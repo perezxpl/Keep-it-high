@@ -1,0 +1,15 @@
+export const CONFIG = {
+  GRAVITY: 0.38,
+  JUMP_FORCE: 9.8,
+  ACCEL: 0.24,
+  DECEL: 0.84,
+  SLIDE_DECEL: 0.958,
+  CROUCH_SPEED: 1.6,
+  WALK_MAX: 2.2,
+  JOG_MAX: 4.2,
+  SPRINT_MAX: 6.8,
+  SLIDE_DASH_SPEED: 9.0
+};
+
+export const FRAME_DURATION = 1000 / 60; // 16.666 ms (dokĹ‚adnie 60 FPS)
+export const START_X = 160;

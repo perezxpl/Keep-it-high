@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kapki Runner - Free Turf Ball & Athletic Sprint</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090c10;
+      font-family: monospace;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    #rotate-device {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #090c10;
+      color: #fff;
+      z-index: 1000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    @media (orientation: portrait) {
+      #rotate-device {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="rotate-device">
+    <h2>Obr&oacute;&#263; telefon</h2>
+    <p style="color: #888; margin-top: 8px;">Wymagana orientacja pozioma</p>
+  </div>
+
+  <div id="game-container">
+    <canvas id="game"></canvas>
+  </div>
+
+  <script src="js/bundle.js"></script>
+</body>
+
+</html>
