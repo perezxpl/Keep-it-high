@@ -3,7 +3,8 @@ import {
   canvas, ctx, W, H, GROUND_Y, camera,
   initCanvas, resize, updateCamera, updateDistance,
   spawnGrass, updateParticles, dist,
-  drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD
+  drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
+  drawStadiumForeground
 } from './world.js';
 import {
   player, playerJump, playerSlide, startKickCharge, executeReleaseKick,
@@ -199,6 +200,9 @@ function draw() {
   drawObstacles(ctx, GROUND_Y);
   drawPlayer(ctx, GROUND_Y);
   drawBall(ctx);
+
+  // Przednia warstwa stadionu (filary bram przesłaniające gracza, konfetti, snopy jupiterów)
+  drawStadiumForeground(ctx, worldLeft, worldRight);
 
   ctx.restore();
 
