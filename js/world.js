@@ -300,6 +300,531 @@ function triggerConfettiCannon() {
   }
 }
 
+// ==========================================
+// ==========================================
+// ORGANICZNE KŁĘBY PYŁU I MGŁA PUSTYNNA (800 – 1599 m)
+// ==========================================
+export const desertClouds = [];
+export const desertWisps = desertClouds; // alias dla zachowania kompatybilności wstecznej
+export const desertSpecks = [];
+
+const DESERT_CLOUDS_COUNT = 32;
+
+function getDesertViewBounds() {
+  const zoom = (camera && camera.zoom) ? camera.zoom : 0.85;
+  const camX = (camera && camera.x !== undefined) ? camera.x : 0;
+  const camY = (camera && camera.y !== undefined) ? camera.y : GROUND_Y;
+
+  // Pełny zakres widoku kamery w przestrzeni świata (od samego nieba po sam dół ekranu i murawę)
+  const left = camX - (W * 0.40) / zoom - 250;
+  const right = camX + (W * 0.60) / zoom + 250;
+  const top = camY - (H * 0.68) / zoom - 150;
+  const bottom = camY + (H * 0.32) / zoom + 150;
+
+  return { left, right, top, bottom };
+}
+
+function resetCloud(c, worldRight, bounds, initialX) {
+  const b = bounds || getDesertViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+
+  if (initialX !== undefined) {
+    c.x = initialX;
+  } else {
+    c.x = worldRight + 20 + Math.random() * 200;
+  }
+
+  // Cząstki/kłęby kurzu losowane na całej rozpiętości pionowej kadru (od samej góry po sam dół)
+  c.y = b.top + Math.random() * spanY;
+  c.r = Math.random() * 90 + 90; // promień 90 – 180 px
+  c.scaleX = Math.random() * 0.6 + 2.2; // 2.2 – 2.8 (aerodynamiczne spłaszczenie)
+  c.scaleY = Math.random() * 0.15 + 0.60; // 0.60 – 0.75
+  c.vx = -(Math.random() * 4.5 + 3.5); // zróżnicowana prędkość: -3.5 do -8.0 px/klatkę
+  c.vy = (Math.random() - 0.5) * 0.4;
+  c.alpha = Math.random() * 0.08 + 0.12; // krycie 0.12 – 0.20
+  c.phase = Math.random() * Math.PI * 2;
+}
+
+export function initDesertWindPool(worldLeft, worldRight) {
+  const bounds = getDesertViewBounds();
+  const left = (worldLeft !== undefined) ? worldLeft : bounds.left;
+  const right = (worldRight !== undefined) ? worldRight : bounds.right;
+  const wWidth = Math.max(800, right - left);
+  const spanY = Math.max(200, bounds.bottom - bounds.top);
+
+  desertClouds.length = 0;
+  for (let i = 0; i < DESERT_CLOUDS_COUNT; i++) {
+    const c = {};
+    const initX = left + Math.random() * wWidth;
+    resetCloud(c, right, bounds, initX);
+    // Równomierne rozmieszczenie w pionie od góry do dołu ekranu (zero pustych stref)
+    const slot = (i + Math.random() * 0.8) / DESERT_CLOUDS_COUNT;
+    c.y = bounds.top + slot * spanY;
+    desertClouds.push(c);
+  }
+}
+
+export function updateDesertWind() {
+  if (currentDist < 800 || currentDist > 1599) {
+    if (desertClouds.length > 0) desertClouds.length = 0;
+    return;
+  }
+
+  const bounds = getDesertViewBounds();
+
+  if (desertClouds.length === 0) {
+    initDesertWindPool(bounds.left, bounds.right);
+  }
+
+  const spanY = Math.max(200, bounds.bottom - bounds.top);
+
+  for (let i = 0; i < desertClouds.length; i++) {
+    const c = desertClouds[i];
+    c.x += c.vx;
+    c.y += c.vy;
+
+    // Utrzymanie tumanów w pełnym kadrze
+    if (c.y < bounds.top) {
+      c.vy = Math.abs(c.vy);
+    } else if (c.y > bounds.bottom) {
+      c.vy = -Math.abs(c.vy);
+    }
+
+    const halfW = c.r * c.scaleX;
+    // Cząstka wylatująca z lewej krawędzi natychmiast wraca z prawej strony z nowo wylosowaną pozycją Y na pełnej wysokości
+    if (c.x + halfW < bounds.left - 60) {
+      resetCloud(c, bounds.right, bounds);
+    } else if (c.x > bounds.right + 450 || c.x < bounds.left - 700) {
+      c.x = bounds.left + Math.random() * (bounds.right - bounds.left);
+      c.y = bounds.top + Math.random() * spanY;
+    }
+  }
+}
+
+export function drawDesertWind(ctx, worldLeft, worldRight) {
+  if (currentDist < 800 || currentDist > 1599) {
+    return;
+  }
+
+  const bounds = getDesertViewBounds();
+  const wl = (worldLeft !== undefined) ? worldLeft : bounds.left;
+  const wr = (worldRight !== undefined) ? worldRight : bounds.right;
+
+  if (desertClouds.length === 0) {
+    initDesertWindPool(wl, wr);
+  }
+
+  ctx.save();
+  const now = performance.now();
+
+  // 1. Pełnoekranowa atmosfera burzy (Ambient Haze): ciepły filtr piaskowy spajający całe tło na pełnej wysokości i szerokości
+  ctx.save();
+  ctx.resetTransform();
+  ctx.scale(DPR, DPR);
+  ctx.fillStyle = 'rgba(210, 150, 70, 0.12)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // 2. Organiczne, spłaszczone kłęby kurzu na pełnej wysokości kadru (Zero kresek!)
+  for (let i = 0; i < desertClouds.length; i++) {
+    const c = desertClouds[i];
+    const halfW = c.r * c.scaleX;
+    if (c.x + halfW < wl - 60 || c.x - halfW > wr + 60) continue;
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    // Dynamiczne falowanie i pulsacja tumanu
+    const pulse = Math.sin(now * 0.0018 + c.phase) * 0.06;
+    ctx.scale(c.scaleX + pulse, c.scaleY - pulse * 0.4);
+
+    // Gradient radialny: gęstszy środek, płynne rozmycie do pełnej przezroczystości (alpha = 0) na obrzeżach
+    const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, c.r);
+    radGrad.addColorStop(0, `rgba(225, 170, 90, ${c.alpha})`);
+    radGrad.addColorStop(0.5, `rgba(235, 185, 110, ${c.alpha * 0.55})`);
+    radGrad.addColorStop(1, 'rgba(225, 170, 90, 0)');
+
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ==========================================
+// ==========================================
+// POTĘŻNE POWIEWY ŚNIEGU I ZAMIECIA ŚNIEŻNA W TLE (1600 – 2399 m)
+// ==========================================
+export const blizzardClouds = [];
+export const blizzardSnowflakes = [];
+export const blizzardForegroundFlakes = [];
+
+const BLIZZARD_CLOUDS_COUNT = 36;
+const BLIZZARD_SNOWFLAKES_COUNT = 150;
+const BLIZZARD_FG_COUNT = 18;
+
+function getWinterViewBounds() {
+  const zoom = (camera && camera.zoom) ? camera.zoom : 0.85;
+  const camX = (camera && camera.x !== undefined) ? camera.x : 0;
+  const camY = (camera && camera.y !== undefined) ? camera.y : GROUND_Y;
+
+  // Pełny zakres widoku kamery w przestrzeni świata (od samego nieba po spód kadru)
+  const left = camX - (W * 0.40) / zoom - 250;
+  const right = camX + (W * 0.60) / zoom + 250;
+  const top = camY - (H * 0.68) / zoom - 180;
+  const bottom = camY + (H * 0.32) / zoom + 160;
+
+  return { left, right, top, bottom };
+}
+
+export function getBlizzardWindForce(now) {
+  // Porywisty wiatr arktyczny: bazowa oscylacja + cykliczne fale uderzeniowe zamieci
+  const baseGust = Math.sin(now * 0.0011) * 0.25 + Math.cos(now * 0.00041 + 1.2) * 0.35;
+  const squall = Math.pow(Math.max(0, Math.sin(now * 0.00072 + 0.6)), 3) * 0.75;
+  return Math.max(0.75, Math.min(2.4, 1.1 + baseGust + squall));
+}
+
+export function clearWinterBlizzard() {
+  if (blizzardClouds.length > 0) blizzardClouds.length = 0;
+  if (blizzardSnowflakes.length > 0) blizzardSnowflakes.length = 0;
+  if (blizzardForegroundFlakes.length > 0) blizzardForegroundFlakes.length = 0;
+  if (snowFlurryParticles.length > 0) snowFlurryParticles.length = 0;
+}
+
+function resetBlizzardCloud(c, worldRight, bounds, initialX) {
+  const b = bounds || getWinterViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+
+  if (initialX !== undefined) {
+    c.x = initialX;
+  } else {
+    c.x = worldRight + 30 + Math.random() * 240;
+  }
+
+  // Rozmieszczenie na całej wysokości kadru od nieba po zmarzlinę
+  c.y = b.top + Math.random() * spanY;
+  c.r = Math.random() * 85 + 95; // promień 95 – 180 px
+  c.scaleX = Math.random() * 1.5 + 3.2; // 3.2 – 4.7 (aerodynamiczne rozciągnięcie huraganowym wiatrem)
+  c.scaleY = Math.random() * 0.16 + 0.38; // 0.38 – 0.54
+  c.baseVx = -(Math.random() * 5.5 + 5.5); // bazowy pęd od -5.5 do -11.0 px/klatkę
+  c.vy = (Math.random() - 0.5) * 0.3 + 0.12; // delikatny opad zacinającego śniegu
+  c.alpha = Math.random() * 0.09 + 0.11; // krycie 0.11 – 0.20
+  c.phase = Math.random() * Math.PI * 2;
+  c.tilt = -(Math.random() * 0.04 + 0.02); // lekki kąt natarcia zamieci w kierunku pędu
+}
+
+function resetBlizzardSnowflake(p, bounds, initialX) {
+  const b = bounds || getWinterViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+  const wWidth = Math.max(800, b.right - b.left);
+
+  if (initialX !== undefined) {
+    p.x = initialX;
+    p.y = b.top + Math.random() * spanY;
+  } else {
+    // Respawn z prawej strony lub z góry ekranu
+    if (Math.random() < 0.75) {
+      p.x = b.right + Math.random() * 120;
+      p.y = b.top + Math.random() * spanY;
+    } else {
+      p.x = b.left + Math.random() * wWidth;
+      p.y = b.top - Math.random() * 60;
+    }
+  }
+
+  // Typy cząsteczek zamieci:
+  // 0: Drobny pył w tle, 1: Wyraziste płatki zamieci, 2: Pędzące igły lodu (linie wiatru), 3: Śnieg zamiatany przy zmarzlinie
+  const rnd = Math.random();
+  if (rnd < 0.35) {
+    p.type = 0; // pył śnieżny
+    p.size = Math.random() * 1.0 + 1.2;
+    p.baseVx = -(Math.random() * 4.5 + 7.0);
+    p.baseVy = Math.random() * 1.6 + 1.2;
+    p.alpha = Math.random() * 0.3 + 0.35;
+  } else if (rnd < 0.65) {
+    p.type = 1; // wyrazisty płatek
+    p.size = Math.random() * 1.8 + 2.2;
+    p.baseVx = -(Math.random() * 7.0 + 9.5);
+    p.baseVy = Math.random() * 2.5 + 2.0;
+    p.alpha = Math.random() * 0.3 + 0.65;
+  } else if (rnd < 0.85) {
+    p.type = 2; // pędząca igła lodowa (streak)
+    p.size = 1.4;
+    p.streakLen = Math.random() * 16 + 16;
+    p.baseVx = -(Math.random() * 9.0 + 15.0);
+    p.baseVy = Math.random() * 1.8 + 1.2;
+    p.alpha = Math.random() * 0.35 + 0.45;
+  } else {
+    p.type = 3; // przygruntowy wir śnieżny
+    p.y = GROUND_Y - Math.random() * 25;
+    p.size = Math.random() * 1.5 + 1.8;
+    p.baseVx = -(Math.random() * 8.0 + 11.0);
+    p.baseVy = (Math.random() - 0.5) * 0.4;
+    p.alpha = Math.random() * 0.3 + 0.60;
+  }
+
+  p.phase = Math.random() * Math.PI * 2;
+}
+
+function resetBlizzardForegroundFlake(p, bounds, initialX) {
+  const b = bounds || getWinterViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+
+  if (initialX !== undefined) {
+    p.x = initialX;
+  } else {
+    p.x = b.right + 20 + Math.random() * 150;
+  }
+
+  p.y = b.top + Math.random() * spanY;
+  p.size = Math.random() * 4.0 + 5.0; // 5.0 – 9.0 px (duże, rozmyte optycznie przed kamerą)
+  p.baseVx = -(Math.random() * 8.0 + 15.0);
+  p.baseVy = Math.random() * 3.0 + 2.5;
+  p.alpha = Math.random() * 0.35 + 0.30;
+  p.phase = Math.random() * Math.PI * 2;
+}
+
+export function initWinterBlizzardPool(worldLeft, worldRight) {
+  const bounds = getWinterViewBounds();
+  const left = (worldLeft !== undefined) ? worldLeft : bounds.left;
+  const right = (worldRight !== undefined) ? worldRight : bounds.right;
+  const wWidth = Math.max(800, right - left);
+  const spanY = Math.max(200, bounds.bottom - bounds.top);
+
+  blizzardClouds.length = 0;
+  for (let i = 0; i < BLIZZARD_CLOUDS_COUNT; i++) {
+    const c = {};
+    const initX = left + Math.random() * wWidth;
+    resetBlizzardCloud(c, right, bounds, initX);
+    const slot = (i + Math.random() * 0.8) / BLIZZARD_CLOUDS_COUNT;
+    c.y = bounds.top + slot * spanY;
+    blizzardClouds.push(c);
+  }
+
+  blizzardSnowflakes.length = 0;
+  for (let i = 0; i < BLIZZARD_SNOWFLAKES_COUNT; i++) {
+    const p = {};
+    const initX = left + Math.random() * wWidth;
+    resetBlizzardSnowflake(p, bounds, initX);
+    blizzardSnowflakes.push(p);
+  }
+
+  blizzardForegroundFlakes.length = 0;
+  for (let i = 0; i < BLIZZARD_FG_COUNT; i++) {
+    const p = {};
+    const initX = left + Math.random() * wWidth;
+    resetBlizzardForegroundFlake(p, bounds, initX);
+    blizzardForegroundFlakes.push(p);
+  }
+}
+
+export function updateWinterBlizzard() {
+  if (currentDist < 1600) {
+    clearWinterBlizzard();
+    return; // Przed 1600 m (stadion i pustynia) zero śniegu
+  }
+  if (currentDist > 2399) {
+    clearWinterBlizzard();
+    return;
+  }
+
+  const bounds = getWinterViewBounds();
+
+  if (blizzardClouds.length === 0) {
+    initWinterBlizzardPool(bounds.left, bounds.right);
+  }
+
+  const now = performance.now();
+  const windForce = getBlizzardWindForce(now);
+  const spanY = Math.max(200, bounds.bottom - bounds.top);
+
+  // 1. Aktualizacja monumentalnych tumanów i kłębów zamieci w tle
+  for (let i = 0; i < blizzardClouds.length; i++) {
+    const c = blizzardClouds[i];
+    c.x += c.baseVx * windForce;
+    c.y += c.vy + Math.sin(now * 0.0022 + c.phase) * 0.35;
+
+    if (c.y < bounds.top - 80) {
+      c.vy = Math.abs(c.vy);
+    } else if (c.y > bounds.bottom + 80) {
+      c.vy = -Math.abs(c.vy);
+    }
+
+    const halfW = c.r * c.scaleX;
+    if (c.x + halfW < bounds.left - 60) {
+      resetBlizzardCloud(c, bounds.right, bounds);
+    } else if (c.x > bounds.right + 500 || c.x < bounds.left - 800) {
+      c.x = bounds.left + Math.random() * (bounds.right - bounds.left);
+      c.y = bounds.top + Math.random() * spanY;
+    }
+  }
+
+  // 2. Aktualizacja pędzących płatków, igieł lodu i śniegu przygruntowego
+  for (let i = 0; i < blizzardSnowflakes.length; i++) {
+    const p = blizzardSnowflakes[i];
+    p.x += p.baseVx * windForce;
+    p.y += p.baseVy;
+
+    if (p.type === 3) {
+      // Przygruntowy śnieg - utrzymanie tuż nad zmrożonym podłożem
+      if (p.y > GROUND_Y + 1 || p.y < GROUND_Y - 35) {
+        p.y = GROUND_Y - Math.random() * 25;
+      }
+    } else {
+      // Delikatne zawirowania wiatru
+      p.y += Math.sin(now * 0.004 + p.phase) * 0.4;
+    }
+
+    if (p.x < bounds.left - 50 || p.y > bounds.bottom + 50) {
+      resetBlizzardSnowflake(p, bounds);
+    }
+  }
+
+  // 3. Aktualizacja dużych płatków na pierwszym planie
+  for (let i = 0; i < blizzardForegroundFlakes.length; i++) {
+    const p = blizzardForegroundFlakes[i];
+    p.x += p.baseVx * windForce;
+    p.y += p.baseVy;
+    p.y += Math.sin(now * 0.003 + p.phase) * 0.5;
+
+    if (p.x < bounds.left - 60 || p.y > bounds.bottom + 60) {
+      resetBlizzardForegroundFlake(p, bounds);
+    }
+  }
+}
+
+export function drawWinterBlizzard(ctx, worldLeft, worldRight) {
+  if (currentDist < 1600) {
+    return; // Przed 1600 m (stadion i pustynia) zero śniegu
+  }
+  if (currentDist > 2399) {
+    return;
+  }
+
+  const bounds = getWinterViewBounds();
+  const wl = (worldLeft !== undefined) ? worldLeft : bounds.left;
+  const wr = (worldRight !== undefined) ? worldRight : bounds.right;
+
+  if (blizzardClouds.length === 0) {
+    initWinterBlizzardPool(wl, wr);
+  }
+
+  const now = performance.now();
+  const windForce = getBlizzardWindForce(now);
+
+  ctx.save();
+
+  // 1. Pełnoekranowa atmosfera zamieci (Ambient Blizzard Fog & Frost Tint)
+  ctx.save();
+  ctx.resetTransform();
+  ctx.scale(DPR, DPR);
+
+  // Mroźny, chłodny filtr śnieżycy pulsujący w rytm porywów wichury
+  const hazeAlpha = 0.07 + (windForce - 1.0) * 0.035;
+  ctx.fillStyle = `rgba(215, 238, 255, ${Math.min(0.18, Math.max(0.05, hazeAlpha))})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // Mroźna winieta na obrzeżach ekranu (wrażenie zmrożonej soczewki/gogli)
+  const frostGrad = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.42, W * 0.5, H * 0.5, Math.max(W, H) * 0.74);
+  frostGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+  frostGrad.addColorStop(1, `rgba(186, 230, 253, ${0.07 + (windForce - 1.0) * 0.04})`);
+  ctx.fillStyle = frostGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.restore();
+
+  // 2. Potężne, aerodynamiczne kłęby i tumany zamieci śnieżnej w tle
+  for (let i = 0; i < blizzardClouds.length; i++) {
+    const c = blizzardClouds[i];
+    const halfW = c.r * c.scaleX;
+    if (c.x + halfW < wl - 60 || c.x - halfW > wr + 60) continue;
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.tilt);
+
+    // Dynamiczna pulsacja tumanu pod naporem wiatru
+    const pulse = Math.sin(now * 0.0022 + c.phase) * 0.08;
+    ctx.scale(c.scaleX + pulse, c.scaleY - pulse * 0.3);
+
+    const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, c.r);
+    radGrad.addColorStop(0, `rgba(255, 255, 255, ${c.alpha})`);
+    radGrad.addColorStop(0.45, `rgba(224, 242, 254, ${c.alpha * 0.65})`);
+    radGrad.addColorStop(1, 'rgba(186, 230, 253, 0)');
+
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 3. Wielowarstwowa zawieja śnieżna: płatki, igły lodowe i przygruntowy śnieg w tle
+  for (let i = 0; i < blizzardSnowflakes.length; i++) {
+    const p = blizzardSnowflakes[i];
+    if (p.x < wl - 40 || p.x > wr + 40) continue;
+
+    if (p.type === 2) {
+      // Dynamiczna linia pędu wiatru (lodowa igła)
+      ctx.strokeStyle = `rgba(235, 248, 255, ${p.alpha})`;
+      ctx.lineWidth = p.size;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.streakLen, p.y - p.streakLen * 0.14);
+      ctx.stroke();
+    } else if (p.type === 3) {
+      // Przygruntowy puch śnieżny tuż nad zmarzliną
+      ctx.fillStyle = `rgba(240, 249, 255, ${p.alpha})`;
+      ctx.fillRect(p.x, p.y, p.size * 1.4, p.size * 0.7);
+    } else {
+      // Płatki śniegu
+      ctx.fillStyle = `rgba(245, 250, 255, ${p.alpha})`;
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawWinterBlizzardForeground(ctx, worldLeft, worldRight) {
+  if (currentDist < 1600) {
+    return; // Przed 1600 m (stadion i pustynia) zero śniegu
+  }
+  if (currentDist > 2399) {
+    return;
+  }
+
+  const wl = worldLeft;
+  const wr = worldRight;
+
+  ctx.save();
+  for (let i = 0; i < blizzardForegroundFlakes.length; i++) {
+    const p = blizzardForegroundFlakes[i];
+    if (p.x < wl - 30 || p.x > wr + 30) continue;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+    radGrad.addColorStop(0, `rgba(255, 255, 255, ${p.alpha})`);
+    radGrad.addColorStop(0.5, `rgba(224, 242, 254, ${p.alpha * 0.5})`);
+    radGrad.addColorStop(1, 'rgba(200, 235, 255, 0)');
+
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 export function updateParticles() {
   for (let i = grassParticles.length - 1; i >= 0; i--) {
     const gp = grassParticles[i];
@@ -312,32 +837,11 @@ export function updateParticles() {
     }
   }
 
-  // Cząsteczki śniegu unoszące się nad zmarzliną w biomie zimowym (1600 – 2399 m)
-  const isWinter = (currentDist >= 1550 && currentDist <= 2450);
-  if (isWinter && snowFlurryParticles.length < 45) {
-    const worldLeft = camera ? camera.x - (W / camera.zoom) : 0;
-    const worldRight = camera ? camera.x + (W / camera.zoom) * 2 : 2000;
-    snowFlurryParticles.push({
-      x: worldLeft + Math.random() * (worldRight - worldLeft + 150),
-      y: GROUND_Y - Math.random() * 22,
-      vx: -(Math.random() * 4.2 + 2.4),
-      vy: (Math.random() * 0.4 - 0.2),
-      size: Math.random() * 2.4 + 1.2,
-      opacity: Math.random() * 0.5 + 0.35,
-      life: 1.0,
-      decay: Math.random() * 0.015 + 0.008
-    });
-  }
+  // Aktualizacja powiewów i drobin piasku w biomie pustynnym (800 – 1599 m)
+  updateDesertWind();
 
-  for (let i = snowFlurryParticles.length - 1; i >= 0; i--) {
-    const sp = snowFlurryParticles[i];
-    sp.x += sp.vx;
-    sp.y += sp.vy;
-    sp.life -= sp.decay;
-    if (sp.life <= 0 || sp.y > GROUND_Y + 2) {
-      snowFlurryParticles.splice(i, 1);
-    }
-  }
+  // Aktualizacja potężnych powiewów śniegu i zamieci śnieżnej w biomie zimowym (1600 – 2399 m)
+  updateWinterBlizzard();
 
   // Wystrzał konfetti na powitanie przy wbiegnięciu na stadion (300 m)
   if (currentDist >= 300 && currentDist <= 330 && !confettiTriggered) {
@@ -1301,8 +1805,10 @@ export function drawStadium(ctx, worldLeft, worldRight) {
 }
 
 export function drawGround(ctx, worldLeft, worldWidth) {
+  const worldRight = worldLeft + worldWidth;
+
   // 1. Tło stadionu w warstwie mid-ground (za murawą, graczem i obiektami)
-  drawStadium(ctx, worldLeft, worldLeft + worldWidth);
+  drawStadium(ctx, worldLeft, worldRight);
 
   // 2. Grunt biomu
   const biome = getInterpolatedBiome(currentDist);
@@ -1312,7 +1818,13 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   ctx.fillRect(worldLeft, GROUND_Y, worldWidth, 9);
 
   // 3. Profesjonalna murawa piłkarska z pasami koszenia i liniami (300m - 750m)
-  drawPitchMarkings(ctx, START_X + 300 * 14, START_X + 750 * 14, GROUND_Y, worldLeft, worldLeft + worldWidth);
+  drawPitchMarkings(ctx, START_X + 300 * 14, START_X + 750 * 14, GROUND_Y, worldLeft, worldRight);
+
+  // 4. Klimatyczny efekt atmosferyczny pustyni (kłęby kurzu i pełnoekranowa atmosfera burzy)
+  drawDesertWind(ctx, worldLeft, worldRight);
+
+  // 5. Potężne powiewy śniegu i zamieć śnieżna w tle (biom zimowy 1600 – 2399 m)
+  drawWinterBlizzard(ctx, worldLeft, worldRight);
 }
 
 // ==========================================
@@ -1544,6 +2056,9 @@ export function drawStadiumForeground(ctx, worldLeft, worldRight) {
     ctx.fillRect(-cp.w / 2, -cp.h / 2, cp.w, cp.h);
     ctx.restore();
   }
+
+  // 5. Płatki zamieci śnieżnej na pierwszym planie (biom zimowy 1600 – 2399 m)
+  drawWinterBlizzardForeground(ctx, worldLeft, worldRight);
 }
 
 export function drawParticles(ctx) {
@@ -1556,10 +2071,12 @@ export function drawParticles(ctx) {
     ctx.fillRect(gp.x, gp.y, gp.size, gp.size * 1.5);
   }
 
-  // 2. Cząsteczki śniegu / zamieci tuż nad zmarzliną w biomie zimowym
-  for (let sp of snowFlurryParticles) {
-    ctx.fillStyle = `rgba(240, 248, 255, ${sp.opacity * sp.life})`;
-    ctx.fillRect(sp.x, sp.y, sp.size, sp.size * 0.85);
+  // 2. Cząsteczki śniegu / zamieci tuż nad zmarzliną w biomie zimowym (od 1600 m)
+  if (currentDist >= 1600 && currentDist <= 2399) {
+    for (let sp of snowFlurryParticles) {
+      ctx.fillStyle = `rgba(240, 248, 255, ${sp.opacity * sp.life})`;
+      ctx.fillRect(sp.x, sp.y, sp.size, sp.size * 0.85);
+    }
   }
 }
 
