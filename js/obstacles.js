@@ -1,6 +1,6 @@
 import { START_X } from './config.js';
 import { player } from './player.js';
-import { camera, W, GROUND_Y } from './world.js';
+import { camera, W, GROUND_Y, distToSegment } from './world.js';
 
 // ==========================================
 // PROCEDURALNY SYSTEM PRZESZKÓD WEDŁUG BIOMÓW
@@ -299,32 +299,451 @@ export function updateProceduralObstacles(focusX) {
 
 export const birds = [];
 
+// 3 PRECYZYJNE PUŁAPY WYSOKOŚCI WZGLĘDEM GROUND_Y:
+// - Poziom 1 (Niski): GROUND_Y - 55 px (wślizg / niskie podcięcie pod ptakiem)
+// - Poziom 2 (Średni): GROUND_Y - 120 px (wysokość skoku gracza / średnia parabola)
+// - Poziom 3 (Wysoki): GROUND_Y - 200 px (strefa mocnych wykopów / lobów)
+export const BIRD_ALTITUDES_OFFSETS = [55, 120, 200];
+
+export const BIRD_ALTITUDES = [
+  GROUND_Y - 55,   // Niski
+  GROUND_Y - 120,  // Średni
+  GROUND_Y - 200   // Wysoki
+];
+
+export function getBirdAltitudes(gy = GROUND_Y) {
+  const g = (typeof gy !== 'undefined' && gy !== null) ? gy : GROUND_Y;
+  return [
+    g - 55,   // Niski
+    g - 120,  // Średni
+    g - 200   // Wysoki
+  ];
+}
+
 const BIOME_BIRD_TYPES = {
-  0: 'pigeon',    // Murawa: Gołąb miejski / Jastrząb
-  1: 'vulture',   // Pustynia: Sęp pustynny
-  2: 'snow_owl',  // Zima: Sowa śnieżna
+  0: 'crow',      // Murawa i Stadion: Wrona drapieżna / Jastrząb miejski
+  1: 'vulture',   // Pustynia: Sęp pustynny / Jastrząb pustynny
+  2: 'snow_owl',  // Zima: Sowa śnieżna drapieżna
   3: 'parrot',    // Dżungla: Papuga Ara
   4: 'hell_bat'   // Piekło: Piekielny nietoperz
 };
 
 export function getBirdTypeForX(x) {
   const biomeId = getBiomeForX(x);
-  return BIOME_BIRD_TYPES[biomeId] || 'pigeon';
+  return BIOME_BIRD_TYPES[biomeId] || 'crow';
 }
 
-let lastBirdSpawnX = START_X + 2800; // Pierwszy ptak po ok. 200m (przed stadionem)
+// ==========================================
+// SYSTEM CZĄSTECZEK EKSPLOZJI PIÓR I PUCHU
+// ==========================================
+
+export const birdFeatherParticles = [];
+export const birdPuffParticles = [];
+export const birdSparkParticles = [];
+export const birdShockwaves = [];
+export const birdPopups = [];
+
+const BIRD_FEATHER_PALETTES = {
+  crow: {
+    feathers: ['#0f172a', '#1e293b', '#334155', '#475569', '#1e1b4b', '#0369a1'],
+    highlights: ['#38bdf8', '#64748b', '#94a3b8', null],
+    puffs: ['rgba(30, 41, 59, 0.75)', 'rgba(71, 85, 105, 0.65)', 'rgba(148, 163, 184, 0.55)'],
+    sparks: ['#38bdf8', '#f8fafc', '#94a3b8'],
+    quill: '#000000'
+  },
+  pigeon: {
+    feathers: ['#0f172a', '#1e293b', '#334155', '#475569', '#1e1b4b', '#0369a1'],
+    highlights: ['#38bdf8', '#64748b', '#94a3b8', null],
+    puffs: ['rgba(30, 41, 59, 0.75)', 'rgba(71, 85, 105, 0.65)', 'rgba(148, 163, 184, 0.55)'],
+    sparks: ['#38bdf8', '#f8fafc', '#94a3b8'],
+    quill: '#000000'
+  },
+  vulture: {
+    feathers: ['#292524', '#44403c', '#57534e', '#78716c', '#d6d3d1', '#fef08a'],
+    highlights: ['#a8a29e', '#fde047', null],
+    puffs: ['rgba(68, 64, 60, 0.75)', 'rgba(168, 162, 158, 0.65)', 'rgba(214, 211, 209, 0.55)'],
+    sparks: ['#facc15', '#fef08a', '#e7e5e4'],
+    quill: '#1c1917'
+  },
+  snow_owl: {
+    feathers: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1', '#64748b'],
+    highlights: ['#ffffff', '#e0f2fe', null],
+    puffs: ['rgba(255, 255, 255, 0.9)', 'rgba(241, 245, 249, 0.8)', 'rgba(226, 232, 240, 0.65)'],
+    sparks: ['#ffffff', '#fbbf24', '#38bdf8'],
+    quill: '#94a3b8'
+  },
+  parrot: {
+    feathers: ['#ef4444', '#dc2626', '#facc15', '#eab308', '#2563eb', '#1d4ed8', '#10b981'],
+    highlights: ['#fef08a', '#93c5fd', '#fca5a5', null],
+    puffs: ['rgba(239, 68, 68, 0.75)', 'rgba(250, 204, 21, 0.75)', 'rgba(37, 99, 235, 0.75)'],
+    sparks: ['#fde047', '#f87171', '#60a5fa'],
+    quill: '#7f1d1d'
+  },
+  hell_bat: {
+    feathers: ['#881337', '#4c0519', '#e11d48', '#ff0055', '#ea580c', '#18181b'],
+    highlights: ['#fb923c', '#fda4af', null],
+    puffs: ['rgba(136, 19, 55, 0.8)', 'rgba(234, 88, 12, 0.75)', 'rgba(24, 24, 27, 0.75)'],
+    sparks: ['#ff0055', '#fb923c', '#fef08a'],
+    quill: '#27040d'
+  }
+};
 
 /**
- * Fabryka ptaków – tworzy latającą przeszkodę powietrzną z własną fizyką i animacją
+ * Generuje widowiskową eksplozję piór, puchu, iskier i fali uderzeniowej przy trafieniu piłką
+ */
+export function createBirdExplosion(x, y, birdType = 'crow', impactVx = 0, impactVy = 0) {
+  const palette = BIRD_FEATHER_PALETTES[birdType] || BIRD_FEATHER_PALETTES.crow;
+
+  // 1. Chmura wirujących piór (Feathers) — 22 do 28 cząsteczek
+  const featherCount = 22 + Math.floor(Math.random() * 7);
+  for (let i = 0; i < featherCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2.4 + Math.random() * 6.8;
+    const col = palette.feathers[Math.floor(Math.random() * palette.feathers.length)];
+    const hl = palette.highlights[Math.floor(Math.random() * palette.highlights.length)];
+
+    birdFeatherParticles.push({
+      x: x + (Math.random() - 0.5) * 14,
+      y: y + (Math.random() - 0.5) * 14,
+      vx: Math.cos(angle) * speed + impactVx * 0.28,
+      vy: Math.sin(angle) * speed + impactVy * 0.28 - 1.4,
+      len: 9 + Math.random() * 10,
+      w: 3.5 + Math.random() * 2.5,
+      color: col,
+      highlightColor: hl,
+      quillColor: palette.quill,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.24,
+      swayPhase: Math.random() * Math.PI * 2,
+      swaySpeed: 0.08 + Math.random() * 0.08,
+      swayAmp: 1.0 + Math.random() * 1.5,
+      gravity: 0.07 + Math.random() * 0.05,
+      drag: 0.94,
+      life: 1.0,
+      decay: 1 / (45 + Math.random() * 35)
+    });
+  }
+
+  // 2. Chmura puchu / obłoczek uderzenia (Puffs) — 12 do 16 cząsteczek
+  const puffCount = 12 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < puffCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.0 + Math.random() * 3.8;
+    const col = palette.puffs[Math.floor(Math.random() * palette.puffs.length)];
+
+    birdPuffParticles.push({
+      x: x + (Math.random() - 0.5) * 10,
+      y: y + (Math.random() - 0.5) * 10,
+      vx: Math.cos(angle) * speed + impactVx * 0.16,
+      vy: Math.sin(angle) * speed + impactVy * 0.16 - 0.8,
+      radius: 5 + Math.random() * 5,
+      maxRadius: 18 + Math.random() * 12,
+      growth: 0.42 + Math.random() * 0.25,
+      color: col,
+      life: 1.0,
+      decay: 1 / (26 + Math.random() * 16)
+    });
+  }
+
+  // 3. Iskry kinetyczne / drobne odłamki (Sparks) — 12 do 18 cząsteczek
+  const sparkCount = 12 + Math.floor(Math.random() * 7);
+  for (let i = 0; i < sparkCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4.5 + Math.random() * 8.5;
+    const col = palette.sparks[Math.floor(Math.random() * palette.sparks.length)];
+
+    birdSparkParticles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed + impactVx * 0.35,
+      vy: Math.sin(angle) * speed + impactVy * 0.35 - 1.0,
+      len: 7 + Math.random() * 9,
+      color: col,
+      life: 1.0,
+      decay: 1 / (14 + Math.random() * 10)
+    });
+  }
+
+  // 4. Pierścień uderzeniowy / fala uderzeniowa (Shockwave)
+  birdShockwaves.push({
+    x,
+    y,
+    radius: 7,
+    maxRadius: 44,
+    growth: 3.2,
+    alpha: 0.88,
+    decay: 0.055,
+    color: '#ffffff'
+  });
+
+  // 5. Stylizowany arcade popup tekstowy
+  const popups = ['BIRD STRIKE! 🪶', 'DIRECT HIT! 💥', 'AERIAL SMASH! 🎯'];
+  const text = popups[Math.floor(Math.random() * popups.length)];
+  birdPopups.push({
+    x,
+    y: y - 10,
+    text,
+    color: '#fef08a',
+    scale: 0.6,
+    targetScale: 1.25,
+    alpha: 1.0,
+    life: 42
+  });
+}
+
+/**
+ * Tworzy mniejszy obłoczek piórek (np. przy potrąceniu ptaka przez biegnącego gracza)
+ */
+export function createBirdFeatherPuff(x, y, birdType = 'crow', count = 8) {
+  const palette = BIRD_FEATHER_PALETTES[birdType] || BIRD_FEATHER_PALETTES.crow;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.8 + Math.random() * 3.5;
+    const col = palette.feathers[Math.floor(Math.random() * palette.feathers.length)];
+    const hl = palette.highlights[Math.floor(Math.random() * palette.highlights.length)];
+
+    birdFeatherParticles.push({
+      x: x + (Math.random() - 0.5) * 10,
+      y: y + (Math.random() - 0.5) * 10,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.2,
+      len: 8 + Math.random() * 7,
+      w: 3.0 + Math.random() * 2.0,
+      color: col,
+      highlightColor: hl,
+      quillColor: palette.quill,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+      swayPhase: Math.random() * Math.PI * 2,
+      swaySpeed: 0.08 + Math.random() * 0.08,
+      swayAmp: 1.0 + Math.random() * 1.2,
+      gravity: 0.08,
+      drag: 0.94,
+      life: 1.0,
+      decay: 1 / (35 + Math.random() * 25)
+    });
+  }
+}
+
+/**
+ * Aktualizacja fizyki cząsteczek eksplozji ptaków
+ */
+export function updateBirdParticles() {
+  const gy = (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500);
+
+  // 1. Pióra
+  for (let i = birdFeatherParticles.length - 1; i >= 0; i--) {
+    const f = birdFeatherParticles[i];
+    f.x += f.vx;
+    f.y += f.vy;
+    f.vx *= f.drag;
+    f.vy = (f.vy + f.gravity) * f.drag;
+
+    f.swayPhase += f.swaySpeed;
+    f.x += Math.sin(f.swayPhase) * f.swayAmp;
+    f.rot += f.rotSpeed;
+    f.life -= f.decay;
+
+    if (f.y >= gy) {
+      f.y = gy;
+      f.vx *= 0.65;
+      f.vy = 0;
+      f.decay *= 1.8;
+    }
+
+    if (f.life <= 0) {
+      birdFeatherParticles.splice(i, 1);
+    }
+  }
+
+  // 2. Chmury puchu
+  for (let i = birdPuffParticles.length - 1; i >= 0; i--) {
+    const p = birdPuffParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.91;
+    p.vy *= 0.91;
+    p.radius = Math.min(p.maxRadius, p.radius + p.growth);
+    p.life -= p.decay;
+
+    if (p.life <= 0) {
+      birdPuffParticles.splice(i, 1);
+    }
+  }
+
+  // 3. Iskry kinetyczne
+  for (let i = birdSparkParticles.length - 1; i >= 0; i--) {
+    const s = birdSparkParticles[i];
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vx *= 0.88;
+    s.vy *= 0.88;
+    s.life -= s.decay;
+
+    if (s.life <= 0) {
+      birdSparkParticles.splice(i, 1);
+    }
+  }
+
+  // 4. Pierścienie fal uderzeniowych
+  for (let i = birdShockwaves.length - 1; i >= 0; i--) {
+    const sw = birdShockwaves[i];
+    sw.radius += sw.growth;
+    sw.alpha -= sw.decay;
+
+    if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) {
+      birdShockwaves.splice(i, 1);
+    }
+  }
+
+  // 5. Popupy tekstowe
+  for (let i = birdPopups.length - 1; i >= 0; i--) {
+    const pop = birdPopups[i];
+    pop.y -= 0.65;
+    pop.scale += (pop.targetScale - pop.scale) * 0.15;
+    pop.life--;
+    if (pop.life < 15) {
+      pop.alpha = pop.life / 15;
+    }
+    if (pop.life <= 0) {
+      birdPopups.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Renderuje pojedyncze realistyczne piórko z chorągiewką, stosiną i światłocieniem
+ */
+function drawSingleFeather(ctx, f) {
+  const len = f.len;
+  const w = f.w;
+  ctx.save();
+  ctx.translate(f.x, f.y);
+  ctx.rotate(f.rot);
+  ctx.globalAlpha = Math.max(0, Math.min(1, f.life));
+
+  // Chorągiewka pióra
+  ctx.fillStyle = f.color;
+  ctx.beginPath();
+  ctx.moveTo(0, -len * 0.5);
+  ctx.bezierCurveTo(w * 0.7, -len * 0.25, w, len * 0.2, 0, len * 0.5);
+  ctx.bezierCurveTo(-w, len * 0.2, -w * 0.7, -len * 0.25, 0, -len * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rozświetlenie jednej strony piórka dla głębi 3D
+  if (f.highlightColor) {
+    ctx.fillStyle = f.highlightColor;
+    ctx.beginPath();
+    ctx.moveTo(0, -len * 0.5);
+    ctx.bezierCurveTo(w * 0.35, -len * 0.25, w * 0.5, len * 0.2, 0, len * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Oś pióra (stosina / quill)
+  ctx.strokeStyle = f.quillColor || 'rgba(0, 0, 0, 0.4)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(0, -len * 0.5);
+  ctx.lineTo(0, len * 0.55);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje wszystkie aktywne cząsteczki eksplozji ptaków
+ */
+export function drawBirdParticles(ctx) {
+  // 1. Shockwaves
+  for (let i = 0; i < birdShockwaves.length; i++) {
+    const sw = birdShockwaves[i];
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = sw.color;
+    ctx.lineWidth = Math.max(1, 3.5 * sw.alpha);
+    ctx.globalAlpha = Math.max(0, Math.min(1, sw.alpha));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 2. Chmury puchu
+  for (let i = 0; i < birdPuffParticles.length; i++) {
+    const p = birdPuffParticles[i];
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 0.6));
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 3. Kinetic sparks
+  for (let i = 0; i < birdSparkParticles.length; i++) {
+    const s = birdSparkParticles[i];
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - s.vx * 1.8, s.y - s.vy * 1.8);
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = Math.max(0, Math.min(1, s.life));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 4. Pióra
+  for (let i = 0; i < birdFeatherParticles.length; i++) {
+    const f = birdFeatherParticles[i];
+    drawSingleFeather(ctx, f);
+  }
+
+  // 5. Popupy tekstowe (BIRD STRIKE!)
+  for (let i = 0; i < birdPopups.length; i++) {
+    const pop = birdPopups[i];
+    ctx.save();
+    ctx.translate(pop.x, pop.y);
+    ctx.scale(pop.scale, pop.scale);
+    ctx.globalAlpha = Math.max(0, Math.min(1, pop.alpha));
+    ctx.font = '900 12px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillText(pop.text, 1.5, 1.5);
+    ctx.fillStyle = pop.color;
+    ctx.fillText(pop.text, 0, 0);
+    ctx.restore();
+  }
+}
+
+let lastBirdSpawnX = START_X + 1400; // Pierwszy ptak po ok. 100m
+
+/**
+ * Fabryka ptaków – tworzy dynamiczną przeszkodę powietrzną na 1 z 3 zdefiniowanych pułapów
  */
 export function createBird(x, groundY = (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500)) {
+  const gy = (typeof groundY !== 'undefined' && groundY !== null) ? groundY : (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500);
   const type = getBirdTypeForX(x);
-  // Wysokość lotu 45–70 px nad poziomem murawy (GROUND_Y - 45 do GROUND_Y - 70)
-  const altitude = 48 + Math.random() * 18;
-  const w = 28;
-  const h = 18;
-  const hoverPhase = Math.random() * Math.PI * 2;
-  const y = groundY - altitude - h + Math.sin(hoverPhase) * 4;
+
+  // 3 zdefiniowane poziomy wysokości (Niski: gy - 55, Średni: gy - 120, Wysoki: gy - 200)
+  const altitudes = getBirdAltitudes(gy);
+  const altitudeIndex = Math.floor(Math.random() * altitudes.length);
+  const baseAltitudeY = altitudes[altitudeIndex];
+  const altitudeOffset = BIRD_ALTITUDES_OFFSETS[altitudeIndex];
+
+  // Zwiększony rozmiar sylwetki o ok. 50%–70% (rozpiętość skrzydeł ~44 px, radius = 18 px)
+  const w = 44;
+  const h = 28;
+  const radius = 18;
+
+  // Prędkość przelotu naprzeciw graczowi: vx = -(3.2 + Math.random() * 1.8) px/klatkę
+  const vx = -(3.2 + Math.random() * 1.8);
+  const phase = Math.random() * Math.PI * 2;
+  const y = baseAltitudeY - h / 2;
 
   return {
     type,
@@ -332,17 +751,20 @@ export function createBird(x, groundY = (typeof GROUND_Y !== 'undefined' ? GROUN
     y,
     w,
     h,
-    baseAltitude: altitude,
-    hoverPhase,
-    vx: -0.8,          // Powolne szybowanie w lewo naprzeciw biegaczowi
-    restitution: 0.85, // Sprężyste odbicie piłki
+    radius,
+    baseAltitude: altitudeOffset,
+    altitudeLevel: altitudeIndex, // 0: Niski, 1: Średni, 2: Wysoki
+    phase,
+    vx,
+    vy: 0,
+    restitution: 0.88,
     friction: 0.35,
     hitReaction: 0
   };
 }
 
 /**
- * Aktualizuje ruch, animacje i proceduralne generowanie ptaków
+ * Aktualizuje ruch, animacje falowe i proceduralne generowanie ptaków
  */
 export function updateProceduralBirds(focusX, groundY) {
   const gy = (typeof groundY !== 'undefined' && groundY !== null) ? groundY : (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500);
@@ -352,25 +774,38 @@ export function updateProceduralBirds(focusX, groundY) {
     return;
   }
 
-  // 1. Ruch poziomy i falowanie w pionie
+  // 1. Ruch poziomy i naturalna oscylacja wysokości w locie za pomocą funkcji falowej
   for (let i = 0; i < birds.length; i++) {
     const b = birds[i];
     b.x += b.vx;
-    b.hoverPhase += 0.05;
-    b.y = gy - b.baseAltitude - b.h + Math.sin(b.hoverPhase) * 4;
+
+    // Naturalna, delikatna oscylacja wysokości w locie za pomocą funkcji falowej:
+    // y += Math.sin(bird.phase) * 0.6; bird.phase += 0.08;
+    b.y += Math.sin(b.phase) * 0.6;
+    b.phase += 0.08;
+
+    // Subtelna stabilizacja wokół zadanego pułapu
+    if (b.vy) {
+      b.y += b.vy;
+      b.vy *= 0.92;
+    } else {
+      const targetY = gy - b.baseAltitude - b.h / 2;
+      b.y += (targetY - b.y) * 0.015;
+    }
+
     if (b.hitReaction > 0) {
       b.hitReaction--;
     }
   }
 
-  // 2. Generowanie nowych ptaków w przód (średnio co ok. 350 m = 4900 px)
+  // 2. Generowanie nowych ptaków w przód (regularne, zbalansowane odstępy co ok. 85 - 150m)
   const targetAheadX = focusX + SPAWN_AHEAD_BUFFER;
   while (lastBirdSpawnX < targetAheadX) {
-    const birdGap = 4900 + (Math.random() * 560 - 280);
+    const birdGap = 1200 + Math.random() * 900;
     lastBirdSpawnX += birdGap;
 
-    // Całkowite wykluczenie ptaków wewnątrz stadionu (300 m – 750 m) oraz piramidy (1050 m – 1350 m)
-    if (isInsideStadiumZone(lastBirdSpawnX, 40) || isInsidePyramidZone(lastBirdSpawnX, 40)) {
+    // Całkowite wykluczenie ptaków wyłącznie wewnątrz zamkniętej Piramidy (1050 m – 1350 m)
+    if (isInsidePyramidZone(lastBirdSpawnX, 40)) {
       continue;
     }
 
@@ -378,9 +813,9 @@ export function updateProceduralBirds(focusX, groundY) {
     birds.push(bird);
   }
 
-  // 3. Usuwanie ptaków, które mogły znaleźć się wewnątrz stadionu lub piramidy
+  // 3. Usuwanie ptaków, które mogły znaleźć się wewnątrz zamkniętej piramidy
   for (let i = birds.length - 1; i >= 0; i--) {
-    if (isInsideStadiumZone(birds[i].x, birds[i].w) || isInsidePyramidZone(birds[i].x, birds[i].w)) {
+    if (isInsidePyramidZone(birds[i].x, birds[i].w)) {
       birds.splice(i, 1);
     }
   }
@@ -390,11 +825,19 @@ export function updateProceduralBirds(focusX, groundY) {
   while (birds.length > 0 && (birds[0].x + birds[0].w) < despawnThreshold) {
     birds.shift();
   }
+
+  // 5. Aktualizacja cząsteczek eksplozji i piór
+  updateBirdParticles();
 }
 
 export function resetBirds() {
   birds.length = 0;
-  lastBirdSpawnX = START_X + 2800;
+  birdFeatherParticles.length = 0;
+  birdPuffParticles.length = 0;
+  birdSparkParticles.length = 0;
+  birdShockwaves.length = 0;
+  birdPopups.length = 0;
+  lastBirdSpawnX = START_X + 1400;
 }
 
 /**
@@ -496,19 +939,91 @@ export function checkObstacleCollisions(ball, GROUND_Y) {
   // 2. Kolizje z przeszkodami powietrznymi (ptaki biomów)
   for (let i = 0; i < birds.length; i++) {
     const bird = birds[i];
-    if (isInsideStadiumZone(bird.x, bird.w) || isInsidePyramidZone(bird.x, bird.w)) continue;
-    if (Math.abs(ball.x - (bird.x + bird.w / 2)) < bird.w + 50) {
-      const hit = resolveBoxCollision(
-        ball,
-        bird.x,
-        bird.y,
-        bird.w,
-        bird.h,
-        bird.restitution ?? 0.85,
-        bird.friction ?? 0.35
-      );
-      if (hit) {
-        bird.hitReaction = 16;
+    if (isInsidePyramidZone(bird.x, bird.w)) continue;
+
+    const cx = bird.x + bird.w / 2;
+    const cy = bird.y + bird.h / 2;
+    const birdRadius = bird.radius || 18;
+    const combinedRadius = (ball.radius || 12) + birdRadius;
+
+    // A. Kolizja bezpośrednia piłki z ptakiem (z CCD anti-tunneling dla mocnych wykopów)
+    const dx = ball.x - cx;
+    const dy = ball.y - cy;
+    const curDist = Math.hypot(dx, dy);
+
+    let isHit = (curDist < combinedRadius);
+
+    if (!isHit && (Math.abs(ball.vx) > 7 || Math.abs(ball.vy) > 7)) {
+      const prevX = ball.x - ball.vx;
+      const prevY = ball.y - ball.vy;
+      const seg = distToSegment(cx, cy, prevX, prevY, ball.x, ball.y);
+      if (seg.dist < combinedRadius) {
+        isHit = true;
+      }
+    }
+
+    if (isHit) {
+      // 1. Obliczenie znormalizowanego wektora odbicia
+      const dist = Math.hypot(dx, dy) || 1;
+      const nx = dist > 0 ? dx / dist : (ball.vx > 0 ? 1 : -1);
+      const ny = dist > 0 ? dy / dist : -0.7;
+      const nLen = Math.hypot(nx, ny) || 1;
+      const normX = nx / nLen;
+      const normY = ny / nLen;
+
+      // 2. Korekta pozycji piłki (wypchnięcie poza promień kolizji)
+      ball.x = cx + normX * (combinedRadius + 2);
+      ball.y = cy + normY * (combinedRadius + 2);
+
+      // 3. Sprężyste odbicie fizyczne piłki
+      const dot = ball.vx * normX + ball.vy * normY;
+      if (dot < 0) {
+        const restitution = bird.restitution ?? 0.88;
+        ball.vx = ball.vx - (1 + restitution) * dot * normX;
+        ball.vy = ball.vy - (1 + restitution) * dot * normY;
+      }
+
+      // Impuls kinetyczny od prędkości ptaka i zderzenia
+      ball.vx += bird.vx * 0.35 + normX * 2.2;
+      ball.vy += normY * 2.5;
+      ball.spin += (Math.random() - 0.5) * 0.85;
+
+      // 4. WIDOWISKOWA EKSPLOZJA CHMURY PIÓR I CZĄSTECZEK
+      createBirdExplosion(cx, cy, bird.type, ball.vx, ball.vy);
+
+      // 5. Usunięcie zestrzelonego ptaka z przestrzeni powietrznej
+      birds.splice(i, 1);
+      i--;
+      continue;
+    }
+
+    // B. Interakcja ptaka z graczem
+    if (player && !player.isIntro) {
+      const playerBoxX = player.x;
+      const playerBoxW = player.w;
+      // Podczas wślizgu wysokość gracza to zaledwie 20px (ślizga się pod ptakiem na poziomie 1)
+      const playerBoxH = player.isSliding ? 20 : player.h;
+      const playerBoxY = player.isSliding ? (GROUND_Y - 20) : (player.y || GROUND_Y - player.h);
+
+      const closestX = Math.max(playerBoxX, Math.min(cx, playerBoxX + playerBoxW));
+      const closestY = Math.max(playerBoxY, Math.min(cy, playerBoxY + playerBoxH));
+      const pDist = Math.hypot(cx - closestX, cy - closestY);
+
+      if (pDist < birdRadius + 2) {
+        if (player.kickState === 'SWING') {
+          // Wykop bezpośrednio z nogi trafia w ptaka!
+          createBirdExplosion(cx, cy, bird.type, player.facing * 9, -5);
+          birds.splice(i, 1);
+          i--;
+          continue;
+        } else if (!player.isSliding) {
+          // Gracz wyprostowany wpada na ptaka
+          createBirdFeatherPuff(cx, cy, bird.type, 8);
+          bird.hitReaction = 24;
+          bird.vx = -7;
+          bird.vy = -6; // Ptak gwałtownie ucieka w górę
+          player.vx *= 0.65; // Chwilowe wytracenie pędu biegu
+        }
       }
     }
   }
@@ -1111,391 +1626,444 @@ export function drawObstacles(ctx, GROUND_Y) {
 export function drawBirds(ctx, GROUND_Y, viewLeft, viewRight) {
   for (let i = 0; i < birds.length; i++) {
     const bird = birds[i];
-    if (isInsideStadiumZone(bird.x, bird.w) || isInsidePyramidZone(bird.x, bird.w)) continue;
+    if (isInsidePyramidZone(bird.x, bird.w)) continue;
     if (bird.x + bird.w < viewLeft || bird.x > viewRight) continue;
 
     drawBird(ctx, bird, GROUND_Y);
   }
+
+  // Renderowanie spektakularnych cząsteczek eksplozji (chmura piór, obłoczek puchu, iskry, popupy)
+  drawBirdParticles(ctx);
 }
 
 function drawBird(ctx, bird, GROUND_Y) {
   const bx = bird.x;
   const by = bird.y;
-  const bw = bird.w; // 28
-  const bh = bird.h; // 18
+  const bw = bird.w || 44; // powiększony rozmiar sylwetki (~44 px rozpiętości)
+  const bh = bird.h || 28;
   const cx = bx + bw / 2;
   const cy = by + bh / 2;
 
-  // 1. Cień ptaka rzucany na podłoże
+  // 1. Cień ptaka rzucany na podłoże (dynamicznie skalowany z pułapem wysokości)
   const altitudeAboveGround = Math.max(10, GROUND_Y - (by + bh));
-  const shadowScale = Math.max(0.4, 1 - (altitudeAboveGround / 120));
-  const shadowAlpha = Math.max(0.08, 0.24 * shadowScale);
+  const shadowScale = Math.max(0.35, Math.min(1.2, 1.15 - (altitudeAboveGround / 240)));
+  const shadowAlpha = Math.max(0.06, 0.32 * shadowScale);
   ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha.toFixed(2)})`;
   ctx.beginPath();
-  ctx.ellipse(cx, GROUND_Y + 1, 14 * shadowScale, 3.5 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, GROUND_Y + 1, 20 * shadowScale, 4.8 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2. Animacja machania skrzydłami (sinusoida w czasie)
-  const flapSpeed = bird.hitReaction > 0 ? 0.028 : 0.012;
-  const flap = Math.sin(Date.now() * flapSpeed + bird.hoverPhase);
-  const wingFlapY = flap * 7;
+  // 2. Animacja machania skrzydłami (sinusoida sprzężona z fazą lotu ptaka)
+  const flapSpeed = bird.hitReaction > 0 ? 0.038 : 0.016;
+  const flap = Math.sin(Date.now() * flapSpeed + bird.phase * 4);
+  const wingFlapY = flap * 12;
 
   ctx.save();
 
   // Reakcja na kolizję (krótkie drżenie / odrzut)
   if (bird.hitReaction > 0) {
-    const jitter = (Math.random() - 0.5) * 3;
+    const jitter = (Math.random() - 0.5) * 4;
     ctx.translate(jitter, jitter);
   }
 
-  if (bird.type === 'pigeon') {
+  if (bird.type === 'crow' || bird.type === 'pigeon') {
     // ==========================================
-    // BIOM 0: GOŁĄB MIEJSKI (pigeon)
+    // BIOM 0: WRONA DRAPIEŻNA / JASTRZĄB NA STADIONIE (crow / pigeon)
     // ==========================================
-    // Sterówki ogona (skierowane w prawo)
-    ctx.fillStyle = '#455a64';
+    // 1. Sterówki ogona (rozpostarty, schodkowy ogon drapieżnika)
+    ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.moveTo(bx + 18, cy + 1);
-    ctx.lineTo(bx + 29, cy - 2);
-    ctx.lineTo(bx + 28, cy + 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#263238';
-    ctx.fillRect(bx + 25, cy - 1, 3, 4);
-
-    // Tylne skrzydło (w głębi)
-    ctx.fillStyle = '#607d8b';
-    ctx.beginPath();
-    ctx.moveTo(bx + 12, cy - 1);
-    ctx.lineTo(bx + 18, cy - 9 - wingFlapY * 0.7);
-    ctx.lineTo(bx + 21, cy - 2);
+    ctx.moveTo(bx + 24, cy + 2);
+    ctx.lineTo(bx + 42, cy - 3);
+    ctx.lineTo(bx + 45, cy + 2);
+    ctx.lineTo(bx + 40, cy + 8);
     ctx.closePath();
     ctx.fill();
 
-    // Korpus gołębia (szaro-stalowy z jasnym brzuszkiem)
-    ctx.fillStyle = '#78909c';
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(bx + 13, cy + 2, 8.5, 5.5, -0.12, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(bx + 26, cy + 2);
+    ctx.lineTo(bx + 43, cy);
+    ctx.moveTo(bx + 26, cy + 3);
+    ctx.lineTo(bx + 42, cy + 5);
+    ctx.stroke();
 
-    ctx.fillStyle = '#b0bec5';
+    // 2. Tylne skrzydło (w głębi, z rozczapierzonymi lotkami)
+    ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.ellipse(bx + 12, cy + 4, 6, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Szmaragdowo-opalizująca szyja
-    ctx.fillStyle = '#26a69a';
-    ctx.beginPath();
-    ctx.arc(bx + 8, cy - 1, 3.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Głowa gołębia
-    ctx.fillStyle = '#546e7a';
-    ctx.beginPath();
-    ctx.arc(bx + 6, cy - 2, 4.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Dziób
-    ctx.fillStyle = '#ffb74d';
-    ctx.beginPath();
-    ctx.moveTo(bx + 2.5, cy - 3.5);
-    ctx.lineTo(bx - 3, cy - 1.5);
-    ctx.lineTo(bx + 2.5, cy);
+    ctx.moveTo(bx + 16, cy - 1);
+    ctx.lineTo(bx + 24, cy - 16 - wingFlapY * 0.8);
+    ctx.lineTo(bx + 29, cy - 13 - wingFlapY * 0.7);
+    ctx.lineTo(bx + 31, cy - 2);
     ctx.closePath();
     ctx.fill();
 
-    // Oko (pomarańczowa obwódka i czarna źrenica)
-    ctx.fillStyle = '#ff7043';
+    // 3. Korpus (aerodynamiczny, grafitowo-czarny z opalizującym połyskiem)
+    ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.arc(bx + 5, cy - 3, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#101418';
-    ctx.beginPath();
-    ctx.arc(bx + 4.8, cy - 3, 0.9, 0, Math.PI * 2);
+    ctx.ellipse(bx + 20, cy + 3, 13, 8.5, -0.12, 0, Math.PI * 2);
     ctx.fill();
 
-    // Przednie skrzydło z dwoma czarnymi pasami
-    ctx.fillStyle = '#78909c';
+    // Opalizujący petrol-blue / grafitowy brzuszek i pierś
+    const corvidGrad = ctx.createLinearGradient(bx + 8, cy - 4, bx + 24, cy + 8);
+    corvidGrad.addColorStop(0, '#1e293b');
+    corvidGrad.addColorStop(0.5, '#0f172a');
+    corvidGrad.addColorStop(1, '#0284c7');
+    ctx.fillStyle = corvidGrad;
     ctx.beginPath();
-    ctx.moveTo(bx + 9, cy);
-    ctx.lineTo(bx + 17, cy - 9 + wingFlapY);
-    ctx.lineTo(bx + 21, cy + 1);
+    ctx.ellipse(bx + 18, cy + 5, 9, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Szyja i głowa drapieżnika
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.arc(bx + 9, cy - 3, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nastroszone pióra na karku (hackles)
+    ctx.fillStyle = '#1f2937';
+    ctx.beginPath();
+    ctx.moveTo(bx + 13, cy - 6);
+    ctx.lineTo(bx + 16, cy - 9);
+    ctx.lineTo(bx + 15, cy - 4);
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = '#37474f';
-    ctx.lineWidth = 1.6;
+    // 5. Potężny, ostry, zakrzywiony dziób drapieżnej wrony / jastrzębia
+    ctx.fillStyle = '#1f2937';
     ctx.beginPath();
-    ctx.moveTo(bx + 13, cy - 4 + wingFlapY * 0.5);
-    ctx.lineTo(bx + 18, cy + wingFlapY * 0.5);
-    ctx.moveTo(bx + 15, cy - 2 + wingFlapY * 0.6);
-    ctx.lineTo(bx + 20, cy + 2 + wingFlapY * 0.6);
+    ctx.moveTo(bx + 4, cy - 6);
+    ctx.quadraticCurveTo(bx - 3, cy - 4, bx - 8, cy - 0.5);
+    ctx.lineTo(bx - 4, cy + 2.5);
+    ctx.lineTo(bx + 4, cy);
+    ctx.closePath();
+    ctx.fill();
+
+    // Rogowa krawędź dzioba (jasny refleks)
+    ctx.strokeStyle = '#9ca3af';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(bx + 4, cy - 5.5);
+    ctx.quadraticCurveTo(bx - 3, cy - 3.8, bx - 7.5, cy - 0.5);
+    ctx.stroke();
+
+    // 6. Oko drapieżnika (bursztynowo-złota tęczówka z czarną źrenicą)
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(bx + 7.5, cy - 4.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(bx + 7.2, cy - 4.5, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(bx + 7.6, cy - 5.3, 0.9, 0.9);
+
+    // 7. Przednie potężne skrzydło z rozczapierzonymi lotkami (fingered primaries)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.moveTo(bx + 13, cy + 1);
+    ctx.lineTo(bx + 24, cy - 18 + wingFlapY * 1.1);
+    ctx.lineTo(bx + 29, cy - 20 + wingFlapY * 1.15);
+    ctx.lineTo(bx + 33, cy - 14 + wingFlapY * 0.95);
+    ctx.lineTo(bx + 36, cy - 8 + wingFlapY * 0.75);
+    ctx.lineTo(bx + 32, cy + 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pas pokryw skrzydłowych z metalicznym połyskiem
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(bx + 18, cy - 6 + wingFlapY * 0.5);
+    ctx.lineTo(bx + 27, cy - 2 + wingFlapY * 0.5);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(bx + 20, cy - 2 + wingFlapY * 0.6);
+    ctx.lineTo(bx + 29, cy + 2 + wingFlapY * 0.6);
+    ctx.stroke();
+
+    // 8. Podkurczone szpony
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(bx + 17, cy + 9);
+    ctx.lineTo(bx + 15, cy + 12);
+    ctx.moveTo(bx + 20, cy + 9);
+    ctx.lineTo(bx + 18, cy + 12);
     ctx.stroke();
 
   } else if (bird.type === 'vulture') {
     // ==========================================
-    // BIOM 1: SĘP PUSTYNNY (vulture)
+    // BIOM 1: SĘP PUSTYNNY / JASTRZĄB PUSTYNNY (vulture)
     // ==========================================
     // Szeroki ogon klinowy
     ctx.fillStyle = '#271c19';
     ctx.beginPath();
-    ctx.moveTo(bx + 18, cy + 2);
-    ctx.lineTo(bx + 29, cy - 1);
-    ctx.lineTo(bx + 28, cy + 6);
+    ctx.moveTo(bx + 24, cy + 3);
+    ctx.lineTo(bx + 43, cy - 2);
+    ctx.lineTo(bx + 41, cy + 9);
     ctx.closePath();
     ctx.fill();
 
-    // Tylne skrzydło z lotkami
+    // Tylne skrzydło z postrzępionymi lotkami
     ctx.fillStyle = '#3e2723';
     ctx.beginPath();
-    ctx.moveTo(bx + 13, cy - 1);
-    ctx.lineTo(bx + 21, cy - 11 - wingFlapY * 0.8);
-    ctx.lineTo(bx + 24, cy - 2);
+    ctx.moveTo(bx + 17, cy - 1);
+    ctx.lineTo(bx + 28, cy - 18 - wingFlapY * 0.85);
+    ctx.lineTo(bx + 33, cy - 14 - wingFlapY * 0.7);
+    ctx.lineTo(bx + 33, cy - 2);
     ctx.closePath();
     ctx.fill();
 
-    // Ciemnobrązowy korpus
+    // Ciemnobrązowy potężny korpus
     ctx.fillStyle = '#4e342e';
     ctx.beginPath();
-    ctx.ellipse(bx + 14, cy + 3, 9, 6, -0.08, 0, Math.PI * 2);
+    ctx.ellipse(bx + 20, cy + 4, 13.5, 9, -0.08, 0, Math.PI * 2);
     ctx.fill();
 
     // Pierzasty białawy kołnierz wokół szyi
-    ctx.fillStyle = '#d7ccc8';
+    ctx.fillStyle = '#e7e5e4';
     ctx.beginPath();
-    ctx.ellipse(bx + 7.5, cy + 1, 3.5, 4.5, 0.4, 0, Math.PI * 2);
+    ctx.ellipse(bx + 10, cy + 1.5, 5.5, 7, 0.4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Łysa, różowo-beżowa szyja i głowa
-    ctx.fillStyle = '#ef9a9a';
+    // Łysa, różowo-beżowa szyja i głowa drapieżnika
+    ctx.fillStyle = '#fca5a5';
     ctx.beginPath();
-    ctx.moveTo(bx + 7, cy);
-    ctx.lineTo(bx + 3, cy + 2);
-    ctx.lineTo(bx + 3, cy - 2);
+    ctx.moveTo(bx + 9, cy);
+    ctx.lineTo(bx + 4, cy + 3);
+    ctx.lineTo(bx + 4, cy - 3);
     ctx.closePath();
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(bx + 3, cy - 1, 3.5, 0, Math.PI * 2);
+    ctx.arc(bx + 4, cy - 1.5, 5.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Zadziorny, zakrzywiony kościsty dziób
-    ctx.fillStyle = '#fff9c4';
+    // Zadziorny, zakrzywiony kościsty dziób sępa
+    ctx.fillStyle = '#fef08a';
     ctx.beginPath();
-    ctx.moveTo(bx + 1, cy - 3);
-    ctx.lineTo(bx - 4, cy);
-    ctx.lineTo(bx - 3, cy + 3);
-    ctx.lineTo(bx, cy);
+    ctx.moveTo(bx + 2, cy - 5);
+    ctx.lineTo(bx - 7, cy - 0.5);
+    ctx.lineTo(bx - 5, cy + 4.5);
+    ctx.lineTo(bx + 1, cy);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#5d4037';
-    ctx.fillRect(bx - 3.5, cy + 1, 2, 2);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(bx - 6, cy + 1.5, 3.2, 3);
 
     // Żółte oko drapieżnika
-    ctx.fillStyle = '#fbc02d';
+    ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.arc(bx + 2.5, cy - 1.5, 1.4, 0, Math.PI * 2);
+    ctx.arc(bx + 3.2, cy - 2.5, 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(bx + 2.3, cy - 1.5, 0.7, 0, Math.PI * 2);
+    ctx.arc(bx + 3.0, cy - 2.5, 1.1, 0, Math.PI * 2);
     ctx.fill();
 
     // Przednie potężne drapieżne skrzydło z rozczapierzonymi lotkami
     ctx.fillStyle = '#4e342e';
     ctx.beginPath();
-    ctx.moveTo(bx + 9, cy + 1);
-    ctx.lineTo(bx + 19, cy - 12 + wingFlapY * 1.1);
-    ctx.lineTo(bx + 24, cy - 8 + wingFlapY * 0.9);
-    ctx.lineTo(bx + 22, cy + 2);
+    ctx.moveTo(bx + 12, cy + 1);
+    ctx.lineTo(bx + 25, cy - 20 + wingFlapY * 1.15);
+    ctx.lineTo(bx + 31, cy - 21 + wingFlapY * 1.2);
+    ctx.lineTo(bx + 36, cy - 14 + wingFlapY * 0.95);
+    ctx.lineTo(bx + 34, cy + 4);
     ctx.closePath();
     ctx.fill();
 
-    // Końcówki lotek
-    ctx.fillStyle = '#1b1b1b';
-    ctx.fillRect(bx + 17, cy - 11 + wingFlapY * 1.1, 4, 3);
-    ctx.fillRect(bx + 21, cy - 8 + wingFlapY * 0.9, 3, 3);
+    // Końcówki lotek w kolorze węgla
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(bx + 23, cy - 19 + wingFlapY * 1.15, 6, 4.5);
+    ctx.fillRect(bx + 29, cy - 17 + wingFlapY * 1.05, 5, 4.5);
+    ctx.fillRect(bx + 33, cy - 13 + wingFlapY * 0.85, 4, 4);
 
   } else if (bird.type === 'snow_owl') {
     // ==========================================
-    // BIOM 2: SOWA ŚNIEŻNA (snow_owl)
+    // BIOM 2: SOWA ŚNIEŻNA DRAPIEŻNA (snow_owl)
     // ==========================================
     // Zaokrąglony ogon
-    ctx.fillStyle = '#eceff1';
+    ctx.fillStyle = '#f1f5f9';
     ctx.beginPath();
-    ctx.moveTo(bx + 19, cy + 2);
-    ctx.lineTo(bx + 28, cy);
-    ctx.lineTo(bx + 27, cy + 5);
+    ctx.moveTo(bx + 26, cy + 3);
+    ctx.lineTo(bx + 42, cy - 1);
+    ctx.lineTo(bx + 40, cy + 7);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#37474f';
-    ctx.fillRect(bx + 23, cy + 2, 2.5, 1.5);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(bx + 32, cy + 2, 4, 2);
 
     // Tylne skrzydło
-    ctx.fillStyle = '#cfd8dc';
+    ctx.fillStyle = '#cbd5e1';
     ctx.beginPath();
-    ctx.moveTo(bx + 12, cy - 1);
-    ctx.lineTo(bx + 18, cy - 9 - wingFlapY * 0.7);
-    ctx.lineTo(bx + 22, cy - 1);
+    ctx.moveTo(bx + 16, cy - 1);
+    ctx.lineTo(bx + 25, cy - 15 - wingFlapY * 0.75);
+    ctx.lineTo(bx + 31, cy - 2);
     ctx.closePath();
     ctx.fill();
 
     // Puszysty biały korpus
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(bx + 13, cy + 2, 9, 6.5, -0.05, 0, Math.PI * 2);
+    ctx.ellipse(bx + 19, cy + 3, 13, 9.5, -0.05, 0, Math.PI * 2);
     ctx.fill();
 
-    // Poprzeczne cętki na piersi
-    ctx.fillStyle = '#455a64';
-    ctx.fillRect(bx + 11, cy + 1, 2.5, 1.2);
-    ctx.fillRect(bx + 15, cy + 2, 2.5, 1.2);
-    ctx.fillRect(bx + 13, cy + 5, 2.5, 1.2);
+    // Poprzeczne ciemne cętki na piersi
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(bx + 15, cy + 1, 3.8, 1.8);
+    ctx.fillRect(bx + 21, cy + 3, 3.8, 1.8);
+    ctx.fillRect(bx + 18, cy + 7, 3.8, 1.8);
 
     // Duża okrągła głowa sowy
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(bx + 6, cy - 2, 5, 0, Math.PI * 2);
+    ctx.arc(bx + 8, cy - 3, 7.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#b0bec5';
-    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.1;
     ctx.stroke();
 
     // Złotożółte hipnotyzujące oczy sowy
-    ctx.fillStyle = '#ffd600';
+    ctx.fillStyle = '#fbbf24';
     ctx.beginPath();
-    ctx.arc(bx + 4.5, cy - 2.5, 2.2, 0, Math.PI * 2);
+    ctx.arc(bx + 6, cy - 4, 3.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(bx + 4.3, cy - 2.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(bx + 5.7, cy - 4, 1.8, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(bx + 4.8, cy - 3.2, 0.8, 0.8);
+    ctx.fillRect(bx + 6.3, cy - 5, 1.2, 1.2);
 
-    // Zakrzywiony czarny dzióbek
-    ctx.fillStyle = '#212121';
+    // Zakrzywiony czarny dzióbek sowy
+    ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.moveTo(bx + 2, cy - 3);
-    ctx.lineTo(bx - 2, cy - 0.5);
-    ctx.lineTo(bx + 2, cy);
+    ctx.moveTo(bx + 2.5, cy - 5);
+    ctx.lineTo(bx - 3.5, cy - 1);
+    ctx.lineTo(bx + 2.5, cy);
     ctx.closePath();
     ctx.fill();
 
-    // Przednie skrzydło
-    ctx.fillStyle = '#f5f5f5';
+    // Przednie skrzydło z cętkami
+    ctx.fillStyle = '#f8fafc';
     ctx.beginPath();
-    ctx.moveTo(bx + 9, cy);
-    ctx.lineTo(bx + 18, cy - 10 + wingFlapY);
-    ctx.lineTo(bx + 22, cy + 1);
+    ctx.moveTo(bx + 13, cy + 1);
+    ctx.lineTo(bx + 25, cy - 17 + wingFlapY * 1.05);
+    ctx.lineTo(bx + 32, cy + 2);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#546e7a';
-    ctx.fillRect(bx + 15, cy - 6 + wingFlapY * 0.7, 2.5, 1.5);
-    ctx.fillRect(bx + 17, cy - 3 + wingFlapY * 0.7, 2.5, 1.5);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(bx + 20, cy - 10 + wingFlapY * 0.7, 3.5, 2.2);
+    ctx.fillRect(bx + 24, cy - 5 + wingFlapY * 0.7, 3.5, 2.2);
 
   } else if (bird.type === 'parrot') {
     // ==========================================
     // BIOM 3: PAPUGA ARA (parrot)
     // ==========================================
-    // Długi, smukły ogon w barwach czerwieni i kobaltu
-    ctx.fillStyle = '#1565c0';
+    // Długi, smukły ogon w barwach kobaltu i szkarłatu
+    ctx.fillStyle = '#1d4ed8';
     ctx.beginPath();
-    ctx.moveTo(bx + 18, cy + 2);
-    ctx.lineTo(bx + 32, cy + 7);
-    ctx.lineTo(bx + 25, cy + 4);
+    ctx.moveTo(bx + 25, cy + 3);
+    ctx.lineTo(bx + 47, cy + 10);
+    ctx.lineTo(bx + 35, cy + 6);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#d32f2f';
+    ctx.fillStyle = '#dc2626';
     ctx.beginPath();
-    ctx.moveTo(bx + 17, cy + 2);
-    ctx.lineTo(bx + 30, cy + 4);
-    ctx.lineTo(bx + 22, cy + 5);
+    ctx.moveTo(bx + 24, cy + 3);
+    ctx.lineTo(bx + 44, cy + 6);
+    ctx.lineTo(bx + 31, cy + 7);
     ctx.closePath();
     ctx.fill();
 
     // Tylne skrzydło (szafirowo-żółte)
-    ctx.fillStyle = '#0d47a1';
+    ctx.fillStyle = '#1e40af';
     ctx.beginPath();
-    ctx.moveTo(bx + 12, cy - 1);
-    ctx.lineTo(bx + 19, cy - 10 - wingFlapY * 0.8);
-    ctx.lineTo(bx + 22, cy);
+    ctx.moveTo(bx + 17, cy - 1);
+    ctx.lineTo(bx + 27, cy - 16 - wingFlapY * 0.85);
+    ctx.lineTo(bx + 31, cy);
     ctx.closePath();
     ctx.fill();
 
     // Szkarłatny korpus ary
-    ctx.fillStyle = '#d32f2f';
+    ctx.fillStyle = '#dc2626';
     ctx.beginPath();
-    ctx.ellipse(bx + 13, cy + 2, 8, 5.5, -0.1, 0, Math.PI * 2);
+    ctx.ellipse(bx + 18, cy + 3, 12, 8.5, -0.1, 0, Math.PI * 2);
     ctx.fill();
 
     // Złocisty brzuszek
-    ctx.fillStyle = '#fbc02d';
+    ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.ellipse(bx + 12, cy + 4.5, 5, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(bx + 17, cy + 6.5, 7.5, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Czerwona głowa
-    ctx.fillStyle = '#c62828';
+    ctx.fillStyle = '#b91c1c';
     ctx.beginPath();
-    ctx.arc(bx + 6.5, cy - 2, 4.5, 0, Math.PI * 2);
+    ctx.arc(bx + 9, cy - 3, 6.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Biała maska policzkowa
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(bx + 5, cy - 2.5, 2.5, 3.2, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(bx + 7, cy - 3.8, 3.8, 4.8, 0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Czarne oko z żółtą tęczówką
-    ctx.fillStyle = '#ffd54f';
+    // Oko z żółtą tęczówką
+    ctx.fillStyle = '#fde047';
     ctx.beginPath();
-    ctx.arc(bx + 5.5, cy - 3, 1.5, 0, Math.PI * 2);
+    ctx.arc(bx + 7.5, cy - 4.5, 2.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(bx + 5.3, cy - 3, 0.8, 0, Math.PI * 2);
+    ctx.arc(bx + 7.2, cy - 4.5, 1.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Potężny zakrzywiony dziób Ary (kość słoniowa u góry, czarny na dole)
-    ctx.fillStyle = '#fff9c4';
+    // Potężny zakrzywiony dziób Ary
+    ctx.fillStyle = '#fef9c3';
     ctx.beginPath();
-    ctx.moveTo(bx + 3, cy - 5);
-    ctx.lineTo(bx - 3.5, cy - 1);
-    ctx.lineTo(bx - 2, cy + 3.5);
-    ctx.lineTo(bx + 2, cy - 1);
+    ctx.moveTo(bx + 4, cy - 7);
+    ctx.lineTo(bx - 5.5, cy - 1.5);
+    ctx.lineTo(bx - 3, cy + 5);
+    ctx.lineTo(bx + 3, cy - 1.5);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#212121';
+    ctx.fillStyle = '#18181b';
     ctx.beginPath();
-    ctx.moveTo(bx + 1.5, cy - 0.5);
-    ctx.lineTo(bx - 1.5, cy + 2);
-    ctx.lineTo(bx + 1.5, cy + 2.5);
+    ctx.moveTo(bx + 2, cy - 1);
+    ctx.lineTo(bx - 2.5, cy + 3);
+    ctx.lineTo(bx + 2, cy + 3.8);
     ctx.closePath();
     ctx.fill();
 
     // Wielobarwne przednie skrzydło (czerwony, żółty, szafir)
-    ctx.fillStyle = '#d32f2f';
+    ctx.fillStyle = '#dc2626';
     ctx.beginPath();
-    ctx.moveTo(bx + 9, cy);
-    ctx.lineTo(bx + 14, cy - 5 + wingFlapY * 0.5);
-    ctx.lineTo(bx + 18, cy + 1);
+    ctx.moveTo(bx + 13, cy + 1);
+    ctx.lineTo(bx + 20, cy - 8 + wingFlapY * 0.5);
+    ctx.lineTo(bx + 26, cy + 2);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#ffeb3b';
+    ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.moveTo(bx + 11, cy - 2 + wingFlapY * 0.3);
-    ctx.lineTo(bx + 16, cy - 8 + wingFlapY * 0.7);
-    ctx.lineTo(bx + 20, cy);
+    ctx.moveTo(bx + 15, cy - 2 + wingFlapY * 0.3);
+    ctx.lineTo(bx + 23, cy - 12 + wingFlapY * 0.7);
+    ctx.lineTo(bx + 28, cy);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#1976d2';
+    ctx.fillStyle = '#2563eb';
     ctx.beginPath();
-    ctx.moveTo(bx + 13, cy - 5 + wingFlapY * 0.6);
-    ctx.lineTo(bx + 19, cy - 11 + wingFlapY);
-    ctx.lineTo(bx + 22, cy);
+    ctx.moveTo(bx + 18, cy - 6 + wingFlapY * 0.6);
+    ctx.lineTo(bx + 27, cy - 18 + wingFlapY * 1.05);
+    ctx.lineTo(bx + 32, cy);
     ctx.closePath();
     ctx.fill();
 
@@ -1504,87 +2072,87 @@ function drawBird(ctx, bird, GROUND_Y) {
     // BIOM 4: PIEKIELNY NIETOPERZ (hell_bat)
     // ==========================================
     // Tylne skórzaste skrzydło
-    ctx.fillStyle = '#3e0a14';
+    ctx.fillStyle = '#4c0519';
     ctx.beginPath();
-    ctx.moveTo(bx + 13, cy);
-    ctx.lineTo(bx + 20, cy - 12 - wingFlapY * 0.9);
-    ctx.lineTo(bx + 24, cy - 5 - wingFlapY * 0.5);
-    ctx.lineTo(bx + 22, cy + 2);
+    ctx.moveTo(bx + 18, cy + 1);
+    ctx.lineTo(bx + 28, cy - 18 - wingFlapY * 0.95);
+    ctx.lineTo(bx + 34, cy - 8 - wingFlapY * 0.5);
+    ctx.lineTo(bx + 31, cy + 3);
     ctx.closePath();
     ctx.fill();
 
     // Mroczny korpus nietoperza
-    ctx.fillStyle = '#1a0f0f';
+    ctx.fillStyle = '#18181b';
     ctx.beginPath();
-    ctx.ellipse(bx + 13, cy + 2, 7.5, 5.5, -0.05, 0, Math.PI * 2);
+    ctx.ellipse(bx + 18, cy + 3, 11, 8, -0.05, 0, Math.PI * 2);
     ctx.fill();
 
     // Pysk i spiczaste uszy
-    ctx.fillStyle = '#261214';
+    ctx.fillStyle = '#27040d';
     ctx.beginPath();
-    ctx.arc(bx + 6.5, cy - 1.5, 4, 0, Math.PI * 2);
+    ctx.arc(bx + 9, cy - 2, 5.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Rogate uszy
-    ctx.fillStyle = '#880e4f';
+    ctx.fillStyle = '#9f1239';
     ctx.beginPath();
-    ctx.moveTo(bx + 6, cy - 4);
-    ctx.lineTo(bx + 5, cy - 9);
-    ctx.lineTo(bx + 8, cy - 4);
+    ctx.moveTo(bx + 8, cy - 5);
+    ctx.lineTo(bx + 6.5, cy - 13);
+    ctx.lineTo(bx + 11, cy - 5);
     ctx.closePath();
     ctx.fill();
 
     ctx.beginPath();
-    ctx.moveTo(bx + 8, cy - 3.5);
-    ctx.lineTo(bx + 10, cy - 8);
-    ctx.lineTo(bx + 11, cy - 3);
+    ctx.moveTo(bx + 11, cy - 4.5);
+    ctx.lineTo(bx + 14, cy - 12);
+    ctx.lineTo(bx + 15, cy - 4);
     ctx.closePath();
     ctx.fill();
 
     // Ostre kły
-    ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(bx + 3, cy + 1, 1.2, 2.5);
-    ctx.fillRect(bx + 5, cy + 1, 1.2, 2.5);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(bx + 4, cy + 1.5, 1.8, 3.5);
+    ctx.fillRect(bx + 7, cy + 1.5, 1.8, 3.5);
 
     // Płonące karmazynowe ślepia
-    ctx.fillStyle = '#ff1744';
+    ctx.fillStyle = '#ff0055';
     ctx.beginPath();
-    ctx.arc(bx + 4.5, cy - 2, 1.8, 0, Math.PI * 2);
+    ctx.arc(bx + 6.5, cy - 3, 2.6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffebee';
-    ctx.fillRect(bx + 4.2, cy - 2.5, 1, 1);
+    ctx.fillStyle = '#ffedd5';
+    ctx.fillRect(bx + 6.0, cy - 3.8, 1.4, 1.4);
 
     // Przednie skórzaste skrzydło nietoperza z kośćmi i błoną
-    ctx.fillStyle = '#5c0d18';
+    ctx.fillStyle = '#881337';
     ctx.beginPath();
-    ctx.moveTo(bx + 8, cy + 1);
-    ctx.lineTo(bx + 17, cy - 13 + wingFlapY * 1.2);
-    ctx.lineTo(bx + 22, cy - 7 + wingFlapY * 0.8);
-    ctx.lineTo(bx + 20, cy + 3);
+    ctx.moveTo(bx + 11, cy + 2);
+    ctx.lineTo(bx + 24, cy - 20 + wingFlapY * 1.25);
+    ctx.lineTo(bx + 31, cy - 11 + wingFlapY * 0.85);
+    ctx.lineTo(bx + 28, cy + 4);
     ctx.closePath();
     ctx.fill();
 
     // Rogate kościste ramiona skrzydła
-    ctx.strokeStyle = '#212121';
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(bx + 9, cy);
-    ctx.lineTo(bx + 17, cy - 13 + wingFlapY * 1.2);
-    ctx.lineTo(bx + 22, cy - 7 + wingFlapY * 0.8);
+    ctx.moveTo(bx + 12, cy + 1);
+    ctx.lineTo(bx + 24, cy - 20 + wingFlapY * 1.25);
+    ctx.lineTo(bx + 31, cy - 11 + wingFlapY * 0.85);
     ctx.stroke();
 
     // Iskry żaru unoszące się z piekielnego nietoperza
-    ctx.fillStyle = '#ff6d00';
+    ctx.fillStyle = '#ea580c';
     const emberTime = (Date.now() * 0.008) % 1;
-    ctx.fillRect(bx + 21 + emberTime * 6, cy - 2 + Math.sin(emberTime * 5) * 3, 2, 2);
+    ctx.fillRect(bx + 29 + emberTime * 8, cy - 3 + Math.sin(emberTime * 5) * 4, 2.5, 2.5);
   }
 
-  // Efekt uderzenia (piórka / obłoczek gdy bird.hitReaction > 0)
+  // Efekt potrącenia / reakcji na uderzenie (drobne piórka)
   if (bird.hitReaction > 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
     ctx.beginPath();
-    ctx.arc(cx - 8, cy - 4, 2.5, 0, Math.PI * 2);
-    ctx.arc(cx + 6, cy + 6, 2, 0, Math.PI * 2);
+    ctx.arc(cx - 10, cy - 6, 3.2, 0, Math.PI * 2);
+    ctx.arc(cx + 8, cy + 8, 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
 
