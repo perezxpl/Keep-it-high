@@ -7,7 +7,8 @@ import {
   drawStadiumForeground, clearDesertSandstorm, clearWinterBlizzard
 } from './world.js';
 import {
-  player, playerJump, playerSlide, startKickCharge, executeReleaseKick,
+  player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
+  startKickCharge, executeReleaseKick,
   updatePlayer, drawPlayer
 } from './player.js';
 import {
@@ -44,7 +45,7 @@ function updateButtonLayout() {
   btnCluster.slide.y = btnCluster.centerY + 18;
 }
 
-// Inicjalizacja Canvas i wymiarĂłw
+// Inicjalizacja Canvas i wymiarów
 const canvasEl = document.getElementById('game');
 initCanvas(canvasEl);
 resize(player);
@@ -56,7 +57,7 @@ window.addEventListener('resize', () => {
   updateButtonLayout();
 });
 
-// ObsĹ‚uga Touch
+// Obsługa Touch
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
   const midX = W / 2;
@@ -242,13 +243,16 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
   if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !keys.up) {
-    keys.up = true; playerJump();
+    keys.up = true;
+    startJumpCharge();
   }
   if (e.code === 'Space' && !keys.space) {
-    keys.space = true; startKickCharge();
+    keys.space = true;
+    startJumpCharge();
   }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !keys.slide) {
-    keys.slide = true; playerSlide(spawnGrass, GROUND_Y);
+    keys.slide = true;
+    playerSlide(spawnGrass, GROUND_Y);
   }
   if (e.code === 'KeyR') resetBallToPlayer(player, GROUND_Y);
 
@@ -272,21 +276,38 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
   if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
-  if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+    keys.up = false;
+    executeReleaseJump(spawnGrass);
+  }
   if (e.code === 'Space') {
-    keys.space = false; executeReleaseKick();
+    keys.space = false;
+    executeReleaseJump(spawnGrass);
   }
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
 });
 
-// Mysz PC (klikniÄ™cie w przyciski na ekranie)
+// Mysz PC (Strzał / Wykop przez LPM oraz obsługa przycisków ekranowych)
 canvas.addEventListener('mousedown', (e) => {
-  if (dist(e.clientX, e.clientY, btnCluster.jump.x, btnCluster.jump.y) < btnCluster.jump.r) playerJump();
-  else if (dist(e.clientX, e.clientY, btnCluster.kick.x, btnCluster.kick.y) < btnCluster.kick.r) startKickCharge();
-  else if (dist(e.clientX, e.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r) playerSlide(spawnGrass, GROUND_Y);
+  if (e.button !== 0) return; // Tylko Lewy Przycisk Myszy (LPM)
+
+  if (dist(e.clientX, e.clientY, btnCluster.jump.x, btnCluster.jump.y) < btnCluster.jump.r) {
+    startJumpCharge();
+  } else if (dist(e.clientX, e.clientY, btnCluster.kick.x, btnCluster.kick.y) < btnCluster.kick.r) {
+    startKickCharge();
+  } else if (dist(e.clientX, e.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r) {
+    playerSlide(spawnGrass, GROUND_Y);
+  } else {
+    // Wciśnięcie LPM na obszarze gry (poza wirtualnymi przyciskami dotykowymi): ładowanie strzału
+    startKickCharge();
+  }
 });
-window.addEventListener('mouseup', () => {
-  if (player.isCharging) executeReleaseKick();
+
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0 || e.button === undefined) {
+    if (player.isCharging) executeReleaseKick();
+    if (player.isJumpCharging) executeReleaseJump(spawnGrass);
+  }
 });
 
 // Aktualizacja stanu gry
@@ -307,7 +328,7 @@ function draw() {
   // Niebo
   drawSky(ctx);
 
-  // Ĺšwiat gry w przestrzeni kamery
+  // Świat gry w przestrzeni kamery
   ctx.save();
   ctx.translate(W * 0.40, H * 0.68);
   ctx.scale(camera.zoom, camera.zoom);
@@ -317,14 +338,14 @@ function draw() {
   const worldRight = camera.x + (W / camera.zoom) * 2;
   const worldWidth = worldRight - worldLeft;
 
-  // Murawa i czÄ…steczki darni
+  // Murawa i cząsteczki darni
   drawGround(ctx, worldLeft, worldWidth);
   drawParticles(ctx);
 
   // Metry
   drawDistanceMarkers(ctx, worldLeft, worldRight);
 
-  // Obiekty Ĺ›wiata gry
+  // Obiekty świata gry
   drawObstacles(ctx, GROUND_Y);
   drawPlayer(ctx, GROUND_Y);
   drawBall(ctx);
@@ -366,5 +387,5 @@ function loop() {
   draw();
 }
 
-// Uruchomienie pÄ™tli gry
+// Uruchomienie pętli gry
 requestAnimationFrame(loop);

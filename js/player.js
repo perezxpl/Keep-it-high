@@ -162,7 +162,7 @@ export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, fac
 
 if (typeof window !== 'undefined') {
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+    if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
       executeReleaseJump();
     }
   });
@@ -319,7 +319,7 @@ export function playerSlide(spawnGrass, GROUND_Y) {
   if (player.isIntro) return;
   if (!player.isJumping && !player.isSliding) {
     player.isSliding = true;
-    player.slideTimer = 44;
+    player.slideTimer = 56;
     player.isCrouching = false;
     player.isJumpCharging = false;
 
@@ -327,8 +327,8 @@ export function playerSlide(spawnGrass, GROUND_Y) {
     const isSprinting = curSpeed > 4.2;
 
     if (isSprinting) player.vx = player.facing * CONFIG.SLIDE_DASH_SPEED;
-    else if (curSpeed > 1.2) player.vx = player.facing * 6.2;
-    else player.vx = player.facing * 4.6;
+    else if (curSpeed > 2.0) player.vx = player.facing * 10.5;
+    else player.vx = player.facing * 8.2;
 
     if (spawnGrass) {
       for (let i = 0; i < 8; i++) spawnGrass(player.x + player.w / 2 + (player.facing * 15), GROUND_Y, player.facing);
@@ -727,10 +727,11 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
     player.jumpChargePower = Math.min(1.0, player.jumpChargePower + 0.038);
   }
 
-  if (wasKeyUp && !keys.up && player.isJumpCharging) {
+  const isJumpKeyActive = !!(keys.space || keys.up);
+  if (wasKeyUp && !isJumpKeyActive && player.isJumpCharging) {
     executeReleaseJump(spawnGrass);
   }
-  wasKeyUp = keys.up;
+  wasKeyUp = isJumpKeyActive;
 
   let inputAxisX = 0;
   let inputAxisY = 0;
@@ -792,7 +793,7 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
 
     const hipX = player.x + player.w / 2;
     const hipY = player.y + player.h - 40;
-    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, hipY, GROUND_Y, player.facing, ball ? ball.radius : 12);
+    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, hipY, GROUND_Y, player.facing, ball ? ball.radius : 8);
     player.gaitMode = choreo.trickName;
     player.frontLegOverBall = choreo.frontLegOverBall;
   } else {
@@ -968,7 +969,7 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
   } else if (player.isJumping) {
     targetTilt = 0.06 * player.facing;
   } else if (player.isIntro) {
-    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 12);
+    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
     targetTilt = choreo.torsoLean * player.facing;
   } else if (player.gaitMode === 'IDLE') {
     targetTilt = 0;
@@ -1009,7 +1010,7 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
 
   let targetPelvisY = -6.5;
   if (player.isIntro) {
-    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 12);
+    const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
     targetPelvisY = -6.5 + choreo.pelvisDip;
   } else if (player.isJumpCharging) {
     if (speed < 0.8) {
@@ -1056,6 +1057,9 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
   const headY = hipY - (28 * Math.cos(player.torsoTilt)) - 10 + player.headBob;
   
   if (ball) {
+    player.lastBallX = ball.x;
+    player.lastBallY = ball.y;
+
     const dxBall = (ball.x - headX) * player.facing;
     const dyBall = ball.y - headY;
 
@@ -1063,24 +1067,23 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass) {
 
     if (player.kickMode === 'BACKFLIP') {
       desiredPitch = 0.35;
-    } else if (dxBall > 6) {
-      // Piłka jest przed graczem (w polu widzenia) -> patrzy bezpośrednio na piłkę
+    } else if (dxBall <= 6) {
+      // Piłka jest za plecami gracza (dxBall <= 6) -> natychmiast prostuje wzrok i patrzy prosto przed siebie
+      desiredPitch = (player.gaitMode === 'SPRINT') ? 0.12 : 0.0;
+    } else {
+      // Piłka przed zawodnikiem (dxBall > 6) -> śledzenie wzrokiem z ochroną karku
       const worldPitch = Math.atan2(dyBall, dxBall);
       const compensatedPitch = worldPitch - (player.torsoTilt * player.facing);
-      
-      // Naturalny zakres ruchomości szyi: od -48° (w górę) do +60° (w dół)
-      desiredPitch = Math.max(-0.85, Math.min(1.05, compensatedPitch));
-    } else {
-      // Piłka jest za plecami -> gracz nie wykręca karku, tylko patrzy przed siebie
-      if (player.gaitMode === 'SPRINT') {
-        desiredPitch = 0.12; // skupiony wzrok przed siebie w sprincie
-      } else {
-        desiredPitch = 0.0;  // neutralny profil
-      }
+
+      // Bezpieczny limit skłonu głowy w dół: max 0.32 rad (~18° w dół), eliminacja wyłamywania karku przy murawie/stopach (dyBall > 10)
+      // Pełny zakres kątowy śledzenia w górę (do -0.80 rad) zachowany wyłącznie dla piłki lecącej w powietrzu przed zawodnikiem
+      const maxDownPitch = (dyBall > 10) ? 0.32 : 0.32;
+      desiredPitch = Math.max(-0.80, Math.min(maxDownPitch, compensatedPitch));
     }
 
-    // Płynna, dynamiczna reakcja szyi i wzroku
-    player.headPitch += (desiredPitch - player.headPitch) * 0.22;
+    // Płynna, dynamiczna reakcja szyi i wzroku (szybsze natychmiastowe prostowanie przy piłce za plecami)
+    const pitchLerp = (dxBall <= 6) ? 0.32 : 0.22;
+    player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
   }
 }
 
@@ -1102,64 +1105,164 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const armDir = Math.atan2(elbowY - shY, elbowX - shX);
   const foreDir = Math.atan2(wristY - elbowY, wristX - elbowX);
 
-  // A. RAMIĘ (Zaokrąglony bark, rękawek i biceps)
+  // =========================================================================
+  // A. RAMIĘ (Rękawek, cień rzucany na ramię, wolumetryczny mięsień)
+  // =========================================================================
   ctx.save();
   ctx.translate(shX, shY);
   ctx.rotate(armDir);
 
-  ctx.fillStyle = upperCol;
+  const sleeveLen = upperLen * 0.58;
+  const sleeveHalfH = 3.9;
+
+  // 1. Rękawek koszulki - wolumetryczny cylinder (gradient prostopadły do osi kości)
+  const sleeveGrad = ctx.createLinearGradient(0, -sleeveHalfH, 0, sleeveHalfH);
+  if (isFront) {
+    sleeveGrad.addColorStop(0.0, '#ff6b6b'); // rozjaśniony grzbiet barku (światło jupiterów)
+    sleeveGrad.addColorStop(0.35, upperCol);  // atletyczna czerwień koszulki
+    sleeveGrad.addColorStop(1.0, '#991b1b'); // dolny cień cylindryczny
+  } else {
+    sleeveGrad.addColorStop(0.0, '#dc2626');
+    sleeveGrad.addColorStop(0.4, upperCol);
+    sleeveGrad.addColorStop(1.0, '#5f1212');
+  }
+
+  // Bark (deltoid) - zaokrąglona głowa mięśnia
   ctx.beginPath();
-  ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
+  ctx.arc(0, 0, sleeveHalfH, 0, Math.PI * 2);
+  ctx.fillStyle = sleeveGrad;
   ctx.fill();
+
+  // Rękawek
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(-1.0, -sleeveHalfH, sleeveLen + 1.0, sleeveHalfH * 2, [0, 2, 2, 0]);
+  } else {
+    ctx.rect(-1.0, -sleeveHalfH, sleeveLen + 1.0, sleeveHalfH * 2);
+  }
+  ctx.fillStyle = sleeveGrad;
+  ctx.fill();
+
+  // Biały pasek/lamówka rękawka
+  ctx.fillStyle = isFront ? 'rgba(255, 255, 255, 0.70)' : 'rgba(255, 255, 255, 0.35)';
+  ctx.fillRect(sleeveLen - 1.6, -sleeveHalfH, 1.6, sleeveHalfH * 2);
+
+  // Stadium Rim Light na górnej krawędzi barku i rękawka
+  ctx.beginPath();
+  ctx.moveTo(-sleeveHalfH * 0.5, -sleeveHalfH);
+  ctx.lineTo(sleeveLen, -sleeveHalfH);
+  ctx.strokeStyle = isFront ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // 2. Odsłonięty biceps / triceps (anatomiczny cylinder mięśnia)
+  const armHalfH = 2.8;
+  const bareLen = upperLen - sleeveLen + 1.2;
+
+  const bicepGrad = ctx.createLinearGradient(0, -armHalfH, 0, armHalfH);
+  if (isFront) {
+    bicepGrad.addColorStop(0.0, '#fde68a'); // jasny grzbiet mięśnia
+    bicepGrad.addColorStop(0.35, foreCol);  // zdrowa skóra sportowca (#f5b078)
+    bicepGrad.addColorStop(1.0, '#b45309'); // dolny cień mięśnia
+  } else {
+    bicepGrad.addColorStop(0.0, '#f5b078');
+    bicepGrad.addColorStop(0.4, foreCol);
+    bicepGrad.addColorStop(1.0, '#78350f');
+  }
 
   ctx.beginPath();
   if (ctx.roundRect) {
-    ctx.roundRect(-1.2, -3.8, upperLen * 0.62 + 1.2, 7.6, 2);
+    ctx.roundRect(sleeveLen, -armHalfH, bareLen, armHalfH * 2, 2);
   } else {
-    ctx.rect(-1.2, -3.8, upperLen * 0.62 + 1.2, 7.6);
+    ctx.rect(sleeveLen, -armHalfH, bareLen, armHalfH * 2);
   }
+  ctx.fillStyle = bicepGrad;
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.fillRect(upperLen * 0.52, -3.8, 1.8, 7.6);
+  // 3. Cień rzucany przez rękawek na odsłonięte ramię (Ambient Occlusion: rgba(0,0,0,0.25))
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.fillRect(sleeveLen, -armHalfH, 2.2, armHalfH * 2);
 
-  ctx.fillStyle = foreCol;
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(upperLen * 0.52, -2.8, upperLen * 0.48, 5.6, 2.8);
-  } else {
-    ctx.rect(upperLen * 0.52, -2.8, upperLen * 0.48, 5.6);
-  }
-  ctx.fill();
   ctx.restore();
 
-  // B. PRZEDRAMIĘ I DŁOŃ
+  // =========================================================================
+  // B. PRZEDRAMIĘ I DŁOŃ (Anatomiczny stożek mięśniowy, frotka, dłoń)
+  // =========================================================================
   ctx.save();
   ctx.translate(elbowX, elbowY);
   ctx.rotate(foreDir);
 
-  ctx.fillStyle = foreCol;
-  ctx.beginPath();
-  ctx.arc(0, 0, 2.8, 0, Math.PI * 2);
-  ctx.fill();
+  const elbowR = 2.9;
+  const wristR = 1.9;
+
+  // Staw łokciowy
+  const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
+  jointGrad.addColorStop(0.0, isFront ? '#fde68a' : '#f5b078');
+  jointGrad.addColorStop(0.5, foreCol);
+  jointGrad.addColorStop(1.0, isFront ? '#b45309' : '#78350f');
 
   ctx.beginPath();
-  ctx.moveTo(0, -2.8);
-  ctx.lineTo(foreLen * 0.75, -2.0);
-  ctx.lineTo(foreLen * 0.75, 2.0);
-  ctx.lineTo(0, 2.8);
-  ctx.closePath();
+  ctx.arc(0, 0, elbowR, 0, Math.PI * 2);
+  ctx.fillStyle = jointGrad;
   ctx.fill();
 
+  // Przedramię o anatomicznym kształcie (zwężające się od łokcia do nadgarstka)
+  const forearmGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
   if (isFront) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(foreLen * 0.58, -2.6, 3.2, 5.2);
+    forearmGrad.addColorStop(0.0, '#fed7aa');
+    forearmGrad.addColorStop(0.35, foreCol);
+    forearmGrad.addColorStop(1.0, '#b45309');
+  } else {
+    forearmGrad.addColorStop(0.0, '#f5b078');
+    forearmGrad.addColorStop(0.4, foreCol);
+    forearmGrad.addColorStop(1.0, '#78350f');
   }
 
-  ctx.fillStyle = '#de935e';
   ctx.beginPath();
-  ctx.arc(foreLen + 1.2, 0, isFront ? 2.8 : 2.4, 0, Math.PI * 2);
+  ctx.moveTo(0, -elbowR);
+  ctx.lineTo(foreLen * 0.78, -wristR);
+  ctx.lineTo(foreLen * 0.78, wristR);
+  ctx.lineTo(0, elbowR);
+  ctx.closePath();
+  ctx.fillStyle = forearmGrad;
   ctx.fill();
+
+  // Frotka sportowa (opaska na nadgarstku przedniej ręki)
+  if (isFront) {
+    const bandX = foreLen * 0.52;
+    const bandW = 3.6;
+    const bandGrad = ctx.createLinearGradient(0, -wristR - 0.4, 0, wristR + 0.4);
+    bandGrad.addColorStop(0.0, '#ffffff');
+    bandGrad.addColorStop(0.5, '#f1f5f9');
+    bandGrad.addColorStop(1.0, '#94a3b8');
+
+    ctx.fillStyle = bandGrad;
+    ctx.fillRect(bandX, -wristR - 0.4, bandW, (wristR + 0.4) * 2);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.fillRect(bandX + bandW, -wristR, 1.2, wristR * 2);
+  }
+
+  // Dłoń sportowca (zwarta pięść sprinterska z kciukiem i kostkami)
+  const handX = foreLen + 0.5;
+  const handR = isFront ? 2.8 : 2.4;
+
+  const handGrad = ctx.createRadialGradient(handX, -0.6, 0.5, handX, 0, handR + 1.0);
+  handGrad.addColorStop(0.0, isFront ? '#fed7aa' : '#f5b078');
+  handGrad.addColorStop(0.7, foreCol);
+  handGrad.addColorStop(1.0, isFront ? '#c05621' : '#78350f');
+
+  ctx.beginPath();
+  ctx.ellipse(handX, 0, handR * 1.15, handR * 0.85, 0, 0, Math.PI * 2);
+  ctx.fillStyle = handGrad;
+  ctx.fill();
+
+  // Kciuk
+  ctx.beginPath();
+  ctx.arc(handX - 0.5, -handR * 0.55, 1.2, 0, Math.PI * 2);
+  ctx.fillStyle = isFront ? '#fcd34d' : foreCol;
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -1169,86 +1272,232 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
 
+  const isFrontLeg = (colorBoot === '#18181b'); // Przednia noga ma jaśniejszy/wyrazisty but, tylna #111827
+
   ctx.save();
 
-  // A. UDO I WYPROFILOWANE SPODENKI
+  // =========================================================================
+  // A. UDO, NOGAWKA SPODENEK, CIEŃ NA CZWOROGŁOWY I MIĘSIEŃ UDA
+  // =========================================================================
   ctx.save();
   ctx.translate(hipX, hipY);
   ctx.rotate(thighAng);
 
-  ctx.fillStyle = '#ffffff';
+  const shortsLen = l1 * 0.65;
+  const shortsHalfH = 5.6;
+
+  // 1. Spodenki na udzie - wolumetryczny cylinder
+  const shortsGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, shortsHalfH);
+  if (isFrontLeg) {
+    shortsGrad.addColorStop(0.0, '#ffffff'); // górny grzbiet
+    shortsGrad.addColorStop(0.4, '#f8fafc');
+    shortsGrad.addColorStop(1.0, '#94a3b8'); // dolny cień
+  } else {
+    shortsGrad.addColorStop(0.0, '#e2e8f0');
+    shortsGrad.addColorStop(0.5, '#cbd5e1');
+    shortsGrad.addColorStop(1.0, '#64748b');
+  }
+
   ctx.beginPath();
-  ctx.moveTo(0, -5.5);
-  ctx.lineTo(l1 * 0.65, -4.5);
-  ctx.lineTo(l1 * 0.65, 4.5);
-  ctx.lineTo(0, 5.5);
+  ctx.moveTo(0, -shortsHalfH);
+  ctx.lineTo(shortsLen, -shortsHalfH + 1.0);
+  ctx.lineTo(shortsLen, shortsHalfH - 0.8);
+  ctx.lineTo(0, shortsHalfH);
   ctx.closePath();
+  ctx.fillStyle = shortsGrad;
   ctx.fill();
 
-  ctx.fillStyle = colorThigh;
-  ctx.fillRect(0, -5.5, l1 * 0.65, 1.6);
+  // Pasek boczny na spodenkach (klubowy lampas)
+  const stripeGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, -shortsHalfH + 1.8);
+  stripeGrad.addColorStop(0.0, isFrontLeg ? '#ef4444' : '#b91c1c');
+  stripeGrad.addColorStop(1.0, isFrontLeg ? '#dc2626' : '#991b1b');
+  ctx.fillStyle = stripeGrad;
+  ctx.fillRect(0, -shortsHalfH, shortsLen, 1.8);
 
-  ctx.fillStyle = '#f5b078';
+  // Mankiet nogawki
+  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
+  ctx.fillRect(shortsLen - 1.8, -shortsHalfH + 1.0, 1.8, (shortsHalfH - 0.9) * 2);
+
+  // 2. Mięsień czworogłowy uda (quadriceps) z anatomicznym brzuścem
+  const quadHalfH = 3.6;
+  const quadLen = l1 - shortsLen;
+
+  const quadGrad = ctx.createLinearGradient(0, -quadHalfH, 0, quadHalfH);
+  if (isFrontLeg) {
+    quadGrad.addColorStop(0.0, '#fed7aa'); // górny połysk mięśnia
+    quadGrad.addColorStop(0.35, '#f5b078'); // zdrowy koloryt
+    quadGrad.addColorStop(1.0, '#b45309'); // dolny cień mięśnia
+  } else {
+    quadGrad.addColorStop(0.0, '#f5b078');
+    quadGrad.addColorStop(0.4, '#de935e');
+    quadGrad.addColorStop(1.0, '#78350f');
+  }
+
   ctx.beginPath();
-  ctx.moveTo(l1 * 0.65, -3.6);
-  ctx.lineTo(l1, -2.6);
+  // Wypukłość brzuśca czworogłowego
+  ctx.moveTo(shortsLen, -quadHalfH);
+  ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH - 0.6, l1, -2.6);
   ctx.lineTo(l1, 2.6);
-  ctx.lineTo(l1 * 0.65, 3.6);
+  ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, quadHalfH, shortsLen, quadHalfH);
+  ctx.closePath();
+  ctx.fillStyle = quadGrad;
+  ctx.fill();
+
+  // 3. Cień rzucany przez nogawkę spodenek na mięsień czworogłowy (Ambient Occlusion: rgba(0,0,0,0.25))
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath();
+  ctx.moveTo(shortsLen, -quadHalfH);
+  ctx.lineTo(shortsLen + 2.6, -quadHalfH + 0.2);
+  ctx.lineTo(shortsLen + 2.6, quadHalfH - 0.2);
+  ctx.lineTo(shortsLen, quadHalfH);
   ctx.closePath();
   ctx.fill();
+
   ctx.restore();
 
-  // B. ŁYDKA, GETRA Z WYBRZUSZENIEM OCHRANIACZA I TAPING
+  // =========================================================================
+  // B. ŁYDKA, GETRA Z WYBRZUSZENIEM OCHRANIACZA I WŁASNYM BLIKIEM ŚWIETLNYM
+  // =========================================================================
   ctx.save();
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, -3.4, 3.2, 6.8);
+  // Staw kolanowy i rzepka (patella)
+  const kneeGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
+  kneeGrad.addColorStop(0.0, isFrontLeg ? '#ffffff' : '#e2e8f0');
+  kneeGrad.addColorStop(0.5, isFrontLeg ? '#f1f5f9' : '#cbd5e1');
+  kneeGrad.addColorStop(1.0, isFrontLeg ? '#94a3b8' : '#64748b');
 
-  ctx.fillStyle = colorShin;
   ctx.beginPath();
-  ctx.moveTo(3.2, -3.8);
-  ctx.lineTo(l2 * 0.50, -4.6);
-  ctx.lineTo(l2, -2.8);
-  ctx.lineTo(l2, 2.8);
-  ctx.lineTo(l2 * 0.40, 4.2);
-  ctx.lineTo(3.2, 3.4);
-  ctx.closePath();
+  ctx.arc(1.4, 0, 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = kneeGrad;
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.fillRect(l2 - 4.8, -3.0, 3.8, 6.0);
+  // Rzepka kolanowa
+  ctx.beginPath();
+  ctx.arc(2.0, -0.6, 2.0, 0, Math.PI * 2);
+  ctx.fillStyle = isFrontLeg ? '#fed7aa' : '#de935e';
+  ctx.fill();
+
+  // Getra piłkarska z wyraźnym wybrzuszeniem ochraniacza na piszczelu
+  const sockGrad = ctx.createLinearGradient(0, -4.8, 0, 4.4);
+  if (isFrontLeg) {
+    sockGrad.addColorStop(0.0, '#ff8a80'); // rozświetlony szczyt ochraniacza
+    sockGrad.addColorStop(0.3, colorShin); // intensywna czerwień turniejowa
+    sockGrad.addColorStop(1.0, '#7f1d1d'); // głęboki cień pod łydką
+  } else {
+    sockGrad.addColorStop(0.0, '#e53935');
+    sockGrad.addColorStop(0.4, colorShin);
+    sockGrad.addColorStop(1.0, '#450a0a');
+  }
+
+  // Kształt getry z wybrzuszeniem ochraniacza z przodu (góra) i brzuśca łydki z tyłu (dół)
+  ctx.beginPath();
+  ctx.moveTo(3.0, -3.6);
+  // Wybrzuszenie ochraniacza na kości piszczelowej (shin guard bulge)
+  ctx.quadraticCurveTo(l2 * 0.44, -5.2, l2 - 4.5, -2.8);
+  ctx.lineTo(l2 - 4.5, 2.6);
+  // Wybrzuszenie brzuśca łydki z tyłu nogi
+  ctx.quadraticCurveTo(l2 * 0.40, 4.6, 3.0, 3.4);
+  ctx.closePath();
+  ctx.fillStyle = sockGrad;
+  ctx.fill();
+
+  // WŁASNY PUNKT ŚWIETLNY / BLIK OCHRANIACZA NA PISZCZELU
+  if (isFrontLeg) {
+    // Miękki podłużny odblask na twardej skorupie ochraniacza pod materiałem getry
+    ctx.save();
+    ctx.translate(l2 * 0.42, -4.1);
+    ctx.rotate(-0.06);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, l2 * 0.22, 1.2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
+    ctx.fill();
+
+    // Punktowy, skupiony blik światła jupiterów
+    ctx.beginPath();
+    ctx.arc(-1.2, -0.2, 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Taping sportowy nad kostką (nowoczesny tejp piłkarski)
+  const tapeGrad = ctx.createLinearGradient(0, -3.0, 0, 3.0);
+  tapeGrad.addColorStop(0.0, '#ffffff');
+  tapeGrad.addColorStop(0.5, '#f1f5f9');
+  tapeGrad.addColorStop(1.0, isFrontLeg ? '#94a3b8' : '#64748b');
+
+  ctx.fillStyle = tapeGrad;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(l2 - 4.8, -2.9, 4.2, 5.8, 1);
+  } else {
+    ctx.rect(l2 - 4.8, -2.9, 4.2, 5.8);
+  }
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
   ctx.restore();
 
-  // C. OPŁYWOWY BUT PIŁKARSKI Z DYSKRETNYMI WKRĘTAMI
+  // =========================================================================
+  // C. OPŁYWOWY KOREK PIŁKARSKI Z CIENKĄ PODESZWĄ, GRAFIKĄ I WKRĘTAMI
+  // =========================================================================
   ctx.save();
   ctx.translate(ik.footX, ik.footY);
   ctx.rotate(ankleRot);
   ctx.scale(facing, 1);
 
-  ctx.fillStyle = colorBoot;
+  // 1. Cholewka korka piłkarskiego (ergonomiczny, opływowy kształt)
+  const bootGrad = ctx.createLinearGradient(0, -3.2, 0, 2.6);
+  if (isFrontLeg) {
+    bootGrad.addColorStop(0.0, '#27272a'); // górny grzbiet cholewki
+    bootGrad.addColorStop(0.5, colorBoot); // głęboka czerń buta
+    bootGrad.addColorStop(1.0, '#09090b');
+  } else {
+    bootGrad.addColorStop(0.0, '#1f2937');
+    bootGrad.addColorStop(1.0, '#030712');
+  }
+
   ctx.beginPath();
-  ctx.moveTo(-5.0, -2.8);
-  ctx.lineTo(11.0, -1.4);
-  ctx.lineTo(14.0, 2.2);
-  ctx.lineTo(-4.0, 2.8);
+  ctx.moveTo(-5.2, -2.6); // zapiętek
+  ctx.quadraticCurveTo(2.0, -3.4, 11.5, -1.2); // podbicie i czubek
+  ctx.lineTo(14.2, 1.8);  // czubek buta
+  ctx.lineTo(-4.2, 2.6);  // spód zapiętka
   ctx.closePath();
+  ctx.fillStyle = bootGrad;
   ctx.fill();
 
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.2;
+  // 2. Grafika cholewki (dynamiczna fala / strike-line w stylu Nike Mercurial)
+  ctx.strokeStyle = isFrontLeg ? '#38bdf8' : '#0284c7';
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(-1.0, -0.4);
-  ctx.lineTo(7.0, 0.6);
+  ctx.moveTo(-1.5, -0.6);
+  ctx.quadraticCurveTo(4.0, -1.8, 8.5, 0.6);
   ctx.stroke();
 
+  // 3. Cienka, techniczna podeszwa (soleplate) z włókna węglowego
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-4.0, 2.8, 18.0, 1.4);
+  ctx.fillRect(-4.5, 2.4, 18.2, 1.3);
 
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(-1.5, 4.2, 1.8, 1.6);
-  ctx.fillRect(9.2, 4.2, 1.8, 1.6);
+  // Srebrny/metaliczny rant podeszwy
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.fillRect(-3.0, 2.4, 15.0, 0.6);
+
+  // 4. Dyskretne, zgrabne wkręty piłkarskie (studs)
+  const studGrad = ctx.createLinearGradient(0, 3.7, 0, 5.2);
+  studGrad.addColorStop(0.0, '#94a3b8');
+  studGrad.addColorStop(1.0, '#cbd5e1');
+  ctx.fillStyle = studGrad;
+
+  // Tylny wkręt pod piętą
+  ctx.fillRect(-2.2, 3.7, 1.7, 1.4);
+  // Dwa przednie wkręty pod śródstopiem i palcami
+  ctx.fillRect(5.5, 3.7, 1.6, 1.4);
+  ctx.fillRect(10.2, 3.7, 1.5, 1.4);
 
   ctx.restore();
 
@@ -1661,164 +1910,289 @@ export function drawPlayer(ctx, GROUND_Y) {
   ctx.rotate(p.torsoTilt * player.facing);
   ctx.scale(player.facing, 1);
 
-  // Spodenki piłkarskie
-  ctx.fillStyle = '#ffffff';
+  // A. SPODENKI PIŁKARSKIE (Volumetric shorts)
+  const shortsW = 15.6;
+  const shortsH = 11.2;
+  const shortsGrad = ctx.createLinearGradient(-shortsW / 2, 0, shortsW / 2, 0);
+  shortsGrad.addColorStop(0.0, '#e2e8f0');
+  shortsGrad.addColorStop(0.4, '#ffffff');
+  shortsGrad.addColorStop(1.0, '#cbd5e1');
+
   ctx.beginPath();
   if (ctx.roundRect) {
-    ctx.roundRect(-7.5, -8, 15, 11, 2);
+    ctx.roundRect(-shortsW / 2, -8.0, shortsW, shortsH, 2.5);
   } else {
-    ctx.rect(-7.5, -8, 15, 11);
+    ctx.rect(-shortsW / 2, -8.0, shortsW, shortsH);
   }
+  ctx.fillStyle = shortsGrad;
   ctx.fill();
 
   // Elastyczny pasek spodenek
   ctx.fillStyle = '#e2e8f0';
-  ctx.fillRect(-7.5, -8, 15, 2.2);
+  ctx.fillRect(-shortsW / 2, -8.0, shortsW, 2.4);
 
-  // Smukła sylwetka koszulki (atletyczny profil)
-  ctx.fillStyle = '#e53935';
+  // B. KOSZULKA SPORTOWA (Atletyczny krój z wolumetrią)
+  // Smukła sylwetka: szersza w klatce piersiowej, zwężająca się w talii
+  const jerseyGrad = ctx.createLinearGradient(-7.0, 0, 7.0, 0);
+  jerseyGrad.addColorStop(0.0, '#b91c1c'); // cień grzbietowy
+  jerseyGrad.addColorStop(0.35, '#ef4444'); // atletyczny front koszulki
+  jerseyGrad.addColorStop(0.85, '#dc2626');
+  jerseyGrad.addColorStop(1.0, '#991b1b');
+
   ctx.beginPath();
-  ctx.moveTo(-5.5, -6);
-  ctx.quadraticCurveTo(-6.0, -15, -6.5, -24.5);
-  ctx.lineTo(6.5, -24.5);
-  ctx.quadraticCurveTo(7.0, -15, 5.5, -6);
+  ctx.moveTo(-5.8, -6.0);
+  ctx.quadraticCurveTo(-6.4, -15.0, -7.0, -24.8);
+  ctx.lineTo(7.0, -24.8);
+  ctx.quadraticCurveTo(7.2, -15.0, 5.8, -6.0);
   ctx.closePath();
+  ctx.fillStyle = jerseyGrad;
   ctx.fill();
+
+  // Cień rzucany przez koszulkę na pas spodenek (Ambient Occlusion: rgba(0,0,0,0.25))
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.fillRect(-6.5, -6.0, 13.0, 2.0);
+
+  // Stadium Rim Light na grzbiecie koszulki
+  ctx.beginPath();
+  ctx.moveTo(-7.0, -24.8);
+  ctx.quadraticCurveTo(-6.4, -15.0, -5.8, -6.0);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1.1;
+  ctx.stroke();
 
   // Dynamiczny szew boczny koszulki
   const seamX = (p.torsoYaw * 3.2);
-  ctx.fillStyle = '#b71c1c';
+  ctx.fillStyle = '#991b1b';
   ctx.beginPath();
-  ctx.moveTo(-5.5, -6);
-  ctx.lineTo(-6.5, -24.5);
-  ctx.lineTo(seamX - 1.0, -24.5);
-  ctx.lineTo(seamX - 0.5, -6);
+  ctx.moveTo(-5.8, -6.0);
+  ctx.lineTo(-7.0, -24.8);
+  ctx.lineTo(seamX - 1.2, -24.8);
+  ctx.lineTo(seamX - 0.6, -6.0);
   ctx.closePath();
   ctx.fill();
 
-  // Detale dekoltu i numeru
+  // C. DETALE KOSZULKI: DEKOLT V-NECK I NUMER 10
   if (p.torsoYaw > 0.04) {
+    // Widok bardziej z przodu
     const vCenter = 2.0 + (p.torsoYaw * 2.0);
-    ctx.fillStyle = '#ffffff';
+    // V-neck lamówka
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(vCenter - 2.8, -24.5);
+    ctx.moveTo(vCenter - 3.0, -24.8);
     ctx.lineTo(vCenter, -20.5);
-    ctx.lineTo(vCenter + 2.8, -24.5);
-    ctx.closePath();
-    ctx.fill();
+    ctx.lineTo(vCenter + 3.0, -24.8);
+    ctx.stroke();
 
-    ctx.fillStyle = '#de935e';
+    // Wcięcie dekoltu (skóra)
+    ctx.fillStyle = '#f5b078';
     ctx.beginPath();
-    ctx.moveTo(vCenter - 1.6, -24.5);
-    ctx.lineTo(vCenter, -21.8);
-    ctx.lineTo(vCenter + 1.6, -24.5);
+    ctx.moveTo(vCenter - 1.8, -24.8);
+    ctx.lineTo(vCenter, -21.6);
+    ctx.lineTo(vCenter + 1.8, -24.8);
     ctx.closePath();
     ctx.fill();
 
+    // Herb klubowy / tarcza na piersi
     ctx.fillStyle = '#fbc02d';
     ctx.beginPath();
-    ctx.arc(vCenter + 2.8, -18.0, 1.6, 0, Math.PI * 2);
+    ctx.arc(vCenter + 2.8, -17.8, 1.7, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(vCenter + 2.2, -18.4, 1.2, 1.2);
   } else if (p.torsoYaw < -0.04) {
+    // Widok z tyłu: numer 10 na plecach
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-2.5, -25.5, 5.0, 1.6);
+    ctx.fillRect(-2.5, -25.6, 5.0, 1.6);
 
     const numX = -1.8 + (p.torsoYaw * 2.0);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
     ctx.font = 'bold 9.5px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('10', numX, -12);
   } else {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-1.0, -25.2, 3.5, 1.4);
+    // Profil boczny
+    // V-neck lamówka kołnierzyka
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-1.5, -24.8);
+    ctx.lineTo(1.8, -22.4);
+    ctx.lineTo(3.8, -24.8);
+    ctx.stroke();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.font = 'bold 8.5px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('10', 0, -12);
+    ctx.fillText('10', -0.5, -12);
   }
 
   // =========================================================================
-  // ANATOMICZNY KARK I SZYJA SPORTOWCA (ZERO PISTONÓW I CYLINDRÓW)
+  // D. ANATOMICZNY KARK I MIĘSIEŃ CZWOROBOCZNY (TRAPEZIUS)
   // =========================================================================
-  ctx.fillStyle = '#de935e';
+  // Brak efektu „tłoka”: szyja tworzy anatomiczny mięsień czworoboczny
+  // płynnie łączący łopatki z podstawą potylicy czaszki.
+  const neckGrad = ctx.createLinearGradient(-6.5, -26.0, 3.8, -26.0);
+  neckGrad.addColorStop(0.0, '#c26e38'); // cień mięśnia czworobocznego
+  neckGrad.addColorStop(0.45, '#f5b078'); // mostkowo-obojczykowo-sutkowy (front)
+  neckGrad.addColorStop(1.0, '#fed7aa'); // rozświetlona krawędź krtani
+
   ctx.beginPath();
-  ctx.moveTo(-5.5, -24.0); // tył barku / koszulki
-  ctx.lineTo(-2.8, -28.0); // podstawa potylicy czaszki
-  ctx.lineTo(2.8, -27.5);  // krawędź żuchwy pod uchem
-  ctx.lineTo(3.2, -24.0);  // obojczyk / przód kołnierzyka
+  // Zaczynamy od łopatki/barku z anatomicznym łukiem mięśnia czworobocznego
+  ctx.moveTo(-6.2, -24.6);
+  ctx.bezierCurveTo(-5.4, -26.6, -4.4, -28.2, -3.2, -29.2); // kark do potylicy
+  ctx.lineTo(3.2, -28.4);  // podstawa czaszki do żuchwy
+  ctx.lineTo(3.8, -24.6);  // obojczyk / przód kołnierzyka
+  ctx.closePath();
+  ctx.fillStyle = neckGrad;
+  ctx.fill();
+
+  // Cień rzucany przez linię żuchwy na szyję (Ambient Occlusion: rgba(0,0,0,0.25))
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath();
+  ctx.moveTo(0.2, -28.6);
+  ctx.lineTo(3.2, -28.4);
+  ctx.lineTo(1.8, -26.5);
   ctx.closePath();
   ctx.fill();
 
-  // Elastyczny kołnierzyk wokół szyi
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.4;
+  // Stadium Rim Light na karku (górna krawędź mięśnia czworobocznego)
   ctx.beginPath();
-  ctx.moveTo(-5.5, -24.5);
-  ctx.lineTo(3.5, -24.5);
+  ctx.moveTo(-6.2, -24.6);
+  ctx.bezierCurveTo(-5.4, -26.6, -4.4, -28.2, -3.2, -29.2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1.0;
   ctx.stroke();
 
   // =========================================================================
-  // GŁOWA SPORTOWCA (NATURALNIE OSADZONA NA KARKU, PEŁNY KĄT ŚLEDZENIA)
+  // E. GŁOWA I TWARZ W PROFILU (NOS, USTA, PODBRÓDEK, UCHO, OKO ZE ŚLEDZENIEM)
   // =========================================================================
   ctx.save();
-  ctx.translate(1.0, -29.8 + (player.headBob * 0.35));
+  ctx.translate(1.0, -30.0 + (player.headBob * 0.35));
   ctx.rotate(p.headPitch);
 
-  // Profil twarzy z linią nosa i podbródka
-  ctx.fillStyle = '#f5b078';
+  // 1. Twarz w profilu z zarysem nosa, ust, podbródka i linii żuchwy
+  const faceGrad = ctx.createLinearGradient(-5.0, 0, 7.0, 0);
+  faceGrad.addColorStop(0.0, '#de935e');
+  faceGrad.addColorStop(0.5, '#f5b078');
+  faceGrad.addColorStop(1.0, '#fed7aa');
+
   ctx.beginPath();
-  ctx.moveTo(-4.8, -6.0);
-  ctx.lineTo(4.8, -6.0);
-  ctx.lineTo(6.0, -1.0);
-  ctx.lineTo(7.2, 0.8);
-  ctx.lineTo(5.2, 2.0);
-  ctx.lineTo(3.8, 6.0);
-  ctx.lineTo(-3.2, 5.0);
-  ctx.lineTo(-4.8, -1.0);
+  ctx.moveTo(-4.6, -6.6); // czubek czoła
+  ctx.lineTo(4.2, -6.6);  // krawędź czoła pod opaską
+  ctx.lineTo(4.8, -4.2);  // łuk brwiowy
+  ctx.lineTo(4.3, -3.3);  // nasada nosa (wcięcie)
+  ctx.lineTo(6.8, -1.0);  // grzbiet i czubek nosa
+  ctx.lineTo(5.1, -0.4);  // podstawa nosa
+  ctx.lineTo(5.5, 0.6);   // warga górna
+  ctx.lineTo(4.9, 1.4);   // wcięcie wargowe (kącik ust)
+  ctx.lineTo(5.3, 2.3);   // warga dolna
+  ctx.lineTo(4.3, 4.8);   // atletyczny podbródek
+  ctx.lineTo(0.2, 4.4);   // linia żuchwy
+  ctx.lineTo(-4.6, 1.2);  // kąt żuchwy do potylicy
   ctx.closePath();
+  ctx.fillStyle = faceGrad;
   ctx.fill();
 
-  // Ucho
+  // 2. Anatomiczne ucho z małżowiną
   ctx.fillStyle = '#de935e';
   ctx.beginPath();
-  ctx.arc(-3.8, 0.5, 1.8, 0, Math.PI * 2);
+  ctx.ellipse(-3.2, -0.8, 1.5, 2.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Cieniowanie boków głowy (fryzura fade)
-  ctx.fillStyle = '#3a2012';
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(-4.5, -2.5);
-  ctx.lineTo(-5.0, -6.5);
-  ctx.lineTo(1.5, -6.5);
-  ctx.lineTo(1.5, -3.0);
-  ctx.closePath();
-  ctx.fill();
-
-  // Teksturowana góra włosów
-  ctx.fillStyle = '#23120b';
-  ctx.beginPath();
-  ctx.moveTo(-5.5, -4.5);
-  ctx.lineTo(-6.2, -10.5);
-  ctx.lineTo(2.5, -11.8);
-  ctx.lineTo(6.5, -7.0);
-  ctx.lineTo(3.2, -5.0);
-  ctx.closePath();
-  ctx.fill();
-
-  // Biała opaska sportowa na włosach
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.moveTo(-5.0, -6.0);
-  ctx.lineTo(5.0, -6.0);
+  ctx.arc(-3.1, -0.8, 1.0, 0.4 * Math.PI, 1.7 * Math.PI, false);
   ctx.stroke();
 
-  // Oko
-  ctx.fillStyle = '#1e1b18';
-  ctx.fillRect(2.0, -1.5, 2.6, 1.3);
+  // 3. Fryzura fade i włosy
+  const hairGrad = ctx.createLinearGradient(-6.0, -12.0, 5.0, -5.0);
+  hairGrad.addColorStop(0.0, '#1c0d06');
+  hairGrad.addColorStop(0.6, '#2e160a');
+  hairGrad.addColorStop(1.0, '#452210');
+
+  ctx.beginPath();
+  ctx.moveTo(-4.8, -4.8);
+  ctx.lineTo(-6.0, -10.6);
+  ctx.bezierCurveTo(-6.0, -11.6, -1.5, -12.8, 2.5, -12.2);
+  ctx.quadraticCurveTo(6.0, -9.5, 5.2, -6.8);
+  ctx.lineTo(3.6, -4.8);
+  ctx.closePath();
+  ctx.fillStyle = hairGrad;
+  ctx.fill();
+
+  // Stadium Rim Light na czubku głowy i krawędzi włosów
+  ctx.beginPath();
+  ctx.moveTo(-6.0, -10.6);
+  ctx.bezierCurveTo(-6.0, -11.6, -1.5, -12.8, 2.5, -12.2);
+  ctx.quadraticCurveTo(6.0, -9.5, 5.2, -6.8);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1.1;
+  ctx.stroke();
+
+  // Biała opaska sportowa (Headband)
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-5.2, -6.6);
+  ctx.lineTo(4.4, -6.6);
+  ctx.stroke();
+
+  // 4. OKO SPORTOWCA ZE ŚLEDZENIEM PIŁKI
+  // Twardówka (białko oka), tęczówka ze źrenicą i biały błysk rogówkowy
+  const eyeCenterX = 2.7;
+  const eyeCenterY = -2.1;
+
+  // Twardówka (białko)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(eyeCenterX, eyeCenterY, 1.5, 1.0, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dynamiczne śledzenie piłki wzrokiem
+  // Gdy piłka jest przed graczem: wzrok skierowany dokładnie na piłkę
+  // Gdy piłka jest za plecami: wzrok patrzy naturalnie przed siebie w osi biegu
+  let lookX = 0.55;
+  let lookY = 0.0;
+
+  if (player.lastBallX !== undefined && player.lastBallY !== undefined) {
+    const headWorldX = hipX + (28 * Math.sin(p.torsoTilt)) * player.facing;
+    const headWorldY = hipY - (28 * Math.cos(p.torsoTilt)) - 10;
+    const dxBall = (player.lastBallX - headWorldX) * player.facing;
+    const dyBall = player.lastBallY - headWorldY;
+
+    if (dxBall > 6) {
+      const ballAngle = Math.atan2(dyBall, dxBall);
+      // Kompensacja obrotu głowy i tułowia
+      const relAngle = ballAngle - p.headPitch - (p.torsoTilt * player.facing);
+      lookX = Math.cos(relAngle) * 0.65;
+      lookY = Math.sin(relAngle) * 0.45;
+    } else {
+      lookX = 0.55;
+      lookY = 0.0;
+    }
+  }
+
+  // Tęczówka ze źrenicą (ciemna)
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(3.2, -1.0, 1.4, 1.4);
+  ctx.beginPath();
+  ctx.arc(eyeCenterX + lookX, eyeCenterY + lookY, 0.72, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Błysk rogówkowy (corneal highlight - biały lśniący punkt)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(eyeCenterX + lookX * 0.5 + 0.25, eyeCenterY + lookY * 0.5 - 0.25, 0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Łuk brwiowy (brew sportowca nadająca skupiony wyraz twarzy)
+  ctx.strokeStyle = '#23120b';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(1.4, -3.3);
+  ctx.lineTo(4.4, -3.5);
+  ctx.stroke();
 
   ctx.restore();
   ctx.restore();
