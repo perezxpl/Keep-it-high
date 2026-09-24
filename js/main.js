@@ -206,15 +206,12 @@ function draw() {
 
   ctx.restore();
 
-  // Interfejs uĹĽytkownika i kontrolki
-  drawHUD(ctx, player, fpsDisplay, leftStick, btnCluster);
+  // Interfejs użytkownika i kontrolki
+  drawHUD(ctx, player, leftStick, btnCluster);
 }
 
-// StaĹ‚a blokada do 60 Hz (identyczna prÄ™dkoĹ›Ä‡ na monitorach 60Hz, 120Hz, 144Hz, 165Hz, 240Hz+)
+// Stała blokada do 60 Hz (identyczna prędkość na monitorach 60Hz, 120Hz, 144Hz, 165Hz, 240Hz+)
 let lastTime = performance.now();
-let fpsDisplay = 60;
-let fpsCount = 0;
-let lastFpsTime = performance.now();
 
 function loop() {
   requestAnimationFrame(loop);
@@ -222,12 +219,12 @@ function loop() {
   const now = performance.now();
   const delta = now - lastTime;
 
-  // Odrzucenie nadmiarowych wywoĹ‚aĹ„ na ekranach 165Hz (i innych high-refresh rate)
+  // Odrzucenie nadmiarowych wywołań na ekranach 165Hz (i innych high-refresh rate)
   if (delta < FRAME_DURATION - 0.5) {
     return;
   }
 
-  // Zabezpieczenie przed uĹ›pieniem karty lub duĹĽym opĂłĹşnieniem ("Spiral of Death")
+  // Zabezpieczenie przed uśpieniem karty lub dużym opóźnieniem ("Spiral of Death")
   if (delta > 250) {
     lastTime = now;
   } else {
@@ -235,14 +232,6 @@ function loop() {
     if (now - lastTime > FRAME_DURATION) {
       lastTime = now;
     }
-  }
-
-  // Licznik FPS aktualizowany co sekundÄ™
-  fpsCount++;
-  if (now - lastFpsTime >= 1000) {
-    fpsDisplay = Math.round((fpsCount * 1000) / (now - lastFpsTime));
-    fpsCount = 0;
-    lastFpsTime = now;
   }
 
   update();

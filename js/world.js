@@ -843,6 +843,9 @@ export function updateParticles() {
   // Aktualizacja potężnych powiewów śniegu i zamieci śnieżnej w biomie zimowym (1600 – 2399 m)
   updateWinterBlizzard();
 
+  // Aktualizacja przelatujących samolotów w biomie murawy (0 – 799 m)
+  updateAirplanes();
+
   // Wystrzał konfetti na powitanie przy wbiegnięciu na stadion (300 m)
   if (currentDist >= 300 && currentDist <= 330 && !confettiTriggered) {
     confettiTriggered = true;
@@ -930,6 +933,285 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
 }
 
 // ==========================================
+// SAMOLOTY PRZELATUJĄCE NA NIEBIE (BIOM MURAWA: 0 – 799 m)
+// ==========================================
+export const airplane = {
+  active: false,
+  x: -200,
+  yRel: 0.18,
+  speed: 1.35,
+  dir: 1, // 1: wschód (w prawo), -1: zachód (w lewo)
+  scale: 1.0,
+  angle: 0.015,
+  cooldown: 180, // pierwsze pojawienie się po ~3 sekundach od startu
+  strobeTimer: 0,
+  contrailCounter: 0
+};
+
+export const airplaneContrails = [];
+
+const AIRPLANE_PARALLAX = 0.06;
+
+export function updateAirplanes() {
+  // Izolacja do biomu murawy (0 – 799 m)
+  if (currentDist >= 800) {
+    if (airplane.active) airplane.active = false;
+    if (airplaneContrails.length > 0) airplaneContrails.length = 0;
+    airplane.cooldown = 400;
+    return;
+  }
+
+  const camX = camera ? camera.x : 0;
+
+  // 1. Obsługa stanu uśpienia i ponownego pojawiania się
+  if (!airplane.active) {
+    airplane.cooldown--;
+    if (airplane.cooldown <= 0) {
+      airplane.active = true;
+      // 75% szansy na lot z zachodu na wschód (w stronę biegu gracza), 25% wschód -> zachód
+      airplane.dir = Math.random() < 0.75 ? 1 : -1;
+      airplane.yRel = Math.random() * 0.16 + 0.11; // 11% do 27% wysokości ekranu
+      airplane.speed = Math.random() * 0.35 + 1.25; // spokojna prędkość przelotowa
+      airplane.scale = Math.random() * 0.22 + 0.90;
+      airplane.angle = (Math.random() - 0.5) * 0.03; // delikatne wznoszenie lub zniżanie
+      airplane.strobeTimer = 0;
+      airplane.contrailCounter = 0;
+
+      if (airplane.dir === 1) {
+        airplane.x = (camX * AIRPLANE_PARALLAX) - 220;
+      } else {
+        airplane.x = (camX * AIRPLANE_PARALLAX) + W + 220;
+      }
+    }
+  }
+
+  // 2. Aktualizacja aktywnego samolotu
+  if (airplane.active) {
+    airplane.x += airplane.speed * airplane.dir;
+    airplane.strobeTimer = (airplane.strobeTimer + 1) % 70;
+
+    const screenX = airplane.x - (camX * AIRPLANE_PARALLAX);
+    const screenY = airplane.yRel * H;
+
+    // Emisja smug kondensacyjnych z dwóch silników pod skrzydłami co 2 klatki
+    airplane.contrailCounter++;
+    if (airplane.contrailCounter % 2 === 0) {
+      const cosA = Math.cos(airplane.angle);
+      const sinA = Math.sin(airplane.angle);
+      const s = airplane.scale;
+      const d = airplane.dir;
+
+      // Odsunięcie silnika 1 (górnego / dalszego w rzucie)
+      const e1LocalX = -5 * d * s;
+      const e1LocalY = -6.5 * s;
+      const e1X = airplane.x + (e1LocalX * cosA - e1LocalY * sinA);
+      const e1Y = screenY + (e1LocalX * sinA + e1LocalY * cosA);
+
+      // Odsunięcie silnika 2 (dolnego / bliższego w rzucie)
+      const e2LocalX = -4 * d * s;
+      const e2LocalY = 7.5 * s;
+      const e2X = airplane.x + (e2LocalX * cosA - e2LocalY * sinA);
+      const e2Y = screenY + (e2LocalX * sinA + e2LocalY * cosA);
+
+      airplaneContrails.push({
+        skyX: e1X,
+        skyY: e1Y,
+        age: 0,
+        maxAge: 300,
+        baseAlpha: 0.35,
+        initWidth: 1.6 * s,
+        maxWidth: 7.5 * s
+      });
+
+      airplaneContrails.push({
+        skyX: e2X,
+        skyY: e2Y,
+        age: 0,
+        maxAge: 300,
+        baseAlpha: 0.35,
+        initWidth: 1.6 * s,
+        maxWidth: 7.5 * s
+      });
+    }
+
+    // Sprawdzenie wylotu poza kadr
+    if (airplane.dir === 1 && screenX > W + 320) {
+      airplane.active = false;
+      airplane.cooldown = Math.random() * 900 + 700; // 12 do 27 sekund
+    } else if (airplane.dir === -1 && screenX < -320) {
+      airplane.active = false;
+      airplane.cooldown = Math.random() * 900 + 700;
+    }
+  }
+
+  // 3. Aktualizacja i powolne rozpraszanie smug kondensacyjnych
+  for (let i = airplaneContrails.length - 1; i >= 0; i--) {
+    const pt = airplaneContrails[i];
+    pt.age++;
+    if (pt.age >= pt.maxAge) {
+      airplaneContrails.splice(i, 1);
+    }
+  }
+}
+
+function drawAirplaneShape(ctx, scale, dir, strobeOn) {
+  ctx.save();
+  ctx.scale(scale * dir, scale);
+
+  // 1. Cień dolny kadłuba dający trójwymiarowość
+  ctx.fillStyle = '#94a3b8';
+  ctx.beginPath();
+  ctx.ellipse(0, 1.6, 20, 2.4, 0, 0, Math.PI);
+  ctx.fill();
+
+  // 2. Elegancki kadłub odrzutowca pasażerskiego (czysta biel)
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.moveTo(22, 0); // dziób
+  ctx.quadraticCurveTo(15, -3.2, 0, -3.2); // grzbiet
+  ctx.lineTo(-18, -1.8);
+  ctx.lineTo(-20, -0.5);
+  ctx.lineTo(-18, 1.2);
+  ctx.lineTo(0, 2.5); // brzuch
+  ctx.quadraticCurveTo(16, 2.5, 22, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. Przyciemniana szyba kokpitu
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.moveTo(17, -1.8);
+  ctx.lineTo(19, -0.6);
+  ctx.lineTo(16, -0.6);
+  ctx.lineTo(14, -1.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // 4. Dalekie skrzydło skośne (górne)
+  ctx.fillStyle = '#94a3b8';
+  ctx.beginPath();
+  ctx.moveTo(4, -2.5);
+  ctx.lineTo(-4, -12);
+  ctx.lineTo(-8, -11.5);
+  ctx.lineTo(-3, -2.2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Daleki silnik
+  ctx.fillStyle = '#64748b';
+  ctx.beginPath();
+  ctx.ellipse(0, -6.5, 4.5, 1.6, -0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-4.5, -7.5, 1.5, 2);
+
+  // 5. Statecznik pionowy (ogon) z cyjanowym paskiem Champions
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.moveTo(-14, -1.8);
+  ctx.lineTo(-20, -11);
+  ctx.lineTo(-23, -11);
+  ctx.lineTo(-19, -0.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Statecznik poziomy
+  ctx.fillStyle = '#cbd5e1';
+  ctx.beginPath();
+  ctx.moveTo(-16, -0.8);
+  ctx.lineTo(-21, -3.5);
+  ctx.lineTo(-23, -3.2);
+  ctx.lineTo(-18, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 6. Bliższe skrzydło skośne (dolne)
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.moveTo(6, 0.5);
+  ctx.lineTo(-5, 14);
+  ctx.lineTo(-9, 13.5);
+  ctx.lineTo(-3, 1.2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bliższy silnik odrzutowy
+  ctx.fillStyle = '#94a3b8';
+  ctx.beginPath();
+  ctx.ellipse(1, 7.5, 5, 1.8, 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-4, 6.5, 1.5, 2);
+
+  // 7. Światła nawigacyjne
+  // Czerwone światło na lewym skrzydle
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(-6, -11.8, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Zielone światło na prawym skrzydle
+  ctx.fillStyle = '#22c55e';
+  ctx.beginPath();
+  ctx.arc(-7, 13.8, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Biały stroboskop (błysk)
+  if (strobeOn) {
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 5;
+    ctx.beginPath();
+    ctx.arc(-21.5, -11, 2, 0, Math.PI * 2);
+    ctx.arc(0, 3, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+export function drawAirplanes(ctx) {
+  if (currentDist >= 800) return;
+
+  const camX = camera ? camera.x : 0;
+
+  // 1. Rysowanie smug kondensacyjnych (półprzezroczysta para rozpraszająca się w atmosferze)
+  for (let i = 0; i < airplaneContrails.length; i++) {
+    const pt = airplaneContrails[i];
+    const sx = pt.skyX - (camX * AIRPLANE_PARALLAX);
+    const sy = pt.skyY;
+    if (sx < -120 || sx > W + 120) continue;
+
+    const progress = pt.age / pt.maxAge;
+    const alpha = (1.0 - progress) * pt.baseAlpha;
+    const w = pt.initWidth + progress * (pt.maxWidth - pt.initWidth);
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, w * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 2. Rysowanie aktywnego samolotu
+  if (airplane.active) {
+    const screenX = airplane.x - (camX * AIRPLANE_PARALLAX);
+    const screenY = airplane.yRel * H;
+
+    if (screenX >= -100 && screenX <= W + 100) {
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(airplane.angle * airplane.dir);
+
+      const strobeOn = (airplane.strobeTimer < 6);
+      drawAirplaneShape(ctx, airplane.scale, airplane.dir, strobeOn);
+
+      ctx.restore();
+    }
+  }
+}
+
+// ==========================================
 // CHMURY Z PARALAKSĄ
 // ==========================================
 const CLOUDS_CYCLE = 2600;
@@ -977,6 +1259,30 @@ function drawFluffyCloud(ctx, cx, cy, scale, opacity, biome) {
   ctx.fill();
 
   ctx.restore();
+}
+
+function drawCloudsLayer(ctx, targetLayer, biome) {
+  const cycle = Math.max(CLOUDS_CYCLE, W + 800);
+  const camX = camera ? camera.x : 0;
+  const drift = performance.now() * 0.005;
+
+  for (let i = 0; i < CLOUD_DEFINITIONS.length; i++) {
+    const c = CLOUD_DEFINITIONS[i];
+    if (c.layer !== targetLayer) continue;
+    const parallaxSpeed = c.layer === 0 ? 0.12 : 0.24;
+    const totalOffset = camX * parallaxSpeed + drift;
+
+    const relX = ((c.baseX - totalOffset) % cycle + cycle) % cycle;
+    let screenX = relX;
+    if (screenX > W + 200 && screenX > cycle - 300) {
+      screenX -= cycle;
+    }
+
+    if (screenX >= -220 && screenX <= W + 220) {
+      const screenY = c.yRel * H;
+      drawFluffyCloud(ctx, screenX, screenY, c.scale, c.opacity, biome);
+    }
+  }
 }
 
 // ==========================================
@@ -1085,27 +1391,22 @@ export function drawSky(ctx) {
     // Słońce renderowane przed chmurami
     drawSun(ctx, biome);
 
-    // Renderowanie chmur z efektem paralaksy
-    const cycle = Math.max(CLOUDS_CYCLE, W + 800);
-    const camX = camera ? camera.x : 0;
-    const drift = performance.now() * 0.005;
+    // Dalsze chmury (warstwa 0)
+    drawCloudsLayer(ctx, 0, biome);
 
-    for (let i = 0; i < CLOUD_DEFINITIONS.length; i++) {
-      const c = CLOUD_DEFINITIONS[i];
-      const parallaxSpeed = c.layer === 0 ? 0.12 : 0.24;
-      const totalOffset = camX * parallaxSpeed + drift;
+    ctx.restore();
+  }
 
-      const relX = ((c.baseX - totalOffset) % cycle + cycle) % cycle;
-      let screenX = relX;
-      if (screenX > W + 200 && screenX > cycle - 300) {
-        screenX -= cycle;
-      }
+  // Samoloty na niebie w biomie murawy (0m – 799m)
+  // Widoczne na tle nieba, za konstrukcją stadionu i masztami jupiterów
+  drawAirplanes(ctx);
 
-      if (screenX >= -220 && screenX <= W + 220) {
-        const screenY = c.yRel * H;
-        drawFluffyCloud(ctx, screenX, screenY, c.scale, c.opacity, biome);
-      }
-    }
+  // Bliższe chmury (warstwa 1)
+  if (skyVisibility > 0.01) {
+    ctx.save();
+    ctx.globalAlpha *= skyVisibility;
+
+    drawCloudsLayer(ctx, 1, biome);
 
     ctx.restore();
   }
@@ -2144,35 +2445,13 @@ export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
   ctx.textBaseline = 'alphabetic';
 }
 
-export function drawHUD(ctx, player, fpsDisplay, leftStick, btnCluster) {
+export function drawHUD(ctx, player, leftStick, btnCluster) {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 20px monospace';
   ctx.fillText(`DYSTANS: ${currentDist} m`, 24, 38);
   ctx.fillStyle = '#ffeb3b';
   ctx.fillText(`REKORD:  ${bestDistance} m`, 24, 62);
-
-  let modeCol = '#aaa';
-  if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
-  else if (player.isCrouching) modeCol = '#29b6f6';
-  else if (player.gaitMode === 'SPRINT') modeCol = '#ff5722';
-  else if (player.gaitMode === 'JOG') modeCol = '#ffeb3b';
-  else if (player.gaitMode === 'WALK') modeCol = '#4caf50';
-
-  ctx.fillStyle = modeCol;
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText(`STAN: ${player.gaitMode}`, 24, 84);
-
-  // Wskaźnik aktualnego biomu
-  const currentBiome = getCurrentBiome(currentDist);
-  ctx.fillStyle = currentBiome.uiColor;
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText(`BIOM: ${currentBiome.name}`, 24, 102);
-
-  ctx.fillStyle = '#888';
-  ctx.fillText(`R = Przywołaj piłkę`, 24, 120);
-  ctx.fillStyle = '#00e5ff';
-  ctx.fillText('FPS: ' + fpsDisplay + ' (60 Hz)', 24, 138);
 
   // 1. LEWY DRĄŻEK
   if (leftStick && leftStick.active) {
