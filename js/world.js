@@ -267,10 +267,21 @@ export function updateCamera(player, ball) {
   camera.y += (camera.targetY - camera.y) * camera.smoothPos;
 }
 
+export let eyeAdaptationFrames = 0;
+export const EYE_ADAPTATION_MAX_FRAMES = 18;
+export let eyeAdaptationTriggered = false;
+
 export function updateDistance(ballX) {
   currentDist = Math.max(0, Math.floor((ballX - START_X) / 14));
   if (currentDist > bestDistance) {
     bestDistance = currentDist;
+  }
+  if (currentDist >= 298 && currentDist <= 330 && !eyeAdaptationTriggered) {
+    eyeAdaptationTriggered = true;
+    eyeAdaptationFrames = EYE_ADAPTATION_MAX_FRAMES;
+  }
+  if (currentDist < 250) {
+    eyeAdaptationTriggered = false;
   }
 }
 
@@ -3348,14 +3359,37 @@ export function drawSky(ctx) {
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Łuna świetlna reflektorów w koronie stadionu rozświetlająca zamkniętą arenę
+  // Łuna świetlna reflektorów i monumentalne zadaszenie zamkniętej areny stadionu
   if (stadiumFactor > 0.001) {
-    const arenaGlow = ctx.createLinearGradient(0, 0, 0, H * 0.6);
-    arenaGlow.addColorStop(0, `rgba(56, 189, 248, ${0.16 * stadiumFactor})`);
-    arenaGlow.addColorStop(0.5, `rgba(255, 255, 255, ${0.08 * stadiumFactor})`);
+    // 1. Zamknięta czasza dachu stadionu - zlikwidowane puste niebo
+    const roofVault = ctx.createLinearGradient(0, 0, 0, H * 0.7);
+    roofVault.addColorStop(0, '#040711');
+    roofVault.addColorStop(0.35, '#081020');
+    roofVault.addColorStop(0.70, '#0f1b32');
+    roofVault.addColorStop(1.0, 'rgba(15, 27, 50, 0)');
+    ctx.fillStyle = roofVault;
+    ctx.fillRect(0, 0, W, H * 0.7);
+
+    // Stalowe żebra konstrukcyjne sklepienia dachu w tle
+    ctx.save();
+    ctx.strokeStyle = `rgba(51, 65, 85, ${0.45 * stadiumFactor})`;
+    ctx.lineWidth = 2.5;
+    for (let rx = -W * 0.15; rx < W * 1.25; rx += 140) {
+      ctx.beginPath();
+      ctx.moveTo(rx, 0);
+      ctx.bezierCurveTo(rx + 60, H * 0.22, rx + 100, H * 0.45, rx + 140, H * 0.7);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Łuna świetlna potężnych reflektorów w koronie stadionu rozświetlająca zamkniętą arenę
+    const arenaGlow = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+    arenaGlow.addColorStop(0, `rgba(56, 189, 248, ${0.20 * stadiumFactor})`);
+    arenaGlow.addColorStop(0.35, `rgba(255, 255, 255, ${0.12 * stadiumFactor})`);
+    arenaGlow.addColorStop(0.70, `rgba(56, 189, 248, ${0.05 * stadiumFactor})`);
     arenaGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = arenaGlow;
-    ctx.fillRect(0, 0, W, H * 0.6);
+    ctx.fillRect(0, 0, W, H * 0.65);
   }
 
   // Ciepła poświata pochodni rozświetlająca mroczne sklepienie wnętrza piramidy
@@ -3393,9 +3427,10 @@ export function drawSky(ctx) {
     drawMidDunes(ctx, currentDist);
   }
 
-  // Samoloty na niebie w biomie murawy (0m – 799m)
-  // Widoczne na tle nieba, za konstrukcją stadionu i masztami jupiterów
-  drawAirplanes(ctx);
+  // Samoloty na niebie w biomie murawy (0m – 799m) - ukryte wewnątrz zamkniętej areny stadionu
+  if (skyVisibility > 0.05) {
+    drawAirplanes(ctx);
+  }
 
   // Bliższe chmury (warstwa 1)
   if (skyVisibility > 0.01) {
@@ -3409,436 +3444,534 @@ export function drawSky(ctx) {
 }
 
 // ==========================================
-// TŁO I STRUKTURA: MONUMENTALNA ARENA STADIONOWA (300M - 750M)
+// TŁO I STRUKTURA: MONUMENTALNA ARENA STADIONOWA 2.5D (300M - 750M)
+// KINEMATYCZNY TUNEL, ZAKRZYWIONA MISA, 3 WARSTWY PARALAKSY,
+// WOLUMETRYCZNE JUPITERY ORAZ PERSPEKTYWA DARNI
 // ==========================================
-function drawFanCrowd(ctx, seatX, seatY, seatW, seatH, bayIdx, rowIdx, now) {
-  const fanSpacing = 7;
-  // Chłodna paleta barw (granat, indygo, grafit, cyjan, złoto, biel - ZERO czerwieni dla kontrastu z graczem)
-  const fanCols = ['#0a1128', '#1c2541', '#1e293b', '#00e5ff', '#ffc107', '#334155', '#475569', '#64748b', '#f8fafc'];
-  const count = Math.floor(seatW / fanSpacing);
 
-  for (let i = 0; i < count; i++) {
-    const fx = seatX + i * fanSpacing + 2;
-    const seed = (bayIdx * 73 + rowIdx * 31 + i * 17);
-    const col = fanCols[seed % fanCols.length];
+// Maszty jupiterów rozlokowane w strategicznych punktach zadaszenia areny
+const STADIUM_FLOODLIGHT_MASTS = [
+  START_X + 340 * 14, // 4920 px - narożnik wejściowy stadionu
+  START_X + 475 * 14, // 6810 px - lewa strona środka boiska
+  START_X + 575 * 14, // 8210 px - prawa strona środka boiska
+  START_X + 710 * 14  // 10100 px - narożnik wyjściowy stadionu
+];
 
-    // Subtelna animacja dopingu / skakania kibiców
-    const isCheering = Math.sin((now * 0.0035) + bayIdx * 1.2 + i * 0.25) > 0.82;
-    const yOffset = isCheering ? -2.5 : 0;
-
-    // Głowa
-    ctx.fillStyle = '#fde68a';
-    ctx.fillRect(fx + 1, seatY + 2 + yOffset, 2.5, 2.5);
-
-    // Koszulka w barwach areny (granat, indygo, cyjan, grafit)
-    ctx.fillStyle = col;
-    ctx.fillRect(fx, seatY + 5 + yOffset, 4.5, 4.5);
-
-    // Szalik kibica w dłoniach (neonowy cyjan lub złoto)
-    if (isCheering && (seed % 4 === 0)) {
-      ctx.fillStyle = (seed % 2 === 0) ? '#00e5ff' : '#ffc107';
-      ctx.fillRect(fx - 1, seatY + yOffset, 7, 2);
-    }
-
-    // Błyski fleszy aparatów w tłumie
-    if ((seed + Math.floor(now * 0.02)) % 130 === 0) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.beginPath();
-      ctx.arc(fx + 2, seatY + 4, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-}
-
+// 4. WOLUMETRYCZNE OŚWIETLENIE JUPITERÓW (MIESZANIE ADDYTYWNE)
 function drawFloodlightTower(ctx, mx, gy, now) {
-  // Powiększony maszt kratownicowy sięgający 570 px nad murawę
-  const mastBaseY = gy - 440;
-  const mastTopY = gy - 570;
+  const mastTopY = gy - 620;
+  const mastBaseY = gy - 490;
 
-  // 1. Stalowe słupy masztu kratownicowego
+  // 1. Stalowe belki i kratownica nośna masztu podwieszonego pod konstrukcją dachu
   ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 3;
-
+  ctx.lineWidth = 3.5;
   ctx.beginPath();
-  ctx.moveTo(mx - 20, mastBaseY);
-  ctx.lineTo(mx - 10, mastTopY);
-  ctx.moveTo(mx + 20, mastBaseY);
-  ctx.lineTo(mx + 10, mastTopY);
+  ctx.moveTo(mx - 32, mastTopY);
+  ctx.lineTo(mx - 18, mastBaseY);
+  ctx.moveTo(mx + 32, mastTopY);
+  ctx.lineTo(mx + 18, mastBaseY);
   ctx.stroke();
 
-  // Krzyżulce kratownicy (X)
+  // Krzyżulce kratownicy wsporczej (stężenia stalowe)
   ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  for (let y = mastBaseY; y > mastTopY + 16; y -= 24) {
-    const t1 = (y - mastBaseY) / (mastTopY - mastBaseY);
-    const t2 = (y - 24 - mastBaseY) / (mastTopY - mastBaseY);
-    const w1 = 20 - t1 * 10;
-    const w2 = 20 - t2 * 10;
-    ctx.moveTo(mx - w1, y);
-    ctx.lineTo(mx + w1, y);
-    ctx.moveTo(mx - w1, y);
-    ctx.lineTo(mx + w2, y - 24);
-    ctx.moveTo(mx + w1, y);
-    ctx.lineTo(mx - w2, y - 24);
-  }
-  ctx.stroke();
-
-  // 2. Potężna głowica z 16 reflektorami LED
-  const headW = 86;
-  const headH = 34;
-  const headX = mx - headW / 2;
-  const headY = mastTopY - headH;
-
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(headX, headY, headW, headH);
-  ctx.strokeStyle = '#00e5ff';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(headX, headY, headW, headH);
-
-  // Cyjanowa dioda ostrzegawcza
-  ctx.fillStyle = (Math.sin(now * 0.006 + mx) > 0) ? '#00e5ff' : '#0369a1';
-  ctx.beginPath();
-  ctx.arc(mx, headY - 4, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 3. Szerokie snopy światła oświetlające płytę boiska
-  const beamLeft = ctx.createLinearGradient(mx, headY + headH, mx - 160, gy);
-  beamLeft.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
-  beamLeft.addColorStop(0.40, 'rgba(240, 248, 255, 0.09)');
-  beamLeft.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-
-  ctx.fillStyle = beamLeft;
-  ctx.beginPath();
-  ctx.moveTo(mx - 15, headY + headH);
-  ctx.lineTo(mx + 15, headY + headH);
-  ctx.lineTo(mx + 120, gy);
-  ctx.lineTo(mx - 320, gy);
-  ctx.closePath();
-  ctx.fill();
-
-  const beamRight = ctx.createLinearGradient(mx, headY + headH, mx + 160, gy);
-  beamRight.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
-  beamRight.addColorStop(0.40, 'rgba(240, 248, 255, 0.09)');
-  beamRight.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-
-  ctx.fillStyle = beamRight;
-  ctx.beginPath();
-  ctx.moveTo(mx - 15, headY + headH);
-  ctx.lineTo(mx + 15, headY + headH);
-  ctx.lineTo(mx + 320, gy);
-  ctx.lineTo(mx - 120, gy);
-  ctx.closePath();
-  ctx.fill();
-
-  // 4. Panel 16 projektorów LED (2 rzędy po 8)
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 8; col++) {
-      const lx = headX + 7 + col * 10.5;
-      const ly = headY + 8 + row * 16;
-
-      ctx.fillStyle = 'rgba(255, 250, 220, 0.75)';
-      ctx.beginPath();
-      ctx.arc(lx, ly, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(lx, ly, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-}
-
-// Tło tunelu wejściowego na 300 m (widok za graczem)
-function drawEntranceTunnelBg(ctx, enterX, gy) {
-  const tw = 200;
-  const th = 220;
-  const tx = enterX - tw / 2;
-  const ty = gy - th;
-
-  // Głęboki mrok korytarza wyjściowego
-  const tunnelGrad = ctx.createLinearGradient(enterX, ty, enterX, gy);
-  tunnelGrad.addColorStop(0, '#02050c');
-  tunnelGrad.addColorStop(0.7, '#070e1b');
-  tunnelGrad.addColorStop(1, '#0e1726');
-  ctx.fillStyle = tunnelGrad;
-  ctx.fillRect(tx, ty, tw, th);
-
-  // Linie perspektywy ścian
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.28)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(tx, ty);
-  ctx.lineTo(enterX - 55, ty + 60);
-  ctx.moveTo(tx + tw, ty);
-  ctx.lineTo(enterX + 55, ty + 60);
-  ctx.moveTo(tx, gy);
-  ctx.lineTo(enterX - 60, gy - 25);
-  ctx.moveTo(tx + tw, gy);
-  ctx.lineTo(enterX + 60, gy - 25);
+  ctx.moveTo(mx - 30, mastTopY + 22);
+  ctx.lineTo(mx + 20, mastBaseY - 12);
+  ctx.moveTo(mx + 30, mastTopY + 22);
+  ctx.lineTo(mx - 20, mastBaseY - 12);
+  ctx.moveTo(mx - 24, (mastTopY + mastBaseY) / 2);
+  ctx.lineTo(mx + 24, (mastTopY + mastBaseY) / 2);
   ctx.stroke();
 
-  // Lampa sufitowa LED w korytarzu
-  ctx.fillStyle = '#00e5ff';
-  ctx.fillRect(enterX - 55, ty + 58, 110, 5);
-  const glow = ctx.createRadialGradient(enterX, ty + 60, 2, enterX, ty + 60, 60);
-  glow.addColorStop(0, 'rgba(0, 229, 255, 0.50)');
-  glow.addColorStop(1, 'rgba(0, 229, 255, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(enterX - 80, ty + 30, 160, 80);
+  // 2. Masywna głowica baterii reflektorów (bateria jupiterów)
+  const headW = 104;
+  const headH = 40;
+  const headX = mx - headW / 2;
+  const headY = mastBaseY;
 
-  // Napis w głębi korytarza
-  ctx.fillStyle = '#00e5ff';
+  // Korpus baterii z radiatorem chłodzącym
+  ctx.fillStyle = '#0b1120';
+  ctx.fillRect(headX, headY, headW, headH);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(headX, headY, headW, headH);
+
+  // Żebra chłodzące radiatora na górze korpusu
+  ctx.fillStyle = '#1e293b';
+  for (let fx = headX + 4; fx < headX + headW - 4; fx += 6) {
+    ctx.fillRect(fx, headY - 4, 3, 4);
+  }
+
+  // Dioda ostrzegawcza masztu (stroboskop lotniczy)
+  const beaconBlink = Math.sin(now * 0.006 + mx * 0.01) > 0;
+  ctx.fillStyle = beaconBlink ? '#ef4444' : '#7f1d1d';
+  ctx.beginPath();
+  ctx.arc(mx, headY - 7, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. WOLUMETRYCZNE STOŻKI ŚWIATŁA (MIESZANIE ADDYTYWNE LIGHTER)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Cztery szerokie stożki światła o barwie rgba(220, 240, 255, 0.12) przecinające kadr z góry na murawę
+  const drawBeam = (fromX1, fromX2, toX1, toX2, intensityMult = 1.0) => {
+    const beamGrad = ctx.createLinearGradient(mx, headY + headH, (toX1 + toX2) / 2, gy);
+    beamGrad.addColorStop(0, `rgba(220, 240, 255, ${0.18 * intensityMult})`);
+    beamGrad.addColorStop(0.35, `rgba(220, 240, 255, ${0.12 * intensityMult})`);
+    beamGrad.addColorStop(0.70, `rgba(220, 240, 255, ${0.05 * intensityMult})`);
+    beamGrad.addColorStop(1, 'rgba(220, 240, 255, 0.0)');
+
+    ctx.fillStyle = beamGrad;
+    ctx.beginPath();
+    ctx.moveTo(fromX1, headY + headH);
+    ctx.lineTo(fromX2, headY + headH);
+    ctx.lineTo(toX2, gy);
+    ctx.lineTo(toX1, gy);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // Stożek 1: Skierowany szeroko w lewo
+  drawBeam(mx - 35, mx + 5, mx - 440, mx - 80, 1.05);
+
+  // Stożek 2: Środkowo-lewy szeroki snop
+  drawBeam(mx - 25, mx + 15, mx - 220, mx + 140, 1.0);
+
+  // Stożek 3: Środkowo-prawy szeroki snop
+  drawBeam(mx - 15, mx + 25, mx - 140, mx + 220, 1.0);
+
+  // Stożek 4: Skierowany szeroko w prawo
+  drawBeam(mx - 5, mx + 35, mx + 80, mx + 440, 1.05);
+
+  // Podświetlona plama światła na murawie (rozświetlona darniowa elipsa)
+  const turfPool = ctx.createRadialGradient(mx, gy, 15, mx, gy, 230);
+  turfPool.addColorStop(0, 'rgba(220, 240, 255, 0.16)');
+  turfPool.addColorStop(0.45, 'rgba(220, 240, 255, 0.08)');
+  turfPool.addColorStop(1, 'rgba(220, 240, 255, 0)');
+  ctx.fillStyle = turfPool;
+  ctx.beginPath();
+  ctx.ellipse(mx, gy + 3, 230, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // 4. Bateria projektorów LED (soczewki dużej mocy)
+  const cols = 8;
+  const rows = 3;
+  const stepX = (headW - 14) / (cols - 1);
+  const stepY = (headH - 12) / (rows - 1);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const lx = headX + 7 + c * stepX;
+      const ly = headY + 6 + r * stepY;
+
+      // Zewnętrzny odblask klosza
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.65)';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 4.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Czyste, oślepiające białe światło jupitera (#ffffff)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Koronowa poświata wokół baterii
+  const batteryGlow = ctx.createRadialGradient(mx, headY + headH / 2, 8, mx, headY + headH / 2, 65);
+  batteryGlow.addColorStop(0, 'rgba(255, 255, 255, 0.50)');
+  batteryGlow.addColorStop(0.45, 'rgba(186, 230, 253, 0.20)');
+  batteryGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = batteryGlow;
+  ctx.beginPath();
+  ctx.arc(mx, headY + headH / 2, 65, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// 1. KINEMATYCZNE WEJŚCIE NA PŁYTĘ (TUNEL GRACZY) - TŁO
+function drawPlayerTunnelBg(ctx, tunnelStartX, enterX, gy) {
+  const tw = enterX - tunnelStartX;
+  const ty = gy - 620;
+  const th = 620;
+
+  // Ciemnoszare, betonowe ściany i strop zamykające górę ekranu
+  const tunnelGrad = ctx.createLinearGradient(tunnelStartX, ty, enterX, gy);
+  tunnelGrad.addColorStop(0, '#04070e');
+  tunnelGrad.addColorStop(0.45, '#0b111a');
+  tunnelGrad.addColorStop(0.85, '#131c28');
+  tunnelGrad.addColorStop(1, '#0e1622');
+  ctx.fillStyle = tunnelGrad;
+  ctx.fillRect(tunnelStartX - 40, ty, tw + 50, th);
+
+  // Poziome i pionowe fugi dylatacyjne prefabrykatów betonowych
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let py = ty + 70; py < gy; py += 75) {
+    ctx.moveTo(tunnelStartX - 40, py);
+    ctx.lineTo(enterX + 10, py);
+  }
+  for (let px = tunnelStartX; px <= enterX; px += 95) {
+    ctx.moveTo(px, ty);
+    ctx.lineTo(px, gy);
+  }
+  ctx.stroke();
+
+  // Betonowe żebra wsporcze sklepienia tunelu (brutalistyczna architektura)
+  for (let px = tunnelStartX + 20; px <= enterX - 30; px += 95) {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px, ty + 40, 14, th - 65);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(px, ty + 40, 3, th - 65);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(px + 11, ty + 40, 3, th - 65);
+  }
+
+  // Podwieszone rury kablowe, korytka instalacyjne i wentylacja pod stropem
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(tunnelStartX - 40, gy - 260);
+  ctx.lineTo(enterX, gy - 260);
+  ctx.moveTo(tunnelStartX - 40, gy - 275);
+  ctx.lineTo(enterX, gy - 275);
+  ctx.stroke();
+
+  // Oprawy oświetleniowe LED w suficie tunelu rzucające chłodne światło w dół
+  for (let lx = tunnelStartX + 45; lx < enterX; lx += 95) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(lx - 20, gy - 250, 40, 4);
+
+    const lampCone = ctx.createLinearGradient(lx, gy - 248, lx, gy);
+    lampCone.addColorStop(0, 'rgba(224, 242, 254, 0.35)');
+    lampCone.addColorStop(0.6, 'rgba(56, 189, 248, 0.12)');
+    lampCone.addColorStop(1, 'rgba(56, 189, 248, 0)');
+    ctx.fillStyle = lampCone;
+    ctx.beginPath();
+    ctx.moveTo(lx - 20, gy - 246);
+    ctx.lineTo(lx + 20, gy - 246);
+    ctx.lineTo(lx + 55, gy);
+    ctx.lineTo(lx - 55, gy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Napis informacyjny na ścianie tunelu
+  ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 11px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('CHAMPIONS ARENA', enterX, ty + 48);
+  ctx.fillText('➔ TUNEL GRACZY • WYJŚCIE NA PŁYTĘ ➔', (tunnelStartX + enterX) / 2, gy - 165);
+  ctx.fillStyle = '#facc15';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('★ CHAMPIONS ARENA ★', (tunnelStartX + enterX) / 2, gy - 145);
   ctx.textAlign = 'left';
 
-  // Chodnik wyjściowy w chłodnym granacie ze złotą krawędzią (brak czerwieni)
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(tx + 25, gy - 7, tw - 50, 7);
-  ctx.fillStyle = '#ffc107';
-  ctx.fillRect(tx + 25, gy - 7, tw - 50, 2);
+  // Czerwona wykładzina techniczna na ziemi
+  const carpetStartX = tunnelStartX - 30;
+  const carpetEndX = enterX + 45; // płynne wyjście czerwonej wykładziny na płytę
+  const carpetW = carpetEndX - carpetStartX;
+
+  // Główna wstęga czerwonej wykładziny technicznej
+  const carpetGrad = ctx.createLinearGradient(0, gy - 2, 0, gy + 8);
+  carpetGrad.addColorStop(0, '#991b1b');
+  carpetGrad.addColorStop(0.4, '#b91c1c');
+  carpetGrad.addColorStop(1, '#7f1d1d');
+  ctx.fillStyle = carpetGrad;
+  ctx.fillRect(carpetStartX, gy - 2, carpetW, 8);
+
+  // Krawędzie złocistej listwy wykończeniowej i metalowy próg transition
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(carpetStartX, gy - 2, carpetW, 1.5);
+  ctx.fillRect(carpetStartX, gy + 5, carpetW, 1.5);
+
+  // Prążkowana faktura antypoślizgowej gumy technicznej
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let cx = carpetStartX; cx <= carpetEndX; cx += 5) {
+    ctx.moveTo(cx, gy - 2);
+    ctx.lineTo(cx, gy + 6);
+  }
+  ctx.stroke();
 }
 
 // Tło tunelu wyjściowego na 750 m (widok za graczem)
 function drawExitTunnelBg(ctx, exitX, gy) {
-  const tw = 200;
-  const th = 220;
+  const tw = 220;
+  const th = 260;
   const tx = exitX - tw / 2;
   const ty = gy - th;
 
-  ctx.fillStyle = '#050913';
+  // Mroczny portal z widokiem na otwarty horyzont pustyni
+  ctx.fillStyle = '#060a14';
   ctx.fillRect(tx, ty, tw, th);
 
-  // Złocisty blask pustyni w głębi tunelu
-  const desertGlow = ctx.createRadialGradient(exitX + 20, gy - 85, 8, exitX + 20, gy - 85, 100);
-  desertGlow.addColorStop(0, 'rgba(251, 191, 36, 0.70)');
-  desertGlow.addColorStop(0.5, 'rgba(245, 158, 11, 0.28)');
+  // Złocisty blask słońca w głębi tunelu wyjściowego
+  const desertGlow = ctx.createRadialGradient(exitX + 25, gy - 75, 10, exitX + 25, gy - 75, 120);
+  desertGlow.addColorStop(0, 'rgba(251, 191, 36, 0.75)');
+  desertGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.35)');
+  desertGlow.addColorStop(0.8, 'rgba(217, 119, 6, 0.12)');
   desertGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = desertGlow;
   ctx.fillRect(tx, ty, tw, th);
 
-  // Zielona lampa ewakuacyjna
+  // Sylwetka wydmy widoczna przez otwór tunelu
+  ctx.fillStyle = '#d97706';
+  ctx.beginPath();
+  ctx.moveTo(exitX - 45, gy);
+  ctx.bezierCurveTo(exitX, gy - 40, exitX + 30, gy - 60, exitX + 60, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  // Zielony neon ewakuacyjny
   ctx.fillStyle = '#22c55e';
-  ctx.fillRect(exitX - 40, ty + 40, 80, 5);
+  ctx.fillRect(exitX - 45, ty + 50, 90, 5);
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('➔ EXIT TO DESERT ➔', exitX, ty + 42);
+  ctx.textAlign = 'left';
 }
 
-// Linie boiska i profesjonalna murawa piłkarska wewnątrz stadionu (300m - 750m)
+// 3. PŁYTA BOISKA Z ILUZJĄ GŁĘBI (PERSPEKTYWA DARNI)
 function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
   if (viewRight < enterX - 100 || viewLeft > exitX + 100) return;
 
-  const startX = Math.max(enterX, viewLeft - 80);
-  const endX = Math.min(exitX, viewRight + 80);
+  const startX = Math.max(enterX, viewLeft - 120);
+  const endX = Math.min(exitX, viewRight + 120);
   if (startX > endX) return;
 
-  // 1. Pasy koszenia trawy (Mowing Stripes) o równej szerokości 80 px
-  // Naprzemienne szlachetne odcienie głębokiej zieleni piłkarskiej:
-  // Ciemniejszy szmaragd #1b5e20 i jaśniejszy odcień #2e7d32 (efekt profesjonalnej płyty Ligi Mistrzów)
-  const STRIPE_W = 80;
-  const firstStripeIdx = Math.floor(startX / STRIPE_W);
-  const lastStripeIdx = Math.ceil(endX / STRIPE_W);
+  const now = performance.now();
+  const midPitchX = START_X + 525 * 14; // 7510 px (środek boiska)
 
-  for (let s = firstStripeIdx; s <= lastStripeIdx; s++) {
-    const sx = s * STRIPE_W;
-    const isLight = (s % 2 === 0);
-    const sw = Math.min(STRIPE_W, exitX - sx);
-    if (sw <= 0) continue;
+  // A. Pasy koszenia trawy o zróżnicowanej szerokości i odcieniach zieleni (#1b5e20 oraz #2e7d32)
+  // Biegną pod delikatnym kątem zbiegu perspektywicznego ku linii horyzontu / band LED
+  const stripeWidths = [74, 86, 68, 92, 78, 82];
+  let curX = enterX;
+  let sIdx = 0;
 
-    const drawX = Math.max(enterX, sx);
-    const drawW = Math.min(sx + sw, exitX) - drawX;
-    if (drawW <= 0) continue;
+  while (curX < exitX) {
+    const sw = stripeWidths[sIdx % stripeWidths.length];
+    const nextX = Math.min(exitX, curX + sw);
+    const stripeW = nextX - curX;
 
-    // Głęboka zieleń piłkarska płyty boiska z łagodnym zanikaniem kontrastu koszenia przed exitX
-    const stripeContrast = Math.max(0, Math.min(1, (exitX - drawX) / 250));
-    ctx.fillStyle = isLight ? (stripeContrast > 0.5 ? '#2e7d32' : '#236b28') : '#1b5e20';
-    ctx.fillRect(drawX, gy, drawW, 600);
+    if (nextX >= startX && curX <= endX && stripeW > 0) {
+      const isLight = (sIdx % 2 === 0);
+      const colBase = isLight ? '#2e7d32' : '#1b5e20';
+      const colHighlight = isLight ? '#388e3c' : '#236928';
 
-    // Krawędź górna darni z lekkim rozjaśnieniem koszenia
-    ctx.fillStyle = isLight ? (stripeContrast > 0.5 ? '#388e3c' : '#2b7831') : '#25702b';
-    ctx.fillRect(drawX, gy, drawW, 8);
+      // Kąt zbiegu perspektywicznego ku horyzontowi / band LED
+      // Wierzchołki przy horyzoncie (gy - 2) oraz rozszerzenie ku dołowi kadru (gy + 450)
+      const slant1 = (curX - midPitchX) * 0.045;
+      const slant2 = (nextX - midPitchX) * 0.045;
+
+      const topX1 = curX;
+      const topX2 = nextX;
+      const botX1 = curX + slant1;
+      const botX2 = nextX + slant2;
+
+      ctx.fillStyle = colBase;
+      ctx.beginPath();
+      ctx.moveTo(topX1, gy - 2);
+      ctx.lineTo(topX2, gy - 2);
+      ctx.lineTo(botX2, gy + 450);
+      ctx.lineTo(botX1, gy + 450);
+      ctx.closePath();
+      ctx.fill();
+
+      // Subtelny pasek rozjaśnienia krawędzi walca kosiarki dający iluzję 3D darni
+      ctx.fillStyle = colHighlight;
+      ctx.beginPath();
+      ctx.moveTo(topX1, gy - 2);
+      ctx.lineTo(topX2, gy - 2);
+      ctx.lineTo(topX2 + slant2 * 0.04, gy + 8);
+      ctx.lineTo(topX1 + slant1 * 0.04, gy + 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    curX = nextX;
+    sIdx++;
   }
 
-  // 2. Biała linia boczna (Touchline) z płynnym zanikaniem przed granicą stadionu
+  // B. Wyraźna, gruba biała linia boczna z delikatnym cieniem
   const touchLeft = Math.max(enterX, viewLeft);
   const touchRight = Math.min(exitX, viewRight);
   if (touchRight > touchLeft) {
-    if (touchRight > exitX - 220) {
-      const solidEnd = Math.min(touchRight, exitX - 220);
-      if (solidEnd > touchLeft) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.fillRect(touchLeft, gy + 2, solidEnd - touchLeft, 3.5);
-      }
-      const fadeStart = Math.max(touchLeft, exitX - 220);
-      if (touchRight > fadeStart) {
-        const lineGrad = ctx.createLinearGradient(exitX - 220, 0, exitX, 0);
-        lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
-        lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-        ctx.fillStyle = lineGrad;
-        ctx.fillRect(fadeStart, gy + 2, touchRight - fadeStart, 3.5);
-      }
-    } else {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.fillRect(touchLeft, gy + 2, touchRight - touchLeft, 3.5);
-    }
+    // Delikatny cień linii bocznej dający iluzję głębi
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
+    ctx.fillRect(touchLeft, gy + 6, touchRight - touchLeft, 4);
+
+    // Gruba biała linia boczna (oddzielająca płytę główną od strefy technicznej)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillRect(touchLeft, gy + 2, touchRight - touchLeft, 5);
   }
 
-  // 3. Linia środkowa i koło środkowe na 525 m (7510 px)
-  const midX = START_X + 525 * 14;
-  if (midX >= viewLeft - 140 && midX <= viewRight + 140) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 3.5;
-
-    // Poprzeczna linia środkowa w głąb boiska
-    ctx.fillRect(midX - 1.75, gy + 2, 3.5, 130);
-
-    // Punkt środkowy (center spot)
+  // C. Łuk narożnika boiska (Corner arc) przy wejściu (315 m = 4570 px)
+  const cornerX1 = START_X + 315 * 14;
+  if (cornerX1 >= viewLeft - 60 && cornerX1 <= viewRight + 60) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.arc(midX, gy + 4, 4.5, 0, Math.PI * 2);
+    ctx.arc(cornerX1, gy + 2, 34, 0, Math.PI * 0.5, false);
+    ctx.stroke();
+
+    // Chorągiewka narożna ze sprężynową podstawą
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cornerX1, gy + 2);
+    ctx.lineTo(cornerX1, gy - 8);
+    ctx.stroke();
+
+    const sway = Math.sin(now * 0.005) * 1.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cornerX1, gy - 8);
+    ctx.quadraticCurveTo(cornerX1 + sway * 0.5, gy - 24, cornerX1 + sway, gy - 38);
+    ctx.stroke();
+
+    // Żółto-czerwony materiał chorągiewki
+    const topFlagX = cornerX1 + sway;
+    const topFlagY = gy - 38;
+    const flagWave = Math.sin(now * 0.008) * 2;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(topFlagX, topFlagY);
+    ctx.lineTo(topFlagX + 18 + flagWave, topFlagY + 4);
+    ctx.lineTo(topFlagX, topFlagY + 8);
+    ctx.closePath();
     ctx.fill();
 
-    // Łuk koła środkowego boiska
+    ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.arc(midX, gy + 2, 95, 0, Math.PI, false);
+    ctx.moveTo(topFlagX, topFlagY + 8);
+    ctx.lineTo(topFlagX + 18 + flagWave, topFlagY + 4);
+    ctx.lineTo(topFlagX, topFlagY + 16);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // D. Łuk narożnika boiska (Corner arc) przy wyjściu (735 m = 10450 px)
+  const cornerX2 = START_X + 735 * 14;
+  if (cornerX2 >= viewLeft - 60 && cornerX2 <= viewRight + 60) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.arc(cornerX2, gy + 2, 34, Math.PI * 0.5, Math.PI, false);
+    ctx.stroke();
+
+    const sway = Math.sin(now * 0.005 + 1.5) * 1.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cornerX2, gy - 8);
+    ctx.quadraticCurveTo(cornerX2 - sway * 0.5, gy - 24, cornerX2 - sway, gy - 38);
+    ctx.stroke();
+
+    const topFlagX = cornerX2 - sway;
+    const topFlagY = gy - 38;
+    const flagWave = Math.sin(now * 0.008 + 1.5) * 2;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(topFlagX, topFlagY);
+    ctx.lineTo(topFlagX - 18 - flagWave, topFlagY + 4);
+    ctx.lineTo(topFlagX, topFlagY + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(topFlagX, topFlagY + 8);
+    ctx.lineTo(topFlagX - 18 - flagWave, topFlagY + 4);
+    ctx.lineTo(topFlagX, topFlagY + 16);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // E. Linia środkowa i koło środkowe w perspektywie (525 m = 7510 px)
+  if (midPitchX >= viewLeft - 160 && midPitchX <= viewRight + 160) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 4.5;
+
+    // Poprzeczna linia środkowa
+    ctx.fillRect(midPitchX - 2, gy + 2, 4.5, 200);
+
+    // Punkt środkowy (center spot) z cieniem
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.arc(midPitchX, gy + 6, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(midPitchX, gy + 4, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Łuk koła środkowego w perspektywie 2.5D (elipsa na darni)
+    ctx.beginPath();
+    ctx.ellipse(midPitchX, gy + 2, 115, 44, 0, 0, Math.PI);
     ctx.stroke();
   }
 
-  // 4. Pole karne i punkt boczny/karny przy wejściu (350 m = 5060 px)
-  const penX1 = START_X + 350 * 14;
-  if (penX1 >= viewLeft - 260 && penX1 <= viewRight + 260) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 3.5;
+  // F. Pole karne i łuk pola karnego (355 m oraz 695 m)
+  const penX1 = START_X + 355 * 14;
+  if (penX1 >= viewLeft - 220 && penX1 <= viewRight + 220) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
+    ctx.lineWidth = 4.5;
 
-    // Duże pole karne (linia poprzeczna i dolna pozioma)
-    const boxX1 = penX1 + 180;
-    ctx.fillRect(boxX1 - 1.75, gy + 2, 3.5, 110);
-    ctx.fillRect(enterX, gy + 110, boxX1 - enterX, 3.5);
-
-    // Małe pole bramkowe (5 metrów)
-    const goalBoxX1 = penX1 - 40;
-    ctx.fillRect(goalBoxX1 - 1.75, gy + 2, 3.5, 55);
-    ctx.fillRect(enterX, gy + 55, goalBoxX1 - enterX, 3.5);
-
-    // Punkt karny / punkt boczny
+    ctx.fillRect(penX1 + 160, gy + 2, 4.5, 110);
     ctx.beginPath();
     ctx.arc(penX1, gy + 45, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Łuk przed polem karnym (D-box arc)
+    // Łuk pola karnego w perspektywie
     ctx.beginPath();
-    ctx.arc(penX1, gy + 45, 68, 0, Math.PI * 0.65, false);
+    ctx.ellipse(penX1, gy + 45, 65, 24, 0, 0, Math.PI * 0.65);
     ctx.stroke();
   }
 
-  // 5. Pole karne i punkt boczny/karny przy wyjściu (700 m = 9960 px)
-  const penX2 = START_X + 700 * 14;
-  if (penX2 >= viewLeft - 260 && penX2 <= viewRight + 260) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 3.5;
+  const penX2 = START_X + 695 * 14;
+  if (penX2 >= viewLeft - 220 && penX2 <= viewRight + 220) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
+    ctx.lineWidth = 4.5;
 
-    // Duże pole karne (linia poprzeczna i dolna pozioma)
-    const boxX2 = penX2 - 180;
-    ctx.fillRect(boxX2 - 1.75, gy + 2, 3.5, 110);
-    ctx.fillRect(boxX2, gy + 110, exitX - boxX2, 3.5);
-
-    // Małe pole bramkowe (5 metrów)
-    const goalBoxX2 = penX2 + 40;
-    ctx.fillRect(goalBoxX2 - 1.75, gy + 2, 3.5, 55);
-    ctx.fillRect(goalBoxX2, gy + 55, exitX - goalBoxX2, 3.5);
-
-    // Punkt karny / punkt boczny
+    ctx.fillRect(penX2 - 160, gy + 2, 4.5, 110);
     ctx.beginPath();
     ctx.arc(penX2, gy + 45, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Łuk przed polem karnym
     ctx.beginPath();
-    ctx.arc(penX2, gy + 45, 68, Math.PI * 0.35, Math.PI, false);
+    ctx.ellipse(penX2, gy + 45, 65, 24, 0, Math.PI * 0.35, Math.PI);
     ctx.stroke();
-  }
-
-  // 6. Chorągiewki narożne i łuki rożne
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.lineWidth = 3.5;
-
-  if (enterX >= viewLeft - 40 && enterX <= viewRight + 40) {
-    // Łuk narożny (ćwiartka koła)
-    ctx.beginPath();
-    ctx.arc(enterX, gy + 2, 26, 0, Math.PI * 0.5, false);
-    ctx.stroke();
-
-    // Maszt chorągiewki narożnej
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(enterX, gy + 2);
-    ctx.lineTo(enterX, gy - 28);
-    ctx.stroke();
-
-    // Flaga chorągiewki
-    ctx.fillStyle = '#ffc107';
-    ctx.beginPath();
-    ctx.moveTo(enterX, gy - 28);
-    ctx.lineTo(enterX + 16, gy - 21);
-    ctx.lineTo(enterX, gy - 14);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  if (exitX >= viewLeft - 40 && exitX <= viewRight + 40) {
-    // Łuk narożny (ćwiartka koła)
-    ctx.beginPath();
-    ctx.arc(exitX, gy + 2, 26, Math.PI * 0.5, Math.PI, false);
-    ctx.stroke();
-
-    // Maszt chorągiewki narożnej
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(exitX, gy + 2);
-    ctx.lineTo(exitX, gy - 28);
-    ctx.stroke();
-
-    // Flaga chorągiewki
-    ctx.fillStyle = '#ffc107';
-    ctx.beginPath();
-    ctx.moveTo(exitX, gy - 28);
-    ctx.lineTo(exitX - 16, gy - 21);
-    ctx.lineTo(exitX, gy - 14);
-    ctx.closePath();
-    ctx.fill();
   }
 }
 
+// 2. ZAKRZYWIONA „MISA STADIONU” (OWALNA ARENA) I 3 WARSTWY PARALAKSY
 export function drawStadium(ctx, worldLeft, worldRight) {
   const camDist = (camera.x - START_X) / 14;
   if (camDist < 250 || camDist > 820) return;
 
   let alpha = 1.0;
-  if (camDist < 300) {
-    alpha = smoothstep(250, 300, camDist);
-  } else if (camDist > 740) {
-    alpha = 1.0 - smoothstep(740, 820, camDist);
+  if (camDist < 290) {
+    alpha = smoothstep(250, 290, camDist);
+  } else if (camDist > 745) {
+    alpha = 1.0 - smoothstep(745, 820, camDist);
   }
   alpha = Math.max(0, Math.min(1, alpha));
   if (alpha <= 0.01) return;
 
   const enterX = START_X + 300 * 14; // 4360 px
   const exitX = START_X + 750 * 14;  // 10660 px
-
-  const STADIUM_START = enterX - 360;
-  const STADIUM_END = exitX + 360;
-  const BAY_W = 180;
-  const TOTAL_BAYS = Math.ceil((STADIUM_END - STADIUM_START) / BAY_W);
-
-  // Widoczne sektory w przestrzeni kamery
-  const firstBay = Math.max(0, Math.floor((worldLeft - STADIUM_START) / BAY_W));
-  const lastBay = Math.min(TOTAL_BAYS - 1, Math.ceil((worldRight - STADIUM_START) / BAY_W));
-  if (firstBay > lastBay) return;
+  const stadiumCenter = (enterX + exitX) / 2; // 7510 px
+  const tunnelStartX = START_X + 265 * 14; // 3870 px
 
   const gy = GROUND_Y;
   const now = performance.now();
@@ -3846,277 +3979,481 @@ export function drawStadium(ctx, worldLeft, worldRight) {
   ctx.save();
   ctx.globalAlpha *= alpha;
 
-  // 1. Zewnętrzna ściana nośna (sięgająca 470 px w górę!)
-  for (let b = firstBay; b <= lastBay; b++) {
-    const bx = STADIUM_START + b * BAY_W;
+  // ----------------------------------------------------
+  // WARSTWA 1: DACH I GIGANTYCZNE KRATOWNICE STALOWE (PARALLAX 0.15)
+  // Prędkość kamery x 0.15 (niemal nieruchome na samej górze)
+  // ----------------------------------------------------
+  const p1 = 0.15;
+  const shift1 = (camera.x - stadiumCenter) * (1.0 - p1);
 
-    ctx.fillStyle = '#0a0f1d';
-    ctx.fillRect(bx, gy - 470, BAY_W, 470);
+  ctx.save();
+  ctx.translate(shift1, 0);
 
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(bx, gy - 470, 10, 470);
-    ctx.fillRect(bx + BAY_W - 10, gy - 470, 10, 470);
+  const roofStart = tunnelStartX - 200;
+  const roofEnd = exitX + 260;
+  const ROOF_BAY_W = 240;
+  const totalRoofBays = Math.ceil((roofEnd - roofStart) / ROOF_BAY_W);
 
-    // Przeszklone pasy lóż VIP pod koroną stadionu
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.22)';
-    ctx.fillRect(bx + 14, gy - 460, BAY_W - 28, 16);
-  }
+  for (let b = 0; b < totalRoofBays; b++) {
+    const rx = roofStart + b * ROOF_BAY_W;
+    if (rx + ROOF_BAY_W < worldLeft - shift1 - 100 || rx > worldRight - shift1 + 100) continue;
 
-  // 2. Wysokie sektory i rzędy krzesełek w chłodnej palecie (granat, indygo, grafit - ZERO czerwieni)
-  // Górna trybuna (14 rzędów = 248 px wysokości)
-  const upperRows = [
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' },
-    { h: 17, col: '#131f42' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' },
-    { h: 17, col: '#131f42' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' },
-    { h: 17, col: '#131f42' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' }
-  ];
+    // Główny łuk zadaszenia stadionu (aerodynamiczna czasza nad trybunami)
+    const roofGrad = ctx.createLinearGradient(rx, gy - 660, rx, gy - 460);
+    roofGrad.addColorStop(0, '#040711');
+    roofGrad.addColorStop(0.40, '#0e1626');
+    roofGrad.addColorStop(0.85, '#1e293b');
+    roofGrad.addColorStop(1, '#334155');
 
-  // Dolna trybuna (8 rzędów = 140 px wysokości)
-  const lowerRows = [
-    { h: 17, col: '#131f42' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' },
-    { h: 17, col: '#131f42' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0a1128' },
-    { h: 17, col: '#1c2541' }
-  ];
-
-  for (let b = firstBay; b <= lastBay; b++) {
-    const bx = STADIUM_START + b * BAY_W;
-    const seatLeft = bx + 18;
-    const seatW = BAY_W - 24;
-
-    // A. Monumentalna Górna Trybuna (od gy - 440 do gy - 194)
-    let curY = gy - 440;
-    for (let r = 0; r < upperRows.length; r++) {
-      const row = upperRows[r];
-      ctx.fillStyle = row.col;
-      ctx.fillRect(seatLeft, curY, seatW, row.h);
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(seatLeft, curY + row.h - 2, seatW, 2);
-
-      drawFanCrowd(ctx, seatLeft, curY, seatW, row.h, b, r, now);
-      curY += row.h;
-    }
-
-    // Środkowy pomost z podświetlaną cyjanową barierką
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(bx, gy - 194, BAY_W, 24);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(bx, gy - 194, BAY_W, 4);
-
-    // Neonowa poręcz LED
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = 1.8;
+    ctx.fillStyle = roofGrad;
     ctx.beginPath();
-    ctx.moveTo(bx, gy - 186);
-    ctx.lineTo(bx + BAY_W, gy - 186);
-    ctx.stroke();
-
-    // B. Monumentalna Dolna Trybuna (od gy - 170 do gy - 30)
-    curY = gy - 170;
-    for (let r = 0; r < lowerRows.length; r++) {
-      const row = lowerRows[r];
-      ctx.fillStyle = row.col;
-      ctx.fillRect(seatLeft, curY, seatW, row.h);
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(seatLeft, curY + row.h - 2, seatW, 2);
-
-      drawFanCrowd(ctx, seatLeft, curY, seatW, row.h, b, r + 20, now);
-      curY += row.h;
-    }
-
-    // Schody ewakuacyjne z neonowymi stopnicami
-    ctx.fillStyle = '#0b1120';
-    ctx.fillRect(bx + 2, gy - 440, 14, 410);
-
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.75)';
-    for (let sy = gy - 438; sy < gy - 30; sy += 14) {
-      ctx.fillRect(bx + 3, sy, 12, 2.5);
-    }
-  }
-
-  // 3. Konstrukcja dachu z potężnymi stalowymi dźwigarami i cięgnami przy górnej krawędzi
-  for (let b = firstBay; b <= lastBay; b++) {
-    const bx = STADIUM_START + b * BAY_W;
-
-    // Główny łuk zadaszenia (cantilever) sięgający 550 px w górę
-    const gradRoof = ctx.createLinearGradient(bx, gy - 550, bx, gy - 450);
-    gradRoof.addColorStop(0, '#090e1a');
-    gradRoof.addColorStop(0.5, '#162032');
-    gradRoof.addColorStop(1, '#25334a');
-
-    ctx.fillStyle = gradRoof;
-    ctx.beginPath();
-    ctx.moveTo(bx - 2, gy - 540);
-    ctx.bezierCurveTo(bx + BAY_W * 0.4, gy - 560, bx + BAY_W * 0.7, gy - 510, bx + BAY_W + 2, gy - 460);
-    ctx.lineTo(bx + BAY_W + 2, gy - 445);
-    ctx.bezierCurveTo(bx + BAY_W * 0.7, gy - 485, bx + BAY_W * 0.4, gy - 525, bx - 2, gy - 515);
+    ctx.moveTo(rx - 6, gy - 640);
+    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 670, rx + ROOF_BAY_W + 6, gy - 640);
+    ctx.lineTo(rx + ROOF_BAY_W + 6, gy - 480);
+    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 510, rx - 6, gy - 480);
     ctx.closePath();
     ctx.fill();
 
-    // Neonowa listwa cyjanowa na krawędzi dachu
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(bx - 2, gy - 515);
-    ctx.bezierCurveTo(bx + BAY_W * 0.4, gy - 525, bx + BAY_W * 0.7, gy - 485, bx + BAY_W + 2, gy - 445);
-    ctx.stroke();
-
-    // Potężne stalowe cięgna podwieszenia dachu biegnące z wysokiego pylonu
-    ctx.strokeStyle = '#94a3b8';
+    // Błękitna listwa LED wzdłuż krawędzi zadaszenia
+    ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(bx + 12, gy - 580);
-    ctx.lineTo(bx + BAY_W * 0.65, gy - 485);
-    ctx.moveTo(bx + 12, gy - 580);
-    ctx.lineTo(bx + BAY_W * 0.95, gy - 455);
+    ctx.moveTo(rx - 6, gy - 480);
+    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 510, rx + ROOF_BAY_W + 6, gy - 480);
     ctx.stroke();
 
-    // Dźwigary kratownicowe przy samej górnej krawędzi
+    // Stalowe kratownice przestrzenne w najwyższej strefie dachu (Warren space-truss)
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(rx, gy - 610);
+    ctx.lineTo(rx + ROOF_BAY_W, gy - 610);
+    ctx.moveTo(rx, gy - 570);
+    ctx.lineTo(rx + ROOF_BAY_W, gy - 570);
+
+    for (let kx = rx; kx < rx + ROOF_BAY_W; kx += 40) {
+      ctx.moveTo(kx, gy - 610);
+      ctx.lineTo(kx + 20, gy - 570);
+      ctx.lineTo(kx + 40, gy - 610);
+    }
+    ctx.stroke();
+
+    // Pomost techniczny (catwalk) dla obsługi oświetlenia
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(rx, gy - 570, ROOF_BAY_W, 4);
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(rx, gy - 578);
+    ctx.lineTo(rx + ROOF_BAY_W, gy - 578);
+    for (let cx = rx + 15; cx < rx + ROOF_BAY_W; cx += 25) {
+      ctx.moveTo(cx, gy - 570);
+      ctx.lineTo(cx, gy - 578);
+    }
+    ctx.stroke();
+
+    // Cięgna nośne i stalowe odciągi
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(rx + 15, gy - 640);
+    ctx.lineTo(rx + ROOF_BAY_W * 0.65, gy - 510);
+    ctx.moveTo(rx + 15, gy - 640);
+    ctx.lineTo(rx + ROOF_BAY_W * 0.95, gy - 480);
+    ctx.stroke();
+
+    // Pylon dachowy z czerwoną diodą przeszkodową
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(rx + 10, gy - 665, 8, 30);
+    ctx.fillStyle = (Math.sin(now * 0.005 + b) > 0) ? '#ef4444' : '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(rx + 14, gy - 668, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ----------------------------------------------------
+  // WARSTWA 2: GÓRNE TRYBUNY + PODWIESZONE TELEBIMY (PARALLAX 0.35)
+  // Prędkość kamery x 0.35. Zakrzywione sektory, tysiące punktów krzesełek i losowe błyski fleszy
+  // ----------------------------------------------------
+  const p2 = 0.35;
+  const shift2 = (camera.x - stadiumCenter) * (1.0 - p2);
+
+  ctx.save();
+  ctx.translate(shift2, 0);
+
+  const standStart = tunnelStartX - 150;
+  const standEnd = exitX + 220;
+  const BAY_W = 220;
+  const totalBays = Math.ceil((standEnd - standStart) / BAY_W);
+
+  // Paleta rzędów widowni w barwach nocnego koloseum
+  const upperTierRows = [
+    { h: 17, col: '#080d1a' },
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0b1329' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0b1329' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0f172a' }
+  ];
+
+  // Rysowanie zakrzywionych sektorów górnej trybuny
+  for (let b = 0; b < totalBays; b++) {
+    const bx = standStart + b * BAY_W;
+    if (bx + BAY_W < worldLeft - shift2 - 100 || bx > worldRight - shift2 + 100) continue;
+
+    // Tylna ściana sektora
+    ctx.fillStyle = '#070b14';
+    ctx.fillRect(bx, gy - 470, BAY_W, 280);
+
+    // Filary dzielące sektory areny
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(bx, gy - 470, 10, 280);
+    ctx.fillRect(bx + BAY_W - 10, gy - 470, 10, 280);
+
+    // Loże VIP pod zadaszeniem
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+    ctx.fillRect(bx + 12, gy - 465, BAY_W - 24, 14);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx + 12, gy - 465, BAY_W - 24, 14);
+
+    // Zakrzywiona misa górnej trybuny (ctx.quadraticCurveTo): środek niżej, boki ku górze
+    let curRowY = gy - 445;
+    for (let r = 0; r < upperTierRows.length; r++) {
+      const row = upperTierRows[r];
+      const curveSag = 6.5; // wygięcie łuku w dół ku środkowi sektora
+
+      // Rząd trybuny jako zakrzywiony pasek
+      ctx.fillStyle = row.col;
+      ctx.beginPath();
+      ctx.moveTo(bx + 10, curRowY);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + curveSag, bx + BAY_W - 10, curRowY);
+      ctx.lineTo(bx + BAY_W - 10, curRowY + row.h);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + 10, curRowY + row.h);
+      ctx.closePath();
+      ctx.fill();
+
+      // Cień stopnia wzdłuż zakrzywionej krawędzi
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(bx + 10, curRowY + row.h);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + BAY_W - 10, curRowY + row.h);
+      ctx.stroke();
+
+      // Tysiące ciemniejszych punktów krzesełek wzdłuż łuku rzędu
+      const seatSpacing = 6.0;
+      const seatCount = Math.floor((BAY_W - 28) / seatSpacing);
+
+      for (let s = 0; s < seatCount; s++) {
+        const t = s / (seatCount - 1);
+        const sx = bx + 14 + s * seatSpacing;
+        // Obliczenie wysokości Y na paraboli krzywej rzędu
+        const sy = curRowY + 4 * curveSag * t * (1 - t);
+
+        const seatSeed = (b * 67 + r * 29 + s * 13);
+        const seatCols = ['#0f172a', '#172554', '#1e293b', '#312e81', '#1e1b4b', '#1e293b'];
+        ctx.fillStyle = seatCols[seatSeed % seatCols.length];
+        ctx.fillRect(sx, sy + 3, 4, 5);
+
+        // Kibic na krzesełku (barwy klubowe)
+        if (seatSeed % 3 !== 0) {
+          const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
+          ctx.fillStyle = skinCols[seatSeed % skinCols.length];
+          ctx.fillRect(sx + 0.8, sy + 1, 2.4, 2.4);
+
+          const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
+          ctx.fillStyle = fanCols[(seatSeed + 1) % fanCols.length];
+          ctx.fillRect(sx, sy + 3.5, 4, 4);
+        }
+
+        // BŁYSKI FLESZY APARATÓW: Math.random() < 0.04
+        if (Math.random() < 0.04) {
+          const flashX = sx + 2;
+          const flashY = sy + 3;
+
+          // Promienista gwiazdka flesza
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(flashX - 6, flashY);
+          ctx.lineTo(flashX + 6, flashY);
+          ctx.moveTo(flashX, flashY - 6);
+          ctx.lineTo(flashX, flashY + 6);
+          ctx.stroke();
+
+          // Jasny biały punkt centralny
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(flashX, flashY, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Poświata radialna flesza
+          const flashGlow = ctx.createRadialGradient(flashX, flashY, 1, flashX, flashY, 8);
+          flashGlow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+          flashGlow.addColorStop(0.45, 'rgba(224, 242, 254, 0.35)');
+          flashGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = flashGlow;
+          ctx.beginPath();
+          ctx.arc(flashX, flashY, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      curRowY += row.h;
+    }
+
+    // Środkowa promenada betonowa ze stalową balustradą
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(bx, gy - 200, BAY_W, 18);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(bx, gy - 200, BAY_W, 3);
+
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(bx, gy - 560);
-    ctx.lineTo(bx + BAY_W, gy - 560);
-    ctx.moveTo(bx, gy - 535);
-    ctx.lineTo(bx + BAY_W, gy - 535);
-    // Ukośne wzmocnienia kratownicy
-    ctx.moveTo(bx, gy - 560);
-    ctx.lineTo(bx + BAY_W / 2, gy - 535);
-    ctx.lineTo(bx + BAY_W, gy - 560);
+    ctx.moveTo(bx, gy - 192);
+    ctx.lineTo(bx + BAY_W, gy - 192);
+    for (let px = bx + 20; px < bx + BAY_W; px += 35) {
+      ctx.moveTo(px, gy - 200);
+      ctx.lineTo(px, gy - 192);
+    }
+    ctx.stroke();
+  }
+
+  // PODWIESZONE TELEBIMY (JUMBOTRONS) W WARSTWIE 2
+  const drawScoreboard = (screenX, timeText) => {
+    const sw = 240;
+    const sh = 84;
+    const sx = screenX - sw / 2;
+    const sy = gy - 440;
+
+    // Stalowe liny podwieszenia telebimu pod dachem
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(sx + 30, sy - 50);
+    ctx.lineTo(sx + 30, sy);
+    ctx.moveTo(sx + sw - 30, sy - 50);
+    ctx.lineTo(sx + sw - 30, sy);
     ctx.stroke();
 
-    // Szczyt pylonu odciągowego z cyjanową diodą
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(bx + 9, gy - 585, 8, 60);
-    ctx.fillStyle = (Math.sin(now * 0.005 + b) > 0) ? '#00e5ff' : '#0369a1';
-    ctx.beginPath();
-    ctx.arc(bx + 13, gy - 587, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 4. Monumentalny centralny telebim (Jumbotron) na 525 m (środek boiska)
-  const midX = START_X + 525 * 14; // 7510 px
-  if (midX >= worldLeft - 140 && midX <= worldRight + 140) {
-    const jx = midX - 110;
-    const jy = gy - 430;
-    const jw = 220;
-    const jh = 75;
-
-    ctx.fillStyle = '#0b1120';
-    ctx.fillRect(jx - 5, jy - 5, jw + 10, jh + 10);
-    ctx.strokeStyle = '#00e5ff';
+    // Obudowa LED
+    ctx.fillStyle = '#080d1a';
+    ctx.fillRect(sx - 4, sy - 4, sw + 8, sh + 8);
+    ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(jx - 5, jy - 5, jw + 10, jh + 10);
+    ctx.strokeRect(sx - 4, sy - 4, sw + 8, sh + 8);
 
+    // Ekran LED
     ctx.fillStyle = '#020617';
-    ctx.fillRect(jx, jy, jw, jh);
+    ctx.fillRect(sx, sy, sw, sh);
 
-    ctx.fillStyle = '#00e5ff';
-    ctx.font = 'bold 11px monospace';
+    // Siatka skanlinii LED
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+    for (let my = sy + 3; my < sy + sh; my += 4) {
+      ctx.fillRect(sx, my, sw, 1);
+    }
+
     ctx.textAlign = 'center';
-    ctx.fillText('★ CHAMPIONS ARENA ★', midX, jy + 18);
-
-    ctx.fillStyle = '#ffc107';
-    ctx.font = 'bold 18px monospace';
-    ctx.fillText('KEEP IT HIGH', midX, jy + 42);
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('★ MATCHDAY 2026 ★', screenX, sy + 18);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText('FAIR PLAY • 525M', midX, jy + 62);
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText('2  :  1', screenX, sy + 47);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('HOME', screenX - 60, sy + 44);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('AWAY', screenX + 60, sy + 44);
+
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(timeText, screenX, sy + 70);
     ctx.textAlign = 'left';
+  };
+
+  // Centralny telebim na 525 m oraz telebimy pomocnicze
+  const elapsedSec = Math.floor((now * 0.001) % 60);
+  const timeStr = `LIVE 84:${elapsedSec < 10 ? '0' : ''}${elapsedSec} • CHAMPIONS ARENA`;
+
+  drawScoreboard(START_X + 525 * 14, timeStr);
+  drawScoreboard(START_X + 390 * 14, 'LIVE 84\' • MATCHDAY 2026');
+  drawScoreboard(START_X + 660 * 14, 'LIVE 84\' • KEEP IT HIGH');
+
+  ctx.restore();
+
+  // ----------------------------------------------------
+  // WARSTWA 3: DOLNE TRYBUNY I BANDY LED (PARALLAX 0.70)
+  // Prędkość kamery x 0.70. Zakrzywione sektory dolne i świecące bandy reklamowe tuż za linią
+  // ----------------------------------------------------
+  const p3 = 0.70;
+  const shift3 = (camera.x - stadiumCenter) * (1.0 - p3);
+
+  ctx.save();
+  ctx.translate(shift3, 0);
+
+  const lowerTierRows = [
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0b1329' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' }
+  ];
+
+  for (let b = 0; b < totalBays; b++) {
+    const bx = standStart + b * BAY_W;
+    if (bx + BAY_W < worldLeft - shift3 - 100 || bx > worldRight - shift3 + 100) continue;
+
+    // A. Dolna trybuna z krzywymi quadraticCurveTo
+    let curRowY = gy - 180;
+    for (let r = 0; r < lowerTierRows.length; r++) {
+      const row = lowerTierRows[r];
+      const curveSag = 5.0; // wygięcie łuku ku środkowi sektora
+
+      ctx.fillStyle = row.col;
+      ctx.beginPath();
+      ctx.moveTo(bx + 8, curRowY);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + curveSag, bx + BAY_W - 8, curRowY);
+      ctx.lineTo(bx + BAY_W - 8, curRowY + row.h);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + 8, curRowY + row.h);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx + 8, curRowY + row.h);
+      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + BAY_W - 8, curRowY + row.h);
+      ctx.stroke();
+
+      // Kibice na dolnej trybunie
+      const seatSpacing = 6.2;
+      const seatCount = Math.floor((BAY_W - 24) / seatSpacing);
+
+      for (let s = 0; s < seatCount; s++) {
+        const t = s / (seatCount - 1);
+        const sx = bx + 12 + s * seatSpacing;
+        const sy = curRowY + 4 * curveSag * t * (1 - t);
+        const seed = (b * 53 + r * 19 + s * 11);
+
+        const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
+        ctx.fillStyle = skinCols[seed % skinCols.length];
+        ctx.fillRect(sx + 1, sy + 1, 2.5, 2.5);
+
+        const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
+        ctx.fillStyle = fanCols[seed % fanCols.length];
+        ctx.fillRect(sx, sy + 4, 4.5, 4.5);
+      }
+
+      curRowY += row.h;
+    }
+
+    // Schody ewakuacyjne
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(bx + 2, gy - 180, 12, 158);
+    for (let sy = gy - 178; sy < gy - 24; sy += 12) {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(bx + 3, sy, 10, 2.5);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(bx + 3, sy + 2.5, 10, 1);
+    }
   }
 
-  // 5. Powiększone jupitery rozmieszczone co 720 px wzdłuż dachu (kończą się na exitX = 750m)
-  for (let mx = enterX - 100; mx <= exitX; mx += 720) {
-    if (mx >= worldLeft - 360 && mx <= worldRight + 360) {
+  // B. NOWOCZESNE, ŚWIECĄCE BANDY REKLAMOWE LED TUŻ ZA LINIĄ BOISKA
+  // Emitujące neonową poświatę na krawędź murawy
+  const ledSponsors = [
+    { title: '★ KEEP IT HIGH ★', col1: '#00e5ff', col2: '#ffffff', glowRgb: '0, 229, 255' },
+    { title: 'MATCHDAY 2026', col1: '#facc15', col2: '#ffffff', glowRgb: '250, 204, 21' },
+    { title: 'CHAMPIONS LEAGUE', col1: '#38bdf8', col2: '#818cf8', glowRgb: '56, 189, 248' },
+    { title: 'POWER ENERGY', col1: '#22c55e', col2: '#a3e635', glowRgb: '34, 197, 94' },
+    { title: 'CYBER ARENA', col1: '#f43f5e', col2: '#ffffff', glowRgb: '244, 63, 94' }
+  ];
+
+  const boardH = 20; // wysokość bandy LED
+  const boardY = gy - boardH - 2;
+
+  for (let b = 0; b < totalBays; b++) {
+    const bx = standStart + b * BAY_W;
+    if (bx >= exitX) continue;
+    const currentBayW = Math.min(BAY_W, exitX - bx);
+    if (currentBayW <= 0) continue;
+    if (bx + currentBayW < worldLeft - shift3 - 100 || bx > worldRight - shift3 + 100) continue;
+
+    const sponsor = ledSponsors[b % ledSponsors.length];
+
+    // Cokół montażowy bandy
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(bx, boardY + boardH, currentBayW, 2);
+
+    // Korpus bandy LED
+    ctx.fillStyle = '#030712';
+    ctx.fillRect(bx, boardY, currentBayW, boardH);
+
+    // Górna i dolna krawędź LED
+    ctx.fillStyle = sponsor.col1;
+    ctx.fillRect(bx, boardY, currentBayW, 1.8);
+    ctx.fillStyle = sponsor.col2;
+    ctx.fillRect(bx, boardY + boardH - 1.5, currentBayW, 1.5);
+
+    // Animowana treść sponsora z płynącym połyskiem
+    if (currentBayW >= 80) {
+      const sheen = ((now * 0.08 + b * 45) % currentBayW);
+      const gradLED = ctx.createLinearGradient(bx, boardY, bx + currentBayW, boardY);
+      gradLED.addColorStop(0, sponsor.col1);
+      gradLED.addColorStop(Math.max(0, Math.min(1, sheen / currentBayW)), sponsor.col2);
+      gradLED.addColorStop(1, sponsor.col1);
+
+      ctx.fillStyle = gradLED;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(sponsor.title, bx + currentBayW / 2, boardY + 14);
+      ctx.textAlign = 'left';
+    }
+
+    // NEONOWA POŚWIATA RZUCANA PRZEZ BANDY NA KRAWĘDŹ TRAWY
+    const grassGlow = ctx.createLinearGradient(0, gy - 2, 0, gy + 16);
+    grassGlow.addColorStop(0, `rgba(${sponsor.glowRgb}, 0.45)`);
+    grassGlow.addColorStop(0.5, `rgba(${sponsor.glowRgb}, 0.18)`);
+    grassGlow.addColorStop(1, `rgba(${sponsor.glowRgb}, 0.0)`);
+    ctx.fillStyle = grassGlow;
+    ctx.fillRect(bx, gy - 2, currentBayW, 18);
+  }
+
+  ctx.restore();
+
+  // ----------------------------------------------------
+  // 4 POTĘŻNE MASZTY JUPITERÓW (OŚWIETLENIE WOLUMETRYCZNE W KADRZE)
+  // ----------------------------------------------------
+  for (let i = 0; i < STADIUM_FLOODLIGHT_MASTS.length; i++) {
+    const mx = STADIUM_FLOODLIGHT_MASTS[i];
+    if (mx >= worldLeft - 480 && mx <= worldRight + 480) {
       drawFloodlightTower(ctx, mx, gy, now);
     }
   }
 
-  // 6. Świecące bandy reklamowe LED z wyłącznie hasłami KEEP IT HIGH, FAIR PLAY, CHAMPIONS ARENA
-  const ledMessages = [
-    'KEEP IT HIGH',
-    'FAIR PLAY',
-    'CHAMPIONS ARENA'
-  ];
-
-  for (let b = firstBay; b <= lastBay; b++) {
-    const bx = STADIUM_START + b * BAY_W;
-    if (bx >= exitX) continue;
-    const currentBayW = Math.min(BAY_W, exitX - bx);
-    if (currentBayW <= 0) continue;
-
-    // Techniczne pobocze / pas sztucznej nawierzchni (tartan żwirowy #37474f o wysokości 7 px)
-    // na styku murawy i trybun, na którym osadzone są świecące bandy reklamowe
-    const tartanY = gy - 7;
-    const tartanH = 7;
-    ctx.fillStyle = '#37474f';
-    ctx.fillRect(bx, tartanY, currentBayW, tartanH);
-
-    // Krawędź krawężnika technicznego
-    ctx.fillStyle = '#263238';
-    ctx.fillRect(bx, tartanY, currentBayW, 2);
-
-    // Drobna ziarnistość technicznego żwiru
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    for (let tx = bx + 6; tx < bx + currentBayW; tx += 18) {
-      ctx.fillRect(tx, tartanY + 3, 3, 2);
-    }
-
-    // Świecące bandy reklamowe LED osadzone bezpośrednio na pasie technicznym
-    const boardH = 26;
-    const boardY = tartanY - boardH; // od gy - 33 do gy - 7
-
-    // Tło bandy LED
-    ctx.fillStyle = '#050811';
-    ctx.fillRect(bx, boardY, currentBayW, boardH);
-
-    // Neonowa górna listwa cyjanowa i dolna złota tuż nad tartanem
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillRect(bx, boardY, currentBayW, 2.5);
-    ctx.fillStyle = '#ffc107';
-    ctx.fillRect(bx, boardY + boardH - 2, currentBayW, 2);
-
-    // Treść reklamowa LED (jeśli zmieści się w szerokości)
-    if (currentBayW >= 90) {
-      const msg = ledMessages[b % ledMessages.length];
-      ctx.font = 'bold 12.5px monospace';
-      ctx.textAlign = 'center';
-
-      // Płynny przemieszczający się po bandzie świetlny gradient neonowy
-      const sheen = ((now * 0.09 + b * 45) % currentBayW);
-      const gradLED = ctx.createLinearGradient(bx, boardY, bx + currentBayW, boardY);
-      gradLED.addColorStop(0, '#00e5ff');
-      gradLED.addColorStop(Math.max(0, Math.min(1, sheen / currentBayW)), '#ffffff');
-      gradLED.addColorStop(1, '#ffc107');
-
-      ctx.fillStyle = gradLED;
-      ctx.fillText(msg, bx + currentBayW / 2, boardY + 17.5);
-      ctx.textAlign = 'left';
-    }
+  // ----------------------------------------------------
+  // TŁO TUNELU WEJŚCIOWEGO (GRACZY) ORAZ WYJŚCIOWEGO
+  // ----------------------------------------------------
+  if (enterX >= worldLeft - 300 && tunnelStartX <= worldRight + 300) {
+    drawPlayerTunnelBg(ctx, tunnelStartX, enterX, gy);
   }
-
-  // 7. Tła korytarzy tunelu wejściowego i wyjściowego (za graczem)
-  if (enterX >= worldLeft - 200 && enterX <= worldRight + 200) {
-    drawEntranceTunnelBg(ctx, enterX, gy);
-  }
-  if (exitX >= worldLeft - 200 && exitX <= worldRight + 200) {
+  if (exitX >= worldLeft - 220 && exitX <= worldRight + 220) {
     drawExitTunnelBg(ctx, exitX, gy);
   }
 
@@ -4389,59 +4726,90 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 // WARSTWA PRZEDNIA (FOREGROUND): BRAMY, KONFETTI I OŚWIETLENIE
 // ==========================================
 function drawEntranceGateForeground(ctx, enterX, gy) {
-  // Monumentalna brama wznosząca się wysoko ponad głowę zawodnika (wysokość 310 px)
-  const pillarW = 42;
-  const pillarH = 300;
+  // 1. KINEMATYCZNE WEJŚCIE NA PŁYTĘ (TUNEL GRACZY) - PIERWSZY PLAN
+  // Ciemnoszare, betonowe ściany i strop zamykające górę ekranu przed wejściem na stadion
+  const tunnelStartX = START_X + 265 * 14; // 3870 px
+  const tunnelW = enterX - tunnelStartX;
+
+  // Strop betonowy zamykający górę ekranu w tunelu (od góry kadru do gy - 130)
+  const slabH = 500;
+  const slabY = gy - 630;
+  const slabGrad = ctx.createLinearGradient(tunnelStartX, slabY, enterX, gy - 130);
+  slabGrad.addColorStop(0, '#04070d');
+  slabGrad.addColorStop(0.5, '#0e141e');
+  slabGrad.addColorStop(1, '#1b232e');
+  ctx.fillStyle = slabGrad;
+  ctx.fillRect(tunnelStartX - 40, slabY, tunnelW + 40, slabH);
+
+  // Masywne żebra stropowe prefabrykowane z surowego betonu
+  for (let px = tunnelStartX + 10; px < enterX; px += 85) {
+    ctx.fillStyle = '#222935';
+    ctx.fillRect(px, slabY, 16, slabH);
+    ctx.fillStyle = '#333e4f';
+    ctx.fillRect(px, slabY, 3, slabH);
+    ctx.fillStyle = '#10141a';
+    ctx.fillRect(px + 13, slabY, 3, slabH);
+  }
+
+  // Dolna krawędź betonowego nadproża sklepienia tunelu
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(tunnelStartX - 40, gy - 135, tunnelW + 40, 8);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(tunnelStartX - 40, gy - 135, tunnelW + 40, 2);
+
+  // Podwieszone korytka kablowe i oprawy oświetleniowe w suficie tunelu
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(tunnelStartX - 40, gy - 145);
+  ctx.lineTo(enterX, gy - 145);
+  ctx.stroke();
+
+  // Czerwona wykładzina techniczna na pierwszym planie (w korytarzu wyjściowym)
+  const carpetStartX = tunnelStartX - 30;
+  const carpetEndX = enterX + 45;
+  const carpetW = carpetEndX - carpetStartX;
+
+  const carpetGrad = ctx.createLinearGradient(0, gy - 2, 0, gy + 8);
+  carpetGrad.addColorStop(0, '#991b1b');
+  carpetGrad.addColorStop(0.4, '#b91c1c');
+  carpetGrad.addColorStop(1, '#7f1d1d');
+  ctx.fillStyle = carpetGrad;
+  ctx.fillRect(carpetStartX, gy - 2, carpetW, 8);
+
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(carpetStartX, gy - 2, carpetW, 1.5);
+  ctx.fillRect(carpetStartX, gy + 5, carpetW, 1.5);
+
+  // 2. MONUMENTALNA BRAMA PORTALOWA NA WEJŚCIU (Wylot tunelu na murawę)
+  const pillarW = 44;
+  const pillarH = 310;
   const gateW = 230;
   const leftPillarX = enterX - gateW / 2;
   const rightPillarX = enterX + gateW / 2 - pillarW;
 
-  // Harmonijkowy przezroczysty tunel stadionowy (pleksi i stalowe żebra nad głową)
-  const archLeft = leftPillarX + pillarW;
-  const archRight = rightPillarX;
-  const ribCount = 7;
-  const ribStep = (archRight - archLeft) / (ribCount + 1);
-
-  for (let i = 1; i <= ribCount; i++) {
-    const rx = archLeft + i * ribStep;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(rx, gy - 110, 75, Math.PI, 0, false);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.18)';
-    ctx.beginPath();
-    ctx.arc(rx, gy - 110, 75, Math.PI, 0, false);
-    ctx.lineTo(rx + 10, gy - 110);
-    ctx.arc(rx + 10, gy - 110, 75, 0, Math.PI, true);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Stalowe filary wejściowe (przesłaniające gracza na pierwszym planie)
   const drawPillar = (px) => {
     const gradPillar = ctx.createLinearGradient(px, 0, px + pillarW, 0);
-    gradPillar.addColorStop(0, '#0a0f1d');
+    gradPillar.addColorStop(0, '#090e1a');
     gradPillar.addColorStop(0.3, '#1e293b');
     gradPillar.addColorStop(0.7, '#334155');
-    gradPillar.addColorStop(1, '#0a0f1d');
+    gradPillar.addColorStop(1, '#090e1a');
     ctx.fillStyle = gradPillar;
     ctx.fillRect(px, gy - pillarH, pillarW, pillarH + 10);
 
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(px, gy - pillarH, pillarW, pillarH + 10);
 
     // Żółto-czarne pasy ostrzegawcze skrajni
-    const hazardH = 44;
-    const stripeSize = 11;
+    const hazardH = 48;
+    const stripeSize = 12;
     ctx.save();
     ctx.beginPath();
     ctx.rect(px, gy - hazardH, pillarW, hazardH);
     ctx.clip();
     for (let sy = gy - hazardH - stripeSize; sy < gy + stripeSize; sy += stripeSize * 2) {
-      ctx.fillStyle = '#ffc107';
+      ctx.fillStyle = '#facc15';
       ctx.beginPath();
       ctx.moveTo(px, sy);
       ctx.lineTo(px + pillarW, sy + stripeSize);
@@ -4449,7 +4817,7 @@ function drawEntranceGateForeground(ctx, enterX, gy) {
       ctx.lineTo(px, sy + stripeSize);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#0a0f1d';
+      ctx.fillStyle = '#090e1a';
       ctx.beginPath();
       ctx.moveTo(px, sy + stripeSize);
       ctx.lineTo(px + pillarW, sy + stripeSize * 2);
@@ -4470,19 +4838,18 @@ function drawEntranceGateForeground(ctx, enterX, gy) {
   const lintelX = leftPillarX - 8;
   const lintelW = (rightPillarX + pillarW) - leftPillarX + 16;
 
-  ctx.fillStyle = '#0b1120';
+  ctx.fillStyle = '#080d1a';
   ctx.fillRect(lintelX, lintelY, lintelW, lintelH);
-  ctx.strokeStyle = '#00e5ff';
+  ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 3;
   ctx.strokeRect(lintelX, lintelY, lintelW, lintelH);
 
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
   ctx.lineWidth = 1.2;
   ctx.strokeRect(lintelX + 4, lintelY + 4, lintelW - 8, lintelH - 8);
 
-  // Nowe hasła bez „Kapki”
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffc107';
+  ctx.fillStyle = '#facc15';
   ctx.font = 'bold 12px monospace';
   ctx.fillText('★ CHAMPIONS ARENA ★', enterX, lintelY + 22);
 
@@ -4490,14 +4857,14 @@ function drawEntranceGateForeground(ctx, enterX, gy) {
   ctx.font = 'bold 18px monospace';
   ctx.fillText('KEEP IT HIGH', enterX, lintelY + 46);
 
-  ctx.fillStyle = '#00e5ff';
+  ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 12px monospace';
   ctx.fillText('FAIR PLAY • 300M', enterX, lintelY + 64);
   ctx.textAlign = 'left';
 
-  // Dioda ostrzegawcza
+  // Diody ostrzegawcze
   const blink = Math.sin(performance.now() * 0.007) > 0;
-  ctx.fillStyle = blink ? '#00e5ff' : '#0369a1';
+  ctx.fillStyle = blink ? '#38bdf8' : '#0369a1';
   ctx.beginPath();
   ctx.arc(leftPillarX + pillarW / 2, lintelY - 5, 4.5, 0, Math.PI * 2);
   ctx.arc(rightPillarX + pillarW / 2, lintelY - 5, 4.5, 0, Math.PI * 2);
@@ -4505,22 +4872,22 @@ function drawEntranceGateForeground(ctx, enterX, gy) {
 }
 
 function drawExitGateForeground(ctx, exitX, gy) {
-  const pillarW = 42;
-  const pillarH = 300;
+  const pillarW = 44;
+  const pillarH = 310;
   const gateW = 230;
   const leftPillarX = exitX - gateW / 2;
   const rightPillarX = exitX + gateW / 2 - pillarW;
 
   const drawPillar = (px) => {
     const gradPillar = ctx.createLinearGradient(px, 0, px + pillarW, 0);
-    gradPillar.addColorStop(0, '#0a0f1d');
+    gradPillar.addColorStop(0, '#090e1a');
     gradPillar.addColorStop(0.3, '#1e293b');
     gradPillar.addColorStop(0.7, '#334155');
-    gradPillar.addColorStop(1, '#0a0f1d');
+    gradPillar.addColorStop(1, '#090e1a');
     ctx.fillStyle = gradPillar;
     ctx.fillRect(px, gy - pillarH, pillarW, pillarH + 10);
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(px, gy - pillarH, pillarW, pillarH + 10);
   };
 
@@ -4547,45 +4914,63 @@ function drawExitGateForeground(ctx, exitX, gy) {
   ctx.font = 'bold 18px monospace';
   ctx.fillText('KEEP IT HIGH', exitX, lintelY + 46);
 
-  ctx.fillStyle = '#ffc107';
+  ctx.fillStyle = '#facc15';
   ctx.font = 'bold 12px monospace';
   ctx.fillText('FAIR PLAY • 750M ➔', exitX, lintelY + 64);
   ctx.textAlign = 'left';
 }
 
 function drawForegroundSpotlight(ctx, mx, gy) {
-  // Powiększony przedni snop światła padający na gracza
-  const cone = ctx.createLinearGradient(mx, gy - 540, mx, gy);
-  cone.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
-  cone.addColorStop(0.6, 'rgba(240, 248, 255, 0.08)');
-  cone.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+  // Przedni wolumetryczny snop światła padający na zawodnika
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  const cone = ctx.createLinearGradient(mx, gy - 550, mx, gy);
+  cone.addColorStop(0, 'rgba(220, 240, 255, 0.16)');
+  cone.addColorStop(0.5, 'rgba(220, 240, 255, 0.08)');
+  cone.addColorStop(1, 'rgba(220, 240, 255, 0.0)');
 
   ctx.fillStyle = cone;
   ctx.beginPath();
-  ctx.moveTo(mx - 20, gy - 540);
-  ctx.lineTo(mx + 20, gy - 540);
-  ctx.lineTo(mx + 200, gy);
-  ctx.lineTo(mx - 200, gy);
+  ctx.moveTo(mx - 25, gy - 550);
+  ctx.lineTo(mx + 25, gy - 550);
+  ctx.lineTo(mx + 230, gy);
+  ctx.lineTo(mx - 230, gy);
   ctx.closePath();
   ctx.fill();
 
-  // Rozświetlona plama światła na murawie
-  const pool = ctx.createRadialGradient(mx, gy, 15, mx, gy, 180);
-  pool.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
-  pool.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  const pool = ctx.createRadialGradient(mx, gy, 15, mx, gy, 210);
+  pool.addColorStop(0, 'rgba(220, 240, 255, 0.14)');
+  pool.addColorStop(1, 'rgba(220, 240, 255, 0)');
   ctx.fillStyle = pool;
   ctx.beginPath();
-  ctx.ellipse(mx, gy + 4, 180, 20, 0, 0, Math.PI * 2);
+  ctx.ellipse(mx, gy + 4, 210, 20, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.restore();
 }
 
 export function drawStadiumForeground(ctx, worldLeft, worldRight) {
   const gy = GROUND_Y;
   const enterX = START_X + 300 * 14; // 4360 px
   const exitX = START_X + 750 * 14;  // 10660 px
+  const tunnelStartX = START_X + 265 * 14; // 3870 px
+  const camDist = (camera ? (camera.x - START_X) / 14 : 0);
 
-  // 1. Przód monumentalnej bramy wejściowej na 300 m (filary przesłaniające gracza)
-  if (enterX >= worldLeft - 260 && enterX <= worldRight + 260) {
+  // Współczynnik przebywania wewnątrz areny stadionu do efektów globalnych
+  let stadiumFactor = 0;
+  if (camDist >= 250 && camDist <= 810) {
+    if (camDist < 300) {
+      stadiumFactor = smoothstep(250, 300, camDist);
+    } else if (camDist > 740) {
+      stadiumFactor = 1.0 - smoothstep(740, 810, camDist);
+    } else {
+      stadiumFactor = 1.0;
+    }
+  }
+
+  // 1. Przód tunelu graczy i monumentalnej bramy wejściowej na 300 m
+  if (enterX >= worldLeft - 260 && tunnelStartX <= worldRight + 260) {
     drawEntranceGateForeground(ctx, enterX, gy);
   }
 
@@ -4594,14 +4979,119 @@ export function drawStadiumForeground(ctx, worldLeft, worldRight) {
     drawExitGateForeground(ctx, exitX, gy);
   }
 
-  // 3. Przednie snopy światła jupiterów oświetlające gracza
-  for (let mx = enterX + 240; mx < exitX; mx += 720) {
-    if (mx >= worldLeft - 220 && mx <= worldRight + 220) {
+  // 3. Przednie snopy światła jupiterów oświetlające gracza i płytę boiska
+  for (let mx = enterX + 220; mx < exitX; mx += 560) {
+    if (mx >= worldLeft - 260 && mx <= worldRight + 260) {
       drawForegroundSpotlight(ctx, mx, gy);
     }
   }
 
-  // 4. Opadające, wirujące konfetti na powitanie (chłodny cyjan, złoto, biel)
+  // 4. JEDNORAZOWY EFEKT ADAPTACJI OKA (BIAŁY FLASH TRWAJĄCY 15-20 KLATEK, ALPHA 0.55 -> 0.0)
+  // Wyzwalany w momencie minięcia bramy tunelu (300 m)
+  if (camDist >= 298 && camDist <= 330 && !eyeAdaptationTriggered) {
+    eyeAdaptationTriggered = true;
+    eyeAdaptationFrames = EYE_ADAPTATION_MAX_FRAMES;
+  }
+  if (camDist < 250) {
+    eyeAdaptationTriggered = false;
+  }
+
+  if (eyeAdaptationFrames > 0) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Rysowanie w pełnych współrzędnych ekranowych
+
+    const t = eyeAdaptationFrames / EYE_ADAPTATION_MAX_FRAMES; // 1.0 -> 0.0
+    // Krótkie rozjaśnienie ekranu: biały flash trwający 15-20 klatek, płynnie znikający od alpha = 0.55 do 0.0
+    const flashAlpha = 0.55 * t;
+
+    // A. Pełnoekranowy biały flash adaptacji oka
+    ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // B. Kinematyczna poświata radialna odkrywająca rozświetloną arenę
+    const bloomGrad = ctx.createRadialGradient(W * 0.48, H * 0.42, 20, W * 0.48, H * 0.42, W * 0.75);
+    bloomGrad.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.90})`);
+    bloomGrad.addColorStop(0.40, `rgba(224, 242, 254, ${flashAlpha * 0.50})`);
+    bloomGrad.addColorStop(0.80, `rgba(186, 230, 253, ${flashAlpha * 0.20})`);
+    bloomGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = bloomGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // C. Horyzontalny błysk anamorficzny reflektorów stadionowych
+    const flareGrad = ctx.createLinearGradient(0, H * 0.36, 0, H * 0.46);
+    flareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    flareGrad.addColorStop(0.5, `rgba(255, 255, 255, ${flashAlpha * 0.60})`);
+    flareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = flareGrad;
+    ctx.fillRect(0, H * 0.36, W, H * 0.10);
+
+    ctx.restore();
+    eyeAdaptationFrames--;
+  }
+
+  // 5. WINIETA GŁĘBI I KONTRASTU
+  // Przyciemnienie górnej krawędzi dachu i narożników ekranu dla kinowego nocnego kontrastu
+  if (stadiumFactor > 0.02) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Przyciemnienie górnej krawędzi zadaszenia stadionu
+    const topVignette = ctx.createLinearGradient(0, 0, 0, H * 0.32);
+    topVignette.addColorStop(0, `rgba(2, 6, 18, ${0.68 * stadiumFactor})`);
+    topVignette.addColorStop(0.65, `rgba(2, 6, 18, ${0.25 * stadiumFactor})`);
+    topVignette.addColorStop(1, 'rgba(2, 6, 18, 0)');
+    ctx.fillStyle = topVignette;
+    ctx.fillRect(0, 0, W, H * 0.32);
+
+    // Przyciemnienie dolnej krawędzi ekranu
+    const bottomVignette = ctx.createLinearGradient(0, H - 75, 0, H);
+    bottomVignette.addColorStop(0, 'rgba(2, 6, 18, 0)');
+    bottomVignette.addColorStop(1, `rgba(2, 6, 18, ${0.40 * stadiumFactor})`);
+    ctx.fillStyle = bottomVignette;
+    ctx.fillRect(0, H - 75, W, 75);
+
+    // Winieta narożnikowa (studyjna głębia areny piłkarskiej)
+    const cornerGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75);
+    cornerGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    cornerGrad.addColorStop(1, `rgba(3, 7, 22, ${0.48 * stadiumFactor})`);
+    ctx.fillStyle = cornerGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.restore();
+  }
+
+  // 5. WINIETA GŁĘBI I KONTRASTU (Wymóg 4)
+  // Przyciemnienie górnej krawędzi dachu i narożników ekranu dla studyjnego kontrastu
+  if (stadiumFactor > 0.02) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Przyciemnienie górnej krawędzi zadaszenia stadionu
+    const topVignette = ctx.createLinearGradient(0, 0, 0, H * 0.32);
+    topVignette.addColorStop(0, `rgba(2, 6, 18, ${0.68 * stadiumFactor})`);
+    topVignette.addColorStop(0.65, `rgba(2, 6, 18, ${0.25 * stadiumFactor})`);
+    topVignette.addColorStop(1, 'rgba(2, 6, 18, 0)');
+    ctx.fillStyle = topVignette;
+    ctx.fillRect(0, 0, W, H * 0.32);
+
+    // Przyciemnienie dolnej krawędzi ekranu
+    const bottomVignette = ctx.createLinearGradient(0, H - 75, 0, H);
+    bottomVignette.addColorStop(0, 'rgba(2, 6, 18, 0)');
+    bottomVignette.addColorStop(1, `rgba(2, 6, 18, ${0.40 * stadiumFactor})`);
+    ctx.fillStyle = bottomVignette;
+    ctx.fillRect(0, H - 75, W, 75);
+
+    // Winieta narożnikowa (studyjna głębia areny piłkarskiej)
+    const cornerGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75);
+    cornerGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    cornerGrad.addColorStop(1, `rgba(3, 7, 22, ${0.48 * stadiumFactor})`);
+    ctx.fillStyle = cornerGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.restore();
+  }
+
+  // 6. Opadające, wirujące konfetti na powitanie (chłodny cyjan, złoto, biel)
   for (let cp of confettiParticles) {
     if (cp.x < worldLeft - 40 || cp.x > worldRight + 40) continue;
     ctx.save();
@@ -4615,13 +5105,13 @@ export function drawStadiumForeground(ctx, worldLeft, worldRight) {
     ctx.restore();
   }
 
-  // 5. Przednia warstwa Wielkiej Piramidy (strop z bloków kamiennych, przednie kolumny, portale i snop słońca)
+  // 7. Przednia warstwa Wielkiej Piramidy (strop z bloków kamiennych, przednie kolumny, portale i snop słońca)
   drawPyramidForeground(ctx, worldLeft, worldRight);
 
-  // 6. Płatki/drobiny zamieci piaskowej na pierwszym planie (biom pustynny 800 – 1599 m)
+  // 8. Płatki/drobiny zamieci piaskowej na pierwszym planie (biom pustynny 800 – 1599 m)
   drawDesertSandstormForeground(ctx, worldLeft, worldRight);
 
-  // 7. Płatki zamieci śnieżnej na pierwszym planie (biom zimowy 1600 – 2399 m)
+  // 9. Płatki zamieci śnieżnej na pierwszym planie (biom zimowy 1600 – 2399 m)
   drawWinterBlizzardForeground(ctx, worldLeft, worldRight);
 }
 
@@ -4732,13 +5222,154 @@ export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
   ctx.textBaseline = 'alphabetic';
 }
 
+// ==========================================
+// DYNAMICZNY LICZNIK FPS I ZAKŁADKA BIOMÓW
+// ==========================================
+let lastTime = performance.now();
+let frameCount = 0;
+export let currentFps = 60;
+
+export function updateFps() {
+  frameCount++;
+  const now = performance.now();
+  const elapsed = now - lastTime;
+  if (elapsed >= 350) { // Uśrednianie co 350 ms (okno 250–500 ms) dla czytelności i braku migotania
+    currentFps = Math.round((frameCount * 1000) / elapsed);
+    frameCount = 0;
+    lastTime = now;
+    if (typeof window !== 'undefined') {
+      window.currentFps = currentFps;
+    }
+  }
+}
+
+export function drawBiomeInfoPanel(ctx, currentDist, currentFps, now, W) {
+  const biome = getCurrentBiome(currentDist);
+  if (!biome) return;
+
+  let biomeIcon = '🏟️';
+  let biomeSub = `${Math.min(BIOMES.length - 1, Math.floor(currentDist / BIOME_STEP)) * BIOME_STEP}–${(Math.min(BIOMES.length - 1, Math.floor(currentDist / BIOME_STEP)) + 1) * BIOME_STEP}m`;
+
+  if (biome.id === 0) {
+    biomeIcon = '🏟️';
+    if (currentDist >= 300 && currentDist <= 750) {
+      biomeSub = 'STADION (300–750m)';
+    } else {
+      biomeSub = 'MURAWA (0–800m)';
+    }
+  } else if (biome.id === 1) {
+    biomeIcon = '🏜️';
+    if (currentDist >= 1050 && currentDist <= 1350) {
+      biomeSub = 'PIRAMIDA (1050–1350m)';
+    } else {
+      biomeSub = 'PUSTYNIA (800–1600m)';
+    }
+  } else if (biome.id === 2) {
+    biomeIcon = '❄️';
+    biomeSub = 'ZIMA (1600–2400m)';
+  } else if (biome.id === 3) {
+    biomeIcon = '🌴';
+    biomeSub = 'DŻUNGLA (2400–3200m)';
+  } else if (biome.id === 4) {
+    biomeIcon = '🔥';
+    biomeSub = 'PIEKŁO (3200m+)';
+  }
+
+  // Kolor statusu FPS (zielony dla 55+, żółty dla 30-54, czerwony dla <30)
+  const fpsColor = currentFps >= 55 ? '#00e676' : (currentFps >= 30 ? '#ffd600' : '#ff5252');
+
+  // Położenie panelu w prawym górnym rogu ekranu
+  const panelW = 216;
+  const panelH = 48;
+  const panelX = Math.max(12, W - panelW - 24);
+  const panelY = 20;
+
+  ctx.save();
+
+  // 1. Tło glassmorphism panelu
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(panelX, panelY, panelW, panelH, 8);
+  } else {
+    ctx.rect(panelX, panelY, panelW, panelH);
+  }
+  ctx.fill();
+
+  // Obramowanie karty
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 2. Akcent kolorystyczny aktywnego biomu na lewej krawędzi
+  ctx.fillStyle = biome.uiColor;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(panelX, panelY + 6, 4, panelH - 12, [2, 0, 0, 2]);
+  } else {
+    ctx.rect(panelX, panelY + 6, 4, panelH - 12);
+  }
+  ctx.fill();
+
+  // 3. Informacja o biomie (lewa strona karty)
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  // Nazwa biomu z ikoną
+  ctx.font = 'bold 12px monospace';
+  ctx.fillStyle = biome.uiColor;
+  ctx.fillText(`${biomeIcon} ${biome.name}`, panelX + 14, panelY + 17);
+
+  // Zakres metrażu / strefa
+  ctx.font = '600 10px monospace';
+  ctx.fillStyle = 'rgba(226, 232, 240, 0.72)';
+  ctx.fillText(biomeSub, panelX + 14, panelY + 34);
+
+  // 4. Pionowy separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.beginPath();
+  ctx.moveTo(panelX + panelW - 68, panelY + 8);
+  ctx.lineTo(panelX + panelW - 68, panelY + panelH - 8);
+  ctx.stroke();
+
+  // 5. Dynamiczny licznik FPS (prawa strona karty)
+  // Pulsująca dioda LED
+  ctx.fillStyle = fpsColor;
+  ctx.shadowColor = fpsColor;
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.arc(panelX + panelW - 55, panelY + 24, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Wartość liczbowa FPS
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText(`${currentFps}`, panelX + panelW - 46, panelY + 19);
+
+  // Etykieta FPS
+  ctx.font = '600 9px monospace';
+  ctx.fillStyle = 'rgba(203, 213, 225, 0.65)';
+  ctx.fillText('FPS', panelX + panelW - 46, panelY + 33);
+
+  ctx.restore();
+}
+
 export function drawHUD(ctx, player, leftStick, btnCluster) {
+  // Aktualizacja dynamicznego licznika FPS (uśrednianie co 250-500 ms)
+  updateFps();
+
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 20px monospace';
   ctx.fillText(`DYSTANS: ${currentDist} m`, 24, 38);
   ctx.fillStyle = '#ffeb3b';
   ctx.fillText(`REKORD:  ${bestDistance} m`, 24, 62);
+
+  // Renderowanie panelu / zakładki z informacjami o biomie i dynamicznym licznikiem FPS
+  drawBiomeInfoPanel(ctx, currentDist, currentFps, performance.now(), W);
 
   // 1. LEWY DRĄŻEK
   if (leftStick && leftStick.active) {
