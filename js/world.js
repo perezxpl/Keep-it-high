@@ -3446,7 +3446,7 @@ export function drawSky(ctx) {
 // ==========================================
 // TŁO I STRUKTURA: MONUMENTALNA ARENA STADIONOWA 2.5D (300M - 750M)
 // KINEMATYCZNY TUNEL, ZAKRZYWIONA MISA, 3 WARSTWY PARALAKSY,
-// WOLUMETRYCZNE JUPITERY ORAZ PERSPEKTYWA DARNI
+// WOLUMETRYCZNE JUPITERY ORAZ PRE-RENDEROWANE TŁO (OFFSCREEN CANVAS)
 // ==========================================
 
 // Maszty jupiterów rozlokowane w strategicznych punktach zadaszenia areny
@@ -3737,7 +3737,7 @@ function drawExitTunnelBg(ctx, exitX, gy) {
   ctx.textAlign = 'left';
 }
 
-// 3. PŁYTA BOISKA Z ILUZJĄ GŁĘBI (PERSPEKTYWA DARNI)
+// 3. PŁYTA BOISKA Z ILUZJĄ GŁĘBI (PERSPEKTYWA DARNI) - ZOPTYMALIZOWANE RYSOWANIE
 function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
   if (viewRight < enterX - 100 || viewLeft > exitX + 100) return;
 
@@ -3749,23 +3749,30 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
   const midPitchX = START_X + 525 * 14; // 7510 px (środek boiska)
 
   // A. Pasy koszenia trawy o zróżnicowanej szerokości i odcieniach zieleni (#1b5e20 oraz #2e7d32)
-  // Biegną pod delikatnym kątem zbiegu perspektywicznego ku linii horyzontu / band LED
+  // Zoptymalizowana pętla: przewijamy do pierwszego widocznego pasa i rysujemy wyłącznie pasy w kadrze
   const stripeWidths = [74, 86, 68, 92, 78, 82];
   let curX = enterX;
   let sIdx = 0;
 
-  while (curX < exitX) {
+  // Szybkie przewinięcie do pierwszego widocznego pasa
+  while (curX + 100 < startX && curX < exitX) {
+    const sw = stripeWidths[sIdx % stripeWidths.length];
+    curX += sw;
+    sIdx++;
+  }
+
+  // Rysowanie wyłącznie pasów widocznych w kadrze
+  while (curX < endX && curX < exitX) {
     const sw = stripeWidths[sIdx % stripeWidths.length];
     const nextX = Math.min(exitX, curX + sw);
     const stripeW = nextX - curX;
 
-    if (nextX >= startX && curX <= endX && stripeW > 0) {
+    if (stripeW > 0) {
       const isLight = (sIdx % 2 === 0);
       const colBase = isLight ? '#2e7d32' : '#1b5e20';
       const colHighlight = isLight ? '#388e3c' : '#236928';
 
       // Kąt zbiegu perspektywicznego ku horyzontowi / band LED
-      // Wierzchołki przy horyzoncie (gy - 2) oraz rozszerzenie ku dołowi kadru (gy + 450)
       const slant1 = (curX - midPitchX) * 0.045;
       const slant2 = (nextX - midPitchX) * 0.045;
 
@@ -3802,11 +3809,9 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
   const touchLeft = Math.max(enterX, viewLeft);
   const touchRight = Math.min(exitX, viewRight);
   if (touchRight > touchLeft) {
-    // Delikatny cień linii bocznej dający iluzję głębi
     ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
     ctx.fillRect(touchLeft, gy + 6, touchRight - touchLeft, 4);
 
-    // Gruba biała linia boczna (oddzielająca płytę główną od strefy technicznej)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.fillRect(touchLeft, gy + 2, touchRight - touchLeft, 5);
   }
@@ -3820,7 +3825,6 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
     ctx.arc(cornerX1, gy + 2, 34, 0, Math.PI * 0.5, false);
     ctx.stroke();
 
-    // Chorągiewka narożna ze sprężynową podstawą
     ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -3836,7 +3840,6 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
     ctx.quadraticCurveTo(cornerX1 + sway * 0.5, gy - 24, cornerX1 + sway, gy - 38);
     ctx.stroke();
 
-    // Żółto-czerwony materiał chorągiewki
     const topFlagX = cornerX1 + sway;
     const topFlagY = gy - 38;
     const flagWave = Math.sin(now * 0.008) * 2;
@@ -3900,10 +3903,8 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.lineWidth = 4.5;
 
-    // Poprzeczna linia środkowa
     ctx.fillRect(midPitchX - 2, gy + 2, 4.5, 200);
 
-    // Punkt środkowy (center spot) z cieniem
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.beginPath();
     ctx.arc(midPitchX, gy + 6, 5.5, 0, Math.PI * 2);
@@ -3913,7 +3914,6 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
     ctx.arc(midPitchX, gy + 4, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Łuk koła środkowego w perspektywie 2.5D (elipsa na darni)
     ctx.beginPath();
     ctx.ellipse(midPitchX, gy + 2, 115, 44, 0, 0, Math.PI);
     ctx.stroke();
@@ -3931,7 +3931,6 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
     ctx.arc(penX1, gy + 45, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Łuk pola karnego w perspektywie
     ctx.beginPath();
     ctx.ellipse(penX1, gy + 45, 65, 24, 0, 0, Math.PI * 0.65);
     ctx.stroke();
@@ -3954,140 +3953,127 @@ function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
   }
 }
 
-// 2. ZAKRZYWIONA „MISA STADIONU” (OWALNA ARENA) I 3 WARSTWY PARALAKSY
-export function drawStadium(ctx, worldLeft, worldRight) {
-  const camDist = (camera.x - START_X) / 14;
-  if (camDist < 250 || camDist > 820) return;
+// ==========================================
+// OFFSCREEN CANVAS PRE-RENDERING TŁA STADIONU (WYMÓG OPTYMALIZACYJNY)
+// ==========================================
+const stadiumPatternCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+let stadiumPatternReady = false;
 
-  let alpha = 1.0;
-  if (camDist < 290) {
-    alpha = smoothstep(250, 290, camDist);
-  } else if (camDist > 745) {
-    alpha = 1.0 - smoothstep(745, 820, camDist);
+const ROOF_CANVAS_W = 240;
+const ROOF_CANVAS_H = 200;
+const STAND_CANVAS_W = 220;
+const UPPER_CANVAS_H = 280;
+const LOWER_CANVAS_H = 180;
+
+function initStadiumPatternCanvas() {
+  if (stadiumPatternReady || !stadiumPatternCanvas) return;
+
+  // Szerokość 240 px, wysokość 660 px = 200 (dach) + 280 (górna trybuna) + 180 (dolna trybuna)
+  stadiumPatternCanvas.width = 240;
+  stadiumPatternCanvas.height = 660;
+
+  const pCtx = stadiumPatternCanvas.getContext('2d');
+  if (!pCtx) return;
+
+  // -----------------------------------------------------------------
+  // 1. MODUŁ ZADASZENIA I KRATOWNIC STALOWYCH (Y: 0 do 200, W: 240)
+  // W przestrzeni świata odpowiada to Y od (gy - 660) do (gy - 460)
+  // -----------------------------------------------------------------
+  const rY0 = 0;
+  const rw = ROOF_CANVAS_W;
+
+  // A. Główny łuk zadaszenia stadionu (aerodynamiczna czasza)
+  const roofGrad = pCtx.createLinearGradient(0, rY0, 0, rY0 + 200);
+  roofGrad.addColorStop(0, '#040711');
+  roofGrad.addColorStop(0.40, '#0e1626');
+  roofGrad.addColorStop(0.85, '#1e293b');
+  roofGrad.addColorStop(1, '#334155');
+
+  pCtx.fillStyle = roofGrad;
+  pCtx.beginPath();
+  pCtx.moveTo(-6, rY0 + 20);
+  pCtx.quadraticCurveTo(rw * 0.5, rY0 - 10, rw + 6, rY0 + 20);
+  pCtx.lineTo(rw + 6, rY0 + 180);
+  pCtx.quadraticCurveTo(rw * 0.5, rY0 + 150, -6, rY0 + 180);
+  pCtx.closePath();
+  pCtx.fill();
+
+  // B. Błękitna listwa LED wzdłuż krawędzi zadaszenia
+  pCtx.strokeStyle = '#38bdf8';
+  pCtx.lineWidth = 2.5;
+  pCtx.beginPath();
+  pCtx.moveTo(-6, rY0 + 180);
+  pCtx.quadraticCurveTo(rw * 0.5, rY0 + 150, rw + 6, rY0 + 180);
+  pCtx.stroke();
+
+  // C. Stalowe kratownice przestrzenne (Warren space-truss)
+  pCtx.strokeStyle = '#475569';
+  pCtx.lineWidth = 2;
+  pCtx.beginPath();
+  pCtx.moveTo(0, rY0 + 50);
+  pCtx.lineTo(rw, rY0 + 50);
+  pCtx.moveTo(0, rY0 + 90);
+  pCtx.lineTo(rw, rY0 + 90);
+
+  for (let kx = 0; kx < rw; kx += 40) {
+    pCtx.moveTo(kx, rY0 + 50);
+    pCtx.lineTo(kx + 20, rY0 + 90);
+    pCtx.lineTo(kx + 40, rY0 + 50);
   }
-  alpha = Math.max(0, Math.min(1, alpha));
-  if (alpha <= 0.01) return;
+  pCtx.stroke();
 
-  const enterX = START_X + 300 * 14; // 4360 px
-  const exitX = START_X + 750 * 14;  // 10660 px
-  const stadiumCenter = (enterX + exitX) / 2; // 7510 px
-  const tunnelStartX = START_X + 265 * 14; // 3870 px
-
-  const gy = GROUND_Y;
-  const now = performance.now();
-
-  ctx.save();
-  ctx.globalAlpha *= alpha;
-
-  // ----------------------------------------------------
-  // WARSTWA 1: DACH I GIGANTYCZNE KRATOWNICE STALOWE (PARALLAX 0.15)
-  // Prędkość kamery x 0.15 (niemal nieruchome na samej górze)
-  // ----------------------------------------------------
-  const p1 = 0.15;
-  const shift1 = (camera.x - stadiumCenter) * (1.0 - p1);
-
-  ctx.save();
-  ctx.translate(shift1, 0);
-
-  const roofStart = tunnelStartX - 200;
-  const roofEnd = exitX + 260;
-  const ROOF_BAY_W = 240;
-  const totalRoofBays = Math.ceil((roofEnd - roofStart) / ROOF_BAY_W);
-
-  for (let b = 0; b < totalRoofBays; b++) {
-    const rx = roofStart + b * ROOF_BAY_W;
-    if (rx + ROOF_BAY_W < worldLeft - shift1 - 100 || rx > worldRight - shift1 + 100) continue;
-
-    // Główny łuk zadaszenia stadionu (aerodynamiczna czasza nad trybunami)
-    const roofGrad = ctx.createLinearGradient(rx, gy - 660, rx, gy - 460);
-    roofGrad.addColorStop(0, '#040711');
-    roofGrad.addColorStop(0.40, '#0e1626');
-    roofGrad.addColorStop(0.85, '#1e293b');
-    roofGrad.addColorStop(1, '#334155');
-
-    ctx.fillStyle = roofGrad;
-    ctx.beginPath();
-    ctx.moveTo(rx - 6, gy - 640);
-    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 670, rx + ROOF_BAY_W + 6, gy - 640);
-    ctx.lineTo(rx + ROOF_BAY_W + 6, gy - 480);
-    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 510, rx - 6, gy - 480);
-    ctx.closePath();
-    ctx.fill();
-
-    // Błękitna listwa LED wzdłuż krawędzi zadaszenia
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(rx - 6, gy - 480);
-    ctx.quadraticCurveTo(rx + ROOF_BAY_W * 0.5, gy - 510, rx + ROOF_BAY_W + 6, gy - 480);
-    ctx.stroke();
-
-    // Stalowe kratownice przestrzenne w najwyższej strefie dachu (Warren space-truss)
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(rx, gy - 610);
-    ctx.lineTo(rx + ROOF_BAY_W, gy - 610);
-    ctx.moveTo(rx, gy - 570);
-    ctx.lineTo(rx + ROOF_BAY_W, gy - 570);
-
-    for (let kx = rx; kx < rx + ROOF_BAY_W; kx += 40) {
-      ctx.moveTo(kx, gy - 610);
-      ctx.lineTo(kx + 20, gy - 570);
-      ctx.lineTo(kx + 40, gy - 610);
-    }
-    ctx.stroke();
-
-    // Pomost techniczny (catwalk) dla obsługi oświetlenia
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(rx, gy - 570, ROOF_BAY_W, 4);
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(rx, gy - 578);
-    ctx.lineTo(rx + ROOF_BAY_W, gy - 578);
-    for (let cx = rx + 15; cx < rx + ROOF_BAY_W; cx += 25) {
-      ctx.moveTo(cx, gy - 570);
-      ctx.lineTo(cx, gy - 578);
-    }
-    ctx.stroke();
-
-    // Cięgna nośne i stalowe odciągi
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(rx + 15, gy - 640);
-    ctx.lineTo(rx + ROOF_BAY_W * 0.65, gy - 510);
-    ctx.moveTo(rx + 15, gy - 640);
-    ctx.lineTo(rx + ROOF_BAY_W * 0.95, gy - 480);
-    ctx.stroke();
-
-    // Pylon dachowy z czerwoną diodą przeszkodową
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(rx + 10, gy - 665, 8, 30);
-    ctx.fillStyle = (Math.sin(now * 0.005 + b) > 0) ? '#ef4444' : '#7f1d1d';
-    ctx.beginPath();
-    ctx.arc(rx + 14, gy - 668, 3.5, 0, Math.PI * 2);
-    ctx.fill();
+  // D. Pomost techniczny (catwalk) dla obsługi oświetlenia
+  pCtx.fillStyle = '#1e293b';
+  pCtx.fillRect(0, rY0 + 90, rw, 4);
+  pCtx.strokeStyle = '#64748b';
+  pCtx.lineWidth = 1.2;
+  pCtx.beginPath();
+  pCtx.moveTo(0, rY0 + 82);
+  pCtx.lineTo(rw, rY0 + 82);
+  for (let cx = 15; cx < rw; cx += 25) {
+    pCtx.moveTo(cx, rY0 + 90);
+    pCtx.lineTo(cx, rY0 + 82);
   }
-  ctx.restore();
+  pCtx.stroke();
 
-  // ----------------------------------------------------
-  // WARSTWA 2: GÓRNE TRYBUNY + PODWIESZONE TELEBIMY (PARALLAX 0.35)
-  // Prędkość kamery x 0.35. Zakrzywione sektory, tysiące punktów krzesełek i losowe błyski fleszy
-  // ----------------------------------------------------
-  const p2 = 0.35;
-  const shift2 = (camera.x - stadiumCenter) * (1.0 - p2);
+  // E. Cięgna nośne i stalowe odciągi
+  pCtx.strokeStyle = '#94a3b8';
+  pCtx.lineWidth = 2;
+  pCtx.beginPath();
+  pCtx.moveTo(15, rY0 + 20);
+  pCtx.lineTo(rw * 0.65, rY0 + 150);
+  pCtx.moveTo(15, rY0 + 20);
+  pCtx.lineTo(rw * 0.95, rY0 + 180);
+  pCtx.stroke();
 
-  ctx.save();
-  ctx.translate(shift2, 0);
+  // Pylon dachowy
+  pCtx.fillStyle = '#334155';
+  pCtx.fillRect(10, rY0 - 5, 8, 30);
 
-  const standStart = tunnelStartX - 150;
-  const standEnd = exitX + 220;
-  const BAY_W = 220;
-  const totalBays = Math.ceil((standEnd - standStart) / BAY_W);
+  // -----------------------------------------------------------------
+  // 2. MODUŁ GÓRNEJ TRYBUNY WIDOWNI (Y: 200 do 480, W: 220)
+  // W przestrzeni świata odpowiada to Y od (gy - 470) do (gy - 190)
+  // -----------------------------------------------------------------
+  const uY0 = 200;
+  const bw = STAND_CANVAS_W;
 
-  // Paleta rzędów widowni w barwach nocnego koloseum
+  // Tylna ściana sektora
+  pCtx.fillStyle = '#070b14';
+  pCtx.fillRect(0, uY0, bw, 280);
+
+  // Filary dzielące sektory areny
+  pCtx.fillStyle = '#1e293b';
+  pCtx.fillRect(0, uY0, 10, 280);
+  pCtx.fillRect(bw - 10, uY0, 10, 280);
+
+  // Loże VIP pod zadaszeniem
+  pCtx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+  pCtx.fillRect(12, uY0 + 5, bw - 24, 14);
+  pCtx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
+  pCtx.lineWidth = 1;
+  pCtx.strokeRect(12, uY0 + 5, bw - 24, 14);
+
+  // 14 zakrzywionych rzędów widowni górnej
   const upperTierRows = [
     { h: 17, col: '#080d1a' },
     { h: 17, col: '#0f172a' },
@@ -4105,139 +4091,274 @@ export function drawStadium(ctx, worldLeft, worldRight) {
     { h: 17, col: '#0f172a' }
   ];
 
-  // Rysowanie zakrzywionych sektorów górnej trybuny
-  for (let b = 0; b < totalBays; b++) {
-    const bx = standStart + b * BAY_W;
-    if (bx + BAY_W < worldLeft - shift2 - 100 || bx > worldRight - shift2 + 100) continue;
+  let curRowY = uY0 + 25;
+  const curveSag = 6.5;
 
-    // Tylna ściana sektora
-    ctx.fillStyle = '#070b14';
-    ctx.fillRect(bx, gy - 470, BAY_W, 280);
+  for (let r = 0; r < upperTierRows.length; r++) {
+    const row = upperTierRows[r];
 
-    // Filary dzielące sektory areny
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(bx, gy - 470, 10, 280);
-    ctx.fillRect(bx + BAY_W - 10, gy - 470, 10, 280);
+    // Rząd trybuny jako zakrzywiony pasek
+    pCtx.fillStyle = row.col;
+    pCtx.beginPath();
+    pCtx.moveTo(10, curRowY);
+    pCtx.quadraticCurveTo(bw * 0.5, curRowY + curveSag, bw - 10, curRowY);
+    pCtx.lineTo(bw - 10, curRowY + row.h);
+    pCtx.quadraticCurveTo(bw * 0.5, curRowY + row.h + curveSag, 10, curRowY + row.h);
+    pCtx.closePath();
+    pCtx.fill();
 
-    // Loże VIP pod zadaszeniem
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
-    ctx.fillRect(bx + 12, gy - 465, BAY_W - 24, 14);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx + 12, gy - 465, BAY_W - 24, 14);
+    // Cień stopnia wzdłuż zakrzywionej krawędzi
+    pCtx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    pCtx.lineWidth = 1.8;
+    pCtx.beginPath();
+    pCtx.moveTo(10, curRowY + row.h);
+    pCtx.quadraticCurveTo(bw * 0.5, curRowY + row.h + curveSag, bw - 10, curRowY + row.h);
+    pCtx.stroke();
 
-    // Zakrzywiona misa górnej trybuny (ctx.quadraticCurveTo): środek niżej, boki ku górze
-    let curRowY = gy - 445;
-    for (let r = 0; r < upperTierRows.length; r++) {
-      const row = upperTierRows[r];
-      const curveSag = 6.5; // wygięcie łuku w dół ku środkowi sektora
+    // Krzesełka i kibice
+    const seatSpacing = 6.0;
+    const seatCount = Math.floor((bw - 28) / seatSpacing);
 
-      // Rząd trybuny jako zakrzywiony pasek
-      ctx.fillStyle = row.col;
-      ctx.beginPath();
-      ctx.moveTo(bx + 10, curRowY);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + curveSag, bx + BAY_W - 10, curRowY);
-      ctx.lineTo(bx + BAY_W - 10, curRowY + row.h);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + 10, curRowY + row.h);
-      ctx.closePath();
-      ctx.fill();
+    for (let s = 0; s < seatCount; s++) {
+      const t = s / (seatCount - 1);
+      const sx = 14 + s * seatSpacing;
+      const sy = curRowY + 4 * curveSag * t * (1 - t);
 
-      // Cień stopnia wzdłuż zakrzywionej krawędzi
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(bx + 10, curRowY + row.h);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + BAY_W - 10, curRowY + row.h);
-      ctx.stroke();
+      const seatSeed = (r * 29 + s * 13 + 7);
+      const seatCols = ['#0f172a', '#172554', '#1e293b', '#312e81', '#1e1b4b'];
+      pCtx.fillStyle = seatCols[seatSeed % seatCols.length];
+      pCtx.fillRect(sx, sy + 3, 4, 5);
 
-      // Tysiące ciemniejszych punktów krzesełek wzdłuż łuku rzędu
-      const seatSpacing = 6.0;
-      const seatCount = Math.floor((BAY_W - 28) / seatSpacing);
+      if (seatSeed % 3 !== 0) {
+        const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
+        pCtx.fillStyle = skinCols[seatSeed % skinCols.length];
+        pCtx.fillRect(sx + 0.8, sy + 1, 2.4, 2.4);
 
-      for (let s = 0; s < seatCount; s++) {
-        const t = s / (seatCount - 1);
-        const sx = bx + 14 + s * seatSpacing;
-        // Obliczenie wysokości Y na paraboli krzywej rzędu
-        const sy = curRowY + 4 * curveSag * t * (1 - t);
-
-        const seatSeed = (b * 67 + r * 29 + s * 13);
-        const seatCols = ['#0f172a', '#172554', '#1e293b', '#312e81', '#1e1b4b', '#1e293b'];
-        ctx.fillStyle = seatCols[seatSeed % seatCols.length];
-        ctx.fillRect(sx, sy + 3, 4, 5);
-
-        // Kibic na krzesełku (barwy klubowe)
-        if (seatSeed % 3 !== 0) {
-          const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
-          ctx.fillStyle = skinCols[seatSeed % skinCols.length];
-          ctx.fillRect(sx + 0.8, sy + 1, 2.4, 2.4);
-
-          const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
-          ctx.fillStyle = fanCols[(seatSeed + 1) % fanCols.length];
-          ctx.fillRect(sx, sy + 3.5, 4, 4);
-        }
-
-        // BŁYSKI FLESZY APARATÓW: Math.random() < 0.04
-        if (Math.random() < 0.04) {
-          const flashX = sx + 2;
-          const flashY = sy + 3;
-
-          // Promienista gwiazdka flesza
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(flashX - 6, flashY);
-          ctx.lineTo(flashX + 6, flashY);
-          ctx.moveTo(flashX, flashY - 6);
-          ctx.lineTo(flashX, flashY + 6);
-          ctx.stroke();
-
-          // Jasny biały punkt centralny
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(flashX, flashY, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Poświata radialna flesza
-          const flashGlow = ctx.createRadialGradient(flashX, flashY, 1, flashX, flashY, 8);
-          flashGlow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
-          flashGlow.addColorStop(0.45, 'rgba(224, 242, 254, 0.35)');
-          flashGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = flashGlow;
-          ctx.beginPath();
-          ctx.arc(flashX, flashY, 8, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
+        pCtx.fillStyle = fanCols[(seatSeed + 1) % fanCols.length];
+        pCtx.fillRect(sx, sy + 3.5, 4, 4);
       }
-
-      curRowY += row.h;
     }
 
-    // Środkowa promenada betonowa ze stalową balustradą
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(bx, gy - 200, BAY_W, 18);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(bx, gy - 200, BAY_W, 3);
-
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(bx, gy - 192);
-    ctx.lineTo(bx + BAY_W, gy - 192);
-    for (let px = bx + 20; px < bx + BAY_W; px += 35) {
-      ctx.moveTo(px, gy - 200);
-      ctx.lineTo(px, gy - 192);
-    }
-    ctx.stroke();
+    curRowY += row.h;
   }
 
-  // PODWIESZONE TELEBIMY (JUMBOTRONS) W WARSTWIE 2
+  // Środkowa promenada betonowa ze stalową balustradą
+  pCtx.fillStyle = '#64748b';
+  pCtx.fillRect(0, uY0 + 270, bw, 10);
+  pCtx.fillStyle = '#94a3b8';
+  pCtx.fillRect(0, uY0 + 270, bw, 2.5);
+
+  pCtx.strokeStyle = '#334155';
+  pCtx.lineWidth = 1.8;
+  pCtx.beginPath();
+  pCtx.moveTo(0, uY0 + 264);
+  pCtx.lineTo(bw, uY0 + 264);
+  for (let px = 20; px < bw; px += 35) {
+    pCtx.moveTo(px, uY0 + 270);
+    pCtx.lineTo(px, uY0 + 264);
+  }
+  pCtx.stroke();
+
+  // -----------------------------------------------------------------
+  // 3. MODUŁ DOLNEJ TRYBUNY WIDOWNI (Y: 480 do 660, W: 220)
+  // W przestrzeni świata odpowiada to Y od (gy - 180) do (gy - 2)
+  // -----------------------------------------------------------------
+  const lY0 = 480;
+
+  const lowerTierRows = [
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0b1329' },
+    { h: 17, col: '#172554' },
+    { h: 17, col: '#1e293b' },
+    { h: 17, col: '#0f172a' },
+    { h: 17, col: '#172554' }
+  ];
+
+  let curLowerY = lY0;
+  const lowerCurveSag = 5.0;
+
+  for (let r = 0; r < lowerTierRows.length; r++) {
+    const row = lowerTierRows[r];
+
+    pCtx.fillStyle = row.col;
+    pCtx.beginPath();
+    pCtx.moveTo(8, curLowerY);
+    pCtx.quadraticCurveTo(bw * 0.5, curLowerY + lowerCurveSag, bw - 8, curLowerY);
+    pCtx.lineTo(bw - 8, curLowerY + row.h);
+    pCtx.quadraticCurveTo(bw * 0.5, curLowerY + row.h + lowerCurveSag, 8, curLowerY + row.h);
+    pCtx.closePath();
+    pCtx.fill();
+
+    pCtx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    pCtx.lineWidth = 1.5;
+    pCtx.beginPath();
+    pCtx.moveTo(8, curLowerY + row.h);
+    pCtx.quadraticCurveTo(bw * 0.5, curLowerY + row.h + lowerCurveSag, bw - 8, curLowerY + row.h);
+    pCtx.stroke();
+
+    const seatSpacing = 6.2;
+    const seatCount = Math.floor((bw - 24) / seatSpacing);
+
+    for (let s = 0; s < seatCount; s++) {
+      const t = s / (seatCount - 1);
+      const sx = 12 + s * seatSpacing;
+      const sy = curLowerLowerSag(curLowerY, lowerCurveSag, t);
+      const seed = (r * 19 + s * 11 + 13);
+
+      const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
+      pCtx.fillStyle = skinCols[seed % skinCols.length];
+      pCtx.fillRect(sx + 1, sy + 1, 2.5, 2.5);
+
+      const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
+      pCtx.fillStyle = fanCols[seed % fanCols.length];
+      pCtx.fillRect(sx, sy + 4, 4.5, 4.5);
+    }
+
+    curLowerY += row.h;
+  }
+
+  // Schody ewakuacyjne dolnej trybuny
+  pCtx.fillStyle = '#64748b';
+  pCtx.fillRect(2, lY0, 12, 158);
+  for (let sy = lY0 + 2; sy < lY0 + 158; sy += 12) {
+    pCtx.fillStyle = '#cbd5e1';
+    pCtx.fillRect(3, sy, 10, 2.5);
+    pCtx.fillStyle = '#facc15';
+    pCtx.fillRect(3, sy + 2.5, 10, 1);
+  }
+
+  stadiumPatternReady = true;
+}
+
+function curLowerLowerSag(baseY, sag, t) {
+  return baseY + 4 * sag * t * (1 - t);
+}
+
+// 2. ZAKRZYWIONA „MISA STADIONU” (OWALNA ARENA) I 3 WARSTWY PARALAKSY
+export function drawStadium(ctx, worldLeft, worldRight) {
+  const camDist = (camera.x - START_X) / 14;
+  if (camDist < 250 || camDist > 820) return;
+
+  let alpha = 1.0;
+  if (camDist < 290) {
+    alpha = smoothstep(250, 290, camDist);
+  } else if (camDist > 745) {
+    alpha = 1.0 - smoothstep(745, 820, camDist);
+  }
+  alpha = Math.max(0, Math.min(1, alpha));
+  if (alpha <= 0.01) return;
+
+  // Inicjalizacja offscreen canvas (wykonywana tylko raz w pamięci)
+  initStadiumPatternCanvas();
+  if (!stadiumPatternReady || !stadiumPatternCanvas) return;
+
+  const enterX = START_X + 300 * 14; // 4360 px
+  const exitX = START_X + 750 * 14;  // 10660 px
+  const stadiumCenter = (enterX + exitX) / 2; // 7510 px
+  const tunnelStartX = START_X + 265 * 14; // 3870 px
+
+  const gy = GROUND_Y;
+  const now = performance.now();
+
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+
+  // ----------------------------------------------------
+  // WARSTWA 1: DACH I GIGANTYCZNE KRATOWNICE (PARALLAX 0.15) - PRE-RENDERED
+  // ----------------------------------------------------
+  const p1 = 0.15;
+  const shift1 = (camera.x - stadiumCenter) * (1.0 - p1);
+
+  ctx.save();
+  ctx.translate(shift1, 0);
+
+  const roofStart = tunnelStartX - 200;
+  const roofEnd = exitX + 260;
+  const ROOF_BAY_W = 240;
+  const totalRoofBays = Math.ceil((roofEnd - roofStart) / ROOF_BAY_W);
+
+  const firstRoofBay = Math.max(0, Math.floor((worldLeft - shift1 - roofStart - 100) / ROOF_BAY_W));
+  const lastRoofBay = Math.min(totalRoofBays - 1, Math.ceil((worldRight - shift1 - roofStart + 100) / ROOF_BAY_W));
+
+  for (let b = firstRoofBay; b <= lastRoofBay; b++) {
+    const rx = roofStart + b * ROOF_BAY_W;
+    // Błyskawiczny drawImage z bufora offscreen (zadaszenie, kratownice, catwalk, cięgna)
+    ctx.drawImage(stadiumPatternCanvas, 0, 0, 240, 200, rx, gy - 660, 240, 200);
+
+    // Dynamiczna dioda stroboskopowa pylonu
+    const beaconBlink = (Math.sin(now * 0.005 + b) > 0);
+    ctx.fillStyle = beaconBlink ? '#ef4444' : '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(rx + 14, gy - 668, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ----------------------------------------------------
+  // WARSTWA 2: GÓRNE TRYBUNY + TELEBIMY (PARALLAX 0.35) - PRE-RENDERED
+  // ----------------------------------------------------
+  const p2 = 0.35;
+  const shift2 = (camera.x - stadiumCenter) * (1.0 - p2);
+
+  ctx.save();
+  ctx.translate(shift2, 0);
+
+  const standStart = tunnelStartX - 150;
+  const standEnd = exitX + 220;
+  const BAY_W = 220;
+  const totalBays = Math.ceil((standEnd - standStart) / BAY_W);
+
+  const firstUpperBay = Math.max(0, Math.floor((worldLeft - shift2 - standStart - 100) / BAY_W));
+  const lastUpperBay = Math.min(totalBays - 1, Math.ceil((worldRight - shift2 - standStart + 100) / BAY_W));
+
+  for (let b = firstUpperBay; b <= lastUpperBay; b++) {
+    const bx = standStart + b * BAY_W;
+    // Błyskawiczny drawImage z bufora offscreen (14 rzędów, tysiące krzesełek, loże VIP)
+    ctx.drawImage(stadiumPatternCanvas, 0, 200, 220, 280, bx, gy - 470, 220, 280);
+
+    // Dynamiczne losowe błyski fleszy aparatów w widocznych sektorach (Math.random() < 0.04)
+    if (Math.random() < 0.35) {
+      const flashCount = Math.floor(Math.random() * 2) + 1;
+      for (let f = 0; f < flashCount; f++) {
+        const flashX = bx + 16 + Math.random() * 188;
+        const flashY = gy - 435 + Math.random() * 220;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(flashX - 5, flashY);
+        ctx.lineTo(flashX + 5, flashY);
+        ctx.moveTo(flashX, flashY - 5);
+        ctx.lineTo(flashX, flashY + 5);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(flashX, flashY, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        const flashGlow = ctx.createRadialGradient(flashX, flashY, 1, flashX, flashY, 7);
+        flashGlow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+        flashGlow.addColorStop(0.45, 'rgba(224, 242, 254, 0.35)');
+        flashGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = flashGlow;
+        ctx.beginPath();
+        ctx.arc(flashX, flashY, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // PODWIESZONE TELEBIMY (JUMBOTRONS) W WARSTWIE 2 - Rysowane tylko gdy w kadrze
   const drawScoreboard = (screenX, timeText) => {
     const sw = 240;
     const sh = 84;
     const sx = screenX - sw / 2;
     const sy = gy - 440;
 
-    // Stalowe liny podwieszenia telebimu pod dachem
     ctx.strokeStyle = '#94a3b8';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -4247,18 +4368,15 @@ export function drawStadium(ctx, worldLeft, worldRight) {
     ctx.lineTo(sx + sw - 30, sy);
     ctx.stroke();
 
-    // Obudowa LED
     ctx.fillStyle = '#080d1a';
     ctx.fillRect(sx - 4, sy - 4, sw + 8, sh + 8);
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2.5;
     ctx.strokeRect(sx - 4, sy - 4, sw + 8, sh + 8);
 
-    // Ekran LED
     ctx.fillStyle = '#020617';
     ctx.fillRect(sx, sy, sw, sh);
 
-    // Siatka skanlinii LED
     ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
     for (let my = sy + 3; my < sy + sh; my += 4) {
       ctx.fillRect(sx, my, sw, 1);
@@ -4285,19 +4403,25 @@ export function drawStadium(ctx, worldLeft, worldRight) {
     ctx.textAlign = 'left';
   };
 
-  // Centralny telebim na 525 m oraz telebimy pomocnicze
   const elapsedSec = Math.floor((now * 0.001) % 60);
   const timeStr = `LIVE 84:${elapsedSec < 10 ? '0' : ''}${elapsedSec} • CHAMPIONS ARENA`;
 
-  drawScoreboard(START_X + 525 * 14, timeStr);
-  drawScoreboard(START_X + 390 * 14, 'LIVE 84\' • MATCHDAY 2026');
-  drawScoreboard(START_X + 660 * 14, 'LIVE 84\' • KEEP IT HIGH');
+  const jumbotrons = [
+    { x: START_X + 525 * 14, text: timeStr },
+    { x: START_X + 390 * 14, text: "LIVE 84' • MATCHDAY 2026" },
+    { x: START_X + 660 * 14, text: "LIVE 84' • KEEP IT HIGH" }
+  ];
+  for (let j = 0; j < jumbotrons.length; j++) {
+    const jx = jumbotrons[j].x;
+    if (jx >= worldLeft - shift2 - 160 && jx <= worldRight - shift2 + 160) {
+      drawScoreboard(jx, jumbotrons[j].text);
+    }
+  }
 
   ctx.restore();
 
   // ----------------------------------------------------
-  // WARSTWA 3: DOLNE TRYBUNY I BANDY LED (PARALLAX 0.70)
-  // Prędkość kamery x 0.70. Zakrzywione sektory dolne i świecące bandy reklamowe tuż za linią
+  // WARSTWA 3: DOLNE TRYBUNY I BANDY LED (PARALLAX 0.70) - PRE-RENDERED
   // ----------------------------------------------------
   const p3 = 0.70;
   const shift3 = (camera.x - stadiumCenter) * (1.0 - p3);
@@ -4305,78 +4429,6 @@ export function drawStadium(ctx, worldLeft, worldRight) {
   ctx.save();
   ctx.translate(shift3, 0);
 
-  const lowerTierRows = [
-    { h: 17, col: '#0f172a' },
-    { h: 17, col: '#172554' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0b1329' },
-    { h: 17, col: '#172554' },
-    { h: 17, col: '#1e293b' },
-    { h: 17, col: '#0f172a' },
-    { h: 17, col: '#172554' }
-  ];
-
-  for (let b = 0; b < totalBays; b++) {
-    const bx = standStart + b * BAY_W;
-    if (bx + BAY_W < worldLeft - shift3 - 100 || bx > worldRight - shift3 + 100) continue;
-
-    // A. Dolna trybuna z krzywymi quadraticCurveTo
-    let curRowY = gy - 180;
-    for (let r = 0; r < lowerTierRows.length; r++) {
-      const row = lowerTierRows[r];
-      const curveSag = 5.0; // wygięcie łuku ku środkowi sektora
-
-      ctx.fillStyle = row.col;
-      ctx.beginPath();
-      ctx.moveTo(bx + 8, curRowY);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + curveSag, bx + BAY_W - 8, curRowY);
-      ctx.lineTo(bx + BAY_W - 8, curRowY + row.h);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + 8, curRowY + row.h);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(bx + 8, curRowY + row.h);
-      ctx.quadraticCurveTo(bx + BAY_W * 0.5, curRowY + row.h + curveSag, bx + BAY_W - 8, curRowY + row.h);
-      ctx.stroke();
-
-      // Kibice na dolnej trybunie
-      const seatSpacing = 6.2;
-      const seatCount = Math.floor((BAY_W - 24) / seatSpacing);
-
-      for (let s = 0; s < seatCount; s++) {
-        const t = s / (seatCount - 1);
-        const sx = bx + 12 + s * seatSpacing;
-        const sy = curRowY + 4 * curveSag * t * (1 - t);
-        const seed = (b * 53 + r * 19 + s * 11);
-
-        const skinCols = ['#fde68a', '#fcd34d', '#fed7aa'];
-        ctx.fillStyle = skinCols[seed % skinCols.length];
-        ctx.fillRect(sx + 1, sy + 1, 2.5, 2.5);
-
-        const fanCols = ['#ef4444', '#3b82f6', '#ffffff', '#facc15', '#1e293b'];
-        ctx.fillStyle = fanCols[seed % fanCols.length];
-        ctx.fillRect(sx, sy + 4, 4.5, 4.5);
-      }
-
-      curRowY += row.h;
-    }
-
-    // Schody ewakuacyjne
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(bx + 2, gy - 180, 12, 158);
-    for (let sy = gy - 178; sy < gy - 24; sy += 12) {
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(bx + 3, sy, 10, 2.5);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(bx + 3, sy + 2.5, 10, 1);
-    }
-  }
-
-  // B. NOWOCZESNE, ŚWIECĄCE BANDY REKLAMOWE LED TUŻ ZA LINIĄ BOISKA
-  // Emitujące neonową poświatę na krawędź murawy
   const ledSponsors = [
     { title: '★ KEEP IT HIGH ★', col1: '#00e5ff', col2: '#ffffff', glowRgb: '0, 229, 255' },
     { title: 'MATCHDAY 2026', col1: '#facc15', col2: '#ffffff', glowRgb: '250, 204, 21' },
@@ -4385,54 +4437,56 @@ export function drawStadium(ctx, worldLeft, worldRight) {
     { title: 'CYBER ARENA', col1: '#f43f5e', col2: '#ffffff', glowRgb: '244, 63, 94' }
   ];
 
-  const boardH = 20; // wysokość bandy LED
+  const boardH = 20;
   const boardY = gy - boardH - 2;
 
-  for (let b = 0; b < totalBays; b++) {
+  const firstLowerBay = Math.max(0, Math.floor((worldLeft - shift3 - standStart - 100) / BAY_W));
+  const lastLowerBay = Math.min(totalBays - 1, Math.ceil((worldRight - shift3 - standStart + 100) / BAY_W));
+
+  for (let b = firstLowerBay; b <= lastLowerBay; b++) {
     const bx = standStart + b * BAY_W;
-    if (bx >= exitX) continue;
-    const currentBayW = Math.min(BAY_W, exitX - bx);
-    if (currentBayW <= 0) continue;
-    if (bx + currentBayW < worldLeft - shift3 - 100 || bx > worldRight - shift3 + 100) continue;
+    // Błyskawiczny drawImage z bufora offscreen (8 rzędów, kibice, schody)
+    ctx.drawImage(stadiumPatternCanvas, 0, 480, 220, 180, bx, gy - 180, 220, 180);
 
-    const sponsor = ledSponsors[b % ledSponsors.length];
+    // Bandy reklamowe LED tuż za linią boiska
+    if (bx < exitX) {
+      const currentBayW = Math.min(BAY_W, exitX - bx);
+      if (currentBayW > 0) {
+        const sponsor = ledSponsors[b % ledSponsors.length];
 
-    // Cokół montażowy bandy
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(bx, boardY + boardH, currentBayW, 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(bx, boardY + boardH, currentBayW, 2);
 
-    // Korpus bandy LED
-    ctx.fillStyle = '#030712';
-    ctx.fillRect(bx, boardY, currentBayW, boardH);
+        ctx.fillStyle = '#030712';
+        ctx.fillRect(bx, boardY, currentBayW, boardH);
 
-    // Górna i dolna krawędź LED
-    ctx.fillStyle = sponsor.col1;
-    ctx.fillRect(bx, boardY, currentBayW, 1.8);
-    ctx.fillStyle = sponsor.col2;
-    ctx.fillRect(bx, boardY + boardH - 1.5, currentBayW, 1.5);
+        ctx.fillStyle = sponsor.col1;
+        ctx.fillRect(bx, boardY, currentBayW, 1.8);
+        ctx.fillStyle = sponsor.col2;
+        ctx.fillRect(bx, boardY + boardH - 1.5, currentBayW, 1.5);
 
-    // Animowana treść sponsora z płynącym połyskiem
-    if (currentBayW >= 80) {
-      const sheen = ((now * 0.08 + b * 45) % currentBayW);
-      const gradLED = ctx.createLinearGradient(bx, boardY, bx + currentBayW, boardY);
-      gradLED.addColorStop(0, sponsor.col1);
-      gradLED.addColorStop(Math.max(0, Math.min(1, sheen / currentBayW)), sponsor.col2);
-      gradLED.addColorStop(1, sponsor.col1);
+        if (currentBayW >= 80) {
+          const sheen = ((now * 0.08 + b * 45) % currentBayW);
+          const gradLED = ctx.createLinearGradient(bx, boardY, bx + currentBayW, boardY);
+          gradLED.addColorStop(0, sponsor.col1);
+          gradLED.addColorStop(Math.max(0, Math.min(1, sheen / currentBayW)), sponsor.col2);
+          gradLED.addColorStop(1, sponsor.col1);
 
-      ctx.fillStyle = gradLED;
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(sponsor.title, bx + currentBayW / 2, boardY + 14);
-      ctx.textAlign = 'left';
+          ctx.fillStyle = gradLED;
+          ctx.font = 'bold 11px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(sponsor.title, bx + currentBayW / 2, boardY + 14);
+          ctx.textAlign = 'left';
+        }
+
+        const grassGlow = ctx.createLinearGradient(0, gy - 2, 0, gy + 16);
+        grassGlow.addColorStop(0, `rgba(${sponsor.glowRgb}, 0.45)`);
+        grassGlow.addColorStop(0.5, `rgba(${sponsor.glowRgb}, 0.18)`);
+        grassGlow.addColorStop(1, `rgba(${sponsor.glowRgb}, 0.0)`);
+        ctx.fillStyle = grassGlow;
+        ctx.fillRect(bx, gy - 2, currentBayW, 18);
+      }
     }
-
-    // NEONOWA POŚWIATA RZUCANA PRZEZ BANDY NA KRAWĘDŹ TRAWY
-    const grassGlow = ctx.createLinearGradient(0, gy - 2, 0, gy + 16);
-    grassGlow.addColorStop(0, `rgba(${sponsor.glowRgb}, 0.45)`);
-    grassGlow.addColorStop(0.5, `rgba(${sponsor.glowRgb}, 0.18)`);
-    grassGlow.addColorStop(1, `rgba(${sponsor.glowRgb}, 0.0)`);
-    ctx.fillStyle = grassGlow;
-    ctx.fillRect(bx, gy - 2, currentBayW, 18);
   }
 
   ctx.restore();
