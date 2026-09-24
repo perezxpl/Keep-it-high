@@ -1,10 +1,10 @@
-import { FRAME_DURATION } from './config.js';
+import { FRAME_DURATION, START_X } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera,
   initCanvas, resize, updateCamera, updateDistance,
   spawnGrass, updateParticles, dist,
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
-  drawStadiumForeground
+  drawStadiumForeground, clearDesertSandstorm, clearWinterBlizzard
 } from './world.js';
 import {
   player, playerJump, playerSlide, startKickCharge, executeReleaseKick,
@@ -14,7 +14,8 @@ import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
 } from './ball.js';
 import {
-  checkObstacleCollisions, drawObstacles
+  checkObstacleCollisions, drawObstacles, resetObstacles,
+  updateProceduralObstacles, updateProceduralBirds
 } from './obstacles.js';
 
 // Kontrolery dotykowe
@@ -123,6 +124,118 @@ function endTouch(e) {
 canvas.addEventListener('touchend', endTouch, { passive: false });
 canvas.addEventListener('touchcancel', endTouch, { passive: false });
 
+// ==========================================
+// SYSTEM SZYBKIEJ TELEPORTACJI DEWELOPERSKIEJ (ADMIN / DEBUG)
+// ==========================================
+export const BIOME_TELEPORT_TARGETS = {
+  STADIUM: 0,
+  DESERT: 800,
+  WINTER: 1600,
+  JUNGLE: 2400,
+  HELL: 3200
+};
+
+export function teleportToDistance(meters) {
+  const targetX = START_X + (meters * 14);
+
+  // Gracz:
+  player.x = targetX;
+  player.y = GROUND_Y - player.h;
+  player.vx = 0;
+  player.vy = 0;
+  player.isJumping = false;
+  player.isSliding = false;
+  player.isIntro = false;
+  player.isCharging = false;
+  player.isJumpCharging = false;
+  player.kickState = 'IDLE';
+  player.gaitMode = 'IDLE';
+
+  // Piłka:
+  ball.x = targetX + (30 * (player.facing || 1));
+  ball.y = GROUND_Y - ball.radius;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.spin = 0;
+  ball.trail = [];
+
+  // Natychmiastowe ustawienie kamery (Snap Camera - wyzerowanie interpolacji w tej klatce)
+  camera.x = player.x;
+  camera.targetX = player.x;
+  camera.y = GROUND_Y;
+  camera.targetY = GROUND_Y;
+
+  // Bezpieczne czyszczenie cząsteczek pogodowych poprzednich biomów
+  clearDesertSandstorm();
+  clearWinterBlizzard();
+
+  // Reset i wygenerowanie przeszkód pod docelowy biom
+  resetObstacles();
+  updateProceduralObstacles(targetX);
+  updateProceduralBirds(targetX, GROUND_Y);
+
+  // Aktualizacja dystansu
+  updateDistance(targetX);
+}
+
+// Udostępnienie w obiekcie globalnym window do testów z konsoli
+window.teleportToDistance = teleportToDistance;
+
+// Obsługa panelu deweloperskiego na ekranie (Mobile / Debug UI)
+const devPanelContainer = document.getElementById('dev-panel-container');
+const devToggleBtn = document.getElementById('dev-toggle-btn');
+const devMenu = document.getElementById('dev-menu');
+
+export function toggleDevPanel() {
+  if (!devMenu) return;
+  const isHidden = devMenu.classList.toggle('dev-menu-hidden');
+  if (devToggleBtn) {
+    if (isHidden) {
+      devToggleBtn.classList.remove('active');
+    } else {
+      devToggleBtn.classList.add('active');
+    }
+  }
+}
+window.toggleDevPanel = toggleDevPanel;
+
+if (devToggleBtn) {
+  devToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDevPanel();
+  });
+  devToggleBtn.addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+  }, { passive: false });
+}
+
+if (devPanelContainer) {
+  // Izolacja zdarzeń myszy i dotyku – zapobieganie przenikaniu do canvasu gry
+  ['mousedown', 'touchstart', 'touchend', 'touchmove'].forEach((evtType) => {
+    devPanelContainer.addEventListener(evtType, (e) => {
+      e.stopPropagation();
+    }, { passive: false });
+  });
+}
+
+document.querySelectorAll('.dev-btn').forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const meters = parseInt(btn.getAttribute('data-meters'), 10);
+    if (!isNaN(meters)) {
+      teleportToDistance(meters);
+    }
+  });
+  btn.addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const meters = parseInt(btn.getAttribute('data-meters'), 10);
+    if (!isNaN(meters)) {
+      teleportToDistance(meters);
+    }
+  });
+});
+
 // Klawiatura PC
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -138,6 +251,21 @@ window.addEventListener('keydown', (e) => {
     keys.slide = true; playerSlide(spawnGrass, GROUND_Y);
   }
   if (e.code === 'KeyR') resetBallToPlayer(player, GROUND_Y);
+
+  // Szybka teleportacja do biomów (1: Stadion, 2: Pustynia, 3: Zima, 4: Dżungla, 5: Piekło)
+  if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+    teleportToDistance(BIOME_TELEPORT_TARGETS.STADIUM);
+  } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
+    teleportToDistance(BIOME_TELEPORT_TARGETS.DESERT);
+  } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+    teleportToDistance(BIOME_TELEPORT_TARGETS.WINTER);
+  } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
+    teleportToDistance(BIOME_TELEPORT_TARGETS.JUNGLE);
+  } else if (e.code === 'Digit5' || e.code === 'Numpad5' || e.key === '5') {
+    teleportToDistance(BIOME_TELEPORT_TARGETS.HELL);
+  } else if (e.code === 'Backquote' || e.key === '`' || e.key === '~') {
+    toggleDevPanel();
+  }
 });
 
 window.addEventListener('keyup', (e) => {
