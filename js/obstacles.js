@@ -91,6 +91,18 @@ function createObstacle(type, x) {
       color: '#8d6e63', lightColor: '#bcaaa4', darkColor: '#5d4037',
       restitution: 0.76, friction: 0.38
     };
+  } else if (type === 'tomb_urn') {
+    return {
+      type: 'tomb_urn', x, w: 24, h: 40,
+      potteryColor: '#e0cda9', goldColor: '#ffd700', lapisColor: '#0284c7', darkColor: '#a8895e',
+      restitution: 0.72, friction: 0.40
+    };
+  } else if (type === 'pharaoh_block') {
+    return {
+      type: 'pharaoh_block', x, w: 42, h: 28,
+      stoneColor: '#a67c52', darkStone: '#6d4c2b', hieroColor: '#ffd54f', lightEdge: '#d4a373',
+      restitution: 0.60, friction: 0.52
+    };
   }
 
   // BIOM 2: ZIMA (1600 – 2399 m)
@@ -169,7 +181,10 @@ function createObstacle(type, x) {
  */
 function pickRandomType(x) {
   const biomeId = getBiomeForX(x);
-  const types = BIOME_OBSTACLE_TYPES[biomeId] || BIOME_OBSTACLE_TYPES[0];
+  let types = BIOME_OBSTACLE_TYPES[biomeId] || BIOME_OBSTACLE_TYPES[0];
+  if (isInsidePyramidZone(x, 40)) {
+    types = ['tomb_urn', 'pharaoh_block', 'desert_rock'];
+  }
   let candidate = types[Math.floor(Math.random() * types.length)];
 
   // Zapobieganie pojawieniu się identycznej przeszkody dwa razy z rzędu
@@ -222,6 +237,19 @@ export function isInsideStadiumZone(x, w = 0) {
   const distStart = (x - START_X) / 14;
   const distEnd = (x + w - START_X) / 14;
   if ((x + w >= 4150 && x <= 10680) || (distEnd >= 295 && distStart <= 755)) {
+    return true;
+  }
+  return false;
+}
+
+// Strefa wewnętrzna Wielkiej Piramidy: 1050 m – 1350 m (14860 px – 19060 px)
+export const PYRAMID_ZONE_MIN_X = 14860;
+export const PYRAMID_ZONE_MAX_X = 19060;
+
+export function isInsidePyramidZone(x, w = 0) {
+  const distStart = (x - START_X) / 14;
+  const distEnd = (x + w - START_X) / 14;
+  if ((x + w >= 14820 && x <= 19100) || (distEnd >= 1048 && distStart <= 1352)) {
     return true;
   }
   return false;
@@ -341,8 +369,8 @@ export function updateProceduralBirds(focusX, groundY) {
     const birdGap = 4900 + (Math.random() * 560 - 280);
     lastBirdSpawnX += birdGap;
 
-    // Całkowite wykluczenie ptaków wewnątrz stadionu (300 m – 750 m)
-    if (isInsideStadiumZone(lastBirdSpawnX, 40)) {
+    // Całkowite wykluczenie ptaków wewnątrz stadionu (300 m – 750 m) oraz piramidy (1050 m – 1350 m)
+    if (isInsideStadiumZone(lastBirdSpawnX, 40) || isInsidePyramidZone(lastBirdSpawnX, 40)) {
       continue;
     }
 
@@ -350,9 +378,9 @@ export function updateProceduralBirds(focusX, groundY) {
     birds.push(bird);
   }
 
-  // 3. Usuwanie ptaków, które mogły znaleźć się wewnątrz stadionu
+  // 3. Usuwanie ptaków, które mogły znaleźć się wewnątrz stadionu lub piramidy
   for (let i = birds.length - 1; i >= 0; i--) {
-    if (isInsideStadiumZone(birds[i].x, birds[i].w)) {
+    if (isInsideStadiumZone(birds[i].x, birds[i].w) || isInsidePyramidZone(birds[i].x, birds[i].w)) {
       birds.splice(i, 1);
     }
   }
@@ -468,7 +496,7 @@ export function checkObstacleCollisions(ball, GROUND_Y) {
   // 2. Kolizje z przeszkodami powietrznymi (ptaki biomów)
   for (let i = 0; i < birds.length; i++) {
     const bird = birds[i];
-    if (isInsideStadiumZone(bird.x, bird.w)) continue;
+    if (isInsideStadiumZone(bird.x, bird.w) || isInsidePyramidZone(bird.x, bird.w)) continue;
     if (Math.abs(ball.x - (bird.x + bird.w / 2)) < bird.w + 50) {
       const hit = resolveBoxCollision(
         ball,
@@ -722,6 +750,55 @@ export function drawObstacles(ctx, GROUND_Y) {
       ctx.moveTo(cx - 4, cy - r); ctx.lineTo(cx + 4, cy + r);
       ctx.moveTo(cx - r * 0.7, cy - r * 0.7); ctx.lineTo(cx + r * 0.7, cy + r * 0.7);
       ctx.stroke();
+
+    } else if (obs.type === 'tomb_urn') {
+      // Starożytna alabastrowa urna kanopska ze złotym wiekiem i zdobieniem
+      const ux = obs.x + 2;
+      const uw = obs.w - 4;
+      // Cokół urny
+      ctx.fillStyle = obs.darkColor;
+      ctx.fillRect(ux + 2, GROUND_Y - 4, uw - 4, 4);
+      // Brzuch urny (alabastrowy korpus)
+      ctx.fillStyle = obs.potteryColor;
+      ctx.beginPath();
+      ctx.moveTo(ux + 3, GROUND_Y - 4);
+      ctx.bezierCurveTo(ux - 3, oy + 16, ux + uw + 3, oy + 16, ux + uw - 3, GROUND_Y - 4);
+      ctx.closePath();
+      ctx.fill();
+      // Ozdobne pasy lazurytu i złota
+      ctx.fillStyle = obs.lapisColor;
+      ctx.fillRect(ux + 2, oy + 20, uw - 4, 3);
+      ctx.fillStyle = obs.goldColor;
+      ctx.fillRect(ux + 3, oy + 23, uw - 6, 2);
+      ctx.fillRect(ux + 4, oy + 15, uw - 8, 2);
+      // Szyjka urny
+      ctx.fillStyle = obs.potteryColor;
+      ctx.fillRect(ux + 5, oy + 9, uw - 10, 7);
+      // Złote wieko ze stylizowaną głową bóstwa
+      ctx.fillStyle = obs.goldColor;
+      ctx.beginPath();
+      ctx.arc(ux + uw / 2, oy + 8, (uw - 6) / 2, Math.PI, 0);
+      ctx.fill();
+      // Szczyt wieka (złoty pąk / nemes)
+      ctx.fillRect(ux + uw / 2 - 2, oy + 2, 4, 4);
+
+    } else if (obs.type === 'pharaoh_block') {
+      // Rzeźbiony starożytny blok piaskowca z wyrytymi hieroglifami
+      ctx.fillStyle = obs.darkStone;
+      ctx.fillRect(obs.x + 2, oy + 2, obs.w - 2, obs.h - 2);
+      ctx.fillStyle = obs.stoneColor;
+      ctx.fillRect(obs.x, oy, obs.w - 3, obs.h - 2);
+      // Fazowane krawędzie bloku
+      ctx.fillStyle = obs.lightEdge;
+      ctx.fillRect(obs.x, oy, obs.w - 3, 3);
+      ctx.fillRect(obs.x, oy, 3, obs.h - 2);
+      // Złote wyryte inskrypcje hieroglificzne na ściance
+      ctx.fillStyle = obs.hieroColor;
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('𓀀 𓃠', obs.x + (obs.w - 3) / 2, oy + 14);
+      ctx.fillText('𓋹 𓊹', obs.x + (obs.w - 3) / 2, oy + 23);
+      ctx.textAlign = 'left';
 
     // ----------------------------------------------------
     // BIOM 2: ZIMA (snowman, ice_spike, snow_drift)
@@ -1034,7 +1111,7 @@ export function drawObstacles(ctx, GROUND_Y) {
 export function drawBirds(ctx, GROUND_Y, viewLeft, viewRight) {
   for (let i = 0; i < birds.length; i++) {
     const bird = birds[i];
-    if (isInsideStadiumZone(bird.x, bird.w)) continue;
+    if (isInsideStadiumZone(bird.x, bird.w) || isInsidePyramidZone(bird.x, bird.w)) continue;
     if (bird.x + bird.w < viewLeft || bird.x > viewRight) continue;
 
     drawBird(ctx, bird, GROUND_Y);

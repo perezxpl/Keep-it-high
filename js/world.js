@@ -302,20 +302,51 @@ function triggerConfettiCannon() {
 
 // ==========================================
 // ==========================================
-// ORGANICZNE KŁĘBY PYŁU I MGŁA PUSTYNNA (800 – 1599 m)
+// PUSTYNIA: GWAŁTOWNA ZAMIEĆ PIASKOWA ORAZ WIELKA PIRAMIDA (800 – 1599 m)
 // ==========================================
-export const desertClouds = [];
-export const desertWisps = desertClouds; // alias dla zachowania kompatybilności wstecznej
-export const desertSpecks = [];
+export const PYRAMID_ENTER_DIST = 1050; // Portal wejściowy do piramidy na 1050 m
+export const PYRAMID_EXIT_DIST = 1350;  // Portal wyjściowy z piramidy na 1350 m (dokładnie 300 m wewnątrz)
+export const PYRAMID_LENGTH_M = 300;
+export const PYRAMID_ENTER_X = START_X + PYRAMID_ENTER_DIST * 14; // 14860 px
+export const PYRAMID_EXIT_X = START_X + PYRAMID_EXIT_DIST * 14;   // 19060 px
+export const PYRAMID_CENTER_X = (PYRAMID_ENTER_X + PYRAMID_EXIT_X) / 2; // 16960 px
+export const PYRAMID_BASE_WIDTH = 5600; // Podstawa monumentalnej piramidy (400 metrów)
+export const PYRAMID_HEIGHT = 780;      // Wysokość szczytu sięgająca nieba (780 px)
 
-const DESERT_CLOUDS_COUNT = 32;
+/**
+ * Płynny współczynnik przebywania wewnątrz piramidy (0.0 na zewnątrz do 1.0 wewnątrz)
+ */
+export function getPyramidInsideFactor(dist) {
+  const d = (dist !== undefined) ? dist : currentDist;
+  if (d < 1045 || d > 1355) return 0;
+  if (d < 1065) return (d - 1045) / 20;
+  if (d > 1335) return 1.0 - (d - 1335) / 20;
+  return 1.0;
+}
+
+// ----------------------------------------------------
+// 1. ZAMIEĆ PIASKOWA (DESERT SANDSTORM)
+// ----------------------------------------------------
+export const sandstormClouds = [];
+export const desertClouds = sandstormClouds; // alias dla kompatybilności wstecznej
+export const desertWisps = sandstormClouds;  // alias dla kompatybilności wstecznej
+export const sandstormGrains = [];
+export const desertSpecks = sandstormGrains; // alias dla kompatybilności wstecznej
+export const sandstormForegroundGrains = [];
+export const tombDustMotes = [];
+
+const SANDSTORM_CLOUDS_COUNT = 32;
+const SANDSTORM_GRAINS_COUNT = 180;
+const SANDSTORM_FG_COUNT = 20;
+const TOMB_DUST_COUNT = 45;
+
+const SAND_COLORS = ['#e0a96d', '#d4a373', '#c28b51', '#f4d06f'];
 
 function getDesertViewBounds() {
   const zoom = (camera && camera.zoom) ? camera.zoom : 0.85;
   const camX = (camera && camera.x !== undefined) ? camera.x : 0;
   const camY = (camera && camera.y !== undefined) ? camera.y : GROUND_Y;
 
-  // Pełny zakres widoku kamery w przestrzeni świata (od samego nieba po sam dół ekranu i murawę)
   const left = camX - (W * 0.40) / zoom - 250;
   const right = camX + (W * 0.60) / zoom + 250;
   const top = camY - (H * 0.68) / zoom - 150;
@@ -324,7 +355,14 @@ function getDesertViewBounds() {
   return { left, right, top, bottom };
 }
 
-function resetCloud(c, worldRight, bounds, initialX) {
+export function getSandstormWindForce(now) {
+  // Porywisty wiatr pustynny: oscylacja bazowa + dynamiczne porywy i zawirowania
+  const baseGust = Math.sin(now * 0.0012) * 0.25 + Math.cos(now * 0.00045 + 0.9) * 0.35;
+  const squall = Math.pow(Math.max(0, Math.sin(now * 0.0007 + 1.2)), 3) * 0.8;
+  return Math.max(0.75, Math.min(2.5, 1.15 + baseGust + squall));
+}
+
+function resetSandstormCloud(c, worldRight, bounds, initialX) {
   const b = bounds || getDesertViewBounds();
   const spanY = Math.max(200, b.bottom - b.top);
 
@@ -334,126 +372,1478 @@ function resetCloud(c, worldRight, bounds, initialX) {
     c.x = worldRight + 20 + Math.random() * 200;
   }
 
-  // Cząstki/kłęby kurzu losowane na całej rozpiętości pionowej kadru (od samej góry po sam dół)
   c.y = b.top + Math.random() * spanY;
   c.r = Math.random() * 90 + 90; // promień 90 – 180 px
-  c.scaleX = Math.random() * 0.6 + 2.2; // 2.2 – 2.8 (aerodynamiczne spłaszczenie)
-  c.scaleY = Math.random() * 0.15 + 0.60; // 0.60 – 0.75
-  c.vx = -(Math.random() * 4.5 + 3.5); // zróżnicowana prędkość: -3.5 do -8.0 px/klatkę
-  c.vy = (Math.random() - 0.5) * 0.4;
-  c.alpha = Math.random() * 0.08 + 0.12; // krycie 0.12 – 0.20
+  c.scaleX = Math.random() * 0.8 + 2.4; // 2.4 – 3.2 (aerodynamiczne rozciągnięcie huraganowym wiatrem)
+  c.scaleY = Math.random() * 0.15 + 0.55; // 0.55 – 0.70
+  c.baseVx = -(Math.random() * 5.0 + 4.5);
+  c.vy = (Math.random() - 0.5) * 0.35 + 0.10;
+  c.alpha = Math.random() * 0.08 + 0.11; // krycie 0.11 – 0.19
   c.phase = Math.random() * Math.PI * 2;
+  c.tilt = -(Math.random() * 0.04 + 0.02);
 }
 
-export function initDesertWindPool(worldLeft, worldRight) {
+function resetSandstormGrain(p, bounds, initialX) {
+  const b = bounds || getDesertViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+  const wWidth = Math.max(800, b.right - b.left);
+
+  if (initialX !== undefined) {
+    p.x = initialX;
+    p.y = b.top + Math.random() * spanY;
+  } else {
+    if (Math.random() < 0.75) {
+      p.x = b.right + Math.random() * 120;
+      p.y = b.top + Math.random() * spanY;
+    } else {
+      p.x = b.left + Math.random() * wWidth;
+      p.y = b.top - Math.random() * 60;
+    }
+  }
+
+  const rnd = Math.random();
+  if (rnd < 0.35) {
+    // 0: Drobny pył zawieszony w powietrzu
+    p.type = 0;
+    p.size = Math.random() * 0.6 + 1.0; // 1.0 - 1.6 px
+    p.baseVx = -(Math.random() * 5.0 + 8.0);
+    p.baseVy = Math.random() * 1.2 + 0.5;
+    p.alpha = Math.random() * 0.25 + 0.30;
+  } else if (rnd < 0.65) {
+    // 1: Wyraziste ziarna piasku pędzące z wiatrem
+    p.type = 1;
+    p.size = Math.random() * 1.2 + 1.8; // 1.8 - 3.0 px
+    p.baseVx = -(Math.random() * 7.0 + 11.0);
+    p.baseVy = Math.random() * 1.8 + 0.9;
+    p.alpha = Math.random() * 0.35 + 0.45;
+  } else if (rnd < 0.85) {
+    // 2: Pędząca smuga piasku (speed streak)
+    p.type = 2;
+    p.size = 1.4;
+    p.streakLen = Math.random() * 14 + 14;
+    p.baseVx = -(Math.random() * 9.0 + 15.0);
+    p.baseVy = Math.random() * 1.5 + 0.8;
+    p.alpha = Math.random() * 0.30 + 0.50;
+  } else {
+    // 3: Przygruntowy wir piaskowy nad wydmami
+    p.type = 3;
+    p.y = GROUND_Y - Math.random() * 26;
+    p.size = Math.random() * 1.2 + 1.6;
+    p.baseVx = -(Math.random() * 8.0 + 12.0);
+    p.baseVy = (Math.random() - 0.5) * 0.4;
+    p.alpha = Math.random() * 0.30 + 0.50;
+  }
+
+  p.color = SAND_COLORS[Math.floor(Math.random() * SAND_COLORS.length)];
+  p.phase = Math.random() * Math.PI * 2;
+}
+
+function resetSandstormForegroundGrain(p, bounds, initialX) {
+  const b = bounds || getDesertViewBounds();
+  const spanY = Math.max(200, b.bottom - b.top);
+
+  if (initialX !== undefined) {
+    p.x = initialX;
+  } else {
+    p.x = b.right + 20 + Math.random() * 150;
+  }
+
+  p.y = b.top + Math.random() * spanY;
+  p.size = Math.random() * 2.5 + 3.0; // 3.0 - 5.5 px (rozmyte optycznie przed obiektywem)
+  p.baseVx = -(Math.random() * 9.0 + 16.0);
+  p.baseVy = Math.random() * 2.5 + 1.8;
+  p.alpha = Math.random() * 0.30 + 0.30;
+  p.color = SAND_COLORS[Math.floor(Math.random() * SAND_COLORS.length)];
+  p.phase = Math.random() * Math.PI * 2;
+}
+
+function resetTombDustMote(p, bounds, initialX) {
+  const b = bounds || getDesertViewBounds();
+  const spanY = Math.max(160, b.bottom - b.top);
+  const wWidth = Math.max(600, b.right - b.left);
+
+  p.x = (initialX !== undefined) ? initialX : b.left + Math.random() * wWidth;
+  p.y = b.top + Math.random() * spanY;
+  p.size = Math.random() * 1.2 + 1.2;
+  p.vx = (Math.random() - 0.5) * 0.35 + 0.15;
+  p.vy = (Math.random() - 0.5) * 0.30 - 0.12;
+  p.alpha = Math.random() * 0.20 + 0.18;
+  p.color = Math.random() < 0.6 ? '#f4d06f' : '#ecd29b';
+  p.phase = Math.random() * Math.PI * 2;
+}
+
+export function initDesertSandstormPool(worldLeft, worldRight) {
   const bounds = getDesertViewBounds();
   const left = (worldLeft !== undefined) ? worldLeft : bounds.left;
   const right = (worldRight !== undefined) ? worldRight : bounds.right;
   const wWidth = Math.max(800, right - left);
   const spanY = Math.max(200, bounds.bottom - bounds.top);
 
-  desertClouds.length = 0;
-  for (let i = 0; i < DESERT_CLOUDS_COUNT; i++) {
+  sandstormClouds.length = 0;
+  for (let i = 0; i < SANDSTORM_CLOUDS_COUNT; i++) {
     const c = {};
     const initX = left + Math.random() * wWidth;
-    resetCloud(c, right, bounds, initX);
-    // Równomierne rozmieszczenie w pionie od góry do dołu ekranu (zero pustych stref)
-    const slot = (i + Math.random() * 0.8) / DESERT_CLOUDS_COUNT;
+    resetSandstormCloud(c, right, bounds, initX);
+    const slot = (i + Math.random() * 0.8) / SANDSTORM_CLOUDS_COUNT;
     c.y = bounds.top + slot * spanY;
-    desertClouds.push(c);
+    sandstormClouds.push(c);
+  }
+
+  sandstormGrains.length = 0;
+  for (let i = 0; i < SANDSTORM_GRAINS_COUNT; i++) {
+    const p = {};
+    const initX = left + Math.random() * wWidth;
+    resetSandstormGrain(p, bounds, initX);
+    sandstormGrains.push(p);
+  }
+
+  sandstormForegroundGrains.length = 0;
+  for (let i = 0; i < SANDSTORM_FG_COUNT; i++) {
+    const p = {};
+    const initX = left + Math.random() * wWidth;
+    resetSandstormForegroundGrain(p, bounds, initX);
+    sandstormForegroundGrains.push(p);
+  }
+
+  tombDustMotes.length = 0;
+  for (let i = 0; i < TOMB_DUST_COUNT; i++) {
+    const p = {};
+    const initX = left + Math.random() * wWidth;
+    resetTombDustMote(p, bounds, initX);
+    tombDustMotes.push(p);
   }
 }
+export const initDesertWindPool = initDesertSandstormPool;
 
-export function updateDesertWind() {
+export function clearDesertSandstorm() {
+  if (sandstormClouds.length > 0) sandstormClouds.length = 0;
+  if (sandstormGrains.length > 0) sandstormGrains.length = 0;
+  if (sandstormForegroundGrains.length > 0) sandstormForegroundGrains.length = 0;
+  if (tombDustMotes.length > 0) tombDustMotes.length = 0;
+}
+export const clearDesertWind = clearDesertSandstorm;
+
+export function updateDesertSandstorm() {
   if (currentDist < 800 || currentDist > 1599) {
-    if (desertClouds.length > 0) desertClouds.length = 0;
+    clearDesertSandstorm();
     return;
   }
 
   const bounds = getDesertViewBounds();
 
-  if (desertClouds.length === 0) {
-    initDesertWindPool(bounds.left, bounds.right);
+  if (sandstormClouds.length === 0) {
+    initDesertSandstormPool(bounds.left, bounds.right);
   }
 
+  const now = performance.now();
+  const windForce = getSandstormWindForce(now);
   const spanY = Math.max(200, bounds.bottom - bounds.top);
+  const insideFactor = getPyramidInsideFactor(currentDist);
 
-  for (let i = 0; i < desertClouds.length; i++) {
-    const c = desertClouds[i];
-    c.x += c.vx;
-    c.y += c.vy;
+  // 1. Aktualizacja monumentalnych tumanów i kłębów pyłu w tle
+  for (let i = 0; i < sandstormClouds.length; i++) {
+    const c = sandstormClouds[i];
+    c.x += c.baseVx * windForce;
+    c.y += c.vy + Math.sin(now * 0.002 + c.phase) * 0.35;
 
-    // Utrzymanie tumanów w pełnym kadrze
-    if (c.y < bounds.top) {
+    if (c.y < bounds.top - 70) {
       c.vy = Math.abs(c.vy);
-    } else if (c.y > bounds.bottom) {
+    } else if (c.y > bounds.bottom + 70) {
       c.vy = -Math.abs(c.vy);
     }
 
     const halfW = c.r * c.scaleX;
-    // Cząstka wylatująca z lewej krawędzi natychmiast wraca z prawej strony z nowo wylosowaną pozycją Y na pełnej wysokości
     if (c.x + halfW < bounds.left - 60) {
-      resetCloud(c, bounds.right, bounds);
-    } else if (c.x > bounds.right + 450 || c.x < bounds.left - 700) {
+      resetSandstormCloud(c, bounds.right, bounds);
+    } else if (c.x > bounds.right + 450 || c.x < bounds.left - 750) {
       c.x = bounds.left + Math.random() * (bounds.right - bounds.left);
       c.y = bounds.top + Math.random() * spanY;
     }
   }
-}
 
-export function drawDesertWind(ctx, worldLeft, worldRight) {
-  if (currentDist < 800 || currentDist > 1599) {
-    return;
+  // 2. Aktualizacja cząsteczek ziaren piasku
+  for (let i = 0; i < sandstormGrains.length; i++) {
+    const p = sandstormGrains[i];
+    p.x += p.baseVx * windForce;
+    p.y += p.baseVy;
+
+    if (p.type === 3) {
+      // Przygruntowy wir piaskowy tuż nad wydmą
+      if (p.y > GROUND_Y + 1 || p.y < GROUND_Y - 32) {
+        p.y = GROUND_Y - Math.random() * 24;
+      }
+    } else {
+      p.y += Math.sin(now * 0.0035 + p.phase) * 0.45;
+    }
+
+    if (p.x < bounds.left - 50 || p.y > bounds.bottom + 50) {
+      resetSandstormGrain(p, bounds);
+    }
   }
+
+  // 3. Aktualizacja cząsteczek piasku na pierwszym planie
+  for (let i = 0; i < sandstormForegroundGrains.length; i++) {
+    const p = sandstormForegroundGrains[i];
+    p.x += p.baseVx * windForce;
+    p.y += p.baseVy;
+    p.y += Math.sin(now * 0.0028 + p.phase) * 0.55;
+
+    if (p.x < bounds.left - 60 || p.y > bounds.bottom + 60) {
+      resetSandstormForegroundGrain(p, bounds);
+    }
+  }
+
+  // 4. Aktualizacja delikatnego kurzu unoszącego się we wnętrzu piramidy
+  if (insideFactor > 0.02) {
+    for (let i = 0; i < tombDustMotes.length; i++) {
+      const p = tombDustMotes[i];
+      p.x += p.vx;
+      p.y += p.vy + Math.sin(now * 0.002 + p.phase) * 0.2;
+
+      // Zawracanie w granicach kadru wnętrza
+      if (p.x < bounds.left - 20) p.x = bounds.right + 20;
+      if (p.x > bounds.right + 20) p.x = bounds.left - 20;
+      if (p.y < bounds.top - 20 || p.y > bounds.bottom + 20) {
+        p.y = bounds.top + Math.random() * spanY;
+      }
+    }
+  }
+}
+export const updateDesertWind = updateDesertSandstorm;
+
+export function drawDesertSandstorm(ctx, worldLeft, worldRight) {
+  if (currentDist < 800 || currentDist > 1599) return;
 
   const bounds = getDesertViewBounds();
   const wl = (worldLeft !== undefined) ? worldLeft : bounds.left;
   const wr = (worldRight !== undefined) ? worldRight : bounds.right;
 
-  if (desertClouds.length === 0) {
-    initDesertWindPool(wl, wr);
+  if (sandstormClouds.length === 0) {
+    initDesertSandstormPool(wl, wr);
   }
 
-  ctx.save();
   const now = performance.now();
+  const insideFactor = getPyramidInsideFactor(currentDist);
+  const sandstormIntensity = 1.0 - insideFactor;
 
-  // 1. Pełnoekranowa atmosfera burzy (Ambient Haze): ciepły filtr piaskowy spajający całe tło na pełnej wysokości i szerokości
   ctx.save();
-  ctx.resetTransform();
-  ctx.scale(DPR, DPR);
-  ctx.fillStyle = 'rgba(210, 150, 70, 0.12)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
 
-  // 2. Organiczne, spłaszczone kłęby kurzu na pełnej wysokości kadru (Zero kresek!)
-  for (let i = 0; i < desertClouds.length; i++) {
-    const c = desertClouds[i];
-    const halfW = c.r * c.scaleX;
-    if (c.x + halfW < wl - 60 || c.x - halfW > wr + 60) continue;
-
+  // A. Pełnoekranowa ciepła mgła pyłowa (Ambient Dust Haze Overlay)
+  if (sandstormIntensity > 0.02) {
     ctx.save();
-    ctx.translate(c.x, c.y);
+    ctx.resetTransform();
+    ctx.scale(DPR, DPR);
 
-    // Dynamiczne falowanie i pulsacja tumanu
-    const pulse = Math.sin(now * 0.0018 + c.phase) * 0.06;
-    ctx.scale(c.scaleX + pulse, c.scaleY - pulse * 0.4);
+    const hazeAlpha = 0.18 * sandstormIntensity;
+    ctx.fillStyle = `rgba(224, 169, 109, ${hazeAlpha})`;
+    ctx.fillRect(0, 0, W, H);
 
-    // Gradient radialny: gęstszy środek, płynne rozmycie do pełnej przezroczystości (alpha = 0) na obrzeżach
-    const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, c.r);
-    radGrad.addColorStop(0, `rgba(225, 170, 90, ${c.alpha})`);
-    radGrad.addColorStop(0.5, `rgba(235, 185, 110, ${c.alpha * 0.55})`);
-    radGrad.addColorStop(1, 'rgba(225, 170, 90, 0)');
-
-    ctx.fillStyle = radGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
-    ctx.fill();
+    // Ograniczenie widoczności horyzontu przez unoszący się pył
+    const horizGrad = ctx.createLinearGradient(0, H * 0.35, 0, H);
+    horizGrad.addColorStop(0, 'rgba(224, 169, 109, 0)');
+    horizGrad.addColorStop(0.7, `rgba(212, 163, 115, ${0.14 * sandstormIntensity})`);
+    horizGrad.addColorStop(1.0, `rgba(194, 139, 81, ${0.18 * sandstormIntensity})`);
+    ctx.fillStyle = horizGrad;
+    ctx.fillRect(0, H * 0.35, W, H * 0.65);
 
     ctx.restore();
   }
 
+  // B. Kłęby i aerodynamiczne tumany pyłu pustynnego w tle
+  if (sandstormIntensity > 0.02) {
+    for (let i = 0; i < sandstormClouds.length; i++) {
+      const c = sandstormClouds[i];
+      const halfW = c.r * c.scaleX;
+      if (c.x + halfW < wl - 60 || c.x - halfW > wr + 60) continue;
+
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.tilt);
+
+      const pulse = Math.sin(now * 0.0018 + c.phase) * 0.06;
+      ctx.scale(c.scaleX + pulse, c.scaleY - pulse * 0.4);
+
+      const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, c.r);
+      const effAlpha = c.alpha * sandstormIntensity;
+      radGrad.addColorStop(0, `rgba(224, 169, 109, ${effAlpha})`);
+      radGrad.addColorStop(0.5, `rgba(212, 163, 115, ${effAlpha * 0.55})`);
+      radGrad.addColorStop(1, 'rgba(224, 169, 109, 0)');
+
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  // C. Zróżnicowane ziarna piasku i pędzące smugi
+  if (sandstormIntensity > 0.02) {
+    for (let i = 0; i < sandstormGrains.length; i++) {
+      const p = sandstormGrains[i];
+      if (p.x < wl - 40 || p.x > wr + 40) continue;
+
+      const alpha = p.alpha * sandstormIntensity;
+
+      if (p.type === 2) {
+        // Pędząca smuga piasku (speed streak)
+        ctx.strokeStyle = `rgba(244, 208, 111, ${alpha})`;
+        ctx.lineWidth = p.size;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.streakLen, p.y - p.streakLen * 0.12);
+        ctx.stroke();
+      } else if (p.type === 3) {
+        // Przygruntowy wir piaskowy
+        ctx.fillStyle = `rgba(212, 163, 115, ${alpha})`;
+        ctx.fillRect(p.x, p.y, p.size * 1.5, p.size * 0.8);
+      } else {
+        // Drobne i wyraziste ziarenka piasku
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+  }
+
+  // D. Delikatny, unoszący się w powietrzu kurz we wnętrzu piramidy (Tomb Dust Motes)
+  if (insideFactor > 0.02) {
+    for (let i = 0; i < tombDustMotes.length; i++) {
+      const p = tombDustMotes[i];
+      if (p.x < wl - 20 || p.x > wr + 20) continue;
+
+      const glimmer = Math.sin(now * 0.003 + p.phase) * 0.25 + 0.75;
+      const alpha = p.alpha * insideFactor * glimmer;
+
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
   ctx.restore();
 }
+export const drawDesertWind = drawDesertSandstorm;
+
+export function drawDesertSandstormForeground(ctx, worldLeft, worldRight) {
+  if (currentDist < 800 || currentDist > 1599) return;
+  const insideFactor = getPyramidInsideFactor(currentDist);
+  const sandstormIntensity = 1.0 - insideFactor;
+  if (sandstormIntensity <= 0.02) return;
+
+  const wl = worldLeft;
+  const wr = worldRight;
+
+  ctx.save();
+  for (let i = 0; i < sandstormForegroundGrains.length; i++) {
+    const p = sandstormForegroundGrains[i];
+    if (p.x < wl - 30 || p.x > wr + 30) continue;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+    const alpha = p.alpha * sandstormIntensity;
+    radGrad.addColorStop(0, `rgba(244, 208, 111, ${alpha})`);
+    radGrad.addColorStop(0.5, `rgba(224, 169, 109, ${alpha * 0.5})`);
+    radGrad.addColorStop(1, 'rgba(194, 139, 81, 0)');
+
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// ----------------------------------------------------
+// 2. WIELKA PIRAMIDA: DETALE ARCHITEKTONICZNE I PROCEDURALNE
+// ----------------------------------------------------
+
+/**
+ * Proceduralny rysownik starożytnych egipskich symboli hieroglificznych
+ */
+function drawHieroglyphSymbol(ctx, type, cx, cy, size, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+
+  if (type === 0) {
+    // Ankh (Klucz Życia)
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - size * 0.45, size * 0.28, size * 0.35, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.45, cy - size * 0.1);
+    ctx.lineTo(cx + size * 0.45, cy - size * 0.1);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - size * 0.1);
+    ctx.lineTo(cx, cy + size * 0.65);
+    ctx.stroke();
+  } else if (type === 1) {
+    // Oko Horusa (Wedjat)
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.5, cy);
+    ctx.quadraticCurveTo(cx, cy - size * 0.45, cx + size * 0.5, cy);
+    ctx.quadraticCurveTo(cx, cy + size * 0.35, cx - size * 0.5, cy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.05, size * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.5, cy - size * 0.35);
+    ctx.quadraticCurveTo(cx, cy - size * 0.65, cx + size * 0.55, cy - size * 0.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.15, cy + size * 0.18);
+    ctx.lineTo(cx - size * 0.15, cy + size * 0.55);
+    ctx.moveTo(cx + size * 0.15, cy + size * 0.18);
+    ctx.quadraticCurveTo(cx + size * 0.4, cy + size * 0.35, cx + size * 0.25, cy + size * 0.6);
+    ctx.stroke();
+  } else if (type === 2) {
+    // Skarabeusz (Khepri) z dyskiem słonecznym
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + size * 0.1, size * 0.3, size * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffc107';
+    ctx.beginPath();
+    ctx.arc(cx, cy - size * 0.45, size * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.25, cy - size * 0.1);
+    ctx.lineTo(cx - size * 0.55, cy - size * 0.4);
+    ctx.moveTo(cx + size * 0.25, cy - size * 0.1);
+    ctx.lineTo(cx + size * 0.55, cy - size * 0.4);
+    ctx.moveTo(cx - size * 0.3, cy + size * 0.2);
+    ctx.lineTo(cx - size * 0.6, cy + size * 0.35);
+    ctx.moveTo(cx + size * 0.3, cy + size * 0.2);
+    ctx.lineTo(cx + size * 0.6, cy + size * 0.35);
+    ctx.stroke();
+  } else if (type === 3) {
+    // Filar Dżed (Djed Pillar)
+    ctx.fillRect(cx - size * 0.12, cy - size * 0.3, size * 0.24, size * 0.9);
+    for (let r = 0; r < 4; r++) {
+      const ry = cy - size * 0.45 + r * size * 0.18;
+      ctx.fillRect(cx - size * 0.45, ry, size * 0.9, size * 0.1);
+    }
+  } else if (type === 4) {
+    // Święty Sokół Horusa
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.2, cy + size * 0.5);
+    ctx.lineTo(cx - size * 0.35, cy + size * 0.1);
+    ctx.quadraticCurveTo(cx - size * 0.4, cy - size * 0.35, cx - size * 0.1, cy - size * 0.45);
+    ctx.lineTo(cx + size * 0.35, cy - size * 0.35);
+    ctx.lineTo(cx + size * 0.1, cy - size * 0.2);
+    ctx.quadraticCurveTo(cx + size * 0.35, cy + size * 0.2, cx + size * 0.4, cy + size * 0.55);
+    ctx.lineTo(cx - size * 0.2, cy + size * 0.5);
+    ctx.fill();
+  } else {
+    // Królewski Kartusz
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - size * 0.4, cy - size * 0.55, size * 0.8, size * 1.0, size * 0.35);
+    } else {
+      ctx.rect(cx - size * 0.4, cy - size * 0.55, size * 0.8, size * 1.0);
+    }
+    ctx.stroke();
+    ctx.fillRect(cx - size * 0.45, cy + size * 0.5, size * 0.9, size * 0.12);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(cx - size * 0.2, cy - size * 0.3, size * 0.4, size * 0.1);
+    ctx.fillRect(cx - size * 0.15, cy - size * 0.1, size * 0.3, size * 0.1);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Scena ścienna: płaskorzeźba faraona i bóstwa
+ */
+function drawWallMuralScene(ctx, mx, gy) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(43, 23, 14, 0.45)';
+  ctx.fillRect(mx - 75, gy - 240, 150, 110);
+  ctx.strokeStyle = '#c28b51';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(mx - 75, gy - 240, 150, 110);
+
+  // Faraon z darami (kwiatami lotosu)
+  ctx.fillStyle = '#deb887';
+  ctx.fillRect(mx - 48, gy - 195, 20, 38);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(mx - 50, gy - 165, 24, 22);
+  ctx.fillStyle = '#deb887';
+  ctx.fillRect(mx - 47, gy - 143, 8, 25);
+  ctx.fillRect(mx - 38, gy - 143, 8, 25);
+
+  ctx.strokeStyle = '#deb887';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(mx - 38, gy - 190);
+  ctx.lineTo(mx - 15, gy - 198);
+  ctx.lineTo(mx - 5, gy - 212);
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.arc(mx - 5, gy - 215, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#deb887';
+  ctx.beginPath();
+  ctx.arc(mx - 38, gy - 208, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(mx - 45, gy - 216, 14, 9);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(mx - 44, gy - 218, 12, 3);
+
+  // Ołtarz ofiarny pośrodku
+  ctx.fillStyle = '#8d6338';
+  ctx.fillRect(mx - 4, gy - 175, 16, 45);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(mx - 7, gy - 178, 22, 5);
+
+  // Siedzące bóstwo (Ozyrys)
+  ctx.fillStyle = '#388e3c';
+  ctx.fillRect(mx + 22, gy - 195, 18, 38);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(mx + 18, gy - 165, 26, 35);
+  ctx.fillStyle = '#6d4c2b';
+  ctx.fillRect(mx + 16, gy - 130, 32, 12);
+  ctx.fillRect(mx + 42, gy - 180, 8, 50);
+
+  ctx.fillStyle = '#388e3c';
+  ctx.beginPath();
+  ctx.arc(mx + 30, gy - 206, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.moveTo(mx + 25, gy - 212);
+  ctx.lineTo(mx + 30, gy - 235);
+  ctx.lineTo(mx + 35, gy - 212);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Wnęka ceremonialna ze złotym sarkofagiem królewskim
+ */
+function drawSarcophagusNiche(ctx, sx, gy) {
+  ctx.save();
+  const nw = 68;
+  const nh = 175;
+  const ny = gy - nh - 10;
+
+  ctx.fillStyle = '#140a05';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(sx - nw / 2, ny, nw, nh, [24, 24, 0, 0]);
+  } else {
+    ctx.rect(sx - nw / 2, ny, nw, nh);
+  }
+  ctx.fill();
+  ctx.strokeStyle = '#8d6338';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Złocony sarkofag antropoidowy
+  const sarcW = 42;
+  const sarcH = 145;
+  const sarcY = gy - sarcH - 12;
+
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(sx - 14, sarcY + 22);
+  ctx.quadraticCurveTo(sx - 21, sarcY + 45, sx - 16, sarcY + 95);
+  ctx.lineTo(sx - 12, sarcY + sarcH);
+  ctx.lineTo(sx + 12, sarcY + sarcH);
+  ctx.lineTo(sx + 16, sarcY + 95);
+  ctx.quadraticCurveTo(sx + 21, sarcY + 45, sx + 14, sarcY + 22);
+  ctx.quadraticCurveTo(sx, sarcY + 12, sx - 14, sarcY + 22);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#0284c7';
+  ctx.lineWidth = 2.5;
+  for (let b = 1; b <= 7; b++) {
+    const by = sarcY + 48 + b * 11;
+    ctx.beginPath();
+    ctx.moveTo(sx - 16 + b * 0.5, by);
+    ctx.lineTo(sx + 16 - b * 0.5, by);
+    ctx.stroke();
+  }
+
+  // Złota maska grobowa i broda
+  ctx.fillStyle = '#ffe082';
+  ctx.beginPath();
+  ctx.arc(sx, sarcY + 28, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(sx - 7, sarcY + 26, 4, 2);
+  ctx.fillRect(sx + 3, sarcY + 26, 4, 2);
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(sx - 2, sarcY + 36, 4, 10);
+
+  // Skrzyżowane berła królewskie (heka i nekhakha)
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx - 12, sarcY + 62); ctx.lineTo(sx + 10, sarcY + 44);
+  ctx.moveTo(sx + 12, sarcY + 62); ctx.lineTo(sx - 10, sarcY + 44);
+  ctx.stroke();
+
+  ctx.fillStyle = '#6d4c2b';
+  ctx.fillRect(sx - 20, gy - 12, 40, 10);
+
+  ctx.restore();
+}
+
+/**
+ * Kolumny papirusowe z rzeźbionym kapitelem podtrzymujące strop
+ */
+function drawPapyrusColumn(ctx, cx, gy, isForeground) {
+  ctx.save();
+  const colW = isForeground ? 48 : 34;
+  const colH = 340;
+  const topY = gy - colH;
+
+  // Cokół kolumny
+  ctx.fillStyle = isForeground ? '#4a2c1d' : '#6d4c2b';
+  ctx.fillRect(cx - colW * 0.65, gy - 20, colW * 1.3, 20);
+  ctx.fillStyle = isForeground ? '#684126' : '#8d6338';
+  ctx.fillRect(cx - colW * 0.55, gy - 26, colW * 1.1, 6);
+
+  // Trzon kolumny
+  const gradCol = ctx.createLinearGradient(cx - colW / 2, 0, cx + colW / 2, 0);
+  if (isForeground) {
+    gradCol.addColorStop(0, '#2b170e');
+    gradCol.addColorStop(0.35, '#5c3d2e');
+    gradCol.addColorStop(0.65, '#7a5230');
+    gradCol.addColorStop(1, '#2b170e');
+  } else {
+    gradCol.addColorStop(0, '#3b2416');
+    gradCol.addColorStop(0.35, '#6d4c2b');
+    gradCol.addColorStop(0.65, '#8d6338');
+    gradCol.addColorStop(1, '#3b2416');
+  }
+  ctx.fillStyle = gradCol;
+  ctx.fillRect(cx - colW / 2, topY + 50, colW, colH - 76);
+
+  // Złote obręcze
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(cx - colW / 2 - 1, topY + 80, colW + 2, 4);
+  ctx.fillRect(cx - colW / 2 - 1, gy - 60, colW + 2, 4);
+
+  // Kapitel kolumny w kształcie pąka lotosu
+  ctx.fillStyle = isForeground ? '#684126' : '#8d6338';
+  ctx.beginPath();
+  ctx.moveTo(cx - colW / 2, topY + 50);
+  ctx.quadraticCurveTo(cx - colW * 0.85, topY + 22, cx - colW * 0.75, topY);
+  ctx.lineTo(cx + colW * 0.75, topY);
+  ctx.quadraticCurveTo(cx + colW * 0.85, topY + 22, cx + colW / 2, topY + 50);
+  ctx.closePath();
+  ctx.fill();
+
+  // Płatki lotosu
+  ctx.fillStyle = isForeground ? '#ffd700' : '#d4a373';
+  ctx.beginPath();
+  ctx.moveTo(cx, topY + 45);
+  ctx.lineTo(cx - colW * 0.35, topY + 8);
+  ctx.lineTo(cx, topY);
+  ctx.lineTo(cx + colW * 0.35, topY + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Architraw nad głowicą
+  ctx.fillStyle = isForeground ? '#3b2416' : '#5c3d2e';
+  ctx.fillRect(cx - colW * 0.85, topY - 14, colW * 1.7, 14);
+
+  ctx.restore();
+}
+
+/**
+ * Pochodnie ścienne z animowanym wielowarstwowym płomieniem i ciepłą radialną poświatą
+ */
+function drawWallTorch(ctx, tx, gy, now) {
+  ctx.save();
+  const torchY = gy - 130;
+
+  // Kuty brązowy uchwyt ścienny
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(tx - 3, torchY + 12, 6, 22);
+  ctx.beginPath();
+  ctx.moveTo(tx - 3, torchY + 34);
+  ctx.lineTo(tx + 12, torchY + 18);
+  ctx.lineTo(tx + 8, torchY + 18);
+  ctx.lineTo(tx - 3, torchY + 28);
+  ctx.fill();
+
+  // Drewniany trzonek pochodni
+  ctx.fillStyle = '#3e2723';
+  ctx.fillRect(tx - 3, torchY, 6, 16);
+
+  // Głowica pochodni
+  ctx.fillStyle = '#1c1917';
+  ctx.fillRect(tx - 5, torchY - 8, 10, 10);
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(tx - 4, torchY - 6, 8, 6);
+
+  // Animacja płomienia
+  const seed = tx * 0.08;
+  const flickX = Math.sin(now * 0.007 + seed) * 2.2 + Math.cos(now * 0.013 + seed * 2) * 1.2;
+  const flickY = Math.cos(now * 0.008 + seed) * 3.5;
+  const flameH = 26 + flickY;
+
+  // Zewnętrzny język ognia
+  ctx.fillStyle = '#ea580c';
+  ctx.beginPath();
+  ctx.moveTo(tx - 5, torchY - 6);
+  ctx.quadraticCurveTo(tx - 8 + flickX * 0.5, torchY - flameH * 0.5, tx + flickX, torchY - flameH);
+  ctx.quadraticCurveTo(tx + 8 + flickX * 0.5, torchY - flameH * 0.5, tx + 5, torchY - 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Środkowy płomień
+  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
+  ctx.moveTo(tx - 3.5, torchY - 6);
+  ctx.quadraticCurveTo(tx - 5 + flickX * 0.5, torchY - flameH * 0.45, tx + flickX * 0.8, torchY - flameH * 0.82);
+  ctx.quadraticCurveTo(tx + 5 + flickX * 0.5, torchY - flameH * 0.45, tx + 3.5, torchY - 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rdzeń płomienia
+  ctx.fillStyle = '#fffbeb';
+  ctx.beginPath();
+  ctx.moveTo(tx - 2, torchY - 6);
+  ctx.quadraticCurveTo(tx - 3, torchY - flameH * 0.3, tx + flickX * 0.5, torchY - flameH * 0.5);
+  ctx.quadraticCurveTo(tx + 3, torchY - flameH * 0.3, tx + 2, torchY - 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Unoszące się iskry
+  for (let s = 0; s < 3; s++) {
+    const spPhase = now * 0.004 + seed + s * 2.1;
+    const spY = torchY - 14 - ((now * 0.05 + s * 18 + seed * 20) % 45);
+    const spX = tx + Math.sin(spPhase) * 6 + flickX * 0.5;
+    const spAlpha = Math.max(0, 1.0 - (torchY - spY) / 45);
+    ctx.fillStyle = `rgba(254, 240, 138, ${spAlpha})`;
+    ctx.fillRect(spX - 1, spY - 1, 2, 2);
+  }
+
+  // RadialGradient ciepłego światła pochodni
+  const pulseR = 210 + Math.sin(now * 0.006 + seed) * 18;
+  const torchGlow = ctx.createRadialGradient(tx, torchY - 8, 8, tx, torchY - 8, pulseR);
+  torchGlow.addColorStop(0, 'rgba(255, 175, 45, 0.38)');
+  torchGlow.addColorStop(0.35, 'rgba(255, 115, 20, 0.16)');
+  torchGlow.addColorStop(0.7, 'rgba(180, 50, 10, 0.05)');
+  torchGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = torchGlow;
+  ctx.beginPath();
+  ctx.arc(tx, torchY - 8, pulseR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Posąg strażnika faraona / sfinksa wykuty z piaskowca i granitu
+ */
+function drawColossalGuardianStatue(ctx, sx, gy, facingLeft) {
+  ctx.save();
+  ctx.translate(sx, gy);
+  if (facingLeft) ctx.scale(-1, 1);
+
+  // Piedestał
+  ctx.fillStyle = '#4a2c1d';
+  ctx.fillRect(-20, -18, 45, 18);
+  ctx.fillStyle = '#6d4c2b';
+  ctx.fillRect(-18, -22, 41, 4);
+
+  // Siedząca postać
+  ctx.fillStyle = '#7a5230';
+  ctx.fillRect(5, -60, 16, 40);
+  ctx.fillRect(-12, -75, 30, 20);
+  ctx.fillRect(-16, -125, 24, 55);
+
+  ctx.fillStyle = '#8d6338';
+  ctx.fillRect(-8, -95, 28, 10);
+
+  ctx.fillStyle = '#7a5230';
+  ctx.beginPath();
+  ctx.arc(-4, -138, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(-16, -145);
+  ctx.lineTo(8, -145);
+  ctx.lineTo(12, -120);
+  ctx.lineTo(-4, -125);
+  ctx.lineTo(-20, -120);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#3b2416';
+  ctx.fillRect(2, -130, 4, 14);
+
+  ctx.restore();
+}
+
+/**
+ * Monumentalne pylony portalu z nadprożem i skrzydlatym dyskiem słońca
+ */
+function drawPortalPylons(ctx, px, gy, isExit) {
+  ctx.save();
+  const pylonW = 75;
+  const pylonH = 310;
+  const gateW = 220;
+  const leftX = px - gateW / 2;
+  const rightX = px + gateW / 2 - pylonW;
+
+  const drawPylon = (x, isRight) => {
+    const batter = 14;
+    ctx.fillStyle = isExit ? '#8d6338' : '#a67c52';
+    ctx.beginPath();
+    ctx.moveTo(x + (isRight ? batter : 0), gy - pylonH);
+    ctx.lineTo(x + pylonW - (isRight ? 0 : batter), gy - pylonH);
+    ctx.lineTo(x + pylonW, gy);
+    ctx.lineTo(x, gy);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#5c3d2e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(60, 36, 22, 0.35)';
+    ctx.lineWidth = 1;
+    for (let y = gy - pylonH + 25; y < gy; y += 22) {
+      ctx.beginPath();
+      ctx.moveTo(x + 2, y);
+      ctx.lineTo(x + pylonW - 2, y);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(x - 3, gy - pylonH - 8, pylonW + 6, 8);
+    ctx.fillStyle = '#6d4c2b';
+    ctx.fillRect(x - 6, gy - pylonH - 18, pylonW + 12, 10);
+  };
+
+  drawPylon(leftX, false);
+  drawPylon(rightX, true);
+
+  // Kamienne nadproże portalu
+  const lintelY = gy - pylonH - 22;
+  const lintelH = 58;
+  const lintelX = leftX - 10;
+  const lintelW = (rightX + pylonW) - leftX + 20;
+
+  ctx.fillStyle = '#7a5230';
+  ctx.fillRect(lintelX, lintelY, lintelW, lintelH);
+  ctx.strokeStyle = '#4a2c1d';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(lintelX, lintelY, lintelW, lintelH);
+
+  // Skrzydlaty Dysk Słońca
+  const midX = px;
+  const diskY = lintelY + 28;
+
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(midX, diskY);
+  ctx.quadraticCurveTo(midX - 45, diskY - 14, midX - 95, diskY);
+  ctx.quadraticCurveTo(midX - 45, diskY + 8, midX, diskY + 4);
+  ctx.moveTo(midX, diskY);
+  ctx.quadraticCurveTo(midX + 45, diskY - 14, midX + 95, diskY);
+  ctx.quadraticCurveTo(midX + 45, diskY + 8, midX, diskY + 4);
+  ctx.fill();
+
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath();
+  ctx.arc(midX, diskY, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(midX - 16, diskY - 5, 4, 10);
+  ctx.fillRect(midX + 12, diskY - 5, 4, 10);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(isExit ? '★ WYJŚCIE • KRES GROBOWCA ★' : '★ WIELKA PIRAMIDA • 1050M ★', px, lintelY + 50);
+  ctx.textAlign = 'left';
+
+  // Wnętrze otworu bramy
+  const archW = 120;
+  const archH = 225;
+  const archX = px - archW / 2;
+  const archY = gy - archH;
+
+  if (!isExit) {
+    const darkGrad = ctx.createLinearGradient(archX, 0, archX + archW, 0);
+    darkGrad.addColorStop(0, '#100704');
+    darkGrad.addColorStop(0.5, '#050201');
+    darkGrad.addColorStop(1, '#100704');
+    ctx.fillStyle = darkGrad;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(archX, archY, archW, archH, [30, 30, 0, 0]);
+    } else {
+      ctx.rect(archX, archY, archW, archH);
+    }
+    ctx.fill();
+  } else {
+    const sunExitGrad = ctx.createRadialGradient(px, gy - archH * 0.5, 10, px, gy - archH * 0.5, archW * 1.5);
+    sunExitGrad.addColorStop(0, 'rgba(255, 255, 245, 0.95)');
+    sunExitGrad.addColorStop(0.35, 'rgba(255, 235, 150, 0.75)');
+    sunExitGrad.addColorStop(0.7, 'rgba(245, 175, 60, 0.40)');
+    sunExitGrad.addColorStop(1, 'rgba(212, 163, 115, 0.0)');
+    ctx.fillStyle = sunExitGrad;
+    ctx.fillRect(archX - 50, archY - 30, archW + 100, archH + 40);
+  }
+
+  // Posągi strażników po bokach
+  drawColossalGuardianStatue(ctx, leftX - 45, gy, false);
+  drawColossalGuardianStatue(ctx, rightX + pylonW + 15, gy, true);
+
+  ctx.restore();
+}
+
+/**
+ * Przednia warstwa portalu wejściowego
+ */
+function drawEntrancePortalForeground(ctx, enterX, gy) {
+  const pylonW = 75;
+  const gateW = 220;
+  const leftX = enterX - gateW / 2;
+  const rightX = enterX + gateW / 2 - pylonW;
+
+  ctx.fillStyle = '#5c3d2e';
+  ctx.fillRect(leftX, gy - 310, pylonW * 0.45, 310);
+  ctx.fillRect(rightX + pylonW * 0.55, gy - 310, pylonW * 0.45, 310);
+}
+
+/**
+ * Przednia warstwa portalu wyjściowego z oślepiającym światłem pustynnego słońca
+ */
+function drawExitPortalForeground(ctx, exitX, gy) {
+  const pylonW = 75;
+  const gateW = 220;
+  const leftX = exitX - gateW / 2;
+  const rightX = exitX + gateW / 2 - pylonW;
+
+  ctx.fillStyle = '#6d4c2b';
+  ctx.fillRect(leftX, gy - 310, pylonW * 0.45, 310);
+  ctx.fillRect(rightX + pylonW * 0.55, gy - 310, pylonW * 0.45, 310);
+
+  // Snop jasnego światła słonecznego wdzierający się do grobowca
+  const now = performance.now();
+  const rayShimmer = Math.sin(now * 0.003) * 0.08 + 0.92;
+
+  const rayGrad = ctx.createLinearGradient(exitX, gy - 120, exitX - 320, gy - 120);
+  rayGrad.addColorStop(0, `rgba(255, 255, 245, ${0.85 * rayShimmer})`);
+  rayGrad.addColorStop(0.3, `rgba(255, 235, 160, ${0.55 * rayShimmer})`);
+  rayGrad.addColorStop(0.7, `rgba(244, 208, 111, ${0.22 * rayShimmer})`);
+  rayGrad.addColorStop(1, 'rgba(212, 163, 115, 0)');
+
+  ctx.fillStyle = rayGrad;
+  ctx.beginPath();
+  ctx.moveTo(exitX, gy - 230);
+  ctx.lineTo(exitX - 320, gy - 270);
+  ctx.lineTo(exitX - 320, gy);
+  ctx.lineTo(exitX, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  const sunFlare = ctx.createRadialGradient(exitX, gy - 110, 15, exitX, gy - 110, 220);
+  sunFlare.addColorStop(0, `rgba(255, 255, 255, ${0.90 * rayShimmer})`);
+  sunFlare.addColorStop(0.35, `rgba(255, 245, 180, ${0.60 * rayShimmer})`);
+  sunFlare.addColorStop(0.7, `rgba(255, 215, 0, ${0.25 * rayShimmer})`);
+  sunFlare.addColorStop(1, 'rgba(255, 215, 0, 0)');
+
+  ctx.fillStyle = sunFlare;
+  ctx.beginPath();
+  ctx.arc(exitX, gy - 110, 220, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/**
+ * Sylwetka Wielkiej Piramidy na horyzoncie nieba (warstwa paralaksy)
+ */
+export function drawDistantPyramidParallax(ctx, currentDist) {
+  const insideFactor = getPyramidInsideFactor(currentDist);
+  if (insideFactor >= 0.99) return;
+
+  const camX = camera ? camera.x : 0;
+  const horizonX = W * 0.55 - (camX - START_X - 1000 * 14) * 0.05;
+  const horizonY = H * 0.65;
+  const pyrW = 520;
+  const pyrH = 260;
+  const peakX = horizonX;
+  const peakY = horizonY - pyrH;
+  const leftX = horizonX - pyrW * 0.6;
+  const rightX = horizonX + pyrW * 0.4;
+  const ridgeX = horizonX - pyrW * 0.08;
+
+  ctx.save();
+  ctx.globalAlpha = (1.0 - insideFactor) * 0.85;
+
+  // Oświetlona lewa ściana
+  const litGrad = ctx.createLinearGradient(leftX, horizonY, ridgeX, peakY);
+  litGrad.addColorStop(0, '#c28b51');
+  litGrad.addColorStop(0.5, '#deb887');
+  litGrad.addColorStop(1, '#f5c270');
+  ctx.fillStyle = litGrad;
+  ctx.beginPath();
+  ctx.moveTo(leftX, horizonY);
+  ctx.lineTo(peakX, peakY);
+  ctx.lineTo(ridgeX, horizonY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Zacieniona prawa ściana
+  const shadowGrad = ctx.createLinearGradient(ridgeX, peakY, rightX, horizonY);
+  shadowGrad.addColorStop(0, '#8d6338');
+  shadowGrad.addColorStop(1, '#5c3d2e');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.moveTo(ridgeX, horizonY);
+  ctx.lineTo(peakX, peakY);
+  ctx.lineTo(rightX, horizonY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Warstwy stopni kamiennych
+  ctx.strokeStyle = 'rgba(60, 36, 22, 0.25)';
+  ctx.lineWidth = 1;
+  for (let s = 1; s <= 18; s++) {
+    const t = s / 19;
+    const sy = peakY + (horizonY - peakY) * t;
+    const lx = peakX + (leftX - peakX) * t;
+    const rx = peakX + (rightX - peakX) * t;
+    ctx.beginPath();
+    ctx.moveTo(lx, sy);
+    ctx.lineTo(rx, sy);
+    ctx.stroke();
+  }
+
+  // Złoty Pyramidion na szczycie z poświatą
+  const capH = 24;
+  const capT = capH / pyrH;
+  const capLeft = peakX + (leftX - peakX) * capT;
+  const capRight = peakX + (rightX - peakX) * capT;
+  const capRidge = peakX + (ridgeX - peakX) * capT;
+  const capY = peakY + capH;
+
+  const goldGrad = ctx.createLinearGradient(capLeft, capY, capRight, peakY);
+  goldGrad.addColorStop(0, '#ffd700');
+  goldGrad.addColorStop(0.5, '#fff9c4');
+  goldGrad.addColorStop(1, '#f59e0b');
+  ctx.fillStyle = goldGrad;
+  ctx.beginPath();
+  ctx.moveTo(capLeft, capY);
+  ctx.lineTo(peakX, peakY);
+  ctx.lineTo(capRight, capY);
+  ctx.lineTo(capRidge, capY);
+  ctx.closePath();
+  ctx.fill();
+
+  const now = performance.now();
+  const gleam = Math.sin(now * 0.003) * 0.5 + 0.5;
+  const glint = ctx.createRadialGradient(peakX, peakY, 0, peakX, peakY, 35);
+  glint.addColorStop(0, `rgba(255, 255, 230, ${0.7 * gleam})`);
+  glint.addColorStop(0.4, `rgba(255, 215, 0, ${0.4 * gleam})`);
+  glint.addColorStop(1, 'rgba(255, 215, 0, 0)');
+  ctx.fillStyle = glint;
+  ctx.beginPath();
+  ctx.arc(peakX, peakY, 35, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Monumentalna fasada zewnętrzna Wielkiej Piramidy w skali 1:1
+ */
+export function drawPyramidExterior(ctx, worldLeft, worldRight) {
+  const enterX = PYRAMID_ENTER_X;
+  const exitX = PYRAMID_EXIT_X;
+  const centerX = PYRAMID_CENTER_X;
+  const baseLeft = enterX - 850;
+  const baseRight = exitX + 850;
+  const gy = GROUND_Y;
+  const apexY = gy - PYRAMID_HEIGHT;
+  const ridgeX = centerX - 120;
+
+  if (baseRight < worldLeft - 200 || baseLeft > worldRight + 200) return;
+
+  ctx.save();
+
+  // 1. Oświetlona ściana piramidy (lewa fasetka)
+  const litGrad = ctx.createLinearGradient(baseLeft, gy, ridgeX, apexY);
+  litGrad.addColorStop(0, '#ecd29b');
+  litGrad.addColorStop(0.4, '#deb887');
+  litGrad.addColorStop(1, '#fae19c');
+  ctx.fillStyle = litGrad;
+  ctx.beginPath();
+  ctx.moveTo(baseLeft, gy);
+  ctx.lineTo(centerX, apexY);
+  ctx.lineTo(ridgeX, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Zacieniona ściana piramidy (prawa fasetka)
+  const shadowGrad = ctx.createLinearGradient(ridgeX, apexY, baseRight, gy);
+  shadowGrad.addColorStop(0, '#8d6338');
+  shadowGrad.addColorStop(0.6, '#6d4c2b');
+  shadowGrad.addColorStop(1, '#4a2c1d');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.moveTo(ridgeX, gy);
+  ctx.lineTo(centerX, apexY);
+  ctx.lineTo(baseRight, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. Poziome rzędy bloków piaskowca i spoiny kamienne
+  ctx.lineWidth = 1;
+  const totalCourses = 42;
+  for (let c = 1; c < totalCourses; c++) {
+    const t = c / totalCourses;
+    const cy = apexY + PYRAMID_HEIGHT * t;
+    const lx = centerX + (baseLeft - centerX) * t;
+    const rx = centerX + (baseRight - centerX) * t;
+    const mx = centerX + (ridgeX - centerX) * t;
+
+    // Krawędź oświetlona
+    ctx.strokeStyle = 'rgba(74, 44, 29, 0.35)';
+    ctx.beginPath();
+    ctx.moveTo(lx, cy);
+    ctx.lineTo(mx, cy);
+    ctx.stroke();
+
+    // Krawędź zacieniona
+    ctx.strokeStyle = 'rgba(30, 16, 10, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(mx, cy);
+    ctx.lineTo(rx, cy);
+    ctx.stroke();
+  }
+
+  // 4. Złote zwieńczenie na szczycie (Pyramidion)
+  const capH = 65;
+  const capT = capH / PYRAMID_HEIGHT;
+  const capLeft = centerX + (baseLeft - centerX) * capT;
+  const capRight = centerX + (baseRight - centerX) * capT;
+  const capRidge = centerX + (ridgeX - centerX) * capT;
+  const capY = apexY + capH;
+
+  const goldCap = ctx.createLinearGradient(capLeft, capY, capRight, apexY);
+  goldCap.addColorStop(0, '#ffd700');
+  goldCap.addColorStop(0.4, '#fff9c4');
+  goldCap.addColorStop(0.8, '#f59e0b');
+  goldCap.addColorStop(1, '#b45309');
+  ctx.fillStyle = goldCap;
+  ctx.beginPath();
+  ctx.moveTo(capLeft, capY);
+  ctx.lineTo(centerX, apexY);
+  ctx.lineTo(capRight, capY);
+  ctx.lineTo(capRidge, capY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Błysk i snopy światła pyramidionu
+  const now = performance.now();
+  const gleam = Math.sin(now * 0.003) * 0.5 + 0.5;
+  const glint = ctx.createRadialGradient(centerX, apexY, 0, centerX, apexY, 70);
+  glint.addColorStop(0, `rgba(255, 255, 235, ${0.85 * gleam})`);
+  glint.addColorStop(0.4, `rgba(255, 215, 0, ${0.45 * gleam})`);
+  glint.addColorStop(1, 'rgba(255, 215, 0, 0)');
+  ctx.fillStyle = glint;
+  ctx.beginPath();
+  ctx.arc(centerX, apexY, 70, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Monumentalny portal wejściowy na 1050 m
+  if (enterX >= worldLeft - 300 && enterX <= worldRight + 300) {
+    drawPortalPylons(ctx, enterX, gy, false);
+  }
+
+  // 6. Monumentalny portal wyjściowy na 1350 m
+  if (exitX >= worldLeft - 300 && exitX <= worldRight + 300) {
+    drawPortalPylons(ctx, exitX, gy, true);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Wnętrze komory grobowej Wielkiej Piramidy (sekcja trwająca dokładnie 300 m)
+ */
+export function drawPyramidInterior(ctx, worldLeft, worldRight) {
+  const enterX = PYRAMID_ENTER_X;
+  const exitX = PYRAMID_EXIT_X;
+  const gy = GROUND_Y;
+
+  if (exitX < worldLeft - 100 || enterX > worldRight + 100) return;
+
+  const startX = Math.max(enterX, worldLeft - 50);
+  const endX = Math.min(exitX, worldRight + 50);
+  if (startX >= endX) return;
+
+  ctx.save();
+  const now = performance.now();
+
+  // 1. Potężne kamienne ściany grobowca z bloków piaskowca
+  const wallTop = gy - 320;
+  const wallH = 320;
+
+  const wallGrad = ctx.createLinearGradient(0, wallTop, 0, gy);
+  wallGrad.addColorStop(0, '#2b170e');
+  wallGrad.addColorStop(0.4, '#3b2416');
+  wallGrad.addColorStop(0.8, '#5c3d2e');
+  wallGrad.addColorStop(1, '#4a2c1d');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(startX, wallTop, endX - startX, wallH);
+
+  // Ułożone warstwy bloków megalitycznych
+  const blockH = 28;
+  const firstRow = Math.floor(wallTop / blockH) * blockH;
+  for (let by = firstRow; by < gy; by += blockH) {
+    if (by < wallTop - 10) continue;
+    const isRowAlt = (Math.floor(by / blockH) % 2 === 0);
+    const blockW = isRowAlt ? 75 : 95;
+    const firstCol = Math.floor(startX / blockW) * blockW;
+
+    ctx.strokeStyle = '#24140b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(startX, by);
+    ctx.lineTo(endX, by);
+    ctx.stroke();
+
+    for (let bx = firstCol; bx <= endX; bx += blockW) {
+      if (bx < enterX || bx > exitX) continue;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx, by + blockH);
+      ctx.stroke();
+
+      // Subtelny relief krawędzi bloku
+      ctx.strokeStyle = 'rgba(212, 163, 115, 0.12)';
+      ctx.beginPath();
+      ctx.moveTo(bx + 1, by + 1);
+      ctx.lineTo(bx + blockW - 1, by + 1);
+      ctx.stroke();
+    }
+  }
+
+  // 2. Pasy hieroglifów na ścianach
+  const friezeY1 = gy - 215;
+  const friezeY2 = gy - 145;
+
+  ctx.fillStyle = 'rgba(255, 215, 0, 0.18)';
+  ctx.fillRect(startX, friezeY1 - 12, endX - startX, 24);
+  ctx.fillRect(startX, friezeY2 - 12, endX - startX, 24);
+
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(startX, friezeY1 - 12); ctx.lineTo(endX, friezeY1 - 12);
+  ctx.moveTo(startX, friezeY1 + 12); ctx.lineTo(endX, friezeY1 + 12);
+  ctx.moveTo(startX, friezeY2 - 12); ctx.lineTo(endX, friezeY2 - 12);
+  ctx.moveTo(startX, friezeY2 + 12); ctx.lineTo(endX, friezeY2 + 12);
+  ctx.stroke();
+
+  // Symbole hieroglificzne wyryte na ścianach
+  const glyphStep = 38;
+  const firstGlyph = Math.floor(startX / glyphStep) * glyphStep;
+  for (let gx = firstGlyph; gx <= endX; gx += glyphStep) {
+    if (gx < enterX + 20 || gx > exitX - 20) continue;
+    const type1 = Math.abs(Math.floor(gx / 38)) % 6;
+    const type2 = Math.abs(Math.floor(gx / 38 + 2)) % 6;
+    drawHieroglyphSymbol(ctx, type1, gx, friezeY1, 14, '#ffd54f');
+    drawHieroglyphSymbol(ctx, type2, gx, friezeY2, 14, '#e0a96d');
+  }
+
+  // 3. Płaskorzeźby ścienne i sceny bóstw
+  const muralStep = 240;
+  const firstMural = Math.floor(startX / muralStep) * muralStep;
+  for (let mx = firstMural; mx <= endX; mx += muralStep) {
+    if (mx < enterX + 90 || mx > exitX - 90) continue;
+    if (mx >= worldLeft - 100 && mx <= worldRight + 100) {
+      drawWallMuralScene(ctx, mx, gy);
+    }
+  }
+
+  // 4. Wnęki ze złoconymi sarkofagami
+  const nicheStep = 560;
+  const firstNiche = Math.floor(startX / nicheStep) * nicheStep + 280;
+  for (let nx = firstNiche; nx <= endX; nx += nicheStep) {
+    if (nx < enterX + 140 || nx > exitX - 140) continue;
+    if (nx >= worldLeft - 60 && nx <= worldRight + 60) {
+      drawSarcophagusNiche(ctx, nx, gy);
+    }
+  }
+
+  // 5. Kamienne kolumny papirusowe podtrzymujące strop (tło)
+  const colStep = 230;
+  const firstCol = Math.floor(startX / colStep) * colStep;
+  for (let cx = firstCol; cx <= endX; cx += colStep) {
+    if (cx < enterX + 60 || cx > exitX - 60) continue;
+    if (cx >= worldLeft - 60 && cx <= worldRight + 60) {
+      drawPapyrusColumn(ctx, cx, gy, false);
+    }
+  }
+
+  // 6. Oświetlenie pochodniami z animowanym płomieniem i poświatą
+  const torchStep = 115;
+  const firstTorch = Math.floor(startX / torchStep) * torchStep;
+  for (let tx = firstTorch; tx <= endX; tx += torchStep) {
+    if (tx < enterX + 40 || tx > exitX - 40) continue;
+    if (tx >= worldLeft - 220 && tx <= worldRight + 220) {
+      drawWallTorch(ctx, tx, gy, now);
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Posadzka wnętrza piramidy ze starożytnych kamiennych płyt
+ */
+export function drawPyramidFloor(ctx, worldLeft, worldRight) {
+  const enterX = PYRAMID_ENTER_X;
+  const exitX = PYRAMID_EXIT_X;
+  if (exitX < worldLeft - 60 || enterX > worldRight + 60) return;
+
+  const startX = Math.max(enterX, worldLeft - 40);
+  const endX = Math.min(exitX, worldRight + 40);
+  if (startX >= endX) return;
+
+  const gy = GROUND_Y;
+  ctx.save();
+
+  const slabW = 60;
+  const slabH = 16;
+  const firstSlab = Math.floor(startX / slabW) * slabW;
+
+  for (let x = firstSlab; x <= endX; x += slabW) {
+    if (x < enterX || x > exitX) continue;
+    const isAlt = (Math.floor(x / slabW) % 2 === 0);
+    ctx.fillStyle = isAlt ? '#7a5230' : '#6d4c2b';
+    ctx.fillRect(x, gy, slabW - 2, slabH);
+
+    ctx.fillStyle = isAlt ? '#9c6d3d' : '#8d6338';
+    ctx.fillRect(x, gy, slabW - 2, 2.5);
+
+    ctx.fillStyle = '#2b170e';
+    ctx.fillRect(x + slabW - 2, gy, 2, slabH);
+  }
+
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(startX, gy, endX - startX, 2);
+
+  const firstTile = Math.floor(startX / 120) * 120;
+  for (let tx = firstTile; tx <= endX; tx += 120) {
+    if (tx < enterX + 20 || tx > exitX - 20) continue;
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(tx + 20, gy + 3, 20, 8);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(tx + 22, gy + 5, 16, 4);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Przednia warstwa piramidy: masywny sufit z kamiennych bloków, przednie kolumny i portale
+ */
+export function drawPyramidForeground(ctx, worldLeft, worldRight) {
+  const enterX = PYRAMID_ENTER_X;
+  const exitX = PYRAMID_EXIT_X;
+  const gy = GROUND_Y;
+
+  if (exitX < worldLeft - 100 || enterX > worldRight + 100) return;
+
+  const startX = Math.max(enterX, worldLeft - 60);
+  const endX = Math.min(exitX, worldRight + 60);
+  if (startX >= endX) return;
+
+  ctx.save();
+
+  // 1. Masywny sufit z kamiennych bloków nad murawą
+  const ceilingY = gy - 275;
+  const ceilingH = 80;
+
+  const ceilGrad = ctx.createLinearGradient(0, ceilingY - ceilingH, 0, ceilingY);
+  ceilGrad.addColorStop(0, '#1c100a');
+  ceilGrad.addColorStop(0.5, '#3b2416');
+  ceilGrad.addColorStop(1, '#24140c');
+  ctx.fillStyle = ceilGrad;
+  ctx.fillRect(startX, ceilingY - ceilingH, endX - startX, ceilingH);
+
+  // Poprzeczne belki stropowe
+  const firstBeam = Math.floor(startX / 90) * 90;
+  for (let bx = firstBeam; bx <= endX; bx += 90) {
+    if (bx < enterX || bx > exitX) continue;
+    ctx.fillStyle = '#1c100a';
+    ctx.fillRect(bx, ceilingY - ceilingH, 14, ceilingH);
+    ctx.fillStyle = '#5c3d2e';
+    ctx.fillRect(bx + 14, ceilingY - ceilingH, 3, ceilingH);
+  }
+
+  // Rzeźbiony gzyms architrawu
+  ctx.fillStyle = '#4a2c1d';
+  ctx.fillRect(startX, ceilingY - 6, endX - startX, 8);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(startX, ceilingY + 2, endX - startX, 2);
+
+  // Cień rzucany ze stropu w dół na korytarz
+  const dropShadow = ctx.createLinearGradient(0, ceilingY + 4, 0, ceilingY + 50);
+  dropShadow.addColorStop(0, 'rgba(15, 8, 4, 0.70)');
+  dropShadow.addColorStop(1, 'rgba(15, 8, 4, 0.0)');
+  ctx.fillStyle = dropShadow;
+  ctx.fillRect(startX, ceilingY + 4, endX - startX, 46);
+
+  // 2. Przednie kolumny komory grobowej (pierwszy plan przed graczem)
+  const firstCol = Math.floor(startX / 460) * 460;
+  for (let cx = firstCol; cx <= endX; cx += 460) {
+    if (cx < enterX + 180 || cx > exitX - 180) continue;
+    if (cx >= worldLeft - 60 && cx <= worldRight + 60) {
+      drawPapyrusColumn(ctx, cx, gy, true);
+    }
+  }
+
+  // 3. Przednia warstwa portalu wejściowego na 1050 m
+  if (enterX >= worldLeft - 200 && enterX <= worldRight + 200) {
+    drawEntrancePortalForeground(ctx, enterX, gy);
+  }
+
+  // 4. Przednia warstwa portalu wyjściowego na 1350 m i wylewające się jasne słońce
+  if (exitX >= worldLeft - 250 && exitX <= worldRight + 250) {
+    drawExitPortalForeground(ctx, exitX, gy);
+  }
+
+  ctx.restore();
+}
+
 
 // ==========================================
 // ==========================================
@@ -837,8 +2227,8 @@ export function updateParticles() {
     }
   }
 
-  // Aktualizacja powiewów i drobin piasku w biomie pustynnym (800 – 1599 m)
-  updateDesertWind();
+  // Aktualizacja powiewów i drobin zamieci piaskowej w biomie pustynnym (800 – 1599 m)
+  updateDesertSandstorm();
 
   // Aktualizacja potężnych powiewów śniegu i zamieci śnieżnej w biomie zimowym (1600 – 2399 m)
   updateWinterBlizzard();
@@ -1356,13 +2746,21 @@ export function drawSky(ctx) {
     }
   }
 
-  // Gradient nieba dostosowany do aktualnego biomu lub nocnej areny zamkniętego stadionu
+  // Współczynnik przebywania wewnątrz Wielkiej Piramidy (1050m - 1350m)
+  const pyramidFactor = getPyramidInsideFactor(currentDist);
+
+  // Gradient nieba dostosowany do aktualnego biomu, nocnej areny zamkniętego stadionu lub grobowca piramidy
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
   if (stadiumFactor > 0) {
     skyGrad.addColorStop(0, '#040711');
     skyGrad.addColorStop(0.35, '#0a1322');
     skyGrad.addColorStop(0.70, '#102038');
     skyGrad.addColorStop(1.0, '#172b48');
+  } else if (pyramidFactor > 0) {
+    skyGrad.addColorStop(0, '#0d0705');
+    skyGrad.addColorStop(0.35, '#1a0e08');
+    skyGrad.addColorStop(0.70, '#26140b');
+    skyGrad.addColorStop(1.0, '#381e10');
   } else {
     skyGrad.addColorStop(0, biome.sky[0]);
     skyGrad.addColorStop(0.35, biome.sky[1]);
@@ -1382,8 +2780,18 @@ export function drawSky(ctx) {
     ctx.fillRect(0, 0, W, H * 0.6);
   }
 
-  // Słońce i chmury znikają wewnątrz zamkniętego stadionu
-  const skyVisibility = 1.0 - stadiumFactor;
+  // Ciepła poświata pochodni rozświetlająca mroczne sklepienie wnętrza piramidy
+  if (pyramidFactor > 0) {
+    const tombGlow = ctx.createLinearGradient(0, H * 0.35, 0, H);
+    tombGlow.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    tombGlow.addColorStop(0.6, `rgba(255, 140, 25, ${0.12 * pyramidFactor})`);
+    tombGlow.addColorStop(1.0, `rgba(255, 90, 10, ${0.18 * pyramidFactor})`);
+    ctx.fillStyle = tombGlow;
+    ctx.fillRect(0, H * 0.35, W, H * 0.65);
+  }
+
+  // Słońce i chmury znikają wewnątrz zamkniętego stadionu oraz piramidy
+  const skyVisibility = (1.0 - stadiumFactor) * (1.0 - pyramidFactor);
   if (skyVisibility > 0.01) {
     ctx.save();
     ctx.globalAlpha *= skyVisibility;
@@ -1395,6 +2803,11 @@ export function drawSky(ctx) {
     drawCloudsLayer(ctx, 0, biome);
 
     ctx.restore();
+  }
+
+  // Monumentalna sylwetka Wielkiej Piramidy na horyzoncie pustyni (widok z oddali)
+  if (currentDist >= 750 && currentDist <= 1550) {
+    drawDistantPyramidParallax(ctx, currentDist);
   }
 
   // Samoloty na niebie w biomie murawy (0m – 799m)
@@ -2111,20 +3524,29 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   // 1. Tło stadionu w warstwie mid-ground (za murawą, graczem i obiektami)
   drawStadium(ctx, worldLeft, worldRight);
 
-  // 2. Grunt biomu
+  // 2. Sylwetka i monumentalna fasada zewnętrzna Wielkiej Piramidy (biom pustynny)
+  drawPyramidExterior(ctx, worldLeft, worldRight);
+
+  // 3. Wnętrze komory grobowej Wielkiej Piramidy (1050m - 1350m: dokładnie 300 metrów)
+  drawPyramidInterior(ctx, worldLeft, worldRight);
+
+  // 4. Grunt biomu
   const biome = getInterpolatedBiome(currentDist);
   ctx.fillStyle = biome.groundBase;
   ctx.fillRect(worldLeft, GROUND_Y, worldWidth, 600);
   ctx.fillStyle = biome.groundTop;
   ctx.fillRect(worldLeft, GROUND_Y, worldWidth, 9);
 
-  // 3. Profesjonalna murawa piłkarska z pasami koszenia i liniami (300m - 750m)
+  // 5. Starożytna kamienna posadzka wnętrza piramidy (1050m - 1350m)
+  drawPyramidFloor(ctx, worldLeft, worldRight);
+
+  // 6. Profesjonalna murawa piłkarska z pasami koszenia i liniami (300m - 750m)
   drawPitchMarkings(ctx, START_X + 300 * 14, START_X + 750 * 14, GROUND_Y, worldLeft, worldRight);
 
-  // 4. Klimatyczny efekt atmosferyczny pustyni (kłęby kurzu i pełnoekranowa atmosfera burzy)
-  drawDesertWind(ctx, worldLeft, worldRight);
+  // 7. Gwałtowna zamieć piaskowa (biom pustynny 800 – 1599 m)
+  drawDesertSandstorm(ctx, worldLeft, worldRight);
 
-  // 5. Potężne powiewy śniegu i zamieć śnieżna w tle (biom zimowy 1600 – 2399 m)
+  // 8. Potężne powiewy śniegu i zamieć śnieżna w tle (biom zimowy 1600 – 2399 m)
   drawWinterBlizzard(ctx, worldLeft, worldRight);
 }
 
@@ -2358,7 +3780,13 @@ export function drawStadiumForeground(ctx, worldLeft, worldRight) {
     ctx.restore();
   }
 
-  // 5. Płatki zamieci śnieżnej na pierwszym planie (biom zimowy 1600 – 2399 m)
+  // 5. Przednia warstwa Wielkiej Piramidy (strop z bloków kamiennych, przednie kolumny, portale i snop słońca)
+  drawPyramidForeground(ctx, worldLeft, worldRight);
+
+  // 6. Płatki/drobiny zamieci piaskowej na pierwszym planie (biom pustynny 800 – 1599 m)
+  drawDesertSandstormForeground(ctx, worldLeft, worldRight);
+
+  // 7. Płatki zamieci śnieżnej na pierwszym planie (biom zimowy 1600 – 2399 m)
   drawWinterBlizzardForeground(ctx, worldLeft, worldRight);
 }
 
@@ -2404,7 +3832,17 @@ export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
       ctx.fillRect(x - 3.5, GROUND_Y - 1, 7, 3);
 
       // 2. Estetyczna etykieta metrażu (badge z tłem)
-      const label = `${m}m`;
+      let label = `${m}m`;
+      const isPyramidEnter = (m === 1050);
+      const isPyramidExit = (m === 1350);
+      const isInsidePyramid = (m > 1050 && m < 1350);
+
+      if (isPyramidEnter) {
+        label = `★ WEJŚCIE DO PIRAMIDY • ${m}m ★`;
+      } else if (isPyramidExit) {
+        label = `★ WYJŚCIE Z PIRAMIDY • ${m}m ★`;
+      }
+
       ctx.font = 'bold 12px monospace';
       const textWidth = ctx.measureText(label).width;
       const badgeW = textWidth + 14;
@@ -2412,9 +3850,19 @@ export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
       const badgeX = x - badgeW / 2;
       const badgeY = GROUND_Y + 28;
 
-      ctx.fillStyle = 'rgba(8, 16, 28, 0.78)';
-      ctx.strokeStyle = isHundred ? 'rgba(255, 235, 59, 0.70)' : 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 1;
+      if (isPyramidEnter || isPyramidExit) {
+        ctx.fillStyle = 'rgba(43, 23, 14, 0.92)';
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1.5;
+      } else if (isInsidePyramid) {
+        ctx.fillStyle = 'rgba(28, 16, 10, 0.82)';
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.65)';
+        ctx.lineWidth = 1;
+      } else {
+        ctx.fillStyle = 'rgba(8, 16, 28, 0.78)';
+        ctx.strokeStyle = isHundred ? 'rgba(255, 235, 59, 0.70)' : 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1;
+      }
 
       ctx.beginPath();
       if (ctx.roundRect) {
@@ -2426,14 +3874,18 @@ export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
       ctx.stroke();
 
       // Tekst metrażu
-      ctx.fillStyle = isHundred ? '#ffeb3b' : '#ffffff';
+      if (isPyramidEnter || isPyramidExit || isInsidePyramid) {
+        ctx.fillStyle = '#ffd700';
+      } else {
+        ctx.fillStyle = isHundred ? '#ffeb3b' : '#ffffff';
+      }
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, x, badgeY + badgeH / 2);
 
     } else {
-      // Pomocnicza mała kreska co 10 metrów (pomijana wewnątrz stadionu dla zachowania czystości linii boiska)
-      if (m < 300 || m > 750) {
+      // Pomocnicza mała kreska co 10 metrów (pomijana wewnątrz stadionu oraz wewnątrz piramidy dla czystości posadzki)
+      if ((m < 300 || m > 750) && (m < 1050 || m > 1350)) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
         ctx.fillRect(x - 0.75, GROUND_Y, 1.5, 8);
       }
