@@ -1861,78 +1861,98 @@ export function drawNearDunes(ctx, worldLeft, worldRight) {
 
   if (duneEnd < worldLeft - 100 || duneStart > worldRight + 100) return;
 
-  const startX = Math.max(duneStart, worldLeft - 150);
-  const endX = Math.min(duneEnd, worldRight + 150);
+  const startX = Math.max(duneStart, worldLeft - 180);
+  const endX = Math.min(duneEnd, worldRight + 180);
   if (startX >= endX) return;
 
   const gy = GROUND_Y;
   ctx.save();
 
-  const segW = 180;
-  const firstSeg = Math.floor(startX / segW) * segW;
+  // Funkcja płynnej wysokości wydmy w przestrzeni świata (bez ostrych szwów)
+  const getDuneH = (x, phaseOffset, hScale) => {
+    const k = (x - START_X) * 0.0032;
+    const wave = Math.sin(k * 1.4 + phaseOffset) * 36 +
+                 Math.cos(k * 0.75 + phaseOffset * 1.3) * 22 +
+                 Math.sin(k * 2.8 + phaseOffset * 0.5) * 12 + 58;
+    const mDist = (x - START_X) / 14;
+    const fade = smoothstep(760, 850, mDist) * (1.0 - smoothstep(1550, 1640, mDist));
+    return wave * hScale * fade;
+  };
 
-  for (let x = firstSeg; x <= endX; x += segW) {
-    if (x + segW <= duneStart) continue;
-    const segDist = (x - START_X) / 14;
-    const duneFade = smoothstep(760, 850, segDist) * (1.0 - smoothstep(1550, 1640, segDist));
-    if (duneFade <= 0.01) continue;
+  const step = 45; // gęste, idealnie gładkie próbkowanie łuku krzywej
+  const numSteps = Math.ceil((endX - startX) / step);
 
-    const idx = Math.floor(x / segW);
-    const midX = x + segW * 0.48;
-    const nextX = x + segW;
-    const nextSegDist = (nextX - START_X) / 14;
-    const nextDuneFade = smoothstep(760, 850, nextSegDist) * (1.0 - smoothstep(1550, 1640, nextSegDist));
+  // ----------------------------------------------------
+  // WARSTWA 1: DALSZA PRZYZIEMNA WYDMA (CIEPLEJSZY PÓŁCIEŃ W TLE)
+  // ----------------------------------------------------
+  const bgGrad = ctx.createLinearGradient(0, gy - 110, 0, gy);
+  bgGrad.addColorStop(0, '#c4874e');
+  bgGrad.addColorStop(0.45, '#a66838');
+  bgGrad.addColorStop(1.0, '#75401d');
 
-    const duneH = (Math.sin(idx * 1.8) * 45 + Math.cos(idx * 1.1) * 25 + 65) * duneFade;
-    const crestY = gy - duneH;
-    const nextDuneH = (Math.sin((idx + 1) * 1.8) * 45 + Math.cos((idx + 1) * 1.1) * 25 + 65) * nextDuneFade;
-    const nextCrestY = gy - nextDuneH;
+  ctx.fillStyle = bgGrad;
+  ctx.beginPath();
+  ctx.moveTo(startX, gy + 15);
+  ctx.lineTo(startX, gy - getDuneH(startX, 1.8, 0.85));
 
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, duneFade));
-
-    // Zbocze zacienione (lewa strona fali piaskowej)
-    const shadowGrad = ctx.createLinearGradient(x, crestY, midX, gy);
-    shadowGrad.addColorStop(0, '#b57642');
-    shadowGrad.addColorStop(0.55, '#8f5228');
-    shadowGrad.addColorStop(1.0, '#693616');
-    ctx.fillStyle = shadowGrad;
-    ctx.beginPath();
-    ctx.moveTo(x, gy + 15);
-    ctx.lineTo(x, crestY + 18);
-    ctx.quadraticCurveTo(x + (midX - x) * 0.5, crestY - 8, midX, crestY);
-    ctx.lineTo(midX, gy + 15);
-    ctx.closePath();
-    ctx.fill();
-
-    // Zbocze oświetlone słońcem (prawa strona fali piaskowej)
-    const litGrad = ctx.createLinearGradient(midX, crestY, nextX, gy);
-    litGrad.addColorStop(0, '#fce0a6');
-    litGrad.addColorStop(0.25, '#e2a868');
-    litGrad.addColorStop(0.7, '#c98a58');
-    litGrad.addColorStop(1.0, '#9e6234');
-    ctx.fillStyle = litGrad;
-    ctx.beginPath();
-    ctx.moveTo(midX, crestY);
-    ctx.quadraticCurveTo(midX + (nextX - midX) * 0.55, crestY + 12, nextX, nextCrestY);
-    ctx.lineTo(nextX, gy + 15);
-    ctx.lineTo(midX, gy + 15);
-    ctx.closePath();
-    ctx.fill();
-
-    // Zmarszczki wiatrowe na piasku (wind ripples)
-    ctx.strokeStyle = 'rgba(255, 235, 175, 0.28)';
-    ctx.lineWidth = 1;
-    for (let r = 1; r <= 3; r++) {
-      const ry = crestY + (gy - crestY) * (r * 0.22);
-      ctx.beginPath();
-      ctx.moveTo(midX + 15, ry);
-      ctx.quadraticCurveTo(midX + 50, ry + 4, midX + 85, ry - 2);
-      ctx.stroke();
-    }
-
-    ctx.restore();
+  for (let i = 1; i <= numSteps; i++) {
+    const x = startX + i * step;
+    const prevX = startX + (i - 1) * step;
+    const y = gy - getDuneH(x, 1.8, 0.85);
+    const prevY = gy - getDuneH(prevX, 1.8, 0.85);
+    const midX = (prevX + x) * 0.5;
+    const midY = (prevY + y) * 0.5;
+    ctx.quadraticCurveTo(prevX, prevY, midX, midY);
   }
+  ctx.lineTo(endX, gy + 15);
+  ctx.closePath();
+  ctx.fill();
+
+  // ----------------------------------------------------
+  // WARSTWA 2: GŁÓWNA, JEDWABISTA WYDMA PUSTYNNA (ZŁOCISTE ŚWIATŁO SŁOŃCA)
+  // ----------------------------------------------------
+  const fgGrad = ctx.createLinearGradient(0, gy - 130, 0, gy);
+  fgGrad.addColorStop(0, '#fde6b3'); // lśniący, nagrzany słońcem piasek
+  fgGrad.addColorStop(0.22, '#e8b26e'); // naturalne złoto pustynne
+  fgGrad.addColorStop(0.65, '#c57f44'); // ciepły odcień zbocza
+  fgGrad.addColorStop(1.0, '#8c4e23');  // miękki cień u podstawy gruntu
+
+  ctx.fillStyle = fgGrad;
+  ctx.beginPath();
+  ctx.moveTo(startX, gy + 15);
+  ctx.lineTo(startX, gy - getDuneH(startX, 0.0, 1.0));
+
+  for (let i = 1; i <= numSteps; i++) {
+    const x = startX + i * step;
+    const prevX = startX + (i - 1) * step;
+    const y = gy - getDuneH(x, 0.0, 1.0);
+    const prevY = gy - getDuneH(prevX, 0.0, 1.0);
+    const midX = (prevX + x) * 0.5;
+    const midY = (prevY + y) * 0.5;
+    ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+  }
+  ctx.lineTo(endX, gy + 15);
+  ctx.closePath();
+  ctx.fill();
+
+  // ----------------------------------------------------
+  // ROZŚWIETLONA GRAŃ WYDMY (RIM LIGHT NA GRZBIECIE)
+  // ----------------------------------------------------
+  ctx.strokeStyle = 'rgba(255, 245, 210, 0.65)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(startX, gy - getDuneH(startX, 0.0, 1.0));
+
+  for (let i = 1; i <= numSteps; i++) {
+    const x = startX + i * step;
+    const prevX = startX + (i - 1) * step;
+    const y = gy - getDuneH(x, 0.0, 1.0);
+    const prevY = gy - getDuneH(prevX, 0.0, 1.0);
+    const midX = (prevX + x) * 0.5;
+    const midY = (prevY + y) * 0.5;
+    ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+  }
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -3594,88 +3614,11 @@ function drawFloodlightTower(ctx, mx, gy, now) {
 
 // 1. KINEMATYCZNE WEJŚCIE NA PŁYTĘ (TUNEL GRACZY) - TŁO
 function drawPlayerTunnelBg(ctx, tunnelStartX, enterX, gy) {
-  const tw = enterX - tunnelStartX;
-  const ty = gy - 620;
-  const th = 620;
-
-  // Ciemnoszare, betonowe ściany i strop zamykające górę ekranu
-  const tunnelGrad = ctx.createLinearGradient(tunnelStartX, ty, enterX, gy);
-  tunnelGrad.addColorStop(0, '#04070e');
-  tunnelGrad.addColorStop(0.45, '#0b111a');
-  tunnelGrad.addColorStop(0.85, '#131c28');
-  tunnelGrad.addColorStop(1, '#0e1622');
-  ctx.fillStyle = tunnelGrad;
-  ctx.fillRect(tunnelStartX - 40, ty, tw + 50, th);
-
-  // Poziome i pionowe fugi dylatacyjne prefabrykatów betonowych
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let py = ty + 70; py < gy; py += 75) {
-    ctx.moveTo(tunnelStartX - 40, py);
-    ctx.lineTo(enterX + 10, py);
-  }
-  for (let px = tunnelStartX; px <= enterX; px += 95) {
-    ctx.moveTo(px, ty);
-    ctx.lineTo(px, gy);
-  }
-  ctx.stroke();
-
-  // Betonowe żebra wsporcze sklepienia tunelu (brutalistyczna architektura)
-  for (let px = tunnelStartX + 20; px <= enterX - 30; px += 95) {
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(px, ty + 40, 14, th - 65);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(px, ty + 40, 3, th - 65);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(px + 11, ty + 40, 3, th - 65);
-  }
-
-  // Podwieszone rury kablowe, korytka instalacyjne i wentylacja pod stropem
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(tunnelStartX - 40, gy - 260);
-  ctx.lineTo(enterX, gy - 260);
-  ctx.moveTo(tunnelStartX - 40, gy - 275);
-  ctx.lineTo(enterX, gy - 275);
-  ctx.stroke();
-
-  // Oprawy oświetleniowe LED w suficie tunelu rzucające chłodne światło w dół
-  for (let lx = tunnelStartX + 45; lx < enterX; lx += 95) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(lx - 20, gy - 250, 40, 4);
-
-    const lampCone = ctx.createLinearGradient(lx, gy - 248, lx, gy);
-    lampCone.addColorStop(0, 'rgba(224, 242, 254, 0.35)');
-    lampCone.addColorStop(0.6, 'rgba(56, 189, 248, 0.12)');
-    lampCone.addColorStop(1, 'rgba(56, 189, 248, 0)');
-    ctx.fillStyle = lampCone;
-    ctx.beginPath();
-    ctx.moveTo(lx - 20, gy - 246);
-    ctx.lineTo(lx + 20, gy - 246);
-    ctx.lineTo(lx + 55, gy);
-    ctx.lineTo(lx - 55, gy);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Napis informacyjny na ścianie tunelu
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('➔ TUNEL GRACZY • WYJŚCIE NA PŁYTĘ ➔', (tunnelStartX + enterX) / 2, gy - 165);
-  ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 13px monospace';
-  ctx.fillText('★ CHAMPIONS ARENA ★', (tunnelStartX + enterX) / 2, gy - 145);
-  ctx.textAlign = 'left';
-
   // Czerwona wykładzina techniczna na ziemi
   const carpetStartX = tunnelStartX - 30;
-  const carpetEndX = enterX + 45; // płynne wyjście czerwonej wykładziny na płytę
+  const carpetEndX = enterX + 45;
   const carpetW = carpetEndX - carpetStartX;
 
-  // Główna wstęga czerwonej wykładziny technicznej
   const carpetGrad = ctx.createLinearGradient(0, gy - 2, 0, gy + 8);
   carpetGrad.addColorStop(0, '#991b1b');
   carpetGrad.addColorStop(0.4, '#b91c1c');
@@ -3683,12 +3626,10 @@ function drawPlayerTunnelBg(ctx, tunnelStartX, enterX, gy) {
   ctx.fillStyle = carpetGrad;
   ctx.fillRect(carpetStartX, gy - 2, carpetW, 8);
 
-  // Krawędzie złocistej listwy wykończeniowej i metalowy próg transition
   ctx.fillStyle = '#f59e0b';
   ctx.fillRect(carpetStartX, gy - 2, carpetW, 1.5);
   ctx.fillRect(carpetStartX, gy + 5, carpetW, 1.5);
 
-  // Prążkowana faktura antypoślizgowej gumy technicznej
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -4781,43 +4722,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 // ==========================================
 function drawEntranceGateForeground(ctx, enterX, gy) {
   // 1. KINEMATYCZNE WEJŚCIE NA PŁYTĘ (TUNEL GRACZY) - PIERWSZY PLAN
-  // Ciemnoszare, betonowe ściany i strop zamykające górę ekranu przed wejściem na stadion
   const tunnelStartX = START_X + 265 * 14; // 3870 px
-  const tunnelW = enterX - tunnelStartX;
-
-  // Strop betonowy zamykający górę ekranu w tunelu (od góry kadru do gy - 130)
-  const slabH = 500;
-  const slabY = gy - 630;
-  const slabGrad = ctx.createLinearGradient(tunnelStartX, slabY, enterX, gy - 130);
-  slabGrad.addColorStop(0, '#04070d');
-  slabGrad.addColorStop(0.5, '#0e141e');
-  slabGrad.addColorStop(1, '#1b232e');
-  ctx.fillStyle = slabGrad;
-  ctx.fillRect(tunnelStartX - 40, slabY, tunnelW + 40, slabH);
-
-  // Masywne żebra stropowe prefabrykowane z surowego betonu
-  for (let px = tunnelStartX + 10; px < enterX; px += 85) {
-    ctx.fillStyle = '#222935';
-    ctx.fillRect(px, slabY, 16, slabH);
-    ctx.fillStyle = '#333e4f';
-    ctx.fillRect(px, slabY, 3, slabH);
-    ctx.fillStyle = '#10141a';
-    ctx.fillRect(px + 13, slabY, 3, slabH);
-  }
-
-  // Dolna krawędź betonowego nadproża sklepienia tunelu
-  ctx.fillStyle = '#334155';
-  ctx.fillRect(tunnelStartX - 40, gy - 135, tunnelW + 40, 8);
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(tunnelStartX - 40, gy - 135, tunnelW + 40, 2);
-
-  // Podwieszone korytka kablowe i oprawy oświetleniowe w suficie tunelu
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(tunnelStartX - 40, gy - 145);
-  ctx.lineTo(enterX, gy - 145);
-  ctx.stroke();
 
   // Czerwona wykładzina techniczna na pierwszym planie (w korytarzu wyjściowym)
   const carpetStartX = tunnelStartX - 30;
