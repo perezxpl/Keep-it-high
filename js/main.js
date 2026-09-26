@@ -4,7 +4,9 @@ import {
   initCanvas, resize, updateCamera, updateDistance,
   spawnGrass, updateParticles, dist,
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
-  drawStadiumForeground, clearDesertSandstorm, clearWinterBlizzard
+  drawStadiumForeground, clearDesertSandstorm, clearWinterBlizzard,
+  openChest, openChestShop, closeChestShop, chestShopModal,
+  openChestTier, closeChestModal, chestModal, CHEST_TIERS
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -57,9 +59,69 @@ window.addEventListener('resize', () => {
   updateButtonLayout();
 });
 
+// Obsługa kliknięć w modal sklepu skrzyń
+function handleShopClick(clickX, clickY) {
+  // 1. Sprawdź kliknięcie w przycisk zamknięcia [X]
+  if (chestShopModal.closeBtnBounds) {
+    const cb = chestShopModal.closeBtnBounds;
+    if (clickX >= cb.x && clickX <= cb.x + cb.w && clickY >= cb.y && clickY <= cb.y + cb.h) {
+      closeChestShop();
+      return true;
+    }
+  }
+
+  // 2. Sprawdź kliknięcie poza oknem modalu (zamknięcie po kliknięciu w tło)
+  if (chestShopModal.modalBounds) {
+    const mb = chestShopModal.modalBounds;
+    if (clickX < mb.x || clickX > mb.x + mb.w || clickY < mb.y || clickY > mb.y + mb.h) {
+      closeChestShop();
+      return true;
+    }
+  }
+
+  // 3. Sprawdź kliknięcie w karty skrzyń / przyciski OTWÓRZ
+  if (chestShopModal.cardBounds) {
+    for (let c of chestShopModal.cardBounds) {
+      const hitBtn = (clickX >= c.x && clickX <= c.x + c.w && clickY >= c.y && clickY <= c.y + c.h);
+      const hitCard = (clickX >= c.cardX && clickX <= c.cardX + c.cardW && clickY >= c.cardY && clickY <= c.cardY + c.cardH);
+      if (hitBtn || hitCard) {
+        if (c.canAfford) {
+          openChestTier(c.id);
+        }
+        return true;
+      }
+    }
+  }
+  return true;
+}
+
 // Obsługa Touch
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
+
+  if (chestModal.active) {
+    if (chestModal.state === 'reward') {
+      closeChestModal();
+    }
+    return;
+  }
+
+  if (chestShopModal.active) {
+    const t = e.changedTouches[0];
+    if (t) {
+      handleShopClick(t.clientX, t.clientY);
+    }
+    return;
+  }
+
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i];
+    if (t.clientX >= 24 && t.clientX <= 224 && t.clientY >= 96 && t.clientY <= 140) {
+      openChestShop();
+      return;
+    }
+  }
+
   const midX = W / 2;
 
   for (let i = 0; i < e.changedTouches.length; i++) {
@@ -239,6 +301,38 @@ document.querySelectorAll('.dev-btn').forEach((btn) => {
 
 // Klawiatura PC
 window.addEventListener('keydown', (e) => {
+  // Klawisz B (Otwarcie/zamknięcie sklepu skrzyń lub odebranie nagrody)
+  if (e.code === 'KeyB') {
+    if (chestModal.active && chestModal.state === 'reward') {
+      closeChestModal();
+    } else if (chestShopModal.active) {
+      closeChestShop();
+    } else if (!chestModal.active) {
+      openChestShop();
+    }
+    return;
+  }
+
+  // Klawisz Escape (Zamknięcie sklepu lub odebranie nagrody)
+  if (e.code === 'Escape') {
+    if (chestModal.active && chestModal.state === 'reward') {
+      closeChestModal();
+    } else if (chestShopModal.active) {
+      closeChestShop();
+    }
+    return;
+  }
+
+  // Spacja do odbioru nagrody gdy modal jest w stanie 'reward'
+  if (e.code === 'Space' && chestModal.active) {
+    if (chestModal.state === 'reward') {
+      closeChestModal();
+    }
+    return;
+  }
+
+  if (chestModal.active || chestShopModal.active) return; // Blokada sterowania podczas otwarcia skrzynki lub sklepu
+
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
   if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
@@ -291,6 +385,24 @@ window.addEventListener('keyup', (e) => {
 canvas.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return; // Tylko Lewy Przycisk Myszy (LPM)
 
+  if (chestModal.active) {
+    if (chestModal.state === 'reward') {
+      closeChestModal();
+    }
+    return;
+  }
+
+  if (chestShopModal.active) {
+    handleShopClick(e.clientX, e.clientY);
+    return;
+  }
+
+  // Kliknięcie w przycisk sklepu skrzyń w HUD (btnX: 24, btnY: 104, btnW: 190, btnH: 32)
+  if (e.clientX >= 24 && e.clientX <= 224 && e.clientY >= 96 && e.clientY <= 140) {
+    openChestShop();
+    return;
+  }
+
   if (dist(e.clientX, e.clientY, btnCluster.jump.x, btnCluster.jump.y) < btnCluster.jump.r) {
     startJumpCharge();
   } else if (dist(e.clientX, e.clientY, btnCluster.kick.x, btnCluster.kick.y) < btnCluster.kick.r) {
@@ -312,6 +424,7 @@ window.addEventListener('mouseup', (e) => {
 
 // Aktualizacja stanu gry
 function update() {
+  if (chestModal.active || chestShopModal.active) return; // Pauza gry podczas otwierania skrzynki lub sklepu
   updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass);
   updateParticles();
   updateBall(GROUND_Y);
