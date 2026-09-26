@@ -4328,220 +4328,11 @@ function drawStadiumLedBoards(ctx, enterX, exitX, gy, viewLeft, viewRight, now) 
   }
 }
 
-// 3. PŁYTA BOISKA Z ILUZJĄ GŁĘBI (PERSPEKTYWA DARNI) - ZOPTYMALIZOWANE RYSOWANIE
-function drawPitchMarkings(ctx, enterX, exitX, gy, viewLeft, viewRight) {
-  if (viewRight < enterX - 100 || viewLeft > exitX + 100) return;
-
-  const startX = Math.max(enterX, viewLeft - 120);
-  const endX = Math.min(exitX, viewRight + 120);
-  if (startX > endX) return;
-
-  const now = performance.now();
-  const midPitchX = START_X + 525 * 14; // 7510 px (środek boiska)
-
-  // A. Pasy koszenia trawy o zróżnicowanej szerokości i odcieniach zieleni (#1b5e20 oraz #2e7d32)
-  // Zoptymalizowana pętla: przewijamy do pierwszego widocznego pasa i rysujemy wyłącznie pasy w kadrze
-  const stripeWidths = [74, 86, 68, 92, 78, 82];
-  let curX = enterX;
-  let sIdx = 0;
-
-  // Szybkie przewinięcie do pierwszego widocznego pasa
-  while (curX + 100 < startX && curX < exitX) {
-    const sw = stripeWidths[sIdx % stripeWidths.length];
-    curX += sw;
-    sIdx++;
-  }
-
-  // Rysowanie wyłącznie pasów widocznych w kadrze
-  while (curX < endX && curX < exitX) {
-    const sw = stripeWidths[sIdx % stripeWidths.length];
-    const nextX = Math.min(exitX, curX + sw);
-    const stripeW = nextX - curX;
-
-    if (stripeW > 0) {
-      const isLight = (sIdx % 2 === 0);
-      const colBase = isLight ? '#2e7d32' : '#1b5e20';
-      const colHighlight = isLight ? '#388e3c' : '#236928';
-
-      // Kąt zbiegu perspektywicznego ku horyzontowi / band LED
-      const slant1 = (curX - midPitchX) * 0.045;
-      const slant2 = (nextX - midPitchX) * 0.045;
-
-      const topX1 = curX;
-      const topX2 = nextX;
-      const botX1 = curX + slant1;
-      const botX2 = nextX + slant2;
-
-      ctx.fillStyle = colBase;
-      ctx.beginPath();
-      ctx.moveTo(topX1, gy - 2);
-      ctx.lineTo(topX2, gy - 2);
-      ctx.lineTo(botX2, gy + 450);
-      ctx.lineTo(botX1, gy + 450);
-      ctx.closePath();
-      ctx.fill();
-
-      // Subtelny pasek rozjaśnienia krawędzi walca kosiarki dający iluzję 3D darni
-      ctx.fillStyle = colHighlight;
-      ctx.beginPath();
-      ctx.moveTo(topX1, gy - 2);
-      ctx.lineTo(topX2, gy - 2);
-      ctx.lineTo(topX2 + slant2 * 0.04, gy + 8);
-      ctx.lineTo(topX1 + slant1 * 0.04, gy + 8);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    curX = nextX;
-    sIdx++;
-  }
-
-  // B. Wyraźna, gruba biała linia boczna z delikatnym cieniem
-  const touchLeft = Math.max(enterX, viewLeft);
-  const touchRight = Math.min(exitX, viewRight);
-  if (touchRight > touchLeft) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
-    ctx.fillRect(touchLeft, gy + 6, touchRight - touchLeft, 4);
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.fillRect(touchLeft, gy + 2, touchRight - touchLeft, 5);
-  }
-
-  // C. Łuk narożnika boiska (Corner arc) przy wejściu (315 m = 4570 px)
-  const cornerX1 = START_X + 315 * 14;
-  if (cornerX1 >= viewLeft - 60 && cornerX1 <= viewRight + 60) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.arc(cornerX1, gy + 2, 34, 0, Math.PI * 0.5, false);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(cornerX1, gy + 2);
-    ctx.lineTo(cornerX1, gy - 8);
-    ctx.stroke();
-
-    const sway = Math.sin(now * 0.005) * 1.5;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cornerX1, gy - 8);
-    ctx.quadraticCurveTo(cornerX1 + sway * 0.5, gy - 24, cornerX1 + sway, gy - 38);
-    ctx.stroke();
-
-    const topFlagX = cornerX1 + sway;
-    const topFlagY = gy - 38;
-    const flagWave = Math.sin(now * 0.008) * 2;
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(topFlagX, topFlagY);
-    ctx.lineTo(topFlagX + 18 + flagWave, topFlagY + 4);
-    ctx.lineTo(topFlagX, topFlagY + 8);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.moveTo(topFlagX, topFlagY + 8);
-    ctx.lineTo(topFlagX + 18 + flagWave, topFlagY + 4);
-    ctx.lineTo(topFlagX, topFlagY + 16);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // D. Łuk narożnika boiska (Corner arc) przy wyjściu (735 m = 10450 px)
-  const cornerX2 = START_X + 735 * 14;
-  if (cornerX2 >= viewLeft - 60 && cornerX2 <= viewRight + 60) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.arc(cornerX2, gy + 2, 34, Math.PI * 0.5, Math.PI, false);
-    ctx.stroke();
-
-    const sway = Math.sin(now * 0.005 + 1.5) * 1.5;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cornerX2, gy - 8);
-    ctx.quadraticCurveTo(cornerX2 - sway * 0.5, gy - 24, cornerX2 - sway, gy - 38);
-    ctx.stroke();
-
-    const topFlagX = cornerX2 - sway;
-    const topFlagY = gy - 38;
-    const flagWave = Math.sin(now * 0.008 + 1.5) * 2;
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(topFlagX, topFlagY);
-    ctx.lineTo(topFlagX - 18 - flagWave, topFlagY + 4);
-    ctx.lineTo(topFlagX, topFlagY + 8);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.moveTo(topFlagX, topFlagY + 8);
-    ctx.lineTo(topFlagX - 18 - flagWave, topFlagY + 4);
-    ctx.lineTo(topFlagX, topFlagY + 16);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // E. Linia środkowa i koło środkowe w perspektywie (525 m = 7510 px)
-  if (midPitchX >= viewLeft - 160 && midPitchX <= viewRight + 160) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.lineWidth = 4.5;
-
-    ctx.fillRect(midPitchX - 2, gy + 2, 4.5, 200);
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx.beginPath();
-    ctx.arc(midPitchX, gy + 6, 5.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(midPitchX, gy + 4, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(midPitchX, gy + 2, 115, 44, 0, 0, Math.PI);
-    ctx.stroke();
-  }
-
-  // F. Pole karne i łuk pola karnego (355 m oraz 695 m)
-  const penX1 = START_X + 355 * 14;
-  if (penX1 >= viewLeft - 220 && penX1 <= viewRight + 220) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
-    ctx.lineWidth = 4.5;
-
-    ctx.fillRect(penX1 + 160, gy + 2, 4.5, 110);
-    ctx.beginPath();
-    ctx.arc(penX1, gy + 45, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(penX1, gy + 45, 65, 24, 0, 0, Math.PI * 0.65);
-    ctx.stroke();
-  }
-
-  const penX2 = START_X + 695 * 14;
-  if (penX2 >= viewLeft - 220 && penX2 <= viewRight + 220) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
-    ctx.lineWidth = 4.5;
-
-    ctx.fillRect(penX2 - 160, gy + 2, 4.5, 110);
-    ctx.beginPath();
-    ctx.arc(penX2, gy + 45, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(penX2, gy + 45, 65, 24, 0, Math.PI * 0.35, Math.PI);
-    ctx.stroke();
-  }
+// ==========================================
+// PŁYTA BOISKA STADIONU (WYŁĄCZONA NA RZECZ NATURALNEJ MURAWY)
+// ==========================================
+export function drawPitchMarkings() {
+  // Pasy boiska i białe linie zostały wyłączone na rzecz jednolitej, naturalnej trawy
 }
 
 // 7. GŁÓWNA FUNKCJA RYSOWANIA STADIONU W WARSTWIE TŁA (MID-GROUND)
@@ -4658,7 +4449,13 @@ const GROUND_SEGMENTS = [
   { startX: START_X + 3250 * 14, endX: 1e9, type: 'solid', baseHex: BIOMES[4].groundBaseHex, topHex: BIOMES[4].groundTopHex }
 ];
 
+// ==========================================
+// WIELOWARSTWOWY, REALISTYCZNY RENDERER PODŁOŻA I MRAWY
+// ==========================================
 export function drawContinuousGround(ctx, worldLeft, worldRight) {
+  const gy = GROUND_Y;
+  const now = performance.now();
+
   for (let i = 0; i < GROUND_SEGMENTS.length; i++) {
     const seg = GROUND_SEGMENTS[i];
     if (worldRight < seg.startX || worldLeft > seg.endX) continue;
@@ -4668,27 +4465,102 @@ export function drawContinuousGround(ctx, worldLeft, worldRight) {
     const drawW = drawEnd - drawStart;
     if (drawW <= 0) continue;
 
-    if (seg.type === 'solid') {
-      ctx.fillStyle = seg.baseHex;
-      ctx.fillRect(drawStart, GROUND_Y, drawW, 600);
-      ctx.fillStyle = seg.topHex;
-      ctx.fillRect(drawStart, GROUND_Y, drawW, 9);
-    } else {
-      // Płynny gradient strefy przejściowej w koordynatach świata
-      const baseGrad = ctx.createLinearGradient(seg.startX, 0, seg.endX, 0);
-      for (let s = 0; s < seg.baseStops.length; s++) {
-        baseGrad.addColorStop(seg.baseStops[s][0], seg.baseStops[s][1]);
-      }
-      ctx.fillStyle = baseGrad;
-      ctx.fillRect(drawStart, GROUND_Y, drawW, 600);
+    ctx.save();
 
-      const topGrad = ctx.createLinearGradient(seg.startX, 0, seg.endX, 0);
-      for (let s = 0; s < seg.topStops.length; s++) {
-        topGrad.addColorStop(seg.topStops[s][0], seg.topStops[s][1]);
-      }
-      ctx.fillStyle = topGrad;
-      ctx.fillRect(drawStart, GROUND_Y, drawW, 9);
+    // ----------------------------------------------------
+    // 1. WIELOWARSTWOWY PRZEKRÓJ GLEBY (ANATOMIA PODŁOŻA)
+    // ----------------------------------------------------
+    const groundDepth = 600;
+    const soilGrad = ctx.createLinearGradient(0, gy, 0, gy + groundDepth);
+
+    if (seg.baseHex === '#1b5e20') {
+      // BIOM 0: ŻYZNA MURAWA (Zieleń -> Darń -> Ciemna próchnica -> Podglebie)
+      soilGrad.addColorStop(0.00, '#2e7d32'); // soczysta zieleń na styku z murawą
+      soilGrad.addColorStop(0.02, '#1b5e20'); // gęsta, ciemnozielona darń
+      soilGrad.addColorStop(0.06, '#1e381e'); // strefa splątanych korzonków
+      soilGrad.addColorStop(0.12, '#2b2118'); // ciemnobrunatna, żyzna ziemia
+      soilGrad.addColorStop(0.35, '#1c150e'); // wilgotna gleba
+      soilGrad.addColorStop(1.00, '#0f0b07'); // głębokie podglebie
+    } else {
+      // POZOSTAŁE BIOMY: Płynne przejście z zachowaniem barwy bazowej
+      soilGrad.addColorStop(0.00, seg.topHex || '#2e7d32');
+      soilGrad.addColorStop(0.05, seg.baseHex || '#1b5e20');
+      soilGrad.addColorStop(0.20, '#1c150e');
+      soilGrad.addColorStop(1.00, '#0a0805');
     }
+
+    ctx.fillStyle = soilGrad;
+    ctx.fillRect(drawStart, gy, drawW, groundDepth);
+
+    // ----------------------------------------------------
+    // 2. STREFA KORZENIOWA I DROBINKI GLEBY (POD POWIERZCHNIĄ)
+    // ----------------------------------------------------
+    if (seg.baseHex === '#1b5e20') {
+      // Drobne korzonki wnikające w ziemię (10-40 px pod murawą)
+      const rootStep = 32;
+      const firstRoot = Math.floor(drawStart / rootStep) * rootStep;
+      ctx.strokeStyle = 'rgba(74, 55, 38, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      for (let rx = firstRoot; rx <= drawEnd; rx += rootStep) {
+        const seed = Math.abs(Math.sin(rx * 0.12));
+        const rootLen = 14 + seed * 22;
+        ctx.moveTo(rx, gy + 8);
+        ctx.quadraticCurveTo(rx + (seed - 0.5) * 16, gy + 8 + rootLen * 0.5, rx + (seed - 0.5) * 24, gy + 8 + rootLen);
+      }
+      ctx.stroke();
+
+      // Ciemniejsza linia próchnicy tuż pod darnią
+      ctx.fillStyle = 'rgba(20, 14, 10, 0.35)';
+      ctx.fillRect(drawStart, gy + 12, drawW, 4);
+    }
+
+    // ----------------------------------------------------
+    // 3. ROZŚWIETLONA KRAWĘDŹ SZCZYTOWA (RIM LIGHT)
+    // ----------------------------------------------------
+    const rimGrad = ctx.createLinearGradient(0, gy - 1, 0, gy + 4);
+    rimGrad.addColorStop(0, 'rgba(110, 231, 183, 0.75)'); // jaśniejszy seledynowy blask słońca
+    rimGrad.addColorStop(0.5, 'rgba(74, 222, 128, 0.45)');
+    rimGrad.addColorStop(1, 'rgba(46, 125, 50, 0)');
+    ctx.fillStyle = rimGrad;
+    ctx.fillRect(drawStart, gy - 1, drawW, 5);
+
+    // ----------------------------------------------------
+    // 4. PROCEDURALNE ŹDŹBŁA TRAWY (NATURALNY FRINGE NA KRAWĘDZI)
+    // ----------------------------------------------------
+    if (seg.baseHex === '#1b5e20') {
+      const bladeStep = 5; // gęste rozmieszczenie źdźbeł
+      const firstBlade = Math.floor(drawStart / bladeStep) * bladeStep;
+      const windSway = Math.sin(now * 0.0035) * 1.5;
+
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+
+      // Rysowanie kępek trawy w dwóch odcieniach zieleni dla głębi
+      for (let bx = firstBlade; bx <= drawEnd; bx += bladeStep) {
+        const seed = Math.abs(Math.sin(bx * 0.45 + 1.2));
+        const bladeH = 4 + seed * 6.5; // wysokość źdźbła 4-10.5 px
+        const bladeLean = (seed - 0.48) * 4 + windSway * (0.6 + seed * 0.4);
+
+        // Naprzemienne odcienie: młode jasne źdźbła i ciemniejsza trawa
+        ctx.strokeStyle = seed > 0.5 ? '#4ade80' : '#22c55e';
+        ctx.beginPath();
+        ctx.moveTo(bx, gy + 1);
+        ctx.quadraticCurveTo(bx + bladeLean * 0.5, gy - bladeH * 0.6, bx + bladeLean, gy - bladeH);
+        ctx.stroke();
+
+        // Dodatkowe drugie mniejsze źdźbło w kępce
+        if (seed > 0.35) {
+          ctx.strokeStyle = '#16a34a';
+          ctx.beginPath();
+          ctx.moveTo(bx + 2, gy + 1);
+          ctx.quadraticCurveTo(bx + 2 - bladeLean * 0.3, gy - bladeH * 0.4, bx + 2 - bladeLean * 0.6, gy - bladeH * 0.7);
+          ctx.stroke();
+        }
+      }
+    }
+
+    ctx.restore();
   }
 }
 
@@ -4830,9 +4702,6 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 
   // 8. Monumentalne portale wejściowy i wyjściowy Wielkiej Piramidy (spójny obiekt na wierzchu tła)
   drawPyramidPortals(ctx, worldLeft, worldRight);
-
-  // 9. Profesjonalna murawa piłkarska z pasami koszenia i liniami (300m - 750m)
-  drawPitchMarkings(ctx, START_X + 300 * 14, START_X + 750 * 14, GROUND_Y, worldLeft, worldRight);
 
   // 10. Gwałtowna zamieć piaskowa (płynna dynamika cząsteczek i pyłu)
   drawDesertSandstorm(ctx, worldLeft, worldRight);
@@ -6091,59 +5960,80 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
   ctx.fillStyle = '#ffeb3b';
   ctx.fillText(`REKORD:  ${bestDistance} m`, 24, 62);
 
-  // Licznik monet z opcjonalnym mnożnikiem (stałym i/lub czasowym z dynamicznym odliczaniem MM:SS)
-  ctx.fillStyle = '#facc15';
-  ctx.fillText(`★ MONETY: ${coins}`, 240, 38);
+  // ==========================================
+  // DYNAMICZNY LICZNIK MONET I MNOŻNIKÓW (BEZ NACHODZENIA)
+  // ==========================================
+  const coinY = 84;
+  let curHudX = 24;
 
-  const activeMult = getActiveCoinMultiplier();
-  const remTime = getTempMultiplierTimeRemaining();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 16px monospace';
+  ctx.fillStyle = '#ffd54f';
 
-  if (activeMult > 1.0) {
-    ctx.save();
-    ctx.font = 'bold 12px monospace';
-    const multStr = (activeMult % 1 === 0) ? activeMult.toFixed(0) : activeMult.toFixed(1);
-    
-    let badgeText = '';
-    if (remTime && playerInventory.permCoinMult > 1.0) {
-      const permStr = (playerInventory.permCoinMult % 1 === 0) ? playerInventory.permCoinMult.toFixed(0) : playerInventory.permCoinMult.toFixed(1);
-      const tempStr = (playerInventory.tempCoinMult % 1 === 0) ? playerInventory.tempCoinMult.toFixed(0) : playerInventory.tempCoinMult.toFixed(1);
-      badgeText = `[x${multStr} | x${permStr} STAŁY + x${tempStr} ⏱️ ${remTime}]`;
-    } else if (remTime) {
-      badgeText = `[x${multStr} ⏱️ ${remTime}]`;
-    } else if (playerInventory.permCoinMult > 1.0) {
-      badgeText = `[x${multStr} STAŁY]`;
+  const coinText = `★ MONETY: ${coins}`;
+  ctx.fillText(coinText, curHudX, coinY);
+
+  // Dynamiczne przesunięcie pozycji kolejnych elementów na podstawie szerokości tekstu
+  curHudX += ctx.measureText(coinText).width + 12;
+
+  // 1. Plakietka stałego mnożnika x2 (jeśli aktywny)
+  if (playerInventory.permCoinMult > 1.0) {
+    const badgeText = '[x2 STAŁY]';
+    ctx.font = '700 12px monospace';
+    const badgeW = ctx.measureText(badgeText).width + 14;
+    const badgeH = 22;
+
+    // Tło plakietki
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.15)';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(curHudX, coinY - badgeH / 2, badgeW, badgeH, 4);
+    } else {
+      ctx.rect(curHudX, coinY - badgeH / 2, badgeW, badgeH);
     }
+    ctx.fill();
+    ctx.stroke();
 
-    if (badgeText) {
-      const coinsWidth = ctx.measureText(`★ MONETY: ${coins}`).width;
-      const badgeX = 240 + coinsWidth + 10;
-      const badgeY = 22;
-      ctx.font = 'bold 11px monospace';
-      const textW = ctx.measureText(badgeText).width;
-      const badgeW = textW + 12;
-      const badgeH = 22;
+    // Napis wewnątrz plakietki
+    ctx.fillStyle = '#fef08a';
+    ctx.textAlign = 'center';
+    ctx.fillText(badgeText, curHudX + badgeW / 2, coinY);
+    ctx.textAlign = 'left';
 
-      // Efekt podświetlenia badge'a
-      ctx.fillStyle = remTime ? 'rgba(6, 182, 212, 0.22)' : 'rgba(234, 179, 8, 0.22)';
-      ctx.strokeStyle = remTime ? '#06b6d4' : '#eab308';
-      ctx.lineWidth = 1.2;
-      if (typeof ctx.roundRect === 'function') {
-        ctx.beginPath();
-        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-        ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-      }
-
-      ctx.fillStyle = remTime ? '#67e8f9' : '#fef08a';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(badgeText, badgeX + 6, badgeY + badgeH / 2);
-    }
-    ctx.restore();
+    curHudX += badgeW + 8;
   }
+
+  // 2. Plakietka boosta czasowego (jeśli aktywny)
+  const tempTimer = getTempMultiplierTimeRemaining ? getTempMultiplierTimeRemaining() : null;
+  if (tempTimer) {
+    const boostText = `[x${playerInventory.tempCoinMult} BOOST: ${tempTimer}]`;
+    ctx.font = '700 12px monospace';
+    const boostW = ctx.measureText(boostText).width + 14;
+    const boostH = 22;
+
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(curHudX, coinY - boostH / 2, boostW, boostH, 4);
+    } else {
+      ctx.rect(curHudX, coinY - boostH / 2, boostW, boostH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#bae6fd';
+    ctx.textAlign = 'center';
+    ctx.fillText(boostText, curHudX + boostW / 2, coinY);
+    ctx.textAlign = 'left';
+  }
+
+  // Przywrócenie domyślnych parametrów fontu dla dalszych elementów HUD
+  ctx.textBaseline = 'alphabetic';
 
   // Tytuł i Korona Czempiona w profilu HUD
   if (playerInventory && (playerInventory.title || playerInventory.hasCrown)) {
@@ -6151,7 +6041,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = playerInventory.hasCrown ? '#fbbf24' : '#38bdf8';
     const icon = playerInventory.hasCrown ? '👑 ' : '🏷️ ';
-    ctx.fillText(`${icon}${playerInventory.title || 'NOWICJUSZ'}`, 24, 84);
+    ctx.fillText(`${icon}${playerInventory.title || 'NOWICJUSZ'}`, 240, 38);
     ctx.restore();
   }
 

@@ -58,17 +58,27 @@
     }
 
     /* Dev / Admin Teleport Panel */
-    #dev-panel-container {
+    #dev-panel-container,
+    #dev-toggle-btn {
       position: absolute;
-      top: 76px;
+      top: 155px;
       left: 24px;
-      z-index: 100;
+      z-index: 999;
+    }
+
+    #dev-panel-container {
       display: flex;
       align-items: center;
       gap: 6px;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+    }
+
+    #dev-panel-container #dev-toggle-btn {
+      position: static;
+      top: auto;
+      left: auto;
     }
 
     #dev-toggle-btn {
