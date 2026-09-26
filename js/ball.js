@@ -31,14 +31,15 @@ export function resetBallToPlayer(p, GROUND_Y) {
 
 /**
  * Prawidłowy model rakietowy:
- * Piłka wystrzeliwuje ze znacznie wyższą prędkością początkową vx0,
- * wytraca pęd w locie (dX) i opada precyzyjnie na stopę biegacza.
+ * Piłka wystrzeliwuje z wyższą prędkością początkową vx0,
+ * wytraca pęd w locie (dX) i opada precyzyjnie na podbicie stopy biegacza.
  */
 function launchRocketTrajectory(baseVy, targetOffsetX, groundY, playerObj, effectiveVx) {
   const g = CONFIG.GRAVITY;
-  const dragCoeffY = 0.0010; // Subtelny opór pionowy (nie ścina maksymalnej wysokości!)
+  const dragCoeffY = 0.0010; // Subtelny opór pionowy
   const dX = 0.982;          // Wytracanie prędkości poziomej w locie
-  const targetLandingY = groundY - ball.radius;
+  // Wysokość kontaktu dopasowana do podbicia stopy nad murawą:
+  const targetLandingY = groundY - ball.radius - 8;
 
   // 1. Dokładna symulacja czasu lotu T w pionie
   let simY = ball.y;
@@ -54,7 +55,7 @@ function launchRocketTrajectory(baseVy, targetOffsetX, groundY, playerObj, effec
   }
   if (T < 8) T = 8;
 
-  // 2. Pozycja docelowa lądowania przy zachowaniu tempa gracza
+  // 2. Pozycja docelowa lądowania wysunięta na stopę przed kolanem
   const hipX = playerObj.x + playerObj.w / 2;
   const targetX = hipX + (targetOffsetX * playerObj.facing) + (effectiveVx * T);
   const totalDx = targetX - ball.x;
@@ -154,8 +155,10 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
         playerObj.vx = playerObj.intendedVx;
         // Od tap = -7.2 (60px) do pełnego charge = -27.2 (518px)
         const baseVy = -7.2 - (playerObj.chargePower * 20.0);
-        launchRocketTrajectory(baseVy, 18, GROUND_Y, playerObj, playerObj.vx);
-        ball.y -= 8;
+        const speedRatio = Math.min(1.0, Math.abs(playerObj.vx) / CONFIG.SPRINT_MAX);
+        const dynamicOffsetX = 20 + speedRatio * 12;
+        launchRocketTrajectory(baseVy, dynamicOffsetX, GROUND_Y, playerObj, playerObj.vx);
+        ball.y -= 4;
       } else {
         // Świeca w miejscu pod kątem 80°
         const rad80 = (80 * Math.PI) / 180;
@@ -163,7 +166,7 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
         ball.vx = speed * Math.cos(rad80) * playerObj.facing;
         ball.vy = -speed * Math.sin(rad80);
         ball.spin = playerObj.facing * 0.45;
-        ball.y -= 8;
+        ball.y -= 4;
       }
 
       playerObj.chargePower = 0;
@@ -184,8 +187,12 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
 
     if (hit.dist < ball.radius + batThickness) {
       const scoopVy = -13.0 - Math.min(Math.abs(playerObj.vx) * 0.35, 3.5);
-      launchRocketTrajectory(scoopVy, 22, GROUND_Y, playerObj, playerObj.vx);
-      ball.y = Math.min(ball.y, GROUND_Y - ball.radius - 8);
+      const speedRatio = Math.min(1.0, Math.abs(playerObj.vx) / CONFIG.SPRINT_MAX);
+      const dynamicOffsetX = 22 + speedRatio * 10;
+      launchRocketTrajectory(scoopVy, dynamicOffsetX, GROUND_Y, playerObj, playerObj.vx);
+      if (ball.y > GROUND_Y - ball.radius - 4) {
+        ball.y = GROUND_Y - ball.radius - 4;
+      }
 
       if (spawnGrass) spawnGrass(ball.x, GROUND_Y, playerObj.facing);
     }
@@ -193,21 +200,31 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
   }
 
   // =========================================================================
-  // 2. TIMING & TEMPO: TAP = 60 PX (KAPKA), FULL CHARGE = 518 PX (POTĘŻNY PUŁAP)
+  // 2. WYKOP: PRECYZYJNA KOLIZJA Z PODBICIEM I CZUBKIEM BUTA (BEZ TELEPORTACJI)
   // =========================================================================
   const isKicking = (playerObj.kickState === 'SWING' || playerObj.kickBufferTimer > 0);
 
   if (isKicking && !playerObj.hitThisSwing) {
-    const footReach = playerObj.thighLen + playerObj.shinLen + 2;
-    const currentAngle = playerObj.kickState === 'SWING' ? playerObj.kickAngle : 0.6;
+    let footX = playerObj.kickingFootX;
+    let footY = playerObj.kickingFootY;
 
-    const footX = hipX + Math.sin(currentAngle) * footReach * playerObj.facing;
-    const footY = hipY + Math.cos(currentAngle) * footReach;
+    if (!footX || !footY) {
+      const footReach = playerObj.thighLen + playerObj.shinLen;
+      const currentAngle = playerObj.kickState === 'SWING' ? playerObj.kickAngle : 0.6;
+      footX = hipX + Math.sin(currentAngle) * footReach * playerObj.facing;
+      footY = hipY + Math.cos(currentAngle) * footReach;
+    }
 
-    const hit = distToSegment(ball.x, ball.y, hipX, hipY, footX, footY);
-    const batThickness = 14;
+    // Segment stopy: od kostki/pięty do noska buta
+    const heelX = footX - (4 * playerObj.facing);
+    const heelY = footY - 2;
+    const toeX = footX + (12 * playerObj.facing);
+    const toeY = footY + 1;
 
-    if (hit.dist < ball.radius + batThickness) {
+    const hit = distToSegment(ball.x, ball.y, heelX, heelY, toeX, toeY);
+    const shoeHitRadius = 14;
+
+    if (hit.dist < ball.radius + shoeHitRadius) {
       playerObj.hitThisSwing = true;
       playerObj.kickBufferTimer = 0;
 
@@ -221,11 +238,18 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
         playerObj.vx = playerObj.intendedVx;
       }
 
-      launchRocketTrajectory(baseVy, 18, GROUND_Y, playerObj, effectiveVx);
+      // Dynamiczny offset lądowania: 20px przy marszu, 32px przy pełnym sprincie
+      const speedRatio = Math.min(1.0, Math.abs(effectiveVx) / CONFIG.SPRINT_MAX);
+      const dynamicOffsetX = 20 + speedRatio * 12;
 
-      ball.y = Math.min(ball.y, footY - ball.radius - 2);
+      launchRocketTrajectory(baseVy, dynamicOffsetX, GROUND_Y, playerObj, effectiveVx);
+
+      // Płynna ochrona przed wnikaniem piłki pod podeszwę (bez skoku poziomego)
+      if (ball.y > footY - ball.radius) {
+        ball.y = footY - ball.radius;
+      }
+
       playerObj.chargePower = 0;
-
       if (spawnGrass) spawnGrass(ball.x, GROUND_Y, playerObj.facing);
     }
   }
@@ -412,4 +436,3 @@ export function drawBall(ctx) {
     drawFrontLegOnly(ctx, ball.y + ball.radius);
   }
 }
-
