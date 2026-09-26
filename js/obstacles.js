@@ -1,5 +1,6 @@
 import { START_X } from './config.js';
 import { player } from './player.js';
+import { ball } from './ball.js';
 import { camera, W, GROUND_Y, distToSegment } from './world.js';
 
 // ==========================================
@@ -331,6 +332,78 @@ const BIOME_BIRD_TYPES = {
 export function getBirdTypeForX(x) {
   const biomeId = getBiomeForX(x);
   return BIOME_BIRD_TYPES[biomeId] || 'crow';
+}
+
+// ==========================================
+// SYSTEM NATURALNYCH GNIAZD BIOMOWYCH
+// ==========================================
+export const birdNests = [];
+
+// Tworzy konstrukcję drzewa/gniazda dopasowaną do pozycji i biomu
+function createBiomeRoost(x, gy, birdType) {
+  let treeType = 'park_tree';
+  let roostH = 150; // Wysokość żerdzi/gałęzi nad ziemią
+  let roostW = 70;
+
+  if (birdType === 'vulture') {
+    treeType = 'cactus_roost';
+    roostH = 135;
+    roostW = 60;
+  } else if (birdType === 'snow_owl') {
+    treeType = 'snowy_pine';
+    roostH = 160;
+    roostW = 75;
+  } else if (birdType === 'parrot') {
+    treeType = 'jungle_palm';
+    roostH = 170;
+    roostW = 80;
+  } else if (birdType === 'hell_bat') {
+    treeType = 'hell_spire';
+    roostH = 155;
+    roostW = 55;
+  }
+
+  return {
+    type: treeType,
+    x,
+    y: gy - roostH,
+    w: roostW,
+    h: roostH,
+    nestX: x + roostW * 0.45,
+    nestY: gy - roostH + 12
+  };
+}
+
+// Zmodyfikowana funkcja createBird powiązana z gniazdem
+export function createBirdWithNest(x, gy) {
+  const type = getBirdTypeForX(x);
+  const altitudes = getBirdAltitudes(gy);
+  const altitudeIndex = Math.floor(Math.random() * altitudes.length);
+  const targetAltitudeY = altitudes[altitudeIndex];
+  const altitudeOffset = BIRD_ALTITUDES_OFFSETS[altitudeIndex];
+
+  const roost = createBiomeRoost(x, gy, type);
+  birdNests.push(roost);
+
+  return {
+    type,
+    x: roost.nestX - 18,
+    y: roost.nestY - 20,
+    w: 44,
+    h: 28,
+    radius: 18,
+    baseAltitude: altitudeOffset,
+    targetY: targetAltitudeY,
+    altitudeLevel: altitudeIndex,
+    phase: Math.random() * Math.PI * 2,
+    vx: 0,
+    vy: 0,
+    restitution: 0.88,
+    friction: 0.35,
+    hitReaction: 0,
+    state: 'PERCHED', // 'PERCHED' -> 'TAKEOFF' -> 'FLYING'
+    roostRef: roost
+  };
 }
 
 // ==========================================
@@ -727,44 +800,11 @@ let lastBirdSpawnX = START_X + 1400; // Pierwszy ptak po ok. 100m
  */
 export function createBird(x, groundY = (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500)) {
   const gy = (typeof groundY !== 'undefined' && groundY !== null) ? groundY : (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500);
-  const type = getBirdTypeForX(x);
-
-  // 3 zdefiniowane poziomy wysokości (Niski: gy - 55, Średni: gy - 120, Wysoki: gy - 200)
-  const altitudes = getBirdAltitudes(gy);
-  const altitudeIndex = Math.floor(Math.random() * altitudes.length);
-  const baseAltitudeY = altitudes[altitudeIndex];
-  const altitudeOffset = BIRD_ALTITUDES_OFFSETS[altitudeIndex];
-
-  // Zwiększony rozmiar sylwetki o ok. 50%–70% (rozpiętość skrzydeł ~44 px, radius = 18 px)
-  const w = 44;
-  const h = 28;
-  const radius = 18;
-
-  // Prędkość przelotu naprzeciw graczowi: vx = -(3.2 + Math.random() * 1.8) px/klatkę
-  const vx = -(3.2 + Math.random() * 1.8);
-  const phase = Math.random() * Math.PI * 2;
-  const y = baseAltitudeY - h / 2;
-
-  return {
-    type,
-    x,
-    y,
-    w,
-    h,
-    radius,
-    baseAltitude: altitudeOffset,
-    altitudeLevel: altitudeIndex, // 0: Niski, 1: Średni, 2: Wysoki
-    phase,
-    vx,
-    vy: 0,
-    restitution: 0.88,
-    friction: 0.35,
-    hitReaction: 0
-  };
+  return createBirdWithNest(x, gy);
 }
 
 /**
- * Aktualizuje ruch, animacje falowe i proceduralne generowanie ptaków
+ * Aktualizuje ruch, maszynę stanów (PERCHED -> TAKEOFF -> FLYING) i proceduralne generowanie ptaków z gniazdami
  */
 export function updateProceduralBirds(focusX, groundY) {
   const gy = (typeof groundY !== 'undefined' && groundY !== null) ? groundY : (typeof GROUND_Y !== 'undefined' ? GROUND_Y : 500);
@@ -774,23 +814,67 @@ export function updateProceduralBirds(focusX, groundY) {
     return;
   }
 
-  // 1. Ruch poziomy i naturalna oscylacja wysokości w locie za pomocą funkcji falowej
+  const px = (typeof player !== 'undefined' && player) ? player.x : focusX;
+  const py = (typeof player !== 'undefined' && player && player.y) ? player.y : (gy - 40);
+  const bx = (typeof ball !== 'undefined' && ball) ? ball.x : px;
+  const by = (typeof ball !== 'undefined' && ball) ? ball.y : py;
+
+  // 1. Maszyna stanów i ruch ptaków
   for (let i = 0; i < birds.length; i++) {
     const b = birds[i];
-    b.x += b.vx;
 
-    // Naturalna, delikatna oscylacja wysokości w locie za pomocą funkcji falowej:
-    // y += Math.sin(bird.phase) * 0.6; bird.phase += 0.08;
-    b.y += Math.sin(b.phase) * 0.6;
-    b.phase += 0.08;
+    if (b.state === 'PERCHED') {
+      // Ptak siedzi na gałęzi / w gnieździe: subtelne oddychanie i kołysanie
+      const breath = Math.sin(Date.now() * 0.0035 + b.phase) * 1.2;
+      if (b.roostRef) {
+        b.x = b.roostRef.nestX - 18;
+        b.y = b.roostRef.nestY - 20 + breath;
+      }
+      b.vx = 0;
+      b.vy = 0;
 
-    // Subtelna stabilizacja wokół zadanego pułapu
-    if (b.vy) {
+      // Wykrywanie zbliżenia gracza lub piłki na odległość < 680 px
+      const distToPlayer = player ? Math.hypot((b.x + b.w / 2) - (player.x + (player.w || 20) / 2), (b.y + b.h / 2) - ((player.y || (gy - 40)) + (player.h || 40) / 2)) : Infinity;
+      const distToBall = ball ? Math.hypot((b.x + b.w / 2) - ball.x, (b.y + b.h / 2) - ball.y) : Infinity;
+      const distToFocus = Math.abs((b.x + b.w / 2) - focusX);
+
+      if (distToPlayer < 680 || distToBall < 680 || distToFocus < 680) {
+        b.state = 'TAKEOFF';
+        b.takeoffTicks = 0;
+        b.vx = -(3.2 + Math.random() * 1.5);
+        b.vy = -3.8; // Zrywa się z gniazda po łuku w górę
+        createBirdFeatherPuff(b.x + b.w / 2, b.y + b.h / 2, b.type, 6);
+      }
+    } else if (b.state === 'TAKEOFF') {
+      b.takeoffTicks = (b.takeoffTicks || 0) + 1;
+      b.x += b.vx;
       b.y += b.vy;
-      b.vy *= 0.92;
+
+      // Docelowy pułap lotu ptaka
+      const targetY = (b.targetY || (gy - b.baseAltitude)) - b.h / 2;
+      const dy = targetY - b.y;
+
+      // Łukowe wznoszenie i płynne wypoziomowanie ku targetY
+      b.vy += (dy * 0.045 - b.vy) * 0.09;
+
+      if ((b.takeoffTicks > 20 && Math.abs(b.y - targetY) < 6) || b.takeoffTicks > 60) {
+        b.state = 'FLYING';
+        b.vy = 0;
+        b.phase = Math.random() * Math.PI * 2;
+      }
     } else {
-      const targetY = gy - b.baseAltitude - b.h / 2;
-      b.y += (targetY - b.y) * 0.015;
+      // Stan FLYING: Poziomy przelot z naturalną oscylacją falową
+      b.x += b.vx;
+      b.y += Math.sin(b.phase) * 0.6;
+      b.phase += 0.08;
+
+      if (b.vy) {
+        b.y += b.vy;
+        b.vy *= 0.92;
+      } else {
+        const targetY = (b.targetY || (gy - b.baseAltitude)) - b.h / 2;
+        b.y += (targetY - b.y) * 0.015;
+      }
     }
 
     if (b.hitReaction > 0) {
@@ -798,32 +882,40 @@ export function updateProceduralBirds(focusX, groundY) {
     }
   }
 
-  // 2. Generowanie nowych ptaków w przód (regularne, zbalansowane odstępy co ok. 85 - 150m)
+  // 2. Generowanie nowych gniazd i ptaków w przód
   const targetAheadX = focusX + SPAWN_AHEAD_BUFFER;
   while (lastBirdSpawnX < targetAheadX) {
-    const birdGap = 1200 + Math.random() * 900;
+    const birdGap = 1100 + Math.random() * 800;
     lastBirdSpawnX += birdGap;
 
-    // Całkowite wykluczenie ptaków wyłącznie wewnątrz zamkniętej Piramidy (1050 m – 1350 m)
-    if (isInsidePyramidZone(lastBirdSpawnX, 40)) {
+    // Całkowite wykluczenie ze strefy stadionu (300m - 750m) oraz piramidy (1050m - 1350m)
+    if (isInsideStadiumZone(lastBirdSpawnX, 80) || isInsidePyramidZone(lastBirdSpawnX, 80)) {
       continue;
     }
 
-    const bird = createBird(lastBirdSpawnX, gy);
+    const bird = createBirdWithNest(lastBirdSpawnX, gy);
     birds.push(bird);
   }
 
-  // 3. Usuwanie ptaków, które mogły znaleźć się wewnątrz zamkniętej piramidy
+  // 3. Usuwanie ptaków i gniazd ze stref zamkniętych (piramida)
   for (let i = birds.length - 1; i >= 0; i--) {
     if (isInsidePyramidZone(birds[i].x, birds[i].w)) {
       birds.splice(i, 1);
     }
   }
+  for (let i = birdNests.length - 1; i >= 0; i--) {
+    if (isInsidePyramidZone(birdNests[i].x, birdNests[i].w)) {
+      birdNests.splice(i, 1);
+    }
+  }
 
-  // 4. Usuwanie ptaków, które odleciały daleko za gracza
+  // 4. Usuwanie ptaków i gniazd, które minęły gracza daleko z tyłu
   const despawnThreshold = focusX - DESPAWN_BEHIND_BUFFER;
   while (birds.length > 0 && (birds[0].x + birds[0].w) < despawnThreshold) {
     birds.shift();
+  }
+  while (birdNests.length > 0 && (birdNests[0].x + birdNests[0].w) < despawnThreshold) {
+    birdNests.shift();
   }
 
   // 5. Aktualizacja cząsteczek eksplozji i piór
@@ -832,6 +924,7 @@ export function updateProceduralBirds(focusX, groundY) {
 
 export function resetBirds() {
   birds.length = 0;
+  birdNests.length = 0;
   birdFeatherParticles.length = 0;
   birdPuffParticles.length = 0;
   birdSparkParticles.length = 0;
@@ -1020,6 +1113,7 @@ export function checkObstacleCollisions(ball, GROUND_Y) {
           // Gracz wyprostowany wpada na ptaka
           createBirdFeatherPuff(cx, cy, bird.type, 8);
           bird.hitReaction = 24;
+          bird.state = 'FLYING';
           bird.vx = -7;
           bird.vy = -6; // Ptak gwałtownie ucieka w górę
           player.vx *= 0.65; // Chwilowe wytracenie pędu biegu
@@ -1037,6 +1131,10 @@ export function drawObstacles(ctx, GROUND_Y) {
   const viewLeft = camera ? camera.x - (W / camera.zoom) - 80 : -Infinity;
   const viewRight = camera ? camera.x + (W / camera.zoom) * 2 + 80 : Infinity;
 
+  // 1. Naturalne gniazda i żerdzie biomowe (drzewa, kaktusy, iglice w tle)
+  drawBirdNests(ctx, GROUND_Y, viewLeft, viewRight);
+
+  // 2. Przeszkody naziemne
   for (let i = 0; i < obstacles.length; i++) {
     const obs = obstacles[i];
     if (isInsideStadiumZone(obs.x, obs.w)) continue;
@@ -1644,26 +1742,34 @@ function drawBird(ctx, bird, GROUND_Y) {
   const cx = bx + bw / 2;
   const cy = by + bh / 2;
 
-  // 1. Cień ptaka rzucany na podłoże (dynamicznie skalowany z pułapem wysokości)
-  const altitudeAboveGround = Math.max(10, GROUND_Y - (by + bh));
-  const shadowScale = Math.max(0.35, Math.min(1.2, 1.15 - (altitudeAboveGround / 240)));
-  const shadowAlpha = Math.max(0.06, 0.32 * shadowScale);
-  ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha.toFixed(2)})`;
-  ctx.beginPath();
-  ctx.ellipse(cx, GROUND_Y + 1, 20 * shadowScale, 4.8 * shadowScale, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // 1. Cień ptaka rzucany na podłoże (wyłączony gdy ptak siedzi w gnieździe/na gałęzi)
+  if (bird.state !== 'PERCHED') {
+    const altitudeAboveGround = Math.max(10, GROUND_Y - (by + bh));
+    const shadowScale = Math.max(0.35, Math.min(1.2, 1.15 - (altitudeAboveGround / 240)));
+    const shadowAlpha = Math.max(0.06, 0.32 * shadowScale);
+    ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, GROUND_Y + 1, 20 * shadowScale, 4.8 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // 2. Animacja machania skrzydłami (sinusoida sprzężona z fazą lotu ptaka)
-  const flapSpeed = bird.hitReaction > 0 ? 0.038 : 0.016;
-  const flap = Math.sin(Date.now() * flapSpeed + bird.phase * 4);
+  // 2. Animacja machania skrzydłami (skrzydła złożone w spoczynku, energiczne przy starcie)
+  const flapSpeed = bird.hitReaction > 0 ? 0.038 : (bird.state === 'TAKEOFF' ? 0.028 : 0.016);
+  const flap = bird.state === 'PERCHED' ? 0 : Math.sin(Date.now() * flapSpeed + bird.phase * 4);
   const wingFlapY = flap * 12;
 
   ctx.save();
 
-  // Reakcja na kolizję (krótkie drżenie / odrzut)
+  // Reakcja na kolizję (krótkie drżenie / odrzut) lub rozglądanie się w gnieździe
   if (bird.hitReaction > 0) {
     const jitter = (Math.random() - 0.5) * 4;
     ctx.translate(jitter, jitter);
+  } else if (bird.state === 'PERCHED') {
+    // Subtelne rozglądanie się w gnieździe (delikatny obrót główki / tułowia)
+    const lookAngle = Math.sin(Date.now() * 0.002 + bird.phase) > 0.6 ? 0.04 : -0.02;
+    ctx.translate(cx, cy);
+    ctx.rotate(lookAngle);
+    ctx.translate(-cx, -cy);
   }
 
   if (bird.type === 'crow' || bird.type === 'pigeon') {
@@ -2156,5 +2262,688 @@ function drawBird(ctx, bird, GROUND_Y) {
     ctx.fill();
   }
 
+  // Przednia krawędź gniazda przysłaniająca lekko szpony ptaka gdy siedzi na grzędzie
+  if (bird.state === 'PERCHED') {
+    ctx.strokeStyle = bird.type === 'hell_bat' ? '#27272a' : (bird.type === 'parrot' ? '#b45309' : (bird.type === 'snow_owl' ? '#52525b' : '#6d4c41'));
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(bx + 18, cy + 12, 13, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+  }
+
   ctx.restore();
+}
+
+// ==========================================
+// RENDEROWANIE NATURALNYCH GNIAZD BIOMOWYCH
+// ==========================================
+
+export function drawBirdNests(ctx, GROUND_Y, viewLeft, viewRight) {
+  for (let i = 0; i < birdNests.length; i++) {
+    const roost = birdNests[i];
+    if (isInsidePyramidZone(roost.x, roost.w) || isInsideStadiumZone(roost.x, roost.w)) continue;
+    if (roost.x + roost.w < viewLeft || roost.x > viewRight) continue;
+
+    if (roost.type === 'park_tree') {
+      drawParkTree(ctx, roost, GROUND_Y);
+    } else if (roost.type === 'cactus_roost') {
+      drawCactusRoost(ctx, roost, GROUND_Y);
+    } else if (roost.type === 'snowy_pine') {
+      drawSnowyPine(ctx, roost, GROUND_Y);
+    } else if (roost.type === 'jungle_palm') {
+      drawJunglePalm(ctx, roost, GROUND_Y);
+    } else if (roost.type === 'hell_spire') {
+      drawHellSpire(ctx, roost, GROUND_Y);
+    }
+  }
+}
+
+// ----------------------------------------------------
+// BIOM 0: PARK TREE Z WIKLINOWYM GNIAZDEM WRONY
+// ----------------------------------------------------
+function drawParkTree(ctx, roost, gy) {
+  const rx = roost.x;
+  const rw = roost.w;
+  const rh = roost.h;
+  const nx = roost.nestX;
+  const ny = roost.nestY;
+
+  // 1. Cień pod drzewem na trawie
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.35, gy + 1, rw * 0.48, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Pień drzewa i konary
+  const trunkBaseX = rx + rw * 0.28;
+  const trunkBaseW = 18;
+
+  const trunkGrad = ctx.createLinearGradient(trunkBaseX, gy, trunkBaseX + trunkBaseW, gy);
+  trunkGrad.addColorStop(0, '#2d1810');
+  trunkGrad.addColorStop(0.3, '#4a2c1d');
+  trunkGrad.addColorStop(0.7, '#6b4226');
+  trunkGrad.addColorStop(1, '#3b2214');
+  ctx.fillStyle = trunkGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(trunkBaseX - 3, gy);
+  ctx.lineTo(trunkBaseX + 3, gy - rh * 0.45);
+  ctx.lineTo(rx + rw * 0.15, gy - rh * 0.8);
+  ctx.lineTo(rx + rw * 0.25, gy - rh * 0.8);
+  ctx.lineTo(trunkBaseX + 9, gy - rh * 0.48);
+  ctx.lineTo(nx + 16, ny + 8);
+  ctx.lineTo(nx - 4, ny + 10);
+  ctx.lineTo(trunkBaseX + 11, gy - rh * 0.42);
+  ctx.lineTo(trunkBaseX + trunkBaseW + 3, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  // Słoje i faktura kory
+  ctx.strokeStyle = '#27160c';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(trunkBaseX + 4, gy - 4);
+  ctx.lineTo(trunkBaseX + 5, gy - rh * 0.35);
+  ctx.moveTo(trunkBaseX + 10, gy - 2);
+  ctx.lineTo(trunkBaseX + 11, gy - rh * 0.4);
+  ctx.stroke();
+
+  // Gruba żerdź podtrzymująca gniazdo
+  ctx.strokeStyle = '#5c3826';
+  ctx.lineWidth = 4.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(trunkBaseX + 8, gy - rh * 0.5);
+  ctx.quadraticCurveTo(nx - 8, ny + 12, nx + 22, ny + 6);
+  ctx.stroke();
+
+  // 3. Korona drzewa (liście i kępy w odcieniach głębokiego lasu)
+  ctx.fillStyle = '#1b4332';
+  ctx.beginPath();
+  ctx.arc(rx + rw * 0.2, gy - rh * 0.82, 28, 0, Math.PI * 2);
+  ctx.arc(rx + rw * 0.65, gy - rh * 0.85, 24, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#2d6a4f';
+  ctx.beginPath();
+  ctx.arc(rx + rw * 0.32, gy - rh * 0.9, 30, 0, Math.PI * 2);
+  ctx.arc(rx + rw * 0.55, gy - rh * 0.92, 26, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#40916c';
+  ctx.beginPath();
+  ctx.arc(rx + rw * 0.38, gy - rh * 0.96, 24, 0, Math.PI * 2);
+  ctx.arc(rx + rw * 0.48, gy - rh * 0.98, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#52b788';
+  ctx.beginPath();
+  ctx.arc(rx + rw * 0.4, gy - rh * 1.02, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Wiklinowe gniazdo wrony
+  drawWickerNest(ctx, nx, ny, '#3e2723', '#6d4c41', '#a1887f');
+}
+
+// ----------------------------------------------------
+// BIOM 1: CACTUS ROOST Z PUSTYNNYM GNIAZDEM SĘPA
+// ----------------------------------------------------
+function drawCactusRoost(ctx, roost, gy) {
+  const rx = roost.x;
+  const rw = roost.w;
+  const rh = roost.h;
+  const nx = roost.nestX;
+  const ny = roost.nestY;
+
+  // 1. Cień na pustynnym piasku
+  ctx.fillStyle = 'rgba(74, 45, 20, 0.25)';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.4, gy + 1, rw * 0.45, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Skalny kopczyk u podstawy kaktusa
+  ctx.fillStyle = '#c28854';
+  ctx.beginPath();
+  ctx.moveTo(rx + rw * 0.1, gy);
+  ctx.lineTo(rx + rw * 0.25, gy - 12);
+  ctx.lineTo(rx + rw * 0.55, gy - 10);
+  ctx.lineTo(rx + rw * 0.7, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#a06a38';
+  ctx.beginPath();
+  ctx.moveTo(rx + rw * 0.25, gy - 12);
+  ctx.lineTo(rx + rw * 0.45, gy - 16);
+  ctx.lineTo(rx + rw * 0.6, gy);
+  ctx.lineTo(rx + rw * 0.25, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Trzon kaktusa Saguaro
+  const stemX = rx + rw * 0.32;
+  const stemW = 18;
+  const stemH = rh * 0.88;
+
+  const cactGrad = ctx.createLinearGradient(stemX, 0, stemX + stemW, 0);
+  cactGrad.addColorStop(0, '#1b4332');
+  cactGrad.addColorStop(0.35, '#2d6a4f');
+  cactGrad.addColorStop(0.7, '#40916c');
+  cactGrad.addColorStop(1, '#1e3d34');
+  ctx.fillStyle = cactGrad;
+
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(stemX, gy - stemH, stemW, stemH, [9, 9, 0, 0]);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(stemX, gy);
+    ctx.lineTo(stemX, gy - stemH + 9);
+    ctx.quadraticCurveTo(stemX, gy - stemH, stemX + 9, gy - stemH);
+    ctx.lineTo(stemX + stemW - 9, gy - stemH);
+    ctx.quadraticCurveTo(stemX + stemW, gy - stemH, stemX + stemW, gy - stemH + 9);
+    ctx.lineTo(stemX + stemW, gy);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Żebrowanie pionowe
+  ctx.strokeStyle = '#132a13';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(stemX + 4, gy - 2);
+  ctx.lineTo(stemX + 4, gy - stemH + 6);
+  ctx.moveTo(stemX + 9, gy - 2);
+  ctx.lineTo(stemX + 9, gy - stemH + 4);
+  ctx.moveTo(stemX + 14, gy - 2);
+  ctx.lineTo(stemX + 14, gy - stemH + 6);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#74c69d';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(stemX + 10, gy - 4);
+  ctx.lineTo(stemX + 10, gy - stemH + 8);
+  ctx.stroke();
+
+  // Kolce kaktusa
+  ctx.fillStyle = '#fef08a';
+  for (let sy = gy - 20; sy > gy - stemH + 15; sy -= 18) {
+    ctx.fillRect(stemX - 2, sy, 2, 1.2);
+    ctx.fillRect(stemX + stemW, sy - 6, 2, 1.2);
+  }
+
+  // 3. Boczne ramię kaktusa tworzące żerdź pod gniazdo
+  const armBaseY = gy - stemH * 0.55;
+  ctx.fillStyle = cactGrad;
+  ctx.beginPath();
+  ctx.moveTo(stemX + stemW - 2, armBaseY);
+  ctx.lineTo(nx + 14, armBaseY);
+  ctx.arcTo(nx + 20, armBaseY, nx + 20, ny + 4, 8);
+  ctx.lineTo(nx + 20, ny + 10);
+  ctx.lineTo(nx + 6, ny + 10);
+  ctx.lineTo(nx + 6, armBaseY + 12);
+  ctx.arcTo(nx + 6, armBaseY + 14, stemX + stemW - 2, armBaseY + 14, 8);
+  ctx.lineTo(stemX + stemW - 2, armBaseY + 14);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#132a13';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(stemX + stemW, armBaseY + 6);
+  ctx.lineTo(nx + 13, armBaseY + 6);
+  ctx.lineTo(nx + 13, ny + 10);
+  ctx.stroke();
+
+  // 4. Pustynne gniazdo sępa
+  drawDesertStickNest(ctx, nx, ny);
+}
+
+// ----------------------------------------------------
+// BIOM 2: SNOWY PINE Z GNIAZDEM SOWY ŚNIEŻNEJ
+// ----------------------------------------------------
+function drawSnowyPine(ctx, roost, gy) {
+  const rx = roost.x;
+  const rw = roost.w;
+  const rh = roost.h;
+  const nx = roost.nestX;
+  const ny = roost.nestY;
+
+  // 1. Cień na śniegu
+  ctx.fillStyle = 'rgba(20, 45, 70, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.38, gy + 1, rw * 0.44, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Zaspa śnieżna u dołu
+  ctx.fillStyle = '#cbd5e1';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.38, gy - 2, 22, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.38, gy - 4, 18, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Pień świerka
+  const trunkX = rx + rw * 0.34;
+  const trunkW = 14;
+  ctx.fillStyle = '#1c1917';
+  ctx.fillRect(trunkX, gy - rh * 0.85, trunkW, rh * 0.85);
+  ctx.fillStyle = '#292524';
+  ctx.fillRect(trunkX + 2, gy - rh * 0.85, 4, rh * 0.85);
+
+  // 3. Piętra ośnieżonych iglastych gałęzi
+  const tiers = [
+    { y: gy - rh * 0.35, w: rw * 0.88, h: 22 },
+    { y: gy - rh * 0.55, w: rw * 0.74, h: 20 },
+    { y: gy - rh * 0.75, w: rw * 0.58, h: 18 },
+    { y: gy - rh * 0.95, w: rw * 0.40, h: 16 }
+  ];
+
+  for (let t of tiers) {
+    const cx = rx + rw * 0.4;
+    ctx.fillStyle = '#064e3b';
+    ctx.beginPath();
+    ctx.moveTo(cx - t.w / 2, t.y);
+    ctx.lineTo(cx, t.y - t.h);
+    ctx.lineTo(cx + t.w / 2, t.y);
+    ctx.lineTo(cx + t.w * 0.3, t.y - 3);
+    ctx.lineTo(cx, t.y + 4);
+    ctx.lineTo(cx - t.w * 0.3, t.y - 3);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#047857';
+    ctx.beginPath();
+    ctx.moveTo(cx - t.w * 0.35, t.y - 2);
+    ctx.lineTo(cx, t.y - t.h + 2);
+    ctx.lineTo(cx + t.w * 0.35, t.y - 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(cx - t.w * 0.48, t.y - 1);
+    ctx.quadraticCurveTo(cx, t.y - t.h - 3, cx + t.w * 0.48, t.y - 1);
+    ctx.quadraticCurveTo(cx, t.y - 5, cx - t.w * 0.48, t.y - 1);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(cx - t.w * 0.42, t.y - 2);
+    ctx.quadraticCurveTo(cx, t.y - t.h - 2, cx + t.w * 0.42, t.y - 2);
+    ctx.quadraticCurveTo(cx, t.y - 7, cx - t.w * 0.42, t.y - 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+    ctx.fillRect(cx - t.w * 0.25, t.y - 1, 2, 4);
+    ctx.fillRect(cx + t.w * 0.2, t.y - 1, 2, 5);
+  }
+
+  // Boczna ośnieżona gałąź pod gniazdo
+  ctx.strokeStyle = '#292524';
+  ctx.lineWidth = 4.0;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(trunkX + 6, ny + 12);
+  ctx.lineTo(nx + 18, ny + 8);
+  ctx.stroke();
+
+  // 4. Ośnieżone gniazdo sowy śnieżnej
+  drawSnowyOwlNest(ctx, nx, ny);
+}
+
+// ----------------------------------------------------
+// BIOM 3: JUNGLE PALM Z GNIAZDEM PAPUGI I LIANAMI
+// ----------------------------------------------------
+function drawJunglePalm(ctx, roost, gy) {
+  const rx = roost.x;
+  const rw = roost.w;
+  const rh = roost.h;
+  const nx = roost.nestX;
+  const ny = roost.nestY;
+
+  // 1. Cień tropikalny
+  ctx.fillStyle = 'rgba(6, 40, 20, 0.26)';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.35, gy + 1, rw * 0.46, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Łukowato wygięty pień palmy tropikalnej
+  const baseX = rx + rw * 0.25;
+  const topX = rx + rw * 0.42;
+  const topY = gy - rh * 0.88;
+
+  const palmGrad = ctx.createLinearGradient(baseX, gy, topX, topY);
+  palmGrad.addColorStop(0, '#422818');
+  palmGrad.addColorStop(0.5, '#5c3826');
+  palmGrad.addColorStop(1, '#8a5a36');
+  ctx.strokeStyle = palmGrad;
+  ctx.lineWidth = 14;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(baseX, gy);
+  ctx.quadraticCurveTo(rx + rw * 0.18, gy - rh * 0.45, topX, topY);
+  ctx.stroke();
+
+  // Pierścienie wzrostowe pnia
+  ctx.strokeStyle = '#2d180c';
+  ctx.lineWidth = 1.5;
+  for (let f = 0.15; f < 0.9; f += 0.12) {
+    const px = baseX * (1 - f) * (1 - f) + 2 * (rx + rw * 0.18) * (1 - f) * f + topX * f * f;
+    const py = gy * (1 - f) * (1 - f) + 2 * (gy - rh * 0.45) * (1 - f) * f + topY * f * f;
+    ctx.beginPath();
+    ctx.moveTo(px - 6, py);
+    ctx.lineTo(px + 6, py);
+    ctx.stroke();
+  }
+
+  // Opadające liany z liśćmi
+  ctx.strokeStyle = '#15803d';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(topX - 4, topY + 6);
+  ctx.quadraticCurveTo(topX - 18, gy - rh * 0.4, baseX + 4, gy - 15);
+  ctx.stroke();
+
+  ctx.fillStyle = '#16a34a';
+  ctx.beginPath();
+  ctx.ellipse(topX - 10, gy - rh * 0.6, 5, 2.5, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(topX - 14, gy - rh * 0.45, 5, 2.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Konar pod gniazdo papugi
+  ctx.strokeStyle = '#5c3826';
+  ctx.lineWidth = 4.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(topX, topY + 8);
+  ctx.quadraticCurveTo(nx - 4, ny + 12, nx + 20, ny + 7);
+  ctx.stroke();
+
+  // 3. Rozłożyste pióropusze liści palmowych
+  const frondColors = ['#064e3b', '#047857', '#10b981', '#84cc16'];
+  const frondAngles = [-2.6, -2.1, -1.6, -1.1, -0.6, -0.2];
+  for (let a of frondAngles) {
+    ctx.save();
+    ctx.translate(topX, topY);
+    ctx.rotate(a);
+    ctx.fillStyle = frondColors[Math.abs(Math.floor(a * 2)) % frondColors.length];
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(25, -12, 45, 0);
+    ctx.quadraticCurveTo(25, 6, 0, 0);
+    ctx.fill();
+    ctx.strokeStyle = '#a3e635';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(42, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 4. Egzotyczne gniazdo papugi
+  drawParrotNest(ctx, nx, ny);
+}
+
+// ----------------------------------------------------
+// BIOM 4: HELL SPIRE Z LEŻEM PIEKIELNEGO NIETOPERZA
+// ----------------------------------------------------
+function drawHellSpire(ctx, roost, gy) {
+  const rx = roost.x;
+  const rw = roost.w;
+  const rh = roost.h;
+  const nx = roost.nestX;
+  const ny = roost.nestY;
+
+  // 1. Spalenizna i żar u podstawy
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.42, gy + 1, rw * 0.46, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const pulse = Math.sin(Date.now() * 0.004 + rx) * 0.2 + 0.8;
+  ctx.fillStyle = `rgba(239, 68, 68, ${0.4 * pulse})`;
+  ctx.beginPath();
+  ctx.ellipse(rx + rw * 0.42, gy, rw * 0.35, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Iglica bazaltowa
+  const spireBaseX = rx + rw * 0.15;
+  const spireBaseW = rw * 0.6;
+  const spireTopX = rx + rw * 0.38;
+  const spireTopY = gy - rh * 0.92;
+
+  ctx.fillStyle = '#0f0d13';
+  ctx.beginPath();
+  ctx.moveTo(spireBaseX, gy);
+  ctx.lineTo(spireBaseX + 6, gy - rh * 0.4);
+  ctx.lineTo(spireTopX - 6, spireTopY);
+  ctx.lineTo(spireTopX + 8, spireTopY);
+  ctx.lineTo(spireBaseX + spireBaseW - 4, gy - rh * 0.45);
+  ctx.lineTo(spireBaseX + spireBaseW + 4, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#1c1924';
+  ctx.beginPath();
+  ctx.moveTo(spireBaseX + 8, gy);
+  ctx.lineTo(spireBaseX + 12, gy - rh * 0.38);
+  ctx.lineTo(spireTopX, spireTopY);
+  ctx.lineTo(spireTopX + 6, spireTopY + 4);
+  ctx.lineTo(spireBaseX + spireBaseW - 6, gy);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#2d2838';
+  ctx.beginPath();
+  ctx.moveTo(spireTopX - 2, spireTopY);
+  ctx.lineTo(spireTopX + 6, spireTopY);
+  ctx.lineTo(spireBaseX + 16, gy - rh * 0.35);
+  ctx.closePath();
+  ctx.fill();
+
+  // Pęknięcia z płynną lawą
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(spireBaseX + 14, gy - 4);
+  ctx.lineTo(spireBaseX + 18, gy - rh * 0.3);
+  ctx.lineTo(spireTopX + 2, gy - rh * 0.6);
+  ctx.lineTo(spireTopX + 5, spireTopY + 12);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(spireBaseX + 15, gy - 6);
+  ctx.lineTo(spireBaseX + 18, gy - rh * 0.3);
+  ctx.lineTo(spireTopX + 3, gy - rh * 0.6);
+  ctx.stroke();
+
+  // Półka skalna pod leże
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.moveTo(spireTopX + 4, spireTopY + 6);
+  ctx.lineTo(nx + 22, ny + 8);
+  ctx.lineTo(nx + 18, ny + 14);
+  ctx.lineTo(spireTopX + 2, spireTopY + 16);
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. Leże piekielnego nietoperza
+  drawHellBatRoost(ctx, nx, ny);
+}
+
+// ----------------------------------------------------
+// FABRYKI I GRAFIKA GNIAZD
+// ----------------------------------------------------
+function drawWickerNest(ctx, nx, ny, cDark = '#3e2723', cMid = '#6d4c41', cLight = '#a1887f') {
+  ctx.fillStyle = cDark;
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 7, 16, 7.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#1e1008';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 5, 12, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = cMid;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(nx, ny + 6, 14, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  ctx.strokeStyle = cLight;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(nx - 14, ny + 4);
+  ctx.lineTo(nx - 18, ny + 2);
+  ctx.moveTo(nx + 13, ny + 5);
+  ctx.lineTo(nx + 17, ny + 3);
+  ctx.moveTo(nx - 8, ny + 9);
+  ctx.lineTo(nx - 12, ny + 11);
+  ctx.moveTo(nx + 6, ny + 10);
+  ctx.lineTo(nx + 11, ny + 12);
+  ctx.stroke();
+}
+
+function drawDesertStickNest(ctx, nx, ny) {
+  ctx.fillStyle = '#3e2723';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 6, 17, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#23140c';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 4, 13, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#8c6747';
+  ctx.lineWidth = 2.0;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(nx - 18, ny + 3);
+  ctx.lineTo(nx + 16, ny + 8);
+  ctx.moveTo(nx - 15, ny + 8);
+  ctx.lineTo(nx + 19, ny + 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#d4a373';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(nx - 12, ny + 10);
+  ctx.lineTo(nx + 14, ny + 10);
+  ctx.moveTo(nx - 17, ny + 6);
+  ctx.lineTo(nx - 21, ny + 4);
+  ctx.moveTo(nx + 15, ny + 6);
+  ctx.lineTo(nx + 20, ny + 7);
+  ctx.stroke();
+}
+
+function drawSnowyOwlNest(ctx, nx, ny) {
+  ctx.fillStyle = '#262626';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 7, 16, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#171717';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 5, 12, 4.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#52525b';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(nx, ny + 6, 14, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.ellipse(nx - 7, ny + 8, 6, 2.5, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(nx + 7, ny + 8, 6, 2.5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(nx - 7, ny + 7, 5, 2, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(nx + 7, ny + 7, 5, 2, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawParrotNest(ctx, nx, ny) {
+  ctx.fillStyle = '#451a03';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 7, 16, 7.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#270e02';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 5, 12, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(nx, ny + 6, 14, 0.15, Math.PI - 0.15);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(nx - 14, ny + 6);
+  ctx.lineTo(nx - 17, ny + 3);
+  ctx.moveTo(nx + 13, ny + 7);
+  ctx.lineTo(nx + 18, ny + 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f43f5e';
+  ctx.beginPath();
+  ctx.arc(nx - 9, ny + 8, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
+  ctx.arc(nx + 8, ny + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHellBatRoost(ctx, nx, ny) {
+  ctx.fillStyle = '#09090b';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 7, 16, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.ellipse(nx, ny + 5, 11, 4.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#52525b';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(nx - 15, ny + 6);
+  ctx.lineTo(nx - 19, ny + 2);
+  ctx.moveTo(nx + 14, ny + 6);
+  ctx.lineTo(nx + 18, ny + 1);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#d4d4d8';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(nx - 10, ny + 8);
+  ctx.lineTo(nx - 13, ny + 12);
+  ctx.moveTo(nx + 9, ny + 8);
+  ctx.lineTo(nx + 13, ny + 12);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(nx, ny + 7, 1.4, 0, Math.PI * 2);
+  ctx.fill();
 }
