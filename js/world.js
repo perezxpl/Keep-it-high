@@ -1,4 +1,6 @@
 import { START_X } from './config.js';
+import { player } from './player.js';
+import { ball } from './ball.js';
 
 export let canvas = null;
 export let ctx = null;
@@ -285,10 +287,126 @@ export function updateDistance(ballX) {
   }
 }
 
+// ==========================================
+// SYSTEM 4 SKRZYŃ I EKWIPUNKU GRACZA
+// ==========================================
+export const CHEST_TIERS = {
+  common: {
+    id: 'common',
+    name: 'ZWYKŁA SKRZYNIA',
+    cost: 150,
+    color: '#94a3b8',
+    icon: '📦',
+    dropsPreview: ['40–80 Monet (70%)', 'Szare Iskry Darni (25%)', 'Tytuł "Nowicjusz" (5%)'],
+    roll: () => {
+      const r = Math.random() * 100;
+      if (r < 70) return { type: 'coins', val: Math.floor(Math.random() * 41 + 40), name: 'ZWROT MONET', rarity: 'ZWYKŁY', color: '#94a3b8' };
+      if (r < 95) return { type: 'turf', val: 'white', name: 'SZARE ISKRY DARNI', rarity: 'ZWYKŁY', color: '#e2e8f0' };
+      return { type: 'title', val: 'NOWICJUSZ', name: 'TYTUŁ: NOWICJUSZ', rarity: 'RZADKI', color: '#38bdf8' };
+    }
+  },
+  rare: {
+    id: 'rare',
+    name: 'RZADKA SKRZYNIA',
+    cost: 300,
+    color: '#38bdf8',
+    icon: '🔷',
+    dropsPreview: ['100–180 Monet (65%)', 'Błękitne Iskry (22%)', 'Neonowy Wślizg (10%)', 'Mnożnik x1.5 (5 min) (3%)'],
+    roll: () => {
+      const r = Math.random() * 100;
+      if (r < 65) return { type: 'coins', val: Math.floor(Math.random() * 81 + 100), name: 'ZWROT MONET', rarity: 'ZWYKŁY', color: '#94a3b8' };
+      if (r < 87) return { type: 'turf', val: 'blue', name: 'BŁĘKITNE ISKRY NEONU', rarity: 'RZADKI', color: '#38bdf8' };
+      if (r < 97) return { type: 'slide', val: 'cyan', name: 'ŚLAD BŁĘKITNEGO WŚLIZGU', rarity: 'RZADKI', color: '#06b6d4' };
+      return { type: 'temp_mult', val: 1.5, durationMs: 5 * 60 * 1000, name: 'MNOŻNIK x1.5 (5 MIN)', rarity: 'EPICKI', color: '#c084fc' };
+    }
+  },
+  epic: {
+    id: 'epic',
+    name: 'EPICKA SKRZYNIA',
+    cost: 700,
+    color: '#c084fc',
+    icon: '🔮',
+    dropsPreview: ['250–450 Monet (60%)', 'Iskry Magmy (23%)', 'Mroczna Aura Void (12%)', 'Mnożnik x2.0 (5 min) (5%)'],
+    roll: () => {
+      const r = Math.random() * 100;
+      if (r < 60) return { type: 'coins', val: Math.floor(Math.random() * 201 + 250), name: 'ZWROT MONET', rarity: 'ZWYKŁY', color: '#94a3b8' };
+      if (r < 83) return { type: 'turf', val: 'magma', name: 'OGNISTE ISKRY MAGMY', rarity: 'RZADKI', color: '#fb923c' };
+      if (r < 95) return { type: 'aura', val: 'void', name: 'MROCZNA AURA PĘDU (VOID)', rarity: 'EPICKI', color: '#c084fc' };
+      return { type: 'temp_mult', val: 2.0, durationMs: 5 * 60 * 1000, name: 'MNOŻNIK x2.0 (5 MIN)', rarity: 'LEGENDA', color: '#facc15' };
+    }
+  },
+  legendary: {
+    id: 'legendary',
+    name: 'LEGENDARNA SKRZYNIA',
+    cost: 1000,
+    color: '#facc15',
+    icon: '👑',
+    dropsPreview: ['400–650 Monet (55%)', 'Złoty Pył Gwiazd (25%)', 'Boska Aura Mistrza (14%)', 'Stały Mnożnik x2.0 (5%)', 'Korona + Legenda Areny (1%)'],
+    roll: () => {
+      const r = Math.random() * 100;
+      if (r < 55) return { type: 'coins', val: Math.floor(Math.random() * 251 + 400), name: 'ZWROT MONET', rarity: 'ZWYKŁY', color: '#94a3b8' };
+      if (r < 80) return { type: 'turf', val: 'gold_dust', name: 'ZŁOTY PYŁ GWIAZD', rarity: 'EPICKI', color: '#fbbf24' };
+      if (r < 94) return { type: 'aura', val: 'divine', name: 'BOSKA AURA MISTRZA', rarity: 'LEGENDA', color: '#f59e0b' };
+      if (r < 99) return { type: 'perm_mult', val: 2.0, name: 'STAŁY MNOŻNIK x2.0 (NA ZAWSZE)', rarity: 'MITYCZNY', color: '#ec4899' };
+      return { type: 'champion', val: 'LEGENDA ARENY', name: 'KORONA + LEGENDA ARENY', rarity: 'MITYCZNY', color: '#ef4444' };
+    }
+  }
+};
+
+// Stan mnożników monet i ekwipunku gracza
+export const playerInventory = {
+  turf: localStorage.getItem('inv_turf') || localStorage.getItem('reward_turf_style') || 'default',
+  aura: localStorage.getItem('inv_aura') || localStorage.getItem('reward_aura_style') || 'none',
+  slide: localStorage.getItem('inv_slide') || localStorage.getItem('reward_slide_style') || 'default',
+  turfStyle: localStorage.getItem('inv_turf') || localStorage.getItem('reward_turf_style') || (localStorage.getItem('reward_golden_turf') === 'true' ? 'gold_dust' : null),
+  auraStyle: localStorage.getItem('inv_aura') || localStorage.getItem('reward_aura_style') || (localStorage.getItem('reward_fire_aura') === 'true' ? 'magma' : null),
+  slideStyle: localStorage.getItem('inv_slide') || localStorage.getItem('reward_slide_style') || null,
+  permCoinMult: parseFloat(localStorage.getItem('inv_perm_coin_mult') || (localStorage.getItem('reward_coin_mult') === '2' ? '2.0' : '1.0')), // Stały mnożnik (np. x2.0)
+  tempCoinMult: parseFloat(localStorage.getItem('inv_temp_coin_mult') || '1.0'), // Czasowy boost (np. x1.5, x2.0, x3.0)
+  tempMultExpiresAt: parseInt(localStorage.getItem('inv_temp_mult_exp') || '0', 10), // Timestamp wygaśnięcia (ms)
+  title: localStorage.getItem('inv_title') || localStorage.getItem('reward_title') || (localStorage.getItem('reward_champion_title') === 'true' ? 'LEGENDA ARENY' : ''),
+  hasCrown: localStorage.getItem('inv_crown') === 'true' || localStorage.getItem('reward_has_crown') === 'true',
+  get coinMultiplier() {
+    return getActiveCoinMultiplier();
+  }
+};
+
+// Obliczenie aktualnie obowiązującego łącznego mnożnika
+export function getActiveCoinMultiplier() {
+  const now = Date.now();
+  const hasActiveTemp = playerInventory.tempMultExpiresAt > now && playerInventory.tempCoinMult > 1.0;
+  const tempFactor = hasActiveTemp ? playerInventory.tempCoinMult : 1.0;
+  return playerInventory.permCoinMult * tempFactor;
+}
+
+// Zwraca sformatowany pozostały czas boosta czasowego, np. "04:35" lub null
+export function getTempMultiplierTimeRemaining() {
+  const diff = playerInventory.tempMultExpiresAt - Date.now();
+  if (diff <= 0 || playerInventory.tempCoinMult <= 1.0) return null;
+  const totalSec = Math.floor(diff / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 export function spawnGrass(x, y, dir) {
   const biome = getInterpolatedBiome(currentDist);
   const cols = biome.particleColors;
-  const col = cols[Math.floor(Math.random() * cols.length)];
+  let col = cols[Math.floor(Math.random() * cols.length)];
+
+  // Kosmetyczne iskry darni ze skrzyń nagród
+  const activeTurf = playerInventory && (playerInventory.turfStyle || playerInventory.turf);
+  if (activeTurf && activeTurf !== 'default') {
+    if (activeTurf === 'white') {
+      col = Math.random() > 0.4 ? '#e2e8f0' : '#94a3b8';
+    } else if (activeTurf === 'blue') {
+      col = Math.random() > 0.4 ? '#38bdf8' : '#0ea5e9';
+    } else if (activeTurf === 'magma') {
+      col = Math.random() > 0.4 ? '#ff4500' : '#fb923c';
+    } else if (activeTurf === 'gold_dust') {
+      col = Math.random() > 0.4 ? '#facc15' : '#fbbf24';
+    }
+  }
 
   for (let i = 0; i < 2; i++) {
     grassParticles.push({
@@ -2804,6 +2922,79 @@ export function updateParticles() {
   // Aktualizacja przelatujących samolotów w biomie murawy (0 – 799 m)
   updateAirplanes();
 
+  // Aktualizacja proceduralnych monet i efektów zebrania
+  updateCoins(camera ? camera.x : START_X, GROUND_Y);
+
+  // Kosmetyczne aury pędu i ślad wślizgu wokół gracza (nagrody ze skrzyń)
+  if (player) {
+    // 1. Ślad neonowo-błękitnego wślizgu
+    const activeSlide = playerInventory && (playerInventory.slideStyle || playerInventory.slide);
+    if (player.isSliding && activeSlide === 'cyan') {
+      for (let s = 0; s < 2; s++) {
+        grassParticles.push({
+          x: player.x + (player.w || 24) * 0.5 + (Math.random() * 24 - 12),
+          y: GROUND_Y - 4 + Math.random() * 3,
+          vx: -(player.facing || 1) * (Math.random() * 3.5 + 1.2),
+          vy: -(Math.random() * 1.6 + 0.4),
+          size: Math.random() * 3.2 + 1.8,
+          life: 0.65,
+          color: Math.random() > 0.4 ? '#06b6d4' : '#22d3ee'
+        });
+      }
+    }
+
+    // 2. Aury wokół gracza
+    const aStyle = playerInventory && (playerInventory.auraStyle || playerInventory.aura);
+    if (aStyle && aStyle !== 'none') {
+      if (aStyle === 'magma') {
+        // Ognista aura magmy
+        if (Math.random() < 0.45) {
+          const px = player.x + (player.w || 24) * 0.5 + (Math.random() * 16 - 8);
+          const py = player.y + (player.h || 70) * (0.35 + Math.random() * 0.55);
+          grassParticles.push({
+            x: px,
+            y: py,
+            vx: (player.facing ? -player.facing : -1) * (Math.random() * 2 + 0.8),
+            vy: -(Math.random() * 2.2 + 0.8),
+            size: Math.random() * 2.6 + 1.6,
+            life: 0.55,
+            color: Math.random() > 0.35 ? '#ff4500' : '#f59e0b'
+          });
+        }
+      } else if (aStyle === 'void') {
+        // Fioletowa Mroczna Aura Pędu (Dark Void Aura wokół gracza)
+        if (Math.random() < 0.55) {
+          const px = player.x + (player.w || 24) * 0.5 + (Math.random() * 22 - 11);
+          const py = player.y + (player.h || 70) * (0.2 + Math.random() * 0.7);
+          grassParticles.push({
+            x: px,
+            y: py,
+            vx: (player.facing ? -player.facing : -1) * (Math.random() * 1.5 + 0.5) + (Math.random() - 0.5) * 1.2,
+            vy: -(Math.random() * 2.6 + 0.8),
+            size: Math.random() * 3.2 + 1.8,
+            life: 0.65,
+            color: Math.random() > 0.4 ? '#c084fc' : (Math.random() > 0.5 ? '#9333ea' : '#581c87')
+          });
+        }
+      } else if (aStyle === 'divine') {
+        // Złota Boska Aura Mistrza (Divine Gold Aura z promieniami)
+        if (Math.random() < 0.65) {
+          const px = player.x + (player.w || 24) * 0.5 + (Math.random() * 26 - 13);
+          const py = player.y + (player.h || 70) * (0.15 + Math.random() * 0.75);
+          grassParticles.push({
+            x: px,
+            y: py,
+            vx: (player.facing ? -player.facing : -1) * (Math.random() * 1.2 + 0.4) + (Math.random() - 0.5) * 1.2,
+            vy: -(Math.random() * 3.2 + 1.2),
+            size: Math.random() * 3.4 + 1.8,
+            life: 0.75,
+            color: Math.random() > 0.5 ? '#facc15' : (Math.random() > 0.5 ? '#fbbf24' : '#ffffff')
+          });
+        }
+      }
+    }
+  }
+
   // Wystrzał konfetti na powitanie przy wbiegnięciu na stadion (300 m)
   if (currentDist >= 300 && currentDist <= 330 && !confettiTriggered) {
     confettiTriggered = true;
@@ -3603,116 +3794,108 @@ function drawStadiumEntrancePylon(ctx, enterX, gy, now) {
   }
 }
 
-// 2. MONUMENTALNY PYLON WYJŚCIOWY (750 M) OTWIERAJĄCY WIDOK NA PUSTYNIĘ
-function drawStadiumExitPylon(ctx, exitX, gy, now) {
-  const pylonBaseX = exitX - 80;
-  const pylonW = 220;
-  const topY = gy - 620;
+// ==========================================
+// MONUMENTALNA BRAMA WYJŚCIOWA ZE STADIONU (750M)
+// ==========================================
+function drawStadiumExitGate(ctx, exitX, gy) {
+  const pylonW = 56;
+  const pylonH = 340;
+  const topY = gy - pylonH;
 
-  // 1. Zewnętrzna wieża nośna i otwarty łuk ku pustyni
-  const towerGrad = ctx.createLinearGradient(pylonBaseX, 0, pylonBaseX + pylonW, 0);
-  towerGrad.addColorStop(0, '#334155');
-  towerGrad.addColorStop(0.30, '#1e293b');
-  towerGrad.addColorStop(0.65, '#0f172a');
-  towerGrad.addColorStop(1.0, '#030712');
+  ctx.save();
 
-  ctx.fillStyle = towerGrad;
-  ctx.beginPath();
-  ctx.moveTo(exitX - 80, topY + 20);
-  ctx.quadraticCurveTo(exitX + 40, topY, exitX + pylonW - 30, topY + 40);
-  ctx.lineTo(exitX + pylonW, gy);
-  ctx.lineTo(exitX + pylonW - 90, gy);
-  ctx.quadraticCurveTo(exitX + 10, topY + 45, exitX - 80, topY + 60);
-  ctx.closePath();
-  ctx.fill();
+  // 1. ŚCIANA ZAMYKAJĄCA PRZEKRÓJ TRYBUN I DACHU
+  // Masywny pionowy filar maskujący ucięte krzesełka od dachu do samej murawy
+  const wallGrad = ctx.createLinearGradient(exitX - pylonW, 0, exitX, 0);
+  wallGrad.addColorStop(0, '#040711');
+  wallGrad.addColorStop(0.4, '#0f172a');
+  wallGrad.addColorStop(1, '#1e293b');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(exitX - pylonW / 2, gy - 560, pylonW, 560);
 
-  ctx.strokeStyle = '#22c55e';
+  // Krawędź konstrukcyjna i podświetlenie neonowe krawędzi
+  ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(exitX - 80, topY + 20);
-  ctx.quadraticCurveTo(exitX + 40, topY, exitX + pylonW - 30, topY + 40);
-  ctx.lineTo(exitX + pylonW, gy);
+  ctx.moveTo(exitX + pylonW / 2, gy - 560);
+  ctx.lineTo(exitX + pylonW / 2, gy);
   ctx.stroke();
 
-  // 2. Otwarty portal z widokiem na złocistą pustynię
-  const portalW = 150;
-  const portalH = 260;
-  const portalX = exitX - 20;
-  const portalY = gy - portalH;
+  // 2. GŁÓWNY PYLON BRAMY WYJŚCIOWEJ (STALOWO-KOMPOZYTOWY)
+  const pylonGrad = ctx.createLinearGradient(exitX - pylonW / 2, 0, exitX + pylonW / 2, 0);
+  pylonGrad.addColorStop(0, '#090e1a');
+  pylonGrad.addColorStop(0.35, '#1e293b');
+  pylonGrad.addColorStop(0.70, '#334155');
+  pylonGrad.addColorStop(1, '#090e1a');
+  ctx.fillStyle = pylonGrad;
+  ctx.fillRect(exitX - pylonW / 2, topY, pylonW, pylonH);
 
-  const desertSkyGrad = ctx.createLinearGradient(portalX, portalY, portalX + portalW, gy);
-  desertSkyGrad.addColorStop(0, '#0a0d1a');
-  desertSkyGrad.addColorStop(0.35, '#2e1808');
-  desertSkyGrad.addColorStop(0.75, '#7c2d12');
-  desertSkyGrad.addColorStop(1.0, '#d97706');
-  ctx.fillStyle = desertSkyGrad;
-  ctx.fillRect(portalX, portalY, portalW, portalH);
-
-  // Ciepły snop słońca wpadający przez portal
-  const sunBeam = ctx.createRadialGradient(portalX + 90, gy - 60, 10, portalX + 90, gy - 60, 140);
-  sunBeam.addColorStop(0, 'rgba(251, 191, 36, 0.70)');
-  sunBeam.addColorStop(0.4, 'rgba(245, 158, 11, 0.35)');
-  sunBeam.addColorStop(0.8, 'rgba(217, 119, 6, 0.12)');
-  sunBeam.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = sunBeam;
-  ctx.fillRect(portalX, portalY, portalW, portalH);
-
-  // Sylwetka wydmy widoczna wewnątrz portalu
-  ctx.fillStyle = '#b45309';
-  ctx.beginPath();
-  ctx.moveTo(portalX, gy);
-  ctx.quadraticCurveTo(portalX + 60, gy - 65, portalX + portalW, gy - 20);
-  ctx.lineTo(portalX + portalW, gy);
-  ctx.closePath();
-  ctx.fill();
-
-  // 3. Neonowy szyld wyjściowy
-  const signW = 190;
-  const signH = 55;
-  const signX = exitX - signW / 2 + 30;
-  const signY = topY + 160;
-
-  ctx.fillStyle = '#020617';
-  ctx.fillRect(signX, signY, signW, signH);
-
-  ctx.strokeStyle = '#22c55e';
+  ctx.strokeStyle = '#facc15';
   ctx.lineWidth = 2.5;
-  ctx.strokeRect(signX, signY, signW, signH);
+  ctx.strokeRect(exitX - pylonW / 2, topY, pylonW, pylonH);
+
+  // Żółto-czarne pasy ostrzegawcze skrajni u dołu
+  const hazardH = 46;
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(exitX - pylonW / 2 + 2, gy - hazardH, pylonW - 4, hazardH);
+  ctx.fillStyle = '#090e1a';
+  for (let s = 0; s < 3; s++) {
+    ctx.fillRect(exitX - pylonW / 2 + 6 + s * 16, gy - hazardH, 7, hazardH);
+  }
+
+  // 3. NEONOWY KASETON WYJŚCIOWY (SYMETRYCZNY DO WEJŚCIA)
+  const lintelY = topY - 35;
+  const lintelH = 75;
+  const lintelW = 220;
+  const lintelX = exitX - lintelW / 2;
+
+  ctx.fillStyle = '#080d1a';
+  ctx.fillRect(lintelX, lintelY, lintelW, lintelH);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(lintelX, lintelY, lintelW, lintelH);
+
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(lintelX + 4, lintelY + 4, lintelW - 8, lintelH - 8);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#4ade80';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText('➔ EXIT TO DESERT ➔', signX + signW / 2, signY + 24);
-
   ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 10px monospace';
-  ctx.fillText('STAGE FINISH • 750M', signX + signW / 2, signY + 42);
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('★ WYJŚCIE ZE STADIONU ★', exitX, lintelY + 22);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('KIERUNEK: PUSTYNIA', exitX, lintelY + 46);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('750M • DESERT AHEAD ➔', exitX, lintelY + 64);
   ctx.textAlign = 'left';
 
-  // 4. Organiczne nawiewki piaskowe na styku areny i portalu
-  ctx.fillStyle = '#d97706';
+  // Diody ostrzegawcze na szczycie kasetonu
+  const blink = Math.sin(performance.now() * 0.007) > 0;
+  ctx.fillStyle = blink ? '#facc15' : '#854d0e';
   ctx.beginPath();
-  ctx.moveTo(exitX - 40, gy);
-  ctx.quadraticCurveTo(exitX + 20, gy - 12, exitX + 90, gy);
-  ctx.closePath();
+  ctx.arc(lintelX + 16, lintelY - 5, 4.5, 0, Math.PI * 2);
+  ctx.arc(lintelX + lintelW - 16, lintelY - 5, 4.5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#b45309';
-  ctx.beginPath();
-  ctx.moveTo(exitX - 10, gy);
-  ctx.quadraticCurveTo(exitX + 40, gy - 8, exitX + 70, gy);
-  ctx.closePath();
-  ctx.fill();
+  // 4. PRÓG WYJŚCIOWY I WYKŁADZINA
+  const carpetW = 60;
+  const carpetGrad = ctx.createLinearGradient(0, gy - 2, 0, gy + 8);
+  carpetGrad.addColorStop(0, '#991b1b');
+  carpetGrad.addColorStop(1, '#7f1d1d');
+  ctx.fillStyle = carpetGrad;
+  ctx.fillRect(exitX - carpetW, gy - 2, carpetW, 8);
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(exitX - carpetW, gy - 2, carpetW, 1.5);
+  ctx.fillRect(exitX - 2, gy - 2, 3, 8); // metalowa listwa progowa
 
-  // 5. Stroboskop ostrzegawczy na szczycie
-  const strobeOn = Math.sin(now * 0.007 + 2.0) > 0.2;
-  ctx.fillStyle = strobeOn ? '#ef4444' : '#7f1d1d';
-  ctx.beginPath();
-  ctx.arc(exitX + pylonW - 30, topY + 36, 4, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.restore();
 }
 
-// 3. DACH: ZINTEGROWANA KRATOWNICA STALOWA Z WBUDOWANYMI REFLEKTORAMI LED I SNOPAMI ŚWIATŁA
+// 2. DACH: ZINTEGROWANA KRATOWNICA STALOWA Z WBUDOWANYMI REFLEKTORAMI LED I SNOPAMI ŚWIATŁA
 function drawStadiumRoofAndLighting(ctx, enterX, exitX, gy, viewLeft, viewRight, now) {
   const roofTopY = gy - 640;
   const roofBotY = gy - 550;
@@ -4388,9 +4571,9 @@ export function drawStadium(ctx, worldLeft, worldRight) {
     drawStadiumEntrancePylon(ctx, enterX, gy, now);
   }
 
-  // 5. Monumentalny pylon wyjściowy otwierający widok na pustynię (750 m = 10660 px)
+  // 5. Monumentalna brama wyjściowa maskująca przekrój stadionu (750 m = 10660 px)
   if (exitX >= worldLeft - 250 && exitX <= worldRight + 350) {
-    drawStadiumExitPylon(ctx, exitX, gy, now);
+    drawStadiumExitGate(ctx, exitX, gy);
   }
 
   ctx.restore();
@@ -4745,51 +4928,6 @@ function drawEntranceGateForeground(ctx, enterX, gy) {
   ctx.fill();
 }
 
-function drawExitGateForeground(ctx, exitX, gy) {
-  // Architektoniczne obramowanie wyjścia na pierwszym planie
-  const pillarW = 44;
-  const pillarH = 310;
-  const rightPillarX = exitX + 130;
-
-  // Prawy pylon zewnętrzny (poza torem biegu)
-  const gradPillar = ctx.createLinearGradient(rightPillarX, 0, rightPillarX + pillarW, 0);
-  gradPillar.addColorStop(0, '#090e1a');
-  gradPillar.addColorStop(0.3, '#1e293b');
-  gradPillar.addColorStop(0.7, '#334155');
-  gradPillar.addColorStop(1, '#090e1a');
-  ctx.fillStyle = gradPillar;
-  ctx.fillRect(rightPillarX, gy - pillarH, pillarW, pillarH + 10);
-  ctx.strokeStyle = '#22c55e';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(rightPillarX, gy - pillarH, pillarW, pillarH + 10);
-
-  // Górny kaseton bramy wyjściowej (powyżej toru biegu gracza)
-  const lintelY = gy - pillarH - 35;
-  const lintelH = 75;
-  const lintelW = 260;
-  const lintelX = rightPillarX + pillarW - lintelW + 8;
-
-  ctx.fillStyle = '#052e16';
-  ctx.fillRect(lintelX, lintelY, lintelW, lintelH);
-  ctx.strokeStyle = '#22c55e';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(lintelX, lintelY, lintelW, lintelH);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#4ade80';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText('CHAMPIONS ARENA', lintelX + lintelW / 2, lintelY + 22);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText('KEEP IT HIGH', lintelX + lintelW / 2, lintelY + 46);
-
-  ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText('FAIR PLAY • 750M ➔', lintelX + lintelW / 2, lintelY + 64);
-  ctx.textAlign = 'left';
-}
-
 function drawForegroundSpotlight(ctx, mx, gy) {
   // Przedni wolumetryczny snop światła padający na zawodnika
   ctx.save();
@@ -4844,19 +4982,14 @@ export function drawStadiumForeground(ctx, worldLeft, worldRight) {
     drawEntranceGateForeground(ctx, enterX, gy);
   }
 
-  // 2. Przód monumentalnej bramy wyjściowej na 750 m (filary przesłaniające gracza)
-  if (exitX >= worldLeft - 260 && exitX <= worldRight + 260) {
-    drawExitGateForeground(ctx, exitX, gy);
-  }
-
-  // 3. Przednie snopy światła jupiterów oświetlające gracza i płytę boiska
+  // 2. Przednie snopy światła jupiterów oświetlające gracza i płytę boiska
   for (let mx = enterX + 220; mx < exitX; mx += 560) {
     if (mx >= worldLeft - 260 && mx <= worldRight + 260) {
       drawForegroundSpotlight(ctx, mx, gy);
     }
   }
 
-  // 4. JEDNORAZOWY EFEKT ADAPTACJI OKA (BIAŁY FLASH TRWAJĄCY 15-20 KLATEK, ALPHA 0.55 -> 0.0)
+  // 3. JEDNORAZOWY EFEKT ADAPTACJI OKA (BIAŁY FLASH TRWAJĄCY 15-20 KLATEK, ALPHA 0.55 -> 0.0)
   // Wyzwalany w momencie minięcia bramy tunelu (300 m)
   if (camDist >= 298 && camDist <= 330 && !eyeAdaptationTriggered) {
     eyeAdaptationTriggered = true;
@@ -4972,6 +5105,756 @@ export function drawParticles(ctx) {
       ctx.fillRect(sp.x, sp.y, sp.size, sp.size * 0.85);
     }
   }
+
+  // 3. Monety na mapie i unoszące się efekty zebrania (+1, iskry)
+  const wLeft = camera ? camera.x - (W / camera.zoom) : -1e6;
+  const wRight = camera ? camera.x + (W / camera.zoom) * 2 : 1e6;
+  drawCoins(ctx, wLeft, wRight);
+}
+
+// ==========================================
+// SYSTEM MONET I PUNKTÓW (KROK 1)
+// ==========================================
+export let coins = parseInt(localStorage.getItem('runner_coins') || '0', 10);
+export const mapCoins = [];
+export const coinPickupEffects = [];
+
+let lastCoinSpawnX = START_X + 280; // Pierwsza partia monet tuż za startem
+
+export function addCoins(amount) {
+  coins += amount;
+  localStorage.setItem('runner_coins', coins.toString());
+}
+
+// Proceduralne tworzenie partii monet
+function spawnCoinGroup(startX, gy) {
+  const patternType = Math.floor(Math.random() * 3);
+  const count = 4 + Math.floor(Math.random() * 3); // 4-6 monet w grupie
+
+  if (patternType === 0) {
+    // Prosta linia przy ziemi
+    for (let i = 0; i < count; i++) {
+      mapCoins.push({
+        x: startX + i * 36,
+        y: gy - 20,
+        baseY: gy - 20,
+        radius: 9,
+        collected: false,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  } else if (patternType === 1) {
+    // Parabola w powietrzu (łuk zachęcający do skoku / strzału)
+    const arcHeight = 70;
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      const arcY = Math.sin(t * Math.PI) * arcHeight;
+      mapCoins.push({
+        x: startX + i * 38,
+        y: gy - 22 - arcY,
+        baseY: gy - 22 - arcY,
+        radius: 9,
+        collected: false,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  } else {
+    // Podwójna fala
+    for (let i = 0; i < count; i++) {
+      mapCoins.push({
+        x: startX + i * 34,
+        y: gy - 40 + Math.sin(i * 0.9) * 20,
+        baseY: gy - 40 + Math.sin(i * 0.9) * 20,
+        radius: 9,
+        collected: false,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+}
+
+let lastUpdateCoinsTime = -1;
+
+export function updateCoins(focusX, gy, customPlayer = player, customBall = ball) {
+  const spawnAhead = focusX + 2400;
+  const despawnBehind = focusX - 800;
+
+  // Generowanie nowych monet w przód
+  while (lastCoinSpawnX < spawnAhead) {
+    const gap = 380 + Math.random() * 450;
+    lastCoinSpawnX += gap;
+    spawnCoinGroup(lastCoinSpawnX, gy);
+  }
+
+  // Animacja i sprawdzanie kolizji
+  const now = performance.now();
+  if (now === lastUpdateCoinsTime) return;
+  lastUpdateCoinsTime = now;
+
+  const pObj = customPlayer || player;
+  const bObj = customBall || ball;
+
+  const px = pObj ? (pObj.x + (pObj.w || 24) / 2) : 0;
+  const py = pObj ? (pObj.y + (pObj.h || 70) / 2) : 0;
+  const pRadius = pObj ? (pObj.isSliding ? 22 : 36) : 30;
+
+  const bx = bObj ? bObj.x : -9999;
+  const by = bObj ? bObj.y : -9999;
+  const bRadius = bObj ? (bObj.radius || 10) + 6 : 14;
+
+  for (let i = mapCoins.length - 1; i >= 0; i--) {
+    const c = mapCoins[i];
+
+    // Delikatne lewitowanie
+    c.y = c.baseY + Math.sin(now * 0.005 + c.phase) * 3;
+
+    // Despawn za plecami
+    if (c.x < despawnBehind) {
+      mapCoins.splice(i, 1);
+      continue;
+    }
+
+    // Kolizja z graczem LUB piłką
+    const distPlayer = Math.hypot(c.x - px, c.y - py);
+    const distBall = Math.hypot(c.x - bx, c.y - by);
+
+    if (distPlayer < c.radius + pRadius || distBall < c.radius + bRadius) {
+      addCoinsWithMult(1);
+
+      // Efekt cząsteczek przy zebraniu
+      for (let s = 0; s < 6; s++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 3 + 2;
+        coinPickupEffects.push({
+          type: 'spark',
+          x: c.x,
+          y: c.y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1,
+          color: Math.random() > 0.3 ? '#facc15' : '#ffffff',
+          size: Math.random() * 2.5 + 1.5,
+          alpha: 1.0,
+          life: 24
+        });
+      }
+
+      // Unoszący się tekst +1 (lub więcej przy aktywnym mnożniku monet)
+      const currentMult = getActiveCoinMultiplier();
+      const earnedAmount = currentMult > 1 ? (Math.round(currentMult * 10) / 10) : 1;
+      coinPickupEffects.push({
+        type: 'text',
+        x: c.x,
+        y: c.y - 10,
+        text: `+${earnedAmount}`,
+        alpha: 1.0,
+        life: 30
+      });
+
+      mapCoins.splice(i, 1);
+    }
+  }
+
+  // Aktualizacja efektów zebrania
+  for (let i = coinPickupEffects.length - 1; i >= 0; i--) {
+    const eff = coinPickupEffects[i];
+    eff.life--;
+    eff.y -= 0.6;
+    if (eff.type === 'spark') {
+      eff.x += eff.vx;
+      eff.y += eff.vy;
+      eff.vy += 0.12;
+      eff.alpha = eff.life / 24;
+    } else {
+      eff.alpha = eff.life / 30;
+    }
+
+    if (eff.life <= 0) {
+      coinPickupEffects.splice(i, 1);
+    }
+  }
+}
+
+let lastDrawCoinsTime = -1;
+
+// Renderowanie monet 2.5D z obrotem
+export function drawCoins(ctx, worldLeft, worldRight) {
+  const now = performance.now();
+  if (now === lastDrawCoinsTime) return;
+  lastDrawCoinsTime = now;
+
+  for (let i = 0; i < mapCoins.length; i++) {
+    const c = mapCoins[i];
+    if (worldLeft !== undefined && worldRight !== undefined) {
+      if (c.x < worldLeft - 30 || c.x > worldRight + 30) continue;
+    }
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    // Dynamiczny obrót horyzontalny 3D
+    const spin = Math.sin(now * 0.006 + c.phase);
+    ctx.scale(spin, 1);
+
+    // Zewnętrzny złoty rant
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.arc(0, 0, c.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Złote lico monety
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(0, 0, c.radius - 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wytłoczona gwiazdka w centrum
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', 0, 0.5);
+
+    ctx.restore();
+  }
+
+  // Renderowanie efektów uniesienia (+1 i iskry)
+  for (let i = 0; i < coinPickupEffects.length; i++) {
+    const eff = coinPickupEffects[i];
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, eff.alpha);
+
+    if (eff.type === 'spark') {
+      ctx.fillStyle = eff.color;
+      ctx.fillRect(eff.x, eff.y, eff.size, eff.size);
+    } else {
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#fde047';
+      ctx.textAlign = 'center';
+      ctx.fillText(eff.text, eff.x, eff.y);
+    }
+    ctx.restore();
+  }
+}
+
+// Zmodyfikuj funkcję addCoins, by uwzględniała mnożnik nagród (jeśli amount > 0):
+const originalAddCoins = addCoins;
+let coinFraction = 0;
+export function addCoinsWithMult(amount) {
+  const mult = getActiveCoinMultiplier();
+  if (amount > 0 && mult > 1) {
+    const total = amount * mult + coinFraction;
+    const gained = Math.floor(total);
+    coinFraction = total - gained;
+    originalAddCoins(gained);
+    return gained;
+  }
+  originalAddCoins(amount);
+  return amount;
+}
+
+// ==========================================
+// SYSTEM 4 SKRZYŃ I EKWIPUNKU GRACZA (SKLEP I MODAL)
+// ==========================================
+export const chestShopModal = {
+  active: false,
+  cardBounds: [],
+  closeBtnBounds: null,
+  modalBounds: null
+};
+
+export const chestModal = {
+  active: false,
+  currentTier: null,
+  state: 'idle', // 'shaking' -> 'burst' -> 'reward'
+  timer: 0,
+  currentReward: null,
+  sparks: []
+};
+
+export function openChestShop() {
+  if (chestModal.active) return;
+  chestShopModal.active = true;
+}
+
+export function closeChestShop() {
+  chestShopModal.active = false;
+}
+
+export function openChestTier(tierId) {
+  const tier = CHEST_TIERS[tierId];
+  if (!tier) return false;
+  if (coins < tier.cost || chestModal.active) return false;
+
+  addCoins(-tier.cost);
+  chestShopModal.active = false;
+  chestModal.active = true;
+  chestModal.currentTier = tier;
+  chestModal.state = 'shaking';
+  chestModal.timer = 0;
+  chestModal.sparks = [];
+  chestModal.currentReward = tier.roll();
+  return true;
+}
+
+// Kompatybilność wsteczna - otwiera pełne menu wyboru skrzyń
+export function openChest() {
+  openChestShop();
+}
+
+export function closeChestModal() {
+  if (!chestModal.active || chestModal.state !== 'reward' || !chestModal.currentReward) return;
+
+  const r = chestModal.currentReward;
+  if (r.type === 'coins') {
+    addCoins(r.val);
+  } else if (r.type === 'turf') {
+    playerInventory.turf = r.val;
+    playerInventory.turfStyle = r.val;
+    localStorage.setItem('inv_turf', r.val);
+    localStorage.setItem('reward_turf_style', r.val);
+  } else if (r.type === 'slide') {
+    playerInventory.slide = r.val;
+    playerInventory.slideStyle = r.val;
+    localStorage.setItem('inv_slide', r.val);
+    localStorage.setItem('reward_slide_style', r.val);
+  } else if (r.type === 'aura') {
+    playerInventory.aura = r.val;
+    playerInventory.auraStyle = r.val;
+    localStorage.setItem('inv_aura', r.val);
+    localStorage.setItem('reward_aura_style', r.val);
+  } else if (r.type === 'temp_mult') {
+    playerInventory.tempCoinMult = r.val;
+    playerInventory.tempMultExpiresAt = Date.now() + (r.durationMs || 5 * 60 * 1000);
+    localStorage.setItem('inv_temp_coin_mult', playerInventory.tempCoinMult.toString());
+    localStorage.setItem('inv_temp_mult_exp', playerInventory.tempMultExpiresAt.toString());
+  } else if (r.type === 'perm_mult') {
+    playerInventory.permCoinMult = r.val;
+    localStorage.setItem('inv_perm_coin_mult', r.val.toString());
+  } else if (r.type === 'mult') {
+    playerInventory.tempCoinMult = r.val;
+    playerInventory.tempMultExpiresAt = Date.now() + 5 * 60 * 1000;
+    localStorage.setItem('inv_temp_coin_mult', playerInventory.tempCoinMult.toString());
+    localStorage.setItem('inv_temp_mult_exp', playerInventory.tempMultExpiresAt.toString());
+  } else if (r.type === 'title') {
+    if (playerInventory.title !== 'LEGENDA ARENY' || r.val === 'LEGENDA ARENY') {
+      playerInventory.title = r.val;
+      localStorage.setItem('inv_title', r.val);
+      localStorage.setItem('reward_title', r.val);
+    }
+  } else if (r.type === 'champion') {
+    playerInventory.hasCrown = true;
+    playerInventory.title = 'LEGENDA ARENY';
+    localStorage.setItem('inv_crown', 'true');
+    localStorage.setItem('reward_has_crown', 'true');
+    localStorage.setItem('inv_title', 'LEGENDA ARENY');
+    localStorage.setItem('reward_title', 'LEGENDA ARENY');
+  }
+
+  chestModal.active = false;
+  chestModal.state = 'idle';
+  chestModal.currentReward = null;
+  chestModal.currentTier = null;
+}
+
+// ----------------------------------------------------
+// RENDEROWANIE PEŁNEGO MENU WYBORU SKRZYŃ (SKLEP MODAL)
+// ----------------------------------------------------
+export function drawChestShopModal(ctx, W, H) {
+  if (!chestShopModal.active) return;
+
+  ctx.save();
+  ctx.resetTransform();
+  ctx.scale(DPR, DPR);
+
+  // 1. Ciemne tło przyciemniające grę
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.84)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Wymiary okna sklepu
+  const modalW = Math.min(940, W - 32);
+  const modalH = Math.min(530, H - 32);
+  const mx = (W - modalW) / 2;
+  const my = (H - modalH) / 2;
+  chestShopModal.modalBounds = { x: mx, y: my, w: modalW, h: modalH };
+
+  // Tło modalu
+  const bgGrad = ctx.createLinearGradient(mx, my, mx, my + modalH);
+  bgGrad.addColorStop(0, '#0f172a');
+  bgGrad.addColorStop(1, '#020617');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(mx, my, modalW, modalH);
+
+  // Ramka modalu
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mx, my, modalW, modalH);
+
+  // Tęczowy pasek akcentujący na górze modalu
+  const topBar = ctx.createLinearGradient(mx, my, mx + modalW, my);
+  topBar.addColorStop(0, '#94a3b8');
+  topBar.addColorStop(0.33, '#38bdf8');
+  topBar.addColorStop(0.66, '#c084fc');
+  topBar.addColorStop(1, '#facc15');
+  ctx.fillStyle = topBar;
+  ctx.fillRect(mx, my, modalW, 3);
+
+  // Nagłówek okna
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('📦 SKLEP MAGICZNYCH SKRZYŃ', mx + 24, my + 34);
+
+  ctx.font = '600 11px monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('Wybierz poziom skrzyni, aby wylosować aury, mnożniki monet lub rzadkie tytuły!', mx + 24, my + 54);
+
+  // Saldo gracza w prawym górnym rogu
+  const saldoTxt = `★ SALDO: ${coins} 🪙`;
+  ctx.font = 'bold 15px monospace';
+  ctx.fillStyle = '#facc15';
+  ctx.textAlign = 'right';
+  ctx.fillText(saldoTxt, mx + modalW - 60, my + 38);
+
+  // Przycisk zamknięcia [X]
+  const cbS = 28;
+  const cbX = mx + modalW - 42;
+  const cbY = my + 16;
+  chestShopModal.closeBtnBounds = { x: cbX, y: cbY, w: cbS, h: cbS };
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(cbX, cbY, cbS, cbS);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(cbX, cbY, cbS, cbS);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText('✕', cbX + cbS / 2, cbY + cbS / 2);
+
+  // Siatka 4 kart skrzyń
+  const tiersList = [CHEST_TIERS.common, CHEST_TIERS.rare, CHEST_TIERS.epic, CHEST_TIERS.legendary];
+  const padH = 18;
+  const gap = 12;
+  const totalCards = 4;
+  const cardW = Math.floor((modalW - padH * 2 - gap * (totalCards - 1)) / totalCards);
+  const cardH = modalH - 92;
+  const cardY = my + 72;
+
+  chestShopModal.cardBounds = [];
+
+  for (let i = 0; i < totalCards; i++) {
+    const tier = tiersList[i];
+    const cardX = mx + padH + i * (cardW + gap);
+    const canAfford = coins >= tier.cost;
+
+    // Tło karty
+    ctx.fillStyle = canAfford ? 'rgba(30, 41, 59, 0.85)' : 'rgba(15, 23, 42, 0.7)';
+    ctx.fillRect(cardX, cardY, cardW, cardH);
+    ctx.strokeStyle = canAfford ? tier.color : '#334155';
+    ctx.lineWidth = canAfford ? 2 : 1;
+    ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+    // Górny pasek karty z kolorem rzadkości
+    ctx.fillStyle = tier.color + '26';
+    ctx.fillRect(cardX, cardY, cardW, 46);
+    ctx.fillStyle = tier.color;
+    ctx.fillRect(cardX, cardY, cardW, 2);
+
+    // Ikona i nazwa rzadkości
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '20px monospace';
+    ctx.fillText(tier.icon, cardX + cardW / 2, cardY + 16);
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = tier.color;
+    ctx.fillText(tier.name, cardX + cardW / 2, cardY + 34);
+
+    // Pigułka kosztu
+    const costY = cardY + 68;
+    ctx.fillStyle = canAfford ? 'rgba(34, 197, 94, 0.16)' : 'rgba(239, 68, 68, 0.15)';
+    ctx.fillRect(cardX + 14, costY - 12, cardW - 28, 24);
+    ctx.strokeStyle = canAfford ? '#22c55e' : '#ef4444';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cardX + 14, costY - 12, cardW - 28, 24);
+
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = canAfford ? '#4ade80' : '#f87171';
+    ctx.fillText(`KOSZT: ${tier.cost} 🪙`, cardX + cardW / 2, costY);
+
+    // Lista potencjalnych nagród
+    const lootStartY = cardY + 98;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('MOŻLIWY DROP:', cardX + 12, lootStartY);
+
+    ctx.font = '9px monospace';
+    for (let d = 0; d < tier.dropsPreview.length; d++) {
+      const dropStr = tier.dropsPreview[d];
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(`• ${dropStr}`, cardX + 12, lootStartY + 18 + d * 18);
+    }
+
+    // Przycisk "OTWÓRZ"
+    const btnH = 34;
+    const btnW = cardW - 24;
+    const btnX = cardX + 12;
+    const btnY = cardY + cardH - btnH - 12;
+
+    chestShopModal.cardBounds.push({
+      id: tier.id,
+      x: btnX,
+      y: btnY,
+      w: btnW,
+      h: btnH,
+      cardX: cardX,
+      cardY: cardY,
+      cardW: cardW,
+      cardH: cardH,
+      canAfford: canAfford,
+      tier: tier
+    });
+
+    if (canAfford) {
+      ctx.fillStyle = tier.color;
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`OTWÓRZ (${tier.cost} 🪙)`, btnX + btnW / 2, btnY + btnH / 2);
+    } else {
+      ctx.fillStyle = 'rgba(51, 65, 85, 0.45)';
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(btnX, btnY, btnW, btnH);
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ZA MAŁO MONET', btnX + btnW / 2, btnY + btnH / 2);
+    }
+  }
+
+  ctx.restore();
+}
+
+// ----------------------------------------------------
+// RENDEROWANIE OKNA OTWARCIA SKRZYNI (MODAL 2.5D)
+// ----------------------------------------------------
+export function drawChestModal(ctx, W, H) {
+  if (!chestModal.active) return;
+
+  const tier = chestModal.currentTier || CHEST_TIERS.common;
+  chestModal.timer++;
+  const cx = W / 2;
+  const cy = H / 2;
+
+  ctx.save();
+  ctx.resetTransform();
+  ctx.scale(DPR, DPR);
+
+  // 1. Ciemne tło przyciemniające grę
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Aktualizacja faz animacji
+  if (chestModal.state === 'shaking') {
+    if (chestModal.timer > 45) {
+      chestModal.state = 'burst';
+      chestModal.timer = 0;
+      // Wybuch cząsteczek w barwach wylosowanej skrzyni
+      for (let i = 0; i < 40; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 9 + 3;
+        chestModal.sparks.push({
+          x: cx, y: cy,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 2,
+          color: Math.random() > 0.4 ? tier.color : '#ffffff',
+          size: Math.random() * 4.5 + 2,
+          life: 42
+        });
+      }
+    }
+  } else if (chestModal.state === 'burst') {
+    if (chestModal.timer > 25) {
+      chestModal.state = 'reward';
+    }
+  }
+
+  // Animacja iskier wybuchu
+  for (let i = chestModal.sparks.length - 1; i >= 0; i--) {
+    const sp = chestModal.sparks[i];
+    sp.x += sp.vx;
+    sp.y += sp.vy;
+    sp.vy += 0.2;
+    sp.life--;
+    ctx.fillStyle = sp.color;
+    ctx.fillRect(sp.x, sp.y, sp.size, sp.size);
+    if (sp.life <= 0) chestModal.sparks.splice(i, 1);
+  }
+
+  // 2. Rysowanie skrzynki 2.5D
+  if (chestModal.state === 'shaking' || chestModal.state === 'burst') {
+    ctx.save();
+    let shakeX = 0;
+    let shakeY = 0;
+    if (chestModal.state === 'shaking') {
+      const intensity = (chestModal.timer / 45) * 7;
+      shakeX = (Math.random() - 0.5) * intensity;
+      shakeY = (Math.random() - 0.5) * intensity;
+    }
+    ctx.translate(cx + shakeX, cy + shakeY);
+
+    // Blask bijący ze skrzyni w kolorze tieru
+    const glowR = 85 + Math.sin(chestModal.timer * 0.2) * 22;
+    const glow = ctx.createRadialGradient(0, 0, 10, 0, 0, glowR);
+    glow.addColorStop(0, tier.color + '88');
+    glow.addColorStop(1, tier.color + '00');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Korpus skrzyni (drewno / kompozyt + okucia w kolorze tieru)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-45, -20, 90, 55);
+    ctx.fillStyle = tier.color;
+    ctx.fillRect(-45, -20, 10, 55);
+    ctx.fillRect(35, -20, 10, 55);
+    ctx.fillRect(-45, 10, 90, 8);
+
+    // Wieko skrzyni
+    const lidLift = chestModal.state === 'burst' ? -28 : 0;
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.ellipse(0, -22 + lidLift, 46, 18, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = tier.color;
+    ctx.strokeRect(-45, -24 + lidLift, 90, 6);
+
+    // Zamek
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-7, -10, 14, 16);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-2, -5, 4, 6);
+
+    ctx.restore();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = tier.color;
+    ctx.fillText(`OTWIERANIE: ${tier.name}...`, cx, cy + 78);
+  }
+
+  // 3. Ekran wylosowanej nagrody
+  if (chestModal.state === 'reward') {
+    const rew = chestModal.currentReward;
+
+    // Karta nagrody
+    const cardW = 280;
+    const cardH = 240;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cx - cardW / 2, cy - cardH / 2 - 20, cardW, cardH);
+    ctx.strokeStyle = rew.color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(cx - cardW / 2, cy - cardH / 2 - 20, cardW, cardH);
+
+    // Nagłówek rzadkości
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = rew.color;
+    ctx.fillText(`★ NAGRODA: ${rew.rarity} ★`, cx, cy - 95);
+
+    // Nazwa nagrody
+    ctx.font = '700 15px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(rew.name, cx, cy - 58);
+
+    // Opis wartości nagrody
+    ctx.font = '600 11px monospace';
+    ctx.fillStyle = '#94a3b8';
+    if (rew.type === 'coins') {
+      ctx.fillText(`Zwrot: +${rew.val} monet do Twojego salda!`, cx, cy - 38);
+    } else if (rew.type === 'turf') {
+      ctx.fillText('Unikalny efekt iskier darni pod stopami!', cx, cy - 38);
+    } else if (rew.type === 'slide') {
+      ctx.fillText('Neonowy błękitny ślad podczas wślizgu!', cx, cy - 38);
+    } else if (rew.type === 'aura') {
+      ctx.fillText('Potężna stała aura energii wokół gracza!', cx, cy - 38);
+    } else if (rew.type === 'temp_mult') {
+      ctx.fillText(`Czasowy boost monet x${rew.val} na 5 minut!`, cx, cy - 38);
+    } else if (rew.type === 'perm_mult') {
+      ctx.fillText(`Stały mnożnik monet x${rew.val} (NA ZAWSZE)!`, cx, cy - 38);
+    } else if (rew.type === 'mult') {
+      ctx.fillText(`Mnożnik zbieranych monet x${rew.val}!`, cx, cy - 38);
+    } else if (rew.type === 'title') {
+      ctx.fillText('Nowy tytuł prezentowany w HUD gry!', cx, cy - 38);
+    } else if (rew.type === 'champion') {
+      ctx.fillText('Mityczna Złota Korona + Tytuł Mistrza!', cx, cy - 38);
+    }
+
+    // Ikona centralna
+    ctx.font = '46px monospace';
+    let icon = '🎁';
+    if (rew.type === 'coins') icon = '💰';
+    else if (rew.type === 'turf') icon = '🌿';
+    else if (rew.type === 'slide') icon = '⚡';
+    else if (rew.type === 'aura') icon = '🔮';
+    else if (rew.type === 'temp_mult') icon = '⏱️';
+    else if (rew.type === 'perm_mult') icon = '📈';
+    else if (rew.type === 'mult') icon = '📈';
+    else if (rew.type === 'title') icon = '🏷️';
+    else if (rew.type === 'champion') icon = '👑';
+    ctx.fillText(icon, cx, cy + 18);
+
+    // Przycisk ZBIERZ / ODBIERZ
+    const btnW = 180;
+    const btnH = 38;
+    const btnY = cy + 42;
+    ctx.fillStyle = rew.color;
+    ctx.fillRect(cx - btnW / 2, btnY, btnW, btnH);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 13px monospace';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ODBIERZ [SPACJA / B]', cx, btnY + btnH / 2);
+  }
+
+  ctx.restore();
+}
+
+// ----------------------------------------------------
+// INTEGRACJA W HUD (`drawHUD` w `world.js`)
+// ----------------------------------------------------
+export function drawChestHUDButton(ctx, W) {
+  const btnX = 24;
+  const btnY = 104;
+  const btnW = 190;
+  const btnH = 32;
+
+  const canAffordMin = coins >= CHEST_TIERS.common.cost;
+  const now = performance.now();
+  const pulse = canAffordMin ? (Math.sin(now * 0.008) * 0.25 + 0.75) : 0.4;
+
+  ctx.save();
+  ctx.fillStyle = canAffordMin ? `rgba(245, 158, 11, ${pulse * 0.25})` : 'rgba(30, 41, 59, 0.4)';
+  ctx.fillRect(btnX, btnY, btnW, btnH);
+  ctx.strokeStyle = canAffordMin ? '#f59e0b' : '#64748b';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = canAffordMin ? '#fef08a' : '#94a3b8';
+  ctx.fillText('[B] 📦 SKLEP SKRZYŃ', btnX + 10, btnY + btnH / 2);
+  ctx.restore();
 }
 
 export function drawDistanceMarkers(ctx, worldLeft, worldRight) {
@@ -5208,8 +6091,75 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
   ctx.fillStyle = '#ffeb3b';
   ctx.fillText(`REKORD:  ${bestDistance} m`, 24, 62);
 
+  // Licznik monet z opcjonalnym mnożnikiem (stałym i/lub czasowym z dynamicznym odliczaniem MM:SS)
+  ctx.fillStyle = '#facc15';
+  ctx.fillText(`★ MONETY: ${coins}`, 240, 38);
+
+  const activeMult = getActiveCoinMultiplier();
+  const remTime = getTempMultiplierTimeRemaining();
+
+  if (activeMult > 1.0) {
+    ctx.save();
+    ctx.font = 'bold 12px monospace';
+    const multStr = (activeMult % 1 === 0) ? activeMult.toFixed(0) : activeMult.toFixed(1);
+    
+    let badgeText = '';
+    if (remTime && playerInventory.permCoinMult > 1.0) {
+      const permStr = (playerInventory.permCoinMult % 1 === 0) ? playerInventory.permCoinMult.toFixed(0) : playerInventory.permCoinMult.toFixed(1);
+      const tempStr = (playerInventory.tempCoinMult % 1 === 0) ? playerInventory.tempCoinMult.toFixed(0) : playerInventory.tempCoinMult.toFixed(1);
+      badgeText = `[x${multStr} | x${permStr} STAŁY + x${tempStr} ⏱️ ${remTime}]`;
+    } else if (remTime) {
+      badgeText = `[x${multStr} ⏱️ ${remTime}]`;
+    } else if (playerInventory.permCoinMult > 1.0) {
+      badgeText = `[x${multStr} STAŁY]`;
+    }
+
+    if (badgeText) {
+      const coinsWidth = ctx.measureText(`★ MONETY: ${coins}`).width;
+      const badgeX = 240 + coinsWidth + 10;
+      const badgeY = 22;
+      ctx.font = 'bold 11px monospace';
+      const textW = ctx.measureText(badgeText).width;
+      const badgeW = textW + 12;
+      const badgeH = 22;
+
+      // Efekt podświetlenia badge'a
+      ctx.fillStyle = remTime ? 'rgba(6, 182, 212, 0.22)' : 'rgba(234, 179, 8, 0.22)';
+      ctx.strokeStyle = remTime ? '#06b6d4' : '#eab308';
+      ctx.lineWidth = 1.2;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+        ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+      }
+
+      ctx.fillStyle = remTime ? '#67e8f9' : '#fef08a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, badgeX + 6, badgeY + badgeH / 2);
+    }
+    ctx.restore();
+  }
+
+  // Tytuł i Korona Czempiona w profilu HUD
+  if (playerInventory && (playerInventory.title || playerInventory.hasCrown)) {
+    ctx.save();
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = playerInventory.hasCrown ? '#fbbf24' : '#38bdf8';
+    const icon = playerInventory.hasCrown ? '👑 ' : '🏷️ ';
+    ctx.fillText(`${icon}${playerInventory.title || 'NOWICJUSZ'}`, 24, 84);
+    ctx.restore();
+  }
+
   // Renderowanie panelu / zakładki z informacjami o biomie i dynamicznym licznikiem FPS
   drawBiomeInfoPanel(ctx, currentDist, currentFps, performance.now(), W);
+
+  // Przycisk sklepu ze skrzyniami w lewym górnym rogu pod monetami
+  drawChestHUDButton(ctx, W);
 
   // 1. LEWY DRĄŻEK
   if (leftStick && leftStick.active) {
@@ -5236,7 +6186,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
     ctx.fill();
   }
 
-  // 2. TRĂ“JKÄ„T PRZYCISKĂ“W
+  // 2. TRÓJKĄT PRZYCISKÓW
   if (btnCluster) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 2;
@@ -5260,7 +6210,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
     ctx.textAlign = 'center';
     ctx.fillText('SKOK', btnCluster.jump.x, btnCluster.jump.y + 4);
 
-    // KOPNIÄCIE / CHARGE
+    // KOPNIĘCIE / CHARGE
     ctx.beginPath();
     ctx.arc(btnCluster.kick.x, btnCluster.kick.y, btnCluster.kick.r, 0, Math.PI * 2);
     ctx.fillStyle = player.isCharging ? 'rgba(255, 235, 59, 0.35)' : 'rgba(255, 255, 255, 0.12)';
@@ -5280,7 +6230,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
     ctx.textAlign = 'center';
     ctx.fillText(player.isCharging ? `${Math.round(player.chargePower * 100)}%` : 'KOPNIJ', btnCluster.kick.x, btnCluster.kick.y + 4);
 
-    // WĹšLIZG
+    // WŚLIZG
     ctx.beginPath();
     ctx.arc(btnCluster.slide.x, btnCluster.slide.y, btnCluster.slide.r, 0, Math.PI * 2);
     ctx.fillStyle = player.isSliding ? 'rgba(0, 229, 255, 0.8)' : 'rgba(255, 255, 255, 0.12)';
@@ -5294,4 +6244,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster) {
     ctx.fillText('WŚLIZG', btnCluster.slide.x, btnCluster.slide.y + 4);
     ctx.textAlign = 'left';
   }
+
+  // 3. Okna sklepu skrzyń i otwarcia skrzyni (modale na samym wierzchu)
+  drawChestShopModal(ctx, W, H);
+  drawChestModal(ctx, W, H);
 }
