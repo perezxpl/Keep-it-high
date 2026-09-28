@@ -2,8 +2,8 @@
 // WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ
 // =========================================================================
 
-import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { activeArenaId, arenaScore } from './obstacles.js';
+import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
+import { activeArenaId, arenaScore, arena1State } from './obstacles.js';
 
 export const goalCelebration = {
   active: false,
@@ -205,54 +205,103 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
 }
 
 function drawSoldatParallax(ctx, camX) {
-  const time = performance.now() * 0.0006;
+  const time = performance.now() * 0.0007;
 
-  const hillOffset = (camX * 0.06) % 900;
-  ctx.fillStyle = '#0f172a';
+  // 1. Dalekie, spowite mrokiem pasmo wzgórz (Paralaks 0.04)
+  const farOffset = (camX * 0.04) % 1200;
+  ctx.fillStyle = '#070c16';
   ctx.beginPath();
-  ctx.moveTo(-100, H * 0.74);
-  for (let x = -100; x <= W + 100; x += 100) {
-    const y = Math.sin((x + hillOffset) * 0.007) * 35;
-    ctx.lineTo(x, H * 0.64 + y);
+  ctx.moveTo(-100, H * 0.78);
+  for (let x = -100; x <= W + 100; x += 80) {
+    const y = Math.sin((x + farOffset) * 0.004) * 45 + Math.cos((x + farOffset) * 0.009) * 20;
+    ctx.lineTo(x, H * 0.65 + y);
   }
   ctx.lineTo(W + 100, H);
   ctx.lineTo(-100, H);
   ctx.closePath();
   ctx.fill();
 
-  const towerOffset = (camX * 0.14) % 650;
-  ctx.fillStyle = '#1e293b';
-  for (let i = -1; i < 4; i++) {
-    const tx = i * 460 - towerOffset;
-    ctx.fillRect(tx + 60, H * 0.44, 20, H * 0.45);
-    ctx.fillRect(tx + 280, H * 0.30, 5, H * 0.60);
+  // 2. Bliższe wzgórza bazy taktycznej (Paralaks 0.08)
+  const midOffset = (camX * 0.08) % 900;
+  ctx.fillStyle = '#0c1322';
+  ctx.beginPath();
+  ctx.moveTo(-100, H * 0.82);
+  for (let x = -100; x <= W + 100; x += 60) {
+    const y = Math.sin((x + midOffset) * 0.006) * 32;
+    ctx.lineTo(x, H * 0.70 + y);
+  }
+  ctx.lineTo(W + 100, H);
+  ctx.lineTo(-100, H);
+  ctx.closePath();
+  ctx.fill();
 
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.arc(tx + 282, H * 0.30, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1e293b';
+  // 3. Maszty łączności, radary i wieże strażnicze (Paralaks 0.14)
+  const towerOffset = (camX * 0.14) % 800;
+  ctx.fillStyle = '#161f30';
+  for (let i = -1; i < 5; i++) {
+    const tx = i * 400 - towerOffset;
+    if (tx < -150 || tx > W + 150) continue;
+
+    // Wieża kratownicowa
+    ctx.fillRect(tx + 60, H * 0.46, 22, H * 0.45);
+    ctx.fillRect(tx + 54, H * 0.44, 34, 8); // platforma obserwacyjna
+
+    // Smukła iglica antenowa
+    ctx.fillRect(tx + 260, H * 0.32, 6, H * 0.58);
+    ctx.fillRect(tx + 252, H * 0.38, 22, 3);
+    ctx.fillRect(tx + 255, H * 0.44, 16, 3);
+
+    // Czerwone migające światła ostrzegawcze na szczycie (FAA beacons)
+    const blink = (Math.sin(time * 6 + i * 2) > 0.1);
+    if (blink) {
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(tx + 71, H * 0.43, 3.5, 0, Math.PI * 2);
+      ctx.arc(tx + 263, H * 0.31, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#161f30';
+    }
   }
 
-  for (let s = 0; s < 2; s++) {
-    const sPhase = s * Math.PI;
-    const lightAngle = Math.sin(time + sPhase) * 0.32 - (s === 0 ? 0.25 : -0.25);
-    const lx = (W * (s === 0 ? 0.28 : 0.72)) - camX * 0.04;
+  // 4. Szperacze przeciwlotnicze bazy wojskowej (3 snopy światła skanujące niebo)
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let s = 0; s < 3; s++) {
+    const sPhase = s * (Math.PI * 0.68);
+    const lightAngle = Math.sin(time * 1.2 + sPhase) * 0.36 + (s === 0 ? -0.32 : (s === 1 ? 0.05 : 0.35));
+    const lx = (W * (0.18 + s * 0.32)) - (camX * 0.05);
 
     ctx.save();
-    ctx.translate(lx, H * 0.85);
+    ctx.translate(lx, H * 0.88);
     ctx.rotate(lightAngle);
-    const beam = ctx.createLinearGradient(0, 0, 0, -H * 1.8);
-    beam.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
-    beam.addColorStop(0.6, 'rgba(147, 197, 253, 0.08)');
-    beam.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+
+    const beam = ctx.createLinearGradient(0, 0, 0, -H * 1.9);
+    beam.addColorStop(0.0, 'rgba(255, 255, 255, 0.28)');
+    beam.addColorStop(0.2, 'rgba(186, 230, 253, 0.14)');
+    beam.addColorStop(0.65, 'rgba(56, 189, 248, 0.06)');
+    beam.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = beam;
+
     ctx.beginPath();
-    ctx.moveTo(-20, 0); ctx.lineTo(-120, -H * 1.8); ctx.lineTo(120, -H * 1.8); ctx.lineTo(20, 0);
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-140, -H * 1.9);
+    ctx.lineTo(140, -H * 1.9);
+    ctx.lineTo(16, 0);
     ctx.closePath();
     ctx.fill();
+
+    // Źródło reflektora
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.restore();
   }
+  ctx.restore();
 }
 
 function drawCyberStadiumSky(ctx, camX) {
@@ -389,15 +438,16 @@ export function drawSky(ctx) {
   if (activeArenaId === 'ARENA_2') {
     drawCyberStadiumSky(ctx, camera ? camera.x : 960);
   } else {
+    // Nocny klimat Soldat Night Ops
     const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0.0, '#04070d');
-    sky.addColorStop(0.48, '#0d131f');
-    sky.addColorStop(0.80, '#1c222c');
-    sky.addColorStop(1.0, '#302419');
+    sky.addColorStop(0.0, '#020409');
+    sky.addColorStop(0.40, '#070c16');
+    sky.addColorStop(0.72, '#0e1624');
+    sky.addColorStop(1.0, '#1a2432');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
-    drawSoldatParallax(ctx, camera ? camera.x : 0);
+    drawSoldatParallax(ctx, camera ? camera.x : 1760);
   }
 }
 
@@ -411,33 +461,55 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 
   ctx.fillStyle = '#27272a';
   ctx.fillRect(startX, GROUND_Y, w, 14);
-  ctx.fillStyle = '#166534';
+  ctx.fillStyle = '#14532d'; // Ciemna murawa nocna
   ctx.fillRect(startX, GROUND_Y, w, 4);
 
   const wallH = 1350;
 
   [ARENA_LEFT, ARENA_RIGHT].forEach((wallX, idx) => {
     const isLeft = idx === 0;
-    const bw = 38;
+    const bw = 42;
     const bx = isLeft ? wallX - bw : wallX;
 
-    ctx.fillStyle = '#1e293b';
+    // Betonowo-stalowy mur oporowy bazy wojskowej
+    const wallGrad = ctx.createLinearGradient(bx, GROUND_Y - wallH, bx + bw, GROUND_Y - wallH);
+    wallGrad.addColorStop(0.0, '#0f172a');
+    wallGrad.addColorStop(0.5, '#1e293b');
+    wallGrad.addColorStop(1.0, '#0f172a');
+    ctx.fillStyle = wallGrad;
     ctx.fillRect(bx, GROUND_Y - wallH, bw, wallH);
+
     ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.0;
     ctx.strokeRect(bx, GROUND_Y - wallH, bw, wallH);
 
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 3;
+    // Poziome rygle i dylatacje
+    ctx.fillStyle = '#020617';
+    for (let wy = GROUND_Y - wallH + 50; wy < GROUND_Y; wy += 60) {
+      ctx.fillRect(bx, wy, bw, 3);
+    }
+
+    // Granica areny - neonowa linia pola walki
+    const accentCol = isLeft ? '#06b6d4' : '#f97316';
+    ctx.strokeStyle = accentCol;
+    ctx.shadowColor = accentCol;
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.moveTo(wallX, GROUND_Y - wallH);
     ctx.lineTo(wallX, GROUND_Y);
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    ctx.fillStyle = '#ef4444';
+    // Czerwony kogut ostrzegawczy na szczycie muru
+    const blink = (Math.sin(performance.now() * 0.006 + idx) > 0);
+    ctx.fillStyle = blink ? '#ef4444' : '#7f1d1d';
+    ctx.shadowColor = blink ? '#ef4444' : 'transparent';
+    ctx.shadowBlur = blink ? 10 : 0;
     ctx.beginPath();
-    ctx.arc(isLeft ? bx + 12 : bx + bw - 12, GROUND_Y - wallH + 12, 6, 0, Math.PI * 2);
+    ctx.arc(isLeft ? bx + 12 : bx + bw - 12, GROUND_Y - wallH + 12, 7, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   });
 }
 
@@ -925,9 +997,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.font = '10px monospace';
   ctx.fillText(`FPS: ${currentFps}`, hpX, hpY + 95);
 
-  // 4. Tablica wyników Areny 2 (Cyber Stadium)
-  if (activeArenaId === 'ARENA_2') {
-    const scoreBoxW = 220;
+  // 4. Tablica wyników (Arena 1 Soldat Night Ops & Arena 2 Cyber Stadium)
+  const isMatchArena = (activeArenaId === 'ARENA_1' || activeArenaId === 'ARENA_2');
+  if (isMatchArena) {
+    const scoreBoxW = 230;
     const scoreBoxH = 34;
     const scoreBoxX = (W - scoreBoxW) / 2;
     const scoreBoxY = 16;
@@ -958,6 +1031,17 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.shadowColor = '#f97316';
     ctx.shadowBlur = 6;
     ctx.fillText(`${arenaScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + 14, scoreBoxY + 22);
+
+    if (activeArenaId === 'ARENA_1' && arena1State?.waitingForKickoff) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.005);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 8;
+      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1760) ⚡', W / 2, scoreBoxY + scoreBoxH + 16);
+    }
+
     ctx.restore();
   }
 

@@ -13,6 +13,6 @@ export const CONFIG = {
 
 export const FRAME_DURATION = 1000 / 60; // 16.666 ms (dokładnie 60 FPS)
 export const START_X = 160;
-export const ARENA_WIDTH = 1600;
-export const ARENA_LEFT = START_X;
-export const ARENA_RIGHT = START_X + ARENA_WIDTH;
+export const ARENA_WIDTH = 3200;
+export const ARENA_LEFT = START_X; // 160
+export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3360
