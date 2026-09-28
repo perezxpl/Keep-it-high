@@ -172,10 +172,8 @@ canvas.addEventListener('touchmove', (e) => {
         const nx = dx / sDist;
         const ny = dy / sDist;
         const aimDist = 160 + power * 120;
-        aimOffsetX = nx * aimDist;
-        aimOffsetY = ny * aimDist;
-        player.aimX = player.x + player.w / 2 + aimOffsetX;
-        player.aimY = player.y + player.h / 2 + aimOffsetY;
+        player.aimX = player.x + player.w / 2 + nx * aimDist;
+        player.aimY = player.y + player.h / 2 + ny * aimDist;
       } else {
         rightStick.power = 0;
         player.chargePower = 0;
@@ -370,7 +368,6 @@ document.querySelectorAll('.dev-class-btn').forEach((btn) => {
   btn.addEventListener('touchend', handler);
 });
 
-// Obsługa włączania/wyłączania bota w panelu DEV
 const devBotToggleBtn = document.getElementById('dev-bot-toggle-btn');
 if (devBotToggleBtn) {
   const toggleBot = (e) => {
@@ -384,7 +381,6 @@ if (devBotToggleBtn) {
       devBotToggleBtn.style.color = '#ffffff';
       devBotToggleBtn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
 
-      // Respawn 350 px przed graczem na poziomie podłoża i zresetowanie pędu
       bot.x = player.x + (player.facing || 1) * 350;
       bot.y = GROUND_Y - bot.h;
       bot.vx = 0;
@@ -409,7 +405,6 @@ if (devBotToggleBtn) {
   devBotToggleBtn.addEventListener('touchend', toggleBot);
 }
 
-// Obsługa przełącznika areny w panelu DEV (#dev-arena-btn)
 const devArenaBtn = document.getElementById('dev-arena-btn');
 if (devArenaBtn) {
   const toggleArena = (e) => {
@@ -449,7 +444,6 @@ window.addEventListener('keydown', (e) => {
     jumpKeyPressed = true;
 
     if (!player.isJumping && !player.isSliding && !player.isIntro) {
-      // Skok z podłoża: pojedynczy impuls fizyczny bez lewitacji w locie
       const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
       player.vy = -jumpForce;
       player.isJumping = true;
@@ -507,29 +501,23 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
 });
 
-let aimOffsetX = 160;
-let aimOffsetY = -30;
-
-function updateMouseAim(clientX, clientY) {
-  const worldMouseX = camera.x + (clientX - W * 0.40) / camera.zoom;
-  const worldMouseY = camera.y + (clientY - H * 0.68) / camera.zoom;
-  aimOffsetX = worldMouseX - (player.x + player.w / 2);
-  aimOffsetY = worldMouseY - (player.y + player.h / 2);
-}
+// Płynne, niezależne od ruchu postaci współrzędne kursora myszy
+let mouseScreenX = W * 0.65;
+let mouseScreenY = H * 0.45;
 
 window.addEventListener('mousemove', (e) => {
-  updateMouseAim(e.clientX, e.clientY);
+  mouseScreenX = e.clientX;
+  mouseScreenY = e.clientY;
 });
 
 canvas.addEventListener('mousedown', (e) => {
-  updateMouseAim(e.clientX, e.clientY);
+  mouseScreenX = e.clientX;
+  mouseScreenY = e.clientY;
 
   if (e.button === 0) {
-    // LPM: Strzał
     mouseState.lmbDown = true;
     mouseState.semiFired = false;
   } else if (e.button === 2) {
-    // PPM: Ładowanie wykopu piłki
     mouseState.rmbDown = true;
     startKickCharge(player);
   }
@@ -581,18 +569,24 @@ function drawCrosshair(ctx, x, y, customCol) {
   if (typeof x !== 'number' || isNaN(x)) return;
   const col = customCol || player.currentClass?.visuals?.crosshairColor || '#38bdf8';
 
+  // Rozszerzenie celownika w takt odrzutu broni i podrzutu lufy (Bloom)
+  const kick = player.weaponKickback || 0;
+  const rise = player.muzzleRise || 0;
+  const spreadGap = Math.min(18, 4 + kick * 1.5 + rise * 16);
+
   ctx.save();
   ctx.strokeStyle = col;
   ctx.lineWidth = 1.5;
+
   ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.arc(x, y, 7 + spreadGap * 0.35, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(x - 12, y); ctx.lineTo(x - 4, y);
-  ctx.moveTo(x + 4, y);  ctx.lineTo(x + 12, y);
-  ctx.moveTo(x, y - 12); ctx.lineTo(x, y - 4);
-  ctx.moveTo(x, y + 4);  ctx.lineTo(x, y + 12);
+  ctx.moveTo(x - spreadGap - 7, y); ctx.lineTo(x - spreadGap, y);
+  ctx.moveTo(x + spreadGap, y);     ctx.lineTo(x + spreadGap + 7, y);
+  ctx.moveTo(x, y - spreadGap - 7); ctx.lineTo(x, y - spreadGap);
+  ctx.moveTo(x, y + spreadGap);     ctx.lineTo(x, y + spreadGap + 7);
   ctx.stroke();
 
   ctx.fillStyle = col;
@@ -603,29 +597,35 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  player.aimX = (player.x + player.w / 2) + aimOffsetX;
-  player.aimY = (player.y + player.h / 2) + aimOffsetY;
+  // Przeliczenie pozycji celownika myszy w przestrzeni świata (odporne na kucanie i skoki)
+  if (!isTouchDevice || player.isStickCharging) {
+    if (!isTouchDevice) {
+      const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+      const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+      player.aimX = worldMouseX;
+      player.aimY = worldMouseY;
+    }
+  }
 
   // =========================================================================
   // OBSŁUGA STRZELANIA GRACZA (CIĄGŁY OGIEŃ DLA AK-47 VS SEMI DLA SHOTGUNA)
   // =========================================================================
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isHoldingLMB = mouseState.lmbDown && !player.isDead;
+  const isHoldingFire = mouseState.lmbDown && !player.isDead;
 
-  // STAN 2: Prowadzenie ognia (trzymanie LPM przy AK-47)
   if (curWep.auto) {
-    player.isShooting = isHoldingLMB;
+    player.isShooting = isHoldingFire;
   } else {
-    player.isShooting = false;
+    player.isShooting = (player.shootPoseTimer > 0);
   }
 
-  if (isHoldingLMB && player.shootCooldown <= 0) {
+  if (isHoldingFire && player.shootCooldown <= 0) {
     if (curWep.auto) {
       shootWeapon(player, curWep);
     } else {
       if (!mouseState.semiFired) {
         shootWeapon(player, curWep);
-        mouseState.semiFired = true; // Blokada do czasu ponownego kliknięcia LPM
+        mouseState.semiFired = true; // Blokada do kolejnego zwolnienia i naciśnięcia
       }
     }
   }
@@ -646,7 +646,6 @@ function update() {
     checkPlayerPlatformLanding(bot, GROUND_Y);
   }
 
-  // Aktualizacja balistyki i kolizji pocisków z areną, piłką i postaciami
   const combatants = bot.active ? [player, bot] : [player];
   updateBullets(GROUND_Y, obstacles, ball, combatants);
 
@@ -672,17 +671,13 @@ function draw() {
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);
 
-  // Renderowanie pocisków w przestrzeni świata
   drawBullets(ctx);
-
   drawPlayer(ctx, GROUND_Y, player);
 
-  // Rysowanie drugiego gracza (bota)
   if (bot.active) {
     drawPlayer(ctx, GROUND_Y, bot);
     drawEntityHealthBar(ctx, bot, -12);
 
-    // Dyskretny znacznik nad paskiem HP bota
     ctx.save();
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
@@ -691,13 +686,11 @@ function draw() {
     ctx.shadowBlur = 4;
     ctx.fillText('[BOT]', bot.x + bot.w / 2, bot.y - 19);
     ctx.restore();
-
-    // Celownik bota został wyłączony zgodnie z wytycznymi
   }
 
   drawBall(ctx);
 
-  // Celownik gracza
+  // Dynamiczny celownik gracza
   drawCrosshair(ctx, player.aimX, player.aimY);
 
   ctx.restore();
