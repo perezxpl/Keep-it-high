@@ -31,12 +31,51 @@
       cursor: none;
     }
 
+    #game-container.cursor-visible,
+    #game-container.cursor-visible canvas {
+      cursor: default !important;
+    }
+
     canvas {
       display: block;
       width: 100%;
       height: 100%;
       touch-action: none;
       cursor: none;
+    }
+
+    #dev-menu, #dev-menu *, #multi-panel, #multi-panel * {
+      cursor: default !important;
+      pointer-events: auto !important;
+    }
+
+    #dev-panel-container,
+    #dev-panel-container *,
+    #mp-modal,
+    #mp-modal *,
+    #game-chat:not(.chat-hidden),
+    #game-chat:not(.chat-hidden) * {
+      cursor: default !important;
+      pointer-events: auto !important;
+    }
+
+    #game-chat.chat-hidden,
+    #game-chat.chat-hidden * {
+      pointer-events: none !important;
+    }
+
+    input[type="text"], textarea {
+      cursor: text !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    button, .dev-btn {
+      cursor: pointer !important;
+    }
+
+    .mp-action-btn, .mp-top-btn, .mp-close-btn, .mp-sub-btn {
+      cursor: pointer !important;
     }
 
     #rotate-device {
@@ -187,7 +226,430 @@
       background: rgba(168, 85, 247, 0.25);
       box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
     }
+
+    /* Multiplayer Online P2P Styling */
+    .mp-top-btn {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 229, 255, 0.6);
+      color: #00e5ff;
+      border-radius: 6px;
+      padding: 5px 11px;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+      transition: all 0.18s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      touch-action: none;
+    }
+
+    .mp-top-btn:hover {
+      background: rgba(0, 229, 255, 0.25);
+      border-color: #00e5ff;
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.6);
+    }
+
+    #mp-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #mp-modal.mp-modal-hidden {
+      display: none !important;
+    }
+
+    .mp-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .mp-modal-box {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(0, 229, 255, 0.45);
+      border-radius: 12px;
+      box-shadow: 0 0 35px rgba(0, 229, 255, 0.25), 0 15px 30px rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      color: #f8fafc;
+      font-family: monospace;
+    }
+
+    .mp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+
+    .mp-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #00e5ff;
+      letter-spacing: 0.5px;
+    }
+
+    .mp-close-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .mp-close-btn:hover {
+      color: #ef4444;
+    }
+
+    .mp-status-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(2, 6, 23, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .mp-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+      flex-shrink: 0;
+    }
+
+    .mp-status-dot.dot-green {
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    .mp-status-dot.dot-yellow {
+      background: #eab308;
+      box-shadow: 0 0 10px #eab308;
+    }
+
+    .mp-status-text {
+      font-size: 11px;
+      font-weight: 700;
+      flex: 1;
+      letter-spacing: 0.5px;
+    }
+
+    .mp-ping-tag {
+      font-size: 10px;
+      color: #facc15;
+      background: rgba(234, 179, 8, 0.15);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(234, 179, 8, 0.35);
+    }
+
+    .mp-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .mp-card-cyan {
+      border: 1px solid rgba(6, 182, 212, 0.35);
+    }
+
+    .mp-card-orange {
+      border: 1px solid rgba(249, 115, 22, 0.35);
+    }
+
+    .mp-card-green {
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .mp-card-title {
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .mp-card-cyan .mp-card-title { color: #22d3ee; }
+    .mp-card-orange .mp-card-title { color: #fb923c; }
+    .mp-card-green .mp-card-title { color: #4ade80; }
+
+    .mp-card-desc {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .mp-action-btn {
+      width: 100%;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .mp-btn-cyan {
+      background: rgba(6, 182, 212, 0.2);
+      border: 1px solid #06b6d4;
+      color: #22d3ee;
+    }
+    .mp-btn-cyan:hover {
+      background: rgba(6, 182, 212, 0.35);
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+      color: #fff;
+    }
+
+    .mp-btn-orange {
+      background: rgba(249, 115, 22, 0.2);
+      border: 1px solid #f97316;
+      color: #fb923c;
+    }
+    .mp-btn-orange:hover {
+      background: rgba(249, 115, 22, 0.35);
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.5);
+      color: #fff;
+    }
+
+    .mp-btn-accent {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid #a855f7;
+      color: #c084fc;
+    }
+    .mp-btn-accent:hover {
+      background: rgba(168, 85, 247, 0.35);
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+      color: #fff;
+    }
+
+    .mp-btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+    .mp-btn-danger:hover {
+      background: rgba(239, 68, 68, 0.35);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+      color: #fff;
+    }
+
+    .mp-code-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(2, 6, 23, 0.85);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px dashed rgba(0, 229, 255, 0.4);
+    }
+
+    .mp-code-label {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .mp-code-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: #00e5ff;
+      letter-spacing: 2px;
+    }
+
+    .mp-sub-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .mp-sub-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .mp-waiting-text {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #facc15;
+      text-align: center;
+    }
+
+    .mp-join-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mp-text-input {
+      flex: 1;
+      background: rgba(2, 6, 23, 0.85);
+      border: 1px solid rgba(249, 115, 22, 0.45);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-family: monospace;
+      font-size: 12px;
+      outline: none;
+    }
+    .mp-text-input:focus {
+      border-color: #f97316;
+      box-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+    }
+
+    .mp-session-details {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      background: rgba(2, 6, 23, 0.75);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .mp-feature-bullets {
+      font-size: 10px;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    /* Online Chat Styling */
+    #game-chat {
+      position: absolute;
+      bottom: 125px;
+      left: 20px;
+      z-index: 150;
+      width: 380px;
+      max-width: calc(100vw - 40px);
+      font-family: monospace;
+      font-size: 11px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 160px;
+      overflow-y: hidden;
+      pointer-events: auto;
+    }
+
+    .chat-msg {
+      background: rgba(15, 23, 42, 0.84);
+      border-left: 3px solid #00e5ff;
+      padding: 5px 9px;
+      border-radius: 4px;
+      color: #f8fafc;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      word-break: break-word;
+      line-height: 1.35;
+      transition: opacity 0.5s ease;
+    }
+
+    .chat-msg.msg-fading {
+      opacity: 0.15;
+    }
+
+    .chat-sender {
+      font-weight: 800;
+      margin-right: 5px;
+      text-shadow: 0 0 6px currentColor;
+    }
+
+    .chat-text {
+      color: #ffffff;
+    }
+
+    #chat-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(0, 229, 255, 0.6);
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+      border-radius: 6px;
+      padding: 6px 10px;
+      pointer-events: auto;
+    }
+
+    #chat-prompt {
+      font-weight: 800;
+      font-size: 11px;
+      color: #00e5ff;
+      white-space: nowrap;
+      text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+    }
+
+    #chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: text !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    #chat-input::placeholder {
+      color: #64748b;
+    }
+
+    #game-chat.chat-hidden #chat-input-wrapper {
+      display: none !important;
+    }
   </style>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 
 <body>
@@ -203,6 +665,8 @@
     <!-- Developer Debug & Class Selection Panel -->
     <div id="dev-panel-container">
       <button id="dev-toggle-btn" type="button" title="Panel deweloperski (~ / `)">⚙️ DEV</button>
+      <button id="mp-open-btn" class="mp-top-btn" type="button" title="Tryb wieloosobowy Online (P2P WebRTC)">🌐 MULTI</button>
+
       <div id="dev-menu" class="dev-menu-hidden">
         <button class="dev-btn" data-meters="0" title="Restart do punktu 0m">🏟️ Reset (0m)</button>
 
@@ -223,6 +687,98 @@
 
         <!-- Przełącznik Areny -->
         <button class="dev-btn" id="dev-arena-btn" style="border-color: #06b6d4; color: #22d3ee;">🏟️ Arena: 1</button>
+
+        <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
+
+        <!-- Otwórz okno sieciowe z menu DEV -->
+        <button class="dev-btn" id="dev-mp-btn" style="border-color: #00e5ff; color: #00e5ff;">🌐 MULTIPLAYER</button>
+      </div>
+    </div>
+
+    <!-- Multiplayer P2P WebRTC Modal -->
+    <div id="mp-modal" class="mp-modal-hidden">
+      <div class="mp-modal-backdrop" id="mp-backdrop"></div>
+      <div class="mp-modal-box" id="multi-panel">
+        <div class="mp-header">
+          <div class="mp-title">
+            <span>🌐</span>
+            <span>MULTIPLAYER P2P (WEBRTC)</span>
+          </div>
+          <button id="mp-close-btn" class="mp-close-btn" type="button" title="Zamknij">✕</button>
+        </div>
+
+        <div class="mp-body">
+          <!-- Status Banner -->
+          <div class="mp-status-banner" id="mp-status-banner">
+            <span class="mp-status-dot" id="mp-status-dot"></span>
+            <span class="mp-status-text" id="mp-status-text">ROZŁĄCZONO / OFFLINE</span>
+            <span class="mp-ping-tag" id="mp-ping-tag" style="display: none;">0 ms</span>
+          </div>
+
+          <!-- Disconnected / Setup Mode -->
+          <div id="mp-setup-view">
+            <!-- HOST SECTION -->
+            <div class="mp-card mp-card-cyan">
+              <div class="mp-card-title">👑 STWÓRZ POKÓJ (HOST)</div>
+              <p class="mp-card-desc">Jesteś gospodarzem – drugi gracz połączy się bezpośrednio z Twoim komputerem przez Internet (WebRTC).</p>
+              
+              <div id="mp-host-start-row">
+                <button id="mp-host-btn" class="mp-action-btn mp-btn-cyan" type="button">🚀 Utwórz Pokój Gry</button>
+              </div>
+
+              <div id="mp-host-info-row" style="display: none;">
+                <div class="mp-code-container">
+                  <span class="mp-code-label">KOD POKOJU:</span>
+                  <span class="mp-code-val" id="mp-host-code-val">------</span>
+                  <button id="mp-copy-code-btn" class="mp-sub-btn" type="button">📋 Kopiuj Kod</button>
+                </div>
+                <div style="margin-top: 8px;">
+                  <button id="mp-copy-link-btn" class="mp-action-btn mp-btn-accent" type="button">🔗 Kopiuj Link z Zaproszeniem</button>
+                </div>
+                <div class="mp-waiting-text" id="mp-waiting-text">
+                  ⏳ Oczekiwanie na dołączenie drugiego gracza...
+                </div>
+              </div>
+            </div>
+
+            <!-- JOIN SECTION -->
+            <div class="mp-card mp-card-orange">
+              <div class="mp-card-title">⚡ DOŁĄCZ DO POKOJU (KLIENT)</div>
+              <p class="mp-card-desc">Wpisz lub wklej kod pokoju otrzymany od drugiego gracza:</p>
+              <div class="mp-join-row">
+                <input type="text" id="mp-join-input" class="mp-text-input" placeholder="np. kih-ab12..." autocomplete="off" spellcheck="false" />
+                <button id="mp-join-btn" class="mp-action-btn mp-btn-orange" type="button">Połącz</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connected View -->
+          <div id="mp-connected-view" style="display: none;">
+            <div class="mp-card mp-card-green">
+              <div class="mp-card-title">🎮 SESJA AKTYWNA</div>
+              <div class="mp-session-details">
+                <div>Rola: <strong id="mp-role-val" style="color: #00e5ff;">HOST</strong></div>
+                <div>Status gracza 2: <strong style="color: #4ade80;">POŁĄCZONY</strong></div>
+                <div>Opóźnienie (Ping): <strong id="mp-live-ping" style="color: #facc15;">-- ms</strong></div>
+              </div>
+              <div class="mp-feature-bullets">
+                <div>⚡ Pełna synchronizacja postaci, broni i jetpacka w czasie rzeczywistym</div>
+                <div>🏟️ Wspólne stawianie i usuwanie przeszkód w edytorze DEV na żywo</div>
+                <div>⚽ Wspólne mecze piłki nożnej (Bramka Cyan vs Orange)</div>
+              </div>
+              <button id="mp-disconnect-btn" class="mp-action-btn mp-btn-danger" type="button" style="margin-top: 10px;">❌ Rozłącz Grę</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Online Chat System (Klawisz T) -->
+    <div id="game-chat" class="chat-hidden">
+      <div id="chat-messages"></div>
+      <div id="chat-input-wrapper">
+        <span id="chat-prompt">💬 [CZAT]:</span>
+        <input type="text" id="chat-input" maxlength="120" placeholder="Wpisz wiadomość i naciśnij Enter..." autocomplete="off" />
       </div>
     </div>
   </div>

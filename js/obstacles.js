@@ -59,6 +59,15 @@ export function undoCustomObstacle() {
   return customObstacles.pop();
 }
 
+export function setCustomObstacles(newList) {
+  customObstacles.length = 0;
+  if (Array.isArray(newList)) {
+    for (const obs of newList) {
+      customObstacles.push(obs);
+    }
+  }
+}
+
 // =========================================================================
 // ARENA 1: SOLDAT NIGHT OPS (TAKTYCZNA BAZA WOJSKOWA 3200 PX)
 // =========================================================================
@@ -1877,24 +1886,36 @@ export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, h
 
 function drawRockIsland(ctx, plat, groundY) {
   const topY = groundY - plat.relY;
-  const time = performance.now() * 0.002;
   const thick = plat.thickness || 20;
 
   ctx.save();
 
   if (plat.isCyberBastion || plat.isBastion) {
-    const accentCol = plat.theme === 'cyan' ? '#06b6d4' : '#f97316';
-    ctx.fillStyle = '#1e293b';
+    const isCyan = plat.theme === 'cyan';
+    const accentCol = isCyan ? '#06b6d4' : '#f97316';
+    const accentCore = isCyan ? '#00e5ff' : '#ff7700';
+
+    ctx.fillStyle = '#090d16';
     ctx.fillRect(plat.x, topY, plat.w, thick);
-    ctx.strokeStyle = '#475569';
+    ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.4)' : 'rgba(249, 115, 22, 0.4)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(plat.x, topY, plat.w, thick);
 
+    // Jaskrawa neonowa krawędź nawierzchni
     ctx.save();
     ctx.strokeStyle = accentCol;
-    ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = 2.5;
+    ctx.shadowColor = accentCore;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 3.6;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
     ctx.lineTo(plat.x + plat.w, topY);
@@ -1903,17 +1924,27 @@ function drawRockIsland(ctx, plat, groundY) {
 
     drawHazardStripes(ctx, plat.x, topY + thick - 5, plat.w, 4);
   } else if (plat.isAltar || plat.type === 'altar_island') {
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#080c14';
     ctx.fillRect(plat.x, topY, plat.w, thick);
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2.0;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.8;
     ctx.strokeRect(plat.x, topY, plat.w, thick);
 
+    // Jaskrawa neonowa krawędź ołtarza
     ctx.save();
     ctx.strokeStyle = '#00e5ff';
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 3.0;
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 4.0;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
     ctx.lineTo(plat.x + plat.w, topY);
@@ -1922,14 +1953,36 @@ function drawRockIsland(ctx, plat, groundY) {
 
     drawHazardStripes(ctx, plat.x, topY + thick - 5, plat.w, 4);
   } else {
-    ctx.fillStyle = '#1e293b';
+    const isCyan = (plat.x + plat.w / 2 < 1760);
+    const accentCol = isCyan ? '#06b6d4' : '#f97316';
+    const accentCore = isCyan ? '#00e5ff' : '#ff7700';
+
+    ctx.fillStyle = '#090d16';
     ctx.fillRect(plat.x, topY, plat.w, thick);
-    ctx.strokeStyle = '#475569';
+    ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.4)' : 'rgba(249, 115, 22, 0.4)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(plat.x, topY, plat.w, thick);
 
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(plat.x, topY, plat.w, 3);
+    // Jaskrawa neonowa krawędź platformy
+    ctx.save();
+    ctx.strokeStyle = accentCol;
+    ctx.shadowColor = accentCore;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+    ctx.restore();
 
     drawHazardStripes(ctx, plat.x, topY + thick - 4, plat.w, 4);
   }
@@ -1943,17 +1996,17 @@ function drawRockIsland(ctx, plat, groundY) {
         drawCrate(ctx, px, topY - prop.h, prop.w, prop.h);
       } else if (prop.type === 'bunker_tier') {
         const by = topY - prop.h;
-        ctx.fillStyle = '#334155';
+        ctx.fillStyle = '#1e293b';
         ctx.fillRect(px, by, prop.w, prop.h);
-        ctx.strokeStyle = '#475569';
+        ctx.strokeStyle = '#334155';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(px, by, prop.w, prop.h);
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = '#090d16';
         ctx.fillRect(px + 14, by + 8, prop.w - 28, 6);
         drawHazardStripes(ctx, px, by + prop.h - 4, prop.w, 4);
       } else if (prop.type === 'altar_pedestal') {
         const by = topY - prop.h;
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#0f172a';
         ctx.fillRect(px, by, prop.w, prop.h);
         ctx.strokeStyle = '#00e5ff';
         ctx.shadowColor = '#00e5ff';
@@ -1975,10 +2028,10 @@ function drawRockIsland(ctx, plat, groundY) {
         ctx.lineTo(px, topY - 36 - prop.h);
         ctx.stroke();
 
-        const pulse = 0.4 + 0.6 * Math.sin(time * 3);
-        ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
+        // Stałe, niemrugające oświetlenie diody anteny
+        ctx.fillStyle = '#ef4444';
         ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(px, topY - 36 - prop.h, 3.5, 0, Math.PI * 2);
         ctx.fill();
@@ -1992,10 +2045,14 @@ function drawRockIsland(ctx, plat, groundY) {
 
 function drawCatwalk(ctx, cat, groundY) {
   const topY = groundY - cat.relY;
+  const isCyan = (cat.x + cat.w / 2 < 1760);
+  const neonCol = isCyan ? '#06b6d4' : '#f97316';
+  const neonCore = isCyan ? '#00e5ff' : '#ff7700';
 
   ctx.save();
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 2.2;
+  // Zawieszone stalowo-neonowe liny/łańcuchy
+  ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.55)' : 'rgba(249, 115, 22, 0.55)';
+  ctx.lineWidth = 2.0;
   for (const cx of cat.chains) {
     ctx.beginPath();
     ctx.moveTo(cat.x + cx, topY);
@@ -2003,16 +2060,44 @@ function drawCatwalk(ctx, cat, groundY) {
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#1e293b';
+  // Ciemny korpus kładki w estetyce cyberpunk
+  ctx.fillStyle = '#090d16';
   ctx.fillRect(cat.x, topY, cat.w, cat.thickness);
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 1.6;
+
+  // Wewnętrzne szczeliny techniczne
+  ctx.fillStyle = isCyan ? 'rgba(6, 182, 212, 0.14)' : 'rgba(249, 115, 22, 0.14)';
+  for (let hx = cat.x + 8; hx < cat.x + cat.w - 8; hx += 16) {
+    ctx.fillRect(hx, topY + 4, 10, cat.thickness - 7);
+  }
+
+  // Zewnętrzny obrys techniczny
+  ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
+  ctx.lineWidth = 1.4;
   ctx.strokeRect(cat.x, topY, cat.w, cat.thickness);
 
-  ctx.fillStyle = '#0f172a';
-  for (let hx = cat.x + 8; hx < cat.x + cat.w - 8; hx += 16) {
-    ctx.fillRect(hx, topY + 3, 10, cat.thickness - 6);
-  }
+  // =========================================================================
+  // JASKRAWA, NEONOWA KRAWĘDŹ NAWIERZCHNI PLATFORMY
+  // =========================================================================
+  ctx.save();
+  ctx.strokeStyle = neonCol;
+  ctx.shadowColor = neonCore;
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(cat.x, topY);
+  ctx.lineTo(cat.x + cat.w, topY);
+  ctx.stroke();
+
+  // Wewnętrzny biało-neonowy rdzeń świetlny
+  ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 4;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(cat.x, topY);
+  ctx.lineTo(cat.x + cat.w, topY);
+  ctx.stroke();
+  ctx.restore();
 
   drawHazardStripes(ctx, cat.x, topY + cat.thickness - 4, cat.w, 4);
   ctx.restore();

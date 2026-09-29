@@ -30,6 +30,18 @@ import {
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon } from './weapons.js';
+import {
+  remotePlayer, networkState, initNetwork,
+  sendPlayerState, sendBallState, sendShootEvent,
+  sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
+  sendArenaSwitch, updateRemotePlayer,
+  isChatActive, openChat, closeChat, updateCursorVisibility
+} from './network.js';
+
+export function triggerPlayerShoot(p, wep) {
+  shootWeapon(p, wep);
+  sendShootEvent(wep.id, p.x, p.y, p.aimAngle);
+}
 
 // =========================================================================
 // STAN MYSZY I BLOKADA MENU KONTEKSTOWEGO
@@ -213,7 +225,7 @@ canvas.addEventListener('touchstart', (e) => {
 
           const curWep = player.currentWeapon || WEAPONS.AK47;
           if (player.shootCooldown <= 0) {
-            shootWeapon(player, curWep);
+            triggerPlayerShoot(player, curWep);
           }
         } else {
           rightStick.active = true;
@@ -454,6 +466,7 @@ window.setPlayerClass = setPlayerClass;
 const devPanelContainer = document.getElementById('dev-panel-container');
 const devToggleBtn = document.getElementById('dev-toggle-btn');
 const devMenu = document.getElementById('dev-menu');
+const mpModal = document.getElementById('mp-modal') || document.getElementById('multi-panel') || document.querySelector('.mp-modal');
 
 export function toggleDevPanel() {
   if (!devMenu) return;
@@ -462,6 +475,7 @@ export function toggleDevPanel() {
     if (isHidden) devToggleBtn.classList.remove('active');
     else devToggleBtn.classList.add('active');
   }
+  updateCursorVisibility();
 }
 window.toggleDevPanel = toggleDevPanel;
 
@@ -625,6 +639,7 @@ if (devArenaBtn) {
     e.preventDefault();
     const nextArena = (activeArenaId === 'ARENA_1') ? 'ARENA_2' : 'ARENA_1';
     switchArena(nextArena, player, bot, ball);
+    sendArenaSwitch(nextArena);
     devArenaBtn.textContent = (activeArenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
     if (activeArenaId === 'ARENA_2') {
       devArenaBtn.style.background = 'rgba(6, 182, 212, 0.25)';
@@ -712,6 +727,7 @@ export function initObstacleEditorUI() {
   undoBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     undoCustomObstacle();
+    sendObstacleUndo();
   });
   devEditorSubpanel.appendChild(undoBtn);
 
@@ -723,6 +739,7 @@ export function initObstacleEditorUI() {
   clearBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     clearCustomObstacles();
+    sendObstacleClear();
   });
   devEditorSubpanel.appendChild(clearBtn);
 
@@ -884,6 +901,7 @@ function placeSelectedObstacle() {
 
   customObstacles.push(newObs);
   spawnJetpackSparks(px + w / 2, py + h / 2, 0, 4);
+  sendObstacleAdd(newObs);
 }
 
 function handleEditorRightClick() {
@@ -896,6 +914,7 @@ function handleEditorRightClick() {
     if (worldX >= obs.x - 10 && worldX <= obs.x + obs.w + 10 &&
       worldY >= topY - 10 && worldY <= topY + obs.h + 10) {
       spawnJetpackSparks(obs.x + obs.w / 2, topY + obs.h / 2, 0, 6);
+      sendObstacleRemove(obs);
       customObstacles.splice(i, 1);
       return;
     }
@@ -1006,6 +1025,7 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 initDevZoomUI();
+initNetwork();
 
 let jumpKeyPressed = false;
 let lastWPressTime = 0;
@@ -1013,6 +1033,36 @@ let isJetpackActive = false;
 const DOUBLE_TAP_WINDOW_MS = 280;
 
 window.addEventListener('keydown', (e) => {
+  // Obsługa otwierania czatu sieciowego klawiszem "T"
+  if (e.code === 'KeyT' && !isChatActive) {
+    const activeEl = document.activeElement;
+    const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+    if (!isInput) {
+      e.preventDefault();
+      keys.left = false;
+      keys.right = false;
+      keys.up = false;
+      keys.down = false;
+      keys.space = false;
+      keys.slide = false;
+      mouseState.lmbDown = false;
+      mouseState.rmbDown = false;
+      openChat();
+      return;
+    }
+  }
+
+  // Blokada klawiszy gry gdy czat jest aktywny lub fokus jest w polu tekstowym
+  const activeEl = document.activeElement;
+  const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+  if (isChatActive || isInputFocused) {
+    if (e.code === 'Escape' && isChatActive) {
+      e.preventDefault();
+      closeChat();
+    }
+    return;
+  }
+
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
 
@@ -1099,6 +1149,18 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+  if (isChatActive) {
+    keys.left = false;
+    keys.right = false;
+    keys.up = false;
+    keys.down = false;
+    keys.space = false;
+    keys.slide = false;
+    return;
+  }
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) return;
+
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
 
@@ -1144,6 +1206,10 @@ window.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mousedown', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+
+  if (isChatActive) return;
+  const mpModal = document.getElementById('mp-modal');
+  if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) return;
 
   // 0. Obsługa kliknięcia myszą w kafelki broni (dolny lewy róg)
   for (const btn of weaponButtons) {
@@ -1257,6 +1323,26 @@ function update() {
     return;
   }
 
+  // Wymuszenie stanu kursora systemowego w menu DEV / MULTI / CZAT
+  const mpModal = document.getElementById('mp-modal');
+  const devMenu = document.getElementById('dev-menu');
+  const isMpOpen = mpModal && !mpModal.classList.contains('mp-modal-hidden');
+  const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
+
+  if (isMpOpen || isDevOpen || isChatActive) {
+    if (canvas.style.cursor !== 'default') canvas.style.cursor = 'default';
+    if (canvas.parentElement && !canvas.parentElement.classList.contains('cursor-visible')) {
+      canvas.parentElement.classList.add('cursor-visible');
+    }
+    mouseState.lmbDown = false;
+    mouseState.rmbDown = false;
+  } else {
+    if (canvas.style.cursor !== 'none') canvas.style.cursor = 'none';
+    if (canvas.parentElement && canvas.parentElement.classList.contains('cursor-visible')) {
+      canvas.parentElement.classList.remove('cursor-visible');
+    }
+  }
+
   if (!isTouchDevice) {
     const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
     const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
@@ -1318,14 +1404,14 @@ function update() {
 
   if (isTouchFiring) {
     if (player.shootCooldown <= 0) {
-      shootWeapon(player, curWep);
+      triggerPlayerShoot(player, curWep);
     }
   } else if (mouseState.lmbDown && !player.isDead && player.shootCooldown <= 0) {
     if (curWep.auto) {
-      shootWeapon(player, curWep);
+      triggerPlayerShoot(player, curWep);
     } else {
       if (!mouseState.semiFired) {
-        shootWeapon(player, curWep);
+        triggerPlayerShoot(player, curWep);
         mouseState.semiFired = true;
       }
     }
@@ -1370,14 +1456,37 @@ function update() {
     updateDoubleFlickDetection(leftStick.axisY);
   }
 
+  if (remotePlayer.active) {
+    updateRemotePlayer(GROUND_Y);
+  }
+
   updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player);
+  sendPlayerState(player);
+
   updateParticles();
   updateJetpackParticles();
   updateGore(GROUND_Y);
-  updateSeveredHeads([player, bot], GROUND_Y);
-  updateBall(GROUND_Y);
-  checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
-  checkObstacleCollisions(ball, GROUND_Y, player);
+
+  const headEntities = [player];
+  if (bot.active) headEntities.push(bot);
+  if (remotePlayer.active) headEntities.push(remotePlayer);
+  updateSeveredHeads(headEntities, GROUND_Y);
+
+  if (networkState.isHost || !networkState.isConnected) {
+    updateBall(GROUND_Y);
+    checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+    if (remotePlayer.active) {
+      checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
+      checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+    }
+    checkObstacleCollisions(ball, GROUND_Y, player);
+    if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer);
+    sendBallState(ball);
+  } else {
+    // Klient – autorytatywna pozycja piłki z sieci P2P
+    checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+    checkObstacleCollisions(ball, GROUND_Y, player);
+  }
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const currentFloor = player.currentGroundY || GROUND_Y;
@@ -1398,7 +1507,9 @@ function update() {
     checkPlayerPlatformLanding(bot, GROUND_Y);
   }
 
-  const combatants = bot.active ? [player, bot] : [player];
+  const combatants = [player];
+  if (bot.active) combatants.push(bot);
+  if (remotePlayer.active) combatants.push(remotePlayer);
   updateBullets(GROUND_Y, obstacles, ball, combatants);
 
   updateCamera(player, ball);
@@ -1478,9 +1589,25 @@ function draw() {
 
   drawBullets(ctx);
   drawGore(ctx);
-  drawSeveredHeads(ctx, [player, bot]);
+  drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
   drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
+
+  if (remotePlayer.active) {
+    drawPlayer(ctx, GROUND_Y, remotePlayer);
+    drawEntityHealthBar(ctx, remotePlayer, -14);
+
+    ctx.save();
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    const tagColor = networkState.isHost ? '#f97316' : '#06b6d4';
+    const tagName = networkState.isHost ? '[P2: CLIENT]' : '[P1: HOST]';
+    ctx.fillStyle = tagColor;
+    ctx.shadowColor = tagColor;
+    ctx.shadowBlur = 6;
+    ctx.fillText(tagName, remotePlayer.x + remotePlayer.w / 2, remotePlayer.y - 21);
+    ctx.restore();
+  }
 
   if (bot.active) {
     drawPlayer(ctx, GROUND_Y, bot);
@@ -1498,7 +1625,11 @@ function draw() {
 
   drawBall(ctx);
 
-  if (!player.isDead) {
+  const modalEl = document.getElementById('mp-modal') || mpModal;
+  const isDevOpenForCrosshair = devMenu && !devMenu.classList.contains('dev-menu-hidden');
+  const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
+
+  if (!player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive) {
     drawCrosshair(ctx, player.aimX, player.aimY);
   }
 

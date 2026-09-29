@@ -822,97 +822,352 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
   return false;
 }
 
-function drawSoldatParallax(ctx, camX) {
-  const time = performance.now() * 0.0007;
+export function drawNeonNightOpsSky(ctx, camX) {
+  const time = performance.now() * 0.001;
+  const horizonY = H * 0.74;
 
-  const farOffset = (camX * 0.04) % 1200;
-  ctx.fillStyle = '#070c16';
-  ctx.beginPath();
-  ctx.moveTo(-100, H * 0.78);
-  for (let x = -100; x <= W + 100; x += 80) {
-    const y = Math.sin((x + farOffset) * 0.004) * 45 + Math.cos((x + farOffset) * 0.009) * 20;
-    ctx.lineTo(x, H * 0.65 + y);
-  }
-  ctx.lineTo(W + 100, H);
-  ctx.lineTo(-100, H);
-  ctx.closePath();
-  ctx.fill();
+  // =========================================================================
+  // 1. DUAL-TONE GRADIENT NIEBA (GŁĘBOKA CZERŃ KOSMICZNA + NEONOWA ŁUNA)
+  // =========================================================================
+  // A. Głęboka czerń kosmiczna i ciemny fiolet / obsydian
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0.0, '#020208');
+  skyGrad.addColorStop(0.35, '#060714');
+  skyGrad.addColorStop(0.68, '#0d0f22');
+  skyGrad.addColorStop(1.0, '#15132d');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
 
-  const midOffset = (camX * 0.08) % 900;
-  ctx.fillStyle = '#0c1322';
-  ctx.beginPath();
-  ctx.moveTo(-100, H * 0.82);
-  for (let x = -100; x <= W + 100; x += 60) {
-    const y = Math.sin((x + midOffset) * 0.006) * 32;
-    ctx.lineTo(x, H * 0.70 + y);
-  }
-  ctx.lineTo(W + 100, H);
-  ctx.lineTo(-100, H);
-  ctx.closePath();
-  ctx.fill();
-
-  const towerOffset = (camX * 0.14) % 800;
-  ctx.fillStyle = '#161f30';
-  for (let i = -1; i < 5; i++) {
-    const tx = i * 400 - towerOffset;
-    if (tx < -150 || tx > W + 150) continue;
-
-    ctx.fillRect(tx + 60, H * 0.46, 22, H * 0.45);
-    ctx.fillRect(tx + 54, H * 0.44, 34, 8);
-
-    ctx.fillRect(tx + 260, H * 0.32, 6, H * 0.58);
-    ctx.fillRect(tx + 252, H * 0.38, 22, 3);
-    ctx.fillRect(tx + 255, H * 0.44, 16, 3);
-
-    const blink = (Math.sin(time * 6 + i * 2) > 0.1);
-    if (blink) {
-      ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.arc(tx + 71, H * 0.43, 3.5, 0, Math.PI * 2);
-      ctx.arc(tx + 263, H * 0.31, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#161f30';
-    }
-  }
+  // B. Ambientowa poświata skrzydeł areny (Cyan po lewej, Orange po prawej)
+  const leftGlowX = W * 0.20 + (ARENA_LEFT - camX) * 0.12;
+  const rightGlowX = W * 0.80 + (ARENA_RIGHT - camX) * 0.12;
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  for (let s = 0; s < 3; s++) {
-    const sPhase = s * (Math.PI * 0.68);
-    const lightAngle = Math.sin(time * 1.2 + sPhase) * 0.36 + (s === 0 ? -0.32 : (s === 1 ? 0.05 : 0.35));
-    const lx = (W * (0.18 + s * 0.32)) - (camX * 0.05);
 
-    ctx.save();
-    ctx.translate(lx, H * 0.88);
-    ctx.rotate(lightAngle);
+  // Horyzontalna łuna na horyzoncie z płynnym wymieszaniem w ciemny, chłodny fiolet w centrum
+  const horizGlow = ctx.createLinearGradient(0, 0, W, 0);
+  horizGlow.addColorStop(0.0, 'rgba(6, 182, 212, 0.18)');
+  horizGlow.addColorStop(0.28, 'rgba(6, 182, 212, 0.08)');
+  horizGlow.addColorStop(0.50, 'rgba(79, 70, 229, 0.06)'); // ciemny, chłodny fiolet
+  horizGlow.addColorStop(0.72, 'rgba(249, 115, 22, 0.08)');
+  horizGlow.addColorStop(1.0, 'rgba(249, 115, 22, 0.18)');
+  ctx.fillStyle = horizGlow;
+  ctx.fillRect(0, H * 0.46, W, H * 0.54);
 
-    const beam = ctx.createLinearGradient(0, 0, 0, -H * 1.9);
-    beam.addColorStop(0.0, 'rgba(255, 255, 255, 0.28)');
-    beam.addColorStop(0.2, 'rgba(186, 230, 253, 0.14)');
-    beam.addColorStop(0.65, 'rgba(56, 189, 248, 0.06)');
-    beam.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = beam;
+  // Lewa mgławica / radialny ambient bazy Cyan (rgba(6, 182, 212, 0.18))
+  const cyanRadius = Math.max(W * 0.60, 640);
+  const cyanNebula = ctx.createRadialGradient(leftGlowX, horizonY, 20, leftGlowX, horizonY, cyanRadius);
+  cyanNebula.addColorStop(0.0, 'rgba(6, 182, 212, 0.18)');
+  cyanNebula.addColorStop(0.42, 'rgba(6, 182, 212, 0.05)');
+  cyanNebula.addColorStop(1.0, 'rgba(6, 182, 212, 0)');
+  ctx.fillStyle = cyanNebula;
+  ctx.fillRect(0, 0, W, H);
 
+  // Prawa mgławica / radialny ambient bazy Orange (rgba(249, 115, 22, 0.18))
+  const orangeRadius = Math.max(W * 0.60, 640);
+  const orangeNebula = ctx.createRadialGradient(rightGlowX, horizonY, 20, rightGlowX, horizonY, orangeRadius);
+  orangeNebula.addColorStop(0.0, 'rgba(249, 115, 22, 0.18)');
+  orangeNebula.addColorStop(0.42, 'rgba(249, 115, 22, 0.05)');
+  orangeNebula.addColorStop(1.0, 'rgba(249, 115, 22, 0)');
+  ctx.fillStyle = orangeNebula;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // =========================================================================
+  // 2. CYFROWY PYŁ / NEONOWE ISKRY W TLE
+  // =========================================================================
+  const dustCount = 55;
+  for (let i = 0; i < dustCount; i++) {
+    const seed = i * 71.197;
+    const periodX = 3600;
+    const worldX = ((seed * 197.3 + time * 22 * ((i % 3 === 0) ? -1 : 1)) % periodX + periodX) % periodX;
+    const scrX = ((worldX - camX * 0.04) % W + W) % W;
+    const normY = (Math.sin(seed * 3.7) * 0.5 + 0.5);
+    const scrY = normY * (H * 0.70) + Math.sin(time * 1.5 + seed) * 10;
+
+    const twinkle = Math.sin(time * 2.6 + seed * 4.1) * 0.5 + 0.5;
+    const isCyanSide = (worldX < periodX * 0.5);
+    const alpha = (0.28 + twinkle * 0.62).toFixed(2);
+    ctx.fillStyle = isCyanSide ? `rgba(34, 211, 238, ${alpha})` : `rgba(251, 146, 60, ${alpha})`;
+    const size = (i % 6 === 0) ? 2.4 : ((i % 2 === 0) ? 1.6 : 1.0);
+    ctx.fillRect(scrX, scrY, size, size);
+  }
+
+  // =========================================================================
+  // 3. SUBTELNA NEONOWA SIATKA WEKTOROWA (SYNTHWAVE GRID NA HORYZONCIE)
+  // =========================================================================
+  ctx.save();
+  const gridTopY = H * 0.65;
+  const gridBottomY = H * 0.88;
+  const vanishX = W * 0.50 + (1760 - camX) * 0.12;
+
+  // Poziome linie perspektywiczne (rozstaw zagęszczony ku horyzontowi)
+  const horizLines = 6;
+  for (let l = 1; l <= horizLines; l++) {
+    const t = l / horizLines;
+    const ly = gridTopY + (gridBottomY - gridTopY) * (t * t);
+    const lineGrad = ctx.createLinearGradient(0, ly, W, ly);
+    lineGrad.addColorStop(0.0, `rgba(6, 182, 212, ${0.16 * t})`);
+    lineGrad.addColorStop(0.5, `rgba(168, 85, 247, ${0.10 * t})`);
+    lineGrad.addColorStop(1.0, `rgba(249, 115, 22, ${0.16 * t})`);
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.moveTo(-16, 0);
-    ctx.lineTo(-140, -H * 1.9);
-    ctx.lineTo(140, -H * 1.9);
-    ctx.lineTo(16, 0);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(0, ly);
+    ctx.lineTo(W, ly);
+    ctx.stroke();
+  }
 
-    ctx.fillStyle = '#ffffff';
+  // Linie zbiegające ku punktowi centralnemu
+  const persCount = 14;
+  for (let i = -persCount / 2; i <= persCount / 2; i++) {
+    const bottomX = vanishX + i * (W * 0.11);
+    const isLeftSide = i < 0;
+    const isCenter = Math.abs(i) <= 1;
+    ctx.strokeStyle = isCenter ? 'rgba(168, 85, 247, 0.12)' : (isLeftSide ? 'rgba(6, 182, 212, 0.13)' : 'rgba(249, 115, 22, 0.13)');
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    ctx.moveTo(vanishX + i * 6, gridTopY);
+    ctx.lineTo(bottomX, gridBottomY);
+    ctx.stroke();
   }
   ctx.restore();
+
+  // =========================================================================
+  // 4. WARSTWA DALEKA: MEGA-WIEŻE I PYLONY (PARALAKS ~0.03)
+  // =========================================================================
+  const farOffset = (camX * 0.03) % 1800;
+  const farTowers = [
+    { x: 40,   w: 68,  h: 300, spire: 40, side: 'cyan' },
+    { x: 160,  w: 105, h: 410, spire: 60, side: 'cyan' },
+    { x: 310,  w: 58,  h: 250, spire: 30, side: 'cyan' },
+    { x: 410,  w: 125, h: 450, spire: 75, side: 'cyan' },
+    { x: 580,  w: 80,  h: 330, spire: 45, side: 'cyan' },
+    { x: 720,  w: 95,  h: 370, spire: 50, side: 'center' },
+    { x: 870,  w: 115, h: 430, spire: 70, side: 'center' },
+    { x: 1030, w: 85,  h: 320, spire: 40, side: 'orange' },
+    { x: 1160, w: 130, h: 460, spire: 80, side: 'orange' },
+    { x: 1340, w: 60,  h: 270, spire: 35, side: 'orange' },
+    { x: 1450, w: 110, h: 400, spire: 60, side: 'orange' },
+    { x: 1620, w: 75,  h: 310, spire: 40, side: 'orange' }
+  ];
+
+  for (let loop = -1; loop <= 2; loop++) {
+    for (const b of farTowers) {
+      const bx = b.x + loop * 1800 - farOffset;
+      if (bx + b.w < -120 || bx > W + 120) continue;
+      const by = horizonY + 35 - b.h;
+
+      // Bryła wieży w ciemnym graficie
+      ctx.fillStyle = '#070a13';
+      ctx.fillRect(bx, by, b.w, b.h + 120);
+
+      // Iglica / antena na dachu
+      const spireX = bx + b.w / 2;
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(spireX, by);
+      ctx.lineTo(spireX, by - b.spire);
+      ctx.stroke();
+
+      // Dioda ostrzegawcza na szczycie iglicy (stałe, 100% ciągłe oświetlenie)
+      const beaconCol = b.side === 'cyan' ? '#06b6d4' : (b.side === 'orange' ? '#f97316' : '#ef4444');
+      ctx.fillStyle = beaconCol;
+      ctx.shadowColor = beaconCol;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(spireX, by - b.spire, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Neonowa krawędź dachu
+      const edgeCol = b.side === 'cyan' ? 'rgba(6, 182, 212, 0.45)' : (b.side === 'orange' ? 'rgba(249, 115, 22, 0.45)' : 'rgba(168, 85, 247, 0.35)');
+      ctx.fillStyle = edgeCol;
+      ctx.fillRect(bx, by, b.w, 2);
+
+      // Pasy okien LED / poziome szczeliny świetlne
+      const winCol = b.side === 'cyan' ? 'rgba(34, 211, 238, 0.28)' : (b.side === 'orange' ? 'rgba(251, 146, 60, 0.28)' : 'rgba(192, 132, 252, 0.22)');
+      ctx.fillStyle = winCol;
+      for (let wy = by + 28; wy < by + b.h - 30; wy += 28) {
+        for (let wx = bx + 8; wx < bx + b.w - 8; wx += 14) {
+          if (((wx + wy) % 7) < 4) {
+            ctx.fillRect(wx, wy, 6, 2.5);
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // 5. WARSTWA ŚREDNIA: KRATOWNICE I WIEŻE TRANSMISYJNE (PARALAKS ~0.08)
+  // =========================================================================
+  const midOffset = (camX * 0.08) % 1500;
+  const midTowers = [
+    { x: 90,  w: 42, h: 260, side: 'cyan', hasLattice: true },
+    { x: 260, w: 28, h: 320, side: 'cyan', hasLattice: false },
+    { x: 440, w: 50, h: 240, side: 'cyan', hasLattice: true },
+    { x: 620, w: 32, h: 290, side: 'cyan', hasLattice: false },
+    { x: 800, w: 46, h: 340, side: 'orange', hasLattice: true },
+    { x: 980, w: 30, h: 280, side: 'orange', hasLattice: false },
+    { x: 1160, w: 48, h: 250, side: 'orange', hasLattice: true },
+    { x: 1340, w: 34, h: 310, side: 'orange', hasLattice: false }
+  ];
+
+  for (let loop = -1; loop <= 2; loop++) {
+    for (const tw of midTowers) {
+      const tx = tw.x + loop * 1500 - midOffset;
+      if (tx + tw.w < -100 || tx > W + 100) continue;
+      const ty = horizonY + 50 - tw.h;
+
+      const isCyan = tw.side === 'cyan';
+      const accentCol = isCyan ? '#06b6d4' : '#f97316';
+
+      // Słupy nośne konstrukcji
+      ctx.fillStyle = '#0c1322';
+      ctx.fillRect(tx, ty, 5, tw.h + 100);
+      ctx.fillRect(tx + tw.w - 5, ty, 5, tw.h + 100);
+
+      // Kratownice krzyżowe
+      ctx.strokeStyle = '#131b2e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let yStep = ty; yStep < ty + tw.h; yStep += 32) {
+        ctx.moveTo(tx, yStep);
+        ctx.lineTo(tx + tw.w, yStep + 32);
+        ctx.moveTo(tx + tw.w, yStep);
+        ctx.lineTo(tx, yStep + 32);
+        ctx.moveTo(tx, yStep);
+        ctx.lineTo(tx + tw.w, yStep);
+      }
+      ctx.stroke();
+
+      // Pomosty techniczne
+      ctx.fillStyle = '#172033';
+      ctx.fillRect(tx - 6, ty + 40, tw.w + 12, 6);
+      ctx.fillRect(tx - 4, ty + 120, tw.w + 8, 5);
+
+      // Neonowa linia akcentowa i świecące diody
+      ctx.save();
+      ctx.shadowColor = accentCol;
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = accentCol;
+      ctx.fillRect(tx - 6, ty + 40, tw.w + 12, 1.8);
+
+      // Stałe świecenie diod na wieżach transmisyjnych (brak mrugania)
+      ctx.beginPath();
+      ctx.arc(tx - 2, ty + 38, 2.4, 0, Math.PI * 2);
+      ctx.arc(tx + tw.w + 2, ty + 38, 2.4, 0, Math.PI * 2);
+      ctx.arc(tx + tw.w / 2, ty - 6, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // =========================================================================
+  // 6. KRZYŻUJĄCE SIĘ NEONOWE LASERY / REFLEKTORY (SPOTLIGHTS)
+  // =========================================================================
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  const leftSpotX = W * 0.18 + (ARENA_LEFT - camX) * 0.12;
+  const rightSpotX = W * 0.82 + (ARENA_RIGHT - camX) * 0.12;
+  const spotSourceY = horizonY + 30;
+  const beamLen = Math.max(H * 2.2, 1300);
+
+  // A. LEWY REFLEKTOR (CYAN)
+  const leftAngle = 0.40 + Math.sin(time * 0.85) * 0.24;
+  ctx.save();
+  ctx.translate(leftSpotX, spotSourceY);
+  ctx.rotate(leftAngle);
+
+  // Szeroki snop światła Cyan: rgba(6, 182, 212, 0.28) -> rgba(6, 182, 212, 0)
+  const cyanBeam = ctx.createLinearGradient(0, 0, 0, -beamLen);
+  cyanBeam.addColorStop(0.0, 'rgba(6, 182, 212, 0.28)');
+  cyanBeam.addColorStop(0.25, 'rgba(6, 182, 212, 0.16)');
+  cyanBeam.addColorStop(0.65, 'rgba(6, 182, 212, 0.05)');
+  cyanBeam.addColorStop(1.0, 'rgba(6, 182, 212, 0.0)');
+  ctx.fillStyle = cyanBeam;
+
+  ctx.beginPath();
+  ctx.moveTo(-18, 0);
+  ctx.lineTo(-160, -beamLen);
+  ctx.lineTo(160, -beamLen);
+  ctx.lineTo(18, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wewnętrzny rdzeń lasera o wyższej jasności
+  const cyanCore = ctx.createLinearGradient(0, 0, 0, -beamLen);
+  cyanCore.addColorStop(0.0, 'rgba(165, 243, 252, 0.32)');
+  cyanCore.addColorStop(0.35, 'rgba(34, 211, 238, 0.14)');
+  cyanCore.addColorStop(1.0, 'rgba(6, 182, 212, 0.0)');
+  ctx.fillStyle = cyanCore;
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(-55, -beamLen);
+  ctx.lineTo(55, -beamLen);
+  ctx.lineTo(6, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowColor = '#06b6d4';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#22d3ee';
+  ctx.beginPath();
+  ctx.arc(0, 0, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // B. PRAWY REFLEKTOR (ORANGE)
+  const rightAngle = -0.40 - Math.sin(time * 0.75 + 1.4) * 0.24;
+  ctx.save();
+  ctx.translate(rightSpotX, spotSourceY);
+  ctx.rotate(rightAngle);
+
+  // Szeroki snop światła Orange: rgba(249, 115, 22, 0.28) -> rgba(249, 115, 22, 0)
+  const orangeBeam = ctx.createLinearGradient(0, 0, 0, -beamLen);
+  orangeBeam.addColorStop(0.0, 'rgba(249, 115, 22, 0.28)');
+  orangeBeam.addColorStop(0.25, 'rgba(249, 115, 22, 0.16)');
+  orangeBeam.addColorStop(0.65, 'rgba(249, 115, 22, 0.05)');
+  orangeBeam.addColorStop(1.0, 'rgba(249, 115, 22, 0.0)');
+  ctx.fillStyle = orangeBeam;
+
+  ctx.beginPath();
+  ctx.moveTo(-18, 0);
+  ctx.lineTo(-160, -beamLen);
+  ctx.lineTo(160, -beamLen);
+  ctx.lineTo(18, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wewnętrzny rdzeń lasera o wyższej jasności
+  const orangeCore = ctx.createLinearGradient(0, 0, 0, -beamLen);
+  orangeCore.addColorStop(0.0, 'rgba(254, 215, 170, 0.32)');
+  orangeCore.addColorStop(0.35, 'rgba(251, 146, 60, 0.14)');
+  orangeCore.addColorStop(1.0, 'rgba(249, 115, 22, 0.0)');
+  ctx.fillStyle = orangeCore;
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(-55, -beamLen);
+  ctx.lineTo(55, -beamLen);
+  ctx.lineTo(6, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowColor = '#f97316';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#fb923c';
+  ctx.beginPath();
+  ctx.arc(0, 0, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
 }
+
+export const drawSoldatParallax = drawNeonNightOpsSky;
 
 function drawCyberStadiumSky(ctx, camX) {
   const sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -951,9 +1206,12 @@ function drawCyberStadiumSky(ctx, camX) {
       ctx.stroke();
 
       ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(bx + b.w / 2, by - 32, 2.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.fillStyle = '#080c14';
     }
   }
@@ -1040,15 +1298,7 @@ export function drawSky(ctx) {
   if (activeArenaId === 'ARENA_2') {
     drawCyberStadiumSky(ctx, camera ? camera.x : 960);
   } else {
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0.0, '#020409');
-    sky.addColorStop(0.40, '#070c16');
-    sky.addColorStop(0.72, '#0e1624');
-    sky.addColorStop(1.0, '#1a2432');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H);
-
-    drawSoldatParallax(ctx, camera ? camera.x : 1760);
+    drawNeonNightOpsSky(ctx, camera ? camera.x : 1760);
   }
 }
 
@@ -1057,13 +1307,72 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   const endX = ARENA_RIGHT + 300;
   const w = endX - startX;
 
-  ctx.fillStyle = '#18181b';
-  ctx.fillRect(startX, GROUND_Y, w, 600);
+  // Głęboki techniczny korpus podłoża
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(startX, GROUND_Y, w, 700);
 
-  ctx.fillStyle = '#27272a';
-  ctx.fillRect(startX, GROUND_Y, w, 14);
-  ctx.fillStyle = '#14532d';
-  ctx.fillRect(startX, GROUND_Y, w, 4);
+  // Podpowierzchniowy pas techniczny
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(startX, GROUND_Y + 1, w, 14);
+
+  // Znaczniki siatki technicznej co 60px
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  for (let mx = ARENA_LEFT; mx <= ARENA_RIGHT; mx += 60) {
+    ctx.fillRect(mx, GROUND_Y + 2, 2, 8);
+  }
+
+  // =========================================================================
+  // NEONOWA POWIERZCHNIA PODŁOŻA (CYAN -> ORANGE SYNTHWAVE RAIL)
+  // =========================================================================
+  ctx.save();
+  const surfaceGrad = ctx.createLinearGradient(ARENA_LEFT, GROUND_Y, ARENA_RIGHT, GROUND_Y);
+  surfaceGrad.addColorStop(0.0, '#06b6d4');
+  surfaceGrad.addColorStop(0.45, '#00e5ff');
+  surfaceGrad.addColorStop(0.55, '#f97316');
+  surfaceGrad.addColorStop(1.0, '#ff7700');
+
+  // Szeroka poświata neonowa
+  ctx.strokeStyle = surfaceGrad;
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 14;
+  ctx.lineWidth = 4.0;
+  ctx.beginPath();
+  ctx.moveTo(ARENA_LEFT, GROUND_Y);
+  ctx.lineTo(ARENA_RIGHT, GROUND_Y);
+  ctx.stroke();
+
+  // Jaskrawy, biało-neonowy rdzeń świetlny
+  const coreGrad = ctx.createLinearGradient(ARENA_LEFT, GROUND_Y, ARENA_RIGHT, GROUND_Y);
+  coreGrad.addColorStop(0.0, '#a5f3fc');
+  coreGrad.addColorStop(0.48, '#ffffff');
+  coreGrad.addColorStop(0.52, '#ffffff');
+  coreGrad.addColorStop(1.0, '#fed7aa');
+  ctx.strokeStyle = coreGrad;
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 6;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(ARENA_LEFT, GROUND_Y);
+  ctx.lineTo(ARENA_RIGHT, GROUND_Y);
+  ctx.stroke();
+
+  // Subtelne przedłużenie krawędzi poza liniami bramkowymi (bufor areny)
+  ctx.strokeStyle = '#06b6d4';
+  ctx.lineWidth = 2.0;
+  ctx.shadowColor = '#06b6d4';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(startX, GROUND_Y);
+  ctx.lineTo(ARENA_LEFT, GROUND_Y);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#f97316';
+  ctx.shadowColor = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(ARENA_RIGHT, GROUND_Y);
+  ctx.lineTo(endX, GROUND_Y);
+  ctx.stroke();
+  ctx.restore();
 
   const wallH = 1350;
 
@@ -1089,20 +1398,31 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     }
 
     const accentCol = isLeft ? '#06b6d4' : '#f97316';
+    const accentCore = isLeft ? '#00e5ff' : '#ff7700';
+
+    ctx.save();
     ctx.strokeStyle = accentCol;
-    ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 8;
+    ctx.shadowColor = accentCore;
+    ctx.shadowBlur = 10;
     ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.moveTo(wallX, GROUND_Y - wallH);
     ctx.lineTo(wallX, GROUND_Y);
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
-    const blink = (Math.sin(performance.now() * 0.006 + idx) > 0);
-    ctx.fillStyle = blink ? '#ef4444' : '#7f1d1d';
-    ctx.shadowColor = blink ? '#ef4444' : 'transparent';
-    ctx.shadowBlur = blink ? 10 : 0;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(wallX, GROUND_Y - wallH);
+    ctx.lineTo(wallX, GROUND_Y);
+    ctx.stroke();
+    ctx.restore();
+
+    // Stałe, niemrugające oświetlenie diod ostrzegawczych na ścianach (100% ciągły blask)
+    const beaconColor = '#ef4444';
+    ctx.fillStyle = beaconColor;
+    ctx.shadowColor = beaconColor;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.arc(isLeft ? bx + 12 : bx + bw - 12, GROUND_Y - wallH + 12, 7, 0, Math.PI * 2);
     ctx.fill();

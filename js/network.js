@@ -1,0 +1,937 @@
+import { createPlayerInstance, setPlayerClass } from './player.js';
+import { WEAPONS, shootWeapon } from './weapons.js';
+import { customObstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena } from './obstacles.js';
+import { spawnJetpackSparks } from './world.js';
+import { ball } from './ball.js';
+
+// =============================================================================
+// ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
+// =============================================================================
+export const remotePlayer = createPlayerInstance({
+  isIntro: false,
+  x: 2600,
+  y: 600,
+  facing: -1
+});
+remotePlayer.active = false;
+remotePlayer.isRemote = true;
+remotePlayer.name = 'Gracz 2';
+remotePlayer.targetX = 2600;
+remotePlayer.targetY = 600;
+remotePlayer.isJetpacking = false;
+
+// =============================================================================
+// STAN SIECI I POŁĄCZENIA
+// =============================================================================
+export const networkState = {
+  isHost: false,
+  isConnected: false,
+  roomId: null,
+  peer: null,
+  conn: null,
+  ping: 0,
+  status: 'disconnected', // 'disconnected' | 'hosting' | 'connecting' | 'connected'
+  statusMsg: 'Offline',
+  lastPingSent: 0,
+  lastStateSent: 0
+};
+
+// =============================================================================
+// STYLIZACJA WIZUALNA DRUŻYN (CYAN VS ORANGE)
+// =============================================================================
+export function applyTeamVisuals(isHost) {
+  if (!remotePlayer || !remotePlayer.visuals) return;
+  if (isHost) {
+    // Host to Cyan, Gracz 2 to Orange
+    remotePlayer.visuals.jerseyFront0 = '#c2410c';
+    remotePlayer.visuals.jerseyFront1 = '#ea580c';
+    remotePlayer.visuals.jerseyFront2 = '#f97316';
+    remotePlayer.visuals.jerseyFront3 = '#fb923c';
+    remotePlayer.visuals.jerseyBack0 = '#9a3412';
+    remotePlayer.visuals.jerseyBack1 = '#c2410c';
+    remotePlayer.visuals.jerseyBack2 = '#7c2d12';
+    remotePlayer.visuals.jerseyStripe = '#f97316';
+    remotePlayer.visuals.wristbandColor = '#fb923c';
+    remotePlayer.visuals.headbandColor = '#fb923c';
+    remotePlayer.name = 'P2 (ORANGE)';
+  } else {
+    // Client to Orange, Gracz 2 (Host) to Cyan
+    remotePlayer.visuals.jerseyFront0 = '#0e7490';
+    remotePlayer.visuals.jerseyFront1 = '#0891b2';
+    remotePlayer.visuals.jerseyFront2 = '#06b6d4';
+    remotePlayer.visuals.jerseyFront3 = '#22d3ee';
+    remotePlayer.visuals.jerseyBack0 = '#155e75';
+    remotePlayer.visuals.jerseyBack1 = '#0e7490';
+    remotePlayer.visuals.jerseyBack2 = '#164e63';
+    remotePlayer.visuals.jerseyStripe = '#06b6d4';
+    remotePlayer.visuals.wristbandColor = '#22d3ee';
+    remotePlayer.visuals.headbandColor = '#22d3ee';
+    remotePlayer.name = 'P1 (CYAN)';
+  }
+}
+
+// =============================================================================
+// AKTUALIZACJA I INTERPOLACJA ZDALNEGO GRACZA
+// =============================================================================
+export function updateRemotePlayer(groundY) {
+  if (!remotePlayer.active) return;
+
+  // Płynna interpolacja pozycji (lerp)
+  const dx = remotePlayer.targetX - remotePlayer.x;
+  const dy = remotePlayer.targetY - remotePlayer.y;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist > 140) {
+    // Duży przeskok (respawn / teleport)
+    remotePlayer.x = remotePlayer.targetX;
+    remotePlayer.y = remotePlayer.targetY;
+  } else {
+    remotePlayer.x += dx * 0.45;
+    remotePlayer.y += dy * 0.45;
+  }
+
+  // Animacja biegu / cyklu chodu
+  if (remotePlayer.isRunning || Math.abs(remotePlayer.vx) > 0.4) {
+    remotePlayer.animTimer = (remotePlayer.animTimer || 0) + 0.22;
+  }
+
+  // Cząsteczki płomienia jetpacka u zdalnego gracza
+  if (remotePlayer.isJetpacking) {
+    const nozzleX = remotePlayer.x + remotePlayer.w / 2 - (remotePlayer.facing * 10);
+    const nozzleY = remotePlayer.y + 42;
+    spawnJetpackSparks(nozzleX, nozzleY, remotePlayer.facing, 2);
+  }
+}
+
+// =============================================================================
+// WYSYŁANIE PAKIETÓW SIECIOWYCH
+// =============================================================================
+export function sendPlayerState(localPlayer) {
+  if (!networkState.conn || !networkState.isConnected) return;
+
+  const now = performance.now();
+  // Wysyłamy co klatkę lub max 60 Hz
+  if (now - networkState.lastStateSent < 16) return;
+  networkState.lastStateSent = now;
+
+  try {
+    networkState.conn.send({
+      type: 'p_state',
+      x: Math.round(localPlayer.x * 10) / 10,
+      y: Math.round(localPlayer.y * 10) / 10,
+      vx: Math.round(localPlayer.vx * 10) / 10,
+      vy: Math.round(localPlayer.vy * 10) / 10,
+      facing: localPlayer.facing,
+      aimX: Math.round(localPlayer.aimX),
+      aimY: Math.round(localPlayer.aimY),
+      aimAngle: Math.round(localPlayer.aimAngle * 100) / 100,
+      isJumping: !!localPlayer.isJumping,
+      isSliding: !!localPlayer.isSliding,
+      isRunning: !!localPlayer.isRunning,
+      isKickCharging: !!localPlayer.isKickCharging,
+      kickCharge: Math.round((localPlayer.kickCharge || 0) * 100) / 100,
+      hp: localPlayer.hp,
+      maxHp: localPlayer.maxHp || 100,
+      isDead: !!localPlayer.isDead,
+      selectedClass: localPlayer.selectedClass,
+      currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'pistol',
+      isJetpacking: !!localPlayer.isJetpacking,
+      jetFuel: Math.round(localPlayer.jetFuel || 0)
+    });
+  } catch (e) {
+    console.warn('[P2P] Send player state error:', e);
+  }
+}
+
+export function sendBallState(localBall) {
+  // Tylko host zarządza autorytatywnie piłką i wysyła jej pozycję
+  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+
+  try {
+    networkState.conn.send({
+      type: 'b_state',
+      x: Math.round(localBall.x * 10) / 10,
+      y: Math.round(localBall.y * 10) / 10,
+      vx: Math.round(localBall.vx * 100) / 100,
+      vy: Math.round(localBall.vy * 100) / 100,
+      rot: Math.round((localBall.rot || 0) * 100) / 100,
+      isGrounded: !!localBall.isGrounded
+    });
+  } catch (e) { }
+}
+
+export function sendShootEvent(weaponId, x, y, aimAngle) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'shoot',
+      weaponId: weaponId,
+      x: Math.round(x),
+      y: Math.round(y),
+      aimAngle: Math.round(aimAngle * 1000) / 1000
+    });
+  } catch (e) { }
+}
+
+export function sendKickEvent(vx, vy, spin = 0) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'kick_ball',
+      vx: Math.round(vx * 100) / 100,
+      vy: Math.round(vy * 100) / 100,
+      spin: Math.round(spin * 100) / 100
+    });
+  } catch (e) { }
+}
+
+export function sendObstacleAdd(obstacle) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'obs_add',
+      obs: obstacle
+    });
+  } catch (e) { }
+}
+
+export function sendObstacleRemove(obs) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'obs_rem',
+      x: obs.x,
+      y: obs.y,
+      type: obs.type
+    });
+  } catch (e) { }
+}
+
+export function sendObstacleClear() {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({ type: 'obs_clr' });
+  } catch (e) { }
+}
+
+export function sendObstacleUndo() {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({ type: 'obs_undo' });
+  } catch (e) { }
+}
+
+export function sendArenaSwitch(arenaId) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'arena_sw',
+      arenaId: arenaId
+    });
+  } catch (e) { }
+}
+
+// =============================================================================
+// ODBIÓR PAKIETÓW SIECIOWYCH
+// =============================================================================
+function handleNetworkData(data) {
+  if (!data || !data.type) return;
+
+  switch (data.type) {
+    case 'init_sync': {
+      if (data.arenaId && data.arenaId !== activeArenaId) {
+        switchArena(data.arenaId);
+        const arenaBtn = document.getElementById('dev-arena-btn');
+        if (arenaBtn) {
+          arenaBtn.textContent = (data.arenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
+        }
+      }
+      if (data.customObstacles) {
+        setCustomObstacles(data.customObstacles);
+      }
+      if (data.ball) {
+        ball.x = data.ball.x;
+        ball.y = data.ball.y;
+        ball.vx = data.ball.vx;
+        ball.vy = data.ball.vy;
+      }
+      break;
+    }
+
+    case 'p_state': {
+      remotePlayer.active = true;
+      remotePlayer.targetX = data.x;
+      remotePlayer.targetY = data.y;
+      remotePlayer.vx = data.vx;
+      remotePlayer.vy = data.vy;
+      remotePlayer.facing = data.facing;
+      remotePlayer.aimX = data.aimX;
+      remotePlayer.aimY = data.aimY;
+      remotePlayer.aimAngle = data.aimAngle;
+      remotePlayer.isJumping = data.isJumping;
+      remotePlayer.isSliding = data.isSliding;
+      remotePlayer.isRunning = data.isRunning;
+      remotePlayer.isKickCharging = data.isKickCharging;
+      remotePlayer.kickCharge = data.kickCharge;
+      remotePlayer.hp = data.hp;
+      remotePlayer.maxHp = data.maxHp;
+      remotePlayer.isDead = data.isDead;
+      remotePlayer.isJetpacking = data.isJetpacking;
+      remotePlayer.jetFuel = data.jetFuel;
+
+      if (data.selectedClass && remotePlayer.selectedClass !== data.selectedClass) {
+        setPlayerClass(data.selectedClass, remotePlayer);
+        applyTeamVisuals(networkState.isHost);
+      }
+
+      if (data.currentWeaponId && WEAPONS[data.currentWeaponId]) {
+        remotePlayer.currentWeapon = WEAPONS[data.currentWeaponId];
+      }
+      break;
+    }
+
+    case 'b_state': {
+      // Tylko klient przyjmuje pozycję piłki od hosta
+      if (!networkState.isHost) {
+        const dx = data.x - ball.x;
+        const dy = data.y - ball.y;
+        if (Math.hypot(dx, dy) > 90) {
+          ball.x = data.x;
+          ball.y = data.y;
+        } else {
+          ball.x += dx * 0.45;
+          ball.y += dy * 0.45;
+        }
+        ball.vx = data.vx;
+        ball.vy = data.vy;
+        ball.rot = data.rot;
+        ball.isGrounded = data.isGrounded;
+      }
+      break;
+    }
+
+    case 'shoot': {
+      const wep = WEAPONS[data.weaponId] || remotePlayer.currentWeapon;
+      remotePlayer.aimAngle = data.aimAngle;
+      remotePlayer.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
+      shootWeapon(remotePlayer, wep);
+      break;
+    }
+
+    case 'kick_ball': {
+      if (networkState.isHost) {
+        ball.vx = data.vx;
+        ball.vy = data.vy;
+        if (data.spin !== undefined) ball.spin = data.spin;
+      }
+      break;
+    }
+
+    case 'obs_add': {
+      if (data.obs) {
+        customObstacles.push(data.obs);
+        spawnJetpackSparks(data.obs.x + data.obs.w / 2, data.obs.y + data.obs.h / 2, 0, 4);
+      }
+      break;
+    }
+
+    case 'obs_rem': {
+      for (let i = customObstacles.length - 1; i >= 0; i--) {
+        const o = customObstacles[i];
+        if (Math.abs(o.x - data.x) < 5 && Math.abs(o.y - data.y) < 5) {
+          spawnJetpackSparks(o.x + o.w / 2, o.y + o.h / 2, 0, 5);
+          customObstacles.splice(i, 1);
+          break;
+        }
+      }
+      break;
+    }
+
+    case 'obs_clr': {
+      clearCustomObstacles();
+      break;
+    }
+
+    case 'obs_undo': {
+      undoCustomObstacle();
+      break;
+    }
+
+    case 'arena_sw': {
+      if (data.arenaId) {
+        switchArena(data.arenaId);
+        const arenaBtn = document.getElementById('dev-arena-btn');
+        if (arenaBtn) {
+          arenaBtn.textContent = (data.arenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
+        }
+      }
+      break;
+    }
+
+    case 'ping': {
+      try {
+        networkState.conn.send({
+          type: 'pong',
+          ts: data.ts
+        });
+      } catch (e) { }
+      break;
+    }
+
+    case 'pong': {
+      if (data.ts) {
+        networkState.ping = Math.max(1, Math.round(performance.now() - data.ts));
+        updatePingUI(networkState.ping);
+      }
+      break;
+    }
+
+    case 'chat_msg': {
+      if (data.text) {
+        const senderName = data.sender || (networkState.isHost ? 'P2' : 'P1');
+        const senderCol = data.color || (networkState.isHost ? '#f97316' : '#00e5ff');
+        addChatMessageToUI(senderName, data.text, senderCol);
+      }
+      break;
+    }
+  }
+}
+
+// =============================================================================
+// ZARZĄDZANIE SESJĄ PEERJS
+// =============================================================================
+let pingInterval = null;
+
+function startPingLoop() {
+  if (pingInterval) clearInterval(pingInterval);
+  pingInterval = setInterval(() => {
+    if (networkState.conn && networkState.isConnected) {
+      try {
+        networkState.conn.send({
+          type: 'ping',
+          ts: performance.now()
+        });
+      } catch (e) { }
+    }
+  }, 2000);
+}
+
+function stopPingLoop() {
+  if (pingInterval) {
+    clearInterval(pingInterval);
+    pingInterval = null;
+  }
+}
+
+function setupConnection(conn, isHost) {
+  networkState.conn = conn;
+  networkState.isHost = isHost;
+
+  conn.on('open', () => {
+    networkState.isConnected = true;
+    networkState.status = 'connected';
+    updateUIStatus('connected', isHost ? 'Połączono z Graczem 2 (Klient)' : 'Połączono z Hostem gry');
+
+    remotePlayer.active = true;
+    remotePlayer.isDead = false;
+    remotePlayer.hp = 100;
+    applyTeamVisuals(isHost);
+
+    // Host wysyła inicjalny stan mapy i areny
+    if (isHost) {
+      conn.send({
+        type: 'init_sync',
+        arenaId: activeArenaId,
+        customObstacles: customObstacles,
+        ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy }
+      });
+    }
+
+    startPingLoop();
+  });
+
+  conn.on('data', (data) => {
+    handleNetworkData(data);
+  });
+
+  conn.on('close', () => {
+    handleDisconnect('Połączenie zostało zamknięte przez drugiego gracza.');
+  });
+
+  conn.on('error', (err) => {
+    console.warn('[P2P] Connection error:', err);
+    handleDisconnect('Błąd transmisji danych WebRTC.');
+  });
+}
+
+export function hostRoom() {
+  if (typeof Peer === 'undefined') {
+    alert('Biblioteka PeerJS nie została załadowana. Sprawdź połączenie internetowe.');
+    return;
+  }
+
+  disconnectNetwork();
+
+  updateUIStatus('hosting', 'Rejestracja pokoju...');
+  const shortId = 'kih-' + Math.random().toString(36).substring(2, 6);
+
+  try {
+    const peer = new Peer(shortId, { debug: 1 });
+    networkState.peer = peer;
+    networkState.isHost = true;
+
+    peer.on('open', (id) => {
+      networkState.roomId = id;
+      updateUIStatus('hosting', `Oczekiwanie na gracza... Kod: ${id}`);
+      displayHostRoomCode(id);
+    });
+
+    peer.on('connection', (conn) => {
+      setupConnection(conn, true);
+    });
+
+    peer.on('error', (err) => {
+      console.warn('[P2P] Peer host error:', err);
+      if (err.type === 'unavailable-id') {
+        // ID zajęte, utwórz z automatycznym identyfikatorem
+        const autoPeer = new Peer();
+        networkState.peer = autoPeer;
+        autoPeer.on('open', (id) => {
+          networkState.roomId = id;
+          updateUIStatus('hosting', `Oczekiwanie na gracza... Kod: ${id}`);
+          displayHostRoomCode(id);
+        });
+        autoPeer.on('connection', (c) => setupConnection(c, true));
+      } else {
+        updateUIStatus('disconnected', `Błąd: ${err.message || err.type}`);
+      }
+    });
+  } catch (err) {
+    updateUIStatus('disconnected', 'Nie udało się utworzyć pokoju.');
+  }
+}
+
+export function joinRoom(targetId) {
+  if (!targetId || targetId.trim() === '') {
+    alert('Wpisz prawidłowy kod pokoju!');
+    return;
+  }
+  if (typeof Peer === 'undefined') {
+    alert('Biblioteka PeerJS nie została załadowana. Sprawdź połączenie internetowe.');
+    return;
+  }
+
+  targetId = targetId.trim().toLowerCase();
+  disconnectNetwork();
+
+  updateUIStatus('connecting', `Łączenie z ${targetId}...`);
+
+  try {
+    const peer = new Peer({ debug: 1 });
+    networkState.peer = peer;
+    networkState.isHost = false;
+
+    peer.on('open', () => {
+      const conn = peer.connect(targetId, { reliable: true });
+      setupConnection(conn, false);
+    });
+
+    peer.on('error', (err) => {
+      console.warn('[P2P] Peer join error:', err);
+      updateUIStatus('disconnected', `Nie można połączyć z ${targetId}. Sprawdź kod pokoju.`);
+    });
+  } catch (err) {
+    updateUIStatus('disconnected', 'Błąd tworzenia klienta P2P.');
+  }
+}
+
+export function disconnectNetwork() {
+  stopPingLoop();
+
+  if (networkState.conn) {
+    try { networkState.conn.close(); } catch (e) { }
+    networkState.conn = null;
+  }
+  if (networkState.peer) {
+    try { networkState.peer.destroy(); } catch (e) { }
+    networkState.peer = null;
+  }
+
+  networkState.isConnected = false;
+  networkState.isHost = false;
+  networkState.roomId = null;
+  networkState.ping = 0;
+  remotePlayer.active = false;
+
+  updateUIStatus('disconnected', 'Rozłączono / Offline');
+}
+
+function handleDisconnect(reason) {
+  stopPingLoop();
+  networkState.isConnected = false;
+  remotePlayer.active = false;
+  updateUIStatus('disconnected', reason || 'Rozłączono');
+}
+
+// =============================================================================
+// INTERFEJS UŻYTKOWNIKA (UI BINDINGS & HELPERS)
+// =============================================================================
+function updateUIStatus(status, message) {
+  networkState.status = status;
+  networkState.statusMsg = message;
+
+  const dot = document.getElementById('mp-status-dot');
+  const text = document.getElementById('mp-status-text');
+  const pingTag = document.getElementById('mp-ping-tag');
+  const roleVal = document.getElementById('mp-role-val');
+  const setupView = document.getElementById('mp-setup-view');
+  const connectedView = document.getElementById('mp-connected-view');
+  const topBadge = document.getElementById('mp-open-btn');
+
+  if (dot) {
+    dot.className = 'mp-status-dot';
+    if (status === 'connected') dot.classList.add('dot-green');
+    else if (status === 'hosting' || status === 'connecting') dot.classList.add('dot-yellow');
+    else dot.classList.add('dot-red');
+  }
+
+  if (text) text.textContent = message.toUpperCase();
+
+  if (topBadge) {
+    if (status === 'connected') {
+      topBadge.textContent = '🟢 MULTI (ON)';
+      topBadge.style.borderColor = '#4ade80';
+      topBadge.style.color = '#4ade80';
+    } else if (status === 'hosting' || status === 'connecting') {
+      topBadge.textContent = '🟡 MULTI (...)';
+      topBadge.style.borderColor = '#facc15';
+      topBadge.style.color = '#facc15';
+    } else {
+      topBadge.textContent = '🌐 MULTI';
+      topBadge.style.borderColor = 'rgba(0, 229, 255, 0.5)';
+      topBadge.style.color = '#00e5ff';
+    }
+  }
+
+  if (status === 'connected') {
+    if (setupView) setupView.style.display = 'none';
+    if (connectedView) connectedView.style.display = 'block';
+    if (pingTag) pingTag.style.display = 'inline-block';
+    if (roleVal) {
+      roleVal.textContent = networkState.isHost ? 'HOST (Baza Cyan / Władca Fizyki)' : 'KLIENT (Baza Orange)';
+      roleVal.style.color = networkState.isHost ? '#00e5ff' : '#f97316';
+    }
+  } else {
+    if (setupView) setupView.style.display = 'block';
+    if (connectedView) connectedView.style.display = 'none';
+    if (pingTag) pingTag.style.display = 'none';
+  }
+}
+
+function updatePingUI(ping) {
+  const pingTag = document.getElementById('mp-ping-tag');
+  const livePing = document.getElementById('mp-live-ping');
+  const str = `${ping} ms`;
+  if (pingTag) pingTag.textContent = str;
+  if (livePing) livePing.textContent = str;
+}
+
+function displayHostRoomCode(id) {
+  const hostInit = document.getElementById('mp-host-start-row');
+  const hostInfo = document.getElementById('mp-host-info-row');
+  const codeVal = document.getElementById('mp-host-code-val');
+
+  if (hostInit) hostInit.style.display = 'none';
+  if (hostInfo) hostInfo.style.display = 'block';
+  if (codeVal) codeVal.textContent = id;
+}
+
+export function openMultiplayerModal() {
+  const modal = document.getElementById('mp-modal');
+  if (modal) modal.classList.remove('mp-modal-hidden');
+  updateCursorVisibility();
+}
+
+export function closeMultiplayerModal() {
+  const modal = document.getElementById('mp-modal');
+  if (modal) modal.classList.add('mp-modal-hidden');
+  updateCursorVisibility();
+}
+
+// =============================================================================
+// ZARZĄDZANIE WIDOCZNOŚCIĄ KURSORA (DEV MENU / MULTI / CZAT)
+// =============================================================================
+let isHoveringUI = false;
+
+export function updateCursorVisibility() {
+  const gameContainer = document.getElementById('game-container');
+  const canvasEl = document.getElementById('game');
+  const mpModal = document.getElementById('mp-modal');
+  const devMenu = document.getElementById('dev-menu');
+
+  const isMpOpen = mpModal && !mpModal.classList.contains('mp-modal-hidden');
+  const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
+  const isChatOpen = !!isChatActive;
+
+  const showCursor = isMpOpen || isDevOpen || isChatOpen || isHoveringUI;
+
+  if (gameContainer) {
+    if (showCursor) {
+      gameContainer.classList.add('cursor-visible');
+    } else {
+      gameContainer.classList.remove('cursor-visible');
+    }
+  }
+  if (canvasEl) {
+    canvasEl.style.cursor = showCursor ? 'default' : 'none';
+  }
+}
+
+// =============================================================================
+// SYSTEM CZATU TEKSTOWEGO ONLINE (KLAWISZ "T")
+// =============================================================================
+export let isChatActive = false;
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[m]);
+}
+
+export function addChatMessageToUI(sender, text, color = '#00e5ff') {
+  const chatMessages = document.getElementById('chat-messages');
+  const chatContainer = document.getElementById('game-chat');
+  if (!chatMessages) return;
+
+  const msgEl = document.createElement('div');
+  msgEl.className = 'chat-msg';
+  msgEl.style.borderLeftColor = color;
+  msgEl.innerHTML = `<span class="chat-sender" style="color: ${color}">[${escapeHtml(sender)}]:</span><span class="chat-text">${escapeHtml(text)}</span>`;
+
+  chatMessages.appendChild(msgEl);
+
+  // Ogranicz do ostatnich 20 wiadomości w historii
+  while (chatMessages.children.length > 20) {
+    chatMessages.removeChild(chatMessages.firstChild);
+  }
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Odśwież widoczność czatu dla nowej wiadomości
+  if (chatContainer) {
+    chatContainer.style.opacity = '1';
+  }
+
+  // Płynne wygaszenie po 7 sekundach
+  setTimeout(() => {
+    msgEl.classList.add('msg-fading');
+  }, 7000);
+}
+
+export function sendChatMessage(text) {
+  if (!text || !text.trim()) return;
+  text = text.trim();
+
+  const myName = networkState.isHost ? 'P1 (TY)' : (networkState.isConnected ? 'P2 (TY)' : 'TY');
+  const myColor = networkState.isHost ? '#00e5ff' : '#f97316';
+
+  if (networkState.conn && networkState.isConnected) {
+    try {
+      networkState.conn.send({
+        type: 'chat_msg',
+        text: text,
+        sender: networkState.isHost ? 'P1' : 'P2',
+        color: networkState.isHost ? '#00e5ff' : '#f97316'
+      });
+    } catch (e) {
+      console.warn('[P2P] Send chat error:', e);
+    }
+  }
+
+  addChatMessageToUI(myName, text, myColor);
+}
+
+export function openChat() {
+  const chatContainer = document.getElementById('game-chat');
+  const chatInput = document.getElementById('chat-input');
+  if (!chatContainer || !chatInput) return;
+
+  isChatActive = true;
+  chatContainer.classList.remove('chat-hidden');
+  chatContainer.style.opacity = '1';
+
+  // Przywróć pełną widoczność wszystkich ostatnich wiadomości
+  const msgs = chatContainer.querySelectorAll('.chat-msg');
+  msgs.forEach((m) => m.classList.remove('msg-fading'));
+
+  chatInput.value = '';
+  setTimeout(() => {
+    chatInput.focus();
+    chatInput.select();
+  }, 10);
+
+  updateCursorVisibility();
+}
+
+export function closeChat() {
+  const chatContainer = document.getElementById('game-chat');
+  const chatInput = document.getElementById('chat-input');
+  if (!chatContainer) return;
+
+  isChatActive = false;
+  chatContainer.classList.add('chat-hidden');
+  if (chatInput) {
+    chatInput.value = '';
+    chatInput.blur();
+  }
+
+  updateCursorVisibility();
+}
+
+function initChatUI() {
+  const chatInput = document.getElementById('chat-input');
+  const chatWrapper = document.getElementById('chat-input-wrapper');
+  if (!chatInput) return;
+
+  if (chatWrapper) {
+    chatWrapper.addEventListener('mousedown', (e) => e.stopPropagation());
+    chatWrapper.addEventListener('pointerdown', (e) => e.stopPropagation());
+  }
+
+  chatInput.addEventListener('keydown', (e) => {
+    e.stopPropagation(); // Blokuj propagację do silnika gry!
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const text = chatInput.value.trim();
+      if (text) {
+        sendChatMessage(text);
+      }
+      closeChat();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeChat();
+    }
+  });
+
+  chatInput.addEventListener('keyup', (e) => e.stopPropagation());
+  chatInput.addEventListener('keypress', (e) => e.stopPropagation());
+
+  chatInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (isChatActive) closeChat();
+    }, 150);
+  });
+}
+
+export function initNetwork() {
+  // Przycisk otwierający w nagłówku
+  const openBtn = document.getElementById('mp-open-btn');
+  if (openBtn) openBtn.onclick = () => openMultiplayerModal();
+
+  // Przycisk otwierający w menu DEV
+  const devMpBtn = document.getElementById('dev-mp-btn');
+  if (devMpBtn) devMpBtn.onclick = () => openMultiplayerModal();
+
+  // Przycisk zamykający
+  const closeBtn = document.getElementById('mp-close-btn');
+  if (closeBtn) closeBtn.onclick = () => closeMultiplayerModal();
+
+  const backdrop = document.getElementById('mp-backdrop');
+  if (backdrop) backdrop.onclick = () => closeMultiplayerModal();
+
+  // Przycisk tworzenia pokoju (Host)
+  const hostBtn = document.getElementById('mp-host-btn');
+  if (hostBtn) hostBtn.onclick = () => hostRoom();
+
+  // Kopiowanie kodu pokoju
+  const copyCodeBtn = document.getElementById('mp-copy-code-btn');
+  if (copyCodeBtn) {
+    copyCodeBtn.onclick = () => {
+      if (networkState.roomId) {
+        navigator.clipboard.writeText(networkState.roomId).then(() => {
+          copyCodeBtn.textContent = '✅ Skopiowano!';
+          setTimeout(() => { copyCodeBtn.textContent = '📋 Kopiuj Kod'; }, 2000);
+        });
+      }
+    };
+  }
+
+  // Kopiowanie linku z zaproszeniem
+  const copyLinkBtn = document.getElementById('mp-copy-link-btn');
+  if (copyLinkBtn) {
+    copyLinkBtn.onclick = () => {
+      if (networkState.roomId) {
+        const url = `${window.location.origin}${window.location.pathname}?room=${networkState.roomId}`;
+        navigator.clipboard.writeText(url).then(() => {
+          copyLinkBtn.textContent = '✅ Link Skopiowany do Schowka!';
+          setTimeout(() => { copyLinkBtn.textContent = '🔗 Kopiuj Link z Zaproszeniem'; }, 2500);
+        });
+      }
+    };
+  }
+
+  // Dołączanie do pokoju
+  const joinBtn = document.getElementById('mp-join-btn');
+  const joinInput = document.getElementById('mp-join-input');
+  if (joinBtn && joinInput) {
+    joinBtn.onclick = () => {
+      const code = joinInput.value.trim();
+      if (code) joinRoom(code);
+    };
+    joinInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        const code = joinInput.value.trim();
+        if (code) joinRoom(code);
+      }
+    };
+  }
+
+  // Rozłączenie gry
+  const disconnectBtn = document.getElementById('mp-disconnect-btn');
+  if (disconnectBtn) {
+    disconnectBtn.onclick = () => disconnectNetwork();
+  }
+
+  // Inicjalizacja czatu tekstowego
+  initChatUI();
+
+  // Nasłuchiwanie najechania kursorem na panele UI
+  const bindHover = (elId) => {
+    const el = document.getElementById(elId);
+    if (el) {
+      el.addEventListener('mouseenter', () => { isHoveringUI = true; updateCursorVisibility(); });
+      el.addEventListener('mouseleave', () => { isHoveringUI = false; updateCursorVisibility(); });
+    }
+  };
+
+  bindHover('dev-panel-container');
+  bindHover('mp-modal');
+  bindHover('game-chat');
+
+  // Monitorowanie przycisku przełączania menu DEV
+  const devToggleBtn = document.getElementById('dev-toggle-btn');
+  if (devToggleBtn) {
+    devToggleBtn.addEventListener('click', () => {
+      setTimeout(updateCursorVisibility, 50);
+    });
+  }
+
+  // Auto-connect jeśli w adresie URL przekazano ?room=... lub ?join=...
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetRoom = urlParams.get('room') || urlParams.get('join');
+    if (targetRoom) {
+      openMultiplayerModal();
+      if (joinInput) joinInput.value = targetRoom;
+      setTimeout(() => {
+        joinRoom(targetRoom);
+      }, 500);
+    }
+  } catch (e) { }
+
+  updateCursorVisibility();
+}
