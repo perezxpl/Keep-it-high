@@ -44,8 +44,8 @@ export const EnforcerClass = {
     sleeveless: true,          // Odsłonięte ramiona (tank-top bez rękawków)
     sleeveLengthMult: 0.0,
 
-    hasWristband: true,        // Czerwone bandaże bokserskie na dłoniach
-    wristbandColor: '#dc2626',
+    hasWristband: true,        // Jasny bandaż bokserski na dłoniach
+    wristbandColor: '#f8fafc', // Jasny bandaż bokserski kontrastujący z ciemnoczerwoną koszulką
     hasHeadband: false,        // Brak opaski (krótko ścięte ciemne włosy)
 
     hairColor0: '#09090b',

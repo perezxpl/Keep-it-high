@@ -106,6 +106,19 @@ export const DEFAULT_CLASS_SCHEMA = {
   visuals: DEFAULT_VISUALS
 };
 
+/**
+ * Bezpieczne scalanie podanej klasy ze schematem domyślnym DEFAULT_CLASS_SCHEMA (Fallback Merge)
+ */
+export function mergeClassWithSchema(classDef) {
+  const c = classDef || {};
+  return {
+    ...c,
+    body: { ...DEFAULT_CLASS_SCHEMA.body, ...(c.body || {}) },
+    stats: { ...DEFAULT_CLASS_SCHEMA.stats, ...(c.stats || {}) },
+    visuals: { ...DEFAULT_CLASS_SCHEMA.visuals, ...(c.visuals || {}) }
+  };
+}
+
 // =========================================================================
 // FREESTYLE ENGINE: INTRO PRZED LINIĄ STARTU
 // =========================================================================
@@ -261,12 +274,7 @@ let lastAirFacing = 0;
 
 export function createPlayerInstance(overrides = {}) {
   const baseClass = overrides.currentClass || DEFAULT_CLASS;
-  const mergedClass = {
-    ...baseClass,
-    body: { ...DEFAULT_BODY, ...(baseClass?.body || {}) },
-    stats: { ...DEFAULT_STATS, ...(baseClass?.stats || {}) },
-    visuals: { ...DEFAULT_VISUALS, ...(baseClass?.visuals || {}) }
-  };
+  const mergedClass = mergeClassWithSchema(baseClass);
 
   return {
     x: START_X - 60,
@@ -428,13 +436,9 @@ export function setPlayerClass(newClass, p = player) {
 
   p.currentClass?.onDestroy?.(p);
 
-  // Bezpieczne scalanie wybranej klasy z wartościami domyślnymi silnika
-  p.currentClass = {
-    ...newClass,
-    body: { ...DEFAULT_BODY, ...(newClass.body || {}) },
-    stats: { ...DEFAULT_STATS, ...(newClass.stats || {}) },
-    visuals: { ...DEFAULT_VISUALS, ...(newClass.visuals || {}) }
-  };
+  // Bezpieczne scalanie wybranej klasy ze schematem domyślnym silnika
+  const merged = mergeClassWithSchema(newClass);
+  p.currentClass = merged;
 
   // Automatyczne zaaplikowanie szkieletu i parametrów energii
   p.w = p.currentClass.body.w;
@@ -1757,10 +1761,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
 // =========================================================================
 // SYSTEM GRAFICZNY: MODELOWANY SPORTOWIEC 2.5D (RZEŹBIONA ANATOMIA I KOLOS)
 // =========================================================================
-export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals) {
+export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = null, armForeLen = null) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
-  const upperLen = player.upperArmLen;
-  const foreLen = player.forearmLen;
+  const upperLen = armUpperLen || player.upperArmLen || 14;
+  const foreLen = armForeLen || player.forearmLen || 13;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
 
@@ -1782,24 +1786,58 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const sleeveHalfH = 3.9 * muscle;
   const armHalfH = 2.8 * muscle;
 
-  // 1. RĘKAWEK
-  if (!v.sleeveless && sleeveLen > 0) {
-    const sleeveGrad = ctx.createLinearGradient(0, -sleeveHalfH, 0, sleeveHalfH);
+  // 1. ZARYS NARAMIENNIKA (DELTOID) W NASADZIE RAMIENIA
+  // Przykrywa łączenie ręki z tułowiem, eliminując efekt „doczepionej rurki”
+  const deltoidW = armHalfH * (isSculpted ? 1.48 : 1.32);
+  const deltoidLen = upperLen * (isSculpted ? 0.48 : 0.42);
+
+  const deltoidGrad = ctx.createRadialGradient(deltoidLen * 0.2, -deltoidW * 0.25, 1.0, deltoidLen * 0.35, 0, deltoidW * 1.4);
+  if (isFront) {
+    deltoidGrad.addColorStop(0.0, v.skinLight);
+    deltoidGrad.addColorStop(0.40, v.skinMid);
+    deltoidGrad.addColorStop(0.85, v.skinDark);
+    deltoidGrad.addColorStop(1.0, '#78350f');
+  } else {
+    deltoidGrad.addColorStop(0.0, v.skinMid);
+    deltoidGrad.addColorStop(0.45, v.skinBack);
+    deltoidGrad.addColorStop(1.0, v.skinDark);
+  }
+
+  if (v.sleeveless) {
+    // Odsłonięty, muskularny naramiennik przykrywający staw barkowy
+    ctx.beginPath();
+    ctx.moveTo(-deltoidW * 0.45, 0);
+    ctx.quadraticCurveTo(-deltoidW * 0.40, -deltoidW * 1.15, deltoidLen * 0.22, -deltoidW * 1.08);
+    ctx.quadraticCurveTo(deltoidLen * 0.65, -deltoidW * 0.85, deltoidLen, -armHalfH * 0.65);
+    ctx.lineTo(deltoidLen, armHalfH * 0.65);
+    ctx.quadraticCurveTo(deltoidLen * 0.65, deltoidW * 0.85, deltoidLen * 0.22, deltoidW * 1.08);
+    ctx.quadraticCurveTo(-deltoidW * 0.40, deltoidW * 1.15, -deltoidW * 0.45, 0);
+    ctx.closePath();
+    ctx.fillStyle = deltoidGrad;
+    ctx.fill();
+
+    if (isSculpted) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.20)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(deltoidLen * 0.15, -deltoidW * 0.55);
+      ctx.quadraticCurveTo(deltoidLen * 0.52, -deltoidW * 0.22, deltoidLen * 0.85, 0);
+      ctx.stroke();
+    }
+  } else if (sleeveLen > 0) {
+    // Rękawek układający się na naramienniku w 3D
+    const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
     sleeveGrad.addColorStop(0.0, upperCol || v.armColorFront);
     sleeveGrad.addColorStop(0.35, upperCol || v.armColorFront);
     sleeveGrad.addColorStop(1.0, upperCol || v.armColorBack);
 
     ctx.beginPath();
-    ctx.arc(0, 0, sleeveHalfH, 0, Math.PI * 2);
-    ctx.fillStyle = sleeveGrad;
-    ctx.fill();
-
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(-1.0, -sleeveHalfH, sleeveLen + 1.0, sleeveHalfH * 2, [0, 2, 2, 0]);
-    } else {
-      ctx.rect(-1.0, -sleeveHalfH, sleeveLen + 1.0, sleeveHalfH * 2);
-    }
+    ctx.moveTo(-deltoidW * 0.40, 0);
+    ctx.quadraticCurveTo(-deltoidW * 0.35, -deltoidW, sleeveLen * 0.3, -sleeveHalfH * 1.05);
+    ctx.lineTo(sleeveLen, -sleeveHalfH);
+    ctx.lineTo(sleeveLen, sleeveHalfH);
+    ctx.quadraticCurveTo(sleeveLen * 0.3, sleeveHalfH * 1.05, -deltoidW * 0.35, deltoidW);
+    ctx.closePath();
     ctx.fillStyle = sleeveGrad;
     ctx.fill();
 
@@ -1822,16 +1860,18 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   ctx.beginPath();
   if (isSculpted) {
-    ctx.moveTo(0, -sleeveHalfH * 0.9);
-    ctx.quadraticCurveTo(upperLen * 0.25, -armHalfH * 1.55, upperLen * 0.45, -armHalfH * 1.1);
-    ctx.quadraticCurveTo(upperLen * 0.65, -armHalfH * 1.45, upperLen, -armHalfH * 0.75);
+    const startX = v.sleeveless ? deltoidLen * 0.35 : sleeveLen;
+    ctx.moveTo(startX, -armHalfH * 1.05);
+    ctx.quadraticCurveTo(upperLen * 0.35, -armHalfH * 1.55, upperLen * 0.65, -armHalfH * 1.25);
+    ctx.lineTo(upperLen, -armHalfH * 0.75);
     ctx.lineTo(upperLen, armHalfH * 0.65);
-    ctx.quadraticCurveTo(upperLen * 0.50, armHalfH * 1.65, upperLen * 0.15, armHalfH * 1.15);
-    ctx.quadraticCurveTo(0, armHalfH * 0.8, 0, -sleeveHalfH * 0.9);
+    ctx.quadraticCurveTo(upperLen * 0.55, armHalfH * 1.60, upperLen * 0.25, armHalfH * 1.15);
+    ctx.quadraticCurveTo(startX, armHalfH * 0.95, startX, -armHalfH * 1.05);
   } else {
-    const bareLen = upperLen - sleeveLen + 1.2;
-    if (ctx.roundRect) ctx.roundRect(sleeveLen, -armHalfH, bareLen, armHalfH * 2, 2);
-    else ctx.rect(sleeveLen, -armHalfH, bareLen, armHalfH * 2);
+    const startX = v.sleeveless ? 0 : sleeveLen;
+    const bareLen = upperLen - startX + 1.2;
+    if (ctx.roundRect) ctx.roundRect(startX, -armHalfH, bareLen, armHalfH * 2, 2);
+    else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
   }
   ctx.closePath();
   ctx.fillStyle = bicepGrad;
@@ -1841,8 +1881,8 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.moveTo(upperLen * 0.35, -armHalfH * 0.2);
-    ctx.quadraticCurveTo(upperLen * 0.55, 0, upperLen * 0.75, armHalfH * 0.2);
+    ctx.moveTo(upperLen * 0.38, -armHalfH * 0.2);
+    ctx.quadraticCurveTo(upperLen * 0.58, 0, upperLen * 0.78, armHalfH * 0.2);
     ctx.stroke();
   }
 
@@ -1914,23 +1954,68 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.strokeRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
   }
 
-  // 5. Dłoń
+  // 5. Dłoń: anatomiczna bryła zaciśniętej pięści/chwytu z zarysem kostek, kciuka i bruzd palców
   const handX = foreLen + 0.5;
-  const handR = (isFront ? 3.0 : 2.5) * (isSculpted ? muscle * 0.95 : muscle);
+  const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
+  const fW = 4.4 * handScale;
+  const fH = 3.3 * handScale;
 
-  const handGrad = ctx.createRadialGradient(handX, -0.6, 0.5, handX, 0, handR + 1.0);
+  const handGrad = ctx.createRadialGradient(handX + fW * 0.35, -fH * 0.2, 0.8, handX + fW * 0.4, 0, fW + 1.5);
   handGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-  handGrad.addColorStop(0.7, isFront ? v.skinMid : v.skinBack);
+  handGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
   handGrad.addColorStop(1.0, v.skinDark);
 
+  // Bryła dłoni i zgiętych palców (pięść)
   ctx.beginPath();
-  ctx.ellipse(handX, 0, handR * 1.18, handR * 0.88, 0, 0, Math.PI * 2);
+  // Przejście z nadgarstka
+  ctx.moveTo(handX - 0.5, -wristR * 0.85);
+  // Grzbiet dłoni unoszący się ku kostkom
+  ctx.lineTo(handX + fW * 0.25, -fH * 0.95);
+  // Kostka palca wskazującego
+  ctx.quadraticCurveTo(handX + fW * 0.55, -fH * 1.05, handX + fW * 0.72, -fH * 0.85);
+  // Kostka palca środkowego (najbardziej wysunięta)
+  ctx.quadraticCurveTo(handX + fW * 1.05, -fH * 0.65, handX + fW, -fH * 0.25);
+  // Front zaciśniętych palców
+  ctx.quadraticCurveTo(handX + fW * 1.05, fH * 0.35, handX + fW * 0.75, fH * 0.85);
+  // Kłąb palca małego (hipotenar)
+  ctx.quadraticCurveTo(handX + fW * 0.35, fH * 0.95, handX - 0.5, wristR * 0.85);
+  ctx.closePath();
   ctx.fillStyle = handGrad;
   ctx.fill();
 
+  // Zarys kciuka dociskającego chwyt
+  const thumbGrad = ctx.createLinearGradient(handX, -fH * 0.7, handX + fW * 0.6, fH * 0.2);
+  thumbGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
+  thumbGrad.addColorStop(1.0, isFront ? v.skinMid : v.skinDark);
+
   ctx.beginPath();
-  ctx.arc(handX - 0.5, -handR * 0.55, 1.2, 0, Math.PI * 2);
-  ctx.fillStyle = isFront ? v.skinLight : v.skinMid;
+  ctx.moveTo(handX + fW * 0.05, -fH * 0.45);
+  ctx.quadraticCurveTo(handX + fW * 0.45, -fH * 0.75, handX + fW * 0.70, -fH * 0.15);
+  ctx.quadraticCurveTo(handX + fW * 0.55, fH * 0.25, handX + fW * 0.25, fH * 0.10);
+  ctx.quadraticCurveTo(handX + fW * 0.10, -fH * 0.10, handX + fW * 0.05, -fH * 0.45);
+  ctx.closePath();
+  ctx.fillStyle = thumbGrad;
+  ctx.fill();
+
+  // Bruzdy między zgiętymi palcami (bruzdy kostek i paliczków)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.lineWidth = 0.75;
+  ctx.beginPath();
+  // Bruzda między palcem wskazującym a środkowym
+  ctx.moveTo(handX + fW * 0.72, -fH * 0.45);
+  ctx.lineTo(handX + fW * 0.95, -fH * 0.25);
+  // Bruzda między palcem środkowym a serdecznym
+  ctx.moveTo(handX + fW * 0.68, -fH * 0.05);
+  ctx.lineTo(handX + fW * 0.92, fH * 0.15);
+  // Bruzda pod kciukiem
+  ctx.moveTo(handX + fW * 0.18, -fH * 0.35);
+  ctx.quadraticCurveTo(handX + fW * 0.40, -fH * 0.30, handX + fW * 0.50, fH * 0.05);
+  ctx.stroke();
+
+  // Odblask na głównej kostce
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.beginPath();
+  ctx.arc(handX + fW * 0.65, -fH * 0.68, 0.75 * handScale, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -1955,6 +2040,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const shortsLen = l1 * (isSculpted ? 0.56 : 0.65);
   const shortsHalfH = 4.8 * muscle;
+  const quadHalfH = 3.8 * muscle;
+  const quadLen = l1 - shortsLen;
 
   const shortsGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, shortsHalfH);
   if (isFrontLeg) {
@@ -1967,10 +2054,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     shortsGrad.addColorStop(1.0, '#334155');
   }
 
+  // Wylot nogawki z eliptycznym mankietem okalającym udo w 3D (cuffCurve)
+  const cuffBulge = 2.4;
   ctx.beginPath();
   ctx.moveTo(0, -shortsHalfH);
   ctx.lineTo(shortsLen, -shortsHalfH + 0.8);
-  ctx.lineTo(shortsLen, shortsHalfH - 0.8);
+  ctx.quadraticCurveTo(shortsLen + cuffBulge, 0, shortsLen, shortsHalfH - 0.8);
   ctx.lineTo(0, shortsHalfH);
   ctx.closePath();
   ctx.fillStyle = shortsGrad;
@@ -1980,13 +2069,31 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   stripeGrad.addColorStop(0.0, isFrontLeg ? v.jerseyStripe : v.jerseyFront0);
   stripeGrad.addColorStop(1.0, isFrontLeg ? (v.jerseyFront1 || v.jerseyColor || '#dc2626') : '#991b1b');
   ctx.fillStyle = stripeGrad;
-  ctx.fillRect(0, -shortsHalfH, shortsLen, 1.6);
+  ctx.beginPath();
+  ctx.moveTo(0, -shortsHalfH);
+  ctx.lineTo(shortsLen, -shortsHalfH + 0.8);
+  ctx.lineTo(shortsLen, -shortsHalfH + 2.4);
+  ctx.lineTo(0, -shortsHalfH + 1.6);
+  ctx.closePath();
+  ctx.fill();
 
-  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
-  ctx.fillRect(shortsLen - 1.8, -shortsHalfH + 0.8, 1.8, (shortsHalfH - 0.8) * 2);
+  // Elastyczny mankiet / ściągacz nogawki (cuffCurve)
+  ctx.strokeStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(shortsLen - 0.8, -shortsHalfH + 0.8);
+  ctx.quadraticCurveTo(shortsLen - 0.8 + cuffBulge, 0, shortsLen - 0.8, shortsHalfH - 0.8);
+  ctx.stroke();
 
-  const quadHalfH = 3.8 * muscle;
-  const quadLen = l1 - shortsLen;
+  // Cień rzucany przez mankiet na mięsień czworogłowy
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+  ctx.beginPath();
+  ctx.moveTo(shortsLen, -quadHalfH);
+  ctx.quadraticCurveTo(shortsLen + cuffBulge, 0, shortsLen, quadHalfH);
+  ctx.lineTo(shortsLen + 2.2, quadHalfH - 0.3);
+  ctx.quadraticCurveTo(shortsLen + 2.2 + cuffBulge, 0, shortsLen + 2.2, -quadHalfH + 0.3);
+  ctx.closePath();
+  ctx.fill();
 
   const quadGrad = ctx.createLinearGradient(0, -quadHalfH * 1.3, 0, quadHalfH * 1.3);
   if (isFrontLeg) {
@@ -1999,30 +2106,35 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     quadGrad.addColorStop(1.0, v.skinDark);
   }
 
+  // Anatomiczny zarys mięśnia czworogłowego schodzącego klinem w stronę rzepki
   ctx.beginPath();
   if (isSculpted) {
-    ctx.moveTo(shortsLen, -quadHalfH * 0.95);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH * 1.35, l1, -2.2);
+    ctx.moveTo(shortsLen - 0.5, -quadHalfH * 0.95);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.32, -quadHalfH * 1.18, shortsLen + quadLen * 0.68, -quadHalfH * 0.88);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.90, -quadHalfH * 0.62, l1, -2.4);
     ctx.lineTo(l1, 2.2);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.40, quadHalfH * 1.25, shortsLen, quadHalfH * 0.95);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.60, quadHalfH * 0.92, shortsLen + quadLen * 0.25, quadHalfH * 0.98);
+    ctx.quadraticCurveTo(shortsLen, quadHalfH * 0.95, shortsLen - 0.5, quadHalfH * 0.90);
   } else {
-    ctx.moveTo(shortsLen, -quadHalfH);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH - 0.6, l1, -2.6);
-    ctx.lineTo(l1, 2.6);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, quadHalfH, shortsLen, quadHalfH);
+    ctx.moveTo(shortsLen - 0.5, -quadHalfH);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.40, -quadHalfH * 1.05, shortsLen + quadLen * 0.75, -quadHalfH * 0.82);
+    ctx.lineTo(l1, -2.4);
+    ctx.lineTo(l1, 2.2);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.50, quadHalfH * 0.90, shortsLen - 0.5, quadHalfH * 0.92);
   }
   ctx.closePath();
   ctx.fillStyle = quadGrad;
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-  ctx.beginPath();
-  ctx.moveTo(shortsLen, -quadHalfH);
-  ctx.lineTo(shortsLen + 2.4, -quadHalfH + 0.2);
-  ctx.lineTo(shortsLen + 2.4, quadHalfH - 0.2);
-  ctx.lineTo(shortsLen, quadHalfH);
-  ctx.closePath();
-  ctx.fill();
+  if (isSculpted && isFrontLeg) {
+    // Subtelna separacja głowy przyśrodkowej (łezka vastus medialis nad rzepką)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.16)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(shortsLen + quadLen * 0.50, -quadHalfH * 0.65);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.78, -quadHalfH * 0.45, l1 - 1.5, -1.8);
+    ctx.stroke();
+  }
 
   ctx.restore();
 
@@ -2031,20 +2143,22 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  const kneeR = 3.2 * muscle;
-  const kneeGrad = ctx.createLinearGradient(0, -kneeR, 0, kneeR);
-  kneeGrad.addColorStop(0.0, isFrontLeg ? '#ffffff' : '#e2e8f0');
-  kneeGrad.addColorStop(0.5, isFrontLeg ? '#f1f5f9' : '#cbd5e1');
-  kneeGrad.addColorStop(1.0, isFrontLeg ? '#94a3b8' : '#64748b');
+  // Rzepka cieniowana w kolorze skóry (zamiast wielkiej białej kuli)
+  const patellaR = 2.4 * (isSculpted ? muscle * 0.95 : muscle);
+  const patellaGrad = ctx.createLinearGradient(0, -patellaR, 0, patellaR);
+  patellaGrad.addColorStop(0.0, isFrontLeg ? v.skinLight : v.skinMid);
+  patellaGrad.addColorStop(0.5, isFrontLeg ? v.skinMid : v.skinBack);
+  patellaGrad.addColorStop(1.0, v.skinDark);
 
   ctx.beginPath();
-  ctx.arc(1.4, 0, kneeR, 0, Math.PI * 2);
-  ctx.fillStyle = kneeGrad;
+  ctx.ellipse(1.6, -0.4, patellaR * 0.95, patellaR * 1.15, -0.1, 0, Math.PI * 2);
+  ctx.fillStyle = patellaGrad;
   ctx.fill();
 
+  // Odblask na rzepce
+  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.20)';
   ctx.beginPath();
-  ctx.arc(2.0, -0.6, 2.0 * muscle, 0, Math.PI * 2);
-  ctx.fillStyle = isFrontLeg ? v.skinLight : v.skinBack;
+  ctx.arc(1.5, -0.8, patellaR * 0.45, 0, Math.PI * 2);
   ctx.fill();
 
   const sockGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
@@ -2054,22 +2168,43 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   sockGrad.addColorStop(0.3, shinCol);
   sockGrad.addColorStop(1.0, thighCol);
 
+  // Asymetryczna łydka: prosty grzebień piszczeli z przodu, brzusiec w górnej 1/3 z tyłu schodzący w ścięgno Achillesa
+  const achillesHalfW = 1.9 * (isSculpted ? Math.max(1.0, muscle * 0.88) : muscle);
+  const calfBulge = (isSculpted ? 5.2 : 4.4) * muscle;
+
   ctx.beginPath();
-  if (isSculpted) {
-    ctx.moveTo(2.0, -kneeR * 0.8);
-    ctx.lineTo(l2 - 4.0, -2.2);
-    ctx.lineTo(l2 - 4.0, 2.0);
-    ctx.quadraticCurveTo(l2 * 0.65, 3.2 * muscle, l2 * 0.38, 5.8 * muscle);
-    ctx.quadraticCurveTo(l2 * 0.15, 4.6 * muscle, 2.0, kneeR * 0.8);
-  } else {
-    ctx.moveTo(3.0, -3.6 * muscle);
-    ctx.quadraticCurveTo(l2 * 0.44, -5.2 * muscle, l2 - 3.5, -2.6);
-    ctx.lineTo(l2 - 3.5, 2.4);
-    ctx.quadraticCurveTo(l2 * 0.40, 4.6 * muscle, 3.0, 3.4 * muscle);
-  }
+  // Przednia krawędź (grzebień piszczeli)
+  ctx.moveTo(1.8, -patellaR * 0.7);
+  ctx.lineTo(l2 * 0.15, -2.4 * muscle);
+  ctx.lineTo(l2 - 4.5, -achillesHalfW);
+  // Ścięcie nad kostką
+  ctx.lineTo(l2 - 4.5, achillesHalfW);
+  // Wąskie ścięgno Achillesa
+  ctx.quadraticCurveTo(l2 * 0.68, achillesHalfW * 1.15, l2 * 0.48, calfBulge * 0.75);
+  // Szczyt asymetrycznego brzuśca łydki w górnej 1/3 (gastrocnemius)
+  ctx.quadraticCurveTo(l2 * 0.30, calfBulge, l2 * 0.14, calfBulge * 0.78);
+  ctx.quadraticCurveTo(0.8, patellaR * 0.9, 1.8, patellaR * 0.6);
   ctx.closePath();
   ctx.fillStyle = sockGrad;
   ctx.fill();
+
+  // Płaskorzeźba i odblask krawędzi piszczeli
+  if (isFrontLeg) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(l2 * 0.20, -2.1 * muscle);
+    ctx.lineTo(l2 * 0.75, -achillesHalfW * 0.8);
+    ctx.stroke();
+
+    if (isSculpted) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.beginPath();
+      ctx.moveTo(l2 * 0.26, calfBulge * 0.25);
+      ctx.quadraticCurveTo(l2 * 0.35, calfBulge * 0.35, l2 * 0.52, achillesHalfW * 0.4);
+      ctx.stroke();
+    }
+  }
 
   if (isFrontLeg) {
     ctx.save();
@@ -2780,10 +2915,10 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   player.currentClass?.onDrawUnder?.(ctx, player);
 
   if (isRightLimbForeground) {
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, v);
+    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
     renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
   } else {
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, null, false, v);
+    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
     renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
   }
 
@@ -2799,7 +2934,40 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const shoulderHalfW = (4.8 + absSin * 1.5) * (isSculpted ? muscle * 1.28 : muscle);
   const waistY = 2.0;
 
-  // Pas i spodenki
+  // 1. SZYJA I MIĘŚNIE CZWOROBOCZNE (KAPTURY / TRAPEZIUS)
+  // Szyja schodzi w dół szerokimi skosami mięśni czworobocznych prosto w obojczyki i barki
+  const neckBaseHalfW = (2.2 * absCos + 3.0 * absSin) * muscle;
+  const trapHalfW = shoulderHalfW * 0.98;
+  const neckGrad = ctx.createLinearGradient(-trapHalfW, 0, trapHalfW, 0);
+  neckGrad.addColorStop(0.0, v.skinDark);
+  neckGrad.addColorStop(0.35, v.skinBack);
+  neckGrad.addColorStop(0.70, v.skinMid);
+  neckGrad.addColorStop(1.0, v.skinLight);
+
+  ctx.beginPath();
+  ctx.moveTo(-neckBaseHalfW * 0.85, -29.2);
+  ctx.lineTo(neckBaseHalfW * 0.85, -28.8);
+  // Szeroki skos mięśni czworobocznych (kapturów) opadający w obojczyki i naramienniki
+  ctx.quadraticCurveTo(neckBaseHalfW * 1.35, -26.8, trapHalfW, -23.6);
+  ctx.lineTo(trapHalfW, -19.0);
+  ctx.lineTo(-trapHalfW, -19.0);
+  ctx.lineTo(-trapHalfW, -23.6);
+  ctx.quadraticCurveTo(-neckBaseHalfW * 1.35, -26.8, -neckBaseHalfW * 0.85, -29.2);
+  ctx.closePath();
+  ctx.fillStyle = neckGrad;
+  ctx.fill();
+
+  // Modelowanie dołka jarzmowego i krtani
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+  ctx.beginPath();
+  ctx.moveTo(0.0, -28.8);
+  ctx.lineTo(neckBaseHalfW * 0.45, -28.6);
+  ctx.lineTo(neckBaseHalfW * 0.25, -26.5);
+  ctx.lineTo(0.0, -26.0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. PAS BIODROWY I SPODENKI (ŁUK BIODROWY 3D)
   const pelvisShortsGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
   pelvisShortsGrad.addColorStop(0.0, v.shortsColor2);
   pelvisShortsGrad.addColorStop(0.5, v.shortsColor0);
@@ -2807,14 +2975,14 @@ function _drawCharacter(ctx, GROUND_Y, player) {
 
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, 0);
-  ctx.lineTo(waistHalfW, 0);
-  ctx.lineTo(waistHalfW - 0.4, 4.2);
-  ctx.lineTo(-waistHalfW + 0.4, 4.2);
+  ctx.quadraticCurveTo(0, 1.4, waistHalfW, 0);
+  ctx.lineTo(waistHalfW - 0.4, 4.4);
+  ctx.quadraticCurveTo(0, 6.2, -waistHalfW + 0.4, 4.4);
   ctx.closePath();
   ctx.fillStyle = pelvisShortsGrad;
   ctx.fill();
 
-  // Koszulka / Tank-top z wcięciem pod pachami i mięśniami najszerszymi
+  // 3. KOSZULKA / TANK-TOP Z ANATOMICZNYM DEKOLTEM SCOOP OPADAJĄCYM NA MOSTEK
   const jerseyGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
   if (isLookingAway) {
     jerseyGrad.addColorStop(0.0, v.jerseyBack0);
@@ -2827,25 +2995,45 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     jerseyGrad.addColorStop(1.0, v.jerseyFront3);
   }
 
+  const scoopCenterX = !isLookingAway ? (cosYaw * 1.2) : (-sinYaw * 0.8);
+  const scoopCenterY = !isLookingAway ? -19.8 : -23.2;
+  const strapLeftX = -shoulderHalfW * 0.48;
+  const strapRightX = shoulderHalfW * 0.48;
+
   ctx.beginPath();
+  ctx.moveTo(-waistHalfW, waistY);
   if (isSculpted) {
-    ctx.moveTo(-waistHalfW, waistY);
-    ctx.quadraticCurveTo(-waistHalfW * 1.15, -12.0, -shoulderHalfW, -24.8);
-    ctx.lineTo(shoulderHalfW, -24.8);
-    ctx.quadraticCurveTo(shoulderHalfW * 1.05, -12.0, waistHalfW, waistY);
-    ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+    // Wcięcie talii i potężne mięśnie najszersze grzbietu (latissimus dorsi / V-taper)
+    ctx.quadraticCurveTo(-waistHalfW * 1.15, -12.0, -shoulderHalfW, -24.4);
   } else {
-    ctx.moveTo(-waistHalfW, waistY);
-    ctx.lineTo(-shoulderHalfW, -24.8);
-    ctx.lineTo(shoulderHalfW, -24.8);
-    ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
-    ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+    ctx.lineTo(-shoulderHalfW, -24.4);
   }
+  // Lewe ramiączko
+  ctx.lineTo(strapLeftX, -24.4);
+  // Anatomiczny dekolt typu tank-top scoop opadający łukiem na mostek
+  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
+  // Prawe ramiączko
+  ctx.lineTo(shoulderHalfW, -24.4);
+  if (isSculpted) {
+    ctx.quadraticCurveTo(shoulderHalfW * 1.05, -12.0, waistHalfW, waistY);
+  } else {
+    ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
+  }
+  // Dolna krawędź koszulki
+  ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
   ctx.closePath();
   ctx.fillStyle = jerseyGrad;
   ctx.fill();
 
-  // Zarys mięśni piersiowych (Pectoral shelf)
+  // Lamówka dekoltu (scoop neckline collar)
+  ctx.strokeStyle = v.seamColor || 'rgba(0, 0, 0, 0.35)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(strapLeftX, -24.4);
+  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
+  ctx.stroke();
+
+  // Zarys mięśni piersiowych (Pectoral shelf) pod dekoltem
   if (isSculpted && !isLookingAway && absCos > 0.3) {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.lineWidth = 1.1;
@@ -2856,15 +3044,23 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     ctx.stroke();
   }
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-  ctx.fillRect(-waistHalfW, waistY - 1.2, waistHalfW * 2, 1.6);
+  // Anatomiczny pas biodrowy – łuk biodrowy (zamiast prostokątnego fillRect)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.beginPath();
+  ctx.moveTo(-waistHalfW, waistY - 1.2);
+  ctx.quadraticCurveTo(0, waistY + 0.8, waistHalfW, waistY - 1.2);
+  ctx.lineTo(waistHalfW, waistY + 0.6);
+  ctx.quadraticCurveTo(0, waistY + 2.6, -waistHalfW, waistY + 0.6);
+  ctx.closePath();
+  ctx.fill();
 
+  // Szew boczny
   const seamX = cosYaw * 2.2;
   ctx.fillStyle = v.seamColor;
   ctx.beginPath();
   ctx.moveTo(seamX - 0.8, waistY);
-  ctx.lineTo(seamX - 1.4, -24.8);
-  ctx.lineTo(seamX - 0.4, -24.8);
+  ctx.lineTo(seamX - 1.4, scoopCenterY);
+  ctx.lineTo(seamX - 0.4, scoopCenterY);
   ctx.lineTo(seamX + 0.2, waistY);
   ctx.closePath();
   ctx.fill();
@@ -2894,30 +3090,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
       ctx.fillText(classNum, -0.5 * cosYaw, -13.0);
     }
   }
-
-  // Szyja z palety v.skin*
-  const neckW = (2.8 * absCos + 3.8 * absSin) * muscle;
-  const neckGrad = ctx.createLinearGradient(-neckW, 0, neckW, 0);
-  neckGrad.addColorStop(0.0, v.skinDark);
-  neckGrad.addColorStop(0.45, v.skinMid);
-  neckGrad.addColorStop(1.0, v.skinLight);
-
-  ctx.beginPath();
-  ctx.moveTo(-neckW * 0.8, -24.8);
-  ctx.lineTo(-neckW * 0.7, -29.2);
-  ctx.lineTo(neckW * 0.7, -28.6);
-  ctx.lineTo(neckW * 0.8, -24.8);
-  ctx.closePath();
-  ctx.fillStyle = neckGrad;
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-  ctx.beginPath();
-  ctx.moveTo(0.0, -28.8);
-  ctx.lineTo(neckW * 0.7, -28.6);
-  ctx.lineTo(neckW * 0.4, -26.5);
-  ctx.closePath();
-  ctx.fill();
 
   // GŁOWA LUB KIKUT SZYI
   ctx.save();
@@ -3108,10 +3280,10 @@ function _drawCharacter(ctx, GROUND_Y, player) {
 
   if (isRightLimbForeground) {
     renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, null, true, v);
+    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
   } else {
     renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, null, true, v);
+    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
   }
 
   player.currentClass?.onDrawOverlay?.(ctx, player);

@@ -42,7 +42,8 @@ export const CLASS_TEMPLATE = {
   // 3. Pełna konfiguracja wizualna i fason stroju (opcjonalne)
   visuals: {
     // Proporcje i fason ciała
-    muscleMult: 1.0,          // Mnożnik grubości mięśni (np. 1.35 dla osiłka, 0.85 dla lotnika)
+    sculptedMuscles: false,   // false = standardowy model, true = wyrzeźbione brzuśce mięśniowe
+    muscleMult: 1.0,          // Mnożnik grubości mięśni (np. 1.40 dla osiłka, 0.85 dla lotnika)
     sleeveless: false,        // true = odkryte ramiona (tank-top / brak rękawków)
     sleeveLengthMult: 1.0,    // Mnożnik długości rękawków (gdy sleeveless: false)
     

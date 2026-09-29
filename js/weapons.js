@@ -151,13 +151,19 @@ export function getWeaponHoldTransform(p) {
   const looseAimAngle = directAngle + idleDroop;
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance)
-  const braceOffsetX = (isShotgun ? -2.0 : -1.0) * charFacing;
+  const muscleMult = p.currentClass?.visuals?.muscleMult || 1.0;
+  const braceForward = (isShotgun ? 4.0 : 3.5) + (muscleMult - 1.0) * 3.5;
   const braceOffsetY = isCrouch ? 1.5 : 0;
-  const shoulderPivotX = rightShoulderX + braceOffsetX;
-  const shoulderPivotY = rightShoulderY + braceOffsetY;
+  const shoulderPocketX = rightShoulderX + braceForward * charFacing;
+  const shoulderPocketY = rightShoulderY + braceOffsetY;
+
+  const stockLen = isShotgun ? 13.0 : 12.5;
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
-  const shoulderAimAngle = Math.atan2(aimY - shoulderPivotY, (aimX - shoulderPivotX) * charFacing) - muzzleRise;
+  const shoulderAimAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing) - muzzleRise;
+
+  const shoulderPivotX = shoulderPocketX + Math.cos(shoulderAimAngle) * stockLen * charFacing;
+  const shoulderPivotY = shoulderPocketY + Math.sin(shoulderAimAngle) * stockLen;
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
@@ -171,15 +177,15 @@ export function getWeaponHoldTransform(p) {
   const cosA = Math.cos(blendedAngle);
   const sinA = Math.sin(blendedAngle);
 
-  // Punkty podparcia dłoni
-  const rearGripDistX = isShotgun ? 2.0 : 3.8;
-  const rearGripDistY = isShotgun ? 2.8 : 3.8;
+  // Punkty podparcia dłoni skorygowane do nowego chwytu broni (chwyt pistoletowy i łoże)
+  const rearGripDistX = isShotgun ? 1.6 : 1.5;
+  const rearGripDistY = isShotgun ? 4.5 : 4.2;
   const rightHandWorldX = finalPivotX + (cosA * rearGripDistX - sinA * rearGripDistY) * charFacing;
   const rightHandWorldY = finalPivotY + (sinA * rearGripDistX + cosA * rearGripDistY);
 
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  const foreGripDistX = (isShotgun ? 14.5 : 18.0) + pumpShift;
-  const foreGripDistY = isShotgun ? 1.0 : 0.5;
+  const foreGripDistX = (isShotgun ? 16.5 : 17.5) + pumpShift;
+  const foreGripDistY = isShotgun ? 2.0 : 1.2;
   const leftHandWorldX = finalPivotX + (cosA * foreGripDistX - sinA * foreGripDistY) * charFacing;
   const leftHandWorldY = finalPivotY + (sinA * foreGripDistX + cosA * foreGripDistY);
 
@@ -192,6 +198,8 @@ export function getWeaponHoldTransform(p) {
     charFacing,
     rightShoulderX,
     rightShoulderY,
+    shoulderPocketX,
+    shoulderPocketY,
     aimX,
     aimY,
     weight: w,
