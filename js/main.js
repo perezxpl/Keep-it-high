@@ -29,7 +29,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -39,8 +39,13 @@ import {
 } from './network.js';
 
 export function triggerPlayerShoot(p, wep) {
-  shootWeapon(p, wep);
-  sendShootEvent(wep.id, p.x, p.y, p.aimAngle);
+  const muzzle = getMuzzlePosition(p, wep);
+  const targetAimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : muzzle.aimX;
+  const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;
+  const shootAngle = Math.atan2(targetAimY - muzzle.muzzleY, targetAimX - muzzle.muzzleX);
+  p.aimAngle = shootAngle;
+  shootWeapon(p, wep, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
+  sendShootEvent(wep.id, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
 }
 
 // =========================================================================

@@ -1,23 +1,24 @@
 import { createPlayerInstance, setPlayerClass } from './player.js';
 import { WEAPONS, shootWeapon } from './weapons.js';
 import { customObstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena } from './obstacles.js';
-import { spawnJetpackSparks } from './world.js';
+import { spawnJetpackSparks, GROUND_Y } from './world.js';
 import { ball } from './ball.js';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
 // =============================================================================
+const initialGroundY = (typeof GROUND_Y === 'number' && GROUND_Y > 0) ? GROUND_Y : 500;
 export const remotePlayer = createPlayerInstance({
   isIntro: false,
   x: 2600,
-  y: 600,
+  y: initialGroundY - 70,
   facing: -1
 });
 remotePlayer.active = false;
 remotePlayer.isRemote = true;
 remotePlayer.name = 'Gracz 2';
 remotePlayer.targetX = 2600;
-remotePlayer.targetY = 600;
+remotePlayer.targetY = initialGroundY - 70;
 remotePlayer.isJetpacking = false;
 
 // =============================================================================
@@ -76,12 +77,22 @@ export function applyTeamVisuals(isHost) {
 export function updateRemotePlayer(groundY) {
   if (!remotePlayer.active) return;
 
+  remotePlayer.groundY = groundY;
+
+  // Spadek timerów animacji i wystrzału
+  if (remotePlayer.shootCooldown > 0) remotePlayer.shootCooldown--;
+  if (remotePlayer.shootPoseTimer > 0) remotePlayer.shootPoseTimer--;
+  if (remotePlayer.muzzleFlashTimer > 0) remotePlayer.muzzleFlashTimer--;
+  if (remotePlayer.weaponKickback > 0.05) remotePlayer.weaponKickback *= 0.65; else remotePlayer.weaponKickback = 0;
+  if (remotePlayer.muzzleRise > 0.005) remotePlayer.muzzleRise *= 0.72; else remotePlayer.muzzleRise = 0;
+  if (remotePlayer.pumpTimer > 0) remotePlayer.pumpTimer--;
+
   // Płynna interpolacja pozycji (lerp)
   const dx = remotePlayer.targetX - remotePlayer.x;
   const dy = remotePlayer.targetY - remotePlayer.y;
   const dist = Math.hypot(dx, dy);
 
-  if (dist > 140) {
+  if (dist > 180) {
     // Duży przeskok (respawn / teleport)
     remotePlayer.x = remotePlayer.targetX;
     remotePlayer.y = remotePlayer.targetY;
@@ -119,12 +130,14 @@ export function sendPlayerState(localPlayer) {
       type: 'p_state',
       x: Math.round(localPlayer.x * 10) / 10,
       y: Math.round(localPlayer.y * 10) / 10,
+      relY: Math.round((GROUND_Y - localPlayer.y) * 10) / 10,
       vx: Math.round(localPlayer.vx * 10) / 10,
       vy: Math.round(localPlayer.vy * 10) / 10,
       facing: localPlayer.facing,
       aimX: Math.round(localPlayer.aimX),
       aimY: Math.round(localPlayer.aimY),
-      aimAngle: Math.round(localPlayer.aimAngle * 100) / 100,
+      relAimY: Math.round((GROUND_Y - localPlayer.aimY) * 10) / 10,
+      aimAngle: Math.round((localPlayer.aimAngle || 0) * 100) / 100,
       isJumping: !!localPlayer.isJumping,
       isSliding: !!localPlayer.isSliding,
       isRunning: !!localPlayer.isRunning,
@@ -134,9 +147,10 @@ export function sendPlayerState(localPlayer) {
       maxHp: localPlayer.maxHp || 100,
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass,
-      currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'pistol',
+      currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'AK47',
       isJetpacking: !!localPlayer.isJetpacking,
-      jetFuel: Math.round(localPlayer.jetFuel || 0)
+      jetFuel: Math.round(localPlayer.jetFuel || 0),
+      gaitMode: localPlayer.gaitMode
     });
   } catch (e) {
     console.warn('[P2P] Send player state error:', e);
@@ -152,6 +166,7 @@ export function sendBallState(localBall) {
       type: 'b_state',
       x: Math.round(localBall.x * 10) / 10,
       y: Math.round(localBall.y * 10) / 10,
+      relY: Math.round((GROUND_Y - localBall.y) * 10) / 10,
       vx: Math.round(localBall.vx * 100) / 100,
       vy: Math.round(localBall.vy * 100) / 100,
       rot: Math.round((localBall.rot || 0) * 100) / 100,
@@ -160,14 +175,15 @@ export function sendBallState(localBall) {
   } catch (e) { }
 }
 
-export function sendShootEvent(weaponId, x, y, aimAngle) {
+export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
   if (!networkState.conn || !networkState.isConnected) return;
   try {
     networkState.conn.send({
       type: 'shoot',
       weaponId: weaponId,
-      x: Math.round(x),
-      y: Math.round(y),
+      x: Math.round(muzzleX * 10) / 10,
+      y: Math.round(muzzleY * 10) / 10,
+      relY: Math.round((GROUND_Y - muzzleY) * 10) / 10,
       aimAngle: Math.round(aimAngle * 1000) / 1000
     });
   } catch (e) { }
@@ -251,7 +267,7 @@ function handleNetworkData(data) {
       }
       if (data.ball) {
         ball.x = data.ball.x;
-        ball.y = data.ball.y;
+        ball.y = (data.ball.relY !== undefined) ? (GROUND_Y - data.ball.relY) : data.ball.y;
         ball.vx = data.ball.vx;
         ball.vy = data.ball.vy;
       }
@@ -261,12 +277,12 @@ function handleNetworkData(data) {
     case 'p_state': {
       remotePlayer.active = true;
       remotePlayer.targetX = data.x;
-      remotePlayer.targetY = data.y;
+      remotePlayer.targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
       remotePlayer.vx = data.vx;
       remotePlayer.vy = data.vy;
       remotePlayer.facing = data.facing;
       remotePlayer.aimX = data.aimX;
-      remotePlayer.aimY = data.aimY;
+      remotePlayer.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
       remotePlayer.aimAngle = data.aimAngle;
       remotePlayer.isJumping = data.isJumping;
       remotePlayer.isSliding = data.isSliding;
@@ -278,14 +294,16 @@ function handleNetworkData(data) {
       remotePlayer.isDead = data.isDead;
       remotePlayer.isJetpacking = data.isJetpacking;
       remotePlayer.jetFuel = data.jetFuel;
+      if (data.gaitMode) remotePlayer.gaitMode = data.gaitMode;
 
       if (data.selectedClass && remotePlayer.selectedClass !== data.selectedClass) {
         setPlayerClass(data.selectedClass, remotePlayer);
         applyTeamVisuals(networkState.isHost);
       }
 
-      if (data.currentWeaponId && WEAPONS[data.currentWeaponId]) {
-        remotePlayer.currentWeapon = WEAPONS[data.currentWeaponId];
+      const wepId = data.currentWeaponId || data.weaponId;
+      if (wepId && WEAPONS[wepId]) {
+        remotePlayer.currentWeapon = WEAPONS[wepId];
       }
       break;
     }
@@ -293,11 +311,12 @@ function handleNetworkData(data) {
     case 'b_state': {
       // Tylko klient przyjmuje pozycję piłki od hosta
       if (!networkState.isHost) {
+        const targetBallY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
         const dx = data.x - ball.x;
-        const dy = data.y - ball.y;
+        const dy = targetBallY - ball.y;
         if (Math.hypot(dx, dy) > 90) {
           ball.x = data.x;
-          ball.y = data.y;
+          ball.y = targetBallY;
         } else {
           ball.x += dx * 0.45;
           ball.y += dy * 0.45;
@@ -311,10 +330,23 @@ function handleNetworkData(data) {
     }
 
     case 'shoot': {
-      const wep = WEAPONS[data.weaponId] || remotePlayer.currentWeapon;
+      const wep = WEAPONS[data.weaponId] || remotePlayer.currentWeapon || WEAPONS.AK47;
+      remotePlayer.currentWeapon = wep;
       remotePlayer.aimAngle = data.aimAngle;
       remotePlayer.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
-      shootWeapon(remotePlayer, wep);
+
+      // Oblicz pozycję wylotu lufy zsynchronizowaną z lokalnym GROUND_Y odbiorcy
+      const shootOriginX = (typeof data.x === 'number') ? data.x : (remotePlayer.x + remotePlayer.w / 2);
+      const shootOriginY = (data.relY !== undefined)
+        ? (GROUND_Y - data.relY)
+        : ((typeof data.y === 'number') ? data.y : (remotePlayer.y + 20));
+
+      shootWeapon(remotePlayer, wep, shootOriginX, shootOriginY, data.aimAngle);
+      break;
+    }
+
+    case 'hb': {
+      lastReceivedDataTime = performance.now();
       break;
     }
 
@@ -329,8 +361,12 @@ function handleNetworkData(data) {
 
     case 'obs_add': {
       if (data.obs) {
-        customObstacles.push(data.obs);
-        spawnJetpackSparks(data.obs.x + data.obs.w / 2, data.obs.y + data.obs.h / 2, 0, 4);
+        const obs = data.obs;
+        if (obs.relY !== undefined) {
+          obs.y = GROUND_Y - obs.relY;
+        }
+        customObstacles.push(obs);
+        spawnJetpackSparks(obs.x + obs.w / 2, obs.y + obs.h / 2, 0, 4);
       }
       break;
     }
@@ -398,9 +434,63 @@ function handleNetworkData(data) {
 }
 
 // =============================================================================
-// ZARZĄDZANIE SESJĄ PEERJS
+// ZARZĄDZANIE SESJĄ PEERJS, STUN I RESILIENT MULTIPLAYER
 // =============================================================================
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ],
+    iceCandidatePoolSize: 10
+  }
+};
+
 let pingInterval = null;
+let lastReceivedDataTime = 0;
+
+const savedSession = {
+  isHost: false,
+  roomId: null,
+  targetJoinId: null,
+  reconnecting: false,
+  reconnectAttempts: 0
+};
+
+// Web Worker utrzymujący heartbeat w tle na urządzeniach mobilnych (gdy setInterval jest dławiony)
+let heartbeatWorker = null;
+function initHeartbeatWorker() {
+  if (heartbeatWorker) return;
+  try {
+    const blobCode = `
+      let timer = null;
+      self.onmessage = function(e) {
+        if (e.data === 'start') {
+          if (timer) clearInterval(timer);
+          timer = setInterval(function() {
+            self.postMessage('hb_tick');
+          }, 1200);
+        } else if (e.data === 'stop') {
+          if (timer) { clearInterval(timer); timer = null; }
+        }
+      };
+    `;
+    const blob = new Blob([blobCode], { type: 'application/javascript' });
+    heartbeatWorker = new Worker(URL.createObjectURL(blob));
+    heartbeatWorker.onmessage = () => {
+      if (networkState.conn && networkState.isConnected) {
+        try {
+          networkState.conn.send({ type: 'hb', ts: performance.now() });
+        } catch (e) { }
+      }
+    };
+  } catch (err) {
+    console.warn('[P2P] WebWorker heartbeat niedostępny, fallback do setInterval:', err);
+  }
+}
 
 function startPingLoop() {
   if (pingInterval) clearInterval(pingInterval);
@@ -412,6 +502,12 @@ function startPingLoop() {
           ts: performance.now()
         });
       } catch (e) { }
+
+      // Sprawdź brak pakietów (>25s) tylko gdy okno jest aktywne
+      if (!document.hidden && lastReceivedDataTime > 0 && (performance.now() - lastReceivedDataTime > 25000)) {
+        console.warn('[P2P] Timeout braku pakietów >25s');
+        handleDisconnect('Utracono kontakt z drugim graczem (Timeout).');
+      }
     }
   }, 2000);
 }
@@ -423,13 +519,50 @@ function stopPingLoop() {
   }
 }
 
+export function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    console.log('[P2P] Aplikacja wznowiona na pierwszym planie.');
+
+    // 1. Wznów połączenie sygnalizacyjne z serwerem PeerJS
+    if (networkState.peer && !networkState.peer.destroyed && networkState.peer.disconnected) {
+      console.log('[P2P] Ponowne łączenie z serwerem sygnalizacyjnym PeerJS...');
+      try { networkState.peer.reconnect(); } catch (e) { }
+    }
+
+    // 2. Jeśli kanał WebRTC DataChannel nadal jest otwarty, wyślij natychmiastowe keepalive
+    if (networkState.conn && networkState.conn.open) {
+      try {
+        networkState.conn.send({ type: 'hb', ts: performance.now() });
+        networkState.conn.send({ type: 'ping', ts: performance.now() });
+      } catch (e) { }
+      updateUIStatus('connected', networkState.isHost ? 'Połączono z Graczem 2 (Klient)' : 'Połączono z Hostem gry');
+      return;
+    }
+
+    // 3. Jeśli połączenie zerwało się podczas uśpienia na telefonie, automatycznie wznów połączenie!
+    if (!networkState.isHost && savedSession.targetJoinId && !savedSession.reconnecting) {
+      console.log('[P2P] Wznawianie zerwanego połączenia klienta po uśpieniu do pokoju:', savedSession.targetJoinId);
+      savedSession.reconnecting = true;
+      updateUIStatus('connecting', 'Wznawianie gry po uśpieniu telefonu...');
+      setTimeout(() => {
+        if (!networkState.isConnected && savedSession.targetJoinId) {
+          joinRoom(savedSession.targetJoinId, true);
+        }
+      }, 500);
+    }
+  }
+}
+
 function setupConnection(conn, isHost) {
   networkState.conn = conn;
   networkState.isHost = isHost;
+  lastReceivedDataTime = performance.now();
 
   conn.on('open', () => {
     networkState.isConnected = true;
     networkState.status = 'connected';
+    savedSession.reconnecting = false;
+    savedSession.reconnectAttempts = 0;
     updateUIStatus('connected', isHost ? 'Połączono z Graczem 2 (Klient)' : 'Połączono z Hostem gry');
 
     remotePlayer.active = true;
@@ -437,30 +570,49 @@ function setupConnection(conn, isHost) {
     remotePlayer.hp = 100;
     applyTeamVisuals(isHost);
 
-    // Host wysyła inicjalny stan mapy i areny
+    // Host wysyła inicjalny stan mapy, areny i piłki (z pozycją Y względną do ziemi)
     if (isHost) {
       conn.send({
         type: 'init_sync',
         arenaId: activeArenaId,
         customObstacles: customObstacles,
-        ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy }
+        ball: {
+          x: ball.x,
+          y: ball.y,
+          relY: GROUND_Y - ball.y,
+          vx: ball.vx,
+          vy: ball.vy
+        }
       });
     }
 
     startPingLoop();
+    initHeartbeatWorker();
+    if (heartbeatWorker) {
+      try { heartbeatWorker.postMessage('start'); } catch (e) { }
+    }
   });
 
   conn.on('data', (data) => {
+    lastReceivedDataTime = performance.now();
     handleNetworkData(data);
   });
 
   conn.on('close', () => {
+    console.warn('[P2P] WebRTC conn zamknięty. document.hidden:', document.hidden);
+    if (document.hidden) {
+      // Jeśli telefon został zminimalizowany, nie pokazuj od razu błędu – poczekaj na wznowienie
+      networkState.isConnected = false;
+      return;
+    }
     handleDisconnect('Połączenie zostało zamknięte przez drugiego gracza.');
   });
 
   conn.on('error', (err) => {
     console.warn('[P2P] Connection error:', err);
-    handleDisconnect('Błąd transmisji danych WebRTC.');
+    if (!document.hidden) {
+      handleDisconnect('Błąd transmisji danych WebRTC.');
+    }
   });
 }
 
@@ -474,16 +626,27 @@ export function hostRoom() {
 
   updateUIStatus('hosting', 'Rejestracja pokoju...');
   const shortId = 'kih-' + Math.random().toString(36).substring(2, 6);
+  savedSession.isHost = true;
+  savedSession.roomId = shortId;
+  savedSession.targetJoinId = null;
 
   try {
-    const peer = new Peer(shortId, { debug: 1 });
+    const peer = new Peer(shortId, PEER_CONFIG);
     networkState.peer = peer;
     networkState.isHost = true;
 
     peer.on('open', (id) => {
       networkState.roomId = id;
+      savedSession.roomId = id;
       updateUIStatus('hosting', `Oczekiwanie na gracza... Kod: ${id}`);
       displayHostRoomCode(id);
+    });
+
+    peer.on('disconnected', () => {
+      console.warn('[P2P] Host peer rozłączony z serwerem sygnalizacyjnym, ponawianie...');
+      if (networkState.peer && !networkState.peer.destroyed) {
+        try { networkState.peer.reconnect(); } catch (e) { }
+      }
     });
 
     peer.on('connection', (conn) => {
@@ -493,13 +656,18 @@ export function hostRoom() {
     peer.on('error', (err) => {
       console.warn('[P2P] Peer host error:', err);
       if (err.type === 'unavailable-id') {
-        // ID zajęte, utwórz z automatycznym identyfikatorem
-        const autoPeer = new Peer();
+        const autoPeer = new Peer(PEER_CONFIG);
         networkState.peer = autoPeer;
         autoPeer.on('open', (id) => {
           networkState.roomId = id;
+          savedSession.roomId = id;
           updateUIStatus('hosting', `Oczekiwanie na gracza... Kod: ${id}`);
           displayHostRoomCode(id);
+        });
+        autoPeer.on('disconnected', () => {
+          if (networkState.peer && !networkState.peer.destroyed) {
+            try { networkState.peer.reconnect(); } catch (e) { }
+          }
         });
         autoPeer.on('connection', (c) => setupConnection(c, true));
       } else {
@@ -511,42 +679,80 @@ export function hostRoom() {
   }
 }
 
-export function joinRoom(targetId) {
+export function joinRoom(targetId, isAutoReconnect = false) {
   if (!targetId || targetId.trim() === '') {
-    alert('Wpisz prawidłowy kod pokoju!');
+    if (!isAutoReconnect) alert('Wpisz prawidłowy kod pokoju!');
     return;
   }
   if (typeof Peer === 'undefined') {
-    alert('Biblioteka PeerJS nie została załadowana. Sprawdź połączenie internetowe.');
+    if (!isAutoReconnect) alert('Biblioteka PeerJS nie została załadowana. Sprawdź połączenie internetowe.');
     return;
   }
 
   targetId = targetId.trim().toLowerCase();
-  disconnectNetwork();
+  savedSession.isHost = false;
+  savedSession.targetJoinId = targetId;
 
-  updateUIStatus('connecting', `Łączenie z ${targetId}...`);
+  if (!isAutoReconnect) {
+    disconnectNetwork();
+    savedSession.targetJoinId = targetId;
+  } else {
+    stopPingLoop();
+    if (networkState.conn) {
+      try { networkState.conn.close(); } catch (e) { }
+      networkState.conn = null;
+    }
+    if (networkState.peer) {
+      try { networkState.peer.destroy(); } catch (e) { }
+      networkState.peer = null;
+    }
+    networkState.isConnected = false;
+  }
+
+  updateUIStatus('connecting', isAutoReconnect ? `Wznawianie gry z ${targetId}...` : `Łączenie z ${targetId}...`);
 
   try {
-    const peer = new Peer({ debug: 1 });
+    const peer = new Peer(PEER_CONFIG);
     networkState.peer = peer;
     networkState.isHost = false;
 
     peer.on('open', () => {
-      const conn = peer.connect(targetId, { reliable: true });
+      const conn = peer.connect(targetId, {
+        reliable: true
+      });
       setupConnection(conn, false);
+    });
+
+    peer.on('disconnected', () => {
+      console.warn('[P2P] Client peer rozłączony z serwerem sygnalizacyjnym, ponawianie...');
+      if (networkState.peer && !networkState.peer.destroyed) {
+        try { networkState.peer.reconnect(); } catch (e) { }
+      }
     });
 
     peer.on('error', (err) => {
       console.warn('[P2P] Peer join error:', err);
-      updateUIStatus('disconnected', `Nie można połączyć z ${targetId}. Sprawdź kod pokoju.`);
+      if (!isAutoReconnect || savedSession.reconnectAttempts >= 3) {
+        updateUIStatus('disconnected', `Nie można połączyć z ${targetId}. Sprawdź kod pokoju.`);
+        savedSession.reconnecting = false;
+      }
     });
   } catch (err) {
     updateUIStatus('disconnected', 'Błąd tworzenia klienta P2P.');
+    savedSession.reconnecting = false;
   }
 }
 
 export function disconnectNetwork() {
   stopPingLoop();
+  if (heartbeatWorker) {
+    try { heartbeatWorker.postMessage('stop'); } catch (e) { }
+  }
+
+  savedSession.roomId = null;
+  savedSession.targetJoinId = null;
+  savedSession.reconnecting = false;
+  savedSession.reconnectAttempts = 0;
 
   if (networkState.conn) {
     try { networkState.conn.close(); } catch (e) { }
@@ -568,6 +774,9 @@ export function disconnectNetwork() {
 
 function handleDisconnect(reason) {
   stopPingLoop();
+  if (heartbeatWorker) {
+    try { heartbeatWorker.postMessage('stop'); } catch (e) { }
+  }
   networkState.isConnected = false;
   remotePlayer.active = false;
   updateUIStatus('disconnected', reason || 'Rozłączono');
@@ -932,6 +1141,11 @@ export function initNetwork() {
       }, 500);
     }
   } catch (e) { }
+
+  // Obsługa powrotu z uśpienia / minimalizacji na urządzeniach mobilnych
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('pageshow', handleVisibilityChange);
+  window.addEventListener('focus', handleVisibilityChange);
 
   updateCursorVisibility();
 }

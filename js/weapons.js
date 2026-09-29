@@ -237,9 +237,10 @@ export function getMuzzlePosition(shooter, weapon) {
 /**
  * Wystrzał z broni – z wyłączonym fizycznym odpychaniem postaci
  */
-export function shootWeapon(shooter, weapon) {
+export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead) return;
-  if (shooter.shootCooldown > 0) return;
+  // Zdalny gracz ma sprawdzany cooldown u nadawcy - nie blokujemy go u odbiorcy
+  if (shooter.shootCooldown > 0 && !shooter.isRemote) return;
 
   const isCrouch = !!shooter.isCrouching;
 
@@ -255,21 +256,32 @@ export function shootWeapon(shooter, weapon) {
   }
   shooter.shootPoseWeight = 1.0;
 
-  const { muzzleX, muzzleY, shoulderX, shoulderY, aimAngle, charFacing, aimX, aimY } = getMuzzlePosition(shooter, weapon);
-  const effectiveGroundY = (typeof shooter.groundY === 'number' && shooter.groundY > 0)
-    ? shooter.groundY
-    : (typeof GROUND_Y === 'number' && GROUND_Y > 0 ? GROUND_Y : 500);
+  let muzzleX, muzzleY, theta;
+  if (overrideX !== undefined && overrideY !== undefined && overrideAngle !== undefined) {
+    muzzleX = overrideX;
+    muzzleY = overrideY;
+    theta = overrideAngle;
+  } else {
+    const muzzle = getMuzzlePosition(shooter, weapon);
+    muzzleX = muzzle.muzzleX;
+    muzzleY = muzzle.muzzleY;
 
-  const wallHit = checkRayObstacleCollision(shoulderX, shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
-  if (wallHit) {
-    spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, 5);
-    shooter.shootCooldown = weapon.fireRate;
-    shooter.muzzleFlashTimer = 2;
-    if (weapon.recoil > 1.2) triggerScreenShake(2.5);
-    return;
+    const effectiveGroundY = (typeof shooter.groundY === 'number' && shooter.groundY > 0)
+      ? shooter.groundY
+      : (typeof GROUND_Y === 'number' && GROUND_Y > 0 ? GROUND_Y : 500);
+
+    const wallHit = checkRayObstacleCollision(muzzle.shoulderX, muzzle.shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
+    if (wallHit) {
+      spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, 5);
+      if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
+      shooter.muzzleFlashTimer = 2;
+      if (weapon.recoil > 1.2 && !shooter.isRemote) triggerScreenShake(2.5);
+      return;
+    }
+
+    theta = Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
   }
 
-  const theta = Math.atan2(aimY - muzzleY, aimX - muzzleX);
   const activeSpread = weapon.spread * (isCrouch ? weapon.crouchSpreadMult : 1.0);
 
   for (let i = 0; i < weapon.pellets; i++) {
@@ -295,13 +307,14 @@ export function shootWeapon(shooter, weapon) {
     });
   }
 
-  shooter.shootCooldown = weapon.fireRate;
   shooter.muzzleFlashTimer = 2;
-
-  if (weapon.recoil > 1.5) {
-    triggerScreenShake(isCrouch ? 2.4 : 3.8);
-  } else {
-    triggerScreenShake(1.2);
+  if (!shooter.isRemote) {
+    shooter.shootCooldown = weapon.fireRate;
+    if (weapon.recoil > 1.5) {
+      triggerScreenShake(isCrouch ? 2.4 : 3.8);
+    } else {
+      triggerScreenShake(1.2);
+    }
   }
 
   spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
