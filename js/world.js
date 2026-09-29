@@ -96,8 +96,17 @@ export function resize(player) {
   }
 }
 
+export let devZoomLevel = null; // null = automatyczny zoom gry, liczba = sztywny zoom DEV (np. 1.5)
+export function setDevZoom(val) {
+  devZoomLevel = val !== null ? Math.max(0.35, Math.min(2.5, val)) : null;
+}
+
 export function updateCamera(player, ball) {
-  camera.targetZoom = 0.75;
+  if (devZoomLevel !== null) {
+    camera.targetZoom = devZoomLevel;
+  } else {
+    camera.targetZoom = 0.75; // domyślny zoom gry
+  }
   camera.zoom += (camera.targetZoom - camera.zoom) * camera.smoothZoom;
 
   camera.targetX = (player.x + player.w / 2) + (player.vx * 12);

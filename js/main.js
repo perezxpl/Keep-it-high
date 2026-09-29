@@ -10,7 +10,8 @@ import {
   jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles,
   consumeHitstop, updateGore, drawBloodDecals, drawGore, clearGore,
   updateSeveredHeads, drawSeveredHeads,
-  weaponButtons
+  weaponButtons,
+  devZoomLevel, setDevZoom
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -141,7 +142,7 @@ canvas.addEventListener('touchstart', (e) => {
     let touchedWeaponBtn = false;
     for (const btn of weaponButtons) {
       if (t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
-          t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
+        t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
         player.currentWeapon = WEAPONS[btn.id];
         touchedWeaponBtn = true;
         break;
@@ -906,6 +907,106 @@ function handleEditorRightClick() {
 
 initObstacleEditorUI();
 
+// =========================================================================
+// DEV ZOOM CONTROLS (PRZYBLIŻANIE / ODDALANIE KAMERY W MENU DEV)
+// =========================================================================
+let devZoomLabel = null;
+
+export function updateDevZoomLabel() {
+  if (!devZoomLabel) return;
+  if (devZoomLevel !== null) {
+    devZoomLabel.textContent = `ZOOM: ${devZoomLevel.toFixed(2)}x`;
+    devZoomLabel.style.color = '#38bdf8';
+    devZoomLabel.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+  } else {
+    devZoomLabel.textContent = `ZOOM: Auto`;
+    devZoomLabel.style.color = '#94a3b8';
+    devZoomLabel.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+  }
+}
+
+export function initDevZoomUI() {
+  const devMenu = document.getElementById('dev-menu');
+  if (!devMenu) return;
+
+  const sep = document.createElement('span');
+  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+  sep.textContent = '|';
+  devMenu.appendChild(sep);
+
+  devZoomLabel = document.createElement('span');
+  devZoomLabel.className = 'dev-btn';
+  devZoomLabel.id = 'dev-zoom-label';
+  devZoomLabel.style.cssText = 'color: #94a3b8; font-weight: 700; cursor: default; user-select: none;';
+  devZoomLabel.textContent = 'ZOOM: Auto';
+  devMenu.appendChild(devZoomLabel);
+
+  const zoomOutBtn = document.createElement('button');
+  zoomOutBtn.className = 'dev-btn';
+  zoomOutBtn.id = 'dev-zoom-out-btn';
+  zoomOutBtn.title = 'Oddal widok kamery (-0.25x)';
+  zoomOutBtn.textContent = '🔍 - Oddal';
+  zoomOutBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
+    setDevZoom(cur - 0.25);
+    updateDevZoomLabel();
+  });
+  devMenu.appendChild(zoomOutBtn);
+
+  const zoomResetBtn = document.createElement('button');
+  zoomResetBtn.className = 'dev-btn';
+  zoomResetBtn.id = 'dev-zoom-reset-btn';
+  zoomResetBtn.title = 'Ustaw zoom dokładnie na 1.0x (widok 1:1)';
+  zoomResetBtn.textContent = '🔍 Reset (1.0x)';
+  zoomResetBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    setDevZoom(1.0);
+    updateDevZoomLabel();
+  });
+  devMenu.appendChild(zoomResetBtn);
+
+  const zoomInBtn = document.createElement('button');
+  zoomInBtn.className = 'dev-btn';
+  zoomInBtn.id = 'dev-zoom-in-btn';
+  zoomInBtn.title = 'Przybliż widok kamery (+0.25x, max 2.5x)';
+  zoomInBtn.textContent = '🔍 + Przybliż';
+  zoomInBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
+    setDevZoom(cur + 0.25);
+    updateDevZoomLabel();
+  });
+  devMenu.appendChild(zoomInBtn);
+
+  const zoomAutoBtn = document.createElement('button');
+  zoomAutoBtn.className = 'dev-btn';
+  zoomAutoBtn.id = 'dev-zoom-auto-btn';
+  zoomAutoBtn.title = 'Przywróć domyślny automatyczny zoom kamery';
+  zoomAutoBtn.textContent = '🔍 Auto';
+  zoomAutoBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    setDevZoom(null);
+    updateDevZoomLabel();
+  });
+  devMenu.appendChild(zoomAutoBtn);
+
+  updateDevZoomLabel();
+}
+
+window.addEventListener('wheel', (e) => {
+  const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
+  if (isDevOpen || e.altKey) {
+    e.preventDefault();
+    const current = devZoomLevel !== null ? devZoomLevel : camera.zoom;
+    const delta = e.deltaY < 0 ? 0.15 : -0.15;
+    setDevZoom(current + delta);
+    updateDevZoomLabel();
+  }
+}, { passive: false });
+
+initDevZoomUI();
+
 let jumpKeyPressed = false;
 let lastWPressTime = 0;
 let isJetpackActive = false;
@@ -1047,7 +1148,7 @@ canvas.addEventListener('mousedown', (e) => {
   // 0. Obsługa kliknięcia myszą w kafelki broni (dolny lewy róg)
   for (const btn of weaponButtons) {
     if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
-        e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
+      e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
       player.currentWeapon = WEAPONS[btn.id];
       return;
     }
