@@ -38,6 +38,9 @@ export const mouseState = {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
+let jetpackAirborneSession = false;
+let lastSPressTime = 0;
+
 export const leftStick = {
   active: false,
   id: null,
@@ -53,7 +56,8 @@ export const leftStick = {
   jumpTriggered: false,
   waitingForJetpackTap: false,
   jetpackWindowTimer: 0,
-  isJetpacking: false
+  isJetpacking: false,
+  jetpackAirborneSession: false
 };
 
 export const rightStick = {
@@ -80,12 +84,20 @@ export const rightStick = {
   gestureCooldownUntil: 0
 };
 
-// Przyciski dotykowe (usunięto przycisk SKOK - po prawej stronie pozostał tylko WŚLIZG)
+// Przyciski dotykowe (po prawej stronie pozostał tylko WŚLIZG)
 const btnCluster = {
   slide: { x: 0, y: 0, r: 30, active: false, id: null }
 };
 
-const keys = { left: false, right: false, down: false, up: false, space: false, slide: false };
+const keys = {
+  left: false,
+  right: false,
+  down: false,
+  up: false,
+  space: false,
+  slide: false,
+  ctrl: false
+};
 
 function updateButtonLayout() {
   btnCluster.slide.x = W - 60;
@@ -133,9 +145,12 @@ canvas.addEventListener('touchstart', (e) => {
       leftStick.axisX = 0;
       leftStick.axisY = 0;
 
-      // Sprawdzenie: Czy kliknięcie nastąpiło w oknie 300 ms dla Jetpacka?
-      if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
+      if (leftStick.jetpackAirborneSession) {
         leftStick.isJetpacking = true;
+      } else if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
+        leftStick.isJetpacking = true;
+        leftStick.jetpackAirborneSession = true;
+        jetpackAirborneSession = true;
         leftStick.waitingForJetpackTap = false;
         leftStick.jetpackWindowTimer = 0;
       } else {
@@ -154,7 +169,6 @@ canvas.addEventListener('touchstart', (e) => {
         btnCluster.slide.id = t.identifier;
         playerSlide(spawnGrass, GROUND_Y);
       } else if (!rightStick.active) {
-        // Czy kliknięto w oknie 300 ms od wycelowania -> Rozpoczęcie ognia ciągłego
         if (rightStick.waitingForSecondTap && rightStick.windowTimer > 0) {
           rightStick.active = true;
           rightStick.id = t.identifier;
@@ -167,7 +181,6 @@ canvas.addEventListener('touchstart', (e) => {
           player.isAiming = true;
           player.isShooting = true;
 
-          // Korekta celownika w kierunku nowego dotknięcia względem bazy drążka
           const dx = t.clientX - rightStick.baseX;
           const dy = t.clientY - rightStick.baseY;
           const sDist = Math.hypot(dx, dy);
@@ -185,7 +198,6 @@ canvas.addEventListener('touchstart', (e) => {
             shootWeapon(player, curWep);
           }
         } else {
-          // Nowy cykl celowania
           rightStick.active = true;
           rightStick.id = t.identifier;
           rightStick.baseX = t.clientX;
@@ -215,7 +227,6 @@ canvas.addEventListener('touchmove', (e) => {
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
 
-    // Obsługa lewego drążka
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.curX = t.clientX;
       leftStick.curY = t.clientY;
@@ -235,7 +246,7 @@ canvas.addEventListener('touchmove', (e) => {
       }
 
       // 1. Skok przy mocnym wychyleniu lewego drążka w górę
-      if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro) {
+      if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro && !leftStick.jetpackAirborneSession) {
         const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
         player.vy = -jumpForce;
         player.isJumping = true;
@@ -249,17 +260,19 @@ canvas.addEventListener('touchmove', (e) => {
         leftStick.jumpTriggered = false;
       }
 
-      // 2. Jetpack: aktywny podczas trybu isJetpacking przy wychyleniu w górę (axisY < -0.15)
-      if (leftStick.isJetpacking) {
+      // 2. Ciąg jetpacka przy wychyleniu w górę
+      if (leftStick.jetpackAirborneSession || leftStick.isJetpacking) {
         if (leftStick.axisY < -0.15 && (player.jetFuel || 0) > 0) {
           isJetpackActive = true;
+          leftStick.isJetpacking = true;
+          leftStick.jetpackAirborneSession = true;
+          jetpackAirborneSession = true;
         } else {
           isJetpackActive = false;
         }
       }
     }
 
-    // Obsługa prawego drążka (celowanie + dynamiczne korygowanie ognia)
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.curX = t.clientX;
       rightStick.curY = t.clientY;
@@ -278,7 +291,6 @@ canvas.addEventListener('touchmove', (e) => {
         player.isAiming = true;
       }
 
-      // Detekcja gestu kopnięcia (Wychylenie -> Cofnięcie do osi -> Wypchnięcie)
       if (!rightStick.isShooting) {
         const now = performance.now();
         const outerThreshold = 36;
@@ -311,19 +323,16 @@ function endTouch(e) {
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
 
-    // Puszczenie lewego drążka
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.active = false;
       leftStick.id = null;
 
       const hadUpwardMotion = (leftStick.axisY < -0.40) || leftStick.jumpTriggered;
 
-      if (leftStick.isJetpacking) {
-        leftStick.isJetpacking = false;
-        isJetpackActive = false;
-        leftStick.waitingForJetpackTap = false;
-        leftStick.jetpackWindowTimer = 0;
-      } else if (hadUpwardMotion) {
+      isJetpackActive = false;
+      leftStick.isJetpacking = false;
+
+      if (!leftStick.jetpackAirborneSession && hadUpwardMotion) {
         leftStick.waitingForJetpackTap = true;
         leftStick.jetpackWindowTimer = 300;
       }
@@ -338,7 +347,6 @@ function endTouch(e) {
       btnCluster.slide.id = null;
     }
 
-    // Puszczenie prawego drążka
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
@@ -349,7 +357,6 @@ function endTouch(e) {
       player.isShooting = false;
       player.isAiming = false;
 
-      // Okno 300 ms na powtórny tap dla strzelania serią
       rightStick.waitingForSecondTap = true;
       rightStick.windowTimer = 300;
       rightStick.lingerAlpha = 1.0;
@@ -383,6 +390,8 @@ export function teleportToDistance(meters) {
   player.kickState = 'IDLE';
   player.gaitMode = 'IDLE';
   isJetpackActive = false;
+  jetpackAirborneSession = false;
+  leftStick.jetpackAirborneSession = false;
 
   ball.x = targetX + (30 * (player.facing || 1));
   ball.y = GROUND_Y - ball.radius;
@@ -844,14 +853,32 @@ const DOUBLE_TAP_WINDOW_MS = 280;
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
-  if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+
+  // Obsługa kucania klawiszem Ctrl na komputerze
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+    keys.ctrl = true;
+  }
+
+  // Obsługa klawisza S / Strzałka w dół (kucanie + podwójny tap dla drop-through)
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+    const now = performance.now();
+    if (now - lastSPressTime < 280) {
+      player.dropThroughTimer = 18; // Zeskok z kładki przy szybkim podwójnym kliknięciu S
+    }
+    lastSPressTime = now;
+    keys.down = true;
+  }
 
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !jumpKeyPressed) {
     jumpKeyPressed = true;
 
     const now = performance.now();
-    if (now - lastWPressTime < DOUBLE_TAP_WINDOW_MS && (player.jetFuel || 0) > 5) {
+    if (jetpackAirborneSession && (player.jetFuel || 0) > 5) {
       isJetpackActive = true;
+    } else if (now - lastWPressTime < DOUBLE_TAP_WINDOW_MS && (player.jetFuel || 0) > 5) {
+      isJetpackActive = true;
+      jetpackAirborneSession = true;
+      leftStick.jetpackAirborneSession = true;
     }
     lastWPressTime = now;
 
@@ -914,7 +941,13 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
-  if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+    keys.ctrl = false;
+  }
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+    keys.down = false;
+  }
 
   if (e.code === 'KeyW' || e.code === 'ArrowUp') {
     jumpKeyPressed = false;
@@ -1069,7 +1102,6 @@ function update() {
       player.aimOffsetY = -20;
     }
 
-    // Gdy drążek jest nieaktywny i nie trwa strzelanie, celownik obraca się ze zwrotem postaci
     if (!rightStick.active && !player.isShooting && !player.isAiming) {
       if (player.facing === 1 && player.aimOffsetX < 0) {
         player.aimOffsetX = Math.abs(player.aimOffsetX);
@@ -1078,7 +1110,6 @@ function update() {
       }
     }
 
-    // Kluczowe: celownik ZAWSZE w każdej klatce porusza się w świecie razem z pozycją gracza
     player.aimX = hipX + player.aimOffsetX;
     player.aimY = hipY + player.aimOffsetY;
   }
@@ -1179,6 +1210,21 @@ function update() {
   updateBall(GROUND_Y);
   checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
   checkObstacleCollisions(ball, GROUND_Y, player);
+
+  // =========================================================================
+  // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU NA ZIEMI / PLATFORMIE
+  // =========================================================================
+  const currentFloor = player.currentGroundY || GROUND_Y;
+  const isPlayerGrounded = !player.isJumping && (player.y >= currentFloor - player.h - 3);
+
+  if (isPlayerGrounded || player.isDead) {
+    jetpackAirborneSession = false;
+    leftStick.jetpackAirborneSession = false;
+    leftStick.isJetpacking = false;
+    leftStick.waitingForJetpackTap = false;
+    leftStick.jetpackWindowTimer = 0;
+    isJetpackActive = false;
+  }
 
   if (bot.active) {
     updateBotBrain(ball, player, GROUND_Y, spawnGrass);

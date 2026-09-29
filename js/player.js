@@ -191,6 +191,8 @@ export function createPlayerInstance(overrides = {}) {
 
     aimX: START_X + 160,
     aimY: 0,
+    aimOffsetX: 160,
+    aimOffsetY: -20,
     isAiming: false,
     jetFuel: 100,
     jetMax: 100,
@@ -544,11 +546,6 @@ export function executeReleaseKick(ballParam, p = player, forcePower = null) {
   }
 }
 
-/**
- * 2-Bone IK z kierunkiem zgięcia stawu:
- * - bendDir = -1: kolana wyginają się w przód (default dla nóg)
- * - bendDir = +1: łokcie opadają w dół pod broń (naturalne zgięcie rąk)
- */
 export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
   if (isNaN(tx) || isNaN(ty)) {
     tx = hx;
@@ -991,7 +988,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;
   if (player.shootPoseTimer > 0) player.shootPoseTimer--;
 
-  // Aktualizacja stanów balistycznych i animacji broni (kickback, muzzle rise, pompka)
   updateWeaponState(player);
 
   const isShootingStance = (player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0);
@@ -1017,7 +1013,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   if (keys) {
     if (keys.right) inputAxisX += 1;
     if (keys.left) inputAxisX -= 1;
-    if (keys.down) inputAxisY += 1;
+    if (keys.down || keys.ctrl) inputAxisY += 1;
 
     if (keys.up && !player.isJumping && !player.isSliding && !player.isIntro) {
       const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
@@ -1039,10 +1035,23 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     }
   }
 
+  // LEWY DRĄŻEK: KUCANIE W MIEJSCU ORAZ CHÓD NA KUCKA OD KĄTA 20 STOPNI
   if (leftStick && leftStick.active) {
     inputAxisX = leftStick.axisX;
     inputAxisY = leftStick.axisY;
+
+    if (leftStick.axisY > 0.35) {
+      const angleFromDownRad = Math.atan2(Math.abs(leftStick.axisX), Math.max(0.0001, leftStick.axisY));
+      const angleDeg = angleFromDownRad * (180 / Math.PI);
+      if (angleDeg < 20) {
+        inputAxisX = 0; // Kucanie w miejscu
+      }
+    }
   }
+
+  const isPcCtrl = !!(keys && (keys.ctrl || keys.down));
+  const isTouchCrouch = !!(leftStick && leftStick.active && leftStick.axisY > 0.35);
+  player.isCrouching = (isPcCtrl || isTouchCrouch) && !player.isSliding && !player.isJumping;
 
   const now = performance.now();
   if (player.isJumping) {
@@ -1072,7 +1081,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   const slideDecel = player.currentClass?.stats?.slideDecel || CONFIG.SLIDE_DECEL;
 
   let targetTopSpeed;
-  if ((keys && keys.down) || inputAxisY > 0.45) {
+  if (player.isCrouching) {
     targetTopSpeed = CONFIG.CROUCH_SPEED;
   } else {
     const isSprint = Math.abs(inputAxisX) > 0.75;
@@ -1172,8 +1181,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       }
     }
 
-    player.isCrouching = (inputAxisY > 0.45 || (keys && keys.down)) && !player.isSliding && !player.isJumping;
-
     if (player.isSliding) {
       player.vx *= slideDecel;
       player.slideTimer--;
@@ -1199,6 +1206,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
         player.vx += (targetVx - player.vx) * accel;
       } else {
         player.vx *= decel;
+      }
+
+      // STABILIZACJA I ANCHORING: Brak cofania przy strzelaniu ze stania/zaparcia
+      if (player.shootPoseWeight > 0.2 && Math.abs(inputAxisX) < 0.15) {
+        player.vx *= 0.65;
       }
     }
 
@@ -1243,7 +1255,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   const speed = Math.abs(player.vx);
 
   let wantKneeJuggle = false;
-  if ((player.gaitMode === 'WALK' || player.gaitMode === 'IDLE') && ball && !player.isIntro && !player.isSliding && !player.isJumping && player.kickState === 'IDLE') {
+  if ((player.gaitMode === 'WALK' || player.gaitMode === 'IDLE') && ball && !player.isIntro && !player.isSliding && !player.isJumping && player.kickState === 'IDLE' && player.shootPoseWeight < 0.1) {
     const ballRelX = (ball.x - hipX) * player.facing;
     const ballRelY = ball.y - hipY;
     if (ballRelX >= 4 && ballRelX <= 38 && ballRelY >= -52 && ballRelY <= 8) {
@@ -1384,8 +1396,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
   }
 
+  // W zaparciu strzeleckim tułów mocno kompensuje odrzut w stronę celu
   if (player.shootPoseWeight > 0) {
-    const shootingLean = player.isCrouching ? 0.09 : 0.055;
+    const shootingLean = player.isCrouching ? 0.09 : 0.075;
     targetTilt += shootingLean * player.facing * player.shootPoseWeight;
   }
 
@@ -1451,7 +1464,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   } else if (player.isCrouching) {
     targetPelvisY = 16.5;
   } else if (player.gaitMode === 'IDLE') {
-    targetPelvisY = -11.8;
+    // Obniżenie środka ciężkości w rozkroku przy strzelaniu ze stania
+    const braceDip = (player.shootPoseWeight || 0) * 3.2;
+    targetPelvisY = -11.8 + braceDip;
   } else if (player.gaitMode === 'WALK') {
     targetPelvisY = -10.4 - Math.cos(player.stridePhase * 2 - 0.3) * 1.8;
   } else if (player.gaitMode === 'JOG') {
@@ -1468,7 +1483,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   player.headBobVel = (player.headBobVel + headForce) * 0.65;
   player.headBob += player.headBobVel;
 
-  // Głowa i wzrok (śledzenie celu)
   const headX = hipX + (28 * Math.sin(player.torsoTilt));
   const headY = hipY - (28 * Math.cos(player.torsoTilt)) - 10 + player.headBob;
 
@@ -2203,10 +2217,12 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     rawBackSwing = 0.35;
     rawBackElbow = 0.65;
   } else if (player.gaitMode === 'CROUCH') {
-    rawFootFrontTargetX = hipX + (6 * player.facing);
+    // KUCANIE W MIEJSCU / W ZAPARCIU STRZELECKIM
+    const braceW = (player.shootPoseWeight || 0);
+    rawFootFrontTargetX = hipX + (lerp(6, 12, braceW) * player.facing);
     rawFootFrontTargetY = plantFloorY - 6.5;
     rawFootFrontAnkle = 0.50 * player.facing;
-    rawFootBackTargetX = hipX - (8 * player.facing);
+    rawFootBackTargetX = hipX - (lerp(8, 14, braceW) * player.facing);
     rawFootBackTargetY = plantFloorY - 7.0;
     rawFootBackAnkle = 0.60 * player.facing;
 
@@ -2215,12 +2231,18 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     rawBackSwing = -0.12;
     rawBackElbow = 0.55;
   } else if (player.gaitMode === 'IDLE') {
-    rawFootFrontTargetX = hipX + (3 * player.facing);
+    // POSTAWA W ROZKROKU PRZY STRZELANIU ZE STANIA
+    const braceW = (player.shootPoseWeight || 0);
+    const frontOffset = lerp(3, 16, braceW) * player.facing;
+    const backOffset = lerp(-3, -15, braceW) * player.facing;
+
+    rawFootFrontTargetX = hipX + frontOffset;
     rawFootFrontTargetY = plantFloorY;
-    rawFootFrontAnkle = 0;
-    rawFootBackTargetX = hipX - (3 * player.facing);
+    rawFootFrontAnkle = lerp(0, 0.06, braceW) * player.facing;
+
+    rawFootBackTargetX = hipX + backOffset;
     rawFootBackTargetY = plantFloorY;
-    rawFootBackAnkle = 0;
+    rawFootBackAnkle = lerp(0, -0.14, braceW) * player.facing;
 
     const breathe = Math.sin(performance.now() * 0.003) * 0.03;
     rawFrontSwing = 0.05 + breathe;
@@ -2306,7 +2328,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   }
 
   // =========================================================================
-  // KINEMATYKA RĄK PRAWORĘCZNEGO STRZELCA (ŁOKCIE SKIEROWANE W DÓŁ POD BROŃ)
+  // KINEMATYKA RĄK PRAWORĘCZNEGO STRZELCA
   // =========================================================================
   if (player.currentWeapon && !player.isDead) {
     const hold = getWeaponHoldTransform(player);
@@ -2431,7 +2453,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
 
   const vis = player.currentClass?.visuals;
 
-  // 1. Dalsza ręka i noga (tło) + hook onDrawUnder
   player.currentClass?.onDrawUnder?.(ctx, player);
   if (isRightLimbForeground) {
     renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, vis);
@@ -2441,7 +2462,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, vis);
   }
 
-  // 2. Tors i biodra
   ctx.save();
   ctx.translate(hipX, hipY);
   ctx.rotate(p.torsoTilt);
@@ -2552,7 +2572,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.closePath();
   ctx.fill();
 
-  // Głowa
   ctx.save();
   ctx.translate(0.0, -30.5 + (player.headBob * 0.35));
 
@@ -2714,10 +2733,8 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.restore();
   ctx.restore();
 
-  // 3. Renderowanie broni
   drawHeldWeapon(ctx, player);
 
-  // 4. Bliższa ręka i noga (pierwszy plan)
   const armColFront = v?.armColorFront || '#e53935';
   const legThighFront = v?.legThighFront || '#dc2626';
   const legShinFront = v?.legShinFront || '#e53935';

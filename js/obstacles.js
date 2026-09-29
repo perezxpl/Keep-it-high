@@ -57,16 +57,14 @@ export function undoCustomObstacle() {
 
 // =========================================================================
 // ARENA 1: SOLDAT NIGHT OPS (TAKTYCZNA BAZA WOJSKOWA 3200 PX)
-// Szerokość: ARENA_WIDTH = 3200 px (od START_X: 160 do 3360). Środek / Ołtarz: 1760.
 // =========================================================================
 export const ARENA_1_PLATFORMS = [
-  // 1. Lewy Bastion Twierdzy (Baza Cyan z bramką)
   {
     id: 'west_bastion_fortress',
     type: 'rock_platform',
     isBastion: true,
     theme: 'cyan',
-    x: START_X + 20, // 180
+    x: START_X + 20,
     w: 380,
     relY: 130,
     thickness: 22,
@@ -76,22 +74,20 @@ export const ARENA_1_PLATFORMS = [
       { type: 'crate', rx: 40, w: 36, h: 26 }
     ]
   },
-  // 2. Kładka pod bramkę Cyan w połowie wysokości areny (relY: 500)
   {
     id: 'catwalk_goal_west',
     type: 'catwalk',
-    x: START_X + 20, // 180
+    x: START_X + 20,
     w: 260,
     relY: 500,
     thickness: 16,
     chains: [30, 230]
   },
-  // 3. GŁÓWNY OŁTARZ CENTRALNY (CENTRAL ALTAR - X: 1600 do 1920, Środek: 1760)
   {
     id: 'central_altar_platform',
     type: 'altar_island',
     isAltar: true,
-    x: START_X + 1440, // 1600
+    x: START_X + 1440,
     w: 320,
     relY: 190,
     thickness: 24,
@@ -101,23 +97,21 @@ export const ARENA_1_PLATFORMS = [
       { type: 'sandbags', rx: 255, w: 45, h: 20 }
     ]
   },
-  // 4. Kładka pod bramkę Orange w połowie wysokości areny (relY: 500)
   {
     id: 'catwalk_goal_east',
     type: 'catwalk',
-    x: START_X + ARENA_WIDTH - 280, // 3080
+    x: START_X + ARENA_WIDTH - 280,
     w: 260,
     relY: 500,
     thickness: 16,
     chains: [30, 230]
   },
-  // 5. Prawy Bastion Twierdzy (Baza Orange z bramką)
   {
     id: 'east_bastion_fortress',
     type: 'rock_platform',
     isBastion: true,
     theme: 'orange',
-    x: START_X + 2800, // 2960
+    x: START_X + 2800,
     w: 380,
     relY: 130,
     thickness: 22,
@@ -135,7 +129,7 @@ export const ARENA_1_GOALS = [
   {
     id: 'goal_arena1_west',
     team: 'CYAN',
-    x: START_X + 35, // 195
+    x: START_X + 35,
     relY: 500,
     w: 100,
     h: 125,
@@ -146,7 +140,7 @@ export const ARENA_1_GOALS = [
   {
     id: 'goal_arena1_east',
     team: 'ORANGE',
-    x: START_X + ARENA_WIDTH - 135, // 3225
+    x: START_X + ARENA_WIDTH - 135,
     relY: 500,
     w: 100,
     h: 125,
@@ -160,7 +154,7 @@ export const arena1State = {
   waitingForKickoff: true,
   kickoffCooldown: 0,
   initialSetupDone: false,
-  altarX: START_X + ARENA_WIDTH / 2, // 1760 (dokładny środek areny)
+  altarX: START_X + ARENA_WIDTH / 2,
   altarRelY: 245
 };
 
@@ -178,10 +172,8 @@ export function spawnAltarShockwave(x, y) {
 
 // =========================================================================
 // ARENA 2: CYBERPUNKOWE KOLOSEUM (CYBER STADIUM)
-// Szerokość i granice: START_X (160) do START_X + 1600 (1760). Środek: 960.
 // =========================================================================
 export const ARENA_CYBER_STADIUM_PLATFORMS = [
-  // 1. Lewy betonowy bastion z bramką CYAN (x: 160, w: 280, relY: 240)
   {
     id: 'cyber_bastion_west',
     type: 'rock_platform',
@@ -196,7 +188,6 @@ export const ARENA_CYBER_STADIUM_PLATFORMS = [
       { type: 'sandbags', rx: 130, w: 50, h: 20 }
     ]
   },
-  // 2. Prawy betonowy bastion z bramką ORANGE (x: 1480, w: 280, relY: 240)
   {
     id: 'cyber_bastion_east',
     type: 'rock_platform',
@@ -240,7 +231,6 @@ export const ARENA_CYBER_STADIUM_GOALS = [
   }
 ];
 
-// Aktywny zestaw platform i barykad
 export let activeArenaId = 'ARENA_1';
 export const ARENA_PLATFORMS = [...ARENA_1_PLATFORMS];
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
@@ -267,7 +257,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     GOALS.push(...ARENA_CYBER_STADIUM_GOALS);
     arena1State.waitingForKickoff = false;
 
-    // Pozycjonowanie graczy i piłki na środku boiska Cyber Stadium
     if (playerObj) {
       playerObj.x = 750;
       playerObj.y = groundY - playerObj.h;
@@ -307,7 +296,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     arena1State.kickoffCooldown = 0;
 
     if (playerObj) {
-      playerObj.x = START_X + 240; // 400 (na lewym bastionie)
+      playerObj.x = START_X + 240;
       playerObj.y = groundY - 130 - playerObj.h;
       playerObj.vx = 0;
       playerObj.vy = 0;
@@ -319,7 +308,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (botObj) {
-      botObj.x = START_X + ARENA_WIDTH - 240; // 3120 (na prawym bastionie)
+      botObj.x = START_X + ARENA_WIDTH - 240;
       botObj.y = groundY - 130 - botObj.h;
       botObj.vx = 0;
       botObj.vy = 0;
@@ -343,20 +332,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
 export function getPlatformSurfaceY(plat, px, groundY) {
   return groundY - plat.relY;
-}
-
-let isDownPressed = false;
-if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-      isDownPressed = true;
-    }
-  });
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-      isDownPressed = false;
-    }
-  });
 }
 
 // =========================================================================
@@ -456,7 +431,6 @@ export function explodeBarrel(barrel, groundY) {
   const radius = 120;
   const maxDmg = 45;
 
-  // 1. Obrażenia i silne odrzucenie gracza
   if (_activePlayer && !_activePlayer.isDead) {
     const px = _activePlayer.x + _activePlayer.w / 2;
     const py = _activePlayer.y + _activePlayer.h / 2;
@@ -476,7 +450,6 @@ export function explodeBarrel(barrel, groundY) {
     }
   }
 
-  // 2. Obrażenia i impuls dla bota
   if (bot && bot.active && !bot.isDead) {
     const bx = bot.x + bot.w / 2;
     const by = bot.y + bot.h / 2;
@@ -496,7 +469,6 @@ export function explodeBarrel(barrel, groundY) {
     }
   }
 
-  // 3. Silne odrzucenie piłki
   if (_activeBall) {
     const distBall = Math.hypot(_activeBall.x - cx, _activeBall.y - cy);
     if (distBall <= radius) {
@@ -508,7 +480,6 @@ export function explodeBarrel(barrel, groundY) {
     }
   }
 
-  // 4. Detonacja łańcuchowa kolejnych beczek
   for (let i = customObstacles.length - 1; i >= 0; i--) {
     const other = customObstacles[i];
     if (other && other.type === 'explosive_barrel' && !other.exploded) {
@@ -522,7 +493,9 @@ export function explodeBarrel(barrel, groundY) {
   }
 }
 
-// Obsługa lądowania na każdym z pięter do 72 m oraz zeskoku (drop-through)
+// =========================================================================
+// OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
+// =========================================================================
 export function checkPlayerPlatformLanding(p, groundY) {
   if (!p || p.isIntro) return;
 
@@ -532,16 +505,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const feetY = p.y + p.h;
   const centerX = p.x + p.w / 2;
 
-  // Zeskok w dół (drop-through): gracz stoi na platformie/rampie/bunkrze i wciska S/strzałkę w dół, kuca lub aktywował dropThroughTimer
-  const isHuman = !p.isBot;
-  const wantDrop = (isHuman && (isDownPressed || p.isCrouching)) || (p.dropThroughTimer > 0);
+  // POPRAWKA: Zeskok w dół następuje WYŁĄCZNIE gdy aktywuje się dropThroughTimer
+  // (np. podwójne szarpnięcie drążkiem w dół lub podwójne 'S').
+  // Kucanie (p.isCrouching) NIE zrzuca już gracza z platformy!
+  const wantDrop = (p.dropThroughTimer > 0);
 
   if (wantDrop) {
     for (const plat of ARENA_PLATFORMS) {
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
         const topY = getPlatformSurfaceY(plat, centerX, groundY);
 
-        // 1. Zeskok z powierzchni platformy / kładki
         if (Math.abs(feetY - topY) <= 14 && p.y < groundY - p.h - 2) {
           p.y = topY - p.h + 12;
           p.vy = 2.8;
@@ -552,7 +525,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
           return;
         }
 
-        // 2. Zeskok z tarasu bunkra lub ołtarza
         if (plat.props) {
           const tier = plat.props.find(pr => pr.type === 'bunker_tier' || pr.type === 'altar_pedestal');
           if (tier) {
@@ -575,7 +547,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     }
 
-    // Zeskok z platform i kładek postawionych przez gracza (customObstacles)
     for (const obs of customObstacles) {
       if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower' || obs.type === 'metal_ramp_left' || obs.type === 'metal_ramp_right') {
         const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -601,17 +572,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     }
 
-    // Dopóki klawisz 'S' / strzałka w dół jest trzymany, pomijamy lądowanie na platformach
     p.currentGroundY = groundY;
     return;
   }
 
-  // Interaktywne zachowania przeszkód gracza (customObstacles)
+  // Interaktywne przeszkody gracza (customObstacles)
   for (const obs of customObstacles) {
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const bottomY = topY + obs.h;
 
-    // 1. Jump Pad
     if (obs.type === 'jump_pad') {
       if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
         if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
@@ -625,9 +594,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
           return;
         }
       }
-    }
-    // 2. Speed Booster Pad (neonowy pas przyspieszający)
-    else if (obs.type === 'speed_booster_pad') {
+    } else if (obs.type === 'speed_booster_pad') {
       if (centerX >= obs.x && centerX <= obs.x + obs.w && feetY >= topY - 8 && feetY <= topY + 12) {
         if (!p.boostCooldown || p.boostCooldown <= 0) {
           const facing = p.facing || (p.vx >= 0 ? 1 : -1);
@@ -637,18 +604,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
           triggerScreenShake(3.0);
         }
       }
-    }
-    // 3. Gravity Lift (strumień antygrawitacyjny unoszący płynnie w górę)
-    else if (obs.type === 'gravity_lift') {
+    } else if (obs.type === 'gravity_lift') {
       if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
         p.vy = Math.max(-6.5, p.vy - 0.7);
         p.isJumping = true;
         p.airVx = p.vx;
         spawnJetpackSparks(centerX, p.y + p.h, 0, 1);
       }
-    }
-    // 4. Cyber Bumper (sprężysty pinballowy odbijacz o promieniu 20 px)
-    else if (obs.type === 'cyber_bumper') {
+    } else if (obs.type === 'cyber_bumper') {
       const cx = obs.x + obs.w / 2;
       const cy = topY + obs.h / 2;
       const px = p.x + p.w / 2;
@@ -666,9 +629,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
         triggerScreenShake(5.0);
         spawnJetpackSparks(cx + nx * 20, cy + ny * 20, 0, 8);
       }
-    }
-    // 5. Barbed Wire (drut kolczasty - spowolnienie i drobne obrażenia)
-    else if (obs.type === 'barbed_wire') {
+    } else if (obs.type === 'barbed_wire') {
       if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY >= topY && p.y <= bottomY) {
         p.vx *= 0.45;
         obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
@@ -677,9 +638,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
           if (p.hp <= 0 && !p.isDead) { p.isDead = true; p.respawnTimer = 180; }
         }
       }
-    }
-    // 6. Laser Gate (kurtyna laserowa - przepuszcza zadając 15 obrażeń)
-    else if (obs.type === 'laser_gate') {
+    } else if (obs.type === 'laser_gate') {
       if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
         if (!p.laserCooldown || p.laserCooldown <= 0) {
           p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
@@ -697,7 +656,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
   for (const plat of ARENA_PLATFORMS) {
     if (centerX >= plat.x - 4 && centerX <= plat.x + plat.w + 4) {
       const topY = getPlatformSurfaceY(plat, centerX, groundY);
-
       const prevFeetY = feetY - p.vy;
       const isLanding = p.vy >= 0 && prevFeetY <= topY + 12 && feetY >= topY - 10 && feetY <= topY + Math.max(20, p.vy + 10);
 
@@ -708,9 +666,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Lądowanie na obiektach gracza (customObstacles)
   for (const obs of customObstacles) {
-    // Obiekty niemające płaskiej powierzchni do stania pomijamy
     if (obs.type === 'hedgehog' || obs.type === 'gravity_lift' || obs.type === 'barbed_wire' || obs.type === 'laser_gate' || obs.type === 'cyber_bumper' || obs.type === 'speed_booster_pad') {
       continue;
     }
@@ -754,7 +710,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Poziome odpychanie od ścian bloków betonowych, murów, beczek i pylonów
   for (const obs of customObstacles) {
     if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall' || obs.type === 'explosive_barrel') {
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -891,7 +846,6 @@ export function resolveBallObstacleCollisions(ball, groundY) {
     }
   }
 
-  // Barykady na ziemi (GROUND_BARRICADES)
   for (const bar of GROUND_BARRICADES) {
     if (bar.type === 'sandbags' || bar.type === 'ammo_depot') {
       const barLeft = bar.x;
@@ -949,16 +903,12 @@ export function resolveBallObstacleCollisions(ball, groundY) {
     }
   }
 
-  // =========================================================================
-  // KOLIZJE PIŁKI Z PRZESZKODAMI GRACZA (CUSTOM_OBSTACLES)
-  // =========================================================================
   for (const obs of customObstacles) {
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const bottomY = topY + obs.h;
     const obsLeft = obs.x;
     const obsRight = obs.x + obs.w;
 
-    // 1. Cyber Bumper - sprężysty pinballowy odbijacz
     if (obs.type === 'cyber_bumper') {
       const cx = obs.x + obs.w / 2;
       const cy = topY + obs.h / 2;
@@ -980,9 +930,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         spawnAltarShockwave(cx, cy);
         continue;
       }
-    }
-    // 2. Speed Booster Pad - neonowy pas podłogowy
-    else if (obs.type === 'speed_booster_pad') {
+    } else if (obs.type === 'speed_booster_pad') {
       if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y + cR >= topY - 3 && ball.y - cR <= bottomY) {
         const dir = Math.abs(ball.vx) > 0.5 ? Math.sign(ball.vx) : 1;
         ball.y = topY - cR;
@@ -992,24 +940,18 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         triggerScreenShake(2.5);
         continue;
       }
-    }
-    // 3. Gravity Lift - słup unoszący piłkę ku górze
-    else if (obs.type === 'gravity_lift') {
+    } else if (obs.type === 'gravity_lift') {
       if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y >= topY - cR && ball.y <= bottomY + cR) {
         ball.vy = Math.max(-6.5, ball.vy - 0.7);
         continue;
       }
-    }
-    // 4. Stalowe rampy skośne - fizyka odbicia pod kątem
-    else if (obs.type === 'metal_ramp_left') {
+    } else if (obs.type === 'metal_ramp_left') {
       resolveSegmentCollision(ball, obs.x, topY, obs.x + obs.w, topY + obs.h, 6, 0, 0, 0, 0, 0.75, 0.20);
       continue;
     } else if (obs.type === 'metal_ramp_right') {
       resolveSegmentCollision(ball, obs.x, topY + obs.h, obs.x + obs.w, topY, 6, 0, 0, 0, 0, 0.75, 0.20);
       continue;
-    }
-    // 5. Jump Pad
-    else if (obs.type === 'jump_pad') {
+    } else if (obs.type === 'jump_pad') {
       if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR) {
         if (ball.y + cR >= topY - 2 && ball.y - cR <= bottomY) {
           ball.y = topY - cR - 3;
@@ -1021,9 +963,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
           continue;
         }
       }
-    }
-    // 6. Kładki, Heksagony, Wieże - jednostronne lądowanie od góry
-    else if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower') {
+    } else if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower') {
       if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR) {
         if (ball.vy > 0) {
           const prevBottomY = (ball.y - ball.vy) + cR;
@@ -1037,15 +977,11 @@ export function resolveBallObstacleCollisions(ball, groundY) {
           }
         }
       }
-    }
-    // 7. Drut kolczasty - tarcie powierzchniowe
-    else if (obs.type === 'barbed_wire') {
+    } else if (obs.type === 'barbed_wire') {
       if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y + cR >= topY && ball.y - cR <= bottomY) {
         ball.vx *= 0.94;
       }
-    }
-    // 8. Jeż stalowy
-    else if (obs.type === 'hedgehog') {
+    } else if (obs.type === 'hedgehog') {
       const hcx = obs.x + obs.w / 2;
       const hcy = topY + obs.h / 2;
       const hr = (obs.size || 32) / 2;
@@ -1064,9 +1000,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         ball.vy = -ball.vy * 0.70;
         if (speed > 6.0) triggerScreenShake(2.2);
       }
-    }
-    // 9. Obiekty bryłowe AABB (mury, bloki, lasery, beczki, skrzynie, worki, pylon)
-    else {
+    } else {
       const ballLeft = ball.x - cR;
       const ballRight = ball.x + cR;
       const ballTop = ball.y - cR;
@@ -1120,11 +1054,7 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
     resolveBallObstacleCollisions(ball, groundY);
   }
 
-  // =========================================================================
-  // MECHANIKA ARENY 1: OŁTARZ CENTRALNY (LEWITACJA / KICKOFF) I BRAMKI
-  // =========================================================================
   if (activeArenaId === 'ARENA_1') {
-    // 1. Inicjalne przygotowanie przy pierwszym uruchomieniu gry
     if (!arena1State.initialSetupDone) {
       arena1State.initialSetupDone = true;
       arena1State.waitingForKickoff = true;
@@ -1147,7 +1077,6 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
       }
     }
 
-    // 2. Obsługa restartu pozycji (np. po klawiszu 'R' lub restarcie gracza)
     if (p && p.isIntro) {
       p.isIntro = false;
       p.gaitMode = 'IDLE';
@@ -1170,7 +1099,6 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
       arena1State.kickoffCooldown--;
     }
 
-    // 3. Podtrzymywanie piłki lewitującej na ołtarzu centralnym przed startem meczu
     if (arena1State.waitingForKickoff && ball) {
       const time = performance.now() * 0.003;
       const hoverY = (groundY - arena1State.altarRelY) + Math.sin(time) * 6;
@@ -1181,7 +1109,6 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
       ball.spin = 0;
       ball.trail = [];
 
-      // Sprawdzenie rozpoczęcia meczu (kickoff)
       if (arena1State.kickoffCooldown <= 0) {
         const pCenterX = p ? p.x + p.w / 2 : Infinity;
         const pCenterY = p ? p.y + p.h / 2 : Infinity;
@@ -1205,7 +1132,6 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
       }
     }
 
-    // 4. Detekcja goli w Arenie 1 (Bramki lewa i prawa)
     if (!arena1State.waitingForKickoff && ball) {
       for (const g of GOALS) {
         const bottomY = groundY - g.relY;
@@ -1224,7 +1150,6 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
           triggerScreenShake(15);
           triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
 
-          // Reset piłki na ołtarz centralny w oczekiwaniu na kolejny kickoff
           arena1State.waitingForKickoff = true;
           arena1State.kickoffCooldown = 65;
           ball.x = arena1State.altarX;
@@ -1920,7 +1845,6 @@ function drawRockIsland(ctx, plat, groundY) {
 
     drawHazardStripes(ctx, plat.x, topY + thick - 5, plat.w, 4);
   } else if (plat.isAltar || plat.type === 'altar_island') {
-    // Stylistyka Ołtarza Centralnego (czysta pozioma płyta o stałej grubości)
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(plat.x, topY, plat.w, thick);
     ctx.strokeStyle = '#475569';
@@ -1940,7 +1864,6 @@ function drawRockIsland(ctx, plat, groundY) {
 
     drawHazardStripes(ctx, plat.x, topY + thick - 5, plat.w, 4);
   } else {
-    // Czysty, płaski profil platformy o stałej grubości thickness
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(plat.x, topY, plat.w, thick);
     ctx.strokeStyle = '#475569';
@@ -2043,7 +1966,6 @@ function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor)
   const numPillars = 4;
   const span = (width - pillarW) / (numPillars - 1);
 
-  // 1. Masywne betonowe filary nośne
   for (let i = 0; i < numPillars; i++) {
     const px = startX + i * span;
     const colGrad = ctx.createLinearGradient(px, topY, px + pillarW, topY);
@@ -2057,14 +1979,12 @@ function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor)
     ctx.lineWidth = 1.2;
     ctx.strokeRect(px, topY, pillarW, h);
 
-    // Poziome dylatacje w betonie
     ctx.fillStyle = '#0f172a';
     for (let y = topY + 25; y < bottomY - 10; y += 32) {
       ctx.fillRect(px, y, pillarW, 2.5);
     }
   }
 
-  // 2. Stalowe kratownice 'X-truss' łączące filary
   ctx.strokeStyle = '#64748b';
   ctx.lineWidth = 2.8;
   for (let i = 0; i < numPillars - 1; i++) {
@@ -2085,13 +2005,11 @@ function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor)
       ctx.lineTo(p1X, bayBottom);
       ctx.stroke();
 
-      // Pozioma belka
       ctx.beginPath();
       ctx.moveTo(p1X, bayBottom);
       ctx.lineTo(p2X, bayBottom);
       ctx.stroke();
 
-      // Węzeł nitowy
       ctx.fillStyle = '#94a3b8';
       ctx.beginPath();
       ctx.arc((p1X + p2X) / 2, (bayTop + bayBottom) / 2, 2.4, 0, Math.PI * 2);
@@ -2099,7 +2017,6 @@ function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor)
     }
   }
 
-  // 3. Pionowy neonowy pasek akcentowy na filarze
   ctx.save();
   ctx.strokeStyle = accentColor;
   ctx.shadowColor = accentColor;
@@ -2115,9 +2032,7 @@ function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor)
 
 function drawCyberStadiumStructures(ctx, groundY) {
   ctx.save();
-  // Konstrukcje pod lewym bastionem (x: 160 do 440, relY: 240)
   drawBastionSubstructure(ctx, 160, 280, groundY - 240, groundY, '#06b6d4');
-  // Konstrukcje pod prawym bastionem (x: 1480 do 1760, relY: 240)
   drawBastionSubstructure(ctx, 1480, 280, groundY - 240, groundY, '#f97316');
   ctx.restore();
 }
@@ -2134,7 +2049,6 @@ function drawNeonGoals(ctx, groundY, goals) {
 
     ctx.save();
 
-    // 1. Poświata wnętrza bramki
     const netGlow = ctx.createLinearGradient(
       g.facing === 1 ? leftX : rightX, bottomY,
       g.facing === 1 ? rightX : leftX, bottomY
@@ -2144,7 +2058,6 @@ function drawNeonGoals(ctx, groundY, goals) {
     ctx.fillStyle = netGlow;
     ctx.fillRect(leftX, topY, g.w, g.h);
 
-    // 2. Siatka bramki z laserowej plecionki
     ctx.save();
     ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.35)' : 'rgba(249, 115, 22, 0.35)';
     ctx.lineWidth = 1.0;
@@ -2161,7 +2074,6 @@ function drawNeonGoals(ctx, groundY, goals) {
     ctx.stroke();
     ctx.restore();
 
-    // 3. Neonowa rama bramki z shadowBlur (cyjan po lewej, bursztyn/orange po prawej)
     ctx.save();
     ctx.strokeStyle = g.color;
     ctx.shadowColor = g.glowColor;
@@ -2184,7 +2096,6 @@ function drawNeonGoals(ctx, groundY, goals) {
     ctx.lineTo(mouthX, bottomY);
     ctx.stroke();
 
-    // Wewnętrzny jasny rdzeń rury neonowej
     ctx.strokeStyle = '#ffffff';
     ctx.shadowBlur = 0;
     ctx.lineWidth = 1.2;
@@ -2196,7 +2107,6 @@ function drawNeonGoals(ctx, groundY, goals) {
     ctx.stroke();
     ctx.restore();
 
-    // 4. Cyfrowy neonowy napis drużyny nad bramką
     ctx.save();
     ctx.fillStyle = g.color;
     ctx.shadowColor = g.color;
@@ -2222,7 +2132,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
 
-  // 1. Zewnętrzny stożek światła z górnego pomostu na ołtarz
   const beamTopW = 40;
   const beamBottomW = 240;
 
@@ -2242,7 +2151,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.closePath();
   ctx.fill();
 
-  // 2. Wewnętrzny jaskrawy rdzeń światła
   const coreGrad = ctx.createLinearGradient(altarX, gantryY, altarX, topY);
   coreGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.90)');
   coreGrad.addColorStop(0.35, 'rgba(224, 242, 254, 0.45)');
@@ -2257,7 +2165,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.closePath();
   ctx.fill();
 
-  // 3. Iluminacja i plama światła na cokole ołtarza
   const poolGrad = ctx.createRadialGradient(altarX, pedestalY + 4, 10, altarX, pedestalY + 4, 120);
   poolGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.70)');
   poolGrad.addColorStop(0.35, 'rgba(56, 189, 248, 0.40)');
@@ -2269,7 +2176,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.ellipse(altarX, pedestalY + 2, 115, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 4. Reflektor na górnym pomoście
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = '#38bdf8';
   ctx.shadowBlur = 24;
@@ -2279,12 +2185,10 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
 
   ctx.restore();
 
-  // Efekty lewitacji piłki przed startem meczu
   if (arena1State.waitingForKickoff) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 3.5);
 
     ctx.save();
-    // Efekt poświaty / bańki ochronnej
     const bubbleGrad = ctx.createRadialGradient(altarX, hoverY, 4, altarX, hoverY, 30 + pulse * 6);
     bubbleGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.65)');
     bubbleGrad.addColorStop(0.4, 'rgba(0, 229, 255, 0.35)');
@@ -2295,7 +2199,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
     ctx.arc(altarX, hoverY, 30 + pulse * 6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Dwa obracające się neonowe pierścienie energii wokół piłki
     ctx.strokeStyle = `rgba(0, 229, 255, ${0.75 + pulse * 0.25})`;
     ctx.shadowColor = '#00e5ff';
     ctx.shadowBlur = 10;
@@ -2309,7 +2212,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
     ctx.ellipse(altarX, hoverY, 26 + pulse * 3, 9, -time * 2.2, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Holo-wskaźnik nad piłką
     ctx.font = 'bold 9.5px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
@@ -2319,7 +2221,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
     ctx.restore();
   }
 
-  // Rysowanie fali uderzeniowej po rozpoczęciu meczu (shockwaves)
   for (let i = altarShockwaves.length - 1; i >= 0; i--) {
     const sw = altarShockwaves[i];
     sw.radius += 3.5;
@@ -2364,14 +2265,12 @@ export function drawObstacles(ctx, groundY) {
     }
   }
 
-  // 5. Renderowanie przeszkód z edytora gracza (customObstacles)
   for (const obs of customObstacles) {
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     drawSingleObstacleByType(ctx, obs.type, obs.x, topY, obs.w, obs.h, groundY, obs.hitTimer || 0);
   }
 
   drawBarrelExplosionParticles(ctx);
-
   drawNeonGoals(ctx, groundY, GOALS);
 
   if (activeArenaId === 'ARENA_1') {
@@ -2398,10 +2297,10 @@ export function getSegmentAABBIntersection(x1, y1, x2, y2, left, top, right, bot
   const p = [-dx, dx, -dy, dy];
   const q = [x1 - left, right - x1, y1 - top, bottom - y1];
   const normals = [
-    [-1, 0], // lewa krawędź
-    [1, 0],  // prawa krawędź
-    [0, -1], // górna krawędź
-    [0, 1]   // dolna krawędź
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1]
   ];
 
   let hitNorm = [0, -1];
@@ -2530,7 +2429,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // 1. Podłoże
   if (y2 >= groundY) {
     if (y1 < groundY) {
       const dy = y2 - y1;
@@ -2555,7 +2453,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // 2. Barykady naziemne (GROUND_BARRICADES)
   if (Array.isArray(GROUND_BARRICADES)) {
     for (const bar of GROUND_BARRICADES) {
       if (bar.type === 'sandbags' || bar.type === 'ammo_depot') {
@@ -2575,18 +2472,15 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // 3. Platformy, bunkry, skrzynki i kładki (ARENA_PLATFORMS)
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.type === 'rock_platform' || plat.type === 'citadel_island' || plat.type === 'altar_island') {
         const topY = groundY - plat.relY;
         const thick = plat.thickness || 20;
 
-        // Płaska płyta platformy
         const rockHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
         recordHit(rockHit);
 
-        // Rekwizyty na platformie (bunkry, worki, skrzynki)
         if (Array.isArray(plat.props)) {
           for (const prop of plat.props) {
             if (prop.w && prop.h) {
@@ -2606,7 +2500,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // 4. Proceduralne / dynamiczne przeszkody
   const obsList = extraObstacles || obstacles;
   if (Array.isArray(obsList)) {
     for (const obs of obsList) {
@@ -2627,7 +2520,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // 5. Przeszkody postawione przez gracza (customObstacles)
   if (Array.isArray(customObstacles)) {
     for (const obs of customObstacles) {
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -2649,7 +2541,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
           recordHit(hit, 'custom_cyber_bumper');
         }
       } else if (obs.type === 'metal_ramp_left') {
-        // Skośna płaszczyzna najazdu
         const rampHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, topY + obs.h);
         if (rampHit) recordHit(rampHit, 'custom_metal_ramp_left');
         const backHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY, obs.x, topY + obs.h);
@@ -2657,7 +2548,6 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const botHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY + obs.h);
         if (botHit) recordHit(botHit, 'custom_metal_ramp_left');
       } else if (obs.type === 'metal_ramp_right') {
-        // Skośna płaszczyzna najazdu
         const rampHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY);
         if (rampHit) recordHit(rampHit, 'custom_metal_ramp_right');
         const backHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x + obs.w, topY, obs.x + obs.w, topY + obs.h);
