@@ -38,42 +38,58 @@ export const mouseState = {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-const leftStick = {
-  active: false, id: null, baseX: 0, baseY: 0, curX: 0, curY: 0,
-  axisX: 0, axisY: 0, maxRadius: 55
-};
-
-const rightStick = {
+export const leftStick = {
   active: false,
   id: null,
-  baseX: 0, baseY: 0,
-  curX: 0, curY: 0,
-  axisX: 0, axisY: 0,
-  maxRadius: 65,
-  // Tap-to-shoot detection
-  tapStartTime: 0,
-  tapStartX: 0,
-  tapStartY: 0,
-  // 300 ms linger fade
-  lingerTimer: 0,
-  lingerAlpha: 0
+  baseX: 0,
+  baseY: 0,
+  curX: 0,
+  curY: 0,
+  axisX: 0,
+  axisY: 0,
+  maxRadius: 55,
+
+  // Skok i obsługa jetpacka na lewym drążku
+  jumpTriggered: false,
+  waitingForJetpackTap: false,
+  jetpackWindowTimer: 0,
+  isJetpacking: false
 };
 
+export const rightStick = {
+  active: false,
+  id: null,
+  baseX: 0,
+  baseY: 0,
+  curX: 0,
+  curY: 0,
+  axisX: 0,
+  axisY: 0,
+  maxRadius: 65,
+
+  // Tryb strzelania i okno 300 ms po wycelowaniu
+  isShooting: false,
+  waitingForSecondTap: false,
+  windowTimer: 0,
+  lingerAlpha: 0,
+
+  // Maszyna stanów gestu wykopu (Wypchnięcie -> Cofnięcie -> Wypchnięcie)
+  gestureState: 'IDLE',
+  gestureLastOutTime: 0,
+  gestureRetractTime: 0,
+  gestureCooldownUntil: 0
+};
+
+// Przyciski dotykowe (usunięto przycisk SKOK - po prawej stronie pozostał tylko WŚLIZG)
 const btnCluster = {
-  jump: { x: 0, y: 0, r: 30, active: false, id: null },
-  slide: { x: 0, y: 0, r: 26, active: false, id: null },
-  kick: { x: 0, y: 0, r: 28, active: false, id: null }
+  slide: { x: 0, y: 0, r: 30, active: false, id: null }
 };
 
 const keys = { left: false, right: false, down: false, up: false, space: false, slide: false };
 
 function updateButtonLayout() {
-  btnCluster.jump.x = W - 60;
-  btnCluster.jump.y = H - 200;
   btnCluster.slide.x = W - 60;
-  btnCluster.slide.y = H - 135;
-  btnCluster.kick.x = W - 60;
-  btnCluster.kick.y = H - 70;
+  btnCluster.slide.y = H - 85;
 }
 
 const canvasEl = document.getElementById('game');
@@ -104,43 +120,91 @@ canvas.addEventListener('touchstart', (e) => {
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
 
+    // =======================================================================
+    // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK
+    // =======================================================================
     if (t.clientX < midX && !leftStick.active) {
       leftStick.active = true;
       leftStick.id = t.identifier;
-      leftStick.baseX = t.clientX; leftStick.baseY = t.clientY;
-      leftStick.curX = t.clientX; leftStick.curY = t.clientY;
-      leftStick.axisX = 0; leftStick.axisY = 0;
+      leftStick.baseX = t.clientX;
+      leftStick.baseY = t.clientY;
+      leftStick.curX = t.clientX;
+      leftStick.curY = t.clientY;
+      leftStick.axisX = 0;
+      leftStick.axisY = 0;
+
+      // Sprawdzenie: Czy kliknięcie nastąpiło w oknie 300 ms dla Jetpacka?
+      if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
+        leftStick.isJetpacking = true;
+        leftStick.waitingForJetpackTap = false;
+        leftStick.jetpackWindowTimer = 0;
+      } else {
+        leftStick.isJetpacking = false;
+        leftStick.waitingForJetpackTap = false;
+        leftStick.jetpackWindowTimer = 0;
+      }
     }
 
+    // =======================================================================
+    // PRAWA STRONA EKRANU: WŚLIZG, CELOWANIE, STRZAŁ I GEST KOPNIĘCIA
+    // =======================================================================
     if (t.clientX >= midX) {
-      if (dist(t.clientX, t.clientY, btnCluster.jump.x, btnCluster.jump.y) < btnCluster.jump.r + 14) {
-        btnCluster.jump.active = true; btnCluster.jump.id = t.identifier;
-        keys.up = true;
-        startJumpCharge();
-      } else if (dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r + 14) {
-        btnCluster.slide.active = true; btnCluster.slide.id = t.identifier;
+      if (dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r + 14) {
+        btnCluster.slide.active = true;
+        btnCluster.slide.id = t.identifier;
         playerSlide(spawnGrass, GROUND_Y);
-      } else if (dist(t.clientX, t.clientY, btnCluster.kick.x, btnCluster.kick.y) < btnCluster.kick.r + 14) {
-        btnCluster.kick.active = true; btnCluster.kick.id = t.identifier;
-        mouseState.rmbDown = true;
-        startKickCharge(player);
       } else if (!rightStick.active) {
-        // RIGHT STICK – celowanie i strzelanie (nie kopanie)
-        rightStick.active = true;
-        rightStick.id = t.identifier;
-        rightStick.baseX = t.clientX; rightStick.baseY = t.clientY;
-        rightStick.curX = t.clientX; rightStick.curY = t.clientY;
-        rightStick.axisX = 0; rightStick.axisY = 0;
-        rightStick.tapStartTime = performance.now();
-        rightStick.tapStartX = t.clientX;
-        rightStick.tapStartY = t.clientY;
-        rightStick.lingerTimer = 0;
-        rightStick.lingerAlpha = 1.0;
-        // Ustaw kierunek celowania na pozycję dotyku (względem gracza)
-        const wx = player.x + player.w / 2 + (t.clientX - W * 0.5) * 0.8;
-        const wy = player.y + player.h / 2 + (t.clientY - H * 0.65) * 0.8;
-        player.aimX = wx;
-        player.aimY = wy;
+        // Czy kliknięto w oknie 300 ms od wycelowania -> Rozpoczęcie ognia ciągłego
+        if (rightStick.waitingForSecondTap && rightStick.windowTimer > 0) {
+          rightStick.active = true;
+          rightStick.id = t.identifier;
+          rightStick.isShooting = true;
+          rightStick.waitingForSecondTap = false;
+          rightStick.windowTimer = 0;
+          rightStick.lingerAlpha = 1.0;
+          rightStick.curX = t.clientX;
+          rightStick.curY = t.clientY;
+          player.isAiming = true;
+          player.isShooting = true;
+
+          // Korekta celownika w kierunku nowego dotknięcia względem bazy drążka
+          const dx = t.clientX - rightStick.baseX;
+          const dy = t.clientY - rightStick.baseY;
+          const sDist = Math.hypot(dx, dy);
+          if (sDist > 6) {
+            rightStick.axisX = dx / sDist;
+            rightStick.axisY = dy / sDist;
+            const maxR = rightStick.maxRadius || 65;
+            const aimDist = 180 + Math.min(1.0, (sDist - 6) / (maxR - 6)) * 120;
+            player.aimOffsetX = rightStick.axisX * aimDist;
+            player.aimOffsetY = rightStick.axisY * aimDist;
+          }
+
+          const curWep = player.currentWeapon || WEAPONS.AK47;
+          if (player.shootCooldown <= 0) {
+            shootWeapon(player, curWep);
+          }
+        } else {
+          // Nowy cykl celowania
+          rightStick.active = true;
+          rightStick.id = t.identifier;
+          rightStick.baseX = t.clientX;
+          rightStick.baseY = t.clientY;
+          rightStick.curX = t.clientX;
+          rightStick.curY = t.clientY;
+          rightStick.axisX = 0;
+          rightStick.axisY = 0;
+          rightStick.isShooting = false;
+          rightStick.waitingForSecondTap = false;
+          rightStick.windowTimer = 0;
+          rightStick.lingerAlpha = 1.0;
+          rightStick.gestureState = 'IDLE';
+
+          player.isAiming = true;
+          const defaultAimDist = 180;
+          player.aimOffsetX = (player.facing || 1) * defaultAimDist;
+          player.aimOffsetY = -20;
+        }
       }
     }
   }
@@ -151,13 +215,16 @@ canvas.addEventListener('touchmove', (e) => {
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
 
+    // Obsługa lewego drążka
     if (leftStick.active && t.identifier === leftStick.id) {
-      leftStick.curX = t.clientX; leftStick.curY = t.clientY;
+      leftStick.curX = t.clientX;
+      leftStick.curY = t.clientY;
       const dx = leftStick.curX - leftStick.baseX;
       const dy = leftStick.curY - leftStick.baseY;
       const sDist = Math.hypot(dx, dy);
       const deadzone = 5;
       const maxR = leftStick.maxRadius || 55;
+
       if (sDist > deadzone) {
         const factor = Math.min(1.0, (sDist - deadzone) / (maxR - deadzone));
         leftStick.axisX = (dx / sDist) * factor;
@@ -166,25 +233,74 @@ canvas.addEventListener('touchmove', (e) => {
         leftStick.axisX = 0;
         leftStick.axisY = 0;
       }
+
+      // 1. Skok przy mocnym wychyleniu lewego drążka w górę
+      if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro) {
+        const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+        player.vy = -jumpForce;
+        player.isJumping = true;
+        player.isCrouching = false;
+        player.airVx = player.vx;
+        leftStick.jumpTriggered = true;
+        if (spawnGrass && player.groundY) {
+          spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+        }
+      } else if (leftStick.axisY > -0.25) {
+        leftStick.jumpTriggered = false;
+      }
+
+      // 2. Jetpack: aktywny podczas trybu isJetpacking przy wychyleniu w górę (axisY < -0.15)
+      if (leftStick.isJetpacking) {
+        if (leftStick.axisY < -0.15 && (player.jetFuel || 0) > 0) {
+          isJetpackActive = true;
+        } else {
+          isJetpackActive = false;
+        }
+      }
     }
 
+    // Obsługa prawego drążka (celowanie + dynamiczne korygowanie ognia)
     if (rightStick.active && t.identifier === rightStick.id) {
-      rightStick.curX = t.clientX; rightStick.curY = t.clientY;
+      rightStick.curX = t.clientX;
+      rightStick.curY = t.clientY;
       const dx = rightStick.curX - rightStick.baseX;
       const dy = rightStick.curY - rightStick.baseY;
       const sDist = Math.hypot(dx, dy);
       const deadzone = 6;
+      const maxR = rightStick.maxRadius || 65;
 
       if (sDist > deadzone) {
         rightStick.axisX = dx / sDist;
         rightStick.axisY = dy / sDist;
-        // Przelicz cel celowania w przestrzeni świata
-        const aimDist = 180 + Math.min(1.0, (sDist - deadzone) / ((rightStick.maxRadius || 65) - deadzone)) * 120;
-        player.aimX = player.x + player.w / 2 + rightStick.axisX * aimDist;
-        player.aimY = player.y + player.h / 2 + rightStick.axisY * aimDist;
-      } else {
-        rightStick.axisX = 0;
-        rightStick.axisY = 0;
+        const aimDist = 180 + Math.min(1.0, (sDist - deadzone) / (maxR - deadzone)) * 120;
+        player.aimOffsetX = rightStick.axisX * aimDist;
+        player.aimOffsetY = rightStick.axisY * aimDist;
+        player.isAiming = true;
+      }
+
+      // Detekcja gestu kopnięcia (Wychylenie -> Cofnięcie do osi -> Wypchnięcie)
+      if (!rightStick.isShooting) {
+        const now = performance.now();
+        const outerThreshold = 36;
+        const innerThreshold = 15;
+
+        if (sDist > outerThreshold) {
+          if (rightStick.gestureState === 'RETRACTED' && (now - rightStick.gestureRetractTime < 280)) {
+            executeReleaseKick(ball, player, 0.95);
+            rightStick.gestureState = 'COOLDOWN';
+            rightStick.gestureCooldownUntil = now + 350;
+            rightStick.isShooting = false;
+            rightStick.waitingForSecondTap = false;
+          } else if (rightStick.gestureState !== 'COOLDOWN' || now > rightStick.gestureCooldownUntil) {
+            rightStick.gestureState = 'OUTER';
+            rightStick.gestureLastOutTime = now;
+          }
+        } else if (sDist < innerThreshold) {
+          if (rightStick.gestureState === 'OUTER' && (now - rightStick.gestureLastOutTime < 240)) {
+            rightStick.gestureState = 'RETRACTED';
+            rightStick.gestureRetractTime = now;
+          }
+        }
       }
     }
   }
@@ -194,47 +310,50 @@ function endTouch(e) {
   e.preventDefault();
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    // Puszczenie lewego drążka
     if (leftStick.active && t.identifier === leftStick.id) {
-      leftStick.active = false; leftStick.id = null;
-      leftStick.axisX = 0; leftStick.axisY = 0;
+      leftStick.active = false;
+      leftStick.id = null;
+
+      const hadUpwardMotion = (leftStick.axisY < -0.40) || leftStick.jumpTriggered;
+
+      if (leftStick.isJetpacking) {
+        leftStick.isJetpacking = false;
+        isJetpackActive = false;
+        leftStick.waitingForJetpackTap = false;
+        leftStick.jetpackWindowTimer = 0;
+      } else if (hadUpwardMotion) {
+        leftStick.waitingForJetpackTap = true;
+        leftStick.jetpackWindowTimer = 300;
+      }
+
+      leftStick.axisX = 0;
+      leftStick.axisY = 0;
+      leftStick.jumpTriggered = false;
     }
-    if (btnCluster.jump.active && t.identifier === btnCluster.jump.id) {
-      btnCluster.jump.active = false; btnCluster.jump.id = null;
-      keys.up = false;
-      executeReleaseJump(spawnGrass);
-    }
+
     if (btnCluster.slide.active && t.identifier === btnCluster.slide.id) {
-      btnCluster.slide.active = false; btnCluster.slide.id = null;
+      btnCluster.slide.active = false;
+      btnCluster.slide.id = null;
     }
-    if (btnCluster.kick && btnCluster.kick.active && t.identifier === btnCluster.kick.id) {
-      btnCluster.kick.active = false; btnCluster.kick.id = null;
-      mouseState.rmbDown = false;
-      executeReleaseKick(ball, player);
-    }
+
+    // Puszczenie prawego drążka
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
       rightStick.axisX = 0;
       rightStick.axisY = 0;
 
-      const tapDuration = performance.now() - rightStick.tapStartTime;
-      const tapMovement = Math.hypot(
-        rightStick.curX - rightStick.tapStartX,
-        rightStick.curY - rightStick.tapStartY
-      );
+      rightStick.isShooting = false;
+      player.isShooting = false;
+      player.isAiming = false;
 
-      // Quick Tap-to-Shoot: < 220 ms i ruch < 14 px
-      if (tapDuration < 220 && tapMovement < 14 && !player.isDead) {
-        const curWep = player.currentWeapon || WEAPONS.AK47;
-        if (player.shootCooldown <= 0) {
-          shootWeapon(player, curWep);
-          mouseState.semiFired = true;
-        }
-      }
-
-      // 300 ms linger fade-out (drążek zanika zamiast znikać natychmiast)
-      rightStick.lingerTimer = 300;
+      // Okno 300 ms na powtórny tap dla strzelania serią
+      rightStick.waitingForSecondTap = true;
+      rightStick.windowTimer = 300;
       rightStick.lingerAlpha = 1.0;
+      rightStick.gestureState = 'IDLE';
     }
   }
 }
@@ -460,7 +579,7 @@ if (devArenaBtn) {
 }
 
 // =========================================================================
-// EDYTOR PRZESZKÓD (OBSTACLE EDITOR) - STAN I ELEMENTY INTERFEJSU
+// EDYTOR PRZESZKÓD (OBSTACLE EDITOR)
 // =========================================================================
 export const editorState = {
   active: false,
@@ -568,10 +687,10 @@ export function initObstacleEditorUI() {
     editorState.active = !editorState.active;
     if (editorState.active) {
       devEditorBtn.textContent = '🏗️ EDYTOR: ON';
-      devEditorBtn.style.background = 'rgba(16, 185, 129, 0.3)';
-      devEditorBtn.style.borderColor = '#34d399';
+      devEditorBtn.style.background = 'rgba(168, 85, 247, 0.3)';
+      devEditorBtn.style.borderColor = '#c084fc';
       devEditorBtn.style.color = '#ffffff';
-      devEditorBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
+      devEditorBtn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.55)';
       devEditorSubpanel.style.display = 'inline-flex';
       renderEditorPalette();
     } else {
@@ -700,7 +819,6 @@ function handleEditorRightClick() {
   const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
   const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
 
-  // Wyszukiwanie od góry, by usuwać kliknięty obiekt
   for (let i = customObstacles.length - 1; i >= 0; i--) {
     const obs = customObstacles[i];
     const topY = obs.y !== undefined ? obs.y : (GROUND_Y - obs.relY);
@@ -712,7 +830,6 @@ function handleEditorRightClick() {
     }
   }
 
-  // Kliknięcie w puste miejsce wyłącza aktywne narzędzie
   editorState.selectedType = null;
   updateEditorPaletteHighlight();
 }
@@ -811,7 +928,6 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
 });
 
-// Płynne, niezależne od ruchu postaci współrzędne kursora myszy
 let mouseScreenX = W * 0.65;
 let mouseScreenY = H * 0.45;
 
@@ -907,7 +1023,6 @@ function drawCrosshair(ctx, x, y, customCol) {
   if (typeof x !== 'number' || isNaN(x)) return;
   const col = customCol || player.currentClass?.visuals?.crosshairColor || '#38bdf8';
 
-  // Rozszerzenie celownika w takt odrzutu broni i podrzutu lufy (Bloom)
   const kick = player.weaponKickback || 0;
   const rise = player.muzzleRise || 0;
   const spreadGap = Math.min(18, 4 + kick * 1.5 + rise * 16);
@@ -935,7 +1050,6 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  // Przeliczenie pozycji celownika myszy w przestrzeni świata (tylko na desktopie)
   if (!isTouchDevice) {
     const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
     const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
@@ -944,29 +1058,83 @@ function update() {
   }
 
   // =========================================================================
-  // OBSŁUGA STRZELANIA GRACZA (CIĄGŁY OGIEŃ DLA AK-47 VS SEMI DLA SHOTGUNA)
+  // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ (BRAK PRZYKLEJENIA W ŚWIECIE)
+  // =========================================================================
+  if (isTouchDevice && !player.isDead) {
+    const hipX = player.x + player.w / 2;
+    const hipY = player.y + player.h / 2;
+
+    if (typeof player.aimOffsetX !== 'number' || isNaN(player.aimOffsetX)) {
+      player.aimOffsetX = (player.facing || 1) * 180;
+      player.aimOffsetY = -20;
+    }
+
+    // Gdy drążek jest nieaktywny i nie trwa strzelanie, celownik obraca się ze zwrotem postaci
+    if (!rightStick.active && !player.isShooting && !player.isAiming) {
+      if (player.facing === 1 && player.aimOffsetX < 0) {
+        player.aimOffsetX = Math.abs(player.aimOffsetX);
+      } else if (player.facing === -1 && player.aimOffsetX > 0) {
+        player.aimOffsetX = -Math.abs(player.aimOffsetX);
+      }
+    }
+
+    // Kluczowe: celownik ZAWSZE w każdej klatce porusza się w świecie razem z pozycją gracza
+    player.aimX = hipX + player.aimOffsetX;
+    player.aimY = hipY + player.aimOffsetY;
+  }
+
+  // =========================================================================
+  // OBSŁUGA OKIEN CZASOWYCH DRĄŻKÓW (300 MS)
+  // =========================================================================
+  if (leftStick.jetpackWindowTimer > 0) {
+    leftStick.jetpackWindowTimer -= FRAME_DURATION;
+    if (leftStick.jetpackWindowTimer <= 0) {
+      leftStick.jetpackWindowTimer = 0;
+      leftStick.waitingForJetpackTap = false;
+    }
+  }
+
+  if (rightStick.windowTimer > 0) {
+    rightStick.windowTimer -= FRAME_DURATION;
+    rightStick.lingerAlpha = 1.0;
+    if (rightStick.windowTimer <= 0) {
+      rightStick.windowTimer = 0;
+      rightStick.waitingForSecondTap = false;
+      rightStick.lingerAlpha = 0;
+    }
+  }
+
+  // =========================================================================
+  // OBSŁUGA STRZELANIA GRACZA
   // =========================================================================
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isHoldingFire = mouseState.lmbDown && !player.isDead;
+  const isTouchFiring = rightStick.active && rightStick.isShooting && !player.isDead;
+  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
 
   if (curWep.auto) {
     player.isShooting = isHoldingFire;
   } else {
-    player.isShooting = (player.shootPoseTimer > 0);
+    player.isShooting = isTouchFiring || (player.shootPoseTimer > 0);
   }
 
-  if (isHoldingFire && player.shootCooldown <= 0) {
+  if (isTouchFiring) {
+    if (player.shootCooldown <= 0) {
+      shootWeapon(player, curWep);
+    }
+  } else if (mouseState.lmbDown && !player.isDead && player.shootCooldown <= 0) {
     if (curWep.auto) {
       shootWeapon(player, curWep);
     } else {
       if (!mouseState.semiFired) {
         shootWeapon(player, curWep);
-        mouseState.semiFired = true; // Blokada do kolejnego zwolnienia i naciśnięcia
+        mouseState.semiFired = true;
       }
     }
   }
 
-  // Szybki neonowy jetpack o podwyższonej prędkości
+  // =========================================================================
+  // SILNIK JETPACKA (ZASILANY Z PC 'W' LUB LEWEGO DRĄŻKA DOTYKOWEGO)
+  // =========================================================================
   if (isJetpackActive && !player.isDead) {
     if (player.jetFuel > 0) {
       player.jetFuel = Math.max(0, player.jetFuel - 0.95);
@@ -997,14 +1165,8 @@ function update() {
       spawnJetpackSparks(nozzleX, nozzleY, player.facing, 2);
     } else {
       isJetpackActive = false;
+      leftStick.isJetpacking = false;
     }
-  }
-
-  // 300 ms linger fade-out dla prawego drążka
-  if (!rightStick.active && rightStick.lingerTimer > 0) {
-    const dt = 1000 / 60; // ~16.67 ms per frame at 60 fps
-    rightStick.lingerTimer = Math.max(0, rightStick.lingerTimer - dt);
-    rightStick.lingerAlpha = rightStick.lingerTimer / 300;
   }
 
   if (leftStick && leftStick.active) {
@@ -1049,7 +1211,6 @@ function draw() {
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);
 
-  // --- PODGLĄD I SIATKA EDYTORA PRZESZKÓD ---
   if (editorState.active) {
     if (editorState.snapToGrid) {
       ctx.save();
@@ -1121,7 +1282,6 @@ function draw() {
 
   drawBall(ctx);
 
-  // Dynamiczny celownik gracza
   drawCrosshair(ctx, player.aimX, player.aimY);
 
   ctx.restore();

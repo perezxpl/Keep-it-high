@@ -1,3 +1,7 @@
+// =========================================================================
+// PLAYER.JS - KINEMATYKA, FIZYKA I RENDEROWANIE POSTACI (2.5D IK ENGINE)
+// =========================================================================
+
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { DEFAULT_CLASS, CLASSES } from './classes/index.js';
 import { isTouchDevice } from './world.js';
@@ -187,6 +191,7 @@ export function createPlayerInstance(overrides = {}) {
 
     aimX: START_X + 160,
     aimY: 0,
+    isAiming: false,
     jetFuel: 100,
     jetMax: 100,
 
@@ -315,12 +320,8 @@ export const player = createPlayerInstance({ isIntro: true });
 export function setPlayerClass(newClass, p = player) {
   if (!newClass || !p) return;
 
-  // Powiadom starą klasę o zakończeniu
   p.currentClass?.onDestroy?.(p);
-
   p.currentClass = newClass;
-
-  // Powiadom nową klasę o inicjalizacji (ustawia jetMax, jetFuel i inne stany)
   newClass.onInit?.(p);
 }
 
@@ -365,7 +366,6 @@ export function executeReleaseJump(spawnGrass, p = player) {
     }
   }
 
-  // Hook klasy: modyfikator / efekt skoku
   p.currentClass?.onJump?.(p, grassFn);
 }
 
@@ -454,7 +454,12 @@ export function isBallInKickReach(playerObj, ballObj) {
   return evaluateKickTiming(playerObj, ballObj) !== 'CANCEL';
 }
 
-export function executeReleaseKick(ballParam, p = player) {
+export function executeReleaseKick(ballParam, p = player, forcePower = null) {
+  if (forcePower !== null && forcePower !== undefined) {
+    p.isCharging = true;
+    p.chargePower = Math.max(0.1, Math.min(1.0, forcePower));
+  }
+
   if (!p.isCharging && !p.isIntro) return;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) {
     p.isCharging = false;
@@ -1118,19 +1123,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     const isLockedFacing = (player.kickMode === 'BACKFLIP' || player.kickMode === 'BACKFLIP_LAND' || player.kickMode === 'SPIN_VOLLEY');
     const isHighSpeedTurn = Math.abs(player.vx) > 2.0 || player.isSliding;
 
-    if (isTouchDevice && !player.isBot && !player.isStickCharging) {
-      player.aimX = (player.x + player.w / 2) + (player.facing * 160);
-      player.aimY = player.y + player.h - 35;
-    }
-
     if (!isLockedFacing) {
       let targetFacing = player.facing;
+      const isAimingActive = player.isAiming || player.isShooting || (player.shootPoseTimer > 0);
 
       if (isTouchDevice && !player.isBot) {
-        if (player.isStickCharging && typeof player.aimX === 'number' && !isNaN(player.aimX)) {
+        if (isAimingActive && typeof player.aimX === 'number' && !isNaN(player.aimX)) {
           targetFacing = (player.aimX < player.x + player.w / 2) ? -1 : 1;
-        } else {
-          targetFacing = player.facing;
+        } else if (inputAxisX > 0.1 && !player.isSliding) {
+          targetFacing = 1;
+        } else if (inputAxisX < -0.1 && !player.isSliding) {
+          targetFacing = -1;
         }
       } else {
         if (typeof player.aimX === 'number' && !isNaN(player.aimX)) {
@@ -1381,7 +1384,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
   }
 
-  // Agresywna postawa strzelecka: kompensacja odrzutu masą tułowia w stronę celu
   if (player.shootPoseWeight > 0) {
     const shootingLean = player.isCrouching ? 0.09 : 0.055;
     targetTilt += shootingLean * player.facing * player.shootPoseWeight;
@@ -1515,7 +1517,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const upperLen = player.upperArmLen;
   const foreLen = player.forearmLen;
 
-  // Kolory skóry z wizuali klasy (lub domyślne neutralne odcienie)
   const skinLight = visuals?.skinLight || '#fed7aa';
   const skinMid   = visuals?.skinMid   || '#f5b078';
   const skinDark  = visuals?.skinDark  || '#b45309';
@@ -1670,10 +1671,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
 
-  // isFront jest teraz jawnym parametrem – nie ma krucha logika porównania kolorów
   const isFrontLeg = !!isFront;
 
-  // Kolory skóry z wizuali klasy
   const skinLight = visuals?.skinLight || '#fed7aa';
   const skinMid   = visuals?.skinMid   || '#f5b078';
   const skinDark  = visuals?.skinDark  || '#b45309';
@@ -1986,8 +1985,8 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p = player) {
     jerseyStripe,
     jerseyStripe,
     bootCol,
-    true,                                     // isFront
-    p.currentClass?.visuals                   // visuals
+    true,
+    p.currentClass?.visuals
   );
 }
 
@@ -2323,15 +2322,12 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     const shLeftX = shoulderBaseX - shOffsetHoriz;
     const shLeftY = shoulderBaseY + (shoulderTilt * 4 * cosYaw);
 
-    // 1. Prawa dłoń (spust / chwyt pistoletowy) wychodząca z prawego barku
     const rightArmRelX = (hold.rightHandTarget.x - shRightX) * currentFacingDir;
     const rightArmRelY = hold.rightHandTarget.y - shRightY;
 
-    // 2. Lewa dłoń (łoże / czółenko pompki) wychodząca z lewego barku
     const leftArmRelX = (hold.leftHandTarget.x - shLeftX) * currentFacingDir;
     const leftArmRelY = hold.leftHandTarget.y - shLeftY;
 
-    // bendDir = +1 gwarantuje naturalne opadanie łokci ku dołowi
     const armRight = getArmAnglesForTarget(rightArmRelX, rightArmRelY, player.upperArmLen, player.forearmLen, 1);
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, player.upperArmLen, player.forearmLen, 1);
 

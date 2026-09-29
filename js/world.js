@@ -233,7 +233,6 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
       }
     }
 
-    // ZAWSZE rozsuń geometrię, aby piłka nie grzęzła w segmentach
     const pen = minDist - d;
     b.x += nx * pen;
     b.y += ny * pen;
@@ -301,16 +300,13 @@ function drawSoldatParallax(ctx, camX) {
     const tx = i * 400 - towerOffset;
     if (tx < -150 || tx > W + 150) continue;
 
-    // Wieża kratownicowa
     ctx.fillRect(tx + 60, H * 0.46, 22, H * 0.45);
-    ctx.fillRect(tx + 54, H * 0.44, 34, 8); // platforma obserwacyjna
+    ctx.fillRect(tx + 54, H * 0.44, 34, 8);
 
-    // Smukła iglica antenowa
     ctx.fillRect(tx + 260, H * 0.32, 6, H * 0.58);
     ctx.fillRect(tx + 252, H * 0.38, 22, 3);
     ctx.fillRect(tx + 255, H * 0.44, 16, 3);
 
-    // Czerwone migające światła ostrzegawcze na szczycie (FAA beacons)
     const blink = (Math.sin(time * 6 + i * 2) > 0.1);
     if (blink) {
       ctx.fillStyle = '#ef4444';
@@ -325,7 +321,7 @@ function drawSoldatParallax(ctx, camX) {
     }
   }
 
-  // 4. Szperacze przeciwlotnicze bazy wojskowej (3 snopy światła skanujące niebo)
+  // 4. Szperacze przeciwlotnicze bazy wojskowej
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (let s = 0; s < 3; s++) {
@@ -352,7 +348,6 @@ function drawSoldatParallax(ctx, camX) {
     ctx.closePath();
     ctx.fill();
 
-    // Źródło reflektora
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -374,7 +369,7 @@ function drawCyberStadiumSky(ctx, camX) {
 
   const time = performance.now() * 0.0012;
 
-  // 1. Odległe wieżowce cyberpunkowe (daleka paralaksa)
+  // 1. Odległe wieżowce cyberpunkowe
   const farOffset = (camX * 0.04) % 1200;
   ctx.fillStyle = '#080c14';
   const farTowers = [
@@ -393,7 +388,6 @@ function drawCyberStadiumSky(ctx, camX) {
       const by = H * 0.88 - b.h;
       ctx.fillRect(bx, by, b.w, b.h + 120);
 
-      // Iglica antenowa na szczycie
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1.6;
       ctx.beginPath();
@@ -401,7 +395,6 @@ function drawCyberStadiumSky(ctx, camX) {
       ctx.lineTo(bx + b.w / 2, by - 32);
       ctx.stroke();
 
-      // Czerwone migające światło ostrzegawcze
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
       ctx.arc(bx + b.w / 2, by - 32, 2.5, 0, Math.PI * 2);
@@ -428,7 +421,6 @@ function drawCyberStadiumSky(ctx, camX) {
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(bx, by, b.w, b.h + 120);
 
-      // Neonowe okna (cyjan i bursztyn)
       for (let wy = by + 26; wy < by + b.h - 25; wy += 26) {
         const isWinCyan = ((bx + wy) % 52 === 0);
         ctx.fillStyle = isWinCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
@@ -439,13 +431,13 @@ function drawCyberStadiumSky(ctx, camX) {
     }
   }
 
-  // 3. Cztery snopy światła jupiterów padające z górnych okapów (globalCompositeOperation = 'screen')
+  // 3. Snopy światła jupiterów
   if (camera) {
     const spots = [
-      { worldX: 240, baseAngle: 0.38, color: 'rgba(6, 182, 212, ' },   // Lewy skrajny jupiter (CYAN)
-      { worldX: 460, baseAngle: 0.20, color: 'rgba(56, 189, 248, ' },  // Lewy wewnętrzny jupiter
-      { worldX: 1460, baseAngle: -0.20, color: 'rgba(251, 146, 60, ' }, // Prawy wewnętrzny jupiter
-      { worldX: 1680, baseAngle: -0.38, color: 'rgba(249, 115, 22, ' }  // Prawy skrajny jupiter (ORANGE)
+      { worldX: 240, baseAngle: 0.38, color: 'rgba(6, 182, 212, ' },
+      { worldX: 460, baseAngle: 0.20, color: 'rgba(56, 189, 248, ' },
+      { worldX: 1460, baseAngle: -0.20, color: 'rgba(251, 146, 60, ' },
+      { worldX: 1680, baseAngle: -0.38, color: 'rgba(249, 115, 22, ' }
     ];
 
     ctx.save();
@@ -454,7 +446,6 @@ function drawCyberStadiumSky(ctx, camX) {
     const beamLen = 950 * camera.zoom;
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
-      // Przeliczenie współrzędnych okapu (relY: 520) na ekran
       const sourceScreenX = W * 0.40 + (s.worldX - camera.x) * camera.zoom;
       const sourceScreenY = H * 0.68 + ((GROUND_Y - 520) - camera.y) * camera.zoom;
 
@@ -480,7 +471,6 @@ function drawCyberStadiumSky(ctx, camX) {
       ctx.closePath();
       ctx.fill();
 
-      // Żarnik / reflektor lampy
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(0, 0, 7 * camera.zoom, 0, Math.PI * 2);
@@ -497,7 +487,6 @@ export function drawSky(ctx) {
   if (activeArenaId === 'ARENA_2') {
     drawCyberStadiumSky(ctx, camera ? camera.x : 960);
   } else {
-    // Nocny klimat Soldat Night Ops
     const sky = ctx.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0.0, '#020409');
     sky.addColorStop(0.40, '#070c16');
@@ -520,7 +509,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 
   ctx.fillStyle = '#27272a';
   ctx.fillRect(startX, GROUND_Y, w, 14);
-  ctx.fillStyle = '#14532d'; // Ciemna murawa nocna
+  ctx.fillStyle = '#14532d';
   ctx.fillRect(startX, GROUND_Y, w, 4);
 
   const wallH = 1350;
@@ -530,7 +519,6 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     const bw = 42;
     const bx = isLeft ? wallX - bw : wallX;
 
-    // Betonowo-stalowy mur oporowy bazy wojskowej
     const wallGrad = ctx.createLinearGradient(bx, GROUND_Y - wallH, bx + bw, GROUND_Y - wallH);
     wallGrad.addColorStop(0.0, '#0f172a');
     wallGrad.addColorStop(0.5, '#1e293b');
@@ -542,13 +530,11 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     ctx.lineWidth = 2.0;
     ctx.strokeRect(bx, GROUND_Y - wallH, bw, wallH);
 
-    // Poziome rygle i dylatacje
     ctx.fillStyle = '#020617';
     for (let wy = GROUND_Y - wallH + 50; wy < GROUND_Y; wy += 60) {
       ctx.fillRect(bx, wy, bw, 3);
     }
 
-    // Granica areny - neonowa linia pola walki
     const accentCol = isLeft ? '#06b6d4' : '#f97316';
     ctx.strokeStyle = accentCol;
     ctx.shadowColor = accentCol;
@@ -560,7 +546,6 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Czerwony kogut ostrzegawczy na szczycie muru
     const blink = (Math.sin(performance.now() * 0.006 + idx) > 0);
     ctx.fillStyle = blink ? '#ef4444' : '#7f1d1d';
     ctx.shadowColor = blink ? '#ef4444' : 'transparent';
@@ -600,7 +585,25 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
   ctx.save();
 
-  if (leftStick && leftStick.active) {
+  // =========================================================================
+  // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK
+  // =========================================================================
+  if (leftStick && (leftStick.active || leftStick.waitingForJetpackTap)) {
+    const isJetReady = leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0;
+    const isJetActive = leftStick.isJetpacking;
+
+    let stickBorder = 'rgba(255, 255, 255, 0.2)';
+    let stickGlow = 'transparent';
+
+    if (isJetActive) {
+      stickBorder = '#00e5ff';
+      stickGlow = '#00e5ff';
+    } else if (isJetReady) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
+      stickBorder = `rgba(0, 229, 255, ${0.4 + pulse * 0.5})`;
+      stickGlow = '#00e5ff';
+    }
+
     const bgGrad = ctx.createRadialGradient(leftStick.baseX, leftStick.baseY, 10, leftStick.baseX, leftStick.baseY, 55);
     bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.55)');
     bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
@@ -609,64 +612,103 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.arc(leftStick.baseX, leftStick.baseY, 55, 0, Math.PI * 2);
     ctx.fillStyle = bgGrad;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1.5;
+    ctx.shadowColor = stickGlow;
+    ctx.shadowBlur = isJetActive ? 10 : (isJetReady ? 6 : 0);
+    ctx.strokeStyle = stickBorder;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    const knobX = leftStick.baseX + (leftStick.axisX * (leftStick.maxRadius || 55));
-    const knobY = leftStick.baseY + (leftStick.axisY * (leftStick.maxRadius || 55));
+    // Strzałka wzniosu informująca o skoku / dopalaczu w osi Y
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = isJetActive ? '#00e5ff' : (isJetReady ? '#38bdf8' : 'rgba(255, 255, 255, 0.4)');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('▲ SKOK / JET', leftStick.baseX, leftStick.baseY - 60);
 
-    const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
-    knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
-    knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
-    knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+    if (isJetReady) {
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + 68);
+    }
 
-    ctx.beginPath();
-    ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
-    ctx.fillStyle = knobGrad;
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.0;
-    ctx.stroke();
+    if (leftStick.active) {
+      const knobX = leftStick.baseX + (leftStick.axisX * (leftStick.maxRadius || 55));
+      const knobY = leftStick.baseY + (leftStick.axisY * (leftStick.maxRadius || 55));
 
-    ctx.beginPath();
-    ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
+      const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
+      if (isJetActive) {
+        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
+        knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.85)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
+      } else {
+        knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
+        knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+      }
+
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
+      ctx.fillStyle = knobGrad;
+      ctx.fill();
+      ctx.strokeStyle = isJetActive ? '#00e5ff' : '#38bdf8';
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
   }
 
-  // RIGHT STICK – Neonowy drążek celowania z 300 ms linger fade
-  const rsVisible = (rightStick && rightStick.active) ||
-    (rightStick && !rightStick.active && rightStick.lingerAlpha > 0.01);
+  // =========================================================================
+  // 2. PRAWY DRĄŻEK: CELOWANIE, OKNO 300 MS I OGIEŃ CIĄGŁY
+  // =========================================================================
+  const rsVisible = (rightStick && (rightStick.active || rightStick.waitingForSecondTap || rightStick.lingerAlpha > 0.01));
 
   if (rsVisible) {
-    const rsAlpha = rightStick.active ? 1.0 : (rightStick.lingerAlpha || 0);
+    const isFiring = rightStick.active && rightStick.isShooting;
+    const isWaitingTap = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
+
+    let mainColor = '#00e5ff';
+    let glowColor = '#00e5ff';
+    let baseBorder = 'rgba(0, 229, 255, 0.35)';
+
+    if (isFiring) {
+      mainColor = '#f97316';
+      glowColor = '#ef4444';
+      baseBorder = 'rgba(249, 115, 22, 0.6)';
+    } else if (isWaitingTap) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
+      mainColor = pulse > 0.5 ? '#facc15' : '#00e5ff';
+      glowColor = mainColor;
+      baseBorder = `rgba(250, 204, 21, ${0.4 + pulse * 0.4})`;
+    }
+
     ctx.save();
-    ctx.globalAlpha = rsAlpha;
+    ctx.globalAlpha = rightStick.lingerAlpha !== undefined ? rightStick.lingerAlpha : 1.0;
 
     const bx = rightStick.baseX;
     const by = rightStick.baseY;
     const maxR = rightStick.maxRadius || 65;
 
-    // Tło podstawy drążka
     const bgGrad = ctx.createRadialGradient(bx, by, 10, bx, by, maxR);
-    bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.55)');
-    bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.35)');
+    bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.65)');
+    bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
 
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
     ctx.fillStyle = bgGrad;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = baseBorder;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    // Neonowe oznaczenie celownika – krzyż na środku podstawy
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+    ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.5)' : 'rgba(0, 229, 255, 0.4)';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.moveTo(bx - 10, by); ctx.lineTo(bx + 10, by);
-    ctx.moveTo(bx, by - 10); ctx.lineTo(bx, by + 10);
+    ctx.moveTo(bx, by - 10); ctx.lineTo(bx + 10, by);
     ctx.stroke();
 
     if (rightStick.active) {
@@ -676,13 +718,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const normX = rawDist > 0.001 ? dx / rawDist : 1;
       const normY = rawDist > 0.001 ? dy / rawDist : 0;
 
-      // Kierunkowy promień (linia od centrum do knoba)
       const clampedDist = Math.min(rawDist, maxR);
       const knobX = bx + normX * clampedDist;
       const knobY = by + normY * clampedDist;
 
-      ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.8)' : 'rgba(0, 229, 255, 0.6)';
+      ctx.lineWidth = 1.4;
       ctx.setLineDash([5, 4]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
@@ -690,25 +731,29 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Gałka (knob) – neonowy cyjan + poświata
-      const knobGrad = ctx.createRadialGradient(knobX - 5, knobY - 5, 3, knobX, knobY, 22);
-      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
-      knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+      const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
+      if (isFiring) {
+        knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
+        knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+      } else {
+        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
+        knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+      }
 
       ctx.beginPath();
       ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
       ctx.fillStyle = knobGrad;
       ctx.fill();
 
-      ctx.shadowColor = '#00e5ff';
+      ctx.shadowColor = glowColor;
       ctx.shadowBlur = 10;
-      ctx.strokeStyle = '#00e5ff';
+      ctx.strokeStyle = mainColor;
       ctx.lineWidth = 2.2;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Ikona celownika w gałce
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.4;
       ctx.beginPath();
@@ -722,48 +767,29 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.stroke();
     }
 
-    // Etykieta TAP=STRZAŁ
-    ctx.font = 'bold 8px monospace';
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.75)';
+    let statusText = 'CEL / KOP: GEST';
+    if (isFiring) {
+      statusText = '🔥 OGIEŃ CIĄGŁY';
+    } else if (isWaitingTap) {
+      statusText = '⚡ TAP = STRZAŁ';
+    }
+
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = mainColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('TAP=STRZAŁ', bx, by + maxR + 14);
+    ctx.fillText(statusText, bx, by + maxR + 15);
 
     ctx.restore();
   }
 
-  if (btnCluster) {
+  // =========================================================================
+  // 3. PRZYCISK WŚLIZG (SKOK I KOP ZOSTAŁY PRZENIESIONE NA DRĄŻKI)
+  // =========================================================================
+  if (btnCluster && btnCluster.slide) {
     const glassBg = 'rgba(15, 23, 42, 0.55)';
-    const glassBorder = 'rgba(255, 255, 255, 0.25)';
-
-    const jump = btnCluster.jump;
-    const jumpR = jump.r || 32;
-
-    ctx.beginPath();
-    ctx.arc(jump.x, jump.y, jumpR, 0, Math.PI * 2);
-    ctx.fillStyle = jump.active ? 'rgba(56, 189, 248, 0.35)' : glassBg;
-    ctx.fill();
-    ctx.strokeStyle = jump.active ? '#38bdf8' : glassBorder;
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(jump.x, jump.y);
-    ctx.beginPath();
-    ctx.moveTo(0, -12); ctx.lineTo(8, -2); ctx.lineTo(4, -2);
-    ctx.lineTo(4, 7); ctx.lineTo(-4, 7); ctx.lineTo(-4, -2); ctx.lineTo(-8, -2);
-    ctx.closePath();
-    ctx.fillStyle = jump.active ? '#38bdf8' : '#ffffff';
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('SKOK', 0, 16);
-    ctx.restore();
-
     const slide = btnCluster.slide;
-    const slideR = slide.r || 28;
+    const slideR = slide.r || 30;
     const isSlideReady = Math.abs(player.vx) >= (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 0.82;
     const isSlideActive = player.isSliding || slide.active;
 
@@ -801,33 +827,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.fillStyle = isSlideReady ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
-    ctx.font = 'bold 8px monospace';
+    ctx.font = 'bold 8.5px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('WŚLIZG', 0, 15);
+    ctx.fillText('WŚLIZG', 0, 16);
     ctx.restore();
-
-    if (btnCluster.kick) {
-      const kick = btnCluster.kick;
-      const kickR = kick.r || 28;
-      const isKickActive = kick.active || player.isCharging;
-
-      ctx.beginPath();
-      ctx.arc(kick.x, kick.y, kickR, 0, Math.PI * 2);
-      ctx.fillStyle = isKickActive ? 'rgba(56, 189, 248, 0.45)' : 'rgba(15, 23, 42, 0.65)';
-      ctx.fill();
-      ctx.strokeStyle = isKickActive ? '#38bdf8' : 'rgba(56, 189, 248, 0.6)';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(kick.x, kick.y);
-      ctx.fillStyle = isKickActive ? '#38bdf8' : '#7dd3fc';
-      ctx.font = 'bold 9px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('KOP', 0, 0);
-      ctx.restore();
-    }
   }
 
   ctx.restore();
@@ -908,7 +911,6 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   ctx.translate(ix, iy);
   ctx.rotate(angle);
 
-  // Trójkąt / strzałka skierowana w stronę piłki
   ctx.beginPath();
   ctx.moveTo(14, 0);
   ctx.lineTo(-10, -9);
@@ -925,7 +927,6 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
 
   ctx.restore();
 
-  // Dystans w metrach do gracza
   const pX = player ? (player.x + player.w / 2) : camera.x;
   const pY = player ? (player.y + player.h / 2) : camera.y;
   const distMeters = Math.round(Math.hypot(ball.x - pX, ball.y - pY) / 14);
@@ -950,9 +951,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
 
   ctx.save();
 
-  // =========================================================================
-  // 1. PASEK ŻYCIA (HP) GRACZA
-  // =========================================================================
+  // 1. PASEK ŻYCIA (HP) GRACZA[span_4](start_span)[span_4](end_span)
   const hpX = 20;
   const hpY = 20;
   const hpW = 180;
@@ -963,7 +962,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
   const hpColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#f97316' : '#ef4444');
 
-  // Tło paska HP
   ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.lineWidth = 1.2;
@@ -973,7 +971,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fill();
   ctx.stroke();
 
-  // Wypełnienie paska HP
   if (hpRatio > 0) {
     ctx.save();
     ctx.beginPath();
@@ -987,7 +984,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.restore();
   }
 
-  // Wartość liczbowa HP
   ctx.textAlign = 'right';
   ctx.font = 'bold 9.5px monospace';
   ctx.fillStyle = '#ffffff';
@@ -995,9 +991,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.shadowBlur = 3;
   ctx.fillText(`HP: ${Math.ceil(curHp)}/${maxHp}`, hpX + hpW - 6, hpY + 10.5);
 
-  // =========================================================================
-  // 1b. NEONOWY PASEK PALIWA JETPACKA
-  // =========================================================================
+  // 1b. PASEK PALIWA JETPACKA[span_5](start_span)[span_5](end_span)
   const jetX = hpX;
   const jetY = hpY + 16;
   const jetW = 180;
@@ -1007,7 +1001,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
   const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
 
-  // Tło: ciemny obrys z rgba(15, 23, 42, 0.85)
   ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
   ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
   ctx.lineWidth = 1.0;
@@ -1017,7 +1010,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fill();
   ctx.stroke();
 
-  // Wypełnienie: #00e5ff z poświatą shadowBlur: 6
   if (jetRatio > 0) {
     ctx.save();
     ctx.beginPath();
@@ -1031,7 +1023,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.restore();
   }
 
-  // Tekst pod spodem: JET: ${Math.round(player.jetFuel)}%
   ctx.save();
   ctx.textAlign = 'right';
   ctx.font = 'bold 8.5px monospace';
@@ -1041,9 +1032,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fillText(`JET: ${Math.round(curJet)}%`, jetX + jetW, jetY + 12.5);
   ctx.restore();
 
-  // =========================================================================
-  // 2. WSKAŹNIK AKTYWNEJ BRONI
-  // =========================================================================
+  // 2. WSKAŹNIK AKTYWNEJ BRONI[span_6](start_span)[span_6](end_span)
   const weapon = player.currentWeapon;
   const isShotgun = (weapon && weapon.id === 'SHOTGUN');
   const weaponHint = isShotgun ? '[2] SHOTGUN (SEMI)' : '[1] AK-47 (AUTO)';
@@ -1057,9 +1046,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fillText(weaponHint, hpX, hpY + 42);
   ctx.shadowBlur = 0;
 
-  // =========================================================================
-  // 3. STATYSTYKI DYSTANSU I GRY
-  // =========================================================================
+  // 3. STATYSTYKI DYSTANSU I GRY[span_7](start_span)[span_7](end_span)
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 13px monospace';
   ctx.fillText(`DYSTANS: ${currentDist} m`, hpX, hpY + 60);
@@ -1083,7 +1070,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.font = '10px monospace';
   ctx.fillText(`FPS: ${currentFps}`, hpX, hpY + 106);
 
-  // 4. Tablica wyników (Arena 1 Soldat Night Ops & Arena 2 Cyber Stadium)
+  // 4. Tablica wyników (Arena 1 & Arena 2)[span_8](start_span)[span_8](end_span)
   const isMatchArena = (activeArenaId === 'ARENA_1' || activeArenaId === 'ARENA_2');
   if (isMatchArena) {
     const scoreBoxW = 230;
@@ -1131,7 +1118,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.restore();
   }
 
-  // 5. Baner celebracji gola
+  // 5. Baner celebracji gola[span_9](start_span)[span_9](end_span)
   if (goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;
