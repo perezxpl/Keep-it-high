@@ -59,6 +59,7 @@ export const DEFAULT_STATS = {
 };
 
 export const DEFAULT_VISUALS = {
+  sculptedMuscles: false,    // Wyrzeźbione brzuśce mięśniowe
   muscleMult: 1.0,
   sleeveless: false,
   sleeveLengthMult: 1.0,
@@ -313,6 +314,7 @@ export function createPlayerInstance(overrides = {}) {
     deathRotVel: 0,
     isSettled: false,
     pelvisY: 0,
+    severedHead: null,
 
     currentClass: mergedClass,
 
@@ -1072,7 +1074,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     player.rotSpeed = 0;
     player.spin = 0;
 
-    // 2. Zablokuj player.yaw na stałej wartości (brak ciągłego obracania wokół osi pionowej)
+    // 2. Zablokuj player.yaw na stałej wartości
     player.yaw = (player.facing === -1) ? Math.PI : 0;
 
     // 3. Natychmiastowe anulowanie animacji specjalnych przy zgonie
@@ -1124,7 +1126,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
 
       if (!player.isSettled) {
         player.deathTilt = (player.deathTilt || 0) + (player.deathRotVel || 0);
-        // Zapewnij, że obrót nie wykonuje nieskończonych fikołków – docelowo zmierza do ~1.57 rad (90° - leżenie płasko)
         const targetAngle = (player.deathRotVel > 0 ? 1 : -1) * (Math.PI * 0.5);
         if (Math.abs(player.deathTilt) > Math.abs(targetAngle)) {
           player.deathTilt = targetAngle;
@@ -1140,7 +1141,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
         player.y = currentFloor - player.h;
         player.isJumping = false;
         if (Math.abs(player.vy) > 1.5) {
-          // Lekkie sprężyste odbicie przy uderzeniu plecami o ziemię
           player.vy = -player.vy * 0.28;
           triggerScreenShake?.(2.5);
           spawnBloodDecal?.(player.x + player.w / 2, currentFloor);
@@ -1182,7 +1182,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       player.torsoTilt = 0;
       player.torsoTiltVel = 0;
       player.headBobVel = 0;
-      player.severedHead = null;   // Zresetuj odpadłą głowę przy respawnie
+      player.severedHead = null;
 
       if (player.isBot) {
         player.x = START_X + 600;
@@ -1755,13 +1755,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
 }
 
 // =========================================================================
-// SYSTEM GRAFICZNY: MODELOWANY SPORTOWIEC 2.5D (PARAMETRYZACJA KLASY)
+// SYSTEM GRAFICZNY: MODELOWANY SPORTOWIEC 2.5D (RZEŹBIONA ANATOMIA I KOLOS)
 // =========================================================================
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
   const upperLen = player.upperArmLen;
   const foreLen = player.forearmLen;
-  const muscle = v.muscleMult;
+  const muscle = v.muscleMult || 1.0;
+  const isSculpted = !!v.sculptedMuscles;
 
   const elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
   const elbowY = shY + Math.cos(swingAngle) * upperLen;
@@ -1781,7 +1782,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const sleeveHalfH = 3.9 * muscle;
   const armHalfH = 2.8 * muscle;
 
-  // 1. Rękawek
+  // 1. RĘKAWEK
   if (!v.sleeveless && sleeveLen > 0) {
     const sleeveGrad = ctx.createLinearGradient(0, -sleeveHalfH, 0, sleeveHalfH);
     sleeveGrad.addColorStop(0.0, upperCol || v.armColorFront);
@@ -1806,13 +1807,13 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.fillRect(sleeveLen - 1.6, -sleeveHalfH, 1.6, sleeveHalfH * 2);
   }
 
-  // 2. Odsłonięty biceps / ramię
-  const bareLen = upperLen - sleeveLen + 1.2;
-  const bicepGrad = ctx.createLinearGradient(0, -armHalfH, 0, armHalfH);
+  // 2. RAMIĘ: BICEPS I TRICEPS (ANATOMICZNE WYGIĘCIE LUB PROSTE)
+  const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
   if (isFront) {
     bicepGrad.addColorStop(0.0, v.skinLight);
     bicepGrad.addColorStop(0.35, v.skinMid);
-    bicepGrad.addColorStop(1.0, v.skinDark);
+    bicepGrad.addColorStop(0.85, v.skinDark);
+    bicepGrad.addColorStop(1.0, '#78350f');
   } else {
     bicepGrad.addColorStop(0.0, v.skinMid);
     bicepGrad.addColorStop(0.4, v.skinBack);
@@ -1820,28 +1821,40 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   }
 
   ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(sleeveLen, -armHalfH, bareLen, armHalfH * 2, 2);
+  if (isSculpted) {
+    ctx.moveTo(0, -sleeveHalfH * 0.9);
+    ctx.quadraticCurveTo(upperLen * 0.25, -armHalfH * 1.55, upperLen * 0.45, -armHalfH * 1.1);
+    ctx.quadraticCurveTo(upperLen * 0.65, -armHalfH * 1.45, upperLen, -armHalfH * 0.75);
+    ctx.lineTo(upperLen, armHalfH * 0.65);
+    ctx.quadraticCurveTo(upperLen * 0.50, armHalfH * 1.65, upperLen * 0.15, armHalfH * 1.15);
+    ctx.quadraticCurveTo(0, armHalfH * 0.8, 0, -sleeveHalfH * 0.9);
   } else {
-    ctx.rect(sleeveLen, -armHalfH, bareLen, armHalfH * 2);
+    const bareLen = upperLen - sleeveLen + 1.2;
+    if (ctx.roundRect) ctx.roundRect(sleeveLen, -armHalfH, bareLen, armHalfH * 2, 2);
+    else ctx.rect(sleeveLen, -armHalfH, bareLen, armHalfH * 2);
   }
+  ctx.closePath();
   ctx.fillStyle = bicepGrad;
   ctx.fill();
 
-  if (!v.sleeveless && sleeveLen > 0) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.fillRect(sleeveLen, -armHalfH, 2.2, armHalfH * 2);
+  if (isSculpted) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(upperLen * 0.35, -armHalfH * 0.2);
+    ctx.quadraticCurveTo(upperLen * 0.55, 0, upperLen * 0.75, armHalfH * 0.2);
+    ctx.stroke();
   }
 
   ctx.restore();
 
-  // 3. Przedramię
+  // 3. PRZEDRAMIĘ (RAMIENNO-PROMIENIOWY I ZGINACZE)
   ctx.save();
   ctx.translate(elbowX, elbowY);
   ctx.rotate(foreDir);
 
   const elbowR = 2.9 * muscle;
-  const wristR = 1.9 * muscle;
+  const wristR = 1.9 * (isSculpted ? Math.max(1.1, muscle * 0.85) : muscle);
 
   const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
   jointGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
@@ -1849,11 +1862,11 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   jointGrad.addColorStop(1.0, v.skinDark);
 
   ctx.beginPath();
-  ctx.arc(0, 0, elbowR, 0, Math.PI * 2);
+  ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
   ctx.fillStyle = jointGrad;
   ctx.fill();
 
-  const forearmGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
+  const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
   if (isFront) {
     forearmGrad.addColorStop(0.0, v.skinLight);
     forearmGrad.addColorStop(0.35, v.skinMid);
@@ -1865,25 +1878,45 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   }
 
   ctx.beginPath();
-  ctx.moveTo(0, -elbowR);
-  ctx.lineTo(foreLen * 0.78, -wristR);
-  ctx.lineTo(foreLen * 0.78, wristR);
-  ctx.lineTo(0, elbowR);
+  if (isSculpted) {
+    ctx.moveTo(0, -elbowR * 0.85);
+    ctx.quadraticCurveTo(foreLen * 0.28, -elbowR * 1.45, foreLen * 0.65, -wristR * 1.15);
+    ctx.lineTo(foreLen * 0.85, -wristR);
+    ctx.lineTo(foreLen * 0.85, wristR);
+    ctx.quadraticCurveTo(foreLen * 0.35, elbowR * 1.25, 0, elbowR * 0.85);
+  } else {
+    ctx.moveTo(0, -elbowR);
+    ctx.lineTo(foreLen * 0.78, -wristR);
+    ctx.lineTo(foreLen * 0.78, wristR);
+    ctx.lineTo(0, elbowR);
+  }
   ctx.closePath();
   ctx.fillStyle = forearmGrad;
   ctx.fill();
 
-  // 4. Frotka / opaska na przedramieniu
+  if (isSculpted) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(foreLen * 0.20, -elbowR * 0.3);
+    ctx.lineTo(foreLen * 0.60, -wristR * 0.2);
+    ctx.stroke();
+  }
+
+  // 4. Frotka / bandaż
   if (isFront && v.hasWristband) {
     const bandX = foreLen * 0.52;
-    const bandW = 3.6;
+    const bandW = 4.0;
     ctx.fillStyle = v.wristbandColor;
-    ctx.fillRect(bandX, -wristR - 0.4, bandW, (wristR + 0.4) * 2);
+    ctx.fillRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
   }
 
   // 5. Dłoń
   const handX = foreLen + 0.5;
-  const handR = (isFront ? 2.8 : 2.4) * muscle;
+  const handR = (isFront ? 3.0 : 2.5) * (isSculpted ? muscle * 0.95 : muscle);
 
   const handGrad = ctx.createRadialGradient(handX, -0.6, 0.5, handX, 0, handR + 1.0);
   handGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
@@ -1891,7 +1924,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   handGrad.addColorStop(1.0, v.skinDark);
 
   ctx.beginPath();
-  ctx.ellipse(handX, 0, handR * 1.15, handR * 0.85, 0, 0, Math.PI * 2);
+  ctx.ellipse(handX, 0, handR * 1.18, handR * 0.88, 0, 0, Math.PI * 2);
   ctx.fillStyle = handGrad;
   ctx.fill();
 
@@ -1905,7 +1938,8 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
 export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
-  const muscle = v.muscleMult;
+  const muscle = v.muscleMult || 1.0;
+  const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
 
   const ik = solve2BoneIK(hipX, hipY, targetFootX, targetFootY, l1, l2, facing, -1);
@@ -1919,7 +1953,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(hipX, hipY);
   ctx.rotate(thighAng);
 
-  const shortsLen = l1 * 0.65;
+  const shortsLen = l1 * (isSculpted ? 0.56 : 0.65);
   const shortsHalfH = 4.8 * muscle;
 
   const shortsGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, shortsHalfH);
@@ -1951,10 +1985,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
   ctx.fillRect(shortsLen - 1.8, -shortsHalfH + 0.8, 1.8, (shortsHalfH - 0.8) * 2);
 
-  const quadHalfH = 3.6 * muscle;
+  const quadHalfH = 3.8 * muscle;
   const quadLen = l1 - shortsLen;
 
-  const quadGrad = ctx.createLinearGradient(0, -quadHalfH, 0, quadHalfH);
+  const quadGrad = ctx.createLinearGradient(0, -quadHalfH * 1.3, 0, quadHalfH * 1.3);
   if (isFrontLeg) {
     quadGrad.addColorStop(0.0, v.skinLight);
     quadGrad.addColorStop(0.35, v.skinMid);
@@ -1966,10 +2000,17 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   }
 
   ctx.beginPath();
-  ctx.moveTo(shortsLen, -quadHalfH);
-  ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH - 0.6, l1, -2.6);
-  ctx.lineTo(l1, 2.6);
-  ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, quadHalfH, shortsLen, quadHalfH);
+  if (isSculpted) {
+    ctx.moveTo(shortsLen, -quadHalfH * 0.95);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH * 1.35, l1, -2.2);
+    ctx.lineTo(l1, 2.2);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.40, quadHalfH * 1.25, shortsLen, quadHalfH * 0.95);
+  } else {
+    ctx.moveTo(shortsLen, -quadHalfH);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, -quadHalfH - 0.6, l1, -2.6);
+    ctx.lineTo(l1, 2.6);
+    ctx.quadraticCurveTo(shortsLen + quadLen * 0.45, quadHalfH, shortsLen, quadHalfH);
+  }
   ctx.closePath();
   ctx.fillStyle = quadGrad;
   ctx.fill();
@@ -1990,13 +2031,14 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  const kneeGrad = ctx.createLinearGradient(0, -3.2 * muscle, 0, 3.2 * muscle);
+  const kneeR = 3.2 * muscle;
+  const kneeGrad = ctx.createLinearGradient(0, -kneeR, 0, kneeR);
   kneeGrad.addColorStop(0.0, isFrontLeg ? '#ffffff' : '#e2e8f0');
   kneeGrad.addColorStop(0.5, isFrontLeg ? '#f1f5f9' : '#cbd5e1');
   kneeGrad.addColorStop(1.0, isFrontLeg ? '#94a3b8' : '#64748b');
 
   ctx.beginPath();
-  ctx.arc(1.4, 0, 3.2 * muscle, 0, Math.PI * 2);
+  ctx.arc(1.4, 0, kneeR, 0, Math.PI * 2);
   ctx.fillStyle = kneeGrad;
   ctx.fill();
 
@@ -2013,10 +2055,18 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   sockGrad.addColorStop(1.0, thighCol);
 
   ctx.beginPath();
-  ctx.moveTo(3.0, -3.6 * muscle);
-  ctx.quadraticCurveTo(l2 * 0.44, -5.2 * muscle, l2 - 3.5, -2.6);
-  ctx.lineTo(l2 - 3.5, 2.4);
-  ctx.quadraticCurveTo(l2 * 0.40, 4.6 * muscle, 3.0, 3.4 * muscle);
+  if (isSculpted) {
+    ctx.moveTo(2.0, -kneeR * 0.8);
+    ctx.lineTo(l2 - 4.0, -2.2);
+    ctx.lineTo(l2 - 4.0, 2.0);
+    ctx.quadraticCurveTo(l2 * 0.65, 3.2 * muscle, l2 * 0.38, 5.8 * muscle);
+    ctx.quadraticCurveTo(l2 * 0.15, 4.6 * muscle, 2.0, kneeR * 0.8);
+  } else {
+    ctx.moveTo(3.0, -3.6 * muscle);
+    ctx.quadraticCurveTo(l2 * 0.44, -5.2 * muscle, l2 - 3.5, -2.6);
+    ctx.lineTo(l2 - 3.5, 2.4);
+    ctx.quadraticCurveTo(l2 * 0.40, 4.6 * muscle, 3.0, 3.4 * muscle);
+  }
   ctx.closePath();
   ctx.fillStyle = sockGrad;
   ctx.fill();
@@ -2099,7 +2149,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const hingeX = 3.6;
   const hingeY = 2.6;
-  const toeLen = 8.0 * muscle;
+  const toeLen = 8.0 * (isSculpted ? muscle * 0.95 : muscle);
 
   const cosF = Math.cos(-flexAngle);
   const sinF = Math.sin(-flexAngle);
@@ -2225,7 +2275,6 @@ export function drawPlayer(ctx, GROUND_Y, p = player) {
 }
 
 function _drawCharacter(ctx, GROUND_Y, player) {
-  // Jeśli postać została całkowicie rozerwana na strzępy (Gibbed), nie rysujemy korpusu!
   if (player.isDead && player.isGibbed) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
@@ -2241,7 +2290,8 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.save();
 
   const v = { ...DEFAULT_VISUALS, ...(player.currentClass?.visuals || {}) };
-  const muscle = v.muscleMult;
+  const muscle = v.muscleMult || 1.0;
+  const isSculpted = !!v.sculptedMuscles;
 
   const centerX = player.x + player.w / 2;
   const standingY = (player.currentGroundY !== undefined && !player.isJumping) ? player.currentGroundY : (player.y + player.h);
@@ -2251,7 +2301,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const hipY = player.y + player.h - 40 + player.pelvisY;
   const speed = Math.abs(player.vx);
 
-  // BLOKADA WIROWANIA ZWŁOK: zablokowany lub ściśle ograniczony kąt ciała (brak obrotów 360 / efektu wiatraka)
   if (player.isDead) {
     const safeAngle = Math.max(-0.4, Math.min(0.4, player.corpseAngle || 0));
     if (safeAngle !== 0) {
@@ -2282,14 +2331,12 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     (isVisualCharging || player.kickState === 'SWING' || player.kickState === 'RECOVER');
 
   if (player.isDead) {
-    // Bezwładność kończyn w stylu Soldat
     const currentFloor = (player.currentGroundY !== undefined) ? player.currentGroundY : (player.y + player.h);
     const inAir = !player.isSettled && (player.y < currentFloor - player.h - 4);
     const fallDir = Math.sign(player.vx) || (player.deathRotVel ? Math.sign(player.deathRotVel) : (player.facing * -1));
     const armDirRel = fallDir * player.facing;
 
     if (inAir) {
-      // W locie: nogi bezwładnie zwisają/podciągają się za ruchem, ręce odrzucone
       rawFootFrontTargetX = hipX - fallDir * 18;
       rawFootFrontTargetY = hipY + 28;
       rawFootFrontAnkle = -fallDir * 0.35;
@@ -2303,7 +2350,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
       rawBackSwing = 0.50 * armDirRel;
       rawBackElbow = 0.45;
     } else {
-      // Na ziemi: nogi rozciągnięte wzdłuż podłoża, ręce bezwładnie odrzucone w stronę upadku
       const feetY = currentFloor - 2;
       rawFootFrontTargetX = hipX - fallDir * 34;
       rawFootFrontTargetY = feetY;
@@ -2604,7 +2650,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     }
   }
 
-  // KINEMATYKA RĄK PRAWORĘCZNEGO STRZELCA
+  // Kinematyka rąk przy trzymaniu broni
   if (player.currentWeapon && !player.isDead) {
     const hold = getWeaponHoldTransform(player);
 
@@ -2748,11 +2794,12 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const absCos = Math.abs(cosYaw);
   const absSin = Math.sin(sinYaw);
 
-  const waistHalfW = (4.6 + absSin * 1.2) * muscle;
-  const shoulderHalfW = (4.8 + absSin * 1.5) * muscle;
+  // SZEROKI TORS V-TAPER
+  const waistHalfW = (4.4 + absSin * 1.2) * (isSculpted ? muscle * 0.90 : muscle);
+  const shoulderHalfW = (4.8 + absSin * 1.5) * (isSculpted ? muscle * 1.28 : muscle);
   const waistY = 2.0;
 
-  // Pas i spodenki z palety v.shortsColor0-2
+  // Pas i spodenki
   const pelvisShortsGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
   pelvisShortsGrad.addColorStop(0.0, v.shortsColor2);
   pelvisShortsGrad.addColorStop(0.5, v.shortsColor0);
@@ -2767,7 +2814,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.fillStyle = pelvisShortsGrad;
   ctx.fill();
 
-  // Koszulka
+  // Koszulka / Tank-top z wcięciem pod pachami i mięśniami najszerszymi
   const jerseyGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
   if (isLookingAway) {
     jerseyGrad.addColorStop(0.0, v.jerseyBack0);
@@ -2781,14 +2828,33 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   }
 
   ctx.beginPath();
-  ctx.moveTo(-waistHalfW, waistY);
-  ctx.lineTo(-shoulderHalfW, -24.8);
-  ctx.lineTo(shoulderHalfW, -24.8);
-  ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
-  ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+  if (isSculpted) {
+    ctx.moveTo(-waistHalfW, waistY);
+    ctx.quadraticCurveTo(-waistHalfW * 1.15, -12.0, -shoulderHalfW, -24.8);
+    ctx.lineTo(shoulderHalfW, -24.8);
+    ctx.quadraticCurveTo(shoulderHalfW * 1.05, -12.0, waistHalfW, waistY);
+    ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+  } else {
+    ctx.moveTo(-waistHalfW, waistY);
+    ctx.lineTo(-shoulderHalfW, -24.8);
+    ctx.lineTo(shoulderHalfW, -24.8);
+    ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
+    ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+  }
   ctx.closePath();
   ctx.fillStyle = jerseyGrad;
   ctx.fill();
+
+  // Zarys mięśni piersiowych (Pectoral shelf)
+  if (isSculpted && !isLookingAway && absCos > 0.3) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(-shoulderHalfW * 0.65, -16.5);
+    ctx.lineTo(0, -15.5);
+    ctx.lineTo(shoulderHalfW * 0.65, -16.5);
+    ctx.stroke();
+  }
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
   ctx.fillRect(-waistHalfW, waistY - 1.2, waistHalfW * 2, 1.6);
