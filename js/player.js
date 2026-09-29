@@ -314,9 +314,14 @@ export const player = createPlayerInstance({ isIntro: true });
 
 export function setPlayerClass(newClass, p = player) {
   if (!newClass || !p) return;
+
+  // Powiadom starą klasę o zakończeniu
+  p.currentClass?.onDestroy?.(p);
+
   p.currentClass = newClass;
-  p.jetMax = newClass.stats.jetMax || 100;
-  p.jetFuel = p.jetMax;
+
+  // Powiadom nową klasę o inicjalizacji (ustawia jetMax, jetFuel i inne stany)
+  newClass.onInit?.(p);
 }
 
 if (typeof window !== 'undefined') {
@@ -359,6 +364,9 @@ export function executeReleaseJump(spawnGrass, p = player) {
       grassFn(p.x + p.w / 2, currentFloor, p.facing);
     }
   }
+
+  // Hook klasy: modyfikator / efekt skoku
+  p.currentClass?.onJump?.(p, grassFn);
 }
 
 export function playerSlide(spawnGrass, GROUND_Y, p = player) {
@@ -633,7 +641,7 @@ export function getSprintFootTrajectory(p) {
   return { lx, ly, ankle };
 }
 
-export function getBiomechanicFootTrajectory(phase, mode, speed) {
+export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   const p = ((phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
   if (mode === 'SPRINT') {
@@ -645,7 +653,7 @@ export function getBiomechanicFootTrajectory(phase, mode, speed) {
   if (mode === 'CROUCH_WALK') {
     let strideLen = 14;
     let ankleOffset = 0;
-    if (player.isMovingBackwards) {
+    if (playerRef && playerRef.isMovingBackwards) {
       strideLen = 14 * 0.7;
       ankleOffset = 0.2;
     }
@@ -1503,9 +1511,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
 // =========================================================================
 // SYSTEM GRAFICZNY: MODELOWANY SPORTOWIEC 2.5D
 // =========================================================================
-export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront) {
+export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals) {
   const upperLen = player.upperArmLen;
   const foreLen = player.forearmLen;
+
+  // Kolory skóry z wizuali klasy (lub domyślne neutralne odcienie)
+  const skinLight = visuals?.skinLight || '#fed7aa';
+  const skinMid   = visuals?.skinMid   || '#f5b078';
+  const skinDark  = visuals?.skinDark  || '#b45309';
+  const skinBack  = visuals?.skinBack  || '#de935e';
 
   const elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
   const elbowY = shY + Math.cos(swingAngle) * upperLen;
@@ -1526,13 +1540,13 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const sleeveGrad = ctx.createLinearGradient(0, -sleeveHalfH, 0, sleeveHalfH);
   if (isFront) {
-    sleeveGrad.addColorStop(0.0, '#ff6b6b');
+    sleeveGrad.addColorStop(0.0, upperCol);
     sleeveGrad.addColorStop(0.35, upperCol);
-    sleeveGrad.addColorStop(1.0, '#991b1b');
+    sleeveGrad.addColorStop(1.0, upperCol);
   } else {
-    sleeveGrad.addColorStop(0.0, '#dc2626');
+    sleeveGrad.addColorStop(0.0, upperCol);
     sleeveGrad.addColorStop(0.4, upperCol);
-    sleeveGrad.addColorStop(1.0, '#5f1212');
+    sleeveGrad.addColorStop(1.0, upperCol);
   }
 
   ctx.beginPath();
@@ -1557,13 +1571,13 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const bicepGrad = ctx.createLinearGradient(0, -armHalfH, 0, armHalfH);
   if (isFront) {
-    bicepGrad.addColorStop(0.0, '#fde68a');
-    bicepGrad.addColorStop(0.35, foreCol);
-    bicepGrad.addColorStop(1.0, '#b45309');
+    bicepGrad.addColorStop(0.0, skinLight);
+    bicepGrad.addColorStop(0.35, skinMid);
+    bicepGrad.addColorStop(1.0, skinDark);
   } else {
-    bicepGrad.addColorStop(0.0, '#f5b078');
-    bicepGrad.addColorStop(0.4, foreCol);
-    bicepGrad.addColorStop(1.0, '#78350f');
+    bicepGrad.addColorStop(0.0, skinMid);
+    bicepGrad.addColorStop(0.4, skinBack);
+    bicepGrad.addColorStop(1.0, skinDark);
   }
 
   ctx.beginPath();
@@ -1588,9 +1602,9 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const wristR = 1.9;
 
   const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
-  jointGrad.addColorStop(0.0, isFront ? '#fde68a' : '#f5b078');
-  jointGrad.addColorStop(0.5, foreCol);
-  jointGrad.addColorStop(1.0, isFront ? '#b45309' : '#78350f');
+  jointGrad.addColorStop(0.0, isFront ? skinLight : skinMid);
+  jointGrad.addColorStop(0.5, isFront ? skinMid : skinBack);
+  jointGrad.addColorStop(1.0, isFront ? skinDark : skinDark);
 
   ctx.beginPath();
   ctx.arc(0, 0, elbowR, 0, Math.PI * 2);
@@ -1599,13 +1613,13 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const forearmGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
   if (isFront) {
-    forearmGrad.addColorStop(0.0, '#fed7aa');
-    forearmGrad.addColorStop(0.35, foreCol);
-    forearmGrad.addColorStop(1.0, '#b45309');
+    forearmGrad.addColorStop(0.0, skinLight);
+    forearmGrad.addColorStop(0.35, skinMid);
+    forearmGrad.addColorStop(1.0, skinDark);
   } else {
-    forearmGrad.addColorStop(0.0, '#f5b078');
-    forearmGrad.addColorStop(0.4, foreCol);
-    forearmGrad.addColorStop(1.0, '#78350f');
+    forearmGrad.addColorStop(0.0, skinMid);
+    forearmGrad.addColorStop(0.4, skinBack);
+    forearmGrad.addColorStop(1.0, skinDark);
   }
 
   ctx.beginPath();
@@ -1633,9 +1647,9 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const handR = isFront ? 2.8 : 2.4;
 
   const handGrad = ctx.createRadialGradient(handX, -0.6, 0.5, handX, 0, handR + 1.0);
-  handGrad.addColorStop(0.0, isFront ? '#fed7aa' : '#f5b078');
-  handGrad.addColorStop(0.7, foreCol);
-  handGrad.addColorStop(1.0, isFront ? '#c05621' : '#78350f');
+  handGrad.addColorStop(0.0, isFront ? skinLight : skinMid);
+  handGrad.addColorStop(0.7, isFront ? skinMid : skinBack);
+  handGrad.addColorStop(1.0, isFront ? skinDark : skinDark);
 
   ctx.beginPath();
   ctx.ellipse(handX, 0, handR * 1.15, handR * 0.85, 0, 0, Math.PI * 2);
@@ -1644,19 +1658,26 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   ctx.beginPath();
   ctx.arc(handX - 0.5, -handR * 0.55, 1.2, 0, Math.PI * 2);
-  ctx.fillStyle = isFront ? '#fcd34d' : foreCol;
+  ctx.fillStyle = isFront ? skinLight : skinMid;
   ctx.fill();
 
   ctx.restore();
 }
 
-export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot) {
+export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals) {
   const ik = solve2BoneIK(hipX, hipY, targetFootX, targetFootY, l1, l2, facing, -1);
 
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
 
-  const isFrontLeg = (colorBoot === '#18181b' || colorBoot === (player.currentClass?.visuals?.bootColor || '#18181b'));
+  // isFront jest teraz jawnym parametrem – nie ma krucha logika porównania kolorów
+  const isFrontLeg = !!isFront;
+
+  // Kolory skóry z wizuali klasy
+  const skinLight = visuals?.skinLight || '#fed7aa';
+  const skinMid   = visuals?.skinMid   || '#f5b078';
+  const skinDark  = visuals?.skinDark  || '#b45309';
+  const skinBack  = visuals?.skinBack  || '#de935e';
 
   ctx.save();
 
@@ -1702,13 +1723,13 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const quadGrad = ctx.createLinearGradient(0, -quadHalfH, 0, quadHalfH);
   if (isFrontLeg) {
-    quadGrad.addColorStop(0.0, '#fed7aa');
-    quadGrad.addColorStop(0.35, '#f5b078');
-    quadGrad.addColorStop(1.0, '#b45309');
+    quadGrad.addColorStop(0.0, skinLight);
+    quadGrad.addColorStop(0.35, skinMid);
+    quadGrad.addColorStop(1.0, skinDark);
   } else {
-    quadGrad.addColorStop(0.0, '#f5b078');
-    quadGrad.addColorStop(0.4, '#de935e');
-    quadGrad.addColorStop(1.0, '#78350f');
+    quadGrad.addColorStop(0.0, skinMid);
+    quadGrad.addColorStop(0.4, skinBack);
+    quadGrad.addColorStop(1.0, skinDark);
   }
 
   ctx.beginPath();
@@ -1748,18 +1769,18 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   ctx.beginPath();
   ctx.arc(2.0, -0.6, 2.0, 0, Math.PI * 2);
-  ctx.fillStyle = isFrontLeg ? '#fed7aa' : '#de935e';
+  ctx.fillStyle = isFrontLeg ? skinLight : skinBack;
   ctx.fill();
 
   const sockGrad = ctx.createLinearGradient(0, -4.8, 0, 4.4);
   if (isFrontLeg) {
-    sockGrad.addColorStop(0.0, '#ff8a80');
+    sockGrad.addColorStop(0.0, colorShin);
     sockGrad.addColorStop(0.3, colorShin);
-    sockGrad.addColorStop(1.0, '#7f1d1d');
+    sockGrad.addColorStop(1.0, colorThigh);
   } else {
-    sockGrad.addColorStop(0.0, '#e53935');
+    sockGrad.addColorStop(0.0, colorShin);
     sockGrad.addColorStop(0.4, colorShin);
-    sockGrad.addColorStop(1.0, '#450a0a');
+    sockGrad.addColorStop(1.0, colorThigh);
   }
 
   ctx.beginPath();
@@ -1964,7 +1985,9 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p = player) {
     p.facing,
     jerseyStripe,
     jerseyStripe,
-    bootCol
+    bootCol,
+    true,                                     // isFront
+    p.currentClass?.visuals                   // visuals
   );
 }
 
@@ -2223,8 +2246,8 @@ function _drawCharacter(ctx, GROUND_Y, player) {
       rawBackElbow = 0.75;
     }
   } else {
-    const legBackTraj = getBiomechanicFootTrajectory(player.stridePhase + Math.PI, player.gaitMode, speed);
-    const legFrontTraj = getBiomechanicFootTrajectory(player.stridePhase, player.gaitMode, speed);
+    const legBackTraj = getBiomechanicFootTrajectory(player.stridePhase + Math.PI, player.gaitMode, speed, player);
+    const legFrontTraj = getBiomechanicFootTrajectory(player.stridePhase, player.gaitMode, speed, player);
 
     rawFootBackTargetX = hipX + (legBackTraj.lx * player.facing);
     rawFootBackTargetY = plantFloorY + legBackTraj.ly;
@@ -2410,13 +2433,16 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const legShinBack = player.currentClass?.visuals?.legShinBack || '#b91c1c';
   const bootBack = player.currentClass?.visuals?.bootBack || '#111827';
 
-  // 1. Dalsza ręka i noga (tło)
+  const vis = player.currentClass?.visuals;
+
+  // 1. Dalsza ręka i noga (tło) + hook onDrawUnder
+  player.currentClass?.onDrawUnder?.(ctx, player);
   if (isRightLimbForeground) {
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, '#de935e', false);
-    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack);
+    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, vis);
+    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, vis);
   } else {
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, '#de935e', false);
-    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack);
+    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, null, false, vis);
+    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, vis);
   }
 
   // 2. Tors i biodra
@@ -2702,11 +2728,11 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const bootFront = v?.bootColor || '#18181b';
 
   if (isRightLimbForeground) {
-    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront);
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, '#f5b078', true);
+    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, vis);
+    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, null, true, vis);
   } else {
-    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront);
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, '#f5b078', true);
+    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, vis);
+    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, null, true, vis);
   }
 
   player.currentClass?.onDrawOverlay?.(ctx, player);

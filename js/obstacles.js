@@ -3,17 +3,63 @@
 // =========================================================================
 
 import { ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from './config.js';
-import { triggerScreenShake, triggerGoalCelebration } from './world.js';
+import { triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks, resolveSegmentCollision, distToSegment } from './world.js';
 import { bot } from './bot.js';
+import { bullets, spawnHitSparks, spawnBulletSparks } from './weapons.js';
 
 export const obstacles = [];
+export const customObstacles = [];
+export let _activePlayer = null;
+export let _activeBall = null;
+
+export const OBSTACLE_PALETTE = {
+  ARENA_1: [
+    { type: 'catwalk', name: 'Stalowa Kładka', label: '⛓️ Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true, chains: [25, 175] },
+    { type: 'sniper_tower', name: 'Wieża Snajperska', label: '🗼 Ambona', category: 'platforms', w: 90, h: 160, isPlatform: true, oneWay: true },
+    { type: 'metal_ramp_left', name: 'Rampa Lewa', label: '📐 Rampa L', category: 'platforms', w: 80, h: 40, isPlatform: true },
+    { type: 'metal_ramp_right', name: 'Rampa Prawa', label: '📐 Rampa P', category: 'platforms', w: 80, h: 40, isPlatform: true },
+    { type: 'tall_concrete_wall', name: 'Mur Zbrojony', label: '🏛️ Mur', category: 'defense', w: 26, h: 110, solid: true },
+    { type: 'bunker_block', name: 'Blok Betonowy', label: '🛡️ Blok', category: 'defense', w: 120, h: 40, isPlatform: true, solid: true },
+    { type: 'sandbags', name: 'Worki z Piaskiem', label: '🧱 Worki', category: 'defense', w: 55, h: 22, isPlatform: true, solid: true },
+    { type: 'ammo_depot', name: 'Skrzynia Ammo', label: '📦 Ammo', category: 'defense', w: 42, h: 28, isPlatform: true, solid: true },
+    { type: 'explosive_barrel', name: 'Beczka Wybuchowa', label: '💥 Beczka', category: 'traps', w: 22, h: 34, solid: true },
+    { type: 'barbed_wire', name: 'Drut Kolczasty', label: '🕸️ Drut', category: 'traps', w: 60, h: 18 },
+    { type: 'hedgehog', name: 'Jeż Stalowy', label: '✖️ Jeż', category: 'traps', w: 32, h: 32, size: 32, isHedgehog: true }
+  ],
+  ARENA_2: [
+    { type: 'cyber_catwalk', name: 'Cyber Kładka', label: '⚡ Cyber Kładka', category: 'platforms', w: 200, h: 16, isPlatform: true, oneWay: true },
+    { type: 'floating_hex', name: 'Heksagon Lewitujący', label: '⬡ Heksagon', category: 'platforms', w: 110, h: 16, isPlatform: true, oneWay: true },
+    { type: 'cyber_pillar', name: 'Pylon Neonowy', label: '🗼 Pylon', category: 'defense', w: 24, h: 120, isPlatform: true, solid: true },
+    { type: 'neon_barrier', name: 'Bariera Energetyczna', label: '💠 Bariera', category: 'defense', w: 60, h: 24, isPlatform: true, solid: true },
+    { type: 'speed_booster_pad', name: 'Pas Przyspieszający', label: '⏩ Booster', category: 'traps', w: 80, h: 10 },
+    { type: 'gravity_lift', name: 'Winda Grawitacyjna', label: '⬆️ Grav-Lift', category: 'traps', w: 50, h: 180 },
+    { type: 'cyber_bumper', name: 'Bumper Pinball', label: '🔘 Bumper', category: 'traps', w: 40, h: 40, size: 40, radius: 20 },
+    { type: 'laser_gate', name: 'Brama Laserowa', label: '🚨 Laser', category: 'traps', w: 12, h: 140 },
+    { type: 'jump_pad', name: 'Jump Pad', label: '🚀 Jump Pad', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true }
+  ]
+};
+
+export function getObstacleDef(type) {
+  for (const arenaKey of ['ARENA_1', 'ARENA_2']) {
+    const found = OBSTACLE_PALETTE[arenaKey].find(d => d.type === type);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function clearCustomObstacles() {
+  customObstacles.length = 0;
+}
+
+export function undoCustomObstacle() {
+  return customObstacles.pop();
+}
 
 // =========================================================================
 // ARENA 1: SOLDAT NIGHT OPS (TAKTYCZNA BAZA WOJSKOWA 3200 PX)
 // Szerokość: ARENA_WIDTH = 3200 px (od START_X: 160 do 3360). Środek / Ołtarz: 1760.
 // =========================================================================
 export const ARENA_1_PLATFORMS = [
-  // --- KONDYGNACJA 1: BASTIONY WOJSKOWE I OŁTARZ CENTRALNY (relY: 110 - 190) ---
   // 1. Lewy Bastion Twierdzy (Baza Cyan z bramką)
   {
     id: 'west_bastion_fortress',
@@ -30,18 +76,15 @@ export const ARENA_1_PLATFORMS = [
       { type: 'crate', rx: 40, w: 36, h: 26 }
     ]
   },
-  // 2. Lewy Taktyczny Posterunek Obronny
+  // 2. Kładka pod bramkę Cyan w połowie wysokości areny (relY: 500)
   {
-    id: 'west_flank_outpost',
-    type: 'rock_platform',
-    x: START_X + 720, // 880
-    w: 280,
-    relY: 110,
-    thickness: 18,
-    props: [
-      { type: 'sandbags', rx: 30, w: 50, h: 20 },
-      { type: 'crate', rx: 190, w: 36, h: 26 }
-    ]
+    id: 'catwalk_goal_west',
+    type: 'catwalk',
+    x: START_X + 20, // 180
+    w: 260,
+    relY: 500,
+    thickness: 16,
+    chains: [30, 230]
   },
   // 3. GŁÓWNY OŁTARZ CENTRALNY (CENTRAL ALTAR - X: 1600 do 1920, Środek: 1760)
   {
@@ -58,18 +101,15 @@ export const ARENA_1_PLATFORMS = [
       { type: 'sandbags', rx: 255, w: 45, h: 20 }
     ]
   },
-  // 4. Prawy Taktyczny Posterunek Obronny
+  // 4. Kładka pod bramkę Orange w połowie wysokości areny (relY: 500)
   {
-    id: 'east_flank_outpost',
-    type: 'rock_platform',
-    x: START_X + 2200, // 2360
-    w: 280,
-    relY: 110,
-    thickness: 18,
-    props: [
-      { type: 'crate', rx: 50, w: 36, h: 26 },
-      { type: 'sandbags', rx: 200, w: 50, h: 20 }
-    ]
+    id: 'catwalk_goal_east',
+    type: 'catwalk',
+    x: START_X + ARENA_WIDTH - 280, // 3080
+    w: 260,
+    relY: 500,
+    thickness: 16,
+    chains: [30, 230]
   },
   // 5. Prawy Bastion Twierdzy (Baza Orange z bramką)
   {
@@ -86,147 +126,17 @@ export const ARENA_1_PLATFORMS = [
       { type: 'bunker_tier', rx: 90, w: 140, h: 30 },
       { type: 'crate', rx: 300, w: 36, h: 26 }
     ]
-  },
-
-  // --- KONDYGNACJA 2: KŁADKI STALOWE I MOSTY PRZERZUTOWE (relY: 320 - 450) ---
-  {
-    id: 'catwalk_west_tier2',
-    type: 'catwalk',
-    x: START_X + 160, // 320
-    w: 260,
-    relY: 320,
-    thickness: 14,
-    chains: [30, 230]
-  },
-  {
-    id: 'catwalk_west_mid',
-    type: 'catwalk',
-    x: START_X + 580, // 740
-    w: 280,
-    relY: 410,
-    thickness: 14,
-    chains: [35, 245]
-  },
-  // Środkowa kładka wisząca bezpośrednio nad Ołtarzem Centralnym
-  {
-    id: 'catwalk_central_over_altar',
-    type: 'catwalk',
-    x: START_X + 1400, // 1560
-    w: 400,
-    relY: 450,
-    thickness: 16,
-    chains: [40, 360]
-  },
-  {
-    id: 'catwalk_east_mid',
-    type: 'catwalk',
-    x: START_X + 2340, // 2500
-    w: 280,
-    relY: 410,
-    thickness: 14,
-    chains: [35, 245]
-  },
-  {
-    id: 'catwalk_east_tier2',
-    type: 'catwalk',
-    x: START_X + 2780, // 2940
-    w: 260,
-    relY: 320,
-    thickness: 14,
-    chains: [30, 230]
-  },
-
-  // --- KONDYGNACJA 3: GNIAZDA SNAJPERSKIE I STACJE ZAWIESZONE (relY: 620 - 680) ---
-  {
-    id: 'sniper_nest_west',
-    type: 'catwalk',
-    x: START_X + 320, // 480
-    w: 240,
-    relY: 620,
-    thickness: 14,
-    chains: [25, 215]
-  },
-  {
-    id: 'station_mid_west',
-    type: 'catwalk',
-    x: START_X + 960, // 1120
-    w: 320,
-    relY: 680,
-    thickness: 14,
-    chains: [40, 280]
-  },
-  {
-    id: 'station_mid_east',
-    type: 'catwalk',
-    x: START_X + 1920, // 2080
-    w: 320,
-    relY: 680,
-    thickness: 14,
-    chains: [40, 280]
-  },
-  {
-    id: 'sniper_nest_east',
-    type: 'catwalk',
-    x: START_X + 2640, // 2800
-    w: 240,
-    relY: 620,
-    thickness: 14,
-    chains: [25, 215]
-  },
-
-  // --- KONDYGNACJA 4 & 5: APEX CYTADELA ORBITALNA I POMOST JUPITERA (relY: 860 - 1050) ---
-  {
-    id: 'apex_orbital_fortress',
-    type: 'citadel_island',
-    x: START_X + 1350, // 1510
-    w: 500,
-    relY: 860,
-    thickness: 22,
-    props: [
-      { type: 'bunker_tier', rx: 160, w: 180, h: 36 },
-      { type: 'antenna', rx: 250, h: 75 },
-      { type: 'sandbags', rx: 40, w: 50, h: 20 },
-      { type: 'crate', rx: 410, w: 36, h: 26 }
-    ]
-  },
-  // Najwyższy podwieszany pomost z reflektorem jupitera rzucającym snop światła na ołtarz
-  {
-    id: 'apex_spotlight_gantry',
-    type: 'catwalk',
-    x: START_X + 1460, // 1620
-    w: 280,
-    relY: 1050,
-    thickness: 16,
-    chains: [30, 250]
   }
 ];
 
-export const ARENA_1_BARRICADES = [
-  { type: 'sandbags', x: START_X + 280, w: 55, h: 22 },
-  { type: 'hedgehog', x: START_X + 560, size: 32 },
-  { type: 'ammo_depot', x: START_X + 820, w: 42, h: 28 },
-  { type: 'sandbags', x: START_X + 1100, w: 55, h: 22 },
-  { type: 'hedgehog', x: START_X + 1320, size: 32 },
-  // Osłony wokół podnóża ołtarza centralnego
-  { type: 'sandbags', x: START_X + 1520, w: 55, h: 22 },
-  { type: 'hedgehog', x: START_X + 1600, size: 34 },
-  { type: 'ammo_depot', x: START_X + 1740, w: 42, h: 28 },
-  { type: 'hedgehog', x: START_X + 1880, size: 34 },
-  { type: 'sandbags', x: START_X + 1960, w: 55, h: 22 },
-  // Skrzydło wschodnie
-  { type: 'hedgehog', x: START_X + 2180, size: 32 },
-  { type: 'sandbags', x: START_X + 2400, w: 55, h: 22 },
-  { type: 'ammo_depot', x: START_X + 2660, w: 42, h: 28 },
-  { type: 'hedgehog', x: START_X + 2920, size: 32 },
-  { type: 'sandbags', x: START_X + 3160, w: 55, h: 22 }
-];
+export const ARENA_1_BARRICADES = [];
 
 export const ARENA_1_GOALS = [
   {
     id: 'goal_arena1_west',
     team: 'CYAN',
-    x: START_X + 40, // 200 (na lewym bastionie)
-    relY: 130,
+    x: START_X + 35, // 195
+    relY: 500,
     w: 100,
     h: 125,
     color: '#06b6d4',
@@ -236,8 +146,8 @@ export const ARENA_1_GOALS = [
   {
     id: 'goal_arena1_east',
     team: 'ORANGE',
-    x: START_X + ARENA_WIDTH - 140, // 3220 (na prawym bastionie)
-    relY: 130,
+    x: START_X + ARENA_WIDTH - 135, // 3225
+    relY: 500,
     w: 100,
     h: 125,
     color: '#f97316',
@@ -300,58 +210,10 @@ export const ARENA_CYBER_STADIUM_PLATFORMS = [
       { type: 'sandbags', rx: 100, w: 50, h: 20 },
       { type: 'bunker_tier', rx: 170, w: 90, h: 28 }
     ]
-  },
-  // 4. Środkowy pomost stalowy (x: 680, w: 560, relY: 140) z niższym balkonem (x: 820, w: 280, relY: 85)
-  {
-    id: 'cyber_bridge_center',
-    type: 'catwalk',
-    x: 680,
-    w: 560,
-    relY: 140,
-    thickness: 16,
-    chains: [50, 230, 330, 510]
-  },
-  {
-    id: 'cyber_balcony_center',
-    type: 'catwalk',
-    x: 820,
-    w: 280,
-    relY: 85,
-    thickness: 14,
-    chains: [30, 250]
-  },
-  // 5. Stalowe zadaszenia/okapy nad bastionami (relY: 520, w: 380) blokujące loby z góry
-  {
-    id: 'cyber_canopy_west',
-    type: 'catwalk',
-    x: 160,
-    w: 380,
-    relY: 520,
-    thickness: 20,
-    chains: [40, 190, 340]
-  },
-  {
-    id: 'cyber_canopy_east',
-    type: 'catwalk',
-    x: 1380,
-    w: 380,
-    relY: 520,
-    thickness: 20,
-    chains: [40, 190, 340]
   }
 ];
 
-export const ARENA_CYBER_STADIUM_BARRICADES = [
-  // Worki z piaskiem na skrzydłach (x: 480, 620, 1240, 1380)
-  { type: 'sandbags', x: 480, w: 55, h: 22 },
-  { type: 'sandbags', x: 620, w: 55, h: 22 },
-  { type: 'sandbags', x: 1240, w: 55, h: 22 },
-  { type: 'sandbags', x: 1380, w: 55, h: 22 },
-  // 3 stalowe jeże przeciwczołgowe w centrum boiska (x: 880, 960, 1040)
-  { type: 'hedgehog', x: 880, size: 30 },
-  { type: 'hedgehog', x: 960, size: 34 },
-  { type: 'hedgehog', x: 1040, size: 30 }
-];
+export const ARENA_CYBER_STADIUM_BARRICADES = [];
 
 export const ARENA_CYBER_STADIUM_GOALS = [
   {
@@ -497,9 +359,175 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// =========================================================================
+// SYSTEM EKSPLOZJI BECZEK I CZĄSTECZEK OGNIOWYCH
+// =========================================================================
+export const barrelExplosionParticles = [];
+
+export function spawnBarrelExplosion(cx, cy) {
+  for (let i = 0; i < 28; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 7.5 + 2.5;
+    barrelExplosionParticles.push({
+      type: 'fire',
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.8,
+      size: Math.random() * 8 + 6,
+      life: 1.0,
+      decay: Math.random() * 0.035 + 0.025,
+      color: Math.random() < 0.4 ? '#f97316' : (Math.random() < 0.7 ? '#ef4444' : '#facc15')
+    });
+  }
+  for (let i = 0; i < 16; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 3.5 + 1.0;
+    barrelExplosionParticles.push({
+      type: 'smoke',
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2.8,
+      size: Math.random() * 14 + 8,
+      life: 1.0,
+      decay: Math.random() * 0.02 + 0.015,
+      color: '#334155'
+    });
+  }
+  spawnAltarShockwave(cx, cy);
+}
+
+export function updateBarrelExplosionParticles() {
+  for (let i = barrelExplosionParticles.length - 1; i >= 0; i--) {
+    const p = barrelExplosionParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+    if (p.type === 'smoke') {
+      p.vy -= 0.04;
+      p.size += 0.25;
+    }
+    p.life -= p.decay;
+    if (p.life <= 0) {
+      barrelExplosionParticles.splice(i, 1);
+    }
+  }
+}
+
+export function drawBarrelExplosionParticles(ctx) {
+  for (const p of barrelExplosionParticles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life);
+    if (p.type === 'fire') {
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1, p.size * p.life), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1, p.size), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+export function explodeBarrel(barrel, groundY) {
+  if (!barrel || barrel.exploded) return;
+  barrel.exploded = true;
+
+  const idx = customObstacles.indexOf(barrel);
+  if (idx !== -1) {
+    customObstacles.splice(idx, 1);
+  }
+
+  const topY = barrel.y !== undefined ? barrel.y : (groundY - barrel.relY);
+  const cx = barrel.x + barrel.w / 2;
+  const cy = topY + barrel.h / 2;
+
+  triggerScreenShake(8);
+  spawnBarrelExplosion(cx, cy);
+
+  const radius = 120;
+  const maxDmg = 45;
+
+  // 1. Obrażenia i silne odrzucenie gracza
+  if (_activePlayer && !_activePlayer.isDead) {
+    const px = _activePlayer.x + _activePlayer.w / 2;
+    const py = _activePlayer.y + _activePlayer.h / 2;
+    const distP = Math.hypot(px - cx, py - cy);
+    if (distP <= radius) {
+      const dmg = Math.round(maxDmg * (1 - distP / radius * 0.45));
+      _activePlayer.hp = Math.max(0, (_activePlayer.hp !== undefined ? _activePlayer.hp : 100) - dmg);
+      const nx = distP > 0.001 ? (px - cx) / distP : 0;
+      const push = (1 - distP / radius) * 14 + 7;
+      _activePlayer.vx += nx * push;
+      _activePlayer.vy = -Math.abs(push * 0.75) - 4.5;
+      _activePlayer.isJumping = true;
+      if (_activePlayer.hp <= 0 && !_activePlayer.isDead) {
+        _activePlayer.isDead = true;
+        _activePlayer.respawnTimer = 180;
+      }
+    }
+  }
+
+  // 2. Obrażenia i impuls dla bota
+  if (bot && bot.active && !bot.isDead) {
+    const bx = bot.x + bot.w / 2;
+    const by = bot.y + bot.h / 2;
+    const distB = Math.hypot(bx - cx, by - cy);
+    if (distB <= radius) {
+      const dmg = Math.round(maxDmg * (1 - distB / radius * 0.45));
+      bot.hp = Math.max(0, (bot.hp !== undefined ? bot.hp : 100) - dmg);
+      const nx = distB > 0.001 ? (bx - cx) / distB : 0;
+      const push = (1 - distB / radius) * 14 + 7;
+      bot.vx += nx * push;
+      bot.vy = -Math.abs(push * 0.75) - 4.5;
+      bot.isJumping = true;
+      if (bot.hp <= 0 && !bot.isDead) {
+        bot.isDead = true;
+        bot.respawnTimer = 180;
+      }
+    }
+  }
+
+  // 3. Silne odrzucenie piłki
+  if (_activeBall) {
+    const distBall = Math.hypot(_activeBall.x - cx, _activeBall.y - cy);
+    if (distBall <= radius) {
+      const nx = distBall > 0.001 ? (_activeBall.x - cx) / distBall : (Math.random() - 0.5);
+      const push = (1 - distBall / radius) * 18 + 9;
+      _activeBall.vx += nx * push;
+      _activeBall.vy = -Math.abs(push * 0.75) - 6;
+      _activeBall.spin = (_activeBall.vx > 0 ? 1 : -1) * 0.9;
+    }
+  }
+
+  // 4. Detonacja łańcuchowa kolejnych beczek
+  for (let i = customObstacles.length - 1; i >= 0; i--) {
+    const other = customObstacles[i];
+    if (other && other.type === 'explosive_barrel' && !other.exploded) {
+      const otherTopY = other.y !== undefined ? other.y : (groundY - other.relY);
+      const ocx = other.x + other.w / 2;
+      const ocy = otherTopY + other.h / 2;
+      if (Math.hypot(ocx - cx, ocy - cy) <= radius) {
+        explodeBarrel(other, groundY);
+      }
+    }
+  }
+}
+
 // Obsługa lądowania na każdym z pięter do 72 m oraz zeskoku (drop-through)
 export function checkPlayerPlatformLanding(p, groundY) {
   if (!p || p.isIntro) return;
+
+  if (p.boostCooldown > 0) p.boostCooldown--;
+  if (p.laserCooldown > 0) p.laserCooldown--;
 
   const feetY = p.y + p.h;
   const centerX = p.x + p.w / 2;
@@ -513,7 +541,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
         const topY = getPlatformSurfaceY(plat, centerX, groundY);
 
-        // 1. Zeskok z powierzchni platformy / kładki / rampy
+        // 1. Zeskok z powierzchni platformy / kładki
         if (Math.abs(feetY - topY) <= 14 && p.y < groundY - p.h - 2) {
           p.y = topY - p.h + 12;
           p.vy = 2.8;
@@ -547,10 +575,121 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     }
 
+    // Zeskok z platform i kładek postawionych przez gracza (customObstacles)
+    for (const obs of customObstacles) {
+      if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower' || obs.type === 'metal_ramp_left' || obs.type === 'metal_ramp_right') {
+        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+        if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
+          let surfaceY = topY;
+          if (obs.type === 'metal_ramp_left') {
+            const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+            surfaceY = topY + t * obs.h;
+          } else if (obs.type === 'metal_ramp_right') {
+            const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+            surfaceY = topY + (1 - t) * obs.h;
+          }
+          if (Math.abs(feetY - surfaceY) <= 16 && p.y < groundY - p.h - 2) {
+            p.y = surfaceY - p.h + 12;
+            p.vy = 2.8;
+            p.isJumping = true;
+            p.isCrouching = false;
+            p.airVx = p.vx;
+            p.currentGroundY = groundY;
+            return;
+          }
+        }
+      }
+    }
+
     // Dopóki klawisz 'S' / strzałka w dół jest trzymany, pomijamy lądowanie na platformach
-    // (umożliwiając swobodne opadanie w dół aż do poziomu ziemi)
     p.currentGroundY = groundY;
     return;
+  }
+
+  // Interaktywne zachowania przeszkód gracza (customObstacles)
+  for (const obs of customObstacles) {
+    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+    const bottomY = topY + obs.h;
+
+    // 1. Jump Pad
+    if (obs.type === 'jump_pad') {
+      if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
+        if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
+          p.y = topY - p.h - 4;
+          p.vy = -12.5;
+          p.isJumping = true;
+          p.isCrouching = false;
+          p.airVx = p.vx;
+          triggerScreenShake(5.0);
+          spawnJetpackSparks(centerX, topY, 0, 6);
+          return;
+        }
+      }
+    }
+    // 2. Speed Booster Pad (neonowy pas przyspieszający)
+    else if (obs.type === 'speed_booster_pad') {
+      if (centerX >= obs.x && centerX <= obs.x + obs.w && feetY >= topY - 8 && feetY <= topY + 12) {
+        if (!p.boostCooldown || p.boostCooldown <= 0) {
+          const facing = p.facing || (p.vx >= 0 ? 1 : -1);
+          p.vx += facing * 8.5;
+          p.boostCooldown = 18;
+          spawnJetpackSparks(centerX, topY, facing, 5);
+          triggerScreenShake(3.0);
+        }
+      }
+    }
+    // 3. Gravity Lift (strumień antygrawitacyjny unoszący płynnie w górę)
+    else if (obs.type === 'gravity_lift') {
+      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
+        p.vy = Math.max(-6.5, p.vy - 0.7);
+        p.isJumping = true;
+        p.airVx = p.vx;
+        spawnJetpackSparks(centerX, p.y + p.h, 0, 1);
+      }
+    }
+    // 4. Cyber Bumper (sprężysty pinballowy odbijacz o promieniu 20 px)
+    else if (obs.type === 'cyber_bumper') {
+      const cx = obs.x + obs.w / 2;
+      const cy = topY + obs.h / 2;
+      const px = p.x + p.w / 2;
+      const py = p.y + p.h / 2;
+      const bdist = Math.hypot(px - cx, py - cy);
+      if (bdist < 20 + 16) {
+        const nx = bdist > 0.001 ? (px - cx) / bdist : 0;
+        const ny = bdist > 0.001 ? (py - cy) / bdist : -1;
+        p.x = cx + nx * 38 - p.w / 2;
+        p.y = cy + ny * 38 - p.h / 2;
+        p.vx = nx * 15.0;
+        p.vy = ny * 15.0;
+        p.isJumping = true;
+        obs.hitTimer = 14;
+        triggerScreenShake(5.0);
+        spawnJetpackSparks(cx + nx * 20, cy + ny * 20, 0, 8);
+      }
+    }
+    // 5. Barbed Wire (drut kolczasty - spowolnienie i drobne obrażenia)
+    else if (obs.type === 'barbed_wire') {
+      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY >= topY && p.y <= bottomY) {
+        p.vx *= 0.45;
+        obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
+        if (obs.wireDmgTick % 18 === 0) {
+          p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 1);
+          if (p.hp <= 0 && !p.isDead) { p.isDead = true; p.respawnTimer = 180; }
+        }
+      }
+    }
+    // 6. Laser Gate (kurtyna laserowa - przepuszcza zadając 15 obrażeń)
+    else if (obs.type === 'laser_gate') {
+      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
+        if (!p.laserCooldown || p.laserCooldown <= 0) {
+          p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
+          p.laserCooldown = 30;
+          triggerScreenShake(4.0);
+          spawnHitSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
+          if (p.hp <= 0 && !p.isDead) { p.isDead = true; p.respawnTimer = 180; }
+        }
+      }
+    }
   }
 
   let landedSurface = null;
@@ -565,6 +704,72 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (isLanding) {
         landedSurface = topY;
         break;
+      }
+    }
+  }
+
+  // Lądowanie na obiektach gracza (customObstacles)
+  for (const obs of customObstacles) {
+    // Obiekty niemające płaskiej powierzchni do stania pomijamy
+    if (obs.type === 'hedgehog' || obs.type === 'gravity_lift' || obs.type === 'barbed_wire' || obs.type === 'laser_gate' || obs.type === 'cyber_bumper' || obs.type === 'speed_booster_pad') {
+      continue;
+    }
+
+    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+
+    if (obs.type === 'metal_ramp_left') {
+      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+        const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+        const rampSurfaceY = topY + t * obs.h;
+        const prevFeetY = feetY - p.vy;
+        const isLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
+        if (isLanding) {
+          if (landedSurface === null || rampSurfaceY < landedSurface) {
+            landedSurface = rampSurfaceY;
+          }
+        }
+      }
+    } else if (obs.type === 'metal_ramp_right') {
+      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+        const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+        const rampSurfaceY = topY + (1 - t) * obs.h;
+        const prevFeetY = feetY - p.vy;
+        const isLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
+        if (isLanding) {
+          if (landedSurface === null || rampSurfaceY < landedSurface) {
+            landedSurface = rampSurfaceY;
+          }
+        }
+      }
+    } else {
+      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+        const prevFeetY = feetY - p.vy;
+        const isLanding = p.vy >= 0 && prevFeetY <= topY + 12 && feetY >= topY - 10 && feetY <= topY + Math.max(20, p.vy + 10);
+        if (isLanding) {
+          if (landedSurface === null || topY < landedSurface) {
+            landedSurface = topY;
+          }
+        }
+      }
+    }
+  }
+
+  // Poziome odpychanie od ścian bloków betonowych, murów, beczek i pylonów
+  for (const obs of customObstacles) {
+    if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall' || obs.type === 'explosive_barrel') {
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const bottomY = topY + obs.h;
+      if (feetY > topY + 8 && p.y < bottomY - 4) {
+        if (p.x + p.w > obs.x && p.x < obs.x + obs.w) {
+          const midX = obs.x + obs.w / 2;
+          if (p.x + p.w / 2 < midX) {
+            p.x = obs.x - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else {
+            p.x = obs.x + obs.w;
+            if (p.vx < 0) p.vx = 0;
+          }
+        }
       }
     }
   }
@@ -612,15 +817,10 @@ export function resolveBallObstacleCollisions(ball, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (plat.type === 'catwalk') {
-      // =====================================================================
-      // 1. KŁADKA (CATWALK) - Jednostronna platforma (One-Way Platform)
-      //    Całkowicie przenikalna od dołu, odbicie tylko z góry gdy ball.vy > 0
-      // =====================================================================
       const topY = groundY - plat.relY;
       const platLeft = plat.x;
       const platRight = plat.x + plat.w;
 
-      // Odbicie od góry wyłącznie gdy piłka opada (ball.vy > 0)
       if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {
         if (ball.vy > 0) {
           const prevBottomY = (ball.y - ball.vy) + cR;
@@ -635,15 +835,11 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         }
       }
     } else {
-      // =====================================================================
-      // 2. PŁASKA WYSPA / BASTION / OŁTARZ (ROCK_PLATFORM / CITADEL_ISLAND)
-      // =====================================================================
       const topY = groundY - plat.relY;
       const platLeft = plat.x;
       const platRight = plat.x + plat.w;
       const thickness = plat.thickness || 20;
 
-      // Sprawdzenie powierzchni platformy od góry (ball.vy > 0)
       if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {
         const prevBottomY = prevY + cR;
         const curBottomY = ball.y + cR;
@@ -658,7 +854,6 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         }
       }
 
-      // Rekwizyty na platformie (np. bunker_tier, altar_pedestal, crate, sandbags)
       if (plat.props) {
         for (const prop of plat.props) {
           if (prop.type === 'bunker_tier' || prop.type === 'altar_pedestal') {
@@ -696,9 +891,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
     }
   }
 
-  // =========================================================================
-  // 4. BARYKADY NA ZIEMI (SANDBAGS, AMMO_DEPOT, HEDGEHOG) - Pełna depenetracja AABB
-  // =========================================================================
+  // Barykady na ziemi (GROUND_BARRICADES)
   for (const bar of GROUND_BARRICADES) {
     if (bar.type === 'sandbags' || bar.type === 'ammo_depot') {
       const barLeft = bar.x;
@@ -717,7 +910,6 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         const overlapTop = ballBottom - barTop;
 
         const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop);
-
         const isRollingFlat = Math.abs(ball.vy) < 1.0 || (ball.y + cR >= groundY - 4);
 
         if (minOverlap === overlapTop && ball.vy >= 0) {
@@ -732,21 +924,6 @@ export function resolveBallObstacleCollisions(ball, groundY) {
           ball.x = barRight + cR;
           ball.vx = Math.abs(ball.vx) * 0.70;
           if (isRollingFlat) ball.vy = 0;
-        } else {
-          if (isRollingFlat) {
-            if (ball.x < (barLeft + barRight) / 2) {
-              ball.x = barLeft - cR;
-              ball.vx = -Math.abs(ball.vx) * 0.70;
-            } else {
-              ball.x = barRight + cR;
-              ball.vx = Math.abs(ball.vx) * 0.70;
-            }
-            ball.vy = 0;
-          } else {
-            ball.y = barTop - cR;
-            ball.vy = -Math.abs(ball.vy) * 0.55;
-            ball.vx *= 0.88;
-          }
         }
       }
     } else if (bar.type === 'hedgehog') {
@@ -764,16 +941,163 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         const hpen = minDistH - hd;
         ball.x += hnx * hpen;
         ball.y += hny * hpen;
-
-        // Płaskie odbicie bez sztucznego wyrzutu pionowego
         ball.vx = -ball.vx * 0.65;
         ball.vy *= 0.5;
+        if (ball.y + cR >= groundY - 4 && ball.vy < 0) ball.vy = 0;
+        if (speed > 6.0) triggerScreenShake(2.2);
+      }
+    }
+  }
 
-        // Jeśli piłka toczy się blisko podłoża, nie modyfikuj ball.vy na wartość ujemną
-        if (ball.y + cR >= groundY - 4 && ball.vy < 0) {
-          ball.vy = 0;
+  // =========================================================================
+  // KOLIZJE PIŁKI Z PRZESZKODAMI GRACZA (CUSTOM_OBSTACLES)
+  // =========================================================================
+  for (const obs of customObstacles) {
+    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+    const bottomY = topY + obs.h;
+    const obsLeft = obs.x;
+    const obsRight = obs.x + obs.w;
+
+    // 1. Cyber Bumper - sprężysty pinballowy odbijacz
+    if (obs.type === 'cyber_bumper') {
+      const cx = obs.x + obs.w / 2;
+      const cy = topY + obs.h / 2;
+      const br = 20;
+      const bdx = ball.x - cx;
+      const bdy = ball.y - cy;
+      const bdist = Math.hypot(bdx, bdy);
+      if (bdist < br + cR) {
+        const bnx = bdist > 0.001 ? bdx / bdist : 0;
+        const bny = bdist > 0.001 ? bdy / bdist : -1;
+        ball.x = cx + bnx * (br + cR + 2);
+        ball.y = cy + bny * (br + cR + 2);
+        const impulse = Math.max(16.0, Math.hypot(ball.vx, ball.vy) * 2.2);
+        ball.vx = bnx * impulse;
+        ball.vy = bny * impulse;
+        ball.spin = (ball.vx > 0 ? 1 : -1) * 0.9;
+        obs.hitTimer = 14;
+        triggerScreenShake(5.0);
+        spawnAltarShockwave(cx, cy);
+        continue;
+      }
+    }
+    // 2. Speed Booster Pad - neonowy pas podłogowy
+    else if (obs.type === 'speed_booster_pad') {
+      if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y + cR >= topY - 3 && ball.y - cR <= bottomY) {
+        const dir = Math.abs(ball.vx) > 0.5 ? Math.sign(ball.vx) : 1;
+        ball.y = topY - cR;
+        ball.vx = dir * (Math.abs(ball.vx) + 8.5);
+        ball.vy = -3.2;
+        spawnJetpackSparks(ball.x, topY, dir, 4);
+        triggerScreenShake(2.5);
+        continue;
+      }
+    }
+    // 3. Gravity Lift - słup unoszący piłkę ku górze
+    else if (obs.type === 'gravity_lift') {
+      if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y >= topY - cR && ball.y <= bottomY + cR) {
+        ball.vy = Math.max(-6.5, ball.vy - 0.7);
+        continue;
+      }
+    }
+    // 4. Stalowe rampy skośne - fizyka odbicia pod kątem
+    else if (obs.type === 'metal_ramp_left') {
+      resolveSegmentCollision(ball, obs.x, topY, obs.x + obs.w, topY + obs.h, 6, 0, 0, 0, 0, 0.75, 0.20);
+      continue;
+    } else if (obs.type === 'metal_ramp_right') {
+      resolveSegmentCollision(ball, obs.x, topY + obs.h, obs.x + obs.w, topY, 6, 0, 0, 0, 0, 0.75, 0.20);
+      continue;
+    }
+    // 5. Jump Pad
+    else if (obs.type === 'jump_pad') {
+      if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR) {
+        if (ball.y + cR >= topY - 2 && ball.y - cR <= bottomY) {
+          ball.y = topY - cR - 3;
+          ball.vy = -14.0;
+          ball.vx *= 1.05;
+          ball.spin = (ball.vx > 0 ? 1 : -1) * 0.8;
+          triggerScreenShake(5.0);
+          spawnAltarShockwave(ball.x, topY);
+          continue;
         }
+      }
+    }
+    // 6. Kładki, Heksagony, Wieże - jednostronne lądowanie od góry
+    else if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower') {
+      if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR) {
+        if (ball.vy > 0) {
+          const prevBottomY = (ball.y - ball.vy) + cR;
+          if (ball.y + cR >= topY && prevBottomY <= topY + 12) {
+            ball.y = topY - cR;
+            ball.vy = Math.abs(ball.vy) > 0.8 ? -ball.vy * 0.65 : 0;
+            ball.vx *= 0.98;
+            ball.spin *= 0.94;
+            ball.rotation += ball.vx * 0.08;
+            if (speed > 8.0) triggerScreenShake(2.5);
+          }
+        }
+      }
+    }
+    // 7. Drut kolczasty - tarcie powierzchniowe
+    else if (obs.type === 'barbed_wire') {
+      if (ball.x >= obsLeft - cR && ball.x <= obsRight + cR && ball.y + cR >= topY && ball.y - cR <= bottomY) {
+        ball.vx *= 0.94;
+      }
+    }
+    // 8. Jeż stalowy
+    else if (obs.type === 'hedgehog') {
+      const hcx = obs.x + obs.w / 2;
+      const hcy = topY + obs.h / 2;
+      const hr = (obs.size || 32) / 2;
+      const hdx = ball.x - hcx;
+      const hdy = ball.y - hcy;
+      const hd = Math.hypot(hdx, hdy);
+      const minDistH = cR + hr;
 
+      if (hd < minDistH) {
+        const hnx = hd > 0.001 ? hdx / hd : 0;
+        const hny = hd > 0.001 ? hdy / hd : -1;
+        const hpen = minDistH - hd;
+        ball.x += hnx * hpen;
+        ball.y += hny * hpen;
+        ball.vx = -ball.vx * 0.70;
+        ball.vy = -ball.vy * 0.70;
+        if (speed > 6.0) triggerScreenShake(2.2);
+      }
+    }
+    // 9. Obiekty bryłowe AABB (mury, bloki, lasery, beczki, skrzynie, worki, pylon)
+    else {
+      const ballLeft = ball.x - cR;
+      const ballRight = ball.x + cR;
+      const ballTop = ball.y - cR;
+      const ballBottom = ball.y + cR;
+
+      if (ballRight > obsLeft && ballLeft < obsRight && ballBottom > topY && ballTop < bottomY) {
+        const overlapLeft = ballRight - obsLeft;
+        const overlapRight = obsRight - ballLeft;
+        const overlapTop = ballBottom - topY;
+        const overlapBottom = bottomY - ballTop;
+
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        const rest = obs.type === 'laser_gate' ? 0.95 : (obs.type === 'neon_barrier' ? 0.82 : 0.65);
+
+        if (minOverlap === overlapTop && ball.vy >= 0) {
+          ball.y = topY - cR;
+          ball.vy = -Math.abs(ball.vy) * rest;
+          ball.vx *= 0.92;
+        } else if (minOverlap === overlapBottom && ball.vy <= 0) {
+          ball.y = bottomY + cR;
+          ball.vy = Math.abs(ball.vy) * rest;
+        } else if (minOverlap === overlapLeft) {
+          ball.x = obsLeft - cR;
+          ball.vx = -Math.abs(ball.vx) * rest;
+        } else if (minOverlap === overlapRight) {
+          ball.x = obsRight + cR;
+          ball.vx = Math.abs(ball.vx) * rest;
+        }
+        if (obs.type === 'laser_gate') {
+          spawnHitSparks(ball.x, ball.y, ball.vx > 0 ? 1 : -1, 0, 4);
+        }
         if (speed > 6.0) triggerScreenShake(2.2);
       }
     }
@@ -781,6 +1105,14 @@ export function resolveBallObstacleCollisions(ball, groundY) {
 }
 
 export function checkObstacleCollisions(ball, groundY, p = null) {
+  _activeBall = ball;
+  _activePlayer = p;
+
+  updateBarrelExplosionParticles();
+  for (const obs of customObstacles) {
+    if (obs.hitTimer > 0) obs.hitTimer--;
+  }
+
   if (p) {
     checkPlayerPlatformLanding(p, groundY);
   }
@@ -974,6 +1306,590 @@ function drawHedgehog(ctx, x, y, size) {
   ctx.moveTo(0, -size / 2); ctx.lineTo(0, size / 2);
   ctx.stroke();
   ctx.restore();
+}
+
+export function drawBunkerBlock(ctx, x, y, w, h) {
+  ctx.save();
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#475569');
+  grad.addColorStop(0.35, '#334155');
+  grad.addColorStop(1, '#1e293b');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(x, y, w, 2.5);
+
+  ctx.fillStyle = '#cbd5e1';
+  const rRad = 2.2;
+  ctx.beginPath();
+  ctx.arc(x + 6, y + 6, rRad, 0, Math.PI * 2);
+  ctx.arc(x + w - 6, y + 6, rRad, 0, Math.PI * 2);
+  ctx.arc(x + 6, y + h - 6, rRad, 0, Math.PI * 2);
+  ctx.arc(x + w - 6, y + h - 6, rRad, 0, Math.PI * 2);
+  ctx.fill();
+
+  const stripeH = Math.min(10, h * 0.3);
+  const stripeY = y + (h - stripeH) / 2;
+  drawHazardStripes(ctx, x + 4, stripeY, w - 8, stripeH);
+
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(x + w * 0.25, y + 7, w * 0.5, 4);
+  ctx.restore();
+}
+
+export function drawCyberCatwalk(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 25, y); ctx.lineTo(x + 25, y - 180);
+  ctx.moveTo(x + w - 25, y); ctx.lineTo(x + w - 25, y - 180);
+  ctx.stroke();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(x, y, w, h);
+
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 10;
+  ctx.fillRect(x, y, w, 3);
+
+  ctx.fillStyle = 'rgba(6, 182, 212, 0.18)';
+  for (let sx = x + 10; sx < x + w - 10; sx += 18) {
+    ctx.fillRect(sx, y + 5, 11, h - 8);
+  }
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
+export function drawNeonBarrier(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.003;
+  const pulse = 0.7 + 0.3 * Math.sin(time * 2);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(x, y, 6, h);
+  ctx.fillRect(x + w - 6, y, 6, h);
+
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, `rgba(0, 229, 255, ${0.45 * pulse})`);
+  grad.addColorStop(0.5, `rgba(168, 85, 247, ${0.30 * pulse})`);
+  grad.addColorStop(1, `rgba(0, 229, 255, ${0.45 * pulse})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(x + 6, y, w - 12, h);
+
+  ctx.strokeStyle = `rgba(0, 229, 255, ${0.85 * pulse})`;
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+
+  const scanY = y + ((time * 35) % h);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + 6, scanY);
+  ctx.lineTo(x + w - 6, scanY);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+export function drawJumpPad(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.005;
+
+  ctx.fillStyle = '#0f172a';
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y + 4, w, h - 4, 3);
+  else ctx.rect(x, y + 4, w, h - 4);
+  ctx.fill();
+  ctx.stroke();
+
+  const padGrad = ctx.createLinearGradient(x, y, x + w, y);
+  padGrad.addColorStop(0, '#10b981');
+  padGrad.addColorStop(0.5, '#34d399');
+  padGrad.addColorStop(1, '#10b981');
+  ctx.fillStyle = padGrad;
+  ctx.shadowColor = '#10b981';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(x + 4, y, w - 8, 4);
+
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const wave = Math.sin(time * 3);
+  ctx.fillStyle = wave > 0 ? '#ffffff' : '#34d399';
+  ctx.fillText('▲  ▲  ▲', x + w / 2, y + h / 2 + 1);
+
+  ctx.restore();
+}
+
+export function drawCyberPillar(ctx, x, y, w, h) {
+  ctx.save();
+  const grad = ctx.createLinearGradient(x, y, x + w, y);
+  grad.addColorStop(0, '#090d16');
+  grad.addColorStop(0.5, '#1e293b');
+  grad.addColorStop(1, '#090d16');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.strokeStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y + 4);
+  ctx.lineTo(x + w / 2, y + h - 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.shadowColor = '#38bdf8';
+  ctx.shadowBlur = 6;
+  for (let ry = y + 16; ry < y + h - 10; ry += 24) {
+    ctx.fillRect(x - 2, ry, w + 4, 3);
+  }
+
+  ctx.fillStyle = '#64748b';
+  ctx.shadowBlur = 0;
+  ctx.fillRect(x - 3, y, w + 6, 4);
+  ctx.fillRect(x - 3, y + h - 4, w + 6, 4);
+  ctx.restore();
+}
+
+export function drawExplosiveBarrel(ctx, x, y, w, h) {
+  ctx.save();
+  const grad = ctx.createLinearGradient(x, y, x + w, y);
+  grad.addColorStop(0, '#7f1d1d');
+  grad.addColorStop(0.3, '#dc2626');
+  grad.addColorStop(0.7, '#ef4444');
+  grad.addColorStop(1, '#991b1b');
+  ctx.fillStyle = grad;
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 3);
+  else ctx.rect(x, y, w, h);
+  ctx.fill();
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 6); ctx.lineTo(x + w, y + 6);
+  ctx.moveTo(x, y + h - 6); ctx.lineTo(x + w, y + h - 6);
+  ctx.stroke();
+
+  drawHazardStripes(ctx, x + 2, y + h * 0.38, w - 4, 8);
+
+  ctx.fillStyle = '#fef08a';
+  ctx.shadowColor = '#ef4444';
+  ctx.shadowBlur = 6;
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🔥', x + w / 2, y + h * 0.72);
+
+  ctx.strokeStyle = '#450a0a';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
+export function drawBarbedWire(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.fillStyle = '#78716c';
+  ctx.strokeStyle = '#292524';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(x + 4, y, 5, h);
+  ctx.strokeRect(x + 4, y, 5, h);
+  ctx.fillRect(x + w - 9, y, 5, h);
+  ctx.strokeRect(x + w - 9, y, 5, h);
+
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  const cy = y + h / 2;
+  for (let i = x + 8; i < x + w - 8; i += 7) {
+    ctx.ellipse(i, cy, 3.5, 6, 0.4, 0, Math.PI * 2);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = x + 11; i < x + w - 10; i += 10) {
+    ctx.moveTo(i - 2, cy - 5); ctx.lineTo(i + 2, cy + 5);
+    ctx.moveTo(i - 2, cy + 5); ctx.lineTo(i + 2, cy - 5);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function drawSniperTower(ctx, x, y, w, h) {
+  ctx.save();
+  const platH = 14;
+  const platY = y;
+  const legsTopY = platY + platH;
+  const legsBottomY = y + h;
+
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 2.0;
+
+  ctx.beginPath();
+  ctx.moveTo(x + 12, legsTopY); ctx.lineTo(x + 4, legsBottomY);
+  ctx.moveTo(x + w - 12, legsTopY); ctx.lineTo(x + w - 4, legsBottomY);
+  ctx.stroke();
+
+  const numSections = 4;
+  const secH = (legsBottomY - legsTopY) / numSections;
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = '#64748b';
+  for (let s = 0; s < numSections; s++) {
+    const sy1 = legsTopY + s * secH;
+    const sy2 = sy1 + secH;
+    const t1 = s / numSections;
+    const t2 = (s + 1) / numSections;
+    const lx1 = (x + 12) * (1 - t1) + (x + 4) * t1;
+    const rx1 = (x + w - 12) * (1 - t1) + (x + w - 4) * t1;
+    const lx2 = (x + 12) * (1 - t2) + (x + 4) * t2;
+    const rx2 = (x + w - 12) * (1 - t2) + (x + w - 4) * t2;
+
+    ctx.beginPath();
+    ctx.moveTo(lx1, sy1); ctx.lineTo(rx2, sy2);
+    ctx.moveTo(rx1, sy1); ctx.lineTo(lx2, sy2);
+    ctx.moveTo(lx2, sy2); ctx.lineTo(rx2, sy2);
+    ctx.stroke();
+  }
+
+  const ladderX = x + w / 2;
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ladderX - 5, legsTopY); ctx.lineTo(ladderX - 5, legsBottomY);
+  ctx.moveTo(ladderX + 5, legsTopY); ctx.lineTo(ladderX + 5, legsBottomY);
+  ctx.stroke();
+
+  ctx.lineWidth = 1.0;
+  for (let ly = legsTopY + 10; ly < legsBottomY; ly += 12) {
+    ctx.beginPath();
+    ctx.moveTo(ladderX - 5, ly); ctx.lineTo(ladderX + 5, ly);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(x, platY, w, platH);
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, platY, w, platH);
+
+  drawHazardStripes(ctx, x, platY + platH - 4, w, 4);
+
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, platY - 14); ctx.lineTo(x + w - 2, platY - 14);
+  ctx.moveTo(x + 2, platY); ctx.lineTo(x + 2, platY - 14);
+  ctx.moveTo(x + w - 2, platY); ctx.lineTo(x + w - 2, platY - 14);
+  ctx.moveTo(x + 24, platY); ctx.lineTo(x + 24, platY - 14);
+  ctx.moveTo(x + w - 24, platY); ctx.lineTo(x + w - 24, platY - 14);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+export function drawMetalRamp(ctx, x, y, w, h, isLeft) {
+  ctx.save();
+  ctx.beginPath();
+  if (isLeft) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+  } else {
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h);
+  }
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#334155');
+  grad.addColorStop(0.5, '#1e293b');
+  grad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.2;
+  for (let rx = x + 16; rx < x + w - 8; rx += 16) {
+    const t = (rx - x) / w;
+    const topRampY = isLeft ? (y + t * h) : (y + (1 - t) * h);
+    ctx.beginPath();
+    ctx.moveTo(rx, topRampY);
+    ctx.lineTo(rx, y + h);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  if (isLeft) {
+    ctx.moveTo(x, y); ctx.lineTo(x + w, y + h);
+  } else {
+    ctx.moveTo(x, y + h); ctx.lineTo(x + w, y);
+  }
+  ctx.stroke();
+
+  drawHazardStripes(ctx, x, y + h - 4, w, 4);
+  ctx.restore();
+}
+
+export function drawTallConcreteWall(ctx, x, y, w, h) {
+  ctx.save();
+  const grad = ctx.createLinearGradient(x, y, x + w, y);
+  grad.addColorStop(0, '#475569');
+  grad.addColorStop(0.35, '#334155');
+  grad.addColorStop(1, '#1e293b');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.8;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(x - 2, y, w + 4, 4);
+
+  drawHazardStripes(ctx, x + 2, y + h * 0.45, w - 4, 12);
+
+  ctx.fillStyle = '#0f172a';
+  for (let ry = y + 16; ry < y + h - 14; ry += 28) {
+    ctx.beginPath();
+    ctx.arc(x + w / 2, ry, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+export function drawSpeedBoosterPad(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.006;
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 10;
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const offset = Math.floor((time * 15) % 3);
+  for (let i = 0; i < 4; i++) {
+    const arrowX = x + 14 + i * 16;
+    ctx.fillStyle = ((i + offset) % 3 === 0) ? '#ffffff' : '#00e5ff';
+    ctx.fillText('▶▶', arrowX, y + h / 2 + 1);
+  }
+  ctx.restore();
+}
+
+export function drawGravityLift(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.003;
+  const pulse = 0.6 + 0.4 * Math.sin(time * 3);
+
+  const padH = 10;
+  const padY = y + h - padH;
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(x, padY, w, padH);
+  ctx.strokeStyle = '#a855f7';
+  ctx.shadowColor = '#a855f7';
+  ctx.shadowBlur = 10;
+  ctx.lineWidth = 2.0;
+  ctx.strokeRect(x, padY, w, padH);
+
+  const beamGrad = ctx.createLinearGradient(x, padY, x, y);
+  beamGrad.addColorStop(0, `rgba(168, 85, 247, ${0.45 * pulse})`);
+  beamGrad.addColorStop(0.5, `rgba(0, 229, 255, ${0.30 * pulse})`);
+  beamGrad.addColorStop(1, 'rgba(168, 85, 247, 0.0)');
+  ctx.fillStyle = beamGrad;
+  ctx.fillRect(x + 4, y, w - 8, h - padH);
+
+  ctx.strokeStyle = `rgba(0, 229, 255, ${0.65 * pulse})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, padY); ctx.lineTo(x + 4, y);
+  ctx.moveTo(x + w - 4, padY); ctx.lineTo(x + w - 4, y);
+  ctx.stroke();
+
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#00e5ff';
+  for (let k = 0; k < 3; k++) {
+    const arrowY = padY - (((time * 45 + k * 50) % (h - 20)));
+    ctx.fillText('▲', x + w / 2, arrowY);
+  }
+  ctx.restore();
+}
+
+export function drawLaserGate(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.005;
+  const pulse = 0.7 + 0.3 * Math.sin(time * 6);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.strokeStyle = '#f43f5e';
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(x - 3, y, w + 6, 8);
+  ctx.strokeRect(x - 3, y, w + 6, 8);
+  ctx.fillRect(x - 3, y + h - 8, w + 6, 8);
+  ctx.strokeRect(x - 3, y + h - 8, w + 6, 8);
+
+  const laserGrad = ctx.createLinearGradient(x, y, x + w, y);
+  laserGrad.addColorStop(0, `rgba(244, 63, 94, ${0.75 * pulse})`);
+  laserGrad.addColorStop(0.5, '#ffffff');
+  laserGrad.addColorStop(1, `rgba(244, 63, 94, ${0.75 * pulse})`);
+  ctx.fillStyle = laserGrad;
+  ctx.shadowColor = '#f43f5e';
+  ctx.shadowBlur = 14;
+  ctx.fillRect(x + 2, y + 8, w - 4, h - 16);
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  for (let ly = y + 14; ly < y + h - 14; ly += 14) {
+    const jitter = Math.sin(time * 8 + ly) * 3;
+    ctx.moveTo(x, ly);
+    ctx.lineTo(x + w + jitter, ly);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function drawFloatingHex(ctx, x, y, w, h) {
+  ctx.save();
+  const time = performance.now() * 0.002;
+  const pulse = 0.5 + 0.5 * Math.sin(time * 3);
+  const cut = 12;
+
+  ctx.beginPath();
+  ctx.moveTo(x + cut, y);
+  ctx.lineTo(x + w - cut, y);
+  ctx.lineTo(x + w, y + h / 2);
+  ctx.lineTo(x + w - cut, y + h);
+  ctx.lineTo(x + cut, y + h);
+  ctx.lineTo(x, y + h / 2);
+  ctx.closePath();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fill();
+
+  ctx.strokeStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 10;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.fillStyle = '#00e5ff';
+  ctx.fillRect(x + 20, y + h / 2 - 2, w - 40, 4);
+
+  ctx.fillStyle = `rgba(0, 229, 255, ${0.35 + pulse * 0.35})`;
+  ctx.shadowBlur = 16;
+  ctx.fillRect(x + cut + 6, y + h, w - 2 * cut - 12, 4);
+
+  ctx.restore();
+}
+
+export function drawCyberBumper(ctx, x, y, w, h, hitTimer = 0) {
+  ctx.save();
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const r = (w || 40) / 2;
+  const isHit = hitTimer > 0;
+
+  ctx.fillStyle = isHit ? '#ffffff' : '#090d16';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = isHit ? '#f43f5e' : '#00e5ff';
+  ctx.shadowColor = isHit ? '#f43f5e' : '#00e5ff';
+  ctx.shadowBlur = isHit ? 22 : 12;
+  ctx.lineWidth = isHit ? 3.5 : 2.5;
+  ctx.stroke();
+
+  ctx.strokeStyle = isHit ? '#ffffff' : '#38bdf8';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = isHit ? '#f43f5e' : '#00e5ff';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, hitTimer = 0) {
+  if (type === 'catwalk') {
+    drawCatwalk(ctx, { x, w, relY: groundY - y, thickness: h, chains: [25, w - 25] }, groundY);
+  } else if (type === 'sandbags') {
+    drawSandbags(ctx, x, y, w, h);
+  } else if (type === 'ammo_depot') {
+    drawCrate(ctx, x, y, w, h);
+  } else if (type === 'hedgehog') {
+    drawHedgehog(ctx, x + w / 2, y + h / 2, w);
+  } else if (type === 'bunker_block') {
+    drawBunkerBlock(ctx, x, y, w, h);
+  } else if (type === 'cyber_catwalk') {
+    drawCyberCatwalk(ctx, x, y, w, h);
+  } else if (type === 'neon_barrier') {
+    drawNeonBarrier(ctx, x, y, w, h);
+  } else if (type === 'jump_pad') {
+    drawJumpPad(ctx, x, y, w, h);
+  } else if (type === 'cyber_pillar') {
+    drawCyberPillar(ctx, x, y, w, h);
+  } else if (type === 'explosive_barrel') {
+    drawExplosiveBarrel(ctx, x, y, w, h);
+  } else if (type === 'barbed_wire') {
+    drawBarbedWire(ctx, x, y, w, h);
+  } else if (type === 'sniper_tower') {
+    drawSniperTower(ctx, x, y, w, h);
+  } else if (type === 'metal_ramp_left') {
+    drawMetalRamp(ctx, x, y, w, h, true);
+  } else if (type === 'metal_ramp_right') {
+    drawMetalRamp(ctx, x, y, w, h, false);
+  } else if (type === 'tall_concrete_wall') {
+    drawTallConcreteWall(ctx, x, y, w, h);
+  } else if (type === 'speed_booster_pad') {
+    drawSpeedBoosterPad(ctx, x, y, w, h);
+  } else if (type === 'gravity_lift') {
+    drawGravityLift(ctx, x, y, w, h);
+  } else if (type === 'laser_gate') {
+    drawLaserGate(ctx, x, y, w, h);
+  } else if (type === 'floating_hex') {
+    drawFloatingHex(ctx, x, y, w, h);
+  } else if (type === 'cyber_bumper') {
+    drawCyberBumper(ctx, x, y, w, h, hitTimer);
+  }
 }
 
 function drawRockIsland(ctx, plat, groundY) {
@@ -1448,6 +2364,14 @@ export function drawObstacles(ctx, groundY) {
     }
   }
 
+  // 5. Renderowanie przeszkód z edytora gracza (customObstacles)
+  for (const obs of customObstacles) {
+    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+    drawSingleObstacleByType(ctx, obs.type, obs.x, topY, obs.w, obs.h, groundY, obs.hitTimer || 0);
+  }
+
+  drawBarrelExplosionParticles(ctx);
+
   drawNeonGoals(ctx, groundY, GOALS);
 
   if (activeArenaId === 'ARENA_1') {
@@ -1699,6 +2623,82 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const cy = groundY - r;
         const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
         recordHit(hit);
+      }
+    }
+  }
+
+  // 5. Przeszkody postawione przez gracza (customObstacles)
+  if (Array.isArray(customObstacles)) {
+    for (const obs of customObstacles) {
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const bottomY = topY + obs.h;
+
+      if (obs.type === 'hedgehog') {
+        const cx = obs.x + obs.w / 2;
+        const cy = topY + obs.h / 2;
+        const r = (obs.size || 32) / 2;
+        const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
+        recordHit(hit, 'custom_hedgehog');
+      } else if (obs.type === 'cyber_bumper') {
+        const cx = obs.x + obs.w / 2;
+        const cy = topY + obs.h / 2;
+        const r = 20;
+        const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
+        if (hit) {
+          obs.hitTimer = 10;
+          recordHit(hit, 'custom_cyber_bumper');
+        }
+      } else if (obs.type === 'metal_ramp_left') {
+        // Skośna płaszczyzna najazdu
+        const rampHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, topY + obs.h);
+        if (rampHit) recordHit(rampHit, 'custom_metal_ramp_left');
+        const backHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY, obs.x, topY + obs.h);
+        if (backHit) recordHit(backHit, 'custom_metal_ramp_left');
+        const botHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY + obs.h);
+        if (botHit) recordHit(botHit, 'custom_metal_ramp_left');
+      } else if (obs.type === 'metal_ramp_right') {
+        // Skośna płaszczyzna najazdu
+        const rampHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY);
+        if (rampHit) recordHit(rampHit, 'custom_metal_ramp_right');
+        const backHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x + obs.w, topY, obs.x + obs.w, topY + obs.h);
+        if (backHit) recordHit(backHit, 'custom_metal_ramp_right');
+        const botHit = getSegmentSegmentIntersection(x1, y1, x2, y2, obs.x, topY + obs.h, obs.x + obs.w, topY + obs.h);
+        if (botHit) recordHit(botHit, 'custom_metal_ramp_right');
+      } else if (obs.type === 'explosive_barrel') {
+        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
+        if (hit) {
+          recordHit(hit, 'custom_explosive_barrel');
+          explodeBarrel(obs, groundY);
+        }
+      } else if (obs.type === 'laser_gate') {
+        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
+        if (hit) {
+          let ricocheted = false;
+          if (Array.isArray(bullets)) {
+            for (const b of bullets) {
+              if (Math.hypot(b.prevX - x1, b.prevY - y1) < 4 || Math.hypot(b.x - x2, b.y - y2) < 4) {
+                if (!b.laserBounces || b.laserBounces < 3) {
+                  b.laserBounces = (b.laserBounces || 0) + 1;
+                  b.vx = -b.vx * 0.92;
+                  b.x = hit.x + (b.vx > 0 ? 3 : -3);
+                  b.prevX = b.x;
+                  spawnHitSparks(hit.x, hit.y, b.vx > 0 ? 1 : -1, 0, 5);
+                  triggerScreenShake(2.5);
+                  ricocheted = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (!ricocheted) {
+            recordHit(hit, 'custom_laser_gate');
+          }
+        }
+      } else if (obs.type === 'barbed_wire' || obs.type === 'gravity_lift' || obs.type === 'speed_booster_pad') {
+        continue;
+      } else {
+        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
+        recordHit(hit, 'custom_' + obs.type);
       }
     }
   }

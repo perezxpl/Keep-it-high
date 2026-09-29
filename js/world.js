@@ -136,6 +136,65 @@ export function drawParticles(ctx) {
   }
 }
 
+// =========================================================================
+// NEONOWY SYSTEM CZĄSTECZEK JETPACKA (CYJAN, BŁĘKIT, FIOLET)
+// =========================================================================
+export const jetpackParticles = [];
+
+export function spawnJetpackSparks(x, y, facing, count = 2) {
+  const colors = ['#00e5ff', '#38bdf8', '#c084fc'];
+  const dir = facing || 1;
+
+  for (let i = 0; i < count; i++) {
+    const col = colors[Math.floor(Math.random() * colors.length)];
+    const vx = -dir * (Math.random() * 2.5 + 1.0) + (Math.random() - 0.5) * 1.5;
+    const vy = Math.random() * 4.5 + 2.5;
+
+    jetpackParticles.push({
+      x: x + (Math.random() * 4 - 2),
+      y: y + (Math.random() * 4 - 2),
+      vx,
+      vy,
+      size: Math.random() * 2.5 + 2.0,
+      life: 1.0,
+      color: col
+    });
+  }
+
+  if (jetpackParticles.length > 150) {
+    jetpackParticles.splice(0, jetpackParticles.length - 150);
+  }
+}
+
+export function updateJetpackParticles() {
+  for (let i = jetpackParticles.length - 1; i >= 0; i--) {
+    const p = jetpackParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.045;
+    if (p.life <= 0) {
+      jetpackParticles.splice(i, 1);
+    }
+  }
+}
+
+export function drawJetpackParticles(ctx) {
+  if (jetpackParticles.length === 0) return;
+
+  for (let i = 0; i < jetpackParticles.length; i++) {
+    const p = jetpackParticles[i];
+    ctx.save();
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 export function dist(x1, y1, x2, y2) {
   return Math.hypot(x2 - x1, y2 - y1);
 }
@@ -576,97 +635,101 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
   }
 
-  if (rightStick && rightStick.active) {
+  // RIGHT STICK – Neonowy drążek celowania z 300 ms linger fade
+  const rsVisible = (rightStick && rightStick.active) ||
+    (rightStick && !rightStick.active && rightStick.lingerAlpha > 0.01);
+
+  if (rsVisible) {
+    const rsAlpha = rightStick.active ? 1.0 : (rightStick.lingerAlpha || 0);
+    ctx.save();
+    ctx.globalAlpha = rsAlpha;
+
     const bx = rightStick.baseX;
     const by = rightStick.baseY;
     const maxR = rightStick.maxRadius || 65;
 
-    const dx = rightStick.curX - bx;
-    const dy = rightStick.curY - by;
-    const rawDist = Math.hypot(dx, dy);
-    const normX = rawDist > 0.001 ? dx / rawDist : 1;
-    const normY = rawDist > 0.001 ? dy / rawDist : 0;
-    const angle = Math.atan2(normY, normX);
-
-    const power = Math.max(0, Math.min(1.0, player.chargePower || 0));
-
-    let mainColor, glowColor;
-    if (power < 0.45) {
-      mainColor = '#38bdf8';
-      glowColor = 'rgba(56, 189, 248, 0.4)';
-    } else if (power < 0.80) {
-      mainColor = '#facc15';
-      glowColor = 'rgba(250, 204, 21, 0.45)';
-    } else {
-      mainColor = '#ef4444';
-      glowColor = 'rgba(239, 68, 68, 0.6)';
-    }
+    // Tło podstawy drążka
+    const bgGrad = ctx.createRadialGradient(bx, by, 10, bx, by, maxR);
+    bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.55)');
+    bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.35)');
 
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+    ctx.fillStyle = bgGrad;
     ctx.fill();
-    ctx.strokeStyle = glowColor;
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    if (power > 0.05) {
-      ctx.save();
-      ctx.translate(bx, by);
-      ctx.rotate(angle);
-
-      const arrowLen = 25 + power * 55;
-      const shaftW = 7 + power * 5;
-      const headLen = 16 + power * 8;
-      const headW = 14 + power * 10;
-
-      ctx.beginPath();
-      ctx.moveTo(12, -shaftW * 0.5);
-      ctx.lineTo(arrowLen - headLen, -shaftW * 0.5);
-      ctx.lineTo(arrowLen - headLen, -headW * 0.5);
-      ctx.lineTo(arrowLen, 0);
-      ctx.lineTo(arrowLen - headLen, headW * 0.5);
-      ctx.lineTo(arrowLen - headLen, shaftW * 0.5);
-      ctx.lineTo(12, shaftW * 0.5);
-      ctx.closePath();
-
-      const arrowGrad = ctx.createLinearGradient(0, 0, arrowLen, 0);
-      arrowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
-      arrowGrad.addColorStop(0.3, glowColor);
-      arrowGrad.addColorStop(1.0, mainColor);
-
-      ctx.fillStyle = arrowGrad;
-      ctx.fill();
-      ctx.strokeStyle = mainColor;
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-
-      if (power >= 0.95) {
-        ctx.shadowColor = mainColor;
-        ctx.shadowBlur = 12;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
-    const clampedDist = Math.min(rawDist, maxR);
-    const knobX = bx + normX * clampedDist;
-    const knobY = by + normY * clampedDist;
-
+    // Neonowe oznaczenie celownika – krzyż na środku podstawy
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.fill();
-    ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 2.5;
+    ctx.moveTo(bx - 10, by); ctx.lineTo(bx + 10, by);
+    ctx.moveTo(bx, by - 10); ctx.lineTo(bx, by + 10);
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px monospace';
+    if (rightStick.active) {
+      const dx = rightStick.curX - bx;
+      const dy = rightStick.curY - by;
+      const rawDist = Math.hypot(dx, dy);
+      const normX = rawDist > 0.001 ? dx / rawDist : 1;
+      const normY = rawDist > 0.001 ? dy / rawDist : 0;
+
+      // Kierunkowy promień (linia od centrum do knoba)
+      const clampedDist = Math.min(rawDist, maxR);
+      const knobX = bx + normX * clampedDist;
+      const knobY = by + normY * clampedDist;
+
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(knobX, knobY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Gałka (knob) – neonowy cyjan + poświata
+      const knobGrad = ctx.createRadialGradient(knobX - 5, knobY - 5, 3, knobX, knobY, 22);
+      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
+      knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
+      ctx.fillStyle = knobGrad;
+      ctx.fill();
+
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Ikona celownika w gałce
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
+      ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
+      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX, knobY - 7);
+      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
+      ctx.stroke();
+    }
+
+    // Etykieta TAP=STRZAŁ
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.75)';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${Math.round(power * 100)}%`, knobX, knobY);
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('TAP=STRZAŁ', bx, by + maxR + 14);
+
+    ctx.restore();
   }
 
   if (btnCluster) {
@@ -742,29 +805,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.textAlign = 'center';
     ctx.fillText('WŚLIZG', 0, 15);
     ctx.restore();
-
-    if (btnCluster.fire) {
-      const fire = btnCluster.fire;
-      const fireR = fire.r || 30;
-      const isFireActive = fire.active;
-
-      ctx.beginPath();
-      ctx.arc(fire.x, fire.y, fireR, 0, Math.PI * 2);
-      ctx.fillStyle = isFireActive ? 'rgba(239, 68, 68, 0.45)' : 'rgba(15, 23, 42, 0.65)';
-      ctx.fill();
-      ctx.strokeStyle = isFireActive ? '#ef4444' : 'rgba(239, 68, 68, 0.6)';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(fire.x, fire.y);
-      ctx.fillStyle = isFireActive ? '#ef4444' : '#f87171';
-      ctx.font = 'bold 9px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('OGIEŃ', 0, 0);
-      ctx.restore();
-    }
 
     if (btnCluster.kick) {
       const kick = btnCluster.kick;
@@ -956,6 +996,52 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fillText(`HP: ${Math.ceil(curHp)}/${maxHp}`, hpX + hpW - 6, hpY + 10.5);
 
   // =========================================================================
+  // 1b. NEONOWY PASEK PALIWA JETPACKA
+  // =========================================================================
+  const jetX = hpX;
+  const jetY = hpY + 16;
+  const jetW = 180;
+  const jetH = 5;
+
+  const maxJet = player.jetMax || 100;
+  const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
+  const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
+
+  // Tło: ciemny obrys z rgba(15, 23, 42, 0.85)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(jetX, jetY, jetW, jetH, 2);
+  else ctx.rect(jetX, jetY, jetW, jetH);
+  ctx.fill();
+  ctx.stroke();
+
+  // Wypełnienie: #00e5ff z poświatą shadowBlur: 6
+  if (jetRatio > 0) {
+    ctx.save();
+    ctx.beginPath();
+    const fillJetW = Math.max(2, jetW * jetRatio);
+    if (ctx.roundRect) ctx.roundRect(jetX, jetY, fillJetW, jetH, 2);
+    else ctx.rect(jetX, jetY, fillJetW, jetH);
+    ctx.fillStyle = '#00e5ff';
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Tekst pod spodem: JET: ${Math.round(player.jetFuel)}%
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 8.5px monospace';
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`JET: ${Math.round(curJet)}%`, jetX + jetW, jetY + 12.5);
+  ctx.restore();
+
+  // =========================================================================
   // 2. WSKAŹNIK AKTYWNEJ BRONI
   // =========================================================================
   const weapon = player.currentWeapon;
@@ -968,7 +1054,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fillStyle = weaponColor;
   ctx.shadowColor = weaponColor;
   ctx.shadowBlur = 6;
-  ctx.fillText(weaponHint, hpX, hpY + 28);
+  ctx.fillText(weaponHint, hpX, hpY + 42);
   ctx.shadowBlur = 0;
 
   // =========================================================================
@@ -976,11 +1062,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   // =========================================================================
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 13px monospace';
-  ctx.fillText(`DYSTANS: ${currentDist} m`, hpX, hpY + 48);
+  ctx.fillText(`DYSTANS: ${currentDist} m`, hpX, hpY + 60);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '600 11px monospace';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, hpX, hpY + 64);
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, hpX, hpY + 76);
 
   let modeCol = '#94a3b8';
   if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
@@ -991,11 +1077,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
 
   ctx.fillStyle = modeCol;
   ctx.font = 'bold 11px monospace';
-  ctx.fillText(`STAN: ${player.gaitMode}`, hpX, hpY + 80);
+  ctx.fillText(`STAN: ${player.gaitMode}`, hpX, hpY + 92);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = '10px monospace';
-  ctx.fillText(`FPS: ${currentFps}`, hpX, hpY + 95);
+  ctx.fillText(`FPS: ${currentFps}`, hpX, hpY + 106);
 
   // 4. Tablica wyników (Arena 1 Soldat Night Ops & Arena 2 Cyber Stadium)
   const isMatchArena = (activeArenaId === 'ARENA_1' || activeArenaId === 'ARENA_2');

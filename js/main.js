@@ -6,7 +6,8 @@ import {
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
   drawEntityHealthBar,
   clearDesertSandstorm, clearWinterBlizzard,
-  isTouchDevice, setTouchDevice
+  isTouchDevice, setTouchDevice,
+  jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -18,7 +19,9 @@ import {
 } from './ball.js';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
-  updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId
+  updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
+  customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
+  drawSingleObstacleByType
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
@@ -41,14 +44,24 @@ const leftStick = {
 };
 
 const rightStick = {
-  active: false, id: null, baseX: 0, baseY: 0, curX: 0, curY: 0,
-  axisX: 0, axisY: 0, maxRadius: 65, power: 0
+  active: false,
+  id: null,
+  baseX: 0, baseY: 0,
+  curX: 0, curY: 0,
+  axisX: 0, axisY: 0,
+  maxRadius: 65,
+  // Tap-to-shoot detection
+  tapStartTime: 0,
+  tapStartX: 0,
+  tapStartY: 0,
+  // 300 ms linger fade
+  lingerTimer: 0,
+  lingerAlpha: 0
 };
 
 const btnCluster = {
   jump: { x: 0, y: 0, r: 30, active: false, id: null },
   slide: { x: 0, y: 0, r: 26, active: false, id: null },
-  fire: { x: 0, y: 0, r: 32, active: false, id: null },
   kick: { x: 0, y: 0, r: 28, active: false, id: null }
 };
 
@@ -59,8 +72,6 @@ function updateButtonLayout() {
   btnCluster.jump.y = H - 200;
   btnCluster.slide.x = W - 60;
   btnCluster.slide.y = H - 135;
-  btnCluster.fire.x = W - 130;
-  btnCluster.fire.y = H - 75;
   btnCluster.kick.x = W - 60;
   btnCluster.kick.y = H - 70;
 }
@@ -109,25 +120,27 @@ canvas.addEventListener('touchstart', (e) => {
       } else if (dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r + 14) {
         btnCluster.slide.active = true; btnCluster.slide.id = t.identifier;
         playerSlide(spawnGrass, GROUND_Y);
-      } else if (dist(t.clientX, t.clientY, btnCluster.fire.x, btnCluster.fire.y) < btnCluster.fire.r + 14) {
-        btnCluster.fire.active = true; btnCluster.fire.id = t.identifier;
-        mouseState.lmbDown = true;
-        mouseState.semiFired = false;
       } else if (dist(t.clientX, t.clientY, btnCluster.kick.x, btnCluster.kick.y) < btnCluster.kick.r + 14) {
         btnCluster.kick.active = true; btnCluster.kick.id = t.identifier;
         mouseState.rmbDown = true;
         startKickCharge(player);
       } else if (!rightStick.active) {
+        // RIGHT STICK – celowanie i strzelanie (nie kopanie)
         rightStick.active = true;
         rightStick.id = t.identifier;
         rightStick.baseX = t.clientX; rightStick.baseY = t.clientY;
         rightStick.curX = t.clientX; rightStick.curY = t.clientY;
         rightStick.axisX = 0; rightStick.axisY = 0;
-        rightStick.power = 0;
-
-        player.isCharging = true;
-        player.isStickCharging = true;
-        player.chargePower = 0;
+        rightStick.tapStartTime = performance.now();
+        rightStick.tapStartX = t.clientX;
+        rightStick.tapStartY = t.clientY;
+        rightStick.lingerTimer = 0;
+        rightStick.lingerAlpha = 1.0;
+        // Ustaw kierunek celowania na pozycję dotyku (względem gracza)
+        const wx = player.x + player.w / 2 + (t.clientX - W * 0.5) * 0.8;
+        const wy = player.y + player.h / 2 + (t.clientY - H * 0.65) * 0.8;
+        player.aimX = wx;
+        player.aimY = wy;
       }
     }
   }
@@ -161,23 +174,17 @@ canvas.addEventListener('touchmove', (e) => {
       const dy = rightStick.curY - rightStick.baseY;
       const sDist = Math.hypot(dx, dy);
       const deadzone = 6;
-      const maxR = rightStick.maxRadius || 65;
 
       if (sDist > deadzone) {
-        const power = Math.min(1.0, (sDist - deadzone) / (maxR - deadzone));
-        rightStick.power = power;
-        player.chargePower = power;
-        player.isCharging = true;
-
-        const nx = dx / sDist;
-        const ny = dy / sDist;
-        const aimDist = 160 + power * 120;
-        player.aimX = player.x + player.w / 2 + nx * aimDist;
-        player.aimY = player.y + player.h / 2 + ny * aimDist;
+        rightStick.axisX = dx / sDist;
+        rightStick.axisY = dy / sDist;
+        // Przelicz cel celowania w przestrzeni świata
+        const aimDist = 180 + Math.min(1.0, (sDist - deadzone) / ((rightStick.maxRadius || 65) - deadzone)) * 120;
+        player.aimX = player.x + player.w / 2 + rightStick.axisX * aimDist;
+        player.aimY = player.y + player.h / 2 + rightStick.axisY * aimDist;
       } else {
-        rightStick.power = 0;
-        player.chargePower = 0;
-        player.isCharging = false;
+        rightStick.axisX = 0;
+        rightStick.axisY = 0;
       }
     }
   }
@@ -199,20 +206,35 @@ function endTouch(e) {
     if (btnCluster.slide.active && t.identifier === btnCluster.slide.id) {
       btnCluster.slide.active = false; btnCluster.slide.id = null;
     }
-    if (btnCluster.fire && btnCluster.fire.active && t.identifier === btnCluster.fire.id) {
-      btnCluster.fire.active = false; btnCluster.fire.id = null;
-      mouseState.lmbDown = false;
-      mouseState.semiFired = false;
-    }
     if (btnCluster.kick && btnCluster.kick.active && t.identifier === btnCluster.kick.id) {
       btnCluster.kick.active = false; btnCluster.kick.id = null;
       mouseState.rmbDown = false;
       executeReleaseKick(ball, player);
     }
     if (rightStick.active && t.identifier === rightStick.id) {
-      rightStick.active = false; rightStick.id = null;
-      player.isStickCharging = false;
-      executeReleaseKick(ball, player);
+      rightStick.active = false;
+      rightStick.id = null;
+      rightStick.axisX = 0;
+      rightStick.axisY = 0;
+
+      const tapDuration = performance.now() - rightStick.tapStartTime;
+      const tapMovement = Math.hypot(
+        rightStick.curX - rightStick.tapStartX,
+        rightStick.curY - rightStick.tapStartY
+      );
+
+      // Quick Tap-to-Shoot: < 220 ms i ruch < 14 px
+      if (tapDuration < 220 && tapMovement < 14 && !player.isDead) {
+        const curWep = player.currentWeapon || WEAPONS.AK47;
+        if (player.shootCooldown <= 0) {
+          shootWeapon(player, curWep);
+          mouseState.semiFired = true;
+        }
+      }
+
+      // 300 ms linger fade-out (drążek zanika zamiast znikać natychmiast)
+      rightStick.lingerTimer = 300;
+      rightStick.lingerAlpha = 1.0;
     }
   }
 }
@@ -241,6 +263,7 @@ export function teleportToDistance(meters) {
   player.isJumpCharging = false;
   player.kickState = 'IDLE';
   player.gaitMode = 'IDLE';
+  isJetpackActive = false;
 
   ball.x = targetX + (30 * (player.facing || 1));
   ball.y = GROUND_Y - ball.radius;
@@ -311,7 +334,7 @@ if (devToggleBtn && devPanelContainer) {
     devDragStartY = e.clientY;
     devPanelStartLeft = devPanelContainer.offsetLeft;
     devPanelStartTop = devPanelContainer.offsetTop;
-    try { devToggleBtn.setPointerCapture(e.pointerId); } catch (err) {}
+    try { devToggleBtn.setPointerCapture(e.pointerId); } catch (err) { }
   });
 
   devToggleBtn.addEventListener('pointermove', (e) => {
@@ -336,7 +359,7 @@ if (devToggleBtn && devPanelContainer) {
     if (!isDraggingDev) return;
     e.stopPropagation();
     isDraggingDev = false;
-    try { devToggleBtn.releasePointerCapture(e.pointerId); } catch (err) {}
+    try { devToggleBtn.releasePointerCapture(e.pointerId); } catch (err) { }
     if (!devHasMoved) {
       toggleDevPanel();
     }
@@ -428,12 +451,278 @@ if (devArenaBtn) {
     camera.targetX = player.x;
     camera.y = player.y;
     camera.targetY = player.y;
+    if (editorState.active) {
+      renderEditorPalette();
+    }
   };
   devArenaBtn.addEventListener('click', toggleArena);
   devArenaBtn.addEventListener('touchend', toggleArena);
 }
 
+// =========================================================================
+// EDYTOR PRZESZKÓD (OBSTACLE EDITOR) - STAN I ELEMENTY INTERFEJSU
+// =========================================================================
+export const editorState = {
+  active: false,
+  selectedType: null,
+  snapToGrid: true,
+  gridSize: 20,
+  hoverX: 0,
+  hoverY: 0
+};
+
+let devEditorBtn = null;
+let devEditorSubpanel = null;
+let devGridBtn = null;
+let devPaletteContainer = null;
+
+export function initObstacleEditorUI() {
+  const devMenu = document.getElementById('dev-menu');
+  if (!devMenu) return;
+
+  const sep = document.createElement('span');
+  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+  sep.textContent = '|';
+  devMenu.appendChild(sep);
+
+  devEditorBtn = document.createElement('button');
+  devEditorBtn.className = 'dev-btn';
+  devEditorBtn.id = 'dev-editor-toggle-btn';
+  devEditorBtn.title = 'Włącz / Wyłącz interaktywny Edytor Przeszkód na żywo';
+  devEditorBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 700;';
+  devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
+  devMenu.appendChild(devEditorBtn);
+
+  devEditorSubpanel = document.createElement('div');
+  devEditorSubpanel.id = 'dev-editor-subpanel';
+  devEditorSubpanel.style.cssText = 'display: none; align-items: center; gap: 4px; flex-wrap: wrap; margin-left: 2px;';
+
+  devGridBtn = document.createElement('button');
+  devGridBtn.className = 'dev-btn';
+  devGridBtn.id = 'dev-grid-btn';
+  devGridBtn.title = 'Włącz/Wyłącz przyciąganie do siatki (20px)';
+  devGridBtn.style.cssText = 'border-color: #06b6d4; color: #22d3ee;';
+  devGridBtn.textContent = '🧲 SIATKA: 20px';
+  devGridBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    editorState.snapToGrid = !editorState.snapToGrid;
+    devGridBtn.textContent = editorState.snapToGrid ? '🧲 SIATKA: 20px' : '🧲 SIATKA: WYŁ';
+    devGridBtn.style.color = editorState.snapToGrid ? '#22d3ee' : '#94a3b8';
+  });
+  devEditorSubpanel.appendChild(devGridBtn);
+
+  devPaletteContainer = document.createElement('div');
+  devPaletteContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;';
+  devEditorSubpanel.appendChild(devPaletteContainer);
+
+  const undoBtn = document.createElement('button');
+  undoBtn.className = 'dev-btn';
+  undoBtn.title = 'Cofnij ostatnio postawiony obiekt (Ctrl+Z)';
+  undoBtn.textContent = '↩️ COFNIJ OSTATNIĄ';
+  undoBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    undoCustomObstacle();
+  });
+  devEditorSubpanel.appendChild(undoBtn);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'dev-btn';
+  clearBtn.title = 'Wyczyść wszystkie postawione przeszkody';
+  clearBtn.style.cssText = 'border-color: rgba(239, 68, 68, 0.4); color: #ef4444;';
+  clearBtn.textContent = '🗑️ WYCZYŚĆ WSZYSTKO';
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    clearCustomObstacles();
+  });
+  devEditorSubpanel.appendChild(clearBtn);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'dev-btn';
+  copyBtn.title = 'Skopiuj aktualny układ postawionych przeszkód do schowka jako JSON';
+  copyBtn.style.cssText = 'border-color: #a855f7; color: #c084fc; font-weight: 600;';
+  copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const jsonStr = JSON.stringify(customObstacles, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        copyBtn.textContent = '✅ SKOPIOWANO!';
+        copyBtn.style.color = '#34d399';
+        setTimeout(() => {
+          copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
+          copyBtn.style.color = '#c084fc';
+        }, 1800);
+      }).catch(() => {
+        prompt('Skopiuj JSON układu przeszkód:', jsonStr);
+      });
+    } else {
+      prompt('Skopiuj JSON układu przeszkód:', jsonStr);
+    }
+  });
+  devEditorSubpanel.appendChild(copyBtn);
+
+  devMenu.appendChild(devEditorSubpanel);
+
+  const toggleEditor = (e) => {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    editorState.active = !editorState.active;
+    if (editorState.active) {
+      devEditorBtn.textContent = '🏗️ EDYTOR: ON';
+      devEditorBtn.style.background = 'rgba(16, 185, 129, 0.3)';
+      devEditorBtn.style.borderColor = '#34d399';
+      devEditorBtn.style.color = '#ffffff';
+      devEditorBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
+      devEditorSubpanel.style.display = 'inline-flex';
+      renderEditorPalette();
+    } else {
+      devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
+      devEditorBtn.style.background = '';
+      devEditorBtn.style.borderColor = '#10b981';
+      devEditorBtn.style.color = '#34d399';
+      devEditorBtn.style.boxShadow = '';
+      devEditorSubpanel.style.display = 'none';
+      editorState.selectedType = null;
+    }
+  };
+
+  devEditorBtn.addEventListener('click', toggleEditor);
+  devEditorBtn.addEventListener('touchend', toggleEditor);
+
+  renderEditorPalette();
+}
+
+export function renderEditorPalette() {
+  if (!devPaletteContainer) return;
+  devPaletteContainer.innerHTML = '';
+
+  const arenaKey = (activeArenaId === 'ARENA_2') ? 'ARENA_2' : 'ARENA_1';
+  const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
+
+  const catTitles = arenaKey === 'ARENA_2' ? {
+    platforms: '⚡ Kładki / Podesty',
+    defense: '🗼 Piony / Osłony',
+    traps: '🚀 Interaktywne / Energia'
+  } : {
+    platforms: '🪜 Kładki / Wieże',
+    defense: '🛡️ Mury / Osłony',
+    traps: '💥 Interaktywne / Pułapki'
+  };
+
+  const categories = ['platforms', 'defense', 'traps'];
+
+  for (const cat of categories) {
+    const items = palette.filter(p => p.category === cat);
+    if (items.length === 0) continue;
+
+    const catGroup = document.createElement('div');
+    catGroup.style.cssText = 'display: inline-flex; align-items: center; gap: 3px; background: rgba(15, 23, 42, 0.65); padding: 2px 5px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.08); margin: 1px 2px;';
+
+    const catBadge = document.createElement('span');
+    catBadge.style.cssText = 'font-size: 8.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-right: 2px; white-space: nowrap;';
+    catBadge.textContent = catTitles[cat] || cat;
+    catGroup.appendChild(catBadge);
+
+    for (const item of items) {
+      const btn = document.createElement('button');
+      btn.className = 'dev-btn dev-tool-btn';
+      btn.dataset.tool = item.type;
+      btn.title = item.name + ` (${item.w}x${item.h})`;
+      btn.textContent = item.label || item.name;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        if (editorState.selectedType === item.type) {
+          editorState.selectedType = null;
+        } else {
+          editorState.selectedType = item.type;
+        }
+        updateEditorPaletteHighlight();
+      });
+
+      catGroup.appendChild(btn);
+    }
+
+    devPaletteContainer.appendChild(catGroup);
+  }
+
+  updateEditorPaletteHighlight();
+}
+
+export function updateEditorPaletteHighlight() {
+  if (!devPaletteContainer) return;
+  const buttons = devPaletteContainer.querySelectorAll('.dev-tool-btn');
+  buttons.forEach(btn => {
+    if (btn.dataset.tool === editorState.selectedType) {
+      btn.style.background = 'rgba(0, 229, 255, 0.35)';
+      btn.style.borderColor = '#00e5ff';
+      btn.style.color = '#ffffff';
+      btn.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.6)';
+    } else {
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.style.boxShadow = '';
+    }
+  });
+}
+
+function placeSelectedObstacle() {
+  if (!editorState.selectedType) return;
+  const def = getObstacleDef(editorState.selectedType);
+  if (!def) return;
+
+  const w = def.w || 40;
+  const h = def.h || 20;
+  let px = editorState.hoverX - w / 2;
+  let py = editorState.hoverY - h / 2;
+  if (editorState.snapToGrid) {
+    px = Math.round(px / editorState.gridSize) * editorState.gridSize;
+    py = Math.round(py / editorState.gridSize) * editorState.gridSize;
+  }
+
+  const newObs = {
+    id: 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    type: def.type,
+    x: px,
+    y: py,
+    w: w,
+    h: h,
+    size: def.size || w,
+    relY: GROUND_Y - py,
+    thickness: h
+  };
+
+  customObstacles.push(newObs);
+  spawnJetpackSparks(px + w / 2, py + h / 2, 0, 4);
+}
+
+function handleEditorRightClick() {
+  const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+  const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+
+  // Wyszukiwanie od góry, by usuwać kliknięty obiekt
+  for (let i = customObstacles.length - 1; i >= 0; i--) {
+    const obs = customObstacles[i];
+    const topY = obs.y !== undefined ? obs.y : (GROUND_Y - obs.relY);
+    if (worldX >= obs.x - 10 && worldX <= obs.x + obs.w + 10 &&
+      worldY >= topY - 10 && worldY <= topY + obs.h + 10) {
+      spawnJetpackSparks(obs.x + obs.w / 2, topY + obs.h / 2, 0, 6);
+      customObstacles.splice(i, 1);
+      return;
+    }
+  }
+
+  // Kliknięcie w puste miejsce wyłącza aktywne narzędzie
+  editorState.selectedType = null;
+  updateEditorPaletteHighlight();
+}
+
+initObstacleEditorUI();
+
 let jumpKeyPressed = false;
+let lastWPressTime = 0;
+let isJetpackActive = false;
+const DOUBLE_TAP_WINDOW_MS = 280;
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -442,6 +731,12 @@ window.addEventListener('keydown', (e) => {
 
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !jumpKeyPressed) {
     jumpKeyPressed = true;
+
+    const now = performance.now();
+    if (now - lastWPressTime < DOUBLE_TAP_WINDOW_MS && (player.jetFuel || 0) > 5) {
+      isJetpackActive = true;
+    }
+    lastWPressTime = now;
 
     if (!player.isJumping && !player.isSliding && !player.isIntro) {
       const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
@@ -483,6 +778,20 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Digit9' || e.code === 'Numpad9' || e.key === '9') devSetClass('SWEEPER');
 
   if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
+
+  if (e.code === 'Escape') {
+    if (editorState.active) {
+      if (editorState.selectedType) {
+        editorState.selectedType = null;
+        updateEditorPaletteHighlight();
+      }
+    }
+  }
+  if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
+    if (editorState.active) {
+      undoCustomObstacle();
+    }
+  }
 });
 
 window.addEventListener('keyup', (e) => {
@@ -493,6 +802,7 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyW' || e.code === 'ArrowUp') {
     jumpKeyPressed = false;
     keys.up = false;
+    isJetpackActive = false;
   }
   if (e.code === 'Space') {
     keys.space = false;
@@ -508,11 +818,34 @@ let mouseScreenY = H * 0.45;
 window.addEventListener('mousemove', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+
+  if (editorState.active) {
+    const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+    const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+    if (editorState.snapToGrid) {
+      editorState.hoverX = Math.round(worldX / editorState.gridSize) * editorState.gridSize;
+      editorState.hoverY = Math.round(worldY / editorState.gridSize) * editorState.gridSize;
+    } else {
+      editorState.hoverX = Math.round(worldX);
+      editorState.hoverY = Math.round(worldY);
+    }
+  }
 });
 
 canvas.addEventListener('mousedown', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+
+  if (editorState.active) {
+    if (e.button === 0 && editorState.selectedType) {
+      placeSelectedObstacle();
+      return;
+    }
+    if (e.button === 2) {
+      handleEditorRightClick();
+      return;
+    }
+  }
 
   if (e.button === 0) {
     mouseState.lmbDown = true;
@@ -524,6 +857,11 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 window.addEventListener('mouseup', (e) => {
+  if (editorState.active) {
+    mouseState.lmbDown = false;
+    mouseState.rmbDown = false;
+    return;
+  }
   if (e.button === 0) {
     mouseState.lmbDown = false;
     mouseState.semiFired = false;
@@ -584,9 +922,9 @@ function drawCrosshair(ctx, x, y, customCol) {
 
   ctx.beginPath();
   ctx.moveTo(x - spreadGap - 7, y); ctx.lineTo(x - spreadGap, y);
-  ctx.moveTo(x + spreadGap, y);     ctx.lineTo(x + spreadGap + 7, y);
+  ctx.moveTo(x + spreadGap, y); ctx.lineTo(x + spreadGap + 7, y);
   ctx.moveTo(x, y - spreadGap - 7); ctx.lineTo(x, y - spreadGap);
-  ctx.moveTo(x, y + spreadGap);     ctx.lineTo(x, y + spreadGap + 7);
+  ctx.moveTo(x, y + spreadGap); ctx.lineTo(x, y + spreadGap + 7);
   ctx.stroke();
 
   ctx.fillStyle = col;
@@ -597,14 +935,12 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  // Przeliczenie pozycji celownika myszy w przestrzeni świata (odporne na kucanie i skoki)
-  if (!isTouchDevice || player.isStickCharging) {
-    if (!isTouchDevice) {
-      const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-      const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
-      player.aimX = worldMouseX;
-      player.aimY = worldMouseY;
-    }
+  // Przeliczenie pozycji celownika myszy w przestrzeni świata (tylko na desktopie)
+  if (!isTouchDevice) {
+    const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+    const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+    player.aimX = worldMouseX;
+    player.aimY = worldMouseY;
   }
 
   // =========================================================================
@@ -630,12 +966,54 @@ function update() {
     }
   }
 
+  // Szybki neonowy jetpack o podwyższonej prędkości
+  if (isJetpackActive && !player.isDead) {
+    if (player.jetFuel > 0) {
+      player.jetFuel = Math.max(0, player.jetFuel - 0.95);
+      player.vy = Math.max(-8.5, player.vy - 0.95);
+
+      let inputAxisX = 0;
+      if (keys.left) inputAxisX -= 1;
+      if (keys.right) inputAxisX += 1;
+      if (leftStick && leftStick.active && Math.abs(leftStick.axisX) > 0.05) {
+        inputAxisX = leftStick.axisX;
+      }
+
+      if (Math.abs(inputAxisX) > 0.05) {
+        player.vx += inputAxisX * 0.42;
+        const maxAirVx = CONFIG.SPRINT_MAX * 1.1;
+        player.vx = Math.max(-maxAirVx, Math.min(maxAirVx, player.vx));
+        if (inputAxisX > 0.1) player.facing = 1;
+        else if (inputAxisX < -0.1) player.facing = -1;
+      }
+
+      player.isJumping = true;
+      player.isCrouching = false;
+
+      const hipX = player.x + player.w / 2;
+      const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
+      const nozzleX = hipX - (player.facing * 10);
+      const nozzleY = hipY + 2;
+      spawnJetpackSparks(nozzleX, nozzleY, player.facing, 2);
+    } else {
+      isJetpackActive = false;
+    }
+  }
+
+  // 300 ms linger fade-out dla prawego drążka
+  if (!rightStick.active && rightStick.lingerTimer > 0) {
+    const dt = 1000 / 60; // ~16.67 ms per frame at 60 fps
+    rightStick.lingerTimer = Math.max(0, rightStick.lingerTimer - dt);
+    rightStick.lingerAlpha = rightStick.lingerTimer / 300;
+  }
+
   if (leftStick && leftStick.active) {
     updateDoubleFlickDetection(leftStick.axisY);
   }
 
   updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player);
   updateParticles();
+  updateJetpackParticles();
   updateBall(GROUND_Y);
   checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
   checkObstacleCollisions(ball, GROUND_Y, player);
@@ -671,7 +1049,60 @@ function draw() {
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);
 
+  // --- PODGLĄD I SIATKA EDYTORA PRZESZKÓD ---
+  if (editorState.active) {
+    if (editorState.snapToGrid) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.12)';
+      const step = editorState.gridSize;
+      const startX = Math.floor(worldLeft / step) * step;
+      const endX = Math.ceil(worldRight / step) * step;
+      const startY = Math.floor((camera.y - H / camera.zoom) / step) * step;
+      const endY = Math.ceil((camera.y + H / camera.zoom) / step) * step;
+
+      for (let gx = startX; gx <= endX; gx += step * 2) {
+        for (let gy = startY; gy <= endY; gy += step * 2) {
+          ctx.fillRect(gx - 1, gy - 1, 2, 2);
+        }
+      }
+      ctx.restore();
+    }
+
+    if (editorState.selectedType) {
+      const def = getObstacleDef(editorState.selectedType);
+      if (def) {
+        const w = def.w || 40;
+        const h = def.h || 20;
+        let px = editorState.hoverX - w / 2;
+        let py = editorState.hoverY - h / 2;
+        if (editorState.snapToGrid) {
+          px = Math.round(px / editorState.gridSize) * editorState.gridSize;
+          py = Math.round(py / editorState.gridSize) * editorState.gridSize;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        drawSingleObstacleByType(ctx, def.type, px, py, w, h, GROUND_Y);
+
+        ctx.strokeStyle = '#00e5ff';
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(px - 2, py - 2, w + 4, h + 4);
+        ctx.setLineDash([]);
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#00e5ff';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${def.name} (${w}x${h})`, px + w / 2, py - 6);
+        ctx.restore();
+      }
+    }
+  }
+
   drawBullets(ctx);
+  drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
 
   if (bot.active) {
@@ -696,6 +1127,31 @@ function draw() {
   ctx.restore();
 
   drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball);
+
+  if (editorState.active) {
+    ctx.save();
+    const bannerW = 500;
+    const bannerH = 26;
+    const bannerX = (W - bannerW) / 2;
+    const bannerY = H - 38;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+    ctx.lineWidth = 1.2;
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#00e5ff';
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 6;
+    const currentToolLabel = editorState.selectedType ? `[NARZĘDZIE: ${getObstacleDef(editorState.selectedType)?.name || editorState.selectedType}]` : '[WYBIERZ PRZESZKODĘ Z MENU DEV]';
+    ctx.fillText(`🏗️ EDYTOR: ${currentToolLabel} | LPM: Postaw | PPM: Usuń/Anuluj | Ctrl+Z: Cofnij`, W / 2, bannerY + 17);
+    ctx.restore();
+  }
 }
 
 let lastTime = performance.now();
