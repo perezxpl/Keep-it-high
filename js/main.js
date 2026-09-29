@@ -15,7 +15,7 @@ import {
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
-  startKickCharge, executeReleaseKick,
+  startKickCharge, executeReleaseKick, isBallInKickReach,
   updatePlayer, drawPlayer, setPlayerClass
 } from './player.js';
 import {
@@ -90,6 +90,8 @@ export const rightStick = {
   curY: 0,
   axisX: 0,
   axisY: 0,
+  power: 0,
+  movedDist: 0,
   maxRadius: 65,
 
   // Tryb strzelania i okno 300 ms po wycelowaniu
@@ -317,37 +319,47 @@ canvas.addEventListener('touchmove', (e) => {
       const deadzone = 6;
       const maxR = rightStick.maxRadius || 65;
 
+      rightStick.movedDist = sDist;
+
       if (sDist > deadzone) {
-        rightStick.axisX = dx / sDist;
-        rightStick.axisY = dy / sDist;
-        const aimDist = 180 + Math.min(1.0, (sDist - deadzone) / (maxR - deadzone)) * 120;
-        player.aimOffsetX = rightStick.axisX * aimDist;
-        player.aimOffsetY = rightStick.axisY * aimDist;
+        const power = Math.min(1.0, (sDist - deadzone) / (maxR - deadzone));
+        const nx = dx / sDist;
+        const ny = dy / sDist;
+
+        rightStick.axisX = nx * power;
+        rightStick.axisY = ny * power;
+        rightStick.power = power;
+
+        const aimDist = 160 + power * 100;
+        player.aimOffsetX = nx * aimDist;
+        player.aimOffsetY = ny * aimDist;
+        player.aimX = player.x + player.w / 2 + nx * aimDist;
+        player.aimY = player.y + player.h / 2 + ny * aimDist;
         player.isAiming = true;
-      }
 
-      if (!rightStick.isShooting) {
-        const now = performance.now();
-        const outerThreshold = 36;
-        const innerThreshold = 15;
-
-        if (sDist > outerThreshold) {
-          if (rightStick.gestureState === 'RETRACTED' && (now - rightStick.gestureRetractTime < 280)) {
-            executeReleaseKick(ball, player, 0.95);
-            rightStick.gestureState = 'COOLDOWN';
-            rightStick.gestureCooldownUntil = now + 350;
-            rightStick.isShooting = false;
-            rightStick.waitingForSecondTap = false;
-          } else if (rightStick.gestureState !== 'COOLDOWN' || now > rightStick.gestureCooldownUntil) {
-            rightStick.gestureState = 'OUTER';
-            rightStick.gestureLastOutTime = now;
-          }
-        } else if (sDist < innerThreshold) {
-          if (rightStick.gestureState === 'OUTER' && (now - rightStick.gestureLastOutTime < 240)) {
-            rightStick.gestureState = 'RETRACTED';
-            rightStick.gestureRetractTime = now;
-          }
+        if (Math.abs(nx) > 0.1) {
+          player.facing = nx >= 0 ? 1 : -1;
         }
+
+        // Sprawdzenie zasięgu do piłki:
+        const canKickBall = isBallInKickReach(player, ball);
+        if (canKickBall && power > 0.15) {
+          player.isCharging = true;
+          player.isStickCharging = true;
+          player.chargePower = Math.min(1.0, power);
+        } else if (!canKickBall) {
+          // Piłka poza zasięgiem nogi – wyłącz tryb ładowania wykopu
+          player.isCharging = false;
+          player.isStickCharging = false;
+          player.chargePower = 0;
+        }
+      } else {
+        rightStick.axisX = 0;
+        rightStick.axisY = 0;
+        rightStick.power = 0;
+        player.isCharging = false;
+        player.isStickCharging = false;
+        player.chargePower = 0;
       }
     }
   }
@@ -385,15 +397,40 @@ function endTouch(e) {
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
+
+      const canKickBall = isBallInKickReach(player, ball);
+      const wasDeflected = (rightStick.power > 0.2 || rightStick.movedDist > 18);
+
+      if (canKickBall && wasDeflected && player.kickState === 'IDLE') {
+        // Wykonanie precyzyjnego wykopu w kierunku ostatniego wychylenia:
+        player.isCharging = true;
+        if (!player.chargePower || player.chargePower < 0.15) {
+          player.chargePower = Math.min(1.0, Math.max(0.2, rightStick.power || (rightStick.movedDist / (rightStick.maxRadius || 65))));
+        }
+        executeReleaseKick(ball, player);
+        player.isCharging = false;
+        player.isStickCharging = false;
+        player.chargePower = 0;
+        rightStick.waitingForSecondTap = false;
+        rightStick.windowTimer = 0;
+      } else {
+        // Piłka była poza zasięgiem nogi – anuluj ładowanie i zachowaj standardową obsługę celowania/strzelania
+        player.isCharging = false;
+        player.isStickCharging = false;
+        player.chargePower = 0;
+        rightStick.waitingForSecondTap = true;
+        rightStick.windowTimer = 300;
+      }
+
       rightStick.axisX = 0;
       rightStick.axisY = 0;
+      rightStick.power = 0;
+      rightStick.movedDist = 0;
 
       rightStick.isShooting = false;
       player.isShooting = false;
       player.isAiming = false;
 
-      rightStick.waitingForSecondTap = true;
-      rightStick.windowTimer = 300;
       rightStick.lingerAlpha = 1.0;
       rightStick.gestureState = 'IDLE';
     }
@@ -421,6 +458,7 @@ export function teleportToDistance(meters) {
   player.isSliding = false;
   player.isIntro = false;
   player.isCharging = false;
+  player.isStickCharging = false;
   player.isJumpCharging = false;
   player.kickState = 'IDLE';
   player.gaitMode = 'IDLE';
@@ -1423,45 +1461,56 @@ function update() {
   }
 
   // SILNIK JETPACKA
-  if (isJetpackActive && !player.isDead) {
-    if (player.jetFuel > 0) {
-      player.jetFuel = Math.max(0, player.jetFuel - 0.95);
-      player.vy = Math.max(-8.5, player.vy - 0.95);
+  if (isJetpackActive && !player.isDead && player.jetFuel > 0) {
+    player.isJetpacking = true;
+    player.jetFuel = Math.max(0, player.jetFuel - 0.95);
+    player.vy = Math.max(-8.5, player.vy - 0.95);
 
-      let inputAxisX = 0;
-      if (keys.left) inputAxisX -= 1;
-      if (keys.right) inputAxisX += 1;
-      if (leftStick && leftStick.active && Math.abs(leftStick.axisX) > 0.05) {
-        inputAxisX = leftStick.axisX;
-      }
-
-      if (Math.abs(inputAxisX) > 0.05) {
-        player.vx += inputAxisX * 0.42;
-        const maxAirVx = CONFIG.SPRINT_MAX * 1.1;
-        player.vx = Math.max(-maxAirVx, Math.min(maxAirVx, player.vx));
-        if (inputAxisX > 0.1) player.facing = 1;
-        else if (inputAxisX < -0.1) player.facing = -1;
-      }
-
-      player.isJumping = true;
-      player.isCrouching = false;
-
-      const hipX = player.x + player.w / 2;
-      const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
-      const nozzleX = hipX - (player.facing * 10);
-      const nozzleY = hipY + 2;
-      spawnJetpackSparks(nozzleX, nozzleY, player.facing, 2);
-    } else {
-      isJetpackActive = false;
-      leftStick.isJetpacking = false;
+    let inputAxisX = 0;
+    if (keys.left) inputAxisX -= 1;
+    if (keys.right) inputAxisX += 1;
+    if (leftStick && leftStick.active && Math.abs(leftStick.axisX) > 0.05) {
+      inputAxisX = leftStick.axisX;
     }
+
+    if (Math.abs(inputAxisX) > 0.05) {
+      player.vx += inputAxisX * 0.42;
+      const maxAirVx = CONFIG.SPRINT_MAX * 1.1;
+      player.vx = Math.max(-maxAirVx, Math.min(maxAirVx, player.vx));
+      if (inputAxisX > 0.1) player.facing = 1;
+      else if (inputAxisX < -0.1) player.facing = -1;
+    }
+
+    player.isJumping = true;
+    player.isCrouching = false;
+
+    const hipX = player.x + player.w / 2;
+    const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
+    const nozzleX = hipX - (player.facing * 10);
+    const nozzleY = hipY + 2;
+    const myJetColors = networkState.isHost
+      ? ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
+      : ['#f97316', '#fb923c', '#fdba74', '#ffffff'];
+    spawnJetpackSparks(nozzleX, nozzleY, player.facing, 2, myJetColors);
+  } else {
+    isJetpackActive = false;
+    if (leftStick) leftStick.isJetpacking = false;
+    player.isJetpacking = false;
   }
 
   if (leftStick && leftStick.active) {
     updateDoubleFlickDetection(leftStick.axisY);
   }
 
-  if (remotePlayer.active) {
+  if (remotePlayer && remotePlayer.active) {
+    remotePlayer.groundY = GROUND_Y;
+    remotePlayer.currentGroundY = GROUND_Y; // Kluczowy fix nóg!
+
+    // Aktualizacja fazy chodu i biegu dla nóg IK:
+    const rSpeed = Math.abs(remotePlayer.vx || 0);
+    if (rSpeed > 0.1 && !remotePlayer.isJumping) {
+      remotePlayer.stridePhase = (remotePlayer.stridePhase || 0) + rSpeed * 0.04;
+    }
     updateRemotePlayer(GROUND_Y);
   }
 
@@ -1490,6 +1539,10 @@ function update() {
   } else {
     // Klient – autorytatywna pozycja piłki z sieci P2P
     checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+    if (remotePlayer.active) {
+      checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
+      checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+    }
     checkObstacleCollisions(ball, GROUND_Y, player);
   }
 
@@ -1499,11 +1552,14 @@ function update() {
 
   if (isPlayerGrounded || player.isDead) {
     jetpackAirborneSession = false;
-    leftStick.jetpackAirborneSession = false;
-    leftStick.isJetpacking = false;
-    leftStick.waitingForJetpackTap = false;
-    leftStick.jetpackWindowTimer = 0;
+    if (leftStick) {
+      leftStick.jetpackAirborneSession = false;
+      leftStick.isJetpacking = false;
+      leftStick.waitingForJetpackTap = false;
+      leftStick.jetpackWindowTimer = 0;
+    }
     isJetpackActive = false;
+    player.isJetpacking = false;
   }
 
   if (bot.active) {

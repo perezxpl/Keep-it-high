@@ -19,6 +19,9 @@ remotePlayer.isRemote = true;
 remotePlayer.name = 'Gracz 2';
 remotePlayer.targetX = 2600;
 remotePlayer.targetY = initialGroundY - 70;
+remotePlayer.groundY = initialGroundY;
+remotePlayer.currentGroundY = initialGroundY;
+remotePlayer.stridePhase = 0;
 remotePlayer.isJetpacking = false;
 
 // =============================================================================
@@ -78,6 +81,7 @@ export function updateRemotePlayer(groundY) {
   if (!remotePlayer.active) return;
 
   remotePlayer.groundY = groundY;
+  remotePlayer.currentGroundY = groundY;
 
   // Spadek timerów animacji i wystrzału
   if (remotePlayer.shootCooldown > 0) remotePlayer.shootCooldown--;
@@ -102,15 +106,24 @@ export function updateRemotePlayer(groundY) {
   }
 
   // Animacja biegu / cyklu chodu
-  if (remotePlayer.isRunning || Math.abs(remotePlayer.vx) > 0.4) {
+  const rSpeed = Math.abs(remotePlayer.vx || 0);
+  if (remotePlayer.isRunning || rSpeed > 0.1) {
     remotePlayer.animTimer = (remotePlayer.animTimer || 0) + 0.22;
+    if (!remotePlayer.isJumping) {
+      remotePlayer.stridePhase = (remotePlayer.stridePhase || 0) + rSpeed * 0.04;
+    }
   }
 
-  // Cząsteczki płomienia jetpacka u zdalnego gracza
+  // Cząsteczki płomienia jetpacka u zdalnego gracza w barwach drużyny
   if (remotePlayer.isJetpacking) {
-    const nozzleX = remotePlayer.x + remotePlayer.w / 2 - (remotePlayer.facing * 10);
-    const nozzleY = remotePlayer.y + 42;
-    spawnJetpackSparks(nozzleX, nozzleY, remotePlayer.facing, 2);
+    const hipX = remotePlayer.x + remotePlayer.w / 2;
+    const hipY = remotePlayer.y + remotePlayer.h - 40 + (remotePlayer.pelvisY || 0);
+    const nozzleX = hipX - (remotePlayer.facing * 10);
+    const nozzleY = hipY + 2;
+    const remoteJetColors = networkState.isHost
+      ? ['#f97316', '#fb923c', '#fdba74', '#ffffff'] // Zdalny to Klient (P2 Orange)
+      : ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']; // Zdalny to Host (P1 Cyan)
+    spawnJetpackSparks(nozzleX, nozzleY, remotePlayer.facing, 3, remoteJetColors);
   }
 }
 
@@ -278,6 +291,8 @@ function handleNetworkData(data) {
       remotePlayer.active = true;
       remotePlayer.targetX = data.x;
       remotePlayer.targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      remotePlayer.groundY = GROUND_Y;
+      remotePlayer.currentGroundY = GROUND_Y;
       remotePlayer.vx = data.vx;
       remotePlayer.vy = data.vy;
       remotePlayer.facing = data.facing;
@@ -1004,25 +1019,91 @@ export function closeChat() {
 function initChatUI() {
   const chatInput = document.getElementById('chat-input');
   const chatWrapper = document.getElementById('chat-input-wrapper');
+  const sendBtn = document.getElementById('chat-send-btn');
+  const closeChatBtn = document.getElementById('chat-close-btn');
+  const mobileChatBtn = document.getElementById('mobile-chat-btn');
   if (!chatInput) return;
+
+  let isInteractingWithChatControls = false;
+  const preventBlurControls = [sendBtn, closeChatBtn, mobileChatBtn].filter(Boolean);
+  preventBlurControls.forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => {
+      isInteractingWithChatControls = true;
+      e.stopPropagation();
+    });
+    btn.addEventListener('touchstart', (e) => {
+      isInteractingWithChatControls = true;
+      e.stopPropagation();
+    }, { passive: false });
+    btn.addEventListener('pointerup', () => {
+      setTimeout(() => { isInteractingWithChatControls = false; }, 300);
+    });
+    btn.addEventListener('touchend', () => {
+      setTimeout(() => { isInteractingWithChatControls = false; }, 300);
+    });
+  });
 
   if (chatWrapper) {
     chatWrapper.addEventListener('mousedown', (e) => e.stopPropagation());
     chatWrapper.addEventListener('pointerdown', (e) => e.stopPropagation());
+    chatWrapper.addEventListener('touchstart', (e) => e.stopPropagation());
+  }
+
+  const handleSend = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const text = chatInput.value.trim();
+    if (text) {
+      sendChatMessage(text);
+    }
+    closeChat();
+  };
+
+  const handleClose = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    closeChat();
+  };
+
+  const handleMobileToggle = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isChatActive) {
+      closeChat();
+    } else {
+      openChat();
+    }
+  };
+
+  if (sendBtn) {
+    sendBtn.addEventListener('click', handleSend);
+    sendBtn.addEventListener('touchend', handleSend);
+  }
+
+  if (closeChatBtn) {
+    closeChatBtn.addEventListener('click', handleClose);
+    closeChatBtn.addEventListener('touchend', handleClose);
+  }
+
+  if (mobileChatBtn) {
+    mobileChatBtn.addEventListener('click', handleMobileToggle);
+    mobileChatBtn.addEventListener('touchend', handleMobileToggle);
   }
 
   chatInput.addEventListener('keydown', (e) => {
     e.stopPropagation(); // Blokuj propagację do silnika gry!
     if (e.key === 'Enter') {
       e.preventDefault();
-      const text = chatInput.value.trim();
-      if (text) {
-        sendChatMessage(text);
-      }
-      closeChat();
+      handleSend();
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      closeChat();
+      handleClose();
     }
   });
 
@@ -1031,8 +1112,10 @@ function initChatUI() {
 
   chatInput.addEventListener('blur', () => {
     setTimeout(() => {
-      if (isChatActive) closeChat();
-    }, 150);
+      if (isChatActive && !isInteractingWithChatControls) {
+        closeChat();
+      }
+    }, 250);
   });
 }
 

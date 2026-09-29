@@ -74,7 +74,7 @@
       cursor: pointer !important;
     }
 
-    .mp-action-btn, .mp-top-btn, .mp-close-btn, .mp-sub-btn {
+    .mp-action-btn, .mp-top-btn, .mp-close-btn, .mp-sub-btn, .chat-top-btn, #chat-send-btn, #chat-close-btn {
       cursor: pointer !important;
     }
 
@@ -648,6 +648,68 @@
     #game-chat.chat-hidden #chat-input-wrapper {
       display: none !important;
     }
+
+    .chat-top-btn {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 229, 255, 0.5);
+      color: #00e5ff;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+      transition: all 0.18s ease;
+      touch-action: manipulation;
+    }
+    .chat-top-btn:hover, .chat-top-btn:active {
+      background: rgba(0, 229, 255, 0.25);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+      color: #fff;
+    }
+
+    #chat-send-btn {
+      background: linear-gradient(135deg, #00e5ff, #0891b2);
+      border: none;
+      color: #020617;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #chat-send-btn:active {
+      transform: scale(0.94);
+      background: #22d3ee;
+    }
+
+    #chat-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #94a3b8;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #chat-close-btn:hover, #chat-close-btn:active {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
   </style>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -666,6 +728,7 @@
     <div id="dev-panel-container">
       <button id="dev-toggle-btn" type="button" title="Panel deweloperski (~ / `)">⚙️ DEV</button>
       <button id="mp-open-btn" class="mp-top-btn" type="button" title="Tryb wieloosobowy Online (P2P WebRTC)">🌐 MULTI</button>
+      <button id="mobile-chat-btn" class="chat-top-btn" type="button" title="Otwórz czat (Klawisz T)">💬 CZAT</button>
 
       <div id="dev-menu" class="dev-menu-hidden">
         <button class="dev-btn" data-meters="0" title="Restart do punktu 0m">🏟️ Reset (0m)</button>
@@ -778,7 +841,9 @@
       <div id="chat-messages"></div>
       <div id="chat-input-wrapper">
         <span id="chat-prompt">💬 [CZAT]:</span>
-        <input type="text" id="chat-input" maxlength="120" placeholder="Wpisz wiadomość i naciśnij Enter..." autocomplete="off" />
+        <input type="text" id="chat-input" maxlength="120" placeholder="Wpisz wiadomość..." autocomplete="off" />
+        <button id="chat-send-btn" type="button" title="Wyślij wiadomość">➤</button>
+        <button id="chat-close-btn" type="button" title="Zamknij czat">✕</button>
       </div>
     </div>
   </div>

@@ -4,6 +4,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
 import { activeArenaId, arenaScore, arena1State, ARENA_PLATFORMS, customObstacles } from './obstacles.js';
+import { isBallInKickReach } from './player.js';
 
 export const goalCelebration = {
   active: false,
@@ -701,8 +702,8 @@ export function drawGore(ctx) {
 // =========================================================================
 export const jetpackParticles = [];
 
-export function spawnJetpackSparks(x, y, facing, count = 2) {
-  const colors = ['#00e5ff', '#38bdf8', '#c084fc'];
+export function spawnJetpackSparks(x, y, facing, count = 2, customColors = null) {
+  const colors = customColors || ['#00e5ff', '#38bdf8', '#c084fc'];
   const dir = facing || 1;
 
   for (let i = 0; i < count; i++) {
@@ -1453,7 +1454,7 @@ export function updateFps() {
 export let isTouchDevice = (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
 export function setTouchDevice(val) { isTouchDevice = !!val; }
 
-export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick) {
+export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball) {
   if (!isTouchDevice || !ctx || !player) return;
 
   ctx.save();
@@ -1529,18 +1530,32 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
   }
 
-  // 2. PRAWY DRĄŻEK: CELOWANIE, OKNO 300 MS I OGIEŃ CIĄGŁY
+  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ ORAZ DYNAMICZNY WYKOP PIŁKI
   const rsVisible = (rightStick && (rightStick.active || rightStick.waitingForSecondTap || rightStick.lingerAlpha > 0.01));
 
   if (rsVisible) {
     const isFiring = rightStick.active && rightStick.isShooting;
     const isWaitingTap = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
 
+    // Sprawdzenie stanu zasięgu do piłki i wychylenia drążka
+    const activeBall = ball || player._ball;
+    const inKickRange = (activeBall && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, activeBall) : false;
+    const isStickDeflected = rightStick.active && (rightStick.power > 0.12 || (rightStick.movedDist || 0) > 8);
+    const isKickReady = inKickRange && isStickDeflected;
+
     let mainColor = '#00e5ff';
     let glowColor = '#00e5ff';
     let baseBorder = 'rgba(0, 229, 255, 0.35)';
 
-    if (isFiring) {
+    if (isKickReady) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
+      const isStrong = (player.chargePower >= 0.7) || (rightStick.power >= 0.7);
+      mainColor = isStrong ? '#facc15' : '#00e5ff';
+      glowColor = mainColor;
+      baseBorder = isStrong
+        ? `rgba(250, 204, 21, ${0.7 + pulse * 0.3})`
+        : `rgba(0, 229, 255, ${0.7 + pulse * 0.3})`;
+    } else if (isFiring) {
       mainColor = '#f97316';
       glowColor = '#ef4444';
       baseBorder = 'rgba(249, 115, 22, 0.6)';
@@ -1559,23 +1574,29 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const maxR = rightStick.maxRadius || 65;
 
     const bgGrad = ctx.createRadialGradient(bx, by, 10, bx, by, maxR);
-    bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.65)');
-    bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
+    bgGrad.addColorStop(0.0, isKickReady ? 'rgba(15, 23, 42, 0.75)' : 'rgba(30, 41, 59, 0.65)');
+    bgGrad.addColorStop(1.0, isKickReady ? 'rgba(2, 6, 23, 0.85)' : 'rgba(15, 23, 42, 0.45)');
 
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
     ctx.fillStyle = bgGrad;
     ctx.fill();
-    ctx.strokeStyle = baseBorder;
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
 
-    ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.5)' : 'rgba(0, 229, 255, 0.4)';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(bx - 10, by); ctx.lineTo(bx + 10, by);
-    ctx.moveTo(bx, by - 10); ctx.lineTo(bx + 10, by);
+    ctx.shadowColor = isKickReady ? glowColor : 'transparent';
+    ctx.shadowBlur = isKickReady ? 10 : 0;
+    ctx.strokeStyle = baseBorder;
+    ctx.lineWidth = isKickReady ? 2.2 : 1.6;
     ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if (!isKickReady) {
+      ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.5)' : 'rgba(0, 229, 255, 0.4)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(bx - 10, by); ctx.lineTo(bx + 10, by);
+      ctx.moveTo(bx, by - 10); ctx.lineTo(bx + 10, by);
+      ctx.stroke();
+    }
 
     let knobX = bx;
     let knobY = by;
@@ -1591,18 +1612,67 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       knobX = bx + normX * clampedDist;
       knobY = by + normY * clampedDist;
 
-      ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.8)' : 'rgba(0, 229, 255, 0.6)';
-      ctx.lineWidth = 1.4;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(knobX, knobY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (isKickReady) {
+        // Wektorowa strzałka wskazująca dokładny tor lotu piłki po puszczeniu palca
+        const arrowPower = Math.min(1.0, Math.max(0.15, rightStick.power || (clampedDist / maxR)));
+        const arrowLen = 30 + arrowPower * 35;
+        const arrowStartX = knobX + normX * 14;
+        const arrowStartY = knobY + normY * 14;
+        const arrowEndX = arrowStartX + normX * arrowLen;
+        const arrowEndY = arrowStartY + normY * arrowLen;
+
+        ctx.save();
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(knobX, knobY);
+        ctx.lineTo(arrowEndX, arrowEndY);
+        ctx.stroke();
+
+        // Grot wektora
+        const headLen = 11;
+        const headAngle = Math.atan2(normY, normX);
+        ctx.fillStyle = mainColor;
+        ctx.beginPath();
+        ctx.moveTo(arrowEndX, arrowEndY);
+        ctx.lineTo(
+          arrowEndX - headLen * Math.cos(headAngle - Math.PI / 6),
+          arrowEndY - headLen * Math.sin(headAngle - Math.PI / 6)
+        );
+        ctx.lineTo(
+          arrowEndX - headLen * Math.cos(headAngle + Math.PI / 6),
+          arrowEndY - headLen * Math.sin(headAngle + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.8)' : 'rgba(0, 229, 255, 0.6)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(knobX, knobY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
-    if (isFiring) {
+    if (isKickReady) {
+      if ((player.chargePower >= 0.7) || (rightStick.power >= 0.7)) {
+        knobGrad.addColorStop(0.0, 'rgba(250, 204, 21, 0.95)');
+        knobGrad.addColorStop(0.55, 'rgba(234, 179, 8, 0.80)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
+      } else {
+        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
+        knobGrad.addColorStop(0.55, 'rgba(14, 116, 144, 0.80)');
+        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
+      }
+    } else if (isFiring) {
       knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
       knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
       knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
@@ -1618,26 +1688,43 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = isKickReady ? 10 : 8;
     ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = isKickReady ? 2.6 : 2.2;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
-    ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
-    ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX - 7, knobY);
-    ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
-    ctx.stroke();
+    if (isKickReady) {
+      // Czytelny napis ⚽ KOP na gałce zamiast celownika
+      ctx.save();
+      ctx.font = '900 10.5px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 6;
+      ctx.fillText('⚽ KOP', knobX, knobY);
+      ctx.restore();
+    } else {
+      // Standardowy celownik broni
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
+      ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
+      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX, knobY - 7);
+      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
+      ctx.stroke();
+    }
 
-    let statusText = 'CEL / KOP: GEST';
-    if (isFiring) {
+    let statusText = 'CELOWNIK';
+    if (isKickReady) {
+      const pPct = Math.round((player.chargePower || rightStick.power || 0) * 100);
+      statusText = `⚽ WYKOP: ${pPct}% (PUŚĆ)`;
+    } else if (isFiring) {
       statusText = '🔥 OGIEŃ CIĄGŁY';
     } else if (isWaitingTap) {
       statusText = '⚡ TAP = STRZAŁ';
@@ -2092,6 +2179,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   }
 
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick);
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball);
   }
 }
