@@ -1,14 +1,26 @@
 // =========================================================================
 // CLASS_TEMPLATE – Referencyjny szablon kontraktu klasy postaci (ClassContract)
-// Skopiuj i uzupełnij ten plik, aby stworzyc nowa klase.
-// Wszystkie hooki sa opcjonalne - silnik player.js wywoluje je przez ?.
+// Skopiuj i uzupełnij ten plik, aby stworzyć nową klasę.
+// Wszystkie sekcje i pojedyncze pola są opcjonalne – silnik w player.js 
+// automatycznie uzupełnia brakujące wartości schematem domyślnym.
 // =========================================================================
 
 export const CLASS_TEMPLATE = {
   id: 'CLASS_ID',
   name: 'Nazwa Klasy',
-  role: 'Rola / Opis',
+  role: 'Rola / Opis archetypu',
 
+  // 1. Wymiary i anatomia szkieletu IK (opcjonalne)
+  body: {
+    w: 24,            // Szerokość hitboksa
+    h: 70,            // Wysokość postaci
+    thighLen: 25,     // Długość kości uda
+    shinLen: 24,      // Długość kości goleni
+    upperArmLen: 14,  // Długość kości ramienia (biceps)
+    forearmLen: 13    // Długość przedramienia
+  },
+
+  // 2. Statystyki fizyczne i ruchowe (opcjonalne)
   stats: {
     walkMax: 2.2,
     jogMax: 4.2,
@@ -27,7 +39,36 @@ export const CLASS_TEMPLATE = {
     jetMax: 100
   },
 
+  // 3. Pełna konfiguracja wizualna i fason stroju (opcjonalne)
   visuals: {
+    // Proporcje i fason ciała
+    muscleMult: 1.0,          // Mnożnik grubości mięśni (np. 1.35 dla osiłka, 0.85 dla lotnika)
+    sleeveless: false,        // true = odkryte ramiona (tank-top / brak rękawków)
+    sleeveLengthMult: 1.0,    // Mnożnik długości rękawków (gdy sleeveless: false)
+    
+    // Dodatki i akcesoria
+    hasWristband: true,       // Frotka / bandaż na przedramieniu
+    wristbandColor: '#ffffff',
+    hasHeadband: true,        // Opaska sportowa na czole
+    headbandColor: '#ffffff',
+    
+    // Włosy
+    hairColor0: '#1c0d06',
+    hairColor1: '#2e160a',
+    hairColor2: '#452210',
+    
+    // Spodenki (gradient tkaniny)
+    shortsColor0: '#ffffff',
+    shortsColor1: '#f8fafc',
+    shortsColor2: '#cbd5e1',
+
+    // Karnacja skóry (ręce, nogi, szyja, twarz)
+    skinLight: '#fed7aa',
+    skinMid: '#f5b078',
+    skinDark: '#b45309',
+    skinBack: '#de935e',
+
+    // Koszulka – przód i tył
     jerseyFront0: '#991b1b',
     jerseyFront1: '#dc2626',
     jerseyFront2: '#ef4444',
@@ -38,23 +79,26 @@ export const CLASS_TEMPLATE = {
     jerseyStripe: '#e53935',
     armColorFront: '#e53935',
     armColorBack: '#991b1b',
-    skinLight: '#fed7aa',
-    skinMid: '#f5b078',
-    skinDark: '#b45309',
-    skinBack: '#de935e',
+
+    // Getry i spodenki
     legThighFront: '#dc2626',
     legShinFront: '#e53935',
     legThighBack: '#991b1b',
     legShinBack: '#b91c1c',
+
+    // Buty piłkarskie
     bootColor: '#18181b',
     bootBack: '#111827',
     bootAccent: '#38bdf8',
+
+    // Herb, szwy, celownik i numer
     crestColor: '#fbc02d',
     seamColor: '#7f1d1d',
     crosshairColor: '#38bdf8',
     number: '10'
   },
 
+  // 4. Cykl życia i haki silnika (opcjonalne)
   onInit(player) {},
   onDestroy(player) {},
   onUpdate(player, ball, keys) {},
