@@ -9,6 +9,7 @@ import {
   isTouchDevice, setTouchDevice,
   jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles,
   consumeHitstop, updateGore, drawBloodDecals, drawGore, clearGore,
+  updateSeveredHeads, drawSeveredHeads,
   weaponButtons
 } from './world.js';
 import {
@@ -1272,6 +1273,7 @@ function update() {
   updateParticles();
   updateJetpackParticles();
   updateGore(GROUND_Y);
+  updateSeveredHeads([player, bot], GROUND_Y);
   updateBall(GROUND_Y);
   checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
   checkObstacleCollisions(ball, GROUND_Y, player);
@@ -1375,6 +1377,7 @@ function draw() {
 
   drawBullets(ctx);
   drawGore(ctx);
+  drawSeveredHeads(ctx, [player, bot]);
   drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
 

@@ -457,8 +457,30 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         closestChar.isDead = true;
         closestChar.respawnTimer = 180;
         closestChar.corpseAngle = 0;
+        closestChar.corpseRotVel = 0;
+        closestChar.torsoTiltVel = 0;
+        closestChar.headBobVel = 0;
+        closestChar.rotSpeed = 0;
+        closestChar.spin = 0;
+        closestChar.kickMode = 'GROUND';
+        closestChar.kickState = 'IDLE';
+        closestChar.bicycleTimer = 0;
+        closestChar.spinVolleyTimer = 0;
+        closestChar.scissorTimer = 0;
         closestChar.corpseFloorY = groundY;
         closestChar.isGibbed = false; // Całkowite rozerwanie jest zarezerwowane wyłącznie dla beczki!
+
+        // Soldat dynamic death impulse: mocny impuls w tył oraz poderwanie w górę
+        const hitDir = Math.sign(b.vx) || (closestChar.facing * -1);
+        closestChar.vx = hitDir * (Math.random() * 1.5 + 4.2); // pęd w stronę lotu kuli
+        closestChar.vy = -(Math.random() * 1.2 + 3.8);         // podbicie w powietrze
+        closestChar.isJumping = true;
+
+        // Inicjalizacja dynamiki przewrotu
+        closestChar.deathTilt = 0;              // bieżący kąt przewrotu
+        closestChar.deathRotVel = hitDir * 0.14; // prędkość obrotu tułowia w locie
+        closestChar.isSettled = false;          // czy ciało znieruchomiało na ziemi
+        closestChar.pelvisY = 0;
 
         const shotDist = Math.hypot(hitPtX - (b.originX || hitPtX), hitPtY - (b.originY || hitPtY));
         const isHeadshot = (hitPtY <= closestChar.y + 22);
@@ -478,7 +500,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
         if (isHeadshot && isCloseShotgun) {
           // =================================================================
-          // 1. CZYSTA DEKAPITACJA: ODCIĘTA GŁOWA + FONTANNA KRWI + KOZIOŁKOWANIE
+          // 1. CZYSTA DEKAPITACJA: ODCIĘTA GŁOWA + FONTANNA KRWI
           // =================================================================
           closestChar.hasHead = false;
           closestChar.decapitated = true;
@@ -487,7 +509,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           triggerHitstop(6);
           triggerScreenShake(16);
 
-          // Wystrzelenie odciętej głowy w powietrze
+          // Wystrzelenie odciętej głowy w powietrze (głowa może swobodnie rotować)
           spawnHeadGib(
             closestChar.x + closestChar.w / 2,
             closestChar.y + 8,
@@ -497,17 +519,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             closestChar.currentClass?.visuals
           );
 
-          // Korpus koziołkuje i leci w tył pod kątem
-          closestChar.vx = b.vx * 0.45;
-          closestChar.vy = -4.2;
-          closestChar.corpseRotVel = (b.vx > 0 ? 0.16 : -0.16);
-          closestChar.isJumping = true;
-
           spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
         } else {
           // =================================================================
-          // 2. NORMALNA ŚMIERĆ KINETYCZNA (Głowa zostaje na karku)
+          // 2. NORMALNA ŚMIERĆ KINETYCZNA (Głowa odpada, ciało wykonuje przewrót w stylu Soldat)
           // =================================================================
           closestChar.hasHead = true;
           closestChar.decapitated = false;
@@ -516,12 +532,23 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           triggerHitstop(3);
           triggerScreenShake(7);
 
-          closestChar.vx = b.vx * 0.32;
-          closestChar.vy = -3.2;
-          closestChar.corpseRotVel = (b.vx > 0 ? 0.09 : -0.09);
-          closestChar.isJumping = true;
+          // Odpadająca głowa (severedHead) – rotować może się wyłącznie odcięta głowa
+          closestChar.severedHead = {
+            x: closestChar.x + closestChar.w / 2,
+            y: closestChar.y + 12,
+            vx: (b.vx * 0.06) + (Math.random() - 0.5) * 1.5,
+            vy: -3.8 - Math.random() * 1.5,
+            rotation: 0,
+            rotSpeed: (Math.random() - 0.5) * 0.25,
+            onGround: false,
+            life: 420,
+            fadeTimer: 60,
+            alpha: 1.0,
+            facing: closestChar.facing,
+            visuals: closestChar.currentClass?.visuals
+          };
 
-          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.8, -1.8, 16, 1.0);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.5, -1.2, 10, 0.8);
         }
       }
 

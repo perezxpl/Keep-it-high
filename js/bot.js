@@ -41,6 +41,10 @@ export const bot = createPlayerInstance({
   shootCooldown: 0,
   isDead: false,
   respawnTimer: 0,
+  deathTilt: 0,
+  deathRotVel: 0,
+  isSettled: false,
+  pelvisY: 0,
   burstShotsRemaining: 0,
   burstPauseTimer: 0,
 

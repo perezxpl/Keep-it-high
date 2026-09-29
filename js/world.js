@@ -68,8 +68,8 @@ export const grassParticles = [];
 // INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
 // =========================================================================
 export const weaponButtons = [
-  { id: 'AK47', name: 'AK', type: 'AUTO', x: 20, y: 0, w: 46, h: 26 },
-  { id: 'SHOTGUN', name: 'SG', type: 'SEMI', x: 20, y: 0, w: 46, h: 26 }
+  { id: 'AK47', name: 'AK', type: 'AUTO', x: 20, y: 0, w: 52, h: 32 },
+  { id: 'SHOTGUN', name: 'SG', type: 'SEMI', x: 20, y: 0, w: 52, h: 32 }
 ];
 
 export function initCanvas(canvasEl) {
@@ -218,9 +218,14 @@ export function addBloodDecal(x, y) {
     y,
     w: Math.random() * 9 + 5,
     h: Math.random() * 3 + 1.8,
-    alpha: Math.random() * 0.35 + 0.55
+    baseAlpha: Math.random() * 0.35 + 0.55,
+    alpha: Math.random() * 0.35 + 0.55,
+    lifeTime: 300,      // 5 sekund przy 60 FPS – pełne krycie
+    fadeDuration: 60,   // 1 sekunda płynnego wygaszania
+    fadeTimer: 60
   });
 }
+export const spawnBloodDecal = addBloodDecal;
 
 export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
   if (!CONFIG.GORE_ENABLED) return;
@@ -281,6 +286,9 @@ export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing) {
 }
 
 export function updateGore(groundY) {
+  // Uaktualnij czas życia i alpha plam krwi (zanikanie po 5 sekundach)
+  updateBloodDecals();
+
   for (let i = bloodParticles.length - 1; i >= 0; i--) {
     const p = bloodParticles[i];
     p.x += p.vx;
@@ -447,11 +455,118 @@ export function updateGore(groundY) {
   }
 }
 
+// =================================================================
+// FIZYKA I RENDEROWANIE ODPADAJACEJ GLOWY (severedHead)
+// =================================================================
+export function updateSeveredHeads(chars, groundY) {
+  for (const ch of chars) {
+    const head = ch.severedHead;
+    if (!head) continue;
+    if (!head.onGround) {
+      head.vy += 0.38;
+      head.x += head.vx;
+      head.y += head.vy;
+      head.rotation += head.rotSpeed;
+      if (head.y >= groundY - 6) {
+        head.y = groundY - 6;
+        head.vy = -head.vy * 0.32;
+        head.vx *= 0.78;
+        head.rotSpeed *= 0.65;
+        if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
+        addBloodDecal(head.x, groundY);
+      }
+      for (const plat of ARENA_PLATFORMS) {
+        const topY = groundY - plat.relY;
+        if (head.x >= plat.x && head.x <= plat.x + plat.w && head.y >= topY - 6 && head.y <= topY + 4 && head.vy > 0) {
+          head.y = topY - 6;
+          head.vy = -head.vy * 0.32;
+          head.vx *= 0.78;
+          head.rotSpeed *= 0.65;
+          if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
+          break;
+        }
+      }
+    } else {
+      head.vx *= 0.92;
+      head.rotSpeed *= 0.88;
+    }
+    head.life--;
+    if (head.life <= head.fadeTimer) { head.alpha = Math.max(0, head.life / head.fadeTimer); }
+    if (head.life <= 0) { ch.severedHead = null; }
+  }
+}
+
+export function drawSeveredHeads(ctx, chars) {
+  if (!CONFIG.GORE_ENABLED) return;
+  for (const ch of chars) {
+    const head = ch.severedHead;
+    if (!head) continue;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, head.alpha);
+    ctx.translate(head.x, head.y);
+    ctx.rotate(head.rotation);
+    ctx.scale(head.facing, 1);
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 4.2, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const vis = head.visuals;
+    const faceGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
+    faceGrad.addColorStop(0.0, (vis && vis.skinBack) ? vis.skinBack : '#de935e');
+    faceGrad.addColorStop(0.5, (vis && vis.skinMid) ? vis.skinMid : '#f5b078');
+    faceGrad.addColorStop(1.0, (vis && vis.skinLight) ? vis.skinLight : '#fed7aa');
+    ctx.beginPath();
+    ctx.ellipse(0, -1.0, 5.0, 5.8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = faceGrad;
+    ctx.fill();
+    ctx.fillStyle = '#2e160a';
+    ctx.beginPath();
+    ctx.arc(0, -2.5, 5.1, Math.PI * 0.85, Math.PI * 0.15, true);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(-1.8, -1.5, 1.2, 0.9, 0, 0, Math.PI * 2);
+    ctx.ellipse(2.0, -1.5, 1.2, 0.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(-1.8, -1.5, 0.5, 0, Math.PI * 2);
+    ctx.arc(2.0, -1.5, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+export function updateBloodDecals() {
+  for (let i = bloodDecals.length - 1; i >= 0; i--) {
+    const d = bloodDecals[i];
+    if (d.lifeTime === undefined) {
+      // Stare dekale bez lifetime – dodaj pola
+      d.lifeTime = 300;
+      d.fadeDuration = 60;
+      d.fadeTimer = 60;
+      d.baseAlpha = d.alpha;
+    }
+    if (d.lifeTime > 0) {
+      d.lifeTime--;
+      d.alpha = d.baseAlpha; // pełne krycie przez 5 sekund
+    } else {
+      // Płynne wygaszanie przez 1 sekundę
+      d.fadeTimer = Math.max(0, d.fadeTimer - 1);
+      d.alpha = d.baseAlpha * (d.fadeTimer / d.fadeDuration);
+      if (d.alpha <= 0.005) {
+        bloodDecals.splice(i, 1);
+        continue;
+      }
+    }
+  }
+}
+
 export function drawBloodDecals(ctx) {
   if (!CONFIG.GORE_ENABLED || bloodDecals.length === 0) return;
   ctx.save();
   for (const d of bloodDecals) {
-    ctx.fillStyle = `rgba(136, 19, 19, ${d.alpha.toFixed(2)})`;
+    ctx.fillStyle = `rgba(136, 19, 19, ${d.alpha.toFixed(3)})`;
     ctx.beginPath();
     ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1444,11 +1559,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   // =========================================================================
   const panelX = 20;
 
-  // A. Przyciski wyboru broni – małe, ułożone pionowo jeden na drugim
-  const btnH = 26;
+  // A. Przyciski wyboru broni – ułożone pionowo, powiększone
+  const btnH = 32;
   const btnGap = 5;
-  const akY = H - 64;
-  const sgY = H - 33;
+  const akY = H - 74;
+  const sgY = H - 37;
   const curWepId = player.currentWeapon?.id || 'AK47';
 
   weaponButtons[0].y = akY;
@@ -1491,9 +1606,9 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   }
 
   // B. Pasek HP i Jetpacka (bezpośrednio nad kolumną wyboru broni)
-  const barW = 140;
-  const hpY = akY - 32;
-  const hpH = 10;
+  const barW = 230;
+  const hpY = akY - 38;
+  const hpH = 18;
 
   const maxHp = player.maxHp || 100;
   const curHp = Math.max(0, player.hp ?? 100);
@@ -1522,17 +1637,17 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.restore();
   }
 
-  ctx.textAlign = 'right';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 8px monospace';
+  ctx.font = 'bold 11px monospace';
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = 'rgba(0,0,0,0.8)';
   ctx.shadowBlur = 3;
-  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW - 4, hpY + hpH / 2 + 0.5);
+  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW / 2, hpY + hpH / 2 + 0.5);
 
   // C. Pasek Jetpacka
-  const jetY = hpY + 14;
-  const jetH = 4.5;
+  const jetY = hpY + hpH + 4;
+  const jetH = 6.5;
 
   const maxJet = player.jetMax || 100;
   const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
@@ -1561,13 +1676,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   }
 
   ctx.save();
-  ctx.textAlign = 'right';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.font = 'bold 7.5px monospace';
+  ctx.font = 'bold 10px monospace';
   ctx.fillStyle = '#00e5ff';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
   ctx.shadowBlur = 3;
-  ctx.fillText(`JET ${Math.round(curJet)}%`, panelX + barW, jetY + 11.5);
+  ctx.fillText(`JET ${Math.round(jetRatio * 100)}%`, panelX + barW / 2, jetY + jetH + 11);
   ctx.restore();
 
   // =========================================================================

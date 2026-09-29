@@ -4,7 +4,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { DEFAULT_CLASS, CLASSES } from './classes/index.js';
-import { isTouchDevice, spawnBloodFountain, spawnJetpackSparks } from './world.js';
+import { isTouchDevice, spawnBloodFountain, spawnJetpackSparks, triggerScreenShake, spawnBloodDecal } from './world.js';
 import { WEAPONS, drawHeldWeapon, getWeaponHoldTransform, updateWeaponState } from './weapons.js';
 
 function ease(t) {
@@ -222,6 +222,10 @@ export function createPlayerInstance(overrides = {}) {
     corpseFloorY: 0,
     deathSpiralTimer: 0,
     deathInitDone: false,
+    deathTilt: 0,
+    deathRotVel: 0,
+    isSettled: false,
+    pelvisY: 0,
 
     currentClass: DEFAULT_CLASS,
 
@@ -950,12 +954,29 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = pl
 
 function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   // =========================================================================
-  // FIZYKA ŚMIERCI: KOZIOŁKOWANIE, DEKAPITACJA, SPIRALA JETPACKA I RESPAWN
+  // FIZYKA ŚMIERCI: NATURALNE OPADANIE, DEKAPITACJA I RESPAWN (BEZ WIROWANIA CIAŁA)
   // =========================================================================
   if (player.isDead) {
     player.respawnTimer--;
 
-    // Inicjalizacja ewentualnej spirali śmierci na jetpacku
+    // 1. Całkowicie zablokuj i wyzeruj prędkości kątowe
+    player.torsoTiltVel = 0;
+    player.headBobVel = 0;
+    player.corpseRotVel = 0;
+    player.rotSpeed = 0;
+    player.spin = 0;
+
+    // 2. Zablokuj player.yaw na stałej wartości (brak ciągłego obracania wokół osi pionowej)
+    player.yaw = (player.facing === -1) ? Math.PI : 0;
+
+    // 3. Natychmiastowe anulowanie animacji specjalnych przy zgonie
+    player.kickMode = 'GROUND';
+    player.kickState = 'IDLE';
+    player.bicycleTimer = 0;
+    player.spinVolleyTimer = 0;
+    player.scissorTimer = 0;
+
+    // Inicjalizacja ewentualnych iskier jetpacka (bez spirali rotacji ciała)
     if (!player.deathInitDone) {
       player.deathInitDone = true;
       if ((player.jetFuel || 0) > 10 && player.isJumping && !player.isGibbed) {
@@ -973,42 +994,65 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       }
     }
 
-    // Spirala śmierci na jetpacku
+    // Iskry jetpacka przy opadaniu (bez nadawania obrotów ciału)
     if (player.deathSpiralTimer > 0) {
       player.deathSpiralTimer--;
-      player.corpseRotVel = (player.corpseRotVel || 0) + (player.facing || 1) * 0.08;
-      player.vy += 0.12;
+      player.vy += 0.05;
       const hipX = player.x + player.w / 2;
       const hipY = player.y + player.h / 2;
-      spawnJetpackSparks(hipX, hipY, -player.facing, 3);
+      spawnJetpackSparks(hipX, hipY, -player.facing, 2);
     }
 
     if (player.isGibbed) {
       player.vx = 0;
       player.vy = 0;
     } else {
-      // Kinetyka koziołkującego korpusu
+      // 1. Lot w powietrzu (przewrót):
       player.vy += CONFIG.GRAVITY;
       player.x += player.vx;
       player.y += player.vy;
-      player.corpseAngle = (player.corpseAngle || 0) + (player.corpseRotVel || 0);
+      player.corpseAngle = 0;
+
+      // Zabezpieczenie przed wylotem poza arenę
+      player.x = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT - player.w, player.x));
+
+      if (!player.isSettled) {
+        player.deathTilt = (player.deathTilt || 0) + (player.deathRotVel || 0);
+        // Zapewnij, że obrót nie wykonuje nieskończonych fikołków – docelowo zmierza do ~1.57 rad (90° - leżenie płasko)
+        const targetAngle = (player.deathRotVel > 0 ? 1 : -1) * (Math.PI * 0.5);
+        if (Math.abs(player.deathTilt) > Math.abs(targetAngle)) {
+          player.deathTilt = targetAngle;
+          player.deathRotVel *= 0.5;
+        }
+        player.torsoTilt = player.deathTilt;
+      }
 
       const currentFloor = player.currentGroundY || GROUND_Y;
-      const floorLimit = currentFloor - (player.h * 0.65);
 
-      if (player.y >= floorLimit) {
-        player.y = floorLimit;
-        if (Math.abs(player.vy) > 1.2) {
-          player.vy = -player.vy * 0.38;
-          player.vx *= 0.65;
-          player.corpseRotVel *= 0.55;
+      // 2. Uderzenie o podłoże (kontakt z ziemią):
+      if (player.y >= currentFloor - player.h) {
+        player.y = currentFloor - player.h;
+        player.isJumping = false;
+        if (Math.abs(player.vy) > 1.5) {
+          // Lekkie sprężyste odbicie przy uderzeniu plecami o ziemię
+          player.vy = -player.vy * 0.28;
+          triggerScreenShake?.(2.5);
+          spawnBloodDecal?.(player.x + player.w / 2, currentFloor);
         } else {
           player.vy = 0;
-          player.vx *= 0.78;
-          player.corpseRotVel *= 0.7;
-          if (Math.abs(player.corpseRotVel) < 0.01) {
-            player.corpseRotVel = 0;
-          }
+        }
+
+        // Tarcie ślizgowe po ziemi aż do zatrzymania
+        player.vx *= 0.84;
+        player.deathRotVel = 0;
+
+        // Zablokuj ciało leżące płasko na plecach
+        const fallDir = Math.sign(player.vx) || (player.deathRotVel ? Math.sign(player.deathRotVel) : (player.facing * -1));
+        player.torsoTilt = fallDir * (Math.PI * 0.48); 
+        player.pelvisY = 22; // obniżenie miednicy do poziomu podłoża
+        if (Math.abs(player.vx) < 0.1) {
+          player.vx = 0;
+          player.isSettled = true;
         }
       }
     }
@@ -1025,6 +1069,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       player.deathInitDone = false;
       player.corpseAngle = 0;
       player.corpseRotVel = 0;
+      player.deathTilt = 0;
+      player.deathRotVel = 0;
+      player.isSettled = false;
+      player.pelvisY = 0;
+      player.torsoTilt = 0;
+      player.torsoTiltVel = 0;
+      player.headBobVel = 0;
+      player.severedHead = null;   // Zresetuj odpadłą głowę przy respawnie
 
       if (player.isBot) {
         player.x = START_X + 600;
@@ -2104,11 +2156,14 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const hipY = player.y + player.h - 40 + player.pelvisY;
   const speed = Math.abs(player.vx);
 
-  // KINETYCZNA ROTACJA KOZIOŁKUJĄCYCH ZWŁOK WOKÓŁ BIODER
+  // BLOKADA WIROWANIA ZWŁOK: zablokowany lub ściśle ograniczony kąt ciała (brak obrotów 360 / efektu wiatraka)
   if (player.isDead) {
-    ctx.translate(hipX, hipY);
-    ctx.rotate(player.corpseAngle || 0);
-    ctx.translate(-hipX, -hipY);
+    const safeAngle = Math.max(-0.4, Math.min(0.4, player.corpseAngle || 0));
+    if (safeAngle !== 0) {
+      ctx.translate(hipX, hipY);
+      ctx.rotate(safeAngle);
+      ctx.translate(-hipX, -hipY);
+    }
   }
 
   const yaw = player.yaw || 0;
@@ -2132,19 +2187,42 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     (isVisualCharging || player.kickState === 'SWING' || player.kickState === 'RECOVER');
 
   if (player.isDead) {
-    // Bezwładne, luźno opadające kończyny martwego ciała
-    rawFootFrontTargetX = hipX + (8 * player.facing);
-    rawFootFrontTargetY = hipY + 36;
-    rawFootFrontAnkle = 0.4 * player.facing;
+    // Bezwładność kończyn w stylu Soldat
+    const currentFloor = (player.currentGroundY !== undefined) ? player.currentGroundY : (player.y + player.h);
+    const inAir = !player.isSettled && (player.y < currentFloor - player.h - 4);
+    const fallDir = Math.sign(player.vx) || (player.deathRotVel ? Math.sign(player.deathRotVel) : (player.facing * -1));
+    const armDirRel = fallDir * player.facing;
 
-    rawFootBackTargetX = hipX - (6 * player.facing);
-    rawFootBackTargetY = hipY + 34;
-    rawFootBackAnkle = -0.2 * player.facing;
+    if (inAir) {
+      // W locie: nogi bezwładnie zwisają/podciągają się za ruchem, ręce odrzucone
+      rawFootFrontTargetX = hipX - fallDir * 18;
+      rawFootFrontTargetY = hipY + 28;
+      rawFootFrontAnkle = -fallDir * 0.35;
 
-    rawFrontSwing = 0.35;
-    rawFrontElbow = 0.50;
-    rawBackSwing = -0.30;
-    rawBackElbow = 0.45;
+      rawFootBackTargetX = hipX - fallDir * 10;
+      rawFootBackTargetY = hipY + 32;
+      rawFootBackAnkle = -fallDir * 0.20;
+
+      rawFrontSwing = 0.70 * armDirRel;
+      rawFrontElbow = 0.60;
+      rawBackSwing = 0.50 * armDirRel;
+      rawBackElbow = 0.45;
+    } else {
+      // Na ziemi: nogi rozciągnięte wzdłuż podłoża, ręce bezwładnie odrzucone w stronę upadku
+      const feetY = currentFloor - 2;
+      rawFootFrontTargetX = hipX - fallDir * 34;
+      rawFootFrontTargetY = feetY;
+      rawFootFrontAnkle = -fallDir * 0.40;
+
+      rawFootBackTargetX = hipX - fallDir * 24;
+      rawFootBackTargetY = feetY;
+      rawFootBackAnkle = -fallDir * 0.25;
+
+      rawFrontSwing = 0.45 * armDirRel;
+      rawFrontElbow = 0.40;
+      rawBackSwing = 0.30 * armDirRel;
+      rawBackElbow = 0.35;
+    }
   } else if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, hipY, floorY, player.facing, 8);
     hipX += choreo.hipShiftX;
@@ -2526,12 +2604,16 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   p.armBackSwing += (rawBackSwing - p.armBackSwing) * armBlend;
   p.armBackElbow += (rawBackElbow - p.armBackElbow) * armBlend;
 
-  if (player.kickMode === 'BACKFLIP') {
+  if (player.isDead) {
+    p.torsoTilt += (player.torsoTilt - p.torsoTilt) * 0.35;
+    p.headPitch = (player.torsoTilt > 0 ? 0.35 : -0.35) * player.facing;
+  } else if (player.kickMode === 'BACKFLIP') {
     p.torsoTilt = player.torsoTilt;
+    p.headPitch += (player.headPitch - p.headPitch) * 0.22;
   } else {
     p.torsoTilt += (player.torsoTilt - p.torsoTilt) * 0.24;
+    p.headPitch += (player.headPitch - p.headPitch) * 0.22;
   }
-  p.headPitch += (player.headPitch - p.headPitch) * 0.22;
 
   const shoulderCounterTilt = -Math.sin(player.stridePhase) * (speed > 0.8 ? 0.045 : 0.015) * currentFacingDir;
   p.shoulderTilt += (shoulderCounterTilt - p.shoulderTilt) * 0.20;
@@ -2681,7 +2763,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.save();
   ctx.translate(0.0, -30.5 + (player.headBob * 0.35));
 
-  if (player.isDead && (!player.hasHead || player.decapitated)) {
+  if (player.isDead && (!player.hasHead || player.decapitated || player.severedHead)) {
     // 1. Kikut szyi (odcięta głowa)
     ctx.fillStyle = '#7f1d1d';
     ctx.beginPath();
