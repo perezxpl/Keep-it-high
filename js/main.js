@@ -7,7 +7,9 @@ import {
   drawEntityHealthBar,
   clearDesertSandstorm, clearWinterBlizzard,
   isTouchDevice, setTouchDevice,
-  jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles
+  jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles,
+  consumeHitstop, updateGore, drawBloodDecals, drawGore, clearGore,
+  weaponButtons
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -131,6 +133,20 @@ canvas.addEventListener('touchstart', (e) => {
 
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    // =======================================================================
+    // 0. KLIKNIĘCIE W DEDYKOWANE PRZYCISKI WYBORU BRONI (DOLNY LEWY RÓG)
+    // =======================================================================
+    let touchedWeaponBtn = false;
+    for (const btn of weaponButtons) {
+      if (t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
+          t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
+        player.currentWeapon = WEAPONS[btn.id];
+        touchedWeaponBtn = true;
+        break;
+      }
+    }
+    if (touchedWeaponBtn) continue;
 
     // =======================================================================
     // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK
@@ -407,6 +423,7 @@ export function teleportToDistance(meters) {
 
   clearDesertSandstorm();
   clearWinterBlizzard();
+  clearGore();
 
   resetObstacles();
   updateProceduralObstacles(targetX);
@@ -519,7 +536,12 @@ document.querySelectorAll('.dev-class-btn').forEach((btn) => {
   btn.addEventListener('touchend', handler);
 });
 
+// =========================================================================
+// WŁĄCZANIE BOTA ORAZ PRZYCISK ZAMRAŻANIA BOTA (STANDSTILL)
+// =========================================================================
 const devBotToggleBtn = document.getElementById('dev-bot-toggle-btn');
+let devBotFreezeBtn = document.getElementById('dev-bot-freeze-btn');
+
 if (devBotToggleBtn) {
   const toggleBot = (e) => {
     e.stopPropagation();
@@ -554,6 +576,44 @@ if (devBotToggleBtn) {
   };
   devBotToggleBtn.addEventListener('click', toggleBot);
   devBotToggleBtn.addEventListener('touchend', toggleBot);
+}
+
+// Dynamiczne utworzenie przycisku zamrażania bota w panelu deweloperskim
+if (!devBotFreezeBtn && devMenu) {
+  devBotFreezeBtn = document.createElement('button');
+  devBotFreezeBtn.className = 'dev-btn';
+  devBotFreezeBtn.id = 'dev-bot-freeze-btn';
+  devBotFreezeBtn.style.cssText = 'border-color: #eab308; color: #facc15; font-weight: 600; margin-left: 2px;';
+  devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+
+  if (devBotToggleBtn && devBotToggleBtn.parentNode) {
+    devBotToggleBtn.parentNode.insertBefore(devBotFreezeBtn, devBotToggleBtn.nextSibling);
+  } else {
+    devMenu.appendChild(devBotFreezeBtn);
+  }
+}
+
+if (devBotFreezeBtn) {
+  const toggleFreeze = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    bot.frozen = !bot.frozen;
+    if (bot.frozen) {
+      devBotFreezeBtn.textContent = '🛑 BOT: STOI';
+      devBotFreezeBtn.style.background = 'rgba(234, 179, 8, 0.35)';
+      devBotFreezeBtn.style.borderColor = '#facc15';
+      devBotFreezeBtn.style.color = '#ffffff';
+      devBotFreezeBtn.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.6)';
+    } else {
+      devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+      devBotFreezeBtn.style.background = '';
+      devBotFreezeBtn.style.borderColor = '#eab308';
+      devBotFreezeBtn.style.color = '#facc15';
+      devBotFreezeBtn.style.boxShadow = '';
+    }
+  };
+  devBotFreezeBtn.addEventListener('click', toggleFreeze);
+  devBotFreezeBtn.addEventListener('touchend', toggleFreeze);
 }
 
 const devArenaBtn = document.getElementById('dev-arena-btn');
@@ -854,16 +914,14 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
 
-  // Obsługa kucania klawiszem Ctrl na komputerze
   if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
     keys.ctrl = true;
   }
 
-  // Obsługa klawisza S / Strzałka w dół (kucanie + podwójny tap dla drop-through)
   if (e.code === 'KeyS' || e.code === 'ArrowDown') {
     const now = performance.now();
     if (now - lastSPressTime < 280) {
-      player.dropThroughTimer = 18; // Zeskok z kładki przy szybkim podwójnym kliknięciu S
+      player.dropThroughTimer = 18;
     }
     lastSPressTime = now;
     keys.down = true;
@@ -985,6 +1043,15 @@ canvas.addEventListener('mousedown', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
 
+  // 0. Obsługa kliknięcia myszą w kafelki broni (dolny lewy róg)
+  for (const btn of weaponButtons) {
+    if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
+        e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
+      player.currentWeapon = WEAPONS[btn.id];
+      return;
+    }
+  }
+
   if (editorState.active) {
     if (e.button === 0 && editorState.selectedType) {
       placeSelectedObstacle();
@@ -1083,6 +1150,11 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
+  if (consumeHitstop()) {
+    updateCamera(player, ball);
+    return;
+  }
+
   if (!isTouchDevice) {
     const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
     const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
@@ -1090,9 +1162,7 @@ function update() {
     player.aimY = worldMouseY;
   }
 
-  // =========================================================================
-  // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ (BRAK PRZYKLEJENIA W ŚWIECIE)
-  // =========================================================================
+  // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ
   if (isTouchDevice && !player.isDead) {
     const hipX = player.x + player.w / 2;
     const hipY = player.y + player.h / 2;
@@ -1114,9 +1184,7 @@ function update() {
     player.aimY = hipY + player.aimOffsetY;
   }
 
-  // =========================================================================
   // OBSŁUGA OKIEN CZASOWYCH DRĄŻKÓW (300 MS)
-  // =========================================================================
   if (leftStick.jetpackWindowTimer > 0) {
     leftStick.jetpackWindowTimer -= FRAME_DURATION;
     if (leftStick.jetpackWindowTimer <= 0) {
@@ -1135,9 +1203,7 @@ function update() {
     }
   }
 
-  // =========================================================================
   // OBSŁUGA STRZELANIA GRACZA
-  // =========================================================================
   const curWep = player.currentWeapon || WEAPONS.AK47;
   const isTouchFiring = rightStick.active && rightStick.isShooting && !player.isDead;
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
@@ -1163,9 +1229,7 @@ function update() {
     }
   }
 
-  // =========================================================================
-  // SILNIK JETPACKA (ZASILANY Z PC 'W' LUB LEWEGO DRĄŻKA DOTYKOWEGO)
-  // =========================================================================
+  // SILNIK JETPACKA
   if (isJetpackActive && !player.isDead) {
     if (player.jetFuel > 0) {
       player.jetFuel = Math.max(0, player.jetFuel - 0.95);
@@ -1207,13 +1271,12 @@ function update() {
   updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player);
   updateParticles();
   updateJetpackParticles();
+  updateGore(GROUND_Y);
   updateBall(GROUND_Y);
   checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
   checkObstacleCollisions(ball, GROUND_Y, player);
 
-  // =========================================================================
-  // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU NA ZIEMI / PLATFORMIE
-  // =========================================================================
+  // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const currentFloor = player.currentGroundY || GROUND_Y;
   const isPlayerGrounded = !player.isJumping && (player.y >= currentFloor - player.h - 3);
 
@@ -1256,6 +1319,8 @@ function draw() {
   drawParticles(ctx);
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);
+
+  drawBloodDecals(ctx);
 
   if (editorState.active) {
     if (editorState.snapToGrid) {
@@ -1309,6 +1374,7 @@ function draw() {
   }
 
   drawBullets(ctx);
+  drawGore(ctx);
   drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
 
@@ -1322,13 +1388,15 @@ function draw() {
     ctx.fillStyle = '#c084fc';
     ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
     ctx.shadowBlur = 4;
-    ctx.fillText('[BOT]', bot.x + bot.w / 2, bot.y - 19);
+    ctx.fillText(bot.frozen ? '[BOT: STOP]' : '[BOT]', bot.x + bot.w / 2, bot.y - 19);
     ctx.restore();
   }
 
   drawBall(ctx);
 
-  drawCrosshair(ctx, player.aimX, player.aimY);
+  if (!player.isDead) {
+    drawCrosshair(ctx, player.aimX, player.aimY);
+  }
 
   ctx.restore();
 

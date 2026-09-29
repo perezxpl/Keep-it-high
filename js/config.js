@@ -8,7 +8,11 @@ export const CONFIG = {
   WALK_MAX: 2.2,
   JOG_MAX: 4.2,
   SPRINT_MAX: 6.8,
-  SLIDE_DASH_SPEED: 13.5
+  SLIDE_DASH_SPEED: 13.5,
+
+  // SYSTEM EFEKTÓW GORE / ROZCZŁONKOWANIA
+  GORE_ENABLED: true,
+  MAX_BLOOD_DECALS: 120
 };
 
 export const FRAME_DURATION = 1000 / 60; // 16.666 ms (dokładnie 60 FPS)

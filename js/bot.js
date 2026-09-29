@@ -25,6 +25,7 @@ export const botKeys = {
 export const bot = createPlayerInstance({
   isBot: true,
   active: false,
+  frozen: false, // Flaga zamrożenia bota w miejscu (Standstill)
   facing: -1,
   x: START_X + 600,
   y: 0,
@@ -67,6 +68,25 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     botKeys.down = false;
     botKeys.space = false;
     botKeys.slide = false;
+    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot);
+    return;
+  }
+
+  // =========================================================================
+  // TRYB ZATRZYMANIA W MIEJSCU (BOT FROZEN / STANDSTILL)
+  // =========================================================================
+  if (bot.frozen) {
+    botKeys.left = false;
+    botKeys.right = false;
+    botKeys.up = false;
+    botKeys.down = false;
+    botKeys.space = false;
+    botKeys.slide = false;
+    bot.vx = 0;
+    bot.airVx = 0;
+    bot.isShooting = false;
+    bot.isCharging = false;
+    bot.shootPoseTimer = 0;
     updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot);
     return;
   }
@@ -159,20 +179,17 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
 
   if (distToBallTotal > 260) {
     if (bot.idleDecisionTimer <= 0) {
-      bot.idleDecisionTimer = Math.floor(Math.random() * 60 + 60); // co 60-120 klatek
+      bot.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
 
       const roll = Math.random();
       if (roll < 0.40) {
-        // Krótki strafe lewo / prawo
         bot.strafeDir = Math.random() < 0.5 ? -1 : 1;
         bot.strafeTimer = Math.floor(Math.random() * 16 + 12);
       } else if (roll < 0.65) {
-        // Skok taktyczny
         if (!bot.isJumping && !bot.isSliding) {
           botKeys.up = true;
         }
       } else if (roll < 0.80) {
-        // Krótkie przykucnięcie
         botKeys.down = true;
         bot.crouchTimer = Math.floor(Math.random() * 20 + 10);
       }
@@ -200,7 +217,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   let aimTargetX = ball.x + (ball.vx * 3);
   let aimTargetY = ball.y + (ball.vy * 3);
 
-  // Jeśli piłka nie wymaga natychmiastowego kopnięcia, celownik kieruje się na przeciwnika
   if (humanPlayer && !humanPlayer.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
     aimTargetX = humanPlayer.x + humanPlayer.w / 2;
     aimTargetY = humanPlayer.y + humanPlayer.h / 2;
@@ -215,7 +231,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   const desiredAimX = botCenterX + Math.cos(finalAimAngle) * aimDist;
   const desiredAimY = botCenterY + Math.sin(finalAimAngle) * aimDist;
 
-  // Wygładzanie lerp (0.15) zamiast natychmiastowego przeskoku
   if (typeof bot.aimX !== 'number' || isNaN(bot.aimX)) bot.aimX = desiredAimX;
   if (typeof bot.aimY !== 'number' || isNaN(bot.aimY)) bot.aimY = desiredAimY;
 
@@ -223,7 +238,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   bot.aimY += (desiredAimY - bot.aimY) * 0.15;
 
   // =========================================================================
-  // 5. OSTRZAŁ BOTA (SERIA AK-47 LUB POJEDYNCZY STRZAŁ SHOTGUN)
+  // 5. OSTRZAŁ BOTA
   // =========================================================================
   if (humanPlayer && !humanPlayer.isDead) {
     const playerCenterX = humanPlayer.x + humanPlayer.w / 2;
@@ -236,7 +251,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     let angleDiff = Math.abs(currentAimAngle - angleToPlayer);
     while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-    const toleranceRad = 18 * (Math.PI / 180); // Tolerancja ±18°
+    const toleranceRad = 18 * (Math.PI / 180);
     const isAimedAtPlayer = angleDiff <= toleranceRad;
 
     if (isAimedAtPlayer) {
@@ -247,16 +262,15 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
             shootWeapon(bot, bot.currentWeapon);
             bot.burstShotsRemaining--;
             if (bot.burstShotsRemaining <= 0) {
-              bot.burstPauseTimer = 25; // 25 klatek przerwy po serii
+              bot.burstPauseTimer = 25;
             }
           }
         } else if (bot.burstPauseTimer <= 0 && bot.shootCooldown <= 0) {
-          bot.burstShotsRemaining = Math.floor(Math.random() * 2) + 3; // Seria 3–4 strzałów
+          bot.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
           shootWeapon(bot, bot.currentWeapon);
           bot.burstShotsRemaining--;
         }
       } else if (bot.currentWeapon === WEAPONS.SHOTGUN) {
-        // Dla Shotguna: pojedynczy strzał w bliskim zasięgu
         if (distToPlayer < 180 && bot.shootCooldown <= 0) {
           shootWeapon(bot, bot.currentWeapon);
         }
@@ -271,14 +285,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
       bot.isCharging = true;
       bot.chargePower = 0;
-      bot.chargeTarget = Math.random() * 0.55 + 0.30; // Losowa siła 0.30 - 0.85
+      bot.chargeTarget = Math.random() * 0.55 + 0.30;
     } else if (bot.isCharging) {
       if (bot.chargePower >= bot.chargeTarget) {
         executeReleaseKick(ball, bot);
       }
     }
   } else if (bot.isCharging) {
-    // Jeśli gracz/piłka ucieka, zwolnij wykop
     if (bot.chargePower >= bot.chargeTarget || ballDistFromHip > hitReach + 40) {
       executeReleaseKick(ball, bot);
     }

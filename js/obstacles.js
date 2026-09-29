@@ -3,7 +3,11 @@
 // =========================================================================
 
 import { ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from './config.js';
-import { triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks, resolveSegmentCollision, distToSegment } from './world.js';
+import {
+  triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
+  resolveSegmentCollision, distToSegment, triggerHitstop,
+  spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon
+} from './world.js';
 import { bot } from './bot.js';
 import { bullets, spawnHitSparks, spawnBulletSparks } from './weapons.js';
 
@@ -412,6 +416,78 @@ export function drawBarrelExplosionParticles(ctx) {
   }
 }
 
+// Procedura obsługi zgonu od eksplozji (całkowity gibbing vs wyrzut całego ciała)
+function applyExplosionToEntity(ent, cx, cy, radius, maxDmg, groundY) {
+  if (!ent || ent.isDead) return;
+
+  const ex = ent.x + ent.w / 2;
+  const ey = ent.y + ent.h / 2;
+  const distE = Math.hypot(ex - cx, ey - cy);
+
+  if (distE <= radius) {
+    const dmg = Math.round(maxDmg * (1 - distE / radius * 0.45));
+    ent.hp = Math.max(0, (ent.hp !== undefined ? ent.hp : 100) - dmg);
+
+    const nx = distE > 0.001 ? (ex - cx) / distE : (Math.random() < 0.5 ? -1 : 1);
+    const push = (1 - distE / radius) * 16 + 8;
+
+    ent.vx += nx * push;
+    ent.vy = -Math.abs(push * 0.85) - 5.5;
+    ent.isJumping = true;
+
+    if (ent.hp <= 0 && !ent.isDead) {
+      ent.isDead = true;
+      ent.respawnTimer = 180;
+      ent.corpseAngle = 0;
+      ent.corpseFloorY = groundY;
+
+      // Upuszczenie broni
+      if (ent.currentWeapon) {
+        spawnDroppedWeapon(
+          ent.x + ent.w / 2,
+          ent.y + 24,
+          nx * 5.0,
+          -6.0,
+          ent.currentWeapon,
+          ent.facing
+        );
+      }
+
+      // WARUNEK: Strefa bezpośrednia (<= 65 px) = CAŁKOWITE ROZCZŁONKOWANIE (Gibbing)
+      if (distE <= 65) {
+        ent.isGibbed = true;
+        ent.hasHead = false;
+        ent.decapitated = false;
+
+        triggerHitstop(6);
+        triggerScreenShake(20);
+
+        spawnBodyGibs(
+          ent.x + ent.w / 2,
+          ent.y + ent.h / 2,
+          ent.facing,
+          ent.currentClass?.visuals
+        );
+      } else {
+        // WARUNEK: Strefa fali (65 - 120 px) = BRAK ROZCZŁONKOWANIA (całe ciało leci wysoko w powietrze)
+        ent.isGibbed = false;
+        ent.hasHead = true;
+        ent.decapitated = false;
+        ent.neckFountainTimer = 0;
+
+        // Katapultowanie w górę z mocnym koziołkowaniem
+        ent.vy = -13.5 - Math.random() * 3.5;
+        ent.corpseRotVel = nx * (0.16 + Math.random() * 0.12);
+
+        triggerHitstop(3);
+        triggerScreenShake(12);
+
+        spawnBloodSpurt(ex, ey, nx, -1, 15, 1.2);
+      }
+    }
+  }
+}
+
 export function explodeBarrel(barrel, groundY) {
   if (!barrel || barrel.exploded) return;
   barrel.exploded = true;
@@ -425,61 +501,33 @@ export function explodeBarrel(barrel, groundY) {
   const cx = barrel.x + barrel.w / 2;
   const cy = topY + barrel.h / 2;
 
-  triggerScreenShake(8);
+  triggerScreenShake(10);
   spawnBarrelExplosion(cx, cy);
 
   const radius = 120;
-  const maxDmg = 45;
+  const maxDmg = 55;
 
-  if (_activePlayer && !_activePlayer.isDead) {
-    const px = _activePlayer.x + _activePlayer.w / 2;
-    const py = _activePlayer.y + _activePlayer.h / 2;
-    const distP = Math.hypot(px - cx, py - cy);
-    if (distP <= radius) {
-      const dmg = Math.round(maxDmg * (1 - distP / radius * 0.45));
-      _activePlayer.hp = Math.max(0, (_activePlayer.hp !== undefined ? _activePlayer.hp : 100) - dmg);
-      const nx = distP > 0.001 ? (px - cx) / distP : 0;
-      const push = (1 - distP / radius) * 14 + 7;
-      _activePlayer.vx += nx * push;
-      _activePlayer.vy = -Math.abs(push * 0.75) - 4.5;
-      _activePlayer.isJumping = true;
-      if (_activePlayer.hp <= 0 && !_activePlayer.isDead) {
-        _activePlayer.isDead = true;
-        _activePlayer.respawnTimer = 180;
-      }
-    }
+  // 1. Gracz
+  applyExplosionToEntity(_activePlayer, cx, cy, radius, maxDmg, groundY);
+
+  // 2. Bot
+  if (bot && bot.active) {
+    applyExplosionToEntity(bot, cx, cy, radius, maxDmg, groundY);
   }
 
-  if (bot && bot.active && !bot.isDead) {
-    const bx = bot.x + bot.w / 2;
-    const by = bot.y + bot.h / 2;
-    const distB = Math.hypot(bx - cx, by - cy);
-    if (distB <= radius) {
-      const dmg = Math.round(maxDmg * (1 - distB / radius * 0.45));
-      bot.hp = Math.max(0, (bot.hp !== undefined ? bot.hp : 100) - dmg);
-      const nx = distB > 0.001 ? (bx - cx) / distB : 0;
-      const push = (1 - distB / radius) * 14 + 7;
-      bot.vx += nx * push;
-      bot.vy = -Math.abs(push * 0.75) - 4.5;
-      bot.isJumping = true;
-      if (bot.hp <= 0 && !bot.isDead) {
-        bot.isDead = true;
-        bot.respawnTimer = 180;
-      }
-    }
-  }
-
+  // 3. Silne odrzucenie piłki
   if (_activeBall) {
     const distBall = Math.hypot(_activeBall.x - cx, _activeBall.y - cy);
     if (distBall <= radius) {
       const nx = distBall > 0.001 ? (_activeBall.x - cx) / distBall : (Math.random() - 0.5);
-      const push = (1 - distBall / radius) * 18 + 9;
+      const push = (1 - distBall / radius) * 20 + 10;
       _activeBall.vx += nx * push;
-      _activeBall.vy = -Math.abs(push * 0.75) - 6;
-      _activeBall.spin = (_activeBall.vx > 0 ? 1 : -1) * 0.9;
+      _activeBall.vy = -Math.abs(push * 0.75) - 6.5;
+      _activeBall.spin = (_activeBall.vx > 0 ? 1 : -1) * 1.1;
     }
   }
 
+  // 4. Detonacja łańcuchowa kolejnych beczek
   for (let i = customObstacles.length - 1; i >= 0; i--) {
     const other = customObstacles[i];
     if (other && other.type === 'explosive_barrel' && !other.exploded) {
@@ -505,9 +553,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const feetY = p.y + p.h;
   const centerX = p.x + p.w / 2;
 
-  // POPRAWKA: Zeskok w dół następuje WYŁĄCZNIE gdy aktywuje się dropThroughTimer
-  // (np. podwójne szarpnięcie drążkiem w dół lub podwójne 'S').
-  // Kucanie (p.isCrouching) NIE zrzuca już gracza z platformy!
   const wantDrop = (p.dropThroughTimer > 0);
 
   if (wantDrop) {
@@ -576,7 +621,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
     return;
   }
 
-  // Interaktywne przeszkody gracza (customObstacles)
   for (const obs of customObstacles) {
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const bottomY = topY + obs.h;
@@ -635,7 +679,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
         obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
         if (obs.wireDmgTick % 18 === 0) {
           p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 1);
-          if (p.hp <= 0 && !p.isDead) { p.isDead = true; p.respawnTimer = 180; }
+          if (p.hp <= 0 && !p.isDead) {
+            p.isDead = true;
+            p.respawnTimer = 180;
+            p.hasHead = true;
+            p.isGibbed = false;
+            p.corpseAngle = 0;
+            if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+          }
         }
       }
     } else if (obs.type === 'laser_gate') {
@@ -645,7 +696,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
           p.laserCooldown = 30;
           triggerScreenShake(4.0);
           spawnHitSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
-          if (p.hp <= 0 && !p.isDead) { p.isDead = true; p.respawnTimer = 180; }
+          if (p.hp <= 0 && !p.isDead) {
+            p.isDead = true;
+            p.respawnTimer = 180;
+            p.hasHead = true;
+            p.isGibbed = false;
+            p.corpseAngle = 0;
+            if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+          }
         }
       }
     }

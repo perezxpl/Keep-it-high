@@ -1,9 +1,9 @@
 // =========================================================================
-// WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ
+// WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ + SYSTEM GORE & KINEMATYKA ŚMIERCI
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
-import { activeArenaId, arenaScore, arena1State } from './obstacles.js';
+import { activeArenaId, arenaScore, arena1State, ARENA_PLATFORMS, customObstacles } from './obstacles.js';
 
 export const goalCelebration = {
   active: false,
@@ -42,12 +42,35 @@ export const camera = {
 };
 
 export function triggerScreenShake(intensity) {
-  camera.shakeIntensity = Math.min(22, Math.max(camera.shakeIntensity, intensity));
+  camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
+}
+
+// =========================================================================
+// SYSTEM HITSTOP (ZAMROŻENIE KLATKI PRZY EFEKTOWNEJ ŚMIERCI)
+// =========================================================================
+export let hitstopFrames = 0;
+export function triggerHitstop(frames = 5) {
+  hitstopFrames = Math.max(hitstopFrames, frames);
+}
+export function consumeHitstop() {
+  if (hitstopFrames > 0) {
+    hitstopFrames--;
+    return true;
+  }
+  return false;
 }
 
 export let currentDist = 0;
 export let bestDistance = 0;
 export const grassParticles = [];
+
+// =========================================================================
+// INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
+// =========================================================================
+export const weaponButtons = [
+  { id: 'AK47', name: 'AK', type: 'AUTO', x: 20, y: 0, w: 46, h: 26 },
+  { id: 'SHOTGUN', name: 'SG', type: 'SEMI', x: 20, y: 0, w: 46, h: 26 }
+];
 
 export function initCanvas(canvasEl) {
   canvas = canvasEl;
@@ -133,6 +156,419 @@ export function drawParticles(ctx) {
   for (const gp of grassParticles) {
     ctx.fillStyle = gp.color || '#166534';
     ctx.fillRect(gp.x, gp.y, gp.size, gp.size * 1.5);
+  }
+}
+
+// =========================================================================
+// SYSTEM GORE: KREW, PLAMY, ODCIĘTA GŁOWA, GIBS I UPUSZCZONA BROŃ
+// =========================================================================
+export const bloodParticles = [];
+export const bloodDecals = [];
+export const headGibs = [];
+export const bodyGibs = [];
+export const droppedWeapons = [];
+
+export function clearGore() {
+  bloodParticles.length = 0;
+  headGibs.length = 0;
+  bodyGibs.length = 0;
+  droppedWeapons.length = 0;
+}
+
+export function spawnBloodSpurt(x, y, dirX, dirY, count = 10, speedMult = 1.0) {
+  if (!CONFIG.GORE_ENABLED) return;
+  for (let i = 0; i < count; i++) {
+    const spread = (Math.random() - 0.5) * 0.8;
+    const spd = (Math.random() * 4.5 + 2.0) * speedMult;
+    const baseAngle = Math.atan2(dirY, dirX) + spread;
+    bloodParticles.push({
+      x: x + (Math.random() * 4 - 2),
+      y: y + (Math.random() * 4 - 2),
+      vx: Math.cos(baseAngle) * spd,
+      vy: Math.sin(baseAngle) * spd,
+      size: Math.random() * 2.8 + 1.6,
+      life: 1.0,
+      decay: Math.random() * 0.015 + 0.015
+    });
+  }
+}
+
+export function spawnBloodFountain(x, y, facing, count = 4) {
+  if (!CONFIG.GORE_ENABLED) return;
+  for (let i = 0; i < count; i++) {
+    bloodParticles.push({
+      x: x + (Math.random() * 4 - 2),
+      y: y,
+      vx: (facing * (Math.random() * 2.2 + 0.5)) + (Math.random() - 0.5) * 1.2,
+      vy: -(Math.random() * 4.2 + 2.8),
+      size: Math.random() * 2.5 + 2.0,
+      life: 1.0,
+      decay: Math.random() * 0.02 + 0.02
+    });
+  }
+}
+
+export function addBloodDecal(x, y) {
+  if (!CONFIG.GORE_ENABLED) return;
+  if (bloodDecals.length >= (CONFIG.MAX_BLOOD_DECALS || 120)) {
+    bloodDecals.shift();
+  }
+  bloodDecals.push({
+    x: x + (Math.random() * 4 - 2),
+    y,
+    w: Math.random() * 9 + 5,
+    h: Math.random() * 3 + 1.8,
+    alpha: Math.random() * 0.35 + 0.55
+  });
+}
+
+export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
+  if (!CONFIG.GORE_ENABLED) return;
+  headGibs.push({
+    x,
+    y,
+    vx: vx * 1.05 + (facing * 2.0),
+    vy: vy - 4.5,
+    rot: 0,
+    vRot: (Math.random() * 0.25 + 0.15) * facing,
+    facing: facing || 1,
+    visuals: visuals || {},
+    radius: 7.5,
+    groundBounces: 0,
+    life: 300,
+    sprayTimer: 45
+  });
+  spawnBloodSpurt(x, y, vx, vy - 3, 24, 1.4);
+}
+
+export function spawnBodyGibs(cx, cy, facing, visuals) {
+  if (!CONFIG.GORE_ENABLED) return;
+  const types = ['arm', 'leg', 'torso_chunk', 'boot', 'pelvis'];
+  for (const t of types) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = Math.random() * 7.0 + 3.5;
+    bodyGibs.push({
+      type: t,
+      x: cx + (Math.random() * 12 - 6),
+      y: cy + (Math.random() * 16 - 8),
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 3.5,
+      rot: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.35,
+      facing: Math.random() < 0.5 ? 1 : -1,
+      visuals: visuals || {},
+      groundBounces: 0,
+      life: 280
+    });
+  }
+  spawnBloodSpurt(cx, cy, 0, -1, 35, 1.8);
+}
+
+export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing) {
+  if (!weapon) return;
+  droppedWeapons.push({
+    weapon,
+    x,
+    y,
+    vx: (vx || 0) * 0.4 + (facing * (Math.random() * 2.5 + 1.5)),
+    vy: (vy || 0) * 0.3 - (Math.random() * 3.5 + 3.0),
+    rot: 0,
+    vRot: (Math.random() * 0.22 + 0.12) * (Math.random() < 0.5 ? 1 : -1),
+    facing: facing || 1,
+    bounces: 0,
+    life: 360
+  });
+}
+
+export function updateGore(groundY) {
+  for (let i = bloodParticles.length - 1; i >= 0; i--) {
+    const p = bloodParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += CONFIG.GRAVITY * 0.85;
+    p.vx *= 0.98;
+    p.life -= p.decay;
+
+    let hitFloor = false;
+    let floorY = groundY;
+
+    for (const plat of ARENA_PLATFORMS) {
+      const topY = groundY - plat.relY;
+      if (p.x >= plat.x && p.x <= plat.x + plat.w && p.y >= topY && p.y <= topY + 12 && p.vy > 0) {
+        hitFloor = true;
+        floorY = topY;
+        break;
+      }
+    }
+    if (!hitFloor) {
+      for (const obs of customObstacles) {
+        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+        if (p.x >= obs.x && p.x <= obs.x + obs.w && p.y >= topY && p.y <= topY + 12 && p.vy > 0) {
+          hitFloor = true;
+          floorY = topY;
+          break;
+        }
+      }
+    }
+
+    if (p.y >= groundY || hitFloor) {
+      addBloodDecal(p.x, hitFloor ? floorY : groundY);
+      bloodParticles.splice(i, 1);
+      continue;
+    }
+
+    if (p.life <= 0) {
+      bloodParticles.splice(i, 1);
+    }
+  }
+
+  for (let i = headGibs.length - 1; i >= 0; i--) {
+    const hg = headGibs[i];
+    hg.x += hg.vx;
+    hg.y += hg.vy;
+    hg.vy += CONFIG.GRAVITY;
+    hg.rot += hg.vRot;
+    hg.vx *= 0.985;
+    hg.life--;
+
+    if (hg.sprayTimer > 0) {
+      hg.sprayTimer--;
+      if (hg.sprayTimer % 3 === 0) {
+        spawnBloodSpurt(hg.x, hg.y, -hg.vx * 0.4, -hg.vy * 0.4, 2, 0.6);
+      }
+    }
+
+    let floorY = groundY - hg.radius;
+    let landed = false;
+
+    if (hg.y >= floorY) {
+      landed = true;
+    } else {
+      for (const plat of ARENA_PLATFORMS) {
+        const topY = groundY - plat.relY;
+        if (hg.x >= plat.x && hg.x <= plat.x + plat.w && hg.y >= topY - hg.radius && hg.y <= topY + 8 && hg.vy > 0) {
+          floorY = topY - hg.radius;
+          landed = true;
+          break;
+        }
+      }
+    }
+
+    if (landed) {
+      hg.y = floorY;
+      if (Math.abs(hg.vy) > 1.2 && hg.groundBounces < 4) {
+        hg.vy = -hg.vy * 0.48;
+        hg.vx *= 0.75;
+        hg.vRot *= 0.7;
+        hg.groundBounces++;
+        addBloodDecal(hg.x, floorY + hg.radius);
+      } else {
+        hg.vy = 0;
+        hg.vx *= 0.85;
+        hg.vRot = 0;
+      }
+    }
+
+    if (hg.life <= 0) {
+      headGibs.splice(i, 1);
+    }
+  }
+
+  for (let i = bodyGibs.length - 1; i >= 0; i--) {
+    const bg = bodyGibs[i];
+    bg.x += bg.vx;
+    bg.y += bg.vy;
+    bg.vy += CONFIG.GRAVITY;
+    bg.rot += bg.vRot;
+    bg.vx *= 0.98;
+    bg.life--;
+
+    if (bg.y >= groundY - 4) {
+      bg.y = groundY - 4;
+      if (Math.abs(bg.vy) > 1.5 && bg.groundBounces < 3) {
+        bg.vy = -bg.vy * 0.42;
+        bg.vx *= 0.75;
+        bg.groundBounces++;
+        addBloodDecal(bg.x, groundY);
+      } else {
+        bg.vy = 0;
+        bg.vx = 0;
+        bg.vRot = 0;
+      }
+    }
+
+    if (bg.life <= 0) {
+      bodyGibs.splice(i, 1);
+    }
+  }
+
+  for (let i = droppedWeapons.length - 1; i >= 0; i--) {
+    const dw = droppedWeapons[i];
+    dw.x += dw.vx;
+    dw.y += dw.vy;
+    dw.vy += CONFIG.GRAVITY;
+    dw.rot += dw.vRot;
+    dw.vx *= 0.98;
+    dw.life--;
+
+    let floorY = groundY - 4;
+    let landed = false;
+
+    if (dw.y >= floorY) {
+      landed = true;
+    } else {
+      for (const plat of ARENA_PLATFORMS) {
+        const topY = groundY - plat.relY;
+        if (dw.x >= plat.x && dw.x <= plat.x + plat.w && dw.y >= topY - 4 && dw.y <= topY + 8 && dw.vy > 0) {
+          floorY = topY - 4;
+          landed = true;
+          break;
+        }
+      }
+    }
+
+    if (landed) {
+      dw.y = floorY;
+      if (Math.abs(dw.vy) > 1.2 && dw.bounces < 3) {
+        dw.vy = -dw.vy * 0.45;
+        dw.vx *= 0.72;
+        dw.vRot *= 0.6;
+        dw.bounces++;
+      } else {
+        dw.vy = 0;
+        dw.vx *= 0.82;
+        dw.vRot = 0;
+      }
+    }
+
+    if (dw.life <= 0) {
+      droppedWeapons.splice(i, 1);
+    }
+  }
+}
+
+export function drawBloodDecals(ctx) {
+  if (!CONFIG.GORE_ENABLED || bloodDecals.length === 0) return;
+  ctx.save();
+  for (const d of bloodDecals) {
+    ctx.fillStyle = `rgba(136, 19, 19, ${d.alpha.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+export function drawGore(ctx) {
+  if (!CONFIG.GORE_ENABLED) return;
+
+  if (bloodParticles.length > 0) {
+    ctx.save();
+    for (const p of bloodParticles) {
+      ctx.fillStyle = Math.random() < 0.3 ? '#7f1d1d' : '#991b1b';
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+    ctx.restore();
+  }
+
+  for (const hg of headGibs) {
+    ctx.save();
+    ctx.translate(hg.x, hg.y);
+    ctx.rotate(hg.rot);
+    ctx.scale(hg.facing, 1);
+
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 4.2, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const faceGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
+    faceGrad.addColorStop(0.0, '#de935e');
+    faceGrad.addColorStop(0.5, '#f5b078');
+    faceGrad.addColorStop(1.0, '#fed7aa');
+
+    ctx.beginPath();
+    ctx.ellipse(0, -1.0, 5.0, 5.8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = faceGrad;
+    ctx.fill();
+
+    ctx.fillStyle = '#2e160a';
+    ctx.beginPath();
+    ctx.arc(0, -2.5, 5.1, Math.PI * 0.85, Math.PI * 0.15, true);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-4.8, -2.8);
+    ctx.lineTo(4.8, -2.8);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(1.2, -2.2); ctx.lineTo(3.2, -0.2);
+    ctx.moveTo(3.2, -2.2); ctx.lineTo(1.2, -0.2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  for (const bg of bodyGibs) {
+    ctx.save();
+    ctx.translate(bg.x, bg.y);
+    ctx.rotate(bg.rot);
+
+    if (bg.type === 'boot') {
+      ctx.fillStyle = bg.visuals?.bootColor || '#18181b';
+      ctx.fillRect(-4, -2, 9, 5);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-4, -4, 3, 2);
+    } else if (bg.type === 'leg') {
+      ctx.fillStyle = bg.visuals?.legShinFront || '#ef4444';
+      ctx.fillRect(-3, -7, 6, 14);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(-3, -9, 6, 2);
+    } else if (bg.type === 'arm') {
+      ctx.fillStyle = bg.visuals?.armColorFront || '#dc2626';
+      ctx.fillRect(-2.5, -5, 5, 10);
+      ctx.fillStyle = '#f5b078';
+      ctx.fillRect(-2, 5, 4, 3);
+    } else {
+      ctx.fillStyle = bg.visuals?.jerseyFront1 || '#991b1b';
+      ctx.fillRect(-5, -5, 10, 10);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(-5, -6, 10, 2);
+    }
+
+    ctx.restore();
+  }
+
+  for (const dw of droppedWeapons) {
+    ctx.save();
+    ctx.translate(dw.x, dw.y);
+    ctx.rotate(dw.rot);
+    ctx.scale(dw.facing, 1);
+
+    if (dw.weapon.id === 'AK47') {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-8, -1.5, 6, 3);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-2, -2, 14, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(4, 2, 4, 5);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(12, -1, 10, 2);
+    } else {
+      ctx.fillStyle = '#3f2712';
+      ctx.fillRect(-7, -1.5, 6, 3.5);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-1, -2.5, 11, 5);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(10, -2, 14, 3);
+    }
+
+    ctx.restore();
   }
 }
 
@@ -265,7 +701,6 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
 function drawSoldatParallax(ctx, camX) {
   const time = performance.now() * 0.0007;
 
-  // 1. Dalekie, spowite mrokiem pasmo wzgórz (Paralaks 0.04)
   const farOffset = (camX * 0.04) % 1200;
   ctx.fillStyle = '#070c16';
   ctx.beginPath();
@@ -279,7 +714,6 @@ function drawSoldatParallax(ctx, camX) {
   ctx.closePath();
   ctx.fill();
 
-  // 2. Bliższe wzgórza bazy taktycznej (Paralaks 0.08)
   const midOffset = (camX * 0.08) % 900;
   ctx.fillStyle = '#0c1322';
   ctx.beginPath();
@@ -293,7 +727,6 @@ function drawSoldatParallax(ctx, camX) {
   ctx.closePath();
   ctx.fill();
 
-  // 3. Maszty łączności, radary i wieże strażnicze (Paralaks 0.14)
   const towerOffset = (camX * 0.14) % 800;
   ctx.fillStyle = '#161f30';
   for (let i = -1; i < 5; i++) {
@@ -321,7 +754,6 @@ function drawSoldatParallax(ctx, camX) {
     }
   }
 
-  // 4. Szperacze przeciwlotnicze bazy wojskowej
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   for (let s = 0; s < 3; s++) {
@@ -369,7 +801,6 @@ function drawCyberStadiumSky(ctx, camX) {
 
   const time = performance.now() * 0.0012;
 
-  // 1. Odległe wieżowce cyberpunkowe
   const farOffset = (camX * 0.04) % 1200;
   ctx.fillStyle = '#080c14';
   const farTowers = [
@@ -403,7 +834,6 @@ function drawCyberStadiumSky(ctx, camX) {
     }
   }
 
-  // 2. Bliższe drapacze chmur z neonowymi rzędami okien
   const nearOffset = (camX * 0.10) % 960;
   const nearTowers = [
     { x: 60, w: 85, h: 260 },
@@ -431,7 +861,6 @@ function drawCyberStadiumSky(ctx, camX) {
     }
   }
 
-  // 3. Snopy światła jupiterów
   if (camera) {
     const spots = [
       { worldX: 240, baseAngle: 0.38, color: 'rgba(6, 182, 212, ' },
@@ -585,9 +1014,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
   ctx.save();
 
-  // =========================================================================
   // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK
-  // =========================================================================
   if (leftStick && (leftStick.active || leftStick.waitingForJetpackTap)) {
     const isJetReady = leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0;
     const isJetActive = leftStick.isJetpacking;
@@ -619,7 +1046,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Strzałka wzniosu informująca o skoku / dopalaczu w osi Y
     ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = isJetActive ? '#00e5ff' : (isJetReady ? '#38bdf8' : 'rgba(255, 255, 255, 0.4)');
     ctx.textAlign = 'center';
@@ -631,39 +1057,35 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + 68);
     }
 
-    if (leftStick.active) {
-      const knobX = leftStick.baseX + (leftStick.axisX * (leftStick.maxRadius || 55));
-      const knobY = leftStick.baseY + (leftStick.axisY * (leftStick.maxRadius || 55));
+    const knobX = leftStick.baseX + (leftStick.axisX * (leftStick.maxRadius || 55));
+    const knobY = leftStick.baseY + (leftStick.axisY * (leftStick.maxRadius || 55));
 
-      const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
-      if (isJetActive) {
-        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
-        knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.85)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-      } else {
-        knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
-        knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
-      }
-
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
-      ctx.fillStyle = knobGrad;
-      ctx.fill();
-      ctx.strokeStyle = isJetActive ? '#00e5ff' : '#38bdf8';
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+    const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
+    if (isJetActive) {
+      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
+      knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.85)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
+    } else {
+      knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
+      knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
     }
+
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
+    ctx.fillStyle = knobGrad;
+    ctx.fill();
+    ctx.strokeStyle = isJetActive ? '#00e5ff' : '#38bdf8';
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
   }
 
-  // =========================================================================
   // 2. PRAWY DRĄŻEK: CELOWANIE, OKNO 300 MS I OGIEŃ CIĄGŁY
-  // =========================================================================
   const rsVisible = (rightStick && (rightStick.active || rightStick.waitingForSecondTap || rightStick.lingerAlpha > 0.01));
 
   if (rsVisible) {
@@ -711,6 +1133,9 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.moveTo(bx, by - 10); ctx.lineTo(bx + 10, by);
     ctx.stroke();
 
+    let knobX = bx;
+    let knobY = by;
+
     if (rightStick.active) {
       const dx = rightStick.curX - bx;
       const dy = rightStick.curY - by;
@@ -719,8 +1144,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const normY = rawDist > 0.001 ? dy / rawDist : 0;
 
       const clampedDist = Math.min(rawDist, maxR);
-      const knobX = bx + normX * clampedDist;
-      const knobY = by + normY * clampedDist;
+      knobX = bx + normX * clampedDist;
+      knobY = by + normY * clampedDist;
 
       ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.8)' : 'rgba(0, 229, 255, 0.6)';
       ctx.lineWidth = 1.4;
@@ -730,42 +1155,42 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.lineTo(knobX, knobY);
       ctx.stroke();
       ctx.setLineDash([]);
-
-      const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
-      if (isFiring) {
-        knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
-        knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
-      } else {
-        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
-        knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
-      }
-
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
-      ctx.fillStyle = knobGrad;
-      ctx.fill();
-
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = mainColor;
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
-      ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
-      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX, knobY - 7);
-      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
-      ctx.stroke();
     }
+
+    const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
+    if (isFiring) {
+      knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
+      knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+    } else {
+      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
+      knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+    }
+
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
+    ctx.fillStyle = knobGrad;
+    ctx.fill();
+
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
+    ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
+    ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX - 7, knobY);
+    ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
+    ctx.stroke();
 
     let statusText = 'CEL / KOP: GEST';
     if (isFiring) {
@@ -783,9 +1208,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
   }
 
-  // =========================================================================
-  // 3. PRZYCISK WŚLIZG (SKOK I KOP ZOSTAŁY PRZENIESIONE NA DRĄŻKI)
-  // =========================================================================
+  // 3. PRZYCISK WŚLIZG
   if (btnCluster && btnCluster.slide) {
     const glassBg = 'rgba(15, 23, 42, 0.55)';
     const slide = btnCluster.slide;
@@ -946,114 +1369,60 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   ctx.restore();
 }
 
+/**
+ * Rysowanie miniaturowej sylwetki broni w tle kafelka wyboru
+ */
+function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const alpha = isSelected ? 0.38 : 0.16;
+
+  if (type === 'AK47') {
+    ctx.fillStyle = `rgba(250, 204, 21, ${alpha})`;
+    // Kolba
+    ctx.fillRect(-17, -1, 7, 3);
+    // Komora i łoże
+    ctx.fillRect(-10, -2, 16, 4);
+    // Magazynek łukowy
+    ctx.beginPath();
+    ctx.moveTo(-5, 2);
+    ctx.lineTo(-2, 7);
+    ctx.lineTo(1, 7);
+    ctx.lineTo(-1, 2);
+    ctx.closePath();
+    ctx.fill();
+    // Lufa
+    ctx.fillRect(6, -1, 10, 2);
+  } else if (type === 'SHOTGUN') {
+    ctx.fillStyle = `rgba(251, 146, 60, ${alpha})`;
+    // Kolba
+    ctx.fillRect(-16, -1, 8, 4);
+    // Komora zamkowa
+    ctx.fillRect(-8, -2, 12, 5);
+    // Długa lufa i podlufowy magazynek
+    ctx.fillRect(4, -2, 12, 3);
+    ctx.fillRect(4, 1, 10, 2);
+  }
+
+  ctx.restore();
+}
+
 export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   updateFps();
 
   ctx.save();
 
-  // 1. PASEK ŻYCIA (HP) GRACZA[span_4](start_span)[span_4](end_span)
-  const hpX = 20;
-  const hpY = 20;
-  const hpW = 180;
-  const hpH = 14;
-
-  const maxHp = player.maxHp || 100;
-  const curHp = Math.max(0, player.hp ?? 100);
-  const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
-  const hpColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#f97316' : '#ef4444');
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(hpX, hpY, hpW, hpH, 4);
-  else ctx.rect(hpX, hpY, hpW, hpH);
-  ctx.fill();
-  ctx.stroke();
-
-  if (hpRatio > 0) {
-    ctx.save();
-    ctx.beginPath();
-    const fillW = Math.max(4, (hpW - 2) * hpRatio);
-    if (ctx.roundRect) ctx.roundRect(hpX + 1, hpY + 1, fillW, hpH - 2, 3);
-    else ctx.rect(hpX + 1, hpY + 1, fillW, hpH - 2);
-    ctx.fillStyle = hpColor;
-    ctx.shadowColor = hpColor;
-    ctx.shadowBlur = 6;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  ctx.textAlign = 'right';
-  ctx.font = 'bold 9.5px monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`HP: ${Math.ceil(curHp)}/${maxHp}`, hpX + hpW - 6, hpY + 10.5);
-
-  // 1b. PASEK PALIWA JETPACKA[span_5](start_span)[span_5](end_span)
-  const jetX = hpX;
-  const jetY = hpY + 16;
-  const jetW = 180;
-  const jetH = 5;
-
-  const maxJet = player.jetMax || 100;
-  const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
-  const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(jetX, jetY, jetW, jetH, 2);
-  else ctx.rect(jetX, jetY, jetW, jetH);
-  ctx.fill();
-  ctx.stroke();
-
-  if (jetRatio > 0) {
-    ctx.save();
-    ctx.beginPath();
-    const fillJetW = Math.max(2, jetW * jetRatio);
-    if (ctx.roundRect) ctx.roundRect(jetX, jetY, fillJetW, jetH, 2);
-    else ctx.rect(jetX, jetY, fillJetW, jetH);
-    ctx.fillStyle = '#00e5ff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 6;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  ctx.save();
-  ctx.textAlign = 'right';
-  ctx.font = 'bold 8.5px monospace';
-  ctx.fillStyle = '#00e5ff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`JET: ${Math.round(curJet)}%`, jetX + jetW, jetY + 12.5);
-  ctx.restore();
-
-  // 2. WSKAŹNIK AKTYWNEJ BRONI[span_6](start_span)[span_6](end_span)
-  const weapon = player.currentWeapon;
-  const isShotgun = (weapon && weapon.id === 'SHOTGUN');
-  const weaponHint = isShotgun ? '[2] SHOTGUN (SEMI)' : '[1] AK-47 (AUTO)';
-  const weaponColor = isShotgun ? '#fb923c' : '#facc15';
-
+  // =========================================================================
+  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (DYSTANS, KLASA, STAN, FPS)
+  // =========================================================================
   ctx.textAlign = 'left';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = weaponColor;
-  ctx.shadowColor = weaponColor;
-  ctx.shadowBlur = 6;
-  ctx.fillText(weaponHint, hpX, hpY + 42);
-  ctx.shadowBlur = 0;
-
-  // 3. STATYSTYKI DYSTANSU I GRY[span_7](start_span)[span_7](end_span)
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 13px monospace';
-  ctx.fillText(`DYSTANS: ${currentDist} m`, hpX, hpY + 60);
+  ctx.fillText(`DYSTANS: ${currentDist} m`, 20, 26);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '600 11px monospace';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, hpX, hpY + 76);
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, 20, 44);
 
   let modeCol = '#94a3b8';
   if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
@@ -1064,13 +1433,146 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
 
   ctx.fillStyle = modeCol;
   ctx.font = 'bold 11px monospace';
-  ctx.fillText(`STAN: ${player.gaitMode}`, hpX, hpY + 92);
+  ctx.fillText(`STAN: ${player.gaitMode}`, 20, 62);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = '10px monospace';
-  ctx.fillText(`FPS: ${currentFps}`, hpX, hpY + 106);
+  ctx.fillText(`FPS: ${currentFps}`, 20, 78);
 
-  // 4. Tablica wyników (Arena 1 & Arena 2)[span_8](start_span)[span_8](end_span)
+  // =========================================================================
+  // 2. PANEL DOLNY LEWY: HP, JETPACK ORAZ PIONOWY WYBÓR BRONI
+  // =========================================================================
+  const panelX = 20;
+
+  // A. Przyciski wyboru broni – małe, ułożone pionowo jeden na drugim
+  const btnH = 26;
+  const btnGap = 5;
+  const akY = H - 64;
+  const sgY = H - 33;
+  const curWepId = player.currentWeapon?.id || 'AK47';
+
+  weaponButtons[0].y = akY;
+  weaponButtons[1].y = sgY;
+
+  for (const btn of weaponButtons) {
+    const isSelected = (curWepId === btn.id);
+    const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#facc15';
+
+    ctx.save();
+    ctx.fillStyle = isSelected
+      ? (btn.id === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.28)' : 'rgba(250, 204, 21, 0.28)')
+      : 'rgba(15, 23, 42, 0.82)';
+    ctx.strokeStyle = isSelected ? accentCol : 'rgba(255, 255, 255, 0.20)';
+    ctx.lineWidth = isSelected ? 1.6 : 1.0;
+
+    if (isSelected) {
+      ctx.shadowColor = accentCol;
+      ctx.shadowBlur = 8;
+    }
+
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 4);
+    else ctx.rect(btn.x, btn.y, btn.w, btn.h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Rysunek sylwetki broni w tle kafelka
+    drawWeaponSilhouette(ctx, btn.id, btn.x + btn.w / 2, btn.y + btn.h / 2, isSelected);
+
+    // Etykieta broni
+    ctx.font = 'bold 8.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isSelected ? '#ffffff' : '#94a3b8';
+    ctx.fillText(btn.name, btn.x + btn.w / 2, btn.y + btn.h / 2 + 0.5);
+
+    ctx.restore();
+  }
+
+  // B. Pasek HP i Jetpacka (bezpośrednio nad kolumną wyboru broni)
+  const barW = 140;
+  const hpY = akY - 32;
+  const hpH = 10;
+
+  const maxHp = player.maxHp || 100;
+  const curHp = Math.max(0, player.hp ?? 100);
+  const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
+  const hpColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#f97316' : '#ef4444');
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(panelX, hpY, barW, hpH, 3);
+  else ctx.rect(panelX, hpY, barW, hpH);
+  ctx.fill();
+  ctx.stroke();
+
+  if (hpRatio > 0) {
+    ctx.save();
+    ctx.beginPath();
+    const fillW = Math.max(3, (barW - 2) * hpRatio);
+    if (ctx.roundRect) ctx.roundRect(panelX + 1, hpY + 1, fillW, hpH - 2, 2);
+    else ctx.rect(panelX + 1, hpY + 1, fillW, hpH - 2);
+    ctx.fillStyle = hpColor;
+    ctx.shadowColor = hpColor;
+    ctx.shadowBlur = 5;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 8px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW - 4, hpY + hpH / 2 + 0.5);
+
+  // C. Pasek Jetpacka
+  const jetY = hpY + 14;
+  const jetH = 4.5;
+
+  const maxJet = player.jetMax || 100;
+  const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
+  const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(panelX, jetY, barW, jetH, 2);
+  else ctx.rect(panelX, jetY, barW, jetH);
+  ctx.fill();
+  ctx.stroke();
+
+  if (jetRatio > 0) {
+    ctx.save();
+    ctx.beginPath();
+    const fillJetW = Math.max(2, barW * jetRatio);
+    if (ctx.roundRect) ctx.roundRect(panelX, jetY, fillJetW, jetH, 2);
+    else ctx.rect(panelX, jetY, fillJetW, jetH);
+    ctx.fillStyle = '#00e5ff';
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 5;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 7.5px monospace';
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`JET ${Math.round(curJet)}%`, panelX + barW, jetY + 11.5);
+  ctx.restore();
+
+  // =========================================================================
+  // 3. TABLICA WYNIKÓW (GÓRA EKRANU)
+  // =========================================================================
   const isMatchArena = (activeArenaId === 'ARENA_1' || activeArenaId === 'ARENA_2');
   if (isMatchArena) {
     const scoreBoxW = 230;
@@ -1118,7 +1620,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.restore();
   }
 
-  // 5. Baner celebracji gola[span_9](start_span)[span_9](end_span)
+  // 4. BANER CELEBRACJI GOLA
   if (goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;

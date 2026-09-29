@@ -2,7 +2,10 @@
 // WEAPONS.JS - SYSTEM BRONI, BALISTYKI I KINEMATYKI STRZELECKIEJ (SOLDAT STYLE)
 // =========================================================================
 
-import { triggerScreenShake, GROUND_Y } from './world.js';
+import {
+  triggerScreenShake, GROUND_Y, triggerHitstop,
+  spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnDroppedWeapon
+} from './world.js';
 import { checkRayObstacleCollision, obstacles } from './obstacles.js';
 
 export const WEAPONS = {
@@ -232,7 +235,6 @@ export function shootWeapon(shooter, weapon) {
 
   const isCrouch = !!shooter.isCrouching;
 
-  // Aktywacja postawy strzeleckiej i odrzutu wizualnego broni
   if (weapon.id === 'SHOTGUN') {
     shooter.shootPoseTimer = 10;
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -250,7 +252,6 @@ export function shootWeapon(shooter, weapon) {
     ? shooter.groundY
     : (typeof GROUND_Y === 'number' && GROUND_Y > 0 ? GROUND_Y : 500);
 
-  // Zabezpieczenie przed strzelaniem przez ściany
   const wallHit = checkRayObstacleCollision(shoulderX, shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
   if (wallHit) {
     spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, 5);
@@ -260,7 +261,6 @@ export function shootWeapon(shooter, weapon) {
     return;
   }
 
-  // Wektor kierunku wystrzału pocisków
   const theta = Math.atan2(aimY - muzzleY, aimX - muzzleX);
   const activeSpread = weapon.spread * (isCrouch ? weapon.crouchSpreadMult : 1.0);
 
@@ -274,6 +274,9 @@ export function shootWeapon(shooter, weapon) {
       y: muzzleY,
       prevX: muzzleX,
       prevY: muzzleY,
+      originX: muzzleX,
+      originY: muzzleY,
+      weaponId: weapon.id,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       damage: weapon.damage,
@@ -284,14 +287,9 @@ export function shootWeapon(shooter, weapon) {
     });
   }
 
-  // UWAGA: Fizyczny impuls odrzutu na ciele postaci (shooter.vx) został całkowicie wyłączony!
-  // Postać stoi stabilnie w rozkroku i nie jest spychana w tył.
-
-  // Cooldown i rozbłysk wylotowy
   shooter.shootCooldown = weapon.fireRate;
   shooter.muzzleFlashTimer = 2;
 
-  // Wstrząs kamery (feedback uderzenia bez odpychania postaci)
   if (weapon.recoil > 1.5) {
     triggerScreenShake(isCrouch ? 2.4 : 3.8);
   } else {
@@ -369,7 +367,7 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
 }
 
 /**
- * Aktualizacja pocisków
+ * Aktualizacja pocisków i detekcja dekapitacji / zgonu
  */
 export function updateBullets(groundY, obstaclesList, ball, characters) {
   for (let i = bulletParticles.length - 1; i >= 0; i--) {
@@ -449,15 +447,82 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       const hitPtY = b.prevY + (b.y - b.prevY) * closestCharT;
 
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - b.damage);
-      closestChar.vx += b.vx * 0.08;
-      closestChar.vy -= 1.0;
-      closestChar.isJumping = true;
+      spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 5);
+      spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 4, 0.7);
 
-      spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 6);
-
+      // =====================================================================
+      // OBSŁUGA ZGONU I DEKAPITACJI
+      // =====================================================================
       if (closestChar.hp <= 0 && !closestChar.isDead) {
         closestChar.isDead = true;
         closestChar.respawnTimer = 180;
+        closestChar.corpseAngle = 0;
+        closestChar.corpseFloorY = groundY;
+        closestChar.isGibbed = false; // Całkowite rozerwanie jest zarezerwowane wyłącznie dla beczki!
+
+        const shotDist = Math.hypot(hitPtX - (b.originX || hitPtX), hitPtY - (b.originY || hitPtY));
+        const isHeadshot = (hitPtY <= closestChar.y + 22);
+        const isCloseShotgun = (b.weaponId === 'SHOTGUN' && shotDist < 155);
+
+        // Odłącz i wyrzuć broń ofiary w świat
+        if (closestChar.currentWeapon) {
+          spawnDroppedWeapon(
+            closestChar.x + closestChar.w / 2,
+            closestChar.y + 28,
+            b.vx * 0.22,
+            -3.8,
+            closestChar.currentWeapon,
+            closestChar.facing
+          );
+        }
+
+        if (isHeadshot && isCloseShotgun) {
+          // =================================================================
+          // 1. CZYSTA DEKAPITACJA: ODCIĘTA GŁOWA + FONTANNA KRWI + KOZIOŁKOWANIE
+          // =================================================================
+          closestChar.hasHead = false;
+          closestChar.decapitated = true;
+          closestChar.neckFountainTimer = 55; // Kikut szyi tryska fontanną przez 55 klatek
+
+          triggerHitstop(6);
+          triggerScreenShake(16);
+
+          // Wystrzelenie odciętej głowy w powietrze
+          spawnHeadGib(
+            closestChar.x + closestChar.w / 2,
+            closestChar.y + 8,
+            b.vx * 0.55,
+            -5.5,
+            closestChar.facing,
+            closestChar.currentClass?.visuals
+          );
+
+          // Korpus koziołkuje i leci w tył pod kątem
+          closestChar.vx = b.vx * 0.45;
+          closestChar.vy = -4.2;
+          closestChar.corpseRotVel = (b.vx > 0 ? 0.16 : -0.16);
+          closestChar.isJumping = true;
+
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+        } else {
+          // =================================================================
+          // 2. NORMALNA ŚMIERĆ KINETYCZNA (Głowa zostaje na karku)
+          // =================================================================
+          closestChar.hasHead = true;
+          closestChar.decapitated = false;
+          closestChar.neckFountainTimer = 0;
+
+          triggerHitstop(3);
+          triggerScreenShake(7);
+
+          closestChar.vx = b.vx * 0.32;
+          closestChar.vy = -3.2;
+          closestChar.corpseRotVel = (b.vx > 0 ? 0.09 : -0.09);
+          closestChar.isJumping = true;
+
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.8, -1.8, 16, 1.0);
+        }
       }
 
       bullets.splice(i, 1);
@@ -512,7 +577,6 @@ export function drawHeldWeapon(ctx, p) {
   ctx.rotate(hold.angle);
 
   if (weapon.id === 'AK47') {
-    // 1. Drewniana kolba
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.moveTo(0, -1);
@@ -535,13 +599,11 @@ export function drawHeldWeapon(ctx, p) {
     ctx.closePath();
     ctx.fill();
 
-    // 2. Komora zamkowa
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, -2.5, 14, 4.5);
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, -1.8, 14, 3.5);
 
-    // 3. Magazynek łukowy
     ctx.fillStyle = '#334155';
     ctx.beginPath();
     ctx.moveTo(6.5, 2.0);
@@ -554,13 +616,11 @@ export function drawHeldWeapon(ctx, p) {
     ctx.lineWidth = 0.6;
     ctx.stroke();
 
-    // 4. Drewniane łoże
     ctx.fillStyle = '#78350f';
     ctx.fillRect(14, -2.2, 8.5, 3.8);
     ctx.fillStyle = '#92400e';
     ctx.fillRect(14, -2.2, 8.5, 1.0);
 
-    // 5. Lufa
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(22.5, -1.4, 11.5, 2.4);
     ctx.fillStyle = '#334155';
@@ -574,7 +634,6 @@ export function drawHeldWeapon(ctx, p) {
       drawMuzzleFlash(ctx, 34, -0.2, 11, false);
     }
   } else if (weapon.id === 'SHOTGUN') {
-    // 1. Kolba drewniana
     ctx.fillStyle = '#3f2712';
     ctx.beginPath();
     ctx.moveTo(0, -1);
@@ -591,19 +650,16 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#3f2712';
     ctx.fillRect(0, 2.5, 3.2, 5);
 
-    // 2. Komora zamkowa
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, -2.6, 11, 5.4);
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, -3.2, 11, 1.2);
 
-    // 3. Lufa
     ctx.fillStyle = '#334155';
     ctx.fillRect(11, -2.4, 17, 3.0);
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(11, 0.6, 14, 2.4);
 
-    // 4. Ruchome czółenko
     const pumpX = 13 + (p.pumpOffset || 0);
     ctx.fillStyle = '#3f2712';
     ctx.fillRect(pumpX, -0.2, 7.5, 3.8);
