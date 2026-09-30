@@ -69,8 +69,8 @@ export const grassParticles = [];
 // INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
 // =========================================================================
 export const weaponButtons = [
-  { id: 'AK47', name: 'AK', type: 'AUTO', x: 20, y: 0, w: 52, h: 32 },
-  { id: 'SHOTGUN', name: 'SG', type: 'SEMI', x: 20, y: 0, w: 52, h: 32 }
+  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', x: 20, y: 0, w: 230, h: 32 },
+  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 230, h: 32 }
 ];
 
 export function initCanvas(canvasEl) {
@@ -90,6 +90,7 @@ export function resize(player) {
     ctx.scale(DPR, DPR);
   }
   GROUND_Y = H - 75;
+  invalidateSkyCache();
   if (player) {
     if (player.y >= GROUND_Y - player.h - 5) {
       player.y = GROUND_Y - player.h;
@@ -823,6 +824,167 @@ export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, 
   return false;
 }
 
+// =========================================================================
+// OFFSCREEN SKYLINE CANVAS CACHE (Eliminacja migotania okien i sub-pixel aliasingu)
+// =========================================================================
+
+let cachedArena1Towers = null;
+let cachedArena1H = 0;
+
+const FAR_TOWERS_ARENA1 = [
+  { x: 40,   w: 68,  h: 300, spire: 40, side: 'cyan' },
+  { x: 160,  w: 105, h: 410, spire: 60, side: 'cyan' },
+  { x: 310,  w: 58,  h: 250, spire: 30, side: 'cyan' },
+  { x: 410,  w: 125, h: 450, spire: 75, side: 'cyan' },
+  { x: 580,  w: 80,  h: 330, spire: 45, side: 'cyan' },
+  { x: 720,  w: 95,  h: 370, spire: 50, side: 'center' },
+  { x: 870,  w: 115, h: 430, spire: 70, side: 'center' },
+  { x: 1030, w: 85,  h: 320, spire: 40, side: 'orange' },
+  { x: 1160, w: 130, h: 460, spire: 80, side: 'orange' },
+  { x: 1340, w: 60,  h: 270, spire: 35, side: 'orange' },
+  { x: 1450, w: 110, h: 400, spire: 60, side: 'orange' },
+  { x: 1620, w: 75,  h: 310, spire: 40, side: 'orange' }
+];
+
+function getArena1TowersCanvas(horizonY) {
+  const curH = Math.ceil(H);
+  if (cachedArena1Towers && cachedArena1H === curH) {
+    return cachedArena1Towers;
+  }
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 1800;
+  cvs.height = curH;
+  const cctx = cvs.getContext('2d');
+  cctx.clearRect(0, 0, 1800, curH);
+
+  for (let bIdx = 0; bIdx < FAR_TOWERS_ARENA1.length; bIdx++) {
+    const b = FAR_TOWERS_ARENA1[bIdx];
+    const bx = Math.round(b.x);
+    const by = Math.round(horizonY + 35 - b.h);
+    const bw = Math.round(b.w);
+    const bh = Math.round(b.h + 120);
+
+    // Bryła wieży w ciemnym graficie
+    cctx.fillStyle = '#070a13';
+    cctx.fillRect(bx, by, bw, bh);
+
+    // Neonowa krawędź dachu
+    const edgeCol = b.side === 'cyan' 
+      ? 'rgba(6, 182, 212, 0.45)' 
+      : (b.side === 'orange' ? 'rgba(249, 115, 22, 0.45)' : 'rgba(168, 85, 247, 0.35)');
+    cctx.fillStyle = edgeCol;
+    cctx.fillRect(bx, by, bw, 2);
+
+    // Pasy okien LED / poziome szczeliny świetlne o stałej grubości 3px
+    const winCol = b.side === 'cyan' 
+      ? 'rgba(34, 211, 238, 0.28)' 
+      : (b.side === 'orange' ? 'rgba(251, 146, 60, 0.28)' : 'rgba(192, 132, 252, 0.22)');
+    cctx.fillStyle = winCol;
+    let row = 0;
+    for (let wy = by + 28; wy < by + b.h - 30; wy += 28, row++) {
+      let col = 0;
+      for (let wx = bx + 8; wx < bx + b.w - 8; wx += 14, col++) {
+        // Stabilny, statyczny układ okien (nie zależy od pozycji kamery)
+        if (((col * 3 + row * 5 + bIdx) % 7) < 4) {
+          cctx.fillRect(Math.round(wx), Math.round(wy), 6, 3);
+        }
+      }
+    }
+  }
+
+  cachedArena1Towers = cvs;
+  cachedArena1H = curH;
+  return cachedArena1Towers;
+}
+
+let cachedArena2FarTowers = null;
+let cachedArena2NearTowers = null;
+let cachedArena2H = 0;
+
+const FAR_TOWERS_ARENA2 = [
+  { x: 80, w: 90, h: 320 },
+  { x: 220, w: 140, h: 420 },
+  { x: 410, w: 85, h: 290 },
+  { x: 540, w: 160, h: 470 },
+  { x: 740, w: 110, h: 360 },
+  { x: 890, w: 150, h: 430 },
+  { x: 1080, w: 95, h: 310 }
+];
+
+const NEAR_TOWERS_ARENA2 = [
+  { x: 60, w: 85, h: 260 },
+  { x: 180, w: 120, h: 350 },
+  { x: 340, w: 80, h: 230 },
+  { x: 460, w: 140, h: 390 },
+  { x: 640, w: 95, h: 280 },
+  { x: 780, w: 130, h: 360 }
+];
+
+function getCyberFarCanvas() {
+  const curH = Math.ceil(H);
+  if (cachedArena2FarTowers && cachedArena2H === curH) {
+    return cachedArena2FarTowers;
+  }
+  const cvs = document.createElement('canvas');
+  cvs.width = 1200;
+  cvs.height = curH;
+  const cctx = cvs.getContext('2d');
+  cctx.clearRect(0, 0, 1200, curH);
+  cctx.fillStyle = '#080c14';
+
+  for (const b of FAR_TOWERS_ARENA2) {
+    const bx = Math.round(b.x);
+    const by = Math.round(curH * 0.88 - b.h);
+    cctx.fillRect(bx, by, Math.round(b.w), Math.round(b.h + 120));
+  }
+  cachedArena2FarTowers = cvs;
+  return cachedArena2FarTowers;
+}
+
+function getCyberNearCanvas() {
+  const curH = Math.ceil(H);
+  if (cachedArena2NearTowers && cachedArena2H === curH) {
+    return cachedArena2NearTowers;
+  }
+  const cvs = document.createElement('canvas');
+  cvs.width = 960;
+  cvs.height = curH;
+  const cctx = cvs.getContext('2d');
+  cctx.clearRect(0, 0, 960, curH);
+
+  for (let bIdx = 0; bIdx < NEAR_TOWERS_ARENA2.length; bIdx++) {
+    const b = NEAR_TOWERS_ARENA2[bIdx];
+    const bx = Math.round(b.x);
+    const by = Math.round(curH * 0.90 - b.h);
+    const bw = Math.round(b.w);
+    const bh = Math.round(b.h + 120);
+
+    cctx.fillStyle = '#0f172a';
+    cctx.fillRect(bx, by, bw, bh);
+
+    let row = 0;
+    for (let wy = by + 26; wy < by + b.h - 25; wy += 26, row++) {
+      const isWinCyan = ((bIdx + row) % 2 === 0);
+      cctx.fillStyle = isWinCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
+      for (let wx = bx + 10; wx < bx + b.w - 10; wx += 16) {
+        cctx.fillRect(Math.round(wx), Math.round(wy), 8, 4);
+      }
+    }
+  }
+  cachedArena2NearTowers = cvs;
+  cachedArena2H = curH;
+  return cachedArena2NearTowers;
+}
+
+export function invalidateSkyCache() {
+  cachedArena1Towers = null;
+  cachedArena2FarTowers = null;
+  cachedArena2NearTowers = null;
+  cachedArena1H = 0;
+  cachedArena2H = 0;
+}
+
 export function drawNeonNightOpsSky(ctx, camX) {
   const time = performance.now() * 0.001;
   const horizonY = H * 0.74;
@@ -883,9 +1045,9 @@ export function drawNeonNightOpsSky(ctx, camX) {
     const seed = i * 71.197;
     const periodX = 3600;
     const worldX = ((seed * 197.3 + time * 22 * ((i % 3 === 0) ? -1 : 1)) % periodX + periodX) % periodX;
-    const scrX = ((worldX - camX * 0.04) % W + W) % W;
+    const scrX = Math.round(((worldX - camX * 0.04) % W + W) % W);
     const normY = (Math.sin(seed * 3.7) * 0.5 + 0.5);
-    const scrY = normY * (H * 0.70) + Math.sin(time * 1.5 + seed) * 10;
+    const scrY = Math.round(normY * (H * 0.70) + Math.sin(time * 1.5 + seed) * 10);
 
     const twinkle = Math.sin(time * 2.6 + seed * 4.1) * 0.5 + 0.5;
     const isCyanSide = (worldX < periodX * 0.5);
@@ -907,7 +1069,7 @@ export function drawNeonNightOpsSky(ctx, camX) {
   const horizLines = 6;
   for (let l = 1; l <= horizLines; l++) {
     const t = l / horizLines;
-    const ly = gridTopY + (gridBottomY - gridTopY) * (t * t);
+    const ly = Math.round(gridTopY + (gridBottomY - gridTopY) * (t * t));
     const lineGrad = ctx.createLinearGradient(0, ly, W, ly);
     lineGrad.addColorStop(0.0, `rgba(6, 182, 212, ${0.16 * t})`);
     lineGrad.addColorStop(0.5, `rgba(168, 85, 247, ${0.10 * t})`);
@@ -920,150 +1082,23 @@ export function drawNeonNightOpsSky(ctx, camX) {
     ctx.stroke();
   }
 
-  // Linie zbiegające ku punktowi centralnemu
-  const persCount = 14;
-  for (let i = -persCount / 2; i <= persCount / 2; i++) {
-    const bottomX = vanishX + i * (W * 0.11);
-    const isLeftSide = i < 0;
-    const isCenter = Math.abs(i) <= 1;
-    ctx.strokeStyle = isCenter ? 'rgba(168, 85, 247, 0.12)' : (isLeftSide ? 'rgba(6, 182, 212, 0.13)' : 'rgba(249, 115, 22, 0.13)');
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(vanishX + i * 6, gridTopY);
-    ctx.lineTo(bottomX, gridBottomY);
-    ctx.stroke();
-  }
   ctx.restore();
 
   // =========================================================================
-  // 4. WARSTWA DALEKA: MEGA-WIEŻE I PYLONY (PARALAKS ~0.03)
+  // 4. WARSTWA DALEKA: MEGA-WIEŻE I PYLONY (OFFSCREEN CACHING + ZERO ALIASING)
   // =========================================================================
-  const farOffset = (camX * 0.03) % 1800;
-  const farTowers = [
-    { x: 40,   w: 68,  h: 300, spire: 40, side: 'cyan' },
-    { x: 160,  w: 105, h: 410, spire: 60, side: 'cyan' },
-    { x: 310,  w: 58,  h: 250, spire: 30, side: 'cyan' },
-    { x: 410,  w: 125, h: 450, spire: 75, side: 'cyan' },
-    { x: 580,  w: 80,  h: 330, spire: 45, side: 'cyan' },
-    { x: 720,  w: 95,  h: 370, spire: 50, side: 'center' },
-    { x: 870,  w: 115, h: 430, spire: 70, side: 'center' },
-    { x: 1030, w: 85,  h: 320, spire: 40, side: 'orange' },
-    { x: 1160, w: 130, h: 460, spire: 80, side: 'orange' },
-    { x: 1340, w: 60,  h: 270, spire: 35, side: 'orange' },
-    { x: 1450, w: 110, h: 400, spire: 60, side: 'orange' },
-    { x: 1620, w: 75,  h: 310, spire: 40, side: 'orange' }
-  ];
+  const towersCanvas = getArena1TowersCanvas(Math.round(horizonY));
+  const farPeriod = 1800;
+  const parallaxFactor = 0.03;
+  // Całkowite zaokrąglenie przesunięcia kamery (eliminacja subpixel aliasingu):
+  const farOffset = Math.floor(((camX * parallaxFactor) % farPeriod + farPeriod) % farPeriod);
 
-  for (let loop = -1; loop <= 2; loop++) {
-    for (const b of farTowers) {
-      const bx = b.x + loop * 1800 - farOffset;
-      if (bx + b.w < -120 || bx > W + 120) continue;
-      const by = horizonY + 35 - b.h;
-
-      // Bryła wieży w ciemnym graficie
-      ctx.fillStyle = '#070a13';
-      ctx.fillRect(bx, by, b.w, b.h + 120);
-
-      // Iglica / antena na dachu
-      const spireX = bx + b.w / 2;
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(spireX, by);
-      ctx.lineTo(spireX, by - b.spire);
-      ctx.stroke();
-
-      // Dioda ostrzegawcza na szczycie iglicy (stałe, 100% ciągłe oświetlenie)
-      const beaconCol = b.side === 'cyan' ? '#06b6d4' : (b.side === 'orange' ? '#f97316' : '#ef4444');
-      ctx.fillStyle = beaconCol;
-      ctx.shadowColor = beaconCol;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(spireX, by - b.spire, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Neonowa krawędź dachu
-      const edgeCol = b.side === 'cyan' ? 'rgba(6, 182, 212, 0.45)' : (b.side === 'orange' ? 'rgba(249, 115, 22, 0.45)' : 'rgba(168, 85, 247, 0.35)');
-      ctx.fillStyle = edgeCol;
-      ctx.fillRect(bx, by, b.w, 2);
-
-      // Pasy okien LED / poziome szczeliny świetlne
-      const winCol = b.side === 'cyan' ? 'rgba(34, 211, 238, 0.28)' : (b.side === 'orange' ? 'rgba(251, 146, 60, 0.28)' : 'rgba(192, 132, 252, 0.22)');
-      ctx.fillStyle = winCol;
-      for (let wy = by + 28; wy < by + b.h - 30; wy += 28) {
-        for (let wx = bx + 8; wx < bx + b.w - 8; wx += 14) {
-          if (((wx + wy) % 7) < 4) {
-            ctx.fillRect(wx, wy, 6, 2.5);
-          }
-        }
-      }
-    }
-  }
-
-  // =========================================================================
-  // 5. WARSTWA ŚREDNIA: KRATOWNICE I WIEŻE TRANSMISYJNE (PARALAKS ~0.08)
-  // =========================================================================
-  const midOffset = (camX * 0.08) % 1500;
-  const midTowers = [
-    { x: 90,  w: 42, h: 260, side: 'cyan', hasLattice: true },
-    { x: 260, w: 28, h: 320, side: 'cyan', hasLattice: false },
-    { x: 440, w: 50, h: 240, side: 'cyan', hasLattice: true },
-    { x: 620, w: 32, h: 290, side: 'cyan', hasLattice: false },
-    { x: 800, w: 46, h: 340, side: 'orange', hasLattice: true },
-    { x: 980, w: 30, h: 280, side: 'orange', hasLattice: false },
-    { x: 1160, w: 48, h: 250, side: 'orange', hasLattice: true },
-    { x: 1340, w: 34, h: 310, side: 'orange', hasLattice: false }
-  ];
-
-  for (let loop = -1; loop <= 2; loop++) {
-    for (const tw of midTowers) {
-      const tx = tw.x + loop * 1500 - midOffset;
-      if (tx + tw.w < -100 || tx > W + 100) continue;
-      const ty = horizonY + 50 - tw.h;
-
-      const isCyan = tw.side === 'cyan';
-      const accentCol = isCyan ? '#06b6d4' : '#f97316';
-
-      // Słupy nośne konstrukcji
-      ctx.fillStyle = '#0c1322';
-      ctx.fillRect(tx, ty, 5, tw.h + 100);
-      ctx.fillRect(tx + tw.w - 5, ty, 5, tw.h + 100);
-
-      // Kratownice krzyżowe
-      ctx.strokeStyle = '#131b2e';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (let yStep = ty; yStep < ty + tw.h; yStep += 32) {
-        ctx.moveTo(tx, yStep);
-        ctx.lineTo(tx + tw.w, yStep + 32);
-        ctx.moveTo(tx + tw.w, yStep);
-        ctx.lineTo(tx, yStep + 32);
-        ctx.moveTo(tx, yStep);
-        ctx.lineTo(tx + tw.w, yStep);
-      }
-      ctx.stroke();
-
-      // Pomosty techniczne
-      ctx.fillStyle = '#172033';
-      ctx.fillRect(tx - 6, ty + 40, tw.w + 12, 6);
-      ctx.fillRect(tx - 4, ty + 120, tw.w + 8, 5);
-
-      // Neonowa linia akcentowa i świecące diody
-      ctx.save();
-      ctx.shadowColor = accentCol;
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = accentCol;
-      ctx.fillRect(tx - 6, ty + 40, tw.w + 12, 1.8);
-
-      // Stałe świecenie diod na wieżach transmisyjnych (brak mrugania)
-      ctx.beginPath();
-      ctx.arc(tx - 2, ty + 38, 2.4, 0, Math.PI * 2);
-      ctx.arc(tx + tw.w + 2, ty + 38, 2.4, 0, Math.PI * 2);
-      ctx.arc(tx + tw.w / 2, ty - 6, 3.0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+  const minLoop = Math.floor((-farOffset) / farPeriod) - 1;
+  const maxLoop = Math.ceil((W - farOffset) / farPeriod) + 1;
+  for (let loop = minLoop; loop <= maxLoop; loop++) {
+    const drawX = Math.floor(loop * farPeriod - farOffset);
+    if (drawX + farPeriod < 0 || drawX > W) continue;
+    ctx.drawImage(towersCanvas, drawX, 0);
   }
 
   // =========================================================================
@@ -1181,67 +1216,26 @@ function drawCyberStadiumSky(ctx, camX) {
 
   const time = performance.now() * 0.0012;
 
-  const farOffset = (camX * 0.04) % 1200;
-  ctx.fillStyle = '#080c14';
-  const farTowers = [
-    { x: 80, w: 90, h: 320 },
-    { x: 220, w: 140, h: 420 },
-    { x: 410, w: 85, h: 290 },
-    { x: 540, w: 160, h: 470 },
-    { x: 740, w: 110, h: 360 },
-    { x: 890, w: 150, h: 430 },
-    { x: 1080, w: 95, h: 310 }
-  ];
-  for (let loop = -1; loop <= 2; loop++) {
-    for (const b of farTowers) {
-      const bx = b.x + loop * 1200 - farOffset;
-      if (bx + b.w < -100 || bx > W + 100) continue;
-      const by = H * 0.88 - b.h;
-      ctx.fillRect(bx, by, b.w, b.h + 120);
-
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(bx + b.w / 2, by);
-      ctx.lineTo(bx + b.w / 2, by - 32);
-      ctx.stroke();
-
-      ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(bx + b.w / 2, by - 32, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#080c14';
-    }
+  const farCanvas = getCyberFarCanvas();
+  const farPeriod = 1200;
+  const farOffset = Math.floor(((camX * 0.04) % farPeriod + farPeriod) % farPeriod);
+  const minFarLoop = Math.floor((-farOffset) / farPeriod) - 1;
+  const maxFarLoop = Math.ceil((W - farOffset) / farPeriod) + 1;
+  for (let loop = minFarLoop; loop <= maxFarLoop; loop++) {
+    const drawX = Math.floor(loop * farPeriod - farOffset);
+    if (drawX + farPeriod < 0 || drawX > W) continue;
+    ctx.drawImage(farCanvas, drawX, 0);
   }
 
-  const nearOffset = (camX * 0.10) % 960;
-  const nearTowers = [
-    { x: 60, w: 85, h: 260 },
-    { x: 180, w: 120, h: 350 },
-    { x: 340, w: 80, h: 230 },
-    { x: 460, w: 140, h: 390 },
-    { x: 640, w: 95, h: 280 },
-    { x: 780, w: 130, h: 360 }
-  ];
-  for (let loop = -1; loop <= 2; loop++) {
-    for (const b of nearTowers) {
-      const bx = b.x + loop * 960 - nearOffset;
-      if (bx + b.w < -100 || bx > W + 100) continue;
-      const by = H * 0.90 - b.h;
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(bx, by, b.w, b.h + 120);
-
-      for (let wy = by + 26; wy < by + b.h - 25; wy += 26) {
-        const isWinCyan = ((bx + wy) % 52 === 0);
-        ctx.fillStyle = isWinCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
-        for (let wx = bx + 10; wx < bx + b.w - 10; wx += 16) {
-          ctx.fillRect(wx, wy, 8, 4);
-        }
-      }
-    }
+  const nearCanvas = getCyberNearCanvas();
+  const nearPeriod = 960;
+  const nearOffset = Math.floor(((camX * 0.10) % nearPeriod + nearPeriod) % nearPeriod);
+  const minNearLoop = Math.floor((-nearOffset) / nearPeriod) - 1;
+  const maxNearLoop = Math.ceil((W - nearOffset) / nearPeriod) + 1;
+  for (let loop = minNearLoop; loop <= maxNearLoop; loop++) {
+    const drawX = Math.floor(loop * nearPeriod - nearOffset);
+    if (drawX + nearPeriod < 0 || drawX > W) continue;
+    ctx.drawImage(nearCanvas, drawX, 0);
   }
 
   if (camera) {
@@ -1373,62 +1367,92 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   ctx.moveTo(ARENA_RIGHT, GROUND_Y);
   ctx.lineTo(endX, GROUND_Y);
   ctx.stroke();
+
+  // Pionowe neonowe ściany energetyczne za bramkami
+  drawArenaEnergyBoundaries(ctx, GROUND_Y);
+
   ctx.restore();
+}
 
-  const wallH = 1350;
+export function drawArenaEnergyBoundaries(ctx, groundY) {
+  const isArena2 = (activeArenaId === 'ARENA_2');
+  const leftX = isArena2 ? 150 : ARENA_LEFT;
+  const rightX = isArena2 ? 1770 : ARENA_RIGHT;
+  const barrierH = 3000; // ok. 300 jednostek/metrów w skali gry (1m = 10px)
+  const topY = groundY - barrierH;
+  const time = performance.now() * 0.0012;
+  const pulse = 0.82 + 0.18 * Math.sin(time * 3.5);
 
-  [ARENA_LEFT, ARENA_RIGHT].forEach((wallX, idx) => {
-    const isLeft = idx === 0;
-    const bw = 42;
-    const bx = isLeft ? wallX - bw : wallX;
+  const walls = [
+    {
+      x: leftX,
+      color: '#06b6d4',
+      coreColor: '#a5f3fc',
+      glowColor: '#00e5ff',
+      fadeDir: 1
+    },
+    {
+      x: rightX,
+      color: '#f97316',
+      coreColor: '#fed7aa',
+      glowColor: '#ff7700',
+      fadeDir: -1
+    }
+  ];
 
-    const wallGrad = ctx.createLinearGradient(bx, GROUND_Y - wallH, bx + bw, GROUND_Y - wallH);
-    wallGrad.addColorStop(0.0, '#0f172a');
-    wallGrad.addColorStop(0.5, '#1e293b');
-    wallGrad.addColorStop(1.0, '#0f172a');
-    ctx.fillStyle = wallGrad;
-    ctx.fillRect(bx, GROUND_Y - wallH, bw, wallH);
+  for (const w of walls) {
+    ctx.save();
 
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2.0;
-    ctx.strokeRect(bx, GROUND_Y - wallH, bw, wallH);
+    // 1. Półprzezroczysta pionowa kurtyna pola siłowego (fading 38px do wnętrza boiska)
+    const fieldW = 38;
+    const fieldGrad = ctx.createLinearGradient(w.x, 0, w.x + w.fadeDir * fieldW, 0);
+    fieldGrad.addColorStop(0.0, w.fadeDir === 1 ? `rgba(6, 182, 212, ${0.28 * pulse})` : `rgba(249, 115, 22, ${0.28 * pulse})`);
+    fieldGrad.addColorStop(0.35, w.fadeDir === 1 ? `rgba(0, 229, 255, ${0.12 * pulse})` : `rgba(255, 119, 0, ${0.12 * pulse})`);
+    fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = fieldGrad;
+    const fx = w.fadeDir === 1 ? w.x : (w.x - fieldW);
+    ctx.fillRect(fx, topY, fieldW, barrierH);
 
-    ctx.fillStyle = '#020617';
-    for (let wy = GROUND_Y - wallH + 50; wy < GROUND_Y; wy += 60) {
-      ctx.fillRect(bx, wy, bw, 3);
+    // 2. Dynamiczne impulsy energii wznoszące się wzdłuż ściany
+    const step = 50;
+    const offset = (time * 75) % step;
+    ctx.fillStyle = w.fadeDir === 1 ? 'rgba(165, 243, 252, 0.38)' : 'rgba(254, 215, 170, 0.38)';
+    for (let py = groundY - offset; py > topY; py -= step) {
+      const rw = 16 + Math.sin(py * 0.03 + time * 3) * 6;
+      const rx = w.fadeDir === 1 ? w.x : (w.x - rw);
+      ctx.fillRect(rx, py, rw, 1.8);
     }
 
-    const accentCol = isLeft ? '#06b6d4' : '#f97316';
-    const accentCore = isLeft ? '#00e5ff' : '#ff7700';
-
-    ctx.save();
-    ctx.strokeStyle = accentCol;
-    ctx.shadowColor = accentCore;
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 3.5;
+    // 3. Główna pionowa neonowa linia energetyczna z potężnym rozbłyskiem (glow)
+    ctx.strokeStyle = w.color;
+    ctx.shadowColor = w.glowColor;
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3.6;
     ctx.beginPath();
-    ctx.moveTo(wallX, GROUND_Y - wallH);
-    ctx.lineTo(wallX, GROUND_Y);
+    ctx.moveTo(w.x, groundY);
+    ctx.lineTo(w.x, topY);
     ctx.stroke();
 
+    // 4. Intensywny biały rdzeń lasera energetycznego
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.2;
+    ctx.shadowColor = w.coreColor;
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(wallX, GROUND_Y - wallH);
-    ctx.lineTo(wallX, GROUND_Y);
+    ctx.moveTo(w.x, groundY);
+    ctx.lineTo(w.x, topY);
     ctx.stroke();
-    ctx.restore();
 
-    // Stałe, niemrugające oświetlenie diod ostrzegawczych na ścianach (100% ciągły blask)
-    const beaconColor = '#ef4444';
-    ctx.fillStyle = beaconColor;
-    ctx.shadowColor = beaconColor;
+    // 5. Emiter podłożowy u nasady ściany
+    ctx.fillStyle = w.color;
+    ctx.shadowColor = w.glowColor;
     ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.arc(isLeft ? bx + 12 : bx + bw - 12, GROUND_Y - wallH + 12, 7, 0, Math.PI * 2);
+    ctx.arc(w.x, groundY, 4.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
-  });
+
+    ctx.restore();
+  }
 }
 
 export function drawDistanceMarkers(ctx, worldLeft, worldRight) { }
@@ -1944,16 +1968,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.save();
 
   // =========================================================================
-  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (DYSTANS, KLASA, STAN, FPS)
+  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (KLASA, STAN, BROŃ, FPS)
   // =========================================================================
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '700 13px monospace';
-  ctx.fillText(`DYSTANS: ${currentDist} m`, 20, 26);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 11px monospace';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, 20, 44);
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '700 12px monospace';
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, 20, 26);
 
   let modeCol = '#94a3b8';
   if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
@@ -1964,7 +1985,35 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
 
   ctx.fillStyle = modeCol;
   ctx.font = 'bold 11px monospace';
-  ctx.fillText(`STAN: ${player.gaitMode}`, 20, 62);
+  ctx.fillText(`STAN: ${player.gaitMode}`, 20, 44);
+
+  // Status aktywnej broni i amunicji w lewym górnym rogu
+  const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
+  const wepShort = curWep.id === 'SHOTGUN' ? 'SG' : 'AK';
+  const curAmmoObj = player.ammo?.[curWep.id];
+  const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : (curWep.id === 'SHOTGUN' ? 8 : 30);
+  const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : (curWep.id === 'SHOTGUN' ? 64 : 90);
+  const mSize = curAmmoObj ? (curAmmoObj.magSize || (curWep.id === 'SHOTGUN' ? 8 : 30)) : (curWep.id === 'SHOTGUN' ? 8 : 30);
+  const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
+  const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
+  const isLow = (!isNoAmmo && cAmmo <= Math.ceil(mSize * 0.25));
+
+  let wepTextColor = '#facc15';
+  let wepStatusText = `${wepShort} ${cAmmo}/${rAmmo}`;
+  if (isRel) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+    wepTextColor = `rgba(250, 204, 21, ${0.5 + pulse * 0.5})`;
+    wepStatusText = `${wepShort} RELOADING...`;
+  } else if (isNoAmmo) {
+    wepTextColor = '#ef4444';
+    wepStatusText = `${wepShort} NO AMMO`;
+  } else if (isLow) {
+    wepTextColor = cAmmo === 0 ? '#ef4444' : '#f97316';
+  }
+
+  ctx.fillStyle = wepTextColor;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(`BROŃ: ${wepStatusText}`, 20, 62);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = '10px monospace';
@@ -1989,16 +2038,32 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     const isSelected = (curWepId === btn.id);
     const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#facc15';
 
+    // Pobranie stanu amunicji z obiektu gracza
+    const ammoObj = player.ammo?.[btn.id];
+    const defMag = (btn.id === 'SHOTGUN' ? 8 : 30);
+    const defRes = (btn.id === 'SHOTGUN' ? 64 : 90);
+    const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
+    const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
+    const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
+    const bIsReloading = !!ammoObj?.isReloading;
+    const bIsNoAmmo = (bCurrentAmmo === 0 && bReserveAmmo === 0);
+    const bIsLowAmmo = (!bIsNoAmmo && bCurrentAmmo <= Math.ceil(bMagSize * 0.25));
+
     ctx.save();
     ctx.fillStyle = isSelected
-      ? (btn.id === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.28)' : 'rgba(250, 204, 21, 0.28)')
+      ? (btn.id === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.24)' : 'rgba(250, 204, 21, 0.24)')
       : 'rgba(15, 23, 42, 0.82)';
-    ctx.strokeStyle = isSelected ? accentCol : 'rgba(255, 255, 255, 0.20)';
+
+    let borderCol = isSelected ? accentCol : 'rgba(255, 255, 255, 0.18)';
+    if (isSelected && bIsNoAmmo) borderCol = '#ef4444';
+    else if (isSelected && bIsLowAmmo) borderCol = '#f97316';
+
+    ctx.strokeStyle = borderCol;
     ctx.lineWidth = isSelected ? 1.6 : 1.0;
 
     if (isSelected) {
-      ctx.shadowColor = accentCol;
-      ctx.shadowBlur = 8;
+      ctx.shadowColor = borderCol;
+      ctx.shadowBlur = bIsNoAmmo ? 10 : 8;
     }
 
     ctx.beginPath();
@@ -2008,15 +2073,74 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Rysunek sylwetki broni w tle kafelka
-    drawWeaponSilhouette(ctx, btn.id, btn.x + btn.w / 2, btn.y + btn.h / 2, isSelected);
+    // Pasek postępu przeładowania na dolnej krawędzi kafelka
+    if (bIsReloading && ammoObj) {
+      const dur = ammoObj.reloadDuration || 120;
+      const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
+      ctx.save();
+      ctx.fillStyle = accentCol;
+      ctx.shadowColor = accentCol;
+      ctx.shadowBlur = 6;
+      ctx.fillRect(btn.x + 2, btn.y + btn.h - 3, (btn.w - 4) * prog, 2.2);
+      ctx.restore();
+    }
 
-    // Etykieta broni
-    ctx.font = 'bold 8.5px monospace';
-    ctx.textAlign = 'center';
+    // Lewa strona: hotkey badge [1] / [2]
+    const keyHint = btn.id === 'SHOTGUN' ? '[2]' : '[1]';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isSelected ? accentCol : '#64748b';
+    ctx.fillText(keyHint, btn.x + 8, btn.y + btn.h / 2 + 0.5);
+
+    // Rysunek sylwetki broni
+    drawWeaponSilhouette(ctx, btn.id, btn.x + 36, btn.y + btn.h / 2, isSelected);
+
+    // Nazwa broni
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = isSelected ? '#ffffff' : '#94a3b8';
-    ctx.fillText(btn.name, btn.x + btn.w / 2, btn.y + btn.h / 2 + 0.5);
+    ctx.fillText(btn.name, btn.x + 56, btn.y + btn.h / 2 + 0.5);
+
+    // Prawa strona: czytelny licznik amunicji lub status
+    ctx.textAlign = 'right';
+    if (bIsReloading) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = `rgba(250, 204, 21, ${0.45 + pulse * 0.55})`;
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 8;
+      ctx.fillText('⚡ RELOADING...', btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
+    } else if (bIsNoAmmo) {
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.012);
+      ctx.font = 'bold 10.5px monospace';
+      ctx.fillStyle = `rgba(239, 68, 68, ${0.5 + pulse * 0.5})`;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
+      ctx.fillText('⛔ NO AMMO', btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
+    } else {
+      let ammoColor = isSelected ? '#f8fafc' : '#cbd5e1';
+      if (bIsLowAmmo) {
+        ammoColor = bCurrentAmmo === 0 ? '#ef4444' : '#f97316';
+        ctx.shadowColor = ammoColor;
+        ctx.shadowBlur = 6;
+      }
+      ctx.font = 'bold 11.5px monospace';
+      ctx.fillStyle = ammoColor;
+
+      const ammoText = `${bCurrentAmmo}/${bReserveAmmo}`;
+      ctx.fillText(ammoText, btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
+
+      // Podpowiedź klawisza przeładowania [R] dla aktywnej broni, gdy magazynek nie jest pełny
+      if (isSelected && bCurrentAmmo < bMagSize && bReserveAmmo > 0) {
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'right';
+        ctx.fillText('[R]', btn.x + btn.w - 78, btn.y + btn.h / 2 + 0.5);
+      }
+    }
 
     ctx.restore();
   }

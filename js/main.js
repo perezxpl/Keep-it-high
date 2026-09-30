@@ -29,7 +29,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -44,8 +44,10 @@ export function triggerPlayerShoot(p, wep) {
   const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;
   const shootAngle = Math.atan2(targetAimY - muzzle.muzzleY, targetAimX - muzzle.muzzleX);
   p.aimAngle = shootAngle;
-  shootWeapon(p, wep, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
-  sendShootEvent(wep.id, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
+  const fired = shootWeapon(p, wep, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
+  if (fired) {
+    sendShootEvent(wep.id, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
+  }
 }
 
 // =========================================================================
@@ -162,7 +164,11 @@ canvas.addEventListener('touchstart', (e) => {
     for (const btn of weaponButtons) {
       if (t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
         t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
-        player.currentWeapon = WEAPONS[btn.id];
+        if (player.currentWeapon?.id === btn.id) {
+          reloadWeapon(player, player.currentWeapon);
+        } else {
+          player.currentWeapon = WEAPONS[btn.id];
+        }
         touchedWeaponBtn = true;
         break;
       }
@@ -1155,7 +1161,12 @@ window.addEventListener('keydown', (e) => {
     keys.slide = true;
     playerSlide(spawnGrass, GROUND_Y);
   }
-  if (e.code === 'KeyR') resetBallToPlayer(player, GROUND_Y);
+  if (e.code === 'KeyR') {
+    reloadWeapon(player, player.currentWeapon);
+  }
+  if (e.code === 'KeyB') {
+    resetBallToPlayer(player, GROUND_Y);
+  }
 
   if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
     player.currentWeapon = WEAPONS.AK47;
@@ -1169,9 +1180,9 @@ window.addEventListener('keydown', (e) => {
     teleportToDistance(BIOME_TELEPORT_TARGETS.HELL);
   }
 
-  if (e.code === 'Digit6' || e.code === 'Numpad6' || e.key === '6') devSetClass('PLAYMAKER');
+  if (e.code === 'Digit6' || e.code === 'Numpad6' || e.key === '6') devSetClass('AERO');
   else if (e.code === 'Digit7' || e.code === 'Numpad7' || e.key === '7') devSetClass('ENFORCER');
-  else if (e.code === 'Digit8' || e.code === 'Numpad8' || e.key === '8') devSetClass('AERO');
+  else if (e.code === 'Digit8' || e.code === 'Numpad8' || e.key === '8') devSetClass('PLAYMAKER');
   else if (e.code === 'Digit9' || e.code === 'Numpad9' || e.key === '9') devSetClass('SWEEPER');
 
   if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
@@ -1258,7 +1269,11 @@ canvas.addEventListener('mousedown', (e) => {
   for (const btn of weaponButtons) {
     if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
       e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
-      player.currentWeapon = WEAPONS[btn.id];
+      if (player.currentWeapon?.id === btn.id) {
+        reloadWeapon(player, player.currentWeapon);
+      } else {
+        player.currentWeapon = WEAPONS[btn.id];
+      }
       return;
     }
   }

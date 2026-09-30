@@ -153,15 +153,22 @@ export function updateBall(GROUND_Y) {
     ball.x += ball.vx * subDt;
     ball.y += ball.vy * subDt;
 
-    // Sprężyste odbijanie piłki (rykoszety) od pionowych ścian areny (ARENA_LEFT i ARENA_RIGHT)
-    if (ball.x - ball.colRadius <= ARENA_LEFT) {
-      ball.x = ARENA_LEFT + ball.colRadius;
-      ball.vx = Math.abs(ball.vx) * 0.88;
-      ball.spin = -ball.spin * 0.75;
-    } else if (ball.x + ball.colRadius >= ARENA_RIGHT) {
-      ball.x = ARENA_RIGHT - ball.colRadius;
-      ball.vx = -Math.abs(ball.vx) * 0.88;
-      ball.spin = -ball.spin * 0.75;
+    // Sprężyste odbijanie piłki (rykoszety) od pionowych neonowych ścian areny (300m bariera)
+    const isArena2 = (activeArenaId === 'ARENA_2');
+    const wallLeft = isArena2 ? 150 : ARENA_LEFT;
+    const wallRight = isArena2 ? 1770 : ARENA_RIGHT;
+    const wallTop = GROUND_Y - 3000;
+
+    if (ball.y >= wallTop) {
+      if (ball.x - ball.colRadius <= wallLeft) {
+        ball.x = wallLeft + ball.colRadius;
+        ball.vx = Math.abs(ball.vx) * 0.88;
+        ball.spin = -ball.spin * 0.75;
+      } else if (ball.x + ball.colRadius >= wallRight) {
+        ball.x = wallRight - ball.colRadius;
+        ball.vx = -Math.abs(ball.vx) * 0.88;
+        ball.spin = -ball.spin * 0.75;
+      }
     }
 
     // Lądowanie na trawie

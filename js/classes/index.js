@@ -1,20 +1,20 @@
-import { PlaymakerClass } from './playmaker.js';
-import { EnforcerClass } from './enforcer.js';
 import { AeroClass } from './aero.js';
+import { EnforcerClass } from './enforcer.js';
+import { PlaymakerClass } from './playmaker.js';
 import { SweeperClass } from './sweeper.js';
 
 export const CLASSES = {
-  PLAYMAKER: PlaymakerClass,
-  ENFORCER: EnforcerClass,
   AERO: AeroClass,
+  ENFORCER: EnforcerClass,
+  PLAYMAKER: PlaymakerClass,
   SWEEPER: SweeperClass
 };
 
 export const CLASS_LIST = [
-  PlaymakerClass,
-  EnforcerClass,
   AeroClass,
+  EnforcerClass,
+  PlaymakerClass,
   SweeperClass
 ];
 
-export const DEFAULT_CLASS = EnforcerClass;
+export const DEFAULT_CLASS = AeroClass;

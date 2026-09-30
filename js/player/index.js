@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { activeArenaId } from '../obstacles.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { isTouchDevice } from '../world.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
@@ -107,6 +108,44 @@ export function createPlayerInstance(overrides = {}) {
     muzzleRise: 0,
     pumpTimer: 0,
     pumpOffset: 0,
+
+    // System amunicji i przeładowania broni gracza
+    isReloading: false,
+    reloadTimer: 0,
+    reloadDuration: 0,
+    emptyAmmoAlert: 0,
+    ammo: {
+      AK47: {
+        magSize: 30,
+        currentAmmo: 30,
+        reserveAmmo: 90,
+        reloadDuration: 120,
+        reloadTime: 2.0,
+        isReloading: false,
+        reloadTimer: 0
+      },
+      SHOTGUN: {
+        magSize: 8,
+        currentAmmo: 8,
+        reserveAmmo: 64,
+        reloadDuration: 150,
+        reloadTime: 2.5,
+        isReloading: false,
+        reloadTimer: 0
+      }
+    },
+    get currentAmmo() {
+      const wepId = this.currentWeapon?.id || 'AK47';
+      return this.ammo?.[wepId]?.currentAmmo ?? 0;
+    },
+    get reserveAmmo() {
+      const wepId = this.currentWeapon?.id || 'AK47';
+      return this.ammo?.[wepId]?.reserveAmmo ?? 0;
+    },
+    get magSize() {
+      const wepId = this.currentWeapon?.id || 'AK47';
+      return this.ammo?.[wepId]?.magSize ?? 30;
+    },
 
     // Pola zgonu i rozczłonkowania
     hasHead: true,
@@ -722,6 +761,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     player.y = groundFloorLimit;
     player.vy = 0;
     player.isJumping = false;
+    player.onGround = true;
     player.airVx = 0;
     player.currentGroundY = GROUND_Y;
 
@@ -815,13 +855,21 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   const pitchLerp = 0.30;
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
-  if (player.x < ARENA_LEFT) {
-    player.x = ARENA_LEFT;
-    if (player.vx < 0) player.vx = 0;
-    if (player.airVx < 0) player.airVx = 0;
-  } else if (player.x + player.w > ARENA_RIGHT) {
-    player.x = ARENA_RIGHT - player.w;
-    if (player.vx > 0) player.vx = 0;
-    if (player.airVx > 0) player.airVx = 0;
+  const isArena2 = (activeArenaId === 'ARENA_2');
+  const wallLeft = isArena2 ? 150 : ARENA_LEFT;
+  const wallRight = isArena2 ? 1770 : ARENA_RIGHT;
+  const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (window.innerHeight - 75) : 500;
+  const wallTop = groundFloorY - 3000;
+
+  if (player.y >= wallTop) {
+    if (player.x < wallLeft) {
+      player.x = wallLeft;
+      if (player.vx < 0) player.vx = 0;
+      if (player.airVx < 0) player.airVx = 0;
+    } else if (player.x + player.w > wallRight) {
+      player.x = wallRight - player.w;
+      if (player.vx > 0) player.vx = 0;
+      if (player.airVx > 0) player.airVx = 0;
+    }
   }
 }

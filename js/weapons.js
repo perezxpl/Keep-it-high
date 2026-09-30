@@ -9,6 +9,7 @@ import {
   bodyGibs
 } from './world.js';
 import { checkRayObstacleCollision, obstacles } from './obstacles.js';
+import { WEAPON_CONFIG } from './config.js';
 
 export const WEAPONS = {
   AK47: {
@@ -28,7 +29,12 @@ export const WEAPONS = {
     bodyPush: 0.032,        // Subtelne wytrącenie z równowagi żywej postaci
     ragdollPushMult: 0.85,  // Standardowy, realistyczny impuls śmierci
     pellets: 1,
-    bulletColor: '#facc15'
+    bulletColor: '#facc15',
+    magSize: WEAPON_CONFIG.AK47.magSize,
+    currentAmmo: WEAPON_CONFIG.AK47.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.AK47.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.AK47.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.AK47.reloadTime * 60)
   },
   SHOTGUN: {
     id: 'SHOTGUN',
@@ -47,7 +53,12 @@ export const WEAPONS = {
     bodyPush: 0.095,        // Silny odrzut kinetyczny żywej postaci od każdego śrutu
     ragdollPushMult: 2.20,  // Potężne katapultowanie bezwładnego ciała w tył
     pellets: 6,
-    bulletColor: '#fb923c'
+    bulletColor: '#fb923c',
+    magSize: WEAPON_CONFIG.SHOTGUN.magSize,
+    currentAmmo: WEAPON_CONFIG.SHOTGUN.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.SHOTGUN.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.SHOTGUN.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.SHOTGUN.reloadTime * 60)
   }
 };
 
@@ -174,7 +185,8 @@ export function getWeaponHoldTransform(p) {
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
-  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w);
+  const reloadDip = p.isReloading ? Math.sin((p.reloadTimer / (p.reloadDuration || 120)) * Math.PI) * 0.16 : 0;
+  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadDip;
 
   const kickback = p.weaponKickback || 0;
   const finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing;
@@ -241,11 +253,97 @@ export function getMuzzlePosition(shooter, weapon) {
 }
 
 /**
- * Wystrzał z broni
+ * Pobranie obiektu stanu amunicji dla danego strzelca i broni
+ */
+export function getWeaponAmmo(shooter, weapon = shooter?.currentWeapon) {
+  if (!shooter) return null;
+  const wepId = weapon?.id || (typeof weapon === 'string' ? weapon : 'AK47');
+  if (!shooter.ammo) {
+    shooter.ammo = {};
+  }
+  if (!shooter.ammo[wepId]) {
+    const baseWep = WEAPONS[wepId] || WEAPONS.AK47;
+    const magSize = baseWep.magSize || (wepId === 'SHOTGUN' ? 8 : 30);
+    const reserveAmmo = baseWep.reserveAmmo ?? (wepId === 'SHOTGUN' ? 64 : 90);
+    const reloadTime = baseWep.reloadTime || (wepId === 'SHOTGUN' ? 2.5 : 2.0);
+    shooter.ammo[wepId] = {
+      magSize,
+      currentAmmo: magSize,
+      reserveAmmo,
+      reloadTime,
+      reloadDuration: Math.round(reloadTime * 60),
+      isReloading: false,
+      reloadTimer: 0
+    };
+  }
+  return shooter.ammo[wepId];
+}
+
+/**
+ * Rozpoczęcie przeładowania bieżącej broni gracza
+ */
+export function reloadWeapon(shooter, weapon = shooter?.currentWeapon) {
+  if (!shooter || shooter.isDead) return false;
+  const ammo = getWeaponAmmo(shooter, weapon);
+  if (!ammo) return false;
+  if (ammo.isReloading) return false;
+  if (ammo.currentAmmo >= ammo.magSize) return false;
+  if (ammo.reserveAmmo <= 0) return false;
+
+  ammo.isReloading = true;
+  ammo.reloadDuration = ammo.reloadDuration || Math.round((ammo.reloadTime || 2.0) * 60);
+  ammo.reloadTimer = ammo.reloadDuration;
+  shooter.isReloading = true;
+  shooter.reloadTimer = ammo.reloadTimer;
+  shooter.reloadDuration = ammo.reloadDuration;
+  return true;
+}
+
+/**
+ * Anulowanie przeładowania (np. przy zmianie broni)
+ */
+export function cancelReload(shooter, weapon = shooter?.currentWeapon) {
+  if (!shooter) return;
+  const ammo = getWeaponAmmo(shooter, weapon);
+  if (ammo) {
+    ammo.isReloading = false;
+    ammo.reloadTimer = 0;
+  }
+  shooter.isReloading = false;
+  shooter.reloadTimer = 0;
+}
+
+/**
+ * Wystrzał z broni z obsługą amunicji i automatycznego przeładowania
  */
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
-  if (!shooter || !weapon || shooter.isDead) return;
-  if (shooter.shootCooldown > 0 && !shooter.isRemote) return;
+  if (!shooter || !weapon || shooter.isDead) return false;
+  if (shooter.shootCooldown > 0 && !shooter.isRemote) return false;
+
+  // Weryfikacja amunicji dla gracza lokalnego
+  if (!shooter.isRemote && !shooter.isBot) {
+    const ammo = getWeaponAmmo(shooter, weapon);
+    if (ammo) {
+      // Zablokuj strzał w trakcie przeładowania
+      if (ammo.isReloading) {
+        return false;
+      }
+      // Zablokuj strzał, gdy magazynek jest pusty
+      if (ammo.currentAmmo <= 0) {
+        if (ammo.reserveAmmo > 0) {
+          // Automatyczne przeładowanie przy próbie strzału z pustego magazynka
+          reloadWeapon(shooter, weapon);
+        } else {
+          // Brak amunicji w ogóle - "pusty klik"
+          shooter.shootCooldown = 12;
+          shooter.emptyAmmoAlert = 35;
+        }
+        return false;
+      }
+      // Zmniejszaj currentAmmo o 1 przy każdym wystrzale
+      ammo.currentAmmo--;
+    }
+  }
 
   const isCrouch = !!shooter.isCrouching;
 
@@ -281,7 +379,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = 2;
       if (weapon.recoil > 1.2 && !shooter.isRemote) triggerScreenShake(2.5);
-      return;
+      return true;
     }
 
     theta = Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
@@ -325,10 +423,11 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   }
 
   spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
+  return true;
 }
 
 /**
- * Aktualizacja klatkowa stanów broni
+ * Aktualizacja klatkowa stanów broni i cyklu przeładowania
  */
 export function updateWeaponState(p) {
   if (!p) return;
@@ -354,6 +453,48 @@ export function updateWeaponState(p) {
     }
   } else {
     p.pumpOffset = 0;
+  }
+
+  if (p.emptyAmmoAlert > 0) {
+    p.emptyAmmoAlert--;
+  }
+
+  // Obsługa amunicji i przeładowania broni gracza
+  const curWep = p.currentWeapon || WEAPONS.AK47;
+  const curWepId = curWep?.id || 'AK47';
+
+  // Anulowanie trwającego przeładowania przy zmianie broni
+  if (p._prevWeaponId && p._prevWeaponId !== curWepId) {
+    if (p.ammo && p.ammo[p._prevWeaponId]) {
+      p.ammo[p._prevWeaponId].isReloading = false;
+      p.ammo[p._prevWeaponId].reloadTimer = 0;
+    }
+  }
+  p._prevWeaponId = curWepId;
+
+  if (p.ammo) {
+    const ammo = getWeaponAmmo(p, curWep);
+    if (ammo && ammo.isReloading) {
+      ammo.reloadTimer--;
+      p.isReloading = true;
+      p.reloadTimer = ammo.reloadTimer;
+      p.reloadDuration = ammo.reloadDuration;
+
+      if (ammo.reloadTimer <= 0) {
+        // Zakończenie przeładowania: doładuj magazynek do pełna, odejmując zużytą liczbę z reserveAmmo
+        const needed = ammo.magSize - ammo.currentAmmo;
+        const toLoad = Math.min(needed, ammo.reserveAmmo);
+        ammo.currentAmmo += toLoad;
+        ammo.reserveAmmo -= toLoad;
+        ammo.isReloading = false;
+        ammo.reloadTimer = 0;
+        p.isReloading = false;
+        p.reloadTimer = 0;
+      }
+    } else {
+      p.isReloading = false;
+      p.reloadTimer = 0;
+    }
   }
 }
 

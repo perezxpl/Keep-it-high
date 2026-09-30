@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { CONFIG } from '../config.js';
-import { ease } from './ik.js';
+import { ease, lerp } from './ik.js';
 
 export function startJumpCharge(p) {
   if (p.isIntro || p.isJumping || p.isSliding) return;

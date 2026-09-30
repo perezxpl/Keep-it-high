@@ -5,7 +5,7 @@ import { triggerScreenShake } from '../world.js';
 
 export const EnforcerClass = {
   id: 'ENFORCER',
-  name: 'Taran',
+  name: 'Enforcer',
   role: 'Czołg / Siła',
 
   // 1. ANATOMIA SZKIELETU IK – Wyraźnie większa, masywna postura

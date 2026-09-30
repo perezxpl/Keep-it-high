@@ -20,3 +20,21 @@ export const START_X = 160;
 export const ARENA_WIDTH = 3200;
 export const ARENA_LEFT = START_X; // 160
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3360
+
+// =========================================================================
+// KONFIGURACJA AMUNICJI I PRZEŁADOWANIA BRONI GRACZA
+// =========================================================================
+export const WEAPON_CONFIG = {
+  AK47: {
+    magSize: 30,
+    currentAmmo: 30,
+    reserveAmmo: 90,
+    reloadTime: 2.0 // ok. 2.0s (~120 klatek przy 60 FPS)
+  },
+  SHOTGUN: {
+    magSize: 8,
+    currentAmmo: 8,
+    reserveAmmo: 64,
+    reloadTime: 2.5 // ok. 2.5s (~150 klatek przy 60 FPS)
+  }
+};

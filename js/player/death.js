@@ -250,6 +250,17 @@ export function handlePlayerDeath(player, groundY) {
   player.spinVolleyTimer = 0;
   player.scissorTimer = 0;
 
+  if (player.isReloading) {
+    player.isReloading = false;
+    player.reloadTimer = 0;
+    if (player.ammo) {
+      for (const k in player.ammo) {
+        player.ammo[k].isReloading = false;
+        player.ammo[k].reloadTimer = 0;
+      }
+    }
+  }
+
   if (player.neckFountainTimer > 0) {
     player.neckFountainTimer--;
     if (player.neckFountainTimer % 3 === 0) {
@@ -268,6 +279,26 @@ export function handlePlayerDeath(player, groundY) {
   if (player.respawnTimer <= 0) {
     player.isDead = false;
     player.hp = player.maxHp;
+
+    // Odnowienie zapasu amunicji po odrodzeniu
+    if (player.ammo) {
+      if (player.ammo.AK47) {
+        player.ammo.AK47.currentAmmo = 30;
+        player.ammo.AK47.reserveAmmo = 90;
+        player.ammo.AK47.isReloading = false;
+        player.ammo.AK47.reloadTimer = 0;
+      }
+      if (player.ammo.SHOTGUN) {
+        player.ammo.SHOTGUN.currentAmmo = 8;
+        player.ammo.SHOTGUN.reserveAmmo = 64;
+        player.ammo.SHOTGUN.isReloading = false;
+        player.ammo.SHOTGUN.reloadTimer = 0;
+      }
+    }
+    player.isReloading = false;
+    player.reloadTimer = 0;
+    player.emptyAmmoAlert = 0;
+
     player.hasHead = true;
     player.decapitated = false;
     player.isGibbed = false;

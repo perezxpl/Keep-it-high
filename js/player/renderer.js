@@ -371,7 +371,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
 
-  const ik = solve2BoneIK(hipX, hipY, targetFootX, targetFootY, l1, l2, facing, -1);
+  const safeFootY = Math.max(hipY + 6, targetFootY);
+  const ik = solve2BoneIK(hipX, hipY, targetFootX, safeFootY, l1, l2, facing, -1);
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
 
@@ -765,7 +766,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const isSculpted = !!v.sculptedMuscles;
 
   const centerX = p.x + p.w / 2;
-  const standingY = (p.currentGroundY !== undefined && !p.isJumping) ? p.currentGroundY : (p.y + p.h);
+  const isGrounded = (p.onGround !== undefined)
+    ? (p.onGround && !p.isJumping)
+    : (!p.isJumping && (p.y >= (GROUND_Y - p.h - 2) || (p.currentGroundY !== undefined && Math.abs(p.y + p.h - p.currentGroundY) < 4)));
+  const standingY = (isGrounded && p.currentGroundY !== undefined && p.currentGroundY >= p.y + p.h - 6)
+    ? p.currentGroundY
+    : (p.y + p.h);
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
@@ -964,30 +970,38 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85;
     rawBackSwing = 0.60;
     rawBackElbow = 0.85;
-  } else if (p.isJumping) {
-    const isRising = p.vy < 0;
+  } else if (p.isJumping || !isGrounded || Math.abs(p.vy) > 1.2 || p.vy > 100) {
+    const isFalling = (p.vy > 0.8 || p.vy > 100);
+    const isRising = p.vy < -0.5;
+
     if (isRising) {
-      rawFootFrontTargetX = hipX + (14 * p.facing);
-      rawFootFrontTargetY = hipY + 22;
-      rawFootFrontAnkle = 0.22 * p.facing;
+      rawFootFrontTargetX = hipX + (12 * p.facing);
+      rawFootFrontTargetY = hipY + 24;
+      rawFootFrontAnkle = 0.20 * p.facing;
 
       rawFootBackTargetX = hipX - (8 * p.facing);
       rawFootBackTargetY = hipY + 34;
       rawFootBackAnkle = -0.15 * p.facing;
+
+      rawFrontSwing = -0.35;
+      rawFrontElbow = 0.75;
+      rawBackSwing = 0.35;
+      rawBackElbow = 0.65;
     } else {
-      rawFootFrontTargetX = hipX + (8 * p.facing);
-      rawFootFrontTargetY = hipY + 38;
-      rawFootFrontAnkle = 0.10 * p.facing;
+      // Naturalna, lekko ugięta poza spadania / opadania z wysokości (nogi skierowane w dół, stopy pod biodrami)
+      rawFootFrontTargetX = hipX + (5 * p.facing);
+      rawFootFrontTargetY = hipY + 41;
+      rawFootFrontAnkle = 0.12 * p.facing;
 
-      rawFootBackTargetX = hipX - (6 * p.facing);
-      rawFootBackTargetY = hipY + 40;
-      rawFootBackAnkle = 0.05 * p.facing;
+      rawFootBackTargetX = hipX - (4 * p.facing);
+      rawFootBackTargetY = hipY + 43;
+      rawFootBackAnkle = 0.06 * p.facing;
+
+      rawFrontSwing = -0.20;
+      rawFrontElbow = 0.60;
+      rawBackSwing = 0.20;
+      rawBackElbow = 0.50;
     }
-
-    rawFrontSwing = -0.35;
-    rawFrontElbow = 0.75;
-    rawBackSwing = 0.35;
-    rawBackElbow = 0.65;
   } else if (p.gaitMode === 'CROUCH') {
     const braceW = (p.shootPoseWeight || 0);
     rawFootFrontTargetX = hipX + (lerp(6, 12, braceW) * p.facing);
@@ -1635,6 +1649,37 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 6;
     ctx.fillText(`💀 RESPAWN ZA ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
+    ctx.restore();
+  } else if (p.isReloading) {
+    ctx.save();
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+    ctx.font = 'bold 9.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(250, 204, 21, ${0.55 + pulse * 0.45})`;
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 6;
+    ctx.fillText('⚡ RELOADING...', p.x + p.w / 2, p.y - 18);
+
+    if (p.reloadDuration > 0) {
+      const prog = Math.max(0, Math.min(1, 1 - ((p.reloadTimer || 0) / p.reloadDuration)));
+      const barW = 34;
+      const barH = 3;
+      const barX = p.x + p.w / 2 - barW / 2;
+      const barY = p.y - 13;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(barX, barY, barW * prog, barH);
+    }
+    ctx.restore();
+  } else if (p.emptyAmmoAlert > 0) {
+    ctx.save();
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 8;
+    ctx.fillText('⛔ NO AMMO', p.x + p.w / 2, p.y - 16);
     ctx.restore();
   }
 

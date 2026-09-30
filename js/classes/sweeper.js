@@ -6,7 +6,7 @@
 // =========================================================================
 export const SweeperClass = {
   id: 'SWEEPER',
-  name: 'Libero',
+  name: 'Sweeper',
   role: 'Obrona / Kontrola',
 
   // 1. Statystyki fizyczne i ruchowe

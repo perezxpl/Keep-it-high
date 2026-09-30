@@ -18,7 +18,7 @@ export let _activeBall = null;
 
 export const OBSTACLE_PALETTE = {
   ARENA_1: [
-    { type: 'catwalk', name: 'Stalowa Kładka', label: '⛓️ Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true, chains: [25, 175] },
+    { type: 'catwalk', name: 'Stalowa Kładka', label: '⛓️ Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true },
     { type: 'sniper_tower', name: 'Wieża Snajperska', label: '🗼 Ambona', category: 'platforms', w: 90, h: 160, isPlatform: true, oneWay: true },
     { type: 'metal_ramp_left', name: 'Rampa Lewa', label: '📐 Rampa L', category: 'platforms', w: 80, h: 40, isPlatform: true },
     { type: 'metal_ramp_right', name: 'Rampa Prawa', label: '📐 Rampa P', category: 'platforms', w: 80, h: 40, isPlatform: true },
@@ -33,7 +33,6 @@ export const OBSTACLE_PALETTE = {
   ARENA_2: [
     { type: 'cyber_catwalk', name: 'Cyber Kładka', label: '⚡ Cyber Kładka', category: 'platforms', w: 200, h: 16, isPlatform: true, oneWay: true },
     { type: 'floating_hex', name: 'Heksagon Lewitujący', label: '⬡ Heksagon', category: 'platforms', w: 110, h: 16, isPlatform: true, oneWay: true },
-    { type: 'cyber_pillar', name: 'Pylon Neonowy', label: '🗼 Pylon', category: 'defense', w: 24, h: 120, isPlatform: true, solid: true },
     { type: 'neon_barrier', name: 'Bariera Energetyczna', label: '💠 Bariera', category: 'defense', w: 60, h: 24, isPlatform: true, solid: true },
     { type: 'speed_booster_pad', name: 'Pas Przyspieszający', label: '⏩ Booster', category: 'traps', w: 80, h: 10 },
     { type: 'gravity_lift', name: 'Winda Grawitacyjna', label: '⬆️ Grav-Lift', category: 'traps', w: 50, h: 180 },
@@ -81,11 +80,7 @@ export const ARENA_1_PLATFORMS = [
     w: 380,
     relY: 130,
     thickness: 22,
-    props: [
-      { type: 'bunker_tier', rx: 150, w: 140, h: 30 },
-      { type: 'sandbags', rx: 310, w: 50, h: 20 },
-      { type: 'crate', rx: 40, w: 36, h: 26 }
-    ]
+    props: []
   },
   {
     id: 'catwalk_goal_west',
@@ -93,8 +88,7 @@ export const ARENA_1_PLATFORMS = [
     x: START_X + 20,
     w: 260,
     relY: 500,
-    thickness: 16,
-    chains: [30, 230]
+    thickness: 16
   },
   {
     id: 'central_altar_platform',
@@ -105,9 +99,7 @@ export const ARENA_1_PLATFORMS = [
     relY: 190,
     thickness: 24,
     props: [
-      { type: 'altar_pedestal', rx: 90, w: 140, h: 32 },
-      { type: 'sandbags', rx: 20, w: 45, h: 20 },
-      { type: 'sandbags', rx: 255, w: 45, h: 20 }
+      { type: 'altar_pedestal', rx: 90, w: 140, h: 32 }
     ]
   },
   {
@@ -116,8 +108,7 @@ export const ARENA_1_PLATFORMS = [
     x: START_X + ARENA_WIDTH - 280,
     w: 260,
     relY: 500,
-    thickness: 16,
-    chains: [30, 230]
+    thickness: 16
   },
   {
     id: 'east_bastion_fortress',
@@ -128,11 +119,7 @@ export const ARENA_1_PLATFORMS = [
     w: 380,
     relY: 130,
     thickness: 22,
-    props: [
-      { type: 'sandbags', rx: 20, w: 50, h: 20 },
-      { type: 'bunker_tier', rx: 90, w: 140, h: 30 },
-      { type: 'crate', rx: 300, w: 36, h: 26 }
-    ]
+    props: []
   }
 ];
 
@@ -196,10 +183,7 @@ export const ARENA_CYBER_STADIUM_PLATFORMS = [
     w: 280,
     relY: 240,
     thickness: 22,
-    props: [
-      { type: 'bunker_tier', rx: 20, w: 90, h: 28 },
-      { type: 'sandbags', rx: 130, w: 50, h: 20 }
-    ]
+    props: []
   },
   {
     id: 'cyber_bastion_east',
@@ -210,10 +194,7 @@ export const ARENA_CYBER_STADIUM_PLATFORMS = [
     w: 280,
     relY: 240,
     thickness: 22,
-    props: [
-      { type: 'sandbags', rx: 100, w: 50, h: 20 },
-      { type: 'bunker_tier', rx: 170, w: 90, h: 28 }
-    ]
+    props: []
   }
 ];
 
@@ -580,7 +561,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
         }
 
         if (plat.props) {
-          const tier = plat.props.find(pr => pr.type === 'bunker_tier' || pr.type === 'altar_pedestal');
+          const tier = plat.props.find(pr => pr.type === 'altar_pedestal');
           if (tier) {
             const tierLeft = plat.x + tier.rx;
             const tierRight = tierLeft + tier.w;
@@ -799,7 +780,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (landedSurface === null) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.props) {
-        const tier = plat.props.find(pr => pr.type === 'bunker_tier' || pr.type === 'altar_pedestal');
+        const tier = plat.props.find(pr => pr.type === 'altar_pedestal');
         if (tier) {
           const tierLeft = plat.x + tier.rx;
           const tierRight = tierLeft + tier.w;
@@ -820,6 +801,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.y = landedSurface - p.h;
     p.vy = 0;
     p.isJumping = false;
+    p.onGround = true;
     p.airVx = 0;
     p.currentGroundY = landedSurface;
     if (p.jetFuel < p.jetMax) {
@@ -827,6 +809,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   } else {
     p.currentGroundY = groundY;
+    p.onGround = (p.y >= groundY - p.h - 1);
   }
 }
 
@@ -878,7 +861,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
 
       if (plat.props) {
         for (const prop of plat.props) {
-          if (prop.type === 'bunker_tier' || prop.type === 'altar_pedestal') {
+          if (prop.type === 'altar_pedestal') {
             const bx = plat.x + prop.rx;
             const by = topY - prop.h;
             const bw = prop.w;
@@ -1255,36 +1238,9 @@ function drawHazardStripes(ctx, x, y, w, h) {
 }
 
 function drawSandbags(ctx, x, y, w, h) {
-  ctx.save();
-  ctx.fillStyle = '#78716c';
-  ctx.strokeStyle = '#44403c';
-  ctx.lineWidth = 1.2;
-  const bagW = w / 2;
-  const bagH = h / 2;
-  for (let i = 0; i < 2; i++) {
-    ctx.fillRect(x + i * bagW, y + bagH, bagW - 1, bagH);
-    ctx.strokeRect(x + i * bagW, y + bagH, bagW - 1, bagH);
-  }
-  ctx.fillRect(x + bagW * 0.25, y, bagW * 1.5, bagH);
-  ctx.strokeRect(x + bagW * 0.25, y, bagW * 1.5, bagH);
-  ctx.restore();
 }
 
 function drawCrate(ctx, x, y, w, h) {
-  ctx.save();
-  ctx.fillStyle = '#365314';
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = '#1e3a1e';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
-  ctx.beginPath();
-  ctx.moveTo(x, y); ctx.lineTo(x + w, y + h);
-  ctx.moveTo(x + w, y); ctx.lineTo(x, y + h);
-  ctx.stroke();
-  ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 7px monospace';
-  ctx.fillText('AMMO', x + 4, y + h / 2 + 2);
-  ctx.restore();
 }
 
 function drawHedgehog(ctx, x, y, size) {
@@ -1428,39 +1384,7 @@ export function drawJumpPad(ctx, x, y, w, h) {
 }
 
 export function drawCyberPillar(ctx, x, y, w, h) {
-  ctx.save();
-  const grad = ctx.createLinearGradient(x, y, x + w, y);
-  grad.addColorStop(0, '#090d16');
-  grad.addColorStop(0.5, '#1e293b');
-  grad.addColorStop(1, '#090d16');
-  ctx.fillStyle = grad;
-  ctx.fillRect(x, y, w, h);
-
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
-
-  ctx.strokeStyle = '#00e5ff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 8;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x + w / 2, y + 4);
-  ctx.lineTo(x + w / 2, y + h - 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.shadowColor = '#38bdf8';
-  ctx.shadowBlur = 6;
-  for (let ry = y + 16; ry < y + h - 10; ry += 24) {
-    ctx.fillRect(x - 2, ry, w + 4, 3);
-  }
-
-  ctx.fillStyle = '#64748b';
-  ctx.shadowBlur = 0;
-  ctx.fillRect(x - 3, y, w + 6, 4);
-  ctx.fillRect(x - 3, y + h - 4, w + 6, 4);
-  ctx.restore();
+  // Wyłączono rysowanie pionowego słupka
 }
 
 export function drawExplosiveBarrel(ctx, x, y, w, h) {
@@ -1842,7 +1766,7 @@ export function drawCyberBumper(ctx, x, y, w, h, hitTimer = 0) {
 
 export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, hitTimer = 0) {
   if (type === 'catwalk') {
-    drawCatwalk(ctx, { x, w, relY: groundY - y, thickness: h, chains: [25, w - 25] }, groundY);
+    drawCatwalk(ctx, { x, w, relY: groundY - y, thickness: h }, groundY);
   } else if (type === 'sandbags') {
     drawSandbags(ctx, x, y, w, h);
   } else if (type === 'ammo_depot') {
@@ -1990,21 +1914,7 @@ function drawRockIsland(ctx, plat, groundY) {
   if (plat.props) {
     for (let prop of plat.props) {
       const px = plat.x + prop.rx;
-      if (prop.type === 'sandbags') {
-        drawSandbags(ctx, px, topY - prop.h, prop.w, prop.h);
-      } else if (prop.type === 'crate') {
-        drawCrate(ctx, px, topY - prop.h, prop.w, prop.h);
-      } else if (prop.type === 'bunker_tier') {
-        const by = topY - prop.h;
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(px, by, prop.w, prop.h);
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(px, by, prop.w, prop.h);
-        ctx.fillStyle = '#090d16';
-        ctx.fillRect(px + 14, by + 8, prop.w - 28, 6);
-        drawHazardStripes(ctx, px, by + prop.h - 4, prop.w, 4);
-      } else if (prop.type === 'altar_pedestal') {
+      if (prop.type === 'altar_pedestal') {
         const by = topY - prop.h;
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(px, by, prop.w, prop.h);
@@ -2020,22 +1930,6 @@ function drawRockIsland(ctx, plat, groundY) {
         ctx.fillStyle = '#38bdf8';
         ctx.textAlign = 'center';
         ctx.fillText('⚡ ALTAR OF WAR ⚡', px + prop.w / 2, by + 16);
-      } else if (prop.type === 'antenna') {
-        ctx.strokeStyle = '#64748b';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(px, topY - 36);
-        ctx.lineTo(px, topY - 36 - prop.h);
-        ctx.stroke();
-
-        // Stałe, niemrugające oświetlenie diody anteny
-        ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(px, topY - 36 - prop.h, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
       }
     }
   }
@@ -2050,15 +1944,6 @@ function drawCatwalk(ctx, cat, groundY) {
   const neonCore = isCyan ? '#00e5ff' : '#ff7700';
 
   ctx.save();
-  // Zawieszone stalowo-neonowe liny/łańcuchy
-  ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.55)' : 'rgba(249, 115, 22, 0.55)';
-  ctx.lineWidth = 2.0;
-  for (const cx of cat.chains) {
-    ctx.beginPath();
-    ctx.moveTo(cat.x + cx, topY);
-    ctx.lineTo(cat.x + cx, topY - 260);
-    ctx.stroke();
-  }
 
   // Ciemny korpus kładki w estetyce cyberpunk
   ctx.fillStyle = '#090d16';
@@ -2104,80 +1989,11 @@ function drawCatwalk(ctx, cat, groundY) {
 }
 
 function drawBastionSubstructure(ctx, startX, width, topY, bottomY, accentColor) {
-  const h = bottomY - topY;
-  const pillarW = 28;
-  const numPillars = 4;
-  const span = (width - pillarW) / (numPillars - 1);
-
-  for (let i = 0; i < numPillars; i++) {
-    const px = startX + i * span;
-    const colGrad = ctx.createLinearGradient(px, topY, px + pillarW, topY);
-    colGrad.addColorStop(0.0, '#1e293b');
-    colGrad.addColorStop(0.5, '#334155');
-    colGrad.addColorStop(1.0, '#0f172a');
-    ctx.fillStyle = colGrad;
-    ctx.fillRect(px, topY, pillarW, h);
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(px, topY, pillarW, h);
-
-    ctx.fillStyle = '#0f172a';
-    for (let y = topY + 25; y < bottomY - 10; y += 32) {
-      ctx.fillRect(px, y, pillarW, 2.5);
-    }
-  }
-
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 2.8;
-  for (let i = 0; i < numPillars - 1; i++) {
-    const p1X = startX + i * span + pillarW;
-    const p2X = startX + (i + 1) * span;
-    if (p2X <= p1X) continue;
-
-    const numBays = 3;
-    const bayH = h / numBays;
-    for (let b = 0; b < numBays; b++) {
-      const bayTop = topY + b * bayH;
-      const bayBottom = bayTop + bayH;
-
-      ctx.beginPath();
-      ctx.moveTo(p1X, bayTop);
-      ctx.lineTo(p2X, bayBottom);
-      ctx.moveTo(p2X, bayTop);
-      ctx.lineTo(p1X, bayBottom);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(p1X, bayBottom);
-      ctx.lineTo(p2X, bayBottom);
-      ctx.stroke();
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.beginPath();
-      ctx.arc((p1X + p2X) / 2, (bayTop + bayBottom) / 2, 2.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  ctx.save();
-  ctx.strokeStyle = accentColor;
-  ctx.shadowColor = accentColor;
-  ctx.shadowBlur = 9;
-  ctx.lineWidth = 2.2;
-  const accentX = (accentColor === '#06b6d4') ? (startX + width - 10) : (startX + 10);
-  ctx.beginPath();
-  ctx.moveTo(accentX, topY + 8);
-  ctx.lineTo(accentX, bottomY - 12);
-  ctx.stroke();
-  ctx.restore();
+  // Wyłączono pionowe słupy i linie akcentowe areny
 }
 
 function drawCyberStadiumStructures(ctx, groundY) {
-  ctx.save();
-  drawBastionSubstructure(ctx, 160, 280, groundY - 240, groundY, '#06b6d4');
-  drawBastionSubstructure(ctx, 1480, 280, groundY - 240, groundY, '#f97316');
-  ctx.restore();
+  // Wyłączono pionowe struktury koloseum
 }
 
 function drawNeonGoals(ctx, groundY, goals) {
@@ -2387,13 +2203,6 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
 }
 
 export function drawObstacles(ctx, groundY) {
-  if (activeArenaId === 'ARENA_1') {
-    drawBastionSubstructure(ctx, START_X + 20, 380, groundY - 130, groundY, '#06b6d4');
-    drawBastionSubstructure(ctx, START_X + 2800, 380, groundY - 130, groundY, '#f97316');
-  } else if (activeArenaId === 'ARENA_2') {
-    drawCyberStadiumStructures(ctx, groundY);
-  }
-
   for (const bar of GROUND_BARRICADES) {
     if (bar.type === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
     else if (bar.type === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);

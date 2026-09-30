@@ -5,7 +5,7 @@
 // =========================================================================
 export const AeroClass = {
   id: 'AERO',
-  name: 'Akrobata',
+  name: 'Aero',
   role: 'Lotnik / Freestyler',
 
   // 1. Statystyki fizyczne i ruchowe

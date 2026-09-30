@@ -30,6 +30,13 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
     tx = hx;
     ty = hy + l1 + l2 - 4;
   }
+
+  // Zabezpieczenie dla kończyn dolnych (nogi: bendDir === -1):
+  // Stopa i kolano nie mogą być wyginane ponad poziom bioder w naturalnych stanach ruchu i spadania
+  if (bendDir === -1 && ty < hy + 6) {
+    ty = hy + 6;
+  }
+
   let dx = tx - hx;
   let dy = ty - hy;
   let d = Math.hypot(dx, dy);
@@ -42,7 +49,12 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
 
   const maxReach = (l1 + l2) * 0.998;
   if (d >= maxReach) {
-    const ang = Math.atan2(dy, dx);
+    let ang = Math.atan2(dy, dx);
+    if (bendDir === -1) {
+      // Ograniczenie kąta wyprostu nóg - skierowane zawsze w dół z bioder
+      if (ang < 0.08 && ang > -Math.PI / 2) ang = 0.08;
+      else if (ang <= -Math.PI / 2 && ang > -Math.PI) ang = Math.PI - 0.08;
+    }
     const reach = Math.min(d, maxReach);
     return {
       kneeX: hx + l1 * Math.cos(ang),
@@ -63,7 +75,14 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
   const cosAlpha = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
   const alpha = Math.acos(cosAlpha);
 
-  const thighAngle = baseAngle + bendDir * (facing * alpha);
+  let thighAngle = baseAngle + bendDir * (facing * alpha);
+  // Ograniczenie kąta uda dla nóg (staw kolanowy nie może unosić się w tułów)
+  if (bendDir === -1) {
+    if (Math.sin(thighAngle) < 0.05) {
+      thighAngle = facing >= 0 ? 0.08 : (Math.PI - 0.08);
+    }
+  }
+
   const kneeX = hx + l1 * Math.cos(thighAngle);
   const kneeY = hy + l1 * Math.sin(thighAngle);
 

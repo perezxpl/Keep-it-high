@@ -5,7 +5,7 @@
 // =========================================================================
 export const PlaymakerClass = {
   id: 'PLAYMAKER',
-  name: 'Wirtuoz',
+  name: 'Playmaker',
   role: 'Technik / Snajper',
 
   // 1. Statystyki fizyczne i ruchowe
