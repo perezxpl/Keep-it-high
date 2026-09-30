@@ -1,5 +1,6 @@
 // =========================================================================
 // WEAPONS.JS - SYSTEM BRONI, BALISTYKI I KINEMATYKI STRZELECKIEJ (SOLDAT STYLE)
+// Zintegrowany z realistycznymi strefami trafień (Headshot / Torso / Legs)
 // =========================================================================
 
 import {
@@ -177,7 +178,7 @@ export function getWeaponHoldTransform(p) {
   const cosA = Math.cos(blendedAngle);
   const sinA = Math.sin(blendedAngle);
 
-  // Punkty podparcia dłoni skorygowane do nowego chwytu broni (chwyt pistoletowy i łoże)
+  // Punkty podparcia dłoni
   const rearGripDistX = isShotgun ? 1.6 : 1.5;
   const rearGripDistY = isShotgun ? 4.5 : 4.2;
   const rightHandWorldX = finalPivotX + (cosA * rearGripDistX - sinA * rearGripDistY) * charFacing;
@@ -235,11 +236,10 @@ export function getMuzzlePosition(shooter, weapon) {
 }
 
 /**
- * Wystrzał z broni – z wyłączonym fizycznym odpychaniem postaci
+ * Wystrzał z broni
  */
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead) return;
-  // Zdalny gracz ma sprawdzany cooldown u nadawcy - nie blokujemy go u odbiorcy
   if (shooter.shootCooldown > 0 && !shooter.isRemote) return;
 
   const isCrouch = !!shooter.isCrouching;
@@ -388,7 +388,7 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
 }
 
 /**
- * Aktualizacja pocisków i detekcja dekapitacji / zgonu
+ * Aktualizacja pocisków, strefy trafień (Headshot / Torso / Legs) i realistyczny zgon
  */
 export function updateBullets(groundY, obstaclesList, ball, characters) {
   for (let i = bulletParticles.length - 1; i >= 0; i--) {
@@ -453,7 +453,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       const hitH = ch.h || 70;
       const charLeft = ch.x;
       const charRight = ch.x + hitW;
-      const charTop = ch.y;
+
+      // KLUCZOWA POPRAWKA:
+      // Głowa znajduje się powyżej ch.y (aż do ch.y - 25 px)[span_10](start_span)[span_10](end_span).
+      // Poprzednio charTop wynosiło ch.y, przez co strzały w głowę przelatywały ponad hitboxem[span_11](start_span)[span_11](end_span)!
+      const charTop = ch.y - 25;
       const charBottom = ch.y + hitH;
 
       const charT = getSegmentAABBHitT(b.prevX, b.prevY, endX, endY, charLeft, charTop, charRight, charBottom);
@@ -467,12 +471,36 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       const hitPtX = b.prevX + (b.x - b.prevX) * closestCharT;
       const hitPtY = b.prevY + (b.y - b.prevY) * closestCharT;
 
-      closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - b.damage);
-      spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 5);
-      spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 4, 0.7);
+      // =====================================================================
+      // STREFY TRAFIEŃ I REALISTYCZNE MNOŻNIKI OBRAŻEŃ
+      // =====================================================================
+      // 1. GŁOWA: czubek głowy od (ch.y - 25) do nasady szyi (ch.y + 6)[span_12](start_span)[span_12](end_span)
+      // 2. TORS: od klatki piersiowej do pasa (ch.y + 6 do ch.y + 40)
+      // 3. NOGI: poniżej pasa (ch.y + 40 do stóp)
+      const isHeadshot = (hitPtY <= closestChar.y + 6);
+      const isLegshot = (hitPtY >= closestChar.y + 40);
+
+      let damageMultiplier = 1.0;
+      if (isHeadshot) {
+        damageMultiplier = 2.5; // Krytyczne trafienie w głowę: 250% obrażeń!
+      } else if (isLegshot) {
+        damageMultiplier = 0.75; // Rany nóg: zredukowane obrażenia do 75%
+      }
+
+      const totalDamage = Math.round(b.damage * damageMultiplier);
+      closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
+
+      if (isHeadshot) {
+        spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
+        spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.55, b.vy * 0.55, 12, 1.4);
+        triggerScreenShake(2.2);
+      } else {
+        spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
+        spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 5, 0.8);
+      }
 
       // =====================================================================
-      // OBSŁUGA ZGONU I DEKAPITACJI
+      // OBSŁUGA ZGONU: REALISTYCZNA KINETYKA I WARUNKOWA DEKAPITACJA
       // =====================================================================
       if (closestChar.hp <= 0 && !closestChar.isDead) {
         closestChar.isDead = true;
@@ -489,25 +517,36 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         closestChar.spinVolleyTimer = 0;
         closestChar.scissorTimer = 0;
         closestChar.corpseFloorY = groundY;
-        closestChar.isGibbed = false; // Całkowite rozerwanie jest zarezerwowane wyłącznie dla beczki!
+        closestChar.isGibbed = false;
 
-        // Soldat dynamic death impulse: mocny impuls w tył oraz poderwanie w górę
-        const hitDir = Math.sign(b.vx) || (closestChar.facing * -1);
-        closestChar.vx = hitDir * (Math.random() * 1.5 + 4.2); // pęd w stronę lotu kuli
-        closestChar.vy = -(Math.random() * 1.2 + 3.8);         // podbicie w powietrze
-        closestChar.isJumping = true;
+        // Przekazanie punktu uderzenia kuli do ragdolla
+        closestChar.deathHitPoint = { x: hitPtX, y: hitPtY };
 
-        // Inicjalizacja dynamiki przewrotu
-        closestChar.deathTilt = 0;              // bieżący kąt przewrotu
-        closestChar.deathRotVel = hitDir * 0.14; // prędkość obrotu tułowia w locie
-        closestChar.isSettled = false;          // czy ciało znieruchomiało na ziemi
-        closestChar.pelvisY = 0;
+        // Impuls zależny od strefy trafienia
+        if (isLegshot) {
+          closestChar.deathImpulse = {
+            vx: b.vx * 0.42 + (Math.random() - 0.5) * 1.5,
+            vy: -1.2
+          };
+        } else if (isHeadshot) {
+          closestChar.deathImpulse = {
+            vx: b.vx * 0.52 + (Math.random() - 0.5) * 1.5,
+            vy: -3.0
+          };
+        } else {
+          closestChar.deathImpulse = {
+            vx: b.vx * 0.38 + (Math.random() - 0.5) * 1.5,
+            vy: -2.0
+          };
+        }
+
+        // Reset ragdolla wymusza świeżą integrację z aktualnej pozy trafienia
+        closestChar.ragdoll = null;
 
         const shotDist = Math.hypot(hitPtX - (b.originX || hitPtX), hitPtY - (b.originY || hitPtY));
-        const isHeadshot = (hitPtY <= closestChar.y + 22);
-        const isCloseShotgun = (b.weaponId === 'SHOTGUN' && shotDist < 155);
+        const isCloseShotgun = (b.weaponId === 'SHOTGUN' && shotDist < 160);
 
-        // Odłącz i wyrzuć broń ofiary w świat
+        // Wyrzucenie broni
         if (closestChar.currentWeapon) {
           spawnDroppedWeapon(
             closestChar.x + closestChar.w / 2,
@@ -521,19 +560,19 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
         if (isHeadshot && isCloseShotgun) {
           // =================================================================
-          // 1. CZYSTA DEKAPITACJA: ODCIĘTA GŁOWA + FONTANNA KRWI
+          // 1. DEKAPITACJA: WYŁĄCZNIE przy bezpośrednim strzale ze strzelby w głowę z bliska!
           // =================================================================
           closestChar.hasHead = false;
           closestChar.decapitated = true;
-          closestChar.neckFountainTimer = 55; // Kikut szyi tryska fontanną przez 55 klatek
+          closestChar.severedHead = null;
+          closestChar.neckFountainTimer = 55;
 
           triggerHitstop(6);
           triggerScreenShake(16);
 
-          // Wystrzelenie odciętej głowy w powietrze (głowa może swobodnie rotować)
           spawnHeadGib(
             closestChar.x + closestChar.w / 2,
-            closestChar.y + 8,
+            closestChar.y - 8,
             b.vx * 0.55,
             -5.5,
             closestChar.facing,
@@ -542,34 +581,32 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
           spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
-        } else {
+        } else if (isHeadshot) {
           // =================================================================
-          // 2. NORMALNA ŚMIERĆ KINETYCZNA (Głowa odpada, ciało wykonuje przewrót w stylu Soldat)
+          // 2. HEADSHOT Z INNEJ BRONI (np. AK-47):
+          // Głowa POZOSTAJE na ciele! Silny trysk krwi, brak dekapitacji.
           // =================================================================
           closestChar.hasHead = true;
           closestChar.decapitated = false;
+          closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
 
-          triggerHitstop(3);
-          triggerScreenShake(7);
+          triggerHitstop(4);
+          triggerScreenShake(10);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.65, -2.2, 18, 1.3);
+        } else {
+          // =================================================================
+          // 3. TRAFIENIE W TORS LUB NOGI:
+          // Głowa ABSOLUTNIE ZAWSZE zostaje na ciele! Całe ciało jest całe.
+          // =================================================================
+          closestChar.hasHead = true;
+          closestChar.decapitated = false;
+          closestChar.severedHead = null; // USUNIĘTY BŁĄD ODPADAJĄCEJ GŁOWY PRZY STRZALE W KORPUS!
+          closestChar.neckFountainTimer = 0;
 
-          // Odpadająca głowa (severedHead) – rotować może się wyłącznie odcięta głowa
-          closestChar.severedHead = {
-            x: closestChar.x + closestChar.w / 2,
-            y: closestChar.y + 12,
-            vx: (b.vx * 0.06) + (Math.random() - 0.5) * 1.5,
-            vy: -3.8 - Math.random() * 1.5,
-            rotation: 0,
-            rotSpeed: (Math.random() - 0.5) * 0.25,
-            onGround: false,
-            life: 420,
-            fadeTimer: 60,
-            alpha: 1.0,
-            facing: closestChar.facing,
-            visuals: closestChar.currentClass?.visuals
-          };
-
-          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.5, -1.2, 10, 0.8);
+          triggerHitstop(2);
+          triggerScreenShake(isLegshot ? 4 : 6);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, -1.0, 8, 0.8);
         }
       }
 

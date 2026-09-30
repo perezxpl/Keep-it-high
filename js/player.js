@@ -1,12 +1,14 @@
 // =========================================================================
 // PLAYER.JS - KINEMATYKA, FIZYKA I RENDEROWANIE POSTACI (2.5D IK ENGINE)
 // Data-Driven Schema: pełna niezależność klas z bazowymi wartościami silnika
+// Zintegrowany z modułem death.js (obsługa fizyki śmierci i ragdolla)
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { DEFAULT_CLASS, CLASSES } from './classes/index.js';
-import { isTouchDevice, spawnBloodFountain, spawnJetpackSparks, triggerScreenShake, spawnBloodDecal } from './world.js';
+import { isTouchDevice, triggerScreenShake } from './world.js';
 import { WEAPONS, drawHeldWeapon, getWeaponHoldTransform, updateWeaponState } from './weapons.js';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 
 function ease(t) {
   return 0.5 - 0.5 * Math.cos(t * Math.PI);
@@ -27,10 +29,6 @@ function lerpAngle(a, b, t) {
   return a + diff * t;
 }
 
-// =========================================================================
-// BAZOWY SCHEMAT DOMYŚLNY SILNIKA (DEFAULT CLASS SCHEMA)
-// Wartości rezerwowe wstrzykiwane automatycznie w przypadku pominięcia pól
-// =========================================================================
 export const DEFAULT_BODY = {
   w: 24,
   h: 70,
@@ -59,7 +57,7 @@ export const DEFAULT_STATS = {
 };
 
 export const DEFAULT_VISUALS = {
-  sculptedMuscles: false,    // Wyrzeźbione brzuśce mięśniowe
+  sculptedMuscles: false,
   muscleMult: 1.0,
   sleeveless: false,
   sleeveLengthMult: 1.0,
@@ -106,9 +104,6 @@ export const DEFAULT_CLASS_SCHEMA = {
   visuals: DEFAULT_VISUALS
 };
 
-/**
- * Bezpieczne scalanie podanej klasy ze schematem domyślnym DEFAULT_CLASS_SCHEMA (Fallback Merge)
- */
 export function mergeClassWithSchema(classDef) {
   const c = classDef || {};
   return {
@@ -119,9 +114,6 @@ export function mergeClassWithSchema(classDef) {
   };
 }
 
-// =========================================================================
-// FREESTYLE ENGINE: INTRO PRZED LINIĄ STARTU
-// =========================================================================
 export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, facing, ballRadius) {
   let loopTimer = timer;
   if (timer > 60) {
@@ -321,8 +313,13 @@ export function createPlayerInstance(overrides = {}) {
     deathTilt: 0,
     deathRotVel: 0,
     isSettled: false,
-    pelvisY: 0,
+    pelvisY: -11.8,
     severedHead: null,
+
+    // RAGDOLL SYSTEM
+    ragdoll: null,
+    deathHitPoint: null,
+    deathImpulse: null,
 
     currentClass: mergedClass,
 
@@ -368,7 +365,6 @@ export function createPlayerInstance(overrides = {}) {
     forearmLen: mergedClass.body.forearmLen,
 
     stridePhase: 0,
-    pelvisY: -11.8,
     torsoTilt: 0,
     torsoTiltVel: 0,
     gaitMode: 'PODBICIE Z ZIEMI',
@@ -436,11 +432,9 @@ export function setPlayerClass(newClass, p = player) {
 
   p.currentClass?.onDestroy?.(p);
 
-  // Bezpieczne scalanie wybranej klasy ze schematem domyślnym silnika
   const merged = mergeClassWithSchema(newClass);
   p.currentClass = merged;
 
-  // Automatyczne zaaplikowanie szkieletu i parametrów energii
   p.w = p.currentClass.body.w;
   p.h = p.currentClass.body.h;
   p.thighLen = p.currentClass.body.thighLen;
@@ -523,7 +517,7 @@ export function playerSlide(spawnGrass, GROUND_Y, p = player) {
     const currentFloor = p.currentGroundY || GROUND_Y;
     const grassFn = spawnGrass || p._spawnGrass;
     if (grassFn) {
-      for (let i = 0; i < 8; i++) grassFn(p.x + p.w / 2 + (player.facing * 15), currentFloor, p.facing);
+      for (let i = 0; i < 8; i++) grassFn(p.x + p.w / 2 + (player.facing * 15), currentFloor, player.facing);
     }
 
     p.currentClass?.onSlide?.(p, grassFn);
@@ -1066,145 +1060,10 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = pl
 
 function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   // =========================================================================
-  // FIZYKA ŚMIERCI: NATURALNE OPADANIE, DEKAPITACJA I RESPAWN (BEZ WIROWANIA CIAŁA)
+  // FIZYKA ŚMIERCI: DELEGACJA DO MODUŁU DEATH.JS
   // =========================================================================
   if (player.isDead) {
-    player.respawnTimer--;
-
-    // 1. Całkowicie zablokuj i wyzeruj prędkości kątowe
-    player.torsoTiltVel = 0;
-    player.headBobVel = 0;
-    player.corpseRotVel = 0;
-    player.rotSpeed = 0;
-    player.spin = 0;
-
-    // 2. Zablokuj player.yaw na stałej wartości
-    player.yaw = (player.facing === -1) ? Math.PI : 0;
-
-    // 3. Natychmiastowe anulowanie animacji specjalnych przy zgonie
-    player.kickMode = 'GROUND';
-    player.kickState = 'IDLE';
-    player.bicycleTimer = 0;
-    player.spinVolleyTimer = 0;
-    player.scissorTimer = 0;
-
-    // Inicjalizacja ewentualnych iskier jetpacka (bez spirali rotacji ciała)
-    if (!player.deathInitDone) {
-      player.deathInitDone = true;
-      if ((player.jetFuel || 0) > 10 && player.isJumping && !player.isGibbed) {
-        player.deathSpiralTimer = 26;
-      }
-    }
-
-    // Fontanna krwi tryskająca z kikuta szyi
-    if (player.neckFountainTimer > 0) {
-      player.neckFountainTimer--;
-      if (player.neckFountainTimer % 3 === 0) {
-        const hipX = player.x + player.w / 2;
-        const neckY = player.y + 14;
-        spawnBloodFountain(hipX, neckY, player.facing, 3);
-      }
-    }
-
-    // Iskry jetpacka przy opadaniu (bez nadawania obrotów ciału)
-    if (player.deathSpiralTimer > 0) {
-      player.deathSpiralTimer--;
-      player.vy += 0.05;
-      const hipX = player.x + player.w / 2;
-      const hipY = player.y + player.h / 2;
-      spawnJetpackSparks(hipX, hipY, -player.facing, 2);
-    }
-
-    if (player.isGibbed) {
-      player.vx = 0;
-      player.vy = 0;
-    } else {
-      // 1. Lot w powietrzu (przewrót):
-      player.vy += CONFIG.GRAVITY;
-      player.x += player.vx;
-      player.y += player.vy;
-      player.corpseAngle = 0;
-
-      // Zabezpieczenie przed wylotem poza arenę
-      player.x = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT - player.w, player.x));
-
-      if (!player.isSettled) {
-        player.deathTilt = (player.deathTilt || 0) + (player.deathRotVel || 0);
-        const targetAngle = (player.deathRotVel > 0 ? 1 : -1) * (Math.PI * 0.5);
-        if (Math.abs(player.deathTilt) > Math.abs(targetAngle)) {
-          player.deathTilt = targetAngle;
-          player.deathRotVel *= 0.5;
-        }
-        player.torsoTilt = player.deathTilt;
-      }
-
-      const currentFloor = player.currentGroundY || GROUND_Y;
-
-      // 2. Uderzenie o podłoże (kontakt z ziemią):
-      if (player.y >= currentFloor - player.h) {
-        player.y = currentFloor - player.h;
-        player.isJumping = false;
-        if (Math.abs(player.vy) > 1.5) {
-          player.vy = -player.vy * 0.28;
-          triggerScreenShake?.(2.5);
-          spawnBloodDecal?.(player.x + player.w / 2, currentFloor);
-        } else {
-          player.vy = 0;
-        }
-
-        // Tarcie ślizgowe po ziemi aż do zatrzymania
-        player.vx *= 0.84;
-        player.deathRotVel = 0;
-
-        // Zablokuj ciało leżące płasko na plecach
-        const fallDir = Math.sign(player.vx) || (player.deathRotVel ? Math.sign(player.deathRotVel) : (player.facing * -1));
-        player.torsoTilt = fallDir * (Math.PI * 0.48); 
-        player.pelvisY = 22; // obniżenie miednicy do poziomu podłoża
-        if (Math.abs(player.vx) < 0.1) {
-          player.vx = 0;
-          player.isSettled = true;
-        }
-      }
-    }
-
-    // Respawn postaci
-    if (player.respawnTimer <= 0) {
-      player.isDead = false;
-      player.hp = player.maxHp;
-      player.hasHead = true;
-      player.decapitated = false;
-      player.isGibbed = false;
-      player.neckFountainTimer = 0;
-      player.deathSpiralTimer = 0;
-      player.deathInitDone = false;
-      player.corpseAngle = 0;
-      player.corpseRotVel = 0;
-      player.deathTilt = 0;
-      player.deathRotVel = 0;
-      player.isSettled = false;
-      player.pelvisY = 0;
-      player.torsoTilt = 0;
-      player.torsoTiltVel = 0;
-      player.headBobVel = 0;
-      player.severedHead = null;
-
-      if (player.isBot) {
-        player.x = START_X + 600;
-        player.y = GROUND_Y - player.h;
-        player.facing = -1;
-      } else {
-        player.x = START_X - 60;
-        player.y = GROUND_Y - player.h;
-        player.facing = 1;
-      }
-      player.vx = 0;
-      player.vy = 0;
-      player.airVx = 0;
-      player.isJumping = false;
-      player.isSliding = false;
-      player.isCharging = false;
-      player.kickState = 'IDLE';
-    }
+    handlePlayerDeath(player, GROUND_Y);
     return;
   }
 
@@ -1444,7 +1303,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
         player.vx *= decel;
       }
 
-      // STABILIZACJA I ANCHORING
       if (player.shootPoseWeight > 0.2 && Math.abs(inputAxisX) < 0.15) {
         player.vx *= 0.65;
       }
@@ -1758,9 +1616,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   }
 }
 
-// =========================================================================
-// SYSTEM GRAFICZNY: MODELOWANY SPORTOWIEC 2.5D (RZEŹBIONA ANATOMIA I KOLOS)
-// =========================================================================
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = null, armForeLen = null) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
   const upperLen = armUpperLen || player.upperArmLen || 14;
@@ -1786,8 +1641,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const sleeveHalfH = 3.9 * muscle;
   const armHalfH = 2.8 * muscle;
 
-  // 1. ZARYS NARAMIENNIKA (DELTOID) W NASADZIE RAMIENIA
-  // Przykrywa łączenie ręki z tułowiem, eliminując efekt „doczepionej rurki”
   const deltoidW = armHalfH * (isSculpted ? 1.48 : 1.32);
   const deltoidLen = upperLen * (isSculpted ? 0.48 : 0.42);
 
@@ -1804,7 +1657,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   }
 
   if (v.sleeveless) {
-    // Odsłonięty, muskularny naramiennik przykrywający staw barkowy
     ctx.beginPath();
     ctx.moveTo(-deltoidW * 0.45, 0);
     ctx.quadraticCurveTo(-deltoidW * 0.40, -deltoidW * 1.15, deltoidLen * 0.22, -deltoidW * 1.08);
@@ -1825,7 +1677,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       ctx.stroke();
     }
   } else if (sleeveLen > 0) {
-    // Rękawek układający się na naramienniku w 3D
     const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
     sleeveGrad.addColorStop(0.0, upperCol || v.armColorFront);
     sleeveGrad.addColorStop(0.35, upperCol || v.armColorFront);
@@ -1845,7 +1696,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.fillRect(sleeveLen - 1.6, -sleeveHalfH, 1.6, sleeveHalfH * 2);
   }
 
-  // 2. RAMIĘ: BICEPS I TRICEPS (ANATOMICZNE WYGIĘCIE LUB PROSTE)
   const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
   if (isFront) {
     bicepGrad.addColorStop(0.0, v.skinLight);
@@ -1888,7 +1738,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   ctx.restore();
 
-  // 3. PRZEDRAMIĘ (RAMIENNO-PROMIENIOWY I ZGINACZE)
   ctx.save();
   ctx.translate(elbowX, elbowY);
   ctx.rotate(foreDir);
@@ -1943,7 +1792,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.stroke();
   }
 
-  // 4. Frotka / bandaż
   if (isFront && v.hasWristband) {
     const bandX = foreLen * 0.52;
     const bandW = 4.0;
@@ -1954,7 +1802,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.strokeRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
   }
 
-  // 5. Dłoń: anatomiczna bryła zaciśniętej pięści/chwytu z zarysem kostek, kciuka i bruzd palców
   const handX = foreLen + 0.5;
   const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
   const fW = 4.4 * handScale;
@@ -1965,25 +1812,17 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   handGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
   handGrad.addColorStop(1.0, v.skinDark);
 
-  // Bryła dłoni i zgiętych palców (pięść)
   ctx.beginPath();
-  // Przejście z nadgarstka
   ctx.moveTo(handX - 0.5, -wristR * 0.85);
-  // Grzbiet dłoni unoszący się ku kostkom
   ctx.lineTo(handX + fW * 0.25, -fH * 0.95);
-  // Kostka palca wskazującego
   ctx.quadraticCurveTo(handX + fW * 0.55, -fH * 1.05, handX + fW * 0.72, -fH * 0.85);
-  // Kostka palca środkowego (najbardziej wysunięta)
   ctx.quadraticCurveTo(handX + fW * 1.05, -fH * 0.65, handX + fW, -fH * 0.25);
-  // Front zaciśniętych palców
   ctx.quadraticCurveTo(handX + fW * 1.05, fH * 0.35, handX + fW * 0.75, fH * 0.85);
-  // Kłąb palca małego (hipotenar)
   ctx.quadraticCurveTo(handX + fW * 0.35, fH * 0.95, handX - 0.5, wristR * 0.85);
   ctx.closePath();
   ctx.fillStyle = handGrad;
   ctx.fill();
 
-  // Zarys kciuka dociskającego chwyt
   const thumbGrad = ctx.createLinearGradient(handX, -fH * 0.7, handX + fW * 0.6, fH * 0.2);
   thumbGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
   thumbGrad.addColorStop(1.0, isFront ? v.skinMid : v.skinDark);
@@ -1997,22 +1836,17 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.fillStyle = thumbGrad;
   ctx.fill();
 
-  // Bruzdy między zgiętymi palcami (bruzdy kostek i paliczków)
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
   ctx.lineWidth = 0.75;
   ctx.beginPath();
-  // Bruzda między palcem wskazującym a środkowym
   ctx.moveTo(handX + fW * 0.72, -fH * 0.45);
   ctx.lineTo(handX + fW * 0.95, -fH * 0.25);
-  // Bruzda między palcem środkowym a serdecznym
   ctx.moveTo(handX + fW * 0.68, -fH * 0.05);
   ctx.lineTo(handX + fW * 0.92, fH * 0.15);
-  // Bruzda pod kciukiem
   ctx.moveTo(handX + fW * 0.18, -fH * 0.35);
   ctx.quadraticCurveTo(handX + fW * 0.40, -fH * 0.30, handX + fW * 0.50, fH * 0.05);
   ctx.stroke();
 
-  // Odblask na głównej kostce
   ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
   ctx.beginPath();
   ctx.arc(handX + fW * 0.65, -fH * 0.68, 0.75 * handScale, 0, Math.PI * 2);
@@ -2054,7 +1888,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     shortsGrad.addColorStop(1.0, '#334155');
   }
 
-  // Wylot nogawki z eliptycznym mankietem okalającym udo w 3D (cuffCurve)
   const cuffBulge = 2.4;
   ctx.beginPath();
   ctx.moveTo(0, -shortsHalfH);
@@ -2077,7 +1910,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.closePath();
   ctx.fill();
 
-  // Elastyczny mankiet / ściągacz nogawki (cuffCurve)
   ctx.strokeStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
   ctx.lineWidth = 1.8;
   ctx.beginPath();
@@ -2085,7 +1917,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.quadraticCurveTo(shortsLen - 0.8 + cuffBulge, 0, shortsLen - 0.8, shortsHalfH - 0.8);
   ctx.stroke();
 
-  // Cień rzucany przez mankiet na mięsień czworogłowy
   ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
   ctx.beginPath();
   ctx.moveTo(shortsLen, -quadHalfH);
@@ -2106,7 +1937,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     quadGrad.addColorStop(1.0, v.skinDark);
   }
 
-  // Anatomiczny zarys mięśnia czworogłowego schodzącego klinem w stronę rzepki
   ctx.beginPath();
   if (isSculpted) {
     ctx.moveTo(shortsLen - 0.5, -quadHalfH * 0.95);
@@ -2127,7 +1957,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.fill();
 
   if (isSculpted && isFrontLeg) {
-    // Subtelna separacja głowy przyśrodkowej (łezka vastus medialis nad rzepką)
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.16)';
     ctx.lineWidth = 0.9;
     ctx.beginPath();
@@ -2143,7 +1972,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  // Rzepka cieniowana w kolorze skóry (zamiast wielkiej białej kuli)
   const patellaR = 2.4 * (isSculpted ? muscle * 0.95 : muscle);
   const patellaGrad = ctx.createLinearGradient(0, -patellaR, 0, patellaR);
   patellaGrad.addColorStop(0.0, isFrontLeg ? v.skinLight : v.skinMid);
@@ -2155,7 +1983,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.fillStyle = patellaGrad;
   ctx.fill();
 
-  // Odblask na rzepce
   ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.20)';
   ctx.beginPath();
   ctx.arc(1.5, -0.8, patellaR * 0.45, 0, Math.PI * 2);
@@ -2168,27 +1995,21 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   sockGrad.addColorStop(0.3, shinCol);
   sockGrad.addColorStop(1.0, thighCol);
 
-  // Asymetryczna łydka: prosty grzebień piszczeli z przodu, brzusiec w górnej 1/3 z tyłu schodzący w ścięgno Achillesa
   const achillesHalfW = 1.9 * (isSculpted ? Math.max(1.0, muscle * 0.88) : muscle);
   const calfBulge = (isSculpted ? 5.2 : 4.4) * muscle;
 
   ctx.beginPath();
-  // Przednia krawędź (grzebień piszczeli)
   ctx.moveTo(1.8, -patellaR * 0.7);
   ctx.lineTo(l2 * 0.15, -2.4 * muscle);
   ctx.lineTo(l2 - 4.5, -achillesHalfW);
-  // Ścięcie nad kostką
   ctx.lineTo(l2 - 4.5, achillesHalfW);
-  // Wąskie ścięgno Achillesa
   ctx.quadraticCurveTo(l2 * 0.68, achillesHalfW * 1.15, l2 * 0.48, calfBulge * 0.75);
-  // Szczyt asymetrycznego brzuśca łydki w górnej 1/3 (gastrocnemius)
   ctx.quadraticCurveTo(l2 * 0.30, calfBulge, l2 * 0.14, calfBulge * 0.78);
   ctx.quadraticCurveTo(0.8, patellaR * 0.9, 1.8, patellaR * 0.6);
   ctx.closePath();
   ctx.fillStyle = sockGrad;
   ctx.fill();
 
-  // Płaskorzeźba i odblask krawędzi piszczeli
   if (isFrontLeg) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.lineWidth = 0.8;
@@ -2243,7 +2064,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   let targetEffAnkle = ankleRot;
   let targetFlex = 0;
 
-  if (isSpecialKick && Math.abs(ankleRot) > 1.1) {
+  if (player.isDead) {
+    targetEffAnkle = ankleRot;
+    targetFlex = 0;
+  } else if (isSpecialKick && Math.abs(ankleRot) > 1.1) {
     targetEffAnkle = ankleRot;
     targetFlex = 0;
   } else {
@@ -2266,7 +2090,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   let flexSmooth = 0.24;
   let ankleSmooth = 0.28;
-  if (isSpecialKick || player.kickMode === 'BACKFLIP') {
+  if (player.isDead) {
+    flexSmooth = 0.85;
+    ankleSmooth = 0.85;
+  } else if (isSpecialKick || player.kickMode === 'BACKFLIP') {
     flexSmooth = 0.45;
     ankleSmooth = 0.55;
   }
@@ -2433,17 +2260,8 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
-  const hipY = player.y + player.h - 40 + player.pelvisY;
+  let hipY = player.y + player.h - 40 + player.pelvisY;
   const speed = Math.abs(player.vx);
-
-  if (player.isDead) {
-    const safeAngle = Math.max(-0.4, Math.min(0.4, player.corpseAngle || 0));
-    if (safeAngle !== 0) {
-      ctx.translate(hipX, hipY);
-      ctx.rotate(safeAngle);
-      ctx.translate(-hipX, -hipY);
-    }
-  }
 
   const yaw = player.yaw || 0;
   const cosYaw = Math.cos(yaw);
@@ -2465,40 +2283,28 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     player.kickMode === 'GROUND' &&
     (isVisualCharging || player.kickState === 'SWING' || player.kickState === 'RECOVER');
 
+  // =========================================================================
+  // ODCZYT KOORDYNATÓW POZY BEZWŁADNEJ Z MODUŁU DEATH.JS
+  // =========================================================================
   if (player.isDead) {
-    const currentFloor = (player.currentGroundY !== undefined) ? player.currentGroundY : (player.y + player.h);
-    const inAir = !player.isSettled && (player.y < currentFloor - player.h - 4);
-    const fallDir = Math.sign(player.vx) || (player.deathRotVel ? Math.sign(player.deathRotVel) : (player.facing * -1));
-    const armDirRel = fallDir * player.facing;
+    const ragPose = getRagdollRenderPose(player, standingY);
+    hipX = ragPose.hipX;
+    hipY = ragPose.hipY;
+    player.torsoTilt = ragPose.torsoTilt;
+    player.headPitch = ragPose.headPitch;
 
-    if (inAir) {
-      rawFootFrontTargetX = hipX - fallDir * 18;
-      rawFootFrontTargetY = hipY + 28;
-      rawFootFrontAnkle = -fallDir * 0.35;
+    rawFootFrontTargetX = ragPose.footFrontX;
+    rawFootFrontTargetY = ragPose.footFrontY;
+    rawFootFrontAnkle = ragPose.footFrontAnkle;
 
-      rawFootBackTargetX = hipX - fallDir * 10;
-      rawFootBackTargetY = hipY + 32;
-      rawFootBackAnkle = -fallDir * 0.20;
+    rawFootBackTargetX = ragPose.footBackX;
+    rawFootBackTargetY = ragPose.footBackY;
+    rawFootBackAnkle = ragPose.footBackAnkle;
 
-      rawFrontSwing = 0.70 * armDirRel;
-      rawFrontElbow = 0.60;
-      rawBackSwing = 0.50 * armDirRel;
-      rawBackElbow = 0.45;
-    } else {
-      const feetY = currentFloor - 2;
-      rawFootFrontTargetX = hipX - fallDir * 34;
-      rawFootFrontTargetY = feetY;
-      rawFootFrontAnkle = -fallDir * 0.40;
-
-      rawFootBackTargetX = hipX - fallDir * 24;
-      rawFootBackTargetY = feetY;
-      rawFootBackAnkle = -fallDir * 0.25;
-
-      rawFrontSwing = 0.45 * armDirRel;
-      rawFrontElbow = 0.40;
-      rawBackSwing = 0.30 * armDirRel;
-      rawBackElbow = 0.35;
-    }
+    rawFrontSwing = ragPose.armFrontSwing;
+    rawFrontElbow = ragPose.armFrontElbow;
+    rawBackSwing = ragPose.armBackSwing;
+    rawBackElbow = ragPose.armBackElbow;
   } else if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, hipY, floorY, player.facing, 8);
     hipX += choreo.hipShiftX;
@@ -2785,7 +2591,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     }
   }
 
-  // Kinematyka rąk przy trzymaniu broni
+  // Kinematyka rąk przy trzymaniu broni (gdy żywy)
   if (player.currentWeapon && !player.isDead) {
     const hold = getWeaponHoldTransform(player);
 
@@ -2837,9 +2643,9 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     p.initialized = true;
   }
 
-  let footBlend = player.isDead ? 0.45 : 0.32;
   const wepWeight = (player.currentWeapon && typeof player.shootPoseWeight === 'number') ? player.shootPoseWeight : 0;
-  let armBlend = (player.currentWeapon && !player.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : (player.isDead ? 0.45 : 0.24);
+  let footBlend = player.isDead ? 0.90 : 0.32;
+  let armBlend = player.isDead ? 0.90 : ((player.currentWeapon && !player.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.24);
 
   if (player.kickMode === 'BACKFLIP') {
     footBlend = 0.85;
@@ -2881,8 +2687,8 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   p.armBackElbow += (rawBackElbow - p.armBackElbow) * armBlend;
 
   if (player.isDead) {
-    p.torsoTilt += (player.torsoTilt - p.torsoTilt) * 0.35;
-    p.headPitch = (player.torsoTilt > 0 ? 0.35 : -0.35) * player.facing;
+    p.torsoTilt = player.torsoTilt;
+    p.headPitch = player.headPitch;
   } else if (player.kickMode === 'BACKFLIP') {
     p.torsoTilt = player.torsoTilt;
     p.headPitch += (player.headPitch - p.headPitch) * 0.22;
@@ -2891,7 +2697,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     p.headPitch += (player.headPitch - p.headPitch) * 0.22;
   }
 
-  const shoulderCounterTilt = -Math.sin(player.stridePhase) * (speed > 0.8 ? 0.045 : 0.015) * currentFacingDir;
+  const shoulderCounterTilt = player.isDead ? 0 : -Math.sin(player.stridePhase) * (speed > 0.8 ? 0.045 : 0.015) * currentFacingDir;
   p.shoulderTilt += (shoulderCounterTilt - p.shoulderTilt) * 0.20;
 
   const shoulderBaseX = hipX + (21 * Math.sin(p.torsoTilt));
@@ -2929,13 +2735,11 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const absCos = Math.abs(cosYaw);
   const absSin = Math.sin(sinYaw);
 
-  // SZEROKI TORS V-TAPER
   const waistHalfW = (4.4 + absSin * 1.2) * (isSculpted ? muscle * 0.90 : muscle);
   const shoulderHalfW = (4.8 + absSin * 1.5) * (isSculpted ? muscle * 1.28 : muscle);
   const waistY = 2.0;
 
-  // 1. SZYJA I MIĘŚNIE CZWOROBOCZNE (KAPTURY / TRAPEZIUS)
-  // Szyja schodzi w dół szerokimi skosami mięśni czworobocznych prosto w obojczyki i barki
+  // 1. SZYJA I KAPTURY
   const neckBaseHalfW = (2.2 * absCos + 3.0 * absSin) * muscle;
   const trapHalfW = shoulderHalfW * 0.98;
   const neckGrad = ctx.createLinearGradient(-trapHalfW, 0, trapHalfW, 0);
@@ -2947,7 +2751,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.beginPath();
   ctx.moveTo(-neckBaseHalfW * 0.85, -29.2);
   ctx.lineTo(neckBaseHalfW * 0.85, -28.8);
-  // Szeroki skos mięśni czworobocznych (kapturów) opadający w obojczyki i naramienniki
   ctx.quadraticCurveTo(neckBaseHalfW * 1.35, -26.8, trapHalfW, -23.6);
   ctx.lineTo(trapHalfW, -19.0);
   ctx.lineTo(-trapHalfW, -19.0);
@@ -2957,7 +2760,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.fillStyle = neckGrad;
   ctx.fill();
 
-  // Modelowanie dołka jarzmowego i krtani
   ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
   ctx.beginPath();
   ctx.moveTo(0.0, -28.8);
@@ -2967,7 +2769,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.closePath();
   ctx.fill();
 
-  // 2. PAS BIODROWY I SPODENKI (ŁUK BIODROWY 3D)
+  // 2. PAS BIODROWY
   const pelvisShortsGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
   pelvisShortsGrad.addColorStop(0.0, v.shortsColor2);
   pelvisShortsGrad.addColorStop(0.5, v.shortsColor0);
@@ -2982,7 +2784,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.fillStyle = pelvisShortsGrad;
   ctx.fill();
 
-  // 3. KOSZULKA / TANK-TOP Z ANATOMICZNYM DEKOLTEM SCOOP OPADAJĄCYM NA MOSTEK
+  // 3. TORS / KOSZULKA
   const jerseyGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
   if (isLookingAway) {
     jerseyGrad.addColorStop(0.0, v.jerseyBack0);
@@ -3003,29 +2805,23 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, waistY);
   if (isSculpted) {
-    // Wcięcie talii i potężne mięśnie najszersze grzbietu (latissimus dorsi / V-taper)
     ctx.quadraticCurveTo(-waistHalfW * 1.15, -12.0, -shoulderHalfW, -24.4);
   } else {
     ctx.lineTo(-shoulderHalfW, -24.4);
   }
-  // Lewe ramiączko
   ctx.lineTo(strapLeftX, -24.4);
-  // Anatomiczny dekolt typu tank-top scoop opadający łukiem na mostek
   ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
-  // Prawe ramiączko
   ctx.lineTo(shoulderHalfW, -24.4);
   if (isSculpted) {
     ctx.quadraticCurveTo(shoulderHalfW * 1.05, -12.0, waistHalfW, waistY);
   } else {
     ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
   }
-  // Dolna krawędź koszulki
   ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
   ctx.closePath();
   ctx.fillStyle = jerseyGrad;
   ctx.fill();
 
-  // Lamówka dekoltu (scoop neckline collar)
   ctx.strokeStyle = v.seamColor || 'rgba(0, 0, 0, 0.35)';
   ctx.lineWidth = 1.0;
   ctx.beginPath();
@@ -3033,7 +2829,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
   ctx.stroke();
 
-  // Zarys mięśni piersiowych (Pectoral shelf) pod dekoltem
   if (isSculpted && !isLookingAway && absCos > 0.3) {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.lineWidth = 1.1;
@@ -3044,7 +2839,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     ctx.stroke();
   }
 
-  // Anatomiczny pas biodrowy – łuk biodrowy (zamiast prostokątnego fillRect)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, waistY - 1.2);
@@ -3054,7 +2848,6 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   ctx.closePath();
   ctx.fill();
 
-  // Szew boczny
   const seamX = cosYaw * 2.2;
   ctx.fillStyle = v.seamColor;
   ctx.beginPath();
@@ -3180,7 +2973,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     let lookX = 0.55;
     let lookY = 0.0;
 
-    if (player.lastBallX !== undefined && player.lastBallY !== undefined) {
+    if (!player.isDead && player.lastBallX !== undefined && player.lastBallY !== undefined) {
       const headWorldX = hipX + (28 * Math.sin(p.torsoTilt));
       const headWorldY = hipY - (28 * Math.cos(p.torsoTilt)) - 10;
       const dxLook = (player.lastBallX - headWorldX) * player.facing;
