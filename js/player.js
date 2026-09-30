@@ -1,12 +1,12 @@
 // =========================================================================
 // PLAYER.JS - KINEMATYKA, FIZYKA I RENDEROWANIE POSTACI (2.5D IK ENGINE)
 // Data-Driven Schema: pełna niezależność klas z bazowymi wartościami silnika
-// Zintegrowany z modułem death.js (obsługa fizyki śmierci i ragdolla)
+// Zintegrowany z modułem death.js oraz systemem rozczłonkowania (Dismemberment)
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { DEFAULT_CLASS, CLASSES } from './classes/index.js';
-import { isTouchDevice, triggerScreenShake } from './world.js';
+import { isTouchDevice } from './world.js';
 import { WEAPONS, drawHeldWeapon, getWeaponHoldTransform, updateWeaponState } from './weapons.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 
@@ -300,7 +300,7 @@ export function createPlayerInstance(overrides = {}) {
     pumpTimer: 0,
     pumpOffset: 0,
 
-    // POLA FIZYKI ŚMIERCI I GORE
+    // POLA FIZYKI ŚMIERCI I ROZCZŁONKOWANIA
     hasHead: true,
     decapitated: false,
     neckFountainTimer: 0,
@@ -315,6 +315,14 @@ export function createPlayerInstance(overrides = {}) {
     isSettled: false,
     pelvisY: -11.8,
     severedHead: null,
+
+    // FLAGI ODERWANYCH KOŃCZYN
+    dismembered: {
+      armFront: false,
+      armBack: false,
+      legFront: false,
+      legBack: false
+    },
 
     // RAGDOLL SYSTEM
     ragdoll: null,
@@ -1052,6 +1060,89 @@ function getBackflipTargets(timer, duration, hipX, hipY, facing) {
     kicking: { x: kx, y: ky, ankle: 0.35 * facing },
     guide: { x: gx, y: gy, ankle: -0.18 * facing }
   };
+}
+
+/**
+ * Rysuje roszarpany kikut mięśniowy i wystającą kość w miejscu urwanej kończyny
+ */
+export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) {
+  const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(facing, 1);
+
+  if (type === 'arm') {
+    // 1. KIKUT RAMIENIA / BARKU
+    if (!v.sleeveless) {
+      ctx.fillStyle = isFront ? (v.armColorFront || '#dc2626') : (v.armColorBack || '#991b1b');
+      ctx.beginPath();
+      ctx.moveTo(-3, -3.5);
+      ctx.lineTo(4.5, -3.5);
+      ctx.lineTo(5.5, 3.5);
+      ctx.lineTo(-3, 3.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Poszarpana tkanka mięśniowa
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.ellipse(5, 0, 3.5, 4.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.ellipse(5.5, 0, 2.2, 2.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wystający odłamek kości ramiennej
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(4.5, -1.0, 4.5, 2.0);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(8.0, -1.2, 1.2, 2.4);
+
+    // Zakrzepła krew w środku kikuta
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(5, 0, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 2. KIKUT UDA / BIODRA
+    // Poszarpana nogawka spodenek
+    ctx.fillStyle = isFront ? v.shortsColor0 : v.shortsColor2;
+    ctx.beginPath();
+    ctx.moveTo(-4.5, 0);
+    ctx.lineTo(4.5, 0);
+    ctx.lineTo(4.0, 6.5);
+    ctx.lineTo(-4.0, 6.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Szarpana tkanka uda
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.ellipse(0, 7.0, 4.5, 3.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.ellipse(0, 7.2, 3.0, 2.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wystająca odłamana kość udowa
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-1.2, 6.0, 2.4, 4.5);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(-1.5, 9.5, 3.0, 1.2);
+
+    // Kapiąca krew
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(1.2, 12.0, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = player) {
@@ -2209,6 +2300,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 }
 
 export function drawFrontLegOnly(ctx, GROUND_Y, p = player) {
+  if (p.dismembered?.legFront) return;
+
   const hipX = (p.x + p.w / 2) + p.lastHipShiftX;
   const hipY = p.y + p.h - 40 + p.pelvisY;
 
@@ -2591,7 +2684,7 @@ function _drawCharacter(ctx, GROUND_Y, player) {
     }
   }
 
-  // Kinematyka rąk przy trzymaniu broni (gdy żywy)
+  // Kinematyka rąk przy trzymaniu broni (gdy postać żyje)
   if (player.currentWeapon && !player.isDead) {
     const hold = getWeaponHoldTransform(player);
 
@@ -2720,14 +2813,44 @@ function _drawCharacter(ctx, GROUND_Y, player) {
 
   player.currentClass?.onDrawUnder?.(ctx, player);
 
+  // Sprawdzenie flag rozczłonkowania
+  const isArmFrontDismembered = !!player.dismembered?.armFront;
+  const isArmBackDismembered = !!player.dismembered?.armBack;
+  const isLegFrontDismembered = !!player.dismembered?.legFront;
+  const isLegBackDismembered = !!player.dismembered?.legBack;
+
+  // =========================================================================
+  // KOŃCZYNY W TLE (BACKGROUND LIMBS)
+  // =========================================================================
   if (isRightLimbForeground) {
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
-    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
+    if (!isArmBackDismembered) {
+      renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
+    } else {
+      drawLimbStump(ctx, shLeftX, shLeftY, p.armBackSwing, 'arm', currentFacingDir, v, false);
+    }
+
+    if (!isLegBackDismembered) {
+      renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
+    } else {
+      drawLimbStump(ctx, hipLeftX, hipY, p.torsoTilt, 'leg', currentFacingDir, v, false);
+    }
   } else {
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
-    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
+    if (!isArmFrontDismembered) {
+      renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColBack, null, false, v, player.upperArmLen, player.forearmLen);
+    } else {
+      drawLimbStump(ctx, shRightX, shRightY, p.armFrontSwing, 'arm', currentFacingDir, v, false);
+    }
+
+    if (!isLegFrontDismembered) {
+      renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v);
+    } else {
+      drawLimbStump(ctx, hipRightX, hipY, p.torsoTilt, 'leg', currentFacingDir, v, false);
+    }
   }
 
+  // =========================================================================
+  // TORS, PAS I SZYJA
+  // =========================================================================
   ctx.save();
   ctx.translate(hipX, hipY);
   ctx.rotate(p.torsoTilt);
@@ -3071,12 +3194,33 @@ function _drawCharacter(ctx, GROUND_Y, player) {
   const legShinFront = v.legShinFront || '#e53935';
   const bootFront = v.bootColor || '#18181b';
 
+  // =========================================================================
+  // KOŃCZYNY NA PIERWSZYM PLANIE (FOREGROUND LIMBS)
+  // =========================================================================
   if (isRightLimbForeground) {
-    renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
-    renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
+    if (!isLegFrontDismembered) {
+      renderIKLeg(ctx, hipRightX, hipY, p.footFrontX, p.footFrontY, player.thighLen, player.shinLen, p.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
+    } else {
+      drawLimbStump(ctx, hipRightX, hipY, p.torsoTilt, 'leg', currentFacingDir, v, true);
+    }
+
+    if (!isArmFrontDismembered) {
+      renderArm(ctx, shRightX, shRightY, p.armFrontSwing, p.armFrontElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
+    } else {
+      drawLimbStump(ctx, shRightX, shRightY, p.armFrontSwing, 'arm', currentFacingDir, v, true);
+    }
   } else {
-    renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
-    renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
+    if (!isLegBackDismembered) {
+      renderIKLeg(ctx, hipLeftX, hipY, p.footBackX, p.footBackY, player.thighLen, player.shinLen, p.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v);
+    } else {
+      drawLimbStump(ctx, hipLeftX, hipY, p.torsoTilt, 'leg', currentFacingDir, v, true);
+    }
+
+    if (!isArmBackDismembered) {
+      renderArm(ctx, shLeftX, shLeftY, p.armBackSwing, p.armBackElbow, currentFacingDir, armColFront, null, true, v, player.upperArmLen, player.forearmLen);
+    } else {
+      drawLimbStump(ctx, shLeftX, shLeftY, p.armBackSwing, 'arm', currentFacingDir, v, true);
+    }
   }
 
   player.currentClass?.onDrawOverlay?.(ctx, player);

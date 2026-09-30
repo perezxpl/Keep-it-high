@@ -266,7 +266,7 @@ export function handlePlayerDeath(player, groundY) {
     updatePlayerRagdoll(player, groundY);
   }
 
-  // Respawn
+  // Respawn: przywrócenie pełnego stanu ciała i kompletnych kończyn
   if (player.respawnTimer <= 0) {
     player.isDead = false;
     player.hp = player.maxHp;
@@ -289,6 +289,15 @@ export function handlePlayerDeath(player, groundY) {
     player.ragdoll = null;
     player.deathHitPoint = null;
     player.deathImpulse = null;
+
+    // Reset uszkodzeń i przywrócenie kończyn
+    player.dismembered = {
+      armFront: false,
+      armBack: false,
+      legFront: false,
+      legBack: false
+    };
+
     if (player.pose) player.pose.initialized = false;
 
     if (player.isBot) {
