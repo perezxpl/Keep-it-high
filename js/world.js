@@ -5,6 +5,7 @@
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
 import { activeArenaId, arenaScore, arena1State, ARENA_PLATFORMS, customObstacles } from './obstacles.js';
 import { isBallInKickReach } from './player.js';
+import { drawWeaponSlot, drawWeaponSilhouette } from './player/renderer.js?v=hud_v4';
 
 export const goalCelebration = {
   active: false,
@@ -703,28 +704,40 @@ export function drawGore(ctx) {
 // =========================================================================
 export const jetpackParticles = [];
 
-export function spawnJetpackSparks(x, y, facing, count = 2, customColors = null) {
-  const colors = customColors || ['#00e5ff', '#38bdf8', '#c084fc'];
-  const dir = facing || 1;
+export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2) {
+  const colors = customColors || ['#00e5ff', '#38bdf8', '#ffffff'];
 
   for (let i = 0; i < count; i++) {
-    const col = colors[Math.floor(Math.random() * colors.length)];
-    const vx = -dir * (Math.random() * 2.5 + 1.0) + (Math.random() - 0.5) * 1.5;
-    const vy = Math.random() * 4.5 + 2.5;
+    // Stożkowy rozrzut wokół wektora dyszy (+/- 14 stopni)
+    const coneAngle = nozzleAngle + (Math.random() - 0.5) * 0.48;
+    const thrustSpeed = Math.random() * 5.0 + 4.0;
+
+    // Prędkość wylotowa z uwzględnieniem części wektora prędkości gracza
+    const vx = Math.cos(coneAngle) * thrustSpeed + inheritVx * 0.35;
+    const vy = Math.sin(coneAngle) * thrustSpeed + inheritVy * 0.35;
+
+    const isSmoke = Math.random() < 0.35;
+    const col = isSmoke 
+      ? '#64748b' 
+      : colors[Math.floor(Math.random() * colors.length)];
 
     jetpackParticles.push({
-      x: x + (Math.random() * 4 - 2),
-      y: y + (Math.random() * 4 - 2),
+      x: x + (Math.random() * 2.0 - 1.0),
+      y: y + (Math.random() * 2.0 - 1.0),
       vx,
       vy,
-      size: Math.random() * 2.5 + 2.0,
+      size: isSmoke ? (Math.random() * 2.0 + 3.0) : (Math.random() * 1.5 + 2.5),
+      maxSize: isSmoke ? 8.5 : 5.5,
       life: 1.0,
-      color: col
+      decay: isSmoke ? 0.032 : 0.046,
+      isFlame: !isSmoke,
+      color: col,
+      glowColor: colors[0] || '#00e5ff'
     });
   }
 
-  if (jetpackParticles.length > 150) {
-    jetpackParticles.splice(0, jetpackParticles.length - 150);
+  if (jetpackParticles.length > 200) {
+    jetpackParticles.splice(0, jetpackParticles.length - 200);
   }
 }
 
@@ -733,7 +746,24 @@ export function updateJetpackParticles() {
     const p = jetpackParticles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.life -= 0.045;
+
+    // Opór powietrza
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+    p.life -= p.decay;
+
+    // Chłodzenie ognia w rozszerzający się dym
+    if (p.isFlame) {
+      if (p.life < 0.55) {
+        p.isFlame = false;
+        p.color = '#64748b';
+      }
+    } else {
+      // Dym rozszerza się i lekko unosi
+      p.size = Math.min(p.maxSize, p.size + 0.18);
+      p.vy -= 0.04;
+    }
+
     if (p.life <= 0) {
       jetpackParticles.splice(i, 1);
     }
@@ -746,13 +776,35 @@ export function drawJetpackParticles(ctx) {
   for (let i = 0; i < jetpackParticles.length; i++) {
     const p = jetpackParticles[i];
     ctx.save();
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
+
+    if (p.isFlame) {
+      // Gorący płomień z neonowym blaskiem
+      ctx.shadowColor = p.glowColor || p.color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Białe jądro w środku świeżego płomienia
+      if (p.life > 0.8) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Rozszerzający się, gasnący dym (fade-out przez alpha)
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color || '#64748b';
+      ctx.globalAlpha = Math.max(0, p.life * 0.35);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 }
@@ -1924,42 +1976,18 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   ctx.restore();
 }
 
+
 /**
- * Rysowanie miniaturowej sylwetki broni w tle kafelka wyboru
+ * Rysowanie taktycznego prostokąta ze ściętym prawym górnym narożnikiem (tactical sci-fi chamfer)
  */
-function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  const alpha = isSelected ? 0.38 : 0.16;
-
-  if (type === 'AK47') {
-    ctx.fillStyle = `rgba(250, 204, 21, ${alpha})`;
-    // Kolba
-    ctx.fillRect(-17, -1, 7, 3);
-    // Komora i łoże
-    ctx.fillRect(-10, -2, 16, 4);
-    // Magazynek łukowy
-    ctx.beginPath();
-    ctx.moveTo(-5, 2);
-    ctx.lineTo(-2, 7);
-    ctx.lineTo(1, 7);
-    ctx.lineTo(-1, 2);
-    ctx.closePath();
-    ctx.fill();
-    // Lufa
-    ctx.fillRect(6, -1, 10, 2);
-  } else if (type === 'SHOTGUN') {
-    ctx.fillStyle = `rgba(251, 146, 60, ${alpha})`;
-    // Kolba
-    ctx.fillRect(-16, -1, 8, 4);
-    // Komora zamkowa
-    ctx.fillRect(-8, -2, 12, 5);
-    // Długa lufa i podlufowy magazynek
-    ctx.fillRect(4, -2, 12, 3);
-    ctx.fillRect(4, 1, 10, 2);
-  }
-
-  ctx.restore();
+function drawChamferedBar(ctx, x, y, w, h, chamfer = 6) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w - chamfer, y);
+  ctx.lineTo(x + w, y + chamfer);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
 }
 
 export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
@@ -2020,210 +2048,143 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball) {
   ctx.fillText(`FPS: ${currentFps}`, 20, 78);
 
   // =========================================================================
-  // 2. PANEL DOLNY LEWY: HP, JETPACK ORAZ PIONOWY WYBÓR BRONI
+  // 2. PANEL DOLNY LEWY: HP, JETPACK ORAZ PIONOWY WYBÓR BRONI (TACTICAL SCI-FI)
   // =========================================================================
   const panelX = 20;
-
-  // A. Przyciski wyboru broni – ułożone pionowo, powiększone
-  const btnH = 32;
-  const btnGap = 5;
-  const akY = H - 74;
-  const sgY = H - 37;
-  const curWepId = player.currentWeapon?.id || 'AK47';
-
-  weaponButtons[0].y = akY;
-  weaponButtons[1].y = sgY;
-
-  for (const btn of weaponButtons) {
-    const isSelected = (curWepId === btn.id);
-    const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#facc15';
-
-    // Pobranie stanu amunicji z obiektu gracza
-    const ammoObj = player.ammo?.[btn.id];
-    const defMag = (btn.id === 'SHOTGUN' ? 8 : 30);
-    const defRes = (btn.id === 'SHOTGUN' ? 64 : 90);
-    const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
-    const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
-    const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
-    const bIsReloading = !!ammoObj?.isReloading;
-    const bIsNoAmmo = (bCurrentAmmo === 0 && bReserveAmmo === 0);
-    const bIsLowAmmo = (!bIsNoAmmo && bCurrentAmmo <= Math.ceil(bMagSize * 0.25));
-
-    ctx.save();
-    ctx.fillStyle = isSelected
-      ? (btn.id === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.24)' : 'rgba(250, 204, 21, 0.24)')
-      : 'rgba(15, 23, 42, 0.82)';
-
-    let borderCol = isSelected ? accentCol : 'rgba(255, 255, 255, 0.18)';
-    if (isSelected && bIsNoAmmo) borderCol = '#ef4444';
-    else if (isSelected && bIsLowAmmo) borderCol = '#f97316';
-
-    ctx.strokeStyle = borderCol;
-    ctx.lineWidth = isSelected ? 1.6 : 1.0;
-
-    if (isSelected) {
-      ctx.shadowColor = borderCol;
-      ctx.shadowBlur = bIsNoAmmo ? 10 : 8;
-    }
-
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 4);
-    else ctx.rect(btn.x, btn.y, btn.w, btn.h);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Pasek postępu przeładowania na dolnej krawędzi kafelka
-    if (bIsReloading && ammoObj) {
-      const dur = ammoObj.reloadDuration || 120;
-      const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
-      ctx.save();
-      ctx.fillStyle = accentCol;
-      ctx.shadowColor = accentCol;
-      ctx.shadowBlur = 6;
-      ctx.fillRect(btn.x + 2, btn.y + btn.h - 3, (btn.w - 4) * prog, 2.2);
-      ctx.restore();
-    }
-
-    // Lewa strona: hotkey badge [1] / [2]
-    const keyHint = btn.id === 'SHOTGUN' ? '[2]' : '[1]';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSelected ? accentCol : '#64748b';
-    ctx.fillText(keyHint, btn.x + 8, btn.y + btn.h / 2 + 0.5);
-
-    // Rysunek sylwetki broni
-    drawWeaponSilhouette(ctx, btn.id, btn.x + 36, btn.y + btn.h / 2, isSelected);
-
-    // Nazwa broni
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSelected ? '#ffffff' : '#94a3b8';
-    ctx.fillText(btn.name, btn.x + 56, btn.y + btn.h / 2 + 0.5);
-
-    // Prawa strona: czytelny licznik amunicji lub status
-    ctx.textAlign = 'right';
-    if (bIsReloading) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-      ctx.font = 'bold 10px monospace';
-      ctx.fillStyle = `rgba(250, 204, 21, ${0.45 + pulse * 0.55})`;
-      ctx.shadowColor = '#facc15';
-      ctx.shadowBlur = 8;
-      ctx.fillText('⚡ RELOADING...', btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
-    } else if (bIsNoAmmo) {
-      const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.012);
-      ctx.font = 'bold 10.5px monospace';
-      ctx.fillStyle = `rgba(239, 68, 68, ${0.5 + pulse * 0.5})`;
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 10;
-      ctx.fillText('⛔ NO AMMO', btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
-    } else {
-      let ammoColor = isSelected ? '#f8fafc' : '#cbd5e1';
-      if (bIsLowAmmo) {
-        ammoColor = bCurrentAmmo === 0 ? '#ef4444' : '#f97316';
-        ctx.shadowColor = ammoColor;
-        ctx.shadowBlur = 6;
-      }
-      ctx.font = 'bold 11.5px monospace';
-      ctx.fillStyle = ammoColor;
-
-      const ammoText = `${bCurrentAmmo}/${bReserveAmmo}`;
-      ctx.fillText(ammoText, btn.x + btn.w - 10, btn.y + btn.h / 2 + 0.5);
-
-      // Podpowiedź klawisza przeładowania [R] dla aktywnej broni, gdy magazynek nie jest pełny
-      if (isSelected && bCurrentAmmo < bMagSize && bReserveAmmo > 0) {
-        ctx.font = '9px monospace';
-        ctx.fillStyle = '#64748b';
-        ctx.shadowBlur = 0;
-        ctx.textAlign = 'right';
-        ctx.fillText('[R]', btn.x + btn.w - 78, btn.y + btn.h / 2 + 0.5);
-      }
-    }
-
-    ctx.restore();
-  }
-
-  // B. Pasek HP i Jetpacka (bezpośrednio nad kolumną wyboru broni)
   const barW = 230;
-  const hpY = akY - 38;
-  const hpH = 18;
+  const spacing = 5; // Dokładny, spójny odstęp pionowy (gap: 5px)
+  const hpBarHeight = 18;
+  const jetBarHeight = 9;
+  const btnH = 34;
+  const totalWeaponHeight = (btnH * 2) + spacing;
+  const totalHudHeight = hpBarHeight + spacing + jetBarHeight + spacing + totalWeaponHeight;
+  const bottomMargin = 18;
 
+  // Dynamiczne pozycjonowanie pionowe elementów od dołu ekranu
+  const hpBarY = H - totalHudHeight - bottomMargin;
+  const jetBarY = hpBarY + hpBarHeight + spacing;
+  const akY = jetBarY + jetBarHeight + spacing;
+  const sgY = akY + btnH + spacing;
+
+  // -------------------------------------------------------------------------
+  // A. PASEK HP (Główny pasek, ścięty narożnik, neonowe wypełnienie #22c55e)
+  // -------------------------------------------------------------------------
   const maxHp = player.maxHp || 100;
   const curHp = Math.max(0, player.hp ?? 100);
   const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
   const hpColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#f97316' : '#ef4444');
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  // Ciemne tło i obrys paska HP
+  drawChamferedBar(ctx, panelX, hpBarY, barW, hpBarHeight, 6);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
   ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(panelX, hpY, barW, hpH, 3);
-  else ctx.rect(panelX, hpY, barW, hpH);
   ctx.fill();
   ctx.stroke();
 
+  // Neonowe wypełnienie przy użyciu clip()
   if (hpRatio > 0) {
     ctx.save();
-    ctx.beginPath();
-    const fillW = Math.max(3, (barW - 2) * hpRatio);
-    if (ctx.roundRect) ctx.roundRect(panelX + 1, hpY + 1, fillW, hpH - 2, 2);
-    else ctx.rect(panelX + 1, hpY + 1, fillW, hpH - 2);
+    drawChamferedBar(ctx, panelX, hpBarY, barW, hpBarHeight, 6);
+    ctx.clip();
+
     ctx.fillStyle = hpColor;
     ctx.shadowColor = hpColor;
-    ctx.shadowBlur = 5;
-    ctx.fill();
+    ctx.shadowBlur = 8;
+    ctx.fillRect(panelX, hpBarY, barW * hpRatio, hpBarHeight);
     ctx.restore();
   }
 
-  ctx.textAlign = 'center';
+  // Wartość i oznaczenie HP
+  ctx.save();
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText('HP', panelX + 8, hpBarY + hpBarHeight / 2 + 0.5);
+
   ctx.font = 'bold 11px monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW / 2, hpY + hpH / 2 + 0.5);
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW - 12, hpBarY + hpBarHeight / 2 + 0.5);
+  ctx.restore();
 
-  // C. Pasek Jetpacka
-  const jetY = hpY + hpH + 4;
-  const jetH = 6.5;
-
+  // -------------------------------------------------------------------------
+  // B. PASEK JET (Cieńszy wskaźnik pomocniczy 9px, jasny cyjan #06b6d4)
+  // -------------------------------------------------------------------------
   const maxJet = player.jetMax || 100;
   const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
   const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+  // Ciemne tło i obrys paska JET
+  drawChamferedBar(ctx, panelX, jetBarY, barW, jetBarHeight, 4);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
   ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(panelX, jetY, barW, jetH, 2);
-  else ctx.rect(panelX, jetY, barW, jetH);
   ctx.fill();
   ctx.stroke();
 
+  // Wypełnienie cyjanowe z poświatą neonową
   if (jetRatio > 0) {
     ctx.save();
-    ctx.beginPath();
-    const fillJetW = Math.max(2, barW * jetRatio);
-    if (ctx.roundRect) ctx.roundRect(panelX, jetY, fillJetW, jetH, 2);
-    else ctx.rect(panelX, jetY, fillJetW, jetH);
-    ctx.fillStyle = '#00e5ff';
+    drawChamferedBar(ctx, panelX, jetBarY, barW, jetBarHeight, 4);
+    ctx.clip();
+
+    ctx.fillStyle = '#06b6d4';
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 5;
-    ctx.fill();
+    ctx.shadowBlur = 6;
+    ctx.fillRect(panelX, jetBarY, barW * jetRatio, jetBarHeight);
     ctx.restore();
   }
 
+  // Zwięzłe etykiety: mały "JET" po lewej, procent po prawej
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = 'bold 10px monospace';
-  ctx.fillStyle = '#00e5ff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`JET ${Math.round(jetRatio * 100)}%`, panelX + barW / 2, jetY + jetH + 11);
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText('JET', panelX + 8, jetBarY + jetBarHeight / 2 + 0.5);
+
+  ctx.font = 'bold 8.5px monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText(`${Math.round(jetRatio * 100)}%`, panelX + barW - 10, jetBarY + jetBarHeight / 2 + 0.5);
   ctx.restore();
+
+  // -------------------------------------------------------------------------
+  // C. KARTY BRONI (WEAPON SLOTS - DARK GLASS TACTICAL SCI-FI)
+  // -------------------------------------------------------------------------
+  const curWepId = player.currentWeapon?.id || 'AK47';
+
+  weaponButtons[0].x = panelX;
+  weaponButtons[0].y = akY;
+  weaponButtons[0].w = barW;
+  weaponButtons[0].h = btnH;
+
+  weaponButtons[1].x = panelX;
+  weaponButtons[1].y = sgY;
+  weaponButtons[1].w = barW;
+  weaponButtons[1].h = btnH;
+
+  for (const btn of weaponButtons) {
+    const isSelected = (curWepId === btn.id);
+    drawWeaponSlot(ctx, btn, isSelected, player);
+  }
+
 
   // =========================================================================
   // 3. TABLICA WYNIKÓW (GÓRA EKRANU)

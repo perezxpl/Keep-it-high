@@ -746,6 +746,233 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p) {
   );
 }
 
+export function getJetpackNozzlePos(p) {
+  const hipX = p.x + p.w / 2;
+  const hipY = p.y + p.h - 40 + (p.pelvisY || 0);
+  const facingDir = (p.facing === 'left' || p.facing === -1) ? -1 : 1;
+  const tilt = (p.pose && p.pose.torsoTilt !== undefined) 
+    ? p.pose.torsoTilt 
+    : (p.torsoTilt || 0);
+
+  // Wektor dyszy w lokalnym układzie tułowia (na plecach postaci, u dołu dyszy):
+  const localX = -facingDir * 7.5;
+  const localY = 2.0;
+
+  const cosA = Math.cos(tilt);
+  const sinA = Math.sin(tilt);
+
+  return {
+    x: hipX + (localX * cosA - localY * sinA),
+    y: hipY + (localX * sinA + localY * cosA),
+    angle: tilt + Math.PI / 2
+  };
+}
+
+export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW) {
+  const isFiring = !!p.isJetpacking;
+  const isHost = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
+  const themeColor = isHost ? '#00e5ff' : '#f97316';
+  const glowColor = isHost ? '#38bdf8' : '#fb923c';
+
+  ctx.save();
+
+  if (isLookingAway) {
+    // Widok z tyłu (obie dysze i korpus plecaka widoczny centralnie na plecach)
+    const packW = 14;
+    const packH = 20;
+    const packX = -packW / 2;
+    const packY = -22;
+
+    // Główna metalowa płyta nośna
+    const plateGrad = ctx.createLinearGradient(packX, 0, packX + packW, 0);
+    plateGrad.addColorStop(0.0, '#1e293b');
+    plateGrad.addColorStop(0.5, '#334155');
+    plateGrad.addColorStop(1.0, '#1e293b');
+    ctx.fillStyle = plateGrad;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(packX, packY, packW, packH, 3);
+    else ctx.rect(packX, packY, packW, packH);
+    ctx.fill();
+    ctx.stroke();
+
+    // Dwa zbiorniki paliwa (lewy i prawy cylinder)
+    const tankW = 5.2;
+    const tankH = 18;
+    for (const tx of [-5.5, 0.3]) {
+      const tankGrad = ctx.createLinearGradient(tx, 0, tx + tankW, 0);
+      tankGrad.addColorStop(0.0, '#0f172a');
+      tankGrad.addColorStop(0.4, '#475569');
+      tankGrad.addColorStop(0.8, '#64748b');
+      tankGrad.addColorStop(1.0, '#1e293b');
+      ctx.fillStyle = tankGrad;
+      ctx.fillRect(tx, packY + 1, tankW, tankH);
+      ctx.strokeRect(tx, packY + 1, tankW, tankH);
+
+      // Górny zawór zbiornika
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(tx + 1, packY - 1.5, tankW - 2, 2.5);
+
+      // Dolna dysza wylotowa (nozzle)
+      const nzX = tx + 0.4;
+      const nzY = packY + tankH;
+      const nzW = tankW - 0.8;
+      const nzH = 4.5;
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(nzX + 0.6, nzY);
+      ctx.lineTo(nzX + nzW - 0.6, nzY);
+      ctx.lineTo(nzX + nzW + 0.8, nzY + nzH);
+      ctx.lineTo(nzX - 0.8, nzY + nzH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#090d16';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Płonące wnętrze dyszy, gdy jetpack jest aktywny
+      if (isFiring) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(nzX, nzY + nzH - 1.5, nzW, 2.0);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Centralna dioda statusu energetycznego
+    ctx.fillStyle = isFiring ? '#ffffff' : themeColor;
+    ctx.shadowColor = themeColor;
+    ctx.shadowBlur = isFiring ? 10 : 4;
+    ctx.beginPath();
+    ctx.arc(0, packY + 8, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+  } else {
+    // Widok z boku / profilu (plecak przylegający do pleców)
+    // Plecy są po przeciwnej stronie niż zwrot postaci: -facingDir
+    const backSign = -facingDir;
+    const packW = 7.5;
+    const packH = 20;
+    const packTopY = -22;
+    const packBottomY = packTopY + packH;
+    const anchorX = backSign * (waistHalfW * 0.85);
+    const outerX = anchorX + backSign * packW;
+    const leftX = Math.min(anchorX, outerX);
+    const rightX = Math.max(anchorX, outerX);
+
+    // 1. Paski montażowe / uprząż taktyczna (harness straps) wokół klatki i ramion
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(anchorX, packTopY + 2);
+    ctx.lineTo(facingDir * (shoulderHalfW * 0.4), packTopY + 3);
+    ctx.moveTo(anchorX, 0);
+    ctx.lineTo(facingDir * (waistHalfW * 0.3), 1);
+    ctx.stroke();
+
+    // 2. Główny korpus zbiornika jetpacka (tytanowy cylinder w profilu)
+    const tankGrad = ctx.createLinearGradient(leftX, 0, rightX, 0);
+    if (facingDir > 0) {
+      tankGrad.addColorStop(0.0, '#0f172a');
+      tankGrad.addColorStop(0.35, '#334155');
+      tankGrad.addColorStop(0.70, '#475569');
+      tankGrad.addColorStop(1.0, '#1e293b');
+    } else {
+      tankGrad.addColorStop(0.0, '#1e293b');
+      tankGrad.addColorStop(0.30, '#475569');
+      tankGrad.addColorStop(0.65, '#334155');
+      tankGrad.addColorStop(1.0, '#0f172a');
+    }
+
+    ctx.fillStyle = tankGrad;
+    ctx.strokeStyle = '#090d16';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(leftX, packTopY, packW, packH, [3, 3, 2, 2]);
+    } else {
+      ctx.rect(leftX, packTopY, packW, packH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Górny zawór ciśnieniowy / wzmocniona kopuła
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(leftX + 1.2, packTopY - 2.0, packW - 2.4, 2.5);
+    ctx.strokeRect(leftX + 1.2, packTopY - 2.0, packW - 2.4, 2.5);
+
+    // Metalowe opaski stabilizujące (ribs)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(leftX, packTopY + 6, packW, 1.8);
+    ctx.fillRect(leftX, packTopY + 13, packW, 1.8);
+
+    // Neonowy wskaźnik stanu / LED
+    ctx.fillStyle = isFiring ? '#ffffff' : themeColor;
+    ctx.shadowColor = themeColor;
+    ctx.shadowBlur = isFiring ? 10 : 5;
+    ctx.fillRect(leftX + (facingDir > 0 ? 1.0 : packW - 2.5), packTopY + 8, 1.5, 3.5);
+    ctx.shadowBlur = 0;
+
+    // 3. Stożkowa dysza wylotowa (nozzle) u dołu plecaka
+    const nzCenterX = (leftX + rightX) / 2;
+    const nzTopY = packBottomY;
+    const nzH = 4.5;
+    const throatW = 4.2;
+    const mouthW = 6.4;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(nzCenterX - throatW / 2, nzTopY);
+    ctx.lineTo(nzCenterX + throatW / 2, nzTopY);
+    ctx.lineTo(nzCenterX + mouthW / 2, nzTopY + nzH);
+    ctx.lineTo(nzCenterX - mouthW / 2, nzTopY + nzH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#090d16';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // Metalowa kryza / pierścień żaroodporny u wylotu dyszy
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(nzCenterX - mouthW / 2, nzTopY + nzH);
+    ctx.lineTo(nzCenterX + mouthW / 2, nzTopY + nzH);
+    ctx.stroke();
+
+    // Efekt aktywnego płomienia wewnątrz dyszy podczas lotu
+    if (isFiring) {
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.ellipse(nzCenterX, nzTopY + nzH, mouthW * 0.42, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mały język ognia u samego wylotu dyszy
+      const flameGrad = ctx.createLinearGradient(0, nzTopY + nzH, 0, nzTopY + nzH + 8);
+      flameGrad.addColorStop(0.0, '#ffffff');
+      flameGrad.addColorStop(0.4, themeColor);
+      flameGrad.addColorStop(1.0, 'rgba(0, 229, 255, 0)');
+
+      ctx.fillStyle = flameGrad;
+      ctx.beginPath();
+      ctx.moveTo(nzCenterX - mouthW * 0.35, nzTopY + nzH);
+      ctx.lineTo(nzCenterX, nzTopY + nzH + (6.0 + Math.random() * 4.0));
+      ctx.lineTo(nzCenterX + mouthW * 0.35, nzTopY + nzH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  ctx.restore();
+}
+
 export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.isDead && p.isGibbed) {
     ctx.save();
@@ -1425,6 +1652,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
+  // MODEL JETPACKA NA PLECACH POSTACI
+  drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW);
+
   // GŁOWA LUB KIKUT SZYI
   ctx.save();
   ctx.translate(0.0, -30.5 + (p.headBob * 0.35));
@@ -1685,3 +1915,222 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   ctx.restore();
 }
+
+/**
+ * Rysuje sylwetkę broni w slocie HUD.
+ * 4. Ikonkę broni narysuj kolorem: ctx.fillStyle = '#94A3B8';
+ */
+export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  if (isSelected) {
+    ctx.fillStyle = type === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.45)' : 'rgba(250, 204, 21, 0.45)';
+  } else {
+    // 4. Ikonkę nieaktywnej broni narysuj kolorem #94A3B8
+    ctx.fillStyle = '#94A3B8';
+  }
+
+  if (type === 'AK47') {
+    // Kolba
+    ctx.fillRect(-17, -1, 7, 3);
+    // Komora i łoże
+    ctx.fillRect(-10, -2, 16, 4);
+    // Magazynek łukowy
+    ctx.beginPath();
+    ctx.moveTo(-5, 2);
+    ctx.lineTo(-2, 7);
+    ctx.lineTo(1, 7);
+    ctx.lineTo(-1, 2);
+    ctx.closePath();
+    ctx.fill();
+    // Lufa
+    ctx.fillRect(6, -1, 10, 2);
+  } else if (type === 'SHOTGUN') {
+    // Kolba
+    ctx.fillRect(-16, -1, 8, 4);
+    // Komora zamkowa
+    ctx.fillRect(-8, -2, 12, 5);
+    // Długa lufa i podlufowy magazynek
+    ctx.fillRect(4, -2, 12, 3);
+    ctx.fillRect(4, 1, 10, 2);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje pojedynczy slot broni w interfejsie HUD z zachowaniem maksymalnego kontrastu.
+ */
+export function drawWeaponSlot(ctx, btn, isSelected, player) {
+  const isActive = isSelected;
+  const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#f59e0b';
+
+  // Pobranie stanu amunicji z obiektu gracza
+  const ammoObj = player.ammo?.[btn.id];
+  const defMag = (btn.id === 'SHOTGUN' ? 8 : 30);
+  const defRes = (btn.id === 'SHOTGUN' ? 64 : 90);
+  const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
+  const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
+  const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
+  const bIsReloading = !!ammoObj?.isReloading;
+  const bIsNoAmmo = (bCurrentAmmo === 0 && bReserveAmmo === 0);
+  const bIsLowAmmo = (!bIsNoAmmo && bCurrentAmmo <= Math.ceil(bMagSize * 0.25));
+
+  ctx.save();
+
+  // 1 & 2. Blok warunkowy dla nieaktywnego slotu (!isActive / else)
+  if (!isActive) {
+    // 2. Jeśli masz tam ustawione ctx.globalAlpha, zmień jego wartość na stałe ctx.globalAlpha = 0.9 (lub usuń obniżanie alfy)
+    ctx.globalAlpha = 0.95;
+  } else {
+    ctx.globalAlpha = 1.0;
+  }
+
+  // 1. Tło w stylu Dark Glass ze ściętym narożnikiem (chamfer)
+  ctx.beginPath();
+  const chamfer = 6;
+  ctx.moveTo(btn.x, btn.y);
+  ctx.lineTo(btn.x + btn.w - chamfer, btn.y);
+  ctx.lineTo(btn.x + btn.w, btn.y + chamfer);
+  ctx.lineTo(btn.x + btn.w, btn.y + btn.h);
+  ctx.lineTo(btn.x, btn.y + btn.h);
+  ctx.closePath();
+
+  ctx.fillStyle = isActive
+    ? 'rgba(30, 41, 59, 0.88)'
+    : 'rgba(15, 23, 42, 0.85)';
+  ctx.fill();
+
+  // 2. Obrys ramki
+  let borderCol = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
+  if (isActive && bIsNoAmmo) borderCol = '#ef4444';
+  else if (isActive && bIsLowAmmo) borderCol = '#f97316';
+
+  ctx.strokeStyle = borderCol;
+  ctx.lineWidth = isActive ? 1.4 : 1.0;
+  if (isActive) {
+    ctx.shadowColor = borderCol;
+    ctx.shadowBlur = 6;
+  } else {
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 3. Pionowy lewy pasek akcentu (grubość 3.2px)
+  ctx.fillStyle = isActive ? accentCol : '#334155';
+  ctx.fillRect(btn.x, btn.y, 3.2, btn.h);
+
+  // Pasek postępu przeładowania na dolnej krawędzi kafelka
+  if (bIsReloading && ammoObj) {
+    const dur = ammoObj.reloadDuration || 120;
+    const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
+    ctx.save();
+    ctx.fillStyle = accentCol;
+    ctx.shadowColor = accentCol;
+    ctx.shadowBlur = 6;
+    ctx.fillRect(btn.x + 4, btn.y + btn.h - 3, (btn.w - 8) * prog, 2.2);
+    ctx.restore();
+  }
+
+  // 4. Tag klawisza: [1] / [2] w estetycznej ramce
+  const keyHint = btn.id === 'SHOTGUN' ? '[2]' : '[1]';
+  const tagX = btn.x + 9;
+  const tagY = btn.y + (btn.h - 18) / 2;
+  const tagW = 20;
+  const tagH = 18;
+
+  ctx.fillStyle = isActive ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.08)';
+  ctx.strokeStyle = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
+  ctx.lineWidth = 1.0;
+  if (ctx.roundRect) ctx.roundRect(tagX, tagY, tagW, tagH, 3);
+  else ctx.rect(tagX, tagY, tagW, tagH);
+  ctx.fill();
+  ctx.stroke();
+
+  // 3. Tekst klawisza: [1] / [2]
+  ctx.font = 'bold 9.5px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText(keyHint, tagX + tagW / 2, tagY + tagH / 2 + 0.5);
+
+  // 4. Ikonka broni w tle
+  drawWeaponSilhouette(ctx, btn.id, btn.x + 44, btn.y + btn.h / 2, isActive);
+
+  // 3. Nazwa broni
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 1.0;
+  ctx.fillText(btn.name, btn.x + 64, btn.y + btn.h / 2 + 0.5);
+
+  // 3. Licznik amunicji
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  if (!isActive) {
+    // Wszystkie teksty nieaktywnego slotu w 100% czysto białe (#FFFFFF)
+    ctx.font = 'bold 12px monospace';
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.globalAlpha = 1.0;
+    ctx.fillText(`${bCurrentAmmo} / ${bReserveAmmo}`, btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
+  } else {
+    if (bIsReloading) {
+      ctx.font = 'bold 10px monospace';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = 1.0;
+      ctx.fillText('⚡ RELOAD', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
+    } else if (bIsNoAmmo) {
+      ctx.font = 'bold 10.5px monospace';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = 1.0;
+      ctx.fillText('⛔ EMPTY', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
+    } else {
+      const resText = `/ ${bReserveAmmo}`;
+      ctx.font = 'bold 10px monospace';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = 1.0;
+      ctx.fillText(resText, btn.x + btn.w - 12, btn.y + btn.h / 2 + 1.5);
+
+      const resWidth = ctx.measureText(resText).width;
+
+      ctx.font = 'bold 15px monospace';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = 1.0;
+      ctx.fillText(`${bCurrentAmmo}`, btn.x + btn.w - 15 - resWidth, btn.y + btn.h / 2 + 0.5);
+
+      if (bCurrentAmmo < bMagSize && bReserveAmmo > 0) {
+        ctx.font = '8.5px monospace';
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = 1.0;
+        ctx.fillText('[R]', btn.x + btn.w - 20 - resWidth - ctx.measureText(`${bCurrentAmmo}`).width, btn.y + btn.h / 2 + 0.5);
+      }
+    }
+  }
+
+  // 5. Zapewnij, że po narysowaniu slotu alfa wraca do normy: ctx.globalAlpha = 1.0;
+  ctx.globalAlpha = 1.0;
+  ctx.restore();
+}
+

@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X } from './config.js';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera,
   initCanvas, resize, updateCamera, updateDistance,
@@ -16,7 +16,7 @@ import {
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach,
-  updatePlayer, drawPlayer, setPlayerClass
+  updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos
 } from './player.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
@@ -511,6 +511,412 @@ export function devSetClass(target) {
 window.teleportToDistance = teleportToDistance;
 window.devSetClass = devSetClass;
 window.setPlayerClass = setPlayerClass;
+
+// ==========================================
+// STAN GRY I SYSTEM WYBORU KLAS POSTACI
+// ==========================================
+let mouseScreenX = 640;
+let mouseScreenY = 360;
+
+export let gameState = GAME_STATES.CLASS_SELECT;
+
+export const CLASS_CARDS = [
+  {
+    id: 'AERO',
+    name: 'Aero',
+    key: '1',
+    color: '#10b981',
+    glowColor: 'rgba(16, 185, 129, 0.45)',
+    role: 'LOTNIK / FREESTYLER',
+    attribute: '🪽 MOBILNOŚĆ',
+    desc: 'Ekstremalna mobilność powietrzna, długi lot i akrobatyczne woleje.',
+    stats: ['Jetpack: 150 Pojemności', 'Wysoka zwrotność w locie', 'Spin Volley w powietrzu'],
+    classObj: CLASSES.AERO
+  },
+  {
+    id: 'ENFORCER',
+    name: 'Enforcer',
+    key: '2',
+    color: '#ef4444',
+    glowColor: 'rgba(239, 68, 68, 0.45)',
+    role: 'KOLOS / PANCERZ',
+    attribute: '🛡️ PANCERZ / SIŁA',
+    desc: 'Masywna sylwetka, potężna odporność i niszczycielskie strzały.',
+    stats: ['Maksymalne Zdrowie: 160 HP', 'Odporność na odrzut', 'Brutalne uderzenia z ziemi'],
+    classObj: CLASSES.ENFORCER
+  },
+  {
+    id: 'PLAYMAKER',
+    name: 'Playmaker',
+    key: '3',
+    color: '#38bdf8',
+    glowColor: 'rgba(56, 189, 248, 0.45)',
+    role: 'TECHNIK / SNAJPER',
+    attribute: '🎯 KONTROLA PIŁKI',
+    desc: 'Chirurgiczna precyzja, niesamowity spin i błyskawiczny charge.',
+    stats: ['Ekstremalna rotacja piłki', 'Błyskawiczny Kick Charge', 'Podkręcane trajektorie'],
+    classObj: CLASSES.PLAYMAKER
+  },
+  {
+    id: 'SWEEPER',
+    name: 'Sweeper',
+    key: '4',
+    color: '#f59e0b',
+    glowColor: 'rgba(245, 158, 11, 0.45)',
+    role: 'LIBERO / DEFENSYWA',
+    attribute: '🧤 DEFENSYWA',
+    desc: 'Bramkarski mur, natychmiastowe gaszenie piłki i zasięg obrony.',
+    stats: ['Zwiększony zasięg wybicia', 'Pasywne wyhamowanie piłki', 'Żelazna obrona bramki'],
+    classObj: CLASSES.SWEEPER
+  }
+];
+
+function wrapText(context, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = context.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      context.fillText(line.trim(), x, curY);
+      line = words[n] + ' ';
+      curY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  context.fillText(line.trim(), x, curY);
+  return curY + lineHeight;
+}
+
+export function getClassCardRects(modalW = Math.min(940, W - 32), modalH = Math.min(500, H - 32)) {
+  const modalX = (W - modalW) / 2;
+  const modalY = (H - modalH) / 2;
+  const cardPadding = 18;
+  const gap = 14;
+  const totalGaps = gap * (CLASS_CARDS.length - 1);
+  const availableW = modalW - (cardPadding * 2) - totalGaps;
+  const cardW = Math.floor(availableW / CLASS_CARDS.length);
+  const cardH = modalH - 114;
+  const startY = modalY + 98;
+
+  return CLASS_CARDS.map((card, i) => ({
+    card,
+    x: modalX + cardPadding + i * (cardW + gap),
+    y: startY,
+    w: cardW,
+    h: cardH
+  }));
+}
+
+export function getHoveredClassCard(screenX, screenY) {
+  if (gameState !== GAME_STATES.CLASS_SELECT) return null;
+  const rects = getClassCardRects();
+  for (const item of rects) {
+    if (screenX >= item.x && screenX <= item.x + item.w &&
+        screenY >= item.y && screenY <= item.y + item.h) {
+      return item.card;
+    }
+  }
+  return null;
+}
+
+export function drawClassSelectModal(ctx) {
+  ctx.save();
+
+  // 1. Półprzezroczyste ciemne tło (vignette / backdrop)
+  ctx.fillStyle = 'rgba(5, 8, 18, 0.78)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Radialny glow w tle modalu
+  const bgGlow = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, Math.max(W, H) * 0.55);
+  bgGlow.addColorStop(0, 'rgba(0, 229, 255, 0.10)');
+  bgGlow.addColorStop(0.5, 'rgba(15, 23, 42, 0.25)');
+  bgGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bgGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. Wymiary i pozycjonowanie modalu
+  const modalW = Math.min(940, W - 32);
+  const modalH = Math.min(500, H - 32);
+  const modalX = (W - modalW) / 2;
+  const modalY = (H - modalH) / 2;
+
+  // Główny korpus okna modalu z neonową ramką
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.45)';
+  ctx.shadowBlur = 24;
+
+  const panelGrad = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalH);
+  panelGrad.addColorStop(0, 'rgba(15, 23, 42, 0.96)');
+  panelGrad.addColorStop(1, 'rgba(9, 14, 26, 0.98)');
+  ctx.fillStyle = panelGrad;
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.65)';
+  ctx.lineWidth = 1.8;
+
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(modalX, modalY, modalW, modalH, 16);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.rect(modalX, modalY, modalW, modalH);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Wewnętrzny pasek nagłówkowy
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Badge kategorii
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 6;
+  ctx.fillText('⚡ PROTOKÓŁ ROZGRYWKI • WYBIERZ SPECJALIZACJĘ ⚡', W / 2, modalY + 34);
+  ctx.shadowBlur = 0;
+
+  // Główny nagłówek
+  ctx.font = '900 24px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('WYBIERZ SWOJĄ KLASĘ / SELECT YOUR CLASS', W / 2, modalY + 62);
+  ctx.shadowBlur = 0;
+
+  // Podtytuł z instrukcją
+  ctx.font = '600 12px "Segoe UI", monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('KLIKNIJ KAFELEK MYSZKĄ LUB WCIŚNIJ KLAWISZ CYFRY [1] - [4] NA KLAWIATURZE', W / 2, modalY + 82);
+
+  // Linia podziału
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(modalX + 24, modalY + 92);
+  ctx.lineTo(modalX + modalW - 24, modalY + 92);
+  ctx.stroke();
+  ctx.restore();
+
+  // 3. Rysowanie 4 kafelków klas
+  const cardRects = getClassCardRects(modalW, modalH);
+
+  cardRects.forEach(({ card, x, y, w, h }) => {
+    const isHovered = mouseScreenX >= x && mouseScreenX <= x + w &&
+                      mouseScreenY >= y && mouseScreenY <= y + h;
+
+    ctx.save();
+
+    // Tło kafelka
+    const cardBg = ctx.createLinearGradient(x, y, x, y + h);
+    if (isHovered) {
+      cardBg.addColorStop(0, 'rgba(30, 41, 59, 0.95)');
+      cardBg.addColorStop(1, 'rgba(15, 23, 42, 0.98)');
+      ctx.shadowColor = card.color;
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = card.color;
+      ctx.lineWidth = 2.4;
+    } else {
+      cardBg.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
+      cardBg.addColorStop(1, 'rgba(10, 15, 26, 0.88)');
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1.2;
+    }
+
+    ctx.fillStyle = cardBg;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 12);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Akcent górny kafelka w kolorze klasy
+    ctx.save();
+    ctx.fillStyle = card.color;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(x + 12, y + 2, w - 24, 3, 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x + 12, y + 2, w - 24, 3);
+    }
+    ctx.restore();
+
+    // Badge klawisza skrótu [ 1 ], [ 2 ], itd.
+    ctx.save();
+    const badgeW = 34;
+    const badgeH = 22;
+    const badgeX = x + w - badgeW - 12;
+    const badgeY = y + 14;
+
+    ctx.fillStyle = isHovered ? card.color : 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+    }
+
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isHovered ? '#0f172a' : '#f1f5f9';
+    ctx.fillText(`[${card.key}]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    ctx.restore();
+
+    // Nazwa klasy
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = '900 20px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = isHovered ? '#ffffff' : '#f8fafc';
+    if (isHovered) {
+      ctx.shadowColor = card.color;
+      ctx.shadowBlur = 8;
+    }
+    ctx.fillText(card.name, x + 16, y + 32);
+    ctx.shadowBlur = 0;
+
+    // Atrybut główny
+    ctx.font = 'bold 11px "Segoe UI", monospace';
+    ctx.fillStyle = card.color;
+    ctx.fillText(card.attribute, x + 16, y + 50);
+
+    // Rola / kategoria
+    ctx.font = '600 10px monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(card.role, x + 16, y + 66);
+
+    // Linia wewnątrz kafelka
+    ctx.strokeStyle = isHovered ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 16, y + 76);
+    ctx.lineTo(x + w - 16, y + 76);
+    ctx.stroke();
+
+    // Krótki opis roli
+    ctx.font = '11px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    wrapText(ctx, card.desc, x + 16, y + 94, w - 32, 16);
+
+    // Wypunktowane atrybuty / statystyki
+    let statY = y + 155;
+    for (const stat of card.stats) {
+      ctx.font = 'bold 10px "Segoe UI", monospace';
+      ctx.fillStyle = isHovered ? '#f1f5f9' : '#cbd5e1';
+      ctx.fillText(`• ${stat}`, x + 16, statY);
+      statY += 20;
+    }
+
+    // Dolny przycisk "WYBIERZ [klawisz]"
+    const btnH = 34;
+    const btnY = y + h - btnH - 14;
+    const btnW = w - 32;
+    const btnX = x + 16;
+
+    const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+    if (isHovered) {
+      btnGrad.addColorStop(0, card.color);
+      btnGrad.addColorStop(1, card.color);
+      ctx.shadowColor = card.color;
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#ffffff';
+    } else {
+      btnGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+      btnGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03)');
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    }
+
+    ctx.fillStyle = btnGrad;
+    ctx.lineWidth = 1.2;
+
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.rect(btnX, btnY, btnW, btnH);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.font = 'bold 11px "Segoe UI", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isHovered ? '#0f172a' : '#f1f5f9';
+    ctx.fillText(isHovered ? `▶ WYBIERZ KLASĘ [${card.key}]` : `WYBIERZ [${card.key}]`, btnX + btnW / 2, btnY + btnH / 2);
+
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
+
+export function selectPlayerClass(targetClass) {
+  let cls = targetClass;
+  if (typeof targetClass === 'string') {
+    cls = CLASSES[targetClass.toUpperCase()] || CLASSES[targetClass];
+  }
+  if (!cls) cls = CLASSES.AERO;
+
+  setPlayerClass(cls, player);
+  gameState = GAME_STATES.PLAYING;
+
+  // Reset i respawn gracza po zatwierdzeniu wyboru klasy
+  player.isDead = false;
+  player.deathTimer = 0;
+  player.hp = player.currentClass?.stats?.hp || 100;
+  player.maxHp = player.hp;
+  player.x = START_X;
+  player.y = GROUND_Y - player.h;
+  player.vx = 0;
+  player.vy = 0;
+  player.airVx = 0;
+  player.isJumping = false;
+  player.isSliding = false;
+  player.isIntro = false;
+  player.jetFuel = player.jetMax || 100;
+
+  resetBallToPlayer(player, GROUND_Y);
+
+  if (canvas && canvas.parentElement) {
+    canvas.parentElement.classList.remove('cursor-visible');
+  }
+  if (canvas) canvas.style.cursor = 'none';
+}
+window.selectPlayerClass = selectPlayerClass;
+
+export function openClassSelect() {
+  gameState = GAME_STATES.CLASS_SELECT;
+  if (canvas && canvas.parentElement) {
+    canvas.parentElement.classList.add('cursor-visible');
+  }
+  if (canvas) canvas.style.cursor = 'default';
+}
+window.openClassSelect = openClassSelect;
 
 const devPanelContainer = document.getElementById('dev-panel-container');
 const devToggleBtn = document.getElementById('dev-toggle-btn');
@@ -1082,6 +1488,29 @@ let isJetpackActive = false;
 const DOUBLE_TAP_WINDOW_MS = 280;
 
 window.addEventListener('keydown', (e) => {
+  // Tryb wyboru klasy przed rozpoczęciem gry
+  if (gameState === GAME_STATES.CLASS_SELECT) {
+    if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+      e.preventDefault();
+      selectPlayerClass(CLASSES.AERO);
+      return;
+    } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
+      e.preventDefault();
+      selectPlayerClass(CLASSES.ENFORCER);
+      return;
+    } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+      e.preventDefault();
+      selectPlayerClass(CLASSES.PLAYMAKER);
+      return;
+    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
+      e.preventDefault();
+      selectPlayerClass(CLASSES.SWEEPER);
+      return;
+    }
+    // Podczas wyboru klasy blokujemy wszystkie pozostałe akcje gry
+    return;
+  }
+
   // Obsługa otwierania czatu sieciowego klawiszem "T"
   if (e.code === 'KeyT' && !isChatActive) {
     const activeEl = document.activeElement;
@@ -1237,12 +1666,17 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
 });
 
-let mouseScreenX = W * 0.65;
-let mouseScreenY = H * 0.45;
+mouseScreenX = W * 0.65;
+mouseScreenY = H * 0.45;
 
 window.addEventListener('mousemove', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+
+  if (gameState === GAME_STATES.CLASS_SELECT) {
+    const card = getHoveredClassCard(mouseScreenX, mouseScreenY);
+    canvas.style.cursor = card ? 'pointer' : 'default';
+  }
 
   if (editorState.active) {
     const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
@@ -1257,9 +1691,30 @@ window.addEventListener('mousemove', (e) => {
   }
 });
 
+canvas.addEventListener('touchstart', (e) => {
+  if (gameState === GAME_STATES.CLASS_SELECT && e.touches && e.touches[0]) {
+    const touch = e.touches[0];
+    const card = getHoveredClassCard(touch.clientX, touch.clientY);
+    if (card) {
+      e.preventDefault();
+      selectPlayerClass(card.classObj);
+    }
+  }
+}, { passive: false });
+
 canvas.addEventListener('mousedown', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+
+  if (gameState === GAME_STATES.CLASS_SELECT) {
+    if (e.button === 0) {
+      const card = getHoveredClassCard(e.clientX, e.clientY);
+      if (card) {
+        selectPlayerClass(card.classObj);
+      }
+    }
+    return;
+  }
 
   if (isChatActive) return;
   const mpModal = document.getElementById('mp-modal');
@@ -1294,6 +1749,10 @@ canvas.addEventListener('mousedown', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = true;
+    if (player.jetFuel > 0 && !player.isDead) {
+      isJetpackActive = true;
+      jetpackAirborneSession = true;
+    }
     startKickCharge(player);
   }
 });
@@ -1309,6 +1768,7 @@ window.addEventListener('mouseup', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = false;
+    isJetpackActive = false;
     executeReleaseKick(ball, player);
   }
 });
@@ -1378,6 +1838,23 @@ function drawCrosshair(ctx, x, y, customCol) {
 function update() {
   if (consumeHitstop()) {
     updateCamera(player, ball);
+    return;
+  }
+
+  // Stan wyboru klasy: pauzujemy fizykę gracza, botów i piłki
+  if (gameState === GAME_STATES.CLASS_SELECT) {
+    if (canvas.parentElement && !canvas.parentElement.classList.contains('cursor-visible')) {
+      canvas.parentElement.classList.add('cursor-visible');
+    }
+    const hoveredCard = getHoveredClassCard(mouseScreenX, mouseScreenY);
+    canvas.style.cursor = hoveredCard ? 'pointer' : 'default';
+
+    mouseState.lmbDown = false;
+    mouseState.rmbDown = false;
+
+    // Ambientowe tło i ruch kamery bez symulacji fizyki
+    updateCamera(player, ball);
+    updateParticles();
     return;
   }
 
@@ -1476,7 +1953,8 @@ function update() {
   }
 
   // SILNIK JETPACKA
-  if (isJetpackActive && !player.isDead && player.jetFuel > 0) {
+  const isFlightActive = (isJetpackActive || (mouseState && mouseState.rmbDown)) && !player.isDead && player.jetFuel > 0;
+  if (isFlightActive) {
     player.isJetpacking = true;
     player.jetFuel = Math.max(0, player.jetFuel - 0.95);
     player.vy = Math.max(-8.5, player.vy - 0.95);
@@ -1499,14 +1977,12 @@ function update() {
     player.isJumping = true;
     player.isCrouching = false;
 
-    const hipX = player.x + player.w / 2;
-    const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
-    const nozzleX = hipX - (player.facing * 10);
-    const nozzleY = hipY + 2;
+    // Precyzyjny punkt spawnu na wylocie dyszy jetpacka
+    const nozzle = getJetpackNozzlePos(player);
     const myJetColors = networkState.isHost
       ? ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
       : ['#f97316', '#fb923c', '#fdba74', '#ffffff'];
-    spawnJetpackSparks(nozzleX, nozzleY, player.facing, 2, myJetColors);
+    spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, 4, myJetColors, player.vx, player.vy, nozzle.angle);
   } else {
     isJetpackActive = false;
     if (leftStick) leftStick.isJetpacking = false;
@@ -1705,13 +2181,17 @@ function draw() {
   const isDevOpenForCrosshair = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
 
-  if (!player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive) {
+  if (!player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && gameState === GAME_STATES.PLAYING) {
     drawCrosshair(ctx, player.aimX, player.aimY);
   }
 
   ctx.restore();
 
-  drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball);
+  if (gameState === GAME_STATES.CLASS_SELECT) {
+    drawClassSelectModal(ctx);
+  } else {
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball);
+  }
 
   if (editorState.active) {
     ctx.save();

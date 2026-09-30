@@ -1,3 +1,8 @@
+export const GAME_STATES = {
+  CLASS_SELECT: 'CLASS_SELECT',
+  PLAYING: 'PLAYING'
+};
+
 export const CONFIG = {
   GRAVITY: 0.38,
   JUMP_FORCE: 9.8,
