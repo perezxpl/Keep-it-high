@@ -6,6 +6,22 @@
 import { CONFIG } from '../config.js';
 import { ease, parabola, lerp } from './ik.js';
 
+export const MIN_RUN_SPEED = 2.5; // Minimalna prędkość pozioma (~150 px/s przy 60 FPS) wymagana do ślizgu
+
+/**
+ * Sprawdza, czy postać może wykonać ślizg (Slide):
+ * Ślizg możliwy WYŁĄCZNIE w pełnym biegu (na ziemi i z prędkością > MIN_RUN_SPEED).
+ *
+ * @param {Object} player - Obiekt gracza
+ * @returns {boolean}
+ */
+export function canSlide(player) {
+  if (!player || player.isDead || player.isIntro) return false;
+  const isGrounded = (player.onGround !== undefined) ? (player.onGround && !player.isJumping) : (!player.isJumping);
+  const minSpeed = CONFIG.MIN_RUN_SPEED || MIN_RUN_SPEED;
+  return isGrounded && Math.abs(player.vx) > minSpeed;
+}
+
 /**
  * Sekwencja żonglerki i podbicia piłki w intro przed startem
  */

@@ -14,6 +14,7 @@ export const CONFIG = {
   JOG_MAX: 4.2,
   SPRINT_MAX: 6.8,
   SLIDE_DASH_SPEED: 13.5,
+  MIN_RUN_SPEED: 2.5,         // Minimalna prędkość biegu do wykonania ślizgu (~150 px/s przy 60 FPS)
 
   // SYSTEM EFEKTÓW GORE / ROZCZŁONKOWANIA
   GORE_ENABLED: true,

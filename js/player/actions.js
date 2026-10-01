@@ -51,11 +51,26 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     grassFn = GROUND_Y;
     groundYVal = p;
   }
-  if (!char) return;
+  if (!char) return false;
 
   const isMovingBackwards = (char.vx * char.facing < -0.1);
-  if (isMovingBackwards) return;
-  if (char.isIntro || char.isDead) return;
+  if (isMovingBackwards) return false;
+  if (char.isIntro || char.isDead) return false;
+
+  const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
+  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+
+  // Ślizg (Slide) możliwy WYŁĄCZNIE w pełnym biegu:
+  // player.onGround && Math.abs(player.vx) > MIN_RUN_SPEED (min. 150-200 px/s)
+  if (!isGrounded || Math.abs(char.vx) <= minSpeed) {
+    // Jeśli gracz stoi w miejscu (Math.abs(player.vx) <= MIN_RUN_SPEED), postać jedynie kuca (CROUCH)
+    if (isGrounded && !char.isDead && !char.isIntro) {
+      char.isCrouching = true;
+      char.isProne = false;
+      char.crouchToggled = true;
+    }
+    return false;
+  }
 
   if (!char.isJumping && !char.isSliding) {
     char.isSliding = true;
@@ -75,7 +90,9 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     }
 
     char.currentClass?.onSlide?.(char, finalGrassFn);
+    return true;
   }
+  return false;
 }
 
 /**
@@ -138,19 +155,63 @@ export function startKickCharge(p, targets) {
   p.kickPower = 0;
 }
 
+/**
+ * Pobiera dokładną pozycję stopy wykonującej kopnięcie:
+ * - na podstawie kości/stawu stopy z IK: footX, footY (player.kickingFootX/Y, pose.footFront, lastFootFront)
+ * - lub wysuniętego punktu u dołu postaci w kierunku zwrotu:
+ *   player.x + (facingRight ? footOffsetX : -footOffsetX), player.y + footOffsetY
+ *
+ * @param {Object} p - Obiekt gracza
+ * @returns {{ x: number, y: number }}
+ */
+export function getKickingFootPos(p) {
+  if (!p) return { x: 0, y: 0 };
+
+  // 1. Bezpośrednie współrzędne stopy kopiącej z animacji/IK (jeśli wyliczone)
+  if (typeof p.kickingFootX === 'number' && !isNaN(p.kickingFootX) && p.kickingFootX !== 0 &&
+      typeof p.kickingFootY === 'number' && !isNaN(p.kickingFootY) && p.kickingFootY !== 0) {
+    return { x: p.kickingFootX, y: p.kickingFootY };
+  }
+
+  // 2. Pozycja stopy z IK gracza (pose / lastFootFront)
+  if (p.pose?.footFront && typeof p.pose.footFront.x === 'number') {
+    return { x: p.pose.footFront.x, y: p.pose.footFront.y };
+  }
+  if (typeof p.lastFootFrontX === 'number' && typeof p.lastFootFrontY === 'number' && p.lastFootFrontX !== 0) {
+    return { x: p.lastFootFrontX, y: p.lastFootFrontY };
+  }
+
+  // 3. Pozycja wysuniętego punktu u dołu postaci w kierunku zwrotu:
+  // player.x + (facingRight ? footOffsetX : -footOffsetX), player.y + footOffsetY
+  const facing = (typeof p.facing === 'number') ? p.facing : 1;
+  const facingRight = facing >= 0;
+  const pw = p.w || 24;
+  const ph = p.h || 70;
+  const footOffsetX = (pw / 2) + 16;
+  const footOffsetY = ph - 4;
+
+  return {
+    x: p.x + (facingRight ? footOffsetX : -footOffsetX),
+    y: p.y + footOffsetY
+  };
+}
+
 export function evaluateKickTiming(playerObj, ballObj) {
   const b = ballObj || playerObj._ball;
   if (!b) return 'CANCEL';
 
-  const hipX = playerObj.x + playerObj.w / 2;
-  const hipY = playerObj.y + playerObj.h - 40 + playerObj.pelvisY;
+  const footPos = getKickingFootPos(playerObj);
+  const footX = footPos.x;
+  const footY = footPos.y;
 
-  const dx = b.x - hipX;
-  const dy = b.y - hipY;
+  const dx = b.x - footX;
+  const dy = b.y - footY;
   const distNow = Math.hypot(dx, dy);
 
-  const hitReach = playerObj.currentClass?.stats?.hitReach || 56;
-  const whiffReach = playerObj.currentClass?.stats?.whiffReach || 88;
+  const footRadius = 15; // Promień kolizji stopy: 12-16px
+  const ballRadius = b.radius || b.colRadius || 12;
+  const hitReach = footRadius + ballRadius;
+  const whiffReach = hitReach + 24;
 
   if (distNow <= hitReach) return 'HIT';
   if (distNow <= whiffReach) return 'WHIFF';
@@ -169,7 +230,7 @@ export function evaluateKickTiming(playerObj, ballObj) {
   const closestY = dy + relVy * tImpact;
   const closestDist = Math.hypot(closestX, closestY);
 
-  const willIntersect = closestDist <= (hitReach + 20);
+  const willIntersect = closestDist <= (hitReach + 10);
 
   if (willIntersect) {
     if (tImpact <= 4.5) return 'HIT';
@@ -315,12 +376,9 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
   const hipX = player.x + player.w / 2;
   const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
 
-  const footX = (player.kickingFootX !== undefined && !isNaN(player.kickingFootX))
-    ? player.kickingFootX
-    : (hipX + (player.kickDirX || player.facing) * 44);
-  const footY = (player.kickingFootY !== undefined && !isNaN(player.kickingFootY))
-    ? player.kickingFootY
-    : (hipY + (player.kickDirY || 0) * 44);
+  const footPos = getKickingFootPos(player);
+  const footX = footPos.x;
+  const footY = footPos.y;
 
   const kickReach = (player.currentClass?.stats?.hitReach || 56) + 24;
 
@@ -343,11 +401,16 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
 
   let didHitAnything = false;
 
-  // 1. Interakcja z piłką
+  // 1. Interakcja z piłką - PRECYZYJNY HITBOX STOPY (fizyczny kontakt stopy z piłką)
   const activeBall = ball || player._ball;
   if (activeBall) {
-    const distBall = distPointToSegment(activeBall.x, activeBall.y, hipX, hipY, footX, footY);
-    if (distBall <= kickReach + (activeBall.colRadius || 12)) {
+    const footRadius = 15; // Promień stopy: ok. 12-16px
+    const ballRadius = activeBall.colRadius || activeBall.radius || 12;
+    const distBall = Math.hypot(activeBall.x - footX, activeBall.y - footY);
+
+    // Warunek trafienia: piłka musi fizycznie stykać się z małym promieniem stopy:
+    // Math.hypot(ball.x - footX, ball.y - footY) <= (footRadius + ball.radius)
+    if (distBall <= (footRadius + ballRadius)) {
       const bdx = (typeof player.aimX === 'number') ? (player.aimX - activeBall.x) : (kickDirX * 100);
       const bdy = (typeof player.aimY === 'number') ? (player.aimY - activeBall.y) : (kickDirY * 100);
       const angle = Math.atan2(bdy, bdx);
@@ -356,7 +419,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
 
       const pwr = (player.kickPower !== undefined && player.kickPower !== null) ? player.kickPower : 0.70;
       const powerFactor = 0.85 + pwr * 0.22;
-      const falloff = getDistanceFalloff(activeBall.x, activeBall.y, footX, footY, kickReach);
+      const falloff = getDistanceFalloff(activeBall.x, activeBall.y, footX, footY, footRadius + ballRadius + 10);
 
       // Obliczenie końcowej siły impulsu z uwzględnieniem roli klasy i odległości od stopy
       const finalForce = BASE_KICK_FORCE * kickForceMultiplier * powerFactor * falloff;
@@ -526,7 +589,12 @@ export function performKick(p, options = {}) {
     p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
   }
 
-  // 5. Interakcja ze światem (piłka, przeciwnicy, beczki)
+  // 5. Inicjalizacja pozycji stopy kopiącej dla natychmiastowej detekcji trafienia
+  const footInit = getKickingFootPos(p);
+  p.kickingFootX = footInit.x;
+  p.kickingFootY = footInit.y;
+
+  // 6. Interakcja ze światem (piłka, przeciwnicy, beczki)
   applyKickInteractions(p, options.ball || p._ball, targets, options.obstacles, currentFloor, options.spawnGrass);
 
   return p.kickMode;

@@ -1536,7 +1536,7 @@ initNetwork();
 let jumpKeyPressed = false;
 let lastWPressTime = 0;
 let isJetpackActive = false;
-const DOUBLE_TAP_WINDOW_MS = 280;
+const DOUBLE_TAP_WINDOW_MS = 300;
 
 window.addEventListener('keydown', (e) => {
   // Tryb wyboru klasy przed rozpoczęciem gry
@@ -1606,6 +1606,12 @@ window.addEventListener('keydown', (e) => {
     }
     lastSPressTime = now;
     keys.down = true;
+
+    // Ślizg wyzwalany klawiszem w dół / kucania wyłącznie w pełnym biegu
+    const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+    if (player.onGround && Math.abs(player.vx) > minSpeed) {
+      playerSlide(spawnGrass, GROUND_Y, player);
+    }
   }
 
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !jumpKeyPressed) {
@@ -1617,29 +1623,33 @@ window.addEventListener('keydown', (e) => {
     player.isCrouching = false;
     player.crouchToggled = false;
 
-    const now = performance.now();
-    if (jetpackAirborneSession && (player.jetFuel || 0) > 5) {
-      isJetpackActive = true;
-    } else if (now - lastWPressTime < DOUBLE_TAP_WINDOW_MS && (player.jetFuel || 0) > 5) {
-      isJetpackActive = true;
-      jetpackAirborneSession = true;
-      leftStick.jetpackAirborneSession = true;
-    }
-    lastWPressTime = now;
+    const now = Date.now();
+    const timeSinceLastPress = now - lastWPressTime;
+    const isDoubleTap = (timeSinceLastPress < DOUBLE_TAP_WINDOW_MS);
 
-    if (!player.isJumping && !player.isSliding && !player.isIntro) {
-      const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-      player.vy = -jumpForce;
-      player.isJumping = true;
-      player.onGround = false;
-      player.isCrouching = false;
-      player.isProne = false;
-      player.crouchToggled = false;
-      player.airVx = player.vx;
-      if (spawnGrass && player.groundY) {
-        spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+    if (isDoubleTap && (player.jetFuel || 0) > 0) {
+      // Podwójne wciśnięcie W (<300ms): aktywacja stanu jetpacka
+      isJetpackActive = true;
+      player.isJetpacking = true;
+      jetpackAirborneSession = true;
+      if (leftStick) leftStick.jetpackAirborneSession = true;
+    } else {
+      isJetpackActive = false;
+      player.isJetpacking = false;
+
+      // Pojedyncze wciśnięcie W: odpowiada WYŁĄCZNIE za normalny skok z podłoża
+      if (!player.isJumping && !player.isSliding && !player.isIntro) {
+        const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+        player.vy = -jumpForce;
+        player.isJumping = true;
+        player.onGround = false;
+        player.airVx = player.vx;
+        if (spawnGrass && player.groundY) {
+          spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+        }
       }
     }
+    lastWPressTime = now;
   }
   if (e.code === 'Space' && !keys.space) {
     keys.space = true;
@@ -1722,6 +1732,7 @@ window.addEventListener('keyup', (e) => {
     jumpKeyPressed = false;
     keys.up = false;
     isJetpackActive = false;
+    player.isJetpacking = false;
   }
   if (e.code === 'Space') {
     keys.space = false;
@@ -2037,9 +2048,9 @@ function update() {
     }
   }
 
-  // SILNIK JETPACKA (aktywacja wyłącznie dedykowanym klawiszem w locie, całkowicie odłączony od PPM)
-  const isAirborne = player.isJumping || (player.groundY && player.y < player.groundY - player.h - 6);
-  const isFlightActive = (isJetpackActive || (keys.up && isAirborne)) && !player.isDead && player.jetFuel > 0;
+  // SILNIK JETPACKA (aktywacja wyłącznie po podwójnym wciśnięciu 'W', trzymanie 'W' podtrzymuje lot)
+  const isTouchFlight = !!(leftStick && leftStick.isJetpacking);
+  const isFlightActive = ((isJetpackActive && keys.up) || isTouchFlight) && !player.isDead && player.jetFuel > 0;
   if (isFlightActive) {
     player.isJetpacking = true;
     player.jetFuel = Math.max(0, player.jetFuel - 0.95);

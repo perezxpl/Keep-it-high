@@ -314,15 +314,20 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
     const footReach = playerObj.thighLen + playerObj.shinLen + 2;
     const currentAngle = playerObj.kickState === 'SWING' ? playerObj.kickAngle : 0.6;
 
-    const footX = playerObj.kickingFootX !== undefined ? playerObj.kickingFootX : (hipX + Math.sin(currentAngle) * footReach * playerObj.facing);
-    const footY = playerObj.kickingFootY !== undefined ? playerObj.kickingFootY : (hipY + Math.cos(currentAngle) * footReach);
+    const footX = (playerObj.kickingFootX !== undefined && playerObj.kickingFootX !== 0)
+      ? playerObj.kickingFootX
+      : (hipX + Math.sin(currentAngle) * footReach * playerObj.facing);
+    const footY = (playerObj.kickingFootY !== undefined && playerObj.kickingFootY !== 0)
+      ? playerObj.kickingFootY
+      : (hipY + Math.cos(currentAngle) * footReach);
 
-    const hit = distToSegment(ball.x, ball.y, hipX, hipY, footX, footY);
-    const batThickness = playerObj.kickMode === 'SPIN_VOLLEY' ? 24 : 18;
+    const footRadius = 15;
+    const ballRadius = ball.colRadius || ball.radius || 12;
+    const distBall = Math.hypot(ball.x - footX, ball.y - footY);
 
-    if (hit.dist < ball.colRadius + batThickness) {
+    if (distBall <= (footRadius + ballRadius)) {
       launchBallKinetic(playerObj, spawnGrass, undefined, playerObj.kickMode === 'SPIN_VOLLEY');
-      ball.y = Math.min(ball.y, footY - ball.colRadius - 2);
+      ball.y = Math.min(ball.y, footY - ballRadius - 2);
     }
   } else if (!isKicking) {
     // 3. Pasywny kontakt z ciałem / nogami zawodnika (np. amortyzacja piłki przez Libero / Sweeper)

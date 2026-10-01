@@ -58,3 +58,50 @@ export function triggerMouseKick(player, mouseScreenX, mouseScreenY, camera, W, 
     power: extraOptions.power || 0.70
   });
 }
+
+// =========================================================================
+// OBSŁUGA STEROWANIA JETPACKIEM: DOUBLE-TAP 'W' (250-300 MS)
+// - Pojedyncze wciśnięcie 'W': normalny skok z podłoża
+// - Podwójne wciśnięcie 'W': aktywacja jetpacka (isJetpacking = true)
+// - Trzymanie 'W' po double-tap: podtrzymanie lotu dopóki klawisz jest wciśnięty i jest paliwo
+// - Keyup 'W': natychmiastowe zresetowanie stanu lotu
+// =========================================================================
+export const DOUBLE_TAP_THRESHOLD = 300; // ms (okno czasowe double-tap)
+
+export const jetpackState = {
+  lastWPressTime: 0,
+  isJetpacking: false,
+  doubleTapThreshold: DOUBLE_TAP_THRESHOLD
+};
+
+/**
+ * Obsługa zdarzenia keydown dla 'W' / skoku
+ * @param {Object} player - Obiekt gracza
+ * @param {number} [now] - Opcjonalny timestamp (domyślnie Date.now())
+ * @returns {boolean} Czy jetpack został aktywowany (double-tap)
+ */
+export function handleWKeyDown(player, now = Date.now()) {
+  const timeSinceLast = now - jetpackState.lastWPressTime;
+  const isDoubleTap = (timeSinceLast < jetpackState.doubleTapThreshold);
+
+  if (isDoubleTap && (player?.jetFuel || 0) > 0) {
+    jetpackState.isJetpacking = true;
+    if (player) player.isJetpacking = true;
+  } else {
+    jetpackState.isJetpacking = false;
+    if (player) player.isJetpacking = false;
+  }
+
+  jetpackState.lastWPressTime = now;
+  return jetpackState.isJetpacking;
+}
+
+/**
+ * Obsługa zdarzenia keyup dla 'W'
+ * @param {Object} player - Obiekt gracza
+ */
+export function handleWKeyUp(player) {
+  jetpackState.isJetpacking = false;
+  if (player) player.isJetpacking = false;
+}
+
