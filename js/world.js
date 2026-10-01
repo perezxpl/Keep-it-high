@@ -1840,19 +1840,20 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
   }
 
-  // 3. DYNAMICZNY PRZYCISK: WŚLIZG / LEŻENIE (CONTEXTUAL PRONE BUTTON)
+  // 3. DYNAMICZNY PRZYCISK: WŚLIZG / LEŻENIE (DYNAMIC CONTEXTUAL BUTTON)
   if (btnCluster && btnCluster.slide) {
-    const glassBg = 'rgba(15, 23, 42, 0.55)';
     const slide = btnCluster.slide;
     const slideR = slide.r || 30;
-    const isProneMode = (slide.mode === 'PRONE' || player.isProne || (leftStick && leftStick.downIntent));
+    const isProneMode = (slide.mode === 'PRONE' || player.isCrouching || player.isProne);
     const isProneActive = !!player.isProne;
-    const isSlideReady = !isProneMode && Math.abs(player.vx) >= (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 0.82;
-    const isSlideActive = !isProneMode && (player.isSliding || slide.active);
+    const isSlideMode = (slide.mode === 'SLIDE' || (player.gaitMode === 'SPRINT' && (player.sprintDuration || 0) >= 60 && (player.slideCooldown || 0) <= 0));
+    const isSlideActive = player.isSliding || slide.active;
 
-    let btnBorder = 'rgba(255, 255, 255, 0.15)';
-    let btnBg = glassBg;
-    let btnAccent = 'rgba(255, 255, 255, 0.4)';
+    let btnBorder = 'rgba(255, 255, 255, 0.10)';
+    let btnBg = 'rgba(15, 23, 42, 0.45)';
+    let btnAccent = 'rgba(148, 163, 184, 0.35)';
+    let labelColor = 'rgba(148, 163, 184, 0.40)';
+    let labelText = 'WŚLIZG';
 
     if (isProneMode) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
@@ -1860,10 +1861,14 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
         btnBorder = '#10b981';
         btnBg = `rgba(16, 185, 129, ${0.22 + pulse * 0.20})`;
         btnAccent = '#10b981';
+        labelColor = '#10b981';
+        labelText = 'WSTAŃ';
       } else {
         btnBorder = '#f59e0b';
-        btnBg = `rgba(245, 158, 11, ${0.18 + pulse * 0.18})`;
+        btnBg = `rgba(245, 158, 11, ${0.20 + pulse * 0.20})`;
         btnAccent = '#f59e0b';
+        labelColor = '#f59e0b';
+        labelText = 'LEŻENIE';
       }
 
       ctx.beginPath();
@@ -1871,17 +1876,26 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.strokeStyle = isProneActive ? `rgba(16, 185, 129, ${(1 - pulse) * 0.65})` : `rgba(245, 158, 11, ${(1 - pulse) * 0.65})`;
       ctx.lineWidth = 2.0;
       ctx.stroke();
-    } else if (isSlideReady || isSlideActive) {
+    } else if (isSlideMode || isSlideActive) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
       btnBorder = '#10b981';
-      btnBg = `rgba(16, 185, 129, ${0.18 + pulse * 0.22})`;
+      btnBg = `rgba(16, 185, 129, ${0.20 + pulse * 0.22})`;
       btnAccent = '#10b981';
+      labelColor = '#10b981';
+      labelText = 'WŚLIZG';
 
       ctx.beginPath();
       ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
       ctx.lineWidth = 2.0;
       ctx.stroke();
+    } else {
+      // W pozostałych stanach: przycisk jest nieaktywny / wyszarzony
+      btnBorder = 'rgba(255, 255, 255, 0.08)';
+      btnBg = 'rgba(15, 23, 42, 0.35)';
+      btnAccent = 'rgba(100, 116, 139, 0.30)';
+      labelColor = 'rgba(100, 116, 139, 0.35)';
+      labelText = 'WŚLIZG';
     }
 
     ctx.beginPath();
@@ -1889,7 +1903,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = btnBg;
     ctx.fill();
     ctx.strokeStyle = btnBorder;
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = (isProneMode || isSlideMode) ? 1.8 : 1.0;
     ctx.stroke();
 
     ctx.save();
@@ -1908,7 +1922,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       // Głowa leżącej postaci
       ctx.beginPath();
       ctx.arc(pFacing * 11, -3, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = isProneActive ? '#10b981' : '#ffffff';
+      ctx.fillStyle = isProneActive ? '#10b981' : (btnAccent === '#f59e0b' ? '#ffffff' : btnAccent);
       ctx.fill();
 
       // Nogi płasko w tył
@@ -1919,10 +1933,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.lineTo(-pFacing * 16, 3);
       ctx.stroke();
 
-      ctx.fillStyle = isProneActive ? '#10b981' : '#f59e0b';
+      ctx.fillStyle = labelColor;
       ctx.font = 'bold 8.5px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(player.isProne ? 'WSTAŃ' : 'LEŻENIE', 0, 16);
+      ctx.fillText(labelText, 0, 16);
     } else {
       // Ikona wślizgu
       ctx.beginPath();
@@ -1931,10 +1945,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.fillStyle = btnAccent;
       ctx.fill();
 
-      ctx.fillStyle = isSlideReady ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
+      ctx.fillStyle = labelColor;
       ctx.font = 'bold 8.5px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('WŚLIZG', 0, 16);
+      ctx.fillText(labelText, 0, 16);
     }
     ctx.restore();
   }
@@ -1943,80 +1957,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 }
 
 /**
- * Rysuje kompaktowy pasek życia (HP) bezpośrednio nad głową postaci.
- * Prawidłowo wylicza współrzędne Y i X z uwzględnieniem szkieletu/IK,
- * wysokości gracza i dynamicznych zmian pozycji (np. wślizg / kucanie / skok).
+ * Paski zdrowia i paliwa są renderowane bezpośrednio nad głową każdej postaci w js/player/renderer.js
  */
 export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
-  if (!entity || entity.isDead) return;
-
-  const barW = 38;
-  const barH = 4.5;
-  const pHeight = entity.height || entity.h || 70;
-  const pWidth = entity.width || entity.w || 24;
-
-  // 1. Prawidłowe wyznaczenie współrzędnych pionowych (Y) nad czubkiem głowy:
-  let barY;
-  if (entity.head && typeof entity.head.y === 'number') {
-    // Jeśli gracz używa szkieletu / IK:
-    // const headY = player.head ? player.head.y : (player.y - player.height / 2);
-    // const barY = headY - 18; // ok. 15-20px nad czubkiem głowy
-    const headY = entity.head.y;
-    barY = headY - 18 + yOffset;
-  } else if (entity.origin === 'bottom') {
-    // Jeśli pozycja entity.y to stopy (bottom origin):
-    // const barY = player.y - player.height - 15;
-    barY = entity.y - pHeight - 15 + yOffset;
-  } else if (entity.origin === 'center') {
-    // Jeśli pozycja entity.y to środek (center origin):
-    // const barY = player.y - (player.height / 2) - 15;
-    barY = entity.y - (pHeight / 2) - 15 + yOffset;
-  } else if (entity.origin === 'top') {
-    // Jeśli pozycja entity.y to góra (top origin):
-    // const barY = player.y - 15;
-    barY = entity.y - 15 + yOffset;
-  } else {
-    // Dynamiczne dopasowanie przy kucaniu / ślizgu (SLIDE) lub domyślny fallback IK:
-    const isSlidingOrProne = entity.isProne || entity.isSliding || entity.state === 'SLIDE';
-    const headY = isSlidingOrProne
-      ? (entity.currentGroundY ? entity.currentGroundY - 8 : entity.y + pHeight - 8)
-      : (entity.head ? entity.head.y : (entity.y - (pHeight / 2)));
-    barY = headY - 18 + yOffset;
-  }
-
-  // 2. Wyśrodkowanie w poziomie (X) względem szerokości gracza / głowy:
-  // const barX = player.x - (barWidth / 2);
-  let barX;
-  if (entity.head && typeof entity.head.x === 'number') {
-    barX = entity.head.x - (barW / 2);
-  } else if (entity.origin === 'center') {
-    barX = entity.x - (barW / 2);
-  } else {
-    // entity.x to lewa krawędź hitboxa gracza o szerokości pWidth
-    const centerX = entity.x + (pWidth / 2);
-    barX = centerX - (barW / 2);
-  }
-
-  const maxHp = entity.maxHp || 100;
-  const curHp = Math.max(0, entity.hp ?? 100);
-  const ratio = Math.max(0, Math.min(1, curHp / maxHp));
-
-  ctx.save();
-  // Ciemne tło podkładowe
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
-
-  // Zielone wypełnienie (#22c55e) proporcjonalne do hp / maxHp, bez zbędnych napisów
-  if (ratio > 0) {
-    ctx.fillStyle = '#22c55e';
-    ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 3;
-    ctx.fillRect(barX, barY, barW * ratio, barH);
-  }
-  ctx.restore();
+  // Zastąpione przez minimalistyczne paski HP i JET nad głową w drawPlayer
 }
 
 export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
@@ -2215,28 +2159,28 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   }
 
   // 4. Ikonka / sylwetka broni w centrum kafelka
-  const iconScale = isMobile ? 0.82 : 0.95;
+  const iconScale = 0.85;
   ctx.save();
-  ctx.translate(tileX + tileSize / 2, tileY + tileSize / 2);
+  ctx.translate(tileX + tileSize / 2, tileY + tileSize / 2 - 2);
   ctx.scale(iconScale, iconScale);
   drawWeaponSilhouette(ctx, btn.id, 0, 0, isActive);
   ctx.restore();
 
-  // 5. Mały, dyskretny licznik amunicji pod ikoną
+  // 5. Mały, dyskretny licznik amunicji na dolnej krawędzi kafelka
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  const ammoY = tileY + tileSize + (isMobile ? 3 : 4);
+  ctx.textBaseline = 'bottom';
+  const ammoY = tileY + tileSize - 2;
 
   if (bIsReloading) {
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.font = 'bold 7.5px monospace';
     ctx.fillStyle = accentCol;
     ctx.fillText('RELOAD', tileX + tileSize / 2, ammoY);
   } else if (bIsNoAmmo) {
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.font = 'bold 7.5px monospace';
     ctx.fillStyle = '#ef4444';
     ctx.fillText('EMPTY', tileX + tileSize / 2, ammoY);
   } else {
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.font = 'bold 7.5px monospace';
     ctx.fillStyle = isActive ? '#f8fafc' : '#94a3b8';
     ctx.fillText(`${bCurrentAmmo}/${bReserveAmmo}`, tileX + tileSize / 2, ammoY);
   }
@@ -2304,35 +2248,24 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.restore();
 
   // =========================================================================
-  // 2. KAFELKI BRONI (MINIMALISTYCZNE KWADRATOWE IKONY)
+  // 2. KAFELKI BRONI (KOMPAKTOWE SLOTY 38x38 PX W LEWYM DOLNYM ROGU EKRANU)
   // =========================================================================
-  // Statyczny pasek HP oraz wskaźnik JET zostały całkowicie usunięte z HUD.
-  // Mobilne: prawy górny róg (nie zasłania drążków ani środka pola walki).
-  // Desktop: lewy dolny róg.
-  const tileSize = isMobile ? 32 : 36;
-  const tileGap = isMobile ? 6 : 8;
-  const ammoExtraH = isMobile ? 12 : 14;
-
-  let panelX, panelY;
-  if (isMobile) {
-    panelX = W - (tileSize * 2 + tileGap + 16);
-    panelY = 14;
-  } else {
-    panelX = 20;
-    panelY = H - tileSize - 26;
-  }
+  const slotSize = 38;
+  const slotGap = 8;
+  const panelX = 14;
+  const panelY = H - slotSize - 14;
 
   const curWepId = player.currentWeapon?.id || 'AK47';
 
   weaponButtons[0].x = panelX;
   weaponButtons[0].y = panelY;
-  weaponButtons[0].w = tileSize;
-  weaponButtons[0].h = tileSize + ammoExtraH;
+  weaponButtons[0].w = slotSize;
+  weaponButtons[0].h = slotSize;
 
-  weaponButtons[1].x = panelX + tileSize + tileGap;
+  weaponButtons[1].x = panelX + slotSize + slotGap;
   weaponButtons[1].y = panelY;
-  weaponButtons[1].w = tileSize;
-  weaponButtons[1].h = tileSize + ammoExtraH;
+  weaponButtons[1].w = slotSize;
+  weaponButtons[1].h = slotSize;
 
   for (const btn of weaponButtons) {
     const isSelected = (curWepId === btn.id);

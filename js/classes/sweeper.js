@@ -11,9 +11,9 @@ export const SweeperClass = {
 
   // 1. Statystyki fizyczne i ruchowe
   stats: {
-    walkMax: 2.1,
-    jogMax: 4.0,
-    sprintMax: 6.1,
+    walkMax: 2.0,
+    jogMax: 3.8,
+    sprintMax: 6.2,
     accel: 0.35,
     decel: 0.84,
     slideDecel: 0.974,

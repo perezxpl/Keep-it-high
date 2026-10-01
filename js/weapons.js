@@ -324,7 +324,7 @@ export function cancelReload(shooter, weapon = shooter?.currentWeapon) {
  * Wystrzał z broni z obsługą amunicji i automatycznego przeładowania
  */
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
-  if (!shooter || !weapon || shooter.isDead) return false;
+  if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return false;
   if (shooter.shootCooldown > 0 && !shooter.isRemote) return false;
 
   // Weryfikacja amunicji dla gracza lokalnego

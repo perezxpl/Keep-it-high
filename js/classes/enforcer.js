@@ -20,9 +20,9 @@ export const EnforcerClass = {
 
   // 2. FIZYKA I KINETYKA CIĘŻKIEJ MASY
   stats: {
-    walkMax: 1.7,
-    jogMax: 3.5,
-    sprintMax: 5.9,
+    walkMax: 1.8,
+    jogMax: 3.4,
+    sprintMax: 5.6,
     accel: 0.15,            // Duża bezwładność przy ruszaniu
     decel: 0.88,            // Trudno go wyhamować
     slideDecel: 0.989,      // Niezwykle długi wślizg taranujący

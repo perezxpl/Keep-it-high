@@ -4,7 +4,6 @@ import {
   initCanvas, resize, updateCamera, updateDistance,
   spawnGrass, updateParticles, dist,
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
-  drawEntityHealthBar,
   clearDesertSandstorm, clearWinterBlizzard,
   isTouchDevice, setTouchDevice,
   jetpackParticles, spawnJetpackSparks, updateJetpackParticles, drawJetpackParticles,
@@ -147,12 +146,15 @@ canvas.addEventListener('touchstart', (e) => {
 
       if (leftStick.jetpackAirborneSession) {
         leftStick.isJetpacking = true;
-      } else if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
+      } else if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0 && player.isJumping && (player.jetFuel || 0) > 0) {
+        // Ponowne pchnięcie/dotknięcie w górę w locie (w oknie 280ms): aktywacja jetpacka
         leftStick.isJetpacking = true;
         leftStick.jetpackAirborneSession = true;
         jetpackAirborneSession = true;
+        isJetpackActive = true;
         leftStick.waitingForJetpackTap = false;
         leftStick.jetpackWindowTimer = 0;
+        leftStick.canDoublePushJetpack = false;
       } else {
         leftStick.isJetpacking = false;
         leftStick.waitingForJetpackTap = false;
@@ -173,7 +175,12 @@ canvas.addEventListener('touchstart', (e) => {
         // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisku wślizgu/leżenia
         if (distToSlide < btnCluster.slide.r + 28) continue;
 
-        if (rightStick.waitingForSecondTap && rightStick.windowTimer > 0) {
+        const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
+        const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
+        const curWep = player.currentWeapon || WEAPONS.AK47;
+
+        if (isGhostActive && distToGhost < (rightStick.maxRadius || 65) + 35) {
+          // Dotknięcie ducha drążka w oknie 300 ms
           rightStick.active = true;
           rightStick.id = t.identifier;
           rightStick.touchStartTime = performance.now();
@@ -181,8 +188,6 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.startY = t.clientY;
           rightStick.movedDist = 0;
           rightStick.isShooting = true;
-          rightStick.waitingForSecondTap = false;
-          rightStick.windowTimer = 0;
           rightStick.lingerAlpha = 1.0;
           rightStick.curX = t.clientX;
           rightStick.curY = t.clientY;
@@ -201,9 +206,21 @@ canvas.addEventListener('touchstart', (e) => {
             player.aimOffsetY = rightStick.axisY * aimDist;
           }
 
-          const curWep = player.currentWeapon || WEAPONS.AK47;
-          if (player.shootCooldown <= 0) {
-            triggerPlayerShoot(player, curWep);
+          if (curWep.id === 'SHOTGUN') {
+            // SHOTGUN (Strzelba): Dotknięcie ducha oddaje pojedynczy strzał
+            rightStick.shotgunFiredThisTap = true;
+            rightStick.waitingForSecondTap = false;
+            rightStick.windowTimer = 0;
+            if (player.shootCooldown <= 0) {
+              triggerPlayerShoot(player, curWep);
+            }
+          } else {
+            // AK-47 (Automat): Dotknięcie i przytrzymanie prowadzi ogień ciągły tak długo, jak palec spoczywa na ekranie
+            rightStick.waitingForSecondTap = false;
+            rightStick.windowTimer = 0;
+            if (player.shootCooldown <= 0) {
+              triggerPlayerShoot(player, curWep);
+            }
           }
         } else {
           rightStick.active = true;
@@ -224,6 +241,7 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.windowTimer = 0;
           rightStick.lingerAlpha = 1.0;
           rightStick.gestureState = 'IDLE';
+          rightStick.shotgunFiredThisTap = false;
 
           player.isAiming = true;
           const defaultAimDist = 180;
@@ -261,32 +279,62 @@ canvas.addEventListener('touchmove', (e) => {
       // Aktualizacja kontekstu przycisku wślizg / leżenie
       updateMobileControlStates(player, leftStick, btnCluster);
 
-      // 1. Skok przy mocnym wychyleniu lewego drążka w górę
-      if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro && !leftStick.jetpackAirborneSession) {
-        const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-        player.vy = -jumpForce;
-        player.isJumping = true;
-        player.isCrouching = false;
-        player.airVx = player.vx;
-        leftStick.jumpTriggered = true;
-        if (spawnGrass && player.groundY) {
-          spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+      // 1. Pchnięcie w górę (axisY < -0.55): natychmiastowy skok
+      if (leftStick.axisY < -0.55) {
+        if (!leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro && !leftStick.jetpackAirborneSession) {
+          const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+          player.vy = -jumpForce;
+          player.isJumping = true;
+          player.isCrouching = false;
+          player.isProne = false;
+          player.crouchToggled = false;
+          player.airVx = player.vx;
+          leftStick.jumpTriggered = true;
+          // Okno 280ms na ponowne pchnięcie w locie do aktywacji jetpacka:
+          leftStick.waitingForJetpackTap = true;
+          leftStick.jetpackWindowTimer = 280;
+          leftStick.canDoublePushJetpack = false;
+          if (spawnGrass && player.groundY) {
+            spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+          }
+        } else if (player.isJumping && leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0 && leftStick.canDoublePushJetpack && (player.jetFuel || 0) > 0) {
+          // Ponowne pchnięcie w górę w locie (w oknie 280ms): aktywacja jetpacka
+          leftStick.isJetpacking = true;
+          leftStick.jetpackAirborneSession = true;
+          jetpackAirborneSession = true;
+          isJetpackActive = true;
+          leftStick.waitingForJetpackTap = false;
+          leftStick.jetpackWindowTimer = 0;
+          leftStick.canDoublePushJetpack = false;
         }
       } else if (leftStick.axisY > -0.25) {
         leftStick.jumpTriggered = false;
+        if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
+          leftStick.canDoublePushJetpack = true;
+        }
       }
 
-      // 2. Ciąg jetpacka przy wychyleniu w górę
+      // 2. W locie jetpackiem: sterowanie lewo/prawo działa tylko przy utrzymaniu gałki uniesionej (axisY < -0.15).
+      // Pociągnięcie w dół natychmiast odcina ciąg silników.
       if (leftStick.jetpackAirborneSession || leftStick.isJetpacking) {
-        if (leftStick.axisY < -0.15 && (player.jetFuel || 0) > 0) {
+        if (leftStick.axisY > 0.15) {
+          // Pociągnięcie w dół natychmiast odcina ciąg silników
+          leftStick.isJetpacking = false;
+          isJetpackActive = false;
+          player.isJetpacking = false;
+        } else if (leftStick.axisY < -0.15 && (player.jetFuel || 0) > 0) {
           isJetpackActive = true;
           leftStick.isJetpacking = true;
           leftStick.jetpackAirborneSession = true;
           jetpackAirborneSession = true;
         } else {
           isJetpackActive = false;
+          leftStick.isJetpacking = false;
         }
       }
+
+      // Podwójne szybkie szarpnięcie w dół (Double flick w oknie 80-350ms): zeskakiwanie z platformy
+      updateDoubleFlickDetection(leftStick.axisY);
     }
 
     if (rightStick.active && t.identifier === rightStick.id) {
@@ -320,18 +368,10 @@ canvas.addEventListener('touchmove', (e) => {
           player.facing = nx >= 0 ? 1 : -1;
         }
 
-        // Sprawdzenie zasięgu do piłki:
-        const canKickBall = isBallInKickReach(player, ball);
-        if (canKickBall && power > 0.15) {
-          player.isCharging = true;
-          player.isStickCharging = true;
-          player.chargePower = Math.min(1.0, power);
-        } else if (!canKickBall) {
-          // Piłka poza zasięgiem nogi – wyłącz tryb ładowania wykopu
-          player.isCharging = false;
-          player.isStickCharging = false;
-          player.chargePower = 0;
-        }
+        // Wychylenie prawej gałki ładuje siłę wykopu:
+        player.isCharging = true;
+        player.isStickCharging = true;
+        player.chargePower = Math.min(1.0, power);
       } else {
         rightStick.axisX = 0;
         rightStick.axisY = 0;
@@ -358,16 +398,17 @@ function endTouch(e) {
       isJetpackActive = false;
       leftStick.isJetpacking = false;
 
-      if (!leftStick.jetpackAirborneSession && hadUpwardMotion) {
+      if (!leftStick.jetpackAirborneSession && hadUpwardMotion && player.isJumping) {
         leftStick.waitingForJetpackTap = true;
-        leftStick.jetpackWindowTimer = 300;
+        leftStick.jetpackWindowTimer = 280;
+        leftStick.canDoublePushJetpack = true;
       }
 
-      // Jeśli gracz wszedł w leżenie poprzez przytrzymanie drążka w dół, puszczenie go stawia postać
-      if (player.isProne && player.enteredProneViaStickDown) {
-        player.isProne = false;
-        player.enteredProneViaStickDown = false;
-      }
+      // Powrót do pionu: puszczenie gałki stawia postać na równe nogi (wyłącza kucanie i leżenie)
+      player.isCrouching = false;
+      player.isProne = false;
+      player.crouchToggled = false;
+      player.enteredProneViaStickDown = false;
 
       leftStick.axisX = 0;
       leftStick.axisY = 0;
@@ -384,30 +425,41 @@ function endTouch(e) {
       rightStick.active = false;
       rightStick.id = null;
 
-      const touchDuration = performance.now() - (rightStick.touchStartTime || 0);
-      const movedDist = rightStick.movedDist || 0;
       const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      const isFlickOrTap = checkRightStickFlickOrTap(rightStick, touchDuration, movedDist);
       const inKickReach = isBallInKickReach(player, ball);
+      const meleeTarget = findMeleeTarget(player, meleeTargets);
+      const hasMeleeTarget = !!meleeTarget;
+      const isChargedKick = (player.chargePower >= 0.95);
+      const curWep = player.currentWeapon || WEAPONS.AK47;
 
       if (rightStick.isShooting) {
-        // Zakończenie serii strzałów broni
+        // Zakończenie próby strzału
+        rightStick.isShooting = false;
+        player.isShooting = false;
+        if (curWep.id === 'SHOTGUN') {
+          // SHOTGUN (Strzelba): Aby oddać kolejny strzał, gracz musi oderwać palec i ponownie dotknąć drążka w ciągu ODNOWIONEGO okna 300 ms (cykl pompki)
+          rightStick.waitingForSecondTap = true;
+          rightStick.windowTimer = 300;
+          rightStick.lingerAlpha = 0.55;
+          rightStick.shotgunFiredThisTap = false;
+        } else {
+          // AK-47 (Automat): zwolnienie palca usuwa ducha
+          rightStick.waitingForSecondTap = false;
+          rightStick.windowTimer = 0;
+          rightStick.lingerAlpha = 0;
+        }
+      } else if (inKickReach || (isChargedKick && hasMeleeTarget)) {
+        // WARIANT A (Wykop lub Spartan Kick): Jeśli w zasięgu stóp (<= 75 px) jest piłka LUB stoi wróg przy pełnym naładowaniu (chargePower >= 0.95):
+        // Wykonaj wykop (executeReleaseKick). Duch drążka się NIE pojawia.
+        executeReleaseKick(ball, player, 0, meleeTargets);
         rightStick.waitingForSecondTap = false;
         rightStick.windowTimer = 0;
-      } else if (isFlickOrTap || inKickReach) {
-        // Kliknięcie / tap w prawy drążek lub szybki flick wyzwala natychmiastowe kopnięcie (Right Stick Kick)
-        triggerRightStickKick(player, rightStick, {
-          ball,
-          targets: meleeTargets,
-          obstacles: customObstacles,
-          spawnGrass
-        });
-        rightStick.waitingForSecondTap = false;
-        rightStick.windowTimer = 0;
+        rightStick.lingerAlpha = 0;
       } else {
-        // Piłka poza zasięgiem i brak flicku – zachowaj okno podwójnego kliknięcia do strzału
+        // WARIANT B (Brak celu w zwarciu): Postać NIE kopie w powietrze. W miejscu puszczenia na 300 ms aktywuje się półprzezroczysty duch drążka
         rightStick.waitingForSecondTap = true;
         rightStick.windowTimer = 300;
+        rightStick.lingerAlpha = 0.55;
       }
 
       player.isCharging = false;
@@ -417,13 +469,7 @@ function endTouch(e) {
       rightStick.axisY = 0;
       rightStick.power = 0;
       rightStick.movedDist = 0;
-
-      rightStick.isShooting = false;
-      player.isShooting = false;
       player.isAiming = false;
-
-      rightStick.lingerAlpha = 1.0;
-      rightStick.gestureState = 'IDLE';
     }
   }
 }
@@ -1820,17 +1866,11 @@ canvas.addEventListener('mousedown', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = true;
-    const worldMouseX = camera.x + (e.clientX - W * 0.40) / camera.zoom;
-    const worldMouseY = camera.y + (e.clientY - H * 0.68) / camera.zoom;
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
     const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-    performKick(player, {
-      aimX: worldMouseX,
-      aimY: worldMouseY,
-      ball: ball,
-      targets: meleeTargets,
-      obstacles: customObstacles,
-      spawnGrass: spawnGrass
-    });
+    startKickCharge(player, meleeTargets);
   }
 });
 
@@ -1845,6 +1885,8 @@ window.addEventListener('mouseup', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = false;
+    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+    executeReleaseKick(ball, player, 0, meleeTargets);
   }
 });
 
@@ -2001,7 +2043,7 @@ function update() {
     }
   }
 
-  // OBSŁUGA STRZELANIA GRACZA
+  // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
   const curWep = player.currentWeapon || WEAPONS.AK47;
   const isTouchFiring = rightStick.active && rightStick.isShooting && !player.isDead;
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
@@ -2012,23 +2054,38 @@ function update() {
     player.isShooting = isTouchFiring || (player.shootPoseTimer > 0);
   }
 
+  const curAmmoObj = player.ammo?.[curWep.id];
+  const isOutOfAmmo = curAmmoObj && curAmmoObj.currentAmmo <= 0;
+  const isReloading = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
+
   if (isTouchFiring) {
-    if (player.shootCooldown <= 0) {
-      triggerPlayerShoot(player, curWep);
+    // Automatyczne przeładowanie w boju, gdy amunicja spadnie do 0
+    if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
+      reloadWeapon(player, curWep);
+    } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
+      if (curWep.auto) {
+        triggerPlayerShoot(player, curWep);
+      } else if (!rightStick.shotgunFiredThisTap) {
+        triggerPlayerShoot(player, curWep);
+        rightStick.shotgunFiredThisTap = true;
+      }
     }
-  } else if (mouseState.lmbDown && !player.isDead && player.shootCooldown <= 0) {
-    if (curWep.auto) {
-      triggerPlayerShoot(player, curWep);
-    } else {
-      if (!mouseState.semiFired) {
+  } else if (mouseState.lmbDown && !player.isDead) {
+    if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
+      reloadWeapon(player, curWep);
+    } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
+      if (curWep.auto) {
+        triggerPlayerShoot(player, curWep);
+      } else if (!mouseState.semiFired) {
         triggerPlayerShoot(player, curWep);
         mouseState.semiFired = true;
       }
     }
   }
 
-  // SILNIK JETPACKA (aktywacja wyłącznie po podwójnym wciśnięciu 'W', trzymanie 'W' podtrzymuje lot)
-  const isTouchFlight = !!(leftStick && leftStick.isJetpacking);
+  // SILNIK JETPACKA (aktywacja po podwójnym pchnięciu 'W' / drążka, podtrzymanie tylko przy uniesionej gałce axisY < -0.15)
+  const isStickRaised = !!(leftStick && leftStick.axisY < -0.15);
+  const isTouchFlight = !!(leftStick && leftStick.isJetpacking && isStickRaised);
   const isFlightActive = ((isJetpackActive && keys.up) || isTouchFlight) && !player.isDead && player.jetFuel > 0;
   if (isFlightActive) {
     player.isJetpacking = true;
@@ -2038,7 +2095,8 @@ function update() {
     let inputAxisX = 0;
     if (keys.left) inputAxisX -= 1;
     if (keys.right) inputAxisX += 1;
-    if (leftStick && leftStick.active && Math.abs(leftStick.axisX) > 0.05) {
+    // W locie jetpackiem: sterowanie lewo/prawo działa tylko przy utrzymaniu gałki uniesionej (axisY < -0.15)
+    if (leftStick && leftStick.active && isStickRaised && Math.abs(leftStick.axisX) > 0.05) {
       inputAxisX = leftStick.axisX;
     }
 
@@ -2052,6 +2110,7 @@ function update() {
 
     player.isJumping = true;
     player.isCrouching = false;
+    player.isProne = false;
 
     // Precyzyjny punkt spawnu na wylocie dyszy jetpacka
     const nozzle = getJetpackNozzlePos(player);
@@ -2248,11 +2307,9 @@ function draw() {
   drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
   drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
-  drawEntityHealthBar(ctx, player);
 
   if (remotePlayer.active) {
     drawPlayer(ctx, GROUND_Y, remotePlayer);
-    drawEntityHealthBar(ctx, remotePlayer);
 
     ctx.save();
     ctx.font = 'bold 9px monospace';
@@ -2270,7 +2327,6 @@ function draw() {
 
   if (bot.active) {
     drawPlayer(ctx, GROUND_Y, bot);
-    drawEntityHealthBar(ctx, bot);
 
     ctx.save();
     ctx.font = 'bold 9px monospace';

@@ -1042,6 +1042,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     p.lastFootFrontX = rawFootFrontTargetX;
     p.lastFootFrontY = rawFootFrontTargetY;
     p.lastFootFrontAnkle = rawFootFrontAnkle;
+  } else if (p.staggerTimer > 0) {
+    // Sylwetka leci / leży na plecach (efekt ścięcia z nóg i lądowania na łopatkach):
+    rawFootFrontTargetX = hipX + (18 * p.facing);
+    rawFootFrontTargetY = hipY + 14;
+    rawFootFrontAnkle = -0.35 * p.facing;
+
+    rawFootBackTargetX = hipX + (10 * p.facing);
+    rawFootBackTargetY = hipY + 20;
+    rawFootBackAnkle = -0.25 * p.facing;
+
+    // Głowa i ramiona bezwładnie odrzucone wstecz
+    rawFrontSwing = -1.55;
+    rawFrontElbow = 0.25;
+    rawBackSwing = -1.45;
+    rawBackElbow = 0.20;
   } else if (p.kickMode === 'BACKFLIP') {
     const flip = getBackflipTargets(p.bicycleTimer, p.bicycleDuration, hipX, hipY, p.facing);
     rawFootFrontTargetX = flip.kicking.x;
@@ -1091,19 +1106,45 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawBackSwing = 0.45;
     rawBackElbow = 0.75;
   } else if (p.kickMode === 'SPARTAN') {
-    const targets = getSpartanKickTargets(p.spartanTimer || 0, p.spartanDuration || 18, hipX, hipY, p.facing, plantFloorY);
-    rawFootFrontTargetX = targets.kicking.x;
-    rawFootFrontTargetY = targets.kicking.y;
-    rawFootFrontAnkle = targets.kicking.ankle;
+    const targets = getSpartanKickTargets(p.spartanTimer || 0, p.spartanDuration || 22, hipX, hipY, p.facing, plantFloorY);
+    const isFrontKicking = (p.kickLeg === 'front');
 
-    rawFootBackTargetX = targets.support.x;
-    rawFootBackTargetY = targets.support.y;
-    rawFootBackAnkle = targets.support.ankle;
+    if (isFrontKicking) {
+      rawFootFrontTargetX = targets.kicking.x;
+      rawFootFrontTargetY = targets.kicking.y;
+      rawFootFrontAnkle = targets.kicking.ankle;
 
-    rawFrontSwing = 0.65;
-    rawFrontElbow = 1.15;
-    rawBackSwing = -0.55;
-    rawBackElbow = 0.85;
+      rawFootBackTargetX = targets.support.x;
+      rawFootBackTargetY = targets.support.y;
+      rawFootBackAnkle = targets.support.ankle;
+    } else {
+      rawFootBackTargetX = targets.kicking.x;
+      rawFootBackTargetY = targets.kicking.y;
+      rawFootBackAnkle = targets.kicking.ankle;
+
+      rawFootFrontTargetX = targets.support.x;
+      rawFootFrontTargetY = targets.support.y;
+      rawFootFrontAnkle = targets.support.ankle;
+    }
+
+    const t = p.spartanTimer || 0;
+    if (t <= 4) {
+      rawFrontSwing = -0.35;
+      rawFrontElbow = 1.10;
+      rawBackSwing = 0.40;
+      rawBackElbow = 0.80;
+    } else if (t <= 15) {
+      rawFrontSwing = -0.75;
+      rawFrontElbow = 0.50;
+      rawBackSwing = -0.80;
+      rawBackElbow = 0.60;
+    } else {
+      const w = Math.min(1.0, (t - 15) / 7);
+      rawFrontSwing = lerp(-0.75, 0.0, w);
+      rawFrontElbow = lerp(0.50, 0.35, w);
+      rawBackSwing = lerp(-0.80, 0.0, w);
+      rawBackElbow = lerp(0.60, 0.30, w);
+    }
   } else if (p.isProne) {
     const isCrawling = speed > 0.08;
     const crawlP = p.crawlPhase || 0;
@@ -1348,7 +1389,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
-  if (p.currentWeapon && !p.isDead && !isProneCrawling) {
+  if (p.currentWeapon && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0)) {
     const hold = getWeaponHoldTransform(p);
 
     const shoulderBaseX = hipX + (21 * Math.sin(p.pose?.torsoTilt || p.torsoTilt || 0));
@@ -1424,6 +1465,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.kickMode === 'SPARTAN') {
     footBlend = 0.75;
     armBlend = 0.55;
+  } else if (p.staggerTimer > 0) {
+    footBlend = 0.85;
+    armBlend = 0.85;
   } else if (p.isProne) {
     footBlend = 0.55;
     armBlend = 0.45;
@@ -1454,9 +1498,26 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.kickMode === 'BACKFLIP') {
     pose.torsoTilt = p.torsoTilt;
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
+  } else if (p.staggerTimer > 0) {
+    // Sylwetka leci/leży na plecach: tors odgięty do tyłu (-1.55 * facing), głowa i ramiona bezwładnie odrzucone wstecz
+    pose.torsoTilt = -1.55 * p.facing;
+    pose.headPitch = -0.45 * p.facing;
   } else if (p.kickMode === 'SPARTAN') {
-    pose.torsoTilt = -0.35 * p.facing;
-    pose.headPitch = 0.12 * p.facing;
+    const t = p.spartanTimer || 0;
+    if (t <= 4) {
+      // Faza 1: Chambering (klatki 0-4): korpus lekko pochylony ku celowi
+      pose.torsoTilt = 0.15 * p.facing;
+      pose.headPitch = 0.08 * p.facing;
+    } else if (t <= 15) {
+      // Fazy 2 i 3: Piston Thrust i Impact Hold (klatki 5-15): tors mocno w tył w geście zaparcia (-0.45 * facing)
+      pose.torsoTilt = -0.45 * p.facing;
+      pose.headPitch = 0.14 * p.facing;
+    } else {
+      // Faza 4: Recovery (klatki 16-22): płynny powrót do pionu
+      const w = Math.min(1.0, (t - 15) / 7);
+      pose.torsoTilt = lerp(-0.45, 0.0, w) * p.facing;
+      pose.headPitch = lerp(0.14, 0.0, w) * p.facing;
+    }
   } else if (p.isProne) {
     pose.torsoTilt = 1.48 * p.facing;
     pose.headPitch = -0.45 * p.facing;
@@ -1977,6 +2038,43 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.closePath();
     ctx.fill();
 
+    // DWA CIENKIE, MINIMALISTYCZNE PASKI (34 px x 3 px) BEZPOŚREDNIO NAD GŁOWĄ, TUŻ POD CHEVRONEM:
+    // Górny pasek: Zdrowie (zielony/czerwony)
+    // Dolny pasek: Jetpack (jasny cyjan #06b6d4)
+    // Zero tekstu, zero cyfr – czysta minimalistyczna geometria
+    const barW = 34;
+    const barH = 3;
+    const barX = headTopX - (barW / 2);
+    const barY_hp = headTopY - 9;
+    const barY_jet = headTopY - 5;
+
+    const maxHp = p.maxHp || 100;
+    const curHp = Math.max(0, p.hp ?? 100);
+    const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
+
+    const maxJet = p.jetMax || 100;
+    const curJet = Math.max(0, p.jetFuel ?? 0);
+    const jetRatio = Math.max(0, Math.min(1, curJet / maxJet));
+
+    // Tło paska HP
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+    ctx.fillRect(barX - 0.5, barY_hp - 0.5, barW + 1, barH + 1);
+    // Wypełnienie HP (zielony / czerwony)
+    if (hpRatio > 0) {
+      ctx.fillStyle = (hpRatio > 0.25) ? '#22c55e' : '#ef4444';
+      ctx.fillRect(barX, barY_hp, barW * hpRatio, barH);
+    }
+
+    // Tło paska Jetpack
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+    ctx.fillRect(barX - 0.5, barY_jet - 0.5, barW + 1, barH + 1);
+    // Wypełnienie Jetpack (jasny cyjan #06b6d4)
+    if (jetRatio > 0) {
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(barX, barY_jet, barW * jetRatio, barH);
+    }
+
     ctx.restore();
   }
 
@@ -2126,79 +2224,9 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
 }
 
 /**
- * Rysuje kompaktowy pasek życia (HP) bezpośrednio nad głową postaci.
- * Prawidłowo wylicza współrzędne Y i X z uwzględnieniem szkieletu/IK,
- * wysokości gracza i dynamicznych zmian pozycji (np. wślizg / kucanie / skok).
+ * Paski zdrowia i paliwa są renderowane bezpośrednio nad głową każdej postaci w drawPlayer.
  */
 export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
-  if (!entity || entity.isDead) return;
-
-  const barW = 38;
-  const barH = 4.5;
-  const pHeight = entity.height || entity.h || 70;
-  const pWidth = entity.width || entity.w || 24;
-
-  // 1. Prawidłowe wyznaczenie współrzędnych pionowych (Y) nad czubkiem głowy:
-  let barY;
-  if (entity.head && typeof entity.head.y === 'number') {
-    // Jeśli gracz używa szkieletu / IK:
-    // const headY = player.head ? player.head.y : (player.y - player.height / 2);
-    // const barY = headY - 18; // ok. 15-20px nad czubkiem głowy
-    const headY = entity.head.y;
-    barY = headY - 18 + yOffset;
-  } else if (entity.origin === 'bottom') {
-    // Jeśli pozycja entity.y to stopy (bottom origin):
-    // const barY = player.y - player.height - 15;
-    barY = entity.y - pHeight - 15 + yOffset;
-  } else if (entity.origin === 'center') {
-    // Jeśli pozycja entity.y to środek (center origin):
-    // const barY = player.y - (player.height / 2) - 15;
-    barY = entity.y - (pHeight / 2) - 15 + yOffset;
-  } else if (entity.origin === 'top') {
-    // Jeśli pozycja entity.y to góra (top origin):
-    // const barY = player.y - 15;
-    barY = entity.y - 15 + yOffset;
-  } else {
-    // Dynamiczne dopasowanie przy kucaniu / ślizgu (SLIDE) lub domyślny fallback IK:
-    const isSlidingOrProne = entity.isProne || entity.isSliding || entity.state === 'SLIDE';
-    const headY = isSlidingOrProne
-      ? (entity.currentGroundY ? entity.currentGroundY - 8 : entity.y + pHeight - 8)
-      : (entity.head ? entity.head.y : (entity.y - (pHeight / 2)));
-    barY = headY - 18 + yOffset;
-  }
-
-  // 2. Wyśrodkowanie w poziomie (X) względem szerokości gracza / głowy:
-  // const barX = player.x - (barWidth / 2);
-  let barX;
-  if (entity.head && typeof entity.head.x === 'number') {
-    barX = entity.head.x - (barW / 2);
-  } else if (entity.origin === 'center') {
-    barX = entity.x - (barW / 2);
-  } else {
-    // entity.x to lewa krawędź hitboxa gracza o szerokości pWidth
-    const centerX = entity.x + (pWidth / 2);
-    barX = centerX - (barW / 2);
-  }
-
-  const maxHp = entity.maxHp || 100;
-  const curHp = Math.max(0, entity.hp ?? 100);
-  const ratio = Math.max(0, Math.min(1, curHp / maxHp));
-
-  ctx.save();
-  // Ciemne tło podkładowe
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
-
-  // Zielone wypełnienie (#22c55e) proporcjonalne do hp / maxHp, bez zbędnych napisów
-  if (ratio > 0) {
-    ctx.fillStyle = '#22c55e';
-    ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 3;
-    ctx.fillRect(barX, barY, barW * ratio, barH);
-  }
-  ctx.restore();
+  // Zastąpione przez minimalistyczne paski HP i JET nad głową w drawPlayer
 }
 

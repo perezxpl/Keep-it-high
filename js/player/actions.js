@@ -5,10 +5,10 @@
 
 import { CONFIG, KICK_CONFIG } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt } from '../world.js';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop } from '../world.js';
 
 export function startJumpCharge(p) {
-  if (p.isIntro || p.isJumping || p.isSliding) return;
+  if (p.isIntro || p.isJumping || p.isSliding || p.staggerTimer > 0) return;
   p.isJumpCharging = true;
   p.jumpChargePower = 0;
 }
@@ -58,13 +58,14 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   if (char.isIntro || char.isDead) return false;
 
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
-  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
 
-  // Ślizg (Slide) możliwy WYŁĄCZNIE w pełnym biegu:
-  // player.onGround && Math.abs(player.vx) > MIN_RUN_SPEED (min. 150-200 px/s)
-  if (!isGrounded || Math.abs(char.vx) <= minSpeed) {
-    // Jeśli gracz stoi w miejscu (Math.abs(player.vx) <= MIN_RUN_SPEED), postać jedynie kuca (CROUCH)
-    if (isGrounded && !char.isDead && !char.isIntro) {
+  // Wślizg (Slide) możliwy WYŁĄCZNIE po 1 sekundzie ciągłego sprintu (sprintDuration >= 60) oraz braku cooldownu (slideCooldown <= 0)
+  const sprintOk = (typeof char.sprintDuration === 'number' && char.sprintDuration >= 60);
+  const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
+
+  if (!isGrounded || !sprintOk || !cooldownOk) {
+    // Jeśli gracz nie spełnia warunków wślizgu, postać na ziemi jedynie kuca (CROUCH)
+    if (isGrounded && !char.isDead && !char.isIntro && !char.isSliding) {
       char.isCrouching = true;
       char.isProne = false;
       char.crouchToggled = true;
@@ -75,6 +76,8 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   if (!char.isJumping && !char.isSliding) {
     char.isSliding = true;
     char.slideTimer = 56;
+    char.slideCooldown = 300; // 5 sekund blokady ponownego użycia (300 klatek przy 60 FPS)
+    char.sprintDuration = 0;
     char.isCrouching = false;
     char.isProne = false;
     char.isJumpCharging = false;
@@ -96,7 +99,7 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
 }
 
 /**
- * Wykrywanie przeciwnika w zwarciu (w odległości <= 65px przed graczem)
+ * Wykrywanie żywego przeciwnika w zwarciu (w odległości <= 75 px przed graczem w kierunku facing)
  */
 export function findMeleeTarget(p, potentialTargets) {
   if (!p) return null;
@@ -115,8 +118,8 @@ export function findMeleeTarget(p, potentialTargets) {
     const dx = targetX - hipX;
     const dy = targetY - hipY;
 
-    // Przeciwnik musi znajdować się przed graczem w kierunku facing
-    const isAhead = (dx * p.facing) >= -12;
+    // Przeciwnik musi znajdować się przed graczem w kierunku zwrotu (facing)
+    const isAhead = (dx * p.facing) >= -6;
     const dist = Math.hypot(dx, dy);
 
     if (isAhead && dist <= 75) {
@@ -127,10 +130,10 @@ export function findMeleeTarget(p, potentialTargets) {
 }
 
 /**
- * Inicjalizacja manewru Spartan Kick (poziomy wykop w klatkę przeciwnika)
+ * Inicjalizacja manewru Spartan Kick (4-fazowy ruch tłokowy, czas trwania: 22 klatki)
  */
 export function triggerSpartanKick(p, meleeTarget) {
-  const pwr = p.chargePower || 0;
+  const pwr = (p.chargePower !== undefined && p.chargePower > 0) ? p.chargePower : 1.0;
   p.isCharging = false;
   p.kickPower = pwr;
   p.chargePower = pwr;
@@ -138,16 +141,16 @@ export function triggerSpartanKick(p, meleeTarget) {
   p.kickLeg = p.nextLeg || 'front';
   p.kickState = 'SWING';
   p.spartanTimer = 0;
-  p.spartanDuration = 18;
+  p.spartanDuration = 22;
   p.hitThisSwing = false;
-  p.kickBufferTimer = 18;
+  p.kickBufferTimer = 22;
   p.spartanTarget = meleeTarget || null;
   p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
   return 'SPARTAN';
 }
 
 export function startKickCharge(p, targets) {
-  if (!p || p.isSliding) return;
+  if (!p || p.isSliding || p.staggerTimer > 0) return;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) return;
 
   p.isCharging = true;
@@ -245,13 +248,7 @@ export function isBallInKickReach(playerObj, ballObj) {
 }
 
 export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targets) {
-  if (!p) return null;
-
-  // Sprawdź czy przed graczem jest wróg w zwarciu (Spartan Kick)
-  const meleeTarget = findMeleeTarget(p, targets);
-  if (meleeTarget && p.kickState === 'IDLE' && p.kickCooldown <= 0) {
-    return triggerSpartanKick(p, meleeTarget);
-  }
+  if (!p || p.staggerTimer > 0) return null;
 
   if (!p.isCharging && !p.isIntro) return null;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) {
@@ -259,9 +256,16 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     return null;
   }
 
-  if (meleeTarget) {
+  // Spartan Kick aktywuje się WYŁĄCZNIE wtedy, gdy spełnione są jednocześnie 2 warunki:
+  // 1. Siła wykopu została naładowana do pełna: player.chargePower >= 0.95
+  // 2. Przed graczem w kierunku zwrotu (facing) w odległości <= 75 px znajduje się żywy przeciwnik (findMeleeTarget(p, targets))
+  const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
+  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
+  if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
     return triggerSpartanKick(p, meleeTarget);
   }
+
+  // W każdym innym przypadku (brak pełnego naładowania LUB brak wroga w zasięgu) postać wykonuje standardowy wykop (GROUND lub SCISSOR)
 
   const ball = ballParam || p._ball;
   const timing = evaluateKickTiming(p, ball);
@@ -520,7 +524,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
  * Natychmiastowe wykonanie akcji kopnięcia (Kick) postaci (pod PPM)
  */
 export function performKick(p, options = {}) {
-  if (!p || p.isDead || p.isSliding || p.isIntro) return false;
+  if (!p || p.isDead || p.isSliding || p.isIntro || p.staggerTimer > 0) return false;
   if (p.kickState !== 'IDLE' || (p.kickCooldown && p.kickCooldown > 0)) return false;
 
   // 1. Podrywa postać z czołgania / kucania do pionu
@@ -570,14 +574,15 @@ export function performKick(p, options = {}) {
   const isAirborne = p.isJumping || (currentFloor > 0 && p.y < currentFloor - p.h - 4);
 
   const targets = options.targets || p._targets;
-  const meleeTarget = findMeleeTarget(p, targets);
+  const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
+  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
 
   if (isAirborne) {
     p.kickMode = 'SCISSOR';
     p.scissorTimer = 0;
     p.scissorDuration = 22;
     p.kickState = 'SWING';
-  } else if (meleeTarget) {
+  } else if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
     triggerSpartanKick(p, meleeTarget);
   } else {
     p.kickMode = 'GROUND';
@@ -775,40 +780,44 @@ export function getBackflipTargets(timer, duration, hipX, hipY, facing) {
 }
 
 /**
- * Trajektoria kinetyczna manewru Spartan Kick (poziome wypchnięcie stopy w przód w klatkę)
+ * Trajektoria kinetyczna manewru Spartan Kick - 4-fazowy ruch tłokowy (czas trwania: 22 klatki):
+ * Faza 1: Chambering (klatki 0-4): gwałtowne podciągnięcie kolana nogi atakującej pod klatkę piersiową gracza, stopa uniesiona z ziemi, korpus lekko pochylony ku celowi.
+ * Faza 2: Piston Thrust (klatki 5-10): poziome, liniowe wystrzelenie stopy prosto w klatkę wroga (wysokość: hipY - 14 px, wysięg w przód: +52 px). Kąt kostki/stopy zablokowany prostopadle do celu (-0.15 * facing).
+ * Faza 3: Impact Hold (klatki 11-15): zablokowany, pełny wyprost stopy w klatce celu (+52 px, hipY - 14 px).
+ * Faza 4: Recovery (klatki 16-22): płynny powrót stopy na ziemię do pozycji spoczynkowej.
  */
 export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floorY) {
-  const u = Math.min(1.0, timer / duration);
   const plantFloorY = floorY - 3.5;
+  const t = Math.max(0, Math.min(timer, 22));
 
-  // Noga podporowa mocno zaparta w podłożu za biodrami
-  const supportFootX = hipX - 10 * facing;
+  // Noga podporowa wbija się w ziemię za biodrami: supportFootX = hipX - 12 * player.facing
+  const supportFootX = hipX - 12 * facing;
   const supportFootY = plantFloorY;
   const supportAnkle = 0.08 * facing;
 
   let kickFootX, kickFootY, kickAnkle;
 
-  if (u < 0.22) {
-    // 1. Uniesienie stopy z ziemi i podciągnięcie kolana do klatki (chamber)
-    const w = ease(u / 0.22);
-    kickFootX = hipX + lerp(4, 18, w) * facing;
-    kickFootY = lerp(plantFloorY, hipY - 2, w);
-    kickAnkle = lerp(0.0, 0.40, w) * facing;
-  } else if (u < 0.55) {
-    // 2. Eksplozywne poziome wypchnięcie stopy w przód prosto w klatkę wroga (wysoko: hipY - 14 px, wysięg +48 px)
-    const w = ease((u - 0.22) / 0.33);
-    kickFootX = hipX + lerp(18, 48, w) * facing;
-    kickFootY = lerp(hipY - 2, hipY - 14, w);
-    kickAnkle = lerp(0.40, -0.15, w) * facing;
-  } else if (u < 0.75) {
-    // 3. Utrzymanie pełnego wyprostu w klatce celu (impact hold)
-    kickFootX = hipX + 48 * facing;
+  if (t <= 4) {
+    // Faza 1: Chambering (klatki 0-4)
+    const w = ease(t / 4);
+    kickFootX = hipX + lerp(4, 14, w) * facing;
+    kickFootY = lerp(plantFloorY, hipY + 2, w);
+    kickAnkle = lerp(0.0, 0.45, w) * facing;
+  } else if (t <= 10) {
+    // Faza 2: Piston Thrust (klatki 5-10): wysokość hipY - 14 px, wysięg +52 px
+    const w = ease((t - 4) / 6);
+    kickFootX = hipX + lerp(14, 52, w) * facing;
+    kickFootY = lerp(hipY + 2, hipY - 14, w);
+    kickAnkle = lerp(0.45, -0.15, w) * facing;
+  } else if (t <= 15) {
+    // Faza 3: Impact Hold (klatki 11-15)
+    kickFootX = hipX + 52 * facing;
     kickFootY = hipY - 14;
     kickAnkle = -0.15 * facing;
   } else {
-    // 4. Płynny powrót stopy na ziemię
-    const w = ease((u - 0.75) / 0.25);
-    kickFootX = hipX + lerp(48, 8, w) * facing;
+    // Faza 4: Recovery (klatki 16-22)
+    const w = ease(Math.min(1.0, (t - 15) / 7));
+    kickFootX = hipX + lerp(52, 6, w) * facing;
     kickFootY = lerp(hipY - 14, plantFloorY, w);
     kickAnkle = lerp(-0.15, 0.0, w) * facing;
   }
@@ -817,6 +826,86 @@ export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floor
     kicking: { x: kickFootX, y: kickFootY, ankle: kickAnkle },
     support: { x: supportFootX, y: supportFootY, ankle: supportAnkle }
   };
+}
+
+/**
+ * Impakt, Hitstop i efekty wizualne Spartan Kick (w klatce 6 kontaktu):
+ * - Hitstop: triggerHitstop(4) z world.js (~65 ms pauzy dla obu postaci)
+ * - Wstrząs ekranu: triggerScreenShake(14)
+ * - Cząsteczki: spawnJetpackSparks w punkcie uderzenia + spawnBloodSpurt zza pleców wroga
+ * - Obrażenia: lekkie uszkodzenia (10-12 HP)
+ * - Fizyka celu: potężny knockback (vx: facing * 16.5, vy: -4.2, isJumping: true) i 2 sekundy ogłuszenia (staggerTimer: 120)
+ */
+export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGrass) {
+  if (player.hitThisSwing) return false;
+
+  const activeTargets = targets || player._targets;
+  const enemy = player.spartanTarget || findMeleeTarget(player, activeTargets);
+
+  if (enemy && !enemy.isDead) {
+    const ex = enemy.x + (enemy.w || 24) / 2;
+    const ey = enemy.y + (enemy.h || 70) * 0.45;
+
+    // 1. Hitstop (mikro-zamrożenie 4 klatki ~ 65 ms)
+    triggerHitstop(4);
+
+    // 2. Wstrząs ekranu
+    triggerScreenShake(14);
+
+    // 3. Cząsteczki: iskry w punkcie uderzenia + mikro-rozbryzg krwi zza pleców wroga
+    spawnJetpackSparks(ex, ey, player.facing, 9);
+    spawnBloodSpurt(ex + (player.facing * 8), ey, player.facing, -0.2, 10, 1.2);
+
+    // 4. Obrażenia: lekkie uszkodzenia (10-12 HP)
+    const dmg = 11;
+    enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
+
+    // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
+    enemy.vx = player.facing * 16.5;
+    enemy.airVx = enemy.vx;
+    enemy.vy = -4.5;
+    enemy.isJumping = true;
+    enemy.onGround = false;
+    enemy.staggerTimer = 120;
+    enemy.isCharging = false;
+    enemy.isShooting = false;
+
+    // Obsługa śmierci celu jeśli HP spadnie do 0
+    if (enemy.hp <= 0 && !enemy.isDead) {
+      enemy.isDead = true;
+      enemy.respawnTimer = 180;
+      enemy.corpseAngle = 0;
+      enemy.corpseFloorY = groundY;
+    }
+
+    player.hitThisSwing = true;
+    return true;
+  }
+
+  // Interakcja z przeszkodami fizycznymi (beczki itp.)
+  if (obstacles && Array.isArray(obstacles)) {
+    const hipX = player.x + player.w / 2;
+    const reach = 52 + 20;
+    for (const obs of obstacles) {
+      if (!obs || obs.exploded || obs.type !== 'explosive_barrel') continue;
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const ocx = obs.x + obs.w / 2;
+      const ocy = topY + obs.h / 2;
+      const dx = ocx - hipX;
+      if ((dx * player.facing) > 0 && Math.abs(dx) <= reach) {
+        obs.vx = player.facing * 14.0;
+        obs.vy = -3.5;
+        obs.isAirborne = true;
+        triggerHitstop(4);
+        triggerScreenShake(14);
+        spawnJetpackSparks(ocx, ocy, player.facing, 8);
+        player.hitThisSwing = true;
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**

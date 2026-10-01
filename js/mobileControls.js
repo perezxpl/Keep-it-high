@@ -89,34 +89,27 @@ export function updateButtonLayout(W, H) {
  * @param {Object} [bCluster] - Zespół przycisków
  */
 export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster) {
-  if (!player) return;
+  if (!player || !bCluster || !bCluster.slide) return;
 
-  const isDownIntent = !!(lStick && lStick.active && (lStick.axisY > 0.58));
-  if (lStick) lStick.downIntent = isDownIntent;
+  const slideBtn = bCluster.slide;
 
-  if (!bCluster || !bCluster.slide) return;
-
-  if (player.isProne) {
-    bCluster.slide.mode = 'PRONE';
-  } else if (isDownIntent) {
-    bCluster.slide.mode = 'PRONE';
+  if (player.isCrouching || player.isProne) {
+    slideBtn.mode = 'PRONE';
+    slideBtn.enabled = true;
+  } else if (player.gaitMode === 'SPRINT' && (player.sprintDuration || 0) >= 60 && (player.slideCooldown || 0) <= 0) {
+    slideBtn.mode = 'SLIDE';
+    slideBtn.enabled = true;
   } else {
-    bCluster.slide.mode = 'SLIDE';
-  }
-
-  // Wstawanie przy puszczeniu kierunku w dół, jeśli leżenie zostało wywołane przytrzymaniem drążka
-  if (player.isProne && player.enteredProneViaStickDown) {
-    if (!lStick || !lStick.active || lStick.axisY < 0.25) {
-      player.isProne = false;
-      player.enteredProneViaStickDown = false;
-    }
+    slideBtn.mode = 'DISABLED';
+    slideBtn.enabled = false;
   }
 }
 
 /**
  * Obsługa wciśnięcia kontekstowego przycisku wślizgu / leżenia:
- * - W trybie PRONE: kładzie postać płasko (lub podrywa na nogi jeśli już leży)
- * - W trybie SLIDE: wykonuje ślizg (tylko w pełnym biegu, w przeciwnym razie kuca)
+ * - W trybie PRONE (podczas kucania): kładzie postać płasko na brzuchu (CRAWL) lub wznosi do kucania
+ * - W trybie SLIDE (podczas sprintu >= 1s i po zejściu cooldownu): odpala wślizg, nakłada cooldown 300 i zeruje sprint
+ * - W pozostałych stanach: przycisk nieaktywny
  *
  * @param {Object} player - Obiekt gracza
  * @param {Function} spawnGrass - Funkcja spawnu cząsteczek
@@ -127,28 +120,35 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
 export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bCluster = btnCluster) {
   if (!player || player.isDead || player.isIntro) return false;
 
-  const mode = bCluster?.slide?.mode || (player.isProne ? 'PRONE' : 'SLIDE');
+  const slideBtn = bCluster?.slide;
+  if (!slideBtn || !slideBtn.enabled) return false;
 
-  if (mode === 'PRONE' || player.isProne) {
+  if (slideBtn.mode === 'PRONE' || player.isCrouching || player.isProne) {
     if (player.isProne) {
-      // Wstawanie z leżenia
+      // Wstawanie z leżenia do kucania
       player.isProne = false;
-      player.isCrouching = false;
+      player.isCrouching = true;
       player.crouchToggled = false;
-      player.enteredProneViaStickDown = false;
     } else {
-      // Kładzenie się płasko na ziemi (PRONE)
+      // Kładzenie się płasko na ziemi (PRONE / CRAWL)
       player.isProne = true;
       player.isCrouching = false;
       player.crouchToggled = false;
       player.isSliding = false;
-      player.enteredProneViaStickDown = true;
     }
     return true;
   }
 
-  // Standardowy wślizg w trybie SLIDE
-  return playerSlide(spawnGrass, GROUND_Y, player);
+  if (slideBtn.mode === 'SLIDE') {
+    const slid = playerSlide(spawnGrass, GROUND_Y, player);
+    if (slid) {
+      player.slideCooldown = 300; // 5 sekund blokady przy 60 FPS
+      player.sprintDuration = 0;
+    }
+    return slid;
+  }
+
+  return false;
 }
 
 /**

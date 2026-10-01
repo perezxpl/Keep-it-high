@@ -12,7 +12,7 @@ export const PlaymakerClass = {
   stats: {
     walkMax: 2.2,
     jogMax: 4.2,
-    sprintMax: 6.6,
+    sprintMax: 6.8,
     accel: 0.25,
     decel: 0.84,
     slideDecel: 0.972,

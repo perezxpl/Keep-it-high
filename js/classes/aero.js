@@ -10,9 +10,9 @@ export const AeroClass = {
 
   // 1. Statystyki fizyczne i ruchowe
   stats: {
-    walkMax: 2.3,
-    jogMax: 4.4,
-    sprintMax: 7.2,
+    walkMax: 2.4,
+    jogMax: 4.6,
+    sprintMax: 7.4,
     accel: 0.28,
     decel: 0.84,
     slideDecel: 0.968,
