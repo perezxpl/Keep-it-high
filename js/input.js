@@ -105,3 +105,18 @@ export function handleWKeyUp(player) {
   if (player) player.isJetpacking = false;
 }
 
+// =========================================================================
+// RE-EKSPORT STEROWANIA MOBILNEGO (MOBILE CONTROLS)
+// =========================================================================
+export {
+  leftStick,
+  rightStick,
+  btnCluster,
+  updateButtonLayout,
+  updateMobileControlStates,
+  handleSlideProneButtonPress,
+  triggerRightStickKick,
+  checkRightStickFlickOrTap
+} from './mobileControls.js';
+
+

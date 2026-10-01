@@ -1840,23 +1840,42 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
   }
 
-  // 3. PRZYCISK WŚLIZG
+  // 3. DYNAMICZNY PRZYCISK: WŚLIZG / LEŻENIE (CONTEXTUAL PRONE BUTTON)
   if (btnCluster && btnCluster.slide) {
     const glassBg = 'rgba(15, 23, 42, 0.55)';
     const slide = btnCluster.slide;
     const slideR = slide.r || 30;
-    const isSlideReady = Math.abs(player.vx) >= (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 0.82;
-    const isSlideActive = player.isSliding || slide.active;
+    const isProneMode = (slide.mode === 'PRONE' || player.isProne || (leftStick && leftStick.downIntent));
+    const isProneActive = !!player.isProne;
+    const isSlideReady = !isProneMode && Math.abs(player.vx) >= (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 0.82;
+    const isSlideActive = !isProneMode && (player.isSliding || slide.active);
 
-    let slideBorder = 'rgba(255, 255, 255, 0.15)';
-    let slideBg = glassBg;
-    let slideAccent = 'rgba(255, 255, 255, 0.4)';
+    let btnBorder = 'rgba(255, 255, 255, 0.15)';
+    let btnBg = glassBg;
+    let btnAccent = 'rgba(255, 255, 255, 0.4)';
 
-    if (isSlideReady || isSlideActive) {
+    if (isProneMode) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-      slideBorder = '#10b981';
-      slideBg = `rgba(16, 185, 129, ${0.18 + pulse * 0.22})`;
-      slideAccent = '#10b981';
+      if (isProneActive) {
+        btnBorder = '#10b981';
+        btnBg = `rgba(16, 185, 129, ${0.22 + pulse * 0.20})`;
+        btnAccent = '#10b981';
+      } else {
+        btnBorder = '#f59e0b';
+        btnBg = `rgba(245, 158, 11, ${0.18 + pulse * 0.18})`;
+        btnAccent = '#f59e0b';
+      }
+
+      ctx.beginPath();
+      ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = isProneActive ? `rgba(16, 185, 129, ${(1 - pulse) * 0.65})` : `rgba(245, 158, 11, ${(1 - pulse) * 0.65})`;
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+    } else if (isSlideReady || isSlideActive) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+      btnBorder = '#10b981';
+      btnBg = `rgba(16, 185, 129, ${0.18 + pulse * 0.22})`;
+      btnAccent = '#10b981';
 
       ctx.beginPath();
       ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
@@ -1867,24 +1886,56 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     ctx.beginPath();
     ctx.arc(slide.x, slide.y, slideR, 0, Math.PI * 2);
-    ctx.fillStyle = slideBg;
+    ctx.fillStyle = btnBg;
     ctx.fill();
-    ctx.strokeStyle = slideBorder;
+    ctx.strokeStyle = btnBorder;
     ctx.lineWidth = 1.8;
     ctx.stroke();
 
     ctx.save();
     ctx.translate(slide.x, slide.y);
-    ctx.beginPath();
-    ctx.moveTo(-10, 4); ctx.lineTo(8, 4); ctx.lineTo(10, 0); ctx.lineTo(4, -4); ctx.lineTo(-4, -4); ctx.lineTo(-7, 0);
-    ctx.closePath();
-    ctx.fillStyle = slideAccent;
-    ctx.fill();
 
-    ctx.fillStyle = isSlideReady ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
-    ctx.font = 'bold 8.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('WŚLIZG', 0, 16);
+    if (isProneMode) {
+      // Ikona leżącej sylwetki (płasko na ziemi)
+      const pFacing = player.facing || 1;
+
+      // Korpus / tułów poziomy
+      ctx.beginPath();
+      ctx.rect(-13, -1, 24, 4.5);
+      ctx.fillStyle = btnAccent;
+      ctx.fill();
+
+      // Głowa leżącej postaci
+      ctx.beginPath();
+      ctx.arc(pFacing * 11, -3, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = isProneActive ? '#10b981' : '#ffffff';
+      ctx.fill();
+
+      // Nogi płasko w tył
+      ctx.strokeStyle = btnAccent;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-pFacing * 12, 1);
+      ctx.lineTo(-pFacing * 16, 3);
+      ctx.stroke();
+
+      ctx.fillStyle = isProneActive ? '#10b981' : '#f59e0b';
+      ctx.font = 'bold 8.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(player.isProne ? 'WSTAŃ' : 'LEŻENIE', 0, 16);
+    } else {
+      // Ikona wślizgu
+      ctx.beginPath();
+      ctx.moveTo(-10, 4); ctx.lineTo(8, 4); ctx.lineTo(10, 0); ctx.lineTo(4, -4); ctx.lineTo(-4, -4); ctx.lineTo(-7, 0);
+      ctx.closePath();
+      ctx.fillStyle = btnAccent;
+      ctx.fill();
+
+      ctx.fillStyle = isSlideReady ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
+      ctx.font = 'bold 8.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('WŚLIZG', 0, 16);
+    }
     ctx.restore();
   }
 

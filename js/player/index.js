@@ -402,6 +402,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.isProne = false;
     player.isCrouching = false;
     player.crouchToggled = false;
+    player.enteredProneViaStickDown = false;
+  }
+
+  // Wstawanie przy puszczeniu kierunku w dół na drążku, jeśli wejście w leżenie nastąpiło przez wychylenie drążka w dół
+  if (player.isProne && player.enteredProneViaStickDown) {
+    if (!leftStick || !leftStick.active || leftStick.axisY < 0.25) {
+      player.isProne = false;
+      player.enteredProneViaStickDown = false;
+    }
   }
 
   // Obsługa Lewy Ctrl: Tap (kucanie toggle) vs Hold >= 16 klatek (~260 ms: isProne / czołganie)
@@ -533,7 +542,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   let targetTopSpeed;
   if (player.isProne) {
-    targetTopSpeed = 1.2; // Czołganie (crawl)
+    targetTopSpeed = Math.round(walkMax * 0.28 * 100) / 100; // Powolne czołganie się: ok. 25–30% standardowej prędkości chodu (~0.62)
   } else if (player.isCrouching) {
     targetTopSpeed = CONFIG.CROUCH_SPEED;
   } else {

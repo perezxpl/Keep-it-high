@@ -40,6 +40,12 @@ import {
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
 } from './network.js';
+import {
+  leftStick, rightStick, btnCluster,
+  updateButtonLayout, updateMobileControlStates,
+  handleSlideProneButtonPress, triggerRightStickKick,
+  checkRightStickFlickOrTap
+} from './mobileControls.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -67,55 +73,7 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 let jetpackAirborneSession = false;
 let lastSPressTime = 0;
 
-export const leftStick = {
-  active: false,
-  id: null,
-  baseX: 0,
-  baseY: 0,
-  curX: 0,
-  curY: 0,
-  axisX: 0,
-  axisY: 0,
-  maxRadius: 55,
-
-  // Skok i obsługa jetpacka na lewym drążku
-  jumpTriggered: false,
-  waitingForJetpackTap: false,
-  jetpackWindowTimer: 0,
-  isJetpacking: false,
-  jetpackAirborneSession: false
-};
-
-export const rightStick = {
-  active: false,
-  id: null,
-  baseX: 0,
-  baseY: 0,
-  curX: 0,
-  curY: 0,
-  axisX: 0,
-  axisY: 0,
-  power: 0,
-  movedDist: 0,
-  maxRadius: 65,
-
-  // Tryb strzelania i okno 300 ms po wycelowaniu
-  isShooting: false,
-  waitingForSecondTap: false,
-  windowTimer: 0,
-  lingerAlpha: 0,
-
-  // Maszyna stanów gestu wykopu (Wypchnięcie -> Cofnięcie -> Wypchnięcie)
-  gestureState: 'IDLE',
-  gestureLastOutTime: 0,
-  gestureRetractTime: 0,
-  gestureCooldownUntil: 0
-};
-
-// Przyciski dotykowe (po prawej stronie pozostał tylko WŚLIZG)
-const btnCluster = {
-  slide: { x: 0, y: 0, r: 30, active: false, id: null }
-};
+export { leftStick, rightStick, btnCluster, updateButtonLayout };
 
 const keys = {
   left: false,
@@ -126,11 +84,6 @@ const keys = {
   slide: false,
   ctrl: false
 };
-
-function updateButtonLayout() {
-  btnCluster.slide.x = W - 60;
-  btnCluster.slide.y = H - 85;
-}
 
 const canvasEl = document.getElementById('game');
 initCanvas(canvasEl);
@@ -208,17 +161,25 @@ canvas.addEventListener('touchstart', (e) => {
     }
 
     // =======================================================================
-    // PRAWA STRONA EKRANU: WŚLIZG, CELOWANIE, STRZAŁ I GEST KOPNIĘCIA
+    // PRAWA STRONA EKRANU: WŚLIZG / LEŻENIE, CELOWANIE, STRZAŁ I KOPNIĘCIE
     // =======================================================================
     if (t.clientX >= midX) {
-      if (dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r + 14) {
+      const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
+      if (distToSlide < btnCluster.slide.r + 16) {
         btnCluster.slide.active = true;
         btnCluster.slide.id = t.identifier;
-        playerSlide(spawnGrass, GROUND_Y, player);
+        handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, btnCluster);
       } else if (!rightStick.active) {
+        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisku wślizgu/leżenia
+        if (distToSlide < btnCluster.slide.r + 28) continue;
+
         if (rightStick.waitingForSecondTap && rightStick.windowTimer > 0) {
           rightStick.active = true;
           rightStick.id = t.identifier;
+          rightStick.touchStartTime = performance.now();
+          rightStick.startX = t.clientX;
+          rightStick.startY = t.clientY;
+          rightStick.movedDist = 0;
           rightStick.isShooting = true;
           rightStick.waitingForSecondTap = false;
           rightStick.windowTimer = 0;
@@ -247,12 +208,17 @@ canvas.addEventListener('touchstart', (e) => {
         } else {
           rightStick.active = true;
           rightStick.id = t.identifier;
-          rightStick.baseX = t.clientX;
-          rightStick.baseY = t.clientY;
+          rightStick.touchStartTime = performance.now();
+          rightStick.startX = t.clientX;
+          rightStick.startY = t.clientY;
+          rightStick.movedDist = 0;
+          rightStick.baseX = Math.max(midX + 70, Math.min(W - 90, t.clientX));
+          rightStick.baseY = Math.max(70, Math.min(H - 70, t.clientY));
           rightStick.curX = t.clientX;
           rightStick.curY = t.clientY;
           rightStick.axisX = 0;
           rightStick.axisY = 0;
+          rightStick.power = 0;
           rightStick.isShooting = false;
           rightStick.waitingForSecondTap = false;
           rightStick.windowTimer = 0;
@@ -291,6 +257,9 @@ canvas.addEventListener('touchmove', (e) => {
         leftStick.axisX = 0;
         leftStick.axisY = 0;
       }
+
+      // Aktualizacja kontekstu przycisku wślizg / leżenie
+      updateMobileControlStates(player, leftStick, btnCluster);
 
       // 1. Skok przy mocnym wychyleniu lewego drążka w górę
       if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro && !leftStick.jetpackAirborneSession) {
@@ -394,9 +363,16 @@ function endTouch(e) {
         leftStick.jetpackWindowTimer = 300;
       }
 
+      // Jeśli gracz wszedł w leżenie poprzez przytrzymanie drążka w dół, puszczenie go stawia postać
+      if (player.isProne && player.enteredProneViaStickDown) {
+        player.isProne = false;
+        player.enteredProneViaStickDown = false;
+      }
+
       leftStick.axisX = 0;
       leftStick.axisY = 0;
       leftStick.jumpTriggered = false;
+      updateMobileControlStates(player, leftStick, btnCluster);
     }
 
     if (btnCluster.slide.active && t.identifier === btnCluster.slide.id) {
@@ -408,32 +384,35 @@ function endTouch(e) {
       rightStick.active = false;
       rightStick.id = null;
 
+      const touchDuration = performance.now() - (rightStick.touchStartTime || 0);
+      const movedDist = rightStick.movedDist || 0;
       const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      const meleeTarget = findMeleeTarget(player, meleeTargets);
-      const canKickBall = isBallInKickReach(player, ball);
-      const wasDeflected = (rightStick.power > 0.2 || rightStick.movedDist > 18);
+      const isFlickOrTap = checkRightStickFlickOrTap(rightStick, touchDuration, movedDist);
+      const inKickReach = isBallInKickReach(player, ball);
 
-      if ((canKickBall || meleeTarget) && wasDeflected && player.kickState === 'IDLE') {
-        // Wykonanie precyzyjnego wykopu w kierunku ostatniego wychylenia lub Spartan Kick:
-        player.isCharging = true;
-        if (!player.chargePower || player.chargePower < 0.15) {
-          player.chargePower = Math.min(1.0, Math.max(0.2, rightStick.power || (rightStick.movedDist / (rightStick.maxRadius || 65))));
-        }
-        executeReleaseKick(ball, player, 0, meleeTargets);
-        player.isCharging = false;
-        player.isStickCharging = false;
-        player.chargePower = 0;
+      if (rightStick.isShooting) {
+        // Zakończenie serii strzałów broni
+        rightStick.waitingForSecondTap = false;
+        rightStick.windowTimer = 0;
+      } else if (isFlickOrTap || inKickReach) {
+        // Kliknięcie / tap w prawy drążek lub szybki flick wyzwala natychmiastowe kopnięcie (Right Stick Kick)
+        triggerRightStickKick(player, rightStick, {
+          ball,
+          targets: meleeTargets,
+          obstacles: customObstacles,
+          spawnGrass
+        });
         rightStick.waitingForSecondTap = false;
         rightStick.windowTimer = 0;
       } else {
-        // Piłka była poza zasięgiem nogi – anuluj ładowanie i zachowaj standardową obsługę celowania/strzelania
-        player.isCharging = false;
-        player.isStickCharging = false;
-        player.chargePower = 0;
+        // Piłka poza zasięgiem i brak flicku – zachowaj okno podwójnego kliknięcia do strzału
         rightStick.waitingForSecondTap = true;
         rightStick.windowTimer = 300;
       }
 
+      player.isCharging = false;
+      player.isStickCharging = false;
+      player.chargePower = 0;
       rightStick.axisX = 0;
       rightStick.axisY = 0;
       rightStick.power = 0;
@@ -2103,6 +2082,7 @@ function update() {
   }
 
   const mainMeleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+  updateMobileControlStates(player, leftStick, btnCluster);
   updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
 
