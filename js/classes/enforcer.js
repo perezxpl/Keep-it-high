@@ -37,7 +37,12 @@ export const EnforcerClass = {
     jetMax: 55,             // Paliwo jetpacka szybko się zużywa
     spartanKnockback: 18.0, // Potężny odrzut kinetyczny i twardy knockback
     spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
-    spartanDamage: 18
+    spartanDamage: 18,
+    kickForce: 1.15,
+    kickForceMultiplier: 1.15,
+    knockback: 1.50,
+    knockbackMultiplier: 1.50,
+    kickCooldown: 0.70
   },
 
   // 3. WŁAŚCIWOŚCI WIZUALNE: RZEŹBIONA ANATOMIA I BRAK RĘKAWKÓW

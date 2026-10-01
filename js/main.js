@@ -16,6 +16,7 @@ import {
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
+  performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos
 } from './player.js';
 import {
@@ -25,7 +26,9 @@ import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
-  drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot
+  drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
+  calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
+  updateMovableObstacles
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
@@ -1130,13 +1133,18 @@ export const editorState = {
   selectedType: null,
   snapToGrid: true,
   gridSize: 20,
+  surfaceSnap: true,
+  snapThreshold: 16,
   hoverX: 0,
-  hoverY: 0
+  hoverY: 0,
+  cursorWorldX: 0,
+  cursorWorldY: 0
 };
 
 let devEditorBtn = null;
 let devEditorSubpanel = null;
 let devGridBtn = null;
+let devMagnetBtn = null;
 let devPaletteContainer = null;
 
 export function initObstacleEditorUI() {
@@ -1165,14 +1173,29 @@ export function initObstacleEditorUI() {
   devGridBtn.id = 'dev-grid-btn';
   devGridBtn.title = 'Włącz/Wyłącz przyciąganie do siatki (20px)';
   devGridBtn.style.cssText = 'border-color: #06b6d4; color: #22d3ee;';
-  devGridBtn.textContent = '🧲 SIATKA: 20px';
+  devGridBtn.textContent = '📐 SIATKA: 20px';
   devGridBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     editorState.snapToGrid = !editorState.snapToGrid;
-    devGridBtn.textContent = editorState.snapToGrid ? '🧲 SIATKA: 20px' : '🧲 SIATKA: WYŁ';
+    devGridBtn.textContent = editorState.snapToGrid ? '📐 SIATKA: 20px' : '📐 SIATKA: WYŁ';
     devGridBtn.style.color = editorState.snapToGrid ? '#22d3ee' : '#94a3b8';
   });
   devEditorSubpanel.appendChild(devGridBtn);
+
+  devMagnetBtn = document.createElement('button');
+  devMagnetBtn.className = 'dev-btn';
+  devMagnetBtn.id = 'dev-magnet-btn';
+  devMagnetBtn.title = 'Włącz/Wyłącz inteligentne przyciąganie do powierzchni platform i gruntu (Surface Magnet 16px)';
+  devMagnetBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 600;';
+  devMagnetBtn.textContent = '🧲 MAGNET: 16px';
+  devMagnetBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    editorState.surfaceSnap = !editorState.surfaceSnap;
+    devMagnetBtn.textContent = editorState.surfaceSnap ? '🧲 MAGNET: 16px' : '🧲 MAGNET: WYŁ';
+    devMagnetBtn.style.color = editorState.surfaceSnap ? '#34d399' : '#94a3b8';
+    devMagnetBtn.style.borderColor = editorState.surfaceSnap ? '#10b981' : 'rgba(148, 163, 184, 0.3)';
+  });
+  devEditorSubpanel.appendChild(devMagnetBtn);
 
   devPaletteContainer = document.createElement('div');
   devPaletteContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;';
@@ -1316,8 +1339,11 @@ export function renderEditorPalette() {
 export function updateEditorPaletteHighlight() {
   if (!devPaletteContainer) return;
   const buttons = devPaletteContainer.querySelectorAll('.dev-tool-btn');
+  const selNorm = normalizeObstacleType(editorState.selectedType);
   buttons.forEach(btn => {
-    if (btn.dataset.tool === editorState.selectedType) {
+    const btnTool = btn.dataset.tool;
+    const btnNorm = normalizeObstacleType(btnTool);
+    if (btnTool === editorState.selectedType || (selNorm && btnNorm === selNorm)) {
       btn.style.background = 'rgba(0, 229, 255, 0.35)';
       btn.style.borderColor = '#00e5ff';
       btn.style.color = '#ffffff';
@@ -1336,28 +1362,48 @@ function placeSelectedObstacle() {
   const def = getObstacleDef(editorState.selectedType);
   if (!def) return;
 
-  const w = def.w || 40;
-  const h = def.h || 20;
-  let px = editorState.hoverX - w / 2;
-  let py = editorState.hoverY - h / 2;
-  if (editorState.snapToGrid) {
-    px = Math.round(px / editorState.gridSize) * editorState.gridSize;
-    py = Math.round(py / editorState.gridSize) * editorState.gridSize;
+  const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+  const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+
+  const placement = calculateObstaclePlacement(def, worldX, worldY, {
+    snapToGrid: editorState.snapToGrid,
+    gridSize: editorState.gridSize,
+    groundY: GROUND_Y,
+    surfaceSnapActive: editorState.surfaceSnap,
+    snapThreshold: editorState.snapThreshold
+  });
+
+  const px = placement.x;
+  const py = placement.y;
+  const normType = normalizeObstacleType(def.type);
+  let w = placement.w;
+  let h = placement.h;
+  if (!w || w <= 0) {
+    w = normType === 'ammo_depot' ? 32 : (normType === 'sandbags' ? 48 : (def.w || 40));
+  }
+  if (!h || h <= 0) {
+    h = normType === 'ammo_depot' ? 24 : (normType === 'sandbags' ? 24 : (def.h || 20));
   }
 
   const newObs = {
     id: 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
     type: def.type,
+    name: def.name,
     x: px,
     y: py,
     w: w,
     h: h,
     size: def.size || w,
     relY: GROUND_Y - py,
-    thickness: h
+    thickness: h,
+    isPlatform: def.isPlatform || false,
+    solid: def.solid || false,
+    isPickup: def.isPickup !== undefined ? def.isPickup : (normType === 'ammo_depot'),
+    isInteractable: def.isInteractable !== undefined ? def.isInteractable : (normType === 'ammo_depot')
   };
 
   customObstacles.push(newObs);
+  obstacles.push(newObs);
   spawnJetpackSparks(px + w / 2, py + h / 2, 0, 4);
   sendObstacleAdd(newObs);
 }
@@ -1374,6 +1420,8 @@ function handleEditorRightClick() {
       spawnJetpackSparks(obs.x + obs.w / 2, topY + obs.h / 2, 0, 6);
       sendObstacleRemove(obs);
       customObstacles.splice(i, 1);
+      const obsIdx = obstacles.indexOf(obs);
+      if (obsIdx >= 0) obstacles.splice(obsIdx, 1);
       return;
     }
   }
@@ -1698,12 +1746,28 @@ window.addEventListener('mousemove', (e) => {
   if (editorState.active) {
     const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
     const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
-    if (editorState.snapToGrid) {
-      editorState.hoverX = Math.round(worldX / editorState.gridSize) * editorState.gridSize;
-      editorState.hoverY = Math.round(worldY / editorState.gridSize) * editorState.gridSize;
+    editorState.cursorWorldX = worldX;
+    editorState.cursorWorldY = worldY;
+
+    if (editorState.selectedType) {
+      const def = getObstacleDef(editorState.selectedType);
+      const placement = calculateObstaclePlacement(def, worldX, worldY, {
+        snapToGrid: editorState.snapToGrid,
+        gridSize: editorState.gridSize,
+        groundY: GROUND_Y,
+        surfaceSnapActive: editorState.surfaceSnap,
+        snapThreshold: editorState.snapThreshold
+      });
+      editorState.hoverX = placement.x + placement.w / 2;
+      editorState.hoverY = placement.y + placement.h / 2;
     } else {
-      editorState.hoverX = Math.round(worldX);
-      editorState.hoverY = Math.round(worldY);
+      if (editorState.snapToGrid) {
+        editorState.hoverX = Math.round(worldX / editorState.gridSize) * editorState.gridSize;
+        editorState.hoverY = Math.round((worldY - GROUND_Y) / editorState.gridSize) * editorState.gridSize + GROUND_Y;
+      } else {
+        editorState.hoverX = Math.round(worldX);
+        editorState.hoverY = Math.round(worldY);
+      }
     }
   }
 });
@@ -1766,12 +1830,17 @@ canvas.addEventListener('mousedown', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = true;
-    if (player.jetFuel > 0 && !player.isDead) {
-      isJetpackActive = true;
-      jetpackAirborneSession = true;
-    }
+    const worldMouseX = camera.x + (e.clientX - W * 0.40) / camera.zoom;
+    const worldMouseY = camera.y + (e.clientY - H * 0.68) / camera.zoom;
     const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-    startKickCharge(player, meleeTargets);
+    performKick(player, {
+      aimX: worldMouseX,
+      aimY: worldMouseY,
+      ball: ball,
+      targets: meleeTargets,
+      obstacles: customObstacles,
+      spawnGrass: spawnGrass
+    });
   }
 });
 
@@ -1786,9 +1855,6 @@ window.addEventListener('mouseup', (e) => {
     mouseState.semiFired = false;
   } else if (e.button === 2) {
     mouseState.rmbDown = false;
-    isJetpackActive = false;
-    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-    executeReleaseKick(ball, player, 0, meleeTargets);
   }
 });
 
@@ -1971,8 +2037,9 @@ function update() {
     }
   }
 
-  // SILNIK JETPACKA
-  const isFlightActive = (isJetpackActive || (mouseState && mouseState.rmbDown)) && !player.isDead && player.jetFuel > 0;
+  // SILNIK JETPACKA (aktywacja wyłącznie dedykowanym klawiszem w locie, całkowicie odłączony od PPM)
+  const isAirborne = player.isJumping || (player.groundY && player.y < player.groundY - player.h - 6);
+  const isFlightActive = (isJetpackActive || (keys.up && isAirborne)) && !player.isDead && player.jetFuel > 0;
   if (isFlightActive) {
     player.isJetpacking = true;
     player.jetFuel = Math.max(0, player.jetFuel - 0.95);
@@ -2030,6 +2097,7 @@ function update() {
 
   updateParticles();
   updateJetpackParticles();
+  updateMovableObstacles(GROUND_Y);
   updateGore(GROUND_Y, ARENA_PLATFORMS, customObstacles);
 
   const headEntities = [player];
@@ -2111,16 +2179,23 @@ function draw() {
   if (editorState.active) {
     if (editorState.snapToGrid) {
       ctx.save();
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.12)';
       const step = editorState.gridSize;
       const startX = Math.floor(worldLeft / step) * step;
       const endX = Math.ceil(worldRight / step) * step;
-      const startY = Math.floor((camera.y - H / camera.zoom) / step) * step;
-      const endY = Math.ceil((camera.y + H / camera.zoom) / step) * step;
+      const startY = Math.floor((camera.y - H / camera.zoom - GROUND_Y) / step) * step + GROUND_Y;
+      const endY = Math.ceil((camera.y + H / camera.zoom - GROUND_Y) / step) * step + GROUND_Y;
 
-      for (let gx = startX; gx <= endX; gx += step * 2) {
-        for (let gy = startY; gy <= endY; gy += step * 2) {
-          ctx.fillRect(gx - 1, gy - 1, 2, 2);
+      // Punkty siatki wyrównane do linii bazowej gruntu (GROUND_Y)
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+      for (let gx = startX; gx <= endX; gx += step) {
+        for (let gy = startY; gy <= endY; gy += step) {
+          if (gy === GROUND_Y) {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.50)';
+            ctx.fillRect(gx - 1.5, gy - 1.5, 3, 3);
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+          } else {
+            ctx.fillRect(gx - 1, gy - 1, 2, 2);
+          }
         }
       }
       ctx.restore();
@@ -2129,31 +2204,49 @@ function draw() {
     if (editorState.selectedType) {
       const def = getObstacleDef(editorState.selectedType);
       if (def) {
-        const w = def.w || 40;
-        const h = def.h || 20;
-        let px = editorState.hoverX - w / 2;
-        let py = editorState.hoverY - h / 2;
-        if (editorState.snapToGrid) {
-          px = Math.round(px / editorState.gridSize) * editorState.gridSize;
-          py = Math.round(py / editorState.gridSize) * editorState.gridSize;
-        }
+        const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
+        const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+        const placement = calculateObstaclePlacement(def, worldX, worldY, {
+          snapToGrid: editorState.snapToGrid,
+          gridSize: editorState.gridSize,
+          groundY: GROUND_Y,
+          surfaceSnapActive: editorState.surfaceSnap,
+          snapThreshold: editorState.snapThreshold
+        });
+
+        const px = placement.x;
+        const py = placement.y;
+        const w = placement.w;
+        const h = placement.h;
+        const isSnapped = placement.isSnappedToSurface;
 
         ctx.save();
-        ctx.globalAlpha = 0.55;
+        ctx.globalAlpha = 0.65;
         drawSingleObstacleByType(ctx, def.type, px, py, w, h, GROUND_Y);
 
-        ctx.strokeStyle = '#00e5ff';
-        ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = 8;
-        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isSnapped ? '#10b981' : '#00e5ff';
+        ctx.shadowColor = isSnapped ? '#10b981' : '#00e5ff';
+        ctx.shadowBlur = isSnapped ? 12 : 8;
+        ctx.lineWidth = isSnapped ? 2.2 : 1.8;
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(px - 2, py - 2, w + 4, h + 4);
         ctx.setLineDash([]);
 
+        // Efekt podglądu przylegania do podłoża / platformy (Bottom Anchor Contact)
+        if (isSnapped) {
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(px - 3, py + h);
+          ctx.lineTo(px + w + 3, py + h);
+          ctx.stroke();
+        }
+
         ctx.font = 'bold 10px monospace';
-        ctx.fillStyle = '#00e5ff';
+        ctx.fillStyle = isSnapped ? '#34d399' : '#00e5ff';
         ctx.textAlign = 'center';
-        ctx.fillText(`${def.name} (${w}x${h})`, px + w / 2, py - 6);
+        const magnetBadge = isSnapped ? ` [🧲 ${placement.surfaceName || 'POWIERZCHNIA'}]` : '';
+        ctx.fillText(`${def.name} (${w}x${h})${magnetBadge}`, px + w / 2, py - 6);
         ctx.restore();
       }
     }

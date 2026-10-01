@@ -39,7 +39,12 @@ export const CLASS_TEMPLATE = {
     jetMax: 100,
     spartanKnockback: 11.0,
     spartanStagger: 16,
-    spartanDamage: 10
+    spartanDamage: 10,
+    kickForce: 1.0,
+    kickForceMultiplier: 1.0,
+    knockback: 1.0,
+    knockbackMultiplier: 1.0,
+    kickCooldown: 0.50
   },
 
   // 3. Pełna konfiguracja wizualna i fason stroju (opcjonalne)

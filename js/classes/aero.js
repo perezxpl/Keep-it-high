@@ -27,7 +27,12 @@ export const AeroClass = {
     jetMax: 150,
     spartanKnockback: 9.5,
     spartanStagger: 14,
-    spartanDamage: 8
+    spartanDamage: 8,
+    kickForce: 0.85,
+    kickForceMultiplier: 0.85,
+    knockback: 0.70,
+    knockbackMultiplier: 0.70,
+    kickCooldown: 0.35
   },
 
   // 2. Kolorystyka i dane wizualne renderera – Oliwka / Ranger Green PMC

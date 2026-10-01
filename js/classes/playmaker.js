@@ -27,7 +27,12 @@ export const PlaymakerClass = {
     jetMax: 90,
     spartanKnockback: 10.0,
     spartanStagger: 15,
-    spartanDamage: 9
+    spartanDamage: 9,
+    kickForce: 1.30,
+    kickForceMultiplier: 1.30,
+    knockback: 1.00,
+    knockbackMultiplier: 1.00,
+    kickCooldown: 0.50
   },
 
   // 2. Kolorystyka i dane wizualne renderera – Grafit / Urban Slate PMC

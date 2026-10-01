@@ -7,7 +7,7 @@ import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon,
-  registerWorldObstacles, setActiveArenaId
+  registerWorldObstacles, setActiveArenaId, GROUND_Y
 } from './world.js';
 
 export const obstacles = [];
@@ -25,38 +25,301 @@ export function spawnObstacleSparks(x, y, nx = 0, ny = -1, count = 4) {
   }
 }
 
+export function normalizeObstacleType(type) {
+  if (!type) return '';
+  const str = String(type).trim().toLowerCase().replace(/[-_\s]+/g, '');
+  if (str === 'sandbag' || str === 'sandbags' || str === 'worki' || str === 'workizpiaskiem') {
+    return 'sandbags';
+  }
+  if (
+    str === 'ammo' ||
+    str === 'ammocrate' ||
+    str === 'ammobox' ||
+    str === 'ammodepot' ||
+    str === 'crate' ||
+    str === 'ammobag' ||
+    str === 'skrzynia' ||
+    str === 'skrzyniaammo'
+  ) {
+    return 'ammo_depot';
+  }
+  return type;
+}
+
 export const OBSTACLE_PALETTE = {
   ARENA_1: [
-    { type: 'catwalk', name: 'Stalowa Kładka', label: '⛓️ Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true },
-    { type: 'sniper_tower', name: 'Wieża Snajperska', label: '🗼 Ambona', category: 'platforms', w: 90, h: 160, isPlatform: true, oneWay: true },
-    { type: 'metal_ramp_left', name: 'Rampa Lewa', label: '📐 Rampa L', category: 'platforms', w: 80, h: 40, isPlatform: true },
-    { type: 'metal_ramp_right', name: 'Rampa Prawa', label: '📐 Rampa P', category: 'platforms', w: 80, h: 40, isPlatform: true },
-    { type: 'tall_concrete_wall', name: 'Mur Zbrojony', label: '🏛️ Mur', category: 'defense', w: 26, h: 110, solid: true },
-    { type: 'bunker_block', name: 'Blok Betonowy', label: '🛡️ Blok', category: 'defense', w: 120, h: 40, isPlatform: true, solid: true },
-    { type: 'sandbags', name: 'Worki z Piaskiem', label: '🧱 Worki', category: 'defense', w: 55, h: 22, isPlatform: true, solid: true },
-    { type: 'ammo_depot', name: 'Skrzynia Ammo', label: '📦 Ammo', category: 'defense', w: 42, h: 28, isPlatform: true, solid: true },
-    { type: 'explosive_barrel', name: 'Beczka Wybuchowa', label: '💥 Beczka', category: 'traps', w: 22, h: 34, solid: true },
-    { type: 'barbed_wire', name: 'Drut Kolczasty', label: '🕸️ Drut', category: 'traps', w: 60, h: 18 },
-    { type: 'hedgehog', name: 'Jeż Stalowy', label: '✖️ Jeż', category: 'traps', w: 32, h: 32, size: 32, isHedgehog: true }
+    { type: 'catwalk', name: 'Stalowa Kładka', label: '⛓️ Kładka', category: 'platforms', w: 200, h: 14, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'sniper_tower', name: 'Wieża Snajperska', label: '🗼 Ambona', category: 'platforms', w: 90, h: 160, isPlatform: true, oneWay: true, anchor: 'bottom' },
+    { type: 'metal_ramp_left', name: 'Rampa Lewa', label: '📐 Rampa L', category: 'platforms', w: 80, h: 40, isPlatform: true, anchor: 'bottom' },
+    { type: 'metal_ramp_right', name: 'Rampa Prawa', label: '📐 Rampa P', category: 'platforms', w: 80, h: 40, isPlatform: true, anchor: 'bottom' },
+    { type: 'tall_concrete_wall', name: 'Mur Zbrojony', label: '🏛️ Mur', category: 'defense', w: 26, h: 110, solid: true, anchor: 'bottom' },
+    { type: 'bunker_block', name: 'Blok Betonowy', label: '🛡️ Blok', category: 'defense', w: 120, h: 40, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'sandbags', name: 'Worki z Piaskiem', label: '🧱 Worki', category: 'defense', w: 48, h: 24, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'ammo_depot', name: 'Skrzynia Ammo', label: '📦 Ammo', category: 'defense', w: 32, h: 24, isPlatform: true, solid: true, anchor: 'bottom', isPickup: true, isInteractable: true },
+    { type: 'explosive_barrel', name: 'Beczka Wybuchowa', label: '💥 Beczka', category: 'traps', w: 22, h: 34, solid: true, anchor: 'bottom' },
+    { type: 'barbed_wire', name: 'Drut Kolczasty', label: '🕸️ Drut', category: 'traps', w: 60, h: 18, anchor: 'bottom' },
+    { type: 'hedgehog', name: 'Jeż Stalowy', label: '✖️ Jeż', category: 'traps', w: 32, h: 32, size: 32, isHedgehog: true, anchor: 'bottom' }
   ],
   ARENA_2: [
-    { type: 'cyber_catwalk', name: 'Cyber Kładka', label: '⚡ Cyber Kładka', category: 'platforms', w: 200, h: 16, isPlatform: true, oneWay: true },
-    { type: 'floating_hex', name: 'Heksagon Lewitujący', label: '⬡ Heksagon', category: 'platforms', w: 110, h: 16, isPlatform: true, oneWay: true },
-    { type: 'neon_barrier', name: 'Bariera Energetyczna', label: '💠 Bariera', category: 'defense', w: 60, h: 24, isPlatform: true, solid: true },
-    { type: 'speed_booster_pad', name: 'Pas Przyspieszający', label: '⏩ Booster', category: 'traps', w: 80, h: 10 },
-    { type: 'gravity_lift', name: 'Winda Grawitacyjna', label: '⬆️ Grav-Lift', category: 'traps', w: 50, h: 180 },
-    { type: 'cyber_bumper', name: 'Bumper Pinball', label: '🔘 Bumper', category: 'traps', w: 40, h: 40, size: 40, radius: 20 },
-    { type: 'laser_gate', name: 'Brama Laserowa', label: '🚨 Laser', category: 'traps', w: 12, h: 140 },
-    { type: 'jump_pad', name: 'Jump Pad', label: '🚀 Jump Pad', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true }
+    { type: 'cyber_catwalk', name: 'Cyber Kładka', label: '⚡ Cyber Kładka', category: 'platforms', w: 200, h: 16, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'floating_hex', name: 'Heksagon Lewitujący', label: '⬡ Heksagon', category: 'platforms', w: 110, h: 16, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'neon_barrier', name: 'Bariera Energetyczna', label: '💠 Bariera', category: 'defense', w: 60, h: 24, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'speed_booster_pad', name: 'Pas Przyspieszający', label: '⏩ Booster', category: 'traps', w: 80, h: 10, anchor: 'bottom' },
+    { type: 'gravity_lift', name: 'Winda Grawitacyjna', label: '⬆️ Grav-Lift', category: 'traps', w: 50, h: 180, anchor: 'bottom' },
+    { type: 'cyber_bumper', name: 'Bumper Pinball', label: '🔘 Bumper', category: 'traps', w: 40, h: 40, size: 40, radius: 20, anchor: 'center' },
+    { type: 'laser_gate', name: 'Brama Laserowa', label: '🚨 Laser', category: 'traps', w: 12, h: 140, anchor: 'bottom' },
+    { type: 'jump_pad', name: 'Jump Pad', label: '🚀 Jump Pad', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
   ]
 };
 
 export function getObstacleDef(type) {
+  if (!type) return null;
+  const norm = normalizeObstacleType(type);
   for (const arenaKey of ['ARENA_1', 'ARENA_2']) {
-    const found = OBSTACLE_PALETTE[arenaKey].find(d => d.type === type);
-    if (found) return found;
+    const found = OBSTACLE_PALETTE[arenaKey].find(
+      d => d.type === type || d.type === norm || normalizeObstacleType(d.type) === norm
+    );
+    if (found) {
+      const copy = { ...found };
+      if (norm === 'ammo_depot') {
+        copy.w = copy.w || 32;
+        copy.h = copy.h || 24;
+        if (copy.isPickup === undefined) copy.isPickup = true;
+        if (copy.isInteractable === undefined) copy.isInteractable = true;
+      } else if (norm === 'sandbags') {
+        copy.w = copy.w || 48;
+        copy.h = copy.h || 24;
+      }
+      return copy;
+    }
+  }
+  if (norm === 'ammo_depot') {
+    return {
+      type: type || 'ammo_depot',
+      name: 'Skrzynia Ammo',
+      label: '📦 Ammo',
+      category: 'defense',
+      w: 32,
+      h: 24,
+      isPlatform: true,
+      solid: true,
+      anchor: 'bottom',
+      isPickup: true,
+      isInteractable: true
+    };
+  }
+  if (norm === 'sandbags') {
+    return {
+      type: type || 'sandbags',
+      name: 'Worki z Piaskiem',
+      label: '🧱 Worki',
+      category: 'defense',
+      w: 48,
+      h: 24,
+      isPlatform: true,
+      solid: true,
+      anchor: 'bottom'
+    };
   }
   return null;
+}
+
+export function isBottomAnchored(def) {
+  if (!def) return false;
+  if (def.anchor === 'bottom') return true;
+  if (def.anchor === 'top' || def.anchor === 'center') return false;
+  const norm = normalizeObstacleType(def.type);
+  if (norm === 'sandbags' || norm === 'ammo_depot') return true;
+  if (def.type === 'catwalk' || def.type === 'cyber_catwalk' || def.type === 'floating_hex') {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Znajduje najbliższą powierzchnię (platformę, grunt lub przeszkodę) pod dolną krawędzią obiektu w zasięgu snapThreshold.
+ */
+export function findSupportingSurface(px, bottomY, w, h, groundY = GROUND_Y, snapThreshold = 16, platforms = ARENA_PLATFORMS, obstacles = customObstacles, rawBottomY = null) {
+  if (snapThreshold <= 0) return null;
+
+  const minOverlap = Math.min(6, w * 0.25);
+  const candidates = [];
+
+  const checkCandidate = (surfaceY, type, name = '') => {
+    const dist1 = Math.abs(bottomY - surfaceY);
+    const dist2 = (rawBottomY !== null && rawBottomY !== undefined) ? Math.abs(rawBottomY - surfaceY) : dist1;
+    const dist = Math.min(dist1, dist2);
+
+    if (dist <= snapThreshold) {
+      candidates.push({ y: surfaceY, dist, type, name });
+    }
+  };
+
+  // 1. Grunt (GROUND_Y)
+  checkCandidate(groundY, 'ground', 'Grunt');
+
+  // 2. Platformy areny (ARENA_PLATFORMS)
+  if (Array.isArray(platforms)) {
+    for (const plat of platforms) {
+      const platLeft = plat.x;
+      const platRight = plat.x + plat.w;
+      const overlap = Math.min(px + w, platRight) - Math.max(px, platLeft);
+
+      if (overlap >= minOverlap) {
+        const platTopY = plat.y !== undefined ? plat.y : (groundY - plat.relY);
+        checkCandidate(platTopY, 'platform', plat.name || plat.type || 'Platforma');
+
+        if (plat.props && Array.isArray(plat.props)) {
+          for (const prop of plat.props) {
+            if (prop.type === 'altar_pedestal') {
+              const propLeft = plat.x + (prop.rx || 0);
+              const propRight = propLeft + prop.w;
+              const propOverlap = Math.min(px + w, propRight) - Math.max(px, propLeft);
+              if (propOverlap >= minOverlap) {
+                const propTopY = platTopY - prop.h;
+                checkCandidate(propTopY, 'prop', 'Piedestał Ołtarza');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Postawione przeszkody (customObstacles)
+  if (Array.isArray(obstacles)) {
+    for (const obs of obstacles) {
+      const obsLeft = obs.x;
+      const obsRight = obs.x + obs.w;
+      const overlap = Math.min(px + w, obsRight) - Math.max(px, obsLeft);
+
+      if (overlap >= minOverlap) {
+        const obsTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+
+        if (obs.type === 'metal_ramp_left') {
+          const cx = px + w / 2;
+          const t = Math.max(0, Math.min(1, (cx - obs.x) / obs.w));
+          const rampY = obsTopY + t * obs.h;
+          checkCandidate(rampY, 'ramp', 'Rampa Lewa');
+        } else if (obs.type === 'metal_ramp_right') {
+          const cx = px + w / 2;
+          const t = Math.max(0, Math.min(1, (cx - obs.x) / obs.w));
+          const rampY = obsTopY + (1 - t) * obs.h;
+          checkCandidate(rampY, 'ramp', 'Rampa Prawa');
+        } else {
+          checkCandidate(obsTopY, 'obstacle', obs.name || obs.type || 'Przeszkoda');
+        }
+      }
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => a.dist - b.dist || a.y - b.y);
+  return candidates[0];
+}
+
+/**
+ * Oblicza dokładne współrzędne położenia obiektu w edytorze uwzględniając siatkę, Bottom Anchor i Surface Magnet.
+ */
+export function calculateObstaclePlacement(def, worldX, worldY, options = {}) {
+  if (!def) {
+    return {
+      x: Math.round(worldX),
+      y: Math.round(worldY),
+      w: 40,
+      h: 20,
+      bottomY: Math.round(worldY) + 20,
+      isSnappedToSurface: false,
+      surfaceY: null,
+      surfaceName: ''
+    };
+  }
+
+  const snapToGrid = options.snapToGrid !== undefined ? options.snapToGrid : true;
+  const gridSize = options.gridSize || 20;
+  const groundY = options.groundY !== undefined ? options.groundY : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
+  const snapThreshold = options.surfaceSnapActive === false ? 0 : (options.snapThreshold !== undefined ? options.snapThreshold : 16);
+  const platforms = options.platforms || ARENA_PLATFORMS;
+  const obstacles = options.obstacles || customObstacles;
+
+  const norm = normalizeObstacleType(def.type);
+  let defaultW = 40;
+  let defaultH = 20;
+  if (norm === 'ammo_depot') {
+    defaultW = 32;
+    defaultH = 24;
+  } else if (norm === 'sandbags') {
+    defaultW = 48;
+    defaultH = 24;
+  }
+  const w = (def.w && def.w > 0) ? def.w : defaultW;
+  const h = (def.h && def.h > 0) ? def.h : defaultH;
+
+  // 1. Wyrównanie poziome X (wyśrodkowane wokół kursora)
+  const rawX = worldX - w / 2;
+  const px = snapToGrid ? Math.round(rawX / gridSize) * gridSize : Math.round(rawX);
+
+  // 2. Wyrównanie pionowe Y (Bottom Anchor dla obiektów stojących, Top Anchor dla platform)
+  const isBottom = isBottomAnchored(def);
+  const rawBottom = worldY + h / 2;
+  const rawTop = worldY - h / 2;
+  let py;
+
+  if (isBottom) {
+    // Obiekty stojące na ziemi / platformach: przyciągaj DOLNĄ krawędź (y + h) do linii siatki Y
+    if (snapToGrid) {
+      const snappedBottom = Math.round((rawBottom - groundY) / gridSize) * gridSize + groundY;
+      py = snappedBottom - h;
+    } else {
+      py = Math.round(worldY - h / 2);
+    }
+  } else if (def.anchor === 'center') {
+    if (snapToGrid) {
+      const snappedCenter = Math.round((worldY - groundY) / gridSize) * gridSize + groundY;
+      py = snappedCenter - h / 2;
+    } else {
+      py = Math.round(worldY - h / 2);
+    }
+  } else {
+    // Platformy / kładki (np. catwalk): przyciągaj GÓRNĄ krawędź chodu (y) do linii siatki Y
+    if (snapToGrid) {
+      const snappedTop = Math.round((rawTop - groundY) / gridSize) * gridSize + groundY;
+      py = snappedTop;
+    } else {
+      py = Math.round(worldY - h / 2);
+    }
+  }
+
+  // 3. Inteligentne przyciąganie do powierzchni (Surface Snapping / Magnet)
+  // Sprawdź czy pod dolną krawędzią znajduje się platforma lub grunt w odległości < snapThreshold
+  let isSnappedToSurface = false;
+  let surfaceY = null;
+  let surfaceName = '';
+
+  if (snapThreshold > 0) {
+    const bottomY = py + h;
+    const surface = findSupportingSurface(px, bottomY, w, h, groundY, snapThreshold, platforms, obstacles, rawBottom);
+    if (surface) {
+      // Ustaw pionową pozycję obiektu dokładnie tak, aby jego dolna krawędź przylegała do krawędzi platformy:
+      // object.y = platform.y - object.height;
+      py = surface.y - h;
+      isSnappedToSurface = true;
+      surfaceY = surface.y;
+      surfaceName = surface.name;
+    }
+  }
+
+  return {
+    x: px,
+    y: py,
+    w,
+    h,
+    bottomY: py + h,
+    isSnappedToSurface,
+    surfaceY,
+    surfaceName
+  };
 }
 
 export function clearCustomObstacles() {
@@ -69,9 +332,24 @@ export function undoCustomObstacle() {
 
 export function setCustomObstacles(newList) {
   customObstacles.length = 0;
+  obstacles.length = 0;
   if (Array.isArray(newList)) {
     for (const obs of newList) {
-      customObstacles.push(obs);
+      if (obs) {
+        const norm = normalizeObstacleType(obs.type);
+        if (!obs.w || obs.w <= 0) {
+          obs.w = norm === 'ammo_depot' ? 32 : (norm === 'sandbags' ? 48 : 40);
+        }
+        if (!obs.h || obs.h <= 0) {
+          obs.h = norm === 'ammo_depot' ? 24 : (norm === 'sandbags' ? 24 : 20);
+        }
+        if (norm === 'ammo_depot') {
+          if (obs.isPickup === undefined) obs.isPickup = true;
+          if (obs.isInteractable === undefined) obs.isInteractable = true;
+        }
+        customObstacles.push(obs);
+        obstacles.push(obs);
+      }
     }
   }
 }
@@ -87,7 +365,7 @@ export const ARENA_1_PLATFORMS = [
     theme: 'cyan',
     x: START_X + 20,
     w: 380,
-    relY: 130,
+    relY: 140,
     thickness: 22,
     props: []
   },
@@ -105,7 +383,7 @@ export const ARENA_1_PLATFORMS = [
     isAltar: true,
     x: START_X + 1440,
     w: 320,
-    relY: 190,
+    relY: 200,
     thickness: 24,
     props: [
       { type: 'altar_pedestal', rx: 90, w: 140, h: 32 }
@@ -126,7 +404,7 @@ export const ARENA_1_PLATFORMS = [
     theme: 'orange',
     x: START_X + 2800,
     w: 380,
-    relY: 130,
+    relY: 140,
     thickness: 22,
     props: []
   }
@@ -164,7 +442,7 @@ export const arena1State = {
   kickoffCooldown: 0,
   initialSetupDone: false,
   altarX: START_X + ARENA_WIDTH / 2,
-  altarRelY: 245
+  altarRelY: 255
 };
 
 const altarShockwaves = [];
@@ -259,7 +537,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;
 
-  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (window.innerHeight - 75) : 500;
+  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
   const targetBot = botObj || _activeBot;
 
   if (activeArenaId === 'ARENA_2') {
@@ -547,6 +825,93 @@ export function explodeBarrel(barrel, groundY) {
     }
   }
 }
+
+/**
+ * Aktualizacja fizyki i ruchu przeszkód (np. kopniętych beczek wybuchowych)
+ */
+export function updateMovableObstacles(groundY = 500) {
+  for (let i = customObstacles.length - 1; i >= 0; i--) {
+    const obs = customObstacles[i];
+    if (!obs || obs.exploded) continue;
+
+    // Przeszkody z nadaną prędkością lub oznaczone jako kopnięte
+    if ((obs.vx !== undefined && Math.abs(obs.vx) > 0.01) ||
+        (obs.vy !== undefined && Math.abs(obs.vy) > 0.01) ||
+        obs.kicked) {
+      obs.vy = (obs.vy || 0) + 0.55; // grawitacja
+      obs.x += (obs.vx || 0);
+      const curY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      obs.y = curY + obs.vy;
+
+      const floorY = groundY - obs.h;
+      if (obs.y >= floorY) {
+        obs.y = floorY;
+        if (Math.abs(obs.vy) > 3.0) {
+          obs.vy = -obs.vy * 0.35; // odbicie od ziemi
+          spawnObstacleSparks(obs.x + obs.w / 2, obs.y + obs.h, 0, -1, 3);
+        } else {
+          obs.vy = 0;
+        }
+        obs.vx = (obs.vx || 0) * 0.88; // tarcie podłoża
+        if (Math.abs(obs.vx) < 0.15 && Math.abs(obs.vy) < 0.15) {
+          obs.vx = 0;
+          obs.vy = 0;
+          obs.kicked = false;
+        }
+      }
+
+      obs.relY = groundY - obs.y;
+
+      // Odbicie od krawędzi areny
+      if (obs.x < 100) {
+        obs.x = 100;
+        obs.vx = Math.abs(obs.vx || 0) * 0.5;
+      } else if (obs.x > 1850) {
+        obs.x = 1850;
+        obs.vx = -Math.abs(obs.vx || 0) * 0.5;
+      }
+
+      // Detonacja przy zderzeniu z encjami przy dużej prędkości
+      if (obs.type === 'explosive_barrel') {
+        const speed = Math.hypot(obs.vx || 0, obs.vy || 0);
+        if (speed > 5.0) {
+          const ocx = obs.x + obs.w / 2;
+          const ocy = obs.y + obs.h / 2;
+          const hitRadius = (obs.w / 2) + 16;
+
+          // Trafienie w bota
+          if (_activeBot && _activeBot.active && !_activeBot.isDead) {
+            const bx = _activeBot.x + (_activeBot.w || 24) / 2;
+            const by = _activeBot.y + (_activeBot.h || 70) / 2;
+            if (Math.hypot(ocx - bx, ocy - by) <= hitRadius + 18) {
+              explodeBarrel(obs, groundY);
+              continue;
+            }
+          }
+
+          // Trafienie w gracza (jeśli kopiącym był bot/inny podmiot)
+          if (_activePlayer && !_activePlayer.isDead && obs.kickedBy !== _activePlayer) {
+            const px = _activePlayer.x + (_activePlayer.w || 24) / 2;
+            const py = _activePlayer.y + (_activePlayer.h || 70) / 2;
+            if (Math.hypot(ocx - px, ocy - py) <= hitRadius + 18) {
+              explodeBarrel(obs, groundY);
+              continue;
+            }
+          }
+
+          // Trafienie w piłkę
+          if (_activeBall) {
+            if (Math.hypot(ocx - _activeBall.x, ocy - _activeBall.y) <= hitRadius + (_activeBall.colRadius || 12)) {
+              explodeBarrel(obs, groundY);
+              continue;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
@@ -914,7 +1279,8 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   }
 
   for (const bar of GROUND_BARRICADES) {
-    if (bar.type === 'sandbags' || bar.type === 'ammo_depot') {
+    const bType = normalizeObstacleType(bar.type);
+    if (bType === 'sandbags' || bType === 'ammo_depot') {
       const barLeft = bar.x;
       const barRight = bar.x + bar.w;
       const barTop = groundY - bar.h;
@@ -1255,10 +1621,284 @@ function drawHazardStripes(ctx, x, y, w, h) {
   ctx.restore();
 }
 
-function drawSandbags(ctx, x, y, w, h) {
+export function drawCrate(ctx, x, y, w, h) {
+  ctx.save();
+
+  // 1. Cień rzucany na podłoże
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+  ctx.beginPath();
+  if (ctx.ellipse) {
+    ctx.ellipse(x + w / 2, y + h, w * 0.48, 2.5, 0, 0, Math.PI * 2);
+  } else {
+    ctx.rect(x + 2, y + h - 1, w - 4, 2);
+  }
+  ctx.fill();
+
+  // 2. Główny korpus skrzyni w kolorystyce wojskowej zieleni (#2d4a22)
+  const bodyGrad = ctx.createLinearGradient(x, y, x, y + h);
+  bodyGrad.addColorStop(0, '#3a5f2c');   // jaśniejsza krawędź u góry
+  bodyGrad.addColorStop(0.35, '#2d4a22'); // wojskowa zieleń wojsk lądowych (#2d4a22)
+  bodyGrad.addColorStop(0.85, '#22381a'); // ciemniejszy oliwkowy
+  bodyGrad.addColorStop(1, '#182813');   // głęboki cień u dołu
+  ctx.fillStyle = bodyGrad;
+
+  const rad = 2.5;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, rad);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+  ctx.fill();
+
+  // 3. Ciemna obwódka skrzyni
+  ctx.strokeStyle = '#121f0e';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  // 4. Górne rozjaśnienie pokrywy (bevel)
+  ctx.strokeStyle = 'rgba(110, 175, 80, 0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 1);
+  ctx.lineTo(x + w - 2, y + 1);
+  ctx.stroke();
+
+  // 5. Pozioma szczelina pokrywy
+  const lidH = Math.max(5, Math.round(h * 0.28));
+  const seamY = y + lidH;
+  ctx.strokeStyle = '#0f1a0b';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x + 1, seamY);
+  ctx.lineTo(x + w - 1, seamY);
+  ctx.stroke();
+
+  // Odblask pod rowkiem pokrywy
+  ctx.strokeStyle = 'rgba(75, 120, 55, 0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x + 1, seamY + 1.2);
+  ctx.lineTo(x + w - 1, seamY + 1.2);
+  ctx.stroke();
+
+  // 6. Stalowe okucia rogów (metalowe narożniki)
+  const bracketW = Math.max(3, Math.min(6, w * 0.16));
+  const bracketH = Math.max(3, Math.min(5, h * 0.18));
+  ctx.fillStyle = '#334155'; // stal grafitowa
+  // Lewy górny
+  ctx.fillRect(x, y, bracketW, 2);
+  ctx.fillRect(x, y, 2, bracketH);
+  // Prawy górny
+  ctx.fillRect(x + w - bracketW, y, bracketW, 2);
+  ctx.fillRect(x + w - 2, y, 2, bracketH);
+  // Lewy dolny
+  ctx.fillRect(x, y + h - 2, bracketW, 2);
+  ctx.fillRect(x, y + h - bracketH, 2, bracketH);
+  // Prawy dolny
+  ctx.fillRect(x + w - bracketW, y + h - 2, bracketW, 2);
+  ctx.fillRect(x + w - 2, y + h - bracketH, 2, bracketH);
+
+  // Nity na narożnikach
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(x + 2.5, y + 2.5, 1.2, 1.2);
+  ctx.fillRect(x + w - 3.7, y + 2.5, 1.2, 1.2);
+  ctx.fillRect(x + 2.5, y + h - 3.7, 1.2, 1.2);
+  ctx.fillRect(x + w - 3.7, y + h - 3.7, 1.2, 1.2);
+
+  // 7. Boczne zagłębienia na uchwyty transportowe
+  const handleH = Math.max(4, Math.round(h * 0.22));
+  const handleY = y + lidH + (h - lidH - handleH) / 2;
+  ctx.fillStyle = '#14220f';
+  ctx.fillRect(x + 1, handleY, 2, handleH);
+  ctx.fillRect(x + w - 3, handleY, 2, handleH);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(x + 1.5, handleY + 1, 1, handleH - 2);
+  ctx.fillRect(x + w - 2.5, handleY + 1, 1, handleH - 2);
+
+  // 8. Centralna klamra / zamek (metalowy zatrzask)
+  const latchW = Math.max(4, Math.min(7, Math.round(w * 0.18)));
+  const latchH = Math.max(4, Math.min(6, Math.round(h * 0.22)));
+  const latchX = x + (w - latchW) / 2;
+  const latchY = seamY - Math.round(latchH * 0.40);
+
+  // Cień pod klamrą
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillRect(latchX - 0.5, latchY + 0.5, latchW + 1, latchH + 1);
+
+  // Płytka zatrzasku ze stali
+  const latchGrad = ctx.createLinearGradient(latchX, latchY, latchX + latchW, latchY);
+  latchGrad.addColorStop(0, '#94a3b8');
+  latchGrad.addColorStop(0.4, '#e2e8f0');
+  latchGrad.addColorStop(0.7, '#cbd5e1');
+  latchGrad.addColorStop(1, '#64748b');
+  ctx.fillStyle = latchGrad;
+  ctx.fillRect(latchX, latchY, latchW, latchH);
+
+  // Ramka klamry
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(latchX, latchY, latchW, latchH);
+
+  // Otwór zamka / rygiel
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(latchX + latchW / 2 - 0.6, latchY + latchH * 0.52, 1.2, 1.6);
+
+  // 9. Żółty szablonowy napis "AMMO"
+  const textSpaceY = seamY + 1;
+  const textSpaceH = h - (seamY - y);
+  const fontSize = Math.max(6, Math.min(8, Math.round(w * 0.22)));
+  ctx.font = `900 ${fontSize}px "Courier New", Courier, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const textY = textSpaceY + textSpaceH / 2 + 0.5;
+  const textX = x + w / 2;
+
+  // Cień tekstu dla kontrastu
+  ctx.fillStyle = 'rgba(10, 18, 8, 0.85)';
+  ctx.fillText('AMMO', textX + 0.6, textY + 0.6);
+
+  // Wojskowy żółty kolor napisu
+  ctx.fillStyle = '#facc15';
+  ctx.fillText('AMMO', textX, textY);
+
+  ctx.restore();
 }
 
-function drawCrate(ctx, x, y, w, h) {
+function drawSingleSandbag(ctx, bx, by, bw, bh, isOlive = false) {
+  ctx.save();
+
+  // Cień pod workiem
+  ctx.fillStyle = 'rgba(20, 16, 10, 0.40)';
+  ctx.beginPath();
+  if (ctx.ellipse) {
+    ctx.ellipse(bx + bw / 2, by + bh, bw * 0.46, 2, 0, 0, Math.PI * 2);
+  } else {
+    ctx.rect(bx + 1, by + bh - 1, bw - 2, 2);
+  }
+  ctx.fill();
+
+  // Gradient tkaniny worka (beżowy lub oliwkowy)
+  const bagGrad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  if (isOlive) {
+    bagGrad.addColorStop(0, '#8c8b60');   // oliwkowy rozbłysk
+    bagGrad.addColorStop(0.35, '#76744d'); // oliwkowa juta
+    bagGrad.addColorStop(0.85, '#5d5c3b'); // cień oliwkowy
+    bagGrad.addColorStop(1, '#444329');   // głębokie załamanie
+  } else {
+    bagGrad.addColorStop(0, '#b8a681');   // piaskowo-beżowy rozbłysk
+    bagGrad.addColorStop(0.35, '#9e8c67'); // ciepły beżowy płótno
+    bagGrad.addColorStop(0.85, '#7d6d4d'); // ciemniejsza juta
+    bagGrad.addColorStop(1, '#574b33');   // załamanie materiału
+  }
+  ctx.fillStyle = bagGrad;
+
+  // Zaokrąglony kształt worka (poduszkowaty)
+  const r = Math.min(5, bh * 0.45);
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(bx, by, bw, bh, r);
+  } else {
+    ctx.rect(bx, by, bw, bh);
+  }
+  ctx.fill();
+
+  // Zarys tkaniny (kontur)
+  ctx.strokeStyle = isOlive ? '#3c3b24' : '#4d412b';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Górna krawędź światła (rozjaśnienie wypukłości)
+  ctx.strokeStyle = isOlive ? 'rgba(195, 195, 150, 0.45)' : 'rgba(235, 220, 185, 0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by + 1.2);
+  ctx.lineTo(bx + bw - r, by + 1.2);
+  ctx.stroke();
+
+  // Związane końce ("uszy" worka na brzegach)
+  ctx.fillStyle = isOlive ? '#504f32' : '#635438';
+  ctx.beginPath();
+  if (ctx.ellipse) {
+    ctx.ellipse(bx + 1, by + bh / 2, 1.8, 3, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(bx + bw - 1, by + bh / 2, 1.8, 3, 0.2, 0, Math.PI * 2);
+  } else {
+    ctx.rect(bx, by + bh / 2 - 2, 2, 4);
+    ctx.rect(bx + bw - 2, by + bh / 2 - 2, 2, 4);
+  }
+  ctx.fill();
+
+  // Sznurek / przewiązanie worka
+  ctx.fillStyle = '#f5eedb';
+  ctx.fillRect(bx + 1.8, by + bh / 2 - 1.5, 0.9, 3);
+  ctx.fillRect(bx + bw - 2.7, by + bh / 2 - 1.5, 0.9, 3);
+
+  // Załamania i fałdy tkaniny (naprężenia materiału)
+  ctx.strokeStyle = isOlive ? 'rgba(45, 44, 28, 0.35)' : 'rgba(60, 50, 32, 0.35)';
+  ctx.lineWidth = 0.9;
+  const numCreases = Math.max(2, Math.floor(bw / 12));
+  for (let c = 1; c <= numCreases; c++) {
+    const cxPos = bx + (bw / (numCreases + 1)) * c;
+    ctx.beginPath();
+    ctx.moveTo(cxPos - 2, by + 3);
+    ctx.quadraticCurveTo(cxPos + 1, by + bh / 2, cxPos - 1, by + bh - 3);
+    ctx.stroke();
+  }
+
+  // Szew poziomy przez środek worka
+  ctx.strokeStyle = isOlive ? 'rgba(35, 34, 20, 0.25)' : 'rgba(50, 40, 24, 0.25)';
+  ctx.lineWidth = 0.7;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(bx + 4, by + bh * 0.55);
+  ctx.lineTo(bx + bw - 4, by + bh * 0.55);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+export function drawSandbags(ctx, x, y, w, h) {
+  ctx.save();
+
+  // Cień ogólny pod barykadą
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.beginPath();
+  if (ctx.ellipse) {
+    ctx.ellipse(x + w / 2, y + h, w * 0.48, 2.5, 0, 0, Math.PI * 2);
+  } else {
+    ctx.rect(x + 2, y + h - 2, w - 4, 2);
+  }
+  ctx.fill();
+
+  // Warstwowy układ stosu worków (staggered stack)
+  // Dolna warstwa: 2 worki obok siebie
+  // Górna warstwa: 2 worki przesunięte, zachodzące na łączenie
+  const rowH = Math.round(h * 0.56);
+  const bottomY = y + h - rowH;
+  const topY = y;
+
+  const bBagW = Math.round(w * 0.52);
+
+  // Dolne worki: lewy beżowy, prawy oliwkowy
+  drawSingleSandbag(ctx, x, bottomY, bBagW, rowH, false);
+  drawSingleSandbag(ctx, x + w - bBagW, bottomY, bBagW, rowH, true);
+
+  // Cień rzucany przez górne worki na dolne
+  ctx.fillStyle = 'rgba(15, 12, 8, 0.45)';
+  ctx.fillRect(x + 4, bottomY - 0.5, w - 8, 2.5);
+
+  // Górne worki: przesunięte, wypełniające stos
+  const tBagW = Math.round(w * 0.46);
+  const tBagH = Math.round(h * 0.52);
+  const tOffset = Math.round((w - (tBagW * 2 - 4)) / 2);
+
+  // Górne worki: lewy oliwkowy, prawy ciepły beż
+  drawSingleSandbag(ctx, x + Math.max(2, tOffset), topY, tBagW, tBagH, true);
+  drawSingleSandbag(ctx, x + w - Math.max(2, tOffset) - tBagW, topY, tBagW, tBagH, false);
+
+  ctx.restore();
 }
 
 function drawHedgehog(ctx, x, y, size) {
@@ -1782,47 +2422,119 @@ export function drawCyberBumper(ctx, x, y, w, h, hitTimer = 0) {
   ctx.restore();
 }
 
+export const OBSTACLE_RENDERERS = {
+  sandbag: drawSandbags,
+  sandbags: drawSandbags,
+  sand_bag: drawSandbags,
+  sand_bags: drawSandbags,
+  worki: drawSandbags,
+  ammo: drawCrate,
+  ammo_crate: drawCrate,
+  ammoBox: drawCrate,
+  ammobox: drawCrate,
+  ammo_depot: drawCrate,
+  crate: drawCrate,
+  bunker_block: drawBunkerBlock,
+  cyber_catwalk: drawCyberCatwalk,
+  neon_barrier: drawNeonBarrier,
+  jump_pad: drawJumpPad,
+  cyber_pillar: drawCyberPillar,
+  explosive_barrel: drawExplosiveBarrel,
+  barbed_wire: drawBarbedWire,
+  sniper_tower: drawSniperTower,
+  tall_concrete_wall: drawTallConcreteWall,
+  speed_booster_pad: drawSpeedBoosterPad,
+  gravity_lift: drawGravityLift,
+  laser_gate: drawLaserGate,
+  floating_hex: drawFloatingHex
+};
+
 export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, hitTimer = 0) {
-  if (type === 'catwalk') {
-    drawCatwalk(ctx, { x, w, relY: groundY - y, thickness: h }, groundY);
-  } else if (type === 'sandbags') {
-    drawSandbags(ctx, x, y, w, h);
-  } else if (type === 'ammo_depot') {
-    drawCrate(ctx, x, y, w, h);
-  } else if (type === 'hedgehog') {
-    drawHedgehog(ctx, x + w / 2, y + h / 2, w);
-  } else if (type === 'bunker_block') {
-    drawBunkerBlock(ctx, x, y, w, h);
-  } else if (type === 'cyber_catwalk') {
-    drawCyberCatwalk(ctx, x, y, w, h);
-  } else if (type === 'neon_barrier') {
-    drawNeonBarrier(ctx, x, y, w, h);
-  } else if (type === 'jump_pad') {
-    drawJumpPad(ctx, x, y, w, h);
-  } else if (type === 'cyber_pillar') {
-    drawCyberPillar(ctx, x, y, w, h);
-  } else if (type === 'explosive_barrel') {
-    drawExplosiveBarrel(ctx, x, y, w, h);
-  } else if (type === 'barbed_wire') {
-    drawBarbedWire(ctx, x, y, w, h);
-  } else if (type === 'sniper_tower') {
-    drawSniperTower(ctx, x, y, w, h);
-  } else if (type === 'metal_ramp_left') {
-    drawMetalRamp(ctx, x, y, w, h, true);
-  } else if (type === 'metal_ramp_right') {
-    drawMetalRamp(ctx, x, y, w, h, false);
-  } else if (type === 'tall_concrete_wall') {
-    drawTallConcreteWall(ctx, x, y, w, h);
-  } else if (type === 'speed_booster_pad') {
-    drawSpeedBoosterPad(ctx, x, y, w, h);
-  } else if (type === 'gravity_lift') {
-    drawGravityLift(ctx, x, y, w, h);
-  } else if (type === 'laser_gate') {
-    drawLaserGate(ctx, x, y, w, h);
-  } else if (type === 'floating_hex') {
-    drawFloatingHex(ctx, x, y, w, h);
-  } else if (type === 'cyber_bumper') {
-    drawCyberBumper(ctx, x, y, w, h, hitTimer);
+  const norm = normalizeObstacleType(type);
+
+  // Słownik metod renderujących przeszkody
+  const renderer = OBSTACLE_RENDERERS[type] || OBSTACLE_RENDERERS[norm];
+  if (typeof renderer === 'function') {
+    renderer(ctx, x, y, w, h);
+    return;
+  }
+
+  // Switch / case jako gwarantowany mechanizm renderowania dla wszystkich typów i aliasów
+  switch (norm) {
+    case 'sandbags':
+      drawSandbags(ctx, x, y, w, h);
+      break;
+    case 'ammo_depot':
+      drawCrate(ctx, x, y, w, h);
+      break;
+    case 'catwalk':
+      drawCatwalk(ctx, { x, w, relY: groundY - y, thickness: h }, groundY);
+      break;
+    case 'hedgehog':
+      drawHedgehog(ctx, x + w / 2, y + h / 2, w);
+      break;
+    case 'bunker_block':
+      drawBunkerBlock(ctx, x, y, w, h);
+      break;
+    case 'cyber_catwalk':
+      drawCyberCatwalk(ctx, x, y, w, h);
+      break;
+    case 'neon_barrier':
+      drawNeonBarrier(ctx, x, y, w, h);
+      break;
+    case 'jump_pad':
+      drawJumpPad(ctx, x, y, w, h);
+      break;
+    case 'cyber_pillar':
+      drawCyberPillar(ctx, x, y, w, h);
+      break;
+    case 'explosive_barrel':
+      drawExplosiveBarrel(ctx, x, y, w, h);
+      break;
+    case 'barbed_wire':
+      drawBarbedWire(ctx, x, y, w, h);
+      break;
+    case 'sniper_tower':
+      drawSniperTower(ctx, x, y, w, h);
+      break;
+    case 'metal_ramp_left':
+      drawMetalRamp(ctx, x, y, w, h, true);
+      break;
+    case 'metal_ramp_right':
+      drawMetalRamp(ctx, x, y, w, h, false);
+      break;
+    case 'tall_concrete_wall':
+      drawTallConcreteWall(ctx, x, y, w, h);
+      break;
+    case 'speed_booster_pad':
+      drawSpeedBoosterPad(ctx, x, y, w, h);
+      break;
+    case 'gravity_lift':
+      drawGravityLift(ctx, x, y, w, h);
+      break;
+    case 'laser_gate':
+      drawLaserGate(ctx, x, y, w, h);
+      break;
+    case 'floating_hex':
+      drawFloatingHex(ctx, x, y, w, h);
+      break;
+    case 'cyber_bumper':
+      drawCyberBumper(ctx, x, y, w, h, hitTimer);
+      break;
+    default:
+      if (type === 'sandbag' || type === 'sandbags' || type === 'sand_bag' || type === 'sand_bags') {
+        drawSandbags(ctx, x, y, w, h);
+      } else if (
+        type === 'ammo' ||
+        type === 'ammo_crate' ||
+        type === 'ammoBox' ||
+        type === 'ammobox' ||
+        type === 'ammo_depot' ||
+        type === 'crate'
+      ) {
+        drawCrate(ctx, x, y, w, h);
+      }
+      break;
   }
 }
 
@@ -2222,12 +2934,15 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
 
 export function drawObstacles(ctx, groundY) {
   for (const bar of GROUND_BARRICADES) {
-    if (bar.type === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
-    else if (bar.type === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
-    else if (bar.type === 'hedgehog') drawHedgehog(ctx, bar.x, groundY - bar.size / 2, bar.size);
+    if (!bar) continue;
+    const bType = normalizeObstacleType(bar.type);
+    if (bType === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
+    else if (bType === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
+    else if (bType === 'hedgehog') drawHedgehog(ctx, bar.x, groundY - bar.size / 2, bar.size);
   }
 
   for (const plat of ARENA_PLATFORMS) {
+    if (!plat) continue;
     if (plat.type === 'catwalk') {
       drawCatwalk(ctx, plat, groundY);
     } else {
@@ -2235,9 +2950,20 @@ export function drawObstacles(ctx, groundY) {
     }
   }
 
-  for (const obs of customObstacles) {
+  // Główna pętla renderowania postawionych obiektów (spójna w trybie gry i trybie edycji)
+  // UWAGA: Nie filtrujemy obiektów z flagami isPickup ani isInteractable!
+  const renderedSet = new Set();
+  const allObstacles = [...customObstacles, ...obstacles];
+  for (const obs of allObstacles) {
+    if (!obs || renderedSet.has(obs)) continue;
+    renderedSet.add(obs);
+
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-    drawSingleObstacleByType(ctx, obs.type, obs.x, topY, obs.w, obs.h, groundY, obs.hitTimer || 0);
+    const norm = normalizeObstacleType(obs.type);
+    const w = (obs.w && obs.w > 0) ? obs.w : (norm === 'ammo_depot' ? 32 : (norm === 'sandbags' ? 48 : 40));
+    const h = (obs.h && obs.h > 0) ? obs.h : (norm === 'ammo_depot' ? 24 : (norm === 'sandbags' ? 24 : 20));
+
+    drawSingleObstacleByType(ctx, obs.type, obs.x, topY, w, h, groundY, obs.hitTimer || 0);
   }
 
   drawBarrelExplosionParticles(ctx);
@@ -2248,7 +2974,10 @@ export function drawObstacles(ctx, groundY) {
   }
 }
 
-export function resetObstacles() { obstacles.length = 0; }
+export function resetObstacles() {
+  obstacles.length = 0;
+  customObstacles.length = 0;
+}
 export function resetBirds() { }
 export function updateProceduralObstacles() { }
 export function updateProceduralBirds() { }
@@ -2425,7 +3154,8 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
 
   if (Array.isArray(GROUND_BARRICADES)) {
     for (const bar of GROUND_BARRICADES) {
-      if (bar.type === 'sandbags' || bar.type === 'ammo_depot') {
+      const bType = normalizeObstacleType(bar.type);
+      if (bType === 'sandbags' || bType === 'ammo_depot') {
         const left = bar.x;
         const right = bar.x + bar.w;
         const top = groundY - bar.h;
@@ -2473,7 +3203,8 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   const obsList = extraObstacles || obstacles;
   if (Array.isArray(obsList)) {
     for (const obs of obsList) {
-      if (obs.type === 'sandbags' || obs.type === 'ammo_depot') {
+      const oType = normalizeObstacleType(obs.type);
+      if (oType === 'sandbags' || oType === 'ammo_depot') {
         const left = obs.x;
         const right = obs.x + obs.w;
         const top = groundY - obs.h;

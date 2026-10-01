@@ -1,6 +1,6 @@
 import { createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
 import { WEAPONS, shootWeapon } from './weapons.js';
-import { customObstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena } from './obstacles.js';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y } from './world.js';
 import { ball } from './ball.js';
 
@@ -379,7 +379,15 @@ function handleNetworkData(data) {
         if (obs.relY !== undefined) {
           obs.y = GROUND_Y - obs.relY;
         }
+        const norm = normalizeObstacleType(obs.type);
+        if (!obs.w || obs.w <= 0) obs.w = norm === 'ammo_depot' ? 32 : (norm === 'sandbags' ? 48 : 40);
+        if (!obs.h || obs.h <= 0) obs.h = norm === 'ammo_depot' ? 24 : (norm === 'sandbags' ? 24 : 20);
+        if (norm === 'ammo_depot') {
+          if (obs.isPickup === undefined) obs.isPickup = true;
+          if (obs.isInteractable === undefined) obs.isInteractable = true;
+        }
         customObstacles.push(obs);
+        obstacles.push(obs);
         spawnJetpackSparks(obs.x + obs.w / 2, obs.y + obs.h / 2, 0, 4);
       }
       break;
@@ -391,6 +399,8 @@ function handleNetworkData(data) {
         if (Math.abs(o.x - data.x) < 5 && Math.abs(o.y - data.y) < 5) {
           spawnJetpackSparks(o.x + o.w / 2, o.y + o.h / 2, 0, 5);
           customObstacles.splice(i, 1);
+          const obsIdx = obstacles.indexOf(o);
+          if (obsIdx >= 0) obstacles.splice(obsIdx, 1);
           break;
         }
       }

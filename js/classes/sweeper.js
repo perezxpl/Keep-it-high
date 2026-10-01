@@ -28,7 +28,12 @@ export const SweeperClass = {
     jetMax: 80,
     spartanKnockback: 13.0, // Średni / defensywny odrzut
     spartanStagger: 20,     // Solidne oszołomienie defensywne
-    spartanDamage: 12
+    spartanDamage: 12,
+    kickForce: 1.25,
+    kickForceMultiplier: 1.25,
+    knockback: 1.25,
+    knockbackMultiplier: 1.25,
+    kickCooldown: 0.55
   },
 
   // 2. Kolorystyka i dane wizualne renderera – Coyote Tan / Desert PMC

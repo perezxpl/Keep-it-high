@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId } from '../obstacles.js';
+import { activeArenaId, customObstacles } from '../obstacles.js';
 import { triggerScreenShake } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
@@ -15,7 +15,8 @@ import {
   startJumpCharge, playerJump, executeReleaseJump, playerSlide,
   startKickCharge, evaluateKickTiming, isBallInKickReach, executeReleaseKick,
   getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets,
-  findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets
+  findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
+  applyKickInteractions
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js';
@@ -54,7 +55,12 @@ export const DEFAULT_STATS = {
   jetMax: 100,
   spartanKnockback: 11.0,
   spartanStagger: 25,
-  spartanDamage: 10
+  spartanDamage: 10,
+  kickForce: 1.0,
+  kickForceMultiplier: 1.0,
+  knockback: 1.0,
+  knockbackMultiplier: 1.0,
+  kickCooldown: 0.50
 };
 
 export const DEFAULT_CLASS_SCHEMA = {
@@ -288,6 +294,12 @@ export function createPlayerInstance(overrides = {}) {
       shoulderTilt: 0,
       headPitch: 0
     },
+    currentClass: mergedClass,
+    classConfig: mergedClass,
+    class: mergedClass,
+    kickForceMultiplier: mergedClass.stats.kickForce || 1.0,
+    knockbackMultiplier: mergedClass.stats.knockback || 1.0,
+    kickCooldownTime: mergedClass.stats.kickCooldown || 0.50,
     ...overrides
   };
 }
@@ -301,6 +313,11 @@ export function setPlayerClass(newClass, p = player) {
 
   const merged = mergeClassWithSchema(newClass);
   p.currentClass = merged;
+  p.classConfig = merged;
+  p.class = merged;
+  p.kickForceMultiplier = merged.stats.kickForce || 1.0;
+  p.knockbackMultiplier = merged.stats.knockback || 1.0;
+  p.kickCooldownTime = merged.stats.kickCooldown || 0.50;
 
   p.w = p.currentClass.body.w;
   p.h = p.currentClass.body.h;
@@ -732,6 +749,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.kickingFootX = scissorTargets.front.x;
     player.kickingFootY = scissorTargets.front.y;
 
+    if (!player.hitThisSwing) {
+      applyKickInteractions(player, ball, targets, customObstacles, player.currentGroundY || GROUND_Y, spawnGrass);
+    }
+
     if (player.scissorTimer >= player.scissorDuration) {
       player.kickState = 'IDLE';
       player.kickMode = 'GROUND';
@@ -744,6 +765,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     const u = player.spinVolleyTimer / player.spinVolleyDuration;
     player.kickingFootX = hipX + Math.cos(u * Math.PI) * 36 * player.facing;
     player.kickingFootY = hipY + 4;
+
+    if (!player.hitThisSwing) {
+      applyKickInteractions(player, ball, targets, customObstacles, player.currentGroundY || GROUND_Y, spawnGrass);
+    }
 
     if (player.spinVolleyTimer >= player.spinVolleyDuration) {
       player.kickState = 'IDLE';
@@ -775,6 +800,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         triggerScreenShake(8 + pwr * 6);
         player.hitThisSwing = true;
       }
+      applyKickInteractions(player, ball, targets, customObstacles, player.currentGroundY || GROUND_Y, spawnGrass);
     }
 
     if (player.spartanTimer >= duration) {
@@ -794,6 +820,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       const kickTraj = getGroundKickTrajectory('SWING', player.kickAngle, player.kickPower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX);
       player.kickingFootX = kickTraj.kicking.x;
       player.kickingFootY = kickTraj.kicking.y;
+
+      if (!player.hitThisSwing) {
+        applyKickInteractions(player, ball, targets, customObstacles, currentFloor, spawnGrass);
+      }
 
       if (player.kickAngle >= 2.1) {
         player.kickState = 'RECOVER';
@@ -999,7 +1029,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isArena2 = (activeArenaId === 'ARENA_2');
   const wallLeft = isArena2 ? 150 : ARENA_LEFT;
   const wallRight = isArena2 ? 1770 : ARENA_RIGHT;
-  const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (window.innerHeight - 75) : 500;
+  const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
   const wallTop = groundFloorY - 3000;
 
   if (player.y >= wallTop) {

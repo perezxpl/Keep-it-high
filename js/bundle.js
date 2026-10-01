@@ -28,7 +28,7 @@
   let W = window.innerWidth;
   let H = window.innerHeight;
   let DPR = Math.min(window.devicePixelRatio || 1, 2);
-  let GROUND_Y = H - 75;
+  let GROUND_Y = Math.round((H - 75) / 20) * 20;
 
   const camera = {
     x: 160,
@@ -62,7 +62,7 @@
       ctx.resetTransform();
       ctx.scale(DPR, DPR);
     }
-    GROUND_Y = H - 75;
+    GROUND_Y = Math.round((H - 75) / 20) * 20;
     if (playerObj) {
       playerObj.y = GROUND_Y - playerObj.h;
     }

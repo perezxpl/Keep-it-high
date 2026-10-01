@@ -17,7 +17,43 @@ export const CONFIG = {
 
   // SYSTEM EFEKTÓW GORE / ROZCZŁONKOWANIA
   GORE_ENABLED: true,
-  MAX_BLOOD_DECALS: 120
+  MAX_BLOOD_DECALS: 120,
+
+  // SYSTEM BALANSU KOPNIĘCIA (GLOBAL NERF ~45-50% I BAZOWE SIŁY)
+  BASE_KICK_FORCE: 19.5,      // Bazowa siła wykopu piłki (osłabienie o ~45% z 36)
+  BASE_KNOCKBACK: 10.5,       // Bazowy knockback dla postaci (osłabienie o ~50% z 22)
+  BASE_BARREL_IMPULSE: 9.5    // Bazowy impuls dla ruchomych przeszkód (beczek)
+};
+
+// =========================================================================
+// STATYSTYKI KOPNIĘCIA PRZYPISANE DO RÓL KLAS
+// =========================================================================
+export const KICK_CONFIG = {
+  BASE_KICK_FORCE: 19.5,
+  BASE_KNOCKBACK: 10.5,
+  BASE_BARREL_IMPULSE: 9.5,
+  CLASSES: {
+    AERO: {
+      kickForce: 0.85,      // Lekkie, szybkie podanie
+      knockback: 0.70,      // Niski odrzut
+      cooldown: 0.35        // Najkrótszy cooldown: 0.35s (~21 klatek)
+    },
+    ENFORCER: {
+      kickForce: 1.15,      // Ciężki wykop
+      knockback: 1.50,      // Najwyższy knockback / taranowanie
+      cooldown: 0.70        // Najdłuższy cooldown: 0.70s (~42 klatki)
+    },
+    PLAYMAKER: {
+      kickForce: 1.30,      // Najwyższa siła i precyzja
+      knockback: 1.00,      // Umiarkowany odrzut
+      cooldown: 0.50        // Zbalansowany cooldown: 0.50s (~30 klatek)
+    },
+    SWEEPER: {
+      kickForce: 1.25,      // Daleki wykop obronny
+      knockback: 1.25,      // Wysoki odrzut defensywny
+      cooldown: 0.55        // Cooldown: 0.55s (~33 klatki)
+    }
+  }
 };
 
 export const FRAME_DURATION = 1000 / 60; // 16.666 ms (dokładnie 60 FPS)

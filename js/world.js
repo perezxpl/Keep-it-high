@@ -48,7 +48,7 @@ export let ctx = null;
 export let W = window.innerWidth;
 export let H = window.innerHeight;
 export let DPR = Math.min(window.devicePixelRatio || 1, 2);
-export let GROUND_Y = H - 75;
+export let GROUND_Y = Math.round((H - 75) / 20) * 20;
 
 export const camera = {
   x: START_X + 400,
@@ -112,7 +112,7 @@ export function resize(player) {
     ctx.resetTransform();
     ctx.scale(DPR, DPR);
   }
-  GROUND_Y = H - 75;
+  GROUND_Y = Math.round((H - 75) / 20) * 20;
   invalidateSkyCache();
   if (player) {
     if (player.y >= GROUND_Y - player.h - 5) {
