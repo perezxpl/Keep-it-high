@@ -3,10 +3,9 @@
 // Łączy w całość logikę ruchową, akcje, renderowanie i stan encji gracza.
 // =========================================================================
 
-import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId } from '../obstacles.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
-import { isTouchDevice } from '../world.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';

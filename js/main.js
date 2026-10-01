@@ -25,7 +25,7 @@ import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
-  drawSingleObstacleByType
+  drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
@@ -138,6 +138,7 @@ if (canvas) {
 }
 resize(player);
 updateButtonLayout();
+setActiveBot(bot);
 resetBallToPlayer(player, GROUND_Y);
 
 window.addEventListener('resize', () => {
@@ -615,7 +616,7 @@ export function getHoveredClassCard(screenX, screenY) {
   const rects = getClassCardRects();
   for (const item of rects) {
     if (screenX >= item.x && screenX <= item.x + item.w &&
-        screenY >= item.y && screenY <= item.y + item.h) {
+      screenY >= item.y && screenY <= item.y + item.h) {
       return item.card;
     }
   }
@@ -707,7 +708,7 @@ export function drawClassSelectModal(ctx) {
 
   cardRects.forEach(({ card, x, y, w, h }) => {
     const isHovered = mouseScreenX >= x && mouseScreenX <= x + w &&
-                      mouseScreenY >= y && mouseScreenY <= y + h;
+      mouseScreenY >= y && mouseScreenY <= y + h;
 
     ctx.save();
 
@@ -2010,12 +2011,12 @@ function update() {
 
   updateParticles();
   updateJetpackParticles();
-  updateGore(GROUND_Y);
+  updateGore(GROUND_Y, ARENA_PLATFORMS, customObstacles);
 
   const headEntities = [player];
   if (bot.active) headEntities.push(bot);
   if (remotePlayer.active) headEntities.push(remotePlayer);
-  updateSeveredHeads(headEntities, GROUND_Y);
+  updateSeveredHeads(headEntities, GROUND_Y, ARENA_PLATFORMS);
 
   if (networkState.isHost || !networkState.isConnected) {
     updateBall(GROUND_Y);
@@ -2024,8 +2025,8 @@ function update() {
       checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
       checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
     }
-    checkObstacleCollisions(ball, GROUND_Y, player);
-    if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer);
+    checkObstacleCollisions(ball, GROUND_Y, player, bot);
+    if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer, bot);
     sendBallState(ball);
   } else {
     // Klient – autorytatywna pozycja piłki z sieci P2P
@@ -2034,7 +2035,7 @@ function update() {
       checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
       checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
     }
-    checkObstacleCollisions(ball, GROUND_Y, player);
+    checkObstacleCollisions(ball, GROUND_Y, player, bot);
   }
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
@@ -2190,7 +2191,8 @@ function draw() {
   if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx);
   } else {
-    drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball);
+    const inKickRange = (ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange, { activeArenaId, arenaScore, arena1State });
   }
 
   if (editorState.active) {

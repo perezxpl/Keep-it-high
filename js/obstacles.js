@@ -6,15 +6,24 @@ import { ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from './config.js';
 import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
-  spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon
+  spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon,
+  registerWorldObstacles, setActiveArenaId
 } from './world.js';
-import { bot } from './bot.js';
-import { bullets, spawnHitSparks, spawnBulletSparks } from './weapons.js';
 
 export const obstacles = [];
 export const customObstacles = [];
 export let _activePlayer = null;
 export let _activeBall = null;
+export let _activeBot = null;
+export function setActiveBot(b) { _activeBot = b; }
+
+let _onSpawnHitSparks = null;
+export function registerHitSparkCallback(fn) { _onSpawnHitSparks = fn; }
+export function spawnObstacleSparks(x, y, nx = 0, ny = -1, count = 4) {
+  if (typeof _onSpawnHitSparks === 'function') {
+    _onSpawnHitSparks(x, y, nx, ny, count);
+  }
+}
 
 export const OBSTACLE_PALETTE = {
   ARENA_1: [
@@ -232,18 +241,26 @@ export const GOALS = [...ARENA_1_GOALS];
 export const arenaScore = { cyan: 0, orange: 0 };
 export let goalCelebrationTimer = 0;
 
+registerWorldObstacles(ARENA_PLATFORMS, customObstacles, {
+  get activeArenaId() { return activeArenaId; },
+  arenaScore,
+  arena1State
+});
+
 export function setGoalCelebrationTimer(val) {
   goalCelebrationTimer = val;
 }
 
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
   activeArenaId = (arenaId === 'ARENA_2' || arenaId === 2 || arenaId === 'CYBER_STADIUM') ? 'ARENA_2' : 'ARENA_1';
+  setActiveArenaId(activeArenaId);
 
   ARENA_PLATFORMS.length = 0;
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;
 
   const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (window.innerHeight - 75) : 500;
+  const targetBot = botObj || _activeBot;
 
   if (activeArenaId === 'ARENA_2') {
     ARENA_PLATFORMS.push(...ARENA_CYBER_STADIUM_PLATFORMS);
@@ -262,16 +279,16 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isSliding = false;
       playerObj.gaitMode = 'IDLE';
     }
-    if (botObj) {
-      botObj.active = true;
-      botObj.x = 1170;
-      botObj.y = groundY - botObj.h;
-      botObj.vx = 0;
-      botObj.vy = 0;
-      botObj.facing = -1;
-      botObj.isJumping = false;
-      botObj.isSliding = false;
-      botObj.gaitMode = 'IDLE';
+    if (targetBot) {
+      targetBot.active = true;
+      targetBot.x = 1170;
+      targetBot.y = groundY - targetBot.h;
+      targetBot.vx = 0;
+      targetBot.vy = 0;
+      targetBot.facing = -1;
+      targetBot.isJumping = false;
+      targetBot.isSliding = false;
+      targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
       ballObj.x = 960;
@@ -301,15 +318,15 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isSliding = false;
       playerObj.gaitMode = 'IDLE';
     }
-    if (botObj) {
-      botObj.x = START_X + ARENA_WIDTH - 240;
-      botObj.y = groundY - 130 - botObj.h;
-      botObj.vx = 0;
-      botObj.vy = 0;
-      botObj.facing = -1;
-      botObj.isJumping = false;
-      botObj.isSliding = false;
-      botObj.gaitMode = 'IDLE';
+    if (targetBot) {
+      targetBot.x = START_X + ARENA_WIDTH - 240;
+      targetBot.y = groundY - 130 - targetBot.h;
+      targetBot.vx = 0;
+      targetBot.vy = 0;
+      targetBot.facing = -1;
+      targetBot.isJumping = false;
+      targetBot.isSliding = false;
+      targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
       ballObj.x = arena1State.altarX;
@@ -501,8 +518,8 @@ export function explodeBarrel(barrel, groundY) {
   applyExplosionToEntity(_activePlayer, cx, cy, radius, maxDmg, groundY);
 
   // 2. Bot
-  if (bot && bot.active) {
-    applyExplosionToEntity(bot, cx, cy, radius, maxDmg, groundY);
+  if (_activeBot && _activeBot.active) {
+    applyExplosionToEntity(_activeBot, cx, cy, radius, maxDmg, groundY);
   }
 
   // 3. Silne odrzucenie piłki
@@ -685,7 +702,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
           p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
           p.laserCooldown = 30;
           triggerScreenShake(4.0);
-          spawnHitSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
+          spawnObstacleSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
           if (p.hp <= 0 && !p.isDead) {
             p.isDead = true;
             p.respawnTimer = 180;
@@ -1080,7 +1097,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
           ball.vx = Math.abs(ball.vx) * rest;
         }
         if (obs.type === 'laser_gate') {
-          spawnHitSparks(ball.x, ball.y, ball.vx > 0 ? 1 : -1, 0, 4);
+          spawnObstacleSparks(ball.x, ball.y, ball.vx > 0 ? 1 : -1, 0, 4);
         }
         if (speed > 6.0) triggerScreenShake(2.2);
       }
@@ -1088,9 +1105,10 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   }
 }
 
-export function checkObstacleCollisions(ball, groundY, p = null) {
+export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) {
   _activeBall = ball;
   _activePlayer = p;
+  if (botObj) _activeBot = botObj;
 
   updateBarrelExplosionParticles();
   for (const obs of customObstacles) {
@@ -1164,8 +1182,8 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
         const pCenterY = p ? p.y + p.h / 2 : Infinity;
         const distP = Math.hypot(ball.x - pCenterX, ball.y - pCenterY);
 
-        const bCenterX = (bot && bot.active) ? bot.x + bot.w / 2 : Infinity;
-        const bCenterY = (bot && bot.active) ? bot.y + bot.h / 2 : Infinity;
+        const bCenterX = (_activeBot && _activeBot.active) ? _activeBot.x + _activeBot.w / 2 : Infinity;
+        const bCenterY = (_activeBot && _activeBot.active) ? _activeBot.y + _activeBot.h / 2 : Infinity;
         const distB = Math.hypot(ball.x - bCenterX, ball.y - bCenterY);
 
         const isNear = distP < 55 || distB < 55;
@@ -1175,7 +1193,7 @@ export function checkObstacleCollisions(ball, groundY, p = null) {
           arena1State.waitingForKickoff = false;
           triggerScreenShake(7);
           ball.vy = -6.2;
-          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 6.5) : ((bot?.facing || -1) * 6.5);
+          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 6.5) : ((_activeBot?.facing || -1) * 6.5);
           ball.spin = (ball.vx > 0 ? 1 : -1) * 0.6;
           spawnAltarShockwave(ball.x, ball.y);
         }
@@ -2370,7 +2388,7 @@ export function getSegmentSegmentIntersection(x1, y1, x2, y2, sx1, sy1, sx2, sy2
   return null;
 }
 
-export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacles = null) {
+export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacles = null, bulletObj = null) {
   let closestHit = null;
 
   function recordHit(candidate, sourceName = 'unknown') {
@@ -2516,21 +2534,15 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, obs.x, topY, obs.x + obs.w, bottomY);
         if (hit) {
           let ricocheted = false;
-          if (Array.isArray(bullets)) {
-            for (const b of bullets) {
-              if (Math.hypot(b.prevX - x1, b.prevY - y1) < 4 || Math.hypot(b.x - x2, b.y - y2) < 4) {
-                if (!b.laserBounces || b.laserBounces < 3) {
-                  b.laserBounces = (b.laserBounces || 0) + 1;
-                  b.vx = -b.vx * 0.92;
-                  b.x = hit.x + (b.vx > 0 ? 3 : -3);
-                  b.prevX = b.x;
-                  spawnHitSparks(hit.x, hit.y, b.vx > 0 ? 1 : -1, 0, 5);
-                  triggerScreenShake(2.5);
-                  ricocheted = true;
-                  break;
-                }
-              }
-            }
+          const b = bulletObj;
+          if (b && (!b.laserBounces || b.laserBounces < 3)) {
+            b.laserBounces = (b.laserBounces || 0) + 1;
+            b.vx = -b.vx * 0.92;
+            b.x = hit.x + (b.vx > 0 ? 3 : -3);
+            b.prevX = b.x;
+            spawnObstacleSparks(hit.x, hit.y, b.vx > 0 ? 1 : -1, 0, 5);
+            triggerScreenShake(2.5);
+            ricocheted = true;
           }
           if (!ricocheted) {
             recordHit(hit, 'custom_laser_gate');

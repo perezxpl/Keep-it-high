@@ -43,3 +43,10 @@ export const WEAPON_CONFIG = {
     reloadTime: 2.5 // ok. 2.5s (~150 klatek przy 60 FPS)
   }
 };
+
+// =========================================================================
+// URZĄDZENIA DOTYKOWE (STEROWANIE MOBILNE / VIRTUAL JOYSTICK)
+// =========================================================================
+export let isTouchDevice = (typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0)));
+export function setTouchDevice(val) { isTouchDevice = !!val; }
+

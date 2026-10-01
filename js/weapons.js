@@ -8,7 +8,7 @@ import {
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnDroppedWeapon,
   bodyGibs
 } from './world.js';
-import { checkRayObstacleCollision, obstacles } from './obstacles.js';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 
 export const WEAPONS = {
@@ -98,6 +98,7 @@ export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
     });
   }
 }
+registerHitSparkCallback(spawnHitSparks);
 
 function lerpAngle(a, b, t) {
   let diff = (b - a) % (Math.PI * 2);
@@ -567,7 +568,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       continue;
     }
 
-    const mapHit = checkRayObstacleCollision(b.prevX, b.prevY, b.x, b.y, groundY, obs);
+    const mapHit = checkRayObstacleCollision(b.prevX, b.prevY, b.x, b.y, groundY, obs, b);
     const endX = mapHit ? mapHit.x : b.x;
     const endY = mapHit ? mapHit.y : b.y;
     const maxT = mapHit ? mapHit.t : 1.0;
