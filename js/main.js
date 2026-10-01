@@ -15,7 +15,7 @@ import {
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
-  startKickCharge, executeReleaseKick, isBallInKickReach,
+  startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos
 } from './player.js';
 import {
@@ -211,7 +211,7 @@ canvas.addEventListener('touchstart', (e) => {
       if (dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y) < btnCluster.slide.r + 14) {
         btnCluster.slide.active = true;
         btnCluster.slide.id = t.identifier;
-        playerSlide(spawnGrass, GROUND_Y);
+        playerSlide(spawnGrass, GROUND_Y, player);
       } else if (!rightStick.active) {
         if (rightStick.waitingForSecondTap && rightStick.windowTimer > 0) {
           rightStick.active = true;
@@ -405,16 +405,18 @@ function endTouch(e) {
       rightStick.active = false;
       rightStick.id = null;
 
+      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      const meleeTarget = findMeleeTarget(player, meleeTargets);
       const canKickBall = isBallInKickReach(player, ball);
       const wasDeflected = (rightStick.power > 0.2 || rightStick.movedDist > 18);
 
-      if (canKickBall && wasDeflected && player.kickState === 'IDLE') {
-        // Wykonanie precyzyjnego wykopu w kierunku ostatniego wychylenia:
+      if ((canKickBall || meleeTarget) && wasDeflected && player.kickState === 'IDLE') {
+        // Wykonanie precyzyjnego wykopu w kierunku ostatniego wychylenia lub Spartan Kick:
         player.isCharging = true;
         if (!player.chargePower || player.chargePower < 0.15) {
           player.chargePower = Math.min(1.0, Math.max(0.2, rightStick.power || (rightStick.movedDist / (rightStick.maxRadius || 65))));
         }
-        executeReleaseKick(ball, player);
+        executeReleaseKick(ball, player, 0, meleeTargets);
         player.isCharging = false;
         player.isStickCharging = false;
         player.chargePower = 0;
@@ -1560,6 +1562,12 @@ window.addEventListener('keydown', (e) => {
 
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !jumpKeyPressed) {
     jumpKeyPressed = true;
+    keys.up = true;
+
+    // Klawisz W natychmiast podrywa postać do pionu
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
 
     const now = performance.now();
     if (jetpackAirborneSession && (player.jetFuel || 0) > 5) {
@@ -1575,9 +1583,11 @@ window.addEventListener('keydown', (e) => {
       const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
       player.vy = -jumpForce;
       player.isJumping = true;
+      player.onGround = false;
       player.isCrouching = false;
+      player.isProne = false;
+      player.crouchToggled = false;
       player.airVx = player.vx;
-      keys.up = false;
       if (spawnGrass && player.groundY) {
         spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
       }
@@ -1585,11 +1595,16 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'Space' && !keys.space) {
     keys.space = true;
-    startKickCharge();
+    // Spacja podrywa postać z leżenia/kucania do pionu i rozpoczyna wykop
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+    startKickCharge(player, meleeTargets);
   }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !keys.slide) {
     keys.slide = true;
-    playerSlide(spawnGrass, GROUND_Y);
+    playerSlide(spawnGrass, GROUND_Y, player);
   }
   if (e.code === 'KeyR') {
     reloadWeapon(player, player.currentWeapon);
@@ -1662,7 +1677,8 @@ window.addEventListener('keyup', (e) => {
   }
   if (e.code === 'Space') {
     keys.space = false;
-    executeReleaseKick(ball, player);
+    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+    executeReleaseKick(ball, player, 0, meleeTargets);
   }
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
 });
@@ -1754,7 +1770,8 @@ canvas.addEventListener('mousedown', (e) => {
       isJetpackActive = true;
       jetpackAirborneSession = true;
     }
-    startKickCharge(player);
+    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+    startKickCharge(player, meleeTargets);
   }
 });
 
@@ -1770,7 +1787,8 @@ window.addEventListener('mouseup', (e) => {
   } else if (e.button === 2) {
     mouseState.rmbDown = false;
     isJetpackActive = false;
-    executeReleaseKick(ball, player);
+    const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+    executeReleaseKick(ball, player, 0, meleeTargets);
   }
 });
 
@@ -2006,7 +2024,8 @@ function update() {
     updateRemotePlayer(GROUND_Y);
   }
 
-  updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player);
+  const mainMeleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+  updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
 
   updateParticles();

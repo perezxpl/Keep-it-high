@@ -33,10 +33,13 @@ export const CLASS_TEMPLATE = {
     chargeSpeed: 0.035,
     hitReach: 56,
     whiffReach: 88,
-    baseKickSpeed: 15.0,
+    baseKickSpeed: 30.0,
     kickPowerMult: 1.0,
     spinMult: 1.0,
-    jetMax: 100
+    jetMax: 100,
+    spartanKnockback: 11.0,
+    spartanStagger: 16,
+    spartanDamage: 10
   },
 
   // 3. Pełna konfiguracja wizualna i fason stroju (opcjonalne)
@@ -58,10 +61,10 @@ export const CLASS_TEMPLATE = {
     hairColor1: '#2e160a',
     hairColor2: '#452210',
     
-    // Spodenki (gradient tkaniny)
-    shortsColor0: '#ffffff',
-    shortsColor1: '#f8fafc',
-    shortsColor2: '#cbd5e1',
+    // Spodenki / Bojówki Cargo (gradient tkaniny)
+    shortsColor0: '#27272a',
+    shortsColor1: '#3f3f46',
+    shortsColor2: '#18181b',
 
     // Karnacja skóry (ręce, nogi, szyja, twarz)
     skinLight: '#fed7aa',
@@ -69,34 +72,34 @@ export const CLASS_TEMPLATE = {
     skinDark: '#b45309',
     skinBack: '#de935e',
 
-    // Koszulka – przód i tył
-    jerseyFront0: '#991b1b',
-    jerseyFront1: '#dc2626',
-    jerseyFront2: '#ef4444',
-    jerseyFront3: '#b91c1c',
-    jerseyBack0: '#7f1d1d',
-    jerseyBack1: '#991b1b',
-    jerseyBack2: '#5f1212',
-    jerseyStripe: '#e53935',
-    armColorFront: '#e53935',
-    armColorBack: '#991b1b',
+    // Kamizelka taktyczna / Plate Carrier – przód i tył
+    jerseyFront0: '#18181b',
+    jerseyFront1: '#27272a',
+    jerseyFront2: '#3f3f46',
+    jerseyFront3: '#18181b',
+    jerseyBack0: '#09090b',
+    jerseyBack1: '#18181b',
+    jerseyBack2: '#09090b',
+    jerseyStripe: '#52525b',
+    armColorFront: '#27272a',
+    armColorBack: '#18181b',
 
-    // Getry i spodenki
-    legThighFront: '#dc2626',
-    legShinFront: '#e53935',
-    legThighBack: '#991b1b',
-    legShinBack: '#b91c1c',
+    // Bojówki Cargo i nakolanniki
+    legThighFront: '#27272a',
+    legShinFront: '#3f3f46',
+    legThighBack: '#18181b',
+    legShinBack: '#27272a',
 
-    // Buty piłkarskie
+    // Buty bojowe / Mag-Boots
     bootColor: '#18181b',
-    bootBack: '#111827',
-    bootAccent: '#38bdf8',
+    bootBack: '#09090b',
+    bootAccent: '#52525b',
 
-    // Herb, szwy, celownik i numer
-    crestColor: '#fbc02d',
-    seamColor: '#7f1d1d',
+    // Elementy taktyczne, szwy, celownik i numer
+    crestColor: '#71717a',
+    seamColor: '#09090b',
     crosshairColor: '#38bdf8',
-    number: '10'
+    number: '00'
   },
 
   // 4. Cykl życia i haki silnika (opcjonalne)

@@ -2243,6 +2243,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   let modeCol = '#94a3b8';
   if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
+  else if (player.isProne || player.gaitMode === 'PRONE' || player.gaitMode === 'CRAWL') modeCol = '#c084fc';
   else if (player.isCrouching) modeCol = '#38bdf8';
   else if (player.gaitMode === 'SPRINT') modeCol = '#ef4444';
   else if (player.gaitMode === 'JOG') modeCol = '#facc15';

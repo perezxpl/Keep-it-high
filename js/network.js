@@ -150,6 +150,7 @@ export function sendPlayerState(localPlayer) {
       aimAngle: Math.round((localPlayer.aimAngle || 0) * 100) / 100,
       isJumping: !!localPlayer.isJumping,
       isSliding: !!localPlayer.isSliding,
+      isProne: !!localPlayer.isProne,
       isRunning: !!localPlayer.isRunning,
       isKickCharging: !!localPlayer.isKickCharging,
       kickCharge: Math.round((localPlayer.kickCharge || 0) * 100) / 100,
@@ -298,6 +299,7 @@ function handleNetworkData(data) {
       remotePlayer.aimAngle = data.aimAngle;
       remotePlayer.isJumping = data.isJumping;
       remotePlayer.isSliding = data.isSliding;
+      if (data.isProne !== undefined) remotePlayer.isProne = !!data.isProne;
       remotePlayer.isRunning = data.isRunning;
       remotePlayer.isKickCharging = data.isKickCharging;
       remotePlayer.kickCharge = data.kickCharge;

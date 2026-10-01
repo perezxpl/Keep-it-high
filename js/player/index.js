@@ -5,6 +5,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId } from '../obstacles.js';
+import { triggerScreenShake } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 
@@ -13,7 +14,8 @@ import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTr
 import {
   startJumpCharge, playerJump, executeReleaseJump, playerSlide,
   startKickCharge, evaluateKickTiming, isBallInKickReach, executeReleaseKick,
-  getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets
+  getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets,
+  findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js';
@@ -46,10 +48,13 @@ export const DEFAULT_STATS = {
   chargeSpeed: 0.035,
   hitReach: 56,
   whiffReach: 88,
-  baseKickSpeed: 15.0,
+  baseKickSpeed: 30.0,
   kickPowerMult: 1.0,
   spinMult: 1.0,
-  jetMax: 100
+  jetMax: 100,
+  spartanKnockback: 11.0,
+  spartanStagger: 25,
+  spartanDamage: 10
 };
 
 export const DEFAULT_CLASS_SCHEMA = {
@@ -227,6 +232,12 @@ export function createPlayerInstance(overrides = {}) {
     headBobVel: 0,
 
     isCrouching: false,
+    crouchToggled: false,
+    isProne: false,
+    ctrlTimer: 0,
+    wasCtrlPressed: false,
+    crawlPhase: 0,
+    staggerTimer: 0,
     isJumping: false,
     isSliding: false,
     slideTimer: 0,
@@ -234,7 +245,11 @@ export function createPlayerInstance(overrides = {}) {
     isMovingBackwards: false,
     spinVolleyTimer: 0,
     spinVolleyDuration: 24,
+    spartanTimer: 0,
+    spartanDuration: 18,
+    spartanTarget: null,
     _ball: null,
+    _targets: null,
 
     kickLeg: 'front',
     nextLeg: 'front',
@@ -305,15 +320,17 @@ if (typeof window !== 'undefined') {
   window.CLASSES = CLASSES;
 }
 
-export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = player) {
-  _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, p);
+export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = player, targets = null) {
+  _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, p, targets);
 }
 
-function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
+function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, targets = null) {
   if (player.isDead) {
     handlePlayerDeath(player, GROUND_Y);
     return;
   }
+
+  if (targets) player._targets = targets;
 
   player.groundY = GROUND_Y;
   if (!player.currentGroundY) player.currentGroundY = GROUND_Y;
@@ -332,6 +349,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;
   if (player.shootPoseTimer > 0) player.shootPoseTimer--;
 
+  // Obsługa oszołomienia (staggerTimer po Spartan Kick)
+  const isStaggered = (player.staggerTimer > 0);
+  if (isStaggered) {
+    player.staggerTimer--;
+    player.isCharging = false;
+    player.isShooting = false;
+  }
+
   updateWeaponState(player);
 
   const isShootingStance = (player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0);
@@ -342,28 +367,81 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   if (player.shootPoseWeight < 0.001) player.shootPoseWeight = 0;
   else if (player.shootPoseWeight > 0.999) player.shootPoseWeight = 1;
 
-  if (player.isCharging && !player.isStickCharging) {
+  if (player.isCharging && !player.isStickCharging && !isStaggered) {
     const chargeRate = player.currentClass?.stats?.chargeSpeed || 0.035;
     player.chargePower = Math.min(1.0, player.chargePower + chargeRate);
   }
 
-  if (player.isJumpCharging) {
+  if (player.isJumpCharging && !isStaggered) {
     player.jumpChargePower = Math.min(1.0, player.jumpChargePower + 0.038);
   }
 
   let inputAxisX = 0;
   let inputAxisY = 0;
 
-  if (keys) {
+  // Wciśnięcie skoku / wykopu (W / Up / Space / jumpTriggered) natychmiast podrywa postać na nogi z leżenia i kucania
+  const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered));
+  if (standUpRequested && (player.isProne || player.isCrouching || player.crouchToggled)) {
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+  }
+
+  // Obsługa Lewy Ctrl: Tap (kucanie toggle) vs Hold >= 16 klatek (~260 ms: isProne / czołganie)
+  const ctrlDown = !!(keys && keys.ctrl && !isStaggered);
+  if (ctrlDown) {
+    if (!player.wasCtrlPressed) {
+      player.wasCtrlPressed = true;
+      player.ctrlTimer = 0;
+    } else {
+      player.ctrlTimer++;
+      // Przytrzymanie >= 16 klatek kładzie postać na brzuchu (HOLD)
+      if (player.ctrlTimer >= 16 && !player.isProne) {
+        player.isProne = true;
+        player.isCrouching = false;
+        player.crouchToggled = false;
+      }
+    }
+  } else {
+    if (player.wasCtrlPressed) {
+      // Krótkie naciśnięcie (< 16 klatek) -> TAP: przełączenie kucania
+      if (player.ctrlTimer < 16) {
+        if (player.isProne) {
+          player.isProne = false;
+          player.isCrouching = false;
+          player.crouchToggled = false; // ponowny Ctrl podrywa postać do pionu
+        } else {
+          player.crouchToggled = !player.crouchToggled;
+          player.isCrouching = player.crouchToggled;
+        }
+      }
+      player.wasCtrlPressed = false;
+      player.ctrlTimer = 0;
+    }
+  }
+
+  if (keys && !isStaggered) {
     if (keys.right) inputAxisX += 1;
     if (keys.left) inputAxisX -= 1;
-    if (keys.down || keys.ctrl) inputAxisY += 1;
+
+    const isHoldingDown = !!keys.down;
+    if (isHoldingDown) {
+      inputAxisY += 1;
+      if (!player.isProne && !player.isSliding && !player.isJumping) {
+        player.isCrouching = true;
+      }
+    } else if (!player.crouchToggled && !player.isProne) {
+      player.isCrouching = false;
+    }
 
     if (keys.up && !player.isJumping && !player.isSliding && !player.isIntro) {
       const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
       player.vy = -jumpForce;
       player.isJumping = true;
+      player.onGround = false;
       player.isCrouching = false;
+      player.isProne = false;
+      player.crouchToggled = false;
       player.airVx = player.vx;
       keys.up = false;
       const grassFn = spawnGrass || player._spawnGrass;
@@ -379,7 +457,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     }
   }
 
-  if (leftStick && leftStick.active) {
+  if (leftStick && leftStick.active && !isStaggered) {
     inputAxisX = leftStick.axisX;
     inputAxisY = leftStick.axisY;
 
@@ -389,12 +467,25 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       if (angleDeg < 20) {
         inputAxisX = 0;
       }
+      if (!player.isProne && !player.isSliding && !player.isJumping) {
+        player.isCrouching = true;
+      }
+    } else if (!keys?.down && !player.crouchToggled && !player.isProne) {
+      player.isCrouching = false;
     }
   }
 
-  const isPcCtrl = !!(keys && (keys.ctrl || keys.down));
-  const isTouchCrouch = !!(leftStick && leftStick.active && leftStick.axisY > 0.35);
-  player.isCrouching = (isPcCtrl || isTouchCrouch) && !player.isSliding && !player.isJumping;
+  if (player.isProne) {
+    player.isCrouching = false;
+    player.crouchToggled = false;
+  }
+
+  // W stanie oszołomienia blokujemy wektory sterowania i wygaszamy prędkość
+  if (isStaggered) {
+    inputAxisX = 0;
+    inputAxisY = 0;
+    player.vx *= 0.88;
+  }
 
   const now = performance.now();
   if (player.isJumping) {
@@ -424,7 +515,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
   const slideDecel = player.currentClass?.stats?.slideDecel || CONFIG.SLIDE_DECEL;
 
   let targetTopSpeed;
-  if (player.isCrouching) {
+  if (player.isProne) {
+    targetTopSpeed = 1.2; // Czołganie (crawl)
+  } else if (player.isCrouching) {
     targetTopSpeed = CONFIG.CROUCH_SPEED;
   } else {
     const isSprint = Math.abs(inputAxisX) > 0.75;
@@ -565,13 +658,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     player.isMovingBackwards = isMovingBackwards;
 
     if (player.isSliding) player.gaitMode = 'SLIDE';
+    else if (player.isProne) {
+      player.gaitMode = speed > 0.08 ? 'CRAWL' : 'PRONE';
+      player.crawlPhase = (player.crawlPhase || 0) + speed * 0.14;
+    }
     else if (player.isCrouching) player.gaitMode = speed > 0.1 ? 'CROUCH_WALK' : 'CROUCH';
     else if (speed < 0.1) player.gaitMode = 'IDLE';
     else if (speed <= walkMax + 0.1) player.gaitMode = 'WALK';
     else if (speed <= jogMax + 0.1 || (player.vx * player.facing < -0.1)) player.gaitMode = 'JOG';
     else player.gaitMode = 'SPRINT';
 
-    if (!player.isSliding && player.gaitMode !== 'IDLE' && player.gaitMode !== 'CROUCH' && !player.isJumping) {
+    if (!player.isSliding && player.gaitMode !== 'IDLE' && player.gaitMode !== 'CROUCH' && player.gaitMode !== 'PRONE' && player.gaitMode !== 'CRAWL' && !player.isJumping) {
       let freq = 0.038;
       if (player.gaitMode === 'CROUCH_WALK') freq = 0.055;
       if (player.gaitMode === 'WALK') freq = 0.1047;
@@ -655,12 +752,46 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
       player.kickCooldown = 12;
       player.yaw = (player.facing === 1) ? 0 : (player.turnMode === 'FRONT' ? Math.PI : -Math.PI);
     }
+  } else if (player.kickMode === 'SPARTAN') {
+    player.spartanTimer++;
+    const duration = player.spartanDuration || 18;
+    const targets = getSpartanKickTargets(player.spartanTimer, duration, hipX, hipY, player.facing, player.currentGroundY || GROUND_Y);
+    player.kickingFootX = targets.kicking.x;
+    player.kickingFootY = targets.kicking.y;
+
+    // Okno trafienia kinetycznego Spartan Kick (wypchnięcie w przód w klatkę)
+    if (player.spartanTimer >= 4 && player.spartanTimer <= 11 && !player.hitThisSwing) {
+      const enemy = player.spartanTarget || findMeleeTarget(player, player._targets);
+      if (enemy && !enemy.isDead) {
+        const pwr = (player.chargePower !== undefined && player.chargePower > 0) ? player.chargePower : (player.kickPower || 0);
+        const knockback = player.facing * (12.0 + pwr * 10.0);
+        const dmg = player.currentClass?.stats?.spartanDamage || 12;
+
+        enemy.vx = knockback;
+        enemy.vy = -3.8;
+        enemy.staggerTimer = 25;
+        enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
+
+        triggerScreenShake(8 + pwr * 6);
+        player.hitThisSwing = true;
+      }
+    }
+
+    if (player.spartanTimer >= duration) {
+      player.kickState = 'IDLE';
+      player.kickMode = 'GROUND';
+      player.hitThisSwing = false;
+      player.kickCooldown = 14;
+      player.spartanTarget = null;
+      player.chargePower = 0;
+      player.kickPower = 0;
+    }
   } else {
     const currentFloor = player.currentGroundY || GROUND_Y;
     if (player.kickState === 'SWING') {
       player.kickAngle += player.swingSpeed;
 
-      const kickTraj = getGroundKickTrajectory(kickPhase => 'SWING', player.kickAngle, player.kickPower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX);
+      const kickTraj = getGroundKickTrajectory('SWING', player.kickAngle, player.kickPower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX);
       player.kickingFootX = kickTraj.kicking.x;
       player.kickingFootY = kickTraj.kicking.y;
 
@@ -670,7 +801,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     } else if (player.kickState === 'RECOVER') {
       player.kickAngle -= player.kickRecoverSpeed;
 
-      const kickTraj = getGroundKickTrajectory(kickPhase => 'RECOVER', player.kickAngle, player.kickPower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX);
+      const kickTraj = getGroundKickTrajectory('RECOVER', player.kickAngle, player.kickPower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX);
       player.kickingFootX = kickTraj.kicking.x;
       player.kickingFootY = kickTraj.kicking.y;
 
@@ -681,14 +812,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
         player.kickCooldown = 8;
         player.stridePhase = (player.kickLeg === 'front') ? 0 : Math.PI;
       }
-    } else if (player.isCharging && speed < 0.8 && isBallInKickReach(player, ball)) {
+    } else if (player.isCharging && speed < 0.8) {
       const kickTraj = getGroundKickTrajectory('CHARGE', 0, player.chargePower, hipX, hipY, currentFloor, player.facing, speed, 0);
       player.kickingFootX = kickTraj.kicking.x;
       player.kickingFootY = kickTraj.kicking.y;
     }
   }
 
-  const isVisualChargingInUpdate = (player.isCharging && speed < 0.8 && isBallInKickReach(player, ball));
+  const isVisualChargingInUpdate = (player.isCharging && speed < 0.8);
 
   let targetTilt = 0;
   if (player.kickMode === 'BACKFLIP') {
@@ -719,10 +850,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     }
   } else if (player.kneeJuggleWeight > 0) {
     targetTilt = -0.06 * player.kneeJuggleWeight * player.facing;
+  } else if (player.kickMode === 'SPARTAN') {
+    targetTilt = -0.35 * player.facing;
   } else if (player.isSliding) {
     targetTilt = -0.75 * player.facing;
   } else if (isMovingBackwards) {
     targetTilt = -0.08 * player.facing;
+  } else if (player.isProne) {
+    targetTilt = 1.48 * player.facing;
   } else if (player.isCrouching) {
     targetTilt = 0.20 * player.facing;
   } else if (player.isJumping) {
@@ -799,8 +934,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player) {
     targetPelvisY = -1.5;
   } else if (player.kickMode === 'BACKFLIP_LAND') {
     targetPelvisY = 6.0;
-  } else if (player.kickMode === 'GROUND' && (player.kickState === 'SWING' || isVisualChargingInUpdate)) {
+  } else if (player.isCharging && speed < 0.8) {
+    const chargeDip = (player.chargePower || 0) * 4.2;
+    targetPelvisY = -11.8 + chargeDip;
+  } else if (player.kickMode === 'GROUND' && player.kickState === 'SWING') {
     targetPelvisY = -10.5;
+  } else if (player.kickMode === 'SPARTAN') {
+    targetPelvisY = -4.0;
+  } else if (player.isProne) {
+    targetPelvisY = 34;
   } else if (player.isSliding) {
     targetPelvisY = 26;
   } else if (player.isCrouching) {

@@ -31,10 +31,13 @@ export const EnforcerClass = {
     chargeSpeed: 0.024,
     hitReach: 64,           // Duży zasięg dzięki długości kończyn
     whiffReach: 94,
-    baseKickSpeed: 15.0,
+    baseKickSpeed: 30.0,
     kickPowerMult: 1.52,    // Najpotężniejsze uderzenie w grze
     spinMult: 0.30,         // Prawie czysta trajektoria balistyczna
-    jetMax: 55              // Paliwo jetpacka szybko się zużywa
+    jetMax: 55,             // Paliwo jetpacka szybko się zużywa
+    spartanKnockback: 18.0, // Potężny odrzut kinetyczny i twardy knockback
+    spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
+    spartanDamage: 18
   },
 
   // 3. WŁAŚCIWOŚCI WIZUALNE: RZEŹBIONA ANATOMIA I BRAK RĘKAWKÓW
@@ -63,28 +66,28 @@ export const EnforcerClass = {
     skinDark: '#8c4e1a',
     skinBack: '#a7652c',
 
-    // Agresywna karmazynowo-czarna kolorystyka
-    jerseyFront0: '#7f1d1d',
-    jerseyFront1: '#991b1b',
-    jerseyFront2: '#dc2626',
-    jerseyFront3: '#7f1d1d',
-    jerseyBack0: '#450a0a',
-    jerseyBack1: '#7f1d1d',
-    jerseyBack2: '#450a0a',
-    jerseyStripe: '#ef4444',
-    armColorFront: '#dc2626',
-    armColorBack: '#991b1b',
+    // Surowa, taktyczna czerń bojowa PMC
+    jerseyFront0: '#09090b',
+    jerseyFront1: '#18181b',
+    jerseyFront2: '#27272a',
+    jerseyFront3: '#18181b',
+    jerseyBack0: '#030712',
+    jerseyBack1: '#09090b',
+    jerseyBack2: '#030712',
+    jerseyStripe: '#3f3f46',
+    armColorFront: '#18181b',
+    armColorBack: '#09090b',
 
-    legThighFront: '#991b1b',
-    legShinFront: '#dc2626',
-    legThighBack: '#7f1d1d',
-    legShinBack: '#991b1b',
-    bootColor: '#09090b',
-    bootBack: '#030712',
-    bootAccent: '#ef4444',
-    crestColor: '#facc15',
-    seamColor: '#450a0a',
-    crosshairColor: '#dc2626',
+    legThighFront: '#18181b',
+    legShinFront: '#27272a',
+    legThighBack: '#09090b',
+    legShinBack: '#18181b',
+    bootColor: '#18181b',
+    bootBack: '#09090b',
+    bootAccent: '#52525b',
+    crestColor: '#71717a',
+    seamColor: '#09090b',
+    crosshairColor: '#ef4444',
     number: '99'
   },
 

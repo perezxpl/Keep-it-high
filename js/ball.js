@@ -64,14 +64,13 @@ function launchBallKinetic(playerObj, spawnGrass, baseSpeedOverride, isSpinVolle
 
   // Statystyki aktywnej klasy postaci
   const classStats = playerObj.currentClass?.stats;
-  const baseSpeedDef = classStats?.baseKickSpeed || 15.0;
+  const baseSpeedDef = classStats?.baseKickSpeed || 30.0;
   const powerMult = classStats?.kickPowerMult || 1.0;
   const spinMult = classStats?.spinMult || 1.0;
 
-  // Prędkość pocisku bazująca na sile naładowania strzału (chargePower) i modyfikatorach klasy (-33% energii)
+  // Prędkość pocisku bazująca na sile naładowania strzału (chargePower) i modyfikatorach klasy (mnożnik x2.0 - dynamiczny, szybki lot)
   const charge = playerObj.chargePower || 0;
-  let baseSpeed = (baseSpeedOverride || (baseSpeedDef + charge * 14.0)) * powerMult;
-  baseSpeed *= 0.67;
+  let baseSpeed = (baseSpeedOverride || (baseSpeedDef + charge * 28.0)) * powerMult * 2.0;
 
   if (isSpinVolley || playerObj.kickMode === 'SPIN_VOLLEY') {
     // Bonus do prędkości x1.2, precyzyjny kąt myszy i minimalna grawitacja przez 20 klatek
@@ -143,7 +142,7 @@ export function updateBall(GROUND_Y) {
 
   // Continuous Collision Detection (CCD): Sub-stepping przy wysokich prędkościach
   const speed = Math.hypot(ball.vx, ball.vy);
-  const steps = speed > 10 ? 4 : 1;
+  const steps = speed > 24 ? 8 : (speed > 10 ? 4 : 1);
   const subDt = 1 / steps;
 
   for (let s = 0; s < steps; s++) {
@@ -288,11 +287,11 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
     const batThickness = 16;
 
     if (hit.dist < ball.colRadius + batThickness) {
-      // Sztywny wektor uderzenia z wślizgu - skalowany siłą klasy (-33%)
+      // Sztywny wektor uderzenia z wślizgu - skalowany siłą klasy (podwojona dynamika)
       playerObj.hitThisSwing = true;
       const powerMult = playerObj.currentClass?.stats?.kickPowerMult || 1.0;
-      ball.vx = playerObj.facing * (11.0 * powerMult);
-      ball.vy = -2.5;
+      ball.vx = playerObj.facing * (22.0 * powerMult);
+      ball.vy = -3.2;
       ball.spin = playerObj.facing * 0.8;
       ball.trail = [];
       ball.lowGravityFrames = 0;

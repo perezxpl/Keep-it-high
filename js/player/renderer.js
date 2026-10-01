@@ -6,7 +6,10 @@
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js';
-import { isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets } from './actions.js';
+import {
+  isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
+  getBackflipTargets, getSpartanKickTargets, getProneIKTargets
+} from './actions.js';
 import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
 
@@ -22,34 +25,34 @@ export const DEFAULT_VISUALS = {
   hairColor0: '#1c0d06',
   hairColor1: '#2e160a',
   hairColor2: '#452210',
-  shortsColor0: '#ffffff',
-  shortsColor1: '#f8fafc',
-  shortsColor2: '#cbd5e1',
+  shortsColor0: '#27272a',
+  shortsColor1: '#3f3f46',
+  shortsColor2: '#18181b',
   skinLight: '#fed7aa',
   skinMid: '#f5b078',
   skinDark: '#b45309',
   skinBack: '#de935e',
-  jerseyFront0: '#991b1b',
-  jerseyFront1: '#dc2626',
-  jerseyFront2: '#ef4444',
-  jerseyFront3: '#b91c1c',
-  jerseyBack0: '#7f1d1d',
-  jerseyBack1: '#991b1b',
-  jerseyBack2: '#5f1212',
-  jerseyStripe: '#e53935',
-  armColorFront: '#e53935',
-  armColorBack: '#991b1b',
-  legThighFront: '#dc2626',
-  legShinFront: '#e53935',
-  legThighBack: '#991b1b',
-  legShinBack: '#b91c1c',
+  jerseyFront0: '#18181b',
+  jerseyFront1: '#27272a',
+  jerseyFront2: '#3f3f46',
+  jerseyFront3: '#18181b',
+  jerseyBack0: '#09090b',
+  jerseyBack1: '#18181b',
+  jerseyBack2: '#09090b',
+  jerseyStripe: '#52525b',
+  armColorFront: '#27272a',
+  armColorBack: '#18181b',
+  legThighFront: '#27272a',
+  legShinFront: '#3f3f46',
+  legThighBack: '#18181b',
+  legShinBack: '#27272a',
   bootColor: '#18181b',
-  bootBack: '#111827',
-  bootAccent: '#38bdf8',
-  crestColor: '#fbc02d',
-  seamColor: '#7f1d1d',
+  bootBack: '#09090b',
+  bootAccent: '#52525b',
+  crestColor: '#71717a',
+  seamColor: '#09090b',
   crosshairColor: '#38bdf8',
-  number: '10'
+  number: '00'
 };
 
 /**
@@ -371,196 +374,135 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
 
-  const safeFootY = Math.max(hipY + 6, targetFootY);
-  const ik = solve2BoneIK(hipX, hipY, targetFootX, safeFootY, l1, l2, facing, -1);
+  const isSpecialKickOrProne = !!(playerRef && (
+    playerRef.isProne ||
+    playerRef.kickMode === 'SPARTAN' ||
+    playerRef.kickMode === 'BACKFLIP' ||
+    playerRef.kickMode === 'SPIN_VOLLEY' ||
+    playerRef.kickMode === 'SCISSOR' ||
+    playerRef.kickState === 'SWING' ||
+    playerRef.isSliding ||
+    playerRef.kneeJuggleWeight > 0 ||
+    playerRef.isIntro
+  ));
+
+  const safeFootY = isSpecialKickOrProne ? targetFootY : Math.max(hipY + 6, targetFootY);
+  const ik = solve2BoneIK(hipX, hipY, targetFootX, safeFootY, l1, l2, facing, -1, isSpecialKickOrProne);
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
 
   ctx.save();
 
-  // UDO I SPODENKI
+  // UDO - BOJÓWKI CARGO PMC
   ctx.save();
   ctx.translate(hipX, hipY);
   ctx.rotate(thighAng);
 
-  const shortsLen = l1 * (isSculpted ? 0.56 : 0.65);
-  const shortsHalfH = 4.8 * muscle;
-  const quadHalfH = 3.8 * muscle;
-  const quadLen = l1 - shortsLen;
+  const thighHalfH = 4.8 * muscle;
+  const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
+  const pantsThighCol = isFrontLeg ? (v.legThighFront || '#3f3f46') : (v.legThighBack || '#27272a');
+  pantsGrad.addColorStop(0.0, pantsThighCol);
+  pantsGrad.addColorStop(0.4, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
+  pantsGrad.addColorStop(1.0, isFrontLeg ? (v.shortsColor2 || '#18181b') : '#0f172a');
 
-  const shortsGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, shortsHalfH);
-  if (isFrontLeg) {
-    shortsGrad.addColorStop(0.0, v.shortsColor0);
-    shortsGrad.addColorStop(0.4, v.shortsColor1);
-    shortsGrad.addColorStop(1.0, v.shortsColor2);
-  } else {
-    shortsGrad.addColorStop(0.0, v.shortsColor1);
-    shortsGrad.addColorStop(0.5, v.shortsColor2);
-    shortsGrad.addColorStop(1.0, '#334155');
-  }
-
-  const cuffBulge = 2.4;
+  // Nogawka bojówek rozciągająca się na całą długość uda
   ctx.beginPath();
-  ctx.moveTo(0, -shortsHalfH);
-  ctx.lineTo(shortsLen, -shortsHalfH + 0.8);
-  ctx.quadraticCurveTo(shortsLen + cuffBulge, 0, shortsLen, shortsHalfH - 0.8);
-  ctx.lineTo(0, shortsHalfH);
+  ctx.moveTo(0, -thighHalfH);
+  ctx.lineTo(l1 - 1.5, -thighHalfH + 0.6);
+  ctx.lineTo(l1, -2.4);
+  ctx.lineTo(l1, 2.4);
+  ctx.lineTo(l1 - 1.5, thighHalfH - 0.6);
+  ctx.lineTo(0, thighHalfH);
   ctx.closePath();
-  ctx.fillStyle = shortsGrad;
+  ctx.fillStyle = pantsGrad;
   ctx.fill();
 
-  const stripeGrad = ctx.createLinearGradient(0, -shortsHalfH, 0, -shortsHalfH + 1.6);
-  stripeGrad.addColorStop(0.0, isFrontLeg ? v.jerseyStripe : v.jerseyFront0);
-  stripeGrad.addColorStop(1.0, isFrontLeg ? (v.jerseyFront1 || v.jerseyColor || '#dc2626') : '#991b1b');
-  ctx.fillStyle = stripeGrad;
-  ctx.beginPath();
-  ctx.moveTo(0, -shortsHalfH);
-  ctx.lineTo(shortsLen, -shortsHalfH + 0.8);
-  ctx.lineTo(shortsLen, -shortsHalfH + 2.4);
-  ctx.lineTo(0, -shortsHalfH + 1.6);
-  ctx.closePath();
-  ctx.fill();
+  // Boczna kieszeń cargo (Cargo Pocket) z klapą i przeszyciami
+  const pocketX = l1 * 0.22;
+  const pocketW = l1 * 0.50;
+  const pocketH = thighHalfH * 0.85;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.fillRect(pocketX, -pocketH - 0.4, pocketW, pocketH * 1.8);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(pocketX, -pocketH - 0.4, pocketW, pocketH * 1.8);
 
-  ctx.strokeStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.4)';
-  ctx.lineWidth = 1.8;
+  // Klapa kieszeni cargo (Pocket Flap)
+  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.4)';
+  ctx.fillRect(pocketX - 0.5, -pocketH - 0.8, pocketW + 1.0, 2.2);
+
+  // Szew wzmacniający bojówek
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(shortsLen - 0.8, -shortsHalfH + 0.8);
-  ctx.quadraticCurveTo(shortsLen - 0.8 + cuffBulge, 0, shortsLen - 0.8, shortsHalfH - 0.8);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(l1, 0);
   ctx.stroke();
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
-  ctx.beginPath();
-  ctx.moveTo(shortsLen, -quadHalfH);
-  ctx.quadraticCurveTo(shortsLen + cuffBulge, 0, shortsLen, quadHalfH);
-  ctx.lineTo(shortsLen + 2.2, quadHalfH - 0.3);
-  ctx.quadraticCurveTo(shortsLen + 2.2 + cuffBulge, 0, shortsLen + 2.2, -quadHalfH + 0.3);
-  ctx.closePath();
-  ctx.fill();
-
-  const quadGrad = ctx.createLinearGradient(0, -quadHalfH * 1.3, 0, quadHalfH * 1.3);
-  if (isFrontLeg) {
-    quadGrad.addColorStop(0.0, v.skinLight);
-    quadGrad.addColorStop(0.35, v.skinMid);
-    quadGrad.addColorStop(1.0, v.skinDark);
-  } else {
-    quadGrad.addColorStop(0.0, v.skinMid);
-    quadGrad.addColorStop(0.4, v.skinBack);
-    quadGrad.addColorStop(1.0, v.skinDark);
-  }
-
-  ctx.beginPath();
-  if (isSculpted) {
-    ctx.moveTo(shortsLen - 0.5, -quadHalfH * 0.95);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.32, -quadHalfH * 1.18, shortsLen + quadLen * 0.68, -quadHalfH * 0.88);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.90, -quadHalfH * 0.62, l1, -2.4);
-    ctx.lineTo(l1, 2.2);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.60, quadHalfH * 0.92, shortsLen + quadLen * 0.25, quadHalfH * 0.98);
-    ctx.quadraticCurveTo(shortsLen, quadHalfH * 0.95, shortsLen - 0.5, quadHalfH * 0.90);
-  } else {
-    ctx.moveTo(shortsLen - 0.5, -quadHalfH);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.40, -quadHalfH * 1.05, shortsLen + quadLen * 0.75, -quadHalfH * 0.82);
-    ctx.lineTo(l1, -2.4);
-    ctx.lineTo(l1, 2.2);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.50, quadHalfH * 0.90, shortsLen - 0.5, quadHalfH * 0.92);
-  }
-  ctx.closePath();
-  ctx.fillStyle = quadGrad;
-  ctx.fill();
-
-  if (isSculpted && isFrontLeg) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.16)';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(shortsLen + quadLen * 0.50, -quadHalfH * 0.65);
-    ctx.quadraticCurveTo(shortsLen + quadLen * 0.78, -quadHalfH * 0.45, l1 - 1.5, -1.8);
-    ctx.stroke();
-  }
 
   ctx.restore();
 
-  // ŁYDKA I GETRA
+  // ŁYDKA, BOJÓWKI I NAKOLANNIK TAKTYCZNY
   ctx.save();
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  const patellaR = 2.4 * (isSculpted ? muscle * 0.95 : muscle);
-  const patellaGrad = ctx.createLinearGradient(0, -patellaR, 0, patellaR);
-  patellaGrad.addColorStop(0.0, isFrontLeg ? v.skinLight : v.skinMid);
-  patellaGrad.addColorStop(0.5, isFrontLeg ? v.skinMid : v.skinBack);
-  patellaGrad.addColorStop(1.0, v.skinDark);
-
-  ctx.beginPath();
-  ctx.ellipse(1.6, -0.4, patellaR * 0.95, patellaR * 1.15, -0.1, 0, Math.PI * 2);
-  ctx.fillStyle = patellaGrad;
-  ctx.fill();
-
-  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.20)';
-  ctx.beginPath();
-  ctx.arc(1.5, -0.8, patellaR * 0.45, 0, Math.PI * 2);
-  ctx.fill();
-
-  const sockGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
-  const shinCol = colorShin || v.legShinFront;
-  const thighCol = colorThigh || v.legThighFront;
-  sockGrad.addColorStop(0.0, shinCol);
-  sockGrad.addColorStop(0.3, shinCol);
-  sockGrad.addColorStop(1.0, thighCol);
-
-  const achillesHalfW = 1.9 * (isSculpted ? Math.max(1.0, muscle * 0.88) : muscle);
   const calfBulge = (isSculpted ? 5.2 : 4.4) * muscle;
+  const achillesHalfW = 2.4 * muscle;
+  const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
+  const shinCol = isFrontLeg ? (v.legShinFront || '#3f3f46') : (v.legShinBack || '#27272a');
+  pantsShinGrad.addColorStop(0.0, shinCol);
+  pantsShinGrad.addColorStop(0.5, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
+  pantsShinGrad.addColorStop(1.0, '#18181b');
 
   ctx.beginPath();
-  ctx.moveTo(1.8, -patellaR * 0.7);
-  ctx.lineTo(l2 * 0.15, -2.4 * muscle);
+  ctx.moveTo(1.8, -calfBulge * 0.7);
+  ctx.lineTo(l2 * 0.15, -2.8 * muscle);
   ctx.lineTo(l2 - 4.5, -achillesHalfW);
   ctx.lineTo(l2 - 4.5, achillesHalfW);
   ctx.quadraticCurveTo(l2 * 0.68, achillesHalfW * 1.15, l2 * 0.48, calfBulge * 0.75);
   ctx.quadraticCurveTo(l2 * 0.30, calfBulge, l2 * 0.14, calfBulge * 0.78);
-  ctx.quadraticCurveTo(0.8, patellaR * 0.9, 1.8, patellaR * 0.6);
+  ctx.quadraticCurveTo(0.8, calfBulge * 0.8, 1.8, calfBulge * 0.6);
   ctx.closePath();
-  ctx.fillStyle = sockGrad;
+  ctx.fillStyle = pantsShinGrad;
   ctx.fill();
 
-  if (isFrontLeg) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(l2 * 0.20, -2.1 * muscle);
-    ctx.lineTo(l2 * 0.75, -achillesHalfW * 0.8);
-    ctx.stroke();
-
-    if (isSculpted) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-      ctx.beginPath();
-      ctx.moveTo(l2 * 0.26, calfBulge * 0.25);
-      ctx.quadraticCurveTo(l2 * 0.35, calfBulge * 0.35, l2 * 0.52, achillesHalfW * 0.4);
-      ctx.stroke();
-    }
-  }
-
-  if (isFrontLeg) {
-    ctx.save();
-    ctx.translate(l2 * 0.42, -4.1 * muscle);
-    ctx.rotate(-0.06);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, l2 * 0.22, 1.2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
-    ctx.fill();
-    ctx.restore();
-  }
-
-  const tapeGrad = ctx.createLinearGradient(0, -2.8, 0, 2.8);
-  tapeGrad.addColorStop(0.0, '#ffffff');
-  tapeGrad.addColorStop(0.5, '#f1f5f9');
-  tapeGrad.addColorStop(1.0, isFrontLeg ? '#94a3b8' : '#64748b');
-
-  ctx.fillStyle = tapeGrad;
+  // NAKOLANNIK TAKTYCZNY (Hard-Shell Combat Knee Pad)
+  const padR = 3.6 * (isSculpted ? muscle * 0.95 : muscle);
+  // Neoprenowy pas nośny nakolannika wokół stawu
+  ctx.fillStyle = '#09090b';
   ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(l2 - 4.5, -2.6, 4.0, 5.2, 1);
-  } else {
-    ctx.rect(l2 - 4.5, -2.6, 4.0, 5.2);
-  }
+  ctx.rect(-0.8, -padR * 1.15, 3.8, padR * 2.3);
+  ctx.fill();
+
+  // Twarda polimerowa czasza nakolannika
+  const padGrad = ctx.createLinearGradient(-1.0, -padR, 3.5, padR);
+  padGrad.addColorStop(0.0, '#3f3f46');
+  padGrad.addColorStop(0.5, '#27272a');
+  padGrad.addColorStop(1.0, '#18181b');
+  ctx.fillStyle = padGrad;
+  ctx.strokeStyle = '#52525b';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(1.5, 0, padR * 0.85, padR * 1.15, 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Nity montażowe nakolannika
+  ctx.fillStyle = '#a1a1aa';
+  ctx.beginPath();
+  ctx.arc(1.5, -padR * 0.65, 0.6, 0, Math.PI * 2);
+  ctx.arc(1.5, padR * 0.65, 0.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cholewa buta bojowego (Combat Boot Collar)
+  const collarGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
+  collarGrad.addColorStop(0.0, '#27272a');
+  collarGrad.addColorStop(0.5, '#18181b');
+  collarGrad.addColorStop(1.0, '#09090b');
+  ctx.fillStyle = collarGrad;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(l2 - 5.5, -2.8, 5.2, 5.6, 1.2);
+  else ctx.rect(l2 - 5.5, -2.8, 5.2, 5.6);
   ctx.fill();
 
   ctx.restore();
@@ -694,24 +636,57 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.lineTo(hingeX + cosF * 4.5, -0.2 + sinF * 4.5);
   ctx.stroke();
 
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-4.2, 2.6, hingeX + 4.2, 1.2);
+  // GRUBA ZĄBKOWANA PODESZWA WIBRAMOWA (#18181b)
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(-4.5, 2.6, hingeX + 4.5, 2.2);
 
+  // Wibramowe protektory i ząbki podeszwy (tread lugs)
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(-4.2, 4.4, 1.4, 1.2);
+  ctx.fillRect(-2.2, 4.4, 1.4, 1.2);
+  ctx.fillRect(-0.2, 4.4, 1.4, 1.2);
+  ctx.fillRect(1.8, 4.4, 1.4, 1.2);
+
+  // Przednia część podeszwy (pracująca z kątem zgięcia palców)
   ctx.save();
   ctx.translate(hingeX, 2.6);
   ctx.rotate(-flexAngle);
-  ctx.fillRect(0, 0, toeLen, 1.2);
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(0, 0, toeLen + 0.5, 2.2);
 
-  const studGrad = ctx.createLinearGradient(0, 1.2, 0, 2.6);
-  studGrad.addColorStop(0.0, '#94a3b8');
-  studGrad.addColorStop(1.0, '#cbd5e1');
-  ctx.fillStyle = studGrad;
-  ctx.fillRect(1.8, 1.2, 1.5, 1.3);
-  ctx.fillRect(toeLen - 2.0, 1.2, 1.4, 1.3);
+  // Ząbkowane bieżniki przedniej części podeszwy
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(1.2, 1.8, 1.5, 1.2);
+  ctx.fillRect(3.6, 1.8, 1.5, 1.2);
+  ctx.fillRect(5.8, 1.8, 1.5, 1.2);
+  if (toeLen > 7.2) ctx.fillRect(7.6, 1.8, 1.5, 1.2);
+
+  // WZMOCNIONY NOSEK BOJOWY (Steel Toe Cap)
+  const capGrad = ctx.createLinearGradient(toeLen - 3.8, 0, toeLen + 1.2, 0);
+  capGrad.addColorStop(0.0, 'rgba(63, 63, 70, 0.4)');
+  capGrad.addColorStop(0.4, '#3f3f46');
+  capGrad.addColorStop(0.85, '#27272a');
+  capGrad.addColorStop(1.0, '#18181b');
+  ctx.fillStyle = capGrad;
+  ctx.beginPath();
+  ctx.moveTo(toeLen - 3.2, 2.4);
+  ctx.lineTo(toeLen + 0.6, 2.4);
+  ctx.quadraticCurveTo(toeLen + 1.6, 1.0, toeLen + 0.2, -1.2);
+  ctx.quadraticCurveTo(toeLen - 2.0, -1.0, toeLen - 3.2, 0.2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#71717a';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Nit wzmacniający noska
+  ctx.fillStyle = '#a1a1aa';
+  ctx.beginPath();
+  ctx.arc(toeLen - 1.8, 0.8, 0.55, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
-
-  ctx.fillStyle = studGrad;
-  ctx.fillRect(-2.4, 3.6, 1.6, 1.3);
 
   ctx.restore();
   ctx.restore();
@@ -1003,6 +978,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
   let hipY = p.y + p.h - 40 + p.pelvisY;
+  if (p.isProne) {
+    hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
+  }
   const speed = Math.abs(p.vx);
 
   const yaw = p.yaw || 0;
@@ -1019,7 +997,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   let rawFrontSwing = 0.05, rawFrontElbow = 0.32;
   let rawBackSwing = -0.03, rawBackElbow = 0.26;
 
-  const isVisualCharging = (p.isCharging && speed < 0.8 && isBallInKickReach(p, p._ball));
+  const isVisualCharging = (p.isCharging && speed < 0.8);
 
   const isGroundKicking = !p.isIntro && !p.isSliding && !p.isJumping &&
     p.kickMode === 'GROUND' &&
@@ -1112,6 +1090,37 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85;
     rawBackSwing = 0.45;
     rawBackElbow = 0.75;
+  } else if (p.kickMode === 'SPARTAN') {
+    const targets = getSpartanKickTargets(p.spartanTimer || 0, p.spartanDuration || 18, hipX, hipY, p.facing, plantFloorY);
+    rawFootFrontTargetX = targets.kicking.x;
+    rawFootFrontTargetY = targets.kicking.y;
+    rawFootFrontAnkle = targets.kicking.ankle;
+
+    rawFootBackTargetX = targets.support.x;
+    rawFootBackTargetY = targets.support.y;
+    rawFootBackAnkle = targets.support.ankle;
+
+    rawFrontSwing = 0.65;
+    rawFrontElbow = 1.15;
+    rawBackSwing = -0.55;
+    rawBackElbow = 0.85;
+  } else if (p.isProne) {
+    const isCrawling = speed > 0.08;
+    const crawlP = p.crawlPhase || 0;
+    const proneTargets = getProneIKTargets(crawlP, isCrawling, hipX, plantFloorY, p.facing);
+
+    rawFootFrontTargetX = proneTargets.front.x;
+    rawFootFrontTargetY = proneTargets.front.y;
+    rawFootFrontAnkle = proneTargets.front.ankle;
+
+    rawFootBackTargetX = proneTargets.back.x;
+    rawFootBackTargetY = proneTargets.back.y;
+    rawFootBackAnkle = proneTargets.back.ankle;
+
+    rawFrontSwing = proneTargets.frontArm.swing;
+    rawFrontElbow = proneTargets.frontArm.elbow;
+    rawBackSwing = proneTargets.backArm.swing;
+    rawBackElbow = proneTargets.backArm.elbow;
   } else if (p.isJumpCharging && speed < 0.8) {
     rawFootFrontTargetX = hipX + (4 * p.facing);
     rawFootFrontTargetY = plantFloorY;
@@ -1338,7 +1347,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
-  if (p.currentWeapon && !p.isDead) {
+  const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
+  if (p.currentWeapon && !p.isDead && !isProneCrawling) {
     const hold = getWeaponHoldTransform(p);
 
     const shoulderBaseX = hipX + (21 * Math.sin(p.pose?.torsoTilt || p.torsoTilt || 0));
@@ -1411,6 +1421,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.kickMode === 'SPIN_VOLLEY') {
     footBlend = 0.75;
     armBlend = 0.45;
+  } else if (p.kickMode === 'SPARTAN') {
+    footBlend = 0.75;
+    armBlend = 0.55;
+  } else if (p.isProne) {
+    footBlend = 0.55;
+    armBlend = 0.45;
   }
 
   if (p.isSliding) {
@@ -1438,6 +1454,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.kickMode === 'BACKFLIP') {
     pose.torsoTilt = p.torsoTilt;
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
+  } else if (p.kickMode === 'SPARTAN') {
+    pose.torsoTilt = -0.35 * p.facing;
+    pose.headPitch = 0.12 * p.facing;
+  } else if (p.isProne) {
+    pose.torsoTilt = 1.48 * p.facing;
+    pose.headPitch = -0.45 * p.facing;
   } else {
     pose.torsoTilt += (p.torsoTilt - pose.torsoTilt) * 0.24;
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
@@ -1539,117 +1561,94 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.closePath();
   ctx.fill();
 
-  const pelvisShortsGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
-  pelvisShortsGrad.addColorStop(0.0, v.shortsColor2);
-  pelvisShortsGrad.addColorStop(0.5, v.shortsColor0);
-  pelvisShortsGrad.addColorStop(1.0, v.shortsColor2);
+  // PAS TAKTYCZNY PMC (Duty / Riggers Belt)
+  const beltGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
+  beltGrad.addColorStop(0.0, '#09090b');
+  beltGrad.addColorStop(0.5, '#18181b');
+  beltGrad.addColorStop(1.0, '#09090b');
 
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, 0);
   ctx.quadraticCurveTo(0, 1.4, waistHalfW, 0);
-  ctx.lineTo(waistHalfW - 0.4, 4.4);
-  ctx.quadraticCurveTo(0, 6.2, -waistHalfW + 0.4, 4.4);
+  ctx.lineTo(waistHalfW - 0.4, 4.6);
+  ctx.quadraticCurveTo(0, 6.2, -waistHalfW + 0.4, 4.6);
   ctx.closePath();
-  ctx.fillStyle = pelvisShortsGrad;
+  ctx.fillStyle = beltGrad;
   ctx.fill();
 
-  const jerseyGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
-  if (isLookingAway) {
-    jerseyGrad.addColorStop(0.0, v.jerseyBack0);
-    jerseyGrad.addColorStop(0.5, v.jerseyBack1);
-    jerseyGrad.addColorStop(1.0, v.jerseyBack2);
-  } else {
-    jerseyGrad.addColorStop(0.0, v.jerseyFront0);
-    jerseyGrad.addColorStop(0.35, v.jerseyFront1);
-    jerseyGrad.addColorStop(0.75, v.jerseyFront2);
-    jerseyGrad.addColorStop(1.0, v.jerseyFront3);
-  }
+  // Metalowa klamra pasa taktycznego
+  ctx.fillStyle = '#52525b';
+  ctx.fillRect(-1.6, 1.2, 3.2, 2.6);
+  ctx.fillStyle = '#71717a';
+  ctx.fillRect(-1.0, 1.7, 2.0, 1.6);
 
-  const scoopCenterX = !isLookingAway ? (cosYaw * 1.2) : (-sinYaw * 0.8);
-  const scoopCenterY = !isLookingAway ? -19.8 : -23.2;
+  // KAMIZELKA TAKTYCZNA / PLATE CARRIER PMC
+  const vestGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
+  const vestBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
+  const vestLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
+  const vestDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
+  vestGrad.addColorStop(0.0, vestDarkCol);
+  vestGrad.addColorStop(0.35, vestBaseCol);
+  vestGrad.addColorStop(0.75, vestLightCol);
+  vestGrad.addColorStop(1.0, vestDarkCol);
+
   const strapLeftX = -shoulderHalfW * 0.48;
   const strapRightX = shoulderHalfW * 0.48;
+  const scoopCenterX = !isLookingAway ? (cosYaw * 1.0) : (-sinYaw * 0.8);
+  const scoopCenterY = !isLookingAway ? -21.5 : -23.2;
 
+  // Główny korpus plate carriera
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, waistY);
-  if (isSculpted) {
-    ctx.quadraticCurveTo(-waistHalfW * 1.15, -12.0, -shoulderHalfW, -24.4);
-  } else {
-    ctx.lineTo(-shoulderHalfW, -24.4);
-  }
+  ctx.lineTo(-shoulderHalfW, -24.4);
   ctx.lineTo(strapLeftX, -24.4);
   ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
   ctx.lineTo(shoulderHalfW, -24.4);
-  if (isSculpted) {
-    ctx.quadraticCurveTo(shoulderHalfW * 1.05, -12.0, waistHalfW, waistY);
-  } else {
-    ctx.quadraticCurveTo(shoulderHalfW + 0.8, -14.0, waistHalfW, waistY);
-  }
+  ctx.lineTo(waistHalfW, waistY);
   ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
   ctx.closePath();
-  ctx.fillStyle = jerseyGrad;
+  ctx.fillStyle = vestGrad;
   ctx.fill();
 
-  ctx.strokeStyle = v.seamColor || 'rgba(0, 0, 0, 0.35)';
+  // Obrys i wzmocnione krawędzie pancerza
+  ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  ctx.moveTo(strapLeftX, -24.4);
-  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
   ctx.stroke();
 
-  if (isSculpted && !isLookingAway && absCos > 0.3) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    ctx.moveTo(-shoulderHalfW * 0.65, -16.5);
-    ctx.lineTo(0, -15.5);
-    ctx.lineTo(shoulderHalfW * 0.65, -16.5);
-    ctx.stroke();
-  }
+  // Pasy nośne i taśmy MOLLE (Modular Lightweight Load-carrying Equipment)
+  const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
+  const molleCol = 'rgba(0, 0, 0, 0.45)';
+  const molleStitch = 'rgba(255, 255, 255, 0.15)';
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-  ctx.beginPath();
-  ctx.moveTo(-waistHalfW, waistY - 1.2);
-  ctx.quadraticCurveTo(0, waistY + 0.8, waistHalfW, waistY - 1.2);
-  ctx.lineTo(waistHalfW, waistY + 0.6);
-  ctx.quadraticCurveTo(0, waistY + 2.6, -waistHalfW, waistY + 0.6);
-  ctx.closePath();
-  ctx.fill();
+  // Pas piersiowy MOLLE 1
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.45, -17.0, plateW * 0.9, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.15, -17.0, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.15, -17.0, 0.8, 1.8);
 
-  const seamX = cosYaw * 2.2;
-  ctx.fillStyle = v.seamColor;
-  ctx.beginPath();
-  ctx.moveTo(seamX - 0.8, waistY);
-  ctx.lineTo(seamX - 1.4, scoopCenterY);
-  ctx.lineTo(seamX - 0.4, scoopCenterY);
-  ctx.lineTo(seamX + 0.2, waistY);
-  ctx.closePath();
-  ctx.fill();
+  // Pas brzuszny MOLLE 2
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.48, -12.5, plateW * 0.96, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.18, -12.5, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.18, -12.5, 0.8, 1.8);
 
-  const classNum = v.number || '10';
-  if (isLookingAway) {
-    const numScale = Math.max(0.4, absSin * 1.0);
-    ctx.save();
-    ctx.translate(-sinYaw * 1.5, -13.0);
-    ctx.scale(numScale, 1.0);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-    ctx.font = 'bold 8.0px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(classNum, 0, 0);
-    ctx.restore();
-  } else {
-    const crestX = (cosYaw * 3.0) + (sinYaw * -3.2);
-    ctx.fillStyle = v.crestColor;
-    ctx.beginPath();
-    ctx.arc(crestX, -17.8, 1.4, 0, Math.PI * 2);
-    ctx.fill();
+  // Pas dolny MOLLE 3
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.50, -8.0, plateW * 1.0, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.20, -8.0, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.20, -8.0, 0.8, 1.8);
 
-    if (absCos > 0.45) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-      ctx.font = 'bold 7.0px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(classNum, -0.5 * cosYaw, -13.0);
-    }
+  // Panel rzepu taktycznego / Velcro Morale Patch na klatce piersiowej
+  if (!isLookingAway && absCos > 0.25) {
+    const patchX = (cosYaw * 2.0) - (plateW * 0.32);
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(patchX, -20.2, plateW * 0.64, 2.4);
+    ctx.strokeStyle = '#3f3f46';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(patchX, -20.2, plateW * 0.64, 2.4);
   }
 
   // MODEL JETPACKA NA PLECACH POSTACI
@@ -1910,6 +1909,68 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.shadowColor = '#ef4444';
     ctx.shadowBlur = 8;
     ctx.fillText('⛔ NO AMMO', p.x + p.w / 2, p.y - 16);
+    ctx.restore();
+  }
+
+  // TAKTYCZNY CHEVRON / HOLOGRAM DRUŻYNY (CYAN vs ORANGE) UNOSZĄCY SIĘ 16 PX NAD GŁOWĄ
+  if (!p.isDead) {
+    ctx.save();
+    const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
+    const teamNeon = isCyan ? '#00f0ff' : '#f97316';
+    const teamCore = isCyan ? '#a5f3fc' : '#fed7aa';
+    const teamGlow = isCyan ? 'rgba(6, 182, 212, ' : 'rgba(249, 115, 22, ';
+
+    const headTopX = hipX + (36 * Math.sin(pose.torsoTilt));
+    const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + (p.headBob * 0.35);
+
+    const now = performance.now();
+    const hoverY = Math.sin(now * 0.005) * 1.5;
+    const pulse = 0.65 + 0.35 * Math.sin(now * 0.007);
+
+    const chevX = headTopX;
+    const chevY = headTopY - 16 + hoverY;
+
+    // Poświata neonowa hologramu
+    ctx.shadowColor = teamNeon;
+    ctx.shadowBlur = 8 + pulse * 6;
+
+    // Pierścień / emiter projekcji holograficznej
+    ctx.strokeStyle = `${teamGlow}${0.35 * pulse})`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(chevX, headTopY - 6, 7.0, 2.2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Taktyczne nawiasy HUD
+    ctx.strokeStyle = `${teamGlow}${0.55 * pulse})`;
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(chevX - 7.5, chevY - 3.5);
+    ctx.lineTo(chevX - 6.0, chevY - 5.5);
+    ctx.lineTo(chevX - 3.0, chevY - 5.5);
+    ctx.moveTo(chevX + 7.5, chevY - 3.5);
+    ctx.lineTo(chevX + 6.0, chevY - 5.5);
+    ctx.lineTo(chevX + 3.0, chevY - 5.5);
+    ctx.stroke();
+
+    // Holograficzny taktyczny chevron (▼)
+    ctx.fillStyle = teamNeon;
+    ctx.beginPath();
+    ctx.moveTo(chevX - 4.8, chevY - 4.5);
+    ctx.lineTo(chevX + 4.8, chevY - 4.5);
+    ctx.lineTo(chevX, chevY + 2.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wewnętrzny rdzeń neonu
+    ctx.fillStyle = teamCore;
+    ctx.beginPath();
+    ctx.moveTo(chevX - 2.8, chevY - 3.8);
+    ctx.lineTo(chevX + 2.8, chevY - 3.8);
+    ctx.lineTo(chevX, chevY + 0.8);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.restore();
   }
 

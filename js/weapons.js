@@ -153,7 +153,7 @@ export function getWeaponHoldTransform(p) {
   const { rightShoulderX, rightShoulderY, hipX, hipY } = getShooterShoulderPos(p);
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
-  const isCrouch = !!p.isCrouching;
+  const isCrouch = !!(p.isCrouching || p.isProne);
 
   const aimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : (rightShoulderX + charFacing * 120);
   const aimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : rightShoulderY;
@@ -188,13 +188,19 @@ export function getWeaponHoldTransform(p) {
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
   const reloadDip = p.isReloading ? Math.sin((p.reloadTimer / (p.reloadDuration || 120)) * Math.PI) * 0.16 : 0;
   const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadDip;
-
   const kickback = p.weaponKickback || 0;
-  const finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing;
-  const finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback;
 
-  const cosA = Math.cos(blendedAngle);
-  const sinA = Math.sin(blendedAngle);
+  let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing;
+  let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback;
+
+  if (p.isProne) {
+    const floorY = p.currentGroundY || p.groundY || 560;
+    finalPivotY = Math.max(floorY - 9.0, Math.min(floorY - 6.5, finalPivotY));
+  }
+
+  const proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
+  const cosA = Math.cos(proneAimAngle);
+  const sinA = Math.sin(proneAimAngle);
 
   // Punkty podparcia dłoni
   const rearGripDistX = isShotgun ? 1.6 : 1.5;
@@ -213,7 +219,7 @@ export function getWeaponHoldTransform(p) {
   return {
     pivotX: finalPivotX,
     pivotY: finalPivotY,
-    angle: blendedAngle,
+    angle: proneAimAngle,
     charFacing,
     rightShoulderX,
     rightShoulderY,
@@ -346,7 +352,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     }
   }
 
-  const isCrouch = !!shooter.isCrouching;
+  const isCrouch = !!(shooter.isCrouching || shooter.isProne);
 
   if (weapon.id === 'SHOTGUN') {
     shooter.shootPoseTimer = 10;
@@ -600,10 +606,20 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
-      const charLeft = ch.x;
-      const charRight = ch.x + hitW;
-      const charTop = ch.y - 25;
-      const charBottom = ch.y + hitH;
+      let charLeft = ch.x;
+      let charRight = ch.x + hitW;
+      let charTop = ch.y - 25;
+      let charBottom = ch.y + hitH;
+
+      if (ch.isProne) {
+        // Obniżony profil kolizji dla pozycji leżącej na brzuchu (22px wysokości)
+        charTop = ch.y + hitH - 24;
+        charBottom = ch.y + hitH + 2;
+        charLeft = ch.x - (ch.facing === 1 ? 14 : 38);
+        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
+      } else if (ch.isCrouching) {
+        charTop = ch.y + 12;
+      }
 
       const charT = getSegmentAABBHitT(b.prevX, b.prevY, endX, endY, charLeft, charTop, charRight, charBottom);
       if (charT !== null && charT <= maxT && charT < closestCharT) {

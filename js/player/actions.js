@@ -42,40 +42,96 @@ export function executeReleaseJump(spawnGrass, p) {
 }
 
 export function playerSlide(spawnGrass, GROUND_Y, p) {
-  const isMovingBackwards = (p.vx * p.facing < -0.1);
+  let char = p;
+  let grassFn = spawnGrass;
+  let groundYVal = GROUND_Y;
+  if (spawnGrass && typeof spawnGrass.vx === 'number') {
+    char = spawnGrass;
+    grassFn = GROUND_Y;
+    groundYVal = p;
+  }
+  if (!char) return;
+
+  const isMovingBackwards = (char.vx * char.facing < -0.1);
   if (isMovingBackwards) return;
-  if (p.isIntro) return;
+  if (char.isIntro || char.isDead) return;
 
-  const sprintMax = p.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX;
-  if (Math.abs(p.vx) < sprintMax * 0.78) return;
+  if (!char.isJumping && !char.isSliding) {
+    char.isSliding = true;
+    char.slideTimer = 56;
+    char.isCrouching = false;
+    char.isProne = false;
+    char.isJumpCharging = false;
 
-  if (!p.isJumping && !p.isSliding) {
-    p.isSliding = true;
-    p.slideTimer = 56;
-    p.isCrouching = false;
-    p.isJumpCharging = false;
+    // Natychmiastowe nadanie pełnego pędu wślizgu (slideDashSpeed)
+    const slideDash = char.currentClass?.stats?.slideDashSpeed || CONFIG.SLIDE_DASH_SPEED || 13.5;
+    char.vx = char.facing * slideDash;
 
-    const curSpeed = Math.abs(p.vx);
-    const isSprinting = curSpeed > 4.2;
-    const slideDash = p.currentClass?.stats?.slideDashSpeed || CONFIG.SLIDE_DASH_SPEED;
-
-    if (isSprinting) p.vx = p.facing * slideDash;
-    else if (curSpeed > 2.0) p.vx = p.facing * (slideDash * 0.78);
-    else p.vx = p.facing * (slideDash * 0.62);
-
-    const currentFloor = p.currentGroundY || GROUND_Y;
-    const grassFn = spawnGrass || p._spawnGrass;
-    if (grassFn) {
-      for (let i = 0; i < 8; i++) grassFn(p.x + p.w / 2 + (p.facing * 15), currentFloor, p.facing);
+    const currentFloor = char.currentGroundY || groundYVal;
+    const finalGrassFn = grassFn || char._spawnGrass;
+    if (finalGrassFn && currentFloor) {
+      for (let i = 0; i < 8; i++) finalGrassFn(char.x + char.w / 2 + (char.facing * 15), currentFloor, char.facing);
     }
 
-    p.currentClass?.onSlide?.(p, grassFn);
+    char.currentClass?.onSlide?.(char, finalGrassFn);
   }
 }
 
-export function startKickCharge(p) {
-  if (p.isSliding) return;
+/**
+ * Wykrywanie przeciwnika w zwarciu (w odległości <= 65px przed graczem)
+ */
+export function findMeleeTarget(p, potentialTargets) {
+  if (!p) return null;
+  const list = potentialTargets || p._targets;
+  if (!list) return null;
+  const targets = Array.isArray(list) ? list : [list];
+
+  const hipX = p.x + p.w / 2;
+  const hipY = p.y + p.h - 40 + (p.pelvisY || 0);
+
+  for (const t of targets) {
+    if (!t || t === p || t.isDead) continue;
+    const targetX = t.x + (t.w || 24) / 2;
+    const targetY = t.y + (t.h || 70) - 40;
+
+    const dx = targetX - hipX;
+    const dy = targetY - hipY;
+
+    // Przeciwnik musi znajdować się przed graczem w kierunku facing
+    const isAhead = (dx * p.facing) >= -12;
+    const dist = Math.hypot(dx, dy);
+
+    if (isAhead && dist <= 75) {
+      return t;
+    }
+  }
+  return null;
+}
+
+/**
+ * Inicjalizacja manewru Spartan Kick (poziomy wykop w klatkę przeciwnika)
+ */
+export function triggerSpartanKick(p, meleeTarget) {
+  const pwr = p.chargePower || 0;
+  p.isCharging = false;
+  p.kickPower = pwr;
+  p.chargePower = pwr;
+  p.kickMode = 'SPARTAN';
+  p.kickLeg = p.nextLeg || 'front';
+  p.kickState = 'SWING';
+  p.spartanTimer = 0;
+  p.spartanDuration = 18;
+  p.hitThisSwing = false;
+  p.kickBufferTimer = 18;
+  p.spartanTarget = meleeTarget || null;
+  p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
+  return 'SPARTAN';
+}
+
+export function startKickCharge(p, targets) {
+  if (!p || p.isSliding) return;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) return;
+
   p.isCharging = true;
   p.chargePower = 0;
   p.kickPower = 0;
@@ -126,22 +182,27 @@ export function isBallInKickReach(playerObj, ballObj) {
   return evaluateKickTiming(playerObj, ballObj) !== 'CANCEL';
 }
 
-export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0) {
+export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targets) {
+  if (!p) return null;
+
+  // Sprawdź czy przed graczem jest wróg w zwarciu (Spartan Kick)
+  const meleeTarget = findMeleeTarget(p, targets);
+  if (meleeTarget && p.kickState === 'IDLE' && p.kickCooldown <= 0) {
+    return triggerSpartanKick(p, meleeTarget);
+  }
+
   if (!p.isCharging && !p.isIntro) return null;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) {
     p.isCharging = false;
     return null;
   }
 
+  if (meleeTarget) {
+    return triggerSpartanKick(p, meleeTarget);
+  }
+
   const ball = ballParam || p._ball;
   const timing = evaluateKickTiming(p, ball);
-
-  if (!p.isIntro && timing === 'CANCEL') {
-    p.isCharging = false;
-    p.chargePower = 0;
-    p.kickPower = 0;
-    return null;
-  }
 
   const hipY = p.y + p.h - 40;
   const isWaistHeight = ball && (ball.y >= hipY - 20 && ball.y <= hipY + 22);
@@ -196,12 +257,12 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0) {
     p.kickState = 'SWING';
     p.hitThisSwing = false;
     p.kickAngle = 0;
-    p.kickBufferTimer = 12;
+    p.kickBufferTimer = 14;
 
     const curSpeed = Math.abs(p.vx);
     const sprintMax = p.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX;
     const speedRatio = Math.min(1.0, curSpeed / sprintMax);
-    p.swingSpeed = (0.17 + p.chargePower * 0.12) * (1.0 + speedRatio * 0.95);
+    p.swingSpeed = (0.18 + p.chargePower * 0.14) * (1.0 + speedRatio * 0.95);
     p.kickRecoverSpeed = (0.14 + p.chargePower * 0.06) * (1.0 + speedRatio * 0.85);
 
     const hipX = p.x + p.w / 2;
@@ -234,67 +295,68 @@ export function getGroundKickTrajectory(phase, angle, power, hipX, hipY, floorY,
       supportAnkle = (toeProgress * 0.45) * facing;
     }
   } else {
-    supportFootX = hipX - 3.5 * facing;
+    supportFootX = hipX - 6.0 * facing;
     supportFootY = plantFloorY;
     supportAnkle = 0.0;
   }
 
   if (phase === 'CHARGE') {
+    // Naturalna pozycja gotowości: obie stopy stabilnie na podłożu, zero odginania nogi w tył
     const p = ease(power);
-    const reachBackX = -12 - p * 16;
-    const pullUpY = 30 - p * 10;
-
-    kickFootX = hipX + reachBackX * facing;
-    kickFootY = hipY + pullUpY;
-    kickAnkle = (Math.PI * 0.5) * facing;
+    kickFootX = hipX + (6.0 + p * 2.0) * facing;
+    kickFootY = plantFloorY;
+    kickAnkle = 0.0;
   } else if (phase === 'SWING') {
     const u = Math.min(1.0, angle / 2.1);
 
-    if (u < 0.28) {
-      const w = ease(u / 0.28);
-      const startX = -12 - power * 16;
-      const startY = 30 - power * 10;
-      const curX = lerp(startX, 8 + speedRatio * 8, w);
-      const curY = lerp(startY, 34, w);
+    if (u < 0.35) {
+      // Dynamiczny start stopy w przód z ziemi w stronę piłki (kickAngle rośnie w przód)
+      const w = ease(u / 0.35);
+      const startX = 6.0;
+      const startY = plantFloorY - hipY;
+      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const strikeY = 36 - power * 6;
 
-      kickFootX = hipX + curX * facing;
-      kickFootY = hipY + curY;
-
-      const initAnkle = Math.PI * 0.5;
-      kickAnkle = lerp(initAnkle, 0.75, w) * facing;
-    } else if (u < 0.68) {
-      const w = ease((u - 0.28) / 0.40);
-      const strikeX = 34 + speedRatio * 14 + power * 8;
-      const strikeY = 38 - power * 8;
-      const curX = lerp(8 + speedRatio * 8, strikeX, w);
-      const curY = lerp(34, strikeY, w);
-
-      kickFootX = hipX + curX * facing;
-      kickFootY = hipY + curY;
-      kickAnkle = lerp(0.75, 0.35, w) * facing;
-    } else {
-      const w = ease((u - 0.68) / 0.32);
-      const strikeX = 34 + speedRatio * 14 + power * 8;
-      const peakX = strikeX + 6 + speedRatio * 8;
-      const peakY = lerp(38 - power * 8, 20 - power * 16, w);
+      kickFootX = hipX + lerp(startX, strikeX, w) * facing;
+      kickFootY = hipY + lerp(startY, strikeY, w);
+      kickAnkle = lerp(0.0, 0.45, w) * facing;
+    } else if (u < 0.75) {
+      // Dynamiczny follow-through i wyciągnięcie stopy w przód
+      const w = ease((u - 0.35) / 0.40);
+      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const strikeY = 36 - power * 6;
+      const peakX = strikeX + 10 + speedRatio * 8;
+      const peakY = lerp(strikeY, 14 - power * 16, w);
 
       kickFootX = hipX + lerp(strikeX, peakX, w) * facing;
       kickFootY = hipY + peakY;
-      kickAnkle = lerp(0.35, -0.20, w) * facing;
+      kickAnkle = lerp(0.45, -0.25, w) * facing;
+    } else {
+      // Wyciszenie wymachu stopy
+      const w = ease((u - 0.75) / 0.25);
+      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const peakX = strikeX + 10 + speedRatio * 8;
+      const peakY = 14 - power * 16;
+      const targetLandingX = 14 + speedRatio * 8;
+      const targetLandingY = plantFloorY - hipY;
+
+      kickFootX = hipX + lerp(peakX, targetLandingX, w) * facing;
+      kickFootY = hipY + lerp(peakY, targetLandingY, w);
+      kickAnkle = lerp(-0.25, 0.10, w) * facing;
     }
   } else {
+    // Faza RECOVER
     const u = Math.max(0, Math.min(1.0, angle / 2.1));
     const w = ease(u);
-    const strikeX = 34 + speedRatio * 14 + power * 8;
-    const peakX = strikeX + 6 + speedRatio * 8;
-    const peakY = 20 - power * 16;
+    const peakX = 46 + speedRatio * 22 + power * 10;
+    const peakY = 14 - power * 16;
 
     const targetLandingX = 14 + speedRatio * 8;
     const targetLandingY = plantFloorY - hipY;
 
     kickFootX = hipX + lerp(targetLandingX, peakX, w) * facing;
     kickFootY = hipY + lerp(targetLandingY, peakY, w);
-    kickAnkle = lerp(0.05, 0.20, w) * facing;
+    kickAnkle = lerp(0.05, 0.15, w) * facing;
   }
 
   return {
@@ -383,3 +445,103 @@ export function getBackflipTargets(timer, duration, hipX, hipY, facing) {
     guide: { x: gx, y: gy, ankle: -0.18 * facing }
   };
 }
+
+/**
+ * Trajektoria kinetyczna manewru Spartan Kick (poziome wypchnięcie stopy w przód w klatkę)
+ */
+export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floorY) {
+  const u = Math.min(1.0, timer / duration);
+  const plantFloorY = floorY - 3.5;
+
+  // Noga podporowa mocno zaparta w podłożu za biodrami
+  const supportFootX = hipX - 10 * facing;
+  const supportFootY = plantFloorY;
+  const supportAnkle = 0.08 * facing;
+
+  let kickFootX, kickFootY, kickAnkle;
+
+  if (u < 0.22) {
+    // 1. Uniesienie stopy z ziemi i podciągnięcie kolana do klatki (chamber)
+    const w = ease(u / 0.22);
+    kickFootX = hipX + lerp(4, 18, w) * facing;
+    kickFootY = lerp(plantFloorY, hipY - 2, w);
+    kickAnkle = lerp(0.0, 0.40, w) * facing;
+  } else if (u < 0.55) {
+    // 2. Eksplozywne poziome wypchnięcie stopy w przód prosto w klatkę wroga (wysoko: hipY - 14 px, wysięg +48 px)
+    const w = ease((u - 0.22) / 0.33);
+    kickFootX = hipX + lerp(18, 48, w) * facing;
+    kickFootY = lerp(hipY - 2, hipY - 14, w);
+    kickAnkle = lerp(0.40, -0.15, w) * facing;
+  } else if (u < 0.75) {
+    // 3. Utrzymanie pełnego wyprostu w klatce celu (impact hold)
+    kickFootX = hipX + 48 * facing;
+    kickFootY = hipY - 14;
+    kickAnkle = -0.15 * facing;
+  } else {
+    // 4. Płynny powrót stopy na ziemię
+    const w = ease((u - 0.75) / 0.25);
+    kickFootX = hipX + lerp(48, 8, w) * facing;
+    kickFootY = lerp(hipY - 14, plantFloorY, w);
+    kickAnkle = lerp(-0.15, 0.0, w) * facing;
+  }
+
+  return {
+    kicking: { x: kickFootX, y: kickFootY, ankle: kickAnkle },
+    support: { x: supportFootX, y: supportFootY, ankle: supportAnkle }
+  };
+}
+
+/**
+ * Prawidłowe cele IK dla leżenia (Prone) i czołgania (Crawl):
+ * Tors płasko przy ziemi (floorY - 6 px), kolana i łokcie pracujące wzdłuż podłoża,
+ * stopy spoczywają płasko na podłożu (plantFloorY), bez unoszenia nóg w powietrze.
+ */
+export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, facing) {
+  if (isCrawling) {
+    // Wojskowy low crawl: ciało przesuwa się tuż przy ziemi, kolana i stopy ślizgają się po podłożu
+    const legStride = Math.sin(crawlPhase) * 8;
+    return {
+      front: {
+        x: hipX - (44 + legStride) * facing,
+        y: plantFloorY,
+        ankle: 0.05 * facing
+      },
+      back: {
+        x: hipX - (44 - legStride) * facing,
+        y: plantFloorY,
+        ankle: -0.05 * facing
+      },
+      frontArm: {
+        swing: 0.85 + Math.cos(crawlPhase) * 0.35,
+        elbow: 1.40
+      },
+      backArm: {
+        swing: 0.85 - Math.cos(crawlPhase) * 0.35,
+        elbow: 1.40
+      }
+    };
+  }
+
+  // Leżenie płasko (Prone Idle): tors i miednica przylegają do podłoża, nogi wyprostowane spoczywają płasko na ziemi
+  return {
+    front: {
+      x: hipX - 44 * facing,
+      y: plantFloorY,
+      ankle: 0.0
+    },
+    back: {
+      x: hipX - 46 * facing,
+      y: plantFloorY,
+      ankle: 0.0
+    },
+    frontArm: {
+      swing: 0.70,
+      elbow: 1.30
+    },
+    backArm: {
+      swing: 0.65,
+      elbow: 1.25
+    }
+  };
+}
+

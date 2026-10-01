@@ -25,15 +25,15 @@ export function lerpAngle(a, b, t) {
 /**
  * Analityczny solwer 2-Bone IK oparty na twierdzeniu cosinusów
  */
-export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
+export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1, allowRaised = false) {
   if (isNaN(tx) || isNaN(ty)) {
     tx = hx;
     ty = hy + l1 + l2 - 4;
   }
 
-  // Zabezpieczenie dla kończyn dolnych (nogi: bendDir === -1):
-  // Stopa i kolano nie mogą być wyginane ponad poziom bioder w naturalnych stanach ruchu i spadania
-  if (bendDir === -1 && ty < hy + 6) {
+  // Zabezpieczenie dla kończyn dolnych w standardowym chodzie i biegu (nogi: bendDir === -1):
+  // W pozycji leżącej (Prone) lub przy wykopach (Spartan Kick) stopy mogą znajdować się na poziomie bioder/klatki
+  if (!allowRaised && bendDir === -1 && ty < hy + 6) {
     ty = hy + 6;
   }
 
@@ -50,8 +50,8 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
   const maxReach = (l1 + l2) * 0.998;
   if (d >= maxReach) {
     let ang = Math.atan2(dy, dx);
-    if (bendDir === -1) {
-      // Ograniczenie kąta wyprostu nóg - skierowane zawsze w dół z bioder
+    if (!allowRaised && bendDir === -1) {
+      // Ograniczenie kąta wyprostu nóg w standardowym chodzie
       if (ang < 0.08 && ang > -Math.PI / 2) ang = 0.08;
       else if (ang <= -Math.PI / 2 && ang > -Math.PI) ang = Math.PI - 0.08;
     }
@@ -76,8 +76,8 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1) {
   const alpha = Math.acos(cosAlpha);
 
   let thighAngle = baseAngle + bendDir * (facing * alpha);
-  // Ograniczenie kąta uda dla nóg (staw kolanowy nie może unosić się w tułów)
-  if (bendDir === -1) {
+  // Ograniczenie kąta uda dla nóg w standardowym chodzie
+  if (!allowRaised && bendDir === -1) {
     if (Math.sin(thighAngle) < 0.05) {
       thighAngle = facing >= 0 ? 0.08 : (Math.PI - 0.08);
     }

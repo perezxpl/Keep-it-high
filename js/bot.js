@@ -72,7 +72,21 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     botKeys.down = false;
     botKeys.space = false;
     botKeys.slide = false;
-    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot);
+    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
+    return;
+  }
+
+  // Obsługa oszołomienia po Spartan Kick
+  if (bot.staggerTimer > 0) {
+    botKeys.left = false;
+    botKeys.right = false;
+    botKeys.up = false;
+    botKeys.down = false;
+    botKeys.space = false;
+    botKeys.slide = false;
+    bot.isShooting = false;
+    bot.isCharging = false;
+    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
     return;
   }
 
@@ -91,7 +105,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     bot.isShooting = false;
     bot.isCharging = false;
     bot.shootPoseTimer = 0;
-    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot);
+    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
     return;
   }
 
@@ -297,12 +311,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     }
   } else if (bot.isCharging) {
     if (bot.chargePower >= bot.chargeTarget || ballDistFromHip > hitReach + 40) {
-      executeReleaseKick(ball, bot);
+      executeReleaseKick(ball, bot, 0, [humanPlayer]);
     }
   }
 
   // =========================================================================
   // 7. WYWOŁANIE FIZYKI POSTACI
   // =========================================================================
-  updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot);
+  updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
 }
