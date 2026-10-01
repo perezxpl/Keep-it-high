@@ -92,8 +92,8 @@ export const grassParticles = [];
 // INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
 // =========================================================================
 export const weaponButtons = [
-  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', x: 20, y: 0, w: 230, h: 32 },
-  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 230, h: 32 }
+  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 36, h: 36 }
 ];
 
 export function initCanvas(canvasEl) {
@@ -1891,30 +1891,79 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   ctx.restore();
 }
 
-export function drawEntityHealthBar(ctx, entity, yOffset = -12) {
+/**
+ * Rysuje kompaktowy pasek życia (HP) bezpośrednio nad głową postaci.
+ * Prawidłowo wylicza współrzędne Y i X z uwzględnieniem szkieletu/IK,
+ * wysokości gracza i dynamicznych zmian pozycji (np. wślizg / kucanie / skok).
+ */
+export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
   if (!entity || entity.isDead) return;
-  const barW = 34;
+
+  const barW = 38;
   const barH = 4.5;
-  const x = (entity.x + entity.w / 2) - barW / 2;
-  const y = entity.y + yOffset;
+  const pHeight = entity.height || entity.h || 70;
+  const pWidth = entity.width || entity.w || 24;
+
+  // 1. Prawidłowe wyznaczenie współrzędnych pionowych (Y) nad czubkiem głowy:
+  let barY;
+  if (entity.head && typeof entity.head.y === 'number') {
+    // Jeśli gracz używa szkieletu / IK:
+    // const headY = player.head ? player.head.y : (player.y - player.height / 2);
+    // const barY = headY - 18; // ok. 15-20px nad czubkiem głowy
+    const headY = entity.head.y;
+    barY = headY - 18 + yOffset;
+  } else if (entity.origin === 'bottom') {
+    // Jeśli pozycja entity.y to stopy (bottom origin):
+    // const barY = player.y - player.height - 15;
+    barY = entity.y - pHeight - 15 + yOffset;
+  } else if (entity.origin === 'center') {
+    // Jeśli pozycja entity.y to środek (center origin):
+    // const barY = player.y - (player.height / 2) - 15;
+    barY = entity.y - (pHeight / 2) - 15 + yOffset;
+  } else if (entity.origin === 'top') {
+    // Jeśli pozycja entity.y to góra (top origin):
+    // const barY = player.y - 15;
+    barY = entity.y - 15 + yOffset;
+  } else {
+    // Dynamiczne dopasowanie przy kucaniu / ślizgu (SLIDE) lub domyślny fallback IK:
+    const isSlidingOrProne = entity.isProne || entity.isSliding || entity.state === 'SLIDE';
+    const headY = isSlidingOrProne
+      ? (entity.currentGroundY ? entity.currentGroundY - 8 : entity.y + pHeight - 8)
+      : (entity.head ? entity.head.y : (entity.y - (pHeight / 2)));
+    barY = headY - 18 + yOffset;
+  }
+
+  // 2. Wyśrodkowanie w poziomie (X) względem szerokości gracza / głowy:
+  // const barX = player.x - (barWidth / 2);
+  let barX;
+  if (entity.head && typeof entity.head.x === 'number') {
+    barX = entity.head.x - (barW / 2);
+  } else if (entity.origin === 'center') {
+    barX = entity.x - (barW / 2);
+  } else {
+    // entity.x to lewa krawędź hitboxa gracza o szerokości pWidth
+    const centerX = entity.x + (pWidth / 2);
+    barX = centerX - (barW / 2);
+  }
 
   const maxHp = entity.maxHp || 100;
   const curHp = Math.max(0, entity.hp ?? 100);
   const ratio = Math.max(0, Math.min(1, curHp / maxHp));
-  const col = ratio > 0.5 ? '#22c55e' : (ratio > 0.25 ? '#f97316' : '#ef4444');
 
   ctx.save();
+  // Ciemne tło podkładowe
   ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.fillRect(x - 1, y - 1, barW + 2, barH + 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = 0.8;
-  ctx.strokeRect(x - 1, y - 1, barW + 2, barH + 2);
+  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
 
+  // Zielone wypełnienie (#22c55e) proporcjonalne do hp / maxHp, bez zbędnych napisów
   if (ratio > 0) {
-    ctx.fillStyle = col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 4;
-    ctx.fillRect(x, y, barW * ratio, barH);
+    ctx.fillStyle = '#22c55e';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 3;
+    ctx.fillRect(barX, barY, barW * ratio, barH);
   }
   ctx.restore();
 }
@@ -2003,19 +2052,6 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
 
 
 /**
- * Rysowanie taktycznego prostokąta ze ściętym prawym górnym narożnikiem (tactical sci-fi chamfer)
- */
-function drawChamferedBar(ctx, x, y, w, h, chamfer = 6) {
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + w - chamfer, y);
-  ctx.lineTo(x + w, y + chamfer);
-  ctx.lineTo(x + w, y + h);
-  ctx.lineTo(x, y + h);
-  ctx.closePath();
-}
-
-/**
  * Rysuje sylwetkę broni w slocie HUD.
  */
 export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
@@ -2023,43 +2059,47 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
   ctx.translate(cx, cy);
 
   if (isSelected) {
-    ctx.fillStyle = type === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.45)' : 'rgba(250, 204, 21, 0.45)';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+    ctx.shadowBlur = 4;
   } else {
-    ctx.fillStyle = '#94A3B8';
+    ctx.fillStyle = '#94a3b8';
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
   }
 
   if (type === 'AK47') {
     // Kolba
-    ctx.fillRect(-17, -1, 7, 3);
+    ctx.fillRect(-13, -1, 5, 2.5);
     // Komora i łoże
-    ctx.fillRect(-10, -2, 16, 4);
+    ctx.fillRect(-8, -2, 12, 3.5);
     // Magazynek łukowy
     ctx.beginPath();
-    ctx.moveTo(-5, 2);
-    ctx.lineTo(-2, 7);
-    ctx.lineTo(1, 7);
-    ctx.lineTo(-1, 2);
+    ctx.moveTo(-4, 1.5);
+    ctx.lineTo(-2, 5.5);
+    ctx.lineTo(0.5, 5.5);
+    ctx.lineTo(-1, 1.5);
     ctx.closePath();
     ctx.fill();
     // Lufa
-    ctx.fillRect(6, -1, 10, 2);
+    ctx.fillRect(4, -1, 8, 1.8);
   } else if (type === 'SHOTGUN') {
     // Kolba
-    ctx.fillRect(-16, -1, 8, 4);
+    ctx.fillRect(-12, -1, 6, 3);
     // Komora zamkowa
-    ctx.fillRect(-8, -2, 12, 5);
+    ctx.fillRect(-6, -2, 10, 4);
     // Długa lufa i podlufowy magazynek
-    ctx.fillRect(4, -2, 12, 3);
-    ctx.fillRect(4, 1, 10, 2);
+    ctx.fillRect(4, -2, 9, 2.5);
+    ctx.fillRect(4, 0.8, 7, 1.8);
   }
 
   ctx.restore();
 }
 
 /**
- * Rysuje pojedynczy slot broni w interfejsie HUD z zachowaniem maksymalnego kontrastu.
+ * Rysuje pojedynczy, minimalistyczny kwadratowy kafelek broni w interfejsie HUD.
  */
-export function drawWeaponSlot(ctx, btn, isSelected, player) {
+export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   const isActive = isSelected;
   const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#f59e0b';
 
@@ -2074,36 +2114,33 @@ export function drawWeaponSlot(ctx, btn, isSelected, player) {
   const bIsNoAmmo = (bCurrentAmmo === 0 && bReserveAmmo === 0);
   const bIsLowAmmo = (!bIsNoAmmo && bCurrentAmmo <= Math.ceil(bMagSize * 0.25));
 
+  const tileSize = btn.w;
+  const tileX = btn.x;
+  const tileY = btn.y;
+
   ctx.save();
+  ctx.globalAlpha = isMobile ? 0.80 : 0.85;
 
-  if (!isActive) {
-    ctx.globalAlpha = 0.95;
-  } else {
-    ctx.globalAlpha = 1.0;
-  }
-
-  // 1. Tło w stylu Dark Glass ze ściętym narożnikiem (chamfer)
+  // 1. Tło kwadratowego kafelka (Dark Glass)
+  const radius = isMobile ? 5 : 6;
   ctx.beginPath();
-  const chamfer = 6;
-  ctx.moveTo(btn.x, btn.y);
-  ctx.lineTo(btn.x + btn.w - chamfer, btn.y);
-  ctx.lineTo(btn.x + btn.w, btn.y + chamfer);
-  ctx.lineTo(btn.x + btn.w, btn.y + btn.h);
-  ctx.lineTo(btn.x, btn.y + btn.h);
-  ctx.closePath();
-
+  if (ctx.roundRect) {
+    ctx.roundRect(tileX, tileY, tileSize, tileSize, radius);
+  } else {
+    ctx.rect(tileX, tileY, tileSize, tileSize);
+  }
   ctx.fillStyle = isActive
-    ? 'rgba(30, 41, 59, 0.88)'
-    : 'rgba(15, 23, 42, 0.85)';
+    ? 'rgba(30, 41, 59, 0.85)'
+    : 'rgba(15, 23, 42, 0.80)';
   ctx.fill();
 
-  // 2. Obrys ramki
-  let borderCol = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
+  // 2. Obrys ramki (akcent dla aktywnej, przygaszony szary dla nieaktywnej)
+  let borderCol = isActive ? accentCol : 'rgba(148, 163, 184, 0.40)';
   if (isActive && bIsNoAmmo) borderCol = '#ef4444';
   else if (isActive && bIsLowAmmo) borderCol = '#f97316';
 
   ctx.strokeStyle = borderCol;
-  ctx.lineWidth = isActive ? 1.4 : 1.0;
+  ctx.lineWidth = isActive ? 1.6 : 1.0;
   if (isActive) {
     ctx.shadowColor = borderCol;
     ctx.shadowBlur = 6;
@@ -2114,116 +2151,45 @@ export function drawWeaponSlot(ctx, btn, isSelected, player) {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // 3. Pionowy lewy pasek akcentu (grubość 3.2px)
-  ctx.fillStyle = isActive ? accentCol : '#334155';
-  ctx.fillRect(btn.x, btn.y, 3.2, btn.h);
-
-  // Pasek postępu przeładowania na dolnej krawędzi kafelka
+  // 3. Pasek postępu przeładowania na dolnej krawędzi kafelka
   if (bIsReloading && ammoObj) {
     const dur = ammoObj.reloadDuration || 120;
     const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
     ctx.save();
     ctx.fillStyle = accentCol;
     ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 6;
-    ctx.fillRect(btn.x + 4, btn.y + btn.h - 3, (btn.w - 8) * prog, 2.2);
+    ctx.shadowBlur = 4;
+    ctx.fillRect(tileX + 3, tileY + tileSize - 3, (tileSize - 6) * prog, 2);
     ctx.restore();
   }
 
-  // 4. Tag klawisza: [1] / [2] w estetycznej ramce
-  const keyHint = btn.id === 'SHOTGUN' ? '[2]' : '[1]';
-  const tagX = btn.x + 9;
-  const tagY = btn.y + (btn.h - 18) / 2;
-  const tagW = 20;
-  const tagH = 18;
+  // 4. Ikonka / sylwetka broni w centrum kafelka
+  const iconScale = isMobile ? 0.82 : 0.95;
+  ctx.save();
+  ctx.translate(tileX + tileSize / 2, tileY + tileSize / 2);
+  ctx.scale(iconScale, iconScale);
+  drawWeaponSilhouette(ctx, btn.id, 0, 0, isActive);
+  ctx.restore();
 
-  ctx.fillStyle = isActive ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.08)';
-  ctx.strokeStyle = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
-  ctx.lineWidth = 1.0;
-  if (ctx.roundRect) ctx.roundRect(tagX, tagY, tagW, tagH, 3);
-  else ctx.rect(tagX, tagY, tagW, tagH);
-  ctx.fill();
-  ctx.stroke();
-
-  // 3. Tekst klawisza: [1] / [2]
-  ctx.font = 'bold 9.5px monospace';
+  // 5. Mały, dyskretny licznik amunicji pod ikoną
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(keyHint, tagX + tagW / 2, tagY + tagH / 2 + 0.5);
+  ctx.textBaseline = 'top';
+  const ammoY = tileY + tileSize + (isMobile ? 3 : 4);
 
-  // 4. Ikonka broni w tle
-  drawWeaponSilhouette(ctx, btn.id, btn.x + 44, btn.y + btn.h / 2, isActive);
-
-  // 3. Nazwa broni
-  ctx.font = 'bold 12px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(btn.name, btn.x + 64, btn.y + btn.h / 2 + 0.5);
-
-  // 3. Licznik amunicji
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-
-  if (!isActive) {
-    ctx.font = 'bold 12px monospace';
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.globalAlpha = 1.0;
-    ctx.fillText(`${bCurrentAmmo} / ${bReserveAmmo}`, btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
+  if (bIsReloading) {
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = accentCol;
+    ctx.fillText('RELOAD', tileX + tileSize / 2, ammoY);
+  } else if (bIsNoAmmo) {
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('EMPTY', tileX + tileSize / 2, ammoY);
   } else {
-    if (bIsReloading) {
-      ctx.font = 'bold 10px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText('⚡ RELOAD', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
-    } else if (bIsNoAmmo) {
-      ctx.font = 'bold 10.5px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText('⛔ EMPTY', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
-    } else {
-      const resText = `/ ${bReserveAmmo}`;
-      ctx.font = 'bold 10px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText(resText, btn.x + btn.w - 12, btn.y + btn.h / 2 + 1.5);
-
-      const resWidth = ctx.measureText(resText).width;
-
-      ctx.font = 'bold 15px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText(`${bCurrentAmmo}`, btn.x + btn.w - 15 - resWidth, btn.y + btn.h / 2 + 0.5);
-
-      if (bCurrentAmmo < bMagSize && bReserveAmmo > 0) {
-        ctx.font = '8.5px monospace';
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.globalAlpha = 1.0;
-        ctx.fillText('[R]', btn.x + btn.w - 20 - resWidth - ctx.measureText(`${bCurrentAmmo}`).width, btn.y + btn.h / 2 + 0.5);
-      }
-    }
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = isActive ? '#f8fafc' : '#94a3b8';
+    ctx.fillText(`${bCurrentAmmo}/${bReserveAmmo}`, tileX + tileSize / 2, ammoY);
   }
 
-  ctx.globalAlpha = 1.0;
   ctx.restore();
 }
 
@@ -2232,27 +2198,25 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   ctx.save();
 
+  // Wykrywanie urządzeń mobilnych / małych ekranów
+  const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
+
   // =========================================================================
-  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (KLASA, STAN, BROŃ, FPS)
+  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (KLASA, BROŃ, FPS)
   // =========================================================================
+  ctx.save();
+  ctx.globalAlpha = isMobile ? 0.80 : 0.88;
   ctx.textAlign = 'left';
 
+  const statsX = isMobile ? 12 : 20;
+  const lineGap = isMobile ? 15 : 18;
+  let curY = isMobile ? 16 : 22;
+
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '700 12px monospace';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, 20, 26);
+  ctx.font = isMobile ? 'bold 9.5px monospace' : '700 12px monospace';
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, statsX, curY);
 
-  let modeCol = '#94a3b8';
-  if (player.gaitMode === 'SLIDE') modeCol = '#00e5ff';
-  else if (player.isProne || player.gaitMode === 'PRONE' || player.gaitMode === 'CRAWL') modeCol = '#c084fc';
-  else if (player.isCrouching) modeCol = '#38bdf8';
-  else if (player.gaitMode === 'SPRINT') modeCol = '#ef4444';
-  else if (player.gaitMode === 'JOG') modeCol = '#facc15';
-  else if (player.gaitMode === 'WALK') modeCol = '#10b981';
-
-  ctx.fillStyle = modeCol;
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(`STAN: ${player.gaitMode}`, 20, 44);
-
+  curY += lineGap;
   // Status aktywnej broni i amunicji w lewym górnym rogu
   const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
   const wepShort = curWep.id === 'SHOTGUN' ? 'SG' : 'AK';
@@ -2278,151 +2242,51 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
 
   ctx.fillStyle = wepTextColor;
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(`BROŃ: ${wepStatusText}`, 20, 62);
+  ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
+  ctx.fillText(`BROŃ: ${wepStatusText}`, statsX, curY);
 
+  curY += lineGap;
+  // Powiększony, czytelny licznik klatek (FPS)
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '10px monospace';
-  ctx.fillText(`FPS: ${currentFps}`, 20, 78);
-
-  // =========================================================================
-  // 2. PANEL DOLNY LEWY: HP, JETPACK ORAZ PIONOWY WYBÓR BRONI (TACTICAL SCI-FI)
-  // =========================================================================
-  const panelX = 20;
-  const barW = 230;
-  const spacing = 5; // Dokładny, spójny odstęp pionowy (gap: 5px)
-  const hpBarHeight = 18;
-  const jetBarHeight = 9;
-  const btnH = 34;
-  const totalWeaponHeight = (btnH * 2) + spacing;
-  const totalHudHeight = hpBarHeight + spacing + jetBarHeight + spacing + totalWeaponHeight;
-  const bottomMargin = 18;
-
-  // Dynamiczne pozycjonowanie pionowe elementów od dołu ekranu
-  const hpBarY = H - totalHudHeight - bottomMargin;
-  const jetBarY = hpBarY + hpBarHeight + spacing;
-  const akY = jetBarY + jetBarHeight + spacing;
-  const sgY = akY + btnH + spacing;
-
-  // -------------------------------------------------------------------------
-  // A. PASEK HP (Główny pasek, ścięty narożnik, neonowe wypełnienie #22c55e)
-  // -------------------------------------------------------------------------
-  const maxHp = player.maxHp || 100;
-  const curHp = Math.max(0, player.hp ?? 100);
-  const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
-  const hpColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#f97316' : '#ef4444');
-
-  // Ciemne tło i obrys paska HP
-  drawChamferedBar(ctx, panelX, hpBarY, barW, hpBarHeight, 6);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-  ctx.lineWidth = 1.0;
-  ctx.fill();
-  ctx.stroke();
-
-  // Neonowe wypełnienie przy użyciu clip()
-  if (hpRatio > 0) {
-    ctx.save();
-    drawChamferedBar(ctx, panelX, hpBarY, barW, hpBarHeight, 6);
-    ctx.clip();
-
-    ctx.fillStyle = hpColor;
-    ctx.shadowColor = hpColor;
-    ctx.shadowBlur = 8;
-    ctx.fillRect(panelX, hpBarY, barW * hpRatio, hpBarHeight);
-    ctx.restore();
-  }
-
-  // Wartość i oznaczenie HP
-  ctx.save();
-  ctx.font = 'bold 9px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText('HP', panelX + 8, hpBarY + hpBarHeight / 2 + 0.5);
-
-  ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(`HP ${Math.ceil(curHp)}`, panelX + barW - 12, hpBarY + hpBarHeight / 2 + 0.5);
+  ctx.font = isMobile ? 'bold 11px monospace' : 'bold 14px monospace';
+  ctx.fillText(`FPS: ${currentFps}`, statsX, curY);
   ctx.restore();
 
-  // -------------------------------------------------------------------------
-  // B. PASEK JET (Cieńszy wskaźnik pomocniczy 9px, jasny cyjan #06b6d4)
-  // -------------------------------------------------------------------------
-  const maxJet = player.jetMax || 100;
-  const curJet = Math.max(0, Math.min(maxJet, player.jetFuel ?? 100));
-  const jetRatio = maxJet > 0 ? (curJet / maxJet) : 0;
+  // =========================================================================
+  // 2. KAFELKI BRONI (MINIMALISTYCZNE KWADRATOWE IKONY)
+  // =========================================================================
+  // Statyczny pasek HP oraz wskaźnik JET zostały całkowicie usunięte z HUD.
+  // Mobilne: prawy górny róg (nie zasłania drążków ani środka pola walki).
+  // Desktop: lewy dolny róg.
+  const tileSize = isMobile ? 32 : 36;
+  const tileGap = isMobile ? 6 : 8;
+  const ammoExtraH = isMobile ? 12 : 14;
 
-  // Ciemne tło i obrys paska JET
-  drawChamferedBar(ctx, panelX, jetBarY, barW, jetBarHeight, 4);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
-  ctx.lineWidth = 1.0;
-  ctx.fill();
-  ctx.stroke();
-
-  // Wypełnienie cyjanowe z poświatą neonową
-  if (jetRatio > 0) {
-    ctx.save();
-    drawChamferedBar(ctx, panelX, jetBarY, barW, jetBarHeight, 4);
-    ctx.clip();
-
-    ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 6;
-    ctx.fillRect(panelX, jetBarY, barW * jetRatio, jetBarHeight);
-    ctx.restore();
+  let panelX, panelY;
+  if (isMobile) {
+    panelX = W - (tileSize * 2 + tileGap + 16);
+    panelY = 14;
+  } else {
+    panelX = 20;
+    panelY = H - tileSize - 26;
   }
 
-  // Zwięzłe etykiety: mały "JET" po lewej, procent po prawej
-  ctx.save();
-  ctx.font = 'bold 8px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText('JET', panelX + 8, jetBarY + jetBarHeight / 2 + 0.5);
-
-  ctx.font = 'bold 8.5px monospace';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(`${Math.round(jetRatio * 100)}%`, panelX + barW - 10, jetBarY + jetBarHeight / 2 + 0.5);
-  ctx.restore();
-
-  // -------------------------------------------------------------------------
-  // C. KARTY BRONI (WEAPON SLOTS - DARK GLASS TACTICAL SCI-FI)
-  // -------------------------------------------------------------------------
   const curWepId = player.currentWeapon?.id || 'AK47';
 
   weaponButtons[0].x = panelX;
-  weaponButtons[0].y = akY;
-  weaponButtons[0].w = barW;
-  weaponButtons[0].h = btnH;
+  weaponButtons[0].y = panelY;
+  weaponButtons[0].w = tileSize;
+  weaponButtons[0].h = tileSize + ammoExtraH;
 
-  weaponButtons[1].x = panelX;
-  weaponButtons[1].y = sgY;
-  weaponButtons[1].w = barW;
-  weaponButtons[1].h = btnH;
+  weaponButtons[1].x = panelX + tileSize + tileGap;
+  weaponButtons[1].y = panelY;
+  weaponButtons[1].w = tileSize;
+  weaponButtons[1].h = tileSize + ammoExtraH;
 
   for (const btn of weaponButtons) {
     const isSelected = (curWepId === btn.id);
-    drawWeaponSlot(ctx, btn, isSelected, player);
+    drawWeaponSlot(ctx, btn, isSelected, player, isMobile);
   }
-
 
   // =========================================================================
   // 3. TABLICA WYNIKÓW (GÓRA EKRANU)
@@ -2433,12 +2297,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curA1State = aState.arena1State;
   const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2');
   if (isMatchArena) {
-    const scoreBoxW = 230;
-    const scoreBoxH = 34;
+    const scoreBoxW = isMobile ? 180 : 230;
+    const scoreBoxH = isMobile ? 26 : 34;
     const scoreBoxX = (W - scoreBoxW) / 2;
-    const scoreBoxY = 16;
+    const scoreBoxY = isMobile ? 10 : 16;
 
     ctx.save();
+    ctx.globalAlpha = isMobile ? 0.80 : 0.88;
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
     ctx.lineWidth = 1.2;
@@ -2447,32 +2312,32 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.fill();
     ctx.stroke();
 
-    ctx.font = 'bold 12px monospace';
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 12px monospace';
     ctx.textAlign = 'right';
     ctx.fillStyle = '#06b6d4';
     ctx.shadowColor = '#06b6d4';
     ctx.shadowBlur = 6;
-    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - 14, scoreBoxY + 22);
+    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
     ctx.shadowBlur = 0;
-    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + 21);
+    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 16 : 21));
 
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
     ctx.shadowColor = '#f97316';
     ctx.shadowBlur = 6;
-    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + 14, scoreBoxY + 22);
+    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
 
     if (curArenaId === 'ARENA_1' && curA1State?.waitingForKickoff) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.005);
       ctx.textAlign = 'center';
-      ctx.font = 'bold 10px monospace';
+      ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
       ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
       ctx.shadowColor = '#00e5ff';
       ctx.shadowBlur = 8;
-      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1760) ⚡', W / 2, scoreBoxY + scoreBoxH + 16);
+      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1760) ⚡', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
     }
 
     ctx.restore();

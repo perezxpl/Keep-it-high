@@ -210,20 +210,12 @@
     ctx.fillStyle = '#ffeb3b';
     ctx.fillText(`REKORD:  ${bestDistance} m`, 24, 62);
 
-    let modeCol = '#aaa';
-    if (playerObj.gaitMode === 'SLIDE') modeCol = '#00e5ff';
-    else if (playerObj.isCrouching) modeCol = '#29b6f6';
-    else if (playerObj.gaitMode === 'SPRINT') modeCol = '#ff5722';
-    else if (playerObj.gaitMode === 'JOG') modeCol = '#ffeb3b';
-    else if (playerObj.gaitMode === 'WALK') modeCol = '#4caf50';
-
-    ctx.fillStyle = modeCol;
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(`STAN: ${playerObj.gaitMode}`, 24, 84);
     ctx.fillStyle = '#888';
-    ctx.fillText(`R = Przywołaj piłkę`, 24, 102);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`R = Przywołaj piłkę`, 24, 84);
     ctx.fillStyle = '#00e5ff';
-    ctx.fillText('FPS: ' + fps + ' (60 Hz)', 24, 120);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('FPS: ' + fps + ' (60 Hz)', 24, 106);
 
     // 1. LEWY DRĄŻEK
     if (leftStick && leftStick.active) {

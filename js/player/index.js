@@ -998,6 +998,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   const headX = hipX + (28 * Math.sin(player.torsoTilt));
   const headY = hipY - (28 * Math.cos(player.torsoTilt)) - 10 + player.headBob;
+  player.head = { x: headX, y: headY };
+  if (!player.height) player.height = player.h || 70;
+  if (!player.width) player.width = player.w || 24;
 
   let targetLookX, targetLookY;
   if (typeof player.aimX === 'number' && !isNaN(player.aimX) && typeof player.aimY === 'number' && !isNaN(player.aimY)) {

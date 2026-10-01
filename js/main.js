@@ -2257,10 +2257,11 @@ function draw() {
   drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
   drawJetpackParticles(ctx);
   drawPlayer(ctx, GROUND_Y, player);
+  drawEntityHealthBar(ctx, player);
 
   if (remotePlayer.active) {
     drawPlayer(ctx, GROUND_Y, remotePlayer);
-    drawEntityHealthBar(ctx, remotePlayer, -14);
+    drawEntityHealthBar(ctx, remotePlayer);
 
     ctx.save();
     ctx.font = 'bold 9px monospace';
@@ -2270,13 +2271,15 @@ function draw() {
     ctx.fillStyle = tagColor;
     ctx.shadowColor = tagColor;
     ctx.shadowBlur = 6;
-    ctx.fillText(tagName, remotePlayer.x + remotePlayer.w / 2, remotePlayer.y - 21);
+    const tagX = remotePlayer.head ? remotePlayer.head.x : (remotePlayer.x + remotePlayer.w / 2);
+    const tagY = remotePlayer.head ? (remotePlayer.head.y - 26) : (remotePlayer.y - 28);
+    ctx.fillText(tagName, tagX, tagY);
     ctx.restore();
   }
 
   if (bot.active) {
     drawPlayer(ctx, GROUND_Y, bot);
-    drawEntityHealthBar(ctx, bot, -12);
+    drawEntityHealthBar(ctx, bot);
 
     ctx.save();
     ctx.font = 'bold 9px monospace';
@@ -2284,7 +2287,9 @@ function draw() {
     ctx.fillStyle = '#c084fc';
     ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
     ctx.shadowBlur = 4;
-    ctx.fillText(bot.frozen ? '[BOT: STOP]' : '[BOT]', bot.x + bot.w / 2, bot.y - 19);
+    const botTagX = bot.head ? bot.head.x : (bot.x + bot.w / 2);
+    const botTagY = bot.head ? (bot.head.y - 26) : (bot.y - 26);
+    ctx.fillText(bot.frozen ? '[BOT: STOP]' : '[BOT]', botTagX, botTagY);
     ctx.restore();
   }
 

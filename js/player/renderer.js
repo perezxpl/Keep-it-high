@@ -1471,6 +1471,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const shoulderBaseX = hipX + (21 * Math.sin(pose.torsoTilt));
   const shoulderBaseY = hipY - (21 * Math.cos(pose.torsoTilt));
 
+  const headTopX = hipX + (36 * Math.sin(pose.torsoTilt));
+  const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + ((p.headBob || 0) * 0.35);
+  p.head = { x: headTopX, y: headTopY };
+  if (!p.height) p.height = p.h || 70;
+  if (!p.width) p.width = p.w || 24;
+
   const shOffsetHoriz = (cosYaw * 1.4) - (sinYaw * 4.5);
   const shRightX = shoulderBaseX + shOffsetHoriz;
   const shLeftX = shoulderBaseX - shOffsetHoriz;
@@ -1920,15 +1926,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const teamCore = isCyan ? '#a5f3fc' : '#fed7aa';
     const teamGlow = isCyan ? 'rgba(6, 182, 212, ' : 'rgba(249, 115, 22, ';
 
-    const headTopX = hipX + (36 * Math.sin(pose.torsoTilt));
-    const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + (p.headBob * 0.35);
+    const headTopX = p.head ? p.head.x : (hipX + (36 * Math.sin(pose.torsoTilt)));
+    const headTopY = p.head ? p.head.y : (hipY - (36 * Math.cos(pose.torsoTilt)) + (p.headBob * 0.35));
 
     const now = performance.now();
     const hoverY = Math.sin(now * 0.005) * 1.5;
     const pulse = 0.65 + 0.35 * Math.sin(now * 0.007);
 
     const chevX = headTopX;
-    const chevY = headTopY - 16 + hoverY;
+    const chevY = headTopY - 8 + hoverY;
 
     // Poświata neonowa hologramu
     ctx.shadowColor = teamNeon;
@@ -1938,7 +1944,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.strokeStyle = `${teamGlow}${0.35 * pulse})`;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.ellipse(chevX, headTopY - 6, 7.0, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(chevX, headTopY - 4, 7.0, 2.2, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     // Taktyczne nawiasy HUD
@@ -1979,51 +1985,53 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
 /**
  * Rysuje sylwetkę broni w slocie HUD.
- * 4. Ikonkę broni narysuj kolorem: ctx.fillStyle = '#94A3B8';
  */
 export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
   ctx.save();
   ctx.translate(cx, cy);
 
   if (isSelected) {
-    ctx.fillStyle = type === 'SHOTGUN' ? 'rgba(251, 146, 60, 0.45)' : 'rgba(250, 204, 21, 0.45)';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+    ctx.shadowBlur = 4;
   } else {
-    // 4. Ikonkę nieaktywnej broni narysuj kolorem #94A3B8
-    ctx.fillStyle = '#94A3B8';
+    ctx.fillStyle = '#94a3b8';
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
   }
 
   if (type === 'AK47') {
     // Kolba
-    ctx.fillRect(-17, -1, 7, 3);
+    ctx.fillRect(-13, -1, 5, 2.5);
     // Komora i łoże
-    ctx.fillRect(-10, -2, 16, 4);
+    ctx.fillRect(-8, -2, 12, 3.5);
     // Magazynek łukowy
     ctx.beginPath();
-    ctx.moveTo(-5, 2);
-    ctx.lineTo(-2, 7);
-    ctx.lineTo(1, 7);
-    ctx.lineTo(-1, 2);
+    ctx.moveTo(-4, 1.5);
+    ctx.lineTo(-2, 5.5);
+    ctx.lineTo(0.5, 5.5);
+    ctx.lineTo(-1, 1.5);
     ctx.closePath();
     ctx.fill();
     // Lufa
-    ctx.fillRect(6, -1, 10, 2);
+    ctx.fillRect(4, -1, 8, 1.8);
   } else if (type === 'SHOTGUN') {
     // Kolba
-    ctx.fillRect(-16, -1, 8, 4);
+    ctx.fillRect(-12, -1, 6, 3);
     // Komora zamkowa
-    ctx.fillRect(-8, -2, 12, 5);
+    ctx.fillRect(-6, -2, 10, 4);
     // Długa lufa i podlufowy magazynek
-    ctx.fillRect(4, -2, 12, 3);
-    ctx.fillRect(4, 1, 10, 2);
+    ctx.fillRect(4, -2, 9, 2.5);
+    ctx.fillRect(4, 0.8, 7, 1.8);
   }
 
   ctx.restore();
 }
 
 /**
- * Rysuje pojedynczy slot broni w interfejsie HUD z zachowaniem maksymalnego kontrastu.
+ * Rysuje pojedynczy, minimalistyczny kwadratowy kafelek broni w interfejsie HUD.
  */
-export function drawWeaponSlot(ctx, btn, isSelected, player) {
+export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   const isActive = isSelected;
   const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#f59e0b';
 
@@ -2038,38 +2046,33 @@ export function drawWeaponSlot(ctx, btn, isSelected, player) {
   const bIsNoAmmo = (bCurrentAmmo === 0 && bReserveAmmo === 0);
   const bIsLowAmmo = (!bIsNoAmmo && bCurrentAmmo <= Math.ceil(bMagSize * 0.25));
 
+  const tileSize = btn.w;
+  const tileX = btn.x;
+  const tileY = btn.y;
+
   ctx.save();
+  ctx.globalAlpha = isMobile ? 0.80 : 0.85;
 
-  // 1 & 2. Blok warunkowy dla nieaktywnego slotu (!isActive / else)
-  if (!isActive) {
-    // 2. Jeśli masz tam ustawione ctx.globalAlpha, zmień jego wartość na stałe ctx.globalAlpha = 0.9 (lub usuń obniżanie alfy)
-    ctx.globalAlpha = 0.95;
-  } else {
-    ctx.globalAlpha = 1.0;
-  }
-
-  // 1. Tło w stylu Dark Glass ze ściętym narożnikiem (chamfer)
+  // 1. Tło kwadratowego kafelka (Dark Glass)
+  const radius = isMobile ? 5 : 6;
   ctx.beginPath();
-  const chamfer = 6;
-  ctx.moveTo(btn.x, btn.y);
-  ctx.lineTo(btn.x + btn.w - chamfer, btn.y);
-  ctx.lineTo(btn.x + btn.w, btn.y + chamfer);
-  ctx.lineTo(btn.x + btn.w, btn.y + btn.h);
-  ctx.lineTo(btn.x, btn.y + btn.h);
-  ctx.closePath();
-
+  if (ctx.roundRect) {
+    ctx.roundRect(tileX, tileY, tileSize, tileSize, radius);
+  } else {
+    ctx.rect(tileX, tileY, tileSize, tileSize);
+  }
   ctx.fillStyle = isActive
-    ? 'rgba(30, 41, 59, 0.88)'
-    : 'rgba(15, 23, 42, 0.85)';
+    ? 'rgba(30, 41, 59, 0.85)'
+    : 'rgba(15, 23, 42, 0.80)';
   ctx.fill();
 
-  // 2. Obrys ramki
-  let borderCol = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
+  // 2. Obrys ramki (akcent dla aktywnej, przygaszony szary dla nieaktywnej)
+  let borderCol = isActive ? accentCol : 'rgba(148, 163, 184, 0.40)';
   if (isActive && bIsNoAmmo) borderCol = '#ef4444';
   else if (isActive && bIsLowAmmo) borderCol = '#f97316';
 
   ctx.strokeStyle = borderCol;
-  ctx.lineWidth = isActive ? 1.4 : 1.0;
+  ctx.lineWidth = isActive ? 1.6 : 1.0;
   if (isActive) {
     ctx.shadowColor = borderCol;
     ctx.shadowBlur = 6;
@@ -2080,118 +2083,122 @@ export function drawWeaponSlot(ctx, btn, isSelected, player) {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // 3. Pionowy lewy pasek akcentu (grubość 3.2px)
-  ctx.fillStyle = isActive ? accentCol : '#334155';
-  ctx.fillRect(btn.x, btn.y, 3.2, btn.h);
-
-  // Pasek postępu przeładowania na dolnej krawędzi kafelka
+  // 3. Pasek postępu przeładowania na dolnej krawędzi kafelka
   if (bIsReloading && ammoObj) {
     const dur = ammoObj.reloadDuration || 120;
     const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
     ctx.save();
     ctx.fillStyle = accentCol;
     ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 6;
-    ctx.fillRect(btn.x + 4, btn.y + btn.h - 3, (btn.w - 8) * prog, 2.2);
+    ctx.shadowBlur = 4;
+    ctx.fillRect(tileX + 3, tileY + tileSize - 3, (tileSize - 6) * prog, 2);
     ctx.restore();
   }
 
-  // 4. Tag klawisza: [1] / [2] w estetycznej ramce
-  const keyHint = btn.id === 'SHOTGUN' ? '[2]' : '[1]';
-  const tagX = btn.x + 9;
-  const tagY = btn.y + (btn.h - 18) / 2;
-  const tagW = 20;
-  const tagH = 18;
+  // 4. Ikonka / sylwetka broni w centrum kafelka
+  const iconScale = isMobile ? 0.82 : 0.95;
+  ctx.save();
+  ctx.translate(tileX + tileSize / 2, tileY + tileSize / 2);
+  ctx.scale(iconScale, iconScale);
+  drawWeaponSilhouette(ctx, btn.id, 0, 0, isActive);
+  ctx.restore();
 
-  ctx.fillStyle = isActive ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.08)';
-  ctx.strokeStyle = isActive ? accentCol : 'rgba(148, 163, 184, 0.35)';
-  ctx.lineWidth = 1.0;
-  if (ctx.roundRect) ctx.roundRect(tagX, tagY, tagW, tagH, 3);
-  else ctx.rect(tagX, tagY, tagW, tagH);
-  ctx.fill();
-  ctx.stroke();
-
-  // 3. Tekst klawisza: [1] / [2]
-  ctx.font = 'bold 9.5px monospace';
+  // 5. Mały, dyskretny licznik amunicji pod ikoną
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(keyHint, tagX + tagW / 2, tagY + tagH / 2 + 0.5);
+  ctx.textBaseline = 'top';
+  const ammoY = tileY + tileSize + (isMobile ? 3 : 4);
 
-  // 4. Ikonka broni w tle
-  drawWeaponSilhouette(ctx, btn.id, btn.x + 44, btn.y + btn.h / 2, isActive);
-
-  // 3. Nazwa broni
-  ctx.font = 'bold 12px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.globalAlpha = 1.0;
-  ctx.fillText(btn.name, btn.x + 64, btn.y + btn.h / 2 + 0.5);
-
-  // 3. Licznik amunicji
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-
-  if (!isActive) {
-    // Wszystkie teksty nieaktywnego slotu w 100% czysto białe (#FFFFFF)
-    ctx.font = 'bold 12px monospace';
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.globalAlpha = 1.0;
-    ctx.fillText(`${bCurrentAmmo} / ${bReserveAmmo}`, btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
+  if (bIsReloading) {
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = accentCol;
+    ctx.fillText('RELOAD', tileX + tileSize / 2, ammoY);
+  } else if (bIsNoAmmo) {
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('EMPTY', tileX + tileSize / 2, ammoY);
   } else {
-    if (bIsReloading) {
-      ctx.font = 'bold 10px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText('⚡ RELOAD', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
-    } else if (bIsNoAmmo) {
-      ctx.font = 'bold 10.5px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText('⛔ EMPTY', btn.x + btn.w - 12, btn.y + btn.h / 2 + 0.5);
-    } else {
-      const resText = `/ ${bReserveAmmo}`;
-      ctx.font = 'bold 10px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText(resText, btn.x + btn.w - 12, btn.y + btn.h / 2 + 1.5);
-
-      const resWidth = ctx.measureText(resText).width;
-
-      ctx.font = 'bold 15px monospace';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.globalAlpha = 1.0;
-      ctx.fillText(`${bCurrentAmmo}`, btn.x + btn.w - 15 - resWidth, btn.y + btn.h / 2 + 0.5);
-
-      if (bCurrentAmmo < bMagSize && bReserveAmmo > 0) {
-        ctx.font = '8.5px monospace';
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.globalAlpha = 1.0;
-        ctx.fillText('[R]', btn.x + btn.w - 20 - resWidth - ctx.measureText(`${bCurrentAmmo}`).width, btn.y + btn.h / 2 + 0.5);
-      }
-    }
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+    ctx.fillStyle = isActive ? '#f8fafc' : '#94a3b8';
+    ctx.fillText(`${bCurrentAmmo}/${bReserveAmmo}`, tileX + tileSize / 2, ammoY);
   }
 
-  // 5. Zapewnij, że po narysowaniu slotu alfa wraca do normy: ctx.globalAlpha = 1.0;
-  ctx.globalAlpha = 1.0;
+  ctx.restore();
+}
+
+/**
+ * Rysuje kompaktowy pasek życia (HP) bezpośrednio nad głową postaci.
+ * Prawidłowo wylicza współrzędne Y i X z uwzględnieniem szkieletu/IK,
+ * wysokości gracza i dynamicznych zmian pozycji (np. wślizg / kucanie / skok).
+ */
+export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
+  if (!entity || entity.isDead) return;
+
+  const barW = 38;
+  const barH = 4.5;
+  const pHeight = entity.height || entity.h || 70;
+  const pWidth = entity.width || entity.w || 24;
+
+  // 1. Prawidłowe wyznaczenie współrzędnych pionowych (Y) nad czubkiem głowy:
+  let barY;
+  if (entity.head && typeof entity.head.y === 'number') {
+    // Jeśli gracz używa szkieletu / IK:
+    // const headY = player.head ? player.head.y : (player.y - player.height / 2);
+    // const barY = headY - 18; // ok. 15-20px nad czubkiem głowy
+    const headY = entity.head.y;
+    barY = headY - 18 + yOffset;
+  } else if (entity.origin === 'bottom') {
+    // Jeśli pozycja entity.y to stopy (bottom origin):
+    // const barY = player.y - player.height - 15;
+    barY = entity.y - pHeight - 15 + yOffset;
+  } else if (entity.origin === 'center') {
+    // Jeśli pozycja entity.y to środek (center origin):
+    // const barY = player.y - (player.height / 2) - 15;
+    barY = entity.y - (pHeight / 2) - 15 + yOffset;
+  } else if (entity.origin === 'top') {
+    // Jeśli pozycja entity.y to góra (top origin):
+    // const barY = player.y - 15;
+    barY = entity.y - 15 + yOffset;
+  } else {
+    // Dynamiczne dopasowanie przy kucaniu / ślizgu (SLIDE) lub domyślny fallback IK:
+    const isSlidingOrProne = entity.isProne || entity.isSliding || entity.state === 'SLIDE';
+    const headY = isSlidingOrProne
+      ? (entity.currentGroundY ? entity.currentGroundY - 8 : entity.y + pHeight - 8)
+      : (entity.head ? entity.head.y : (entity.y - (pHeight / 2)));
+    barY = headY - 18 + yOffset;
+  }
+
+  // 2. Wyśrodkowanie w poziomie (X) względem szerokości gracza / głowy:
+  // const barX = player.x - (barWidth / 2);
+  let barX;
+  if (entity.head && typeof entity.head.x === 'number') {
+    barX = entity.head.x - (barW / 2);
+  } else if (entity.origin === 'center') {
+    barX = entity.x - (barW / 2);
+  } else {
+    // entity.x to lewa krawędź hitboxa gracza o szerokości pWidth
+    const centerX = entity.x + (pWidth / 2);
+    barX = centerX - (barW / 2);
+  }
+
+  const maxHp = entity.maxHp || 100;
+  const curHp = Math.max(0, entity.hp ?? 100);
+  const ratio = Math.max(0, Math.min(1, curHp / maxHp));
+
+  ctx.save();
+  // Ciemne tło podkładowe
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+  // Zielone wypełnienie (#22c55e) proporcjonalne do hp / maxHp, bez zbędnych napisów
+  if (ratio > 0) {
+    ctx.fillStyle = '#22c55e';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 3;
+    ctx.fillRect(barX, barY, barW * ratio, barH);
+  }
   ctx.restore();
 }
 
