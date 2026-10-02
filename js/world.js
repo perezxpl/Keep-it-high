@@ -2942,22 +2942,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.fillText(`BROŃ: ${wepStatusText}`, statsX, curY);
 
   curY += lineGap;
-  const ultMeter = player.ultMeter !== undefined ? player.ultMeter : (player.ultCooldown > 0 ? 0 : 100);
-  const isUltReady = (!player.ultCooldown || player.ultCooldown <= 0) && ultMeter >= 100;
-  if (isUltReady) {
-    ctx.fillStyle = '#10b981';
-    ctx.shadowColor = '#10b981';
-    ctx.shadowBlur = 6;
-    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
-    ctx.fillText(`ULT [Q]: GRANAT GOTOWY!`, statsX, curY);
-    ctx.shadowBlur = 0;
-  } else {
-    ctx.fillStyle = '#64748b';
-    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
-    ctx.fillText(`ULT [Q]: ŁADOWANIE (${ultMeter}%)`, statsX, curY);
-  }
-
-  curY += lineGap;
   // Powiększony, czytelny licznik klatek (FPS)
   ctx.fillStyle = '#38bdf8';
   ctx.font = isMobile ? 'bold 11px monospace' : 'bold 14px monospace';
