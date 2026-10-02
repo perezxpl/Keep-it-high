@@ -3,7 +3,7 @@
 // Obsługa skoków, wślizgów, ładowania wykopu oraz trajektorii kopnięć.
 // =========================================================================
 
-import { CONFIG, KICK_CONFIG } from '../config.js';
+import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop } from '../world.js';
 
@@ -59,6 +59,7 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
 
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
 
+<<<<<<< HEAD
   const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
   const speedOk = Math.abs(char.vx) > minSpeed;
   const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
@@ -66,6 +67,18 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   // Warunek konieczny: Wślizg może wykonać się TYLKO WTEDY, GDY POSTAĆ BIEGNIE (|vx| > MIN_RUN_SPEED).
   // Jeśli gracz stoi w miejscu i wciśnięty jest Shift, wślizg nie aktywuje się (brak przejścia w kucanie).
   if (!isGrounded || !speedOk || !cooldownOk) {
+=======
+  // Wślizg możliwy wyłącznie po sprincie (sprintDuration >= 60) oraz braku cooldownu
+  const sprintOk = (typeof char.sprintDuration === 'number' && char.sprintDuration >= 60);
+  const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
+
+  if (!isGrounded || !sprintOk || !cooldownOk) {
+    if (isGrounded && !char.isDead && !char.isIntro && !char.isSliding) {
+      char.isCrouching = true;
+      char.isProne = false;
+      char.crouchToggled = true;
+    }
+>>>>>>> 7338c91f106cd8b57a63c3caf9df59ad3903666e
     return false;
   }
 
@@ -73,13 +86,12 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     char.isSliding = true;
     char.state = 'SLIDE';
     char.slideTimer = 56;
-    char.slideCooldown = 300; // 5 sekund blokady ponownego użycia (300 klatek przy 60 FPS)
+    char.slideCooldown = 300;
     char.sprintDuration = 0;
     char.isCrouching = false;
     char.isProne = false;
     char.isJumpCharging = false;
 
-    // Natychmiastowe nadanie pełnego pędu wślizgu (slideDashSpeed)
     const slideDash = char.currentClass?.stats?.slideDashSpeed || CONFIG.SLIDE_DASH_SPEED || 13.5;
     char.vx = char.facing * slideDash;
 
@@ -115,7 +127,6 @@ export function findMeleeTarget(p, potentialTargets) {
     const dx = targetX - hipX;
     const dy = targetY - hipY;
 
-    // Przeciwnik musi znajdować się przed graczem w kierunku zwrotu (facing)
     const isAhead = (dx * p.facing) >= -6;
     const dist = Math.hypot(dx, dy);
 
@@ -127,7 +138,7 @@ export function findMeleeTarget(p, potentialTargets) {
 }
 
 /**
- * Inicjalizacja manewru Spartan Kick (4-fazowy ruch tłokowy, czas trwania: 22 klatki)
+ * Inicjalizacja manewru Spartan Kick (czas trwania: 22 klatki)
  */
 export function triggerSpartanKick(p, meleeTarget) {
   const pwr = (p.chargePower !== undefined && p.chargePower > 0) ? p.chargePower : 1.0;
@@ -156,46 +167,54 @@ export function startKickCharge(p, targets) {
 }
 
 /**
- * Pobiera dokładną pozycję stopy wykonującej kopnięcie:
- * - na podstawie kości/stawu stopy z IK: footX, footY (player.kickingFootX/Y, pose.footFront, lastFootFront)
- * - lub wysuniętego punktu u dołu postaci w kierunku zwrotu:
- *   player.x + (facingRight ? footOffsetX : -footOffsetX), player.y + footOffsetY
- *
- * @param {Object} p - Obiekt gracza
- * @returns {{ x: number, y: number }}
+ * Pobiera dokładną, aktualną pozycję stopy wykonującej kopnięcie.
  */
 export function getKickingFootPos(p) {
   if (!p) return { x: 0, y: 0 };
 
-  // 1. Bezpośrednie współrzędne stopy kopiącej z animacji/IK (jeśli wyliczone)
-  if (typeof p.kickingFootX === 'number' && !isNaN(p.kickingFootX) && p.kickingFootX !== 0 &&
-      typeof p.kickingFootY === 'number' && !isNaN(p.kickingFootY) && p.kickingFootY !== 0) {
-    return { x: p.kickingFootX, y: p.kickingFootY };
+  const hipX = p.x + (p.w || 24) / 2;
+  const isActivelySwinging = p.kickState === 'SWING' ||
+    p.kickMode === 'SCISSOR' ||
+    p.kickMode === 'SPIN_VOLLEY' ||
+    p.kickMode === 'SPARTAN' ||
+    p.kickMode === 'BACKFLIP';
+
+  // 1. Podczas aktywnego wymachu używamy wyliczonej trajektorii stopy kopiącej
+  if (isActivelySwinging && typeof p.kickingFootX === 'number' && !isNaN(p.kickingFootX) && p.kickingFootX !== 0) {
+    if (Math.abs(p.kickingFootX - hipX) < 110) {
+      return { x: p.kickingFootX, y: p.kickingFootY };
+    }
   }
 
-  // 2. Pozycja stopy z IK gracza (pose / lastFootFront)
-  if (p.pose?.footFront && typeof p.pose.footFront.x === 'number') {
-    return { x: p.pose.footFront.x, y: p.pose.footFront.y };
-  }
-  if (typeof p.lastFootFrontX === 'number' && typeof p.lastFootFrontY === 'number' && p.lastFootFrontX !== 0) {
-    return { x: p.lastFootFrontX, y: p.lastFootFrontY };
+  // 2. Pozycja stopy z aktualnej klatki animacji szkieletowej (IK)
+  const isBackLeg = (p.kickLeg === 'back');
+  const poseFootX = isBackLeg ? p.pose?.footBackX : p.pose?.footFrontX;
+  const poseFootY = isBackLeg ? p.pose?.footBackY : p.pose?.footFrontY;
+
+  if (typeof poseFootX === 'number' && !isNaN(poseFootX) && poseFootX !== 0) {
+    if (Math.abs(poseFootX - hipX) < 85) {
+      return { x: poseFootX, y: poseFootY };
+    }
   }
 
-  // 3. Pozycja wysuniętego punktu u dołu postaci w kierunku zwrotu:
-  // player.x + (facingRight ? footOffsetX : -footOffsetX), player.y + footOffsetY
+  // 3. Fallback: wysunięty punkt stopy liczony dynamicznie z aktualnej pozycji gracza
   const facing = (typeof p.facing === 'number') ? p.facing : 1;
-  const facingRight = facing >= 0;
   const pw = p.w || 24;
   const ph = p.h || 70;
-  const footOffsetX = (pw / 2) + 16;
+  const curSpeed = Math.abs(p.vx || 0);
+  const sprintOffset = Math.min(20, curSpeed * 2.4);
+  const footOffsetX = (pw / 2) + 14 + sprintOffset;
   const footOffsetY = ph - 4;
 
   return {
-    x: p.x + (facingRight ? footOffsetX : -footOffsetX),
+    x: p.x + (facing >= 0 ? footOffsetX : -footOffsetX),
     y: p.y + footOffsetY
   };
 }
 
+/**
+ * Ewaluacja zasięgu i timingu kontaktu z piłką z tolerancją dla dotyku i biegu.
+ */
 export function evaluateKickTiming(playerObj, ballObj) {
   const b = ballObj || playerObj._ball;
   if (!b) return 'CANCEL';
@@ -206,12 +225,20 @@ export function evaluateKickTiming(playerObj, ballObj) {
 
   const dx = b.x - footX;
   const dy = b.y - footY;
-  const distNow = Math.hypot(dx, dy);
 
-  const footRadius = 15; // Promień kolizji stopy: 12-16px
+  // Tolerancja wysokości: redukcja kary pionowej, gdy uniesiona stopa mija piłkę przy ziemi
+  const dyEff = (dy > 0) ? dy * 0.65 : dy;
+  const distNow = Math.hypot(dx, dyEff);
+
+  // Dodatkowy margines prędkości oraz dedykowany bufor dotykowy
+  const curSpeed = Math.abs(playerObj.vx || 0);
+  const speedMargin = Math.min(28, curSpeed * 2.8);
+  const touchBonus = isTouchDevice ? 18 : 6;
+
+  const footRadius = 18 + touchBonus;
   const ballRadius = b.radius || b.colRadius || 12;
-  const hitReach = footRadius + ballRadius;
-  const whiffReach = hitReach + 24;
+  const hitReach = footRadius + ballRadius + speedMargin;
+  const whiffReach = hitReach + (isTouchDevice ? 34 : 26);
 
   if (distNow <= hitReach) return 'HIT';
   if (distNow <= whiffReach) return 'WHIFF';
@@ -228,13 +255,13 @@ export function evaluateKickTiming(playerObj, ballObj) {
   const tImpact = -dot / vSq;
   const closestX = dx + relVx * tImpact;
   const closestY = dy + relVy * tImpact;
-  const closestDist = Math.hypot(closestX, closestY);
+  const closestDist = Math.hypot(closestX, (closestY > 0 ? closestY * 0.65 : closestY));
 
-  const willIntersect = closestDist <= (hitReach + 10);
+  const willIntersect = closestDist <= (hitReach + (isTouchDevice ? 16 : 12));
 
   if (willIntersect) {
-    if (tImpact <= 4.5) return 'HIT';
-    if (tImpact <= 11.0) return 'WHIFF';
+    if (tImpact <= (isTouchDevice ? 8.0 : 6.0)) return 'HIT';
+    if (tImpact <= 14.0) return 'WHIFF';
   }
 
   return 'CANCEL';
@@ -253,16 +280,12 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     return null;
   }
 
-  // Spartan Kick aktywuje się WYŁĄCZNIE wtedy, gdy spełnione są jednocześnie 2 warunki:
-  // 1. Siła wykopu została naładowana do pełna: player.chargePower >= 0.95
-  // 2. Przed graczem w kierunku zwrotu (facing) w odległości <= 75 px znajduje się żywy przeciwnik (findMeleeTarget(p, targets))
+  // Spartan Kick aktywuje się przy pełnym naładowaniu i przeciwniku w zwarciu
   const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
   const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
   if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
     return triggerSpartanKick(p, meleeTarget);
   }
-
-  // W każdym innym przypadku (brak pełnego naładowania LUB brak wroga w zasięgu) postać wykonuje standardowy wykop (GROUND lub SCISSOR)
 
   const ball = ballParam || p._ball;
   const timing = evaluateKickTiming(p, ball);
@@ -320,7 +343,7 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     p.kickState = 'SWING';
     p.hitThisSwing = false;
     p.kickAngle = 0;
-    p.kickBufferTimer = 14;
+    p.kickBufferTimer = 16;
 
     const curSpeed = Math.abs(p.vx);
     const sprintMax = p.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX;
@@ -349,27 +372,19 @@ function distPointToSegment(px, py, x1, y1, x2, y2) {
 }
 
 /**
- * Oblicza delikatny spadek siły w zależności od odległości od środka stopy gracza
- * @param {number} tx - Pozycja X środka celu
- * @param {number} ty - Pozycja Y środka celu
- * @param {number} footX - Pozycja X stopy
- * @param {number} footY - Pozycja Y stopy
- * @param {number} maxReach - Maksymalny zasięg kopnięcia
- * @returns {number} Współczynnik od 1.0 (przy samej stopie) do 0.70 (na skraju zasięgu)
+ * Oblicza spadek siły w zależności od odległości od stopy gracza
  */
 function getDistanceFalloff(tx, ty, footX, footY, maxReach) {
   const distFromFoot = Math.hypot(tx - footX, ty - footY);
-  const sweetSpotRadius = 18; // pełna siła w promieniu 18px od stopy
+  const sweetSpotRadius = 24;
   if (distFromFoot <= sweetSpotRadius) return 1.0;
   const reachSpan = Math.max(1, maxReach - sweetSpotRadius);
   const t = Math.min(1.0, (distFromFoot - sweetSpotRadius) / reachSpan);
-  // Delikatny spadek siły do 70% na obrzeżu zasięgu
   return Math.max(0.70, 1.0 - t * 0.30);
 }
 
 /**
  * Interakcja kinetyczna kopnięcia z otoczeniem (piłka, przeciwnicy, beczki wybuchowe)
- * Uwzględnia globalny nerf bazowej siły (~45-50%), statystyki klasowe oraz spadek z dystansem.
  */
 export function applyKickInteractions(player, ball, targets, obstacles, groundY = 500, spawnGrass) {
   if (!player || player.isDead || player.hitThisSwing) return false;
@@ -386,7 +401,6 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
   const kickDirX = (typeof player.kickDirX === 'number' && !isNaN(player.kickDirX)) ? player.kickDirX : player.facing;
   const kickDirY = (typeof player.kickDirY === 'number' && !isNaN(player.kickDirY)) ? player.kickDirY : -0.35;
 
-  // Pobieranie mnożników z player.classConfig, player.class lub player.currentClass?.stats
   const classStats = player.classConfig?.stats || player.class?.stats || player.currentClass?.stats || {};
   const kickForceMultiplier = (typeof player.kickForceMultiplier === 'number')
     ? player.kickForceMultiplier
@@ -402,15 +416,23 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
 
   let didHitAnything = false;
 
-  // 1. Interakcja z piłką - PRECYZYJNY HITBOX STOPY (fizyczny kontakt stopy z piłką)
+  // 1. Interakcja z piłką
   const activeBall = ball || player._ball;
   if (activeBall) {
-    const footRadius = 15; // Promień stopy: ok. 12-16px
-    const ballRadius = activeBall.colRadius || activeBall.radius || 12;
-    const distBall = Math.hypot(activeBall.x - footX, activeBall.y - footY);
+    const curSpeed = Math.abs(player.vx || 0);
+    const speedMargin = Math.min(28, curSpeed * 2.8);
+    const touchBonus = isTouchDevice ? 18 : 6;
 
-    // Warunek trafienia: piłka musi fizycznie stykać się z małym promieniem stopy:
-    // Math.hypot(ball.x - footX, ball.y - footY) <= (footRadius + ball.radius)
+    const footRadius = 18 + touchBonus + speedMargin;
+    const ballRadius = activeBall.colRadius || activeBall.radius || 12;
+
+    const dx = activeBall.x - footX;
+    const dy = activeBall.y - footY;
+
+    // Kompensacja uniesionej stopy w fazie wymachu nad murawą
+    const dyEff = (dy > 0) ? dy * 0.65 : dy;
+    const distBall = Math.hypot(dx, dyEff);
+
     if (distBall <= (footRadius + ballRadius)) {
       const bdx = (typeof player.aimX === 'number') ? (player.aimX - activeBall.x) : (kickDirX * 100);
       const bdy = (typeof player.aimY === 'number') ? (player.aimY - activeBall.y) : (kickDirY * 100);
@@ -422,10 +444,9 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
       const powerFactor = 0.85 + pwr * 0.22;
       const falloff = getDistanceFalloff(activeBall.x, activeBall.y, footX, footY, footRadius + ballRadius + 10);
 
-      // Obliczenie końcowej siły impulsu z uwzględnieniem roli klasy i odległości od stopy
       const finalForce = BASE_KICK_FORCE * kickForceMultiplier * powerFactor * falloff;
 
-      activeBall.vx = Math.cos(angle) * finalForce + (player.vx * 0.25);
+      activeBall.vx = Math.cos(angle) * finalForce + (player.vx * 0.35);
       activeBall.vy = Math.sin(angle) * finalForce;
       activeBall.spin = (activeBall.vx > 0 ? 1 : -1) * (0.65 * (classStats.spinMult || 1.0));
       activeBall.trail = [];
@@ -441,7 +462,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
     }
   }
 
-  // 2. Interakcja z przeciwnikami (knockback / obrażenia wręcz)
+  // 2. Interakcja z przeciwnikami
   const activeTargets = targets || player._targets;
   if (activeTargets) {
     const targetList = Array.isArray(activeTargets) ? activeTargets : [activeTargets];
@@ -486,7 +507,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
     }
   }
 
-  // 3. Interakcja z ruchomymi przeszkodami (np. beczkami wybuchowymi)
+  // 3. Interakcja z przeszkodami (beczki)
   if (obstacles && Array.isArray(obstacles)) {
     for (const obs of obstacles) {
       if (!obs || obs.exploded) continue;
@@ -518,19 +539,17 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
 }
 
 /**
- * Natychmiastowe wykonanie akcji kopnięcia (Kick) postaci (pod PPM)
+ * Natychmiastowe wykonanie akcji kopnięcia (Kick) postaci
  */
 export function performKick(p, options = {}) {
   if (!p || p.isDead || p.isSliding || p.isIntro || p.staggerTimer > 0) return false;
   if (p.kickState !== 'IDLE' || (p.kickCooldown && p.kickCooldown > 0)) return false;
 
-  // 1. Podrywa postać z czołgania / kucania do pionu
   p.isProne = false;
   p.isCrouching = false;
   p.crouchToggled = false;
   p.isCharging = false;
 
-  // 2. Określenie kierunku kopnięcia (kursor myszy lub zwrot postaci)
   const hipX = p.x + p.w / 2;
   const hipY = p.y + p.h - 40 + (p.pelvisY || 0);
 
@@ -553,20 +572,16 @@ export function performKick(p, options = {}) {
   p.kickDirX = dx / dist;
   p.kickDirY = dy / dist;
 
-  // 3. Parametry kinetyczne i cooldown zapobiegający spamowaniu
   const pwr = (typeof options.power === 'number') ? options.power : 0.70;
   p.chargePower = pwr;
   p.kickPower = pwr;
   p.hitThisSwing = false;
   p.kickBufferTimer = 16;
 
-  // Cooldown przypisany do roli klasy:
-  // Aero: 0.35s (~21f), Playmaker: 0.50s (~30f), Sweeper: 0.55s (~33f), Enforcer: 0.70s (~42f)
   const classCooldownSec = p.kickCooldownTime ?? p.currentClass?.stats?.kickCooldown ?? p.classConfig?.stats?.kickCooldown ?? 0.50;
   const defaultCooldownFrames = Math.round(classCooldownSec * 60);
   p.kickCooldown = (typeof options.cooldown === 'number') ? options.cooldown : defaultCooldownFrames;
 
-  // 4. Tryb wykopu (powietrzny SCISSOR vs naziemny GROUND vs zwarcia SPARTAN)
   const currentFloor = p.currentGroundY || p.groundY || 500;
   const isAirborne = p.isJumping || (currentFloor > 0 && p.y < currentFloor - p.h - 4);
 
@@ -591,12 +606,10 @@ export function performKick(p, options = {}) {
     p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
   }
 
-  // 5. Inicjalizacja pozycji stopy kopiącej dla natychmiastowej detekcji trafienia
   const footInit = getKickingFootPos(p);
   p.kickingFootX = footInit.x;
   p.kickingFootY = footInit.y;
 
-  // 6. Interakcja ze światem (piłka, przeciwnicy, beczki)
   applyKickInteractions(p, options.ball || p._ball, targets, options.obstacles, currentFloor, options.spawnGrass);
 
   return p.kickMode;
@@ -631,29 +644,27 @@ export function getGroundKickTrajectory(phase, angle, power, hipX, hipY, floorY,
   }
 
   if (phase === 'CHARGE') {
-    // Naturalna pozycja gotowości: obie stopy stabilnie na podłożu, zero odginania nogi w tył
     const p = ease(power);
-    kickFootX = hipX + (6.0 + p * 2.0) * facing;
+    const sprintForwardOffset = speedRatio * 16.0;
+    kickFootX = hipX + (6.0 + p * 4.0 + sprintForwardOffset) * facing;
     kickFootY = plantFloorY;
     kickAnkle = 0.0;
   } else if (phase === 'SWING') {
     const u = Math.min(1.0, angle / 2.1);
 
     if (u < 0.35) {
-      // Dynamiczny start stopy w przód z ziemi w stronę piłki (kickAngle rośnie w przód)
       const w = ease(u / 0.35);
-      const startX = 6.0;
+      const startX = 6.0 + speedRatio * 8.0;
       const startY = plantFloorY - hipY;
-      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const strikeX = 36 + speedRatio * 16 + power * 10;
       const strikeY = 36 - power * 6;
 
       kickFootX = hipX + lerp(startX, strikeX, w) * facing;
       kickFootY = hipY + lerp(startY, strikeY, w);
       kickAnkle = lerp(0.0, 0.45, w) * facing;
     } else if (u < 0.75) {
-      // Dynamiczny follow-through i wyciągnięcie stopy w przód
       const w = ease((u - 0.35) / 0.40);
-      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const strikeX = 36 + speedRatio * 16 + power * 10;
       const strikeY = 36 - power * 6;
       const peakX = strikeX + 10 + speedRatio * 8;
       const peakY = lerp(strikeY, 14 - power * 16, w);
@@ -662,9 +673,8 @@ export function getGroundKickTrajectory(phase, angle, power, hipX, hipY, floorY,
       kickFootY = hipY + peakY;
       kickAnkle = lerp(0.45, -0.25, w) * facing;
     } else {
-      // Wyciszenie wymachu stopy
       const w = ease((u - 0.75) / 0.25);
-      const strikeX = 36 + speedRatio * 14 + power * 10;
+      const strikeX = 36 + speedRatio * 16 + power * 10;
       const peakX = strikeX + 10 + speedRatio * 8;
       const peakY = 14 - power * 16;
       const targetLandingX = 14 + speedRatio * 8;
@@ -776,18 +786,10 @@ export function getBackflipTargets(timer, duration, hipX, hipY, facing) {
   };
 }
 
-/**
- * Trajektoria kinetyczna manewru Spartan Kick - 4-fazowy ruch tłokowy (czas trwania: 22 klatki):
- * Faza 1: Chambering (klatki 0-4): gwałtowne podciągnięcie kolana nogi atakującej pod klatkę piersiową gracza, stopa uniesiona z ziemi, korpus lekko pochylony ku celowi.
- * Faza 2: Piston Thrust (klatki 5-10): poziome, liniowe wystrzelenie stopy prosto w klatkę wroga (wysokość: hipY - 14 px, wysięg w przód: +52 px). Kąt kostki/stopy zablokowany prostopadle do celu (-0.15 * facing).
- * Faza 3: Impact Hold (klatki 11-15): zablokowany, pełny wyprost stopy w klatce celu (+52 px, hipY - 14 px).
- * Faza 4: Recovery (klatki 16-22): płynny powrót stopy na ziemię do pozycji spoczynkowej.
- */
 export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floorY) {
   const plantFloorY = floorY - 3.5;
   const t = Math.max(0, Math.min(timer, 22));
 
-  // Noga podporowa wbija się w ziemię za biodrami: supportFootX = hipX - 12 * player.facing
   const supportFootX = hipX - 12 * facing;
   const supportFootY = plantFloorY;
   const supportAnkle = 0.08 * facing;
@@ -795,24 +797,20 @@ export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floor
   let kickFootX, kickFootY, kickAnkle;
 
   if (t <= 4) {
-    // Faza 1: Chambering (klatki 0-4)
     const w = ease(t / 4);
     kickFootX = hipX + lerp(4, 14, w) * facing;
     kickFootY = lerp(plantFloorY, hipY + 2, w);
     kickAnkle = lerp(0.0, 0.45, w) * facing;
   } else if (t <= 10) {
-    // Faza 2: Piston Thrust (klatki 5-10): wysokość hipY - 14 px, wysięg +52 px
     const w = ease((t - 4) / 6);
     kickFootX = hipX + lerp(14, 52, w) * facing;
     kickFootY = lerp(hipY + 2, hipY - 14, w);
     kickAnkle = lerp(0.45, -0.15, w) * facing;
   } else if (t <= 15) {
-    // Faza 3: Impact Hold (klatki 11-15)
     kickFootX = hipX + 52 * facing;
     kickFootY = hipY - 14;
     kickAnkle = -0.15 * facing;
   } else {
-    // Faza 4: Recovery (klatki 16-22)
     const w = ease(Math.min(1.0, (t - 15) / 7));
     kickFootX = hipX + lerp(52, 6, w) * facing;
     kickFootY = lerp(hipY - 14, plantFloorY, w);
@@ -825,14 +823,6 @@ export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floor
   };
 }
 
-/**
- * Impakt, Hitstop i efekty wizualne Spartan Kick (w klatce 6 kontaktu):
- * - Hitstop: triggerHitstop(4) z world.js (~65 ms pauzy dla obu postaci)
- * - Wstrząs ekranu: triggerScreenShake(14)
- * - Cząsteczki: spawnJetpackSparks w punkcie uderzenia + spawnBloodSpurt zza pleców wroga
- * - Obrażenia: lekkie uszkodzenia (10-12 HP)
- * - Fizyka celu: potężny knockback (vx: facing * 16.5, vy: -4.2, isJumping: true) i 2 sekundy ogłuszenia (staggerTimer: 120)
- */
 export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGrass) {
   if (player.hitThisSwing) return false;
 
@@ -843,22 +833,19 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     const ex = enemy.x + (enemy.w || 24) / 2;
     const ey = enemy.y + (enemy.h || 70) * 0.45;
 
-    // 1. Hitstop (mikro-zamrożenie 4 klatki ~ 65 ms)
     triggerHitstop(4);
-
-    // 2. Wstrząs ekranu
     triggerScreenShake(14);
-
-    // 3. Cząsteczki: iskry w punkcie uderzenia + mikro-rozbryzg krwi zza pleców wroga
     spawnJetpackSparks(ex, ey, player.facing, 9);
     spawnBloodSpurt(ex + (player.facing * 8), ey, player.facing, -0.2, 10, 1.2);
 
-    // 4. Obrażenia: lekkie uszkodzenia (10-12 HP)
     const dmg = 11;
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
 
+<<<<<<< HEAD
     // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
     enemy.facing = -player.facing;
+=======
+>>>>>>> 7338c91f106cd8b57a63c3caf9df59ad3903666e
     enemy.vx = player.facing * 16.5;
     enemy.airVx = enemy.vx;
     enemy.vy = -4.5;
@@ -874,7 +861,6 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.crouchToggled = false;
     enemy.isProne = false;
 
-    // Obsługa śmierci celu jeśli HP spadnie do 0
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
       enemy.respawnTimer = 180;
@@ -886,7 +872,6 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     return true;
   }
 
-  // Interakcja z przeszkodami fizycznymi (beczki itp.)
   if (obstacles && Array.isArray(obstacles)) {
     const hipX = player.x + player.w / 2;
     const reach = 52 + 20;
@@ -912,14 +897,8 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
   return false;
 }
 
-/**
- * Prawidłowe cele IK dla leżenia (Prone) i czołgania (Crawl):
- * Tors płasko przy ziemi (floorY - 6 px), kolana i łokcie pracujące wzdłuż podłoża,
- * stopy spoczywają płasko na podłożu (plantFloorY), bez unoszenia nóg w powietrze.
- */
 export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, facing) {
   if (isCrawling) {
-    // Wojskowy low crawl: ciało przesuwa się tuż przy ziemi, kolana i stopy ślizgają się po podłożu
     const legStride = Math.sin(crawlPhase) * 8;
     return {
       front: {
@@ -943,7 +922,6 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
     };
   }
 
-  // Leżenie płasko (Prone Idle): tors i miednica przylegają do podłoża, nogi wyprostowane spoczywają płasko na ziemi
   return {
     front: {
       x: hipX - 44 * facing,
@@ -965,4 +943,3 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
     }
   };
 }
-

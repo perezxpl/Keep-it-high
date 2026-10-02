@@ -55,8 +55,8 @@ export const camera = {
   y: GROUND_Y,
   targetX: START_X + 400,
   targetY: GROUND_Y,
-  zoom: 0.70,
-  targetZoom: 0.70,
+  zoom: 0.50,
+  targetZoom: 0.50,
   smoothPos: 0.08,
   smoothZoom: 0.04,
   shakeIntensity: 0,
@@ -130,7 +130,7 @@ export function updateCamera(player, ball) {
   if (devZoomLevel !== null) {
     camera.targetZoom = devZoomLevel;
   } else {
-    camera.targetZoom = 0.75; // domyślny zoom gry
+    camera.targetZoom = 0.50; // domyślny zoom gry
   }
   camera.zoom += (camera.targetZoom - camera.zoom) * camera.smoothZoom;
 
@@ -1836,8 +1836,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.beginPath();
       ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
       ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
-      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX, knobY - 7);
-      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX, knobY + 10);
+      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX - 7, knobY);
+      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX + 10, knobY);
       ctx.stroke();
     }
 
