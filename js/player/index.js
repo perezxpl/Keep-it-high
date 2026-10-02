@@ -296,7 +296,6 @@ export function createPlayerInstance(overrides = {}) {
       shoulderTilt: 0,
       headPitch: 0
     },
-    currentClass: mergedClass,
     classConfig: mergedClass,
     class: mergedClass,
     kickForceMultiplier: mergedClass.stats.kickForce || 1.0,
@@ -400,7 +399,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   let inputAxisX = 0;
   let inputAxisY = 0;
 
-  // Wciśnięcie skoku / wykopu (W / Up / Space / jumpTriggered) natychmiast podrywa postać na nogi z leżenia i kucania
+  // Wciśnięcie skoku / wykopu natychmiast podrywa postać na nogi z leżenia i kucania
   const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered));
   if (standUpRequested && (player.isProne || player.isCrouching || player.crouchToggled)) {
     player.isProne = false;
@@ -409,7 +408,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.enteredProneViaStickDown = false;
   }
 
-  // Wstawanie przy puszczeniu kierunku w dół na drążku, jeśli wejście w leżenie nastąpiło przez wychylenie drążka w dół
+  // Wstawanie przy puszczeniu kierunku w dół na drążku
   if (player.isProne && player.enteredProneViaStickDown) {
     if (!leftStick || !leftStick.active || leftStick.axisY < 0.25) {
       player.isProne = false;
@@ -417,7 +416,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
-  // Obsługa Lewy Ctrl: Tap (kucanie toggle) vs Hold >= 16 klatek (~260 ms: isProne / czołganie)
+  // Obsługa Lewy Ctrl: Tap (kucanie toggle) vs Hold >= 16 klatek (leżenie)
   const ctrlDown = !!(keys && keys.ctrl && !isStaggered);
   if (ctrlDown) {
     if (!player.wasCtrlPressed) {
@@ -425,7 +424,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.ctrlTimer = 0;
     } else {
       player.ctrlTimer++;
-      // Przytrzymanie >= 16 klatek kładzie postać na brzuchu (HOLD)
       if (player.ctrlTimer >= 16 && !player.isProne) {
         player.isProne = true;
         player.isCrouching = false;
@@ -434,12 +432,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   } else {
     if (player.wasCtrlPressed) {
-      // Krótkie naciśnięcie (< 16 klatek) -> TAP: przełączenie kucania
       if (player.ctrlTimer < 16) {
         if (player.isProne) {
           player.isProne = false;
           player.isCrouching = false;
-          player.crouchToggled = false; // ponowny Ctrl podrywa postać do pionu
+          player.crouchToggled = false;
         } else {
           player.crouchToggled = !player.crouchToggled;
           player.isCrouching = player.crouchToggled;
@@ -489,7 +486,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   if (leftStick && leftStick.active && !isStaggered) {
     const sMag = Math.hypot(leftStick.axisX, leftStick.axisY);
-    // Powrót do martwej strefy (< 0.18) lub pchnięcie w górę (< -0.20) natychmiast podrywa postać na równe nogi
     if (sMag < 0.18 || leftStick.axisY < -0.20) {
       if (!keys?.down && !keys?.ctrl) {
         player.isCrouching = false;
@@ -505,9 +501,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       const angleFromDownRad = Math.atan2(Math.abs(leftStick.axisX), Math.max(0.0001, leftStick.axisY));
       const angleDeg = angleFromDownRad * (180 / Math.PI);
       if (angleDeg < 20) {
-        inputAxisX = 0; // Kucanie w miejscu (CROUCH)
+        inputAxisX = 0;
       }
-      // Wychylenie na boki >= 20 stopni: chód na kucaka (CROUCH_WALK)
       if (!player.isProne && !player.isSliding && !player.isJumping) {
         player.isCrouching = true;
       }
@@ -515,7 +510,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.isCrouching = false;
     }
   } else if (!keys?.down && !keys?.ctrl && !isStaggered && leftStick && !leftStick.active) {
-    // Puszczenie gałki (powrót do martwej strefy / brak aktywnego dotyku) podrywa postać na równe nogi
     if (player.isCrouching || player.isProne) {
       player.isCrouching = false;
       player.isProne = false;
@@ -528,7 +522,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.crouchToggled = false;
   }
 
-  // W stanie oszołomienia blokujemy wektory sterowania i wygaszamy prędkość
   if (isStaggered) {
     inputAxisX = 0;
     inputAxisY = 0;
@@ -565,7 +558,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   let targetTopSpeed;
   if (player.isProne) {
-    targetTopSpeed = Math.round(walkMax * 0.28 * 100) / 100; // Powolne czołganie się: ok. 25–30% standardowej prędkości chodu (~0.62)
+    targetTopSpeed = Math.round(walkMax * 0.28 * 100) / 100;
   } else if (player.isCrouching) {
     targetTopSpeed = CONFIG.CROUCH_SPEED;
   } else {
@@ -717,7 +710,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     else if (speed <= jogMax + 0.15) player.gaitMode = 'JOG';
     else player.gaitMode = 'SPRINT';
 
-    // Obsługa licznika 1 sekundy ciągłego sprintu przed wślizgiem:
     if (player.gaitMode === 'SPRINT' && !player.isJumping && !player.isCrouching && !player.isProne && !player.isSliding) {
       player.sprintDuration = (player.sprintDuration || 0) + 1;
     } else {
@@ -781,6 +773,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickState = 'IDLE';
       player.hitThisSwing = false;
       player.kickCooldown = 12;
+      player.kickingFootX = 0;
+      player.kickingFootY = 0;
     }
   } else if (player.kickMode === 'SCISSOR') {
     player.scissorTimer++;
@@ -797,6 +791,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickMode = 'GROUND';
       player.hitThisSwing = false;
       player.kickCooldown = 10;
+      player.kickingFootX = 0;
+      player.kickingFootY = 0;
     }
   } else if (player.kickMode === 'SPIN_VOLLEY') {
     player.spinVolleyTimer++;
@@ -815,6 +811,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.hitThisSwing = false;
       player.kickCooldown = 12;
       player.yaw = (player.facing === 1) ? 0 : (player.turnMode === 'FRONT' ? Math.PI : -Math.PI);
+      player.kickingFootX = 0;
+      player.kickingFootY = 0;
     }
   } else if (player.kickMode === 'SPARTAN') {
     player.spartanTimer++;
@@ -823,7 +821,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.kickingFootX = kickTargets.kicking.x;
     player.kickingFootY = kickTargets.kicking.y;
 
-    // W klatce kontaktu (klatka 6 animacji) wywołaj applySpartanKickHit
     if (player.spartanTimer >= 6 && player.spartanTimer <= 9 && !player.hitThisSwing) {
       applySpartanKickHit(player, targets || player._targets, customObstacles, player.currentGroundY || GROUND_Y, spawnGrass);
     }
@@ -836,6 +833,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.spartanTarget = null;
       player.chargePower = 0;
       player.kickPower = 0;
+      player.kickingFootX = 0;
+      player.kickingFootY = 0;
     }
   } else {
     const currentFloor = player.currentGroundY || GROUND_Y;
@@ -866,15 +865,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.hitThisSwing = false;
         player.kickCooldown = 8;
         player.stridePhase = (player.kickLeg === 'front') ? 0 : Math.PI;
+        player.kickingFootX = 0;
+        player.kickingFootY = 0;
       }
-    } else if (player.isCharging && speed < 0.8) {
-      const kickTraj = getGroundKickTrajectory('CHARGE', 0, player.chargePower, hipX, hipY, currentFloor, player.facing, speed, 0);
+    } else if (player.isCharging) {
+      // Synchronizacja stopy ze sprintem i pędem postaci w czasie ładowania strzału
+      const kickTraj = getGroundKickTrajectory('CHARGE', 0, player.chargePower, hipX, hipY, currentFloor, player.facing, speed, player.kickPlantWorldX || 0);
       player.kickingFootX = kickTraj.kicking.x;
       player.kickingFootY = kickTraj.kicking.y;
     }
   }
-
-  const isVisualChargingInUpdate = (player.isCharging && speed < 0.8);
 
   let targetTilt = 0;
   if (player.kickMode === 'BACKFLIP') {
@@ -976,6 +976,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickMode = 'GROUND';
       player.scissorTimer = 0;
       player.kickCooldown = 10;
+      player.kickingFootX = 0;
+      player.kickingFootY = 0;
     }
   }
 
