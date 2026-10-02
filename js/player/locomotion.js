@@ -23,6 +23,30 @@ export function canSlide(player) {
 }
 
 /**
+ * Sprawdza stan kucania lub leżenia pod wejściem klawisza Ctrl / przycisku kucania na podstawie czasu trzymania:
+ * - Początek trzymania / krótkie wciśnięcie (holdDuration < 450 ms): CROUCH
+ * - Przytrzymanie dłużej (holdDuration >= 450 ms, w oknie 400-500 ms): płynne przejście w PRONE
+ * - Puszczenie wejścia: STAND (o ile nie blokuje go sufit)
+ *
+ * @param {Object} player - Obiekt gracza
+ * @param {boolean} crouchInputHeld - Czy klawisz crouch / Ctrl jest trzymany
+ * @param {number} [holdDurationMs=0] - Czas trzymania w ms
+ * @returns {'CROUCH' | 'PRONE' | 'STAND'}
+ */
+export function evaluateCrouchState(player, crouchInputHeld, holdDurationMs = 0) {
+  if (!player || player.isDead || player.isIntro) return 'STAND';
+  if (!crouchInputHeld) return 'STAND';
+
+  const isGrounded = (player.onGround !== undefined) ? (player.onGround && !player.isJumping) : (!player.isJumping);
+  if (!isGrounded) return 'STAND';
+
+  if (holdDurationMs >= 450) {
+    return 'PRONE';
+  }
+  return 'CROUCH';
+}
+
+/**
  * Sekwencja żonglerki i podbicia piłki w intro przed startem
  */
 export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, facing, ballRadius) {

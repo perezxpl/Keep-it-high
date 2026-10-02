@@ -31,7 +31,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -81,7 +81,8 @@ const keys = {
   up: false,
   space: false,
   slide: false,
-  ctrl: false
+  ctrl: false,
+  crouch: false
 };
 
 const canvasEl = document.getElementById('game');
@@ -167,13 +168,20 @@ canvas.addEventListener('touchstart', (e) => {
     // =======================================================================
     if (t.clientX >= midX) {
       const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
+      const crouchBtn = btnCluster.crouch;
+      const distToCrouch = crouchBtn ? dist(t.clientX, t.clientY, crouchBtn.x, crouchBtn.y) : 999;
+
       if (distToSlide < btnCluster.slide.r + 16) {
         btnCluster.slide.active = true;
         btnCluster.slide.id = t.identifier;
         handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, btnCluster);
+      } else if (crouchBtn && distToCrouch < crouchBtn.r + 16) {
+        crouchBtn.active = true;
+        crouchBtn.id = t.identifier;
+        keys.crouch = true;
       } else if (!rightStick.active) {
-        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisku wślizgu/leżenia
-        if (distToSlide < btnCluster.slide.r + 28) continue;
+        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków wślizgu/kucania
+        if (distToSlide < btnCluster.slide.r + 28 || (crouchBtn && distToCrouch < crouchBtn.r + 28)) continue;
 
         const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
         const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
@@ -421,6 +429,12 @@ function endTouch(e) {
       btnCluster.slide.id = null;
     }
 
+    if (btnCluster.crouch && btnCluster.crouch.active && t.identifier === btnCluster.crouch.id) {
+      btnCluster.crouch.active = false;
+      btnCluster.crouch.id = null;
+      keys.crouch = false;
+    }
+
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
@@ -518,6 +532,7 @@ export function teleportToDistance(meters) {
   clearDesertSandstorm();
   clearWinterBlizzard();
   clearGore();
+  clearBulletCasings();
 
   resetObstacles();
   updateProceduralObstacles(targetX);
@@ -1599,6 +1614,8 @@ window.addEventListener('keydown', (e) => {
       keys.down = false;
       keys.space = false;
       keys.slide = false;
+      keys.ctrl = false;
+      keys.crouch = false;
       mouseState.lmbDown = false;
       mouseState.rmbDown = false;
       openChat();
@@ -1620,8 +1637,10 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
 
-  if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+    e.preventDefault();
     keys.ctrl = true;
+    keys.crouch = true;
   }
 
   if (e.code === 'KeyS' || e.code === 'ArrowDown') {
@@ -1631,12 +1650,6 @@ window.addEventListener('keydown', (e) => {
     }
     lastSPressTime = now;
     keys.down = true;
-
-    // Ślizg wyzwalany klawiszem w dół / kucania wyłącznie w pełnym biegu
-    const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
-    if (player.onGround && Math.abs(player.vx) > minSpeed) {
-      playerSlide(spawnGrass, GROUND_Y, player);
-    }
   }
 
   if ((e.code === 'KeyW' || e.code === 'ArrowUp') && !jumpKeyPressed) {
@@ -1687,7 +1700,11 @@ window.addEventListener('keydown', (e) => {
   }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !keys.slide) {
     keys.slide = true;
-    playerSlide(spawnGrass, GROUND_Y, player);
+    keys.shift = true;
+    const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+    if (player.onGround && Math.abs(player.vx) > minSpeed) {
+      playerSlide(spawnGrass, GROUND_Y, player);
+    }
   }
   if (e.code === 'KeyR') {
     reloadWeapon(player, player.currentWeapon);
@@ -1738,6 +1755,9 @@ window.addEventListener('keyup', (e) => {
     keys.down = false;
     keys.space = false;
     keys.slide = false;
+    keys.shift = false;
+    keys.ctrl = false;
+    keys.crouch = false;
     return;
   }
   const activeEl = document.activeElement;
@@ -1746,8 +1766,9 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
 
-  if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
     keys.ctrl = false;
+    keys.crouch = false;
   }
   if (e.code === 'KeyS' || e.code === 'ArrowDown') {
     keys.down = false;
@@ -1764,7 +1785,10 @@ window.addEventListener('keyup', (e) => {
     const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
     executeReleaseKick(ball, player, 0, meleeTargets);
   }
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') keys.slide = false;
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+    keys.slide = false;
+    keys.shift = false;
+  }
 });
 
 mouseScreenX = W * 0.65;

@@ -6,9 +6,9 @@
 // - Klawisz skoku / W / Spacja w locie: Dedykowane sterowanie jetpackiem (bez PPM)
 // =========================================================================
 
-import { performKick, kick } from './player/actions.js';
+import { performKick, kick, playerSlide } from './player/actions.js';
 
-export { performKick, kick };
+export { performKick, kick, playerSlide };
 
 export const mouseState = {
   lmbDown: false,
@@ -22,9 +22,81 @@ export const keys = {
   down: false,
   up: false,
   space: false,
+  shift: false,
   slide: false,
-  ctrl: false
+  ctrl: false,
+  crouch: false
 };
+
+/**
+ * Obsługa zdarzenia keydown dla klawiszy Control (Kucanie i Leżenie: Crouch & Prone)
+ * @param {KeyboardEvent} e
+ * @returns {boolean} Czy klawisz został obsłużony
+ */
+export function handleControlKeyDown(e) {
+  if (!e) return false;
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+    if (typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    keys.ctrl = true;
+    keys.crouch = true;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Obsługa zdarzenia keyup dla klawiszy Control (Kucanie i Leżenie: Crouch & Prone)
+ * @param {KeyboardEvent} e
+ * @returns {boolean} Czy klawisz został obsłużony
+ */
+export function handleControlKeyUp(e) {
+  if (!e) return false;
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+    keys.ctrl = false;
+    keys.crouch = false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Obsługa zdarzenia keydown dla klawiszy Shift / Slide (Wślizg WYŁĄCZNIE w biegu)
+ * @param {KeyboardEvent} e
+ * @param {Object} [player]
+ * @param {Function} [spawnGrass]
+ * @param {number} [groundY]
+ * @returns {boolean}
+ */
+export function handleSlideKeyDown(e, player, spawnGrass, groundY) {
+  if (!e) return false;
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+    keys.shift = true;
+    keys.slide = true;
+    const minSpeed = 2.5;
+    if (player && player.onGround && Math.abs(player.vx) > minSpeed) {
+      return playerSlide(spawnGrass, groundY, player);
+    }
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Obsługa zdarzenia keyup dla klawiszy Shift / Slide
+ * @param {KeyboardEvent} e
+ * @returns {boolean}
+ */
+export function handleSlideKeyUp(e) {
+  if (!e) return false;
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+    keys.shift = false;
+    keys.slide = false;
+    return true;
+  }
+  return false;
+}
 
 /**
  * Wywołuje akcję kopnięcia postaci w kierunku pozycji kursora myszy.

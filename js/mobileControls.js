@@ -61,7 +61,16 @@ export const btnCluster = {
     r: 30,
     active: false,
     id: null,
-    mode: 'SLIDE' // 'SLIDE' | 'PRONE'
+    enabled: false,
+    mode: 'SLIDE'
+  },
+  crouch: {
+    x: 0,
+    y: 0,
+    r: 28,
+    active: false,
+    id: null,
+    pressStartTime: 0
   }
 };
 
@@ -76,40 +85,40 @@ export function updateButtonLayout(W, H) {
   btnCluster.slide.x = curW - 65;
   btnCluster.slide.y = curH - 85;
   btnCluster.slide.r = 30;
+
+  if (!btnCluster.crouch) {
+    btnCluster.crouch = { x: 0, y: 0, r: 28, active: false, id: null, pressStartTime: 0 };
+  }
+  btnCluster.crouch.x = curW - 135;
+  btnCluster.crouch.y = curH - 85;
+  btnCluster.crouch.r = 28;
 }
 
 /**
- * Monitoruje wychylenie lewego drążka i zarządza kontekstem przycisku:
- * - joystick.y > 0.6 (mocne wychylenie w dół) -> zmiana na "POŁÓŻ SIĘ" / "LEŻENIE"
- * - joystick neutralny / bieg w przód -> natychmiast wraca do "WŚLIZG"
- * - jeśli gracz leży (isProne) -> przycisk pozostaje w trybie PRONE z etykietą "WSTAŃ"
+ * Monitoruje ruch postaci i stan cooldownu wślizgu dla przycisku mobilnego:
+ * - Wślizg dostępny tylko w pełnym biegu (|vx| > MIN_RUN_SPEED) i na podłożu
  *
  * @param {Object} player - Obiekt gracza
  * @param {Object} [lStick] - Lewy drążek
  * @param {Object} [bCluster] - Zespół przycisków
  */
 export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster) {
-  if (!player || !bCluster || !bCluster.slide) return;
+  if (!player || !bCluster) return;
 
-  const slideBtn = bCluster.slide;
+  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+  const isRunning = (player.onGround && !player.isJumping && Math.abs(player.vx) > minSpeed);
+  const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
 
-  if (player.isCrouching || player.isProne) {
-    slideBtn.mode = 'PRONE';
-    slideBtn.enabled = true;
-  } else if (player.gaitMode === 'SPRINT' && (player.sprintDuration || 0) >= 60 && (player.slideCooldown || 0) <= 0) {
-    slideBtn.mode = 'SLIDE';
-    slideBtn.enabled = true;
-  } else {
-    slideBtn.mode = 'DISABLED';
-    slideBtn.enabled = false;
+  if (bCluster.slide) {
+    bCluster.slide.mode = 'SLIDE';
+    bCluster.slide.enabled = isRunning && cooldownOk;
   }
 }
 
 /**
- * Obsługa wciśnięcia kontekstowego przycisku wślizgu / leżenia:
- * - W trybie PRONE (podczas kucania): kładzie postać płasko na brzuchu (CRAWL) lub wznosi do kucania
- * - W trybie SLIDE (podczas sprintu >= 1s i po zejściu cooldownu): odpala wślizg, nakłada cooldown 300 i zeruje sprint
- * - W pozostałych stanach: przycisk nieaktywny
+ * Obsługa wciśnięcia mobilnego przycisku wślizgu:
+ * - Warunek konieczny: Wślizg może wykonać się tylko wtedy, gdy postać biegnie (|vx| > MIN_RUN_SPEED).
+ * - Jeśli gracz stoi w miejscu, wślizg nie aktywuje się.
  *
  * @param {Object} player - Obiekt gracza
  * @param {Function} spawnGrass - Funkcja spawnu cząsteczek
@@ -120,35 +129,13 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
 export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bCluster = btnCluster) {
   if (!player || player.isDead || player.isIntro) return false;
 
-  const slideBtn = bCluster?.slide;
-  if (!slideBtn || !slideBtn.enabled) return false;
-
-  if (slideBtn.mode === 'PRONE' || player.isCrouching || player.isProne) {
-    if (player.isProne) {
-      // Wstawanie z leżenia do kucania
-      player.isProne = false;
-      player.isCrouching = true;
-      player.crouchToggled = false;
-    } else {
-      // Kładzenie się płasko na ziemi (PRONE / CRAWL)
-      player.isProne = true;
-      player.isCrouching = false;
-      player.crouchToggled = false;
-      player.isSliding = false;
-    }
-    return true;
+  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+  if (!player.onGround || Math.abs(player.vx) <= minSpeed) {
+    return false;
   }
 
-  if (slideBtn.mode === 'SLIDE') {
-    const slid = playerSlide(spawnGrass, GROUND_Y, player);
-    if (slid) {
-      player.slideCooldown = 300; // 5 sekund blokady przy 60 FPS
-      player.sprintDuration = 0;
-    }
-    return slid;
-  }
-
-  return false;
+  const slid = playerSlide(spawnGrass, GROUND_Y, player);
+  return slid;
 }
 
 /**

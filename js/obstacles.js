@@ -6,7 +6,7 @@ import { ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from './config.js';
 import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
-  spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon,
+  spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
   registerWorldObstacles, setActiveArenaId, GROUND_Y
 } from './world.js';
 
@@ -836,8 +836,8 @@ export function updateMovableObstacles(groundY = 500) {
 
     // Przeszkody z nadaną prędkością lub oznaczone jako kopnięte
     if ((obs.vx !== undefined && Math.abs(obs.vx) > 0.01) ||
-        (obs.vy !== undefined && Math.abs(obs.vy) > 0.01) ||
-        obs.kicked) {
+      (obs.vy !== undefined && Math.abs(obs.vy) > 0.01) ||
+      obs.kicked) {
       obs.vy = (obs.vy || 0) + 0.55; // grawitacja
       obs.x += (obs.vx || 0);
       const curY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -922,7 +922,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (p.boostCooldown > 0) p.boostCooldown--;
   if (p.laserCooldown > 0) p.laserCooldown--;
 
-  const feetY = p.y + p.h;
+  const colH = (p.staggerTimer > 0) ? 15 : (p.h || 70);
+  const feetY = p.y + colH;
   const centerX = p.x + p.w / 2;
 
   const wantDrop = (p.dropThroughTimer > 0);
@@ -1180,18 +1181,29 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   if (landedSurface !== null) {
-    p.y = landedSurface - p.h;
+    p.y = landedSurface - colH;
     p.vy = 0;
     p.isJumping = false;
     p.onGround = true;
     p.airVx = 0;
     p.currentGroundY = landedSurface;
+    if (p.staggerTimer > 0 && !p.staggerLanded) {
+      p.staggerLanded = true;
+      p.vx *= 0.70;
+      spawnGroundPuff(centerX, landedSurface);
+    }
     if (p.jetFuel < p.jetMax) {
       p.jetFuel = Math.min(p.jetMax, p.jetFuel + 2.5);
     }
   } else {
     p.currentGroundY = groundY;
-    p.onGround = (p.y >= groundY - p.h - 1);
+    p.onGround = (p.y >= groundY - colH - 1);
+    if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
+      p.staggerLanded = true;
+      p.vy = 0;
+      p.vx *= 0.70;
+      spawnGroundPuff(centerX, groundY);
+    }
   }
 }
 

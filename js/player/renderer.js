@@ -980,6 +980,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   let hipY = p.y + p.h - 40 + p.pelvisY;
   if (p.isProne) {
     hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
+  } else if (p.staggerTimer > 0) {
+    // 2. Po zetknięciu z gruntem obniż punkt bioder bezpośrednio do poziomu podłoża:
+    // hipY = floorY - 6 (zamiast normalnej wysokości stojącej ~p.y - 28 px)
+    const isStaggerLanded = (p.staggerLanded || p.onGround);
+    if (isStaggerLanded) {
+      hipY = floorY - 6;
+    } else {
+      hipY = p.y + 10;
+    }
   }
   const speed = Math.abs(p.vx);
 
@@ -1043,19 +1052,20 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     p.lastFootFrontY = rawFootFrontTargetY;
     p.lastFootFrontAnkle = rawFootFrontAnkle;
   } else if (p.staggerTimer > 0) {
-    // Sylwetka leci / leży na plecach (efekt ścięcia z nóg i lądowania na łopatkach):
-    rawFootFrontTargetX = hipX + (18 * p.facing);
-    rawFootFrontTargetY = hipY + 14;
-    rawFootFrontAnkle = -0.35 * p.facing;
+    // Sylwetka leży płasko na plecach (efekt ścięcia z nóg i lądowania na łopatkach):
+    // Kończyny dolne: nogi ułożone luźno na podłożu, lekko ugięte w kolanach, spoczywające płasko na ziemi
+    rawFootFrontTargetX = hipX + (28 * p.facing);
+    rawFootFrontTargetY = floorY - 2;
+    rawFootFrontAnkle = 0.10 * p.facing;
 
-    rawFootBackTargetX = hipX + (10 * p.facing);
-    rawFootBackTargetY = hipY + 20;
-    rawFootBackAnkle = -0.25 * p.facing;
+    rawFootBackTargetX = hipX + (22 * p.facing);
+    rawFootBackTargetY = floorY - 3;
+    rawFootBackAnkle = 0.20 * p.facing;
 
-    // Głowa i ramiona bezwładnie odrzucone wstecz
-    rawFrontSwing = -1.55;
-    rawFrontElbow = 0.25;
-    rawBackSwing = -1.45;
+    // Ramiona postaci: odepnij IK rąk od chwytu bojowego – ręce spoczywają bezwładnie wzdłuż tułowia lub jedna spoczywa luźno na broni:
+    rawFrontSwing = -1.25;
+    rawFrontElbow = 0.85;
+    rawBackSwing = -1.50;
     rawBackElbow = 0.20;
   } else if (p.kickMode === 'BACKFLIP') {
     const flip = getBackflipTargets(p.bicycleTimer, p.bicycleDuration, hipX, hipY, p.facing);
@@ -1499,9 +1509,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     pose.torsoTilt = p.torsoTilt;
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
   } else if (p.staggerTimer > 0) {
-    // Sylwetka leci/leży na plecach: tors odgięty do tyłu (-1.55 * facing), głowa i ramiona bezwładnie odrzucone wstecz
-    pose.torsoTilt = -1.55 * p.facing;
-    pose.headPitch = -0.45 * p.facing;
+    // Sylwetka leży płasko na plecach: tors i głowa płasko równolegle do platformy (-90 stopni odchylenia)
+    pose.torsoTilt = -Math.PI / 2 * p.facing;
+    pose.headPitch = 0;
   } else if (p.kickMode === 'SPARTAN') {
     const t = p.spartanTimer || 0;
     if (t <= 4) {

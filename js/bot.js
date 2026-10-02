@@ -86,6 +86,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     botKeys.slide = false;
     bot.isShooting = false;
     bot.isCharging = false;
+    bot.decisionTimer = 0;
+    bot.shootPoseTimer = 0;
     updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
     return;
   }

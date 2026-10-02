@@ -151,6 +151,8 @@ export function sendPlayerState(localPlayer) {
       isJumping: !!localPlayer.isJumping,
       isSliding: !!localPlayer.isSliding,
       isProne: !!localPlayer.isProne,
+      staggerTimer: localPlayer.staggerTimer || 0,
+      staggerLanded: !!localPlayer.staggerLanded,
       isRunning: !!localPlayer.isRunning,
       isKickCharging: !!localPlayer.isKickCharging,
       kickCharge: Math.round((localPlayer.kickCharge || 0) * 100) / 100,
@@ -300,6 +302,8 @@ function handleNetworkData(data) {
       remotePlayer.isJumping = data.isJumping;
       remotePlayer.isSliding = data.isSliding;
       if (data.isProne !== undefined) remotePlayer.isProne = !!data.isProne;
+      if (data.staggerTimer !== undefined) remotePlayer.staggerTimer = data.staggerTimer;
+      if (data.staggerLanded !== undefined) remotePlayer.staggerLanded = !!data.staggerLanded;
       remotePlayer.isRunning = data.isRunning;
       remotePlayer.isKickCharging = data.isKickCharging;
       remotePlayer.kickCharge = data.kickCharge;

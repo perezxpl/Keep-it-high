@@ -59,22 +59,19 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
 
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
 
-  // Wślizg (Slide) możliwy WYŁĄCZNIE po 1 sekundzie ciągłego sprintu (sprintDuration >= 60) oraz braku cooldownu (slideCooldown <= 0)
-  const sprintOk = (typeof char.sprintDuration === 'number' && char.sprintDuration >= 60);
+  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+  const speedOk = Math.abs(char.vx) > minSpeed;
   const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
 
-  if (!isGrounded || !sprintOk || !cooldownOk) {
-    // Jeśli gracz nie spełnia warunków wślizgu, postać na ziemi jedynie kuca (CROUCH)
-    if (isGrounded && !char.isDead && !char.isIntro && !char.isSliding) {
-      char.isCrouching = true;
-      char.isProne = false;
-      char.crouchToggled = true;
-    }
+  // Warunek konieczny: Wślizg może wykonać się TYLKO WTEDY, GDY POSTAĆ BIEGNIE (|vx| > MIN_RUN_SPEED).
+  // Jeśli gracz stoi w miejscu i wciśnięty jest Shift, wślizg nie aktywuje się (brak przejścia w kucanie).
+  if (!isGrounded || !speedOk || !cooldownOk) {
     return false;
   }
 
   if (!char.isJumping && !char.isSliding) {
     char.isSliding = true;
+    char.state = 'SLIDE';
     char.slideTimer = 56;
     char.slideCooldown = 300; // 5 sekund blokady ponownego użycia (300 klatek przy 60 FPS)
     char.sprintDuration = 0;
@@ -861,14 +858,21 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
 
     // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
+    enemy.facing = -player.facing;
     enemy.vx = player.facing * 16.5;
     enemy.airVx = enemy.vx;
     enemy.vy = -4.5;
     enemy.isJumping = true;
     enemy.onGround = false;
     enemy.staggerTimer = 120;
+    enemy.staggerLanded = false;
+    enemy.staggerRecoveryTimer = 0;
     enemy.isCharging = false;
     enemy.isShooting = false;
+    enemy.isSliding = false;
+    enemy.isCrouching = false;
+    enemy.crouchToggled = false;
+    enemy.isProne = false;
 
     // Obsługa śmierci celu jeśli HP spadnie do 0
     if (enemy.hp <= 0 && !enemy.isDead) {

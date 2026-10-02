@@ -173,6 +173,26 @@ export function spawnGrass(x, y, dir) {
   }
 }
 
+/**
+ * Spawnuje mały obłok pyłu / kurzu uderzeniowego pod plecami powalonej postaci
+ * @param {number} x - Środek postaci
+ * @param {number} y - Poziom podłoża/platformy
+ */
+export function spawnGroundPuff(x, y) {
+  const puffColors = ['#94a3b8', '#cbd5e1', '#64748b', '#78350f', '#475569'];
+  for (let i = 0; i < 7; i++) {
+    grassParticles.push({
+      x: x + (Math.random() * 24 - 12),
+      y: y - 1,
+      vx: (Math.random() * 3.6 - 1.8),
+      vy: -(Math.random() * 2.0 + 0.6),
+      size: Math.random() * 3.2 + 1.8,
+      life: 0.85 + Math.random() * 0.3,
+      color: puffColors[Math.floor(Math.random() * puffColors.length)]
+    });
+  }
+}
+
 export function updateParticles() {
   for (let i = grassParticles.length - 1; i >= 0; i--) {
     const gp = grassParticles[i];
@@ -1840,105 +1860,45 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
   }
 
-  // 3. DYNAMICZNY PRZYCISK: WŚLIZG / LEŻENIE (DYNAMIC CONTEXTUAL BUTTON)
-  if (btnCluster && btnCluster.slide) {
-    const slide = btnCluster.slide;
-    const slideR = slide.r || 30;
-    const isProneMode = (slide.mode === 'PRONE' || player.isCrouching || player.isProne);
-    const isProneActive = !!player.isProne;
-    const isSlideMode = (slide.mode === 'SLIDE' || (player.gaitMode === 'SPRINT' && (player.sprintDuration || 0) >= 60 && (player.slideCooldown || 0) <= 0));
-    const isSlideActive = player.isSliding || slide.active;
+  // 3. DEDYKOWANE PRZYCISKI MOBILNE: WŚLIZG (SHIFT) ORAZ KUCANIE/LEŻENIE (CTRL)
+  if (btnCluster) {
+    // 3A. PRZYCISK WŚLIZGU (WYŁĄCZNIE W PEŁNYM BIEGU)
+    if (btnCluster.slide) {
+      const slide = btnCluster.slide;
+      const slideR = slide.r || 30;
+      const minRun = CONFIG.MIN_RUN_SPEED || 2.5;
+      const isSlideReady = (player.onGround && !player.isJumping && Math.abs(player.vx) > minRun && (player.slideCooldown || 0) <= 0);
+      const isSlideActive = player.isSliding || slide.active;
 
-    let btnBorder = 'rgba(255, 255, 255, 0.10)';
-    let btnBg = 'rgba(15, 23, 42, 0.45)';
-    let btnAccent = 'rgba(148, 163, 184, 0.35)';
-    let labelColor = 'rgba(148, 163, 184, 0.40)';
-    let labelText = 'WŚLIZG';
+      let btnBorder = 'rgba(255, 255, 255, 0.08)';
+      let btnBg = 'rgba(15, 23, 42, 0.35)';
+      let btnAccent = 'rgba(100, 116, 139, 0.30)';
+      let labelColor = 'rgba(100, 116, 139, 0.35)';
 
-    if (isProneMode) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-      if (isProneActive) {
+      if (isSlideReady || isSlideActive) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
         btnBorder = '#10b981';
-        btnBg = `rgba(16, 185, 129, ${0.22 + pulse * 0.20})`;
+        btnBg = `rgba(16, 185, 129, ${0.20 + pulse * 0.22})`;
         btnAccent = '#10b981';
         labelColor = '#10b981';
-        labelText = 'WSTAŃ';
-      } else {
-        btnBorder = '#f59e0b';
-        btnBg = `rgba(245, 158, 11, ${0.20 + pulse * 0.20})`;
-        btnAccent = '#f59e0b';
-        labelColor = '#f59e0b';
-        labelText = 'LEŻENIE';
+
+        ctx.beginPath();
+        ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
       }
 
       ctx.beginPath();
-      ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
-      ctx.strokeStyle = isProneActive ? `rgba(16, 185, 129, ${(1 - pulse) * 0.65})` : `rgba(245, 158, 11, ${(1 - pulse) * 0.65})`;
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-    } else if (isSlideMode || isSlideActive) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-      btnBorder = '#10b981';
-      btnBg = `rgba(16, 185, 129, ${0.20 + pulse * 0.22})`;
-      btnAccent = '#10b981';
-      labelColor = '#10b981';
-      labelText = 'WŚLIZG';
-
-      ctx.beginPath();
-      ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-    } else {
-      // W pozostałych stanach: przycisk jest nieaktywny / wyszarzony
-      btnBorder = 'rgba(255, 255, 255, 0.08)';
-      btnBg = 'rgba(15, 23, 42, 0.35)';
-      btnAccent = 'rgba(100, 116, 139, 0.30)';
-      labelColor = 'rgba(100, 116, 139, 0.35)';
-      labelText = 'WŚLIZG';
-    }
-
-    ctx.beginPath();
-    ctx.arc(slide.x, slide.y, slideR, 0, Math.PI * 2);
-    ctx.fillStyle = btnBg;
-    ctx.fill();
-    ctx.strokeStyle = btnBorder;
-    ctx.lineWidth = (isProneMode || isSlideMode) ? 1.8 : 1.0;
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(slide.x, slide.y);
-
-    if (isProneMode) {
-      // Ikona leżącej sylwetki (płasko na ziemi)
-      const pFacing = player.facing || 1;
-
-      // Korpus / tułów poziomy
-      ctx.beginPath();
-      ctx.rect(-13, -1, 24, 4.5);
-      ctx.fillStyle = btnAccent;
+      ctx.arc(slide.x, slide.y, slideR, 0, Math.PI * 2);
+      ctx.fillStyle = btnBg;
       ctx.fill();
-
-      // Głowa leżącej postaci
-      ctx.beginPath();
-      ctx.arc(pFacing * 11, -3, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = isProneActive ? '#10b981' : (btnAccent === '#f59e0b' ? '#ffffff' : btnAccent);
-      ctx.fill();
-
-      // Nogi płasko w tył
-      ctx.strokeStyle = btnAccent;
-      ctx.lineWidth = 2.0;
-      ctx.beginPath();
-      ctx.moveTo(-pFacing * 12, 1);
-      ctx.lineTo(-pFacing * 16, 3);
+      ctx.strokeStyle = btnBorder;
+      ctx.lineWidth = (isSlideReady || isSlideActive) ? 1.8 : 1.0;
       ctx.stroke();
 
-      ctx.fillStyle = labelColor;
-      ctx.font = 'bold 8.5px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(labelText, 0, 16);
-    } else {
-      // Ikona wślizgu
+      ctx.save();
+      ctx.translate(slide.x, slide.y);
       ctx.beginPath();
       ctx.moveTo(-10, 4); ctx.lineTo(8, 4); ctx.lineTo(10, 0); ctx.lineTo(4, -4); ctx.lineTo(-4, -4); ctx.lineTo(-7, 0);
       ctx.closePath();
@@ -1948,9 +1908,91 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.fillStyle = labelColor;
       ctx.font = 'bold 8.5px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(labelText, 0, 16);
+      ctx.fillText('WŚLIZG', 0, 16);
+      ctx.restore();
     }
-    ctx.restore();
+
+    // 3B. PRZYCISK KUCANIA I LEŻENIA (ODPOWIEDNIK KLAWISZA CTRL)
+    if (btnCluster.crouch) {
+      const cr = btnCluster.crouch;
+      const crR = cr.r || 28;
+      const isProne = !!player.isProne;
+      const isCrouch = !!player.isCrouching;
+
+      let btnBorder = 'rgba(255, 255, 255, 0.10)';
+      let btnBg = 'rgba(15, 23, 42, 0.40)';
+      let btnAccent = 'rgba(148, 163, 184, 0.35)';
+      let labelColor = 'rgba(148, 163, 184, 0.45)';
+      let labelText = 'KUCANIE';
+
+      if (isProne) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+        btnBorder = '#10b981';
+        btnBg = `rgba(16, 185, 129, ${0.22 + pulse * 0.20})`;
+        btnAccent = '#10b981';
+        labelColor = '#10b981';
+        labelText = 'LEŻENIE';
+
+        ctx.beginPath();
+        ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+      } else if (isCrouch) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+        btnBorder = '#f59e0b';
+        btnBg = `rgba(245, 158, 11, ${0.20 + pulse * 0.20})`;
+        btnAccent = '#f59e0b';
+        labelColor = '#f59e0b';
+        labelText = 'KUCANIE';
+
+        ctx.beginPath();
+        ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(245, 158, 11, ${(1 - pulse) * 0.65})`;
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.arc(cr.x, cr.y, crR, 0, Math.PI * 2);
+      ctx.fillStyle = btnBg;
+      ctx.fill();
+      ctx.strokeStyle = btnBorder;
+      ctx.lineWidth = (isProne || isCrouch) ? 1.8 : 1.0;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cr.x, cr.y);
+      const pFacing = player.facing || 1;
+
+      if (isProne) {
+        ctx.beginPath();
+        ctx.rect(-11, -1, 20, 4);
+        ctx.fillStyle = btnAccent;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pFacing * 9, -2, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.rect(-6, -2, 12, 5);
+        ctx.fillStyle = btnAccent;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pFacing * 4, -7, 3, 0, Math.PI * 2);
+        ctx.fillStyle = isCrouch ? '#f59e0b' : btnAccent;
+        ctx.fill();
+      }
+
+      ctx.fillStyle = labelColor;
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(labelText, 0, 15);
+      ctx.restore();
+    }
   }
 
   ctx.restore();

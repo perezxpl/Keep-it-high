@@ -26,3 +26,8 @@ export {
   OBSTACLE_RENDERERS,
   normalizeObstacleType
 } from './obstacles.js';
+
+export {
+  drawBulletCasing,
+  drawBulletCasings
+} from './particles.js';

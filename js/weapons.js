@@ -10,6 +10,21 @@ import {
 } from './world.js';
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
+import {
+  spawnBulletCasing,
+  updateBulletCasings,
+  drawBulletCasings,
+  clearBulletCasings,
+  bulletCasings
+} from './particles.js';
+
+export {
+  spawnBulletCasing,
+  updateBulletCasings,
+  drawBulletCasings,
+  clearBulletCasings,
+  bulletCasings
+};
 
 export const WEAPONS = {
   AK47: {
@@ -100,6 +115,10 @@ export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
 }
 registerHitSparkCallback(spawnHitSparks);
 
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
 function lerpAngle(a, b, t) {
   let diff = (b - a) % (Math.PI * 2);
   if (diff < -Math.PI) diff += Math.PI * 2;
@@ -113,7 +132,11 @@ function lerpAngle(a, b, t) {
 export function getShooterShoulderPos(shooter) {
   const charFacing = shooter.facing || 1;
   const hipX = shooter.x + shooter.w / 2;
-  const hipY = shooter.y + shooter.h - 40 + (shooter.pelvisY || 0);
+  let hipY = shooter.y + shooter.h - 40 + (shooter.pelvisY || 0);
+  if (shooter.staggerTimer > 0) {
+    const floorY = shooter.currentGroundY || shooter.groundY || (shooter.y + 15);
+    hipY = floorY - 6;
+  }
   const torsoTilt = shooter.pose?.torsoTilt || shooter.torsoTilt || 0;
 
   const shoulderBaseX = hipX + (21 * Math.sin(torsoTilt));
@@ -154,6 +177,52 @@ export function getWeaponHoldTransform(p) {
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isCrouch = !!(p.isCrouching || p.isProne);
+
+  const isStaggered = (p.staggerTimer > 0);
+  const recTimer = (p.staggerRecoveryTimer > 0) ? p.staggerRecoveryTimer : 0;
+  let slingWeight = 0;
+  if (isStaggered) {
+    slingWeight = 1.0;
+  } else if (recTimer > 0) {
+    slingWeight = Math.min(1.0, recTimer / 8.0);
+  }
+
+  // Pozycja pasa taktycznego (tactical sling) na klatce piersiowej leżącej postaci:
+  // x = hipX + 4 * p.facing, y = hipY - 4 (tuż nad ziemią, na klatce)
+  // Kąt broni: zablokowany wzdłuż leżącego torsu (0 = równolegle do podłoża)
+  const slingPivotX = hipX + 4 * charFacing;
+  const slingPivotY = hipY - 4;
+  const slingAngle = 0;
+
+  if (slingWeight >= 1.0) {
+    // 3. POZYCJA BRONI I RAMION – PAS TAKTYCZNY:
+    // CAŁKOWICIE odetnij broń i ramiona od śledzenia kursora myszy (aimAngle).
+    // Broń nie może sterczeć w powietrze ani celować w niebo.
+    const rightHandWorldX = slingPivotX + 2 * charFacing;
+    const rightHandWorldY = slingPivotY + 3;
+    const leftHandWorldX = slingPivotX + 14 * charFacing;
+    const leftHandWorldY = slingPivotY + 2;
+    const barrelLength = isShotgun ? 28 : 34;
+
+    return {
+      pivotX: slingPivotX,
+      pivotY: slingPivotY,
+      angle: slingAngle,
+      charFacing,
+      rightShoulderX,
+      rightShoulderY,
+      shoulderPocketX: rightShoulderX,
+      shoulderPocketY: rightShoulderY,
+      aimX: slingPivotX + 50 * charFacing,
+      aimY: slingPivotY,
+      weight: 0,
+      kickback: 0,
+      muzzleRise: 0,
+      rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
+      leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
+      barrelLen: barrelLength
+    };
+  }
 
   const aimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : (rightShoulderX + charFacing * 120);
   const aimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : rightShoulderY;
@@ -198,21 +267,29 @@ export function getWeaponHoldTransform(p) {
     finalPivotY = Math.max(floorY - 9.0, Math.min(floorY - 6.5, finalPivotY));
   }
 
-  const proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
-  const cosA = Math.cos(proneAimAngle);
-  const sinA = Math.sin(proneAimAngle);
+  let proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
 
   // Punkty podparcia dłoni
   const rearGripDistX = isShotgun ? 1.6 : 1.5;
   const rearGripDistY = isShotgun ? 4.5 : 4.2;
-  const rightHandWorldX = finalPivotX + (cosA * rearGripDistX - sinA * rearGripDistY) * charFacing;
-  const rightHandWorldY = finalPivotY + (sinA * rearGripDistX + cosA * rearGripDistY);
-
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   const foreGripDistX = (isShotgun ? 16.5 : 17.5) + pumpShift;
   const foreGripDistY = isShotgun ? 2.0 : 1.2;
-  const leftHandWorldX = finalPivotX + (cosA * foreGripDistX - sinA * foreGripDistY) * charFacing;
-  const leftHandWorldY = finalPivotY + (sinA * foreGripDistX + cosA * foreGripDistY);
+
+  let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
+  let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
+  let leftHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * foreGripDistX - Math.sin(proneAimAngle) * foreGripDistY) * charFacing;
+  let leftHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * foreGripDistX + Math.cos(proneAimAngle) * foreGripDistY);
+
+  if (slingWeight > 0) {
+    finalPivotX = lerp(finalPivotX, slingPivotX, slingWeight);
+    finalPivotY = lerp(finalPivotY, slingPivotY, slingWeight);
+    proneAimAngle = lerpAngle(proneAimAngle, slingAngle, slingWeight);
+    rightHandWorldX = lerp(rightHandWorldX, slingPivotX + 2 * charFacing, slingWeight);
+    rightHandWorldY = lerp(rightHandWorldY, slingPivotY + 3, slingWeight);
+    leftHandWorldX = lerp(leftHandWorldX, slingPivotX + 14 * charFacing, slingWeight);
+    leftHandWorldY = lerp(leftHandWorldY, slingPivotY + 2, slingWeight);
+  }
 
   const barrelLength = isShotgun ? 28 : 34;
 
@@ -386,6 +463,15 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = 2;
       if (weapon.recoil > 1.2 && !shooter.isRemote) triggerScreenShake(2.5);
+
+      // Wyrzut łuski z zamka broni przy strzale
+      const hold = getWeaponHoldTransform(shooter);
+      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : 10);
+      const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (hold.charFacing || 1);
+      const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
+      const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+      spawnBulletCasing(bX, bY, hold.angle, weapon.id, charFacing, shooter.vx || 0, shooter.vy || 0);
+
       return true;
     }
 
@@ -430,6 +516,26 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   }
 
   spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
+
+  // Wyrzut łuski z zamka broni (Ejection Mechanics: punkt startowy na zamku, lekko cofnięty w stronę broni/gracza)
+  let breechX, breechY;
+  const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (Math.cos(theta) >= 0 ? 1 : -1);
+
+  if (shooter && overrideX === undefined) {
+    const hold = getWeaponHoldTransform(shooter);
+    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : 10);
+    breechX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
+    breechY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+  } else {
+    const backDist = (weapon.id === 'SHOTGUN' ? 18 : 22);
+    breechX = muzzleX - Math.cos(theta) * backDist;
+    breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
+  }
+
+  const inheritVx = shooter ? (shooter.vx || 0) : 0;
+  const inheritVy = shooter ? (shooter.vy || 0) : 0;
+  spawnBulletCasing(breechX, breechY, theta, weapon.id, charFacing, inheritVx, inheritVy);
+
   return true;
 }
 
@@ -559,6 +665,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
   const charList = characters || [];
   const obs = obstaclesList || obstacles;
+  updateBulletCasings(1 / 60, groundY, obs);
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
@@ -611,8 +718,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let charTop = ch.y - 25;
       let charBottom = ch.y + hitH;
 
-      if (ch.isProne) {
-        // Obniżony profil kolizji dla pozycji leżącej na brzuchu (22px wysokości)
+      if (ch.isProne || ch.staggerTimer > 0) {
+        // Obniżony profil kolizji dla pozycji leżącej na brzuchu lub na plecach po powaleniu
         charTop = ch.y + hitH - 24;
         charBottom = ch.y + hitH + 2;
         charLeft = ch.x - (ch.facing === 1 ? 14 : 38);
@@ -843,6 +950,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 }
 
 export function drawBullets(ctx) {
+  drawBulletCasings(ctx);
+
   for (const p of bulletParticles) {
     ctx.fillStyle = p.color;
     ctx.fillRect(p.x, p.y, p.size, p.size);

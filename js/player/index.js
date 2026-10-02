@@ -5,12 +5,46 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId, customObstacles } from '../obstacles.js';
-import { triggerScreenShake } from '../world.js';
+import { triggerScreenShake, spawnGroundPuff } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory } from './locomotion.js';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js';
+
+/**
+ * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
+ * @param {Object} player - Obiekt gracza
+ * @param {number} [groundY] - Poziom podłoża
+ * @returns {boolean}
+ */
+export function isCeilingBlockingStand(player, groundY = 500) {
+  if (!player) return false;
+  const currentFloor = player.currentGroundY || groundY || 500;
+  const standTopY = currentFloor - (player.h || 70);
+  const crouchTopY = currentFloor - 45;
+  const px = player.x + (player.w || 24) / 2;
+  const halfW = (player.w || 24) / 2;
+
+  if (Array.isArray(customObstacles)) {
+    for (const obs of customObstacles) {
+      if (!obs || obs.exploded) continue;
+      if (obs.solid || obs.isPlatform) {
+        const obsTop = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+        const obsBottom = obsTop + (obs.h || 20);
+        const obsLeft = obs.x;
+        const obsRight = obs.x + (obs.w || 40);
+
+        if (px + halfW > obsLeft && px - halfW < obsRight) {
+          if (obsBottom > standTopY && obsBottom <= crouchTopY + 5) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
 import {
   startJumpCharge, playerJump, executeReleaseJump, playerSlide,
   startKickCharge, evaluateKickTiming, isBallInKickReach, executeReleaseKick,
@@ -240,10 +274,16 @@ export function createPlayerInstance(overrides = {}) {
     isCrouching: false,
     crouchToggled: false,
     isProne: false,
+    state: 'STAND',
+    hitboxHeight: 70,
+    crouchHoldTimer: 0,
+    _crouchStartTime: 0,
     ctrlTimer: 0,
     wasCtrlPressed: false,
     crawlPhase: 0,
     staggerTimer: 0,
+    staggerLanded: false,
+    staggerRecoveryTimer: 0,
     isJumping: false,
     isSliding: false,
     slideTimer: 0,
@@ -376,6 +416,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.isCharging = false;
     player.isShooting = false;
     player.isJumpCharging = false;
+    if (player.staggerTimer === 0) {
+      // 4. PŁYNNE WSTANIE PO UPŁYWIE OGŁUSZENIA:
+      // Przywróć pełny collider stojący bez zacinania się w geometrii platformy (p.y wyrównane do gruntu)
+      const currentFloor = player.currentGroundY || GROUND_Y;
+      player.y = currentFloor - (player.h || 70);
+      player.vy = 0;
+      player.isJumping = false;
+      player.onGround = true;
+      player.staggerRecoveryTimer = 8; // 6-8 klatek płynnego powrotu broni i ramion do Low-Ready
+      player.staggerLanded = false;
+    }
+  }
+  if (player.staggerRecoveryTimer > 0) {
+    player.staggerRecoveryTimer--;
   }
 
   updateWeaponState(player);
@@ -417,36 +471,62 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
-  // Obsługa Lewy Ctrl: Tap (kucanie toggle) vs Hold >= 16 klatek (~260 ms: isProne / czołganie)
-  const ctrlDown = !!(keys && keys.ctrl && !isStaggered);
-  if (ctrlDown) {
-    if (!player.wasCtrlPressed) {
-      player.wasCtrlPressed = true;
-      player.ctrlTimer = 0;
-    } else {
-      player.ctrlTimer++;
-      // Przytrzymanie >= 16 klatek kładzie postać na brzuchu (HOLD)
-      if (player.ctrlTimer >= 16 && !player.isProne) {
-        player.isProne = true;
-        player.isCrouching = false;
-        player.crouchToggled = false;
+  // =========================================================================
+  // OBSŁUGA KUCANIA I LEŻENIA (CROUCH & PRONE) POD KLAWISZEM CTRL / MOBILE
+  // 1. Krótkie wciśnięcie / początek trzymania Ctrl (holdDuration < 450 ms):
+  //    - postać wchodzi w stan kucania (CROUCH)
+  // 2. Przytrzymanie Ctrl dłużej (> 400-500 ms, ok. 450 ms):
+  //    - postać płynnie przechodzi ze stanu kucania w stan leżenia (PRONE)
+  // 3. Puszczenie klawisza Ctrl / zwolnienie przycisku lub drążka:
+  //    - postać natychmiast wstaje do pozycji stojącej (STAND), o ile sufit nie blokuje
+  // 4. WŚLIZG (SLIDE) NIE JEST wyzwalany klawiszem Ctrl (wślizg wyłącznie pod Shiftem!)
+  // =========================================================================
+  const isCrouchInputActive = !!(
+    (keys && (keys.crouch || keys.ctrl)) ||
+    (leftStick && leftStick.active && leftStick.axisY > 0.40)
+  );
+
+  const crouchHeld = isCrouchInputActive && !isStaggered;
+
+  if (crouchHeld) {
+    if (!player.isDead && !player.isIntro && !player.isSliding) {
+      const isGrounded = (player.onGround !== undefined) ? (player.onGround && !player.isJumping) : (!player.isJumping);
+      if (isGrounded) {
+        if (!player._crouchStartTime) {
+          player._crouchStartTime = performance.now();
+        }
+        player.crouchHoldTimer = (player.crouchHoldTimer || 0) + 1;
+        const holdDurationMs = performance.now() - player._crouchStartTime;
+        const targetPosture = evaluateCrouchState(player, true, Math.max(holdDurationMs, player.crouchHoldTimer * 16.666));
+
+        if (targetPosture === 'PRONE') {
+          player.isProne = true;
+          player.isCrouching = false;
+          player.state = 'PRONE';
+          player.hitboxHeight = 26;
+        } else {
+          player.isCrouching = true;
+          player.isProne = false;
+          player.state = 'CROUCH';
+          player.hitboxHeight = 45;
+        }
       }
     }
   } else {
-    if (player.wasCtrlPressed) {
-      // Krótkie naciśnięcie (< 16 klatek) -> TAP: przełączenie kucania
-      if (player.ctrlTimer < 16) {
-        if (player.isProne) {
-          player.isProne = false;
+    // Puszczenie klawisza Ctrl / zwolnienie przycisku lub powrót drążka do neutralnej pozycji
+    player._crouchStartTime = 0;
+    player.crouchHoldTimer = 0;
+
+    if ((player.isCrouching || player.isProne) && !player.isSliding) {
+      const isHoldingDownArrow = !!(keys && keys.down);
+      if (!isHoldingDownArrow && !player.crouchToggled) {
+        if (!isCeilingBlockingStand(player, GROUND_Y)) {
           player.isCrouching = false;
-          player.crouchToggled = false; // ponowny Ctrl podrywa postać do pionu
-        } else {
-          player.crouchToggled = !player.crouchToggled;
-          player.isCrouching = player.crouchToggled;
+          player.isProne = false;
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
         }
       }
-      player.wasCtrlPressed = false;
-      player.ctrlTimer = 0;
     }
   }
 
@@ -459,9 +539,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       inputAxisY += 1;
       if (!player.isProne && !player.isSliding && !player.isJumping) {
         player.isCrouching = true;
+        player.state = 'CROUCH';
       }
-    } else if (!player.crouchToggled && !player.isProne) {
-      player.isCrouching = false;
+    } else if (!player.crouchToggled && !crouchHeld) {
+      if (!isCeilingBlockingStand(player, GROUND_Y)) {
+        player.isCrouching = false;
+        player.isProne = false;
+        if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+      }
     }
 
     if (keys.up && !player.isJumping && !player.isSliding && !player.isIntro) {
@@ -482,7 +567,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
 
     if (keys.slide) {
-      playerSlide(spawnGrass, GROUND_Y, player);
+      const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+      if (player.onGround && Math.abs(player.vx) > minSpeed) {
+        playerSlide(spawnGrass, GROUND_Y, player);
+      }
       keys.slide = false;
     }
   }
@@ -491,10 +579,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     const sMag = Math.hypot(leftStick.axisX, leftStick.axisY);
     // Powrót do martwej strefy (< 0.18) lub pchnięcie w górę (< -0.20) natychmiast podrywa postać na równe nogi
     if (sMag < 0.18 || leftStick.axisY < -0.20) {
-      if (!keys?.down && !keys?.ctrl) {
-        player.isCrouching = false;
-        player.isProne = false;
-        player.crouchToggled = false;
+      if (!keys?.down && !crouchHeld) {
+        if (!isCeilingBlockingStand(player, GROUND_Y)) {
+          player.isCrouching = false;
+          player.isProne = false;
+          player.crouchToggled = false;
+          if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+        }
       }
     }
 
@@ -505,21 +596,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       const angleFromDownRad = Math.atan2(Math.abs(leftStick.axisX), Math.max(0.0001, leftStick.axisY));
       const angleDeg = angleFromDownRad * (180 / Math.PI);
       if (angleDeg < 20) {
-        inputAxisX = 0; // Kucanie w miejscu (CROUCH)
+        inputAxisX = 0; // Kucanie w miejscu
       }
-      // Wychylenie na boki >= 20 stopni: chód na kucaka (CROUCH_WALK)
-      if (!player.isProne && !player.isSliding && !player.isJumping) {
-        player.isCrouching = true;
-      }
-    } else if (!keys?.down && !player.crouchToggled && !player.isProne) {
-      player.isCrouching = false;
     }
-  } else if (!keys?.down && !keys?.ctrl && !isStaggered && leftStick && !leftStick.active) {
+  } else if (!keys?.down && !crouchHeld && !isStaggered && leftStick && !leftStick.active) {
     // Puszczenie gałki (powrót do martwej strefy / brak aktywnego dotyku) podrywa postać na równe nogi
-    if (player.isCrouching || player.isProne) {
-      player.isCrouching = false;
-      player.isProne = false;
-      player.crouchToggled = false;
+    if ((player.isCrouching || player.isProne) && !player.crouchToggled) {
+      if (!isCeilingBlockingStand(player, GROUND_Y)) {
+        player.isCrouching = false;
+        player.isProne = false;
+        if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+      }
     }
   }
 
@@ -532,8 +619,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (isStaggered) {
     inputAxisX = 0;
     inputAxisY = 0;
-    player.vx *= 0.88;
-    if (typeof player.airVx === 'number') player.airVx *= 0.88;
+    if (player.onGround || player.staggerLanded) {
+      player.vx *= 0.70; // Gwałtowne wygaszanie prędkości poziomej (tarcie ciała o podłoże)
+      if (Math.abs(player.vx) < 0.15) player.vx = 0;
+      if (typeof player.airVx === 'number') player.airVx = 0;
+    } else {
+      player.vx *= 0.985;
+      if (typeof player.airVx === 'number') player.airVx *= 0.985;
+    }
   }
 
   const now = performance.now();
@@ -706,16 +799,29 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     isMovingBackwards = (player.vx * player.facing < -0.1);
     player.isMovingBackwards = isMovingBackwards;
 
-    if (player.isSliding) player.gaitMode = 'SLIDE';
-    else if (player.isProne) {
+    if (player.isSliding) {
+      player.gaitMode = 'SLIDE';
+      player.state = 'SLIDE';
+      player.hitboxHeight = 35;
+    } else if (player.isProne) {
       player.gaitMode = speed > 0.08 ? 'CRAWL' : 'PRONE';
+      player.state = 'PRONE';
+      player.hitboxHeight = 26;
       player.crawlPhase = (player.crawlPhase || 0) + speed * 0.14;
+    } else if (player.isCrouching) {
+      player.gaitMode = speed > 0.1 ? 'CROUCH_WALK' : 'CROUCH';
+      player.state = 'CROUCH';
+      player.hitboxHeight = 45; // 60-70% normalnej wysokości (~64.3% z 70)
+    } else {
+      player.hitboxHeight = player.h || 70;
+      if (player.isJumping) player.state = 'JUMP';
+      else player.state = 'STAND';
+
+      if (speed < 0.1) player.gaitMode = 'IDLE';
+      else if (speed <= walkMax + 0.15) player.gaitMode = 'WALK';
+      else if (speed <= jogMax + 0.15) player.gaitMode = 'JOG';
+      else player.gaitMode = 'SPRINT';
     }
-    else if (player.isCrouching) player.gaitMode = speed > 0.1 ? 'CROUCH_WALK' : 'CROUCH';
-    else if (speed < 0.1) player.gaitMode = 'IDLE';
-    else if (speed <= walkMax + 0.15) player.gaitMode = 'WALK';
-    else if (speed <= jogMax + 0.15) player.gaitMode = 'JOG';
-    else player.gaitMode = 'SPRINT';
 
     // Obsługa licznika 1 sekundy ciągłego sprintu przed wślizgiem:
     if (player.gaitMode === 'SPRINT' && !player.isJumping && !player.isCrouching && !player.isProne && !player.isSliding) {
@@ -906,7 +1012,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.kneeJuggleWeight > 0) {
     targetTilt = -0.06 * player.kneeJuggleWeight * player.facing;
   } else if (player.staggerTimer > 0) {
-    targetTilt = -1.55 * player.facing;
+    targetTilt = -Math.PI / 2 * player.facing;
   } else if (player.kickMode === 'SPARTAN') {
     const t = player.spartanTimer || 0;
     if (t <= 4) {
@@ -952,30 +1058,46 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.torsoTilt += player.torsoTiltVel;
   }
 
-  player.vy += CONFIG.GRAVITY;
-  player.y += player.vy;
+  const colH = (player.staggerTimer > 0) ? 15 : (player.h || 70);
 
-  const groundFloorLimit = GROUND_Y - player.h;
-  if (player.y >= groundFloorLimit) {
-    player.y = groundFloorLimit;
+  if (player.staggerTimer > 0 && player.staggerLanded && player.onGround) {
+    // Przez resztę czasu ogłuszenia (do końca 2 sekund) postać leży nieruchomo płasko na powierzchni gruntu
     player.vy = 0;
     player.isJumping = false;
-    player.onGround = true;
-    player.airVx = 0;
-    player.currentGroundY = GROUND_Y;
+    const currentFloor = player.currentGroundY || GROUND_Y;
+    player.y = currentFloor - colH;
+  } else {
+    player.vy += CONFIG.GRAVITY;
+    player.y += player.vy;
 
-    if (player.jetFuel < player.jetMax) {
-      player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
-    }
+    const groundFloorLimit = GROUND_Y - colH;
+    if (player.y >= groundFloorLimit) {
+      player.y = groundFloorLimit;
+      player.vy = 0;
+      player.isJumping = false;
+      player.onGround = true;
+      player.airVx = 0;
+      player.currentGroundY = GROUND_Y;
 
-    if (player.kickMode === 'BACKFLIP') {
-      player.kickMode = 'BACKFLIP_LAND';
-      player.landingTurnTimer = 10;
-    } else if (player.kickMode === 'SCISSOR') {
-      player.kickState = 'IDLE';
-      player.kickMode = 'GROUND';
-      player.scissorTimer = 0;
-      player.kickCooldown = 10;
+      if (player.staggerTimer > 0 && !player.staggerLanded) {
+        player.staggerLanded = true;
+        player.vx *= 0.70;
+        spawnGroundPuff(player.x + (player.w || 24) / 2, GROUND_Y);
+      }
+
+      if (player.jetFuel < player.jetMax) {
+        player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
+      }
+
+      if (player.kickMode === 'BACKFLIP') {
+        player.kickMode = 'BACKFLIP_LAND';
+        player.landingTurnTimer = 10;
+      } else if (player.kickMode === 'SCISSOR') {
+        player.kickState = 'IDLE';
+        player.kickMode = 'GROUND';
+        player.scissorTimer = 0;
+        player.kickCooldown = 10;
+      }
     }
   }
 
