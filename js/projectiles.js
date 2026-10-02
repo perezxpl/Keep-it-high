@@ -1,0 +1,659 @@
+// =========================================================================
+// PROJECTILES.JS - POCISKI SPECJALNE I SUPER-GRANAT DLA KLASY AERO
+// Warstwa 1 / 2: Mechanika wybuchowa, niszczenie terenu i odłamki gruzu
+// =========================================================================
+
+import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt } from './world.js';
+import { ARENA_PLATFORMS, customObstacles, obstacles } from './obstacles.js';
+
+export const activeProjectiles = [];
+export const rubbleParticles = [];
+export const explosionEffects = [];
+export const explosionCraters = [];
+
+/**
+ * Klasa super-granatu dla klasy Aero
+ */
+export class AeroSuperGrenade {
+  constructor(shooter, targetX, targetY) {
+    this.id = 'grenade_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    this.shooter = shooter;
+    this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
+
+    // Punkt startowy z klatki piersiowej / dłoni gracza
+    const startX = shooter ? (shooter.x + shooter.w / 2 + (shooter.facing || 1) * 14) : targetX;
+    const startY = shooter ? (shooter.y + shooter.h * 0.42) : targetY;
+
+    this.x = startX;
+    this.y = startY;
+    this.prevX = startX;
+    this.prevY = startY;
+
+    // Kąt wzdłuż celownika
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const angle = Math.atan2(dy, dx);
+
+    // Prędkość początkowa: ok. 500 px/s (przy 60 FPS: 500 / 60 ≈ 8.33 px/frame)
+    const initialSpeed = 500 / 60;
+    this.vx = Math.cos(angle) * initialSpeed + (shooter ? (shooter.vx || 0) * 0.35 : 0);
+    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - 1.2;
+
+    this.radius = 9;
+    this.rot = angle;
+    this.vRot = (Math.random() * 0.15 + 0.18) * (this.vx >= 0 ? 1 : -1);
+
+    this.bounces = 0;
+    this.maxBounces = 2;
+    this.restitution = 0.62;
+
+    // Zapalnik czasowy: 1.5 sekundy (90 klatek)
+    this.fuse = 90;
+    this.maxFuse = 90;
+    this.detonated = false;
+
+    this.blastRadius = 145; // Promień wybuchu R = 130-150 px
+    this.smokeTimer = 0;
+  }
+
+  update(groundY, platforms, customObs, combatants, ball) {
+    if (this.detonated) return false;
+
+    this.prevX = this.x;
+    this.prevY = this.y;
+
+    // Standardowa grawitacja gry
+    const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
+    this.vy += grav;
+
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rot += this.vRot;
+
+    // Dymna smuga pocisku
+    this.smokeTimer++;
+    if (this.smokeTimer % 2 === 0) {
+      spawnGrenadeSmokePuff(this.x, this.y);
+    }
+
+    // 1. Odbicia od bocznych granic mapy
+    if (this.x - this.radius <= ARENA_LEFT) {
+      this.x = ARENA_LEFT + this.radius;
+      this.vx = -this.vx * this.restitution;
+      this.vRot = -this.vRot * 0.8;
+      this.bounces++;
+    } else if (this.x + this.radius >= ARENA_RIGHT) {
+      this.x = ARENA_RIGHT - this.radius;
+      this.vx = -this.vx * this.restitution;
+      this.vRot = -this.vRot * 0.8;
+      this.bounces++;
+    }
+
+    // 2. Odbicie od poziomu podłogi (GROUND_Y)
+    if (this.y + this.radius >= groundY) {
+      this.y = groundY - this.radius;
+      this.vy = -this.vy * this.restitution;
+      this.vx *= 0.82;
+      this.vRot *= 0.75;
+      this.bounces++;
+      if (this.bounces > this.maxBounces) {
+        this.vy = 0;
+        this.vx *= 0.65;
+      }
+    }
+
+    // 3. Kolizje z platformami
+    const activePlats = platforms || ARENA_PLATFORMS;
+    if (Array.isArray(activePlats)) {
+      for (const plat of activePlats) {
+        if (!plat) continue;
+        const topY = groundY - plat.relY;
+        const thick = plat.thickness || 20;
+
+        if (this.x >= plat.x - this.radius && this.x <= plat.x + plat.w + this.radius) {
+          // Lądowanie na górnej krawędzi platformy
+          if (this.vy > 0 && this.prevY + this.radius <= topY + 8 && this.y + this.radius >= topY - 4) {
+            this.y = topY - this.radius;
+            this.vy = -this.vy * this.restitution;
+            this.vx *= 0.85;
+            this.vRot *= 0.75;
+            this.bounces++;
+            break;
+          }
+          // Odbicie od dolnej krawędzi platformy
+          else if (this.vy < 0 && this.prevY - this.radius >= topY + thick - 8 && this.y - this.radius <= topY + thick + 4) {
+            this.y = topY + thick + this.radius;
+            this.vy = -this.vy * this.restitution;
+            this.bounces++;
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. Detekcja bezpośredniego kontaktu z wrogim graczem / botem
+    if (Array.isArray(combatants)) {
+      for (const ch of combatants) {
+        if (!ch || ch === this.shooter || ch.isDead) continue;
+        const chCenterX = ch.x + ch.w / 2;
+        const chCenterY = ch.y + ch.h / 2;
+        const distToChar = Math.hypot(chCenterX - this.x, chCenterY - this.y);
+
+        if (distToChar <= this.radius + Math.min(ch.w, ch.h) * 0.55) {
+          // Natychmiastowa detonacja przy uderzeniu we wroga!
+          this.detonate(groundY, activePlats, customObs, combatants, ball);
+          return false;
+        }
+      }
+    }
+
+    // 5. Odliczanie zapalnika czasowego (1.5 sekundy)
+    this.fuse--;
+    if (this.fuse <= 0) {
+      this.detonate(groundY, activePlats, customObs, combatants, ball);
+      return false;
+    }
+
+    return true;
+  }
+
+  detonate(groundY, platforms, customObs, combatants, ball) {
+    if (this.detonated) return;
+    this.detonated = true;
+
+    detonateGrenadeExplosion(this.x, this.y, this.blastRadius, this.shooter, groundY, platforms, customObs, combatants, ball);
+  }
+
+  draw(ctx) {
+    if (this.detonated) return;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+
+    // Korpuc granatu – taktyczny wojskowy aero-kanister
+    ctx.fillStyle = '#2d3748';
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(-6, -9, 12, 18, 4);
+    else ctx.rect(-6, -9, 12, 18);
+    ctx.fill();
+    ctx.stroke();
+
+    // Pierścień ozdobny Aero (Oliwka / Neon Lime)
+    ctx.fillStyle = '#65a30d';
+    ctx.fillRect(-6, -2, 12, 4);
+
+    // Zapalnik i łyżka
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-2, -12, 4, 3);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(2, -11);
+    ctx.lineTo(6, -6);
+    ctx.lineTo(6, 4);
+    ctx.stroke();
+
+    // Pulsująca czerwona dioda zapalnika
+    const pulseRate = (this.maxFuse - this.fuse) / this.maxFuse;
+    const isLit = (Math.sin(this.fuse * (0.25 + pulseRate * 0.55)) > 0);
+
+    ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = isLit ? 10 : 0;
+    ctx.beginPath();
+    ctx.arc(0, -5, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+/**
+ * Wystrzelenie super-granatu z postaci
+ */
+export function spawnAeroSuperGrenade(shooter, targetX, targetY) {
+  const grenade = new AeroSuperGrenade(shooter, targetX, targetY);
+  activeProjectiles.push(grenade);
+  return grenade;
+}
+
+/**
+ * Główna procedura wybuchu, obrażeń i niszczenia terenu (AoE Destruction)
+ */
+export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball) {
+  // 1. Obrażenia i odrzut graczy / botów
+  const targets = Array.isArray(combatants) ? combatants : [];
+  for (const ch of targets) {
+    if (!ch || ch.isDead) continue;
+    const chCenterX = ch.x + ch.w / 2;
+    const chCenterY = ch.y + ch.h / 2;
+    const dist = Math.hypot(chCenterX - expX, chCenterY - expY);
+
+    if (dist <= radius) {
+      const factor = Math.max(0, 1 - (dist / radius));
+      // 120-150 dmg w centrum ze spadkiem liniowym
+      const damage = Math.round(145 * factor);
+      const impulse = factor * 22.0;
+
+      const normX = dist > 0.001 ? (chCenterX - expX) / dist : (ch.facing || 1);
+      const normY = dist > 0.001 ? (chCenterY - expY) / dist : -0.8;
+
+      ch.vx += normX * impulse;
+      ch.vy += normY * impulse - 3.8;
+
+      ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - damage);
+      spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
+
+      if (ch.hp <= 0 && !ch.isDead) {
+        ch.isDead = true;
+        ch.respawnTimer = 180;
+        ch.corpseFloorY = groundY;
+        ch.isGibbed = true;
+        ch.deathImpulse = { vx: normX * impulse * 1.2, vy: normY * impulse * 1.2 - 2.5 };
+        triggerHitstop(8);
+      }
+    }
+  }
+
+  // 2. Potężny impuls odrzucający piłkę
+  if (ball) {
+    const ballDx = ball.x - expX;
+    const ballDy = ball.y - expY;
+    const ballDist = Math.hypot(ballDx, ballDy);
+
+    if (ballDist <= radius) {
+      const factor = Math.max(0, 1 - (ballDist / radius));
+      const ballImpulse = factor * 28.0;
+      const bNormX = ballDist > 0.001 ? ballDx / ballDist : 0;
+      const bNormY = ballDist > 0.001 ? ballDy / ballDist : -1;
+
+      ball.vx += bNormX * ballImpulse;
+      ball.vy += bNormY * ballImpulse - 5.5;
+      ball.spin = (Math.random() - 0.5) * 0.45;
+    }
+  }
+
+  // 3. FIZYCZNE NISZCZENIE PLATFORM (AABB Destructible Terrain)
+  const targetPlatforms = platforms || ARENA_PLATFORMS;
+  if (Array.isArray(targetPlatforms)) {
+    destroyPlatformSegments(targetPlatforms, expX, expY, radius, groundY);
+  }
+
+  // 4. Niszczenie postawionych przeszkód w zasięgu wybuchu
+  const targetObs = customObs || customObstacles;
+  if (Array.isArray(targetObs)) {
+    for (let i = targetObs.length - 1; i >= 0; i--) {
+      const obs = targetObs[i];
+      if (!obs) continue;
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const obsCenterX = obs.x + (obs.w || 30) / 2;
+      const obsCenterY = topY + (obs.h || 30) / 2;
+      const obsDist = Math.hypot(obsCenterX - expX, obsCenterY - expY);
+
+      if (obsDist <= radius * 0.95) {
+        spawnRubbleDebris(obsCenterX, obsCenterY, 8);
+        targetObs.splice(i, 1);
+        const idx = obstacles.indexOf(obs);
+        if (idx !== -1) obstacles.splice(idx, 1);
+      }
+    }
+  }
+
+  // 5. Cząsteczki odłamków gruzu/betonu (12-18 odłamków)
+  spawnRubbleDebris(expX, expY, Math.floor(Math.random() * 7 + 12));
+
+  // 6. Kula ognia, fala uderzeniowa i wstrząs kamery
+  spawnExplosionEffect(expX, expY, radius);
+  addExplosionCrater(expX, expY, radius * 0.65);
+  triggerScreenShake(12);
+}
+
+/**
+ * Logika cięcia / podziału platform AABB przy wybuchu
+ */
+export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) {
+  const newPlatsToAdd = [];
+
+  for (let i = platforms.length - 1; i >= 0; i--) {
+    const plat = platforms[i];
+    if (!plat) continue;
+
+    const platTopY = groundY - plat.relY;
+    const platThick = plat.thickness || 22;
+    const platBottomY = platTopY + platThick;
+    const platLeft = plat.x;
+    const platRight = plat.x + plat.w;
+
+    // Sprawdzenie czy okrąg wybuchu przecina prostokąt platformy
+    const nearestY = Math.max(platTopY, Math.min(expY, platBottomY));
+    const nearestX = Math.max(platLeft, Math.min(expX, platRight));
+    const distToPlat = Math.hypot(expX - nearestX, expY - nearestY);
+
+    if (distToPlat > radius) {
+      continue; // Wybuch nie sięga platformy
+    }
+
+    // Zakres poziomy wycięcia wybuchu
+    const holeLeft = expX - radius * 0.85;
+    const holeRight = expX + radius * 0.85;
+
+    // Przypadek 1: Wybuch obejmuje całą platformę -> całkowite zniszczenie
+    if (holeLeft <= platLeft && holeRight >= platRight) {
+      platforms.splice(i, 1);
+      continue;
+    }
+
+    // Przypadek 2: Wycięcie lewej części platformy
+    if (holeLeft <= platLeft && holeRight < platRight) {
+      const remainingWidth = platRight - holeRight;
+      if (remainingWidth >= 20) {
+        plat.x = holeRight;
+        plat.w = remainingWidth;
+      } else {
+        platforms.splice(i, 1);
+      }
+      continue;
+    }
+
+    // Przypadek 3: Wycięcie prawej części platformy
+    if (holeLeft > platLeft && holeRight >= platRight) {
+      const remainingWidth = holeLeft - platLeft;
+      if (remainingWidth >= 20) {
+        plat.w = remainingWidth;
+      } else {
+        platforms.splice(i, 1);
+      }
+      continue;
+    }
+
+    // Przypadek 4: Wycięcie DZIURY w środku platformy (podział na 2 mniejsze segmenty)
+    if (holeLeft > platLeft && holeRight < platRight) {
+      const leftW = holeLeft - platLeft;
+      const rightW = platRight - holeRight;
+
+      if (leftW >= 20 && rightW >= 20) {
+        // Lewy fragment
+        plat.w = leftW;
+
+        // Prawy fragment – skopiuj właściwości platformy
+        const rightPlat = {
+          ...JSON.parse(JSON.stringify(plat)),
+          id: plat.id + '_split_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+          x: holeRight,
+          w: rightW
+        };
+        newPlatsToAdd.push(rightPlat);
+      } else if (leftW >= 20) {
+        plat.w = leftW;
+      } else if (rightW >= 20) {
+        plat.x = holeRight;
+        plat.w = rightW;
+      } else {
+        platforms.splice(i, 1);
+      }
+    }
+  }
+
+  if (newPlatsToAdd.length > 0) {
+    platforms.push(...newPlatsToAdd);
+  }
+}
+
+/**
+ * Fizyczne cząsteczki gruzu i betonu odbijające się od podłoża
+ */
+export function spawnRubbleDebris(x, y, count = 15) {
+  const colors = ['#475569', '#334155', '#64748b', '#94a3b8', '#1e293b', '#f97316'];
+
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 6.5 + 2.5;
+
+    rubbleParticles.push({
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (Math.random() * 4.5 + 2.0),
+      size: Math.random() * 5 + 3,
+      angle: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.35,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      bounces: 0,
+      maxBounces: 2,
+      isGrounded: false,
+      life: 180,
+      maxLife: 180,
+      alpha: 1.0
+    });
+  }
+}
+
+export function updateRubbleParticles(groundY, platforms) {
+  for (let i = rubbleParticles.length - 1; i >= 0; i--) {
+    const r = rubbleParticles[i];
+    r.life--;
+    if (r.life <= 0) {
+      rubbleParticles.splice(i, 1);
+      continue;
+    }
+
+    if (r.life < 40) {
+      r.alpha = r.life / 40;
+    }
+
+    if (!r.isGrounded) {
+      r.vy += 0.38;
+      r.x += r.vx;
+      r.y += r.vy;
+      r.angle += r.vRot;
+
+      // Odbicie od podłoża
+      if (r.y >= groundY) {
+        r.y = groundY;
+        r.vy = -r.vy * 0.45;
+        r.vx *= 0.65;
+        r.bounces++;
+        if (r.bounces >= r.maxBounces || Math.abs(r.vy) < 0.6) {
+          r.isGrounded = true;
+          r.vy = 0;
+          r.vx = 0;
+        }
+      }
+    }
+  }
+}
+
+export function drawRubbleParticles(ctx) {
+  for (const r of rubbleParticles) {
+    ctx.save();
+    ctx.globalAlpha = r.alpha;
+    ctx.translate(r.x, r.y);
+    ctx.rotate(r.angle);
+    ctx.fillStyle = r.color;
+    ctx.fillRect(-r.size / 2, -r.size / 2, r.size, r.size * 0.75);
+    ctx.restore();
+  }
+}
+
+export function clearRubbleParticles() {
+  rubbleParticles.length = 0;
+}
+
+/**
+ * Błysk i rozrastająca się fala uderzeniowa eksplozji
+ */
+export function spawnExplosionEffect(x, y, maxRadius = 145) {
+  explosionEffects.push({
+    x,
+    y,
+    currentRadius: 10,
+    maxRadius,
+    shockwaveRadius: 15,
+    maxShockwaveRadius: maxRadius * 1.25,
+    life: 28,
+    maxLife: 28,
+    flashAlpha: 0.95
+  });
+}
+
+export function updateExplosionEffects() {
+  for (let i = explosionEffects.length - 1; i >= 0; i--) {
+    const ef = explosionEffects[i];
+    ef.life--;
+    if (ef.life <= 0) {
+      explosionEffects.splice(i, 1);
+      continue;
+    }
+
+    const progress = 1 - (ef.life / ef.maxLife);
+    ef.currentRadius = 10 + (ef.maxRadius - 10) * Math.sin(progress * Math.PI * 0.5);
+    ef.shockwaveRadius = 15 + (ef.maxShockwaveRadius - 15) * progress;
+    ef.flashAlpha = Math.max(0, 1 - progress * 1.5);
+  }
+}
+
+export function drawExplosionEffects(ctx) {
+  for (const ef of explosionEffects) {
+    const progress = 1 - (ef.life / ef.maxLife);
+    const alpha = Math.max(0, 1 - progress);
+
+    ctx.save();
+
+    // 1. Kula ognia
+    const grad = ctx.createRadialGradient(ef.x, ef.y, 0, ef.x, ef.y, ef.currentRadius);
+    grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
+    grad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.9})`);
+    grad.addColorStop(0.55, `rgba(249, 115, 22, ${alpha * 0.75})`);
+    grad.addColorStop(0.85, `rgba(239, 68, 68, ${alpha * 0.45})`);
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(ef.x, ef.y, ef.currentRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Pierścień uderzeniowy (Shockwave ring)
+    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.85})`;
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3.5 * alpha;
+    ctx.beginPath();
+    ctx.arc(ef.x, ef.y, ef.shockwaveRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+export function clearExplosionEffects() {
+  explosionEffects.length = 0;
+}
+
+/**
+ * Ślady przypalenia po wybuchu (Craters / Scorch marks)
+ */
+export function addExplosionCrater(x, y, r) {
+  explosionCraters.push({
+    x,
+    y,
+    r,
+    alpha: 0.65
+  });
+  if (explosionCraters.length > 25) {
+    explosionCraters.shift();
+  }
+}
+
+export function drawExplosionCraters(ctx) {
+  for (const c of explosionCraters) {
+    ctx.save();
+    ctx.fillStyle = `rgba(15, 23, 42, ${c.alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.r, c.r * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+export function clearExplosionCraters() {
+  explosionCraters.length = 0;
+}
+
+/**
+ * Smugi dymu z lecącego granatu
+ */
+const grenadeSmokeParticles = [];
+export function spawnGrenadeSmokePuff(x, y) {
+  grenadeSmokeParticles.push({
+    x: x + (Math.random() - 0.5) * 4,
+    y: y + (Math.random() - 0.5) * 4,
+    vx: (Math.random() - 0.5) * 0.6,
+    vy: (Math.random() - 0.5) * 0.6 - 0.3,
+    size: Math.random() * 3.5 + 2,
+    alpha: 0.65,
+    life: 30,
+    maxLife: 30
+  });
+}
+
+export function updateGrenadeSmoke() {
+  for (let i = grenadeSmokeParticles.length - 1; i >= 0; i--) {
+    const s = grenadeSmokeParticles[i];
+    s.life--;
+    if (s.life <= 0) {
+      grenadeSmokeParticles.splice(i, 1);
+      continue;
+    }
+    s.x += s.vx;
+    s.y += s.vy;
+    s.size += 0.18;
+    s.alpha = (s.life / s.maxLife) * 0.65;
+  }
+}
+
+export function drawGrenadeSmoke(ctx) {
+  for (const s of grenadeSmokeParticles) {
+    ctx.save();
+    ctx.fillStyle = `rgba(148, 163, 184, ${s.alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * Zbiorcza aktualizacja wszystkich pocisków i efektów
+ */
+export function updateProjectiles(groundY, platforms, customObs, combatants, ball) {
+  for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+    const p = activeProjectiles[i];
+    const isAlive = p.update(groundY, platforms, customObs, combatants, ball);
+    if (!isAlive || p.detonated) {
+      activeProjectiles.splice(i, 1);
+    }
+  }
+
+  updateRubbleParticles(groundY, platforms);
+  updateExplosionEffects();
+  updateGrenadeSmoke();
+}
+
+/**
+ * Zbiorcze renderowanie pocisków i efektów wybuchu
+ */
+export function drawProjectiles(ctx) {
+  drawExplosionCraters(ctx);
+  drawGrenadeSmoke(ctx);
+
+  for (const p of activeProjectiles) {
+    p.draw(ctx);
+  }
+
+  drawRubbleParticles(ctx);
+  drawExplosionEffects(ctx);
+}

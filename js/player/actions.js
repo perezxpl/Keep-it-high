@@ -6,6 +6,7 @@
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop } from '../world.js';
+import { spawnAeroSuperGrenade } from '../projectiles.js';
 
 export function startJumpCharge(p) {
   if (p.isIntro || p.isJumping || p.isSliding || p.staggerTimer > 0) return;
@@ -59,7 +60,6 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
 
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
 
-<<<<<<< HEAD
   const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
   const speedOk = Math.abs(char.vx) > minSpeed;
   const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
@@ -67,18 +67,6 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   // Warunek konieczny: Wślizg może wykonać się TYLKO WTEDY, GDY POSTAĆ BIEGNIE (|vx| > MIN_RUN_SPEED).
   // Jeśli gracz stoi w miejscu i wciśnięty jest Shift, wślizg nie aktywuje się (brak przejścia w kucanie).
   if (!isGrounded || !speedOk || !cooldownOk) {
-=======
-  // Wślizg możliwy wyłącznie po sprincie (sprintDuration >= 60) oraz braku cooldownu
-  const sprintOk = (typeof char.sprintDuration === 'number' && char.sprintDuration >= 60);
-  const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
-
-  if (!isGrounded || !sprintOk || !cooldownOk) {
-    if (isGrounded && !char.isDead && !char.isIntro && !char.isSliding) {
-      char.isCrouching = true;
-      char.isProne = false;
-      char.crouchToggled = true;
-    }
->>>>>>> 7338c91f106cd8b57a63c3caf9df59ad3903666e
     return false;
   }
 
@@ -841,11 +829,8 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     const dmg = 11;
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
 
-<<<<<<< HEAD
     // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
     enemy.facing = -player.facing;
-=======
->>>>>>> 7338c91f106cd8b57a63c3caf9df59ad3903666e
     enemy.vx = player.facing * 16.5;
     enemy.airVx = enemy.vx;
     enemy.vy = -4.5;
@@ -943,3 +928,33 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
     }
   };
 }
+
+/**
+ * Super-umiejętność (Q) dla klasy Aero: Wybuchowy super-granat niszczący teren
+ */
+export function executeAeroUlt(p, targetX = null, targetY = null) {
+  if (!p || p.isDead || p.isIntro) return false;
+
+  // Sprawdzenie gotowości ult / cooldownu
+  if (p.ultCooldown !== undefined && p.ultCooldown > 0) {
+    return false;
+  }
+
+  // Ustalenie pozycji celu (celownik gracza lub domyślny wektor)
+  const aimX = (targetX !== null && targetX !== undefined) ? targetX : (p.aimX !== undefined ? p.aimX : (p.x + (p.facing || 1) * 300));
+  const aimY = (targetY !== null && targetY !== undefined) ? targetY : (p.aimY !== undefined ? p.aimY : (p.y - 40));
+
+  // Wystrzelenie super-granatu Aero
+  const grenade = spawnAeroSuperGrenade(p, aimX, aimY);
+
+  // Cooldown super-umiejętności: 8 sekund (480 klatek)
+  p.ultCooldown = 8 * 60;
+  p.ultMeter = 0;
+
+  // Wizualny odrzut przy rzucie
+  p.recoilAnim = 8;
+  triggerScreenShake(2.5);
+
+  return grenade;
+}
+

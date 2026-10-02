@@ -7,8 +7,9 @@ import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
-  registerWorldObstacles, setActiveArenaId, GROUND_Y
+  registerWorldObstacles, setActiveArenaId, GROUND_Y, world
 } from './world.js';
+import { clearRubbleParticles, clearExplosionEffects, clearExplosionCraters } from './projectiles.js';
 
 export const obstacles = [];
 export const customObstacles = [];
@@ -528,6 +529,57 @@ registerWorldObstacles(ARENA_PLATFORMS, customObstacles, {
 export function setGoalCelebrationTimer(val) {
   goalCelebrationTimer = val;
 }
+
+export let arenaSnapshot = {
+  arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
+  arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+  customObstacles: []
+};
+
+export function saveArenaSnapshot() {
+  arenaSnapshot = {
+    arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
+    arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+    customObstacles: JSON.parse(JSON.stringify(customObstacles))
+  };
+  if (typeof world !== 'undefined' && world) {
+    world.initialState = arenaSnapshot;
+  }
+}
+
+export function resetArena() {
+  if (!arenaSnapshot) {
+    saveArenaSnapshot();
+  }
+
+  ARENA_PLATFORMS.length = 0;
+  if (activeArenaId === 'ARENA_2') {
+    ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena2Platforms)));
+  } else {
+    ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena1Platforms)));
+  }
+
+  clearRubbleParticles();
+  clearExplosionEffects();
+  clearExplosionCraters();
+}
+
+if (typeof world !== 'undefined' && world) {
+  world.initialState = arenaSnapshot;
+  world.resetArena = resetArena;
+  world.saveInitialState = saveArenaSnapshot;
+  Object.defineProperty(world, 'platforms', {
+    get() { return ARENA_PLATFORMS; },
+    set(v) {
+      if (Array.isArray(v)) {
+        ARENA_PLATFORMS.length = 0;
+        ARENA_PLATFORMS.push(...v);
+      }
+    },
+    configurable: true
+  });
+}
+
 
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
   activeArenaId = (arenaId === 'ARENA_2' || arenaId === 2 || arenaId === 'CYBER_STADIUM') ? 'ARENA_2' : 'ARENA_1';
@@ -1595,6 +1647,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
           triggerScreenShake(15);
           triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+          resetArena();
 
           arena1State.waitingForKickoff = true;
           arena1State.kickoffCooldown = 65;

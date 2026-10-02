@@ -1,7 +1,7 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES } from './config.js';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
 import {
-  canvas, ctx, W, H, GROUND_Y, camera,
-  initCanvas, resize, updateCamera, updateDistance,
+  canvas, ctx, W, H, GROUND_Y, camera, world,
+  initCanvas, resize, updateCamera, updateDistance, clampCamera,
   spawnGrass, updateParticles, dist,
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
   clearDesertSandstorm, clearWinterBlizzard,
@@ -16,8 +16,10 @@ import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
-  updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos
+  updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
+  executeAeroUlt
 } from './player.js';
+import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
 } from './ball.js';
@@ -27,7 +29,7 @@ import {
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
-  updateMovableObstacles
+  updateMovableObstacles, resetArena
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
@@ -524,10 +526,11 @@ export function teleportToDistance(meters) {
   ball.spin = 0;
   ball.trail = [];
 
-  camera.x = player.x;
-  camera.targetX = player.x;
-  camera.y = GROUND_Y;
-  camera.targetY = GROUND_Y;
+  camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+  camera.x = camera.targetX;
+  camera.targetY = GROUND_Y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+  camera.y = camera.targetY;
+  clampCamera();
 
   clearDesertSandstorm();
   clearWinterBlizzard();
@@ -554,9 +557,43 @@ export function devSetClass(target) {
   }
 }
 
+// Bezpieczne pobieranie granic areny z fallbackiem (Safe Arena Bounds Clamping Fallback)
+export const arenaLeft = (typeof world !== 'undefined' && world?.bounds?.minX !== undefined)
+  ? world.bounds.minX
+  : (typeof ARENA_LEFT !== 'undefined' ? ARENA_LEFT : 0);
+
+export const arenaRight = (typeof world !== 'undefined' && world?.bounds?.maxX !== undefined)
+  ? world.bounds.maxX
+  : (typeof ARENA_RIGHT !== 'undefined' ? ARENA_RIGHT : (typeof ARENA_WIDTH !== 'undefined' ? ARENA_WIDTH : 2400));
+
 window.teleportToDistance = teleportToDistance;
 window.devSetClass = devSetClass;
 window.setPlayerClass = setPlayerClass;
+window.arenaLeft = arenaLeft;
+window.arenaRight = arenaRight;
+window.world = (typeof world !== 'undefined' && world) ? world : {
+  bounds: { minX: arenaLeft, maxX: arenaRight, arenaWidth: arenaRight - arenaLeft }
+};
+window.camera = (typeof camera !== 'undefined') ? camera : null;
+window.resetArena = resetArena;
+window.executeAeroUlt = () => executeAeroUlt(player);
+
+export function startRound() {
+  resetArena();
+  if (player) {
+    player.hp = 100;
+    player.isDead = false;
+    player.ultCooldown = 0;
+    player.ultMeter = 100;
+  }
+  if (bot && bot.active) {
+    bot.hp = 100;
+    bot.isDead = false;
+  }
+  resetBallToPlayer(player, GROUND_Y);
+}
+window.startRound = startRound;
+
 
 // ==========================================
 // STAN GRY I SYSTEM WYBORU KLAS POSTACI
@@ -1153,10 +1190,11 @@ if (devArenaBtn) {
       devArenaBtn.style.color = '#22d3ee';
       devArenaBtn.style.boxShadow = '';
     }
-    camera.x = player.x;
-    camera.targetX = player.x;
-    camera.y = player.y;
-    camera.targetY = player.y;
+    camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+    camera.x = camera.targetX;
+    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+    camera.y = camera.targetY;
+    clampCamera();
     if (editorState.active) {
       renderEditorPalette();
     }
@@ -1402,8 +1440,8 @@ function placeSelectedObstacle() {
   const def = getObstacleDef(editorState.selectedType);
   if (!def) return;
 
-  const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-  const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+  const worldX = camera.x + mouseScreenX / camera.zoom;
+  const worldY = camera.y + mouseScreenY / camera.zoom;
 
   const placement = calculateObstaclePlacement(def, worldX, worldY, {
     snapToGrid: editorState.snapToGrid,
@@ -1449,8 +1487,8 @@ function placeSelectedObstacle() {
 }
 
 function handleEditorRightClick() {
-  const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-  const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+  const worldX = camera.x + mouseScreenX / camera.zoom;
+  const worldY = camera.y + mouseScreenY / camera.zoom;
 
   for (let i = customObstacles.length - 1; i >= 0; i--) {
     const obs = customObstacles[i];
@@ -1709,6 +1747,11 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR') {
     reloadWeapon(player, player.currentWeapon);
   }
+  if (e.code === 'KeyQ') {
+    if (gameState === GAME_STATES.PLAYING && !player.isDead) {
+      executeAeroUlt(player);
+    }
+  }
   if (e.code === 'KeyB') {
     resetBallToPlayer(player, GROUND_Y);
   }
@@ -1804,8 +1847,8 @@ window.addEventListener('mousemove', (e) => {
   }
 
   if (editorState.active) {
-    const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-    const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+    const worldX = camera.x + mouseScreenX / camera.zoom;
+    const worldY = camera.y + mouseScreenY / camera.zoom;
     editorState.cursorWorldX = worldX;
     editorState.cursorWorldY = worldY;
 
@@ -2020,8 +2063,8 @@ function update() {
   }
 
   if (!isTouchDevice) {
-    const worldMouseX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-    const worldMouseY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+    const worldMouseX = camera.x + mouseScreenX / camera.zoom;
+    const worldMouseY = camera.y + mouseScreenY / camera.zoom;
     player.aimX = worldMouseX;
     player.aimY = worldMouseY;
   }
@@ -2225,6 +2268,7 @@ function update() {
   if (bot.active) combatants.push(bot);
   if (remotePlayer.active) combatants.push(remotePlayer);
   updateBullets(GROUND_Y, obstacles, ball, combatants);
+  updateProjectiles(GROUND_Y, ARENA_PLATFORMS, customObstacles, combatants, ball);
 
   updateCamera(player, ball);
   updateDistance(ball.x);
@@ -2235,12 +2279,11 @@ function draw() {
   drawSky(ctx);
 
   ctx.save();
-  ctx.translate(W * 0.40, H * 0.68);
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  const worldLeft = camera.x - (W / camera.zoom);
-  const worldRight = camera.x + (W / camera.zoom) * 2;
+  const worldLeft = camera.x;
+  const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
   const worldWidth = worldRight - worldLeft;
 
   drawGround(ctx, worldLeft, worldWidth);
@@ -2278,8 +2321,8 @@ function draw() {
     if (editorState.selectedType) {
       const def = getObstacleDef(editorState.selectedType);
       if (def) {
-        const worldX = camera.x + (mouseScreenX - W * 0.40) / camera.zoom;
-        const worldY = camera.y + (mouseScreenY - H * 0.68) / camera.zoom;
+        const worldX = camera.x + mouseScreenX / camera.zoom;
+        const worldY = camera.y + mouseScreenY / camera.zoom;
         const placement = calculateObstaclePlacement(def, worldX, worldY, {
           snapToGrid: editorState.snapToGrid,
           gridSize: editorState.gridSize,
@@ -2327,6 +2370,7 @@ function draw() {
   }
 
   drawBullets(ctx);
+  drawProjectiles(ctx);
   drawGore(ctx);
   drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
   drawJetpackParticles(ctx);

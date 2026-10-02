@@ -117,8 +117,8 @@ export function triggerMouseKick(player, mouseScreenX, mouseScreenY, camera, W, 
   const camX = (camera && camera.x) ? camera.x : 0;
   const camY = (camera && camera.y) ? camera.y : 0;
 
-  const worldMouseX = camX + (mouseScreenX - W * 0.40) / zoom;
-  const worldMouseY = camY + (mouseScreenY - H * 0.68) / zoom;
+  const worldMouseX = camX + mouseScreenX / zoom;
+  const worldMouseY = camY + mouseScreenY / zoom;
 
   return performKick(player, {
     aimX: worldMouseX,

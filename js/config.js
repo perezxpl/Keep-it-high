@@ -23,7 +23,11 @@ export const CONFIG = {
   // SYSTEM BALANSU KOPNIĘCIA (GLOBAL NERF ~45-50% I BAZOWE SIŁY)
   BASE_KICK_FORCE: 19.5,      // Bazowa siła wykopu piłki (osłabienie o ~45% z 36)
   BASE_KNOCKBACK: 10.5,       // Bazowy knockback dla postaci (osłabienie o ~50% z 22)
-  BASE_BARREL_IMPULSE: 9.5    // Bazowy impuls dla ruchomych przeszkód (beczek)
+  BASE_BARREL_IMPULSE: 9.5,   // Bazowy impuls dla ruchomych przeszkód (beczek)
+
+  // SYSTEM OGRANICZENIA KAMERY (CAMERA CLAMPING)
+  CAMERA_CLAMPING: true,
+  CAMERA_SMOOTH_SPEED: 0.08
 };
 
 // =========================================================================

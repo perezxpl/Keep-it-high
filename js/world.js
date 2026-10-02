@@ -50,24 +50,39 @@ export let H = window.innerHeight;
 export let DPR = Math.min(window.devicePixelRatio || 1, 2);
 export let GROUND_Y = Math.round((H - 75) / 20) * 20;
 
-export const camera = {
-  x: START_X + 400,
-  y: GROUND_Y,
-  targetX: START_X + 400,
-  targetY: GROUND_Y,
-  zoom: 0.50,
-  targetZoom: 0.50,
-  smoothPos: 0.08,
-  smoothZoom: 0.04,
-  shakeIntensity: 0,
-  shakeDecay: 0.88,
-  shakeX: 0,
-  shakeY: 0
-};
+import {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight
+} from './camera.js';
 
-export function triggerScreenShake(intensity) {
-  camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
-}
+export {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight
+};
 
 // =========================================================================
 // SYSTEM HITSTOP (ZAMROŻENIE KLATKI PRZY EFEKTOWNEJ ŚMIERCI)
@@ -121,35 +136,7 @@ export function resize(player) {
   }
 }
 
-export let devZoomLevel = null; // null = automatyczny zoom gry, liczba = sztywny zoom DEV (np. 1.5)
-export function setDevZoom(val) {
-  devZoomLevel = val !== null ? Math.max(0.35, Math.min(2.5, val)) : null;
-}
 
-export function updateCamera(player, ball) {
-  if (devZoomLevel !== null) {
-    camera.targetZoom = devZoomLevel;
-  } else {
-    camera.targetZoom = 0.50; // domyślny zoom gry
-  }
-  camera.zoom += (camera.targetZoom - camera.zoom) * camera.smoothZoom;
-
-  camera.targetX = (player.x + player.w / 2) + (player.vx * 12);
-  camera.targetY = player.y + 20;
-
-  if (camera.shakeIntensity > 0.1) {
-    camera.shakeX = (Math.random() * 2 - 1) * camera.shakeIntensity;
-    camera.shakeY = (Math.random() * 2 - 1) * camera.shakeIntensity;
-    camera.shakeIntensity *= camera.shakeDecay;
-  } else {
-    camera.shakeIntensity = 0;
-    camera.shakeX = 0;
-    camera.shakeY = 0;
-  }
-
-  camera.x += (camera.targetX - camera.x) * camera.smoothPos + camera.shakeX;
-  camera.y += (camera.targetY - camera.y) * camera.smoothPos + camera.shakeY;
-}
 
 export function updateDistance(ballX) {
   currentDist = Math.max(0, Math.floor((ballX - START_X) / 14));
@@ -1350,8 +1337,8 @@ function drawCyberStadiumSky(ctx, camX) {
     const beamLen = 950 * camera.zoom;
     for (let i = 0; i < spots.length; i++) {
       const s = spots[i];
-      const sourceScreenX = W * 0.40 + (s.worldX - camera.x) * camera.zoom;
-      const sourceScreenY = H * 0.68 + ((GROUND_Y - 520) - camera.y) * camera.zoom;
+      const sourceScreenX = (s.worldX - camera.x) * camera.zoom;
+      const sourceScreenY = ((GROUND_Y - 520) - camera.y) * camera.zoom;
 
       const sway = Math.sin(time * 1.5 + i * 1.6) * 0.10;
       const currentAngle = s.baseAngle + sway;
@@ -1388,10 +1375,11 @@ function drawCyberStadiumSky(ctx, camX) {
 }
 
 export function drawSky(ctx) {
+  const camCenterX = camera ? (camera.x + (camera.viewWidth || (W / (camera.zoom || 1))) / 2) : 1760;
   if (activeArenaId === 'ARENA_2') {
-    drawCyberStadiumSky(ctx, camera ? camera.x : 960);
+    drawCyberStadiumSky(ctx, camCenterX);
   } else {
-    drawNeonNightOpsSky(ctx, camera ? camera.x : 1760);
+    drawNeonNightOpsSky(ctx, camCenterX);
   }
 }
 
@@ -2008,8 +1996,8 @@ export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
 export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   if (!ball || !camera) return;
 
-  const screenX = W * 0.40 + (ball.x - camera.x) * camera.zoom;
-  const screenY = H * 0.68 + (ball.y - camera.y) * camera.zoom;
+  const screenX = (ball.x - camera.x) * camera.zoom;
+  const screenY = (ball.y - camera.y) * camera.zoom;
 
   const margin = 35;
   const minX = margin;
@@ -2281,6 +2269,22 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.fillStyle = wepTextColor;
   ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
   ctx.fillText(`BROŃ: ${wepStatusText}`, statsX, curY);
+
+  curY += lineGap;
+  const ultMeter = player.ultMeter !== undefined ? player.ultMeter : (player.ultCooldown > 0 ? 0 : 100);
+  const isUltReady = (!player.ultCooldown || player.ultCooldown <= 0) && ultMeter >= 100;
+  if (isUltReady) {
+    ctx.fillStyle = '#10b981';
+    ctx.shadowColor = '#10b981';
+    ctx.shadowBlur = 6;
+    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
+    ctx.fillText(`ULT [Q]: GRANAT GOTOWY!`, statsX, curY);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillStyle = '#64748b';
+    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
+    ctx.fillText(`ULT [Q]: ŁADOWANIE (${ultMeter}%)`, statsX, curY);
+  }
 
   curY += lineGap;
   // Powiększony, czytelny licznik klatek (FPS)

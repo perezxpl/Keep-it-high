@@ -31,3 +31,30 @@ export {
   drawBulletCasing,
   drawBulletCasings
 } from './particles.js';
+
+export {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake
+} from './camera.js';
+
+export {
+  drawProjectiles,
+  drawRubbleParticles,
+  drawExplosionEffects,
+  drawExplosionCraters,
+  AeroSuperGrenade,
+  activeProjectiles,
+  rubbleParticles,
+  explosionEffects
+} from './projectiles.js';
+

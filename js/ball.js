@@ -1,7 +1,7 @@
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { distToSegment, triggerScreenShake, triggerGoalCelebration } from './world.js';
 import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, arenaScore } from './obstacles.js';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, arenaScore, resetArena } from './obstacles.js';
 
 export const ball = {
   x: START_X - 38,
@@ -208,6 +208,7 @@ export function updateBall(GROUND_Y) {
 
         triggerScreenShake(14);
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+        resetArena();
 
         // Reset piłki na środek murawy
         ball.x = 960;
