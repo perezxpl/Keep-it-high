@@ -17,7 +17,7 @@ import {
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
-  executeAeroUlt
+  executeAeroUlt, throwTacticalGrenade
 } from './player.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import {
@@ -123,7 +123,9 @@ canvas.addEventListener('touchstart', (e) => {
     for (const btn of weaponButtons) {
       if (t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
         t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
-        if (player.currentWeapon?.id === btn.id) {
+        if (btn.id === 'GRENADE') {
+          throwTacticalGrenade(player);
+        } else if (player.currentWeapon?.id === btn.id) {
           reloadWeapon(player, player.currentWeapon);
         } else {
           player.currentWeapon = WEAPONS[btn.id];
@@ -172,6 +174,8 @@ canvas.addEventListener('touchstart', (e) => {
       const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
       const crouchBtn = btnCluster.crouch;
       const distToCrouch = crouchBtn ? dist(t.clientX, t.clientY, crouchBtn.x, crouchBtn.y) : 999;
+      const grenadeBtn = btnCluster.grenade;
+      const distToGrenade = grenadeBtn ? dist(t.clientX, t.clientY, grenadeBtn.x, grenadeBtn.y) : 999;
 
       if (distToSlide < btnCluster.slide.r + 16) {
         btnCluster.slide.active = true;
@@ -181,9 +185,13 @@ canvas.addEventListener('touchstart', (e) => {
         crouchBtn.active = true;
         crouchBtn.id = t.identifier;
         keys.crouch = true;
+      } else if (grenadeBtn && distToGrenade < grenadeBtn.r + 16) {
+        grenadeBtn.active = true;
+        grenadeBtn.id = t.identifier;
+        throwTacticalGrenade(player);
       } else if (!rightStick.active) {
-        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków wślizgu/kucania
-        if (distToSlide < btnCluster.slide.r + 28 || (crouchBtn && distToCrouch < crouchBtn.r + 28)) continue;
+        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków wślizgu/kucania/granatu
+        if (distToSlide < btnCluster.slide.r + 28 || (crouchBtn && distToCrouch < crouchBtn.r + 28) || (grenadeBtn && distToGrenade < grenadeBtn.r + 28)) continue;
 
         const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
         const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
@@ -437,6 +445,11 @@ function endTouch(e) {
       keys.crouch = false;
     }
 
+    if (btnCluster.grenade && btnCluster.grenade.active && t.identifier === btnCluster.grenade.id) {
+      btnCluster.grenade.active = false;
+      btnCluster.grenade.id = null;
+    }
+
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
@@ -577,6 +590,7 @@ window.world = (typeof world !== 'undefined' && world) ? world : {
 window.camera = (typeof camera !== 'undefined') ? camera : null;
 window.resetArena = resetArena;
 window.executeAeroUlt = () => executeAeroUlt(player);
+window.throwTacticalGrenade = () => throwTacticalGrenade(player);
 
 export function startRound() {
   resetArena();
@@ -1748,8 +1762,11 @@ window.addEventListener('keydown', (e) => {
     reloadWeapon(player, player.currentWeapon);
   }
   if (e.code === 'KeyQ') {
+    // Klawisz 'Q' zwolniony z rzutu granatem (ult nie jest zużywany przy rzucie)
+  }
+  if (e.code === 'KeyG' || e.code === 'KeyF') {
     if (gameState === GAME_STATES.PLAYING && !player.isDead) {
-      executeAeroUlt(player);
+      throwTacticalGrenade(player);
     }
   }
   if (e.code === 'KeyB') {
@@ -1908,7 +1925,9 @@ canvas.addEventListener('mousedown', (e) => {
   for (const btn of weaponButtons) {
     if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
       e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
-      if (player.currentWeapon?.id === btn.id) {
+      if (btn.id === 'GRENADE') {
+        throwTacticalGrenade(player);
+      } else if (player.currentWeapon?.id === btn.id) {
         reloadWeapon(player, player.currentWeapon);
       } else {
         player.currentWeapon = WEAPONS[btn.id];

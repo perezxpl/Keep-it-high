@@ -38,6 +38,22 @@ export function triggerScreenShake(intensity) {
   camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
 }
 
+export function shakeImpulse(intensity = 14, duration = 0.15) {
+  camera.shakeIntensity = Math.min(32, Math.max(camera.shakeIntensity || 0, intensity));
+  camera.shakeDecay = (typeof duration === 'number' && duration <= 0.25) ? 0.72 : 0.85;
+}
+camera.shakeImpulse = shakeImpulse;
+
+Object.defineProperty(camera, 'shake', {
+  get() { return this.shakeIntensity || 0; },
+  set(val) {
+    this.shakeIntensity = Math.min(32, Math.max(0, val));
+  },
+  configurable: true
+});
+
+
+
 /**
  * Logiczna szerokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
  */

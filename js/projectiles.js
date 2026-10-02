@@ -4,8 +4,29 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles } from './obstacles.js';
+import {
+  spawnShrapnelStreak,
+  spawnConcreteDebris,
+  spawnPowderSmoke,
+  spawnDustCloud,
+  spawnShockwaveRing,
+  spawnExplosionFirePuff,
+  spawnStretchedSparks,
+  spawnHeavySmokePuff,
+  spawnJuiceExplosion,
+  updateExplosionParticles,
+  drawDustClouds,
+  drawConcreteDebris,
+  drawShrapnelStreaks,
+  drawRicochetSparks,
+  drawPowderSmoke,
+  drawExplosionSmokeBackground,
+  drawExplosionFireAndSparks,
+  drawGrenadeJuiceExplosion,
+  clearExplosionParticles
+} from './particles.js';
 
 export const activeProjectiles = [];
 export const rubbleParticles = [];
@@ -277,10 +298,15 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
-  // 3. FIZYCZNE NISZCZENIE PLATFORM (AABB Destructible Terrain)
+  // 3. FIZYCZNE NISZCZENIE PLATFORM I WYCINKA PODŁOŻA (Real Geometry Carving)
   const targetPlatforms = platforms || ARENA_PLATFORMS;
+  const terrainRadius = 90;
   if (Array.isArray(targetPlatforms)) {
-    destroyPlatformSegments(targetPlatforms, expX, expY, radius, groundY);
+    destroyPlatformSegments(targetPlatforms, expX, expY, terrainRadius, groundY);
+  }
+  // Realna wycinka podłoża areny (GROUND_Y)
+  if (typeof carveGroundHole === 'function') {
+    carveGroundHole(expX, expY, terrainRadius);
   }
 
   // 4. Niszczenie postawionych przeszkód w zasięgu wybuchu
@@ -295,7 +321,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       const obsDist = Math.hypot(obsCenterX - expX, obsCenterY - expY);
 
       if (obsDist <= radius * 0.95) {
-        spawnRubbleDebris(obsCenterX, obsCenterY, 8);
+        spawnConcreteDebris(obsCenterX, obsCenterY, 8);
         targetObs.splice(i, 1);
         const idx = obstacles.indexOf(obs);
         if (idx !== -1) obstacles.splice(idx, 1);
@@ -303,19 +329,40 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
 
-  // 5. Cząsteczki odłamków gruzu/betonu (12-18 odłamków)
-  spawnRubbleDebris(expX, expY, Math.floor(Math.random() * 7 + 12));
+  // 5. Dynamiczny efekt wybuchu HE (Game Juice):
+  // - 1x ShockwaveRing
+  // - 14–18 cząsteczek ExplosionFirePuff (promień 20px, prędkość 50–120 px/s)
+  // - 30–40 cząsteczek StretchedSparks (rozciągane linie żaru)
+  // - 10–14 cząsteczek HeavySmokePuff (ciemne tło wybuchu)
+  spawnJuiceExplosion(expX, expY);
 
-  // 6. Kula ognia, fala uderzeniowa i wstrząs kamery
+  // Odpalenie dodatkowej fali cząsteczek otoczenia:
+  spawnShrapnelStreak(expX, expY, 20);
+  spawnPowderSmoke(expX, expY, 12);
+  spawnDustCloud(expX, expY, 18);
+
+  // 6. Krótkotrwały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF'), kula ognia
   spawnExplosionEffect(expX, expY, radius);
-  addExplosionCrater(expX, expY, radius * 0.65);
-  triggerScreenShake(12);
+  // (Usunięto addExplosionCrater - zastąpiono realną wyrwą w geometrii kładki)
+
+  // 7. Kamera: camera.shake = 16 oraz krótkie spowolnienie czasu / hitstop (freeze na 2 klatki)
+  if (typeof camera !== 'undefined' && camera) {
+    camera.shake = 16;
+    if (typeof camera.shakeImpulse === 'function') {
+      camera.shakeImpulse(16, 0.15);
+    }
+  } else if (typeof shakeImpulse === 'function') {
+    shakeImpulse(16, 0.15);
+  } else {
+    triggerScreenShake(16);
+  }
+  triggerHitstop(2);
 }
 
 /**
  * Logika cięcia / podziału platform AABB przy wybuchu
  */
-export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) {
+export function destroyPlatformSegments(platforms, expX, expY, radius = 90, groundY) {
   const newPlatsToAdd = [];
 
   for (let i = platforms.length - 1; i >= 0; i--) {
@@ -341,6 +388,32 @@ export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) 
     const holeLeft = expX - radius * 0.85;
     const holeRight = expX + radius * 0.85;
 
+    // Określ zniszczony wycinek platformy [cutStart, cutEnd]
+    const cutStart = Math.max(platLeft, holeLeft);
+    const cutEnd = Math.min(platRight, holeRight);
+    const destroyedWidth = cutEnd - cutStart;
+
+    if (destroyedWidth > 5) {
+      // Wykryj do 5 kratek / segmentów w zasięgu wybuchu (kratki o szerokości ~25-35px)
+      const numCells = Math.min(5, Math.max(1, Math.round(destroyedWidth / 28)));
+      for (let k = 0; k < numCells; k++) {
+        const cellCenterX = cutStart + (k + 0.5) * (destroyedWidth / numCells);
+        const cellCenterY = platTopY + platThick / 2;
+
+        const cDx = cellCenterX - expX;
+        const cDy = cellCenterY - expY;
+        const cDist = Math.hypot(cDx, cDy) || 1;
+        const normX = cDx / cDist;
+        const normY = cDy / cDist;
+        const speed = 160 + Math.random() * 180;
+        const outwardVx = normX * speed;
+        const outwardVy = normY * speed - 50;
+
+        // Z centrum każdej zniszczonej kratki wyrzuć po 2–3 cząsteczki ConcreteDebris z wektorem odśrodkowym
+        spawnConcreteDebris(cellCenterX, cellCenterY, Math.floor(Math.random() * 2 + 2), outwardVx, outwardVy);
+      }
+    }
+
     // Przypadek 1: Wybuch obejmuje całą platformę -> całkowite zniszczenie
     if (holeLeft <= platLeft && holeRight >= platRight) {
       platforms.splice(i, 1);
@@ -353,6 +426,8 @@ export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) 
       if (remainingWidth >= 20) {
         plat.x = holeRight;
         plat.w = remainingWidth;
+        plat.scorchLeft = true;
+        plat.scorchMark = true;
       } else {
         platforms.splice(i, 1);
       }
@@ -364,6 +439,8 @@ export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) 
       const remainingWidth = holeLeft - platLeft;
       if (remainingWidth >= 20) {
         plat.w = remainingWidth;
+        plat.scorchRight = true;
+        plat.scorchMark = true;
       } else {
         platforms.splice(i, 1);
       }
@@ -378,20 +455,29 @@ export function destroyPlatformSegments(platforms, expX, expY, radius, groundY) 
       if (leftW >= 20 && rightW >= 20) {
         // Lewy fragment
         plat.w = leftW;
+        plat.scorchRight = true;
+        plat.scorchMark = true;
 
         // Prawy fragment – skopiuj właściwości platformy
         const rightPlat = {
           ...JSON.parse(JSON.stringify(plat)),
           id: plat.id + '_split_' + Date.now() + '_' + Math.floor(Math.random() * 100),
           x: holeRight,
-          w: rightW
+          w: rightW,
+          scorchLeft: true,
+          scorchRight: false,
+          scorchMark: true
         };
         newPlatsToAdd.push(rightPlat);
       } else if (leftW >= 20) {
         plat.w = leftW;
+        plat.scorchRight = true;
+        plat.scorchMark = true;
       } else if (rightW >= 20) {
         plat.x = holeRight;
         plat.w = rightW;
+        plat.scorchLeft = true;
+        plat.scorchMark = true;
       } else {
         platforms.splice(i, 1);
       }
@@ -496,7 +582,9 @@ export function spawnExplosionEffect(x, y, maxRadius = 145) {
     maxShockwaveRadius: maxRadius * 1.25,
     life: 28,
     maxLife: 28,
-    flashAlpha: 0.95
+    flashAlpha: 1.0,
+    flashFrames: 2, // 2 klatki, promień 60px, kolor: '#FFFFFF'
+    flashRadius: 60
   });
 }
 
@@ -507,6 +595,10 @@ export function updateExplosionEffects() {
     if (ef.life <= 0) {
       explosionEffects.splice(i, 1);
       continue;
+    }
+
+    if (ef.flashFrames > 0) {
+      ef.flashFrames--;
     }
 
     const progress = 1 - (ef.life / ef.maxLife);
@@ -545,6 +637,16 @@ export function drawExplosionEffects(ctx) {
     ctx.arc(ef.x, ef.y, ef.shockwaveRadius, 0, Math.PI * 2);
     ctx.stroke();
 
+    // 3. Krótkotrwały intensywny biały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF')
+    if (ef.flashFrames > 0) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = '#FFFFFF';
+      ctx.shadowBlur = 30;
+      ctx.beginPath();
+      ctx.arc(ef.x, ef.y, ef.flashRadius || 60, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 }
@@ -555,28 +657,14 @@ export function clearExplosionEffects() {
 
 /**
  * Ślady przypalenia po wybuchu (Craters / Scorch marks)
+ * Usunięto sztuczną nakładkę (Fake Decal) - zastąpiono realną wyrwą w geometrii
  */
 export function addExplosionCrater(x, y, r) {
-  explosionCraters.push({
-    x,
-    y,
-    r,
-    alpha: 0.65
-  });
-  if (explosionCraters.length > 25) {
-    explosionCraters.shift();
-  }
+  // Pusta funkcja dla kompatybilności API – brak sztucznego malowania elipsy
 }
 
 export function drawExplosionCraters(ctx) {
-  for (const c of explosionCraters) {
-    ctx.save();
-    ctx.fillStyle = `rgba(15, 23, 42, ${c.alpha})`;
-    ctx.beginPath();
-    ctx.ellipse(c.x, c.y, c.r, c.r * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+  // Pusta funkcja – usunięto sztuczną nakładkę ciemnej elipsy na podłodze
 }
 
 export function clearExplosionCraters() {
@@ -638,22 +726,47 @@ export function updateProjectiles(groundY, platforms, customObs, combatants, bal
     }
   }
 
+  // Aktualizacja cząsteczek wybuchu HE (szrapnele, dym prochowy, pył, gruz, iskry)
+  updateExplosionParticles(1 / 60, groundY, platforms);
+
   updateRubbleParticles(groundY, platforms);
   updateExplosionEffects();
   updateGrenadeSmoke();
 }
 
 /**
- * Zbiorcze renderowanie pocisków i efektów wybuchu
+ * Zbiorcze renderowanie pocisków i warstw cząsteczek we właściwej kolejności:
+ * KROK 1: Dym w tle (source-over)
+ * KROK 2: Ogień, błysk i iskry (lighter / additive blending)
  */
 export function drawProjectiles(ctx) {
+  // 1. Ślady przypalenia po wybuchu na podłożu
   drawExplosionCraters(ctx);
+
+  // 2. Pył betonowy w tle
+  drawDustClouds(ctx);
+
+  // 3. Ciężki gruz zniszczonego terenu
+  drawConcreteDebris(ctx);
+  drawRubbleParticles(ctx);
+
+  // 4. KROK 1: Dym w tle – zwykły tryb ('source-over')
+  drawExplosionSmokeBackground(ctx);
+  drawPowderSmoke(ctx);
   drawGrenadeSmoke(ctx);
 
+  // 5. KROK 2: Ogień, błysk i iskry – tryb rozświetlenia ('lighter' - Additive Blending)
+  drawExplosionFireAndSparks(ctx);
+
+  // 6. Smugi naddźwiękowego szrapnela i iskry rykoszetu
+  drawShrapnelStreaks(ctx);
+  drawRicochetSparks(ctx);
+
+  // 7. Pociski lecące
   for (const p of activeProjectiles) {
     p.draw(ctx);
   }
 
-  drawRubbleParticles(ctx);
+  // 8. Błysk, kula ognia i fala uderzeniowa
   drawExplosionEffects(ctx);
 }

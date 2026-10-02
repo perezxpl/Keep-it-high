@@ -6,9 +6,9 @@
 // - Klawisz skoku / W / Spacja w locie: Dedykowane sterowanie jetpackiem (bez PPM)
 // =========================================================================
 
-import { performKick, kick, playerSlide } from './player/actions.js';
+import { performKick, kick, playerSlide, throwTacticalGrenade } from './player/actions.js';
 
-export { performKick, kick, playerSlide };
+export { performKick, kick, playerSlide, throwTacticalGrenade };
 
 export const mouseState = {
   lmbDown: false,
@@ -25,7 +25,8 @@ export const keys = {
   shift: false,
   slide: false,
   ctrl: false,
-  crouch: false
+  crouch: false,
+  grenade: false
 };
 
 /**

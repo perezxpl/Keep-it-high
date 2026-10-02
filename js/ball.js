@@ -1,5 +1,5 @@
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { distToSegment, triggerScreenShake, triggerGoalCelebration } from './world.js';
+import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js';
 import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js';
 import { resolveBallObstacleCollisions, activeArenaId, GOALS, arenaScore, resetArena } from './obstacles.js';
 
@@ -170,8 +170,12 @@ export function updateBall(GROUND_Y) {
       }
     }
 
-    // Lądowanie na trawie
-    if (ball.y + ball.colRadius >= GROUND_Y) {
+    // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
+    const isGroundUnderBall = (typeof isGroundAt === 'function')
+      ? isGroundAt(ball.x, ball.colRadius * 0.6)
+      : true;
+
+    if (ball.y + ball.colRadius >= GROUND_Y && isGroundUnderBall && ball.y - ball.colRadius <= GROUND_Y + 12) {
       ball.y = GROUND_Y - ball.colRadius;
       if (Math.abs(ball.vy) > 0.8) {
         ball.vy = -ball.vy * 0.58;
@@ -182,8 +186,21 @@ export function updateBall(GROUND_Y) {
       ball.spin *= Math.pow(0.94, subDt);
       ball.rotation += (ball.vx * 0.08 * subDt);
     } else {
+      // W locie lub wpadanie w wyrwę (grawitacja ściąga piłkę w dół przez otwór w kładce)
       ball.rotation += (ball.spin + (ball.vx * 0.04)) * subDt;
       ball.spin *= Math.pow(0.96, subDt);
+    }
+
+    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego
+    if (ball.y > GROUND_Y + 280) {
+      ball.x = 960;
+      ball.y = GROUND_Y - ball.colRadius - 30;
+      ball.prevX = ball.x;
+      ball.prevY = ball.y;
+      ball.vx = 0;
+      ball.vy = -4.0;
+      ball.spin = 0;
+      ball.trail = [];
     }
 
     // Rozwiązanie kolizji z przeszkodami i terenem

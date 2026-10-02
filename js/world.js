@@ -3,6 +3,7 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, isTouchDevice, setTouchDevice } from './config.js';
+import { spawnConcreteDebris, spawnRicochetSparks } from './particles.js';
 export { isTouchDevice, setTouchDevice };
 
 export let _worldPlatforms = [];
@@ -50,6 +51,156 @@ export let H = window.innerHeight;
 export let DPR = Math.min(window.devicePixelRatio || 1, 2);
 export let GROUND_Y = Math.round((H - 75) / 20) * 20;
 
+// =========================================================================
+// SEGMENTOWA ARCHITEKTURA PODŁOŻA I INDUSTRIALNE FUNDAMENTY
+// =========================================================================
+export const GROUND_SLAB_HEIGHT = 36; // realna grubość kładki przemysłowej
+export const GROUND_SEG_WIDTH = 32;   // siatka segmentów o szerokości 30–40 px
+export const PILLAR_SPACING = 120;    // industrialne belki nośne / filary schodzące w dół co 120 px
+export const groundSegments = [];
+
+let _nextGroundId = 1;
+export function generateGroundId() {
+  return 'ground_seg_' + (_nextGroundId++);
+}
+
+export function initGroundSegments() {
+  groundSegments.length = 0;
+  const startX = ARENA_LEFT - 320;
+  const endX = ARENA_RIGHT + 320;
+  for (let x = startX; x < endX; x += GROUND_SEG_WIDTH) {
+    groundSegments.push({
+      id: generateGroundId(),
+      x: x,
+      y: GROUND_Y,
+      width: GROUND_SEG_WIDTH,
+      height: GROUND_SLAB_HEIGHT,
+      destroyed: false,
+      scorchLeft: false,
+      scorchRight: false
+    });
+  }
+}
+
+// Inicjalizacja segmentów poziomu zerowego
+initGroundSegments();
+
+export function isGroundAt(x, margin = 4) {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+    if (x >= seg.x - margin && x <= seg.x + seg.width + margin) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isGroundSupporting(minX, maxX) {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+    if (seg.x + seg.width > minX && seg.x < maxX) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function findGroundHoleAt(x) {
+  if (isGroundAt(x, 0)) return null;
+  let holeStart = ARENA_LEFT - 320;
+  let holeEnd = ARENA_RIGHT + 320;
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (!seg.destroyed) {
+      if (seg.x + seg.width <= x && seg.x + seg.width > holeStart) {
+        holeStart = seg.x + seg.width;
+      }
+      if (seg.x >= x && seg.x < holeEnd) {
+        holeEnd = seg.x;
+      }
+    }
+  }
+  return { holeStart, holeEnd };
+}
+
+export function updateGroundEdgeFlags() {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    seg.scorchLeft = false;
+    seg.scorchRight = false;
+    if (seg.destroyed) continue;
+
+    const prev = groundSegments[i - 1];
+    if (prev && prev.destroyed) {
+      seg.scorchLeft = true;
+    }
+    const next = groundSegments[i + 1];
+    if (next && next.destroyed) {
+      seg.scorchRight = true;
+    }
+  }
+}
+
+export function resetGroundSegments() {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    seg.destroyed = false;
+    seg.scorchLeft = false;
+    seg.scorchRight = false;
+    seg.y = GROUND_Y;
+  }
+}
+
+export function carveGroundHole(expX, expY, blastRadius = 85) {
+  const topY = GROUND_Y;
+  const bottomY = GROUND_Y + GROUND_SLAB_HEIGHT;
+  const nearestY = Math.max(topY, Math.min(expY, bottomY));
+  const distY = Math.abs(expY - nearestY);
+
+  if (distY > blastRadius) {
+    return [];
+  }
+
+  const reachX = Math.sqrt(Math.max(0, blastRadius * blastRadius - distY * distY));
+  const effectiveRadius = Math.max(blastRadius * 0.70, reachX);
+  const holeStart = expX - effectiveRadius;
+  const holeEnd = expX + effectiveRadius;
+
+  const destroyed = [];
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+
+    const segLeft = seg.x;
+    const segRight = seg.x + seg.width;
+
+    if (segRight > holeStart && segLeft < holeEnd) {
+      seg.destroyed = true;
+      destroyed.push(seg);
+
+      const segCenterX = seg.x + seg.width / 2;
+      const segCenterY = seg.y + seg.height / 2;
+      const sDx = segCenterX - expX;
+      const sDy = segCenterY - expY;
+      const dist = Math.hypot(sDx, sDy) || 1;
+      const normX = sDx / dist;
+      const normY = sDy / dist;
+      const speed = 150 + Math.random() * 160;
+      if (typeof spawnConcreteDebris === 'function') {
+        spawnConcreteDebris(segCenterX, segCenterY, 3, normX * speed, normY * speed - 50);
+      }
+      if (typeof spawnRicochetSparks === 'function') {
+        spawnRicochetSparks(segCenterX, seg.y, 0, -1, 3);
+      }
+    }
+  }
+
+  updateGroundEdgeFlags();
+  return destroyed;
+}
+
 import {
   camera,
   updateCamera,
@@ -64,7 +215,8 @@ import {
   worldToScreen,
   screenToWorld,
   getCanvasLogicalWidth,
-  getCanvasLogicalHeight
+  getCanvasLogicalHeight,
+  shakeImpulse
 } from './camera.js';
 
 export {
@@ -76,6 +228,7 @@ export {
   devZoomLevel,
   setDevZoom,
   triggerScreenShake,
+  shakeImpulse,
   applyCameraTransform,
   restoreCameraTransform,
   worldToScreen,
@@ -108,7 +261,8 @@ export const grassParticles = [];
 // =========================================================================
 export const weaponButtons = [
   { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', x: 20, y: 0, w: 36, h: 36 },
-  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 36, h: 36 }
+  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'GRENADE', name: 'HE', fullName: 'GRENADE', type: 'TACTICAL', key: 'G', x: 20, y: 0, w: 36, h: 36 }
 ];
 
 export function initCanvas(canvasEl) {
@@ -128,6 +282,11 @@ export function resize(player) {
     ctx.scale(DPR, DPR);
   }
   GROUND_Y = Math.round((H - 75) / 20) * 20;
+  if (Array.isArray(groundSegments)) {
+    for (const seg of groundSegments) {
+      seg.y = GROUND_Y;
+    }
+  }
   invalidateSkyCache();
   if (player) {
     if (player.y >= GROUND_Y - player.h - 5) {
@@ -1383,27 +1542,300 @@ export function drawSky(ctx) {
   }
 }
 
+/**
+ * Renderuje poszarpane krawędzie i wystające zbrojenie na ocalałych brzegach wyrwy
+ */
+export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') {
+  ctx.save();
+  const slabH = GROUND_SLAB_HEIGHT;
+
+  if (direction === 'RIGHT') {
+    // 1. Profil boczny zniszczonej płyty (grubość 36 px) z ciemnym wnętrzem przekroju
+    ctx.fillStyle = '#080c14';
+    ctx.fillRect(edgeX - 5, groundY, 5, slabH);
+
+    // Ciemny rdzeń metalowo-kompozytowy
+    ctx.fillStyle = '#141c2c';
+    ctx.fillRect(edgeX - 4, groundY + 4, 3, slabH - 8);
+
+    // Przypalony brzeg krawędzi
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(edgeX - 1.5, groundY, 1.5, slabH);
+
+    // 2. Poszarpany metal (3 nieregularne zęby wyrwanej blachy)
+    ctx.fillStyle = '#2d3748';
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 3);
+    ctx.lineTo(edgeX + 5, groundY + 8);
+    ctx.lineTo(edgeX, groundY + 13);
+
+    ctx.moveTo(edgeX, groundY + 15);
+    ctx.lineTo(edgeX + 7, groundY + 21);
+    ctx.lineTo(edgeX, groundY + 26);
+
+    ctx.moveTo(edgeX, groundY + 28);
+    ctx.lineTo(edgeX + 4, groundY + 33);
+    ctx.lineTo(edgeX, groundY + 36);
+    ctx.fill();
+
+    // Wewnętrzny cień na poszarpanym metalu
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 5);
+    ctx.lineTo(edgeX + 3, groundY + 8);
+    ctx.lineTo(edgeX, groundY + 11);
+
+    ctx.moveTo(edgeX, groundY + 17);
+    ctx.lineTo(edgeX + 4, groundY + 21);
+    ctx.lineTo(edgeX, groundY + 24);
+    ctx.fill();
+
+    // 3. Wystające zbrojenie (2–3 krótkie pomarańczowe/szare pręty)
+    // Pręt 1 (górny): zgięty szary pręt ze stopionym, rozżarzonym czubkiem
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 8);
+    ctx.lineTo(edgeX + 8, groundY + 9);
+    ctx.lineTo(edgeX + 15, groundY + 13);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#f97316';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 5;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(edgeX + 11, groundY + 11);
+    ctx.lineTo(edgeX + 15, groundY + 13);
+    ctx.stroke();
+
+    // Pręt 2 (środkowy): stalowy szary prosty pręt
+    ctx.strokeStyle = '#94a3b8';
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 20);
+    ctx.lineTo(edgeX + 6, groundY + 19);
+    ctx.lineTo(edgeX + 11, groundY + 21);
+    ctx.stroke();
+
+    // Pręt 3 (dolny): rozgrzany pręt pomarańczowy wygięty ku górze
+    ctx.strokeStyle = '#ea580c';
+    ctx.shadowColor = '#ea580c';
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 29);
+    ctx.lineTo(edgeX + 9, groundY + 29);
+    ctx.lineTo(edgeX + 16, groundY + 26);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fdba74';
+    ctx.shadowColor = '#fde047';
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(edgeX + 13, groundY + 27);
+    ctx.lineTo(edgeX + 16, groundY + 26);
+    ctx.stroke();
+  } else {
+    // Krawędź lewa (kierunek LEFT, brzeg po prawej stronie wyrwy)
+    // 1. Profil boczny zniszczonej płyty (grubość 36 px)
+    ctx.fillStyle = '#080c14';
+    ctx.fillRect(edgeX, groundY, 5, slabH);
+
+    ctx.fillStyle = '#141c2c';
+    ctx.fillRect(edgeX + 1, groundY + 4, 3, slabH - 8);
+
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(edgeX, groundY, 1.5, slabH);
+
+    // 2. Poszarpany metal
+    ctx.fillStyle = '#2d3748';
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 3);
+    ctx.lineTo(edgeX - 5, groundY + 8);
+    ctx.lineTo(edgeX, groundY + 13);
+
+    ctx.moveTo(edgeX, groundY + 15);
+    ctx.lineTo(edgeX - 7, groundY + 21);
+    ctx.lineTo(edgeX, groundY + 26);
+
+    ctx.moveTo(edgeX, groundY + 28);
+    ctx.lineTo(edgeX - 4, groundY + 33);
+    ctx.lineTo(edgeX, groundY + 36);
+    ctx.fill();
+
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 5);
+    ctx.lineTo(edgeX - 3, groundY + 8);
+    ctx.lineTo(edgeX, groundY + 11);
+
+    ctx.moveTo(edgeX, groundY + 17);
+    ctx.lineTo(edgeX - 4, groundY + 21);
+    ctx.lineTo(edgeX, groundY + 24);
+    ctx.fill();
+
+    // 3. Wystające zbrojenie
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 8);
+    ctx.lineTo(edgeX - 8, groundY + 9);
+    ctx.lineTo(edgeX - 15, groundY + 13);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#f97316';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 5;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(edgeX - 11, groundY + 11);
+    ctx.lineTo(edgeX - 15, groundY + 13);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 20);
+    ctx.lineTo(edgeX - 6, groundY + 19);
+    ctx.lineTo(edgeX - 11, groundY + 21);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ea580c';
+    ctx.shadowColor = '#ea580c';
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX, groundY + 29);
+    ctx.lineTo(edgeX - 9, groundY + 29);
+    ctx.lineTo(edgeX - 16, groundY + 26);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fdba74';
+    ctx.shadowColor = '#fde047';
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(edgeX - 13, groundY + 27);
+    ctx.lineTo(edgeX - 16, groundY + 26);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 export function drawGround(ctx, worldLeft, worldWidth) {
-  const startX = ARENA_LEFT - 300;
-  const endX = ARENA_RIGHT + 300;
+  const startX = ARENA_LEFT - 320;
+  const endX = ARENA_RIGHT + 320;
   const w = endX - startX;
 
-  // Głęboki techniczny korpus podłoża
-  ctx.fillStyle = '#090d16';
-  ctx.fillRect(startX, GROUND_Y, w, 700);
+  // =========================================================================
+  // 1. DOLNY KANAŁ TECHNICZNY I CZELUŚĆ POD KŁADKĄ (THE VOID & SUB-LEVEL)
+  // =========================================================================
+  ctx.fillStyle = '#05070d';
+  ctx.fillRect(startX, GROUND_Y + GROUND_SLAB_HEIGHT, w, 700);
 
-  // Podpowierzchniowy pas techniczny
-  ctx.fillStyle = '#111827';
-  ctx.fillRect(startX, GROUND_Y + 1, w, 14);
-
-  // Znaczniki siatki technicznej co 60px
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-  for (let mx = ARENA_LEFT; mx <= ARENA_RIGHT; mx += 60) {
-    ctx.fillRect(mx, GROUND_Y + 2, 2, 8);
+  // Poziome magistrale i linie techniczne w tle kanału
+  ctx.save();
+  ctx.strokeStyle = '#0c1322';
+  ctx.lineWidth = 2.5;
+  for (let dy = 65; dy <= 450; dy += 90) {
+    ctx.beginPath();
+    ctx.moveTo(startX, GROUND_Y + dy);
+    ctx.lineTo(endX, GROUND_Y + dy);
+    ctx.stroke();
   }
 
   // =========================================================================
-  // NEONOWA POWIERZCHNIA PODŁOŻA (CYAN -> ORANGE SYNTHWAVE RAIL)
+  // 2. INDUSTRIALNE BELKI NOŚNE / FILARY PODŁOŻA CO 120 PX
+  // =========================================================================
+  const pillarStep = PILLAR_SPACING;
+  const pStart = Math.floor(startX / pillarStep) * pillarStep;
+  const pEnd = Math.ceil(endX / pillarStep) * pillarStep;
+
+  for (let px = pStart; px <= pEnd; px += pillarStep) {
+    const colW = 18;
+    const colLeft = px - colW / 2;
+    const colTop = GROUND_Y + GROUND_SLAB_HEIGHT;
+    const colH = 500;
+
+    // Główny korpus stalowego dwuteownika
+    ctx.fillStyle = '#101726';
+    ctx.fillRect(colLeft, colTop, colW, colH);
+
+    // Krawędzie pasów dwuteownika (półki)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(colLeft, colTop, 2.5, colH);
+    ctx.fillRect(colLeft + colW - 2.5, colTop, 2.5, colH);
+
+    // Środnik w cieniu
+    ctx.fillStyle = '#080d16';
+    ctx.fillRect(px - 1.5, colTop, 3, colH);
+
+    // Głowica montażowa u góry filaru
+    ctx.fillStyle = '#223049';
+    ctx.fillRect(px - 13, colTop, 26, 6);
+
+    // Nity montażowe wzdłuż filaru
+    ctx.fillStyle = '#334155';
+    for (let ry = colTop + 24; ry < colTop + 350; ry += 36) {
+      ctx.fillRect(colLeft + 3.5, ry, 2, 2);
+      ctx.fillRect(colLeft + colW - 5.5, ry, 2, 2);
+    }
+
+    // Skośne stężenia kratownicowe (X-bracing) pomiędzy filarami
+    if (px + pillarStep <= pEnd) {
+      ctx.strokeStyle = '#0d1525';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(px, colTop + 16);
+      ctx.lineTo(px + pillarStep, colTop + 115);
+      ctx.moveTo(px, colTop + 115);
+      ctx.lineTo(px + pillarStep, colTop + 16);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // =========================================================================
+  // 3. AKTYWNE SEGMENTY PODŁOŻA (36 PX PŁYTA PRZEMYSŁOWEJ KŁADKI)
+  // =========================================================================
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue; // Wyrwa: segment fizycznie nie istnieje
+
+    // Gradient grubości płyty (36px)
+    const slabGrad = ctx.createLinearGradient(seg.x, GROUND_Y, seg.x, GROUND_Y + GROUND_SLAB_HEIGHT);
+    slabGrad.addColorStop(0.0, '#151e2e');
+    slabGrad.addColorStop(0.25, '#101726');
+    slabGrad.addColorStop(0.75, '#0b101c');
+    slabGrad.addColorStop(1.0, '#060910');
+
+    ctx.fillStyle = slabGrad;
+    ctx.fillRect(seg.x, GROUND_Y, seg.width, GROUND_SLAB_HEIGHT);
+
+    // Poziomy rowek technologiczny płyty
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(seg.x, GROUND_Y + 12, seg.width, 1);
+
+    // Dolna krawędź kładki (skaza / faza)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(seg.x, GROUND_Y + GROUND_SLAB_HEIGHT - 1.5, seg.width, 1.5);
+
+    // Dylatacja / łączenie segmentów
+    ctx.fillStyle = '#060911';
+    ctx.fillRect(seg.x, GROUND_Y + 1, 1, GROUND_SLAB_HEIGHT - 2);
+
+    // Wcięcie montażowe na środku segmentu
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+    ctx.fillRect(seg.x + seg.width / 2 - 1, GROUND_Y + 3, 2, 5);
+  }
+
+  // =========================================================================
+  // 4. NEONOWA POWIERZCHNIA PODŁOŻA – PRZERYWANA W MIEJSCACH WYRWY
   // =========================================================================
   ctx.save();
   const surfaceGrad = ctx.createLinearGradient(ARENA_LEFT, GROUND_Y, ARENA_RIGHT, GROUND_Y);
@@ -1412,47 +1844,108 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   surfaceGrad.addColorStop(0.55, '#f97316');
   surfaceGrad.addColorStop(1.0, '#ff7700');
 
-  // Szeroka poświata neonowa
-  ctx.strokeStyle = surfaceGrad;
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 14;
-  ctx.lineWidth = 4.0;
-  ctx.beginPath();
-  ctx.moveTo(ARENA_LEFT, GROUND_Y);
-  ctx.lineTo(ARENA_RIGHT, GROUND_Y);
-  ctx.stroke();
-
-  // Jaskrawy, biało-neonowy rdzeń świetlny
   const coreGrad = ctx.createLinearGradient(ARENA_LEFT, GROUND_Y, ARENA_RIGHT, GROUND_Y);
   coreGrad.addColorStop(0.0, '#a5f3fc');
   coreGrad.addColorStop(0.48, '#ffffff');
   coreGrad.addColorStop(0.52, '#ffffff');
   coreGrad.addColorStop(1.0, '#fed7aa');
-  ctx.strokeStyle = coreGrad;
-  ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 6;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(ARENA_LEFT, GROUND_Y);
-  ctx.lineTo(ARENA_RIGHT, GROUND_Y);
-  ctx.stroke();
 
-  // Subtelne przedłużenie krawędzi poza liniami bramkowymi (bufor areny)
-  ctx.strokeStyle = '#06b6d4';
-  ctx.lineWidth = 2.0;
-  ctx.shadowColor = '#06b6d4';
-  ctx.shadowBlur = 6;
-  ctx.beginPath();
-  ctx.moveTo(startX, GROUND_Y);
-  ctx.lineTo(ARENA_LEFT, GROUND_Y);
-  ctx.stroke();
+  // Znajdź ciągłe, nieprzerwane odcinki ocalałego podłoża
+  const activeRuns = [];
+  let currentRun = null;
 
-  ctx.strokeStyle = '#f97316';
-  ctx.shadowColor = '#f97316';
-  ctx.beginPath();
-  ctx.moveTo(ARENA_RIGHT, GROUND_Y);
-  ctx.lineTo(endX, GROUND_Y);
-  ctx.stroke();
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (!seg.destroyed) {
+      if (!currentRun) {
+        currentRun = { start: seg.x, end: seg.x + seg.width };
+      } else {
+        currentRun.end = seg.x + seg.width;
+      }
+    } else {
+      if (currentRun) {
+        activeRuns.push(currentRun);
+        currentRun = null;
+      }
+    }
+  }
+  if (currentRun) {
+    activeRuns.push(currentRun);
+  }
+
+  // Rysuj neon WYŁĄCZNIE na niezniszczonych odcinkach!
+  for (const run of activeRuns) {
+    const arenaStart = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT, run.start));
+    const arenaEnd = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT, run.end));
+
+    if (arenaEnd > arenaStart) {
+      // Szeroka poświata neonowa
+      ctx.strokeStyle = surfaceGrad;
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 4.0;
+      ctx.beginPath();
+      ctx.moveTo(arenaStart, GROUND_Y);
+      ctx.lineTo(arenaEnd, GROUND_Y);
+      ctx.stroke();
+
+      // Jaskrawy, biało-neonowy rdzeń świetlny
+      ctx.strokeStyle = coreGrad;
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 6;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(arenaStart, GROUND_Y);
+      ctx.lineTo(arenaEnd, GROUND_Y);
+      ctx.stroke();
+    }
+
+    // Odcinki buforowe poza bramkami
+    if (run.start < ARENA_LEFT) {
+      const bLeft = run.start;
+      const bRight = Math.min(ARENA_LEFT, run.end);
+      if (bRight > bLeft) {
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2.0;
+        ctx.shadowColor = '#06b6d4';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(bLeft, GROUND_Y);
+        ctx.lineTo(bRight, GROUND_Y);
+        ctx.stroke();
+      }
+    }
+
+    if (run.end > ARENA_RIGHT) {
+      const bLeft = Math.max(ARENA_RIGHT, run.start);
+      const bRight = run.end;
+      if (bRight > bLeft) {
+        ctx.strokeStyle = '#f97316';
+        ctx.shadowColor = '#f97316';
+        ctx.lineWidth = 2.0;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(bLeft, GROUND_Y);
+        ctx.lineTo(bRight, GROUND_Y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // =========================================================================
+  // 5. WIZUALIZACJA POSZARPANYCH KRAWĘDZI I WYSTAJĄCEGO ZBROJENIA WYRWY
+  // =========================================================================
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+
+    if (seg.scorchRight) {
+      drawSeveredGroundEdge(ctx, seg.x + seg.width, GROUND_Y, 'RIGHT');
+    }
+    if (seg.scorchLeft) {
+      drawSeveredGroundEdge(ctx, seg.x, GROUND_Y, 'LEFT');
+    }
+  }
 
   // Pionowe neonowe ściany energetyczne za bramkami
   drawArenaEnergyBoundaries(ctx, GROUND_Y);
@@ -1981,6 +2474,74 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.fillText(labelText, 0, 15);
       ctx.restore();
     }
+
+    // 3C. DEDYKOWANY PRZYCISK MOBILNY: GRANAT ODŁAMKOWY Z COOLDOWNEM 10s
+    if (btnCluster.grenade) {
+      const gr = btnCluster.grenade;
+      const grR = gr.r || 28;
+      const cd = player.grenadeCooldown || 0;
+      const maxCd = player.grenadeMaxCooldown || 10.0;
+      const isReady = (cd <= 0);
+
+      let btnBorder = 'rgba(255, 255, 255, 0.10)';
+      let btnBg = 'rgba(15, 23, 42, 0.40)';
+      let btnAccent = 'rgba(148, 163, 184, 0.35)';
+      let labelColor = 'rgba(148, 163, 184, 0.45)';
+      let labelText = 'GRANAT';
+
+      if (isReady) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.007);
+        btnBorder = '#f97316';
+        btnBg = `rgba(249, 115, 22, ${0.20 + pulse * 0.20})`;
+        btnAccent = '#f97316';
+        labelColor = '#fdba74';
+        labelText = 'GRANAT';
+
+        ctx.beginPath();
+        ctx.arc(gr.x, gr.y, grR + 3 + pulse * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(249, 115, 22, ${(1 - pulse) * 0.65})`;
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+      } else {
+        labelText = `${cd.toFixed(1)}s`;
+        labelColor = '#fb923c';
+        btnAccent = 'rgba(100, 116, 139, 0.25)';
+      }
+
+      ctx.beginPath();
+      ctx.arc(gr.x, gr.y, grR, 0, Math.PI * 2);
+      ctx.fillStyle = btnBg;
+      ctx.fill();
+      ctx.strokeStyle = btnBorder;
+      ctx.lineWidth = isReady ? 1.8 : 1.0;
+      ctx.stroke();
+
+      // Radialny overlay ładowania jeśli trwa cooldown
+      if (!isReady && maxCd > 0) {
+        const progress = Math.max(0, Math.min(1, cd / maxCd));
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(gr.x, gr.y);
+        ctx.arc(gr.x, gr.y, grR - 1, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2, false);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Ikonka granatu
+      ctx.save();
+      ctx.translate(gr.x, gr.y - 3);
+      ctx.scale(0.85, 0.85);
+      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady);
+      ctx.restore();
+
+      // Tekst podpisu lub czasu odnowienia
+      ctx.fillStyle = labelColor;
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(labelText, gr.x, gr.y + 15);
+    }
   }
 
   ctx.restore();
@@ -2116,6 +2677,33 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
     // Długa lufa i podlufowy magazynek
     ctx.fillRect(4, -2, 9, 2.5);
     ctx.fillRect(4, 0.8, 7, 1.8);
+  } else if (type === 'GRENADE') {
+    // Korpus granatu odłamkowego
+    ctx.beginPath();
+    ctx.ellipse(0, 1.2, 5.0, 6.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Żebrowanie odłamkowe (siatka segmentów)
+    ctx.strokeStyle = isSelected ? 'rgba(0, 0, 0, 0.45)' : 'rgba(15, 23, 42, 0.6)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(-4.8, 1.2); ctx.lineTo(4.8, 1.2);
+    ctx.moveTo(-4.0, -1.8); ctx.lineTo(4.0, -1.8);
+    ctx.moveTo(-4.0, 4.2); ctx.lineTo(4.0, 4.2);
+    ctx.moveTo(0, -5.2); ctx.lineTo(0, 7.6);
+    ctx.stroke();
+
+    // Szyjka zapalnika i łyżka (safety lever)
+    ctx.fillStyle = isSelected ? '#fed7aa' : '#94a3b8';
+    ctx.fillRect(-2, -6.5, 4, 2.2);
+    ctx.fillRect(1.5, -6.5, 2, 7.0);
+
+    // Zawleczka z kółkiem (pull ring)
+    ctx.strokeStyle = isSelected ? '#ffffff' : '#cbd5e1';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.arc(-3.5, -5.8, 1.8, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   ctx.restore();
@@ -2125,6 +2713,89 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
  * Rysuje pojedynczy, minimalistyczny kwadratowy kafelek broni w interfejsie HUD.
  */
 export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
+  // Specjalna obsługa slotu granatu taktycznego
+  if (btn.id === 'GRENADE') {
+    const cd = player.grenadeCooldown || 0;
+    const maxCd = player.grenadeMaxCooldown || 10.0;
+    const isReady = (cd <= 0);
+
+    const tileSize = btn.w;
+    const tileX = btn.x;
+    const tileY = btn.y;
+
+    ctx.save();
+    ctx.globalAlpha = isMobile ? 0.85 : 0.90;
+
+    // 1. Tło kafelka (Dark Glass)
+    const radius = isMobile ? 5 : 6;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(tileX, tileY, tileSize, tileSize, radius);
+    else ctx.rect(tileX, tileY, tileSize, tileSize);
+
+    ctx.fillStyle = isReady
+      ? 'rgba(30, 41, 59, 0.85)'
+      : 'rgba(15, 23, 42, 0.80)';
+    ctx.fill();
+
+    // 2. Obrys kafelka i delikatny błysk gotowości
+    let borderCol = isReady ? '#f97316' : 'rgba(100, 116, 139, 0.35)';
+    if (isReady) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.006);
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = borderCol;
+      ctx.shadowBlur = 5 + pulse * 4;
+    } else {
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth = 1.0;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 3. Ikonka / sylwetka granatu (wyszarzona gdy cd > 0, pełna jasność gdy cd === 0)
+    ctx.save();
+    ctx.translate(tileX + tileSize / 2, tileY + tileSize / 2 - 3);
+    ctx.scale(0.85, 0.85);
+    if (!isReady) {
+      ctx.globalAlpha = 0.30;
+    }
+    drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady);
+    ctx.restore();
+
+    // 4. Radialny overlay ładowania jeśli trwa cooldown
+    if (!isReady && maxCd > 0) {
+      const progress = Math.max(0, Math.min(1, cd / maxCd));
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(tileX + tileSize / 2, tileY + tileSize / 2 - 3);
+      ctx.arc(tileX + tileSize / 2, tileY + tileSize / 2 - 3, tileSize * 0.40, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2, false);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 5. Wskaźnik cooldownu / statusu na dole kafelka
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const ammoY = tileY + tileSize - 2;
+
+    if (!isReady) {
+      ctx.font = 'bold 7.5px monospace';
+      ctx.fillStyle = '#fb923c';
+      ctx.fillText(`${cd.toFixed(1)}s`, tileX + tileSize / 2, ammoY);
+    } else {
+      ctx.font = 'bold 7.5px monospace';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText(isMobile ? 'READY' : '[G]', tileX + tileSize / 2, ammoY);
+    }
+
+    ctx.restore();
+    return;
+  }
+
   const isActive = isSelected;
   const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#f59e0b';
 
@@ -2312,6 +2983,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   weaponButtons[1].y = panelY;
   weaponButtons[1].w = slotSize;
   weaponButtons[1].h = slotSize;
+
+  if (weaponButtons[2]) {
+    weaponButtons[2].x = panelX + (slotSize + slotGap) * 2;
+    weaponButtons[2].y = panelY;
+    weaponButtons[2].w = slotSize;
+    weaponButtons[2].h = slotSize;
+  }
 
   for (const btn of weaponButtons) {
     const isSelected = (curWepId === btn.id);

@@ -5,8 +5,15 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop } from '../world.js';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade } from '../projectiles.js';
+import {
+  spawnShockwaveRing,
+  spawnExplosionFirePuff,
+  spawnStretchedSparks,
+  spawnHeavySmokePuff,
+  spawnJuiceExplosion
+} from '../particles.js';
 
 export function startJumpCharge(p) {
   if (p.isIntro || p.isJumping || p.isSliding || p.staggerTimer > 0) return;
@@ -930,31 +937,81 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
 }
 
 /**
- * Super-umiejętność (Q) dla klasy Aero: Wybuchowy super-granat niszczący teren
+ * Rzut granatem taktycznym niszczącym teren (standardowe wyposażenie / 10s cooldown)
+ * @param {Object} p - Gracz rzucający granat
+ * @param {number|null} [targetX] - Pozycja docelowa X (domyślnie aimX)
+ * @param {number|null} [targetY] - Pozycja docelowa Y (domyślnie aimY)
+ * @returns {Object|boolean} Wystrzelony pocisk lub false jeśli na cooldownie
  */
-export function executeAeroUlt(p, targetX = null, targetY = null) {
+export function throwTacticalGrenade(p, targetX = null, targetY = null) {
   if (!p || p.isDead || p.isIntro) return false;
 
-  // Sprawdzenie gotowości ult / cooldownu
-  if (p.ultCooldown !== undefined && p.ultCooldown > 0) {
+  // Sprawdzenie 10-sekundowego czasu odnowienia (cooldown)
+  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) {
     return false;
   }
 
-  // Ustalenie pozycji celu (celownik gracza lub domyślny wektor)
+  // Ustalenie pozycji celu (kursor myszy lub kierunek zwrotu)
   const aimX = (targetX !== null && targetX !== undefined) ? targetX : (p.aimX !== undefined ? p.aimX : (p.x + (p.facing || 1) * 300));
   const aimY = (targetY !== null && targetY !== undefined) ? targetY : (p.aimY !== undefined ? p.aimY : (p.y - 40));
 
-  // Wystrzelenie super-granatu Aero
+  // Wystrzelenie pocisku granatu niszczącego teren
   const grenade = spawnAeroSuperGrenade(p, aimX, aimY);
 
-  // Cooldown super-umiejętności: 8 sekund (480 klatek)
-  p.ultCooldown = 8 * 60;
-  p.ultMeter = 0;
+  // Natychmiastowe nałożenie 10-sekundowego cooldownu
+  p.grenadeMaxCooldown = p.grenadeMaxCooldown || 10.0;
+  p.grenadeCooldown = p.grenadeMaxCooldown;
 
-  // Wizualny odrzut przy rzucie
+  // Wizualny odrzut i wstrząs kamery przy rzucie
   p.recoilAnim = 8;
   triggerScreenShake(2.5);
 
   return grenade;
+}
+
+/**
+ * Super-umiejętność (Q) dla klasy Aero – slot ulta zwolniony z rzutu granatem
+ */
+export function executeAeroUlt(p, targetX = null, targetY = null) {
+  // Granat został przeniesiony z ulta do standardowego wyposażenia (throwTacticalGrenade)
+  return false;
+}
+
+/**
+ * Spawnowanie efektu detonacji granatu w punkcie (expX, expY) (Game Juice):
+ * 1. Fala uderzeniowa: 1x ShockwaveRing
+ * 2. Rdzeń ognia: 14–18 cząsteczek ExplosionFirePuff wyrzuconych w promieniu 20px z losowymi prędkościami (50–120 px/s)
+ * 3. Snop iskier: 30–40 cząsteczek StretchedSparks rozrzuconych promieniście
+ * 4. Chmura dymu: 10–14 cząsteczek HeavySmokePuff tworzących tło wybuchu
+ * 5. Kamera: camera.shake = 16 oraz krótkie spowolnienie czasu / hitstop (freeze na 2 klatki)
+ */
+export function spawnGrenadeDetonationJuice(expX, expY) {
+  // 1. Fala uderzeniowa: 1x ShockwaveRing
+  spawnShockwaveRing(expX, expY);
+
+  // 2. Rdzeń ognia: 14–18 cząsteczek ExplosionFirePuff
+  spawnExplosionFirePuff(expX, expY, Math.floor(Math.random() * 5 + 14));
+
+  // 3. Snop iskier: 30–40 cząsteczek StretchedSparks
+  spawnStretchedSparks(expX, expY, Math.floor(Math.random() * 11 + 30));
+
+  // 4. Chmura dymu: 10–14 cząsteczek HeavySmokePuff
+  spawnHeavySmokePuff(expX, expY, Math.floor(Math.random() * 5 + 10));
+
+  // 5. Kamera: camera.shake = 16 oraz hitstop na 2 klatki
+  if (typeof camera !== 'undefined' && camera) {
+    camera.shake = 16;
+    if (typeof camera.shakeImpulse === 'function') {
+      camera.shakeImpulse(16, 0.15);
+    }
+  } else {
+    triggerScreenShake(16);
+  }
+  triggerHitstop(2);
+
+  // 6. Geometry Carving podłoża w promieniu wybuchu
+  if (typeof carveGroundHole === 'function') {
+    carveGroundHole(expX, expY, 85);
+  }
 }
 

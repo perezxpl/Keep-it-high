@@ -71,6 +71,14 @@ export const btnCluster = {
     active: false,
     id: null,
     pressStartTime: 0
+  },
+  grenade: {
+    x: 0,
+    y: 0,
+    r: 28,
+    active: false,
+    id: null,
+    enabled: true
   }
 };
 
@@ -92,6 +100,13 @@ export function updateButtonLayout(W, H) {
   btnCluster.crouch.x = curW - 135;
   btnCluster.crouch.y = curH - 85;
   btnCluster.crouch.r = 28;
+
+  if (!btnCluster.grenade) {
+    btnCluster.grenade = { x: 0, y: 0, r: 28, active: false, id: null, enabled: true };
+  }
+  btnCluster.grenade.x = curW - 205;
+  btnCluster.grenade.y = curH - 85;
+  btnCluster.grenade.r = 28;
 }
 
 /**
@@ -112,6 +127,10 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
   if (bCluster.slide) {
     bCluster.slide.mode = 'SLIDE';
     bCluster.slide.enabled = isRunning && cooldownOk;
+  }
+
+  if (bCluster.grenade) {
+    bCluster.grenade.enabled = (player.grenadeCooldown === undefined || player.grenadeCooldown <= 0);
   }
 }
 

@@ -7,9 +7,11 @@ import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
-  registerWorldObstacles, setActiveArenaId, GROUND_Y, world
+  registerWorldObstacles, setActiveArenaId, GROUND_Y, world,
+  isGroundAt, resetGroundSegments
 } from './world.js';
 import { clearRubbleParticles, clearExplosionEffects, clearExplosionCraters } from './projectiles.js';
+import { clearExplosionParticles } from './particles.js';
 
 export const obstacles = [];
 export const customObstacles = [];
@@ -156,8 +158,10 @@ export function findSupportingSurface(px, bottomY, w, h, groundY = GROUND_Y, sna
     }
   };
 
-  // 1. Grunt (GROUND_Y)
-  checkCandidate(groundY, 'ground', 'Grunt');
+  // 1. Grunt (GROUND_Y) – sprawdzamy tylko jeśli segment podłoża jest nienaruszony
+  if (typeof isGroundAt !== 'function' || isGroundAt(px + w * 0.5)) {
+    checkCandidate(groundY, 'ground', 'Grunt');
+  }
 
   // 2. Platformy areny (ARENA_PLATFORMS)
   if (Array.isArray(platforms)) {
@@ -562,6 +566,10 @@ export function resetArena() {
   clearRubbleParticles();
   clearExplosionEffects();
   clearExplosionCraters();
+  clearExplosionParticles();
+  if (typeof resetGroundSegments === 'function') {
+    resetGroundSegments();
+  }
 }
 
 if (typeof world !== 'undefined' && world) {
@@ -1248,13 +1256,34 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.jetFuel = Math.min(p.jetMax, p.jetFuel + 2.5);
     }
   } else {
-    p.currentGroundY = groundY;
-    p.onGround = (p.y >= groundY - colH - 1);
-    if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
-      p.staggerLanded = true;
-      p.vy = 0;
-      p.vx *= 0.70;
-      spawnGroundPuff(centerX, groundY);
+    // Sprawdzenie czy pod postacią znajduje się niezDestroyowany segment podłoża
+    const isSupported = (typeof isGroundAt === 'function')
+      ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
+      : true;
+
+    if (isSupported) {
+      p.currentGroundY = groundY;
+      p.onGround = (p.y >= groundY - colH - 1);
+      if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
+        p.staggerLanded = true;
+        p.vy = 0;
+        p.vx *= 0.70;
+        spawnGroundPuff(centerX, groundY);
+      }
+    } else {
+      // Postać nad wyrwą w geometrii – natychmiast traci podparcie
+      p.onGround = false;
+      p.currentGroundY = null;
+    }
+  }
+
+  // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
+  if (p.y > groundY + 160 && !p.isDead) {
+    p.hp = 0;
+    p.isDead = true;
+    p.respawnTimer = 75;
+    if (typeof triggerScreenShake === 'function') {
+      triggerScreenShake(12);
     }
   }
 }
@@ -2729,6 +2758,102 @@ function drawRockIsland(ctx, plat, groundY) {
     }
   }
 
+  // Poszarpane, okopcone krawędzie krateru i wystające pręty zbrojeniowe
+  if (plat.scorchMark || plat.scorchLeft || plat.scorchRight) {
+    drawPlatformScorchEdges(ctx, plat.x, topY, plat.w, thick, plat.scorchLeft, plat.scorchRight);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Rysowanie okopconych, postrzępionych brzegów ocalałej platformy po wybuchu HE
+ * wraz z ciemnym gradientem oraz wystającymi metalowymi kikutami/prętami o grubości 1–2px
+ */
+export function drawPlatformScorchEdges(ctx, x, y, w, h, scorchLeft, scorchRight) {
+  if (!scorchLeft && !scorchRight) return;
+
+  ctx.save();
+
+  // 1. Lewa krawędź – poszarpana, okopcona, z wystającymi prętami zbrojeniowymi
+  if (scorchLeft) {
+    const sootW = Math.min(24, Math.max(12, w * 0.45));
+    const grad = ctx.createLinearGradient(x, y, x + sootW, y);
+    grad.addColorStop(0.0, 'rgba(10, 15, 26, 0.98)');
+    grad.addColorStop(0.45, 'rgba(23, 29, 44, 0.75)');
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y - 1, sootW, h + 2);
+
+    // Poszarpany profil zniszczonego betonu
+    ctx.fillStyle = '#0b0f19';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 3.5, y + h * 0.22);
+    ctx.lineTo(x - 1.2, y + h * 0.52);
+    ctx.lineTo(x + 4.0, y + h * 0.82);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x - 3, y + h);
+    ctx.lineTo(x - 3, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wystające pręty zbrojeniowe / kikuty metalu (1–2px grubości)
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, y + h * 0.28);
+    ctx.lineTo(x - 6, y + h * 0.20);
+    ctx.lineTo(x - 10, y + h * 0.36);
+    ctx.moveTo(x + 2, y + h * 0.72);
+    ctx.lineTo(x - 7, y + h * 0.80);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x - 11, y + h * 0.34, 2.5, 2.5);
+    ctx.fillRect(x - 8, y + h * 0.78, 2.5, 2.5);
+  }
+
+  // 2. Prawa krawędź – poszarpana, okopcona, z wystającymi prętami
+  if (scorchRight) {
+    const sootW = Math.min(24, Math.max(12, w * 0.45));
+    const rightEdge = x + w;
+    const grad = ctx.createLinearGradient(rightEdge, y, rightEdge - sootW, y);
+    grad.addColorStop(0.0, 'rgba(10, 15, 26, 0.98)');
+    grad.addColorStop(0.45, 'rgba(23, 29, 44, 0.75)');
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(rightEdge - sootW, y - 1, sootW, h + 2);
+
+    // Poszarpany profil zniszczonego betonu
+    ctx.fillStyle = '#0b0f19';
+    ctx.beginPath();
+    ctx.moveTo(rightEdge, y);
+    ctx.lineTo(rightEdge - 3.5, y + h * 0.22);
+    ctx.lineTo(rightEdge + 1.2, y + h * 0.52);
+    ctx.lineTo(rightEdge - 4.0, y + h * 0.82);
+    ctx.lineTo(rightEdge, y + h);
+    ctx.lineTo(rightEdge + 3, y + h);
+    ctx.lineTo(rightEdge + 3, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wystające pręty zbrojeniowe (1–2px)
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(rightEdge - 1, y + h * 0.26);
+    ctx.lineTo(rightEdge + 7, y + h * 0.18);
+    ctx.lineTo(rightEdge + 11, y + h * 0.34);
+    ctx.moveTo(rightEdge - 2, y + h * 0.68);
+    ctx.lineTo(rightEdge + 8, y + h * 0.76);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(rightEdge + 10, y + h * 0.32, 2.5, 2.5);
+    ctx.fillRect(rightEdge + 7, y + h * 0.74, 2.5, 2.5);
+  }
+
   ctx.restore();
 }
 
@@ -2780,6 +2905,12 @@ function drawCatwalk(ctx, cat, groundY) {
   ctx.restore();
 
   drawHazardStripes(ctx, cat.x, topY + cat.thickness - 4, cat.w, 4);
+
+  // Poszarpane, okopcone krawędzie krateru i wystające pręty zbrojeniowe
+  if (cat.scorchMark || cat.scorchLeft || cat.scorchRight) {
+    drawPlatformScorchEdges(ctx, cat.x, topY, cat.w, cat.thickness, cat.scorchLeft, cat.scorchRight);
+  }
+
   ctx.restore();
 }
 

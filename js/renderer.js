@@ -5,6 +5,7 @@
 export {
   drawObstacles,
   drawSingleObstacleByType,
+  drawPlatformScorchEdges,
   drawCrate,
   drawSandbags,
   drawCatwalk,
@@ -29,7 +30,25 @@ export {
 
 export {
   drawBulletCasing,
-  drawBulletCasings
+  drawBulletCasings,
+  drawDustClouds,
+  drawConcreteDebris,
+  drawShrapnelStreaks,
+  drawRicochetSparks,
+  drawPowderSmoke,
+  drawAllExplosionParticles,
+  drawExplosionSmokeBackground,
+  drawExplosionFireAndSparks,
+  drawGrenadeJuiceExplosion,
+  ExplosionFirePuff,
+  StretchedSparks,
+  ShockwaveRing,
+  HeavySmokePuff,
+  spawnExplosionFirePuff,
+  spawnStretchedSparks,
+  spawnShockwaveRing,
+  spawnHeavySmokePuff,
+  spawnJuiceExplosion
 } from './particles.js';
 
 export {
@@ -44,7 +63,8 @@ export {
   screenToWorld,
   devZoomLevel,
   setDevZoom,
-  triggerScreenShake
+  triggerScreenShake,
+  shakeImpulse
 } from './camera.js';
 
 export {
@@ -57,4 +77,25 @@ export {
   rubbleParticles,
   explosionEffects
 } from './projectiles.js';
+
+export {
+  drawGround,
+  drawSeveredGroundEdge,
+  drawArenaEnergyBoundaries,
+  groundSegments,
+  carveGroundHole,
+  isGroundAt,
+  isGroundSupporting,
+  findGroundHoleAt,
+  resetGroundSegments,
+  GROUND_SLAB_HEIGHT,
+  GROUND_SEG_WIDTH,
+  PILLAR_SPACING
+} from './world.js';
+
+export {
+  throwTacticalGrenade,
+  executeAeroUlt
+} from './player/actions.js';
+
 

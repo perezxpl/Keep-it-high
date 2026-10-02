@@ -74,6 +74,16 @@ export const WEAPONS = {
     reserveAmmo: WEAPON_CONFIG.SHOTGUN.reserveAmmo,
     reloadTime: WEAPON_CONFIG.SHOTGUN.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.SHOTGUN.reloadTime * 60)
+  },
+  GRENADE: {
+    id: 'GRENADE',
+    name: 'GRENADE',
+    fullName: 'HE GRENADE',
+    type: 'TACTICAL',
+    cooldown: 10.0,
+    maxCooldown: 10.0,
+    damage: 85,
+    radius: 90
   }
 };
 

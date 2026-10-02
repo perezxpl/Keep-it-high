@@ -5,7 +5,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId, customObstacles } from '../obstacles.js';
-import { triggerScreenShake, spawnGroundPuff } from '../world.js';
+import { triggerScreenShake, spawnGroundPuff, isGroundAt } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 
@@ -142,6 +142,8 @@ export function createPlayerInstance(overrides = {}) {
     maxHp: 100,
     currentWeapon: WEAPONS.AK47,
     shootCooldown: 0,
+    grenadeCooldown: 0,
+    grenadeMaxCooldown: 10.0, // 10 sekund czasu odnowienia
     isDead: false,
     respawnTimer: 0,
     muzzleFlashTimer: 0,
@@ -395,6 +397,18 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   player.groundY = GROUND_Y;
   if (!player.currentGroundY) player.currentGroundY = GROUND_Y;
+
+  // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią
+  if (player.onGround && player.currentGroundY === GROUND_Y) {
+    const isSupported = (typeof isGroundAt === 'function')
+      ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
+      : true;
+    if (!isSupported) {
+      player.onGround = false;
+      player.currentGroundY = null;
+    }
+  }
+
   if (ball) player._ball = ball;
   if (spawnGrass) player._spawnGrass = spawnGrass;
 
@@ -410,6 +424,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.dropThroughTimer > 0) player.dropThroughTimer--;
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;
   if (player.shootPoseTimer > 0) player.shootPoseTimer--;
+  if (player.grenadeCooldown > 0) {
+    player.grenadeCooldown = Math.max(0, player.grenadeCooldown - (1 / 60));
+  }
 
   // Obsługa oszołomienia (staggerTimer po Spartan Kick)
   const isStaggered = (player.staggerTimer > 0);
@@ -1087,7 +1104,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.y += player.vy;
 
     const groundFloorLimit = GROUND_Y - colH;
-    if (player.y >= groundFloorLimit) {
+    const isSupported = (typeof isGroundAt === 'function')
+      ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
+      : true;
+
+    if (isSupported && player.y >= groundFloorLimit && player.y <= groundFloorLimit + 30) {
       player.y = groundFloorLimit;
       player.vy = 0;
       player.isJumping = false;
@@ -1115,6 +1136,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.kickCooldown = 10;
         player.kickingFootX = 0;
         player.kickingFootY = 0;
+      }
+    } else if (!isSupported && player.y >= groundFloorLimit - 4) {
+      // Postać wpada w wyrwę w geometrii – grawitacja ściąga ją w dół przez otwór w kładce
+      player.onGround = false;
+      player.currentGroundY = null;
+    }
+
+    // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
+    if (player.y > GROUND_Y + 160 && !player.isDead) {
+      player.hp = 0;
+      player.isDead = true;
+      player.respawnTimer = 75;
+      if (typeof triggerScreenShake === 'function') {
+        triggerScreenShake(12);
       }
     }
   }
@@ -1222,3 +1257,5 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 }
+
+export { throwTacticalGrenade } from './actions.js';

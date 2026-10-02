@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
-import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain } from '../world.js';
+import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 
@@ -12,7 +12,7 @@ import { getArmAnglesForTarget } from './ik.js';
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
  */
 function getSurfaceUnderPoint(x, y, groundY) {
-  let floor = groundY;
+  let floor = (typeof isGroundAt === 'function' && !isGroundAt(x)) ? (groundY + 600) : groundY;
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (x >= plat.x - 6 && x <= plat.x + plat.w + 6) {
