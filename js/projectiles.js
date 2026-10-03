@@ -373,7 +373,7 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
     const plat = platforms[i];
     if (!plat || plat.isCanyonTerrain || plat.solid) continue;
 
-    const platTopY = groundY - plat.relY;
+    const platTopY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
     const platThick = plat.thickness || 22;
     const platBottomY = platTopY + platThick;
     const platLeft = plat.x;

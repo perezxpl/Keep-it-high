@@ -15,6 +15,17 @@ import {
 } from './world.js';
 import { clearRubbleParticles, clearExplosionEffects, clearExplosionCraters } from './projectiles.js';
 import { clearExplosionParticles } from './particles.js';
+import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/index.js';
+import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State } from './arenas/arena1.js';
+import arena2, { ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS } from './arenas/arena2.js';
+import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/arena3.js';
+
+export {
+  ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State,
+  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
+  ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
+  getActiveArena, setActiveArena, ARENAS, onArenaChange
+};
 
 export const obstacles = [];
 export const customObstacles = [];
@@ -373,97 +384,7 @@ export function setCustomObstacles(newList) {
   }
 }
 
-// =========================================================================
-// ARENA 1: SOLDAT NIGHT OPS (TAKTYCZNA BAZA WOJSKOWA 3200 PX)
-// =========================================================================
-export const ARENA_1_PLATFORMS = [
-  {
-    id: 'west_bastion_fortress',
-    type: 'rock_platform',
-    isBastion: true,
-    theme: 'cyan',
-    x: START_X + 20,
-    w: 380,
-    relY: 140,
-    thickness: 22,
-    props: []
-  },
-  {
-    id: 'catwalk_goal_west',
-    type: 'catwalk',
-    x: START_X + 20,
-    w: 260,
-    relY: 500,
-    thickness: 16
-  },
-  {
-    id: 'central_altar_platform',
-    type: 'altar_island',
-    isAltar: true,
-    x: START_X + 1440,
-    w: 320,
-    relY: 200,
-    thickness: 24,
-    props: [
-      { type: 'altar_pedestal', rx: 90, w: 140, h: 32 }
-    ]
-  },
-  {
-    id: 'catwalk_goal_east',
-    type: 'catwalk',
-    x: START_X + ARENA_WIDTH - 280,
-    w: 260,
-    relY: 500,
-    thickness: 16
-  },
-  {
-    id: 'east_bastion_fortress',
-    type: 'rock_platform',
-    isBastion: true,
-    theme: 'orange',
-    x: START_X + 2800,
-    w: 380,
-    relY: 140,
-    thickness: 22,
-    props: []
-  }
-];
-
-export const ARENA_1_BARRICADES = [];
-
-export const ARENA_1_GOALS = [
-  {
-    id: 'goal_arena1_west',
-    team: 'CYAN',
-    x: START_X + 35,
-    relY: 500,
-    w: 100,
-    h: 125,
-    color: '#06b6d4',
-    glowColor: 'rgba(6, 182, 212, 0.85)',
-    facing: 1
-  },
-  {
-    id: 'goal_arena1_east',
-    team: 'ORANGE',
-    x: START_X + ARENA_WIDTH - 135,
-    relY: 500,
-    w: 100,
-    h: 125,
-    color: '#f97316',
-    glowColor: 'rgba(249, 115, 22, 0.85)',
-    facing: -1
-  }
-];
-
-export const arena1State = {
-  waitingForKickoff: true,
-  kickoffCooldown: 0,
-  initialSetupDone: false,
-  altarX: START_X + ARENA_WIDTH / 2,
-  altarRelY: 255
-};
-
+// ARENA 1 & ARENA 2 geometrie i obiekty zaimportowane autonomicznie z js/arenas/arena1.js i arena2.js
 const altarShockwaves = [];
 export function spawnAltarShockwave(x, y) {
   altarShockwaves.push({
@@ -476,60 +397,7 @@ export function spawnAltarShockwave(x, y) {
   });
 }
 
-// =========================================================================
-// ARENA 2: CYBERPUNKOWE KOLOSEUM (CYBER STADIUM)
-// =========================================================================
-export const ARENA_CYBER_STADIUM_PLATFORMS = [
-  {
-    id: 'cyber_bastion_west',
-    type: 'rock_platform',
-    isCyberBastion: true,
-    theme: 'cyan',
-    x: 160,
-    w: 280,
-    relY: 240,
-    thickness: 22,
-    props: []
-  },
-  {
-    id: 'cyber_bastion_east',
-    type: 'rock_platform',
-    isCyberBastion: true,
-    theme: 'orange',
-    x: 1480,
-    w: 280,
-    relY: 240,
-    thickness: 22,
-    props: []
-  }
-];
 
-export const ARENA_CYBER_STADIUM_BARRICADES = [];
-
-export const ARENA_CYBER_STADIUM_GOALS = [
-  {
-    id: 'goal_cyan',
-    team: 'CYAN',
-    x: 180,
-    relY: 240,
-    w: 90,
-    h: 110,
-    color: '#06b6d4',
-    glowColor: 'rgba(6, 182, 212, 0.85)',
-    facing: 1
-  },
-  {
-    id: 'goal_orange',
-    team: 'ORANGE',
-    x: 1650,
-    relY: 240,
-    w: 90,
-    h: 110,
-    color: '#f97316',
-    glowColor: 'rgba(249, 115, 22, 0.85)',
-    facing: -1
-  }
-];
 
 // =========================================================================
 // =========================================================================
@@ -655,12 +523,21 @@ export const ARENA_FOUNDRY_BARRICADES = [];
 // USUNIĘTO BRAMKI W TRYBIE DEATHMATCH
 export const ARENA_FOUNDRY_GOALS = [];
 
-export let activeArenaId = 'ARENA_1';
-export const ARENA_PLATFORMS = [...ARENA_1_PLATFORMS];
+const _initArena = getActiveArena();
+export let activeArenaId = (_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
+export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
 export const GOALS = [...ARENA_1_GOALS];
 export const arenaScore = { cyan: 0, orange: 0 };
 export let goalCelebrationTimer = 0;
+
+// Subskrypcja zmian areny dla natychmiastowej synchronizacji platform
+onArenaChange((newArena) => {
+  ARENA_PLATFORMS.length = 0;
+  if (newArena && Array.isArray(newArena.platforms)) {
+    ARENA_PLATFORMS.push(...newArena.platforms);
+  }
+});
 
 registerWorldObstacles(ARENA_PLATFORMS, customObstacles, {
   get activeArenaId() { return activeArenaId; },
@@ -732,9 +609,11 @@ if (typeof world !== 'undefined' && world) {
 
 
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
-  if (arenaId === 'ARENA_3' || arenaId === 3 || arenaId === 'ARENA_FOUNDRY' || arenaId === 'FOUNDRY') {
+  setActiveArena(arenaId);
+  const currentArena = getActiveArena();
+  if (currentArena.id === 'arena-3') {
     activeArenaId = 'ARENA_3';
-  } else if (arenaId === 'ARENA_2' || arenaId === 2 || arenaId === 'CYBER_STADIUM') {
+  } else if (currentArena.id === 'arena-2') {
     activeArenaId = 'ARENA_2';
   } else {
     activeArenaId = 'ARENA_1';
@@ -745,11 +624,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;
 
+  if (currentArena && Array.isArray(currentArena.platforms)) {
+    ARENA_PLATFORMS.push(...currentArena.platforms);
+  }
+
   const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
   const targetBot = botObj || _activeBot;
 
   if (activeArenaId === 'ARENA_3') {
-    ARENA_PLATFORMS.push(...ARENA_FOUNDRY_PLATFORMS);
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
     // W trybie Deathmatch (Arena 3) bramki są usunięte, a wynik zlicza eliminacje drużynowe
     GOALS.length = 0;
@@ -791,13 +673,12 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.trail = [];
     }
   } else if (activeArenaId === 'ARENA_2') {
-    ARENA_PLATFORMS.push(...ARENA_CYBER_STADIUM_PLATFORMS);
     GROUND_BARRICADES.push(...ARENA_CYBER_STADIUM_BARRICADES);
     GOALS.push(...ARENA_CYBER_STADIUM_GOALS);
     arena1State.waitingForKickoff = false;
 
     if (playerObj) {
-      playerObj.x = 750;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 750;
       playerObj.y = groundY - playerObj.h;
       playerObj.vx = 0;
       playerObj.vy = 0;
@@ -809,7 +690,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       targetBot.active = true;
-      targetBot.x = 1170;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 1170;
       targetBot.y = groundY - targetBot.h;
       targetBot.vx = 0;
       targetBot.vy = 0;
@@ -819,7 +700,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.x = 960;
+      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 960;
       ballObj.y = groundY - ballObj.colRadius;
       ballObj.vx = 0;
       ballObj.vy = 0;
@@ -827,7 +708,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.trail = [];
     }
   } else {
-    ARENA_PLATFORMS.push(...ARENA_1_PLATFORMS);
     GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
     GOALS.push(...ARENA_1_GOALS);
 
@@ -835,7 +715,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     arena1State.kickoffCooldown = 0;
 
     if (playerObj) {
-      playerObj.x = START_X + 240;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : (START_X + 240);
       playerObj.y = groundY - 130 - playerObj.h;
       playerObj.vx = 0;
       playerObj.vy = 0;
@@ -847,7 +727,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      targetBot.x = START_X + ARENA_WIDTH - 240;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : (START_X + ARENA_WIDTH - 240);
       targetBot.y = groundY - 130 - targetBot.h;
       targetBot.vx = 0;
       targetBot.vy = 0;
@@ -857,7 +737,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.x = arena1State.altarX;
+      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : arena1State.altarX;
       ballObj.y = groundY - arena1State.altarRelY;
       ballObj.vx = 0;
       ballObj.vy = 0;
@@ -1692,7 +1572,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (plat.type === 'catwalk') {
-      const topY = groundY - plat.relY;
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const platLeft = plat.x;
       const platRight = plat.x + plat.w;
 
@@ -2123,6 +2003,38 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
           ball.trail = [];
           break;
         }
+      }
+    }
+  }
+
+  if (activeArenaId === 'ARENA_2' && ball) {
+    for (const g of GOALS) {
+      const bottomY = groundY - g.relY;
+      const topY = bottomY - g.h;
+      const leftX = g.x;
+      const rightX = g.x + g.w;
+
+      if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
+        const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
+        if (scoringTeam === 'CYAN') {
+          arenaScore.cyan++;
+        } else {
+          arenaScore.orange++;
+        }
+
+        triggerScreenShake(15);
+        triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+        resetArena();
+
+        ball.x = 960;
+        ball.y = groundY - (ball.colRadius || 14) - 2;
+        ball.prevX = 960;
+        ball.prevY = ball.y;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.spin = 0;
+        ball.trail = [];
+        break;
       }
     }
   }
@@ -3666,7 +3578,7 @@ export function drawPlatformScorchEdges(ctx, x, y, w, h, scorchLeft, scorchRight
 }
 
 function drawCatwalk(ctx, cat, groundY) {
-  const topY = groundY - cat.relY;
+  const topY = (cat.y !== undefined) ? cat.y : (groundY - (cat.relY || 0));
   const isFoundry = (cat.theme === 'foundry');
   const isCyan = !isFoundry && (cat.x + cat.w / 2 < 1760);
   const neonCol = isFoundry ? '#ea580c' : (isCyan ? '#06b6d4' : '#f97316');
@@ -3951,7 +3863,7 @@ export function drawObstacles(ctx, groundY) {
   }
 
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.isWall || plat.isCanyonTerrain || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
+    if (!plat || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
     if (plat.type === 'catwalk') {
       if (plat.theme === 'wood' || plat.isLadder || plat.isJungleHut || plat.isHutRoof || plat.isTowerDeck || plat.isRavineDeck || plat.isRavineRoof || plat.isSkywalk || plat.isTunnelFloor || plat.isUpperDrift || plat.isDrainageTunnel) {
         drawJungleWoodStructure(ctx, plat, groundY);

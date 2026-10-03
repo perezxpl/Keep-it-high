@@ -10,6 +10,7 @@ import {
 } from './world.js';
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
+import { getActiveArena } from './arenas/index.js';
 import {
   spawnBulletCasing,
   updateBulletCasings,
@@ -712,6 +713,16 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
     }
     if (hitBall) continue;
+
+    // Przechwycenie trafienia pocisku w unikalne elementy mapy (Plugin Lifecycle Hook)
+    const activeArena = getActiveArena();
+    if (activeArena && typeof activeArena.onBulletHit === 'function') {
+      if (activeArena.onBulletHit(b)) {
+        b.alive = false;
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
 
     let hitChar = false;
     let closestChar = null;

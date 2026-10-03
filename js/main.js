@@ -18,9 +18,10 @@ import {
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
-  executeAeroUlt, throwTacticalGrenade
+  executeAeroUlt, throwTacticalGrenade, isCeilingBlockingStand
 } from './player.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
 } from './ball.js';
@@ -78,12 +79,13 @@ let lastSPressTime = 0;
 
 export { leftStick, rightStick, btnCluster, updateButtonLayout };
 
-const keys = {
+export const keys = {
   left: false,
   right: false,
   down: false,
   up: false,
   space: false,
+  shift: false,
   slide: false,
   ctrl: false,
   crouch: false
@@ -1645,10 +1647,75 @@ let jumpKeyPressed = false;
 let lastWPressTime = 0;
 let isJetpackActive = false;
 const DOUBLE_TAP_WINDOW_MS = 300;
+let ctrlPressStartTime = 0;
+let ctrlWasToggledOnKeyDown = false;
+
+export function resetInputState() {
+  for (const k in keys) {
+    keys[k] = false;
+  }
+  jumpKeyPressed = false;
+  isJetpackActive = false;
+  ctrlPressStartTime = 0;
+  ctrlWasToggledOnKeyDown = false;
+  if (player) {
+    player.isJetpacking = false;
+    player.crouchToggled = false;
+    if (player.isCharging) {
+      player.isCharging = false;
+      player.chargePower = 0;
+      player.kickPower = 0;
+    }
+  }
+  mouseState.lmbDown = false;
+  mouseState.rmbDown = false;
+  mouseState.semiFired = false;
+}
+
+window.addEventListener('blur', () => {
+  resetInputState();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    resetInputState();
+  }
+});
+
+// Ochrona przed przypadkowym zamknięciem karty (skrót Ctrl+W, odświeżenie itp.) w trakcie gry
+window.addEventListener('beforeunload', (e) => {
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+});
+
+// Obsługa Keyboard Lock API w trybie pełnoekranowym (pełna blokada skrótów systemowych, w tym Ctrl+W)
+async function requestKeyboardLock() {
+  if (typeof navigator !== 'undefined' && navigator.keyboard && typeof navigator.keyboard.lock === 'function') {
+    try {
+      await navigator.keyboard.lock(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight', 'Space']);
+    } catch (_) {}
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    requestKeyboardLock();
+  }
+});
 
 window.addEventListener('keydown', (e) => {
+  // Bezwzględna blokada skrótu Ctrl+W / Cmd+W (zamykanie karty w przeglądarce)
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyW' || e.key === 'w' || e.key === 'W')) {
+    e.preventDefault();
+  }
+
   // Tryb wyboru klasy przed rozpoczęciem gry
   if (gameState === GAME_STATES.CLASS_SELECT) {
+    if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyW' || e.key === 'w' || e.key === 'W')) {
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
       e.preventDefault();
       selectPlayerClass(CLASSES.AERO);
@@ -1676,16 +1743,7 @@ window.addEventListener('keydown', (e) => {
     const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
     if (!isInput) {
       e.preventDefault();
-      keys.left = false;
-      keys.right = false;
-      keys.up = false;
-      keys.down = false;
-      keys.space = false;
-      keys.slide = false;
-      keys.ctrl = false;
-      keys.crouch = false;
-      mouseState.lmbDown = false;
-      mouseState.rmbDown = false;
+      resetInputState();
       openChat();
       return;
     }
@@ -1702,11 +1760,45 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Blokada domyślnych skrótów przeglądarki (prevent default) w trakcie rozgrywki
+  // Nie blokujemy klawiszy narzędziowych / odświeżania: F12 (DevTools), F5 (Refresh) itp.
+  const isFunctionKey = e.code === 'F5' || e.key === 'F5' || e.code === 'F12' || e.key === 'F12' ||
+                        (typeof e.key === 'string' && /^F\d+$/.test(e.key));
+
+  if (!isFunctionKey) {
+    const isControlKey = (
+      e.code === 'Space' || e.key === ' ' ||
+      e.code === 'Tab' || e.key === 'Tab' ||
+      e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' ||
+      e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift' ||
+      e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control' ||
+      e.code === 'AltLeft' || e.code === 'AltRight' || e.key === 'Alt'
+    );
+
+    const hasModifier = e.ctrlKey || e.shiftKey || e.altKey || e.metaKey;
+    const isGameKey = (
+      e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
+      e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' || e.code === 'KeyF' ||
+      e.code === 'KeyB' || e.code === 'KeyQ' || e.code === 'KeyZ' ||
+      e.code === 'Space' ||
+      (typeof e.code === 'string' && (e.code.startsWith('Arrow') || e.code.startsWith('Digit') || e.code.startsWith('Numpad')))
+    );
+
+    // Blokada kombinacji np. Ctrl+W/A/S/D oraz klawiszy modyfikatorów/sterujących (Spacja, Tab, Strzałki, Shift, Ctrl, Alt)
+    if (isControlKey || (hasModifier && isGameKey)) {
+      e.preventDefault();
+    }
+  }
+
   if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
 
   if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
     e.preventDefault();
+    if (!e.repeat) {
+      ctrlPressStartTime = performance.now();
+      ctrlWasToggledOnKeyDown = !!player.crouchToggled;
+    }
     keys.ctrl = true;
     keys.crouch = true;
   }
@@ -1769,6 +1861,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !keys.slide) {
     keys.slide = true;
     keys.shift = true;
+    player.crouchToggled = false;
     const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
     if (player.onGround && Math.abs(player.vx) > minSpeed) {
       playerSlide(spawnGrass, GROUND_Y, player);
@@ -1825,15 +1918,7 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
   if (isChatActive) {
-    keys.left = false;
-    keys.right = false;
-    keys.up = false;
-    keys.down = false;
-    keys.space = false;
-    keys.slide = false;
-    keys.shift = false;
-    keys.ctrl = false;
-    keys.crouch = false;
+    resetInputState();
     return;
   }
   const activeEl = document.activeElement;
@@ -1843,8 +1928,39 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
 
   if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+    const pressDuration = performance.now() - ctrlPressStartTime;
     keys.ctrl = false;
     keys.crouch = false;
+
+    // Krótkie kliknięcie klawisza Ctrl (< 320 ms) przełącza stan kucania (Toggle Crouch)
+    if (pressDuration < 320 && !player.isProne && !player.isSliding && !player.isJumping) {
+      if (ctrlWasToggledOnKeyDown) {
+        // Jeśli postać była już w trybie kucania, ponowne krótkie kliknięcie podrywa ją na nogi
+        if (!isCeilingBlockingStand(player, GROUND_Y)) {
+          player.crouchToggled = false;
+          player.isCrouching = false;
+          player.isProne = false;
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
+        }
+      } else {
+        // Krótkie kliknięcie aktywuje kucanie
+        player.crouchToggled = true;
+        player.isCrouching = true;
+        player.isProne = false;
+        player.state = 'CROUCH';
+        player.hitboxHeight = 45;
+      }
+    } else {
+      // Długie przytrzymanie (hold-to-crouch / hold-to-prone) - zwolnienie klawisza stawia postać
+      if (!isCeilingBlockingStand(player, GROUND_Y)) {
+        player.crouchToggled = false;
+        player.isCrouching = false;
+        player.isProne = false;
+        player.state = 'STAND';
+        player.hitboxHeight = player.h || 70;
+      }
+    }
   }
   if (e.code === 'KeyS' || e.code === 'ArrowDown') {
     keys.down = false;
@@ -1856,12 +1972,12 @@ window.addEventListener('keyup', (e) => {
     isJetpackActive = false;
     player.isJetpacking = false;
   }
-  if (e.code === 'Space') {
+  if (e.code === 'Space' || e.key === ' ') {
     keys.space = false;
     const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
     executeReleaseKick(ball, player, 0, meleeTargets);
   }
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC' || e.key === 'Shift') {
     keys.slide = false;
     keys.shift = false;
   }
@@ -2266,6 +2382,10 @@ function update() {
   if (remotePlayer.active) headEntities.push(remotePlayer);
   updateSeveredHeads(headEntities, GROUND_Y, ARENA_PLATFORMS);
 
+  // Aktualizacja cyklu życia specyficznego dla aktywnej areny (np. spadające skały, łańcuchy, wózki)
+  const activeArena = getActiveArena();
+  activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities);
+
   if (!isDeathmatch) {
     if (networkState.isHost || !networkState.isConnected) {
       updateBall(GROUND_Y);
@@ -2371,7 +2491,7 @@ function update() {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  drawSky(ctx);
+  renderArenaBackground(ctx, camera);
 
   ctx.save();
   ctx.scale(camera.zoom, camera.zoom);
@@ -2516,6 +2636,9 @@ function draw() {
   if (!player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && gameState === GAME_STATES.PLAYING) {
     drawCrosshair(ctx, player.aimX, player.aimY);
   }
+
+  // Renderowanie elementów areny na pierwszym planie (np. łańcuchy, ołtarz, stemple)
+  renderArenaForeground(ctx, camera);
 
   if (DEBUG_COLLIDERS && typeof drawDebugColliders === 'function') {
     drawDebugColliders(ctx, GROUND_Y, player);

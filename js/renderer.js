@@ -145,6 +145,36 @@ export {
 } from './player/actions.js';
 
 import { ARENA_PLATFORMS, customObstacles } from './obstacles.js';
+import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
+import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js';
+
+export { getActiveArena, setActiveArena, ARENAS };
+
+/**
+ * Renderuje tło aktywnej areny (przed postaciami i obiektami świata)
+ * @param {CanvasRenderingContext2D} ctx - Kontekst renderowania
+ * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
+ */
+export function renderArenaBackground(ctx, camera) {
+  const activeArena = getActiveArena();
+  if (activeArena && typeof activeArena.drawBackground === 'function') {
+    activeArena.drawBackground(ctx, camera);
+  } else {
+    drawSky(ctx);
+  }
+}
+
+/**
+ * Renderuje elementy areny na pierwszym planie (po postaciach i obiektach świata w przestrzeni świata)
+ * @param {CanvasRenderingContext2D} ctx - Kontekst renderowania
+ * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
+ */
+export function renderArenaForeground(ctx, camera) {
+  const activeArena = getActiveArena();
+  if (activeArena && typeof activeArena.draw === 'function') {
+    activeArena.draw(ctx, camera);
+  }
+}
 
 // =========================================================================
 // TRYB DEBUGOWANIA KOLIZJI (COLLIDER DEBUG VISUALIZER)
@@ -172,7 +202,11 @@ export function drawDebugColliders(ctx, groundY, player) {
   if (!ctx || !DEBUG_COLLIDERS) return;
   ctx.save();
 
-  const plats = (typeof ARENA_PLATFORMS !== 'undefined' && Array.isArray(ARENA_PLATFORMS)) ? ARENA_PLATFORMS : [];
+  const activeArena = getActiveArena();
+  const plats = (typeof ARENA_PLATFORMS !== 'undefined' && Array.isArray(ARENA_PLATFORMS) && ARENA_PLATFORMS.length > 0)
+    ? ARENA_PLATFORMS
+    : (activeArena?.platforms || []);
+
 
   // 1. Linie pochyłe (slopes/polygons): ctx.strokeStyle = '#FF0055'; ctx.beginPath()... ctx.stroke()
   ctx.strokeStyle = '#FF0055';

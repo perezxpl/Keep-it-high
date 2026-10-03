@@ -29,6 +29,38 @@ export const keys = {
   grenade: false
 };
 
+export const DOUBLE_TAP_THRESHOLD = 300; // ms (okno czasowe double-tap)
+
+export const jetpackState = {
+  lastWPressTime: 0,
+  isJetpacking: false,
+  doubleTapThreshold: DOUBLE_TAP_THRESHOLD
+};
+
+/**
+ * Resetuje stan wszystkich klawiszy wejściowych i stanu myszy przy utracie fokusu
+ */
+export function resetKeys() {
+  for (const k in keys) {
+    keys[k] = false;
+  }
+  jetpackState.isJetpacking = false;
+  mouseState.lmbDown = false;
+  mouseState.rmbDown = false;
+  mouseState.semiFired = false;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('blur', () => {
+    resetKeys();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      resetKeys();
+    }
+  });
+}
+
 /**
  * Obsługa zdarzenia keydown dla klawiszy Control (Kucanie i Leżenie: Crouch & Prone)
  * @param {KeyboardEvent} e
@@ -73,6 +105,9 @@ export function handleControlKeyUp(e) {
 export function handleSlideKeyDown(e, player, spawnGrass, groundY) {
   if (!e) return false;
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+    if (typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     keys.shift = true;
     keys.slide = true;
     const minSpeed = 2.5;
@@ -139,13 +174,6 @@ export function triggerMouseKick(player, mouseScreenX, mouseScreenY, camera, W, 
 // - Trzymanie 'W' po double-tap: podtrzymanie lotu dopóki klawisz jest wciśnięty i jest paliwo
 // - Keyup 'W': natychmiastowe zresetowanie stanu lotu
 // =========================================================================
-export const DOUBLE_TAP_THRESHOLD = 300; // ms (okno czasowe double-tap)
-
-export const jetpackState = {
-  lastWPressTime: 0,
-  isJetpacking: false,
-  doubleTapThreshold: DOUBLE_TAP_THRESHOLD
-};
 
 /**
  * Obsługa zdarzenia keydown dla 'W' / skoku

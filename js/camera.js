@@ -141,6 +141,7 @@ export function clampCamera(cam = camera) {
 
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
+  const minCamY = groundFloor - (isArena3 ? 1300 : 3000);
   const maxCamY = isArena3 ? (1300 - (viewHeight * 0.72)) : (groundFloor - (viewHeight * 0.72));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));

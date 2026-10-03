@@ -695,7 +695,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 }
 
 export function drawFrontLegOnly(ctx, GROUND_Y, p) {
-  if (p.dismembered?.legFront) return;
+  if (!p || p.dismembered?.legFront) return;
 
   const hipX = (p.x + p.w / 2) + p.lastHipShiftX;
   const hipY = p.y + p.h - 40 + p.pelvisY;

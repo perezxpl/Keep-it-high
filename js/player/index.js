@@ -8,6 +8,7 @@ import { activeArenaId, customObstacles } from '../obstacles.js';
 import { triggerScreenShake, spawnGroundPuff, isGroundAt, getCaveCeilingY } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
+import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
 import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js';
@@ -570,6 +571,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
+  // Utrzymanie stanu kucania przy aktywnym przełączniku (toggle crouch)
+  if (player.crouchToggled && !player.isProne && !player.isSliding && !player.isJumping) {
+    player.isCrouching = true;
+    player.state = 'CROUCH';
+    player.hitboxHeight = 45;
+  }
+
   if (keys && !isStaggered) {
     if (keys.right) inputAxisX += 1;
     if (keys.left) inputAxisX -= 1;
@@ -973,6 +981,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.kickingFootY = kickTargets.kicking.y;
 
     if (player.spartanTimer >= 6 && player.spartanTimer <= 9 && !player.hitThisSwing) {
+      const activeArena = getActiveArena();
+      const kickHitbox = {
+        x: player.facing === 1 ? hipX : hipX - 50,
+        y: hipY - 20,
+        w: 50,
+        h: 40,
+        footX: player.kickingFootX,
+        footY: player.kickingFootY
+      };
+      activeArena?.onKickHit?.(player, kickHitbox);
       applySpartanKickHit(player, targets || player._targets, customObstacles, player.currentGroundY || GROUND_Y, spawnGrass);
     }
 

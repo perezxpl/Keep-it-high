@@ -528,7 +528,8 @@ export function drawBall(ctx) {
   ctx.restore();
 
   // 3. Warstwowość 2D: noga zasłaniająca piłkę w intro
-  if (player.isIntro && player.frontLegOverBall) {
-    drawFrontLegOnly(ctx, ball.y + ball.radius);
+  if (player && player.isIntro && player.frontLegOverBall) {
+    drawFrontLegOnly(ctx, ball.y + ball.radius, player);
   }
 }
+
