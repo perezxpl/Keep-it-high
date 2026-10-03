@@ -1277,7 +1277,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const isArena2 = (activeArenaId === 'ARENA_2');
   const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
-  const wallRight = isArena3 ? 3600 : (isArena2 ? 1770 : ARENA_RIGHT);
+  const wallRight = isArena3 ? 4400 : (isArena2 ? 1770 : ARENA_RIGHT);
   const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
   const wallTop = groundFloorY - (isArena3 ? 1300 : 3000);
 

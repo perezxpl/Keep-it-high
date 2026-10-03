@@ -86,7 +86,7 @@ def draw_slab_segment(x1, x2):
     for nx in range(x1 + 30, x2 - 20, 50):
         draw.ellipse([nx, Y_MAIN + 3, nx + 4, Y_MAIN + 7], fill='#556780')
 
-# Podłoga solidna pod bramkami i na korcie
+# Podłoga solidna pod wlotami tuneli i na korcie
 draw_slab_segment(0, 780)
 draw_slab_segment(920, 1850)
 draw_slab_segment(2550, 3480)
@@ -97,7 +97,7 @@ for hx1, hx2 in [(780, 920), (3480, 3620)]:
     for gx in range(hx1 + 10, hx2, 16):
         draw.line([(gx, Y_MAIN), (gx, Y_MAIN + 8)], fill='#475569', width=2)
 
-# Drabiny do dolnego tunelu (na otwartym korcie)
+# Drabiny do dolnego tunelu
 for lx in [440, 3960]:
     draw.line([(lx - 12, Y_MAIN), (lx - 12, Y_TUNNEL_FLR)], fill='#334155', width=3)
     draw.line([(lx + 12, Y_MAIN), (lx + 12, Y_TUNNEL_FLR)], fill='#334155', width=3)
@@ -149,23 +149,37 @@ draw.polygon([(CX - 24, ladle_top_y + 35), (CX + 24, ladle_top_y + 35), (CX + 16
 draw.polygon([(CX - 12, ladle_top_y + 40), (CX + 12, ladle_top_y + 40), (CX + 8, Y_TUNNEL_FLR), (CX - 8, Y_TUNNEL_FLR)], fill='#ea580c')
 draw.polygon([(CX - 5, ladle_top_y + 40), (CX + 5, ladle_top_y + 40), (CX + 3, Y_TUNNEL_FLR), (CX - 3, Y_TUNNEL_FLR)], fill='#fef08a')
 
-# 7. WKLEJANIE BRAMEK W BOCZNYM PROFILU 2D (SIDE-VIEW FOUNDRY GOALS)
-side_cyan = Image.open('assets/side_goal_cyan.png').convert('RGBA')
-side_orange = Image.open('assets/side_goal_orange.png').convert('RGBA')
+# 7. PRZEMYSŁOWE DZIURY W ŚCIANIE (CIRCULAR WALL CONDUIT HOLES)
+def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0):
+    im = Image.open(im_path).convert('RGBA')
+    if rotate_deg != 0:
+        im = im.rotate(rotate_deg)
+    w, h = im.size
+    cx, cy = w // 2, h // 2
+    
+    mask = Image.new('L', (w, h), 0)
+    dm = ImageDraw.Draw(mask)
+    dm.ellipse([cx - r_outer, cy - r_outer, cx + r_outer, cy + r_outer], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(feather))
+    
+    im.putalpha(mask)
+    crop_box = (cx - r_outer - 15, cy - r_outer - 15, cx + r_outer + 15, cy + r_outer + 15)
+    return im.crop(crop_box)
 
-# Rozmiar bramki: wysokość 270 px (ok. 3.5x wysokość postaci), szerokość ok. 294 px
-GOAL_H = 270
-GOAL_W = int(GOAL_H * (side_cyan.width / side_cyan.height))
-GOAL_Y = Y_MAIN - GOAL_H  # 900 - 270 = 630
+circle_cyan = make_circular_conduit('assets/hole_cyan.jpg', r_outer=425, feather=14, rotate_deg=180)
+circle_orange = make_circular_conduit('assets/hole_orange.jpg', r_outer=425, feather=14, rotate_deg=0)
 
-scaled_cyan = side_cyan.resize((GOAL_W, GOAL_H), Image.Resampling.LANCZOS)
-scaled_orange = side_orange.resize((GOAL_W, GOAL_H), Image.Resampling.LANCZOS)
+HOLE_DIAMETER = 340
+HOLE_Y = Y_MAIN - HOLE_DIAMETER  # 900 - 340 = 560
 
-CYAN_GOAL_X = 10
-ORANGE_GOAL_X = W - GOAL_W - 10
+scaled_cyan_hole = circle_cyan.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)
+scaled_orange_hole = circle_orange.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)
 
-img.paste(scaled_cyan, (CYAN_GOAL_X, GOAL_Y), scaled_cyan)
-img.paste(scaled_orange, (ORANGE_GOAL_X, GOAL_Y), scaled_orange)
+CYAN_HOLE_X = 20
+ORANGE_HOLE_X = W - HOLE_DIAMETER - 20
+
+img.paste(scaled_cyan_hole, (CYAN_HOLE_X, HOLE_Y), scaled_cyan_hole)
+img.paste(scaled_orange_hole, (ORANGE_HOLE_X, HOLE_Y), scaled_orange_hole)
 
 # 8. Rozmycie światła wolumetrycznego
 glow = Image.new('RGB', (W, H), (0, 0, 0))
@@ -174,14 +188,14 @@ glow_draw.ellipse([CX - 650, ladle_top_y - 200, CX + 650, Y_MAIN + 250], fill=(2
 glow_draw.ellipse([CX - 280, ladle_top_y - 90, CX + 280, ladle_top_y + 160], fill=(255, 175, 35))
 glow_draw.rectangle([CX - 120, ladle_top_y, CX + 120, Y_TUNNEL_FLR], fill=(215, 55, 0))
 
-# Blask i poświata z komór bramek
-glow_draw.ellipse([CYAN_GOAL_X + 40, GOAL_Y + 100, CYAN_GOAL_X + 240, Y_MAIN + 15], fill=(0, 160, 240))
-glow_draw.ellipse([CYAN_GOAL_X + 70, GOAL_Y + 160, CYAN_GOAL_X + 210, Y_MAIN], fill=(140, 240, 255))
+# Poświata z głębi tuneli w ścianie (Cyan w lewo, Orange w prawo)
+glow_draw.ellipse([CYAN_HOLE_X + 40, HOLE_Y + 70, CYAN_HOLE_X + 220, HOLE_Y + 250], fill=(0, 180, 255))
+glow_draw.ellipse([CYAN_HOLE_X + 70, HOLE_Y + 100, CYAN_HOLE_X + 180, HOLE_Y + 220], fill=(160, 245, 255))
 
-glow_draw.ellipse([ORANGE_GOAL_X + 50, GOAL_Y + 100, ORANGE_GOAL_X + 250, Y_MAIN + 15], fill=(240, 95, 10))
-glow_draw.ellipse([ORANGE_GOAL_X + 80, GOAL_Y + 160, ORANGE_GOAL_X + 220, Y_MAIN], fill=(255, 195, 50))
+glow_draw.ellipse([ORANGE_HOLE_X + 120, HOLE_Y + 70, ORANGE_HOLE_X + 300, HOLE_Y + 250], fill=(255, 110, 10))
+glow_draw.ellipse([ORANGE_HOLE_X + 160, HOLE_Y + 100, ORANGE_HOLE_X + 270, HOLE_Y + 220], fill=(255, 205, 60))
 
-glow = glow.filter(ImageFilter.GaussianBlur(80))
+glow = glow.filter(ImageFilter.GaussianBlur(60))
 final_img = Image.blend(img, glow, 0.40)
 final_img.save('foundry_bg.png', format='PNG')
-print("Successfully generated foundry_bg.png with side-view 2D goals.")
+print("Successfully generated foundry_bg.png with circular wall conduit holes.")

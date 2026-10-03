@@ -13,10 +13,10 @@ foundryBgImage.src = 'foundry_bg.png';
 // =========================================================================
 export const ARENA_3_PLATFORMS = [
   // Płyta główna (poziom Y = 900, grubość 70 px)
-  { id: 'floor_l1', x: 320, w: 460, y: 900, h: 70, solid: true, isPlatform: true },
+  { id: 'floor_l1', x: 0, w: 780, y: 900, h: 70, solid: true, isPlatform: true },
   { id: 'floor_l2', x: 920, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
   { id: 'floor_r1', x: 2550, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
-  { id: 'floor_r2', x: 3620, w: 460, y: 900, h: 70, solid: true, isPlatform: true },
+  { id: 'floor_r2', x: 3620, w: 780, y: 900, h: 70, solid: true, isPlatform: true },
   // Luki zrzutowe do tunelu (Drop-Through, oneWay)
   { id: 'hatch_l', x: 780, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true },
   { id: 'hatch_r', x: 3480, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true },
@@ -61,8 +61,8 @@ export const ARENA_FOUNDRY_WALLS = [];
 // Tylko bramki wbudowane w narysowane wnęki ścian szczytowych
 // =========================================================================
 export const ARENA_3_CUSTOM_OBJECTS = [
-  { id: 'goal_cyan', team: 'CYAN', x: 40, y: 640, w: 220, h: 260, facing: 1 },
-  { id: 'goal_orange', team: 'ORANGE', x: 4130, y: 640, w: 220, h: 260, facing: -1 }
+  { id: 'goal_cyan', team: 'CYAN', x: 80, y: 615, w: 220, h: 280, facing: 1 },
+  { id: 'goal_orange', team: 'ORANGE', x: 4100, y: 615, w: 220, h: 280, facing: -1 }
 ];
 
 // =========================================================================

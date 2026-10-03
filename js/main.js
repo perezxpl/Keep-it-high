@@ -2707,4 +2707,9 @@ function loop() {
   draw();
 }
 
+if (typeof window !== 'undefined') {
+  window.player = player;
+  window.camera = camera;
+}
+
 requestAnimationFrame(loop);

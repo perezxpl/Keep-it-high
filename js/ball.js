@@ -156,7 +156,7 @@ export function updateBall(GROUND_Y) {
     const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
     const isArena2 = (activeArenaId === 'ARENA_2');
     const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
-    const wallRight = isArena3 ? 3600 : (isArena2 ? 1770 : ARENA_RIGHT);
+    const wallRight = isArena3 ? 4400 : (isArena2 ? 1770 : ARENA_RIGHT);
     const wallTop = GROUND_Y - (isArena3 ? 1300 : 3000);
 
     if (ball.y >= wallTop) {
