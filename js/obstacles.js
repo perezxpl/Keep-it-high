@@ -3951,7 +3951,7 @@ export function drawObstacles(ctx, groundY) {
   }
 
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.isCanyonTerrain || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
+    if (!plat || plat.isWall || plat.isCanyonTerrain || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
     if (plat.type === 'catwalk') {
       if (plat.theme === 'wood' || plat.isLadder || plat.isJungleHut || plat.isHutRoof || plat.isTowerDeck || plat.isRavineDeck || plat.isRavineRoof || plat.isSkywalk || plat.isTunnelFloor || plat.isUpperDrift || plat.isDrainageTunnel) {
         drawJungleWoodStructure(ctx, plat, groundY);

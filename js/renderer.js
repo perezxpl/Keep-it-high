@@ -8,7 +8,6 @@ export {
   drawPlatformScorchEdges,
   drawCrate,
   drawSandbags,
-  drawCatwalk,
   drawBunkerBlock,
   drawCyberCatwalk,
   drawNeonBarrier,
