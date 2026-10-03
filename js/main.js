@@ -10,7 +10,8 @@ import {
   consumeHitstop, updateGore, drawBloodDecals, drawGore, clearGore,
   updateSeveredHeads, drawSeveredHeads,
   weaponButtons,
-  devZoomLevel, setDevZoom
+  devZoomLevel, setDevZoom,
+  getCaveCeilingY
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -47,6 +48,7 @@ import {
   handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
 } from './mobileControls.js';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -1189,16 +1191,30 @@ if (devArenaBtn) {
   const toggleArena = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    const nextArena = (activeArenaId === 'ARENA_1') ? 'ARENA_2' : 'ARENA_1';
+    let nextArena = 'ARENA_1';
+    if (activeArenaId === 'ARENA_1') {
+      nextArena = 'ARENA_2';
+    } else if (activeArenaId === 'ARENA_2') {
+      nextArena = 'ARENA_3';
+    } else {
+      nextArena = 'ARENA_1';
+    }
     switchArena(nextArena, player, bot, ball);
     sendArenaSwitch(nextArena);
-    devArenaBtn.textContent = (activeArenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
-    if (activeArenaId === 'ARENA_2') {
+    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+      devArenaBtn.textContent = '🏟️ Arena: 3 (Dżungla)';
+      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))';
+      devArenaBtn.style.borderColor = '#22c55e';
+      devArenaBtn.style.color = '#86efac';
+      devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
+    } else if (activeArenaId === 'ARENA_2') {
+      devArenaBtn.textContent = '🏟️ Arena: 2';
       devArenaBtn.style.background = 'rgba(6, 182, 212, 0.25)';
       devArenaBtn.style.borderColor = '#06b6d4';
       devArenaBtn.style.color = '#22d3ee';
       devArenaBtn.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.55)';
     } else {
+      devArenaBtn.textContent = '🏟️ Arena: 1';
       devArenaBtn.style.background = '';
       devArenaBtn.style.borderColor = '#06b6d4';
       devArenaBtn.style.color = '#22d3ee';
@@ -1375,7 +1391,7 @@ export function renderEditorPalette() {
   if (!devPaletteContainer) return;
   devPaletteContainer.innerHTML = '';
 
-  const arenaKey = (activeArenaId === 'ARENA_2') ? 'ARENA_2' : 'ARENA_1';
+  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2') ? 'ARENA_2' : 'ARENA_1');
   const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
 
   const catTitles = arenaKey === 'ARENA_2' ? {
@@ -2039,8 +2055,10 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
+  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+
   if (consumeHitstop()) {
-    updateCamera(player, ball);
+    updateCamera(player, isDeathmatch ? null : ball);
     return;
   }
 
@@ -2056,7 +2074,7 @@ function update() {
     mouseState.rmbDown = false;
 
     // Ambientowe tło i ruch kamery bez symulacji fizyki
-    updateCamera(player, ball);
+    updateCamera(player, isDeathmatch ? null : ball);
     updateParticles();
     return;
   }
@@ -2169,7 +2187,7 @@ function update() {
     }
   }
 
-  // SILNIK JETPACKA (aktywacja po podwójnym pchnięciu 'W' / drążka, podtrzymanie tylko przy uniesionej gałce axisY < -0.15)
+  // SILNIK JETPACKA
   const isStickRaised = !!(leftStick && leftStick.axisY < -0.15);
   const isTouchFlight = !!(leftStick && leftStick.isJetpacking && isStickRaised);
   const isFlightActive = ((isJetpackActive && keys.up) || isTouchFlight) && !player.isDead && player.jetFuel > 0;
@@ -2181,7 +2199,6 @@ function update() {
     let inputAxisX = 0;
     if (keys.left) inputAxisX -= 1;
     if (keys.right) inputAxisX += 1;
-    // W locie jetpackiem: sterowanie lewo/prawo działa tylko przy utrzymaniu gałki uniesionej (axisY < -0.15)
     if (leftStick && leftStick.active && isStickRaised && Math.abs(leftStick.axisX) > 0.05) {
       inputAxisX = leftStick.axisX;
     }
@@ -2198,7 +2215,16 @@ function update() {
     player.isCrouching = false;
     player.isProne = false;
 
-    // Precyzyjny punkt spawnu na wylocie dyszy jetpacka
+    // Blokada wylotu ponad lity strop jaskini w locie jetpackiem
+    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+      const ceilY = getCaveCeilingY(player.x + player.w / 2, GROUND_Y);
+      if (player.y < ceilY) {
+        player.y = ceilY;
+        if (player.vy < 0) player.vy = 0.5;
+        spawnJetpackSparks(player.x + player.w / 2, ceilY + 4, 0, 4);
+      }
+    }
+
     const nozzle = getJetpackNozzlePos(player);
     const myJetColors = networkState.isHost
       ? ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
@@ -2216,9 +2242,8 @@ function update() {
 
   if (remotePlayer && remotePlayer.active) {
     remotePlayer.groundY = GROUND_Y;
-    remotePlayer.currentGroundY = GROUND_Y; // Kluczowy fix nóg!
+    remotePlayer.currentGroundY = GROUND_Y;
 
-    // Aktualizacja fazy chodu i biegu dla nóg IK:
     const rSpeed = Math.abs(remotePlayer.vx || 0);
     if (rSpeed > 0.1 && !remotePlayer.isJumping) {
       remotePlayer.stridePhase = (remotePlayer.stridePhase || 0) + rSpeed * 0.04;
@@ -2228,7 +2253,7 @@ function update() {
 
   const mainMeleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
   updateMobileControlStates(player, leftStick, btnCluster);
-  updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, player, mainMeleeTargets);
+  updatePlayer(keys, leftStick, GROUND_Y, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
 
   updateParticles();
@@ -2241,24 +2266,71 @@ function update() {
   if (remotePlayer.active) headEntities.push(remotePlayer);
   updateSeveredHeads(headEntities, GROUND_Y, ARENA_PLATFORMS);
 
-  if (networkState.isHost || !networkState.isConnected) {
-    updateBall(GROUND_Y);
-    checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
-    if (remotePlayer.active) {
-      checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
-      checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+  if (!isDeathmatch) {
+    if (networkState.isHost || !networkState.isConnected) {
+      updateBall(GROUND_Y);
+      checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+      if (remotePlayer.active) {
+        checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
+        checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+      }
+      checkObstacleCollisions(ball, GROUND_Y, player, bot);
+      if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer, bot);
+      sendBallState(ball);
+    } else {
+      // Klient – autorytatywna pozycja piłki z sieci P2P
+      checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+      if (remotePlayer.active) {
+        checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
+        checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+      }
+      checkObstacleCollisions(ball, GROUND_Y, player, bot);
     }
-    checkObstacleCollisions(ball, GROUND_Y, player, bot);
-    if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer, bot);
-    sendBallState(ball);
   } else {
-    // Klient – autorytatywna pozycja piłki z sieci P2P
-    checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+    // W trybie Team Deathmatch (Arena 3) piłka jest całkowicie wycofana z gry
+    if (ball.active) {
+      ball.active = false;
+      ball.x = -9999;
+      ball.y = -9999;
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+    checkObstacleCollisions(null, GROUND_Y, player, bot);
     if (remotePlayer.active) {
-      checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
       checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
     }
-    checkObstacleCollisions(ball, GROUND_Y, player, bot);
+
+    // Zliczanie fragów w trybie Team Deathmatch
+    if (player.isDead) {
+      if (!player._fragRecorded) {
+        arenaScore.orange++;
+        player._fragRecorded = true;
+      }
+    } else {
+      player._fragRecorded = false;
+    }
+
+    if (bot.active) {
+      if (bot.isDead) {
+        if (!bot._fragRecorded) {
+          arenaScore.cyan++;
+          bot._fragRecorded = true;
+        }
+      } else {
+        bot._fragRecorded = false;
+      }
+    }
+
+    if (remotePlayer.active) {
+      if (remotePlayer.isDead) {
+        if (!remotePlayer._fragRecorded) {
+          arenaScore.cyan++;
+          remotePlayer._fragRecorded = true;
+        }
+      } else {
+        remotePlayer._fragRecorded = false;
+      }
+    }
   }
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
@@ -2278,19 +2350,23 @@ function update() {
   }
 
   if (bot.active) {
-    updateBotBrain(ball, player, GROUND_Y, spawnGrass);
-    checkBallPlayerCollisions(bot, GROUND_Y, spawnGrass);
+    updateBotBrain(isDeathmatch ? null : ball, player, GROUND_Y, spawnGrass);
+    if (!isDeathmatch) {
+      checkBallPlayerCollisions(bot, GROUND_Y, spawnGrass);
+    }
     checkPlayerPlatformLanding(bot, GROUND_Y);
   }
 
   const combatants = [player];
   if (bot.active) combatants.push(bot);
   if (remotePlayer.active) combatants.push(remotePlayer);
-  updateBullets(GROUND_Y, obstacles, ball, combatants);
-  updateProjectiles(GROUND_Y, ARENA_PLATFORMS, customObstacles, combatants, ball);
+  updateBullets(GROUND_Y, obstacles, isDeathmatch ? null : ball, combatants);
+  updateProjectiles(GROUND_Y, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
-  updateCamera(player, ball);
-  updateDistance(ball.x);
+  updateCamera(player, isDeathmatch ? null : ball);
+  if (!isDeathmatch) {
+    updateDistance(ball.x);
+  }
 }
 
 function draw() {
@@ -2427,7 +2503,11 @@ function draw() {
     ctx.restore();
   }
 
-  drawBall(ctx);
+  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+
+  if (!isDeathmatch) {
+    drawBall(ctx);
+  }
 
   const modalEl = document.getElementById('mp-modal') || mpModal;
   const isDevOpenForCrosshair = devMenu && !devMenu.classList.contains('dev-menu-hidden');
@@ -2437,13 +2517,27 @@ function draw() {
     drawCrosshair(ctx, player.aimX, player.aimY);
   }
 
+  if (DEBUG_COLLIDERS && typeof drawDebugColliders === 'function') {
+    drawDebugColliders(ctx, GROUND_Y, player);
+  }
+
   ctx.restore();
+
+  if (DEBUG_COLLIDERS) {
+    ctx.save();
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#22c55e';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText('⚡ DEBUG COLLIDERS ON [F1 / ~ to toggle]', 16, 24);
+    ctx.restore();
+  }
 
   if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx);
   } else {
-    const inKickRange = (ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
-    drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange, { activeArenaId, arenaScore, arena1State });
+    const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State });
   }
 
   if (editorState.active) {

@@ -78,17 +78,18 @@ export function getCanvasLogicalHeight() {
  * 1. Pobranie dokładnych współrzędnych granic areny (World Bounds)
  */
 export function getArenaBounds() {
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const isArena2 = (activeArenaId === 'ARENA_2');
-  const minX = isArena2 ? 150 : CFG_ARENA_LEFT;
-  const maxX = isArena2 ? 1770 : CFG_ARENA_RIGHT;
+  const minX = isArena3 ? 0 : (isArena2 ? 150 : CFG_ARENA_LEFT);
+  const maxX = isArena3 ? 3600 : (isArena2 ? 1770 : CFG_ARENA_RIGHT);
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (getCanvasLogicalHeight() - 75);
 
   return {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: groundFloor - 3000,
-    maxY: groundFloor
+    minY: groundFloor - (isArena3 ? 1300 : 3000),
+    maxY: isArena3 ? 1300 : groundFloor
   };
 }
 
@@ -138,9 +139,9 @@ export function clampCamera(cam = camera) {
     cam.targetX = ARENA_LEFT;
   }
 
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
-  const minCamY = groundFloor - 3000;
-  const maxCamY = groundFloor - (viewHeight * 0.72);
+  const maxCamY = isArena3 ? (1300 - (viewHeight * 0.72)) : (groundFloor - (viewHeight * 0.72));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -160,12 +161,13 @@ export function updateCamera(player, ball) {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
   const minZoom = canvasWidth / arenaWidth;
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
-    // Domyślny zoom gry gwarantujący brak widoczności obszarów poza mapą
-    const defaultGameZoom = Math.max(0.60, minZoom);
+    // Domyślny zoom gry gwarantujący płynne i szerokie pole widzenia w powiększonym świecie
+    const defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : Math.max(0.60, minZoom);
     camera.targetZoom = defaultGameZoom;
   }
 
@@ -198,13 +200,15 @@ export function updateCamera(player, ball) {
     targetCamX = ARENA_LEFT;
   }
 
-  // Ograniczenie pionowe (Y): podłoga nie przekracza dolnej części kadru
+  // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
   const targetY = target ? (target.y !== undefined ? target.y : groundFloor - 50) : (groundFloor - 50);
   let targetCamY = targetY - (viewHeight * 0.65);
 
-  const minCamY = groundFloor - 3000; // sufit
-  const maxCamY = groundFloor - (viewHeight * 0.72); // podłoga
+  const minCamY = groundFloor - (isArena3 ? 1300 : 3000); // sufit dopasowany do wysokości mapy 1300 px
+  // W Arenie 3 umożliwiamy płynne zejście kamery w głąb Dolnej Pieczary Bojowej (y = 1180)
+  const subterraneanBottom = isArena3 ? 1300 : groundFloor;
+  const maxCamY = subterraneanBottom - (viewHeight * 0.72);
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   camera.targetX = targetCamX;

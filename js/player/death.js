@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
 import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
-import { ARENA_PLATFORMS, customObstacles } from '../obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 
 /**
@@ -15,8 +15,11 @@ function getSurfaceUnderPoint(x, y, groundY) {
   let floor = (typeof isGroundAt === 'function' && !isGroundAt(x)) ? (groundY + 600) : groundY;
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
+      if (plat.isWall) continue;
       if (x >= plat.x - 6 && x <= plat.x + plat.w + 6) {
-        const topY = groundY - plat.relY;
+        const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
+          ? getPlatformSurfaceY(plat, x, groundY)
+          : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
         if (y <= topY + 16 && topY < floor) {
           floor = topY;
         }

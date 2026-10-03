@@ -153,10 +153,11 @@ export function updateBall(GROUND_Y) {
     ball.y += ball.vy * subDt;
 
     // Sprężyste odbijanie piłki (rykoszety) od pionowych neonowych ścian areny (300m bariera)
+    const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
     const isArena2 = (activeArenaId === 'ARENA_2');
-    const wallLeft = isArena2 ? 150 : ARENA_LEFT;
-    const wallRight = isArena2 ? 1770 : ARENA_RIGHT;
-    const wallTop = GROUND_Y - 3000;
+    const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
+    const wallRight = isArena3 ? 3600 : (isArena2 ? 1770 : ARENA_RIGHT);
+    const wallTop = GROUND_Y - (isArena3 ? 1300 : 3000);
 
     if (ball.y >= wallTop) {
       if (ball.x - ball.colRadius <= wallLeft) {
@@ -207,8 +208,8 @@ export function updateBall(GROUND_Y) {
     resolveBallObstacleCollisions(ball, GROUND_Y);
   }
 
-  // Detekcja gola na Arenie 2 (Cyber Stadium)
-  if (activeArenaId === 'ARENA_2') {
+  // Detekcja gola na Arenie 2 (Cyber Stadium) oraz Arenie 3 (The Foundry)
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     for (const g of GOALS) {
       const bottomY = GROUND_Y - g.relY;
       const topY = bottomY - g.h;
@@ -227,13 +228,14 @@ export function updateBall(GROUND_Y) {
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        // Reset piłki na środek murawy
-        ball.x = 960;
-        ball.y = GROUND_Y - ball.colRadius - 20;
+        // Reset piłki: dla Areny 3 na X: 1800, Y: GROUND_Y - 340, dla Areny 2 na X: 960, Y: GROUND_Y - ball.colRadius - 20
+        const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+        ball.x = isA3 ? 1800 : 960;
+        ball.y = isA3 ? (GROUND_Y - 340 - ball.colRadius - 2) : (GROUND_Y - ball.colRadius - 20);
         ball.prevX = ball.x;
         ball.prevY = ball.y;
         ball.vx = 0;
-        ball.vy = -3.0;
+        ball.vy = isA3 ? 0 : -3.0;
         ball.spin = 0;
         ball.trail = [];
         break;
@@ -247,8 +249,10 @@ export function updateBall(GROUND_Y) {
     if (ballSpeed < 0.25) {
       ball.stuckFrames = (ball.stuckFrames || 0) + 1;
       if (ball.stuckFrames > 14) {
+        const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+        const centerX = isA3 ? 1800 : 960;
         ball.vy = -4.5;
-        ball.vx = (ball.x < 960) ? 3.5 : -3.5;
+        ball.vx = (ball.x < centerX) ? 3.5 : -3.5;
         ball.stuckFrames = 0;
       }
     } else {

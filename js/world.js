@@ -4,11 +4,25 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, isTouchDevice, setTouchDevice } from './config.js';
 import { spawnConcreteDebris, spawnRicochetSparks } from './particles.js';
+import { drawMineCaveBackground } from './background.js';
 export { isTouchDevice, setTouchDevice };
 
 export let _worldPlatforms = [];
 export let _worldCustomObstacles = [];
+export let platforms = [];
+export let slopes = [];
+export let walls = [];
+export let obstacles = [];
+
+export function resetColliders() {
+  platforms = [];
+  slopes = [];
+  walls = [];
+  obstacles = [];
+}
+
 export let activeArenaId = 'ARENA_1';
+export const ladders = [];
 export let _worldArenaState = {
   get activeArenaId() { return activeArenaId; },
   set activeArenaId(val) { activeArenaId = val; },
@@ -51,6 +65,30 @@ export let H = window.innerHeight;
 export let DPR = Math.min(window.devicePixelRatio || 1, 2);
 export let GROUND_Y = Math.round((H - 75) / 20) * 20;
 
+/**
+ * Renderuje pasy ostrzegawcze (żółto-czarne skośne pasy przemysłowe)
+ */
+export function drawHazardStripes(ctx, x, y, w, h) {
+  if (!ctx || w <= 0 || h <= 0) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#18181b';
+  for (let sx = x - h; sx < x + w + h; sx += 12) {
+    ctx.beginPath();
+    ctx.moveTo(sx, y);
+    ctx.lineTo(sx + 6, y);
+    ctx.lineTo(sx - 2, y + h);
+    ctx.lineTo(sx - 8, y + h);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 // =========================================================================
 // SEGMENTOWA ARCHITEKTURA PODŁOŻA I INDUSTRIALNE FUNDAMENTY
 // =========================================================================
@@ -86,6 +124,9 @@ export function initGroundSegments() {
 initGroundSegments();
 
 export function isGroundAt(x, margin = 4) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    return false;
+  }
   for (let i = 0; i < groundSegments.length; i++) {
     const seg = groundSegments[i];
     if (seg.destroyed) continue;
@@ -97,6 +138,9 @@ export function isGroundAt(x, margin = 4) {
 }
 
 export function isGroundSupporting(minX, maxX) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    return false;
+  }
   for (let i = 0; i < groundSegments.length; i++) {
     const seg = groundSegments[i];
     if (seg.destroyed) continue;
@@ -108,6 +152,9 @@ export function isGroundSupporting(minX, maxX) {
 }
 
 export function findGroundHoleAt(x) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    return { holeStart: ARENA_LEFT - 320, holeEnd: ARENA_RIGHT + 320 };
+  }
   if (isGroundAt(x, 0)) return null;
   let holeStart = ARENA_LEFT - 320;
   let holeEnd = ARENA_RIGHT + 320;
@@ -1533,8 +1580,287 @@ function drawCyberStadiumSky(ctx, camX) {
   }
 }
 
+/**
+ * Renderuje malownicze tło Kanionu w Dżungli (Jungle Canyon / Arena 3):
+ * - Wilgotne, poranne niebo z mgłą nad koronami drzew i delikatnymi promieniami słońca (god rays)
+ * - Paralaksa daleka (camX * 0.015): pasma zamglonych grzbietów górskich pokrytych gęstą dżunglą
+ * - Paralaksa średnia (camX * 0.038): gigantyczne drzewa deszczowe z wiszącymi lianami i krasowe filary skalne
+ * - Paralaksa bliska (camX * 0.075): tropikalne liście i gałęzie palmowe okalające kadr od góry
+ * - Cząsteczki atmosferyczne: wirujące tropikalne liście i świetliste zarodniki unoszące się na wietrze
+ */
+export function drawJungleSky(ctx, camX) {
+  const time = performance.now() * 0.001;
+  const horizonY = H * 0.78;
+
+  // 1. PIONOWY GRADIENT TŁA BAZOWEGO (WILGOTNE NIEBO DŻUNGLI -> MGŁA NAD KORONAMI DRZEW)
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0.0, '#c7d6be');
+  skyGrad.addColorStop(0.32, '#a7bf9d');
+  skyGrad.addColorStop(0.58, '#829f77');
+  skyGrad.addColorStop(0.82, '#5e7c53');
+  skyGrad.addColorStop(1.0, '#3a5431');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. PROMIENIE SŁONECZNE (GOD RAYS) PRZEDZIERAJĄCE SIĘ PRZEZ KORONY DRZEW
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const sunPulse = 0.88 + 0.12 * Math.sin(time * 1.8);
+  const sunX = W * 0.24 - (camX * 0.01 % W);
+  const sunGrad = ctx.createRadialGradient(sunX, -40, 10, sunX, 80, 520);
+  sunGrad.addColorStop(0.0, `rgba(254, 252, 232, ${0.45 * sunPulse})`);
+  sunGrad.addColorStop(0.40, `rgba(253, 230, 138, ${0.20 * sunPulse})`);
+  sunGrad.addColorStop(0.80, `rgba(187, 247, 208, ${0.08 * sunPulse})`);
+  sunGrad.addColorStop(1.0, 'rgba(187, 247, 208, 0)');
+  ctx.fillStyle = sunGrad;
+  ctx.fillRect(0, 0, W, H * 0.85);
+
+  // Skośne smugi światła
+  const rayAngles = [-0.18, 0.02, 0.22, 0.44];
+  for (let r = 0; r < rayAngles.length; r++) {
+    const rayOffset = Math.sin(time * 0.6 + r * 1.5) * 40;
+    const rx = sunX + r * 160 + rayOffset;
+    const rayWidth = 90 + r * 35;
+    const rayGrad = ctx.createLinearGradient(rx, 0, rx + 240, horizonY);
+    rayGrad.addColorStop(0.0, 'rgba(254, 249, 195, 0.12)');
+    rayGrad.addColorStop(0.55, 'rgba(254, 249, 195, 0.05)');
+    rayGrad.addColorStop(1.0, 'rgba(254, 249, 195, 0)');
+    ctx.fillStyle = rayGrad;
+    ctx.beginPath();
+    ctx.moveTo(rx, 0);
+    ctx.lineTo(rx + rayWidth, 0);
+    ctx.lineTo(rx + rayWidth + 340, horizonY);
+    ctx.lineTo(rx + 300, horizonY);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 3. PARALAKSA DALEKA (camX * 0.015) – Zamglone pasma górskie i sylwetki gęstych koron lasu
+  const farPeriod = 1400;
+  const farOffset = Math.floor(((camX * 0.015) % farPeriod + farPeriod) % farPeriod);
+  const minFarLoop = Math.floor((-farOffset) / farPeriod) - 1;
+  const maxFarLoop = Math.ceil((W - farOffset) / farPeriod) + 1;
+
+  ctx.save();
+  ctx.fillStyle = '#49633f';
+
+  for (let loop = minFarLoop; loop <= maxFarLoop; loop++) {
+    const baseX = Math.floor(loop * farPeriod - farOffset);
+    if (baseX + farPeriod < 0 || baseX > W) continue;
+
+    // Pasmo górskie 1 (lewy masyw krasowy)
+    ctx.beginPath();
+    ctx.moveTo(baseX, horizonY);
+    ctx.lineTo(baseX, horizonY - 140);
+    ctx.quadraticCurveTo(baseX + 160, horizonY - 310, baseX + 340, horizonY - 180);
+    ctx.quadraticCurveTo(baseX + 520, horizonY - 340, baseX + 720, horizonY - 160);
+    ctx.quadraticCurveTo(baseX + 940, horizonY - 290, baseX + 1140, horizonY - 170);
+    ctx.quadraticCurveTo(baseX + 1300, horizonY - 260, baseX + farPeriod, horizonY - 140);
+    ctx.lineTo(baseX + farPeriod, horizonY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Zaokrąglone kępy gęstych koron drzew na grzbiecie górskim
+    ctx.fillStyle = '#3c5333';
+    for (let bx = 40; bx < farPeriod; bx += 85) {
+      const hillY = horizonY - 180 - Math.sin((bx / farPeriod) * Math.PI * 3) * 60;
+      ctx.beginPath();
+      ctx.arc(baseX + bx, hillY, 48, Math.PI, 0);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#49633f';
+  }
+
+  // Pozioma warstwa mgły w dolinie górskiej
+  const mistGrad = ctx.createLinearGradient(0, horizonY - 180, 0, horizonY - 40);
+  mistGrad.addColorStop(0.0, 'rgba(180, 203, 172, 0)');
+  mistGrad.addColorStop(0.5, 'rgba(180, 203, 172, 0.28)');
+  mistGrad.addColorStop(1.0, 'rgba(180, 203, 172, 0.06)');
+  ctx.fillStyle = mistGrad;
+  ctx.fillRect(0, horizonY - 180, W, 140);
+  ctx.restore();
+
+  // 4. PARALAKSA ŚREDNIA (camX * 0.038) – Kolumny krasowe i pradawne drzewa tropikalne
+  const midPeriod = 1100;
+  const midOffset = Math.floor(((camX * 0.038) % midPeriod + midPeriod) % midPeriod);
+  const minMidLoop = Math.floor((-midOffset) / midPeriod) - 1;
+  const maxMidLoop = Math.ceil((W - midOffset) / midPeriod) + 1;
+
+  ctx.save();
+  for (let loop = minMidLoop; loop <= maxMidLoop; loop++) {
+    const baseX = Math.floor(loop * midPeriod - midOffset);
+    if (baseX + midPeriod < 0 || baseX > W) continue;
+
+    // Filar skalny w tle (jak formacje krasowe w Wietnamie / Soldat 2)
+    const p1X = baseX + 220;
+    const p1Y = horizonY - 330;
+    ctx.fillStyle = '#344b2f';
+    ctx.beginPath();
+    ctx.moveTo(p1X - 25, horizonY);
+    ctx.lineTo(p1X - 18, p1Y + 30);
+    ctx.quadraticCurveTo(p1X, p1Y - 10, p1X + 45, p1Y + 25);
+    ctx.lineTo(p1X + 55, horizonY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Czapa zieleni na szczycie filaru w tle
+    ctx.fillStyle = '#4c6c44';
+    ctx.beginPath();
+    ctx.arc(p1X + 15, p1Y + 12, 34, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.fill();
+
+    // Drzewo 1: Gigantyczne drzewo tropikalne z rozłożystą koroną
+    const t1X = baseX + 560;
+    const t1Y = horizonY - 260;
+    ctx.fillStyle = '#263a22';
+    // Pień drzewa
+    ctx.beginPath();
+    ctx.moveTo(t1X - 16, horizonY);
+    ctx.quadraticCurveTo(t1X - 8, horizonY - 130, t1X - 10, t1Y + 40);
+    ctx.lineTo(t1X + 18, t1Y + 40);
+    ctx.quadraticCurveTo(t1X + 16, horizonY - 130, t1X + 28, horizonY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Konary i korona liściasta
+    ctx.fillStyle = '#2e4929';
+    ctx.beginPath();
+    ctx.arc(t1X - 45, t1Y + 15, 62, 0, Math.PI * 2);
+    ctx.arc(t1X + 40, t1Y + 10, 68, 0, Math.PI * 2);
+    ctx.arc(t1X, t1Y - 20, 78, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Jaśniejszy refleks na koronie
+    ctx.fillStyle = '#41633a';
+    ctx.beginPath();
+    ctx.arc(t1X - 10, t1Y - 30, 46, 0, Math.PI * 2);
+    ctx.arc(t1X + 30, t1Y - 10, 42, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wiszące pnącza / liany ze skrajnych gałęzi
+    ctx.strokeStyle = '#273f23';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(t1X - 70, t1Y + 40);
+    ctx.quadraticCurveTo(t1X - 65, t1Y + 110, t1X - 74, t1Y + 160);
+    ctx.moveTo(t1X + 65, t1Y + 35);
+    ctx.quadraticCurveTo(t1X + 70, t1Y + 100, t1X + 62, t1Y + 150);
+    ctx.stroke();
+
+    // Drzewo 2 (mniejsze skupisko w tle po prawej)
+    const t2X = baseX + 920;
+    const t2Y = horizonY - 220;
+    ctx.fillStyle = '#263a22';
+    ctx.beginPath();
+    ctx.arc(t2X - 25, t2Y + 20, 52, 0, Math.PI * 2);
+    ctx.arc(t2X + 30, t2Y + 15, 55, 0, Math.PI * 2);
+    ctx.arc(t2X, t2Y - 10, 60, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 5. PARALAKSA BLISKA (camX * 0.075) – Tropikalne liście zwisające z góry ekranu
+  const nearPeriod = 900;
+  const nearOffset = Math.floor(((camX * 0.075) % nearPeriod + nearPeriod) % nearPeriod);
+  const minNearLoop = Math.floor((-nearOffset) / nearPeriod) - 1;
+  const maxNearLoop = Math.ceil((W - nearOffset) / nearPeriod) + 1;
+
+  ctx.save();
+  for (let loop = minNearLoop; loop <= maxNearLoop; loop++) {
+    const baseX = Math.floor(loop * nearPeriod - nearOffset);
+    if (baseX + nearPeriod < 0 || baseX > W) continue;
+
+    // Duże liście palmowe i paprocie w górnych partiach kadru
+    const lx1 = baseX + 90;
+    const leafSway1 = Math.sin(time * 1.5 + loop) * 8;
+    ctx.fillStyle = '#1c2e1a';
+    ctx.beginPath();
+    ctx.moveTo(lx1 - 50, 0);
+    ctx.quadraticCurveTo(lx1 + leafSway1, 85, lx1 + 55 + leafSway1, 130);
+    ctx.quadraticCurveTo(lx1 + 25 + leafSway1, 75, lx1 + 35, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    const lx2 = baseX + 140;
+    const leafSway2 = Math.cos(time * 1.7 + loop) * 10;
+    ctx.fillStyle = '#284124';
+    ctx.beginPath();
+    ctx.moveTo(lx2 - 40, 0);
+    ctx.quadraticCurveTo(lx2 + leafSway2, 110, lx2 + 75 + leafSway2, 175);
+    ctx.quadraticCurveTo(lx2 + 35 + leafSway2, 95, lx2 + 45, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Długa zwisająca liana z listkami
+    const vineX = baseX + 680;
+    const vineSway = Math.sin(time * 1.2 + loop * 2.1) * 14;
+    ctx.strokeStyle = '#1e331b';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(vineX, 0);
+    ctx.quadraticCurveTo(vineX + vineSway * 0.5, 140, vineX + vineSway, 280);
+    ctx.stroke();
+
+    // Drobne listki na lianie
+    ctx.fillStyle = '#3f6236';
+    for (let vy = 40; vy < 260; vy += 32) {
+      const vProgress = vy / 280;
+      const vx = vineX + vineSway * vProgress;
+      const leafDir = (vy % 64 === 0) ? 1 : -1;
+      ctx.beginPath();
+      ctx.ellipse(vx + leafDir * 9, vy, 11, 5, leafDir * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // 6. CZĄSTECZKI TROPIKALNE (UNOSZĄCE SIĘ ZIELONE LIŚCIE I ŚWIETLISTE ZARODNIKI)
+  const leafCount = 45;
+  for (let i = 0; i < leafCount; i++) {
+    const seed = i * 53.17;
+    const spdY = 24 + (i % 5) * 11;
+    const driftY = ((time * spdY + seed * 41) % (H + 60)) - 30;
+    const sway = Math.sin(time * 1.9 + seed) * 32;
+    const leafX = (((seed * 179.3 + sway - camX * 0.05) % W + W) % W);
+
+    if (i % 3 === 0) {
+      // Wirujący tropikalny listek (zielony/oliwkowy)
+      ctx.save();
+      ctx.translate(leafX, driftY);
+      ctx.rotate(time * 2.2 + seed);
+      ctx.fillStyle = (i % 6 === 0) ? '#65a30d' : '#4d7c0f';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 7, 3.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      // Świetlisty zarodnik / pyłek unoszący się w smugach światła
+      const sporePulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(time * 4.2 + seed * 2.7));
+      const sporeY = (H - ((time * (spdY * 0.75) + seed * 27) % H));
+      ctx.fillStyle = (i % 2 === 0)
+        ? `rgba(250, 204, 21, ${sporePulse * 0.75})`
+        : `rgba(163, 230, 53, ${sporePulse * 0.65})`;
+      const sz = (i % 5 === 0) ? 2.5 : 1.6;
+      ctx.fillRect(leafX, sporeY, sz, sz);
+    }
+  }
+}
+
+/**
+ * Kompatybilność wsteczna: przekierowanie drawFoundrySky do podziemnego drawMineCaveBackground
+ */
+export function drawFoundrySky(ctx, camX) {
+  drawMineCaveBackground(ctx, camX, camera ? camera.y : 0);
+}
+
 export function drawSky(ctx) {
   const camCenterX = camera ? (camera.x + (camera.viewWidth || (W / (camera.zoom || 1))) / 2) : 1760;
+  const camCenterY = camera ? (camera.y + (camera.viewHeight || (H / (camera.zoom || 1))) / 2) : 0;
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    drawMineCaveBackground(ctx, camCenterX, camCenterY);
+    return;
+  }
   if (activeArenaId === 'ARENA_2') {
     drawCyberStadiumSky(ctx, camCenterX);
   } else {
@@ -1727,14 +2053,1419 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
   ctx.restore();
 }
 
+// =========================================================================
+// ARENA 3: CIĄGŁY PROFIL GEOMETRII KANIONU (SOLID CANYON PROFILE)
+// =========================================================================
+export const LOWER_CAVERN_FLOOR_Y = 1180;
+export const LOWER_CAVERN_CEILING_Y = 780;
+export const LOWER_CAVERN_BOUNDS = {
+  left: 950,
+  right: 2300,
+  ceilY: 780,
+  floorY: 1180
+};
+
+// =========================================================================
+// ARENA 3: NATURALNE PROFILE GEOMETRII JASKINI (DWUPOZIOMOWY UKŁAD)
+// =========================================================================
+// 1. Lewy masyw z pochyłą rampą zejściową (kąt ~35°) schodzącą do podziemia (x: 700 do 950)
+export const LEFT_MASSIF_AND_RAMP_PROFILE = [
+  { x: ARENA_LEFT - 320, y: 420 },
+  { x: 0, y: 420 },
+  { x: 360, y: 420 },
+  { x: 480, y: 460 },
+  { x: 620, y: 520 },
+  { x: 700, y: 580 }, // Górny brzeg rampy zejściowej
+  // Naturalna pochyła rampa skalna schodząca ze zbocza pod kątem ~35° w głąb pieczary
+  { x: 750, y: 700 },
+  { x: 800, y: 820 },
+  { x: 860, y: 950 },
+  { x: 910, y: 1060 },
+  { x: 950, y: 1180 }  // Płynne połączenie z podłogą dolnej pieczary (y = 1180)
+];
+
+// 2. Pomost Środkowy (Płyta główna / Grzbiety): gruba lita platforma skalna (x: 950 do 2300)
+export const CENTRAL_HILL_PROFILE = [
+  { x: 950, y: 580 },
+  { x: 1160, y: 520 },
+  { x: 1360, y: 460 },
+  { x: 1540, y: 400 },
+  { x: 1700, y: 360 },
+  { x: 1800, y: 340 }, // Szczyt wzgórza
+  { x: 1940, y: 400 },
+  { x: 2040, y: 440 },
+  { x: 2120, y: 480 },
+  { x: 2300, y: 580 }  // Krawędź prawej pionowej rozpadliny
+];
+
+// 3. Prawy masyw skalny za pionową rozpadliną (x: 2480 do ARENA_RIGHT + 320)
+export const RIGHT_MASSIF_PROFILE = [
+  { x: 2480, y: 580 }, // Prawa krawędź rozpadliny
+  { x: 2560, y: 520 },
+  { x: 2640, y: 480 },
+  { x: 2820, y: 480 },
+  { x: 2900, y: 440 },
+  { x: 3220, y: 440 },
+  { x: 3300, y: 420 },
+  { x: 3600, y: 420 },
+  { x: ARENA_RIGHT + 320, y: 420 }
+];
+
+export const JUNGLE_CANYON_PROFILE = [
+  { x: ARENA_LEFT - 320, relY: 580, y: 420 },
+  { x: 0, relY: 580, y: 420 },
+  { x: 360, relY: 580, y: 420 },
+  { x: 480, relY: 540, y: 460 },
+  { x: 620, relY: 480, y: 520 },
+  { x: 700, relY: 420, y: 580 },
+  { x: 950, relY: 420, y: 580 },
+  { x: 1160, relY: 480, y: 520 },
+  { x: 1360, relY: 540, y: 460 },
+  { x: 1540, relY: 600, y: 400 },
+  { x: 1700, relY: 640, y: 360 },
+  { x: 1800, relY: 660, y: 340 },
+  { x: 1940, relY: 600, y: 400 },
+  { x: 2040, relY: 560, y: 440 },
+  { x: 2120, relY: 520, y: 480 },
+  { x: 2300, relY: 420, y: 580 },
+  { x: 2480, relY: 420, y: 580 },
+  { x: 2560, relY: 480, y: 520 },
+  { x: 2640, relY: 520, y: 480 },
+  { x: 2820, relY: 520, y: 480 },
+  { x: 2900, relY: 560, y: 440 },
+  { x: 3220, relY: 560, y: 440 },
+  { x: 3300, relY: 580, y: 420 },
+  { x: 3600, relY: 580, y: 420 },
+  { x: ARENA_RIGHT + 320, relY: 580, y: 420 }
+];
+
+export function getCanyonSurfaceInfo(px, groundY) {
+  // 1. Lewy masyw i rampa wejściowa 35° (x <= 950)
+  if (px <= 950) {
+    const pts = LEFT_MASSIF_AND_RAMP_PROFILE;
+    if (px <= pts[0].x) return { surfaceY: pts[0].y, slope: 0 };
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      if (px >= p0.x && px <= p1.x) {
+        const dx = p1.x - p0.x;
+        const dy = p1.y - p0.y;
+        const t = dx > 0 ? (px - p0.x) / dx : 0;
+        return { surfaceY: p0.y + t * dy, slope: -dy / (dx || 1) };
+      }
+    }
+    return { surfaceY: 1180, slope: 0 };
+  }
+  // 2. Pomost środkowy / szczyt wzgórza (x: 950 do 2300)
+  if (px <= 2300) {
+    const pts = CENTRAL_HILL_PROFILE;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      if (px >= p0.x && px <= p1.x) {
+        const dx = p1.x - p0.x;
+        const dy = p1.y - p0.y;
+        const t = dx > 0 ? (px - p0.x) / dx : 0;
+        return { surfaceY: p0.y + t * dy, slope: -dy / (dx || 1) };
+      }
+    }
+    return { surfaceY: 580, slope: 0 };
+  }
+  // 3. Prawa pionowa rozpadlina (x: 2300 do 2480) - otwarta przestrzeń szybu, dno na dole 1180
+  if (px < 2480) {
+    return { surfaceY: 1180, slope: 0 };
+  }
+  // 4. Prawy masyw skalny (x >= 2480)
+  const pts = RIGHT_MASSIF_PROFILE;
+  if (px >= pts[pts.length - 1].x) return { surfaceY: pts[pts.length - 1].y, slope: 0 };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    if (px >= p0.x && px <= p1.x) {
+      const dx = p1.x - p0.x;
+      const dy = p1.y - p0.y;
+      const t = dx > 0 ? (px - p0.x) / dx : 0;
+      return { surfaceY: p0.y + t * dy, slope: -dy / (dx || 1) };
+    }
+  }
+  return { surfaceY: 420, slope: 0 };
+}
+
+export function getCanyonSurfaceY(px, groundY) {
+  return getCanyonSurfaceInfo(px, groundY).surfaceY;
+}
+
+export const MINE_CAVERN_PROFILE = CENTRAL_HILL_PROFILE;
+
+// =========================================================================
+// STROP DOLNEJ PIECZARY BOJOWEJ (NATURALNY, NIEREGULARNY PROFIL SKALNY)
+// Wysokość stropu podziemia y ≈ 780, grubość platformy pomostu 200–440 px
+// =========================================================================
+export const LOWER_CAVERN_CEILING_PROFILE = [
+  { x: 950, y: 780 },
+  { x: 1080, y: 775 },
+  { x: 1220, y: 785 },
+  { x: 1380, y: 770 },
+  { x: 1560, y: 785 },
+  { x: 1740, y: 775 },
+  { x: 1920, y: 785 },
+  { x: 2100, y: 775 },
+  { x: 2220, y: 780 },
+  { x: 2300, y: 780 }
+];
+
+export function getLowerCavernCeilingY(px) {
+  const pts = LOWER_CAVERN_CEILING_PROFILE;
+  if (px <= pts[0].x) return pts[0].y;
+  if (px >= pts[pts.length - 1].x) return pts[pts.length - 1].y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    if (px >= p0.x && px <= p1.x) {
+      const dx = p1.x - p0.x;
+      const t = dx > 0 ? (px - p0.x) / dx : 0;
+      return p0.y + t * (p1.y - p0.y);
+    }
+  }
+  return 780;
+}
+
+// =========================================================================
+// NATURALNE PÓŁKI SKALNE W DOLNEJ PIECZARZE (ONE-WAY PLATFORMS)
+// =========================================================================
+export const LOWER_CAVERN_SHELVES = [
+  {
+    id: 'lower_shelf_left',
+    type: 'rock_shelf',
+    theme: 'jungle',
+    name: 'Lewa Półka Skalna',
+    x: 1050,
+    y: 950,
+    w: 220,
+    h: 28,
+    oneWay: true,
+    solid: false
+  },
+  {
+    id: 'lower_dais_center',
+    type: 'rock_shelf',
+    theme: 'jungle',
+    name: 'Centralny Cokół Skalny',
+    x: 1600,
+    y: 1040,
+    w: 350,
+    h: 45,
+    oneWay: true,
+    solid: false
+  },
+  {
+    id: 'lower_shelf_right',
+    type: 'rock_shelf',
+    theme: 'jungle',
+    name: 'Prawa Półka Skalna',
+    x: 2150,
+    y: 920,
+    w: 240,
+    h: 28,
+    oneWay: true,
+    solid: false
+  },
+  {
+    id: 'right_shaft_cushion_shelf',
+    type: 'rock_shelf',
+    theme: 'jungle',
+    name: 'Półka Amortyzująca Szybu',
+    x: 2320,
+    y: 880,
+    w: 90,
+    h: 22,
+    oneWay: true,
+    solid: false
+  }
+];
+
+export const LOWER_CAVERN_FLOOR = {
+  id: 'lower_cavern_floor',
+  type: 'rock_platform',
+  theme: 'jungle',
+  name: 'Spąg Dolnej Pieczary Bojowej',
+  x: 950,
+  y: 1180,
+  w: 1530,
+  h: 120,
+  solid: true
+};
+
+// =========================================================================
+// ARENA 3: SKALNY SUFIT JASKINI (LITA GRAŃ SKALNA STROPU)
+// Zamknięta górna krawędź jaskini o naturalnym, nieregularnym profilu grani
+// =========================================================================
+export const MINE_CAVE_CEILING_PROFILE = [
+  { x: ARENA_LEFT - 320, relY: 980 },
+  { x: 0, relY: 980 },
+  { x: 260, relY: 960 },
+  { x: 520, relY: 990 },
+  { x: 780, relY: 950 },
+  { x: 1040, relY: 980 },
+  { x: 1320, relY: 1020 },
+  { x: 1680, relY: 1060 }, // Sklepienie Centralnej Groty (kopuła nad wzgórzem)
+  { x: 1960, relY: 1010 },
+  { x: 2240, relY: 980 },
+  { x: 2540, relY: 960 },
+  { x: 2860, relY: 1000 },
+  { x: 3180, relY: 970 },
+  { x: 3480, relY: 990 },
+  { x: 3600, relY: 980 },
+  { x: ARENA_RIGHT + 320, relY: 980 }
+];
+
+export function getCaveCeilingInfo(px, groundY) {
+  const pts = MINE_CAVE_CEILING_PROFILE;
+  if (px <= pts[0].x) {
+    return { ceilingY: groundY - pts[0].relY, slope: 0 };
+  }
+  if (px >= pts[pts.length - 1].x) {
+    return { ceilingY: groundY - pts[pts.length - 1].relY, slope: 0 };
+  }
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    if (px >= p0.x && px <= p1.x) {
+      const dx = p1.x - p0.x;
+      const dyRel = p1.relY - p0.relY;
+      const t = dx > 0 ? (px - p0.x) / dx : 0;
+      const curRelY = p0.relY + t * dyRel;
+      const slope = dyRel / (dx || 1);
+      return { ceilingY: groundY - curRelY, slope };
+    }
+  }
+  return { ceilingY: groundY - 960, slope: 0 };
+}
+
+export function getCaveCeilingY(px, groundY) {
+  return getCaveCeilingInfo(px, groundY).ceilingY;
+}
+
+/**
+ * =========================================================================
+ * PROCEDURALNA TEKSTURA LITEJ SKAŁY, WARSTWY OSADOWE I KRAWĘDZIE GZYMSU
+ * =========================================================================
+ * 1. Masa skalna: głęboka paleta łupku #181B20 do #111317 na dole
+ * 2. Warstwowość geologiczna: pofalowane żyły skalne 2-6px (#232830, #0E1013, Math.sin)
+ * 3. Pęknięcia tektoniczne: 1px #0A0C0E z obrysem 1px #2C323D
+ * 4. Ambient Occlusion: miękkie cienie w zagłębieniach i wąwozach
+ * 5. Krawędzie chodzone: fazowany rim 3px #3A4454 + linia światła 1px #5E6E87
+ * 6. Opadający gruz: nieregularne trapezy 2x3px zwisające z krawędzi (brak ząbków)
+ */
+export function drawCaveTerrain(ctx, polyPoints, mapBottomY, groundY) {
+  if (!polyPoints || polyPoints.length < 2) return;
+
+  const minX = polyPoints[0].x;
+  const maxX = polyPoints[polyPoints.length - 1].x;
+  let minY = polyPoints[0].y;
+  for (let i = 1; i < polyPoints.length; i++) {
+    if (polyPoints[i].y < minY) minY = polyPoints[i].y;
+  }
+  const maxY = mapBottomY || (groundY + 2400);
+
+  ctx.save();
+
+  // 1. LITA MASA SKALNA (SOLID BEDROCK MASS)
+  ctx.beginPath();
+  ctx.moveTo(polyPoints[0].x, maxY);
+  for (let i = 0; i < polyPoints.length; i++) {
+    ctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+  }
+  ctx.lineTo(polyPoints[polyPoints.length - 1].x, maxY);
+  ctx.closePath();
+
+  // Wypełnienie głęboką paletą łupku: baza #181B20 przechodząca w #111317 na dole
+  const slateGrad = ctx.createLinearGradient(0, minY, 0, maxY);
+  slateGrad.addColorStop(0.0, '#181B20');
+  slateGrad.addColorStop(1.0, '#111317');
+  ctx.fillStyle = slateGrad;
+  ctx.fill();
+
+  // 2. PROCEDURALNE WARSTWY SEDYMENTACYJNE I SZCZELINY (CLIPPED)
+  ctx.save();
+  ctx.clip();
+
+  // A. Warstwowość geologiczna (Strata lines)
+  // Horyzontalne, lekko pofalowane żyły skalne i warstwy osadowe (grubość 2–6px, tony #232830 i #0E1013)
+  const strataStep = 22;
+  const strataLimit = Math.min(maxY, minY + 1600);
+  for (let sy = minY + 12; sy <= strataLimit; sy += strataStep) {
+    const isDark = (Math.floor(sy / strataStep) % 2 === 0);
+    const strokeCol = isDark ? '#0E1013' : '#232830';
+    const thick = 2 + (Math.floor(sy * 7.19) % 5); // 2, 3, 4, 5, 6px
+
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = thick;
+
+    const phaseA = sy * 0.037;
+    const phaseB = sy * 0.081;
+
+    ctx.beginPath();
+    let first = true;
+    for (let sx = minX - 40; sx <= maxX + 40; sx += 40) {
+      const wave = Math.sin(sx * 0.007 + phaseA) * 5.2 + Math.sin(sx * 0.023 + phaseB) * 2.4;
+      const py = sy + wave;
+      if (first) {
+        ctx.moveTo(sx, py);
+        first = false;
+      } else {
+        ctx.lineTo(sx, py);
+      }
+    }
+    ctx.stroke();
+  }
+
+  // B. Proceduralne wąskie pęknięcia tektoniczne (cienkie linie 1px #0A0C0E z obrysem 1px #2C323D)
+  const crackSpans = [
+    { startX: minX + (maxX - minX) * 0.12, startY: minY + 60, len: 320, angle: 1.18, seed: 1.7 },
+    { startX: minX + (maxX - minX) * 0.28, startY: minY + 90, len: 280, angle: 1.25, seed: 3.2 },
+    { startX: minX + (maxX - minX) * 0.45, startY: minY + 40, len: 360, angle: 1.15, seed: 5.1 },
+    { startX: minX + (maxX - minX) * 0.62, startY: minY + 110, len: 300, angle: 1.22, seed: 7.4 },
+    { startX: minX + (maxX - minX) * 0.78, startY: minY + 70, len: 340, angle: 1.17, seed: 9.3 },
+    { startX: minX + (maxX - minX) * 0.91, startY: minY + 130, len: 260, angle: 1.28, seed: 11.8 }
+  ];
+
+  for (let cIdx = 0; cIdx < crackSpans.length; cIdx++) {
+    const cr = crackSpans[cIdx];
+    if (cr.startX < minX - 50 || cr.startX > maxX + 50) continue;
+
+    const pts = [{ x: cr.startX, y: cr.startY }];
+    let cx = cr.startX;
+    let cy = cr.startY;
+    const segs = 6;
+    const segLen = cr.len / segs;
+
+    for (let s = 1; s <= segs; s++) {
+      const stepAngle = cr.angle + Math.sin(cr.seed + s * 2.7) * 0.35;
+      cx += Math.cos(stepAngle) * segLen;
+      cy += Math.sin(stepAngle) * segLen;
+      pts.push({ x: cx, y: cy });
+    }
+
+    // Jasny obrys 1px #2C323D (imitacja krawędzi szczeliny skalnej)
+    ctx.strokeStyle = '#2C323D';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x + 1, pts[0].y + 1);
+    for (let p = 1; p < pts.length; p++) {
+      ctx.lineTo(pts[p].x + 1, pts[p].y + 1);
+    }
+    ctx.stroke();
+
+    // Wąska linia pęknięcia 1px #0A0C0E
+    ctx.strokeStyle = '#0A0C0E';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let p = 1; p < pts.length; p++) {
+      ctx.lineTo(pts[p].x, pts[p].y);
+    }
+    ctx.stroke();
+  }
+
+  // C. Wewnętrzny cień (Ambient Occlusion) w wąwozach i załamaniach terenu
+  for (let i = 1; i < polyPoints.length - 1; i++) {
+    const prev = polyPoints[i - 1];
+    const curr = polyPoints[i];
+    const next = polyPoints[i + 1];
+
+    const dy1 = curr.y - prev.y;
+    const dy2 = next.y - curr.y;
+    if (dy1 > 15 || dy2 < -15 || curr.y > prev.y + 35 || curr.y > next.y + 35) {
+      const aoRadius = 150;
+      const aoGrad = ctx.createRadialGradient(curr.x, curr.y + 30, 10, curr.x, curr.y + 30, aoRadius);
+      aoGrad.addColorStop(0.0, 'rgba(5, 7, 10, 0.65)');
+      aoGrad.addColorStop(0.5, 'rgba(5, 7, 10, 0.30)');
+      aoGrad.addColorStop(1.0, 'rgba(5, 7, 10, 0.0)');
+      ctx.fillStyle = aoGrad;
+      ctx.beginPath();
+      ctx.arc(curr.x, curr.y + 30, aoRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore(); // Koniec clipa
+
+  // 3. KRAWĘDZIE PLATFORM I POWIERZCHNIE CHODZONE (LEDGES)
+  // A. Główny pasek krawędzi: kamienny błękit/grafit #3A4454 (3px)
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+  for (let i = 1; i < polyPoints.length; i++) {
+    ctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+  }
+  ctx.stroke();
+
+  // B. Górna linia odbłysku: #5E6E87 (1px) imitująca ostre światło padające na krawędź
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(polyPoints[0].x, polyPoints[0].y - 0.7);
+  for (let i = 1; i < polyPoints.length; i++) {
+    ctx.lineTo(polyPoints[i].x, polyPoints[i].y - 0.7);
+  }
+  ctx.stroke();
+
+  // C. Opadający gruz: drobne kanciaste odpryski skalne (trapezy 2x3px) zwisające z krawędzi
+  for (let i = 0; i < polyPoints.length - 1; i++) {
+    const pA = polyPoints[i];
+    const pB = polyPoints[i + 1];
+    const segLen = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+    if (segLen < 12) continue;
+
+    const numChips = Math.floor(segLen / 44);
+    for (let k = 0; k < numChips; k++) {
+      const seed = ((pA.x * 19.3 + k * 41.7) % 100) / 100;
+      const t = 0.15 + seed * 0.70;
+      const cx = pA.x + (pB.x - pA.x) * t;
+      const cy = pA.y + (pB.y - pA.y) * t;
+
+      const chipW = 2.8;
+      const chipH = 3.0;
+
+      ctx.fillStyle = '#2A323D';
+      ctx.beginPath();
+      ctx.moveTo(cx - chipW * 0.5, cy + 1.0);
+      ctx.lineTo(cx + chipW * 0.5, cy + 1.0);
+      ctx.lineTo(cx + chipW * 0.25, cy + 1.0 + chipH);
+      ctx.lineTo(cx - chipW * 0.25, cy + 1.0 + chipH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#5E6E87';
+      ctx.fillRect(cx - chipW * 0.5, cy + 1.0, 1, 1);
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * =========================================================================
+ * SKALNY STROP, STALAKTYTY Z CIENIOWANIEM WIELOKĄTNYM, KABLE I LAMPY
+ * =========================================================================
+ * 1. Strop: nieregularna lita grań skalna z warstwowością
+ * 2. Stalaktyty: wielokątne fasetowanie (lewa #2A313C, prawa #14171C, wierzchołek kropla #CBD5E1)
+ * 3. Kable: grube czarne łuki Beziera z metalowymi klamrami i śrubami
+ * 4. Lampy: radialny stożek światła #FFFAF0 -> #F59E0B -> alpha 0.0 w trybie screen
+ */
+export function drawCaveCeilingAndStalactites(ctx, groundY, time) {
+  const ceilingPoints = MINE_CAVE_CEILING_PROFILE.map(p => ({
+    x: p.x,
+    y: groundY - p.relY
+  }));
+
+  const mapTopY = groundY - 1450;
+  const startX = ceilingPoints[0].x;
+  const endX = ceilingPoints[ceilingPoints.length - 1].x;
+
+  ctx.save();
+
+  // 1. LITA GRAŃ SKALNA STROPU
+  ctx.beginPath();
+  ctx.moveTo(startX, mapTopY);
+  for (let i = 0; i < ceilingPoints.length; i++) {
+    ctx.lineTo(ceilingPoints[i].x, ceilingPoints[i].y);
+  }
+  ctx.lineTo(endX, mapTopY);
+  ctx.closePath();
+
+  const ceilGrad = ctx.createLinearGradient(0, mapTopY, 0, groundY - 950);
+  ceilGrad.addColorStop(0.0, '#111317');
+  ceilGrad.addColorStop(1.0, '#181B20');
+  ctx.fillStyle = ceilGrad;
+  ctx.fill();
+
+  // Warstwy sedymentacyjne stropu (clipped)
+  ctx.save();
+  ctx.clip();
+  for (let sy = groundY - 1420; sy <= groundY - 940; sy += 24) {
+    const isDark = (Math.floor(sy / 24) % 2 === 0);
+    ctx.strokeStyle = isDark ? '#0E1013' : '#232830';
+    ctx.lineWidth = 2 + (Math.floor(sy * 4.3) % 4);
+    ctx.beginPath();
+    let first = true;
+    for (let sx = startX - 40; sx <= endX + 40; sx += 40) {
+      const wave = Math.sin(sx * 0.008 + sy * 0.04) * 4.0;
+      if (first) { ctx.moveTo(sx, sy + wave); first = false; }
+      else { ctx.lineTo(sx, sy + wave); }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Dolny obrys sklepienia: grafit #3A4454 (2.5px) + linia światła #5E6E87 (1px)
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(ceilingPoints[0].x, ceilingPoints[0].y);
+  for (let i = 1; i < ceilingPoints.length; i++) {
+    ctx.lineTo(ceilingPoints[i].x, ceilingPoints[i].y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ceilingPoints[0].x, ceilingPoints[0].y + 0.6);
+  for (let i = 1; i < ceilingPoints.length; i++) {
+    ctx.lineTo(ceilingPoints[i].x, ceilingPoints[i].y + 0.6);
+  }
+  ctx.stroke();
+
+  // 2. ORGANICZNE STALAKTYTY Z CIENIOWANIEM WIELOKĄTNYM (FACET SHADING)
+  const stalactites = [
+    { x: 140, w: 34, len: 75, slant: 2 },
+    { x: 380, w: 44, len: 115, slant: -3 },
+    { x: 640, w: 28, len: 65, slant: 1 },
+    { x: 920, w: 46, len: 125, slant: -4 },
+    { x: 1200, w: 36, len: 85, slant: 2 },
+    { x: 1520, w: 48, len: 135, slant: 3 },
+    { x: 1840, w: 52, len: 150, slant: -2 }, // Centralna Grota
+    { x: 2120, w: 34, len: 80, slant: 1 },
+    { x: 2380, w: 44, len: 120, slant: -3 },
+    { x: 2700, w: 38, len: 95, slant: 2 },
+    { x: 3040, w: 46, len: 130, slant: -2 },
+    { x: 3360, w: 32, len: 70, slant: 1 },
+    { x: 3650, w: 40, len: 105, slant: -1 }
+  ];
+
+  for (let s = 0; s < stalactites.length; s++) {
+    const st = stalactites[s];
+    const baseY = getCaveCeilingY(st.x, groundY);
+    const tipX = st.x + st.slant;
+    const tipY = baseY + st.len;
+    const midX = st.x + st.slant * 0.2;
+    const midY = baseY - 4;
+
+    // Lewa strona sopla: oświetlona (#2A313C)
+    ctx.fillStyle = '#2A313C';
+    ctx.beginPath();
+    ctx.moveTo(st.x - st.w * 0.5, baseY);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(tipX, tipY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Prawa strona sopla: w cieniu (#14171C)
+    ctx.fillStyle = '#14171C';
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
+    ctx.lineTo(st.x + st.w * 0.5, baseY);
+    ctx.lineTo(tipX, tipY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Krawędź grań między fasetami
+    ctx.strokeStyle = '#3F4957';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+
+    // Zaokrąglony wierzchołek z punktem wilgoci (#CBD5E1)
+    ctx.fillStyle = '#CBD5E1';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Spadająca kropla wody
+    const dropSeed = (st.x * 0.17) % 3.6;
+    const cycle = (time + dropSeed) % 3.6;
+    if (cycle < 1.1) {
+      const dropProgress = cycle / 1.1;
+      const dropY = tipY + dropProgress * 210;
+      const dropAlpha = (1.0 - dropProgress) * 0.75;
+      ctx.fillStyle = `rgba(226, 232, 240, ${dropAlpha})`;
+      ctx.beginPath();
+      ctx.arc(tipX, dropY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 3. GRUBE, CIĘŻKIE KABLE PRZEMYSŁOWE MIĘDZY STALAKTYTAMI
+  const cables = [
+    { x1: 80, x2: 780, sag: 52 },
+    { x1: 780, x2: 1600, sag: 64 },
+    { x1: 1600, x2: 2460, sag: 68 },
+    { x1: 2460, x2: 3260, sag: 58 },
+    { x1: 3260, x2: 3840, sag: 50 }
+  ];
+
+  for (let c = 0; c < cables.length; c++) {
+    const cb = cables[c];
+    const y1 = getCaveCeilingY(cb.x1, groundY) + 14;
+    const y2 = getCaveCeilingY(cb.x2, groundY) + 14;
+    const midX = (cb.x1 + cb.x2) * 0.5;
+    const midY = Math.max(y1, y2) + cb.sag;
+
+    // Główny kabel przemysłowy
+    ctx.strokeStyle = '#0B0D12';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(cb.x1, y1);
+    ctx.quadraticCurveTo(midX, midY, cb.x2, y2);
+    ctx.stroke();
+
+    // Równoległa wiązka przewodów
+    ctx.strokeStyle = '#1E2530';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(cb.x1, y1 + 2);
+    ctx.quadraticCurveTo(midX, midY + 2, cb.x2, y2 + 2);
+    ctx.stroke();
+
+    // Metalowe klamry mocujące ze śrubami
+    const anchors = [{ x: cb.x1, y: y1 }, { x: cb.x2, y: y2 }];
+    for (let a = 0; a < anchors.length; a++) {
+      const an = anchors[a];
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(an.x - 5, an.y - 7, 10, 9);
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(an.x - 5, an.y - 7, 10, 9);
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.fillRect(an.x - 3, an.y - 5, 2, 2);
+      ctx.fillRect(an.x + 1, an.y - 5, 2, 2);
+    }
+  }
+
+  // 4. MIĘKKIE OŚWIETLENIE WOLUMETRYCZNE LAMP GÓRNICZYCH
+  const lamps = [
+    { x: 420, yOffset: 70 },
+    { x: 1100, yOffset: 65 },
+    { x: 1720, yOffset: 85 }, // Szczyt wzgórza / sklepienie Centralnej Groty
+    { x: 2360, yOffset: 75 }, // Wąwóz wschodni
+    { x: 2980, yOffset: 70 }, // Nad schronem urwiska
+    { x: 3500, yOffset: 65 }  // Prawy bastion
+  ];
+
+  for (let l = 0; l < lamps.length; l++) {
+    const lamp = lamps[l];
+    const ceilY = getCaveCeilingY(lamp.x, groundY);
+    const lx = lamp.x;
+    const ly = ceilY + lamp.yOffset;
+    const flicker = 0.90 + 0.10 * Math.sin(time * 5.6 + l * 2.3);
+
+    // Pręt mocujący
+    ctx.strokeStyle = '#1E293B';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(lx, ceilY);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
+
+    // Blask wolumetryczny w trybie screen
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    // Miękki stożek światła (radial gradient)
+    const coneGrad = ctx.createRadialGradient(lx, ly + 6, 3, lx, ly + 110, 220);
+    coneGrad.addColorStop(0.00, `rgba(255, 250, 240, ${0.80 * flicker})`);
+    coneGrad.addColorStop(0.12, `rgba(245, 158, 11, ${0.50 * flicker})`);
+    coneGrad.addColorStop(0.38, `rgba(217, 119, 6, ${0.25 * flicker})`);
+    coneGrad.addColorStop(0.70, `rgba(180, 83, 9, ${0.08 * flicker})`);
+    coneGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(lx - 8, ly + 6);
+    ctx.lineTo(lx - 130, ly + 220);
+    ctx.quadraticCurveTo(lx, ly + 240, lx + 130, ly + 220);
+    ctx.lineTo(lx + 8, ly + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Okrągły bloom wokół klosza
+    const bloom = ctx.createRadialGradient(lx, ly + 8, 2, lx, ly + 8, 38);
+    bloom.addColorStop(0.0, `rgba(255, 250, 240, ${0.85 * flicker})`);
+    bloom.addColorStop(0.3, `rgba(245, 158, 11, ${0.45 * flicker})`);
+    bloom.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = bloom;
+    ctx.beginPath();
+    ctx.arc(lx, ly + 8, 38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Oprawa lampy i klatka
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(lx - 7, ly, 14, 5);
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(lx - 7, ly, 14, 5);
+
+    ctx.fillStyle = '#F59E0B';
+    ctx.fillRect(lx - 5, ly + 5, 10, 8);
+    ctx.fillStyle = '#FFFAF0';
+    ctx.fillRect(lx - 2, ly + 7, 4, 4);
+
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(lx - 6, ly + 4, 12, 10);
+    ctx.beginPath();
+    ctx.moveTo(lx, ly + 4); ctx.lineTo(lx, ly + 14);
+    ctx.moveTo(lx - 6, ly + 9); ctx.lineTo(lx + 6, ly + 9);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * =========================================================================
+ * DOLNA SALA BOJOWA (LOWER COMBAT CAVERN) - RENDEROWANIE DWUPOZIOMOWE
+ * =========================================================================
+ * 1. Tło i kryształy: drawLowerCavernBackground
+ * 2. Spąg, rampa wejściowa i masywy boczne: drawBedrockAndSideSlopes
+ * 3. Pomost Środkowy (Płyta Główna): drawCentralRockBridge
+ * 4. Stalaktyty, półki i lampy podwieszone pod stropem y ≈ 780: drawLowerCavernPropsAndLighting
+ */
+
+export function drawLedgeDebris(ctx, polyPoints) {
+  if (!polyPoints || polyPoints.length < 2) return;
+  for (let i = 0; i < polyPoints.length - 1; i++) {
+    const pA = polyPoints[i];
+    const pB = polyPoints[i + 1];
+    const segLen = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+    if (segLen < 12) continue;
+
+    const numChips = Math.floor(segLen / 44);
+    for (let k = 0; k < numChips; k++) {
+      const seed = ((pA.x * 19.3 + k * 41.7) % 100) / 100;
+      const t = 0.15 + seed * 0.70;
+      const cx = pA.x + (pB.x - pA.x) * t;
+      const cy = pA.y + (pB.y - pA.y) * t;
+
+      const chipW = 2.8;
+      const chipH = 3.0;
+
+      ctx.fillStyle = '#2A323D';
+      ctx.beginPath();
+      ctx.moveTo(cx - chipW * 0.5, cy + 1.0);
+      ctx.lineTo(cx + chipW * 0.5, cy + 1.0);
+      ctx.lineTo(cx + chipW * 0.25, cy + 1.0 + chipH);
+      ctx.lineTo(cx - chipW * 0.25, cy + 1.0 + chipH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#5E6E87';
+      ctx.fillRect(cx - chipW * 0.5, cy + 1.0, 1, 1);
+    }
+  }
+}
+
+export function drawLowerCavernBackground(ctx, time) {
+  // Ciemna ściana skalna w tle (od lewej rampy x: 700 do prawej rozpadliny x: 2500, y: 580 do 1180)
+  const bgGrad = ctx.createLinearGradient(0, 580, 0, 1180);
+  bgGrad.addColorStop(0.0, '#090C10');
+  bgGrad.addColorStop(1.0, '#12151B');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(700, 580, 1800, 600);
+
+  // Subtelne rysy i spękania na odległej ścianie tła
+  ctx.save();
+  ctx.strokeStyle = 'rgba(20, 24, 32, 0.45)';
+  ctx.lineWidth = 1.5;
+  for (let ly = 620; ly <= 1160; ly += 45) {
+    ctx.beginPath();
+    ctx.moveTo(700, ly);
+    ctx.lineTo(2500, ly + Math.sin(ly * 0.08) * 8);
+    ctx.stroke();
+  }
+
+  // Klimatyczne poświaty kryształów w ścianach tła (emerald & cyan)
+  const crystalClusters = [
+    { x: 980, y: 840, col: '#10B981', glow: 'rgba(16, 185, 129, ', pts: [[0, 0], [4, -8], [-5, -6], [7, 2]] },
+    { x: 1280, y: 920, col: '#06B6D4', glow: 'rgba(6, 182, 212, ', pts: [[0, 0], [5, -10], [-4, -7], [8, -3]] },
+    { x: 1510, y: 810, col: '#10B981', glow: 'rgba(16, 185, 129, ', pts: [[0, 0], [-5, -9], [4, -6], [-7, -2]] },
+    { x: 1880, y: 860, col: '#06B6D4', glow: 'rgba(6, 182, 212, ', pts: [[0, 0], [6, -11], [-3, -8], [7, -1]] },
+    { x: 2090, y: 960, col: '#10B981', glow: 'rgba(16, 185, 129, ', pts: [[0, 0], [-4, -7], [5, -9], [-6, 0]] },
+    { x: 2360, y: 830, col: '#06B6D4', glow: 'rgba(6, 182, 212, ', pts: [[0, 0], [5, -8], [-4, -6], [6, 2]] }
+  ];
+
+  for (let c = 0; c < crystalClusters.length; c++) {
+    const cr = crystalClusters[c];
+    const pulse = 0.75 + 0.25 * Math.sin(time * 2.2 + c * 1.7);
+
+    // Poświata w tle (radial glow)
+    const glowGrad = ctx.createRadialGradient(cr.x, cr.y, 2, cr.x, cr.y, 35);
+    glowGrad.addColorStop(0.0, cr.glow + (0.55 * pulse) + ')');
+    glowGrad.addColorStop(0.4, cr.glow + (0.20 * pulse) + ')');
+    glowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(cr.x, cr.y, 35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Kryształki (ostrosłupy)
+    ctx.fillStyle = cr.col;
+    for (let p = 0; p < cr.pts.length; p++) {
+      const pt = cr.pts[p];
+      const kx = cr.x + pt[0];
+      const ky = cr.y + pt[1];
+      ctx.beginPath();
+      ctx.moveTo(kx - 2, ky + 4);
+      ctx.lineTo(kx, ky - 6);
+      ctx.lineTo(kx + 2, ky + 4);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * 2. WARSTWA B: LITY SPĄG, RAMPA WEJŚCIOWA I SKARPY BOCZNE (BEDROCK & SLOPES)
+ * Ciągła bryła skalna:
+ * - Lewy masyw (x < 700)
+ * - Lewa rampa 35° w dół (x: 700 do 950, y: 580 do 1180)
+ * - Podłoga dolnej sali (x: 950 do 2460, y: 1180)
+ * - Ściana prawej rozpadliny (x: 2460 do 2480, y: 1180 do 580)
+ * - Prawy masyw (x: 2480 do ARENA_RIGHT + 320, y: 580 do 420)
+ * - Lita masa skalna sięga dna canvasu (mapBottomY = 1500)
+ */
+export function drawBedrockAndSideSlopes(ctx, mapBottomY = 1500) {
+  const startX = ARENA_LEFT - 320;
+  const endX = ARENA_RIGHT + 320;
+
+  // 1. Zbudowanie zamkniętego wielokąta litego podłoża
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(startX, mapBottomY);
+  ctx.lineTo(startX, 420);
+
+  // Lewy masyw i pochyła rampa zejściowa pod kątem ~35° do podziemia
+  for (let i = 0; i < LEFT_MASSIF_AND_RAMP_PROFILE.length; i++) {
+    const pt = LEFT_MASSIF_AND_RAMP_PROFILE[i];
+    ctx.lineTo(pt.x, pt.y);
+  }
+
+  // Dno dolnej sali bojowej (y = 1180, lity spąg)
+  ctx.lineTo(2460, 1180);
+
+  // Wznosząca się ściana prawej pionowej rozpadliny (szyb zejściowy)
+  ctx.lineTo(2480, 580);
+
+  // Prawy masyw skalny
+  for (let i = 0; i < RIGHT_MASSIF_PROFILE.length; i++) {
+    const pt = RIGHT_MASSIF_PROFILE[i];
+    ctx.lineTo(pt.x, pt.y);
+  }
+
+  ctx.lineTo(endX, mapBottomY);
+  ctx.closePath();
+
+  // Wypełnienie litą masą łupku (slate gradient)
+  const slateGrad = ctx.createLinearGradient(0, 340, 0, mapBottomY);
+  slateGrad.addColorStop(0.0, '#181B20');
+  slateGrad.addColorStop(0.5, '#14171C');
+  slateGrad.addColorStop(1.0, '#0D0F13');
+  ctx.fillStyle = slateGrad;
+  ctx.fill();
+
+  // 2. Proceduralne uławicenie skalne i pęknięcia tektoniczne (CLIPPED)
+  ctx.save();
+  ctx.clip();
+
+  // A. Poziome pofalowane żyły skalne (Strata lines)
+  const strataStep = 22;
+  for (let sy = 380; sy <= mapBottomY; sy += strataStep) {
+    const isDark = (Math.floor(sy / strataStep) % 2 === 0);
+    ctx.strokeStyle = isDark ? '#0E1013' : '#232830';
+    ctx.lineWidth = 2 + (Math.floor(sy * 7.19) % 5);
+
+    const phaseA = sy * 0.037;
+    const phaseB = sy * 0.081;
+
+    ctx.beginPath();
+    let first = true;
+    for (let sx = startX; sx <= endX; sx += 45) {
+      const wave = Math.sin(sx * 0.007 + phaseA) * 5.2 + Math.sin(sx * 0.023 + phaseB) * 2.4;
+      const py = sy + wave;
+      if (first) { ctx.moveTo(sx, py); first = false; }
+      else { ctx.lineTo(sx, py); }
+    }
+    ctx.stroke();
+  }
+
+  // B. Pęknięcia tektoniczne w masie skalnej
+  const crackSpans = [
+    { startX: 180, startY: 480, len: 320, angle: 1.18, seed: 1.7 },
+    { startX: 520, startY: 560, len: 280, angle: 1.25, seed: 3.2 },
+    { startX: 820, startY: 880, len: 260, angle: 1.15, seed: 4.8 },
+    { startX: 1400, startY: 1210, len: 340, angle: 1.20, seed: 6.3 },
+    { startX: 2000, startY: 1205, len: 320, angle: 1.16, seed: 7.9 },
+    { startX: 2700, startY: 530, len: 300, angle: 1.22, seed: 9.4 },
+    { startX: 3200, startY: 470, len: 340, angle: 1.17, seed: 11.2 }
+  ];
+
+  for (let cIdx = 0; cIdx < crackSpans.length; cIdx++) {
+    const cr = crackSpans[cIdx];
+    const pts = [{ x: cr.startX, y: cr.startY }];
+    let cx = cr.startX;
+    let cy = cr.startY;
+    const segs = 6;
+    const segLen = cr.len / segs;
+
+    for (let s = 1; s <= segs; s++) {
+      const stepAngle = cr.angle + Math.sin(cr.seed + s * 2.7) * 0.35;
+      cx += Math.cos(stepAngle) * segLen;
+      cy += Math.sin(stepAngle) * segLen;
+      pts.push({ x: cx, y: cy });
+    }
+
+    ctx.strokeStyle = '#2C323D';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x + 1, pts[0].y + 1);
+    for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x + 1, pts[p].y + 1);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#0A0C0E';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x, pts[p].y);
+    ctx.stroke();
+  }
+
+  ctx.restore(); // Koniec clipa
+
+  // 3. PODŚWIETLENIE (RIM-LIGHT) TYLKO NA RZECZYWISTYCH POWIERZCHNIACH CHODZONYCH!
+  // A. Lewy grzbiet i rampa w dół (x: startX do 950)
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < LEFT_MASSIF_AND_RAMP_PROFILE.length; i++) {
+    const pt = LEFT_MASSIF_AND_RAMP_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < LEFT_MASSIF_AND_RAMP_PROFILE.length; i++) {
+    const pt = LEFT_MASSIF_AND_RAMP_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y - 0.7);
+    else ctx.lineTo(pt.x, pt.y - 0.7);
+  }
+  ctx.stroke();
+
+  // B. Podłoga dolnej sali (x: 950 do 2460, y = 1180)
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(950, 1180);
+  ctx.lineTo(2460, 1180);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(950, 1179.3);
+  ctx.lineTo(2460, 1179.3);
+  ctx.stroke();
+
+  // C. Prawy masyw (x: 2480 do endX)
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let i = 0; i < RIGHT_MASSIF_PROFILE.length; i++) {
+    const pt = RIGHT_MASSIF_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < RIGHT_MASSIF_PROFILE.length; i++) {
+    const pt = RIGHT_MASSIF_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y - 0.7);
+    else ctx.lineTo(pt.x, pt.y - 0.7);
+  }
+  ctx.stroke();
+
+  // Drobne odpryski skalne (gruz) na chodzonych powierzchniach
+  drawLedgeDebris(ctx, LEFT_MASSIF_AND_RAMP_PROFILE);
+  drawLedgeDebris(ctx, RIGHT_MASSIF_PROFILE);
+  ctx.restore();
+}
+
+/**
+ * 3. WARSTWA A: POMOST ŚRODKOWY / PŁYTA GŁÓWNA (CENTRAL ROCK BRIDGE)
+ * Gruba lita platforma skalna (strop dolnej sali) o grubości 200–440 px:
+ * - Górna krawędź: szczyt wzgórza (x: 950, y: 580 do x: 1800, y: 340 do x: 2300, y: 580)
+ * - Prawa krawędź: pionowa ściana rozpadliny (x: 2300, y: 580 do 780)
+ * - Dolna krawędź: naturalny, organiczny strop dolnej sali (LOWER_CAVERN_CEILING_PROFILE, y ≈ 780)
+ * - Lewa krawędź: płynne połączenie ze zboczem nad rampą (x: 950, y: 780 do 580)
+ * - BRAK sztucznego cięcia poziomego!
+ */
+export function drawCentralRockBridge(ctx) {
+  ctx.save();
+  ctx.beginPath();
+
+  // 1. Górny profil wzgórza (crest)
+  ctx.moveTo(CENTRAL_HILL_PROFILE[0].x, CENTRAL_HILL_PROFILE[0].y);
+  for (let i = 1; i < CENTRAL_HILL_PROFILE.length; i++) {
+    ctx.lineTo(CENTRAL_HILL_PROFILE[i].x, CENTRAL_HILL_PROFILE[i].y);
+  }
+
+  // 2. Zejście pionową ścianą rozpadliny do stropu dolnej komory
+  ctx.lineTo(2300, 780);
+
+  // 3. Organiczny sufit dolnej komory (od prawej do lewej)
+  for (let i = LOWER_CAVERN_CEILING_PROFILE.length - 1; i >= 0; i--) {
+    const pt = LOWER_CAVERN_CEILING_PROFILE[i];
+    ctx.lineTo(pt.x, pt.y);
+  }
+
+  // 4. Domknięcie lewej krawędzi mostu skalnego do punktu startowego
+  ctx.lineTo(950, 580);
+  ctx.closePath();
+
+  // Wypełnienie litą masą łupku
+  const bridgeGrad = ctx.createLinearGradient(0, 340, 0, 780);
+  bridgeGrad.addColorStop(0.0, '#181B20');
+  bridgeGrad.addColorStop(0.6, '#14171C');
+  bridgeGrad.addColorStop(1.0, '#0F1216');
+  ctx.fillStyle = bridgeGrad;
+  ctx.fill();
+
+  // Wewnętrzne uławicenie skalne i pęknięcia
+  ctx.save();
+  ctx.clip();
+
+  const strataStep = 22;
+  for (let sy = 350; sy <= 780; sy += strataStep) {
+    const isDark = (Math.floor(sy / strataStep) % 2 === 0);
+    ctx.strokeStyle = isDark ? '#0E1013' : '#232830';
+    ctx.lineWidth = 2 + (Math.floor(sy * 7.19) % 5);
+
+    const phaseA = sy * 0.037;
+    const phaseB = sy * 0.081;
+
+    ctx.beginPath();
+    let first = true;
+    for (let sx = 920; sx <= 2340; sx += 40) {
+      const wave = Math.sin(sx * 0.007 + phaseA) * 5.2 + Math.sin(sx * 0.023 + phaseB) * 2.4;
+      const py = sy + wave;
+      if (first) { ctx.moveTo(sx, py); first = false; }
+      else { ctx.lineTo(sx, py); }
+    }
+    ctx.stroke();
+  }
+
+  // Pęknięcia tektoniczne wewnątrz mostu
+  const bridgeCracks = [
+    { startX: 1180, startY: 540, len: 200, angle: 1.25, seed: 2.1 },
+    { startX: 1520, startY: 420, len: 260, angle: 1.18, seed: 5.3 },
+    { startX: 1820, startY: 360, len: 280, angle: 1.22, seed: 7.6 },
+    { startX: 2080, startY: 470, len: 220, angle: 1.15, seed: 9.8 }
+  ];
+
+  for (let cIdx = 0; cIdx < bridgeCracks.length; cIdx++) {
+    const cr = bridgeCracks[cIdx];
+    const pts = [{ x: cr.startX, y: cr.startY }];
+    let cx = cr.startX;
+    let cy = cr.startY;
+    const segs = 5;
+    const segLen = cr.len / segs;
+
+    for (let s = 1; s <= segs; s++) {
+      const stepAngle = cr.angle + Math.sin(cr.seed + s * 2.7) * 0.35;
+      cx += Math.cos(stepAngle) * segLen;
+      cy += Math.sin(stepAngle) * segLen;
+      pts.push({ x: cx, y: cy });
+    }
+
+    ctx.strokeStyle = '#2C323D';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x + 1, pts[0].y + 1);
+    for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x + 1, pts[p].y + 1);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#0A0C0E';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x, pts[p].y);
+    ctx.stroke();
+  }
+
+  // Cień ambient occlusion pod sufitem dolnej sali
+  const ceilShadow = ctx.createLinearGradient(0, 780, 0, 700);
+  ceilShadow.addColorStop(0.0, 'rgba(5, 7, 10, 0.70)');
+  ceilShadow.addColorStop(1.0, 'rgba(5, 7, 10, 0.0)');
+  ctx.fillStyle = ceilShadow;
+  ctx.fillRect(950, 700, 1350, 85);
+
+  ctx.restore(); // Koniec clipa
+
+  // Podświetlenie rim-light TYLKO NA GÓRNYM GRZBIECIE WZGÓRZA (powierzchnia chodzona!)
+  // Nigdy na suficie dolnej komory ani pionowej rozpadlinie!
+  ctx.strokeStyle = '#3A4454';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < CENTRAL_HILL_PROFILE.length; i++) {
+    const pt = CENTRAL_HILL_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5E6E87';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < CENTRAL_HILL_PROFILE.length; i++) {
+    const pt = CENTRAL_HILL_PROFILE[i];
+    if (i === 0) ctx.moveTo(pt.x, pt.y - 0.7);
+    else ctx.lineTo(pt.x, pt.y - 0.7);
+  }
+  ctx.stroke();
+
+  drawLedgeDebris(ctx, CENTRAL_HILL_PROFILE);
+  ctx.restore();
+}
+
+/**
+ * 4. STALAKTYTY, PÓŁKI SKALNE I LAMPY DOLNEJ SALI BOJOWEJ
+ */
+export function drawLowerCavernPropsAndLighting(ctx, time) {
+  // 1. Stalaktyty na suficie dolnej komory (wiszące ze stropu y ≈ 780)
+  const lowerStalactites = [
+    { x: 1040, w: 22, len: 45, slant: 1 },
+    { x: 1220, w: 26, len: 65, slant: -2 },
+    { x: 1450, w: 24, len: 55, slant: 2 },
+    { x: 1720, w: 30, len: 75, slant: -1 },
+    { x: 1980, w: 26, len: 60, slant: 2 },
+    { x: 2200, w: 22, len: 50, slant: -2 }
+  ];
+
+  for (let s = 0; s < lowerStalactites.length; s++) {
+    const st = lowerStalactites[s];
+    const baseY = getLowerCavernCeilingY(st.x);
+    const tipX = st.x + st.slant;
+    const tipY = baseY + st.len;
+    const midX = st.x + st.slant * 0.2;
+    const midY = baseY - 2;
+
+    // Oświetlona strona
+    ctx.fillStyle = '#2A313C';
+    ctx.beginPath();
+    ctx.moveTo(st.x - st.w * 0.5, baseY);
+    ctx.lineTo(midX, midY);
+    ctx.lineTo(tipX, tipY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Strona w cieniu
+    ctx.fillStyle = '#14171C';
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
+    ctx.lineTo(st.x + st.w * 0.5, baseY);
+    ctx.lineTo(tipX, tipY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Grań i kropelka wilgoci
+    ctx.strokeStyle = '#3F4957';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#CBD5E1';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 2. 4 naturalne półki skalne (LOWER_CAVERN_SHELVES)
+  for (let shIdx = 0; shIdx < LOWER_CAVERN_SHELVES.length; shIdx++) {
+    const shelf = LOWER_CAVERN_SHELVES[shIdx];
+    const sx = shelf.x;
+    const sy = shelf.y;
+    const sw = shelf.w;
+    const sh = shelf.h;
+
+    const sGrad = ctx.createLinearGradient(0, sy, 0, sy + sh);
+    sGrad.addColorStop(0.0, '#1E232B');
+    sGrad.addColorStop(1.0, '#13161C');
+    ctx.fillStyle = sGrad;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + sw, sy);
+    ctx.lineTo(sx + sw - 6, sy + sh);
+    ctx.lineTo(sx + 6, sy + sh);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sx, sy, sw, sh);
+    ctx.clip();
+    ctx.strokeStyle = '#232830';
+    ctx.lineWidth = 2.0;
+    for (let ly = sy + 6; ly < sy + sh; ly += 9) {
+      ctx.beginPath();
+      ctx.moveTo(sx, ly);
+      ctx.lineTo(sx + sw, ly + Math.sin(ly * 0.1) * 3);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = '#3A4454';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + sw, sy);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#5E6E87';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - 0.7);
+    ctx.lineTo(sx + sw, sy - 0.7);
+    ctx.stroke();
+
+    const numChips = Math.floor(sw / 45);
+    for (let k = 0; k < numChips; k++) {
+      const cx = sx + 20 + k * 45 + ((k * 13) % 15);
+      ctx.fillStyle = '#2A323D';
+      ctx.beginPath();
+      ctx.moveTo(cx - 1.5, sy + 1);
+      ctx.lineTo(cx + 1.5, sy + 1);
+      ctx.lineTo(cx + 1.0, sy + 4);
+      ctx.lineTo(cx - 1.0, sy + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#5E6E87';
+      ctx.fillRect(cx - 1.5, sy + 1, 1, 1);
+    }
+  }
+
+  // 3. 3 Lampy górnicze wiszące wyłącznie na suficie dolnej komory
+  const lowerLamps = [
+    { x: 1160, coneAngle: 0.18 },  // skierowana lekko na lewą półkę i wejście
+    { x: 1720, coneAngle: 0.00 },  // centralna nad cokołem
+    { x: 2180, coneAngle: -0.18 }  // skierowana w prawo/środek
+  ];
+
+  for (let l = 0; l < lowerLamps.length; l++) {
+    const lamp = lowerLamps[l];
+    const lx = lamp.x;
+    const ceilY = getLowerCavernCeilingY(lx);
+    const ly = ceilY + 30; // lampa wisi 30 px pod stropem
+    const flicker = 0.90 + 0.10 * Math.sin(time * 5.4 + l * 2.5);
+
+    // Stalowe zawiesie od stropu dolnej komory
+    ctx.strokeStyle = '#1E293B';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(lx, ceilY);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
+
+    // Stożek światła w trybie screen oświetlający dolną salę
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const coneGrad = ctx.createRadialGradient(lx, ly + 6, 4, lx + lamp.coneAngle * 80, ly + 140, 260);
+    coneGrad.addColorStop(0.00, `rgba(255, 250, 240, ${0.80 * flicker})`);
+    coneGrad.addColorStop(0.12, `rgba(245, 158, 11, ${0.50 * flicker})`);
+    coneGrad.addColorStop(0.38, `rgba(217, 119, 6, ${0.25 * flicker})`);
+    coneGrad.addColorStop(0.70, `rgba(180, 83, 9, ${0.08 * flicker})`);
+    coneGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(lx - 8, ly + 6);
+    ctx.lineTo(lx - 150 + lamp.coneAngle * 90, ly + 260);
+    ctx.quadraticCurveTo(lx + lamp.coneAngle * 90, ly + 280, lx + 150 + lamp.coneAngle * 90, ly + 260);
+    ctx.lineTo(lx + 8, ly + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Okrągły bloom lampy
+    const bloom = ctx.createRadialGradient(lx, ly + 8, 2, lx, ly + 8, 36);
+    bloom.addColorStop(0.0, `rgba(255, 250, 240, ${0.85 * flicker})`);
+    bloom.addColorStop(0.3, `rgba(245, 158, 11, ${0.45 * flicker})`);
+    bloom.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = bloom;
+    ctx.beginPath();
+    ctx.arc(lx, ly + 8, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Stalowa oprawa
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(lx - 6, ly, 12, 4);
+    ctx.fillStyle = '#F59E0B';
+    ctx.fillRect(lx - 4, ly + 4, 8, 6);
+    ctx.fillStyle = '#FFFAF0';
+    ctx.fillRect(lx - 2, ly + 5, 4, 4);
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 1.0;
+    ctx.strokeRect(lx - 5, ly + 3, 10, 8);
+  }
+}
+
+export function drawLowerCavern(ctx, time) {
+  drawLowerCavernBackground(ctx, time);
+  drawLowerCavernPropsAndLighting(ctx, time);
+}
+
 export function drawGround(ctx, worldLeft, worldWidth) {
   const startX = ARENA_LEFT - 320;
   const endX = ARENA_RIGHT + 320;
   const w = endX - startX;
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+
+  if (isArena3) {
+    const time = performance.now() * 0.001;
+    const mapBottomY = 1500;
+
+    // 1. Tło i kryształy dolnej komory
+    drawLowerCavernBackground(ctx, time);
+
+    // 2. Lity spąg, rampa wejściowa i masywy boczne (ciągła skała do dna mapy)
+    drawBedrockAndSideSlopes(ctx, mapBottomY);
+
+    // 3. Pomost Środkowy / Płyta Główna (lita bryła skalna nad dolną salą)
+    drawCentralRockBridge(ctx);
+
+    // 4. Stalaktyty, półki skalne i 3 wiszące lampy dolnej komory
+    drawLowerCavernPropsAndLighting(ctx, time);
+
+    // 5. Górny strop jaskini, stalaktyty, kable i lampy stropowe
+    drawCaveCeilingAndStalactites(ctx, GROUND_Y, time);
+    return;
+  }
 
   // =========================================================================
-  // 1. DOLNY KANAŁ TECHNICZNY I CZELUŚĆ POD KŁADKĄ (THE VOID & SUB-LEVEL)
+  // ARENY 1 & 2: INDUSTRIALNA KŁADKA / DWUTEOWNIKI / CYBER NEON
   // =========================================================================
+  // 1. DOLNY KANAŁ TECHNICZNY I CZELUŚĆ POD KŁADKĄ (THE VOID & SUB-LEVEL)
   ctx.fillStyle = '#05070d';
   ctx.fillRect(startX, GROUND_Y + GROUND_SLAB_HEIGHT, w, 700);
 
@@ -1749,9 +3480,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     ctx.stroke();
   }
 
-  // =========================================================================
   // 2. INDUSTRIALNE BELKI NOŚNE / FILARY PODŁOŻA CO 120 PX
-  // =========================================================================
   const pillarStep = PILLAR_SPACING;
   const pStart = Math.floor(startX / pillarStep) * pillarStep;
   const pEnd = Math.ceil(endX / pillarStep) * pillarStep;
@@ -1800,14 +3529,11 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   }
   ctx.restore();
 
-  // =========================================================================
   // 3. AKTYWNE SEGMENTY PODŁOŻA (36 PX PŁYTA PRZEMYSŁOWEJ KŁADKI)
-  // =========================================================================
   for (let i = 0; i < groundSegments.length; i++) {
     const seg = groundSegments[i];
-    if (seg.destroyed) continue; // Wyrwa: segment fizycznie nie istnieje
+    if (seg.destroyed) continue;
 
-    // Gradient grubości płyty (36px)
     const slabGrad = ctx.createLinearGradient(seg.x, GROUND_Y, seg.x, GROUND_Y + GROUND_SLAB_HEIGHT);
     slabGrad.addColorStop(0.0, '#151e2e');
     slabGrad.addColorStop(0.25, '#101726');
@@ -1817,26 +3543,20 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     ctx.fillStyle = slabGrad;
     ctx.fillRect(seg.x, GROUND_Y, seg.width, GROUND_SLAB_HEIGHT);
 
-    // Poziomy rowek technologiczny płyty
     ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.fillRect(seg.x, GROUND_Y + 12, seg.width, 1);
 
-    // Dolna krawędź kładki (skaza / faza)
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(seg.x, GROUND_Y + GROUND_SLAB_HEIGHT - 1.5, seg.width, 1.5);
 
-    // Dylatacja / łączenie segmentów
     ctx.fillStyle = '#060911';
     ctx.fillRect(seg.x, GROUND_Y + 1, 1, GROUND_SLAB_HEIGHT - 2);
 
-    // Wcięcie montażowe na środku segmentu
     ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
     ctx.fillRect(seg.x + seg.width / 2 - 1, GROUND_Y + 3, 2, 5);
   }
 
-  // =========================================================================
   // 4. NEONOWA POWIERZCHNIA PODŁOŻA – PRZERYWANA W MIEJSCACH WYRWY
-  // =========================================================================
   ctx.save();
   const surfaceGrad = ctx.createLinearGradient(ARENA_LEFT, GROUND_Y, ARENA_RIGHT, GROUND_Y);
   surfaceGrad.addColorStop(0.0, '#06b6d4');
@@ -1850,36 +3570,33 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   coreGrad.addColorStop(0.52, '#ffffff');
   coreGrad.addColorStop(1.0, '#fed7aa');
 
-  // Znajdź ciągłe, nieprzerwane odcinki ocalałego podłoża
-  const activeRuns = [];
-  let currentRun = null;
+  const legacyActiveRuns = [];
+  let legacyCurrentRun = null;
 
   for (let i = 0; i < groundSegments.length; i++) {
     const seg = groundSegments[i];
     if (!seg.destroyed) {
-      if (!currentRun) {
-        currentRun = { start: seg.x, end: seg.x + seg.width };
+      if (!legacyCurrentRun) {
+        legacyCurrentRun = { start: seg.x, end: seg.x + seg.width };
       } else {
-        currentRun.end = seg.x + seg.width;
+        legacyCurrentRun.end = seg.x + seg.width;
       }
     } else {
-      if (currentRun) {
-        activeRuns.push(currentRun);
-        currentRun = null;
+      if (legacyCurrentRun) {
+        legacyActiveRuns.push(legacyCurrentRun);
+        legacyCurrentRun = null;
       }
     }
   }
-  if (currentRun) {
-    activeRuns.push(currentRun);
+  if (legacyCurrentRun) {
+    legacyActiveRuns.push(legacyCurrentRun);
   }
 
-  // Rysuj neon WYŁĄCZNIE na niezniszczonych odcinkach!
-  for (const run of activeRuns) {
+  for (const run of legacyActiveRuns) {
     const arenaStart = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT, run.start));
     const arenaEnd = Math.max(ARENA_LEFT, Math.min(ARENA_RIGHT, run.end));
 
     if (arenaEnd > arenaStart) {
-      // Szeroka poświata neonowa
       ctx.strokeStyle = surfaceGrad;
       ctx.shadowColor = '#00e5ff';
       ctx.shadowBlur = 14;
@@ -1889,7 +3606,6 @@ export function drawGround(ctx, worldLeft, worldWidth) {
       ctx.lineTo(arenaEnd, GROUND_Y);
       ctx.stroke();
 
-      // Jaskrawy, biało-neonowy rdzeń świetlny
       ctx.strokeStyle = coreGrad;
       ctx.shadowColor = '#ffffff';
       ctx.shadowBlur = 6;
@@ -1900,7 +3616,6 @@ export function drawGround(ctx, worldLeft, worldWidth) {
       ctx.stroke();
     }
 
-    // Odcinki buforowe poza bramkami
     if (run.start < ARENA_LEFT) {
       const bLeft = run.start;
       const bRight = Math.min(ARENA_LEFT, run.end);
@@ -1932,9 +3647,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     }
   }
 
-  // =========================================================================
   // 5. WIZUALIZACJA POSZARPANYCH KRAWĘDZI I WYSTAJĄCEGO ZBROJENIA WYRWY
-  // =========================================================================
   for (let i = 0; i < groundSegments.length; i++) {
     const seg = groundSegments[i];
     if (seg.destroyed) continue;
@@ -1947,17 +3660,19 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     }
   }
 
-  // Pionowe neonowe ściany energetyczne za bramkami
   drawArenaEnergyBoundaries(ctx, GROUND_Y);
-
   ctx.restore();
 }
 
 export function drawArenaEnergyBoundaries(ctx, groundY) {
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  if (isArena3) {
+    return; // W zamkniętym podziemnym systemie jaskiń i sztolni ściany areny to lity górotwór – brak laserowych linii granicznych
+  }
   const isArena2 = (activeArenaId === 'ARENA_2');
   const leftX = isArena2 ? 150 : ARENA_LEFT;
   const rightX = isArena2 ? 1770 : ARENA_RIGHT;
-  const barrierH = 3000; // ok. 300 jednostek/metrów w skali gry (1m = 10px)
+  const barrierH = 3000;
   const topY = groundY - barrierH;
   const time = performance.now() * 0.0012;
   const pulse = 0.82 + 0.18 * Math.sin(time * 3.5);
@@ -1985,9 +3700,15 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
     // 1. Półprzezroczysta pionowa kurtyna pola siłowego (fading 38px do wnętrza boiska)
     const fieldW = 38;
     const fieldGrad = ctx.createLinearGradient(w.x, 0, w.x + w.fadeDir * fieldW, 0);
-    fieldGrad.addColorStop(0.0, w.fadeDir === 1 ? `rgba(6, 182, 212, ${0.28 * pulse})` : `rgba(249, 115, 22, ${0.28 * pulse})`);
-    fieldGrad.addColorStop(0.35, w.fadeDir === 1 ? `rgba(0, 229, 255, ${0.12 * pulse})` : `rgba(255, 119, 0, ${0.12 * pulse})`);
-    fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    if (isArena3) {
+      fieldGrad.addColorStop(0.0, `rgba(234, 179, 8, ${0.32 * pulse})`);
+      fieldGrad.addColorStop(0.35, `rgba(250, 204, 21, ${0.14 * pulse})`);
+      fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    } else {
+      fieldGrad.addColorStop(0.0, w.fadeDir === 1 ? `rgba(6, 182, 212, ${0.28 * pulse})` : `rgba(249, 115, 22, ${0.28 * pulse})`);
+      fieldGrad.addColorStop(0.35, w.fadeDir === 1 ? `rgba(0, 229, 255, ${0.12 * pulse})` : `rgba(255, 119, 0, ${0.12 * pulse})`);
+      fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    }
     ctx.fillStyle = fieldGrad;
     const fx = w.fadeDir === 1 ? w.x : (w.x - fieldW);
     ctx.fillRect(fx, topY, fieldW, barrierH);
@@ -1995,7 +3716,7 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
     // 2. Dynamiczne impulsy energii wznoszące się wzdłuż ściany
     const step = 50;
     const offset = (time * 75) % step;
-    ctx.fillStyle = w.fadeDir === 1 ? 'rgba(165, 243, 252, 0.38)' : 'rgba(254, 215, 170, 0.38)';
+    ctx.fillStyle = isArena3 ? 'rgba(254, 240, 138, 0.45)' : (w.fadeDir === 1 ? 'rgba(165, 243, 252, 0.38)' : 'rgba(254, 215, 170, 0.38)');
     for (let py = groundY - offset; py > topY; py -= step) {
       const rw = 16 + Math.sin(py * 0.03 + time * 3) * 6;
       const rx = w.fadeDir === 1 ? w.x : (w.x - rw);
@@ -2987,8 +4708,63 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
-  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2');
-  if (isMatchArena) {
+  const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
+  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2' || isDeathmatch);
+
+  if (isDeathmatch) {
+    const scoreBoxW = isMobile ? 220 : 280;
+    const scoreBoxH = isMobile ? 32 : 40;
+    const scoreBoxX = (W - scoreBoxW) / 2;
+    const scoreBoxY = isMobile ? 10 : 16;
+
+    ctx.save();
+    ctx.globalAlpha = isMobile ? 0.85 : 0.92;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+    ctx.lineWidth = 1.4;
+    if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
+    else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
+    ctx.fill();
+    ctx.stroke();
+
+    // Nagłówek trybu TDM
+    ctx.font = isMobile ? '900 8.5px monospace' : '900 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 8;
+    ctx.fillText('💀 TEAM DEATHMATCH 💀', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 11 : 13));
+
+    // Fragi obu drużyn
+    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 14px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#06b6d4';
+    ctx.shadowColor = '#06b6d4';
+    ctx.shadowBlur = 6;
+    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 0;
+    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 24 : 29));
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f97316';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 6;
+    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
+
+    // Subtekst pod tablicą z celem eliminacji
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.004);
+    ctx.textAlign = 'center';
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9.5px monospace';
+    ctx.fillStyle = `rgba(248, 113, 113, ${0.75 + pulse * 0.25})`;
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6;
+    ctx.fillText('⚔️ CEL: ELIMINACJA WROGA ⚔️', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 14));
+
+    ctx.restore();
+  } else if (isMatchArena) {
     const scoreBoxW = isMobile ? 180 : 230;
     const scoreBoxH = isMobile ? 26 : 34;
     const scoreBoxX = (W - scoreBoxW) / 2;
@@ -3035,8 +4811,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.restore();
   }
 
-  // 4. BANER CELEBRACJI GOLA
-  if (goalCelebration.active && goalCelebration.timer > 0) {
+  // 4. BANER CELEBRACJI GOLA (tylko w trybie meczowym z piłką)
+  if (!isDeathmatch && goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;
 
@@ -3058,11 +4834,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
   ctx.restore();
 
-  if (ball) {
+  if (ball && !isDeathmatch) {
     drawOffscreenBallIndicator(ctx, ball, camera, player);
   }
 
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange);
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange);
   }
 }

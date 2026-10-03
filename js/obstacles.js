@@ -8,7 +8,10 @@ import {
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
   registerWorldObstacles, setActiveArenaId, GROUND_Y, world,
-  isGroundAt, resetGroundSegments
+  isGroundAt, resetGroundSegments, JUNGLE_CANYON_PROFILE,
+  LEFT_MASSIF_AND_RAMP_PROFILE, CENTRAL_HILL_PROFILE, RIGHT_MASSIF_PROFILE,
+  getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
+  LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
 } from './world.js';
 import { clearRubbleParticles, clearExplosionEffects, clearExplosionCraters } from './projectiles.js';
 import { clearExplosionParticles } from './particles.js';
@@ -72,13 +75,24 @@ export const OBSTACLE_PALETTE = {
     { type: 'cyber_bumper', name: 'Bumper Pinball', label: '🔘 Bumper', category: 'traps', w: 40, h: 40, size: 40, radius: 20, anchor: 'center' },
     { type: 'laser_gate', name: 'Brama Laserowa', label: '🚨 Laser', category: 'traps', w: 12, h: 140, anchor: 'bottom' },
     { type: 'jump_pad', name: 'Jump Pad', label: '🚀 Jump Pad', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
+  ],
+  ARENA_3: [
+    { type: 'jungle_rock', name: 'Półka Skalna (Dżungla)', label: '🪨 Skalna Półka', category: 'platforms', w: 180, h: 40, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'sandbags', name: 'Bunkier z Worków', label: '🧱 Worki', category: 'defense', w: 56, h: 26, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'wooden_ladder', name: 'Drabina Drewniana', label: '🪜 Drabina', category: 'platforms', w: 32, h: 180, isPlatform: true, oneWay: true, anchor: 'bottom' },
+    { type: 'jungle_hut', name: 'Strażnica na Palach', label: '🛖 Strażnica', category: 'platforms', w: 110, h: 100, isPlatform: true, oneWay: true, anchor: 'bottom' },
+    { type: 'ammo_depot', name: 'Skrzynia Zaopatrzenia', label: '📦 Ammo', category: 'defense', w: 32, h: 24, isPlatform: true, solid: true, anchor: 'bottom', isPickup: true, isInteractable: true },
+    { type: 'explosive_barrel', name: 'Beczka Paliwa', label: '💥 Beczka', category: 'traps', w: 24, h: 36, solid: true, anchor: 'bottom' },
+    { type: 'catwalk', name: 'Kładka / Most Linowy', label: '🪵 Kładka', category: 'platforms', w: 180, h: 16, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'jump_pad', name: 'Wyrzutnia Gejzer', label: '💨 Gejzer', category: 'traps', w: 60, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
   ]
 };
 
 export function getObstacleDef(type) {
   if (!type) return null;
   const norm = normalizeObstacleType(type);
-  for (const arenaKey of ['ARENA_1', 'ARENA_2']) {
+  for (const arenaKey of ['ARENA_1', 'ARENA_2', 'ARENA_3']) {
+    if (!OBSTACLE_PALETTE[arenaKey]) continue;
     const found = OBSTACLE_PALETTE[arenaKey].find(
       d => d.type === type || d.type === norm || normalizeObstacleType(d.type) === norm
     );
@@ -517,6 +531,130 @@ export const ARENA_CYBER_STADIUM_GOALS = [
   }
 ];
 
+// =========================================================================
+// =========================================================================
+// ARENA 3: KANYON W DŻUNGLI / JUNGLE CANYON (3600x1300)
+// =========================================================================
+// ARENA 3: PODZIEMNA KOPALNIA I SZTOLNIE / MINING CAVERN & SHAFTS (3600x1300)
+// =========================================================================
+
+export const ARENA_FOUNDRY_WALLS = [
+  // 1. Lewa pionowa ściana mostu skalnego przy wejściu do lewego szybu / rampy
+  // Od szczytu mostu (y: 580) w dół do stropu pieczary (y: 780). Poniżej y: 780 przestrzeń otwarta!
+  {
+    id: 'left_shaft_bridge_wall',
+    name: 'Ściana Pomostu Lewego Szybu',
+    x: 944,
+    y: 580,
+    w: 12,
+    h: 200,
+    solid: true,
+    isWall: true,
+    pushSide: 'left'
+  },
+  // 2. Prawa pionowa ściana mostu skalnego przy zejściu do prawego szybu
+  // Od krawędzi mostu (y: 580) w dół do stropu pieczary (y: 780). Poniżej y: 780 przestrzeń otwarta!
+  {
+    id: 'right_shaft_bridge_wall',
+    name: 'Ściana Pomostu Prawego Szybu',
+    x: 2294,
+    y: 580,
+    w: 12,
+    h: 200,
+    solid: true,
+    isWall: true,
+    pushSide: 'right'
+  },
+  // 3. Pionowa lita ściana urwiska skalnego po prawej stronie szybu
+  // Od krawędzi prawego masywu (y: 580) w dół do samego spągu jaskini (y: 1180)
+  {
+    id: 'right_shaft_cliff_wall',
+    name: 'Ściana Urwiska Prawego Szybu',
+    x: 2476,
+    y: 580,
+    w: 16,
+    h: 600,
+    solid: true,
+    isWall: true,
+    pushSide: 'left'
+  }
+];
+
+export const ARENA_FOUNDRY_PLATFORMS = [
+  // =========================================================================
+  // 1. LEWY MASYW SKALNY I NATURALNA RAMPA ZEJŚCIOWA 35° (x: -320 do 950)
+  // Naturalna pochyła rampa skalna schodząca ze zbocza w głąb pieczary (y: 580 do 1180)
+  // =========================================================================
+  {
+    id: 'jungle_canyon_left_terrain',
+    type: 'rock_platform',
+    theme: 'jungle',
+    isCanyonTerrain: true,
+    solid: true,
+    x: ARENA_LEFT - 320,
+    w: 950 - (ARENA_LEFT - 320),
+    surfacePoints: LEFT_MASSIF_AND_RAMP_PROFILE,
+    props: [
+      { type: 'sandbag_trench', rx: 200 - (ARENA_LEFT - 320), w: 100, h: 26 }
+    ]
+  },
+  // =========================================================================
+  // 2. POMOST ŚRODKOWY (PŁYTA GŁÓWNA / GRZBIETY - STROP DOLNEJ SALI)
+  // Gruba lita platforma skalna (x: 950 do 2300, y: 580 -> 340 -> 580)
+  // =========================================================================
+  {
+    id: 'jungle_canyon_central_hill',
+    type: 'rock_platform',
+    theme: 'jungle',
+    isCanyonTerrain: true,
+    solid: true,
+    x: 950,
+    w: 1350,
+    surfacePoints: CENTRAL_HILL_PROFILE,
+    thickness: 240,
+    props: [
+      { type: 'sandbag_trench', rx: 770, w: 90, h: 26 }
+    ]
+  },
+  // =========================================================================
+  // 3. PRAWY MASYW SKALNY ZA PIONOWĄ ROZPADLINĄ (x: 2480 do ARENA_RIGHT + 320)
+  // =========================================================================
+  {
+    id: 'jungle_canyon_right_terrain',
+    type: 'rock_platform',
+    theme: 'jungle',
+    isCanyonTerrain: true,
+    solid: true,
+    x: 2480,
+    w: (ARENA_RIGHT + 320) - 2480,
+    surfacePoints: RIGHT_MASSIF_PROFILE,
+    props: [
+      { type: 'sandbag_trench', rx: 160, w: 140, h: 28 },
+      { type: 'wooden_log_bunker', rx: 410, w: 180, h: 74 },
+      { type: 'sandbag_trench', rx: 840, w: 110, h: 26 }
+    ]
+  },
+  // =========================================================================
+  // 4. PIONOWE ŚCIANY BOCZNE SZYBÓW WEJŚCIOWYCH (BLOKADA WNIKANIA W SKAŁĘ)
+  // =========================================================================
+  ...ARENA_FOUNDRY_WALLS,
+  // =========================================================================
+  // 5. NATURALNE PÓŁKI SKALNE W DOLNEJ SALI I SZYBIE (ONE-WAY PLATFORMS)
+  // =========================================================================
+  ...LOWER_CAVERN_SHELVES,
+  // =========================================================================
+  // 6. SPĄG DOLNEJ PIECZARY BOJOWEJ (PODŁOGA Y = 1180, x: 950 do 2480)
+  // =========================================================================
+  LOWER_CAVERN_FLOOR
+];
+
+export const ladders = [];
+
+export const ARENA_FOUNDRY_BARRICADES = [];
+
+// USUNIĘTO BRAMKI W TRYBIE DEATHMATCH
+export const ARENA_FOUNDRY_GOALS = [];
+
 export let activeArenaId = 'ARENA_1';
 export const ARENA_PLATFORMS = [...ARENA_1_PLATFORMS];
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
@@ -537,6 +675,7 @@ export function setGoalCelebrationTimer(val) {
 export let arenaSnapshot = {
   arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
   arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+  arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
   customObstacles: []
 };
 
@@ -544,6 +683,7 @@ export function saveArenaSnapshot() {
   arenaSnapshot = {
     arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
     arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+    arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
     customObstacles: JSON.parse(JSON.stringify(customObstacles))
   };
   if (typeof world !== 'undefined' && world) {
@@ -557,7 +697,9 @@ export function resetArena() {
   }
 
   ARENA_PLATFORMS.length = 0;
-  if (activeArenaId === 'ARENA_2') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena3Platforms)));
+  } else if (activeArenaId === 'ARENA_2') {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena2Platforms)));
   } else {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena1Platforms)));
@@ -590,7 +732,13 @@ if (typeof world !== 'undefined' && world) {
 
 
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
-  activeArenaId = (arenaId === 'ARENA_2' || arenaId === 2 || arenaId === 'CYBER_STADIUM') ? 'ARENA_2' : 'ARENA_1';
+  if (arenaId === 'ARENA_3' || arenaId === 3 || arenaId === 'ARENA_FOUNDRY' || arenaId === 'FOUNDRY') {
+    activeArenaId = 'ARENA_3';
+  } else if (arenaId === 'ARENA_2' || arenaId === 2 || arenaId === 'CYBER_STADIUM') {
+    activeArenaId = 'ARENA_2';
+  } else {
+    activeArenaId = 'ARENA_1';
+  }
   setActiveArenaId(activeArenaId);
 
   ARENA_PLATFORMS.length = 0;
@@ -600,7 +748,49 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
   const targetBot = botObj || _activeBot;
 
-  if (activeArenaId === 'ARENA_2') {
+  if (activeArenaId === 'ARENA_3') {
+    ARENA_PLATFORMS.push(...ARENA_FOUNDRY_PLATFORMS);
+    GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
+    // W trybie Deathmatch (Arena 3) bramki są usunięte, a wynik zlicza eliminacje drużynowe
+    GOALS.length = 0;
+    arena1State.waitingForKickoff = false;
+    arenaScore.cyan = 0;
+    arenaScore.orange = 0;
+
+    if (playerObj) {
+      playerObj.x = 280;
+      playerObj.y = groundY - 380 - playerObj.h;
+      playerObj.vx = 0;
+      playerObj.vy = 0;
+      playerObj.facing = 1;
+      playerObj.isIntro = false;
+      playerObj.isJumping = false;
+      playerObj.isSliding = false;
+      playerObj.gaitMode = 'IDLE';
+    }
+    if (targetBot) {
+      targetBot.active = true;
+      targetBot.x = 3320;
+      targetBot.y = groundY - 380 - targetBot.h;
+      targetBot.vx = 0;
+      targetBot.vy = 0;
+      targetBot.facing = -1;
+      targetBot.isJumping = false;
+      targetBot.isSliding = false;
+      targetBot.gaitMode = 'IDLE';
+    }
+    if (ballObj) {
+      ballObj.active = false;
+      ballObj.x = -9999;
+      ballObj.y = -9999;
+      ballObj.prevX = -9999;
+      ballObj.prevY = -9999;
+      ballObj.vx = 0;
+      ballObj.vy = 0;
+      ballObj.spin = 0;
+      ballObj.trail = [];
+    }
+  } else if (activeArenaId === 'ARENA_2') {
     ARENA_PLATFORMS.push(...ARENA_CYBER_STADIUM_PLATFORMS);
     GROUND_BARRICADES.push(...ARENA_CYBER_STADIUM_BARRICADES);
     GOALS.push(...ARENA_CYBER_STADIUM_GOALS);
@@ -679,8 +869,96 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   return activeArenaId;
 }
 
+export function getPlatformSurfaceInfo(plat, px, groundY) {
+  if (!plat) {
+    return { surfaceY: groundY, slope: 0, nx: 0, ny: -1, angle: 0 };
+  }
+
+  const getPtY = (pt) => (pt && pt.y !== undefined ? pt.y : (groundY - ((pt && pt.relY) || 0)));
+
+  // Obsługa wielokątnych platform o zmiennym profilu (organic multi-segment slopes)
+  if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
+    const pts = plat.surfacePoints;
+    if (px <= pts[0].x) {
+      const dx = pts[1].x - pts[0].x;
+      const dy = getPtY(pts[1]) - getPtY(pts[0]);
+      const slope = -dy / (dx || 1);
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        surfaceY: getPtY(pts[0]),
+        slope,
+        nx: -dy / len,
+        ny: -dx / len,
+        angle: Math.atan2(dy, dx)
+      };
+    }
+    if (px >= pts[pts.length - 1].x) {
+      const p0 = pts[pts.length - 2];
+      const p1 = pts[pts.length - 1];
+      const dx = p1.x - p0.x;
+      const dy = getPtY(p1) - getPtY(p0);
+      const slope = -dy / (dx || 1);
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        surfaceY: getPtY(p1),
+        slope,
+        nx: -dy / len,
+        ny: -dx / len,
+        angle: Math.atan2(dy, dx)
+      };
+    }
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      if (px >= p0.x && px <= p1.x) {
+        const dx = p1.x - p0.x;
+        const y0 = getPtY(p0);
+        const y1 = getPtY(p1);
+        const dy = y1 - y0;
+        const t = dx > 0 ? (px - p0.x) / dx : 0;
+        const curY = y0 + t * dy;
+        const slope = -dy / (dx || 1);
+        const len = Math.hypot(dx, dy) || 1;
+        return {
+          surfaceY: curY,
+          slope,
+          nx: -dy / len,
+          ny: -dx / len,
+          angle: Math.atan2(dy, dx)
+        };
+      }
+    }
+  }
+
+  if (plat.isSlope) {
+    const dx = plat.w || 1;
+    const y0 = plat.startY !== undefined ? plat.startY : (groundY - (plat.startRelY || 0));
+    const y1 = plat.endY !== undefined ? plat.endY : (groundY - (plat.endRelY || 0));
+    const dy = y1 - y0;
+    const t = Math.max(0, Math.min(1, (px - plat.x) / dx));
+    const curY = y0 + t * dy;
+    const slope = -dy / dx;
+    const len = Math.hypot(dx, dy) || 1;
+    return {
+      surfaceY: curY,
+      slope,
+      nx: -dy / len,
+      ny: -dx / len,
+      angle: Math.atan2(dy, dx)
+    };
+  }
+
+  return {
+    surfaceY: (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)),
+    slope: 0,
+    nx: 0,
+    ny: -1,
+    angle: 0
+  };
+}
+
 export function getPlatformSurfaceY(plat, px, groundY) {
-  return groundY - plat.relY;
+  return getPlatformSurfaceInfo(plat, px, groundY).surfaceY;
 }
 
 // =========================================================================
@@ -990,6 +1268,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   if (wantDrop) {
     for (const plat of ARENA_PLATFORMS) {
+      if (!plat || plat.solid || plat.isCanyonTerrain) continue;
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
         const topY = getPlatformSurfaceY(plat, centerX, groundY);
 
@@ -1143,16 +1422,33 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   let landedSurface = null;
+  let landedSlope = 0;
+  let landedPlatform = null;
 
   for (const plat of ARENA_PLATFORMS) {
-    if (centerX >= plat.x - 4 && centerX <= plat.x + plat.w + 4) {
-      const topY = getPlatformSurfaceY(plat, centerX, groundY);
+    if (plat.isWall) continue;
+    if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
+      const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
+      const topY = surf.surfaceY;
       const prevFeetY = feetY - p.vy;
-      const isLanding = p.vy >= 0 && prevFeetY <= topY + 12 && feetY >= topY - 10 && feetY <= topY + Math.max(20, p.vy + 10);
+      const isLanding = (p.vy >= 0 && prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
+                        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24);
 
       if (isLanding) {
-        landedSurface = topY;
-        break;
+        if (plat.oneWay && p.dropThroughTimer > 0) {
+          continue;
+        }
+        if (p.onGround && p.currentPlatform === plat) {
+          landedSurface = topY;
+          landedSlope = surf.slope;
+          landedPlatform = plat;
+          break;
+        }
+        if (landedSurface === null || topY < landedSurface) {
+          landedSurface = topY;
+          landedSlope = surf.slope;
+          landedPlatform = plat;
+        }
       }
     }
   }
@@ -1220,10 +1516,60 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
+  // Twarda blokada przechodzenia przez pionowe monolity i formacje skalne
+  for (const plat of ARENA_PLATFORMS) {
+    if (plat && plat.solid && plat.isMonolith) {
+      const topY = groundY - plat.relY;
+      const bottomY = topY + (plat.thickness || 470);
+      if (feetY > topY + 8 && p.y < bottomY - 4) {
+        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+          const midX = plat.x + plat.w / 2;
+          if (p.x + p.w / 2 < midX) {
+            p.x = plat.x - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else {
+            p.x = plat.x + plat.w;
+            if (p.vx < 0) p.vx = 0;
+          }
+        }
+      }
+    }
+  }
+
+  // Twarda blokada przechodzenia przez pionowe ściany szybów i krawędzie skał (isWall)
+  for (const plat of ARENA_PLATFORMS) {
+    if (plat && plat.isWall) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || plat.thickness || 200);
+      if (feetY > topY + 6 && p.y < bottomY - 4) {
+        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+          if (plat.pushSide === 'left') {
+            p.x = plat.x - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else if (plat.pushSide === 'right') {
+            p.x = plat.x + plat.w;
+            if (p.vx < 0) p.vx = 0;
+          } else {
+            const overlapLeft = (p.x + p.w) - plat.x;
+            const overlapRight = (plat.x + plat.w) - p.x;
+            if (overlapLeft < overlapRight) {
+              p.x = plat.x - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = plat.x + plat.w;
+              if (p.vx < 0) p.vx = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+  p.isClimbing = false;
+
   if (landedSurface === null) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.props) {
-        const tier = plat.props.find(pr => pr.type === 'altar_pedestal');
+        const tier = plat.props.find(pr => pr.type === 'altar_pedestal' || pr.type === 'sandbag_trench');
         if (tier) {
           const tierLeft = plat.x + tier.rx;
           const tierRight = tierLeft + tier.w;
@@ -1247,6 +1593,19 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.onGround = true;
     p.airVx = 0;
     p.currentGroundY = landedSurface;
+    p.currentPlatform = landedPlatform;
+
+    // Obsługa nachylenia (slopes physics): ślizganie i dynamiczny bieg po pochyłym terenie
+    if (Math.abs(landedSlope) > 0.01) {
+      if (p.isSliding) {
+        // Pęd grawitacyjny w dół zbocza (downhill slide boost)
+        p.vx -= landedSlope * 0.28;
+      }
+      p.slopeAngle = Math.atan(-landedSlope) * 0.6;
+    } else {
+      p.slopeAngle = 0;
+    }
+
     if (p.staggerTimer > 0 && !p.staggerLanded) {
       p.staggerLanded = true;
       p.vx *= 0.70;
@@ -1256,29 +1615,65 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.jetFuel = Math.min(p.jetMax, p.jetFuel + 2.5);
     }
   } else {
-    // Sprawdzenie czy pod postacią znajduje się niezDestroyowany segment podłoża
-    const isSupported = (typeof isGroundAt === 'function')
-      ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
-      : true;
-
-    if (isSupported) {
-      p.currentGroundY = groundY;
-      p.onGround = (p.y >= groundY - colH - 1);
-      if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
-        p.staggerLanded = true;
-        p.vy = 0;
-        p.vx *= 0.70;
-        spawnGroundPuff(centerX, groundY);
-      }
-    } else {
-      // Postać nad wyrwą w geometrii – natychmiast traci podparcie
+    p.currentPlatform = null;
+    p.slopeAngle = 0;
+    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    if (isA3) {
+      // W Arenie 3 brak domyślnej podłogi na poziomie groundY (1000) – postać spada swobodnie w głąb jaskini
       p.onGround = false;
       p.currentGroundY = null;
+    } else {
+      // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
+      const isSupported = (typeof isGroundAt === 'function')
+        ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
+        : true;
+
+      if (isSupported) {
+        p.currentGroundY = groundY;
+        p.onGround = (p.y >= groundY - colH - 1);
+        if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
+          p.staggerLanded = true;
+          p.vy = 0;
+          p.vx *= 0.70;
+          spawnGroundPuff(centerX, groundY);
+        }
+      } else {
+        // Postać nad wyrwą w geometrii – natychmiast traci podparcie
+        p.onGround = false;
+        p.currentGroundY = null;
+      }
+    }
+  }
+
+  // Zabezpieczenie przed wylotem ponad lity skalny sufit jaskini (Solid Rock Ceiling)
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    // 1. Strop dolnej pieczary (y ≈ 780) pod centralnym wzgórzem
+    if (p.y <= 850 && p.y >= 680 && centerX >= 950 && centerX <= 2300) {
+      const lowerCeilY = (typeof getLowerCavernCeilingY === 'function') ? getLowerCavernCeilingY(centerX) : 780;
+      if (p.y < lowerCeilY) {
+        p.y = lowerCeilY;
+        if (p.vy < 0) {
+          p.vy = 1.0;
+          spawnObstacleSparks(centerX, lowerCeilY + 4, 0, 1, 3);
+        }
+      }
+    }
+
+    // 2. Globalny sufit jaskini u góry mapy (y ≈ 20-50 px)
+    const ceilY = getCaveCeilingY(centerX, groundY);
+    if (p.y < ceilY) {
+      p.y = ceilY;
+      if (p.vy < 0) {
+        p.vy = 1.2; // Lekkie odbicie w dół od litego stropu
+        spawnObstacleSparks(centerX, ceilY + 4, 0, 1, 4);
+      }
     }
   }
 
   // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
-  if (p.y > groundY + 160 && !p.isDead) {
+  const isA3Death = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const deathLimitY = isA3Death ? 1290 : (groundY + 160);
+  if (p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
     p.respawnTimer = 75;
@@ -1315,7 +1710,8 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         }
       }
     } else {
-      const topY = groundY - plat.relY;
+      const surf = getPlatformSurfaceInfo(plat, ball.x, groundY);
+      const topY = surf.surfaceY;
       const platLeft = plat.x;
       const platRight = plat.x + plat.w;
       const thickness = plat.thickness || 20;
@@ -1324,19 +1720,56 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         const prevBottomY = prevY + cR;
         const curBottomY = ball.y + cR;
 
-        if (ball.vy > 0 && prevBottomY <= topY + 14 && curBottomY >= topY && ball.y - cR <= topY + thickness + 10) {
-          ball.y = topY - cR;
-          ball.vy = Math.abs(ball.vy) > 0.8 ? -ball.vy * 0.65 : 0;
-          ball.vx *= 0.98;
-          ball.spin *= 0.94;
-          ball.rotation += ball.vx * 0.08;
+        if (curBottomY >= topY && prevBottomY <= topY + 18 && ball.y - cR <= topY + thickness + 15) {
+          if (Math.abs(surf.slope) > 0.05) {
+            // Kolizja wektorowa ze stokiem / naturalną rampą kicker
+            const nx = surf.nx;
+            const ny = surf.ny;
+            const vDotN = ball.vx * nx + ball.vy * ny;
+            if (vDotN < 0) {
+              const restitution = 0.68;
+              ball.vx -= (1 + restitution) * vDotN * nx;
+              ball.vy -= (1 + restitution) * vDotN * ny;
+              // Rampa wybijająca w centrum (kicker ramp): wznoszący profil wyrzuca piłkę w powietrze
+              if (surf.slope > 0.35 && ball.vx > 2.5) {
+                ball.vy -= Math.min(8.2, ball.vx * 0.80);
+              }
+            }
+            ball.y = topY - cR;
+            ball.vx *= 0.985;
+            ball.spin = -ball.vx * 0.12;
+            ball.rotation += ball.vx * 0.08;
+          } else {
+            ball.y = topY - cR;
+            ball.vy = Math.abs(ball.vy) > 0.8 ? -ball.vy * 0.65 : 0;
+            ball.vx *= 0.98;
+            ball.spin *= 0.94;
+            ball.rotation += ball.vx * 0.08;
+          }
           if (speed > 8.0) triggerScreenShake(2.5);
+        }
+      }
+
+      // Odbicie boczne od pionowego monolitu skalnego
+      if (plat.isMonolith) {
+        const mTop = groundY - plat.relY;
+        const mBottom = mTop + (plat.thickness || 470);
+        if (ball.y >= mTop && ball.y <= mBottom) {
+          if (ball.x + cR >= platLeft && ball.x - cR <= platRight) {
+            if (ball.x < platLeft + plat.w / 2) {
+              ball.x = platLeft - cR;
+              if (ball.vx > 0) ball.vx = -ball.vx * 0.75;
+            } else {
+              ball.x = platRight + cR;
+              if (ball.vx < 0) ball.vx = -ball.vx * 0.75;
+            }
+          }
         }
       }
 
       if (plat.props) {
         for (const prop of plat.props) {
-          if (prop.type === 'altar_pedestal') {
+          if (prop.type === 'altar_pedestal' || prop.type === 'sandbag_trench' || prop.type === 'wooden_log_bunker') {
             const bx = plat.x + prop.rx;
             const by = topY - prop.h;
             const bw = prop.w;
@@ -1690,6 +2123,38 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
           ball.trail = [];
           break;
         }
+      }
+    }
+  }
+
+  if ((activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') && ball) {
+    for (const g of GOALS) {
+      const bottomY = groundY - g.relY;
+      const topY = bottomY - g.h;
+      const leftX = g.x;
+      const rightX = g.x + g.w;
+
+      if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
+        const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
+        if (scoringTeam === 'CYAN') {
+          arenaScore.cyan++;
+        } else {
+          arenaScore.orange++;
+        }
+
+        triggerScreenShake(14);
+        triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+        resetArena();
+
+        ball.x = 1800;
+        ball.y = groundY - 340 - (ball.colRadius || 14) - 2;
+        ball.prevX = 1800;
+        ball.prevY = ball.y;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.spin = 0;
+        ball.trail = [];
+        break;
       }
     }
   }
@@ -2615,6 +3080,15 @@ export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, h
     case 'cyber_bumper':
       drawCyberBumper(ctx, x, y, w, h, hitTimer);
       break;
+    case 'wooden_ladder':
+      drawWoodenLadder(ctx, x, y, w, h);
+      break;
+    case 'jungle_hut':
+      drawJungleHutObstacle(ctx, x, y, w, h);
+      break;
+    case 'jungle_rock':
+      drawJungleRockObstacle(ctx, x, y, w, h);
+      break;
     default:
       if (type === 'sandbag' || type === 'sandbags' || type === 'sand_bag' || type === 'sand_bags') {
         drawSandbags(ctx, x, y, w, h);
@@ -2632,7 +3106,308 @@ export function drawSingleObstacleByType(ctx, type, x, y, w, h, groundY = 500, h
   }
 }
 
+/**
+ * Procedura renderowania sztucznych konstrukcji drewnianych.
+ * Zgodnie z wytycznymi wszystkie drabiny, wieże i wiszące mosty zostały usunięte z jaskini.
+ */
+export function drawJungleWoodStructure(ctx, plat, groundY) {
+  // Wszystkie sztuczne struktury (drabiny, pomosty, kładki wiszące, wieże) zostały usunięte na rzecz surowej, naturalnej groty skalnej
+}
+
+/**
+ * Renderuje realistyczny drewniany bunkier z bali z wąską strzelnicą i nasypem ziemno-trawiastym
+ */
+export function drawWoodenLogBunker(ctx, x, y, w, h) {
+  ctx.save();
+  const logCount = 4;
+  const logH = Math.round(h / (logCount + 0.6));
+
+  // Cień bunkra na gruncie
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+  ctx.fillRect(x + 4, y + h - 2, w - 8, 4);
+
+  // 1. Ściany z ułożonych wzdłużnie bali sosnowych
+  for (let i = 0; i < logCount; i++) {
+    const ly = y + h - (i + 1) * logH;
+    const logGrad = ctx.createLinearGradient(0, ly, 0, ly + logH);
+    logGrad.addColorStop(0.0, '#3a2315');
+    logGrad.addColorStop(0.35, '#5c3a23');
+    logGrad.addColorStop(0.70, '#754b2d');
+    logGrad.addColorStop(1.0, '#311d11');
+    ctx.fillStyle = logGrad;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x, ly, w, logH - 1, 3) : ctx.rect(x, ly, w, logH - 1);
+    ctx.fill();
+
+    // Głęboka szczelina / mszyste uszczelnienie między balami
+    ctx.strokeStyle = '#180e07';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, ly + logH - 1);
+    ctx.lineTo(x + w, ly + logH - 1);
+    ctx.stroke();
+
+    // Słoje drewna i spękania
+    ctx.strokeStyle = 'rgba(24, 14, 7, 0.55)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(x + 12, ly + logH * 0.45);
+    ctx.lineTo(x + w * 0.45, ly + logH * 0.48);
+    ctx.moveTo(x + w * 0.6, ly + logH * 0.52);
+    ctx.lineTo(x + w - 16, ly + logH * 0.46);
+    ctx.stroke();
+
+    // Końcówki bali (czopowe zaciosy na rogach z widocznymi słojami)
+    ctx.fillStyle = '#6d4529';
+    ctx.beginPath();
+    ctx.ellipse(x + 6, ly + logH * 0.5, 4.5, logH * 0.42, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + w - 6, ly + logH * 0.5, 4.5, logH * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#24140a';
+    ctx.stroke();
+  }
+
+  // 2. Pozioma szczelina strzelecka (embrasure)
+  const slitW = Math.round(w * 0.44);
+  const slitH = Math.round(logH * 0.95);
+  const slitX = x + Math.round((w - slitW) / 2);
+  const slitY = y + Math.round(h * 0.36);
+
+  // Wnętrze ciemnego bunkra
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(slitX, slitY, slitW, slitH);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2.0;
+  ctx.strokeRect(slitX, slitY, slitW, slitH);
+
+  // Stalowa płyta opancerzenia otworu strzelniczego
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(slitX - 2, slitY - 1, slitW + 4, slitH + 2);
+
+  // Stalowe nity opancerzenia
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(slitX - 1, slitY - 1, 2.5, 2.5);
+  ctx.fillRect(slitX + slitW - 1.5, slitY - 1, 2.5, 2.5);
+  ctx.fillRect(slitX - 1, slitY + slitH - 1.5, 2.5, 2.5);
+  ctx.fillRect(slitX + slitW - 1.5, slitY + slitH - 1.5, 2.5, 2.5);
+
+  // 3. Ciężki strop z bali i warstwa skalnego kruszywa / płyt stalowych
+  const roofH = 14;
+  const roofY = y - 4;
+  const roofGrad = ctx.createLinearGradient(0, roofY - roofH, 0, roofY);
+  roofGrad.addColorStop(0.0, '#334155');
+  roofGrad.addColorStop(0.4, '#1e293b');
+  roofGrad.addColorStop(0.85, '#0f172a');
+  roofGrad.addColorStop(1.0, '#26160d');
+  ctx.fillStyle = roofGrad;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x - 8, roofY - roofH, w + 16, roofH + 6, [4, 4, 2, 2]) : ctx.rect(x - 8, roofY - roofH, w + 16, roofH + 6);
+  ctx.fill();
+
+  // Poszarpane odłamki skalnego kruszywa i stalowe nakładki na stropie schronu
+  ctx.fillStyle = '#64748b';
+  for (let bx = x - 4; bx <= x + w + 4; bx += 10) {
+    const th = 4 + ((bx * 17) % 6);
+    ctx.beginPath();
+    ctx.moveTo(bx, roofY - roofH);
+    ctx.lineTo(bx + 2, roofY - roofH - th);
+    ctx.lineTo(bx + 4.5, roofY - roofH);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Stalowe okucia i nity stropowe
+  ctx.fillStyle = '#94a3b8';
+  for (let rx = x; rx <= x + w; rx += 24) {
+    ctx.fillRect(rx - 2, roofY - roofH + 2, 4, 3);
+  }
+
+  ctx.restore();
+}
+
+export function drawSniperTowerStructure(ctx, groundY) {
+  // Całkowicie usunięto wieżę szybową / strażniczą na życzenie użytkownika
+}
+
+/**
+ * Renderuje wagonik górniczy ze stalową kolebą i urobkiem skalnym
+ */
+export function drawMineOreCart(ctx, x, y) {
+  // Koła wagonika
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.arc(x + 10, y + 20, 7, 0, Math.PI * 2);
+  ctx.arc(x + 44, y + 20, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+
+  // Podwozie
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(x + 2, y + 14, 50, 4);
+
+  // Korpus stalowej koleby na urobek
+  const cartGrad = ctx.createLinearGradient(x, y, x, y + 15);
+  cartGrad.addColorStop(0.0, '#334155');
+  cartGrad.addColorStop(0.5, '#1e293b');
+  cartGrad.addColorStop(1.0, '#0f172a');
+  ctx.fillStyle = cartGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(x, y + 1);
+  ctx.lineTo(x + 54, y + 1);
+  ctx.lineTo(x + 48, y + 14);
+  ctx.lineTo(x + 6, y + 14);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  // Urobek skalny w wagoniku (ciemne bryły antracytu z błyskiem)
+  ctx.fillStyle = '#090d14';
+  ctx.beginPath();
+  ctx.arc(x + 14, y + 1, 8, Math.PI, 0);
+  ctx.arc(x + 27, y - 2, 10, Math.PI, 0);
+  ctx.arc(x + 40, y + 1, 8, Math.PI, 0);
+  ctx.fill();
+}
+
+/**
+ * Renderuje skrzynkę z dynamitem (TNT)
+ */
+export function drawDynamiteCrate(ctx, x, y) {
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(x, y, 28, 22);
+  ctx.strokeStyle = '#451a03';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(x, y, 28, 22);
+
+  // Stalowe taśmy spinające
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(x + 4, y, 3, 22);
+  ctx.fillRect(x + 21, y, 3, 22);
+
+  // Czerwone pole ostrzegawcze
+  ctx.fillStyle = '#dc2626';
+  ctx.fillRect(x + 8, y + 8, 12, 6);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 5px sans-serif';
+  ctx.fillText('TNT', x + 9, y + 13);
+}
+
+/**
+ * Renderuje elementy infrastruktury górniczej, szańce, skrzynie i wagoniki w jaskini
+ */
+export function drawJungleCanyonProps(ctx, groundY) {
+  // 1. Lewy bastion - okop i skrzynia z dynamitem (x: 200, y: 420)
+  drawSandbags(ctx, 200, 420 - 26, 100, 26);
+  drawDynamiteCrate(ctx, 160, 420 - 22);
+
+  // 2. Szczyt wzgórza / grzbiet pomostu - okop z worków z piaskiem (x: 1720, y: 355)
+  drawSandbags(ctx, 1720, 355 - 26, 90, 26);
+
+  // 3. Półka dolna urwiska (Step 1) - szaniec z worków i wagonik z urobkiem (x: 2640, y: 480)
+  drawSandbags(ctx, 2640, 480 - 28, 140, 28);
+  drawMineOreCart(ctx, 2790, 480 - 26);
+
+  // 4. Półka środkowa urwiska (Step 2) - drewniany schron kopalniany (x: 2890, y: 440)
+  drawWoodenLogBunker(ctx, 2890, 440 - 74, 180, 74);
+  drawDynamiteCrate(ctx, 3080, 440 - 22);
+
+  // 5. Prawy bastion - okop z worków z piaskiem (x: 3320, y: 420)
+  drawSandbags(ctx, 3320, 420 - 26, 110, 26);
+
+  // 6. Wagonik i skrzynia z dynamitem na dnie dolnej sali bojowej (y: 1180)
+  drawMineOreCart(ctx, 1450, 1180 - 26);
+  drawDynamiteCrate(ctx, 1120, 1180 - 22);
+}
+export const drawMineCavernProps = drawJungleCanyonProps;
+
+export function drawSubterraneanCorridors(ctx, groundY) {
+  // Usunięto sztuczne czarne prostokątne boksy podziemne na życzenie użytkownika
+}
+
+export function drawWoodenStiltsAndOverhangBrackets(ctx, groundY) {
+  // Usunięto pojedyncze wiszące słupy i wsporniki pod skałami na życzenie użytkownika
+}
+
+/**
+ * Renderuje organiczne skały dżungli z gradientem (#2A323D do #1A1F26),
+ * wtopionymi głazami, pęknięciami, skalnym kruszywem i fundamentami zintegrowanymi z rzeźbą terenu
+ */
+export function drawJungleRockPlatform(ctx, plat, groundY) {
+  ctx.save();
+  const time = performance.now() * 0.001;
+  const x = plat.x;
+  const w = plat.w;
+  const bedrockBottomY = groundY + 180; // Lity masyw schodzący w dół w fundamenty
+
+  // 1. ZBUDOWANIE ŚCIEŻKI GÓRNEJ KRAWĘDZI I KORPUSU WIELOKĄTA SKALNEGO
+  let polyPoints = [];
+  let minY = groundY;
+
+  if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
+    polyPoints = plat.surfacePoints.map(p => ({ x: p.x, y: groundY - p.relY }));
+  } else if (plat.isSlope) {
+    polyPoints = [
+      { x: x, y: groundY - plat.startRelY },
+      { x: x + w, y: groundY - plat.endRelY }
+    ];
+  } else {
+    const topY = groundY - (plat.relY || 100);
+    polyPoints = [
+      { x: x, y: topY },
+      { x: x + w, y: topY }
+    ];
+  }
+
+  for (const pt of polyPoints) {
+    if (pt.y < minY) minY = pt.y;
+  }
+
+  // 2. PROCEDURALNA TEKSTURA LITEJ SKAŁY, WARSTWY OSADOWE I KRAWĘDZIE GZYMSU
+  // Zastąpiono powtarzalne owale/głazy i trójkątne zęby jednolitym systemem geologicznym
+  drawCaveTerrain(ctx, polyPoints, bedrockBottomY, groundY);
+
+  // 3. RENDEROWANIE PROPSÓW PRZYPISANYCH DO PLATFORMY (BUNKER, SANDBAGS)
+  if (plat.props) {
+    for (const prop of plat.props) {
+      const propTopY = getPlatformSurfaceY(plat, x + prop.rx, groundY);
+      const bx = x + prop.rx;
+      const by = propTopY - prop.h;
+
+      if (prop.type === 'sandbag_trench') {
+        drawSandbags(ctx, bx, by, prop.w, prop.h);
+      } else if (prop.type === 'wooden_log_bunker') {
+        drawWoodenLogBunker(ctx, bx, by, prop.w, prop.h);
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawWoodenLadder(ctx, x, y, w, h) {
+  // Całkowicie usunięto szczeble i konstrukcję drabin na życzenie użytkownika
+}
+
+export function drawJungleHutObstacle(ctx, x, y, w, h) {
+  drawJungleWoodStructure(ctx, { x, w, relY: 500 - y, thickness: h, isJungleHut: true }, 500);
+}
+
+export function drawJungleRockObstacle(ctx, x, y, w, h) {
+  drawJungleRockPlatform(ctx, { x, w, relY: 500 - y, thickness: h, theme: 'jungle' }, 500);
+}
+
 function drawRockIsland(ctx, plat, groundY) {
+  if (plat.theme === 'jungle' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    drawJungleRockPlatform(ctx, plat, groundY);
+    return;
+  }
   const topY = groundY - plat.relY;
   const thick = plat.thickness || 20;
 
@@ -2661,6 +3436,39 @@ function drawRockIsland(ctx, plat, groundY) {
     ctx.stroke();
 
     ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+    ctx.restore();
+
+    drawHazardStripes(ctx, plat.x, topY + thick - 5, plat.w, 4);
+  } else if (plat.theme === 'foundry') {
+    // Korpus platformy zardzewiały
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(plat.x, topY, plat.w, thick);
+    ctx.strokeStyle = '#44403c';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(plat.x, topY, plat.w, thick);
+
+    // Górna linia i poświata imitujące gorącą stal / ostrzegawcze paski
+    const accentCol = '#ea580c';
+    const accentCore = '#f97316';
+
+    ctx.save();
+    ctx.strokeStyle = accentCol;
+    ctx.shadowColor = accentCore;
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3.6;
+    ctx.beginPath();
+    ctx.moveTo(plat.x, topY);
+    ctx.lineTo(plat.x + plat.w, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fef08a';
     ctx.shadowColor = '#ffffff';
     ctx.shadowBlur = 4;
     ctx.lineWidth = 1.4;
@@ -2859,24 +3667,29 @@ export function drawPlatformScorchEdges(ctx, x, y, w, h, scorchLeft, scorchRight
 
 function drawCatwalk(ctx, cat, groundY) {
   const topY = groundY - cat.relY;
-  const isCyan = (cat.x + cat.w / 2 < 1760);
-  const neonCol = isCyan ? '#06b6d4' : '#f97316';
-  const neonCore = isCyan ? '#00e5ff' : '#ff7700';
+  const isFoundry = (cat.theme === 'foundry');
+  const isCyan = !isFoundry && (cat.x + cat.w / 2 < 1760);
+  const neonCol = isFoundry ? '#ea580c' : (isCyan ? '#06b6d4' : '#f97316');
+  const neonCore = isFoundry ? '#f97316' : (isCyan ? '#00e5ff' : '#ff7700');
 
   ctx.save();
 
-  // Ciemny korpus kładki w estetyce cyberpunk
-  ctx.fillStyle = '#090d16';
+  // Ciemny korpus kładki w estetyce cyberpunk / zardzewiała stal huty
+  ctx.fillStyle = isFoundry ? '#1c1917' : '#090d16';
   ctx.fillRect(cat.x, topY, cat.w, cat.thickness);
 
-  // Wewnętrzne szczeliny techniczne
-  ctx.fillStyle = isCyan ? 'rgba(6, 182, 212, 0.14)' : 'rgba(249, 115, 22, 0.14)';
+  // Wewnętrzne szczeliny techniczne z podświetleniem huty
+  ctx.fillStyle = isFoundry
+    ? 'rgba(234, 88, 12, 0.22)'
+    : (isCyan ? 'rgba(6, 182, 212, 0.14)' : 'rgba(249, 115, 22, 0.14)');
   for (let hx = cat.x + 8; hx < cat.x + cat.w - 8; hx += 16) {
     ctx.fillRect(hx, topY + 4, 10, cat.thickness - 7);
   }
 
   // Zewnętrzny obrys techniczny
-  ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
+  ctx.strokeStyle = isFoundry
+    ? 'rgba(234, 88, 12, 0.45)'
+    : (isCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)');
   ctx.lineWidth = 1.4;
   ctx.strokeRect(cat.x, topY, cat.w, cat.thickness);
 
@@ -2886,15 +3699,15 @@ function drawCatwalk(ctx, cat, groundY) {
   ctx.save();
   ctx.strokeStyle = neonCol;
   ctx.shadowColor = neonCore;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = isFoundry ? 14 : 12;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(cat.x, topY);
   ctx.lineTo(cat.x + cat.w, topY);
   ctx.stroke();
 
-  // Wewnętrzny biało-neonowy rdzeń świetlny
-  ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
+  // Wewnętrzny biało-żółty rdzeń świetlny
+  ctx.strokeStyle = isFoundry ? '#fef08a' : (isCyan ? '#a5f3fc' : '#fed7aa');
   ctx.shadowColor = '#ffffff';
   ctx.shadowBlur = 4;
   ctx.lineWidth = 1.4;
@@ -3138,12 +3951,21 @@ export function drawObstacles(ctx, groundY) {
   }
 
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat) continue;
+    if (!plat || plat.isCanyonTerrain || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
     if (plat.type === 'catwalk') {
-      drawCatwalk(ctx, plat, groundY);
+      if (plat.theme === 'wood' || plat.isLadder || plat.isJungleHut || plat.isHutRoof || plat.isTowerDeck || plat.isRavineDeck || plat.isRavineRoof || plat.isSkywalk || plat.isTunnelFloor || plat.isUpperDrift || plat.isDrainageTunnel) {
+        drawJungleWoodStructure(ctx, plat, groundY);
+      } else {
+        drawCatwalk(ctx, plat, groundY);
+      }
     } else {
       drawRockIsland(ctx, plat, groundY);
     }
+  }
+
+  // Elementy otoczenia i szańce dla Areny 3 (Surowa grota jaskiniowa)
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    drawJungleCanyonProps(ctx, groundY);
   }
 
   // Główna pętla renderowania postawionych obiektów (spójna w trybie gry i trybie edycji)
@@ -3163,7 +3985,9 @@ export function drawObstacles(ctx, groundY) {
   }
 
   drawBarrelExplosionParticles(ctx);
-  drawNeonGoals(ctx, groundY, GOALS);
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY') {
+    drawNeonGoals(ctx, groundY, GOALS);
+  }
 
   if (activeArenaId === 'ARENA_1') {
     drawAltarSpotlightAndLevitation(ctx, groundY);
@@ -3371,15 +4195,41 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.type === 'rock_platform' || plat.type === 'citadel_island' || plat.type === 'altar_island') {
-        const topY = groundY - plat.relY;
-        const thick = plat.thickness || 20;
+        if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
+          const pts = plat.surfacePoints;
+          for (let i = 0; i < pts.length - 1; i++) {
+            const hit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[i].x, groundY - pts[i].relY, pts[i + 1].x, groundY - pts[i + 1].relY);
+            if (hit) recordHit(hit);
+          }
+          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY - pts[0].relY, pts[0].x, groundY);
+          if (leftHit) recordHit(leftHit);
+          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[pts.length - 1].x, groundY - pts[pts.length - 1].relY, pts[pts.length - 1].x, groundY);
+          if (rightHit) recordHit(rightHit);
+          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY, pts[pts.length - 1].x, groundY);
+          if (bottomHit) recordHit(bottomHit);
+        } else if (plat.isSlope) {
+          const topY1 = groundY - plat.startRelY;
+          const topY2 = groundY - plat.endRelY;
+          const slopeHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x + plat.w, topY2);
+          if (slopeHit) recordHit(slopeHit);
+          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, groundY, plat.x + plat.w, groundY);
+          if (bottomHit) recordHit(bottomHit);
+          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, groundY);
+          if (leftHit) recordHit(leftHit);
+          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, groundY);
+          if (rightHit) recordHit(rightHit);
+        } else {
+          const topY = groundY - plat.relY;
+          const thick = plat.thickness || 20;
 
-        const rockHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
-        recordHit(rockHit);
+          const rockHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
+          recordHit(rockHit);
+        }
 
         if (Array.isArray(plat.props)) {
           for (const prop of plat.props) {
             if (prop.w && prop.h) {
+              const topY = getPlatformSurfaceY(plat, plat.x + prop.rx, groundY);
               const bx = plat.x + prop.rx;
               const by = topY - prop.h;
               const propHit = getSegmentAABBIntersection(x1, y1, x2, y2, bx, by, bx + prop.w, topY);
@@ -3388,10 +4238,13 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
           }
         }
       } else if (plat.type === 'catwalk') {
-        const topY = groundY - plat.relY;
-        const thick = plat.thickness || 14;
-        const catHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
-        recordHit(catHit);
+        // Przez wieżę obserwacyjną, kładki wiszące, drabiny i schrony można swobodnie strzelać!
+        if (!plat.isTowerDeck && !plat.isSkywalk && !plat.isLadder && !plat.isRavineDeck && !plat.isRavineRoof && !plat.isTunnelFloor) {
+          const topY = groundY - plat.relY;
+          const thick = plat.thickness || 14;
+          const catHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
+          recordHit(catHit);
+        }
       }
     }
   }

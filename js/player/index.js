@@ -5,7 +5,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId, customObstacles } from '../obstacles.js';
-import { triggerScreenShake, spawnGroundPuff, isGroundAt } from '../world.js';
+import { triggerScreenShake, spawnGroundPuff, isGroundAt, getCaveCeilingY } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 
@@ -25,6 +25,14 @@ export function isCeilingBlockingStand(player, groundY = 500) {
   const crouchTopY = currentFloor - 45;
   const px = player.x + (player.w || 24) / 2;
   const halfW = (player.w || 24) / 2;
+
+  // Sprawdzenie litego skalnego sufitu jaskini i niskich sztolni
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    const ceilY = getCaveCeilingY(px, currentFloor);
+    if (standTopY < ceilY && crouchTopY >= ceilY - 14) {
+      return true;
+    }
+  }
 
   if (Array.isArray(customObstacles)) {
     for (const obs of customObstacles) {
@@ -388,6 +396,9 @@ export function updatePlayer(keys, leftStick, GROUND_Y, ball, spawnGrass, p = pl
 }
 
 function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, targets = null) {
+  if (keys) player.keys = keys;
+  if (leftStick) player.leftStick = leftStick;
+
   if (player.isDead) {
     handlePlayerDeath(player, GROUND_Y);
     return;
@@ -395,11 +406,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   if (targets) player._targets = targets;
 
-  player.groundY = GROUND_Y;
-  if (!player.currentGroundY) player.currentGroundY = GROUND_Y;
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  player.groundY = isA3 ? 1180 : GROUND_Y;
+  if (!isA3 && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią
-  if (player.onGround && player.currentGroundY === GROUND_Y) {
+  if (!isA3 && player.onGround && player.currentGroundY === GROUND_Y) {
     const isSupported = (typeof isGroundAt === 'function')
       ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
       : true;
@@ -1103,48 +1115,53 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.vy += CONFIG.GRAVITY;
     player.y += player.vy;
 
-    const groundFloorLimit = GROUND_Y - colH;
-    const isSupported = (typeof isGroundAt === 'function')
-      ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
-      : true;
+    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    if (!isA3) {
+      const groundFloorLimit = GROUND_Y - colH;
+      const isSupported = (typeof isGroundAt === 'function')
+        ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
+        : true;
 
-    if (isSupported && player.y >= groundFloorLimit && player.y <= groundFloorLimit + 30) {
-      player.y = groundFloorLimit;
-      player.vy = 0;
-      player.isJumping = false;
-      player.onGround = true;
-      player.airVx = 0;
-      player.currentGroundY = GROUND_Y;
+      if (isSupported && player.y >= groundFloorLimit && player.y <= groundFloorLimit + 30) {
+        player.y = groundFloorLimit;
+        player.vy = 0;
+        player.isJumping = false;
+        player.onGround = true;
+        player.airVx = 0;
+        player.currentGroundY = GROUND_Y;
 
-      if (player.staggerTimer > 0 && !player.staggerLanded) {
-        player.staggerLanded = true;
-        player.vx *= 0.70;
-        spawnGroundPuff(player.x + (player.w || 24) / 2, GROUND_Y);
+        if (player.staggerTimer > 0 && !player.staggerLanded) {
+          player.staggerLanded = true;
+          player.vx *= 0.70;
+          spawnGroundPuff(player.x + (player.w || 24) / 2, GROUND_Y);
+        }
+
+        if (player.jetFuel < player.jetMax) {
+          player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
+        }
+
+        if (player.kickMode === 'BACKFLIP') {
+          player.kickMode = 'BACKFLIP_LAND';
+          player.landingTurnTimer = 10;
+        } else if (player.kickMode === 'SCISSOR') {
+          player.kickState = 'IDLE';
+          player.kickMode = 'GROUND';
+          player.scissorTimer = 0;
+          player.kickCooldown = 10;
+          player.kickingFootX = 0;
+          player.kickingFootY = 0;
+        }
+      } else if (!isSupported && player.y >= groundFloorLimit - 4) {
+        // Postać wpada w wyrwę w geometrii – grawitacja ściąga ją w dół przez otwór w kładce
+        player.onGround = false;
+        player.currentGroundY = null;
       }
-
-      if (player.jetFuel < player.jetMax) {
-        player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
-      }
-
-      if (player.kickMode === 'BACKFLIP') {
-        player.kickMode = 'BACKFLIP_LAND';
-        player.landingTurnTimer = 10;
-      } else if (player.kickMode === 'SCISSOR') {
-        player.kickState = 'IDLE';
-        player.kickMode = 'GROUND';
-        player.scissorTimer = 0;
-        player.kickCooldown = 10;
-        player.kickingFootX = 0;
-        player.kickingFootY = 0;
-      }
-    } else if (!isSupported && player.y >= groundFloorLimit - 4) {
-      // Postać wpada w wyrwę w geometrii – grawitacja ściąga ją w dół przez otwór w kładce
-      player.onGround = false;
-      player.currentGroundY = null;
     }
 
     // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
-    if (player.y > GROUND_Y + 160 && !player.isDead) {
+    const isA3Death = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    const deathLimitY = isA3Death ? 1290 : (GROUND_Y + 160);
+    if (player.y > deathLimitY && !player.isDead) {
       player.hp = 0;
       player.isDead = true;
       player.respawnTimer = 75;
@@ -1239,11 +1256,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const pitchLerp = 0.30;
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const isArena2 = (activeArenaId === 'ARENA_2');
-  const wallLeft = isArena2 ? 150 : ARENA_LEFT;
-  const wallRight = isArena2 ? 1770 : ARENA_RIGHT;
+  const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
+  const wallRight = isArena3 ? 3600 : (isArena2 ? 1770 : ARENA_RIGHT);
   const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
-  const wallTop = groundFloorY - 3000;
+  const wallTop = groundFloorY - (isArena3 ? 1300 : 3000);
 
   if (player.y >= wallTop) {
     if (player.x < wallLeft) {

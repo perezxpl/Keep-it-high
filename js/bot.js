@@ -145,11 +145,19 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     const errorDeg = (6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1);
     bot.aimErrorAngle = errorDeg * (Math.PI / 180);
 
-    // Przewidywany punkt piłki z lekkim błędem symulującym ludzką estymację
-    const predOffset = Math.sin(performance.now() * 0.002) * 20;
-    const targetX = ball.x + (ball.vx * 12) + predOffset;
+    // Przewidywany punkt celu (piłka w trybie meczowym, przeciwnik w trybie Deathmatch)
+    const hasBall = (ball && ball.active);
+    let targetX;
+    if (hasBall) {
+      const predOffset = Math.sin(performance.now() * 0.002) * 20;
+      targetX = ball.x + (ball.vx * 12) + predOffset;
+    } else if (humanPlayer && !humanPlayer.isDead) {
+      targetX = humanPlayer.x + humanPlayer.w / 2;
+    } else {
+      targetX = botCenterX;
+    }
 
-    // Martwa strefa (deadzone): nie szarp lewo-prawo, gdy piłka jest blisko w poziomie
+    // Martwa strefa (deadzone): nie szarp lewo-prawo, gdy cel jest blisko w poziomie
     const diffX = targetX - botCenterX;
     if (Math.abs(diffX) < 35) {
       botKeys.left = false;
@@ -163,7 +171,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     }
 
     // Nawigacja wertykalna: wspinaczka i zeskok
-    const targetY = (ball && ball.y < groundY - 20) ? ball.y : (humanPlayer ? humanPlayer.y : groundY);
+    const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (humanPlayer ? humanPlayer.y : groundY);
 
     // Cel znajduje się wyżej o > 50 px - skok na platformę lub rampę
     if (targetY < bot.y - 50) {
@@ -179,23 +187,34 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
       }
     }
 
-    // Wślizg (Soldat Tackle): piłka toczy się szybko naprzeciw bota
-    const ballSpeed = Math.hypot(ball.vx, ball.vy);
-    const dxToBall = ball.x - botCenterX;
-    const isBallMovingTowardsBot = (ball.vx * dxToBall < 0);
-    const distToBallX = Math.abs(dxToBall);
+    // Wślizg (Soldat Tackle)
+    if (hasBall) {
+      const ballSpeed = Math.hypot(ball.vx, ball.vy);
+      const dxToBall = ball.x - botCenterX;
+      const isBallMovingTowardsBot = (ball.vx * dxToBall < 0);
+      const distToBallX = Math.abs(dxToBall);
 
-    if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(bot.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
-      if (Math.random() < 0.40) {
-        playerSlide(spawnGrass, groundY, bot);
+      if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(bot.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
+        if (Math.random() < 0.40) {
+          playerSlide(spawnGrass, groundY, bot);
+        }
+      }
+    } else if (humanPlayer && !humanPlayer.isDead) {
+      // W trybie Deathmatch: wślizg powalający w stronę gracza
+      const dxToEnemy = (humanPlayer.x + humanPlayer.w / 2) - botCenterX;
+      const distToEnemyX = Math.abs(dxToEnemy);
+      if (distToEnemyX >= 50 && distToEnemyX <= 120 && Math.abs(bot.vx) > 3.2 && (bot.vx * dxToEnemy > 0)) {
+        if (Math.random() < 0.35) {
+          playerSlide(spawnGrass, groundY, bot);
+        }
       }
     }
   }
 
   // =========================================================================
-  // 3. STRAFE BOJOWY I ZACHOWANIA IDLE (Gdy brak piłki w bezpośrednim zasięgu)
+  // 3. STRAFE BOJOWY I ZACHOWANIA IDLE
   // =========================================================================
-  const distToBallTotal = Math.hypot(ball.x - botCenterX, ball.y - botCenterY);
+  const distToBallTotal = (ball && ball.active) ? Math.hypot(ball.x - botCenterX, ball.y - botCenterY) : Infinity;
 
   if (distToBallTotal > 260) {
     if (bot.idleDecisionTimer <= 0) {
@@ -232,14 +251,22 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   const hitReach = bot.currentClass?.stats?.hitReach || 56;
   const hipX = botCenterX;
   const hipY = bot.y + bot.h - 40 + (bot.pelvisY || 0);
-  const ballDistFromHip = Math.hypot(ball.x - hipX, ball.y - hipY);
+  const ballDistFromHip = (ball && ball.active) ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
-  let aimTargetX = ball.x + (ball.vx * 3);
-  let aimTargetY = ball.y + (ball.vy * 3);
-
-  if (humanPlayer && !humanPlayer.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
+  let aimTargetX, aimTargetY;
+  if (ball && ball.active) {
+    aimTargetX = ball.x + (ball.vx * 3);
+    aimTargetY = ball.y + (ball.vy * 3);
+    if (humanPlayer && !humanPlayer.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
+      aimTargetX = humanPlayer.x + humanPlayer.w / 2;
+      aimTargetY = humanPlayer.y + humanPlayer.h / 2;
+    }
+  } else if (humanPlayer && !humanPlayer.isDead) {
     aimTargetX = humanPlayer.x + humanPlayer.w / 2;
     aimTargetY = humanPlayer.y + humanPlayer.h / 2;
+  } else {
+    aimTargetX = botCenterX + (bot.facing || 1) * 160;
+    aimTargetY = botCenterY;
   }
 
   const dxAim = aimTargetX - botCenterX;
@@ -299,21 +326,39 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   }
 
   // =========================================================================
-  // 6. KOPANIE PIŁKI I ŁADOWANIE SIŁY
+  // 6. KOPANIE PIŁKI I SPARTAN MELEE KICK
   // =========================================================================
-  if (ballDistFromHip <= hitReach + 10) {
-    if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
-      bot.isCharging = true;
-      bot.chargePower = 0;
-      bot.chargeTarget = Math.random() * 0.55 + 0.30;
+  if (ball && ball.active) {
+    if (ballDistFromHip <= hitReach + 10) {
+      if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
+        bot.isCharging = true;
+        bot.chargePower = 0;
+        bot.chargeTarget = Math.random() * 0.55 + 0.30;
+      } else if (bot.isCharging) {
+        if (bot.chargePower >= bot.chargeTarget) {
+          executeReleaseKick(ball, bot);
+        }
+      }
     } else if (bot.isCharging) {
-      if (bot.chargePower >= bot.chargeTarget) {
-        executeReleaseKick(ball, bot);
+      if (bot.chargePower >= bot.chargeTarget || ballDistFromHip > hitReach + 40) {
+        executeReleaseKick(ball, bot, 0, [humanPlayer]);
       }
     }
-  } else if (bot.isCharging) {
-    if (bot.chargePower >= bot.chargeTarget || ballDistFromHip > hitReach + 40) {
-      executeReleaseKick(ball, bot, 0, [humanPlayer]);
+  } else if (humanPlayer && !humanPlayer.isDead) {
+    // Tryb Deathmatch: Spartan Kick wręcz w gracza
+    const distToEnemyFromHip = Math.hypot((humanPlayer.x + humanPlayer.w / 2) - hipX, (humanPlayer.y + humanPlayer.h / 2) - hipY);
+    if (distToEnemyFromHip <= hitReach + 20) {
+      if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
+        bot.isCharging = true;
+        bot.chargePower = 0;
+        bot.chargeTarget = Math.random() * 0.40 + 0.45;
+      } else if (bot.isCharging) {
+        if (bot.chargePower >= bot.chargeTarget) {
+          executeReleaseKick(null, bot, 0, [humanPlayer]);
+        }
+      }
+    } else if (bot.isCharging) {
+      executeReleaseKick(null, bot, 0, [humanPlayer]);
     }
   }
 

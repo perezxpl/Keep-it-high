@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js';
-import { ARENA_PLATFORMS, customObstacles, obstacles } from './obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,
@@ -111,9 +111,11 @@ export class AeroSuperGrenade {
       this.bounces++;
     }
 
-    // 2. Odbicie od poziomu podłogi (GROUND_Y)
-    if (this.y + this.radius >= groundY) {
-      this.y = groundY - this.radius;
+    // 2. Odbicie od poziomu podłogi
+    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    const floorBounceY = isA3 ? 1180 : groundY;
+    if (this.y + this.radius >= floorBounceY) {
+      this.y = floorBounceY - this.radius;
       this.vy = -this.vy * this.restitution;
       this.vx *= 0.82;
       this.vRot *= 0.75;
@@ -129,7 +131,9 @@ export class AeroSuperGrenade {
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
         if (!plat) continue;
-        const topY = groundY - plat.relY;
+        const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
+          ? getPlatformSurfaceY(plat, this.x, groundY)
+          : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
         const thick = plat.thickness || 20;
 
         if (this.x >= plat.x - this.radius && this.x <= plat.x + plat.w + this.radius) {
@@ -367,7 +371,7 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
 
   for (let i = platforms.length - 1; i >= 0; i--) {
     const plat = platforms[i];
-    if (!plat) continue;
+    if (!plat || plat.isCanyonTerrain || plat.solid) continue;
 
     const platTopY = groundY - plat.relY;
     const platThick = plat.thickness || 22;

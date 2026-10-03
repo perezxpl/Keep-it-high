@@ -260,6 +260,30 @@ export function sendArenaSwitch(arenaId) {
   } catch (e) { }
 }
 
+function updateDevArenaButtonUI(arenaId) {
+  const arenaBtn = document.getElementById('dev-arena-btn');
+  if (!arenaBtn) return;
+  if (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY') {
+    arenaBtn.textContent = '🏟️ Arena: 3 (Dżungla)';
+    arenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))';
+    arenaBtn.style.borderColor = '#22c55e';
+    arenaBtn.style.color = '#86efac';
+    arenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
+  } else if (arenaId === 'ARENA_2') {
+    arenaBtn.textContent = '🏟️ Arena: 2';
+    arenaBtn.style.background = 'rgba(6, 182, 212, 0.25)';
+    arenaBtn.style.borderColor = '#06b6d4';
+    arenaBtn.style.color = '#22d3ee';
+    arenaBtn.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.55)';
+  } else {
+    arenaBtn.textContent = '🏟️ Arena: 1';
+    arenaBtn.style.background = '';
+    arenaBtn.style.borderColor = '#06b6d4';
+    arenaBtn.style.color = '#22d3ee';
+    arenaBtn.style.boxShadow = '';
+  }
+}
+
 // =============================================================================
 // ODBIÓR PAKIETÓW SIECIOWYCH
 // =============================================================================
@@ -269,11 +293,8 @@ function handleNetworkData(data) {
   switch (data.type) {
     case 'init_sync': {
       if (data.arenaId && data.arenaId !== activeArenaId) {
-        switchArena(data.arenaId);
-        const arenaBtn = document.getElementById('dev-arena-btn');
-        if (arenaBtn) {
-          arenaBtn.textContent = (data.arenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
-        }
+        switchArena(data.arenaId, null, null, ball);
+        updateDevArenaButtonUI(data.arenaId);
       }
       if (data.customObstacles) {
         setCustomObstacles(data.customObstacles);
@@ -423,11 +444,8 @@ function handleNetworkData(data) {
 
     case 'arena_sw': {
       if (data.arenaId) {
-        switchArena(data.arenaId);
-        const arenaBtn = document.getElementById('dev-arena-btn');
-        if (arenaBtn) {
-          arenaBtn.textContent = (data.arenaId === 'ARENA_2') ? '🏟️ Arena: 2' : '🏟️ Arena: 1';
-        }
+        switchArena(data.arenaId, null, null, ball);
+        updateDevArenaButtonUI(data.arenaId);
       }
       break;
     }
