@@ -140,14 +140,15 @@ for cyl_x in [2010, 2390]:
 collar_w, collar_h = ladle_w_top + 20, 48
 draw.ellipse([CX - collar_w//2, ladle_top_y, CX + collar_w//2, ladle_top_y + collar_h], fill='#1a212d', outline='#374659', width=5)
 
-lava_w, lava_h = collar_w - 28, collar_h - 16
-draw.ellipse([CX - lava_w//2, ladle_top_y + 8, CX + lava_w//2, ladle_top_y + 8 + lava_h], fill='#c2410c', outline='#ea580c', width=2)
-draw.ellipse([CX - (lava_w - 40)//2, ladle_top_y + 12, CX + (lava_w - 40)//2, ladle_top_y + 12 + lava_h - 10], fill='#f97316')
-draw.ellipse([CX - (lava_w - 90)//2, ladle_top_y + 16, CX + (lava_w - 90)//2, ladle_top_y + 16 + lava_h - 16], fill='#fef08a')
+lava_w, lava_h = collar_w - 32, collar_h - 16
+for step_i, col in enumerate(['#7c1d06', '#9a3412', '#c2410c', '#ea580c', '#f97316', '#fbbf24', '#fef08a']):
+    shrink_x = step_i * 14
+    shrink_y = int(step_i * 2.2)
+    draw.ellipse([CX - (lava_w - shrink_x)//2, ladle_top_y + 8 + shrink_y, CX + (lava_w - shrink_x)//2, ladle_top_y + 8 + lava_h - shrink_y], fill=col)
 
-draw.polygon([(CX - 24, ladle_top_y + 35), (CX + 24, ladle_top_y + 35), (CX + 16, ladle_top_y + 90), (CX - 16, ladle_top_y + 90)], fill='#171d26', outline='#354354', width=2)
-draw.polygon([(CX - 12, ladle_top_y + 40), (CX + 12, ladle_top_y + 40), (CX + 8, Y_TUNNEL_FLR), (CX - 8, Y_TUNNEL_FLR)], fill='#ea580c')
-draw.polygon([(CX - 5, ladle_top_y + 40), (CX + 5, ladle_top_y + 40), (CX + 3, Y_TUNNEL_FLR), (CX - 3, Y_TUNNEL_FLR)], fill='#fef08a')
+draw.polygon([(CX - 20, ladle_top_y + 35), (CX + 20, ladle_top_y + 35), (CX + 14, ladle_top_y + 80), (CX - 14, ladle_top_y + 80)], fill='#171d26', outline='#354354', width=2)
+draw.polygon([(CX - 10, ladle_top_y + 40), (CX + 10, ladle_top_y + 40), (CX + 7, Y_TUNNEL_FLR), (CX - 7, Y_TUNNEL_FLR)], fill='#ea580c')
+draw.polygon([(CX - 4, ladle_top_y + 40), (CX + 4, ladle_top_y + 40), (CX + 2, Y_TUNNEL_FLR), (CX - 2, Y_TUNNEL_FLR)], fill='#fef08a')
 
 # 7. PRZEMYSŁOWE DZIURY W ŚCIANIE (CIRCULAR WALL CONDUIT HOLES)
 def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0):

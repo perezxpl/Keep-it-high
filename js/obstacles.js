@@ -13,8 +13,14 @@ import {
   getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
 } from './world.js';
-import { clearRubbleParticles, clearExplosionEffects, clearExplosionCraters } from './projectiles.js';
 import { clearExplosionParticles } from './particles.js';
+
+const _arenaResetCallbacks = [];
+export function registerArenaResetCallback(cb) {
+  if (typeof cb === 'function' && !_arenaResetCallbacks.includes(cb)) {
+    _arenaResetCallbacks.push(cb);
+  }
+}
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/index.js';
 import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State } from './arenas/arena1.js';
 import arena2, { ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS } from './arenas/arena2.js';
@@ -524,9 +530,13 @@ export function resetArena() {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena1Platforms)));
   }
 
-  clearRubbleParticles();
-  clearExplosionEffects();
-  clearExplosionCraters();
+  for (const cb of _arenaResetCallbacks) {
+    try {
+      cb();
+    } catch (e) {
+      console.warn('Error in arena reset callback:', e);
+    }
+  }
   clearExplosionParticles();
   if (typeof resetGroundSegments === 'function') {
     resetGroundSegments();
@@ -1263,7 +1273,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const topY = surf.surfaceY;
       const prevFeetY = feetY - p.vy;
       const isLanding = (p.vy >= 0 && prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
-                        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24);
+        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24);
 
       if (isLanding) {
         if (plat.oneWay && p.dropThroughTimer > 0) {

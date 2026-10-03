@@ -4,7 +4,43 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT } from './config.js';
-import { canvas, W, H, DPR, GROUND_Y, activeArenaId } from './world.js';
+
+let _cameraCanvas = null;
+let _cameraGroundY = null;
+let _cameraArenaId = 'ARENA_1';
+
+export function setCameraCanvas(c) {
+  _cameraCanvas = c;
+}
+
+export function getCameraCanvas() {
+  if (_cameraCanvas) return _cameraCanvas;
+  if (typeof document !== 'undefined') {
+    return document.getElementById('gameCanvas') || document.querySelector('canvas');
+  }
+  return null;
+}
+
+export function setCameraGroundY(val) {
+  _cameraGroundY = val;
+}
+
+export function getCameraGroundY() {
+  if (typeof _cameraGroundY === 'number') return _cameraGroundY;
+  const h = getCanvasLogicalHeight();
+  return Math.round((h - 75) / 20) * 20;
+}
+
+export function setCameraArenaId(id) {
+  if (id) {
+    _cameraArenaId = id;
+    camera.activeArenaId = id;
+  }
+}
+
+export function getCameraArenaId() {
+  return camera.activeArenaId || _cameraArenaId || 'ARENA_1';
+}
 
 /**
  * Stan globalny kamery
@@ -26,7 +62,8 @@ export const camera = {
   shakeIntensity: 0,
   shakeDecay: 0.88,
   shakeX: 0,
-  shakeY: 0
+  shakeY: 0,
+  activeArenaId: 'ARENA_1'
 };
 
 export let devZoomLevel = null; // null = dynamiczny zoom gry, liczba = stały zoom DEV
@@ -52,37 +89,40 @@ Object.defineProperty(camera, 'shake', {
   configurable: true
 });
 
-
-
 /**
  * Logiczna szerokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
  */
 export function getCanvasLogicalWidth() {
-  if (typeof DPR !== 'undefined' && DPR > 0 && typeof canvas !== 'undefined' && canvas && canvas.width) {
-    return canvas.width / DPR;
+  const c = getCameraCanvas();
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+  if (c && c.width && dpr > 0) {
+    return c.width / dpr;
   }
-  return (typeof W !== 'undefined' && W > 0) ? W : (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  return (typeof window !== 'undefined' ? window.innerWidth : 1920);
 }
 
 /**
  * Logiczna wysokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
  */
 export function getCanvasLogicalHeight() {
-  if (typeof DPR !== 'undefined' && DPR > 0 && typeof canvas !== 'undefined' && canvas && canvas.height) {
-    return canvas.height / DPR;
+  const c = getCameraCanvas();
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+  if (c && c.height && dpr > 0) {
+    return c.height / dpr;
   }
-  return (typeof H !== 'undefined' && H > 0) ? H : (typeof window !== 'undefined' ? window.innerHeight : 1080);
+  return (typeof window !== 'undefined' ? window.innerHeight : 1080);
 }
 
 /**
  * 1. Pobranie dokładnych współrzędnych granic areny (World Bounds)
  */
 export function getArenaBounds() {
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (activeArenaId === 'ARENA_2');
+  const arenaId = getCameraArenaId();
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const isArena2 = (arenaId === 'ARENA_2');
   const minX = isArena3 ? 0 : (isArena2 ? 150 : CFG_ARENA_LEFT);
   const maxX = isArena3 ? 4400 : (isArena2 ? 1770 : CFG_ARENA_RIGHT);
-  const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (getCanvasLogicalHeight() - 75);
+  const groundFloor = getCameraGroundY();
 
   return {
     minX,
@@ -139,8 +179,9 @@ export function clampCamera(cam = camera) {
     cam.targetX = ARENA_LEFT;
   }
 
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
+  const arenaId = getCameraArenaId();
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const groundFloor = getCameraGroundY();
   const minCamY = isArena3 ? 0 : (groundFloor - 3000);
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
 
@@ -162,7 +203,8 @@ export function updateCamera(player, ball) {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
   const minZoom = canvasWidth / arenaWidth;
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const arenaId = getCameraArenaId();
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
@@ -202,7 +244,7 @@ export function updateCamera(player, ball) {
   }
 
   // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
-  const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
+  const groundFloor = getCameraGroundY();
   const targetY = target ? (target.y !== undefined ? target.y : groundFloor - 50) : (groundFloor - 50);
   let targetCamY = targetY - (viewHeight * 0.65);
 

@@ -1694,7 +1694,7 @@ async function requestKeyboardLock() {
   if (typeof navigator !== 'undefined' && navigator.keyboard && typeof navigator.keyboard.lock === 'function') {
     try {
       await navigator.keyboard.lock(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight', 'Space']);
-    } catch (_) {}
+    } catch (_) { }
   }
 }
 
@@ -1763,7 +1763,7 @@ window.addEventListener('keydown', (e) => {
   // Blokada domyślnych skrótów przeglądarki (prevent default) w trakcie rozgrywki
   // Nie blokujemy klawiszy narzędziowych / odświeżania: F12 (DevTools), F5 (Refresh) itp.
   const isFunctionKey = e.code === 'F5' || e.key === 'F5' || e.code === 'F12' || e.key === 'F12' ||
-                        (typeof e.key === 'string' && /^F\d+$/.test(e.key));
+    (typeof e.key === 'string' && /^F\d+$/.test(e.key));
 
   if (!isFunctionKey) {
     const isControlKey = (

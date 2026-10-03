@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js';
-import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,
@@ -673,6 +673,14 @@ export function drawExplosionCraters(ctx) {
 
 export function clearExplosionCraters() {
   explosionCraters.length = 0;
+}
+
+if (typeof registerArenaResetCallback === 'function') {
+  registerArenaResetCallback(() => {
+    clearRubbleParticles();
+    clearExplosionEffects();
+    clearExplosionCraters();
+  });
 }
 
 /**

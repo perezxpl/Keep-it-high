@@ -33,7 +33,10 @@ export function registerWorldObstacles(platforms, obstacles, arenaState) {
   if (platforms) _worldPlatforms = platforms;
   if (obstacles) _worldCustomObstacles = obstacles;
   if (arenaState) {
-    if (arenaState.activeArenaId) activeArenaId = arenaState.activeArenaId;
+    if (arenaState.activeArenaId) {
+      activeArenaId = arenaState.activeArenaId;
+      setCameraArenaId(activeArenaId);
+    }
     if (arenaState.arenaScore) _worldArenaState.arenaScore = arenaState.arenaScore;
     if (arenaState.arena1State) _worldArenaState.arena1State = arenaState.arena1State;
   }
@@ -41,6 +44,7 @@ export function registerWorldObstacles(platforms, obstacles, arenaState) {
 
 export function setActiveArenaId(id) {
   activeArenaId = id;
+  setCameraArenaId(id);
 }
 
 export const goalCelebration = {
@@ -262,8 +266,15 @@ import {
   screenToWorld,
   getCanvasLogicalWidth,
   getCanvasLogicalHeight,
-  shakeImpulse
+  shakeImpulse,
+  setCameraCanvas,
+  setCameraGroundY,
+  setCameraArenaId,
+  getCameraArenaId
 } from './camera.js';
+
+setCameraArenaId(activeArenaId);
+setCameraGroundY(GROUND_Y);
 
 export {
   camera,
@@ -280,7 +291,11 @@ export {
   worldToScreen,
   screenToWorld,
   getCanvasLogicalWidth,
-  getCanvasLogicalHeight
+  getCanvasLogicalHeight,
+  setCameraCanvas,
+  setCameraGroundY,
+  setCameraArenaId,
+  getCameraArenaId
 };
 
 // =========================================================================
@@ -313,6 +328,7 @@ export const weaponButtons = [
 
 export function initCanvas(canvasEl) {
   canvas = canvasEl;
+  setCameraCanvas(canvasEl);
   ctx = canvas.getContext('2d');
   resize();
 }
@@ -328,6 +344,7 @@ export function resize(player) {
     ctx.scale(DPR, DPR);
   }
   GROUND_Y = Math.round((H - 75) / 20) * 20;
+  setCameraGroundY(GROUND_Y);
   if (Array.isArray(groundSegments)) {
     for (const seg of groundSegments) {
       seg.y = GROUND_Y;
