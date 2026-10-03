@@ -196,7 +196,9 @@ export function findSupportingSurface(px, bottomY, w, h, groundY = GROUND_Y, sna
       const overlap = Math.min(px + w, platRight) - Math.max(px, platLeft);
 
       if (overlap >= minOverlap) {
-        const platTopY = plat.y !== undefined ? plat.y : (groundY - plat.relY);
+        const platTopY = (plat.isSlope || plat.type === 'ramp' || plat.surfacePoints)
+          ? getPlatformSurfaceY(plat, px + w * 0.5, groundY)
+          : (plat.y !== undefined ? plat.y : (groundY - plat.relY));
         checkCandidate(platTopY, 'platform', plat.name || plat.type || 'Platforma');
 
         if (plat.props && Array.isArray(plat.props)) {
@@ -448,94 +450,34 @@ export const ARENA_FOUNDRY_WALLS = [
   }
 ];
 
-export const ARENA_FOUNDRY_PLATFORMS = [
-  // =========================================================================
-  // 1. LEWY MASYW SKALNY I NATURALNA RAMPA ZEJŚCIOWA 35° (x: -320 do 950)
-  // Naturalna pochyła rampa skalna schodząca ze zbocza w głąb pieczary (y: 580 do 1180)
-  // =========================================================================
-  {
-    id: 'jungle_canyon_left_terrain',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: ARENA_LEFT - 320,
-    w: 950 - (ARENA_LEFT - 320),
-    surfacePoints: LEFT_MASSIF_AND_RAMP_PROFILE,
-    props: [
-      { type: 'sandbag_trench', rx: 200 - (ARENA_LEFT - 320), w: 100, h: 26 }
-    ]
-  },
-  // =========================================================================
-  // 2. POMOST ŚRODKOWY (PŁYTA GŁÓWNA / GRZBIETY - STROP DOLNEJ SALI)
-  // Gruba lita platforma skalna (x: 950 do 2300, y: 580 -> 340 -> 580)
-  // =========================================================================
-  {
-    id: 'jungle_canyon_central_hill',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: 950,
-    w: 1350,
-    surfacePoints: CENTRAL_HILL_PROFILE,
-    thickness: 240,
-    props: [
-      { type: 'sandbag_trench', rx: 770, w: 90, h: 26 }
-    ]
-  },
-  // =========================================================================
-  // 3. PRAWY MASYW SKALNY ZA PIONOWĄ ROZPADLINĄ (x: 2480 do ARENA_RIGHT + 320)
-  // =========================================================================
-  {
-    id: 'jungle_canyon_right_terrain',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: 2480,
-    w: (ARENA_RIGHT + 320) - 2480,
-    surfacePoints: RIGHT_MASSIF_PROFILE,
-    props: [
-      { type: 'sandbag_trench', rx: 160, w: 140, h: 28 },
-      { type: 'wooden_log_bunker', rx: 410, w: 180, h: 74 },
-      { type: 'sandbag_trench', rx: 840, w: 110, h: 26 }
-    ]
-  },
-  // =========================================================================
-  // 4. PIONOWE ŚCIANY BOCZNE SZYBÓW WEJŚCIOWYCH (BLOKADA WNIKANIA W SKAŁĘ)
-  // =========================================================================
-  ...ARENA_FOUNDRY_WALLS,
-  // =========================================================================
-  // 5. NATURALNE PÓŁKI SKALNE W DOLNEJ SALI I SZYBIE (ONE-WAY PLATFORMS)
-  // =========================================================================
-  ...LOWER_CAVERN_SHELVES,
-  // =========================================================================
-  // 6. SPĄG DOLNEJ PIECZARY BOJOWEJ (PODŁOGA Y = 1180, x: 950 do 2480)
-  // =========================================================================
-  LOWER_CAVERN_FLOOR
-];
+export const ARENA_FOUNDRY_PLATFORMS = ARENA_3_PLATFORMS;
 
 export const ladders = [];
 
 export const ARENA_FOUNDRY_BARRICADES = [];
 
-// USUNIĘTO BRAMKI W TRYBIE DEATHMATCH
-export const ARENA_FOUNDRY_GOALS = [];
+export const ARENA_FOUNDRY_GOALS = ARENA_3_CUSTOM_OBJECTS.filter(o => o.team);
 
 const _initArena = getActiveArena();
 export let activeArenaId = (_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
 export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
-export const GOALS = [...ARENA_1_GOALS];
+export const GOALS = [...((_initArena && _initArena.id === 'arena-3') ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
+if (_initArena && Array.isArray(_initArena.customObjects)) {
+  customObstacles.push(..._initArena.customObjects);
+}
 export const arenaScore = { cyan: 0, orange: 0 };
 export let goalCelebrationTimer = 0;
 
-// Subskrypcja zmian areny dla natychmiastowej synchronizacji platform
+// Subskrypcja zmian areny dla natychmiastowej synchronizacji platform i obiektów
 onArenaChange((newArena) => {
   ARENA_PLATFORMS.length = 0;
   if (newArena && Array.isArray(newArena.platforms)) {
     ARENA_PLATFORMS.push(...newArena.platforms);
+  }
+  customObstacles.length = 0;
+  if (newArena && Array.isArray(newArena.customObjects)) {
+    customObstacles.push(...newArena.customObjects);
   }
 });
 
@@ -633,15 +575,15 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
   if (activeArenaId === 'ARENA_3') {
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
-    // W trybie Deathmatch (Arena 3) bramki są usunięte, a wynik zlicza eliminacje drużynowe
-    GOALS.length = 0;
+    const arena3Goals = currentArena?.customObjects?.filter(o => o.team) || ARENA_FOUNDRY_GOALS;
+    GOALS.push(...arena3Goals);
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
     if (playerObj) {
-      playerObj.x = 280;
-      playerObj.y = groundY - 380 - playerObj.h;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 830;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -652,8 +594,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       targetBot.active = true;
-      targetBot.x = 3320;
-      targetBot.y = groundY - 380 - targetBot.h;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3800;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 830;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -662,11 +604,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.active = false;
-      ballObj.x = -9999;
-      ballObj.y = -9999;
-      ballObj.prevX = -9999;
-      ballObj.prevY = -9999;
+      ballObj.active = true;
+      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 2200;
+      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 740;
+      ballObj.prevX = ballObj.x;
+      ballObj.prevY = ballObj.y;
       ballObj.vx = 0;
       ballObj.vy = 0;
       ballObj.spin = 0;
@@ -810,10 +752,19 @@ export function getPlatformSurfaceInfo(plat, px, groundY) {
     }
   }
 
-  if (plat.isSlope) {
+  if (plat.isSlope || plat.type === 'ramp') {
     const dx = plat.w || 1;
-    const y0 = plat.startY !== undefined ? plat.startY : (groundY - (plat.startRelY || 0));
-    const y1 = plat.endY !== undefined ? plat.endY : (groundY - (plat.endRelY || 0));
+    let y0 = plat.startY !== undefined ? plat.startY : (groundY - (plat.startRelY || 0));
+    let y1 = plat.endY !== undefined ? plat.endY : (groundY - (plat.endRelY || 0));
+    if (plat.startY === undefined && plat.startRelY === undefined) {
+      if (plat.id === 'ramp_left') {
+        y0 = (plat.y !== undefined ? plat.y : 800) + (plat.h || 100);
+        y1 = (plat.y !== undefined ? plat.y : 800);
+      } else if (plat.id === 'ramp_right') {
+        y0 = (plat.y !== undefined ? plat.y : 800);
+        y1 = (plat.y !== undefined ? plat.y : 800) + (plat.h || 100);
+      }
+    }
     const dy = y1 - y0;
     const t = Math.max(0, Math.min(1, (px - plat.x) / dx));
     const curY = y0 + t * dy;
@@ -1525,34 +1476,34 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Zabezpieczenie przed wylotem ponad lity skalny sufit jaskini (Solid Rock Ceiling)
+  // Zabezpieczenie sufitu w Arenie 3 (The Foundry)
   if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    // 1. Strop dolnej pieczary (y ≈ 780) pod centralnym wzgórzem
-    if (p.y <= 850 && p.y >= 680 && centerX >= 950 && centerX <= 2300) {
-      const lowerCeilY = (typeof getLowerCavernCeilingY === 'function') ? getLowerCavernCeilingY(centerX) : 780;
-      if (p.y < lowerCeilY) {
-        p.y = lowerCeilY;
+    // 1. Strop dolnego tunelu (Y = 970) blokujący wylot w górę w litą płytę
+    if (p.y >= 960 && p.y <= 1220) {
+      // Przepuść gracza przez luki zrzutowe (hatch_left 770..930 i hatch_right 3470..3630)
+      const isUnderHatch = (centerX >= 770 && centerX <= 930) || (centerX >= 3470 && centerX <= 3630);
+      if (!isUnderHatch && p.y < 970) {
+        p.y = 970;
         if (p.vy < 0) {
           p.vy = 1.0;
-          spawnObstacleSparks(centerX, lowerCeilY + 4, 0, 1, 3);
+          spawnObstacleSparks(centerX, 970, 0, 1, 3);
         }
       }
     }
 
-    // 2. Globalny sufit jaskini u góry mapy (y ≈ 20-50 px)
-    const ceilY = getCaveCeilingY(centerX, groundY);
-    if (p.y < ceilY) {
-      p.y = ceilY;
+    // 2. Globalny sufit hali przemysłowej u góry mapy (Y = 34)
+    if (p.y < 34) {
+      p.y = 34;
       if (p.vy < 0) {
-        p.vy = 1.2; // Lekkie odbicie w dół od litego stropu
-        spawnObstacleSparks(centerX, ceilY + 4, 0, 1, 4);
+        p.vy = 1.2;
+        spawnObstacleSparks(centerX, 38, 0, 1, 4);
       }
     }
   }
 
-  // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
+  // Wpadnięcie do strefy śmierci poniżej spągu
   const isA3Death = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const deathLimitY = isA3Death ? 1290 : (groundY + 160);
+  const deathLimitY = isA3Death ? 1390 : (groundY + 160);
   if (p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
@@ -2041,8 +1992,8 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
   if ((activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') && ball) {
     for (const g of GOALS) {
-      const bottomY = groundY - g.relY;
-      const topY = bottomY - g.h;
+      const topY = (g.y !== undefined) ? g.y : (groundY - g.relY - g.h);
+      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (groundY - g.relY);
       const leftX = g.x;
       const rightX = g.x + g.w;
 
@@ -2058,9 +2009,9 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        ball.x = 1800;
-        ball.y = groundY - 340 - (ball.colRadius || 14) - 2;
-        ball.prevX = 1800;
+        ball.x = 2200;
+        ball.y = 740;
+        ball.prevX = 2200;
         ball.prevY = ball.y;
         ball.vx = 0;
         ball.vy = 0;
@@ -3263,7 +3214,10 @@ export function drawJungleRockPlatform(ctx, plat, groundY) {
   let minY = groundY;
 
   if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
-    polyPoints = plat.surfacePoints.map(p => ({ x: p.x, y: groundY - p.relY }));
+    polyPoints = plat.surfacePoints.map(p => ({
+      x: p.x,
+      y: p.y !== undefined ? p.y : (groundY - (p.relY || 0))
+    }));
   } else if (plat.isSlope) {
     polyPoints = [
       { x: x, y: groundY - plat.startRelY },
@@ -3316,7 +3270,10 @@ export function drawJungleRockObstacle(ctx, x, y, w, h) {
 }
 
 function drawRockIsland(ctx, plat, groundY) {
-  if (plat.theme === 'jungle' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    return;
+  }
+  if (plat.theme === 'jungle') {
     drawJungleRockPlatform(ctx, plat, groundY);
     return;
   }
@@ -3864,6 +3821,13 @@ export function drawObstacles(ctx, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
+    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+      // W Arenie 3 cała geometria i platformy rysowane są na wygenerowanym tle oraz w drawArena3Foreground
+      if (plat.type === 'catwalk') {
+        drawCatwalk(ctx, { ...plat, theme: 'foundry' }, groundY);
+      }
+      continue;
+    }
     if (plat.type === 'catwalk') {
       if (plat.theme === 'wood' || plat.isLadder || plat.isJungleHut || plat.isHutRoof || plat.isTowerDeck || plat.isRavineDeck || plat.isRavineRoof || plat.isSkywalk || plat.isTunnelFloor || plat.isUpperDrift || plat.isDrainageTunnel) {
         drawJungleWoodStructure(ctx, plat, groundY);
@@ -3873,11 +3837,6 @@ export function drawObstacles(ctx, groundY) {
     } else {
       drawRockIsland(ctx, plat, groundY);
     }
-  }
-
-  // Elementy otoczenia i szańce dla Areny 3 (Surowa grota jaskiniowa)
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    drawJungleCanyonProps(ctx, groundY);
   }
 
   // Główna pętla renderowania postawionych obiektów (spójna w trybie gry i trybie edycji)

@@ -180,7 +180,7 @@ export function renderArenaForeground(ctx, camera) {
 // TRYB DEBUGOWANIA KOLIZJI (COLLIDER DEBUG VISUALIZER)
 // Flaga aktywowana domyślnie lub przełączana klawiszem F1 / Tylda (~)
 // =========================================================================
-export let DEBUG_COLLIDERS = true;
+export let DEBUG_COLLIDERS = false;
 
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
@@ -279,7 +279,7 @@ export function drawDebugColliders(ctx, groundY, player) {
   }
 
   // 3. Strop dolnej komory bojowej (twardy sufit blokujący jetpack w głąb skały)
-  if (typeof LOWER_CAVERN_CEILING_PROFILE !== 'undefined' && Array.isArray(LOWER_CAVERN_CEILING_PROFILE)) {
+  if (activeArena?.id !== 'arena-3' && typeof LOWER_CAVERN_CEILING_PROFILE !== 'undefined' && Array.isArray(LOWER_CAVERN_CEILING_PROFILE)) {
     ctx.strokeStyle = '#00FFFF';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);

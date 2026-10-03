@@ -211,8 +211,8 @@ export function updateBall(GROUND_Y) {
   // Detekcja gola na Arenie 2 (Cyber Stadium) oraz Arenie 3 (The Foundry)
   if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     for (const g of GOALS) {
-      const bottomY = GROUND_Y - g.relY;
-      const topY = bottomY - g.h;
+      const topY = (g.y !== undefined) ? g.y : (GROUND_Y - g.relY - g.h);
+      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (GROUND_Y - g.relY);
       const leftX = g.x;
       const rightX = g.x + g.w;
 
@@ -228,10 +228,10 @@ export function updateBall(GROUND_Y) {
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        // Reset piłki: dla Areny 3 na X: 1800, Y: GROUND_Y - 340, dla Areny 2 na X: 960, Y: GROUND_Y - ball.colRadius - 20
+        // Reset piłki: dla Areny 3 na X: 2200, Y: 740, dla Areny 2 na X: 960, Y: GROUND_Y - ball.colRadius - 20
         const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-        ball.x = isA3 ? 1800 : 960;
-        ball.y = isA3 ? (GROUND_Y - 340 - ball.colRadius - 2) : (GROUND_Y - ball.colRadius - 20);
+        ball.x = isA3 ? 2200 : 960;
+        ball.y = isA3 ? 740 : (GROUND_Y - ball.colRadius - 20);
         ball.prevX = ball.x;
         ball.prevY = ball.y;
         ball.vx = 0;
@@ -250,7 +250,7 @@ export function updateBall(GROUND_Y) {
       ball.stuckFrames = (ball.stuckFrames || 0) + 1;
       if (ball.stuckFrames > 14) {
         const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-        const centerX = isA3 ? 1800 : 960;
+        const centerX = isA3 ? 2200 : 960;
         ball.vy = -4.5;
         ball.vx = (ball.x < centerX) ? 3.5 : -3.5;
         ball.stuckFrames = 0;

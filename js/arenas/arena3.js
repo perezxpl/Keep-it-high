@@ -1,339 +1,298 @@
 // =========================================================================
-// ARENAS/ARENA3.JS - MINING CAVERN & FOUNDRY (3600x1300 PX)
+// ARENAS/ARENA3.JS - THE FOUNDRY (4400x1400 PX INDUSTRIAL FACILITY)
 // Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
-// Podziemna sztolnia kopalniana z wózkami rudy, kładkami i przeszkodami
+// Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1, zero importów z wyższych warstw)
 // =========================================================================
 
-import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
-import {
-  LEFT_MASSIF_AND_RAMP_PROFILE,
-  CENTRAL_HILL_PROFILE,
-  RIGHT_MASSIF_PROFILE,
-  LOWER_CAVERN_FLOOR,
-  LOWER_CAVERN_SHELVES
-} from '../world.js';
+// 1. Obraz tła hali przemysłowej generowany skryptem Python (foundry_bg.png)
+const foundryBgImage = new Image();
+foundryBgImage.src = 'foundry_bg.png';
 
 // =========================================================================
-// STATYCZNA GEOMETRIA I PLATFORMY
+// STATYCZNA GEOMETRIA I PLATFORMY (ARENA_3_PLATFORMS)
 // =========================================================================
-export const ARENA_FOUNDRY_WALLS = [
-  {
-    id: 'left_shaft_bridge_wall',
-    name: 'Ściana Pomostu Lewego Szybu',
-    x: 944,
-    y: 580,
-    w: 12,
-    h: 200,
-    solid: true,
-    isWall: true,
-    pushSide: 'left'
-  },
-  {
-    id: 'right_shaft_bridge_wall',
-    name: 'Ściana Pomostu Prawego Szybu',
-    x: 2294,
-    y: 580,
-    w: 12,
-    h: 200,
-    solid: true,
-    isWall: true,
-    pushSide: 'right'
-  },
-  {
-    id: 'right_shaft_cliff_wall',
-    name: 'Ściana Urwiska Prawego Szybu',
-    x: 2476,
-    y: 580,
-    w: 16,
-    h: 600,
-    solid: true,
-    isWall: true,
-    pushSide: 'left'
-  }
-];
-
 export const ARENA_3_PLATFORMS = [
+  // Płyta główna (poziom Y = 900, grubość 70 px)
+  { id: 'floor_l1', x: 320, w: 460, y: 900, h: 70, solid: true, isPlatform: true },
+  { id: 'floor_l2', x: 920, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
+  { id: 'floor_r1', x: 2550, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
+  { id: 'floor_r2', x: 3620, w: 460, y: 900, h: 70, solid: true, isPlatform: true },
+  // Luki zrzutowe do tunelu (Drop-Through, oneWay)
+  { id: 'hatch_l', x: 780, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true },
+  { id: 'hatch_r', x: 3480, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true },
+  // Rampa najazdowa i pomost kadzi (Y = 800)
   {
-    id: 'jungle_canyon_left_terrain',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: ARENA_LEFT - 320,
-    w: 950 - (ARENA_LEFT - 320),
-    surfacePoints: LEFT_MASSIF_AND_RAMP_PROFILE,
-    props: [
-      { type: 'sandbag_trench', rx: 200 - (ARENA_LEFT - 320), w: 100, h: 26 }
-    ]
+    id: 'ramp_left',
+    type: 'ramp',
+    x: 1850,
+    y: 800,
+    w: 130,
+    h: 100,
+    isPlatform: true,
+    isSlope: true,
+    startY: 900,
+    endY: 800,
+    surfacePoints: [{ x: 1850, y: 900 }, { x: 1980, y: 800 }]
   },
   {
-    id: 'jungle_canyon_central_hill',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: 950,
-    w: 1350,
-    surfacePoints: CENTRAL_HILL_PROFILE,
-    thickness: 240,
-    props: [
-      { type: 'sandbag_trench', rx: 770, w: 90, h: 26 }
-    ]
+    id: 'ramp_right',
+    type: 'ramp',
+    x: 2420,
+    y: 800,
+    w: 130,
+    h: 100,
+    isPlatform: true,
+    isSlope: true,
+    startY: 800,
+    endY: 900,
+    surfacePoints: [{ x: 2420, y: 800 }, { x: 2550, y: 900 }]
   },
-  {
-    id: 'jungle_canyon_right_terrain',
-    type: 'rock_platform',
-    theme: 'jungle',
-    isCanyonTerrain: true,
-    solid: true,
-    x: 2480,
-    w: (ARENA_RIGHT + 320) - 2480,
-    surfacePoints: RIGHT_MASSIF_PROFILE,
-    props: [
-      { type: 'sandbag_trench', rx: 160, w: 140, h: 28 },
-      { type: 'wooden_log_bunker', rx: 410, w: 180, h: 74 },
-      { type: 'sandbag_trench', rx: 840, w: 110, h: 26 }
-    ]
-  },
-  ...ARENA_FOUNDRY_WALLS,
-  ...LOWER_CAVERN_SHELVES,
-  LOWER_CAVERN_FLOOR
+  { id: 'furnace_deck', x: 1980, w: 440, y: 800, h: 20, solid: true, isPlatform: true },
+  // Podłoga dolnego tunelu
+  { id: 'tunnel_floor', x: 160, w: 4080, y: 1270, h: 130, solid: true, isPlatform: true }
 ];
 
+// Aliasy dla zachowania wstecznej kompatybilności
 export const ARENA_FOUNDRY_PLATFORMS = ARENA_3_PLATFORMS;
+export const ARENA_FOUNDRY_WALLS = [];
 
+// =========================================================================
+// OBIEKTY SPECYFICZNE DLA ARENY 3 (ARENA_3_CUSTOM_OBJECTS)
+// Tylko bramki wbudowane w narysowane wnęki ścian szczytowych
+// =========================================================================
 export const ARENA_3_CUSTOM_OBJECTS = [
-  {
-    id: 'mine_cart_central',
-    type: 'ore_cart',
-    x: 1750,
-    y: 546,
-    w: 64,
-    h: 34,
-    vx: 0,
-    weight: 250
-  },
-  {
-    id: 'dynamite_cache',
-    type: 'explosive_cache',
-    x: 720,
-    y: 832,
-    w: 40,
-    h: 28
-  }
+  { id: 'goal_cyan', team: 'CYAN', x: 40, y: 640, w: 220, h: 260, facing: 1 },
+  { id: 'goal_orange', team: 'ORANGE', x: 4130, y: 640, w: 220, h: 260, facing: -1 }
 ];
 
 // =========================================================================
-// RENDEROWANIE TŁA ARENY 3 (PODZIEMNA GROTA / MINING CAVERN)
+// RENDEROWANIE TŁA ARENY 3 (BACKGROUND: OBRAZ, ŁOPATKI WENTYLATORA, PŁYNNA SURÓWKA)
 // =========================================================================
 export function drawArena3Background(ctx, camera) {
   if (!ctx) return;
-  const W = ctx.canvas?.width || 1920;
-  const H = ctx.canvas?.height || 1080;
-  const camX = camera ? (camera.x + (camera.viewWidth || (W / (camera.zoom || 1))) / 2) : 1800;
+
+  ctx.save();
+  if (camera) {
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
+  }
+
+  // 1. Główny obraz tła hali 4400x1400
+  if (foundryBgImage && foundryBgImage.complete && foundryBgImage.naturalWidth > 0) {
+    ctx.drawImage(foundryBgImage, 0, 0, 4400, 1400);
+  } else {
+    // Gradient awaryjny w razie dłuższego wczytywania zasobu graficznego
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 1400);
+    bgGrad.addColorStop(0.0, '#060910');
+    bgGrad.addColorStop(0.7, '#111722');
+    bgGrad.addColorStop(1.0, '#2d180f');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 4400, 1400);
+  }
+
   const time = performance.now() * 0.001;
 
-  // 1. Ciemny gradient pionowy surowej groty skalnej (#08090C do #12151B)
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0.0, '#08090C');
-  bgGrad.addColorStop(0.5, '#0E1117');
-  bgGrad.addColorStop(1.0, '#161922');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // 2. Paralaksa filarów skalnych w głębi
-  ctx.save();
-  const pillars = [
-    { x: 300, w: 220, alpha: 0.4 },
-    { x: 900, w: 180, alpha: 0.3 },
-    { x: 1550, w: 260, alpha: 0.5 },
-    { x: 2200, w: 200, alpha: 0.35 },
-    { x: 2900, w: 240, alpha: 0.45 }
-  ];
-
-  const period = 2000;
-  const offset = ((camX * 0.03) % period + period) % period;
-
-  for (let loop = -1; loop <= 1; loop++) {
-    const shift = loop * period - offset;
-    for (const pil of pillars) {
-      const px = pil.x + shift;
-      if (px + pil.w < 0 || px > W) continue;
-
-      const pGrad = ctx.createLinearGradient(px, 0, px + pil.w, 0);
-      pGrad.addColorStop(0.0, 'rgba(8, 10, 14, 0.0)');
-      pGrad.addColorStop(0.3, `rgba(14, 18, 24, ${pil.alpha})`);
-      pGrad.addColorStop(0.7, `rgba(18, 22, 30, ${pil.alpha})`);
-      pGrad.addColorStop(1.0, 'rgba(8, 10, 14, 0.0)');
-      ctx.fillStyle = pGrad;
-      ctx.fillRect(px, 0, pil.w, H);
-    }
-  }
-  ctx.restore();
-
-  // 3. Wolno unoszące się drobiny pyłu kopalnianego
-  ctx.save();
-  for (let i = 0; i < 35; i++) {
-    const seed = i * 43.17;
-    const dustX = ((seed * 123.4 + time * 12 * ((i % 2 === 0) ? 1 : -1)) % W + W) % W;
-    const dustY = ((seed * 89.1 + time * 6) % H + H) % H;
-    const alpha = (Math.sin(time * 1.8 + seed) * 0.15 + 0.25).toFixed(2);
-    ctx.fillStyle = `rgba(203, 213, 225, ${alpha})`;
-    ctx.fillRect(dustX, dustY, (i % 3 === 0) ? 2 : 1.2, (i % 3 === 0) ? 2 : 1.2);
-  }
-  ctx.restore();
-}
-
-// =========================================================================
-// RENDEROWANIE FOREGROUND (DREWNIANE BELKI, LATARNIE, WÓZEK RUDY)
-// =========================================================================
-export function drawArena3Foreground(ctx, camera) {
-  if (!ctx) return;
-  const time = performance.now() * 0.001;
+  // 2. Obracające się łopatki wentylatora sufitowego (X = 2200, Y = 220, promień R = 210)
+  const fanX = 2200;
+  const fanY = 220;
+  const fanR = 210;
+  const fanAngle = performance.now() * 0.0018;
 
   ctx.save();
+  ctx.translate(fanX, fanY);
+  ctx.rotate(fanAngle);
 
-  // 1. Drewniane stemple i belki podtrzymujące strop
-  const supports = [820, 1350, 1800, 2250, 2750];
-  for (const sx of supports) {
-    // Belka pionowa
-    ctx.fillStyle = '#271c14';
-    ctx.fillRect(sx, 500, 14, 80);
-    ctx.strokeStyle = '#453225';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(sx, 500, 14, 80);
+  const numBlades = 6;
+  for (let b = 0; b < numBlades; b++) {
+    const bladeAngle = (b * Math.PI * 2) / numBlades;
+    ctx.save();
+    ctx.rotate(bladeAngle);
 
-    // Metalowe okucie belki
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(sx - 2, 570, 18, 6);
-  }
-
-  // 2. Ciepłe światło górniczych lamp naftowych
-  const lanterns = [
-    { x: 1357, y: 530 },
-    { x: 2257, y: 530 }
-  ];
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  for (let i = 0; i < lanterns.length; i++) {
-    const lan = lanterns[i];
-    const flicker = Math.sin(time * 8.0 + i * 3.7) * 0.08 + 0.92;
-    const rad = 110 * flicker;
-
-    const lanGrad = ctx.createRadialGradient(lan.x, lan.y, 4, lan.x, lan.y, rad);
-    lanGrad.addColorStop(0.0, 'rgba(251, 191, 36, 0.45)');
-    lanGrad.addColorStop(0.3, 'rgba(245, 158, 11, 0.18)');
-    lanGrad.addColorStop(1.0, 'rgba(217, 119, 6, 0.0)');
-    ctx.fillStyle = lanGrad;
+    // Aerodynamiczny płat łopatki stalowej
     ctx.beginPath();
-    ctx.arc(lan.x, lan.y, rad, 0, Math.PI * 2);
+    ctx.moveTo(-16, 32);
+    ctx.lineTo(-26, fanR - 16);
+    ctx.quadraticCurveTo(0, fanR, 26, fanR - 16);
+    ctx.lineTo(16, 32);
+    ctx.closePath();
+
+    const bladeGrad = ctx.createLinearGradient(-26, 0, 26, 0);
+    bladeGrad.addColorStop(0.0, '#0d131a');
+    bladeGrad.addColorStop(0.35, '#1e293b');
+    bladeGrad.addColorStop(0.75, '#334155');
+    bladeGrad.addColorStop(1.0, '#0f172a');
+    ctx.fillStyle = bladeGrad;
     ctx.fill();
 
-    // Obudowa lampy
-    ctx.fillStyle = '#fef3c7';
-    ctx.fillRect(lan.x - 2, lan.y - 3, 4, 6);
-  }
-  ctx.restore();
-
-  // 3. Wózek kopalniany (ore cart)
-  const cart = ARENA_3_CUSTOM_OBJECTS.find(o => o.type === 'ore_cart');
-  if (cart) {
-    ctx.fillStyle = '#1f2937';
-    ctx.fillRect(cart.x, cart.y, cart.w, cart.h);
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cart.x, cart.y, cart.w, cart.h);
-
-    // Bryły rudy w wózku
-    ctx.fillStyle = '#78716c';
-    ctx.beginPath();
-    ctx.arc(cart.x + 16, cart.y - 3, 10, Math.PI, 0);
-    ctx.arc(cart.x + 32, cart.y - 6, 12, Math.PI, 0);
-    ctx.arc(cart.x + 48, cart.y - 4, 10, Math.PI, 0);
-    ctx.fill();
-
-    // Koła wózka
-    ctx.fillStyle = '#475569';
-    ctx.beginPath();
-    ctx.arc(cart.x + 14, cart.y + cart.h + 2, 7, 0, Math.PI * 2);
-    ctx.arc(cart.x + cart.w - 14, cart.y + cart.h + 2, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#e2e8f0';
+    ctx.strokeStyle = '#475569';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    // Centralne żebro usztywniające i nity montażowe
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 36);
+    ctx.lineTo(0, fanR - 22);
+    ctx.stroke();
+
+    ctx.restore();
   }
+
+  // Centralna osłona piasty wentylatora z nitami
+  const hubGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 38);
+  hubGrad.addColorStop(0.0, '#475569');
+  hubGrad.addColorStop(0.6, '#1e293b');
+  hubGrad.addColorStop(1.0, '#0b0f17');
+  ctx.fillStyle = hubGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Osiowa śruba nośna
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(0, 0, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // 3. Animowana płynna surówka w kadzi i pionowy strumień w trybie 'lighter'
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  const cx = 2200;
+  const ladleTopY = 780; // ramp_top = 800, ladle_top_y = 780
+
+  // (A) Fale sinusoidalne w czarze kadzi (X = 2200, Y = 780..820)
+  for (let layer = 0; layer < 3; layer++) {
+    const waveSpeed = time * (2.8 + layer * 1.3);
+    const amp = 4.2 - layer * 1.0;
+    const waveW = 95 - layer * 16;
+    const baseLavaY = ladleTopY + 12 + layer * 8;
+
+    ctx.beginPath();
+    ctx.moveTo(cx - waveW, baseLavaY);
+    for (let wx = -waveW; wx <= waveW; wx += 4) {
+      const wy = baseLavaY + Math.sin((wx * 0.07) + waveSpeed) * amp + Math.cos((wx * 0.14) - waveSpeed * 0.6) * (amp * 0.45);
+      ctx.lineTo(cx + wx, wy);
+    }
+    ctx.lineTo(cx + waveW, baseLavaY + 22);
+    ctx.lineTo(cx - waveW, baseLavaY + 22);
+    ctx.closePath();
+
+    if (layer === 0) {
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.75)'; // Jasnożółty rdzeń ciekłego metalu
+    } else if (layer === 1) {
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.65)';  // Płynna pomarańczowa surówka
+    } else {
+      ctx.fillStyle = 'rgba(234, 88, 12, 0.45)';   // Żar termiczny
+    }
+    ctx.fill();
+  }
+
+  // Radialna łuna termiczna wokół kadzi
+  const ladleGlow = ctx.createRadialGradient(cx, ladleTopY + 20, 20, cx, ladleTopY + 20, 180);
+  ladleGlow.addColorStop(0.0, 'rgba(255, 180, 50, 0.45)');
+  ladleGlow.addColorStop(0.4, 'rgba(234, 88, 12, 0.22)');
+  ladleGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+  ctx.fillStyle = ladleGlow;
+  ctx.fillRect(cx - 180, ladleTopY - 70, 360, 210);
+
+  // (B) Ciągły strumień ciekłego żelaza z dyszy kadzi w dół do spągu tunelu (Y = 1270)
+  const streamW = 14 + Math.sin(time * 9.0) * 2;
+  const streamTop = ladleTopY + 40;
+  const streamBottom = 1270;
+
+  const streamGrad = ctx.createLinearGradient(cx - streamW, 0, cx + streamW, 0);
+  streamGrad.addColorStop(0.0, 'rgba(234, 88, 12, 0.4)');
+  streamGrad.addColorStop(0.28, 'rgba(249, 115, 22, 0.85)');
+  streamGrad.addColorStop(0.50, 'rgba(254, 240, 138, 0.95)');
+  streamGrad.addColorStop(0.72, 'rgba(249, 115, 22, 0.85)');
+  streamGrad.addColorStop(1.0, 'rgba(234, 88, 12, 0.4)');
+
+  ctx.fillStyle = streamGrad;
+  ctx.fillRect(cx - streamW * 0.5, streamTop, streamW, streamBottom - streamTop);
+
+  // (C) Opadające punkty żaru i iskry wzdłuż pionowego strumienia
+  for (let i = 0; i < 45; i++) {
+    const seed = i * 41.27;
+    const dropSpeed = 360 + (seed % 190);
+    const dropY = streamTop + ((time * dropSpeed + seed * 43) % (streamBottom - streamTop));
+    const spreadX = (Math.sin(seed + time * 3.5) * 8.5) + (Math.sin(i * 8.7) * 5.0);
+    const sparkX = cx + spreadX;
+    const sparkR = 1.8 + (seed % 2.5);
+
+    ctx.fillStyle = (i % 2 === 0) ? '#fef08a' : '#f97316';
+    ctx.beginPath();
+    ctx.arc(sparkX, dropY, sparkR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Drobne rozbryzgi żaru przy uderzeniu w spąg tunelu
+    if (dropY > 1245) {
+      const splashX = cx + Math.sin(seed + time * 7.5) * (18 + (seed % 34));
+      const splashY = 1268 - (seed % 14);
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.85)';
+      ctx.fillRect(splashX, splashY, 2.2, 2.2);
+    }
+  }
+
+  // Rozbłysk uderzenia surówki o podłoże tunelu
+  const splashGlow = ctx.createRadialGradient(cx, 1270, 10, cx, 1270, 95);
+  splashGlow.addColorStop(0.0, 'rgba(255, 220, 110, 0.65)');
+  splashGlow.addColorStop(0.45, 'rgba(249, 115, 22, 0.32)');
+  splashGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+  ctx.fillStyle = splashGlow;
+  ctx.beginPath();
+  ctx.arc(cx, 1270, 95, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
 
   ctx.restore();
 }
 
 // =========================================================================
-// PĘTLA AKTUALIZACJI SPECYFICZNA DLA ARENY 3
+// RENDEROWANIE ELEMENTÓW PIERWSZOPLANOWYCH
 // =========================================================================
-export function updateArena3(dt, players) {
-  const cart = ARENA_3_CUSTOM_OBJECTS.find(o => o.type === 'ore_cart');
-  if (!cart) return;
-
-  // Tarcie toczenia wózka kopalnianego po szynach
-  if (Math.abs(cart.vx) > 0.01) {
-    cart.x += cart.vx;
-    cart.vx *= 0.96;
-
-    // Granice torów na moście skalnym
-    if (cart.x < 1250) {
-      cart.x = 1250;
-      cart.vx = -cart.vx * 0.4;
-    } else if (cart.x + cart.w > 2350) {
-      cart.x = 2350 - cart.w;
-      cart.vx = -cart.vx * 0.4;
-    }
-  } else {
-    cart.vx = 0;
-  }
+export function drawArena3Foreground(ctx, camera) {
+  // Dynamiczne obiekty pierwszoplanowe (bramki wypalone bezpośrednio w tła PNG jako portale 3D)
 }
 
 // =========================================================================
-// HAKI TRAFIENIA KULI I SPARTAN KICK
+// PĘTLA AKTUALIZACJI MECHANIZMÓW ARENY 3 (CZYSTY FUNDAMENT)
+// =========================================================================
+export function updateArena3(dt, players) {
+  // Arena 3 oczyszczona z prowizorycznych obiektów
+}
+
+// =========================================================================
+// HAKI KOLIZJI POCISKÓW I KOPNIĘCIA SPARTAN KICK
 // =========================================================================
 export function onArena3BulletHit(bullet) {
-  if (!bullet) return false;
-  const cart = ARENA_3_CUSTOM_OBJECTS.find(o => o.type === 'ore_cart');
-  if (cart) {
-    if (bullet.x >= cart.x && bullet.x <= cart.x + cart.w &&
-        bullet.y >= cart.y && bullet.y <= cart.y + cart.h + 10) {
-      // Pocisk uderza w stalowy wózek kopalniany i lekko go popycha
-      cart.vx += (bullet.vx > 0 ? 0.35 : -0.35);
-      return true;
-    }
-  }
   return false;
 }
 
 export function onArena3KickHit(player, kickBox) {
-  if (!player || !kickBox) return false;
-  const cart = ARENA_3_CUSTOM_OBJECTS.find(o => o.type === 'ore_cart');
-  if (cart) {
-    const footX = kickBox.footX || (player.x + (player.facing === 1 ? 40 : -20));
-    const footY = kickBox.footY || (player.y + 35);
-    if (Math.abs(footX - (cart.x + cart.w / 2)) < 55 && Math.abs(footY - (cart.y + cart.h / 2)) < 40) {
-      // Spartan Kick posyła wózek rudy wzdłuż szyn torowiska
-      cart.vx = player.facing * 7.5;
-      return true;
-    }
-  }
   return false;
 }
 
 // =========================================================================
-// KONTRAKT ARENY 3 (PLUGIN DEFINITION)
+// KONTRAKT ARENY 3 (PLUGIN DEFINITION / LIFECYCLE HOOKS)
 // =========================================================================
 const arena3 = {
   id: 'arena-3',
-  name: 'Mining Cavern & Foundry',
+  name: 'The Foundry',
   spawns: [
-    { x: 280, y: 120 }, // Spawn gracza (Cyan)
-    { x: 3320, y: 120 }, // Spawn bota (Orange)
-    { x: 1800, y: 400 } // Punkt centralny
+    { x: 600, y: 830 },   // Gracz Cyan (płyta Y = 900)
+    { x: 3800, y: 830 },  // Bot Orange (płyta Y = 900)
+    { x: 2200, y: 740 }   // Piłka (środek nad kadzią)
   ],
   platforms: ARENA_3_PLATFORMS,
   customObjects: ARENA_3_CUSTOM_OBJECTS,

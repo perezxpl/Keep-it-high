@@ -2171,7 +2171,7 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isDeathmatch = false;
 
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);
@@ -2623,7 +2623,7 @@ function draw() {
     ctx.restore();
   }
 
-  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isDeathmatch = false;
 
   if (!isDeathmatch) {
     drawBall(ctx);

@@ -81,15 +81,15 @@ export function getArenaBounds() {
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const isArena2 = (activeArenaId === 'ARENA_2');
   const minX = isArena3 ? 0 : (isArena2 ? 150 : CFG_ARENA_LEFT);
-  const maxX = isArena3 ? 3600 : (isArena2 ? 1770 : CFG_ARENA_RIGHT);
+  const maxX = isArena3 ? 4400 : (isArena2 ? 1770 : CFG_ARENA_RIGHT);
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (getCanvasLogicalHeight() - 75);
 
   return {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: groundFloor - (isArena3 ? 1300 : 3000),
-    maxY: isArena3 ? 1300 : groundFloor
+    minY: isArena3 ? 0 : (groundFloor - 3000),
+    maxY: isArena3 ? 1400 : groundFloor
   };
 }
 
@@ -141,8 +141,8 @@ export function clampCamera(cam = camera) {
 
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const groundFloor = (typeof GROUND_Y !== 'undefined') ? GROUND_Y : (canvasHeight - 75);
-  const minCamY = groundFloor - (isArena3 ? 1300 : 3000);
-  const maxCamY = isArena3 ? (1300 - (viewHeight * 0.72)) : (groundFloor - (viewHeight * 0.72));
+  const minCamY = isArena3 ? 0 : (groundFloor - 3000);
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -206,10 +206,9 @@ export function updateCamera(player, ball) {
   const targetY = target ? (target.y !== undefined ? target.y : groundFloor - 50) : (groundFloor - 50);
   let targetCamY = targetY - (viewHeight * 0.65);
 
-  const minCamY = groundFloor - (isArena3 ? 1300 : 3000); // sufit dopasowany do wysokości mapy 1300 px
-  // W Arenie 3 umożliwiamy płynne zejście kamery w głąb Dolnej Pieczary Bojowej (y = 1180)
-  const subterraneanBottom = isArena3 ? 1300 : groundFloor;
-  const maxCamY = subterraneanBottom - (viewHeight * 0.72);
+  const minCamY = isArena3 ? 0 : (groundFloor - 3000);
+  const subterraneanBottom = isArena3 ? 1400 : groundFloor;
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   camera.targetX = targetCamX;
