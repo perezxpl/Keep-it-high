@@ -21,12 +21,21 @@ export const ball = {
 
 export function resetBallToPlayer(p, GROUND_Y) {
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
   if (isA3) {
     p.x = 600;
     p.y = 830;
     p.facing = 1;
     ball.x = p.x + 20;
     ball.y = 900 - ball.colRadius;
+    p.isIntro = false;
+    p.gaitMode = 'IDLE';
+  } else if (isA2) {
+    p.x = 480;
+    p.y = 370;
+    p.facing = 1;
+    ball.x = 1800;
+    ball.y = 560;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
   } else {
@@ -165,10 +174,10 @@ export function updateBall(GROUND_Y) {
 
     // Sprężyste odbijanie piłki (rykoszety) od pionowych neonowych ścian areny (300m bariera)
     const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const isArena2 = (activeArenaId === 'ARENA_2');
-    const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
-    const wallRight = isArena3 ? 4400 : (isArena2 ? 1770 : ARENA_RIGHT);
-    const wallTop = GROUND_Y - (isArena3 ? 1300 : 3000);
+    const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
+    const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
+    const wallTop = isArena2 ? 0 : (GROUND_Y - (isArena3 ? 1300 : 3000));
 
     if (ball.y >= wallTop) {
       if (ball.x - ball.colRadius <= wallLeft) {
@@ -183,9 +192,10 @@ export function updateBall(GROUND_Y) {
     }
 
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
-    const isGroundUnderBall = (typeof isGroundAt === 'function')
+    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const isGroundUnderBall = (!hasNoFloor && typeof isGroundAt === 'function')
       ? isGroundAt(ball.x, ball.colRadius * 0.6)
-      : true;
+      : (!hasNoFloor);
 
     if (ball.y + ball.colRadius >= GROUND_Y && isGroundUnderBall && ball.y - ball.colRadius <= GROUND_Y + 12) {
       ball.y = GROUND_Y - ball.colRadius;
@@ -203,13 +213,17 @@ export function updateBall(GROUND_Y) {
       ball.spin *= Math.pow(0.96, subDt);
     }
 
-    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego
+    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego lub otchłani
     const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const ballVoidLimit = isA3 ? 1380 : (GROUND_Y + 280);
+    const isA2Void = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const ballVoidLimit = (isA3 || isA2Void) ? 1380 : (GROUND_Y + 280);
     if (ball.y > ballVoidLimit) {
       if (isA3) {
         ball.x = 2200;
         ball.y = 740;
+      } else if (isA2Void) {
+        ball.x = 1800;
+        ball.y = 560;
       } else {
         ball.x = 960;
         ball.y = GROUND_Y - ball.colRadius - 30;
@@ -217,7 +231,7 @@ export function updateBall(GROUND_Y) {
       ball.prevX = ball.x;
       ball.prevY = ball.y;
       ball.vx = 0;
-      ball.vy = -4.0;
+      ball.vy = (isA3 || isA2Void) ? 0 : -4.0;
       ball.spin = 0;
       ball.trail = [];
     }
@@ -226,11 +240,11 @@ export function updateBall(GROUND_Y) {
     resolveBallObstacleCollisions(ball, GROUND_Y);
   }
 
-  // Detekcja gola na Arenie 2 (Cyber Stadium) oraz Arenie 3 (The Foundry)
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  // Detekcja gola na Arenie 2 (Pandora) oraz Arenie 3 (The Foundry)
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     for (const g of GOALS) {
-      const topY = (g.y !== undefined) ? g.y : (GROUND_Y - g.relY - g.h);
-      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (GROUND_Y - g.relY);
+      const topY = (g.y !== undefined) ? g.y : (GROUND_Y - (g.relY || 0) - g.h);
+      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (GROUND_Y - (g.relY || 0));
       const leftX = g.x;
       const rightX = g.x + g.w;
 
@@ -246,14 +260,15 @@ export function updateBall(GROUND_Y) {
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        // Reset piłki: dla Areny 3 na X: 2200, Y: 740, dla Areny 2 na X: 960, Y: GROUND_Y - ball.colRadius - 20
+        // Reset piłki: dla Areny 3 na X: 2200, Y: 740, dla Areny 2 na X: 1800, Y: 560
         const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-        ball.x = isA3 ? 2200 : 960;
-        ball.y = isA3 ? 740 : (GROUND_Y - ball.colRadius - 20);
+        const isA2Goal = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+        ball.x = isA3 ? 2200 : (isA2Goal ? 1800 : 960);
+        ball.y = isA3 ? 740 : (isA2Goal ? 560 : (GROUND_Y - ball.colRadius - 20));
         ball.prevX = ball.x;
         ball.prevY = ball.y;
         ball.vx = 0;
-        ball.vy = isA3 ? 0 : -3.0;
+        ball.vy = (isA3 || isA2Goal) ? 0 : -3.0;
         ball.spin = 0;
         ball.trail = [];
         break;
@@ -268,7 +283,8 @@ export function updateBall(GROUND_Y) {
       ball.stuckFrames = (ball.stuckFrames || 0) + 1;
       if (ball.stuckFrames > 14) {
         const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-        const centerX = isA3 ? 2200 : 960;
+        const isA2Anti = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+        const centerX = isA3 ? 2200 : (isA2Anti ? 1800 : 960);
         ball.vy = -4.5;
         ball.vx = (ball.x < centerX) ? 3.5 : -3.5;
         ball.stuckFrames = 0;

@@ -119,17 +119,17 @@ export function getCanvasLogicalHeight() {
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (arenaId === 'ARENA_2');
-  const minX = isArena3 ? 0 : (isArena2 ? 150 : CFG_ARENA_LEFT);
-  const maxX = isArena3 ? 4400 : (isArena2 ? 1770 : CFG_ARENA_RIGHT);
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
+  const minX = isArena3 ? 0 : (isArena2 ? 0 : CFG_ARENA_LEFT);
+  const maxX = isArena3 ? 4400 : (isArena2 ? 3600 : CFG_ARENA_RIGHT);
   const groundFloor = getCameraGroundY();
 
   return {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: isArena3 ? 0 : (groundFloor - 3000),
-    maxY: isArena3 ? 1400 : groundFloor
+    minY: (isArena3 || isArena2) ? 0 : (groundFloor - 3000),
+    maxY: (isArena3 || isArena2) ? 1400 : groundFloor
   };
 }
 
@@ -181,9 +181,10 @@ export function clampCamera(cam = camera) {
 
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
   const groundFloor = getCameraGroundY();
-  const minCamY = isArena3 ? 0 : (groundFloor - 3000);
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
+  const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
+  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -205,12 +206,13 @@ export function updateCamera(player, ball) {
   const minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
     // Domyślny zoom gry gwarantujący płynne i szerokie pole widzenia w powiększonym świecie
-    const defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : Math.max(0.60, minZoom);
+    const defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom));
     camera.targetZoom = defaultGameZoom;
   }
 
@@ -245,12 +247,12 @@ export function updateCamera(player, ball) {
 
   // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
   const groundFloor = getCameraGroundY();
-  const targetY = target ? (target.y !== undefined ? target.y : groundFloor - 50) : (groundFloor - 50);
+  const targetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 600 : groundFloor - 50)) : (isArena2 ? 600 : groundFloor - 50);
   let targetCamY = targetY - (viewHeight * 0.65);
 
-  const minCamY = isArena3 ? 0 : (groundFloor - 3000);
-  const subterraneanBottom = isArena3 ? 1400 : groundFloor;
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72));
+  const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
+  const subterraneanBottom = (isArena3 || isArena2) ? 1400 : groundFloor;
+  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   camera.targetX = targetCamX;

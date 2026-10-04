@@ -410,11 +410,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (targets) player._targets = targets;
 
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  player.groundY = isA3 ? 900 : GROUND_Y;
-  if (!isA3 && !player.currentGroundY) player.currentGroundY = GROUND_Y;
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const noFlatGround = isA3 || isA2;
+  player.groundY = isA3 ? 900 : (isA2 ? 1400 : GROUND_Y);
+  if (!noFlatGround && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią
-  if (!isA3 && player.onGround && player.currentGroundY === GROUND_Y) {
+  if (!noFlatGround && player.onGround && player.currentGroundY === GROUND_Y) {
     const isSupported = (typeof isGroundAt === 'function')
       ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
       : true;
@@ -1136,7 +1138,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.y += player.vy;
 
     const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    if (!isA3) {
+    const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    if (!isA3 && !isA2) {
       const groundFloorLimit = GROUND_Y - colH;
       const isSupported = (typeof isGroundAt === 'function')
         ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
@@ -1178,15 +1181,39 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
-    // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
-    const isA3Death = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const deathLimitY = isA3Death ? 1290 : (GROUND_Y + 160);
-    if (player.y > deathLimitY && !player.isDead) {
-      player.hp = 0;
-      player.isDead = true;
-      player.respawnTimer = 75;
-      if (typeof triggerScreenShake === 'function') {
-        triggerScreenShake(12);
+    // Przepaść i prądy wznoszące (Pandora Updraft / Abyss Zone) lub strefa śmierci kanału technicznego
+    if (isA2) {
+      // Poniżej y = 1260: strefa chmur
+      if (player.y > 1260) {
+        const hasFuel = (player.jetFuel !== undefined ? player.jetFuel > 0 : true);
+        if (hasFuel) {
+          // Gracz z paliwem: silny pionowy impuls wznoszący wybijający z powrotem w strefę wysp
+          player.vy = -22.5;
+          player.updraftImpulse = -680;
+          player.isJumping = true;
+          player.onGround = false;
+          player.currentPlatform = null;
+        } else if (player.y >= 1380 && !player.isDead) {
+          // Gracz bez paliwa po osiągnięciu y = 1380 ginie (upadek w otchłań / respawn)
+          player.hp = 0;
+          player.isDead = true;
+          player.respawnTimer = 75;
+          if (typeof triggerScreenShake === 'function') {
+            triggerScreenShake(12);
+          }
+        }
+      }
+    } else {
+      // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
+      const isA3Death = isA3;
+      const deathLimitY = isA3Death ? 1290 : (GROUND_Y + 160);
+      if (player.y > deathLimitY && !player.isDead) {
+        player.hp = 0;
+        player.isDead = true;
+        player.respawnTimer = 75;
+        if (typeof triggerScreenShake === 'function') {
+          triggerScreenShake(12);
+        }
       }
     }
   }
@@ -1277,11 +1304,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (activeArenaId === 'ARENA_2');
-  const wallLeft = isArena3 ? 0 : (isArena2 ? 150 : ARENA_LEFT);
-  const wallRight = isArena3 ? 4400 : (isArena2 ? 1770 : ARENA_RIGHT);
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
+  const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
   const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
-  const wallTop = groundFloorY - (isArena3 ? 1300 : 3000);
+  const wallTop = isArena2 ? 0 : (groundFloorY - (isArena3 ? 1300 : 3000));
 
   if (player.y >= wallTop) {
     if (player.x < wallLeft) {

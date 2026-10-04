@@ -8,7 +8,7 @@ import {
   resolveSegmentCollision, distToSegment, triggerHitstop,
   spawnBodyGibs, spawnBloodSpurt, spawnDroppedWeapon, spawnGroundPuff,
   registerWorldObstacles, setActiveArenaId, GROUND_Y, world,
-  isGroundAt, resetGroundSegments, JUNGLE_CANYON_PROFILE,
+  isGroundAt, resetGroundSegments, resetColliders, JUNGLE_CANYON_PROFILE,
   LEFT_MASSIF_AND_RAMP_PROFILE, CENTRAL_HILL_PROFILE, RIGHT_MASSIF_PROFILE,
   getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
@@ -23,11 +23,15 @@ export function registerArenaResetCallback(cb) {
 }
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/index.js';
 import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State } from './arenas/arena1.js';
-import arena2, { ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS } from './arenas/arena2.js';
+import arena2, {
+  ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
+  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS
+} from './arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/arena3.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State,
+  ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
   ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
   getActiveArena, setActiveArena, ARENAS, onArenaChange
@@ -84,14 +88,14 @@ export const OBSTACLE_PALETTE = {
     { type: 'hedgehog', name: 'Jeż Stalowy', label: '✖️ Jeż', category: 'traps', w: 32, h: 32, size: 32, isHedgehog: true, anchor: 'bottom' }
   ],
   ARENA_2: [
-    { type: 'cyber_catwalk', name: 'Cyber Kładka', label: '⚡ Cyber Kładka', category: 'platforms', w: 200, h: 16, isPlatform: true, oneWay: true, anchor: 'top' },
-    { type: 'floating_hex', name: 'Heksagon Lewitujący', label: '⬡ Heksagon', category: 'platforms', w: 110, h: 16, isPlatform: true, oneWay: true, anchor: 'top' },
-    { type: 'neon_barrier', name: 'Bariera Energetyczna', label: '💠 Bariera', category: 'defense', w: 60, h: 24, isPlatform: true, solid: true, anchor: 'bottom' },
-    { type: 'speed_booster_pad', name: 'Pas Przyspieszający', label: '⏩ Booster', category: 'traps', w: 80, h: 10, anchor: 'bottom' },
-    { type: 'gravity_lift', name: 'Winda Grawitacyjna', label: '⬆️ Grav-Lift', category: 'traps', w: 50, h: 180, anchor: 'bottom' },
-    { type: 'cyber_bumper', name: 'Bumper Pinball', label: '🔘 Bumper', category: 'traps', w: 40, h: 40, size: 40, radius: 20, anchor: 'center' },
-    { type: 'laser_gate', name: 'Brama Laserowa', label: '🚨 Laser', category: 'traps', w: 12, h: 140, anchor: 'bottom' },
-    { type: 'jump_pad', name: 'Jump Pad', label: '🚀 Jump Pad', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
+    { type: 'pandora_rock', name: 'Półka Skalna Pandory', label: '🪨 Półka Skalna', category: 'platforms', w: 180, h: 36, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'vine_catwalk', name: 'Kładka z Pnączy', label: '🌿 Kładka Pnącza', category: 'platforms', w: 200, h: 20, isPlatform: true, oneWay: true, isVineBridge: true, anchor: 'top' },
+    { type: 'floating_island_mini', name: 'Lewitujący Odłamek', label: '🪨 Odłamek Skały', category: 'platforms', w: 120, h: 30, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'unobtanium_crystal', name: 'Kryształ Unobtanium', label: '💎 Unobtanium', category: 'defense', w: 40, h: 50, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'ammo_depot', name: 'Skrzynia Zaopatrzenia', label: '📦 Ammo', category: 'defense', w: 32, h: 24, isPlatform: true, solid: true, anchor: 'bottom', isPickup: true, isInteractable: true },
+    { type: 'spore_pod', name: 'Zarodnik Wybuchowy', label: '🍄 Zarodnik', category: 'traps', w: 30, h: 30, solid: true, anchor: 'bottom' },
+    { type: 'updraft_vent', name: 'Prąd Termiczny', label: '💨 Termika', category: 'traps', w: 70, h: 180, isUpdraft: true, anchor: 'bottom' },
+    { type: 'jump_pad', name: 'Sprężyste Pnącze', label: '🚀 Skocznia', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
   ],
   ARENA_3: [
     { type: 'jungle_rock', name: 'Półka Skalna (Dżungla)', label: '🪨 Skalna Półka', category: 'platforms', w: 180, h: 40, isPlatform: true, oneWay: true, anchor: 'top' },
@@ -572,9 +576,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   }
   setActiveArenaId(activeArenaId);
 
+  // Całkowity reset i czyszczenie koliderów fizyki, aby nie zostały niewidzialne przeszkody
+  if (typeof resetColliders === 'function') {
+    resetColliders();
+  }
   ARENA_PLATFORMS.length = 0;
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;
+  customObstacles.length = 0;
 
   if (currentArena && Array.isArray(currentArena.platforms)) {
     ARENA_PLATFORMS.push(...currentArena.platforms);
@@ -624,14 +633,16 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.spin = 0;
       ballObj.trail = [];
     }
-  } else if (activeArenaId === 'ARENA_2') {
-    GROUND_BARRICADES.push(...ARENA_CYBER_STADIUM_BARRICADES);
-    GOALS.push(...ARENA_CYBER_STADIUM_GOALS);
+  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    const arena2Goals = currentArena?.customObjects?.filter(o => o.team) || ARENA_2_PANDORA_GOALS;
+    GOALS.push(...arena2Goals);
     arena1State.waitingForKickoff = false;
+    arenaScore.cyan = 0;
+    arenaScore.orange = 0;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 750;
-      playerObj.y = groundY - playerObj.h;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 480;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 370;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -642,8 +653,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       targetBot.active = true;
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 1170;
-      targetBot.y = groundY - targetBot.h;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3100;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 410;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -652,8 +663,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 960;
-      ballObj.y = groundY - ballObj.colRadius;
+      ballObj.active = true;
+      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 1800;
+      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 560;
+      ballObj.prevX = ballObj.x;
+      ballObj.prevY = ballObj.y;
       ballObj.vx = 0;
       ballObj.vy = 0;
       ballObj.spin = 0;
@@ -1481,9 +1495,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   } else {
     p.currentPlatform = null;
     p.slopeAngle = 0;
-    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    if (isA3) {
-      // W Arenie 3 brak domyślnej podłogi na poziomie groundY (1000) – postać spada swobodnie w głąb jaskini
+    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    if (hasNoFloor) {
+      // W Arenie 3 oraz Arenie 2 (Pandora) brak płaskiej podłogi – mapa składa się wyłącznie z zawieszonych w powietrzu wysp i otchłani
       p.onGround = false;
       p.currentGroundY = null;
     } else {
@@ -1507,6 +1521,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
         p.currentGroundY = null;
       }
     }
+  }
+
+  // Obsługa termiki i otchłani Pandory (Arena 2)
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    applyPandoraUpdraft(p);
   }
 
   // Zabezpieczenie sufitu w Arenie 3 (The Foundry)
@@ -2007,10 +2026,10 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
     }
   }
 
-  if (activeArenaId === 'ARENA_2' && ball) {
+  if ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') && ball) {
     for (const g of GOALS) {
-      const bottomY = groundY - g.relY;
-      const topY = bottomY - g.h;
+      const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0) - g.h);
+      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (groundY - (g.relY || 0));
       const leftX = g.x;
       const rightX = g.x + g.w;
 
@@ -2026,10 +2045,10 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        ball.x = 960;
-        ball.y = groundY - (ball.colRadius || 14) - 2;
-        ball.prevX = 960;
-        ball.prevY = ball.y;
+        ball.x = 1800;
+        ball.y = 560;
+        ball.prevX = 1800;
+        ball.prevY = 560;
         ball.vx = 0;
         ball.vy = 0;
         ball.spin = 0;
@@ -3653,88 +3672,9 @@ function drawCyberStadiumStructures(ctx, groundY) {
   // Wyłączono pionowe struktury koloseum
 }
 
+// Bramki neonowe wyłączone – arena działa w trybie eliminacji bez bramek
 function drawNeonGoals(ctx, groundY, goals) {
-  if (!goals || goals.length === 0) return;
-
-  for (const g of goals) {
-    const bottomY = groundY - g.relY;
-    const topY = bottomY - g.h;
-    const leftX = g.x;
-    const rightX = g.x + g.w;
-    const isCyan = g.team === 'CYAN';
-
-    ctx.save();
-
-    const netGlow = ctx.createLinearGradient(
-      g.facing === 1 ? leftX : rightX, bottomY,
-      g.facing === 1 ? rightX : leftX, bottomY
-    );
-    netGlow.addColorStop(0.0, isCyan ? 'rgba(6, 182, 212, 0.22)' : 'rgba(249, 115, 22, 0.22)');
-    netGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-    ctx.fillStyle = netGlow;
-    ctx.fillRect(leftX, topY, g.w, g.h);
-
-    ctx.save();
-    ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.35)' : 'rgba(249, 115, 22, 0.35)';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    const netStep = 11;
-    for (let x = leftX; x <= rightX; x += netStep) {
-      ctx.moveTo(x, topY);
-      ctx.lineTo(x + (g.facing === 1 ? -6 : 6), bottomY);
-    }
-    for (let y = topY; y <= bottomY; y += netStep) {
-      ctx.moveTo(leftX, y);
-      ctx.lineTo(rightX, y + 2);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = g.color;
-    ctx.shadowColor = g.glowColor;
-    ctx.shadowBlur = 14;
-    ctx.lineWidth = 3.6;
-
-    const mouthX = g.facing === 1 ? rightX : leftX;
-    const backX = g.facing === 1 ? leftX : rightX;
-
-    ctx.beginPath();
-    ctx.moveTo(mouthX, bottomY);
-    ctx.lineTo(mouthX, topY);
-    ctx.lineTo(backX, topY);
-    ctx.lineTo(backX, bottomY);
-    ctx.stroke();
-
-    ctx.lineWidth = 2.0;
-    ctx.beginPath();
-    ctx.moveTo(backX, bottomY);
-    ctx.lineTo(mouthX, bottomY);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.shadowBlur = 0;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(mouthX, bottomY);
-    ctx.lineTo(mouthX, topY);
-    ctx.lineTo(backX, topY);
-    ctx.lineTo(backX, bottomY);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = g.color;
-    ctx.shadowColor = g.color;
-    ctx.shadowBlur = 8;
-    ctx.font = 'bold 9.5px monospace';
-    ctx.textAlign = 'center';
-    const tagText = isCyan ? '◄ CYAN GOAL' : 'ORANGE GOAL ►';
-    ctx.fillText(tagText, (leftX + rightX) / 2, topY - 7);
-    ctx.restore();
-
-    ctx.restore();
-  }
+  // Wyłączono renderowanie bramek neonowych
 }
 
 function drawAltarSpotlightAndLevitation(ctx, groundY) {
@@ -3905,9 +3845,6 @@ export function drawObstacles(ctx, groundY) {
   }
 
   drawBarrelExplosionParticles(ctx);
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY') {
-    drawNeonGoals(ctx, groundY, GOALS);
-  }
 
   if (activeArenaId === 'ARENA_1') {
     drawAltarSpotlightAndLevitation(ctx, groundY);

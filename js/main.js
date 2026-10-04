@@ -1223,12 +1223,12 @@ if (devArenaBtn) {
       devArenaBtn.style.borderColor = '#22c55e';
       devArenaBtn.style.color = '#86efac';
       devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-    } else if (activeArenaId === 'ARENA_2') {
-      devArenaBtn.textContent = '🏟️ Arena: 2';
-      devArenaBtn.style.background = 'rgba(6, 182, 212, 0.25)';
-      devArenaBtn.style.borderColor = '#06b6d4';
-      devArenaBtn.style.color = '#22d3ee';
-      devArenaBtn.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.55)';
+    } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+      devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
+      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
+      devArenaBtn.style.borderColor = '#10b981';
+      devArenaBtn.style.color = '#6ee7b7';
+      devArenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
     } else {
       devArenaBtn.textContent = '🏟️ Arena: 1';
       devArenaBtn.style.background = '';
@@ -1407,13 +1407,13 @@ export function renderEditorPalette() {
   if (!devPaletteContainer) return;
   devPaletteContainer.innerHTML = '';
 
-  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2') ? 'ARENA_2' : 'ARENA_1');
+  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') ? 'ARENA_2' : 'ARENA_1');
   const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
 
-  const catTitles = arenaKey === 'ARENA_2' ? {
-    platforms: '⚡ Kładki / Podesty',
-    defense: '🗼 Piony / Osłony',
-    traps: '🚀 Interaktywne / Energia'
+  const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA') ? {
+    platforms: '🌿 Lewitujące Półki / Pnącza',
+    defense: '🪨 Skalne Formacje / Bazy',
+    traps: '💎 Unobtanium / Termika'
   } : {
     platforms: '🪜 Kładki / Wieże',
     defense: '🛡️ Mury / Osłony',

@@ -9,45 +9,50 @@ import arena2 from './arena2.js';
 import arena3 from './arena3.js';
 
 export const ARENAS = {
-  'arena-1': arena1,
-  'arena-2': arena2,
-  'arena-3': arena3,
+  get 'arena-1'() { return arena1; },
+  get 'arena-2'() { return arena2; },
+  get 'arena-3'() { return arena3; },
   // Aliasy kompatybilności
-  'ARENA_1': arena1,
-  'ARENA_2': arena2,
-  'ARENA_3': arena3,
-  '1': arena1,
-  '2': arena2,
-  '3': arena3,
-  'CYBER_STADIUM': arena2,
-  'ARENA_FOUNDRY': arena3,
-  'FOUNDRY': arena3
+  get 'ARENA_1'() { return arena1; },
+  get 'ARENA_2'() { return arena2; },
+  get 'ARENA_2_PANDORA'() { return arena2; },
+  get 'PANDORA'() { return arena2; },
+  get 'HALLELUJAH'() { return arena2; },
+  get 'ARENA_3'() { return arena3; },
+  get '1'() { return arena1; },
+  get '2'() { return arena2; },
+  get '3'() { return arena3; },
+  get 'CYBER_STADIUM'() { return arena2; },
+  get 'ARENA_FOUNDRY'() { return arena3; },
+  get 'FOUNDRY'() { return arena3; }
 };
 
 function normalizeArenaId(rawId) {
   if (!rawId) return 'arena-1';
   const str = String(rawId).trim();
-  if (ARENAS[str]) return ARENAS[str].id;
   const lower = str.toLowerCase();
-  if (ARENAS[lower]) return ARENAS[lower].id;
   if (lower === '1' || lower === 'arena1') return 'arena-1';
-  if (lower === '2' || lower === 'arena2' || lower === 'cyber' || lower === 'cyber_stadium') return 'arena-2';
+  if (lower === '2' || lower === 'arena2' || lower === 'pandora' || lower === 'arena_2_pandora' || lower === 'hallelujah' || lower === 'cyber' || lower === 'cyber_stadium') return 'arena-2';
   if (lower === '3' || lower === 'arena3' || lower === 'foundry' || lower === 'jungle' || lower === 'mine') return 'arena-3';
+  if (ARENAS[str]) return ARENAS[str].id;
+  if (ARENAS[lower]) return ARENAS[lower].id;
   return 'arena-1';
 }
 
 // Pobieranie ID startowej areny z parametru URL (np. ?arena=arena-2 lub ?arena=3)
-const initialUrlId = (typeof window !== 'undefined' && window.location)
-  ? (new URLSearchParams(window.location.search).get('arena') || 'arena-1')
-  : 'arena-1';
-
-let activeArena = ARENAS[normalizeArenaId(initialUrlId)] || arena1;
+let activeArena = null;
 
 /**
  * Zwraca aktualnie aktywny moduł areny
  * @returns {Object} Aktywny obiekt areny
  */
 export function getActiveArena() {
+  if (!activeArena) {
+    const initialUrlId = (typeof window !== 'undefined' && window.location)
+      ? (new URLSearchParams(window.location.search).get('arena') || 'arena-1')
+      : 'arena-1';
+    activeArena = ARENAS[normalizeArenaId(initialUrlId)] || arena1;
+  }
   return activeArena;
 }
 

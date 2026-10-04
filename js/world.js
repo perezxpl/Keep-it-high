@@ -2,9 +2,10 @@
 // WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ + SYSTEM GORE & KINEMATYKA ŚMIERCI
 // =========================================================================
 
-import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, isTouchDevice, setTouchDevice } from './config.js';
+import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, isTouchDevice, setTouchDevice, ARENA_2_PANDORA } from './config.js';
 import { spawnConcreteDebris, spawnRicochetSparks } from './particles.js';
-export { isTouchDevice, setTouchDevice };
+import { drawPandoraBackground } from './background.js';
+export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA };
 
 export let _worldPlatforms = [];
 export let _worldCustomObstacles = [];
@@ -18,6 +19,8 @@ export function resetColliders() {
   slopes = [];
   walls = [];
   obstacles = [];
+  _worldPlatforms = [];
+  _worldCustomObstacles = [];
 }
 
 export let activeArenaId = 'ARENA_1';
@@ -127,7 +130,7 @@ export function initGroundSegments() {
 initGroundSegments();
 
 export function isGroundAt(x, margin = 4) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -141,7 +144,7 @@ export function isGroundAt(x, margin = 4) {
 }
 
 export function isGroundSupporting(minX, maxX) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -155,8 +158,8 @@ export function isGroundSupporting(minX, maxX) {
 }
 
 export function findGroundHoleAt(x) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    return { holeStart: ARENA_LEFT - 320, holeEnd: ARENA_RIGHT + 320 };
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    return { holeStart: -600, holeEnd: 4600 };
   }
   if (isGroundAt(x, 0)) return null;
   let holeStart = ARENA_LEFT - 320;
@@ -1205,91 +1208,9 @@ function getArena1TowersCanvas(horizonY) {
   return cachedArena1Towers;
 }
 
-let cachedArena2FarTowers = null;
-let cachedArena2NearTowers = null;
-let cachedArena2H = 0;
-
-const FAR_TOWERS_ARENA2 = [
-  { x: 80, w: 90, h: 320 },
-  { x: 220, w: 140, h: 420 },
-  { x: 410, w: 85, h: 290 },
-  { x: 540, w: 160, h: 470 },
-  { x: 740, w: 110, h: 360 },
-  { x: 890, w: 150, h: 430 },
-  { x: 1080, w: 95, h: 310 }
-];
-
-const NEAR_TOWERS_ARENA2 = [
-  { x: 60, w: 85, h: 260 },
-  { x: 180, w: 120, h: 350 },
-  { x: 340, w: 80, h: 230 },
-  { x: 460, w: 140, h: 390 },
-  { x: 640, w: 95, h: 280 },
-  { x: 780, w: 130, h: 360 }
-];
-
-function getCyberFarCanvas() {
-  const curH = Math.ceil(H);
-  if (cachedArena2FarTowers && cachedArena2H === curH) {
-    return cachedArena2FarTowers;
-  }
-  const cvs = document.createElement('canvas');
-  cvs.width = 1200;
-  cvs.height = curH;
-  const cctx = cvs.getContext('2d');
-  cctx.clearRect(0, 0, 1200, curH);
-  cctx.fillStyle = '#080c14';
-
-  for (const b of FAR_TOWERS_ARENA2) {
-    const bx = Math.round(b.x);
-    const by = Math.round(curH * 0.88 - b.h);
-    cctx.fillRect(bx, by, Math.round(b.w), Math.round(b.h + 120));
-  }
-  cachedArena2FarTowers = cvs;
-  return cachedArena2FarTowers;
-}
-
-function getCyberNearCanvas() {
-  const curH = Math.ceil(H);
-  if (cachedArena2NearTowers && cachedArena2H === curH) {
-    return cachedArena2NearTowers;
-  }
-  const cvs = document.createElement('canvas');
-  cvs.width = 960;
-  cvs.height = curH;
-  const cctx = cvs.getContext('2d');
-  cctx.clearRect(0, 0, 960, curH);
-
-  for (let bIdx = 0; bIdx < NEAR_TOWERS_ARENA2.length; bIdx++) {
-    const b = NEAR_TOWERS_ARENA2[bIdx];
-    const bx = Math.round(b.x);
-    const by = Math.round(curH * 0.90 - b.h);
-    const bw = Math.round(b.w);
-    const bh = Math.round(b.h + 120);
-
-    cctx.fillStyle = '#0f172a';
-    cctx.fillRect(bx, by, bw, bh);
-
-    let row = 0;
-    for (let wy = by + 26; wy < by + b.h - 25; wy += 26, row++) {
-      const isWinCyan = ((bIdx + row) % 2 === 0);
-      cctx.fillStyle = isWinCyan ? 'rgba(6, 182, 212, 0.45)' : 'rgba(249, 115, 22, 0.45)';
-      for (let wx = bx + 10; wx < bx + b.w - 10; wx += 16) {
-        cctx.fillRect(Math.round(wx), Math.round(wy), 8, 4);
-      }
-    }
-  }
-  cachedArena2NearTowers = cvs;
-  cachedArena2H = curH;
-  return cachedArena2NearTowers;
-}
-
 export function invalidateSkyCache() {
   cachedArena1Towers = null;
-  cachedArena2FarTowers = null;
-  cachedArena2NearTowers = null;
   cachedArena1H = 0;
-  cachedArena2H = 0;
 }
 
 export function drawNeonNightOpsSky(ctx, camX) {
@@ -1512,88 +1433,8 @@ export function drawNeonNightOpsSky(ctx, camX) {
 
 export const drawSoldatParallax = drawNeonNightOpsSky;
 
-function drawCyberStadiumSky(ctx, camX) {
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0.0, '#030712');
-  sky.addColorStop(0.42, '#090d16');
-  sky.addColorStop(0.75, '#0f172a');
-  sky.addColorStop(1.0, '#1e1b4b');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, H);
-
-  const time = performance.now() * 0.0012;
-
-  const farCanvas = getCyberFarCanvas();
-  const farPeriod = 1200;
-  const farOffset = Math.floor(((camX * 0.04) % farPeriod + farPeriod) % farPeriod);
-  const minFarLoop = Math.floor((-farOffset) / farPeriod) - 1;
-  const maxFarLoop = Math.ceil((W - farOffset) / farPeriod) + 1;
-  for (let loop = minFarLoop; loop <= maxFarLoop; loop++) {
-    const drawX = Math.floor(loop * farPeriod - farOffset);
-    if (drawX + farPeriod < 0 || drawX > W) continue;
-    ctx.drawImage(farCanvas, drawX, 0);
-  }
-
-  const nearCanvas = getCyberNearCanvas();
-  const nearPeriod = 960;
-  const nearOffset = Math.floor(((camX * 0.10) % nearPeriod + nearPeriod) % nearPeriod);
-  const minNearLoop = Math.floor((-nearOffset) / nearPeriod) - 1;
-  const maxNearLoop = Math.ceil((W - nearOffset) / nearPeriod) + 1;
-  for (let loop = minNearLoop; loop <= maxNearLoop; loop++) {
-    const drawX = Math.floor(loop * nearPeriod - nearOffset);
-    if (drawX + nearPeriod < 0 || drawX > W) continue;
-    ctx.drawImage(nearCanvas, drawX, 0);
-  }
-
-  if (camera) {
-    const spots = [
-      { worldX: 240, baseAngle: 0.38, color: 'rgba(6, 182, 212, ' },
-      { worldX: 460, baseAngle: 0.20, color: 'rgba(56, 189, 248, ' },
-      { worldX: 1460, baseAngle: -0.20, color: 'rgba(251, 146, 60, ' },
-      { worldX: 1680, baseAngle: -0.38, color: 'rgba(249, 115, 22, ' }
-    ];
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-
-    const beamLen = 950 * camera.zoom;
-    for (let i = 0; i < spots.length; i++) {
-      const s = spots[i];
-      const sourceScreenX = (s.worldX - camera.x) * camera.zoom;
-      const sourceScreenY = ((GROUND_Y - 520) - camera.y) * camera.zoom;
-
-      const sway = Math.sin(time * 1.5 + i * 1.6) * 0.10;
-      const currentAngle = s.baseAngle + sway;
-
-      ctx.save();
-      ctx.translate(sourceScreenX, sourceScreenY);
-      ctx.rotate(currentAngle);
-
-      const beamGrad = ctx.createLinearGradient(0, 0, 0, beamLen);
-      beamGrad.addColorStop(0.0, `${s.color}0.55)`);
-      beamGrad.addColorStop(0.35, `${s.color}0.22)`);
-      beamGrad.addColorStop(0.75, `${s.color}0.07)`);
-      beamGrad.addColorStop(1.0, `${s.color}0.0)`);
-
-      ctx.fillStyle = beamGrad;
-      ctx.beginPath();
-      ctx.moveTo(-16 * camera.zoom, 0);
-      ctx.lineTo(-150 * camera.zoom, beamLen);
-      ctx.lineTo(150 * camera.zoom, beamLen);
-      ctx.lineTo(16 * camera.zoom, 0);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, 0, 7 * camera.zoom, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    ctx.restore();
-  }
+export function drawCyberStadiumSky(ctx, camX) {
+  drawPandoraBackground(ctx, camera);
 }
 
 /**
@@ -1876,8 +1717,8 @@ export function drawSky(ctx) {
     // Tło Areny 3 (The Foundry) renderowane jest bezpośrednio przez wtyczkę arena3.js
     return;
   }
-  if (activeArenaId === 'ARENA_2') {
-    drawCyberStadiumSky(ctx, camCenterX);
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    drawPandoraBackground(ctx, camera);
   } else {
     drawNeonNightOpsSky(ctx, camCenterX);
   }
@@ -2586,9 +2427,10 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   const endX = ARENA_RIGHT + 320;
   const w = endX - startX;
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
 
-  if (isArena3) {
-    // Tło, obiekty i platformy Areny 3 renderowane są autonomicznie w module js/arenas/arena3.js
+  if (isArena3 || isArena2) {
+    // Tło, obiekty i platformy Areny 2 & 3 renderowane są autonomicznie w ich modułach areny (brak płaskiego podłoża)
     return;
   }
 
@@ -2796,12 +2638,12 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 
 export function drawArenaEnergyBoundaries(ctx, groundY) {
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  if (isArena3) {
-    return; // W zamkniętym podziemnym systemie jaskiń i sztolni ściany areny to lity górotwór – brak laserowych linii granicznych
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  if (isArena3 || isArena2) {
+    return; // W zamkniętym podziemnym systemie jaskiń i otwartym niebie Pandory brak laserowych linii granicznych
   }
-  const isArena2 = (activeArenaId === 'ARENA_2');
-  const leftX = isArena2 ? 150 : ARENA_LEFT;
-  const rightX = isArena2 ? 1770 : ARENA_RIGHT;
+  const leftX = ARENA_LEFT;
+  const rightX = ARENA_RIGHT;
   const barrierH = 3000;
   const topY = groundY - barrierH;
   const time = performance.now() * 0.0012;
@@ -3839,7 +3681,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
   const isDeathmatch = false;
-  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2' || curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
+  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
 
   if (isDeathmatch) {
     const scoreBoxW = isMobile ? 220 : 280;

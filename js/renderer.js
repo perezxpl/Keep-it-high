@@ -40,7 +40,8 @@ export {
 } from './obstacles.js';
 
 export {
-  drawMineCaveBackground
+  drawMineCaveBackground,
+  drawPandoraBackground
 } from './background.js';
 
 export {
@@ -320,5 +321,13 @@ export function drawDebugColliders(ctx, groundY, player) {
 
   ctx.restore();
 }
+
+// =========================================================================
+// ARENA 2: SYSTEM RENDEROWANIA PANDORY (HALLELUJAH MOUNTAINS)
+// Re-eksport dedykowanej procedury renderowania terenu z modułu areny
+// =========================================================================
+export { renderPandoraTerrain } from './arenas/arena2.js';
+
+
 
 

@@ -69,6 +69,29 @@ export const ARENA_LEFT = START_X; // 0
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 
 // =========================================================================
+// DEFINICJA ARENY 2: PANDORA (HALLELUJAH MOUNTAINS 3600x1400 PX)
+// =========================================================================
+export const ARENA_2_PANDORA = {
+  id: 'ARENA_2',
+  alias: 'ARENA_2_PANDORA',
+  name: 'Góry Pandory',
+  subtitle: 'Hallelujah Mountains',
+  width: 3600,
+  height: 1400,
+  bounds: {
+    minX: 0,
+    maxX: 3600,
+    minY: 0,
+    maxY: 1400
+  },
+  cloudZoneY: 1260,
+  abyssDeathY: 1380,
+  updraftImpulse: -680
+};
+export const ARENA_2_CONFIG = ARENA_2_PANDORA;
+
+
+// =========================================================================
 // KONFIGURACJA AMUNICJI I PRZEŁADOWANIA BRONI GRACZA
 // =========================================================================
 export const WEAPON_CONFIG = {

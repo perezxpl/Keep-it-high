@@ -14,6 +14,24 @@ export {
 } from './obstacles.js';
 
 export {
+  ARENA_2_PANDORA_PLATFORMS,
+  ARENA_2_PANDORA_GOALS,
+  LEFT_VINE_BRIDGE_POINTS,
+  RIGHT_VINE_BRIDGE_POINTS,
+  applyPandoraUpdraft,
+  checkPandoraUpdraft
+} from './arenas/arena2.js';
+
+export function isPandoraAbyss(y) {
+  return y > 1260;
+}
+
+export function isPandoraDeath(y) {
+  return y >= 1380;
+}
+
+
+export {
   isGroundAt,
   isGroundSupporting,
   findGroundHoleAt,

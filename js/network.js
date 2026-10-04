@@ -269,12 +269,12 @@ function updateDevArenaButtonUI(arenaId) {
     arenaBtn.style.borderColor = '#22c55e';
     arenaBtn.style.color = '#86efac';
     arenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (arenaId === 'ARENA_2') {
-    arenaBtn.textContent = '🏟️ Arena: 2';
-    arenaBtn.style.background = 'rgba(6, 182, 212, 0.25)';
-    arenaBtn.style.borderColor = '#06b6d4';
-    arenaBtn.style.color = '#22d3ee';
-    arenaBtn.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.55)';
+  } else if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA') {
+    arenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
+    arenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
+    arenaBtn.style.borderColor = '#10b981';
+    arenaBtn.style.color = '#6ee7b7';
+    arenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
   } else {
     arenaBtn.textContent = '🏟️ Arena: 1';
     arenaBtn.style.background = '';
