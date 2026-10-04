@@ -291,6 +291,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     const ballDist = Math.hypot(ballDx, ballDy);
 
     if (ballDist <= radius) {
+      ball.isLevitating = false;
       const factor = Math.max(0, 1 - (ballDist / radius));
       const ballImpulse = factor * 28.0;
       const bNormX = ballDist > 0.001 ? ballDx / ballDist : 0;

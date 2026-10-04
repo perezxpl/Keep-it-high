@@ -1218,11 +1218,11 @@ if (devArenaBtn) {
     switchArena(nextArena, player, bot, ball);
     sendArenaSwitch(nextArena);
     if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-      devArenaBtn.textContent = '🏟️ Arena: 3 (Dżungla)';
-      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))';
-      devArenaBtn.style.borderColor = '#22c55e';
-      devArenaBtn.style.color = '#86efac';
-      devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
+      devArenaBtn.textContent = '🔥 Arena: 3 (Odlewnia)';
+      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(249, 115, 22, 0.25))';
+      devArenaBtn.style.borderColor = '#f97316';
+      devArenaBtn.style.color = '#fdba74';
+      devArenaBtn.style.boxShadow = '0 0 12px rgba(249, 115, 22, 0.45)';
     } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
       devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
       devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';

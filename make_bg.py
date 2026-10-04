@@ -150,10 +150,12 @@ draw.polygon([(CX - 12, ladle_top_y + 40), (CX + 12, ladle_top_y + 40), (CX + 8,
 draw.polygon([(CX - 5, ladle_top_y + 40), (CX + 5, ladle_top_y + 40), (CX + 3, Y_TUNNEL_FLR), (CX - 3, Y_TUNNEL_FLR)], fill='#fef08a')
 
 # 7. PRZEMYSŁOWE DZIURY W ŚCIANIE (CIRCULAR WALL CONDUIT HOLES)
-def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0):
+def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0, flip_vertical=False):
     im = Image.open(im_path).convert('RGBA')
     if rotate_deg != 0:
         im = im.rotate(rotate_deg)
+    if flip_vertical:
+        im = im.transpose(Image.FLIP_TOP_BOTTOM)
     w, h = im.size
     cx, cy = w // 2, h // 2
     
@@ -166,7 +168,7 @@ def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0):
     crop_box = (cx - r_outer - 15, cy - r_outer - 15, cx + r_outer + 15, cy + r_outer + 15)
     return im.crop(crop_box)
 
-circle_cyan = make_circular_conduit('assets/hole_cyan.jpg', r_outer=425, feather=14, rotate_deg=180)
+circle_cyan = make_circular_conduit('assets/hole_cyan.jpg', r_outer=425, feather=14, rotate_deg=180, flip_vertical=True)
 circle_orange = make_circular_conduit('assets/hole_orange.jpg', r_outer=425, feather=14, rotate_deg=0)
 
 HOLE_DIAMETER = 340

@@ -16,7 +16,10 @@ export const ball = {
   rotation: 0,
   spin: 0,
   trail: [],
-  lowGravityFrames: 0
+  lowGravityFrames: 0,
+  isLevitating: false,
+  hoverBaseY: 680,
+  goalAnimation: null
 };
 
 export function resetBallToPlayer(p, GROUND_Y) {
@@ -26,8 +29,10 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.x = 600;
     p.y = 830;
     p.facing = 1;
-    ball.x = p.x + 20;
-    ball.y = 900 - ball.colRadius;
+    ball.x = 2200;
+    ball.y = 680;
+    ball.hoverBaseY = 680;
+    ball.isLevitating = true;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
   } else if (isA2) {
@@ -36,6 +41,7 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.facing = 1;
     ball.x = 1800;
     ball.y = 560;
+    ball.isLevitating = false;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
   } else {
@@ -44,6 +50,7 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.gaitMode = 'PODBICIE Z ZIEMI';
     ball.x = p.x + (20 * p.facing);
     ball.y = GROUND_Y - ball.colRadius;
+    ball.isLevitating = false;
   }
   p.juggleTimer = 0;
   p.vx = 0;
@@ -59,12 +66,14 @@ export function resetBallToPlayer(p, GROUND_Y) {
   ball.trail = [];
   ball.lowGravityFrames = 0;
   ball.stuckFrames = 0;
+  if (ball.goalAnimation) ball.goalAnimation.active = false;
 }
 
 /**
  * Wystrzelenie piłki jako kinetycznego pocisku balistycznego w stronę punktu aimX, aimY.
  */
 function launchBallKinetic(playerObj, spawnGrass, baseSpeedOverride, isSpinVolley) {
+  ball.isLevitating = false;
   playerObj.hitThisSwing = true;
   playerObj.kickBufferTimer = 0;
   if (playerObj.isIntro) {
@@ -124,6 +133,78 @@ function launchBallKinetic(playerObj, spawnGrass, baseSpeedOverride, isSpinVolle
 }
 
 export function updateBall(GROUND_Y) {
+  // Animacja wpadania piłki w głąb bramki (Visual Goal Entry)
+  if (ball.goalAnimation && ball.goalAnimation.active) {
+    ball.goalAnimation.timer--;
+    const progress = 1.0 - (ball.goalAnimation.timer / ball.goalAnimation.maxTimer);
+    const easeP = 1.0 - Math.pow(1.0 - progress, 2.5);
+
+    ball.x = ball.goalAnimation.startX + (ball.goalAnimation.targetX - ball.goalAnimation.startX) * easeP;
+    ball.y = ball.goalAnimation.startY + (ball.goalAnimation.targetY - ball.goalAnimation.startY) * easeP;
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.trail = [];
+
+    // Efekt głębi 3D - piłka zmniejsza się wpadając w głąb rury za kołnierz ściany
+    ball.goalAnimation.scale = Math.max(0.04, Math.pow(1.0 - progress, 1.4));
+    ball.goalAnimation.alpha = Math.max(0.0, 1.0 - Math.pow(progress, 2.2));
+    ball.rotation += (ball.goalAnimation.spinDir || 1) * 0.28 * (1.0 + progress * 2.0);
+
+    if (ball.goalAnimation.timer <= 0) {
+      ball.goalAnimation.active = false;
+      resetArena();
+
+      const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+      const isA2Goal = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+      if (isA3) {
+        ball.x = 2200;
+        ball.y = 680;
+        ball.hoverBaseY = 680;
+        ball.isLevitating = true;
+        ball.vx = 0;
+        ball.vy = 0;
+      } else if (isA2Goal) {
+        ball.x = 1800;
+        ball.y = 560;
+        ball.isLevitating = false;
+        ball.vx = 0;
+        ball.vy = 0;
+      } else {
+        ball.x = arena1State.altarX || (START_X + ARENA_WIDTH / 2);
+        ball.y = GROUND_Y - (arena1State.altarRelY || 255);
+        ball.isLevitating = false;
+        ball.vx = 0;
+        ball.vy = 0;
+      }
+      ball.prevX = ball.x;
+      ball.prevY = ball.y;
+      ball.spin = 0;
+      ball.trail = [];
+    }
+    return;
+  }
+
+  // Stan lewitacji nad kotłem
+  if (ball.isLevitating) {
+    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    if (isA3) {
+      const hoverOffset = Math.sin(performance.now() * 0.0035) * 8;
+      ball.x = 2200;
+      ball.y = (ball.hoverBaseY || 680) + hoverOffset;
+      ball.prevX = ball.x;
+      ball.prevY = ball.y;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.rotation += 0.015;
+      ball.trail = [];
+      return;
+    } else {
+      ball.isLevitating = false;
+    }
+  }
+
   // Żonglerka przed startem
   if (player.isIntro) {
     const hipX = player.x + player.w / 2;
@@ -191,6 +272,16 @@ export function updateBall(GROUND_Y) {
       }
     }
 
+    // Sprężyste odbicie od stropu dolnego tunelu (Y = 970) w Arenie 3
+    if (isArena3 && ball.y > 960 && ball.y < 1270 && ball.vy < 0) {
+      const isUnderHatch = (ball.x >= 770 && ball.x <= 930) || (ball.x >= 3470 && ball.x <= 3630);
+      if (!isUnderHatch && ball.y - ball.colRadius <= 970) {
+        ball.y = 970 + ball.colRadius;
+        ball.vy = Math.abs(ball.vy) * 0.65;
+        ball.vx *= 0.98;
+      }
+    }
+
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
     const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
     const isGroundUnderBall = (!hasNoFloor && typeof isGroundAt === 'function')
@@ -214,24 +305,30 @@ export function updateBall(GROUND_Y) {
     }
 
     // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego lub otchłani
-    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const isA2Void = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
-    const ballVoidLimit = (isA3 || isA2Void) ? 1380 : (GROUND_Y + 280);
+    const ballVoidLimit = (isArena3 || isArena2) ? 1380 : (GROUND_Y + 280);
     if (ball.y > ballVoidLimit) {
-      if (isA3) {
+      if (isArena3) {
         ball.x = 2200;
-        ball.y = 740;
-      } else if (isA2Void) {
+        ball.y = 680;
+        ball.hoverBaseY = 680;
+        ball.isLevitating = true;
+        ball.vx = 0;
+        ball.vy = 0;
+      } else if (isArena2) {
         ball.x = 1800;
         ball.y = 560;
+        ball.isLevitating = false;
+        ball.vx = 0;
+        ball.vy = 0;
       } else {
         ball.x = 960;
         ball.y = GROUND_Y - ball.colRadius - 30;
+        ball.isLevitating = false;
+        ball.vx = 0;
+        ball.vy = -4.0;
       }
       ball.prevX = ball.x;
       ball.prevY = ball.y;
-      ball.vx = 0;
-      ball.vy = (isA3 || isA2Void) ? 0 : -4.0;
       ball.spin = 0;
       ball.trail = [];
     }
@@ -240,37 +337,60 @@ export function updateBall(GROUND_Y) {
     resolveBallObstacleCollisions(ball, GROUND_Y);
   }
 
-  // Detekcja gola na Arenie 2 (Pandora) oraz Arenie 3 (The Foundry)
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  // Detekcja gola z płynnym zasysaniem w głąb bramki (Visual Goal Entry)
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  if (isA3 && !ball.goalAnimation?.active) {
     for (const g of GOALS) {
       const topY = (g.y !== undefined) ? g.y : (GROUND_Y - (g.relY || 0) - g.h);
       const bottomY = (g.y !== undefined) ? (g.y + g.h) : (GROUND_Y - (g.relY || 0));
       const leftX = g.x;
       const rightX = g.x + g.w;
 
-      if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
-        const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
+      let isInsideGoal = false;
+      let targetX = 0;
+      let targetY = (topY + bottomY) / 2;
+
+      if (isA3 && g.holeCx !== undefined) {
+        const dHole = Math.hypot(ball.x - g.holeCx, ball.y - g.holeCy);
+        if (dHole <= (g.holeR || 170) || (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY)) {
+          isInsideGoal = true;
+          targetX = (g.team === 'CYAN') ? 30 : 4370; // wciągnięcie głęboko w rurę za kołnierz ściany
+          targetY = g.holeCy;
+        }
+      } else if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
+        isInsideGoal = true;
+        targetX = (g.team === 'CYAN') ? (leftX - 45) : (rightX + 45);
+        targetY = (topY + bottomY) / 2;
+      }
+
+      if (isInsideGoal) {
+        const isCyanGoal = (g.team === 'CYAN');
+        const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
         if (scoringTeam === 'CYAN') {
           arenaScore.cyan++;
         } else {
           arenaScore.orange++;
         }
 
-        triggerScreenShake(14);
-        triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
-        resetArena();
+        triggerScreenShake(16);
+        triggerGoalCelebration(scoringTeam, isCyanGoal ? '#06b6d4' : '#f97316');
 
-        // Reset piłki: dla Areny 3 na X: 2200, Y: 740, dla Areny 2 na X: 1800, Y: 560
-        const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-        const isA2Goal = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
-        ball.x = isA3 ? 2200 : (isA2Goal ? 1800 : 960);
-        ball.y = isA3 ? 740 : (isA2Goal ? 560 : (GROUND_Y - ball.colRadius - 20));
-        ball.prevX = ball.x;
-        ball.prevY = ball.y;
+        ball.goalAnimation = {
+          active: true,
+          timer: 48,
+          maxTimer: 48,
+          startX: ball.x,
+          startY: ball.y,
+          targetX: targetX,
+          targetY: targetY,
+          scoringTeam: scoringTeam,
+          color: isCyanGoal ? '#06b6d4' : '#f97316',
+          scale: 1.0,
+          alpha: 1.0,
+          spinDir: (ball.vx > 0 ? 1 : -1) || (isCyanGoal ? -1 : 1)
+        };
         ball.vx = 0;
-        ball.vy = (isA3 || isA2Goal) ? 0 : -3.0;
-        ball.spin = 0;
-        ball.trail = [];
+        ball.vy = 0;
         break;
       }
     }
@@ -344,6 +464,7 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
 
     if (hit.dist < ball.colRadius + batThickness) {
       // Sztywny wektor uderzenia z wślizgu - skalowany siłą klasy (podwojona dynamika)
+      ball.isLevitating = false;
       playerObj.hitThisSwing = true;
       const powerMult = playerObj.currentClass?.stats?.kickPowerMult || 1.0;
       ball.vx = playerObj.facing * (22.0 * powerMult);
@@ -389,6 +510,11 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
     // 3. Pasywny kontakt z ciałem / nogami zawodnika (np. amortyzacja piłki przez Libero / Sweeper)
     const bodyDist = Math.hypot(ball.x - hipX, ball.y - hipY);
     if (bodyDist < ball.colRadius + 32) {
+      if (ball.isLevitating) {
+        ball.isLevitating = false;
+        ball.vx = (playerObj.facing || 1) * 4.5 + (playerObj.vx || 0) * 0.4;
+        ball.vy = -3.2;
+      }
       playerObj.currentClass?.onBallPassiveContact?.(playerObj, ball);
     }
   }
@@ -496,9 +622,51 @@ function drawTelstarPatches(ctx, r, rotation, worldX) {
 export function drawBall(ctx) {
   const r = ball.radius;
 
+  // 0. Efekt unoszenia termicznego / lewitacji nad kotłem
+  if (ball.isLevitating) {
+    const time = performance.now() * 0.001;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    // Termiczna łuna unosząca (Thermal Updraft Glow)
+    const glowPulse = 0.75 + 0.25 * Math.sin(time * 4.0);
+    const auraGrad = ctx.createRadialGradient(ball.x, ball.y, 2, ball.x, ball.y, r * 4.2);
+    auraGrad.addColorStop(0.0, `rgba(254, 240, 138, ${0.80 * glowPulse})`);
+    auraGrad.addColorStop(0.35, `rgba(249, 115, 22, ${0.50 * glowPulse})`);
+    auraGrad.addColorStop(0.70, `rgba(234, 88, 12, ${0.22 * glowPulse})`);
+    auraGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, r * 4.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pierścień unoszącej fali cieplnej
+    const ringPhase = (time * 1.6) % 1.0;
+    const ringR = r * (0.8 + ringPhase * 2.4);
+    const ringAlpha = (1.0 - ringPhase) * 0.65;
+    ctx.strokeStyle = `rgba(254, 240, 138, ${ringAlpha.toFixed(2)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Wznoszące się mikro-iskry ciepła
+    for (let i = 0; i < 4; i++) {
+      const sparkSeed = i * 23.7;
+      const sparkPhase = ((time * 2.2 + i * 0.25) % 1.0);
+      const sparkY = ball.y + r * 1.8 - sparkPhase * r * 3.6;
+      const sparkX = ball.x + Math.sin(time * 3.0 + sparkSeed) * (r * 1.2);
+      const spAlpha = Math.sin(sparkPhase * Math.PI) * 0.85;
+      ctx.fillStyle = `rgba(254, 240, 138, ${spAlpha.toFixed(2)})`;
+      ctx.fillRect(sparkX - 1, sparkY - 1, 2, 2);
+    }
+
+    ctx.restore();
+  }
+
   // 1. Dyskretny, półprzezroczysty biały cień pędu (trail) przy wysokich prędkościach
   const trailLen = ball.trail.length;
-  if (trailLen > 0) {
+  if (trailLen > 0 && !ball.goalAnimation?.active) {
     for (let i = 0; i < trailLen; i++) {
       const tr = ball.trail[i];
       const factor = (i + 1) / (trailLen + 1);
@@ -511,9 +679,31 @@ export function drawBall(ctx) {
     }
   }
 
-  // 2. Kula piłki Telstar
+  // 2. Kula piłki Telstar z obsługą animacji wpadania do bramki
+  const animScale = (ball.goalAnimation && ball.goalAnimation.active) ? ball.goalAnimation.scale : 1.0;
+  const animAlpha = (ball.goalAnimation && ball.goalAnimation.active) ? ball.goalAnimation.alpha : 1.0;
+  if (animAlpha <= 0.01) return;
+
   ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, animAlpha));
   ctx.translate(ball.x, ball.y);
+  if (animScale !== 1.0) {
+    ctx.scale(animScale, animScale);
+  }
+
+  // Poświata zasysania w otchłań bramki (Vortex Glow)
+  if (ball.goalAnimation && ball.goalAnimation.active) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const vGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, r * 2.4);
+    vGlow.addColorStop(0.0, ball.goalAnimation.color || '#00e5ff');
+    vGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = vGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // Maska kuli
   ctx.save();

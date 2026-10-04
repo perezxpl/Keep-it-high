@@ -625,7 +625,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = true;
       ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 2200;
-      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 740;
+      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 680;
+      ballObj.hoverBaseY = ballObj.y;
+      ballObj.isLevitating = true;
+      ballObj.goalAnimation = null;
       ballObj.prevX = ballObj.x;
       ballObj.prevY = ballObj.y;
       ballObj.vx = 0;
@@ -664,6 +667,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (ballObj) {
       ballObj.active = true;
+      ballObj.isLevitating = false;
+      ballObj.goalAnimation = null;
       ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 1800;
       ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 560;
       ballObj.prevX = ballObj.x;
@@ -703,8 +708,12 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
+      ballObj.isLevitating = false;
+      ballObj.goalAnimation = null;
       ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : arena1State.altarX;
       ballObj.y = groundY - arena1State.altarRelY;
+      ballObj.prevX = ballObj.x;
+      ballObj.prevY = ballObj.y;
       ballObj.vx = 0;
       ballObj.vy = 0;
       ballObj.spin = 0;
@@ -1574,6 +1583,9 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   const prevY = ball.prevY !== undefined ? ball.prevY : (ball.y - ball.vy);
 
   for (const plat of ARENA_PLATFORMS) {
+    if (plat.passBall || plat.isHatch || plat.id === 'hatch_l' || plat.id === 'hatch_r') {
+      continue;
+    }
     if (plat.isJumpPad || plat.type === 'jump_pad') {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const bottomY = topY + (plat.h || 14);
@@ -2059,35 +2071,8 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
   }
 
   if ((activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') && ball) {
-    for (const g of GOALS) {
-      const topY = (g.y !== undefined) ? g.y : (groundY - g.relY - g.h);
-      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (groundY - g.relY);
-      const leftX = g.x;
-      const rightX = g.x + g.w;
-
-      if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
-        const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
-        if (scoringTeam === 'CYAN') {
-          arenaScore.cyan++;
-        } else {
-          arenaScore.orange++;
-        }
-
-        triggerScreenShake(14);
-        triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
-        resetArena();
-
-        ball.x = 2200;
-        ball.y = 740;
-        ball.prevX = 2200;
-        ball.prevY = ball.y;
-        ball.vx = 0;
-        ball.vy = 0;
-        ball.spin = 0;
-        ball.trail = [];
-        break;
-      }
-    }
+    // Bramki w Arenie 3 i efekt zasysania piłki w głąb rurociągów są w pełni obsługiwane przez updateBall (js/ball.js)
+    return;
   }
 }
 

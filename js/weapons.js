@@ -703,6 +703,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       const distToBall = distPointToSegment(ball.x, ball.y, b.prevX, b.prevY, endX, endY);
 
       if (distToBall <= cR + 5) {
+        ball.isLevitating = false;
         ball.vx += b.vx * b.ballPush;
         ball.vy += b.vy * b.ballPush;
         ball.spin += (b.vx > 0 ? 0.25 : -0.25);
