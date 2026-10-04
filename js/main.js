@@ -519,9 +519,13 @@ export const BIOME_TELEPORT_TARGETS = {
 
 export function teleportToDistance(meters) {
   const targetX = START_X + (meters * 14);
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const floorY = isA3 ? 900 : GROUND_Y;
 
   player.x = targetX;
-  player.y = GROUND_Y - player.h;
+  player.y = floorY - player.h;
+  player.onGround = true;
+  player.currentGroundY = floorY;
   player.vx = 0;
   player.vy = 0;
   player.isJumping = false;
@@ -537,7 +541,7 @@ export function teleportToDistance(meters) {
   leftStick.jetpackAirborneSession = false;
 
   ball.x = targetX + (30 * (player.facing || 1));
-  ball.y = GROUND_Y - ball.radius;
+  ball.y = floorY - ball.radius;
   ball.vx = 0;
   ball.vy = 0;
   ball.spin = 0;
@@ -991,14 +995,24 @@ export function selectPlayerClass(targetClass) {
   player.deathTimer = 0;
   player.hp = player.currentClass?.stats?.hp || 100;
   player.maxHp = player.hp;
-  player.x = START_X;
-  player.y = GROUND_Y - player.h;
+
+  const currentArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  if (currentArena && Array.isArray(currentArena.spawns) && currentArena.spawns[0]) {
+    player.x = currentArena.spawns[0].x;
+    player.y = currentArena.spawns[0].y;
+  } else {
+    player.x = START_X;
+    player.y = GROUND_Y - player.h;
+  }
+
   player.vx = 0;
   player.vy = 0;
   player.airVx = 0;
   player.isJumping = false;
   player.isSliding = false;
   player.isIntro = false;
+  player.onGround = true;
+  player.currentGroundY = player.y + player.h;
   player.jetFuel = player.jetMax || 100;
 
   resetBallToPlayer(player, GROUND_Y);

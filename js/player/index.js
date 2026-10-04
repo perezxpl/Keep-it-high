@@ -27,11 +27,13 @@ export function isCeilingBlockingStand(player, groundY = 500) {
   const px = player.x + (player.w || 24) / 2;
   const halfW = (player.w || 24) / 2;
 
-  // Sprawdzenie litego skalnego sufitu jaskini i niskich sztolni
+  // Sprawdzenie stropu dolnego tunelu w Arenie 3 (The Foundry)
   if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    const ceilY = getCaveCeilingY(px, currentFloor);
-    if (standTopY < ceilY && crouchTopY >= ceilY - 14) {
-      return true;
+    const isUnderHatch = (px >= 750 && px <= 950) || (px >= 3450 && px <= 3650);
+    if (!isUnderHatch && currentFloor > 970) {
+      if (standTopY < 970 && crouchTopY >= 970 - 14) {
+        return true;
+      }
     }
   }
 
@@ -408,7 +410,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (targets) player._targets = targets;
 
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  player.groundY = isA3 ? 1180 : GROUND_Y;
+  player.groundY = isA3 ? 900 : GROUND_Y;
   if (!isA3 && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią

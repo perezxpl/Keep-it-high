@@ -34,6 +34,8 @@ export function executeReleaseJump(spawnGrass, p) {
   const jumpImpulse = (baseJumpForce * 0.67) + (p.jumpChargePower * 4.2);
   p.vy = -jumpImpulse;
   p.isJumping = true;
+  p.onGround = false;
+  p.currentPlatform = null;
   p.jumpPower = p.jumpChargePower;
   p.jumpChargePower = 0;
 

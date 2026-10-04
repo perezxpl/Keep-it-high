@@ -1174,6 +1174,27 @@ export function checkPlayerPlatformLanding(p, groundY) {
     return;
   }
 
+  // Obsługa wyrzutni / gejzerów na platformach areny (np. industrial steam vents w tunelu Areny 3)
+  for (const plat of ARENA_PLATFORMS) {
+    if (plat && (plat.isJumpPad || plat.type === 'jump_pad')) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
+        if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
+          p.y = topY - p.h - 4;
+          p.vy = plat.launchVy || -12.5;
+          p.isJumping = true;
+          p.onGround = false;
+          p.currentPlatform = null;
+          p.isCrouching = false;
+          p.airVx = p.vx;
+          triggerScreenShake(5.0);
+          spawnJetpackSparks(centerX, topY, 0, 8);
+          return;
+        }
+      }
+    }
+  }
+
   for (const obs of customObstacles) {
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const bottomY = topY + obs.h;
@@ -1267,13 +1288,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
   let landedPlatform = null;
 
   for (const plat of ARENA_PLATFORMS) {
-    if (plat.isWall) continue;
+    if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad') continue;
     if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
       const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
       const topY = surf.surfaceY;
       const prevFeetY = feetY - p.vy;
-      const isLanding = (p.vy >= 0 && prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
-        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24);
+      const isLanding = p.vy >= 0 && (
+        (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
+        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24)
+      );
 
       if (isLanding) {
         if (plat.oneWay && p.dropThroughTimer > 0) {
@@ -1490,8 +1513,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     // 1. Strop dolnego tunelu (Y = 970) blokujący wylot w górę w litą płytę
     if (p.y >= 960 && p.y <= 1220) {
-      // Przepuść gracza przez luki zrzutowe (hatch_left 770..930 i hatch_right 3470..3630)
-      const isUnderHatch = (centerX >= 770 && centerX <= 930) || (centerX >= 3470 && centerX <= 3630);
+      // Przepuść gracza przez luki zrzutowe (hatch_left 780..920 i hatch_right 3480..3620)
+      const isUnderHatch = (centerX >= 750 && centerX <= 950) || (centerX >= 3450 && centerX <= 3650);
       if (!isUnderHatch && p.y < 970) {
         p.y = 970;
         if (p.vy < 0) {
@@ -1532,6 +1555,22 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   const prevY = ball.prevY !== undefined ? ball.prevY : (ball.y - ball.vy);
 
   for (const plat of ARENA_PLATFORMS) {
+    if (plat.isJumpPad || plat.type === 'jump_pad') {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || 14);
+      if (ball.x >= plat.x - cR && ball.x <= plat.x + plat.w + cR) {
+        if (ball.y + cR >= topY - 2 && ball.y - cR <= bottomY) {
+          ball.y = topY - cR - 3;
+          ball.vy = plat.launchVy || -14.0;
+          ball.vx *= 1.05;
+          ball.spin = (ball.vx > 0 ? 1 : -1) * 0.8;
+          triggerScreenShake(5.0);
+          continue;
+        }
+      }
+      continue;
+    }
+
     if (plat.type === 'catwalk') {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const platLeft = plat.x;
@@ -4029,7 +4068,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  if (y2 >= groundY) {
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+
+  if (!isA3 && y2 >= groundY) {
     if (y1 < groundY) {
       const dy = y2 - y1;
       const t = dy !== 0 ? Math.max(0, Math.min(1, (groundY - y1) / dy)) : 0;
@@ -4040,7 +4081,7 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         y: groundY,
         nx: 0,
         ny: -1
-      });
+      }, 'ground');
     } else {
       recordHit({
         hit: true,
@@ -4049,7 +4090,29 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         y: groundY,
         nx: 0,
         ny: -1
-      });
+      }, 'ground');
+    }
+  }
+
+  // W Arenie 3 sprawdzamy globalne granice hali: sufit (y <= 34) oraz dolną granicę próżni (y >= 1390)
+  if (isA3) {
+    if (y2 >= 1390) {
+      if (y1 < 1390) {
+        const dy = y2 - y1;
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (1390 - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1390, nx: 0, ny: -1 }, 'void_bottom');
+      } else {
+        recordHit({ hit: true, t: 0, x: x1, y: 1390, nx: 0, ny: -1 }, 'void_bottom');
+      }
+    }
+    if (y2 <= 34) {
+      if (y1 > 34) {
+        const dy = y2 - y1;
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (34 - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 34, nx: 0, ny: 1 }, 'industrial_ceiling');
+      } else {
+        recordHit({ hit: true, t: 0, x: x1, y: 34, nx: 0, ny: 1 }, 'industrial_ceiling');
+      }
     }
   }
 
@@ -4062,49 +4125,63 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         const top = groundY - bar.h;
         const bottom = groundY;
         const hit = getSegmentAABBIntersection(x1, y1, x2, y2, left, top, right, bottom);
-        recordHit(hit);
+        recordHit(hit, bType);
       } else if (bar.type === 'hedgehog') {
         const cx = bar.x;
         const r = (bar.size || 30) / 2;
         const cy = groundY - r;
         const hit = getSegmentCircleIntersection(x1, y1, x2, y2, cx, cy, r);
-        recordHit(hit);
+        recordHit(hit, 'hedgehog');
       }
     }
   }
 
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
+      if (!plat) continue;
+
+      // 1. Rampa lub profil skośny
+      if (plat.isSlope || plat.type === 'ramp') {
+        const topY1 = plat.startY !== undefined ? plat.startY : (plat.startRelY !== undefined ? groundY - plat.startRelY : plat.y);
+        const topY2 = plat.endY !== undefined ? plat.endY : (plat.endRelY !== undefined ? groundY - plat.endRelY : plat.y);
+        const slopeHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x + plat.w, topY2);
+        if (slopeHit) recordHit(slopeHit, plat.id || 'ramp');
+
+        if (plat.solid) {
+          const bottomY = Math.max(topY1, topY2) + (plat.h || 20);
+          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, bottomY, plat.x + plat.w, bottomY);
+          if (bottomHit) recordHit(bottomHit, plat.id || 'ramp_bottom');
+          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, bottomY);
+          if (leftHit) recordHit(leftHit, plat.id || 'ramp_left');
+          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, bottomY);
+          if (rightHit) recordHit(rightHit, plat.id || 'ramp_right');
+        }
+        continue;
+      }
+
+      // 2. Skaliste wyspy i profile wielokątne z surfacePoints
       if (plat.type === 'rock_platform' || plat.type === 'citadel_island' || plat.type === 'altar_island') {
         if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
           const pts = plat.surfacePoints;
           for (let i = 0; i < pts.length - 1; i++) {
-            const hit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[i].x, groundY - pts[i].relY, pts[i + 1].x, groundY - pts[i + 1].relY);
-            if (hit) recordHit(hit);
+            const p1y = pts[i].y !== undefined ? pts[i].y : (groundY - pts[i].relY);
+            const p2y = pts[i + 1].y !== undefined ? pts[i + 1].y : (groundY - pts[i + 1].relY);
+            const hit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[i].x, p1y, pts[i + 1].x, p2y);
+            if (hit) recordHit(hit, plat.id || 'rock_surface');
           }
-          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY - pts[0].relY, pts[0].x, groundY);
-          if (leftHit) recordHit(leftHit);
-          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[pts.length - 1].x, groundY - pts[pts.length - 1].relY, pts[pts.length - 1].x, groundY);
-          if (rightHit) recordHit(rightHit);
+          const p0y = pts[0].y !== undefined ? pts[0].y : (groundY - pts[0].relY);
+          const plastY = pts[pts.length - 1].y !== undefined ? pts[pts.length - 1].y : (groundY - pts[pts.length - 1].relY);
+          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, p0y, pts[0].x, groundY);
+          if (leftHit) recordHit(leftHit, plat.id || 'rock_left');
+          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[pts.length - 1].x, plastY, pts[pts.length - 1].x, groundY);
+          if (rightHit) recordHit(rightHit, plat.id || 'rock_right');
           const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY, pts[pts.length - 1].x, groundY);
-          if (bottomHit) recordHit(bottomHit);
-        } else if (plat.isSlope) {
-          const topY1 = groundY - plat.startRelY;
-          const topY2 = groundY - plat.endRelY;
-          const slopeHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x + plat.w, topY2);
-          if (slopeHit) recordHit(slopeHit);
-          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, groundY, plat.x + plat.w, groundY);
-          if (bottomHit) recordHit(bottomHit);
-          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, groundY);
-          if (leftHit) recordHit(leftHit);
-          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, groundY);
-          if (rightHit) recordHit(rightHit);
+          if (bottomHit) recordHit(bottomHit, plat.id || 'rock_bottom');
         } else {
-          const topY = groundY - plat.relY;
-          const thick = plat.thickness || 20;
-
+          const topY = plat.y !== undefined ? plat.y : (groundY - plat.relY);
+          const thick = plat.thickness || plat.h || 20;
           const rockHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
-          recordHit(rockHit);
+          recordHit(rockHit, plat.id || 'rock_slab');
         }
 
         if (Array.isArray(plat.props)) {
@@ -4114,17 +4191,31 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
               const bx = plat.x + prop.rx;
               const by = topY - prop.h;
               const propHit = getSegmentAABBIntersection(x1, y1, x2, y2, bx, by, bx + prop.w, topY);
-              recordHit(propHit);
+              recordHit(propHit, prop.type || 'prop');
             }
           }
         }
-      } else if (plat.type === 'catwalk') {
-        // Przez wieżę obserwacyjną, kładki wiszące, drabiny i schrony można swobodnie strzelać!
+        continue;
+      }
+
+      // 3. Kładki catwalk
+      if (plat.type === 'catwalk') {
         if (!plat.isTowerDeck && !plat.isSkywalk && !plat.isLadder && !plat.isRavineDeck && !plat.isRavineRoof && !plat.isTunnelFloor) {
-          const topY = groundY - plat.relY;
-          const thick = plat.thickness || 14;
+          const topY = plat.y !== undefined ? plat.y : (groundY - plat.relY);
+          const thick = plat.thickness || plat.h || 14;
           const catHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
-          recordHit(catHit);
+          recordHit(catHit, plat.id || 'catwalk');
+        }
+        continue;
+      }
+
+      // 4. Lite platformy przemysłowe areny (np. floor_l1, floor_l2, floor_r1, floor_r2, furnace_deck, tunnel_floor)
+      if (plat.solid && !plat.oneWay) {
+        const topY = plat.y !== undefined ? plat.y : (plat.relY !== undefined ? groundY - plat.relY : null);
+        const thick = plat.h || plat.thickness || 20;
+        if (topY !== null) {
+          const solidHit = getSegmentAABBIntersection(x1, y1, x2, y2, plat.x, topY, plat.x + plat.w, topY + thick);
+          if (solidHit) recordHit(solidHit, plat.id || 'solid_platform');
         }
       }
     }

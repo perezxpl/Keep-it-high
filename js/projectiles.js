@@ -113,7 +113,7 @@ export class AeroSuperGrenade {
 
     // 2. Odbicie od poziomu podłogi
     const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const floorBounceY = isA3 ? 1180 : groundY;
+    const floorBounceY = isA3 ? 1270 : groundY;
     if (this.y + this.radius >= floorBounceY) {
       this.y = floorBounceY - this.radius;
       this.vy = -this.vy * this.restitution;

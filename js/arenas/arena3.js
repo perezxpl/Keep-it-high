@@ -49,7 +49,10 @@ export const ARENA_3_PLATFORMS = [
   },
   { id: 'furnace_deck', x: 1980, w: 440, y: 800, h: 20, solid: true, isPlatform: true },
   // Podłoga dolnego tunelu
-  { id: 'tunnel_floor', x: 160, w: 4080, y: 1270, h: 130, solid: true, isPlatform: true }
+  { id: 'tunnel_floor', x: 160, w: 4080, y: 1270, h: 130, solid: true, isPlatform: true },
+  // Przemysłowe gejzery parowe / wyrzutnie ciśnieniowe pod lukami zrzutowymi (Industrial Steam Vents / Jump Pads)
+  { id: 'vent_left', type: 'jump_pad', x: 800, w: 100, y: 1256, h: 14, isPlatform: true, isJumpPad: true, launchVy: -18.5 },
+  { id: 'vent_right', type: 'jump_pad', x: 3500, w: 100, y: 1256, h: 14, isPlatform: true, isJumpPad: true, launchVy: -18.5 }
 ];
 
 // Aliasy dla zachowania wstecznej kompatybilności
@@ -262,7 +265,40 @@ export function drawArena3Background(ctx, camera) {
 // RENDEROWANIE ELEMENTÓW PIERWSZOPLANOWYCH
 // =========================================================================
 export function drawArena3Foreground(ctx, camera) {
-  // Dynamiczne obiekty pierwszoplanowe (bramki wypalone bezpośrednio w tła PNG jako portale 3D)
+  if (!ctx) return;
+  // Rysowanie kratek gejzerów parowych w dolnym tunelu
+  ctx.save();
+  for (const ventX of [800, 3500]) {
+    const ventY = 1256;
+    const ventW = 100;
+    const ventH = 14;
+
+    // Stalowa obudowa wpuszczona w posadzkę
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(ventX, ventY, ventW, ventH);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ventX, ventY, ventW, ventH);
+
+    // Ruszt ciśnieniowy / kratka wylotowa z poświatą termiczną
+    ctx.fillStyle = '#f97316';
+    ctx.shadowColor = '#ea580c';
+    ctx.shadowBlur = 8;
+    for (let gx = ventX + 10; gx < ventX + ventW - 10; gx += 14) {
+      ctx.fillRect(gx, ventY + 3, 6, 8);
+    }
+    ctx.shadowBlur = 0;
+
+    // Strzałka wylotowa wskazująca ucieczkę w górę przez luk
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ventX + ventW / 2 - 10, ventY + 10);
+    ctx.lineTo(ventX + ventW / 2, ventY + 4);
+    ctx.lineTo(ventX + ventW / 2 + 10, ventY + 10);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // =========================================================================

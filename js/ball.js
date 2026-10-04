@@ -20,17 +20,28 @@ export const ball = {
 };
 
 export function resetBallToPlayer(p, GROUND_Y) {
-  p.x = START_X - 60; // Start przed linią 0m (x = 100)
-  p.isIntro = true;
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  if (isA3) {
+    p.x = 600;
+    p.y = 830;
+    p.facing = 1;
+    ball.x = p.x + 20;
+    ball.y = 900 - ball.colRadius;
+    p.isIntro = false;
+    p.gaitMode = 'IDLE';
+  } else {
+    p.x = START_X - 60; // Start przed linią 0m (x = 100)
+    p.isIntro = true;
+    p.gaitMode = 'PODBICIE Z ZIEMI';
+    ball.x = p.x + (20 * p.facing);
+    ball.y = GROUND_Y - ball.colRadius;
+  }
   p.juggleTimer = 0;
   p.vx = 0;
   p.intendedVx = 0;
   p.kickState = 'IDLE';
-  p.gaitMode = 'PODBICIE Z ZIEMI';
   if (p.aimX === undefined || p.aimX === 0) p.aimX = p.x + (160 * p.facing);
-  if (p.aimY === undefined || p.aimY === 0) p.aimY = GROUND_Y - 50;
-  ball.x = p.x + (20 * p.facing);
-  ball.y = GROUND_Y - ball.colRadius;
+  if (p.aimY === undefined || p.aimY === 0) p.aimY = (isA3 ? 900 : GROUND_Y) - 50;
   ball.prevX = ball.x;
   ball.prevY = ball.y;
   ball.vx = 0;
@@ -193,9 +204,16 @@ export function updateBall(GROUND_Y) {
     }
 
     // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego
-    if (ball.y > GROUND_Y + 280) {
-      ball.x = 960;
-      ball.y = GROUND_Y - ball.colRadius - 30;
+    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+    const ballVoidLimit = isA3 ? 1380 : (GROUND_Y + 280);
+    if (ball.y > ballVoidLimit) {
+      if (isA3) {
+        ball.x = 2200;
+        ball.y = 740;
+      } else {
+        ball.x = 960;
+        ball.y = GROUND_Y - ball.colRadius - 30;
+      }
       ball.prevX = ball.x;
       ball.prevY = ball.y;
       ball.vx = 0;

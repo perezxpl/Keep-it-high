@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
 import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
-import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY } from '../obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 
 /**
@@ -331,15 +331,28 @@ export function handlePlayerDeath(player, groundY) {
 
     if (player.pose) player.pose.initialized = false;
 
-    if (player.isBot) {
-      player.x = START_X + 600;
-      player.y = groundY - player.h;
-      player.facing = -1;
+    const activeArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    if (activeArena && Array.isArray(activeArena.spawns)) {
+      if (player.isBot && activeArena.spawns[1]) {
+        player.x = activeArena.spawns[1].x;
+        player.y = activeArena.spawns[1].y;
+        player.facing = -1;
+      } else if (!player.isBot && activeArena.spawns[0]) {
+        player.x = activeArena.spawns[0].x;
+        player.y = activeArena.spawns[0].y;
+        player.facing = 1;
+      } else {
+        player.x = player.isBot ? (START_X + 600) : (START_X - 60);
+        player.y = groundY - player.h;
+        player.facing = player.isBot ? -1 : 1;
+      }
     } else {
-      player.x = START_X - 60;
+      player.x = player.isBot ? (START_X + 600) : (START_X - 60);
       player.y = groundY - player.h;
-      player.facing = 1;
+      player.facing = player.isBot ? -1 : 1;
     }
+    player.onGround = true;
+    player.currentGroundY = player.y + player.h;
     player.vx = 0;
     player.vy = 0;
     player.airVx = 0;
