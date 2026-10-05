@@ -4,6 +4,7 @@
 // Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1, zero importów z wyższych warstw)
 // =========================================================================
 
+import { CONFIG } from '../config.js';
 import { spawnStretchedSparks, spawnRicochetSparks } from '../particles.js';
 
 // 1. Obraz tła hali przemysłowej generowany skryptem Python (foundry_bg.png)
@@ -743,74 +744,141 @@ export function updateArena3(dt, players, ball) {
       spawnStretchedSparks(maxX - 8, floorY - 25, 8);
     }
 
-    // 3. Obsługa pasażera jadącego wewnątrz wagonika
+    // 3. Obsługa pasażera stojącego wewnątrz wagonika
     if (cart.passenger) {
       const p = cart.passenger;
-      const pFootX = p.x + (p.w || 24) / 2;
-      const pFootY = p.y + (p.h || 70);
-      const cartFloorY = cart.y + cart.h - 18;
+      const charW = p.w || 24;
+      const charH = p.h || 70;
+      const pFootX = p.x + charW / 2;
+      const cartFloorY = cart.y + 48; // Precyzyjnie dopasowany poziom podłogi wewnątrz misy wagonika
 
-      // Sprawdzenie czy gracz nie wyskoczył lub nie wyszedł z wagonika
-      const isStillInside = !p.isDead &&
-        pFootX >= cart.x - 12 && pFootX <= cart.x + cart.w + 12 &&
-        Math.abs(pFootY - cartFloorY) < 32 &&
-        (p.vy >= -2);
+      // Sprawdzenie czy gracz nie zginął lub nie wyskoczył
+      const wantJumpOut = p.isJumping || p.vy < -2 || (p.keys && (p.keys.up || p.keys.KeyW || p.keys.Space));
+      const isFarOut = pFootX < cart.x - 15 || pFootX > cart.x + cart.w + 15;
 
-      if (isStillInside) {
+      if (!p.isDead && !wantJumpOut && !isFarOut) {
+        // Postać stoi fizycznie na podłodze wagonika
         p.onGround = true;
+        p.isJumping = false;
         p.currentGroundY = cartFloorY;
-        p.y = cartFloorY - (p.h || 70);
+        p.y = cartFloorY - charH;
         p.vy = 0;
+
+        // Poruszanie się razem z wagonikiem
         p.x += cart.vx * dt;
+
+        // Ograniczenie ruchu do wnętrza misy wagonika
+        const minInX = cart.x + 8;
+        const maxInX = cart.x + cart.w - charW - 8;
+        if (p.x < minInX) p.x = minInX;
+        if (p.x > maxInX) p.x = maxInX;
 
         // Sterowanie / napędzanie wagonika od środka
         const moveLeft = p.keys?.left || p.keys?.KeyA || p.keys?.ArrowLeft || (p.leftStick && p.leftStick.x < -0.3);
         const moveRight = p.keys?.right || p.keys?.KeyD || p.keys?.ArrowRight || (p.leftStick && p.leftStick.x > 0.3);
 
-        if (moveLeft) cart.vx -= 180 * dt;
-        if (moveRight) cart.vx += 180 * dt;
+        if (moveLeft) cart.vx -= 240 * dt;
+        if (moveRight) cart.vx += 240 * dt;
       } else {
         cart.passenger = null;
         if (p.currentGroundY === cartFloorY) {
           p.currentGroundY = floorY;
         }
+        if (wantJumpOut && !p.isDead) {
+          p.vy = -(CONFIG.JUMP_FORCE || 9.8);
+          p.isJumping = true;
+          p.onGround = false;
+        }
       }
     }
 
-    // 4. Detekcja wejścia postaci do środka oraz kolizji zewnętrznych
+    // 4. Detekcja wejścia postaci do środka, taranowania, wślizgu i zderzeń (ZERO DUCHÓW!)
     if (Array.isArray(players)) {
       for (const p of players) {
         if (!p || p.isDead) continue;
-        const pCenterX = p.x + (p.w || 24) / 2;
-        const pFootY = p.y + (p.h || 70);
-        const cartFloorY = cart.y + cart.h - 18;
+        const charW = p.w || 24;
+        const charH = p.h || 70;
+        const pLeft = p.x;
+        const pRight = p.x + charW;
+        const pCenterX = p.x + charW / 2;
+        const pFootY = p.y + charH;
+        const pHeadY = p.y;
+        const cartFloorY = cart.y + 48;
 
-        // (A) Wskoczenie / wejście do pustego wagonika
+        // (A) Wskoczenie od góry do wnętrza pustego wagonika
         if (!cart.passenger &&
             pCenterX >= cart.x + 14 && pCenterX <= cart.x + cart.w - 14 &&
-            pFootY >= cart.y + 12 && pFootY <= cartFloorY + 20 &&
-            p.vy >= -1) {
+            pFootY >= cart.y + 10 && pFootY <= cartFloorY + 18 &&
+            p.vy >= -1 && !p.isSliding) {
           cart.passenger = p;
           p.onGround = true;
+          p.isJumping = false;
           p.currentGroundY = cartFloorY;
-          p.y = cartFloorY - (p.h || 70);
+          p.y = cartFloorY - charH;
           p.vy = 0;
-          cart.bounce = 3;
+          cart.bounce = 4;
           continue;
         }
 
-        // (B) Kolizje z postaciami na zewnątrz wagonika
+        // (B) Interakcje postaci z zewnątrz wagonika
         if (cart.passenger !== p) {
-          const charW = p.w || 24;
-          const charH = p.h || 70;
-
-          if (pFootY >= cart.y && p.y <= cart.y + cart.h) {
-            // Popchnięcie od boku
-            if (p.x + charW >= cart.x && p.x + charW <= cart.x + 18 && p.vx > 0.3) {
-              cart.vx += p.vx * 0.5;
+          // 1. Detekcja kopnięcia (Spartan kick lub normalny wymach nogą)
+          const isKickingNow = (p.kickState === 'SWING' || (p.spartanTimer && p.spartanTimer > 0) || p.isKicking);
+          if (isKickingNow) {
+            const kickReach = 75;
+            const isNearCart = (pRight >= cart.x - kickReach && pLeft <= cart.x + cart.w + kickReach) &&
+                               Math.abs(pFootY - (cart.y + cart.h)) < 50;
+            if (isNearCart && !p._cartKicked) {
+              p._cartKicked = true;
+              const dir = (p.facing !== undefined) ? p.facing : (pCenterX < cart.x + cart.w / 2 ? 1 : -1);
+              const force = (p.kickForce || 1.1) * 780;
+              cart.vx += dir * force;
+              cart.bounce = 8;
+              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 20);
             }
-            if (p.x <= cart.x + cart.w && p.x >= cart.x + cart.w - 18 && p.vx < -0.3) {
-              cart.vx += p.vx * 0.5;
+          } else {
+            p._cartKicked = false;
+          }
+
+          // 2. FIZYCZNA SOLIDNA BARIERA BOCZNA - WŚLIZG I BIEG (NIE PRZECHODZIĆ JAK DUCH!)
+          if (pFootY > cart.y + 12 && pHeadY < cart.y + cart.h + 5) {
+            // Zderzenie od lewej strony (postać uderza w lewy bok wagonika)
+            if (pRight >= cart.x && pLeft < cart.x + 28) {
+              p.x = cart.x - charW; // Zatrzymanie na burcie!
+
+              if (p.isSliding) {
+                // Potężne uderzenie wślizgiem w bok wagonika!
+                const slideImpulse = Math.max(220, Math.abs((p.vx || 10) * 60) * 1.15);
+                cart.vx += slideImpulse;
+                cart.bounce = 6;
+                spawnStretchedSparks(cart.x, pFootY - 12, 18);
+                p.isSliding = false; // Zatrzymanie ślizgu
+                p.vx = 0;
+              } else {
+                if (p.vx > 0) {
+                  cart.vx += p.vx * 0.75;
+                  p.vx = Math.min(p.vx, cart.vx * 0.4);
+                }
+              }
+            }
+            // Zderzenie od prawej strony (postać uderza w prawy bok wagonika)
+            else if (pLeft <= cart.x + cart.w && pRight > cart.x + cart.w - 28) {
+              p.x = cart.x + cart.w; // Zatrzymanie na prawej burcie!
+
+              if (p.isSliding) {
+                // Potężne uderzenie wślizgiem w lewo!
+                const slideImpulse = Math.max(220, Math.abs((p.vx || -10) * 60) * 1.15);
+                cart.vx -= slideImpulse;
+                cart.bounce = 6;
+                spawnStretchedSparks(cart.x + cart.w, pFootY - 12, 18);
+                p.isSliding = false;
+                p.vx = 0;
+              } else {
+                if (p.vx < 0) {
+                  cart.vx += p.vx * 0.75;
+                  p.vx = Math.max(p.vx, cart.vx * 0.4);
+                }
+              }
             }
 
             // Taranowanie przy dużej prędkości wagonika
@@ -870,39 +938,79 @@ export function updateArena3(dt, players, ball) {
 // =========================================================================
 // HAKI KOLIZJI POCISKÓW, KOPNIĘCIA I EKSPLOZJI
 // =========================================================================
+function segmentIntersectsAABB(x1, y1, x2, y2, minX, minY, maxX, maxY) {
+  if ((x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) ||
+      (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)) {
+    return true;
+  }
+  if (Math.max(x1, x2) < minX || Math.min(x1, x2) > maxX ||
+      Math.max(y1, y2) < minY || Math.min(y1, y2) > maxY) {
+    return false;
+  }
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [x1 - minX, maxX - x1, y1 - minY, maxY - y1];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false;
+    } else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return t0 <= t1;
+}
+
 export function onArena3BulletHit(bullet) {
   if (!bullet || !bullet.alive) return false;
 
+  const bx1 = (typeof bullet.prevX === 'number') ? bullet.prevX : (bullet.x - (bullet.vx || 0));
+  const by1 = (typeof bullet.prevY === 'number') ? bullet.prevY : (bullet.y - (bullet.vy || 0));
+  const bx2 = bullet.x;
+  const by2 = bullet.y;
+
   for (const cart of ARENA_3_MINECARTS) {
-    const cartRight = cart.x + cart.w;
-    const cartBottom = cart.y + cart.h;
+    const cartMinX = cart.x;
+    const cartMaxX = cart.x + cart.w;
+    const cartMinY = cart.y;
+    const cartMaxY = cart.y + cart.h;
 
-    if (bullet.x >= cart.x && bullet.x <= cartRight &&
-        bullet.y >= cart.y && bullet.y <= cartBottom) {
-
+    if (segmentIntersectsAABB(bx1, by1, bx2, by2, cartMinX, cartMinY, cartMaxX, cartMaxY)) {
       // Przekazanie pędu pocisku na masę wagonika
-      const bulletImpulse = (bullet.vx || 0) * 0.32;
+      const bulletImpulse = (bullet.vx || 0) * 0.45;
       cart.vx += bulletImpulse;
-      cart.bounce = 2.5;
+      cart.bounce = 3.0;
 
-      // Jeśli trafienie w stalową burtę lub podwozie (pancerz)
-      if (bullet.y >= cart.y + 18) {
-        const nx = bullet.vx > 0 ? -1 : 1;
-        spawnRicochetSparks(bullet.x, bullet.y, nx, -0.3, 6);
+      // Punkt uderzenia
+      const hitX = Math.max(cartMinX, Math.min(cartMaxX, bx2));
+      const hitY = Math.max(cartMinY, Math.min(cartMaxY, by2));
+
+      // Jeśli trafienie w stalową burtę lub koła (pancerz poniżej rantu)
+      if (hitY >= cart.y + 16) {
+        const nx = (bullet.vx || 1) > 0 ? -1 : 1;
+        spawnRicochetSparks(hitX, hitY, nx, -0.3, 8);
         return true; // Kula zablokowana przez stalowy pancerz
       }
 
-      // Jeśli trafienie powyżej rantu (otwarte wnętrze)
+      // Jeśli trafienie powyżej rantu (otwarte wnętrze misy)
       if (cart.passenger) {
-        // Jeśli pasażer kuca, jest w pełni schowany za burtą
+        // Jeśli pasażer kuca, jest w 100% schowany za burtą
         if (cart.passenger.isCrouching) {
-          spawnRicochetSparks(bullet.x, bullet.y, 0, -1, 4);
-          return true;
+          spawnRicochetSparks(hitX, hitY, 0, -1, 6);
+          return true; // Kula zablokowana, rykoszet
         }
         // Jeśli pasażer stoi, pocisk trafia jego wystającą sylwetkę
         return false;
       } else {
-        spawnRicochetSparks(bullet.x, bullet.y, 0, -1, 4);
+        spawnRicochetSparks(hitX, hitY, 0, -1, 6);
         return true;
       }
     }
@@ -925,10 +1033,10 @@ export function onArena3KickHit(player, kickBox) {
 
     if (overlap) {
       const dir = (player.facing !== undefined) ? player.facing : (kickBox.x < cart.x + cart.w / 2 ? 1 : -1);
-      const force = (player.kickForce || 1.0) * 640;
+      const force = (player.kickForce || 1.1) * 780;
       cart.vx += dir * force;
       cart.bounce = 8;
-      spawnStretchedSparks(kickBox.x + kickBox.w / 2, kickBox.y + kickBox.h / 2, 16);
+      spawnStretchedSparks(kickBox.x + kickBox.w / 2, kickBox.y + kickBox.h / 2, 18);
       hitAny = true;
     }
   }
