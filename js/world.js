@@ -2755,8 +2755,9 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK (SZTYWNO UMIEJSCOWIONY, NATURALNIE PRZEZROCZYSTY)
   if (leftStick && leftStick.baseX > 0) {
     const isStickActive = leftStick.active;
-    const isJetReady = leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0;
-    const isJetActive = leftStick.isJetpacking;
+    const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy || 0) > 0.5);
+    const isJetReady = isAirborne && (player.jetFuel || 0) > 0;
+    const isJetActive = player.isJetpacking || leftStick.isJetpacking;
 
     let stickBorder = isStickActive ? '#38bdf8' : 'rgba(255, 255, 255, 0.18)';
     let stickGlow = 'transparent';

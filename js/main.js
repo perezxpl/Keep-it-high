@@ -186,21 +186,13 @@ canvas.addEventListener('touchstart', (e) => {
         }
       }
 
-      if (leftStick.jetpackAirborneSession) {
+      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+      if (isAirborne && leftStick.axisY < -0.25 && (player.jetFuel || 0) > 0) {
         leftStick.isJetpacking = true;
-      } else if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0 && player.isJumping && (player.jetFuel || 0) > 0) {
-        // Ponowne pchnięcie/dotknięcie w górę w locie (w oknie 280ms): aktywacja jetpacka
-        leftStick.isJetpacking = true;
-        leftStick.jetpackAirborneSession = true;
-        jetpackAirborneSession = true;
         isJetpackActive = true;
-        leftStick.waitingForJetpackTap = false;
-        leftStick.jetpackWindowTimer = 0;
-        leftStick.canDoublePushJetpack = false;
+        player.isJetpacking = true;
       } else {
         leftStick.isJetpacking = false;
-        leftStick.waitingForJetpackTap = false;
-        leftStick.jetpackWindowTimer = 0;
       }
     }
 
@@ -421,58 +413,45 @@ canvas.addEventListener('touchmove', (e) => {
       // Aktualizacja kontekstu przycisków mobilnych (w tym pojawiania się przycisku leżenia)
       updateMobileControlStates(player, leftStick, btnCluster);
 
-      // 1. Pchnięcie w górę (axisY < -0.55): natychmiastowy skok
-      if (leftStick.axisY < -0.55) {
-        if (!leftStick.jumpTriggered && !player.isJumping && !player.isSliding && !player.isIntro && !leftStick.jetpackAirborneSession) {
-          const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-          player.vy = -jumpForce;
-          player.isJumping = true;
-          player.isCrouching = false;
-          player.isProne = false;
-          player.crouchToggled = false;
-          player.airVx = player.vx;
-          leftStick.jumpTriggered = true;
-          // Okno 280ms na ponowne pchnięcie w locie do aktywacji jetpacka:
-          leftStick.waitingForJetpackTap = true;
-          leftStick.jetpackWindowTimer = 280;
-          leftStick.canDoublePushJetpack = false;
-          if (spawnGrass && player.groundY) {
-            spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
-          }
-        } else if (player.isJumping && leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0 && leftStick.canDoublePushJetpack && (player.jetFuel || 0) > 0) {
-          // Ponowne pchnięcie w górę w locie (w oknie 280ms): aktywacja jetpacka
-          leftStick.isJetpacking = true;
-          leftStick.jetpackAirborneSession = true;
-          jetpackAirborneSession = true;
-          isJetpackActive = true;
-          leftStick.waitingForJetpackTap = false;
-          leftStick.jetpackWindowTimer = 0;
-          leftStick.canDoublePushJetpack = false;
-        }
-      } else if (leftStick.axisY > -0.25) {
-        leftStick.jumpTriggered = false;
-        if (leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0) {
-          leftStick.canDoublePushJetpack = true;
-        }
-      }
+      // Uniesienie drążka w górę (skok na ziemi lub jetpack w powietrzu)
+      if (leftStick.axisY < -0.30) {
+        player.crouchToggled = false;
+        player.isCrouching = false;
+        player.isProne = false;
 
-      // 2. W locie jetpackiem: sterowanie lewo/prawo działa tylko przy utrzymaniu gałki uniesionej (axisY < -0.15).
-      // Pociągnięcie w dół natychmiast odcina ciąg silników.
-      if (leftStick.jetpackAirborneSession || leftStick.isJetpacking) {
-        if (leftStick.axisY > 0.15) {
-          // Pociągnięcie w dół natychmiast odcina ciąg silników
-          leftStick.isJetpacking = false;
-          isJetpackActive = false;
-          player.isJetpacking = false;
-        } else if (leftStick.axisY < -0.15 && (player.jetFuel || 0) > 0) {
-          isJetpackActive = true;
-          leftStick.isJetpacking = true;
-          leftStick.jetpackAirborneSession = true;
-          jetpackAirborneSession = true;
+        const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+
+        if (isAirborne) {
+          // W POWIETRZU: bezpośrednie działanie jetpacka w powietrzu bez okna czasowego
+          if ((player.jetFuel || 0) > 0) {
+            leftStick.isJetpacking = true;
+            isJetpackActive = true;
+            player.isJetpacking = true;
+          } else {
+            leftStick.isJetpacking = false;
+            isJetpackActive = false;
+            player.isJetpacking = false;
+          }
         } else {
-          isJetpackActive = false;
-          leftStick.isJetpacking = false;
+          // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (axisY < -0.55)
+          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+            const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+            player.vy = -jumpForce;
+            player.isJumping = true;
+            player.onGround = false;
+            player.airVx = player.vx;
+            leftStick.jumpTriggered = true;
+            if (spawnGrass && player.groundY) {
+              spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
+            }
+          }
         }
+      } else if (leftStick.axisY > -0.15) {
+        // Powrót do centrum lub ruch w dół: odcięcie silników jetpacka
+        leftStick.jumpTriggered = false;
+        leftStick.isJetpacking = false;
+        isJetpackActive = false;
+        player.isJetpacking = false;
       }
 
       // Podwójne szybkie szarpnięcie w dół (Double flick w oknie 80-350ms): zeskakiwanie z platformy
@@ -535,16 +514,9 @@ function endTouch(e) {
       leftStick.active = false;
       leftStick.id = null;
 
-      const hadUpwardMotion = (leftStick.axisY < -0.40) || leftStick.jumpTriggered;
-
       isJetpackActive = false;
       leftStick.isJetpacking = false;
-
-      if (!leftStick.jetpackAirborneSession && hadUpwardMotion && player.isJumping) {
-        leftStick.waitingForJetpackTap = true;
-        leftStick.jetpackWindowTimer = 280;
-        leftStick.canDoublePushJetpack = true;
-      }
+      player.isJetpacking = false;
 
       if (leftStick.downIntent) {
         const duration = performance.now() - leftStick.downStartTime;
@@ -1999,33 +1971,24 @@ window.addEventListener('keydown', (e) => {
     player.isCrouching = false;
     player.crouchToggled = false;
 
-    const now = Date.now();
-    const timeSinceLastPress = now - lastWPressTime;
-    const isDoubleTap = (timeSinceLastPress < DOUBLE_TAP_WINDOW_MS);
+    const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
 
-    if (isDoubleTap && (player.jetFuel || 0) > 0) {
-      // Podwójne wciśnięcie W (<300ms): aktywacja stanu jetpacka
+    if (isAirborne && (player.jetFuel || 0) > 0) {
+      // W POWIETRZU: bezpośrednie uruchomienie jetpacka bez wymogu podwójnego kliknięcia czy okna czasowego
       isJetpackActive = true;
       player.isJetpacking = true;
       jetpackAirborneSession = true;
-      if (leftStick) leftStick.jetpackAirborneSession = true;
-    } else {
-      isJetpackActive = false;
-      player.isJetpacking = false;
-
-      // Pojedyncze wciśnięcie W: odpowiada WYŁĄCZNIE za normalny skok z podłoża
-      if (!player.isJumping && !player.isSliding && !player.isIntro) {
-        const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-        player.vy = -jumpForce;
-        player.isJumping = true;
-        player.onGround = false;
-        player.airVx = player.vx;
-        if (spawnGrass && player.groundY) {
-          spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
-        }
+    } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
+      // NA ZIEMI: normalny skok z podłoża
+      const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+      player.vy = -jumpForce;
+      player.isJumping = true;
+      player.onGround = false;
+      player.airVx = player.vx;
+      if (spawnGrass && player.groundY) {
+        spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
       }
     }
-    lastWPressTime = now;
   }
   if (e.code === 'Space' && !keys.space) {
     keys.space = true;
@@ -2481,10 +2444,12 @@ function update() {
     }
   }
 
-  // SILNIK JETPACKA
-  const isStickRaised = !!(leftStick && leftStick.axisY < -0.15);
-  const isTouchFlight = !!(leftStick && leftStick.isJetpacking && isStickRaised);
-  const isFlightActive = ((isJetpackActive && keys.up) || isTouchFlight) && !player.isDead && player.jetFuel > 0;
+  // SILNIK JETPACKA (Działa w powietrzu, bez ograniczenia oknem czasowym)
+  const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+  const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.25);
+  const isTouchFlight = !!(isStickRaised && isAirborne);
+  const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne);
+  const isFlightActive = (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
   if (isFlightActive) {
     player.isJetpacking = true;
     player.jetFuel = Math.max(0, player.jetFuel - 0.95);
