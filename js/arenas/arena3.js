@@ -1,182 +1,537 @@
 // =========================================================================
-// ARENAS/ARENA3.JS - THE FOUNDRY (4400x1400 PX INDUSTRIAL FACILITY)
+// ARENAS/ARENA3.JS - AERO-RAFINERIA / PODNIEBNY DYSTRYKT (4400x1400 PX)
 // Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
 // Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1, zero importów z wyższych warstw)
+//
+// Architektura:
+// - Statyczne tło i architektura: wygenerowane w grafice PNG (assets/aero_refinery_bg.png)
+//   oraz modułowe sprite'y PNG (bramki, most, platformy, windy, kładki szklane)
+// - Obiekty i efekty ruchome: generowane w kodzie (kłębiące się chmury burzowe,
+//   para pod ciśnieniem z rur, obracające się łopatki wielkiego wentylatora,
+//   iskry na kablach, pulsujące lasery w bramkach, niska mgła na autostradzie,
+//   oraz plazma silników antygrawitacyjnych wind towarowych).
 // =========================================================================
 
-import { CONFIG } from '../config.js';
-import { spawnStretchedSparks, spawnRicochetSparks, spawnConcreteDebris } from '../particles.js';
+// 1. ZASOBY GRAFICZNE PNG
+const bgImg = new Image();
+bgImg.src = 'assets/aero_refinery_bg.png';
 
-// 1. Obraz tła hali przemysłowej generowany skryptem Python (foundry_bg.png)
-const foundryBgImage = new Image();
-foundryBgImage.src = 'foundry_bg.png';
+const fanBladesImg = new Image();
+fanBladesImg.src = 'assets/aero_fan_blades.png';
 
-// 2. Modułowe zasoby graficzne wagoników kopalnianych (PNG z przezroczystością)
-const cartBodyImg = new Image();
-cartBodyImg.src = 'assets/minecart_body.png';
+const platformTileImg = new Image();
+platformTileImg.src = 'assets/aero_platform_tile.png';
 
-const cartWheelImg = new Image();
-cartWheelImg.src = 'assets/minecart_wheel.png';
+const suspensionBridgeImg = new Image();
+suspensionBridgeImg.src = 'assets/aero_suspension_bridge.png';
 
-const cartInteriorImg = new Image();
-cartInteriorImg.src = 'assets/minecart_interior_back.png';
+const cargoPlatformImg = new Image();
+cargoPlatformImg.src = 'assets/aero_cargo_platform.png';
 
-const cartFrontImg = new Image();
-cartFrontImg.src = 'assets/minecart_front_chassis.png';
+const goalApertureImg = new Image();
+goalApertureImg.src = 'assets/aero_goal_aperture.png';
 
-// 3. Bramki przemysłowe w ścianach hali - grafiki JPG dziur w ścianach
-const holeCyanImg = new Image();
-holeCyanImg.src = 'assets/hole_cyan.jpg';
+const glassPlatformImg = new Image();
+glassPlatformImg.src = 'assets/aero_glass_platform.png';
 
-const holeOrangeImg = new Image();
-holeOrangeImg.src = 'assets/hole_orange.jpg';
-
-// 4. Modułowe zasoby graficzne zniszczeń terenu (Destruction Kit)
-const craterEdgeLeftImg = new Image();
-craterEdgeLeftImg.src = 'assets/crater_edge_left.png';
-
-const craterEdgeRightImg = new Image();
-craterEdgeRightImg.src = 'assets/crater_edge_right.png';
-
-const scorchBlastImg = new Image();
-scorchBlastImg.src = 'assets/scorch_blast.png';
+const wallPanelImg = new Image();
+wallPanelImg.src = 'assets/aero_steel_wall_panel.png';
 
 // =========================================================================
-// STATYCZNA GEOMETRIA I PLATFORMY (ARENA_3_PLATFORMS)
+// 2. STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE (ARENA_3_PLATFORMS)
 // =========================================================================
 export const ARENA_3_PLATFORMS = [
-  // Płyta główna hali (ciągła żelbetowa posadzka Y = 900 na całej szerokości hali 4400 px)
-  { id: 'floor_main', x: 0, w: 4400, y: 900, h: 70, solid: true, isPlatform: true },
-  // Posadzka dolnego tunelu z torowiskiem (Y = 1270, grubość 130 px do spągu Y = 1400)
-  { id: 'tunnel_floor', x: 0, w: 4400, y: 1270, h: 130, solid: true, isPlatform: true }
+  // -----------------------------------------------------------------------
+  // POZIOM DOLNY (Autostrada Tranzytowa - pełna szerokość mapy, Y = 1180)
+  // -----------------------------------------------------------------------
+  {
+    id: 'highway_floor',
+    name: 'Autostrada Tranzytowa (Kładka Dolna)',
+    x: 20,
+    w: 4360,
+    y: 1180,
+    h: 40,
+    thickness: 40,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // POZIOM GÓRNY - BAZA LEWA (Cyan: x: 180–1280, y: 700)
+  // -----------------------------------------------------------------------
+  {
+    id: 'cyan_base_slab',
+    name: 'Baza Lewa (Cyan - Główna Płyta)',
+    x: 180,
+    w: 1100,
+    y: 700,
+    h: 54,
+    thickness: 54,
+    solid: true,
+    isPlatform: true
+  },
+  // Wlot bramki Cyan - pochyła kieszeń chwytająca opadająca ku ścianie
+  {
+    id: 'goal_cyan_pocket',
+    name: 'Kieszeń Bramki Cyan (Pochylnia)',
+    x: 20,
+    w: 160,
+    y: 700,
+    h: 32,
+    thickness: 32,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 20, y: 716 },
+      { x: 180, y: 700 }
+    ]
+  },
+  // Nadproże / Gzyms Bramki Cyan (masywny dwuteownik I-beam)
+  {
+    id: 'goal_cyan_lintel',
+    name: 'Gzyms Bramki Cyan (Nadproże)',
+    x: 20,
+    w: 160,
+    y: 505,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // POZIOM GÓRNY - CENTRALNY MOST WISZĄCY (x: 1680–2720, y: 700)
+  // -----------------------------------------------------------------------
+  {
+    id: 'central_suspension_bridge',
+    name: 'Centralny Most Wiszący',
+    x: 1680,
+    w: 1040,
+    y: 700,
+    h: 40,
+    thickness: 40,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // POZIOM GÓRNY - BAZA PRAWA (Orange: x: 3120–4220, y: 700)
+  // -----------------------------------------------------------------------
+  {
+    id: 'orange_base_slab',
+    name: 'Baza Prawa (Orange - Główna Płyta)',
+    x: 3120,
+    w: 1100,
+    y: 700,
+    h: 54,
+    thickness: 54,
+    solid: true,
+    isPlatform: true
+  },
+  // Wlot bramki Orange - pochyła kieszeń chwytająca opadająca ku ścianie
+  {
+    id: 'goal_orange_pocket',
+    name: 'Kieszeń Bramki Orange (Pochylnia)',
+    x: 4220,
+    w: 160,
+    y: 700,
+    h: 32,
+    thickness: 32,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 4220, y: 700 },
+      { x: 4380, y: 716 }
+    ]
+  },
+  // Nadproże / Gzyms Bramki Orange (masywny dwuteownik I-beam)
+  {
+    id: 'goal_orange_lintel',
+    name: 'Gzyms Bramki Orange (Nadproże)',
+    x: 4220,
+    w: 160,
+    y: 505,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // LUKI I ASYMETRYCZNE PLATFORMY PRZESIADKOWE (Magnetyczne Windy Towarowe)
+  // -----------------------------------------------------------------------
+  // Studnia Lewa: X: 1280–1680 (pomiędzy Bazą Cyan a Centralnym Mostem)
+  {
+    id: 'cargo_lift_west_low',
+    name: 'Winda Towarowa Zachodnia Dolna',
+    x: 1330,
+    w: 155,
+    y: 970,
+    h: 30,
+    thickness: 30,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'cargo_lift_west_high',
+    name: 'Winda Towarowa Zachodnia Górna',
+    x: 1490,
+    w: 155,
+    y: 835,
+    h: 30,
+    thickness: 30,
+    solid: true,
+    isPlatform: true
+  },
+
+  // Studnia Prawa: X: 2720–3120 (pomiędzy Centralnym Mostem a Bazą Orange)
+  {
+    id: 'cargo_lift_east_high',
+    name: 'Winda Towarowa Wschodnia Górna',
+    x: 2760,
+    w: 155,
+    y: 835,
+    h: 30,
+    thickness: 30,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'cargo_lift_east_low',
+    name: 'Winda Towarowa Wschodnia Dolna',
+    x: 2920,
+    w: 155,
+    y: 970,
+    h: 30,
+    thickness: 30,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // NAJWYŻSZY PUŁAP (Kładki Snajperskie ze zbrojonego szkła)
+  // -----------------------------------------------------------------------
+  {
+    id: 'sniper_glass_west',
+    name: 'Szklana Kładka Snajperska Zachodnia',
+    x: 1840,
+    w: 240,
+    y: 440,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    oneWay: true,
+    isPlatform: true
+  },
+  {
+    id: 'sniper_glass_east',
+    name: 'Szklana Kładka Snajperska Wschodnia',
+    x: 2320,
+    w: 240,
+    y: 440,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    oneWay: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // PIONOWE ŚCIANY BOCZNE HANGARÓW
+  // -----------------------------------------------------------------------
+  // Górne ściany nad wlotem bramki (Y: 0..510)
+  {
+    id: 'wall_west_upper',
+    name: 'Górna Ściana Hangaru Cyan',
+    x: 0,
+    w: 180,
+    y: 0,
+    h: 510,
+    thickness: 180,
+    solid: true,
+    isWall: true,
+    pushSide: 'right'
+  },
+  {
+    id: 'wall_east_upper',
+    name: 'Górna Ściana Hangaru Orange',
+    x: 4220,
+    w: 180,
+    y: 0,
+    h: 510,
+    thickness: 180,
+    solid: true,
+    isWall: true,
+    pushSide: 'left'
+  },
+  // Skrajne granice areny (Y: 0..1400)
+  {
+    id: 'wall_west_boundary',
+    name: 'Boczna Ściana Hangaru Cyan (Granica Zachodnia)',
+    x: 0,
+    w: 20,
+    y: 0,
+    h: 1400,
+    thickness: 20,
+    solid: true,
+    isWall: true,
+    pushSide: 'right'
+  },
+  {
+    id: 'wall_east_boundary',
+    name: 'Boczna Ściana Hangaru Orange (Granica Wschodnia)',
+    x: 4380,
+    w: 20,
+    y: 0,
+    h: 1400,
+    thickness: 20,
+    solid: true,
+    isWall: true,
+    pushSide: 'left'
+  }
 ];
 
-// Aliasy dla zachowania wstecznej kompatybilności
-export const ARENA_FOUNDRY_PLATFORMS = ARENA_3_PLATFORMS;
-export const ARENA_FOUNDRY_WALLS = [];
-
 // =========================================================================
-// SYSTEM ZNISZCZEŃ STROPU ARENY 3 (DESTRUCTION OVERLAY & CARVING)
-// =========================================================================
-export const arena3Breaches = [];
-const DEFAULT_ARENA_3_PLATFORMS = JSON.parse(JSON.stringify(ARENA_3_PLATFORMS));
-
-export function resetArena3Breaches() {
-  arena3Breaches.length = 0;
-  ARENA_3_PLATFORMS.length = 0;
-  ARENA_3_PLATFORMS.push(...JSON.parse(JSON.stringify(DEFAULT_ARENA_3_PLATFORMS)));
-}
-
-export function carveArena3SlabBreach(expX, expY, radius, context) {
-  // Sprawdź czy wybuch dosięga płyty głównej (Y = 900)
-  if (Math.abs(expY - 900) > radius * 1.35 && (expY < 840 || expY > 980)) return;
-
-  // Wyklucz strefy bezpośrednio pod bramkami (aby portale wlotowe nie wisiały w powietrzu)
-  if (expX <= 220 || expX >= 4180) {
-    return;
-  }
-
-  const breachR = Math.min(85, Math.max(48, radius * 0.65));
-  const bLeft = expX - breachR;
-  const bRight = expX + breachR;
-
-  // Rejestracja wyłomu
-  arena3Breaches.push({
-    id: 'breach_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-    x: expX,
-    y: 900,
-    r: breachR,
-    left: bLeft,
-    right: bRight,
-    createdAt: performance.now()
-  });
-
-  // Dynamiczne rozszczepienie geometrii platform (podział lub skrócenie płyty Y=900)
-  function splitPlatforms(arr) {
-    if (!Array.isArray(arr)) return;
-    for (let i = arr.length - 1; i >= 0; i--) {
-      const plat = arr[i];
-      if (!plat || plat.y !== 900 || plat.h < 30 || plat.isHatch || plat.isSlope) continue;
-
-      const pLeft = plat.x;
-      const pRight = plat.x + plat.w;
-      if (pRight <= bLeft || pLeft >= bRight) continue;
-
-      if (pLeft < bLeft && pRight > bRight) {
-        const rightW = pRight - bRight;
-        plat.w = bLeft - pLeft;
-        arr.splice(i + 1, 0, {
-          ...plat,
-          id: plat.id + '_split_' + Math.round(bRight),
-          x: bRight,
-          w: rightW
-        });
-      } else if (pLeft >= bLeft && pRight <= bRight) {
-        arr.splice(i, 1);
-      } else if (pLeft < bLeft && pRight <= bRight) {
-        plat.w = bLeft - pLeft;
-      } else if (pLeft >= bLeft && pRight > bRight) {
-        const diff = bRight - pLeft;
-        plat.x = bRight;
-        plat.w -= diff;
-      }
-    }
-  }
-
-  splitPlatforms(ARENA_3_PLATFORMS);
-  if (context && Array.isArray(context.platforms)) {
-    splitPlatforms(context.platforms);
-  }
-
-  // Odłamki betonu i iskry lecące w dół do tunelu
-  if (typeof spawnConcreteDebris === 'function') {
-    spawnConcreteDebris(expX, 935, 14, (Math.random() - 0.5) * 80, 160 + Math.random() * 120);
-  }
-  if (typeof spawnRicochetSparks === 'function') {
-    spawnRicochetSparks(expX, 900, 0, -1, 16);
-  }
-}
-
-// =========================================================================
-// OBIEKTY SPECYFICZNE DLA ARENY 3 (ARENA_3_CUSTOM_OBJECTS)
-// Okrągłe bramki przemysłowe wbudowane w ściany hali (średnica 340 px)
+// 3. OBIEKTY BRAMEK (CYAN / ORANGE) I PROPY
 // =========================================================================
 export const ARENA_3_CUSTOM_OBJECTS = [
   {
     id: 'goal_cyan',
+    type: 'goal',
     team: 'CYAN',
-    x: 20,
-    y: 280,
-    w: 340,
-    h: 340,
+    x: 30,
+    y: 530,
+    w: 130,
+    h: 170,
     facing: 1,
-    color: '#06b6d4',
-    glowColor: 'rgba(6, 182, 212, 0.85)',
-    holeCx: 190,
-    holeCy: 450,
-    holeR: 170
+    color: '#00e5ff',
+    glowColor: 'rgba(0, 229, 255, 0.85)'
   },
   {
     id: 'goal_orange',
+    type: 'goal',
     team: 'ORANGE',
-    x: 4040,
-    y: 280,
-    w: 340,
-    h: 340,
+    x: 4240,
+    y: 530,
+    w: 130,
+    h: 170,
     facing: -1,
     color: '#f97316',
-    glowColor: 'rgba(249, 115, 22, 0.85)',
-    holeCx: 4210,
-    holeCy: 450,
-    holeR: 170
+    glowColor: 'rgba(249, 115, 22, 0.85)'
   }
 ];
 
+export const ARENA_3_MINECARTS = [];
+export const arena3Breaches = [];
+export function resetArena3Breaches() {}
+export function carveArena3SlabBreach() {}
+export function resetArena3Minecarts() {}
+
 // =========================================================================
-// RENDEROWANIE TŁA ARENY 3 (BACKGROUND: OBRAZ, ŁOPATKI WENTYLATORA, PŁYNNA SURÓWKA)
+// 4. SYMULACJA DYNAMICZNA: PARA, ISKRY, WENTYLATOR, CHMURY
+// =========================================================================
+let animTime = 0;
+let fanRotation = 0;
+let lightningTimer = 3.5;
+let lightningAlpha = 0;
+
+// Dysze pary buchające z rur przemysłowych
+class SteamPuff {
+  constructor(x, y, vx, vy, maxR, life) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.r = 6;
+    this.maxR = maxR;
+    this.life = life;
+    this.maxLife = life;
+    this.alpha = 0.55;
+  }
+  update(dt) {
+    this.life -= dt;
+    if (this.life <= 0) return false;
+    const progress = 1.0 - (this.life / this.maxLife);
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.r = 6 + (this.maxR - 6) * Math.sin(progress * Math.PI * 0.5);
+    this.alpha = 0.55 * Math.sin((1.0 - progress) * Math.PI);
+    return true;
+  }
+  draw(ctx) {
+    if (this.alpha <= 0.01) return;
+    ctx.save();
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    g.addColorStop(0, `rgba(241, 245, 249, ${this.alpha})`);
+    g.addColorStop(0.5, `rgba(203, 213, 225, ${this.alpha * 0.5})`);
+    g.addColorStop(1, 'rgba(148, 163, 184, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+const STEAM_VENTS = [
+  { x: 1120, y: 640, dirX: 1, dirY: -0.6, interval: 2.8, timer: 0.5 },
+  { x: 1620, y: 660, dirX: -0.8, dirY: -0.9, interval: 3.2, timer: 1.8 },
+  { x: 2780, y: 660, dirX: 0.8, dirY: -0.9, interval: 3.0, timer: 1.0 },
+  { x: 3280, y: 640, dirX: -1, dirY: -0.6, interval: 2.9, timer: 2.2 }
+];
+
+const activeSteamPuffs = [];
+
+function spawnSteamJet(vent) {
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const spread = (Math.random() - 0.5) * 0.45;
+    const speed = 70 + Math.random() * 85;
+    const angle = Math.atan2(vent.dirY, vent.dirX) + spread;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    const maxR = 40 + Math.random() * 35;
+    const life = 1.1 + Math.random() * 0.7;
+    activeSteamPuffs.push(new SteamPuff(vent.x, vent.y, vx, vy, maxR, life));
+  }
+}
+
+// Iskry przeskakujące po kablach w dalekim planie
+class CableSpark {
+  constructor(cable) {
+    this.cable = cable;
+    this.progress = 0;
+    this.speed = 0.55 + Math.random() * 0.45;
+    this.size = 2.5 + Math.random() * 2.0;
+  }
+  update(dt) {
+    this.progress += this.speed * dt;
+    return this.progress < 1.0;
+  }
+  draw(ctx) {
+    const c = this.cable;
+    const t = this.progress;
+    const x = c.x1 + (c.x2 - c.x1) * t;
+    const sag = Math.sin(t * Math.PI) * c.sag;
+    const y = c.y1 + (c.y2 - c.y1) * t + sag;
+
+    ctx.save();
+    ctx.fillStyle = '#67e8f9';
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(x, y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+const DISTANT_CABLES = [
+  { x1: 400, y1: 320, x2: 1200, y2: 390, sag: 55, timer: 1.0 },
+  { x1: 1300, y1: 380, x2: 2100, y2: 350, sag: 60, timer: 3.2 },
+  { x1: 2300, y1: 350, x2: 3100, y2: 380, sag: 60, timer: 2.1 },
+  { x1: 3200, y1: 390, x2: 4000, y2: 320, sag: 55, timer: 4.0 }
+];
+
+const activeCableSparks = [];
+
+// Sunąca niska mgła nad autostradą tranzytową (Y: 1140..1180)
+const HIGHWAY_FOG_PUFFS = [];
+for (let i = 0; i < 28; i++) {
+  HIGHWAY_FOG_PUFFS.push({
+    x: i * 160 + Math.random() * 60,
+    baseY: 1165 + Math.random() * 12,
+    r: 55 + Math.random() * 45,
+    speed: 12 + Math.random() * 14,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+
+// =========================================================================
+// 5. GŁÓWNA PĘTLA AKTUALIZACJI ARENY 3 (UPDATE TICK)
+// =========================================================================
+export function updateArena3(dt, players, ball) {
+  animTime += dt;
+  fanRotation = (fanRotation + dt * 0.45) % (Math.PI * 2);
+
+  // Wyładowania burzowe
+  lightningTimer -= dt;
+  if (lightningTimer <= 0) {
+    lightningAlpha = 0.55 + Math.random() * 0.35;
+    lightningTimer = 4.0 + Math.random() * 5.0;
+  }
+  if (lightningAlpha > 0) {
+    lightningAlpha = Math.max(0, lightningAlpha - dt * 2.8);
+  }
+
+  // Buchy pary
+  for (let i = 0; i < STEAM_VENTS.length; i++) {
+    const v = STEAM_VENTS[i];
+    v.timer -= dt;
+    if (v.timer <= 0) {
+      spawnSteamJet(v);
+      v.timer = v.interval + (Math.random() - 0.5) * 1.2;
+    }
+  }
+  for (let i = activeSteamPuffs.length - 1; i >= 0; i--) {
+    if (!activeSteamPuffs[i].update(dt)) {
+      activeSteamPuffs.splice(i, 1);
+    }
+  }
+
+  // Iskry na kablach
+  for (let i = 0; i < DISTANT_CABLES.length; i++) {
+    const c = DISTANT_CABLES[i];
+    c.timer -= dt;
+    if (c.timer <= 0) {
+      activeCableSparks.push(new CableSpark(c));
+      c.timer = 3.5 + Math.random() * 4.5;
+    }
+  }
+  for (let i = activeCableSparks.length - 1; i >= 0; i--) {
+    if (!activeCableSparks[i].update(dt)) {
+      activeCableSparks.splice(i, 1);
+    }
+  }
+
+  // Mgła na autostradzie
+  for (let i = 0; i < HIGHWAY_FOG_PUFFS.length; i++) {
+    const fog = HIGHWAY_FOG_PUFFS[i];
+    fog.x += fog.speed * dt;
+    if (fog.x > 4450) fog.x = -50;
+  }
+
+  // Termika bezpieczeństwa w chmurach poniżej platformy (Y > 1240)
+  if (Array.isArray(players)) {
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p || p.isDead) continue;
+      if (p.y > 1240) {
+        p.vy = -18.5;
+        p.y = 1170 - (p.h || 70);
+        p.isJumping = true;
+        p.onGround = false;
+        p.currentPlatform = null;
+      }
+    }
+  }
+}
+
+// =========================================================================
+// 6. RENDEROWANIE TŁA (PNG + RUCHOME CHMURY, ISKRY, WENTYLATOR, PARA)
 // =========================================================================
 export function drawArena3Background(ctx, camera) {
   if (!ctx) return;
+
+  // 1. Wypełnienie pełnego ekranu zmierzchowym gradientem nieba (screen space)
+  const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  const H_screen = ctx.canvas?.height || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
+  skyGrad.addColorStop(0.0, '#160d26');
+  skyGrad.addColorStop(0.65, '#2b143a');
+  skyGrad.addColorStop(1.0, '#0e0717');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W_screen, H_screen);
 
   ctx.save();
   if (camera) {
@@ -184,861 +539,438 @@ export function drawArena3Background(ctx, camera) {
     ctx.translate(-camera.x, -camera.y);
   }
 
-  // 1. Główny obraz tła hali 4400x1400
-  if (foundryBgImage && foundryBgImage.complete && foundryBgImage.naturalWidth > 0) {
-    ctx.drawImage(foundryBgImage, 0, 0, 4400, 1400);
+  const camL = camera ? camera.x - 150 : 0;
+  const camR = camera ? camera.x + (camera.viewWidth || 2000) + 150 : 4400;
+
+  // 2. RYSOWANIE STATYCZNEJ GRAFIKI PANORAMICZNEJ MAPY (4400 x 1400 px)
+  if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+    ctx.drawImage(bgImg, 0, 0, 4400, 1400);
   } else {
-    // Gradient awaryjny w razie dłuższego wczytywania zasobu graficznego
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 1400);
-    bgGrad.addColorStop(0.0, '#060910');
-    bgGrad.addColorStop(0.7, '#111722');
-    bgGrad.addColorStop(1.0, '#2d180f');
-    ctx.fillStyle = bgGrad;
+    // Rezerwowy gradient gdyby PNG było w trakcie wczytywania
+    const g = ctx.createLinearGradient(0, 0, 0, 1400);
+    g.addColorStop(0, '#160d26');
+    g.addColorStop(0.65, '#b44b24');
+    g.addColorStop(1, '#0e0717');
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, 4400, 1400);
   }
 
-  // 1B. Rezerwowe bramki JPG gdyby pełne tło foundry_bg.png jeszcze się nie załadowało
-  const hasFoundryBg = foundryBgImage && foundryBgImage.complete && foundryBgImage.naturalWidth > 0;
-  if (!hasFoundryBg) {
-    // Bramka Cyan (lewa) - odbicie lustrzane w osi poziomej dla pełnej symetrii osiowej z bramką Orange
-    if (holeCyanImg && holeCyanImg.complete && holeCyanImg.naturalWidth > 0) {
-      ctx.save();
-      ctx.translate(20 + 340, 280);
-      ctx.scale(-1, 1);
-      ctx.drawImage(holeCyanImg, 0, 0, 340, 340);
-      ctx.restore();
-    }
-    // Bramka Orange (prawa) - naturalny zwrot tunelu w głąb prawej ściany
-    if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
-      ctx.drawImage(holeOrangeImg, 4040, 280, 340, 340);
-    }
-  }
-
-  // 1C. Dynamiczne wyłomy i zniszczenia w stropie po wybuchach (Natural Painterly Breach Overlay)
-  if (arena3Breaches.length > 0) {
+  // 3. WOLNO OBRACAJĄCY SIĘ GIGANTYCZNY WENTYLATOR PRZEMYSŁOWY (X = 2200, Y = 480)
+  const fanCx = 2200;
+  const fanCy = 480;
+  if (fanCx + 260 >= camL && fanCx - 260 <= camR) {
     ctx.save();
-    for (const b of arena3Breaches) {
-      drawArena3Breach(ctx, b);
-    }
-    ctx.restore();
-  }
-
-  // Subtelna poświata głębi kanałów bramek (centralna wysokość Y = 450)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const cyanGlow = ctx.createRadialGradient(190, 450, 20, 190, 450, 180);
-  cyanGlow.addColorStop(0.0, 'rgba(6, 182, 212, 0.35)');
-  cyanGlow.addColorStop(0.6, 'rgba(6, 182, 212, 0.12)');
-  cyanGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = cyanGlow;
-  ctx.beginPath();
-  ctx.arc(190, 450, 180, 0, Math.PI * 2);
-  ctx.fill();
-
-  const orangeGlow = ctx.createRadialGradient(4210, 450, 20, 4210, 450, 180);
-  orangeGlow.addColorStop(0.0, 'rgba(249, 115, 22, 0.35)');
-  orangeGlow.addColorStop(0.6, 'rgba(249, 115, 22, 0.12)');
-  orangeGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = orangeGlow;
-  ctx.beginPath();
-  ctx.arc(4210, 450, 180, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // 3. Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
-  for (const cart of ARENA_3_MINECARTS) {
-    if (cart.passenger) {
-      drawMinecartBack(ctx, cart);
-    }
-  }
-
-
-
-  ctx.restore();
-}
-
-// =========================================================================
-// RENDEROWANIE NATURALNYCH WYŁOMÓW W STROPIE (PAINTERLY BREACH OVERLAY)
-// =========================================================================
-function drawArena3Breach(ctx, b) {
-  const bx = b.x;
-  const br = b.r;
-  const bLeft = bx - br;
-  const bRight = bx + br;
-  const floorY = 900;
-
-  // 1. Promieniste osmalenie sadzą i spękania na posadzce wokół leja wybuchu
-  if (scorchBlastImg && scorchBlastImg.complete && scorchBlastImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.globalAlpha = 0.88;
-    const scW = br * 2.6;
-    const scH = br * 0.85;
-    ctx.drawImage(scorchBlastImg, bx - scW / 2, floorY - scH * 0.55, scW, scH);
-    ctx.restore();
-  }
-
-  // 2. Miękki cień wgłębny przy krawędzi pękniętej płyty (nadaje głębię wlotowi do tunelu)
-  ctx.save();
-  const rimShadow = ctx.createLinearGradient(bx, floorY - 2, bx, floorY + 16);
-  rimShadow.addColorStop(0.0, 'rgba(5, 7, 10, 0.7)');
-  rimShadow.addColorStop(1.0, 'rgba(5, 7, 10, 0.0)');
-  ctx.fillStyle = rimShadow;
-  ctx.fillRect(bLeft, floorY - 2, br * 2, 18);
-
-  // 3. Poszarpane mikropęknięcia kamiennej posadzki na krawędziach wyłomu
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.8;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  // Lewa warga - pęknięcie w głąb posadzki
-  ctx.beginPath();
-  ctx.moveTo(bLeft - 10, floorY);
-  ctx.lineTo(bLeft - 3, floorY + 2);
-  ctx.lineTo(bLeft + 3, floorY + 6);
-  ctx.lineTo(bLeft + 1, floorY + 14);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#0f172a';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(bLeft - 6, floorY - 2);
-  ctx.lineTo(bLeft - 14, floorY - 8);
-  ctx.stroke();
-
-  // Prawa warga - pęknięcie w głąb posadzki
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.moveTo(bRight + 10, floorY);
-  ctx.lineTo(bRight + 3, floorY + 2);
-  ctx.lineTo(bRight - 3, floorY + 6);
-  ctx.lineTo(bRight - 1, floorY + 14);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#0f172a';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(bRight + 6, floorY - 2);
-  ctx.lineTo(bRight + 14, floorY - 8);
-  ctx.stroke();
-
-  // 4. Cienkie, zardzewiałe pręty zbrojeniowe zwisające w otwór (delikatne druty stalowe)
-  function drawRebarWire(pts, width) {
-    // Ciemny cień / kontur
-    ctx.strokeStyle = '#140804';
-    ctx.lineWidth = width + 1.2;
+    // Subtelna łuna podświetlenia zza wirnika wentylatora
+    const fanGlow = ctx.createRadialGradient(fanCx, fanCy, 40, fanCx, fanCy, 240);
+    fanGlow.addColorStop(0, 'rgba(249, 115, 22, 0.35)');
+    fanGlow.addColorStop(0.6, 'rgba(234, 88, 12, 0.15)');
+    fanGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = fanGlow;
     ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
+    ctx.arc(fanCx, fanCy, 240, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Rdzawy rdzeń pręta
-    ctx.strokeStyle = '#9a3412';
-    ctx.lineWidth = width;
-    ctx.stroke();
+    ctx.translate(fanCx, fanCy);
+    ctx.rotate(fanRotation);
 
-    // Metaliczny refleks światła
-    ctx.strokeStyle = '#ea580c';
-    ctx.lineWidth = Math.max(0.8, width - 1.0);
-    ctx.stroke();
+    if (fanBladesImg && fanBladesImg.complete && fanBladesImg.naturalWidth > 0) {
+      const s = 420;
+      ctx.drawImage(fanBladesImg, -s / 2, -s / 2, s, s);
+    } else {
+      // Rezerwowe łopatki
+      const blades = 12;
+      for (let i = 0; i < blades; i++) {
+        ctx.rotate((Math.PI * 2) / blades);
+        ctx.fillStyle = '#18141d';
+        ctx.beginPath();
+        ctx.moveTo(-14, -20);
+        ctx.quadraticCurveTo(0, -90, 24, -180);
+        ctx.lineTo(-20, -180);
+        ctx.quadraticCurveTo(-10, -85, -14, -20);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
-  // Lewe zbrojenie
-  drawRebarWire([[bLeft, floorY + 4], [bLeft + 10, floorY + 7], [bLeft + 20, floorY + 16], [bLeft + 24, floorY + 26]], 2.0);
-  drawRebarWire([[bLeft + 2, floorY + 10], [bLeft + 14, floorY + 13], [bLeft + 20, floorY + 20]], 1.5);
-  drawRebarWire([[bLeft - 2, floorY + 14], [bLeft + 8, floorY + 20], [bLeft + 10, floorY + 30]], 1.4);
+  // 4. RUCHOME ISKRY PRZESKAKUJĄCE PO KABLACH
+  for (let i = 0; i < activeCableSparks.length; i++) {
+    activeCableSparks[i].draw(ctx);
+  }
 
-  // Prawe zbrojenie
-  drawRebarWire([[bRight, floorY + 4], [bRight - 10, floorY + 7], [bRight - 20, floorY + 16], [bRight - 24, floorY + 26]], 2.0);
-  drawRebarWire([[bRight - 2, floorY + 10], [bRight - 14, floorY + 13], [bRight - 20, floorY + 20]], 1.5);
-  drawRebarWire([[bRight + 2, floorY + 14], [bRight - 8, floorY + 20], [bRight - 10, floorY + 30]], 1.4);
+  // 5. BUCHY PARY POD CIŚNIENIEM Z RUR
+  for (let i = 0; i < activeSteamPuffs.length; i++) {
+    activeSteamPuffs[i].draw(ctx);
+  }
 
-  // Zwisająca rozerwana nić siatki zbrojeniowej
-  ctx.strokeStyle = '#78350f';
-  ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  ctx.moveTo(bLeft + 12, floorY + 18);
-  ctx.quadraticCurveTo(bx, floorY + 30, bRight - 12, floorY + 18);
-  ctx.stroke();
+  // 6. RUCHOMY OCEAN BURZOWYCH CHMUR W OTCHŁANI (Y: 1080–1400)
+  if (lightningAlpha > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = lightningAlpha;
+    const lGrad = ctx.createRadialGradient(2200, 1280, 80, 2200, 1280, 1600);
+    lGrad.addColorStop(0, 'rgba(192, 132, 252, 0.70)');
+    lGrad.addColorStop(0.5, 'rgba(147, 51, 234, 0.28)');
+    lGrad.addColorStop(1, 'rgba(88, 28, 135, 0)');
+    ctx.fillStyle = lGrad;
+    ctx.fillRect(0, 1050, 4400, 350);
+    ctx.restore();
+  }
+
+  function drawCloudLayer(baseY, amp, speed, color, highlightColor) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, 1400);
+    ctx.lineTo(0, baseY);
+
+    const step = 70;
+    for (let x = 0; x <= 4400; x += step) {
+      const wave1 = Math.sin((x * 0.0032) + (animTime * speed)) * amp;
+      const wave2 = Math.cos((x * 0.0065) - (animTime * speed * 0.7)) * (amp * 0.45);
+      const cy = baseY + wave1 + wave2;
+      ctx.lineTo(x, cy);
+    }
+    ctx.lineTo(4400, 1400);
+    ctx.closePath();
+    ctx.fill();
+
+    if (highlightColor) {
+      ctx.strokeStyle = highlightColor;
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  drawCloudLayer(1135, 26, 0.12, 'rgba(38, 20, 48, 0.95)', 'rgba(217, 83, 30, 0.30)');
+  drawCloudLayer(1180, 22, 0.22, 'rgba(28, 14, 38, 0.98)', 'rgba(234, 115, 42, 0.38)');
+  drawCloudLayer(1230, 18, 0.35, '#12091c', 'rgba(249, 115, 22, 0.20)');
 
   ctx.restore();
 }
 
 // =========================================================================
-// RENDEROWANIE ELEMENTÓW PIERWSZOPLANOWYCH (DRAW FOREGROUND)
+// 7. RENDEROWANIE PIERWSZEGO PLANU (SPRITE'Y PLATFORM, BRUK, MGŁA, LASERY)
 // =========================================================================
 export function drawArena3Foreground(ctx, camera) {
   if (!ctx) return;
+
   ctx.save();
+  const camL = camera ? camera.x - 150 : 0;
+  const camR = camera ? camera.x + (camera.viewWidth || 2000) + 150 : 4400;
 
-
-  // 3. Odbojnice torowiska na krańcach dolnego tunelu (X = 165 oraz X = 4235)
-  drawBufferStop(ctx, 165, true);
-  drawBufferStop(ctx, 4235, false);
-
-  // 4. Mobilne wagoniki kopalniane w dolnym tunelu
-  for (const cart of ARENA_3_MINECARTS) {
-    if (cart.passenger) {
-      // Pasażer został narysowany pomiędzy warstwami; nakładamy przednią pancerną burtę i resory
-      drawMinecartFront(ctx, cart);
+  // -----------------------------------------------------------------------
+  // 1. RENDEROWANIE ŚCIAN BOCZNYCH HANGARÓW I WLOTÓW BRAMEK (Cyan & Orange)
+  // -----------------------------------------------------------------------
+  // A. Ściana i bramka Cyan (Zachód: X: 0..180)
+  if (220 >= camL) {
+    // Górna ściana hangaru z blachy nitowanej (Y: 0..510)
+    if (wallPanelImg && wallPanelImg.complete && wallPanelImg.naturalWidth > 0) {
+      ctx.drawImage(wallPanelImg, 0, 0, 180, 510);
     } else {
-      // Pusty wagonik bez pasażera: rysujemy koła i pełny korpus
-      drawMinecartComplete(ctx, cart);
+      ctx.fillStyle = '#161922';
+      ctx.fillRect(0, 0, 180, 510);
+      ctx.strokeStyle = '#272f3d';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(0, 0, 180, 510);
     }
+
+    // Wlot bramki Cyan (Y: 510..705, lintel na Y = 505..520, wnęka laserowa w głębi)
+    if (goalApertureImg && goalApertureImg.complete && goalApertureImg.naturalWidth > 0) {
+      ctx.drawImage(goalApertureImg, 20, 510, 160, 195);
+    }
+
+    // Pulsujące laserowe pole wewnątrz wnęki
+    ctx.save();
+    const cyanPulse = Math.sin(animTime * 5.0) * 0.25 + 0.75;
+    const clGrad = ctx.createLinearGradient(25, 530, 95, 530);
+    clGrad.addColorStop(0, `rgba(0, 229, 255, ${0.85 * cyanPulse})`);
+    clGrad.addColorStop(0.5, `rgba(6, 182, 212, ${0.40 * cyanPulse})`);
+    clGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+    ctx.fillStyle = clGrad;
+    ctx.fillRect(20, 530, 80, 170);
+    ctx.restore();
   }
 
-  ctx.restore();
-}
+  // B. Ściana i bramka Orange (Wschód: X: 4220..4400)
+  if (4200 <= camR) {
+    // Górna ściana hangaru z blachy nitowanej (Y: 0..510) - odbicie lustrzane
+    if (wallPanelImg && wallPanelImg.complete && wallPanelImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.translate(4220 + 180, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(wallPanelImg, 0, 0, 180, 510);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#161922';
+      ctx.fillRect(4220, 0, 180, 510);
+      ctx.strokeStyle = '#272f3d';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(4220, 0, 180, 510);
+    }
 
-// =========================================================================
-// ODBOJNICE KRAŃCOWE I RENDEROWANIE WARSTW WAGONIKÓW
-// =========================================================================
-function drawBufferStop(ctx, x, isLeft) {
-  ctx.save();
-  const floorY = 1270;
-  const h = 56;
-  const w = 18;
-  const bx = isLeft ? x : x - w;
+    // Wlot bramki Orange (Y: 510..705) - odbicie lustrzane
+    if (goalApertureImg && goalApertureImg.complete && goalApertureImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.translate(4220 + 160, 510);
+      ctx.scale(-1, 1);
+      ctx.drawImage(goalApertureImg, 0, 0, 160, 195);
+      ctx.restore();
+    }
 
-  // Stalowy słupek odbojowy
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(bx, floorY - h, w, h);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(bx, floorY - h, w, h);
-
-  // Paski ostrzegawcze (hazard stripes)
-  for (let y = floorY - h + 5; y < floorY - 6; y += 12) {
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(bx + 2, y, w - 4, 6);
+    // Pulsujące laserowe pole wewnątrz wnęki
+    ctx.save();
+    const orangePulse = Math.sin(animTime * 5.0 + 1.2) * 0.25 + 0.75;
+    const olGrad = ctx.createLinearGradient(4375, 530, 4305, 530);
+    olGrad.addColorStop(0, `rgba(249, 115, 22, ${0.85 * orangePulse})`);
+    olGrad.addColorStop(0.5, `rgba(234, 88, 12, ${0.40 * orangePulse})`);
+    olGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = olGrad;
+    ctx.fillRect(4300, 530, 80, 170);
+    ctx.restore();
   }
 
-  // Gumowo-stalowy odbojnik sprężynowy
-  const padX = isLeft ? bx + w : bx - 10;
-  ctx.fillStyle = '#18181b';
-  ctx.fillRect(padX, floorY - 44, 10, 24);
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(padX, floorY - 44, 10, 24);
+  // -----------------------------------------------------------------------
+  // 2. RENDEROWANIE POZIOMU GÓRNEGO: BAZA CYAN, CENTRALNY MOST, BAZA ORANGE
+  // -----------------------------------------------------------------------
+  // A. Baza Lewa (Cyan: X: 180–1280, Y: 700)
+  if (1280 >= camL && 180 <= camR) {
+    if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
+      ctx.drawImage(platformTileImg, 180, 700, 1100, 54);
+    } else {
+      ctx.fillStyle = '#1c1f26';
+      ctx.fillRect(180, 700, 1100, 54);
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(180, 700, 1100, 4);
+    }
 
-  ctx.restore();
-}
-
-function drawCartWheels(ctx, cart, bounceY) {
-  const r = cart.wheelR;
-  const wheelY = cart.y + cart.wheelYOffset + bounceY;
-  const w1X = cart.x + cart.wheel1XOffset;
-  const w2X = cart.x + cart.wheel2XOffset;
-
-  if (cartWheelImg && cartWheelImg.complete && cartWheelImg.naturalWidth > 0) {
-    // Koło 1 (lewe) - obrót wokół własnej osi
+    // Oznaczenia drużynowe Cyan (wyblakłe logotypy / pasy)
     ctx.save();
-    ctx.translate(w1X, wheelY);
-    ctx.rotate(cart.wheelAngle);
-    ctx.drawImage(cartWheelImg, -r, -r, r * 2, r * 2);
-    ctx.restore();
-
-    // Koło 2 (prawe) - obrót wokół własnej osi
-    ctx.save();
-    ctx.translate(w2X, wheelY);
-    ctx.rotate(cart.wheelAngle);
-    ctx.drawImage(cartWheelImg, -r, -r, r * 2, r * 2);
-    ctx.restore();
-  } else {
-    // Awaryjny wektorowy rysunek kół ze szprychami
-    ctx.save();
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.16)';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('DISTRICT 01 // CYAN', 340, 680);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(w1X, wheelY, r, 0, Math.PI * 2);
-    ctx.arc(w2X, wheelY, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
+    ctx.moveTo(340, 692);
+    ctx.lineTo(820, 692);
     ctx.stroke();
     ctx.restore();
   }
-}
 
-function drawMinecartComplete(ctx, cart) {
-  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
-
-  // 1. Korpus wagonika i podwozie najpierw (z tyłu za kołami)
-  if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
-    ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
-  }
-
-  // 2. Całe koła na wierzchu - 100% widoczne koła obracające się bez przeszkód
-  drawCartWheels(ctx, cart, bounceY);
-}
-
-function drawMinecartBack(ctx, cart) {
-  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
-
-  // Wnętrze i tylna krawędź wagonika (za plecami gracza)
-  if (cartInteriorImg && cartInteriorImg.complete && cartInteriorImg.naturalWidth > 0) {
-    ctx.drawImage(cartInteriorImg, cart.x, cart.y + bounceY, cart.w, cart.h);
-  }
-}
-
-function drawMinecartFront(ctx, cart) {
-  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
-
-  // 1. Przednia stalowa burta osłaniająca postać
-  if (cartFrontImg && cartFrontImg.complete && cartFrontImg.naturalWidth > 0) {
-    ctx.drawImage(cartFrontImg, cart.x, cart.y + bounceY, cart.w, cart.h);
-  } else if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
-    ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
-  }
-
-  // 2. Całe koła na wierzchu - 100% widoczne koła obracające się przed burtą
-  drawCartWheels(ctx, cart, bounceY);
-}
-
-// =========================================================================
-// DEFINICJA WAGONIKÓW KOPALNIANYCH ARENY 3
-// =========================================================================
-export const ARENA_3_MINECARTS = [
-  {
-    id: 'minecart_left',
-    startX: 520,
-    startY: 1270 - 88,
-    x: 520,
-    y: 1270 - 88,
-    w: 124,
-    h: 88,
-    vx: 0,
-    vy: 0,
-    wheelAngle: 0,
-    wheelR: 15.1,
-    wheel1XOffset: 34.1,
-    wheel2XOffset: 94.3,
-    wheelYOffset: 72.9,
-    passenger: null,
-    bounce: 0,
-    bouncePhase: 0,
-    facing: 1
-  },
-  {
-    id: 'minecart_right',
-    startX: 3750,
-    startY: 1270 - 88,
-    x: 3750,
-    y: 1270 - 88,
-    w: 124,
-    h: 88,
-    vx: 0,
-    vy: 0,
-    wheelAngle: 0,
-    wheelR: 15.1,
-    wheel1XOffset: 34.1,
-    wheel2XOffset: 94.3,
-    wheelYOffset: 72.9,
-    passenger: null,
-    bounce: 0,
-    bouncePhase: 0,
-    facing: -1
-  }
-];
-
-export function resetArena3Minecarts() {
-  for (const c of ARENA_3_MINECARTS) {
-    c.x = c.startX;
-    c.y = c.startY;
-    c.vx = 0;
-    c.vy = 0;
-    c.wheelAngle = 0;
-    c.bounce = 0;
-    c.bouncePhase = 0;
-    c.passenger = null;
-  }
-}
-
-// =========================================================================
-// PĘTLA AKTUALIZACJI MECHANIZMÓW ARENY 3 (FIZYKA WAGONIKÓW)
-// =========================================================================
-export function updateArena3(dt, players, ball) {
-  const floorY = 1270;
-  const minX = 165;
-  const maxX = 4235;
-
-  for (let i = 0; i < ARENA_3_MINECARTS.length; i++) {
-    const cart = ARENA_3_MINECARTS[i];
-
-    // 1. Fizyka ruchu i pozycji
-    cart.x += cart.vx * dt;
-    cart.y += cart.vy * dt;
-
-    // Grawitacja (w razie podbicia przez eksplozję)
-    const targetY = floorY - cart.h;
-    if (cart.y < targetY) {
-      cart.vy += 850 * dt;
+  // B. Baza Prawa (Orange: X: 3120–4220, Y: 700)
+  if (4220 >= camL && 3120 <= camR) {
+    if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
+      ctx.save();
+      // Odbicie lustrzane dla symetrii
+      ctx.translate(3120 + 1100, 700);
+      ctx.scale(-1, 1);
+      ctx.drawImage(platformTileImg, 0, 0, 1100, 54);
+      ctx.restore();
     } else {
-      if (cart.vy > 25) {
-        cart.bounce = Math.min(6, cart.vy * 0.02);
-        spawnStretchedSparks(cart.x + cart.w / 2, floorY, 4);
-      }
-      cart.y = targetY;
-      cart.vy = 0;
+      ctx.fillStyle = '#1c1f26';
+      ctx.fillRect(3120, 700, 1100, 54);
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(3120, 700, 1100, 4);
     }
 
-    // Tarcie toczne kół o torowisko
-    const friction = Math.pow(0.988, dt * 60);
-    cart.vx *= friction;
-    if (Math.abs(cart.vx) < 0.6) cart.vx = 0;
+    // Oznaczenia drużynowe Orange
+    ctx.save();
+    ctx.fillStyle = 'rgba(249, 115, 22, 0.16)';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('DISTRICT 02 // ORANGE', 3420, 680);
+    ctx.strokeStyle = 'rgba(249, 115, 22, 0.35)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(3420, 692);
+    ctx.lineTo(3920, 692);
+    ctx.stroke();
+    ctx.restore();
+  }
 
-    // Płynny obrót kół proporcjonalny do prędkości (efekt jazdy)
-    cart.wheelAngle += (cart.vx * dt) / cart.wheelR;
-
-    // Wygaszanie drgań zawieszenia
-    if (cart.bounce > 0.05) {
-      cart.bouncePhase += dt * 25;
-      cart.bounce *= Math.pow(0.92, dt * 60);
+  // C. Centralny Most Wiszący (X: 1680–2720, Y: 700)
+  if (2720 >= camL && 1680 <= camR) {
+    if (suspensionBridgeImg && suspensionBridgeImg.complete && suspensionBridgeImg.naturalWidth > 0) {
+      // Skalowanie sprite'a mostu tak, by podłoga mostu pokrywała Y = 700 (deck row 245 / 675 * 260 = 95 px; 605 + 95 = 700)
+      ctx.drawImage(suspensionBridgeImg, 1680, 605, 1040, 260);
     } else {
-      cart.bounce = 0;
-      cart.bouncePhase = 0;
+      ctx.fillStyle = '#161922';
+      ctx.fillRect(1680, 700, 1040, 40);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1680, 700, 1040, 4);
     }
 
-    // 2. Odbicie od krańcowych odbojnic tunelu
-    if (cart.x < minX) {
-      cart.x = minX;
-      cart.vx = -cart.vx * 0.65;
-      cart.bounce = 5;
-      spawnStretchedSparks(minX + 8, floorY - 25, 8);
-    } else if (cart.x + cart.w > maxX) {
-      cart.x = maxX - cart.w;
-      cart.vx = -cart.vx * 0.65;
-      cart.bounce = 5;
-      spawnStretchedSparks(maxX - 8, floorY - 25, 8);
+    // Zimne niebieskawe jarzeniówki wbudowane w podłogę mostu
+    const bridgeNeonPulse = Math.sin(animTime * 4.0) * 0.15 + 0.85;
+    ctx.save();
+    ctx.fillStyle = `rgba(56, 189, 248, ${0.40 * bridgeNeonPulse})`;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.fillRect(1700, 698, 1000, 3);
+    ctx.restore();
+  }
+
+  // -----------------------------------------------------------------------
+  // 3. RENDEROWANIE MAGNETYCZNYCH WIND TOWAROWYCH (LUKI PRZESIADKOWE)
+  // -----------------------------------------------------------------------
+  const CARGO_LIFTS = [
+    { x: 1330, y: 970, w: 155, team: 'cyan' },
+    { x: 1490, y: 835, w: 155, team: 'cyan' },
+    { x: 2760, y: 835, w: 155, team: 'orange' },
+    { x: 2920, y: 970, w: 155, team: 'orange' }
+  ];
+
+  for (let i = 0; i < CARGO_LIFTS.length; i++) {
+    const cl = CARGO_LIFTS[i];
+    if (cl.x + cl.w < camL || cl.x > camR) continue;
+
+    if (cargoPlatformImg && cargoPlatformImg.complete && cargoPlatformImg.naturalWidth > 0) {
+      // Górna krawędź pokładu (row 0) idealnie na cl.y, silniki wiszą pod spodem
+      ctx.drawImage(cargoPlatformImg, cl.x, cl.y, cl.w, 91);
+    } else {
+      ctx.fillStyle = '#232733';
+      ctx.fillRect(cl.x, cl.y, cl.w, 30);
+      ctx.strokeStyle = cl.team === 'cyan' ? '#00e5ff' : '#f97316';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(cl.x, cl.y, cl.w, 3);
     }
 
-    // 3. Obsługa pasażera stojącego wewnątrz wagonika
-    if (cart.passenger) {
-      const p = cart.passenger;
-      const charW = p.w || 24;
-      const charH = p.h || 70;
-      const pFootX = p.x + charW / 2;
-      const cartFloorY = cart.y + 48; // Precyzyjnie dopasowany poziom podłogi wewnątrz misy wagonika
+    // Pulsujące dysze plazmowe silników antygrawitacyjnych
+    const thrusterPulse = Math.sin(animTime * 6.5 + i) * 0.25 + 0.75;
+    const pods = [cl.x + cl.w * 0.28, cl.x + cl.w * 0.72];
+    for (let k = 0; k < pods.length; k++) {
+      const px = pods[k];
+      const tg = ctx.createLinearGradient(px, cl.y + 28, px, cl.y + 60);
+      tg.addColorStop(0, cl.team === 'cyan' ? `rgba(0, 229, 255, ${0.80 * thrusterPulse})` : `rgba(249, 115, 22, ${0.80 * thrusterPulse})`);
+      tg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = tg;
+      ctx.beginPath();
+      ctx.moveTo(px - 7, cl.y + 28);
+      ctx.lineTo(px + 7, cl.y + 28);
+      ctx.lineTo(px + 12, cl.y + 55);
+      ctx.lineTo(px - 12, cl.y + 55);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
 
-      // Wyjście / wyskoczenie tylko na świadome naciśnięcie skoku (góra / W / gest drążka)
-      const wantJumpOut = !!((p.keys && (p.keys.up || p.keys.KeyW)) || (p.leftStick && p.leftStick.jumpTriggered));
-      const isFarOut = pFootX < cart.x - 16 || pFootX > cart.x + cart.w + 16;
+  // -----------------------------------------------------------------------
+  // 4. RENDEROWANIE KŁADEK SNAJPERSKICH ZE ZBROJONEGO SZKŁA (Y = 440)
+  // -----------------------------------------------------------------------
+  const SNIPER_DECKS = [
+    { x: 1840, y: 440, w: 240, flip: false },
+    { x: 2320, y: 440, w: 240, flip: true }
+  ];
 
-      if (!p.isDead && !wantJumpOut && !isFarOut) {
-        // Postać stoi stabilnie i fizycznie na podłodze wagonika
-        p.inMinecart = true;
-        p._inCart = cart;
-        p.onGround = true;
-        p.isJumping = false;
-        p.currentGroundY = cartFloorY;
-        p.y = cartFloorY - charH;
-        p.vy = 0;
+  for (let i = 0; i < SNIPER_DECKS.length; i++) {
+    const sd = SNIPER_DECKS[i];
+    if (sd.x + sd.w < camL || sd.x > camR) continue;
 
-        // Poruszanie się razem z wagonikiem:
-        p.x += cart.vx * dt;
-
-        // Będąc w środku postać NIE WPŁYWA na ruch wagonika (ani poruszaniem się, ani kopaniem)
-        p.vx = 0;
-
-        // Ograniczenie ruchu do bezpiecznego wnętrza misy wagonika
-        const minInX = cart.x + 8;
-        const maxInX = cart.x + cart.w - charW - 8;
-        if (p.x < minInX) p.x = minInX;
-        if (p.x > maxInX) p.x = maxInX;
+    if (glassPlatformImg && glassPlatformImg.complete && glassPlatformImg.naturalWidth > 0) {
+      ctx.save();
+      if (sd.flip) {
+        ctx.translate(sd.x + sd.w, sd.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(glassPlatformImg, 0, 0, sd.w, 25);
       } else {
-        p.inMinecart = false;
-        p._inCart = null;
-        cart.passenger = null;
-        p.currentGroundY = floorY;
-        if (wantJumpOut && !p.isDead) {
-          p.vy = -(CONFIG.JUMP_FORCE || 9.8);
-          p.isJumping = true;
-          p.onGround = false;
-        }
+        ctx.drawImage(glassPlatformImg, sd.x, sd.y, sd.w, 25);
       }
-    }
-
-    // 4. Detekcja wejścia postaci do środka, taranowania, wślizgu i zderzeń (ZERO DUCHÓW!)
-    if (Array.isArray(players)) {
-      for (const p of players) {
-        if (!p || p.isDead) continue;
-        if (p._cartDmgTimer > 0) p._cartDmgTimer--;
-
-        const charW = p.w || 24;
-        const charH = p.h || 70;
-        const pLeft = p.x;
-        const pRight = p.x + charW;
-        const pCenterX = p.x + charW / 2;
-        const pFootY = p.y + charH;
-        const pHeadY = p.y;
-        const cartFloorY = cart.y + 48;
-
-        // (A) Wskoczenie od góry do wnętrza pustego wagonika (musi wskoczyć od góry!)
-        if (!cart.passenger &&
-            pCenterX >= cart.x + 6 && pCenterX <= cart.x + cart.w - 6 &&
-            pFootY >= cart.y && pFootY <= cartFloorY + 22 &&
-            p.vy >= -2 && !p.isSliding) {
-          cart.passenger = p;
-          p.inMinecart = true;
-          p._inCart = cart;
-          p.onGround = true;
-          p.isJumping = false;
-          p.currentGroundY = cartFloorY;
-          p.y = cartFloorY - charH;
-          p.vy = 0;
-          cart.bounce = 3;
-          continue;
-        }
-
-        // (B) Interakcje postaci z zewnątrz wagonika
-        // Postać będąca wewnątrz JAKIEGOKOLWIEK wagonika NIE MOŻE wpływać na żaden wagonik (ani ruchem, ani kopaniem)
-        const isPlayerInsideAnyCart = (p.inMinecart || p._inCart || cart.passenger === p);
-        if (!isPlayerInsideAnyCart) {
-          // 1. Detekcja kopnięcia (Spartan kick, normalny wymach nogą, ładowanie lub dotyk)
-          const isKickingNow = (p.kickState === 'SWING' || (p.spartanTimer && p.spartanTimer > 0) || p.isKicking || p.isCharging);
-          if (isKickingNow) {
-            const kickReach = 95;
-            const isNearCart = (pRight >= cart.x - kickReach && pLeft <= cart.x + cart.w + kickReach) &&
-                               Math.abs(pFootY - (cart.y + cart.h)) < 65;
-            if (isNearCart && !p._cartKicked) {
-              p._cartKicked = true;
-              const dir = (p.facing !== undefined) ? p.facing : (pCenterX < cart.x + cart.w / 2 ? 1 : -1);
-              const force = (p.kickForce || 1.1) * 280; // Zbalansowana siła kopnięcia w wagonik (nie odrzuca za mocno)
-              cart.vx += dir * force;
-              cart.bounce = 5;
-              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 14);
-            }
-          } else {
-            p._cartKicked = false;
-          }
-
-          // 2. FIZYCZNA BARIERA BOCZNA - POPYCHANIE OD ZEWNĄTRZ I WŚLIZG (NIE WCHODZIĆ Z ZIEMI!)
-          if (pFootY > cart.y + 12 && pHeadY < cart.y + cart.h + 5) {
-            // Zderzenie od lewej strony (postać napiera na lewy bok wagonika)
-            if (pRight >= cart.x && pLeft < cart.x + 18) {
-              p.x = cart.x - charW; // Zatrzymanie na zewnętrznej burcie!
-
-              if (p.isSliding) {
-                // Uderzenie wślizgiem w bok wagonika
-                const slideImpulse = Math.max(140, Math.min(220, Math.abs((p.vx || 6) * 35)));
-                cart.vx += slideImpulse;
-                cart.bounce = 5;
-                spawnStretchedSparks(cart.x, pFootY - 12, 12);
-                p.isSliding = false; // Zatrzymanie ślizgu
-                p.vx = 0;
-              } else {
-                // Postać od zewnątrz popycha wagonik w prawo
-                const isPushing = (p.vx > 0) || (p.keys && (p.keys.right || p.keys.KeyD || p.keys.ArrowRight)) || (p.leftStick && p.leftStick.axisX > 0.25);
-                if (isPushing) {
-                  const pushSpeed = Math.min(120, Math.max(45, Math.abs(p.vx * 60) || 60));
-                  cart.vx = Math.min(120, Math.max(cart.vx + 180 * dt, pushSpeed));
-                  p.vx = Math.min(p.vx, cart.vx / 60);
-                  p.x = cart.x - charW;
-                } else {
-                  if (p.vx > 0) p.vx = 0;
-                }
-              }
-            }
-            // Zderzenie od prawej strony (postać napiera na prawy bok wagonika)
-            else if (pLeft <= cart.x + cart.w && pRight > cart.x + cart.w - 18) {
-              p.x = cart.x + cart.w; // Zatrzymanie na zewnętrznej burcie!
-
-              if (p.isSliding) {
-                // Uderzenie wślizgiem w bok wagonika
-                const slideImpulse = Math.max(140, Math.min(220, Math.abs((p.vx || -6) * 35)));
-                cart.vx -= slideImpulse;
-                cart.bounce = 5;
-                spawnStretchedSparks(cart.x + cart.w, pFootY - 12, 12);
-                p.isSliding = false;
-                p.vx = 0;
-              } else {
-                // Postać od zewnątrz popycha wagonik w lewo
-                const isPushing = (p.vx < 0) || (p.keys && (p.keys.left || p.keys.KeyA || p.keys.ArrowLeft)) || (p.leftStick && p.leftStick.axisX < -0.25);
-                if (isPushing) {
-                  const pushSpeed = Math.min(120, Math.max(45, Math.abs(p.vx * 60) || 60));
-                  cart.vx = Math.max(-120, Math.min(cart.vx - 180 * dt, -pushSpeed));
-                  p.vx = Math.max(p.vx, cart.vx / 60);
-                  p.x = cart.x + cart.w;
-                } else {
-                  if (p.vx < 0) p.vx = 0;
-                }
-              }
-            }
-
-            // Taranowanie przy dużej prędkości wagonika (realistyczne odepchnięcie bez katapultowania w sufit)
-            if (Math.abs(cart.vx) > 130) {
-              const cartCenter = cart.x + cart.w / 2;
-              const dist = Math.abs(pCenterX - cartCenter);
-              if (dist < (cart.w + charW) * 0.5) {
-                const ramDir = cart.vx > 0 ? 1 : -1;
-                p.vx = ramDir * Math.min(8.0, Math.abs(cart.vx) * 0.035);
-                p.vy = -3.5;
-                cart.vx *= 0.88;
-                spawnStretchedSparks(pCenterX, cart.y + cart.h / 2, 8);
-                if (Math.abs(cart.vx) > 260 && p.hp !== undefined && (!p._cartDmgTimer || p._cartDmgTimer <= 0)) {
-                  p.hp = Math.max(1, p.hp - 6);
-                  p._cartDmgTimer = 35; // Cooldown obrażeń taranowania
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 5. Zoptymalizowana, realistyczna fizyka kolizji piłki z wagonikiem (Zoptymalizowana logika kolizji)
-    if (ball) {
-      const bRad = ball.colRadius || 7;
-      const bTop = ball.y - bRad;
-      const bBottom = ball.y + bRad;
-      const bLeft = ball.x - bRad;
-      const bRight = ball.x + bRad;
-
-      const cartFloorY = cart.y + 48;
-      const cartTopY = cart.y + 12;
-      const cartBottomY = cart.y + cart.h;
-      const cartLeft = cart.x;
-      const cartRight = cart.x + cart.w;
-
-      // Sprawdzenie czy piłka jest w ogólnym obszarze wagonika
-      if (bRight >= cartLeft && bLeft <= cartRight && bBottom >= cartTopY && bTop <= cartBottomY) {
-        const isInsideBasketX = (ball.x >= cartLeft + 12 && ball.x <= cartRight - 12);
-
-        if (isInsideBasketX) {
-          // (A) Piłka wewnątrz kosza wagonika
-          if (bBottom >= cartFloorY && bTop < cartFloorY + 16) {
-            // Odbicie od podłogi wózka lub spoczynek w środku
-            ball.y = cartFloorY - bRad;
-            if (ball.vy > 0) {
-              ball.vy = -ball.vy * 0.62;
-              if (Math.abs(ball.vy) < 0.9) {
-                ball.vy = 0;
-                // Piłka toczy się i jedzie razem z wózkiem
-                ball.vx = ball.vx * 0.90 + (cart.vx / 60) * 0.10;
-                ball.x += cart.vx * dt;
-              }
-            }
-            cart.bounce = 2;
-          }
-          // Boczne wewnętrzne ścianki kosza zatrzymują piłkę wewnątrz
-          if (ball.x - bRad < cartLeft + 12) {
-            ball.x = cartLeft + 12 + bRad;
-            if (ball.vx < cart.vx / 60) ball.vx = cart.vx / 60 + Math.abs(ball.vx) * 0.6;
-          } else if (ball.x + bRad > cartRight - 12) {
-            ball.x = cartRight - 12 - bRad;
-            if (ball.vx > cart.vx / 60) ball.vx = cart.vx / 60 - Math.abs(ball.vx) * 0.6;
-          }
-        } else {
-          // (B) Kolizja z zewnętrznymi burtami wagonika (lewa lub prawa burta)
-          const cartCenter = (cartLeft + cartRight) / 2;
-          const isHittingLeftWall = (ball.x < cartCenter);
-
-          if (isHittingLeftWall) {
-            // Kolizja z lewą zewnętrzną burtą wózka
-            ball.x = cartLeft - bRad;
-            const vRel = ball.vx - (cart.vx / 60);
-            if (vRel > 0 || cart.vx < 0) {
-              const impulse = Math.max(Math.abs(vRel) * 0.75, Math.abs(cart.vx / 60) * 0.85);
-              ball.vx = (cart.vx / 60) - impulse - 1.2;
-              ball.vy = ball.vy * 0.75 - 1.5;
-              cart.vx += Math.min(30, Math.abs(ball.vx) * 1.5);
-              cart.bounce = 3;
-              spawnRicochetSparks(ball.x, ball.y, -1, 0, 5);
-            }
-          } else {
-            // Kolizja z prawą zewnętrzną burtą wózka
-            ball.x = cartRight + bRad;
-            const vRel = ball.vx - (cart.vx / 60);
-            if (vRel < 0 || cart.vx > 0) {
-              const impulse = Math.max(Math.abs(vRel) * 0.75, Math.abs(cart.vx / 60) * 0.85);
-              ball.vx = (cart.vx / 60) + impulse + 1.2;
-              ball.vy = ball.vy * 0.75 - 1.5;
-              cart.vx -= Math.min(30, Math.abs(ball.vx) * 1.5);
-              cart.bounce = 3;
-              spawnRicochetSparks(ball.x, ball.y, 1, 0, 5);
-            }
-          }
-
-          // Taranowanie piłki przy dużej prędkości wózka (|cart.vx| > 70)
-          if (Math.abs(cart.vx) > 70) {
-            const ramDir = cart.vx > 0 ? 1 : -1;
-            ball.vx = (cart.vx / 60) * 1.4 + ramDir * 3.5;
-            ball.vy = -Math.abs(cart.vx) * 0.035 - 3.0;
-            spawnStretchedSparks(ball.x, ball.y, 10);
-          }
-        }
-      }
-    }
-  }
-
-  // 6. Kolizja elastyczna pomiędzy dwoma wagonikami
-  if (ARENA_3_MINECARTS.length >= 2) {
-    const c1 = ARENA_3_MINECARTS[0];
-    const c2 = ARENA_3_MINECARTS[1];
-    if (c1.x + c1.w > c2.x && c1.x < c2.x + c2.w) {
-      const overlap = (c1.x + c1.w) - c2.x;
-      c1.x -= overlap * 0.5;
-      c2.x += overlap * 0.5;
-      const vRel = c1.vx - c2.vx;
-      if (vRel > 0) {
-        const e = 0.75;
-        const avg = (c1.vx + c2.vx) * 0.5;
-        c1.vx = avg - (vRel * e * 0.5);
-        c2.vx = avg + (vRel * e * 0.5);
-        c1.bounce = 6;
-        c2.bounce = 6;
-        spawnStretchedSparks((c1.x + c1.w + c2.x) * 0.5, floorY - 35, 12);
-      }
-    }
-  }
-}
-
-// =========================================================================
-// HAKI KOLIZJI POCISKÓW, KOPNIĘCIA I EKSPLOZJI
-// =========================================================================
-function segmentIntersectsAABB(x1, y1, x2, y2, minX, minY, maxX, maxY) {
-  if ((x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) ||
-      (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)) {
-    return true;
-  }
-  if (Math.max(x1, x2) < minX || Math.min(x1, x2) > maxX ||
-      Math.max(y1, y2) < minY || Math.min(y1, y2) > maxY) {
-    return false;
-  }
-  let t0 = 0, t1 = 1;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const p = [-dx, dx, -dy, dy];
-  const q = [x1 - minX, maxX - x1, y1 - minY, maxY - y1];
-  for (let i = 0; i < 4; i++) {
-    if (p[i] === 0) {
-      if (q[i] < 0) return false;
+      ctx.restore();
     } else {
-      const t = q[i] / p[i];
-      if (p[i] < 0) {
-        if (t > t1) return false;
-        if (t > t0) t0 = t;
-      } else {
-        if (t < t0) return false;
-        if (t < t1) t1 = t;
-      }
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.fillRect(sd.x, sd.y, sd.w, 20);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(sd.x, sd.y, sd.w, 20);
     }
   }
-  return t0 <= t1;
+
+  // -----------------------------------------------------------------------
+  // 5. RENDEROWANIE POZIOMU DOLNEGO (AUTOSTRADA TRANZYTOWA, Y = 1180)
+  // -----------------------------------------------------------------------
+  // Rysowanie segmentowej kratownicy autostrady
+  const hFloorY = 1180;
+  if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
+    const tileW = 550;
+    const startTile = Math.floor(Math.max(20, camL) / tileW);
+    const endTile = Math.ceil(Math.min(4380, camR) / tileW);
+    for (let t = startTile; t <= endTile; t++) {
+      const tx = t * tileW;
+      ctx.drawImage(platformTileImg, tx, hFloorY, tileW, 40);
+    }
+  } else {
+    ctx.fillStyle = '#11141c';
+    ctx.fillRect(20, hFloorY, 4360, 40);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, hFloorY, 4360, 3);
+  }
+
+  // Pulsujące żółte lampy awaryjne wbudowane w podłogę
+  const pulse = Math.sin(animTime * 3.5) * 0.25 + 0.75;
+  for (let lx = 90; lx < 4350; lx += 140) {
+    if (lx < camL || lx > camR) continue;
+    const lg = ctx.createRadialGradient(lx, hFloorY + 2, 2, lx, hFloorY + 2, 22);
+    lg.addColorStop(0, `rgba(250, 204, 21, ${0.45 * pulse})`);
+    lg.addColorStop(1, 'rgba(234, 179, 8, 0)');
+    ctx.fillStyle = lg;
+    ctx.beginPath();
+    ctx.arc(lx, hFloorY + 2, 22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Sunąca niska mgła nad podłogą autostrady
+  ctx.save();
+  for (let i = 0; i < HIGHWAY_FOG_PUFFS.length; i++) {
+    const fog = HIGHWAY_FOG_PUFFS[i];
+    if (fog.x + fog.r < camL || fog.x - fog.r > camR) continue;
+    const fy = fog.baseY + Math.sin(animTime * 1.5 + fog.phase) * 4;
+    const fg = ctx.createRadialGradient(fog.x, fy, 0, fog.x, fy, fog.r);
+    fg.addColorStop(0, 'rgba(148, 163, 184, 0.16)');
+    fg.addColorStop(0.6, 'rgba(100, 116, 139, 0.08)');
+    fg.addColorStop(1, 'rgba(71, 85, 105, 0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.arc(fog.x, fy, fog.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.restore();
 }
 
+// =========================================================================
+// 8. HOOKI INTERAKCJI BOJOWYCH
+// =========================================================================
 export function onArena3BulletHit(bullet) {
-  if (!bullet || (bullet.life !== undefined && bullet.life <= 0)) return false;
-
-  const bx1 = (typeof bullet.prevX === 'number') ? bullet.prevX : (bullet.x - (bullet.vx || 0));
-  const by1 = (typeof bullet.prevY === 'number') ? bullet.prevY : (bullet.y - (bullet.vy || 0));
-  const bx2 = bullet.x;
-  const by2 = bullet.y;
-
-  for (const cart of ARENA_3_MINECARTS) {
-    const cartMinX = cart.x;
-    const cartMaxX = cart.x + cart.w;
-    const cartMinY = cart.y;
-    const cartMaxY = cart.y + cart.h;
-
-    if (segmentIntersectsAABB(bx1, by1, bx2, by2, cartMinX, cartMinY, cartMaxX, cartMaxY)) {
-      // Przekazanie pędu pocisku na masę wagonika
-      const bulletImpulse = (bullet.vx || 0) * 0.55;
-      cart.vx += bulletImpulse;
-      cart.bounce = 3.5;
-
-      // Punkt uderzenia
-      const hitX = Math.max(cartMinX, Math.min(cartMaxX, bx2));
-      const hitY = Math.max(cartMinY, Math.min(cartMaxY, by2));
-
-      // Zawsze zablokuj pocisk (niech pociski NIE przenikają przez wagonik!)
-      const nx = (bullet.vx || 1) > 0 ? -1 : 1;
-      spawnRicochetSparks(hitX, hitY, nx, -0.3, 8);
-      bullet.alive = false;
-      return true; // Kula zablokowana i pochłonięta przez pancerz wagonika
-    }
-  }
   return false;
 }
 
 export function onArena3KickHit(player, kickBox) {
-  if (!player) return false;
-  // Postać będąca w środku wagonika NIE MOŻE kopać ani napędzać wagonika od wewnątrz
-  if (player.inMinecart || player._inCart) return false;
-  for (const c of ARENA_3_MINECARTS) {
-    if (c.passenger === player) return false;
-  }
-  let hitAny = false;
-
-  for (const cart of ARENA_3_MINECARTS) {
-    const pCenterX = player.x + (player.w || 24) / 2;
-    const pFootY = player.y + (player.h || 70);
-    const cartCenter = cart.x + cart.w / 2;
-    const distToCartX = Math.abs(pCenterX - cartCenter);
-    const distToCartY = Math.abs(pFootY - (cart.y + cart.h));
-    const isNearby = (distToCartX <= (cart.w / 2 + 75)) && (distToCartY <= 65);
-
-    let overlap = false;
-    if (kickBox) {
-      const boxRight = kickBox.x + kickBox.w + 15;
-      const boxLeft = kickBox.x - 15;
-      const boxBottom = kickBox.y + kickBox.h + 15;
-      const boxTop = kickBox.y - 15;
-      const cartRight = cart.x + cart.w;
-      const cartBottom = cart.y + cart.h;
-      overlap = boxLeft <= cartRight && boxRight >= cart.x &&
-                boxTop <= cartBottom && boxBottom >= cart.y;
-    }
-
-    if (isNearby || overlap) {
-      const dir = (player.facing !== undefined) ? player.facing : (pCenterX < cartCenter ? 1 : -1);
-      const force = (player.kickForce || 1.1) * 280; // Zbalansowana siła kopnięcia
-      cart.vx += dir * force;
-      cart.bounce = 5;
-      spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 14);
-      hitAny = true;
-    }
-  }
-  return hitAny;
+  return false;
 }
 
 export function onArena3Explosion(expX, expY, radius, context) {
-  // 1. Zniszczenie stropu płyty głównej (Y = 900)
-  carveArena3SlabBreach(expX, expY, radius, context);
-
-  // 2. Impuls i odrzut wagoników kopalnianych
-  let hit = false;
-  for (const cart of ARENA_3_MINECARTS) {
-    const cx = cart.x + cart.w / 2;
-    const cy = cart.y + cart.h / 2;
-    const dist = Math.hypot(cx - expX, cy - expY);
-    const maxRadius = radius * 1.35;
-
-    if (dist <= maxRadius) {
-      const factor = Math.max(0, 1 - (dist / maxRadius));
-      const dirX = dist > 1 ? (cx - expX) / dist : (Math.random() > 0.5 ? 1 : -1);
-      const blastForce = factor * 760;
-
-      cart.vx += dirX * blastForce;
-      cart.vy -= factor * 220; // Podbicie wagonika do góry
-      cart.bounce = 10;
-      spawnStretchedSparks(cx, cy, 18);
-      hit = true;
-    }
-  }
-  return hit;
+  return false;
 }
 
 // =========================================================================
-// KONTRAKT ARENY 3 (PLUGIN DEFINITION / LIFECYCLE HOOKS)
+// 9. KONTRAKT ARENY 3 (PLUGIN DEFINITION / LIFECYCLE HOOKS)
 // =========================================================================
 const arena3 = {
   id: 'arena-3',
-  name: 'The Foundry',
+  alias: 'AERO_REFINERY',
+  name: 'Aero-Rafineria (Podniebny Dystrykt)',
+  width: 4400,
+  height: 1400,
   spawns: [
-    { x: 600, y: 830 },   // Gracz Cyan (płyta Y = 900)
-    { x: 3800, y: 830 },  // Bot Orange (płyta Y = 900)
-    { x: 2200, y: 680 }   // Piłka (środek nad kotłem - lewitująca)
+    { x: 600, y: 630 },   // Spawn gracza (Cyan) - Płyta bazy lewej Y = 700 (postać h=70)
+    { x: 3800, y: 630 },  // Spawn bota (Orange) - Płyta bazy prawej Y = 700
+    { x: 2200, y: 650 }   // Piłka - lewitująca nad centralnym mostem Y = 700
   ],
   platforms: ARENA_3_PLATFORMS,
   customObjects: ARENA_3_CUSTOM_OBJECTS,
@@ -1066,10 +998,5 @@ const arena3 = {
     return onArena3Explosion(expX, expY, radius, context);
   }
 };
-
-if (typeof window !== 'undefined') {
-  window.arena3Breaches = arena3Breaches;
-  window.carveBreach = (x = 1400) => carveArena3SlabBreach(x, 900, 85, { platforms: window.world?.platforms });
-}
 
 export default arena3;

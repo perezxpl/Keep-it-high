@@ -101,7 +101,18 @@ if (canvas) {
 resize(player);
 updateButtonLayout();
 setActiveBot(bot);
-resetBallToPlayer(player, GROUND_Y);
+// Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=3 / ?arena=2 / arena-1)
+const initialArena = getActiveArena();
+const initialArenaId = initialArena?.id || 'arena-1';
+switchArena(initialArenaId, player, bot, ball);
+if (typeof syncDevArenaButtonUI === 'function') {
+  syncDevArenaButtonUI();
+}
+camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+camera.x = camera.targetX;
+camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+camera.y = camera.targetY;
+clampCamera();
 
 window.addEventListener('resize', () => {
   resize(player);
@@ -669,7 +680,7 @@ export const BIOME_TELEPORT_TARGETS = {
 export function teleportToDistance(meters) {
   const targetX = START_X + (meters * 14);
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const floorY = isA3 ? 900 : GROUND_Y;
+  const floorY = isA3 ? 700 : GROUND_Y;
 
   player.x = targetX;
   player.y = floorY - player.h;
@@ -1363,11 +1374,40 @@ if (devBotFreezeBtn) {
   devBotFreezeBtn.addEventListener('touchend', toggleFreeze);
 }
 
+export function syncDevArenaButtonUI() {
+  const devArenaBtn = document.getElementById('dev-arena-btn');
+  if (!devArenaBtn) return;
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+    devArenaBtn.textContent = '🏭 Arena: 3 (Aero-Rafineria)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 88, 12, 0.25), rgba(147, 51, 234, 0.25))';
+    devArenaBtn.style.borderColor = '#f97316';
+    devArenaBtn.style.color = '#fdba74';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(249, 115, 22, 0.45)';
+  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
+    devArenaBtn.style.borderColor = '#10b981';
+    devArenaBtn.style.color = '#6ee7b7';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
+  } else {
+    devArenaBtn.textContent = '🏟️ Arena: 1';
+    devArenaBtn.style.background = '';
+    devArenaBtn.style.borderColor = '#06b6d4';
+    devArenaBtn.style.color = '#22d3ee';
+    devArenaBtn.style.boxShadow = '';
+  }
+}
+
 const devArenaBtn = document.getElementById('dev-arena-btn');
 if (devArenaBtn) {
+  let lastToggleTime = 0;
   const toggleArena = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    const now = performance.now();
+    if (now - lastToggleTime < 250) return;
+    lastToggleTime = now;
+
     let nextArena = 'ARENA_1';
     if (activeArenaId === 'ARENA_1') {
       nextArena = 'ARENA_2';
@@ -1378,25 +1418,7 @@ if (devArenaBtn) {
     }
     switchArena(nextArena, player, bot, ball);
     sendArenaSwitch(nextArena);
-    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-      devArenaBtn.textContent = '🔥 Arena: 3 (Odlewnia)';
-      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(249, 115, 22, 0.25))';
-      devArenaBtn.style.borderColor = '#f97316';
-      devArenaBtn.style.color = '#fdba74';
-      devArenaBtn.style.boxShadow = '0 0 12px rgba(249, 115, 22, 0.45)';
-    } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
-      devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
-      devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
-      devArenaBtn.style.borderColor = '#10b981';
-      devArenaBtn.style.color = '#6ee7b7';
-      devArenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
-    } else {
-      devArenaBtn.textContent = '🏟️ Arena: 1';
-      devArenaBtn.style.background = '';
-      devArenaBtn.style.borderColor = '#06b6d4';
-      devArenaBtn.style.color = '#22d3ee';
-      devArenaBtn.style.boxShadow = '';
-    }
+    syncDevArenaButtonUI();
     camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
     camera.x = camera.targetX;
     camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
@@ -1408,6 +1430,7 @@ if (devArenaBtn) {
   };
   devArenaBtn.addEventListener('click', toggleArena);
   devArenaBtn.addEventListener('touchend', toggleArena);
+  syncDevArenaButtonUI();
 }
 
 // =========================================================================
@@ -2512,14 +2535,10 @@ function update() {
     player.isCrouching = false;
     player.isProne = false;
 
-    // Blokada wylotu ponad lity strop jaskini w locie jetpackiem
-    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-      const ceilY = getCaveCeilingY(player.x + player.w / 2, GROUND_Y);
-      if (player.y < ceilY) {
-        player.y = ceilY;
-        if (player.vy < 0) player.vy = 0.5;
-        spawnJetpackSparks(player.x + player.w / 2, ceilY + 4, 0, 4);
-      }
+    // Zabezpieczenie przed wylotem ponad najwyższą granicę nieba
+    if (player.y < 20) {
+      player.y = 20;
+      if (player.vy < 0) player.vy = 0;
     }
 
     const nozzle = getJetpackNozzlePos(player);

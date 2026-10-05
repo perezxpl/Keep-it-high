@@ -369,15 +369,6 @@ export function updateBall(GROUND_Y) {
       }
     }
 
-    // Sprężyste odbicie od stropu dolnego tunelu (Y = 970) w Arenie 3
-    if (isArena3 && ball.y > 960 && ball.y < 1270 && ball.vy < 0) {
-      const isUnderHatch = (ball.x >= 770 && ball.x <= 930) || (ball.x >= 3470 && ball.x <= 3630);
-      if (!isUnderHatch && ball.y - ball.colRadius <= 970) {
-        ball.y = 970 + ball.colRadius;
-        ball.vy = Math.abs(ball.vy) * 0.65;
-        ball.vx *= 0.98;
-      }
-    }
 
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
     const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');

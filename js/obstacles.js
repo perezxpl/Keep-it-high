@@ -611,6 +611,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
   if (currentArena && Array.isArray(currentArena.platforms)) {
     ARENA_PLATFORMS.push(...currentArena.platforms);
+    if (activeArenaId === 'ARENA_3') {
+      arenaSnapshot.arena3Platforms = JSON.parse(JSON.stringify(currentArena.platforms));
+    }
   }
 
   const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
@@ -626,7 +629,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     if (playerObj) {
       playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 830;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 630;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -638,7 +641,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (targetBot) {
       // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3800;
-      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 830;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 630;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -649,7 +652,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = true;
       ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 2200;
-      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 680;
+      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 650;
       ballObj.hoverBaseY = ballObj.y;
       ballObj.isLevitating = true;
       ballObj.goalAnimation = null;
@@ -1581,30 +1584,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
     applyPandoraUpdraft(p);
   }
 
-  // Zabezpieczenie sufitu w Arenie 3 (The Foundry)
+  // Górny limit otwartego nieba w Arenie 3 (Y = 0)
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const isA3Active = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   if (isA3Active) {
-    // 1. Strop dolnego tunelu (Y = 970) blokujący wylot w górę w litą płytę
-    if (p.y >= 960 && p.y <= 1220) {
-      // Przepuść gracza przez luki zrzutowe (hatch_left 780..920 i hatch_right 3480..3620)
-      const isUnderHatch = (centerX >= 750 && centerX <= 950) || (centerX >= 3450 && centerX <= 3650);
-      if (!isUnderHatch && p.y < 970) {
-        p.y = 970;
-        if (p.vy < 0) {
-          p.vy = 1.0;
-          spawnObstacleSparks(centerX, 970, 0, 1, 3);
-        }
-      }
-    }
-
-    // 2. Globalny sufit hali przemysłowej u góry mapy (Y = 34)
-    if (p.y < 34) {
-      p.y = 34;
-      if (p.vy < 0) {
-        p.vy = 1.2;
-        spawnObstacleSparks(centerX, 38, 0, 1, 4);
-      }
+    if (p.y < 0) {
+      p.y = 0;
+      if (p.vy < 0) p.vy = 0;
     }
   }
 
@@ -1642,6 +1628,45 @@ export function resolveBallObstacleCollisions(ball, groundY) {
           ball.spin = (ball.vx > 0 ? 1 : -1) * 0.8;
           triggerScreenShake(5.0);
           continue;
+        }
+      }
+      continue;
+    }
+
+    if (plat.isWall) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || plat.thickness || 200);
+      const platLeft = plat.x;
+      const platRight = plat.x + plat.w;
+
+      if (ball.x + cR >= platLeft && ball.x - cR <= platRight && ball.y + cR >= topY && ball.y - cR <= bottomY) {
+        if (plat.pushSide === 'right' || (ball.vx < 0 && ball.x >= platRight - 15)) {
+          ball.x = platRight + cR;
+          ball.vx = Math.abs(ball.vx) * 0.75;
+          ball.spin = -ball.spin * 0.5;
+        } else if (plat.pushSide === 'left' || (ball.vx > 0 && ball.x <= platLeft + 15)) {
+          ball.x = platLeft - cR;
+          ball.vx = -Math.abs(ball.vx) * 0.75;
+          ball.spin = -ball.spin * 0.5;
+        } else {
+          const ol = (ball.x + cR) - platLeft;
+          const or = platRight - (ball.x - cR);
+          const ot = (ball.y + cR) - topY;
+          const ob = bottomY - (ball.y - cR);
+          const minO = Math.min(ol, or, ot, ob);
+          if (minO === ot && ball.vy >= 0) {
+            ball.y = topY - cR;
+            ball.vy = -Math.abs(ball.vy) * 0.65;
+          } else if (minO === ob && ball.vy <= 0) {
+            ball.y = bottomY + cR;
+            ball.vy = Math.abs(ball.vy) * 0.65;
+          } else if (minO === ol) {
+            ball.x = platLeft - cR;
+            ball.vx = -Math.abs(ball.vx) * 0.75;
+          } else {
+            ball.x = platRight + cR;
+            ball.vx = Math.abs(ball.vx) * 0.75;
+          }
         }
       }
       continue;
@@ -4226,7 +4251,7 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
       }
 
       // 2. Skaliste wyspy i profile wielokątne z surfacePoints
-      if (plat.type === 'rock_platform' || plat.type === 'citadel_island' || plat.type === 'altar_island') {
+      if (plat.type === 'rock_platform' || plat.type === 'citadel_island' || plat.type === 'altar_island' || Array.isArray(plat.surfacePoints)) {
         if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
           const pts = plat.surfacePoints;
           for (let i = 0; i < pts.length - 1; i++) {
