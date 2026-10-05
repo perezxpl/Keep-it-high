@@ -88,28 +88,28 @@ export const ARENA_3_CUSTOM_OBJECTS = [
     id: 'goal_cyan',
     team: 'CYAN',
     x: 20,
-    y: 560,
+    y: 280,
     w: 340,
     h: 340,
     facing: 1,
     color: '#06b6d4',
     glowColor: 'rgba(6, 182, 212, 0.85)',
     holeCx: 190,
-    holeCy: 730,
+    holeCy: 450,
     holeR: 170
   },
   {
     id: 'goal_orange',
     team: 'ORANGE',
     x: 4040,
-    y: 560,
+    y: 280,
     w: 340,
     h: 340,
     facing: -1,
     color: '#f97316',
     glowColor: 'rgba(249, 115, 22, 0.85)',
     holeCx: 4210,
-    holeCy: 730,
+    holeCy: 450,
     holeR: 170
   }
 ];
@@ -143,35 +143,35 @@ export function drawArena3Background(ctx, camera) {
   // Bramka Cyan (lewa) - odbicie lustrzane w osi poziomej dla pełnej symetrii osiowej z bramką Orange
   if (holeCyanImg && holeCyanImg.complete && holeCyanImg.naturalWidth > 0) {
     ctx.save();
-    ctx.translate(20 + 340, 560);
+    ctx.translate(20 + 340, 280);
     ctx.scale(-1, 1);
     ctx.drawImage(holeCyanImg, 0, 0, 340, 340);
     ctx.restore();
   }
   // Bramka Orange (prawa) - naturalny zwrot tunelu w głąb prawej ściany
   if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
-    ctx.drawImage(holeOrangeImg, 4040, 560, 340, 340);
+    ctx.drawImage(holeOrangeImg, 4040, 280, 340, 340);
   }
 
-  // Subtelna poświata głębi kanałów bramek
+  // Subtelna poświata głębi kanałów bramek (centralna wysokość Y = 450)
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  const cyanGlow = ctx.createRadialGradient(190, 730, 20, 190, 730, 180);
+  const cyanGlow = ctx.createRadialGradient(190, 450, 20, 190, 450, 180);
   cyanGlow.addColorStop(0.0, 'rgba(6, 182, 212, 0.35)');
   cyanGlow.addColorStop(0.6, 'rgba(6, 182, 212, 0.12)');
   cyanGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = cyanGlow;
   ctx.beginPath();
-  ctx.arc(190, 730, 180, 0, Math.PI * 2);
+  ctx.arc(190, 450, 180, 0, Math.PI * 2);
   ctx.fill();
 
-  const orangeGlow = ctx.createRadialGradient(4210, 730, 20, 4210, 730, 180);
+  const orangeGlow = ctx.createRadialGradient(4210, 450, 20, 4210, 450, 180);
   orangeGlow.addColorStop(0.0, 'rgba(249, 115, 22, 0.35)');
   orangeGlow.addColorStop(0.6, 'rgba(249, 115, 22, 0.12)');
   orangeGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = orangeGlow;
   ctx.beginPath();
-  ctx.arc(4210, 730, 180, 0, Math.PI * 2);
+  ctx.arc(4210, 450, 180, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
