@@ -139,18 +139,21 @@ export function drawArena3Background(ctx, camera) {
     ctx.fillRect(0, 0, 4400, 1400);
   }
 
-  // 1B. Przemysłowe bramki w ścianach hali - grafiki JPG dziur w ścianach (assets/hole_cyan.jpg i assets/hole_orange.jpg)
-  // Bramka Cyan (lewa) - odbicie lustrzane w osi poziomej dla pełnej symetrii osiowej z bramką Orange
-  if (holeCyanImg && holeCyanImg.complete && holeCyanImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.translate(20 + 340, 280);
-    ctx.scale(-1, 1);
-    ctx.drawImage(holeCyanImg, 0, 0, 340, 340);
-    ctx.restore();
-  }
-  // Bramka Orange (prawa) - naturalny zwrot tunelu w głąb prawej ściany
-  if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
-    ctx.drawImage(holeOrangeImg, 4040, 280, 340, 340);
+  // 1B. Rezerwowe bramki JPG gdyby pełne tło foundry_bg.png jeszcze się nie załadowało
+  const hasFoundryBg = foundryBgImage && foundryBgImage.complete && foundryBgImage.naturalWidth > 0;
+  if (!hasFoundryBg) {
+    // Bramka Cyan (lewa) - odbicie lustrzane w osi poziomej dla pełnej symetrii osiowej z bramką Orange
+    if (holeCyanImg && holeCyanImg.complete && holeCyanImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.translate(20 + 340, 280);
+      ctx.scale(-1, 1);
+      ctx.drawImage(holeCyanImg, 0, 0, 340, 340);
+      ctx.restore();
+    }
+    // Bramka Orange (prawa) - naturalny zwrot tunelu w głąb prawej ściany
+    if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
+      ctx.drawImage(holeOrangeImg, 4040, 280, 340, 340);
+    }
   }
 
   // Subtelna poświata głębi kanałów bramek (centralna wysokość Y = 450)

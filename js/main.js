@@ -1153,6 +1153,11 @@ export function selectPlayerClass(targetClass) {
     player.x = START_X;
     player.y = GROUND_Y - player.h;
   }
+  if (typeof window !== 'undefined' && window.location) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('spawnX')) player.x = Number(urlParams.get('spawnX'));
+    if (urlParams.has('spawnY')) player.y = Number(urlParams.get('spawnY'));
+  }
 
   player.vx = 0;
   player.vy = 0;
@@ -1170,6 +1175,13 @@ export function selectPlayerClass(targetClass) {
     canvas.parentElement.classList.remove('cursor-visible');
   }
   if (canvas) canvas.style.cursor = 'none';
+
+  if (camera) {
+    camera.targetX = player.x - (camera.viewWidth || (W / (camera.zoom || 1))) / 2;
+    camera.x = camera.targetX;
+    camera.targetY = player.y - (camera.viewHeight || (H / (camera.zoom || 1))) * 0.72;
+    camera.y = camera.targetY;
+  }
 }
 window.selectPlayerClass = selectPlayerClass;
 
@@ -2879,6 +2891,14 @@ function loop() {
 if (typeof window !== 'undefined') {
   window.player = player;
   window.camera = camera;
+  if (window.location) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const autostartClass = urlParams.get('class') || urlParams.get('autostart');
+    if (autostartClass) {
+      selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.PLAYMAKER);
+    }
+  }
 }
 
 requestAnimationFrame(loop);
+

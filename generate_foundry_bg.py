@@ -1,162 +1,96 @@
 import math, random
-from collections import deque
 from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 4400, 1400
-img = Image.new('RGB', (W, H), color='#060910')
-draw = ImageDraw.Draw(img)
+Y_MAIN = 900
+Y_SLAB_BOT = 970
+Y_TUNNEL = 1270
 
-# 1. Gradient tła
-for y in range(H):
-    fy = y / H
-    r = int(6 + (fy ** 2.2) * 110)
-    g = int(9 + (fy ** 2.2) * 32)
-    b = int(15 + (fy ** 2.2) * 10)
-    draw.line([(0, y), (W, y)], fill=(r, g, b))
+# 1. Wczytanie źródeł graficznych
+cyan_src = Image.open(r'C:\Users\bujo1\.gemini\antigravity\brain\920a61bb-19f0-4822-9ea3-75f42d7c6c1e\foundry_wall_cyan_1791200672930.jpg')
+orange_src = Image.open(r'C:\Users\bujo1\.gemini\antigravity\brain\920a61bb-19f0-4822-9ea3-75f42d7c6c1e\foundry_wall_orange_1791200694503.jpg')
+center_src = Image.open(r'C:\Users\bujo1\.gemini\antigravity\brain\920a61bb-19f0-4822-9ea3-75f42d7c6c1e\foundry_center_furnace_1791200715747.jpg')
+hole_cyan_raw = Image.open('assets/hole_cyan.jpg').convert('RGBA')
+hole_orange_raw = Image.open('assets/hole_orange.jpg').convert('RGBA')
 
-# 2. Architektura i instalacje
-random.seed(4400)
-for i in range(65):
-    col_x = random.randint(30, W - 30)
-    col_w = random.randint(50, 140)
-    shade = random.randint(11, 22)
-    draw.rectangle([col_x, 0, col_x + col_w, H], fill=(shade, shade + 2, shade + 4))
-    draw.line([col_x, 0, col_x, H], fill=(shade - 5, shade - 5, shade - 5), width=2)
-    draw.line([col_x + col_w, 0, col_x + col_w, H], fill=(shade + 5, shade + 5, shade + 5), width=2)
+# Główna powierzchnia tła
+bg = Image.new('RGB', (W, H), color='#080c14')
 
-for py in [160, 360, 580, 780, 1080]:
-    draw.rectangle([0, py, W, py + 24], fill='#131a24')
-    draw.line([(0, py + 2), (W, py + 2)], fill='#253245', width=3)
-    draw.line([(0, py + 22), (W, py + 22)], fill='#080c12', width=2)
-    for px in range(80, W, 260):
-        draw.rectangle([px - 5, py - 4, px + 5, py + 28], fill='#303e52')
+# =========================================================================
+# 2. KOMPOZYCJA GÓRNEJ HALI (Y: 0 do 950 px)
+# =========================================================================
+hall_h = 950
 
-for y_truss in [80, 400]:
-    draw.rectangle([0, y_truss, W, y_truss + 20], fill='#0f151f')
-    draw.line([(0, y_truss), (W, y_truss)], fill='#1c2636', width=2)
-    for x in range(0, W, 90):
-        draw.line([(x, y_truss), (x + 90, y_truss + 20)], fill='#080c12', width=2)
-        draw.line([(x + 90, y_truss), (x, y_truss + 20)], fill='#080c12', width=2)
+# Środek (Wielka hala pieca) - 2000px szerokości, wyśrodkowany na 2200
+center_w = 2000
+center_scaled = center_src.resize((center_w, hall_h), Image.Resampling.LANCZOS)
+bg.paste(center_scaled, (W // 2 - center_w // 2, 0))
 
-# 3. Szyb wentylatora (otwarty)
-fan_cx, fan_cy = W // 2, 220
-fan_r = 210
-draw.ellipse([fan_cx - fan_r, fan_cy - fan_r, fan_cx + fan_r, fan_cy + fan_r], fill='#020407', outline='#1a2433', width=16)
-for ir in [70, 135, 195]:
-    draw.ellipse([fan_cx - ir, fan_cy - ir, fan_cx + ir, fan_cy + ir], outline='#0e1520', width=4)
-for ang_deg in range(0, 360, 45):
+# Lewe skrzydło (Cyan) - 1650px szerokości
+left_w = 1650
+left_scaled = cyan_src.resize((left_w, hall_h), Image.Resampling.LANCZOS)
+mask_l = Image.new('L', (left_w, hall_h), 255)
+dl = ImageDraw.Draw(mask_l)
+blend_len = 350
+for x in range(left_w - blend_len, left_w):
+    alpha = int(255 * (1.0 - (x - (left_w - blend_len)) / blend_len))
+    dl.line([(x, 0), (x, hall_h)], fill=alpha)
+bg.paste(left_scaled, (0, 0), mask_l)
+
+# Prawe skrzydło (Orange) - 1650px szerokości, lustrzane odbicie
+right_w = 1650
+orange_flipped = orange_src.transpose(Image.FLIP_LEFT_RIGHT)
+right_scaled = orange_flipped.resize((right_w, hall_h), Image.Resampling.LANCZOS)
+mask_r = Image.new('L', (right_w, hall_h), 255)
+dr = ImageDraw.Draw(mask_r)
+for x in range(0, blend_len):
+    alpha = int(255 * (x / blend_len))
+    dr.line([(x, 0), (x, hall_h)], fill=alpha)
+bg.paste(right_scaled, (W - right_w, 0), mask_r)
+
+# =========================================================================
+# 3. PRZEMYSŁOWE GNIAZDA WENTYLATORA SUFITOWEGO (X: 2200, Y: 220, R: 210)
+# =========================================================================
+# Tworzymy głęboki, ciemny szyb wentylacyjny z pancernym pierścieniem i kratownicą
+fan_cx, fan_cy, fan_r = 2200, 220, 210
+fan_layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+fdraw = ImageDraw.Draw(fan_layer)
+
+# Ciemna czeluść szybu
+fdraw.ellipse([fan_cx - fan_r, fan_cy - fan_r, fan_cx + fan_r, fan_cy + fan_r], fill=(6, 9, 14, 255))
+# Pierścienie głębi
+for ir, alpha in [(190, 230), (150, 200), (100, 160), (50, 120)]:
+    fdraw.ellipse([fan_cx - ir, fan_cy - ir, fan_cx + ir, fan_cy + ir], fill=(3, 5, 8, alpha), outline=(25, 35, 48, 255), width=3)
+
+# Radialne stalowe pręty osłony wentylatora
+for ang_deg in range(0, 360, 30):
     rad = math.radians(ang_deg)
     ex = fan_cx + math.cos(rad) * fan_r
     ey = fan_cy + math.sin(rad) * fan_r
-    draw.line([(fan_cx, fan_cy), (ex, ey)], fill='#1a2433', width=4)
-draw.ellipse([fan_cx - 40, fan_cy - 40, fan_cx + 40, fan_cy + 40], fill='#080c14', outline='#2d3b4e', width=6)
-draw.ellipse([fan_cx - 15, fan_cy - 15, fan_cx + 15, fan_cy + 15], fill='#161e2a')
+    fdraw.line([(fan_cx, fan_cy), (ex, ey)], fill=(30, 42, 58, 255), width=3)
+    fdraw.line([(fan_cx, fan_cy), (ex, ey)], fill=(12, 18, 26, 255), width=1)
 
-# 4. Kotwy stropowe pod łańcuchy
-for ax in [500, 750, 1100, 1400, 1750, 2650, 3000, 3300, 3650, 3900]:
-    draw.rectangle([ax - 28, 0, ax + 28, 34], fill='#19202a', outline='#2d3748', width=2)
-    draw.ellipse([ax - 12, 28, ax + 12, 54], outline='#55657d', width=4)
-    draw.line([(ax, 14), (ax, 42)], fill='#3c4a5e', width=4)
+# Pancerne nity i kołnierz zewnętrzny
+fdraw.ellipse([fan_cx - fan_r - 12, fan_cy - fan_r - 12, fan_cx + fan_r + 12, fan_cy + fan_r + 12], outline=(45, 58, 76, 255), width=8)
+fdraw.ellipse([fan_cx - fan_r - 4, fan_cy - fan_r - 4, fan_cx + fan_r + 4, fan_cy + fan_r + 4], outline=(20, 28, 38, 255), width=3)
+for ang_deg in range(0, 360, 15):
+    rad = math.radians(ang_deg)
+    bx = fan_cx + math.cos(rad) * (fan_r + 6)
+    by = fan_cy + math.sin(rad) * (fan_r + 6)
+    fdraw.ellipse([bx - 3, by - 3, bx + 3, by + 3], fill=(85, 105, 130, 255), outline=(15, 22, 32, 255), width=1)
 
-# 5. Podłogi i dolny tunel
-Y_MAIN = 900
-Y_SLAB_BOT = 970
-Y_TUNNEL_FLR = 1270
+bg.paste(fan_layer, (0, 0), fan_layer)
 
-draw.rectangle([0, 0, 160, H], fill='#090d15', outline='#17202e', width=3)
-draw.rectangle([W - 160, 0, W, H], fill='#090d15', outline='#17202e', width=3)
-draw.rectangle([160, Y_SLAB_BOT, W - 160, Y_TUNNEL_FLR], fill='#05070c')
-
-for tx in range(200, W - 200, 120):
-    draw.rectangle([tx - 8, Y_SLAB_BOT, tx + 8, Y_SLAB_BOT + 24], fill='#1e2736')
-    draw.line([(tx, Y_SLAB_BOT + 24), (tx, Y_TUNNEL_FLR)], fill='#101620', width=2)
-
-draw.rectangle([0, Y_TUNNEL_FLR, W, H], fill='#080b10', outline='#1a222f', width=3)
-draw.rectangle([0, Y_TUNNEL_FLR, W, Y_TUNNEL_FLR + 14], fill='#161d28')
-
-for belt_x1, belt_x2 in [(350, 1850), (2550, 4050)]:
-    draw.rectangle([belt_x1, Y_TUNNEL_FLR - 10, belt_x2, Y_TUNNEL_FLR], fill='#0d121a', outline='#2a3545', width=2)
-    for rx in range(belt_x1 + 20, belt_x2, 45):
-        draw.ellipse([rx - 6, Y_TUNNEL_FLR - 8, rx + 6, Y_TUNNEL_FLR - 2], fill='#3b4759')
-
-def draw_slab_segment(x1, x2):
-    draw.rectangle([x1, Y_MAIN, x2, Y_SLAB_BOT], fill='#0e141f', outline='#1f2b3a', width=3)
-    draw.rectangle([x1, Y_MAIN, x2, Y_MAIN + 10], fill='#1c2635')
-    draw.line([(x1, Y_MAIN), (x2, Y_MAIN)], fill='#3b4c63', width=2)
-    for nx in range(x1 + 30, x2 - 20, 50):
-        draw.ellipse([nx, Y_MAIN + 3, nx + 4, Y_MAIN + 7], fill='#556780')
-
-# Podłoga solidna pod wlotami tuneli i na korcie
-draw_slab_segment(0, 780)
-draw_slab_segment(920, 1850)
-draw_slab_segment(2550, 3480)
-draw_slab_segment(3620, 4400)
-
-for hx1, hx2 in [(780, 920), (3480, 3620)]:
-    draw.rectangle([hx1, Y_MAIN, hx2, Y_MAIN + 8], fill='#0a0e16', outline='#334155', width=2)
-    for gx in range(hx1 + 10, hx2, 16):
-        draw.line([(gx, Y_MAIN), (gx, Y_MAIN + 8)], fill='#475569', width=2)
-
-# Drabiny do dolnego tunelu
-for lx in [440, 3960]:
-    draw.line([(lx - 12, Y_MAIN), (lx - 12, Y_TUNNEL_FLR)], fill='#334155', width=3)
-    draw.line([(lx + 12, Y_MAIN), (lx + 12, Y_TUNNEL_FLR)], fill='#334155', width=3)
-    for ly in range(Y_MAIN + 15, Y_TUNNEL_FLR, 22):
-        draw.line([(lx - 12, ly), (lx + 12, ly)], fill='#475569', width=2)
-
-for r1, r2 in [(1000, 1800), (2600, 3400)]:
-    draw.line([(r1, Y_MAIN - 2), (r2, Y_MAIN - 2)], fill='#3b4c63', width=3)
-    for sx in range(r1, r2, 35):
-        draw.rectangle([sx, Y_MAIN - 4, sx + 12, Y_MAIN], fill='#1f2b3a')
-    for obx in [r1, r2]:
-        draw.rectangle([obx - 6, Y_MAIN - 15, obx + 6, Y_MAIN], fill='#0f1622', outline='#475569', width=1)
-        draw.rectangle([obx - 4, Y_MAIN - 15, obx + 4, Y_MAIN - 12], fill='#eab308')
-
-# 6. Centralny piec i rampa
-CX = W // 2
-ramp_top = Y_MAIN - 100
-draw.polygon([(1850, Y_MAIN), (1980, ramp_top), (1980, Y_MAIN)], fill='#0b0f16')
-draw.polygon([(2420, ramp_top), (2550, Y_MAIN), (2420, Y_MAIN)], fill='#0b0f16')
-draw.line([(1850, Y_MAIN), (1980, ramp_top)], fill='#334155', width=6)
-draw.line([(1850, Y_MAIN - 1), (1980, ramp_top - 1)], fill='#64748b', width=2)
-draw.line([(2420, ramp_top), (2550, Y_MAIN)], fill='#334155', width=6)
-draw.line([(2420, ramp_top - 1), (2550, Y_MAIN - 1)], fill='#64748b', width=2)
-
-draw.rectangle([1980, ramp_top, 2420, Y_MAIN + 80], fill='#070a10')
-for p_left in [1970, 2385]:
-    draw.rectangle([p_left, ramp_top - 30, p_left + 45, Y_MAIN + 80], fill='#151d28', outline='#2d3b4e', width=2)
-
-ladle_w_top, ladle_w_bot = 220, 160
-ladle_top_y, ladle_bot_y = ramp_top - 20, Y_MAIN + 60
-draw.polygon([(CX - ladle_w_top//2, ladle_top_y + 15), (CX + ladle_w_top//2, ladle_top_y + 15), (CX + ladle_w_bot//2, ladle_bot_y), (CX - ladle_w_bot//2, ladle_bot_y)], fill='#10151f', outline='#2d3848')
-
-for trun_x in [CX - ladle_w_top//2 - 28, CX + ladle_w_top//2 + 6]:
-    draw.rectangle([trun_x, ladle_top_y + 35, trun_x + 22, ladle_top_y + 65], fill='#252e3d', outline='#475569', width=2)
-    draw.ellipse([trun_x + 2, ladle_top_y + 40, trun_x + 20, ladle_top_y + 60], fill='#080c14', outline='#6b7c96', width=2)
-
-for cyl_x in [2010, 2390]:
-    draw.line([(cyl_x, Y_MAIN + 40), (cyl_x - 18 if cyl_x < CX else cyl_x + 18, ladle_top_y + 55)], fill='#414f63', width=8)
-
-collar_w, collar_h = ladle_w_top + 20, 48
-draw.ellipse([CX - collar_w//2, ladle_top_y, CX + collar_w//2, ladle_top_y + collar_h], fill='#1a212d', outline='#374659', width=5)
-
-lava_w, lava_h = collar_w - 32, collar_h - 16
-for step_i, col in enumerate(['#7c1d06', '#9a3412', '#c2410c', '#ea580c', '#f97316', '#fbbf24', '#fef08a']):
-    shrink_x = step_i * 14
-    shrink_y = int(step_i * 2.2)
-    draw.ellipse([CX - (lava_w - shrink_x)//2, ladle_top_y + 8 + shrink_y, CX + (lava_w - shrink_x)//2, ladle_top_y + 8 + lava_h - shrink_y], fill=col)
-
-draw.polygon([(CX - 20, ladle_top_y + 35), (CX + 20, ladle_top_y + 35), (CX + 14, ladle_top_y + 80), (CX - 14, ladle_top_y + 80)], fill='#171d26', outline='#354354', width=2)
-draw.polygon([(CX - 10, ladle_top_y + 40), (CX + 10, ladle_top_y + 40), (CX + 7, Y_TUNNEL_FLR), (CX - 7, Y_TUNNEL_FLR)], fill='#ea580c')
-draw.polygon([(CX - 4, ladle_top_y + 40), (CX + 4, ladle_top_y + 40), (CX + 2, Y_TUNNEL_FLR), (CX - 2, Y_TUNNEL_FLR)], fill='#fef08a')
-
-# 7. PRZEMYSŁOWE DZIURY W ŚCIANIE (CIRCULAR WALL CONDUIT HOLES)
-def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0, flip_vertical=False):
-    im = Image.open(im_path).convert('RGBA')
-    if rotate_deg != 0:
-        im = im.rotate(rotate_deg)
-    if flip_vertical:
-        im = im.transpose(Image.FLIP_TOP_BOTTOM)
+# =========================================================================
+# 4. WBUDOWANIE BRAMEK PRZEMYSŁOWYCH (CYAN & ORANGE)
+# Dokładne współrzędne gry:
+# Cyan: x: 20, y: 280, w: 340, h: 340, holeCx: 190, holeCy: 450, holeR: 170
+# Orange: x: 4040, y: 280, w: 340, h: 340, holeCx: 4210, holeCy: 450, holeR: 170
+# =========================================================================
+def make_conduit_layer(raw_img, flip_h=False, r_outer=430, feather=22):
+    im = raw_img.copy()
+    if flip_h:
+        im = im.transpose(Image.FLIP_LEFT_RIGHT)
     w, h = im.size
     cx, cy = w // 2, h // 2
     
@@ -164,41 +98,187 @@ def make_circular_conduit(im_path, r_outer=425, feather=14, rotate_deg=0, flip_v
     dm = ImageDraw.Draw(mask)
     dm.ellipse([cx - r_outer, cy - r_outer, cx + r_outer, cy + r_outer], fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(feather))
-    
     im.putalpha(mask)
-    crop_box = (cx - r_outer - 15, cy - r_outer - 15, cx + r_outer + 15, cy + r_outer + 15)
-    return im.crop(crop_box)
+    
+    crop_box = (cx - r_outer - 20, cy - r_outer - 20, cx + r_outer + 20, cy + r_outer + 20)
+    cropped = im.crop(crop_box)
+    return cropped.resize((340, 340), Image.Resampling.LANCZOS)
 
-circle_cyan = make_circular_conduit('assets/hole_cyan.jpg', r_outer=425, feather=14, rotate_deg=180, flip_vertical=True)
-circle_orange = make_circular_conduit('assets/hole_orange.jpg', r_outer=425, feather=14, rotate_deg=0)
+conduit_cyan = make_conduit_layer(hole_cyan_raw, flip_h=True, r_outer=430, feather=22)
+conduit_orange = make_conduit_layer(hole_orange_raw, flip_h=False, r_outer=430, feather=22)
 
-HOLE_DIAMETER = 340
-HOLE_Y = (Y_MAIN - HOLE_DIAMETER) // 2  # (900 - 340) // 2 = 280 (centralnie między sufitem Y=0 a płytą Y=900)
+# Cień kontaktowy za kołnierzem bramki
+shadow_layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+sdraw = ImageDraw.Draw(shadow_layer)
+sdraw.ellipse([190 - 180, 450 - 180, 190 + 180, 450 + 180], fill=(0, 0, 0, 210))
+sdraw.ellipse([4210 - 180, 450 - 180, 4210 + 180, 450 + 180], fill=(0, 0, 0, 210))
+shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(16))
+bg.paste(shadow_layer, (0, 0), shadow_layer)
 
-scaled_cyan_hole = circle_cyan.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)
-scaled_orange_hole = circle_orange.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)
+bg.paste(conduit_cyan, (20, 280), conduit_cyan)
+bg.paste(conduit_orange, (4040, 280), conduit_orange)
 
-CYAN_HOLE_X = 20
-ORANGE_HOLE_X = W - HOLE_DIAMETER - 20
+# =========================================================================
+# 5. DOLNY TUNEL PODZIEMNY (Y: 970 do 1400 px) - PEŁNA ARCHITEKTURA
+# =========================================================================
+draw = ImageDraw.Draw(bg)
 
-img.paste(scaled_cyan_hole, (CYAN_HOLE_X, HOLE_Y), scaled_cyan_hole)
-img.paste(scaled_orange_hole, (ORANGE_HOLE_X, HOLE_Y), scaled_orange_hole)
+# Tło dolnego tunelu: wilgotny kamień i stal
+draw.rectangle([0, Y_SLAB_BOT, W, Y_TUNNEL], fill='#070b12')
+# Pionowe stalowe filary podpierające strop co 180 px
+for col_x in range(160, W - 140, 180):
+    draw.rectangle([col_x - 12, Y_SLAB_BOT, col_x + 12, Y_TUNNEL], fill='#131a26', outline='#1e2736', width=2)
+    draw.line([(col_x - 6, Y_SLAB_BOT), (col_x - 6, Y_TUNNEL)], fill='#253245', width=1)
+    draw.line([(col_x + 6, Y_SLAB_BOT), (col_x + 6, Y_TUNNEL)], fill='#0b0f16', width=1)
+    # Nity montażowe na filarach
+    for ny in range(Y_SLAB_BOT + 25, Y_TUNNEL - 20, 40):
+        draw.ellipse([col_x - 3, ny - 3, col_x + 3, ny + 3], fill='#3b4c63')
 
-# 8. Rozmycie światła wolumetrycznego
+# Ciąg rurociągów podstropowych w tunelu
+draw.rectangle([0, Y_SLAB_BOT + 18, W, Y_SLAB_BOT + 34], fill='#1e2736', outline='#0a0e14', width=2)
+draw.line([(0, Y_SLAB_BOT + 22), (W, Y_SLAB_BOT + 22)], fill='#3b4c63', width=2)
+draw.rectangle([0, Y_SLAB_BOT + 42, W, Y_SLAB_BOT + 54], fill='#16202c', outline='#0a0e14', width=2)
+for jx in range(90, W, 220):
+    draw.rectangle([jx - 4, Y_SLAB_BOT + 15, jx + 4, Y_SLAB_BOT + 37], fill='#334155')
+    draw.rectangle([jx - 4, Y_SLAB_BOT + 39, jx + 4, Y_SLAB_BOT + 57], fill='#334155')
+
+# Spąg tunelu (Y = 1270 do 1400)
+draw.rectangle([0, Y_TUNNEL, W, H], fill='#05070c', outline='#161e2b', width=2)
+draw.rectangle([0, Y_TUNNEL, W, Y_TUNNEL + 12], fill='#101622')
+
+# Podkłady kolejowe (sleepers) i podsypka tłuczniowa pod tory
+for sx in range(160, 4240, 24):
+    draw.rectangle([sx, Y_TUNNEL - 2, sx + 12, Y_TUNNEL + 5], fill='#1a2230', outline='#0b0f16', width=1)
+# Stalowe szyny
+draw.rectangle([160, Y_TUNNEL - 4, 4240, Y_TUNNEL - 2], fill='#475569')
+draw.line([(160, Y_TUNNEL - 4), (4240, Y_TUNNEL - 4)], fill='#94a3b8', width=1)
+
+# Oświetlenie awaryjne w tunelu (żółto-bursztynowe lampy na filarach)
+for lx in [380, 720, 1100, 1500, 1820, 2580, 2900, 3300, 3680, 4020]:
+    draw.rectangle([lx - 5, Y_SLAB_BOT + 75, lx + 5, Y_SLAB_BOT + 92], fill='#1e293b', outline='#334155')
+    draw.ellipse([lx - 4, Y_SLAB_BOT + 80, lx + 4, Y_SLAB_BOT + 92], fill='#f59e0b')
+
+# Pionowe drabiny w tunelu pod szybami (440 i 3960)
+for lx in [440, 3960]:
+    draw.line([(lx - 12, Y_MAIN), (lx - 12, Y_TUNNEL)], fill='#334155', width=3)
+    draw.line([(lx + 12, Y_MAIN), (lx + 12, Y_TUNNEL)], fill='#334155', width=3)
+    for ly in range(Y_MAIN + 15, Y_TUNNEL, 22):
+        draw.line([(lx - 12, ly), (lx + 12, ly)], fill='#475569', width=2)
+
+# =========================================================================
+# 6. PŁYTA GŁÓWNA (Y: 900 do 970 px) & SZYBY ZRZUTOWE
+# =========================================================================
+def draw_floor_slab(x1, x2):
+    draw.rectangle([x1, Y_MAIN, x2, Y_SLAB_BOT], fill='#0d121b', outline='#1e2736', width=2)
+    draw.rectangle([x1, Y_MAIN, x2, Y_MAIN + 10], fill='#1e293b')
+    draw.line([(x1, Y_MAIN), (x2, Y_MAIN)], fill='#475569', width=2)
+    # Nity montażowe
+    for nx in range(x1 + 25, x2 - 15, 45):
+        draw.ellipse([nx, Y_MAIN + 3, nx + 4, Y_MAIN + 7], fill='#64748b')
+
+draw_floor_slab(0, 780)
+draw_floor_slab(920, 1850)
+draw_floor_slab(2550, 3480)
+draw_floor_slab(3620, 4400)
+
+# Otwarte szyby zrzutowe do dolnego tunelu (780..920 oraz 3480..3620)
+for hx1, hx2 in [(780, 920), (3480, 3620)]:
+    draw.rectangle([hx1, Y_MAIN, hx2, Y_MAIN + 8], fill='#070a10', outline='#334155', width=2)
+    for gx in range(hx1 + 8, hx2, 16):
+        draw.line([(gx, Y_MAIN), (gx, Y_MAIN + 8)], fill='#475569', width=2)
+
+# =========================================================================
+# 7. CENTRALNA STREFA PIECA (RAMPY 1850..1980 & 2420..2550, POMOST 1980..2420, KADŹ)
+# =========================================================================
+ramp_top = 800
+
+# Rampa lewa: (1850, 900) -> (1980, 800)
+# Podbudowa rampy ze stalowych kratownic i płyt
+draw.polygon([(1850, Y_MAIN), (1980, ramp_top), (1980, Y_MAIN)], fill='#101622', outline='#1e2838', width=2)
+# Belka nośna skośna rampy z ryflowaniem
+draw.line([(1850, Y_MAIN), (1980, ramp_top)], fill='#334155', width=6)
+draw.line([(1850, Y_MAIN - 2), (1980, ramp_top - 2)], fill='#64748b', width=2)
+for i in range(12):
+    t = i / 11.0
+    rx = 1850 + t * 130
+    ry = Y_MAIN - t * 100
+    draw.line([(rx, ry), (rx + 4, ry - 3)], fill='#eab308', width=2)
+
+# Rampa prawa: (2420, 800) -> (2550, 900)
+draw.polygon([(2420, ramp_top), (2550, Y_MAIN), (2420, Y_MAIN)], fill='#101622', outline='#1e2838', width=2)
+draw.line([(2420, ramp_top), (2550, Y_MAIN)], fill='#334155', width=6)
+draw.line([(2420, ramp_top - 2), (2550, Y_MAIN - 2)], fill='#64748b', width=2)
+for i in range(12):
+    t = i / 11.0
+    rx = 2420 + t * 130
+    ry = ramp_top + t * 100
+    draw.line([(rx, ry), (rx - 4, ry - 3)], fill='#eab308', width=2)
+
+# Pomost roboczy pieca (X: 1980..2420, Y: 800)
+draw.rectangle([1980, ramp_top, 2420, ramp_top + 18], fill='#1e293b', outline='#334155', width=2)
+draw.line([(1980, ramp_top), (2420, ramp_top)], fill='#64748b', width=2)
+# Podbudowa pieca (komora grzewcza pod pomostem X: 1980..2420, Y: 818..900)
+draw.rectangle([1980, ramp_top + 18, 2420, Y_MAIN], fill='#0d131c', outline='#1e2838', width=2)
+# Kraty wentylacyjne komory i żar
+for vx in range(2005, 2390, 35):
+    draw.rectangle([vx, ramp_top + 32, vx + 22, ramp_top + 70], fill='#07090f', outline='#273548', width=2)
+    draw.line([(vx + 4, ramp_top + 55), (vx + 18, ramp_top + 55)], fill='#f97316', width=3)
+
+# CADŹ / KOCIOŁ ODLEWNICZY W CENTRUM (CX = 2200, Y = 780..860)
+# Sylwetka masywnej stalowej kadzi, w której Canvas rysuje wrzącą surówkę
+CX = 2200
+cad_top_y = 794
+cad_bot_y = 865
+cad_w_top = 226
+cad_w_bot = 160
+
+draw.polygon([
+    (CX - cad_w_top // 2, cad_top_y + 12),
+    (CX + cad_w_top // 2, cad_top_y + 12),
+    (CX + cad_w_bot // 2, cad_bot_y),
+    (CX - cad_w_bot // 2, cad_bot_y)
+], fill='#121824', outline='#2a3547', width=3)
+
+# Pasy wzmacniające kadź z nitami
+for py in [cad_top_y + 35, cad_top_y + 55]:
+    draw.line([(CX - 95, py), (CX + 95, py)], fill='#253245', width=5)
+    for nx in range(CX - 85, CX + 90, 22):
+        draw.ellipse([nx - 2, py - 2, nx + 2, py + 2], fill='#556882')
+
+# Czopy obrotowe kadzi (Trunnions) po bokach
+for trun_x in [CX - cad_w_top // 2 - 24, CX + cad_w_top // 2 + 2]:
+    draw.rectangle([trun_x, cad_top_y + 25, trun_x + 22, cad_top_y + 52], fill='#253042', outline='#3b4c63', width=2)
+    draw.ellipse([trun_x + 4, cad_top_y + 30, trun_x + 18, cad_top_y + 46], fill='#0b0f16', outline='#64748b', width=2)
+
+# Kołnierz wylewu kadzi (eliptyczny brzeg)
+collar_w, collar_h = 228, 38
+draw.ellipse([CX - collar_w // 2, cad_top_y - 2, CX + collar_w // 2, cad_top_y + collar_h], fill='#161e2b', outline='#3b4c63', width=4)
+
+# =========================================================================
+# 8. ŚWIATŁO WOLUMETRYCZNE I POŚWIATY (VOLUMETRIC ATMOSPHERE)
+# =========================================================================
 glow = Image.new('RGB', (W, H), (0, 0, 0))
-glow_draw = ImageDraw.Draw(glow)
-glow_draw.ellipse([CX - 650, ladle_top_y - 200, CX + 650, Y_MAIN + 250], fill=(240, 75, 0))
-glow_draw.ellipse([CX - 280, ladle_top_y - 90, CX + 280, ladle_top_y + 160], fill=(255, 175, 35))
-glow_draw.rectangle([CX - 120, ladle_top_y, CX + 120, Y_TUNNEL_FLR], fill=(215, 55, 0))
+gdraw = ImageDraw.Draw(glow)
 
-# Poświata z głębi tuneli w ścianie (Cyan w lewo, Orange w prawo)
-glow_draw.ellipse([CYAN_HOLE_X + 40, HOLE_Y + 70, CYAN_HOLE_X + 220, HOLE_Y + 250], fill=(0, 180, 255))
-glow_draw.ellipse([CYAN_HOLE_X + 70, HOLE_Y + 100, CYAN_HOLE_X + 180, HOLE_Y + 220], fill=(160, 245, 255))
+# Żar wielkiego pieca w centrum
+gdraw.ellipse([CX - 450, cad_top_y - 150, CX + 450, Y_MAIN + 120], fill=(240, 75, 10))
+gdraw.ellipse([CX - 220, cad_top_y - 80, CX + 220, cad_top_y + 100], fill=(255, 160, 35))
 
-glow_draw.ellipse([ORANGE_HOLE_X + 120, HOLE_Y + 70, ORANGE_HOLE_X + 300, HOLE_Y + 250], fill=(255, 110, 10))
-glow_draw.ellipse([ORANGE_HOLE_X + 160, HOLE_Y + 100, ORANGE_HOLE_X + 270, HOLE_Y + 220], fill=(255, 205, 60))
+# Poświata bramki Cyan
+gdraw.ellipse([190 - 150, 450 - 150, 190 + 150, 450 + 150], fill=(0, 175, 245))
+gdraw.ellipse([190 - 80, 450 - 80, 190 + 80, 450 + 80], fill=(150, 240, 255))
 
-glow = glow.filter(ImageFilter.GaussianBlur(60))
-final_img = Image.blend(img, glow, 0.40)
-final_img.save('foundry_bg.png', format='PNG')
-print("Successfully generated foundry_bg.png with circular wall conduit holes.")
+# Poświata bramki Orange
+gdraw.ellipse([4210 - 150, 450 - 150, 4210 + 150, 450 + 150], fill=(250, 105, 10))
+gdraw.ellipse([4210 - 80, 450 - 80, 4210 + 80, 450 + 80], fill=(255, 195, 55))
+
+# Lampy awaryjne w tunelu dolnym
+for lx in [380, 720, 1100, 1500, 1820, 2580, 2900, 3300, 3680, 4020]:
+    gdraw.ellipse([lx - 50, Y_SLAB_BOT + 60, lx + 50, Y_SLAB_BOT + 120], fill=(160, 95, 10))
+
+glow = glow.filter(ImageFilter.GaussianBlur(55))
+final_bg = Image.blend(bg, glow, 0.30)
+
+# Zapisujemy wygenerowane tło do foundry_bg.png
+final_bg.save('foundry_bg.png', format='PNG')
+print("Successfully generated master foundry_bg.png (4400x1400) with complete architecture.")
