@@ -185,6 +185,10 @@ export function drawMineCaveBackground(ctx, camX = 1800, camY = 0) {
   ctx.restore();
 }
 
+// Wygenerowany obraz tła Areny 2 (Hallelujah Mountains / Pandora)
+const pandoraBgImage = new Image();
+pandoraBgImage.src = 'assets/pandora_arena2_bg.jpg';
+
 // =========================================================================
 // ARENA 2: HALLELUJAH MOUNTAINS (PANDORA) - UNIKALNE OBCE TŁO 3-WARSTWOWE
 // =========================================================================
@@ -204,6 +208,32 @@ export function drawPandoraBackground(ctx, camera) {
   const camX = camera ? (camera.x || 0) : 0;
   const camY = camera ? (camera.y || 0) : 0;
   const zoom = camera ? (camera.zoom || 1) : 1;
+
+  // -------------------------------------------------------------------------
+  // OBRAZ TŁA (cover-fit + delikatna paralaksa kamery). Fallback: procedura poniżej.
+  // -------------------------------------------------------------------------
+  if (pandoraBgImage.complete && pandoraBgImage.naturalWidth > 0) {
+    const iw = pandoraBgImage.naturalWidth;
+    const ih = pandoraBgImage.naturalHeight;
+    const overscan = 1.04; // zapas na ruch paralaksy
+    const scale = Math.max(W_screen / iw, H_screen / ih) * overscan;
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const slackX = dw - W_screen;
+    const slackY = dh - H_screen;
+    // Przesunięcie 0..1 wg pozycji kamery na arenie (3600x1400)
+    const tx = Math.max(0, Math.min(1, camX / 3600));
+    const ty = Math.max(0, Math.min(1, camY / 1400));
+    const dx = -slackX * tx;
+    // Kadr przesunięty ku górze: widać planetę i platformy, bez znaku wodnego na dole obrazu
+    const dy = -slackY * (0.18 + 0.25 * ty);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(pandoraBgImage, dx, dy, dw, dh);
+    ctx.restore();
+    return;
+  }
 
   // -------------------------------------------------------------------------
   // WARSTWA 1: KOSMICZNE NIEBO, GWIAZDY I GAZOWY OLBRZYM (POLYPHEMUS)
