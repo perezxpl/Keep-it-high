@@ -45,43 +45,9 @@ scorchBlastImg.src = 'assets/scorch_blast.png';
 // STATYCZNA GEOMETRIA I PLATFORMY (ARENA_3_PLATFORMS)
 // =========================================================================
 export const ARENA_3_PLATFORMS = [
-  // Płyta główna (poziom Y = 900, grubość 70 px)
-  { id: 'floor_l1', x: 0, w: 780, y: 900, h: 70, solid: true, isPlatform: true },
-  { id: 'floor_l2', x: 920, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
-  { id: 'floor_r1', x: 2550, w: 930, y: 900, h: 70, solid: true, isPlatform: true },
-  { id: 'floor_r2', x: 3620, w: 780, y: 900, h: 70, solid: true, isPlatform: true },
-  // Otwarte pionowe szyby zrzutowe do dolnego tunelu (gracze mogą zeskoczyć, piłka swobodnie przelatuje)
-  { id: 'hatch_l', x: 780, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true, passBall: true, isHatch: true },
-  { id: 'hatch_r', x: 3480, w: 140, y: 900, h: 10, oneWay: true, isPlatform: true, passBall: true, isHatch: true },
-  // Rampa najazdowa i pomost kadzi (Y = 800)
-  {
-    id: 'ramp_left',
-    type: 'ramp',
-    x: 1850,
-    y: 800,
-    w: 130,
-    h: 100,
-    isPlatform: true,
-    isSlope: true,
-    startY: 900,
-    endY: 800,
-    surfacePoints: [{ x: 1850, y: 900 }, { x: 1980, y: 800 }]
-  },
-  {
-    id: 'ramp_right',
-    type: 'ramp',
-    x: 2420,
-    y: 800,
-    w: 130,
-    h: 100,
-    isPlatform: true,
-    isSlope: true,
-    startY: 800,
-    endY: 900,
-    surfacePoints: [{ x: 2420, y: 800 }, { x: 2550, y: 900 }]
-  },
-  { id: 'furnace_deck', x: 1980, w: 440, y: 800, h: 20, solid: true, isPlatform: true },
-  // Posadzka dolnego szybu / tunelu (pełna szerokość hali 4400 px bez martwych stref)
+  // Płyta główna hali (ciągła żelbetowa posadzka Y = 900 na całej szerokości hali 4400 px)
+  { id: 'floor_main', x: 0, w: 4400, y: 900, h: 70, solid: true, isPlatform: true },
+  // Posadzka dolnego tunelu z torowiskiem (Y = 1270, grubość 130 px do spągu Y = 1400)
   { id: 'tunnel_floor', x: 0, w: 4400, y: 1270, h: 130, solid: true, isPlatform: true }
 ];
 
@@ -105,8 +71,8 @@ export function carveArena3SlabBreach(expX, expY, radius, context) {
   // Sprawdź czy wybuch dosięga płyty głównej (Y = 900)
   if (Math.abs(expY - 900) > radius * 1.35 && (expY < 840 || expY > 980)) return;
 
-  // Wyklucz stałe szyby zrzutowe i pancerną strefę pieca
-  if ((expX >= 760 && expX <= 940) || (expX >= 3460 && expX <= 3640) || (expX >= 1830 && expX <= 2570)) {
+  // Wyklucz strefy bezpośrednio pod bramkami (aby portale wlotowe nie wisiały w powietrzu)
+  if (expX <= 220 || expX >= 4180) {
     return;
   }
 
@@ -375,237 +341,14 @@ export function drawArena3Background(ctx, camera) {
 
   ctx.restore();
 
-  // 3. Realistyczna, organiczna płynna surówka w kadzi i pionowy strumień (całkowicie bez kwadratowych zakończeń)
-  const cx = 2200;
-  const cy = 802;       // Osiowe centrum eliptycznego zwierciadła surówki
-  const rx = 104;       // Promień poziomy dopasowany do eliptycznego kołnierza kadzi
-  const ry = 17;        // Promień pionowy
-
-  // (A) Otwarte pionowe szyby zrzutowe do dolnego tunelu (X = 780..920 oraz 3480..3620)
-  ctx.save();
-  for (const shaftX of [780, 3480]) {
-    const shaftW = 140;
-    const shaftTopY = 900;
-    const shaftBotY = 1270;
-    const shaftH = shaftBotY - shaftTopY;
-
-    // Ciemne wnętrze pionowego szybu
-    const shaftGrad = ctx.createLinearGradient(shaftX, shaftTopY, shaftX + shaftW, shaftTopY);
-    shaftGrad.addColorStop(0.0, '#03060a');
-    shaftGrad.addColorStop(0.15, '#070b12');
-    shaftGrad.addColorStop(0.50, '#0a0f18');
-    shaftGrad.addColorStop(0.85, '#070b12');
-    shaftGrad.addColorStop(1.0, '#03060a');
-    ctx.fillStyle = shaftGrad;
-    ctx.fillRect(shaftX, shaftTopY, shaftW, shaftH);
-
-    // Stalowe ramy szybu
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(shaftX, shaftTopY, shaftW, shaftH);
-
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(shaftX + 22, shaftTopY);
-    ctx.lineTo(shaftX + 22, shaftBotY);
-    ctx.moveTo(shaftX + shaftW - 22, shaftTopY);
-    ctx.lineTo(shaftX + shaftW - 22, shaftBotY);
-    ctx.stroke();
-
-    // Pulsujące strzałki wskazujące przejście do dolnego szybu
-    const pulse = 0.55 + 0.45 * Math.sin(time * 3.5);
-    ctx.fillStyle = `rgba(249, 115, 22, ${0.45 * pulse})`;
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let ay = shaftTopY + 45; ay < shaftBotY - 20; ay += 75) {
-      ctx.fillText('▼', shaftX + shaftW / 2, ay);
-    }
-  }
-  ctx.restore();
-
-  // (B) Ograniczenie płynnego metalu do idealnej krzywizny eliptycznej czary kadzi (Zero kwadratowych narożników!)
-  ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  ctx.clip(); // Maskowanie elipsą: perfekcyjne organiczne zaokrąglenie w perspektywie 3D
-
-  // Baza termiczna cieczy: wielostopniowy gradient radialno-eliptyczny
-  const lavaGrad = ctx.createRadialGradient(cx, cy - 3, 2, cx, cy, rx);
-  lavaGrad.addColorStop(0.00, '#ffffff'); // Oślepiający biały rdzeń
-  lavaGrad.addColorStop(0.20, '#fef08a'); // Żółty ciekły metal
-  lavaGrad.addColorStop(0.50, '#f97316'); // Płynna pomarańczowa surówka
-  lavaGrad.addColorStop(0.78, '#c2410c'); // Karminowa magma
-  lavaGrad.addColorStop(0.92, '#7f1d1d'); // Zastygający brzeg
-  lavaGrad.addColorStop(1.00, '#1c1917'); // Ciemna skorupa żużlu na styku ze ścianką
-  ctx.fillStyle = lavaGrad;
-  ctx.fillRect(cx - rx - 10, cy - ry - 10, (rx + 10) * 2, (ry + 10) * 2);
-
-  // Harmoniczne fale konwekcyjne o płynnym zaniku ku brzegom elipsy
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  for (let layer = 0; layer < 3; layer++) {
-    const wSpeed = time * (2.2 + layer * 1.4);
-    const layerAmp = 3.0 - layer * 0.7;
-    const col = (layer === 0)
-      ? 'rgba(254, 240, 138, 0.65)'
-      : (layer === 1 ? 'rgba(249, 115, 22, 0.45)' : 'rgba(234, 88, 12, 0.30)');
-    ctx.fillStyle = col;
-
-    ctx.beginPath();
-    ctx.moveTo(cx - rx, cy);
-    for (let wx = -rx; wx <= rx; wx += 3) {
-      const normX = wx / rx;
-      const ellipseHeight = ry * Math.sqrt(Math.max(0, 1 - normX * normX));
-      const edgeFactor = Math.sin(Math.acos(Math.max(-1, Math.min(1, normX))));
-      const waveOffset = (Math.sin(wx * 0.08 + wSpeed) * layerAmp + Math.cos(wx * 0.16 - wSpeed * 0.7) * (layerAmp * 0.4)) * edgeFactor;
-      ctx.lineTo(cx + wx, cy - ellipseHeight * 0.2 + waveOffset);
-    }
-    for (let wx = rx; wx >= -rx; wx -= 4) {
-      const normX = wx / rx;
-      const ellipseHeight = ry * Math.sqrt(Math.max(0, 1 - normX * normX));
-      ctx.lineTo(cx + wx, cy + ellipseHeight * 0.85);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // Pływające organiczne wysepki krzepnącego żużlu (slag crusts)
-  const numCrusts = 5;
-  for (let i = 0; i < numCrusts; i++) {
-    const seed = i * 47.19;
-    const driftSpeed = 0.35 + (i % 3) * 0.15;
-    const driftX = Math.sin(time * driftSpeed + seed) * (rx * 0.55);
-    const driftY = Math.cos(time * driftSpeed * 0.8 + seed * 1.5) * (ry * 0.45);
-    const patchX = cx + driftX;
-    const patchY = cy + driftY;
-    const patchRx = 10 + (seed % 8);
-    const patchRy = 3.5 + (seed % 3);
-
-    ctx.fillStyle = '#1c1917';
-    ctx.beginPath();
-    ctx.ellipse(patchX, patchY, patchRx, patchRy, (seed % 10) * 0.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(254, 240, 138, 0.75)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(patchX - patchRx * 0.6, patchY);
-    ctx.lineTo(patchX, patchY - 1);
-    ctx.lineTo(patchX + patchRx * 0.6, patchY + 0.5);
-    ctx.stroke();
-  }
-
-  // Pęcherze wrzącej surówki (convection bubbles)
-  for (let b = 0; b < 4; b++) {
-    const bSeed = b * 31.8;
-    const bPhase = (time * (1.2 + (b % 3) * 0.4) + bSeed) % 1.0;
-    const bX = cx + Math.sin(bSeed * 3.3) * (rx * 0.6);
-    const bY = cy + Math.cos(bSeed * 2.1) * (ry * 0.45);
-    const bR = Math.sin(bPhase * Math.PI) * (3.8 + (b % 3));
-
-    if (bR > 0.5) {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(bX, bY, bR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 1.0;
-      ctx.stroke();
-    }
-  }
-
-  ctx.restore(); // Koniec clip elipsy
-
-  // (C) Świecący menisk i kołnierz kadzi
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.strokeStyle = 'rgba(255, 200, 80, 0.85)';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Promienista łuna cieplna unosząca się nad kadzią
-  const heatBloom = ctx.createRadialGradient(cx, cy - 14, 10, cx, cy - 14, 150);
-  heatBloom.addColorStop(0.0, 'rgba(255, 180, 50, 0.45)');
-  heatBloom.addColorStop(0.4, 'rgba(234, 88, 12, 0.18)');
-  heatBloom.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-  ctx.fillStyle = heatBloom;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - 14, 160, 80, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // (D) Naturalny pionowy strumień płynnego metalu do spągu tunelu (Y = 1270)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const streamTop = cy + ry + 2;
-  const streamBottom = 1270;
-  const streamW = 12 + Math.sin(time * 8.0) * 2;
-
-  const streamGrad = ctx.createLinearGradient(cx - streamW, 0, cx + streamW, 0);
-  streamGrad.addColorStop(0.0, 'rgba(234, 88, 12, 0.35)');
-  streamGrad.addColorStop(0.28, 'rgba(249, 115, 22, 0.85)');
-  streamGrad.addColorStop(0.50, '#fef08a');
-  streamGrad.addColorStop(0.72, 'rgba(249, 115, 22, 0.85)');
-  streamGrad.addColorStop(1.0, 'rgba(234, 88, 12, 0.35)');
-  ctx.fillStyle = streamGrad;
-  ctx.fillRect(cx - streamW * 0.5, streamTop, streamW, streamBottom - streamTop);
-
-  // Iskry i opadający żar wzdłuż strugi
-  for (let i = 0; i < 35; i++) {
-    const seed = i * 41.27;
-    const dropSpeed = 380 + (seed % 180);
-    const dropY = streamTop + ((time * dropSpeed + seed * 43) % (streamBottom - streamTop));
-    const spreadX = (Math.sin(seed + time * 3.5) * 7.5);
-    const sparkX = cx + spreadX;
-    const sparkR = 1.6 + (seed % 2.0);
-
-    ctx.fillStyle = (i % 2 === 0) ? '#fef08a' : '#f97316';
-    ctx.beginPath();
-    ctx.arc(sparkX, dropY, sparkR, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (dropY > 1248) {
-      const splashX = cx + Math.sin(seed + time * 7.5) * (16 + (seed % 28));
-      const splashY = 1268 - (seed % 12);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(splashX, splashY, 2.2, 2.2);
-    }
-  }
-
-  // Rozbłysk uderzenia surówki o posadzkę tunelu
-  const splashGlow = ctx.createRadialGradient(cx, 1270, 8, cx, 1270, 90);
-  splashGlow.addColorStop(0.0, 'rgba(255, 220, 110, 0.65)');
-  splashGlow.addColorStop(0.45, 'rgba(249, 115, 22, 0.25)');
-  splashGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-  ctx.fillStyle = splashGlow;
-  ctx.beginPath();
-  ctx.arc(cx, 1270, 90, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-
-  // (E) Stalowe torowisko kopalniane w dolnym tunelu (Y = 1270)
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(160, 1268, 4080, 2);
-  ctx.fillStyle = '#475569';
-  ctx.fillRect(160, 1267, 4080, 1);
-  for (let rx = 175; rx < 4230; rx += 28) {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(rx, 1268, 12, 2);
-  }
-
-
-  // Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
+  // 3. Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
   for (const cart of ARENA_3_MINECARTS) {
     if (cart.passenger) {
       drawMinecartBack(ctx, cart);
     }
   }
+
+
 
   ctx.restore();
 }
@@ -617,19 +360,6 @@ export function drawArena3Foreground(ctx, camera) {
   if (!ctx) return;
   ctx.save();
 
-  // 1. Krawędzie ostrzegawcze (Hazard Stripes) wlotów pionowych szybów na płycie głównej (Y = 900)
-  for (const sx of [780, 3480]) {
-    const sw = 140;
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(sx - 10, 900, 10, 8);
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(sx - 7, 900, 4, 8);
-
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(sx + sw, 900, 10, 8);
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(sx + sw + 3, 900, 4, 8);
-  }
 
   // 3. Odbojnice torowiska na krańcach dolnego tunelu (X = 165 oraz X = 4235)
   drawBufferStop(ctx, 165, true);
