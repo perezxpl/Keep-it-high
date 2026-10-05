@@ -214,34 +214,11 @@ export function drawArena3Background(ctx, camera) {
     }
   }
 
-  // 1C. Dynamiczne wyłomy i zniszczenia w stropie po wybuchach (Destruction Overlay)
+  // 1C. Dynamiczne wyłomy i zniszczenia w stropie po wybuchach (Natural Painterly Breach Overlay)
   if (arena3Breaches.length > 0) {
     ctx.save();
     for (const b of arena3Breaches) {
-      const bw = b.r * 2;
-      // Czeluść wyłomu (odsłania ciemne wnętrze tunelu przez płytę 70px)
-      ctx.fillStyle = '#05070c';
-      ctx.fillRect(b.x - b.r, 900, bw, 70);
-
-      // Cień wewnętrzny w otworze
-      const shadowGrad = ctx.createLinearGradient(b.x, 900, b.x, 970);
-      shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
-      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
-      ctx.fillStyle = shadowGrad;
-      ctx.fillRect(b.x - b.r, 900, bw, 70);
-
-      // Osmalenia sadzą i pęknięcia wokół leja wybuchu (Scorch Decal)
-      if (scorchBlastImg && scorchBlastImg.complete && scorchBlastImg.naturalWidth > 0) {
-        ctx.drawImage(scorchBlastImg, b.x - b.r * 1.35, 900 - 35, b.r * 2.7, 70);
-      }
-
-      // Poszarpane krawędzie żelbetu ze sterczącym zbrojeniem
-      if (craterEdgeLeftImg && craterEdgeLeftImg.complete && craterEdgeLeftImg.naturalWidth > 0) {
-        ctx.drawImage(craterEdgeLeftImg, b.x - b.r - 42, 885, 90, 90);
-      }
-      if (craterEdgeRightImg && craterEdgeRightImg.complete && craterEdgeRightImg.naturalWidth > 0) {
-        ctx.drawImage(craterEdgeRightImg, b.x + b.r - 48, 885, 90, 90);
-      }
+      drawArena3Breach(ctx, b);
     }
     ctx.restore();
   }
@@ -268,79 +245,6 @@ export function drawArena3Background(ctx, camera) {
   ctx.fill();
   ctx.restore();
 
-  const time = performance.now() * 0.001;
-
-  // 2. Obracające się łopatki wentylatora sufitowego (X = 2200, Y = 220, promień R = 210)
-  const fanX = 2200;
-  const fanY = 220;
-  const fanR = 210;
-  const fanAngle = performance.now() * 0.0018;
-
-  ctx.save();
-  ctx.translate(fanX, fanY);
-  ctx.rotate(fanAngle);
-
-  const numBlades = 6;
-  for (let b = 0; b < numBlades; b++) {
-    const bladeAngle = (b * Math.PI * 2) / numBlades;
-    ctx.save();
-    ctx.rotate(bladeAngle);
-
-    // Aerodynamiczny płat łopatki stalowej
-    ctx.beginPath();
-    ctx.moveTo(-16, 32);
-    ctx.lineTo(-26, fanR - 16);
-    ctx.quadraticCurveTo(0, fanR, 26, fanR - 16);
-    ctx.lineTo(16, 32);
-    ctx.closePath();
-
-    const bladeGrad = ctx.createLinearGradient(-26, 0, 26, 0);
-    bladeGrad.addColorStop(0.0, '#0d131a');
-    bladeGrad.addColorStop(0.35, '#1e293b');
-    bladeGrad.addColorStop(0.75, '#334155');
-    bladeGrad.addColorStop(1.0, '#0f172a');
-    ctx.fillStyle = bladeGrad;
-    ctx.fill();
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Centralne żebro usztywniające i nity montażowe
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 36);
-    ctx.lineTo(0, fanR - 22);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  // Centralna osłona piasty wentylatora z nitami
-  const hubGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 38);
-  hubGrad.addColorStop(0.0, '#475569');
-  hubGrad.addColorStop(0.6, '#1e293b');
-  hubGrad.addColorStop(1.0, '#0b0f17');
-  ctx.fillStyle = hubGrad;
-  ctx.beginPath();
-  ctx.arc(0, 0, 38, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Osiowa śruba nośna
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath();
-  ctx.arc(0, 0, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  ctx.restore();
-
   // 3. Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
   for (const cart of ARENA_3_MINECARTS) {
     if (cart.passenger) {
@@ -349,6 +253,114 @@ export function drawArena3Background(ctx, camera) {
   }
 
 
+
+  ctx.restore();
+}
+
+// =========================================================================
+// RENDEROWANIE NATURALNYCH WYŁOMÓW W STROPIE (PAINTERLY BREACH OVERLAY)
+// =========================================================================
+function drawArena3Breach(ctx, b) {
+  const bx = b.x;
+  const br = b.r;
+  const bLeft = bx - br;
+  const bRight = bx + br;
+  const floorY = 900;
+
+  // 1. Promieniste osmalenie sadzą i spękania na posadzce wokół leja wybuchu
+  if (scorchBlastImg && scorchBlastImg.complete && scorchBlastImg.naturalWidth > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.88;
+    const scW = br * 2.6;
+    const scH = br * 0.85;
+    ctx.drawImage(scorchBlastImg, bx - scW / 2, floorY - scH * 0.55, scW, scH);
+    ctx.restore();
+  }
+
+  // 2. Miękki cień wgłębny przy krawędzi pękniętej płyty (nadaje głębię wlotowi do tunelu)
+  ctx.save();
+  const rimShadow = ctx.createLinearGradient(bx, floorY - 2, bx, floorY + 16);
+  rimShadow.addColorStop(0.0, 'rgba(5, 7, 10, 0.7)');
+  rimShadow.addColorStop(1.0, 'rgba(5, 7, 10, 0.0)');
+  ctx.fillStyle = rimShadow;
+  ctx.fillRect(bLeft, floorY - 2, br * 2, 18);
+
+  // 3. Poszarpane mikropęknięcia kamiennej posadzki na krawędziach wyłomu
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Lewa warga - pęknięcie w głąb posadzki
+  ctx.beginPath();
+  ctx.moveTo(bLeft - 10, floorY);
+  ctx.lineTo(bLeft - 3, floorY + 2);
+  ctx.lineTo(bLeft + 3, floorY + 6);
+  ctx.lineTo(bLeft + 1, floorY + 14);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(bLeft - 6, floorY - 2);
+  ctx.lineTo(bLeft - 14, floorY - 8);
+  ctx.stroke();
+
+  // Prawa warga - pęknięcie w głąb posadzki
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(bRight + 10, floorY);
+  ctx.lineTo(bRight + 3, floorY + 2);
+  ctx.lineTo(bRight - 3, floorY + 6);
+  ctx.lineTo(bRight - 1, floorY + 14);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(bRight + 6, floorY - 2);
+  ctx.lineTo(bRight + 14, floorY - 8);
+  ctx.stroke();
+
+  // 4. Cienkie, zardzewiałe pręty zbrojeniowe zwisające w otwór (delikatne druty stalowe)
+  function drawRebarWire(pts, width) {
+    // Ciemny cień / kontur
+    ctx.strokeStyle = '#140804';
+    ctx.lineWidth = width + 1.2;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+
+    // Rdzawy rdzeń pręta
+    ctx.strokeStyle = '#9a3412';
+    ctx.lineWidth = width;
+    ctx.stroke();
+
+    // Metaliczny refleks światła
+    ctx.strokeStyle = '#ea580c';
+    ctx.lineWidth = Math.max(0.8, width - 1.0);
+    ctx.stroke();
+  }
+
+  // Lewe zbrojenie
+  drawRebarWire([[bLeft, floorY + 4], [bLeft + 10, floorY + 7], [bLeft + 20, floorY + 16], [bLeft + 24, floorY + 26]], 2.0);
+  drawRebarWire([[bLeft + 2, floorY + 10], [bLeft + 14, floorY + 13], [bLeft + 20, floorY + 20]], 1.5);
+  drawRebarWire([[bLeft - 2, floorY + 14], [bLeft + 8, floorY + 20], [bLeft + 10, floorY + 30]], 1.4);
+
+  // Prawe zbrojenie
+  drawRebarWire([[bRight, floorY + 4], [bRight - 10, floorY + 7], [bRight - 20, floorY + 16], [bRight - 24, floorY + 26]], 2.0);
+  drawRebarWire([[bRight - 2, floorY + 10], [bRight - 14, floorY + 13], [bRight - 20, floorY + 20]], 1.5);
+  drawRebarWire([[bRight + 2, floorY + 14], [bRight - 8, floorY + 20], [bRight - 10, floorY + 30]], 1.4);
+
+  // Zwisająca rozerwana nić siatki zbrojeniowej
+  ctx.strokeStyle = '#78350f';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(bLeft + 12, floorY + 18);
+  ctx.quadraticCurveTo(bx, floorY + 30, bRight - 12, floorY + 18);
+  ctx.stroke();
 
   ctx.restore();
 }
