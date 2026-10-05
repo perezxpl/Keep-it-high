@@ -612,7 +612,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      targetBot.active = true;
+      // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3800;
       targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 830;
       targetBot.vx = 0;
@@ -655,7 +655,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      targetBot.active = true;
+      // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3100;
       targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 410;
       targetBot.vx = 0;
@@ -1505,7 +1505,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.currentPlatform = null;
     p.slopeAngle = 0;
     const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
-    if (hasNoFloor) {
+    if (p.inMinecart || p._inCart) {
+      // Pasażer w wagoniku kopalnianym stoi stabilnie na podłodze wózka
+      p.onGround = true;
+      p.isJumping = false;
+      p.vy = 0;
+    } else if (hasNoFloor) {
       // W Arenie 3 oraz Arenie 2 (Pandora) brak płaskiej podłogi – mapa składa się wyłącznie z zawieszonych w powietrzu wysp i otchłani
       p.onGround = false;
       p.currentGroundY = null;

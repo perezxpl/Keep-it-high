@@ -1019,6 +1019,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickingFootY = kickTraj.kicking.y;
 
       if (!player.hitThisSwing) {
+        const activeArena = getActiveArena();
+        const kickHitbox = {
+          x: player.facing === 1 ? hipX : hipX - 60,
+          y: hipY - 25,
+          w: 60,
+          h: 50,
+          footX: player.kickingFootX,
+          footY: player.kickingFootY
+        };
+        activeArena?.onKickHit?.(player, kickHitbox);
         applyKickInteractions(player, ball, targets, customObstacles, currentFloor, spawnGrass);
       }
 
@@ -1206,7 +1216,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     } else {
       // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
       const isA3Death = isA3;
-      const deathLimitY = isA3Death ? 1290 : (GROUND_Y + 160);
+      const deathLimitY = isA3Death ? 1390 : (GROUND_Y + 160);
       if (player.y > deathLimitY && !player.isDead) {
         player.hp = 0;
         player.isDead = true;

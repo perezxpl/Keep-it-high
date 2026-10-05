@@ -2752,13 +2752,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
   ctx.save();
 
-  // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK
-  if (leftStick && (leftStick.active || leftStick.waitingForJetpackTap)) {
+  // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK (SZTYWNO UMIEJSCOWIONY, NATURALNIE PRZEZROCZYSTY)
+  if (leftStick && leftStick.baseX > 0) {
+    const isStickActive = leftStick.active;
     const isJetReady = leftStick.waitingForJetpackTap && leftStick.jetpackWindowTimer > 0;
     const isJetActive = leftStick.isJetpacking;
 
-    let stickBorder = 'rgba(255, 255, 255, 0.2)';
+    let stickBorder = isStickActive ? '#38bdf8' : 'rgba(255, 255, 255, 0.18)';
     let stickGlow = 'transparent';
+    let baseAlpha = isStickActive ? 0.65 : 0.25;
 
     if (isJetActive) {
       stickBorder = '#00e5ff';
@@ -2769,78 +2771,90 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       stickGlow = '#00e5ff';
     }
 
-    const bgGrad = ctx.createRadialGradient(leftStick.baseX, leftStick.baseY, 10, leftStick.baseX, leftStick.baseY, 55);
-    bgGrad.addColorStop(0.0, 'rgba(30, 41, 59, 0.55)');
-    bgGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
+    const maxR = leftStick.maxRadius || 55;
+    const bgGrad = ctx.createRadialGradient(leftStick.baseX, leftStick.baseY, 10, leftStick.baseX, leftStick.baseY, maxR);
+    bgGrad.addColorStop(0.0, `rgba(30, 41, 59, ${baseAlpha})`);
+    bgGrad.addColorStop(1.0, `rgba(15, 23, 42, ${baseAlpha * 0.85})`);
 
     ctx.beginPath();
-    ctx.arc(leftStick.baseX, leftStick.baseY, 55, 0, Math.PI * 2);
+    ctx.arc(leftStick.baseX, leftStick.baseY, maxR, 0, Math.PI * 2);
     ctx.fillStyle = bgGrad;
     ctx.fill();
     ctx.shadowColor = stickGlow;
     ctx.shadowBlur = isJetActive ? 10 : (isJetReady ? 6 : 0);
     ctx.strokeStyle = stickBorder;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = isStickActive ? 2.0 : 1.4;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
+    // Subtelne krzyżykowe linie orientacji w gałce
+    ctx.strokeStyle = isStickActive ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(leftStick.baseX - 12, leftStick.baseY); ctx.lineTo(leftStick.baseX + 12, leftStick.baseY);
+    ctx.moveTo(leftStick.baseX, leftStick.baseY - 12); ctx.lineTo(leftStick.baseX, leftStick.baseY + 12);
+    ctx.stroke();
+
     ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = isJetActive ? '#00e5ff' : (isJetReady ? '#38bdf8' : 'rgba(255, 255, 255, 0.4)');
+    ctx.fillStyle = isJetActive ? '#00e5ff' : (isJetReady ? '#38bdf8' : (isStickActive ? '#e2e8f0' : 'rgba(255, 255, 255, 0.35)'));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('▲ SKOK / JET', leftStick.baseX, leftStick.baseY - 60);
+    ctx.fillText('▲ SKOK / JET', leftStick.baseX, leftStick.baseY - maxR - 8);
 
     if (isJetReady) {
       ctx.fillStyle = '#00e5ff';
-      ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + 68);
+      ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + maxR + 16);
     }
 
-    const knobX = leftStick.baseX + (leftStick.axisX * (leftStick.maxRadius || 55));
-    const knobY = leftStick.baseY + (leftStick.axisY * (leftStick.maxRadius || 55));
+    const knobX = leftStick.baseX + (leftStick.axisX * maxR);
+    const knobY = leftStick.baseY + (leftStick.axisY * maxR);
 
     const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
     if (isJetActive) {
       knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
       knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.85)');
       knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-    } else {
+    } else if (isStickActive) {
       knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
       knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
       knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+    } else {
+      knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.35)');
+      knobGrad.addColorStop(0.6, 'rgba(30, 41, 59, 0.40)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
     }
 
     ctx.beginPath();
     ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
     ctx.fillStyle = knobGrad;
     ctx.fill();
-    ctx.strokeStyle = isJetActive ? '#00e5ff' : '#38bdf8';
-    ctx.lineWidth = 2.0;
+    ctx.strokeStyle = isJetActive ? '#00e5ff' : (isStickActive ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)');
+    ctx.lineWidth = isStickActive ? 2.0 : 1.2;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.4)';
     ctx.fill();
   }
 
-  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ ORAZ DYNAMICZNY WYKOP PIŁKI
-  const rsVisible = (rightStick && (rightStick.active || rightStick.waitingForSecondTap || rightStick.lingerAlpha > 0.01));
-
-  if (rsVisible) {
-    const isFiring = rightStick.active && rightStick.isShooting;
+  // 2. PRAWY DRĄŻEK: CELOWANIE I OGIEŃ (SZTYWNO UMIEJSCOWIONY, NATURALNIE PRZEZROCZYSTY)
+  if (rightStick && rightStick.baseX > 0) {
+    const isStickActive = rightStick.active;
+    const isFiring = isStickActive && rightStick.isShooting;
     const isWaitingTap = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
 
-    // Sprawdzenie stanu zasięgu do piłki i wychylenia drążka
     const activeBall = ball || player._ball;
     const inKickRangeVal = (inKickRange !== null && inKickRange !== undefined)
       ? inKickRange
       : (player.inKickReach !== undefined ? player.inKickReach : (activeBall && typeof player.isBallInKickReach === 'function' ? player.isBallInKickReach(player, activeBall) : false));
-    const isStickDeflected = rightStick.active && (rightStick.power > 0.12 || (rightStick.movedDist || 0) > 8);
+    const isStickDeflected = isStickActive && (rightStick.power > 0.12 || (rightStick.movedDist || 0) > 8);
     const isKickReady = inKickRangeVal && isStickDeflected;
 
-    let mainColor = '#00e5ff';
+    let mainColor = isStickActive ? '#00e5ff' : 'rgba(0, 229, 255, 0.45)';
     let glowColor = '#00e5ff';
-    let baseBorder = 'rgba(0, 229, 255, 0.35)';
+    let baseBorder = isStickActive ? 'rgba(0, 229, 255, 0.5)' : 'rgba(255, 255, 255, 0.18)';
+    let baseAlpha = isStickActive ? 0.65 : 0.25;
 
     if (isKickReady) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
@@ -2862,53 +2876,40 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
 
     ctx.save();
-    ctx.globalAlpha = rightStick.lingerAlpha !== undefined ? rightStick.lingerAlpha : 1.0;
-
     const bx = rightStick.baseX;
     const by = rightStick.baseY;
-    const maxR = rightStick.maxRadius || 65;
+    const maxR = rightStick.maxRadius || 58;
 
     const bgGrad = ctx.createRadialGradient(bx, by, 10, bx, by, maxR);
-    bgGrad.addColorStop(0.0, isKickReady ? 'rgba(15, 23, 42, 0.75)' : 'rgba(30, 41, 59, 0.65)');
-    bgGrad.addColorStop(1.0, isKickReady ? 'rgba(2, 6, 23, 0.85)' : 'rgba(15, 23, 42, 0.45)');
+    bgGrad.addColorStop(0.0, isKickReady ? 'rgba(15, 23, 42, 0.75)' : `rgba(30, 41, 59, ${baseAlpha})`);
+    bgGrad.addColorStop(1.0, isKickReady ? 'rgba(2, 6, 23, 0.85)' : `rgba(15, 23, 42, ${baseAlpha * 0.85})`);
 
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
     ctx.fillStyle = bgGrad;
     ctx.fill();
 
-    ctx.shadowColor = isKickReady ? glowColor : 'transparent';
-    ctx.shadowBlur = isKickReady ? 10 : 0;
+    ctx.shadowColor = (isKickReady || isFiring) ? glowColor : 'transparent';
+    ctx.shadowBlur = (isKickReady || isFiring) ? 10 : 0;
     ctx.strokeStyle = baseBorder;
-    ctx.lineWidth = isKickReady ? 2.2 : 1.6;
+    ctx.lineWidth = (isKickReady || isStickActive) ? 2.0 : 1.4;
     ctx.stroke();
     ctx.shadowBlur = 0;
-
-    if (!isKickReady) {
-      ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.5)' : 'rgba(0, 229, 255, 0.4)';
-      ctx.lineWidth = 1.0;
-      ctx.beginPath();
-      ctx.moveTo(bx - 10, by); ctx.lineTo(bx + 10, by);
-      ctx.moveTo(bx, by - 10); ctx.lineTo(bx + 10, by);
-      ctx.stroke();
-    }
 
     let knobX = bx;
     let knobY = by;
 
-    if (rightStick.active) {
+    if (isStickActive) {
       const dx = rightStick.curX - bx;
       const dy = rightStick.curY - by;
       const rawDist = Math.hypot(dx, dy);
       const normX = rawDist > 0.001 ? dx / rawDist : 1;
       const normY = rawDist > 0.001 ? dy / rawDist : 0;
-
       const clampedDist = Math.min(rawDist, maxR);
       knobX = bx + normX * clampedDist;
       knobY = by + normY * clampedDist;
 
       if (isKickReady) {
-        // Wektorowa strzałka wskazująca dokładny tor lotu piłki po puszczeniu palca
         const arrowPower = Math.min(1.0, Math.max(0.15, rightStick.power || (clampedDist / maxR)));
         const arrowLen = 30 + arrowPower * 35;
         const arrowStartX = knobX + normX * 14;
@@ -2918,34 +2919,16 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
         ctx.save();
         ctx.shadowColor = glowColor;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 2.6;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(knobX, knobY);
+        ctx.moveTo(arrowStartX, arrowStartY);
         ctx.lineTo(arrowEndX, arrowEndY);
         ctx.stroke();
-
-        // Grot wektora
-        const headLen = 11;
-        const headAngle = Math.atan2(normY, normX);
-        ctx.fillStyle = mainColor;
-        ctx.beginPath();
-        ctx.moveTo(arrowEndX, arrowEndY);
-        ctx.lineTo(
-          arrowEndX - headLen * Math.cos(headAngle - Math.PI / 6),
-          arrowEndY - headLen * Math.sin(headAngle - Math.PI / 6)
-        );
-        ctx.lineTo(
-          arrowEndX - headLen * Math.cos(headAngle + Math.PI / 6),
-          arrowEndY - headLen * Math.sin(headAngle + Math.PI / 6)
-        );
-        ctx.closePath();
-        ctx.fill();
         ctx.restore();
       } else {
-        ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.8)' : 'rgba(0, 229, 255, 0.6)';
+        ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.7)' : 'rgba(0, 229, 255, 0.45)';
         ctx.lineWidth = 1.4;
         ctx.setLineDash([5, 4]);
         ctx.beginPath();
@@ -2958,23 +2941,21 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
     if (isKickReady) {
-      if ((player.chargePower >= 0.7) || (rightStick.power >= 0.7)) {
-        knobGrad.addColorStop(0.0, 'rgba(250, 204, 21, 0.95)');
-        knobGrad.addColorStop(0.55, 'rgba(234, 179, 8, 0.80)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-      } else {
-        knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
-        knobGrad.addColorStop(0.55, 'rgba(14, 116, 144, 0.80)');
-        knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-      }
+      knobGrad.addColorStop(0.0, 'rgba(250, 204, 21, 0.95)');
+      knobGrad.addColorStop(0.55, 'rgba(234, 179, 8, 0.80)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
     } else if (isFiring) {
       knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
       knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
       knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
-    } else {
+    } else if (isStickActive) {
       knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
       knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
       knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+    } else {
+      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.35)');
+      knobGrad.addColorStop(0.55, 'rgba(30, 41, 59, 0.40)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
     }
 
     ctx.beginPath();
@@ -2983,39 +2964,26 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.shadowColor = glowColor;
-    ctx.shadowBlur = isKickReady ? 10 : 8;
+    ctx.shadowBlur = (isKickReady || isFiring) ? 10 : (isStickActive ? 6 : 0);
     ctx.strokeStyle = mainColor;
-    ctx.lineWidth = isKickReady ? 2.6 : 2.2;
+    ctx.lineWidth = isStickActive ? 2.2 : 1.2;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    if (isKickReady) {
-      // Czytelny napis ⚽ KOP na gałce zamiast celownika
-      ctx.save();
-      ctx.font = '900 10.5px monospace';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 6;
-      ctx.fillText('⚽ KOP', knobX, knobY);
-      ctx.restore();
-    } else {
-      // Standardowy celownik broni
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(knobX, knobY, 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(knobX - 10, knobY); ctx.lineTo(knobX - 7, knobY);
-      ctx.moveTo(knobX + 7, knobY); ctx.lineTo(knobX + 10, knobY);
-      ctx.moveTo(knobX, knobY - 10); ctx.lineTo(knobX - 7, knobY);
-      ctx.moveTo(knobX, knobY + 7); ctx.lineTo(knobX + 10, knobY);
-      ctx.stroke();
-    }
+    // Celownik na gałce
+    ctx.strokeStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(knobX - 8, knobY); ctx.lineTo(knobX - 5, knobY);
+    ctx.moveTo(knobX + 5, knobY); ctx.lineTo(knobX + 8, knobY);
+    ctx.moveTo(knobX, knobY - 8); ctx.lineTo(knobX - 5, knobY);
+    ctx.moveTo(knobX, knobY + 5); ctx.lineTo(knobX + 8, knobY);
+    ctx.stroke();
 
-    let statusText = 'CELOWNIK';
+    let statusText = isStickActive ? 'CELOWNIK' : 'CELOWNIK';
     if (isKickReady) {
       const pPct = Math.round((player.chargePower || rightStick.power || 0) * 100);
       statusText = `⚽ WYKOP: ${pPct}% (PUŚĆ)`;
@@ -3026,7 +2994,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
 
     ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = mainColor;
+    ctx.fillStyle = isStickActive ? mainColor : 'rgba(255, 255, 255, 0.35)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(statusText, bx, by + maxR + 15);
@@ -3034,9 +3002,43 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
   }
 
-  // 3. DEDYKOWANE PRZYCISKI MOBILNE: WŚLIZG (SHIFT) ORAZ KUCANIE/LEŻENIE (CTRL)
+  // 3. DEDYKOWANE PRZYCISKI MOBILNE: KOP, WŚLIZG, KUCANIE/LEŻENIE I GRANAT
   if (btnCluster) {
-    // 3A. PRZYCISK WŚLIZGU (WYŁĄCZNIE W PEŁNYM BIEGU)
+    // 3A. DEDYKOWANY PRZYCISK KOPNIĘCIA (🦵 KOP)
+    if (btnCluster.kick) {
+      const kb = btnCluster.kick;
+      const kbR = kb.r || 30;
+      const isPressed = kb.active;
+      const isKickActive = player.kickState === 'SWING' || (player.spartanTimer && player.spartanTimer > 0) || isPressed;
+
+      let btnBorder = isKickActive ? '#facc15' : 'rgba(250, 204, 21, 0.45)';
+      let btnBg = isKickActive ? 'rgba(250, 204, 21, 0.40)' : 'rgba(234, 179, 8, 0.18)';
+      let btnAccent = '#facc15';
+      let labelColor = isKickActive ? '#ffffff' : '#fef08a';
+
+      ctx.beginPath();
+      ctx.arc(kb.x, kb.y, kbR, 0, Math.PI * 2);
+      ctx.fillStyle = btnBg;
+      ctx.fill();
+      ctx.strokeStyle = btnBorder;
+      ctx.lineWidth = isKickActive ? 2.4 : 1.6;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(kb.x, kb.y);
+      ctx.font = '900 13px system-ui, sans-serif';
+      ctx.fillStyle = btnAccent;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🦵', 0, -4);
+
+      ctx.font = 'bold 8.5px monospace';
+      ctx.fillStyle = labelColor;
+      ctx.fillText('KOP', 0, 14);
+      ctx.restore();
+    }
+
+    // 3B. PRZYCISK WŚLIZGU (WYŁĄCZNIE W PEŁNYM BIEGU)
     if (btnCluster.slide) {
       const slide = btnCluster.slide;
       const slideR = slide.r || 30;

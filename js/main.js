@@ -140,18 +140,29 @@ canvas.addEventListener('touchstart', (e) => {
     }
     if (touchedWeaponBtn) continue;
 
+    updateButtonLayout(W, H);
+
     // =======================================================================
-    // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK
+    // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK (SZTYWNO UMIEJSCOWIONY DRĄŻEK)
     // =======================================================================
     if (t.clientX < midX && !leftStick.active) {
       leftStick.active = true;
       leftStick.id = t.identifier;
-      leftStick.baseX = t.clientX;
-      leftStick.baseY = t.clientY;
       leftStick.curX = t.clientX;
       leftStick.curY = t.clientY;
-      leftStick.axisX = 0;
-      leftStick.axisY = 0;
+
+      const dx = t.clientX - leftStick.baseX;
+      const dy = t.clientY - leftStick.baseY;
+      const sDist = Math.hypot(dx, dy);
+      const maxR = leftStick.maxRadius || 55;
+      if (sDist > 5) {
+        const factor = Math.min(1.0, (sDist - 5) / (maxR - 5));
+        leftStick.axisX = (dx / sDist) * factor;
+        leftStick.axisY = (dy / sDist) * factor;
+      } else {
+        leftStick.axisX = 0;
+        leftStick.axisY = 0;
+      }
 
       if (leftStick.jetpackAirborneSession) {
         leftStick.isJetpacking = true;
@@ -172,16 +183,26 @@ canvas.addEventListener('touchstart', (e) => {
     }
 
     // =======================================================================
-    // PRAWA STRONA EKRANU: WŚLIZG / LEŻENIE, CELOWANIE, STRZAŁ I KOPNIĘCIE
+    // PRAWA STRONA EKRANU: PRZYCISKI (KOP, WŚLIZG, KUCANIE, GRANAT) I DRĄŻEK CELOWANIA
     // =======================================================================
     if (t.clientX >= midX) {
+      const kickBtn = btnCluster.kick;
+      const distToKick = kickBtn ? dist(t.clientX, t.clientY, kickBtn.x, kickBtn.y) : 999;
       const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
       const crouchBtn = btnCluster.crouch;
       const distToCrouch = crouchBtn ? dist(t.clientX, t.clientY, crouchBtn.x, crouchBtn.y) : 999;
       const grenadeBtn = btnCluster.grenade;
       const distToGrenade = grenadeBtn ? dist(t.clientX, t.clientY, grenadeBtn.x, grenadeBtn.y) : 999;
 
-      if (distToSlide < btnCluster.slide.r + 16) {
+      if (kickBtn && distToKick < kickBtn.r + 18) {
+        kickBtn.active = true;
+        kickBtn.id = t.identifier;
+        player.isProne = false;
+        player.isCrouching = false;
+        player.crouchToggled = false;
+        const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+        startKickCharge(player, meleeTargets);
+      } else if (distToSlide < btnCluster.slide.r + 16) {
         btnCluster.slide.active = true;
         btnCluster.slide.id = t.identifier;
         handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, btnCluster);
@@ -194,14 +215,14 @@ canvas.addEventListener('touchstart', (e) => {
         grenadeBtn.id = t.identifier;
         throwTacticalGrenade(player);
       } else if (!rightStick.active) {
-        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków wślizgu/kucania/granatu
-        if (distToSlide < btnCluster.slide.r + 28 || (crouchBtn && distToCrouch < crouchBtn.r + 28) || (grenadeBtn && distToGrenade < grenadeBtn.r + 28)) continue;
+        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków
+        if ((kickBtn && distToKick < kickBtn.r + 26) || distToSlide < btnCluster.slide.r + 26 || (crouchBtn && distToCrouch < crouchBtn.r + 26) || (grenadeBtn && distToGrenade < grenadeBtn.r + 26)) continue;
 
         const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
         const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
         const curWep = player.currentWeapon || WEAPONS.AK47;
 
-        if (isGhostActive && distToGhost < (rightStick.maxRadius || 65) + 35) {
+        if (isGhostActive && distToGhost < (rightStick.maxRadius || 58) + 35) {
           // Dotknięcie ducha drążka w oknie 300 ms
           rightStick.active = true;
           rightStick.id = t.identifier;
@@ -222,14 +243,13 @@ canvas.addEventListener('touchstart', (e) => {
           if (sDist > 6) {
             rightStick.axisX = dx / sDist;
             rightStick.axisY = dy / sDist;
-            const maxR = rightStick.maxRadius || 65;
+            const maxR = rightStick.maxRadius || 58;
             const aimDist = 180 + Math.min(1.0, (sDist - 6) / (maxR - 6)) * 120;
             player.aimOffsetX = rightStick.axisX * aimDist;
             player.aimOffsetY = rightStick.axisY * aimDist;
           }
 
           if (curWep.id === 'SHOTGUN') {
-            // SHOTGUN (Strzelba): Dotknięcie ducha oddaje pojedynczy strzał
             rightStick.shotgunFiredThisTap = true;
             rightStick.waitingForSecondTap = false;
             rightStick.windowTimer = 0;
@@ -237,7 +257,6 @@ canvas.addEventListener('touchstart', (e) => {
               triggerPlayerShoot(player, curWep);
             }
           } else {
-            // AK-47 (Automat): Dotknięcie i przytrzymanie prowadzi ogień ciągły tak długo, jak palec spoczywa na ekranie
             rightStick.waitingForSecondTap = false;
             rightStick.windowTimer = 0;
             if (player.shootCooldown <= 0) {
@@ -251,24 +270,36 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.startX = t.clientX;
           rightStick.startY = t.clientY;
           rightStick.movedDist = 0;
-          rightStick.baseX = Math.max(midX + 70, Math.min(W - 90, t.clientX));
-          rightStick.baseY = Math.max(70, Math.min(H - 70, t.clientY));
           rightStick.curX = t.clientX;
           rightStick.curY = t.clientY;
-          rightStick.axisX = 0;
-          rightStick.axisY = 0;
-          rightStick.power = 0;
+
+          const dx = t.clientX - rightStick.baseX;
+          const dy = t.clientY - rightStick.baseY;
+          const sDist = Math.hypot(dx, dy);
+          const maxR = rightStick.maxRadius || 58;
+
+          if (sDist > 6) {
+            const factor = Math.min(1.0, (sDist - 6) / (maxR - 6));
+            rightStick.axisX = (dx / sDist) * factor;
+            rightStick.axisY = (dy / sDist) * factor;
+            rightStick.power = factor;
+            player.aimOffsetX = rightStick.axisX * (180 + factor * 120);
+            player.aimOffsetY = rightStick.axisY * (180 + factor * 120);
+          } else {
+            rightStick.axisX = 0;
+            rightStick.axisY = 0;
+            rightStick.power = 0;
+            player.aimOffsetX = (player.facing || 1) * 180;
+            player.aimOffsetY = -20;
+          }
+
           rightStick.isShooting = false;
           rightStick.waitingForSecondTap = false;
           rightStick.windowTimer = 0;
           rightStick.lingerAlpha = 1.0;
           rightStick.gestureState = 'IDLE';
           rightStick.shotgunFiredThisTap = false;
-
           player.isAiming = true;
-          const defaultAimDist = 180;
-          player.aimOffsetX = (player.facing || 1) * defaultAimDist;
-          player.aimOffsetY = -20;
         }
       }
     }
@@ -438,6 +469,13 @@ function endTouch(e) {
       updateMobileControlStates(player, leftStick, btnCluster);
     }
 
+    if (btnCluster.kick && btnCluster.kick.active && t.identifier === btnCluster.kick.id) {
+      btnCluster.kick.active = false;
+      btnCluster.kick.id = null;
+      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      executeReleaseKick(ball, player, 0, meleeTargets);
+    }
+
     if (btnCluster.slide.active && t.identifier === btnCluster.slide.id) {
       btnCluster.slide.active = false;
       btnCluster.slide.id = null;
@@ -464,6 +502,10 @@ function endTouch(e) {
       const hasMeleeTarget = !!meleeTarget;
       const isChargedKick = (player.chargePower >= 0.95);
       const curWep = player.currentWeapon || WEAPONS.AK47;
+      const touchDuration = performance.now() - (rightStick.touchStartTime || performance.now());
+      const isFlick = (touchDuration < 320 && (rightStick.movedDist > 18 || rightStick.power > 0.25));
+      const activeArena = getActiveArena();
+      const nearCart = activeArena?.minecarts?.some(c => Math.abs((player.x + (player.w || 24) / 2) - (c.x + c.w / 2)) < 160 && Math.abs((player.y + (player.h || 70)) - (c.y + c.h)) < 90);
 
       if (rightStick.isShooting) {
         // Zakończenie próby strzału
@@ -481,15 +523,14 @@ function endTouch(e) {
           rightStick.windowTimer = 0;
           rightStick.lingerAlpha = 0;
         }
-      } else if (inKickReach || (isChargedKick && hasMeleeTarget)) {
-        // WARIANT A (Wykop lub Spartan Kick): Jeśli w zasięgu stóp (<= 75 px) jest piłka LUB stoi wróg przy pełnym naładowaniu (chargePower >= 0.95):
-        // Wykonaj wykop (executeReleaseKick). Duch drążka się NIE pojawia.
+      } else if (inKickReach || (isChargedKick && hasMeleeTarget) || nearCart || isFlick) {
+        // Wykonaj wykop (piłka, wagonik kopalniany, wróg w zwarciu lub dynamiczny flick gałką)
         executeReleaseKick(ball, player, 0, meleeTargets);
         rightStick.waitingForSecondTap = false;
         rightStick.windowTimer = 0;
         rightStick.lingerAlpha = 0;
       } else {
-        // WARIANT B (Brak celu w zwarciu): Postać NIE kopie w powietrze. W miejscu puszczenia na 300 ms aktywuje się półprzezroczysty duch drążka
+        // WARIANT B (Brak celu w zwarciu): W miejscu puszczenia na 300 ms aktywuje się półprzezroczysty duch drążka
         rightStick.waitingForSecondTap = true;
         rightStick.windowTimer = 300;
         rightStick.lingerAlpha = 0.55;

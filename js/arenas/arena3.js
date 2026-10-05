@@ -403,6 +403,80 @@ export function drawArena3Background(ctx, camera) {
     ctx.fillRect(rx, 1268, 12, 2);
   }
 
+  // (F) Okrągłe bramki przemysłowe w ścianach hali renderowane w tle (postać nigdy się w nich nie zakrywa!)
+  for (const goal of ARENA_3_CUSTOM_OBJECTS) {
+    const cx = goal.holeCx || (goal.x + goal.w / 2);
+    const cy = goal.holeCy || (goal.y + goal.h / 2);
+    const rOuter = 170;
+    const rInner = 125;
+    const isCyan = (goal.team === 'CYAN');
+    const neonCol = isCyan ? '#06b6d4' : '#f97316';
+    const neonCore = isCyan ? '#00e5ff' : '#ff7700';
+
+    ctx.save();
+    // Ciemne wnętrze tunelu bramki w tle
+    ctx.beginPath();
+    ctx.arc(cx, cy, rInner, 0, Math.PI * 2);
+    const tunnelDarkness = ctx.createRadialGradient(cx, cy, 10, cx, cy, rInner);
+    tunnelDarkness.addColorStop(0.0, '#020408');
+    tunnelDarkness.addColorStop(0.7, '#050912');
+    tunnelDarkness.addColorStop(1.0, '#090d16');
+    ctx.fillStyle = tunnelDarkness;
+    ctx.fill();
+
+    // Stalowy kołnierz (Flange ring)
+    ctx.beginPath();
+    ctx.arc(cx, cy, rOuter, 0, Math.PI * 2, false);
+    ctx.arc(cx, cy, rInner, 0, Math.PI * 2, true);
+    ctx.closePath();
+
+    const flangeGrad = ctx.createLinearGradient(cx - rOuter, cy - rOuter, cx + rOuter, cy + rOuter);
+    flangeGrad.addColorStop(0.0, '#334155');
+    flangeGrad.addColorStop(0.35, '#1e293b');
+    flangeGrad.addColorStop(0.70, '#0f172a');
+    flangeGrad.addColorStop(1.0, '#090d16');
+    ctx.fillStyle = flangeGrad;
+    ctx.fill();
+
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Nity przemysłowe
+    ctx.fillStyle = '#94a3b8';
+    const numRivets = 16;
+    const rRivet = (rOuter + rInner) * 0.5;
+    for (let i = 0; i < numRivets; i++) {
+      const ang = (i * Math.PI * 2) / numRivets;
+      const rx = cx + Math.cos(ang) * rRivet;
+      const ry = cy + Math.sin(ang) * rRivet;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Neonowy wewnętrzny pierścień
+    ctx.strokeStyle = neonCol;
+    ctx.shadowColor = neonCore;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rInner + 1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Ciemny cień głębi otworu
+    const inShadow = ctx.createRadialGradient(cx, cy, rInner - 12, cx, cy, rInner + 2);
+    inShadow.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
+    inShadow.addColorStop(1.0, 'rgba(0, 0, 0, 0.85)');
+    ctx.fillStyle = inShadow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rInner + 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   // Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
   for (const cart of ARENA_3_MINECARTS) {
     if (cart.passenger) {
@@ -432,71 +506,6 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fillRect(sx + sw, 900, 10, 8);
     ctx.fillStyle = '#18181b';
     ctx.fillRect(sx + sw + 3, 900, 4, 8);
-  }
-
-  // 2. Przednie obramowania (Steel Flange & Bezel Ring) okrągłych bramek w ścianach hali
-  // Ponieważ renderowanie pierwszoplanowe następuje PO narysowaniu piłki (drawBall),
-  // piłka wpadająca w tunel chowa się ZA przednim kołnierzem ściany, dając idealną iluzję 3D wpadania do środka dziury!
-  for (const goal of ARENA_3_CUSTOM_OBJECTS) {
-    const cx = goal.holeCx || (goal.x + goal.w / 2);
-    const cy = goal.holeCy || (goal.y + goal.h / 2);
-    const rOuter = 170;
-    const rInner = 125;
-    const isCyan = (goal.team === 'CYAN');
-    const neonCol = isCyan ? '#06b6d4' : '#f97316';
-    const neonCore = isCyan ? '#00e5ff' : '#ff7700';
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, rOuter, 0, Math.PI * 2, false);
-    ctx.arc(cx, cy, rInner, 0, Math.PI * 2, true); // Otwór w środku
-    ctx.closePath();
-
-    const flangeGrad = ctx.createLinearGradient(cx - rOuter, cy - rOuter, cx + rOuter, cy + rOuter);
-    flangeGrad.addColorStop(0.0, '#334155');
-    flangeGrad.addColorStop(0.35, '#1e293b');
-    flangeGrad.addColorStop(0.70, '#0f172a');
-    flangeGrad.addColorStop(1.0, '#090d16');
-    ctx.fillStyle = flangeGrad;
-    ctx.fill();
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Nity przemysłowe wokół obwodu kołnierza
-    ctx.fillStyle = '#94a3b8';
-    const numRivets = 16;
-    const rRivet = (rOuter + rInner) * 0.5;
-    for (let i = 0; i < numRivets; i++) {
-      const ang = (i * Math.PI * 2) / numRivets;
-      const rx = cx + Math.cos(ang) * rRivet;
-      const ry = cy + Math.sin(ang) * rRivet;
-      ctx.beginPath();
-      ctx.arc(rx, ry, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Neonowy wewnętrzny pierścień świetlny z łuną
-    ctx.strokeStyle = neonCol;
-    ctx.shadowColor = neonCore;
-    ctx.shadowBlur = 12;
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rInner + 1, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Ciemny cień głębi otworu (Depth Shadow)
-    const inShadow = ctx.createRadialGradient(cx, cy, rInner - 8, cx, cy, rInner + 2);
-    inShadow.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
-    inShadow.addColorStop(1.0, 'rgba(0, 0, 0, 0.85)');
-    ctx.fillStyle = inShadow;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rInner + 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
   }
 
   // 3. Odbojnice torowiska na krańcach dolnego tunelu (X = 165 oraz X = 4235)
@@ -752,12 +761,14 @@ export function updateArena3(dt, players, ball) {
       const pFootX = p.x + charW / 2;
       const cartFloorY = cart.y + 48; // Precyzyjnie dopasowany poziom podłogi wewnątrz misy wagonika
 
-      // Sprawdzenie czy gracz nie zginął lub nie wyskoczył
-      const wantJumpOut = p.isJumping || p.vy < -2 || (p.keys && (p.keys.up || p.keys.KeyW || p.keys.Space));
-      const isFarOut = pFootX < cart.x - 15 || pFootX > cart.x + cart.w + 15;
+      // Sprawdzenie czy gracz nie zginął lub nie wyskoczył (wykluczono klawisz Space, który jest kopnięciem!)
+      const wantJumpOut = p.isJumping || p.vy < -2 || (p.keys && (p.keys.up || p.keys.KeyW));
+      const isFarOut = pFootX < cart.x - 20 || pFootX > cart.x + cart.w + 20;
 
       if (!p.isDead && !wantJumpOut && !isFarOut) {
         // Postać stoi fizycznie na podłodze wagonika
+        p.inMinecart = true;
+        p._inCart = cart;
         p.onGround = true;
         p.isJumping = false;
         p.currentGroundY = cartFloorY;
@@ -774,12 +785,14 @@ export function updateArena3(dt, players, ball) {
         if (p.x > maxInX) p.x = maxInX;
 
         // Sterowanie / napędzanie wagonika od środka
-        const moveLeft = p.keys?.left || p.keys?.KeyA || p.keys?.ArrowLeft || (p.leftStick && p.leftStick.x < -0.3);
-        const moveRight = p.keys?.right || p.keys?.KeyD || p.keys?.ArrowRight || (p.leftStick && p.leftStick.x > 0.3);
+        const moveLeft = p.keys?.left || p.keys?.KeyA || p.keys?.ArrowLeft || (p.leftStick && p.leftStick.axisX < -0.3);
+        const moveRight = p.keys?.right || p.keys?.KeyD || p.keys?.ArrowRight || (p.leftStick && p.leftStick.axisX > 0.3);
 
-        if (moveLeft) cart.vx -= 240 * dt;
-        if (moveRight) cart.vx += 240 * dt;
+        if (moveLeft) cart.vx -= 260 * dt;
+        if (moveRight) cart.vx += 260 * dt;
       } else {
+        p.inMinecart = false;
+        p._inCart = null;
         cart.passenger = null;
         if (p.currentGroundY === cartFloorY) {
           p.currentGroundY = floorY;
@@ -807,10 +820,12 @@ export function updateArena3(dt, players, ball) {
 
         // (A) Wskoczenie od góry do wnętrza pustego wagonika
         if (!cart.passenger &&
-            pCenterX >= cart.x + 14 && pCenterX <= cart.x + cart.w - 14 &&
-            pFootY >= cart.y + 10 && pFootY <= cartFloorY + 18 &&
+            pCenterX >= cart.x + 10 && pCenterX <= cart.x + cart.w - 10 &&
+            pFootY >= cart.y + 10 && pFootY <= cartFloorY + 24 &&
             p.vy >= -1 && !p.isSliding) {
           cart.passenger = p;
+          p.inMinecart = true;
+          p._inCart = cart;
           p.onGround = true;
           p.isJumping = false;
           p.currentGroundY = cartFloorY;
@@ -822,19 +837,19 @@ export function updateArena3(dt, players, ball) {
 
         // (B) Interakcje postaci z zewnątrz wagonika
         if (cart.passenger !== p) {
-          // 1. Detekcja kopnięcia (Spartan kick lub normalny wymach nogą)
-          const isKickingNow = (p.kickState === 'SWING' || (p.spartanTimer && p.spartanTimer > 0) || p.isKicking);
+          // 1. Detekcja kopnięcia (Spartan kick, normalny wymach nogą, ładowanie lub dotyk)
+          const isKickingNow = (p.kickState === 'SWING' || (p.spartanTimer && p.spartanTimer > 0) || p.isKicking || p.isCharging);
           if (isKickingNow) {
-            const kickReach = 75;
+            const kickReach = 95;
             const isNearCart = (pRight >= cart.x - kickReach && pLeft <= cart.x + cart.w + kickReach) &&
-                               Math.abs(pFootY - (cart.y + cart.h)) < 50;
+                               Math.abs(pFootY - (cart.y + cart.h)) < 65;
             if (isNearCart && !p._cartKicked) {
               p._cartKicked = true;
               const dir = (p.facing !== undefined) ? p.facing : (pCenterX < cart.x + cart.w / 2 ? 1 : -1);
-              const force = (p.kickForce || 1.1) * 780;
+              const force = (p.kickForce || 1.1) * 850;
               cart.vx += dir * force;
               cart.bounce = 8;
-              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 20);
+              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 22);
             }
           } else {
             p._cartKicked = false;
@@ -970,7 +985,7 @@ function segmentIntersectsAABB(x1, y1, x2, y2, minX, minY, maxX, maxY) {
 }
 
 export function onArena3BulletHit(bullet) {
-  if (!bullet || !bullet.alive) return false;
+  if (!bullet || (bullet.life !== undefined && bullet.life <= 0)) return false;
 
   const bx1 = (typeof bullet.prevX === 'number') ? bullet.prevX : (bullet.x - (bullet.vx || 0));
   const by1 = (typeof bullet.prevY === 'number') ? bullet.prevY : (bullet.y - (bullet.vy || 0));
@@ -985,58 +1000,54 @@ export function onArena3BulletHit(bullet) {
 
     if (segmentIntersectsAABB(bx1, by1, bx2, by2, cartMinX, cartMinY, cartMaxX, cartMaxY)) {
       // Przekazanie pędu pocisku na masę wagonika
-      const bulletImpulse = (bullet.vx || 0) * 0.45;
+      const bulletImpulse = (bullet.vx || 0) * 0.55;
       cart.vx += bulletImpulse;
-      cart.bounce = 3.0;
+      cart.bounce = 3.5;
 
       // Punkt uderzenia
       const hitX = Math.max(cartMinX, Math.min(cartMaxX, bx2));
       const hitY = Math.max(cartMinY, Math.min(cartMaxY, by2));
 
-      // Jeśli trafienie w stalową burtę lub koła (pancerz poniżej rantu)
-      if (hitY >= cart.y + 16) {
-        const nx = (bullet.vx || 1) > 0 ? -1 : 1;
-        spawnRicochetSparks(hitX, hitY, nx, -0.3, 8);
-        return true; // Kula zablokowana przez stalowy pancerz
-      }
-
-      // Jeśli trafienie powyżej rantu (otwarte wnętrze misy)
-      if (cart.passenger) {
-        // Jeśli pasażer kuca, jest w 100% schowany za burtą
-        if (cart.passenger.isCrouching) {
-          spawnRicochetSparks(hitX, hitY, 0, -1, 6);
-          return true; // Kula zablokowana, rykoszet
-        }
-        // Jeśli pasażer stoi, pocisk trafia jego wystającą sylwetkę
-        return false;
-      } else {
-        spawnRicochetSparks(hitX, hitY, 0, -1, 6);
-        return true;
-      }
+      // Zawsze zablokuj pocisk (niech pociski NIE przenikają przez wagonik!)
+      const nx = (bullet.vx || 1) > 0 ? -1 : 1;
+      spawnRicochetSparks(hitX, hitY, nx, -0.3, 8);
+      bullet.alive = false;
+      return true; // Kula zablokowana i pochłonięta przez pancerz wagonika
     }
   }
   return false;
 }
 
 export function onArena3KickHit(player, kickBox) {
-  if (!kickBox) return false;
+  if (!player) return false;
   let hitAny = false;
 
   for (const cart of ARENA_3_MINECARTS) {
-    const boxRight = kickBox.x + kickBox.w;
-    const boxBottom = kickBox.y + kickBox.h;
-    const cartRight = cart.x + cart.w;
-    const cartBottom = cart.y + cart.h;
+    const pCenterX = player.x + (player.w || 24) / 2;
+    const pFootY = player.y + (player.h || 70);
+    const cartCenter = cart.x + cart.w / 2;
+    const distToCartX = Math.abs(pCenterX - cartCenter);
+    const distToCartY = Math.abs(pFootY - (cart.y + cart.h));
+    const isNearby = (distToCartX <= (cart.w / 2 + 75)) && (distToCartY <= 65);
 
-    const overlap = kickBox.x <= cartRight && boxRight >= cart.x &&
-                    kickBox.y <= cartBottom && boxBottom >= cart.y;
+    let overlap = false;
+    if (kickBox) {
+      const boxRight = kickBox.x + kickBox.w + 15;
+      const boxLeft = kickBox.x - 15;
+      const boxBottom = kickBox.y + kickBox.h + 15;
+      const boxTop = kickBox.y - 15;
+      const cartRight = cart.x + cart.w;
+      const cartBottom = cart.y + cart.h;
+      overlap = boxLeft <= cartRight && boxRight >= cart.x &&
+                boxTop <= cartBottom && boxBottom >= cart.y;
+    }
 
-    if (overlap) {
-      const dir = (player.facing !== undefined) ? player.facing : (kickBox.x < cart.x + cart.w / 2 ? 1 : -1);
-      const force = (player.kickForce || 1.1) * 780;
+    if (isNearby || overlap) {
+      const dir = (player.facing !== undefined) ? player.facing : (pCenterX < cartCenter ? 1 : -1);
+      const force = (player.kickForce || 1.1) * 850;
       cart.vx += dir * force;
       cart.bounce = 8;
-      spawnStretchedSparks(kickBox.x + kickBox.w / 2, kickBox.y + kickBox.h / 2, 18);
+      spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 22);
       hitAny = true;
     }
   }

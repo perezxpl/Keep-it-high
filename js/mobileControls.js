@@ -58,7 +58,7 @@ export const btnCluster = {
   slide: {
     x: 0,
     y: 0,
-    r: 30,
+    r: 27,
     active: false,
     id: null,
     enabled: false,
@@ -67,7 +67,7 @@ export const btnCluster = {
   crouch: {
     x: 0,
     y: 0,
-    r: 28,
+    r: 25,
     active: false,
     id: null,
     pressStartTime: 0
@@ -75,7 +75,15 @@ export const btnCluster = {
   grenade: {
     x: 0,
     y: 0,
-    r: 28,
+    r: 25,
+    active: false,
+    id: null,
+    enabled: true
+  },
+  kick: {
+    x: 0,
+    y: 0,
+    r: 30,
     active: false,
     id: null,
     enabled: true
@@ -90,23 +98,55 @@ export const btnCluster = {
 export function updateButtonLayout(W, H) {
   const curW = (typeof W === 'number' && W > 0) ? W : (typeof window !== 'undefined' ? window.innerWidth : 800);
   const curH = (typeof H === 'number' && H > 0) ? H : (typeof window !== 'undefined' ? window.innerHeight : 600);
-  btnCluster.slide.x = curW - 65;
-  btnCluster.slide.y = curH - 85;
-  btnCluster.slide.r = 30;
 
+  // Sztywno umiejscowione, stałe pozycje drążków dotykowych (Fixed Sticks)
+  leftStick.baseX = Math.round(Math.min(135, Math.max(95, curW * 0.14)));
+  leftStick.baseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
+  leftStick.maxRadius = 55;
+  if (!leftStick.active) {
+    leftStick.curX = leftStick.baseX;
+    leftStick.curY = leftStick.baseY;
+  }
+
+  rightStick.baseX = Math.round(curW - Math.min(135, Math.max(95, curW * 0.14)));
+  rightStick.baseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
+  rightStick.maxRadius = 58;
+  if (!rightStick.active) {
+    rightStick.curX = rightStick.baseX;
+    rightStick.curY = rightStick.baseY;
+  }
+
+  const rsX = rightStick.baseX;
+  const rsY = rightStick.baseY;
+
+  // Dedykowany, duży przycisk wykopu (KOP)
+  if (!btnCluster.kick) {
+    btnCluster.kick = { x: 0, y: 0, r: 30, active: false, id: null, enabled: true };
+  }
+  btnCluster.kick.x = Math.round(rsX - 85);
+  btnCluster.kick.y = Math.round(rsY + 15);
+  btnCluster.kick.r = 30;
+
+  // Przycisk wślizgu
+  btnCluster.slide.x = Math.round(rsX - 85);
+  btnCluster.slide.y = Math.round(rsY - 60);
+  btnCluster.slide.r = 27;
+
+  // Przycisk kucania / leżenia
   if (!btnCluster.crouch) {
-    btnCluster.crouch = { x: 0, y: 0, r: 28, active: false, id: null, pressStartTime: 0 };
+    btnCluster.crouch = { x: 0, y: 0, r: 25, active: false, id: null, pressStartTime: 0 };
   }
-  btnCluster.crouch.x = curW - 135;
-  btnCluster.crouch.y = curH - 85;
-  btnCluster.crouch.r = 28;
+  btnCluster.crouch.x = Math.round(rsX - 10);
+  btnCluster.crouch.y = Math.round(rsY - 85);
+  btnCluster.crouch.r = 25;
 
+  // Przycisk granatu taktycznego
   if (!btnCluster.grenade) {
-    btnCluster.grenade = { x: 0, y: 0, r: 28, active: false, id: null, enabled: true };
+    btnCluster.grenade = { x: 0, y: 0, r: 25, active: false, id: null, enabled: true };
   }
-  btnCluster.grenade.x = curW - 205;
-  btnCluster.grenade.y = curH - 85;
-  btnCluster.grenade.r = 28;
+  btnCluster.grenade.x = Math.round(rsX - 75);
+  btnCluster.grenade.y = Math.round(rsY - 130);
+  btnCluster.grenade.r = 25;
 }
 
 /**
