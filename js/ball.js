@@ -1,7 +1,7 @@
-import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT } from './config.js';
+import { CONFIG, START_X, ARENA_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js';
 import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, arenaScore, resetArena } from './obstacles.js';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State } from './obstacles.js';
 
 export const ball = {
   x: START_X - 38,
@@ -132,6 +132,98 @@ function launchBallKinetic(playerObj, spawnGrass, baseSpeedOverride, isSpinVolle
   });
 }
 
+/**
+ * Sprawdza czy piłka wpadła w światło bramki (lub otworu w ścianie w Arenie 3).
+ * Wywoływana zarówno w każdym mikrokroku (sub-step) CCD, jak i po pętli fizyki.
+ * @param {Object} ballObj Obiekt piłki
+ * @param {number} groundY Poziom podłoża
+ * @returns {boolean} true jeśli gol został uznany
+ */
+export function checkGoalTrigger(ballObj, groundY) {
+  if (!ballObj || (ballObj.goalAnimation && ballObj.goalAnimation.active)) return false;
+
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const goalsToCheck = (GOALS && GOALS.length > 0) ? GOALS : (isA3 ? ARENA_FOUNDRY_GOALS : []);
+
+  for (const g of goalsToCheck) {
+    if (!g || !g.team) continue;
+
+    const isCyanGoal = (g.team === 'CYAN');
+    const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
+    const topY = (g.y !== undefined) ? g.y : (Math.min(groundY - (g.relY || 0), groundY - (g.relY || 0) - (g.h || 125)));
+    const bottomY = (g.y !== undefined) ? (g.y + (g.h || 130)) : (Math.max(groundY - (g.relY || 0), groundY - (g.relY || 0) + (g.h || 125)));
+    const leftX = g.x;
+    const rightX = g.x + (g.w || 90);
+
+    let isInsideGoal = false;
+    let targetX = 0;
+    let targetY = (topY + bottomY) / 2;
+
+    if (isA3 || g.holeCx !== undefined) {
+      const hCx = g.holeCx !== undefined ? g.holeCx : (leftX + rightX) / 2;
+      const hCy = g.holeCy !== undefined ? g.holeCy : (topY + bottomY) / 2;
+      const hR = g.holeR || 170;
+      const dHole = Math.hypot(ballObj.x - hCx, ballObj.y - hCy);
+
+      // Warunek 1: Piłka wewnątrz promienia okrągłego otworu w ścianie
+      if (dHole <= hR + ballObj.colRadius) {
+        isInsideGoal = true;
+      }
+      // Warunek 2: Piłka przekroczyła linię otworu na wysokości wlotu
+      else if (ballObj.y >= topY - 15 && ballObj.y <= bottomY + 15) {
+        if (g.facing === 1 && ballObj.x <= rightX && ballObj.x >= leftX - 60) {
+          isInsideGoal = true;
+        } else if (g.facing === -1 && ballObj.x >= leftX && ballObj.x <= rightX + 60) {
+          isInsideGoal = true;
+        }
+      }
+
+      if (isInsideGoal) {
+        // Wciągnięcie głęboko w rurę/kanał techniczny za kołnierz ściany
+        targetX = isCyanGoal ? 30 : 4370;
+        targetY = hCy;
+      }
+    } else {
+      // Standardowe prostokątne bramki neonowe (Arena 1 & 2)
+      if (ballObj.x >= leftX && ballObj.x <= rightX && ballObj.y >= topY && ballObj.y <= bottomY) {
+        isInsideGoal = true;
+        targetX = (g.facing === 1) ? (leftX - 30) : (rightX + 30);
+        targetY = (topY + bottomY) / 2;
+      }
+    }
+
+    if (isInsideGoal) {
+      if (scoringTeam === 'CYAN') {
+        arenaScore.cyan++;
+      } else {
+        arenaScore.orange++;
+      }
+
+      triggerScreenShake(16);
+      triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+
+      ballObj.goalAnimation = {
+        active: true,
+        timer: 48,
+        maxTimer: 48,
+        startX: ballObj.x,
+        startY: ballObj.y,
+        targetX: targetX,
+        targetY: targetY,
+        scoringTeam: scoringTeam,
+        color: scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316',
+        scale: 1.0,
+        alpha: 1.0,
+        spinDir: (ballObj.vx > 0 ? 1 : -1) || (isCyanGoal ? -1 : 1)
+      };
+      ballObj.vx = 0;
+      ballObj.vy = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
 export function updateBall(GROUND_Y) {
   // Animacja wpadania piłki w głąb bramki (Visual Goal Entry)
   if (ball.goalAnimation && ball.goalAnimation.active) {
@@ -253,6 +345,11 @@ export function updateBall(GROUND_Y) {
     ball.x += ball.vx * subDt;
     ball.y += ball.vy * subDt;
 
+    // Natychmiastowa detekcja wpadnięcia do bramki podczas mikrokroku (CCD)
+    if (checkGoalTrigger(ball, GROUND_Y)) {
+      break;
+    }
+
     // Sprężyste odbijanie piłki (rykoszety) od pionowych neonowych ścian areny (300m bariera)
     const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
     const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
@@ -337,63 +434,9 @@ export function updateBall(GROUND_Y) {
     resolveBallObstacleCollisions(ball, GROUND_Y);
   }
 
-  // Detekcja gola z płynnym zasysaniem w głąb bramki (Visual Goal Entry)
-  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  if (isA3 && !ball.goalAnimation?.active) {
-    for (const g of GOALS) {
-      const topY = (g.y !== undefined) ? g.y : (GROUND_Y - (g.relY || 0) - g.h);
-      const bottomY = (g.y !== undefined) ? (g.y + g.h) : (GROUND_Y - (g.relY || 0));
-      const leftX = g.x;
-      const rightX = g.x + g.w;
-
-      let isInsideGoal = false;
-      let targetX = 0;
-      let targetY = (topY + bottomY) / 2;
-
-      if (isA3 && g.holeCx !== undefined) {
-        const dHole = Math.hypot(ball.x - g.holeCx, ball.y - g.holeCy);
-        if (dHole <= (g.holeR || 170) || (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY)) {
-          isInsideGoal = true;
-          targetX = (g.team === 'CYAN') ? 30 : 4370; // wciągnięcie głęboko w rurę za kołnierz ściany
-          targetY = g.holeCy;
-        }
-      } else if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
-        isInsideGoal = true;
-        targetX = (g.team === 'CYAN') ? (leftX - 45) : (rightX + 45);
-        targetY = (topY + bottomY) / 2;
-      }
-
-      if (isInsideGoal) {
-        const isCyanGoal = (g.team === 'CYAN');
-        const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
-        if (scoringTeam === 'CYAN') {
-          arenaScore.cyan++;
-        } else {
-          arenaScore.orange++;
-        }
-
-        triggerScreenShake(16);
-        triggerGoalCelebration(scoringTeam, isCyanGoal ? '#06b6d4' : '#f97316');
-
-        ball.goalAnimation = {
-          active: true,
-          timer: 48,
-          maxTimer: 48,
-          startX: ball.x,
-          startY: ball.y,
-          targetX: targetX,
-          targetY: targetY,
-          scoringTeam: scoringTeam,
-          color: isCyanGoal ? '#06b6d4' : '#f97316',
-          scale: 1.0,
-          alpha: 1.0,
-          spinDir: (ball.vx > 0 ? 1 : -1) || (isCyanGoal ? -1 : 1)
-        };
-        ball.vx = 0;
-        ball.vy = 0;
-        break;
-      }
-    }
+  // Detekcja gola po zintegrowaniu całej klatki (jeśli nie przechwycono w mikrokrokach)
+  if (!ball.goalAnimation?.active) {
+    checkGoalTrigger(ball, GROUND_Y);
   }
 
   // Anti-Stuck Watchdog: zabezpieczenie przed uwięzieniem w szczelinach lub pod kładkami
@@ -437,6 +480,7 @@ export function updateBall(GROUND_Y) {
 }
 
 export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
+  if (ball.goalAnimation && ball.goalAnimation.active) return;
   const hipX = playerObj.x + playerObj.w / 2;
   const hipY = playerObj.y + playerObj.h - 40 + playerObj.pelvisY;
 

@@ -231,6 +231,9 @@ export function findSupportingSurface(px, bottomY, w, h, groundY = GROUND_Y, sna
   // 3. Postawione przeszkody (customObstacles)
   if (Array.isArray(obstacles)) {
     for (const obs of obstacles) {
+      if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+        continue;
+      }
       const obsLeft = obs.x;
       const obsRight = obs.x + obs.w;
       const overlap = Math.min(px + w, obsRight) - Math.max(px, obsLeft);
@@ -498,6 +501,17 @@ onArenaChange((newArena) => {
   customObstacles.length = 0;
   if (newArena && Array.isArray(newArena.customObjects)) {
     customObstacles.push(...newArena.customObjects);
+  }
+
+  GOALS.length = 0;
+  if (activeArenaId === 'ARENA_3') {
+    const a3Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_FOUNDRY_GOALS;
+    GOALS.push(...(a3Goals.length > 0 ? a3Goals : ARENA_FOUNDRY_GOALS));
+  } else if (activeArenaId === 'ARENA_2') {
+    const a2Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_CYBER_STADIUM_GOALS;
+    GOALS.push(...(a2Goals.length > 0 ? a2Goals : ARENA_CYBER_STADIUM_GOALS));
+  } else {
+    GOALS.push(...ARENA_1_GOALS);
   }
 });
 
@@ -1351,6 +1365,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   for (const obs of customObstacles) {
+    if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+      continue;
+    }
     if (obs.type === 'hedgehog' || obs.type === 'gravity_lift' || obs.type === 'barbed_wire' || obs.type === 'laser_gate' || obs.type === 'cyber_bumper' || obs.type === 'speed_booster_pad') {
       continue;
     }
@@ -1395,6 +1412,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   for (const obs of customObstacles) {
+    if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+      continue;
+    }
     if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall' || obs.type === 'explosive_barrel') {
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
       const bottomY = topY + obs.h;
@@ -1601,7 +1621,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 }
 
 export function resolveBallObstacleCollisions(ball, groundY) {
-  if (!ball) return;
+  if (!ball || (ball.goalAnimation && ball.goalAnimation.active)) return;
   const speed = Math.hypot(ball.vx, ball.vy);
   const cR = ball.colRadius !== undefined ? ball.colRadius : ball.radius;
   const prevX = ball.prevX !== undefined ? ball.prevX : (ball.x - ball.vx);
@@ -1799,6 +1819,9 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   }
 
   for (const obs of customObstacles) {
+    if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+      continue;
+    }
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const bottomY = topY + obs.h;
     const obsLeft = obs.x;
@@ -3935,6 +3958,7 @@ export function drawObstacles(ctx, groundY) {
   const allObstacles = [...customObstacles, ...obstacles];
   for (const obs of allObstacles) {
     if (!obs || renderedSet.has(obs)) continue;
+    if (obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') continue;
     renderedSet.add(obs);
 
     const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
@@ -4286,6 +4310,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
 
   if (Array.isArray(customObstacles)) {
     for (const obs of customObstacles) {
+      if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+        continue;
+      }
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
       const bottomY = topY + obs.h;
 
