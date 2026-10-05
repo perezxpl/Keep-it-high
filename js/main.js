@@ -2398,7 +2398,7 @@ function update() {
 
   // Aktualizacja cyklu życia specyficznego dla aktywnej areny (np. spadające skały, łańcuchy, wózki)
   const activeArena = getActiveArena();
-  activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities);
+  activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities, isDeathmatch ? null : ball);
 
   if (!isDeathmatch) {
     if (networkState.isHost || !networkState.isConnected) {

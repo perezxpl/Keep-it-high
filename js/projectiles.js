@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
+import { getActiveArena } from './arenas/index.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import {
@@ -250,6 +251,12 @@ export function spawnAeroSuperGrenade(shooter, targetX, targetY) {
  * Główna procedura wybuchu, obrażeń i niszczenia terenu (AoE Destruction)
  */
 export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball) {
+  // Przechwycenie wybuchu przez elementy aktywnej areny (np. odrzut wagoników kopalnianych)
+  const activeArena = getActiveArena();
+  if (activeArena && typeof activeArena.onExplosion === 'function') {
+    activeArena.onExplosion(expX, expY, radius);
+  }
+
   // 1. Obrażenia i odrzut graczy / botów
   const targets = Array.isArray(combatants) ? combatants : [];
   for (const ch of targets) {

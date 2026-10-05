@@ -4,9 +4,24 @@
 // Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1, zero importów z wyższych warstw)
 // =========================================================================
 
+import { spawnStretchedSparks, spawnRicochetSparks } from '../particles.js';
+
 // 1. Obraz tła hali przemysłowej generowany skryptem Python (foundry_bg.png)
 const foundryBgImage = new Image();
 foundryBgImage.src = 'foundry_bg.png';
+
+// 2. Modułowe zasoby graficzne wagoników kopalnianych (PNG z przezroczystością)
+const cartBodyImg = new Image();
+cartBodyImg.src = 'assets/minecart_body.png';
+
+const cartWheelImg = new Image();
+cartWheelImg.src = 'assets/minecart_wheel.png';
+
+const cartInteriorImg = new Image();
+cartInteriorImg.src = 'assets/minecart_interior_back.png';
+
+const cartFrontImg = new Image();
+cartFrontImg.src = 'assets/minecart_front_chassis.png';
 
 // =========================================================================
 // STATYCZNA GEOMETRIA I PLATFORMY (ARENA_3_PLATFORMS)
@@ -377,6 +392,23 @@ export function drawArena3Background(ctx, camera) {
 
   ctx.restore();
 
+  // (E) Stalowe torowisko kopalniane w dolnym tunelu (Y = 1270)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(160, 1268, 4080, 2);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(160, 1267, 4080, 1);
+  for (let rx = 175; rx < 4230; rx += 28) {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(rx, 1268, 12, 2);
+  }
+
+  // Rysowanie wnętrza i kół wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
+  for (const cart of ARENA_3_MINECARTS) {
+    if (cart.passenger) {
+      drawMinecartBackAndWheels(ctx, cart);
+    }
+  }
+
   ctx.restore();
 }
 
@@ -466,25 +498,464 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
+  // 3. Odbojnice torowiska na krańcach dolnego tunelu (X = 165 oraz X = 4235)
+  drawBufferStop(ctx, 165, true);
+  drawBufferStop(ctx, 4235, false);
+
+  // 4. Mobilne wagoniki kopalniane w dolnym tunelu
+  for (const cart of ARENA_3_MINECARTS) {
+    if (cart.passenger) {
+      // Pasażer został narysowany pomiędzy warstwami; nakładamy przednią pancerną burtę i resory
+      drawMinecartFront(ctx, cart);
+    } else {
+      // Pusty wagonik bez pasażera: rysujemy koła i pełny korpus
+      drawMinecartComplete(ctx, cart);
+    }
+  }
+
   ctx.restore();
 }
 
 // =========================================================================
-// PĘTLA AKTUALIZACJI MECHANIZMÓW ARENY 3 (CZYSTY FUNDAMENT)
+// ODBOJNICE KRAŃCOWE I RENDEROWANIE WARSTW WAGONIKÓW
 // =========================================================================
-export function updateArena3(dt, players) {
-  // Arena 3 oczyszczona z prowizorycznych obiektów
+function drawBufferStop(ctx, x, isLeft) {
+  ctx.save();
+  const floorY = 1270;
+  const h = 56;
+  const w = 18;
+  const bx = isLeft ? x : x - w;
+
+  // Stalowy słupek odbojowy
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(bx, floorY - h, w, h);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bx, floorY - h, w, h);
+
+  // Paski ostrzegawcze (hazard stripes)
+  for (let y = floorY - h + 5; y < floorY - 6; y += 12) {
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(bx + 2, y, w - 4, 6);
+  }
+
+  // Gumowo-stalowy odbojnik sprężynowy
+  const padX = isLeft ? bx + w : bx - 10;
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(padX, floorY - 44, 10, 24);
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(padX, floorY - 44, 10, 24);
+
+  ctx.restore();
+}
+
+function drawCartWheels(ctx, cart, bounceY) {
+  const r = cart.wheelR;
+  const wheelY = cart.y + cart.wheelYOffset + bounceY;
+  const w1X = cart.x + cart.wheel1XOffset;
+  const w2X = cart.x + cart.wheel2XOffset;
+
+  if (cartWheelImg && cartWheelImg.complete && cartWheelImg.naturalWidth > 0) {
+    // Koło 1 (lewe) - obrót wokół własnej osi
+    ctx.save();
+    ctx.translate(w1X, wheelY);
+    ctx.rotate(cart.wheelAngle);
+    ctx.drawImage(cartWheelImg, -r, -r, r * 2, r * 2);
+    ctx.restore();
+
+    // Koło 2 (prawe) - obrót wokół własnej osi
+    ctx.save();
+    ctx.translate(w2X, wheelY);
+    ctx.rotate(cart.wheelAngle);
+    ctx.drawImage(cartWheelImg, -r, -r, r * 2, r * 2);
+    ctx.restore();
+  } else {
+    // Awaryjny wektorowy rysunek kół ze szprychami
+    ctx.save();
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(w1X, wheelY, r, 0, Math.PI * 2);
+    ctx.arc(w2X, wheelY, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawMinecartComplete(ctx, cart) {
+  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
+
+  // 1. Koła kręcące się w osiach zawieszenia
+  drawCartWheels(ctx, cart, bounceY);
+
+  // 2. Cały korpus wagonika na wierzchu
+  if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
+    ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
+  }
+}
+
+function drawMinecartBackAndWheels(ctx, cart) {
+  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
+
+  // 1. Wnętrze i tylna krawędź wagonika (za plecami gracza)
+  if (cartInteriorImg && cartInteriorImg.complete && cartInteriorImg.naturalWidth > 0) {
+    ctx.drawImage(cartInteriorImg, cart.x, cart.y + bounceY, cart.w, cart.h);
+  }
+
+  // 2. Koła za zawieszeniem
+  drawCartWheels(ctx, cart, bounceY);
+}
+
+function drawMinecartFront(ctx, cart) {
+  const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
+
+  // Przednia stalowa burta osłaniająca postać i resory
+  if (cartFrontImg && cartFrontImg.complete && cartFrontImg.naturalWidth > 0) {
+    ctx.drawImage(cartFrontImg, cart.x, cart.y + bounceY, cart.w, cart.h);
+  } else if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
+    ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
+  }
 }
 
 // =========================================================================
-// HAKI KOLIZJI POCISKÓW I KOPNIĘCIA SPARTAN KICK
+// DEFINICJA WAGONIKÓW KOPALNIANYCH ARENY 3
+// =========================================================================
+export const ARENA_3_MINECARTS = [
+  {
+    id: 'minecart_left',
+    startX: 520,
+    startY: 1270 - 84,
+    x: 520,
+    y: 1270 - 84,
+    w: 122,
+    h: 84,
+    vx: 0,
+    vy: 0,
+    wheelAngle: 0,
+    wheelR: 14.2,
+    wheel1XOffset: 33.6,
+    wheel2XOffset: 92.8,
+    wheelYOffset: 70.0,
+    passenger: null,
+    bounce: 0,
+    bouncePhase: 0,
+    facing: 1
+  },
+  {
+    id: 'minecart_right',
+    startX: 3750,
+    startY: 1270 - 84,
+    x: 3750,
+    y: 1270 - 84,
+    w: 122,
+    h: 84,
+    vx: 0,
+    vy: 0,
+    wheelAngle: 0,
+    wheelR: 14.2,
+    wheel1XOffset: 33.6,
+    wheel2XOffset: 92.8,
+    wheelYOffset: 70.0,
+    passenger: null,
+    bounce: 0,
+    bouncePhase: 0,
+    facing: -1
+  }
+];
+
+export function resetArena3Minecarts() {
+  for (const c of ARENA_3_MINECARTS) {
+    c.x = c.startX;
+    c.y = c.startY;
+    c.vx = 0;
+    c.vy = 0;
+    c.wheelAngle = 0;
+    c.bounce = 0;
+    c.bouncePhase = 0;
+    c.passenger = null;
+  }
+}
+
+// =========================================================================
+// PĘTLA AKTUALIZACJI MECHANIZMÓW ARENY 3 (FIZYKA WAGONIKÓW)
+// =========================================================================
+export function updateArena3(dt, players, ball) {
+  const floorY = 1270;
+  const minX = 165;
+  const maxX = 4235;
+
+  for (let i = 0; i < ARENA_3_MINECARTS.length; i++) {
+    const cart = ARENA_3_MINECARTS[i];
+
+    // 1. Fizyka ruchu i pozycji
+    cart.x += cart.vx * dt;
+    cart.y += cart.vy * dt;
+
+    // Grawitacja (w razie podbicia przez eksplozję)
+    const targetY = floorY - cart.h;
+    if (cart.y < targetY) {
+      cart.vy += 850 * dt;
+    } else {
+      if (cart.vy > 25) {
+        cart.bounce = Math.min(6, cart.vy * 0.02);
+        spawnStretchedSparks(cart.x + cart.w / 2, floorY, 4);
+      }
+      cart.y = targetY;
+      cart.vy = 0;
+    }
+
+    // Tarcie toczne kół o torowisko
+    const friction = Math.pow(0.988, dt * 60);
+    cart.vx *= friction;
+    if (Math.abs(cart.vx) < 0.6) cart.vx = 0;
+
+    // Płynny obrót kół proporcjonalny do prędkości (efekt jazdy)
+    cart.wheelAngle += (cart.vx * dt) / cart.wheelR;
+
+    // Wygaszanie drgań zawieszenia
+    if (cart.bounce > 0.05) {
+      cart.bouncePhase += dt * 25;
+      cart.bounce *= Math.pow(0.92, dt * 60);
+    } else {
+      cart.bounce = 0;
+      cart.bouncePhase = 0;
+    }
+
+    // Iskry spod kół przy szybkiej jeździe
+    if (Math.abs(cart.vx) > 160 && Math.random() < 0.28) {
+      const sparkX = cart.vx > 0 ? (cart.x + cart.wheel1XOffset) : (cart.x + cart.wheel2XOffset);
+      spawnStretchedSparks(sparkX, floorY, 2);
+    }
+
+    // 2. Odbicie od krańcowych odbojnic tunelu
+    if (cart.x < minX) {
+      cart.x = minX;
+      cart.vx = -cart.vx * 0.65;
+      cart.bounce = 5;
+      spawnStretchedSparks(minX + 8, floorY - 25, 8);
+    } else if (cart.x + cart.w > maxX) {
+      cart.x = maxX - cart.w;
+      cart.vx = -cart.vx * 0.65;
+      cart.bounce = 5;
+      spawnStretchedSparks(maxX - 8, floorY - 25, 8);
+    }
+
+    // 3. Obsługa pasażera jadącego wewnątrz wagonika
+    if (cart.passenger) {
+      const p = cart.passenger;
+      const pFootX = p.x + (p.w || 24) / 2;
+      const pFootY = p.y + (p.h || 70);
+      const cartFloorY = cart.y + cart.h - 18;
+
+      // Sprawdzenie czy gracz nie wyskoczył lub nie wyszedł z wagonika
+      const isStillInside = !p.isDead &&
+        pFootX >= cart.x - 12 && pFootX <= cart.x + cart.w + 12 &&
+        Math.abs(pFootY - cartFloorY) < 32 &&
+        (p.vy >= -2);
+
+      if (isStillInside) {
+        p.onGround = true;
+        p.currentGroundY = cartFloorY;
+        p.y = cartFloorY - (p.h || 70);
+        p.vy = 0;
+        p.x += cart.vx * dt;
+
+        // Sterowanie / napędzanie wagonika od środka
+        const moveLeft = p.keys?.left || p.keys?.KeyA || p.keys?.ArrowLeft || (p.leftStick && p.leftStick.x < -0.3);
+        const moveRight = p.keys?.right || p.keys?.KeyD || p.keys?.ArrowRight || (p.leftStick && p.leftStick.x > 0.3);
+
+        if (moveLeft) cart.vx -= 180 * dt;
+        if (moveRight) cart.vx += 180 * dt;
+      } else {
+        cart.passenger = null;
+        if (p.currentGroundY === cartFloorY) {
+          p.currentGroundY = floorY;
+        }
+      }
+    }
+
+    // 4. Detekcja wejścia postaci do środka oraz kolizji zewnętrznych
+    if (Array.isArray(players)) {
+      for (const p of players) {
+        if (!p || p.isDead) continue;
+        const pCenterX = p.x + (p.w || 24) / 2;
+        const pFootY = p.y + (p.h || 70);
+        const cartFloorY = cart.y + cart.h - 18;
+
+        // (A) Wskoczenie / wejście do pustego wagonika
+        if (!cart.passenger &&
+            pCenterX >= cart.x + 14 && pCenterX <= cart.x + cart.w - 14 &&
+            pFootY >= cart.y + 12 && pFootY <= cartFloorY + 20 &&
+            p.vy >= -1) {
+          cart.passenger = p;
+          p.onGround = true;
+          p.currentGroundY = cartFloorY;
+          p.y = cartFloorY - (p.h || 70);
+          p.vy = 0;
+          cart.bounce = 3;
+          continue;
+        }
+
+        // (B) Kolizje z postaciami na zewnątrz wagonika
+        if (cart.passenger !== p) {
+          const charW = p.w || 24;
+          const charH = p.h || 70;
+
+          if (pFootY >= cart.y && p.y <= cart.y + cart.h) {
+            // Popchnięcie od boku
+            if (p.x + charW >= cart.x && p.x + charW <= cart.x + 18 && p.vx > 0.3) {
+              cart.vx += p.vx * 0.5;
+            }
+            if (p.x <= cart.x + cart.w && p.x >= cart.x + cart.w - 18 && p.vx < -0.3) {
+              cart.vx += p.vx * 0.5;
+            }
+
+            // Taranowanie przy dużej prędkości wagonika
+            if (Math.abs(cart.vx) > 130) {
+              const cartCenter = cart.x + cart.w / 2;
+              const dist = Math.abs(pCenterX - cartCenter);
+              if (dist < (cart.w + charW) * 0.5) {
+                p.vx = cart.vx * 1.15;
+                p.vy = -160;
+                cart.vx *= 0.82;
+                spawnStretchedSparks(pCenterX, cart.y + cart.h / 2, 8);
+                if (Math.abs(cart.vx) > 220 && p.hp !== undefined) {
+                  p.hp = Math.max(0, p.hp - Math.round(Math.abs(cart.vx) * 0.04));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Interakcja z piłką w tunelu
+    if (ball && ball.y + (ball.colRadius || ball.radius || 10) >= cart.y && ball.y <= floorY) {
+      const bRad = ball.colRadius || ball.radius || 10;
+      if (ball.x + bRad >= cart.x && ball.x - bRad <= cart.x + cart.w) {
+        ball.vx = -ball.vx * 0.7 + cart.vx * 1.25;
+        ball.vy = -Math.abs(ball.vy || -3) * 0.85 - 2.5;
+        cart.vx -= (ball.vx || 0) * 0.04;
+        cart.bounce = 3;
+        spawnStretchedSparks(ball.x, ball.y, 6);
+      }
+    }
+  }
+
+  // 6. Kolizja elastyczna pomiędzy dwoma wagonikami
+  if (ARENA_3_MINECARTS.length >= 2) {
+    const c1 = ARENA_3_MINECARTS[0];
+    const c2 = ARENA_3_MINECARTS[1];
+    if (c1.x + c1.w > c2.x && c1.x < c2.x + c2.w) {
+      const overlap = (c1.x + c1.w) - c2.x;
+      c1.x -= overlap * 0.5;
+      c2.x += overlap * 0.5;
+      const vRel = c1.vx - c2.vx;
+      if (vRel > 0) {
+        const e = 0.75;
+        const avg = (c1.vx + c2.vx) * 0.5;
+        c1.vx = avg - (vRel * e * 0.5);
+        c2.vx = avg + (vRel * e * 0.5);
+        c1.bounce = 6;
+        c2.bounce = 6;
+        spawnStretchedSparks((c1.x + c1.w + c2.x) * 0.5, floorY - 35, 12);
+      }
+    }
+  }
+}
+
+// =========================================================================
+// HAKI KOLIZJI POCISKÓW, KOPNIĘCIA I EKSPLOZJI
 // =========================================================================
 export function onArena3BulletHit(bullet) {
+  if (!bullet || !bullet.alive) return false;
+
+  for (const cart of ARENA_3_MINECARTS) {
+    const cartRight = cart.x + cart.w;
+    const cartBottom = cart.y + cart.h;
+
+    if (bullet.x >= cart.x && bullet.x <= cartRight &&
+        bullet.y >= cart.y && bullet.y <= cartBottom) {
+
+      // Przekazanie pędu pocisku na masę wagonika
+      const bulletImpulse = (bullet.vx || 0) * 0.32;
+      cart.vx += bulletImpulse;
+      cart.bounce = 2.5;
+
+      // Jeśli trafienie w stalową burtę lub podwozie (pancerz)
+      if (bullet.y >= cart.y + 18) {
+        const nx = bullet.vx > 0 ? -1 : 1;
+        spawnRicochetSparks(bullet.x, bullet.y, nx, -0.3, 6);
+        return true; // Kula zablokowana przez stalowy pancerz
+      }
+
+      // Jeśli trafienie powyżej rantu (otwarte wnętrze)
+      if (cart.passenger) {
+        // Jeśli pasażer kuca, jest w pełni schowany za burtą
+        if (cart.passenger.isCrouching) {
+          spawnRicochetSparks(bullet.x, bullet.y, 0, -1, 4);
+          return true;
+        }
+        // Jeśli pasażer stoi, pocisk trafia jego wystającą sylwetkę
+        return false;
+      } else {
+        spawnRicochetSparks(bullet.x, bullet.y, 0, -1, 4);
+        return true;
+      }
+    }
+  }
   return false;
 }
 
 export function onArena3KickHit(player, kickBox) {
-  return false;
+  if (!kickBox) return false;
+  let hitAny = false;
+
+  for (const cart of ARENA_3_MINECARTS) {
+    const boxRight = kickBox.x + kickBox.w;
+    const boxBottom = kickBox.y + kickBox.h;
+    const cartRight = cart.x + cart.w;
+    const cartBottom = cart.y + cart.h;
+
+    const overlap = kickBox.x <= cartRight && boxRight >= cart.x &&
+                    kickBox.y <= cartBottom && boxBottom >= cart.y;
+
+    if (overlap) {
+      const dir = (player.facing !== undefined) ? player.facing : (kickBox.x < cart.x + cart.w / 2 ? 1 : -1);
+      const force = (player.kickForce || 1.0) * 640;
+      cart.vx += dir * force;
+      cart.bounce = 8;
+      spawnStretchedSparks(kickBox.x + kickBox.w / 2, kickBox.y + kickBox.h / 2, 16);
+      hitAny = true;
+    }
+  }
+  return hitAny;
+}
+
+export function onArena3Explosion(expX, expY, radius) {
+  let hit = false;
+  for (const cart of ARENA_3_MINECARTS) {
+    const cx = cart.x + cart.w / 2;
+    const cy = cart.y + cart.h / 2;
+    const dist = Math.hypot(cx - expX, cy - expY);
+    const maxRadius = radius * 1.35;
+
+    if (dist <= maxRadius) {
+      const factor = Math.max(0, 1 - (dist / maxRadius));
+      const dirX = dist > 1 ? (cx - expX) / dist : (Math.random() > 0.5 ? 1 : -1);
+      const blastForce = factor * 760;
+
+      cart.vx += dirX * blastForce;
+      cart.vy -= factor * 220; // Podbicie wagonika do góry
+      cart.bounce = 10;
+      spawnStretchedSparks(cx, cy, 18);
+      hit = true;
+    }
+  }
+  return hit;
 }
 
 // =========================================================================
@@ -500,20 +971,27 @@ const arena3 = {
   ],
   platforms: ARENA_3_PLATFORMS,
   customObjects: ARENA_3_CUSTOM_OBJECTS,
+  minecarts: ARENA_3_MINECARTS,
+  reset() {
+    resetArena3Minecarts();
+  },
   drawBackground(ctx, camera) {
     drawArena3Background(ctx, camera);
   },
   draw(ctx, camera) {
     drawArena3Foreground(ctx, camera);
   },
-  update(dt, players) {
-    updateArena3(dt, players);
+  update(dt, players, ball) {
+    updateArena3(dt, players, ball);
   },
   onBulletHit(bullet) {
     return onArena3BulletHit(bullet);
   },
   onKickHit(player, kickBox) {
     return onArena3KickHit(player, kickBox);
+  },
+  onExplosion(expX, expY, radius) {
+    return onArena3Explosion(expX, expY, radius);
   }
 };
 
