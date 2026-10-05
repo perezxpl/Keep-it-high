@@ -455,11 +455,11 @@ export function drawArena3Background(ctx, camera) {
       ctx.fill();
     }
 
-    // Neonowy wewnętrzny pierścień
+    // Neonowy wewnętrzny pierścień świetlny
     ctx.strokeStyle = neonCol;
     ctx.shadowColor = neonCore;
-    ctx.shadowBlur = 12;
-    ctx.lineWidth = 3.5;
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 4.2;
     ctx.beginPath();
     ctx.arc(cx, cy, rInner + 1, 0, Math.PI * 2);
     ctx.stroke();
@@ -473,6 +473,17 @@ export function drawArena3Background(ctx, camera) {
     ctx.beginPath();
     ctx.arc(cx, cy, rInner + 2, 0, Math.PI * 2);
     ctx.fill();
+
+    // 4. Neonowa etykieta drużyny nad bramką (widoczna z daleka)
+    ctx.save();
+    ctx.fillStyle = neonCol;
+    ctx.shadowColor = neonCore;
+    ctx.shadowBlur = 10;
+    ctx.font = '900 12px monospace';
+    ctx.textAlign = 'center';
+    const tagText = isCyan ? '◄ CYAN GOAL' : 'ORANGE GOAL ►';
+    ctx.fillText(tagText, cx, cy - rOuter - 12);
+    ctx.restore();
 
     ctx.restore();
   }
@@ -833,47 +844,65 @@ export function updateArena3(dt, players, ball) {
             if (isNearCart && !p._cartKicked) {
               p._cartKicked = true;
               const dir = (p.facing !== undefined) ? p.facing : (pCenterX < cart.x + cart.w / 2 ? 1 : -1);
-              const force = (p.kickForce || 1.1) * 850;
+              const force = (p.kickForce || 1.1) * 280; // Zbalansowana siła kopnięcia w wagonik (nie odrzuca za mocno)
               cart.vx += dir * force;
-              cart.bounce = 8;
-              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 22);
+              cart.bounce = 5;
+              spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 14);
             }
           } else {
             p._cartKicked = false;
           }
 
-          // 2. FIZYCZNA SOLIDNA BARIERA BOCZNA - WŚLIZG I BIEG (NIE PRZECHODZIĆ JAK DUCH, NIE WCHODZIĆ Z ZIEMI!)
+          // 2. FIZYCZNA BARIERA BOCZNA - POPYCHANIE OD ZEWNĄTRZ I WŚLIZG (NIE WCHODZIĆ Z ZIEMI!)
           if (pFootY > cart.y + 12 && pHeadY < cart.y + cart.h + 5) {
-            // Zderzenie od lewej strony (postać uderza w lewy bok wagonika)
+            // Zderzenie od lewej strony (postać napiera na lewy bok wagonika)
             if (pRight >= cart.x && pLeft < cart.x + 18) {
-              p.x = cart.x - charW; // Zatrzymanie na lewej burcie!
+              p.x = cart.x - charW; // Zatrzymanie na zewnętrznej burcie!
 
               if (p.isSliding) {
-                // Potężne uderzenie wślizgiem w bok wagonika!
-                const slideImpulse = Math.max(220, Math.abs((p.vx || 10) * 60) * 1.15);
+                // Uderzenie wślizgiem w bok wagonika
+                const slideImpulse = Math.max(140, Math.min(220, Math.abs((p.vx || 6) * 35)));
                 cart.vx += slideImpulse;
-                cart.bounce = 6;
-                spawnStretchedSparks(cart.x, pFootY - 12, 18);
+                cart.bounce = 5;
+                spawnStretchedSparks(cart.x, pFootY - 12, 12);
                 p.isSliding = false; // Zatrzymanie ślizgu
                 p.vx = 0;
               } else {
-                if (p.vx > 0) p.vx = 0;
+                // Postać od zewnątrz popycha wagonik w prawo
+                const isPushing = (p.vx > 0) || (p.keys && (p.keys.right || p.keys.KeyD || p.keys.ArrowRight)) || (p.leftStick && p.leftStick.axisX > 0.25);
+                if (isPushing) {
+                  const pushSpeed = Math.min(120, Math.max(45, Math.abs(p.vx * 60) || 60));
+                  cart.vx = Math.min(120, Math.max(cart.vx + 180 * dt, pushSpeed));
+                  p.vx = Math.min(p.vx, cart.vx / 60);
+                  p.x = cart.x - charW;
+                } else {
+                  if (p.vx > 0) p.vx = 0;
+                }
               }
             }
-            // Zderzenie od prawej strony (postać uderza w prawy bok wagonika)
+            // Zderzenie od prawej strony (postać napiera na prawy bok wagonika)
             else if (pLeft <= cart.x + cart.w && pRight > cart.x + cart.w - 18) {
-              p.x = cart.x + cart.w; // Zatrzymanie na prawej burcie!
+              p.x = cart.x + cart.w; // Zatrzymanie na zewnętrznej burcie!
 
               if (p.isSliding) {
-                // Potężne uderzenie wślizgiem w lewo!
-                const slideImpulse = Math.max(220, Math.abs((p.vx || -10) * 60) * 1.15);
+                // Uderzenie wślizgiem w bok wagonika
+                const slideImpulse = Math.max(140, Math.min(220, Math.abs((p.vx || -6) * 35)));
                 cart.vx -= slideImpulse;
-                cart.bounce = 6;
-                spawnStretchedSparks(cart.x + cart.w, pFootY - 12, 18);
+                cart.bounce = 5;
+                spawnStretchedSparks(cart.x + cart.w, pFootY - 12, 12);
                 p.isSliding = false;
                 p.vx = 0;
               } else {
-                if (p.vx < 0) p.vx = 0;
+                // Postać od zewnątrz popycha wagonik w lewo
+                const isPushing = (p.vx < 0) || (p.keys && (p.keys.left || p.keys.KeyA || p.keys.ArrowLeft)) || (p.leftStick && p.leftStick.axisX < -0.25);
+                if (isPushing) {
+                  const pushSpeed = Math.min(120, Math.max(45, Math.abs(p.vx * 60) || 60));
+                  cart.vx = Math.max(-120, Math.min(cart.vx - 180 * dt, -pushSpeed));
+                  p.vx = Math.max(p.vx, cart.vx / 60);
+                  p.x = cart.x + cart.w;
+                } else {
+                  if (p.vx < 0) p.vx = 0;
+                }
               }
             }
 
@@ -1027,10 +1056,10 @@ export function onArena3KickHit(player, kickBox) {
 
     if (isNearby || overlap) {
       const dir = (player.facing !== undefined) ? player.facing : (pCenterX < cartCenter ? 1 : -1);
-      const force = (player.kickForce || 1.1) * 850;
+      const force = (player.kickForce || 1.1) * 280; // Zbalansowana siła kopnięcia
       cart.vx += dir * force;
-      cart.bounce = 8;
-      spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 22);
+      cart.bounce = 5;
+      spawnStretchedSparks(dir > 0 ? cart.x : cart.x + cart.w, cart.y + 40, 14);
       hitAny = true;
     }
   }

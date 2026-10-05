@@ -2804,6 +2804,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     if (isJetReady) {
       ctx.fillStyle = '#00e5ff';
       ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + maxR + 16);
+    } else {
+      const isCrouchStick = player.isCrouching || (leftStick.active && leftStick.axisY > 0.35);
+      ctx.fillStyle = isCrouchStick ? '#f59e0b' : (isStickActive ? '#94a3b8' : 'rgba(255, 255, 255, 0.30)');
+      ctx.fillText(player.crouchToggled ? '▼ KUCA [WŁ]' : '▼ KUCAJ', leftStick.baseX, leftStick.baseY + maxR + 16);
     }
 
     const knobX = leftStick.baseX + (leftStick.axisX * maxR);
@@ -3088,53 +3092,35 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.restore();
     }
 
-    // 3B. PRZYCISK KUCANIA I LEŻENIA (ODPOWIEDNIK KLAWISZA CTRL)
-    if (btnCluster.crouch) {
-      const cr = btnCluster.crouch;
+    // 3B. POJAWIAJĄCY SIĘ PRZYCISK KŁADZENIA SIĘ (WIDOCZNY WYŁĄCZNIE W MOMENCIE KUCANIA / LEŻENIA)
+    const proneBtn = btnCluster.prone || btnCluster.crouch;
+    const isProne = !!player.isProne;
+    const isCrouch = !!player.isCrouching;
+    const shouldShowProne = (isCrouch || isProne || (proneBtn && proneBtn.visible));
+
+    if (proneBtn && shouldShowProne) {
+      const cr = proneBtn;
       const crR = cr.r || 28;
-      const isProne = !!player.isProne;
-      const isCrouch = !!player.isCrouching;
 
-      let btnBorder = 'rgba(255, 255, 255, 0.10)';
-      let btnBg = 'rgba(15, 23, 42, 0.40)';
-      let btnAccent = 'rgba(148, 163, 184, 0.35)';
-      let labelColor = 'rgba(148, 163, 184, 0.45)';
-      let labelText = 'KUCANIE';
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
+      let btnBorder = isProne ? '#10b981' : '#f59e0b';
+      let btnBg = isProne ? `rgba(16, 185, 129, ${0.28 + pulse * 0.18})` : `rgba(245, 158, 11, ${0.25 + pulse * 0.20})`;
+      let btnAccent = isProne ? '#10b981' : '#f59e0b';
+      let labelColor = isProne ? '#6ee7b7' : '#fde68a';
+      let labelText = isProne ? 'WSTAŃ' : 'POŁÓŻ SIĘ';
 
-      if (isProne) {
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-        btnBorder = '#10b981';
-        btnBg = `rgba(16, 185, 129, ${0.22 + pulse * 0.20})`;
-        btnAccent = '#10b981';
-        labelColor = '#10b981';
-        labelText = 'LEŻENIE';
-
-        ctx.beginPath();
-        ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
-        ctx.lineWidth = 2.0;
-        ctx.stroke();
-      } else if (isCrouch) {
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-        btnBorder = '#f59e0b';
-        btnBg = `rgba(245, 158, 11, ${0.20 + pulse * 0.20})`;
-        btnAccent = '#f59e0b';
-        labelColor = '#f59e0b';
-        labelText = 'KUCANIE';
-
-        ctx.beginPath();
-        ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(245, 158, 11, ${(1 - pulse) * 0.65})`;
-        ctx.lineWidth = 2.0;
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = isProne ? `rgba(16, 185, 129, ${(1 - pulse) * 0.70})` : `rgba(245, 158, 11, ${(1 - pulse) * 0.70})`;
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
 
       ctx.beginPath();
       ctx.arc(cr.x, cr.y, crR, 0, Math.PI * 2);
       ctx.fillStyle = btnBg;
       ctx.fill();
       ctx.strokeStyle = btnBorder;
-      ctx.lineWidth = (isProne || isCrouch) ? 1.8 : 1.0;
+      ctx.lineWidth = 2.0;
       ctx.stroke();
 
       ctx.save();
@@ -3142,6 +3128,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const pFacing = player.facing || 1;
 
       if (isProne) {
+        // Sylwetka leżącego żołnierza
         ctx.beginPath();
         ctx.rect(-11, -1, 20, 4);
         ctx.fillStyle = btnAccent;
@@ -3152,21 +3139,22 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
         ctx.fillStyle = '#10b981';
         ctx.fill();
       } else {
+        // Sylwetka schylonego żołnierza z dynamiczną strzałką w dół ku leżeniu
         ctx.beginPath();
-        ctx.rect(-6, -2, 12, 5);
+        ctx.rect(-7, -1, 13, 5);
         ctx.fillStyle = btnAccent;
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(pFacing * 4, -7, 3, 0, Math.PI * 2);
-        ctx.fillStyle = isCrouch ? '#f59e0b' : btnAccent;
+        ctx.arc(pFacing * 4, -6, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
         ctx.fill();
       }
 
       ctx.fillStyle = labelColor;
-      ctx.font = 'bold 8px monospace';
+      ctx.font = 'bold 8.5px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(labelText, 0, 15);
+      ctx.fillText(labelText, 0, 16);
       ctx.restore();
     }
 
@@ -3584,6 +3572,94 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   ctx.restore();
 }
 
+/**
+ * Renderuje pojedynczą, zunifikowaną ikonę broni na ekranie dotykowym (dolny środek ekranu).
+ * Dotknięcie kafelka natychmiast przełącza broń pomiędzy AK-47 a Shotgunem.
+ */
+export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
+  const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
+  const curWepId = curWep.id || 'AK47';
+  const isShotgun = (curWepId === 'SHOTGUN');
+  const accentCol = isShotgun ? '#fb923c' : '#f59e0b';
+
+  const ammoObj = player.ammo?.[curWepId];
+  const defMag = isShotgun ? 8 : 30;
+  const defRes = isShotgun ? 64 : 90;
+  const currentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
+  const reserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
+  const isReloading = !!ammoObj?.isReloading;
+  const isNoAmmo = (currentAmmo === 0 && reserveAmmo === 0);
+  const isLowAmmo = (!isNoAmmo && currentAmmo <= Math.ceil(defMag * 0.25));
+
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+
+  // 1. Tło Dark Glass ze stylowym zaokrągleniem
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, size, size, 10);
+  } else {
+    ctx.rect(x, y, size, size);
+  }
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.fill();
+
+  // 2. Poświata i ramka kafelka
+  let borderCol = isNoAmmo ? '#ef4444' : (isLowAmmo ? '#f97316' : accentCol);
+  ctx.strokeStyle = borderCol;
+  ctx.lineWidth = 2.0;
+  ctx.shadowColor = borderCol;
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 3. Pasek przeładowania
+  if (isReloading && ammoObj) {
+    const dur = ammoObj.reloadDuration || 120;
+    const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
+    ctx.fillStyle = accentCol;
+    ctx.shadowColor = accentCol;
+    ctx.shadowBlur = 4;
+    ctx.fillRect(x + 4, y + size - 4, (size - 8) * prog, 2.5);
+    ctx.shadowBlur = 0;
+  }
+
+  // 4. Sylwetka broni w centrum
+  ctx.save();
+  ctx.translate(x + size / 2, y + size / 2 - 4);
+  ctx.scale(1.05, 1.05);
+  drawWeaponSilhouette(ctx, curWepId, 0, 0, true);
+  ctx.restore();
+
+  // 5. Wskaźnik przełączania broni w prawym górnym rogu
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('⇄', x + size - 5, y + 11);
+  ctx.restore();
+
+  // 6. Licznik amunicji na dole kafelka
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const ammoY = y + size - 3;
+  ctx.font = 'bold 9px monospace';
+  if (isReloading) {
+    ctx.fillStyle = accentCol;
+    ctx.fillText('RELOAD', x + size / 2, ammoY);
+  } else if (isNoAmmo) {
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('EMPTY', x + size / 2, ammoY);
+  } else {
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`${currentAmmo}/${reserveAmmo}`, x + size / 2, ammoY);
+  }
+  ctx.restore();
+
+  ctx.restore();
+}
+
 export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null, arenaInfo = null) {
   updateFps();
 
@@ -3644,35 +3720,61 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.restore();
 
   // =========================================================================
-  // 2. KAFELKI BRONI (KOMPAKTOWE SLOTY 38x38 PX W LEWYM DOLNYM ROGU EKRANU)
+  // 2. KAFELKI BRONI:
+  // - PC: 3 kompaktowe sloty 38x38 px w lewym dolnym rogu ekranu
+  // - EKRAN DOTYKOWY (MOBILE): Przeniesione na dolny środek ekranu w 1 ikonę
   // =========================================================================
-  const slotSize = 38;
-  const slotGap = 8;
-  const panelX = 14;
-  const panelY = H - slotSize - 14;
-
   const curWepId = player.currentWeapon?.id || 'AK47';
 
-  weaponButtons[0].x = panelX;
-  weaponButtons[0].y = panelY;
-  weaponButtons[0].w = slotSize;
-  weaponButtons[0].h = slotSize;
+  if (isMobile) {
+    const slotSize = 52;
+    const panelX = Math.round((W - slotSize) / 2);
+    const panelY = Math.round(H - slotSize - 12);
 
-  weaponButtons[1].x = panelX + slotSize + slotGap;
-  weaponButtons[1].y = panelY;
-  weaponButtons[1].w = slotSize;
-  weaponButtons[1].h = slotSize;
+    weaponButtons[0].x = panelX;
+    weaponButtons[0].y = panelY;
+    weaponButtons[0].w = slotSize;
+    weaponButtons[0].h = slotSize;
+    weaponButtons[0].id = curWepId;
 
-  if (weaponButtons[2]) {
-    weaponButtons[2].x = panelX + (slotSize + slotGap) * 2;
-    weaponButtons[2].y = panelY;
-    weaponButtons[2].w = slotSize;
-    weaponButtons[2].h = slotSize;
-  }
+    weaponButtons[1].x = -999;
+    weaponButtons[1].y = -999;
+    if (weaponButtons[2]) {
+      weaponButtons[2].x = -999;
+      weaponButtons[2].y = -999;
+    }
 
-  for (const btn of weaponButtons) {
-    const isSelected = (curWepId === btn.id);
-    drawWeaponSlot(ctx, btn, isSelected, player, isMobile);
+    drawSingleMobileWeaponIcon(ctx, panelX, panelY, slotSize, player);
+  } else {
+    const slotSize = 38;
+    const slotGap = 8;
+    const panelX = 14;
+    const panelY = H - slotSize - 14;
+
+    weaponButtons[0].x = panelX;
+    weaponButtons[0].y = panelY;
+    weaponButtons[0].w = slotSize;
+    weaponButtons[0].h = slotSize;
+    weaponButtons[0].id = 'AK47';
+
+    weaponButtons[1].x = panelX + slotSize + slotGap;
+    weaponButtons[1].y = panelY;
+    weaponButtons[1].w = slotSize;
+    weaponButtons[1].h = slotSize;
+    weaponButtons[1].id = 'SHOTGUN';
+
+    if (weaponButtons[2]) {
+      weaponButtons[2].x = panelX + (slotSize + slotGap) * 2;
+      weaponButtons[2].y = panelY;
+      weaponButtons[2].w = slotSize;
+      weaponButtons[2].h = slotSize;
+      weaponButtons[2].id = 'GRENADE';
+    }
+
+    for (const btn of weaponButtons) {
+      const isSelected = (curWepId === btn.id);
+      drawWeaponSlot(ctx, btn, isSelected, player, false);
+    }
   }
 
   // =========================================================================

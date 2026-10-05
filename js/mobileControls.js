@@ -24,7 +24,9 @@ export const leftStick = {
   jetpackWindowTimer: 0,
   isJetpacking: false,
   jetpackAirborneSession: false,
-  downIntent: false
+  downIntent: false,
+  downStartTime: 0,
+  downFlickDetected: false
 };
 
 export const rightStick = {
@@ -64,13 +66,21 @@ export const btnCluster = {
     enabled: false,
     mode: 'SLIDE'
   },
+  prone: {
+    x: 0,
+    y: 0,
+    r: 28,
+    active: false,
+    id: null,
+    visible: false
+  },
   crouch: {
     x: 0,
     y: 0,
-    r: 25,
+    r: 28,
     active: false,
     id: null,
-    pressStartTime: 0
+    visible: false
   },
   grenade: {
     x: 0,
@@ -132,13 +142,14 @@ export function updateButtonLayout(W, H) {
   btnCluster.slide.y = Math.round(rsY - 60);
   btnCluster.slide.r = 27;
 
-  // Przycisk kucania / leżenia
-  if (!btnCluster.crouch) {
-    btnCluster.crouch = { x: 0, y: 0, r: 25, active: false, id: null, pressStartTime: 0 };
+  // Przycisk kładzenia się (pojawiający się w momencie kucania)
+  if (!btnCluster.prone) {
+    btnCluster.prone = { x: 0, y: 0, r: 28, active: false, id: null, visible: false };
   }
-  btnCluster.crouch.x = Math.round(rsX - 10);
-  btnCluster.crouch.y = Math.round(rsY - 85);
-  btnCluster.crouch.r = 25;
+  btnCluster.prone.x = Math.round(rsX - 10);
+  btnCluster.prone.y = Math.round(rsY - 88);
+  btnCluster.prone.r = 28;
+  btnCluster.crouch = btnCluster.prone;
 
   // Przycisk granatu taktycznego
   if (!btnCluster.grenade) {
@@ -152,6 +163,7 @@ export function updateButtonLayout(W, H) {
 /**
  * Monitoruje ruch postaci i stan cooldownu wślizgu dla przycisku mobilnego:
  * - Wślizg dostępny tylko w pełnym biegu (|vx| > MIN_RUN_SPEED) i na podłożu
+ * - Przycisk kładzenia się widoczny WYŁĄCZNIE w momencie kucania lub leżenia
  *
  * @param {Object} player - Obiekt gracza
  * @param {Object} [lStick] - Lewy drążek
@@ -167,6 +179,11 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
   if (bCluster.slide) {
     bCluster.slide.mode = 'SLIDE';
     bCluster.slide.enabled = isRunning && cooldownOk;
+  }
+
+  // Przycisk kładzenia się pojawia się dynamicznie w momencie kucania / leżenia
+  if (bCluster.prone) {
+    bCluster.prone.visible = !!(player.isCrouching || player.isProne);
   }
 
   if (bCluster.grenade) {

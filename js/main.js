@@ -121,18 +121,26 @@ canvas.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[i];
 
     // =======================================================================
-    // 0. KLIKNIĘCIE W DEDYKOWANE PRZYCISKI WYBORU BRONI (DOLNY LEWY RÓG)
+    // 0. KLIKNIĘCIE W DEDYKOWANE PRZYCISKI WYBORU BRONI
     // =======================================================================
     let touchedWeaponBtn = false;
     for (const btn of weaponButtons) {
-      if (t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
+      if (btn.x > -100 && t.clientX >= btn.x && t.clientX <= btn.x + btn.w &&
         t.clientY >= btn.y && t.clientY <= btn.y + btn.h) {
-        if (btn.id === 'GRENADE') {
-          throwTacticalGrenade(player);
-        } else if (player.currentWeapon?.id === btn.id) {
-          reloadWeapon(player, player.currentWeapon);
+        // Sprawdź czy to pojedyncza zunifikowana ikona na ekranie dotykowym
+        const isSingleMobileIcon = (weaponButtons[1] && weaponButtons[1].x < 0);
+        if (isSingleMobileIcon) {
+          // Dotknięcie pojedynczej ikony w dolnym centrum przełącza broń (AK47 <-> SHOTGUN)
+          const curId = player.currentWeapon?.id || 'AK47';
+          player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
         } else {
-          player.currentWeapon = WEAPONS[btn.id];
+          if (btn.id === 'GRENADE') {
+            throwTacticalGrenade(player);
+          } else if (player.currentWeapon?.id === btn.id) {
+            reloadWeapon(player, player.currentWeapon);
+          } else {
+            player.currentWeapon = WEAPONS[btn.id];
+          }
         }
         touchedWeaponBtn = true;
         break;
@@ -150,6 +158,9 @@ canvas.addEventListener('touchstart', (e) => {
       leftStick.id = t.identifier;
       leftStick.curX = t.clientX;
       leftStick.curY = t.clientY;
+      leftStick.downIntent = false;
+      leftStick.downStartTime = 0;
+      leftStick.downFlickDetected = false;
 
       const dx = t.clientX - leftStick.baseX;
       const dy = t.clientY - leftStick.baseY;
@@ -162,6 +173,17 @@ canvas.addEventListener('touchstart', (e) => {
       } else {
         leftStick.axisX = 0;
         leftStick.axisY = 0;
+      }
+
+      if (leftStick.axisY > 0.45) {
+        leftStick.downIntent = true;
+        leftStick.downStartTime = performance.now();
+        player.isCrouching = true;
+        player.state = 'CROUCH';
+        player.hitboxHeight = 45;
+        if (leftStick.axisY > 0.70) {
+          leftStick.downFlickDetected = true;
+        }
       }
 
       if (leftStick.jetpackAirborneSession) {
@@ -189,8 +211,9 @@ canvas.addEventListener('touchstart', (e) => {
       const kickBtn = btnCluster.kick;
       const distToKick = kickBtn ? dist(t.clientX, t.clientY, kickBtn.x, kickBtn.y) : 999;
       const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
-      const crouchBtn = btnCluster.crouch;
-      const distToCrouch = crouchBtn ? dist(t.clientX, t.clientY, crouchBtn.x, crouchBtn.y) : 999;
+      const proneBtn = btnCluster.prone || btnCluster.crouch;
+      const isProneVisible = !!(proneBtn && proneBtn.visible);
+      const distToProne = isProneVisible ? dist(t.clientX, t.clientY, proneBtn.x, proneBtn.y) : 999;
       const grenadeBtn = btnCluster.grenade;
       const distToGrenade = grenadeBtn ? dist(t.clientX, t.clientY, grenadeBtn.x, grenadeBtn.y) : 999;
 
@@ -206,17 +229,33 @@ canvas.addEventListener('touchstart', (e) => {
         btnCluster.slide.active = true;
         btnCluster.slide.id = t.identifier;
         handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, btnCluster);
-      } else if (crouchBtn && distToCrouch < crouchBtn.r + 16) {
-        crouchBtn.active = true;
-        crouchBtn.id = t.identifier;
-        keys.crouch = true;
+      } else if (isProneVisible && distToProne < proneBtn.r + 20) {
+        // Dedykowany przycisk kładzenia się / wstawania pojawiający się w momencie kucania
+        proneBtn.active = true;
+        proneBtn.id = t.identifier;
+        if (player.isProne) {
+          // Wstań
+          player.isProne = false;
+          player.isCrouching = false;
+          player.crouchToggled = false;
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
+        } else {
+          // Połóż się (PRONE)
+          player.isProne = true;
+          player.isCrouching = false;
+          player.crouchToggled = true;
+          player.state = 'PRONE';
+          player.hitboxHeight = 26;
+        }
+        updateMobileControlStates(player, leftStick, btnCluster);
       } else if (grenadeBtn && distToGrenade < grenadeBtn.r + 16) {
         grenadeBtn.active = true;
         grenadeBtn.id = t.identifier;
         throwTacticalGrenade(player);
       } else if (!rightStick.active) {
         // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków
-        if ((kickBtn && distToKick < kickBtn.r + 26) || distToSlide < btnCluster.slide.r + 26 || (crouchBtn && distToCrouch < crouchBtn.r + 26) || (grenadeBtn && distToGrenade < grenadeBtn.r + 26)) continue;
+        if ((kickBtn && distToKick < kickBtn.r + 26) || distToSlide < btnCluster.slide.r + 26 || (isProneVisible && distToProne < proneBtn.r + 26) || (grenadeBtn && distToGrenade < grenadeBtn.r + 26)) continue;
 
         const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
         const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
@@ -329,7 +368,57 @@ canvas.addEventListener('touchmove', (e) => {
         leftStick.axisY = 0;
       }
 
-      // Aktualizacja kontekstu przycisku wślizg / leżenie
+      // Kucanie na lewym drążku (przytrzymanie lub pojedyncze wysunięcie w dół)
+      if (leftStick.axisY > 0.45) {
+        if (!leftStick.downIntent) {
+          leftStick.downIntent = true;
+          leftStick.downStartTime = performance.now();
+          leftStick.downFlickDetected = false;
+        }
+        player.isCrouching = true;
+        player.state = 'CROUCH';
+        player.hitboxHeight = 45;
+        if (leftStick.axisY > 0.70) {
+          leftStick.downFlickDetected = true;
+        }
+      } else if (leftStick.axisY <= 0.25) {
+        if (leftStick.downIntent) {
+          const duration = performance.now() - leftStick.downStartTime;
+          // Pojedyncze szybkie wysunięcie gałki w dół i powrót (< 380 ms lub flick): przełącz stan kucania (toggle)
+          if (duration < 380 || leftStick.downFlickDetected) {
+            player.crouchToggled = !player.crouchToggled;
+            if (player.crouchToggled) {
+              player.isCrouching = true;
+              player.state = 'CROUCH';
+              player.hitboxHeight = 45;
+            } else {
+              player.isCrouching = false;
+              player.isProne = false;
+              player.state = 'STAND';
+              player.hitboxHeight = player.h || 70;
+            }
+          } else {
+            // Trzymane kucanie: powrót gałki stawia postać na nogi (o ile toggle nie jest aktywny)
+            if (!player.crouchToggled && !player.isProne) {
+              player.isCrouching = false;
+              player.state = 'STAND';
+              player.hitboxHeight = player.h || 70;
+            }
+          }
+          leftStick.downIntent = false;
+          leftStick.downStartTime = 0;
+          leftStick.downFlickDetected = false;
+        }
+      }
+
+      // Ruch w górę anuluje kucanie i leżenie
+      if (leftStick.axisY < -0.30) {
+        player.crouchToggled = false;
+        player.isCrouching = false;
+        player.isProne = false;
+      }
+
+      // Aktualizacja kontekstu przycisków mobilnych (w tym pojawiania się przycisku leżenia)
       updateMobileControlStates(player, leftStick, btnCluster);
 
       // 1. Pchnięcie w górę (axisY < -0.55): natychmiastowy skok
@@ -457,12 +546,41 @@ function endTouch(e) {
         leftStick.canDoublePushJetpack = true;
       }
 
-      // Powrót do pionu: puszczenie gałki stawia postać na równe nogi (wyłącza kucanie i leżenie)
-      player.isCrouching = false;
-      player.isProne = false;
-      player.crouchToggled = false;
-      player.enteredProneViaStickDown = false;
+      if (leftStick.downIntent) {
+        const duration = performance.now() - leftStick.downStartTime;
+        if (duration < 380 || leftStick.downFlickDetected) {
+          // Szybkie pojedyncze wysunięcie w dół i puszczenie: przełącz stałe kucanie (toggle crouch)
+          player.crouchToggled = !player.crouchToggled;
+          if (player.crouchToggled) {
+            player.isCrouching = true;
+            player.state = 'CROUCH';
+            player.hitboxHeight = 45;
+          } else {
+            player.isCrouching = false;
+            player.isProne = false;
+            player.state = 'STAND';
+            player.hitboxHeight = player.h || 70;
+          }
+        } else {
+          // Trzymane kucanie: puszczenie drążka stawia postać na nogi
+          if (!player.crouchToggled && !player.isProne) {
+            player.isCrouching = false;
+            player.state = 'STAND';
+            player.hitboxHeight = player.h || 70;
+          }
+        }
+        leftStick.downIntent = false;
+        leftStick.downStartTime = 0;
+        leftStick.downFlickDetected = false;
+      } else {
+        if (!player.crouchToggled && !player.isProne) {
+          player.isCrouching = false;
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
+        }
+      }
 
+      player.enteredProneViaStickDown = false;
       leftStick.axisX = 0;
       leftStick.axisY = 0;
       leftStick.jumpTriggered = false;
@@ -481,9 +599,14 @@ function endTouch(e) {
       btnCluster.slide.id = null;
     }
 
-    if (btnCluster.crouch && btnCluster.crouch.active && t.identifier === btnCluster.crouch.id) {
-      btnCluster.crouch.active = false;
-      btnCluster.crouch.id = null;
+    const proneBtn = btnCluster.prone || btnCluster.crouch;
+    if (proneBtn && proneBtn.active && t.identifier === proneBtn.id) {
+      proneBtn.active = false;
+      proneBtn.id = null;
+      if (btnCluster.crouch) {
+        btnCluster.crouch.active = false;
+        btnCluster.crouch.id = null;
+      }
       keys.crouch = false;
     }
 

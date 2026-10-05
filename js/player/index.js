@@ -543,7 +543,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
         player.crouchHoldTimer = (player.crouchHoldTimer || 0) + 1;
         const holdDurationMs = performance.now() - player._crouchStartTime;
-        const targetPosture = evaluateCrouchState(player, true, Math.max(holdDurationMs, player.crouchHoldTimer * 16.666));
+        const isStickCrouch = (leftStick && leftStick.active && leftStick.axisY > 0.40);
+        let targetPosture;
+        if (isStickCrouch) {
+          // Na ekranie dotykowym drążek w dół to wyłącznie kucanie (pojedyncze lub trzymane),
+          // a leżenie wyzwalane jest dedykowanym przyciskiem
+          targetPosture = 'CROUCH';
+        } else {
+          targetPosture = evaluateCrouchState(player, true, Math.max(holdDurationMs, player.crouchHoldTimer * 16.666));
+        }
 
         if (targetPosture === 'PRONE') {
           player.isProne = true;
@@ -633,10 +641,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     if (sMag < 0.18 || leftStick.axisY < -0.20) {
       if (!keys?.down && !crouchHeld) {
         if (!isCeilingBlockingStand(player, GROUND_Y)) {
-          player.isCrouching = false;
-          player.isProne = false;
-          player.crouchToggled = false;
-          if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+          // Resetuj pozycję tylko przy celowym pchnięciu w górę (axisY < -0.30)
+          // lub jeśli gracz nie miał aktywnego przełącznika (crouchToggled) i nie leżał
+          if (leftStick.axisY < -0.30 || (!player.crouchToggled && !player.isProne)) {
+            player.isCrouching = false;
+            player.isProne = false;
+            player.crouchToggled = false;
+            if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+          }
         }
       }
     }
@@ -652,8 +664,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
   } else if (!keys?.down && !crouchHeld && !isStaggered && leftStick && !leftStick.active) {
-    // Puszczenie gałki (powrót do martwej strefy / brak aktywnego dotyku) podrywa postać na równe nogi
-    if ((player.isCrouching || player.isProne) && !player.crouchToggled) {
+    // Puszczenie gałki podrywa postać na równe nogi tylko jeśli nie ma toggle i nie leży
+    if ((player.isCrouching || player.isProne) && !player.crouchToggled && !player.isProne) {
       if (!isCeilingBlockingStand(player, GROUND_Y)) {
         player.isCrouching = false;
         player.isProne = false;
@@ -664,7 +676,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   if (player.isProne) {
     player.isCrouching = false;
-    player.crouchToggled = false;
   }
 
   if (isStaggered) {

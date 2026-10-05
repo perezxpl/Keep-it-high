@@ -3682,9 +3682,100 @@ function drawCyberStadiumStructures(ctx, groundY) {
   // Wyłączono pionowe struktury koloseum
 }
 
-// Bramki neonowe wyłączone – arena działa w trybie eliminacji bez bramek
-function drawNeonGoals(ctx, groundY, goals) {
-  // Wyłączono renderowanie bramek neonowych
+// =========================================================================
+// RENDEROWANIE BRAMEK SPORTOWYCH (CYAN & ORANGE NEON GOALS)
+// =========================================================================
+export function drawNeonGoals(ctx, groundY, goals) {
+  if (!goals || goals.length === 0) return;
+
+  for (const g of goals) {
+    if (!g || !g.team) continue;
+    const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0));
+    const h = g.h || 130;
+    const bottomY = (g.y !== undefined) ? (g.y + h) : (groundY - (g.relY || 0) + h);
+    const leftX = g.x;
+    const rightX = g.x + (g.w || 90);
+    const w = rightX - leftX;
+    const isCyan = g.team === 'CYAN';
+    const mainCol = g.color || (isCyan ? '#06b6d4' : '#f97316');
+    const glowCol = g.glowColor || (isCyan ? 'rgba(6, 182, 212, 0.85)' : 'rgba(249, 115, 22, 0.85)');
+
+    ctx.save();
+
+    // 1. Poświata siatki bramki (Neon Net Glow)
+    const netGlow = ctx.createLinearGradient(
+      g.facing === 1 ? leftX : rightX, bottomY,
+      g.facing === 1 ? rightX : leftX, bottomY
+    );
+    netGlow.addColorStop(0.0, isCyan ? 'rgba(6, 182, 212, 0.26)' : 'rgba(249, 115, 22, 0.26)');
+    netGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = netGlow;
+    ctx.fillRect(leftX, topY, w, h);
+
+    // 2. Siatka bramki
+    ctx.save();
+    ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.40)' : 'rgba(249, 115, 22, 0.40)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    const netStep = 11;
+    for (let x = leftX; x <= rightX; x += netStep) {
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x + (g.facing === 1 ? -6 : 6), bottomY);
+    }
+    for (let y = topY; y <= bottomY; y += netStep) {
+      ctx.moveTo(leftX, y);
+      ctx.lineTo(rightX, y + 2);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Neonowe słupki i poprzeczka
+    ctx.save();
+    ctx.strokeStyle = mainCol;
+    ctx.shadowColor = glowCol;
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3.6;
+
+    const mouthX = g.facing === 1 ? rightX : leftX;
+    const backX = g.facing === 1 ? leftX : rightX;
+
+    ctx.beginPath();
+    ctx.moveTo(mouthX, bottomY);
+    ctx.lineTo(mouthX, topY);
+    ctx.lineTo(backX, topY);
+    ctx.lineTo(backX, bottomY);
+    ctx.stroke();
+
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(backX, bottomY);
+    ctx.lineTo(mouthX, bottomY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(mouthX, bottomY);
+    ctx.lineTo(mouthX, topY);
+    ctx.lineTo(backX, topY);
+    ctx.lineTo(backX, bottomY);
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Etykieta drużyny nad bramką
+    ctx.save();
+    ctx.fillStyle = mainCol;
+    ctx.shadowColor = mainCol;
+    ctx.shadowBlur = 8;
+    ctx.font = 'bold 9.5px monospace';
+    ctx.textAlign = 'center';
+    const tagText = isCyan ? '◄ CYAN GOAL' : 'ORANGE GOAL ►';
+    ctx.fillText(tagText, (leftX + rightX) / 2, topY - 8);
+    ctx.restore();
+
+    ctx.restore();
+  }
 }
 
 function drawAltarSpotlightAndLevitation(ctx, groundY) {
@@ -3855,6 +3946,10 @@ export function drawObstacles(ctx, groundY) {
   }
 
   drawBarrelExplosionParticles(ctx);
+
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY') {
+    drawNeonGoals(ctx, groundY, GOALS);
+  }
 
   if (activeArenaId === 'ARENA_1') {
     drawAltarSpotlightAndLevitation(ctx, groundY);
