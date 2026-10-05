@@ -2897,6 +2897,14 @@ if (typeof window !== 'undefined') {
     if (autostartClass) {
       selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.PLAYMAKER);
     }
+    if (urlParams.has('breach')) {
+      const bx = Number(urlParams.get('breach')) || 1400;
+      setTimeout(() => {
+        if (typeof window.carveBreach === 'function') {
+          window.carveBreach(bx);
+        }
+      }, 300);
+    }
   }
 }
 

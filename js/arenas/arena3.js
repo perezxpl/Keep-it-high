@@ -5,7 +5,7 @@
 // =========================================================================
 
 import { CONFIG } from '../config.js';
-import { spawnStretchedSparks, spawnRicochetSparks } from '../particles.js';
+import { spawnStretchedSparks, spawnRicochetSparks, spawnConcreteDebris } from '../particles.js';
 
 // 1. Obraz tła hali przemysłowej generowany skryptem Python (foundry_bg.png)
 const foundryBgImage = new Image();
@@ -30,6 +30,16 @@ holeCyanImg.src = 'assets/hole_cyan.jpg';
 
 const holeOrangeImg = new Image();
 holeOrangeImg.src = 'assets/hole_orange.jpg';
+
+// 4. Modułowe zasoby graficzne zniszczeń terenu (Destruction Kit)
+const craterEdgeLeftImg = new Image();
+craterEdgeLeftImg.src = 'assets/crater_edge_left.png';
+
+const craterEdgeRightImg = new Image();
+craterEdgeRightImg.src = 'assets/crater_edge_right.png';
+
+const scorchBlastImg = new Image();
+scorchBlastImg.src = 'assets/scorch_blast.png';
 
 // =========================================================================
 // STATYCZNA GEOMETRIA I PLATFORMY (ARENA_3_PLATFORMS)
@@ -78,6 +88,88 @@ export const ARENA_3_PLATFORMS = [
 // Aliasy dla zachowania wstecznej kompatybilności
 export const ARENA_FOUNDRY_PLATFORMS = ARENA_3_PLATFORMS;
 export const ARENA_FOUNDRY_WALLS = [];
+
+// =========================================================================
+// SYSTEM ZNISZCZEŃ STROPU ARENY 3 (DESTRUCTION OVERLAY & CARVING)
+// =========================================================================
+export const arena3Breaches = [];
+const DEFAULT_ARENA_3_PLATFORMS = JSON.parse(JSON.stringify(ARENA_3_PLATFORMS));
+
+export function resetArena3Breaches() {
+  arena3Breaches.length = 0;
+  ARENA_3_PLATFORMS.length = 0;
+  ARENA_3_PLATFORMS.push(...JSON.parse(JSON.stringify(DEFAULT_ARENA_3_PLATFORMS)));
+}
+
+export function carveArena3SlabBreach(expX, expY, radius, context) {
+  // Sprawdź czy wybuch dosięga płyty głównej (Y = 900)
+  if (Math.abs(expY - 900) > radius * 1.35 && (expY < 840 || expY > 980)) return;
+
+  // Wyklucz stałe szyby zrzutowe i pancerną strefę pieca
+  if ((expX >= 760 && expX <= 940) || (expX >= 3460 && expX <= 3640) || (expX >= 1830 && expX <= 2570)) {
+    return;
+  }
+
+  const breachR = Math.min(85, Math.max(48, radius * 0.65));
+  const bLeft = expX - breachR;
+  const bRight = expX + breachR;
+
+  // Rejestracja wyłomu
+  arena3Breaches.push({
+    id: 'breach_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    x: expX,
+    y: 900,
+    r: breachR,
+    left: bLeft,
+    right: bRight,
+    createdAt: performance.now()
+  });
+
+  // Dynamiczne rozszczepienie geometrii platform (podział lub skrócenie płyty Y=900)
+  function splitPlatforms(arr) {
+    if (!Array.isArray(arr)) return;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const plat = arr[i];
+      if (!plat || plat.y !== 900 || plat.h < 30 || plat.isHatch || plat.isSlope) continue;
+
+      const pLeft = plat.x;
+      const pRight = plat.x + plat.w;
+      if (pRight <= bLeft || pLeft >= bRight) continue;
+
+      if (pLeft < bLeft && pRight > bRight) {
+        const rightW = pRight - bRight;
+        plat.w = bLeft - pLeft;
+        arr.splice(i + 1, 0, {
+          ...plat,
+          id: plat.id + '_split_' + Math.round(bRight),
+          x: bRight,
+          w: rightW
+        });
+      } else if (pLeft >= bLeft && pRight <= bRight) {
+        arr.splice(i, 1);
+      } else if (pLeft < bLeft && pRight <= bRight) {
+        plat.w = bLeft - pLeft;
+      } else if (pLeft >= bLeft && pRight > bRight) {
+        const diff = bRight - pLeft;
+        plat.x = bRight;
+        plat.w -= diff;
+      }
+    }
+  }
+
+  splitPlatforms(ARENA_3_PLATFORMS);
+  if (context && Array.isArray(context.platforms)) {
+    splitPlatforms(context.platforms);
+  }
+
+  // Odłamki betonu i iskry lecące w dół do tunelu
+  if (typeof spawnConcreteDebris === 'function') {
+    spawnConcreteDebris(expX, 935, 14, (Math.random() - 0.5) * 80, 160 + Math.random() * 120);
+  }
+  if (typeof spawnRicochetSparks === 'function') {
+    spawnRicochetSparks(expX, 900, 0, -1, 16);
+  }
+}
 
 // =========================================================================
 // OBIEKTY SPECYFICZNE DLA ARENY 3 (ARENA_3_CUSTOM_OBJECTS)
@@ -154,6 +246,38 @@ export function drawArena3Background(ctx, camera) {
     if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
       ctx.drawImage(holeOrangeImg, 4040, 280, 340, 340);
     }
+  }
+
+  // 1C. Dynamiczne wyłomy i zniszczenia w stropie po wybuchach (Destruction Overlay)
+  if (arena3Breaches.length > 0) {
+    ctx.save();
+    for (const b of arena3Breaches) {
+      const bw = b.r * 2;
+      // Czeluść wyłomu (odsłania ciemne wnętrze tunelu przez płytę 70px)
+      ctx.fillStyle = '#05070c';
+      ctx.fillRect(b.x - b.r, 900, bw, 70);
+
+      // Cień wewnętrzny w otworze
+      const shadowGrad = ctx.createLinearGradient(b.x, 900, b.x, 970);
+      shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+      ctx.fillStyle = shadowGrad;
+      ctx.fillRect(b.x - b.r, 900, bw, 70);
+
+      // Osmalenia sadzą i pęknięcia wokół leja wybuchu (Scorch Decal)
+      if (scorchBlastImg && scorchBlastImg.complete && scorchBlastImg.naturalWidth > 0) {
+        ctx.drawImage(scorchBlastImg, b.x - b.r * 1.35, 900 - 35, b.r * 2.7, 70);
+      }
+
+      // Poszarpane krawędzie żelbetu ze sterczącym zbrojeniem
+      if (craterEdgeLeftImg && craterEdgeLeftImg.complete && craterEdgeLeftImg.naturalWidth > 0) {
+        ctx.drawImage(craterEdgeLeftImg, b.x - b.r - 42, 885, 90, 90);
+      }
+      if (craterEdgeRightImg && craterEdgeRightImg.complete && craterEdgeRightImg.naturalWidth > 0) {
+        ctx.drawImage(craterEdgeRightImg, b.x + b.r - 48, 885, 90, 90);
+      }
+    }
+    ctx.restore();
   }
 
   // Subtelna poświata głębi kanałów bramek (centralna wysokość Y = 450)
@@ -1136,7 +1260,11 @@ export function onArena3KickHit(player, kickBox) {
   return hitAny;
 }
 
-export function onArena3Explosion(expX, expY, radius) {
+export function onArena3Explosion(expX, expY, radius, context) {
+  // 1. Zniszczenie stropu płyty głównej (Y = 900)
+  carveArena3SlabBreach(expX, expY, radius, context);
+
+  // 2. Impuls i odrzut wagoników kopalnianych
   let hit = false;
   for (const cart of ARENA_3_MINECARTS) {
     const cx = cart.x + cart.w / 2;
@@ -1175,6 +1303,7 @@ const arena3 = {
   minecarts: ARENA_3_MINECARTS,
   reset() {
     resetArena3Minecarts();
+    resetArena3Breaches();
   },
   drawBackground(ctx, camera) {
     drawArena3Background(ctx, camera);
@@ -1191,9 +1320,14 @@ const arena3 = {
   onKickHit(player, kickBox) {
     return onArena3KickHit(player, kickBox);
   },
-  onExplosion(expX, expY, radius) {
-    return onArena3Explosion(expX, expY, radius);
+  onExplosion(expX, expY, radius, context) {
+    return onArena3Explosion(expX, expY, radius, context);
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.arena3Breaches = arena3Breaches;
+  window.carveBreach = (x = 1400) => carveArena3SlabBreach(x, 900, 85, { platforms: window.world?.platforms });
+}
 
 export default arena3;
