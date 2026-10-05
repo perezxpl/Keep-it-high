@@ -140,9 +140,15 @@ export function drawArena3Background(ctx, camera) {
   }
 
   // 1B. Przemysłowe bramki w ścianach hali - grafiki JPG dziur w ścianach (assets/hole_cyan.jpg i assets/hole_orange.jpg)
+  // Bramka Cyan (lewa) - odbicie lustrzane w osi poziomej dla pełnej symetrii osiowej z bramką Orange
   if (holeCyanImg && holeCyanImg.complete && holeCyanImg.naturalWidth > 0) {
-    ctx.drawImage(holeCyanImg, 20, 560, 340, 340);
+    ctx.save();
+    ctx.translate(20 + 340, 560);
+    ctx.scale(-1, 1);
+    ctx.drawImage(holeCyanImg, 0, 0, 340, 340);
+    ctx.restore();
   }
+  // Bramka Orange (prawa) - naturalny zwrot tunelu w głąb prawej ściany
   if (holeOrangeImg && holeOrangeImg.complete && holeOrangeImg.naturalWidth > 0) {
     ctx.drawImage(holeOrangeImg, 4040, 560, 340, 340);
   }
