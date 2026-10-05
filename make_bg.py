@@ -172,7 +172,7 @@ circle_cyan = make_circular_conduit('assets/hole_cyan.jpg', r_outer=425, feather
 circle_orange = make_circular_conduit('assets/hole_orange.jpg', r_outer=425, feather=14, rotate_deg=0)
 
 HOLE_DIAMETER = 340
-HOLE_Y = Y_MAIN - HOLE_DIAMETER  # 900 - 340 = 560
+HOLE_Y = (Y_MAIN - HOLE_DIAMETER) // 2  # (900 - 340) // 2 = 280 (centralnie między sufitem Y=0 a płytą Y=900)
 
 scaled_cyan_hole = circle_cyan.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)
 scaled_orange_hole = circle_orange.resize((HOLE_DIAMETER, HOLE_DIAMETER), Image.Resampling.LANCZOS)

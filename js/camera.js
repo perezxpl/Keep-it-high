@@ -271,8 +271,22 @@ export function updateCamera(player, ball) {
 
   // 4. Wyeliminowanie overshootingu przy wygładzaniu (Lerp):
   const lerpSpeed = CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08;
-  camera.x += (targetCamX - camera.x) * lerpSpeed + camera.shakeX;
-  camera.y += (targetCamY - camera.y) * lerpSpeed + camera.shakeY;
+  if (!camera._initialized) {
+    camera._initialized = true;
+    camera.x = targetCamX;
+    camera.y = targetCamY;
+    camera.zoom = camera.targetZoom;
+  } else {
+    camera.x += (targetCamX - camera.x) * lerpSpeed + camera.shakeX;
+    camera.y += (targetCamY - camera.y) * lerpSpeed + camera.shakeY;
+  }
+
+  // Opcjonalne ręczne wymuszenie pozycji kamery w parametrach URL (?camX=...&camY=...)
+  if (typeof window !== 'undefined' && window.location) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('camX')) camera.x = Number(urlParams.get('camX'));
+    if (urlParams.has('camY')) camera.y = Number(urlParams.get('camY'));
+  }
 
   // Ograniczenie wykonaj ZAWSZE na samym końcu, po wyliczeniu wygładzenia:
   if (viewWidth < arenaWidth) {
