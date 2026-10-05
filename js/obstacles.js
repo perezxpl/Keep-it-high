@@ -664,15 +664,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.trail = [];
     }
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
-    const arena2Goals = currentArena?.customObjects?.filter(o => o.team) || ARENA_2_PANDORA_GOALS;
-    GOALS.push(...arena2Goals);
+    GOALS.length = 0; // W Świętej Dżungli brak bramek i piłki - tryb czystej mapy i walki
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 480;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 370;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 500;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 710;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -683,8 +682,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3100;
-      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 410;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3060;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 710;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -693,13 +692,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.active = true;
+      ballObj.active = false;
       ballObj.isLevitating = false;
       ballObj.goalAnimation = null;
-      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 1800;
-      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 560;
-      ballObj.prevX = ballObj.x;
-      ballObj.prevY = ballObj.y;
+      ballObj.x = -9999;
+      ballObj.y = -9999;
+      ballObj.prevX = -9999;
+      ballObj.prevY = -9999;
       ballObj.vx = 0;
       ballObj.vy = 0;
       ballObj.spin = 0;
@@ -3966,6 +3965,10 @@ export function drawObstacles(ctx, groundY) {
       }
       continue;
     }
+    if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+      // W Arenie 2 (Święta Dżungla) cała autorska architektura, świątynia i mosty rysowane są w drawArena2Foreground
+      continue;
+    }
     if (plat.type === 'catwalk') {
       if (plat.theme === 'wood' || plat.isLadder || plat.isJungleHut || plat.isHutRoof || plat.isTowerDeck || plat.isRavineDeck || plat.isRavineRoof || plat.isSkywalk || plat.isTunnelFloor || plat.isUpperDrift || plat.isDrainageTunnel) {
         drawJungleWoodStructure(ctx, plat, groundY);
@@ -3996,7 +3999,7 @@ export function drawObstacles(ctx, groundY) {
 
   drawBarrelExplosionParticles(ctx);
 
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY') {
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA') {
     drawNeonGoals(ctx, groundY, GOALS);
   }
 

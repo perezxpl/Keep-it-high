@@ -3785,10 +3785,34 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
-  const isDeathmatch = false;
-  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
+  const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
+  const isJungleArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA');
+  const isMatchArena = (curArenaId === 'ARENA_1');
 
-  if (isDeathmatch) {
+  if (isJungleArena) {
+    const bannerW = isMobile ? 220 : 290;
+    const bannerH = isMobile ? 26 : 32;
+    const bannerX = (W - bannerW) / 2;
+    const bannerY = isMobile ? 10 : 16;
+
+    ctx.save();
+    ctx.globalAlpha = isMobile ? 0.85 : 0.92;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.55)';
+    ctx.lineWidth = 1.4;
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = isMobile ? '900 8.5px monospace' : '900 10.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 8;
+    ctx.fillText('🌿 ŚWIĘTA DŻUNGLA // SANCTUARY 🌿', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
+    ctx.restore();
+  } else if (isDeathmatch) {
     const scoreBoxW = isMobile ? 220 : 280;
     const scoreBoxH = isMobile ? 32 : 40;
     const scoreBoxX = (W - scoreBoxW) / 2;
@@ -3889,7 +3913,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
 
   // 4. BANER CELEBRACJI GOLA (tylko w trybie meczowym z piłką)
-  if (!isDeathmatch && goalCelebration.active && goalCelebration.timer > 0) {
+  if (!isDeathmatch && !isJungleArena && goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;
 
@@ -3911,11 +3935,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
   ctx.restore();
 
-  if (ball && !isDeathmatch) {
+  if (ball && ball.active && !isDeathmatch && !isJungleArena) {
     drawOffscreenBallIndicator(ctx, ball, camera, player);
   }
 
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange);
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isJungleArena) ? null : ball, inKickRange);
   }
 }

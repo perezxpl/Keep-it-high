@@ -1,6 +1,6 @@
 // =========================================================================
 // BACKGROUND.JS - GŁĘBOKIE PODZIEMNE ŚCIANY SKALNE, GŁĘBIA PRZESTRZENNA I DYM
-// Surowa, naturalna grota skalna: brak prymitywów, realistyczna głębia i światło
+// ORAZ PROCEDURALNE WIELOWARSTWOWE TŁO DŻUNGLI Z PARALAKSĄ
 // =========================================================================
 
 import { camera } from './camera.js';
@@ -185,20 +185,34 @@ export function drawMineCaveBackground(ctx, camX = 1800, camY = 0) {
   ctx.restore();
 }
 
-// Wygenerowany obraz tła Areny 2 (Hallelujah Mountains / Pandora)
-const pandoraBgImage = new Image();
-pandoraBgImage.src = 'assets/pandora_arena2_bg.jpg';
+// =========================================================================
+// ARENA 2: ŚWIĘTA DŻUNGLA (ANCIENT JUNGLE SANCTUARY) - PURE PROCEDURAL ART
+// W pełni autorskie, wielowarstwowe tło dżungli z płynną paralaksą:
+// 1. Zmierzchowe szmaragdowo-złote niebo z promienistym słońcem porannym
+// 2. Odległe iglice krasowe (karst mountain spires) i ruiny stup świątynnych
+// 3. Spływające kaskadami górskie wodospady z animowaną pianą i mgłą
+// 4. Potężne sylwetki banyanów, liany i prehistoryczna roślinność
+// 5. Wolumetryczne złote promienie słońca (god rays) i świetliki dżungli
+// =========================================================================
 
-// =========================================================================
-// ARENA 2: HALLELUJAH MOUNTAINS (PANDORA) - UNIKALNE OBCE TŁO 3-WARSTWOWE
-// =========================================================================
-/**
- * Renderuje 3-warstwowe tło obcej biosfery Pandory dla Areny 2:
- * 1. Warstwa kosmiczna: zmierzchowe fioletowo-granatowe niebo (#0B0F19 do #1E1B4B)
- *    oraz gigantyczny gazowy olbrzym Polyphemus z pasami chmur i pierścieniami.
- * 2. Średnia warstwa paralaksy: zamglone sylwetki dalszych lewitujących wysp (#1E293B z 40% kryciem).
- * 3. Dolne morze chmur: wolno przesuwające się gęste obłoki (y: 1150–1400) z gradientem rozmycia.
- */
+// Cząsteczki pyłku i świetlików w tle
+const BG_JUNGLE_MOTES_COUNT = 44;
+const _bgJungleMotes = [];
+for (let i = 0; i < BG_JUNGLE_MOTES_COUNT; i++) {
+  _bgJungleMotes.push({
+    seedX: 50 + (i * 87.7) % 3600,
+    seedY: 100 + (i * 41.3) % 950,
+    speedX: ((i % 5) - 2) * 5.5,
+    speedY: -7.0 - (i % 4) * 3.5,
+    swayAmp: 18 + (i % 4) * 7,
+    swaySpeed: 0.75 + (i % 3) * 0.4,
+    size: (i % 4 === 0) ? 2.4 : 1.4,
+    pulseSpeed: 1.4 + (i % 3) * 0.6,
+    phase: i * 0.52,
+    isGolden: (i % 3 !== 1)
+  });
+}
+
 export function drawPandoraBackground(ctx, camera) {
   if (!ctx) return;
   const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
@@ -207,348 +221,316 @@ export function drawPandoraBackground(ctx, camera) {
 
   const camX = camera ? (camera.x || 0) : 0;
   const camY = camera ? (camera.y || 0) : 0;
-  const zoom = camera ? (camera.zoom || 1) : 1;
 
   // -------------------------------------------------------------------------
-  // OBRAZ TŁA (cover-fit + delikatna paralaksa kamery). Fallback: procedura poniżej.
+  // WARSTWA 0: NIEBO DŻUNGLI I ZŁOTE PROMIENISTE SŁOŃCE (PARALAKSA 0.005)
   // -------------------------------------------------------------------------
-  if (pandoraBgImage.complete && pandoraBgImage.naturalWidth > 0) {
-    const iw = pandoraBgImage.naturalWidth;
-    const ih = pandoraBgImage.naturalHeight;
-    const overscan = 1.04; // zapas na ruch paralaksy
-    const scale = Math.max(W_screen / iw, H_screen / ih) * overscan;
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const slackX = dw - W_screen;
-    const slackY = dh - H_screen;
-    // Przesunięcie 0..1 wg pozycji kamery na arenie (3600x1400)
-    const tx = Math.max(0, Math.min(1, camX / 3600));
-    const ty = Math.max(0, Math.min(1, camY / 1400));
-    const dx = -slackX * tx;
-    // Kadr przesunięty ku górze: widać planetę i platformy, bez znaku wodnego na dole obrazu
-    const dy = -slackY * (0.18 + 0.25 * ty);
-    ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(pandoraBgImage, dx, dy, dw, dh);
-    ctx.restore();
-    return;
-  }
-
-  // -------------------------------------------------------------------------
-  // WARSTWA 1: KOSMICZNE NIEBO, GWIAZDY I GAZOWY OLBRZYM (POLYPHEMUS)
-  // -------------------------------------------------------------------------
-  // A. Zmierzchowe, fioletowo-granatowe niebo (#0B0F19 do #1E1B4B)
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-  skyGrad.addColorStop(0.00, '#0B0F19');
-  skyGrad.addColorStop(0.38, '#10132B');
-  skyGrad.addColorStop(0.72, '#18173E');
-  skyGrad.addColorStop(1.00, '#1E1B4B');
+  skyGrad.addColorStop(0.00, '#021810');
+  skyGrad.addColorStop(0.25, '#052b1d');
+  skyGrad.addColorStop(0.55, '#0b422a');
+  skyGrad.addColorStop(0.78, '#185938');
+  skyGrad.addColorStop(0.92, '#7a5a22');
+  skyGrad.addColorStop(1.00, '#c28328');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
-  // B. Subtelne migoczące gwiazdy w górnych partiach atmosfery
-  ctx.save();
-  const starCount = 45;
-  for (let s = 0; s < starCount; s++) {
-    const sx = (s * 89.37) % W_screen;
-    const sy = (s * 43.19) % (H_screen * 0.55);
-    const twinkle = 0.4 + 0.6 * Math.sin(time * 1.8 + s * 1.7);
-    const starAlpha = Math.max(0.05, Math.min(0.85, (0.35 + (s % 3) * 0.2) * twinkle));
-    const starR = (s % 7 === 0) ? 1.6 : 1.0;
-    ctx.fillStyle = `rgba(224, 242, 254, ${starAlpha})`;
-    ctx.beginPath();
-    ctx.arc(sx, sy, starR, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Złote słońce przedzierające się przez poranną mgłę dżungli
+  const sunX = W_screen * 0.64 - (camX * 0.006);
+  const sunY = H_screen * 0.30 - (camY * 0.004);
+  const sunR = Math.max(75, Math.min(135, H_screen * 0.16));
 
-  // C. Gigantyczny gazowy olbrzym (Polyphemus) w prawym górnym rogu z pasami chmur i pierścieniami
-  // Pozycja z delikatną paralaksą (0.012)
-  const polyCenterX = W_screen * 0.82 - (camX * 0.012);
-  const polyCenterY = H_screen * 0.24 - (camY * 0.012);
-  const polyR = Math.max(85, Math.min(170, Math.min(W_screen, H_screen) * 0.17));
-
-  ctx.save();
-  ctx.translate(polyCenterX, polyCenterY);
-
-  // Cień i tylna część pierścieni planetarnych (przed narysowaniem globu)
-  const ringTilt = -0.38; // Kąt pochylenia płaszczyzny pierścieni (~ -22 stopnie)
-  const ringRx = polyR * 2.35;
-  const ringRy = polyR * 0.44;
-
-  ctx.save();
-  ctx.rotate(ringTilt);
-
-  // Tylna połowa pierścieni (y < 0 w układzie obróconym)
-  ctx.beginPath();
-  ctx.rect(-ringRx - 20, -ringRy - 20, (ringRx + 20) * 2, ringRy + 20);
-  ctx.clip();
-
-  // Zewnętrzny pierścień lodowy A
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx, ringRy, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.22;
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-  ctx.stroke();
-
-  // Przerwa Cassiniego (ciemna szczelina)
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx * 0.86, ringRy * 0.86, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.04;
-  ctx.strokeStyle = 'rgba(11, 15, 25, 0.7)';
-  ctx.stroke();
-
-  // Wewnętrzny pierścień B (gęstszy błękitny)
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx * 0.74, ringRy * 0.74, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.18;
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
-  ctx.stroke();
-
-  ctx.restore();
-
-  // Glob gazowego olbrzyma (Polyphemus)
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(0, 0, polyR, 0, Math.PI * 2);
-  ctx.clip();
-
-  // Tło bazowe tarczy planety
-  const planetBase = ctx.createLinearGradient(-polyR, -polyR, polyR, polyR);
-  planetBase.addColorStop(0.0, '#0e7490');
-  planetBase.addColorStop(0.5, '#1e1b4b');
-  planetBase.addColorStop(1.0, '#090d16');
-  ctx.fillStyle = planetBase;
-  ctx.fill();
-
-  // Pasma chmur gazowych (alternujące warstwy cyjanu, indygo i purpury)
-  const bandCount = 14;
-  for (let b = 0; b < bandCount; b++) {
-    const by = -polyR + (b / bandCount) * (polyR * 2);
-    const bh = (polyR * 2) / bandCount;
-    const bandWave = Math.sin(b * 1.3) * 6;
-
-    let bandColor = 'rgba(30, 27, 75, 0.55)';
-    if (b % 4 === 0) bandColor = 'rgba(14, 116, 144, 0.45)';
-    else if (b % 4 === 1) bandColor = 'rgba(67, 56, 202, 0.40)';
-    else if (b % 4 === 2) bandColor = 'rgba(21, 94, 117, 0.50)';
-    else bandColor = 'rgba(49, 46, 129, 0.60)';
-
-    ctx.fillStyle = bandColor;
-    ctx.beginPath();
-    ctx.ellipse(0, by + bh / 2, polyR * 1.05, bh * 0.75 + Math.abs(bandWave) * 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Ciemna cyjanowa plama burzowa (Great Storm Eye)
-  const stormX = polyR * 0.32;
-  const stormY = polyR * 0.12;
-  const stormGrad = ctx.createRadialGradient(stormX, stormY, 2, stormX, stormY, polyR * 0.22);
-  stormGrad.addColorStop(0.0, 'rgba(34, 211, 238, 0.85)');
-  stormGrad.addColorStop(0.4, 'rgba(14, 116, 144, 0.65)');
-  stormGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-  ctx.fillStyle = stormGrad;
-  ctx.beginPath();
-  ctx.ellipse(stormX, stormY, polyR * 0.22, polyR * 0.12, -0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Sferyczne oświetlenie i głęboki cień planety (oświetlenie z lewego-góry)
-  const shadowGrad = ctx.createRadialGradient(-polyR * 0.45, -polyR * 0.45, polyR * 0.15, polyR * 0.25, polyR * 0.25, polyR * 1.05);
-  shadowGrad.addColorStop(0.00, 'rgba(255, 255, 255, 0.15)');
-  shadowGrad.addColorStop(0.45, 'rgba(0, 0, 0, 0.0)');
-  shadowGrad.addColorStop(0.78, 'rgba(5, 8, 16, 0.65)');
-  shadowGrad.addColorStop(1.00, 'rgba(3, 5, 10, 0.94)');
-  ctx.fillStyle = shadowGrad;
-  ctx.beginPath();
-  ctx.arc(0, 0, polyR, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore(); // Koniec clip globu
-
-  // Przednia część pierścieni planetarnych (przechodząca przed planetą z cieniem)
-  ctx.save();
-  ctx.rotate(ringTilt);
-  ctx.beginPath();
-  ctx.rect(-ringRx - 20, 0, (ringRx + 20) * 2, ringRy + 20);
-  ctx.clip();
-
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx, ringRy, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.22;
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.42)';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx * 0.86, ringRy * 0.86, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.04;
-  ctx.strokeStyle = 'rgba(11, 15, 25, 0.8)';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.ellipse(0, 0, ringRx * 0.74, ringRy * 0.74, 0, 0, Math.PI * 2);
-  ctx.lineWidth = polyR * 0.18;
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-  ctx.stroke();
-  ctx.restore();
-
-  // Atmosferyczna luminescencja wokół Polyphemusa (screen bloom)
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  const bloomGrad = ctx.createRadialGradient(0, 0, polyR * 0.92, 0, 0, polyR * 1.25);
-  bloomGrad.addColorStop(0.0, 'rgba(34, 211, 238, 0.22)');
-  bloomGrad.addColorStop(0.6, 'rgba(129, 140, 248, 0.10)');
-  bloomGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-  ctx.fillStyle = bloomGrad;
+  // Szeroka korona słoneczna
+  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, sunR * 2.8);
+  coronaGrad.addColorStop(0.0, 'rgba(254, 240, 138, 0.75)');
+  coronaGrad.addColorStop(0.25, 'rgba(250, 204, 21, 0.45)');
+  coronaGrad.addColorStop(0.60, 'rgba(234, 179, 8, 0.18)');
+  coronaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = coronaGrad;
   ctx.beginPath();
-  ctx.arc(0, 0, polyR * 1.25, 0, Math.PI * 2);
+  ctx.arc(sunX, sunY, sunR * 2.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tarcza słońca
+  const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
+  sunCore.addColorStop(0.0, '#fffbeb');
+  sunCore.addColorStop(0.35, '#fef08a');
+  sunCore.addColorStop(0.75, '#facc15');
+  sunCore.addColorStop(1.0, 'rgba(234, 179, 8, 0)');
+  ctx.fillStyle = sunCore;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Mały naturalny satelita w pobliżu planety
-  const moonX = -polyR * 1.55;
-  const moonY = polyR * 0.85;
-  const moonR = polyR * 0.10;
-  ctx.fillStyle = '#94a3b8';
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
-  ctx.beginPath();
-  ctx.arc(moonX + moonR * 0.35, moonY, moonR * 0.85, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore(); // Koniec układu Polyphemus
-
   // -------------------------------------------------------------------------
-  // WARSTWA 2: ODLEGŁE GÓRY HALLELUJAH (ŚREDNIA WARSTWA PARALAKSY)
-  // Niski kontrast, barwa #1E293B z 40% kryciem (rgba(30, 41, 59, 0.40))
+  // WARSTWA 1: ODLEGŁE IGLICE KRASOWE I STUPY ŚWIĄTYNNE (PARALAKSA 0.020)
   // -------------------------------------------------------------------------
   ctx.save();
-  const distantIslands = [
-    { worldX: 420, worldY: 340, w: 320, h: 220, stalactiteH: 190 },
-    { worldX: 1100, worldY: 260, w: 260, h: 180, stalactiteH: 150 },
-    { worldX: 1850, worldY: 320, w: 420, h: 260, stalactiteH: 230 },
-    { worldX: 2650, worldY: 240, w: 290, h: 190, stalactiteH: 160 },
-    { worldX: 3350, worldY: 360, w: 350, h: 240, stalactiteH: 210 }
+  const farX = camX * 0.020;
+  const farY = camY * 0.015;
+  const farBaseY = H_screen * 0.75 - farY;
+
+  ctx.fillStyle = '#09261a';
+  ctx.beginPath();
+  ctx.moveTo(0, H_screen);
+  ctx.lineTo(0, farBaseY);
+
+  const karstPeaks = [
+    { x: 120, w: 220, h: 290, stupa: true },
+    { x: 420, w: 180, h: 370 },
+    { x: 740, w: 280, h: 260 },
+    { x: 1100, w: 320, h: 410, stupa: true },
+    { x: 1540, w: 240, h: 330 },
+    { x: 1880, w: 360, h: 440, stupa: true },
+    { x: 2340, w: 210, h: 300 },
+    { x: 2700, w: 340, h: 380, stupa: true },
+    { x: 3150, w: 260, h: 320 }
   ];
 
-  const parallaxFactorX = 0.10;
-  const parallaxFactorY = 0.08;
+  for (let i = 0; i < karstPeaks.length; i++) {
+    const kp = karstPeaks[i];
+    const sx = (kp.x - farX) % (W_screen + 500) - 250;
+    const sy = farBaseY - kp.h;
 
-  ctx.fillStyle = 'rgba(30, 41, 59, 0.40)';
-  ctx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
-  ctx.lineWidth = 1.5;
+    ctx.lineTo(sx - kp.w * 0.5, farBaseY);
+    ctx.quadraticCurveTo(sx - kp.w * 0.15, sy + kp.h * 0.28, sx, sy);
+    ctx.quadraticCurveTo(sx + kp.w * 0.15, sy + kp.h * 0.28, sx + kp.w * 0.5, farBaseY);
 
-  for (let i = 0; i < distantIslands.length; i++) {
-    const isl = distantIslands[i];
-    // Rzutowanie na współrzędne ekranu z paralaksą
-    const scrX = (isl.worldX - camX * parallaxFactorX) * zoom + (W_screen * 0.15);
-    const scrY = (isl.worldY - camY * parallaxFactorY) * zoom + (H_screen * 0.18);
-    const w = isl.w * zoom;
-    const h = isl.h * zoom;
-    const stalH = isl.stalactiteH * zoom;
+    // Starożytna wieża / stupa na wierzchołku szczytu
+    if (kp.stupa) {
+      ctx.rect(sx - 9, sy - 28, 18, 28);
+      ctx.moveTo(sx - 14, sy - 28);
+      ctx.lineTo(sx + 14, sy - 28);
+      ctx.lineTo(sx, sy - 46);
+      ctx.closePath();
+    }
+  }
+  ctx.lineTo(W_screen, farBaseY);
+  ctx.lineTo(W_screen, H_screen);
+  ctx.closePath();
+  ctx.fill();
 
-    if (scrX + w < -100 || scrX > W_screen + 100) continue;
+  // Mgiełka dolinna między górami
+  const farMist = ctx.createLinearGradient(0, farBaseY - 80, 0, farBaseY + 70);
+  farMist.addColorStop(0.0, 'rgba(15, 60, 42, 0)');
+  farMist.addColorStop(0.6, 'rgba(19, 70, 48, 0.35)');
+  farMist.addColorStop(1.0, 'rgba(11, 42, 29, 0.65)');
+  ctx.fillStyle = farMist;
+  ctx.fillRect(0, farBaseY - 80, W_screen, 150);
+  ctx.restore();
+
+  // -------------------------------------------------------------------------
+  // WARSTWA 2: GĘSTE KORONY DRZEW I KASKADOWE WODOSPADY (PARALAKSA 0.055)
+  // -------------------------------------------------------------------------
+  ctx.save();
+  const midX = camX * 0.055;
+  const midY = camY * 0.035;
+  const midBaseY = H_screen * 0.82 - midY;
+
+  // Głębokie leśne korony drzew
+  const midCanopyGrad = ctx.createLinearGradient(0, midBaseY - 180, 0, midBaseY + 120);
+  midCanopyGrad.addColorStop(0.0, '#0e3d27');
+  midCanopyGrad.addColorStop(0.4, '#134c32');
+  midCanopyGrad.addColorStop(1.0, '#0a2417');
+  ctx.fillStyle = midCanopyGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(0, H_screen);
+  ctx.lineTo(0, midBaseY);
+
+  const domeCount = 18;
+  const domeStep = (W_screen + 400) / domeCount;
+  for (let d = 0; d <= domeCount + 1; d++) {
+    const dx = (d * domeStep - midX) % (W_screen + 400) - 200;
+    const treeH = 110 + Math.sin(d * 1.8) * 45 + Math.cos(d * 2.5) * 30;
+    const dy = midBaseY - treeH;
+    ctx.quadraticCurveTo(dx - domeStep * 0.3, dy - 20, dx, dy);
+    ctx.quadraticCurveTo(dx + domeStep * 0.3, dy + 15, dx + domeStep * 0.5, midBaseY);
+  }
+  ctx.lineTo(W_screen, midBaseY);
+  ctx.lineTo(W_screen, H_screen);
+  ctx.closePath();
+  ctx.fill();
+
+  // DWA GÓRSKIE WODOSPADY W TLE
+  const waterfalls = [
+    { x: W_screen * 0.28 - (camX * 0.055) % (W_screen + 600), startY: midBaseY - 140, len: 170, w: 18 },
+    { x: W_screen * 0.76 - (camX * 0.055) % (W_screen + 600), startY: midBaseY - 160, len: 190, w: 22 }
+  ];
+
+  for (let wf of waterfalls) {
+    const endY = wf.startY + wf.len;
+
+    // Struga wody
+    const wfGrad = ctx.createLinearGradient(wf.x, wf.startY, wf.x + wf.w, wf.startY);
+    wfGrad.addColorStop(0.0, 'rgba(14, 116, 144, 0.65)');
+    wfGrad.addColorStop(0.3, '#38bdf8');
+    wfGrad.addColorStop(0.7, '#7dd3fc');
+    wfGrad.addColorStop(1.0, 'rgba(14, 116, 144, 0.65)');
+    ctx.fillStyle = wfGrad;
 
     ctx.beginPath();
-    // Płaski, lekko zaokrąglony wierzchołek wyspy
-    ctx.moveTo(scrX, scrY);
-    ctx.quadraticCurveTo(scrX + w * 0.5, scrY - h * 0.15, scrX + w, scrY);
-    // Poszarpany bok prawy
-    ctx.lineTo(scrX + w * 0.92, scrY + h * 0.35);
-    ctx.lineTo(scrX + w * 0.78, scrY + h * 0.70);
-    // Dolny stalaktyt zwisający w dół
-    ctx.lineTo(scrX + w * 0.52, scrY + h + stalH);
-    // Poszarpany bok lewy
-    ctx.lineTo(scrX + w * 0.28, scrY + h * 0.65);
-    ctx.lineTo(scrX + w * 0.08, scrY + h * 0.30);
+    ctx.moveTo(wf.x, wf.startY);
+    ctx.lineTo(wf.x + wf.w, wf.startY);
+    ctx.quadraticCurveTo(wf.x + wf.w * 0.85, wf.startY + wf.len * 0.5, wf.x + wf.w * 0.70, endY);
+    ctx.lineTo(wf.x + wf.w * 0.30, endY);
+    ctx.quadraticCurveTo(wf.x + wf.w * 0.15, wf.startY + wf.len * 0.5, wf.x, wf.startY);
     ctx.closePath();
     ctx.fill();
-    ctx.stroke();
 
-    // Drobna strugka odległego wodospadu zamglonego w oddali
+    // Animowane spływające smugi piany
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 1.6;
+    const yOff = (time * 160) % 32;
+    for (let py = wf.startY + yOff; py < endY - 8; py += 32) {
+      ctx.beginPath();
+      ctx.moveTo(wf.x + wf.w * 0.35, py);
+      ctx.lineTo(wf.x + wf.w * 0.65, py + 14);
+      ctx.stroke();
+    }
+
+    // Pióropusz mgły u dołu wodospadu
     ctx.save();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
-    ctx.lineWidth = 1.8 * zoom;
+    ctx.globalCompositeOperation = 'screen';
+    const mistGrad = ctx.createRadialGradient(wf.x + wf.w * 0.5, endY, 4, wf.x + wf.w * 0.5, endY, 45);
+    mistGrad.addColorStop(0.0, 'rgba(204, 251, 241, 0.45)');
+    mistGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.18)');
+    mistGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = mistGrad;
     ctx.beginPath();
-    ctx.moveTo(scrX + w * 0.42, scrY + h * 0.25);
-    ctx.lineTo(scrX + w * 0.42, scrY + h * 0.85);
-    ctx.stroke();
+    ctx.arc(wf.x + wf.w * 0.5, endY, 45, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
+
+  // Odległe potężne liany przerzucone między wierzchołkami koron
+  ctx.strokeStyle = '#071f14';
+  ctx.lineWidth = 4.5;
+  ctx.beginPath();
+  ctx.moveTo(waterfalls[0].x - 140, midBaseY - 110);
+  ctx.quadraticCurveTo(waterfalls[0].x, midBaseY - 50, waterfalls[0].x + 180, midBaseY - 120);
+  ctx.stroke();
+
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 3: DOLNE MORZE CHMUR (Y: 1150–1400) Z ŁAGODNYM GRADIENTEM ROZMYCIA
+  // WARSTWA 3: BLISKA DŻUNGLA, GIGANTYCZNE PNIE I LIANY (PARALAKSA 0.11)
   // -------------------------------------------------------------------------
   ctx.save();
+  const nearX = camX * 0.11;
+  const nearY = camY * 0.07;
+  const nearBaseY = H_screen * 0.90 - nearY;
 
-  // Wyliczenie pozycji horyzontu chmur na ekranie na podstawie kamery
-  const cloudWorldTop = 1150;
-  const cloudWorldBottom = 1400;
-  const cloudScreenTop = (cloudWorldTop - camY) * zoom;
-  const cloudScreenBottom = (cloudWorldBottom - camY) * zoom;
+  // Ciemne sylwetki masywnych pni banyanów i zarośli
+  ctx.fillStyle = '#071910';
 
-  // Podstawa morza chmur wypełniająca dół ekranu
-  const cloudFloorY = Math.max(H_screen * 0.60, cloudScreenTop);
-  const cloudHeight = Math.max(H_screen - cloudFloorY + 120, 260);
-
-  // Gradient pionowy głębi morza chmur (łagodny gradient rozmycia)
-  const cloudGrad = ctx.createLinearGradient(0, cloudFloorY - 60, 0, H_screen);
-  cloudGrad.addColorStop(0.00, 'rgba(15, 23, 42, 0.00)');
-  cloudGrad.addColorStop(0.25, 'rgba(30, 41, 59, 0.48)');
-  cloudGrad.addColorStop(0.60, 'rgba(15, 23, 42, 0.85)');
-  cloudGrad.addColorStop(1.00, 'rgba(8, 12, 22, 0.98)');
-  ctx.fillStyle = cloudGrad;
-  ctx.fillRect(0, cloudFloorY - 60, W_screen, cloudHeight + 80);
-
-  // Wolno przesuwające się kłęby gęstych obłoków (3 warstwy falujących krzywych i puchów)
-  const cloudLayers = [
-    { speed: 12, alpha: 0.32, color: '#334155', yOffset: -25, r: 65 },
-    { speed: 22, alpha: 0.45, color: '#1e293b', yOffset: 15, r: 85 },
-    { speed: 32, alpha: 0.60, color: '#0f172a', yOffset: 45, r: 110 }
+  const bigTrunks = [
+    { x: 80 - nearX % (W_screen + 600), w: 90, h: 480 },
+    { x: 580 - nearX % (W_screen + 600), w: 110, h: 540 },
+    { x: 1220 - nearX % (W_screen + 600), w: 130, h: 510 },
+    { x: 1840 - nearX % (W_screen + 600), w: 95, h: 470 },
+    { x: 2380 - nearX % (W_screen + 600), w: 120, h: 530 }
   ];
 
-  for (let cl = 0; cl < cloudLayers.length; cl++) {
-    const layer = cloudLayers[cl];
-    const offset = (time * layer.speed + cl * 180) % (W_screen + 240);
-    ctx.fillStyle = layer.color;
-    ctx.globalAlpha = layer.alpha;
-
+  for (const tr of bigTrunks) {
     ctx.beginPath();
-    const segW = 120;
-    const startX = -140;
-    const endX = W_screen + 140;
+    ctx.moveTo(tr.x - tr.w * 0.5, H_screen);
+    ctx.lineTo(tr.x - tr.w * 0.35, nearBaseY - tr.h);
+    ctx.lineTo(tr.x + tr.w * 0.35, nearBaseY - tr.h);
+    ctx.lineTo(tr.x + tr.w * 0.5, H_screen);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.moveTo(startX, H_screen);
-    for (let cx = startX; cx <= endX; cx += segW) {
-      const puffY = cloudFloorY + layer.yOffset + Math.sin((cx + offset) * 0.015 + cl) * 22;
-      ctx.quadraticCurveTo(
-        cx + segW * 0.5,
-        puffY - layer.r * 0.45,
-        cx + segW,
-        puffY
-      );
+    // Zwieszające się wici lian z pni w tle
+    ctx.strokeStyle = '#05130c';
+    ctx.lineWidth = 2.5;
+    for (let l = 0; l < 3; l++) {
+      const lx = tr.x - tr.w * 0.2 + l * (tr.w * 0.25);
+      const lLen = 140 + ((l * 43) % 180);
+      const sway = Math.sin(time * 1.5 + l + tr.x * 0.01) * 8;
+      ctx.beginPath();
+      ctx.moveTo(lx, nearBaseY - tr.h + 80);
+      ctx.quadraticCurveTo(lx + sway * 0.5, nearBaseY - tr.h + 80 + lLen * 0.5, lx + sway, nearBaseY - tr.h + 80 + lLen);
+      ctx.stroke();
     }
-    ctx.lineTo(endX, H_screen);
+  }
+
+  // Zarys tropikalnych paproci i liści palmowych na dolnej krawędzi
+  ctx.strokeStyle = '#081d13';
+  ctx.lineWidth = 3.5;
+  for (let f = 0; f < 14; f++) {
+    const fx = (f * 175 - nearX) % (W_screen + 300) - 100;
+    const fy = nearBaseY + 20;
+    for (let fr = -2; fr <= 2; fr++) {
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.quadraticCurveTo(fx + fr * 24, fy - 45, fx + fr * 38, fy - 65);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+
+  // -------------------------------------------------------------------------
+  // WARSTWA 4: WOLUMETRYCZNE ZŁOTE PROMIENIE SŁOŃCA (GOD RAYS)
+  // -------------------------------------------------------------------------
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const rayAngle = -0.34;
+  const rayOriginX = W_screen * 0.65 - camX * 0.02;
+  const rayOriginY = -30;
+
+  ctx.save();
+  ctx.translate(rayOriginX, rayOriginY);
+  ctx.rotate(rayAngle);
+
+  const numRays = 6;
+  for (let r = 0; r < numRays; r++) {
+    const rayWidth = 70 + r * 25;
+    const rayX = (r - 2.5) * 170 + Math.sin(time * 0.7 + r) * 22;
+    const rayPulse = 0.60 + 0.40 * Math.sin(time * 1.1 + r * 1.5);
+    const rayAlpha = (0.08 + (r % 2) * 0.04) * rayPulse;
+
+    const rGrad = ctx.createLinearGradient(rayX, 0, rayX, H_screen * 1.6);
+    rGrad.addColorStop(0.0, `rgba(254, 240, 138, ${rayAlpha * 1.8})`);
+    rGrad.addColorStop(0.35, `rgba(251, 191, 36, ${rayAlpha})`);
+    rGrad.addColorStop(0.70, `rgba(245, 158, 11, ${rayAlpha * 0.4})`);
+    rGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = rGrad;
+    ctx.beginPath();
+    ctx.moveTo(rayX - rayWidth * 0.4, 0);
+    ctx.lineTo(rayX + rayWidth * 0.4, 0);
+    ctx.lineTo(rayX + rayWidth * 1.5, H_screen * 1.6);
+    ctx.lineTo(rayX - rayWidth * 1.5, H_screen * 1.6);
     ctx.closePath();
     ctx.fill();
   }
+  ctx.restore();
 
-  // Wstęgi prądów wznoszących (subtelne smugi pary unoszące się pionowo)
-  ctx.globalAlpha = 0.22;
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-  ctx.lineWidth = 1.4;
-  for (let u = 0; u < 12; u++) {
-    const ux = ((u * 170.83) + (time * 8.0) + W_screen * 10) % W_screen;
-    const uyStart = cloudFloorY + 40;
-    const uyLen = 70 + Math.sin(time * 2.0 + u) * 25;
+  // -------------------------------------------------------------------------
+  // WARSTWA 5: PŁYWAJĄCY PYŁEK SŁONECZNY I ŚWIETLIKI DŻUNGLI
+  // -------------------------------------------------------------------------
+  for (let m = 0; m < _bgJungleMotes.length; m++) {
+    const mt = _bgJungleMotes[m];
+    const mx = (mt.seedX + Math.sin(time * mt.swaySpeed + mt.phase) * mt.swayAmp - camX * 0.03 % W_screen + W_screen) % W_screen;
+    const my = ((mt.seedY + time * mt.speedY) % H_screen + H_screen) % H_screen;
+
+    const sinP = Math.sin(time * mt.pulseSpeed + mt.phase);
+    const alpha = 0.25 + 0.65 * (0.5 + 0.5 * sinP);
+
+    const mCol = mt.isGolden
+      ? `rgba(254, 240, 138, ${alpha})`
+      : `rgba(167, 243, 208, ${alpha * 0.85})`;
+
+    ctx.fillStyle = mCol;
     ctx.beginPath();
-    ctx.moveTo(ux, uyStart);
-    ctx.lineTo(ux + Math.sin(time * 1.5 + u) * 12, uyStart - uyLen);
-    ctx.stroke();
+    ctx.arc(mx, my, mt.size, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();
 }
-

@@ -69,13 +69,13 @@ export const ARENA_LEFT = START_X; // 0
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 
 // =========================================================================
-// DEFINICJA ARENY 2: PANDORA (HALLELUJAH MOUNTAINS 3600x1400 PX)
+// DEFINICJA ARENY 2: ŚWIĘTA DŻUNGLA (ANCIENT JUNGLE CANOPY 3600x1400 PX)
 // =========================================================================
 export const ARENA_2_PANDORA = {
   id: 'ARENA_2',
   alias: 'ARENA_2_PANDORA',
-  name: 'Góry Pandory',
-  subtitle: 'Hallelujah Mountains',
+  name: 'Święta Dżungla',
+  subtitle: 'Ancient Jungle Sanctuary',
   width: 3600,
   height: 1400,
   bounds: {
