@@ -402,10 +402,10 @@ export function drawArena3Background(ctx, camera) {
     ctx.fillRect(rx, 1268, 12, 2);
   }
 
-  // Rysowanie wnętrza i kół wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
+  // Rysowanie wnętrza wagoników z pasażerem (warstwa pod postacią w przestrzeni świata)
   for (const cart of ARENA_3_MINECARTS) {
     if (cart.passenger) {
-      drawMinecartBackAndWheels(ctx, cart);
+      drawMinecartBack(ctx, cart);
     }
   }
 
@@ -588,36 +588,36 @@ function drawCartWheels(ctx, cart, bounceY) {
 function drawMinecartComplete(ctx, cart) {
   const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
 
-  // 1. Koła kręcące się w osiach zawieszenia
-  drawCartWheels(ctx, cart, bounceY);
-
-  // 2. Cały korpus wagonika na wierzchu
+  // 1. Korpus wagonika i podwozie najpierw (z tyłu za kołami)
   if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
     ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
   }
+
+  // 2. Całe koła na wierzchu - 100% widoczne koła obracające się bez przeszkód
+  drawCartWheels(ctx, cart, bounceY);
 }
 
-function drawMinecartBackAndWheels(ctx, cart) {
+function drawMinecartBack(ctx, cart) {
   const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
 
-  // 1. Wnętrze i tylna krawędź wagonika (za plecami gracza)
+  // Wnętrze i tylna krawędź wagonika (za plecami gracza)
   if (cartInteriorImg && cartInteriorImg.complete && cartInteriorImg.naturalWidth > 0) {
     ctx.drawImage(cartInteriorImg, cart.x, cart.y + bounceY, cart.w, cart.h);
   }
-
-  // 2. Koła za zawieszeniem
-  drawCartWheels(ctx, cart, bounceY);
 }
 
 function drawMinecartFront(ctx, cart) {
   const bounceY = (cart.bounce > 0) ? Math.sin(cart.bouncePhase) * cart.bounce : 0;
 
-  // Przednia stalowa burta osłaniająca postać i resory
+  // 1. Przednia stalowa burta osłaniająca postać
   if (cartFrontImg && cartFrontImg.complete && cartFrontImg.naturalWidth > 0) {
     ctx.drawImage(cartFrontImg, cart.x, cart.y + bounceY, cart.w, cart.h);
   } else if (cartBodyImg && cartBodyImg.complete && cartBodyImg.naturalWidth > 0) {
     ctx.drawImage(cartBodyImg, cart.x, cart.y + bounceY, cart.w, cart.h);
   }
+
+  // 2. Całe koła na wierzchu - 100% widoczne koła obracające się przed burtą
+  drawCartWheels(ctx, cart, bounceY);
 }
 
 // =========================================================================
@@ -627,18 +627,18 @@ export const ARENA_3_MINECARTS = [
   {
     id: 'minecart_left',
     startX: 520,
-    startY: 1270 - 84,
+    startY: 1270 - 88,
     x: 520,
-    y: 1270 - 84,
-    w: 122,
-    h: 84,
+    y: 1270 - 88,
+    w: 124,
+    h: 88,
     vx: 0,
     vy: 0,
     wheelAngle: 0,
-    wheelR: 14.2,
-    wheel1XOffset: 33.6,
-    wheel2XOffset: 92.8,
-    wheelYOffset: 70.0,
+    wheelR: 15.1,
+    wheel1XOffset: 34.1,
+    wheel2XOffset: 94.3,
+    wheelYOffset: 72.9,
     passenger: null,
     bounce: 0,
     bouncePhase: 0,
@@ -647,18 +647,18 @@ export const ARENA_3_MINECARTS = [
   {
     id: 'minecart_right',
     startX: 3750,
-    startY: 1270 - 84,
+    startY: 1270 - 88,
     x: 3750,
-    y: 1270 - 84,
-    w: 122,
-    h: 84,
+    y: 1270 - 88,
+    w: 124,
+    h: 88,
     vx: 0,
     vy: 0,
     wheelAngle: 0,
-    wheelR: 14.2,
-    wheel1XOffset: 33.6,
-    wheel2XOffset: 92.8,
-    wheelYOffset: 70.0,
+    wheelR: 15.1,
+    wheel1XOffset: 34.1,
+    wheel2XOffset: 94.3,
+    wheelYOffset: 72.9,
     passenger: null,
     bounce: 0,
     bouncePhase: 0,
