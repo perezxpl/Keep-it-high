@@ -769,7 +769,7 @@ export function updateArena3(dt, players, ball) {
         p.y = cartFloorY - charH;
         p.vy = 0;
 
-        // Poruszanie się razem z wagonikiem
+        // Poruszanie się razem z wagonikiem (pasażer nie popycha wagonika stojąc w nim)
         p.x += cart.vx * dt;
 
         // Ograniczenie ruchu do bezpiecznego wnętrza misy wagonika
@@ -777,13 +777,6 @@ export function updateArena3(dt, players, ball) {
         const maxInX = cart.x + cart.w - charW - 8;
         if (p.x < minInX) p.x = minInX;
         if (p.x > maxInX) p.x = maxInX;
-
-        // Sterowanie / napędzanie wagonika od środka
-        const moveLeft = p.keys?.left || p.keys?.KeyA || p.keys?.ArrowLeft || (p.leftStick && p.leftStick.axisX < -0.3);
-        const moveRight = p.keys?.right || p.keys?.KeyD || p.keys?.ArrowRight || (p.leftStick && p.leftStick.axisX > 0.3);
-
-        if (moveLeft) cart.vx -= 260 * dt;
-        if (moveRight) cart.vx += 260 * dt;
       } else {
         p.inMinecart = false;
         p._inCart = null;
@@ -812,10 +805,10 @@ export function updateArena3(dt, players, ball) {
         const pHeadY = p.y;
         const cartFloorY = cart.y + 48;
 
-        // (A) Wejście / wskoczenie do wnętrza pustego wagonika (od góry lub z poziomu torowiska)
+        // (A) Wskoczenie od góry do wnętrza pustego wagonika (musi wskoczyć od góry!)
         if (!cart.passenger &&
-            pCenterX >= cart.x + 10 && pCenterX <= cart.x + cart.w - 10 &&
-            pFootY >= cart.y - 10 && pFootY <= floorY + 8 &&
+            pCenterX >= cart.x + 6 && pCenterX <= cart.x + cart.w - 6 &&
+            pFootY >= cart.y && pFootY <= cartFloorY + 22 &&
             p.vy >= -2 && !p.isSliding) {
           cart.passenger = p;
           p.inMinecart = true;
@@ -849,26 +842,10 @@ export function updateArena3(dt, players, ball) {
             p._cartKicked = false;
           }
 
-          // 2. FIZYCZNA SOLIDNA BARIERA BOCZNA - WŚLIZG I BIEG (NIE PRZECHODZIĆ JAK DUCH!)
+          // 2. FIZYCZNA SOLIDNA BARIERA BOCZNA - WŚLIZG I BIEG (NIE PRZECHODZIĆ JAK DUCH, NIE WCHODZIĆ Z ZIEMI!)
           if (pFootY > cart.y + 12 && pHeadY < cart.y + cart.h + 5) {
-            const canStepIn = !cart.passenger && !p.isSliding && Math.abs(cart.vx) < 100;
-
             // Zderzenie od lewej strony (postać uderza w lewy bok wagonika)
             if (pRight >= cart.x && pLeft < cart.x + 18) {
-              if (canStepIn && p.vx > 0) {
-                // Postać wchodzi płynnie do wnętrza wagonika od lewej strony
-                cart.passenger = p;
-                p.inMinecart = true;
-                p._inCart = cart;
-                p.onGround = true;
-                p.isJumping = false;
-                p.currentGroundY = cartFloorY;
-                p.y = cartFloorY - charH;
-                p.vy = 0;
-                cart.bounce = 3;
-                continue;
-              }
-
               p.x = cart.x - charW; // Zatrzymanie na lewej burcie!
 
               if (p.isSliding) {
@@ -880,28 +857,11 @@ export function updateArena3(dt, players, ball) {
                 p.isSliding = false; // Zatrzymanie ślizgu
                 p.vx = 0;
               } else {
-                if (p.vx > 0) {
-                  cart.vx = Math.min(120, cart.vx + p.vx * 0.45);
-                  p.vx = Math.min(p.vx, cart.vx * 0.3);
-                }
+                if (p.vx > 0) p.vx = 0;
               }
             }
             // Zderzenie od prawej strony (postać uderza w prawy bok wagonika)
             else if (pLeft <= cart.x + cart.w && pRight > cart.x + cart.w - 18) {
-              if (canStepIn && p.vx < 0) {
-                // Postać wchodzi płynnie do wnętrza wagonika od prawej strony
-                cart.passenger = p;
-                p.inMinecart = true;
-                p._inCart = cart;
-                p.onGround = true;
-                p.isJumping = false;
-                p.currentGroundY = cartFloorY;
-                p.y = cartFloorY - charH;
-                p.vy = 0;
-                cart.bounce = 3;
-                continue;
-              }
-
               p.x = cart.x + cart.w; // Zatrzymanie na prawej burcie!
 
               if (p.isSliding) {
@@ -913,10 +873,7 @@ export function updateArena3(dt, players, ball) {
                 p.isSliding = false;
                 p.vx = 0;
               } else {
-                if (p.vx < 0) {
-                  cart.vx = Math.max(-120, cart.vx + p.vx * 0.45);
-                  p.vx = Math.max(p.vx, cart.vx * 0.3);
-                }
+                if (p.vx < 0) p.vx = 0;
               }
             }
 
