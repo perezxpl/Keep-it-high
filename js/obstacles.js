@@ -3947,7 +3947,9 @@ export function drawObstacles(ctx, groundY) {
 
   drawBarrelExplosionParticles(ctx);
 
-  drawNeonGoals(ctx, groundY, GOALS);
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY') {
+    drawNeonGoals(ctx, groundY, GOALS);
+  }
 
   if (activeArenaId === 'ARENA_1') {
     drawAltarSpotlightAndLevitation(ctx, groundY);

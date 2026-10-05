@@ -20,6 +20,7 @@ export const leftStick = {
 
   // Skok i obsługa jetpacka na lewym drążku
   jumpTriggered: false,
+  jetpackNeutralized: true,
   waitingForJetpackTap: false,
   jetpackWindowTimer: 0,
   isJetpacking: false,

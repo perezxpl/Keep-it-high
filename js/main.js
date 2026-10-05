@@ -187,7 +187,11 @@ canvas.addEventListener('touchstart', (e) => {
       }
 
       const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
-      if (isAirborne && leftStick.axisY < -0.25 && (player.jetFuel || 0) > 0) {
+      if (isAirborne) {
+        // Nowe dotknięcie ekranu w powietrzu oznacza, że drążek był wcześniej zwolniony (zneutralizowany)
+        leftStick.jetpackNeutralized = true;
+      }
+      if (isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.25 && (player.jetFuel || 0) > 0) {
         leftStick.isJetpacking = true;
         isJetpackActive = true;
         player.isJetpacking = true;
@@ -414,16 +418,21 @@ canvas.addEventListener('touchmove', (e) => {
       updateMobileControlStates(player, leftStick, btnCluster);
 
       // Uniesienie drążka w górę (skok na ziemi lub jetpack w powietrzu)
+      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+
+      // Jeśli drążek został odchylony z powrotem w stronę centrum (axisY > -0.20), uznaj go za zneutralizowany
+      if (leftStick.axisY > -0.20) {
+        leftStick.jetpackNeutralized = true;
+      }
+
       if (leftStick.axisY < -0.30) {
         player.crouchToggled = false;
         player.isCrouching = false;
         player.isProne = false;
 
-        const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
-
         if (isAirborne) {
-          // W POWIETRZU: bezpośrednie działanie jetpacka w powietrzu bez okna czasowego
-          if ((player.jetFuel || 0) > 0) {
+          // W POWIETRZU: jetpack działa tylko po uprzednim puszczeniu / odchyleniu drążka po skoku z ziemi
+          if (leftStick.jetpackNeutralized && (player.jetFuel || 0) > 0) {
             leftStick.isJetpacking = true;
             isJetpackActive = true;
             player.isJetpacking = true;
@@ -441,14 +450,16 @@ canvas.addEventListener('touchmove', (e) => {
             player.onGround = false;
             player.airVx = player.vx;
             leftStick.jumpTriggered = true;
+            leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
             if (spawnGrass && player.groundY) {
               spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
             }
           }
         }
-      } else if (leftStick.axisY > -0.15) {
-        // Powrót do centrum lub ruch w dół: odcięcie silników jetpacka
+      } else if (leftStick.axisY > -0.20) {
+        // Powrót do centrum lub ruch w dół: odcięcie silników jetpacka i gotowość do odpalenia w locie
         leftStick.jumpTriggered = false;
+        leftStick.jetpackNeutralized = true;
         leftStick.isJetpacking = false;
         isJetpackActive = false;
         player.isJetpacking = false;
@@ -513,6 +524,8 @@ function endTouch(e) {
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.active = false;
       leftStick.id = null;
+      leftStick.jumpTriggered = false;
+      leftStick.jetpackNeutralized = true;
 
       isJetpackActive = false;
       leftStick.isJetpacking = false;
@@ -1973,8 +1986,8 @@ window.addEventListener('keydown', (e) => {
 
     const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
 
-    if (isAirborne && (player.jetFuel || 0) > 0) {
-      // W POWIETRZU: bezpośrednie uruchomienie jetpacka bez wymogu podwójnego kliknięcia czy okna czasowego
+    if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {
+      // W POWIETRZU: uruchomienie jetpacka (tylko jeśli klawisz W został puszczony po wyskoku z ziemi)
       isJetpackActive = true;
       player.isJetpacking = true;
       jetpackAirborneSession = true;
@@ -1985,6 +1998,7 @@ window.addEventListener('keydown', (e) => {
       player.isJumping = true;
       player.onGround = false;
       player.airVx = player.vx;
+      player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       if (spawnGrass && player.groundY) {
         spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
       }
@@ -2110,6 +2124,7 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'KeyW' || e.code === 'ArrowUp') {
     jumpKeyPressed = false;
     keys.up = false;
+    player.jetpackKeyNeutralized = true;
     isJetpackActive = false;
     player.isJetpacking = false;
   }
@@ -2444,11 +2459,22 @@ function update() {
     }
   }
 
-  // SILNIK JETPACKA (Działa w powietrzu, bez ograniczenia oknem czasowym)
+  // SILNIK JETPACKA (Działa w powietrzu po uprzednim puszczeniu / odchyleniu drążka po skoku z ziemi)
   const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
-  const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.25);
+
+  if (player.onGround && !player.isJumping) {
+    leftStick.jumpTriggered = false;
+    leftStick.jetpackNeutralized = true;
+    player.jetpackKeyNeutralized = true;
+  } else if (isAirborne) {
+    if (!leftStick.active || leftStick.axisY > -0.20) {
+      leftStick.jetpackNeutralized = true;
+    }
+  }
+
+  const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.25 && leftStick.jetpackNeutralized);
   const isTouchFlight = !!(isStickRaised && isAirborne);
-  const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne);
+  const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
   const isFlightActive = (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
   if (isFlightActive) {
     player.isJetpacking = true;

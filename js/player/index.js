@@ -298,6 +298,7 @@ export function createPlayerInstance(overrides = {}) {
     staggerLanded: false,
     staggerRecoveryTimer: 0,
     isJumping: false,
+    jetpackKeyNeutralized: true,
     isSliding: false,
     slideTimer: 0,
     slideCooldown: 0,
@@ -615,6 +616,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.vy = -jumpForce;
       player.isJumping = true;
       player.onGround = false;
+      player.jetpackKeyNeutralized = false;
       player.isCrouching = false;
       player.isProne = false;
       player.crouchToggled = false;
@@ -1183,6 +1185,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.vy = 0;
         player.isJumping = false;
         player.onGround = true;
+        player.jetpackKeyNeutralized = true;
         player.airVx = 0;
         player.currentGroundY = GROUND_Y;
 
