@@ -470,6 +470,7 @@ export const ARENA_FOUNDRY_GOALS = ARENA_3_CUSTOM_OBJECTS.filter(o => o.team);
 
 const _initArena = getActiveArena();
 export let activeArenaId = (_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
+setActiveArenaId(activeArenaId);
 export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
 export const GOALS = [...((_initArena && _initArena.id === 'arena-3') ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
@@ -481,6 +482,15 @@ export let goalCelebrationTimer = 0;
 
 // Subskrypcja zmian areny dla natychmiastowej synchronizacji platform i obiektów
 onArenaChange((newArena) => {
+  if (newArena && (newArena.id === 'arena-3' || newArena.id === 'ARENA_3')) {
+    activeArenaId = 'ARENA_3';
+  } else if (newArena && (newArena.id === 'arena-2' || newArena.id === 'ARENA_2')) {
+    activeArenaId = 'ARENA_2';
+  } else {
+    activeArenaId = 'ARENA_1';
+  }
+  setActiveArenaId(activeArenaId);
+
   ARENA_PLATFORMS.length = 0;
   if (newArena && Array.isArray(newArena.platforms)) {
     ARENA_PLATFORMS.push(...newArena.platforms);
@@ -1504,12 +1514,21 @@ export function checkPlayerPlatformLanding(p, groundY) {
   } else {
     p.currentPlatform = null;
     p.slopeAngle = 0;
-    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+    const hasNoFloor = isA3 || isA2;
+
     if (p.inMinecart || p._inCart) {
       // Pasażer w wagoniku kopalnianym stoi stabilnie na podłodze wózka
       p.onGround = true;
       p.isJumping = false;
       p.vy = 0;
+      if (p._inCart) {
+        const cartFloor = p._inCart.y + 48;
+        p.currentGroundY = cartFloor;
+        p.y = cartFloor - colH;
+      }
     } else if (hasNoFloor) {
       // W Arenie 3 oraz Arenie 2 (Pandora) brak płaskiej podłogi – mapa składa się wyłącznie z zawieszonych w powietrzu wysp i otchłani
       p.onGround = false;
@@ -1543,7 +1562,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Zabezpieczenie sufitu w Arenie 3 (The Foundry)
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA3Active = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  if (isA3Active) {
     // 1. Strop dolnego tunelu (Y = 970) blokujący wylot w górę w litą płytę
     if (p.y >= 960 && p.y <= 1220) {
       // Przepuść gracza przez luki zrzutowe (hatch_left 780..920 i hatch_right 3480..3620)
@@ -1567,10 +1588,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu
-  const isA3Death = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const deathLimitY = isA3Death ? 1390 : (groundY + 160);
-  if (p.y > deathLimitY && !p.isDead) {
+  // Wpadnięcie do strefy śmierci poniżej spągu (zabezpieczenie pasażera wagonika przed fałszywym zgonem)
+  const deathLimitY = isA3Active ? 1390 : (groundY + 160);
+  if (!p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
     p.respawnTimer = 75;

@@ -409,8 +409,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   if (targets) player._targets = targets;
 
-  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
   const noFlatGround = isA3 || isA2;
   player.groundY = isA3 ? 900 : (isA2 ? 1400 : GROUND_Y);
   if (!noFlatGround && !player.currentGroundY) player.currentGroundY = GROUND_Y;
@@ -1137,7 +1138,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   const colH = (player.staggerTimer > 0) ? 15 : (player.h || 70);
 
-  if (player.staggerTimer > 0 && player.staggerLanded && player.onGround) {
+  if (player.inMinecart || player._inCart) {
+    // Postać w wagoniku stoi stabilnie na podłodze wózka i porusza się razem z nim
+    player.onGround = true;
+    player.isJumping = false;
+    player.vy = 0;
+    if (player._inCart) {
+      const cartFloor = player._inCart.y + 48;
+      player.currentGroundY = cartFloor;
+      player.y = cartFloor - colH;
+    }
+  } else if (player.staggerTimer > 0 && player.staggerLanded && player.onGround) {
     // Przez resztę czasu ogłuszenia (do końca 2 sekund) postać leży nieruchomo płasko na powierzchni gruntu
     player.vy = 0;
     player.isJumping = false;
@@ -1147,8 +1158,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.vy += CONFIG.GRAVITY;
     player.y += player.vy;
 
-    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
     if (!isA3 && !isA2) {
       const groundFloorLimit = GROUND_Y - colH;
       const isSupported = (typeof isGroundAt === 'function')
@@ -1214,10 +1226,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
       }
     } else {
-      // Wpadnięcie do strefy śmierci w dolnym kanale technicznym
+      // Wpadnięcie do strefy śmierci w dolnym kanale technicznym (zabezpieczenie pasażera wagonika)
       const isA3Death = isA3;
       const deathLimitY = isA3Death ? 1390 : (GROUND_Y + 160);
-      if (player.y > deathLimitY && !player.isDead) {
+      if (!player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead) {
         player.hp = 0;
         player.isDead = true;
         player.respawnTimer = 75;
