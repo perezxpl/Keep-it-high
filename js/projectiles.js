@@ -254,7 +254,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   // Przechwycenie wybuchu przez elementy aktywnej areny (np. odrzut wagoników kopalnianych)
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.onExplosion === 'function') {
-    activeArena.onExplosion(expX, expY, radius);
+    activeArena.onExplosion(expX, expY, radius, { platforms: platforms || ARENA_PLATFORMS });
   }
 
   // 1. Obrażenia i odrzut graczy / botów
