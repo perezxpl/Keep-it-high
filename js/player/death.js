@@ -7,6 +7,7 @@ import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
 import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
+import { WEAPONS } from '../weapons.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -301,6 +302,9 @@ export function handlePlayerDeath(player, groundY) {
     player.isReloading = false;
     player.reloadTimer = 0;
     player.emptyAmmoAlert = 0;
+    if (!player.currentWeapon) {
+      player.currentWeapon = WEAPONS.AK47;
+    }
 
     player.hasHead = true;
     player.decapitated = false;

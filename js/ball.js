@@ -29,18 +29,15 @@ export function resetBallToPlayer(p, GROUND_Y) {
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
   if (isA3) {
-    p.x = 600;
-    p.y = 1138;
+    p.x = 1050;
+    p.y = 1130;
     p.facing = 1;
     if (typeof window !== 'undefined' && window.location) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
       if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
     }
-    ball.x = 2200;
-    ball.y = 700;
-    ball.hoverBaseY = 700;
-    ball.isLevitating = true;
+    ball.active = false;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
   } else if (isA2) {

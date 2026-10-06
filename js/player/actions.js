@@ -960,8 +960,8 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null) {
   // Wystrzelenie pocisku granatu niszczącego teren
   const grenade = spawnAeroSuperGrenade(p, aimX, aimY);
 
-  // Natychmiastowe nałożenie 10-sekundowego cooldownu
-  p.grenadeMaxCooldown = p.grenadeMaxCooldown || 10.0;
+  // Natychmiastowe nałożenie szybkiego cooldownu (3.5 sekundy dla dynamicznej rozgrywki)
+  p.grenadeMaxCooldown = p.grenadeMaxCooldown || 3.5;
   p.grenadeCooldown = p.grenadeMaxCooldown;
 
   // Wizualny odrzut i wstrząs kamery przy rzucie

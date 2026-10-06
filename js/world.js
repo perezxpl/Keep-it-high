@@ -3755,9 +3755,9 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const aState = arenaInfo || _worldArenaState;
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
-  const isDeathmatch = false;
+  const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isJungleArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA');
-  const isMatchArena = (curArenaId === 'ARENA_1' || curArenaId === 'ARENA_3' || curArenaId === 'ARENA_FOUNDRY');
+  const isMatchArena = (curArenaId === 'ARENA_1');
 
   if (isJungleArena) {
     const bannerW = isMobile ? 220 : 290;
