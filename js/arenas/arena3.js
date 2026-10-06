@@ -387,11 +387,11 @@ export const ARENA_3_PLATFORMS = [
   },
   {
     id: 'bridge_skywalk_upper_left',
-    name: 'Wiszący Pomost Górny Nad Mostem Lewy',
+    name: 'Wiszący Pomost Górny Lewy (Flanka)',
     type: 'platform',
-    x: 1680,
+    x: 1400,
     y: 430,
-    w: 280,
+    w: 300,
     h: 20,
     thickness: 20,
     solid: true,
@@ -400,11 +400,11 @@ export const ARENA_3_PLATFORMS = [
   },
   {
     id: 'bridge_skywalk_upper_right',
-    name: 'Wiszący Pomost Górny Nad Mostem Prawy',
+    name: 'Wiszący Pomost Górny Prawy (Flanka)',
     type: 'platform',
-    x: 2440,
+    x: 2700,
     y: 430,
-    w: 280,
+    w: 300,
     h: 20,
     thickness: 20,
     solid: true,
@@ -1966,9 +1966,9 @@ export function drawArena3Foreground(ctx, camera) {
   drawHighCanopyPlatform(1880, 620, 260, 20);
   drawHighCanopyPlatform(2260, 620, 260, 20);
 
-  // Dodatkowe wyższe pomosty taktyczne w koronach drzew (Y: 430)
-  drawHighCanopyPlatform(1680, 430, 280, 20);
-  drawHighCanopyPlatform(2440, 430, 280, 20);
+  // Dodatkowe wyższe pomosty taktyczne w koronach drzew (Y: 430, rozstawione szerzej na flankach)
+  drawHighCanopyPlatform(1400, 430, 300, 20);
+  drawHighCanopyPlatform(2700, 430, 300, 20);
 
   // C. KABLE KOTWICZĄCE ODCIĄGOWE (Od szczytów pylonów do litej skały brzegów)
   ctx.save();
