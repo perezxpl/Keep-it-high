@@ -601,11 +601,11 @@ export const ARENA_3_CUSTOM_OBJECTS = [];
 // =========================================================================
 export const ARENA_3_SPAWNS = {
   teamA: [
-    { x: 600, y: 1130 },  // Na gruncie Y: 1200
+    { x: 1050, y: 1130 }, // Na płaskim gruncie tuż przed wejściem na rampę mostu (X: 1050, Y: 1130)
     { x: 800, y: 730 }    // Na platformie snajperskiej Y: 800
   ],
   teamB: [
-    { x: 3800, y: 1130 }, // Na gruncie Y: 1200
+    { x: 3350, y: 1130 }, // Na płaskim gruncie tuż przed wejściem na prawe podejście (X: 3350, Y: 1130)
     { x: 3600, y: 730 }   // Na platformie snajperskiej Y: 800
   ]
 };
@@ -2179,6 +2179,7 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.quadraticCurveTo(b.x + b.w / 2 + vSway * 0.5, b.y + b.h + vLen * 0.5, b.x + b.w / 2 + vSway, b.y + b.h + vLen);
         ctx.stroke();
       }
+      ctx.restore();
     } else {
       // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Falling / Floating Rubble)
       const cx = b.x + b.w / 2;
@@ -2279,7 +2280,7 @@ export function onArena3BulletHit(bullet) {
     if (!b.intact) continue;
 
     if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= (bullet.damage || 14);
+      b.hp -= (bullet.damage || 14) * 2.5;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (b.hp <= 0) {
@@ -2356,10 +2357,10 @@ const arena3 = {
     waterDrag: 0.6
   },
   spawns: [
-    // Team A (Cyan): grunt lewy Y: 1200 (wysokość gracza 70px -> y: 1130)
-    { x: 600, y: 1130 },
-    // Team B (Orange): grunt prawy Y: 1200 (wysokość gracza 70px -> y: 1130)
-    { x: 3800, y: 1130 }
+    // Team A (Cyan): na płaskim gruncie tuż przed rampą mostu (X: 1050, Y: 1130)
+    { x: 1050, y: 1130 },
+    // Team B (Orange): na płaskim gruncie tuż przed prawym podejściem (X: 3350, Y: 1130)
+    { x: 3350, y: 1130 }
   ],
   detailedSpawns: ARENA_3_SPAWNS,
   platforms: ARENA_3_PLATFORMS,
@@ -2389,5 +2390,9 @@ const arena3 = {
     return onArena3Explosion(expX, expY, radius, context);
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
+}
 
 export default arena3;

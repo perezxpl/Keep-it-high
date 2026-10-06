@@ -108,6 +108,7 @@ switchArena(initialArenaId, player, bot, ball);
 if (typeof syncDevArenaButtonUI === 'function') {
   syncDevArenaButtonUI();
 }
+syncDevBotButtonUI();
 camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
 camera.x = camera.targetX;
 camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
@@ -956,7 +957,7 @@ export function drawClassSelectModal(ctx) {
   // Podtytuł z instrukcją
   ctx.font = '600 12px "Segoe UI", monospace';
   ctx.fillStyle = '#94a3b8';
-  ctx.fillText('KLIKNIJ KAFELEK MYSZKĄ LUB WCIŚNIJ KLAWISZ CYFRY [1] - [4] NA KLAWIATURZE', W / 2, modalY + 82);
+  ctx.fillText('WYBIERZ KAFELEK [1-4] LUB KLIKNIJ DOWOLNE MIEJSCE / SPACJĘ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
 
   // Linia podziału
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
@@ -1334,6 +1335,24 @@ if (devBotToggleBtn) {
   };
   devBotToggleBtn.addEventListener('click', toggleBot);
   devBotToggleBtn.addEventListener('touchend', toggleBot);
+}
+
+export function syncDevBotButtonUI() {
+  const btn = document.getElementById('dev-bot-toggle-btn');
+  if (!btn) return;
+  if (bot.active) {
+    btn.textContent = '🤖 BOT: ON';
+    btn.style.background = 'rgba(168, 85, 247, 0.35)';
+    btn.style.borderColor = '#c084fc';
+    btn.style.color = '#ffffff';
+    btn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
+  } else {
+    btn.textContent = '🤖 BOT: OFF';
+    btn.style.background = '';
+    btn.style.borderColor = '#a855f7';
+    btn.style.color = '#c084fc';
+    btn.style.boxShadow = '';
+  }
 }
 
 // Dynamiczne utworzenie przycisku zamrażania bota w panelu deweloperskim
@@ -1930,6 +1949,10 @@ window.addEventListener('keydown', (e) => {
       e.preventDefault();
       selectPlayerClass(CLASSES.SWEEPER);
       return;
+    } else if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD') {
+      e.preventDefault();
+      selectPlayerClass(CLASSES.PLAYMAKER);
+      return;
     }
     // Podczas wyboru klasy blokujemy wszystkie pozostałe akcje gry
     return;
@@ -2219,10 +2242,9 @@ canvas.addEventListener('touchstart', (e) => {
   if (gameState === GAME_STATES.CLASS_SELECT && e.touches && e.touches[0]) {
     const touch = e.touches[0];
     const card = getHoveredClassCard(touch.clientX, touch.clientY);
-    if (card) {
-      e.preventDefault();
-      selectPlayerClass(card.classObj);
-    }
+    e.preventDefault();
+    selectPlayerClass(card ? card.classObj : CLASSES.PLAYMAKER);
+    return;
   }
 }, { passive: false });
 
@@ -2233,9 +2255,7 @@ canvas.addEventListener('mousedown', (e) => {
   if (gameState === GAME_STATES.CLASS_SELECT) {
     if (e.button === 0) {
       const card = getHoveredClassCard(e.clientX, e.clientY);
-      if (card) {
-        selectPlayerClass(card.classObj);
-      }
+      selectPlayerClass(card ? card.classObj : CLASSES.PLAYMAKER);
     }
     return;
   }

@@ -642,7 +642,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3800;
+      targetBot.active = true;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3350;
       targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 1130;
       targetBot.vx = 0;
       targetBot.vy = 0;
