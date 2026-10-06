@@ -1593,22 +1593,41 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do śmiertelnej rzeki w Arenie 3 (utonięcie)
-  if (isA3Active && (p.x + (p.w || 24) * 0.5 >= 1560 && p.x + (p.w || 24) * 0.5 <= 2840) && (p.y + (p.h || 70) >= 1300) && !p.isDead) {
-    p.hp = 0;
-    p.isDead = true;
-    p.respawnTimer = 85;
-    p.vx = 0;
-    p.vy = 2.0; // tonie w głąb rzeki
-    p.onGround = false;
-    p.currentPlatform = null;
-    if (typeof triggerScreenShake === 'function') {
-      triggerScreenShake(8);
+  // Wpadnięcie do śmiertelnej rzeki w Arenie 3 (utonięcie po wejściu głębiej do wody)
+  if (isA3Active && !p.isDead) {
+    const pw = p.w || 24;
+    const ph = p.h || 70;
+    const pCenterX = p.x + pw * 0.5;
+    const pFeetY = p.y + ph;
+    const pCenterY = p.y + ph * 0.5;
+    const inWaterX = (pCenterX >= 1560 && pCenterX <= 2840);
+    const inWaterY = (pFeetY >= 1300);
+
+    if (inWaterX && inWaterY) {
+      const inOpenChannel = (pCenterX > 1750 && pCenterX < 2650);
+      const isDeepWater = (pFeetY >= 1350) || (pCenterY >= 1325) || (inOpenChannel && pFeetY >= 1335);
+
+      if (isDeepWater) {
+        p.hp = 0;
+        p.isDead = true;
+        p.respawnTimer = 85;
+        p.vx = 0;
+        p.vy = 2.0; // tonie w głąb rzeki
+        p.onGround = false;
+        p.currentPlatform = null;
+        if (typeof triggerScreenShake === 'function') {
+          triggerScreenShake(6);
+        }
+      } else {
+        // Płytka woda na brzegu - opór ruchu
+        p.vx *= 0.82;
+        if (p.vy > 0) p.vy *= 0.92;
+      }
     }
   }
 
   // Wpadnięcie do strefy śmierci poniżej spągu
-  const deathLimitY = isA3Active ? 1340 : (groundY + 160);
+  const deathLimitY = isA3Active ? 1420 : (groundY + 160);
   if (!p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
