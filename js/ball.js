@@ -56,7 +56,7 @@ export function resetBallToPlayer(p, GROUND_Y) {
     // Arena 1: Centrum mapy (Cokół środkowy)
     const spawnY = (arena1State?.altarY || 760) - ball.radius - 2; // 750
     p.x = 240;
-    p.y = 790;
+    p.y = 580;
     p.facing = 1;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
@@ -168,7 +168,7 @@ export function checkGoalTrigger(ballObj, groundY) {
     const isCyanGoal = (g.team === 'CYAN');
     const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
     const topY = (g.y !== undefined) ? g.y : (Math.min(groundY - (g.relY || 0), groundY - (g.relY || 0) - (g.h || 140)));
-    const bottomY = (g.y !== undefined) ? (g.y + (g.h || 140)) : (Math.max(groundY - (g.relY || 0), groundY - (g.relY || 0) + (g.h || 140)));
+    const bottomY = (g.bottomY !== undefined) ? g.bottomY : ((g.y !== undefined) ? (g.y + (g.h || 140)) : (Math.max(groundY - (g.relY || 0), groundY - (g.relY || 0) + (g.h || 140))));
     const leftX = g.x;
     const rightX = g.x + (g.w || 220);
 

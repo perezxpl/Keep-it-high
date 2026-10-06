@@ -3876,7 +3876,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
       ctx.shadowColor = '#00e5ff';
       ctx.shadowBlur = 0;
-      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1760) ⚡', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
+      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1800) ⚡', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
     }
 
     ctx.restore();

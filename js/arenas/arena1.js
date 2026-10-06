@@ -3,10 +3,14 @@
 // Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
 // =========================================================================
 
-import { START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { START_X, ARENA_WIDTH, MAP_WIDTH, MAP_HEIGHT, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 
 const _mapW = MAP_WIDTH || ARENA_WIDTH || 3600;
+const _mapH = MAP_HEIGHT || 1300;
 export const centerX = _mapW / 2; // 1800
+export const goalPlatformY = _mapH * 0.5; // 650 (dokładnie w połowie obszaru gry)
+export const goalH = 140;
+export const goalTopY = goalPlatformY - goalH; // 510
 
 // =========================================================================
 // DEFINICJE BRAMEK (CYAN & ORANGE NEON GOALS)
@@ -15,9 +19,10 @@ export const goalTriggerLeft = {
   id: 'goal_arena1_west',
   team: 'CYAN',
   x: 0,
-  y: 720,
+  y: goalTopY, // 510
   w: 220,
-  h: 140,
+  h: goalH, // 140
+  bottomY: goalPlatformY, // 650 (spód bramki spoczywa bezpośrednio na platformie)
   lineX: 220,
   facing: 1,
   color: '#00F0FF',
@@ -28,9 +33,10 @@ export const goalTriggerRight = {
   id: 'goal_arena1_east',
   team: 'ORANGE',
   x: _mapW - 220, // 3380
-  y: 720,
+  y: goalTopY, // 510
   w: 220,
-  h: 140,
+  h: goalH, // 140
+  bottomY: goalPlatformY, // 650 (spód bramki spoczywa bezpośrednio na platformie)
   lineX: _mapW - 220,
   facing: -1,
   color: '#FF8800',
@@ -43,6 +49,32 @@ export const ARENA_1_GOALS = [goalTriggerLeft, goalTriggerRight];
 // STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE
 // =========================================================================
 export const ARENA_1_PLATFORMS = [
+  // 1. Lewa platforma bramkowa: x: 0 do 300, y: MAP_HEIGHT * 0.5, wysokość: 30 px
+  {
+    id: 'goal_platform_west',
+    type: 'catwalk',
+    isGoalPlatform: true,
+    theme: 'cyan',
+    x: 0,
+    w: 300,
+    y: goalPlatformY, // 650
+    h: 30,
+    relY: 350,
+    thickness: 30
+  },
+  // Poprzeczka lewej bramki (odbijająca piłkę)
+  {
+    id: 'crossbar_goal_west',
+    type: 'catwalk',
+    isCrossbar: true,
+    x: 0,
+    w: 220,
+    y: goalTopY, // 510
+    h: 14,
+    relY: 490,
+    thickness: 14
+  },
+  // Dolny bastion zachodni
   {
     id: 'west_bastion_fortress',
     type: 'rock_platform',
@@ -56,16 +88,7 @@ export const ARENA_1_PLATFORMS = [
     thickness: 22,
     props: []
   },
-  {
-    id: 'catwalk_goal_west',
-    type: 'catwalk',
-    x: 0,
-    w: 220,
-    y: 720,
-    h: 16,
-    relY: 280,
-    thickness: 16
-  },
+  // Platforma centralna z ołtarzem i cokołem (x: 1640, w: 320, y: 760)
   {
     id: 'central_altar_platform',
     type: 'altar_island',
@@ -80,16 +103,7 @@ export const ARENA_1_PLATFORMS = [
       { type: 'altar_pedestal', rx: 90, w: 140, h: 20 }
     ]
   },
-  {
-    id: 'catwalk_goal_east',
-    type: 'catwalk',
-    x: _mapW - 220, // 3380
-    w: 220,
-    y: 720,
-    h: 16,
-    relY: 280,
-    thickness: 16
-  },
+  // Dolny bastion wschodni
   {
     id: 'east_bastion_fortress',
     type: 'rock_platform',
@@ -102,6 +116,31 @@ export const ARENA_1_PLATFORMS = [
     relY: 140,
     thickness: 22,
     props: []
+  },
+  // 2. Prawa platforma bramkowa: x: 3300 do 3600, y: MAP_HEIGHT * 0.5, wysokość: 30 px
+  {
+    id: 'goal_platform_east',
+    type: 'catwalk',
+    isGoalPlatform: true,
+    theme: 'orange',
+    x: _mapW - 300, // 3300
+    w: 300,
+    y: goalPlatformY, // 650
+    h: 30,
+    relY: 350,
+    thickness: 30
+  },
+  // Poprzeczka prawej bramki (odbijająca piłkę)
+  {
+    id: 'crossbar_goal_east',
+    type: 'catwalk',
+    isCrossbar: true,
+    x: _mapW - 220, // 3380
+    w: 220,
+    y: goalTopY, // 510
+    h: 14,
+    relY: 490,
+    thickness: 14
   }
 ];
 
@@ -377,8 +416,8 @@ const arena1 = {
   id: 'arena-1',
   name: 'Soldat Night Ops',
   spawns: [
-    { x: 240, y: 790 }, // Spawn gracza (Cyan)
-    { x: _mapW - 240, y: 790 }, // Spawn bota (Orange)
+    { x: 240, y: 580 }, // Spawn gracza (Cyan) na platformie bramkowej (650 - 70)
+    { x: _mapW - 240, y: 580 }, // Spawn bota (Orange) na platformie bramkowej (650 - 70)
     { x: centerX, y: 750 } // Punkt rozpoczęcia piłki (1800, 750)
   ],
   platforms: ARENA_1_PLATFORMS,

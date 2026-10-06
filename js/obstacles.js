@@ -569,6 +569,26 @@ export function resetArena() {
   if (typeof resetGroundSegments === 'function') {
     resetGroundSegments();
   }
+
+  if (activeArenaId === 'ARENA_1') {
+    if (_activePlayer) {
+      _activePlayer.x = 240;
+      _activePlayer.y = 580;
+      _activePlayer.vx = 0;
+      _activePlayer.vy = 0;
+      _activePlayer.facing = 1;
+      _activePlayer.isIntro = false;
+      _activePlayer.gaitMode = 'IDLE';
+    }
+    if (_activeBot) {
+      _activeBot.x = 3360;
+      _activeBot.y = 580;
+      _activeBot.vx = 0;
+      _activeBot.vy = 0;
+      _activeBot.facing = -1;
+      _activeBot.gaitMode = 'IDLE';
+    }
+  }
 }
 
 if (typeof world !== 'undefined' && world) {
@@ -718,7 +738,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     if (playerObj) {
       playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 240;
-      playerObj.y = 790;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 580;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -730,7 +750,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3360;
-      targetBot.y = 790;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 580;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -1709,6 +1729,52 @@ export function resolveBallObstacleCollisions(ball, groundY) {
       continue;
     }
 
+    if (plat.isCrossbar) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || plat.thickness || 14);
+      const platLeft = plat.x;
+      const platRight = plat.x + plat.w;
+
+      // Odbicie od górnej lub dolnej krawędzi poprzeczki
+      if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {
+        if (ball.vy > 0 && ball.y + cR >= topY && (ball.y - ball.vy) + cR <= topY + 12) {
+          ball.y = topY - cR;
+          ball.vy = -Math.abs(ball.vy) * 0.72;
+          ball.vx *= 0.96;
+          ball.spin *= 0.90;
+          if (speed > 6.0) triggerScreenShake(2.5);
+        } else if (ball.vy < 0 && ball.y - cR <= bottomY && (ball.y - ball.vy) - cR >= bottomY - 12) {
+          ball.y = bottomY + cR;
+          ball.vy = Math.abs(ball.vy) * 0.72;
+          ball.vx *= 0.96;
+          ball.spin *= 0.90;
+          if (speed > 6.0) triggerScreenShake(2.5);
+        }
+      }
+
+      // Odbicie od przedniego narożnika wlotu poprzeczki (słupek narożny)
+      const postCornerX = (plat.x === 0) ? platRight : platLeft;
+      const postCornerY = topY;
+      const cdx = ball.x - postCornerX;
+      const cdy = ball.y - postCornerY;
+      const cdist = Math.hypot(cdx, cdy);
+      if (cdist < cR && cdist > 0.001) {
+        const cnx = cdx / cdist;
+        const cny = cdy / cdist;
+        ball.x = postCornerX + cnx * (cR + 1);
+        ball.y = postCornerY + cny * (cR + 1);
+        const vDotN = ball.vx * cnx + ball.vy * cny;
+        if (vDotN < 0) {
+          const restitution = 0.78;
+          ball.vx -= (1 + restitution) * vDotN * cnx;
+          ball.vy -= (1 + restitution) * vDotN * cny;
+          ball.spin = (ball.vx > 0 ? 1 : -1) * 0.75;
+          triggerScreenShake(3.5);
+        }
+      }
+      continue;
+    }
+
     if (plat.type === 'catwalk') {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const platLeft = plat.x;
@@ -2048,7 +2114,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
       arena1State.waitingForKickoff = true;
       if (p) {
         p.x = 240;
-        p.y = 790;
+        p.y = 580;
         p.vx = 0;
         p.vy = 0;
         p.facing = 1;
@@ -2071,7 +2137,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
       p.isIntro = false;
       p.gaitMode = 'IDLE';
       p.x = 240;
-      p.y = 790;
+      p.y = 580;
       p.facing = 1;
       arena1State.waitingForKickoff = true;
       arena1State.kickoffCooldown = 0;
@@ -2127,7 +2193,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
     if (!arena1State.waitingForKickoff && ball && (!ball.goalAnimation || !ball.goalAnimation.active)) {
       for (const g of GOALS) {
         const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0) - (g.h || 140));
-        const bottomY = (g.y !== undefined) ? (g.y + (g.h || 140)) : (groundY - (g.relY || 0));
+        const bottomY = (g.bottomY !== undefined) ? g.bottomY : ((g.y !== undefined) ? (g.y + (g.h || 140)) : (groundY - (g.relY || 0)));
         const leftX = g.x;
         const rightX = g.x + (g.w || 220);
 
@@ -3798,7 +3864,7 @@ export function drawNeonGoals(ctx, groundY, goals) {
     if (!g || !g.team) continue;
     const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0));
     const h = g.h || 140;
-    const bottomY = (g.y !== undefined) ? (g.y + h) : (groundY - (g.relY || 0) + h);
+    const bottomY = (g.bottomY !== undefined) ? g.bottomY : ((g.y !== undefined) ? (g.y + h) : (groundY - (g.relY || 0) + h));
     const leftX = g.x;
     const rightX = g.x + (g.w || 220);
     const w = rightX - leftX;
@@ -4033,7 +4099,7 @@ export function drawObstacles(ctx, groundY) {
   }
 
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
+    if (!plat || plat.isCrossbar || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
     const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     if (isA3) {
