@@ -335,6 +335,36 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
+  // POMOSTY PODEJŚCIOWE DO MOSTU (Łączące brzeg rzeki Y: 1280 z mostem Y: 1000)
+  // -----------------------------------------------------------------------
+  {
+    id: 'bridge_approach_left',
+    name: 'Podejście do Mostu Lewe',
+    type: 'catwalk',
+    x: 1620,
+    y: 1140,
+    w: 180,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_approach_right',
+    name: 'Podejście do Mostu Prawe',
+    type: 'catwalk',
+    x: 2600,
+    y: 1140,
+    w: 180,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+
+  // -----------------------------------------------------------------------
   // C. BRAMKI W KSZTAŁCIE "Y" (Kielichy)
   //
   // Bramka Lewa (Team A / CYAN na X: 200):
@@ -759,37 +789,53 @@ export function drawArena3Foreground(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 3. DREWNIANE WIEŻE NOŚNE BRAMEK (X: 200 oraz X: 4200)
+  // Fortyfikacje w stylu militarnej dżungli ze starożytnymi okuciami
   // -----------------------------------------------------------------------
   function drawTowerStructure(isLeft) {
     const tx = isLeft ? 185 : 4185;
     const tw = 30;
     const ty = 600;
     const th = 600;
-    if (tx + tw + 100 < camL || tx - 100 > camR) return;
+    if (tx + tw + 140 < camL || tx - 140 > camR) return;
 
     ctx.save();
-    // A. Główny pionowy drewniany słup (filar)
+    // A. Kamienna podstawa / cokół na gruncie
+    const stoneGrad = ctx.createLinearGradient(tx - 15, ty + th - 60, tx + tw + 15, ty + th);
+    stoneGrad.addColorStop(0, '#3f4738');
+    stoneGrad.addColorStop(0.5, '#2b3325');
+    stoneGrad.addColorStop(1, '#1b2117');
+    ctx.fillStyle = stoneGrad;
+    ctx.fillRect(tx - 12, ty + th - 60, tw + 24, 60);
+    ctx.strokeStyle = '#12170f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(tx - 12, ty + th - 60, tw + 24, 60);
+
+    // Mech na cokole
+    ctx.fillStyle = '#4d8028';
+    ctx.fillRect(tx - 12, ty + th - 60, tw + 24, 6);
+
+    // B. Główny pionowy drewniany słup (filar z bali tekowych)
     const woodGrad = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
-    woodGrad.addColorStop(0, '#5a3a1a');
-    woodGrad.addColorStop(0.5, '#432910');
-    woodGrad.addColorStop(1, '#2c1808');
+    woodGrad.addColorStop(0, '#533418');
+    woodGrad.addColorStop(0.5, '#3c230e');
+    woodGrad.addColorStop(1, '#251406');
     ctx.fillStyle = woodGrad;
     ctx.fillRect(tx, ty, tw, th);
 
-    // B. Faktura słojów drewna
-    ctx.strokeStyle = 'rgba(20, 10, 4, 0.55)';
+    // C. Słoje drewna i nacięcia
+    ctx.strokeStyle = 'rgba(16, 8, 3, 0.65)';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(tx + 8, ty);
     ctx.lineTo(tx + 8, ty + th);
-    ctx.moveTo(tx + 20, ty);
-    ctx.lineTo(tx + 20, ty + th);
+    ctx.moveTo(tx + 21, ty);
+    ctx.lineTo(tx + 21, ty + th);
     ctx.stroke();
 
-    // C. Drewniane zastrzały / krzyżulce wzmacniające wieżę
-    ctx.strokeStyle = '#432910';
+    // D. Drewniane zastrzały / krzyżulce wzmacniające wieżę
+    ctx.strokeStyle = '#3e240e';
     ctx.lineWidth = 8;
-    for (let sy = ty + 40; sy < ty + th - 20; sy += 90) {
+    for (let sy = ty + 40; sy < ty + th - 60; sy += 90) {
       ctx.beginPath();
       const spreadX = isLeft ? (tx - 50) : (tx + 50 + tw);
       ctx.moveTo(tx + tw / 2, sy);
@@ -797,39 +843,89 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.stroke();
     }
 
-    // D. Metalowe okucia / klamry żelazne
-    ctx.fillStyle = '#64748b';
-    for (let by = ty + 50; by < ty + th; by += 100) {
-      ctx.fillRect(tx - 3, by, tw + 6, 12);
-      ctx.strokeStyle = '#334155';
+    // E. Kute żelazne obejmy i pasy nitowane
+    for (let by = ty + 50; by < ty + th - 40; by += 90) {
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(tx - 4, by, tw + 8, 12);
+      ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(tx - 3, by, tw + 6, 12);
+      ctx.strokeRect(tx - 4, by, tw + 8, 12);
+      // Nity
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(tx - 2, by + 3.5, 3, 5);
+      ctx.fillRect(tx + tw - 1, by + 3.5, 3, 5);
     }
 
-    // E. Pomost inspekcyjny przy wieży (Y: 600, w: 160)
+    // F. Pomost inspekcyjny przy wieży (Y: 600, w: 160)
     const deckX = isLeft ? 120 : 4120;
     const deckW = 160;
     const deckY = 600;
     const deckH = 24;
 
     const deckGrad = ctx.createLinearGradient(deckX, deckY, deckX, deckY + deckH);
-    deckGrad.addColorStop(0, '#6d4822');
-    deckGrad.addColorStop(0.5, '#4f3114');
-    deckGrad.addColorStop(1, '#321c08');
+    deckGrad.addColorStop(0, '#5f3c1a');
+    deckGrad.addColorStop(0.5, '#43280f');
+    deckGrad.addColorStop(1, '#2c1706');
     ctx.fillStyle = deckGrad;
     ctx.fillRect(deckX, deckY, deckW, deckH);
 
-    // Krawędź pomostu (rim lighting)
-    ctx.strokeStyle = isLeft ? 'rgba(6, 182, 212, 0.7)' : 'rgba(249, 115, 22, 0.7)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(deckX, deckY);
-    ctx.lineTo(deckX + deckW, deckY);
-    ctx.stroke();
+    // Krawędź pomostu z mchem i ciosanym drewnem
+    ctx.fillStyle = '#4c7a2b';
+    ctx.fillRect(deckX, deckY, deckW, 4);
 
-    ctx.strokeStyle = '#231406';
+    ctx.strokeStyle = '#1c1005';
     ctx.lineWidth = 2;
     ctx.strokeRect(deckX, deckY, deckW, deckH);
+
+    // Podpory pomostu od dołu (drewniane zastrzały)
+    ctx.strokeStyle = '#3a220c';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(deckX + 25, deckY + deckH);
+    ctx.lineTo(tx + tw / 2, deckY + deckH + 50);
+    ctx.moveTo(deckX + deckW - 25, deckY + deckH);
+    ctx.lineTo(tx + tw / 2, deckY + deckH + 50);
+    ctx.stroke();
+
+    // G. Zwisający z boku wieży militarny proporzec drużyny (Field Banner)
+    const bannerX = isLeft ? 90 : 4270;
+    const bannerY = 635;
+    const bannerW = 42;
+    const bannerH = 110;
+    const teamColDark = isLeft ? '#0e7490' : '#c2410c';
+    const teamColLight = isLeft ? '#06b6d4' : '#f97316';
+
+    // Drążek proporca
+    ctx.fillStyle = '#221508';
+    ctx.fillRect(bannerX - 4, bannerY - 6, bannerW + 8, 6);
+
+    // Tkanina proporca z wycięciem na dole
+    ctx.save();
+    ctx.fillStyle = teamColDark;
+    ctx.beginPath();
+    ctx.moveTo(bannerX, bannerY);
+    ctx.lineTo(bannerX + bannerW, bannerY);
+    ctx.lineTo(bannerX + bannerW, bannerY + bannerH);
+    ctx.lineTo(bannerX + bannerW / 2, bannerY + bannerH - 20);
+    ctx.lineTo(bannerX, bannerY + bannerH);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Oznaczenie / runa drużyny na proporcu
+    ctx.fillStyle = teamColLight;
+    ctx.font = '900 13px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(isLeft ? 'A' : 'B', bannerX + bannerW / 2, bannerY + 45);
+
+    // Pasy militarne na proporcu
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.fillRect(bannerX + 5, bannerY + 60, bannerW - 10, 4);
+    ctx.fillRect(bannerX + 8, bannerY + 70, bannerW - 16, 3);
+    ctx.restore();
 
     ctx.restore();
   }
@@ -839,8 +935,7 @@ export function drawArena3Foreground(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 4. BRAMKI W KSZTAŁCIE "Y" (KIELICHY ZAWIESZONE NA WYSOKOŚCI)
-  // Lewa: Team A (Cyan) na X: 200, Y: 400..600
-  // Prawa: Team B (Orange) na X: 4200, Y: 400..600
+  // W 100% spójne z klimatem: ciosane belki, żelazne okucia, paleniska sygnałowe i siatka linowa
   // -----------------------------------------------------------------------
   function drawChaliceGoal(isLeft) {
     const cx = isLeft ? 200 : 4200;
@@ -853,17 +948,31 @@ export function drawArena3Foreground(ctx, camera) {
 
     ctx.save();
     const teamCol = isLeft ? '#06b6d4' : '#f97316';
-    const teamGlow = isLeft ? 'rgba(6, 182, 212, 0.55)' : 'rgba(249, 115, 22, 0.55)';
-    const teamName = isLeft ? 'TEAM A' : 'TEAM B';
+    const teamFlame = isLeft ? ['#e0f2fe', '#38bdf8', '#0284c7'] : ['#fef08a', '#fb923c', '#ea580c'];
+    const teamName = isLeft ? 'TEAM A (CYAN)' : 'TEAM B (ORANGE)';
 
     // A. Trzon kielicha Y (pionowy słupek X: 200, Y: 400..600)
     const stemGrad = ctx.createLinearGradient(stemX, stemY, stemX + stemW, stemY + stemH);
-    stemGrad.addColorStop(0, '#5a3a1a');
-    stemGrad.addColorStop(0.5, '#3e240e');
-    stemGrad.addColorStop(1, '#2c1808');
+    stemGrad.addColorStop(0, '#533418');
+    stemGrad.addColorStop(0.5, '#3c230e');
+    stemGrad.addColorStop(1, '#251406');
     ctx.fillStyle = stemGrad;
     ctx.fillRect(stemX, stemY, stemW, stemH);
-    ctx.strokeStyle = '#201105';
+
+    // Kute żelazne pasy wzmacniające trzon
+    for (let py = stemY + 25; py < stemY + stemH; py += 55) {
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(stemX - 3, py, stemW + 6, 10);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(stemX - 3, py, stemW + 6, 10);
+      // Nity
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(stemX - 1, py + 2.5, 3, 5);
+      ctx.fillRect(stemX + stemW - 2, py + 2.5, 3, 5);
+    }
+
+    ctx.strokeStyle = '#1b0e04';
     ctx.lineWidth = 2.5;
     ctx.strokeRect(stemX, stemY, stemW, stemH);
 
@@ -874,21 +983,43 @@ export function drawArena3Foreground(ctx, camera) {
     const armY_top = 260;
     const armX_right = cx + 140;
 
-    // Cień/poświata ramion
-    ctx.shadowColor = teamCol;
-    ctx.shadowBlur = 18;
-    ctx.strokeStyle = teamGlow;
-    ctx.lineWidth = 22;
+    // Ciosane drewniane zastrzały pod ramionami (podtrzymujące kielich od trzonu)
+    ctx.strokeStyle = '#321c08';
+    ctx.lineWidth = 10;
     ctx.beginPath();
-    ctx.moveTo(armX_left, armY_top);
-    ctx.lineTo(cx, 400);
-    ctx.lineTo(armX_right, armY_top);
+    ctx.moveTo(cx, 470);
+    ctx.lineTo(cx - 75, 335);
+    ctx.moveTo(cx, 470);
+    ctx.lineTo(cx + 75, 335);
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
-    // Solidna belka drewniana ramion
-    ctx.strokeStyle = '#432910';
-    ctx.lineWidth = 16;
+    // C. Siatka kosza kielicha (Rope Net & Chains z juty)
+    // Zawieszona pomiędzy ramionami i opadająca do trzonu, chwyta piłkę
+    ctx.save();
+    ctx.strokeStyle = 'rgba(146, 104, 55, 0.75)';
+    ctx.lineWidth = 2.2;
+    // Liny schodzące z ramion w dół do środka
+    for (let nx = -110; nx <= 110; nx += 25) {
+      const startX = cx + nx;
+      const startY = 400 - Math.abs(nx);
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(cx + nx * 0.4, 385, cx, 400);
+      ctx.stroke();
+    }
+    // Liny poziome / poprzeczne łuki kosza
+    for (let ry = 300; ry <= 385; ry += 25) {
+      const spread = (400 - ry);
+      ctx.beginPath();
+      ctx.moveTo(cx - spread, ry);
+      ctx.quadraticCurveTo(cx, ry + 15, cx + spread, ry);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // D. Główne ciosane belki drewniane ramion kielicha "Y"
+    ctx.strokeStyle = '#43270f';
+    ctx.lineWidth = 18;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -897,44 +1028,144 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.lineTo(armX_right, armY_top);
     ctx.stroke();
 
-    // Kolorowy rdzeń / runy energetyczne wewnątrz ramion
-    ctx.strokeStyle = teamCol;
-    ctx.lineWidth = 5;
+    // Wewnętrzna faktura słojów drewna
+    ctx.strokeStyle = '#5a3717';
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(armX_left, armY_top);
-    ctx.lineTo(cx, 400);
-    ctx.lineTo(armX_right, armY_top);
+    ctx.moveTo(armX_left + 2, armY_top + 2);
+    ctx.lineTo(cx, 398);
+    ctx.lineTo(armX_right - 2, armY_top + 2);
     ctx.stroke();
 
-    // C. Kielich - jarzące się pole punktowania (Goal Trigger)
-    const pulse = 0.72 + Math.sin(animTime * 4.5) * 0.28;
-    ctx.save();
-    ctx.globalAlpha = 0.55 * pulse;
-    const chaliceGlow = ctx.createRadialGradient(cx, 330, 20, cx, 330, 110);
-    chaliceGlow.addColorStop(0.0, teamCol);
-    chaliceGlow.addColorStop(0.6, teamGlow);
-    chaliceGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = chaliceGlow;
+    // Kute żelazne okucia narożników ramion
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 22;
     ctx.beginPath();
-    ctx.arc(cx, 330, 110, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Wewnętrzny stożek kielicha (promień absorpcji)
-    ctx.globalAlpha = 0.40 * pulse;
-    ctx.fillStyle = teamCol;
-    ctx.beginPath();
-    ctx.moveTo(cx - 100, 260);
-    ctx.lineTo(cx + 100, 260);
+    ctx.moveTo(cx - 15, 400);
     ctx.lineTo(cx, 400);
-    ctx.closePath();
+    ctx.lineTo(cx + 15, 400);
+    ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(cx - 3, 396, 6, 8); // Centralny sworzeń kuty
+
+    // Stalowe okucia na końcach obu ramion
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(armX_left - 10, armY_top - 6, 20, 12);
+    ctx.fillRect(armX_right - 10, armY_top - 6, 20, 12);
+
+    // E. Paleniska sygnałowe / czary rytualne na szczytach obu ramion (Braziers)
+    function drawBrazier(bx, by) {
+      // Kuta żelazna misa
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(bx - 18, by);
+      ctx.lineTo(bx + 18, by);
+      ctx.lineTo(bx + 12, by + 16);
+      ctx.lineTo(bx - 12, by + 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Płomień rytualny w barwach drużyny (animowany)
+      const fTime = animTime * 5.5 + (isLeft ? 0 : 2.5);
+      const flameH = 26 + Math.sin(fTime * 1.5) * 6;
+      const fShift = Math.cos(fTime * 2.1) * 3;
+
+      ctx.save();
+      // Poświata ognia
+      const fGlow = ctx.createRadialGradient(bx, by - 6, 4, bx, by - 12, 38);
+      fGlow.addColorStop(0, teamFlame[1]);
+      fGlow.addColorStop(0.5, teamFlame[2]);
+      fGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = fGlow;
+      ctx.beginPath();
+      ctx.arc(bx, by - 10, 38, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Zewnętrzny język ognia
+      ctx.fillStyle = teamFlame[2];
+      ctx.beginPath();
+      ctx.moveTo(bx - 12, by);
+      ctx.quadraticCurveTo(bx - 8 + fShift, by - flameH * 0.6, bx + fShift, by - flameH);
+      ctx.quadraticCurveTo(bx + 8 + fShift, by - flameH * 0.6, bx + 12, by);
+      ctx.closePath();
+      ctx.fill();
+
+      // Środkowy język ognia
+      ctx.fillStyle = teamFlame[1];
+      ctx.beginPath();
+      ctx.moveTo(bx - 8, by);
+      ctx.quadraticCurveTo(bx + fShift * 0.5, by - flameH * 0.7, bx + fShift * 0.3, by - flameH * 0.82);
+      ctx.quadraticCurveTo(bx + 5, by - flameH * 0.5, bx + 8, by);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gorące białe jądro
+      ctx.fillStyle = teamFlame[0];
+      ctx.beginPath();
+      ctx.arc(bx + fShift * 0.2, by - 5, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wznoszące się iskry ognia
+      ctx.fillStyle = teamFlame[0];
+      for (let sp = 0; sp < 3; sp++) {
+        const sparkY = by - 12 - ((fTime * 18 + sp * 14) % 35);
+        const sparkX = bx + Math.sin(sparkY * 0.2 + sp) * 8;
+        ctx.fillRect(sparkX, sparkY, 2, 2);
+      }
+      ctx.restore();
+    }
+
+    drawBrazier(armX_left, armY_top - 6);
+    drawBrazier(armX_right, armY_top - 6);
+
+    // F. Kielich - subtelna, mistyczna mgła punktowania (Goal Trigger Area)
+    const pulse = 0.75 + Math.sin(animTime * 3.5) * 0.25;
+    ctx.save();
+    ctx.globalAlpha = 0.35 * pulse;
+    const chaliceSmoke = ctx.createRadialGradient(cx, 340, 15, cx, 340, 95);
+    chaliceSmoke.addColorStop(0.0, teamFlame[1]);
+    chaliceSmoke.addColorStop(0.6, 'rgba(15, 23, 42, 0.4)');
+    chaliceSmoke.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = chaliceSmoke;
+    ctx.beginPath();
+    ctx.arc(cx, 340, 95, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // D. Oznaczenie bramki
-    ctx.font = 'bold 15px monospace';
+    // Rzeźbiona kamienna czara ofiarna u zbiegu ramion
+    ctx.fillStyle = '#293325';
+    ctx.beginPath();
+    ctx.arc(cx, 396, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#151b13';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Mistyczny klejnot w czarze pulsujący w barwie drużyny
+    ctx.fillStyle = teamCol;
+    ctx.beginPath();
+    ctx.arc(cx, 396, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // G. Oznaczenie bramki - ciosana drewniana tabliczka
+    const signW = 120;
+    const signH = 20;
+    const signX = cx - signW / 2;
+    const signY = 222;
+
+    ctx.fillStyle = '#3c230e';
+    ctx.fillRect(signX, signY, signW, signH);
+    ctx.strokeStyle = '#1b0e04';
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(signX, signY, signW, signH);
+
+    ctx.font = '900 11px monospace';
     ctx.fillStyle = teamCol;
     ctx.textAlign = 'center';
-    ctx.fillText(`⚡ ${teamName} ⚡`, cx, 235);
+    ctx.fillText(teamName, cx, signY + 14);
 
     ctx.restore();
   }
@@ -1003,45 +1234,232 @@ export function drawArena3Foreground(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 6. WISZĄCY MOST (X: 1800 do 2600, Y: 1000)
-  // Liny nośne, wieszaki, drewniane kładki One-Way
+  // Potężne pylony kotwiczące, kable odciągowe do skał, kładki dojściowe
   // -----------------------------------------------------------------------
   const bridgeX1 = 1800;
   const bridgeX2 = 2600;
   const bridgeY = 1000;
+  const pylonLeftX = 1755;
+  const pylonRightX = 2645;
+  const pylonTopY = 850;
 
-  if (bridgeX2 + 50 >= camL && bridgeX1 - 50 <= camR) {
+  // A. PYLONY NOŚNE MOSTU (Drewniano-kamienne wieże bramowe na brzegach rzeki)
+  function drawBridgePylon(px) {
+    if (px + 60 < camL || px - 60 > camR) return;
+
     ctx.save();
-    // A. Główne liny nośne zwisające parabolicznie nad mostem
-    ctx.strokeStyle = '#5a4225';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(bridgeX1 - 40, bridgeY - 70);
-    ctx.quadraticCurveTo(2200, bridgeY + 45, bridgeX2 + 40, bridgeY - 70);
-    ctx.stroke();
-
-    // Dolna linka balastowa
-    ctx.strokeStyle = '#3e2a14';
+    // 1. Kamienny fundament na brzegu (Y: 1200 do 1280)
+    const pBaseGrad = ctx.createLinearGradient(px - 30, 1200, px + 30, 1280);
+    pBaseGrad.addColorStop(0, '#4a5445');
+    pBaseGrad.addColorStop(1, '#23291f');
+    ctx.fillStyle = pBaseGrad;
+    ctx.fillRect(px - 28, 1200, 56, 80);
+    ctx.strokeStyle = '#141812';
     ctx.lineWidth = 2.5;
+    ctx.strokeRect(px - 28, 1200, 56, 80);
+
+    // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1200)
+    const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, 1200);
+    pWoodGrad.addColorStop(0, '#533418');
+    pWoodGrad.addColorStop(0.5, '#3c230e');
+    pWoodGrad.addColorStop(1, '#251406');
+    ctx.fillStyle = pWoodGrad;
+
+    // Lewa noga pylonu
+    ctx.fillRect(px - 24, pylonTopY, 18, 1200 - pylonTopY);
+    // Prawa noga pylonu
+    ctx.fillRect(px + 6, pylonTopY, 18, 1200 - pylonTopY);
+
+    // Krzyżowe rygle wzmacniające (X-bracing)
+    ctx.strokeStyle = '#3e240e';
+    ctx.lineWidth = 6;
+    for (let crossY = pylonTopY + 40; crossY < 1200 - 40; crossY += 75) {
+      ctx.beginPath();
+      ctx.moveTo(px - 20, crossY);
+      ctx.lineTo(px + 20, crossY + 60);
+      ctx.moveTo(px + 20, crossY);
+      ctx.lineTo(px - 20, crossY + 60);
+      ctx.stroke();
+
+      // Stalowe klamry na skrzyżowaniach
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(px - 26, crossY - 4, 52, 8);
+    }
+
+    // 3. Szczyt pylonu: siodło linowe (Cable Saddle z żelaza i brązu)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px - 30, pylonTopY - 14, 60, 16);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px - 30, pylonTopY - 14, 60, 16);
+
+    // Kołowroty / rolki linowe
+    ctx.fillStyle = '#64748b';
     ctx.beginPath();
-    ctx.moveTo(bridgeX1 - 40, bridgeY + 30);
-    ctx.quadraticCurveTo(2200, bridgeY + 80, bridgeX2 + 40, bridgeY + 30);
+    ctx.arc(px - 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+    ctx.arc(px + 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  drawBridgePylon(pylonLeftX);
+  drawBridgePylon(pylonRightX);
+
+  // B. POMOSTY PODEJŚCIOWE DO MOSTU (Łączące brzeg rzeki Y: 1280 z kładką Y: 1000)
+  function drawApproachWalkway(isLeft) {
+    const ax1 = isLeft ? 1620 : 2600;
+    const ax2 = isLeft ? 1800 : 2780;
+    const aw = ax2 - ax1;
+    if (ax2 < camL || ax1 > camR) return;
+
+    ctx.save();
+    // Drewniane słupy podpierające podejście wbite w brzeg
+    ctx.strokeStyle = '#3b220d';
+    ctx.lineWidth = 7;
+    for (let sx = ax1 + 25; sx <= ax2 - 25; sx += 40) {
+      const u = (sx - ax1) / aw;
+      const stepY = isLeft ? (1200 - u * 190) : (1010 + u * 190);
+      ctx.beginPath();
+      ctx.moveTo(sx, stepY);
+      ctx.lineTo(sx, 1280);
+      ctx.stroke();
+    }
+
+    // Drewniana kładka podejścia
+    const appGrad = ctx.createLinearGradient(ax1, 1000, ax2, 1200);
+    appGrad.addColorStop(0, '#6d451e');
+    appGrad.addColorStop(1, '#3b220d');
+    ctx.fillStyle = appGrad;
+
+    ctx.beginPath();
+    if (isLeft) {
+      ctx.moveTo(ax1, 1200);
+      ctx.lineTo(ax2, 1000);
+      ctx.lineTo(ax2, 1018);
+      ctx.lineTo(ax1, 1218);
+    } else {
+      ctx.moveTo(ax1, 1000);
+      ctx.lineTo(ax2, 1200);
+      ctx.lineTo(ax2, 1218);
+      ctx.lineTo(ax1, 1018);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#221306';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Pionowe wieszaki linowe co 50 px
-    ctx.strokeStyle = 'rgba(110, 85, 50, 0.75)';
-    ctx.lineWidth = 1.8;
-    for (let hx = bridgeX1 + 30; hx <= bridgeX2 - 30; hx += 50) {
-      const u = (hx - bridgeX1) / (bridgeX2 - bridgeX1);
-      const ropeTopY = (bridgeY - 70) * (1 - u) + (bridgeY - 70) * u + Math.sin(u * Math.PI) * 85;
+    // Poręcz linowa kładki dojściowej
+    ctx.strokeStyle = '#5a3d1c';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    if (isLeft) {
+      ctx.moveTo(ax1, 1165);
+      ctx.lineTo(ax2, 965);
+    } else {
+      ctx.moveTo(ax1, 965);
+      ctx.lineTo(ax2, 1165);
+    }
+    ctx.stroke();
+
+    // Słupki poręczy
+    ctx.strokeStyle = '#351d09';
+    ctx.lineWidth = 3;
+    for (let px = ax1 + 20; px <= ax2 - 20; px += 35) {
+      const u = (px - ax1) / aw;
+      const by = isLeft ? (1200 - u * 200) : (1000 + u * 200);
       ctx.beginPath();
-      ctx.moveTo(hx, ropeTopY);
-      ctx.lineTo(hx, bridgeY);
+      ctx.moveTo(px, by);
+      ctx.lineTo(px, by - 35);
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  // Segmenty drewnianego mostu (4 segmenty po 200 px)
+  drawApproachWalkway(true);
+  drawApproachWalkway(false);
+
+  // C. KABLE KOTWICZĄCE ODCIĄGOWE (Od szczytów pylonów do litej skały brzegów)
+  ctx.save();
+  ctx.strokeStyle = '#4e3316';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  // Lewy odciąg
+  ctx.moveTo(pylonLeftX, pylonTopY - 6);
+  ctx.lineTo(1560, 1260);
+  // Prawy odciąg
+  ctx.moveTo(pylonRightX, pylonTopY - 6);
+  ctx.lineTo(2840, 1260);
+  ctx.stroke();
+
+  // Druga lina odciągowa (podwójna lina stalowo-linowa)
+  ctx.strokeStyle = '#2d1c0a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
+  ctx.lineTo(1564, 1260);
+  ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
+  ctx.lineTo(2836, 1260);
+  ctx.stroke();
+
+  // Żelazne kotwice wbite w skałę
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(1550, 1250, 20, 25);
+  ctx.fillRect(2830, 1250, 20, 25);
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1550, 1250, 20, 25);
+  ctx.strokeRect(2830, 1250, 20, 25);
+  ctx.restore();
+
+  // D. GŁÓWNE LINY NOŚNE PRZĘSŁA (Łuk paraboliczny od pylonu do pylonu)
+  if (bridgeX2 + 80 >= camL && bridgeX1 - 80 <= camR) {
+    ctx.save();
+    // 1. Górna główna lina nośna (Main Cable)
+    ctx.strokeStyle = '#5a3b19';
+    ctx.lineWidth = 5.5;
+    ctx.beginPath();
+    ctx.moveTo(pylonLeftX, pylonTopY - 6);
+    ctx.quadraticCurveTo(2200, 970, pylonRightX, pylonTopY - 6);
+    ctx.stroke();
+
+    // Ciemna krawędź liny (cień)
+    ctx.strokeStyle = '#2c1a0a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pylonLeftX, pylonTopY - 3);
+    ctx.quadraticCurveTo(2200, 973, pylonRightX, pylonTopY - 3);
+    ctx.stroke();
+
+    // 2. Dolna lina poręczy (Handrail cable)
+    ctx.strokeStyle = '#432910';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(bridgeX1 - 10, bridgeY - 35);
+    ctx.lineTo(bridgeX2 + 10, bridgeY - 35);
+    ctx.stroke();
+
+    // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders)
+    ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
+    ctx.lineWidth = 2;
+    for (let hx = bridgeX1 + 15; hx <= bridgeX2 - 15; hx += 32) {
+      const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
+      // Równanie paraboli liny nośnej
+      const cableY = (1 - u) * (1 - u) * (pylonTopY - 6) + 2 * (1 - u) * u * 970 + u * u * (pylonTopY - 6);
+      ctx.beginPath();
+      ctx.moveTo(hx, cableY);
+      ctx.lineTo(hx, bridgeY);
+      ctx.stroke();
+
+      // Stalowe obejmy na kładce
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(hx - 2, bridgeY - 2, 4, 6);
+    }
+    ctx.restore();
+  }
+
+  // E. DREWNIANE SEGMENTY KŁADKI MOSTU (4 segmenty po 200 px)
   const bridgeSegments = [
     { x: 1800, w: 200 },
     { x: 2000, w: 200 },
@@ -1062,18 +1480,23 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fillStyle = bGrad;
     ctx.fillRect(bSeg.x, bridgeY, bSeg.w, 18);
 
-    // Poszczególne szczebelki mostu
-    ctx.strokeStyle = 'rgba(28, 16, 5, 0.6)';
+    // Poszczególne szczeble i słoje drewna
+    ctx.strokeStyle = 'rgba(28, 16, 5, 0.65)';
     ctx.lineWidth = 2;
-    for (let px = bSeg.x + 18; px < bSeg.x + bSeg.w - 10; px += 24) {
+    for (let px = bSeg.x + 16; px < bSeg.x + bSeg.w - 8; px += 22) {
       ctx.beginPath();
       ctx.moveTo(px, bridgeY);
       ctx.lineTo(px, bridgeY + 18);
       ctx.stroke();
+
+      // Śruby mocujące deski
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(px - 1, bridgeY + 3, 2.5, 2.5);
+      ctx.fillRect(px - 1, bridgeY + 12, 2.5, 2.5);
     }
 
-    // Jasna górna krawędź (rim light)
-    ctx.strokeStyle = 'rgba(215, 175, 80, 0.8)';
+    // Jasna górna krawędź (rim light drewna)
+    ctx.strokeStyle = 'rgba(225, 185, 95, 0.85)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(bSeg.x, bridgeY);
@@ -1084,6 +1507,19 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.strokeStyle = '#241405';
     ctx.lineWidth = 2;
     ctx.strokeRect(bSeg.x, bridgeY, bSeg.w, 18);
+
+    // Zwisające pod mostem pnącza dżungli (vines) kołyszące się na wietrze
+    ctx.strokeStyle = '#32571e';
+    ctx.lineWidth = 2.5;
+    for (let vx = bSeg.x + 30; vx < bSeg.x + bSeg.w - 20; vx += 60) {
+      const vLen = 28 + Math.sin(vx * 0.15) * 12;
+      const vSway = Math.sin(animTime * 2.2 + vx * 0.05) * 6;
+      ctx.beginPath();
+      ctx.moveTo(vx, bridgeY + 18);
+      ctx.quadraticCurveTo(vx + vSway * 0.5, bridgeY + 18 + vLen * 0.5, vx + vSway, bridgeY + 18 + vLen);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
