@@ -2362,7 +2362,11 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  const isDeathmatch = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
+  const isDeathmatch = (
+    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' ||
+    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
+    (ball && !ball.active)
+  );
 
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);
@@ -2837,7 +2841,11 @@ function draw() {
     ctx.restore();
   }
 
-  const isDeathmatch = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
+  const isDeathmatch = (
+    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' ||
+    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
+    (ball && !ball.active)
+  );
 
   if (!isDeathmatch) {
     drawBall(ctx);

@@ -621,15 +621,18 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
   if (activeArenaId === 'ARENA_3') {
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
-    const arena3Goals = currentArena?.customObjects?.filter(o => o.team) || ARENA_FOUNDRY_GOALS;
-    GOALS.push(...arena3Goals);
+    GOALS.length = 0; // W militarnej dżungli brak piłki i bramek - czysty tryb taktyczny / Deathmatch
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
+    if (typeof currentArena?.reset === 'function') {
+      currentArena.reset();
+    }
+
     if (playerObj) {
       playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 630;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 1130;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -639,9 +642,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3800;
-      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 630;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 1130;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -650,18 +652,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
-      ballObj.active = true;
-      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : 2200;
-      ballObj.y = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].y : 650;
-      ballObj.hoverBaseY = ballObj.y;
-      ballObj.isLevitating = true;
-      ballObj.goalAnimation = null;
-      ballObj.prevX = ballObj.x;
-      ballObj.prevY = ballObj.y;
-      ballObj.vx = 0;
-      ballObj.vy = 0;
-      ballObj.spin = 0;
-      ballObj.trail = [];
+      ballObj.active = false;
     }
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
     GOALS.length = 0; // W Świętej Dżungli brak bramek i piłki - tryb czystej mapy i walki
