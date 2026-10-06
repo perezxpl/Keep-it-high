@@ -3973,11 +3973,10 @@ export function drawObstacles(ctx, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
-    if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-      // W Arenie 3 cała geometria i platformy rysowane są na wygenerowanym tle oraz w drawArena3Foreground
-      if (plat.type === 'catwalk') {
-        drawCatwalk(ctx, { ...plat, theme: 'foundry' }, groundY);
-      }
+    const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+    if (isA3) {
+      // W Arenie 3 cała autorska architektura i platformy rysowane są w drawArena3Foreground
       continue;
     }
     if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {

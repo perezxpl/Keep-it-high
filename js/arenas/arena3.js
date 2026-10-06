@@ -83,42 +83,50 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
-  // A. PODŁOŻE: SPADKI TERENU ZAMIAST SCHODKÓW (X: 0 do 1600 oraz X: 2800 do 4400)
-  // Twardy, kamienno-ziemisty grunt opadający płynnie w stronę rzeki
+  // A. PODŁOŻE: OWALNE STOKI SCHODZĄCE DO WODY (X: 0 do 1750 oraz X: 2650 do 4400)
+  // Twardy, kamienno-ziemisty grunt o łagodnym, owalnym profilu schodzącym prosto w toń rzeki
   // -----------------------------------------------------------------------
   {
     id: 'ground_left_slope',
-    name: 'Lewy Brzeg - Spadek Terenu',
+    name: 'Lewy Brzeg - Owalny Stok Schodzący do Wody',
     x: 0,
     y: 1200,
-    w: 1600,
+    w: 1750,
     h: 200,
     thickness: 200,
     solid: true,
     isPlatform: true,
     surfacePoints: [
       { x: 0, y: 1200 },
-      { x: 400, y: 1208 },
-      { x: 800, y: 1216 },
-      { x: 1200, y: 1224 },
-      { x: 1600, y: 1230 }
+      { x: 400, y: 1204 },
+      { x: 800, y: 1214 },
+      { x: 1150, y: 1230 },
+      { x: 1400, y: 1254 },
+      { x: 1560, y: 1276 },
+      { x: 1660, y: 1296 },
+      { x: 1720, y: 1315 },
+      { x: 1750, y: 1335 }
     ]
   },
   {
     id: 'ground_right_slope',
-    name: 'Prawy Brzeg - Spadek Terenu',
-    x: 2800,
+    name: 'Prawy Brzeg - Owalny Stok Schodzący do Wody',
+    x: 2650,
     y: 1200,
-    w: 1600,
+    w: 1750,
     h: 200,
     thickness: 200,
     solid: true,
     isPlatform: true,
     surfacePoints: [
-      { x: 2800, y: 1230 },
-      { x: 3200, y: 1224 },
-      { x: 3600, y: 1216 },
-      { x: 4000, y: 1208 },
+      { x: 2650, y: 1335 },
+      { x: 2680, y: 1315 },
+      { x: 2740, y: 1296 },
+      { x: 2840, y: 1276 },
+      { x: 3000, y: 1254 },
+      { x: 3250, y: 1230 },
+      { x: 3600, y: 1214 },
+      { x: 4000, y: 1204 },
       { x: 4400, y: 1200 }
     ]
   },
@@ -221,16 +229,16 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
-  // B. WISZĄCY MOST (X: 1800 do 2600, Y: 1000)
-  // Kilka sąsiadujących cienkich platform typu One-Way nad rzeką
+  // B. WISZĄCY MOST (X: 1750 do 2650, Y: 1000)
+  // Przęsło mostu rozpięte bezpośrednio pomiędzy pylonami nad rzeką
   // -----------------------------------------------------------------------
   {
     id: 'bridge_segment_1',
     name: 'Wiszący Most - Segment 1',
-    type: 'catwalk',
-    x: 1800,
+    type: 'platform',
+    x: 1750,
     y: 1000,
-    w: 200,
+    w: 225,
     h: 18,
     thickness: 18,
     solid: true,
@@ -240,10 +248,10 @@ export const ARENA_3_PLATFORMS = [
   {
     id: 'bridge_segment_2',
     name: 'Wiszący Most - Segment 2',
-    type: 'catwalk',
-    x: 2000,
+    type: 'platform',
+    x: 1975,
     y: 1000,
-    w: 200,
+    w: 225,
     h: 18,
     thickness: 18,
     solid: true,
@@ -253,10 +261,10 @@ export const ARENA_3_PLATFORMS = [
   {
     id: 'bridge_segment_3',
     name: 'Wiszący Most - Segment 3',
-    type: 'catwalk',
+    type: 'platform',
     x: 2200,
     y: 1000,
-    w: 200,
+    w: 225,
     h: 18,
     thickness: 18,
     solid: true,
@@ -266,54 +274,15 @@ export const ARENA_3_PLATFORMS = [
   {
     id: 'bridge_segment_4',
     name: 'Wiszący Most - Segment 4',
-    type: 'catwalk',
-    x: 2400,
+    type: 'platform',
+    x: 2425,
     y: 1000,
-    w: 200,
+    w: 225,
     h: 18,
     thickness: 18,
     solid: true,
     isPlatform: true,
     oneWay: true
-  },
-
-  // -----------------------------------------------------------------------
-  // SKOŚNE WEJŚCIA NA MOST (Łączące brzeg rzeki Y: 1230 z mostem Y: 1000)
-  // Normalne skośne rampy umożliwiające graczom płynne wejście na wiszący most
-  // -----------------------------------------------------------------------
-  {
-    id: 'bridge_ramp_left',
-    name: 'Skośne Wejście na Most Lewe',
-    type: 'catwalk',
-    x: 1600,
-    y: 1000,
-    w: 200,
-    h: 240,
-    thickness: 22,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    surfacePoints: [
-      { x: 1600, y: 1230 },
-      { x: 1800, y: 1000 }
-    ]
-  },
-  {
-    id: 'bridge_ramp_right',
-    name: 'Skośne Wejście na Most Prawe',
-    type: 'catwalk',
-    x: 2600,
-    y: 1000,
-    w: 200,
-    h: 240,
-    thickness: 22,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    surfacePoints: [
-      { x: 2600, y: 1000 },
-      { x: 2800, y: 1230 }
-    ]
   },
 
   // -----------------------------------------------------------------------
@@ -323,7 +292,7 @@ export const ARENA_3_PLATFORMS = [
   {
     id: 'bridge_skywalk_left',
     name: 'Wiszący Pomost Nad Mostem Lewy',
-    type: 'catwalk',
+    type: 'platform',
     x: 1880,
     y: 620,
     w: 260,
@@ -336,7 +305,7 @@ export const ARENA_3_PLATFORMS = [
   {
     id: 'bridge_skywalk_right',
     name: 'Wiszący Pomost Nad Mostem Prawy',
-    type: 'catwalk',
+    type: 'platform',
     x: 2260,
     y: 620,
     w: 260,
@@ -665,21 +634,43 @@ export function drawArena3Foreground(ctx, camera) {
   const camR = camera ? camera.x + (camera.viewWidth || 2000) + 200 : 4400;
 
   // -----------------------------------------------------------------------
-  // 1. PODŁOŻE I SKAŁY: LEWY I PRAWY BRZEG (PŁYNNE STOKI SPADKOWE)
-  // Przekształcone ze schodków w naturalny, gładki spadek terenu ku rzece
+  // 1. PODŁOŻE: OWALNE PŁASZCZYZNY SCHODZĄCE DO WODY (LEWY I PRAWY BRZEG)
+  // Przekształcone w naturalne, owalne wzgórza łagodnie zanurzające się w rzece
   // -----------------------------------------------------------------------
-  // A. Lewy brzeg - gładki stok (X: 0 do 1600, Y: 1200 -> 1230)
-  if (camL < 1650 && camR > -50) {
+  const leftOvalPoints = [
+    { x: 0, y: 1200 },
+    { x: 400, y: 1204 },
+    { x: 800, y: 1214 },
+    { x: 1150, y: 1230 },
+    { x: 1400, y: 1254 },
+    { x: 1560, y: 1276 },
+    { x: 1660, y: 1296 },
+    { x: 1720, y: 1315 },
+    { x: 1750, y: 1335 }
+  ];
+
+  const rightOvalPoints = [
+    { x: 2650, y: 1335 },
+    { x: 2680, y: 1315 },
+    { x: 2740, y: 1296 },
+    { x: 2840, y: 1276 },
+    { x: 3000, y: 1254 },
+    { x: 3250, y: 1230 },
+    { x: 3600, y: 1214 },
+    { x: 4000, y: 1204 },
+    { x: 4400, y: 1200 }
+  ];
+
+  // A. Lewy brzeg - owalna płaszczyzna schodząca do wody (X: 0 do 1750)
+  if (camL < 1850 && camR > -50) {
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(0, 1200);
-    ctx.lineTo(400, 1208);
-    ctx.lineTo(800, 1216);
-    ctx.lineTo(1200, 1224);
-    ctx.lineTo(1600, 1230);
-    // Pionowe urwisko wpadające do wody na X: 1600
-    ctx.lineTo(1600, 1400);
-    ctx.lineTo(0, 1400);
+    ctx.moveTo(0, 1400);
+    ctx.lineTo(0, 1200);
+    for (let i = 1; i < leftOvalPoints.length; i++) {
+      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
+    }
+    ctx.lineTo(1750, 1400);
     ctx.closePath();
 
     const gGradL = ctx.createLinearGradient(0, 1200, 0, 1400);
@@ -692,87 +683,108 @@ export function drawArena3Foreground(ctx, camera) {
 
     // Detale starożytnych bloków kamiennych zatopionych w gruncie
     ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let kx = 60; kx < 1550; kx += 110) {
-      const ky = 1200 + (kx / 1600) * 30;
+    for (let kx = 60; kx < 1520; kx += 110) {
+      const ky = 1200 + Math.pow(kx / 1750, 2) * 135;
       ctx.fillRect(kx, ky + 26, 60, 22);
       ctx.fillRect(kx + 35, ky + 62, 50, 20);
     }
 
-    // Warstwa mchu i dżunglowej trawy na górnej krawędzi stoku
+    // Warstwa mchu i dżunglowej trawy na owalnej krawędzi
     ctx.save();
     ctx.strokeStyle = '#3e7025';
     ctx.lineWidth = 14;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, 1200);
-    ctx.lineTo(400, 1208);
-    ctx.lineTo(800, 1216);
-    ctx.lineTo(1200, 1224);
-    ctx.lineTo(1600, 1230);
+    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y);
+    for (let i = 1; i < leftOvalPoints.length; i++) {
+      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
+    }
     ctx.stroke();
 
     // Jaśniejsza trawa
     ctx.strokeStyle = '#589e34';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(0, 1198);
-    ctx.lineTo(400, 1206);
-    ctx.lineTo(800, 1214);
-    ctx.lineTo(1200, 1222);
-    ctx.lineTo(1600, 1228);
+    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y - 2);
+    for (let i = 1; i < leftOvalPoints.length; i++) {
+      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y - 2);
+    }
     ctx.stroke();
 
-    // Rim lighting (światło na krawędzi stoku)
+    // Rim lighting (światło na owalnej krawędzi stoku)
     ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(0, 1196);
-    ctx.lineTo(400, 1204);
-    ctx.lineTo(800, 1212);
-    ctx.lineTo(1200, 1220);
-    ctx.lineTo(1600, 1226);
+    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y - 4);
+    for (let i = 1; i < leftOvalPoints.length; i++) {
+      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y - 4);
+    }
     ctx.stroke();
 
-    // Kępki trawy / paprocie wzdłuż stoku
+    // Kępki trawy / paprocie wzdłuż owalnego zbocza (aż do linii wody)
     ctx.fillStyle = '#4fa32c';
-    for (let gx = 40; gx < 1580; gx += 45) {
-      const gy = 1200 + (gx / 1600) * 30;
-      ctx.beginPath();
-      ctx.moveTo(gx - 4, gy);
-      ctx.lineTo(gx, gy - 7);
-      ctx.lineTo(gx + 4, gy);
-      ctx.fill();
+    for (let i = 0; i < leftOvalPoints.length - 2; i++) {
+      const pA = leftOvalPoints[i];
+      const pB = leftOvalPoints[i + 1];
+      for (let t = 0.2; t <= 0.8; t += 0.3) {
+        const gx = pA.x + (pB.x - pA.x) * t;
+        const gy = pA.y + (pB.y - pA.y) * t;
+        if (gy < 1290) {
+          ctx.beginPath();
+          ctx.moveTo(gx - 4, gy);
+          ctx.lineTo(gx, gy - 7);
+          ctx.lineTo(gx + 4, gy);
+          ctx.fill();
+        }
+      }
     }
 
-    // Kontur urwiska i podstawy
+    // Zaokrąglone, gładkie kamienie rzeczne przy i pod linią wody (schodzenie do wody)
+    ctx.fillStyle = '#2d3748';
+    ctx.strokeStyle = '#1a202c';
+    ctx.lineWidth = 1.5;
+    const riverStonesL = [
+      { x: 1620, y: 1290, rx: 14, ry: 8 },
+      { x: 1655, y: 1298, rx: 16, ry: 9 },
+      { x: 1690, y: 1308, rx: 18, ry: 10 },
+      { x: 1725, y: 1320, rx: 20, ry: 11 },
+      { x: 1745, y: 1332, rx: 15, ry: 9 }
+    ];
+    for (const st of riverStonesL) {
+      ctx.beginPath();
+      ctx.ellipse(st.x, st.y, st.rx, st.ry, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Kontur stoku
     ctx.strokeStyle = '#18120a';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, 1200);
-    ctx.lineTo(400, 1208);
-    ctx.lineTo(800, 1216);
-    ctx.lineTo(1200, 1224);
-    ctx.lineTo(1600, 1230);
-    ctx.lineTo(1600, 1400);
+    for (let i = 1; i < leftOvalPoints.length; i++) {
+      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
+    }
+    ctx.lineTo(1750, 1400);
     ctx.stroke();
     ctx.restore();
     ctx.restore();
   }
 
-  // B. Prawy brzeg - gładki stok (X: 2800 do 4400, Y: 1230 -> 1200)
-  if (camL < 4450 && camR > 2750) {
+  // B. Prawy brzeg - owalna płaszczyzna schodząca do wody (X: 2650 do 4400)
+  if (camL < 4450 && camR > 2600) {
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(2800, 1230);
-    ctx.lineTo(3200, 1224);
-    ctx.lineTo(3600, 1216);
-    ctx.lineTo(4000, 1208);
+    ctx.moveTo(4400, 1400);
     ctx.lineTo(4400, 1200);
-    ctx.lineTo(4400, 1400);
-    ctx.lineTo(2800, 1400);
+    for (let i = rightOvalPoints.length - 1; i >= 0; i--) {
+      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
+    }
+    ctx.lineTo(2650, 1400);
     ctx.closePath();
 
-    const gGradR = ctx.createLinearGradient(2800, 1200, 2800, 1400);
+    const gGradR = ctx.createLinearGradient(4400, 1200, 4400, 1400);
     gGradR.addColorStop(0.0, '#42321e');
     gGradR.addColorStop(0.18, '#2e2214');
     gGradR.addColorStop(0.55, '#1e160c');
@@ -783,7 +795,8 @@ export function drawArena3Foreground(ctx, camera) {
     // Detale starożytnych bloków kamiennych
     ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
     for (let kx = 2860; kx < 4350; kx += 110) {
-      const ky = 1230 - ((kx - 2800) / 1600) * 30;
+      const u = (4400 - kx) / 1750;
+      const ky = 1200 + Math.pow(u, 2) * 135;
       ctx.fillRect(kx, ky + 26, 60, 22);
       ctx.fillRect(kx + 35, ky + 62, 50, 20);
     }
@@ -793,55 +806,76 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.strokeStyle = '#3e7025';
     ctx.lineWidth = 14;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(2800, 1230);
-    ctx.lineTo(3200, 1224);
-    ctx.lineTo(3600, 1216);
-    ctx.lineTo(4000, 1208);
-    ctx.lineTo(4400, 1200);
+    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y);
+    for (let i = 1; i < rightOvalPoints.length; i++) {
+      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
+    }
     ctx.stroke();
 
     ctx.strokeStyle = '#589e34';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(2800, 1228);
-    ctx.lineTo(3200, 1222);
-    ctx.lineTo(3600, 1214);
-    ctx.lineTo(4000, 1206);
-    ctx.lineTo(4400, 1198);
+    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y - 2);
+    for (let i = 1; i < rightOvalPoints.length; i++) {
+      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y - 2);
+    }
     ctx.stroke();
 
     ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(2800, 1226);
-    ctx.lineTo(3200, 1220);
-    ctx.lineTo(3600, 1212);
-    ctx.lineTo(4000, 1204);
-    ctx.lineTo(4400, 1196);
+    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y - 4);
+    for (let i = 1; i < rightOvalPoints.length; i++) {
+      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y - 4);
+    }
     ctx.stroke();
 
     // Kępki trawy
     ctx.fillStyle = '#4fa32c';
-    for (let gx = 2840; gx < 4380; gx += 45) {
-      const gy = 1230 - ((gx - 2800) / 1600) * 30;
-      ctx.beginPath();
-      ctx.moveTo(gx - 4, gy);
-      ctx.lineTo(gx, gy - 7);
-      ctx.lineTo(gx + 4, gy);
-      ctx.fill();
+    for (let i = 1; i < rightOvalPoints.length - 1; i++) {
+      const pA = rightOvalPoints[i];
+      const pB = rightOvalPoints[i + 1];
+      for (let t = 0.2; t <= 0.8; t += 0.3) {
+        const gx = pA.x + (pB.x - pA.x) * t;
+        const gy = pA.y + (pB.y - pA.y) * t;
+        if (gy < 1290) {
+          ctx.beginPath();
+          ctx.moveTo(gx - 4, gy);
+          ctx.lineTo(gx, gy - 7);
+          ctx.lineTo(gx + 4, gy);
+          ctx.fill();
+        }
+      }
     }
 
-    // Kontur urwiska i stoku
+    // Zaokrąglone kamienie rzeczne
+    ctx.fillStyle = '#2d3748';
+    ctx.strokeStyle = '#1a202c';
+    ctx.lineWidth = 1.5;
+    const riverStonesR = [
+      { x: 2660, y: 1332, rx: 15, ry: 9 },
+      { x: 2685, y: 1320, rx: 19, ry: 11 },
+      { x: 2720, y: 1308, rx: 17, ry: 10 },
+      { x: 2755, y: 1298, rx: 16, ry: 9 },
+      { x: 2790, y: 1290, rx: 14, ry: 8 }
+    ];
+    for (const st of riverStonesR) {
+      ctx.beginPath();
+      ctx.ellipse(st.x, st.y, st.rx, st.ry, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Kontur stoku
     ctx.strokeStyle = '#18120a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(2800, 1400);
-    ctx.lineTo(2800, 1230);
-    ctx.lineTo(3200, 1224);
-    ctx.lineTo(3600, 1216);
-    ctx.lineTo(4000, 1208);
-    ctx.lineTo(4400, 1200);
+    ctx.moveTo(2650, 1400);
+    for (let i = 0; i < rightOvalPoints.length; i++) {
+      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
+    }
     ctx.stroke();
     ctx.restore();
     ctx.restore();
@@ -1358,11 +1392,11 @@ export function drawArena3Foreground(ctx, camera) {
   drawSniperRock(3400, 800, 400, 34);
 
   // -----------------------------------------------------------------------
-  // 6. WISZĄCY MOST (X: 1800 do 2600, Y: 1000)
-  // Potężne pylony kotwiczące, kable odciągowe do skał, kładki dojściowe
+  // 6. WISZĄCY MOST (X: 1750 do 2650, Y: 1000)
+  // Potężne pylony kotwiczące i wiszące przęsło rozpięte bezpośrednio nad rzeką
   // -----------------------------------------------------------------------
-  const bridgeX1 = 1800;
-  const bridgeX2 = 2600;
+  const bridgeX1 = 1750;
+  const bridgeX2 = 2650;
   const bridgeY = 1000;
   const pylonLeftX = 1755;
   const pylonRightX = 2645;
@@ -1430,116 +1464,6 @@ export function drawArena3Foreground(ctx, camera) {
 
   drawBridgePylon(pylonLeftX);
   drawBridgePylon(pylonRightX);
-
-  // B. SKOŚNE WEJŚCIA NA MOST (Łączące brzeg rzeki Y: 1230 z kładką mostu Y: 1000)
-  // Przerobione na normalne skośne podejścia z poręczami i stopniami
-  function drawSlopedBridgeRamp(isLeft) {
-    const rx1 = isLeft ? 1600 : 2600;
-    const rx2 = isLeft ? 1800 : 2800;
-    const ry1 = isLeft ? 1230 : 1000;
-    const ry2 = isLeft ? 1000 : 1230;
-    const rw = rx2 - rx1;
-
-    if (rx2 < camL || rx1 > camR) return;
-
-    ctx.save();
-    // 1. Drewniane pale nośne (podpory pod rampą)
-    ctx.strokeStyle = '#3b220d';
-    ctx.lineWidth = 8;
-    for (let sx = rx1 + 35; sx <= rx2 - 35; sx += 45) {
-      const u = (sx - rx1) / rw;
-      const rampY = ry1 + u * (ry2 - ry1);
-      ctx.beginPath();
-      ctx.moveTo(sx, rampY);
-      ctx.lineTo(sx, 1340); // wbite w brzeg rzeki
-      ctx.stroke();
-
-      // Zastrzały krzyżowe podpór
-      ctx.strokeStyle = '#2b1809';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(sx - 12, rampY + 20);
-      ctx.lineTo(sx + 12, rampY + 60);
-      ctx.stroke();
-      ctx.strokeStyle = '#3b220d';
-      ctx.lineWidth = 8;
-    }
-
-    // 2. Gruba drewniana belka nośna rampy (pokład skośny)
-    const rampGrad = ctx.createLinearGradient(rx1, ry1, rx2, ry2);
-    rampGrad.addColorStop(0.0, '#785226');
-    rampGrad.addColorStop(0.5, '#563814');
-    rampGrad.addColorStop(1.0, '#362108');
-    ctx.fillStyle = rampGrad;
-
-    ctx.beginPath();
-    ctx.moveTo(rx1, ry1);
-    ctx.lineTo(rx2, ry2);
-    ctx.lineTo(rx2, ry2 + 22);
-    ctx.lineTo(rx1, ry1 + 22);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#221306';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // 3. Stopnie / nacięcia antypoślizgowe na rampie (poprzeczne listwy co 22px)
-    ctx.strokeStyle = 'rgba(235, 195, 105, 0.75)';
-    ctx.lineWidth = 2.2;
-    for (let sx = rx1 + 15; sx <= rx2 - 15; sx += 22) {
-      const u = (sx - rx1) / rw;
-      const sy = ry1 + u * (ry2 - ry1);
-      ctx.beginPath();
-      ctx.moveTo(sx - 4, sy);
-      ctx.lineTo(sx + 4, sy + 7);
-      ctx.stroke();
-
-      // Nity żelazne
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(sx, sy + 4, 3, 3);
-    }
-
-    // 4. Słupki poręczy i lina asekuracyjna
-    const handrailOffset = 36;
-    ctx.strokeStyle = '#3a200a';
-    ctx.lineWidth = 4.5;
-    for (let px = rx1 + 20; px <= rx2 - 20; px += 45) {
-      const u = (px - rx1) / rw;
-      const py = ry1 + u * (ry2 - ry1);
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(px, py - handrailOffset);
-      ctx.stroke();
-
-      // Głowica słupka
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.arc(px, py - handrailOffset, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Lina poręczy rozpięta na słupkach
-    ctx.strokeStyle = '#5a3d1c';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(rx1, ry1 - handrailOffset);
-    ctx.lineTo(rx2, ry2 - handrailOffset);
-    ctx.stroke();
-
-    // Wtórna lina poręczy
-    ctx.strokeStyle = '#3d2610';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(rx1, ry1 - handrailOffset * 0.5);
-    ctx.lineTo(rx2, ry2 - handrailOffset * 0.5);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  drawSlopedBridgeRamp(true);
-  drawSlopedBridgeRamp(false);
 
   // -----------------------------------------------------------------------
   // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most Y: 1000)
@@ -1749,12 +1673,12 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  // E. DREWNIANE SEGMENTY KŁADKI MOSTU (4 segmenty po 200 px)
+  // E. DREWNIANE SEGMENTY KŁADKI MOSTU (4 segmenty po 225 px, span X: 1750 do 2650)
   const bridgeSegments = [
-    { x: 1800, w: 200 },
-    { x: 2000, w: 200 },
-    { x: 2200, w: 200 },
-    { x: 2400, w: 200 }
+    { x: 1750, w: 225 },
+    { x: 1975, w: 225 },
+    { x: 2200, w: 225 },
+    { x: 2425, w: 225 }
   ];
 
   for (let bIdx = 0; bIdx < bridgeSegments.length; bIdx++) {
