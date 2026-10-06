@@ -83,110 +83,53 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
-  // A. PODŁOŻE: LEWY BRZEG (X: 0 do 1600)
-  // Twardy, kamienno-ziemisty grunt. Y zaczyna się na 1200 px, opadając uskokami
+  // A. PODŁOŻE: SPADKI TERENU ZAMIAST SCHODKÓW (X: 0 do 1600 oraz X: 2800 do 4400)
+  // Twardy, kamienno-ziemisty grunt opadający płynnie w stronę rzeki
   // -----------------------------------------------------------------------
   {
-    id: 'ground_left_seg1',
-    name: 'Lewy Brzeg - Półka Główna (Y: 1200)',
+    id: 'ground_left_slope',
+    name: 'Lewy Brzeg - Spadek Terenu',
     x: 0,
     y: 1200,
-    w: 454,
+    w: 1600,
     h: 200,
     thickness: 200,
     solid: true,
-    isPlatform: true
+    isPlatform: true,
+    surfacePoints: [
+      { x: 0, y: 1200 },
+      { x: 400, y: 1208 },
+      { x: 800, y: 1216 },
+      { x: 1200, y: 1224 },
+      { x: 1600, y: 1230 }
+    ]
   },
   {
-    id: 'ground_left_seg2',
-    name: 'Lewy Brzeg - Uskok 1 (Y: 1230)',
-    x: 450,
-    y: 1230,
-    w: 404,
-    h: 170,
-    thickness: 170,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'ground_left_seg3',
-    name: 'Lewy Brzeg - Uskok 2 (Y: 1260)',
-    x: 850,
-    y: 1260,
-    w: 404,
-    h: 140,
-    thickness: 140,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'ground_left_seg4',
-    name: 'Lewy Brzeg - Skraj Rzeki (Y: 1280)',
-    x: 1250,
-    y: 1280,
-    w: 350,
-    h: 120,
-    thickness: 120,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // A. PODŁOŻE: PRAWY BRZEG (X: 2800 do 4400)
-  // Symetryczny do lewego, pnący się uskokami w stronę prawej krawędzi
-  // -----------------------------------------------------------------------
-  {
-    id: 'ground_right_seg4',
-    name: 'Prawy Brzeg - Skraj Rzeki (Y: 1280)',
+    id: 'ground_right_slope',
+    name: 'Prawy Brzeg - Spadek Terenu',
     x: 2800,
-    y: 1280,
-    w: 354,
-    h: 120,
-    thickness: 120,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'ground_right_seg3',
-    name: 'Prawy Brzeg - Uskok 2 (Y: 1260)',
-    x: 3150,
-    y: 1260,
-    w: 404,
-    h: 140,
-    thickness: 140,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'ground_right_seg2',
-    name: 'Prawy Brzeg - Uskok 1 (Y: 1230)',
-    x: 3550,
-    y: 1230,
-    w: 404,
-    h: 170,
-    thickness: 170,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'ground_right_seg1',
-    name: 'Prawy Brzeg - Półka Główna (Y: 1200)',
-    x: 3950,
     y: 1200,
-    w: 450,
+    w: 1600,
     h: 200,
     thickness: 200,
     solid: true,
-    isPlatform: true
+    isPlatform: true,
+    surfacePoints: [
+      { x: 2800, y: 1230 },
+      { x: 3200, y: 1224 },
+      { x: 3600, y: 1216 },
+      { x: 4000, y: 1208 },
+      { x: 4400, y: 1200 }
+    ]
   },
 
   // -----------------------------------------------------------------------
   // A. STREFA WODY (TRIGGER AREA - X: 1600 do 2800, Y: 1300 do 1400)
-  // Zwiększony drag o 40%, spowolnienie piłki i gracza, nie zabija
+  // Śmiertelna głębia: gracz tonie, piłka natychmiast wraca na środek
   // -----------------------------------------------------------------------
   {
     id: 'water_zone',
-    name: 'Rzeka / Strefa Wody (Trigger)',
+    name: 'Rzeka / Strefa Wody (Śmiertelna)',
     type: 'water',
     x: 1600,
     y: 1300,
@@ -335,30 +278,70 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
-  // POMOSTY PODEJŚCIOWE DO MOSTU (Łączące brzeg rzeki Y: 1280 z mostem Y: 1000)
+  // SKOŚNE WEJŚCIA NA MOST (Łączące brzeg rzeki Y: 1230 z mostem Y: 1000)
+  // Normalne skośne rampy umożliwiające graczom płynne wejście na wiszący most
   // -----------------------------------------------------------------------
   {
-    id: 'bridge_approach_left',
-    name: 'Podejście do Mostu Lewe',
+    id: 'bridge_ramp_left',
+    name: 'Skośne Wejście na Most Lewe',
     type: 'catwalk',
-    x: 1620,
-    y: 1140,
-    w: 180,
-    h: 18,
-    thickness: 18,
+    x: 1600,
+    y: 1000,
+    w: 200,
+    h: 240,
+    thickness: 22,
+    solid: true,
+    isPlatform: true,
+    oneWay: true,
+    surfacePoints: [
+      { x: 1600, y: 1230 },
+      { x: 1800, y: 1000 }
+    ]
+  },
+  {
+    id: 'bridge_ramp_right',
+    name: 'Skośne Wejście na Most Prawe',
+    type: 'catwalk',
+    x: 2600,
+    y: 1000,
+    w: 200,
+    h: 240,
+    thickness: 22,
+    solid: true,
+    isPlatform: true,
+    oneWay: true,
+    surfacePoints: [
+      { x: 2600, y: 1000 },
+      { x: 2800, y: 1230 }
+    ]
+  },
+
+  // -----------------------------------------------------------------------
+  // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most na Y: 1000)
+  // Wiszące w koronach drzew dżungli platformy snajpersko-taktyczne
+  // -----------------------------------------------------------------------
+  {
+    id: 'bridge_skywalk_left',
+    name: 'Wiszący Pomost Nad Mostem Lewy',
+    type: 'catwalk',
+    x: 1880,
+    y: 620,
+    w: 260,
+    h: 20,
+    thickness: 20,
     solid: true,
     isPlatform: true,
     oneWay: true
   },
   {
-    id: 'bridge_approach_right',
-    name: 'Podejście do Mostu Prawe',
+    id: 'bridge_skywalk_right',
+    name: 'Wiszący Pomost Nad Mostem Prawy',
     type: 'catwalk',
-    x: 2600,
-    y: 1140,
-    w: 180,
-    h: 18,
-    thickness: 18,
+    x: 2260,
+    y: 620,
+    w: 260,
+    h: 20,
+    thickness: 20,
     solid: true,
     isPlatform: true,
     oneWay: true
@@ -539,46 +522,61 @@ export function updateArena3(dt, players, ball) {
   }
 
   // 2. Fizyka strefy wody (Trigger Area - X: 1600 do 2800, Y: 1300 do 1400)
-  // Opór ruchu (drag) rośnie o 40% (płynny opór cieczy), spowolnienie piłki i gracza.
-  // Woda nie zabija - delikatny wypór pozwala na powolne wyskoczenie na brzeg.
+  // WODA JEST ŚMIERTELNA DLA GRACZA (POSTAĆ TONIE), A PIŁKA RESPI SIĘ NA ŚRODKU ARENY
   if (Array.isArray(players)) {
     for (let i = 0; i < players.length; i++) {
       const p = players[i];
-      if (!p || p.isDead) continue;
+      if (!p) continue;
 
       const pFeetY = p.y + (p.h || 70);
-      const inWaterX = (p.x >= 1580 && p.x <= 2820);
-      const inWaterY = (pFeetY >= 1300 && p.y <= 1400);
+      const inWaterX = (p.x + (p.w || 24) * 0.5 >= 1560 && p.x + (p.w || 24) * 0.5 <= 2840);
+      const inWaterY = (pFeetY >= 1300);
 
       if (inWaterX && inWaterY) {
-        // Płynny opór w wodzie
-        p.vx *= 0.88;
-        p.vy *= 0.85;
-
-        // Ograniczenie maksymalnej prędkości opadania w głąb rzeki
-        if (p.vy > 5.5) p.vy = 5.5;
-
-        // Wypór hydrostatyczny przy dnie rzeki - woda nie pozwala utonąć
-        if (pFeetY > 1365) {
-          p.vy = -7.5;
+        if (!p.isDead) {
+          // Śmierć przez utonięcie w głębinie dżungli
+          p.hp = 0;
+          p.isDead = true;
+          p.respawnTimer = 85;
+          p.vx = 0;
+          p.vy = 2.0; // tonięcie na dno rzeki
           p.onGround = false;
-          p.isJumping = true;
+          p.isJumping = false;
           p.currentPlatform = null;
+          p.corpseAngle = 0;
+          if (p.currentWeapon && typeof spawnDroppedWeapon === 'function') {
+            spawnDroppedWeapon(p.x + (p.w || 24) / 2, p.y + 20, 0, -2, p.currentWeapon, p.facing);
+            p.currentWeapon = null;
+          }
+          if (typeof triggerScreenShake === 'function') {
+            triggerScreenShake(7);
+          }
+        } else {
+          // Martwa postać powoli tonie ku dnu
+          p.vx *= 0.8;
+          p.vy = Math.min(2.4, p.vy + 0.08);
+          p.onGround = false;
         }
       }
     }
   }
 
-  // Spowolnienie i unoszenie piłki w rzece
+  // Piłka wpadająca do rzeki - natychmiastowy respawn na środku areny (X: 2200, Y: 700)
   if (ball && !ball.goalAnimation?.active) {
-    const ballInWater = (ball.x >= 1580 && ball.x <= 2820 && ball.y >= 1300 && ball.y <= 1400);
+    const ballInWater = (ball.x >= 1560 && ball.x <= 2840 && (ball.y + (ball.colRadius || 14) >= 1300));
     if (ballInWater) {
-      ball.vx *= 0.88;
-      ball.vy *= 0.85;
-      if (ball.vy > 5.5) ball.vy = 5.5;
-      // Wypór wody na piłkę
-      if (ball.y > 1360) {
-        ball.vy = -5.5;
+      ball.x = 2200;
+      ball.y = 700;
+      ball.prevX = 2200;
+      ball.prevY = 700;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.spin = 0;
+      ball.hoverBaseY = 700;
+      ball.isLevitating = true;
+      ball.trail = [];
+      if (typeof triggerScreenShake === 'function') {
+        triggerScreenShake(4);
       }
     }
   }
@@ -667,59 +665,186 @@ export function drawArena3Foreground(ctx, camera) {
   const camR = camera ? camera.x + (camera.viewWidth || 2000) + 200 : 4400;
 
   // -----------------------------------------------------------------------
-  // 1. PODŁOŻE I SKAŁY: LEWY I PRAWY BRZEG (USKOKI)
+  // 1. PODŁOŻE I SKAŁY: LEWY I PRAWY BRZEG (PŁYNNE STOKI SPADKOWE)
+  // Przekształcone ze schodków w naturalny, gładki spadek terenu ku rzece
   // -----------------------------------------------------------------------
-  const groundSegments = [
-    // Lewy brzeg
-    { x: 0, y: 1200, w: 454, h: 200 },
-    { x: 450, y: 1230, w: 404, h: 170 },
-    { x: 850, y: 1260, w: 404, h: 140 },
-    { x: 1250, y: 1280, w: 350, h: 120 },
-    // Prawy brzeg
-    { x: 2800, y: 1280, w: 354, h: 120 },
-    { x: 3150, y: 1260, w: 404, h: 140 },
-    { x: 3550, y: 1230, w: 404, h: 170 },
-    { x: 3950, y: 1200, w: 450, h: 200 }
-  ];
+  // A. Lewy brzeg - gładki stok (X: 0 do 1600, Y: 1200 -> 1230)
+  if (camL < 1650 && camR > -50) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 1200);
+    ctx.lineTo(400, 1208);
+    ctx.lineTo(800, 1216);
+    ctx.lineTo(1200, 1224);
+    ctx.lineTo(1600, 1230);
+    // Pionowe urwisko wpadające do wody na X: 1600
+    ctx.lineTo(1600, 1400);
+    ctx.lineTo(0, 1400);
+    ctx.closePath();
 
-  for (let sIdx = 0; sIdx < groundSegments.length; sIdx++) {
-    const seg = groundSegments[sIdx];
-    if (seg.x + seg.w < camL || seg.x > camR) continue;
+    const gGradL = ctx.createLinearGradient(0, 1200, 0, 1400);
+    gGradL.addColorStop(0.0, '#42321e');
+    gGradL.addColorStop(0.18, '#2e2214');
+    gGradL.addColorStop(0.55, '#1e160c');
+    gGradL.addColorStop(1.0, '#100c06');
+    ctx.fillStyle = gGradL;
+    ctx.fill();
 
-    // A. Kamienno-ziemisty trzon gruntu
-    const gGrad = ctx.createLinearGradient(seg.x, seg.y, seg.x, seg.y + seg.h);
-    gGrad.addColorStop(0.0, '#42321e');
-    gGrad.addColorStop(0.15, '#2e2214');
-    gGrad.addColorStop(0.5, '#1e160c');
-    gGrad.addColorStop(1.0, '#100c06');
-    ctx.fillStyle = gGrad;
-    ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
+    // Detale starożytnych bloków kamiennych zatopionych w gruncie
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    for (let kx = 60; kx < 1550; kx += 110) {
+      const ky = 1200 + (kx / 1600) * 30;
+      ctx.fillRect(kx, ky + 26, 60, 22);
+      ctx.fillRect(kx + 35, ky + 62, 50, 20);
+    }
 
-    // B. Warstwa mchu i dżunglowej trawy na górnej krawędzi (Y)
-    ctx.fillStyle = '#3e7025';
-    ctx.fillRect(seg.x, seg.y, seg.w, 14);
-    ctx.fillStyle = '#589e34';
-    ctx.fillRect(seg.x, seg.y, seg.w, 6);
+    // Warstwa mchu i dżunglowej trawy na górnej krawędzi stoku
+    ctx.save();
+    ctx.strokeStyle = '#3e7025';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 1200);
+    ctx.lineTo(400, 1208);
+    ctx.lineTo(800, 1216);
+    ctx.lineTo(1200, 1224);
+    ctx.lineTo(1600, 1230);
+    ctx.stroke();
 
-    // C. Ostra krawędź komiksowa i rim lighting (światło na krawędzi)
+    // Jaśniejsza trawa
+    ctx.strokeStyle = '#589e34';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 1198);
+    ctx.lineTo(400, 1206);
+    ctx.lineTo(800, 1214);
+    ctx.lineTo(1200, 1222);
+    ctx.lineTo(1600, 1228);
+    ctx.stroke();
+
+    // Rim lighting (światło na krawędzi stoku)
     ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(seg.x, seg.y);
-    ctx.lineTo(seg.x + seg.w, seg.y);
+    ctx.moveTo(0, 1196);
+    ctx.lineTo(400, 1204);
+    ctx.lineTo(800, 1212);
+    ctx.lineTo(1200, 1220);
+    ctx.lineTo(1600, 1226);
     ctx.stroke();
 
-    // D. Detale kamieni / starożytnych bloków w gruncie
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let kx = seg.x + 25; kx < seg.x + seg.w - 30; kx += 70) {
-      ctx.fillRect(kx, seg.y + 24, 48, 20);
-      ctx.fillRect(kx + 20, seg.y + 55, 36, 18);
+    // Kępki trawy / paprocie wzdłuż stoku
+    ctx.fillStyle = '#4fa32c';
+    for (let gx = 40; gx < 1580; gx += 45) {
+      const gy = 1200 + (gx / 1600) * 30;
+      ctx.beginPath();
+      ctx.moveTo(gx - 4, gy);
+      ctx.lineTo(gx, gy - 7);
+      ctx.lineTo(gx + 4, gy);
+      ctx.fill();
     }
 
-    // E. Kontur bloku terenu
+    // Kontur urwiska i podstawy
     ctx.strokeStyle = '#18120a';
     ctx.lineWidth = 3;
-    ctx.strokeRect(seg.x, seg.y, seg.w, seg.h);
+    ctx.beginPath();
+    ctx.moveTo(0, 1200);
+    ctx.lineTo(400, 1208);
+    ctx.lineTo(800, 1216);
+    ctx.lineTo(1200, 1224);
+    ctx.lineTo(1600, 1230);
+    ctx.lineTo(1600, 1400);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // B. Prawy brzeg - gładki stok (X: 2800 do 4400, Y: 1230 -> 1200)
+  if (camL < 4450 && camR > 2750) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(2800, 1230);
+    ctx.lineTo(3200, 1224);
+    ctx.lineTo(3600, 1216);
+    ctx.lineTo(4000, 1208);
+    ctx.lineTo(4400, 1200);
+    ctx.lineTo(4400, 1400);
+    ctx.lineTo(2800, 1400);
+    ctx.closePath();
+
+    const gGradR = ctx.createLinearGradient(2800, 1200, 2800, 1400);
+    gGradR.addColorStop(0.0, '#42321e');
+    gGradR.addColorStop(0.18, '#2e2214');
+    gGradR.addColorStop(0.55, '#1e160c');
+    gGradR.addColorStop(1.0, '#100c06');
+    ctx.fillStyle = gGradR;
+    ctx.fill();
+
+    // Detale starożytnych bloków kamiennych
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    for (let kx = 2860; kx < 4350; kx += 110) {
+      const ky = 1230 - ((kx - 2800) / 1600) * 30;
+      ctx.fillRect(kx, ky + 26, 60, 22);
+      ctx.fillRect(kx + 35, ky + 62, 50, 20);
+    }
+
+    // Warstwa mchu i dżunglowej trawy
+    ctx.save();
+    ctx.strokeStyle = '#3e7025';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(2800, 1230);
+    ctx.lineTo(3200, 1224);
+    ctx.lineTo(3600, 1216);
+    ctx.lineTo(4000, 1208);
+    ctx.lineTo(4400, 1200);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#589e34';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(2800, 1228);
+    ctx.lineTo(3200, 1222);
+    ctx.lineTo(3600, 1214);
+    ctx.lineTo(4000, 1206);
+    ctx.lineTo(4400, 1198);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(2800, 1226);
+    ctx.lineTo(3200, 1220);
+    ctx.lineTo(3600, 1212);
+    ctx.lineTo(4000, 1204);
+    ctx.lineTo(4400, 1196);
+    ctx.stroke();
+
+    // Kępki trawy
+    ctx.fillStyle = '#4fa32c';
+    for (let gx = 2840; gx < 4380; gx += 45) {
+      const gy = 1230 - ((gx - 2800) / 1600) * 30;
+      ctx.beginPath();
+      ctx.moveTo(gx - 4, gy);
+      ctx.lineTo(gx, gy - 7);
+      ctx.lineTo(gx + 4, gy);
+      ctx.fill();
+    }
+
+    // Kontur urwiska i stoku
+    ctx.strokeStyle = '#18120a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(2800, 1400);
+    ctx.lineTo(2800, 1230);
+    ctx.lineTo(3200, 1224);
+    ctx.lineTo(3600, 1216);
+    ctx.lineTo(4000, 1208);
+    ctx.lineTo(4400, 1200);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
   }
 
   // -----------------------------------------------------------------------
@@ -781,9 +906,9 @@ export function drawArena3Foreground(ctx, camera) {
     // E. Subtelny napis strefy wody
     ctx.save();
     ctx.font = 'bold 22px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
     ctx.textAlign = 'center';
-    ctx.fillText('≈  RZEKA DŻUNGLI (DRAG +40%)  ≈', 2200, 1355);
+    ctx.fillText('☠  RZEKA DŻUNGLI (ŚMIERTELNA GŁĘBIA)  ☠', 2200, 1355);
     ctx.restore();
   }
 
@@ -1306,79 +1431,244 @@ export function drawArena3Foreground(ctx, camera) {
   drawBridgePylon(pylonLeftX);
   drawBridgePylon(pylonRightX);
 
-  // B. POMOSTY PODEJŚCIOWE DO MOSTU (Łączące brzeg rzeki Y: 1280 z kładką Y: 1000)
-  function drawApproachWalkway(isLeft) {
-    const ax1 = isLeft ? 1620 : 2600;
-    const ax2 = isLeft ? 1800 : 2780;
-    const aw = ax2 - ax1;
-    if (ax2 < camL || ax1 > camR) return;
+  // B. SKOŚNE WEJŚCIA NA MOST (Łączące brzeg rzeki Y: 1230 z kładką mostu Y: 1000)
+  // Przerobione na normalne skośne podejścia z poręczami i stopniami
+  function drawSlopedBridgeRamp(isLeft) {
+    const rx1 = isLeft ? 1600 : 2600;
+    const rx2 = isLeft ? 1800 : 2800;
+    const ry1 = isLeft ? 1230 : 1000;
+    const ry2 = isLeft ? 1000 : 1230;
+    const rw = rx2 - rx1;
+
+    if (rx2 < camL || rx1 > camR) return;
 
     ctx.save();
-    // Drewniane słupy podpierające podejście wbite w brzeg
+    // 1. Drewniane pale nośne (podpory pod rampą)
     ctx.strokeStyle = '#3b220d';
-    ctx.lineWidth = 7;
-    for (let sx = ax1 + 25; sx <= ax2 - 25; sx += 40) {
-      const u = (sx - ax1) / aw;
-      const stepY = isLeft ? (1200 - u * 190) : (1010 + u * 190);
+    ctx.lineWidth = 8;
+    for (let sx = rx1 + 35; sx <= rx2 - 35; sx += 45) {
+      const u = (sx - rx1) / rw;
+      const rampY = ry1 + u * (ry2 - ry1);
       ctx.beginPath();
-      ctx.moveTo(sx, stepY);
-      ctx.lineTo(sx, 1280);
+      ctx.moveTo(sx, rampY);
+      ctx.lineTo(sx, 1340); // wbite w brzeg rzeki
       ctx.stroke();
+
+      // Zastrzały krzyżowe podpór
+      ctx.strokeStyle = '#2b1809';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(sx - 12, rampY + 20);
+      ctx.lineTo(sx + 12, rampY + 60);
+      ctx.stroke();
+      ctx.strokeStyle = '#3b220d';
+      ctx.lineWidth = 8;
     }
 
-    // Drewniana kładka podejścia
-    const appGrad = ctx.createLinearGradient(ax1, 1000, ax2, 1200);
-    appGrad.addColorStop(0, '#6d451e');
-    appGrad.addColorStop(1, '#3b220d');
-    ctx.fillStyle = appGrad;
+    // 2. Gruba drewniana belka nośna rampy (pokład skośny)
+    const rampGrad = ctx.createLinearGradient(rx1, ry1, rx2, ry2);
+    rampGrad.addColorStop(0.0, '#785226');
+    rampGrad.addColorStop(0.5, '#563814');
+    rampGrad.addColorStop(1.0, '#362108');
+    ctx.fillStyle = rampGrad;
 
     ctx.beginPath();
-    if (isLeft) {
-      ctx.moveTo(ax1, 1200);
-      ctx.lineTo(ax2, 1000);
-      ctx.lineTo(ax2, 1018);
-      ctx.lineTo(ax1, 1218);
-    } else {
-      ctx.moveTo(ax1, 1000);
-      ctx.lineTo(ax2, 1200);
-      ctx.lineTo(ax2, 1218);
-      ctx.lineTo(ax1, 1018);
-    }
+    ctx.moveTo(rx1, ry1);
+    ctx.lineTo(rx2, ry2);
+    ctx.lineTo(rx2, ry2 + 22);
+    ctx.lineTo(rx1, ry1 + 22);
     ctx.closePath();
     ctx.fill();
+
     ctx.strokeStyle = '#221306';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Poręcz linowa kładki dojściowej
-    ctx.strokeStyle = '#5a3d1c';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    if (isLeft) {
-      ctx.moveTo(ax1, 1165);
-      ctx.lineTo(ax2, 965);
-    } else {
-      ctx.moveTo(ax1, 965);
-      ctx.lineTo(ax2, 1165);
+    // 3. Stopnie / nacięcia antypoślizgowe na rampie (poprzeczne listwy co 22px)
+    ctx.strokeStyle = 'rgba(235, 195, 105, 0.75)';
+    ctx.lineWidth = 2.2;
+    for (let sx = rx1 + 15; sx <= rx2 - 15; sx += 22) {
+      const u = (sx - rx1) / rw;
+      const sy = ry1 + u * (ry2 - ry1);
+      ctx.beginPath();
+      ctx.moveTo(sx - 4, sy);
+      ctx.lineTo(sx + 4, sy + 7);
+      ctx.stroke();
+
+      // Nity żelazne
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(sx, sy + 4, 3, 3);
     }
+
+    // 4. Słupki poręczy i lina asekuracyjna
+    const handrailOffset = 36;
+    ctx.strokeStyle = '#3a200a';
+    ctx.lineWidth = 4.5;
+    for (let px = rx1 + 20; px <= rx2 - 20; px += 45) {
+      const u = (px - rx1) / rw;
+      const py = ry1 + u * (ry2 - ry1);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px, py - handrailOffset);
+      ctx.stroke();
+
+      // Głowica słupka
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(px, py - handrailOffset, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Lina poręczy rozpięta na słupkach
+    ctx.strokeStyle = '#5a3d1c';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(rx1, ry1 - handrailOffset);
+    ctx.lineTo(rx2, ry2 - handrailOffset);
     ctx.stroke();
 
-    // Słupki poręczy
-    ctx.strokeStyle = '#351d09';
-    ctx.lineWidth = 3;
-    for (let px = ax1 + 20; px <= ax2 - 20; px += 35) {
-      const u = (px - ax1) / aw;
-      const by = isLeft ? (1200 - u * 200) : (1000 + u * 200);
-      ctx.beginPath();
-      ctx.moveTo(px, by);
-      ctx.lineTo(px, by - 35);
-      ctx.stroke();
-    }
+    // Wtórna lina poręczy
+    ctx.strokeStyle = '#3d2610';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(rx1, ry1 - handrailOffset * 0.5);
+    ctx.lineTo(rx2, ry2 - handrailOffset * 0.5);
+    ctx.stroke();
+
     ctx.restore();
   }
 
-  drawApproachWalkway(true);
-  drawApproachWalkway(false);
+  drawSlopedBridgeRamp(true);
+  drawSlopedBridgeRamp(false);
+
+  // -----------------------------------------------------------------------
+  // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most Y: 1000)
+  // Wiszące w koronach drzew dżungli pomosty taktyczne
+  // -----------------------------------------------------------------------
+  function drawHighCanopyPlatform(px, py, pw, ph) {
+    if (px + pw < camL || px > camR) return;
+
+    ctx.save();
+    // 1. Długie liny nośne z baldachimu dżungli (od Y = 0 do py)
+    ctx.strokeStyle = '#4e3316';
+    ctx.lineWidth = 3.5;
+    // Lewa lina nośna
+    ctx.beginPath();
+    ctx.moveTo(px + 20, 0);
+    ctx.lineTo(px + 20, py);
+    ctx.stroke();
+    // Prawa lina nośna
+    ctx.beginPath();
+    ctx.moveTo(px + pw - 20, 0);
+    ctx.lineTo(px + pw - 20, py);
+    ctx.stroke();
+
+    // Owijające się liany wokół lin
+    ctx.strokeStyle = '#3e6822';
+    ctx.lineWidth = 2;
+    for (let ly = 40; ly < py - 20; ly += 60) {
+      ctx.beginPath();
+      ctx.arc(px + 20, ly, 6, 0, Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + pw - 20, ly + 25, 6, 0, Math.PI);
+      ctx.stroke();
+    }
+
+    // 2. Drewniany pomost wiszący (bambus i ciosany tek)
+    const platGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    platGrad.addColorStop(0.0, '#7c582c');
+    platGrad.addColorStop(0.5, '#563a18');
+    platGrad.addColorStop(1.0, '#35220c');
+    ctx.fillStyle = platGrad;
+    ctx.fillRect(px, py, pw, ph);
+
+    // Szczeble i gwoździe
+    ctx.strokeStyle = '#201306';
+    ctx.lineWidth = 2;
+    for (let bx = px + 15; bx < px + pw - 10; bx += 20) {
+      ctx.beginPath();
+      ctx.moveTo(bx, py);
+      ctx.lineTo(bx, py + ph);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(bx - 1, py + 3, 2, 2);
+      ctx.fillRect(bx - 1, py + ph - 5, 2, 2);
+    }
+
+    // Warstewka mchu na deskach
+    ctx.fillStyle = '#4c802b';
+    ctx.fillRect(px, py, pw, 3.5);
+
+    // Rim lighting
+    ctx.strokeStyle = 'rgba(235, 195, 100, 0.85)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + pw, py);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#1b1005';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+
+    // 3. Poręcz linowa na pomoście
+    ctx.strokeStyle = '#3e240e';
+    ctx.lineWidth = 3.5;
+    for (let sx = px + 25; sx <= px + pw - 25; sx += 42) {
+      ctx.beginPath();
+      ctx.moveTo(sx, py);
+      ctx.lineTo(sx, py - 24);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#5c3d1b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(px + 10, py - 24);
+    ctx.lineTo(px + pw - 10, py - 24);
+    ctx.stroke();
+
+    // 4. Wiszące pnącza pod pomostem
+    ctx.strokeStyle = '#2f521b';
+    ctx.lineWidth = 2.2;
+    for (let vx = px + 30; vx < px + pw - 30; vx += 50) {
+      const vLen = 22 + Math.sin(vx * 0.2) * 10;
+      const vSway = Math.sin(animTime * 2.5 + vx * 0.1) * 5;
+      ctx.beginPath();
+      ctx.moveTo(vx, py + ph);
+      ctx.quadraticCurveTo(vx + vSway * 0.5, py + ph + vLen * 0.5, vx + vSway, py + ph + vLen);
+      ctx.stroke();
+    }
+
+    // 5. Wiszący mosiężny lampion na środku spodu pomostu
+    const lcx = px + pw / 2;
+    const lcy = py + ph + 18;
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(lcx, py + ph);
+    ctx.lineTo(lcx, lcy - 10);
+    ctx.stroke();
+
+    // Korpus lampionu
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(lcx - 6, lcy - 10, 12, 14);
+    // Ciepłe światło lampy
+    const lGlow = ctx.createRadialGradient(lcx, lcy - 3, 2, lcx, lcy - 3, 25);
+    lGlow.addColorStop(0, '#fef08a');
+    lGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.55)');
+    lGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = lGlow;
+    ctx.beginPath();
+    ctx.arc(lcx, lcy - 3, 25, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  drawHighCanopyPlatform(1880, 620, 260, 20);
+  drawHighCanopyPlatform(2260, 620, 260, 20);
 
   // C. KABLE KOTWICZĄCE ODCIĄGOWE (Od szczytów pylonów do litej skały brzegów)
   ctx.save();

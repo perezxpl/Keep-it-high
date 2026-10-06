@@ -2696,9 +2696,9 @@ function dismissLoadingOverlay() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) {
     overlay.style.opacity = '0';
-    setTimeout(() => {
-      try { overlay.remove(); } catch (_) {}
-    }, 450);
+    overlay.style.pointerEvents = 'none';
+    overlay.style.display = 'none';
+    try { overlay.remove(); } catch (_) {}
   }
 }
 

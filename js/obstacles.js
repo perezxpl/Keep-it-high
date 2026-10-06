@@ -1593,10 +1593,23 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu (zabezpieczenie pasażera wagonika oraz strefy wody w Arenie 3)
-  const inA3Water = isA3Active && (p.x >= 1550 && p.x <= 2850);
-  const deathLimitY = isA3Active ? 1440 : (groundY + 160);
-  if (!inA3Water && !p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
+  // Wpadnięcie do śmiertelnej rzeki w Arenie 3 (utonięcie)
+  if (isA3Active && (p.x + (p.w || 24) * 0.5 >= 1560 && p.x + (p.w || 24) * 0.5 <= 2840) && (p.y + (p.h || 70) >= 1300) && !p.isDead) {
+    p.hp = 0;
+    p.isDead = true;
+    p.respawnTimer = 85;
+    p.vx = 0;
+    p.vy = 2.0; // tonie w głąb rzeki
+    p.onGround = false;
+    p.currentPlatform = null;
+    if (typeof triggerScreenShake === 'function') {
+      triggerScreenShake(8);
+    }
+  }
+
+  // Wpadnięcie do strefy śmierci poniżej spągu
+  const deathLimitY = isA3Active ? 1340 : (groundY + 160);
+  if (!p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
     p.respawnTimer = 75;

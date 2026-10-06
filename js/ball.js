@@ -27,11 +27,16 @@ export function resetBallToPlayer(p, GROUND_Y) {
   const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
   if (isA3) {
     p.x = 600;
-    p.y = 830;
+    p.y = 1138;
     p.facing = 1;
+    if (typeof window !== 'undefined' && window.location) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
+      if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
+    }
     ball.x = 2200;
-    ball.y = 680;
-    ball.hoverBaseY = 680;
+    ball.y = 700;
+    ball.hoverBaseY = 700;
     ball.isLevitating = true;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
@@ -403,16 +408,18 @@ export function updateBall(GROUND_Y) {
       ball.spin *= Math.pow(0.96, subDt);
     }
 
-    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego lub otchłani
-    const ballVoidLimit = isArena3 ? 1420 : (isArena2 ? 1380 : (GROUND_Y + 280));
-    if (ball.y > ballVoidLimit) {
+    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego, otchłani lub śmiertelnej wody w Arenie 3
+    const ballInA3Water = isArena3 && (ball.y + (ball.colRadius || 14) >= 1300) && (ball.x >= 1560 && ball.x <= 2840);
+    const ballVoidLimit = isArena3 ? 1300 : (isArena2 ? 1380 : (GROUND_Y + 280));
+    if (ball.y > ballVoidLimit || ballInA3Water) {
       if (isArena3) {
         ball.x = 2200;
-        ball.y = 680;
-        ball.hoverBaseY = 680;
+        ball.y = 700;
+        ball.hoverBaseY = 700;
         ball.isLevitating = true;
         ball.vx = 0;
         ball.vy = 0;
+        ball.spin = 0;
       } else if (isArena2) {
         ball.x = 1800;
         ball.y = 560;
