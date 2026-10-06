@@ -768,7 +768,7 @@ export function getPlatformSurfaceInfo(plat, px, groundY) {
       return {
         surfaceY: getPtY(pts[0]),
         slope,
-        nx: -dy / len,
+        nx: dy / len,
         ny: -dx / len,
         angle: Math.atan2(dy, dx)
       };
@@ -783,7 +783,7 @@ export function getPlatformSurfaceInfo(plat, px, groundY) {
       return {
         surfaceY: getPtY(p1),
         slope,
-        nx: -dy / len,
+        nx: dy / len,
         ny: -dx / len,
         angle: Math.atan2(dy, dx)
       };
@@ -803,7 +803,7 @@ export function getPlatformSurfaceInfo(plat, px, groundY) {
         return {
           surfaceY: curY,
           slope,
-          nx: -dy / len,
+          nx: dy / len,
           ny: -dx / len,
           angle: Math.atan2(dy, dx)
         };
@@ -1337,7 +1337,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   let landedPlatform = null;
 
   for (const plat of ARENA_PLATFORMS) {
-    if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad') continue;
+    if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
     if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
       const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
       const topY = surf.surfaceY;
@@ -1593,9 +1593,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu (zabezpieczenie pasażera wagonika przed fałszywym zgonem)
-  const deathLimitY = isA3Active ? 1390 : (groundY + 160);
-  if (!p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
+  // Wpadnięcie do strefy śmierci poniżej spągu (zabezpieczenie pasażera wagonika oraz strefy wody w Arenie 3)
+  const inA3Water = isA3Active && (p.x >= 1550 && p.x <= 2850);
+  const deathLimitY = isA3Active ? 1440 : (groundY + 160);
+  if (!inA3Water && !p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
     p.respawnTimer = 75;
@@ -1613,7 +1614,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
   const prevY = ball.prevY !== undefined ? ball.prevY : (ball.y - ball.vy);
 
   for (const plat of ARENA_PLATFORMS) {
-    if (plat.passBall || plat.isHatch || plat.id === 'hatch_l' || plat.id === 'hatch_r') {
+    if (plat.passBall || plat.isHatch || plat.id === 'hatch_l' || plat.id === 'hatch_r' || plat.type === 'water' || plat.solid === false || plat.isPlatform === false) {
       continue;
     }
     if (plat.isJumpPad || plat.type === 'jump_pad') {
@@ -1696,6 +1697,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
       const platRight = plat.x + plat.w;
       const thickness = plat.thickness || 20;
 
+      if (plat.oneWay && ball.vy <= 0) continue;
       if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {
         const prevBottomY = prevY + cR;
         const curBottomY = ball.y + cR;

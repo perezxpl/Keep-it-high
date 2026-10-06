@@ -1,535 +1,573 @@
 // =========================================================================
-// ARENAS/ARENA3.JS - AERO-RAFINERIA / PODNIEBNY DYSTRYKT (4400x1400 PX)
+// ARENAS/ARENA3.JS - JUNGLE ARENA / MILITARNA DŻUNGLA (4400x1400 PX)
 // Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
-// Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1, zero importów z wyższych warstw)
+// Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1)
 //
 // Architektura:
-// - Statyczne tło i architektura: wygenerowane w grafice PNG (assets/aero_refinery_bg.png)
-//   oraz modułowe sprite'y PNG (bramki, most, platformy, windy, kładki szklane)
-// - Obiekty i efekty ruchome: generowane w kodzie (kłębiące się chmury burzowe,
-//   para pod ciśnieniem z rur, obracające się łopatki wielkiego wentylatora,
-//   iskry na kablach, pulsujące lasery w bramkach, niska mgła na autostradzie,
-//   oraz plazma silników antygrawitacyjnych wind towarowych).
+// - Statyczne tło: wygenerowane w grafice PNG (assets/jungle_arena_bg.png)
+// - Geometria, platformy, bramki i kolidery: generowane w kodzie (Canvas 2D)
+// - Ruchome elementy: falująca rzeka, cząsteczki liści, promienie słońca, pulsujące kielichy
 // =========================================================================
 
-// 1. ZASOBY GRAFICZNE PNG
+// 1. ZASOBY GRAFICZNE PNG (Statyczne tło)
 const bgImg = new Image();
-bgImg.src = 'assets/aero_refinery_bg.png';
-
-const fanBladesImg = new Image();
-fanBladesImg.src = 'assets/aero_fan_blades.png';
-
-const platformTileImg = new Image();
-platformTileImg.src = 'assets/aero_platform_tile.png';
-
-const suspensionBridgeImg = new Image();
-suspensionBridgeImg.src = 'assets/aero_suspension_bridge.png';
-
-const cargoPlatformImg = new Image();
-cargoPlatformImg.src = 'assets/aero_cargo_platform.png';
-
-const goalApertureImg = new Image();
-goalApertureImg.src = 'assets/aero_goal_aperture.png';
-
-const glassPlatformImg = new Image();
-glassPlatformImg.src = 'assets/aero_glass_platform.png';
-
-const wallPanelImg = new Image();
-wallPanelImg.src = 'assets/aero_steel_wall_panel.png';
+bgImg.src = 'assets/jungle_arena_bg.png';
 
 // =========================================================================
-// 2. STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE (ARENA_3_PLATFORMS)
-// =========================================================================
-export const ARENA_3_PLATFORMS = [
-  // -----------------------------------------------------------------------
-  // POZIOM DOLNY (Autostrada Tranzytowa - pełna szerokość mapy, Y = 1180)
-  // -----------------------------------------------------------------------
-  {
-    id: 'highway_floor',
-    name: 'Autostrada Tranzytowa (Kładka Dolna)',
-    x: 20,
-    w: 4360,
-    y: 1180,
-    h: 40,
-    thickness: 40,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // POZIOM GÓRNY - BAZA LEWA (Cyan: x: 180–1280, y: 700)
-  // -----------------------------------------------------------------------
-  {
-    id: 'cyan_base_slab',
-    name: 'Baza Lewa (Cyan - Główna Płyta)',
-    x: 180,
-    w: 1100,
-    y: 700,
-    h: 54,
-    thickness: 54,
-    solid: true,
-    isPlatform: true
-  },
-  // Wlot bramki Cyan - pochyła kieszeń chwytająca opadająca ku ścianie
-  {
-    id: 'goal_cyan_pocket',
-    name: 'Kieszeń Bramki Cyan (Pochylnia)',
-    x: 20,
-    w: 160,
-    y: 700,
-    h: 32,
-    thickness: 32,
-    solid: true,
-    isPlatform: true,
-    surfacePoints: [
-      { x: 20, y: 716 },
-      { x: 180, y: 700 }
-    ]
-  },
-  // Nadproże / Gzyms Bramki Cyan (masywny dwuteownik I-beam)
-  {
-    id: 'goal_cyan_lintel',
-    name: 'Gzyms Bramki Cyan (Nadproże)',
-    x: 20,
-    w: 160,
-    y: 505,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // POZIOM GÓRNY - CENTRALNY MOST WISZĄCY (x: 1680–2720, y: 700)
-  // -----------------------------------------------------------------------
-  {
-    id: 'central_suspension_bridge',
-    name: 'Centralny Most Wiszący',
-    x: 1680,
-    w: 1040,
-    y: 700,
-    h: 40,
-    thickness: 40,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // POZIOM GÓRNY - BAZA PRAWA (Orange: x: 3120–4220, y: 700)
-  // -----------------------------------------------------------------------
-  {
-    id: 'orange_base_slab',
-    name: 'Baza Prawa (Orange - Główna Płyta)',
-    x: 3120,
-    w: 1100,
-    y: 700,
-    h: 54,
-    thickness: 54,
-    solid: true,
-    isPlatform: true
-  },
-  // Wlot bramki Orange - pochyła kieszeń chwytająca opadająca ku ścianie
-  {
-    id: 'goal_orange_pocket',
-    name: 'Kieszeń Bramki Orange (Pochylnia)',
-    x: 4220,
-    w: 160,
-    y: 700,
-    h: 32,
-    thickness: 32,
-    solid: true,
-    isPlatform: true,
-    surfacePoints: [
-      { x: 4220, y: 700 },
-      { x: 4380, y: 716 }
-    ]
-  },
-  // Nadproże / Gzyms Bramki Orange (masywny dwuteownik I-beam)
-  {
-    id: 'goal_orange_lintel',
-    name: 'Gzyms Bramki Orange (Nadproże)',
-    x: 4220,
-    w: 160,
-    y: 505,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // LUKI I ASYMETRYCZNE PLATFORMY PRZESIADKOWE (Magnetyczne Windy Towarowe)
-  // -----------------------------------------------------------------------
-  // Studnia Lewa: X: 1280–1680 (pomiędzy Bazą Cyan a Centralnym Mostem)
-  {
-    id: 'cargo_lift_west_low',
-    name: 'Winda Towarowa Zachodnia Dolna',
-    x: 1330,
-    w: 155,
-    y: 970,
-    h: 30,
-    thickness: 30,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'cargo_lift_west_high',
-    name: 'Winda Towarowa Zachodnia Górna',
-    x: 1490,
-    w: 155,
-    y: 835,
-    h: 30,
-    thickness: 30,
-    solid: true,
-    isPlatform: true
-  },
-
-  // Studnia Prawa: X: 2720–3120 (pomiędzy Centralnym Mostem a Bazą Orange)
-  {
-    id: 'cargo_lift_east_high',
-    name: 'Winda Towarowa Wschodnia Górna',
-    x: 2760,
-    w: 155,
-    y: 835,
-    h: 30,
-    thickness: 30,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'cargo_lift_east_low',
-    name: 'Winda Towarowa Wschodnia Dolna',
-    x: 2920,
-    w: 155,
-    y: 970,
-    h: 30,
-    thickness: 30,
-    solid: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // NAJWYŻSZY PUŁAP (Kładki Snajperskie ze zbrojonego szkła)
-  // -----------------------------------------------------------------------
-  {
-    id: 'sniper_glass_west',
-    name: 'Szklana Kładka Snajperska Zachodnia',
-    x: 1840,
-    w: 240,
-    y: 440,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    oneWay: true,
-    isPlatform: true
-  },
-  {
-    id: 'sniper_glass_east',
-    name: 'Szklana Kładka Snajperska Wschodnia',
-    x: 2320,
-    w: 240,
-    y: 440,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    oneWay: true,
-    isPlatform: true
-  },
-
-  // -----------------------------------------------------------------------
-  // PIONOWE ŚCIANY BOCZNE HANGARÓW
-  // -----------------------------------------------------------------------
-  // Górne ściany nad wlotem bramki (Y: 0..510)
-  {
-    id: 'wall_west_upper',
-    name: 'Górna Ściana Hangaru Cyan',
-    x: 0,
-    w: 180,
-    y: 0,
-    h: 510,
-    thickness: 180,
-    solid: true,
-    isWall: true,
-    pushSide: 'right'
-  },
-  {
-    id: 'wall_east_upper',
-    name: 'Górna Ściana Hangaru Orange',
-    x: 4220,
-    w: 180,
-    y: 0,
-    h: 510,
-    thickness: 180,
-    solid: true,
-    isWall: true,
-    pushSide: 'left'
-  },
-  // Skrajne granice areny (Y: 0..1400)
-  {
-    id: 'wall_west_boundary',
-    name: 'Boczna Ściana Hangaru Cyan (Granica Zachodnia)',
-    x: 0,
-    w: 20,
-    y: 0,
-    h: 1400,
-    thickness: 20,
-    solid: true,
-    isWall: true,
-    pushSide: 'right'
-  },
-  {
-    id: 'wall_east_boundary',
-    name: 'Boczna Ściana Hangaru Orange (Granica Wschodnia)',
-    x: 4380,
-    w: 20,
-    y: 0,
-    h: 1400,
-    thickness: 20,
-    solid: true,
-    isWall: true,
-    pushSide: 'left'
-  }
-];
-
-// =========================================================================
-// 3. OBIEKTY BRAMEK (CYAN / ORANGE) I PROPY
-// =========================================================================
-export const ARENA_3_CUSTOM_OBJECTS = [
-  {
-    id: 'goal_cyan',
-    type: 'goal',
-    team: 'CYAN',
-    x: 30,
-    y: 530,
-    w: 130,
-    h: 170,
-    facing: 1,
-    color: '#00e5ff',
-    glowColor: 'rgba(0, 229, 255, 0.85)'
-  },
-  {
-    id: 'goal_orange',
-    type: 'goal',
-    team: 'ORANGE',
-    x: 4240,
-    y: 530,
-    w: 130,
-    h: 170,
-    facing: -1,
-    color: '#f97316',
-    glowColor: 'rgba(249, 115, 22, 0.85)'
-  }
-];
-
-export const ARENA_3_MINECARTS = [];
-export const arena3Breaches = [];
-export function resetArena3Breaches() {}
-export function carveArena3SlabBreach() {}
-export function resetArena3Minecarts() {}
-
-// =========================================================================
-// 4. SYMULACJA DYNAMICZNA: PARA, ISKRY, WENTYLATOR, CHMURY
+// 2. STAN ANIMACJI I EFEKTY RUCHOME
 // =========================================================================
 let animTime = 0;
-let fanRotation = 0;
-let lightningTimer = 3.5;
-let lightningAlpha = 0;
 
-// Dysze pary buchające z rur przemysłowych
-class SteamPuff {
-  constructor(x, y, vx, vy, maxR, life) {
-    this.x = x;
-    this.y = y;
-    this.vx = vx;
-    this.vy = vy;
-    this.r = 6;
-    this.maxR = maxR;
-    this.life = life;
-    this.maxLife = life;
-    this.alpha = 0.55;
-  }
-  update(dt) {
-    this.life -= dt;
-    if (this.life <= 0) return false;
-    const progress = 1.0 - (this.life / this.maxLife);
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.r = 6 + (this.maxR - 6) * Math.sin(progress * Math.PI * 0.5);
-    this.alpha = 0.55 * Math.sin((1.0 - progress) * Math.PI);
-    return true;
-  }
-  draw(ctx) {
-    if (this.alpha <= 0.01) return;
-    ctx.save();
-    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
-    g.addColorStop(0, `rgba(241, 245, 249, ${this.alpha})`);
-    g.addColorStop(0.5, `rgba(203, 213, 225, ${this.alpha * 0.5})`);
-    g.addColorStop(1, 'rgba(148, 163, 184, 0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+// Cząsteczki opadających liści dżungli
+const LEAF_PARTICLES = [];
+const MAX_LEAVES = 24;
+for (let i = 0; i < MAX_LEAVES; i++) {
+  LEAF_PARTICLES.push({
+    x: Math.random() * 4400,
+    y: Math.random() * 1200 + 50,
+    vx: -(0.6 + Math.random() * 1.4),
+    vy: 0.4 + Math.random() * 0.6,
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 2.0,
+    size: 7 + Math.random() * 9,
+    alpha: 0.45 + Math.random() * 0.45,
+    color: ['#2d6e2d', '#3a7c3a', '#4a9e4a', '#5aae3a', '#78b832', '#99a826'][Math.floor(Math.random() * 6)]
+  });
 }
 
-const STEAM_VENTS = [
-  { x: 1120, y: 640, dirX: 1, dirY: -0.6, interval: 2.8, timer: 0.5 },
-  { x: 1620, y: 660, dirX: -0.8, dirY: -0.9, interval: 3.2, timer: 1.8 },
-  { x: 2780, y: 660, dirX: 0.8, dirY: -0.9, interval: 3.0, timer: 1.0 },
-  { x: 3280, y: 640, dirX: -1, dirY: -0.6, interval: 2.9, timer: 2.2 }
-];
-
-const activeSteamPuffs = [];
-
-function spawnSteamJet(vent) {
-  const count = 7;
-  for (let i = 0; i < count; i++) {
-    const spread = (Math.random() - 0.5) * 0.45;
-    const speed = 70 + Math.random() * 85;
-    const angle = Math.atan2(vent.dirY, vent.dirX) + spread;
-    const vx = Math.cos(angle) * speed;
-    const vy = Math.sin(angle) * speed;
-    const maxR = 40 + Math.random() * 35;
-    const life = 1.1 + Math.random() * 0.7;
-    activeSteamPuffs.push(new SteamPuff(vent.x, vent.y, vx, vy, maxR, life));
-  }
-}
-
-// Iskry przeskakujące po kablach w dalekim planie
-class CableSpark {
-  constructor(cable) {
-    this.cable = cable;
-    this.progress = 0;
-    this.speed = 0.55 + Math.random() * 0.45;
-    this.size = 2.5 + Math.random() * 2.0;
-  }
-  update(dt) {
-    this.progress += this.speed * dt;
-    return this.progress < 1.0;
-  }
-  draw(ctx) {
-    const c = this.cable;
-    const t = this.progress;
-    const x = c.x1 + (c.x2 - c.x1) * t;
-    const sag = Math.sin(t * Math.PI) * c.sag;
-    const y = c.y1 + (c.y2 - c.y1) * t + sag;
-
-    ctx.save();
-    ctx.fillStyle = '#67e8f9';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.arc(x, y, this.size, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-const DISTANT_CABLES = [
-  { x1: 400, y1: 320, x2: 1200, y2: 390, sag: 55, timer: 1.0 },
-  { x1: 1300, y1: 380, x2: 2100, y2: 350, sag: 60, timer: 3.2 },
-  { x1: 2300, y1: 350, x2: 3100, y2: 380, sag: 60, timer: 2.1 },
-  { x1: 3200, y1: 390, x2: 4000, y2: 320, sag: 55, timer: 4.0 }
-];
-
-const activeCableSparks = [];
-
-// Sunąca niska mgła nad autostradą tranzytową (Y: 1140..1180)
-const HIGHWAY_FOG_PUFFS = [];
-for (let i = 0; i < 28; i++) {
-  HIGHWAY_FOG_PUFFS.push({
-    x: i * 160 + Math.random() * 60,
-    baseY: 1165 + Math.random() * 12,
-    r: 55 + Math.random() * 45,
-    speed: 12 + Math.random() * 14,
+// Bąbelki / pluski w strefie wody
+const WATER_RIPPLES = [];
+for (let i = 0; i < 14; i++) {
+  WATER_RIPPLES.push({
+    x: 1650 + Math.random() * 1100,
+    y: 1300 + Math.random() * 80,
+    r: 3 + Math.random() * 7,
+    speed: 0.3 + Math.random() * 0.5,
     phase: Math.random() * Math.PI * 2
   });
 }
+
+// =========================================================================
+// 3. STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE (ARENA_3_PLATFORMS)
+//
+// Układ współrzędnych: [0,0] w lewym górnym rogu; [4400, 1400] w prawym dolnym.
+// =========================================================================
+export const ARENA_3_PLATFORMS = [
+
+  // -----------------------------------------------------------------------
+  // GRANICE ŚWIATA (Ściany boczne zapobiegające wypadnięciu poza canvas 4400 px)
+  // -----------------------------------------------------------------------
+  {
+    id: 'world_boundary_left',
+    name: 'Lewa Krawędź Świata',
+    x: -60,
+    y: 0,
+    w: 60,
+    h: 1400,
+    solid: true,
+    isPlatform: false,
+    isWall: true,
+    pushSide: 'right'
+  },
+  {
+    id: 'world_boundary_right',
+    name: 'Prawa Krawędź Świata',
+    x: 4400,
+    y: 0,
+    w: 60,
+    h: 1400,
+    solid: true,
+    isPlatform: false,
+    isWall: true,
+    pushSide: 'left'
+  },
+
+  // -----------------------------------------------------------------------
+  // A. PODŁOŻE: LEWY BRZEG (X: 0 do 1600)
+  // Twardy, kamienno-ziemisty grunt. Y zaczyna się na 1200 px, opadając uskokami
+  // -----------------------------------------------------------------------
+  {
+    id: 'ground_left_seg1',
+    name: 'Lewy Brzeg - Półka Główna (Y: 1200)',
+    x: 0,
+    y: 1200,
+    w: 454,
+    h: 200,
+    thickness: 200,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_left_seg2',
+    name: 'Lewy Brzeg - Uskok 1 (Y: 1230)',
+    x: 450,
+    y: 1230,
+    w: 404,
+    h: 170,
+    thickness: 170,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_left_seg3',
+    name: 'Lewy Brzeg - Uskok 2 (Y: 1260)',
+    x: 850,
+    y: 1260,
+    w: 404,
+    h: 140,
+    thickness: 140,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_left_seg4',
+    name: 'Lewy Brzeg - Skraj Rzeki (Y: 1280)',
+    x: 1250,
+    y: 1280,
+    w: 350,
+    h: 120,
+    thickness: 120,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // A. PODŁOŻE: PRAWY BRZEG (X: 2800 do 4400)
+  // Symetryczny do lewego, pnący się uskokami w stronę prawej krawędzi
+  // -----------------------------------------------------------------------
+  {
+    id: 'ground_right_seg4',
+    name: 'Prawy Brzeg - Skraj Rzeki (Y: 1280)',
+    x: 2800,
+    y: 1280,
+    w: 354,
+    h: 120,
+    thickness: 120,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_right_seg3',
+    name: 'Prawy Brzeg - Uskok 2 (Y: 1260)',
+    x: 3150,
+    y: 1260,
+    w: 404,
+    h: 140,
+    thickness: 140,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_right_seg2',
+    name: 'Prawy Brzeg - Uskok 1 (Y: 1230)',
+    x: 3550,
+    y: 1230,
+    w: 404,
+    h: 170,
+    thickness: 170,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'ground_right_seg1',
+    name: 'Prawy Brzeg - Półka Główna (Y: 1200)',
+    x: 3950,
+    y: 1200,
+    w: 450,
+    h: 200,
+    thickness: 200,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // A. STREFA WODY (TRIGGER AREA - X: 1600 do 2800, Y: 1300 do 1400)
+  // Zwiększony drag o 40%, spowolnienie piłki i gracza, nie zabija
+  // -----------------------------------------------------------------------
+  {
+    id: 'water_zone',
+    name: 'Rzeka / Strefa Wody (Trigger)',
+    type: 'water',
+    x: 1600,
+    y: 1300,
+    w: 1200,
+    h: 100,
+    solid: false,
+    isPlatform: false,
+    passBall: true,
+    waterDrag: 0.6
+  },
+
+  // -----------------------------------------------------------------------
+  // B. DREWNIANE WIEŻE NOŚNE BRAMEK (X: 200 oraz X: 4200)
+  // Konstrukcje startujące od poziomu gruntu, na których osadzone są bramki
+  // -----------------------------------------------------------------------
+  // Wieża Lewa (Cyan - Team A):
+  {
+    id: 'tower_cyan_stem',
+    name: 'Drewniana Wieża Lewa - Filar Nośny',
+    x: 185,
+    y: 600,
+    w: 30,
+    h: 600,
+    solid: true,
+    isPlatform: false,
+    isWall: true
+  },
+  {
+    id: 'tower_cyan_deck',
+    name: 'Wieża Lewa - Pomost Inspekcyjny',
+    x: 120,
+    y: 600,
+    w: 160,
+    h: 24,
+    thickness: 24,
+    solid: true,
+    isPlatform: true
+  },
+
+  // Wieża Prawa (Orange - Team B):
+  {
+    id: 'tower_orange_stem',
+    name: 'Drewniana Wieża Prawa - Filar Nośny',
+    x: 4185,
+    y: 600,
+    w: 30,
+    h: 600,
+    solid: true,
+    isPlatform: false,
+    isWall: true
+  },
+  {
+    id: 'tower_orange_deck',
+    name: 'Wieża Prawa - Pomost Inspekcyjny',
+    x: 4120,
+    y: 600,
+    w: 160,
+    h: 24,
+    thickness: 24,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // B. GŁÓWNE PLATFORMY SNAJPERSKIE (X: 800, Y: 800 oraz X: 3600, Y: 800)
+  // Solidne półki skalne porośnięte mchem, szerokość ok. 400 px
+  // -----------------------------------------------------------------------
+  {
+    id: 'sniper_shelf_left',
+    name: 'Platforma Snajperska Lewa (Team A)',
+    x: 600,
+    y: 800,
+    w: 400,
+    h: 34,
+    thickness: 34,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'sniper_shelf_right',
+    name: 'Platforma Snajperska Prawa (Team B)',
+    x: 3400,
+    y: 800,
+    w: 400,
+    h: 34,
+    thickness: 34,
+    solid: true,
+    isPlatform: true
+  },
+
+  // -----------------------------------------------------------------------
+  // B. WISZĄCY MOST (X: 1800 do 2600, Y: 1000)
+  // Kilka sąsiadujących cienkich platform typu One-Way nad rzeką
+  // -----------------------------------------------------------------------
+  {
+    id: 'bridge_segment_1',
+    name: 'Wiszący Most - Segment 1',
+    type: 'catwalk',
+    x: 1800,
+    y: 1000,
+    w: 200,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_segment_2',
+    name: 'Wiszący Most - Segment 2',
+    type: 'catwalk',
+    x: 2000,
+    y: 1000,
+    w: 200,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_segment_3',
+    name: 'Wiszący Most - Segment 3',
+    type: 'catwalk',
+    x: 2200,
+    y: 1000,
+    w: 200,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_segment_4',
+    name: 'Wiszący Most - Segment 4',
+    type: 'catwalk',
+    x: 2400,
+    y: 1000,
+    w: 200,
+    h: 18,
+    thickness: 18,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+
+  // -----------------------------------------------------------------------
+  // C. BRAMKI W KSZTAŁCIE "Y" (Kielichy)
+  //
+  // Bramka Lewa (Team A / CYAN na X: 200):
+  // - Trzon: pionowy słupek X: 200, Y: 400 do 600
+  // - Lewe ramię: odchylone o -45° (od 200,400 do 60,260) - blokuje wylot poza mapę
+  // - Prawe ramię: odchylone o +45° (od 200,400 do 340,260)
+  // -----------------------------------------------------------------------
+  {
+    id: 'goal_cyan_stem_top',
+    name: 'Bramka Cyan - Trzon Kielicha (Y: 400-600)',
+    x: 185,
+    y: 400,
+    w: 30,
+    h: 200,
+    solid: true,
+    isPlatform: false,
+    isWall: true
+  },
+  {
+    id: 'goal_cyan_arm_left',
+    name: 'Bramka Cyan - Lewe Ramię (-45°)',
+    x: 60,
+    y: 260,
+    w: 140,
+    h: 140,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 60, y: 260 },
+      { x: 200, y: 400 }
+    ]
+  },
+  {
+    id: 'goal_cyan_arm_right',
+    name: 'Bramka Cyan - Prawe Ramię (+45°)',
+    x: 200,
+    y: 260,
+    w: 140,
+    h: 140,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 200, y: 400 },
+      { x: 340, y: 260 }
+    ]
+  },
+
+  // -----------------------------------------------------------------------
+  // Bramka Prawa (Team B / ORANGE na X: 4200 - Lustrzane odbicie):
+  // - Trzon: pionowy słupek X: 4200, Y: 400 do 600
+  // - Lewe ramię: odchylone o +45° (od 4060,260 do 4200,400)
+  // - Prawe ramię: odchylone o -45° (od 4200,400 do 4340,260) - blokuje wylot
+  // -----------------------------------------------------------------------
+  {
+    id: 'goal_orange_stem_top',
+    name: 'Bramka Orange - Trzon Kielicha (Y: 400-600)',
+    x: 4185,
+    y: 400,
+    w: 30,
+    h: 200,
+    solid: true,
+    isPlatform: false,
+    isWall: true
+  },
+  {
+    id: 'goal_orange_arm_left',
+    name: 'Bramka Orange - Lewe Ramię (+45°)',
+    x: 4060,
+    y: 260,
+    w: 140,
+    h: 140,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 4060, y: 260 },
+      { x: 4200, y: 400 }
+    ]
+  },
+  {
+    id: 'goal_orange_arm_right',
+    name: 'Bramka Orange - Prawe Ramię (-45°)',
+    x: 4200,
+    y: 260,
+    w: 140,
+    h: 140,
+    solid: true,
+    isPlatform: true,
+    surfacePoints: [
+      { x: 4200, y: 400 },
+      { x: 4340, y: 260 }
+    ]
+  }
+];
+
+// =========================================================================
+// 4. BRAMKI (CUSTOM OBJECTS - GOAL TRIGGERS)
+// Obszary punktowania wewnątrz kielichów "Y"
+// =========================================================================
+export const ARENA_3_CUSTOM_OBJECTS = [
+  // Bramka Lewa - Team A (Cyan): obszar pomiędzy ramionami (X: 120-280, Y: 250-400)
+  {
+    id: 'goal_cyan_trigger',
+    type: 'goal',
+    team: 'CYAN',
+    isCupGoal: true,
+    x: 120,
+    y: 250,
+    w: 160,
+    h: 150,
+    facing: 1,
+    targetX: 200,
+    targetY: 410
+  },
+  // Bramka Prawa - Team B (Orange): lustrzane odbicie na X: 4200
+  {
+    id: 'goal_orange_trigger',
+    type: 'goal',
+    team: 'ORANGE',
+    isCupGoal: true,
+    x: 4120,
+    y: 250,
+    w: 160,
+    h: 150,
+    facing: -1,
+    targetX: 4200,
+    targetY: 410
+  }
+];
+
+// =========================================================================
+// PUNKTY ODRODZEŃ (SPAWNERS)
+// =========================================================================
+export const ARENA_3_SPAWNS = {
+  teamA: [
+    { x: 600, y: 1130 },  // Na gruncie Y: 1200
+    { x: 800, y: 730 }    // Na platformie snajperskiej Y: 800
+  ],
+  teamB: [
+    { x: 3800, y: 1130 }, // Na gruncie Y: 1200
+    { x: 3600, y: 730 }   // Na platformie snajperskiej Y: 800
+  ],
+  ball: { x: 2200, y: 700 } // Środek mapy, tuż nad wiszącym mostem
+};
+
+export const ARENA_3_MINECARTS = [];
+
+export function resetArena3Minecarts() {}
+export function resetArena3Breaches() {}
 
 // =========================================================================
 // 5. GŁÓWNA PĘTLA AKTUALIZACJI ARENY 3 (UPDATE TICK)
 // =========================================================================
 export function updateArena3(dt, players, ball) {
   animTime += dt;
-  fanRotation = (fanRotation + dt * 0.45) % (Math.PI * 2);
 
-  // Wyładowania burzowe
-  lightningTimer -= dt;
-  if (lightningTimer <= 0) {
-    lightningAlpha = 0.55 + Math.random() * 0.35;
-    lightningTimer = 4.0 + Math.random() * 5.0;
-  }
-  if (lightningAlpha > 0) {
-    lightningAlpha = Math.max(0, lightningAlpha - dt * 2.8);
-  }
+  // 1. Animacja liści dżungli
+  for (let i = 0; i < LEAF_PARTICLES.length; i++) {
+    const leaf = LEAF_PARTICLES[i];
+    leaf.x += leaf.vx * 60 * dt;
+    leaf.y += leaf.vy * 60 * dt;
+    leaf.rot += leaf.rotSpeed * dt;
+    leaf.x += Math.sin(animTime * 1.5 + i * 0.7) * 0.35;
 
-  // Buchy pary
-  for (let i = 0; i < STEAM_VENTS.length; i++) {
-    const v = STEAM_VENTS[i];
-    v.timer -= dt;
-    if (v.timer <= 0) {
-      spawnSteamJet(v);
-      v.timer = v.interval + (Math.random() - 0.5) * 1.2;
+    if (leaf.x < -40) {
+      leaf.x = 4440;
+      leaf.y = Math.random() * 1000 + 40;
     }
-  }
-  for (let i = activeSteamPuffs.length - 1; i >= 0; i--) {
-    if (!activeSteamPuffs[i].update(dt)) {
-      activeSteamPuffs.splice(i, 1);
+    if (leaf.y > 1380) {
+      leaf.y = -30;
+      leaf.x = Math.random() * 4400;
     }
   }
 
-  // Iskry na kablach
-  for (let i = 0; i < DISTANT_CABLES.length; i++) {
-    const c = DISTANT_CABLES[i];
-    c.timer -= dt;
-    if (c.timer <= 0) {
-      activeCableSparks.push(new CableSpark(c));
-      c.timer = 3.5 + Math.random() * 4.5;
-    }
-  }
-  for (let i = activeCableSparks.length - 1; i >= 0; i--) {
-    if (!activeCableSparks[i].update(dt)) {
-      activeCableSparks.splice(i, 1);
-    }
-  }
-
-  // Mgła na autostradzie
-  for (let i = 0; i < HIGHWAY_FOG_PUFFS.length; i++) {
-    const fog = HIGHWAY_FOG_PUFFS[i];
-    fog.x += fog.speed * dt;
-    if (fog.x > 4450) fog.x = -50;
-  }
-
-  // Termika bezpieczeństwa w chmurach poniżej platformy (Y > 1240)
+  // 2. Fizyka strefy wody (Trigger Area - X: 1600 do 2800, Y: 1300 do 1400)
+  // Opór ruchu (drag) rośnie o 40% (płynny opór cieczy), spowolnienie piłki i gracza.
+  // Woda nie zabija - delikatny wypór pozwala na powolne wyskoczenie na brzeg.
   if (Array.isArray(players)) {
     for (let i = 0; i < players.length; i++) {
       const p = players[i];
       if (!p || p.isDead) continue;
-      if (p.y > 1240) {
-        p.vy = -18.5;
-        p.y = 1170 - (p.h || 70);
-        p.isJumping = true;
-        p.onGround = false;
-        p.currentPlatform = null;
+
+      const pFeetY = p.y + (p.h || 70);
+      const inWaterX = (p.x >= 1580 && p.x <= 2820);
+      const inWaterY = (pFeetY >= 1300 && p.y <= 1400);
+
+      if (inWaterX && inWaterY) {
+        // Płynny opór w wodzie
+        p.vx *= 0.88;
+        p.vy *= 0.85;
+
+        // Ograniczenie maksymalnej prędkości opadania w głąb rzeki
+        if (p.vy > 5.5) p.vy = 5.5;
+
+        // Wypór hydrostatyczny przy dnie rzeki - woda nie pozwala utonąć
+        if (pFeetY > 1365) {
+          p.vy = -7.5;
+          p.onGround = false;
+          p.isJumping = true;
+          p.currentPlatform = null;
+        }
+      }
+    }
+  }
+
+  // Spowolnienie i unoszenie piłki w rzece
+  if (ball && !ball.goalAnimation?.active) {
+    const ballInWater = (ball.x >= 1580 && ball.x <= 2820 && ball.y >= 1300 && ball.y <= 1400);
+    if (ballInWater) {
+      ball.vx *= 0.88;
+      ball.vy *= 0.85;
+      if (ball.vy > 5.5) ball.vy = 5.5;
+      // Wypór wody na piłkę
+      if (ball.y > 1360) {
+        ball.vy = -5.5;
       }
     }
   }
 }
 
 // =========================================================================
-// 6. RENDEROWANIE TŁA (PNG + RUCHOME CHMURY, ISKRY, WENTYLATOR, PARA)
+// 6. RENDEROWANIE TŁA (PNG + WARSTWY RUCHOME)
 // =========================================================================
 export function drawArena3Background(ctx, camera) {
   if (!ctx) return;
 
-  // 1. Wypełnienie pełnego ekranu zmierzchowym gradientem nieba (screen space)
+  // 1. Zmierzchowe / tropikalne niebo jako ekranowy podkład
   const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
   const H_screen = ctx.canvas?.height || (typeof window !== 'undefined' ? window.innerHeight : 1080);
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-  skyGrad.addColorStop(0.0, '#160d26');
-  skyGrad.addColorStop(0.65, '#2b143a');
-  skyGrad.addColorStop(1.0, '#0e0717');
+  skyGrad.addColorStop(0.0, '#78b0d0');
+  skyGrad.addColorStop(0.4, '#a2cda2');
+  skyGrad.addColorStop(0.8, '#3d6829');
+  skyGrad.addColorStop(1.0, '#1a3a12');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
@@ -539,406 +577,540 @@ export function drawArena3Background(ctx, camera) {
     ctx.translate(-camera.x, -camera.y);
   }
 
-  const camL = camera ? camera.x - 150 : 0;
-  const camR = camera ? camera.x + (camera.viewWidth || 2000) + 150 : 4400;
-
-  // 2. RYSOWANIE STATYCZNEJ GRAFIKI PANORAMICZNEJ MAPY (4400 x 1400 px)
+  // 2. Rysowanie statycznego obrazu tła (4400 x 1400 px na współrzędnych [0, 0])
   if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
     ctx.drawImage(bgImg, 0, 0, 4400, 1400);
   } else {
-    // Rezerwowy gradient gdyby PNG było w trakcie wczytywania
+    // Rezerwowy gradient gdy obraz się ładuje
     const g = ctx.createLinearGradient(0, 0, 0, 1400);
-    g.addColorStop(0, '#160d26');
-    g.addColorStop(0.65, '#b44b24');
-    g.addColorStop(1, '#0e0717');
+    g.addColorStop(0, '#8ec5e5');
+    g.addColorStop(0.3, '#c2e0b8');
+    g.addColorStop(0.65, '#3b6a2e');
+    g.addColorStop(1.0, '#142e0d');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 4400, 1400);
   }
 
-  // 3. WOLNO OBRACAJĄCY SIĘ GIGANTYCZNY WENTYLATOR PRZEMYSŁOWY (X = 2200, Y = 480)
-  const fanCx = 2200;
-  const fanCy = 480;
-  if (fanCx + 260 >= camL && fanCx - 260 <= camR) {
-    ctx.save();
-    // Subtelna łuna podświetlenia zza wirnika wentylatora
-    const fanGlow = ctx.createRadialGradient(fanCx, fanCy, 40, fanCx, fanCy, 240);
-    fanGlow.addColorStop(0, 'rgba(249, 115, 22, 0.35)');
-    fanGlow.addColorStop(0.6, 'rgba(234, 88, 12, 0.15)');
-    fanGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = fanGlow;
+  // 3. Promienie słońca przebijające się przez korony drzew (God Rays)
+  ctx.save();
+  ctx.globalAlpha = 0.08 + Math.sin(animTime * 0.8) * 0.03;
+  ctx.fillStyle = '#fffbe8';
+  for (let r = 0; r < 5; r++) {
+    const rx = 800 + r * 650;
     ctx.beginPath();
-    ctx.arc(fanCx, fanCy, 240, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.translate(fanCx, fanCy);
-    ctx.rotate(fanRotation);
-
-    if (fanBladesImg && fanBladesImg.complete && fanBladesImg.naturalWidth > 0) {
-      const s = 420;
-      ctx.drawImage(fanBladesImg, -s / 2, -s / 2, s, s);
-    } else {
-      // Rezerwowe łopatki
-      const blades = 12;
-      for (let i = 0; i < blades; i++) {
-        ctx.rotate((Math.PI * 2) / blades);
-        ctx.fillStyle = '#18141d';
-        ctx.beginPath();
-        ctx.moveTo(-14, -20);
-        ctx.quadraticCurveTo(0, -90, 24, -180);
-        ctx.lineTo(-20, -180);
-        ctx.quadraticCurveTo(-10, -85, -14, -20);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
-
-  // 4. RUCHOME ISKRY PRZESKAKUJĄCE PO KABLACH
-  for (let i = 0; i < activeCableSparks.length; i++) {
-    activeCableSparks[i].draw(ctx);
-  }
-
-  // 5. BUCHY PARY POD CIŚNIENIEM Z RUR
-  for (let i = 0; i < activeSteamPuffs.length; i++) {
-    activeSteamPuffs[i].draw(ctx);
-  }
-
-  // 6. RUCHOMY OCEAN BURZOWYCH CHMUR W OTCHŁANI (Y: 1080–1400)
-  if (lightningAlpha > 0.01) {
-    ctx.save();
-    ctx.globalAlpha = lightningAlpha;
-    const lGrad = ctx.createRadialGradient(2200, 1280, 80, 2200, 1280, 1600);
-    lGrad.addColorStop(0, 'rgba(192, 132, 252, 0.70)');
-    lGrad.addColorStop(0.5, 'rgba(147, 51, 234, 0.28)');
-    lGrad.addColorStop(1, 'rgba(88, 28, 135, 0)');
-    ctx.fillStyle = lGrad;
-    ctx.fillRect(0, 1050, 4400, 350);
-    ctx.restore();
-  }
-
-  function drawCloudLayer(baseY, amp, speed, color, highlightColor) {
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0, 1400);
-    ctx.lineTo(0, baseY);
-
-    const step = 70;
-    for (let x = 0; x <= 4400; x += step) {
-      const wave1 = Math.sin((x * 0.0032) + (animTime * speed)) * amp;
-      const wave2 = Math.cos((x * 0.0065) - (animTime * speed * 0.7)) * (amp * 0.45);
-      const cy = baseY + wave1 + wave2;
-      ctx.lineTo(x, cy);
-    }
-    ctx.lineTo(4400, 1400);
+    ctx.moveTo(rx, 0);
+    ctx.lineTo(rx + 220, 0);
+    ctx.lineTo(rx + 480, 1400);
+    ctx.lineTo(rx + 160, 1400);
     ctx.closePath();
     ctx.fill();
+  }
+  ctx.restore();
 
-    if (highlightColor) {
-      ctx.strokeStyle = highlightColor;
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-    }
+  // 4. Liście opadające w tle (pomiędzy tłem a postaciami)
+  for (let i = 0; i < LEAF_PARTICLES.length; i += 2) {
+    const leaf = LEAF_PARTICLES[i];
+    ctx.save();
+    ctx.globalAlpha = leaf.alpha * 0.55;
+    ctx.translate(leaf.x, leaf.y);
+    ctx.rotate(leaf.rot);
+    ctx.fillStyle = leaf.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, leaf.size, leaf.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
-
-  drawCloudLayer(1135, 26, 0.12, 'rgba(38, 20, 48, 0.95)', 'rgba(217, 83, 30, 0.30)');
-  drawCloudLayer(1180, 22, 0.22, 'rgba(28, 14, 38, 0.98)', 'rgba(234, 115, 42, 0.38)');
-  drawCloudLayer(1230, 18, 0.35, '#12091c', 'rgba(249, 115, 22, 0.20)');
 
   ctx.restore();
 }
 
 // =========================================================================
-// 7. RENDEROWANIE PIERWSZEGO PLANU (SPRITE'Y PLATFORM, BRUK, MGŁA, LASERY)
+// 7. RENDEROWANIE PIERWSZEGO PLANU (PLATFORMY, TEREN, WIEŻE, BRAMKI Y, RZEKA)
+// Pixel-perfect dopasowanie do geometrii kolizyjnej ARENA_3_PLATFORMS
 // =========================================================================
 export function drawArena3Foreground(ctx, camera) {
   if (!ctx) return;
 
   ctx.save();
-  const camL = camera ? camera.x - 150 : 0;
-  const camR = camera ? camera.x + (camera.viewWidth || 2000) + 150 : 4400;
-
-  // -----------------------------------------------------------------------
-  // 1. RENDEROWANIE ŚCIAN BOCZNYCH HANGARÓW I WLOTÓW BRAMEK (Cyan & Orange)
-  // -----------------------------------------------------------------------
-  // A. Ściana i bramka Cyan (Zachód: X: 0..180)
-  if (220 >= camL) {
-    // Górna ściana hangaru z blachy nitowanej (Y: 0..510)
-    if (wallPanelImg && wallPanelImg.complete && wallPanelImg.naturalWidth > 0) {
-      ctx.drawImage(wallPanelImg, 0, 0, 180, 510);
-    } else {
-      ctx.fillStyle = '#161922';
-      ctx.fillRect(0, 0, 180, 510);
-      ctx.strokeStyle = '#272f3d';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(0, 0, 180, 510);
-    }
-
-    // Wlot bramki Cyan (Y: 510..705, lintel na Y = 505..520, wnęka laserowa w głębi)
-    if (goalApertureImg && goalApertureImg.complete && goalApertureImg.naturalWidth > 0) {
-      ctx.drawImage(goalApertureImg, 20, 510, 160, 195);
-    }
-
-    // Pulsujące laserowe pole wewnątrz wnęki
-    ctx.save();
-    const cyanPulse = Math.sin(animTime * 5.0) * 0.25 + 0.75;
-    const clGrad = ctx.createLinearGradient(25, 530, 95, 530);
-    clGrad.addColorStop(0, `rgba(0, 229, 255, ${0.85 * cyanPulse})`);
-    clGrad.addColorStop(0.5, `rgba(6, 182, 212, ${0.40 * cyanPulse})`);
-    clGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
-    ctx.fillStyle = clGrad;
-    ctx.fillRect(20, 530, 80, 170);
-    ctx.restore();
+  if (camera) {
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
   }
 
-  // B. Ściana i bramka Orange (Wschód: X: 4220..4400)
-  if (4200 <= camR) {
-    // Górna ściana hangaru z blachy nitowanej (Y: 0..510) - odbicie lustrzane
-    if (wallPanelImg && wallPanelImg.complete && wallPanelImg.naturalWidth > 0) {
-      ctx.save();
-      ctx.translate(4220 + 180, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(wallPanelImg, 0, 0, 180, 510);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = '#161922';
-      ctx.fillRect(4220, 0, 180, 510);
-      ctx.strokeStyle = '#272f3d';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(4220, 0, 180, 510);
-    }
-
-    // Wlot bramki Orange (Y: 510..705) - odbicie lustrzane
-    if (goalApertureImg && goalApertureImg.complete && goalApertureImg.naturalWidth > 0) {
-      ctx.save();
-      ctx.translate(4220 + 160, 510);
-      ctx.scale(-1, 1);
-      ctx.drawImage(goalApertureImg, 0, 0, 160, 195);
-      ctx.restore();
-    }
-
-    // Pulsujące laserowe pole wewnątrz wnęki
-    ctx.save();
-    const orangePulse = Math.sin(animTime * 5.0 + 1.2) * 0.25 + 0.75;
-    const olGrad = ctx.createLinearGradient(4375, 530, 4305, 530);
-    olGrad.addColorStop(0, `rgba(249, 115, 22, ${0.85 * orangePulse})`);
-    olGrad.addColorStop(0.5, `rgba(234, 88, 12, ${0.40 * orangePulse})`);
-    olGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
-    ctx.fillStyle = olGrad;
-    ctx.fillRect(4300, 530, 80, 170);
-    ctx.restore();
-  }
+  const camL = camera ? camera.x - 200 : 0;
+  const camR = camera ? camera.x + (camera.viewWidth || 2000) + 200 : 4400;
 
   // -----------------------------------------------------------------------
-  // 2. RENDEROWANIE POZIOMU GÓRNEGO: BAZA CYAN, CENTRALNY MOST, BAZA ORANGE
+  // 1. PODŁOŻE I SKAŁY: LEWY I PRAWY BRZEG (USKOKI)
   // -----------------------------------------------------------------------
-  // A. Baza Lewa (Cyan: X: 180–1280, Y: 700)
-  if (1280 >= camL && 180 <= camR) {
-    if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
-      ctx.drawImage(platformTileImg, 180, 700, 1100, 54);
-    } else {
-      ctx.fillStyle = '#1c1f26';
-      ctx.fillRect(180, 700, 1100, 54);
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(180, 700, 1100, 4);
-    }
-
-    // Oznaczenia drużynowe Cyan (wyblakłe logotypy / pasy)
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.16)';
-    ctx.font = 'bold 36px monospace';
-    ctx.fillText('DISTRICT 01 // CYAN', 340, 680);
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(340, 692);
-    ctx.lineTo(820, 692);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // B. Baza Prawa (Orange: X: 3120–4220, Y: 700)
-  if (4220 >= camL && 3120 <= camR) {
-    if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
-      ctx.save();
-      // Odbicie lustrzane dla symetrii
-      ctx.translate(3120 + 1100, 700);
-      ctx.scale(-1, 1);
-      ctx.drawImage(platformTileImg, 0, 0, 1100, 54);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = '#1c1f26';
-      ctx.fillRect(3120, 700, 1100, 54);
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(3120, 700, 1100, 4);
-    }
-
-    // Oznaczenia drużynowe Orange
-    ctx.save();
-    ctx.fillStyle = 'rgba(249, 115, 22, 0.16)';
-    ctx.font = 'bold 36px monospace';
-    ctx.fillText('DISTRICT 02 // ORANGE', 3420, 680);
-    ctx.strokeStyle = 'rgba(249, 115, 22, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(3420, 692);
-    ctx.lineTo(3920, 692);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // C. Centralny Most Wiszący (X: 1680–2720, Y: 700)
-  if (2720 >= camL && 1680 <= camR) {
-    if (suspensionBridgeImg && suspensionBridgeImg.complete && suspensionBridgeImg.naturalWidth > 0) {
-      // Skalowanie sprite'a mostu tak, by podłoga mostu pokrywała Y = 700 (deck row 245 / 675 * 260 = 95 px; 605 + 95 = 700)
-      ctx.drawImage(suspensionBridgeImg, 1680, 605, 1040, 260);
-    } else {
-      ctx.fillStyle = '#161922';
-      ctx.fillRect(1680, 700, 1040, 40);
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(1680, 700, 1040, 4);
-    }
-
-    // Zimne niebieskawe jarzeniówki wbudowane w podłogę mostu
-    const bridgeNeonPulse = Math.sin(animTime * 4.0) * 0.15 + 0.85;
-    ctx.save();
-    ctx.fillStyle = `rgba(56, 189, 248, ${0.40 * bridgeNeonPulse})`;
-    ctx.shadowColor = '#38bdf8';
-    ctx.shadowBlur = 12;
-    ctx.fillRect(1700, 698, 1000, 3);
-    ctx.restore();
-  }
-
-  // -----------------------------------------------------------------------
-  // 3. RENDEROWANIE MAGNETYCZNYCH WIND TOWAROWYCH (LUKI PRZESIADKOWE)
-  // -----------------------------------------------------------------------
-  const CARGO_LIFTS = [
-    { x: 1330, y: 970, w: 155, team: 'cyan' },
-    { x: 1490, y: 835, w: 155, team: 'cyan' },
-    { x: 2760, y: 835, w: 155, team: 'orange' },
-    { x: 2920, y: 970, w: 155, team: 'orange' }
+  const groundSegments = [
+    // Lewy brzeg
+    { x: 0, y: 1200, w: 454, h: 200 },
+    { x: 450, y: 1230, w: 404, h: 170 },
+    { x: 850, y: 1260, w: 404, h: 140 },
+    { x: 1250, y: 1280, w: 350, h: 120 },
+    // Prawy brzeg
+    { x: 2800, y: 1280, w: 354, h: 120 },
+    { x: 3150, y: 1260, w: 404, h: 140 },
+    { x: 3550, y: 1230, w: 404, h: 170 },
+    { x: 3950, y: 1200, w: 450, h: 200 }
   ];
 
-  for (let i = 0; i < CARGO_LIFTS.length; i++) {
-    const cl = CARGO_LIFTS[i];
-    if (cl.x + cl.w < camL || cl.x > camR) continue;
+  for (let sIdx = 0; sIdx < groundSegments.length; sIdx++) {
+    const seg = groundSegments[sIdx];
+    if (seg.x + seg.w < camL || seg.x > camR) continue;
 
-    if (cargoPlatformImg && cargoPlatformImg.complete && cargoPlatformImg.naturalWidth > 0) {
-      // Górna krawędź pokładu (row 0) idealnie na cl.y, silniki wiszą pod spodem
-      ctx.drawImage(cargoPlatformImg, cl.x, cl.y, cl.w, 91);
-    } else {
-      ctx.fillStyle = '#232733';
-      ctx.fillRect(cl.x, cl.y, cl.w, 30);
-      ctx.strokeStyle = cl.team === 'cyan' ? '#00e5ff' : '#f97316';
-      ctx.lineWidth = 1.8;
-      ctx.strokeRect(cl.x, cl.y, cl.w, 3);
+    // A. Kamienno-ziemisty trzon gruntu
+    const gGrad = ctx.createLinearGradient(seg.x, seg.y, seg.x, seg.y + seg.h);
+    gGrad.addColorStop(0.0, '#42321e');
+    gGrad.addColorStop(0.15, '#2e2214');
+    gGrad.addColorStop(0.5, '#1e160c');
+    gGrad.addColorStop(1.0, '#100c06');
+    ctx.fillStyle = gGrad;
+    ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
+
+    // B. Warstwa mchu i dżunglowej trawy na górnej krawędzi (Y)
+    ctx.fillStyle = '#3e7025';
+    ctx.fillRect(seg.x, seg.y, seg.w, 14);
+    ctx.fillStyle = '#589e34';
+    ctx.fillRect(seg.x, seg.y, seg.w, 6);
+
+    // C. Ostra krawędź komiksowa i rim lighting (światło na krawędzi)
+    ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(seg.x, seg.y);
+    ctx.lineTo(seg.x + seg.w, seg.y);
+    ctx.stroke();
+
+    // D. Detale kamieni / starożytnych bloków w gruncie
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    for (let kx = seg.x + 25; kx < seg.x + seg.w - 30; kx += 70) {
+      ctx.fillRect(kx, seg.y + 24, 48, 20);
+      ctx.fillRect(kx + 20, seg.y + 55, 36, 18);
     }
 
-    // Pulsujące dysze plazmowe silników antygrawitacyjnych
-    const thrusterPulse = Math.sin(animTime * 6.5 + i) * 0.25 + 0.75;
-    const pods = [cl.x + cl.w * 0.28, cl.x + cl.w * 0.72];
-    for (let k = 0; k < pods.length; k++) {
-      const px = pods[k];
-      const tg = ctx.createLinearGradient(px, cl.y + 28, px, cl.y + 60);
-      tg.addColorStop(0, cl.team === 'cyan' ? `rgba(0, 229, 255, ${0.80 * thrusterPulse})` : `rgba(249, 115, 22, ${0.80 * thrusterPulse})`);
-      tg.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = tg;
+    // E. Kontur bloku terenu
+    ctx.strokeStyle = '#18120a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(seg.x, seg.y, seg.w, seg.h);
+  }
+
+  // -----------------------------------------------------------------------
+  // 2. STREFA WODY - RZEKA (X: 1600 do 2800, Y: 1300 do 1400)
+  // Falująca powierzchnia wody, głębia, odbicia
+  // -----------------------------------------------------------------------
+  if (camL < 2850 && camR > 1550) {
+    // A. Wypełnienie toni wodnej
+    const waterDepthGrad = ctx.createLinearGradient(1600, 1300, 1600, 1400);
+    waterDepthGrad.addColorStop(0.0, 'rgba(28, 120, 180, 0.88)');
+    waterDepthGrad.addColorStop(0.35, 'rgba(16, 85, 145, 0.94)');
+    waterDepthGrad.addColorStop(1.0, 'rgba(8, 48, 92, 0.98)');
+    ctx.fillStyle = waterDepthGrad;
+    ctx.fillRect(1600, 1300, 1200, 100);
+
+    // B. Falująca powierzchnia rzeki
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(1600, 1300);
+    const waveStep = 30;
+    for (let wx = 1600; wx <= 2800; wx += waveStep) {
+      const wave1 = Math.sin((wx * 0.022) + animTime * 2.8) * 5.5;
+      const wave2 = Math.cos((wx * 0.011) - animTime * 1.9) * 3.5;
+      ctx.lineTo(wx, 1300 + wave1 + wave2);
+    }
+    ctx.lineTo(2800, 1400);
+    ctx.lineTo(1600, 1400);
+    ctx.closePath();
+
+    const surfGrad = ctx.createLinearGradient(1600, 1292, 1600, 1340);
+    surfGrad.addColorStop(0.0, 'rgba(96, 210, 255, 0.92)');
+    surfGrad.addColorStop(0.4, 'rgba(32, 150, 220, 0.75)');
+    surfGrad.addColorStop(1.0, 'rgba(16, 90, 160, 0.50)');
+    ctx.fillStyle = surfGrad;
+    ctx.fill();
+
+    // C. Błyszczące refleksy piany na powierzchni rzeki
+    ctx.strokeStyle = 'rgba(200, 245, 255, 0.85)';
+    ctx.lineWidth = 2.2;
+    for (let wx = 1630; wx < 2770; wx += 95) {
+      const wy = 1300 + Math.sin((wx * 0.022) + animTime * 2.8) * 5.5;
       ctx.beginPath();
-      ctx.moveTo(px - 7, cl.y + 28);
-      ctx.lineTo(px + 7, cl.y + 28);
-      ctx.lineTo(px + 12, cl.y + 55);
-      ctx.lineTo(px - 12, cl.y + 55);
-      ctx.closePath();
+      ctx.moveTo(wx, wy);
+      ctx.lineTo(wx + 45, wy - 1);
+      ctx.stroke();
+    }
+
+    // D. Bąbelki / piana w strefie wody
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    for (let i = 0; i < WATER_RIPPLES.length; i++) {
+      const rip = WATER_RIPPLES[i];
+      const ry = rip.y + Math.sin(animTime * 2 + rip.phase) * 6;
+      ctx.beginPath();
+      ctx.arc(rip.x, ry, rip.r, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+
+    // E. Subtelny napis strefy wody
+    ctx.save();
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.textAlign = 'center';
+    ctx.fillText('≈  RZEKA DŻUNGLI (DRAG +40%)  ≈', 2200, 1355);
+    ctx.restore();
   }
 
   // -----------------------------------------------------------------------
-  // 4. RENDEROWANIE KŁADEK SNAJPERSKICH ZE ZBROJONEGO SZKŁA (Y = 440)
+  // 3. DREWNIANE WIEŻE NOŚNE BRAMEK (X: 200 oraz X: 4200)
   // -----------------------------------------------------------------------
-  const SNIPER_DECKS = [
-    { x: 1840, y: 440, w: 240, flip: false },
-    { x: 2320, y: 440, w: 240, flip: true }
+  function drawTowerStructure(isLeft) {
+    const tx = isLeft ? 185 : 4185;
+    const tw = 30;
+    const ty = 600;
+    const th = 600;
+    if (tx + tw + 100 < camL || tx - 100 > camR) return;
+
+    ctx.save();
+    // A. Główny pionowy drewniany słup (filar)
+    const woodGrad = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
+    woodGrad.addColorStop(0, '#5a3a1a');
+    woodGrad.addColorStop(0.5, '#432910');
+    woodGrad.addColorStop(1, '#2c1808');
+    ctx.fillStyle = woodGrad;
+    ctx.fillRect(tx, ty, tw, th);
+
+    // B. Faktura słojów drewna
+    ctx.strokeStyle = 'rgba(20, 10, 4, 0.55)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(tx + 8, ty);
+    ctx.lineTo(tx + 8, ty + th);
+    ctx.moveTo(tx + 20, ty);
+    ctx.lineTo(tx + 20, ty + th);
+    ctx.stroke();
+
+    // C. Drewniane zastrzały / krzyżulce wzmacniające wieżę
+    ctx.strokeStyle = '#432910';
+    ctx.lineWidth = 8;
+    for (let sy = ty + 40; sy < ty + th - 20; sy += 90) {
+      ctx.beginPath();
+      const spreadX = isLeft ? (tx - 50) : (tx + 50 + tw);
+      ctx.moveTo(tx + tw / 2, sy);
+      ctx.lineTo(spreadX, sy + 60);
+      ctx.stroke();
+    }
+
+    // D. Metalowe okucia / klamry żelazne
+    ctx.fillStyle = '#64748b';
+    for (let by = ty + 50; by < ty + th; by += 100) {
+      ctx.fillRect(tx - 3, by, tw + 6, 12);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(tx - 3, by, tw + 6, 12);
+    }
+
+    // E. Pomost inspekcyjny przy wieży (Y: 600, w: 160)
+    const deckX = isLeft ? 120 : 4120;
+    const deckW = 160;
+    const deckY = 600;
+    const deckH = 24;
+
+    const deckGrad = ctx.createLinearGradient(deckX, deckY, deckX, deckY + deckH);
+    deckGrad.addColorStop(0, '#6d4822');
+    deckGrad.addColorStop(0.5, '#4f3114');
+    deckGrad.addColorStop(1, '#321c08');
+    ctx.fillStyle = deckGrad;
+    ctx.fillRect(deckX, deckY, deckW, deckH);
+
+    // Krawędź pomostu (rim lighting)
+    ctx.strokeStyle = isLeft ? 'rgba(6, 182, 212, 0.7)' : 'rgba(249, 115, 22, 0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(deckX, deckY);
+    ctx.lineTo(deckX + deckW, deckY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#231406';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(deckX, deckY, deckW, deckH);
+
+    ctx.restore();
+  }
+
+  drawTowerStructure(true);
+  drawTowerStructure(false);
+
+  // -----------------------------------------------------------------------
+  // 4. BRAMKI W KSZTAŁCIE "Y" (KIELICHY ZAWIESZONE NA WYSOKOŚCI)
+  // Lewa: Team A (Cyan) na X: 200, Y: 400..600
+  // Prawa: Team B (Orange) na X: 4200, Y: 400..600
+  // -----------------------------------------------------------------------
+  function drawChaliceGoal(isLeft) {
+    const cx = isLeft ? 200 : 4200;
+    const stemX = isLeft ? 185 : 4185;
+    const stemY = 400;
+    const stemH = 200;
+    const stemW = 30;
+
+    if (cx + 250 < camL || cx - 250 > camR) return;
+
+    ctx.save();
+    const teamCol = isLeft ? '#06b6d4' : '#f97316';
+    const teamGlow = isLeft ? 'rgba(6, 182, 212, 0.55)' : 'rgba(249, 115, 22, 0.55)';
+    const teamName = isLeft ? 'TEAM A' : 'TEAM B';
+
+    // A. Trzon kielicha Y (pionowy słupek X: 200, Y: 400..600)
+    const stemGrad = ctx.createLinearGradient(stemX, stemY, stemX + stemW, stemY + stemH);
+    stemGrad.addColorStop(0, '#5a3a1a');
+    stemGrad.addColorStop(0.5, '#3e240e');
+    stemGrad.addColorStop(1, '#2c1808');
+    ctx.fillStyle = stemGrad;
+    ctx.fillRect(stemX, stemY, stemW, stemH);
+    ctx.strokeStyle = '#201105';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(stemX, stemY, stemW, stemH);
+
+    // B. Ramiona kielicha "Y"
+    // Lewe ramię: od (cx, 400) do (cx - 140, 260)
+    // Prawe ramię: od (cx, 400) do (cx + 140, 260)
+    const armX_left = cx - 140;
+    const armY_top = 260;
+    const armX_right = cx + 140;
+
+    // Cień/poświata ramion
+    ctx.shadowColor = teamCol;
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = teamGlow;
+    ctx.lineWidth = 22;
+    ctx.beginPath();
+    ctx.moveTo(armX_left, armY_top);
+    ctx.lineTo(cx, 400);
+    ctx.lineTo(armX_right, armY_top);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Solidna belka drewniana ramion
+    ctx.strokeStyle = '#432910';
+    ctx.lineWidth = 16;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(armX_left, armY_top);
+    ctx.lineTo(cx, 400);
+    ctx.lineTo(armX_right, armY_top);
+    ctx.stroke();
+
+    // Kolorowy rdzeń / runy energetyczne wewnątrz ramion
+    ctx.strokeStyle = teamCol;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(armX_left, armY_top);
+    ctx.lineTo(cx, 400);
+    ctx.lineTo(armX_right, armY_top);
+    ctx.stroke();
+
+    // C. Kielich - jarzące się pole punktowania (Goal Trigger)
+    const pulse = 0.72 + Math.sin(animTime * 4.5) * 0.28;
+    ctx.save();
+    ctx.globalAlpha = 0.55 * pulse;
+    const chaliceGlow = ctx.createRadialGradient(cx, 330, 20, cx, 330, 110);
+    chaliceGlow.addColorStop(0.0, teamCol);
+    chaliceGlow.addColorStop(0.6, teamGlow);
+    chaliceGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = chaliceGlow;
+    ctx.beginPath();
+    ctx.arc(cx, 330, 110, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wewnętrzny stożek kielicha (promień absorpcji)
+    ctx.globalAlpha = 0.40 * pulse;
+    ctx.fillStyle = teamCol;
+    ctx.beginPath();
+    ctx.moveTo(cx - 100, 260);
+    ctx.lineTo(cx + 100, 260);
+    ctx.lineTo(cx, 400);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // D. Oznaczenie bramki
+    ctx.font = 'bold 15px monospace';
+    ctx.fillStyle = teamCol;
+    ctx.textAlign = 'center';
+    ctx.fillText(`⚡ ${teamName} ⚡`, cx, 235);
+
+    ctx.restore();
+  }
+
+  drawChaliceGoal(true);
+  drawChaliceGoal(false);
+
+  // -----------------------------------------------------------------------
+  // 5. GŁÓWNE PLATFORMY SNAJPERSKIE (X: 800, Y: 800 oraz X: 3600, Y: 800)
+  // Solidne półki skalne porośnięte mchem, szerokość ok. 400 px
+  // -----------------------------------------------------------------------
+  function drawSniperRock(px, py, pw, ph) {
+    if (px + pw < camL || px > camR) return;
+
+    ctx.save();
+    // A. Skalna masa (dolomit / bazalt porośnięty dżunglą)
+    const rockGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    rockGrad.addColorStop(0.0, '#536353');
+    rockGrad.addColorStop(0.3, '#3a473a');
+    rockGrad.addColorStop(0.8, '#262f26');
+    rockGrad.addColorStop(1.0, '#151b15');
+    ctx.fillStyle = rockGrad;
+    ctx.fillRect(px, py, pw, ph);
+
+    // B. Warstwa mchu na szczycie półki skalnej
+    ctx.fillStyle = '#4e8d2e';
+    ctx.fillRect(px, py, pw, 9);
+    ctx.fillStyle = '#6ab83e';
+    ctx.fillRect(px + 10, py, pw - 20, 4);
+
+    // C. Ostra krawędź komiksowa / rim lighting
+    ctx.strokeStyle = 'rgba(135, 235, 75, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + pw, py);
+    ctx.stroke();
+
+    // D. Kamienne spękania i reliefy starożytnych ruin
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    for (let rx = px + 25; rx < px + pw - 25; rx += 60) {
+      ctx.fillRect(rx, py + 14, 40, 12);
+    }
+
+    // E. Zwieszające się pnącza (liany) pod platformą
+    ctx.strokeStyle = '#3d6325';
+    ctx.lineWidth = 3;
+    for (let lx = px + 40; lx < px + pw - 40; lx += 80) {
+      const vineLen = 35 + Math.sin(lx * 0.2) * 15;
+      ctx.beginPath();
+      ctx.moveTo(lx, py + ph);
+      ctx.quadraticCurveTo(lx + 10, py + ph + vineLen * 0.5, lx - 5, py + ph + vineLen);
+      ctx.stroke();
+    }
+
+    // F. Obrys platformy
+    ctx.strokeStyle = '#1b231b';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(px, py, pw, ph);
+
+    ctx.restore();
+  }
+
+  drawSniperRock(600, 800, 400, 34);
+  drawSniperRock(3400, 800, 400, 34);
+
+  // -----------------------------------------------------------------------
+  // 6. WISZĄCY MOST (X: 1800 do 2600, Y: 1000)
+  // Liny nośne, wieszaki, drewniane kładki One-Way
+  // -----------------------------------------------------------------------
+  const bridgeX1 = 1800;
+  const bridgeX2 = 2600;
+  const bridgeY = 1000;
+
+  if (bridgeX2 + 50 >= camL && bridgeX1 - 50 <= camR) {
+    ctx.save();
+    // A. Główne liny nośne zwisające parabolicznie nad mostem
+    ctx.strokeStyle = '#5a4225';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(bridgeX1 - 40, bridgeY - 70);
+    ctx.quadraticCurveTo(2200, bridgeY + 45, bridgeX2 + 40, bridgeY - 70);
+    ctx.stroke();
+
+    // Dolna linka balastowa
+    ctx.strokeStyle = '#3e2a14';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(bridgeX1 - 40, bridgeY + 30);
+    ctx.quadraticCurveTo(2200, bridgeY + 80, bridgeX2 + 40, bridgeY + 30);
+    ctx.stroke();
+
+    // Pionowe wieszaki linowe co 50 px
+    ctx.strokeStyle = 'rgba(110, 85, 50, 0.75)';
+    ctx.lineWidth = 1.8;
+    for (let hx = bridgeX1 + 30; hx <= bridgeX2 - 30; hx += 50) {
+      const u = (hx - bridgeX1) / (bridgeX2 - bridgeX1);
+      const ropeTopY = (bridgeY - 70) * (1 - u) + (bridgeY - 70) * u + Math.sin(u * Math.PI) * 85;
+      ctx.beginPath();
+      ctx.moveTo(hx, ropeTopY);
+      ctx.lineTo(hx, bridgeY);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Segmenty drewnianego mostu (4 segmenty po 200 px)
+  const bridgeSegments = [
+    { x: 1800, w: 200 },
+    { x: 2000, w: 200 },
+    { x: 2200, w: 200 },
+    { x: 2400, w: 200 }
   ];
 
-  for (let i = 0; i < SNIPER_DECKS.length; i++) {
-    const sd = SNIPER_DECKS[i];
-    if (sd.x + sd.w < camL || sd.x > camR) continue;
+  for (let bIdx = 0; bIdx < bridgeSegments.length; bIdx++) {
+    const bSeg = bridgeSegments[bIdx];
+    if (bSeg.x + bSeg.w < camL || bSeg.x > camR) continue;
 
-    if (glassPlatformImg && glassPlatformImg.complete && glassPlatformImg.naturalWidth > 0) {
-      ctx.save();
-      if (sd.flip) {
-        ctx.translate(sd.x + sd.w, sd.y);
-        ctx.scale(-1, 1);
-        ctx.drawImage(glassPlatformImg, 0, 0, sd.w, 25);
-      } else {
-        ctx.drawImage(glassPlatformImg, sd.x, sd.y, sd.w, 25);
-      }
-      ctx.restore();
-    } else {
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.fillRect(sd.x, sd.y, sd.w, 20);
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(sd.x, sd.y, sd.w, 20);
-    }
-  }
+    ctx.save();
+    // Drewniana deska
+    const bGrad = ctx.createLinearGradient(bSeg.x, bridgeY, bSeg.x, bridgeY + 18);
+    bGrad.addColorStop(0.0, '#785226');
+    bGrad.addColorStop(0.5, '#563814');
+    bGrad.addColorStop(1.0, '#362108');
+    ctx.fillStyle = bGrad;
+    ctx.fillRect(bSeg.x, bridgeY, bSeg.w, 18);
 
-  // -----------------------------------------------------------------------
-  // 5. RENDEROWANIE POZIOMU DOLNEGO (AUTOSTRADA TRANZYTOWA, Y = 1180)
-  // -----------------------------------------------------------------------
-  // Rysowanie segmentowej kratownicy autostrady
-  const hFloorY = 1180;
-  if (platformTileImg && platformTileImg.complete && platformTileImg.naturalWidth > 0) {
-    const tileW = 550;
-    const startTile = Math.floor(Math.max(20, camL) / tileW);
-    const endTile = Math.ceil(Math.min(4380, camR) / tileW);
-    for (let t = startTile; t <= endTile; t++) {
-      const tx = t * tileW;
-      ctx.drawImage(platformTileImg, tx, hFloorY, tileW, 40);
-    }
-  } else {
-    ctx.fillStyle = '#11141c';
-    ctx.fillRect(20, hFloorY, 4360, 40);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    // Poszczególne szczebelki mostu
+    ctx.strokeStyle = 'rgba(28, 16, 5, 0.6)';
     ctx.lineWidth = 2;
-    ctx.strokeRect(20, hFloorY, 4360, 3);
+    for (let px = bSeg.x + 18; px < bSeg.x + bSeg.w - 10; px += 24) {
+      ctx.beginPath();
+      ctx.moveTo(px, bridgeY);
+      ctx.lineTo(px, bridgeY + 18);
+      ctx.stroke();
+    }
+
+    // Jasna górna krawędź (rim light)
+    ctx.strokeStyle = 'rgba(215, 175, 80, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bSeg.x, bridgeY);
+    ctx.lineTo(bSeg.x + bSeg.w, bridgeY);
+    ctx.stroke();
+
+    // Obrys segmentu
+    ctx.strokeStyle = '#241405';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bSeg.x, bridgeY, bSeg.w, 18);
+    ctx.restore();
   }
 
-  // Pulsujące żółte lampy awaryjne wbudowane w podłogę
-  const pulse = Math.sin(animTime * 3.5) * 0.25 + 0.75;
-  for (let lx = 90; lx < 4350; lx += 140) {
-    if (lx < camL || lx > camR) continue;
-    const lg = ctx.createRadialGradient(lx, hFloorY + 2, 2, lx, hFloorY + 2, 22);
-    lg.addColorStop(0, `rgba(250, 204, 21, ${0.45 * pulse})`);
-    lg.addColorStop(1, 'rgba(234, 179, 8, 0)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.arc(lx, hFloorY + 2, 22, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // -----------------------------------------------------------------------
+  // 7. LIŚCIE OPADAJĄCE NA PIERWSZYM PLANIE (PRZED PLATFORMAMI)
+  // -----------------------------------------------------------------------
+  for (let i = 1; i < LEAF_PARTICLES.length; i += 2) {
+    const leaf = LEAF_PARTICLES[i];
+    if (leaf.x < camL - 40 || leaf.x > camR + 40) continue;
 
-  // Sunąca niska mgła nad podłogą autostrady
-  ctx.save();
-  for (let i = 0; i < HIGHWAY_FOG_PUFFS.length; i++) {
-    const fog = HIGHWAY_FOG_PUFFS[i];
-    if (fog.x + fog.r < camL || fog.x - fog.r > camR) continue;
-    const fy = fog.baseY + Math.sin(animTime * 1.5 + fog.phase) * 4;
-    const fg = ctx.createRadialGradient(fog.x, fy, 0, fog.x, fy, fog.r);
-    fg.addColorStop(0, 'rgba(148, 163, 184, 0.16)');
-    fg.addColorStop(0.6, 'rgba(100, 116, 139, 0.08)');
-    fg.addColorStop(1, 'rgba(71, 85, 105, 0)');
-    ctx.fillStyle = fg;
+    ctx.save();
+    ctx.globalAlpha = leaf.alpha;
+    ctx.translate(leaf.x, leaf.y);
+    ctx.rotate(leaf.rot + 0.3);
+    ctx.fillStyle = leaf.color;
+    ctx.strokeStyle = 'rgba(10, 45, 10, 0.55)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(fog.x, fy, fog.r, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, leaf.size * 1.15, leaf.size * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 
   ctx.restore();
 }
@@ -963,15 +1135,24 @@ export function onArena3Explosion(expX, expY, radius, context) {
 // =========================================================================
 const arena3 = {
   id: 'arena-3',
-  alias: 'AERO_REFINERY',
-  name: 'Aero-Rafineria (Podniebny Dystrykt)',
+  alias: 'JUNGLE_ARENA',
+  mapId: 'jungle_arena_01',
+  name: 'Jungle Arena (Militarna Dżungla)',
   width: 4400,
   height: 1400,
+  physics: {
+    gravity: 9.8,
+    waterDrag: 0.6
+  },
   spawns: [
-    { x: 600, y: 630 },   // Spawn gracza (Cyan) - Płyta bazy lewej Y = 700 (postać h=70)
-    { x: 3800, y: 630 },  // Spawn bota (Orange) - Płyta bazy prawej Y = 700
-    { x: 2200, y: 650 }   // Piłka - lewitująca nad centralnym mostem Y = 700
+    // Team A (Cyan): grunt lewy Y: 1200 (wysokość gracza 70px -> y: 1130)
+    { x: 600, y: 1130 },
+    // Team B (Orange): grunt prawy Y: 1200 (wysokość gracza 70px -> y: 1130)
+    { x: 3800, y: 1130 },
+    // Piłka: środek mapy, tuż nad wiszącym mostem (X: 2200, Y: 700)
+    { x: 2200, y: 700 }
   ],
+  detailedSpawns: ARENA_3_SPAWNS,
   platforms: ARENA_3_PLATFORMS,
   customObjects: ARENA_3_CUSTOM_OBJECTS,
   minecarts: ARENA_3_MINECARTS,

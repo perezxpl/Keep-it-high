@@ -29,7 +29,11 @@ export const ARENAS = {
   get 'AERO_RAFINERIA'() { return arena3; },
   get 'AERO'() { return arena3; },
   get 'SKY_DISTRICT'() { return arena3; },
-  get 'PODNIEBNY_DYSTRYKT'() { return arena3; }
+  get 'PODNIEBNY_DYSTRYKT'() { return arena3; },
+  get 'JUNGLE'() { return arena3; },
+  get 'JUNGLE_ARENA'() { return arena3; },
+  get 'DZUNGLA'() { return arena3; },
+  get 'MILITARNA_DZUNGLA'() { return arena3; }
 };
 
 function normalizeArenaId(rawId) {
@@ -39,7 +43,7 @@ function normalizeArenaId(rawId) {
   const cleaned = lower.replace(/[-_]/g, '');
   if (cleaned === '1' || cleaned === 'arena1') return 'arena-1';
   if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium') return 'arena-2';
-  if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
+  if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;
   return 'arena-1';

@@ -680,7 +680,7 @@ export const BIOME_TELEPORT_TARGETS = {
 export function teleportToDistance(meters) {
   const targetX = START_X + (meters * 14);
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const floorY = isA3 ? 700 : GROUND_Y;
+  const floorY = isA3 ? 1200 : GROUND_Y;
 
   player.x = targetX;
   player.y = floorY - player.h;
@@ -1378,11 +1378,11 @@ export function syncDevArenaButtonUI() {
   const devArenaBtn = document.getElementById('dev-arena-btn');
   if (!devArenaBtn) return;
   if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    devArenaBtn.textContent = '🏭 Arena: 3 (Aero-Rafineria)';
-    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 88, 12, 0.25), rgba(147, 51, 234, 0.25))';
-    devArenaBtn.style.borderColor = '#f97316';
-    devArenaBtn.style.color = '#fdba74';
-    devArenaBtn.style.boxShadow = '0 0 12px rgba(249, 115, 22, 0.45)';
+    devArenaBtn.textContent = '🌴 Arena: 3 (Dżungla)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';
+    devArenaBtn.style.borderColor = '#22c55e';
+    devArenaBtn.style.color = '#86efac';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
     devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
@@ -2362,7 +2362,7 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
-  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
+  const isDeathmatch = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
 
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);
@@ -2823,7 +2823,7 @@ function draw() {
     ctx.restore();
   }
 
-  const isDeathmatch = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
+  const isDeathmatch = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || (ball && !ball.active));
 
   if (!isDeathmatch) {
     drawBall(ctx);

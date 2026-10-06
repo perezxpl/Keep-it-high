@@ -159,7 +159,14 @@ export function checkGoalTrigger(ballObj, groundY) {
     let targetX = 0;
     let targetY = (topY + bottomY) / 2;
 
-    if (isA3 || g.holeCx !== undefined) {
+    if (g.isCupGoal) {
+      const cR = ballObj.colRadius || 12;
+      if (ballObj.x + cR >= leftX && ballObj.x - cR <= rightX && ballObj.y + cR >= topY && ballObj.y - cR <= bottomY) {
+        isInsideGoal = true;
+        targetX = (g.targetX !== undefined) ? g.targetX : ((leftX + rightX) / 2);
+        targetY = (g.targetY !== undefined) ? g.targetY : ((topY + bottomY) / 2);
+      }
+    } else if (isA3 || g.holeCx !== undefined) {
       const hCx = g.holeCx !== undefined ? g.holeCx : (leftX + rightX) / 2;
       const hCy = g.holeCy !== undefined ? g.holeCy : (topY + bottomY) / 2;
       const hR = g.holeR || 170;
@@ -320,7 +327,11 @@ export function updateBall(GROUND_Y) {
   }
 
   // W locie: opór powietrza i grawitacja
-  if (ball.y + ball.colRadius < GROUND_Y) {
+  const isA3Air = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA2Air = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isInAir = (isA3Air || isA2Air) ? (ball.y + ball.colRadius < 1390) : (ball.y + ball.colRadius < GROUND_Y);
+
+  if (isInAir) {
     let grav = CONFIG.GRAVITY;
     if (ball.lowGravityFrames > 0) {
       grav *= 0.12; // Minimalny opad grawitacyjny dla SPIN_VOLLEY / Enforcera
@@ -393,7 +404,7 @@ export function updateBall(GROUND_Y) {
     }
 
     // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego lub otchłani
-    const ballVoidLimit = (isArena3 || isArena2) ? 1380 : (GROUND_Y + 280);
+    const ballVoidLimit = isArena3 ? 1420 : (isArena2 ? 1380 : (GROUND_Y + 280));
     if (ball.y > ballVoidLimit) {
       if (isArena3) {
         ball.x = 2200;
@@ -432,7 +443,7 @@ export function updateBall(GROUND_Y) {
 
   // Anti-Stuck Watchdog: zabezpieczenie przed uwięzieniem w szczelinach lub pod kładkami
   const ballSpeed = Math.hypot(ball.vx, ball.vy);
-  if (ball.y < GROUND_Y - ball.colRadius - 2) {
+  if (isInAir) {
     if (ballSpeed < 0.25) {
       ball.stuckFrames = (ball.stuckFrames || 0) + 1;
       if (ball.stuckFrames > 14) {
@@ -452,7 +463,7 @@ export function updateBall(GROUND_Y) {
 
   // Ślad pędu (trail) aktualizowany na klatkę na podstawie ostatecznej pozycji
   const finalSpeed = Math.hypot(ball.vx, ball.vy);
-  if (ball.y + ball.colRadius < GROUND_Y) {
+  if (isInAir) {
     if (finalSpeed > 7.5) {
       if (ball.trail.length < 5) {
         ball.trail.push({ x: ball.x, y: ball.y });
@@ -491,8 +502,9 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
   // 1. WŚLIZG
   // =========================================================================
   if (playerObj.isSliding) {
+    const feetY = playerObj.y + playerObj.h;
     const batEndX = hipX + (50 * playerObj.facing);
-    const batEndY = GROUND_Y - 4;
+    const batEndY = feetY - 4;
 
     const hit = distToSegment(ball.x, ball.y, hipX, hipY, batEndX, batEndY);
     const batThickness = 16;
@@ -508,7 +520,12 @@ export function checkBallPlayerCollisions(playerObj, GROUND_Y, spawnGrass) {
       ball.trail = [];
       ball.lowGravityFrames = 0;
       ball.stuckFrames = 0;
-      ball.y = Math.min(ball.y, GROUND_Y - ball.colRadius - 8);
+      const isCustomArena = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2');
+      if (!isCustomArena) {
+        ball.y = Math.min(ball.y, GROUND_Y - ball.colRadius - 8);
+      } else {
+        ball.y = Math.min(ball.y, feetY - ball.colRadius - 8);
+      }
       if (spawnGrass) {
         spawnGrass(ball.x, ball.y, playerObj.facing);
       }
