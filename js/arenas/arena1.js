@@ -3,7 +3,41 @@
 // Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
 // =========================================================================
 
-import { START_X, ARENA_WIDTH, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+
+const _mapW = MAP_WIDTH || ARENA_WIDTH || 3600;
+export const centerX = _mapW / 2; // 1800
+
+// =========================================================================
+// DEFINICJE BRAMEK (CYAN & ORANGE NEON GOALS)
+// =========================================================================
+export const goalTriggerLeft = {
+  id: 'goal_arena1_west',
+  team: 'CYAN',
+  x: 0,
+  y: 720,
+  w: 220,
+  h: 140,
+  lineX: 220,
+  facing: 1,
+  color: '#00F0FF',
+  glowColor: 'rgba(0, 240, 255, 0.85)'
+};
+
+export const goalTriggerRight = {
+  id: 'goal_arena1_east',
+  team: 'ORANGE',
+  x: _mapW - 220, // 3380
+  y: 720,
+  w: 220,
+  h: 140,
+  lineX: _mapW - 220,
+  facing: -1,
+  color: '#FF8800',
+  glowColor: 'rgba(255, 136, 0, 0.85)'
+};
+
+export const ARENA_1_GOALS = [goalTriggerLeft, goalTriggerRight];
 
 // =========================================================================
 // STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE
@@ -14,8 +48,9 @@ export const ARENA_1_PLATFORMS = [
     type: 'rock_platform',
     isBastion: true,
     theme: 'cyan',
-    x: START_X + 20,
+    x: 0,
     w: 380,
+    y: 860,
     h: 22,
     relY: 140,
     thickness: 22,
@@ -24,32 +59,35 @@ export const ARENA_1_PLATFORMS = [
   {
     id: 'catwalk_goal_west',
     type: 'catwalk',
-    x: START_X + 20,
-    w: 260,
+    x: 0,
+    w: 220,
+    y: 720,
     h: 16,
-    relY: 500,
+    relY: 280,
     thickness: 16
   },
   {
     id: 'central_altar_platform',
     type: 'altar_island',
     isAltar: true,
-    x: START_X + 1440,
+    x: centerX - 160, // 1640 (dokładnie centerX - platformWidth / 2)
     w: 320,
+    y: 760,
     h: 24,
-    relY: 200,
+    relY: 240,
     thickness: 24,
     props: [
-      { type: 'altar_pedestal', rx: 90, w: 140, h: 32 }
+      { type: 'altar_pedestal', rx: 90, w: 140, h: 20 }
     ]
   },
   {
     id: 'catwalk_goal_east',
     type: 'catwalk',
-    x: START_X + ARENA_WIDTH - 280,
-    w: 260,
+    x: _mapW - 220, // 3380
+    w: 220,
+    y: 720,
     h: 16,
-    relY: 500,
+    relY: 280,
     thickness: 16
   },
   {
@@ -57,8 +95,9 @@ export const ARENA_1_PLATFORMS = [
     type: 'rock_platform',
     isBastion: true,
     theme: 'orange',
-    x: START_X + 2800,
+    x: _mapW - 380, // 3220
     w: 380,
+    y: 860,
     h: 22,
     relY: 140,
     thickness: 22,
@@ -68,37 +107,13 @@ export const ARENA_1_PLATFORMS = [
 
 export const ARENA_1_BARRICADES = [];
 
-export const ARENA_1_GOALS = [
-  {
-    id: 'goal_arena1_west',
-    team: 'CYAN',
-    x: START_X + 35,
-    relY: 500,
-    w: 100,
-    h: 125,
-    color: '#06b6d4',
-    glowColor: 'rgba(6, 182, 212, 0.85)',
-    facing: 1
-  },
-  {
-    id: 'goal_arena1_east',
-    team: 'ORANGE',
-    x: START_X + ARENA_WIDTH - 135,
-    relY: 500,
-    w: 100,
-    h: 125,
-    color: '#f97316',
-    glowColor: 'rgba(249, 115, 22, 0.85)',
-    facing: -1
-  }
-];
-
 export const arena1State = {
   waitingForKickoff: true,
   kickoffCooldown: 0,
   initialSetupDone: false,
-  altarX: START_X + ARENA_WIDTH / 2,
-  altarRelY: 255,
+  altarX: centerX, // 1800
+  altarY: 760,
+  altarRelY: 240,
   altarPulse: 0
 };
 
@@ -307,15 +322,14 @@ export function drawArena1Background(ctx, camera) {
 export function drawArena1Foreground(ctx, camera) {
   if (!ctx) return;
   // Subtelna poświata centralnego ołtarza
-  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
-  const altarX = arena1State.altarX || (START_X + ARENA_WIDTH / 2);
-  const altarY = groundY - arena1State.altarRelY;
+  const altarX = arena1State.altarX || centerX;
+  const altarY = arena1State.altarY || 760;
   const pulse = Math.sin(performance.now() * 0.003) * 0.5 + 0.5;
 
   ctx.save();
-  ctx.fillStyle = `rgba(0, 229, 255, ${0.08 + pulse * 0.08})`;
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 10 + pulse * 8;
+  ctx.fillStyle = `rgba(0, 240, 255, ${0.08 + pulse * 0.08})`;
+  ctx.shadowColor = '#00F0FF';
+  ctx.shadowBlur = 0;
   ctx.beginPath();
   ctx.arc(altarX, altarY, 28, 0, Math.PI * 2);
   ctx.fill();
@@ -335,9 +349,8 @@ export function updateArena1(dt, players) {
 export function onArena1BulletHit(bullet) {
   if (!bullet) return false;
   // Ołtarz centralny odbija/pochłania pociski w samym środku
-  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
-  const altarX = arena1State.altarX || (START_X + ARENA_WIDTH / 2);
-  const altarY = groundY - arena1State.altarRelY;
+  const altarX = arena1State.altarX || centerX;
+  const altarY = arena1State.altarY || 760;
   const dist = Math.hypot(bullet.x - altarX, bullet.y - altarY);
   if (dist < 26) {
     return true; // Kula pochłonięta przez pole siłowe ołtarza
@@ -347,9 +360,8 @@ export function onArena1BulletHit(bullet) {
 
 export function onArena1KickHit(player, kickBox) {
   if (!player || !kickBox) return false;
-  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
-  const altarX = arena1State.altarX || (START_X + ARENA_WIDTH / 2);
-  const altarY = groundY - arena1State.altarRelY;
+  const altarX = arena1State.altarX || centerX;
+  const altarY = arena1State.altarY || 760;
   const dist = Math.hypot((player.x + (player.w || 24) / 2) - altarX, (player.y + 35) - altarY);
   if (dist < 85) {
     // Spartan kick w ołtarz wyzwala impuls
@@ -365,14 +377,14 @@ const arena1 = {
   id: 'arena-1',
   name: 'Soldat Night Ops',
   spawns: [
-    { x: START_X + 240, y: 300 }, // Spawn gracza (Cyan)
-    { x: START_X + ARENA_WIDTH - 240, y: 300 }, // Spawn bota (Orange)
-    { x: START_X + ARENA_WIDTH / 2, y: 476 } // Punkt rozpoczęcia piłki
+    { x: 240, y: 790 }, // Spawn gracza (Cyan)
+    { x: _mapW - 240, y: 790 }, // Spawn bota (Orange)
+    { x: centerX, y: 750 } // Punkt rozpoczęcia piłki (1800, 750)
   ],
   platforms: ARENA_1_PLATFORMS,
   customObjects: [
     ...ARENA_1_GOALS,
-    { id: 'altar_core', type: 'altar', x: START_X + ARENA_WIDTH / 2, y: 255, w: 80, h: 40 }
+    { id: 'altar_core', type: 'altar', x: centerX, y: 760, w: 80, h: 40 }
   ],
   drawBackground(ctx, camera) {
     drawArena1Background(ctx, camera);

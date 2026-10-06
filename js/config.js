@@ -65,6 +65,8 @@ export const FRAME_DURATION = 1000 / 60; // 16.666 ms (dokładnie 60 FPS)
 export const START_X = 0;
 export const ARENA_WIDTH = 3600;
 export const ARENA_HEIGHT = 1300;
+export const MAP_WIDTH = ARENA_WIDTH;
+export const MAP_HEIGHT = ARENA_HEIGHT;
 export const ARENA_LEFT = START_X; // 0
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 

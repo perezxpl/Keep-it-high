@@ -375,7 +375,7 @@ export class ShrapnelStreak {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 1.5;
     ctx.shadowColor = '#fff2b2';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.moveTo(this.prevX, this.prevY);
     ctx.lineTo(this.x, this.y);
@@ -616,12 +616,9 @@ export class DustCloud {
   draw(ctx) {
     if (!ctx || this.alpha <= 0) return;
     ctx.save();
-    ctx.globalAlpha = this.alpha;
-    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-    grad.addColorStop(0.0, this.color);
-    grad.addColorStop(0.65, this.color);
-    grad.addColorStop(1.0, 'rgba(148, 163, 184, 0)');
-    ctx.fillStyle = grad;
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = this.alpha * 0.45;
+    ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
@@ -1053,7 +1050,7 @@ export class StretchedSparks {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2.0; // cienkie, świecące linie żaru o szerokości 2px
     ctx.shadowColor = '#facc15';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
     ctx.lineTo(this.x - this.vx * 0.035, this.y - this.vy * 0.035);
@@ -1104,7 +1101,7 @@ export class ShockwaveRing {
     ctx.globalAlpha = this.alpha;
     ctx.strokeStyle = this.color;
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = this.thickness;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);

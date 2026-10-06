@@ -11,6 +11,10 @@ export {
   drawBunkerBlock,
   drawCyberCatwalk,
   drawNeonBarrier,
+  drawNeonGoals,
+  goalTriggerLeft,
+  goalTriggerRight,
+  ARENA_1_GOALS,
   drawJumpPad,
   drawCyberPillar,
   drawExplosiveBarrel,
@@ -41,7 +45,8 @@ export {
 
 export {
   drawMineCaveBackground,
-  drawPandoraBackground
+  drawPandoraBackground,
+  drawArena1Background
 } from './background.js';
 
 export {
@@ -151,18 +156,27 @@ import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js';
 
 export { getActiveArena, setActiveArena, ARENAS };
 
+// Funkcje zaślepkowe dla usuniętych snopów światła i lampionów (60 FPS & kompatybilność)
+export function drawSunRays() {}
+export function drawGodRays() {}
+export function drawVolumetricLight() {}
+export function drawLightBeams() {}
+export function drawHangingLanterns() {}
+
 /**
  * Renderuje tło aktywnej areny (przed postaciami i obiektami świata)
  * @param {CanvasRenderingContext2D} ctx - Kontekst renderowania
  * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
  */
 export function renderArenaBackground(ctx, camera) {
+  if (ctx) ctx.shadowBlur = 0;
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.drawBackground === 'function') {
     activeArena.drawBackground(ctx, camera);
   } else {
     drawSky(ctx);
   }
+  if (ctx) ctx.shadowBlur = 0;
 }
 
 /**
@@ -171,10 +185,12 @@ export function renderArenaBackground(ctx, camera) {
  * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
  */
 export function renderArenaForeground(ctx, camera) {
+  if (ctx) ctx.shadowBlur = 0;
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.draw === 'function') {
     activeArena.draw(ctx, camera);
   }
+  if (ctx) ctx.shadowBlur = 0;
 }
 
 // =========================================================================
@@ -202,6 +218,7 @@ if (typeof window !== 'undefined') {
 export function drawDebugColliders(ctx, groundY, player) {
   if (!ctx || !DEBUG_COLLIDERS) return;
   ctx.save();
+  ctx.shadowBlur = 0;
 
   const activeArena = getActiveArena();
   const plats = (typeof ARENA_PLATFORMS !== 'undefined' && Array.isArray(ARENA_PLATFORMS) && ARENA_PLATFORMS.length > 0)

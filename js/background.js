@@ -161,9 +161,10 @@ export function drawMineCaveBackground(ctx, camX = 1800, camY = 0) {
     ctx.stroke();
   }
 
-  // 4. WOLNO UNOSZĄCE SIĘ DROBINY PYŁU JASKINIOWEGO (1-2px, alpha 0.15–0.3)
+  // 4. WOLNO UNOSZĄCE SIĘ DROBINY PYŁU JASKINIOWEGO (Zoptymalizowano do 22 sztuk, bez cieni)
   ctx.save();
-  const moteCount = 50;
+  ctx.shadowBlur = 0;
+  const moteCount = 22;
   for (let i = 0; i < moteCount; i++) {
     const seedX = (i * 73.19) % W;
     const seedY = (i * 47.83) % H;
@@ -195,8 +196,8 @@ export function drawMineCaveBackground(ctx, camX = 1800, camY = 0) {
 // 5. Wolumetryczne złote promienie słońca (god rays) i świetliki dżungli
 // =========================================================================
 
-// Cząsteczki pyłku i świetlików w tle
-const BG_JUNGLE_MOTES_COUNT = 44;
+// Cząsteczki pyłku i świetlików w tle (zoptymalizowano do 24 sztuk dla stałych 60 FPS)
+const BG_JUNGLE_MOTES_COUNT = 24;
 const _bgJungleMotes = [];
 for (let i = 0; i < BG_JUNGLE_MOTES_COUNT; i++) {
   _bgJungleMotes.push({
@@ -206,15 +207,22 @@ for (let i = 0; i < BG_JUNGLE_MOTES_COUNT; i++) {
     speedY: -7.0 - (i % 4) * 3.5,
     swayAmp: 18 + (i % 4) * 7,
     swaySpeed: 0.75 + (i % 3) * 0.4,
-    size: (i % 4 === 0) ? 2.4 : 1.4,
+    size: (i % 4 === 0) ? 2.0 : 1.2,
     pulseSpeed: 1.4 + (i % 3) * 0.6,
     phase: i * 0.52,
     isGolden: (i % 3 !== 1)
   });
 }
 
+// Funkcje zaślepkowe dla usuniętych snopów światła i poświaty (kompatybilność)
+export function drawSunRays() {}
+export function drawGodRays() {}
+export function drawVolumetricLight() {}
+export function drawLightBeams() {}
+
 export function drawPandoraBackground(ctx, camera) {
   if (!ctx) return;
+  ctx.shadowBlur = 0;
   const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
   const H_screen = ctx.canvas?.height || (typeof window !== 'undefined' ? window.innerHeight : 1080);
   const time = performance.now() * 0.001;
@@ -223,42 +231,43 @@ export function drawPandoraBackground(ctx, camera) {
   const camY = camera ? (camera.y || 0) : 0;
 
   // -------------------------------------------------------------------------
-  // WARSTWA 0: NIEBO DŻUNGLI I ZŁOTE PROMIENISTE SŁOŃCE (PARALAKSA 0.005)
+  // WARSTWA 0: CZYSTE, NATURALNE NIEBO DŻUNGLI (USUNIĘTO POMARAŃCZOWĄ POŚWIATĘ)
   // -------------------------------------------------------------------------
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
   skyGrad.addColorStop(0.00, '#021810');
   skyGrad.addColorStop(0.25, '#052b1d');
   skyGrad.addColorStop(0.55, '#0b422a');
-  skyGrad.addColorStop(0.78, '#185938');
-  skyGrad.addColorStop(0.92, '#7a5a22');
-  skyGrad.addColorStop(1.00, '#c28328');
+  skyGrad.addColorStop(0.78, '#144c31');
+  skyGrad.addColorStop(0.92, '#185938');
+  skyGrad.addColorStop(1.00, '#103d27');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
-  // Złote słońce przedzierające się przez poranną mgłę dżungli
+  // Naturalne poranne słońce przedzierające się przez mgłę dżungli (bez pomarańczowych plam)
   const sunX = W_screen * 0.64 - (camX * 0.006);
   const sunY = H_screen * 0.30 - (camY * 0.004);
   const sunR = Math.max(75, Math.min(135, H_screen * 0.16));
 
   ctx.save();
+  ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
-  // Szeroka korona słoneczna
-  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, sunR * 2.8);
-  coronaGrad.addColorStop(0.0, 'rgba(254, 240, 138, 0.75)');
-  coronaGrad.addColorStop(0.25, 'rgba(250, 204, 21, 0.45)');
-  coronaGrad.addColorStop(0.60, 'rgba(234, 179, 8, 0.18)');
+  // Dyskretna korona słoneczna
+  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, sunR * 2.4);
+  coronaGrad.addColorStop(0.0, 'rgba(255, 255, 240, 0.40)');
+  coronaGrad.addColorStop(0.35, 'rgba(254, 249, 195, 0.16)');
+  coronaGrad.addColorStop(0.75, 'rgba(220, 252, 231, 0.05)');
   coronaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = coronaGrad;
   ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR * 2.8, 0, Math.PI * 2);
+  ctx.arc(sunX, sunY, sunR * 2.4, 0, Math.PI * 2);
   ctx.fill();
 
   // Tarcza słońca
   const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
-  sunCore.addColorStop(0.0, '#fffbeb');
-  sunCore.addColorStop(0.35, '#fef08a');
-  sunCore.addColorStop(0.75, '#facc15');
-  sunCore.addColorStop(1.0, 'rgba(234, 179, 8, 0)');
+  sunCore.addColorStop(0.0, '#ffffff');
+  sunCore.addColorStop(0.40, '#fef9c3');
+  sunCore.addColorStop(0.85, 'rgba(254, 240, 138, 0.25)');
+  sunCore.addColorStop(1.0, 'rgba(254, 240, 138, 0)');
   ctx.fillStyle = sunCore;
   ctx.beginPath();
   ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
@@ -475,62 +484,28 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 4: WOLUMETRYCZNE ZŁOTE PROMIENIE SŁOŃCA (GOD RAYS)
+  // WARSTWA 4: PŁYWAJĄCY PYŁEK DŻUNGLI (ZOPTYMALIZOWANY DO 24 SZTUK, BEZ CIENI I GRADIENTÓW)
   // -------------------------------------------------------------------------
+  // (Usunięto pionowe pomarańczowe snopy światła / god rays)
   ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  const rayAngle = -0.34;
-  const rayOriginX = W_screen * 0.65 - camX * 0.02;
-  const rayOriginY = -30;
-
-  ctx.save();
-  ctx.translate(rayOriginX, rayOriginY);
-  ctx.rotate(rayAngle);
-
-  const numRays = 6;
-  for (let r = 0; r < numRays; r++) {
-    const rayWidth = 70 + r * 25;
-    const rayX = (r - 2.5) * 170 + Math.sin(time * 0.7 + r) * 22;
-    const rayPulse = 0.60 + 0.40 * Math.sin(time * 1.1 + r * 1.5);
-    const rayAlpha = (0.08 + (r % 2) * 0.04) * rayPulse;
-
-    const rGrad = ctx.createLinearGradient(rayX, 0, rayX, H_screen * 1.6);
-    rGrad.addColorStop(0.0, `rgba(254, 240, 138, ${rayAlpha * 1.8})`);
-    rGrad.addColorStop(0.35, `rgba(251, 191, 36, ${rayAlpha})`);
-    rGrad.addColorStop(0.70, `rgba(245, 158, 11, ${rayAlpha * 0.4})`);
-    rGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-
-    ctx.fillStyle = rGrad;
-    ctx.beginPath();
-    ctx.moveTo(rayX - rayWidth * 0.4, 0);
-    ctx.lineTo(rayX + rayWidth * 0.4, 0);
-    ctx.lineTo(rayX + rayWidth * 1.5, H_screen * 1.6);
-    ctx.lineTo(rayX - rayWidth * 1.5, H_screen * 1.6);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // -------------------------------------------------------------------------
-  // WARSTWA 5: PŁYWAJĄCY PYŁEK SŁONECZNY I ŚWIETLIKI DŻUNGLI
-  // -------------------------------------------------------------------------
+  ctx.shadowBlur = 0;
   for (let m = 0; m < _bgJungleMotes.length; m++) {
     const mt = _bgJungleMotes[m];
     const mx = (mt.seedX + Math.sin(time * mt.swaySpeed + mt.phase) * mt.swayAmp - camX * 0.03 % W_screen + W_screen) % W_screen;
     const my = ((mt.seedY + time * mt.speedY) % H_screen + H_screen) % H_screen;
 
     const sinP = Math.sin(time * mt.pulseSpeed + mt.phase);
-    const alpha = 0.25 + 0.65 * (0.5 + 0.5 * sinP);
+    const alpha = 0.25 + 0.50 * (0.5 + 0.5 * sinP);
 
-    const mCol = mt.isGolden
+    ctx.fillStyle = mt.isGolden
       ? `rgba(254, 240, 138, ${alpha})`
       : `rgba(167, 243, 208, ${alpha * 0.85})`;
 
-    ctx.fillStyle = mCol;
     ctx.beginPath();
     ctx.arc(mx, my, mt.size, 0, Math.PI * 2);
     ctx.fill();
   }
-
   ctx.restore();
 }
+
+export { drawArena1Background } from './arenas/arena1.js';

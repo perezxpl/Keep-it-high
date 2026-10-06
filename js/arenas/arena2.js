@@ -340,9 +340,9 @@ export function checkPandoraUpdraft(player) {
 }
 
 // =========================================================================
-// ATMOSFERYCZNE CZĄSTECZKI DŻUNGLI (ŚWIETLIKI, PYŁEK I ISKRY OŁTARZA)
+// ATMOSFERYCZNE CZĄSTECZKI DŻUNGLI (ZOPTYMALIZOWANE DO 20 SZTUK)
 // =========================================================================
-const JUNGLE_FIREFLIES_COUNT = 40;
+const JUNGLE_FIREFLIES_COUNT = 20;
 const _jungleFireflies = [];
 for (let i = 0; i < JUNGLE_FIREFLIES_COUNT; i++) {
   _jungleFireflies.push({
@@ -352,7 +352,7 @@ for (let i = 0; i < JUNGLE_FIREFLIES_COUNT; i++) {
     vy: -5.0 - (i % 4) * 3.0,
     phase: i * 0.45,
     pulseSpeed: 1.3 + (i % 4) * 0.5,
-    size: 1.8 + (i % 3) * 0.9,
+    size: 1.6 + (i % 3) * 0.6,
     isGolden: (i % 3 !== 1),
     swayAmp: 16 + (i % 4) * 6,
     swaySpeed: 0.7 + (i % 3) * 0.35
@@ -364,9 +364,10 @@ for (let i = 0; i < JUNGLE_FIREFLIES_COUNT; i++) {
 // =========================================================================
 export function renderPandoraTerrain(ctx, camera) {
   if (!ctx) return;
+  ctx.shadowBlur = 0;
   const time = performance.now() * 0.001;
 
-  // 1. Pływający w powietrzu złoty pyłek i świetliki dżungli
+  // 1. Pływający w powietrzu złoty pyłek i świetliki dżungli (zoptymalizowane)
   drawAtmosphericPollenAndFireflies(ctx, time);
 
   // 2. Podłoże: kamienne ciosane płyty, naturalne uskoki i zintegrowane korzenie
@@ -402,42 +403,30 @@ export function renderPandoraTerrain(ctx, camera) {
   drawOvergrownSuspendedRock(ctx, 880, 950, 180, 24, time);
   drawOvergrownSuspendedRock(ctx, 2540, 950, 180, 24, time + 2.0);
 
-  // 9. Przednie smugi światła słonecznego (wolumetryczne promienie foreground)
-  drawVolumetricForegroundLight(ctx, time);
+  // 9. (Usunięto przednie pomarańczowe pionowe snopy światła słonecznego)
 }
 
 // =========================================================================
-// 1. ZŁOTY PYŁEK I ŚWIETLIKI DŻUNGLI
+// 1. ZŁOTY PYŁEK I ŚWIETLIKI DŻUNGLI (PŁASKIE RENDEROWANIE BEZ GRADIENTÓW I CIENI)
 // =========================================================================
 function drawAtmosphericPollenAndFireflies(ctx, time) {
   ctx.save();
+  ctx.shadowBlur = 0;
   for (let i = 0; i < _jungleFireflies.length; i++) {
     const ff = _jungleFireflies[i];
     const driftX = ff.baseX + Math.sin(time * ff.swaySpeed + ff.phase) * ff.swayAmp + Math.sin(time * 0.35 + i) * 10;
     const driftY = ((ff.baseY + time * ff.vy) % 1050 + 1050) % 1050 + 260;
 
     const sinP = Math.sin(time * ff.pulseSpeed + ff.phase);
-    const alpha = 0.20 + 0.55 * (0.5 + 0.5 * sinP);
+    const alpha = 0.20 + 0.45 * (0.5 + 0.5 * sinP);
 
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    const coreCol = ff.isGolden ? `rgba(254, 240, 138, ${alpha})` : `rgba(167, 243, 208, ${alpha * 0.9})`;
-    const glowCol = ff.isGolden ? `rgba(234, 179, 8, ${alpha * 0.5})` : `rgba(34, 197, 94, ${alpha * 0.4})`;
+    ctx.fillStyle = ff.isGolden
+      ? `rgba(254, 240, 138, ${alpha})`
+      : `rgba(167, 243, 208, ${alpha * 0.85})`;
 
-    const grad = ctx.createRadialGradient(driftX, driftY, 0.5, driftX, driftY, ff.size * 3.5);
-    grad.addColorStop(0.0, coreCol);
-    grad.addColorStop(0.4, glowCol);
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(driftX, driftY, ff.size * 3.5, 0, Math.PI * 2);
+    ctx.arc(driftX, driftY, ff.size, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.fillStyle = coreCol;
-    ctx.beginPath();
-    ctx.arc(driftX, driftY, ff.size * 0.75, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
   }
   ctx.restore();
 }
@@ -1375,35 +1364,8 @@ function drawWildOrchidCluster(ctx, cx, cy) {
   ctx.restore();
 }
 
-/** Rysuje wolumetryczne promienie światła słonecznego na pierwszym planie */
-function drawVolumetricForegroundLight(ctx, time) {
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  const beams = [
-    { x1: 520, x2: 760, alpha: 0.12 },
-    { x1: 1720, x2: 2000, alpha: 0.18 },
-    { x1: 2950, x2: 3220, alpha: 0.14 }
-  ];
-
-  for (let b = 0; b < beams.length; b++) {
-    const bm = beams[b];
-    const pulse = 0.82 + 0.18 * Math.sin(time * 0.9 + b);
-    const grad = ctx.createLinearGradient(bm.x1, 0, bm.x2 + 250, 1400);
-    grad.addColorStop(0.0, `rgba(254, 240, 138, ${bm.alpha * pulse * 1.5})`);
-    grad.addColorStop(0.5, `rgba(250, 204, 21, ${bm.alpha * pulse * 0.8})`);
-    grad.addColorStop(1.0, 'rgba(234, 179, 8, 0)');
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(bm.x1, 0);
-    ctx.lineTo(bm.x1 + 180, 0);
-    ctx.lineTo(bm.x2 + 360, 1400);
-    ctx.lineTo(bm.x2 + 120, 1400);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-}
+/** Promienie światła słonecznego usunięte na rzecz czystego widoku 60 FPS */
+function drawVolumetricForegroundLight() {}
 
 // =========================================================================
 // RENDEROWANIE I HOOKI CYKLU ŻYCIA ARENY 2

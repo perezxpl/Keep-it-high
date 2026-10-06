@@ -2,10 +2,13 @@
 // WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ + SYSTEM GORE & KINEMATYKA ŚMIERCI
 // =========================================================================
 
-import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, isTouchDevice, setTouchDevice, ARENA_2_PANDORA } from './config.js';
+import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, MAP_WIDTH, isTouchDevice, setTouchDevice, ARENA_2_PANDORA } from './config.js';
 import { spawnConcreteDebris, spawnRicochetSparks } from './particles.js';
 import { drawPandoraBackground } from './background.js';
-export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA };
+import { goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS } from './arenas/arena1.js';
+export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
+
+export const centerX = MAP_WIDTH / 2; // 1800
 
 export let _worldPlatforms = [];
 export let _worldCustomObstacles = [];
@@ -54,14 +57,14 @@ export const goalCelebration = {
   active: false,
   timer: 0,
   team: '',
-  color: '#06b6d4'
+  color: '#00F0FF'
 };
 
 export function triggerGoalCelebration(team, color) {
   goalCelebration.active = true;
   goalCelebration.timer = 110;
   goalCelebration.team = team;
-  goalCelebration.color = color || (team === 'CYAN' ? '#06b6d4' : '#f97316');
+  goalCelebration.color = color || (team === 'CYAN' ? '#00F0FF' : '#FF8800');
 }
 
 export let canvas = null;
@@ -1038,7 +1041,7 @@ export function drawJetpackParticles(ctx) {
     if (p.isFlame) {
       // Gorący płomień z neonowym blaskiem
       ctx.shadowColor = p.glowColor || p.color;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 0;
       ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
       ctx.beginPath();
@@ -1048,7 +1051,7 @@ export function drawJetpackParticles(ctx) {
       // Białe jądro w środku świeżego płomienia
       if (p.life > 0.8) {
         ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
         ctx.fill();
@@ -1377,7 +1380,7 @@ export function drawNeonNightOpsSky(ctx, camX) {
   ctx.fill();
 
   ctx.shadowColor = '#06b6d4';
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 0;
   ctx.fillStyle = '#22d3ee';
   ctx.beginPath();
   ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -1421,7 +1424,7 @@ export function drawNeonNightOpsSky(ctx, camX) {
   ctx.fill();
 
   ctx.shadowColor = '#f97316';
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 0;
   ctx.fillStyle = '#fb923c';
   ctx.beginPath();
   ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -1459,39 +1462,8 @@ export function drawJungleSky(ctx, camX) {
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // 2. PROMIENIE SŁONECZNE (GOD RAYS) PRZEDZIERAJĄCE SIĘ PRZEZ KORONY DRZEW
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  const sunPulse = 0.88 + 0.12 * Math.sin(time * 1.8);
-  const sunX = W * 0.24 - (camX * 0.01 % W);
-  const sunGrad = ctx.createRadialGradient(sunX, -40, 10, sunX, 80, 520);
-  sunGrad.addColorStop(0.0, `rgba(254, 252, 232, ${0.45 * sunPulse})`);
-  sunGrad.addColorStop(0.40, `rgba(253, 230, 138, ${0.20 * sunPulse})`);
-  sunGrad.addColorStop(0.80, `rgba(187, 247, 208, ${0.08 * sunPulse})`);
-  sunGrad.addColorStop(1.0, 'rgba(187, 247, 208, 0)');
-  ctx.fillStyle = sunGrad;
-  ctx.fillRect(0, 0, W, H * 0.85);
-
-  // Skośne smugi światła
-  const rayAngles = [-0.18, 0.02, 0.22, 0.44];
-  for (let r = 0; r < rayAngles.length; r++) {
-    const rayOffset = Math.sin(time * 0.6 + r * 1.5) * 40;
-    const rx = sunX + r * 160 + rayOffset;
-    const rayWidth = 90 + r * 35;
-    const rayGrad = ctx.createLinearGradient(rx, 0, rx + 240, horizonY);
-    rayGrad.addColorStop(0.0, 'rgba(254, 249, 195, 0.12)');
-    rayGrad.addColorStop(0.55, 'rgba(254, 249, 195, 0.05)');
-    rayGrad.addColorStop(1.0, 'rgba(254, 249, 195, 0)');
-    ctx.fillStyle = rayGrad;
-    ctx.beginPath();
-    ctx.moveTo(rx, 0);
-    ctx.lineTo(rx + rayWidth, 0);
-    ctx.lineTo(rx + rayWidth + 340, horizonY);
-    ctx.lineTo(rx + 300, horizonY);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
+  // 2. (Usunięto pionowe snopy światła / god rays)
+  ctx.shadowBlur = 0;
 
   // 3. PARALAKSA DALEKA (camX * 0.015) – Zamglone pasma górskie i sylwetki gęstych koron lasu
   const farPeriod = 1400;
@@ -1672,8 +1644,10 @@ export function drawJungleSky(ctx, camX) {
   }
   ctx.restore();
 
-  // 6. CZĄSTECZKI TROPIKALNE (UNOSZĄCE SIĘ ZIELONE LIŚCIE I ŚWIETLISTE ZARODNIKI)
-  const leafCount = 45;
+  // 6. CZĄSTECZKI TROPIKALNE (ZOPTYMALIZOWANE DO 22 SZTUK, BEZ CIENI I TRANSFORMACJI)
+  ctx.save();
+  ctx.shadowBlur = 0;
+  const leafCount = 22;
   for (let i = 0; i < leafCount; i++) {
     const seed = i * 53.17;
     const spdY = 24 + (i % 5) * 11;
@@ -1682,18 +1656,14 @@ export function drawJungleSky(ctx, camX) {
     const leafX = (((seed * 179.3 + sway - camX * 0.05) % W + W) % W);
 
     if (i % 3 === 0) {
-      // Wirujący tropikalny listek (zielony/oliwkowy)
-      ctx.save();
-      ctx.translate(leafX, driftY);
-      ctx.rotate(time * 2.2 + seed);
+      // Tropikalny listek (szybkie małe koło)
       ctx.fillStyle = (i % 6 === 0) ? '#65a30d' : '#4d7c0f';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 7, 3.2, 0, 0, Math.PI * 2);
+      ctx.arc(leafX, driftY, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     } else {
-      // Świetlisty zarodnik / pyłek unoszący się w smugach światła
-      const sporePulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(time * 4.2 + seed * 2.7));
+      // Świetlisty zarodnik / pyłek (szybki prostokąt bez gradientu)
+      const sporePulse = 0.4 + 0.5 * (0.5 + 0.5 * Math.sin(time * 3.0 + seed));
       const sporeY = (H - ((time * (spdY * 0.75) + seed * 27) % H));
       ctx.fillStyle = (i % 2 === 0)
         ? `rgba(250, 204, 21, ${sporePulse * 0.75})`
@@ -1702,6 +1672,7 @@ export function drawJungleSky(ctx, camX) {
       ctx.fillRect(leafX, sporeY, sz, sz);
     }
   }
+  ctx.restore();
 }
 
 /**
@@ -1784,7 +1755,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
 
     ctx.strokeStyle = '#f97316';
     ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(edgeX + 11, groundY + 11);
@@ -1804,7 +1775,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
     // Pręt 3 (dolny): rozgrzany pręt pomarańczowy wygięty ku górze
     ctx.strokeStyle = '#ea580c';
     ctx.shadowColor = '#ea580c';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(edgeX, groundY + 29);
@@ -1814,7 +1785,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
 
     ctx.strokeStyle = '#fdba74';
     ctx.shadowColor = '#fde047';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.0;
     ctx.beginPath();
     ctx.moveTo(edgeX + 13, groundY + 27);
@@ -1870,7 +1841,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
 
     ctx.strokeStyle = '#f97316';
     ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(edgeX - 11, groundY + 11);
@@ -1888,7 +1859,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
 
     ctx.strokeStyle = '#ea580c';
     ctx.shadowColor = '#ea580c';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(edgeX, groundY + 29);
@@ -1898,7 +1869,7 @@ export function drawSeveredGroundEdge(ctx, edgeX, groundY, direction = 'RIGHT') 
 
     ctx.strokeStyle = '#fdba74';
     ctx.shadowColor = '#fde047';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 2.0;
     ctx.beginPath();
     ctx.moveTo(edgeX - 13, groundY + 27);
@@ -2571,7 +2542,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
     if (arenaEnd > arenaStart) {
       ctx.strokeStyle = surfaceGrad;
       ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 0;
       ctx.lineWidth = 4.0;
       ctx.beginPath();
       ctx.moveTo(arenaStart, GROUND_Y);
@@ -2580,7 +2551,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 
       ctx.strokeStyle = coreGrad;
       ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 0;
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(arenaStart, GROUND_Y);
@@ -2595,7 +2566,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
         ctx.strokeStyle = '#06b6d4';
         ctx.lineWidth = 2.0;
         ctx.shadowColor = '#06b6d4';
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.moveTo(bLeft, GROUND_Y);
         ctx.lineTo(bRight, GROUND_Y);
@@ -2610,7 +2581,7 @@ export function drawGround(ctx, worldLeft, worldWidth) {
         ctx.strokeStyle = '#f97316';
         ctx.shadowColor = '#f97316';
         ctx.lineWidth = 2.0;
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.moveTo(bLeft, GROUND_Y);
         ctx.lineTo(bRight, GROUND_Y);
@@ -2652,16 +2623,16 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
   const walls = [
     {
       x: leftX,
-      color: '#06b6d4',
+      color: '#00F0FF',
       coreColor: '#a5f3fc',
-      glowColor: '#00e5ff',
+      glowColor: '#00F0FF',
       fadeDir: 1
     },
     {
       x: rightX,
-      color: '#f97316',
+      color: '#FF8800',
       coreColor: '#fed7aa',
-      glowColor: '#ff7700',
+      glowColor: '#FF8800',
       fadeDir: -1
     }
   ];
@@ -2677,8 +2648,8 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
       fieldGrad.addColorStop(0.35, `rgba(250, 204, 21, ${0.14 * pulse})`);
       fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
     } else {
-      fieldGrad.addColorStop(0.0, w.fadeDir === 1 ? `rgba(6, 182, 212, ${0.28 * pulse})` : `rgba(249, 115, 22, ${0.28 * pulse})`);
-      fieldGrad.addColorStop(0.35, w.fadeDir === 1 ? `rgba(0, 229, 255, ${0.12 * pulse})` : `rgba(255, 119, 0, ${0.12 * pulse})`);
+      fieldGrad.addColorStop(0.0, w.fadeDir === 1 ? `rgba(0, 240, 255, ${0.28 * pulse})` : `rgba(255, 136, 0, ${0.28 * pulse})`);
+      fieldGrad.addColorStop(0.35, w.fadeDir === 1 ? `rgba(0, 240, 255, ${0.12 * pulse})` : `rgba(255, 136, 0, ${0.12 * pulse})`);
       fieldGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
     }
     ctx.fillStyle = fieldGrad;
@@ -2698,7 +2669,7 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
     // 3. Główna pionowa neonowa linia energetyczna z potężnym rozbłyskiem (glow)
     ctx.strokeStyle = w.color;
     ctx.shadowColor = w.glowColor;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 3.6;
     ctx.beginPath();
     ctx.moveTo(w.x, groundY);
@@ -2708,7 +2679,7 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
     // 4. Intensywny biały rdzeń lasera energetycznego
     ctx.strokeStyle = '#ffffff';
     ctx.shadowColor = w.coreColor;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(w.x, groundY);
@@ -2718,7 +2689,7 @@ export function drawArenaEnergyBoundaries(ctx, groundY) {
     // 5. Emiter podłożowy u nasady ściany
     ctx.fillStyle = w.color;
     ctx.shadowColor = w.glowColor;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(w.x, groundY, 4.5, 0, Math.PI * 2);
     ctx.fill();
@@ -2782,7 +2753,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = bgGrad;
     ctx.fill();
     ctx.shadowColor = stickGlow;
-    ctx.shadowBlur = isJetActive ? 10 : (isJetReady ? 6 : 0);
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = stickBorder;
     ctx.lineWidth = isStickActive ? 2.0 : 1.4;
     ctx.stroke();
@@ -2895,7 +2866,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.shadowColor = (isKickReady || isFiring) ? glowColor : 'transparent';
-    ctx.shadowBlur = (isKickReady || isFiring) ? 10 : 0;
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = baseBorder;
     ctx.lineWidth = (isKickReady || isStickActive) ? 2.0 : 1.4;
     ctx.stroke();
@@ -2924,7 +2895,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
         ctx.save();
         ctx.shadowColor = glowColor;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = mainColor;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
@@ -2969,7 +2940,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.shadowColor = glowColor;
-    ctx.shadowBlur = (isKickReady || isFiring) ? 10 : (isStickActive ? 6 : 0);
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = mainColor;
     ctx.lineWidth = isStickActive ? 2.2 : 1.2;
     ctx.stroke();
@@ -3293,7 +3264,7 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   ctx.closePath();
   ctx.fillStyle = '#38bdf8';
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 0;
   ctx.fill();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.8;
@@ -3309,7 +3280,7 @@ export function drawOffscreenBallIndicator(ctx, ball, camera, player) {
   ctx.font = 'bold 12px monospace';
   ctx.fillStyle = '#facc15';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -3331,7 +3302,7 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
   if (isSelected) {
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
   } else {
     ctx.fillStyle = '#94a3b8';
     ctx.shadowColor = 'transparent';
@@ -3428,7 +3399,7 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
       ctx.strokeStyle = borderCol;
       ctx.lineWidth = 1.6;
       ctx.shadowColor = borderCol;
-      ctx.shadowBlur = 5 + pulse * 4;
+      ctx.shadowBlur = 0;
     } else {
       ctx.strokeStyle = borderCol;
       ctx.lineWidth = 1.0;
@@ -3523,7 +3494,7 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   ctx.lineWidth = isActive ? 1.6 : 1.0;
   if (isActive) {
     ctx.shadowColor = borderCol;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
   } else {
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
@@ -3538,7 +3509,7 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
     ctx.save();
     ctx.fillStyle = accentCol;
     ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.fillRect(tileX + 3, tileY + tileSize - 3, (tileSize - 6) * prog, 2);
     ctx.restore();
   }
@@ -3610,7 +3581,7 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
   ctx.strokeStyle = borderCol;
   ctx.lineWidth = 2.0;
   ctx.shadowColor = borderCol;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 0;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
@@ -3620,7 +3591,7 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
     const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
     ctx.fillStyle = accentCol;
     ctx.shadowColor = accentCol;
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.fillRect(x + 4, y + size - 4, (size - 8) * prog, 2.5);
     ctx.shadowBlur = 0;
   }
@@ -3808,7 +3779,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'center';
     ctx.fillStyle = '#4ade80';
     ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.fillText('🌿 ŚWIĘTA DŻUNGLA // SANCTUARY 🌿', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
     ctx.restore();
   } else if (isDeathmatch) {
@@ -3832,7 +3803,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ef4444';
     ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.fillText('💀 TEAM DEATHMATCH 💀', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 11 : 13));
 
     // Fragi obu drużyn
@@ -3840,7 +3811,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'right';
     ctx.fillStyle = '#06b6d4';
     ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
 
     ctx.textAlign = 'center';
@@ -3851,7 +3822,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
     ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
 
     // Subtekst pod tablicą z celem eliminacji
@@ -3860,7 +3831,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9.5px monospace';
     ctx.fillStyle = `rgba(248, 113, 113, ${0.75 + pulse * 0.25})`;
     ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillText('⚔️ CEL: ELIMINACJA WROGA ⚔️', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 14));
 
     ctx.restore();
@@ -3884,7 +3855,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'right';
     ctx.fillStyle = '#06b6d4';
     ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
 
     ctx.textAlign = 'center';
@@ -3895,7 +3866,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
     ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 17 : 22));
 
     if (curArenaId === 'ARENA_1' && curA1State?.waitingForKickoff) {
@@ -3904,7 +3875,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
       ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
       ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 0;
       ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1760) ⚡', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
     }
 
@@ -3928,7 +3899,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.font = '900 36px monospace';
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = goalCelebration.color;
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur = 0;
     ctx.fillText(`⚽ ${goalCelebration.team} GOAL! ⚽`, W / 2, H * 0.32);
     ctx.restore();
   }

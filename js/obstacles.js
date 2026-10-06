@@ -22,7 +22,7 @@ export function registerArenaResetCallback(cb) {
   }
 }
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/index.js';
-import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State } from './arenas/arena1.js';
+import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX } from './arenas/arena1.js';
 import arena2, {
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS
@@ -30,7 +30,7 @@ import arena2, {
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/arena3.js';
 
 export {
-  ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State,
+  ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
   ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
@@ -711,9 +711,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     arena1State.waitingForKickoff = true;
     arena1State.kickoffCooldown = 0;
 
+    const _cX = ARENA_WIDTH / 2; // 1800
+    const _altarX = arena1State.altarX || _cX;
+    const _altarY = arena1State.altarY || 760;
+    const _spawnBallY = _altarY - (ballObj?.radius || 8) - 2; // 750
+
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : (START_X + 240);
-      playerObj.y = groundY - 130 - playerObj.h;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 240;
+      playerObj.y = 790;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -724,8 +729,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : (START_X + ARENA_WIDTH - 240);
-      targetBot.y = groundY - 130 - targetBot.h;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3360;
+      targetBot.y = 790;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -736,8 +741,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.isLevitating = false;
       ballObj.goalAnimation = null;
-      ballObj.x = (currentArena.spawns && currentArena.spawns[2]) ? currentArena.spawns[2].x : arena1State.altarX;
-      ballObj.y = groundY - arena1State.altarRelY;
+      ballObj.x = _altarX;
+      ballObj.y = _spawnBallY;
       ballObj.prevX = ballObj.x;
       ballObj.prevY = ballObj.y;
       ballObj.vx = 0;
@@ -914,7 +919,7 @@ export function drawBarrelExplosionParticles(ctx) {
     ctx.globalAlpha = Math.max(0, p.life);
     if (p.type === 'fire') {
       ctx.shadowColor = p.color;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 0;
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, Math.max(1, p.size * p.life), 0, Math.PI * 2);
@@ -2032,12 +2037,18 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
   }
 
   if (activeArenaId === 'ARENA_1') {
+    const _mapW = ARENA_WIDTH || 3600;
+    const centerX = _mapW / 2; // 1800
+    const altarX = arena1State.altarX || centerX;
+    const altarY = arena1State.altarY || 760;
+    const spawnBallY = altarY - (ball?.radius || 8) - 2; // 750
+
     if (!arena1State.initialSetupDone) {
       arena1State.initialSetupDone = true;
       arena1State.waitingForKickoff = true;
       if (p) {
-        p.x = START_X + 240;
-        p.y = groundY - 130 - p.h;
+        p.x = 240;
+        p.y = 790;
         p.vx = 0;
         p.vy = 0;
         p.facing = 1;
@@ -2045,8 +2056,10 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         p.gaitMode = 'IDLE';
       }
       if (ball) {
-        ball.x = arena1State.altarX;
-        ball.y = groundY - arena1State.altarRelY;
+        ball.x = altarX;
+        ball.y = spawnBallY;
+        ball.prevX = altarX;
+        ball.prevY = spawnBallY;
         ball.vx = 0;
         ball.vy = 0;
         ball.spin = 0;
@@ -2057,14 +2070,16 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
     if (p && p.isIntro) {
       p.isIntro = false;
       p.gaitMode = 'IDLE';
-      p.x = START_X + 240;
-      p.y = groundY - 130 - p.h;
+      p.x = 240;
+      p.y = 790;
       p.facing = 1;
       arena1State.waitingForKickoff = true;
       arena1State.kickoffCooldown = 0;
       if (ball) {
-        ball.x = arena1State.altarX;
-        ball.y = groundY - arena1State.altarRelY;
+        ball.x = altarX;
+        ball.y = spawnBallY;
+        ball.prevX = altarX;
+        ball.prevY = spawnBallY;
         ball.vx = 0;
         ball.vy = 0;
         ball.spin = 0;
@@ -2078,8 +2093,8 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
     if (arena1State.waitingForKickoff && ball) {
       const time = performance.now() * 0.003;
-      const hoverY = (groundY - arena1State.altarRelY) + Math.sin(time) * 6;
-      ball.x = arena1State.altarX;
+      const hoverY = spawnBallY + Math.sin(time) * 4;
+      ball.x = altarX;
       ball.y = hoverY;
       ball.vx = 0;
       ball.vy = 0;
@@ -2109,35 +2124,45 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
       }
     }
 
-    if (!arena1State.waitingForKickoff && ball) {
+    if (!arena1State.waitingForKickoff && ball && (!ball.goalAnimation || !ball.goalAnimation.active)) {
       for (const g of GOALS) {
-        const bottomY = groundY - g.relY;
-        const topY = bottomY - g.h;
+        const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0) - (g.h || 140));
+        const bottomY = (g.y !== undefined) ? (g.y + (g.h || 140)) : (groundY - (g.relY || 0));
         const leftX = g.x;
-        const rightX = g.x + g.w;
+        const rightX = g.x + (g.w || 220);
 
-        if (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY) {
-          const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
+        const insideAABB = (ball.x >= leftX && ball.x <= rightX && ball.y >= topY && ball.y <= bottomY);
+        const passedLine = (g.facing === 1 && ball.x <= (g.lineX !== undefined ? g.lineX : rightX) && ball.x >= leftX - 40 && ball.y >= topY && ball.y <= bottomY) ||
+                           (g.facing === -1 && ball.x >= (g.lineX !== undefined ? g.lineX : leftX) && ball.x <= rightX + 40 && ball.y >= topY && ball.y <= bottomY);
+
+        if (insideAABB || passedLine) {
+          const isCyanGoal = (g.team === 'CYAN');
+          const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
           if (scoringTeam === 'CYAN') {
             arenaScore.cyan++;
           } else {
             arenaScore.orange++;
           }
 
-          triggerScreenShake(15);
-          triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
-          resetArena();
+          triggerScreenShake(16);
+          triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
 
-          arena1State.waitingForKickoff = true;
-          arena1State.kickoffCooldown = 65;
-          ball.x = arena1State.altarX;
-          ball.y = groundY - arena1State.altarRelY;
-          ball.prevX = ball.x;
-          ball.prevY = ball.y;
+          ball.goalAnimation = {
+            active: true,
+            timer: 48,
+            maxTimer: 48,
+            startX: ball.x,
+            startY: ball.y,
+            targetX: (g.facing === 1) ? (leftX + 40) : (rightX - 40),
+            targetY: (topY + bottomY) / 2,
+            scoringTeam: scoringTeam,
+            color: scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800',
+            scale: 1.0,
+            alpha: 1.0,
+            spinDir: (ball.vx > 0 ? 1 : -1) || (isCyanGoal ? -1 : 1)
+          };
           ball.vx = 0;
           ball.vy = 0;
-          ball.spin = 0;
-          ball.trail = [];
           break;
         }
       }
@@ -2182,7 +2207,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
   }
 }
 
-function drawHazardStripes(ctx, x, y, w, h) {
+export function drawHazardStripes(ctx, x, y, w, h) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(x, y, w, h);
@@ -2543,7 +2568,7 @@ export function drawCyberCatwalk(ctx, x, y, w, h) {
 
   ctx.fillStyle = '#00e5ff';
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 0;
   ctx.fillRect(x, y, w, 3);
 
   ctx.fillStyle = 'rgba(6, 182, 212, 0.18)';
@@ -2575,7 +2600,7 @@ export function drawNeonBarrier(ctx, x, y, w, h) {
 
   ctx.strokeStyle = `rgba(0, 229, 255, ${0.85 * pulse})`;
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, w, h);
 
@@ -2609,7 +2634,7 @@ export function drawJumpPad(ctx, x, y, w, h) {
   padGrad.addColorStop(1, '#10b981');
   ctx.fillStyle = padGrad;
   ctx.shadowColor = '#10b981';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 0;
   ctx.fillRect(x + 4, y, w - 8, 4);
 
   ctx.font = 'bold 9px monospace';
@@ -2649,7 +2674,7 @@ export function drawExplosiveBarrel(ctx, x, y, w, h) {
 
   ctx.fillStyle = '#fef08a';
   ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 0;
   ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -2848,7 +2873,7 @@ export function drawSpeedBoosterPad(ctx, x, y, w, h) {
 
   ctx.strokeStyle = '#00e5ff';
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 1.6;
   ctx.strokeRect(x, y, w, h);
 
@@ -2875,7 +2900,7 @@ export function drawGravityLift(ctx, x, y, w, h) {
   ctx.fillRect(x, padY, w, padH);
   ctx.strokeStyle = '#a855f7';
   ctx.shadowColor = '#a855f7';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 2.0;
   ctx.strokeRect(x, padY, w, padH);
 
@@ -2922,7 +2947,7 @@ export function drawLaserGate(ctx, x, y, w, h) {
   laserGrad.addColorStop(1, `rgba(244, 63, 94, ${0.75 * pulse})`);
   ctx.fillStyle = laserGrad;
   ctx.shadowColor = '#f43f5e';
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 0;
   ctx.fillRect(x + 2, y + 8, w - 4, h - 16);
 
   ctx.strokeStyle = '#ffffff';
@@ -2957,7 +2982,7 @@ export function drawFloatingHex(ctx, x, y, w, h) {
 
   ctx.strokeStyle = '#00e5ff';
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 1.8;
   ctx.stroke();
 
@@ -2965,7 +2990,7 @@ export function drawFloatingHex(ctx, x, y, w, h) {
   ctx.fillRect(x + 20, y + h / 2 - 2, w - 40, 4);
 
   ctx.fillStyle = `rgba(0, 229, 255, ${0.35 + pulse * 0.35})`;
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur = 0;
   ctx.fillRect(x + cut + 6, y + h, w - 2 * cut - 12, 4);
 
   ctx.restore();
@@ -2985,7 +3010,7 @@ export function drawCyberBumper(ctx, x, y, w, h, hitTimer = 0) {
 
   ctx.strokeStyle = isHit ? '#f43f5e' : '#00e5ff';
   ctx.shadowColor = isHit ? '#f43f5e' : '#00e5ff';
-  ctx.shadowBlur = isHit ? 22 : 12;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = isHit ? 3.5 : 2.5;
   ctx.stroke();
 
@@ -3456,7 +3481,7 @@ function drawRockIsland(ctx, plat, groundY) {
     ctx.save();
     ctx.strokeStyle = accentCol;
     ctx.shadowColor = accentCore;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 3.6;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3465,7 +3490,7 @@ function drawRockIsland(ctx, plat, groundY) {
 
     ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3489,7 +3514,7 @@ function drawRockIsland(ctx, plat, groundY) {
     ctx.save();
     ctx.strokeStyle = accentCol;
     ctx.shadowColor = accentCore;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 3.6;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3498,7 +3523,7 @@ function drawRockIsland(ctx, plat, groundY) {
 
     ctx.strokeStyle = '#fef08a';
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3518,7 +3543,7 @@ function drawRockIsland(ctx, plat, groundY) {
     ctx.save();
     ctx.strokeStyle = '#00e5ff';
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 4.0;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3527,7 +3552,7 @@ function drawRockIsland(ctx, plat, groundY) {
 
     ctx.strokeStyle = '#ffffff';
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3551,7 +3576,7 @@ function drawRockIsland(ctx, plat, groundY) {
     ctx.save();
     ctx.strokeStyle = accentCol;
     ctx.shadowColor = accentCore;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 3.2;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3560,7 +3585,7 @@ function drawRockIsland(ctx, plat, groundY) {
 
     ctx.strokeStyle = isCyan ? '#a5f3fc' : '#fed7aa';
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(plat.x, topY);
@@ -3580,7 +3605,7 @@ function drawRockIsland(ctx, plat, groundY) {
         ctx.fillRect(px, by, prop.w, prop.h);
         ctx.strokeStyle = '#00e5ff';
         ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 0;
         ctx.lineWidth = 2.0;
         ctx.strokeRect(px, by, prop.w, prop.h);
         ctx.shadowBlur = 0;
@@ -3727,7 +3752,7 @@ function drawCatwalk(ctx, cat, groundY) {
   ctx.save();
   ctx.strokeStyle = neonCol;
   ctx.shadowColor = neonCore;
-  ctx.shadowBlur = isFoundry ? 14 : 12;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(cat.x, topY);
@@ -3737,7 +3762,7 @@ function drawCatwalk(ctx, cat, groundY) {
   // Wewnętrzny biało-żółty rdzeń świetlny
   ctx.strokeStyle = isFoundry ? '#fef08a' : (isCyan ? '#a5f3fc' : '#fed7aa');
   ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 4;
+  ctx.shadowBlur = 0;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(cat.x, topY);
@@ -3772,54 +3797,55 @@ export function drawNeonGoals(ctx, groundY, goals) {
   for (const g of goals) {
     if (!g || !g.team) continue;
     const topY = (g.y !== undefined) ? g.y : (groundY - (g.relY || 0));
-    const h = g.h || 130;
+    const h = g.h || 140;
     const bottomY = (g.y !== undefined) ? (g.y + h) : (groundY - (g.relY || 0) + h);
     const leftX = g.x;
-    const rightX = g.x + (g.w || 90);
+    const rightX = g.x + (g.w || 220);
     const w = rightX - leftX;
     const isCyan = g.team === 'CYAN';
-    const mainCol = g.color || (isCyan ? '#06b6d4' : '#f97316');
-    const glowCol = g.glowColor || (isCyan ? 'rgba(6, 182, 212, 0.85)' : 'rgba(249, 115, 22, 0.85)');
+    const mainCol = isCyan ? '#00F0FF' : '#FF8800';
+    const glowCol = isCyan ? 'rgba(0, 240, 255, 0.85)' : 'rgba(255, 136, 0, 0.85)';
 
     ctx.save();
+    ctx.shadowBlur = 0; // Strictly 0 for 60 FPS
 
     // 1. Poświata siatki bramki (Neon Net Glow)
     const netGlow = ctx.createLinearGradient(
       g.facing === 1 ? leftX : rightX, bottomY,
       g.facing === 1 ? rightX : leftX, bottomY
     );
-    netGlow.addColorStop(0.0, isCyan ? 'rgba(6, 182, 212, 0.26)' : 'rgba(249, 115, 22, 0.26)');
+    netGlow.addColorStop(0.0, isCyan ? 'rgba(0, 240, 255, 0.28)' : 'rgba(255, 136, 0, 0.28)');
     netGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
     ctx.fillStyle = netGlow;
     ctx.fillRect(leftX, topY, w, h);
 
-    // 2. Siatka bramki
+    // 2. Fizyczna siatka bramki (Physical Net Mesh)
     ctx.save();
-    ctx.strokeStyle = isCyan ? 'rgba(6, 182, 212, 0.40)' : 'rgba(249, 115, 22, 0.40)';
-    ctx.lineWidth = 1.0;
+    ctx.strokeStyle = isCyan ? 'rgba(0, 240, 255, 0.42)' : 'rgba(255, 136, 0, 0.42)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    const netStep = 11;
+    const netStep = 14;
     for (let x = leftX; x <= rightX; x += netStep) {
       ctx.moveTo(x, topY);
-      ctx.lineTo(x + (g.facing === 1 ? -6 : 6), bottomY);
+      ctx.lineTo(x + (g.facing === 1 ? -10 : 10), bottomY);
     }
     for (let y = topY; y <= bottomY; y += netStep) {
       ctx.moveTo(leftX, y);
-      ctx.lineTo(rightX, y + 2);
+      ctx.lineTo(rightX, y);
     }
     ctx.stroke();
     ctx.restore();
 
-    // 3. Neonowe słupki i poprzeczka
+    // 3. Neonowe słupki i poprzeczka (Neon Cage Frame)
     ctx.save();
     ctx.strokeStyle = mainCol;
-    ctx.shadowColor = glowCol;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 3.6;
 
     const mouthX = g.facing === 1 ? rightX : leftX;
     const backX = g.facing === 1 ? leftX : rightX;
 
+    // Klatka bramkowa: wlot, poprzeczka do tyłu, tylny słupek
     ctx.beginPath();
     ctx.moveTo(mouthX, bottomY);
     ctx.lineTo(mouthX, topY);
@@ -3827,12 +3853,14 @@ export function drawNeonGoals(ctx, groundY, goals) {
     ctx.lineTo(backX, bottomY);
     ctx.stroke();
 
+    // Dolna poprzeczka
     ctx.lineWidth = 2.0;
     ctx.beginPath();
     ctx.moveTo(backX, bottomY);
     ctx.lineTo(mouthX, bottomY);
     ctx.stroke();
 
+    // Wewnętrzny biały rdzeń
     ctx.strokeStyle = '#ffffff';
     ctx.shadowBlur = 0;
     ctx.lineWidth = 1.2;
@@ -3844,11 +3872,20 @@ export function drawNeonGoals(ctx, groundY, goals) {
     ctx.stroke();
     ctx.restore();
 
-    // 4. Etykieta drużyny nad bramką
+    // 4. Linia bramkowa na wlocie (Goal Line)
+    ctx.save();
+    ctx.strokeStyle = isCyan ? '#00F0FF' : '#FF8800';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(mouthX, topY);
+    ctx.lineTo(mouthX, bottomY);
+    ctx.stroke();
+    ctx.restore();
+
+    // 5. Etykieta drużyny nad bramką
     ctx.save();
     ctx.fillStyle = mainCol;
-    ctx.shadowColor = mainCol;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.font = 'bold 9.5px monospace';
     ctx.textAlign = 'center';
     const tagText = isCyan ? '◄ CYAN GOAL' : 'ORANGE GOAL ►';
@@ -3860,65 +3897,69 @@ export function drawNeonGoals(ctx, groundY, goals) {
 }
 
 function drawAltarSpotlightAndLevitation(ctx, groundY) {
-  const altarX = arena1State.altarX;
-  const topY = groundY - 190;
-  const pedestalY = topY - 32;
-  const hoverY = (groundY - arena1State.altarRelY) + Math.sin(performance.now() * 0.003) * 6;
-  const gantryY = groundY - 1050;
+  const centerX = ARENA_WIDTH / 2; // 1800
+  const altarX = arena1State.altarX || centerX;
+  const topY = arena1State.altarY || 760;
+  const pedestalY = topY;
+  const hoverY = (topY - 10) + Math.sin(performance.now() * 0.003) * 4;
+  const gantryY = 0;
   const time = performance.now() * 0.001;
 
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
+  ctx.shadowBlur = 0; // Strictly 0 for 60 FPS
 
-  const beamTopW = 40;
-  const beamBottomW = 240;
+  const beamTopW = 60;
+  const beamBottomW = 260;
 
+  // Pionowy snop światła (spotlight) - oś musi pokrywać się dokładnie ze środkiem platformy (altarX)
   const beamGrad = ctx.createLinearGradient(altarX, gantryY, altarX, topY);
-  beamGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.75)');
-  beamGrad.addColorStop(0.12, 'rgba(186, 230, 253, 0.50)');
-  beamGrad.addColorStop(0.50, 'rgba(56, 189, 248, 0.28)');
-  beamGrad.addColorStop(0.85, 'rgba(6, 182, 212, 0.16)');
-  beamGrad.addColorStop(1.0, 'rgba(6, 182, 212, 0.02)');
+  beamGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.65)');
+  beamGrad.addColorStop(0.12, 'rgba(186, 230, 253, 0.40)');
+  beamGrad.addColorStop(0.50, 'rgba(56, 189, 248, 0.22)');
+  beamGrad.addColorStop(0.85, 'rgba(0, 240, 255, 0.12)');
+  beamGrad.addColorStop(1.0, 'rgba(0, 240, 255, 0.01)');
 
   ctx.fillStyle = beamGrad;
   ctx.beginPath();
   ctx.moveTo(altarX - beamTopW / 2, gantryY);
   ctx.lineTo(altarX + beamTopW / 2, gantryY);
-  ctx.lineTo(altarX + beamBottomW / 2, topY + 8);
-  ctx.lineTo(altarX - beamBottomW / 2, topY + 8);
+  ctx.lineTo(altarX + beamBottomW / 2, topY + 4);
+  ctx.lineTo(altarX - beamBottomW / 2, topY + 4);
   ctx.closePath();
   ctx.fill();
 
   const coreGrad = ctx.createLinearGradient(altarX, gantryY, altarX, topY);
-  coreGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.90)');
-  coreGrad.addColorStop(0.35, 'rgba(224, 242, 254, 0.45)');
+  coreGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.85)');
+  coreGrad.addColorStop(0.35, 'rgba(224, 242, 254, 0.38)');
   coreGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
 
   ctx.fillStyle = coreGrad;
   ctx.beginPath();
-  ctx.moveTo(altarX - 14, gantryY);
-  ctx.lineTo(altarX + 14, gantryY);
-  ctx.lineTo(altarX + 65, topY);
-  ctx.lineTo(altarX - 65, topY);
+  ctx.moveTo(altarX - 16, gantryY);
+  ctx.lineTo(altarX + 16, gantryY);
+  ctx.lineTo(altarX + 70, topY);
+  ctx.lineTo(altarX - 70, topY);
   ctx.closePath();
   ctx.fill();
 
-  const poolGrad = ctx.createRadialGradient(altarX, pedestalY + 4, 10, altarX, pedestalY + 4, 120);
-  poolGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.70)');
-  poolGrad.addColorStop(0.35, 'rgba(56, 189, 248, 0.40)');
-  poolGrad.addColorStop(0.80, 'rgba(6, 182, 212, 0.14)');
+  // Plama świetlna na cokole (pedestal light pool)
+  const poolGrad = ctx.createRadialGradient(altarX, pedestalY, 10, altarX, pedestalY, 130);
+  poolGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.60)');
+  poolGrad.addColorStop(0.35, 'rgba(56, 189, 248, 0.35)');
+  poolGrad.addColorStop(0.80, 'rgba(0, 240, 255, 0.10)');
   poolGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
 
   ctx.fillStyle = poolGrad;
   ctx.beginPath();
-  ctx.ellipse(altarX, pedestalY + 2, 115, 24, 0, 0, Math.PI * 2);
+  ctx.ellipse(altarX, pedestalY, 130, 26, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = '#38bdf8';
-  ctx.shadowBlur = 24;
+  ctx.shadowColor = '#00F0FF';
+  ctx.shadowBlur = 0;
   ctx.beginPath();
-  ctx.arc(altarX, gantryY, 15, 0, Math.PI * 2);
+  ctx.arc(altarX, gantryY + 12, 16, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -3927,34 +3968,35 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 3.5);
 
     ctx.save();
-    const bubbleGrad = ctx.createRadialGradient(altarX, hoverY, 4, altarX, hoverY, 30 + pulse * 6);
+    ctx.shadowBlur = 0;
+    const bubbleGrad = ctx.createRadialGradient(altarX, hoverY, 4, altarX, hoverY, 32 + pulse * 6);
     bubbleGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.65)');
-    bubbleGrad.addColorStop(0.4, 'rgba(0, 229, 255, 0.35)');
-    bubbleGrad.addColorStop(0.8, 'rgba(6, 182, 212, 0.12)');
+    bubbleGrad.addColorStop(0.4, 'rgba(0, 240, 255, 0.35)');
+    bubbleGrad.addColorStop(0.8, 'rgba(0, 240, 255, 0.10)');
     bubbleGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = bubbleGrad;
     ctx.beginPath();
-    ctx.arc(altarX, hoverY, 30 + pulse * 6, 0, Math.PI * 2);
+    ctx.arc(altarX, hoverY, 32 + pulse * 6, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(0, 229, 255, ${0.75 + pulse * 0.25})`;
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 10;
+    ctx.strokeStyle = `rgba(0, 240, 255, ${0.75 + pulse * 0.25})`;
+    ctx.shadowColor = '#00F0FF';
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.8;
 
     ctx.beginPath();
-    ctx.ellipse(altarX, hoverY, 26 + pulse * 3, 9, time * 2, 0, Math.PI * 2);
+    ctx.ellipse(altarX, hoverY, 28 + pulse * 3, 9, time * 2, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.ellipse(altarX, hoverY, 26 + pulse * 3, 9, -time * 2.2, 0, Math.PI * 2);
+    ctx.ellipse(altarX, hoverY, 28 + pulse * 3, 9, -time * 2.2, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.font = 'bold 9.5px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00F0FF';
+    ctx.shadowBlur = 0;
     ctx.fillText('⚡ KICKOFF READY ⚡', altarX, hoverY - 26);
     ctx.restore();
   }
@@ -3967,7 +4009,7 @@ function drawAltarSpotlightAndLevitation(ctx, groundY) {
     ctx.save();
     ctx.strokeStyle = sw.color;
     ctx.shadowColor = sw.color;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = Math.max(0, sw.alpha);
     ctx.lineWidth = 3.0;
     ctx.beginPath();

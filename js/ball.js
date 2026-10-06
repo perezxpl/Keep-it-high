@@ -1,13 +1,16 @@
-import { CONFIG, START_X, ARENA_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
+import { CONFIG, START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js';
 import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State } from './obstacles.js';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js';
+
+const _mapW = (typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : ARENA_WIDTH) || 3600;
+const _centerX = _mapW / 2; // 1800
 
 export const ball = {
-  x: START_X - 38,
-  y: 0,
-  prevX: START_X - 38,
-  prevY: 0,
+  x: _centerX,
+  y: 750,
+  prevX: _centerX,
+  prevY: 750,
   vx: 0,
   vy: 0,
   radius: 8.0,
@@ -18,7 +21,7 @@ export const ball = {
   trail: [],
   lowGravityFrames: 0,
   isLevitating: false,
-  hoverBaseY: 680,
+  hoverBaseY: 750,
   goalAnimation: null
 };
 
@@ -50,12 +53,21 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.isIntro = false;
     p.gaitMode = 'IDLE';
   } else {
-    p.x = START_X - 60; // Start przed linią 0m (x = 100)
-    p.isIntro = true;
-    p.gaitMode = 'PODBICIE Z ZIEMI';
-    ball.x = p.x + (20 * p.facing);
-    ball.y = GROUND_Y - ball.colRadius;
+    // Arena 1: Centrum mapy (Cokół środkowy)
+    const spawnY = (arena1State?.altarY || 760) - ball.radius - 2; // 750
+    p.x = 240;
+    p.y = 790;
+    p.facing = 1;
+    p.isIntro = false;
+    p.gaitMode = 'IDLE';
+    ball.x = _centerX;
+    ball.y = spawnY;
+    ball.hoverBaseY = spawnY;
     ball.isLevitating = false;
+    if (arena1State) {
+      arena1State.waitingForKickoff = true;
+      arena1State.kickoffCooldown = 0;
+    }
   }
   p.juggleTimer = 0;
   p.vx = 0;
@@ -148,17 +160,17 @@ export function checkGoalTrigger(ballObj, groundY) {
   if (!ballObj || (ballObj.goalAnimation && ballObj.goalAnimation.active)) return false;
 
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const goalsToCheck = (GOALS && GOALS.length > 0) ? GOALS : (isA3 ? ARENA_FOUNDRY_GOALS : []);
+  const goalsToCheck = (GOALS && GOALS.length > 0) ? GOALS : (isA3 ? ARENA_FOUNDRY_GOALS : [goalTriggerLeft, goalTriggerRight]);
 
   for (const g of goalsToCheck) {
     if (!g || !g.team) continue;
 
     const isCyanGoal = (g.team === 'CYAN');
     const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
-    const topY = (g.y !== undefined) ? g.y : (Math.min(groundY - (g.relY || 0), groundY - (g.relY || 0) - (g.h || 125)));
-    const bottomY = (g.y !== undefined) ? (g.y + (g.h || 130)) : (Math.max(groundY - (g.relY || 0), groundY - (g.relY || 0) + (g.h || 125)));
+    const topY = (g.y !== undefined) ? g.y : (Math.min(groundY - (g.relY || 0), groundY - (g.relY || 0) - (g.h || 140)));
+    const bottomY = (g.y !== undefined) ? (g.y + (g.h || 140)) : (Math.max(groundY - (g.relY || 0), groundY - (g.relY || 0) + (g.h || 140)));
     const leftX = g.x;
-    const rightX = g.x + (g.w || 90);
+    const rightX = g.x + (g.w || 220);
 
     let isInsideGoal = false;
     let targetX = 0;
@@ -197,9 +209,13 @@ export function checkGoalTrigger(ballObj, groundY) {
       }
     } else {
       // Standardowe prostokątne bramki neonowe (Arena 1 & 2)
-      if (ballObj.x >= leftX && ballObj.x <= rightX && ballObj.y >= topY && ballObj.y <= bottomY) {
+      const insideAABB = (ballObj.x >= leftX && ballObj.x <= rightX && ballObj.y >= topY && ballObj.y <= bottomY);
+      const passedLine = (g.facing === 1 && ballObj.x <= (g.lineX !== undefined ? g.lineX : rightX) && ballObj.x >= leftX - 40 && ballObj.y >= topY && ballObj.y <= bottomY) ||
+                         (g.facing === -1 && ballObj.x >= (g.lineX !== undefined ? g.lineX : leftX) && ballObj.x <= rightX + 40 && ballObj.y >= topY && ballObj.y <= bottomY);
+
+      if (insideAABB || passedLine) {
         isInsideGoal = true;
-        targetX = (g.facing === 1) ? (leftX - 30) : (rightX + 30);
+        targetX = (g.facing === 1) ? (leftX + 40) : (rightX - 40);
         targetY = (topY + bottomY) / 2;
       }
     }
@@ -212,7 +228,7 @@ export function checkGoalTrigger(ballObj, groundY) {
       }
 
       triggerScreenShake(16);
-      triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
+      triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
 
       ballObj.goalAnimation = {
         active: true,
@@ -223,7 +239,7 @@ export function checkGoalTrigger(ballObj, groundY) {
         targetX: targetX,
         targetY: targetY,
         scoringTeam: scoringTeam,
-        color: scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316',
+        color: scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800',
         scale: 1.0,
         alpha: 1.0,
         spinDir: (ballObj.vx > 0 ? 1 : -1) || (isCyanGoal ? -1 : 1)
@@ -276,11 +292,17 @@ export function updateBall(GROUND_Y) {
         ball.vx = 0;
         ball.vy = 0;
       } else {
-        ball.x = arena1State.altarX || (START_X + ARENA_WIDTH / 2);
-        ball.y = GROUND_Y - (arena1State.altarRelY || 255);
+        const spawnY = (arena1State?.altarY || 760) - ball.radius - 2; // 750
+        ball.x = arena1State?.altarX || _centerX; // 1800
+        ball.y = spawnY;
+        ball.hoverBaseY = spawnY;
         ball.isLevitating = false;
         ball.vx = 0;
         ball.vy = 0;
+        if (arena1State) {
+          arena1State.waitingForKickoff = true;
+          arena1State.kickoffCooldown = 60;
+        }
       }
       ball.prevX = ball.x;
       ball.prevY = ball.y;

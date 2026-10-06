@@ -1812,24 +1812,9 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.lineWidth = 2;
     ctx.strokeRect(entryX - 6, entryY - 45, 12, 45);
 
-    // Kute palenisko / lampion wejściowy
+    // Kute zwieńczenie słupa (bez pomarańczowych poświat)
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(entryX - 10, entryY - 55, 20, 10);
-    const fireGrad = ctx.createRadialGradient(entryX, entryY - 58, 2, entryX, entryY - 58, 26);
-    fireGrad.addColorStop(0, '#fef08a');
-    fireGrad.addColorStop(0.35, 'rgba(249, 115, 22, 0.7)');
-    fireGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = fireGrad;
-    ctx.beginPath();
-    ctx.arc(entryX, entryY - 58, 26, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Płomień
-    ctx.fillStyle = '#fbbf24';
-    ctx.beginPath();
-    ctx.arc(entryX, entryY - 56, 4 + Math.sin(animTime * 6) * 1.2, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.fillRect(entryX - 8, entryY - 50, 16, 6);
     ctx.restore();
   }
 
@@ -1936,28 +1921,7 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.stroke();
     }
 
-    // 5. Wiszący mosiężny lampion na środku spodu pomostu
-    const lcx = px + pw / 2;
-    const lcy = py + ph + 18;
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(lcx, py + ph);
-    ctx.lineTo(lcx, lcy - 10);
-    ctx.stroke();
-
-    // Korpus lampionu
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(lcx - 6, lcy - 10, 12, 14);
-    // Ciepłe światło lampy
-    const lGlow = ctx.createRadialGradient(lcx, lcy - 3, 2, lcx, lcy - 3, 25);
-    lGlow.addColorStop(0, '#fef08a');
-    lGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.55)');
-    lGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = lGlow;
-    ctx.beginPath();
-    ctx.arc(lcx, lcy - 3, 25, 0, Math.PI * 2);
-    ctx.fill();
+    // 5. (Usunięto wiszące pomarańczowe lampiony pod kładkami dla czystego dziennego krajobrazu i 60 FPS)
 
     ctx.restore();
   }
