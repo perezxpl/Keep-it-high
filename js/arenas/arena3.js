@@ -356,8 +356,8 @@ export const ARENA_3_PLATFORMS = [
   },
 
   // -----------------------------------------------------------------------
-  // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most na Y: 1000)
-  // Wiszące w koronach drzew dżungli platformy snajpersko-taktyczne
+  // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (POZIOM ŚREDNI Y: 620 ORAZ NAJWYŻSZY Y: 430)
+  // Wiszące w koronach drzew dżungli pomosty snajpersko-taktyczne
   // -----------------------------------------------------------------------
   {
     id: 'bridge_skywalk_left',
@@ -379,6 +379,32 @@ export const ARENA_3_PLATFORMS = [
     x: 2260,
     y: 620,
     w: 260,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_skywalk_upper_left',
+    name: 'Wiszący Pomost Górny Nad Mostem Lewy',
+    type: 'platform',
+    x: 1680,
+    y: 430,
+    w: 280,
+    h: 20,
+    thickness: 20,
+    solid: true,
+    isPlatform: true,
+    oneWay: true
+  },
+  {
+    id: 'bridge_skywalk_upper_right',
+    name: 'Wiszący Pomost Górny Nad Mostem Prawy',
+    type: 'platform',
+    x: 2440,
+    y: 430,
+    w: 280,
     h: 20,
     thickness: 20,
     solid: true,
@@ -1936,8 +1962,13 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
+  // Dolne pomosty w koronach drzew (Y: 620)
   drawHighCanopyPlatform(1880, 620, 260, 20);
   drawHighCanopyPlatform(2260, 620, 260, 20);
+
+  // Dodatkowe wyższe pomosty taktyczne w koronach drzew (Y: 430)
+  drawHighCanopyPlatform(1680, 430, 280, 20);
+  drawHighCanopyPlatform(2440, 430, 280, 20);
 
   // C. KABLE KOTWICZĄCE ODCIĄGOWE (Od szczytów pylonów do litej skały brzegów)
   ctx.save();
