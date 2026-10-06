@@ -2689,7 +2689,21 @@ function update() {
   }
 }
 
+let hasDismissedLoading = false;
+function dismissLoadingOverlay() {
+  if (hasDismissedLoading) return;
+  hasDismissedLoading = true;
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      try { overlay.remove(); } catch (_) {}
+    }, 450);
+  }
+}
+
 function draw() {
+  dismissLoadingOverlay();
   ctx.clearRect(0, 0, W, H);
   renderArenaBackground(ctx, camera);
 

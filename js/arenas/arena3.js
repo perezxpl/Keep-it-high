@@ -632,10 +632,6 @@ export function drawArena3Foreground(ctx, camera) {
   if (!ctx) return;
 
   ctx.save();
-  if (camera) {
-    ctx.scale(camera.zoom, camera.zoom);
-    ctx.translate(-camera.x, -camera.y);
-  }
 
   const camL = camera ? camera.x - 200 : 0;
   const camR = camera ? camera.x + (camera.viewWidth || 2000) + 200 : 4400;

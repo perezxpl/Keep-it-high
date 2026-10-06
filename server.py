@@ -1,5 +1,5 @@
 import sys
-from http.server import SimpleHTTPRequestHandler, test
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 class NoCacheHTTPRequestHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -10,4 +10,6 @@ class NoCacheHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    test(NoCacheHTTPRequestHandler, port=port, bind='0.0.0.0')
+    server = ThreadingHTTPServer(('0.0.0.0', port), NoCacheHTTPRequestHandler)
+    print(f'Starting ThreadingHTTPServer on 0.0.0.0:{port}...')
+    server.serve_forever()

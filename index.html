@@ -83,14 +83,59 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: #090c10;
+      background: radial-gradient(circle at center, #1e293b, #090c10);
       color: #fff;
       z-index: 1000;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 20px;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    }
+
+    .rotate-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      animation: phoneRotate 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.6));
+    }
+
+    @keyframes phoneRotate {
+      0%, 15% { transform: rotate(0deg); }
+      45%, 70% { transform: rotate(-90deg); }
+      90%, 100% { transform: rotate(0deg); }
+    }
+
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #111827, #090c10);
+      color: #00e5ff;
+      z-index: 998;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+      font-size: 15px;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3.5px solid rgba(0, 229, 255, 0.18);
+      border-top-color: #00e5ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     @media (orientation: portrait) {
@@ -713,13 +758,30 @@
     }
   </style>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error('[PAGE ERROR]', e);
+      const errBox = document.getElementById('loading-error');
+      if (errBox) {
+        errBox.style.display = 'block';
+        errBox.textContent = 'Błąd: ' + (e.message || 'Nieznany błąd') + ' (' + (e.filename ? e.filename.split('/').pop() : '') + ':' + (e.lineno || '') + ')';
+      }
+    });
+  </script>
 </head>
 
 <body>
 
+  <div id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div id="loading-text" style="font-weight: 700; letter-spacing: 0.5px;">Ładowanie areny...</div>
+    <div id="loading-error" style="display:none; color:#ef4444; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; margin-top:14px; max-width:85%; font-size:12px;"></div>
+  </div>
+
   <div id="rotate-device">
-    <h2>Obr&oacute;&#263; telefon</h2>
-    <p style="color: #888; margin-top: 8px;">Wymagana orientacja pozioma</p>
+    <div class="rotate-icon">📱</div>
+    <h2 style="font-size: 22px; margin: 0 0 8px 0; color: #38bdf8; text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);">Obróć telefon</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin: 0;">Wymagana orientacja pozioma (Landscape)</p>
   </div>
 
   <div id="game-container">
@@ -849,7 +911,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=jungle_arena_v6"></script>
+  <script type="module" src="js/main.js?v=jungle_arena_v7"></script>
 </body>
 
 </html>
