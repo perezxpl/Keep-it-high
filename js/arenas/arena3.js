@@ -298,7 +298,6 @@ for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
       type: 'platform',
       isCanopyBlock: true,
       parentPlatId: plat.id,
-      parentPlat: plat,
       blockIndex: bIdx,
       origX: bx,
       origY: plat.origY,

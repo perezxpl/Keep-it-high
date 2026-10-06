@@ -41,64 +41,77 @@ export const rightStick = {
   axisY: 0,
   power: 0,
   movedDist: 0,
-  maxRadius: 65,
+  maxRadius: 58,
 
-  // Detekcja flick / tap wykopu z drążka
+  // Tryb wyposażenia drążka: 'FIREARM' (broń palna) lub 'GRENADE' (broń miotana)
+  armedMode: 'FIREARM',
+
+  // Obsługa strzelania i rzutu granatem
   touchStartTime: 0,
   startX: 0,
   startY: 0,
-  hasKicked: false,
-
-  // Tryb strzelania i okno po wycelowaniu
   isShooting: false,
+  shotgunFiredThisTap: false,
+
+  // Płynne przeciąganie ikony na prawy drążek (Drag & Drop)
+  draggedSlot: null, // null lub { type: 'FIREARM'|'GRENADE', startX, startY, curX, curY, touchId }
+
   waitingForSecondTap: false,
   windowTimer: 0,
   lingerAlpha: 0,
   gestureState: 'IDLE'
 };
 
-export const btnCluster = {
-  slide: {
+// =========================================================================
+// KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (POCKETS) & DYNAMICZNY PRZYCISK RUCHU
+// =========================================================================
+export const pockets = {
+  // 1. Kieszeń na broń palną (kliknięcie = zmiana broni, przeciągnięcie = założenie na drążek)
+  firearm: {
     x: 0,
     y: 0,
-    r: 27,
+    r: 26,
     active: false,
     id: null,
-    enabled: false,
-    mode: 'SLIDE'
+    touchStartTime: 0,
+    startX: 0,
+    startY: 0,
+    isDragging: false
   },
-  prone: {
+
+  // 2. Kieszeń na broń miotaną (granat)
+  throwable: {
+    x: 0,
+    y: 0,
+    r: 26,
+    active: false,
+    id: null,
+    touchStartTime: 0,
+    startX: 0,
+    startY: 0,
+    isDragging: false
+  },
+
+  // 3. Zunifikowany 1 przycisk akcji (wślizg / kładzenie się / wstawanie / kopniak)
+  action: {
     x: 0,
     y: 0,
     r: 28,
     active: false,
     id: null,
-    visible: false
-  },
-  crouch: {
-    x: 0,
-    y: 0,
-    r: 28,
-    active: false,
-    id: null,
-    visible: false
-  },
-  grenade: {
-    x: 0,
-    y: 0,
-    r: 25,
-    active: false,
-    id: null,
-    enabled: true
-  },
-  kick: {
-    x: 0,
-    y: 0,
-    r: 30,
-    active: false,
-    id: null,
-    enabled: true
+    currentMode: 'KICK' // 'SLIDE' | 'PRONE' | 'STAND' | 'KICK'
   }
+};
+
+export const btnCluster = {
+  firearm: pockets.firearm,
+  throwable: pockets.throwable,
+  action: pockets.action,
+  slide: pockets.action,
+  prone: pockets.action,
+  crouch: pockets.action,
+  grenade: pockets.throwable,
+  kick: pockets.action
 };
 
 /**
@@ -110,7 +123,7 @@ export function updateButtonLayout(W, H) {
   const curW = (typeof W === 'number' && W > 0) ? W : (typeof window !== 'undefined' ? window.innerWidth : 800);
   const curH = (typeof H === 'number' && H > 0) ? H : (typeof window !== 'undefined' ? window.innerHeight : 600);
 
-  // Sztywno umiejscowione, stałe pozycje drążków dotykowych (Fixed Sticks)
+  // Sztywno umiejscowione, ergonomiczne pozycje drążków dotykowych
   leftStick.baseX = Math.round(Math.min(135, Math.max(95, curW * 0.14)));
   leftStick.baseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
   leftStick.maxRadius = 55;
@@ -130,89 +143,111 @@ export function updateButtonLayout(W, H) {
   const rsX = rightStick.baseX;
   const rsY = rightStick.baseY;
 
-  // Dedykowany, duży przycisk wykopu (KOP)
-  if (!btnCluster.kick) {
-    btnCluster.kick = { x: 0, y: 0, r: 30, active: false, id: null, enabled: true };
-  }
-  btnCluster.kick.x = Math.round(rsX - 85);
-  btnCluster.kick.y = Math.round(rsY + 15);
-  btnCluster.kick.r = 30;
+  // Ergonomiczne rozmieszczenie przycisków w łuku/kolumnie przy prawej dolnej krawędzi:
+  // - Przycisk ruchów najniżej (blisko dolnej krawędzi ekranu)
+  // - Po środku broń miotana (granat)
+  // - Wyżej broń palna (AK47 / Shotgun)
+  const bottomMargin = Math.max(40, Math.min(52, Math.round(curH * 0.09)));
+  const btnSpacing = Math.max(54, Math.min(60, Math.round(curH * 0.125)));
 
-  // Przycisk wślizgu
-  btnCluster.slide.x = Math.round(rsX - 85);
-  btnCluster.slide.y = Math.round(rsY - 60);
-  btnCluster.slide.r = 27;
+  // 1. Zunifikowany przycisk akcji dynamicznej (wślizg / kładzenie się / kopniak) – NAJNIŻEJ, blisko dolnej krawędzi
+  pockets.action.r = 27;
+  pockets.action.x = Math.round(rsX - 78);
+  pockets.action.y = Math.round(curH - bottomMargin);
 
-  // Przycisk kładzenia się (pojawiający się w momencie kucania)
-  if (!btnCluster.prone) {
-    btnCluster.prone = { x: 0, y: 0, r: 28, active: false, id: null, visible: false };
-  }
-  btnCluster.prone.x = Math.round(rsX - 10);
-  btnCluster.prone.y = Math.round(rsY - 88);
-  btnCluster.prone.r = 28;
-  btnCluster.crouch = btnCluster.prone;
+  // 2. Kieszeń na broń miotaną (granat) – PO ŚRODKU
+  pockets.throwable.r = 26;
+  pockets.throwable.x = Math.round(rsX - 84);
+  pockets.throwable.y = Math.round(pockets.action.y - btnSpacing);
 
-  // Przycisk granatu taktycznego
-  if (!btnCluster.grenade) {
-    btnCluster.grenade = { x: 0, y: 0, r: 25, active: false, id: null, enabled: true };
-  }
-  btnCluster.grenade.x = Math.round(rsX - 75);
-  btnCluster.grenade.y = Math.round(rsY - 130);
-  btnCluster.grenade.r = 25;
+  // 3. Kieszeń na broń palną – WYŻEJ
+  pockets.firearm.r = 26;
+  pockets.firearm.x = Math.round(rsX - 76);
+  pockets.firearm.y = Math.round(pockets.throwable.y - btnSpacing);
 }
 
 /**
- * Monitoruje ruch postaci i stan cooldownu wślizgu dla przycisku mobilnego:
- * - Wślizg dostępny tylko w pełnym biegu (|vx| > MIN_RUN_SPEED) i na podłożu
- * - Przycisk kładzenia się widoczny WYŁĄCZNIE w momencie kucania lub leżenia
+ * Monitoruje ruch postaci i dynamicznie przełącza kontekstowy tryb przycisku akcji:
+ * - W pełnym biegu (|vx| > MIN_RUN_SPEED): WŚLIZG (SLIDE)
+ * - W kucaniu / leżeniu: KŁADZENIE SIĘ / WSTAWANIE (PRONE / STAND)
+ * - W pozostałych stanach: KOPNIAK (KICK)
  *
  * @param {Object} player - Obiekt gracza
  * @param {Object} [lStick] - Lewy drążek
  * @param {Object} [bCluster] - Zespół przycisków
  */
 export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster) {
-  if (!player || !bCluster) return;
+  if (!player) return;
 
   const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
   const isRunning = (player.onGround && !player.isJumping && Math.abs(player.vx) > minSpeed);
   const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
 
-  if (bCluster.slide) {
-    bCluster.slide.mode = 'SLIDE';
-    bCluster.slide.enabled = isRunning && cooldownOk;
-  }
-
-  // Przycisk kładzenia się pojawia się dynamicznie w momencie kucania / leżenia
-  if (bCluster.prone) {
-    bCluster.prone.visible = !!(player.isCrouching || player.isProne);
-  }
-
-  if (bCluster.grenade) {
-    bCluster.grenade.enabled = (player.grenadeCooldown === undefined || player.grenadeCooldown <= 0);
+  if (isRunning && cooldownOk) {
+    pockets.action.currentMode = 'SLIDE';
+  } else if (player.isProne) {
+    pockets.action.currentMode = 'STAND';
+  } else if (player.isCrouching) {
+    pockets.action.currentMode = 'PRONE';
+  } else {
+    pockets.action.currentMode = 'KICK';
   }
 }
 
 /**
- * Obsługa wciśnięcia mobilnego przycisku wślizgu:
- * - Warunek konieczny: Wślizg może wykonać się tylko wtedy, gdy postać biegnie (|vx| > MIN_RUN_SPEED).
- * - Jeśli gracz stoi w miejscu, wślizg nie aktywuje się.
+ * Obsługa wciśnięcia zunifikowanego przycisku akcji dynamicznej:
+ * - 'SLIDE': wślizg w pełnym biegu
+ * - 'PRONE': położenie się na ziemi
+ * - 'STAND': wstanie na równe nogi
+ * - 'KICK': dynamiczne kopnięcie (piłka / wróg / powietrze)
  *
  * @param {Object} player - Obiekt gracza
  * @param {Function} spawnGrass - Funkcja spawnu cząsteczek
  * @param {number} GROUND_Y - Poziom podłoża
- * @param {Object} [bCluster] - Zespół przycisków
- * @returns {boolean}
+ * @param {Object} [extraOptions] - Dodatkowe opcje (ball, targets, obstacles)
+ * @returns {boolean|string}
  */
-export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bCluster = btnCluster) {
+export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, extraOptions = {}) {
   if (!player || player.isDead || player.isIntro) return false;
 
-  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
-  if (!player.onGround || Math.abs(player.vx) <= minSpeed) {
-    return false;
-  }
+  const mode = pockets.action.currentMode || 'KICK';
 
-  const slid = playerSlide(spawnGrass, GROUND_Y, player);
-  return slid;
+  if (mode === 'SLIDE') {
+    const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
+    if (player.onGround && Math.abs(player.vx) > minSpeed) {
+      return playerSlide(spawnGrass, GROUND_Y, player);
+    }
+  } else if (mode === 'PRONE') {
+    player.isProne = true;
+    player.isCrouching = false;
+    player.crouchToggled = true;
+    player.state = 'PRONE';
+    player.hitboxHeight = 26;
+    return true;
+  } else if (mode === 'STAND') {
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+    player.state = 'STAND';
+    player.hitboxHeight = player.h || 70;
+    return true;
+  } else {
+    // Mode KICK
+    player.isProne = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+    return triggerRightStickKick(player, rightStick, {
+      ball: extraOptions.ball,
+      targets: extraOptions.targets,
+      obstacles: extraOptions.obstacles,
+      spawnGrass: spawnGrass
+    });
+  }
+  return false;
+}
+
+export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bCluster = btnCluster) {
+  return handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y);
 }
 
 /**

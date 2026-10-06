@@ -38,7 +38,7 @@ export const explosionCraters = [];
  * Klasa super-granatu dla klasy Aero
  */
 export class AeroSuperGrenade {
-  constructor(shooter, targetX, targetY) {
+  constructor(shooter, targetX, targetY, customPower = 1.0) {
     this.id = 'grenade_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     this.shooter = shooter;
     this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
@@ -57,10 +57,11 @@ export class AeroSuperGrenade {
     const dy = targetY - startY;
     const angle = Math.atan2(dy, dx);
 
-    // Prędkość początkowa: ok. 500 px/s (przy 60 FPS: 500 / 60 ≈ 8.33 px/frame)
-    const initialSpeed = 500 / 60;
+    // Prędkość początkowa skalowana siłą rzutu:
+    const speedMult = (typeof customPower === 'number' && customPower > 0) ? Math.max(0.35, Math.min(1.8, customPower)) : 1.0;
+    const initialSpeed = (500 / 60) * speedMult;
     this.vx = Math.cos(angle) * initialSpeed + (shooter ? (shooter.vx || 0) * 0.35 : 0);
-    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - 1.2;
+    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - (1.2 * Math.min(1.2, speedMult));
 
     this.radius = 9;
     this.rot = angle;
@@ -241,8 +242,8 @@ export class AeroSuperGrenade {
 /**
  * Wystrzelenie super-granatu z postaci
  */
-export function spawnAeroSuperGrenade(shooter, targetX, targetY) {
-  const grenade = new AeroSuperGrenade(shooter, targetX, targetY);
+export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0) {
+  const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower);
   activeProjectiles.push(grenade);
   return grenade;
 }
