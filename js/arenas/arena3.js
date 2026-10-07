@@ -125,7 +125,8 @@ for (let i = 0; i < BRIDGE_BLOCK_COUNT; i++) {
     angle: 0,
     vRot: 0,
     intact: true,
-    hp: 100,
+    hp: 320,
+    maxHp: 320,
     isAsleep: false,
     sleepTimer: 0,
     cableAttached: true,
@@ -134,6 +135,140 @@ for (let i = 0; i < BRIDGE_BLOCK_COUNT; i++) {
     sagVel: 0,
     seed: (i * 37 + 13) % 100
   });
+}
+
+// =========================================================================
+// 2B2. ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (DESTRUCTIBLE RAMPS)
+// Lewe podejście: X: 1150 do 1750 (10 segmentów po 60 px)
+// Prawe podejście: X: 2650 do 3250 (10 segmentów po 60 px)
+// =========================================================================
+export function getApproachInclineY(x, isLeft) {
+  if (isLeft) {
+    if (x <= 1150) return 1200;
+    if (x >= 1750) return 1000;
+    const t = (x - 1150) / 600;
+    return 1200 - t * 200;
+  } else {
+    if (x <= 2650) return 1000;
+    if (x >= 3250) return 1200;
+    const t = (x - 2650) / 600;
+    return 1000 + t * 200;
+  }
+}
+
+export const ARENA_3_RAMP_BLOCKS = [];
+const RAMP_BLOCK_COUNT = 10;
+const RAMP_BLOCK_W = 60;
+
+// Lewa rampa (X: 1150 do 1750)
+for (let i = 0; i < RAMP_BLOCK_COUNT; i++) {
+  const bx = 1150 + i * RAMP_BLOCK_W;
+  const yStart = getApproachInclineY(bx, true);
+  const yEnd = getApproachInclineY(bx + RAMP_BLOCK_W, true);
+  const curY = Math.min(yStart, yEnd);
+  ARENA_3_RAMP_BLOCKS.push({
+    id: `ramp_left_block_${i}`,
+    name: `Rampa Lewa - Segment ${i + 1}`,
+    type: 'platform',
+    isRampBlock: true,
+    side: 'left',
+    rampIndex: i,
+    origX: bx,
+    origY: curY,
+    x: bx,
+    y: curY,
+    w: RAMP_BLOCK_W,
+    h: 22,
+    thickness: 22,
+    solid: true,
+    isPlatform: true,
+    oneWay: true,
+    isSlope: true,
+    startY: yStart,
+    endY: yEnd,
+    surfacePoints: [
+      { x: bx, y: yStart },
+      { x: bx + RAMP_BLOCK_W, y: yEnd }
+    ],
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    vRot: 0,
+    intact: true,
+    hp: 350,
+    maxHp: 350,
+    isAsleep: false,
+    sleepTimer: 0,
+    collapseDelay: 0,
+    stiltX: bx + RAMP_BLOCK_W * 0.5,
+    seed: (i * 29 + 17) % 100
+  });
+}
+
+// Prawa rampa (X: 2650 do 3250)
+for (let i = 0; i < RAMP_BLOCK_COUNT; i++) {
+  const bx = 2650 + i * RAMP_BLOCK_W;
+  const yStart = getApproachInclineY(bx, false);
+  const yEnd = getApproachInclineY(bx + RAMP_BLOCK_W, false);
+  const curY = Math.min(yStart, yEnd);
+  ARENA_3_RAMP_BLOCKS.push({
+    id: `ramp_right_block_${i}`,
+    name: `Rampa Prawa - Segment ${i + 1}`,
+    type: 'platform',
+    isRampBlock: true,
+    side: 'right',
+    rampIndex: i,
+    origX: bx,
+    origY: curY,
+    x: bx,
+    y: curY,
+    w: RAMP_BLOCK_W,
+    h: 22,
+    thickness: 22,
+    solid: true,
+    isPlatform: true,
+    oneWay: true,
+    isSlope: true,
+    startY: yStart,
+    endY: yEnd,
+    surfacePoints: [
+      { x: bx, y: yStart },
+      { x: bx + RAMP_BLOCK_W, y: yEnd }
+    ],
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    vRot: 0,
+    intact: true,
+    hp: 350,
+    maxHp: 350,
+    isAsleep: false,
+    sleepTimer: 0,
+    collapseDelay: 0,
+    stiltX: bx + RAMP_BLOCK_W * 0.5,
+    seed: (i * 31 + 43) % 100
+  });
+}
+
+export function breakRampBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
+  if (!block || !block.intact) return;
+  block.intact = false;
+  block.isSlope = false;
+  delete block.surfacePoints;
+  // Po zniszczeniu pozostaje namacalny jako swobodny blok fizyczny
+  block.solid = true;
+  block.isPlatform = true;
+  block.oneWay = true;
+  block.vx += impulseX;
+  block.vy += impulseY;
+  block.vRot += angularImpulse;
+  block.isAsleep = false;
+  block.sleepTimer = 0;
+
+  spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 14);
+  if (typeof triggerScreenShake === 'function') {
+    triggerScreenShake(7);
+  }
 }
 
 // Cząsteczki drzazg i odłamków drewna po wybuchach / strzałach
@@ -162,8 +297,10 @@ export function spawnBridgeSplinters(x, y, vxBase = 0, vyBase = 0, count = 8) {
 export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
-  block.solid = false;
-  block.isPlatform = false;
+  // Zniszczona deska staje się namacalnym spadającym/pływającym obiektem (nie duchem!)
+  block.solid = true;
+  block.isPlatform = true;
+  block.oneWay = true;
   block.cableAttached = false;
   block.vx += impulseX;
   block.vy += impulseY;
@@ -176,6 +313,7 @@ export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpul
 
 // =========================================================================
 // 2C. PYLONY NOŚNE MOSTU (DESTRUCTIBLE BRIDGE PYLONS - ANGRY BIRDS STYLE)
+// Posadowione na potężnych kamiennych kesonach od 1100 do dna rzeki 1395 (NIGDY NIE LEWITUJĄ)
 // =========================================================================
 export const ARENA_3_PYLONS = {
   left: {
@@ -183,11 +321,12 @@ export const ARENA_3_PYLONS = {
     name: 'Lewy Pylon Mostu',
     x: 1755,
     topY: 850,
-    baseY: 1200,
+    baseY: 1100, // Belki wieży stoją na kesonie kamiennym
+    caissonBottomY: 1395, // Osadzony głęboko w litym dnie rzeki
     w: 56,
-    h: 350,
-    hp: 240,
-    maxHp: 240,
+    h: 250,
+    hp: 950,
+    maxHp: 950,
     intact: true,
     tiltAngle: 0,
     vRot: 0,
@@ -198,11 +337,12 @@ export const ARENA_3_PYLONS = {
     name: 'Prawy Pylon Mostu',
     x: 2645,
     topY: 850,
-    baseY: 1200,
+    baseY: 1100,
+    caissonBottomY: 1395,
     w: 56,
-    h: 350,
-    hp: 240,
-    maxHp: 240,
+    h: 250,
+    hp: 950,
+    maxHp: 950,
     intact: true,
     tiltAngle: 0,
     vRot: 0,
@@ -230,6 +370,7 @@ export function destroyPylon(k) {
 
 // =========================================================================
 // 2D. WISZĄCE POMOSTY W KORONACH DRZEW (DESTRUCTIBLE CANOPY PLATFORMS)
+// Pełna fizyka dwuliniowego wahadła, kołysania, ugięcia i przechyłu pod ciężarem gracza
 // =========================================================================
 export const ARENA_3_CANOPY_PLATFORMS = [
   {
@@ -239,8 +380,12 @@ export const ARENA_3_CANOPY_PLATFORMS = [
     origY: 620,
     w: 260,
     h: 20,
-    ropeLeft: { x: 1900, intact: true, hp: 45, maxHp: 45 },
-    ropeRight: { x: 2120, intact: true, hp: 45, maxHp: 45 },
+    ropeLeft: { x: 1900, anchorX: 1900, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    ropeRight: { x: 2120, anchorX: 2120, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    swayX: 0,
+    swayVx: 0,
+    bounceY: 0,
+    bounceVy: 0,
     tiltAngle: 0,
     vRot: 0,
     blocks: []
@@ -252,8 +397,12 @@ export const ARENA_3_CANOPY_PLATFORMS = [
     origY: 620,
     w: 260,
     h: 20,
-    ropeLeft: { x: 2280, intact: true, hp: 45, maxHp: 45 },
-    ropeRight: { x: 2500, intact: true, hp: 45, maxHp: 45 },
+    ropeLeft: { x: 2280, anchorX: 2280, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    ropeRight: { x: 2500, anchorX: 2500, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    swayX: 0,
+    swayVx: 0,
+    bounceY: 0,
+    bounceVy: 0,
     tiltAngle: 0,
     vRot: 0,
     blocks: []
@@ -265,8 +414,12 @@ export const ARENA_3_CANOPY_PLATFORMS = [
     origY: 430,
     w: 300,
     h: 20,
-    ropeLeft: { x: 1420, intact: true, hp: 45, maxHp: 45 },
-    ropeRight: { x: 1680, intact: true, hp: 45, maxHp: 45 },
+    ropeLeft: { x: 1420, anchorX: 1420, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    ropeRight: { x: 1680, anchorX: 1680, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    swayX: 0,
+    swayVx: 0,
+    bounceY: 0,
+    bounceVy: 0,
     tiltAngle: 0,
     vRot: 0,
     blocks: []
@@ -278,8 +431,12 @@ export const ARENA_3_CANOPY_PLATFORMS = [
     origY: 430,
     w: 300,
     h: 20,
-    ropeLeft: { x: 2720, intact: true, hp: 45, maxHp: 45 },
-    ropeRight: { x: 2980, intact: true, hp: 45, maxHp: 45 },
+    ropeLeft: { x: 2720, anchorX: 2720, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    ropeRight: { x: 2980, anchorX: 2980, anchorY: 0, intact: true, hp: 180, maxHp: 180 },
+    swayX: 0,
+    swayVx: 0,
+    bounceY: 0,
+    bounceVy: 0,
     tiltAngle: 0,
     vRot: 0,
     blocks: []
@@ -316,8 +473,8 @@ for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
       angle: 0,
       vRot: 0,
       intact: true,
-      hp: 60,
-      maxHp: 60,
+      hp: 280,
+      maxHp: 280,
       isAsleep: false,
       sleepTimer: 0,
       collapseDelay: 0,
@@ -343,15 +500,19 @@ export function onCanopyRopeSnapped(plat, side) {
       }
     }
   } else {
-    plat.vRot = (side === 'left' ? -0.06 : 0.06);
+    // Rozpoczęcie gwałtownego wahadłowego kołysania na pozostałej linie
+    plat.vRot = (side === 'left' ? -0.14 : 0.14);
+    plat.swayVx = (side === 'left' ? -3.5 : 3.5);
   }
 }
 
 export function breakCanopyBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
-  block.solid = false;
-  block.isPlatform = false;
+  // Pozostaje solidnym i namacalnym obiektem
+  block.solid = true;
+  block.isPlatform = true;
+  block.oneWay = true;
   block.vx += impulseX;
   block.vy += impulseY;
   block.vRot += angularImpulse;
@@ -434,15 +595,42 @@ export function resetArena3() {
     b.angle = 0;
     b.vRot = 0;
     b.intact = true;
-    b.hp = 100;
+    b.hp = b.maxHp;
     b.solid = true;
     b.isPlatform = true;
+    b.oneWay = true;
     b.isAsleep = false;
     b.sleepTimer = 0;
     b.cableAttached = true;
     b.collapseDelay = 0;
     b.sag = 0;
     b.sagVel = 0;
+  }
+
+  // 2B. Reset ramp podejściowych
+  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
+    const b = ARENA_3_RAMP_BLOCKS[i];
+    b.x = b.origX;
+    b.y = b.origY;
+    b.vx = 0;
+    b.vy = 0;
+    b.angle = 0;
+    b.vRot = 0;
+    b.intact = true;
+    b.hp = b.maxHp;
+    b.solid = true;
+    b.isPlatform = true;
+    b.oneWay = true;
+    b.isSlope = true;
+    b.isAsleep = false;
+    b.sleepTimer = 0;
+    b.collapseDelay = 0;
+    const yStart = getApproachInclineY(b.origX, b.side === 'left');
+    const yEnd = getApproachInclineY(b.origX + b.w, b.side === 'left');
+    b.surfacePoints = [
+      { x: b.origX, y: yStart },
+      { x: b.origX + b.w, y: yEnd }
+    ];
   }
 
   // 3. Reset pomostów wiszących
@@ -452,6 +640,10 @@ export function resetArena3() {
     plat.ropeLeft.hp = plat.ropeLeft.maxHp;
     plat.ropeRight.intact = true;
     plat.ropeRight.hp = plat.ropeRight.maxHp;
+    plat.swayX = 0;
+    plat.swayVx = 0;
+    plat.bounceY = 0;
+    plat.bounceVy = 0;
     plat.tiltAngle = 0;
     plat.vRot = 0;
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
@@ -466,6 +658,7 @@ export function resetArena3() {
       b.hp = b.maxHp;
       b.solid = true;
       b.isPlatform = true;
+      b.oneWay = true;
       b.isAsleep = false;
       b.sleepTimer = 0;
       b.collapseDelay = 0;
@@ -485,6 +678,7 @@ export function resetArena3() {
     slab.hp = slab.maxHp;
     slab.solid = true;
     slab.isPlatform = true;
+    slab.oneWay = true;
     slab.isAsleep = false;
     slab.sleepTimer = 0;
   }
@@ -510,6 +704,7 @@ export function resetArena3() {
     b.hp = b.maxHp;
     b.solid = true;
     b.isPlatform = true;
+    b.oneWay = true;
     b.isAsleep = false;
     b.sleepTimer = 0;
   }
@@ -584,8 +779,8 @@ for (const cfg of SNIPER_SLABS_CONFIG) {
       angle: 0,
       vRot: 0,
       intact: true,
-      hp: 130,
-      maxHp: 130,
+      hp: 500,
+      maxHp: 500,
       isAsleep: false,
       sleepTimer: 0,
       seed: (i * 29 + (cfg.side === 'left' ? 7 : 43)) % 100
@@ -596,8 +791,10 @@ for (const cfg of SNIPER_SLABS_CONFIG) {
 export function breakSniperSlab(slab, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!slab || !slab.intact) return;
   slab.intact = false;
-  slab.solid = false;
-  slab.isPlatform = false;
+  // Pozostaje solidnym i namacalnym obiektem
+  slab.solid = true;
+  slab.isPlatform = true;
+  slab.oneWay = true;
   slab.vx += impulseX;
   slab.vy += impulseY;
   slab.vRot += angularImpulse;
@@ -624,8 +821,8 @@ export const ARENA_3_TOWER_PILLARS = {
     baseY: 1200,
     w: 30,
     h: 800,
-    hp: 260,
-    maxHp: 260,
+    hp: 750,
+    maxHp: 750,
     intact: true,
     tiltAngle: 0,
     vRot: 0,
@@ -640,8 +837,8 @@ export const ARENA_3_TOWER_PILLARS = {
     baseY: 1200,
     w: 30,
     h: 800,
-    hp: 260,
-    maxHp: 260,
+    hp: 750,
+    maxHp: 750,
     intact: true,
     tiltAngle: 0,
     vRot: 0,
@@ -687,8 +884,8 @@ for (const deckCfg of TOWER_DECKS_CONFIG) {
       angle: 0,
       vRot: 0,
       intact: true,
-      hp: 85,
-      maxHp: 85,
+      hp: 300,
+      maxHp: 300,
       isAsleep: false,
       sleepTimer: 0,
       seed: (i * 23 + (deckCfg.side === 'left' ? 11 : 67)) % 100
@@ -699,8 +896,10 @@ for (const deckCfg of TOWER_DECKS_CONFIG) {
 export function breakTowerBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
-  block.solid = false;
-  block.isPlatform = false;
+  // Pozostaje solidnym i namacalnym obiektem
+  block.solid = true;
+  block.isPlatform = true;
+  block.oneWay = true;
   block.vx += impulseX;
   block.vy += impulseY;
   block.vRot += angularImpulse;
@@ -798,26 +997,11 @@ export const ARENA_3_PLATFORMS = [
       { x: 1150, y: 1200 }
     ]
   },
-  {
-    id: 'bridge_approach_left',
-    name: 'Łagodne Podejście na Most Lewe',
-    type: 'platform',
-    x: 1150,
-    y: 1000,
-    w: 600,
-    h: 220,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    surfacePoints: [
-      { x: 1150, y: 1200 },
-      { x: 1300, y: 1165 },
-      { x: 1450, y: 1120 },
-      { x: 1600, y: 1065 },
-      { x: 1750, y: 1000 }
-    ]
-  },
+  // -----------------------------------------------------------------------
+  // ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (X: 1150-1750 oraz 2650-3250)
+  // -----------------------------------------------------------------------
+  ...ARENA_3_RAMP_BLOCKS,
+
   {
     id: 'riverbank_left_oval',
     name: 'Lewy Brzeg - Owalny Stok Schodzący do Wody',
@@ -835,26 +1019,6 @@ export const ARENA_3_PLATFORMS = [
       { x: 1580, y: 1295 },
       { x: 1680, y: 1320 },
       { x: 1750, y: 1335 }
-    ]
-  },
-  {
-    id: 'bridge_approach_right',
-    name: 'Łagodne Podejście na Most Prawe',
-    type: 'platform',
-    x: 2650,
-    y: 1000,
-    w: 600,
-    h: 220,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    surfacePoints: [
-      { x: 2650, y: 1000 },
-      { x: 2800, y: 1065 },
-      { x: 2950, y: 1120 },
-      { x: 3100, y: 1165 },
-      { x: 3250, y: 1200 }
     ]
   },
   {
@@ -1089,53 +1253,110 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3B. Fizyka wiszących pomostów w koronach drzew (Canopy Platforms)
+  // 3B. Prawdziwa fizyka wiszących pomostów w koronach drzew (Canopy Platforms)
   for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
     const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
 
-    if (plat.ropeLeft.intact && plat.ropeRight.intact) {
-      plat.tiltAngle = 0;
-      plat.vRot = 0;
-    } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
-      const targetAngle = 1.15; // ~66 stopni przechyłu
-      plat.vRot += (targetAngle - plat.tiltAngle) * 0.08;
-      plat.vRot *= 0.88;
-      plat.tiltAngle += plat.vRot;
-    } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
-      const targetAngle = -1.15;
-      plat.vRot += (targetAngle - plat.tiltAngle) * 0.08;
-      plat.vRot *= 0.88;
-      plat.tiltAngle += plat.vRot;
+    // Detekcja graczy na pomostach: nacisk, bieg i moment obrotowy
+    let playerTorque = 0;
+    let playersCount = 0;
+    if (Array.isArray(players)) {
+      for (let pi = 0; pi < players.length; pi++) {
+        const p = players[pi];
+        if (!p || p.isDead) continue;
+        const pw = p.w || 24;
+        const ph = p.h || 70;
+        const pFeetX = p.x + pw * 0.5;
+        const pFeetY = p.y + ph;
+
+        const platCurY = plat.origY + (plat.bounceY || 0);
+        if (pFeetX >= plat.origX - 15 && pFeetX <= plat.origX + plat.w + 15 && Math.abs(pFeetY - platCurY) <= 30) {
+          playersCount++;
+          const platMidX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
+          const normOffset = (pFeetX - platMidX) / (plat.w * 0.5);
+          playerTorque += normOffset * 0.22;
+
+          // Reakcja horyzontalna od biegu
+          if (Math.abs(p.vx) > 0.4) {
+            plat.swayVx = (plat.swayVx || 0) + (p.vx > 0 ? 0.3 : -0.3);
+          }
+          // Impuls lądowania
+          if (p.vy > 1.2) {
+            plat.bounceVy = (plat.bounceVy || 0) + p.vy * 0.35;
+          }
+        }
+      }
     }
 
-    const isSwinging = (plat.tiltAngle !== 0 || !plat.ropeLeft.intact || !plat.ropeRight.intact);
-    const pivotX = plat.ropeLeft.intact ? plat.ropeLeft.x : plat.ropeRight.x;
-    const pivotY = plat.origY;
+    if (plat.ropeLeft.intact && plat.ropeRight.intact) {
+      // 1. OBYDWIE LINY CAŁE: fizyczne wahadło dwuliniowe + ugięcie sprężyste + wychył od ciężaru
+      const swayForce = -0.045 * (plat.swayX || 0);
+      plat.swayVx = ((plat.swayVx || 0) + swayForce) * 0.985;
+      plat.swayX = Math.max(-45, Math.min(45, (plat.swayX || 0) + plat.swayVx));
+
+      const springK = 38.0;
+      const springDamp = 7.5;
+      const targetBounce = playersCount * 4.5;
+      const bounceForce = -springK * ((plat.bounceY || 0) - targetBounce) - springDamp * (plat.bounceVy || 0);
+      plat.bounceVy = (plat.bounceVy || 0) + bounceForce * dt;
+      plat.bounceY = Math.max(-4, Math.min(18, (plat.bounceY || 0) + plat.bounceVy * dt));
+
+      const tiltSpring = (playerTorque - plat.tiltAngle) * 32.0 - plat.vRot * 7.5;
+      plat.vRot += tiltSpring * dt;
+      plat.tiltAngle = Math.max(-0.24, Math.min(0.24, plat.tiltAngle + plat.vRot * dt));
+    } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
+      // 2. PRAWA LINA ZERWANA: swobodne fizyczne wahadło zawieszone na lewej linie!
+      const targetAngle = 1.32;
+      const pendAcc = (targetAngle - plat.tiltAngle) * 7.5 - plat.vRot * 1.5;
+      plat.vRot += pendAcc * dt;
+      plat.tiltAngle += plat.vRot * dt;
+
+      plat.swayVx = ((plat.swayVx || 0) - 0.03 * (plat.swayX || 0)) * 0.98;
+      plat.swayX = (plat.swayX || 0) + plat.swayVx;
+      plat.bounceY = Math.min(25, (plat.bounceY || 0) + 0.4);
+    } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
+      // 3. LEWA LINA ZERWANA: swobodne fizyczne wahadło zawieszone na prawej linie!
+      const targetAngle = -1.32;
+      const pendAcc = (targetAngle - plat.tiltAngle) * 7.5 - plat.vRot * 1.5;
+      plat.vRot += pendAcc * dt;
+      plat.tiltAngle += plat.vRot * dt;
+
+      plat.swayVx = ((plat.swayVx || 0) - 0.03 * (plat.swayX || 0)) * 0.98;
+      plat.swayX = (plat.swayX || 0) + plat.swayVx;
+      plat.bounceY = Math.min(25, (plat.bounceY || 0) + 0.4);
+    } else {
+      // 4. OBYDWIE LINY ZERWANE: wszystkie klocki odczepiają się i spadają
+      for (let i = 0; i < plat.blocks.length; i++) {
+        const b = plat.blocks[i];
+        if (b.intact) {
+          breakCanopyBlock(b, (Math.random() - 0.5) * 3, Math.random() * 2 + 1, (Math.random() - 0.5) * 0.2);
+        }
+      }
+    }
+
+    // Aktualizacja pozycji każdego bloku na pomostach wiszących
+    const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
+    const platCenterY = plat.origY + (plat.bounceY || 0);
 
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
       const b = plat.blocks[bIdx];
       if (b.intact) {
-        if (Math.abs(plat.tiltAngle) > 0.25 || (!plat.ropeLeft.intact && !plat.ropeRight.intact)) {
-          b.solid = false;
-          b.isPlatform = false;
-        } else {
+        const relX = (b.origX + b.w * 0.5) - (plat.origX + plat.w * 0.5);
+        const cosA = Math.cos(plat.tiltAngle);
+        const sinA = Math.sin(plat.tiltAngle);
+
+        b.x = platCenterX + relX * cosA - b.w * 0.5;
+        b.y = platCenterY + relX * sinA - b.h * 0.5;
+        b.angle = plat.tiltAngle;
+
+        // Jeśli pomost nie wisi pionowo (poniżej ~50 stopni), można po nim stąpać
+        if (Math.abs(plat.tiltAngle) < 0.88) {
           b.solid = true;
           b.isPlatform = true;
-        }
-
-        if (isSwinging && (plat.ropeLeft.intact || plat.ropeRight.intact)) {
-          const cosA = Math.cos(plat.tiltAngle);
-          const sinA = Math.sin(plat.tiltAngle);
-          const relX = (b.origX + b.w * 0.5) - pivotX;
-          b.x = pivotX + relX * cosA - b.w * 0.5;
-          b.y = pivotY + relX * sinA;
-          b.angle = plat.tiltAngle;
-        } else if (!plat.ropeLeft.intact && !plat.ropeRight.intact) {
-          breakCanopyBlock(b, (Math.random() - 0.5) * 3, Math.random() * 2 + 1, (Math.random() - 0.5) * 0.2);
+          b.oneWay = true;
         } else {
-          b.x = b.origX;
-          b.y = b.origY;
-          b.angle = 0;
+          b.solid = false;
+          b.isPlatform = false;
         }
       }
     }
@@ -1203,9 +1424,10 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3C. Fizyka wszystkich zniszczalnych belek i płyt (most, pomosty wiszące, wieże, skały snajperskie)
+  // 3C. Fizyka wszystkich zniszczalnych belek, ramp i płyt (namacalne platformy + crush damage)
   const allDestructibleBlocks = [
     ...ARENA_3_BRIDGE_BLOCKS,
+    ...ARENA_3_RAMP_BLOCKS,
     ...ALL_CANOPY_BLOCKS,
     ...ARENA_3_TOWER_BLOCKS,
     ...ARENA_3_SNIPER_SLABS
@@ -1219,6 +1441,8 @@ export function updateArena3(dt, players, ball) {
       if (b.collapseDelay === 0 && b.intact) {
         if (b.isBridgeBlock) {
           breakBridgeBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
+        } else if (b.isRampBlock) {
+          breakRampBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
         } else if (b.isCanopyBlock) {
           breakCanopyBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
         } else if (b.isTowerBlock) {
@@ -1235,31 +1459,87 @@ export function updateArena3(dt, players, ball) {
         b.y = b.origY;
         b.solid = true;
         b.isPlatform = true;
+        b.oneWay = true;
       }
       continue;
     }
 
-    b.solid = false;
-    b.isPlatform = false;
+    // ZAWALONE ELEMENTY SĄ NAMACALNE (NIE JAK DUCH)
+    b.solid = true;
+    b.isPlatform = true;
+    b.oneWay = true;
+
+    // OBRAŻENIA OD SPADAJĄCYCH ELEMENTÓW NA GRACZY (CRUSH DAMAGE)
+    if (b.vy > 1.2 && Array.isArray(players)) {
+      for (let pIdx = 0; pIdx < players.length; pIdx++) {
+        const p = players[pIdx];
+        if (!p || p.isDead) continue;
+        const pw = p.w || 24;
+        const ph = p.h || 70;
+        const pLeft = p.x;
+        const pRight = p.x + pw;
+        const pTop = p.y;
+        const pBottom = p.y + ph;
+
+        const bLeft = b.x;
+        const bRight = b.x + b.w;
+        const bTop = b.y;
+        const bBottom = b.y + b.h;
+
+        if (bRight > pLeft + 4 && bLeft < pRight - 4 && bBottom >= pTop && bTop <= pBottom - 8) {
+          if (!b.playerHitCooldown || b.playerHitCooldown <= 0) {
+            b.playerHitCooldown = 18;
+            let crushDmg = 0;
+            if (b.isSniperSlab) {
+              crushDmg = Math.round(40 + b.vy * 8);
+              spawnStoneDebris(p.x + pw * 0.5, bBottom, b.vx, -2, 12);
+            } else if (b.isTowerBlock || b.isRampBlock) {
+              crushDmg = Math.round(26 + b.vy * 6);
+              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 10);
+            } else {
+              crushDmg = Math.round(18 + b.vy * 5);
+              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 8);
+            }
+
+            p.hp = Math.max(0, (p.hp || 100) - crushDmg);
+            p.vy = Math.max(p.vy, b.vy * 0.6 + 2.0);
+            p.vx += (b.vx || 0) * 0.5 + (p.x < b.x ? -2.5 : 2.5);
+
+            if (typeof triggerScreenShake === 'function') {
+              triggerScreenShake(b.isSniperSlab ? 10 : 6);
+            }
+
+            b.vy *= 0.35;
+            b.vx *= 0.5;
+
+            if (p.hp <= 0 && !p.isDead) {
+              p.isDead = true;
+              p.respawnTimer = 180;
+            }
+          }
+        }
+      }
+    }
+    if (b.playerHitCooldown > 0) b.playerHitCooldown--;
 
     if (b.isAsleep) continue;
 
     const inWater = (b.y + b.h >= 1305);
 
     if (b.isSniperSlab) {
-      // FIZYKA PŁYTY SKALNEJ: Ciężka masa, tonie w rzece na dno zamiast unosić się na falach
+      // FIZYKA PŁYTY SKALNEJ: Ciężka masa, tonie w rzece na dno
       if (inWater) {
         b.vy = Math.min(2.4, (b.vy + 0.14) * 0.94);
         b.vx *= 0.88;
         b.vRot *= 0.85;
       } else {
-        b.vy += 0.46; // Większa grawitacja dla skały
+        b.vy += 0.46;
         b.vx *= 0.992;
         b.vy *= 0.995;
         b.vRot *= 0.99;
       }
     } else {
-      // FIZYKA ELEMENTÓW DREWNIANYCH (Most, Wieże, Pomosty wiszące)
+      // FIZYKA ELEMENTÓW DREWNIANYCH (Most, Rampy, Wieże, Pomosty wiszące)
       if (inWater) {
         // Wyporność drewna na wodzie (Buoyancy)
         const immersion = (b.y + b.h) - 1305;
@@ -1275,7 +1555,7 @@ export function updateArena3(dt, players, ball) {
         b.vRot -= b.angle * 0.05;
 
         // Kołysanie na falach rzeki
-        b.y += Math.sin(animTime * 3.0 + (b.blockIndex || 0) * 0.6) * 0.28;
+        b.y += Math.sin(animTime * 3.0 + (b.blockIndex || b.rampIndex || 0) * 0.6) * 0.28;
 
         if (Math.abs(b.vx) < 0.08 && Math.abs(b.vy) < 0.12 && Math.abs(b.vRot) < 0.015) {
           b.sleepTimer++;
@@ -1318,13 +1598,13 @@ export function updateArena3(dt, players, ball) {
     b.angle += b.vRot;
   }
 
-  // 4. Detekcja graczy na zniszczonych belkach / płytach
+  // 4. Detekcja graczy na belkach / płytach (jeśli solidne, gracz stoi; jeśli nie, spada)
   if (Array.isArray(players)) {
     for (let i = 0; i < players.length; i++) {
       const p = players[i];
       if (!p) continue;
-      if (p.currentPlatform && (p.currentPlatform.isBridgeBlock || p.currentPlatform.isCanopyBlock || p.currentPlatform.isTowerBlock || p.currentPlatform.isSniperSlab)) {
-        if (!p.currentPlatform.intact || !p.currentPlatform.solid) {
+      if (p.currentPlatform && (p.currentPlatform.isBridgeBlock || p.currentPlatform.isCanopyBlock || p.currentPlatform.isTowerBlock || p.currentPlatform.isSniperSlab || p.currentPlatform.isRampBlock)) {
+        if (!p.currentPlatform.solid) {
           p.currentPlatform = null;
           p.onGround = false;
           p.isJumping = true;
@@ -2350,37 +2630,57 @@ export function drawArena3Foreground(ctx, camera) {
     if (px + 90 < camL || px - 90 > camR) return;
 
     ctx.save();
-    // 1. Kamienny fundament na brzegu (Y: 1200 do 1280) - zawsze niezniszczalny
-    const pBaseGrad = ctx.createLinearGradient(px - 30, 1200, px + 30, 1280);
-    pBaseGrad.addColorStop(0, '#4a5445');
-    pBaseGrad.addColorStop(1, '#23291f');
+    // 1. Potężny kamienny keson / filar fundamentowy (Y: 1100 aż do litego dna rzeki Y: 1395)
+    // Osadzony głęboko w litym dnie rzeki - NIGDY NIE LEWITUJE W POWIETRZU!
+    const caissonTopY = 1100;
+    const caissonBottomY = 1395;
+    const caissonW = 62;
+    const caissonLeft = px - caissonW / 2;
+
+    const pBaseGrad = ctx.createLinearGradient(caissonLeft, caissonTopY, caissonLeft + caissonW, caissonBottomY);
+    pBaseGrad.addColorStop(0.0, '#4a5445');
+    pBaseGrad.addColorStop(0.35, '#313a2d');
+    pBaseGrad.addColorStop(0.70, '#1f251c'); // Strefa zanurzona w wodzie poniżej 1300
+    pBaseGrad.addColorStop(1.0, '#121710');
     ctx.fillStyle = pBaseGrad;
-    ctx.fillRect(px - 28, 1200, 56, 80);
+    ctx.fillRect(caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY);
     ctx.strokeStyle = '#141812';
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(px - 28, 1200, 56, 80);
+    ctx.strokeRect(caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY);
 
-    // Kute żelazne klamry fundamentu
+    // Kute żelazne klamry i obejmy kesonu
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(px - 24, 1210, 48, 8);
-    ctx.fillRect(px - 24, 1240, 48, 8);
+    ctx.fillRect(caissonLeft - 2, 1130, caissonW + 4, 10);
+    ctx.fillRect(caissonLeft - 2, 1210, caissonW + 4, 10);
+    ctx.fillRect(caissonLeft - 2, 1290, caissonW + 4, 12);
+    ctx.fillRect(caissonLeft - 2, 1345, caissonW + 4, 12);
+
+    // Ciosane bloki kamienne i spoiny
+    ctx.strokeStyle = '#182015';
+    ctx.lineWidth = 2;
+    for (let by = caissonTopY + 30; by < caissonBottomY; by += 35) {
+      ctx.beginPath();
+      ctx.moveTo(caissonLeft, by);
+      ctx.lineTo(caissonLeft + caissonW, by);
+      ctx.stroke();
+    }
 
     if (p.intact) {
-      // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1200)
-      const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, 1200);
+      // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1100)
+      const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, caissonTopY);
       pWoodGrad.addColorStop(0, '#533418');
       pWoodGrad.addColorStop(0.5, '#3c230e');
       pWoodGrad.addColorStop(1, '#251406');
       ctx.fillStyle = pWoodGrad;
 
       // Lewa i prawa noga pylonu
-      ctx.fillRect(px - 24, pylonTopY, 18, 1200 - pylonTopY);
-      ctx.fillRect(px + 6, pylonTopY, 18, 1200 - pylonTopY);
+      ctx.fillRect(px - 24, pylonTopY, 18, caissonTopY - pylonTopY);
+      ctx.fillRect(px + 6, pylonTopY, 18, caissonTopY - pylonTopY);
 
       // Krzyżowe rygle wzmacniające (X-bracing)
       ctx.strokeStyle = '#3e240e';
       ctx.lineWidth = 6;
-      for (let crossY = pylonTopY + 40; crossY < 1200 - 40; crossY += 75) {
+      for (let crossY = pylonTopY + 40; crossY < caissonTopY - 20; crossY += 75) {
         ctx.beginPath();
         ctx.moveTo(px - 20, crossY);
         ctx.lineTo(px + 20, crossY + 60);
@@ -2398,17 +2698,17 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.strokeStyle = '#0a0502';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(px - 15, 1050);
-        ctx.lineTo(px - 8, 1080);
-        ctx.lineTo(px - 14, 1120);
+        ctx.moveTo(px - 15, 950);
+        ctx.lineTo(px - 8, 990);
+        ctx.lineTo(px - 14, 1040);
         if (damageRatio > 0.4) {
-          ctx.moveTo(px + 12, 980);
-          ctx.lineTo(px + 18, 1010);
-          ctx.lineTo(px + 10, 1060);
+          ctx.moveTo(px + 12, 920);
+          ctx.lineTo(px + 18, 970);
+          ctx.lineTo(px + 10, 1020);
         }
         if (damageRatio > 0.7) {
-          ctx.moveTo(px - 20, 1140);
-          ctx.lineTo(px + 15, 1160);
+          ctx.moveTo(px - 20, 1060);
+          ctx.lineTo(px + 15, 1080);
         }
         ctx.stroke();
       }
@@ -2428,34 +2728,34 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.fill();
     } else {
       // PYLON ZNISZCZONY (ANGRY BIRDS RUBBLE / FALLEN TOWER)
-      // A. Wyszczerbione kikuty przy fundamencie
+      // A. Wyszczerbione kikuty przy szczycie kesonu
       ctx.fillStyle = '#3a210b';
       ctx.beginPath();
-      ctx.moveTo(px - 24, 1200);
-      ctx.lineTo(px - 24, 1175);
-      ctx.lineTo(px - 16, 1160);
-      ctx.lineTo(px - 12, 1180);
-      ctx.lineTo(px - 6, 1170);
-      ctx.lineTo(px - 6, 1200);
+      ctx.moveTo(px - 24, caissonTopY);
+      ctx.lineTo(px - 24, caissonTopY - 25);
+      ctx.lineTo(px - 16, caissonTopY - 40);
+      ctx.lineTo(px - 12, caissonTopY - 20);
+      ctx.lineTo(px - 6, caissonTopY - 30);
+      ctx.lineTo(px - 6, caissonTopY);
       ctx.closePath();
       ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(px + 6, 1200);
-      ctx.lineTo(px + 6, 1165);
-      ctx.lineTo(px + 14, 1180);
-      ctx.lineTo(px + 18, 1155);
-      ctx.lineTo(px + 24, 1170);
-      ctx.lineTo(px + 24, 1200);
+      ctx.moveTo(px + 6, caissonTopY);
+      ctx.lineTo(px + 6, caissonTopY - 35);
+      ctx.lineTo(px + 14, caissonTopY - 20);
+      ctx.lineTo(px + 18, caissonTopY - 45);
+      ctx.lineTo(px + 24, caissonTopY - 30);
+      ctx.lineTo(px + 24, caissonTopY);
       ctx.closePath();
       ctx.fill();
 
       // B. Przechylony / zawalony korpus wieży pylonu
       ctx.save();
-      ctx.translate(px, 1175);
+      ctx.translate(px, caissonTopY - 25);
       ctx.rotate(p.tiltAngle);
 
-      const towerLen = 1200 - pylonTopY;
+      const towerLen = caissonTopY - pylonTopY;
       const pFallenGrad = ctx.createLinearGradient(-25, -towerLen, 25, 0);
       pFallenGrad.addColorStop(0, '#533418');
       pFallenGrad.addColorStop(1, '#251406');
@@ -2482,225 +2782,217 @@ export function drawArena3Foreground(ctx, camera) {
   drawBridgePylon('left');
   drawBridgePylon('right');
 
-  // B. ŁAGODNE PODEJŚCIA NA MOST (Łączące płaski grunt Y: 1200 z kładką mostu Y: 1000)
-  // Naturalna, łagodna rampa o nachyleniu ~18°, z drewnianym pomostem, palami nośnymi i poręczami
+  // B. ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (Łączące grunt z kładką)
   function drawGentleBridgeApproach(isLeft) {
     const rx1 = isLeft ? 1150 : 2650;
     const rx2 = isLeft ? 1750 : 3250;
 
     if (rx2 < camL || rx1 > camR) return;
 
-    const approachPts = isLeft ? [
-      { x: 1150, y: 1200 },
-      { x: 1300, y: 1165 },
-      { x: 1450, y: 1120 },
-      { x: 1600, y: 1065 },
-      { x: 1750, y: 1000 }
-    ] : [
-      { x: 2650, y: 1000 },
-      { x: 2800, y: 1065 },
-      { x: 2950, y: 1120 },
-      { x: 3100, y: 1165 },
-      { x: 3250, y: 1200 }
-    ];
-
-    function getApproachY(x) {
-      if (isLeft) {
-        if (x <= 1150) return 1200;
-        if (x >= 1750) return 1000;
-        for (let i = 0; i < approachPts.length - 1; i++) {
-          if (x >= approachPts[i].x && x <= approachPts[i + 1].x) {
-            const t = (x - approachPts[i].x) / (approachPts[i + 1].x - approachPts[i].x);
-            return approachPts[i].y + t * (approachPts[i + 1].y - approachPts[i].y);
-          }
-        }
-      } else {
-        if (x <= 2650) return 1000;
-        if (x >= 3250) return 1200;
-        for (let i = 0; i < approachPts.length - 1; i++) {
-          if (x >= approachPts[i].x && x <= approachPts[i + 1].x) {
-            const t = (x - approachPts[i].x) / (approachPts[i + 1].x - approachPts[i].x);
-            return approachPts[i].y + t * (approachPts[i + 1].y - approachPts[i].y);
-          }
-        }
-      }
-      return 1200;
-    }
-
-    function getRiverbankGroundY(x) {
-      if (isLeft) {
-        if (x <= 1150) return 1200;
-        const pts = leftOvalPoints;
-        for (let i = 0; i < pts.length - 1; i++) {
-          if (x >= pts[i].x && x <= pts[i + 1].x) {
-            const t = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
-            return pts[i].y + t * (pts[i + 1].y - pts[i].y);
-          }
-        }
-        return 1335;
-      } else {
-        if (x >= 3250) return 1200;
-        const pts = rightOvalPoints;
-        for (let i = 0; i < pts.length - 1; i++) {
-          if (x >= pts[i].x && x <= pts[i + 1].x) {
-            const t = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
-            return pts[i].y + t * (pts[i + 1].y - pts[i].y);
-          }
-        }
-        return 1335;
-      }
-    }
-
     ctx.save();
 
-    // 1. Drewniane pale nośne (podpory pod podejściem) zakotwiczone w owalnym zboczu
-    const stiltXs = isLeft ? [1260, 1370, 1480, 1590, 1690] : [2710, 2810, 2920, 3030, 3140];
-    for (let sIdx = 0; sIdx < stiltXs.length; sIdx++) {
-      const sx = stiltXs[sIdx];
-      const rampY = getApproachY(sx);
-      const groundY = getRiverbankGroundY(sx);
+    // Filtruj bloki dla tej strony
+    const rampBlocks = ARENA_3_RAMP_BLOCKS.filter(b => isLeft ? b.side === 'left' : b.side === 'right');
 
-      if (groundY > rampY + 16) {
-        // Główny pal nośny z drewna tekowego
-        ctx.strokeStyle = '#38200b';
-        ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.moveTo(sx, rampY + 14);
-        ctx.lineTo(sx, groundY + 12);
-        ctx.stroke();
+    for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
+      const b = rampBlocks[rIdx];
+      if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
 
-        // Światło na krawędzi pala
-        ctx.strokeStyle = '#5a3818';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(sx - 3, rampY + 14);
-        ctx.lineTo(sx - 3, groundY + 12);
-        ctx.stroke();
+      const y1 = getApproachInclineY(b.origX, isLeft);
+      const y2 = getApproachInclineY(b.origX + b.w, isLeft);
+      const groundY = getRiverbankGroundY(b.stiltX);
 
-        // Żelazne klamry mocujące
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(sx - 7, rampY + 22, 14, 7);
-        ctx.fillRect(sx - 7, groundY - 14, 14, 7);
-
-        // Zastrzały krzyżowe pomiędzy sąsiednimi palami
-        if (sIdx < stiltXs.length - 1) {
-          const nextSx = stiltXs[sIdx + 1];
-          const nextRampY = getApproachY(nextSx);
-          const nextGroundY = getRiverbankGroundY(nextSx);
-
-          ctx.strokeStyle = '#281507';
-          ctx.lineWidth = 4;
+      if (b.intact) {
+        // 1. Drewniany pal nośny (stilt) pod kładką zakotwiczony w podłożu
+        if (groundY > Math.max(y1, y2) + 14) {
+          ctx.strokeStyle = '#38200b';
+          ctx.lineWidth = 9;
           ctx.beginPath();
-          ctx.moveTo(sx, rampY + 30);
-          ctx.lineTo(nextSx, Math.min(nextGroundY, nextRampY + 70));
-          ctx.moveTo(nextSx, nextRampY + 30);
-          ctx.lineTo(sx, Math.min(groundY, rampY + 70));
+          ctx.moveTo(b.stiltX, Math.max(y1, y2) + 12);
+          ctx.lineTo(b.stiltX, groundY + 12);
           ctx.stroke();
+
+          // Światło na krawędzi pala
+          ctx.strokeStyle = '#5a3818';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(b.stiltX - 3, Math.max(y1, y2) + 12);
+          ctx.lineTo(b.stiltX - 3, groundY + 12);
+          ctx.stroke();
+
+          // Żelazne klamry mocujące pal do podłoża i kładki
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(b.stiltX - 7, Math.max(y1, y2) + 18, 14, 7);
+          ctx.fillRect(b.stiltX - 7, groundY - 14, 14, 7);
+
+          // Zastrzały krzyżowe do sąsiedniego pala jeśli oba są całe
+          if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
+            const nextB = rampBlocks[rIdx + 1];
+            const nextY = Math.max(getApproachInclineY(nextB.origX, isLeft), getApproachInclineY(nextB.origX + nextB.w, isLeft));
+            const nextGroundY = getRiverbankGroundY(nextB.stiltX);
+
+            ctx.strokeStyle = '#281507';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(b.stiltX, Math.max(y1, y2) + 26);
+            ctx.lineTo(nextB.stiltX, Math.min(nextGroundY, nextY + 60));
+            ctx.moveTo(nextB.stiltX, nextY + 26);
+            ctx.lineTo(b.stiltX, Math.min(groundY, Math.max(y1, y2) + 60));
+            ctx.stroke();
+          }
+        }
+
+        // 2. Belka podestu rampy
+        ctx.beginPath();
+        ctx.moveTo(b.origX, y1);
+        ctx.lineTo(b.origX + b.w, y2);
+        ctx.lineTo(b.origX + b.w, y2 + 20);
+        ctx.lineTo(b.origX, y1 + 20);
+        ctx.closePath();
+
+        const blockGrad = ctx.createLinearGradient(b.origX, y1, b.origX + b.w, y2);
+        blockGrad.addColorStop(0.0, '#785226');
+        blockGrad.addColorStop(0.5, '#563814');
+        blockGrad.addColorStop(1.0, '#362108');
+        ctx.fillStyle = blockGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#221306';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // 3. Listwy antypoślizgowe
+        for (let ax = b.origX + 15; ax <= b.origX + b.w - 10; ax += 22) {
+          const ay = getApproachInclineY(ax, isLeft);
+          ctx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(ax - 5, ay);
+          ctx.lineTo(ax + 5, ay + 6);
+          ctx.stroke();
+
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(ax - 1, ay + 3, 3, 3);
+        }
+
+        // Mech na górnej krawędzi
+        ctx.strokeStyle = 'rgba(95, 180, 50, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(b.origX, y1 + 1);
+        ctx.lineTo(b.origX + b.w, y2 + 1);
+        ctx.stroke();
+
+        // Pęknięcia jeśli rampa jest uszkodzona
+        if (b.hp < b.maxHp) {
+          const dmgRatio = 1 - (b.hp / b.maxHp);
+          ctx.strokeStyle = '#100702';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(b.origX + b.w * 0.4, y1 + 5);
+          ctx.lineTo(b.origX + b.w * 0.5, y1 + 14);
+          if (dmgRatio > 0.5) {
+            ctx.moveTo(b.origX + b.w * 0.7, y2 + 4);
+            ctx.lineTo(b.origX + b.w * 0.6, y2 + 16);
+          }
+          ctx.stroke();
+        }
+
+        // 4. Słupek poręczy na środku segmentu
+        const postX = b.stiltX;
+        const postY = getApproachInclineY(postX, isLeft);
+        const handrailH = 34;
+
+        ctx.strokeStyle = '#3e240e';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(postX, postY);
+        ctx.lineTo(postX, postY - handrailH);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(postX, postY - handrailH, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Linka poręczy do kolejnego segmentu
+        if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
+          const nextPostX = rampBlocks[rIdx + 1].stiltX;
+          const nextPostY = getApproachInclineY(nextPostX, isLeft);
+
+          ctx.strokeStyle = '#5a3d1c';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(postX, postY - handrailH);
+          ctx.lineTo(nextPostX, nextPostY - handrailH);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#3d2610';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(postX, postY - handrailH * 0.5);
+          ctx.lineTo(nextPostX, nextPostY - handrailH * 0.5);
+          ctx.stroke();
+        }
+      } else {
+        // ZNISZCZONY SEGMENT RAMPY (Wyrwa na podejściu - klocek spadający lub spoczywający na zboczu/rzece)
+        // A. Wyszczerbiony kikut pala podestu
+        if (groundY > Math.max(y1, y2) + 14) {
+          ctx.strokeStyle = '#251406';
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.moveTo(b.stiltX, groundY + 12);
+          ctx.lineTo(b.stiltX, groundY - 20);
+          ctx.stroke();
+        }
+
+        // B. Spadający / spoczywający modularny drewniany segment
+        ctx.save();
+        const bcx = b.x + b.w / 2;
+        const bcy = b.y + b.h / 2;
+        ctx.translate(bcx, bcy);
+        ctx.rotate(b.angle);
+
+        const halfW = b.w / 2;
+        const halfH = b.h / 2;
+
+        const rotGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
+        rotGrad.addColorStop(0, '#533614');
+        rotGrad.addColorStop(0.6, '#37200b');
+        rotGrad.addColorStop(1, '#1e0e04');
+        ctx.fillStyle = rotGrad;
+        ctx.fillRect(-halfW, -halfH, b.w, b.h);
+
+        ctx.strokeStyle = '#150901';
+        ctx.lineWidth = 2.2;
+        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
+
+        ctx.strokeStyle = '#0f0501';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-halfW + 6, -halfH);
+        ctx.lineTo(4, 0);
+        ctx.lineTo(-halfW + 10, halfH);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Piana jeśli klocek wpadł do rzeki
+        if (b.y + b.h >= 1300) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.ellipse(bcx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
         }
       }
     }
 
-    // 2. Gruba drewniana belka policzkowa / korpus kładki rampy
-    ctx.beginPath();
-    ctx.moveTo(approachPts[0].x, approachPts[0].y);
-    for (let i = 1; i < approachPts.length; i++) {
-      ctx.lineTo(approachPts[i].x, approachPts[i].y);
-    }
-    for (let i = approachPts.length - 1; i >= 0; i--) {
-      ctx.lineTo(approachPts[i].x, approachPts[i].y + 20);
-    }
-    ctx.closePath();
-
-    const deckGrad = ctx.createLinearGradient(rx1, isLeft ? 1200 : 1000, rx2, isLeft ? 1000 : 1200);
-    deckGrad.addColorStop(0.0, '#785226');
-    deckGrad.addColorStop(0.5, '#563814');
-    deckGrad.addColorStop(1.0, '#362108');
-    ctx.fillStyle = deckGrad;
-    ctx.fill();
-
-    ctx.strokeStyle = '#221306';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // 3. Poprzeczne listwy antypoślizgowe i nity (szczeble co 24px)
-    for (let ax = rx1 + 18; ax <= rx2 - 14; ax += 24) {
-      const ay = getApproachY(ax);
-      // Nacięcie / listwa poprzeczna
-      ctx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(ax - 5, ay);
-      ctx.lineTo(ax + 5, ay + 7);
-      ctx.stroke();
-
-      // Cień pod listwą
-      ctx.strokeStyle = 'rgba(20, 10, 3, 0.6)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(ax - 5, ay + 2);
-      ctx.lineTo(ax + 5, ay + 9);
-      ctx.stroke();
-
-      // Nit żelazny
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(ax - 1, ay + 4, 3, 3);
-    }
-
-    // Warstwa delikatnego mchu na górnej krawędzi
-    ctx.strokeStyle = 'rgba(95, 180, 50, 0.7)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(approachPts[0].x, approachPts[0].y + 1);
-    for (let i = 1; i < approachPts.length; i++) {
-      ctx.lineTo(approachPts[i].x, approachPts[i].y + 1);
-    }
-    ctx.stroke();
-
-    // 4. Słupki poręczy i liny asekuracyjne
-    const postStep = 48;
-    const handrailHeight = 34;
-
-    ctx.strokeStyle = '#3e240e';
-    ctx.lineWidth = 4.5;
-    for (let px = rx1 + 20; px <= rx2 - 10; px += postStep) {
-      const py = getApproachY(px);
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(px, py - handrailHeight);
-      ctx.stroke();
-
-      // Mosiężna głowica słupka
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.arc(px, py - handrailHeight, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Główna lina poręczy biegnąca po szczytach słupków
-    ctx.strokeStyle = '#5a3d1c';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(approachPts[0].x, approachPts[0].y - handrailHeight);
-    for (let i = 1; i < approachPts.length; i++) {
-      ctx.lineTo(approachPts[i].x, approachPts[i].y - handrailHeight);
-    }
-    ctx.stroke();
-
-    // Dolna lina asekuracyjna
-    ctx.strokeStyle = '#3d2610';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(approachPts[0].x, approachPts[0].y - handrailHeight * 0.5);
-    for (let i = 1; i < approachPts.length; i++) {
-      ctx.lineTo(approachPts[i].x, approachPts[i].y - handrailHeight * 0.5);
-    }
-    ctx.stroke();
-
-    // 5. Oznaczenie / Latarnia wejściowa na gruntowej krawędzi rampy
+    // 5. Oznaczenie wejściowe na gruntowej krawędzi rampy
     const entryX = isLeft ? 1150 : 3250;
     const entryY = 1200;
-
-    // Słup bramowy z ciosanego drewna
     ctx.fillStyle = '#3a200a';
     ctx.fillRect(entryX - 6, entryY - 45, 12, 45);
     ctx.strokeStyle = '#1a0e05';
@@ -2734,22 +3026,38 @@ export function drawArena3Foreground(ctx, camera) {
     if (px + pw + 60 < camL || px - 60 > camR) return;
 
     ctx.save();
-    // 1. Długie liny nośne z baldachimu dżungli (od Y = 0 do py)
+    // 1. Długie liny nośne z baldachimu dżungli biegnące prosto do punktów zaczepienia
+    const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
+    const platCenterY = plat.origY + (plat.bounceY || 0);
+    const cosA = Math.cos(plat.tiltAngle);
+    const sinA = Math.sin(plat.tiltAngle);
+
+    const relLX = plat.ropeLeft.x - (plat.origX + plat.w * 0.5);
+    const attachLX = platCenterX + relLX * cosA;
+    const attachLY = platCenterY + relLX * sinA;
+
+    const relRX = plat.ropeRight.x - (plat.origX + plat.w * 0.5);
+    const attachRX = platCenterX + relRX * cosA;
+    const attachRY = platCenterY + relRX * sinA;
+
     // Lewa lina nośna
+    const anchorLX = plat.ropeLeft.anchorX || plat.ropeLeft.x;
     if (plat.ropeLeft.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(plat.ropeLeft.x, 0);
-      ctx.lineTo(plat.ropeLeft.x, py);
+      ctx.moveTo(anchorLX, 0);
+      ctx.lineTo(attachLX, attachLY);
       ctx.stroke();
 
       // Owijające się liany wokół lin
       ctx.strokeStyle = '#3e6822';
       ctx.lineWidth = 2;
-      for (let ly = 40; ly < py - 20; ly += 60) {
+      for (let t = 0.15; t <= 0.85; t += 0.18) {
+        const lx = anchorLX + (attachLX - anchorLX) * t;
+        const ly = attachLY * t;
         ctx.beginPath();
-        ctx.arc(plat.ropeLeft.x, ly, 6, 0, Math.PI);
+        ctx.arc(lx, ly, 6, 0, Math.PI);
         ctx.stroke();
       }
 
@@ -2757,7 +3065,7 @@ export function drawArena3Foreground(ctx, camera) {
       if (plat.ropeLeft.hp < plat.ropeLeft.maxHp) {
         ctx.strokeStyle = '#92400e';
         ctx.lineWidth = 2;
-        ctx.strokeRect(plat.ropeLeft.x - 3, py - 35, 6, 12);
+        ctx.strokeRect(attachLX - 3, attachLY - 25, 6, 12);
       }
     } else {
       // Zerwana lina powiewająca na wietrze z baldachimu
@@ -2765,40 +3073,43 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(plat.ropeLeft.x, 0);
-      ctx.quadraticCurveTo(plat.ropeLeft.x + vSway * 0.5, 45, plat.ropeLeft.x + vSway, 85);
+      ctx.moveTo(anchorLX, 0);
+      ctx.quadraticCurveTo(anchorLX + vSway * 0.5, 45, anchorLX + vSway, 85);
       ctx.stroke();
     }
 
     // Prawa lina nośna
+    const anchorRX = plat.ropeRight.anchorX || plat.ropeRight.x;
     if (plat.ropeRight.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(plat.ropeRight.x, 0);
-      ctx.lineTo(plat.ropeRight.x, py);
+      ctx.moveTo(anchorRX, 0);
+      ctx.lineTo(attachRX, attachRY);
       ctx.stroke();
 
       ctx.strokeStyle = '#3e6822';
       ctx.lineWidth = 2;
-      for (let ly = 65; ly < py - 20; ly += 60) {
+      for (let t = 0.2; t <= 0.85; t += 0.18) {
+        const rx = anchorRX + (attachRX - anchorRX) * t;
+        const ry = attachRY * t;
         ctx.beginPath();
-        ctx.arc(plat.ropeRight.x, ly, 6, 0, Math.PI);
+        ctx.arc(rx, ry, 6, 0, Math.PI);
         ctx.stroke();
       }
 
       if (plat.ropeRight.hp < plat.ropeRight.maxHp) {
         ctx.strokeStyle = '#92400e';
         ctx.lineWidth = 2;
-        ctx.strokeRect(plat.ropeRight.x - 3, py - 35, 6, 12);
+        ctx.strokeRect(attachRX - 3, attachRY - 25, 6, 12);
       }
     } else {
       const vSway = Math.sin(animTime * 3.0 + px * 0.05 + 1.2) * 8;
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(plat.ropeRight.x, 0);
-      ctx.quadraticCurveTo(plat.ropeRight.x + vSway * 0.5, 45, plat.ropeRight.x + vSway, 85);
+      ctx.moveTo(anchorRX, 0);
+      ctx.quadraticCurveTo(anchorRX + vSway * 0.5, 45, anchorRX + vSway, 85);
       ctx.stroke();
     }
 
@@ -3231,15 +3542,34 @@ export function onArena3BulletHit(bullet) {
   if (!bullet) return false;
   const bx = bullet.x;
   const by = bullet.y;
-  const bDamage = (bullet.damage || 14) * 2.5;
+  // Bazowe obrażenia od pocisku bez sztucznego mnożnika, z odpornością balistyczną struktur
+  const bDamage = bullet.damage || 14;
 
-  // 1. Klocki mostu głównego
+  // 1. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS)
+  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
+    const b = ARENA_3_RAMP_BLOCKS[i];
+    if (!b.intact) continue;
+
+    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 12 && by <= b.y + b.h + 20) {
+      b.hp -= bDamage * 0.45;
+      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+
+      if (b.hp <= 0) {
+        const impX = (bullet.vx || 0) * 0.1;
+        const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
+        breakRampBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
+      }
+      return true;
+    }
+  }
+
+  // 2. Klocki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     if (!b.intact) continue;
 
     if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage;
+      b.hp -= bDamage * 0.45;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (b.hp <= 0) {
@@ -3252,13 +3582,13 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 2. Klocki wiszących pomostów taktycznych
+  // 3. Klocki wiszących pomostów taktycznych
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
     if (!b.intact) continue;
 
     if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage;
+      b.hp -= bDamage * 0.45;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (b.hp <= 0) {
@@ -3270,14 +3600,14 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 3. Liny nośne pomostów wiszących (możliwość odstrzelenia liny snajperem!)
+  // 4. Liny nośne pomostów wiszących (możliwość odstrzelenia liny snajperem!)
   for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
     const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
 
     // Lewa lina
     if (plat.ropeLeft.intact) {
       if (Math.abs(bx - plat.ropeLeft.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
-        plat.ropeLeft.hp -= bDamage;
+        plat.ropeLeft.hp -= bDamage * 0.60;
         spawnBridgeSplinters(plat.ropeLeft.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
         if (plat.ropeLeft.hp <= 0) {
           plat.ropeLeft.intact = false;
@@ -3290,7 +3620,7 @@ export function onArena3BulletHit(bullet) {
     // Prawa lina
     if (plat.ropeRight.intact) {
       if (Math.abs(bx - plat.ropeRight.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
-        plat.ropeRight.hp -= bDamage;
+        plat.ropeRight.hp -= bDamage * 0.60;
         spawnBridgeSplinters(plat.ropeRight.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
         if (plat.ropeRight.hp <= 0) {
           plat.ropeRight.intact = false;
@@ -3301,13 +3631,13 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 4. Drewniane filary nośne pylonów mostu (A-frame pylons)
+  // 5. Drewniane filary nośne pylonów mostu (A-frame pylons)
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
     if (!p.intact) continue;
 
     if (bx >= p.x - 28 && bx <= p.x + 28 && by >= p.topY && by <= p.baseY) {
-      p.hp -= bDamage;
+      p.hp -= bDamage * 0.40;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
       if (p.hp <= 0) {
         destroyPylon(k);
@@ -3316,13 +3646,13 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 5. Modularne płyty skalne snajperów
+  // 6. Modularne płyty skalne snajperów
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
     if (!slab.intact) continue;
 
     if (bx >= slab.x - 2 && bx <= slab.x + slab.w + 2 && by >= slab.y - 4 && by <= slab.y + slab.h + 4) {
-      slab.hp -= bDamage * 0.9;
+      slab.hp -= bDamage * 0.35;
       spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (slab.hp <= 0) {
@@ -3332,13 +3662,13 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 6. Modularne drewniane podesty wież strażniczych
+  // 7. Modularne drewniane podesty wież strażniczych
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
     if (!b.intact) continue;
 
     if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage;
+      b.hp -= bDamage * 0.45;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (b.hp <= 0) {
@@ -3348,13 +3678,13 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 7. Główne filary nośne wież strażniczych
+  // 8. Główne filary nośne wież strażniczych
   for (const side of ['left', 'right']) {
     const pillar = ARENA_3_TOWER_PILLARS[side];
     if (!pillar.intact) continue;
 
     if (bx >= pillar.stemX - 16 && bx <= pillar.stemX + pillar.w + 16 && by >= pillar.topY && by <= pillar.baseY) {
-      pillar.hp -= bDamage;
+      pillar.hp -= bDamage * 0.40;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
       if (pillar.hp <= 0) {
         destroyTowerPillar(side);
@@ -3375,7 +3705,25 @@ export function onArena3KickHit(player, kickBox) {
   const kickDamage = 85 * kickPower;
   const dirX = player.facing || 1;
 
-  // 1. Spartan Kick w belki mostu
+  // 1. Spartan Kick w klocki ramp podejścia do mostu
+  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
+    const b = ARENA_3_RAMP_BLOCKS[i];
+    if (!b.intact) continue;
+    const bcx = b.x + b.w / 2;
+    const bcy = b.y + b.h / 2;
+    if (Math.abs(kx - bcx) <= b.w * 0.6 + 10 && Math.abs(ky - bcy) <= 35) {
+      hitAny = true;
+      b.hp -= kickDamage;
+      spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
+      if (b.hp <= 0) {
+        breakRampBlock(b, dirX * 3.5, 4.0, dirX * 0.25);
+      }
+      if (typeof triggerScreenShake === 'function') triggerScreenShake(6);
+      return true;
+    }
+  }
+
+  // 2. Spartan Kick w belki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     if (!b.intact) continue;
@@ -3514,7 +3862,40 @@ export function onArena3Explosion(expX, expY, radius, context) {
   let hitAny = false;
   const blastRad = radius || 140;
 
-  // 1. Wybuch w klocki mostu głównego
+  // 1. Wybuch w klocki ramp podejścia do mostu
+  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
+    const b = ARENA_3_RAMP_BLOCKS[i];
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const d = Math.hypot(cx - expX, cy - expY);
+
+    if (d <= blastRad + 40) {
+      hitAny = true;
+      const intensity = Math.max(0, 1 - d / (blastRad + 40));
+      const dirX = d > 0.001 ? (cx - expX) / d : 0;
+      const dirY = d > 0.001 ? (cy - expY) / d : -1;
+
+      const blastForce = intensity * 19;
+      const impulseX = dirX * blastForce + (Math.random() - 0.5) * 4;
+      const impulseY = (dirY - 0.55) * blastForce - 2.8;
+      const angularImpulse = (dirX >= 0 ? 1 : -1) * (0.12 + Math.random() * 0.24) * intensity;
+
+      if (b.intact) {
+        b.hp -= intensity * 170;
+        if (b.hp <= 0 || d <= blastRad) {
+          breakRampBlock(b, impulseX, impulseY, angularImpulse);
+        }
+      } else {
+        b.vx += impulseX * 0.85;
+        b.vy += impulseY * 0.85;
+        b.vRot += angularImpulse * 0.8;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
+      }
+    }
+  }
+
+  // 2. Wybuch w klocki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     const cx = b.x + b.w / 2;
@@ -3774,6 +4155,8 @@ const arena3 = {
 };
 
 if (typeof window !== 'undefined') {
+  window.ARENA_3_RAMP_BLOCKS = ARENA_3_RAMP_BLOCKS;
+  window.breakRampBlock = breakRampBlock;
   window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
   window.ARENA_3_PYLONS = ARENA_3_PYLONS;
   window.ARENA_3_CANOPY_PLATFORMS = ARENA_3_CANOPY_PLATFORMS;
