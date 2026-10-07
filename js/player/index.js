@@ -502,12 +502,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 
   // Wciśnięcie skoku / wykopu natychmiast podrywa postać na nogi z leżenia i kucania
-  const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered));
+  const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered) || (leftStick && leftStick.axisY < -0.40));
   if (standUpRequested && (player.isProne || player.isCrouching || player.crouchToggled)) {
     player.isProne = false;
     player.isCrouching = false;
     player.crouchToggled = false;
     player.enteredProneViaStickDown = false;
+    player.state = 'STAND';
+    player.hitboxHeight = player.h || 70;
   }
 
   // Wstawanie przy puszczeniu kierunku w dół na drążku
@@ -572,12 +574,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player._crouchStartTime = 0;
     player.crouchHoldTimer = 0;
 
-    if ((player.isCrouching || player.isProne) && !player.isSliding) {
+    if (player.isCrouching && !player.isSliding && !player.isProne) {
       const isHoldingDownArrow = !!(keys && keys.down);
       if (!isHoldingDownArrow && !player.crouchToggled) {
         if (!isCeilingBlockingStand(player, GROUND_Y)) {
           player.isCrouching = false;
-          player.isProne = false;
           player.state = 'STAND';
           player.hitboxHeight = player.h || 70;
         }
@@ -603,11 +604,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.isCrouching = true;
         player.state = 'CROUCH';
       }
-    } else if (!player.crouchToggled && !crouchHeld) {
+    } else if (!player.crouchToggled && !crouchHeld && !player.isProne) {
       if (!isCeilingBlockingStand(player, GROUND_Y)) {
         player.isCrouching = false;
-        player.isProne = false;
-        if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+        if (player.state === 'CROUCH') {
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
+        }
       }
     }
 
@@ -645,11 +648,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         if (!isCeilingBlockingStand(player, GROUND_Y)) {
           // Resetuj pozycję tylko przy celowym pchnięciu w górę (axisY < -0.30)
           // lub jeśli gracz nie miał aktywnego przełącznika (crouchToggled) i nie leżał
-          if (leftStick.axisY < -0.30 || (!player.crouchToggled && !player.isProne)) {
+          if (leftStick.axisY < -0.30) {
             player.isCrouching = false;
             player.isProne = false;
             player.crouchToggled = false;
-            if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+            if (player.state === 'CROUCH' || player.state === 'PRONE') {
+              player.state = 'STAND';
+              player.hitboxHeight = player.h || 70;
+            }
+          } else if (!player.crouchToggled && !player.isProne) {
+            player.isCrouching = false;
+            if (player.state === 'CROUCH') {
+              player.state = 'STAND';
+              player.hitboxHeight = player.h || 70;
+            }
           }
         }
       }
@@ -667,11 +679,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   } else if (!keys?.down && !crouchHeld && !isStaggered && leftStick && !leftStick.active) {
     // Puszczenie gałki podrywa postać na równe nogi tylko jeśli nie ma toggle i nie leży
-    if ((player.isCrouching || player.isProne) && !player.crouchToggled && !player.isProne) {
+    if (player.isCrouching && !player.crouchToggled && !player.isProne) {
       if (!isCeilingBlockingStand(player, GROUND_Y)) {
         player.isCrouching = false;
-        player.isProne = false;
-        if (player.state === 'CROUCH' || player.state === 'PRONE') player.state = 'STAND';
+        if (player.state === 'CROUCH') {
+          player.state = 'STAND';
+          player.hitboxHeight = player.h || 70;
+        }
       }
     }
   }

@@ -10,6 +10,7 @@
 // =========================================================================
 
 // 1. ZASOBY GRAFICZNE PNG (Statyczne tło)
+import { triggerScreenShake } from '../camera.js';
 const bgImg = new Image();
 bgImg.src = 'assets/jungle_arena_bg.png';
 
@@ -171,6 +172,193 @@ export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpul
   spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 10);
 }
 
+// =========================================================================
+// 2C. PYLONY NOŚNE MOSTU (DESTRUCTIBLE BRIDGE PYLONS - ANGRY BIRDS STYLE)
+// =========================================================================
+export const ARENA_3_PYLONS = {
+  left: {
+    id: 'pylon_left',
+    name: 'Lewy Pylon Mostu',
+    x: 1755,
+    topY: 850,
+    baseY: 1200,
+    w: 56,
+    h: 350,
+    hp: 240,
+    maxHp: 240,
+    intact: true,
+    tiltAngle: 0,
+    vRot: 0,
+    collapsed: false
+  },
+  right: {
+    id: 'pylon_right',
+    name: 'Prawy Pylon Mostu',
+    x: 2645,
+    topY: 850,
+    baseY: 1200,
+    w: 56,
+    h: 350,
+    hp: 240,
+    maxHp: 240,
+    intact: true,
+    tiltAngle: 0,
+    vRot: 0,
+    collapsed: false
+  }
+};
+
+export function destroyPylon(k) {
+  const p = ARENA_3_PYLONS[k];
+  if (!p || !p.intact) return;
+  p.intact = false;
+  p.vRot = (k === 'left' ? 0.022 : -0.022);
+  spawnBridgeSplinters(p.x, 1025, (k === 'left' ? 6 : -6), -4, 25);
+  if (typeof triggerScreenShake === 'function') {
+    triggerScreenShake(14);
+  }
+  // Odczep liny nośne z tej strony
+  for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+    if ((k === 'left' && i < 14) || (k === 'right' && i >= 10)) {
+      ARENA_3_BRIDGE_BLOCKS[i].cableAttached = false;
+    }
+  }
+  evaluateBridgeIntegrity();
+}
+
+// =========================================================================
+// 2D. WISZĄCE POMOSTY W KORONACH DRZEW (DESTRUCTIBLE CANOPY PLATFORMS)
+// =========================================================================
+export const ARENA_3_CANOPY_PLATFORMS = [
+  {
+    id: 'bridge_skywalk_left',
+    name: 'Wiszący Pomost Nad Mostem Lewy',
+    origX: 1880,
+    origY: 620,
+    w: 260,
+    h: 20,
+    ropeLeft: { x: 1900, intact: true, hp: 45, maxHp: 45 },
+    ropeRight: { x: 2120, intact: true, hp: 45, maxHp: 45 },
+    tiltAngle: 0,
+    vRot: 0,
+    blocks: []
+  },
+  {
+    id: 'bridge_skywalk_right',
+    name: 'Wiszący Pomost Nad Mostem Prawy',
+    origX: 2260,
+    origY: 620,
+    w: 260,
+    h: 20,
+    ropeLeft: { x: 2280, intact: true, hp: 45, maxHp: 45 },
+    ropeRight: { x: 2500, intact: true, hp: 45, maxHp: 45 },
+    tiltAngle: 0,
+    vRot: 0,
+    blocks: []
+  },
+  {
+    id: 'bridge_skywalk_upper_left',
+    name: 'Wiszący Pomost Górny Lewy (Flanka)',
+    origX: 1400,
+    origY: 430,
+    w: 300,
+    h: 20,
+    ropeLeft: { x: 1420, intact: true, hp: 45, maxHp: 45 },
+    ropeRight: { x: 1680, intact: true, hp: 45, maxHp: 45 },
+    tiltAngle: 0,
+    vRot: 0,
+    blocks: []
+  },
+  {
+    id: 'bridge_skywalk_upper_right',
+    name: 'Wiszący Pomost Górny Prawy (Flanka)',
+    origX: 2700,
+    origY: 430,
+    w: 300,
+    h: 20,
+    ropeLeft: { x: 2720, intact: true, hp: 45, maxHp: 45 },
+    ropeRight: { x: 2980, intact: true, hp: 45, maxHp: 45 },
+    tiltAngle: 0,
+    vRot: 0,
+    blocks: []
+  }
+];
+
+export const ALL_CANOPY_BLOCKS = [];
+const CANOPY_BLOCKS_PER_PLATFORM = 5;
+
+for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+  const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+  const blockW = plat.w / CANOPY_BLOCKS_PER_PLATFORM;
+  for (let bIdx = 0; bIdx < CANOPY_BLOCKS_PER_PLATFORM; bIdx++) {
+    const bx = plat.origX + bIdx * blockW;
+    const block = {
+      id: `${plat.id}_block_${bIdx}`,
+      name: `${plat.name} - Belka ${bIdx + 1}`,
+      type: 'platform',
+      isCanopyBlock: true,
+      parentPlatId: plat.id,
+      blockIndex: bIdx,
+      origX: bx,
+      origY: plat.origY,
+      x: bx,
+      y: plat.origY,
+      w: blockW,
+      h: plat.h,
+      thickness: plat.h,
+      solid: true,
+      isPlatform: true,
+      oneWay: true,
+      vx: 0,
+      vy: 0,
+      angle: 0,
+      vRot: 0,
+      intact: true,
+      hp: 60,
+      maxHp: 60,
+      isAsleep: false,
+      sleepTimer: 0,
+      collapseDelay: 0,
+      seed: (pIdx * 31 + bIdx * 17) % 100
+    };
+    plat.blocks.push(block);
+    ALL_CANOPY_BLOCKS.push(block);
+  }
+}
+
+export function onCanopyRopeSnapped(plat, side) {
+  if (typeof triggerScreenShake === 'function') {
+    triggerScreenShake(8);
+  }
+  const snapX = (side === 'left' ? plat.ropeLeft.x : plat.ropeRight.x);
+  spawnBridgeSplinters(snapX, plat.origY, 0, -3, 14);
+
+  if (!plat.ropeLeft.intact && !plat.ropeRight.intact) {
+    for (let i = 0; i < plat.blocks.length; i++) {
+      const b = plat.blocks[i];
+      if (b.intact) {
+        breakCanopyBlock(b, (Math.random() - 0.5) * 3, Math.random() * 2 + 1, (Math.random() - 0.5) * 0.2);
+      }
+    }
+  } else {
+    plat.vRot = (side === 'left' ? -0.06 : 0.06);
+  }
+}
+
+export function breakCanopyBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
+  if (!block || !block.intact) return;
+  block.intact = false;
+  block.solid = false;
+  block.isPlatform = false;
+  block.vx += impulseX;
+  block.vy += impulseY;
+  block.vRot += angularImpulse;
+  block.isAsleep = false;
+  block.sleepTimer = 0;
+
+  spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 10);
+}
+
 export function evaluateBridgeIntegrity() {
   let segStart = -1;
   const segments = [];
@@ -189,8 +377,8 @@ export function evaluateBridgeIntegrity() {
   }
 
   for (const seg of segments) {
-    const anchoredLeft = (seg.start === 0);
-    const anchoredRight = (seg.end === ARENA_3_BRIDGE_BLOCKS.length - 1);
+    const anchoredLeft = (seg.start === 0 && ARENA_3_PYLONS.left.intact);
+    const anchoredRight = (seg.end === ARENA_3_BRIDGE_BLOCKS.length - 1 && ARENA_3_PYLONS.right.intact);
 
     if (!anchoredLeft && !anchoredRight) {
       for (let i = seg.start; i <= seg.end; i++) {
@@ -224,6 +412,17 @@ export function evaluateBridgeIntegrity() {
 }
 
 export function resetArena3() {
+  // 1. Reset pylonów
+  for (const k of ['left', 'right']) {
+    const p = ARENA_3_PYLONS[k];
+    p.hp = p.maxHp;
+    p.intact = true;
+    p.tiltAngle = 0;
+    p.vRot = 0;
+    p.collapsed = false;
+  }
+
+  // 2. Reset kładki mostu
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     b.x = b.origX;
@@ -241,6 +440,34 @@ export function resetArena3() {
     b.cableAttached = true;
     b.collapseDelay = 0;
   }
+
+  // 3. Reset pomostów wiszących
+  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+    const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+    plat.ropeLeft.intact = true;
+    plat.ropeLeft.hp = plat.ropeLeft.maxHp;
+    plat.ropeRight.intact = true;
+    plat.ropeRight.hp = plat.ropeRight.maxHp;
+    plat.tiltAngle = 0;
+    plat.vRot = 0;
+    for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+      const b = plat.blocks[bIdx];
+      b.x = b.origX;
+      b.y = b.origY;
+      b.vx = 0;
+      b.vy = 0;
+      b.angle = 0;
+      b.vRot = 0;
+      b.intact = true;
+      b.hp = b.maxHp;
+      b.solid = true;
+      b.isPlatform = true;
+      b.isAsleep = false;
+      b.sleepTimer = 0;
+      b.collapseDelay = 0;
+    }
+  }
+
   BRIDGE_SPLINTERS.length = 0;
 }
 
@@ -503,60 +730,9 @@ export const ARENA_3_PLATFORMS = [
 
   // -----------------------------------------------------------------------
   // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (POZIOM ŚREDNI Y: 620 ORAZ NAJWYŻSZY Y: 430)
-  // Wiszące w koronach drzew dżungli pomosty snajpersko-taktyczne
+  // Zniszczalne modułowe pomosty taktyczne w koronach drzew (Angry Birds Physics)
   // -----------------------------------------------------------------------
-  {
-    id: 'bridge_skywalk_left',
-    name: 'Wiszący Pomost Nad Mostem Lewy',
-    type: 'platform',
-    x: 1880,
-    y: 620,
-    w: 260,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true
-  },
-  {
-    id: 'bridge_skywalk_right',
-    name: 'Wiszący Pomost Nad Mostem Prawy',
-    type: 'platform',
-    x: 2260,
-    y: 620,
-    w: 260,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true
-  },
-  {
-    id: 'bridge_skywalk_upper_left',
-    name: 'Wiszący Pomost Górny Lewy (Flanka)',
-    type: 'platform',
-    x: 1400,
-    y: 430,
-    w: 300,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true
-  },
-  {
-    id: 'bridge_skywalk_upper_right',
-    name: 'Wiszący Pomost Górny Prawy (Flanka)',
-    type: 'platform',
-    x: 2700,
-    y: 430,
-    w: 300,
-    h: 20,
-    thickness: 20,
-    solid: true,
-    isPlatform: true,
-    oneWay: true
-  },
+  ...ALL_CANOPY_BLOCKS,
 
   // -----------------------------------------------------------------------
   // C. WOJSKOWE WIEŻE OBSERWACYJNE / GNIAZDA SNAJPERSKIE (X: 200 oraz X: 4200, Y: 400)
@@ -696,28 +872,103 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3. Fizyka i symulacja modularnego mostu (Angry Birds Physics)
-  for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
-    const b = ARENA_3_BRIDGE_BLOCKS[i];
+  // 3A. Fizyka i upadek pylonów mostu (Angry Birds Style Tower Collapse)
+  for (const k of ['left', 'right']) {
+    const p = ARENA_3_PYLONS[k];
+    if (!p.intact && !p.collapsed) {
+      p.tiltAngle += p.vRot;
+      const maxTilt = (k === 'left' ? 0.38 : -0.38);
+      if ((k === 'left' && p.tiltAngle >= maxTilt) || (k === 'right' && p.tiltAngle <= maxTilt)) {
+        p.tiltAngle = maxTilt;
+        p.vRot = 0;
+        p.collapsed = true;
+        spawnBridgeSplinters(p.x + (k === 'left' ? 70 : -70), 1220, 0, -2, 12);
+        if (typeof triggerScreenShake === 'function') {
+          triggerScreenShake(6);
+        }
+      }
+    }
+  }
 
-    // Obsługa kaskadowego zapadania się klocków (chain reaction collapse)
+  // 3B. Fizyka wiszących pomostów w koronach drzew (Canopy Platforms)
+  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+    const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+
+    if (plat.ropeLeft.intact && plat.ropeRight.intact) {
+      plat.tiltAngle = 0;
+      plat.vRot = 0;
+    } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
+      const targetAngle = 1.15; // ~66 stopni przechyłu
+      plat.vRot += (targetAngle - plat.tiltAngle) * 0.08;
+      plat.vRot *= 0.88;
+      plat.tiltAngle += plat.vRot;
+    } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
+      const targetAngle = -1.15;
+      plat.vRot += (targetAngle - plat.tiltAngle) * 0.08;
+      plat.vRot *= 0.88;
+      plat.tiltAngle += plat.vRot;
+    }
+
+    const isSwinging = (plat.tiltAngle !== 0 || !plat.ropeLeft.intact || !plat.ropeRight.intact);
+    const pivotX = plat.ropeLeft.intact ? plat.ropeLeft.x : plat.ropeRight.x;
+    const pivotY = plat.origY;
+
+    for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+      const b = plat.blocks[bIdx];
+      if (b.intact) {
+        if (Math.abs(plat.tiltAngle) > 0.25 || (!plat.ropeLeft.intact && !plat.ropeRight.intact)) {
+          b.solid = false;
+          b.isPlatform = false;
+        } else {
+          b.solid = true;
+          b.isPlatform = true;
+        }
+
+        if (isSwinging && (plat.ropeLeft.intact || plat.ropeRight.intact)) {
+          const cosA = Math.cos(plat.tiltAngle);
+          const sinA = Math.sin(plat.tiltAngle);
+          const relX = (b.origX + b.w * 0.5) - pivotX;
+          b.x = pivotX + relX * cosA - b.w * 0.5;
+          b.y = pivotY + relX * sinA;
+          b.angle = plat.tiltAngle;
+        } else if (!plat.ropeLeft.intact && !plat.ropeRight.intact) {
+          breakCanopyBlock(b, (Math.random() - 0.5) * 3, Math.random() * 2 + 1, (Math.random() - 0.5) * 0.2);
+        } else {
+          b.x = b.origX;
+          b.y = b.origY;
+          b.angle = 0;
+        }
+      }
+    }
+  }
+
+  // 3C. Fizyka wszystkich zniszczalnych belek (most + pomosty wiszące)
+  const allDestructibleBlocks = [...ARENA_3_BRIDGE_BLOCKS, ...ALL_CANOPY_BLOCKS];
+  for (let i = 0; i < allDestructibleBlocks.length; i++) {
+    const b = allDestructibleBlocks[i];
+
+    // Obsługa kaskadowego zapadania się klocków
     if (b.collapseDelay > 0) {
       b.collapseDelay--;
       if (b.collapseDelay === 0 && b.intact) {
-        breakBridgeBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
+        if (b.isBridgeBlock) {
+          breakBridgeBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
+        } else {
+          breakCanopyBlock(b, (Math.random() - 0.5) * 2.5, Math.random() * 2.0 + 1.2, (Math.random() - 0.5) * 0.15);
+        }
       }
     }
 
     if (b.intact) {
-      // Intaktny klocek pozostaje stabilną platformą w spoczynku
-      b.x = b.origX;
-      b.y = b.origY;
-      b.solid = true;
-      b.isPlatform = true;
+      if (b.isBridgeBlock) {
+        b.x = b.origX;
+        b.y = b.origY;
+        b.solid = true;
+        b.isPlatform = true;
+      }
       continue;
     }
 
-    // Klocek jest oderwany / dynamiczny / gruz
     b.solid = false;
     b.isPlatform = false;
 
@@ -740,9 +991,8 @@ export function updateArena3(dt, players, ball) {
       b.vRot -= b.angle * 0.05;
 
       // Kołysanie na falach rzeki
-      b.y += Math.sin(animTime * 3.0 + b.blockIndex * 0.6) * 0.28;
+      b.y += Math.sin(animTime * 3.0 + (b.blockIndex || 0) * 0.6) * 0.28;
 
-      // Sprawdzenie stanu uśpienia (Sleep State - 60 FPS Optimization)
       if (Math.abs(b.vx) < 0.08 && Math.abs(b.vy) < 0.12 && Math.abs(b.vRot) < 0.015) {
         b.sleepTimer++;
         if (b.sleepTimer > 35) {
@@ -752,7 +1002,7 @@ export function updateArena3(dt, players, ball) {
         b.sleepTimer = 0;
       }
     } else {
-      // Klocek w powietrzu - standardowa grawitacja
+      // Klocek w powietrzu - grawitacja
       b.vy += 0.38;
       b.vx *= 0.995;
       b.vy *= 0.995;
@@ -788,10 +1038,12 @@ export function updateArena3(dt, players, ball) {
     for (let i = 0; i < players.length; i++) {
       const p = players[i];
       if (!p) continue;
-      if (p.currentPlatform && p.currentPlatform.isBridgeBlock && !p.currentPlatform.intact) {
-        p.currentPlatform = null;
-        p.onGround = false;
-        p.isJumping = true;
+      if (p.currentPlatform && (p.currentPlatform.isBridgeBlock || p.currentPlatform.isCanopyBlock)) {
+        if (!p.currentPlatform.intact || !p.currentPlatform.solid) {
+          p.currentPlatform = null;
+          p.onGround = false;
+          p.isJumping = true;
+        }
       }
     }
   }
@@ -1617,11 +1869,14 @@ export function drawArena3Foreground(ctx, camera) {
   const pylonTopY = 850;
 
   // A. PYLONY NOŚNE MOSTU (Drewniano-kamienne wieże bramowe na brzegach rzeki)
-  function drawBridgePylon(px) {
-    if (px + 60 < camL || px - 60 > camR) return;
+  function drawBridgePylon(pylonKey) {
+    const p = ARENA_3_PYLONS[pylonKey];
+    if (!p) return;
+    const px = p.x;
+    if (px + 90 < camL || px - 90 > camR) return;
 
     ctx.save();
-    // 1. Kamienny fundament na brzegu (Y: 1200 do 1280)
+    // 1. Kamienny fundament na brzegu (Y: 1200 do 1280) - zawsze niezniszczalny
     const pBaseGrad = ctx.createLinearGradient(px - 30, 1200, px + 30, 1280);
     pBaseGrad.addColorStop(0, '#4a5445');
     pBaseGrad.addColorStop(1, '#23291f');
@@ -1631,53 +1886,127 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.lineWidth = 2.5;
     ctx.strokeRect(px - 28, 1200, 56, 80);
 
-    // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1200)
-    const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, 1200);
-    pWoodGrad.addColorStop(0, '#533418');
-    pWoodGrad.addColorStop(0.5, '#3c230e');
-    pWoodGrad.addColorStop(1, '#251406');
-    ctx.fillStyle = pWoodGrad;
+    // Kute żelazne klamry fundamentu
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px - 24, 1210, 48, 8);
+    ctx.fillRect(px - 24, 1240, 48, 8);
 
-    // Lewa noga pylonu
-    ctx.fillRect(px - 24, pylonTopY, 18, 1200 - pylonTopY);
-    // Prawa noga pylonu
-    ctx.fillRect(px + 6, pylonTopY, 18, 1200 - pylonTopY);
+    if (p.intact) {
+      // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1200)
+      const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, 1200);
+      pWoodGrad.addColorStop(0, '#533418');
+      pWoodGrad.addColorStop(0.5, '#3c230e');
+      pWoodGrad.addColorStop(1, '#251406');
+      ctx.fillStyle = pWoodGrad;
 
-    // Krzyżowe rygle wzmacniające (X-bracing)
-    ctx.strokeStyle = '#3e240e';
-    ctx.lineWidth = 6;
-    for (let crossY = pylonTopY + 40; crossY < 1200 - 40; crossY += 75) {
+      // Lewa i prawa noga pylonu
+      ctx.fillRect(px - 24, pylonTopY, 18, 1200 - pylonTopY);
+      ctx.fillRect(px + 6, pylonTopY, 18, 1200 - pylonTopY);
+
+      // Krzyżowe rygle wzmacniające (X-bracing)
+      ctx.strokeStyle = '#3e240e';
+      ctx.lineWidth = 6;
+      for (let crossY = pylonTopY + 40; crossY < 1200 - 40; crossY += 75) {
+        ctx.beginPath();
+        ctx.moveTo(px - 20, crossY);
+        ctx.lineTo(px + 20, crossY + 60);
+        ctx.moveTo(px + 20, crossY);
+        ctx.lineTo(px - 20, crossY + 60);
+        ctx.stroke();
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(px - 26, crossY - 4, 52, 8);
+      }
+
+      // Dynamiczne pęknięcia drewna przy uszkodzeniu
+      if (p.hp < p.maxHp) {
+        const damageRatio = 1 - (p.hp / p.maxHp);
+        ctx.strokeStyle = '#0a0502';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(px - 15, 1050);
+        ctx.lineTo(px - 8, 1080);
+        ctx.lineTo(px - 14, 1120);
+        if (damageRatio > 0.4) {
+          ctx.moveTo(px + 12, 980);
+          ctx.lineTo(px + 18, 1010);
+          ctx.lineTo(px + 10, 1060);
+        }
+        if (damageRatio > 0.7) {
+          ctx.moveTo(px - 20, 1140);
+          ctx.lineTo(px + 15, 1160);
+        }
+        ctx.stroke();
+      }
+
+      // 3. Szczyt pylonu: siodło linowe (Cable Saddle z żelaza i brązu)
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(px - 30, pylonTopY - 14, 60, 16);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px - 30, pylonTopY - 14, 60, 16);
+
+      // Kołowroty / rolki linowe
+      ctx.fillStyle = '#64748b';
       ctx.beginPath();
-      ctx.moveTo(px - 20, crossY);
-      ctx.lineTo(px + 20, crossY + 60);
-      ctx.moveTo(px + 20, crossY);
-      ctx.lineTo(px - 20, crossY + 60);
+      ctx.arc(px - 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+      ctx.arc(px + 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // PYLON ZNISZCZONY (ANGRY BIRDS RUBBLE / FALLEN TOWER)
+      // A. Wyszczerbione kikuty przy fundamencie
+      ctx.fillStyle = '#3a210b';
+      ctx.beginPath();
+      ctx.moveTo(px - 24, 1200);
+      ctx.lineTo(px - 24, 1175);
+      ctx.lineTo(px - 16, 1160);
+      ctx.lineTo(px - 12, 1180);
+      ctx.lineTo(px - 6, 1170);
+      ctx.lineTo(px - 6, 1200);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(px + 6, 1200);
+      ctx.lineTo(px + 6, 1165);
+      ctx.lineTo(px + 14, 1180);
+      ctx.lineTo(px + 18, 1155);
+      ctx.lineTo(px + 24, 1170);
+      ctx.lineTo(px + 24, 1200);
+      ctx.closePath();
+      ctx.fill();
+
+      // B. Przechylony / zawalony korpus wieży pylonu
+      ctx.save();
+      ctx.translate(px, 1175);
+      ctx.rotate(p.tiltAngle);
+
+      const towerLen = 1200 - pylonTopY;
+      const pFallenGrad = ctx.createLinearGradient(-25, -towerLen, 25, 0);
+      pFallenGrad.addColorStop(0, '#533418');
+      pFallenGrad.addColorStop(1, '#251406');
+      ctx.fillStyle = pFallenGrad;
+
+      ctx.fillRect(-24, -towerLen, 18, towerLen - 25);
+      ctx.fillRect(6, -towerLen, 18, towerLen - 25);
+
+      ctx.strokeStyle = '#2a1608';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-20, -towerLen + 50);
+      ctx.lineTo(20, -towerLen + 110);
       ctx.stroke();
 
-      // Stalowe klamry na skrzyżowaniach
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(px - 26, crossY - 4, 52, 8);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-30, -towerLen - 14, 60, 16);
+      ctx.restore();
     }
-
-    // 3. Szczyt pylonu: siodło linowe (Cable Saddle z żelaza i brązu)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(px - 30, pylonTopY - 14, 60, 16);
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px - 30, pylonTopY - 14, 60, 16);
-
-    // Kołowroty / rolki linowe
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(px - 10, pylonTopY - 6, 7, 0, Math.PI * 2);
-    ctx.arc(px + 10, pylonTopY - 6, 7, 0, Math.PI * 2);
-    ctx.fill();
 
     ctx.restore();
   }
 
-  drawBridgePylon(pylonLeftX);
-  drawBridgePylon(pylonRightX);
+  drawBridgePylon('left');
+  drawBridgePylon('right');
 
   // B. ŁAGODNE PODEJŚCIA NA MOST (Łączące płaski grunt Y: 1200 z kładką mostu Y: 1000)
   // Naturalna, łagodna rampa o nachyleniu ~18°, z drewnianym pomostem, palami nośnymi i poręczami
@@ -1917,136 +2246,224 @@ export function drawArena3Foreground(ctx, camera) {
   // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most Y: 1000)
   // Wiszące w koronach drzew dżungli pomosty taktyczne
   // -----------------------------------------------------------------------
-  function drawHighCanopyPlatform(px, py, pw, ph) {
-    if (px + pw < camL || px > camR) return;
+  // -----------------------------------------------------------------------
+  // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most Y: 1000)
+  // Zniszczalne wiszące pomosty taktyczne w koronach drzew (Angry Birds Physics)
+  // -----------------------------------------------------------------------
+  function drawHighCanopyPlatform(plat) {
+    if (!plat) return;
+    const px = plat.origX;
+    const py = plat.origY;
+    const pw = plat.w;
+    const ph = plat.h;
+
+    if (px + pw + 60 < camL || px - 60 > camR) return;
 
     ctx.save();
     // 1. Długie liny nośne z baldachimu dżungli (od Y = 0 do py)
-    ctx.strokeStyle = '#4e3316';
-    ctx.lineWidth = 3.5;
     // Lewa lina nośna
-    ctx.beginPath();
-    ctx.moveTo(px + 20, 0);
-    ctx.lineTo(px + 20, py);
-    ctx.stroke();
+    if (plat.ropeLeft.intact) {
+      ctx.strokeStyle = '#4e3316';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(plat.ropeLeft.x, 0);
+      ctx.lineTo(plat.ropeLeft.x, py);
+      ctx.stroke();
+
+      // Owijające się liany wokół lin
+      ctx.strokeStyle = '#3e6822';
+      ctx.lineWidth = 2;
+      for (let ly = 40; ly < py - 20; ly += 60) {
+        ctx.beginPath();
+        ctx.arc(plat.ropeLeft.x, ly, 6, 0, Math.PI);
+        ctx.stroke();
+      }
+
+      // Nacięcia / postrzępienia jeśli lina jest uszkodzona
+      if (plat.ropeLeft.hp < plat.ropeLeft.maxHp) {
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(plat.ropeLeft.x - 3, py - 35, 6, 12);
+      }
+    } else {
+      // Zerwana lina powiewająca na wietrze z baldachimu
+      const vSway = Math.sin(animTime * 3.0 + px * 0.05) * 8;
+      ctx.strokeStyle = '#3a200a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(plat.ropeLeft.x, 0);
+      ctx.quadraticCurveTo(plat.ropeLeft.x + vSway * 0.5, 45, plat.ropeLeft.x + vSway, 85);
+      ctx.stroke();
+    }
+
     // Prawa lina nośna
-    ctx.beginPath();
-    ctx.moveTo(px + pw - 20, 0);
-    ctx.lineTo(px + pw - 20, py);
-    ctx.stroke();
-
-    // Owijające się liany wokół lin
-    ctx.strokeStyle = '#3e6822';
-    ctx.lineWidth = 2;
-    for (let ly = 40; ly < py - 20; ly += 60) {
+    if (plat.ropeRight.intact) {
+      ctx.strokeStyle = '#4e3316';
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.arc(px + 20, ly, 6, 0, Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(px + pw - 20, ly + 25, 6, 0, Math.PI);
-      ctx.stroke();
-    }
-
-    // 2. Drewniany pomost wiszący (bambus i ciosany tek)
-    const platGrad = ctx.createLinearGradient(px, py, px, py + ph);
-    platGrad.addColorStop(0.0, '#7c582c');
-    platGrad.addColorStop(0.5, '#563a18');
-    platGrad.addColorStop(1.0, '#35220c');
-    ctx.fillStyle = platGrad;
-    ctx.fillRect(px, py, pw, ph);
-
-    // Szczeble i gwoździe
-    ctx.strokeStyle = '#201306';
-    ctx.lineWidth = 2;
-    for (let bx = px + 15; bx < px + pw - 10; bx += 20) {
-      ctx.beginPath();
-      ctx.moveTo(bx, py);
-      ctx.lineTo(bx, py + ph);
+      ctx.moveTo(plat.ropeRight.x, 0);
+      ctx.lineTo(plat.ropeRight.x, py);
       ctx.stroke();
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(bx - 1, py + 3, 2, 2);
-      ctx.fillRect(bx - 1, py + ph - 5, 2, 2);
-    }
+      ctx.strokeStyle = '#3e6822';
+      ctx.lineWidth = 2;
+      for (let ly = 65; ly < py - 20; ly += 60) {
+        ctx.beginPath();
+        ctx.arc(plat.ropeRight.x, ly, 6, 0, Math.PI);
+        ctx.stroke();
+      }
 
-    // Warstewka mchu na deskach
-    ctx.fillStyle = '#4c802b';
-    ctx.fillRect(px, py, pw, 3.5);
-
-    // Rim lighting
-    ctx.strokeStyle = 'rgba(235, 195, 100, 0.85)';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(px + pw, py);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#1b1005';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px, py, pw, ph);
-
-    // 3. Poręcz linowa na pomoście
-    ctx.strokeStyle = '#3e240e';
-    ctx.lineWidth = 3.5;
-    for (let sx = px + 25; sx <= px + pw - 25; sx += 42) {
+      if (plat.ropeRight.hp < plat.ropeRight.maxHp) {
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(plat.ropeRight.x - 3, py - 35, 6, 12);
+      }
+    } else {
+      const vSway = Math.sin(animTime * 3.0 + px * 0.05 + 1.2) * 8;
+      ctx.strokeStyle = '#3a200a';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(sx, py);
-      ctx.lineTo(sx, py - 24);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = '#5c3d1b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(px + 10, py - 24);
-    ctx.lineTo(px + pw - 10, py - 24);
-    ctx.stroke();
-
-    // 4. Wiszące pnącza pod pomostem
-    ctx.strokeStyle = '#2f521b';
-    ctx.lineWidth = 2.2;
-    for (let vx = px + 30; vx < px + pw - 30; vx += 50) {
-      const vLen = 22 + Math.sin(vx * 0.2) * 10;
-      const vSway = Math.sin(animTime * 2.5 + vx * 0.1) * 5;
-      ctx.beginPath();
-      ctx.moveTo(vx, py + ph);
-      ctx.quadraticCurveTo(vx + vSway * 0.5, py + ph + vLen * 0.5, vx + vSway, py + ph + vLen);
+      ctx.moveTo(plat.ropeRight.x, 0);
+      ctx.quadraticCurveTo(plat.ropeRight.x + vSway * 0.5, 45, plat.ropeRight.x + vSway, 85);
       ctx.stroke();
     }
 
-    // 5. (Usunięto wiszące pomarańczowe lampiony pod kładkami dla czystego dziennego krajobrazu i 60 FPS)
+    // 2. Kładka i modularne deski pomostu wiszącego
+    for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+      const b = plat.blocks[bIdx];
+      if (b.x + b.w + 20 < camL || b.x - 20 > camR) continue;
+
+      ctx.save();
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      ctx.translate(cx, cy);
+      if (b.angle) {
+        ctx.rotate(b.angle);
+      }
+      const halfW = b.w / 2;
+      const halfH = b.h / 2;
+
+      if (b.intact) {
+        const platGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
+        platGrad.addColorStop(0.0, '#7c582c');
+        platGrad.addColorStop(0.5, '#563a18');
+        platGrad.addColorStop(1.0, '#35220c');
+        ctx.fillStyle = platGrad;
+        ctx.fillRect(-halfW, -halfH, b.w, b.h);
+
+        // Szczeble i gwoździe
+        ctx.strokeStyle = '#201306';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -halfH);
+        ctx.lineTo(0, halfH);
+        ctx.stroke();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-halfW + 4, -halfH + 3, 2, 2);
+        ctx.fillRect(halfW - 6, -halfH + 3, 2, 2);
+
+        // Mech na deskach
+        ctx.fillStyle = '#4c802b';
+        ctx.fillRect(-halfW, -halfH, b.w, 3.5);
+
+        // Obrys i rim light
+        ctx.strokeStyle = '#1b1005';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
+
+        ctx.strokeStyle = 'rgba(235, 195, 100, 0.85)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-halfW, -halfH);
+        ctx.lineTo(halfW, -halfH);
+        ctx.stroke();
+
+        // Pęknięcia jeśli oberwała
+        if (b.hp < b.maxHp) {
+          ctx.strokeStyle = '#150901';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(-halfW + 6, -halfH);
+          ctx.lineTo(2, 0);
+          ctx.stroke();
+        }
+      } else {
+        // Zniszczona deska (spadająca / unosząca się w wodzie)
+        const rotGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
+        rotGrad.addColorStop(0, '#533614');
+        rotGrad.addColorStop(0.6, '#37200b');
+        rotGrad.addColorStop(1, '#1e0e04');
+        ctx.fillStyle = rotGrad;
+        ctx.fillRect(-halfW, -halfH, b.w, b.h);
+
+        ctx.strokeStyle = '#150901';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
+
+        ctx.strokeStyle = '#0f0501';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-halfW + 4, -halfH);
+        ctx.lineTo(2, 0);
+        ctx.lineTo(-halfW + 6, halfH);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Piana wodna wokół klocka w wodzie
+      if (!b.intact && b.y + b.h >= 1300) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.ellipse(cx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     ctx.restore();
   }
 
-  // Dolne pomosty w koronach drzew (Y: 620)
-  drawHighCanopyPlatform(1880, 620, 260, 20);
-  drawHighCanopyPlatform(2260, 620, 260, 20);
-
-  // Dodatkowe wyższe pomosty taktyczne w koronach drzew (Y: 430, rozstawione szerzej na flankach)
-  drawHighCanopyPlatform(1400, 430, 300, 20);
-  drawHighCanopyPlatform(2700, 430, 300, 20);
+  // Renderowanie wszystkich 4 wiszących pomostów taktycznych
+  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+    drawHighCanopyPlatform(ARENA_3_CANOPY_PLATFORMS[pIdx]);
+  }
 
   // C. KABLE KOTWICZĄCE ODCIĄGOWE (Od szczytów pylonów do litej skały brzegów)
   ctx.save();
   ctx.strokeStyle = '#4e3316';
   ctx.lineWidth = 5;
   ctx.beginPath();
-  // Lewy odciąg
-  ctx.moveTo(pylonLeftX, pylonTopY - 6);
-  ctx.lineTo(1560, 1260);
-  // Prawy odciąg
-  ctx.moveTo(pylonRightX, pylonTopY - 6);
-  ctx.lineTo(2840, 1260);
+  if (ARENA_3_PYLONS.left.intact) {
+    ctx.moveTo(pylonLeftX, pylonTopY - 6);
+    ctx.lineTo(1560, 1260);
+  } else {
+    ctx.moveTo(1560, 1260);
+    ctx.quadraticCurveTo(1610, 1280, 1650, 1250);
+  }
+  if (ARENA_3_PYLONS.right.intact) {
+    ctx.moveTo(pylonRightX, pylonTopY - 6);
+    ctx.lineTo(2840, 1260);
+  } else {
+    ctx.moveTo(2840, 1260);
+    ctx.quadraticCurveTo(2790, 1280, 2750, 1250);
+  }
   ctx.stroke();
 
   // Druga lina odciągowa (podwójna lina stalowo-linowa)
   ctx.strokeStyle = '#2d1c0a';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
-  ctx.lineTo(1564, 1260);
-  ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
-  ctx.lineTo(2836, 1260);
+  if (ARENA_3_PYLONS.left.intact) {
+    ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
+    ctx.lineTo(1564, 1260);
+  }
+  if (ARENA_3_PYLONS.right.intact) {
+    ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
+    ctx.lineTo(2836, 1260);
+  }
   ctx.stroke();
 
   // Żelazne kotwice wbite w skałę
@@ -2062,29 +2479,37 @@ export function drawArena3Foreground(ctx, camera) {
   // D. GŁÓWNE LINY NOŚNE PRZĘSŁA (Łuk paraboliczny od pylonu do pylonu)
   if (bridgeX2 + 80 >= camL && bridgeX1 - 80 <= camR) {
     ctx.save();
+    const leftAnchorX = ARENA_3_PYLONS.left.intact ? pylonLeftX : (pylonLeftX + 40);
+    const leftAnchorY = ARENA_3_PYLONS.left.intact ? (pylonTopY - 6) : 1150;
+    const rightAnchorX = ARENA_3_PYLONS.right.intact ? pylonRightX : (pylonRightX - 40);
+    const rightAnchorY = ARENA_3_PYLONS.right.intact ? (pylonTopY - 6) : 1150;
+    const midSagY = (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) ? 970 : 1260;
+
     // 1. Górna główna lina nośna (Main Cable)
     ctx.strokeStyle = '#5a3b19';
     ctx.lineWidth = 5.5;
     ctx.beginPath();
-    ctx.moveTo(pylonLeftX, pylonTopY - 6);
-    ctx.quadraticCurveTo(2200, 970, pylonRightX, pylonTopY - 6);
+    ctx.moveTo(leftAnchorX, leftAnchorY);
+    ctx.quadraticCurveTo(2200, midSagY, rightAnchorX, rightAnchorY);
     ctx.stroke();
 
     // Ciemna krawędź liny (cień)
     ctx.strokeStyle = '#2c1a0a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(pylonLeftX, pylonTopY - 3);
-    ctx.quadraticCurveTo(2200, 973, pylonRightX, pylonTopY - 3);
+    ctx.moveTo(leftAnchorX, leftAnchorY + 3);
+    ctx.quadraticCurveTo(2200, midSagY + 3, rightAnchorX, rightAnchorY + 3);
     ctx.stroke();
 
     // 2. Dolna lina poręczy (Handrail cable)
-    ctx.strokeStyle = '#432910';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(bridgeX1 - 10, bridgeY - 35);
-    ctx.lineTo(bridgeX2 + 10, bridgeY - 35);
-    ctx.stroke();
+    if (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) {
+      ctx.strokeStyle = '#432910';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(bridgeX1 - 10, bridgeY - 35);
+      ctx.lineTo(bridgeX2 + 10, bridgeY - 35);
+      ctx.stroke();
+    }
 
     // 3. Pionowe wieszaki linowe łączące główną linę z kładką (Vertical Suspenders)
     ctx.strokeStyle = 'rgba(115, 78, 38, 0.85)';
@@ -2093,7 +2518,7 @@ export function drawArena3Foreground(ctx, camera) {
       const b = ARENA_3_BRIDGE_BLOCKS[i];
       const hx = b.origX + b.w / 2;
       const u = (hx - pylonLeftX) / (pylonRightX - pylonLeftX);
-      const cableY = (1 - u) * (1 - u) * (pylonTopY - 6) + 2 * (1 - u) * u * 970 + u * u * (pylonTopY - 6);
+      const cableY = (1 - u) * (1 - u) * leftAnchorY + 2 * (1 - u) * u * midSagY + u * u * rightAnchorY;
 
       if (b.intact && b.cableAttached) {
         // Nienaruszona lina nośna
@@ -2274,13 +2699,15 @@ export function onArena3BulletHit(bullet) {
   if (!bullet) return false;
   const bx = bullet.x;
   const by = bullet.y;
+  const bDamage = (bullet.damage || 14) * 2.5;
 
+  // 1. Klocki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     if (!b.intact) continue;
 
     if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= (bullet.damage || 14) * 2.5;
+      b.hp -= bDamage;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
 
       if (b.hp <= 0) {
@@ -2292,6 +2719,71 @@ export function onArena3BulletHit(bullet) {
       return true;
     }
   }
+
+  // 2. Klocki wiszących pomostów taktycznych
+  for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
+    const b = ALL_CANOPY_BLOCKS[i];
+    if (!b.intact) continue;
+
+    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
+      b.hp -= bDamage;
+      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+
+      if (b.hp <= 0) {
+        const impX = (bullet.vx || 0) * 0.1;
+        const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
+        breakCanopyBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
+      }
+      return true;
+    }
+  }
+
+  // 3. Liny nośne pomostów wiszących (możliwość odstrzelenia liny snajperem!)
+  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+    const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+
+    // Lewa lina
+    if (plat.ropeLeft.intact) {
+      if (Math.abs(bx - plat.ropeLeft.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
+        plat.ropeLeft.hp -= bDamage;
+        spawnBridgeSplinters(plat.ropeLeft.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+        if (plat.ropeLeft.hp <= 0) {
+          plat.ropeLeft.intact = false;
+          onCanopyRopeSnapped(plat, 'left');
+        }
+        return true;
+      }
+    }
+
+    // Prawa lina
+    if (plat.ropeRight.intact) {
+      if (Math.abs(bx - plat.ropeRight.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
+        plat.ropeRight.hp -= bDamage;
+        spawnBridgeSplinters(plat.ropeRight.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+        if (plat.ropeRight.hp <= 0) {
+          plat.ropeRight.intact = false;
+          onCanopyRopeSnapped(plat, 'right');
+        }
+        return true;
+      }
+    }
+  }
+
+  // 4. Drewniane filary nośne pylonów mostu (A-frame pylons)
+  for (const k of ['left', 'right']) {
+    const p = ARENA_3_PYLONS[k];
+    if (!p.intact) continue;
+
+    if (bx >= p.x - 28 && bx <= p.x + 28 && by >= p.topY && by <= p.baseY) {
+      p.hp -= bDamage;
+      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+      if (p.hp <= 0) {
+        destroyPylon(k);
+      }
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -2303,6 +2795,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   let hitAny = false;
   const blastRad = radius || 140;
 
+  // 1. Wybuch w klocki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     const cx = b.x + b.w / 2;
@@ -2331,6 +2824,92 @@ export function onArena3Explosion(expX, expY, radius, context) {
         b.vRot += angularImpulse * 0.8;
         b.isAsleep = false;
         b.sleepTimer = 0;
+      }
+    }
+  }
+
+  // 2. Wybuch w klocki pomostów wiszących
+  for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
+    const b = ALL_CANOPY_BLOCKS[i];
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const d = Math.hypot(cx - expX, cy - expY);
+
+    if (d <= blastRad + 40) {
+      hitAny = true;
+      const intensity = Math.max(0, 1 - d / (blastRad + 40));
+      const dirX = d > 0.001 ? (cx - expX) / d : 0;
+      const dirY = d > 0.001 ? (cy - expY) / d : -1;
+
+      const blastForce = intensity * 19;
+      const impulseX = dirX * blastForce + (Math.random() - 0.5) * 4;
+      const impulseY = (dirY - 0.55) * blastForce - 2.8;
+      const angularImpulse = (dirX >= 0 ? 1 : -1) * (0.12 + Math.random() * 0.24) * intensity;
+
+      if (b.intact) {
+        b.hp -= intensity * 160;
+        if (b.hp <= 0 || d <= blastRad) {
+          breakCanopyBlock(b, impulseX, impulseY, angularImpulse);
+        }
+      } else {
+        b.vx += impulseX * 0.85;
+        b.vy += impulseY * 0.85;
+        b.vRot += angularImpulse * 0.8;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
+      }
+    }
+  }
+
+  // 3. Wybuch w liny pomostów wiszących
+  for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
+    const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
+
+    // Lewa lina
+    if (plat.ropeLeft.intact) {
+      const clampRopeY = Math.max(0, Math.min(plat.origY, expY));
+      const distL = Math.hypot(plat.ropeLeft.x - expX, clampRopeY - expY);
+      if (distL <= blastRad + 25) {
+        hitAny = true;
+        const intensity = 1 - distL / (blastRad + 25);
+        plat.ropeLeft.hp -= intensity * 110;
+        if (plat.ropeLeft.hp <= 0) {
+          plat.ropeLeft.intact = false;
+          onCanopyRopeSnapped(plat, 'left');
+        }
+      }
+    }
+
+    // Prawa lina
+    if (plat.ropeRight.intact) {
+      const clampRopeY = Math.max(0, Math.min(plat.origY, expY));
+      const distR = Math.hypot(plat.ropeRight.x - expX, clampRopeY - expY);
+      if (distR <= blastRad + 25) {
+        hitAny = true;
+        const intensity = 1 - distR / (blastRad + 25);
+        plat.ropeRight.hp -= intensity * 110;
+        if (plat.ropeRight.hp <= 0) {
+          plat.ropeRight.intact = false;
+          onCanopyRopeSnapped(plat, 'right');
+        }
+      }
+    }
+  }
+
+  // 4. Wybuch w filary pylonów mostu
+  for (const k of ['left', 'right']) {
+    const p = ARENA_3_PYLONS[k];
+    if (!p.intact) continue;
+
+    const clampPylonY = Math.max(p.topY, Math.min(p.baseY, expY));
+    const distP = Math.hypot(p.x - expX, clampPylonY - expY);
+    if (distP <= blastRad + 50) {
+      hitAny = true;
+      const intensity = 1 - distP / (blastRad + 50);
+      p.hp -= intensity * 260; // Granat bezpośredni lub bliski może zniszczyć pylon
+      spawnBridgeSplinters(p.x, clampPylonY, (p.x - expX) * 0.2, -3, 14);
+      if (p.hp <= 0) {
+        destroyPylon(k);
       }
     }
   }
@@ -2393,6 +2972,10 @@ const arena3 = {
 
 if (typeof window !== 'undefined') {
   window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
+  window.ARENA_3_PYLONS = ARENA_3_PYLONS;
+  window.ARENA_3_CANOPY_PLATFORMS = ARENA_3_CANOPY_PLATFORMS;
+  window.ALL_CANOPY_BLOCKS = ALL_CANOPY_BLOCKS;
+  window.arena3 = arena3;
 }
 
 export default arena3;

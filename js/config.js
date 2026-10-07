@@ -114,6 +114,10 @@ export const WEAPON_CONFIG = {
 // =========================================================================
 // URZĄDZENIA DOTYKOWE (STEROWANIE MOBILNE / VIRTUAL JOYSTICK)
 // =========================================================================
-export let isTouchDevice = (typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0)));
+export let isTouchDevice = (typeof window !== 'undefined' && (
+  'ontouchstart' in window ||
+  (navigator && navigator.maxTouchPoints > 0) ||
+  (window.location && (new URLSearchParams(window.location.search).has('touch') || new URLSearchParams(window.location.search).has('mobile')))
+));
 export function setTouchDevice(val) { isTouchDevice = !!val; }
 

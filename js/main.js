@@ -44,9 +44,9 @@ import {
   isChatActive, openChat, closeChat, updateCursorVisibility
 } from './network.js';
 import {
-  leftStick, rightStick, btnCluster,
+  leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
-  handleSlideProneButtonPress, triggerRightStickKick,
+  handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
 } from './mobileControls.js';
 import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
@@ -105,6 +105,7 @@ setActiveBot(bot);
 const initialArena = getActiveArena();
 const initialArenaId = initialArena?.id || 'arena-1';
 switchArena(initialArenaId, player, bot, ball);
+window.activeArenaId = activeArenaId;
 if (typeof syncDevArenaButtonUI === 'function') {
   syncDevArenaButtonUI();
 }
@@ -164,8 +165,11 @@ canvas.addEventListener('touchstart', (e) => {
 
     // =======================================================================
     // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK (SZTYWNO UMIEJSCOWIONY DRĄŻEK)
+    // Dotyk wyłącznie w promieniu lewego drążka (ochrona przed przypadkowym ruchem)
     // =======================================================================
-    if (t.clientX < midX && !leftStick.active) {
+    const distToLeftStick = Math.hypot(t.clientX - leftStick.baseX, t.clientY - leftStick.baseY);
+    const maxLeftTouchDist = (leftStick.maxRadius || 55) + 26;
+    if (t.clientX < midX && !leftStick.active && distToLeftStick <= maxLeftTouchDist) {
       leftStick.active = true;
       leftStick.id = t.identifier;
       leftStick.curX = t.clientX;
@@ -216,137 +220,95 @@ canvas.addEventListener('touchstart', (e) => {
     // PRAWA STRONA EKRANU: PRZYCISKI (KOP, WŚLIZG, KUCANIE, GRANAT) I DRĄŻEK CELOWANIA
     // =======================================================================
     if (t.clientX >= midX) {
-      const kickBtn = btnCluster.kick;
-      const distToKick = kickBtn ? dist(t.clientX, t.clientY, kickBtn.x, kickBtn.y) : 999;
-      const distToSlide = dist(t.clientX, t.clientY, btnCluster.slide.x, btnCluster.slide.y);
-      const proneBtn = btnCluster.prone || btnCluster.crouch;
-      const isProneVisible = !!(proneBtn && proneBtn.visible);
-      const distToProne = isProneVisible ? dist(t.clientX, t.clientY, proneBtn.x, proneBtn.y) : 999;
-      const grenadeBtn = btnCluster.grenade;
-      const distToGrenade = grenadeBtn ? dist(t.clientX, t.clientY, grenadeBtn.x, grenadeBtn.y) : 999;
+      // 1. ZUNIFIKOWANY PRZYCISK AKCJI DYNAMICZNEJ (WŚLIZG / LEŻENIE / WSTANIE / KOPNIAK)
+      const pAct = pockets.action;
+      const distToAct = pAct ? dist(t.clientX, t.clientY, pAct.x, pAct.y) : 999;
 
-      if (kickBtn && distToKick < kickBtn.r + 18) {
-        kickBtn.active = true;
-        kickBtn.id = t.identifier;
-        player.isProne = false;
-        player.isCrouching = false;
-        player.crouchToggled = false;
-        const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-        startKickCharge(player, meleeTargets);
-      } else if (distToSlide < btnCluster.slide.r + 16) {
-        btnCluster.slide.active = true;
-        btnCluster.slide.id = t.identifier;
-        handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, btnCluster);
-      } else if (isProneVisible && distToProne < proneBtn.r + 20) {
-        // Dedykowany przycisk kładzenia się / wstawania pojawiający się w momencie kucania
-        proneBtn.active = true;
-        proneBtn.id = t.identifier;
-        if (player.isProne) {
-          // Wstań
-          player.isProne = false;
-          player.isCrouching = false;
-          player.crouchToggled = false;
-          player.state = 'STAND';
-          player.hitboxHeight = player.h || 70;
-        } else {
-          // Połóż się (PRONE)
-          player.isProne = true;
-          player.isCrouching = false;
-          player.crouchToggled = true;
-          player.state = 'PRONE';
-          player.hitboxHeight = 26;
-        }
-        updateMobileControlStates(player, leftStick, btnCluster);
-      } else if (grenadeBtn && distToGrenade < grenadeBtn.r + 16) {
-        grenadeBtn.active = true;
-        grenadeBtn.id = t.identifier;
-        throwTacticalGrenade(player);
-      } else if (!rightStick.active) {
-        // Zabezpieczenie przed nakładaniem się stref dotykowych prawego drążka i przycisków
-        if ((kickBtn && distToKick < kickBtn.r + 26) || distToSlide < btnCluster.slide.r + 26 || (isProneVisible && distToProne < proneBtn.r + 26) || (grenadeBtn && distToGrenade < grenadeBtn.r + 26)) continue;
+      // 2. KIESZEŃ NA BROŃ PALNĄ
+      const pFarm = pockets.firearm;
+      const distToFarm = pFarm ? dist(t.clientX, t.clientY, pFarm.x, pFarm.y) : 999;
 
-        const isGhostActive = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
-        const distToGhost = isGhostActive ? dist(t.clientX, t.clientY, rightStick.baseX, rightStick.baseY) : 999;
-        const curWep = player.currentWeapon || WEAPONS.AK47;
+      // 3. KIESZEŃ NA BROŃ MIOTANĄ (GRANAT)
+      const pThrow = pockets.throwable;
+      const distToThrow = pThrow ? dist(t.clientX, t.clientY, pThrow.x, pThrow.y) : 999;
 
-        if (isGhostActive && distToGhost < (rightStick.maxRadius || 58) + 35) {
-          // Dotknięcie ducha drążka w oknie 300 ms
-          rightStick.active = true;
-          rightStick.id = t.identifier;
-          rightStick.touchStartTime = performance.now();
-          rightStick.startX = t.clientX;
-          rightStick.startY = t.clientY;
-          rightStick.movedDist = 0;
-          rightStick.isShooting = true;
-          rightStick.lingerAlpha = 1.0;
-          rightStick.curX = t.clientX;
-          rightStick.curY = t.clientY;
+      const distToRightStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
+      const maxRightTouchDist = (rightStick.maxRadius || 58) + 24;
+
+      const minDist = Math.min(distToAct, distToFarm, distToThrow);
+      if (minDist === distToAct && pAct && distToAct < pAct.r + 15) {
+        pAct.active = true;
+        pAct.id = t.identifier;
+        handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, {
+          ball: ball,
+          targets: [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean),
+          obstacles: obstacles
+        });
+      } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 15) {
+        pFarm.active = true;
+        pFarm.id = t.identifier;
+        pFarm.startX = t.clientX;
+        pFarm.startY = t.clientY;
+        pFarm.touchStartTime = performance.now();
+        pFarm.isDragging = false;
+      } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 15) {
+        pThrow.active = true;
+        pThrow.id = t.identifier;
+        pThrow.startX = t.clientX;
+        pThrow.startY = t.clientY;
+        pThrow.touchStartTime = performance.now();
+        pThrow.isDragging = false;
+      } else if (!rightStick.active && distToRightStick <= maxRightTouchDist) {
+        // Zabezpieczenie przed nakładaniem się stref kieszeni i prawego drążka
+        if (distToAct < pAct.r + 12 || distToFarm < pFarm.r + 12 || distToThrow < pThrow.r + 12) continue;
+
+        rightStick.active = true;
+        rightStick.id = t.identifier;
+        rightStick.touchStartTime = performance.now();
+        rightStick.startX = t.clientX;
+        rightStick.startY = t.clientY;
+        rightStick.movedDist = 0;
+        rightStick.curX = t.clientX;
+        rightStick.curY = t.clientY;
+
+        const dx = t.clientX - rightStick.baseX;
+        const dy = t.clientY - rightStick.baseY;
+        const sDist = Math.hypot(dx, dy);
+        const maxR = rightStick.maxRadius || 58;
+
+        if (sDist > 6) {
+          const factor = Math.min(1.0, (sDist - 6) / (maxR - 6));
+          rightStick.axisX = (dx / sDist) * factor;
+          rightStick.axisY = (dy / sDist) * factor;
+          rightStick.power = factor;
+          player.aimOffsetX = rightStick.axisX * (180 + factor * 120);
+          player.aimOffsetY = rightStick.axisY * (180 + factor * 120);
+          player.aimX = player.x + player.w / 2 + player.aimOffsetX;
+          player.aimY = player.y + player.h / 2 + player.aimOffsetY;
           player.isAiming = true;
-          player.isShooting = true;
-
-          const dx = t.clientX - rightStick.baseX;
-          const dy = t.clientY - rightStick.baseY;
-          const sDist = Math.hypot(dx, dy);
-          if (sDist > 6) {
-            rightStick.axisX = dx / sDist;
-            rightStick.axisY = dy / sDist;
-            const maxR = rightStick.maxRadius || 58;
-            const aimDist = 180 + Math.min(1.0, (sDist - 6) / (maxR - 6)) * 120;
-            player.aimOffsetX = rightStick.axisX * aimDist;
-            player.aimOffsetY = rightStick.axisY * aimDist;
+          if (Math.abs(rightStick.axisX) > 0.08) {
+            player.facing = rightStick.axisX >= 0 ? 1 : -1;
           }
 
-          if (curWep.id === 'SHOTGUN') {
-            rightStick.shotgunFiredThisTap = true;
-            rightStick.waitingForSecondTap = false;
-            rightStick.windowTimer = 0;
-            if (player.shootCooldown <= 0) {
-              triggerPlayerShoot(player, curWep);
+          if (rightStick.armedMode === 'FIREARM') {
+            // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+            rightStick.isShooting = (factor >= 0.90);
+            if (rightStick.isShooting && !player.isDead) {
+              const curWep = player.currentWeapon || WEAPONS.AK47;
+              if (player.shootCooldown <= 0) {
+                triggerPlayerShoot(player, curWep);
+              }
             }
           } else {
-            rightStick.waitingForSecondTap = false;
-            rightStick.windowTimer = 0;
-            if (player.shootCooldown <= 0) {
-              triggerPlayerShoot(player, curWep);
-            }
+            rightStick.isShooting = false;
           }
         } else {
-          rightStick.active = true;
-          rightStick.id = t.identifier;
-          rightStick.touchStartTime = performance.now();
-          rightStick.startX = t.clientX;
-          rightStick.startY = t.clientY;
-          rightStick.movedDist = 0;
-          rightStick.curX = t.clientX;
-          rightStick.curY = t.clientY;
-
-          const dx = t.clientX - rightStick.baseX;
-          const dy = t.clientY - rightStick.baseY;
-          const sDist = Math.hypot(dx, dy);
-          const maxR = rightStick.maxRadius || 58;
-
-          if (sDist > 6) {
-            const factor = Math.min(1.0, (sDist - 6) / (maxR - 6));
-            rightStick.axisX = (dx / sDist) * factor;
-            rightStick.axisY = (dy / sDist) * factor;
-            rightStick.power = factor;
-            player.aimOffsetX = rightStick.axisX * (180 + factor * 120);
-            player.aimOffsetY = rightStick.axisY * (180 + factor * 120);
-          } else {
-            rightStick.axisX = 0;
-            rightStick.axisY = 0;
-            rightStick.power = 0;
-            player.aimOffsetX = (player.facing || 1) * 180;
-            player.aimOffsetY = -20;
-          }
-
+          rightStick.axisX = 0;
+          rightStick.axisY = 0;
+          rightStick.power = 0;
           rightStick.isShooting = false;
-          rightStick.waitingForSecondTap = false;
-          rightStick.windowTimer = 0;
-          rightStick.lingerAlpha = 1.0;
-          rightStick.gestureState = 'IDLE';
-          rightStick.shotgunFiredThisTap = false;
-          player.isAiming = true;
+          player.aimOffsetX = (player.facing || 1) * 180;
+          player.aimOffsetY = -20;
         }
       }
     }
@@ -481,6 +443,37 @@ canvas.addEventListener('touchmove', (e) => {
       updateDoubleFlickDetection(leftStick.axisY);
     }
 
+    // A. Przeciąganie kieszeni na broń palną
+    if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
+      const d = Math.hypot(t.clientX - pockets.firearm.startX, t.clientY - pockets.firearm.startY);
+      if (d > 10) {
+        pockets.firearm.isDragging = true;
+        rightStick.draggedSlot = {
+          type: 'FIREARM',
+          startX: pockets.firearm.x,
+          startY: pockets.firearm.y,
+          curX: t.clientX,
+          curY: t.clientY
+        };
+      }
+    }
+
+    // B. Przeciąganie kieszeni na broń miotaną (granat)
+    if (pockets.throwable && pockets.throwable.active && t.identifier === pockets.throwable.id) {
+      const d = Math.hypot(t.clientX - pockets.throwable.startX, t.clientY - pockets.throwable.startY);
+      if (d > 10) {
+        pockets.throwable.isDragging = true;
+        rightStick.draggedSlot = {
+          type: 'GRENADE',
+          startX: pockets.throwable.x,
+          startY: pockets.throwable.y,
+          curX: t.clientX,
+          curY: t.clientY
+        };
+      }
+    }
+
+    // C. Wychylenie prawego drążka (celowanie, natychmiastowy ogień lub miotanie)
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.curX = t.clientX;
       rightStick.curY = t.clientY;
@@ -488,7 +481,7 @@ canvas.addEventListener('touchmove', (e) => {
       const dy = rightStick.curY - rightStick.baseY;
       const sDist = Math.hypot(dx, dy);
       const deadzone = 6;
-      const maxR = rightStick.maxRadius || 65;
+      const maxR = rightStick.maxRadius || 58;
 
       rightStick.movedDist = sDist;
 
@@ -501,28 +494,34 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = ny * power;
         rightStick.power = power;
 
-        const aimDist = 160 + power * 100;
+        const aimDist = 160 + power * 120;
         player.aimOffsetX = nx * aimDist;
         player.aimOffsetY = ny * aimDist;
         player.aimX = player.x + player.w / 2 + nx * aimDist;
         player.aimY = player.y + player.h / 2 + ny * aimDist;
         player.isAiming = true;
 
-        if (Math.abs(nx) > 0.1) {
+        if (Math.abs(nx) > 0.08) {
           player.facing = nx >= 0 ? 1 : -1;
         }
 
-        // Wychylenie prawej gałki ładuje siłę wykopu:
-        player.isCharging = true;
-        player.isStickCharging = true;
-        player.chargePower = Math.min(1.0, power);
+        if (rightStick.armedMode === 'FIREARM') {
+          // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+          rightStick.isShooting = (power >= 0.90);
+          if (rightStick.isShooting && !player.isDead) {
+            const curWep = player.currentWeapon || WEAPONS.AK47;
+            if (player.shootCooldown <= 0) {
+              triggerPlayerShoot(player, curWep);
+            }
+          }
+        } else {
+          rightStick.isShooting = false;
+        }
       } else {
         rightStick.axisX = 0;
         rightStick.axisY = 0;
         rightStick.power = 0;
-        player.isCharging = false;
-        player.isStickCharging = false;
-        player.chargePower = 0;
+        rightStick.isShooting = false;
       }
     }
   }
@@ -584,76 +583,75 @@ function endTouch(e) {
       updateMobileControlStates(player, leftStick, btnCluster);
     }
 
-    if (btnCluster.kick && btnCluster.kick.active && t.identifier === btnCluster.kick.id) {
-      btnCluster.kick.active = false;
-      btnCluster.kick.id = null;
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      executeReleaseKick(ball, player, 0, meleeTargets);
+    // A. Zwolnienie przycisku akcji dynamicznej
+    if (pockets.action && pockets.action.active && t.identifier === pockets.action.id) {
+      pockets.action.active = false;
+      pockets.action.id = null;
     }
 
-    if (btnCluster.slide.active && t.identifier === btnCluster.slide.id) {
-      btnCluster.slide.active = false;
-      btnCluster.slide.id = null;
-    }
+    // B. Zwolnienie kieszeni na broń palną
+    if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
+      pockets.firearm.active = false;
+      pockets.firearm.id = null;
 
-    const proneBtn = btnCluster.prone || btnCluster.crouch;
-    if (proneBtn && proneBtn.active && t.identifier === proneBtn.id) {
-      proneBtn.active = false;
-      proneBtn.id = null;
-      if (btnCluster.crouch) {
-        btnCluster.crouch.active = false;
-        btnCluster.crouch.id = null;
+      if (pockets.firearm.isDragging) {
+        // Przeciągnięcie na prawy drążek (założenie broni na ręce)
+        const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
+        if (distToStick < (rightStick.maxRadius || 58) + 36) {
+          rightStick.armedMode = 'FIREARM';
+        }
+        rightStick.draggedSlot = null;
+        pockets.firearm.isDragging = false;
+      } else {
+        // Kliknięcie na ikonę broni ją zmienia (po puszczeniu przycisku)
+        const touchDur = performance.now() - (pockets.firearm.touchStartTime || 0);
+        if (touchDur < 450) {
+          const curId = player.currentWeapon?.id || 'AK47';
+          player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+        }
       }
-      keys.crouch = false;
     }
 
-    if (btnCluster.grenade && btnCluster.grenade.active && t.identifier === btnCluster.grenade.id) {
-      btnCluster.grenade.active = false;
-      btnCluster.grenade.id = null;
+    // C. Zwolnienie kieszeni na broń miotaną (granat)
+    if (pockets.throwable && pockets.throwable.active && t.identifier === pockets.throwable.id) {
+      pockets.throwable.active = false;
+      pockets.throwable.id = null;
+
+      if (pockets.throwable.isDragging) {
+        // Przeciągnięcie na prawy drążek (uzbrojenie granatu w rękach)
+        const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
+        if (distToStick < (rightStick.maxRadius || 58) + 36) {
+          rightStick.armedMode = 'GRENADE';
+        }
+        rightStick.draggedSlot = null;
+        pockets.throwable.isDragging = false;
+      } else {
+        // Kliknięcie na granat również uzbraja/przełącza tryb miotania na drążku
+        const touchDur = performance.now() - (pockets.throwable.touchStartTime || 0);
+        if (touchDur < 450) {
+          rightStick.armedMode = (rightStick.armedMode === 'GRENADE') ? 'FIREARM' : 'GRENADE';
+        }
+      }
     }
 
+    // D. Zwolnienie prawego drążka
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
 
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      const inKickReach = isBallInKickReach(player, ball);
-      const meleeTarget = findMeleeTarget(player, meleeTargets);
-      const hasMeleeTarget = !!meleeTarget;
-      const isChargedKick = (player.chargePower >= 0.95);
-      const curWep = player.currentWeapon || WEAPONS.AK47;
-      const touchDuration = performance.now() - (rightStick.touchStartTime || performance.now());
-      const isFlick = (touchDuration < 320 && (rightStick.movedDist > 18 || rightStick.power > 0.25));
-      const activeArena = getActiveArena();
-      const nearCart = activeArena?.minecarts?.some(c => Math.abs((player.x + (player.w || 24) / 2) - (c.x + c.w / 2)) < 160 && Math.abs((player.y + (player.h || 70)) - (c.y + c.h)) < 90);
-
-      if (rightStick.isShooting) {
-        // Zakończenie próby strzału
+      if (rightStick.armedMode === 'GRENADE') {
+        // Rzut wykonuje się wychyleniem drążka i puszczeniu; odległość wychylenia wyzwala siłę rzutu
+        if (rightStick.power > 0.12 && !player.isDead) {
+          const throwPower = Math.min(1.5, Math.max(0.4, rightStick.power * 1.3));
+          throwTacticalGrenade(player, player.aimX, player.aimY, throwPower);
+          // Po rzucie drążek natychmiast wraca do trybu broni palnej
+          rightStick.armedMode = 'FIREARM';
+        }
+      } else {
+        // Zakończenie ognia
         rightStick.isShooting = false;
         player.isShooting = false;
-        if (curWep.id === 'SHOTGUN') {
-          // SHOTGUN (Strzelba): Aby oddać kolejny strzał, gracz musi oderwać palec i ponownie dotknąć drążka w ciągu ODNOWIONEGO okna 300 ms (cykl pompki)
-          rightStick.waitingForSecondTap = true;
-          rightStick.windowTimer = 300;
-          rightStick.lingerAlpha = 0.55;
-          rightStick.shotgunFiredThisTap = false;
-        } else {
-          // AK-47 (Automat): zwolnienie palca usuwa ducha
-          rightStick.waitingForSecondTap = false;
-          rightStick.windowTimer = 0;
-          rightStick.lingerAlpha = 0;
-        }
-      } else if (inKickReach || (isChargedKick && hasMeleeTarget) || nearCart || isFlick) {
-        // Wykonaj wykop (piłka, wagonik kopalniany, wróg w zwarciu lub dynamiczny flick gałką)
-        executeReleaseKick(ball, player, 0, meleeTargets);
-        rightStick.waitingForSecondTap = false;
-        rightStick.windowTimer = 0;
-        rightStick.lingerAlpha = 0;
-      } else {
-        // WARIANT B (Brak celu w zwarciu): W miejscu puszczenia na 300 ms aktywuje się półprzezroczysty duch drążka
-        rightStick.waitingForSecondTap = true;
-        rightStick.windowTimer = 300;
-        rightStick.lingerAlpha = 0.55;
+        rightStick.shotgunFiredThisTap = false;
       }
 
       player.isCharging = false;
@@ -1436,6 +1434,7 @@ if (devArenaBtn) {
       nextArena = 'ARENA_1';
     }
     switchArena(nextArena, player, bot, ball);
+    window.activeArenaId = activeArenaId;
     sendArenaSwitch(nextArena);
     syncDevArenaButtonUI();
     camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
@@ -2479,8 +2478,9 @@ function update() {
   }
 
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
+  window.activeArenaId = activeArenaId;
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isTouchFiring = rightStick.active && rightStick.isShooting && !player.isDead;
+  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead;
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
 
   if (curWep.auto) {
@@ -2498,12 +2498,7 @@ function update() {
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
-      if (curWep.auto) {
-        triggerPlayerShoot(player, curWep);
-      } else if (!rightStick.shotgunFiredThisTap) {
-        triggerPlayerShoot(player, curWep);
-        rightStick.shotgunFiredThisTap = true;
-      }
+      triggerPlayerShoot(player, curWep);
     }
   } else if (mouseState.lmbDown && !player.isDead) {
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
@@ -2952,6 +2947,9 @@ function loop() {
 if (typeof window !== 'undefined') {
   window.player = player;
   window.camera = camera;
+  window.pockets = pockets;
+  window.rightStick = rightStick;
+  window.leftStick = leftStick;
   if (window.location) {
     const urlParams = new URLSearchParams(window.location.search);
     const autostartClass = urlParams.get('class') || urlParams.get('autostart');

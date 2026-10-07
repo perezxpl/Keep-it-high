@@ -6,6 +6,27 @@ import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, MAP_WIDTH, isTou
 import { spawnConcreteDebris, spawnRicochetSparks } from './particles.js';
 import { drawPandoraBackground } from './background.js';
 import { goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS } from './arenas/arena1.js';
+import {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight,
+  shakeImpulse,
+  setCameraCanvas,
+  setCameraGroundY,
+  setCameraArenaId,
+  getCameraArenaId
+} from './camera.js';
 export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
 
 export const centerX = MAP_WIDTH / 2; // 1800
@@ -26,7 +47,7 @@ export function resetColliders() {
   _worldCustomObstacles = [];
 }
 
-export let activeArenaId = 'ARENA_1';
+export var activeArenaId = 'ARENA_1';
 export const ladders = [];
 export let _worldArenaState = {
   get activeArenaId() { return activeArenaId; },
@@ -41,7 +62,7 @@ export function registerWorldObstacles(platforms, obstacles, arenaState) {
   if (arenaState) {
     if (arenaState.activeArenaId) {
       activeArenaId = arenaState.activeArenaId;
-      setCameraArenaId(activeArenaId);
+      if (typeof setCameraArenaId === 'function') setCameraArenaId(activeArenaId);
     }
     if (arenaState.arenaScore) _worldArenaState.arenaScore = arenaState.arenaScore;
     if (arenaState.arena1State) _worldArenaState.arena1State = arenaState.arena1State;
@@ -50,7 +71,9 @@ export function registerWorldObstacles(platforms, obstacles, arenaState) {
 
 export function setActiveArenaId(id) {
   activeArenaId = id;
-  setCameraArenaId(id);
+  if (typeof setCameraArenaId === 'function') {
+    setCameraArenaId(id);
+  }
 }
 
 export const goalCelebration = {
@@ -257,27 +280,7 @@ export function carveGroundHole(expX, expY, blastRadius = 85) {
   return destroyed;
 }
 
-import {
-  camera,
-  updateCamera,
-  clampCamera,
-  getArenaBounds,
-  world,
-  devZoomLevel,
-  setDevZoom,
-  triggerScreenShake,
-  applyCameraTransform,
-  restoreCameraTransform,
-  worldToScreen,
-  screenToWorld,
-  getCanvasLogicalWidth,
-  getCanvasLogicalHeight,
-  shakeImpulse,
-  setCameraCanvas,
-  setCameraGroundY,
-  setCameraArenaId,
-  getCameraArenaId
-} from './camera.js';
+
 
 setCameraArenaId(activeArenaId);
 setCameraGroundY(GROUND_Y);
@@ -2718,163 +2721,212 @@ export function updateFps() {
   }
 }
 
+export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const mainColor = isPressed ? '#ffffff' : 'rgba(255, 255, 255, 0.90)';
+  const faintColor = isPressed ? 'rgba(255, 255, 255, 0.70)' : 'rgba(255, 255, 255, 0.50)';
+
+  ctx.strokeStyle = mainColor;
+  ctx.fillStyle = mainColor;
+  ctx.lineWidth = 2.0;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (mode === 'SLIDE') {
+    // 1. Wektorowa sylwetka wślizgu bojowego (Slide)
+    ctx.beginPath();
+    ctx.arc(-6, -4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-5, -1);
+    ctx.lineTo(-2, 3);
+    ctx.lineTo(8, 3);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-2, 3);
+    ctx.lineTo(2, 0);
+    ctx.stroke();
+
+    ctx.strokeStyle = faintColor;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-9, 5);
+    ctx.lineTo(10, 5);
+    ctx.stroke();
+  } else if (mode === 'PRONE') {
+    // 2. Wektorowa sylwetka leżenia (Prone)
+    const pFacing = player ? (player.facing || 1) : 1;
+    ctx.beginPath();
+    ctx.arc(pFacing * 6, -1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(pFacing * 3, 1);
+    ctx.lineTo(-pFacing * 8, 1);
+    ctx.stroke();
+
+    ctx.strokeStyle = faintColor;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-10, 4);
+    ctx.lineTo(10, 4);
+    ctx.stroke();
+  } else if (mode === 'STAND') {
+    // 3. Wektorowa sylwetka wstawania (Stand up)
+    ctx.beginPath();
+    ctx.arc(0, -6, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -3);
+    ctx.lineTo(0, 5);
+    ctx.stroke();
+
+    ctx.strokeStyle = faintColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, 0);
+    ctx.lineTo(0, -5);
+    ctx.lineTo(5, 0);
+    ctx.stroke();
+  } else {
+    // 4. Wektorowa sylwetka dynamicznego wykopu (Kick)
+    ctx.beginPath();
+    ctx.arc(-4, -6, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-3, -3);
+    ctx.lineTo(-1, 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-1, 2);
+    ctx.lineTo(-4, 7);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-1, 2);
+    ctx.lineTo(5, -1);
+    ctx.lineTo(9, -2);
+    ctx.stroke();
+
+    ctx.strokeStyle = faintColor;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, -0.6, 0.1);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null) {
   if (!isTouchDevice || !ctx || !player) return;
 
   ctx.save();
+  const time = performance.now();
 
-  // 1. LEWY DRĄŻEK: RUCH, SKOK W GÓRĘ I JETPACK (SZTYWNO UMIEJSCOWIONY, NATURALNIE PRZEZROCZYSTY)
+  // -------------------------------------------------------------------------
+  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Czysty, transparentny, bez napisów)
+  // -------------------------------------------------------------------------
   if (leftStick && leftStick.baseX > 0) {
     const isStickActive = leftStick.active;
-    const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy || 0) > 0.5);
-    const isJetReady = isAirborne && (player.jetFuel || 0) > 0;
     const isJetActive = player.isJetpacking || leftStick.isJetpacking;
-
-    let stickBorder = isStickActive ? '#38bdf8' : 'rgba(255, 255, 255, 0.18)';
-    let stickGlow = 'transparent';
-    let baseAlpha = isStickActive ? 0.65 : 0.25;
-
-    if (isJetActive) {
-      stickBorder = '#00e5ff';
-      stickGlow = '#00e5ff';
-    } else if (isJetReady) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
-      stickBorder = `rgba(0, 229, 255, ${0.4 + pulse * 0.5})`;
-      stickGlow = '#00e5ff';
-    }
-
     const maxR = leftStick.maxRadius || 55;
-    const bgGrad = ctx.createRadialGradient(leftStick.baseX, leftStick.baseY, 10, leftStick.baseX, leftStick.baseY, maxR);
-    bgGrad.addColorStop(0.0, `rgba(30, 41, 59, ${baseAlpha})`);
-    bgGrad.addColorStop(1.0, `rgba(15, 23, 42, ${baseAlpha * 0.85})`);
+    const bx = leftStick.baseX;
+    const by = leftStick.baseY;
 
+    // Baza drążka: w pełni przezroczysta, delikatny kontur bez koloru
     ctx.beginPath();
-    ctx.arc(leftStick.baseX, leftStick.baseY, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = bgGrad;
+    ctx.arc(bx, by, maxR, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)';
     ctx.fill();
-    ctx.shadowColor = stickGlow;
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = stickBorder;
-    ctx.lineWidth = isStickActive ? 2.0 : 1.4;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
 
-    // Subtelne krzyżykowe linie orientacji w gałce
-    ctx.strokeStyle = isStickActive ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(leftStick.baseX - 12, leftStick.baseY); ctx.lineTo(leftStick.baseX + 12, leftStick.baseY);
-    ctx.moveTo(leftStick.baseX, leftStick.baseY - 12); ctx.lineTo(leftStick.baseX, leftStick.baseY + 12);
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
     ctx.stroke();
 
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = isJetActive ? '#00e5ff' : (isJetReady ? '#38bdf8' : (isStickActive ? '#e2e8f0' : 'rgba(255, 255, 255, 0.35)'));
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText('▲ SKOK / JET', leftStick.baseX, leftStick.baseY - maxR - 8);
+    // Pozycja gałki
+    const knobX = bx + (leftStick.axisX * maxR);
+    const knobY = by + (leftStick.axisY * maxR);
 
-    if (isJetReady) {
-      ctx.fillStyle = '#00e5ff';
-      ctx.fillText('⚡ JETPACK READY', leftStick.baseX, leftStick.baseY + maxR + 16);
-    } else {
-      const isCrouchStick = player.isCrouching || (leftStick.active && leftStick.axisY > 0.35);
-      ctx.fillStyle = isCrouchStick ? '#f59e0b' : (isStickActive ? '#94a3b8' : 'rgba(255, 255, 255, 0.30)');
-      ctx.fillText(player.crouchToggled ? '▼ KUCA [WŁ]' : '▼ KUCAJ', leftStick.baseX, leftStick.baseY + maxR + 16);
+    // Dyskretna linia wychylenia
+    if (isStickActive && (Math.abs(leftStick.axisX) > 0.05 || Math.abs(leftStick.axisY) > 0.05)) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(knobX, knobY);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
-    const knobX = leftStick.baseX + (leftStick.axisX * maxR);
-    const knobY = leftStick.baseY + (leftStick.axisY * maxR);
-
-    const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 24);
-    if (isJetActive) {
-      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
-      knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.85)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-    } else if (isStickActive) {
-      knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.85)');
-      knobGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.75)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
+    // Gałka lewego drążka (subtelne intuicyjne podświetlenie)
+    const knobR = 22;
+    const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
+    if (isStickActive || isJetActive) {
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.38)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.16)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.35)');
-      knobGrad.addColorStop(0.6, 'rgba(30, 41, 59, 0.40)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.12)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.05)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
     }
 
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 24, 0, Math.PI * 2);
+    ctx.arc(knobX, knobY, knobR, 0, Math.PI * 2);
     ctx.fillStyle = knobGrad;
     ctx.fill();
-    ctx.strokeStyle = isJetActive ? '#00e5ff' : (isStickActive ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)');
-    ctx.lineWidth = isStickActive ? 2.0 : 1.2;
-    ctx.stroke();
 
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.50)' : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
+    if (isStickActive) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
+      ctx.shadowBlur = 8;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Subtelny centralny punkt gałki
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.4)';
+    ctx.arc(knobX, knobY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.35)';
     ctx.fill();
   }
 
-  // 2. PRAWY DRĄŻEK: CELOWANIE I OGIEŃ (SZTYWNO UMIEJSCOWIONY, NATURALNIE PRZEZROCZYSTY)
+  // -------------------------------------------------------------------------
+  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ, RZUT (Czysty, transparentny, bez napisów)
+  // -------------------------------------------------------------------------
   if (rightStick && rightStick.baseX > 0) {
     const isStickActive = rightStick.active;
-    const isFiring = isStickActive && rightStick.isShooting;
-    const isWaitingTap = rightStick.waitingForSecondTap && rightStick.windowTimer > 0;
-
-    const activeBall = ball || player._ball;
-    const inKickRangeVal = (inKickRange !== null && inKickRange !== undefined)
-      ? inKickRange
-      : (player.inKickReach !== undefined ? player.inKickReach : (activeBall && typeof player.isBallInKickReach === 'function' ? player.isBallInKickReach(player, activeBall) : false));
-    const isStickDeflected = isStickActive && (rightStick.power > 0.12 || (rightStick.movedDist || 0) > 8);
-    const isKickReady = inKickRangeVal && isStickDeflected;
-
-    let mainColor = isStickActive ? '#00e5ff' : 'rgba(0, 229, 255, 0.45)';
-    let glowColor = '#00e5ff';
-    let baseBorder = isStickActive ? 'rgba(0, 229, 255, 0.5)' : 'rgba(255, 255, 255, 0.18)';
-    let baseAlpha = isStickActive ? 0.65 : 0.25;
-
-    if (isKickReady) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
-      const isStrong = (player.chargePower >= 0.7) || (rightStick.power >= 0.7);
-      mainColor = isStrong ? '#facc15' : '#00e5ff';
-      glowColor = mainColor;
-      baseBorder = isStrong
-        ? `rgba(250, 204, 21, ${0.7 + pulse * 0.3})`
-        : `rgba(0, 229, 255, ${0.7 + pulse * 0.3})`;
-    } else if (isFiring) {
-      mainColor = '#f97316';
-      glowColor = '#ef4444';
-      baseBorder = 'rgba(249, 115, 22, 0.6)';
-    } else if (isWaitingTap) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
-      mainColor = pulse > 0.5 ? '#facc15' : '#00e5ff';
-      glowColor = mainColor;
-      baseBorder = `rgba(250, 204, 21, ${0.4 + pulse * 0.4})`;
-    }
-
-    ctx.save();
+    const maxR = rightStick.maxRadius || 58;
     const bx = rightStick.baseX;
     const by = rightStick.baseY;
-    const maxR = rightStick.maxRadius || 58;
+    const isGrenadeMode = (rightStick.armedMode === 'GRENADE');
 
-    const bgGrad = ctx.createRadialGradient(bx, by, 10, bx, by, maxR);
-    bgGrad.addColorStop(0.0, isKickReady ? 'rgba(15, 23, 42, 0.75)' : `rgba(30, 41, 59, ${baseAlpha})`);
-    bgGrad.addColorStop(1.0, isKickReady ? 'rgba(2, 6, 23, 0.85)' : `rgba(15, 23, 42, ${baseAlpha * 0.85})`);
-
+    // Baza drążka: w pełni przezroczysta, delikatny obrys bez koloru
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = bgGrad;
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)';
     ctx.fill();
 
-    ctx.shadowColor = (isKickReady || isFiring) ? glowColor : 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = baseBorder;
-    ctx.lineWidth = (isKickReady || isStickActive) ? 2.0 : 1.4;
+    // Jeśli przeciągany jest slot w stronę drążka, drążek pulsuje lekko
+    const isDragHover = rightStick.draggedSlot && Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 35;
+    ctx.strokeStyle = isDragHover
+      ? `rgba(255, 255, 255, ${0.45 + 0.35 * Math.sin(time * 0.01)})`
+      : (isStickActive ? 'rgba(255, 255, 255, 0.32)' : 'rgba(255, 255, 255, 0.12)');
+    ctx.lineWidth = (isDragHover || isStickActive) ? 1.8 : 1.2;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
+    // Pozycja gałki
     let knobX = bx;
     let knobY = by;
-
     if (isStickActive) {
       const dx = rightStick.curX - bx;
       const dy = rightStick.curY - by;
@@ -2885,318 +2937,311 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       knobX = bx + normX * clampedDist;
       knobY = by + normY * clampedDist;
 
-      if (isKickReady) {
-        const arrowPower = Math.min(1.0, Math.max(0.15, rightStick.power || (clampedDist / maxR)));
-        const arrowLen = 30 + arrowPower * 35;
-        const arrowStartX = knobX + normX * 14;
-        const arrowStartY = knobY + normY * 14;
-        const arrowEndX = arrowStartX + normX * arrowLen;
-        const arrowEndY = arrowStartY + normY * arrowLen;
-
-        ctx.save();
-        ctx.shadowColor = glowColor;
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(arrowStartX, arrowStartY);
-        ctx.lineTo(arrowEndX, arrowEndY);
-        ctx.stroke();
-        ctx.restore();
-      } else {
-        ctx.strokeStyle = isFiring ? 'rgba(249, 115, 22, 0.7)' : 'rgba(0, 229, 255, 0.45)';
-        ctx.lineWidth = 1.4;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(knobX, knobY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      // Przerywana linia wychylenia
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(knobX, knobY);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
-    const knobGrad = ctx.createRadialGradient(knobX - 4, knobY - 4, 3, knobX, knobY, 22);
-    if (isKickReady) {
-      knobGrad.addColorStop(0.0, 'rgba(250, 204, 21, 0.95)');
-      knobGrad.addColorStop(0.55, 'rgba(234, 179, 8, 0.80)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.90)');
-    } else if (isFiring) {
-      knobGrad.addColorStop(0.0, 'rgba(251, 146, 60, 0.95)');
-      knobGrad.addColorStop(0.6, 'rgba(220, 38, 38, 0.75)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.85)');
-    } else if (isStickActive) {
-      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.90)');
-      knobGrad.addColorStop(0.55, 'rgba(6, 182, 212, 0.65)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
+    // Gałka prawego drążka (subtelne intuicyjne podświetlenie)
+    const knobR = 22;
+    const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
+    if (isStickActive) {
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.40)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.18)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.35)');
-      knobGrad.addColorStop(0.55, 'rgba(30, 41, 59, 0.40)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.45)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.12)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.05)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
     }
 
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
+    ctx.arc(knobX, knobY, knobR, 0, Math.PI * 2);
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = mainColor;
-    ctx.lineWidth = isStickActive ? 2.2 : 1.2;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Celownik na gałce
-    ctx.strokeStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(knobX, knobY, 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(knobX - 8, knobY); ctx.lineTo(knobX - 5, knobY);
-    ctx.moveTo(knobX + 5, knobY); ctx.lineTo(knobX + 8, knobY);
-    ctx.moveTo(knobX, knobY - 8); ctx.lineTo(knobX - 5, knobY);
-    ctx.moveTo(knobX, knobY + 5); ctx.lineTo(knobX + 8, knobY);
-    ctx.stroke();
-
-    let statusText = isStickActive ? 'CELOWNIK' : 'CELOWNIK';
-    if (isKickReady) {
-      const pPct = Math.round((player.chargePower || rightStick.power || 0) * 100);
-      statusText = `⚽ WYKOP: ${pPct}% (PUŚĆ)`;
-    } else if (isFiring) {
-      statusText = '🔥 OGIEŃ CIĄGŁY';
-    } else if (isWaitingTap) {
-      statusText = '⚡ TAP = STRZAŁ';
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
+    if (isStickActive) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
+      ctx.shadowBlur = 8;
     }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = isStickActive ? mainColor : 'rgba(255, 255, 255, 0.35)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(statusText, bx, by + maxR + 15);
-
+    // Dyskretna miniaturowa sylwetka broni na gałce wskazująca co założono na ręce
+    ctx.save();
+    ctx.translate(knobX, knobY);
+    if (isGrenadeMode) {
+      ctx.scale(0.65, 0.65);
+      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isStickActive);
+    } else {
+      const curId = player.currentWeapon?.id || 'AK47';
+      ctx.scale(0.65, 0.65);
+      drawWeaponSilhouette(ctx, curId, 0, 0, isStickActive);
+    }
     ctx.restore();
+
+    // Trajektoria rzutu granatem (gdy drążek w trybie granatu jest wychylony)
+    if (isGrenadeMode && isStickActive && (rightStick.power > 0.12)) {
+      const pwr = Math.min(1.5, Math.max(0.4, rightStick.power * 1.3));
+      const pFacing = player.facing || 1;
+      const startX = player.x + player.w / 2 + pFacing * 14;
+      const startY = player.y + player.h * 0.42;
+
+      const aimX = (typeof player.aimX === 'number' && !isNaN(player.aimX)) ? player.aimX : (startX + (rightStick.axisX || pFacing) * 200);
+      const aimY = (typeof player.aimY === 'number' && !isNaN(player.aimY)) ? player.aimY : (startY + (rightStick.axisY || -0.2) * 200);
+      const angle = Math.atan2(aimY - startY, aimX - startX);
+
+      const speedMult = pwr;
+      const initialSpeed = (500 / 60) * speedMult;
+      const gVx = Math.cos(angle) * initialSpeed + (player.vx || 0) * 0.35;
+      const gVy = Math.sin(angle) * initialSpeed + (player.vy || 0) * 0.25 - (1.2 * Math.min(1.2, speedMult));
+      const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
+
+      ctx.save();
+      const numDots = 9;
+      for (let step = 1; step <= numDots; step++) {
+        const tFrames = step * 3.2;
+        const wx = startX + gVx * tFrames;
+        const wy = startY + gVy * tFrames + 0.5 * grav * tFrames * tFrames;
+
+        const sx = (wx - camera.x) * camera.zoom;
+        const sy = (wy - camera.y) * camera.zoom;
+        const alpha = Math.max(0.12, 0.70 - (step / numDots) * 0.55);
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, Math.max(1.8, 3.8 - step * 0.22), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
-  // 3. DEDYKOWANE PRZYCISKI MOBILNE: KOP, WŚLIZG, KUCANIE/LEŻENIE I GRANAT
-  if (btnCluster) {
-    // 3A. DEDYKOWANY PRZYCISK KOPNIĘCIA (🦵 KOP)
-    if (btnCluster.kick) {
-      const kb = btnCluster.kick;
-      const kbR = kb.r || 30;
-      const isPressed = kb.active;
-      const isKickActive = player.kickState === 'SWING' || (player.spartanTimer && player.spartanTimer > 0) || isPressed;
+  // -------------------------------------------------------------------------
+  // 3. KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (LEDWO WIDOCZNE, PRZEZROCZYSTE, BEZ KOLORU)
+  const effPockets = (btnCluster && (btnCluster.firearm || btnCluster.action)) ? btnCluster : (window.pockets || btnCluster || {});
+  const pFirearm = effPockets.firearm || window.pockets?.firearm;
+  const pThrowable = effPockets.throwable || effPockets.grenade || window.pockets?.throwable;
+  const pAction = effPockets.action || effPockets.kick || effPockets.slide || window.pockets?.action;
 
-      let btnBorder = isKickActive ? '#facc15' : 'rgba(250, 204, 21, 0.45)';
-      let btnBg = isKickActive ? 'rgba(250, 204, 21, 0.40)' : 'rgba(234, 179, 8, 0.18)';
-      let btnAccent = '#facc15';
-      let labelColor = isKickActive ? '#ffffff' : '#fef08a';
+  // 3A. KIESZEŃ NA BROŃ PALNĄ – WYŻEJ
+  if (pFirearm && pFirearm.x > 0) {
+    const isEquipped = (rightStick.armedMode === 'FIREARM');
+    const isPressed = pFirearm.active;
+    const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
+    const curId = curWep.id || 'AK47';
 
-      ctx.beginPath();
-      ctx.arc(kb.x, kb.y, kbR, 0, Math.PI * 2);
-      ctx.fillStyle = btnBg;
-      ctx.fill();
-      ctx.strokeStyle = btnBorder;
-      ctx.lineWidth = isKickActive ? 2.4 : 1.6;
-      ctx.stroke();
+    // Baza kieszeni: szkło z gradientem
+    const grad = ctx.createRadialGradient(pFirearm.x - 2, pFirearm.y - 2, 2, pFirearm.x, pFirearm.y, pFirearm.r);
+    if (isEquipped || isPressed) {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.42)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.20)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
+    } else {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.22)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.10)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.04)');
+    }
+    ctx.beginPath();
+    ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
 
+    // Główny pierścień zewnętrzny
+    ctx.strokeStyle = (isEquipped || isPressed)
+      ? 'rgba(255, 255, 255, 0.85)'
+      : 'rgba(255, 255, 255, 0.52)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 2.2 : 1.6;
+    if (isEquipped || isPressed) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 8;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Wewnętrzny pierścień w stylu drążka
+    ctx.beginPath();
+    ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = (isEquipped || isPressed)
+      ? 'rgba(255, 255, 255, 0.38)'
+      : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(pFirearm.x, pFirearm.y - 3);
+    ctx.scale(0.85, 0.85);
+    drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
+    ctx.restore();
+
+    const ammoObj = player.ammo?.[curId];
+    const cAmmo = ammoObj ? ammoObj.currentAmmo : (curId === 'SHOTGUN' ? 8 : 30);
+    const rAmmo = ammoObj ? ammoObj.reserveAmmo : (curId === 'SHOTGUN' ? 64 : 90);
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = isEquipped ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${cAmmo}/${rAmmo}`, pFirearm.x, pFirearm.y + pFirearm.r - 2);
+  }
+
+  // 3B. KIESZEŃ NA BROŃ MIOTANĄ (GRANAT) – PO ŚRODKU
+  if (pThrowable && pThrowable.x > 0) {
+    const isEquipped = (rightStick.armedMode === 'GRENADE');
+    const isPressed = pThrowable.active;
+    const cd = player.grenadeCooldown || 0;
+    const maxCd = player.grenadeMaxCooldown || 3.5;
+    const isReady = (cd <= 0);
+
+    const grad = ctx.createRadialGradient(pThrowable.x - 2, pThrowable.y - 2, 2, pThrowable.x, pThrowable.y, pThrowable.r);
+    if (isEquipped || isPressed) {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.42)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.20)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
+    } else {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.22)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.10)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.04)');
+    }
+    ctx.beginPath();
+    ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.strokeStyle = (isEquipped || isPressed)
+      ? 'rgba(255, 255, 255, 0.85)'
+      : 'rgba(255, 255, 255, 0.52)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 2.2 : 1.6;
+    if (isEquipped || isPressed) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 8;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Wewnętrzny pierścień w stylu drążka
+    ctx.beginPath();
+    ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = (isEquipped || isPressed)
+      ? 'rgba(255, 255, 255, 0.38)'
+      : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    if (!isReady && maxCd > 0) {
+      const prog = Math.max(0, Math.min(1, cd / maxCd));
       ctx.save();
-      ctx.translate(kb.x, kb.y);
-      ctx.font = '900 13px system-ui, sans-serif';
-      ctx.fillStyle = btnAccent;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🦵', 0, -4);
-
-      ctx.font = 'bold 8.5px monospace';
-      ctx.fillStyle = labelColor;
-      ctx.fillText('KOP', 0, 14);
+      ctx.beginPath();
+      ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 1.5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, false);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
       ctx.restore();
     }
 
-    // 3B. PRZYCISK WŚLIZGU (WYŁĄCZNIE W PEŁNYM BIEGU)
-    if (btnCluster.slide) {
-      const slide = btnCluster.slide;
-      const slideR = slide.r || 30;
-      const minRun = CONFIG.MIN_RUN_SPEED || 2.5;
-      const isSlideReady = (player.onGround && !player.isJumping && Math.abs(player.vx) > minRun && (player.slideCooldown || 0) <= 0);
-      const isSlideActive = player.isSliding || slide.active;
+    ctx.save();
+    ctx.translate(pThrowable.x, pThrowable.y - (isReady ? 2 : 3));
+    ctx.scale(0.85, 0.85);
+    drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady && (isEquipped || isPressed));
+    ctx.restore();
 
-      let btnBorder = 'rgba(255, 255, 255, 0.08)';
-      let btnBg = 'rgba(15, 23, 42, 0.35)';
-      let btnAccent = 'rgba(100, 116, 139, 0.30)';
-      let labelColor = 'rgba(100, 116, 139, 0.35)';
-
-      if (isSlideReady || isSlideActive) {
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-        btnBorder = '#10b981';
-        btnBg = `rgba(16, 185, 129, ${0.20 + pulse * 0.22})`;
-        btnAccent = '#10b981';
-        labelColor = '#10b981';
-
-        ctx.beginPath();
-        ctx.arc(slide.x, slide.y, slideR + 3 + pulse * 4, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(16, 185, 129, ${(1 - pulse) * 0.65})`;
-        ctx.lineWidth = 2.0;
-        ctx.stroke();
-      }
-
-      ctx.beginPath();
-      ctx.arc(slide.x, slide.y, slideR, 0, Math.PI * 2);
-      ctx.fillStyle = btnBg;
-      ctx.fill();
-      ctx.strokeStyle = btnBorder;
-      ctx.lineWidth = (isSlideReady || isSlideActive) ? 1.8 : 1.0;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(slide.x, slide.y);
-      ctx.beginPath();
-      ctx.moveTo(-10, 4); ctx.lineTo(8, 4); ctx.lineTo(10, 0); ctx.lineTo(4, -4); ctx.lineTo(-4, -4); ctx.lineTo(-7, 0);
-      ctx.closePath();
-      ctx.fillStyle = btnAccent;
-      ctx.fill();
-
-      ctx.fillStyle = labelColor;
-      ctx.font = 'bold 8.5px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('WŚLIZG', 0, 16);
-      ctx.restore();
-    }
-
-    // 3B. POJAWIAJĄCY SIĘ PRZYCISK KŁADZENIA SIĘ (WIDOCZNY WYŁĄCZNIE W MOMENCIE KUCANIA / LEŻENIA)
-    const proneBtn = btnCluster.prone || btnCluster.crouch;
-    const isProne = !!player.isProne;
-    const isCrouch = !!player.isCrouching;
-    const shouldShowProne = (isCrouch || isProne || (proneBtn && proneBtn.visible));
-
-    if (proneBtn && shouldShowProne) {
-      const cr = proneBtn;
-      const crR = cr.r || 28;
-
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-      let btnBorder = isProne ? '#10b981' : '#f59e0b';
-      let btnBg = isProne ? `rgba(16, 185, 129, ${0.28 + pulse * 0.18})` : `rgba(245, 158, 11, ${0.25 + pulse * 0.20})`;
-      let btnAccent = isProne ? '#10b981' : '#f59e0b';
-      let labelColor = isProne ? '#6ee7b7' : '#fde68a';
-      let labelText = isProne ? 'WSTAŃ' : 'POŁÓŻ SIĘ';
-
-      ctx.beginPath();
-      ctx.arc(cr.x, cr.y, crR + 3 + pulse * 4, 0, Math.PI * 2);
-      ctx.strokeStyle = isProne ? `rgba(16, 185, 129, ${(1 - pulse) * 0.70})` : `rgba(245, 158, 11, ${(1 - pulse) * 0.70})`;
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(cr.x, cr.y, crR, 0, Math.PI * 2);
-      ctx.fillStyle = btnBg;
-      ctx.fill();
-      ctx.strokeStyle = btnBorder;
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(cr.x, cr.y);
-      const pFacing = player.facing || 1;
-
-      if (isProne) {
-        // Sylwetka leżącego żołnierza
-        ctx.beginPath();
-        ctx.rect(-11, -1, 20, 4);
-        ctx.fillStyle = btnAccent;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(pFacing * 9, -2, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#10b981';
-        ctx.fill();
-      } else {
-        // Sylwetka schylonego żołnierza z dynamiczną strzałką w dół ku leżeniu
-        ctx.beginPath();
-        ctx.rect(-7, -1, 13, 5);
-        ctx.fillStyle = btnAccent;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(pFacing * 4, -6, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fill();
-      }
-
-      ctx.fillStyle = labelColor;
-      ctx.font = 'bold 8.5px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(labelText, 0, 16);
-      ctx.restore();
-    }
-
-    // 3C. DEDYKOWANY PRZYCISK MOBILNY: GRANAT ODŁAMKOWY Z COOLDOWNEM 10s
-    if (btnCluster.grenade) {
-      const gr = btnCluster.grenade;
-      const grR = gr.r || 28;
-      const cd = player.grenadeCooldown || 0;
-      const maxCd = player.grenadeMaxCooldown || 10.0;
-      const isReady = (cd <= 0);
-
-      let btnBorder = 'rgba(255, 255, 255, 0.10)';
-      let btnBg = 'rgba(15, 23, 42, 0.40)';
-      let btnAccent = 'rgba(148, 163, 184, 0.35)';
-      let labelColor = 'rgba(148, 163, 184, 0.45)';
-      let labelText = 'GRANAT';
-
-      if (isReady) {
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.007);
-        btnBorder = '#f97316';
-        btnBg = `rgba(249, 115, 22, ${0.20 + pulse * 0.20})`;
-        btnAccent = '#f97316';
-        labelColor = '#fdba74';
-        labelText = 'GRANAT';
-
-        ctx.beginPath();
-        ctx.arc(gr.x, gr.y, grR + 3 + pulse * 4, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(249, 115, 22, ${(1 - pulse) * 0.65})`;
-        ctx.lineWidth = 2.0;
-        ctx.stroke();
-      } else {
-        labelText = `${cd.toFixed(1)}s`;
-        labelColor = '#fb923c';
-        btnAccent = 'rgba(100, 116, 139, 0.25)';
-      }
-
-      ctx.beginPath();
-      ctx.arc(gr.x, gr.y, grR, 0, Math.PI * 2);
-      ctx.fillStyle = btnBg;
-      ctx.fill();
-      ctx.strokeStyle = btnBorder;
-      ctx.lineWidth = isReady ? 1.8 : 1.0;
-      ctx.stroke();
-
-      // Radialny overlay ładowania jeśli trwa cooldown
-      if (!isReady && maxCd > 0) {
-        const progress = Math.max(0, Math.min(1, cd / maxCd));
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(gr.x, gr.y);
-        ctx.arc(gr.x, gr.y, grR - 1, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2, false);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Ikonka granatu
-      ctx.save();
-      ctx.translate(gr.x, gr.y - 3);
-      ctx.scale(0.85, 0.85);
-      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, isReady);
-      ctx.restore();
-
-      // Tekst podpisu lub czasu odnowienia
-      ctx.fillStyle = labelColor;
+    if (!isReady) {
       ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(labelText, gr.x, gr.y + 15);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${cd.toFixed(1)}s`, pThrowable.x, pThrowable.y + pThrowable.r - 2);
     }
+  }
+
+  // 3C. ZUNIFIKOWANY 1 PRZYCISK RUCHU / AKCJI (WŚLIZG / LEŻENIE / KOPNIAK) – NAJNIŻEJ
+  if (pAction && pAction.x > 0) {
+    const isPressed = pAction.active;
+    const mode = pAction.currentMode || 'KICK';
+
+    const grad = ctx.createRadialGradient(pAction.x - 2, pAction.y - 2, 2, pAction.x, pAction.y, pAction.r);
+    if (isPressed) {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.45)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.22)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
+    } else {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.24)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.10)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.04)');
+    }
+    ctx.beginPath();
+    ctx.arc(pAction.x, pAction.y, pAction.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.52)';
+    ctx.lineWidth = isPressed ? 2.2 : 1.6;
+    if (isPressed) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 8;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Wewnętrzny pierścień
+    ctx.beginPath();
+    ctx.arc(pAction.x, pAction.y, pAction.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    drawDynamicActionSymbol(ctx, mode, pAction.x, pAction.y, isPressed, player);
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. EFEKT PRZECIĄGANIA IKONY NA DRĄŻEK (DRAG & DROP "ZAŁÓŻ BROŃ NA RĘCE")
+  // -------------------------------------------------------------------------
+  if (rightStick.draggedSlot) {
+    const ds = rightStick.draggedSlot;
+    const cx = ds.curX || 0;
+    const cy = ds.curY || 0;
+    const sx = ds.startX || cx;
+    const sy = ds.startY || cy;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo((sx + cx) / 2, (sy + cy) / 2 - 10, cx, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(0.9, 0.9);
+    if (ds.type === 'GRENADE') {
+      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, true);
+    } else {
+      const curId = player.currentWeapon?.id || 'AK47';
+      drawWeaponSilhouette(ctx, curId, 0, 0, true);
+    }
+    ctx.restore();
+    ctx.restore();
   }
 
   ctx.restore();
@@ -3301,10 +3346,10 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
 
   if (isSelected) {
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.50)';
+    ctx.shadowBlur = 4;
   } else {
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.68)';
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
   }
@@ -3699,24 +3744,15 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curWepId = player.currentWeapon?.id || 'AK47';
 
   if (isMobile) {
-    const slotSize = 52;
-    const panelX = Math.round((W - slotSize) / 2);
-    const panelY = Math.round(H - slotSize - 12);
-
-    weaponButtons[0].x = panelX;
-    weaponButtons[0].y = panelY;
-    weaponButtons[0].w = slotSize;
-    weaponButtons[0].h = slotSize;
-    weaponButtons[0].id = curWepId;
-
+    // Na ekranie dotykowym sloty broni znajdują się w przezroczystych kieszeniach wokół prawego drążka (pockets)
+    weaponButtons[0].x = -999;
+    weaponButtons[0].y = -999;
     weaponButtons[1].x = -999;
     weaponButtons[1].y = -999;
     if (weaponButtons[2]) {
       weaponButtons[2].x = -999;
       weaponButtons[2].y = -999;
     }
-
-    drawSingleMobileWeaponIcon(ctx, panelX, panelY, slotSize, player);
   } else {
     const slotSize = 38;
     const slotGap = 8;

@@ -277,10 +277,10 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     return null;
   }
 
-  // Spartan Kick aktywuje się przy pełnym naładowaniu i przeciwniku w zwarciu
+  // Spartan Kick aktywuje się przy przeciwniku w zwarciu lub braku piłki (np. Areny walki 2 i 3)
   const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
-  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
-  if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
+  const meleeTarget = findMeleeTarget(p, targets);
+  if ((meleeTarget && !meleeTarget.isDead) || (!ballParam && !p._ball) || (ballParam && ballParam.active === false)) {
     return triggerSpartanKick(p, meleeTarget);
   }
 
@@ -584,14 +584,14 @@ export function performKick(p, options = {}) {
 
   const targets = options.targets || p._targets;
   const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
-  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
+  const meleeTarget = findMeleeTarget(p, targets);
 
   if (isAirborne) {
     p.kickMode = 'SCISSOR';
     p.scissorTimer = 0;
     p.scissorDuration = 22;
     p.kickState = 'SWING';
-  } else if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
+  } else if (options.spartan || !options.ball || (meleeTarget && !meleeTarget.isDead) || isFullyChargedForSpartan || !isBallInKickReach(p, options.ball)) {
     triggerSpartanKick(p, meleeTarget);
   } else {
     p.kickMode = 'GROUND';
@@ -945,7 +945,7 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
  * @param {number|null} [targetY] - Pozycja docelowa Y (domyślnie aimY)
  * @returns {Object|boolean} Wystrzelony pocisk lub false jeśli na cooldownie
  */
-export function throwTacticalGrenade(p, targetX = null, targetY = null) {
+export function throwTacticalGrenade(p, targetX = null, targetY = null, customPower = 1.0) {
   if (!p || p.isDead || p.isIntro) return false;
 
   // Sprawdzenie 10-sekundowego czasu odnowienia (cooldown)
@@ -957,8 +957,8 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null) {
   const aimX = (targetX !== null && targetX !== undefined) ? targetX : (p.aimX !== undefined ? p.aimX : (p.x + (p.facing || 1) * 300));
   const aimY = (targetY !== null && targetY !== undefined) ? targetY : (p.aimY !== undefined ? p.aimY : (p.y - 40));
 
-  // Wystrzelenie pocisku granatu niszczącego teren
-  const grenade = spawnAeroSuperGrenade(p, aimX, aimY);
+  // Wystrzelenie pocisku granatu niszczącego teren z uwzględnieniem siły rzutu
+  const grenade = spawnAeroSuperGrenade(p, aimX, aimY, customPower);
 
   // Natychmiastowe nałożenie szybkiego cooldownu (3.5 sekundy dla dynamicznej rozgrywki)
   p.grenadeMaxCooldown = p.grenadeMaxCooldown || 3.5;
