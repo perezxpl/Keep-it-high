@@ -4295,7 +4295,8 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const curArenaObj = getActiveArena?.();
+  const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
 
   if (!isA3 && y2 >= groundY) {
     if (y1 < groundY) {
@@ -4321,24 +4322,15 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
     }
   }
 
-  // W Arenie 3 sprawdzamy globalne granice hali: sufit (y <= 34) oraz dolną granicę próżni (y >= 1390)
+  // W Arenie 3 sprawdzamy dolną granicę koryta rzeki / próżni wąwozu (y >= 1395)
   if (isA3) {
-    if (y2 >= 1390) {
-      if (y1 < 1390) {
+    if (y2 >= 1395) {
+      if (y1 < 1395) {
         const dy = y2 - y1;
-        const t = dy !== 0 ? Math.max(0, Math.min(1, (1390 - y1) / dy)) : 0;
-        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1390, nx: 0, ny: -1 }, 'void_bottom');
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (1395 - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1395, nx: 0, ny: -1 }, 'void_bottom');
       } else {
-        recordHit({ hit: true, t: 0, x: x1, y: 1390, nx: 0, ny: -1 }, 'void_bottom');
-      }
-    }
-    if (y2 <= 34) {
-      if (y1 > 34) {
-        const dy = y2 - y1;
-        const t = dy !== 0 ? Math.max(0, Math.min(1, (34 - y1) / dy)) : 0;
-        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 34, nx: 0, ny: 1 }, 'industrial_ceiling');
-      } else {
-        recordHit({ hit: true, t: 0, x: x1, y: 34, nx: 0, ny: 1 }, 'industrial_ceiling');
+        recordHit({ hit: true, t: 0, x: x1, y: 1395, nx: 0, ny: -1 }, 'void_bottom');
       }
     }
   }
@@ -4366,6 +4358,12 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (!plat) continue;
+
+      // W Arenie 3 zniszczalne segmenty (most, kładki w koronach, rampy, płyty snajperskie, podesty wież)
+      // są w całości i precyzyjnie obsługiwane przez activeArena.onBulletHit() wraz z fizyką i cząstkami!
+      if (isA3 && (plat.isBridgeBlock || plat.isRampBlock || plat.isCanopyBlock || plat.isSniperSlab || plat.isTowerBlock)) {
+        continue;
+      }
 
       // 1. Rampa lub profil skośny
       if (plat.isSlope || plat.type === 'ramp') {
@@ -4396,14 +4394,18 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
             const hit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[i].x, p1y, pts[i + 1].x, p2y);
             if (hit) recordHit(hit, plat.id || 'rock_surface');
           }
-          const p0y = pts[0].y !== undefined ? pts[0].y : (groundY - pts[0].relY);
-          const plastY = pts[pts.length - 1].y !== undefined ? pts[pts.length - 1].y : (groundY - pts[pts.length - 1].relY);
-          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, p0y, pts[0].x, groundY);
-          if (leftHit) recordHit(leftHit, plat.id || 'rock_left');
-          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[pts.length - 1].x, plastY, pts[pts.length - 1].x, groundY);
-          if (rightHit) recordHit(rightHit, plat.id || 'rock_right');
-          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY, pts[pts.length - 1].x, groundY);
-          if (bottomHit) recordHit(bottomHit, plat.id || 'rock_bottom');
+          // Ściany boczne i spód sprawdzamy tylko dla wysp latających (Pandora), NIE dla zboczy rzecznych ani ramp w Arenie 3!
+          const isTerrainSlope = (plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.isRampBlock || plat.id === 'ground_left' || plat.id === 'ground_right');
+          if (!isTerrainSlope && !isA3) {
+            const p0y = pts[0].y !== undefined ? pts[0].y : (groundY - pts[0].relY);
+            const plastY = pts[pts.length - 1].y !== undefined ? pts[pts.length - 1].y : (groundY - pts[pts.length - 1].relY);
+            const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, p0y, pts[0].x, groundY);
+            if (leftHit) recordHit(leftHit, plat.id || 'rock_left');
+            const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[pts.length - 1].x, plastY, pts[pts.length - 1].x, groundY);
+            if (rightHit) recordHit(rightHit, plat.id || 'rock_right');
+            const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, groundY, pts[pts.length - 1].x, groundY);
+            if (bottomHit) recordHit(bottomHit, plat.id || 'rock_bottom');
+          }
         } else {
           const topY = plat.y !== undefined ? plat.y : (groundY - plat.relY);
           const thick = plat.thickness || plat.h || 20;

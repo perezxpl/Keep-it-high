@@ -678,7 +678,7 @@ export const BIOME_TELEPORT_TARGETS = {
 
 export function teleportToDistance(meters) {
   const targetX = START_X + (meters * 14);
-  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const floorY = isA3 ? 1200 : GROUND_Y;
 
   player.x = targetX;
@@ -1394,7 +1394,7 @@ if (devBotFreezeBtn) {
 export function syncDevArenaButtonUI() {
   const devArenaBtn = document.getElementById('dev-arena-btn');
   if (!devArenaBtn) return;
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') {
     devArenaBtn.textContent = '🌴 Arena: 3 (Dżungla)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';
     devArenaBtn.style.borderColor = '#22c55e';
@@ -1609,7 +1609,7 @@ export function renderEditorPalette() {
   if (!devPaletteContainer) return;
   devPaletteContainer.innerHTML = '';
 
-  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') ? 'ARENA_2' : 'ARENA_1');
+  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
   const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
 
   const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA') ? {
@@ -2699,8 +2699,10 @@ function update() {
   const combatants = [player];
   if (bot.active) combatants.push(bot);
   if (remotePlayer.active) combatants.push(remotePlayer);
-  updateBullets(GROUND_Y, obstacles, isDeathmatch ? null : ball, combatants);
-  updateProjectiles(GROUND_Y, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
+  const isA3Combat = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const effectiveGroundY = isA3Combat ? 1200 : GROUND_Y;
+  updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
+  updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
   updateCamera(player, isDeathmatch ? null : ball);
   if (!isDeathmatch) {

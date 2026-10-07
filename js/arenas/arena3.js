@@ -294,6 +294,29 @@ export function spawnBridgeSplinters(x, y, vxBase = 0, vyBase = 0, count = 8) {
   }
 }
 
+// Cząsteczki rozbryzgu wody w rzece Areny 3 (pociski, granaty, gejzery)
+export const ARENA_3_WATER_SPLASHES = [];
+
+export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
+  const num = isGeyser ? Math.round(count * 2.2) : count;
+  for (let i = 0; i < num; i++) {
+    ARENA_3_WATER_SPLASHES.push({
+      x: x + (Math.random() - 0.5) * (isGeyser ? 44 : 14),
+      y: y + (Math.random() - 0.5) * 4,
+      vx: (Math.random() - 0.5) * (isGeyser ? 9.5 : 4.5),
+      vy: isGeyser ? (-Math.random() * 12.0 - 5.5) : (-Math.random() * 5.5 - 2.2),
+      size: isGeyser ? (3.5 + Math.random() * 5.0) : (2.0 + Math.random() * 3.5),
+      alpha: 0.95,
+      life: isGeyser ? (45 + Math.random() * 30) : (25 + Math.random() * 20),
+      maxLife: isGeyser ? 75 : 45,
+      color: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#ffffff'][Math.floor(Math.random() * 5)]
+    });
+  }
+  if (ARENA_3_WATER_SPLASHES.length > 100) {
+    ARENA_3_WATER_SPLASHES.splice(0, ARENA_3_WATER_SPLASHES.length - 100);
+  }
+}
+
 export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
@@ -1636,6 +1659,19 @@ export function updateArena3(dt, players, ball) {
     sd.life--;
     if (sd.life <= 0 || sd.y > 1390) {
       STONE_DEBRIS.splice(i, 1);
+    }
+  }
+
+  // 7. Aktualizacja rozbryzgów wody w rzece
+  for (let i = ARENA_3_WATER_SPLASHES.length - 1; i >= 0; i--) {
+    const ws = ARENA_3_WATER_SPLASHES[i];
+    ws.x += ws.vx;
+    ws.y += ws.vy;
+    ws.vy += 0.30;
+    ws.life--;
+    ws.alpha = Math.max(0, ws.life / ws.maxLife);
+    if (ws.life <= 0 || ws.y > 1395) {
+      ARENA_3_WATER_SPLASHES.splice(i, 1);
     }
   }
 }
@@ -3511,6 +3547,19 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
+  // F3. ROZBRYZGI WODY W RZECE (Arena 3 Water Splashes)
+  for (let i = 0; i < ARENA_3_WATER_SPLASHES.length; i++) {
+    const ws = ARENA_3_WATER_SPLASHES[i];
+    if (ws.x < camL - 20 || ws.x > camR + 20) continue;
+    ctx.save();
+    ctx.globalAlpha = ws.alpha;
+    ctx.fillStyle = ws.color;
+    ctx.beginPath();
+    ctx.arc(ws.x, ws.y, ws.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // -----------------------------------------------------------------------
   // 7. LIŚCIE OPADAJĄCE NA PIERWSZYM PLANIE (PRZED PLATFORMAMI)
   // -----------------------------------------------------------------------
@@ -3535,80 +3584,73 @@ export function drawArena3Foreground(ctx, camera) {
   ctx.restore();
 }
 
-// =========================================================================
-// 8. HOOKI INTERAKCJI BOJOWYCH
-// =========================================================================
+// Pomocnicze funkcje przecięcia promienia pocisku (swept segment)
+function rayIntersectsAABB(x1, y1, x2, y2, left, top, right, bottom) {
+  if (x2 >= left && x2 <= right && y2 >= top && y2 <= bottom) return true;
+  if (x1 >= left && x1 <= right && y1 >= top && y1 <= bottom) return true;
+  let t0 = 0.0, t1 = 1.0;
+  const dx = x2 - x1, dy = y2 - y1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [x1 - left, right - x1, y1 - top, bottom - y1];
+  for (let k = 0; k < 4; k++) {
+    if (p[k] === 0) {
+      if (q[k] < 0) return false;
+    } else {
+      const t = q[k] / p[k];
+      if (p[k] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return t0 <= t1;
+}
+
+function rayIntersectsVerticalLine(x1, y1, x2, y2, lineX, topY, bottomY, tolerance = 7) {
+  const minX = Math.min(x1, x2) - tolerance;
+  const maxX = Math.max(x1, x2) + tolerance;
+  if (lineX < minX || lineX > maxX) return false;
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+  if (maxY < topY - 4 || minY > bottomY + 4) return false;
+  const dx = x2 - x1;
+  if (Math.abs(dx) < 0.001) {
+    return Math.abs(x1 - lineX) <= tolerance;
+  }
+  const t = (lineX - x1) / dx;
+  if (t < 0 || t > 1) return false;
+  const hitY = y1 + t * (y2 - y1);
+  return hitY >= topY - 4 && hitY <= bottomY + 4;
+}
+
 export function onArena3BulletHit(bullet) {
   if (!bullet) return false;
   const bx = bullet.x;
   const by = bullet.y;
-  // Bazowe obrażenia od pocisku bez sztucznego mnożnika, z odpornością balistyczną struktur
+  const bx0 = bullet.prevX !== undefined ? bullet.prevX : (bx - (bullet.vx || 0));
+  const by0 = bullet.prevY !== undefined ? bullet.prevY : (by - (bullet.vy || 0));
   const bDamage = bullet.damage || 14;
 
-  // 1. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS)
-  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
-    const b = ARENA_3_RAMP_BLOCKS[i];
-    if (!b.intact) continue;
-
-    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 12 && by <= b.y + b.h + 20) {
-      b.hp -= bDamage * 0.45;
-      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
-
-      if (b.hp <= 0) {
-        const impX = (bullet.vx || 0) * 0.1;
-        const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
-        breakRampBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
-      }
-      return true;
-    }
+  // 1. Lustro wody w rzece (X: 1600 do 2800, linia wody Y: 1305) - absorpcja i rozbryzg wodny
+  if ((by >= 1305 || (by0 < 1305 && by >= 1305)) && bx >= 1600 && bx <= 2800) {
+    spawnArena3WaterSplash(bx, 1305, 8);
+    return true;
   }
 
-  // 2. Klocki mostu głównego
-  for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
-    const b = ARENA_3_BRIDGE_BLOCKS[i];
-    if (!b.intact) continue;
-
-    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage * 0.45;
-      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
-
-      if (b.hp <= 0) {
-        const impX = (bullet.vx || 0) * 0.1;
-        const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
-        breakBridgeBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
-        evaluateBridgeIntegrity();
-      }
-      return true;
-    }
-  }
-
-  // 3. Klocki wiszących pomostów taktycznych
-  for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
-    const b = ALL_CANOPY_BLOCKS[i];
-    if (!b.intact) continue;
-
-    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage * 0.45;
-      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
-
-      if (b.hp <= 0) {
-        const impX = (bullet.vx || 0) * 0.1;
-        const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
-        breakCanopyBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
-      }
-      return true;
-    }
-  }
-
-  // 4. Liny nośne pomostów wiszących (możliwość odstrzelenia liny snajperem!)
+  // 2. Liny nośne pomostów wiszących (swept ray zapobiega przenikaniu pocisków snajperskich)
   for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
     const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
 
     // Lewa lina
     if (plat.ropeLeft.intact) {
-      if (Math.abs(bx - plat.ropeLeft.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
+      const attachX = plat.attachLX !== undefined ? plat.attachLX : plat.ropeLeft.x;
+      const attachY = plat.attachLY !== undefined ? plat.attachLY : plat.origY;
+      if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
         plat.ropeLeft.hp -= bDamage * 0.60;
-        spawnBridgeSplinters(plat.ropeLeft.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+        spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
         if (plat.ropeLeft.hp <= 0) {
           plat.ropeLeft.intact = false;
           onCanopyRopeSnapped(plat, 'left');
@@ -3619,9 +3661,11 @@ export function onArena3BulletHit(bullet) {
 
     // Prawa lina
     if (plat.ropeRight.intact) {
-      if (Math.abs(bx - plat.ropeRight.x) <= 7 && by >= 0 && by <= plat.origY + 4) {
+      const attachX = plat.attachRX !== undefined ? plat.attachRX : plat.ropeRight.x;
+      const attachY = plat.attachRY !== undefined ? plat.attachRY : plat.origY;
+      if (rayIntersectsVerticalLine(bx0, by0, bx, by, attachX, 0, attachY + 6, 8)) {
         plat.ropeRight.hp -= bDamage * 0.60;
-        spawnBridgeSplinters(plat.ropeRight.x, by, (bullet.vx || 0) * 0.15, -1.5, 5);
+        spawnBridgeSplinters(attachX, by, (bullet.vx || 0) * 0.15, -1.5, 5);
         if (plat.ropeRight.hp <= 0) {
           plat.ropeRight.intact = false;
           onCanopyRopeSnapped(plat, 'right');
@@ -3631,12 +3675,11 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
-  // 5. Drewniane filary nośne pylonów mostu (A-frame pylons)
+  // 3. Pylony mostu (drewniana wieża A-frame oraz masywne podwodne kesony kamienne)
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
-    if (!p.intact) continue;
-
-    if (bx >= p.x - 28 && bx <= p.x + 28 && by >= p.topY && by <= p.baseY) {
+    // Drewniana wieża A-frame (Y: topY do baseY)
+    if (p.intact && rayIntersectsAABB(bx0, by0, bx, by, p.x - 28, p.topY, p.x + 28, p.baseY)) {
       p.hp -= bDamage * 0.40;
       spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
       if (p.hp <= 0) {
@@ -3644,50 +3687,145 @@ export function onArena3BulletHit(bullet) {
       }
       return true;
     }
+    // Kamienny fundament kesonu w wodzie (Y: baseY do caissonBottomY)
+    const caissonBot = p.caissonBottomY || 1395;
+    if (rayIntersectsAABB(bx0, by0, bx, by, p.x - 30, p.baseY, p.x + 30, caissonBot)) {
+      spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+      return true;
+    }
   }
 
-  // 6. Modularne płyty skalne snajperów
+  // 4. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS) - całe i zawalone
+  for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
+    const b = ARENA_3_RAMP_BLOCKS[i];
+    if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 10, b.x + b.w + 2, b.y + b.h + 16)) {
+      if (b.intact) {
+        b.hp -= bDamage * 0.45;
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        if (b.hp <= 0) {
+          const impX = (bullet.vx || 0) * 0.1;
+          const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
+          breakRampBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
+        }
+      } else {
+        // Zawalony element jest namacalny: odrzucenie i drzazgi
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 5);
+        b.vx += (bullet.vx || 0) * 0.05;
+        b.vy += (bullet.vy || 0) * 0.05;
+        b.vRot += (Math.random() - 0.5) * 0.08;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
+      }
+      return true;
+    }
+  }
+
+  // 5. Klocki mostu głównego (ARENA_3_BRIDGE_BLOCKS) - całe i zawalone pływające deski
+  for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+    const b = ARENA_3_BRIDGE_BLOCKS[i];
+    if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
+      if (b.intact) {
+        b.hp -= bDamage * 0.45;
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        if (b.hp <= 0) {
+          const impX = (bullet.vx || 0) * 0.1;
+          const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
+          breakBridgeBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
+          evaluateBridgeIntegrity();
+        }
+      } else {
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 5);
+        b.vx += (bullet.vx || 0) * 0.06;
+        b.vy += (bullet.vy || 0) * 0.06;
+        b.vRot += (Math.random() - 0.5) * 0.08;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
+      }
+      return true;
+    }
+  }
+
+  // 6. Klocki wiszących pomostów taktycznych (ALL_CANOPY_BLOCKS)
+  for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
+    const b = ALL_CANOPY_BLOCKS[i];
+    if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
+      if (b.intact) {
+        b.hp -= bDamage * 0.45;
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        if (b.hp <= 0) {
+          const impX = (bullet.vx || 0) * 0.1;
+          const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
+          breakCanopyBlock(b, impX, impY, (Math.random() - 0.5) * 0.2);
+        }
+      } else {
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 5);
+        b.vx += (bullet.vx || 0) * 0.06;
+        b.vy += (bullet.vy || 0) * 0.06;
+        b.vRot += (Math.random() - 0.5) * 0.08;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
+      }
+      return true;
+    }
+  }
+
+  // 7. Modularne płyty skalne snajperów (ARENA_3_SNIPER_SLABS)
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
-    if (!slab.intact) continue;
-
-    if (bx >= slab.x - 2 && bx <= slab.x + slab.w + 2 && by >= slab.y - 4 && by <= slab.y + slab.h + 4) {
-      slab.hp -= bDamage * 0.35;
-      spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
-
-      if (slab.hp <= 0) {
-        breakSniperSlab(slab, (bullet.vx || 0) * 0.08, Math.max(1.5, (bullet.vy || 0) * 0.1 + 1.8), (Math.random() - 0.5) * 0.15);
+    if (rayIntersectsAABB(bx0, by0, bx, by, slab.x - 2, slab.y - 4, slab.x + slab.w + 2, slab.y + slab.h + 6)) {
+      if (slab.intact) {
+        slab.hp -= bDamage * 0.35;
+        spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        if (slab.hp <= 0) {
+          breakSniperSlab(slab, (bullet.vx || 0) * 0.08, Math.max(1.5, (bullet.vy || 0) * 0.1 + 1.8), (Math.random() - 0.5) * 0.15);
+        }
+      } else {
+        spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+        slab.vx += (bullet.vx || 0) * 0.04;
+        slab.vy += (bullet.vy || 0) * 0.04;
+        slab.vRot += (Math.random() - 0.5) * 0.06;
+        slab.isAsleep = false;
+        slab.sleepTimer = 0;
       }
       return true;
     }
   }
 
-  // 7. Modularne drewniane podesty wież strażniczych
+  // 8. Modularne drewniane podesty wież strażniczych (ARENA_3_TOWER_BLOCKS)
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
-    if (!b.intact) continue;
-
-    if (bx >= b.x - 2 && bx <= b.x + b.w + 2 && by >= b.y - 4 && by <= b.y + b.h + 4) {
-      b.hp -= bDamage * 0.45;
-      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
-
-      if (b.hp <= 0) {
-        breakTowerBlock(b, (bullet.vx || 0) * 0.1, Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5)), (Math.random() - 0.5) * 0.2);
+    if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
+      if (b.intact) {
+        b.hp -= bDamage * 0.45;
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        if (b.hp <= 0) {
+          breakTowerBlock(b, (bullet.vx || 0) * 0.1, Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5)), (Math.random() - 0.5) * 0.2);
+        }
+      } else {
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 5);
+        b.vx += (bullet.vx || 0) * 0.06;
+        b.vy += (bullet.vy || 0) * 0.06;
+        b.vRot += (Math.random() - 0.5) * 0.08;
+        b.isAsleep = false;
+        b.sleepTimer = 0;
       }
       return true;
     }
   }
 
-  // 8. Główne filary nośne wież strażniczych
+  // 9. Główne filary nośne wież strażniczych (ARENA_3_TOWER_PILLARS)
   for (const side of ['left', 'right']) {
     const pillar = ARENA_3_TOWER_PILLARS[side];
-    if (!pillar.intact) continue;
-
-    if (bx >= pillar.stemX - 16 && bx <= pillar.stemX + pillar.w + 16 && by >= pillar.topY && by <= pillar.baseY) {
-      pillar.hp -= bDamage * 0.40;
-      spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
-      if (pillar.hp <= 0) {
-        destroyTowerPillar(side);
+    if (!pillar) continue;
+    if (rayIntersectsAABB(bx0, by0, bx, by, pillar.stemX - 16, pillar.topY, pillar.stemX + pillar.w + 16, pillar.baseY)) {
+      if (pillar.intact) {
+        pillar.hp -= bDamage * 0.40;
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+        if (pillar.hp <= 0) {
+          destroyTowerPillar(side);
+        }
+      } else {
+        spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.2, -1.5, 5);
       }
       return true;
     }
@@ -4155,6 +4293,8 @@ const arena3 = {
 };
 
 if (typeof window !== 'undefined') {
+  window.spawnArena3WaterSplash = spawnArena3WaterSplash;
+  window.ARENA_3_WATER_SPLASHES = ARENA_3_WATER_SPLASHES;
   window.ARENA_3_RAMP_BLOCKS = ARENA_3_RAMP_BLOCKS;
   window.breakRampBlock = breakRampBlock;
   window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;

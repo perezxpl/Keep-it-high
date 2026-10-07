@@ -113,45 +113,148 @@ export class AeroSuperGrenade {
       this.bounces++;
     }
 
-    // 2. Odbicie od poziomu podłogi
-    const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-    const floorBounceY = isA3 ? 1270 : groundY;
-    if (this.y + this.radius >= floorBounceY) {
-      this.y = floorBounceY - this.radius;
-      this.vy = -this.vy * this.restitution;
-      this.vx *= 0.82;
-      this.vRot *= 0.75;
-      this.bounces++;
-      if (this.bounces > this.maxBounces) {
-        this.vy = 0;
-        this.vx *= 0.65;
+    // 2. Odbicie od poziomu terenu / rzeki
+    const curArena = getActiveArena?.();
+    const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+
+    if (isA3) {
+      let terrainY = 1200;
+      const gx = this.x;
+      if (gx < 1150) {
+        terrainY = 1200;
+      } else if (gx >= 1150 && gx <= 1750) {
+        const t = (gx - 1150) / 600;
+        terrainY = 1200 + t * 135; // Owalny lewy brzeg (Y: 1200 do 1335)
+      } else if (gx > 1750 && gx < 2650) {
+        terrainY = 1390; // Koryto / dno rzeki w głębi wąwozu
+      } else if (gx >= 2650 && gx <= 3250) {
+        const t = (gx - 2650) / 600;
+        terrainY = 1335 - t * 135; // Owalny prawy brzeg (Y: 1335 do 1200)
+      } else {
+        terrainY = 1200;
+      }
+
+      // Woda rzeki (X: 1650 do 2750, lustro wody Y: 1305)
+      const inRiverZone = (gx >= 1650 && gx <= 2750);
+      if (inRiverZone && this.y + this.radius >= 1305) {
+        // Wejście do wody: rozbryzg wodny
+        if (this.prevY + this.radius < 1305) {
+          if (typeof window.spawnArena3WaterSplash === 'function') {
+            window.spawnArena3WaterSplash(this.x, 1305, 14);
+          }
+        }
+        // Wyporność, opór wody i tłumienie prędkości
+        this.vx *= 0.84;
+        this.vy = Math.min(1.4, (this.vy + 0.08) * 0.76);
+        this.vRot *= 0.75;
+      }
+
+      // Odbicie od twardego podłoża lub dna rzeki
+      if (this.y + this.radius >= terrainY) {
+        this.y = terrainY - this.radius;
+        this.vy = -this.vy * (inRiverZone ? 0.35 : this.restitution);
+        this.vx *= (inRiverZone ? 0.65 : 0.82);
+        this.vRot *= 0.75;
+        this.bounces++;
+        if (this.bounces > this.maxBounces) {
+          this.vy = 0;
+          this.vx *= 0.65;
+        }
+      }
+    } else {
+      if (this.y + this.radius >= groundY) {
+        this.y = groundY - this.radius;
+        this.vy = -this.vy * this.restitution;
+        this.vx *= 0.82;
+        this.vRot *= 0.75;
+        this.bounces++;
+        if (this.bounces > this.maxBounces) {
+          this.vy = 0;
+          this.vx *= 0.65;
+        }
       }
     }
 
-    // 3. Kolizje z platformami
+    // 3. Kolizje z platformami, ścianami i pylonami
     const activePlats = platforms || ARENA_PLATFORMS;
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
         if (!plat) continue;
+        const platX = plat.x;
+        const platW = plat.w;
+        const thick = plat.h || plat.thickness || 20;
         const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
           ? getPlatformSurfaceY(plat, this.x, groundY)
           : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
-        const thick = plat.thickness || 20;
+        const bottomY = topY + thick;
 
-        if (this.x >= plat.x - this.radius && this.x <= plat.x + plat.w + this.radius) {
-          // Lądowanie na górnej krawędzi platformy
-          if (this.vy > 0 && this.prevY + this.radius <= topY + 8 && this.y + this.radius >= topY - 4) {
+        // A. Pionowe słupy nośne i ściany (np. tower_cyan_stem, tower_orange_stem, isWall)
+        if (plat.isWall || plat.pushSide) {
+          if (this.y + this.radius >= topY && this.y - this.radius <= bottomY) {
+            // Kolizja boczna z lewej strony słupa
+            if (this.prevX + this.radius <= platX + 4 && this.x + this.radius >= platX) {
+              this.x = platX - this.radius;
+              this.vx = -Math.abs(this.vx) * this.restitution;
+              this.bounces++;
+              break;
+            }
+            // Kolizja boczna z prawej strony słupa
+            else if (this.prevX - this.radius >= platX + platW - 4 && this.x - this.radius <= platX + platW) {
+              this.x = platX + platW + this.radius;
+              this.vx = Math.abs(this.vx) * this.restitution;
+              this.bounces++;
+              break;
+            }
+          }
+          continue;
+        }
+
+        // B. Kolizje z platformami poziomymi i skośnymi
+        if (this.x >= platX - this.radius && this.x <= platX + platW + this.radius) {
+          // Lądowanie / odbicie od górnej powierzchni platformy
+          if (this.vy > 0 && this.prevY + this.radius <= topY + 10 && this.y + this.radius >= topY - 6) {
             this.y = topY - this.radius;
-            this.vy = -this.vy * this.restitution;
-            this.vx *= 0.85;
+            // Dla ramp nadajemy impuls wzdłuż nachylenia
+            if (plat.isSlope || plat.isRampBlock) {
+              this.vy = -this.vy * this.restitution * 0.85;
+              this.vx = (this.vx + (plat.startY < plat.endY ? 1.2 : -1.2)) * 0.88;
+            } else {
+              this.vy = -this.vy * this.restitution;
+              this.vx *= 0.85;
+            }
             this.vRot *= 0.75;
             this.bounces++;
             break;
           }
-          // Odbicie od dolnej krawędzi platformy
-          else if (this.vy < 0 && this.prevY - this.radius >= topY + thick - 8 && this.y - this.radius <= topY + thick + 4) {
-            this.y = topY + thick + this.radius;
+          // Odbicie od spodu platformy (tylko dla platform litych, nie one-way)
+          else if (!plat.oneWay && this.vy < 0 && this.prevY - this.radius >= bottomY - 8 && this.y - this.radius <= bottomY + 4) {
+            this.y = bottomY + this.radius;
             this.vy = -this.vy * this.restitution;
+            this.bounces++;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3B. Kolizje z pylonami mostu Areny 3 (ARENA_3_PYLONS)
+    if (isA3 && typeof window !== 'undefined' && window.ARENA_3_PYLONS) {
+      for (const side of ['left', 'right']) {
+        const pylon = window.ARENA_3_PYLONS[side];
+        if (!pylon || !pylon.intact) continue;
+        const pLeft = pylon.x - 28;
+        const pRight = pylon.x + 28;
+        const pTop = pylon.topY;
+        const pBottom = pylon.caissonBottomY || 1395;
+        if (this.y + this.radius >= pTop && this.y - this.radius <= pBottom) {
+          if (this.prevX + this.radius <= pLeft + 4 && this.x + this.radius >= pLeft) {
+            this.x = pLeft - this.radius;
+            this.vx = -Math.abs(this.vx) * this.restitution;
+            this.bounces++;
+            break;
+          } else if (this.prevX - this.radius >= pRight - 4 && this.x - this.radius <= pRight) {
+            this.x = pRight + this.radius;
+            this.vx = Math.abs(this.vx) * this.restitution;
             this.bounces++;
             break;
           }
@@ -312,14 +415,24 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   }
 
   // 3. FIZYCZNE NISZCZENIE PLATFORM I WYCINKA PODŁOŻA (Real Geometry Carving)
-  const targetPlatforms = platforms || ARENA_PLATFORMS;
-  const terrainRadius = 90;
-  if (Array.isArray(targetPlatforms)) {
-    destroyPlatformSegments(targetPlatforms, expX, expY, terrainRadius, groundY);
-  }
-  // Realna wycinka podłoża areny (GROUND_Y)
-  if (typeof carveGroundHole === 'function') {
-    carveGroundHole(expX, expY, terrainRadius);
+  const isA3Explosion = (activeArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  if (isA3Explosion) {
+    // Wybuch w wodzie rzeki: potężny gejzer wodny
+    if (expY >= 1290 && expX >= 1620 && expX <= 2780) {
+      if (typeof window.spawnArena3WaterSplash === 'function') {
+        window.spawnArena3WaterSplash(expX, 1305, 36, true);
+      }
+    }
+  } else {
+    const targetPlatforms = platforms || ARENA_PLATFORMS;
+    const terrainRadius = 90;
+    if (Array.isArray(targetPlatforms)) {
+      destroyPlatformSegments(targetPlatforms, expX, expY, terrainRadius, groundY);
+    }
+    // Realna wycinka podłoża areny (GROUND_Y)
+    if (typeof carveGroundHole === 'function') {
+      carveGroundHole(expX, expY, terrainRadius);
+    }
   }
 
   // 4. Niszczenie postawionych przeszkód w zasięgu wybuchu
@@ -790,4 +903,9 @@ export function drawProjectiles(ctx) {
 
   // 8. Błysk, kula ognia i fala uderzeniowa
   drawExplosionEffects(ctx);
+}
+
+if (typeof window !== 'undefined') {
+  window.AeroSuperGrenade = AeroSuperGrenade;
+  window.spawnAeroSuperGrenade = spawnAeroSuperGrenade;
 }
