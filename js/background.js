@@ -231,252 +231,379 @@ export function drawPandoraBackground(ctx, camera) {
   const camY = camera ? (camera.y || 0) : 0;
 
   // -------------------------------------------------------------------------
-  // WARSTWA 0: CZYSTE, NATURALNE NIEBO DŻUNGLI (USUNIĘTO POMARAŃCZOWĄ POŚWIATĘ)
+  // WARSTWA 0: ETERYCZNE NIEBO PANDORY I PROMIENNE SŁOŃCE
   // -------------------------------------------------------------------------
+  // Płynny gradient pionowy: głęboki szmaragd na górze (#021810) przechodzący
+  // w nasyconą zieleń dżungli (#0a3824 -> #144c31) i złociste zamglenie nad horyzontem (#185938 -> #164f33)
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
   skyGrad.addColorStop(0.00, '#021810');
-  skyGrad.addColorStop(0.25, '#052b1d');
-  skyGrad.addColorStop(0.55, '#0b422a');
-  skyGrad.addColorStop(0.78, '#144c31');
-  skyGrad.addColorStop(0.92, '#185938');
-  skyGrad.addColorStop(1.00, '#103d27');
+  skyGrad.addColorStop(0.22, '#042417');
+  skyGrad.addColorStop(0.48, '#0a3824');
+  skyGrad.addColorStop(0.72, '#144c31');
+  skyGrad.addColorStop(0.88, '#185938');
+  skyGrad.addColorStop(1.00, '#12442b');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
-  // Naturalne poranne słońce przedzierające się przez mgłę dżungli (bez pomarańczowych plam)
-  const sunX = W_screen * 0.64 - (camX * 0.006);
-  const sunY = H_screen * 0.30 - (camY * 0.004);
-  const sunR = Math.max(75, Math.min(135, H_screen * 0.16));
+  // Miękkie, promienne słońce przedzierające się przez mistyczną mgłę Pandory
+  const sunX = W_screen * 0.65 - (camX * 0.006);
+  const sunY = H_screen * 0.28 - (camY * 0.004);
+  const sunR = Math.max(80, Math.min(140, H_screen * 0.16));
 
   ctx.save();
-  ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
-  // Dyskretna korona słoneczna
-  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, sunR * 2.4);
-  coronaGrad.addColorStop(0.0, 'rgba(255, 255, 240, 0.40)');
-  coronaGrad.addColorStop(0.35, 'rgba(254, 249, 195, 0.16)');
-  coronaGrad.addColorStop(0.75, 'rgba(220, 252, 231, 0.05)');
+
+  // Szeroka, rozproszona eteryczna aura nieba
+  const sunAura = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, sunR * 3.4);
+  sunAura.addColorStop(0.0, 'rgba(254, 240, 138, 0.28)');
+  sunAura.addColorStop(0.32, 'rgba(187, 247, 208, 0.14)');
+  sunAura.addColorStop(0.68, 'rgba(52, 211, 153, 0.05)');
+  sunAura.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = sunAura;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 3.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Miękka wielostopniowa korona słoneczna bez ostrych krawędzi
+  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 1.85);
+  coronaGrad.addColorStop(0.0, 'rgba(255, 255, 245, 0.65)');
+  coronaGrad.addColorStop(0.28, 'rgba(254, 249, 195, 0.36)');
+  coronaGrad.addColorStop(0.65, 'rgba(253, 224, 71, 0.14)');
   coronaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = coronaGrad;
   ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR * 2.4, 0, Math.PI * 2);
+  ctx.arc(sunX, sunY, sunR * 1.85, 0, Math.PI * 2);
   ctx.fill();
 
-  // Tarcza słońca
-  const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
+  // Jasna tarcza słoneczna z płynnym zanikaniem
+  const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR * 0.9);
   sunCore.addColorStop(0.0, '#ffffff');
-  sunCore.addColorStop(0.40, '#fef9c3');
-  sunCore.addColorStop(0.85, 'rgba(254, 240, 138, 0.25)');
+  sunCore.addColorStop(0.42, '#fef9c3');
+  sunCore.addColorStop(0.78, 'rgba(254, 240, 138, 0.38)');
   sunCore.addColorStop(1.0, 'rgba(254, 240, 138, 0)');
   ctx.fillStyle = sunCore;
   ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.arc(sunX, sunY, sunR * 0.9, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 1: ODLEGŁE IGLICE KRASOWE I STUPY ŚWIĄTYNNE (PARALAKSA 0.020)
+  // WARSTWA 1: ODLEGŁE LEWITUJĄCE IGLICE KRASOWE (KARST PEAKS / HALLELUJAH) [PARALAKSA 0.020]
   // -------------------------------------------------------------------------
   ctx.save();
   const farX = camX * 0.020;
   const farY = camY * 0.015;
-  const farBaseY = H_screen * 0.75 - farY;
+  const farBaseY = H_screen * 0.74 - farY;
+  const wrapW = W_screen + 800;
 
-  ctx.fillStyle = '#09261a';
-  ctx.beginPath();
-  ctx.moveTo(0, H_screen);
-  ctx.lineTo(0, farBaseY);
-
+  // Organiczne sylwetki lewitujących formacji krasowych (Hallelujah Mountains)
   const karstPeaks = [
-    { x: 120, w: 220, h: 290, stupa: true },
-    { x: 420, w: 180, h: 370 },
-    { x: 740, w: 280, h: 260 },
-    { x: 1100, w: 320, h: 410, stupa: true },
-    { x: 1540, w: 240, h: 330 },
-    { x: 1880, w: 360, h: 440, stupa: true },
-    { x: 2340, w: 210, h: 300 },
-    { x: 2700, w: 340, h: 380, stupa: true },
-    { x: 3150, w: 260, h: 320 }
+    { x: 120, w: 230, h: 320, waist: 0.68, stupa: true, floatGap: 55 },
+    { x: 440, w: 180, h: 420, waist: 0.55, stupa: false, floatGap: 0 },
+    { x: 760, w: 290, h: 290, waist: 0.72, stupa: true, floatGap: 40 },
+    { x: 1140, w: 340, h: 460, waist: 0.60, stupa: true, floatGap: 70 },
+    { x: 1560, w: 220, h: 360, waist: 0.58, stupa: false, floatGap: 0 },
+    { x: 1920, w: 380, h: 490, waist: 0.62, stupa: true, floatGap: 80 },
+    { x: 2380, w: 240, h: 330, waist: 0.65, stupa: false, floatGap: 30 },
+    { x: 2760, w: 350, h: 430, waist: 0.57, stupa: true, floatGap: 65 },
+    { x: 3200, w: 270, h: 350, waist: 0.70, stupa: false, floatGap: 0 },
+    { x: 3580, w: 310, h: 440, waist: 0.61, stupa: true, floatGap: 50 }
   ];
 
   for (let i = 0; i < karstPeaks.length; i++) {
     const kp = karstPeaks[i];
-    const sx = (kp.x - farX) % (W_screen + 500) - 250;
+    const sx = (kp.x - farX) % wrapW - 300;
+    if (sx < -kp.w - 100 || sx > W_screen + kp.w + 100) continue;
+
     const sy = farBaseY - kp.h;
+    const peakBaseY = kp.floatGap > 0 ? (farBaseY - kp.floatGap) : (farBaseY + 60);
 
-    ctx.lineTo(sx - kp.w * 0.5, farBaseY);
-    ctx.quadraticCurveTo(sx - kp.w * 0.15, sy + kp.h * 0.28, sx, sy);
-    ctx.quadraticCurveTo(sx + kp.w * 0.15, sy + kp.h * 0.28, sx + kp.w * 0.5, farBaseY);
+    // Organiczna bryła krasowej iglicy z organicznym przewężeniem (waist) i spękaniami
+    ctx.fillStyle = '#072418';
+    ctx.beginPath();
+    ctx.moveTo(sx - kp.w * 0.45, peakBaseY);
 
-    // Starożytna wieża / stupa na wierzchołku szczytu
+    // Lewa krawędź iglicy (falowana ściana skalna)
+    ctx.quadraticCurveTo(sx - kp.w * 0.55 * kp.waist, sy + kp.h * 0.55, sx - kp.w * 0.28, sy + kp.h * 0.22);
+    ctx.quadraticCurveTo(sx - kp.w * 0.12, sy + kp.h * 0.06, sx, sy);
+
+    // Prawa krawędź iglicy
+    ctx.quadraticCurveTo(sx + kp.w * 0.14, sy + kp.h * 0.08, sx + kp.w * 0.30, sy + kp.h * 0.25);
+    ctx.quadraticCurveTo(sx + kp.w * 0.52 * kp.waist, sy + kp.h * 0.58, sx + kp.w * 0.46, peakBaseY);
+
+    // Jeśli iglica lewituje (Hallelujah style) - podcięte, zwężające się ku dołowi skalne podbrzusze
+    if (kp.floatGap > 0) {
+      ctx.quadraticCurveTo(sx + kp.w * 0.22, peakBaseY + 38, sx, peakBaseY + 52);
+      ctx.quadraticCurveTo(sx - kp.w * 0.22, peakBaseY + 38, sx - kp.w * 0.45, peakBaseY);
+    } else {
+      ctx.lineTo(sx - kp.w * 0.45, peakBaseY);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Szmaragdowy mech na szczytowej półce iglicy
+    ctx.fillStyle = '#0e3a26';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 3, kp.w * 0.24, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pionowe szczeliny i żłobienia geologiczne na frontowej ścianie iglicy
+    ctx.strokeStyle = 'rgba(3, 16, 11, 0.55)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(sx - kp.w * 0.08, sy + 18);
+    ctx.quadraticCurveTo(sx - kp.w * 0.12, sy + kp.h * 0.45, sx - kp.w * 0.04, peakBaseY - 10);
+    ctx.moveTo(sx + kp.w * 0.12, sy + 32);
+    ctx.quadraticCurveTo(sx + kp.w * 0.08, sy + kp.h * 0.52, sx + kp.w * 0.16, peakBaseY - 15);
+    ctx.stroke();
+
+    // Starożytne stupy / wieże świątynne na szczytach iglic
     if (kp.stupa) {
-      ctx.rect(sx - 9, sy - 28, 18, 28);
-      ctx.moveTo(sx - 14, sy - 28);
-      ctx.lineTo(sx + 14, sy - 28);
-      ctx.lineTo(sx, sy - 46);
+      ctx.fillStyle = '#061e14';
+      // Schodkowy cokół stupy
+      ctx.fillRect(sx - 14, sy - 8, 28, 8);
+      ctx.fillRect(sx - 11, sy - 17, 22, 9);
+      // Kopuła / brzusiec stupy (anda)
+      ctx.beginPath();
+      ctx.moveTo(sx - 9, sy - 17);
+      ctx.quadraticCurveTo(sx, sy - 34, sx + 9, sy - 17);
       ctx.closePath();
+      ctx.fill();
+      // Tierowane parasole (chattras) i smukła iglica (kalasha) sięgająca w niebo
+      ctx.fillRect(sx - 13, sy - 33, 26, 3);
+      ctx.fillRect(sx - 9, sy - 38, 18, 2.5);
+      ctx.fillRect(sx - 5, sy - 43, 10, 2);
+      ctx.beginPath();
+      ctx.moveTo(sx - 2, sy - 43);
+      ctx.lineTo(sx + 2, sy - 43);
+      ctx.lineTo(sx, sy - 60);
+      ctx.closePath();
+      ctx.fill();
     }
   }
-  ctx.lineTo(W_screen, farBaseY);
-  ctx.lineTo(W_screen, H_screen);
-  ctx.closePath();
-  ctx.fill();
 
-  // Mgiełka dolinna między górami
-  const farMist = ctx.createLinearGradient(0, farBaseY - 80, 0, farBaseY + 70);
-  farMist.addColorStop(0.0, 'rgba(15, 60, 42, 0)');
-  farMist.addColorStop(0.6, 'rgba(19, 70, 48, 0.35)');
-  farMist.addColorStop(1.0, 'rgba(11, 42, 29, 0.65)');
+  // Warstwa mgiełki dolinnej u podnóża krasowych iglic
+  const farMist = ctx.createLinearGradient(0, farBaseY - 110, 0, farBaseY + 90);
+  farMist.addColorStop(0.0, 'rgba(11, 48, 33, 0)');
+  farMist.addColorStop(0.35, 'rgba(16, 68, 46, 0.42)');
+  farMist.addColorStop(0.70, 'rgba(19, 78, 52, 0.65)');
+  farMist.addColorStop(1.0, 'rgba(8, 34, 23, 0.88)');
   ctx.fillStyle = farMist;
-  ctx.fillRect(0, farBaseY - 80, W_screen, 150);
+  ctx.fillRect(0, farBaseY - 110, W_screen, 200);
+
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 2: GĘSTE KORONY DRZEW I KASKADOWE WODOSPADY (PARALAKSA 0.055)
+  // WARSTWA 2: GÓRSKIE WODOSPADY I GĘSTY BALDACHIM KORON [PARALAKSA 0.055]
   // -------------------------------------------------------------------------
   ctx.save();
   const midX = camX * 0.055;
   const midY = camY * 0.035;
-  const midBaseY = H_screen * 0.82 - midY;
+  const midBaseY = H_screen * 0.81 - midY;
+  const canopyWrap = W_screen + 600;
 
-  // Głębokie leśne korony drzew
-  const midCanopyGrad = ctx.createLinearGradient(0, midBaseY - 180, 0, midBaseY + 120);
-  midCanopyGrad.addColorStop(0.0, '#0e3d27');
-  midCanopyGrad.addColorStop(0.4, '#134c32');
-  midCanopyGrad.addColorStop(1.0, '#0a2417');
-  ctx.fillStyle = midCanopyGrad;
+  // Głębokie leśne korony tropikalnych drzew (zróżnicowane odcienie szmaragdu i dżungli)
+  const domeCount = 20;
+  const domeStep = canopyWrap / domeCount;
 
+  // 1. Tylna ciemniejsza warstwa baldachimu
+  ctx.fillStyle = '#0a2e1d';
   ctx.beginPath();
-  ctx.moveTo(0, H_screen);
-  ctx.lineTo(0, midBaseY);
-
-  const domeCount = 18;
-  const domeStep = (W_screen + 400) / domeCount;
+  ctx.moveTo(-100, H_screen);
+  ctx.lineTo(-100, midBaseY);
   for (let d = 0; d <= domeCount + 1; d++) {
-    const dx = (d * domeStep - midX) % (W_screen + 400) - 200;
-    const treeH = 110 + Math.sin(d * 1.8) * 45 + Math.cos(d * 2.5) * 30;
+    const dx = (d * domeStep - midX * 0.85) % canopyWrap - 200;
+    const treeH = 105 + Math.sin(d * 1.5) * 40 + Math.cos(d * 2.1) * 25;
     const dy = midBaseY - treeH;
-    ctx.quadraticCurveTo(dx - domeStep * 0.3, dy - 20, dx, dy);
-    ctx.quadraticCurveTo(dx + domeStep * 0.3, dy + 15, dx + domeStep * 0.5, midBaseY);
+    ctx.quadraticCurveTo(dx - domeStep * 0.35, dy - 18, dx, dy);
+    ctx.quadraticCurveTo(dx + domeStep * 0.35, dy + 16, dx + domeStep * 0.5, midBaseY);
   }
-  ctx.lineTo(W_screen, midBaseY);
-  ctx.lineTo(W_screen, H_screen);
+  ctx.lineTo(W_screen + 100, midBaseY);
+  ctx.lineTo(W_screen + 100, H_screen);
   ctx.closePath();
   ctx.fill();
 
-  // DWA GÓRSKIE WODOSPADY W TLE
+  // 2. Przednia, nasycona warstwa baldachimu drzew (#0e3d27 i #134c32)
+  const midCanopyGrad = ctx.createLinearGradient(0, midBaseY - 160, 0, midBaseY + 100);
+  midCanopyGrad.addColorStop(0.0, '#134c32');
+  midCanopyGrad.addColorStop(0.45, '#0e3d27');
+  midCanopyGrad.addColorStop(1.0, '#071f14');
+  ctx.fillStyle = midCanopyGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(-100, H_screen);
+  ctx.lineTo(-100, midBaseY);
+  for (let d = 0; d <= domeCount + 1; d++) {
+    const dx = (d * domeStep - midX) % canopyWrap - 200;
+    const treeH = 90 + Math.sin(d * 1.9 + 1.2) * 50 + Math.cos(d * 2.7) * 32;
+    const dy = midBaseY - treeH;
+    ctx.quadraticCurveTo(dx - domeStep * 0.30, dy - 24, dx, dy);
+    ctx.quadraticCurveTo(dx + domeStep * 0.30, dy + 20, dx + domeStep * 0.5, midBaseY);
+  }
+  ctx.lineTo(W_screen + 100, midBaseY);
+  ctx.lineTo(W_screen + 100, H_screen);
+  ctx.closePath();
+  ctx.fill();
+
+  // TRZY GÓRSKIE WODOSPADY SPŁYWAJĄCE W PUSTKĘ Z LEWITUJĄCYCH FORMACJI
   const waterfalls = [
-    { x: W_screen * 0.28 - (camX * 0.055) % (W_screen + 600), startY: midBaseY - 140, len: 170, w: 18 },
-    { x: W_screen * 0.76 - (camX * 0.055) % (W_screen + 600), startY: midBaseY - 160, len: 190, w: 22 }
+    { xRel: 0.22, startYOff: -160, len: 195, w: 18, speed: 170 },
+    { xRel: 0.58, startYOff: -190, len: 230, w: 22, speed: 190 },
+    { xRel: 0.85, startYOff: -150, len: 180, w: 16, speed: 160 }
   ];
 
   for (let wf of waterfalls) {
-    const endY = wf.startY + wf.len;
+    const wx = (W_screen * wf.xRel - midX) % canopyWrap - 200;
+    if (wx < -80 || wx > W_screen + 80) continue;
 
-    // Struga wody
-    const wfGrad = ctx.createLinearGradient(wf.x, wf.startY, wf.x + wf.w, wf.startY);
-    wfGrad.addColorStop(0.0, 'rgba(14, 116, 144, 0.65)');
-    wfGrad.addColorStop(0.3, '#38bdf8');
-    wfGrad.addColorStop(0.7, '#7dd3fc');
-    wfGrad.addColorStop(1.0, 'rgba(14, 116, 144, 0.65)');
+    const startY = midBaseY + wf.startYOff;
+    const endY = startY + wf.len;
+
+    // Skalna półka, z której spływa wodospad
+    ctx.fillStyle = '#061d12';
+    ctx.beginPath();
+    ctx.ellipse(wx + wf.w * 0.5, startY + 2, wf.w * 1.3, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Główny strumień wody kaskady
+    const wfGrad = ctx.createLinearGradient(wx, startY, wx + wf.w, startY);
+    wfGrad.addColorStop(0.0, 'rgba(12, 94, 82, 0.70)');
+    wfGrad.addColorStop(0.28, '#22d3ee');
+    wfGrad.addColorStop(0.68, '#67e8f9');
+    wfGrad.addColorStop(1.0, 'rgba(12, 94, 82, 0.70)');
     ctx.fillStyle = wfGrad;
 
     ctx.beginPath();
-    ctx.moveTo(wf.x, wf.startY);
-    ctx.lineTo(wf.x + wf.w, wf.startY);
-    ctx.quadraticCurveTo(wf.x + wf.w * 0.85, wf.startY + wf.len * 0.5, wf.x + wf.w * 0.70, endY);
-    ctx.lineTo(wf.x + wf.w * 0.30, endY);
-    ctx.quadraticCurveTo(wf.x + wf.w * 0.15, wf.startY + wf.len * 0.5, wf.x, wf.startY);
+    ctx.moveTo(wx, startY);
+    ctx.lineTo(wx + wf.w, startY);
+    ctx.quadraticCurveTo(wx + wf.w * 0.82, startY + wf.len * 0.5, wx + wf.w * 0.70, endY);
+    ctx.lineTo(wx + wf.w * 0.30, endY);
+    ctx.quadraticCurveTo(wx + wf.w * 0.18, startY + wf.len * 0.5, wx, startY);
     ctx.closePath();
     ctx.fill();
 
-    // Animowane spływające smugi piany
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    // Animowane spływające smugi piany ((time * speed) % step)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
     ctx.lineWidth = 1.6;
-    const yOff = (time * 160) % 32;
-    for (let py = wf.startY + yOff; py < endY - 8; py += 32) {
+    const yOff = (time * wf.speed) % 28;
+    for (let py = startY + yOff; py < endY - 6; py += 28) {
       ctx.beginPath();
-      ctx.moveTo(wf.x + wf.w * 0.35, py);
-      ctx.lineTo(wf.x + wf.w * 0.65, py + 14);
+      ctx.moveTo(wx + wf.w * 0.32, py);
+      ctx.lineTo(wx + wf.w * 0.68, py + 12);
       ctx.stroke();
     }
 
-    // Pióropusz mgły u dołu wodospadu
+    // Pióropusz mgły wodnej u dołu wodospadu (tryb 'screen' blend)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    const mistGrad = ctx.createRadialGradient(wf.x + wf.w * 0.5, endY, 4, wf.x + wf.w * 0.5, endY, 45);
-    mistGrad.addColorStop(0.0, 'rgba(204, 251, 241, 0.45)');
-    mistGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.18)');
+    const mistR = wf.w * 2.4;
+    const mistGrad = ctx.createRadialGradient(wx + wf.w * 0.5, endY, 4, wx + wf.w * 0.5, endY, mistR);
+    mistGrad.addColorStop(0.0, 'rgba(204, 251, 241, 0.48)');
+    mistGrad.addColorStop(0.48, 'rgba(56, 189, 248, 0.20)');
     mistGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = mistGrad;
     ctx.beginPath();
-    ctx.arc(wf.x + wf.w * 0.5, endY, 45, 0, Math.PI * 2);
+    ctx.arc(wx + wf.w * 0.5, endY, mistR, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  // Odległe potężne liany przerzucone między wierzchołkami koron
-  ctx.strokeStyle = '#071f14';
-  ctx.lineWidth = 4.5;
-  ctx.beginPath();
-  ctx.moveTo(waterfalls[0].x - 140, midBaseY - 110);
-  ctx.quadraticCurveTo(waterfalls[0].x, midBaseY - 50, waterfalls[0].x + 180, midBaseY - 120);
-  ctx.stroke();
+  // Monumentalne liany przewieszone w powietrzu pomiędzy formacjami drzew
+  ctx.strokeStyle = '#061a11';
+  ctx.lineWidth = 4.0;
+  for (let l = 0; l < 2; l++) {
+    const lx1 = (W_screen * (0.24 + l * 0.45) - midX) % canopyWrap - 200;
+    const lx2 = lx1 + 280;
+    const ly = midBaseY - 110 + l * 25;
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly);
+    ctx.quadraticCurveTo(lx1 + 140, ly + 65, lx2, ly - 10);
+    ctx.stroke();
+  }
 
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 3: BLISKA DŻUNGLA, GIGANTYCZNE PNIE I LIANY (PARALAKSA 0.11)
+  // WARSTWA 3: MONUMENTALNE BANYANY I LIANY [PARALAKSA 0.11]
   // -------------------------------------------------------------------------
   ctx.save();
   const nearX = camX * 0.11;
   const nearY = camY * 0.07;
-  const nearBaseY = H_screen * 0.90 - nearY;
+  const nearBaseY = H_screen * 0.91 - nearY;
+  const trunkWrap = W_screen + 700;
 
-  // Ciemne sylwetki masywnych pni banyanów i zarośli
-  ctx.fillStyle = '#071910';
-
+  // Potężne sylwetki pni banyanów z widocznymi korzeniami szkarpowymi (buttress roots)
   const bigTrunks = [
-    { x: 80 - nearX % (W_screen + 600), w: 90, h: 480 },
-    { x: 580 - nearX % (W_screen + 600), w: 110, h: 540 },
-    { x: 1220 - nearX % (W_screen + 600), w: 130, h: 510 },
-    { x: 1840 - nearX % (W_screen + 600), w: 95, h: 470 },
-    { x: 2380 - nearX % (W_screen + 600), w: 120, h: 530 }
+    { xRel: 70, w: 105, h: 510 },
+    { xRel: 560, w: 130, h: 560 },
+    { xRel: 1180, w: 145, h: 530 },
+    { xRel: 1780, w: 110, h: 490 },
+    { xRel: 2340, w: 135, h: 550 },
+    { xRel: 2950, w: 120, h: 520 }
   ];
 
-  for (const tr of bigTrunks) {
+  for (let i = 0; i < bigTrunks.length; i++) {
+    const tr = bigTrunks[i];
+    const tx = (tr.xRel - nearX) % trunkWrap - 250;
+    if (tx < -tr.w - 150 || tx > W_screen + tr.w + 150) continue;
+
+    const topY = nearBaseY - tr.h;
+
+    // Organiczna sylwetka pnia: rozszerzająca się ku dołowi korzeniami szkarpowymi
+    ctx.fillStyle = '#06160e';
     ctx.beginPath();
-    ctx.moveTo(tr.x - tr.w * 0.5, H_screen);
-    ctx.lineTo(tr.x - tr.w * 0.35, nearBaseY - tr.h);
-    ctx.lineTo(tr.x + tr.w * 0.35, nearBaseY - tr.h);
-    ctx.lineTo(tr.x + tr.w * 0.5, H_screen);
+    // Dolny lewy korzeń szkarpowy (szerokie oparcie o grunt)
+    ctx.moveTo(tx - tr.w * 0.85, H_screen);
+    ctx.quadraticCurveTo(tx - tr.w * 0.50, nearBaseY - tr.h * 0.25, tx - tr.w * 0.35, topY + tr.h * 0.20);
+    // Przejście w koronę / górne konary
+    ctx.quadraticCurveTo(tx - tr.w * 0.45, topY, tx - tr.w * 0.25, topY);
+    ctx.lineTo(tx + tr.w * 0.25, topY);
+    ctx.quadraticCurveTo(tx + tr.w * 0.45, topY, tx + tr.w * 0.35, topY + tr.h * 0.20);
+    // Prawy korzeń szkarpowy
+    ctx.quadraticCurveTo(tx + tr.w * 0.50, nearBaseY - tr.h * 0.25, tx + tr.w * 0.85, H_screen);
     ctx.closePath();
     ctx.fill();
 
-    // Zwieszające się wici lian z pni w tle
-    ctx.strokeStyle = '#05130c';
-    ctx.lineWidth = 2.5;
-    for (let l = 0; l < 3; l++) {
-      const lx = tr.x - tr.w * 0.2 + l * (tr.w * 0.25);
-      const lLen = 140 + ((l * 43) % 180);
-      const sway = Math.sin(time * 1.5 + l + tr.x * 0.01) * 8;
+    // Centralny widoczny grzbiet pnia banyanu
+    ctx.strokeStyle = '#0a2216';
+    ctx.lineWidth = tr.w * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(tx, topY + 20);
+    ctx.quadraticCurveTo(tx + 8, topY + tr.h * 0.5, tx - 6, H_screen);
+    ctx.stroke();
+
+    // Zwieszające się pnącza i liany o delikatnym wahadle animacji (Math.sin(time + x))
+    ctx.strokeStyle = '#05140d';
+    ctx.lineWidth = 2.4;
+    for (let l = 0; l < 4; l++) {
+      const lx = tx - tr.w * 0.3 + l * (tr.w * 0.22);
+      const lLen = 150 + ((l * 47 + i * 29) % 210);
+      const sway = Math.sin(time * 1.5 + l * 0.9 + tx * 0.008) * 11;
+
       ctx.beginPath();
-      ctx.moveTo(lx, nearBaseY - tr.h + 80);
-      ctx.quadraticCurveTo(lx + sway * 0.5, nearBaseY - tr.h + 80 + lLen * 0.5, lx + sway, nearBaseY - tr.h + 80 + lLen);
+      ctx.moveTo(lx, topY + 60);
+      ctx.quadraticCurveTo(lx + sway * 0.5, topY + 60 + lLen * 0.5, lx + sway, topY + 60 + lLen);
       ctx.stroke();
+
+      // Drobny listek na końcu liany
+      ctx.fillStyle = '#0b2e1c';
+      ctx.beginPath();
+      ctx.ellipse(lx + sway, topY + 60 + lLen, 3.2, 1.8, 0.4, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
-  // Zarys tropikalnych paproci i liści palmowych na dolnej krawędzi
-  ctx.strokeStyle = '#081d13';
+  // Zarys tropikalnych paproci i liści palmowych na dolnej krawędzi kadru
+  ctx.strokeStyle = '#081e13';
   ctx.lineWidth = 3.5;
-  for (let f = 0; f < 14; f++) {
-    const fx = (f * 175 - nearX) % (W_screen + 300) - 100;
-    const fy = nearBaseY + 20;
+  for (let f = 0; f < 16; f++) {
+    const fx = (f * 160 - nearX) % (W_screen + 350) - 100;
+    const fy = nearBaseY + 15;
     for (let fr = -2; fr <= 2; fr++) {
       ctx.beginPath();
       ctx.moveTo(fx, fy);
-      ctx.quadraticCurveTo(fx + fr * 24, fy - 45, fx + fr * 38, fy - 65);
+      ctx.quadraticCurveTo(fx + fr * 24, fy - 48, fx + fr * 38, fy - 72);
       ctx.stroke();
     }
   }
@@ -484,9 +611,8 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 4: PŁYWAJĄCY PYŁEK DŻUNGLI (ZOPTYMALIZOWANY DO 24 SZTUK, BEZ CIENI I GRADIENTÓW)
+  // WARSTWA 4: PŁYWAJĄCY PYŁEK DŻUNGLI (ZOPTYMALIZOWANY DO 24 SZTUK, 60 FPS)
   // -------------------------------------------------------------------------
-  // (Usunięto pionowe pomarańczowe snopy światła / god rays)
   ctx.save();
   ctx.shadowBlur = 0;
   for (let m = 0; m < _bgJungleMotes.length; m++) {
