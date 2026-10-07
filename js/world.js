@@ -2400,8 +2400,8 @@ export function drawGround(ctx, worldLeft, worldWidth) {
   const startX = ARENA_LEFT - 320;
   const endX = ARENA_RIGHT + 320;
   const w = endX - startX;
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
 
   if (isArena3 || isArena2) {
     // Tło, obiekty i platformy Areny 2 & 3 renderowane są autonomicznie w ich modułach areny (brak płaskiego podłoża)

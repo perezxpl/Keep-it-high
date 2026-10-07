@@ -79,15 +79,19 @@ export const ARENA_2_PANDORA = {
   name: 'Święta Dżungla',
   subtitle: 'Ancient Jungle Sanctuary',
   width: 3600,
-  height: 1400,
+  height: 2000,
   bounds: {
     minX: 0,
     maxX: 3600,
     minY: 0,
-    maxY: 1400
+    maxY: 2000
   },
-  cloudZoneY: 1260,
-  abyssDeathY: 1380,
+  spawns: {
+    left: { x: 420, y: 910 },
+    right: { x: 3180, y: 910 }
+  },
+  cloudZoneY: 1510,
+  abyssDeathY: 1660,
   updraftImpulse: -680
 };
 export const ARENA_2_CONFIG = ARENA_2_PANDORA;

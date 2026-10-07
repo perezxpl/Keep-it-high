@@ -129,7 +129,7 @@ export function getArenaBounds() {
     maxX,
     arenaWidth: maxX - minX,
     minY: (isArena3 || isArena2) ? 0 : (groundFloor - 3000),
-    maxY: (isArena3 || isArena2) ? 1400 : groundFloor
+    maxY: isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor)
   };
 }
 
@@ -180,11 +180,11 @@ export function clampCamera(cam = camera) {
   }
 
   const arenaId = getCameraArenaId();
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const groundFloor = getCameraGroundY();
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
-  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 2000 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));

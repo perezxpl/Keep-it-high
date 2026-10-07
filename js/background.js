@@ -196,21 +196,35 @@ export function drawMineCaveBackground(ctx, camX = 1800, camY = 0) {
 // 5. Wolumetryczne złote promienie słońca (god rays) i świetliki dżungli
 // =========================================================================
 
-// Cząsteczki pyłku i świetlików w tle (zoptymalizowano do 24 sztuk dla stałych 60 FPS)
-const BG_JUNGLE_MOTES_COUNT = 24;
+// Cząsteczki bioluminescencyjnego pyłku i zarodników nocnej Pandory (stałe 60 FPS)
+const BG_JUNGLE_MOTES_COUNT = 28;
 const _bgJungleMotes = [];
 for (let i = 0; i < BG_JUNGLE_MOTES_COUNT; i++) {
   _bgJungleMotes.push({
     seedX: 50 + (i * 87.7) % 3600,
     seedY: 100 + (i * 41.3) % 950,
-    speedX: ((i % 5) - 2) * 5.5,
-    speedY: -7.0 - (i % 4) * 3.5,
-    swayAmp: 18 + (i % 4) * 7,
+    speedX: ((i % 5) - 2) * 4.5,
+    speedY: -6.0 - (i % 4) * 3.0,
+    swayAmp: 16 + (i % 4) * 6,
     swaySpeed: 0.75 + (i % 3) * 0.4,
-    size: (i % 4 === 0) ? 2.0 : 1.2,
+    size: (i % 4 === 0) ? 2.2 : (i % 3 === 0 ? 1.6 : 1.1),
     pulseSpeed: 1.4 + (i % 3) * 0.6,
     phase: i * 0.52,
-    isGolden: (i % 3 !== 1)
+    hueType: i % 3
+  });
+}
+
+// Delikatne gwiazdy nocnego nieba Pandory
+const PANDORA_STARS_COUNT = 90;
+const _pandoraStars = [];
+for (let i = 0; i < PANDORA_STARS_COUNT; i++) {
+  _pandoraStars.push({
+    xRatio: (i * 0.01173 + 0.007) % 1.0,
+    yRatio: (i * 0.00713 + 0.015) % 0.58, // górne 58% ekranu
+    size: 0.7 + (i % 3) * 0.5,
+    color: (i % 4 === 0) ? '#a5f3fc' : ((i % 4 === 1) ? '#c7d2fe' : ((i % 4 === 2) ? '#ffffff' : '#99f6e4')),
+    twinkleSpeed: 1.2 + (i % 5) * 0.6,
+    phase: i * 0.68
   });
 }
 
@@ -220,6 +234,16 @@ export function drawGodRays() {}
 export function drawVolumetricLight() {}
 export function drawLightBeams() {}
 
+/**
+ * Renderuje autorskie tło nocnej Pandory (Ancient Sanctuary / Arena 2):
+ * - Kosmiczne, głębokie niebo (indygo, granat, szafir) z zamglonym szmaragdowo-cyjanowym horyzontem
+ * - Całkowity brak oślepiającej tarczy słonecznej (czysta, nastrojowa noc)
+ * - Mrugające delikatne gwiazdy i subtelna kosmiczna mgławica
+ * - Lewitujące krasowe iglice (Hallelujah) z bioluminescencyjną cyjanową poświatą krawędzi
+ * - Spływające kaskady świecącej, turkusowo-cyjanowej wody
+ * - Nocne sylwetki potężnych banyanów z pulsującymi zarodnikami grzybów
+ * - Unoszący się w powietrzu cyjanowo-szmaragdowy pył bioluminescencyjny
+ */
 export function drawPandoraBackground(ctx, camera) {
   if (!ctx) return;
   ctx.shadowBlur = 0;
@@ -231,65 +255,57 @@ export function drawPandoraBackground(ctx, camera) {
   const camY = camera ? (camera.y || 0) : 0;
 
   // -------------------------------------------------------------------------
-  // WARSTWA 0: ETERYCZNE NIEBO PANDORY I PROMIENNE SŁOŃCE
+  // WARSTWA 0: NOCNE NIEBO PANDORY (GŁĘBOKIE INDYGO, GRANAT, CYJANOWY HORYZONT)
+  // ZERO SŁOŃCA / ZERO ŚWIECĄCEJ TARCZY
   // -------------------------------------------------------------------------
-  // Płynny gradient pionowy: głęboki szmaragd na górze (#021810) przechodzący
-  // w nasyconą zieleń dżungli (#0a3824 -> #144c31) i złociste zamglenie nad horyzontem (#185938 -> #164f33)
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-  skyGrad.addColorStop(0.00, '#021810');
-  skyGrad.addColorStop(0.22, '#042417');
-  skyGrad.addColorStop(0.48, '#0a3824');
-  skyGrad.addColorStop(0.72, '#144c31');
-  skyGrad.addColorStop(0.88, '#185938');
-  skyGrad.addColorStop(1.00, '#12442b');
+  skyGrad.addColorStop(0.00, '#010309'); // kosmiczna czerń z odcieniem indygo
+  skyGrad.addColorStop(0.22, '#040817'); // ciemny nocny szafir
+  skyGrad.addColorStop(0.48, '#081226'); // głęboki nocny granat / indygo
+  skyGrad.addColorStop(0.70, '#0b1c34'); // pruskie nocne indygo
+  skyGrad.addColorStop(0.85, '#07242e'); // nocny morski cyjan
+  skyGrad.addColorStop(1.00, '#041c22'); // szmaragdowo-cyjanowy horyzont Pandory
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
-  // Miękkie, promienne słońce przedzierające się przez mistyczną mgłę Pandory
-  const sunX = W_screen * 0.65 - (camX * 0.006);
-  const sunY = H_screen * 0.28 - (camY * 0.004);
-  const sunR = Math.max(80, Math.min(140, H_screen * 0.16));
+  // Delikatne gwiazdy nocnego nieba Pandory
+  ctx.save();
+  const starParallaxX = camX * 0.005;
+  const starParallaxY = camY * 0.003;
+  for (let i = 0; i < _pandoraStars.length; i++) {
+    const st = _pandoraStars[i];
+    const sx = ((st.xRatio * W_screen - starParallaxX) % W_screen + W_screen) % W_screen;
+    const sy = st.yRatio * H_screen - starParallaxY;
+    if (sy < 0 || sy > H_screen * 0.65) continue;
 
+    const twinkle = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(time * st.twinkleSpeed + st.phase));
+    ctx.globalAlpha = twinkle;
+    ctx.fillStyle = st.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, st.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Eteryczna wstęga kosmicznej mgławicy / zorzy polarno-bioluminescencyjnej w trybie 'screen'
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-
-  // Szeroka, rozproszona eteryczna aura nieba
-  const sunAura = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, sunR * 3.4);
-  sunAura.addColorStop(0.0, 'rgba(254, 240, 138, 0.28)');
-  sunAura.addColorStop(0.32, 'rgba(187, 247, 208, 0.14)');
-  sunAura.addColorStop(0.68, 'rgba(52, 211, 153, 0.05)');
-  sunAura.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = sunAura;
+  const nebX = W_screen * 0.55 - camX * 0.008;
+  const nebY = H_screen * 0.22 - camY * 0.005;
+  const nebR = W_screen * 0.45;
+  const nebGrad = ctx.createRadialGradient(nebX, nebY, 30, nebX, nebY, nebR);
+  nebGrad.addColorStop(0.00, 'rgba(6, 182, 212, 0.12)'); // cyjan
+  nebGrad.addColorStop(0.38, 'rgba(59, 130, 246, 0.06)'); // szafir
+  nebGrad.addColorStop(0.72, 'rgba(99, 102, 241, 0.03)'); // indygo
+  nebGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = nebGrad;
   ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR * 3.4, 0, Math.PI * 2);
+  ctx.arc(nebX, nebY, nebR, 0, Math.PI * 2);
   ctx.fill();
-
-  // Miękka wielostopniowa korona słoneczna bez ostrych krawędzi
-  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 1.85);
-  coronaGrad.addColorStop(0.0, 'rgba(255, 255, 245, 0.65)');
-  coronaGrad.addColorStop(0.28, 'rgba(254, 249, 195, 0.36)');
-  coronaGrad.addColorStop(0.65, 'rgba(253, 224, 71, 0.14)');
-  coronaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = coronaGrad;
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR * 1.85, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Jasna tarcza słoneczna z płynnym zanikaniem
-  const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR * 0.9);
-  sunCore.addColorStop(0.0, '#ffffff');
-  sunCore.addColorStop(0.42, '#fef9c3');
-  sunCore.addColorStop(0.78, 'rgba(254, 240, 138, 0.38)');
-  sunCore.addColorStop(1.0, 'rgba(254, 240, 138, 0)');
-  ctx.fillStyle = sunCore;
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR * 0.9, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 1: ODLEGŁE LEWITUJĄCE IGLICE KRASOWE (KARST PEAKS / HALLELUJAH) [PARALAKSA 0.020]
+  // WARSTWA 1: ZAMGLONE SZMARAGDOWO-CYJANOWE IGLICE KRASOWE (HALLELUJAH) [PARALAKSA 0.020]
   // -------------------------------------------------------------------------
   ctx.save();
   const farX = camX * 0.020;
@@ -297,7 +313,6 @@ export function drawPandoraBackground(ctx, camera) {
   const farBaseY = H_screen * 0.74 - farY;
   const wrapW = W_screen + 800;
 
-  // Organiczne sylwetki lewitujących formacji krasowych (Hallelujah Mountains)
   const karstPeaks = [
     { x: 120, w: 230, h: 320, waist: 0.68, stupa: true, floatGap: 55 },
     { x: 440, w: 180, h: 420, waist: 0.55, stupa: false, floatGap: 0 },
@@ -319,20 +334,15 @@ export function drawPandoraBackground(ctx, camera) {
     const sy = farBaseY - kp.h;
     const peakBaseY = kp.floatGap > 0 ? (farBaseY - kp.floatGap) : (farBaseY + 60);
 
-    // Organiczna bryła krasowej iglicy z organicznym przewężeniem (waist) i spękaniami
-    ctx.fillStyle = '#072418';
+    // Ciemna bryła krasowej iglicy w nocnym odcieniu petrol/teal
+    ctx.fillStyle = '#03121a';
     ctx.beginPath();
     ctx.moveTo(sx - kp.w * 0.45, peakBaseY);
-
-    // Lewa krawędź iglicy (falowana ściana skalna)
     ctx.quadraticCurveTo(sx - kp.w * 0.55 * kp.waist, sy + kp.h * 0.55, sx - kp.w * 0.28, sy + kp.h * 0.22);
     ctx.quadraticCurveTo(sx - kp.w * 0.12, sy + kp.h * 0.06, sx, sy);
-
-    // Prawa krawędź iglicy
     ctx.quadraticCurveTo(sx + kp.w * 0.14, sy + kp.h * 0.08, sx + kp.w * 0.30, sy + kp.h * 0.25);
     ctx.quadraticCurveTo(sx + kp.w * 0.52 * kp.waist, sy + kp.h * 0.58, sx + kp.w * 0.46, peakBaseY);
 
-    // Jeśli iglica lewituje (Hallelujah style) - podcięte, zwężające się ku dołowi skalne podbrzusze
     if (kp.floatGap > 0) {
       ctx.quadraticCurveTo(sx + kp.w * 0.22, peakBaseY + 38, sx, peakBaseY + 52);
       ctx.quadraticCurveTo(sx - kp.w * 0.22, peakBaseY + 38, sx - kp.w * 0.45, peakBaseY);
@@ -342,14 +352,22 @@ export function drawPandoraBackground(ctx, camera) {
     ctx.closePath();
     ctx.fill();
 
-    // Szmaragdowy mech na szczytowej półce iglicy
-    ctx.fillStyle = '#0e3a26';
+    // Szmaragdowo-cyjanowy mech bioluminescencyjny na szczycie iglicy
+    ctx.fillStyle = '#06282e';
     ctx.beginPath();
     ctx.ellipse(sx, sy + 3, kp.w * 0.24, 7, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Pionowe szczeliny i żłobienia geologiczne na frontowej ścianie iglicy
-    ctx.strokeStyle = 'rgba(3, 16, 11, 0.55)';
+    // Delikatny cyjanowy rim-light na krawędzi szczytowej iglicy
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.22)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(sx - kp.w * 0.20, sy + 6);
+    ctx.quadraticCurveTo(sx, sy, sx + kp.w * 0.20, sy + 6);
+    ctx.stroke();
+
+    // Spękania tektoniczne w głębi
+    ctx.strokeStyle = 'rgba(2, 9, 14, 0.70)';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(sx - kp.w * 0.08, sy + 18);
@@ -358,19 +376,16 @@ export function drawPandoraBackground(ctx, camera) {
     ctx.quadraticCurveTo(sx + kp.w * 0.08, sy + kp.h * 0.52, sx + kp.w * 0.16, peakBaseY - 15);
     ctx.stroke();
 
-    // Starożytne stupy / wieże świątynne na szczytach iglic
+    // Starożytne stupy świątynne na szczytach iglic
     if (kp.stupa) {
-      ctx.fillStyle = '#061e14';
-      // Schodkowy cokół stupy
+      ctx.fillStyle = '#020b10';
       ctx.fillRect(sx - 14, sy - 8, 28, 8);
       ctx.fillRect(sx - 11, sy - 17, 22, 9);
-      // Kopuła / brzusiec stupy (anda)
       ctx.beginPath();
       ctx.moveTo(sx - 9, sy - 17);
       ctx.quadraticCurveTo(sx, sy - 34, sx + 9, sy - 17);
       ctx.closePath();
       ctx.fill();
-      // Tierowane parasole (chattras) i smukła iglica (kalasha) sięgająca w niebo
       ctx.fillRect(sx - 13, sy - 33, 26, 3);
       ctx.fillRect(sx - 9, sy - 38, 18, 2.5);
       ctx.fillRect(sx - 5, sy - 43, 10, 2);
@@ -383,19 +398,19 @@ export function drawPandoraBackground(ctx, camera) {
     }
   }
 
-  // Warstwa mgiełki dolinnej u podnóża krasowych iglic
+  // Nocna mgła dolinna u podnóża krasowych iglic
   const farMist = ctx.createLinearGradient(0, farBaseY - 110, 0, farBaseY + 90);
-  farMist.addColorStop(0.0, 'rgba(11, 48, 33, 0)');
-  farMist.addColorStop(0.35, 'rgba(16, 68, 46, 0.42)');
-  farMist.addColorStop(0.70, 'rgba(19, 78, 52, 0.65)');
-  farMist.addColorStop(1.0, 'rgba(8, 34, 23, 0.88)');
+  farMist.addColorStop(0.0, 'rgba(4, 22, 28, 0)');
+  farMist.addColorStop(0.35, 'rgba(6, 32, 40, 0.45)');
+  farMist.addColorStop(0.70, 'rgba(5, 26, 32, 0.68)');
+  farMist.addColorStop(1.0, 'rgba(2, 14, 18, 0.88)');
   ctx.fillStyle = farMist;
   ctx.fillRect(0, farBaseY - 110, W_screen, 200);
 
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 2: GÓRSKIE WODOSPADY I GĘSTY BALDACHIM KORON [PARALAKSA 0.055]
+  // WARSTWA 2: BIOLUMINESCENCYJNE WODOSPADY I NOCNY BALDACHIM [PARALAKSA 0.055]
   // -------------------------------------------------------------------------
   ctx.save();
   const midX = camX * 0.055;
@@ -403,12 +418,11 @@ export function drawPandoraBackground(ctx, camera) {
   const midBaseY = H_screen * 0.81 - midY;
   const canopyWrap = W_screen + 600;
 
-  // Głębokie leśne korony tropikalnych drzew (zróżnicowane odcienie szmaragdu i dżungli)
   const domeCount = 20;
   const domeStep = canopyWrap / domeCount;
 
-  // 1. Tylna ciemniejsza warstwa baldachimu
-  ctx.fillStyle = '#0a2e1d';
+  // 1. Tylna ciemniejsza warstwa baldachimu (nocny grafitowy szmaragd)
+  ctx.fillStyle = '#021418';
   ctx.beginPath();
   ctx.moveTo(-100, H_screen);
   ctx.lineTo(-100, midBaseY);
@@ -424,11 +438,11 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.closePath();
   ctx.fill();
 
-  // 2. Przednia, nasycona warstwa baldachimu drzew (#0e3d27 i #134c32)
+  // 2. Przednia nasycona warstwa baldachimu w odcieniach głębokiego nocnego tealu (#042327 i #021619)
   const midCanopyGrad = ctx.createLinearGradient(0, midBaseY - 160, 0, midBaseY + 100);
-  midCanopyGrad.addColorStop(0.0, '#134c32');
-  midCanopyGrad.addColorStop(0.45, '#0e3d27');
-  midCanopyGrad.addColorStop(1.0, '#071f14');
+  midCanopyGrad.addColorStop(0.0, '#042327');
+  midCanopyGrad.addColorStop(0.45, '#021619');
+  midCanopyGrad.addColorStop(1.0, '#010c0e');
   ctx.fillStyle = midCanopyGrad;
 
   ctx.beginPath();
@@ -446,7 +460,7 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.closePath();
   ctx.fill();
 
-  // TRZY GÓRSKIE WODOSPADY SPŁYWAJĄCE W PUSTKĘ Z LEWITUJĄCYCH FORMACJI
+  // TRZY GÓRSKIE WODOSPADY Z BIOLUMINESCENCYJNĄ CYJANOWĄ POŚWIATĄ
   const waterfalls = [
     { xRel: 0.22, startYOff: -160, len: 195, w: 18, speed: 170 },
     { xRel: 0.58, startYOff: -190, len: 230, w: 22, speed: 190 },
@@ -460,18 +474,18 @@ export function drawPandoraBackground(ctx, camera) {
     const startY = midBaseY + wf.startYOff;
     const endY = startY + wf.len;
 
-    // Skalna półka, z której spływa wodospad
-    ctx.fillStyle = '#061d12';
+    // Skalna półka kaskady
+    ctx.fillStyle = '#020e12';
     ctx.beginPath();
     ctx.ellipse(wx + wf.w * 0.5, startY + 2, wf.w * 1.3, 7, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Główny strumień wody kaskady
+    // Główny strumień wody kaskady z nocnym cyjanem
     const wfGrad = ctx.createLinearGradient(wx, startY, wx + wf.w, startY);
-    wfGrad.addColorStop(0.0, 'rgba(12, 94, 82, 0.70)');
-    wfGrad.addColorStop(0.28, '#22d3ee');
-    wfGrad.addColorStop(0.68, '#67e8f9');
-    wfGrad.addColorStop(1.0, 'rgba(12, 94, 82, 0.70)');
+    wfGrad.addColorStop(0.0, 'rgba(8, 64, 76, 0.80)');
+    wfGrad.addColorStop(0.28, '#06b6d4');
+    wfGrad.addColorStop(0.68, '#38bdf8');
+    wfGrad.addColorStop(1.0, 'rgba(8, 64, 76, 0.80)');
     ctx.fillStyle = wfGrad;
 
     ctx.beginPath();
@@ -483,8 +497,8 @@ export function drawPandoraBackground(ctx, camera) {
     ctx.closePath();
     ctx.fill();
 
-    // Animowane spływające smugi piany ((time * speed) % step)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
+    // Animowane spływające smugi piany
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 1.6;
     const yOff = (time * wf.speed) % 28;
     for (let py = startY + yOff; py < endY - 6; py += 28) {
@@ -494,13 +508,13 @@ export function drawPandoraBackground(ctx, camera) {
       ctx.stroke();
     }
 
-    // Pióropusz mgły wodnej u dołu wodospadu (tryb 'screen' blend)
+    // Pióropusz bioluminescencyjnej mgły wodnej u dołu wodospadu (tryb 'screen')
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     const mistR = wf.w * 2.4;
     const mistGrad = ctx.createRadialGradient(wx + wf.w * 0.5, endY, 4, wx + wf.w * 0.5, endY, mistR);
-    mistGrad.addColorStop(0.0, 'rgba(204, 251, 241, 0.48)');
-    mistGrad.addColorStop(0.48, 'rgba(56, 189, 248, 0.20)');
+    mistGrad.addColorStop(0.0, 'rgba(165, 243, 252, 0.45)');
+    mistGrad.addColorStop(0.48, 'rgba(34, 211, 238, 0.22)');
     mistGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = mistGrad;
     ctx.beginPath();
@@ -509,8 +523,8 @@ export function drawPandoraBackground(ctx, camera) {
     ctx.restore();
   }
 
-  // Monumentalne liany przewieszone w powietrzu pomiędzy formacjami drzew
-  ctx.strokeStyle = '#061a11';
+  // Monumentalne nocne liany przewieszone w powietrzu
+  ctx.strokeStyle = '#010c0e';
   ctx.lineWidth = 4.0;
   for (let l = 0; l < 2; l++) {
     const lx1 = (W_screen * (0.24 + l * 0.45) - midX) % canopyWrap - 200;
@@ -525,7 +539,7 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 3: MONUMENTALNE BANYANY I LIANY [PARALAKSA 0.11]
+  // WARSTWA 3: NOCNE SYLWETKI BANYANÓW I ZARODNIKI [PARALAKSA 0.11]
   // -------------------------------------------------------------------------
   ctx.save();
   const nearX = camX * 0.11;
@@ -533,7 +547,6 @@ export function drawPandoraBackground(ctx, camera) {
   const nearBaseY = H_screen * 0.91 - nearY;
   const trunkWrap = W_screen + 700;
 
-  // Potężne sylwetki pni banyanów z widocznymi korzeniami szkarpowymi (buttress roots)
   const bigTrunks = [
     { xRel: 70, w: 105, h: 510 },
     { xRel: 560, w: 130, h: 560 },
@@ -550,31 +563,42 @@ export function drawPandoraBackground(ctx, camera) {
 
     const topY = nearBaseY - tr.h;
 
-    // Organiczna sylwetka pnia: rozszerzająca się ku dołowi korzeniami szkarpowymi
-    ctx.fillStyle = '#06160e';
+    // Organiczna nocna sylwetka pnia banyanu
+    ctx.fillStyle = '#010a0c';
     ctx.beginPath();
-    // Dolny lewy korzeń szkarpowy (szerokie oparcie o grunt)
     ctx.moveTo(tx - tr.w * 0.85, H_screen);
     ctx.quadraticCurveTo(tx - tr.w * 0.50, nearBaseY - tr.h * 0.25, tx - tr.w * 0.35, topY + tr.h * 0.20);
-    // Przejście w koronę / górne konary
     ctx.quadraticCurveTo(tx - tr.w * 0.45, topY, tx - tr.w * 0.25, topY);
     ctx.lineTo(tx + tr.w * 0.25, topY);
     ctx.quadraticCurveTo(tx + tr.w * 0.45, topY, tx + tr.w * 0.35, topY + tr.h * 0.20);
-    // Prawy korzeń szkarpowy
     ctx.quadraticCurveTo(tx + tr.w * 0.50, nearBaseY - tr.h * 0.25, tx + tr.w * 0.85, H_screen);
     ctx.closePath();
     ctx.fill();
 
-    // Centralny widoczny grzbiet pnia banyanu
-    ctx.strokeStyle = '#0a2216';
+    // Centralny grzbiet pnia
+    ctx.strokeStyle = '#02161b';
     ctx.lineWidth = tr.w * 0.22;
     ctx.beginPath();
     ctx.moveTo(tx, topY + 20);
     ctx.quadraticCurveTo(tx + 8, topY + tr.h * 0.5, tx - 6, H_screen);
     ctx.stroke();
 
-    // Zwieszające się pnącza i liany o delikatnym wahadle animacji (Math.sin(time + x))
-    ctx.strokeStyle = '#05140d';
+    // Świecące bioluminescencyjne zarodniki na korze pnia (tryb 'screen')
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let sp = 0; sp < 4; sp++) {
+      const spY = topY + 80 + sp * 85;
+      const spX = tx - tr.w * 0.15 + ((sp * 31) % (tr.w * 0.3));
+      const spGlow = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(time * 2.2 + sp + i));
+      ctx.fillStyle = sp % 2 === 0 ? `rgba(34, 211, 238, ${spGlow * 0.75})` : `rgba(52, 211, 153, ${spGlow * 0.65})`;
+      ctx.beginPath();
+      ctx.arc(spX, spY, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Zwieszające się nocne liany
+    ctx.strokeStyle = '#010809';
     ctx.lineWidth = 2.4;
     for (let l = 0; l < 4; l++) {
       const lx = tx - tr.w * 0.3 + l * (tr.w * 0.22);
@@ -586,16 +610,15 @@ export function drawPandoraBackground(ctx, camera) {
       ctx.quadraticCurveTo(lx + sway * 0.5, topY + 60 + lLen * 0.5, lx + sway, topY + 60 + lLen);
       ctx.stroke();
 
-      // Drobny listek na końcu liany
-      ctx.fillStyle = '#0b2e1c';
+      ctx.fillStyle = '#041d24';
       ctx.beginPath();
       ctx.ellipse(lx + sway, topY + 60 + lLen, 3.2, 1.8, 0.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // Zarys tropikalnych paproci i liści palmowych na dolnej krawędzi kadru
-  ctx.strokeStyle = '#081e13';
+  // Zarys tropikalnych paproci na dolnej krawędzi
+  ctx.strokeStyle = '#010c0e';
   ctx.lineWidth = 3.5;
   for (let f = 0; f < 16; f++) {
     const fx = (f * 160 - nearX) % (W_screen + 350) - 100;
@@ -611,7 +634,7 @@ export function drawPandoraBackground(ctx, camera) {
   ctx.restore();
 
   // -------------------------------------------------------------------------
-  // WARSTWA 4: PŁYWAJĄCY PYŁEK DŻUNGLI (ZOPTYMALIZOWANY DO 24 SZTUK, 60 FPS)
+  // WARSTWA 4: PŁYWAJĄCY BIOLUMINESCENCYJNY PYŁ PANDORY (60 FPS)
   // -------------------------------------------------------------------------
   ctx.save();
   ctx.shadowBlur = 0;
@@ -621,11 +644,15 @@ export function drawPandoraBackground(ctx, camera) {
     const my = ((mt.seedY + time * mt.speedY) % H_screen + H_screen) % H_screen;
 
     const sinP = Math.sin(time * mt.pulseSpeed + mt.phase);
-    const alpha = 0.25 + 0.50 * (0.5 + 0.5 * sinP);
+    const alpha = 0.30 + 0.55 * (0.5 + 0.5 * sinP);
 
-    ctx.fillStyle = mt.isGolden
-      ? `rgba(254, 240, 138, ${alpha})`
-      : `rgba(167, 243, 208, ${alpha * 0.85})`;
+    if (mt.hueType === 0) {
+      ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`; // neonowy cyjan
+    } else if (mt.hueType === 1) {
+      ctx.fillStyle = `rgba(45, 212, 191, ${alpha * 0.95})`; // morski turkus
+    } else {
+      ctx.fillStyle = `rgba(110, 231, 183, ${alpha * 0.85})`; // szmaragdowa mięta
+    }
 
     ctx.beginPath();
     ctx.arc(mx, my, mt.size, 0, Math.PI * 2);

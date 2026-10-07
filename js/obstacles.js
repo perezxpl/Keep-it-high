@@ -682,8 +682,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     arenaScore.orange = 0;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 500;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 710;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 420;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 910;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -694,8 +694,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3060;
-      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 710;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3180;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 910;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -4217,7 +4217,7 @@ export function drawObstacles(ctx, groundY) {
       // W Arenie 3 cała autorska architektura i platformy rysowane są w drawArena3Foreground
       continue;
     }
-    if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+    if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
       // W Arenie 2 (Święta Dżungla) cała autorska architektura, świątynia i mosty rysowane są w drawArena2Foreground
       continue;
     }
@@ -4251,7 +4251,7 @@ export function drawObstacles(ctx, groundY) {
 
   drawBarrelExplosionParticles(ctx);
 
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA') {
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2') {
     drawNeonGoals(ctx, groundY, GOALS);
   }
 

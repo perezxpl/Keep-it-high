@@ -2736,7 +2736,11 @@ function draw() {
   const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
   const worldWidth = worldRight - worldLeft;
 
-  drawGround(ctx, worldLeft, worldWidth);
+  const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isArena3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  if (!isArena2Active && !isArena3Active) {
+    drawGround(ctx, worldLeft, worldWidth);
+  }
   drawParticles(ctx);
   drawDistanceMarkers(ctx, worldLeft, worldRight);
   drawObstacles(ctx, GROUND_Y);

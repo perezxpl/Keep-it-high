@@ -23,11 +23,11 @@ export {
 } from './arenas/arena2.js';
 
 export function isPandoraAbyss(y) {
-  return y > 1260;
+  return y > 1510;
 }
 
 export function isPandoraDeath(y) {
-  return y >= 1380;
+  return y >= 1660;
 }
 
 
