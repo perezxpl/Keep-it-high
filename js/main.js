@@ -105,6 +105,7 @@ setActiveBot(bot);
 const initialArena = getActiveArena();
 const initialArenaId = initialArena?.id || 'arena-1';
 switchArena(initialArenaId, player, bot, ball);
+window.activeArenaId = activeArenaId;
 if (typeof syncDevArenaButtonUI === 'function') {
   syncDevArenaButtonUI();
 }
@@ -164,8 +165,11 @@ canvas.addEventListener('touchstart', (e) => {
 
     // =======================================================================
     // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK (SZTYWNO UMIEJSCOWIONY DRĄŻEK)
+    // Dotyk wyłącznie w promieniu lewego drążka (ochrona przed przypadkowym ruchem)
     // =======================================================================
-    if (t.clientX < midX && !leftStick.active) {
+    const distToLeftStick = Math.hypot(t.clientX - leftStick.baseX, t.clientY - leftStick.baseY);
+    const maxLeftTouchDist = (leftStick.maxRadius || 55) + 26;
+    if (t.clientX < midX && !leftStick.active && distToLeftStick <= maxLeftTouchDist) {
       leftStick.active = true;
       leftStick.id = t.identifier;
       leftStick.curX = t.clientX;
@@ -228,6 +232,9 @@ canvas.addEventListener('touchstart', (e) => {
       const pThrow = pockets.throwable;
       const distToThrow = pThrow ? dist(t.clientX, t.clientY, pThrow.x, pThrow.y) : 999;
 
+      const distToRightStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
+      const maxRightTouchDist = (rightStick.maxRadius || 58) + 24;
+
       const minDist = Math.min(distToAct, distToFarm, distToThrow);
       if (minDist === distToAct && pAct && distToAct < pAct.r + 15) {
         pAct.active = true;
@@ -251,7 +258,7 @@ canvas.addEventListener('touchstart', (e) => {
         pThrow.startY = t.clientY;
         pThrow.touchStartTime = performance.now();
         pThrow.isDragging = false;
-      } else if (!rightStick.active) {
+      } else if (!rightStick.active && distToRightStick <= maxRightTouchDist) {
         // Zabezpieczenie przed nakładaniem się stref kieszeni i prawego drążka
         if (distToAct < pAct.r + 12 || distToFarm < pFarm.r + 12 || distToThrow < pThrow.r + 12) continue;
 
@@ -284,8 +291,8 @@ canvas.addEventListener('touchstart', (e) => {
           }
 
           if (rightStick.armedMode === 'FIREARM') {
-            rightStick.isShooting = (factor > 0.15);
-            // Natychmiastowy strzał w kierunku wychylenia
+            // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+            rightStick.isShooting = (factor >= 0.90);
             if (rightStick.isShooting && !player.isDead) {
               const curWep = player.currentWeapon || WEAPONS.AK47;
               if (player.shootCooldown <= 0) {
@@ -499,7 +506,8 @@ canvas.addEventListener('touchmove', (e) => {
         }
 
         if (rightStick.armedMode === 'FIREARM') {
-          rightStick.isShooting = (power > 0.15);
+          // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+          rightStick.isShooting = (power >= 0.90);
           if (rightStick.isShooting && !player.isDead) {
             const curWep = player.currentWeapon || WEAPONS.AK47;
             if (player.shootCooldown <= 0) {
@@ -1426,6 +1434,7 @@ if (devArenaBtn) {
       nextArena = 'ARENA_1';
     }
     switchArena(nextArena, player, bot, ball);
+    window.activeArenaId = activeArenaId;
     sendArenaSwitch(nextArena);
     syncDevArenaButtonUI();
     camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
@@ -2469,8 +2478,9 @@ function update() {
   }
 
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
+  window.activeArenaId = activeArenaId;
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.armedMode === 'FIREARM') && !player.isDead;
+  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead;
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
 
   if (curWep.auto) {

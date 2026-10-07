@@ -5,7 +5,16 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach } from './player/actions.js';
+import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js';
+import { ball } from './ball.js';
+import { activeArenaId as obstacleArenaId } from './obstacles.js';
+
+export function isArena1() {
+  const cur = (typeof window !== 'undefined' && window.activeArenaId)
+    ? window.activeArenaId
+    : obstacleArenaId;
+  return (cur === 'ARENA_1' || cur === 'arena-1' || cur === '1');
+}
 
 export const leftStick = {
   active: false,
@@ -183,13 +192,15 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
   const isRunning = (player.onGround && !player.isJumping && Math.abs(player.vx) > minSpeed);
   const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
 
-  if (isRunning && cooldownOk) {
-    pockets.action.currentMode = 'SLIDE';
-  } else if (player.isProne) {
+  if (player.isProne) {
     pockets.action.currentMode = 'STAND';
   } else if (player.isCrouching) {
+    // Tryb leżenia jest dostępny WYŁĄCZNIE kiedy gracz kuca!
     pockets.action.currentMode = 'PRONE';
+  } else if (isRunning && cooldownOk) {
+    pockets.action.currentMode = 'SLIDE';
   } else {
+    // Kiedy stoi normalnie (nie kuca, nie leży, nie biegnie) – KICK (Spartan Kick / wykop piłki w Arenie 1)
     pockets.action.currentMode = 'KICK';
   }
 }
@@ -197,9 +208,9 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
 /**
  * Obsługa wciśnięcia zunifikowanego przycisku akcji dynamicznej:
  * - 'SLIDE': wślizg w pełnym biegu
- * - 'PRONE': położenie się na ziemi
+ * - 'PRONE': położenie się na ziemi (dostępne TYLKO podczas kucania)
  * - 'STAND': wstanie na równe nogi
- * - 'KICK': dynamiczne kopnięcie (piłka / wróg / powietrze)
+ * - 'KICK': wykop piłki w Arenie 1 LUB Spartan Kick w starciu wręcz / Arenach 2 i 3
  *
  * @param {Object} player - Obiekt gracza
  * @param {Function} spawnGrass - Funkcja spawnu cząsteczek
@@ -218,11 +229,15 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
       return playerSlide(spawnGrass, GROUND_Y, player);
     }
   } else if (mode === 'PRONE') {
+    // Tryb leżenia ma być dostępny TYLKO kiedy gracz kuca
+    if (!player.isCrouching) return false;
+
     player.isProne = true;
     player.isCrouching = false;
     player.crouchToggled = true;
     player.state = 'PRONE';
     player.hitboxHeight = 26;
+    pockets.action.currentMode = 'STAND';
     return true;
   } else if (mode === 'STAND') {
     player.isProne = false;
@@ -230,18 +245,32 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     player.crouchToggled = false;
     player.state = 'STAND';
     player.hitboxHeight = player.h || 70;
+    pockets.action.currentMode = 'KICK';
     return true;
   } else {
-    // Mode KICK
+    // Mode KICK: wykop piłki w Arenie 1 LUB przywrócony SPARTAN KICK w walce
     player.isProne = false;
     player.isCrouching = false;
     player.crouchToggled = false;
-    return triggerRightStickKick(player, rightStick, {
-      ball: extraOptions.ball,
-      targets: extraOptions.targets,
-      obstacles: extraOptions.obstacles,
-      spawnGrass: spawnGrass
-    });
+
+    // Jeśli Arena 1 i piłka jest w zasięgu – wykop piłki
+    if (isArena1() && extraOptions.ball && extraOptions.ball.active !== false && isBallInKickReach(player, extraOptions.ball)) {
+      return triggerRightStickKick(player, rightStick, {
+        ball: extraOptions.ball || ball,
+        targets: extraOptions.targets,
+        obstacles: extraOptions.obstacles,
+        spawnGrass: spawnGrass
+      });
+    }
+
+    // W pozostałych przypadkach (Areny 2 i 3 oraz Arena 1 poza piłką) – SPARTAN KICK!
+    const activeTargets = extraOptions.targets || [
+      (typeof window !== 'undefined' && window.bot?.active ? window.bot : null),
+      (typeof window !== 'undefined' && window.remotePlayer?.active ? window.remotePlayer : null)
+    ].filter(Boolean);
+    const meleeTarget = findMeleeTarget(player, activeTargets);
+    triggerSpartanKick(player, meleeTarget);
+    return 'SPARTAN';
   }
   return false;
 }
@@ -253,7 +282,7 @@ export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bClust
 /**
  * Wyzwala kopnięcie z prawego drążka (Right Stick Kick):
  * - Wektor siły wyliczany wzdłuż kąta wychylenia prawego drążka (w stronę celowania)
- * - Wywołuje performKick z fizycznym kontaktem stopy z piłką oraz zbalansowaną siłą klasy
+ * - Wywołuje performKick z fizycznym kontaktem stopy z piłką LUB Spartan Kick w walce
  *
  * @param {Object} player - Obiekt gracza
  * @param {Object} [rStick] - Prawy drążek
@@ -263,40 +292,64 @@ export function handleSlideProneButtonPress(player, spawnGrass, GROUND_Y, bClust
 export function triggerRightStickKick(player, rStick = rightStick, extraOptions = {}) {
   if (!player || player.isDead) return null;
 
-  const hipX = player.x + player.w / 2;
-  const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
+  const currentFloor = player.currentGroundY || player.groundY || 500;
+  const isAirborne = player.isJumping || (currentFloor > 0 && player.y < currentFloor - player.h - 4);
 
-  let dirX = rStick ? rStick.axisX : 0;
-  let dirY = rStick ? rStick.axisY : 0;
-  const mag = Math.hypot(dirX, dirY);
+  // W Arenie 1 przy aktywnej piłce w zasięgu: wykop piłki
+  const canKickBall = isArena1() && extraOptions.ball && extraOptions.ball.active !== false && isBallInKickReach(player, extraOptions.ball);
+  if (canKickBall) {
+    const hipX = player.x + player.w / 2;
+    const hipY = player.y + player.h - 40 + (player.pelvisY || 0);
 
-  let aimX, aimY;
-  if (mag > 0.08) {
-    dirX /= mag;
-    dirY /= mag;
-    aimX = hipX + dirX * 160;
-    aimY = hipY + dirY * 160;
-  } else {
-    // Tap w miejscu - kopnięcie w przód w stronę zwrotu
-    dirX = player.facing || 1;
-    dirY = -0.15;
-    aimX = hipX + dirX * 160;
-    aimY = hipY - 20;
+    let dirX = rStick ? rStick.axisX : 0;
+    let dirY = rStick ? rStick.axisY : 0;
+    const mag = Math.hypot(dirX, dirY);
+
+    let aimX, aimY;
+    if (mag > 0.08) {
+      dirX /= mag;
+      dirY /= mag;
+      aimX = hipX + dirX * 160;
+      aimY = hipY + dirY * 160;
+    } else {
+      dirX = player.facing || 1;
+      dirY = -0.15;
+      aimX = hipX + dirX * 160;
+      aimY = hipY - 20;
+    }
+
+    const pwr = (rStick && rStick.power > 0.15)
+      ? Math.min(1.0, Math.max(0.70, rStick.power))
+      : 0.85;
+
+    return performKick(player, {
+      aimX: aimX,
+      aimY: aimY,
+      power: extraOptions.power || pwr,
+      ball: extraOptions.ball,
+      targets: extraOptions.targets,
+      obstacles: extraOptions.obstacles,
+      spawnGrass: extraOptions.spawnGrass
+    });
   }
 
-  const pwr = (rStick && rStick.power > 0.15)
-    ? Math.min(1.0, Math.max(0.70, rStick.power))
-    : 0.85;
+  // W powietrzu: nożyce (SCISSOR)
+  if (isAirborne) {
+    player.kickMode = 'SCISSOR';
+    player.scissorTimer = 0;
+    player.scissorDuration = 22;
+    player.kickState = 'SWING';
+    return 'SCISSOR';
+  }
 
-  return performKick(player, {
-    aimX: aimX,
-    aimY: aimY,
-    power: extraOptions.power || pwr,
-    ball: extraOptions.ball,
-    targets: extraOptions.targets,
-    obstacles: extraOptions.obstacles,
-    spawnGrass: extraOptions.spawnGrass
-  });
+  // Na ziemi w walce / niszczeniu otoczenia: SPARTAN KICK!
+  const activeTargets = extraOptions.targets || [
+    (typeof window !== 'undefined' && window.bot?.active ? window.bot : null),
+    (typeof window !== 'undefined' && window.remotePlayer?.active ? window.remotePlayer : null)
+  ].filter(Boolean);
+  const meleeTarget = findMeleeTarget(player, activeTargets);
+  triggerSpartanKick(player, meleeTarget);
+  return 'SPARTAN';
 }
 
 /**

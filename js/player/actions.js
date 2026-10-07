@@ -277,10 +277,10 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     return null;
   }
 
-  // Spartan Kick aktywuje się przy pełnym naładowaniu i przeciwniku w zwarciu
+  // Spartan Kick aktywuje się przy przeciwniku w zwarciu lub braku piłki (np. Areny walki 2 i 3)
   const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
-  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
-  if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
+  const meleeTarget = findMeleeTarget(p, targets);
+  if ((meleeTarget && !meleeTarget.isDead) || (!ballParam && !p._ball) || (ballParam && ballParam.active === false)) {
     return triggerSpartanKick(p, meleeTarget);
   }
 
@@ -584,14 +584,14 @@ export function performKick(p, options = {}) {
 
   const targets = options.targets || p._targets;
   const isFullyChargedForSpartan = (p.chargePower || 0) >= 0.95;
-  const meleeTarget = isFullyChargedForSpartan ? findMeleeTarget(p, targets) : null;
+  const meleeTarget = findMeleeTarget(p, targets);
 
   if (isAirborne) {
     p.kickMode = 'SCISSOR';
     p.scissorTimer = 0;
     p.scissorDuration = 22;
     p.kickState = 'SWING';
-  } else if (isFullyChargedForSpartan && meleeTarget && !meleeTarget.isDead) {
+  } else if (options.spartan || !options.ball || (meleeTarget && !meleeTarget.isDead) || isFullyChargedForSpartan || !isBallInKickReach(p, options.ball)) {
     triggerSpartanKick(p, meleeTarget);
   } else {
     p.kickMode = 'GROUND';
