@@ -100,23 +100,26 @@ export class AeroSuperGrenade {
       spawnGrenadeSmokePuff(this.x, this.y);
     }
 
+    // Określenie granic aktualnej areny
+    const curArena = getActiveArena?.();
+    const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+    const arenaLeft = (typeof curArena?.bounds?.minX === 'number') ? curArena.bounds.minX : ARENA_LEFT;
+    const arenaRight = isA3 ? 4400 : ((typeof curArena?.width === 'number') ? curArena.width : ((typeof curArena?.bounds?.maxX === 'number') ? curArena.bounds.maxX : ARENA_RIGHT));
+
     // 1. Odbicia od bocznych granic mapy
-    if (this.x - this.radius <= ARENA_LEFT) {
-      this.x = ARENA_LEFT + this.radius;
+    if (this.x - this.radius <= arenaLeft) {
+      this.x = arenaLeft + this.radius;
       this.vx = -this.vx * this.restitution;
       this.vRot = -this.vRot * 0.8;
       this.bounces++;
-    } else if (this.x + this.radius >= ARENA_RIGHT) {
-      this.x = ARENA_RIGHT - this.radius;
+    } else if (this.x + this.radius >= arenaRight) {
+      this.x = arenaRight - this.radius;
       this.vx = -this.vx * this.restitution;
       this.vRot = -this.vRot * 0.8;
       this.bounces++;
     }
 
     // 2. Odbicie od poziomu terenu / rzeki
-    const curArena = getActiveArena?.();
-    const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
-
     if (isA3) {
       let terrainY = 1200;
       const gx = this.x;
@@ -180,6 +183,10 @@ export class AeroSuperGrenade {
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
         if (!plat) continue;
+        // W Arenie 3 podłoże i granice canvasa (0 oraz 4400) są w pełni modelowane w sekcji 1 i 2
+        if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) {
+          continue;
+        }
         const platX = plat.x;
         const platW = plat.w;
         const thick = plat.h || plat.thickness || 20;

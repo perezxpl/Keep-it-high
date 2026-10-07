@@ -767,6 +767,38 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   return activeArenaId;
 }
 
+export function getPlatformBounds(plat) {
+  if (!plat) return { minX: 0, maxX: 0, minY: 0, maxY: 0, cx: 0, cy: 0 };
+  const thick = plat.h || plat.thickness || 20;
+  if (plat.angle && Math.abs(plat.angle) > 0.01) {
+    const cx = plat.x + plat.w / 2;
+    const cy = plat.y + thick / 2;
+    const cosA = Math.abs(Math.cos(plat.angle));
+    const sinA = Math.abs(Math.sin(plat.angle));
+    const hw = plat.w / 2;
+    const hh = thick / 2;
+    const halfBoxW = hw * cosA + hh * sinA;
+    const halfBoxH = hw * sinA + hh * cosA;
+    return {
+      minX: cx - halfBoxW,
+      maxX: cx + halfBoxW,
+      minY: cy - halfBoxH,
+      maxY: cy + halfBoxH,
+      cx,
+      cy
+    };
+  }
+  const topY = (plat.y !== undefined) ? plat.y : 0;
+  return {
+    minX: plat.x,
+    maxX: plat.x + plat.w,
+    minY: topY,
+    maxY: topY + thick,
+    cx: plat.x + plat.w / 2,
+    cy: topY + thick / 2
+  };
+}
+
 export function getPlatformSurfaceInfo(plat, px, groundY) {
   if (!plat) {
     return { surfaceY: groundY, slope: 0, nx: 0, ny: -1, angle: 0 };
@@ -853,6 +885,57 @@ export function getPlatformSurfaceInfo(plat, px, groundY) {
       ny: -dx / len,
       angle: Math.atan2(dy, dx)
     };
+  }
+
+  // Obsługa obróconych klocków i odłamków (Fallen Debris OBB)
+  if (plat.angle && Math.abs(plat.angle) > 0.01) {
+    const thick = plat.h || plat.thickness || 20;
+    const cx = plat.x + plat.w / 2;
+    const cy = plat.y + thick / 2;
+    const cosA = Math.cos(plat.angle);
+    const sinA = Math.sin(plat.angle);
+    const hw = plat.w / 2;
+    const hh = thick / 2;
+
+    const corners = [
+      { x: -hw * cosA - -hh * sinA + cx, y: -hw * sinA + -hh * cosA + cy },
+      { x:  hw * cosA - -hh * sinA + cx, y:  hw * sinA + -hh * cosA + cy },
+      { x:  hw * cosA -  hh * sinA + cx, y:  hw * sinA +  hh * cosA + cy },
+      { x: -hw * cosA -  hh * sinA + cx, y: -hw * sinA +  hh * cosA + cy }
+    ];
+
+    let bestY = null;
+    let bestSlope = 0;
+    for (let i = 0; i < 4; i++) {
+      const p1 = corners[i];
+      const p2 = corners[(i + 1) % 4];
+      const minSegX = Math.min(p1.x, p2.x);
+      const maxSegX = Math.max(p1.x, p2.x);
+      if (px >= minSegX - 1.0 && px <= maxSegX + 1.0) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        let yAtPx;
+        if (Math.abs(dx) < 0.001) {
+          yAtPx = Math.min(p1.y, p2.y);
+        } else {
+          const t = Math.max(0, Math.min(1, (px - p1.x) / dx));
+          yAtPx = p1.y + t * dy;
+        }
+        if (bestY === null || yAtPx < bestY) {
+          bestY = yAtPx;
+          bestSlope = dx !== 0 ? -dy / dx : 0;
+        }
+      }
+    }
+    if (bestY !== null) {
+      return {
+        surfaceY: bestY,
+        slope: bestSlope,
+        nx: 0,
+        ny: -1,
+        angle: plat.angle
+      };
+    }
   }
 
   return {
@@ -1355,17 +1438,30 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
-    if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
+    const bnds = getPlatformBounds(plat);
+    if (centerX >= bnds.minX - 6 && centerX <= bnds.maxX + 6) {
       const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
       const topY = surf.surfaceY;
       const prevFeetY = feetY - p.vy;
-      const isLanding = p.vy >= 0 && (
+
+      const isFallenDebris = (plat.intact === false) || plat.isDebris;
+
+      let isLanding = p.vy >= 0 && (
         (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
-        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 24)
+        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 28)
       );
 
+      // Wejście na zawalony / leżący klocek (Step-up mechanic na leżący gruz):
+      // Jeśli gracz biegnie po ziemi lub innej platformie i napotyka leżący blok o wysokości stopnia <= 34px:
+      if (!isLanding && isFallenDebris) {
+        const stepDiff = feetY - topY;
+        if (stepDiff >= 0 && stepDiff <= 34 && feetY >= bnds.minY - 12 && feetY <= bnds.maxY + 18) {
+          isLanding = true;
+        }
+      }
+
       if (isLanding) {
-        if (plat.oneWay && p.dropThroughTimer > 0) {
+        if (plat.oneWay && p.dropThroughTimer > 0 && !isFallenDebris) {
           continue;
         }
         if (p.onGround && p.currentPlatform === plat) {
@@ -1496,6 +1592,28 @@ export function checkPlayerPlatformLanding(p, groundY) {
               if (p.vx < 0) p.vx = 0;
             }
           }
+        }
+      }
+    }
+  }
+
+  // Twarda blokada przechodzenia przez zawalone klocki leżące (Solid Debris Obstacles)
+  for (const plat of ARENA_PLATFORMS) {
+    if (!plat || plat.intact !== false || plat.solid === false || plat.isWall) continue;
+    if (p.currentPlatform === plat) continue;
+
+    const bnds = getPlatformBounds(plat);
+    const stepDiff = feetY - bnds.minY;
+    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego gruzu
+    if (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4) {
+      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
+        const midX = bnds.cx;
+        if (p.x + p.w / 2 < midX) {
+          p.x = bnds.minX - p.w;
+          if (p.vx > 0) p.vx = 0;
+        } else {
+          p.x = bnds.maxX;
+          if (p.vx < 0) p.vx = 0;
         }
       }
     }
@@ -1788,9 +1906,10 @@ export function resolveBallObstacleCollisions(ball, groundY) {
     } else {
       const surf = getPlatformSurfaceInfo(plat, ball.x, groundY);
       const topY = surf.surfaceY;
-      const platLeft = plat.x;
-      const platRight = plat.x + plat.w;
-      const thickness = plat.thickness || 20;
+      const bnds = getPlatformBounds(plat);
+      const platLeft = bnds.minX;
+      const platRight = bnds.maxX;
+      const thickness = plat.thickness || plat.h || 20;
 
       if (plat.oneWay && ball.vy <= 0) continue;
       if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {

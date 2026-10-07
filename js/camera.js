@@ -118,8 +118,8 @@ export function getCanvasLogicalHeight() {
  */
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const minX = isArena3 ? 0 : (isArena2 ? 0 : CFG_ARENA_LEFT);
   const maxX = isArena3 ? 4400 : (isArena2 ? 3600 : CFG_ARENA_RIGHT);
   const groundFloor = getCameraGroundY();
@@ -205,8 +205,8 @@ export function updateCamera(player, ball) {
   const canvasHeight = getCanvasLogicalHeight();
   const minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
-  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);

@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
 import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
-import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getActiveArena } from '../obstacles.js';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
 
@@ -16,11 +16,12 @@ function getSurfaceUnderPoint(x, y, groundY) {
   let floor = (typeof isGroundAt === 'function' && !isGroundAt(x)) ? (groundY + 600) : groundY;
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
-      if (plat.isWall) continue;
-      if (x >= plat.x - 6 && x <= plat.x + plat.w + 6) {
+      if (plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
+      if (x >= bnds.minX - 6 && x <= bnds.maxX + 6) {
         const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
           ? getPlatformSurfaceY(plat, x, groundY)
-          : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
+          : ((plat.y !== undefined) ? (typeof getPlatformSurfaceY === 'function' ? getPlatformSurfaceY(plat, x, groundY) : plat.y) : (groundY - (plat.relY || 0)));
         if (y <= topY + 16 && topY < floor) {
           floor = topY;
         }
@@ -164,8 +165,10 @@ export function updatePlayerRagdoll(p, groundY) {
     }
 
     // Ściany areny
+    const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const wallRight = (curArena?.id === 'arena-3') ? 4400 : ((typeof curArena?.width === 'number') ? curArena.width : ARENA_RIGHT);
     if (n.x < ARENA_LEFT + n.r) { n.x = ARENA_LEFT + n.r; n.oldX = n.x; }
-    if (n.x > ARENA_RIGHT - n.r) { n.x = ARENA_RIGHT - n.r; n.oldX = n.x; }
+    if (n.x > wallRight - n.r) { n.x = wallRight - n.r; n.oldX = n.x; }
   }
 
   // 2. Relaksacja więzów szkieletu
