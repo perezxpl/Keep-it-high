@@ -203,6 +203,7 @@ export function findSupportingSurface(px, bottomY, w, h, groundY = GROUND_Y, sna
   // 2. Platformy areny (ARENA_PLATFORMS)
   if (Array.isArray(platforms)) {
     for (const plat of platforms) {
+      if (!plat || plat.solid === false || plat.isWall) continue;
       const platLeft = plat.x;
       const platRight = plat.x + plat.w;
       const overlap = Math.min(px + w, platRight) - Math.max(px, platLeft);
@@ -477,6 +478,9 @@ const _initArena = getActiveArena();
 export let activeArenaId = (_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
 setActiveArenaId(activeArenaId);
 export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
+if (typeof window !== 'undefined') {
+  window.ARENA_PLATFORMS = ARENA_PLATFORMS;
+}
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
 export const GOALS = [...((_initArena && _initArena.id === 'arena-3') ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
 if (_initArena && Array.isArray(_initArena.customObjects)) {
@@ -553,7 +557,10 @@ export function resetArena() {
 
   ARENA_PLATFORMS.length = 0;
   if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
-    ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena3Platforms)));
+    if (typeof arena3 !== 'undefined' && typeof arena3.reset === 'function') {
+      arena3.reset();
+    }
+    ARENA_PLATFORMS.push(...ARENA_3_PLATFORMS);
   } else if (activeArenaId === 'ARENA_2') {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena2Platforms)));
     if (typeof resetArena2Bridges === 'function') resetArena2Bridges();
@@ -1663,7 +1670,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   // Twarda blokada przechodzenia przez pionowe ściany szybów i krawędzie skał (isWall)
   for (const plat of ARENA_PLATFORMS) {
-    if (plat && plat.isWall) {
+    if (plat && plat.isWall && plat.solid !== false) {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const bottomY = topY + (plat.h || plat.thickness || 200);
       if (feetY > topY + 6 && p.y < bottomY - 4) {
@@ -1692,7 +1699,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   // Twarda blokada przechodzenia przez zawalone klocki leżące (Solid Debris Obstacles)
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.intact !== false || plat.solid === false || plat.isWall) continue;
+    if (!plat || plat.intact !== false || plat.solid === false || plat.isWall || plat.oneWay || plat.isTowerBlock) continue;
     if (p.currentPlatform === plat) continue;
 
     const bnds = getPlatformBounds(plat);
@@ -1893,7 +1900,7 @@ export function resolveBallObstacleCollisions(ball, groundY) {
       continue;
     }
 
-    if (plat.isWall) {
+    if (plat.isWall && plat.solid !== false) {
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const bottomY = topY + (plat.h || plat.thickness || 200);
       const platLeft = plat.x;

@@ -149,7 +149,11 @@ canvas.addEventListener('touchstart', (e) => {
           player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
         } else {
           if (btn.id === 'GRENADE') {
-            throwTacticalGrenade(player);
+            const throwAngle = -0.62;
+            const throwDist = 320;
+            const throwAimX = player.x + player.w / 2 + (player.facing || 1) * Math.cos(throwAngle) * throwDist;
+            const throwAimY = player.y + player.h * 0.42 + Math.sin(throwAngle) * throwDist;
+            throwTacticalGrenade(player, throwAimX, throwAimY);
           } else if (player.currentWeapon?.id === btn.id) {
             reloadWeapon(player, player.currentWeapon);
           } else {
@@ -627,10 +631,14 @@ function endTouch(e) {
         rightStick.draggedSlot = null;
         pockets.throwable.isDragging = false;
       } else {
-        // Kliknięcie na granat również uzbraja/przełącza tryb miotania na drążku
+        // Kliknięcie / dotknięcie ikony granatu: natychmiastowy rzut granatem!
         const touchDur = performance.now() - (pockets.throwable.touchStartTime || 0);
-        if (touchDur < 450) {
-          rightStick.armedMode = (rightStick.armedMode === 'GRENADE') ? 'FIREARM' : 'GRENADE';
+        if (touchDur < 500 && !player.isDead) {
+          const throwAngle = -0.62; // ~35 stopni w górę w stronę zwrotu
+          const throwDist = 320;
+          const throwAimX = player.x + player.w / 2 + (player.facing || 1) * Math.cos(throwAngle) * throwDist;
+          const throwAimY = player.y + player.h * 0.42 + Math.sin(throwAngle) * throwDist;
+          throwTacticalGrenade(player, throwAimX, throwAimY, 1.0);
         }
       }
     }
@@ -642,8 +650,8 @@ function endTouch(e) {
 
       if (rightStick.armedMode === 'GRENADE') {
         // Rzut wykonuje się wychyleniem drążka i puszczeniu; odległość wychylenia wyzwala siłę rzutu
-        if (rightStick.power > 0.12 && !player.isDead) {
-          const throwPower = Math.min(1.5, Math.max(0.4, rightStick.power * 1.3));
+        if (rightStick.power > 0.08 && !player.isDead) {
+          const throwPower = Math.min(1.5, Math.max(0.5, rightStick.power * 1.3));
           throwTacticalGrenade(player, player.aimX, player.aimY, throwPower);
           // Po rzucie drążek natychmiast wraca do trybu broni palnej
           rightStick.armedMode = 'FIREARM';
@@ -1797,12 +1805,14 @@ export function initDevZoomUI() {
   zoomOutBtn.id = 'dev-zoom-out-btn';
   zoomOutBtn.title = 'Oddal widok kamery (-0.25x)';
   zoomOutBtn.textContent = '🔍 - Oddal';
-  zoomOutBtn.addEventListener('click', (e) => {
+  const handleZoomOut = (e) => {
     e.stopPropagation(); e.preventDefault();
     const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
     setDevZoom(cur - 0.25);
     updateDevZoomLabel();
-  });
+  };
+  zoomOutBtn.addEventListener('click', handleZoomOut);
+  zoomOutBtn.addEventListener('touchend', handleZoomOut);
   devMenu.appendChild(zoomOutBtn);
 
   const zoomResetBtn = document.createElement('button');
@@ -1810,11 +1820,13 @@ export function initDevZoomUI() {
   zoomResetBtn.id = 'dev-zoom-reset-btn';
   zoomResetBtn.title = 'Ustaw zoom dokładnie na 1.0x (widok 1:1)';
   zoomResetBtn.textContent = '🔍 Reset (1.0x)';
-  zoomResetBtn.addEventListener('click', (e) => {
+  const handleZoomReset = (e) => {
     e.stopPropagation(); e.preventDefault();
     setDevZoom(1.0);
     updateDevZoomLabel();
-  });
+  };
+  zoomResetBtn.addEventListener('click', handleZoomReset);
+  zoomResetBtn.addEventListener('touchend', handleZoomReset);
   devMenu.appendChild(zoomResetBtn);
 
   const zoomInBtn = document.createElement('button');
@@ -1822,12 +1834,14 @@ export function initDevZoomUI() {
   zoomInBtn.id = 'dev-zoom-in-btn';
   zoomInBtn.title = 'Przybliż widok kamery (+0.25x, max 2.5x)';
   zoomInBtn.textContent = '🔍 + Przybliż';
-  zoomInBtn.addEventListener('click', (e) => {
+  const handleZoomIn = (e) => {
     e.stopPropagation(); e.preventDefault();
     const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
     setDevZoom(cur + 0.25);
     updateDevZoomLabel();
-  });
+  };
+  zoomInBtn.addEventListener('click', handleZoomIn);
+  zoomInBtn.addEventListener('touchend', handleZoomIn);
   devMenu.appendChild(zoomInBtn);
 
   const zoomAutoBtn = document.createElement('button');
@@ -1835,11 +1849,13 @@ export function initDevZoomUI() {
   zoomAutoBtn.id = 'dev-zoom-auto-btn';
   zoomAutoBtn.title = 'Przywróć domyślny automatyczny zoom kamery';
   zoomAutoBtn.textContent = '🔍 Auto';
-  zoomAutoBtn.addEventListener('click', (e) => {
+  const handleZoomAuto = (e) => {
     e.stopPropagation(); e.preventDefault();
     setDevZoom(null);
     updateDevZoomLabel();
-  });
+  };
+  zoomAutoBtn.addEventListener('click', handleZoomAuto);
+  zoomAutoBtn.addEventListener('touchend', handleZoomAuto);
   devMenu.appendChild(zoomAutoBtn);
 
   updateDevZoomLabel();
@@ -2268,7 +2284,11 @@ canvas.addEventListener('mousedown', (e) => {
     if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
       e.clientY >= btn.y && e.clientY <= btn.y + btn.h) {
       if (btn.id === 'GRENADE') {
-        throwTacticalGrenade(player);
+        const throwAngle = -0.62;
+        const throwDist = 320;
+        const throwAimX = player.x + player.w / 2 + (player.facing || 1) * Math.cos(throwAngle) * throwDist;
+        const throwAimY = player.y + player.h * 0.42 + Math.sin(throwAngle) * throwDist;
+        throwTacticalGrenade(player, throwAimX, throwAimY);
       } else if (player.currentWeapon?.id === btn.id) {
         reloadWeapon(player, player.currentWeapon);
       } else {

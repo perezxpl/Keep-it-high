@@ -154,7 +154,7 @@ export function createPlayerInstance(overrides = {}) {
     currentWeapon: WEAPONS.AK47,
     shootCooldown: 0,
     grenadeCooldown: 0,
-    grenadeMaxCooldown: 10.0, // 10 sekund czasu odnowienia
+    grenadeMaxCooldown: 3.5, // 3.5 sekundy czasu odnowienia
     isDead: false,
     respawnTimer: 0,
     muzzleFlashTimer: 0,

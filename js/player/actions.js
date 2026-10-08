@@ -948,21 +948,32 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
 export function throwTacticalGrenade(p, targetX = null, targetY = null, customPower = 1.0) {
   if (!p || p.isDead || p.isIntro) return false;
 
-  // Sprawdzenie 10-sekundowego czasu odnowienia (cooldown)
+  // Sprawdzenie czasu odnowienia (cooldown)
   if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) {
     return false;
   }
 
-  // Ustalenie pozycji celu (kursor myszy lub kierunek zwrotu)
-  const aimX = (targetX !== null && targetX !== undefined) ? targetX : (p.aimX !== undefined ? p.aimX : (p.x + (p.facing || 1) * 300));
-  const aimY = (targetY !== null && targetY !== undefined) ? targetY : (p.aimY !== undefined ? p.aimY : (p.y - 40));
+  // Ustalenie pozycji celu (celownik myszy, drążek lub trajektoria łukowa w stronę zwrotu)
+  let aimX, aimY;
+  if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+    aimX = targetX;
+    aimY = targetY;
+  } else if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
+    aimX = p.aimX;
+    aimY = p.aimY;
+  } else {
+    const throwAngle = -0.62; // ~35 stopni w górę
+    const throwDist = 320;
+    aimX = p.x + p.w / 2 + (p.facing || 1) * Math.cos(throwAngle) * throwDist;
+    aimY = p.y + p.h * 0.42 + Math.sin(throwAngle) * throwDist;
+  }
 
   // Wystrzelenie pocisku granatu niszczącego teren z uwzględnieniem siły rzutu
   const grenade = spawnAeroSuperGrenade(p, aimX, aimY, customPower);
 
   // Natychmiastowe nałożenie szybkiego cooldownu (3.5 sekundy dla dynamicznej rozgrywki)
-  p.grenadeMaxCooldown = p.grenadeMaxCooldown || 3.5;
-  p.grenadeCooldown = p.grenadeMaxCooldown;
+  p.grenadeMaxCooldown = 3.5;
+  p.grenadeCooldown = 3.5;
 
   // Wizualny odrzut i wstrząs kamery przy rzucie
   p.recoilAnim = 8;

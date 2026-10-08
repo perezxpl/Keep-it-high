@@ -3,11 +3,29 @@
 // Warstwa 1: Środowisko fizyczne / Silnik kamery
 // =========================================================================
 
-import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT } from './config.js';
+import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT, isTouchDevice } from './config.js';
 
 let _cameraCanvas = null;
 let _cameraGroundY = null;
 let _cameraArenaId = 'ARENA_1';
+
+export function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+  return !!(
+    isTouchDevice ||
+    ('ontouchstart' in window) ||
+    (navigator && (navigator.maxTouchPoints > 0)) ||
+    (window.innerWidth <= 850)
+  );
+}
+
+const initialMobile = (typeof window !== 'undefined' && (
+  isTouchDevice ||
+  ('ontouchstart' in window) ||
+  (navigator && navigator.maxTouchPoints > 0) ||
+  (window.innerWidth <= 850)
+));
+const initialDefaultZoom = initialMobile ? 0.35 : 0.60;
 
 export function setCameraCanvas(c) {
   _cameraCanvas = c;
@@ -49,9 +67,9 @@ export const camera = {
   y: 0,
   targetX: CFG_ARENA_LEFT,
   targetY: 0,
-  zoom: 0.60,
-  targetZoom: 0.60,
-  minZoom: 0.60,
+  zoom: initialDefaultZoom,
+  targetZoom: initialDefaultZoom,
+  minZoom: initialDefaultZoom,
   lerpSpeed: 0.08,
   smoothSpeed: 0.08,
   smoothPos: 0.08,
@@ -210,8 +228,12 @@ export function updateCamera(player, ball) {
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
-    // Domyślny zoom gry gwarantujący płynne i szerokie pole widzenia w powiększonym świecie
-    const defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom));
+    // Domyślny zoom gry gwarantujący płynne i optymalne pole widzenia
+    // Na telefonach: maksymalne oddalenie kamery według limitu DEV (0.35) jako wartość domyślna
+    const isMobile = isMobileDevice();
+    const defaultGameZoom = isMobile
+      ? Math.max(0.35, minZoom)
+      : (isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom)));
     camera.targetZoom = defaultGameZoom;
   }
 

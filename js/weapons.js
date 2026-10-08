@@ -81,8 +81,8 @@ export const WEAPONS = {
     name: 'GRENADE',
     fullName: 'HE GRENADE',
     type: 'TACTICAL',
-    cooldown: 10.0,
-    maxCooldown: 10.0,
+    cooldown: 3.5,
+    maxCooldown: 3.5,
     damage: 85,
     radius: 90
   }

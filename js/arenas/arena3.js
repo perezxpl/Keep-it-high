@@ -882,9 +882,27 @@ export function resetArena3() {
     b.sleepTimer = 0;
   }
   const stemL = ARENA_3_PLATFORMS.find(p => p.id === 'tower_cyan_stem');
-  if (stemL) stemL.solid = true;
+  if (stemL) {
+    stemL.solid = true;
+    stemL.isWall = true;
+  }
   const stemR = ARENA_3_PLATFORMS.find(p => p.id === 'tower_orange_stem');
-  if (stemR) stemR.solid = true;
+  if (stemR) {
+    stemR.solid = true;
+    stemR.isWall = true;
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const actStemL = window.ARENA_PLATFORMS.find(p => p && p.id === 'tower_cyan_stem');
+    if (actStemL) {
+      actStemL.solid = true;
+      actStemL.isWall = true;
+    }
+    const actStemR = window.ARENA_PLATFORMS.find(p => p && p.id === 'tower_orange_stem');
+    if (actStemR) {
+      actStemR.solid = true;
+      actStemR.isWall = true;
+    }
+  }
 
   BRIDGE_SPLINTERS.length = 0;
   STONE_DEBRIS.length = 0;
@@ -1079,6 +1097,22 @@ export function breakTowerBlock(block, impulseX = 0, impulseY = 0, angularImpuls
   block.isAsleep = false;
   block.sleepTimer = 0;
 
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const actBlock = window.ARENA_PLATFORMS.find(p => p && p.id === block.id);
+    if (actBlock && actBlock !== block) {
+      actBlock.intact = false;
+      actBlock.solid = true;
+      actBlock.isPlatform = true;
+      actBlock.oneWay = true;
+      actBlock.x = block.x;
+      actBlock.y = block.y;
+      actBlock.vx = block.vx;
+      actBlock.vy = block.vy;
+      actBlock.isAsleep = false;
+      actBlock.sleepTimer = 0;
+    }
+  }
+
   spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 12);
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(6);
@@ -1109,6 +1143,14 @@ export function destroyTowerPillar(side) {
   const stemObj = ARENA_3_PLATFORMS.find(p => p.id === stemId);
   if (stemObj) {
     stemObj.solid = false;
+    stemObj.isWall = false;
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const actStem = window.ARENA_PLATFORMS.find(p => p && p.id === stemId);
+    if (actStem) {
+      actStem.solid = false;
+      actStem.isWall = false;
+    }
   }
 }
 

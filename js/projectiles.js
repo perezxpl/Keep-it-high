@@ -57,11 +57,11 @@ export class AeroSuperGrenade {
     const dy = targetY - startY;
     const angle = Math.atan2(dy, dx);
 
-    // Prędkość początkowa skalowana siłą rzutu:
+    // Prędkość początkowa skalowana siłą rzutu (dynamiczny zasięg taktyczny 700-900px):
     const speedMult = (typeof customPower === 'number' && customPower > 0) ? Math.max(0.35, Math.min(1.8, customPower)) : 1.0;
-    const initialSpeed = (500 / 60) * speedMult;
+    const initialSpeed = (960 / 60) * speedMult;
     this.vx = Math.cos(angle) * initialSpeed + (shooter ? (shooter.vx || 0) * 0.35 : 0);
-    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - (1.2 * Math.min(1.2, speedMult));
+    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - (3.2 * Math.min(1.2, speedMult));
 
     this.radius = 9;
     this.rot = angle;
@@ -182,7 +182,7 @@ export class AeroSuperGrenade {
     const activePlats = platforms || ARENA_PLATFORMS;
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
-        if (!plat) continue;
+        if (!plat || plat.solid === false) continue;
         // W Arenie 3 podłoże i granice canvasa (0 oraz 4400) są w pełni modelowane w sekcji 1 i 2
         if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) {
           continue;
@@ -196,7 +196,7 @@ export class AeroSuperGrenade {
         const bottomY = topY + thick;
 
         // A. Pionowe słupy nośne i ściany (np. tower_cyan_stem, tower_orange_stem, isWall)
-        if (plat.isWall || plat.pushSide) {
+        if ((plat.isWall || plat.pushSide) && plat.solid !== false) {
           if (this.y + this.radius >= topY && this.y - this.radius <= bottomY) {
             // Kolizja boczna z lewej strony słupa
             if (this.prevX + this.radius <= platX + 4 && this.x + this.radius >= platX) {
