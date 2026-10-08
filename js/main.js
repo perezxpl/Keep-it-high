@@ -11,7 +11,8 @@ import {
   updateSeveredHeads, drawSeveredHeads,
   weaponButtons,
   devZoomLevel, setDevZoom,
-  getCaveCeilingY
+  getCaveCeilingY,
+  setCameraMouseScreenPos
 } from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -2415,6 +2416,7 @@ mouseScreenY = H * 0.45;
 window.addEventListener('mousemove', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+  setCameraMouseScreenPos(e.clientX, e.clientY);
 
   if (gameState === GAME_STATES.CLASS_SELECT) {
     const card = getHoveredClassCard(mouseScreenX, mouseScreenY);
@@ -2463,6 +2465,7 @@ canvas.addEventListener('touchstart', (e) => {
 canvas.addEventListener('mousedown', (e) => {
   mouseScreenX = e.clientX;
   mouseScreenY = e.clientY;
+  setCameraMouseScreenPos(e.clientX, e.clientY);
 
   if (gameState === GAME_STATES.CLASS_SELECT) {
     if (e.button === 0) {
@@ -2626,7 +2629,7 @@ function update() {
     mouseState.rmbDown = false;
 
     // Ambientowe tło i ruch kamery bez symulacji fizyki
-    updateCamera(player, isDeathmatch ? null : ball);
+    updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
     updateParticles();
     return;
   }
@@ -2926,7 +2929,9 @@ function update() {
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
-  updateCamera(player, isDeathmatch ? null : ball);
+  updateCamera(player, isDeathmatch ? null : ball, {
+    disableAimLead: !!(editorState?.active || isChatActive)
+  });
   if (!isDeathmatch) {
     updateDistance(ball.x);
   }

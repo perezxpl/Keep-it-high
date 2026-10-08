@@ -25,7 +25,9 @@ import {
   setCameraCanvas,
   setCameraGroundY,
   setCameraArenaId,
-  getCameraArenaId
+  getCameraArenaId,
+  setCameraMouseScreenPos,
+  mouseScreenPos
 } from './camera.js';
 export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
 
@@ -304,7 +306,9 @@ export {
   setCameraCanvas,
   setCameraGroundY,
   setCameraArenaId,
-  getCameraArenaId
+  getCameraArenaId,
+  setCameraMouseScreenPos,
+  mouseScreenPos
 };
 
 // =========================================================================

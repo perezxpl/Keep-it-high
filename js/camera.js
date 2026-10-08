@@ -80,8 +80,38 @@ export const camera = {
   shakeDecay: 0.88,
   shakeX: 0,
   shakeY: 0,
-  activeArenaId: 'ARENA_1'
+  activeArenaId: 'ARENA_1',
+  mouseScreenX: null,
+  mouseScreenY: null,
+  aimLeadX: 0,
+  aimLeadY: 0
 };
+
+export const mouseScreenPos = {
+  x: typeof window !== 'undefined' ? window.innerWidth * 0.5 : 960,
+  y: typeof window !== 'undefined' ? window.innerHeight * 0.5 : 540,
+  active: false
+};
+
+export function setCameraMouseScreenPos(x, y) {
+  if (typeof x === 'number' && typeof y === 'number') {
+    camera.mouseScreenX = x;
+    camera.mouseScreenY = y;
+    mouseScreenPos.x = x;
+    mouseScreenPos.y = y;
+    mouseScreenPos.active = true;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('mousemove', (e) => {
+    mouseScreenPos.x = e.clientX;
+    mouseScreenPos.y = e.clientY;
+    mouseScreenPos.active = true;
+    camera.mouseScreenX = e.clientX;
+    camera.mouseScreenY = e.clientY;
+  }, { passive: true });
+}
 
 export let devZoomLevel = null; // null = dynamiczny zoom gry, liczba = stały zoom DEV
 export function setDevZoom(val) {
@@ -210,7 +240,7 @@ export function clampCamera(cam = camera) {
 /**
  * Główna funkcja aktualizacji kamery z zachowaniem rygorystycznego clampingu
  */
-export function updateCamera(player, ball) {
+export function updateCamera(player, ball, options = {}) {
   // 1. Dokładne współrzędne pionowych granic areny:
   const bounds = (typeof world !== 'undefined' && world && world.bounds) ? world.bounds : getArenaBounds();
   const ARENA_LEFT = (bounds && typeof bounds.minX === 'number') ? bounds.minX : CFG_ARENA_LEFT;
@@ -224,16 +254,25 @@ export function updateCamera(player, ball) {
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
+  const isMobile = isMobileDevice();
+
+  const isSniperActive = !player?.isHolstered && (player?.currentWeapon?.id === 'SNIPER');
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
     // Domyślny zoom gry gwarantujący płynne i optymalne pole widzenia
     // Na telefonach: maksymalne oddalenie kamery według limitu DEV (0.35) jako wartość domyślna
-    const isMobile = isMobileDevice();
-    const defaultGameZoom = isMobile
+    let defaultGameZoom = isMobile
       ? Math.max(0.35, minZoom)
       : (isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom)));
+
+    // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
+    if (isSniperActive && !isMobile) {
+      const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
+      defaultGameZoom = Math.max(minZoom, defaultGameZoom * sniperZoomMult);
+    }
+
     camera.targetZoom = defaultGameZoom;
   }
 
@@ -250,26 +289,81 @@ export function updateCamera(player, ball) {
   camera.viewWidth = viewWidth;
   camera.viewHeight = viewHeight;
 
+  // Dynamiczne wyprzedzenie celowania (Soldat-style Aim Look-Ahead)
+  let aimLeadX = 0;
+  let aimLeadY = 0;
+  const disableAimLead = !!(options && options.disableAimLead);
+
+  if (CONFIG.CAMERA_AIM_LEAD_ENABLED !== false && !disableAimLead && player && !player.isDead) {
+    if (isMobile) {
+      // --- TRYB MOBILNY (Dotyk / Wirtualny Prawy Drążek) ---
+      const rs = (typeof window !== 'undefined' && window.rightStick) ? window.rightStick : null;
+      if (rs && rs.active && typeof rs.power === 'number' && rs.power > 0.05) {
+        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.45) : 1.0;
+        const maxLeadX = (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 180) * leadMult;
+        const maxLeadY = (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 110) * leadMult;
+        aimLeadX = (rs.axisX || 0) * rs.power * maxLeadX;
+        aimLeadY = (rs.axisY || 0) * rs.power * maxLeadY;
+      } else {
+        // Gdy prawy drążek nie jest aktywnie wychylony: delikatne wyprzedzenie w stronę zwrotu postaci
+        const facingDir = (typeof player.facing === 'number') ? player.facing : 1;
+        aimLeadX = facingDir * 45;
+        aimLeadY = 0;
+      }
+    } else {
+      // --- TRYB PC (Mysz / Celownik ekranowy) ---
+      let rawMouseX = (typeof camera.mouseScreenX === 'number') ? camera.mouseScreenX : mouseScreenPos.x;
+      let rawMouseY = (typeof camera.mouseScreenY === 'number') ? camera.mouseScreenY : mouseScreenPos.y;
+
+      const c = getCameraCanvas();
+      if (c && typeof c.getBoundingClientRect === 'function') {
+        const rect = c.getBoundingClientRect();
+        rawMouseX -= rect.left;
+        rawMouseY -= rect.top;
+      }
+
+      const screenCenterX = canvasWidth * 0.5;
+      const screenCenterY = canvasHeight * 0.5;
+
+      if (screenCenterX > 0 && screenCenterY > 0) {
+        const normX = Math.max(-1, Math.min(1, (rawMouseX - screenCenterX) / screenCenterX));
+        const normY = Math.max(-1, Math.min(1, (rawMouseY - screenCenterY) / screenCenterY));
+
+        // Martwa strefa (deadzone 8%), aby drobne ruchy w centrum ekranu nie powodowały drżenia kadru
+        const deadzone = 0.08;
+        const filteredX = Math.abs(normX) > deadzone ? (normX - Math.sign(normX) * deadzone) / (1 - deadzone) : 0;
+        const filteredY = Math.abs(normY) > deadzone ? (normY - Math.sign(normY) * deadzone) / (1 - deadzone) : 0;
+
+        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.65) : 1.0;
+        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 220) * leadMult;
+        const maxLeadY = (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 130) * leadMult;
+
+        aimLeadX = filteredX * maxLeadX;
+        aimLeadY = filteredY * maxLeadY;
+      }
+    }
+  }
+
+  camera.aimLeadX = aimLeadX;
+  camera.aimLeadY = aimLeadY;
+
   const target = player || ball;
   const targetX = target ? (target.x + (target.w ? target.w / 2 : 0)) : (camera.x + viewWidth / 2);
   const targetVx = (target && typeof target.vx === 'number') ? target.vx : 0;
-  const lookAhead = targetVx * 6;
+  const lookAhead = targetVx * (isMobile ? 4.5 : 5.5);
 
   let targetCamX;
   if (viewWidth < arenaWidth) {
-    // Oblicz wyśrodkowaną pozycję kamery: targetCamX = target.x - (viewWidth / 2);
-    targetCamX = (targetX + lookAhead) - (viewWidth / 2);
-    // Nałóż sztywny limit:
+    targetCamX = (targetX + lookAhead + aimLeadX) - (viewWidth / 2);
     targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
   } else {
-    // Jeśli viewWidth >= arenaWidth: ustaw kamerę sztywno na lewej krawędzi
     targetCamX = ARENA_LEFT;
   }
 
   // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
   const groundFloor = getCameraGroundY();
   const targetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : groundFloor - 50)) : (isArena2 ? 910 : groundFloor - 50);
-  let targetCamY = targetY - (viewHeight * 0.65);
+  let targetCamY = (targetY + aimLeadY) - (viewHeight * 0.65);
 
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
   const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor);
@@ -291,7 +385,9 @@ export function updateCamera(player, ball) {
   }
 
   // 4. Wyeliminowanie overshootingu przy wygładzaniu (Lerp):
-  const lerpSpeed = CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08;
+  const baseLerpSpeed = CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08;
+  const lerpSpeed = isMobile ? Math.min(baseLerpSpeed, 0.075) : baseLerpSpeed;
+
   if (!camera._initialized) {
     camera._initialized = true;
     camera.x = targetCamX;

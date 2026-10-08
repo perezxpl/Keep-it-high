@@ -25,9 +25,16 @@ export const CONFIG = {
   BASE_KNOCKBACK: 10.5,       // Bazowy knockback dla postaci (osłabienie o ~50% z 22)
   BASE_BARREL_IMPULSE: 9.5,   // Bazowy impuls dla ruchomych przeszkód (beczek)
 
-  // SYSTEM OGRANICZENIA KAMERY (CAMERA CLAMPING)
+  // SYSTEM OGRANICZENIA KAMERY (CAMERA CLAMPING) I CELOWANIA (SOLDAT STYLE LOOK-AHEAD)
   CAMERA_CLAMPING: true,
-  CAMERA_SMOOTH_SPEED: 0.08
+  CAMERA_SMOOTH_SPEED: 0.08,
+  CAMERA_AIM_LEAD_ENABLED: true,
+  CAMERA_AIM_MAX_LEAD_X: 220,
+  CAMERA_AIM_MAX_LEAD_Y: 130,
+  CAMERA_AIM_MOBILE_MAX_LEAD_X: 180,
+  CAMERA_AIM_MOBILE_MAX_LEAD_Y: 110,
+  CAMERA_SNIPER_ZOOM_MULT: 0.88,
+  CAMERA_SNIPER_LEAD_MULT: 1.65
 };
 
 // =========================================================================
