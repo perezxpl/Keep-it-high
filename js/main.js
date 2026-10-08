@@ -2609,6 +2609,17 @@ function updateDoubleFlickDetection(axisY) {
 
 function drawCrosshair(ctx, x, y, customCol) {
   if (typeof x !== 'number' || isNaN(x)) return;
+
+  // Ukryj celownik podczas rzutu granatem lub gdy broń jest schowana
+  if (player.throwAnim && player.throwAnim.active) return;
+  if (player.isHolstered || !player.currentWeapon || (typeof player.holsterWeight === 'number' && player.holsterWeight >= 0.5)) return;
+
+  // Na urządzeniach dotykowych ukryj celownik każdej broni, gdy prawy drążek jest nieużywany lub w trybie granatu
+  if (isTouchDevice) {
+    const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
+    if (!isAimingWithStick) return;
+  }
+
   const col = customCol || '#ef4444';
 
   const kick = player.weaponKickback || 0;
@@ -3091,7 +3102,15 @@ function draw() {
   drawJetpackParticles(ctx);
 
   // Celownik laserowy snajperki Barrett .50 w stylu Soldat
-  drawSniperLaserSight(ctx, player);
+  const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
+  const isThrowingGrenade = !!(player.throwAnim && player.throwAnim.active);
+  const isWeaponHolstered = !!(player.isHolstered || !player.currentWeapon || (typeof player.holsterWeight === 'number' && player.holsterWeight >= 0.5));
+
+  const shouldDrawPlayerSniperLaser = !isThrowingGrenade && !isWeaponHolstered && (!isTouchDevice || isAimingWithStick);
+
+  if (shouldDrawPlayerSniperLaser) {
+    drawSniperLaserSight(ctx, player);
+  }
   if (bot.active) {
     drawSniperLaserSight(ctx, bot);
   }
@@ -3152,7 +3171,11 @@ function draw() {
   const isDevOpenForCrosshair = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
 
-  if (!player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && gameState === GAME_STATES.PLAYING) {
+  let shouldDrawCrosshair = !player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && gameState === GAME_STATES.PLAYING;
+  if (isThrowingGrenade || isWeaponHolstered || (rightStick && rightStick.armedMode === 'GRENADE')) shouldDrawCrosshair = false;
+  if (isTouchDevice && !isAimingWithStick) shouldDrawCrosshair = false;
+
+  if (shouldDrawCrosshair) {
     drawCrosshair(ctx, player.aimX, player.aimY);
   }
 

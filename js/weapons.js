@@ -1144,9 +1144,18 @@ export function drawSniperLaserSight(ctx, playerObj) {
   const wep = playerObj.currentWeapon;
   if (!wep || wep.id !== 'SNIPER') return;
 
-  // Jeśli broń jest schowana, nie rysuj lasera
+  // Jeśli broń jest schowana lub gracz rzuca granat, nie rysuj lasera
+  if (playerObj.throwAnim && playerObj.throwAnim.active) return;
   const hWeight = (typeof playerObj.holsterWeight === 'number') ? playerObj.holsterWeight : (playerObj.isHolstered ? 1.0 : 0.0);
   if (hWeight >= 0.5) return;
+
+  // Na urządzeniach dotykowych ukryj celownik laserowy gracza gdy prawy drążek jest nieużywany
+  if (typeof window !== 'undefined' && window.isTouchDevice && window.player === playerObj) {
+    const rs = window.rightStick;
+    if (!rs || !rs.active || rs.armedMode === 'GRENADE' || (typeof rs.power === 'number' && rs.power <= 0.05)) {
+      return;
+    }
+  }
 
   // Wyliczenie pozycji wylotu lufy (muzzle)
   const muzzle = getMuzzlePosition(playerObj, wep);

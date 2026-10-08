@@ -135,5 +135,13 @@ export let isTouchDevice = (typeof window !== 'undefined' && (
   (window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(any-pointer: coarse)').matches)) ||
   (window.location && (new URLSearchParams(window.location.search).has('touch') || new URLSearchParams(window.location.search).has('mobile')))
 ));
-export function setTouchDevice(val) { isTouchDevice = !!val; }
+if (typeof window !== 'undefined') {
+  window.isTouchDevice = isTouchDevice;
+}
+export function setTouchDevice(val) {
+  isTouchDevice = !!val;
+  if (typeof window !== 'undefined') {
+    window.isTouchDevice = isTouchDevice;
+  }
+}
 

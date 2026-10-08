@@ -2473,24 +2473,14 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
     ctx.fill();
   }
 
-  // Wskaźnik punktu uderzenia / lądowania (Reticle / Impact Marker)
+  // Zakończenie trajektorii w punkcie lądowania (dyskretny punkt uderzenia)
   const lastPt = points[points.length - 1];
-  const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.012);
-  ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`;
-  ctx.shadowColor = '#ef4444';
+  ctx.fillStyle = 'rgba(163, 230, 53, 0.95)';
+  ctx.shadowColor = '#a3e635';
   ctx.shadowBlur = 8;
-  ctx.lineWidth = 1.8;
-
   ctx.beginPath();
-  ctx.arc(lastPt.x, lastPt.y, 8 * pulse, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(lastPt.x - 12, lastPt.y); ctx.lineTo(lastPt.x - 4, lastPt.y);
-  ctx.moveTo(lastPt.x + 4, lastPt.y); ctx.lineTo(lastPt.x + 12, lastPt.y);
-  ctx.moveTo(lastPt.x, lastPt.y - 12); ctx.lineTo(lastPt.x, lastPt.y - 4);
-  ctx.moveTo(lastPt.x, lastPt.y + 4); ctx.lineTo(lastPt.x, lastPt.y + 12);
-  ctx.stroke();
+  ctx.arc(lastPt.x, lastPt.y, 3.2, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
