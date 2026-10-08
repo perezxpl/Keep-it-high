@@ -627,7 +627,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       keys.up = false;
       const grassFn = spawnGrass || player._spawnGrass;
       const currentFloor = player.currentGroundY || player.groundY;
-      if (grassFn && currentFloor) {
+      if (typeof grassFn === 'function' && currentFloor) {
         grassFn(player.x + player.w / 2, currentFloor, player.facing);
       }
     }
@@ -842,7 +842,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.slideTimer--;
       const currentFloor = player.currentGroundY || GROUND_Y;
       const grassFn = spawnGrass || player._spawnGrass;
-      if (Math.abs(player.vx) > 1.8 && Math.random() < 0.85 && grassFn) {
+      if (Math.abs(player.vx) > 1.8 && Math.random() < 0.85 && typeof grassFn === 'function') {
         grassFn(player.x + (player.w / 2) + (player.facing * 20), currentFloor, player.facing);
       }
       if (player.slideTimer <= 0 || Math.abs(player.vx) < 0.4) {
@@ -922,7 +922,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
       const currentFloor = player.currentGroundY || GROUND_Y;
       const grassFn = spawnGrass || player._spawnGrass;
-      if (player.gaitMode === 'SPRINT' && Math.sin(player.stridePhase) > 0.85 && grassFn) {
+      if (player.gaitMode === 'SPRINT' && Math.sin(player.stridePhase) > 0.85 && typeof grassFn === 'function') {
         grassFn(player.x + player.w / 2, currentFloor, player.facing);
       }
     }

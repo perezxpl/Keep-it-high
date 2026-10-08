@@ -3793,6 +3793,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const aState = arenaInfo || _worldArenaState;
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
+  const curA1State = aState.arena1State;
   const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isJungleArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA');
   const isMatchArena = (curArenaId === 'ARENA_1');

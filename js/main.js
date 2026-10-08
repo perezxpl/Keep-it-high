@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js?v=v20';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -12,19 +12,19 @@ import {
   weaponButtons,
   devZoomLevel, setDevZoom,
   getCaveCeilingY
-} from './world.js';
+} from './world.js?v=v20';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, isCeilingBlockingStand
-} from './player.js';
-import { updateProjectiles, drawProjectiles } from './projectiles.js';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
+} from './player.js?v=v20';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v20';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v20';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js';
+} from './ball.js?v=v20';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -32,17 +32,17 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js';
-import { CLASSES } from './classes/index.js';
-import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js';
+} from './obstacles.js?v=v20';
+import { CLASSES } from './classes/index.js?v=v20';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v20';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js?v=v20';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js';
+} from './network.js?v=v20';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
@@ -1423,7 +1423,7 @@ if (devArenaBtn) {
     e.stopPropagation();
     e.preventDefault();
     const now = performance.now();
-    if (now - lastToggleTime < 250) return;
+    if (now - lastToggleTime < 350) return;
     lastToggleTime = now;
 
     let nextArena = 'ARENA_1';
@@ -1448,7 +1448,6 @@ if (devArenaBtn) {
     }
   };
   devArenaBtn.addEventListener('click', toggleArena);
-  devArenaBtn.addEventListener('touchend', toggleArena);
   syncDevArenaButtonUI();
 }
 
