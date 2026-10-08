@@ -125,6 +125,7 @@ export const WEAPON_CONFIG = {
 export let isTouchDevice = (typeof window !== 'undefined' && (
   'ontouchstart' in window ||
   (navigator && navigator.maxTouchPoints > 0) ||
+  (window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(any-pointer: coarse)').matches)) ||
   (window.location && (new URLSearchParams(window.location.search).has('touch') || new URLSearchParams(window.location.search).has('mobile')))
 ));
 export function setTouchDevice(val) { isTouchDevice = !!val; }

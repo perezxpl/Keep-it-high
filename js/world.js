@@ -2828,12 +2828,7 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
 }
 
 export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null) {
-  const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
-  if ((!isTouchDevice && !isMobile) || !ctx || !player) return;
-
-  if (isMobile && !isTouchDevice) {
-    setTouchDevice(true);
-  }
+  if (!isTouchDevice || !ctx || !player) return;
 
   ctx.save();
   const time = performance.now();
@@ -3773,7 +3768,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   const curWepId = player.currentWeapon?.id || 'AK47';
 
-  if (isMobile) {
+  if (isTouchDevice) {
     // Na ekranie dotykowym sloty broni znajdują się w przezroczystych kieszeniach wokół prawego drążka (pockets)
     weaponButtons[0].x = -999;
     weaponButtons[0].y = -999;
@@ -3832,6 +3827,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   const aState = arenaInfo || _worldArenaState;
   const curArenaId = aState.activeArenaId;
+  const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
   const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
@@ -3988,7 +3984,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     drawOffscreenBallIndicator(ctx, ball, camera, player);
   }
 
-  if (isTouchDevice || isMobile) {
+  if (isTouchDevice) {
     drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isSectorXArena) ? null : ball, inKickRange);
   }
 }

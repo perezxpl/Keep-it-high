@@ -105,7 +105,7 @@ if (canvas) {
   canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 resize(player);
-updateButtonLayout();
+updateButtonLayout(W, H);
 setActiveBot(bot);
 // Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=3 / ?arena=2 / arena-1)
 const initialArena = getActiveArena();
@@ -124,20 +124,25 @@ clampCamera();
 
 window.addEventListener('resize', () => {
   resize(player);
-  updateButtonLayout();
+  updateButtonLayout(W, H);
 });
 
 window.addEventListener('touchstart', () => {
-  setTouchDevice(true);
-  updateButtonLayout(W, H);
-  updateDevTouchButtonUI();
+  if (!isTouchDevice) {
+    setTouchDevice(true);
+    updateButtonLayout(W, H);
+    updateDevTouchButtonUI();
+  }
 }, { once: true });
 
 canvas.addEventListener('touchstart', (e) => {
   if (gameState === GAME_STATES.CLASS_SELECT) return;
   e.preventDefault();
-  setTouchDevice(true);
-  updateDevTouchButtonUI();
+  if (!isTouchDevice) {
+    setTouchDevice(true);
+    updateButtonLayout(W, H);
+    updateDevTouchButtonUI();
+  }
   const midX = W / 2;
 
   for (let i = 0; i < e.changedTouches.length; i++) {
