@@ -1460,6 +1460,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
+  const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
+  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
 
   if (hasActiveWeapon) {
