@@ -169,14 +169,21 @@ export function drawHangingLanterns() {}
  * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
  */
 export function renderArenaBackground(ctx, camera) {
-  if (ctx) ctx.shadowBlur = 0;
+  if (ctx) {
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0;
+    ctx.globalCompositeOperation = 'source-over';
+  }
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.drawBackground === 'function') {
     activeArena.drawBackground(ctx, camera);
   } else {
     drawSky(ctx);
   }
-  if (ctx) ctx.shadowBlur = 0;
+  if (ctx) {
+    ctx.restore();
+  }
 }
 
 /**
@@ -185,12 +192,19 @@ export function renderArenaBackground(ctx, camera) {
  * @param {Object} camera - Obiekt kamery ze stanem przesunięcia i przybliżenia
  */
 export function renderArenaForeground(ctx, camera) {
-  if (ctx) ctx.shadowBlur = 0;
+  if (ctx) {
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0;
+    ctx.globalCompositeOperation = 'source-over';
+  }
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.draw === 'function') {
     activeArena.draw(ctx, camera);
   }
-  if (ctx) ctx.shadowBlur = 0;
+  if (ctx) {
+    ctx.restore();
+  }
 }
 
 // =========================================================================

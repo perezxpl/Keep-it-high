@@ -25,7 +25,8 @@ import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/
 import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX } from './arenas/arena1.js';
 import arena2, {
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
-  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS
+  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
+  ARENA_2_BRIDGES, resetArena2Bridges
 } from './arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/arena3.js';
 
@@ -33,6 +34,7 @@ export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
+  ARENA_2_BRIDGES, resetArena2Bridges,
   ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
   getActiveArena, setActiveArena, ARENAS, onArenaChange
 };
@@ -554,6 +556,7 @@ export function resetArena() {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena3Platforms)));
   } else if (activeArenaId === 'ARENA_2') {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena2Platforms)));
+    if (typeof resetArena2Bridges === 'function') resetArena2Bridges();
   } else {
     ARENA_PLATFORMS.push(...JSON.parse(JSON.stringify(arenaSnapshot.arena1Platforms)));
   }
@@ -1274,9 +1277,41 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const feetY = p.y + colH;
   const centerX = p.x + p.w / 2;
 
+  // Natychmiastowa utrata oparcia, gdy gracz stoi na zniszczonej desce lub gdy lina pęknie
+  if (p.currentPlatform && p.currentPlatform.isBridgePlank) {
+    const curBr = Array.isArray(ARENA_2_BRIDGES) ? ARENA_2_BRIDGES.find(b => b.id === p.currentPlatform.bridgeId) : null;
+    if (p.currentPlatform.destroyed || p.currentPlatform.isFalling || (curBr && curBr.isSnapped)) {
+      p.currentPlatform = null;
+      p.onGround = false;
+      p.isJumping = true;
+    }
+  }
+
   const wantDrop = (p.dropThroughTimer > 0);
 
   if (wantDrop) {
+    // Drop-through dla kładki wiszącej mostu linowego w Arenie 2
+    const isA2Drop = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA');
+    if (isA2Drop && Array.isArray(ARENA_2_BRIDGES)) {
+      for (const bridge of ARENA_2_BRIDGES) {
+        if (!bridge || bridge.isSnapped) continue;
+        for (const plank of bridge.planks) {
+          if (!plank || plank.destroyed || plank.isFalling) continue;
+          if (centerX >= plank.x - 4 && centerX <= plank.x + plank.w + 4) {
+            const topY = plank.y;
+            if (Math.abs(feetY - topY) <= 14 && p.y < groundY - p.h - 2) {
+              p.y = topY - p.h + 12;
+              p.vy = 2.8;
+              p.isJumping = true;
+              p.isCrouching = false;
+              p.airVx = p.vx;
+              p.currentGroundY = groundY;
+              return;
+            }
+          }
+        }
+      }
+    }
     for (const plat of ARENA_PLATFORMS) {
       if (!plat || plat.solid || plat.isCanyonTerrain) continue;
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
@@ -1494,6 +1529,44 @@ export function checkPlayerPlatformLanding(p, groundY) {
           landedSurface = topY;
           landedSlope = surf.slope;
           landedPlatform = plat;
+        }
+      }
+    }
+  }
+
+  // Lądowanie na deskach dynamicznych mostów linowych Areny 2 (Soldat-style)
+  // Gracz może stać WYŁĄCZNIE na tych segmentach, które mają destroyed === false i gdy most NIE jest zerwany (!isSnapped)
+  let curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA2Landing = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  if (isA2Landing && Array.isArray(ARENA_2_BRIDGES)) {
+    for (const bridge of ARENA_2_BRIDGES) {
+      if (!bridge || bridge.isSnapped) continue;
+      for (const plank of bridge.planks) {
+        if (!plank || plank.destroyed || plank.isFalling) continue;
+
+        if (centerX >= plank.x - 4 && centerX <= plank.x + plank.w + 4) {
+          const topY = plank.y;
+          const prevFeetY = feetY - p.vy;
+
+          let isLanding = p.vy >= 0 && (
+            (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
+            (p.onGround && p.currentPlatform === plank && Math.abs(feetY - topY) < 28)
+          );
+
+          if (isLanding) {
+            if (p.dropThroughTimer > 0) continue;
+            if (p.onGround && p.currentPlatform === plank) {
+              landedSurface = topY;
+              landedSlope = 0;
+              landedPlatform = plank;
+              break;
+            }
+            if (landedSurface === null || topY < landedSurface) {
+              landedSurface = topY;
+              landedSlope = 0;
+              landedPlatform = plank;
+            }
+          }
         }
       }
     }
@@ -1739,7 +1812,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Górny limit otwartego nieba w Arenie 3 (Y = 0)
-  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const isA3Active = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   if (isA3Active) {
     if (p.y < 0) {
@@ -4436,6 +4509,18 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
 
   const curArenaObj = getActiveArena?.();
   const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA2 = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA');
+
+  if (isA2 && Array.isArray(ARENA_2_BRIDGES)) {
+    for (const bridge of ARENA_2_BRIDGES) {
+      if (!bridge || bridge.isSnapped) continue;
+      for (const plank of bridge.planks) {
+        if (!plank || plank.destroyed || plank.isFalling) continue;
+        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, plank.x, plank.y, plank.x + plank.w, plank.y + plank.h);
+        if (hit) recordHit(hit, plank.id || 'bridge_plank');
+      }
+    }
+  }
 
   if (!isA3 && y2 >= groundY) {
     if (y1 < groundY) {
