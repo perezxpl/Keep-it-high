@@ -63,7 +63,7 @@ export const AeroClass = {
     bootAccent: '#588157',
     crestColor: '#a3b18a',
     seamColor: '#1b2a1a',
-    crosshairColor: '#a3b18a',
+    crosshairColor: '#ef4444',
     number: '07'
   },
 

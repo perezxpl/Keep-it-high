@@ -299,15 +299,18 @@ export function updateCamera(player, ball, options = {}) {
       // --- TRYB MOBILNY (Dotyk / Wirtualny Prawy Drążek) ---
       const rs = (typeof window !== 'undefined' && window.rightStick) ? window.rightStick : null;
       if (rs && rs.active && typeof rs.power === 'number' && rs.power > 0.05) {
-        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.45) : 1.0;
-        const maxLeadX = (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 180) * leadMult;
-        const maxLeadY = (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 110) * leadMult;
+        // Dynamiczny zasięg w proporcji do szerokości/wysokości ekranu na telefonie:
+        // Przy mocnym wychyleniu drążka postać przesuwa się w stronę krawędzi ekranu
+        const mobileLeadRatioX = isSniperActive ? 0.44 : 0.35;
+        const mobileLeadRatioY = isSniperActive ? 0.32 : 0.25;
+        const maxLeadX = Math.max(CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 650, viewWidth * mobileLeadRatioX);
+        const maxLeadY = Math.max(CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 360, viewHeight * mobileLeadRatioY);
         aimLeadX = (rs.axisX || 0) * rs.power * maxLeadX;
         aimLeadY = (rs.axisY || 0) * rs.power * maxLeadY;
       } else {
-        // Gdy prawy drążek nie jest aktywnie wychylony: delikatne wyprzedzenie w stronę zwrotu postaci
+        // Gdy prawy drążek nie jest aktywnie wychylony: wyprzedzenie w stronę zwrotu postaci
         const facingDir = (typeof player.facing === 'number') ? player.facing : 1;
-        aimLeadX = facingDir * 45;
+        aimLeadX = facingDir * 80;
         aimLeadY = 0;
       }
     } else {
@@ -334,9 +337,9 @@ export function updateCamera(player, ball, options = {}) {
         const filteredX = Math.abs(normX) > deadzone ? (normX - Math.sign(normX) * deadzone) / (1 - deadzone) : 0;
         const filteredY = Math.abs(normY) > deadzone ? (normY - Math.sign(normY) * deadzone) / (1 - deadzone) : 0;
 
-        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.65) : 1.0;
-        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 220) * leadMult;
-        const maxLeadY = (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 130) * leadMult;
+        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.85) : 1.0;
+        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 240) * leadMult;
+        const maxLeadY = (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 140) * leadMult;
 
         aimLeadX = filteredX * maxLeadX;
         aimLeadY = filteredY * maxLeadY;

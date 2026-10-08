@@ -51,7 +51,7 @@ export const DEFAULT_VISUALS = {
   bootAccent: '#52525b',
   crestColor: '#71717a',
   seamColor: '#09090b',
-  crosshairColor: '#38bdf8',
+  crosshairColor: '#ef4444',
   number: '00'
 };
 

@@ -64,7 +64,7 @@ export const SweeperClass = {
     bootAccent: '#8c6747',
     crestColor: '#d4a373',
     seamColor: '#382818',
-    crosshairColor: '#d4a373',
+    crosshairColor: '#ef4444',
     number: '01'
   },
 

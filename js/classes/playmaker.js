@@ -63,7 +63,7 @@ export const PlaymakerClass = {
     bootAccent: '#64748b',
     crestColor: '#94a3b8',
     seamColor: '#0f172a',
-    crosshairColor: '#94a3b8',
+    crosshairColor: '#ef4444',
     number: '10'
   },
 

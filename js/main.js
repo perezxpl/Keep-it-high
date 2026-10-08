@@ -309,8 +309,10 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.axisX = (dx / sDist) * factor;
           rightStick.axisY = (dy / sDist) * factor;
           rightStick.power = factor;
-          player.aimOffsetX = rightStick.axisX * (180 + factor * 120);
-          player.aimOffsetY = rightStick.axisY * (180 + factor * 120);
+          const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
+          const aimDist = isSniper ? (250 + factor * 750) : (180 + factor * 130);
+          player.aimOffsetX = rightStick.axisX * aimDist;
+          player.aimOffsetY = rightStick.axisY * aimDist;
           player.aimX = player.x + player.w / 2 + player.aimOffsetX;
           player.aimY = player.y + player.h / 2 + player.aimOffsetY;
           player.isAiming = true;
@@ -525,7 +527,8 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = ny * power;
         rightStick.power = power;
 
-        const aimDist = 160 + power * 120;
+        const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
+        const aimDist = isSniper ? (250 + power * 750) : (160 + power * 130);
         player.aimOffsetX = nx * aimDist;
         player.aimOffsetY = ny * aimDist;
         player.aimX = player.x + player.w / 2 + nx * aimDist;
@@ -2577,7 +2580,7 @@ function updateDoubleFlickDetection(axisY) {
 
 function drawCrosshair(ctx, x, y, customCol) {
   if (typeof x !== 'number' || isNaN(x)) return;
-  const col = customCol || player.currentClass?.visuals?.crosshairColor || '#38bdf8';
+  const col = customCol || '#ef4444';
 
   const kick = player.weaponKickback || 0;
   const rise = player.muzzleRise || 0;
@@ -2586,6 +2589,8 @@ function drawCrosshair(ctx, x, y, customCol) {
   ctx.save();
   ctx.strokeStyle = col;
   ctx.lineWidth = 1.5;
+  ctx.shadowColor = 'rgba(239, 68, 68, 0.5)';
+  ctx.shadowBlur = 4;
 
   ctx.beginPath();
   ctx.arc(x, y, 7 + spreadGap * 0.35, 0, Math.PI * 2);
