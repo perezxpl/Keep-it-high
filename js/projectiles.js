@@ -355,6 +355,9 @@ export class AeroSuperGrenade {
 export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0) {
   const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower);
   activeProjectiles.push(grenade);
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
+    window.activeProjectiles.push(grenade);
+  }
   return grenade;
 }
 
@@ -859,11 +862,20 @@ export function drawGrenadeSmoke(ctx) {
  * Zbiorcza aktualizacja wszystkich pocisków i efektów
  */
 export function updateProjectiles(groundY, platforms, customObs, combatants, ball) {
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
+    for (const p of window.activeProjectiles) {
+      if (!activeProjectiles.includes(p)) activeProjectiles.push(p);
+    }
+  }
   for (let i = activeProjectiles.length - 1; i >= 0; i--) {
     const p = activeProjectiles[i];
     const isAlive = p.update(groundY, platforms, customObs, combatants, ball);
     if (!isAlive || p.detonated) {
       activeProjectiles.splice(i, 1);
+      if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles)) {
+        const idx = window.activeProjectiles.indexOf(p);
+        if (idx !== -1) window.activeProjectiles.splice(idx, 1);
+      }
     }
   }
 
@@ -881,6 +893,12 @@ export function updateProjectiles(groundY, platforms, customObs, combatants, bal
  * KROK 2: Ogień, błysk i iskry (lighter / additive blending)
  */
 export function drawProjectiles(ctx) {
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
+    for (const p of window.activeProjectiles) {
+      if (!activeProjectiles.includes(p)) activeProjectiles.push(p);
+    }
+  }
+
   // 1. Ślady przypalenia po wybuchu na podłożu
   drawExplosionCraters(ctx);
 
@@ -915,4 +933,7 @@ export function drawProjectiles(ctx) {
 if (typeof window !== 'undefined') {
   window.AeroSuperGrenade = AeroSuperGrenade;
   window.spawnAeroSuperGrenade = spawnAeroSuperGrenade;
+  window.activeProjectiles = activeProjectiles;
+  window.updateProjectiles = updateProjectiles;
+  window.drawProjectiles = drawProjectiles;
 }

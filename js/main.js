@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js?v=v20';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -12,19 +12,19 @@ import {
   weaponButtons,
   devZoomLevel, setDevZoom,
   getCaveCeilingY
-} from './world.js?v=v20';
+} from './world.js';
 import {
   player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, isCeilingBlockingStand
-} from './player.js?v=v20';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v20';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v20';
+} from './player.js';
+import { updateProjectiles, drawProjectiles } from './projectiles.js';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v20';
+} from './ball.js';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -32,17 +32,17 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v20';
-import { CLASSES } from './classes/index.js?v=v20';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v20';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js?v=v20';
+} from './obstacles.js';
+import { CLASSES } from './classes/index.js';
+import { bot, botKeys, updateBotBrain } from './bot.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v20';
+} from './network.js';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
@@ -451,7 +451,7 @@ canvas.addEventListener('touchmove', (e) => {
     // A. Przeciąganie kieszeni na broń palną
     if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
       const d = Math.hypot(t.clientX - pockets.firearm.startX, t.clientY - pockets.firearm.startY);
-      if (d > 10) {
+      if (d > 8 || pockets.firearm.isDragging) {
         pockets.firearm.isDragging = true;
         rightStick.draggedSlot = {
           type: 'FIREARM',
@@ -466,7 +466,7 @@ canvas.addEventListener('touchmove', (e) => {
     // B. Przeciąganie kieszeni na broń miotaną (granat)
     if (pockets.throwable && pockets.throwable.active && t.identifier === pockets.throwable.id) {
       const d = Math.hypot(t.clientX - pockets.throwable.startX, t.clientY - pockets.throwable.startY);
-      if (d > 10) {
+      if (d > 8 || pockets.throwable.isDragging) {
         pockets.throwable.isDragging = true;
         rightStick.draggedSlot = {
           type: 'GRENADE',
@@ -600,15 +600,17 @@ function endTouch(e) {
       pockets.firearm.id = null;
 
       if (pockets.firearm.isDragging) {
-        // Przeciągnięcie na prawy drążek (założenie broni na ręce)
+        // Przeciągnięcie na prawy drążek (założenie broni palnej na ręce)
         const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
-        if (distToStick < (rightStick.maxRadius || 58) + 36) {
+        const stickRadius = rightStick.maxRadius || 58;
+        if (distToStick < stickRadius + 45 || t.clientX >= rightStick.baseX - 35) {
           rightStick.armedMode = 'FIREARM';
+          triggerScreenShake(1.5);
         }
         rightStick.draggedSlot = null;
         pockets.firearm.isDragging = false;
       } else {
-        // Kliknięcie na ikonę broni ją zmienia (po puszczeniu przycisku)
+        // Zwykłe tapnięcie w kieszeń broni palnej: przełącza model broni (AK47 <-> SHOTGUN)
         const touchDur = performance.now() - (pockets.firearm.touchStartTime || 0);
         if (touchDur < 450) {
           const curId = player.currentWeapon?.id || 'AK47';
@@ -623,23 +625,19 @@ function endTouch(e) {
       pockets.throwable.id = null;
 
       if (pockets.throwable.isDragging) {
-        // Przeciągnięcie na prawy drążek (uzbrojenie granatu w rękach)
+        // Przeciągnięcie na prawy drążek (uzbrojenie broni miotanej / granatu na drążku)
         const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
-        if (distToStick < (rightStick.maxRadius || 58) + 36) {
+        const stickRadius = rightStick.maxRadius || 58;
+        if (distToStick < stickRadius + 45 || t.clientX >= rightStick.baseX - 35) {
           rightStick.armedMode = 'GRENADE';
+          triggerScreenShake(1.5);
         }
         rightStick.draggedSlot = null;
         pockets.throwable.isDragging = false;
       } else {
-        // Kliknięcie / dotknięcie ikony granatu: natychmiastowy rzut granatem!
-        const touchDur = performance.now() - (pockets.throwable.touchStartTime || 0);
-        if (touchDur < 500 && !player.isDead) {
-          const throwAngle = -0.62; // ~35 stopni w górę w stronę zwrotu
-          const throwDist = 320;
-          const throwAimX = player.x + player.w / 2 + (player.facing || 1) * Math.cos(throwAngle) * throwDist;
-          const throwAimY = player.y + player.h * 0.42 + Math.sin(throwAngle) * throwDist;
-          throwTacticalGrenade(player, throwAimX, throwAimY, 1.0);
-        }
+        // Zwykłe kliknięcie / dotknięcie ikony granatu:
+        // Wybór między bronią miotaną a palną ma być WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
+        // Dlatego tap NIE rzuca granatu i NIE zmienia trybu drążka.
       }
     }
 
@@ -651,13 +649,13 @@ function endTouch(e) {
       if (rightStick.armedMode === 'GRENADE') {
         // Rzut wykonuje się wychyleniem drążka i puszczeniu; odległość wychylenia wyzwala siłę rzutu
         if (rightStick.power > 0.08 && !player.isDead) {
-          const throwPower = Math.min(1.5, Math.max(0.5, rightStick.power * 1.3));
+          const throwPower = Math.min(1.8, Math.max(0.6, rightStick.power * 1.3));
           throwTacticalGrenade(player, player.aimX, player.aimY, throwPower);
-          // Po rzucie drążek natychmiast wraca do trybu broni palnej
-          rightStick.armedMode = 'FIREARM';
         }
+        // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
+        // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
       } else {
-        // Zakończenie ognia
+        // Zakończenie ognia z broni palnej
         rightStick.isShooting = false;
         player.isShooting = false;
         rightStick.shotgunFiredThisTap = false;

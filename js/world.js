@@ -2919,7 +2919,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     // Jeśli przeciągany jest slot w stronę drążka, drążek pulsuje lekko
-    const isDragHover = rightStick.draggedSlot && Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 35;
+    const isDragHover = rightStick.draggedSlot && (Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 45 || (rightStick.draggedSlot.curX || 0) >= bx - 35);
     ctx.strokeStyle = isDragHover
       ? `rgba(255, 255, 255, ${0.45 + 0.35 * Math.sin(time * 0.01)})`
       : (isStickActive ? 'rgba(255, 255, 255, 0.32)' : 'rgba(255, 255, 255, 0.12)');
