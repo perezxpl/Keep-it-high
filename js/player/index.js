@@ -152,6 +152,8 @@ export function createPlayerInstance(overrides = {}) {
     hp: 100,
     maxHp: 100,
     currentWeapon: WEAPONS.AK47,
+    isHolstered: (activeArenaId === 'ARENA_1'),
+    holsterWeight: (activeArenaId === 'ARENA_1' ? 1.0 : 0.0),
     shootCooldown: 0,
     grenadeCooldown: 0,
     grenadeMaxCooldown: 3.5, // 3.5 sekundy czasu odnowienia
@@ -472,7 +474,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   updateWeaponState(player);
 
-  const isShootingStance = (player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0);
+  const targetHolster = (player.isHolstered || !player.currentWeapon) ? 1.0 : 0.0;
+  if (typeof player.holsterWeight !== 'number') {
+    player.holsterWeight = targetHolster;
+  } else {
+    player.holsterWeight += (targetHolster - player.holsterWeight) * 0.22;
+    if (Math.abs(targetHolster - player.holsterWeight) < 0.005) {
+      player.holsterWeight = targetHolster;
+    }
+  }
+
+  const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming));
   const targetWeight = isShootingStance ? 1.0 : 0.0;
   player.shootPoseWeight = (typeof player.shootPoseWeight === 'number')
     ? player.shootPoseWeight + (targetWeight - player.shootPoseWeight) * 0.25
@@ -1144,7 +1156,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.gaitMode === 'IDLE') {
     targetTilt = 0;
   } else {
-    if (player.gaitMode === 'WALK') targetTilt = ((speed / walkMax) * 0.015) * player.facing;
+    if (player.gaitMode === 'WALK') targetTilt = ((speed / walkMax) * 0.045) * player.facing;
     else if (player.gaitMode === 'JOG') targetTilt = (0.08 + ((speed - walkMax) / 2.0) * 0.04) * player.facing;
     else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
   }

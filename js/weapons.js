@@ -239,14 +239,52 @@ export function getWeaponHoldTransform(p) {
   const aimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : rightShoulderY;
 
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry)
-  const headBobOffset = (p.headBob || 0) * 0.35;
+  const headBobOffset = (p.headBob || 0) * 0.70;
   const crouchDropY = isCrouch ? 4 : 0;
-  const loosePivotX = hipX + (isShotgun ? 5 : 7) * charFacing;
-  const loosePivotY = hipY - (isShotgun ? 10 : 13) + headBobOffset + crouchDropY;
+  let loosePivotX = hipX + (isShotgun ? 5 : 7) * charFacing;
+  let loosePivotY = hipY - (isShotgun ? 10 : 13) + headBobOffset + crouchDropY;
 
   const directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
   const idleDroop = isShotgun ? 0.40 : 0.26;
-  const looseAimAngle = directAngle + idleDroop;
+  let looseAimAngle = directAngle + idleDroop;
+
+  // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
+  const speed = Math.abs(p.vx || 0);
+  const isMoving = speed > 0.1 && (p.onGround || !p.isJumping);
+  const strideP = p.stridePhase || 0;
+  const isAimActive = !!(p.isAiming || p.isShooting || (p.shootPoseTimer > 0));
+
+  if (!isAimActive) {
+    if (isMoving) {
+      const isSprint = (p.gaitMode === 'SPRINT');
+      const isJog = (p.gaitMode === 'JOG');
+
+      // Pionowy bobbing w takt każdego kroku (stridePhase * 2)
+      const bobAmp = isSprint ? 3.8 : (isJog ? 2.5 : 1.4);
+      const bobY = Math.sin(strideP * 2) * bobAmp;
+
+      // Poziome kołysanie przód-tył
+      const swayAmp = isSprint ? 3.2 : (isJog ? 2.0 : 1.0);
+      const swayX = Math.cos(strideP) * swayAmp * charFacing;
+
+      // Kołysanie kątowe lufy (barrel pitch)
+      const pitchAmp = isSprint ? 0.14 : (isJog ? 0.08 : 0.035);
+      const swayPitch = Math.sin(strideP) * pitchAmp;
+
+      // W sprincie taktyczne obniżenie broni (Tactical Sprint)
+      const sprintDrop = isSprint ? 2.5 : 0;
+      const sprintAngleDroop = isSprint ? 0.18 : 0;
+
+      loosePivotX += swayX;
+      loosePivotY += (bobY + sprintDrop);
+      looseAimAngle += (swayPitch + sprintAngleDroop);
+    } else {
+      // Subtelny oddech na postoju
+      const idleBreathe = Math.sin(performance.now() * 0.003) * 0.6;
+      loosePivotY += idleBreathe;
+      looseAimAngle += idleBreathe * 0.015;
+    }
+  }
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance)
   const muscleMult = p.currentClass?.visuals?.muscleMult || 1.0;
@@ -1001,14 +1039,23 @@ export function drawBullets(ctx) {
  */
 export function drawHeldWeapon(ctx, p) {
   if (!p || !p.currentWeapon || p.isDead) return;
+  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
+  if (hWeight >= 0.99) return; // Całkowicie schowana
 
   const hold = getWeaponHoldTransform(p);
   const weapon = p.currentWeapon;
 
   ctx.save();
-  ctx.translate(hold.pivotX, hold.pivotY);
-  ctx.scale(hold.charFacing, 1);
-  ctx.rotate(hold.angle);
+  if (hWeight > 0.01) {
+    ctx.globalAlpha = Math.max(0, 1.0 - hWeight);
+    ctx.translate(hold.pivotX, hold.pivotY + hWeight * 14);
+    ctx.scale(hold.charFacing, 1);
+    ctx.rotate(hold.angle + hWeight * 0.35);
+  } else {
+    ctx.translate(hold.pivotX, hold.pivotY);
+    ctx.scale(hold.charFacing, 1);
+    ctx.rotate(hold.angle);
+  }
 
   if (weapon.id === 'AK47') {
     ctx.fillStyle = '#78350f';

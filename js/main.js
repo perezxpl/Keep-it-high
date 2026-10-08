@@ -250,6 +250,7 @@ canvas.addEventListener('touchstart', (e) => {
           obstacles: obstacles
         });
       } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 15) {
+        rightStick.draggedSlot = null;
         pFarm.active = true;
         pFarm.id = t.identifier;
         pFarm.startX = t.clientX;
@@ -257,6 +258,7 @@ canvas.addEventListener('touchstart', (e) => {
         pFarm.touchStartTime = performance.now();
         pFarm.isDragging = false;
       } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 15) {
+        rightStick.draggedSlot = null;
         pThrow.active = true;
         pThrow.id = t.identifier;
         pThrow.startX = t.clientX;
@@ -296,9 +298,12 @@ canvas.addEventListener('touchstart', (e) => {
           }
 
           if (rightStick.armedMode === 'FIREARM') {
+            if (factor > 0.15 && player.isHolstered) {
+              player.isHolstered = false;
+            }
             // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
             rightStick.isShooting = (factor >= 0.90);
-            if (rightStick.isShooting && !player.isDead) {
+            if (rightStick.isShooting && !player.isDead && !player.isHolstered) {
               const curWep = player.currentWeapon || WEAPONS.AK47;
               if (player.shootCooldown <= 0) {
                 triggerPlayerShoot(player, curWep);
@@ -511,9 +516,12 @@ canvas.addEventListener('touchmove', (e) => {
         }
 
         if (rightStick.armedMode === 'FIREARM') {
+          if (power > 0.15 && player.isHolstered) {
+            player.isHolstered = false;
+          }
           // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
           rightStick.isShooting = (power >= 0.90);
-          if (rightStick.isShooting && !player.isDead) {
+          if (rightStick.isShooting && !player.isDead && !player.isHolstered) {
             const curWep = player.currentWeapon || WEAPONS.AK47;
             if (player.shootCooldown <= 0) {
               triggerPlayerShoot(player, curWep);
@@ -595,45 +603,88 @@ function endTouch(e) {
     }
 
     // B. Zwolnienie kieszeni na broń palną
-    if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
+    const isFarmTouch = pockets.firearm && (
+      (pockets.firearm.active && (pockets.firearm.id === null || t.identifier === pockets.firearm.id)) ||
+      pockets.firearm.isDragging ||
+      rightStick.draggedSlot?.type === 'FIREARM'
+    );
+    if (isFarmTouch) {
+      const wasDragging = pockets.firearm.isDragging || (rightStick.draggedSlot?.type === 'FIREARM');
+      const startX = pockets.firearm.startX || pockets.firearm.x;
       pockets.firearm.active = false;
+      pockets.firearm.isDragging = false;
       pockets.firearm.id = null;
 
-      if (pockets.firearm.isDragging) {
+      if (wasDragging) {
         // Przeciągnięcie na prawy drążek (założenie broni palnej na ręce)
-        const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
-        const stickRadius = rightStick.maxRadius || 58;
-        if (distToStick < stickRadius + 45 || t.clientX >= rightStick.baseX - 35) {
+        const dropX = t.clientX;
+        const dropY = t.clientY;
+        const distToStick = Math.hypot(dropX - rightStick.baseX, dropY - rightStick.baseY);
+        // Jeśli przeciągnięto w stronę prawego drążka (w prawo o min. 20px LUB w promieniu 140px LUB w strefie drążka):
+        if (dropX >= startX + 20 || distToStick < 140 || dropX >= rightStick.baseX - 60) {
           rightStick.armedMode = 'FIREARM';
-          triggerScreenShake(1.5);
+          player.isHolstered = false;
+          if (typeof triggerScreenShake === 'function') triggerScreenShake(2.0);
         }
         rightStick.draggedSlot = null;
-        pockets.firearm.isDragging = false;
       } else {
-        // Zwykłe tapnięcie w kieszeń broni palnej: przełącza model broni (AK47 <-> SHOTGUN)
-        const touchDur = performance.now() - (pockets.firearm.touchStartTime || 0);
+        // Tapnięcie w kieszeń broni palnej:
+        const now = performance.now();
+        const touchDur = now - (pockets.firearm.touchStartTime || 0);
         if (touchDur < 450) {
-          const curId = player.currentWeapon?.id || 'AK47';
-          player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+          const timeSinceLastTap = now - (pockets.firearm.lastTapReleaseTime || 0);
+          if (timeSinceLastTap > 0 && timeSinceLastTap < 380) {
+            // 2-krotne szybkie stuknięcie (double-tap): chowanie / wyciąganie broni!
+            player.isHolstered = !player.isHolstered;
+            pockets.firearm.lastTapReleaseTime = 0;
+            if (pockets.firearm.prevWeaponId) {
+              player.currentWeapon = WEAPONS[pockets.firearm.prevWeaponId] || player.currentWeapon;
+            }
+            if (!player.isHolstered) {
+              rightStick.armedMode = 'FIREARM';
+            }
+          } else {
+            // Pierwsze pojedyncze tapnięcie:
+            pockets.firearm.lastTapReleaseTime = now;
+            pockets.firearm.prevWeaponId = player.currentWeapon?.id || 'AK47';
+            if (player.isHolstered) {
+              // Jeśli broń była schowana, 1 tapnięcie ją natychmiast wyciąga
+              player.isHolstered = false;
+              rightStick.armedMode = 'FIREARM';
+            } else {
+              // Jeśli broń już była w rękach, 1 tapnięcie przełącza model broni (AK47 <-> SHOTGUN)
+              const curId = player.currentWeapon?.id || 'AK47';
+              player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+            }
+          }
         }
       }
     }
 
     // C. Zwolnienie kieszeni na broń miotaną (granat)
-    if (pockets.throwable && pockets.throwable.active && t.identifier === pockets.throwable.id) {
+    const isThrowTouch = pockets.throwable && (
+      (pockets.throwable.active && (pockets.throwable.id === null || t.identifier === pockets.throwable.id)) ||
+      pockets.throwable.isDragging ||
+      rightStick.draggedSlot?.type === 'GRENADE'
+    );
+    if (isThrowTouch) {
+      const wasDragging = pockets.throwable.isDragging || (rightStick.draggedSlot?.type === 'GRENADE');
+      const startX = pockets.throwable.startX || pockets.throwable.x;
       pockets.throwable.active = false;
+      pockets.throwable.isDragging = false;
       pockets.throwable.id = null;
 
-      if (pockets.throwable.isDragging) {
+      if (wasDragging) {
         // Przeciągnięcie na prawy drążek (uzbrojenie broni miotanej / granatu na drążku)
-        const distToStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
-        const stickRadius = rightStick.maxRadius || 58;
-        if (distToStick < stickRadius + 45 || t.clientX >= rightStick.baseX - 35) {
+        const dropX = t.clientX;
+        const dropY = t.clientY;
+        const distToStick = Math.hypot(dropX - rightStick.baseX, dropY - rightStick.baseY);
+        // Jeśli przeciągnięto w stronę prawego drążka (w prawo o min. 20px LUB w promieniu 140px LUB w strefie drążka):
+        if (dropX >= startX + 20 || distToStick < 140 || dropX >= rightStick.baseX - 60) {
           rightStick.armedMode = 'GRENADE';
-          triggerScreenShake(1.5);
+          if (typeof triggerScreenShake === 'function') triggerScreenShake(2.0);
         }
         rightStick.draggedSlot = null;
-        pockets.throwable.isDragging = false;
       } else {
         // Zwykłe kliknięcie / dotknięcie ikony granatu:
         // Wybór między bronią miotaną a palną ma być WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
@@ -671,9 +722,26 @@ function endTouch(e) {
       player.isAiming = false;
     }
   }
+
+  // Zabezpieczenie globalne: gdy wszystkie palce zeszły z ekranu, ZAWSZE czyść sloty przeciągania
+  if (!e.touches || e.touches.length === 0) {
+    rightStick.draggedSlot = null;
+    if (pockets.firearm) {
+      pockets.firearm.isDragging = false;
+      pockets.firearm.active = false;
+      pockets.firearm.id = null;
+    }
+    if (pockets.throwable) {
+      pockets.throwable.isDragging = false;
+      pockets.throwable.active = false;
+      pockets.throwable.id = null;
+    }
+  }
 }
 canvas.addEventListener('touchend', endTouch, { passive: false });
 canvas.addEventListener('touchcancel', endTouch, { passive: false });
+window.addEventListener('touchend', endTouch, { passive: false });
+window.addEventListener('touchcancel', endTouch, { passive: false });
 
 export const BIOME_TELEPORT_TARGETS = {
   STADIUM: 0,
@@ -2094,7 +2162,9 @@ window.addEventListener('keydown', (e) => {
     }
   }
   if (e.code === 'KeyR') {
-    reloadWeapon(player, player.currentWeapon);
+    if (!player.isHolstered) {
+      reloadWeapon(player, player.currentWeapon);
+    }
   }
   if (e.code === 'KeyQ') {
     // Klawisz 'Q' zwolniony z rzutu granatem (ult nie jest zużywany przy rzucie)
@@ -2109,9 +2179,19 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
-    player.currentWeapon = WEAPONS.AK47;
+    if (player.currentWeapon?.id === 'AK47' && !player.isHolstered) {
+      player.isHolstered = true;
+    } else {
+      player.currentWeapon = WEAPONS.AK47;
+      player.isHolstered = false;
+    }
   } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
-    player.currentWeapon = WEAPONS.SHOTGUN;
+    if (player.currentWeapon?.id === 'SHOTGUN' && !player.isHolstered) {
+      player.isHolstered = true;
+    } else {
+      player.currentWeapon = WEAPONS.SHOTGUN;
+      player.isHolstered = false;
+    }
   } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
     teleportToDistance(BIOME_TELEPORT_TARGETS.WINTER);
   } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
@@ -2288,9 +2368,14 @@ canvas.addEventListener('mousedown', (e) => {
         const throwAimY = player.y + player.h * 0.42 + Math.sin(throwAngle) * throwDist;
         throwTacticalGrenade(player, throwAimX, throwAimY);
       } else if (player.currentWeapon?.id === btn.id) {
-        reloadWeapon(player, player.currentWeapon);
+        if (!player.isHolstered) {
+          player.isHolstered = true;
+        } else {
+          player.isHolstered = false;
+        }
       } else {
         player.currentWeapon = WEAPONS[btn.id];
+        player.isHolstered = false;
       }
       return;
     }
@@ -2498,13 +2583,13 @@ function update() {
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
   window.activeArenaId = activeArenaId;
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead;
-  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead;
+  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered;
+  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead && !player.isHolstered;
 
   if (curWep.auto) {
     player.isShooting = isHoldingFire;
   } else {
-    player.isShooting = isTouchFiring || (player.shootPoseTimer > 0);
+    player.isShooting = (!player.isHolstered) && (isTouchFiring || (player.shootPoseTimer > 0));
   }
 
   const curAmmoObj = player.ammo?.[curWep.id];

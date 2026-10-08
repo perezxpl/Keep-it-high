@@ -1399,7 +1399,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
-  if (p.currentWeapon && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0)) {
+  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
+  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0);
+
+  if (hasActiveWeapon) {
     const hold = getWeaponHoldTransform(p);
 
     const shoulderBaseX = hipX + (21 * Math.sin(p.pose?.torsoTilt || p.torsoTilt || 0));
@@ -1408,10 +1411,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const shoulderTilt = p.pose?.shoulderTilt || 0;
 
     const shRightX = shoulderBaseX + shOffsetHoriz;
-    const shRightY = shoulderBaseY - (shoulderTilt * 4 * cosYaw);
+    const shRightY = shoulderBaseY - (shoulderTilt * 8 * cosYaw);
 
     const shLeftX = shoulderBaseX - shOffsetHoriz;
-    const shLeftY = shoulderBaseY + (shoulderTilt * 4 * cosYaw);
+    const shLeftY = shoulderBaseY + (shoulderTilt * 8 * cosYaw);
 
     const rightArmRelX = (hold.rightHandTarget.x - shRightX) * currentFacingDir;
     const rightArmRelY = hold.rightHandTarget.y - shRightY;
@@ -1422,10 +1425,17 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armRight = getArmAnglesForTarget(rightArmRelX, rightArmRelY, p.upperArmLen, p.forearmLen, 1);
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, p.upperArmLen, p.forearmLen, 1);
 
-    rawFrontSwing = armRight.swing;
-    rawFrontElbow = armRight.elbow;
-    rawBackSwing = armLeft.swing;
-    rawBackElbow = armLeft.elbow;
+    if (hWeight > 0.01) {
+      rawFrontSwing = lerp(armRight.swing, rawFrontSwing, hWeight);
+      rawFrontElbow = lerp(armRight.elbow, rawFrontElbow, hWeight);
+      rawBackSwing = lerp(armLeft.swing, rawBackSwing, hWeight);
+      rawBackElbow = lerp(armLeft.elbow, rawBackElbow, hWeight);
+    } else {
+      rawFrontSwing = armRight.swing;
+      rawFrontElbow = armRight.elbow;
+      rawBackSwing = armLeft.swing;
+      rawBackElbow = armLeft.elbow;
+    }
   }
 
   const pose = p.pose;
@@ -1450,9 +1460,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     pose.initialized = true;
   }
 
-  const wepWeight = (p.currentWeapon && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
+  const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
   let footBlend = p.isDead ? 0.90 : 0.32;
-  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.24);
+  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
 
   if (p.kickMode === 'BACKFLIP') {
     footBlend = 0.85;
@@ -1536,14 +1546,20 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
   }
 
-  const shoulderCounterTilt = p.isDead ? 0 : -Math.sin(p.stridePhase) * (speed > 0.8 ? 0.045 : 0.015) * currentFacingDir;
+  let targetShoulderAmp = 0;
+  if (!p.isDead && speed > 0.1) {
+    if (p.gaitMode === 'SPRINT') targetShoulderAmp = 0.12;
+    else if (p.gaitMode === 'JOG') targetShoulderAmp = 0.08;
+    else targetShoulderAmp = 0.05;
+  }
+  const shoulderCounterTilt = p.isDead ? 0 : -Math.sin(p.stridePhase) * targetShoulderAmp * currentFacingDir;
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
 
   const shoulderBaseX = hipX + (21 * Math.sin(pose.torsoTilt));
   const shoulderBaseY = hipY - (21 * Math.cos(pose.torsoTilt));
 
   const headTopX = hipX + (36 * Math.sin(pose.torsoTilt));
-  const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + ((p.headBob || 0) * 0.35);
+  const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + ((p.headBob || 0) * 0.75);
   p.head = { x: headTopX, y: headTopY };
   if (!p.height) p.height = p.h || 70;
   if (!p.width) p.width = p.w || 24;
@@ -1551,8 +1567,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const shOffsetHoriz = (cosYaw * 1.4) - (sinYaw * 4.5);
   const shRightX = shoulderBaseX + shOffsetHoriz;
   const shLeftX = shoulderBaseX - shOffsetHoriz;
-  const shRightY = shoulderBaseY - (pose.shoulderTilt * 4 * cosYaw);
-  const shLeftY = shoulderBaseY + (pose.shoulderTilt * 4 * cosYaw);
+  const shRightY = shoulderBaseY - (pose.shoulderTilt * 8 * cosYaw);
+  const shLeftY = shoulderBaseY + (pose.shoulderTilt * 8 * cosYaw);
 
   const hipOffsetHoriz = (cosYaw * 2.0) - (sinYaw * 3.5);
   const hipRightX = hipX + hipOffsetHoriz;

@@ -629,6 +629,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     activeArenaId = 'ARENA_1';
   }
   setActiveArenaId(activeArenaId);
+  if (playerObj) {
+    playerObj.isHolstered = (activeArenaId === 'ARENA_1');
+    playerObj.holsterWeight = (activeArenaId === 'ARENA_1' ? 1.0 : 0.0);
+  }
 
   // Całkowity reset i czyszczenie koliderów fizyki, aby nie zostały niewidzialne przeszkody
   if (typeof resetColliders === 'function') {

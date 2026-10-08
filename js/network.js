@@ -161,6 +161,7 @@ export function sendPlayerState(localPlayer) {
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass,
       currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'AK47',
+      isHolstered: !!localPlayer.isHolstered,
       isJetpacking: !!localPlayer.isJetpacking,
       jetFuel: Math.round(localPlayer.jetFuel || 0),
       gaitMode: localPlayer.gaitMode
@@ -343,6 +344,9 @@ function handleNetworkData(data) {
       const wepId = data.currentWeaponId || data.weaponId;
       if (wepId && WEAPONS[wepId]) {
         remotePlayer.currentWeapon = WEAPONS[wepId];
+      }
+      if (data.isHolstered !== undefined) {
+        remotePlayer.isHolstered = !!data.isHolstered;
       }
       break;
     }

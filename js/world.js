@@ -3036,7 +3036,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
   // 3A. KIESZEŃ NA BROŃ PALNĄ – WYŻEJ
   if (pFirearm && pFirearm.x > 0) {
-    const isEquipped = (rightStick.armedMode === 'FIREARM');
+    const isEquipped = (rightStick.armedMode === 'FIREARM') && !player.isHolstered;
     const isPressed = pFirearm.active;
     const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
     const curId = curWep.id || 'AK47';
@@ -3206,11 +3206,14 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   // 4. EFEKT PRZECIĄGANIA IKONY NA DRĄŻEK (DRAG & DROP "ZAŁÓŻ BROŃ NA RĘCE")
   // -------------------------------------------------------------------------
   if (rightStick.draggedSlot) {
-    const ds = rightStick.draggedSlot;
-    const cx = ds.curX || 0;
-    const cy = ds.curY || 0;
-    const sx = ds.startX || cx;
-    const sy = ds.startY || cy;
+    if (!pFirearm?.isDragging && !pThrowable?.isDragging) {
+      rightStick.draggedSlot = null;
+    } else {
+      const ds = rightStick.draggedSlot;
+      const cx = ds.curX || 0;
+      const cy = ds.curY || 0;
+      const sx = ds.startX || cx;
+      const sy = ds.startY || cy;
 
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
@@ -3244,6 +3247,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
     ctx.restore();
     ctx.restore();
+    }
   }
 
   ctx.restore();
@@ -3782,7 +3786,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     }
 
     for (const btn of weaponButtons) {
-      const isSelected = (curWepId === btn.id);
+      const isSelected = (curWepId === btn.id) && !player.isHolstered;
       drawWeaponSlot(ctx, btn, isSelected, player, false);
     }
   }
