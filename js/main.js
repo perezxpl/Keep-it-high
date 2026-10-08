@@ -78,6 +78,12 @@ let jetpackAirborneSession = false;
 let lastSPressTime = 0;
 
 export { leftStick, rightStick, btnCluster, updateButtonLayout };
+if (typeof window !== 'undefined') {
+  window.updateButtonLayout = updateButtonLayout;
+  window.leftStick = leftStick;
+  window.rightStick = rightStick;
+  window.btnCluster = btnCluster;
+}
 
 export const keys = {
   left: false,
@@ -123,12 +129,15 @@ window.addEventListener('resize', () => {
 
 window.addEventListener('touchstart', () => {
   setTouchDevice(true);
+  updateButtonLayout(W, H);
+  updateDevTouchButtonUI();
 }, { once: true });
 
 canvas.addEventListener('touchstart', (e) => {
   if (gameState === GAME_STATES.CLASS_SELECT) return;
   e.preventDefault();
   setTouchDevice(true);
+  updateDevTouchButtonUI();
   const midX = W / 2;
 
   for (let i = 0; i < e.changedTouches.length; i++) {
@@ -1963,6 +1972,57 @@ export function initDevZoomUI() {
   updateDevZoomLabel();
 }
 
+let devTouchBtn = null;
+export function updateDevTouchButtonUI() {
+  if (!devTouchBtn) return;
+  if (isTouchDevice) {
+    devTouchBtn.textContent = '🕹️ PAD: WŁ';
+    devTouchBtn.style.borderColor = '#0284c7';
+    devTouchBtn.style.color = '#38bdf8';
+    devTouchBtn.style.background = 'rgba(2, 132, 199, 0.22)';
+    devTouchBtn.style.boxShadow = '0 0 10px rgba(56, 189, 248, 0.35)';
+  } else {
+    devTouchBtn.textContent = '🕹️ PAD: WYŁ';
+    devTouchBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+    devTouchBtn.style.color = '#94a3b8';
+    devTouchBtn.style.background = 'transparent';
+    devTouchBtn.style.boxShadow = 'none';
+  }
+}
+
+export function toggleTouchControls(forceVal) {
+  const nextVal = (typeof forceVal === 'boolean') ? forceVal : !isTouchDevice;
+  setTouchDevice(nextVal);
+  if (nextVal) {
+    updateButtonLayout(W, H);
+  }
+  updateDevTouchButtonUI();
+}
+window.toggleTouchControls = toggleTouchControls;
+
+export function initTouchControlsDevUI() {
+  const devMenu = document.getElementById('dev-menu');
+  if (!devMenu) return;
+
+  const sep = document.createElement('span');
+  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+  sep.textContent = '|';
+  devMenu.appendChild(sep);
+
+  devTouchBtn = document.createElement('button');
+  devTouchBtn.className = 'dev-btn';
+  devTouchBtn.id = 'dev-touch-toggle-btn';
+  devTouchBtn.title = 'Włącz / Wyłącz ekranowy pad dotykowy (Wirtualny joystick i przyciski akcji) [Skrót: P]';
+  const handleToggle = (e) => {
+    e.stopPropagation(); e.preventDefault();
+    toggleTouchControls();
+  };
+  devTouchBtn.addEventListener('click', handleToggle);
+  devTouchBtn.addEventListener('touchend', handleToggle);
+  devMenu.appendChild(devTouchBtn);
+  updateDevTouchButtonUI();
+}
+
 window.addEventListener('wheel', (e) => {
   const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   if (isDevOpen || e.altKey) {
@@ -1975,6 +2035,7 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 initDevZoomUI();
+initTouchControlsDevUI();
 initNetwork();
 
 let jumpKeyPressed = false;
@@ -2251,6 +2312,12 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' || e.code === 'F2' || e.code === 'Digit0' || e.code === 'Numpad0') {
     if (!isChatActive()) {
       toggleArena();
+    }
+  }
+
+  if (e.code === 'KeyP') {
+    if (!isChatActive()) {
+      toggleTouchControls();
     }
   }
 

@@ -2828,7 +2828,12 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
 }
 
 export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null) {
-  if (!isTouchDevice || !ctx || !player) return;
+  const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
+  if ((!isTouchDevice && !isMobile) || !ctx || !player) return;
+
+  if (isMobile && !isTouchDevice) {
+    setTouchDevice(true);
+  }
 
   ctx.save();
   const time = performance.now();
@@ -3830,6 +3835,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curA1State = aState.arena1State;
   const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
+  const isJungleArena = isSectorXArena; // Wsteczna kompatybilność
   const isMatchArena = (curArenaId === 'ARENA_1');
 
   if (isSectorXArena) {
@@ -3956,7 +3962,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
 
   // 4. BANER CELEBRACJI GOLA (tylko w trybie meczowym z piłką)
-  if (!isDeathmatch && !isJungleArena && goalCelebration.active && goalCelebration.timer > 0) {
+  if (!isDeathmatch && !isSectorXArena && goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;
 
@@ -3978,11 +3984,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
   ctx.restore();
 
-  if (ball && ball.active && !isDeathmatch && !isJungleArena) {
+  if (ball && ball.active && !isDeathmatch && !isSectorXArena) {
     drawOffscreenBallIndicator(ctx, ball, camera, player);
   }
 
-  if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isJungleArena) ? null : ball, inKickRange);
+  if (isTouchDevice || isMobile) {
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isSectorXArena) ? null : ball, inKickRange);
   }
 }
