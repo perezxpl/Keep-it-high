@@ -3118,8 +3118,8 @@ function draw() {
     drawSniperLaserSight(ctx, remotePlayer);
   }
 
-  // Trajektoria balistyczna rzutu bronią miotaną (granatem)
-  if (player.throwAnim && player.throwAnim.active && player.throwAnim.aiming) {
+  // Trajektoria balistyczna rzutu bronią miotaną (granatem) na PC
+  if (!isTouchDevice && player.throwAnim && player.throwAnim.active && player.throwAnim.aiming) {
     drawGrenadeTrajectory(ctx, player, player.throwAnim.targetX, player.throwAnim.targetY, player.throwAnim.power, GROUND_Y);
   }
 

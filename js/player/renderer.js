@@ -2412,76 +2412,40 @@ export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
 }
 
 /**
- * Rysuje w czasie rzeczywistym trajektorię balistyczną rzutu granatem (Arc Preview)
+ * Rysuje w czasie rzeczywistym trajektorię balistyczną rzutu granatem (oryginalne białe kropki)
  */
 export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, groundY = 500) {
   if (!p) return;
-  const handPos = getThrowHandPosition(p);
-  const startX = handPos.x;
-  const startY = handPos.y;
+  const pFacing = p.facing || 1;
+  const handPos = (typeof getThrowHandPosition === 'function') ? getThrowHandPosition(p) : null;
+  const startX = handPos ? handPos.x : (p.x + (p.w || 24) / 2 + pFacing * 14);
+  const startY = handPos ? handPos.y : (p.y + (p.h || 70) * 0.42);
 
-  const dx = targetX - startX;
-  const dy = targetY - startY;
-  const angle = Math.atan2(dy, dx);
+  const aimX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : (startX + pFacing * 200);
+  const aimY = (typeof targetY === 'number' && !isNaN(targetY)) ? targetY : (startY - 0.2 * 200);
+  const angle = Math.atan2(aimY - startY, aimX - startX);
 
-  const speedMult = (typeof power === 'number' && power > 0) ? Math.max(0.35, Math.min(1.8, power)) : 1.0;
+  const pwr = (typeof power === 'number' && power > 0) ? Math.min(1.5, Math.max(0.4, power * 1.3)) : 1.0;
+  const speedMult = pwr;
   const initialSpeed = (960 / 60) * speedMult;
-  let simVx = Math.cos(angle) * initialSpeed + (p.vx || 0) * 0.35;
-  let simVy = Math.sin(angle) * initialSpeed + (p.vy || 0) * 0.25 - (3.2 * Math.min(1.2, speedMult));
+  const gVx = Math.cos(angle) * initialSpeed + (p.vx || 0) * 0.35;
+  const gVy = Math.sin(angle) * initialSpeed + (p.vy || 0) * 0.25 - (3.2 * Math.min(1.2, speedMult));
   const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
 
-  let simX = startX;
-  let simY = startY;
-
-  const points = [{ x: simX, y: simY }];
-  const steps = 30;
-  const floorY = p.currentGroundY || groundY || 500;
-
-  for (let i = 0; i < steps; i++) {
-    simX += simVx;
-    simY += simVy;
-    simVy += grav;
-    points.push({ x: simX, y: simY });
-    if (simY >= floorY) {
-      break;
-    }
-  }
-
   ctx.save();
+  const numDots = 14;
+  for (let step = 1; step <= numDots; step++) {
+    const tFrames = step * 3.5;
+    const wx = startX + gVx * tFrames;
+    const wy = startY + gVy * tFrames + 0.5 * grav * tFrames * tFrames;
 
-  // Rysowanie neonowej linii przerywanej trajektorii
-  ctx.setLineDash([4, 6]);
-  ctx.lineWidth = 2.0;
-  ctx.strokeStyle = 'rgba(163, 230, 53, 0.75)';
-  ctx.shadowColor = '#a3e635';
-  ctx.shadowBlur = 6;
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-  ctx.stroke();
+    const alpha = Math.max(0.12, 0.75 - (step / numDots) * 0.60);
 
-  // Krople energii wzdłuż trajektorii
-  ctx.setLineDash([]);
-  for (let i = 4; i < points.length; i += 5) {
-    const pt = points[i];
-    const alpha = 1.0 - (i / steps) * 0.6;
-    ctx.fillStyle = `rgba(163, 230, 53, ${alpha})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
+    ctx.arc(wx, wy, Math.max(1.8, 4.0 - step * 0.18), 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // Zakończenie trajektorii w punkcie lądowania (dyskretny punkt uderzenia)
-  const lastPt = points[points.length - 1];
-  ctx.fillStyle = 'rgba(163, 230, 53, 0.95)';
-  ctx.shadowColor = '#a3e635';
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.arc(lastPt.x, lastPt.y, 3.2, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.restore();
 }
 

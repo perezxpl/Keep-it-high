@@ -2995,8 +2995,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
     ctx.restore();
 
-    // Trajektoria rzutu granatem (gdy drążek w trybie granatu jest wychylony i brak aktywnej trajektorii globalnej)
-    if (isGrenadeMode && isStickActive && (rightStick.power > 0.08) && !(player.throwAnim && player.throwAnim.active)) {
+    // Trajektoria rzutu granatem (gdy drążek w trybie granatu jest wychylony)
+    if (isGrenadeMode && isStickActive && (rightStick.power > 0.08)) {
       const pwr = Math.min(1.5, Math.max(0.4, rightStick.power * 1.3));
       const pFacing = player.facing || 1;
       const startX = player.x + player.w / 2 + pFacing * 14;
