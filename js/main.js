@@ -2339,13 +2339,13 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
 
   if (e.code === 'KeyM' || e.code === 'F2' || e.code === 'Digit0' || e.code === 'Numpad0') {
-    if (!isChatActive()) {
+    if (!isChatActive) {
       toggleArena();
     }
   }
 
   if (e.code === 'KeyP') {
-    if (!isChatActive()) {
+    if (!isChatActive) {
       toggleTouchControls();
     }
   }
