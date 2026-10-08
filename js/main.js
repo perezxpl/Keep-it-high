@@ -126,6 +126,7 @@ window.addEventListener('touchstart', () => {
 }, { once: true });
 
 canvas.addEventListener('touchstart', (e) => {
+  if (gameState === GAME_STATES.CLASS_SELECT) return;
   e.preventDefault();
   setTouchDevice(true);
   const midX = W / 2;

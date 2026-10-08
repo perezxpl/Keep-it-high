@@ -27,8 +27,7 @@ export function setCameraGroundY(val) {
 
 export function getCameraGroundY() {
   if (typeof _cameraGroundY === 'number') return _cameraGroundY;
-  const h = getCanvasLogicalHeight();
-  return Math.round((h - 75) / 20) * 20;
+  return 1000;
 }
 
 export function setCameraArenaId(id) {
@@ -247,12 +246,12 @@ export function updateCamera(player, ball) {
 
   // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
   const groundFloor = getCameraGroundY();
-  const targetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 600 : groundFloor - 50)) : (isArena2 ? 600 : groundFloor - 50);
+  const targetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : groundFloor - 50)) : (isArena2 ? 910 : groundFloor - 50);
   let targetCamY = targetY - (viewHeight * 0.65);
 
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
-  const subterraneanBottom = (isArena3 || isArena2) ? 1400 : groundFloor;
-  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72));
+  const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor);
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 2000 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   camera.targetX = targetCamX;

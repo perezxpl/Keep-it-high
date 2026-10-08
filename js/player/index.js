@@ -414,7 +414,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
   const noFlatGround = isA3 || isA2;
-  player.groundY = isA3 ? 900 : (isA2 ? 1400 : GROUND_Y);
+  player.groundY = isA3 ? 900 : (isA2 ? 1660 : GROUND_Y);
   if (!noFlatGround && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią
@@ -1233,8 +1233,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
     // Przepaść i prądy wznoszące (Pandora Updraft / Abyss Zone) lub strefa śmierci kanału technicznego
     if (isA2) {
-      // Poniżej y = 1260: strefa chmur
-      if (player.y > 1260) {
+      // Poniżej y = 1510: strefa chmur i prądów wznoszących
+      if (player.y > 1510) {
         const hasFuel = (player.jetFuel !== undefined ? player.jetFuel > 0 : true);
         if (hasFuel) {
           // Gracz z paliwem: silny pionowy impuls wznoszący wybijający z powrotem w strefę wysp
@@ -1243,8 +1243,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           player.isJumping = true;
           player.onGround = false;
           player.currentPlatform = null;
-        } else if (player.y >= 1380 && !player.isDead) {
-          // Gracz bez paliwa po osiągnięciu y = 1380 ginie (upadek w otchłań / respawn)
+        } else if (player.y >= 1660 && !player.isDead) {
+          // Gracz bez paliwa po osiągnięciu y >= 1660 ginie (upadek w otchłań / respawn)
           player.hp = 0;
           player.isDead = true;
           player.respawnTimer = 75;
@@ -1353,11 +1353,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const pitchLerp = 0.30;
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
   const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
   const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
-  const groundFloorY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : 500;
+  const groundFloorY = 1000;
   const wallTop = isArena2 ? 0 : (groundFloorY - (isArena3 ? 1300 : 3000));
 
   if (player.y >= wallTop) {

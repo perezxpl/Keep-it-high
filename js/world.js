@@ -95,7 +95,7 @@ export let ctx = null;
 export let W = window.innerWidth;
 export let H = window.innerHeight;
 export let DPR = Math.min(window.devicePixelRatio || 1, 2);
-export let GROUND_Y = Math.round((H - 75) / 20) * 20;
+export let GROUND_Y = 1000;
 
 /**
  * Renderuje pasy ostrzegawcze (żółto-czarne skośne pasy przemysłowe)
@@ -156,7 +156,7 @@ export function initGroundSegments() {
 initGroundSegments();
 
 export function isGroundAt(x, margin = 4) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -170,7 +170,7 @@ export function isGroundAt(x, margin = 4) {
 }
 
 export function isGroundSupporting(minX, maxX) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -184,7 +184,7 @@ export function isGroundSupporting(minX, maxX) {
 }
 
 export function findGroundHoleAt(x) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
     return { holeStart: -600, holeEnd: 4600 };
   }
   if (isGroundAt(x, 0)) return null;
@@ -352,7 +352,7 @@ export function resize(player) {
     ctx.resetTransform();
     ctx.scale(DPR, DPR);
   }
-  GROUND_Y = Math.round((H - 75) / 20) * 20;
+  GROUND_Y = 1000;
   setCameraGroundY(GROUND_Y);
   if (Array.isArray(groundSegments)) {
     for (const seg of groundSegments) {
@@ -360,8 +360,10 @@ export function resize(player) {
     }
   }
   invalidateSkyCache();
-  if (player) {
-    if (player.y >= GROUND_Y - player.h - 5) {
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  if (player && !isA3 && !isA2) {
+    if (player.y >= GROUND_Y - player.h - 5 && player.currentGroundY === GROUND_Y) {
       player.y = GROUND_Y - player.h;
     }
   }
@@ -2611,8 +2613,8 @@ export function drawGround(ctx, worldLeft, worldWidth) {
 }
 
 export function drawArenaEnergyBoundaries(ctx, groundY) {
-  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
   if (isArena3 || isArena2) {
     return; // W zamkniętym podziemnym systemie jaskiń i otwartym niebie Pandory brak laserowych linii granicznych
   }

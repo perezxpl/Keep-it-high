@@ -26,10 +26,10 @@ export const ball = {
 };
 
 export function resetBallToPlayer(p, GROUND_Y) {
-  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
   if (isA3) {
-    p.x = 1050;
+    p.x = 600;
     p.y = 1130;
     p.facing = 1;
     if (typeof window !== 'undefined' && window.location) {
@@ -38,17 +38,29 @@ export function resetBallToPlayer(p, GROUND_Y) {
       if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
     }
     ball.active = false;
+    ball.x = -9999;
+    ball.y = -9999;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
+    p.onGround = true;
+    p.currentGroundY = p.y + (p.h || 70);
   } else if (isA2) {
-    p.x = 480;
-    p.y = 370;
+    p.x = 420;
+    p.y = 910;
     p.facing = 1;
-    ball.x = 1800;
-    ball.y = 560;
+    if (typeof window !== 'undefined' && window.location) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
+      if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
+    }
+    ball.active = false;
+    ball.x = -9999;
+    ball.y = -9999;
     ball.isLevitating = false;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
+    p.onGround = true;
+    p.currentGroundY = p.y + (p.h || 70);
   } else {
     // Arena 1: Centrum mapy (Cokół środkowy)
     const spawnY = (arena1State?.altarY || 760) - ball.radius - 2; // 750
@@ -57,6 +69,8 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.facing = 1;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
+    p.onGround = true;
+    p.currentGroundY = 650;
     ball.x = _centerX;
     ball.y = spawnY;
     ball.hoverBaseY = spawnY;
@@ -406,7 +420,7 @@ export function updateBall(GROUND_Y) {
 
 
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
-    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
+    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
     const isGroundUnderBall = (!hasNoFloor && typeof isGroundAt === 'function')
       ? isGroundAt(ball.x, ball.colRadius * 0.6)
       : (!hasNoFloor);

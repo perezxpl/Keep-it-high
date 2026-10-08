@@ -636,7 +636,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
   }
 
-  const groundY = (typeof window !== 'undefined' && window.innerHeight) ? (Math.round((window.innerHeight - 75) / 20) * 20) : (typeof GROUND_Y === 'number' ? GROUND_Y : 500);
+  const groundY = (typeof GROUND_Y === 'number' && GROUND_Y > 0) ? GROUND_Y : 1000;
   const targetBot = botObj || _activeBot;
 
   if (activeArenaId === 'ARENA_3') {
@@ -659,6 +659,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
+      playerObj.isDead = false;
+      playerObj.hp = playerObj.maxHp || 100;
+      playerObj.respawnTimer = 0;
+      playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
@@ -670,12 +674,16 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.facing = -1;
       targetBot.isJumping = false;
       targetBot.isSliding = false;
+      targetBot.isDead = false;
+      targetBot.hp = targetBot.maxHp || 100;
+      targetBot.respawnTimer = 0;
+      targetBot.ragdoll = null;
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
       ballObj.active = false;
     }
-  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
     GOALS.length = 0; // W Świętej Dżungli brak bramek i piłki - tryb czystej mapy i walki
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
@@ -690,6 +698,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
+      playerObj.isDead = false;
+      playerObj.hp = playerObj.maxHp || 100;
+      playerObj.respawnTimer = 0;
+      playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
@@ -701,6 +713,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.facing = -1;
       targetBot.isJumping = false;
       targetBot.isSliding = false;
+      targetBot.isDead = false;
+      targetBot.hp = targetBot.maxHp || 100;
+      targetBot.respawnTimer = 0;
+      targetBot.ragdoll = null;
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
@@ -738,6 +754,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.juggleTimer = 0;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
+      playerObj.isDead = false;
+      playerObj.hp = playerObj.maxHp || 100;
+      playerObj.respawnTimer = 0;
+      playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
