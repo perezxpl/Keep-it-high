@@ -650,6 +650,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
   }
 
+  if (currentArena && Array.isArray(currentArena.customObjects)) {
+    customObstacles.push(...currentArena.customObjects);
+  }
+
+  if (typeof currentArena?.reset === 'function') {
+    currentArena.reset();
+  }
+
   const groundY = (typeof GROUND_Y === 'number' && GROUND_Y > 0) ? GROUND_Y : 1000;
   const targetBot = botObj || _activeBot;
 
@@ -785,6 +793,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       targetBot.gaitMode = 'IDLE';
     }
     if (ballObj) {
+      ballObj.active = true;
       ballObj.isLevitating = false;
       ballObj.goalAnimation = null;
       ballObj.x = _altarX;

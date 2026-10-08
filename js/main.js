@@ -541,7 +541,11 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 function endTouch(e) {
-  e.preventDefault();
+  if (e.target === canvas || (e.target && e.target.id === 'canvas-container')) {
+    if (e.cancelable) e.preventDefault();
+  } else if (e.cancelable && !e.target?.closest?.('button, a, input, select, textarea, #dev-panel-container, #dev-menu, #mp-modal, .mp-modal-box')) {
+    e.preventDefault();
+  }
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
 
@@ -1469,13 +1473,15 @@ if (devBotFreezeBtn) {
 export function syncDevArenaButtonUI() {
   const devArenaBtn = document.getElementById('dev-arena-btn');
   if (!devArenaBtn) return;
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') {
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
+  if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
     devArenaBtn.textContent = '🌴 Arena: 3 (Dżungla)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';
     devArenaBtn.style.borderColor = '#22c55e';
     devArenaBtn.style.color = '#86efac';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA') {
     devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
     devArenaBtn.style.borderColor = '#10b981';
@@ -1490,38 +1496,56 @@ export function syncDevArenaButtonUI() {
   }
 }
 
+let lastArenaToggleTime = 0;
+export const toggleArena = (e) => {
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+  }
+  const now = performance.now();
+  if (now - lastArenaToggleTime < 300) return;
+  lastArenaToggleTime = now;
+
+  let nextArena = 'ARENA_1';
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
+  if (curId === 'arena-1' || curId === 'ARENA_1') {
+    nextArena = 'ARENA_2';
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA') {
+    nextArena = 'ARENA_3';
+  } else {
+    nextArena = 'ARENA_1';
+  }
+  switchArena(nextArena, player, bot, ball);
+  window.activeArenaId = activeArenaId;
+  sendArenaSwitch(nextArena);
+  syncDevArenaButtonUI();
+  camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+  camera.x = camera.targetX;
+  camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+  camera.y = camera.targetY;
+  clampCamera();
+  if (editorState.active) {
+    renderEditorPalette();
+  }
+};
+window.toggleArena = toggleArena;
+window.switchArena = (id) => {
+  switchArena(id, player, bot, ball);
+  window.activeArenaId = activeArenaId;
+  sendArenaSwitch(id);
+  syncDevArenaButtonUI();
+  camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+  camera.x = camera.targetX;
+  camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+  camera.y = camera.targetY;
+  clampCamera();
+};
+
 const devArenaBtn = document.getElementById('dev-arena-btn');
 if (devArenaBtn) {
-  let lastToggleTime = 0;
-  const toggleArena = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const now = performance.now();
-    if (now - lastToggleTime < 350) return;
-    lastToggleTime = now;
-
-    let nextArena = 'ARENA_1';
-    if (activeArenaId === 'ARENA_1') {
-      nextArena = 'ARENA_2';
-    } else if (activeArenaId === 'ARENA_2') {
-      nextArena = 'ARENA_3';
-    } else {
-      nextArena = 'ARENA_1';
-    }
-    switchArena(nextArena, player, bot, ball);
-    window.activeArenaId = activeArenaId;
-    sendArenaSwitch(nextArena);
-    syncDevArenaButtonUI();
-    camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
-    camera.x = camera.targetX;
-    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
-    camera.y = camera.targetY;
-    clampCamera();
-    if (editorState.active) {
-      renderEditorPalette();
-    }
-  };
   devArenaBtn.addEventListener('click', toggleArena);
+  devArenaBtn.addEventListener('touchend', toggleArena);
   syncDevArenaButtonUI();
 }
 
@@ -2206,6 +2230,12 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Digit9' || e.code === 'Numpad9' || e.key === '9') devSetClass('SWEEPER');
 
   if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
+
+  if (e.code === 'KeyM' || e.code === 'F2' || e.code === 'Digit0' || e.code === 'Numpad0') {
+    if (!isChatActive()) {
+      toggleArena();
+    }
+  }
 
   if (e.code === 'Escape') {
     if (editorState.active) {

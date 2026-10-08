@@ -1,4 +1,4 @@
-import { createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
+import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
 import { WEAPONS, shootWeapon } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y } from './world.js';
@@ -294,7 +294,7 @@ function handleNetworkData(data) {
   switch (data.type) {
     case 'init_sync': {
       if (data.arenaId && data.arenaId !== activeArenaId) {
-        switchArena(data.arenaId, null, null, ball);
+        switchArena(data.arenaId, player, remotePlayer, ball);
         updateDevArenaButtonUI(data.arenaId);
       }
       if (data.customObstacles) {
@@ -448,7 +448,7 @@ function handleNetworkData(data) {
 
     case 'arena_sw': {
       if (data.arenaId) {
-        switchArena(data.arenaId, null, null, ball);
+        switchArena(data.arenaId, player, remotePlayer, ball);
         updateDevArenaButtonUI(data.arenaId);
       }
       break;
