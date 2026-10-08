@@ -191,6 +191,15 @@ export function createPlayerInstance(overrides = {}) {
         reloadTime: 2.5,
         isReloading: false,
         reloadTimer: 0
+      },
+      SNIPER: {
+        magSize: 5,
+        currentAmmo: 5,
+        reserveAmmo: 25,
+        reloadDuration: 168,
+        reloadTime: 2.8,
+        isReloading: false,
+        reloadTimer: 0
       }
     },
     get currentAmmo() {
@@ -414,9 +423,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-  const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const noFlatGround = isA3 || isA2;
-  player.groundY = isA3 ? 900 : (isA2 ? 1660 : GROUND_Y);
+  player.groundY = isA3 ? 900 : (isA2 ? 1350 : GROUND_Y);
   if (!noFlatGround && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią
@@ -1199,7 +1208,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
     if (!isA3 && !isA2) {
       const groundFloorLimit = GROUND_Y - colH;
       const isSupported = (typeof isGroundAt === 'function')
@@ -1243,20 +1252,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
-    // Przepaść i prądy wznoszące (Pandora Updraft / Abyss Zone) lub strefa śmierci kanału technicznego
+    // Strefa toksycznego kwasu i otchłani śmierci w Sektorze X (Arena 2)
     if (isA2) {
-      // Poniżej y = 1510: strefa chmur i prądów wznoszących
-      if (player.y > 1510) {
-        const hasFuel = (player.jetFuel !== undefined ? player.jetFuel > 0 : true);
-        if (hasFuel) {
-          // Gracz z paliwem: silny pionowy impuls wznoszący wybijający z powrotem w strefę wysp
-          player.vy = -22.5;
-          player.updraftImpulse = -680;
-          player.isJumping = true;
-          player.onGround = false;
-          player.currentPlatform = null;
-        } else if (player.y >= 1660 && !player.isDead) {
-          // Gracz bez paliwa po osiągnięciu y >= 1660 ginie (upadek w otchłań / respawn)
+      const pFeetY = player.y + (player.h || 70);
+      if (pFeetY >= 1350 && !player.isDead) {
+        player.hp = 0;
+        player.isDead = true;
+        player.respawnTimer = 75;
+        if (typeof triggerScreenShake === 'function') {
+          triggerScreenShake(14);
+        }
+      } else if (pFeetY >= 1260 && !player.isDead) {
+        player.hp -= 0.65;
+        player.vx *= 0.94;
+        if (player.hp <= 0) {
           player.hp = 0;
           player.isDead = true;
           player.respawnTimer = 75;
@@ -1366,7 +1375,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
   const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
   const groundFloorY = 1000;

@@ -14,6 +14,8 @@ export {
 } from './obstacles.js';
 
 export {
+  ARENA_2_PLATFORMS,
+  ARENA_2_CONFIG,
   ARENA_2_PANDORA_PLATFORMS,
   ARENA_2_PANDORA_GOALS,
   ARENA_2_BRIDGES,
@@ -24,11 +26,11 @@ export {
 } from './arenas/arena2.js';
 
 export function isPandoraAbyss(y) {
-  return y > 1510;
+  return y > 1260; // Toksyczny kwas Sektora X
 }
 
 export function isPandoraDeath(y) {
-  return y >= 1660;
+  return y >= 1350; // Otchłań śmierci Sektora X
 }
 
 

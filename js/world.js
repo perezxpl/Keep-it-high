@@ -330,8 +330,9 @@ export const grassParticles = [];
 // INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
 // =========================================================================
 export const weaponButtons = [
-  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', x: 20, y: 0, w: 36, h: 36 },
-  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', key: '1', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', key: '2', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'SNIPER', name: 'SR', fullName: 'BARRETT .50', type: 'SNIPER', key: '3', x: 20, y: 0, w: 36, h: 36 },
   { id: 'GRENADE', name: 'HE', fullName: 'GRENADE', type: 'TACTICAL', key: 'G', x: 20, y: 0, w: 36, h: 36 }
 ];
 
@@ -1693,7 +1694,7 @@ export function drawSky(ctx) {
     // Tło Areny 3 (The Foundry) renderowane jest bezpośrednio przez wtyczkę arena3.js
     return;
   }
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     drawPandoraBackground(ctx, camera);
   } else {
     drawNeonNightOpsSky(ctx, camCenterX);
@@ -3383,6 +3384,21 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected) {
     // Długa lufa i podlufowy magazynek
     ctx.fillRect(4, -2, 9, 2.5);
     ctx.fillRect(4, 0.8, 7, 1.8);
+  } else if (type === 'SNIPER') {
+    // Kolba snajperska i baka
+    ctx.fillRect(-13, -1, 6, 2.5);
+    ctx.fillRect(-12, -2.5, 4, 1.5);
+    // Komora zamkowa i magazynek pudełkowy
+    ctx.fillRect(-7, -2.5, 10, 4);
+    ctx.fillRect(-2, 1.5, 3.5, 4.2);
+    // Luneta celownicza optyczna
+    ctx.fillRect(-4, -5.2, 9, 1.8);
+    ctx.fillRect(-5, -6.0, 2.2, 3.0);
+    ctx.fillRect(4, -6.0, 2.5, 3.2);
+    // Długa stalowa lufa ryflowana
+    ctx.fillRect(3, -1.2, 11, 1.8);
+    // Masywny hamulec wylotowy
+    ctx.fillRect(14, -2.2, 3, 3.8);
   } else if (type === 'GRENADE') {
     // Korpus granatu odłamkowego
     ctx.beginPath();
@@ -3503,12 +3519,12 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   }
 
   const isActive = isSelected;
-  const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : '#f59e0b';
+  const accentCol = btn.id === 'SHOTGUN' ? '#fb923c' : (btn.id === 'SNIPER' ? '#38bdf8' : '#f59e0b');
 
   // Pobranie stanu amunicji z obiektu gracza
   const ammoObj = player.ammo?.[btn.id];
-  const defMag = (btn.id === 'SHOTGUN' ? 8 : 30);
-  const defRes = (btn.id === 'SHOTGUN' ? 64 : 90);
+  const defMag = (btn.id === 'SHOTGUN' ? 8 : (btn.id === 'SNIPER' ? 5 : 30));
+  const defRes = (btn.id === 'SHOTGUN' ? 64 : (btn.id === 'SNIPER' ? 25 : 90));
   const bCurrentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const bReserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const bMagSize = ammoObj ? (ammoObj.magSize || defMag) : defMag;
@@ -3603,11 +3619,12 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
   const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
   const curWepId = curWep.id || 'AK47';
   const isShotgun = (curWepId === 'SHOTGUN');
-  const accentCol = isShotgun ? '#fb923c' : '#f59e0b';
+  const isSniper = (curWepId === 'SNIPER');
+  const accentCol = isShotgun ? '#fb923c' : (isSniper ? '#38bdf8' : '#f59e0b');
 
   const ammoObj = player.ammo?.[curWepId];
-  const defMag = isShotgun ? 8 : 30;
-  const defRes = isShotgun ? 64 : 90;
+  const defMag = isShotgun ? 8 : (isSniper ? 5 : 30);
+  const defRes = isShotgun ? 64 : (isSniper ? 25 : 90);
   const currentAmmo = ammoObj ? ammoObj.currentAmmo : defMag;
   const reserveAmmo = ammoObj ? ammoObj.reserveAmmo : defRes;
   const isReloading = !!ammoObj?.isReloading;
@@ -3709,11 +3726,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   curY += lineGap;
   // Status aktywnej broni i amunicji w lewym górnym rogu
   const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
-  const wepShort = curWep.id === 'SHOTGUN' ? 'SG' : 'AK';
+  const wepShort = curWep.id === 'SHOTGUN' ? 'SG' : (curWep.id === 'SNIPER' ? 'SR' : 'AK');
   const curAmmoObj = player.ammo?.[curWep.id];
-  const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : (curWep.id === 'SHOTGUN' ? 8 : 30);
-  const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : (curWep.id === 'SHOTGUN' ? 64 : 90);
-  const mSize = curAmmoObj ? (curAmmoObj.magSize || (curWep.id === 'SHOTGUN' ? 8 : 30)) : (curWep.id === 'SHOTGUN' ? 8 : 30);
+  const defM = curWep.id === 'SHOTGUN' ? 8 : (curWep.id === 'SNIPER' ? 5 : 30);
+  const defR = curWep.id === 'SHOTGUN' ? 64 : (curWep.id === 'SNIPER' ? 25 : 90);
+  const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
+  const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
+  const mSize = curAmmoObj ? (curAmmoObj.magSize || defM) : defM;
   const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
   const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
   const isLow = (!isNoAmmo && cAmmo <= Math.ceil(mSize * 0.25));
@@ -3744,7 +3763,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   // =========================================================================
   // 2. KAFELKI BRONI:
-  // - PC: 3 kompaktowe sloty 38x38 px w lewym dolnym rogu ekranu
+  // - PC: 4 kompaktowe sloty 38x38 px w lewym dolnym rogu ekranu
   // - EKRAN DOTYKOWY (MOBILE): Przeniesione na dolny środek ekranu w 1 ikonę
   // =========================================================================
   const curWepId = player.currentWeapon?.id || 'AK47';
@@ -3758,6 +3777,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     if (weaponButtons[2]) {
       weaponButtons[2].x = -999;
       weaponButtons[2].y = -999;
+    }
+    if (weaponButtons[3]) {
+      weaponButtons[3].x = -999;
+      weaponButtons[3].y = -999;
     }
   } else {
     const slotSize = 38;
@@ -3782,7 +3805,15 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       weaponButtons[2].y = panelY;
       weaponButtons[2].w = slotSize;
       weaponButtons[2].h = slotSize;
-      weaponButtons[2].id = 'GRENADE';
+      weaponButtons[2].id = 'SNIPER';
+    }
+
+    if (weaponButtons[3]) {
+      weaponButtons[3].x = panelX + (slotSize + slotGap) * 3;
+      weaponButtons[3].y = panelY;
+      weaponButtons[3].w = slotSize;
+      weaponButtons[3].h = slotSize;
+      weaponButtons[3].id = 'GRENADE';
     }
 
     for (const btn of weaponButtons) {
@@ -3796,13 +3827,12 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   const aState = arenaInfo || _worldArenaState;
   const curArenaId = aState.activeArenaId;
-  const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
   const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
-  const isJungleArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA');
+  const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
   const isMatchArena = (curArenaId === 'ARENA_1');
 
-  if (isJungleArena) {
+  if (isSectorXArena) {
     const bannerW = isMobile ? 220 : 290;
     const bannerH = isMobile ? 26 : 32;
     const bannerX = (W - bannerW) / 2;
@@ -3811,7 +3841,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.save();
     ctx.globalAlpha = isMobile ? 0.85 : 0.92;
     ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.55)';
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
     ctx.lineWidth = 1.4;
     if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
     else ctx.rect(bannerX, bannerY, bannerW, bannerH);
@@ -3820,10 +3850,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     ctx.font = isMobile ? '900 8.5px monospace' : '900 10.5px monospace';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#4ade80';
-    ctx.shadowColor = '#22c55e';
+    ctx.fillStyle = '#f59e0b';
+    ctx.shadowColor = '#d97706';
     ctx.shadowBlur = 0;
-    ctx.fillText('🌿 ŚWIĘTA DŻUNGLA // SANCTUARY 🌿', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
+    ctx.fillText('☣️ SEKTOR X // INDUSTRIAL FOUNDRY ☣️', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
     ctx.restore();
   } else if (isDeathmatch) {
     const scoreBoxW = isMobile ? 220 : 280;

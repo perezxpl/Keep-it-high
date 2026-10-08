@@ -24,6 +24,7 @@ export function registerArenaResetCallback(cb) {
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from './arenas/index.js';
 import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX } from './arenas/arena1.js';
 import arena2, {
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG,
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
   ARENA_2_BRIDGES, resetArena2Bridges
@@ -32,6 +33,7 @@ import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/aren
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG,
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
   ARENA_2_BRIDGES, resetArena2Bridges,
@@ -90,14 +92,14 @@ export const OBSTACLE_PALETTE = {
     { type: 'hedgehog', name: 'Jeż Stalowy', label: '✖️ Jeż', category: 'traps', w: 32, h: 32, size: 32, isHedgehog: true, anchor: 'bottom' }
   ],
   ARENA_2: [
-    { type: 'pandora_rock', name: 'Półka Skalna Pandory', label: '🪨 Półka Skalna', category: 'platforms', w: 180, h: 36, isPlatform: true, oneWay: true, anchor: 'top' },
-    { type: 'vine_catwalk', name: 'Kładka z Pnączy', label: '🌿 Kładka Pnącza', category: 'platforms', w: 200, h: 20, isPlatform: true, oneWay: true, isVineBridge: true, anchor: 'top' },
-    { type: 'floating_island_mini', name: 'Lewitujący Odłamek', label: '🪨 Odłamek Skały', category: 'platforms', w: 120, h: 30, isPlatform: true, oneWay: true, anchor: 'top' },
-    { type: 'unobtanium_crystal', name: 'Kryształ Unobtanium', label: '💎 Unobtanium', category: 'defense', w: 40, h: 50, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'steel_beam', name: 'Belka Stalowa', label: '🏗️ Belka', category: 'platforms', w: 200, h: 20, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'industrial_catwalk', name: 'Kratownica Pomostowa', label: '🪜 Kratownica', category: 'platforms', w: 180, h: 18, isPlatform: true, oneWay: true, anchor: 'top' },
+    { type: 'concrete_barrier', name: 'Bariera Betonowa', label: '🛡️ Beton', category: 'defense', w: 100, h: 36, isPlatform: true, solid: true, anchor: 'bottom' },
+    { type: 'metal_crate', name: 'Skrzynia Stalowa', label: '📦 Skrzynia', category: 'defense', w: 40, h: 40, isPlatform: true, solid: true, anchor: 'bottom' },
     { type: 'ammo_depot', name: 'Skrzynia Zaopatrzenia', label: '📦 Ammo', category: 'defense', w: 32, h: 24, isPlatform: true, solid: true, anchor: 'bottom', isPickup: true, isInteractable: true },
-    { type: 'spore_pod', name: 'Zarodnik Wybuchowy', label: '🍄 Zarodnik', category: 'traps', w: 30, h: 30, solid: true, anchor: 'bottom' },
-    { type: 'updraft_vent', name: 'Prąd Termiczny', label: '💨 Termika', category: 'traps', w: 70, h: 180, isUpdraft: true, anchor: 'bottom' },
-    { type: 'jump_pad', name: 'Sprężyste Pnącze', label: '🚀 Skocznia', category: 'traps', w: 70, h: 14, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
+    { type: 'toxic_barrel', name: 'Beczka Toksyczna', label: '☣️ Kwas', category: 'traps', w: 24, h: 36, solid: true, anchor: 'bottom' },
+    { type: 'steam_vent', name: 'Zawór Parowy', label: '💨 Para', category: 'traps', w: 40, h: 80, anchor: 'bottom' },
+    { type: 'jump_pad_industrial', name: 'Pneumatyczna Skocznia', label: '🚀 Wyrzutnia', category: 'traps', w: 60, h: 16, isPlatform: true, isJumpPad: true, anchor: 'bottom' }
   ],
   ARENA_3: [
     { type: 'jungle_rock', name: 'Półka Skalna (Dżungla)', label: '🪨 Skalna Półka', category: 'platforms', w: 180, h: 40, isPlatform: true, oneWay: true, anchor: 'top' },
@@ -533,7 +535,7 @@ export function setGoalCelebrationTimer(val) {
 
 export let arenaSnapshot = {
   arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
-  arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+  arena2Platforms: JSON.parse(JSON.stringify(ARENA_2_PLATFORMS)),
   arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
   customObstacles: []
 };
@@ -541,7 +543,7 @@ export let arenaSnapshot = {
 export function saveArenaSnapshot() {
   arenaSnapshot = {
     arena1Platforms: JSON.parse(JSON.stringify(ARENA_1_PLATFORMS)),
-    arena2Platforms: JSON.parse(JSON.stringify(ARENA_CYBER_STADIUM_PLATFORMS)),
+    arena2Platforms: JSON.parse(JSON.stringify(ARENA_2_PLATFORMS)),
     arena3Platforms: JSON.parse(JSON.stringify(ARENA_FOUNDRY_PLATFORMS)),
     customObstacles: JSON.parse(JSON.stringify(customObstacles))
   };
@@ -705,15 +707,15 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = false;
     }
-  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
-    GOALS.length = 0; // W Świętej Dżungli brak bramek i piłki - tryb czystej mapy i walki
+  } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
+    GOALS.length = 0; // W Sektorze X brak bramek i piłki - tryb turniejowy i walki
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 420;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 910;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 520;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 390;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -728,8 +730,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     if (targetBot) {
       // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
-      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3180;
-      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 910;
+      targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3080;
+      targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 390;
       targetBot.vx = 0;
       targetBot.vy = 0;
       targetBot.facing = -1;
@@ -1296,42 +1298,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const colH = (p.staggerTimer > 0) ? 15 : (p.h || 70);
   const feetY = p.y + colH;
   const centerX = p.x + p.w / 2;
-
-  // Natychmiastowa utrata oparcia, gdy gracz stoi na zniszczonej desce lub gdy lina pęknie
-  if (p.currentPlatform && p.currentPlatform.isBridgePlank) {
-    const curBr = Array.isArray(ARENA_2_BRIDGES) ? ARENA_2_BRIDGES.find(b => b.id === p.currentPlatform.bridgeId) : null;
-    if (p.currentPlatform.destroyed || p.currentPlatform.isFalling || (curBr && curBr.isSnapped)) {
-      p.currentPlatform = null;
-      p.onGround = false;
-      p.isJumping = true;
-    }
-  }
-
   const wantDrop = (p.dropThroughTimer > 0);
 
   if (wantDrop) {
-    // Drop-through dla kładki wiszącej mostu linowego w Arenie 2
-    const isA2Drop = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA');
-    if (isA2Drop && Array.isArray(ARENA_2_BRIDGES)) {
-      for (const bridge of ARENA_2_BRIDGES) {
-        if (!bridge || bridge.isSnapped) continue;
-        for (const plank of bridge.planks) {
-          if (!plank || plank.destroyed || plank.isFalling) continue;
-          if (centerX >= plank.x - 4 && centerX <= plank.x + plank.w + 4) {
-            const topY = plank.y;
-            if (Math.abs(feetY - topY) <= 14 && p.y < groundY - p.h - 2) {
-              p.y = topY - p.h + 12;
-              p.vy = 2.8;
-              p.isJumping = true;
-              p.isCrouching = false;
-              p.airVx = p.vx;
-              p.currentGroundY = groundY;
-              return;
-            }
-          }
-        }
-      }
-    }
     for (const plat of ARENA_PLATFORMS) {
       if (!plat || plat.solid || plat.isCanyonTerrain) continue;
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
@@ -1554,44 +1523,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Lądowanie na deskach dynamicznych mostów linowych Areny 2 (Soldat-style)
-  // Gracz może stać WYŁĄCZNIE na tych segmentach, które mają destroyed === false i gdy most NIE jest zerwany (!isSnapped)
-  let curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const isA2Landing = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
-  if (isA2Landing && Array.isArray(ARENA_2_BRIDGES)) {
-    for (const bridge of ARENA_2_BRIDGES) {
-      if (!bridge || bridge.isSnapped) continue;
-      for (const plank of bridge.planks) {
-        if (!plank || plank.destroyed || plank.isFalling) continue;
-
-        if (centerX >= plank.x - 4 && centerX <= plank.x + plank.w + 4) {
-          const topY = plank.y;
-          const prevFeetY = feetY - p.vy;
-
-          let isLanding = p.vy >= 0 && (
-            (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
-            (p.onGround && p.currentPlatform === plank && Math.abs(feetY - topY) < 28)
-          );
-
-          if (isLanding) {
-            if (p.dropThroughTimer > 0) continue;
-            if (p.onGround && p.currentPlatform === plank) {
-              landedSurface = topY;
-              landedSlope = 0;
-              landedPlatform = plank;
-              break;
-            }
-            if (landedSurface === null || topY < landedSurface) {
-              landedSurface = topY;
-              landedSlope = 0;
-              landedPlatform = plank;
-            }
-          }
-        }
-      }
-    }
-  }
-
   for (const obs of customObstacles) {
     if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
       continue;
@@ -1786,7 +1717,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.slopeAngle = 0;
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
     const hasNoFloor = isA3 || isA2;
 
     if (p.inMinecart || p._inCart) {
@@ -1826,13 +1757,32 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Obsługa termiki i otchłani Pandory (Arena 2)
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA') {
-    applyPandoraUpdraft(p);
+  // Obsługa strefy kwasu toksycznego w Sektorze X (Arena 2)
+  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
+    if (p && !p.isDead) {
+      const pFeetY = p.y + (p.h || 70);
+      if (pFeetY >= 1350) {
+        p.hp = 0;
+        p.isDead = true;
+        p.respawnTimer = 75;
+        p.vx = 0;
+        p.vy = 2.0;
+        p.onGround = false;
+        p.currentPlatform = null;
+      } else if (pFeetY >= 1260) {
+        p.hp -= 0.65;
+        p.vx *= 0.94;
+        if (p.hp <= 0) {
+          p.hp = 0;
+          p.isDead = true;
+          p.respawnTimer = 75;
+        }
+      }
+    }
   }
 
   // Górny limit otwartego nieba w Arenie 3 (Y = 0)
-  curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const curArenaObj = (typeof getActiveArena === 'function') ? getActiveArena() : null;
   const isA3Active = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   if (isA3Active) {
     if (p.y < 0) {
@@ -4529,20 +4479,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
 
   const curArenaObj = getActiveArena?.();
   const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
-  const isA2 = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA');
+  const isA2 = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
 
-  if (isA2 && Array.isArray(ARENA_2_BRIDGES)) {
-    for (const bridge of ARENA_2_BRIDGES) {
-      if (!bridge || bridge.isSnapped) continue;
-      for (const plank of bridge.planks) {
-        if (!plank || plank.destroyed || plank.isFalling) continue;
-        const hit = getSegmentAABBIntersection(x1, y1, x2, y2, plank.x, plank.y, plank.x + plank.w, plank.y + plank.h);
-        if (hit) recordHit(hit, plank.id || 'bridge_plank');
-      }
-    }
-  }
-
-  if (!isA3 && y2 >= groundY) {
+  if (!isA3 && !isA2 && y2 >= groundY) {
     if (y1 < groundY) {
       const dy = y2 - y1;
       const t = dy !== 0 ? Math.max(0, Math.min(1, (groundY - y1) / dy)) : 0;
@@ -4563,6 +4502,19 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         nx: 0,
         ny: -1
       }, 'ground');
+    }
+  }
+
+  // W Arenie 2 (Sektor X) toksyczny kwas (y >= 1260) pochłania pociski
+  if (isA2) {
+    if (y2 >= 1260) {
+      if (y1 < 1260) {
+        const dy = y2 - y1;
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (1260 - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1260, nx: 0, ny: -1 }, 'acid_pool');
+      } else {
+        recordHit({ hit: true, t: 0, x: x1, y: 1260, nx: 0, ny: -1 }, 'acid_pool');
+      }
     }
   }
 
@@ -4638,9 +4590,9 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
             const hit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[i].x, p1y, pts[i + 1].x, p2y);
             if (hit) recordHit(hit, plat.id || 'rock_surface');
           }
-          // Ściany boczne i spód sprawdzamy tylko dla wysp latających (Pandora), NIE dla zboczy rzecznych ani ramp w Arenie 3!
-          const isTerrainSlope = (plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.isRampBlock || plat.id === 'ground_left' || plat.id === 'ground_right');
-          if (!isTerrainSlope && !isA3) {
+          // Ściany boczne i spód do groundY pomijamy dla ramp i zboczy w Arenie 2 i Arenie 3
+          const isTerrainSlope = (plat.isSlope || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.isRampBlock || plat.id === 'ground_left' || plat.id === 'ground_right');
+          if (!isTerrainSlope && !isA3 && !isA2) {
             const p0y = pts[0].y !== undefined ? pts[0].y : (groundY - pts[0].relY);
             const plastY = pts[pts.length - 1].y !== undefined ? pts[pts.length - 1].y : (groundY - pts[pts.length - 1].relY);
             const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, pts[0].x, p0y, pts[0].x, groundY);

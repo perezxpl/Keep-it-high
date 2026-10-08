@@ -270,12 +270,12 @@ function updateDevArenaButtonUI(arenaId) {
     arenaBtn.style.borderColor = '#22c55e';
     arenaBtn.style.color = '#86efac';
     arenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA') {
-    arenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
-    arenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
-    arenaBtn.style.borderColor = '#10b981';
-    arenaBtn.style.color = '#6ee7b7';
-    arenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
+  } else if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') {
+    arenaBtn.textContent = '🏭 Arena: 2 (Sektor X)';
+    arenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(239, 68, 68, 0.25))';
+    arenaBtn.style.borderColor = '#eab308';
+    arenaBtn.style.color = '#fef08a';
+    arenaBtn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.55)';
   } else {
     arenaBtn.textContent = '🏟️ Arena: 1';
     arenaBtn.style.background = '';

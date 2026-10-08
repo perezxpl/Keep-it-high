@@ -35,7 +35,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -144,9 +144,15 @@ canvas.addEventListener('touchstart', (e) => {
         // Sprawdź czy to pojedyncza zunifikowana ikona na ekranie dotykowym
         const isSingleMobileIcon = (weaponButtons[1] && weaponButtons[1].x < 0);
         if (isSingleMobileIcon) {
-          // Dotknięcie pojedynczej ikony w dolnym centrum przełącza broń (AK47 <-> SHOTGUN)
+          // Dotknięcie pojedynczej ikony w dolnym centrum przełącza broń (cykl: AK-47 -> Shotgun -> Sniper)
           const curId = player.currentWeapon?.id || 'AK47';
-          player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+          if (curId === 'AK47') {
+            player.currentWeapon = WEAPONS.SHOTGUN;
+          } else if (curId === 'SHOTGUN') {
+            player.currentWeapon = WEAPONS.SNIPER;
+          } else {
+            player.currentWeapon = WEAPONS.AK47;
+          }
         } else {
           if (btn.id === 'GRENADE') {
             const throwAngle = -0.62;
@@ -656,9 +662,15 @@ function endTouch(e) {
               player.isHolstered = false;
               rightStick.armedMode = 'FIREARM';
             } else {
-              // Jeśli broń już była w rękach, 1 tapnięcie przełącza model broni (AK47 <-> SHOTGUN)
+              // Jeśli broń już była w rękach, 1 tapnięcie przełącza model broni (cykl: AK-47 -> Shotgun -> Sniper)
               const curId = player.currentWeapon?.id || 'AK47';
-              player.currentWeapon = (curId === 'AK47') ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+              if (curId === 'AK47') {
+                player.currentWeapon = WEAPONS.SHOTGUN;
+              } else if (curId === 'SHOTGUN') {
+                player.currentWeapon = WEAPONS.SNIPER;
+              } else {
+                player.currentWeapon = WEAPONS.AK47;
+              }
             }
           }
         }
@@ -1481,12 +1493,12 @@ export function syncDevArenaButtonUI() {
     devArenaBtn.style.borderColor = '#22c55e';
     devArenaBtn.style.color = '#86efac';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA') {
-    devArenaBtn.textContent = '🪐 Arena: 2 (Pandora)';
-    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(147, 51, 234, 0.25))';
-    devArenaBtn.style.borderColor = '#10b981';
-    devArenaBtn.style.color = '#6ee7b7';
-    devArenaBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.55)';
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
+    devArenaBtn.textContent = '🏭 Arena: 2 (Sektor X)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.25))';
+    devArenaBtn.style.borderColor = '#f59e0b';
+    devArenaBtn.style.color = '#fde68a';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.55)';
   } else {
     devArenaBtn.textContent = '🏟️ Arena: 1';
     devArenaBtn.style.background = '';
@@ -1511,7 +1523,7 @@ export const toggleArena = (e) => {
   const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
   if (curId === 'arena-1' || curId === 'ARENA_1') {
     nextArena = 'ARENA_2';
-  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA') {
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
     nextArena = 'ARENA_3';
   } else {
     nextArena = 'ARENA_1';
@@ -1710,10 +1722,10 @@ export function renderEditorPalette() {
   const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
   const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
 
-  const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA') ? {
-    platforms: '🌿 Lewitujące Półki / Pnącza',
-    defense: '🪨 Skalne Formacje / Bazy',
-    traps: '💎 Unobtanium / Termika'
+  const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA' || arenaKey === 'ARENA_2_SECTOR_X') ? {
+    platforms: '🏗️ Belki / Pomosty',
+    defense: '🛡️ Osłony / Barykady',
+    traps: '☣️ Zbiorniki Kwasu / Para'
   } : {
     platforms: '🪜 Kładki / Wieże',
     defense: '🛡️ Mury / Osłony',
@@ -2217,7 +2229,12 @@ window.addEventListener('keydown', (e) => {
       player.isHolstered = false;
     }
   } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
-    teleportToDistance(BIOME_TELEPORT_TARGETS.WINTER);
+    if (player.currentWeapon?.id === 'SNIPER' && !player.isHolstered) {
+      player.isHolstered = true;
+    } else {
+      player.currentWeapon = WEAPONS.SNIPER;
+      player.isHolstered = false;
+    }
   } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
     teleportToDistance(BIOME_TELEPORT_TARGETS.JUNGLE);
   } else if (e.code === 'Digit5' || e.code === 'Numpad5' || e.key === '5') {
@@ -2515,7 +2532,7 @@ function drawCrosshair(ctx, x, y, customCol) {
 
 function update() {
   const isDeathmatch = (
-    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' ||
+    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
     activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
     (ball && !ball.active)
   );
@@ -2869,7 +2886,7 @@ function draw() {
   const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
   const worldWidth = worldRight - worldLeft;
 
-  const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const isArena3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   if (!isArena2Active && !isArena3Active) {
     drawGround(ctx, worldLeft, worldWidth);
@@ -2961,6 +2978,16 @@ function draw() {
   drawGore(ctx);
   drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
   drawJetpackParticles(ctx);
+
+  // Celownik laserowy snajperki Barrett .50 w stylu Soldat
+  drawSniperLaserSight(ctx, player);
+  if (bot.active) {
+    drawSniperLaserSight(ctx, bot);
+  }
+  if (remotePlayer.active) {
+    drawSniperLaserSight(ctx, remotePlayer);
+  }
+
   drawPlayer(ctx, GROUND_Y, player);
 
   if (remotePlayer.active) {
@@ -2996,7 +3023,7 @@ function draw() {
   }
 
   const isDeathmatch = (
-    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' ||
+    activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
     activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
     (ball && !ball.active)
   );

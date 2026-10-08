@@ -76,6 +76,33 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG.SHOTGUN.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.SHOTGUN.reloadTime * 60)
   },
+  SNIPER: {
+    id: 'SNIPER',
+    name: 'Barrett .50',
+    auto: false,            // Semi-auto precyzyjna snajperka
+    fireRate: 68,           // Cooldown klatek (~1.13s między strzałami)
+    cooldown: 68,
+    damage: 90,             // Potężne obrażenia .50 BMG
+    bulletSpeed: 52.0,      // Ponaddźwiękowa balistyka w stylu Soldat
+    spread: 0.003,          // Bezwzględna precyzja
+    crouchSpreadMult: 0.35, // Niemal zero rozrzutu w przysiadzie / leżeniu
+    recoil: 4.8,            // Silny wizualny odrzut
+    crouchRecoilMult: 0.40,
+    recoilImpulse: 4.8,     // Fizyczny odrzut gracza w tył
+    screenShake: 12,        // Wstrząs ekranu przy wystrzale
+    muzzleRise: 0.22,       // Podrzut lufy
+    kickbackDistance: 7.8,  // Silne cofnięcie broni
+    ballPush: 0.85,         // Potężne pchnięcie piłki
+    bodyPush: 0.22,         // Odrzut trafionego przeciwnika
+    ragdollPushMult: 3.5,   // Katapultowanie zwłok
+    pellets: 1,
+    bulletColor: '#38bdf8', // Lśniący błękitno-biały pocisk smugowy
+    magSize: WEAPON_CONFIG.SNIPER.magSize,
+    currentAmmo: WEAPON_CONFIG.SNIPER.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.SNIPER.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.SNIPER.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.SNIPER.reloadTime * 60)
+  },
   GRENADE: {
     id: 'GRENADE',
     name: 'GRENADE',
@@ -187,6 +214,7 @@ export function getWeaponHoldTransform(p) {
   const { rightShoulderX, rightShoulderY, hipX, hipY } = getShooterShoulderPos(p);
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
+  const isSniper = (weapon.id === 'SNIPER');
   const isCrouch = !!(p.isCrouching || p.isProne);
 
   const isStaggered = (p.staggerTimer > 0);
@@ -211,9 +239,9 @@ export function getWeaponHoldTransform(p) {
     // Broń nie może sterczeć w powietrze ani celować w niebo.
     const rightHandWorldX = slingPivotX + 2 * charFacing;
     const rightHandWorldY = slingPivotY + 3;
-    const leftHandWorldX = slingPivotX + 14 * charFacing;
+    const leftHandWorldX = slingPivotX + (isSniper ? 18 : 14) * charFacing;
     const leftHandWorldY = slingPivotY + 2;
-    const barrelLength = isShotgun ? 28 : 34;
+    const barrelLength = isSniper ? 45 : (isShotgun ? 28 : 34);
 
     return {
       pivotX: slingPivotX,
@@ -241,11 +269,11 @@ export function getWeaponHoldTransform(p) {
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry)
   const headBobOffset = (p.headBob || 0) * 0.70;
   const crouchDropY = isCrouch ? 4 : 0;
-  let loosePivotX = hipX + (isShotgun ? 5 : 7) * charFacing;
-  let loosePivotY = hipY - (isShotgun ? 10 : 13) + headBobOffset + crouchDropY;
+  let loosePivotX = hipX + (isSniper ? 8 : (isShotgun ? 5 : 7)) * charFacing;
+  let loosePivotY = hipY - (isSniper ? 14 : (isShotgun ? 10 : 13)) + headBobOffset + crouchDropY;
 
   const directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-  const idleDroop = isShotgun ? 0.40 : 0.26;
+  const idleDroop = isSniper ? 0.20 : (isShotgun ? 0.40 : 0.26);
   let looseAimAngle = directAngle + idleDroop;
 
   // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
@@ -288,12 +316,12 @@ export function getWeaponHoldTransform(p) {
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance)
   const muscleMult = p.currentClass?.visuals?.muscleMult || 1.0;
-  const braceForward = (isShotgun ? 4.0 : 3.5) + (muscleMult - 1.0) * 3.5;
+  const braceForward = (isSniper ? 4.5 : (isShotgun ? 4.0 : 3.5)) + (muscleMult - 1.0) * 3.5;
   const braceOffsetY = isCrouch ? 1.5 : 0;
   const shoulderPocketX = rightShoulderX + braceForward * charFacing;
   const shoulderPocketY = rightShoulderY + braceOffsetY;
 
-  const stockLen = isShotgun ? 13.0 : 12.5;
+  const stockLen = isSniper ? 14.5 : (isShotgun ? 13.0 : 12.5);
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
   const shoulderAimAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing) - muzzleRise;
@@ -319,11 +347,11 @@ export function getWeaponHoldTransform(p) {
   let proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
 
   // Punkty podparcia dłoni
-  const rearGripDistX = isShotgun ? 1.6 : 1.5;
-  const rearGripDistY = isShotgun ? 4.5 : 4.2;
+  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
+  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  const foreGripDistX = (isShotgun ? 16.5 : 17.5) + pumpShift;
-  const foreGripDistY = isShotgun ? 2.0 : 1.2;
+  const foreGripDistX = isSniper ? 21.0 : ((isShotgun ? 16.5 : 17.5) + pumpShift);
+  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 2.0 : 1.2);
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
@@ -336,11 +364,11 @@ export function getWeaponHoldTransform(p) {
     proneAimAngle = lerpAngle(proneAimAngle, slingAngle, slingWeight);
     rightHandWorldX = lerp(rightHandWorldX, slingPivotX + 2 * charFacing, slingWeight);
     rightHandWorldY = lerp(rightHandWorldY, slingPivotY + 3, slingWeight);
-    leftHandWorldX = lerp(leftHandWorldX, slingPivotX + 14 * charFacing, slingWeight);
+    leftHandWorldX = lerp(leftHandWorldX, slingPivotX + (isSniper ? 18 : 14) * charFacing, slingWeight);
     leftHandWorldY = lerp(leftHandWorldY, slingPivotY + 2, slingWeight);
   }
 
-  const barrelLength = isShotgun ? 28 : 34;
+  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : 34);
 
   return {
     pivotX: finalPivotX,
@@ -396,9 +424,9 @@ export function getWeaponAmmo(shooter, weapon = shooter?.currentWeapon) {
   }
   if (!shooter.ammo[wepId]) {
     const baseWep = WEAPONS[wepId] || WEAPONS.AK47;
-    const magSize = baseWep.magSize || (wepId === 'SHOTGUN' ? 8 : 30);
-    const reserveAmmo = baseWep.reserveAmmo ?? (wepId === 'SHOTGUN' ? 64 : 90);
-    const reloadTime = baseWep.reloadTime || (wepId === 'SHOTGUN' ? 2.5 : 2.0);
+    const magSize = baseWep.magSize || (wepId === 'SHOTGUN' ? 8 : (wepId === 'SNIPER' ? 5 : 30));
+    const reserveAmmo = baseWep.reserveAmmo ?? (wepId === 'SHOTGUN' ? 64 : (wepId === 'SNIPER' ? 25 : 90));
+    const reloadTime = baseWep.reloadTime || (wepId === 'SHOTGUN' ? 2.5 : (wepId === 'SNIPER' ? 2.8 : 2.0));
     shooter.ammo[wepId] = {
       magSize,
       currentAmmo: magSize,
@@ -485,6 +513,10 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = (shooter.muzzleRise || 0) + weapon.muzzleRise;
     shooter.pumpTimer = 18;
+  } else if (weapon.id === 'SNIPER') {
+    shooter.shootPoseTimer = 24;
+    shooter.weaponKickback = weapon.kickbackDistance;
+    shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   } else {
     shooter.shootPoseTimer = weapon.fireRate + 3;
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -508,14 +540,21 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     const wallHit = checkRayObstacleCollision(muzzle.shoulderX, muzzle.shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
     if (wallHit) {
-      spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, 5);
+      spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id === 'SNIPER' ? 10 : 5);
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
-      shooter.muzzleFlashTimer = 2;
-      if (weapon.recoil > 1.2 && !shooter.isRemote) triggerScreenShake(2.5);
+      shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
+      if (weapon.id === 'SNIPER') {
+        const wallAngle = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
+        shooter.vx -= Math.cos(wallAngle) * 4.8;
+        shooter.vy -= Math.sin(wallAngle) * 1.8;
+        if (!shooter.isRemote) triggerScreenShake(12);
+      } else if (weapon.recoil > 1.2 && !shooter.isRemote) {
+        triggerScreenShake(2.5);
+      }
 
       // Wyrzut łuski z zamka broni przy strzale
       const hold = getWeaponHoldTransform(shooter);
-      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : 10);
+      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : 10));
       const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (hold.charFacing || 1);
       const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
       const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
@@ -546,25 +585,40 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       vy: Math.sin(angle) * speed,
       damage: weapon.damage,
       ballPush: weapon.ballPush,
-      bodyPush: weapon.bodyPush || 0.03,
-      ragdollPushMult: weapon.ragdollPushMult || 1.0,
+      bodyPush: weapon.bodyPush || (weapon.id === 'SNIPER' ? 0.22 : 0.03),
+      ragdollPushMult: weapon.ragdollPushMult || (weapon.id === 'SNIPER' ? 3.5 : 1.0),
       color: weapon.bulletColor,
       shooter: shooter,
-      life: 75
+      life: weapon.id === 'SNIPER' ? 95 : 75,
+      isSniper: (weapon.id === 'SNIPER')
     });
   }
 
-  shooter.muzzleFlashTimer = 2;
+  shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
+
+  // Fizyczny odrzut gracza w tył po strzale ze snajperki
+  if (weapon.id === 'SNIPER') {
+    shooter.vx -= Math.cos(theta) * 4.8;
+    shooter.vy -= Math.sin(theta) * 1.8;
+  }
+
   if (!shooter.isRemote) {
     shooter.shootCooldown = weapon.fireRate;
-    if (weapon.recoil > 1.5) {
+    if (weapon.id === 'SNIPER') {
+      triggerScreenShake(12);
+    } else if (weapon.recoil > 1.5) {
       triggerScreenShake(isCrouch ? 2.4 : 3.8);
     } else {
       triggerScreenShake(1.2);
     }
   }
 
-  spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
+  if (weapon.id === 'SNIPER') {
+    spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#38bdf8', 6);
+    spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#facc15', 3);
+  } else {
+    spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
+  }
 
   // Wyrzut łuski z zamka broni (Ejection Mechanics: punkt startowy na zamku, lekko cofnięty w stronę broni/gracza)
   let breechX, breechY;
@@ -572,11 +626,11 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
   if (shooter && overrideX === undefined) {
     const hold = getWeaponHoldTransform(shooter);
-    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : 10);
+    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : 10));
     breechX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
     breechY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
   } else {
-    const backDist = (weapon.id === 'SHOTGUN' ? 18 : 22);
+    const backDist = (weapon.id === 'SHOTGUN' ? 18 : (weapon.id === 'SNIPER' ? 26 : 22));
     breechX = muzzleX - Math.cos(theta) * backDist;
     breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
   }
@@ -890,29 +944,30 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
         const shotDist = Math.hypot(hitPtX - (b.originX || hitPtX), hitPtY - (b.originY || hitPtY));
         const isCloseShotgun = (isShotgun && shotDist < 170);
+        const isSniper = (b.weaponId === 'SNIPER' || b.isSniper);
 
         // Wyrzucenie trzymanej broni
         if (closestChar.currentWeapon) {
-          const dropMult = isShotgun ? 0.35 : 0.22;
+          const dropMult = isShotgun ? 0.35 : (isSniper ? 0.38 : 0.22);
           spawnDroppedWeapon(
             closestChar.x + closestChar.w / 2,
             closestChar.y + 28,
             b.vx * dropMult,
-            -3.8 + (isShotgun ? -1.5 : 0),
+            -3.8 + (isShotgun ? -1.5 : (isSniper ? -2.0 : 0)),
             closestChar.currentWeapon,
             closestChar.facing
           );
         }
 
-        if (isHeadshot && isCloseShotgun) {
-          // 1. Dekapitacja (wyłącznie bliski strzał w głowę ze strzelby)
+        if (isHeadshot && (isCloseShotgun || isSniper)) {
+          // 1. Dekapitacja (bliski strzał w głowę ze strzelby LUB snajperka Barrett .50)
           closestChar.hasHead = false;
           closestChar.decapitated = true;
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 55;
 
           triggerHitstop(6);
-          triggerScreenShake(18);
+          triggerScreenShake(isSniper ? 20 : 18);
 
           spawnHeadGib(
             closestChar.x + closestChar.w / 2,
@@ -1019,18 +1074,110 @@ export function drawBullets(ctx) {
 
   ctx.save();
   for (const b of bullets) {
-    ctx.strokeStyle = b.color;
-    ctx.lineWidth = 2.0;
-    ctx.shadowColor = b.color;
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.moveTo(b.x - b.vx * 0.7, b.y - b.vy * 0.7);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+    if (b.isSniper || b.weaponId === 'SNIPER') {
+      // Długa, świecąca smuga energii balistycznej (Soldat Barrett .50 ballistic tracer line)
+      const tailLen = 1.4;
+      const tailX = b.x - b.vx * tailLen;
+      const tailY = b.y - b.vy * tailLen;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+      ctx.save();
+      // 1. Szeroka zewnętrzna poświata energii
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
+      ctx.lineWidth = 4.8;
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      // 2. Środkowa smuga błękitna
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.4;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(tailX + b.vx * 0.25, tailY + b.vy * 0.25);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      // 3. Jaskrawy biały rdzeń pocisku
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(tailX + b.vx * 0.55, tailY + b.vy * 0.55);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      // 4. Świecący wierzchołek pocisku
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 2.0;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.moveTo(b.x - b.vx * 0.7, b.y - b.vy * 0.7);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+    }
   }
+  ctx.restore();
+}
+
+/**
+ * Rysuje przerywany czerwony promień lasera z lufy do punktu celowania (aimX, aimY)
+ */
+export function drawSniperLaserSight(ctx, playerObj) {
+  if (!ctx || !playerObj || playerObj.isDead) return;
+  const wep = playerObj.currentWeapon;
+  if (!wep || wep.id !== 'SNIPER') return;
+
+  // Jeśli broń jest schowana, nie rysuj lasera
+  const hWeight = (typeof playerObj.holsterWeight === 'number') ? playerObj.holsterWeight : (playerObj.isHolstered ? 1.0 : 0.0);
+  if (hWeight >= 0.5) return;
+
+  // Wyliczenie pozycji wylotu lufy (muzzle)
+  const muzzle = getMuzzlePosition(playerObj, wep);
+  const startX = muzzle.muzzleX;
+  const startY = muzzle.muzzleY;
+
+  const targetX = (typeof playerObj.aimX === 'number' && !isNaN(playerObj.aimX)) ? playerObj.aimX : (startX + (playerObj.facing || 1) * 350);
+  const targetY = (typeof playerObj.aimY === 'number' && !isNaN(playerObj.aimY)) ? playerObj.aimY : startY;
+
+  ctx.save();
+  // Przerywana czerwona wiązka celownika laserowego w stylu Soldat
+  ctx.setLineDash([5, 5]);
+  ctx.lineDashOffset = (performance.now() * -0.03) % 10;
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+  ctx.lineWidth = 1.2;
+  ctx.shadowColor = '#ef4444';
+  ctx.shadowBlur = 6;
+
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(targetX, targetY);
+  ctx.stroke();
+
+  // Kropka lasera celowniczego w punkcie (aimX, aimY)
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ef4444';
+  ctx.shadowColor = '#f87171';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(targetX, targetY, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -1154,6 +1301,113 @@ export function drawHeldWeapon(ctx, p) {
     if (p.muzzleFlashTimer > 0) {
       drawMuzzleFlash(ctx, 28, -0.9, 15, true);
     }
+  } else if (weapon.id === 'SNIPER') {
+    // 1. Kolba precyzyjna (Tactical PRS sniper stock z baką policzkową i stopką)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.moveTo(0, -1.0);
+    ctx.lineTo(-14, 1.2);
+    ctx.lineTo(-15, 6.8);
+    ctx.lineTo(-6, 4.5);
+    ctx.lineTo(0, 2.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Gumowa stopka kolby amortyzująca odrzut .50 BMG (Buttpad)
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(-16.0, 0.8, 2.2, 6.2);
+
+    // Regulowana baka policzkowa (Cheek riser)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-13, -2.8, 9, 3.2);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-13, -2.8, 9, 0.9);
+
+    // Chwyt pistoletowy (Ergonomic combat grip)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.moveTo(0.5, 2.0);
+    ctx.lineTo(-1.5, 7.5);
+    ctx.lineTo(1.8, 8.2);
+    ctx.lineTo(3.8, 2.0);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Masywna komora zamkowa Barretta .50 (Upper & Lower receiver)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, -3.2, 18, 5.8);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, -2.5, 17, 4.4);
+    // Suwadło i okno wyrzutnika łusek
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(3, -1.5, 6, 2.2);
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(4, -1.0, 4.5, 1.4);
+
+    // Masywny magazynek pudełkowy 5-nabojowy .50 BMG
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(6.5, 2.6, 6.0, 7.2);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(6.5, 2.6, 6.0, 7.2);
+
+    // Szyna montażowa Picatinny (Top rail)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(-2, -4.2, 22, 1.2);
+
+    // 3. Luneta celownicza (High-power optical sniper scope)
+    // Montaże lunety (Scope mounting rings)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(2.5, -5.4, 2.0, 1.4);
+    ctx.fillRect(11.5, -5.4, 2.0, 1.4);
+    // Tubus lunety (Central tube)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0.5, -7.0, 15, 2.2);
+    // Wieżyczka regulacji (Elevation turret)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(7, -8.4, 2.4, 1.6);
+    // Okular tylny (Ocular eyepiece)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(-3, -7.8, 3.8, 3.6);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-3, -7.2, 1.2, 2.4);
+    // Obiektyw przedni z osłoną przeciwsłoneczną (Objective bell & sunshade)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(15, -8.2, 4.5, 4.4);
+    // Antyrefleksyjny błękitny błysk optyki (Glass optical reflection)
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(19.2, -7.5, 0.9, 3.0);
+
+    // 4. Łoże z perforacją chłodzącą (Ventilated handguard)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(18, -2.6, 11, 4.2);
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(20, -1.2, 2.0, 1.4);
+    ctx.fillRect(24, -1.2, 2.0, 1.4);
+
+    // Złożony dwójnóg pod łożem (Folded bipod)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(21, 2.0, 8, 1.3);
+
+    // 5. Długa stalowa lufa ryflowana (Heavy fluted steel barrel)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(29, -1.7, 12, 2.4);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(29, -1.1, 12, 0.7); // chromowo-stalowy refleks na lufie
+
+    // 6. Potężny hamulec wylotowy Barretta .50 (Arrowhead muzzle brake)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(41, -2.8, 4.5, 4.8);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(41, -2.2, 4.0, 3.6);
+    // Szczeliny gazowe (Port vents)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(42.0, -2.4, 1.0, 4.0);
+    ctx.fillRect(43.5, -2.4, 1.0, 4.0);
+
+    if (p.muzzleFlashTimer > 0) {
+      drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+    }
   }
 
   ctx.restore();
@@ -1187,6 +1441,49 @@ function drawMuzzleFlash(ctx, mx, my, size, isShotgun) {
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
   ctx.arc(2, 0, size * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawSniperMuzzleFlash(ctx, mx, my, size) {
+  ctx.save();
+  ctx.translate(mx, my);
+
+  // Potężny błysk centralny z lufy .50 BMG
+  ctx.fillStyle = '#f97316';
+  ctx.shadowColor = '#38bdf8';
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.35);
+  ctx.lineTo(size * 1.1, -size * 0.12);
+  ctx.lineTo(size * 1.6, 0);
+  ctx.lineTo(size * 1.1, size * 0.12);
+  ctx.lineTo(0, size * 0.35);
+  ctx.lineTo(size * 0.3, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wyrzut płomienia i gazów w bok/tył ze szczelin hamulca wylotowego (Muzzle brake side vents)
+  ctx.fillStyle = '#fb923c';
+  ctx.beginPath();
+  ctx.moveTo(-2, -2);
+  ctx.lineTo(-size * 0.45, -size * 0.65);
+  ctx.lineTo(-size * 0.15, -size * 0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(-2, 2);
+  ctx.lineTo(-size * 0.45, size * 0.65);
+  ctx.lineTo(-size * 0.15, size * 0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Biały rdzeń wybuchu
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(2, 0, size * 0.26, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

@@ -15,6 +15,9 @@ export const ARENAS = {
   // Aliasy kompatybilności
   get 'ARENA_1'() { return arena1; },
   get 'ARENA_2'() { return arena2; },
+  get 'ARENA_2_SECTOR_X'() { return arena2; },
+  get 'SECTOR_X'() { return arena2; },
+  get 'SEKTOR_X'() { return arena2; },
   get 'ARENA_2_PANDORA'() { return arena2; },
   get 'PANDORA'() { return arena2; },
   get 'HALLELUJAH'() { return arena2; },
@@ -42,7 +45,7 @@ function normalizeArenaId(rawId) {
   const lower = str.toLowerCase();
   const cleaned = lower.replace(/[-_]/g, '');
   if (cleaned === '1' || cleaned === 'arena1') return 'arena-1';
-  if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium') return 'arena-2';
+  if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium' || cleaned === 'sectorx' || cleaned === 'sektorx' || cleaned === 'arena2sectorx') return 'arena-2';
   if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;

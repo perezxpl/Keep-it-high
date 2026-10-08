@@ -354,10 +354,14 @@ export function drawDebugColliders(ctx, groundY, player) {
 }
 
 // =========================================================================
-// ARENA 2: SYSTEM RENDEROWANIA PANDORY (HALLELUJAH MOUNTAINS)
-// Re-eksport dedykowanej procedury renderowania terenu z modułu areny
+// ARENA 2: SEKTOR X // INDUSTRIAL FOUNDRY & WASTE FACILITY
+// Re-eksport dedykowanej procedury renderowania geometrii z modułu areny
 // =========================================================================
-export { renderPandoraTerrain } from './arenas/arena2.js';
+export {
+  drawArena2Geometry,
+  drawArena2Geometry as renderSectorXTerrain,
+  renderPandoraTerrain
+} from './arenas/arena2.js';
 
 
 

@@ -301,6 +301,12 @@ export function handlePlayerDeath(player, groundY) {
         player.ammo.SHOTGUN.isReloading = false;
         player.ammo.SHOTGUN.reloadTimer = 0;
       }
+      if (player.ammo.SNIPER) {
+        player.ammo.SNIPER.currentAmmo = 5;
+        player.ammo.SNIPER.reserveAmmo = 25;
+        player.ammo.SNIPER.isReloading = false;
+        player.ammo.SNIPER.reloadTimer = 0;
+      }
     }
     player.isReloading = false;
     player.reloadTimer = 0;

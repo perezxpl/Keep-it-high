@@ -71,30 +71,28 @@ export const ARENA_LEFT = START_X; // 0
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 
 // =========================================================================
-// DEFINICJA ARENY 2: ŚWIĘTA DŻUNGLA (ANCIENT JUNGLE CANOPY 3600x1400 PX)
+// DEFINICJA ARENY 2: SEKTOR X // INDUSTRIAL FOUNDRY & WASTE FACILITY
+// Turniejowy układ „X / Klepsydra” w stylu SOLDAT (3600x1400 PX)
 // =========================================================================
-export const ARENA_2_PANDORA = {
+export const ARENA_2_SECTOR_X = {
   id: 'ARENA_2',
-  alias: 'ARENA_2_PANDORA',
-  name: 'Święta Dżungla',
-  subtitle: 'Ancient Jungle Sanctuary',
+  alias: 'ARENA_2_SECTOR_X',
+  name: 'Sektor X',
+  subtitle: 'Industrial Foundry & Waste Facility',
   width: 3600,
-  height: 2000,
-  bounds: {
-    minX: 0,
-    maxX: 3600,
-    minY: 0,
-    maxY: 2000
-  },
-  spawns: {
-    left: { x: 420, y: 910 },
-    right: { x: 3180, y: 910 }
-  },
-  cloudZoneY: 1510,
-  abyssDeathY: 1660,
-  updraftImpulse: -680
+  height: 1400,
+  bounds: { minX: 0, maxX: 3600, minY: 0, maxY: 1400 },
+  hazardZoneY: 1260, // Poziom lustra toksycznego kwasu
+  abyssDeathY: 1350,
+  spawns: [
+    { x: 520,  y: 390, facing: 1 },  // Platforma A (Góra-Lewo)
+    { x: 3080, y: 390, facing: -1 }, // Platforma B (Góra-Prawo)
+    { x: 520,  y: 970, facing: 1 },  // Platforma C (Dół-Lewo)
+    { x: 3080, y: 970, facing: -1 }  // Platforma D (Dół-Prawo)
+  ]
 };
-export const ARENA_2_CONFIG = ARENA_2_PANDORA;
+export const ARENA_2_CONFIG = ARENA_2_SECTOR_X;
+export const ARENA_2_PANDORA = ARENA_2_SECTOR_X; // Alias wstecznej kompatybilności
 
 
 // =========================================================================
@@ -112,6 +110,12 @@ export const WEAPON_CONFIG = {
     currentAmmo: 8,
     reserveAmmo: 64,
     reloadTime: 2.5 // ok. 2.5s (~150 klatek przy 60 FPS)
+  },
+  SNIPER: {
+    magSize: 5,
+    currentAmmo: 5,
+    reserveAmmo: 25,
+    reloadTime: 2.8 // ok. 2.8s (~168 klatek przy 60 FPS)
   }
 };
 

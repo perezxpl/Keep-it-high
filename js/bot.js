@@ -131,6 +131,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
 
   if (distToPlayer < 180) {
     bot.currentWeapon = WEAPONS.SHOTGUN;
+  } else if (distToPlayer > 480) {
+    bot.currentWeapon = WEAPONS.SNIPER;
   } else {
     bot.currentWeapon = WEAPONS.AK47;
   }
@@ -298,7 +300,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     let angleDiff = Math.abs(currentAimAngle - angleToPlayer);
     while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-    const toleranceRad = 18 * (Math.PI / 180);
+    const toleranceRad = (bot.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
     const isAimedAtPlayer = angleDiff <= toleranceRad;
 
     if (isAimedAtPlayer) {
@@ -319,6 +321,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
         }
       } else if (bot.currentWeapon === WEAPONS.SHOTGUN) {
         if (distToPlayer < 180 && bot.shootCooldown <= 0) {
+          shootWeapon(bot, bot.currentWeapon);
+        }
+      } else if (bot.currentWeapon === WEAPONS.SNIPER) {
+        if (bot.shootCooldown <= 0) {
           shootWeapon(bot, bot.currentWeapon);
         }
       }

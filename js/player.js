@@ -5,3 +5,5 @@
 // =========================================================================
 
 export * from './player/index.js';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js';
+

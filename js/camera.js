@@ -136,7 +136,7 @@ export function getCanvasLogicalHeight() {
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const minX = isArena3 ? 0 : (isArena2 ? 0 : CFG_ARENA_LEFT);
   const maxX = isArena3 ? 4400 : (isArena2 ? 3600 : CFG_ARENA_RIGHT);
   const groundFloor = getCameraGroundY();
@@ -146,7 +146,7 @@ export function getArenaBounds() {
     maxX,
     arenaWidth: maxX - minX,
     minY: (isArena3 || isArena2) ? 0 : (groundFloor - 3000),
-    maxY: isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor)
+    maxY: isArena3 ? 1400 : (isArena2 ? 1400 : groundFloor)
   };
 }
 
@@ -198,10 +198,10 @@ export function clampCamera(cam = camera) {
 
   const arenaId = getCameraArenaId();
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
-  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
+  const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 2000 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
+  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
