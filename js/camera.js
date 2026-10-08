@@ -299,18 +299,24 @@ export function updateCamera(player, ball, options = {}) {
       // --- TRYB MOBILNY (Dotyk / Wirtualny Prawy Drążek) ---
       const rs = (typeof window !== 'undefined' && window.rightStick) ? window.rightStick : null;
       if (rs && rs.active && typeof rs.power === 'number' && rs.power > 0.05) {
-        // Dynamiczny zasięg w proporcji do szerokości/wysokości ekranu na telefonie:
-        // Przy mocnym wychyleniu drążka postać przesuwa się w stronę krawędzi ekranu
-        const mobileLeadRatioX = isSniperActive ? 0.44 : 0.35;
-        const mobileLeadRatioY = isSniperActive ? 0.32 : 0.25;
-        const maxLeadX = Math.max(CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 650, viewWidth * mobileLeadRatioX);
-        const maxLeadY = Math.max(CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 360, viewHeight * mobileLeadRatioY);
+        // Zbalansowane wyprzedzenie: wyraźny look-ahead, ale postać zawsze pozostaje czytelnie w kadrze
+        const mobileRatioX = isSniperActive ? 0.26 : 0.20;
+        const maxLeadX = Math.min(viewWidth * mobileRatioX, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 340) * (isSniperActive ? 1.35 : 1.0));
+
+        // Asymetryczny zasięg pionowy (postać domyślnie jest na 65% wysokości):
+        // W górę (rs.axisY < 0): max 10% wysokości widoku, aby postać nigdy nie dotknęła dolnej krawędzi
+        // W dół (rs.axisY > 0): max 15% wysokości widoku, aby postać nigdy nie dotknęła górnej krawędzi
+        const axisY = rs.axisY || 0;
+        const maxLeadY = axisY < 0
+          ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 120))
+          : Math.min(viewHeight * 0.15, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 150));
+
         aimLeadX = (rs.axisX || 0) * rs.power * maxLeadX;
-        aimLeadY = (rs.axisY || 0) * rs.power * maxLeadY;
+        aimLeadY = axisY * rs.power * maxLeadY;
       } else {
-        // Gdy prawy drążek nie jest aktywnie wychylony: wyprzedzenie w stronę zwrotu postaci
+        // Gdy prawy drążek nie jest aktywnie wychylony: łagodny bias zwrotu postaci
         const facingDir = (typeof player.facing === 'number') ? player.facing : 1;
-        aimLeadX = facingDir * 80;
+        aimLeadX = facingDir * 40;
         aimLeadY = 0;
       }
     } else {
@@ -337,9 +343,12 @@ export function updateCamera(player, ball, options = {}) {
         const filteredX = Math.abs(normX) > deadzone ? (normX - Math.sign(normX) * deadzone) / (1 - deadzone) : 0;
         const filteredY = Math.abs(normY) > deadzone ? (normY - Math.sign(normY) * deadzone) / (1 - deadzone) : 0;
 
-        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.85) : 1.0;
-        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 240) * leadMult;
-        const maxLeadY = (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 140) * leadMult;
+        const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.40) : 1.0;
+        const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 180) * leadMult;
+
+        const maxLeadY = filteredY < 0
+          ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 95) * leadMult)
+          : Math.min(viewHeight * 0.15, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 135) * leadMult);
 
         aimLeadX = filteredX * maxLeadX;
         aimLeadY = filteredY * maxLeadY;
@@ -353,7 +362,11 @@ export function updateCamera(player, ball, options = {}) {
   const target = player || ball;
   const targetX = target ? (target.x + (target.w ? target.w / 2 : 0)) : (camera.x + viewWidth / 2);
   const targetVx = (target && typeof target.vx === 'number') ? target.vx : 0;
-  const lookAhead = targetVx * (isMobile ? 4.5 : 5.5);
+  
+  // Zabezpieczone wyprzedzenie prędkości (max 65px w świecie)
+  const maxVelLead = 65;
+  const rawVelLead = targetVx * (isMobile ? 3.5 : 4.5);
+  const lookAhead = Math.max(-maxVelLead, Math.min(maxVelLead, rawVelLead));
 
   let targetCamX;
   if (viewWidth < arenaWidth) {
@@ -373,6 +386,26 @@ export function updateCamera(player, ball, options = {}) {
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 2000 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
+  // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
+  // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines (np. 18% widoku)
+  if (player && !player.isDead) {
+    const pX = player.x + (player.w ? player.w / 2 : 12);
+    const pY = player.y + (player.h ? player.h / 2 : 35);
+    const safeMarginX = Math.max(80, viewWidth * 0.18);
+    const safeMarginTop = Math.max(70, viewHeight * 0.16);
+    const safeMarginBottom = Math.max(75, viewHeight * 0.18);
+
+    targetCamX = Math.max(pX - viewWidth + safeMarginX, Math.min(targetCamX, pX - safeMarginX));
+    targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+
+    if (viewWidth < arenaWidth) {
+      targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
+    } else {
+      targetCamX = ARENA_LEFT;
+    }
+    targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
+  }
+
   camera.targetX = targetCamX;
   camera.targetY = targetCamY;
 
@@ -387,9 +420,9 @@ export function updateCamera(player, ball, options = {}) {
     camera.shakeY = 0;
   }
 
-  // 4. Wyeliminowanie overshootingu przy wygładzaniu (Lerp):
+  // 4. Interpolacja pozycji (Lerp):
   const baseLerpSpeed = CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08;
-  const lerpSpeed = isMobile ? Math.min(baseLerpSpeed, 0.075) : baseLerpSpeed;
+  const lerpSpeed = isMobile ? Math.min(baseLerpSpeed, 0.085) : baseLerpSpeed;
 
   if (!camera._initialized) {
     camera._initialized = true;
@@ -399,6 +432,31 @@ export function updateCamera(player, ball, options = {}) {
   } else {
     camera.x += (targetCamX - camera.x) * lerpSpeed + camera.shakeX;
     camera.y += (targetCamY - camera.y) * lerpSpeed + camera.shakeY;
+  }
+
+  // =========================================================================
+  // 5. ŻELAZNA GWARANCJA: Gracz FIZYCZNIE ZAWSZE w kadrze (Hard Player Boundary)
+  // Nawet przy gwałtownym przyspieszeniu, odrzucie czy zrywach jetpacka,
+  // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
+  // =========================================================================
+  if (player && !player.isDead) {
+    const pX = player.x + (player.w ? player.w / 2 : 12);
+    const pY = player.y + (player.h ? player.h / 2 : 35);
+    const hardPadX = Math.max(60, viewWidth * 0.10);
+    const hardPadTop = Math.max(50, viewHeight * 0.10);
+    const hardPadBottom = Math.max(60, viewHeight * 0.12);
+
+    if (pX < camera.x + hardPadX) {
+      camera.x = pX - hardPadX;
+    } else if (pX > camera.x + viewWidth - hardPadX) {
+      camera.x = pX - viewWidth + hardPadX;
+    }
+
+    if (pY < camera.y + hardPadTop) {
+      camera.y = pY - hardPadTop;
+    } else if (pY > camera.y + viewHeight - hardPadBottom) {
+      camera.y = pY - viewHeight + hardPadBottom;
+    }
   }
 
   // Opcjonalne ręczne wymuszenie pozycji kamery w parametrach URL (?camX=...&camY=...)
