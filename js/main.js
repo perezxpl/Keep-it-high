@@ -333,6 +333,12 @@ canvas.addEventListener('touchstart', (e) => {
                 triggerPlayerShoot(player, curWep);
               }
             }
+          } else if (rightStick.armedMode === 'GRENADE') {
+            rightStick.isShooting = false;
+            if (factor > 0.03 && !player.isDead) {
+              const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
+              prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
+            }
           } else {
             rightStick.isShooting = false;
           }
@@ -554,7 +560,7 @@ canvas.addEventListener('touchmove', (e) => {
           }
         } else if (rightStick.armedMode === 'GRENADE') {
           rightStick.isShooting = false;
-          if (power > 0.08 && !player.isDead) {
+          if (power > 0.03 && !player.isDead) {
             const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
             prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
           }
@@ -3118,9 +3124,15 @@ function draw() {
     drawSniperLaserSight(ctx, remotePlayer);
   }
 
-  // Trajektoria balistyczna rzutu bronią miotaną (granatem) na PC
-  if (!isTouchDevice && player.throwAnim && player.throwAnim.active && player.throwAnim.aiming) {
-    drawGrenadeTrajectory(ctx, player, player.throwAnim.targetX, player.throwAnim.targetY, player.throwAnim.power, GROUND_Y);
+  // Trajektoria balistyczna rzutu bronią miotaną (granatem) - białe kropki Soldat
+  const isStickGrenadeAim = !!(rightStick && rightStick.active && rightStick.armedMode === 'GRENADE' && (typeof rightStick.power === 'number' ? rightStick.power > 0.03 : true));
+  const isAnimGrenadeAim = !!(player.throwAnim && player.throwAnim.active && player.throwAnim.aiming);
+
+  if (!player.isDead && (isStickGrenadeAim || isAnimGrenadeAim)) {
+    const throwPower = isAnimGrenadeAim
+      ? (player.throwAnim.power || 1.0)
+      : Math.min(1.8, Math.max(0.6, (rightStick.power || 0.5) * 1.3));
+    drawGrenadeTrajectory(ctx, player, player.aimX, player.aimY, throwPower, GROUND_Y);
   }
 
   drawPlayer(ctx, GROUND_Y, player);

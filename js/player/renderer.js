@@ -13,6 +13,7 @@ import {
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
+import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
   sculptedMuscles: false,
@@ -2434,16 +2435,20 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
 
   ctx.save();
   const numDots = 14;
+  const zoom = (camera && typeof camera.zoom === 'number' && camera.zoom > 0) ? camera.zoom : 1.0;
+
   for (let step = 1; step <= numDots; step++) {
     const tFrames = step * 3.5;
     const wx = startX + gVx * tFrames;
     const wy = startY + gVy * tFrames + 0.5 * grav * tFrames * tFrames;
 
-    const alpha = Math.max(0.12, 0.75 - (step / numDots) * 0.60);
+    const alpha = Math.max(0.18, 0.85 - (step / numDots) * 0.65);
+    const screenRadius = Math.max(2.2, 4.2 - step * 0.16);
+    const worldRadius = screenRadius / zoom;
 
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     ctx.beginPath();
-    ctx.arc(wx, wy, Math.max(1.8, 4.0 - step * 0.18), 0, Math.PI * 2);
+    ctx.arc(wx, wy, worldRadius, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

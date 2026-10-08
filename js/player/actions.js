@@ -972,7 +972,6 @@ export function getThrowHandPosition(p) {
  */
 export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPower = 1.0) {
   if (!p || p.isDead || p.isIntro) return false;
-  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) return false;
 
   let aimX, aimY;
   if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
@@ -1018,6 +1017,11 @@ export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPow
  */
 export function releaseGrenadeThrow(p, targetX = null, targetY = null, customPower = null) {
   if (!p || p.isDead || !p.throwAnim || !p.throwAnim.active) return false;
+  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) {
+    p.throwAnim.active = false;
+    p.throwAnim.aiming = false;
+    return false;
+  }
 
   if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
     p.throwAnim.targetX = targetX;

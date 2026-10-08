@@ -2995,41 +2995,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
     ctx.restore();
 
-    // Trajektoria rzutu granatem (gdy drążek w trybie granatu jest wychylony)
-    if (isGrenadeMode && isStickActive && (rightStick.power > 0.08)) {
-      const pwr = Math.min(1.5, Math.max(0.4, rightStick.power * 1.3));
-      const pFacing = player.facing || 1;
-      const startX = player.x + player.w / 2 + pFacing * 14;
-      const startY = player.y + player.h * 0.42;
 
-      const aimX = (typeof player.aimX === 'number' && !isNaN(player.aimX)) ? player.aimX : (startX + (rightStick.axisX || pFacing) * 200);
-      const aimY = (typeof player.aimY === 'number' && !isNaN(player.aimY)) ? player.aimY : (startY + (rightStick.axisY || -0.2) * 200);
-      const angle = Math.atan2(aimY - startY, aimX - startX);
-
-      const speedMult = pwr;
-      const initialSpeed = (960 / 60) * speedMult;
-      const gVx = Math.cos(angle) * initialSpeed + (player.vx || 0) * 0.35;
-      const gVy = Math.sin(angle) * initialSpeed + (player.vy || 0) * 0.25 - (3.2 * Math.min(1.2, speedMult));
-      const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
-
-      ctx.save();
-      const numDots = 14;
-      for (let step = 1; step <= numDots; step++) {
-        const tFrames = step * 3.5;
-        const wx = startX + gVx * tFrames;
-        const wy = startY + gVy * tFrames + 0.5 * grav * tFrames * tFrames;
-
-        const sx = (wx - camera.x) * camera.zoom;
-        const sy = (wy - camera.y) * camera.zoom;
-        const alpha = Math.max(0.12, 0.75 - (step / numDots) * 0.60);
-
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(sx, sy, Math.max(1.8, 4.0 - step * 0.18), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
   }
 
   // -------------------------------------------------------------------------
