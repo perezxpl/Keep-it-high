@@ -61,7 +61,8 @@ import {
   startKickCharge, evaluateKickTiming, isBallInKickReach, executeReleaseKick,
   getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets,
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
-  applyKickInteractions, applySpartanKickHit
+  applyKickInteractions, applySpartanKickHit,
+  updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js';
@@ -364,6 +365,20 @@ export function createPlayerInstance(overrides = {}) {
       shoulderTilt: 0,
       headPitch: 0
     },
+    throwAnim: {
+      active: false,
+      phase: 'IDLE',
+      timer: 0,
+      windupDuration: 6,
+      throwDuration: 5,
+      recoveryDuration: 8,
+      targetX: 0,
+      targetY: 0,
+      power: 1.0,
+      aimAngle: 0,
+      aiming: false,
+      spawned: false
+    },
     classConfig: mergedClass,
     class: mergedClass,
     kickForceMultiplier: mergedClass.stats.kickForce || 1.0,
@@ -482,6 +497,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 
   updateWeaponState(player);
+  updatePlayerThrow(player);
 
   const targetHolster = (player.isHolstered || !player.currentWeapon) ? 1.0 : 0.0;
   if (typeof player.holsterWeight !== 'number') {

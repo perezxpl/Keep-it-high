@@ -219,8 +219,9 @@ export function getWeaponHoldTransform(p) {
 
   const isStaggered = (p.staggerTimer > 0);
   const recTimer = (p.staggerRecoveryTimer > 0) ? p.staggerRecoveryTimer : 0;
+  const isThrowing = !!(p.throwAnim && p.throwAnim.active);
   let slingWeight = 0;
-  if (isStaggered) {
+  if (isStaggered || isThrowing) {
     slingWeight = 1.0;
   } else if (recTimer > 0) {
     slingWeight = Math.min(1.0, recTimer / 8.0);

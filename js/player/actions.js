@@ -945,15 +945,35 @@ export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, fac
  * @param {number|null} [targetY] - Pozycja docelowa Y (domyślnie aimY)
  * @returns {Object|boolean} Wystrzelony pocisk lub false jeśli na cooldownie
  */
-export function throwTacticalGrenade(p, targetX = null, targetY = null, customPower = 1.0) {
+/**
+ * Obliczenie aktualnej pozycji dłoni rzucającej w przestrzeni świata
+ */
+export function getThrowHandPosition(p) {
+  const facing = p.facing || 1;
+  const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
+  const hipX = p.x + (p.w || 24) / 2;
+  const hipY = p.y + (p.h || 70) * 0.58;
+  const shBaseX = hipX + (21 * Math.sin(torsoTilt));
+  const shBaseY = hipY - (21 * Math.cos(torsoTilt));
+  const shX = shBaseX + (facing * 4);
+  const shY = shBaseY;
+  const angle = (p.throwAnim && typeof p.throwAnim.aimAngle === 'number')
+    ? p.throwAnim.aimAngle
+    : (facing > 0 ? -0.45 : Math.PI + 0.45);
+
+  return {
+    x: shX + Math.cos(angle) * 26,
+    y: shY + Math.sin(angle) * 26
+  };
+}
+
+/**
+ * Rozpoczęcie zamachu i celowania granatem (przytrzymanie klawisza / wychylenie drążka)
+ */
+export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPower = 1.0) {
   if (!p || p.isDead || p.isIntro) return false;
+  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) return false;
 
-  // Sprawdzenie czasu odnowienia (cooldown)
-  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) {
-    return false;
-  }
-
-  // Ustalenie pozycji celu (celownik myszy, drążek lub trajektoria łukowa w stronę zwrotu)
   let aimX, aimY;
   if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
     aimX = targetX;
@@ -962,24 +982,176 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null, customPo
     aimX = p.aimX;
     aimY = p.aimY;
   } else {
-    const throwAngle = -0.62; // ~35 stopni w górę
+    const throwAngle = -0.62;
     const throwDist = 320;
     aimX = p.x + p.w / 2 + (p.facing || 1) * Math.cos(throwAngle) * throwDist;
     aimY = p.y + p.h * 0.42 + Math.sin(throwAngle) * throwDist;
   }
 
-  // Wystrzelenie pocisku granatu niszczącego teren z uwzględnieniem siły rzutu
-  const grenade = spawnAeroSuperGrenade(p, aimX, aimY, customPower);
+  const dx = aimX - (p.x + p.w / 2);
+  const dy = aimY - (p.y + p.h * 0.38);
+  const aimAngle = Math.atan2(dy, dx);
+  if (Math.abs(dx) > 10) {
+    p.facing = dx > 0 ? 1 : -1;
+  }
 
-  // Natychmiastowe nałożenie szybkiego cooldownu (3.5 sekundy dla dynamicznej rozgrywki)
-  p.grenadeMaxCooldown = 3.5;
-  p.grenadeCooldown = 3.5;
+  p.throwAnim = {
+    active: true,
+    aiming: true,
+    phase: 'WINDUP',
+    timer: 0,
+    windupDuration: 6,
+    throwDuration: 5,
+    recoveryDuration: 8,
+    targetX: aimX,
+    targetY: aimY,
+    power: customPower,
+    spawned: false,
+    aimAngle
+  };
 
-  // Wizualny odrzut i wstrząs kamery przy rzucie
-  p.recoilAnim = 8;
-  triggerScreenShake(2.5);
+  return true;
+}
 
-  return grenade;
+/**
+ * Dynamiczny wyrzut granatu po zwolnieniu przycisku celowania
+ */
+export function releaseGrenadeThrow(p, targetX = null, targetY = null, customPower = null) {
+  if (!p || p.isDead || !p.throwAnim || !p.throwAnim.active) return false;
+
+  if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+    p.throwAnim.targetX = targetX;
+    p.throwAnim.targetY = targetY;
+    const dx = targetX - (p.x + p.w / 2);
+    const dy = targetY - (p.y + p.h * 0.38);
+    p.throwAnim.aimAngle = Math.atan2(dy, dx);
+    if (Math.abs(dx) > 10) {
+      p.facing = dx > 0 ? 1 : -1;
+    }
+  }
+  if (typeof customPower === 'number' && customPower > 0) {
+    p.throwAnim.power = customPower;
+  }
+
+  p.throwAnim.aiming = false;
+  p.throwAnim.phase = 'THROW';
+  p.throwAnim.timer = 0;
+  return true;
+}
+
+/**
+ * Rzut granatem taktycznym niszczącym teren (inicjuje sekwencję animacji rzutu)
+ * @param {Object} p - Gracz rzucający granat
+ * @param {number|null} [targetX] - Pozycja docelowa X (domyślnie aimX)
+ * @param {number|null} [targetY] - Pozycja docelowa Y (domyślnie aimY)
+ * @param {number} [customPower] - Siła rzutu (domyślnie 1.0)
+ * @returns {boolean} Czy rzut został zainicjowany
+ */
+export function throwTacticalGrenade(p, targetX = null, targetY = null, customPower = 1.0) {
+  if (!p || p.isDead || p.isIntro) return false;
+  if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) return false;
+
+  // Jeśli gracz już celuje, wyzwól wyrzut
+  if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
+    return releaseGrenadeThrow(p, targetX, targetY, customPower);
+  }
+
+  let aimX, aimY;
+  if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+    aimX = targetX;
+    aimY = targetY;
+  } else if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
+    aimX = p.aimX;
+    aimY = p.aimY;
+  } else {
+    const throwAngle = -0.62;
+    const throwDist = 320;
+    aimX = p.x + p.w / 2 + (p.facing || 1) * Math.cos(throwAngle) * throwDist;
+    aimY = p.y + p.h * 0.42 + Math.sin(throwAngle) * throwDist;
+  }
+
+  const dx = aimX - (p.x + p.w / 2);
+  const dy = aimY - (p.y + p.h * 0.38);
+  const aimAngle = Math.atan2(dy, dx);
+  if (Math.abs(dx) > 10) {
+    p.facing = dx > 0 ? 1 : -1;
+  }
+
+  p.throwAnim = {
+    active: true,
+    aiming: false,
+    phase: 'WINDUP',
+    timer: 0,
+    windupDuration: 5,
+    throwDuration: 5,
+    recoveryDuration: 8,
+    targetX: aimX,
+    targetY: aimY,
+    power: customPower,
+    spawned: false,
+    aimAngle
+  };
+
+  return true;
+}
+
+/**
+ * Aktualizacja klatek animacji rzutu oraz fizyczny spawn pocisku w szczytowym momencie wyprostu ręki
+ */
+export function updatePlayerThrow(p) {
+  if (!p || !p.throwAnim || !p.throwAnim.active) return;
+  const tAnim = p.throwAnim;
+
+  // Jeśli gracz aktywnie celuje (trzyma klawisz/drążek):
+  if (tAnim.aiming) {
+    tAnim.phase = 'WINDUP';
+    if (tAnim.timer < (tAnim.windupDuration || 6)) {
+      tAnim.timer++;
+    }
+    // Aktualizuj wektor celowania na bieżąco
+    if (typeof p.aimX === 'number' && !isNaN(p.aimX)) {
+      tAnim.targetX = p.aimX;
+      tAnim.targetY = p.aimY;
+      const dx = tAnim.targetX - (p.x + p.w / 2);
+      const dy = tAnim.targetY - (p.y + p.h * 0.38);
+      tAnim.aimAngle = Math.atan2(dy, dx);
+      if (Math.abs(dx) > 10) {
+        p.facing = dx > 0 ? 1 : -1;
+      }
+    }
+    return;
+  }
+
+  // Aktywne przejście przez fazy rzutu:
+  if (tAnim.phase === 'WINDUP') {
+    tAnim.timer++;
+    if (tAnim.timer >= (tAnim.windupDuration || 5)) {
+      tAnim.phase = 'THROW';
+      tAnim.timer = 0;
+    }
+  } else if (tAnim.phase === 'THROW') {
+    tAnim.timer++;
+    // Kulminacyjny moment wyprostu ręki (klatka 2): odrywa się granat!
+    if (tAnim.timer >= 2 && !tAnim.spawned) {
+      tAnim.spawned = true;
+      const handPos = getThrowHandPosition(p);
+      spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+      p.grenadeMaxCooldown = 3.5;
+      p.grenadeCooldown = 3.5;
+      triggerScreenShake(2.0);
+    }
+    if (tAnim.timer >= (tAnim.throwDuration || 5)) {
+      tAnim.phase = 'RECOVERY';
+      tAnim.timer = 0;
+    }
+  } else if (tAnim.phase === 'RECOVERY') {
+    tAnim.timer++;
+    if (tAnim.timer >= (tAnim.recoveryDuration || 8)) {
+      tAnim.active = false;
+      tAnim.phase = 'IDLE';
+      tAnim.timer = 0;
+    }
+  }
 }
 
 /**

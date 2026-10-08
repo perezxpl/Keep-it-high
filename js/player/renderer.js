@@ -8,7 +8,8 @@ import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
-  getBackflipTargets, getSpartanKickTargets, getProneIKTargets
+  getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
+  getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
@@ -126,6 +127,62 @@ export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) 
     ctx.arc(1.2, 12.0, 1.2, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+/**
+ * Rysuje uzbrojony granat w dłoni rzucającej (z pulsującą diodą zapalnika i łyżką)
+ */
+export function drawHandheldGrenade(ctx, x, y, scale = 1.0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  // Korpus granatu – fasetowany, ciemno-stalowy aero-kanister
+  const gGrad = ctx.createLinearGradient(-3.5, -4, 3.5, 4);
+  gGrad.addColorStop(0.0, '#334155');
+  gGrad.addColorStop(0.4, '#1e293b');
+  gGrad.addColorStop(1.0, '#0f172a');
+
+  ctx.fillStyle = gGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 3.6, 4.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#090d16';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // Żebrowania segmentów odłamkowych
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-3.0, -1.6); ctx.lineTo(3.0, -1.6);
+  ctx.moveTo(-3.4, 0);    ctx.lineTo(3.4, 0);
+  ctx.moveTo(-3.0, 1.6);  ctx.lineTo(3.0, 1.6);
+  ctx.stroke();
+
+  // Zespół zapalnika (fuse assembly)
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-1.4, -5.8, 2.8, 1.8);
+
+  // Odgięta łyżka bezpiecznika (safety lever)
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(1.0, -5.6);
+  ctx.quadraticCurveTo(3.2, -4.2, 2.6, -1.0);
+  ctx.stroke();
+
+  // Pulsująca dioda LED uzbrojonego zapalnika (Pulsing Armed LED)
+  const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
+  ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
+  ctx.shadowColor = '#ef4444';
+  ctx.shadowBlur = 6 * pulse;
+  ctx.beginPath();
+  ctx.arc(0, -1.0, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
   ctx.restore();
 }
 
@@ -364,6 +421,10 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.beginPath();
   ctx.arc(handX + fW * 0.65, -fH * 0.68, 0.75 * handScale, 0, Math.PI * 2);
   ctx.fill();
+
+  if (isFront && visuals && visuals.heldGrenade) {
+    drawHandheldGrenade(ctx, handX + fW * 0.40, 0, 1.0);
+  }
 
   ctx.restore();
 }
@@ -964,6 +1025,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.save();
 
   const v = { ...DEFAULT_VISUALS, ...(p.currentClass?.visuals || {}) };
+  v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
 
@@ -1398,9 +1460,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
-  const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
-  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
-  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0);
+  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
 
   if (hasActiveWeapon) {
     const hold = getWeaponHoldTransform(p);
@@ -1435,6 +1495,95 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       rawFrontElbow = armRight.elbow;
       rawBackSwing = armLeft.swing;
       rawBackElbow = armLeft.elbow;
+    }
+  }
+
+  // PROCEDURALNA KINEMATYKA RZUTU BRONIĄ MIOTANĄ (GRANATEM)
+  if (p.throwAnim && p.throwAnim.active) {
+    const tAnim = p.throwAnim;
+    const facingDir = p.facing || 1;
+    const handBaseX = p.x + p.w / 2;
+    const handBaseY = p.y + p.h * 0.38;
+    const targetX = (typeof tAnim.targetX === 'number' && !isNaN(tAnim.targetX)) ? tAnim.targetX : (handBaseX + facingDir * 120);
+    const targetY = (typeof tAnim.targetY === 'number' && !isNaN(tAnim.targetY)) ? tAnim.targetY : (handBaseY - 60);
+    const localAimAngle = Math.atan2(targetY - handBaseY, (targetX - handBaseX) * facingDir);
+
+    let throwSwing = 0, throwElbow = 0;
+    let guideSwing = 0, guideElbow = 0;
+
+    if (tAnim.phase === 'WINDUP') {
+      // 1. ZAMACH / CHAMBERING: Dłoń z granatem uniesiona za głową/uchem
+      const uWindup = Math.min(1.0, (tAnim.timer || 0) / (tAnim.windupDuration || 6));
+      const windupSwing = -2.15 + localAimAngle * 0.22;
+      const windupElbow = 2.05;
+      throwSwing = lerp(rawFrontSwing, windupSwing, Math.max(0.4, uWindup));
+      throwElbow = lerp(rawFrontElbow, windupElbow, Math.max(0.4, uWindup));
+
+      // Ręka nie-dominująca wyciągnięta w stronę celu (stabilizacja i celowanie)
+      const pointSwing = 1.05 + localAimAngle * 0.65;
+      guideSwing = lerp(rawBackSwing, pointSwing, Math.max(0.4, uWindup));
+      guideElbow = 0.35;
+
+      p.torsoTilt = -0.22 * facingDir;
+      if (p.pose) {
+        p.pose.torsoTilt = p.torsoTilt;
+        p.pose.shoulderTilt = -0.15;
+      }
+    } else if (tAnim.phase === 'THROW') {
+      // 2. WYRZUT / SNAP FORWARD & RELEASE APEX: Eksplozja ramienia w wektor celu
+      const dur = tAnim.throwDuration || 5;
+      const uT = Math.min(1.0, (tAnim.timer || 0) / dur);
+      const releaseSwing = (Math.PI / 2) - localAimAngle;
+      const followSwing = releaseSwing - 0.45;
+
+      if (uT < 0.45) {
+        // Eksplozja w przód w stronę Apex (Klatka 0 do 2)
+        const uApex = uT / 0.45;
+        throwSwing = lerp(-2.15 + localAimAngle * 0.22, releaseSwing, uApex);
+        throwElbow = lerp(2.05, 0.25, uApex);
+        guideSwing = lerp(1.05, -0.55, uApex);
+        guideElbow = lerp(0.35, 0.85, uApex);
+        p.torsoTilt = lerp(-0.22, 0.35, uApex) * facingDir;
+        if (p.pose) p.pose.shoulderTilt = lerp(-0.15, 0.20, uApex);
+      } else {
+        // Follow-through po wypuszczeniu granatu z dłoni (Klatka 2 do 5)
+        const uFollow = (uT - 0.45) / 0.55;
+        throwSwing = lerp(releaseSwing, followSwing, uFollow);
+        throwElbow = lerp(0.25, 0.45, uFollow);
+        guideSwing = -0.55;
+        guideElbow = 0.85;
+        p.torsoTilt = 0.35 * facingDir;
+        if (p.pose) p.pose.shoulderTilt = 0.20;
+      }
+      if (p.pose) p.pose.torsoTilt = p.torsoTilt;
+    } else if (tAnim.phase === 'RECOVERY') {
+      // 3. POWRÓT DO POSTAWY / RECOVERY: Płynne wyhamowanie i powrót do gotowości
+      const uRec = Math.min(1.0, (tAnim.timer || 0) / (tAnim.recoveryDuration || 8));
+      const releaseSwing = (Math.PI / 2) - localAimAngle;
+      const followSwing = releaseSwing - 0.45;
+
+      throwSwing = lerp(followSwing, 0.05, uRec);
+      throwElbow = lerp(0.45, 0.35, uRec);
+      guideSwing = lerp(-0.55, -0.05, uRec);
+      guideElbow = lerp(0.85, 0.28, uRec);
+
+      p.torsoTilt = lerp(0.35, 0, uRec) * facingDir;
+      if (p.pose) {
+        p.pose.torsoTilt = p.torsoTilt;
+        p.pose.shoulderTilt = lerp(0.20, 0, uRec);
+      }
+    }
+
+    if (isRightLimbForeground) {
+      rawFrontSwing = throwSwing;
+      rawFrontElbow = throwElbow;
+      rawBackSwing = guideSwing;
+      rawBackElbow = guideElbow;
+    } else {
+      rawBackSwing = throwSwing;
+      rawBackElbow = throwElbow;
+      rawFrontSwing = guideSwing;
+      rawFrontElbow = guideElbow;
     }
   }
 
@@ -1491,6 +1640,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.isProne) {
     footBlend = 0.55;
     armBlend = 0.45;
+  }
+
+  if (p.throwAnim && p.throwAnim.active) {
+    armBlend = 0.85;
   }
 
   if (p.isSliding) {
@@ -2255,4 +2408,89 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
 export function drawEntityHealthBar(ctx, entity, yOffset = 0) {
   // Zastąpione przez minimalistyczne paski HP i JET nad głową w drawPlayer
 }
+
+/**
+ * Rysuje w czasie rzeczywistym trajektorię balistyczną rzutu granatem (Arc Preview)
+ */
+export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, groundY = 500) {
+  if (!p) return;
+  const handPos = getThrowHandPosition(p);
+  const startX = handPos.x;
+  const startY = handPos.y;
+
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+  const angle = Math.atan2(dy, dx);
+
+  const speedMult = (typeof power === 'number' && power > 0) ? Math.max(0.35, Math.min(1.8, power)) : 1.0;
+  const initialSpeed = (960 / 60) * speedMult;
+  let simVx = Math.cos(angle) * initialSpeed + (p.vx || 0) * 0.35;
+  let simVy = Math.sin(angle) * initialSpeed + (p.vy || 0) * 0.25 - (3.2 * Math.min(1.2, speedMult));
+  const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
+
+  let simX = startX;
+  let simY = startY;
+
+  const points = [{ x: simX, y: simY }];
+  const steps = 30;
+  const floorY = p.currentGroundY || groundY || 500;
+
+  for (let i = 0; i < steps; i++) {
+    simX += simVx;
+    simY += simVy;
+    simVy += grav;
+    points.push({ x: simX, y: simY });
+    if (simY >= floorY) {
+      break;
+    }
+  }
+
+  ctx.save();
+
+  // Rysowanie neonowej linii przerywanej trajektorii
+  ctx.setLineDash([4, 6]);
+  ctx.lineWidth = 2.0;
+  ctx.strokeStyle = 'rgba(163, 230, 53, 0.75)';
+  ctx.shadowColor = '#a3e635';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.stroke();
+
+  // Krople energii wzdłuż trajektorii
+  ctx.setLineDash([]);
+  for (let i = 4; i < points.length; i += 5) {
+    const pt = points[i];
+    const alpha = 1.0 - (i / steps) * 0.6;
+    ctx.fillStyle = `rgba(163, 230, 53, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Wskaźnik punktu uderzenia / lądowania (Reticle / Impact Marker)
+  const lastPt = points[points.length - 1];
+  const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.012);
+  ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`;
+  ctx.shadowColor = '#ef4444';
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = 1.8;
+
+  ctx.beginPath();
+  ctx.arc(lastPt.x, lastPt.y, 8 * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(lastPt.x - 12, lastPt.y); ctx.lineTo(lastPt.x - 4, lastPt.y);
+  ctx.moveTo(lastPt.x + 4, lastPt.y); ctx.lineTo(lastPt.x + 12, lastPt.y);
+  ctx.moveTo(lastPt.x, lastPt.y - 12); ctx.lineTo(lastPt.x, lastPt.y - 4);
+  ctx.moveTo(lastPt.x, lastPt.y + 4); ctx.lineTo(lastPt.x, lastPt.y + 12);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 

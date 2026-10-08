@@ -19,7 +19,8 @@ import {
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
-  executeAeroUlt, throwTacticalGrenade, isCeilingBlockingStand
+  executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
+  drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
@@ -551,6 +552,12 @@ canvas.addEventListener('touchmove', (e) => {
               triggerPlayerShoot(player, curWep);
             }
           }
+        } else if (rightStick.armedMode === 'GRENADE') {
+          rightStick.isShooting = false;
+          if (power > 0.08 && !player.isDead) {
+            const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
+            prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
+          }
         } else {
           rightStick.isShooting = false;
         }
@@ -559,6 +566,10 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = 0;
         rightStick.power = 0;
         rightStick.isShooting = false;
+        if (rightStick.armedMode === 'GRENADE' && player.throwAnim && player.throwAnim.aiming) {
+          player.throwAnim.aiming = false;
+          player.throwAnim.active = false;
+        }
       }
     }
   }
@@ -735,7 +746,14 @@ function endTouch(e) {
         // Rzut wykonuje się wychyleniem drążka i puszczeniu; odległość wychylenia wyzwala siłę rzutu
         if (rightStick.power > 0.08 && !player.isDead) {
           const throwPower = Math.min(1.8, Math.max(0.6, rightStick.power * 1.3));
-          throwTacticalGrenade(player, player.aimX, player.aimY, throwPower);
+          if (player.throwAnim && player.throwAnim.active) {
+            releaseGrenadeThrow(player, player.aimX, player.aimY, throwPower);
+          } else {
+            throwTacticalGrenade(player, player.aimX, player.aimY, throwPower);
+          }
+        } else if (player.throwAnim && player.throwAnim.active) {
+          player.throwAnim.active = false;
+          player.throwAnim.aiming = false;
         }
         // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
         // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
@@ -2277,7 +2295,9 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyG' || e.code === 'KeyF') {
     if (gameState === GAME_STATES.PLAYING && !player.isDead) {
-      throwTacticalGrenade(player);
+      if (!e.repeat) {
+        prepareGrenadeThrow(player);
+      }
     }
   }
   if (e.code === 'KeyB') {
@@ -2410,6 +2430,15 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC' || e.key === 'Shift') {
     keys.slide = false;
     keys.shift = false;
+  }
+  if (e.code === 'KeyG' || e.code === 'KeyF') {
+    if (gameState === GAME_STATES.PLAYING && !player.isDead) {
+      if (player.throwAnim && player.throwAnim.active) {
+        releaseGrenadeThrow(player);
+      } else {
+        throwTacticalGrenade(player);
+      }
+    }
   }
 });
 
@@ -3068,6 +3097,11 @@ function draw() {
   }
   if (remotePlayer.active) {
     drawSniperLaserSight(ctx, remotePlayer);
+  }
+
+  // Trajektoria balistyczna rzutu bronią miotaną (granatem)
+  if (player.throwAnim && player.throwAnim.active && player.throwAnim.aiming) {
+    drawGrenadeTrajectory(ctx, player, player.throwAnim.targetX, player.throwAnim.targetY, player.throwAnim.power, GROUND_Y);
   }
 
   drawPlayer(ctx, GROUND_Y, player);

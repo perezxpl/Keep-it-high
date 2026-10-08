@@ -38,14 +38,16 @@ export const explosionCraters = [];
  * Klasa super-granatu dla klasy Aero
  */
 export class AeroSuperGrenade {
-  constructor(shooter, targetX, targetY, customPower = 1.0) {
+  constructor(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
     this.id = 'grenade_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     this.shooter = shooter;
     this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
 
-    // Punkt startowy z klatki piersiowej / dłoni gracza
-    const startX = shooter ? (shooter.x + shooter.w / 2 + (shooter.facing || 1) * 14) : targetX;
-    const startY = shooter ? (shooter.y + shooter.h * 0.42) : targetY;
+    // Punkt startowy z dłoni gracza / klatki piersiowej
+    const defStartX = shooter ? (shooter.x + shooter.w / 2 + (shooter.facing || 1) * 14) : targetX;
+    const defStartY = shooter ? (shooter.y + shooter.h * 0.42) : targetY;
+    const startX = (typeof spawnOriginX === 'number' && !isNaN(spawnOriginX)) ? spawnOriginX : defStartX;
+    const startY = (typeof spawnOriginY === 'number' && !isNaN(spawnOriginY)) ? spawnOriginY : defStartY;
 
     this.x = startX;
     this.y = startY;
@@ -352,8 +354,8 @@ export class AeroSuperGrenade {
 /**
  * Wystrzelenie super-granatu z postaci
  */
-export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0) {
-  const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower);
+export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
+  const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower, spawnOriginX, spawnOriginY);
   activeProjectiles.push(grenade);
   if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
     window.activeProjectiles.push(grenade);
