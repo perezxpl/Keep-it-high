@@ -2140,6 +2140,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
 
+  if (hasActiveWeapon) {
+    const hold = getWeaponHoldTransform(p);
+
     const tiltWep = p.pose?.torsoTilt || p.torsoTilt || 0;
     const cosTWep = Math.cos(tiltWep);
     const sinTWep = Math.sin(tiltWep);
