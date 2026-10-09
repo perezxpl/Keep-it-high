@@ -21,7 +21,7 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v49_jump_takeoff_physics';
+} from './player.js?v=v50_jump_takeoff_fix';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {
@@ -37,7 +37,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v49_jump_takeoff_physics';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v50_jump_takeoff_fix';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -457,7 +457,7 @@ canvas.addEventListener('touchmove', (e) => {
           }
         } else {
           // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (axisY < -0.55)
-          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
+          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
             initiatePlayerJump(player, spawnGrass);
             leftStick.jumpTriggered = true;
             leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
@@ -2308,9 +2308,10 @@ window.addEventListener('keydown', (e) => {
       isJetpackActive = true;
       player.isJetpacking = true;
       jetpackAirborneSession = true;
-    } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
-      // NA ZIEMI: normalny skok z podłoża (sprężyste wybicie z mikro-przysiadem)
+    } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
+      // NA ZIEMI: normalny skok z podłoża (natychmiastowy)
       initiatePlayerJump(player, spawnGrass);
+      player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
     }
   }
   if (e.code === 'Space' && !keys.space) {

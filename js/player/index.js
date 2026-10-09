@@ -65,14 +65,14 @@ import {
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v49_jump_takeoff_physics';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v50_jump_takeoff_fix';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
 export * from './locomotion.js';
 export * from './actions.js';
 export * from './death.js';
-export * from './renderer.js?v=v49_jump_takeoff_physics';
+export * from './renderer.js?v=v50_jump_takeoff_fix';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -433,14 +433,14 @@ export function setPlayerClass(newClass, p = player) {
 }
 
 /**
- * Inicjalizuje sprężyste wybicie z nóg gracza (3 klatki mikro-przysiadu akumulującego energię)
+ * Inicjalizuje natychmiastowe wybicie z nóg gracza z pełną responsywnością i procedurą Piston Takeoff
  * @param {Object} p - Obiekt gracza
  * @param {Function} [spawnGrass] - Callback efektów cząsteczkowych podłoża
  * @returns {boolean} Czy skok został pomyślnie zainicjowany
  */
 export function initiatePlayerJump(p = player, spawnGrass = null) {
   if (!p || p.isDead || p.isIntro || p.isSliding || (p.staggerTimer > 0) || p.isAcidDying) return false;
-  if (p.isJumping || p.jumpSquatTimer > 0) return false;
+  if (p.isJumping) return false;
 
   const currentFloor = p.currentGroundY || p.groundY || (p.y + (p.h || 70));
   const isGrounded = (p.onGround !== undefined)
@@ -450,20 +450,33 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
   if (!isGrounded && Math.abs(p.vy) > 0.8) return false;
 
   // Przerwanie pozycji kucania i leżenia
-  const wasCrouching = p.isCrouching || p.crouchToggled;
   p.isProne = false;
   p.isCrouching = false;
   p.crouchToggled = false;
   p.state = 'STAND';
   p.hitboxHeight = p.h || 70;
 
+  // 1. Natychmiastowy wyskok pionowy z ziemi (100% responsywność bez opóźnień)
+  const jumpForce = p.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+  p.vy = -jumpForce;
+  p.isJumping = true;
+  p.onGround = false;
+  p.airVx = p.vx;
+  p.jetpackKeyNeutralized = false; // Kluczowe: po wyskoku z ziemi wymagamy puszczenia klawisza W, blokując natychmiastowe odpalenie jetpacka!
+  p.jumpSquatTimer = 0;
+
+  // 2. Rejestracja parametrów dla procedury pchnięcia tłokowego stóp (Piston Takeoff)
   p.jumpLaunchFloorY = currentFloor;
   p.jumpLaunchSpeed = Math.abs(p.vx);
-  // Jeśli gracz już kucał, kolana są skompresowane -> natychmiastowe wybicie (1 klatka)
-  // W pozycji stojącej / biegu: 3 klatki (~50 ms) kompresji akumulującej energię
-  p.jumpSquatTimer = wasCrouching ? 1 : (p.jumpSquatMax || 3);
+  p.jumpTakeoffTimer = p.jumpTakeoffMax || 8; // 8 klatek wyraźnego, fizycznego pchnięcia o podłoże
 
-  if (spawnGrass) p._spawnGrass = spawnGrass;
+  const grassFn = spawnGrass || p._spawnGrass;
+  if (typeof grassFn === 'function' && currentFloor) {
+    grassFn(p.x + (p.w || 24) / 2, currentFloor, p.facing);
+  }
+  spawnGroundPuff(p.x + (p.w || 24) / 2, currentFloor);
+  p.currentClass?.onJump?.(p, grassFn);
+
   return true;
 }
 
@@ -561,28 +574,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.grenadeCooldown = Math.max(0, player.grenadeCooldown - (1 / 60));
   }
 
-  // Obsługa sprężystego wybicia nogami i lądowania (Jump Squat, Piston Takeoff, Landing Absorption)
-  if (player.jumpSquatTimer > 0) {
-    player.jumpSquatTimer--;
-    player.vx *= 0.88;
-    if (player.jumpSquatTimer === 0) {
-      const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-      player.vy = -jumpForce;
-      player.isJumping = true;
-      player.onGround = false;
-      player.jetpackKeyNeutralized = false;
-      player.airVx = player.vx;
-      player.jumpTakeoffTimer = player.jumpTakeoffMax || 5;
-
-      const grassFn = spawnGrass || player._spawnGrass;
-      const launchFloor = player.jumpLaunchFloorY || player.currentGroundY || player.groundY;
-      if (typeof grassFn === 'function' && launchFloor) {
-        grassFn(player.x + (player.w || 24) / 2, launchFloor, player.facing);
-      }
-      spawnGroundPuff(player.x + (player.w || 24) / 2, launchFloor);
-      player.currentClass?.onJump?.(player, grassFn);
-    }
-  } else if (player.jumpTakeoffTimer > 0) {
+  // Obsługa procedury pchnięcia nogami (Piston Takeoff) oraz amortyzacji lądowania
+  if (player.jumpTakeoffTimer > 0) {
     player.jumpTakeoffTimer--;
   }
 
@@ -1242,10 +1235,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetTilt = 0.06 * player.facing;
   } else if (player.kickMode === 'SPIN_VOLLEY') {
     targetTilt = -0.10 * player.facing;
-  } else if (player.jumpSquatTimer > 0) {
-    targetTilt = 0.16 * player.facing;
   } else if (player.jumpTakeoffTimer > 0) {
-    targetTilt = (player.jumpLaunchSpeed > 0.8 ? 0.18 : 0.08) * player.facing;
+    targetTilt = (player.jumpLaunchSpeed > 0.8 ? 0.20 : 0.08) * player.facing;
   } else if (player.isJumpCharging) {
     if (speed < 0.8) {
       targetTilt = 0.12 * player.jumpChargePower * player.facing;
@@ -1338,12 +1329,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.onGround = false;
     player.currentGroundY = null;
     player.currentPlatform = null;
-  } else if (player.jumpSquatTimer > 0) {
-    // Stabilne podparcie podczas mikro-przysiadu wybicia z ziemi
-    player.vy = 0;
-    player.onGround = true;
-    const launchFloor = player.jumpLaunchFloorY || player.currentGroundY || GROUND_Y;
-    player.y = launchFloor - colH;
   } else {
     player.vy += CONFIG.GRAVITY;
     player.y += player.vy;
@@ -1438,12 +1423,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
     targetPelvisY = -11.8 + choreo.pelvisDip;
-  } else if (player.jumpSquatTimer > 0) {
-    // Sprężysta kompresja kolan przed wyskokiem (3 klatki mikro-przysiadu)
-    const maxSquat = player.jumpSquatMax || 3;
-    const u = (maxSquat - player.jumpSquatTimer + 0.5) / maxSquat;
-    const squatDip = Math.sin(u * Math.PI * 0.5) * 8.8;
-    targetPelvisY = -11.8 + squatDip;
   } else if (player.isJumpCharging) {
     if (speed < 0.8) {
       targetPelvisY = -11.8 + (player.jumpChargePower * 14);
