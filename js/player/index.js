@@ -11,7 +11,7 @@ import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v51_crouch_walk_hunched';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v52_crouch_walk_depth';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -65,14 +65,14 @@ import {
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v51_crouch_walk_hunched';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v52_crouch_walk_depth';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v51_crouch_walk_hunched';
+export * from './locomotion.js?v=v52_crouch_walk_depth';
 export * from './actions.js';
 export * from './death.js';
-export * from './renderer.js?v=v51_crouch_walk_hunched';
+export * from './renderer.js?v=v52_crouch_walk_depth';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1279,8 +1279,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         targetTilt = 0.28 * player.facing;
       } else {
         // Chodzenie w niskim pochyleniu (tactical prowl / hunched stalker walk):
-        // Wyraźnie pochylony tułów w przód (~26-30 stopni), sylwetka schylona nisko bez szorowania kolanami
-        const crouchLean = 0.46 + Math.min(0.08, (speed / 1.6) * 0.08);
+        const crouchLean = 0.40 + Math.min(0.06, (speed / 1.6) * 0.06);
         targetTilt = crouchLean * player.facing;
       }
     } else {
@@ -1464,9 +1463,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetPelvisY = 26;
   } else if (player.isCrouching) {
     if (player.gaitMode === 'CROUCH_WALK') {
-      // Płynny chód w niskim pochyleniu - miednica obniżona sprężyście o ok. 11 px względem stania (-0.8 px vs -11.8 px),
-      // co daje naturalny prześwit kolan nad ziemią (~18-22 px), podczas gdy mocne schylenie tułowia utrzymuje sylwetkę nisko
-      targetPelvisY = -0.8 - Math.cos(player.stridePhase * 2 - 0.2) * 1.0;
+      // Wyraźnie obniżony, taktyczny chód w przykucnięciu: miednica na wysokości ~6.8 px (obniżona o ok. 19 px ze stania),
+      // co daje wyraźnie niską sylwetkę, a jednocześnie zachowuje bezpieczny prześwit kolan 12-20 px nad ziemią
+      targetPelvisY = 6.8 - Math.cos(player.stridePhase * 2 - 0.2) * 1.0;
     } else {
       // W miejscu (CROUCH): głęboki, stabilny klęk/przykuc taktyczny
       targetPelvisY = 16.5;

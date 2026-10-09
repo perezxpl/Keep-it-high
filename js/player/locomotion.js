@@ -250,10 +250,10 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
     // Chód w niskim pochyleniu (tactical prowl / hunched stalker walk):
     // Stopy stąpają cicho i stabilnie po ziemi (ly = 0 w fazie podparcia, brak sztucznego unoszenia stóp w powietrzu),
     // unosząc się płasko i miękko (stepHeight = 4.8 px) w fazie wykroku.
-    let strideLen = 16.0;
+    let strideLen = 15.0;
     let ankleOffset = 0;
     if (playerRef && playerRef.isMovingBackwards) {
-      strideLen = 12.5;
+      strideLen = 12.0;
       ankleOffset = 0.05;
     }
     const stanceRatio = 0.58;
@@ -272,13 +272,13 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
       } else {
         const tu = ease((u - 0.65) / 0.35);
         ankle = lerp(0.0, 0.22, tu) + ankleOffset;
-        ly = -Math.sin(ankle) * 2.2;
+        ly = -Math.sin(ankle) * 1.8;
       }
     } else {
       const u = (pr - stanceLimit) / (1.0 - stanceLimit);
       const eu = ease(u);
       lx = (-0.5 + eu) * (strideLen * 2);
-      const stepHeight = 4.8; // Niski, zwinny krok skradania (stealth prowl)
+      const stepHeight = 3.6; // Niski, zwinny krok skradania (stealth prowl)
       ly = -Math.sin(u * Math.PI) * stepHeight;
       ankle = lerp(0.22, -0.06, eu) + ankleOffset;
     }
