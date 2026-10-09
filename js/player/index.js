@@ -65,14 +65,14 @@ import {
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=tactical_hands_v46';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v47_bent_support_arm';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
 export * from './locomotion.js';
 export * from './actions.js';
 export * from './death.js';
-export * from './renderer.js?v=tactical_hands_v46';
+export * from './renderer.js?v=v47_bent_support_arm';
 
 export const DEFAULT_BODY = {
   w: 24,

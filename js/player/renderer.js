@@ -12,7 +12,7 @@ import {
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v47_bent_support_arm';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {

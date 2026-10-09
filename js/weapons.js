@@ -327,7 +327,7 @@ export function getWeaponHoldTransform(p) {
   const shoulderPocketX = rightShoulderX + braceForward * charFacing;
   const shoulderPocketY = rightShoulderY + braceOffsetY;
 
-  const stockLen = isSniper ? 14.5 : (isShotgun ? 13.0 : 12.5);
+  const stockLen = isSniper ? 12.5 : (isShotgun ? 11.5 : 10.5);
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
   let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
@@ -362,7 +362,8 @@ export function getWeaponHoldTransform(p) {
   const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
   const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  const foreGripDistX = isSniper ? 21.0 : ((isShotgun ? 16.5 : 17.5) + pumpShift);
+  // Naturalny chwyt łoża z anatomicznym ugięciem łokcia lewej ręki (ok. 30-40 stopni w stawie)
+  const foreGripDistX = isSniper ? 17.5 : ((isShotgun ? 13.5 : 15.0) + pumpShift);
   const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 2.0 : 1.2);
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
