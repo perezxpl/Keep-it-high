@@ -65,14 +65,14 @@ import {
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v47_bent_support_arm';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v48_aim_raise_extended_arm';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
 export * from './locomotion.js';
 export * from './actions.js';
 export * from './death.js';
-export * from './renderer.js?v=v47_bent_support_arm';
+export * from './renderer.js?v=v48_aim_raise_extended_arm';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -551,8 +551,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming));
   const targetWeight = isShootingStance ? 1.0 : 0.0;
+  const weightRate = (targetWeight > (player.shootPoseWeight || 0)) ? 0.32 : 0.14;
   player.shootPoseWeight = (typeof player.shootPoseWeight === 'number')
-    ? player.shootPoseWeight + (targetWeight - player.shootPoseWeight) * 0.25
+    ? player.shootPoseWeight + (targetWeight - player.shootPoseWeight) * weightRate
     : targetWeight;
   if (player.shootPoseWeight < 0.001) player.shootPoseWeight = 0;
   else if (player.shootPoseWeight > 0.999) player.shootPoseWeight = 1;
