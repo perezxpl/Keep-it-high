@@ -247,25 +247,40 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   let lx = 0, ly = 0, ankle = 0;
 
   if (mode === 'CROUCH_WALK') {
-    let strideLen = 14;
+    // Chód w niskim pochyleniu (tactical prowl / hunched stalker walk):
+    // Stopy stąpają cicho i stabilnie po ziemi (ly = 0 w fazie podparcia, brak sztucznego unoszenia stóp w powietrzu),
+    // unosząc się płasko i miękko (stepHeight = 4.8 px) w fazie wykroku.
+    let strideLen = 16.0;
     let ankleOffset = 0;
     if (playerRef && playerRef.isMovingBackwards) {
-      strideLen = 14 * 0.7;
-      ankleOffset = 0.2;
+      strideLen = 12.5;
+      ankleOffset = 0.05;
     }
-    const stanceLimit = 0.55;
+    const stanceRatio = 0.58;
+    const stanceLimit = stanceRatio;
     const pr = p / (Math.PI * 2);
 
     if (pr < stanceLimit) {
       const u = pr / stanceLimit;
       lx = (0.5 - u) * (strideLen * 2);
-      ly = -6.5;
-      ankle = lerp(0.32, 0.60, ease(u)) + ankleOffset;
+      ly = 0;
+      // Płynne przetoczenie stopy: miękki kontakt -> płaskie podparcie -> lekkie uniesienie pięty na palcach
+      if (u < 0.22) {
+        ankle = lerp(-0.06, 0.0, ease(u / 0.22)) + ankleOffset;
+      } else if (u < 0.65) {
+        ankle = 0.0 + ankleOffset;
+      } else {
+        const tu = ease((u - 0.65) / 0.35);
+        ankle = lerp(0.0, 0.22, tu) + ankleOffset;
+        ly = -Math.sin(ankle) * 2.2;
+      }
     } else {
       const u = (pr - stanceLimit) / (1.0 - stanceLimit);
-      lx = (-0.5 + ease(u)) * (strideLen * 2);
-      ly = -6.5 - Math.sin(u * Math.PI) * 7.5;
-      ankle = lerp(0.60, 0.32, ease(u)) + ankleOffset;
+      const eu = ease(u);
+      lx = (-0.5 + eu) * (strideLen * 2);
+      const stepHeight = 4.8; // Niski, zwinny krok skradania (stealth prowl)
+      ly = -Math.sin(u * Math.PI) * stepHeight;
+      ankle = lerp(0.22, -0.06, eu) + ankleOffset;
     }
   } else if (mode === 'WALK') {
     const stanceRatio = 0.58;

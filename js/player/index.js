@@ -11,7 +11,7 @@ import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v51_crouch_walk_hunched';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -65,14 +65,14 @@ import {
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v50_jump_takeoff_fix';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v51_crouch_walk_hunched';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js';
+export * from './locomotion.js?v=v51_crouch_walk_hunched';
 export * from './actions.js';
 export * from './death.js';
-export * from './renderer.js?v=v50_jump_takeoff_fix';
+export * from './renderer.js?v=v51_crouch_walk_hunched';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1270,12 +1270,25 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   } else if (player.isSliding) {
     targetTilt = -0.75 * player.facing;
-  } else if (isMovingBackwards) {
-    targetTilt = -0.08 * player.facing;
   } else if (player.isProne) {
     targetTilt = 1.48 * player.facing;
   } else if (player.isCrouching) {
-    targetTilt = 0.20 * player.facing;
+    if (player.gaitMode === 'CROUCH_WALK') {
+      if (isMovingBackwards) {
+        // Czujny krok wsteczny z bronią w przykucu
+        targetTilt = 0.28 * player.facing;
+      } else {
+        // Chodzenie w niskim pochyleniu (tactical prowl / hunched stalker walk):
+        // Wyraźnie pochylony tułów w przód (~26-30 stopni), sylwetka schylona nisko bez szorowania kolanami
+        const crouchLean = 0.46 + Math.min(0.08, (speed / 1.6) * 0.08);
+        targetTilt = crouchLean * player.facing;
+      }
+    } else {
+      // W miejscu (CROUCH) - stabilna pozycja taktyczna z ugiętymi kolanami i lekkim pochyleniem
+      targetTilt = 0.20 * player.facing;
+    }
+  } else if (isMovingBackwards) {
+    targetTilt = -0.08 * player.facing;
   } else if (player.isJumping) {
     targetTilt = (player.jumpTakeoffTimer > 0 ? (player.jumpLaunchSpeed > 0.8 ? 0.18 : 0.08) : 0.04) * player.facing;
   } else if (player.isIntro) {
@@ -1450,7 +1463,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.isSliding) {
     targetPelvisY = 26;
   } else if (player.isCrouching) {
-    targetPelvisY = 16.5;
+    if (player.gaitMode === 'CROUCH_WALK') {
+      // Płynny chód w niskim pochyleniu - miednica obniżona sprężyście o ok. 11 px względem stania (-0.8 px vs -11.8 px),
+      // co daje naturalny prześwit kolan nad ziemią (~18-22 px), podczas gdy mocne schylenie tułowia utrzymuje sylwetkę nisko
+      targetPelvisY = -0.8 - Math.cos(player.stridePhase * 2 - 0.2) * 1.0;
+    } else {
+      // W miejscu (CROUCH): głęboki, stabilny klęk/przykuc taktyczny
+      targetPelvisY = 16.5;
+    }
   } else if (player.gaitMode === 'IDLE') {
     const braceDip = (player.shootPoseWeight || 0) * 3.2;
     targetPelvisY = -11.8 + braceDip;

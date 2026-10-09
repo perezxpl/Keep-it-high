@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v51_crouch_walk_hunched';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v50_jump_takeoff_fix';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v51_crouch_walk_hunched';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -2181,10 +2181,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armPhase = Math.sin(p.stridePhase);
 
     if (p.gaitMode === 'CROUCH_WALK') {
-      rawFrontSwing = -armPhase * 0.35;
-      rawBackSwing = armPhase * 0.35;
-      rawFrontElbow = 0.75;
-      rawBackElbow = 0.75;
+      rawFrontSwing = -armPhase * 0.28;
+      rawBackSwing = armPhase * 0.28;
+      rawFrontElbow = 0.85;
+      rawBackElbow = 0.85;
     } else if (p.gaitMode === 'WALK') {
       rawFrontSwing = -armPhase * 0.38;
       rawBackSwing = armPhase * 0.38;
