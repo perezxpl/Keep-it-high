@@ -13,6 +13,7 @@ import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import {
   spawnBulletCasing,
+  spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
   clearBulletCasings,
@@ -21,6 +22,7 @@ import {
 
 export {
   spawnBulletCasing,
+  spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
   clearBulletCasings,
@@ -152,6 +154,10 @@ export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
   }
 }
 registerHitSparkCallback(spawnHitSparks);
+
+function ease(t) {
+  return 0.5 - 0.5 * Math.cos(t * Math.PI);
+}
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
@@ -342,12 +348,218 @@ export function getWeaponHoldTransform(p) {
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
-  const reloadDip = p.isReloading ? Math.sin((p.reloadTimer / (p.reloadDuration || 120)) * Math.PI) * 0.16 : 0;
-  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadDip;
+  // Punkty podparcia dłoni w spoczynku / strzale
+  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
+  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
+  const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
+  // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
+  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : 16.0) + pumpShift);
+  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : 1.0);
+
+  // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
+  const u = p.isReloading
+    ? ((typeof p.reloadProgress === 'number') ? p.reloadProgress : (1.0 - (p.reloadTimer / (p.reloadDuration || 120))))
+    : 0;
+
+  let reloadAngleOffset = 0;
+  let reloadPivotShiftX = 0;
+  let reloadPivotShiftY = 0;
+  let leftHandLocalX = foreGripDistX;
+  let leftHandLocalY = foreGripDistY;
+  let isMagInGun = true;
+  let heldMag = null;
+  let boltOffset = 0;
+
+  if (p.isReloading && u > 0 && u < 1.0) {
+    const reloadEnv = Math.sin(u * Math.PI);
+    reloadAngleOffset = (isShotgun ? -0.28 : -0.20) * reloadEnv;
+    reloadPivotShiftX = -2.5 * reloadEnv * charFacing;
+    reloadPivotShiftY = 1.8 * reloadEnv;
+
+    if (isSniper) {
+      // -------------------------------------------------------------
+      // SNIPER (.50 BMG) RELOAD ANIMATION
+      // -------------------------------------------------------------
+      if (u < 0.20) {
+        // Faza 1: Ruch ręki ku zatrzaskowi magazynka (16.5, 1.0) -> (7.0, 6.0)
+        const t = u / 0.20;
+        leftHandLocalX = lerp(foreGripDistX, 7.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 6.0, ease(t));
+        isMagInGun = true;
+      } else if (u < 0.34) {
+        // Faza 2: Zwolnienie zatrzasku i wypięcie magazynka w dół
+        const t = (u - 0.20) / 0.14;
+        leftHandLocalX = lerp(7.0, 5.0, t);
+        leftHandLocalY = lerp(6.0, 12.0, t);
+        isMagInGun = (u < 0.24);
+        if (u >= 0.23 && u <= 0.28) {
+          reloadAngleOffset += Math.sin((u - 0.23) / 0.05 * Math.PI) * 0.05;
+        }
+      } else if (u < 0.52) {
+        // Faza 3: Sięgnięcie do ładownicy przy oporządzeniu
+        const t = (u - 0.34) / 0.18;
+        leftHandLocalX = lerp(5.0, -2.0, ease(t));
+        leftHandLocalY = lerp(12.0, 17.0, ease(t));
+        isMagInGun = false;
+      } else if (u < 0.72) {
+        // Faza 4: Wyciągnięcie nowego magazynka i uniesienie ku gniazdu
+        const t = (u - 0.52) / 0.20;
+        leftHandLocalX = lerp(-2.0, 7.0, ease(t));
+        leftHandLocalY = lerp(17.0, 5.5, ease(t));
+        isMagInGun = false;
+        heldMag = { type: 'SNIPER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.15 };
+        if (t > 0.88) {
+          // Zatrzaśnięcie magazynka w gnieździe (Mag slap)
+          const snapT = (t - 0.88) / 0.12;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.10;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.5;
+        }
+      } else if (u < 0.82) {
+        // Faza 5: Magazynek zaryglowany, ruch ręki w górę do rączki zamka
+        isMagInGun = true;
+        const t = (u - 0.72) / 0.10;
+        leftHandLocalX = lerp(7.0, 3.5, ease(t));
+        leftHandLocalY = lerp(5.5, -3.5, ease(t));
+      } else if (u < 0.90) {
+        // Faza 6: Cykl zamka (odciągnięcie w tył i zaryglowanie w przód)
+        isMagInGun = true;
+        const t = (u - 0.82) / 0.08;
+        const pull = Math.sin(t * Math.PI);
+        boltOffset = -pull * 4.8;
+        leftHandLocalX = 3.5 + boltOffset;
+        leftHandLocalY = -3.5;
+        if (t > 0.5) reloadAngleOffset += Math.sin(t * Math.PI) * 0.06;
+      } else {
+        // Faza 7: Powrót ręki na łoże karabinu
+        isMagInGun = true;
+        const t = (u - 0.90) / 0.10;
+        leftHandLocalX = lerp(3.5, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(-3.5, foreGripDistY, ease(t));
+      }
+    } else if (isShotgun) {
+      // -------------------------------------------------------------
+      // SHOTGUN RELOAD ANIMATION (ŁADOWANIE NABOI DO RURY)
+      // -------------------------------------------------------------
+      isMagInGun = true;
+      if (u < 0.16) {
+        // Sięgnięcie do ładownicy z nabojami
+        const t = u / 0.16;
+        leftHandLocalX = lerp(foreGripDistX, -3.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 15.0, ease(t));
+      } else if (u < 0.44) {
+        // Nabój 1: pobranie i wciśnięcie do okna ładowania od spodu
+        const t = (u - 0.16) / 0.28;
+        leftHandLocalX = lerp(-3.0, 5.5, ease(t));
+        leftHandLocalY = lerp(15.0, 4.0, ease(t));
+        if (t < 0.85) {
+          heldMag = { type: 'SHOTGUN_SHELL', x: leftHandLocalX, y: leftHandLocalY, angle: 0.35 };
+        } else {
+          reloadAngleOffset -= Math.sin((t - 0.85) / 0.15 * Math.PI) * 0.06;
+        }
+      } else if (u < 0.72) {
+        // Nabój 2: powtórzenie cyklu ładowania
+        const tSub = (u - 0.44) / 0.28;
+        if (tSub < 0.45) {
+          const t = tSub / 0.45;
+          leftHandLocalX = lerp(5.5, -3.0, ease(t));
+          leftHandLocalY = lerp(4.0, 15.0, ease(t));
+        } else {
+          const t = (tSub - 0.45) / 0.55;
+          leftHandLocalX = lerp(-3.0, 5.5, ease(t));
+          leftHandLocalY = lerp(15.0, 4.0, ease(t));
+          if (t < 0.85) {
+            heldMag = { type: 'SHOTGUN_SHELL', x: leftHandLocalX, y: leftHandLocalY, angle: 0.35 };
+          } else {
+            reloadAngleOffset -= Math.sin((t - 0.85) / 0.15 * Math.PI) * 0.06;
+          }
+        }
+      } else if (u < 0.80) {
+        // Przejście ręki na czółenko
+        const t = (u - 0.72) / 0.08;
+        leftHandLocalX = lerp(5.5, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(4.0, foreGripDistY, ease(t));
+      } else if (u < 0.89) {
+        // Przeładowanie pompką (Pump action): szarpnięcie w tył i rygiel w przód
+        const t = (u - 0.80) / 0.09;
+        const pull = Math.sin(t * Math.PI);
+        p.pumpOffset = -pull * 4.5;
+        leftHandLocalX = foreGripDistX + p.pumpOffset;
+        leftHandLocalY = foreGripDistY;
+        reloadAngleOffset += Math.sin(t * Math.PI) * 0.07;
+      } else {
+        p.pumpOffset = 0;
+        const t = (u - 0.89) / 0.11;
+        leftHandLocalX = foreGripDistX;
+        leftHandLocalY = foreGripDistY;
+      }
+    } else {
+      // -------------------------------------------------------------
+      // AK-47 RELOAD ANIMATION (ROCK & LOCK + CHARGING HANDLE)
+      // -------------------------------------------------------------
+      if (u < 0.20) {
+        // Faza 1: Ruch ręki ku gniazdu magazynka
+        const t = u / 0.20;
+        leftHandLocalX = lerp(foreGripDistX, 6.5, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 6.0, ease(t));
+        isMagInGun = true;
+      } else if (u < 0.34) {
+        // Faza 2: Wypięcie magazynka łukowego (w dół i tył)
+        const t = (u - 0.20) / 0.14;
+        leftHandLocalX = lerp(6.5, 4.5, t);
+        leftHandLocalY = lerp(6.0, 11.5, t);
+        isMagInGun = (u < 0.24);
+        if (u >= 0.23 && u <= 0.28) {
+          reloadAngleOffset += Math.sin((u - 0.23) / 0.05 * Math.PI) * 0.05;
+        }
+      } else if (u < 0.52) {
+        // Faza 3: Sięgnięcie do ładownicy przy pasie
+        const t = (u - 0.34) / 0.18;
+        leftHandLocalX = lerp(4.5, -2.0, ease(t));
+        leftHandLocalY = lerp(11.5, 16.0, ease(t));
+        isMagInGun = false;
+      } else if (u < 0.72) {
+        // Faza 4: Wyciągnięcie i włożenie nowego magazynka (Rock & Lock)
+        const t = (u - 0.52) / 0.20;
+        leftHandLocalX = lerp(-2.0, 6.5, ease(t));
+        leftHandLocalY = lerp(16.0, 5.5, ease(t));
+        isMagInGun = false;
+        heldMag = { type: 'AK47', x: leftHandLocalX, y: leftHandLocalY, angle: -0.25 };
+        if (t > 0.88) {
+          // Rock & Lock zatrzaśnięcie
+          const snapT = (t - 0.88) / 0.12;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.2;
+        }
+      } else if (u < 0.82) {
+        // Faza 5: Magazynek zaryglowany, sięgnięcie do suwadła zamka
+        isMagInGun = true;
+        const t = (u - 0.72) / 0.10;
+        leftHandLocalX = lerp(6.5, 8.0, ease(t));
+        leftHandLocalY = lerp(5.5, -2.2, ease(t));
+      } else if (u < 0.90) {
+        // Faza 6: Odciągnięcie suwadła zamka i zrzut
+        isMagInGun = true;
+        const t = (u - 0.82) / 0.08;
+        const pull = Math.sin(t * Math.PI);
+        boltOffset = -pull * 4.2;
+        leftHandLocalX = 8.0 + boltOffset;
+        leftHandLocalY = -2.2;
+        if (t > 0.5) reloadAngleOffset += Math.sin(t * Math.PI) * 0.05;
+      } else {
+        // Faza 7: Powrót ręki na łoże
+        isMagInGun = true;
+        const t = (u - 0.90) / 0.10;
+        leftHandLocalX = lerp(8.0, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(-2.2, foreGripDistY, ease(t));
+      }
+    }
+  }
+
+  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadAngleOffset;
   const kickback = p.weaponKickback || 0;
 
-  let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing;
-  let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback;
+  let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
+  let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback + reloadPivotShiftY;
 
   if (p.isProne) {
     const floorY = p.currentGroundY || p.groundY || 560;
@@ -356,18 +568,10 @@ export function getWeaponHoldTransform(p) {
 
   let proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
 
-  // Punkty podparcia dłoni
-  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
-  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
-  const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
-  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : 16.0) + pumpShift);
-  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : 1.0);
-
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
-  let leftHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * foreGripDistX - Math.sin(proneAimAngle) * foreGripDistY) * charFacing;
-  let leftHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * foreGripDistX + Math.cos(proneAimAngle) * foreGripDistY);
+  let leftHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * leftHandLocalX - Math.sin(proneAimAngle) * leftHandLocalY) * charFacing;
+  let leftHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * leftHandLocalX + Math.cos(proneAimAngle) * leftHandLocalY);
 
   if (slingWeight > 0) {
     finalPivotX = lerp(finalPivotX, slingPivotX, slingWeight);
@@ -397,7 +601,10 @@ export function getWeaponHoldTransform(p) {
     muzzleRise,
     rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
     leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
-    barrelLen: barrelLength
+    barrelLen: barrelLength,
+    isMagInGun,
+    heldMag,
+    boltOffset
   };
 }
 
@@ -465,9 +672,12 @@ export function reloadWeapon(shooter, weapon = shooter?.currentWeapon) {
   ammo.isReloading = true;
   ammo.reloadDuration = ammo.reloadDuration || Math.round((ammo.reloadTime || 2.0) * 60);
   ammo.reloadTimer = ammo.reloadDuration;
+  ammo._magEjected = false;
+  ammo._pumpEjected = false;
   shooter.isReloading = true;
   shooter.reloadTimer = ammo.reloadTimer;
   shooter.reloadDuration = ammo.reloadDuration;
+  shooter.reloadProgress = 0;
   return true;
 }
 
@@ -480,9 +690,12 @@ export function cancelReload(shooter, weapon = shooter?.currentWeapon) {
   if (ammo) {
     ammo.isReloading = false;
     ammo.reloadTimer = 0;
+    ammo._magEjected = false;
+    ammo._pumpEjected = false;
   }
   shooter.isReloading = false;
   shooter.reloadTimer = 0;
+  shooter.reloadProgress = 0;
 }
 
 /**
@@ -706,6 +919,31 @@ export function updateWeaponState(p) {
       p.isReloading = true;
       p.reloadTimer = ammo.reloadTimer;
       p.reloadDuration = ammo.reloadDuration;
+      const u = Math.max(0, Math.min(1.0, 1.0 - (ammo.reloadTimer / (ammo.reloadDuration || 120))));
+      p.reloadProgress = u;
+
+      // Obsługa wyrzutu pustego magazynka (Fizyczna cząsteczka spadająca na ziemię)
+      if (u >= 0.24 && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER')) {
+        ammo._magEjected = true;
+        const hold = getWeaponHoldTransform(p);
+        const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
+        const magDist = curWepId === 'SNIPER' ? 7.0 : 6.5;
+        const magYOffset = curWepId === 'SNIPER' ? 5.5 : 5.0;
+        const mX = hold.pivotX + (Math.cos(hold.angle) * magDist - Math.sin(hold.angle) * magYOffset) * charFacing;
+        const mY = hold.pivotY + (Math.sin(hold.angle) * magDist + Math.cos(hold.angle) * magYOffset);
+        spawnDroppedMagazine(mX, mY, curWepId, charFacing, p.vx || 0, p.vy || 0);
+      }
+
+      // Shotgun: wyrzut łuski przy przeładowaniu czółenkiem pompy w tył
+      if (curWepId === 'SHOTGUN' && u >= 0.82 && !ammo._pumpEjected) {
+        ammo._pumpEjected = true;
+        const hold = getWeaponHoldTransform(p);
+        const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
+        const breechDist = 8;
+        const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
+        const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+        spawnBulletCasing(bX, bY, hold.angle, 'SHOTGUN', charFacing, p.vx || 0, p.vy || 0);
+      }
 
       if (ammo.reloadTimer <= 0) {
         // Zakończenie przeładowania: doładuj magazynek do pełna, odejmując zużytą liczbę z reserveAmmo
@@ -715,12 +953,16 @@ export function updateWeaponState(p) {
         ammo.reserveAmmo -= toLoad;
         ammo.isReloading = false;
         ammo.reloadTimer = 0;
+        ammo._magEjected = false;
+        ammo._pumpEjected = false;
         p.isReloading = false;
         p.reloadTimer = 0;
+        p.reloadProgress = 0;
       }
     } else {
       p.isReloading = false;
       p.reloadTimer = 0;
+      p.reloadProgress = 0;
     }
   }
 }
@@ -1256,17 +1498,43 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, -1.8, 14, 3.5);
 
+    if (hold.isMagInGun !== false) {
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(6.5, 2.0);
+      ctx.quadraticCurveTo(8.5, 8.5, 13.5, 10.5);
+      ctx.lineTo(11.2, 11.5);
+      ctx.quadraticCurveTo(5.5, 9.5, 4.0, 2.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
+
+    if (hold.heldMag && hold.heldMag.type === 'AK47') {
+      ctx.save();
+      ctx.translate(hold.heldMag.x, hold.heldMag.y);
+      ctx.rotate(hold.heldMag.angle);
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(-1.0, -3.5);
+      ctx.quadraticCurveTo(1.0, 3.0, 6.0, 5.0);
+      ctx.lineTo(3.8, 6.0);
+      ctx.quadraticCurveTo(-1.8, 3.8, -3.5, -3.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const akBolt = hold.boltOffset || 0;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(4.0 + akBolt, -2.8, 3.2, 1.4);
     ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.moveTo(6.5, 2.0);
-    ctx.quadraticCurveTo(8.5, 8.5, 13.5, 10.5);
-    ctx.lineTo(11.2, 11.5);
-    ctx.quadraticCurveTo(5.5, 9.5, 4.0, 2.0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
+    ctx.fillRect(4.0 + akBolt, -2.4, 2.2, 1.0);
 
     ctx.fillStyle = '#78350f';
     ctx.fillRect(14, -2.2, 8.5, 3.8);
@@ -1319,6 +1587,18 @@ export function drawHeldWeapon(ctx, p) {
     ctx.lineWidth = 0.7;
     ctx.strokeRect(pumpX, -0.2, 7.5, 3.8);
 
+    if (hold.heldMag && hold.heldMag.type === 'SHOTGUN_SHELL') {
+      ctx.save();
+      ctx.translate(hold.heldMag.x, hold.heldMag.y);
+      ctx.rotate(hold.heldMag.angle);
+      // Czerwona łuska 12-gauge z mosiężną kryzą
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(-2.8, -1.2, 5.0, 2.4);
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(-4.0, -1.3, 1.4, 2.6);
+      ctx.restore();
+    }
+
     ctx.fillStyle = '#090d16';
     ctx.fillRect(26.5, -2.6, 1.5, 3.4);
 
@@ -1368,12 +1648,39 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#090d16';
     ctx.fillRect(4, -1.0, 4.5, 1.4);
 
-    // Masywny magazynek pudełkowy 5-nabojowy .50 BMG
+    // Dźwignia zamka czterotaktowego (Bolt handle) poruszająca się w cyklu przeładowania
+    const sniperBolt = hold.boltOffset || 0;
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(4.5 + sniperBolt, -2.2, 2.0, 2.8);
     ctx.fillStyle = '#090d16';
-    ctx.fillRect(6.5, 2.6, 6.0, 7.2);
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(6.5, 2.6, 6.0, 7.2);
+    ctx.beginPath();
+    ctx.arc(5.5 + sniperBolt, -2.6, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Masywny magazynek pudełkowy 5-nabojowy .50 BMG (znika po wypięciu)
+    if (hold.isMagInGun !== false) {
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(6.5, 2.6, 6.0, 7.2);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(6.5, 2.6, 6.0, 7.2);
+    }
+
+    // Magazynek pudełkowy trzymany w lewej ręce i wsuwany do gniazda
+    if (hold.heldMag && hold.heldMag.type === 'SNIPER') {
+      ctx.save();
+      ctx.translate(hold.heldMag.x, hold.heldMag.y);
+      ctx.rotate(hold.heldMag.angle);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-3.0, -3.6, 6.0, 7.2);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(-3.0, -3.6, 6.0, 7.2);
+      // Mosiężny wierzchołek pocisku .50 BMG wystający z warg magazynka
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(-1.5, -4.5, 3.0, 1.2);
+      ctx.restore();
+    }
 
     // Szyna montażowa Picatinny (Top rail)
     ctx.fillStyle = '#090d16';

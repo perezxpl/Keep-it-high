@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v52_crouch_walk_depth';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v53_weapon_reload_animation';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v52_crouch_walk_depth';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v53_weapon_reload_animation';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -2427,6 +2427,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   if (p.throwAnim && p.throwAnim.active) {
     armBlend = 0.85;
+  } else if (p.isReloading && !p.isDead) {
+    armBlend = 0.82;
   }
 
   // Kompensacja inercyjna układu odniesienia ciała w locie:

@@ -271,6 +271,48 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
 }
 
 /**
+ * Wyrzut pustego upuszczonego magazynka podczas przeładowania broni
+ * @param {number} x Pozycja X wyrzutu
+ * @param {number} y Pozycja Y wyrzutu
+ * @param {string} weaponType Identyfikator broni ('AK47' lub 'SNIPER')
+ * @param {number} facing Zwrot postaci
+ * @param {number} inheritVx Prędkość postaci X
+ * @param {number} inheritVy Prędkość postaci Y
+ */
+export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
+  const normType = String(weaponType || 'AK47').toUpperCase();
+  const isSniper = normType.includes('SNIPER');
+
+  const vx = inheritVx * 0.35 + (facing * (-24 - Math.random() * 25));
+  const vy = inheritVy * 0.35 + (20 + Math.random() * 25);
+  const vRot = (facing * (-3.2 - Math.random() * 4.5));
+
+  const casing = new BulletCasing({
+    x,
+    y,
+    vx,
+    vy,
+    angle: isSniper ? 0.15 : 0.45,
+    vRot,
+    width: isSniper ? 6 : 7,
+    height: isSniper ? 9 : 11,
+    color: '#334155',
+    maxBounces: 2,
+    life: 5.5,
+    alpha: 1.0,
+    type: isSniper ? 'SNIPER' : 'AK47',
+    groundTimer: 4.5
+  });
+  casing.isMagazine = true;
+
+  if (bulletCasings.length > 160) {
+    bulletCasings.shift();
+  }
+  bulletCasings.push(casing);
+  return casing;
+}
+
+/**
  * Aktualizacja wszystkich łusek w grze
  */
 export function updateBulletCasings(dt = 1 / 60, groundY = 500, obstaclesList = null) {
@@ -293,13 +335,36 @@ export function drawBulletCasing(ctx, casing) {
   ctx.translate(casing.x, casing.y);
   ctx.rotate(casing.angle);
   ctx.globalAlpha = Math.max(0, Math.min(1, casing.alpha));
-  ctx.fillStyle = casing.color;
-  ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width, casing.height);
 
-  // Shotgun: większy czerwony kartusz ze złotą dupką
-  if (casing.type === 'SHOTGUN' || casing.hasRim) {
-    ctx.fillStyle = casing.rimColor || '#EAB308';
-    ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width * 0.35, casing.height);
+  if (casing.isMagazine) {
+    if (casing.type === 'AK47') {
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(-1.5, -4.5);
+      ctx.quadraticCurveTo(1.5, 0, 4.5, 5.0);
+      ctx.lineTo(2.5, 6.2);
+      ctx.quadraticCurveTo(-0.8, 1.0, -3.5, -4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    } else if (casing.type === 'SNIPER') {
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-3, -4.5, 6, 9);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(-3, -4.5, 6, 9);
+    }
+  } else {
+    ctx.fillStyle = casing.color;
+    ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width, casing.height);
+
+    // Shotgun: większy czerwony kartusz ze złotą dupką
+    if (casing.type === 'SHOTGUN' || casing.hasRim) {
+      ctx.fillStyle = casing.rimColor || '#EAB308';
+      ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width * 0.35, casing.height);
+    }
   }
 
   ctx.restore();

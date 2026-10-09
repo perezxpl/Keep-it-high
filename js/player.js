@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v52_crouch_walk_depth';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v52_crouch_walk_depth';
+export * from './player/index.js?v=v53_weapon_reload_animation';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v53_weapon_reload_animation';
 
