@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v48_aim_raise_extended_arm';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v48_aim_raise_extended_arm';
+export * from './player/index.js?v=v49_jump_takeoff_physics';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v49_jump_takeoff_physics';
 

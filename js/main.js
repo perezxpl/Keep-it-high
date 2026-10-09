@@ -15,13 +15,13 @@ import {
   setCameraMouseScreenPos
 } from './world.js';
 import {
-  player, playerJump, playerSlide, startJumpCharge, executeReleaseJump,
+  player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v48_aim_raise_extended_arm';
+} from './player.js?v=v49_jump_takeoff_physics';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {
@@ -37,7 +37,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain } from './bot.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v48_aim_raise_extended_arm';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v49_jump_takeoff_physics';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -457,17 +457,10 @@ canvas.addEventListener('touchmove', (e) => {
           }
         } else {
           // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (axisY < -0.55)
-          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
-            const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-            player.vy = -jumpForce;
-            player.isJumping = true;
-            player.onGround = false;
-            player.airVx = player.vx;
+          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
+            initiatePlayerJump(player, spawnGrass);
             leftStick.jumpTriggered = true;
             leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
-            if (spawnGrass && player.groundY) {
-              spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
-            }
           }
         }
       } else if (leftStick.axisY > -0.20) {
@@ -2315,17 +2308,9 @@ window.addEventListener('keydown', (e) => {
       isJetpackActive = true;
       player.isJetpacking = true;
       jetpackAirborneSession = true;
-    } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
-      // NA ZIEMI: normalny skok z podłoża
-      const jumpForce = player.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
-      player.vy = -jumpForce;
-      player.isJumping = true;
-      player.onGround = false;
-      player.airVx = player.vx;
-      player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
-      if (spawnGrass && player.groundY) {
-        spawnGrass(player.x + player.w / 2, player.groundY, player.facing);
-      }
+    } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
+      // NA ZIEMI: normalny skok z podłoża (sprężyste wybicie z mikro-przysiadem)
+      initiatePlayerJump(player, spawnGrass);
     }
   }
   if (e.code === 'Space' && !keys.space) {

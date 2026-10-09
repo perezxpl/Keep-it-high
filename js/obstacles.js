@@ -1689,6 +1689,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   if (landedSurface !== null) {
+    const impactVy = p.vy;
     p.y = landedSurface - colH;
     p.vy = 0;
     p.isJumping = false;
@@ -1696,6 +1697,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.airVx = 0;
     p.currentGroundY = landedSurface;
     p.currentPlatform = landedPlatform;
+
+    if (impactVy > 1.8 && !(p.staggerTimer > 0) && !p.isSliding) {
+      p.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);
+      p.landingSquatTimer = Math.min(5, Math.max(2, Math.round(p.landingSquatIntensity * 5)));
+    }
 
     // Obsługa nachylenia (slopes physics): ślizganie i dynamiczny bieg po pochyłym terenie
     if (Math.abs(landedSlope) > 0.01) {

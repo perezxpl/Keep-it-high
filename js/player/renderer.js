@@ -12,7 +12,7 @@ import {
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v48_aim_raise_extended_arm';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v49_jump_takeoff_physics';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -1035,7 +1035,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     playerRef.kickState === 'SWING' ||
     playerRef.isSliding ||
     playerRef.kneeJuggleWeight > 0 ||
-    playerRef.isIntro
+    playerRef.isIntro ||
+    (playerRef.jumpTakeoffTimer > 0 && (playerRef.jumpLaunchSpeed || 0) > 0.8)
   ));
 
   const safeFootY = isSpecialKickOrProne ? targetFootY : Math.max(hipY + 6, targetFootY);
@@ -2030,37 +2031,130 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85;
     rawBackSwing = 0.60;
     rawBackElbow = 0.85;
-  } else if (p.isJumping || !isGrounded || Math.abs(p.vy) > 1.2 || p.vy > 100) {
-    const isFalling = (p.vy > 0.8 || p.vy > 100);
-    const isRising = p.vy < -0.5;
+  } else if (p.jumpSquatTimer > 0) {
+    // ---------------------------------------------------------------------
+    // FAZA 1 WYBICIA: MIKRO-PRZYSIAD / KOMPRESJA SPRĘŻYSTA (JUMP SQUAT)
+    // Gromadzenie energii kinetycznej w stawach kolanowych i skokowych (~50 ms)
+    // ---------------------------------------------------------------------
+    const isStandstill = (p.jumpLaunchSpeed !== undefined ? p.jumpLaunchSpeed : speed) <= 0.8;
+    const maxSquat = p.jumpSquatMax || 3;
+    const squatDepth = 1.0 - (p.jumpSquatTimer / maxSquat);
 
-    if (isRising) {
-      rawFootFrontTargetX = hipX + (12 * p.facing);
-      rawFootFrontTargetY = hipY + 24;
-      rawFootFrontAnkle = 0.20 * p.facing;
+    if (isStandstill) {
+      // Symetryczne wybicie obunóż z miejsca: stopy stabilnie na podłożu, kolana ugięte
+      rawFootFrontTargetX = hipX + (6.0 * p.facing);
+      rawFootFrontTargetY = plantFloorY;
+      rawFootFrontAnkle = (0.24 + squatDepth * 0.16) * p.facing;
 
-      rawFootBackTargetX = hipX - (8 * p.facing);
-      rawFootBackTargetY = hipY + 34;
-      rawFootBackAnkle = -0.15 * p.facing;
+      rawFootBackTargetX = hipX - (6.0 * p.facing);
+      rawFootBackTargetY = plantFloorY;
+      rawFootBackAnkle = (0.20 + squatDepth * 0.16) * p.facing;
 
-      rawFrontSwing = -0.35;
-      rawFrontElbow = 0.75;
-      rawBackSwing = 0.35;
+      // Ramiona cofają się w dół i tył, ładując wymach w górę
+      rawFrontSwing = 0.35 + squatDepth * 0.15;
+      rawFrontElbow = 0.65;
+      rawBackSwing = 0.35 + squatDepth * 0.15;
       rawBackElbow = 0.65;
     } else {
-      // Naturalna, lekko ugięta poza spadania / opadania z wysokości (nogi skierowane w dół, stopy pod biodrami)
-      rawFootFrontTargetX = hipX + (5 * p.facing);
-      rawFootFrontTargetY = hipY + 41;
-      rawFootFrontAnkle = 0.12 * p.facing;
+      // Wybicie w biegu: noga zakroczna przygotowuje się do pchnięcia, wykroczna przyjmuje obciążenie
+      rawFootBackTargetX = hipX - (12.0 * p.facing);
+      rawFootBackTargetY = plantFloorY;
+      rawFootBackAnkle = (0.32 + squatDepth * 0.18) * p.facing;
 
-      rawFootBackTargetX = hipX - (4 * p.facing);
-      rawFootBackTargetY = hipY + 43;
-      rawFootBackAnkle = 0.06 * p.facing;
+      rawFootFrontTargetX = hipX + (10.0 * p.facing);
+      rawFootFrontTargetY = plantFloorY;
+      rawFootFrontAnkle = 0.18 * p.facing;
 
-      rawFrontSwing = -0.20;
-      rawFrontElbow = 0.60;
-      rawBackSwing = 0.20;
-      rawBackElbow = 0.50;
+      rawFrontSwing = 0.45;
+      rawFrontElbow = 0.70;
+      rawBackSwing = -0.45;
+      rawBackElbow = 0.70;
+    }
+  } else if (p.isJumping || !isGrounded || Math.abs(p.vy) > 1.2 || p.vy > 100) {
+    if (p.jumpTakeoffTimer > 0) {
+      // -------------------------------------------------------------------
+      // FAZA 2 WYBICIA: EKSPLOZJA I PCHNIĘCIE TŁOKOWE NÓG (PISTON PUSH-OFF)
+      // Ciało i miednica wystrzeliwują w górę, a stopy napierają na podłoże
+      // aż do osiągnięcia maksymalnego zasięgu kończyn (~47 px).
+      // -------------------------------------------------------------------
+      const maxLegReach = (p.thighLen || 25) + (p.shinLen || 23) - 1.0;
+      const launchFloor = (p.jumpLaunchFloorY !== undefined && p.jumpLaunchFloorY > 0)
+        ? (p.jumpLaunchFloorY - 3.5)
+        : plantFloorY;
+      const contactY = Math.min(launchFloor, hipY + maxLegReach);
+      const isExtended = (hipY + maxLegReach) <= launchFloor;
+      const isStandstill = (p.jumpLaunchSpeed !== undefined ? p.jumpLaunchSpeed : speed) <= 0.8;
+
+      if (isStandstill) {
+        // Symetryczne pchnięcie obunóż: obie nogi prostują się w dół ku ziemi,
+        // stopy stają na palcach (wysokie zgięcie podeszwowe / plantar flexion)
+        rawFootFrontTargetX = hipX + (4.0 * p.facing);
+        rawFootFrontTargetY = contactY;
+        rawFootFrontAnkle = (isExtended ? 0.35 : 0.52) * p.facing;
+
+        rawFootBackTargetX = hipX - (4.0 * p.facing);
+        rawFootBackTargetY = contactY;
+        rawFootBackAnkle = (isExtended ? 0.30 : 0.48) * p.facing;
+
+        // Wyrzut ramion w górę dla asysty pionowej
+        rawFrontSwing = -0.52;
+        rawFrontElbow = 0.70;
+        rawBackSwing = -0.52;
+        rawBackElbow = 0.70;
+      } else {
+        // Atletyczne wybicie w biegu (Hurdle Drive):
+        // Noga zakroczna to tłok wybijający, zapierający się o podłoże z tyłu:
+        rawFootBackTargetX = hipX - (14.0 * p.facing);
+        rawFootBackTargetY = contactY;
+        rawFootBackAnkle = -0.46 * p.facing; // Stopa odpycha się od murawy w tył-dół
+
+        // Noga wykroczna dynamicznie podrywa kolano w przód i górę:
+        const maxTakeoff = p.jumpTakeoffMax || 5;
+        const uTakeoff = 1.0 - (p.jumpTakeoffTimer / maxTakeoff);
+        const leadProg = Math.sin(uTakeoff * Math.PI * 0.5);
+
+        rawFootFrontTargetX = hipX + (12.0 + leadProg * 8.0) * p.facing;
+        rawFootFrontTargetY = hipY + lerp(26.0, 13.0, leadProg);
+        rawFootFrontAnkle = 0.35 * p.facing;
+
+        // Dynamiczny kontr-wymach ramion sprintera
+        rawFrontSwing = -0.68;
+        rawFrontElbow = 0.80;
+        rawBackSwing = 0.55;
+        rawBackElbow = 0.60;
+      }
+    } else {
+      const isFalling = (p.vy > 0.8 || p.vy > 100);
+      const isRising = p.vy < -0.5;
+
+      if (isRising) {
+        rawFootFrontTargetX = hipX + (12 * p.facing);
+        rawFootFrontTargetY = hipY + 24;
+        rawFootFrontAnkle = 0.20 * p.facing;
+
+        rawFootBackTargetX = hipX - (8 * p.facing);
+        rawFootBackTargetY = hipY + 34;
+        rawFootBackAnkle = -0.15 * p.facing;
+
+        rawFrontSwing = -0.35;
+        rawFrontElbow = 0.75;
+        rawBackSwing = 0.35;
+        rawBackElbow = 0.65;
+      } else {
+        // Naturalna, lekko ugięta poza spadania / opadania z wysokości (nogi skierowane w dół, stopy pod biodrami)
+        rawFootFrontTargetX = hipX + (5 * p.facing);
+        rawFootFrontTargetY = hipY + 41;
+        rawFootFrontAnkle = 0.12 * p.facing;
+
+        rawFootBackTargetX = hipX - (4 * p.facing);
+        rawFootBackTargetY = hipY + 43;
+        rawFootBackAnkle = 0.06 * p.facing;
+
+        rawFrontSwing = -0.20;
+        rawFrontElbow = 0.60;
+        rawBackSwing = 0.20;
+        rawBackElbow = 0.50;
+      }
     }
   } else if (p.gaitMode === 'CROUCH') {
     const braceW = (p.shootPoseWeight || 0);
@@ -2306,6 +2400,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
+  if (!p.pose) {
+    p.pose = { initialized: false };
+  }
   const pose = p.pose;
   if (!pose.initialized || Math.abs(rawFootFrontTargetX - pose.footFrontX) > 150) {
     pose.footFrontX = rawFootFrontTargetX;
@@ -2332,7 +2429,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   let footBlend = p.isDead ? 0.90 : 0.32;
   let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
 
-  if (p.kickMode === 'BACKFLIP') {
+  if (p.jumpTakeoffTimer > 0) {
+    footBlend = 0.75;
+    armBlend = 0.55;
+  } else if (p.jumpSquatTimer > 0) {
+    footBlend = 0.80;
+    armBlend = 0.50;
+  } else if (p.kickMode === 'BACKFLIP') {
     footBlend = 0.85;
     armBlend = 0.65;
   } else if (p.kickMode === 'BACKFLIP_LAND') {
