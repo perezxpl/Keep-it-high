@@ -569,11 +569,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   ctx.restore();
 
-  // BUT PIŁKARSKI
-  const shinDx = (ik.footX - ik.kneeX) * facing;
-  const shinDy = ik.footY - ik.kneeY;
-  const localShinAng = Math.atan2(shinDy, shinDx);
-
+  // BUT BOJOWY / STOPA - BIOMECHANICZNA ARTYKULACJA STAWU SKOKOWEGO I PALCÓW
   const isSpecialKick = playerRef && (playerRef.kickState === 'SWING' || playerRef.isCharging || playerRef.kickMode === 'BACKFLIP');
 
   let targetEffAnkle = ankleRot;
@@ -586,13 +582,16 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     targetEffAnkle = ankleRot;
     targetFlex = 0;
   } else {
-    const shinPerp = localShinAng - Math.PI / 2;
-    const heelToBall = shinPerp + (ankleRot * facing * 0.28);
-    targetEffAnkle = heelToBall * facing;
+    // ankleRot jest już wyznaczony w układzie świata z trajektorii biomechanicznej (traj.ankle * facing).
+    targetEffAnkle = ankleRot;
 
-    if (heelToBall > 0.02) {
-      const t = Math.min(1.0, (heelToBall - 0.02) / 0.85);
-      targetFlex = (0.5 - 0.5 * Math.cos(t * Math.PI)) * 1.25;
+    // Kąt uniesienia pięty względem kierunku zwrotu:
+    const localAnkle = ankleRot * facing;
+    if (localAnkle > 0.04) {
+      // Naturalne ugięcie noska buta (toe-break flex) na podłożu podczas uniesienia pięty i wybicia:
+      targetFlex = Math.min(1.0, (localAnkle - 0.04) * 1.35);
+    } else {
+      targetFlex = 0;
     }
   }
 
@@ -603,14 +602,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (pose[flexProp] === undefined) pose[flexProp] = targetFlex;
   if (pose[effProp] === undefined) pose[effProp] = targetEffAnkle;
 
-  let flexSmooth = 0.24;
-  let ankleSmooth = 0.28;
-  if (playerRef && playerRef.isDead) {
-    flexSmooth = 0.85;
-    ankleSmooth = 0.85;
-  } else if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
-    flexSmooth = 0.45;
-    ankleSmooth = 0.55;
+  const curSpd = playerRef ? Math.abs(playerRef.vx || 0) : 0;
+  let flexSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.65 : 0.35);
+  let ankleSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.75 : 0.40);
+  if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
+    flexSmooth = 0.50;
+    ankleSmooth = 0.60;
   }
 
   pose[flexProp] += (targetFlex - pose[flexProp]) * flexSmooth;
@@ -1613,7 +1610,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
-  let footBlend = p.isDead ? 0.90 : 0.32;
+  let footBlend = p.isDead ? 0.90 : (speed > 0.1 ? Math.min(0.85, 0.45 + speed * 0.08) : 0.35);
   let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
 
   if (p.kickMode === 'BACKFLIP') {

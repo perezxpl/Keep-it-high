@@ -47,32 +47,33 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1, allow
     d = 0.001;
   }
 
-  const maxReach = (l1 + l2) * 0.998;
-  if (d >= maxReach) {
-    let ang = Math.atan2(dy, dx);
-    if (!allowRaised && bendDir === -1) {
-      // Ograniczenie kąta wyprostu nóg w standardowym chodzie
-      if (ang < 0.08 && ang > -Math.PI / 2) ang = 0.08;
-      else if (ang <= -Math.PI / 2 && ang > -Math.PI) ang = Math.PI - 0.08;
-    }
-    const reach = Math.min(d, maxReach);
-    return {
-      kneeX: hx + l1 * Math.cos(ang),
-      kneeY: hy + l1 * Math.sin(ang),
-      footX: hx + reach * Math.cos(ang),
-      footY: hy + reach * Math.sin(ang)
-    };
-  }
+  const maxTotalReach = l1 + l2;
+  const maxReach = maxTotalReach * 0.998;
   const minReach = Math.abs(l1 - l2) + 2;
-  if (d < minReach) {
-    const ang = Math.atan2(dy, dx);
-    tx = hx + Math.cos(ang) * minReach;
-    ty = hy + Math.sin(ang) * minReach;
-    d = minReach;
+
+  // SOFT IK: Płynne tłumienie wyprostu kolana w strefie granicznej (zapobiega knee snapping / popping)
+  // Gdy dystans zbliża się do pełnego wyprostu, odległość efektywna asymptotycznie zbiega do maxReach,
+  // zachowując subtelne ugięcie stawu (~3-5 stopni) i eliminując nagłe skoki pochodnej kąta.
+  const softZone = 2.4;
+  const softStart = maxReach - softZone;
+  let effD = d;
+  let effFootX = tx;
+  let effFootY = ty;
+
+  if (d > softStart) {
+    effD = maxReach - softZone * Math.exp(-(d - softStart) / softZone);
+    const scale = effD / d;
+    effFootX = hx + dx * scale;
+    effFootY = hy + dy * scale;
+  } else if (d < minReach) {
+    effD = minReach;
+    const scale = effD / d;
+    effFootX = hx + dx * scale;
+    effFootY = hy + dy * scale;
   }
 
-  const baseAngle = Math.atan2(ty - hy, tx - hx);
-  const cosAlpha = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
+  const baseAngle = Math.atan2(effFootY - hy, effFootX - hx);
+  const cosAlpha = Math.max(-0.9999, Math.min(0.9999, (l1 * l1 + effD * effD - l2 * l2) / (2 * l1 * effD)));
   const alpha = Math.acos(cosAlpha);
 
   let thighAngle = baseAngle + bendDir * (facing * alpha);
@@ -86,7 +87,7 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, facing, bendDir = -1, allow
   const kneeX = hx + l1 * Math.cos(thighAngle);
   const kneeY = hy + l1 * Math.sin(thighAngle);
 
-  return { kneeX, kneeY, footX: tx, footY: ty };
+  return { kneeX, kneeY, footX: effFootX, footY: effFootY };
 }
 
 /**
