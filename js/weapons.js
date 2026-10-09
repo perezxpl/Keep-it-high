@@ -273,7 +273,12 @@ export function getWeaponHoldTransform(p) {
   let loosePivotX = hipX + (isSniper ? 8 : (isShotgun ? 5 : 7)) * charFacing;
   let loosePivotY = hipY - (isSniper ? 14 : (isShotgun ? 10 : 13)) + headBobOffset + crouchDropY;
 
-  const directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+  let directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+  if (directAngle < -Math.PI / 2) {
+    directAngle = Math.max(-1.66, directAngle);
+  } else if (directAngle > Math.PI / 2 + 0.35) {
+    directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
+  }
   const idleDroop = isSniper ? 0.20 : (isShotgun ? 0.40 : 0.26);
   let looseAimAngle = directAngle + idleDroop;
 
@@ -325,7 +330,13 @@ export function getWeaponHoldTransform(p) {
   const stockLen = isSniper ? 14.5 : (isShotgun ? 13.0 : 12.5);
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
-  const shoulderAimAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing) - muzzleRise;
+  let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
+  if (rawShoulderAngle < -Math.PI / 2) {
+    rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
+  } else if (rawShoulderAngle > Math.PI / 2 + 0.35) {
+    rawShoulderAngle = Math.min(Math.PI / 2 + 0.35, rawShoulderAngle);
+  }
+  const shoulderAimAngle = rawShoulderAngle - muzzleRise;
 
   const shoulderPivotX = shoulderPocketX + Math.cos(shoulderAimAngle) * stockLen * charFacing;
   const shoulderPivotY = shoulderPocketY + Math.sin(shoulderAimAngle) * stockLen;
@@ -919,24 +930,25 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
         closestChar.deathHitPoint = { x: hitPtX, y: hitPtY };
 
-        // Mnożnik odepchnięcia
-        const pushMult = b.ragdollPushMult || (isShotgun ? 2.20 : 0.85);
-        const liftBonus = isShotgun ? -2.6 : 0;
+        // Realistyczny impuls kinetyczny trafienia – bez nienaturalnego katapultowania w górę
+        const pushMult = Math.min(2.0, b.ragdollPushMult || (isShotgun ? 1.8 : 0.85));
+        const clampedVx = Math.max(-13, Math.min(13, b.vx * 0.35 * pushMult));
+        const liftBonus = isShotgun ? -0.8 : 0;
 
         if (isLegshot) {
           closestChar.deathImpulse = {
-            vx: b.vx * 0.44 * pushMult + (Math.random() - 0.5) * 1.5,
-            vy: -1.2 + liftBonus * 0.5
+            vx: clampedVx + (Math.random() - 0.5) * 1.0,
+            vy: -0.6 + liftBonus * 0.5
           };
         } else if (isHeadshot) {
           closestChar.deathImpulse = {
-            vx: b.vx * 0.54 * pushMult + (Math.random() - 0.5) * 1.5,
-            vy: -3.0 + liftBonus
+            vx: clampedVx * 1.05 + (Math.random() - 0.5) * 1.0,
+            vy: -1.2 + liftBonus
           };
         } else {
           closestChar.deathImpulse = {
-            vx: b.vx * 0.40 * pushMult + (Math.random() - 0.5) * 1.5,
-            vy: -2.0 + liftBonus
+            vx: clampedVx + (Math.random() - 0.5) * 1.0,
+            vy: -0.8 + liftBonus
           };
         }
 

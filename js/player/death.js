@@ -101,7 +101,7 @@ export function initPlayerRagdoll(p, groundY) {
   // Zachowanie pędu postaci + punktowy impuls od kuli/wybuchu
   const baseVx = p.vx || 0;
   const baseVy = p.vy || 0;
-  const imp = p.deathImpulse || { vx: -facing * 3.5, vy: -2.0 };
+  const imp = p.deathImpulse || { vx: -facing * 3.5, vy: -1.2 };
   const hitY = p.deathHitPoint?.y ?? (hipY - 10);
 
   // Podział energii kinetycznej w zależności od miejsca trafienia
@@ -111,13 +111,18 @@ export function initPlayerRagdoll(p, groundY) {
   const pelvisImpX = imp.vx * (isUpper ? 0.45 : 1.15);
   const pelvisImpY = imp.vy * (isUpper ? 0.45 : 1.15);
 
+  // Ograniczenie początkowej prędkości pionowej – zwłoki nigdy nie powinny być katapultowane w niebo
+  const initChestVy = Math.max(-3.5, Math.min(8.0, baseVy * 0.4 + chestImpY));
+  const initPelvisVy = Math.max(-3.0, Math.min(8.0, baseVy * 0.4 + pelvisImpY));
+  const initLimbVy = Math.max(-2.5, Math.min(6.0, baseVy * 0.3 + imp.vy * 0.3));
+
   p.ragdoll = {
-    pelvis:    { x: hipX,   y: hipY,   oldX: hipX - (baseVx + pelvisImpX), oldY: hipY - (baseVy + pelvisImpY), r: 8 },
-    chest:     { x: chestX, y: chestY, oldX: chestX - (baseVx + chestImpX), oldY: chestY - (baseVy + chestImpY), r: 8 },
-    footFront: { x: fFX,    y: fFY,    oldX: fFX - (baseVx * 0.8 + imp.vx * 0.3), oldY: fFY - (baseVy * 0.8 + imp.vy * 0.3), r: 5 },
-    footBack:  { x: fBX,    y: fBY,    oldX: fBX - (baseVx * 0.8 + imp.vx * 0.3), oldY: fBY - (baseVy * 0.8 + imp.vy * 0.3), r: 5 },
-    handFront: { x: hFX,    y: hFY,    oldX: hFX - (baseVx * 0.9 + imp.vx * 0.6), oldY: hFY - (baseVy * 0.9 + imp.vy * 0.6), r: 4 },
-    handBack:  { x: hBX,    y: hBY,    oldX: hBX - (baseVx * 0.9 + imp.vx * 0.6), oldY: hBY - (baseVy * 0.9 + imp.vy * 0.6), r: 4 },
+    pelvis:    { x: hipX,   y: hipY,   oldX: hipX - (baseVx + pelvisImpX), oldY: hipY - initPelvisVy, r: 8 },
+    chest:     { x: chestX, y: chestY, oldX: chestX - (baseVx + chestImpX), oldY: chestY - initChestVy, r: 8 },
+    footFront: { x: fFX,    y: fFY,    oldX: fFX - (baseVx * 0.8 + imp.vx * 0.3), oldY: fFY - initLimbVy, r: 5 },
+    footBack:  { x: fBX,    y: fBY,    oldX: fBX - (baseVx * 0.8 + imp.vx * 0.3), oldY: fBY - initLimbVy, r: 5 },
+    handFront: { x: hFX,    y: hFY,    oldX: hFX - (baseVx * 0.9 + imp.vx * 0.6), oldY: hFY - initLimbVy, r: 4 },
+    handBack:  { x: hBX,    y: hBY,    oldX: hBX - (baseVx * 0.9 + imp.vx * 0.6), oldY: hBY - initLimbVy, r: 4 },
 
     torsoLen: 22,
     legMax: (p.thighLen + p.shinLen) * 0.96,
@@ -138,8 +143,11 @@ export function updatePlayerRagdoll(p, groundY) {
 
   // 1. Integracja pozycji z tłumieniem i grawitacją
   for (const n of nodes) {
-    const vx = (n.x - n.oldX) * 0.985;
-    const vy = (n.y - n.oldY) * 0.985 + 0.38;
+    let vx = (n.x - n.oldX) * 0.985;
+    let vy = (n.y - n.oldY) * 0.985 + 0.38;
+
+    // Zabezpieczenie przed wystrzałami w górę (Verlet velocity blowout cap)
+    if (vy < -5.5) vy = -5.5;
 
     n.oldX = n.x;
     n.oldY = n.y;
@@ -156,10 +164,16 @@ export function updatePlayerRagdoll(p, groundY) {
 
       const curVy = n.y - n.oldY;
       if (curVy > 1.2) {
-        n.oldY = n.y + curVy * 0.20; // Sprężysty odskok
+        n.oldY = n.y + Math.min(curVy * 0.15, 1.2); // Tłumiony, realistyczny odskok
         if (n === rag.chest || n === rag.pelvis) {
           triggerScreenShake(1.5);
-          spawnBloodDecal(n.x, floorY);
+          if (floorY < groundY + 500) {
+            spawnBloodDecal(n.x, floorY);
+          }
+        }
+      } else {
+        if (n.oldY > n.y) {
+          n.oldY = n.y; // Spoczynek – zapobiegaj fałszywemu pędowi ku górze
         }
       }
     }
@@ -183,8 +197,11 @@ export function updatePlayerRagdoll(p, groundY) {
     // Zabezpieczenie przed zapadaniem się stawów
     for (const n of nodes) {
       const fl = getSurfaceUnderPoint(n.x, n.y, groundY);
-      if (n.y > fl - n.r) {
-        n.y = fl - n.r;
+      const minY = fl - n.r;
+      if (n.y > minY) {
+        const delta = n.y - minY;
+        n.y = minY;
+        n.oldY -= delta; // Przesuń oldY o tę samą deltę – zapobiega wstrzykiwaniu energii kinetycznej w górę
       }
     }
   }

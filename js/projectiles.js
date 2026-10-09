@@ -401,7 +401,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         ch.respawnTimer = 180;
         ch.corpseFloorY = groundY;
         ch.isGibbed = true;
-        ch.deathImpulse = { vx: normX * impulse * 1.2, vy: normY * impulse * 1.2 - 2.5 };
+        const expImpX = Math.max(-18, Math.min(18, normX * impulse * 1.0));
+        const expImpY = Math.max(-6.5, Math.min(10, normY * impulse * 0.75 - 1.5));
+        ch.deathImpulse = { vx: expImpX, vy: expImpY };
         triggerHitstop(8);
       }
     }

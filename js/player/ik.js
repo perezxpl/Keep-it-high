@@ -97,7 +97,9 @@ export function getArmAnglesForTarget(tx, ty, upperLen, foreLen, bendDir = 1) {
   const ik = solve2BoneIK(0, 0, tx, ty, upperLen, foreLen, 1, bendDir);
   const swing = Math.atan2(ik.kneeX, ik.kneeY);
   const fore = Math.atan2(tx - ik.kneeX, ty - ik.kneeY);
-  const elbow = fore - swing;
+  let elbow = (fore - swing) % (Math.PI * 2);
+  if (elbow > Math.PI) elbow -= Math.PI * 2;
+  if (elbow <= -Math.PI) elbow += Math.PI * 2;
   return { swing, elbow };
 }
 

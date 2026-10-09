@@ -1489,10 +1489,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, p.upperArmLen, p.forearmLen, 1);
 
     if (hWeight > 0.01) {
-      rawFrontSwing = lerp(armRight.swing, rawFrontSwing, hWeight);
-      rawFrontElbow = lerp(armRight.elbow, rawFrontElbow, hWeight);
-      rawBackSwing = lerp(armLeft.swing, rawBackSwing, hWeight);
-      rawBackElbow = lerp(armLeft.elbow, rawBackElbow, hWeight);
+      rawFrontSwing = lerpAngle(armRight.swing, rawFrontSwing, hWeight);
+      rawFrontElbow = lerpAngle(armRight.elbow, rawFrontElbow, hWeight);
+      rawBackSwing = lerpAngle(armLeft.swing, rawBackSwing, hWeight);
+      rawBackElbow = lerpAngle(armLeft.elbow, rawBackElbow, hWeight);
     } else {
       rawFrontSwing = armRight.swing;
       rawFrontElbow = armRight.elbow;
@@ -1663,10 +1663,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   pose.footBackY += (rawFootBackTargetY - pose.footBackY) * footBlend;
   pose.footBackAnkle = lerpAngle(pose.footBackAnkle, rawFootBackAnkle, footBlend);
 
-  pose.armFrontSwing += (rawFrontSwing - pose.armFrontSwing) * armBlend;
-  pose.armFrontElbow += (rawFrontElbow - pose.armFrontElbow) * armBlend;
-  pose.armBackSwing += (rawBackSwing - pose.armBackSwing) * armBlend;
-  pose.armBackElbow += (rawBackElbow - pose.armBackElbow) * armBlend;
+  pose.armFrontSwing = lerpAngle(pose.armFrontSwing, rawFrontSwing, armBlend);
+  pose.armFrontElbow = lerpAngle(pose.armFrontElbow, rawFrontElbow, armBlend);
+  pose.armBackSwing = lerpAngle(pose.armBackSwing, rawBackSwing, armBlend);
+  pose.armBackElbow = lerpAngle(pose.armBackElbow, rawBackElbow, armBlend);
 
   if (p.isDead) {
     pose.torsoTilt = p.torsoTilt;

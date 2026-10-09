@@ -487,14 +487,80 @@ export function spawnBloodFountain(x, y, facing, count = 4) {
   }
 }
 
+export function getSurfaceYForPlatform(plat, px, groundY = GROUND_Y) {
+  if (!plat) return groundY;
+  if (plat.surfacePoints && Array.isArray(plat.surfacePoints) && plat.surfacePoints.length >= 2) {
+    let bestY = null;
+    for (let i = 0; i < plat.surfacePoints.length - 1; i++) {
+      const p1 = plat.surfacePoints[i];
+      const p2 = plat.surfacePoints[i + 1];
+      const minX = Math.min(p1.x, p2.x);
+      const maxX = Math.max(p1.x, p2.x);
+      if (px >= minX - 4 && px <= maxX + 4) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        let yAtPx = Math.abs(dx) < 0.001 ? Math.min(p1.y, p2.y) : (p1.y + Math.max(0, Math.min(1, (px - p1.x) / dx)) * dy);
+        if (bestY === null || yAtPx < bestY) bestY = yAtPx;
+      }
+    }
+    if (bestY !== null) return bestY;
+  }
+  return plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
+}
+
+export function getDecalSupportingSurfaceY(x, y, maxDistance = 16) {
+  // 1. Grunt zerowy (GROUND_Y)
+  if (Math.abs(y - GROUND_Y) <= maxDistance && isGroundAt(x)) {
+    return GROUND_Y;
+  }
+
+  // 2. Platformy
+  const plats = _worldPlatforms;
+  if (Array.isArray(plats)) {
+    for (const plat of plats) {
+      if (!plat || plat.solid === false || plat.isWall) continue;
+      const minX = plat.x !== undefined ? plat.x : 0;
+      const maxX = minX + (plat.w || 0);
+      if (x >= minX - 6 && x <= maxX + 6) {
+        const topY = getSurfaceYForPlatform(plat, x, GROUND_Y);
+        if (!isNaN(topY) && Math.abs(y - topY) <= maxDistance) {
+          return topY;
+        }
+      }
+    }
+  }
+
+  // 3. Przeszkody
+  const obsList = _worldCustomObstacles;
+  if (Array.isArray(obsList)) {
+    for (const obs of obsList) {
+      if (!obs || obs.holeCx !== undefined || obs.type === 'goal') continue;
+      const minX = obs.x !== undefined ? obs.x : 0;
+      const maxX = minX + (obs.w || 0);
+      if (x >= minX - 6 && x <= maxX + 6) {
+        const topY = obs.y !== undefined ? obs.y : (GROUND_Y - (obs.relY || 0));
+        if (!isNaN(topY) && Math.abs(y - topY) <= maxDistance) {
+          return topY;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export function addBloodDecal(x, y) {
   if (!CONFIG.GORE_ENABLED) return;
+  // Walidacja: plama krwi MUSI leżeć na stałym podłożu/platformie, nigdy nie lewituje w powietrzu
+  const surfaceY = getDecalSupportingSurfaceY(x, y, 18);
+  if (surfaceY === null) return;
+
   if (bloodDecals.length >= (CONFIG.MAX_BLOOD_DECALS || 120)) {
     bloodDecals.shift();
   }
   bloodDecals.push({
     x: x + (Math.random() * 4 - 2),
-    y,
+    y: surfaceY,
     w: Math.random() * 9 + 5,
     h: Math.random() * 3 + 1.8,
     baseAlpha: Math.random() * 0.35 + 0.55,
@@ -582,27 +648,48 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     let hitFloor = false;
     let floorY = groundY;
 
-    for (const plat of plats) {
-      const topY = groundY - plat.relY;
-      if (p.x >= plat.x && p.x <= plat.x + plat.w && p.y >= topY && p.y <= topY + 12 && p.vy > 0) {
-        hitFloor = true;
-        floorY = topY;
-        break;
-      }
-    }
-    if (!hitFloor) {
-      for (const obs of obsList) {
-        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-        if (p.x >= obs.x && p.x <= obs.x + obs.w && p.y >= topY && p.y <= topY + 12 && p.vy > 0) {
-          hitFloor = true;
-          floorY = topY;
-          break;
+    if (Array.isArray(plats)) {
+      for (const plat of plats) {
+        if (!plat || plat.solid === false || plat.isWall) continue;
+        const minX = plat.x !== undefined ? plat.x : 0;
+        const maxX = minX + (plat.w || 0);
+        if (p.x >= minX - 2 && p.x <= maxX + 2) {
+          const topY = getSurfaceYForPlatform(plat, p.x, groundY);
+          if (!isNaN(topY) && p.y >= topY && p.y <= topY + 14 && p.vy > 0) {
+            hitFloor = true;
+            floorY = topY;
+            break;
+          }
         }
       }
     }
 
-    if (p.y >= groundY || hitFloor) {
-      addBloodDecal(p.x, hitFloor ? floorY : groundY);
+    if (!hitFloor && Array.isArray(obsList)) {
+      for (const obs of obsList) {
+        if (!obs || obs.holeCx !== undefined || obs.type === 'goal') continue;
+        const minX = obs.x !== undefined ? obs.x : 0;
+        const maxX = minX + (obs.w || 0);
+        if (p.x >= minX - 2 && p.x <= maxX + 2) {
+          const topY = obs.y !== undefined ? obs.y : (groundY - (obs.relY || 0));
+          if (!isNaN(topY) && p.y >= topY && p.y <= topY + 14 && p.vy > 0) {
+            hitFloor = true;
+            floorY = topY;
+            break;
+          }
+        }
+      }
+    }
+
+    const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(p.x) : true;
+    if (hitFloor) {
+      addBloodDecal(p.x, floorY);
+      bloodParticles.splice(i, 1);
+      continue;
+    } else if (hasGround && p.y >= groundY) {
+      addBloodDecal(p.x, groundY);
+      bloodParticles.splice(i, 1);
+      continue;
+    } else if (!hasGround && p.y > groundY + 500) {
       bloodParticles.splice(i, 1);
       continue;
     }
@@ -628,18 +715,24 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       }
     }
 
-    let floorY = groundY - hg.radius;
+    const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(hg.x) : true;
+    let floorY = hasGround ? (groundY - hg.radius) : (groundY + 600);
     let landed = false;
 
-    if (hg.y >= floorY) {
+    if (hasGround && hg.y >= floorY) {
       landed = true;
-    } else {
+    } else if (Array.isArray(plats)) {
       for (const plat of plats) {
-        const topY = groundY - plat.relY;
-        if (hg.x >= plat.x && hg.x <= plat.x + plat.w && hg.y >= topY - hg.radius && hg.y <= topY + 8 && hg.vy > 0) {
-          floorY = topY - hg.radius;
-          landed = true;
-          break;
+        if (!plat || plat.solid === false || plat.isWall) continue;
+        const minX = plat.x !== undefined ? plat.x : 0;
+        const maxX = minX + (plat.w || 0);
+        if (hg.x >= minX && hg.x <= maxX) {
+          const topY = getSurfaceYForPlatform(plat, hg.x, groundY);
+          if (!isNaN(topY) && hg.y >= topY - hg.radius && hg.y <= topY + 8 && hg.vy > 0) {
+            floorY = topY - hg.radius;
+            landed = true;
+            break;
+          }
         }
       }
     }
@@ -659,7 +752,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       }
     }
 
-    if (hg.life <= 0) {
+    if (hg.life <= 0 || (!hasGround && hg.y > groundY + 500)) {
       headGibs.splice(i, 1);
     }
   }
@@ -673,7 +766,8 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     bg.vx *= 0.98;
     bg.life--;
 
-    if (bg.y >= groundY - 4) {
+    const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(bg.x) : true;
+    if (hasGround && bg.y >= groundY - 4) {
       bg.y = groundY - 4;
       if (Math.abs(bg.vy) > 1.5 && bg.groundBounces < 3) {
         bg.vy = -bg.vy * 0.42;
@@ -687,7 +781,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       }
     }
 
-    if (bg.life <= 0) {
+    if (bg.life <= 0 || (!hasGround && bg.y > groundY + 500)) {
       bodyGibs.splice(i, 1);
     }
   }
@@ -701,18 +795,24 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     dw.vx *= 0.98;
     dw.life--;
 
-    let floorY = groundY - 4;
+    const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(dw.x) : true;
+    let floorY = hasGround ? (groundY - 4) : (groundY + 600);
     let landed = false;
 
-    if (dw.y >= floorY) {
+    if (hasGround && dw.y >= floorY) {
       landed = true;
-    } else {
+    } else if (Array.isArray(plats)) {
       for (const plat of plats) {
-        const topY = groundY - plat.relY;
-        if (dw.x >= plat.x && dw.x <= plat.x + plat.w && dw.y >= topY - 4 && dw.y <= topY + 8 && dw.vy > 0) {
-          floorY = topY - 4;
-          landed = true;
-          break;
+        if (!plat || plat.solid === false || plat.isWall) continue;
+        const minX = plat.x !== undefined ? plat.x : 0;
+        const maxX = minX + (plat.w || 0);
+        if (dw.x >= minX && dw.x <= maxX) {
+          const topY = getSurfaceYForPlatform(plat, dw.x, groundY);
+          if (!isNaN(topY) && dw.y >= topY - 4 && dw.y <= topY + 8 && dw.vy > 0) {
+            floorY = topY - 4;
+            landed = true;
+            break;
+          }
         }
       }
     }
@@ -731,7 +831,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       }
     }
 
-    if (dw.life <= 0) {
+    if (dw.life <= 0 || (!hasGround && dw.y > groundY + 500)) {
       droppedWeapons.splice(i, 1);
     }
   }
@@ -750,7 +850,8 @@ export function updateSeveredHeads(chars, groundY, platforms = null) {
       head.x += head.vx;
       head.y += head.vy;
       head.rotation += head.rotSpeed;
-      if (head.y >= groundY - 6) {
+      const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(head.x) : true;
+      if (hasGround && head.y >= groundY - 6) {
         head.y = groundY - 6;
         head.vy = -head.vy * 0.32;
         head.vx *= 0.78;
@@ -758,15 +859,23 @@ export function updateSeveredHeads(chars, groundY, platforms = null) {
         if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
         addBloodDecal(head.x, groundY);
       }
-      for (const plat of plats) {
-        const topY = groundY - plat.relY;
-        if (head.x >= plat.x && head.x <= plat.x + plat.w && head.y >= topY - 6 && head.y <= topY + 4 && head.vy > 0) {
-          head.y = topY - 6;
-          head.vy = -head.vy * 0.32;
-          head.vx *= 0.78;
-          head.rotSpeed *= 0.65;
-          if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
-          break;
+      if (Array.isArray(plats)) {
+        for (const plat of plats) {
+          if (!plat || plat.solid === false || plat.isWall) continue;
+          const minX = plat.x !== undefined ? plat.x : 0;
+          const maxX = minX + (plat.w || 0);
+          if (head.x >= minX && head.x <= maxX) {
+            const topY = getSurfaceYForPlatform(plat, head.x, groundY);
+            if (!isNaN(topY) && head.y >= topY - 6 && head.y <= topY + 4 && head.vy > 0) {
+              head.y = topY - 6;
+              head.vy = -head.vy * 0.32;
+              head.vx *= 0.78;
+              head.rotSpeed *= 0.65;
+              if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
+              addBloodDecal(head.x, topY);
+              break;
+            }
+          }
         }
       }
     } else {
@@ -823,6 +932,11 @@ export function drawSeveredHeads(ctx, chars) {
 export function updateBloodDecals() {
   for (let i = bloodDecals.length - 1; i >= 0; i--) {
     const d = bloodDecals[i];
+    // Jeśli podłoże pod plamą zniknęło (np. zniszczona platforma lub wycięty krater w ziemi):
+    if (getDecalSupportingSurfaceY(d.x, d.y, 20) === null) {
+      bloodDecals.splice(i, 1);
+      continue;
+    }
     if (d.lifeTime === undefined) {
       // Stare dekale bez lifetime – dodaj pola
       d.lifeTime = 300;
