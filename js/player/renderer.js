@@ -575,6 +575,13 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   // BUT BOJOWY / STOPA - BIOMECHANICZNA ARTYKULACJA STAWU SKOKOWEGO I PALCÓW
   const isSpecialKick = playerRef && (playerRef.kickState === 'SWING' || playerRef.isCharging || playerRef.kickMode === 'BACKFLIP');
 
+  // Kąt prostopadły (dokładnie 90° / kąt prosty) stopy i pięty względem łydki (shinAng):
+  const shinPerp = shinAng - Math.PI / 2;
+  const localShinTilt = (shinAng - Math.PI / 2) * facing;
+
+  const groundContactY = (playerRef?.currentGroundY !== undefined ? playerRef.currentGroundY : ((playerRef?.y || 0) + (playerRef?.h || 70))) - 3.5;
+  const isFootNearGround = targetFootY >= groundContactY - 5.5;
+
   let targetEffAnkle = ankleRot;
   let targetFlex = 0;
 
@@ -585,14 +592,23 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     targetEffAnkle = ankleRot;
     targetFlex = 0;
   } else {
-    // ankleRot jest już wyznaczony w układzie świata z trajektorii biomechanicznej (traj.ankle * facing).
-    targetEffAnkle = ankleRot;
+    const localTrajAnkle = ankleRot * facing;
 
-    // Kąt uniesienia pięty względem kierunku zwrotu:
-    const localAnkle = ankleRot * facing;
-    if (localAnkle > 0.02) {
-      // Wyraziste, sprężyste ugięcie noska buta (toe-break flex) na podłożu przy uniesieniu pięty i wybiciu:
-      targetFlex = Math.min(1.15, localAnkle * 1.40);
+    // 1. PIĘTA POZOSTAJE W KĄCIE PROSTYM WZGLĘDEM ŁYDKI:
+    // W biomechanice człowieka pięta i ścięgno Achillesa są zorientowane pod kątem prostym (90°) do łydki.
+    // Przy uniesieniu pięty (wybicie ze śródstopia, oparcie na palcach w kucku) pięta ściśle (w 82%) podąża za kątem łydki.
+    if (localTrajAnkle > 0.04 || (!isFootNearGround && localShinTilt > 0.15)) {
+      targetEffAnkle = lerp(ankleRot, shinPerp, 0.82);
+    } else {
+      // Płaskie oparcie stopy o grunt / lądowanie na pięcie:
+      targetEffAnkle = lerp(ankleRot, shinPerp, 0.35);
+    }
+
+    // 2. WYRAZISTE, GŁĘBOKIE UGIĘCIE STOPY I PALCÓW (TOE-BREAK FLEX):
+    // Przód stopy i palce na podłożu uginają się sprężyście przy uniesionej pięcie
+    const localHeelTilt = targetEffAnkle * facing;
+    if (localHeelTilt > 0.02 && isFootNearGround) {
+      targetFlex = Math.min(1.28, localHeelTilt * 1.45);
     } else {
       targetFlex = 0;
     }
@@ -605,13 +621,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (pose[flexProp] === undefined) pose[flexProp] = targetFlex;
   if (pose[effProp] === undefined) pose[effProp] = targetEffAnkle;
 
-  // ankleRot jest już wygładzony i ciągły na poziomie pose.foot[Front/Back]Ankle (footBlend).
-  // Używamy bezpośrednio targetEffAnkle, eliminując wtórne tłumienie kąta stopy:
+  // ankleRot jest już wygładzony i ciągły na poziomie pose.foot[Front/Back]Ankle (footBlend):
   pose[effProp] = targetEffAnkle;
 
   // Błyskawiczny, sprężysty powrót noska (snap-back) po oderwaniu stopy od podłoża:
   const isReleasingFlex = targetFlex < (pose[flexProp] || 0);
-  const flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.85 : 0.75);
+  const flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.88 : 0.78);
   pose[flexProp] += (targetFlex - pose[flexProp]) * flexSmooth;
 
   const effAnkle = targetEffAnkle;
@@ -671,20 +686,20 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.fillStyle = bootGrad;
   ctx.fill();
 
-  if (flexAngle > 0.08) {
-    const foldAlpha = Math.min(1.0, (flexAngle - 0.08) / 0.25);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.20 * foldAlpha})`;
-    ctx.lineWidth = 0.9;
+  if (flexAngle > 0.06) {
+    const foldAlpha = Math.min(1.0, (flexAngle - 0.06) / 0.22);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 * foldAlpha})`;
+    ctx.lineWidth = 1.1;
     ctx.beginPath();
-    ctx.moveTo(creaseX - 0.5, creaseY + 0.4);
-    ctx.lineTo(creaseX + 0.5, creaseY + 2.2);
+    ctx.moveTo(creaseX - 0.6, creaseY + 0.3);
+    ctx.lineTo(creaseX + 0.6, creaseY + 2.4);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(0, 0, 0, ${0.45 * foldAlpha})`;
-    ctx.lineWidth = 0.9;
+    ctx.strokeStyle = `rgba(0, 0, 0, ${0.60 * foldAlpha})`;
+    ctx.lineWidth = 1.1;
     ctx.beginPath();
-    ctx.moveTo(creaseX + 0.5, creaseY + 0.5);
-    ctx.lineTo(creaseX + 1.5, creaseY + 2.3);
+    ctx.moveTo(creaseX + 0.6, creaseY + 0.4);
+    ctx.lineTo(creaseX + 1.8, creaseY + 2.5);
     ctx.stroke();
   }
 
@@ -1359,8 +1374,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Tylna stopa cofnięta, kolano obniżone, wsparta na palcach z uniesioną piętą (aktywne ugięcie toe-break)
     rawFootBackTargetX = hipX - (lerp(9, 15, braceW) * p.facing);
-    rawFootBackTargetY = plantFloorY - 3.8;
-    rawFootBackAnkle = lerp(0.62, 0.72, braceW) * p.facing;
+    rawFootBackTargetY = plantFloorY - 4.0;
+    rawFootBackAnkle = lerp(0.68, 0.78, braceW) * p.facing;
 
     rawFrontSwing = 0.12;
     rawFrontElbow = 0.55;

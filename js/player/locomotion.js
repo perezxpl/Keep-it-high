@@ -326,8 +326,8 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
         ly = 0;
       } else {
         // Push-off / Terminal Stance: wyraźne uniesienie pięty ze sprężystym zgięciem palców (toe-break)
-        const tu = ease((u - 0.50) / 0.50);
-        ankle = lerp(0.0, 0.65, tu);
+        const tu = ease((u - 0.44) / 0.56);
+        ankle = lerp(0.0, 0.72, tu);
         ly = -Math.sin(ankle) * toePinLiftMax;
       }
     } else {
