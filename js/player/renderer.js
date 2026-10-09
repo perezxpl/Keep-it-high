@@ -608,6 +608,155 @@ function drawHeadWoundsAway(ctx, dmgRatio) {
   }
 }
 
+/**
+ * Renderuje anatomiczną, taktyczną dłoń bojową w rękawicy taktycznej z protektorem kostek
+ * Zastępuje dawną "kulkę" profesjonalną rękawicą operatorską (Mechanix / Oakley style)
+ */
+export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v) {
+  const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
+  const hX = foreLen - 0.4;
+  const useGloves = v.hasTacticalGloves !== false;
+  const gloveCol0 = v.gloveColor || '#18181b';
+  const gloveCol1 = '#27272a';
+  const gloveCol2 = '#3f3f46';
+
+  // 1. MANKIET RĘKAWICY / PASEK Z RZEPEM VELCRO (Cuff & Wrist Strap)
+  if (useGloves) {
+    const cuffW = 2.2 * handScale;
+    const cuffH = wristR * 1.12;
+    const cuffGrad = ctx.createLinearGradient(hX - 0.8, -cuffH, hX + cuffW, cuffH);
+    cuffGrad.addColorStop(0.0, '#09090b');
+    cuffGrad.addColorStop(0.5, gloveCol0);
+    cuffGrad.addColorStop(1.0, '#09090b');
+
+    ctx.fillStyle = cuffGrad;
+    ctx.beginPath();
+    ctx.rect(hX - 0.8, -cuffH, cuffW, cuffH * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // Pasek z rzepem Velcro na nadgarstku (Wrist Cinch Strap)
+    ctx.fillStyle = '#3f3f46';
+    ctx.fillRect(hX - 0.4, -cuffH * 0.7, 1.2, cuffH * 1.4);
+    ctx.fillStyle = '#71717a';
+    ctx.fillRect(hX + 0.4, -cuffH * 0.35, 0.6, cuffH * 0.7);
+  }
+
+  // 2. GŁÓWNA BRYŁA DŁONI / ŚRÓDRĘCZE (Metacarpus & Palm)
+  const palmLen = 4.8 * handScale;
+  const palmTop = -2.4 * handScale;
+  const palmBottom = 2.2 * handScale;
+
+  const palmGrad = ctx.createLinearGradient(hX, palmTop, hX + palmLen, palmBottom);
+  if (useGloves) {
+    palmGrad.addColorStop(0.0, isFront ? gloveCol1 : gloveCol0);
+    palmGrad.addColorStop(0.4, isFront ? gloveCol2 : gloveCol1);
+    palmGrad.addColorStop(0.85, isFront ? gloveCol1 : gloveCol0);
+    palmGrad.addColorStop(1.0, '#09090b');
+  } else {
+    palmGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
+    palmGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
+    palmGrad.addColorStop(1.0, v.skinDark);
+  }
+
+  // Anatomiczny profil dłoni w chwycie bojowym (nie owal, lecz ścięte śródręcze przechodzące w palce)
+  ctx.beginPath();
+  ctx.moveTo(hX + 0.8, palmTop * 0.85);
+  ctx.lineTo(hX + palmLen * 0.65, palmTop * 1.15);
+  ctx.lineTo(hX + palmLen, palmTop * 0.55);
+  ctx.lineTo(hX + palmLen + 1.2, 0.0);
+  ctx.lineTo(hX + palmLen * 0.95, palmBottom * 0.65);
+  ctx.lineTo(hX + palmLen * 0.75, palmBottom * 0.95);
+  ctx.lineTo(hX + palmLen * 0.35, palmBottom);
+  ctx.lineTo(hX + 0.8, palmBottom * 0.75);
+  ctx.closePath();
+  ctx.fillStyle = palmGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // 3. PROTEKTOR KOSTEK (Tactical Knuckle Guard)
+  if (useGloves) {
+    const kX = hX + palmLen * 0.35;
+    const kW = palmLen * 0.42;
+    const kH = Math.abs(palmTop) * 1.2;
+
+    const kGrad = ctx.createLinearGradient(kX, -kH, kX + kW, kH);
+    kGrad.addColorStop(0.0, '#52525b');
+    kGrad.addColorStop(0.5, '#27272a');
+    kGrad.addColorStop(1.0, '#09090b');
+
+    ctx.fillStyle = kGrad;
+    ctx.beginPath();
+    ctx.moveTo(kX, -kH * 0.75);
+    ctx.quadraticCurveTo(kX + kW * 0.5, -kH * 1.05, kX + kW, -kH * 0.6);
+    ctx.lineTo(kX + kW * 0.85, 0.2);
+    ctx.lineTo(kX + kW * 0.15, 0.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    ctx.fillStyle = '#71717a';
+    for (let i = 0; i < 3; i++) {
+      const segX = kX + 0.4 + i * (kW * 0.28);
+      const segY = -kH * 0.65 + i * 0.2;
+      ctx.fillRect(segX, segY, 0.9, 1.6);
+    }
+  }
+
+  // 4. KCIUK TAKTYCZNY (Tactical Thumb)
+  const thumbBaseX = hX + palmLen * 0.20;
+  const thumbTipX = hX + palmLen * 0.72;
+  const thumbGrad = ctx.createLinearGradient(thumbBaseX, -1.8, thumbTipX, 1.2);
+  if (useGloves) {
+    thumbGrad.addColorStop(0.0, gloveCol1);
+    thumbGrad.addColorStop(0.6, gloveCol2);
+    thumbGrad.addColorStop(1.0, '#09090b');
+  } else {
+    thumbGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
+    thumbGrad.addColorStop(1.0, isFront ? v.skinMid : v.skinDark);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(thumbBaseX, -0.6 * handScale);
+  ctx.quadraticCurveTo(hX + palmLen * 0.45, -1.8 * handScale, thumbTipX, -0.4 * handScale);
+  ctx.lineTo(hX + palmLen * 0.60, 0.8 * handScale);
+  ctx.lineTo(thumbBaseX + 0.4, 0.3 * handScale);
+  ctx.closePath();
+  ctx.fillStyle = thumbGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.85;
+  ctx.stroke();
+
+  if (useGloves) {
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.arc(thumbTipX - 0.6, -0.2 * handScale, 0.8 * handScale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. SEGMENTY ZGIĘTYCH PALCÓW (Fingers in Grip)
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hX + palmLen * 0.75, -0.2);
+  ctx.lineTo(hX + palmLen + 0.8, -0.2);
+  ctx.moveTo(hX + palmLen * 0.70, 0.8);
+  ctx.lineTo(hX + palmLen + 0.4, 0.8);
+  ctx.moveTo(hX + palmLen * 0.55, 1.6);
+  ctx.lineTo(hX + palmLen * 0.85, 1.6);
+  ctx.stroke();
+
+  ctx.fillStyle = useGloves ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.4)';
+  ctx.fillRect(hX + palmLen * 0.8, -0.8, 1.4, 0.6);
+}
+
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13, playerRef = null) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
   const upperLen = armUpperLen || 14;
@@ -831,58 +980,11 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.strokeRect(bandX, -wristR - 0.5, bandW, (wristR + 0.5) * 2);
   }
 
-  const handX = foreLen + 0.5;
-  const handScale = (isFront ? 1.0 : 0.88) * (isSculpted ? Math.max(1.0, muscle * 0.95) : muscle);
-  const fW = 4.4 * handScale;
-  const fH = 3.3 * handScale;
-
-  const handGrad = ctx.createRadialGradient(handX + fW * 0.35, -fH * 0.2, 0.8, handX + fW * 0.4, 0, fW + 1.5);
-  handGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-  handGrad.addColorStop(0.55, isFront ? v.skinMid : v.skinBack);
-  handGrad.addColorStop(1.0, v.skinDark);
-
-  ctx.beginPath();
-  ctx.moveTo(handX - 0.5, -wristR * 0.85);
-  ctx.lineTo(handX + fW * 0.25, -fH * 0.95);
-  ctx.quadraticCurveTo(handX + fW * 0.55, -fH * 1.05, handX + fW * 0.72, -fH * 0.85);
-  ctx.quadraticCurveTo(handX + fW * 1.05, -fH * 0.65, handX + fW, -fH * 0.25);
-  ctx.quadraticCurveTo(handX + fW * 1.05, fH * 0.35, handX + fW * 0.75, fH * 0.85);
-  ctx.quadraticCurveTo(handX + fW * 0.35, fH * 0.95, handX - 0.5, wristR * 0.85);
-  ctx.closePath();
-  ctx.fillStyle = handGrad;
-  ctx.fill();
-
-  const thumbGrad = ctx.createLinearGradient(handX, -fH * 0.7, handX + fW * 0.6, fH * 0.2);
-  thumbGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-  thumbGrad.addColorStop(1.0, isFront ? v.skinMid : v.skinDark);
-
-  ctx.beginPath();
-  ctx.moveTo(handX + fW * 0.05, -fH * 0.45);
-  ctx.quadraticCurveTo(handX + fW * 0.45, -fH * 0.75, handX + fW * 0.70, -fH * 0.15);
-  ctx.quadraticCurveTo(handX + fW * 0.55, fH * 0.25, handX + fW * 0.25, fH * 0.10);
-  ctx.quadraticCurveTo(handX + fW * 0.10, -fH * 0.10, handX + fW * 0.05, -fH * 0.45);
-  ctx.closePath();
-  ctx.fillStyle = thumbGrad;
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-  ctx.lineWidth = 0.75;
-  ctx.beginPath();
-  ctx.moveTo(handX + fW * 0.72, -fH * 0.45);
-  ctx.lineTo(handX + fW * 0.95, -fH * 0.25);
-  ctx.moveTo(handX + fW * 0.68, -fH * 0.05);
-  ctx.lineTo(handX + fW * 0.92, fH * 0.15);
-  ctx.moveTo(handX + fW * 0.18, -fH * 0.35);
-  ctx.quadraticCurveTo(handX + fW * 0.40, -fH * 0.30, handX + fW * 0.50, fH * 0.05);
-  ctx.stroke();
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.beginPath();
-  ctx.arc(handX + fW * 0.65, -fH * 0.68, 0.75 * handScale, 0, Math.PI * 2);
-  ctx.fill();
+  // DŁOŃ BOJOWA W RĘKAWICY TAKTYCZNEJ (Zastępuje dawną kulkę)
+  drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v);
 
   if (isFront && visuals && visuals.heldGrenade) {
-    drawHandheldGrenade(ctx, handX + fW * 0.40, 0, 1.0);
+    drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0);
   }
 
   // Rany i rozcięcia na przedramieniu i dłoni
