@@ -5,7 +5,7 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, triggerHitstop, camera, carveGroundHole } from '../world.js';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade } from '../projectiles.js';
 import {
   spawnShockwaveRing,
@@ -494,10 +494,13 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
           enemy.respawnTimer = 180;
+          enemy.bleedTimer = 90;
           enemy.corpseAngle = 0;
           enemy.corpseFloorY = groundY;
           enemy.vx = kickDirX * (finalKnockback * 1.15);
           enemy.vy = -4.8;
+          spawnBloodSpurt(ex, ey, kickDirX * 2, -2.5, 14, 1.2);
+          spawnBloodDrip(ex, ey, kickDirX * 1.5, -1.0, 5);
         }
         didHitAnything = true;
       }
@@ -858,8 +861,11 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
       enemy.respawnTimer = 180;
+      enemy.bleedTimer = 90;
       enemy.corpseAngle = 0;
       enemy.corpseFloorY = groundY;
+      spawnBloodSpurt(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, player.facing * 2.5, -2.0, 12, 1.1);
+      spawnBloodDrip(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, player.facing * 1.5, -0.8, 5);
     }
 
     player.hitThisSwing = true;

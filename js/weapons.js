@@ -5,7 +5,7 @@
 
 import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
-  spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnDroppedWeapon,
+  spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   bodyGibs
 } from './world.js';
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
@@ -929,6 +929,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         };
 
         closestChar.deathHitPoint = { x: hitPtX, y: hitPtY };
+        closestChar.bleedTimer = 90;
+        spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.45, -2.2, isHeadshot ? 24 : 16, 1.3);
+        spawnBloodDrip(hitPtX, hitPtY, b.vx * 0.25 + (Math.random() - 0.5) * 1.5, -1.0, 6);
 
         // Realistyczny impuls kinetyczny trafienia – bez nienaturalnego katapultowania w górę
         const pushMult = Math.min(2.0, b.ragdollPushMult || (isShotgun ? 1.8 : 0.85));

@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
-import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, isGroundAt } from '../world.js';
+import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip, spawnBloodSpurt, isGroundAt } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
@@ -168,7 +168,8 @@ export function updatePlayerRagdoll(p, groundY) {
         if (n === rag.chest || n === rag.pelvis) {
           triggerScreenShake(1.5);
           if (floorY < groundY + 500) {
-            spawnBloodDecal(n.x, floorY);
+            spawnBloodDecal(n.x, floorY, 1.4, curVx);
+            spawnBloodSpurt(n.x, floorY, (Math.random() - 0.5) * 4, -2.0, 7, 0.9);
           }
         }
       } else {
@@ -285,10 +286,25 @@ export function handlePlayerDeath(player, groundY) {
     }
   }
 
+  if (player.bleedTimer === undefined) {
+    player.bleedTimer = 90;
+  }
+  // Swobodne lanie się i kapanie krwi z bezwładnego ciała w powietrzu
+  if (player.bleedTimer > 0) {
+    player.bleedTimer--;
+    if (player.bleedTimer % 2 === 0) {
+      const woundX = (player.ragdoll ? player.ragdoll.chest.x : (player.x + player.w / 2)) + (Math.random() * 8 - 4);
+      const woundY = (player.ragdoll ? player.ragdoll.chest.y : (player.y + player.h / 2)) + (Math.random() * 6 - 3);
+      const pVx = player.ragdoll ? (player.ragdoll.chest.x - player.ragdoll.chest.oldX) : (player.vx || 0);
+      const pVy = player.ragdoll ? (player.ragdoll.chest.y - player.ragdoll.chest.oldY) : (player.vy || 0);
+      spawnBloodDrip(woundX, woundY, pVx * 0.35 + (Math.random() - 0.5) * 1.4, pVy * 0.35 + Math.random() * 1.2, 2);
+    }
+  }
+
   if (player.neckFountainTimer > 0) {
     player.neckFountainTimer--;
-    if (player.neckFountainTimer % 3 === 0) {
-      spawnBloodFountain(player.x + player.w / 2, player.y + 14, player.facing, 3);
+    if (player.neckFountainTimer % 2 === 0) {
+      spawnBloodFountain(player.x + player.w / 2, player.y + 14, player.facing, 4);
     }
   }
 
@@ -336,6 +352,7 @@ export function handlePlayerDeath(player, groundY) {
     player.decapitated = false;
     player.isGibbed = false;
     player.neckFountainTimer = 0;
+    player.bleedTimer = 0;
     player.deathSpiralTimer = 0;
     player.deathInitDone = false;
     player.corpseAngle = 0;
