@@ -326,7 +326,7 @@ export function handlePlayerDeath(player, groundY) {
     player.deathTilt = 0;
     player.deathRotVel = 0;
     player.isSettled = false;
-    player.pelvisY = -10.0;
+    player.pelvisY = -11.8;
     player.torsoTilt = 0;
     player.torsoTiltVel = 0;
     player.headBobVel = 0;

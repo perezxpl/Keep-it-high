@@ -438,9 +438,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const isSpecialKickOrProne = !!(playerRef && (
     playerRef.isProne ||
-    playerRef.isCrouching ||
-    playerRef.gaitMode === 'CROUCH' ||
-    playerRef.gaitMode === 'CROUCH_WALK' ||
     playerRef.kickMode === 'SPARTAN' ||
     playerRef.kickMode === 'BACKFLIP' ||
     playerRef.kickMode === 'SPIN_VOLLEY' ||
@@ -572,15 +569,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   ctx.restore();
 
-  // BUT BOJOWY / STOPA - BIOMECHANICZNA ARTYKULACJA STAWU SKOKOWEGO I PALCÓW
+  // BUT PIŁKARSKI
+  const shinDx = (ik.footX - ik.kneeX) * facing;
+  const shinDy = ik.footY - ik.kneeY;
+  const localShinAng = Math.atan2(shinDy, shinDx);
+
   const isSpecialKick = playerRef && (playerRef.kickState === 'SWING' || playerRef.isCharging || playerRef.kickMode === 'BACKFLIP');
-
-  // Kąt prostopadły (dokładnie 90° / kąt prosty) stopy i pięty względem łydki (shinAng):
-  const shinPerp = shinAng - Math.PI / 2;
-  const localShinTilt = (shinAng - Math.PI / 2) * facing;
-
-  const groundContactY = (playerRef?.currentGroundY !== undefined ? playerRef.currentGroundY : ((playerRef?.y || 0) + (playerRef?.h || 70))) - 3.5;
-  const isFootNearGround = targetFootY >= groundContactY - 5.5;
 
   let targetEffAnkle = ankleRot;
   let targetFlex = 0;
@@ -592,25 +586,13 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     targetEffAnkle = ankleRot;
     targetFlex = 0;
   } else {
-    const localTrajAnkle = ankleRot * facing;
+    const shinPerp = localShinAng - Math.PI / 2;
+    const heelToBall = shinPerp + (ankleRot * facing * 0.28);
+    targetEffAnkle = heelToBall * facing;
 
-    // 1. PIĘTA POZOSTAJE W KĄCIE PROSTYM WZGLĘDEM ŁYDKI:
-    // W biomechanice człowieka pięta i ścięgno Achillesa są zorientowane pod kątem prostym (90°) do łydki.
-    // Przy uniesieniu pięty (wybicie ze śródstopia, oparcie na palcach w kucku) pięta ściśle (w 82%) podąża za kątem łydki.
-    if (localTrajAnkle > 0.04 || (!isFootNearGround && localShinTilt > 0.15)) {
-      targetEffAnkle = lerp(ankleRot, shinPerp, 0.82);
-    } else {
-      // Płaskie oparcie stopy o grunt / lądowanie na pięcie:
-      targetEffAnkle = lerp(ankleRot, shinPerp, 0.35);
-    }
-
-    // 2. WYRAZISTE, GŁĘBOKIE UGIĘCIE STOPY I PALCÓW (TOE-BREAK FLEX):
-    // Przód stopy i palce na podłożu uginają się sprężyście przy uniesionej pięcie
-    const localHeelTilt = targetEffAnkle * facing;
-    if (localHeelTilt > 0.02 && isFootNearGround) {
-      targetFlex = Math.min(1.28, localHeelTilt * 1.45);
-    } else {
-      targetFlex = 0;
+    if (heelToBall > 0.02) {
+      const t = Math.min(1.0, (heelToBall - 0.02) / 0.85);
+      targetFlex = (0.5 - 0.5 * Math.cos(t * Math.PI)) * 1.25;
     }
   }
 
@@ -621,15 +603,20 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (pose[flexProp] === undefined) pose[flexProp] = targetFlex;
   if (pose[effProp] === undefined) pose[effProp] = targetEffAnkle;
 
-  // ankleRot jest już wygładzony i ciągły na poziomie pose.foot[Front/Back]Ankle (footBlend):
-  pose[effProp] = targetEffAnkle;
+  let flexSmooth = 0.24;
+  let ankleSmooth = 0.28;
+  if (playerRef && playerRef.isDead) {
+    flexSmooth = 0.85;
+    ankleSmooth = 0.85;
+  } else if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
+    flexSmooth = 0.45;
+    ankleSmooth = 0.55;
+  }
 
-  // Błyskawiczny, sprężysty powrót noska (snap-back) po oderwaniu stopy od podłoża:
-  const isReleasingFlex = targetFlex < (pose[flexProp] || 0);
-  const flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.88 : 0.78);
   pose[flexProp] += (targetFlex - pose[flexProp]) * flexSmooth;
+  pose[effProp] = lerpAngle(pose[effProp], targetEffAnkle, ankleSmooth);
 
-  const effAnkle = targetEffAnkle;
+  const effAnkle = pose[effProp];
   const flexAngle = Math.max(0, pose[flexProp]);
 
   ctx.save();
@@ -686,20 +673,20 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.fillStyle = bootGrad;
   ctx.fill();
 
-  if (flexAngle > 0.06) {
-    const foldAlpha = Math.min(1.0, (flexAngle - 0.06) / 0.22);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 * foldAlpha})`;
-    ctx.lineWidth = 1.1;
+  if (flexAngle > 0.08) {
+    const foldAlpha = Math.min(1.0, (flexAngle - 0.08) / 0.25);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.20 * foldAlpha})`;
+    ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.moveTo(creaseX - 0.6, creaseY + 0.3);
-    ctx.lineTo(creaseX + 0.6, creaseY + 2.4);
+    ctx.moveTo(creaseX - 0.5, creaseY + 0.4);
+    ctx.lineTo(creaseX + 0.5, creaseY + 2.2);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(0, 0, 0, ${0.60 * foldAlpha})`;
-    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = `rgba(0, 0, 0, ${0.45 * foldAlpha})`;
+    ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.moveTo(creaseX + 0.6, creaseY + 0.4);
-    ctx.lineTo(creaseX + 1.8, creaseY + 2.5);
+    ctx.moveTo(creaseX + 0.5, creaseY + 0.5);
+    ctx.lineTo(creaseX + 1.5, creaseY + 2.3);
     ctx.stroke();
   }
 
@@ -1367,15 +1354,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else if (p.gaitMode === 'CROUCH') {
     const braceW = (p.shootPoseWeight || 0);
-    // Przednia stopa oparta stabilnie i płasko na ziemi, przejmuje ciężar ciała
-    rawFootFrontTargetX = hipX + (lerp(8, 14, braceW) * p.facing);
-    rawFootFrontTargetY = plantFloorY;
-    rawFootFrontAnkle = lerp(0.0, 0.04, braceW) * p.facing;
-
-    // Tylna stopa cofnięta, kolano obniżone, wsparta na palcach z uniesioną piętą (aktywne ugięcie toe-break)
-    rawFootBackTargetX = hipX - (lerp(9, 15, braceW) * p.facing);
-    rawFootBackTargetY = plantFloorY - 4.0;
-    rawFootBackAnkle = lerp(0.68, 0.78, braceW) * p.facing;
+    rawFootFrontTargetX = hipX + (lerp(6, 12, braceW) * p.facing);
+    rawFootFrontTargetY = plantFloorY - 6.5;
+    rawFootFrontAnkle = 0.50 * p.facing;
+    rawFootBackTargetX = hipX - (lerp(8, 14, braceW) * p.facing);
+    rawFootBackTargetY = plantFloorY - 7.0;
+    rawFootBackAnkle = 0.60 * p.facing;
 
     rawFrontSwing = 0.12;
     rawFrontElbow = 0.55;
@@ -1629,7 +1613,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
-  let footBlend = p.isDead ? 0.90 : (speed > 0.1 ? Math.min(0.85, 0.48 + speed * 0.08) : (p.isCrouching ? 0.55 : 0.38));
+  let footBlend = p.isDead ? 0.90 : 0.32;
   let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
 
   if (p.kickMode === 'BACKFLIP') {
