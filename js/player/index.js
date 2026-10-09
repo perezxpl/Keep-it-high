@@ -5,7 +5,7 @@
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId, customObstacles } from '../obstacles.js';
-import { triggerScreenShake, spawnGroundPuff, isGroundAt, getCaveCeilingY } from '../world.js';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -458,6 +458,18 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (spawnGrass) player._spawnGrass = spawnGrass;
 
   player.currentClass?.onUpdate?.(player, ball);
+
+  // Krew kapiąca z ran przy krytycznie niskim HP (< 35%)
+  const curHpDrip = Math.max(0, player.hp ?? 100);
+  const maxHpDrip = player.maxHp || 100;
+  if (curHpDrip < maxHpDrip * 0.35 && !player.isDead) {
+    const dripChance = 0.025 + (1.0 - (curHpDrip / (maxHpDrip * 0.35))) * 0.045;
+    if (Math.random() < dripChance) {
+      const px = player.x + (player.w || 24) * (0.3 + Math.random() * 0.4);
+      const py = player.y + (player.h || 70) * (0.35 + Math.random() * 0.35);
+      spawnBloodDrip(px, py, (player.vx || 0) * 0.3 + (Math.random() - 0.5) * 0.6, 0.8 + Math.random() * 0.8, 1);
+    }
+  }
 
   let isMovingBackwards = !player.isIntro && (player.vx * player.facing < -0.1);
   player.isMovingBackwards = isMovingBackwards;

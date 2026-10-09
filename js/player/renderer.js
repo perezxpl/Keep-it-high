@@ -187,12 +187,357 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0) {
   ctx.restore();
 }
 
-export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13) {
+// =========================================================================
+// SYSTEM ŚLADÓW OBRAŻEŃ BITEWNYCH I RAN (PROGRESSIVE BATTLE DAMAGE & WOUNDS)
+// Renderuje rany postrzałowe, okopcone otwory wlotowe pocisków, rozdarcia
+// odłamkowe, nasiąkającą krew w mundurze i stróżki krwi spływające z ciała.
+// =========================================================================
+
+/**
+ * Rysuje otwór wlotowy pocisku z okopconą krawędzią balistyczną, kraterem i wsiąkniętą plamą krwi
+ */
+function drawBulletPuncture(ctx, x, y, radius, alpha) {
+  if (alpha <= 0.02) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1.0, alpha);
+
+  // 1. Ciemna plama krwi wsiąkająca w tkaninę/kamizelkę wokół wlotu pocisku
+  const haloGrad = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius * 3.2);
+  haloGrad.addColorStop(0.0, 'rgba(127, 29, 29, 0.90)');
+  haloGrad.addColorStop(0.5, 'rgba(69, 10, 10, 0.65)');
+  haloGrad.addColorStop(1.0, 'rgba(69, 10, 10, 0.0)');
+  ctx.fillStyle = haloGrad;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 3.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Okopcona, postrzępiona krawędź wlotu (ballistic powder burn / frayed Kevlar rim)
+  ctx.fillStyle = '#09090b';
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 1.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Ciemna jama przestrzeliny (entry cavity)
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.85, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Świeża krew wypływająca z krawędzi otworu (bright arterial rim highlight)
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 0.65;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.75, 0.25 * Math.PI, 1.25 * Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje poszarpaną ranę ciętą lub odłamkową z zakrwawionymi krawędziami
+ */
+function drawShrapnelSlash(ctx, x1, y1, x2, y2, width, alpha) {
+  if (alpha <= 0.02) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1.0, alpha);
+  ctx.lineCap = 'round';
+
+  // Otoczka krwi wsiąkniętej w materiał lub skórę
+  ctx.strokeStyle = 'rgba(69, 10, 10, 0.70)';
+  ctx.lineWidth = width + 2.0;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // Głęboki bordowy rdzeń rozcięcia
+  ctx.strokeStyle = '#7f1d1d';
+  ctx.lineWidth = width + 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // Świeża jasnoczerwona krew w centrum rany
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = Math.max(0.6, width * 0.45);
+  ctx.beginPath();
+  ctx.moveTo(x1 * 0.85 + x2 * 0.15, y1 * 0.85 + y2 * 0.15);
+  ctx.lineTo(x1 * 0.15 + x2 * 0.85, y1 * 0.15 + y2 * 0.85);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje realistyczną stróżkę krwi spływającą w dół z kroplą na końcu
+ */
+function drawBloodTrickle(ctx, startX, startY, len, curveX, width, alpha) {
+  if (alpha <= 0.02) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1.0, alpha);
+  ctx.lineCap = 'round';
+
+  const endX = startX + curveX;
+  const endY = startY + len;
+  const midX = startX + curveX * 0.45;
+  const midY = startY + len * 0.55;
+
+  // Główna ciemnoczerwona stróżka
+  ctx.strokeStyle = '#7f1d1d';
+  ctx.lineWidth = width + 0.6;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(midX, midY, endX, endY);
+  ctx.stroke();
+
+  // Jaśniejszy rdzeń krwi
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = Math.max(0.5, width * 0.55);
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(midX, midY, endX, endY);
+  ctx.stroke();
+
+  // Kropla zbierająca się na końcu stróżki
+  ctx.fillStyle = '#991b1b';
+  ctx.beginPath();
+  ctx.arc(endX, endY + 0.4, width * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje rozlaną, wsiąkniętą plamę krwi na tkaninie munduru / kamizelki
+ */
+function drawBloodSoak(ctx, cx, cy, rx, ry, alpha) {
+  if (alpha <= 0.02) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1.0, alpha);
+  const grad = ctx.createRadialGradient(cx, cy, 0.8, cx, cy, Math.max(rx, ry));
+  grad.addColorStop(0.0, 'rgba(127, 29, 29, 0.85)');
+  grad.addColorStop(0.45, 'rgba(80, 10, 10, 0.60)');
+  grad.addColorStop(1.0, 'rgba(69, 10, 10, 0.0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Rysuje mikro-odpryski i plamki krwi w stałych współrzędnych
+ */
+function drawBloodSpecks(ctx, specks, alpha) {
+  if (alpha <= 0.02) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1.0, alpha);
+  ctx.fillStyle = '#991b1b';
+  for (let i = 0; i < specks.length; i++) {
+    const s = specks[i];
+    ctx.beginPath();
+    ctx.arc(s[0], s[1], s[2], 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * Renderuje rany i ślady krwi na torsie oraz kamizelce kuloodpornej / plate carrierze
+ */
+function drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway) {
+  if (dmgRatio < 0.15) return;
+
+  const t1 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.15) / 0.22));
+  const t2 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.37) / 0.25));
+  const t3 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.62) / 0.28));
+
+  const facingSign = cosYaw >= 0 ? 1 : -1;
+
+  if (!isLookingAway) {
+    // PRZÓD KAMIZELKI TAKTYCZNEJ / KLATKA PIERSIOWA
+
+    // STAGE 1: Otarcia odłamkowe i pojedyncze plamki krwi
+    if (t1 > 0) {
+      drawShrapnelSlash(ctx, -plateW * 0.28 * facingSign, -19.5, -plateW * 0.12 * facingSign, -17.0, 0.9, t1 * 0.85);
+      drawBloodSpecks(ctx, [
+        [plateW * 0.18 * facingSign, -14.5, 0.7],
+        [plateW * 0.25 * facingSign, -16.0, 0.6],
+        [-plateW * 0.08 * facingSign, -11.0, 0.65]
+      ], t1 * 0.8);
+    }
+
+    // STAGE 2: Wyraźne przestrzeliny, nasiąkanie kamizelki i pierwsze stróżki
+    if (t2 > 0) {
+      // Przestrzelina 1: Górna część klatki piersiowej
+      const b1X = plateW * 0.22 * facingSign;
+      const b1Y = -17.2;
+      drawBulletPuncture(ctx, b1X, b1Y, 1.25, t2);
+      drawBloodTrickle(ctx, b1X, b1Y + 1.2, 5.0, -0.6 * facingSign, 0.9, t2);
+
+      // Przestrzelina 2: Żebra / splot słoneczny
+      const b2X = -plateW * 0.24 * facingSign;
+      const b2Y = -12.0;
+      drawBulletPuncture(ctx, b2X, b2Y, 1.35, t2);
+      drawBloodTrickle(ctx, b2X, b2Y + 1.4, 5.5, 0.8 * facingSign, 1.0, t2);
+      drawBloodSoak(ctx, b2X - 0.5, b2Y + 1.0, 3.8, 2.6, t2 * 0.75);
+
+      // Rozcięcie na kołnierzu / szyi
+      drawShrapnelSlash(ctx, plateW * 0.10 * facingSign, -23.5, plateW * 0.22 * facingSign, -22.0, 0.8, t2 * 0.9);
+    }
+
+    // STAGE 3: Ciężkie rany postrzałowe, głębokie rozdarcia, spływająca krew na pas
+    if (t3 > 0) {
+      // Przestrzelina 3: Centralny brzuch / dolna płyta kamizelki
+      const b3X = plateW * 0.04 * facingSign;
+      const b3Y = -7.5;
+      drawBulletPuncture(ctx, b3X, b3Y, 1.5, t3);
+      drawBloodTrickle(ctx, b3X, b3Y + 1.5, 7.8, -0.4 * facingSign, 1.2, t3);
+
+      // Poszarpane rozdarcie odłamkiem na żebrach
+      drawShrapnelSlash(ctx, plateW * 0.32 * facingSign, -10.5, plateW * 0.16 * facingSign, -6.5, 1.2, t3);
+
+      // Duża plama krwi nasiąkająca dolny pas MOLLE
+      drawBloodSoak(ctx, b3X + 1.0, -6.0, 5.2, 3.5, t3 * 0.85);
+      drawBloodSoak(ctx, -plateW * 0.18 * facingSign, -10.0, 4.5, 3.0, t3 * 0.80);
+
+      // Gęste rozbryzgi krwi
+      drawBloodSpecks(ctx, [
+        [plateW * 0.12 * facingSign, -8.0, 0.9],
+        [-plateW * 0.30 * facingSign, -8.5, 0.8],
+        [plateW * 0.28 * facingSign, -4.5, 0.7],
+        [0.0, -2.5, 0.85]
+      ], t3);
+    }
+
+  } else {
+    // TYŁ KAMIZELKI / PLECY
+    if (t1 > 0) {
+      drawShrapnelSlash(ctx, -plateW * 0.22, -18.0, -plateW * 0.05, -16.0, 0.9, t1 * 0.85);
+      drawBloodSpecks(ctx, [
+        [plateW * 0.20, -15.0, 0.7],
+        [-plateW * 0.15, -12.0, 0.6]
+      ], t1 * 0.8);
+    }
+
+    if (t2 > 0) {
+      const bBack1X = plateW * 0.22;
+      const bBack1Y = -15.5;
+      drawBulletPuncture(ctx, bBack1X, bBack1Y, 1.3, t2);
+      drawBloodTrickle(ctx, bBack1X, bBack1Y + 1.2, 5.0, 0.5, 0.9, t2);
+      drawBloodSoak(ctx, bBack1X, bBack1Y, 3.5, 2.5, t2 * 0.7);
+    }
+
+    if (t3 > 0) {
+      const bBack2X = -plateW * 0.18;
+      const bBack2Y = -9.0;
+      drawBulletPuncture(ctx, bBack2X, bBack2Y, 1.4, t3);
+      drawBloodTrickle(ctx, bBack2X, bBack2Y + 1.4, 7.0, -0.6, 1.1, t3);
+      drawBloodSoak(ctx, 0, -8.0, 5.0, 3.2, t3 * 0.85);
+    }
+  }
+}
+
+/**
+ * Renderuje rany i strużki krwi na profilu głowy
+ */
+function drawHeadWoundsProfile(ctx, dmgRatio) {
+  if (dmgRatio < 0.15) return;
+
+  const t1 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.15) / 0.22));
+  const t2 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.37) / 0.25));
+  const t3 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.62) / 0.28));
+
+  // STAGE 1: Lekkie rozcięcie łuku brwiowego
+  if (t1 > 0) {
+    drawShrapnelSlash(ctx, 2.2, -4.1, 3.4, -3.6, 0.65, t1 * 0.9);
+    drawBloodSpecks(ctx, [[3.6, -3.5, 0.45]], t1);
+  }
+
+  // STAGE 2: Krew spływająca z brwi na skroń, rozcięta warga i otarcie na policzku
+  if (t2 > 0) {
+    drawShrapnelSlash(ctx, 1.8, -4.3, 3.6, -3.6, 0.85, t2);
+    drawBloodTrickle(ctx, 2.0, -3.7, 3.2, -0.6, 0.75, t2);
+    drawShrapnelSlash(ctx, 4.8, 1.8, 5.3, 2.4, 0.75, t2);
+    drawBloodSpecks(ctx, [[5.2, 2.5, 0.55]], t2);
+    drawShrapnelSlash(ctx, 2.6, 0.2, 3.6, 0.8, 0.65, t2 * 0.85);
+  }
+
+  // STAGE 3: Strużka krwi z ust spływająca po podbródku, rany czołowe
+  if (t3 > 0) {
+    drawBloodTrickle(ctx, 4.9, 2.4, 3.0, -0.6, 0.85, t3);
+    drawBloodSoak(ctx, 0.6, -5.4, 1.8, 1.2, t3 * 0.8);
+    drawShrapnelSlash(ctx, -0.2, -5.6, 1.6, -5.0, 0.8, t3);
+    drawBloodSpecks(ctx, [
+      [3.2, 1.6, 0.5],
+      [1.4, -1.0, 0.45],
+      [3.8, 4.5, 0.6]
+    ], t3);
+  }
+}
+
+/**
+ * Renderuje rany na twarzy w widoku z przodu / 3/4
+ */
+function drawHeadWoundsFront(ctx, dmgRatio) {
+  if (dmgRatio < 0.15) return;
+
+  const t1 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.15) / 0.22));
+  const t2 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.37) / 0.25));
+  const t3 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.62) / 0.28));
+
+  if (t1 > 0) {
+    drawShrapnelSlash(ctx, 1.4, -3.2, 2.8, -2.8, 0.65, t1 * 0.9);
+    drawBloodSpecks(ctx, [[2.9, -2.7, 0.45]], t1);
+  }
+
+  if (t2 > 0) {
+    drawBloodTrickle(ctx, 2.2, -2.7, 3.4, 0.4, 0.75, t2);
+    drawShrapnelSlash(ctx, 0.4, 2.2, 1.2, 2.7, 0.75, t2);
+    drawShrapnelSlash(ctx, -2.8, 0.2, -1.6, 0.8, 0.65, t2 * 0.85);
+  }
+
+  if (t3 > 0) {
+    drawBloodTrickle(ctx, 0.8, 2.6, 2.8, -0.2, 0.85, t3);
+    drawShrapnelSlash(ctx, -3.2, -2.5, -2.0, -1.8, 0.8, t3);
+    drawBloodSoak(ctx, -2.4, -2.0, 1.5, 1.0, t3 * 0.75);
+    drawBloodSpecks(ctx, [
+      [-1.2, 1.5, 0.5],
+      [2.0, 0.8, 0.45],
+      [0.6, 4.8, 0.6]
+    ], t3);
+  }
+}
+
+/**
+ * Renderuje rany z tyłu głowy / hełmu
+ */
+function drawHeadWoundsAway(ctx, dmgRatio) {
+  if (dmgRatio < 0.25) return;
+  const t2 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.25) / 0.30));
+  const t3 = Math.min(1.0, Math.max(0.0, (dmgRatio - 0.60) / 0.30));
+
+  if (t2 > 0) {
+    drawShrapnelSlash(ctx, -2.0, 2.2, 1.2, 2.8, 0.8, t2 * 0.85);
+    drawBloodSpecks(ctx, [[-0.5, 3.2, 0.55]], t2);
+  }
+  if (t3 > 0) {
+    drawBloodSoak(ctx, 0.0, 2.5, 2.5, 1.8, t3 * 0.75);
+    drawBloodTrickle(ctx, 0.2, 2.8, 3.2, 0.4, 0.8, t3);
+  }
+}
+
+export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13, playerRef = null) {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
   const upperLen = armUpperLen || 14;
   const foreLen = armForeLen || 13;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
+
+  const armMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
+  const armCurHp = playerRef ? Math.max(0, playerRef.hp ?? 100) : armMaxHp;
+  const armDmgRatio = (playerRef && playerRef.isDead) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (armCurHp / armMaxHp)));
 
   const elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
   const elbowY = shY + Math.cos(swingAngle) * upperLen;
@@ -305,6 +650,39 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.moveTo(upperLen * 0.38, -armHalfH * 0.2);
     ctx.quadraticCurveTo(upperLen * 0.58, 0, upperLen * 0.78, armHalfH * 0.2);
     ctx.stroke();
+  }
+
+  // Rany i ślady krwi na ramieniu / bicepsie
+  if (armDmgRatio >= 0.15) {
+    const t1 = Math.min(1.0, Math.max(0.0, (armDmgRatio - 0.15) / 0.22));
+    const t2 = Math.min(1.0, Math.max(0.0, (armDmgRatio - 0.37) / 0.25));
+    const t3 = Math.min(1.0, Math.max(0.0, (armDmgRatio - 0.62) / 0.28));
+
+    if (isFront) {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, upperLen * 0.28, -armHalfH * 0.75, upperLen * 0.48, -armHalfH * 0.35, 0.7, t1 * 0.85);
+      }
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, upperLen * 0.42, -armHalfH * 0.85, upperLen * 0.72, -armHalfH * 0.55, 0.9, t2);
+        drawBloodTrickle(ctx, upperLen * 0.60, -armHalfH * 0.65, 4.2, upperLen * 0.15, 0.8, t2);
+        drawBloodSoak(ctx, upperLen * 0.55, -armHalfH * 0.6, 2.8, 1.8, t2 * 0.75);
+      }
+      if (t3 > 0) {
+        drawBulletPuncture(ctx, upperLen * 0.52, 0.0, 1.15, t3);
+        drawBloodSpecks(ctx, [[upperLen * 0.35, armHalfH * 0.3, 0.6], [upperLen * 0.75, 0.4, 0.55]], t3);
+      }
+    } else {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, upperLen * 0.35, armHalfH * 0.35, upperLen * 0.55, armHalfH * 0.70, 0.7, t1 * 0.8);
+      }
+      if (t2 > 0) {
+        drawBulletPuncture(ctx, upperLen * 0.48, -armHalfH * 0.2, 1.1, t2);
+        drawBloodTrickle(ctx, upperLen * 0.48, 0.0, 4.0, upperLen * 0.1, 0.75, t2);
+      }
+      if (t3 > 0) {
+        drawBloodSoak(ctx, upperLen * 0.50, 0.0, 3.2, 2.0, t3 * 0.8);
+      }
+    }
   }
 
   ctx.restore();
@@ -427,6 +805,32 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     drawHandheldGrenade(ctx, handX + fW * 0.40, 0, 1.0);
   }
 
+  // Rany i rozcięcia na przedramieniu i dłoni
+  if (armDmgRatio >= 0.25) {
+    const t2 = Math.min(1.0, Math.max(0.0, (armDmgRatio - 0.25) / 0.30));
+    const t3 = Math.min(1.0, Math.max(0.0, (armDmgRatio - 0.60) / 0.28));
+
+    if (isFront) {
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, foreLen * 0.25, -wristR * 0.6, foreLen * 0.60, -wristR * 0.35, 0.8, t2);
+        drawBloodTrickle(ctx, foreLen * 0.50, -wristR * 0.4, 4.5, foreLen * 0.2, 0.75, t2);
+        drawBloodSoak(ctx, foreLen * 0.45, -wristR * 0.3, 2.5, 1.6, t2 * 0.7);
+      }
+      if (t3 > 0) {
+        drawShrapnelSlash(ctx, foreLen * 0.55, wristR * 0.2, foreLen * 0.82, wristR * 0.45, 0.9, t3);
+        drawBloodSpecks(ctx, [[foreLen * 0.88, -0.4, 0.65], [foreLen * 0.95, 0.6, 0.55]], t3);
+      }
+    } else {
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, foreLen * 0.35, 0.0, foreLen * 0.68, wristR * 0.3, 0.75, t2 * 0.85);
+        drawBloodTrickle(ctx, foreLen * 0.55, 0.0, 4.0, foreLen * 0.15, 0.7, t2);
+      }
+      if (t3 > 0) {
+        drawBloodSoak(ctx, foreLen * 0.50, 0.0, 2.8, 1.8, t3 * 0.8);
+      }
+    }
+  }
+
   ctx.restore();
 }
 
@@ -435,6 +839,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
+
+  const legMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
+  const legCurHp = playerRef ? Math.max(0, playerRef.hp ?? 100) : legMaxHp;
+  const legDmgRatio = (playerRef && playerRef.isDead) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (legCurHp / legMaxHp)));
 
   const isSpecialKickOrProne = !!(playerRef && (
     playerRef.isProne ||
@@ -501,6 +909,46 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.lineTo(l1, 0);
   ctx.stroke();
 
+  // Rany postrzałowe i rozdarcia bojówek na udzie
+  if (legDmgRatio >= 0.15) {
+    const t1 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.15) / 0.22));
+    const t2 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.37) / 0.25));
+    const t3 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.62) / 0.28));
+
+    if (isFrontLeg) {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, l1 * 0.35, -thighHalfH * 0.30, l1 * 0.48, -thighHalfH * 0.15, 0.75, t1 * 0.85);
+        drawBloodSpecks(ctx, [[l1 * 0.42, -thighHalfH * 0.25, 0.6]], t1);
+      }
+      if (t2 > 0) {
+        const bLegX = l1 * 0.48;
+        const bLegY = -thighHalfH * 0.35;
+        drawBulletPuncture(ctx, bLegX, bLegY, 1.25, t2);
+        drawBloodSoak(ctx, bLegX, bLegY, 4.0, 2.8, t2 * 0.85);
+        drawBloodTrickle(ctx, bLegX, bLegY + 1.2, 5.5, l1 * 0.22, 0.9, t2);
+      }
+      if (t3 > 0) {
+        drawShrapnelSlash(ctx, l1 * 0.68, thighHalfH * 0.30, l1 * 0.88, thighHalfH * 0.10, 1.1, t3);
+        drawBloodSoak(ctx, l1 * 0.75, 0.0, 5.0, 3.2, t3 * 0.85);
+        drawBloodSpecks(ctx, [[l1 * 0.30, thighHalfH * 0.35, 0.7], [l1 * 0.60, -thighHalfH * 0.20, 0.8]], t3);
+      }
+    } else {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, l1 * 0.40, 0.0, l1 * 0.58, thighHalfH * 0.25, 0.75, t1 * 0.8);
+      }
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, l1 * 0.52, -thighHalfH * 0.25, l1 * 0.75, 0.0, 0.9, t2);
+        drawBloodTrickle(ctx, l1 * 0.60, 0.0, 4.5, l1 * 0.15, 0.8, t2);
+        drawBloodSoak(ctx, l1 * 0.60, 0.0, 3.5, 2.2, t2 * 0.75);
+      }
+      if (t3 > 0) {
+        const bLegBackX = l1 * 0.38;
+        drawBulletPuncture(ctx, bLegBackX, 0.0, 1.2, t3);
+        drawBloodSoak(ctx, bLegBackX, 0.0, 4.2, 2.8, t3 * 0.8);
+      }
+    }
+  }
+
   ctx.restore();
 
   // ŁYDKA, BOJÓWKI I NAKOLANNIK TAKTYCZNY
@@ -566,6 +1014,46 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (ctx.roundRect) ctx.roundRect(l2 - 5.5, -2.8, 5.2, 5.6, 1.2);
   else ctx.rect(l2 - 5.5, -2.8, 5.2, 5.6);
   ctx.fill();
+
+  // Rany na łydce, uszkodzenia nakolannika i krew na cholewie buta
+  if (legDmgRatio >= 0.15) {
+    const t1 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.15) / 0.22));
+    const t2 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.37) / 0.25));
+    const t3 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.62) / 0.28));
+
+    if (isFrontLeg) {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, 0.5, -padR * 0.5, 2.5, padR * 0.3, 0.65, t1 * 0.8);
+      }
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, 0.2, -padR * 0.6, 2.8, padR * 0.5, 0.9, t2);
+        drawBloodSoak(ctx, 1.5, 0.0, 2.8, 2.4, t2 * 0.75);
+        drawShrapnelSlash(ctx, l2 * 0.32, calfBulge * 0.30, l2 * 0.54, calfBulge * 0.50, 0.85, t2);
+        drawBloodTrickle(ctx, l2 * 0.40, calfBulge * 0.35, 5.0, l2 * 0.15, 0.8, t2);
+      }
+      if (t3 > 0) {
+        const bShinX = l2 * 0.45;
+        drawBulletPuncture(ctx, bShinX, 0.0, 1.2, t3);
+        drawBloodSoak(ctx, l2 - 5.0, 0.0, 3.8, 2.6, t3 * 0.85);
+        drawBloodTrickle(ctx, bShinX, 1.0, 6.0, l2 * 0.20, 0.95, t3);
+        drawBloodSpecks(ctx, [[l2 - 3.0, -1.2, 0.7], [l2 - 2.0, 1.5, 0.65]], t3);
+      }
+    } else {
+      if (t1 > 0) {
+        drawShrapnelSlash(ctx, l2 * 0.35, -calfBulge * 0.3, l2 * 0.52, -calfBulge * 0.1, 0.7, t1 * 0.75);
+      }
+      if (t2 > 0) {
+        drawShrapnelSlash(ctx, 0.5, -padR * 0.4, 2.5, padR * 0.2, 0.8, t2 * 0.8);
+        drawBloodSoak(ctx, 1.5, 0.0, 2.2, 1.8, t2 * 0.7);
+        drawBloodTrickle(ctx, l2 * 0.45, -calfBulge * 0.2, 4.5, l2 * 0.15, 0.75, t2);
+      }
+      if (t3 > 0) {
+        const bShinBackX = l2 * 0.50;
+        drawBulletPuncture(ctx, bShinBackX, 0.0, 1.15, t3);
+        drawBloodSoak(ctx, bShinBackX, 0.0, 3.4, 2.2, t3 * 0.8);
+      }
+    }
+  }
 
   ctx.restore();
 
@@ -1742,10 +2230,14 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const isLegFrontDismembered = !!p.dismembered?.legFront;
   const isLegBackDismembered = !!p.dismembered?.legBack;
 
+  const maxHp = p.maxHp || 100;
+  const curHp = Math.max(0, p.hp ?? 100);
+  const dmgRatio = p.isDead ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (curHp / maxHp)));
+
   // KOŃCZYNY W TLE
   if (isRightLimbForeground) {
     if (!isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen);
+      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, false);
     }
@@ -1757,7 +2249,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else {
     if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen);
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, false);
     }
@@ -1900,6 +2392,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.strokeRect(patchX, -20.2, plateW * 0.64, 2.4);
   }
 
+  // WIDOCZNE ŚLADY KRWI I OBRAŻEŃ OD KUL/WYBUCHÓW NA TORSIE I KAMIZELCE TAKTYCZNEJ
+  drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway);
+
   // MODEL JETPACKA NA PLECACH POSTACI
   drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW);
 
@@ -2021,6 +2516,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineTo(4.4, -3.5);
     ctx.stroke();
 
+    // Rany na twarzy w profilu
+    drawHeadWoundsProfile(ctx, dmgRatio);
+
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);
     const hairBackGrad = ctx.createLinearGradient(-4.8, -10.0, 4.8, 4.0);
@@ -2040,6 +2538,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ctx.arc(0, -1.6, 4.8, Math.PI * 0.8, Math.PI * 0.2, true);
       ctx.stroke();
     }
+
+    // Rany z tyłu głowy
+    drawHeadWoundsAway(ctx, dmgRatio);
+
   } else {
     ctx.rotate(pose.headPitch * 0.5);
     const faceFrontGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
@@ -2078,6 +2580,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
     ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
     ctx.fill();
+
+    // Rany na twarzy z przodu
+    drawHeadWoundsFront(ctx, dmgRatio);
   }
 
   ctx.restore();
@@ -2099,7 +2604,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen);
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
     }
@@ -2111,7 +2616,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     if (!isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen);
+      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, true);
     }
