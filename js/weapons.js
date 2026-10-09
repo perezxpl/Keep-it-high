@@ -270,8 +270,8 @@ export function getWeaponHoldTransform(p) {
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry)
   const headBobOffset = (p.headBob || 0) * 0.70;
   const crouchDropY = isCrouch ? 4 : 0;
-  let loosePivotX = hipX + (isSniper ? 8 : (isShotgun ? 5 : 7)) * charFacing;
-  let loosePivotY = hipY - (isSniper ? 14 : (isShotgun ? 10 : 13)) + headBobOffset + crouchDropY;
+  let loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : 5.8)) * charFacing;
+  let loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : 10.5)) + headBobOffset + crouchDropY;
 
   let directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
   if (directAngle < -Math.PI / 2) {
@@ -279,7 +279,7 @@ export function getWeaponHoldTransform(p) {
   } else if (directAngle > Math.PI / 2 + 0.35) {
     directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
   }
-  const idleDroop = isSniper ? 0.20 : (isShotgun ? 0.40 : 0.26);
+  const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26);
   let looseAimAngle = directAngle + idleDroop;
 
   // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
@@ -320,14 +320,12 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance)
-  const muscleMult = p.currentClass?.visuals?.muscleMult || 1.0;
-  const braceForward = (isSniper ? 4.5 : (isShotgun ? 4.0 : 3.5)) + (muscleMult - 1.0) * 3.5;
-  const braceOffsetY = isCrouch ? 1.5 : 0;
-  const shoulderPocketX = rightShoulderX + braceForward * charFacing;
-  const shoulderPocketY = rightShoulderY + braceOffsetY;
+  // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance - Uniesienie broni do oka)
+  const braceOffsetY = isCrouch ? 1.0 : 0;
+  const shoulderPocketX = rightShoulderX - 0.5 * charFacing;
+  const shoulderPocketY = rightShoulderY - 2.2 + braceOffsetY;
 
-  const stockLen = isSniper ? 12.5 : (isShotgun ? 11.5 : 10.5);
+  const stockLen = isSniper ? 11.5 : (isShotgun ? 10.4 : 10.2);
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
   let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
@@ -362,9 +360,9 @@ export function getWeaponHoldTransform(p) {
   const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
   const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  // Naturalny chwyt łoża z anatomicznym ugięciem łokcia lewej ręki (ok. 30-40 stopni w stawie)
-  const foreGripDistX = isSniper ? 17.5 : ((isShotgun ? 13.5 : 15.0) + pumpShift);
-  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 2.0 : 1.2);
+  // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
+  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : 16.0) + pumpShift);
+  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : 1.0);
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
@@ -522,16 +520,16 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   const isCrouch = !!(shooter.isCrouching || shooter.isProne);
 
   if (weapon.id === 'SHOTGUN') {
-    shooter.shootPoseTimer = 10;
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 30);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = (shooter.muzzleRise || 0) + weapon.muzzleRise;
     shooter.pumpTimer = 18;
   } else if (weapon.id === 'SNIPER') {
-    shooter.shootPoseTimer = 24;
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 34);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   } else {
-    shooter.shootPoseTimer = weapon.fireRate + 3;
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.24, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   }
@@ -1234,15 +1232,15 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.moveTo(0, -1);
-    ctx.lineTo(-12, 1.5);
-    ctx.lineTo(-12, 6.5);
-    ctx.lineTo(-6, 4.5);
+    ctx.lineTo(-10.2, 1.5);
+    ctx.lineTo(-10.2, 6.2);
+    ctx.lineTo(-5.2, 4.5);
     ctx.lineTo(0, 2.5);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(-12.5, 1.5, 1.5, 5);
+    ctx.fillRect(-10.8, 1.5, 1.4, 4.8);
 
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
@@ -1291,15 +1289,15 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#3f2712';
     ctx.beginPath();
     ctx.moveTo(0, -1);
-    ctx.lineTo(-12, 1.8);
-    ctx.lineTo(-12, 7.0);
-    ctx.lineTo(-5, 4.8);
+    ctx.lineTo(-10.4, 1.8);
+    ctx.lineTo(-10.4, 6.8);
+    ctx.lineTo(-4.8, 4.8);
     ctx.lineTo(0, 3.0);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(-12.5, 1.8, 1.5, 5.2);
+    ctx.fillRect(-11.0, 1.8, 1.4, 5.0);
 
     ctx.fillStyle = '#3f2712';
     ctx.fillRect(0, 2.5, 3.2, 5);
@@ -1332,22 +1330,22 @@ export function drawHeldWeapon(ctx, p) {
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.moveTo(0, -1.0);
-    ctx.lineTo(-14, 1.2);
-    ctx.lineTo(-15, 6.8);
-    ctx.lineTo(-6, 4.5);
+    ctx.lineTo(-11.5, 1.2);
+    ctx.lineTo(-12.2, 6.5);
+    ctx.lineTo(-5.5, 4.5);
     ctx.lineTo(0, 2.5);
     ctx.closePath();
     ctx.fill();
 
     // Gumowa stopka kolby amortyzująca odrzut .50 BMG (Buttpad)
     ctx.fillStyle = '#020617';
-    ctx.fillRect(-16.0, 0.8, 2.2, 6.2);
+    ctx.fillRect(-13.0, 0.8, 1.8, 5.8);
 
     // Regulowana baka policzkowa (Cheek riser)
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(-13, -2.8, 9, 3.2);
+    ctx.fillRect(-10.8, -2.8, 7.8, 3.2);
     ctx.fillStyle = '#334155';
-    ctx.fillRect(-13, -2.8, 9, 0.9);
+    ctx.fillRect(-10.8, -2.8, 7.8, 0.9);
 
     // Chwyt pistoletowy (Ergonomic combat grip)
     ctx.fillStyle = '#0f172a';
@@ -1406,10 +1404,11 @@ export function drawHeldWeapon(ctx, p) {
 
     // 4. Łoże z perforacją chłodzącą (Ventilated handguard)
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(18, -2.6, 11, 4.2);
+    ctx.fillRect(15.5, -2.6, 13.5, 4.2);
     ctx.fillStyle = '#090d16';
-    ctx.fillRect(20, -1.2, 2.0, 1.4);
-    ctx.fillRect(24, -1.2, 2.0, 1.4);
+    ctx.fillRect(17.5, -1.2, 2.0, 1.4);
+    ctx.fillRect(21.5, -1.2, 2.0, 1.4);
+    ctx.fillRect(25.5, -1.2, 2.0, 1.4);
 
     // Złożony dwójnóg pod łożem (Folded bipod)
     ctx.fillStyle = '#090d16';

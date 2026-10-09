@@ -12,7 +12,7 @@ import {
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v47_bent_support_arm';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v48_aim_raise_extended_arm';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -2155,8 +2155,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const shRightX = hipX + (shOffsetHorizWep * cosTWep - lyRightWep * sinTWep);
     const shRightY = hipY + (shOffsetHorizWep * sinTWep + lyRightWep * cosTWep);
 
-    const shLeftX = hipX + (-shOffsetHorizWep * cosTWep - lyLeftWep * sinTWep);
-    const shLeftY = hipY + (-shOffsetHorizWep * sinTWep + lyLeftWep * cosTWep);
+    // W chwycie oburęcznym broni lewy bark wspierający obraca się ku łożu (Tactical Lead Shoulder)
+    const tacticalLeadSh = (1.8 * cosYaw);
+    const shLeftX = hipX + ((-shOffsetHorizWep + tacticalLeadSh) * cosTWep - lyLeftWep * sinTWep);
+    const shLeftY = hipY + ((-shOffsetHorizWep + tacticalLeadSh) * sinTWep + lyLeftWep * cosTWep);
 
     const rightArmRelX = (hold.rightHandTarget.x - shRightX) * currentFacingDir;
     const rightArmRelY = hold.rightHandTarget.y - shRightY;
@@ -2381,6 +2383,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
   }
 
+  // Przyłożenie policzka do baki kolby (Cheek Weld) podczas celowania/strzału
+  if (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) {
+    const cheekWeld = 0.10 * p.shootPoseWeight * currentFacingDir;
+    pose.headPitch += (cheekWeld - pose.headPitch) * 0.25;
+  }
+
   let targetShoulderAmp = 0;
   if (!p.isDead && speed > 0.1) {
     if (p.gaitMode === 'SPRINT') targetShoulderAmp = 0.12;
@@ -2406,8 +2414,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const shRightX = hipX + (shOffsetHoriz * cosTorsoT - lyRightSh * sinTorsoT);
   const shRightY = hipY + (shOffsetHoriz * sinTorsoT + lyRightSh * cosTorsoT);
 
-  const shLeftX = hipX + (-shOffsetHoriz * cosTorsoT - lyLeftSh * sinTorsoT);
-  const shLeftY = hipY + (-shOffsetHoriz * sinTorsoT + lyLeftSh * cosTorsoT);
+  const tacticalLeadSh = hasActiveWeapon ? (1.8 * cosYaw) : 0;
+  const shLeftX = hipX + ((-shOffsetHoriz + tacticalLeadSh) * cosTorsoT - lyLeftSh * sinTorsoT);
+  const shLeftY = hipY + ((-shOffsetHoriz + tacticalLeadSh) * sinTorsoT + lyLeftSh * cosTorsoT);
 
   const hipOffsetHoriz = (cosYaw * 2.0) - (sinYaw * 3.5);
   const hipRightX = hipX + hipOffsetHoriz;
