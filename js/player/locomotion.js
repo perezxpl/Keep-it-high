@@ -201,40 +201,41 @@ export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, fac
 export function getSprintFootTrajectory(p) {
   const t = p / (Math.PI * 2);
   let lx, ly, ankle;
-  const maxPushLift = 7.0;
+  const maxPushLift = 12.5;
 
   // Cykl sprintu: 34% faza podparcia (kontakt na śródstopiu / palcach), 66% faza wymachu (wysokie uniesienie kolana)
   if (t < 0.34) {
     // 1. FAZA PODPARCIA (STANCE): liniowy ruch podłoża względem bioder bez ślizgania
     const u = t / 0.34;
     lx = 22 - u * 52;
-    // Wybicie z palców / plantarflexion pod koniec kontaktu
-    const push = Math.pow(u, 1.25);
-    ankle = lerp(0.08, 0.52, push);
+    // Wybicie z palców / plantarflexion: agresywne zgięcie stopy i uniesienie pięty
+    const push = Math.pow(u, 1.20);
+    ankle = lerp(0.10, 0.82, push);
     ly = -Math.sin(ankle) * maxPushLift;
   } else if (t < 0.62) {
     // 2. PODRYW I WYBICIE (TOE-OFF & HIGH KNEE DRIVE): stopa podciągana pod pośladek
     const u = (t - 0.34) / 0.28;
     const eu = ease(u);
     lx = -30 + eu * 24;
-    const startY = -Math.sin(0.52) * maxPushLift;
+    const startY = -Math.sin(0.82) * maxPushLift;
     const peakY = -38;
     ly = lerp(startY, peakY, Math.sin(eu * Math.PI * 0.5));
-    ankle = lerp(0.52, -0.06, eu);
+    ankle = lerp(0.82, -0.06, eu);
   } else if (t < 0.84) {
     // 3. PRZENIESIENIE W PRZÓD (LEG EXTENSION FORWARD): kolano w przód, goleń rozprostowuje się
     const u = (t - 0.62) / 0.22;
     const eu = ease(u);
     lx = -6 + eu * 34;
     ly = -38 + eu * 24;
-    ankle = lerp(-0.06, 0.10, eu);
+    ankle = lerp(-0.06, 0.12, eu);
   } else {
     // 4. PRZYGOTOWANIE DO LĄDOWANIA (GROUND CAPTURE): aktywne opuszczenie stopy na śródstopie
     const u = (t - 0.84) / 0.16;
     const eu = ease(u);
     lx = 28 - eu * 6;
-    ly = -14 + eu * 13.4;
-    ankle = lerp(0.10, 0.08, eu);
+    const landY = -Math.sin(0.10) * maxPushLift;
+    ly = lerp(-14, landY, eu);
+    ankle = lerp(0.12, 0.10, eu);
   }
 
   return { lx, ly, ankle };
@@ -277,29 +278,29 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
     const isBack = playerRef && playerRef.isMovingBackwards;
     const stanceRatio = 0.58;
     const stanceLimit = Math.PI * 2 * stanceRatio;
-    const baseStride = 17.5;
+    const baseStride = 16.5;
     const strideLen = isBack ? baseStride * 0.78 : baseStride;
-    const stepHeight = 11.0;
-    const toePinLiftMax = 6.2;
+    const stepHeight = 11.5;
+    const toePinLiftMax = 9.5;
 
     if (p < stanceLimit) {
       // 1. FAZA PODPARCIA (STANCE PHASE): Stopa na podłożu przemieszcza się liniowo w tył
       const u = p / stanceLimit;
       lx = (0.5 - u) * (strideLen * 2);
 
-      if (u < 0.15) {
+      if (u < 0.16) {
         // Heel strike -> płynne przetoczenie na całą podeszwę (Loading Response)
-        const hu = ease(u / 0.15);
-        ankle = lerp(-0.14, 0.0, hu);
+        const hu = ease(u / 0.16);
+        ankle = lerp(-0.16, 0.0, hu);
         ly = 0;
-      } else if (u < 0.58) {
+      } else if (u < 0.50) {
         // Midstance: cała podeszwa idealnie płasko na ziemi
         ankle = 0.0;
         ly = 0;
       } else {
-        // Push-off / Terminal Stance: uniesienie pięty z palcami na podłożu
-        const tu = ease((u - 0.58) / 0.42);
-        ankle = lerp(0.0, 0.42, tu);
+        // Push-off / Terminal Stance: wyraźne uniesienie pięty ze sprężystym zgięciem palców (toe-break)
+        const tu = ease((u - 0.50) / 0.50);
+        ankle = lerp(0.0, 0.65, tu);
         ly = -Math.sin(ankle) * toePinLiftMax;
       }
     } else {
@@ -308,30 +309,30 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
       const eu = ease(u);
       lx = (-0.5 + eu) * (strideLen * 2);
 
-      const startLift = Math.sin(0.42) * toePinLiftMax;
+      const startLift = Math.sin(0.65) * toePinLiftMax;
       ly = -Math.sin(u * Math.PI) * stepHeight - startLift * (1.0 - u) * (1.0 - u);
 
       if (u < 0.25) {
         // Wyjście z wybicia: powrót stopy do pozycji neutralnej / lekkiego uniesienia palców
         const su = ease(u / 0.25);
-        ankle = lerp(0.42, -0.04, su);
+        ankle = lerp(0.65, -0.04, su);
       } else if (u < 0.75) {
         // Mid-swing: stopa neutralna, bezpieczny prześwit nad podłożem
         ankle = -0.04;
       } else {
         // Terminal swing: przygotowanie do kontaktu pięty z podłożem (dorsiflexion)
         const prep = ease((u - 0.75) / 0.25);
-        ankle = lerp(-0.04, -0.14, prep);
+        ankle = lerp(-0.04, -0.16, prep);
       }
     }
   } else if (mode === 'JOG') {
     const isBack = playerRef && playerRef.isMovingBackwards;
     const stanceRatio = 0.44;
     const stanceLimit = Math.PI * 2 * stanceRatio;
-    const baseStride = 22.0 + ((speed - CONFIG.WALK_MAX) / (CONFIG.JOG_MAX - CONFIG.WALK_MAX)) * 3.5;
+    const baseStride = 21.0 + ((speed - CONFIG.WALK_MAX) / Math.max(0.1, CONFIG.JOG_MAX - CONFIG.WALK_MAX)) * 3.5;
     const strideLen = isBack ? baseStride * 0.78 : baseStride;
-    const stepHeight = 14.0;
-    const toePinLiftMax = 6.8;
+    const stepHeight = 14.5;
+    const toePinLiftMax = 11.5;
 
     if (p < stanceLimit) {
       // 1. FAZA PODPARCIA (STANCE): liniowe prowadzenie stopy po podłożu
@@ -340,14 +341,14 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
 
       if (u < 0.15) {
         const hu = ease(u / 0.15);
-        ankle = lerp(-0.12, 0.0, hu);
+        ankle = lerp(-0.14, 0.0, hu);
         ly = 0;
-      } else if (u < 0.52) {
+      } else if (u < 0.48) {
         ankle = 0.0;
         ly = 0;
       } else {
-        const tu = ease((u - 0.52) / 0.48);
-        ankle = lerp(0.0, 0.48, tu);
+        const tu = ease((u - 0.48) / 0.52);
+        ankle = lerp(0.0, 0.72, tu);
         ly = -Math.sin(ankle) * toePinLiftMax;
       }
     } else {
@@ -356,18 +357,18 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
       const eu = ease(u);
       lx = (-0.5 + eu) * (strideLen * 2);
 
-      const startLift = Math.sin(0.48) * toePinLiftMax;
+      const startLift = Math.sin(0.72) * toePinLiftMax;
       ly = -Math.sin(u * Math.PI) * stepHeight - startLift * (1.0 - u) * (1.0 - u);
 
       if (u < 0.25) {
         const su = ease(u / 0.25);
-        ankle = lerp(0.48, 0.04, su);
+        ankle = lerp(0.72, 0.04, su);
       } else if (u < 0.70) {
         const su = ease((u - 0.25) / 0.45);
         ankle = lerp(0.04, -0.04, su);
       } else {
         const su = ease((u - 0.70) / 0.30);
-        ankle = lerp(-0.04, -0.12, su);
+        ankle = lerp(-0.04, -0.14, su);
       }
     }
   }

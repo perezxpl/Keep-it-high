@@ -229,7 +229,7 @@ export function createPlayerInstance(overrides = {}) {
     deathTilt: 0,
     deathRotVel: 0,
     isSettled: false,
-    pelvisY: -3.5,
+    pelvisY: -10.0,
     severedHead: null,
 
     dismembered: {
@@ -1182,9 +1182,19 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.gaitMode === 'IDLE') {
     targetTilt = 0;
   } else {
-    if (player.gaitMode === 'WALK') targetTilt = ((speed / walkMax) * 0.045) * player.facing;
-    else if (player.gaitMode === 'JOG') targetTilt = (0.08 + ((speed - walkMax) / 2.0) * 0.04) * player.facing;
-    else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
+    // Dynamiczne, agresywne pochylenie tułowia w przód przy przyspieszaniu i biegu
+    const isAccelerating = Math.abs(inputAxisX) > 0.3 && speed < targetTopSpeed * 0.92;
+    const accelSurge = isAccelerating ? 0.08 : 0;
+
+    if (player.gaitMode === 'WALK') {
+      targetTilt = ((0.05 + (speed / walkMax) * 0.08 + accelSurge) * player.facing);
+    } else if (player.gaitMode === 'JOG') {
+      const uJog = Math.min(1.0, Math.max(0, (speed - walkMax) / Math.max(0.1, jogMax - walkMax)));
+      targetTilt = ((0.14 + uJog * 0.12 + accelSurge) * player.facing);
+    } else if (player.gaitMode === 'SPRINT') {
+      const uSprint = Math.min(1.0, Math.max(0, (speed - jogMax) / Math.max(0.1, sprintMax - jogMax)));
+      targetTilt = ((0.28 + uSprint * 0.14 + accelSurge) * player.facing);
+    }
   }
 
   if (player.shootPoseWeight > 0) {
@@ -1306,21 +1316,21 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
-  let targetPelvisY = -3.5;
+  let targetPelvisY = -10.0;
 
   if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
-    targetPelvisY = -3.5 + choreo.pelvisDip;
+    targetPelvisY = -10.0 + choreo.pelvisDip;
   } else if (player.isJumpCharging) {
     if (speed < 0.8) {
-      targetPelvisY = -3.5 + (player.jumpChargePower * 12);
+      targetPelvisY = -10.0 + (player.jumpChargePower * 14);
     } else {
       const basePelvis = (player.gaitMode === 'SPRINT')
         ? -Math.cos(player.stridePhase * 2) * 3.8
         : (player.gaitMode === 'JOG')
           ? -Math.cos(player.stridePhase * 2) * 2.8
-          : Math.cos(player.stridePhase * 2) * 1.6;
-      targetPelvisY = -3.5 + basePelvis + (player.jumpChargePower * 4.0);
+          : Math.cos(player.stridePhase * 2) * 2.2;
+      targetPelvisY = -10.0 + basePelvis + (player.jumpChargePower * 4.0);
     }
   } else if (player.kickMode === 'BACKFLIP') {
     targetPelvisY = -1.5;
@@ -1328,11 +1338,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetPelvisY = 6.0;
   } else if (player.isCharging && speed < 0.8) {
     const chargeDip = (player.chargePower || 0) * 3.8;
-    targetPelvisY = -3.5 + chargeDip;
+    targetPelvisY = -10.0 + chargeDip;
   } else if (player.kickMode === 'GROUND' && player.kickState === 'SWING') {
-    targetPelvisY = -4.5;
+    targetPelvisY = -6.5;
   } else if (player.kickMode === 'SPARTAN') {
-    targetPelvisY = -3.0;
+    targetPelvisY = -4.0;
   } else if (player.isProne) {
     targetPelvisY = 34;
   } else if (player.isSliding) {
@@ -1340,22 +1350,23 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.isCrouching) {
     targetPelvisY = 16.5;
   } else if (player.gaitMode === 'IDLE') {
-    const braceDip = (player.shootPoseWeight || 0) * 2.8;
-    targetPelvisY = -3.5 + braceDip;
+    // Wyprostowana, naturalna stójka wojskowa (proste nogi, lekki flex na gotowość)
+    const braceDip = (player.shootPoseWeight || 0) * 2.2;
+    targetPelvisY = -10.0 + braceDip;
   } else if (player.gaitMode === 'WALK') {
-    // Model Odwróconego Wahadła (Inverted Pendulum):
-    // Dół (dip) przy kontakcie obunóż (stridePhase 0 i PI), góra (crest) przy przetoczeniu przez nogę podporową
-    targetPelvisY = -3.5 + Math.cos(player.stridePhase * 2) * 1.6;
+    // Model Odwróconego Wahadła:
+    // W pionie (midstance, stridePhase PI/2 i 3PI/2) biodra unoszą się do -11.4 (noga prosta w kolanie)
+    // Przy kontakcie obunóż (stridePhase 0 i PI) biodra opadają do -7.0 (amortyzacja)
+    targetPelvisY = -9.2 + Math.cos(player.stridePhase * 2) * 2.2;
   } else if (player.gaitMode === 'JOG') {
-    // Model Sprężysto-Masowy (Spring-Mass):
-    // Amortyzacja i ugięcie przy kontakcie ze stopą, sprężyste wybicie w fazę lotu
-    targetPelvisY = -2.8 - Math.cos(player.stridePhase * 2) * 2.8;
+    // Model Sprężysto-Masowy: amortyzacja i wybicie w fazę lotu
+    targetPelvisY = -8.5 - Math.cos(player.stridePhase * 2) * 2.8;
   } else if (player.gaitMode === 'SPRINT') {
     // Dynamiczny sprężysty bieg sprinterski
-    targetPelvisY = -2.0 - Math.cos(player.stridePhase * 2) * 3.8;
+    targetPelvisY = -7.5 - Math.cos(player.stridePhase * 2) * 3.8;
   }
 
-  if (player.isJumping) targetPelvisY = -3.5;
+  if (player.isJumping) targetPelvisY = -4.0;
   player.pelvisY += (targetPelvisY - player.pelvisY) * 0.22;
 
   const targetHeadBob = (player.pelvisY * 0.35) + (Math.abs(player.vx) > 0 ? Math.sin(player.stridePhase * 2) * 1.4 : 0);

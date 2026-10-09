@@ -587,9 +587,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
     // Kąt uniesienia pięty względem kierunku zwrotu:
     const localAnkle = ankleRot * facing;
-    if (localAnkle > 0.04) {
-      // Naturalne ugięcie noska buta (toe-break flex) na podłożu podczas uniesienia pięty i wybicia:
-      targetFlex = Math.min(1.0, (localAnkle - 0.04) * 1.35);
+    if (localAnkle > 0.02) {
+      // Wyraziste, sprężyste ugięcie noska buta (toe-break flex) na podłożu przy uniesieniu pięty i wybiciu:
+      targetFlex = Math.min(1.05, localAnkle * 1.35);
     } else {
       targetFlex = 0;
     }
@@ -603,8 +603,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (pose[effProp] === undefined) pose[effProp] = targetEffAnkle;
 
   const curSpd = playerRef ? Math.abs(playerRef.vx || 0) : 0;
-  let flexSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.65 : 0.35);
-  let ankleSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.75 : 0.40);
+  // Błyskawiczny, sprężysty powrót noska (snap-back) po oderwaniu stopy od podłoża:
+  const isReleasingFlex = targetFlex < (pose[flexProp] || 0);
+  let flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.80 : (curSpd > 0.5 ? 0.70 : 0.40));
+  let ankleSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.80 : 0.45);
   if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
     flexSmooth = 0.50;
     ankleSmooth = 0.60;
