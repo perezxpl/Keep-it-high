@@ -20,13 +20,21 @@ export const DEFAULT_VISUALS = {
   muscleMult: 1.0,
   sleeveless: false,
   sleeveLengthMult: 1.0,
-  hasWristband: true,
-  wristbandColor: '#ffffff',
-  hasHeadband: true,
+  hasWristband: false,
+  wristbandColor: '#18181b',
+  hasTacticalGloves: true,
+  gloveColor: '#18181b',
+  hasHeadband: false,
   headbandColor: '#ffffff',
-  hairColor0: '#1c0d06',
-  hairColor1: '#2e160a',
-  hairColor2: '#452210',
+  hairStyle: 'shaved',
+  hasHelmet: false,
+  helmetColor: '#27272a',
+  helmetVisorGlow: '#00e5ff',
+  hasVest: false,
+  vestColor: '#18181b',
+  hairColor0: '#0f172a',
+  hairColor1: '#1e293b',
+  hairColor2: '#334155',
   shortsColor0: '#27272a',
   shortsColor1: '#3f3f46',
   shortsColor2: '#18181b',
@@ -341,6 +349,78 @@ function drawBloodSpecks(ctx, specks, alpha) {
     ctx.fill();
   }
   ctx.restore();
+}
+
+/**
+ * Rysuje nakładaną kamizelkę kuloodporną / Plate Carrier PMC (warstwa modularna)
+ */
+export function drawPlateCarrierOverlay(ctx, p, v, absCos, absSin, cosYaw, isLookingAway, shoulderHalfW, waistHalfW, waistY) {
+  const vestGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
+  const vestBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
+  const vestLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
+  const vestDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
+  vestGrad.addColorStop(0.0, vestDarkCol);
+  vestGrad.addColorStop(0.35, vestBaseCol);
+  vestGrad.addColorStop(0.75, vestLightCol);
+  vestGrad.addColorStop(1.0, vestDarkCol);
+
+  const strapLeftX = -shoulderHalfW * 0.48;
+  const strapRightX = shoulderHalfW * 0.48;
+  const scoopCenterX = !isLookingAway ? (cosYaw * 1.0) : (-absSin * 0.8);
+  const scoopCenterY = !isLookingAway ? -21.5 : -23.2;
+
+  // Główny korpus plate carriera
+  ctx.beginPath();
+  ctx.moveTo(-waistHalfW, waistY);
+  ctx.lineTo(-shoulderHalfW, -24.4);
+  ctx.lineTo(strapLeftX, -24.4);
+  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
+  ctx.lineTo(shoulderHalfW, -24.4);
+  ctx.lineTo(waistHalfW, waistY);
+  ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+  ctx.closePath();
+  ctx.fillStyle = vestGrad;
+  ctx.fill();
+
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Pasy nośne i taśmy MOLLE (Modular Lightweight Load-carrying Equipment)
+  const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
+  const molleCol = 'rgba(0, 0, 0, 0.45)';
+  const molleStitch = 'rgba(255, 255, 255, 0.15)';
+
+  // Pas piersiowy MOLLE 1
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.45, -17.0, plateW * 0.9, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.15, -17.0, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.15, -17.0, 0.8, 1.8);
+
+  // Pas brzuszny MOLLE 2
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.48, -12.5, plateW * 0.96, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.18, -12.5, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.18, -12.5, 0.8, 1.8);
+
+  // Pas dolny MOLLE 3
+  ctx.fillStyle = molleCol;
+  ctx.fillRect(-plateW * 0.50, -8.0, plateW * 1.0, 1.8);
+  ctx.fillStyle = molleStitch;
+  ctx.fillRect(-plateW * 0.20, -8.0, 0.8, 1.8);
+  ctx.fillRect(plateW * 0.20, -8.0, 0.8, 1.8);
+
+  // Panel rzepu taktycznego / Velcro Morale Patch na klatce piersiowej
+  if (!isLookingAway && absCos > 0.25) {
+    const patchX = (cosYaw * 2.0) - (plateW * 0.32);
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(patchX, -20.2, plateW * 0.64, 2.4);
+    ctx.strokeStyle = '#3f3f46';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(patchX, -20.2, plateW * 0.64, 2.4);
+  }
 }
 
 /**
@@ -875,17 +955,19 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   pantsGrad.addColorStop(0.4, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
   pantsGrad.addColorStop(1.0, isFrontLeg ? (v.shortsColor2 || '#18181b') : '#0f172a');
 
-  // Nogawka bojówek rozciągająca się na całą długość uda
+  // Nogawka bojówek rozciągająca się na całą długość uda z zaokrąglonym stawem biodrowym
   ctx.beginPath();
-  ctx.moveTo(0, -thighHalfH);
+  ctx.arc(0, 0, thighHalfH, Math.PI * 0.5, -Math.PI * 0.5, false);
   ctx.lineTo(l1 - 1.5, -thighHalfH + 0.6);
   ctx.lineTo(l1, -2.4);
   ctx.lineTo(l1, 2.4);
   ctx.lineTo(l1 - 1.5, thighHalfH - 0.6);
-  ctx.lineTo(0, thighHalfH);
   ctx.closePath();
   ctx.fillStyle = pantsGrad;
   ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
 
   // Boczna kieszeń cargo (Cargo Pocket) z klapą i przeszyciami
   const pocketX = l1 * 0.22;
@@ -975,6 +1057,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.closePath();
   ctx.fillStyle = pantsShinGrad;
   ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
 
   // NAKOLANNIK TAKTYCZNY (Hard-Shell Combat Knee Pad)
   const padR = 3.6 * (isSculpted ? muscle * 0.95 : muscle);
@@ -1279,9 +1364,9 @@ export function getJetpackNozzlePos(p) {
     ? p.pose.torsoTilt 
     : (p.torsoTilt || 0);
 
-  // Wektor dyszy w lokalnym układzie tułowia (na plecach postaci, u dołu dyszy):
+  // Wektor dyszy w lokalnym układzie tułowia (na plecach postaci, u wylotu dyszy):
   const localX = -facingDir * 7.5;
-  const localY = 2.0;
+  const localY = 2.5;
 
   const cosA = Math.cos(tilt);
   const sinA = Math.sin(tilt);
@@ -1953,19 +2038,20 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
 
-  if (hasActiveWeapon) {
-    const hold = getWeaponHoldTransform(p);
+    const tiltWep = p.pose?.torsoTilt || p.torsoTilt || 0;
+    const cosTWep = Math.cos(tiltWep);
+    const sinTWep = Math.sin(tiltWep);
+    const shTiltWep = p.pose?.shoulderTilt || 0;
 
-    const shoulderBaseX = hipX + (21 * Math.sin(p.pose?.torsoTilt || p.torsoTilt || 0));
-    const shoulderBaseY = hipY - (21 * Math.cos(p.pose?.torsoTilt || p.torsoTilt || 0));
-    const shOffsetHoriz = (cosYaw * 1.4) - (sinYaw * 4.5);
-    const shoulderTilt = p.pose?.shoulderTilt || 0;
+    const shOffsetHorizWep = (cosYaw * 1.6) - (sinYaw * 4.6);
+    const lyRightWep = -24.0 - (shTiltWep * 7.5 * cosYaw);
+    const lyLeftWep = -24.0 + (shTiltWep * 7.5 * cosYaw);
 
-    const shRightX = shoulderBaseX + shOffsetHoriz;
-    const shRightY = shoulderBaseY - (shoulderTilt * 8 * cosYaw);
+    const shRightX = hipX + (shOffsetHorizWep * cosTWep - lyRightWep * sinTWep);
+    const shRightY = hipY + (shOffsetHorizWep * sinTWep + lyRightWep * cosTWep);
 
-    const shLeftX = shoulderBaseX - shOffsetHoriz;
-    const shLeftY = shoulderBaseY + (shoulderTilt * 8 * cosYaw);
+    const shLeftX = hipX + (-shOffsetHorizWep * cosTWep - lyLeftWep * sinTWep);
+    const shLeftY = hipY + (-shOffsetHorizWep * sinTWep + lyLeftWep * cosTWep);
 
     const rightArmRelX = (hold.rightHandTarget.x - shRightX) * currentFacingDir;
     const rightArmRelY = hold.rightHandTarget.y - shRightY;
@@ -2199,20 +2285,24 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const shoulderCounterTilt = p.isDead ? 0 : -Math.sin(p.stridePhase) * targetShoulderAmp * currentFacingDir;
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
 
-  const shoulderBaseX = hipX + (21 * Math.sin(pose.torsoTilt));
-  const shoulderBaseY = hipY - (21 * Math.cos(pose.torsoTilt));
+  const cosTorsoT = Math.cos(pose.torsoTilt);
+  const sinTorsoT = Math.sin(pose.torsoTilt);
 
-  const headTopX = hipX + (36 * Math.sin(pose.torsoTilt));
-  const headTopY = hipY - (36 * Math.cos(pose.torsoTilt)) + ((p.headBob || 0) * 0.75);
+  const headTopX = hipX + (36 * sinTorsoT);
+  const headTopY = hipY - (36 * cosTorsoT) + ((p.headBob || 0) * 0.75);
   p.head = { x: headTopX, y: headTopY };
   if (!p.height) p.height = p.h || 70;
   if (!p.width) p.width = p.w || 24;
 
-  const shOffsetHoriz = (cosYaw * 1.4) - (sinYaw * 4.5);
-  const shRightX = shoulderBaseX + shOffsetHoriz;
-  const shLeftX = shoulderBaseX - shOffsetHoriz;
-  const shRightY = shoulderBaseY - (pose.shoulderTilt * 8 * cosYaw);
-  const shLeftY = shoulderBaseY + (pose.shoulderTilt * 8 * cosYaw);
+  const shOffsetHoriz = (cosYaw * 1.6) - (sinYaw * 4.6);
+  const lyRightSh = -24.0 - (pose.shoulderTilt * 7.5 * cosYaw);
+  const lyLeftSh = -24.0 + (pose.shoulderTilt * 7.5 * cosYaw);
+
+  const shRightX = hipX + (shOffsetHoriz * cosTorsoT - lyRightSh * sinTorsoT);
+  const shRightY = hipY + (shOffsetHoriz * sinTorsoT + lyRightSh * cosTorsoT);
+
+  const shLeftX = hipX + (-shOffsetHoriz * cosTorsoT - lyLeftSh * sinTorsoT);
+  const shLeftY = hipY + (-shOffsetHoriz * sinTorsoT + lyLeftSh * cosTorsoT);
 
   const hipOffsetHoriz = (cosYaw * 2.0) - (sinYaw * 3.5);
   const hipRightX = hipX + hipOffsetHoriz;
@@ -2316,29 +2406,70 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.closePath();
   ctx.fillStyle = beltGrad;
   ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
 
-  // Metalowa klamra pasa taktycznego
+  // Metalowa klamra pasa taktycznego Cobra
   ctx.fillStyle = '#52525b';
   ctx.fillRect(-1.6, 1.2, 3.2, 2.6);
   ctx.fillStyle = '#71717a';
   ctx.fillRect(-1.0, 1.7, 2.0, 1.6);
 
-  // KAMIZELKA TAKTYCZNA / PLATE CARRIER PMC
-  const vestGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
-  const vestBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
-  const vestLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
-  const vestDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
-  vestGrad.addColorStop(0.0, vestDarkCol);
-  vestGrad.addColorStop(0.35, vestBaseCol);
-  vestGrad.addColorStop(0.75, vestLightCol);
-  vestGrad.addColorStop(1.0, vestDarkCol);
+  // MIEDNICA, POŚLADKI I KROK (Pelvis, Gluteus & Inseam)
+  // Wypełnia anatomiczną przestrzeń między pasem a udami, nadając postaci tyłek i łącząc stawy nóg
+  const buttSign = -currentFacingDir;
+  const gluteProtrusion = absCos * (waistHalfW * 0.55);
+  const pelvisBottomY = 8.2;
+
+  const pelvisGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
+  pelvisGrad.addColorStop(0.0, isLookingAway ? (v.shortsColor0 || '#18181b') : (v.shortsColor2 || '#18181b'));
+  pelvisGrad.addColorStop(0.5, v.shortsColor1 || '#27272a');
+  pelvisGrad.addColorStop(1.0, isLookingAway ? (v.shortsColor2 || '#18181b') : (v.shortsColor0 || '#18181b'));
+
+  ctx.beginPath();
+  ctx.moveTo(-waistHalfW + 0.4, 4.4);
+  // Tył / Pośladek (anatomiczne zaokrąglenie gluteus w profilu i pod kątem)
+  if (currentFacingDir > 0) {
+    ctx.quadraticCurveTo(-waistHalfW - gluteProtrusion, 5.8, -waistHalfW * 0.65, pelvisBottomY);
+    ctx.lineTo(waistHalfW * 0.4, pelvisBottomY);
+    ctx.quadraticCurveTo(waistHalfW * 0.9, 6.2, waistHalfW - 0.4, 4.4);
+  } else {
+    ctx.quadraticCurveTo(waistHalfW * 0.9, 6.2, waistHalfW * 0.4, pelvisBottomY);
+    ctx.lineTo(-waistHalfW * 0.65, pelvisBottomY);
+    ctx.quadraticCurveTo(-waistHalfW - gluteProtrusion, 5.8, -waistHalfW + 0.4, 4.4);
+  }
+  ctx.closePath();
+  ctx.fillStyle = pelvisGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Wzmocniony szew kroku / rozporek taktyczny
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(cosYaw * 0.8, 4.6);
+  ctx.lineTo(cosYaw * 0.8, pelvisBottomY - 1.2);
+  ctx.stroke();
+
+  // BAZA MUNDURU: TAKTYCZNY COMBAT SHIRT (Crye Precision Style)
+  const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
+  const shirtBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
+  const shirtLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
+  const shirtDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
+  shirtGrad.addColorStop(0.0, shirtDarkCol);
+  shirtGrad.addColorStop(0.35, shirtBaseCol);
+  shirtGrad.addColorStop(0.75, shirtLightCol);
+  shirtGrad.addColorStop(1.0, shirtDarkCol);
 
   const strapLeftX = -shoulderHalfW * 0.48;
   const strapRightX = shoulderHalfW * 0.48;
-  const scoopCenterX = !isLookingAway ? (cosYaw * 1.0) : (-sinYaw * 0.8);
-  const scoopCenterY = !isLookingAway ? -21.5 : -23.2;
+  const scoopCenterX = !isLookingAway ? (cosYaw * 1.0) : (-absSin * 0.8);
+  const scoopCenterY = !isLookingAway ? -22.5 : -23.5;
 
-  // Główny korpus plate carriera
+  // Główny korpus bluzy bojowej
   ctx.beginPath();
   ctx.moveTo(-waistHalfW, waistY);
   ctx.lineTo(-shoulderHalfW, -24.4);
@@ -2348,51 +2479,45 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.lineTo(waistHalfW, waistY);
   ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
   ctx.closePath();
-  ctx.fillStyle = vestGrad;
+  ctx.fillStyle = shirtGrad;
   ctx.fill();
-
-  // Obrys i wzmocnione krawędzie pancerza
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
-  // Pasy nośne i taśmy MOLLE (Modular Lightweight Load-carrying Equipment)
-  const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
-  const molleCol = 'rgba(0, 0, 0, 0.45)';
-  const molleStitch = 'rgba(255, 255, 255, 0.15)';
+  // Anatomiczne przeszycia taktyczne Combat Shirt (stójka z suwakiem 1/4 zip i panele elastyczne)
+  if (!isLookingAway && absCos > 0.20) {
+    const zipX = cosYaw * 0.8;
+    ctx.strokeStyle = '#52525b';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(zipX, scoopCenterY);
+    ctx.lineTo(zipX, -14.0);
+    ctx.stroke();
 
-  // Pas piersiowy MOLLE 1
-  ctx.fillStyle = molleCol;
-  ctx.fillRect(-plateW * 0.45, -17.0, plateW * 0.9, 1.8);
-  ctx.fillStyle = molleStitch;
-  ctx.fillRect(-plateW * 0.15, -17.0, 0.8, 1.8);
-  ctx.fillRect(plateW * 0.15, -17.0, 0.8, 1.8);
+    ctx.fillStyle = '#71717a';
+    ctx.fillRect(zipX - 0.7, -14.5, 1.4, 2.0);
 
-  // Pas brzuszny MOLLE 2
-  ctx.fillStyle = molleCol;
-  ctx.fillRect(-plateW * 0.48, -12.5, plateW * 0.96, 1.8);
-  ctx.fillStyle = molleStitch;
-  ctx.fillRect(-plateW * 0.18, -12.5, 0.8, 1.8);
-  ctx.fillRect(plateW * 0.18, -12.5, 0.8, 1.8);
-
-  // Pas dolny MOLLE 3
-  ctx.fillStyle = molleCol;
-  ctx.fillRect(-plateW * 0.50, -8.0, plateW * 1.0, 1.8);
-  ctx.fillStyle = molleStitch;
-  ctx.fillRect(-plateW * 0.20, -8.0, 0.8, 1.8);
-  ctx.fillRect(plateW * 0.20, -8.0, 0.8, 1.8);
-
-  // Panel rzepu taktycznego / Velcro Morale Patch na klatce piersiowej
-  if (!isLookingAway && absCos > 0.25) {
-    const patchX = (cosYaw * 2.0) - (plateW * 0.32);
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(patchX, -20.2, plateW * 0.64, 2.4);
-    ctx.strokeStyle = '#3f3f46';
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(patchX, -20.2, plateW * 0.64, 2.4);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-shoulderHalfW * 0.65, -20.0);
+    ctx.quadraticCurveTo(-waistHalfW * 0.5, -10.0, -waistHalfW * 0.7, waistY);
+    ctx.moveTo(shoulderHalfW * 0.65, -20.0);
+    ctx.quadraticCurveTo(waistHalfW * 0.5, -10.0, waistHalfW * 0.7, waistY);
+    ctx.stroke();
   }
 
-  // WIDOCZNE ŚLADY KRWI I OBRAŻEŃ OD KUL/WYBUCHÓW NA TORSIE I KAMIZELCE TAKTYCZNEJ
+  // NAKŁADANA KAMIZELKA KULOODPORNA (MODULAR BULLETPROOF VEST / PLATE CARRIER)
+  // Rysowana TYLKO wtedy, gdy gracz posiada pancerz lub ma ustawione p.hasVest / v.hasVest
+  const hasEquippedVest = !!(p.hasVest || v.hasVest);
+  if (hasEquippedVest) {
+    drawPlateCarrierOverlay(ctx, p, v, absCos, absSin, cosYaw, isLookingAway, shoulderHalfW, waistHalfW, waistY);
+  }
+
+  const plateW = Math.min(shoulderHalfW, waistHalfW) * 1.5;
+
+  // WIDOCZNE ŚLADY KRWI I OBRAŻEŃ OD KUL/WYBUCHÓW NA TORSIE
   drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway);
 
   // MODEL JETPACKA NA PLECACH POSTACI
@@ -2419,61 +2544,118 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.scale(currentFacingDir, 1);
     ctx.rotate(pose.headPitch);
 
+    // 1. ANATOMICZNA CZASZKA (ŁYSA GŁOWA / MILITARY SHAVED HEAD)
     const faceGrad = ctx.createLinearGradient(-5.0, 0, 7.0, 0);
     faceGrad.addColorStop(0.0, v.skinBack);
     faceGrad.addColorStop(0.5, v.skinMid);
     faceGrad.addColorStop(1.0, v.skinLight);
 
     ctx.beginPath();
-    ctx.moveTo(-4.6, -6.6);
-    ctx.lineTo(4.2, -6.6);
-    ctx.lineTo(4.8, -4.2);
-    ctx.lineTo(4.3, -3.3);
-    ctx.lineTo(6.8, -1.0);
+    // Potylica i ciemieniowa kopuła czaszki (okrągła, czysta łysa głowa)
+    ctx.moveTo(-4.6, 2.5);
+    ctx.quadraticCurveTo(-6.4, 0.2, -6.0, -2.8);
+    ctx.quadraticCurveTo(-5.4, -7.2, -1.2, -7.2);
+    // Łuk czołowy
+    ctx.quadraticCurveTo(2.8, -7.0, 4.2, -5.2);
+    // Łuk brwiowy i nasada nosa
+    ctx.lineTo(4.4, -3.4);
+    ctx.lineTo(6.8, -1.0); // czubek nosa
     ctx.lineTo(5.1, -0.4);
-    ctx.lineTo(5.5, 0.6);
-    ctx.lineTo(4.9, 1.4);
-    ctx.lineTo(5.3, 2.3);
-    ctx.lineTo(4.3, 4.8);
+    ctx.lineTo(5.5, 0.6);  // górna warga
+    ctx.lineTo(4.9, 1.4);  // usta
+    ctx.lineTo(5.3, 2.3);  // broda
+    ctx.lineTo(4.3, 4.8);  // dolna szczęka
     ctx.lineTo(0.2, 4.4);
-    ctx.lineTo(-4.6, 1.2);
+    ctx.lineTo(-3.5, 3.8);
     ctx.closePath();
     ctx.fillStyle = faceGrad;
     ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
 
-    ctx.fillStyle = v.skinBack;
+    // Cieniowanie militarne czaszki (subtelny buzzcut fade na potylicy i skroniach)
+    const buzzGrad = ctx.createLinearGradient(-6.0, -6.0, 2.0, 0);
+    buzzGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
+    buzzGrad.addColorStop(0.6, 'rgba(15, 23, 42, 0.12)');
+    buzzGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+
     ctx.beginPath();
-    ctx.ellipse(-3.2, -0.8, 1.5, 2.0, 0, 0, Math.PI * 2);
+    ctx.moveTo(-6.0, -2.0);
+    ctx.quadraticCurveTo(-5.4, -6.8, -1.2, -7.0);
+    ctx.quadraticCurveTo(2.4, -6.8, 3.8, -5.0);
+    ctx.quadraticCurveTo(1.0, -3.0, -2.5, -1.0);
+    ctx.closePath();
+    ctx.fillStyle = buzzGrad;
     ctx.fill();
 
+    // Małżowina uszna (anatomiczne ucho z cieniowaniem)
+    ctx.fillStyle = v.skinBack;
+    ctx.beginPath();
+    ctx.ellipse(-2.6, -0.6, 1.6, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.strokeStyle = v.skinDark;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.arc(-3.1, -0.8, 1.0, 0.4 * Math.PI, 1.7 * Math.PI, false);
+    ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
     ctx.stroke();
 
-    const hairGrad = ctx.createLinearGradient(-6.0, -12.0, 5.0, -5.0);
-    hairGrad.addColorStop(0.0, v.hairColor0);
-    hairGrad.addColorStop(0.6, v.hairColor1);
-    hairGrad.addColorStop(1.0, v.hairColor2);
+    // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    if (hasHelmet) {
+      const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
+      const visorNeon = isCyan ? '#00e5ff' : '#f97316';
+      const helmGrad = ctx.createLinearGradient(-6.0, -11.0, 6.0, -2.0);
+      helmGrad.addColorStop(0.0, '#18181b');
+      helmGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+      helmGrad.addColorStop(1.0, '#09090b');
 
-    ctx.beginPath();
-    ctx.moveTo(-4.8, -4.8);
-    ctx.lineTo(-6.0, -10.6);
-    ctx.bezierCurveTo(-6.0, -11.6, -1.5, -12.8, 2.5, -12.2);
-    ctx.quadraticCurveTo(6.0, -9.5, 5.2, -6.8);
-    ctx.lineTo(3.6, -4.8);
-    ctx.closePath();
-    ctx.fillStyle = hairGrad;
-    ctx.fill();
-
-    if (v.hasHeadband) {
-      ctx.strokeStyle = v.headbandColor;
-      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(-5.2, -6.6);
-      ctx.lineTo(4.4, -6.6);
+      ctx.moveTo(-5.5, -1.8);
+      ctx.lineTo(-6.8, -6.5);
+      ctx.quadraticCurveTo(-6.5, -10.5, -1.2, -10.8);
+      ctx.quadraticCurveTo(4.5, -10.5, 5.5, -6.2);
+      ctx.lineTo(4.8, -3.2);
+      ctx.lineTo(2.0, -3.5);
+      ctx.quadraticCurveTo(-1.0, -3.0, -5.5, -1.8);
+      ctx.closePath();
+      ctx.fillStyle = helmGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.0;
       ctx.stroke();
+
+      // Montaż czołowy noktowizora (NVG Shroud)
+      ctx.fillStyle = '#52525b';
+      ctx.fillRect(4.4, -7.5, 1.5, 3.2);
+      ctx.strokeStyle = '#71717a';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(4.4, -7.5, 1.5, 3.2);
+
+      // Boczna szyna montażowa ARC Rail
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-4.5, -5.0, 6.5, 1.6);
+
+      // Pasek podbródkowy (Chinstrap)
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(-2.5, -1.5);
+      ctx.lineTo(2.5, 3.6);
+      ctx.stroke();
+
+      // Taktyczny neonowy wizjer / HUD Visor
+      ctx.fillStyle = visorNeon;
+      ctx.shadowColor = visorNeon;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.moveTo(2.2, -4.2);
+      ctx.lineTo(5.2, -3.8);
+      ctx.lineTo(4.6, -1.8);
+      ctx.lineTo(2.2, -2.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     const eyeCenterX = 2.7;
@@ -2521,22 +2703,55 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);
-    const hairBackGrad = ctx.createLinearGradient(-4.8, -10.0, 4.8, 4.0);
-    hairBackGrad.addColorStop(0.0, v.hairColor0);
-    hairBackGrad.addColorStop(0.5, v.hairColor1);
-    hairBackGrad.addColorStop(1.0, v.hairColor2);
+
+    // Anatomiczna potylica czaszki (okrągła, czysta łysa głowa)
+    const headBackGrad = ctx.createLinearGradient(-4.8, -8.0, 4.8, 4.0);
+    headBackGrad.addColorStop(0.0, v.skinBack);
+    headBackGrad.addColorStop(0.5, v.skinMid);
+    headBackGrad.addColorStop(1.0, v.skinLight);
 
     ctx.beginPath();
-    ctx.ellipse(0, -1.0, 4.8, 5.8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = hairBackGrad;
+    ctx.ellipse(0, -1.5, 4.9, 5.8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = headBackGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Buzzcut fade na potylicy
+    const buzzBackGrad = ctx.createLinearGradient(0, -8.0, 0, 1.0);
+    buzzBackGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
+    buzzBackGrad.addColorStop(0.7, 'rgba(15, 23, 42, 0.15)');
+    buzzBackGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+
+    ctx.beginPath();
+    ctx.ellipse(0, -2.5, 4.7, 4.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = buzzBackGrad;
     ctx.fill();
 
-    if (v.hasHeadband) {
-      ctx.strokeStyle = v.headbandColor;
-      ctx.lineWidth = 1.5;
+    // Hełm z tyłu (jeśli założony)
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    if (hasHelmet) {
+      const helmBackGrad = ctx.createLinearGradient(-5.5, -9.0, 5.5, 0);
+      helmBackGrad.addColorStop(0.0, '#18181b');
+      helmBackGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+      helmBackGrad.addColorStop(1.0, '#09090b');
+
       ctx.beginPath();
-      ctx.arc(0, -1.6, 4.8, Math.PI * 0.8, Math.PI * 0.2, true);
+      ctx.arc(0, -2.0, 5.5, Math.PI * 0.85, Math.PI * 0.15, true);
+      ctx.closePath();
+      ctx.fillStyle = helmBackGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.0;
       ctx.stroke();
+
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-2.5, -4.5, 5.0, 2.0);
+      ctx.fillStyle = '#52525b';
+      ctx.beginPath();
+      ctx.arc(0, -1.0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Rany z tyłu głowy
@@ -2544,6 +2759,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   } else {
     ctx.rotate(pose.headPitch * 0.5);
+
+    // Anatomiczna twarz z przodu
     const faceFrontGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
     faceFrontGrad.addColorStop(0.0, v.skinBack);
     faceFrontGrad.addColorStop(0.5, v.skinMid);
@@ -2553,20 +2770,50 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.ellipse(0, -0.6, 4.8, 5.8, 0, 0, Math.PI * 2);
     ctx.fillStyle = faceFrontGrad;
     ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
 
-    ctx.fillStyle = v.hairColor1;
+    // Buzzcut fade na czubku głowy
+    const buzzFrontGrad = ctx.createLinearGradient(0, -6.5, 0, 0);
+    buzzFrontGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
+    buzzFrontGrad.addColorStop(0.6, 'rgba(15, 23, 42, 0.12)');
+    buzzFrontGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+
     ctx.beginPath();
-    ctx.arc(0, -2.5, 4.9, Math.PI * 0.85, Math.PI * 0.15, true);
+    ctx.arc(0, -2.5, 4.8, Math.PI * 0.85, Math.PI * 0.15, true);
     ctx.closePath();
+    ctx.fillStyle = buzzFrontGrad;
     ctx.fill();
 
-    if (v.hasHeadband) {
-      ctx.strokeStyle = v.headbandColor;
-      ctx.lineWidth = 1.5;
+    // Hełm z przodu (jeśli założony)
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    if (hasHelmet) {
+      const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
+      const visorNeon = isCyan ? '#00e5ff' : '#f97316';
+
+      const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
+      helmFrontGrad.addColorStop(0.0, '#18181b');
+      helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
+      helmFrontGrad.addColorStop(1.0, '#09090b');
+
       ctx.beginPath();
-      ctx.moveTo(-4.7, -2.8);
-      ctx.lineTo(4.7, -2.8);
+      ctx.arc(0, -1.8, 5.4, Math.PI * 0.9, Math.PI * 0.1, true);
+      ctx.closePath();
+      ctx.fillStyle = helmFrontGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.0;
       ctx.stroke();
+
+      ctx.fillStyle = '#52525b';
+      ctx.fillRect(-1.4, -6.0, 2.8, 2.4);
+
+      ctx.fillStyle = visorNeon;
+      ctx.shadowColor = visorNeon;
+      ctx.shadowBlur = 6;
+      ctx.fillRect(-3.6, -2.8, 7.2, 1.8);
+      ctx.shadowBlur = 0;
     }
 
     ctx.fillStyle = '#ffffff';
@@ -2580,6 +2827,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
     ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.strokeStyle = '#23120b';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(-3.2, -2.8);
+    ctx.lineTo(-0.8, -2.5);
+    ctx.moveTo(3.2, -2.8);
+    ctx.lineTo(0.8, -2.5);
+    ctx.stroke();
 
     // Rany na twarzy z przodu
     drawHeadWoundsFront(ctx, dmgRatio);

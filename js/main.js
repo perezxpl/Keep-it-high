@@ -2056,6 +2056,60 @@ export function initTouchControlsDevUI() {
   updateDevTouchButtonUI();
 }
 
+export function initModularGearDevUI() {
+  const devMenu = document.getElementById('dev-menu');
+  if (!devMenu) return;
+
+  const sep = document.createElement('span');
+  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+  sep.textContent = '|';
+  devMenu.appendChild(sep);
+
+  // Przełącznik modularnego hełmu (Hełm vs Czysta łysa głowa)
+  const helmBtn = document.createElement('button');
+  helmBtn.className = 'dev-btn';
+  helmBtn.id = 'dev-helmet-btn';
+  helmBtn.title = 'Przełącz modularny hełm balistyczny (Łysa głowa vs Hełm FAST)';
+  const updateHelmUI = () => {
+    const hasH = !!player.hasHelmet;
+    helmBtn.textContent = hasH ? '🪖 HEŁM: WŁ' : '🧑‍🦲 GŁOWA: ŁYSA';
+    helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
+    helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
+    helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
+  };
+  const handleHelm = (e) => {
+    e.stopPropagation(); e.preventDefault();
+    player.hasHelmet = !player.hasHelmet;
+    updateHelmUI();
+  };
+  helmBtn.addEventListener('click', handleHelm);
+  helmBtn.addEventListener('touchend', handleHelm);
+  devMenu.appendChild(helmBtn);
+  updateHelmUI();
+
+  // Przełącznik modularnej kamizelki (Czysty combat shirt vs Plate Carrier)
+  const vestBtn = document.createElement('button');
+  vestBtn.className = 'dev-btn';
+  vestBtn.id = 'dev-vest-btn';
+  vestBtn.title = 'Przełącz modularną kamizelkę kuloodporną (Mundur Combat Shirt vs Plate Carrier)';
+  const updateVestUI = () => {
+    const hasV = !!player.hasVest;
+    vestBtn.textContent = hasV ? '🛡️ KAMIZELKA: WŁ' : '👕 MUNDUR: BAZA';
+    vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
+    vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
+    vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
+  };
+  const handleVest = (e) => {
+    e.stopPropagation(); e.preventDefault();
+    player.hasVest = !player.hasVest;
+    updateVestUI();
+  };
+  vestBtn.addEventListener('click', handleVest);
+  vestBtn.addEventListener('touchend', handleVest);
+  devMenu.appendChild(vestBtn);
+  updateVestUI();
+}
+
 window.addEventListener('wheel', (e) => {
   const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   if (isDevOpen || e.altKey) {
@@ -2069,6 +2123,7 @@ window.addEventListener('wheel', (e) => {
 
 initDevZoomUI();
 initTouchControlsDevUI();
+initModularGearDevUI();
 initNetwork();
 
 let jumpKeyPressed = false;
