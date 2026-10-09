@@ -254,25 +254,52 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   let lx = 0, ly = 0, ankle = 0;
 
   if (mode === 'CROUCH_WALK') {
-    let strideLen = 13.5;
-    let ankleOffset = 0;
-    if (playerRef && playerRef.isMovingBackwards) {
-      strideLen = 13.5 * 0.75;
-      ankleOffset = 0.15;
-    }
-    const stanceLimit = 0.55;
+    const isBack = playerRef && playerRef.isMovingBackwards;
+    const baseStride = 13.5;
+    const strideLen = isBack ? baseStride * 0.75 : baseStride;
+    const stanceRatio = 0.58;
     const pr = p / (Math.PI * 2);
 
-    if (pr < stanceLimit) {
-      const u = pr / stanceLimit;
+    if (pr < stanceRatio) {
+      // 1. FAZA PODPARCIA (STANCE): Stopa stabilnie na podłożu z wyraźnym przetoczeniem i wybiciem
+      const u = pr / stanceRatio;
       lx = (0.5 - u) * (strideLen * 2);
-      ly = -6.5;
-      ankle = lerp(0.35, 0.55, u) + ankleOffset;
+
+      if (u < 0.20) {
+        // Wejście na podłoże: płaskie / neutralne przyleganie podeszwy
+        const hu = ease(u / 0.20);
+        ankle = lerp(-0.08, 0.0, hu);
+        ly = 0;
+      } else if (u < 0.52) {
+        // Midstance: cała podeszwa pewnie i stabilnie na ziemi
+        ankle = 0.0;
+        ly = 0;
+      } else {
+        // Push-off: wyraźne uniesienie pięty i praca palców (toe-break flex)
+        const tu = ease((u - 0.52) / 0.48);
+        ankle = lerp(0.0, 0.68, tu);
+        ly = -Math.sin(ankle) * 6.5;
+      }
     } else {
-      const u = (pr - stanceLimit) / (1.0 - stanceLimit);
-      lx = (-0.5 + ease(u)) * (strideLen * 2);
-      ly = -6.5 - Math.sin(u * Math.PI) * 7.0;
-      ankle = lerp(0.55, 0.35, ease(u)) + ankleOffset;
+      // 2. FAZA PRZENIESIENIA (SWING): Płynny łuk uniesienia stopy nad gruntem
+      const u = (pr - stanceRatio) / (1.0 - stanceRatio);
+      const eu = ease(u);
+      lx = (-0.5 + eu) * (strideLen * 2);
+
+      const startLift = Math.sin(0.68) * 6.5;
+      ly = -Math.sin(u * Math.PI) * 9.5 - startLift * (1.0 - u) * (1.0 - u);
+
+      if (u < 0.28) {
+        // Odejście od podłoża: sprężysty powrót palców ku pozycji neutralnej
+        const su = ease(u / 0.28);
+        ankle = lerp(0.68, 0.04, su);
+      } else if (u < 0.72) {
+        ankle = 0.04;
+      } else {
+        // Przygotowanie do lądowania stopy
+        const prep = ease((u - 0.72) / 0.28);
+        ankle = lerp(0.04, -0.08, prep);
+      }
     }
   } else if (mode === 'WALK') {
     const isBack = playerRef && playerRef.isMovingBackwards;

@@ -1348,11 +1348,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.isSliding) {
     targetPelvisY = 26;
   } else if (player.isCrouching) {
-    targetPelvisY = 16.5;
+    if (player.gaitMode === 'CROUCH_WALK') {
+      targetPelvisY = 16.5 + Math.cos(player.stridePhase * 2) * 1.5;
+    } else {
+      targetPelvisY = 16.5;
+    }
   } else if (player.gaitMode === 'IDLE') {
     // Wyprostowana, naturalna stójka wojskowa (proste nogi, lekki flex na gotowość)
     const braceDip = (player.shootPoseWeight || 0) * 2.2;
-    targetPelvisY = -10.0 + braceDip;
+    targetPelvisY = -10.5 + braceDip;
   } else if (player.gaitMode === 'WALK') {
     // Model Odwróconego Wahadła:
     // W pionie (midstance, stridePhase PI/2 i 3PI/2) biodra unoszą się do -11.4 (noga prosta w kolanie)

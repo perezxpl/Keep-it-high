@@ -438,6 +438,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const isSpecialKickOrProne = !!(playerRef && (
     playerRef.isProne ||
+    playerRef.isCrouching ||
+    playerRef.gaitMode === 'CROUCH' ||
+    playerRef.gaitMode === 'CROUCH_WALK' ||
     playerRef.kickMode === 'SPARTAN' ||
     playerRef.kickMode === 'BACKFLIP' ||
     playerRef.kickMode === 'SPIN_VOLLEY' ||
@@ -589,7 +592,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     const localAnkle = ankleRot * facing;
     if (localAnkle > 0.02) {
       // Wyraziste, sprężyste ugięcie noska buta (toe-break flex) na podłożu przy uniesieniu pięty i wybiciu:
-      targetFlex = Math.min(1.05, localAnkle * 1.35);
+      targetFlex = Math.min(1.15, localAnkle * 1.40);
     } else {
       targetFlex = 0;
     }
@@ -602,20 +605,16 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (pose[flexProp] === undefined) pose[flexProp] = targetFlex;
   if (pose[effProp] === undefined) pose[effProp] = targetEffAnkle;
 
-  const curSpd = playerRef ? Math.abs(playerRef.vx || 0) : 0;
+  // ankleRot jest już wygładzony i ciągły na poziomie pose.foot[Front/Back]Ankle (footBlend).
+  // Używamy bezpośrednio targetEffAnkle, eliminując wtórne tłumienie kąta stopy:
+  pose[effProp] = targetEffAnkle;
+
   // Błyskawiczny, sprężysty powrót noska (snap-back) po oderwaniu stopy od podłoża:
   const isReleasingFlex = targetFlex < (pose[flexProp] || 0);
-  let flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.80 : (curSpd > 0.5 ? 0.70 : 0.40));
-  let ankleSmooth = playerRef?.isDead ? 0.85 : (curSpd > 0.5 ? 0.80 : 0.45);
-  if (isSpecialKick || (playerRef && playerRef.kickMode === 'BACKFLIP')) {
-    flexSmooth = 0.50;
-    ankleSmooth = 0.60;
-  }
-
+  const flexSmooth = playerRef?.isDead ? 0.85 : (isReleasingFlex ? 0.85 : 0.75);
   pose[flexProp] += (targetFlex - pose[flexProp]) * flexSmooth;
-  pose[effProp] = lerpAngle(pose[effProp], targetEffAnkle, ankleSmooth);
 
-  const effAnkle = pose[effProp];
+  const effAnkle = targetEffAnkle;
   const flexAngle = Math.max(0, pose[flexProp]);
 
   ctx.save();
@@ -1353,12 +1352,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else if (p.gaitMode === 'CROUCH') {
     const braceW = (p.shootPoseWeight || 0);
-    rawFootFrontTargetX = hipX + (lerp(6, 12, braceW) * p.facing);
-    rawFootFrontTargetY = plantFloorY - 6.5;
-    rawFootFrontAnkle = 0.50 * p.facing;
-    rawFootBackTargetX = hipX - (lerp(8, 14, braceW) * p.facing);
-    rawFootBackTargetY = plantFloorY - 7.0;
-    rawFootBackAnkle = 0.60 * p.facing;
+    // Przednia stopa oparta stabilnie i płasko na ziemi, przejmuje ciężar ciała
+    rawFootFrontTargetX = hipX + (lerp(8, 14, braceW) * p.facing);
+    rawFootFrontTargetY = plantFloorY;
+    rawFootFrontAnkle = lerp(0.0, 0.04, braceW) * p.facing;
+
+    // Tylna stopa cofnięta, kolano obniżone, wsparta na palcach z uniesioną piętą (aktywne ugięcie toe-break)
+    rawFootBackTargetX = hipX - (lerp(9, 15, braceW) * p.facing);
+    rawFootBackTargetY = plantFloorY - 3.8;
+    rawFootBackAnkle = lerp(0.62, 0.72, braceW) * p.facing;
 
     rawFrontSwing = 0.12;
     rawFrontElbow = 0.55;
@@ -1612,7 +1614,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
-  let footBlend = p.isDead ? 0.90 : (speed > 0.1 ? Math.min(0.85, 0.45 + speed * 0.08) : 0.35);
+  let footBlend = p.isDead ? 0.90 : (speed > 0.1 ? Math.min(0.85, 0.48 + speed * 0.08) : (p.isCrouching ? 0.55 : 0.38));
   let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
 
   if (p.kickMode === 'BACKFLIP') {
