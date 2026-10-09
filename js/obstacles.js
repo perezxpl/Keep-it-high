@@ -27,7 +27,9 @@ import arena2, {
   ARENA_2_PLATFORMS, ARENA_2_CONFIG,
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
-  ARENA_2_BRIDGES, resetArena2Bridges
+  ARENA_2_BRIDGES, resetArena2Bridges,
+  ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY,
+  ACID_SURGE_SYSTEM
 } from './arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from './arenas/arena3.js';
 
@@ -37,6 +39,8 @@ export {
   ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
   ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
   ARENA_2_BRIDGES, resetArena2Bridges,
+  ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY,
+  ACID_SURGE_SYSTEM,
   ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
   getActiveArena, setActiveArena, ARENAS, onArenaChange
 };
@@ -1759,23 +1763,19 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   // Obsługa strefy kwasu toksycznego w Sektorze X (Arena 2)
   if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
-    if (p && !p.isDead) {
-      const pFeetY = p.y + (p.h || 70);
-      if (pFeetY >= 1350) {
-        p.hp = 0;
-        p.isDead = true;
-        p.respawnTimer = 75;
-        p.vx = 0;
-        p.vy = 2.0;
-        p.onGround = false;
-        p.currentPlatform = null;
-      } else if (pFeetY >= 1260) {
-        p.hp -= 0.65;
-        p.vx *= 0.94;
-        if (p.hp <= 0) {
-          p.hp = 0;
-          p.isDead = true;
-          p.respawnTimer = 75;
+    if (p && !p.isDead && !p.isAcidDying && (!p.acidDeath || !p.acidDeath.active)) {
+      const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+      const hazardY = curArena?.acidSurge?.currentY || (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM ? window.ACID_SURGE_SYSTEM.currentY : 1260);
+      const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
+      const time = performance.now() * 0.001;
+      const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
+      const exactSurfaceY = hazardY + waveOffset;
+      const playerFeetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
+      const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb kwasu
+
+      if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
+        if (typeof window !== 'undefined' && typeof window.triggerPlayerAcidDeath === 'function') {
+          window.triggerPlayerAcidDeath(p, exactSurfaceY);
         }
       }
     }

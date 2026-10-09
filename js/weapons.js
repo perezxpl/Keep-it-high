@@ -904,7 +904,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       // =====================================================================
       // OBSŁUGA ZGONU: REALISTYCZNY IMPULS RAGDOLLA I ROZRYWANIE KOŃCZYN
       // =====================================================================
-      if (closestChar.hp <= 0 && !closestChar.isDead) {
+      if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
         closestChar.isDead = true;
         closestChar.respawnTimer = 180;
         closestChar.corpseAngle = 0;

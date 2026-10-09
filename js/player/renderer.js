@@ -1686,6 +1686,19 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
 }
 
 export function drawPlayer(ctx, GROUND_Y, p) {
+  if (p.isDead && p.acidDeath && p.acidDeath.dissolved) {
+    ctx.save();
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 6;
+    const secLeft = Math.max(1, Math.ceil(p.respawnTimer / 60));
+    ctx.fillText(`☠️ ROZPUSZCZONO // RESPAWN ZA ${secLeft}s`, p.x + p.w / 2, (p.acidDeath.hazardY || (p.y + (p.h || 70))) - 24);
+    ctx.restore();
+    return;
+  }
+
   if (p.isDead && p.isGibbed) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
@@ -1699,6 +1712,28 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   ctx.save();
+
+  // Animacja rozpuszczania w kwasie (Arena 2): ultra-lekki render bez filtrów CSS (Stałe 60 FPS)
+  const isDissolving = !!(p.acidDeath && p.acidDeath.active);
+  const maxDuration = (p.acidDeath && (p.acidDeath.maxDuration || p.acidDeath.duration)) || 1.2;
+  const dissolveProgress = isDissolving ? Math.min(1.0, Math.max(0, (p.acidDeath.timer || 0) / maxDuration)) : 0;
+  if (isDissolving && dissolveProgress >= 1.0) {
+    ctx.restore();
+    return;
+  }
+
+  if (isDissolving) {
+    const anchorY = p.acidDeath.hazardY || (p.y + (p.h || 70));
+    const anchorX = p.x + (p.w || 24) / 2;
+
+    // 1. Płynne topnienie i zapadanie się sylwetki w dół
+    ctx.translate(anchorX, anchorY);
+    ctx.scale(1 - dissolveProgress * 0.25, Math.max(0.05, 1 - dissolveProgress));
+    ctx.translate(-anchorX, -anchorY);
+
+    // 2. Płynne zanikanie (zwykła przezroczystość nie obciąża karty ani CPU)
+    ctx.globalAlpha = Math.max(0, 1 - dissolveProgress);
+  }
 
   const v = { ...DEFAULT_VISUALS, ...(p.currentClass?.visuals || {}) };
   v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
@@ -3028,7 +3063,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   // TAKTYCZNY CHEVRON / HOLOGRAM DRUŻYNY (CYAN vs ORANGE) UNOSZĄCY SIĘ 16 PX NAD GŁOWĄ
-  if (!p.isDead) {
+  if (!p.isDead && !isDissolving) {
     ctx.save();
     const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
     const teamNeon = isCyan ? '#00f0ff' : '#f97316';
@@ -3124,6 +3159,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     ctx.restore();
+  }
+
+  if (isDissolving) {
+    // 4. Błyskawiczny, lekki zielony blask (jeden prosty okrąg zamiast filtrów blur)
+    ctx.globalAlpha = (1 - dissolveProgress) * 0.35;
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath();
+    ctx.arc(p.x + (p.w || 24) / 2, p.y + (p.h || 70) / 2, 24 * (1 - dissolveProgress * 0.5), 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();

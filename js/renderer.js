@@ -360,7 +360,22 @@ export function drawDebugColliders(ctx, groundY, player) {
 export {
   drawArena2Geometry,
   drawArena2Geometry as renderSectorXTerrain,
-  renderPandoraTerrain
+  renderPandoraTerrain,
+  drawArena2Background,
+  drawRotatingHazardBeacons,
+  drawAcidUpwardUnderglow,
+  drawPlatformRimLighting,
+  drawToxicVaporMotes,
+  drawAcidSurfaceBubbles,
+  drawAcidLevel,
+  drawAcidLake,
+  createAcidSplash,
+  spawnAcidSmoke,
+  spawnAcidDebris,
+  spawnAcidBoilEmitter,
+  ARENA_2_EMERGENCY_BEACONS,
+  _toxicVaporParticles,
+  _surfaceBubbles
 } from './arenas/arena2.js';
 
 

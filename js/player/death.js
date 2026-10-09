@@ -308,7 +308,7 @@ export function handlePlayerDeath(player, groundY) {
     }
   }
 
-  if (player.isGibbed) {
+  if (player.isGibbed || (player.acidDeath && (player.acidDeath.active || player.acidDeath.dissolved))) {
     player.vx = 0;
     player.vy = 0;
   } else {
@@ -318,7 +318,15 @@ export function handlePlayerDeath(player, groundY) {
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
     player.isDead = false;
+    player.isAcidDying = false;
     player.hp = player.maxHp;
+    player.acidDeath = {
+      active: false,
+      timer: 0,
+      maxDuration: 1.2,
+      splashTriggered: false,
+      dissolved: false
+    };
 
     // Odnowienie zapasu amunicji po odrodzeniu
     if (player.ammo) {

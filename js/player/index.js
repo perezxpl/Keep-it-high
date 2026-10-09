@@ -160,6 +160,13 @@ export function createPlayerInstance(overrides = {}) {
     grenadeMaxCooldown: 3.5, // 3.5 sekundy czasu odnowienia
     isDead: false,
     respawnTimer: 0,
+    isAcidDying: false,
+    acidDeath: {
+      active: false,
+      timer: 0,
+      maxDuration: 1.2, // 1.2 sekundy trwania efektu rozpuszczania
+      splashTriggered: false
+    },
     muzzleFlashTimer: 0,
     shootPoseTimer: 0,
     shootPoseWeight: 0,
@@ -432,6 +439,27 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.isDead) {
     handlePlayerDeath(player, GROUND_Y);
     return;
+  }
+
+  // Blokada sterowania podczas sekwencji rozpuszczania w kwasie (Arena 2)
+  if (player.isAcidDying || (player.acidDeath && player.acidDeath.active)) {
+    keys = null;
+    leftStick = null;
+    player.isShooting = false;
+    player.isAiming = false;
+    player.isCharging = false;
+    player.isJumpCharging = false;
+    player.isSliding = false;
+    player.isJumping = false;
+    player.isJetpacking = false;
+    player.isProne = false;
+    player.isCrouching = false;
+    player.dropThroughTimer = 0;
+    if (player.keys) {
+      player.keys.left = false; player.keys.right = false;
+      player.keys.up = false; player.keys.down = false;
+      player.keys.space = false; player.keys.slide = false;
+    }
   }
 
   if (targets) player._targets = targets;
@@ -1230,6 +1258,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.isJumping = false;
     const currentFloor = player.currentGroundY || GROUND_Y;
     player.y = currentFloor - colH;
+  } else if (player.isAcidDying || (player.acidDeath && player.acidDeath.active)) {
+    // Spowolnienie opadania - ociężałe zanurzanie w gęstym kwasie
+    player.vx = 0;
+    player.vy = Math.min(Math.max((player.vy || 0) * 0.85, 0.3), 1.0);
+    player.y += player.vy;
+    player.onGround = false;
+    player.currentGroundY = null;
+    player.currentPlatform = null;
   } else {
     player.vy += CONFIG.GRAVITY;
     player.y += player.vy;
@@ -1282,23 +1318,19 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
     // Strefa toksycznego kwasu i otchłani śmierci w Sektorze X (Arena 2)
     if (isA2) {
-      const pFeetY = player.y + (player.h || 70);
-      if (pFeetY >= 1350 && !player.isDead) {
-        player.hp = 0;
-        player.isDead = true;
-        player.respawnTimer = 75;
-        if (typeof triggerScreenShake === 'function') {
-          triggerScreenShake(14);
-        }
-      } else if (pFeetY >= 1260 && !player.isDead) {
-        player.hp -= 0.65;
-        player.vx *= 0.94;
-        if (player.hp <= 0) {
-          player.hp = 0;
-          player.isDead = true;
-          player.respawnTimer = 75;
-          if (typeof triggerScreenShake === 'function') {
-            triggerScreenShake(12);
+      const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+      const hazardY = curArenaObj?.acidSurge?.currentY || (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM ? window.ACID_SURGE_SYSTEM.currentY : 1260);
+      const px = player.x + (player.w || 24) * 0.5;
+      const time = performance.now() * 0.001;
+      const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
+      const exactSurfaceY = hazardY + waveOffset;
+      const playerFeetY = (player.origin === 'bottom') ? player.y : (player.y + (player.h || 70));
+      const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb kwasu
+
+      if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
+        if (!player.isDead && !player.isAcidDying && (!player.acidDeath || !player.acidDeath.active)) {
+          if (typeof window !== 'undefined' && typeof window.triggerPlayerAcidDeath === 'function') {
+            window.triggerPlayerAcidDeath(player, exactSurfaceY);
           }
         }
       }

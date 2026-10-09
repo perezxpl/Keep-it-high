@@ -64,14 +64,17 @@ export const bot = createPlayerInstance({
 export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   if (!bot.active) return;
 
-  // Obsługa stanu śmierci
-  if (bot.isDead) {
+  // Obsługa stanu śmierci oraz rozpuszczania w kwasie
+  if (bot.isDead || bot.isAcidDying || (bot.acidDeath && bot.acidDeath.active)) {
     botKeys.left = false;
     botKeys.right = false;
     botKeys.up = false;
     botKeys.down = false;
     botKeys.space = false;
     botKeys.slide = false;
+    bot.isShooting = false;
+    bot.isCharging = false;
+    bot.isJumpCharging = false;
     updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
     return;
   }

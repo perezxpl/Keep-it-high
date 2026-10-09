@@ -4,6 +4,8 @@
 // Wymiary: 3600 x 1400 px
 // =========================================================================
 
+import { triggerScreenShake } from '../camera.js';
+
 // =========================================================================
 // 1. KONFIGURACJA ARENY (ARENA_2_CONFIG)
 // =========================================================================
@@ -154,12 +156,12 @@ export const ARENA_2_PLATFORMS = [
   },
 
   // 5. RAMPY DOLNE (Ukośne zjazdy ze środka na dolne platformy)
-  // Ze Środka do Platformy C: od (1440, 746) do (900, 1040)
+  // Ze Środka do Platformy C: od (1440, 720) do (900, 1040)
   {
     id: 'ramp_bot_left',
     name: 'Rampa Dolna Lewa',
     x1: 1440,
-    y1: 746,
+    y1: 720,
     x2: 900,
     y2: 1040,
     thickness: 18,
@@ -168,21 +170,21 @@ export const ARENA_2_PLATFORMS = [
     oneWay: true,
     x: 900,
     w: 540,
-    y: 746,
-    h: 294,
+    y: 720,
+    h: 320,
     startY: 1040,
-    endY: 746,
+    endY: 720,
     surfacePoints: [
       { x: 900, y: 1040 },
-      { x: 1440, y: 746 }
+      { x: 1440, y: 720 }
     ]
   },
-  // Ze Środka do Platformy D: od (2160, 746) do (2700, 1040)
+  // Ze Środka do Platformy D: od (2160, 720) do (2700, 1040)
   {
     id: 'ramp_bot_right',
     name: 'Rampa Dolna Prawa',
     x1: 2160,
-    y1: 746,
+    y1: 720,
     x2: 2700,
     y2: 1040,
     thickness: 18,
@@ -191,12 +193,12 @@ export const ARENA_2_PLATFORMS = [
     oneWay: true,
     x: 2160,
     w: 540,
-    y: 746,
-    h: 294,
-    startY: 746,
+    y: 720,
+    h: 320,
+    startY: 720,
     endY: 1040,
     surfacePoints: [
-      { x: 2160, y: 746 },
+      { x: 2160, y: 720 },
       { x: 2700, y: 1040 }
     ]
   },
@@ -241,8 +243,182 @@ export function applyPandoraUpdraft() { return false; }
 export function checkPandoraUpdraft() { return false; }
 
 // =========================================================================
+// 2B. ELEMENTY TAKTYCZNE I OSŁONY (LEVEL DESIGN - SEKTOR X)
+// =========================================================================
+
+// 1. METALOWE SKRZYNIE / OSŁONY BALISTYCZNE (Blokują pociski i graczy)
+export const ARENA_2_COVERS = [
+  // Bastion górny lewy (A) - osłona od strony środka
+  { id: 'cover_A', x: 680, y: 418, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  // Bastion górny prawy (B) - osłona od strony środka (idealny mirror: 3600 - (680 + 54) = 2866)
+  { id: 'cover_B', x: 2866, y: 418, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  // Bastion dolny lewy (C)
+  { id: 'cover_C', x: 480, y: 998, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  // Bastion dolny prawy (D) (idealny mirror: 3600 - (480 + 54) = 3066)
+  { id: 'cover_D', x: 3066, y: 998, w: 54, h: 42, isSolid: true, blocksBullets: true }
+];
+
+// 2. WYBUCHOWE BECZKI Z TOKSYNAMI (Niszczalne przeszkody środowiskowe)
+export const ARENA_2_BARRELS = [
+  { id: 'barrel_A_edge', x: 830, y: 424, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_B_edge', x: 2744, y: 424, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_C_mid',  x: 740, y: 1004, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_D_mid',  x: 2834, y: 1004, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false }
+];
+
+// 3. CENTRALNY TERMINAL ZAOPATRZENIA (Pick-up w sercu areny)
+export const ARENA_2_SUPPLY = {
+  x: 1800,
+  y: 700,
+  w: 36,
+  h: 20,
+  type: 'AMMO_MEDKIT',
+  isAvailable: true,
+  respawnTimer: 0,
+  respawnDelay: 1200 // 20 sekund przy 60 FPS
+};
+
+// =========================================================================
+// SYSTEM ZRZUTU I ZALANIA KWASEM (TOXIC ACID SURGE SYSTEM)
+// =========================================================================
+
+let _acidSirenCtx = null;
+
+/**
+ * Odtwarza syntetyczną dwutonową przemysłową syrenę alarmową (Web Audio API)
+ */
+export function playAcidSurgeSiren() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!_acidSirenCtx) {
+      _acidSirenCtx = new AudioCtx();
+    }
+    if (_acidSirenCtx.state === 'suspended') {
+      _acidSirenCtx.resume();
+    }
+
+    const now = _acidSirenCtx.currentTime;
+    const osc = _acidSirenCtx.createOscillator();
+    const gain = _acidSirenCtx.createGain();
+
+    osc.type = 'sawtooth';
+    // Modulacja częstotliwości: dwutonowa syrena przemysłowa (wznosząca i opadająca)
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.linearRampToValueAtTime(780, now + 0.6);
+    osc.frequency.linearRampToValueAtTime(420, now + 1.2);
+    osc.frequency.linearRampToValueAtTime(780, now + 1.8);
+    osc.frequency.linearRampToValueAtTime(420, now + 2.4);
+    osc.frequency.linearRampToValueAtTime(780, now + 3.0);
+    osc.frequency.linearRampToValueAtTime(360, now + 3.5);
+
+    // Filtr dolnoprzepustowy nadający surowy, industrialny rezonans
+    const filter = _acidSirenCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1200, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.1);
+    gain.gain.setValueAtTime(0.18, now + 3.0);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(_acidSirenCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 3.5);
+  } catch (err) {
+    // Bezpieczne wyciszenie w przypadku blokady autoplay
+  }
+}
+
+export const ACID_SURGE_SYSTEM = {
+  // Poziomy kwasu (wysokość świata = 1400 px)
+  baseY: 1260,       // Poziom spoczynkowy
+  peakY: 720,        // Połowa mapy (wysokość podestu centralnego)
+  currentY: 1260,    // Aktualny poziom Y (interpolowany)
+
+  // Maszyna stanów: 'CALM' | 'WARNING' | 'RISING' | 'FLOODED' | 'DRAINING'
+  state: 'CALM',
+  timer: 30.0,       // Odliczanie (w sekundach)
+
+  durations: {
+    calm: 30.0,      // 30 sekund normalnego stanu
+    warning: 3.5,    // 3.5 sekundy alarmu ostrzegawczego przed zalaniem
+    rising: 3.5,     // 3.5 sekundy płynnego podnoszenia się cieczy
+    flooded: 15.0,   // 15 sekund utrzymywania wysokiego stanu
+    draining: 4.0    // 4 sekundy spływania kwasu
+  },
+
+  // Easing dla płynnego ruchu cieczy
+  easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  },
+
+  update(dt) {
+    this.timer -= dt;
+
+    switch (this.state) {
+      case 'CALM':
+        this.currentY = this.baseY;
+        if (this.timer <= 0) {
+          this.state = 'WARNING';
+          this.timer = this.durations.warning;
+          playAcidSurgeSiren();
+        }
+        break;
+
+      case 'WARNING':
+        this.currentY = this.baseY;
+        // Wstrząsy zapowiadające zalanie
+        if (Math.random() < 0.25 && typeof triggerScreenShake === 'function') {
+          triggerScreenShake(2);
+        }
+        if (this.timer <= 0) {
+          this.state = 'RISING';
+          this.timer = this.durations.rising;
+        }
+        break;
+
+      case 'RISING': {
+        const progress = 1 - (this.timer / this.durations.rising);
+        this.currentY = this.baseY - (this.baseY - this.peakY) * this.easeInOutQuad(progress);
+        if (this.timer <= 0) {
+          this.state = 'FLOODED';
+          this.timer = this.durations.flooded;
+          this.currentY = this.peakY;
+        }
+        break;
+      }
+
+      case 'FLOODED':
+        this.currentY = this.peakY;
+        if (this.timer <= 0) {
+          this.state = 'DRAINING';
+          this.timer = this.durations.draining;
+        }
+        break;
+
+      case 'DRAINING': {
+        const progress = 1 - (this.timer / this.durations.draining);
+        this.currentY = this.peakY + (this.baseY - this.peakY) * this.easeInOutQuad(progress);
+        if (this.timer <= 0) {
+          this.state = 'CALM';
+          this.timer = this.durations.calm;
+          this.currentY = this.baseY;
+        }
+        break;
+      }
+    }
+  }
+};
+
+// =========================================================================
 // 3. PREALOKOWANE STRUKTURY DLA 60 FPS (ZERO GC ALLOCATIONS)
 // =========================================================================
+// Podwodne bąble kwasu w głębi toni
 const ACID_BUBBLES_COUNT = 28;
 const _acidBubbles = [];
 for (let i = 0; i < ACID_BUBBLES_COUNT; i++) {
@@ -256,6 +432,7 @@ for (let i = 0; i < ACID_BUBBLES_COUNT; i++) {
   });
 }
 
+// Cząsteczki pyłu przemysłowego w hali
 const INDUSTRIAL_DUST_COUNT = 32;
 const _industrialDust = [];
 for (let i = 0; i < INDUSTRIAL_DUST_COUNT; i++) {
@@ -270,9 +447,47 @@ for (let i = 0; i < INDUSTRIAL_DUST_COUNT; i++) {
   });
 }
 
-/** Zwraca falujące lustro toksycznego kwasu (Y ≈ 1260) */
-function getAcidSurfaceY(x, time) {
-  return 1260 + Math.sin(time * 2.8 + x * 0.018) * 3.2 + Math.sin(time * 1.4 + x * 0.042) * 1.6;
+// Górne przemysłowe koguty alarmowe (Rotating Emergency Beacons) na ścianach w tle
+export const ARENA_2_EMERGENCY_BEACONS = [
+  { x: 720,  y: 560, id: 'beacon_1', label: 'BEACON-01' }, // pod górną lewą rampą
+  { x: 2880, y: 560, id: 'beacon_4', label: 'BEACON-04' }  // pod górną prawą rampą
+];
+
+// Stała tablica 28 cząstek unoszących się oparów toksycznych (Steam Motes)
+export const TOXIC_VAPOR_COUNT = 28;
+export const _toxicVaporParticles = [];
+for (let i = 0; i < TOXIC_VAPOR_COUNT; i++) {
+  _toxicVaporParticles.push({
+    baseX: 100 + (i * 123.7) % 3400,
+    radius: 14 + (i % 5) * 2.8, // promień w przedziale 14–26 px
+    speed: 1.15 + (i % 4) * 0.42, // szybkość falowania poziomego
+    amp: 12 + (i % 5) * 3.2, // amplituda falowania (12–25 px)
+    driftSpeed: 0.12 + (i % 3) * 0.035, // pionowy dryf w górę (ok. 6–8s cykl)
+    phase: i * 0.49
+  });
+}
+
+// Pęcherze gazu pęczniejące na tafli kwasu i wyrzucające 2–3 mikro-kropelki cieczy
+export const SURFACE_BUBBLES_COUNT = 32;
+export const _surfaceBubbles = [];
+for (let i = 0; i < SURFACE_BUBBLES_COUNT; i++) {
+  _surfaceBubbles.push({
+    x: 100 + (i * 107.5) % 3400,
+    maxRadius: 2.2 + (i % 4) * 0.58, // promień 2–4 px
+    cycleDuration: 1.8 + (i % 5) * 0.35, // 1.8–3.2 sekundy
+    phase: i * 0.38,
+    droplets: [
+      { vx: -16 + (i % 7) * 4.5, vy: -38 - (i % 3) * 8, size: 1.2 },
+      { vx: 2 + ((i + 1) % 5) * 3.2, vy: -48 - (i % 4) * 6, size: 1.5 },
+      { vx: 15 - ((i + 2) % 6) * 4.2, vy: -34 - (i % 5) * 7, size: 1.0 }
+    ]
+  });
+}
+
+/** Zwraca falujące lustro toksycznego kwasu (jednolita, stała formuła fali) */
+export function getAcidSurfaceY(x, time) {
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  return curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
 }
 
 // =========================================================================
@@ -586,8 +801,8 @@ export function drawArena2Background(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // WARSTWA 2: MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
-  // Dokładny środek areny: X = 1800, Y = 580 (promień 400 px, piasta 76 px)
-  // Symetryczny punkt centralny za podestem taktycznym i skrzyżowaniem ramp „X”
+  // ORAZ PRZEMYSŁOWE KOGUTY ALARMOWE W TLE (ROTATING EMERGENCY BEACONS)
+  // Dokładny środek areny: X = 1800, Y = 580 (promień 300 px, piasta 54 px)
   // -----------------------------------------------------------------------
   ctx.save();
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
@@ -595,31 +810,12 @@ export function drawArena2Background(ctx, camera) {
   ctx.translate(-camX, -camY);
 
   drawMonumentalCenterTurbine(ctx, time);
+  drawRotatingHazardBeacons(ctx, time);
 
   ctx.restore();
 
   // -----------------------------------------------------------------------
-  // WARSTWA 3: PRZEMYSŁOWE NAPISY OSTRZEGAWCZE I GRAFIKI TAKTYCZNE
-  // -----------------------------------------------------------------------
-  ctx.save();
-  const signX = (W_screen * 0.25 - camX * 0.035) % (W_screen + 600) - 100;
-  const signY = H_screen * 0.24 - camY * 0.02;
-  ctx.font = '900 24px monospace';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-  ctx.textAlign = 'left';
-  ctx.fillText('SECTOR-X // HEAVY REFINERY', signX, signY);
-  ctx.font = '700 12px monospace';
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.16)';
-  ctx.fillText('⚠ DANGER: CAUSTIC WASTE DISPOSAL ⚠', signX, signY + 22);
-
-  const sign2X = (W_screen * 0.72 - camX * 0.035) % (W_screen + 600) - 100;
-  ctx.font = '900 20px monospace';
-  ctx.fillStyle = 'rgba(16, 185, 129, 0.06)';
-  ctx.fillText('FOUNDRY CORE // ZONE-02', sign2X, signY + 40);
-  ctx.restore();
-
-  // -----------------------------------------------------------------------
-  // WARSTWA 4: UNOSZĄCE SIĘ CZĄSTECZKI PYŁU I OPARÓW PRZEMYSŁOWYCH (60 FPS)
+  // WARSTWA 3: UNOSZĄCE SIĘ CZĄSTECZKI PYŁU I OPARÓW PRZEMYSŁOWYCH (60 FPS)
   // -----------------------------------------------------------------------
   ctx.save();
   for (let i = 0; i < _industrialDust.length; i++) {
@@ -670,17 +866,11 @@ export function drawArena2Geometry(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 0. ABSOLUTNY, W 100% KRYJĄCY MONOLITYCZNY PODKŁAD POD CAŁĄ ARENĄ
-  // Zero widocznego tła od poziomu kwasu w dół (Y: 1250 do dna)
+  // Zero widocznego tła od dynamicznego poziomu kwasu w dół
   // -----------------------------------------------------------------------
+  const curAcidY = Math.floor((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260);
   ctx.fillStyle = '#010403';
-  ctx.fillRect(-200, 1250, 4000, (BOTTOM_Y - 1250) + 200);
-
-
-  // -----------------------------------------------------------------------
-  // 1. ZBIORNIK TOKSYCZNEGO KWASU (HAZARD LAKE // Y = 1260 DO BOTTOM_Y)
-  // Całkowicie kryjąca toń z bąblami chemicznymi i zielonym blaskiem
-  // -----------------------------------------------------------------------
-  drawAcidLake(ctx, time, BOTTOM_Y);
+  ctx.fillRect(-200, curAcidY - 10, 4000, (BOTTOM_Y - curAcidY) + 210);
 
   // -----------------------------------------------------------------------
   // 2. SUFITOWE MAGISTRALE I BELKI TECHNICZNE (Y: 150-180)
@@ -696,23 +886,25 @@ export function drawArena2Geometry(ctx, camera) {
   // -----------------------------------------------------------------------
   // 4. UKOŚNE RAMPY GÓRNE (POŁĄCZENIE BASTIONÓW ZE ŚRODKIEM)
   // Rampa A: (880, 460) -> (1440, 720)
-  // Rampa B: (2720, 460) -> (2160, 720)
+  // Rampa B (Mirror): (2720, 460) -> (2160, 720)
   // -----------------------------------------------------------------------
   drawIndustrialTrussRamp(ctx, 880, 460, 1440, 720, 18, true, time);
   drawIndustrialTrussRamp(ctx, 2720, 460, 2160, 720, 18, false, time);
 
   // -----------------------------------------------------------------------
-  // 5. CENTRALNY HUB TAKTYCZNY (X: 1440-2160, Y: 720, W: 720, H: 26)
+  // 6. UKOŚNE RAMPY DOLNE (ZE ŚRODKA NA DOLNE BASTIONY)
+  // Rampa C: (1440, 720) -> (900, 1040)
+  // Rampa D (Mirror): (2160, 720) -> (2700, 1040)
   // -----------------------------------------------------------------------
-  drawCenterTacticalHub(ctx, 1440, 720, 720, 26, time);
+  drawIndustrialTrussRamp(ctx, 1440, 720, 900, 1040, 18, false, time);
+  drawIndustrialTrussRamp(ctx, 2160, 720, 2700, 1040, 18, true, time);
 
   // -----------------------------------------------------------------------
-  // 6. UKOŚNE RAMPY DOLNE (ZE ŚRODKA NA DOLNE BASTIONY)
-  // Rampa C: (1440, 746) -> (900, 1040)
-  // Rampa D: (2160, 746) -> (2700, 1040)
+  // 6B. WĘZŁY KRATOWNIC PRZY ŚRODKU (JUNCTION CAPS - LEWY I PRAWY)
+  // Symetryczne zwieńczenia wierzchołków przy X = 1440 oraz X = 2160
   // -----------------------------------------------------------------------
-  drawIndustrialTrussRamp(ctx, 1440, 746, 900, 1040, 18, false, time);
-  drawIndustrialTrussRamp(ctx, 2160, 746, 2700, 1040, 18, true, time);
+  drawRampJunctionCap(ctx, 1440, 720, true);
+  drawRampJunctionCap(ctx, 2160, 720, false);
 
   // -----------------------------------------------------------------------
   // 7. DOLNE BASTIONY C i D (X: 260-900 oraz 2700-3340, Y: 1040)
@@ -721,9 +913,42 @@ export function drawArena2Geometry(ctx, camera) {
   drawIndustrialFortressPlatform(ctx, 2700, 1040, 640, 32, 'D - ACID PIER', false, time);
 
   // -----------------------------------------------------------------------
+  // 1. ZBIORNIK TOKSYCZNEGO KWASU (HAZARD LAKE // Y = currentY DO BOTTOM_Y)
+  // Jednolity, stały render cieczy niezależnie od stanu i fazy alarmu
+  // -----------------------------------------------------------------------
+  drawAcidLevel(ctx, curAcidY, BOTTOM_Y);
+
+  // 1B. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
+  drawAcidSurfaceBubbles(ctx, time);
+
+  // 1C. GŁÓWNA ŁUNA OD KWASU (ACID UPWARD UNDERGLOW)
+  drawAcidUpwardUnderglow(ctx);
+
+  // 1D. DYNAMICZNE EFEKTY ZGONU W KWASIE (WRZENIE, GEJZERY KROPEL, DYM, WYRZUCONY EKWIPUNEK)
+  drawAcidDeathEffects(ctx, time);
+
+  // -----------------------------------------------------------------------
+  // 5. CENTRALNY HUB TAKTYCZNY (X: 1440-2160, Y: 720, W: 720, H: 26)
+  // Renderowany na szczycie fali zalania (Y = 720)
+  // -----------------------------------------------------------------------
+  drawCenterTacticalHub(ctx, 1440, 720, 720, 26, time);
+
+  // 7B. ZIELONY AKCENT NA KRAWĘDZIACH PLATFORM I RAMP (RIM LIGHT // SCREEN)
+  drawPlatformRimLighting(ctx);
+
+  // -----------------------------------------------------------------------
   // 8. ELEMENTY ATMOSFERYCZNE: OPARY KWASU I OSTRZEGAWCZE ŚWIATŁA STROBOSKOPOWE
   // -----------------------------------------------------------------------
+  drawToxicVaporMotes(ctx, time);
   drawAcidVaporAndHazards(ctx, time);
+
+  // KOGUTY ALARMOWE (renderowane w geometrii w przypadku braku tła)
+  drawRotatingHazardBeacons(ctx, time);
+
+  // -----------------------------------------------------------------------
+  // 9. TAKTYCZNE OSTRZEŻENIE O ZALANIU / SYRENY WIZUALNE
+  // -----------------------------------------------------------------------
+  drawAcidSurgeWarningBanner(ctx, time, camera);
 
   ctx.restore();
 }
@@ -740,97 +965,60 @@ export function drawArena2Foreground(ctx, camera) {
 // 6. SZCZEGÓŁOWE PROCEDURY RENDEROWANIA ELEMENTÓW INDUSTRIALNYCH
 // =========================================================================
 
-/** Rysuje jezioro żrącego kwasu o 100% kryciu */
-function drawAcidLake(ctx, time, bottomY) {
+// Jednolity, stały render cieczy niezależnie od stanu i fazy alarmu
+export function drawAcidLevel(ctx, currentY, bottomY = 1400) {
+  const curY = (currentY !== undefined && currentY !== null)
+    ? currentY
+    : ((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260);
+  const BOTTOM_Y = Math.max(1400, bottomY || 1400); // lub dynamiczna dolna granica ekranu
+  const time = performance.now() * 0.001;
+
   ctx.save();
-  ctx.shadowBlur = 0;
   ctx.globalAlpha = 1.0;
   ctx.globalCompositeOperation = 'source-over';
 
-  const acidSteps = 36;
-  const stepW = 3800 / acidSteps;
+  // 1. Zawsze ten sam, niezmienny gradient głębinowy
+  const acidGrad = ctx.createLinearGradient(0, curY, 0, BOTTOM_Y);
+  acidGrad.addColorStop(0.00, '#22c55e'); // standardowa zieleń na powierzchni
+  acidGrad.addColorStop(0.18, '#15803d');
+  acidGrad.addColorStop(0.55, '#052e16');
+  acidGrad.addColorStop(1.00, '#010a05'); // 100% kryjące dno
 
-  // A. 100% KRYJĄCY GRADIENT TONI KWASU (ZERO PRZEŚWITÓW)
-  const acidGrad = ctx.createLinearGradient(0, 1250, 0, bottomY);
-  acidGrad.addColorStop(0.00, '#10b981'); // Jaskrawy szmaragdowy kwas na powierzchni
-  acidGrad.addColorStop(0.12, '#059669'); // Głęboki szmaragd
-  acidGrad.addColorStop(0.40, '#047857'); // Ciemna zieleń chemiczna
-  acidGrad.addColorStop(0.75, '#022c22'); // Toksyczny osad
-  acidGrad.addColorStop(1.00, '#01120d'); // Ciemność dna zbiornika
-
+  // 2. Ta sama standardowa powierzchnia fal
   ctx.fillStyle = acidGrad;
   ctx.beginPath();
-  ctx.moveTo(-100, getAcidSurfaceY(-100, time));
-  for (let i = 1; i <= acidSteps; i++) {
-    const px = -100 + i * stepW;
-    ctx.lineTo(px, getAcidSurfaceY(px, time));
+  ctx.moveTo(0, BOTTOM_Y);
+  ctx.lineTo(0, curY);
+
+  // Stała formuła fal bez względu na to, czy kwas stoi, czy się podnosi
+  const step = 20;
+  for (let x = 0; x <= 3600; x += step) {
+    const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
+    ctx.lineTo(x, waveY);
   }
-  ctx.lineTo(3700, bottomY + 200);
-  ctx.lineTo(-100, bottomY + 200);
+
+  ctx.lineTo(3600, BOTTOM_Y);
   ctx.closePath();
   ctx.fill();
 
-  // B. PODWODNY SZLAK REFLEKSÓW KAUSTYCZNYCH
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.strokeStyle = 'rgba(167, 243, 208, 0.22)';
-  ctx.lineWidth = 2.4;
-  for (let c = 0; c < 12; c++) {
-    const cx = c * 310 + Math.sin(time * 1.5 + c) * 35;
-    const cy = getAcidSurfaceY(cx, time) + 8;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.quadraticCurveTo(cx + 40, cy + 30, cx + 15, cy + 65);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // C. LŚNIĄCA WSTĘGA I CYJANOWA PIANA NA FALACH KWASU
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.strokeStyle = 'rgba(209, 250, 229, 0.90)';
-  ctx.lineWidth = 2.4;
+  // 3. Ta sama, delikatna linia grzbietu fali
+  ctx.strokeStyle = '#86efac';
+  ctx.lineWidth = 2.0;
   ctx.beginPath();
-  ctx.moveTo(-100, getAcidSurfaceY(-100, time));
-  for (let i = 1; i <= acidSteps; i++) {
-    const px = -100 + i * stepW;
-    ctx.lineTo(px, getAcidSurfaceY(px, time));
+  for (let x = 0; x <= 3600; x += step) {
+    const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
+    if (x === 0) ctx.moveTo(x, waveY);
+    else ctx.lineTo(x, waveY);
   }
   ctx.stroke();
 
-  // Dodatkowa neonowa poświata pod grzbietem fali
-  ctx.strokeStyle = 'rgba(52, 211, 153, 0.45)';
-  ctx.lineWidth = 5.0;
-  ctx.stroke();
   ctx.restore();
+}
 
-  // D. BĄBLE CHEMICZNE UNOSZĄCE SIĘ NA POWIERZCHNI
-  for (let i = 0; i < _acidBubbles.length; i++) {
-    const b = _acidBubbles[i];
-    b.y -= b.speedY;
-    if (b.y < 1254) {
-      b.y = 1340 + Math.random() * 40;
-      b.x = 80 + Math.random() * 3440;
-    }
-    const bx = b.x + Math.sin(time * 2.0 + b.phase) * 8;
-    const by = b.y;
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.fillStyle = 'rgba(167, 243, 208, 0.65)';
-    ctx.beginPath();
-    ctx.arc(bx, by, b.size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Punktowe białe lśnienie bąbelka
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(bx - b.size * 0.3, by - b.size * 0.3, b.size * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  ctx.restore();
+/** Alias kompatybilności */
+export function drawAcidLake(ctx, time, bottomY) {
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  drawAcidLevel(ctx, curY, bottomY);
 }
 
 /** Rysuje rury i kratownice sufitowe (Y = 150-180) */
@@ -958,22 +1146,46 @@ function drawIndustrialFortressPlatform(ctx, x, y, w, h, label, isLeft, time) {
   ctx.fillText(label, isLeft ? x + 16 : x + w - 16, y + 24);
   ctx.restore();
 
+  // Zielony akcent na dolnej krawędzi platform C i D (Rim Light od kwasu)
+  if (y >= 1000) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.35)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 
 /** Rysuje ukośną kratownicową rampę stalową łączącą poziomy */
-function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness, isAscending, time) {
+function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness = 18, isAscending, time) {
   ctx.save();
+  ctx.beginPath();
 
-  const dx = x2 - x1;
-  const dy = y2 - y1;
+  // Upewniamy się, że rysujemy od lewej do prawej strony (startX <= endX),
+  // dzięki czemu oś Y w układzie lokalnym jest ZAWSZE skierowana pionowo w dół świata (w stronę grawitacji).
+  // Zapobiega to rysowaniu kratownicy do góry nogami i wystawaniu ponad podesty A, B oraz podest środkowy.
+  const p1 = (x1 <= x2) ? { x: x1, y: y1 } : { x: x2, y: y2 };
+  const p2 = (x1 <= x2) ? { x: x2, y: y2 } : { x: x1, y: y1 };
+
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
   const len = Math.hypot(dx, dy);
+  if (len < 1) {
+    ctx.restore();
+    return;
+  }
   const angle = Math.atan2(dy, dx);
 
-  ctx.translate(x1, y1);
+  ctx.translate(p1.x, p1.y);
   ctx.rotate(angle);
 
-  // A. Dolna kratownica konstrukcyjna (Open-web steel truss)
+  // A. Dolna kratownica konstrukcyjna (Open-web steel truss pod bieżnią)
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 3.2;
   ctx.beginPath();
@@ -995,7 +1207,7 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness, isAscending, ti
     ctx.stroke();
   }
 
-  // B. Płyta bieżna rampy (Ryflowana stal antypoślizgowa)
+  // B. Płyta bieżna rampy (Ryflowana stal antypoślizgowa na górnej krawędzi)
   const rGrad = ctx.createLinearGradient(0, 0, 0, thickness);
   rGrad.addColorStop(0.0, '#475569');
   rGrad.addColorStop(0.3, '#334155');
@@ -1027,6 +1239,66 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness, isAscending, ti
   ctx.restore();
 }
 
+/** Rysuje trójkątne zwieńczenie węzła kratownic przy środkowym podeście (Junction Cap) */
+function drawRampJunctionCap(ctx, jx, jy, isLeft) {
+  ctx.save();
+  ctx.beginPath();
+
+  const sign = isLeft ? -1 : 1;
+  const apexX = jx + sign * 22;
+  const apexY = jy + 39; // zbieg dolnych pasów kratownic (Y: 759)
+
+  // Trójkątna nakładka węzłowa łącząca górną i dolną rampę z czołem podestu
+  ctx.beginPath();
+  ctx.moveTo(jx, jy);       // (1440 / 2160, 720) - górny narożnik bieżni
+  ctx.lineTo(apexX, apexY);  // wierzchołek zbiegu dolnych pasów kratownic
+  ctx.lineTo(jx, jy + 26);   // (1440 / 2160, 746) - dolny narożnik profilu podestu
+  ctx.closePath();
+
+  const gGrad = ctx.createLinearGradient(jx, jy, apexX, apexY);
+  gGrad.addColorStop(0.0, '#334155');
+  gGrad.addColorStop(0.5, '#1e293b');
+  gGrad.addColorStop(1.0, '#0f172a');
+  ctx.fillStyle = gGrad;
+  ctx.fill();
+
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+
+  // Wewnętrzny ryflowany profil usztywniający
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(jx, jy + 13);
+  ctx.lineTo(apexX, apexY);
+  ctx.stroke();
+
+  // Śruby węzłowe
+  ctx.fillStyle = '#94a3b8';
+  const bolts = [
+    { dx: sign * 5, dy: 8 },
+    { dx: sign * 14, dy: 28 },
+    { dx: sign * 5, dy: 20 }
+  ];
+  for (const b of bolts) {
+    ctx.beginPath();
+    ctx.arc(jx + b.dx, jy + b.dy, 2.0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Neonowy punkt telemetryczny LED na węźle
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.arc(jx + sign * 4, jy + 4, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
 /** Rysuje centralny podwieszany hub taktyczny */
 function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.save();
@@ -1046,33 +1318,6 @@ function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.lineWidth = 1.6;
   ctx.stroke();
 
-  // Podwieszany reaktor / generator energii pod hubem (Y: 746-860)
-  const genX = x + w / 2 - 140;
-  const genY = y + h;
-  const genW = 280;
-  const genH = 90;
-
-  const gGrad = ctx.createLinearGradient(genX, genY, genX + genW, genY + genH);
-  gGrad.addColorStop(0.0, '#0f172a');
-  gGrad.addColorStop(0.5, '#1e293b');
-  gGrad.addColorStop(1.0, '#020617');
-  ctx.fillStyle = gGrad;
-  ctx.fillRect(genX, genY, genW, genH);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2.0;
-  ctx.strokeRect(genX, genY, genW, genH);
-
-  // Pulsujący rdzeń plazmowy reaktora w trybie 'screen'
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  const pulse = 0.55 + 0.35 * Math.sin(time * 3.5);
-  ctx.fillStyle = `rgba(16, 185, 129, ${pulse})`;
-  ctx.fillRect(genX + 30, genY + 25, genW - 60, 36);
-
-  ctx.strokeStyle = `rgba(110, 231, 183, ${pulse * 1.2})`;
-  ctx.lineWidth = 2.0;
-  ctx.strokeRect(genX + 30, genY + 25, genW - 60, 36);
-  ctx.restore();
 
   // Korpus platformy huba (Ażurowy pomost techniczny - kratownica)
   const hGrad = ctx.createLinearGradient(x, y, x, y + h);
@@ -1110,28 +1355,286 @@ function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.restore();
 }
 
-/** Rysuje parę chemiczną i światła stroboskopowe */
-function drawAcidVaporAndHazards(ctx, time) {
-  ctx.save();
+// =========================================================================
+// NOWE FUNKCJE ŚWIETLNE I EFEKTÓW CZĄSTECZKOWYCH (KROK 3 - LIGHTING & FX)
+// =========================================================================
 
-  // Mgła toksyczna unosząca się nad kwasem (Y: 1220-1260)
+/**
+ * 1. Podświetlenie od spodu kwasem (Acid Upward Underglow)
+ * Poziomy, rozmyty gradient unoszącego się zielonego blasku tuż nad kwasem (Y = 1260 -> 980 px)
+ */
+export function drawAcidUpwardUnderglow(ctx) {
   ctx.save();
+  ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
-  for (let v = 0; v < 8; v++) {
-    const vx = v * 480 + Math.sin(time * 0.9 + v) * 45;
-    const vy = 1245 + Math.cos(time * 1.1 + v) * 8;
-    const vr = 140;
 
-    const vGrad = ctx.createRadialGradient(vx, vy, 10, vx, vy, vr);
-    vGrad.addColorStop(0.0, 'rgba(52, 211, 153, 0.16)');
-    vGrad.addColorStop(0.5, 'rgba(16, 185, 129, 0.06)');
-    vGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = vGrad;
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  const underglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 280);
+  underglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.28)');
+  underglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.12)');
+  underglowGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = underglowGrad;
+  ctx.fillRect(-200, curY - 280, 4000, 280);
+  ctx.restore();
+}
+
+/**
+ * 1B. Zielony akcent na krawędziach platform (Rim Light)
+ * Cienka fosforyzująca linia (rgba(74, 222, 128, 0.35), lineWidth: 1.8) symulująca odbijanie światła kwasu
+ */
+export function drawPlatformRimLighting(ctx) {
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'screen';
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.35)';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  // Dolne krawędzie platform C i D (Y: 1072 tuż nad kwasem)
+  ctx.moveTo(260, 1072);
+  ctx.lineTo(900, 1072);
+  ctx.moveTo(2700, 1072);
+  ctx.lineTo(3340, 1072);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * 2. Przemysłowe koguty alarmowe (Rotating Emergency Beacons)
+ * 2 lampy na pionowych słupach z obracającym się snopem światła (bursztynowy/czerwony stożek 45°, R=165 px)
+ */
+let _lastBeaconsTime = -1;
+
+export function drawRotatingHazardBeacons(ctx, time, force = false) {
+  if (!force && _lastBeaconsTime === time) return;
+  _lastBeaconsTime = time;
+
+  ctx.save();
+  ctx.shadowBlur = 0;
+
+  const state = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.state : 'CALM';
+  const isAlarm = (state === 'WARNING' || state === 'RISING');
+  const rotSpeed = isAlarm ? 8.4 : 3.8;
+
+  const beamLength = 165;
+  const spread = 45 * Math.PI / 180; // Kąt rozwarcia ~45°
+  const halfSpread = spread * 0.5;
+
+  for (let i = 0; i < ARENA_2_EMERGENCY_BEACONS.length; i++) {
+    const beacon = ARENA_2_EMERGENCY_BEACONS[i];
+    const bx = beacon.x;
+    const by = beacon.y;
+    const angle = (time * rotSpeed + i * 1.57) % (Math.PI * 2);
+
+    // A. PIONOWY SŁUPEK / STALOWY WSPORNIK NA ŚCIANIE W TLE
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(bx - 3, by - 24, 6, 48);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.0;
+    ctx.strokeRect(bx - 3, by - 24, 6, 48);
+
+    // Nitowania wspornika
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(bx - 1.5, by - 20, 3, 3);
+    ctx.fillRect(bx - 1.5, by + 18, 3, 3);
+
+    // B. OBRACAJĄCY SIĘ SNOP ŚWIATŁA (TRYB 'SCREEN')
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    // Główny stożek światła z miękkim radialnym gradientem (bursztynowy/czerwony alarm)
     ctx.beginPath();
-    ctx.arc(vx, vy, vr, 0, Math.PI * 2);
+    ctx.moveTo(bx, by - 2);
+    ctx.arc(bx, by - 2, beamLength, angle - halfSpread, angle + halfSpread);
+    ctx.closePath();
+
+    const beamGrad = ctx.createRadialGradient(bx, by - 2, 2, bx, by - 2, beamLength);
+    beamGrad.addColorStop(0.00, isAlarm ? 'rgba(239, 68, 68, 0.65)' : 'rgba(245, 158, 11, 0.45)');
+    beamGrad.addColorStop(0.35, isAlarm ? 'rgba(249, 115, 22, 0.35)' : 'rgba(245, 158, 11, 0.24)');
+    beamGrad.addColorStop(0.70, isAlarm ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)');
+    beamGrad.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
+    ctx.fillStyle = beamGrad;
+    ctx.fill();
+
+    // Wewnętrzny jaśniejszy rdzeń snopu
+    const innerHalfSpread = halfSpread * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 2);
+    ctx.arc(bx, by - 2, beamLength * 0.85, angle - innerHalfSpread, angle + innerHalfSpread);
+    ctx.closePath();
+
+    const innerGrad = ctx.createRadialGradient(bx, by - 2, 1, bx, by - 2, beamLength * 0.85);
+    innerGrad.addColorStop(0.00, 'rgba(254, 240, 138, 0.45)');
+    innerGrad.addColorStop(0.45, isAlarm ? 'rgba(239, 68, 68, 0.20)' : 'rgba(245, 158, 11, 0.12)');
+    innerGrad.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
+    ctx.fillStyle = innerGrad;
+    ctx.fill();
+
+    // Radialna poświata żarówki
+    const bulbGlow = ctx.createRadialGradient(bx, by - 2, 1, bx, by - 2, 18);
+    bulbGlow.addColorStop(0.00, 'rgba(254, 215, 170, 0.65)');
+    bulbGlow.addColorStop(0.50, isAlarm ? 'rgba(239, 68, 68, 0.30)' : 'rgba(245, 158, 11, 0.20)');
+    bulbGlow.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
+    ctx.fillStyle = bulbGlow;
+    ctx.beginPath();
+    ctx.arc(bx, by - 2, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // C. MAŁA METALOWA OBUDOWA: CIEMNOSZARY COKÓŁ (#1e293b) 12x8 px
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(bx - 6, by + 1, 12, 8);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(bx - 6, by + 1, 12, 8);
+
+    // Nity na cokole
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(bx - 4.5, by + 5, 2, 2);
+    ctx.fillRect(bx + 2.5, by + 5, 2, 2);
+
+    // D. PRZEZROCZYSTY POMARAŃCZOWY/CZERWONY KLOSZ
+    ctx.save();
+    ctx.fillStyle = isAlarm ? 'rgba(239, 68, 68, 0.88)' : 'rgba(245, 158, 11, 0.82)';
+    ctx.beginPath();
+    ctx.moveTo(bx - 5, by + 1);
+    ctx.lineTo(bx - 5, by - 3);
+    ctx.quadraticCurveTo(bx - 5, by - 7, bx, by - 7);
+    ctx.quadraticCurveTo(bx + 5, by - 7, bx + 5, by - 3);
+    ctx.lineTo(bx + 5, by + 1);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = isAlarm ? '#b91c1c' : '#d97706';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Szklany połysk
+    ctx.strokeStyle = 'rgba(254, 243, 199, 0.65)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(bx - 3, by - 2);
+    ctx.lineTo(bx - 2, by - 5);
+    ctx.stroke();
+    ctx.restore();
+
+    // E. PULSUJĄCY RDZEŃ ŻARÓWKI
+    const bulbPulse = 0.70 + 0.30 * Math.sin(time * (isAlarm ? 15.0 : 7.6) + i * 1.57);
+    ctx.fillStyle = isAlarm ? `rgba(239, 68, 68, ${0.90 * bulbPulse})` : `rgba(245, 158, 11, ${0.85 * bulbPulse})`;
+    ctx.beginPath();
+    ctx.arc(bx, by - 2.5, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${bulbPulse})`;
+    ctx.beginPath();
+    ctx.arc(bx, by - 2.5, 1.8, 0, Math.PI * 2);
     ctx.fill();
   }
+
   ctx.restore();
+}
+
+/**
+ * 3. Cząstki unoszących się oparów toksycznych (Steam Motes)
+ * 28 cząstek pary dryfujących pionowo od poziomu kwasu w górę z falowaniem poziomym
+ */
+export function drawToxicVaporMotes(ctx, time) {
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'screen';
+
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+
+  for (let i = 0; i < _toxicVaporParticles.length; i++) {
+    const p = _toxicVaporParticles[i];
+    const progress = ((time * p.driftSpeed + p.phase) % 1.0 + 1.0) % 1.0;
+    const y = curY - progress * 180;
+    const x = p.baseX + Math.sin(time * p.speed + p.phase) * p.amp;
+    const r = p.radius * (0.85 + 0.35 * progress);
+
+    const alpha = Math.sin(progress * Math.PI) * 0.16;
+    if (alpha <= 0.005) continue;
+
+    ctx.fillStyle = `rgba(52, 211, 153, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * 3B. Pęcherze gazu na powierzchni (Bubbles)
+ * Bąble (promień 2–4 px) pęczniejące na tafli kwasu i pękające, wyrzucające 2–3 mikro-kropelki
+ */
+export function drawAcidSurfaceBubbles(ctx, time) {
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'screen';
+
+  for (let i = 0; i < _surfaceBubbles.length; i++) {
+    const b = _surfaceBubbles[i];
+    const cycleTime = (time + b.phase) % b.cycleDuration;
+    const cycleProgress = cycleTime / b.cycleDuration;
+    const surfaceY = getAcidSurfaceY(b.x, time);
+
+    if (cycleProgress < 0.72) {
+      // FAZA 1: PĘCZNIENIE NA TAFLI KWASU (promień 2–4 px)
+      const growProgress = cycleProgress / 0.72;
+      const r = 0.8 + (b.maxRadius - 0.8) * growProgress;
+      const bubbleY = surfaceY - r * 0.45;
+
+      ctx.fillStyle = 'rgba(167, 243, 208, 0.75)';
+      ctx.beginPath();
+      ctx.arc(b.x, bubbleY, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Punktowe białe lśnienie
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(b.x - r * 0.3, bubbleY - r * 0.35, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // FAZA 2: PĘKNIĘCIE I WYRZUCENIE 2–3 MIKRO-KROPELEK CIECZY
+      const popProgress = (cycleProgress - 0.72) / 0.28;
+
+      if (popProgress < 0.35) {
+        const burstR = b.maxRadius + popProgress * 9.0;
+        const ringAlpha = (1.0 - popProgress / 0.35) * 0.65;
+        ctx.strokeStyle = `rgba(110, 231, 183, ${ringAlpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(b.x, surfaceY, burstR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      const dropAlpha = (1.0 - popProgress) * 0.85;
+      ctx.fillStyle = `rgba(167, 243, 208, ${dropAlpha})`;
+
+      for (let d = 0; d < b.droplets.length; d++) {
+        const dr = b.droplets[d];
+        const dtSeconds = popProgress * 0.45;
+        const dropX = b.x + dr.vx * dtSeconds;
+        const dropY = surfaceY + dr.vy * dtSeconds + 0.5 * 180 * dtSeconds * dtSeconds;
+
+        ctx.beginPath();
+        ctx.arc(dropX, dropY, dr.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+/** Rysuje narożne stroboskopy ostrzegawcze na platformach dolnych */
+function drawAcidVaporAndHazards(ctx, time) {
+  ctx.save();
 
   // Pulsujące stroboskopy ostrzegawcze na rogach dolnych bastionów
   const strobeList = [
@@ -1164,40 +1667,556 @@ function drawAcidVaporAndHazards(ctx, time) {
 }
 
 // =========================================================================
-// 7. AKTUALIZACJA LOGIKI ARENY 2 (UPDATEARENA2)
-// Obrażenia od żrącego kwasu oraz strefa natychmiastowej śmierci (Abyss)
+// 6B. TAKTYCZNE OSTRZEŻENIE O ZALANIU (ACID SURGE WARNING BANNER & HUD)
+// =========================================================================
+export function drawAcidSurgeWarningBanner(ctx, time, camera) {
+  const state = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.state : 'CALM';
+  if (state !== 'WARNING' && state !== 'FLOODED') return;
+
+  ctx.save();
+  ctx.shadowBlur = 0;
+
+  const canvasW = (ctx.canvas && ctx.canvas.width) || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const camY = (camera && typeof camera.y === 'number') ? camera.y : 0;
+
+  const screenCenterX = camX + (canvasW / camZoom) * 0.5;
+  const bannerY = camY + 80 / camZoom;
+
+  if (state === 'WARNING') {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 14.0);
+    const bannerW = 600;
+    const bannerH = 46;
+    const bx = screenCenterX - bannerW * 0.5;
+    const by = bannerY;
+
+    // Tło z industrialną obwódką
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fillRect(bx, by, bannerW, bannerH);
+    ctx.strokeStyle = `rgba(245, 158, 11, ${0.4 + 0.6 * pulse})`;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(bx, by, bannerW, bannerH);
+
+    // Paski ostrzegawcze (hazard stripes) na bokach
+    ctx.fillStyle = `rgba(245, 158, 11, ${0.8 * pulse})`;
+    for (let sx = bx + 4; sx < bx + 36; sx += 8) {
+      ctx.fillRect(sx, by + 4, 4, bannerH - 8);
+    }
+    for (let sx = bx + bannerW - 36; sx < bx + bannerW - 4; sx += 8) {
+      ctx.fillRect(sx, by + 4, 4, bannerH - 8);
+    }
+
+    ctx.font = '900 13px monospace';
+    ctx.fillStyle = `rgba(254, 240, 138, ${0.9 + 0.1 * pulse})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠ ALARM: ZRZUT KWASU // EWAKUACJA DOLNYCH SEKTORÓW ⚠', screenCenterX, by + 16);
+
+    ctx.font = '700 11px monospace';
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillText(`POZIOM ZAGROŻENIA ROŚNIE ZA: ${Math.max(0, ACID_SURGE_SYSTEM.timer).toFixed(1)}s`, screenCenterX, by + 33);
+  } else if (state === 'FLOODED') {
+    const pulse = 0.6 + 0.4 * Math.sin(time * 3.5);
+    const bannerW = 440;
+    const bannerH = 26;
+    const bx = screenCenterX - bannerW * 0.5;
+    const by = bannerY;
+
+    ctx.fillStyle = 'rgba(6, 30, 20, 0.85)';
+    ctx.fillRect(bx, by, bannerW, bannerH);
+    ctx.strokeStyle = `rgba(16, 185, 129, ${0.5 * pulse})`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, by, bannerW, bannerH);
+
+    ctx.font = '900 11px monospace';
+    ctx.fillStyle = `rgba(167, 243, 208, ${0.9 * pulse})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`☣ SEKTOR X ZALANY // CZAS DO ODPŁYWU: ${Math.max(0, ACID_SURGE_SYSTEM.timer).toFixed(0)}s ☣`, screenCenterX, by + 13);
+  }
+
+  ctx.restore();
+}
+
+// =========================================================================
+// =========================================================================
+// 7. SYSTEM EFEKTÓW ZGONU W KWASIE (ACID DEATH FX SYSTEM)
+// =========================================================================
+
+export const _acidSplashParticles = [];
+export const _acidDebrisList = [];
+export const _acidSmokeParticles = [];
+export const _acidBoilEmitters = [];
+
+/**
+ * 1. Gejzer kropel kwasu (Acid Splash Geyser) - limit twardy 28 cząstek
+ */
+export function createAcidSplash(x, y) {
+  if (_acidSplashParticles.length >= 28) return;
+  const count = 14;
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.15;
+    const speed = 4.0 + Math.random() * 5.0;
+    _acidSplashParticles.push({
+      x: x + (Math.random() - 0.5) * 16,
+      y: y + (Math.random() - 0.5) * 4,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      gravity: 0.34,
+      size: 2.0 + Math.random() * 1.8,
+      color: Math.random() < 0.55 ? '#4ade80' : '#86efac',
+      alpha: 1.0,
+      life: 0,
+      maxLife: 28 + Math.random() * 10
+    });
+  }
+}
+
+/**
+ * Mniejszy rozbryzg przy wpadnięciu odłamka/broni
+ */
+export function createAcidMiniSplash(x, y) {
+  if (_acidSplashParticles.length >= 28) return;
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+    const speed = 2.0 + Math.random() * 3.0;
+    _acidSplashParticles.push({
+      x: x + (Math.random() - 0.5) * 6,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      gravity: 0.34,
+      size: 1.4 + Math.random() * 1.4,
+      color: '#86efac',
+      alpha: 0.9,
+      life: 0,
+      maxLife: 20 + Math.random() * 8
+    });
+  }
+}
+
+/**
+ * 2. Cząstki ulatującego dymu/oparów toksycznych - limit twardy 18 cząstek
+ */
+export function spawnAcidSmoke(x, y) {
+  if (_acidSmokeParticles.length >= 18) return;
+  _acidSmokeParticles.push({
+    x: x,
+    y: y,
+    vx: (Math.random() - 0.5) * 1.2,
+    vy: -1.4 - Math.random() * 1.4,
+    radius: 4.0 + Math.random() * 3.0,
+    maxRadius: 14.0 + Math.random() * 6.0,
+    alpha: 0.55,
+    color: Math.random() < 0.6 ? '#4ade80' : '#86efac',
+    life: 0,
+    maxLife: 35 + Math.random() * 15
+  });
+}
+
+/**
+ * 3. Wyrzut upuszczonej broni/hełmu z fizyką balistyczną (vy = -7, vx = random(-2, 2))
+ */
+export function spawnAcidDebris(x, y, weaponObj) {
+  if (_acidDebrisList.length >= 3) return;
+  const isHelmet = Math.random() < 0.5;
+  _acidDebrisList.push({
+    x: x,
+    y: y,
+    vx: (Math.random() - 0.5) * 4.0, // random(-2, 2)
+    vy: -7.0,                       // vy = -7
+    gravity: 0.35,
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.28,
+    isHelmet: isHelmet,
+    weaponName: weaponObj ? (weaponObj.name || weaponObj.id || 'RIFLE') : 'RIFLE',
+    active: true
+  });
+}
+
+/**
+ * 4. Emiter wrzenia małych bąbli pękających na tafli kwasu przez 2.5 sekundy
+ */
+export function spawnAcidBoilEmitter(x, y, duration = 2.5) {
+  if (_acidBoilEmitters.length >= 3) return;
+  _acidBoilEmitters.push({
+    x: x,
+    y: y,
+    duration: duration,
+    timer: 0,
+    spawnCooldown: 0,
+    bubbles: []
+  });
+}
+
+/**
+ * Aktualizacja cząstek efektów kwasu
+ */
+export function updateAcidDeathEffects(dt) {
+  const hazardY = ARENA_2_CONFIG.hazardZoneY;
+
+  // 1. Gejzery kropel
+  for (let i = _acidSplashParticles.length - 1; i >= 0; i--) {
+    const sp = _acidSplashParticles[i];
+    sp.x += sp.vx;
+    sp.y += sp.vy;
+    sp.vy += sp.gravity;
+    sp.life++;
+    sp.alpha = Math.max(0, 1 - (sp.life / sp.maxLife));
+    if (sp.life >= sp.maxLife || (sp.vy > 0 && sp.y >= hazardY + 15)) {
+      _acidSplashParticles.splice(i, 1);
+    }
+  }
+
+  // 2. Wyrzucone obiekty broni/hełmu (balistyka)
+  for (let i = _acidDebrisList.length - 1; i >= 0; i--) {
+    const d = _acidDebrisList[i];
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vy += d.gravity;
+    d.rot += d.rotSpeed;
+
+    // Po łuku wpada do kwasu
+    if (d.y >= hazardY && d.vy > 0) {
+      createAcidMiniSplash(d.x, hazardY);
+      _acidDebrisList.splice(i, 1);
+    }
+  }
+
+  // 3. Dym toksyczny
+  for (let i = _acidSmokeParticles.length - 1; i >= 0; i--) {
+    const sm = _acidSmokeParticles[i];
+    sm.x += sm.vx;
+    sm.y += sm.vy;
+    sm.vy *= 0.98;
+    sm.life++;
+    const progress = sm.life / sm.maxLife;
+    sm.radius += (sm.maxRadius - sm.radius) * 0.04;
+    sm.currentAlpha = sm.alpha * (1 - progress);
+    if (sm.life >= sm.maxLife) {
+      _acidSmokeParticles.splice(i, 1);
+    }
+  }
+
+  // 4. Emitery wrzenia
+  for (let i = _acidBoilEmitters.length - 1; i >= 0; i--) {
+    const em = _acidBoilEmitters[i];
+    em.timer += dt;
+
+    if (em.timer < em.duration) {
+      em.spawnCooldown -= dt;
+      if (em.spawnCooldown <= 0) {
+        em.spawnCooldown = 0.08 + Math.random() * 0.06;
+        em.bubbles.push({
+          x: em.x + (Math.random() - 0.5) * 36,
+          life: 0,
+          maxLife: 18 + Math.random() * 14,
+          maxR: 1.8 + Math.random() * 2.2,
+          droplets: [
+            { vx: -0.6 + Math.random() * 1.2, vy: -1.2 - Math.random() * 1.5, size: 1.0 },
+            { vx: -0.8 + Math.random() * 1.6, vy: -1.0 - Math.random() * 1.2, size: 0.8 }
+          ]
+        });
+      }
+    }
+
+    for (let b = em.bubbles.length - 1; b >= 0; b--) {
+      const bub = em.bubbles[b];
+      bub.life++;
+      if (bub.life >= bub.maxLife) {
+        em.bubbles.splice(b, 1);
+      }
+    }
+
+    if (em.timer >= em.duration && em.bubbles.length === 0) {
+      _acidBoilEmitters.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Renderowanie efektów zgonu w kwasie
+ */
+export function drawAcidDeathEffects(ctx, time) {
+  ctx.save();
+  ctx.shadowBlur = 0;
+
+  // A. Emitery wrzenia na tafli kwasu
+  for (let i = 0; i < _acidBoilEmitters.length; i++) {
+    const em = _acidBoilEmitters[i];
+    for (let b = 0; b < em.bubbles.length; b++) {
+      const bub = em.bubbles[b];
+      const surfaceY = getAcidSurfaceY(bub.x, time);
+      const progress = bub.life / bub.maxLife;
+
+      if (progress < 0.70) {
+        const r = bub.maxR * (progress / 0.70);
+        ctx.fillStyle = 'rgba(167, 243, 208, 0.85)';
+        ctx.beginPath();
+        ctx.arc(bub.x, surfaceY - r * 0.5, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bub.x - r * 0.3, surfaceY - r * 0.7, r * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const popProg = (progress - 0.70) / 0.30;
+        const ringR = bub.maxR + popProg * 4.0;
+        ctx.strokeStyle = `rgba(110, 231, 183, ${Math.max(0, 0.6 * (1 - popProg))})`;
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.arc(bub.x, surfaceY, ringR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = `rgba(167, 243, 208, ${Math.max(0, 0.8 * (1 - popProg))})`;
+        for (const dr of bub.droplets) {
+          const dx = bub.x + dr.vx * popProg * 8.0;
+          const dy = surfaceY + dr.vy * popProg * 10.0 + 0.5 * 18.0 * popProg * popProg;
+          ctx.beginPath();
+          ctx.arc(dx, dy, dr.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // B. Kropelki gejzeru (Acid Splash)
+  for (let i = 0; i < _acidSplashParticles.length; i++) {
+    const sp = _acidSplashParticles[i];
+    ctx.save();
+    ctx.globalAlpha = sp.alpha;
+    ctx.fillStyle = sp.color;
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // C. Wyrzucone bronie / hełmy (Debris)
+  for (let i = 0; i < _acidDebrisList.length; i++) {
+    const d = _acidDebrisList[i];
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+
+    if (d.isHelmet) {
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, Math.PI, 0);
+      ctx.lineTo(8, 3);
+      ctx.lineTo(-8, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(-5, 0, 10, 2.5);
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-10, -2.5, 20, 5);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(10, -1.2, 8, 2.4);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-7, 2.5, 4, 6);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-6, -3, 8, 1.2);
+    }
+
+    ctx.restore();
+  }
+
+  // D. Cząstki ulatującego dymu (lekki render bez kosztownych radial gradientów)
+  for (let i = 0; i < _acidSmokeParticles.length; i++) {
+    const sm = _acidSmokeParticles[i];
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, (sm.currentAlpha || 0.4) * 0.45);
+    ctx.fillStyle = sm.color || '#4ade80';
+    ctx.beginPath();
+    ctx.arc(sm.x, sm.y, sm.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Sprawdza, czy stopy postaci są fizycznie zanurzone w widocznej tafli kwasu (z marginesem zanurzenia)
+ */
+export function isPlayerSubmergedInAcid(p, submergeDepth = 18) {
+  if (!p) return false;
+  const time = performance.now() * 0.001;
+  const acidY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : (ARENA_2_CONFIG.hazardZoneY || 1260);
+  const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
+  const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
+  const exactSurfaceY = acidY + waveOffset;
+  const playerFeetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
+  return playerFeetY >= (exactSurfaceY + submergeDepth);
+}
+
+/**
+ * Rozpoczyna sekwencję zgonu gracza po wpadnięciu do kwasu (Etap 1: Inicjalizacja)
+ */
+export function triggerPlayerAcidDeath(p, hazardZoneY) {
+  if (!p) return;
+  if (p.acidDeath && p.acidDeath.active) return;
+  if (p.isDead) return;
+
+  p.isAcidDying = true;
+  p.acidDeath = {
+    active: true,
+    timer: 0,
+    maxDuration: 1.2, // 1.2 sekundy trwania efektu rozpuszczania
+    hazardY: hazardZoneY,
+    splashTriggered: true,
+    smokeCount: 0,
+    dissolved: false
+  };
+
+  // Postać NIE JEST jeszcze martwa (isDead pozostaje false do końca 1.2s)
+  p.isDead = false;
+  p.vx = 0;
+  // Spowolnienie opadania - zanurzanie w gęstym kwasie
+  p.vy = Math.min(Math.max((p.vy || 0) * 0.35, 0.3), 1.0);
+  p.onGround = false;
+  p.currentPlatform = null;
+  p.currentGroundY = null;
+
+  // Schowaj/upuść broń w ręku
+  p.isHolstered = true;
+  p.holsterWeight = 1.0;
+
+  // Zablokuj sterowanie
+  p.moveLeft = false;
+  p.moveRight = false;
+  p.isJumping = false;
+  p.isJetpacking = false;
+  p.isShooting = false;
+  p.isAiming = false;
+  p.isCrouching = false;
+  p.isProne = false;
+  p.isSliding = false;
+  p.isCharging = false;
+  p.isJumpCharging = false;
+  if (p.keys) {
+    p.keys.left = false; p.keys.right = false; p.keys.up = false; p.keys.down = false;
+    p.keys.KeyA = false; p.keys.KeyD = false; p.keys.KeyW = false; p.keys.KeyS = false;
+    p.keys.space = false; p.keys.slide = false;
+  }
+
+  const deathX = p.x + (p.w || 24) / 2;
+
+  // 1. Gejzer kropel (wyzwalany raz na początku zgonu)
+  createAcidSplash(deathX, hazardZoneY);
+
+  // 3. Wyrzut upuszczonej broni/hełmu z fizyką balistyczną (vy = -7, vx = random(-2, 2))
+  spawnAcidDebris(deathX, p.y + 20, p.currentWeapon);
+
+  // 4. Emiter wrzenia małych bąbli pękających na tafli kwasu przez 2.5 sekundy
+  spawnAcidBoilEmitter(deathX, hazardZoneY, 2.5);
+}
+
+// =========================================================================
+// 8. AKTUALIZACJA LOGIKI ARENY 2 (UPDATEARENA2)
+// Obrażenia od żrącego kwasu oraz pełny 3-etapowy proces śmierci w kwasie
 // =========================================================================
 export function updateArena2(dt, players) {
+  const safeDt = dt || (1 / 60);
+
+  // 1. Zaktualizuj maszynę stanów kwasu
+  ACID_SURGE_SYSTEM.update(safeDt);
+
+  // 2. Dynamiczna synchronizacja poziomów w konfiguracji
+  ARENA_2_CONFIG.hazardZoneY = ACID_SURGE_SYSTEM.currentY;
+  ARENA_2_CONFIG.abyssDeathY = ACID_SURGE_SYSTEM.currentY + 90;
+
+  // 3. Aktualizacja cząstek efektów zgonu w kwasie (rozbryzgi, wrzenie, dym, balistyka ekwipunku)
+  updateAcidDeathEffects(safeDt);
+
   if (!Array.isArray(players)) return;
 
-  const acidLevelY = ARENA_2_CONFIG.hazardZoneY; // 1260
-  const deathLevelY = ARENA_2_CONFIG.abyssDeathY;  // 1350
+  const hazardZoneY = ARENA_2_CONFIG.hazardZoneY;
 
   for (let i = 0; i < players.length; i++) {
     const p = players[i];
-    if (!p || p.isDead) continue;
+    if (!p) continue;
 
     const feetY = p.y + (p.h || 70);
 
-    // Wpadnięcie w otchłań kwasu poniżej 1350 px -> natychmiastowa śmierć
-    if (feetY >= deathLevelY) {
-      p.hp = 0;
-      p.isDead = true;
-      p.respawnTimer = 75;
+    // Etap 2: Trwający proces rozpuszczania w kwasie (przez 1.2 sekundy)
+    if (p.acidDeath && p.acidDeath.active) {
+      p.acidDeath.timer += safeDt;
+      p.isAcidDying = true;
+      p.isDead = false;
+
+      // Blokada ruchu poziomego i spowolnione, ociężałe zanurzanie w kwasie
       p.vx = 0;
-      p.vy = 2.0;
+      p.vy = Math.min(Math.max((p.vy || 0) * 0.85, 0.3), 1.0);
+      p.y += p.vy;
       p.onGround = false;
       p.currentPlatform = null;
-    }
-    // Zanurzenie w lustrze kwasu (1260 - 1350 px) -> silne obrażenia chemiczne
-    else if (feetY >= acidLevelY) {
-      p.hp -= 0.65; // ~39 HP na sekundę przy 60 FPS
-      p.vx *= 0.94; // Opór gęstej cieczy chemicznej
-      if (p.hp <= 0) {
+      p.currentGroundY = null;
+
+      // Całkowita blokada sterowania
+      p.moveLeft = false;
+      p.moveRight = false;
+      p.isJumping = false;
+      p.isJetpacking = false;
+      p.isShooting = false;
+      p.isAiming = false;
+      p.isCrouching = false;
+      p.isProne = false;
+      p.isSliding = false;
+      p.isCharging = false;
+      p.isJumpCharging = false;
+      if (p.keys) {
+        p.keys.left = false; p.keys.right = false; p.keys.up = false; p.keys.down = false;
+        p.keys.KeyA = false; p.keys.KeyD = false; p.keys.KeyW = false; p.keys.KeyS = false;
+        p.keys.space = false; p.keys.slide = false;
+      }
+
+      // Płynny spadek życia w trakcie rozpuszczania
+      p.hp = Math.max(0, p.maxHp * (1.0 - (p.acidDeath.timer / p.acidDeath.maxDuration)));
+
+      // Generuj 15 cząstek ulatującego dymu proporcjonalnie w czasie trwania 1.2s
+      const targetSmoke = Math.min(15, Math.floor((p.acidDeath.timer / p.acidDeath.maxDuration) * 15) + 1);
+      while (p.acidDeath.smokeCount < targetSmoke && p.acidDeath.smokeCount < 15) {
+        p.acidDeath.smokeCount++;
+        spawnAcidSmoke(
+          (p.x + (p.w || 24) / 2) + (Math.random() - 0.5) * 20,
+          hazardZoneY + (Math.random() - 0.5) * 6
+        );
+      }
+
+      // Etap 3: Dopiero po upływie 1.2 sekundy następuje właściwy zgon i respawn
+      if (p.acidDeath.timer >= p.acidDeath.maxDuration) {
+        p.isAcidDying = false;
+        p.acidDeath.active = false;
+        p.acidDeath.dissolved = true;
         p.hp = 0;
         p.isDead = true;
-        p.respawnTimer = 75;
+        p.respawnTimer = 90; // Respawn po rozpuszczeniu
       }
+      continue;
+    }
+
+    if (p.isDead) continue;
+
+    // Etap 1: Wykrycie rzeczywistego zanurzenia stóp w widocznej cieczy (margines zanurzenia 18 px)
+    const time = performance.now() * 0.001;
+    const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
+    const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
+    const exactSurfaceY = hazardZoneY + waveOffset;
+    const playerFeetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
+    const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb widocznego kwasu
+
+    if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
+      triggerPlayerAcidDeath(p, exactSurfaceY);
     }
   }
 }
@@ -1214,8 +2233,22 @@ const arena2 = {
   spawns: ARENA_2_CONFIG.spawns,
   platforms: ARENA_2_PLATFORMS,
   bridges: [],
+  covers: ARENA_2_COVERS,
+  barrels: ARENA_2_BARRELS,
+  supply: ARENA_2_SUPPLY,
+  acidSurge: ACID_SURGE_SYSTEM,
   customObjects: [],
-  reset() {},
+  reset() {
+    ACID_SURGE_SYSTEM.state = 'CALM';
+    ACID_SURGE_SYSTEM.timer = ACID_SURGE_SYSTEM.durations.calm;
+    ACID_SURGE_SYSTEM.currentY = ACID_SURGE_SYSTEM.baseY;
+    ARENA_2_CONFIG.hazardZoneY = ACID_SURGE_SYSTEM.baseY;
+    ARENA_2_CONFIG.abyssDeathY = ACID_SURGE_SYSTEM.baseY + 90;
+    _acidSplashParticles.length = 0;
+    _acidDebrisList.length = 0;
+    _acidSmokeParticles.length = 0;
+    _acidBoilEmitters.length = 0;
+  },
   drawBackground(ctx, camera) {
     drawArena2Background(ctx, camera);
   },
@@ -1235,5 +2268,22 @@ const arena2 = {
     return false;
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.ARENA_2_COVERS = ARENA_2_COVERS;
+  window.ARENA_2_BARRELS = ARENA_2_BARRELS;
+  window.ARENA_2_SUPPLY = ARENA_2_SUPPLY;
+  window.ACID_SURGE_SYSTEM = ACID_SURGE_SYSTEM;
+  window.drawAcidLevel = drawAcidLevel;
+  window.drawAcidLake = drawAcidLake;
+  window.createAcidSplash = createAcidSplash;
+  window.spawnAcidSmoke = spawnAcidSmoke;
+  window.spawnAcidDebris = spawnAcidDebris;
+  window.spawnAcidBoilEmitter = spawnAcidBoilEmitter;
+  window.triggerPlayerAcidDeath = triggerPlayerAcidDeath;
+  window.isPlayerSubmergedInAcid = isPlayerSubmergedInAcid;
+  window.getAcidSurfaceY = getAcidSurfaceY;
+  window.arena2 = arena2;
+}
 
 export default arena2;

@@ -396,7 +396,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - damage);
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
 
-      if (ch.hp <= 0 && !ch.isDead) {
+      if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;
         ch.respawnTimer = 180;
         ch.corpseFloorY = groundY;
