@@ -21,7 +21,7 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js';
+} from './player.js?v=tactical_hands_v46';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {

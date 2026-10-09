@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js';
+export * from './player/index.js?v=tactical_hands_v46';
 export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js';
 
