@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v71_raptor_customizer';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v72_three_classes';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v71_raptor_customizer';
+} from './world.js?v=v72_three_classes';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v71_raptor_customizer';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v71_raptor_customizer';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v71_raptor_customizer';
+} from './player.js?v=v72_three_classes';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v72_three_classes';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v72_three_classes';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v71_raptor_customizer';
+} from './ball.js?v=v72_three_classes';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v71_raptor_customizer';
-import { CLASSES } from './classes/index.js?v=v71_raptor_customizer';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v71_raptor_customizer';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v71_raptor_customizer';
+} from './obstacles.js?v=v72_three_classes';
+import { CLASSES } from './classes/index.js?v=v72_three_classes';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v72_three_classes';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v72_three_classes';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v71_raptor_customizer';
+} from './network.js?v=v72_three_classes';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v71_raptor_customizer';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v71_raptor_customizer';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v71_raptor_customizer';
+} from './mobileControls.js?v=v72_three_classes';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v72_three_classes';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v72_three_classes';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -2183,24 +2183,6 @@ export function initModularGearDevUI() {
   vestBtn.addEventListener('touchend', handleVest);
   devMenu.appendChild(vestBtn);
   updateVestUI();
-
-  // Przycisk otwierający Koszary / Modyfikację Wyglądu prosto z paska DEV
-  const custDevBtn = document.createElement('button');
-  custDevBtn.className = 'dev-btn';
-  custDevBtn.id = 'dev-customizer-btn';
-  custDevBtn.title = 'Otwórz Koszary / Modyfikację Wyglądu Postaci (Ubrania, Włosy, Łańcuchy, Jetpack, Skiny)';
-  custDevBtn.textContent = '🎨 WYGLĄD';
-  custDevBtn.style.borderColor = '#4ade80';
-  custDevBtn.style.color = '#4ade80';
-  const handleCustDev = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    if (window.uiManager && typeof window.uiManager.openCustomizer === 'function') {
-      window.uiManager.openCustomizer();
-    }
-  };
-  custDevBtn.addEventListener('click', handleCustDev);
-  custDevBtn.addEventListener('touchend', handleCustDev);
-  devMenu.appendChild(custDevBtn);
 
   if (typeof window !== 'undefined') {
     window.syncArmorDevButtons = () => {

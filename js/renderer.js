@@ -41,7 +41,7 @@ export {
   getPlatformSurfaceY,
   OBSTACLE_RENDERERS,
   normalizeObstacleType
-} from './obstacles.js?v=v71_raptor_customizer';
+} from './obstacles.js?v=v72_three_classes';
 
 export {
   drawMineCaveBackground,
@@ -97,7 +97,7 @@ export {
   activeProjectiles,
   rubbleParticles,
   explosionEffects
-} from './projectiles.js?v=v71_raptor_customizer';
+} from './projectiles.js?v=v72_three_classes';
 
 export {
   drawGround,
@@ -141,17 +141,17 @@ export {
   LOWER_CAVERN_CEILING_Y,
   drawHazardStripes,
   ladders
-} from './world.js?v=v71_raptor_customizer';
+} from './world.js?v=v72_three_classes';
 
 export function drawLadderRungs() {}
 
 export {
   throwTacticalGrenade
-} from './player/actions.js?v=v71_raptor_customizer';
+} from './player/actions.js?v=v72_three_classes';
 
-import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v71_raptor_customizer';
+import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v72_three_classes';
 import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
-import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v71_raptor_customizer';
+import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v72_three_classes';
 
 export { getActiveArena, setActiveArena, ARENAS };
 

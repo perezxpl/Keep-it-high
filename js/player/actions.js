@@ -5,8 +5,8 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v71_raptor_customizer';
-import { spawnAeroSuperGrenade } from '../projectiles.js?v=v71_raptor_customizer';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v72_three_classes';
+import { spawnAeroSuperGrenade } from '../projectiles.js?v=v72_three_classes';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,

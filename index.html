@@ -13,28 +13,28 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/uiManager.js": "./js/uiManager.js?v=v71_raptor_customizer",
-      "./js/config.js": "./js/config.js?v=v71_raptor_customizer",
-      "./js/classes/index.js": "./js/classes/index.js?v=v71_raptor_customizer",
-      "./js/classes/aero.js": "./js/classes/aero.js?v=v71_raptor_customizer",
-      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v71_raptor_customizer",
-      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v71_raptor_customizer",
-      "./js/world.js": "./js/world.js?v=v71_raptor_customizer",
-      "./js/player.js": "./js/player.js?v=v71_raptor_customizer",
-      "./js/player/index.js": "./js/player/index.js?v=v71_raptor_customizer",
-      "./js/player/renderer.js": "./js/player/renderer.js?v=v71_raptor_customizer",
-      "./js/player/actions.js": "./js/player/actions.js?v=v71_raptor_customizer",
-      "./js/player/death.js": "./js/player/death.js?v=v71_raptor_customizer",
-      "./js/weapons.js": "./js/weapons.js?v=v71_raptor_customizer",
-      "./js/ball.js": "./js/ball.js?v=v71_raptor_customizer",
-      "./js/obstacles.js": "./js/obstacles.js?v=v71_raptor_customizer",
-      "./js/arenas/index.js": "./js/arenas/index.js?v=v71_raptor_customizer",
-      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v71_raptor_customizer",
-      "./js/projectiles.js": "./js/projectiles.js?v=v71_raptor_customizer",
-      "./js/renderer.js": "./js/renderer.js?v=v71_raptor_customizer",
-      "./js/network.js": "./js/network.js?v=v71_raptor_customizer",
-      "./js/bot.js": "./js/bot.js?v=v71_raptor_customizer",
-      "./js/mobileControls.js": "./js/mobileControls.js?v=v71_raptor_customizer"
+      "./js/uiManager.js": "./js/uiManager.js?v=v72_three_classes",
+      "./js/config.js": "./js/config.js?v=v72_three_classes",
+      "./js/classes/index.js": "./js/classes/index.js?v=v72_three_classes",
+      "./js/classes/aero.js": "./js/classes/aero.js?v=v72_three_classes",
+      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v72_three_classes",
+      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v72_three_classes",
+      "./js/world.js": "./js/world.js?v=v72_three_classes",
+      "./js/player.js": "./js/player.js?v=v72_three_classes",
+      "./js/player/index.js": "./js/player/index.js?v=v72_three_classes",
+      "./js/player/renderer.js": "./js/player/renderer.js?v=v72_three_classes",
+      "./js/player/actions.js": "./js/player/actions.js?v=v72_three_classes",
+      "./js/player/death.js": "./js/player/death.js?v=v72_three_classes",
+      "./js/weapons.js": "./js/weapons.js?v=v72_three_classes",
+      "./js/ball.js": "./js/ball.js?v=v72_three_classes",
+      "./js/obstacles.js": "./js/obstacles.js?v=v72_three_classes",
+      "./js/arenas/index.js": "./js/arenas/index.js?v=v72_three_classes",
+      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v72_three_classes",
+      "./js/projectiles.js": "./js/projectiles.js?v=v72_three_classes",
+      "./js/renderer.js": "./js/renderer.js?v=v72_three_classes",
+      "./js/network.js": "./js/network.js?v=v72_three_classes",
+      "./js/bot.js": "./js/bot.js?v=v72_three_classes",
+      "./js/mobileControls.js": "./js/mobileControls.js?v=v72_three_classes"
     }
   }
   </script>
@@ -269,15 +269,8 @@
       box-shadow: 0 0 10px rgba(76, 175, 80, 0.35);
     }
 
-    /* Kolory klas postaci (1. Raptor, 2. Striker, 3. Enforcer) */
-    .dev-btn[data-class="RAPTOR"]:hover {
-      border-color: #10b981;
-      color: #10b981;
-      background: rgba(16, 185, 129, 0.16);
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
-    }
-
-    .dev-btn[data-class="STRIKER"]:hover {
+    /* Kolory klas postaci */
+    .dev-btn[data-class="PLAYMAKER"]:hover {
       border-color: #38bdf8;
       color: #38bdf8;
       background: rgba(56, 189, 248, 0.16);
@@ -289,6 +282,20 @@
       color: #ef4444;
       background: rgba(239, 68, 68, 0.16);
       box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    }
+
+    .dev-btn[data-class="AERO"]:hover {
+      border-color: #10b981;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.16);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+    }
+
+    .dev-btn[data-class="SWEEPER"]:hover {
+      border-color: #f59e0b;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.16);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
     }
 
     #dev-bot-toggle-btn:hover {
@@ -1899,185 +1906,6 @@
       color: #94a3b8;
       line-height: 1.3;
     }
-
-    /* ----------------------------------------------------------------------- */
-    /* KOSZARY / MODYFIKACJA WYGLĄDU POSTACI (#customizer-overlay)             */
-    /* ----------------------------------------------------------------------- */
-    .customizer-modal-box {
-      width: min(860px, 95vw);
-      max-height: 92vh;
-      background: rgba(9, 13, 22, 0.96);
-      border: 1px solid rgba(34, 197, 94, 0.45);
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(34, 197, 94, 0.15);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      color: #f8fafc;
-    }
-
-    .customizer-body {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      gap: 16px;
-      padding: 16px 20px;
-      overflow-y: auto;
-      max-height: calc(92vh - 130px);
-    }
-
-    .customizer-preview-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      background: radial-gradient(circle at 50% 45%, rgba(34, 197, 94, 0.14), rgba(15, 23, 42, 0.9));
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    #customizer-preview-canvas {
-      width: 210px;
-      height: 230px;
-      border-radius: 8px;
-      background: rgba(2, 6, 23, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .customizer-preview-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      width: 100%;
-    }
-
-    .cust-mini-btn {
-      background: rgba(30, 41, 59, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      color: #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .cust-mini-btn:hover {
-      border-color: #4ade80;
-      color: #fff;
-      background: rgba(34, 197, 94, 0.2);
-    }
-
-    .cust-mini-btn.active {
-      border-color: #22d3ee;
-      color: #22d3ee;
-      background: rgba(6, 182, 212, 0.18);
-    }
-
-    .customizer-controls-col {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .cust-section {
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      border-radius: 10px;
-      padding: 10px 12px;
-    }
-
-    .cust-section-title {
-      font-family: 'Orbitron', monospace, sans-serif;
-      font-size: 11px;
-      font-weight: 800;
-      color: #4ade80;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .cust-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .cust-pill {
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #cbd5e1;
-      border-radius: 7px;
-      padding: 5px 10px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .cust-pill:hover {
-      border-color: rgba(74, 222, 128, 0.65);
-      color: #ffffff;
-    }
-
-    .cust-pill.active {
-      background: linear-gradient(135deg, rgba(22, 163, 74, 0.45), rgba(15, 23, 42, 0.95));
-      border-color: #4ade80;
-      color: #ffffff;
-      box-shadow: 0 0 12px rgba(74, 222, 128, 0.35);
-    }
-
-    .cust-pill.special {
-      border-color: rgba(250, 204, 21, 0.5);
-      color: #fde047;
-    }
-
-    .cust-pill.special.active {
-      background: linear-gradient(135deg, rgba(202, 138, 4, 0.45), rgba(15, 23, 42, 0.95));
-      border-color: #facc15;
-      color: #fef08a;
-      box-shadow: 0 0 14px rgba(250, 204, 21, 0.4);
-    }
-
-    .cust-swatches {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
-      margin-top: 7px;
-      align-items: center;
-    }
-
-    .cust-swatch {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.25);
-      cursor: pointer;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-
-    .cust-swatch:hover {
-      transform: scale(1.15);
-    }
-
-    .cust-swatch.active {
-      border-color: #ffffff;
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-      transform: scale(1.15);
-    }
-
-    @media (max-width: 680px) {
-      .customizer-body {
-        grid-template-columns: 1fr;
-      }
-    }
   </style>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
@@ -2121,9 +1949,9 @@
         <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
 
         <!-- Wybór klas postaci (od lekkiej do ciężkiej): 1. Raptor, 2. Striker, 3. Enforcer -->
-        <button class="dev-btn dev-class-btn" data-class="RAPTOR" title="Klasa lekka (Klawisz 6)">🦅 Raptor</button>
-        <button class="dev-btn dev-class-btn" data-class="STRIKER" title="Klasa średnia (Klawisz 7)">⚡ Striker</button>
-        <button class="dev-btn dev-class-btn" data-class="ENFORCER" title="Klasa ciężka (Klawisz 8)">🛡️ Enforcer</button>
+        <button class="dev-btn dev-class-btn" data-class="RAPTOR" title="Klawisz 6 (Lekka - Jetpack)">🦅 Raptor</button>
+        <button class="dev-btn dev-class-btn" data-class="STRIKER" title="Klawisz 7 (Średnia - Turbo Buty)">⚡ Striker</button>
+        <button class="dev-btn dev-class-btn" data-class="ENFORCER" title="Klawisz 8 (Ciężka - Rocket Jump)">🛡️ Enforcer</button>
 
         <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
 
@@ -2278,12 +2106,6 @@
               <span class="btn-icon">⚡</span>
               <span class="btn-text">ROZPOCZNIJ ROZGRYWKĘ</span>
               <span class="btn-badge">[SPACJA / ENTER]</span>
-            </button>
-
-            <button id="menu-btn-customizer" class="ui-btn ui-btn-cyan ui-btn-large" type="button" title="Modyfikacja wyglądu postaci, ubrania, włosów, pancerza i jetpacka" style="margin-top: 4px; border-color: #4ade80; color: #4ade80;">
-              <span class="btn-icon">🎨</span>
-              <span class="btn-text">KOSZARY // WYGLĄD POSTACI</span>
-              <span class="btn-badge">[RAPTOR / SKINY]</span>
             </button>
 
             <div class="menu-actions-row">
@@ -2540,11 +2362,6 @@
               <span class="btn-text">ZMIEŃ KLASĘ POSTACI</span>
             </button>
 
-            <button id="pause-btn-customizer" class="ui-btn ui-btn-secondary" type="button" style="border-color: rgba(74, 222, 128, 0.5); color: #4ade80;">
-              <span class="btn-icon">🎨</span>
-              <span class="btn-text">KOSZARY // WYGLĄD POSTACI</span>
-            </button>
-
             <button id="pause-btn-settings" class="ui-btn ui-btn-secondary" type="button">
               <span class="btn-icon">⚙️</span>
               <span class="btn-text">USTAWIENIA</span>
@@ -2559,146 +2376,6 @@
           <div class="pause-footer-hint">Naciśnij [ESC] lub [P] aby natychmiast wrócić do gry</div>
         </div>
       </div>
-
-      <!-- 4. OKNO KOSZAR / MODYFIKACJI WYGLĄDU POSTACI -->
-      <div id="customizer-overlay" class="ui-view-overlay" style="display: none;">
-        <div class="customizer-modal-box">
-          <div class="settings-header">
-            <div class="settings-title-group">
-              <span class="settings-icon">🎨</span>
-              <div>
-                <h2>KOSZARY // MODYFIKACJA WYGLĄDU</h2>
-                <p>Klasa Lekka: <strong>1. RAPTOR (Zwiadowca / Lotnik)</strong> — Pancerz, Ubrania, Włosy, Dodatki i Jetpack</p>
-              </div>
-            </div>
-            <button id="customizer-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
-          </div>
-
-          <div class="customizer-body">
-            <!-- Lewa kolumna: Podgląd na żywo -->
-            <div class="customizer-preview-col">
-              <div style="font-family: 'Orbitron', monospace; font-size: 11px; color: #4ade80; font-weight: 800; letter-spacing: 1px;">PODGLĄD NA ŻYWO</div>
-              <canvas id="customizer-preview-canvas" width="210" height="230"></canvas>
-              <div class="customizer-preview-actions">
-                <button id="cust-btn-rotate" class="cust-mini-btn" type="button" title="Zmień kąt podglądu (Profil / Przód / Tył)">🔄 Widok: Profil</button>
-                <button id="cust-btn-jetpack-test" class="cust-mini-btn" type="button" title="Włącz podgląd płomienia Jetpacka">🔥 Test Jetpacka</button>
-                <button id="cust-btn-helmet" class="cust-mini-btn" type="button" title="Załóż / Zdejmij hełm (w walce spada po strzałach w głowę)">🪖 Hełm: WYŁ</button>
-                <button id="cust-btn-vest" class="cust-mini-btn" type="button" title="Załóż / Zdejmij kamizelkę (w walce znika po zużyciu HP)">🛡️ Kamizelka: WYŁ</button>
-              </div>
-              <div style="font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.35; margin-top: 2px;">
-                💡 <strong>Hełm</strong> chroni przed headshotem i spada po trafieniach.<br>
-                💡 <strong>Kamizelka</strong> pochłania obrażenia i po zużyciu znika, odsłaniając ubranie i łańcuch!
-              </div>
-            </div>
-
-            <!-- Prawa kolumna: Opcje modyfikacji wizualnych -->
-            <div class="customizer-controls-col">
-              <!-- 1. Gotowe Kostiumy (Zwykłe i Specjalne) -->
-              <div class="cust-section">
-                <div class="cust-section-title">
-                  <span>🎭 GOTOWE KOSTIUMY (ZWYKŁE I SPECJALNE ★)</span>
-                  <span style="color: #94a3b8; font-size: 10px;">1 KLIKNIĘCIE</span>
-                </div>
-                <div class="cust-pills" id="cust-outfit-pills">
-                  <button class="cust-pill active" data-outfit="ranger_recon" type="button">🦅 Ranger Recon</button>
-                  <button class="cust-pill" data-outfit="jungle_commando" type="button">🌿 Soldat Commando</button>
-                  <button class="cust-pill" data-outfit="street_merc" type="button">🕶️ Uliczny Najemnik</button>
-                  <button class="cust-pill special" data-outfit="cyber_valkyrie" type="button">★ Cyber Raptor</button>
-                  <button class="cust-pill special" data-outfit="crimson_ace" type="button">★ Karmazynowy As</button>
-                </div>
-              </div>
-
-              <!-- 2. Włosy / Fryzura i Kolor -->
-              <div class="cust-section">
-                <div class="cust-section-title">
-                  <span>💈 WŁOSY / NAKRYCIE (WIDOCZNE BEZ HEŁMU LUB PO STRĄCENIU)</span>
-                </div>
-                <div class="cust-pills" id="cust-hair-pills">
-                  <button class="cust-pill" data-hair="shaved" type="button">Ogulona (Buzzcut)</button>
-                  <button class="cust-pill active" data-hair="spiky" type="button">Nastroszone (Spiky)</button>
-                  <button class="cust-pill" data-hair="mohawk" type="button">Irokez (Mohawk)</button>
-                  <button class="cust-pill" data-hair="slick" type="button">Zaczesane (Slick)</button>
-                  <button class="cust-pill" data-hair="bandana" type="button">Bandana Bojowa</button>
-                </div>
-                <div class="cust-swatches" id="cust-hair-colors">
-                  <span style="font-size: 11px; color: #94a3b8; margin-right: 4px;">Kolor włosów:</span>
-                  <button class="cust-swatch active" data-hcolor="#18181b" style="background: #18181b;" title="Kruczoczarny" type="button"></button>
-                  <button class="cust-swatch" data-hcolor="#451a03" style="background: #451a03;" title="Ciemny Brąz" type="button"></button>
-                  <button class="cust-swatch" data-hcolor="#eab308" style="background: #eab308;" title="Złoty Blond" type="button"></button>
-                  <button class="cust-swatch" data-hcolor="#dc2626" style="background: #dc2626;" title="Karmazynowy" type="button"></button>
-                  <button class="cust-swatch" data-hcolor="#f8fafc" style="background: #f8fafc;" title="Srebrzysty / Biały" type="button"></button>
-                  <button class="cust-swatch" data-hcolor="#00e5ff" style="background: #00e5ff;" title="Cyber Neon Cyan" type="button"></button>
-                </div>
-              </div>
-
-              <!-- 3. Dodatki na szyję (Nieśmiertelnik / Łańcuch) -->
-              <div class="cust-section">
-                <div class="cust-section-title">
-                  <span>⛓️ DODATKI NA SZYJĘ (NIEŚMIERTELNIK / ŁAŃCUCH)</span>
-                </div>
-                <div class="cust-pills" id="cust-neck-pills">
-                  <button class="cust-pill" data-neck="none" type="button">Brak</button>
-                  <button class="cust-pill active" data-neck="dogtags" type="button">🏷️ Nieśmiertelnik</button>
-                  <button class="cust-pill" data-neck="silver_chain" type="button">⛓️ Srebrny Łańcuch</button>
-                  <button class="cust-pill" data-neck="gold_chain" type="button">👑 Złoty Łańcuch</button>
-                </div>
-              </div>
-
-              <!-- 4. Ubrania (Góra, Spodnie i Kolory) -->
-              <div class="cust-section">
-                <div class="cust-section-title">
-                  <span>👕 UBRANIE (GÓRA, SPODNIE I KOLORYSTYKA)</span>
-                </div>
-                <div class="cust-pills" id="cust-top-pills" style="margin-bottom: 6px;">
-                  <button class="cust-pill active" data-top="combat_shirt" type="button">Bluza Combat Shirt</button>
-                  <button class="cust-pill" data-top="tshirt" type="button">Koszulka T-Shirt</button>
-                  <button class="cust-pill" data-top="sleeveless" type="button">Bezrękawnik (Tank-Top)</button>
-                  <button class="cust-pill" data-top="jacket" type="button">Kurtka Taktyczna</button>
-                </div>
-                <div class="cust-pills" id="cust-pants-pills">
-                  <button class="cust-pill active" data-pants="cargo" type="button">Spodnie Cargo (Nakolanniki)</button>
-                  <button class="cust-pill" data-pants="shorts" type="button">Krótkie Spodenki Bojowe</button>
-                </div>
-                <div class="cust-swatches" id="cust-cloth-colors">
-                  <span style="font-size: 11px; color: #94a3b8; margin-right: 4px;">Barwy:</span>
-                  <button class="cust-swatch active" data-ccolor="olive" style="background: #3a5a40;" title="Oliwka / Ranger Green" type="button"></button>
-                  <button class="cust-swatch" data-ccolor="stealth" style="background: #27272a;" title="Nocny Grafit / Spec-Ops" type="button"></button>
-                  <button class="cust-swatch" data-ccolor="desert" style="background: #a16207;" title="Pustynny Kojot" type="button"></button>
-                  <button class="cust-swatch" data-ccolor="navy" style="background: #1d4ed8;" title="Miejski Kobalt" type="button"></button>
-                  <button class="cust-swatch" data-ccolor="crimson" style="background: #991b1b;" title="Karmazynowy Szturm" type="button"></button>
-                </div>
-              </div>
-
-              <!-- 5. Modyfikacja wizualna Jetpacka -->
-              <div class="cust-section">
-                <div class="cust-section-title">
-                  <span>🚀 MODYFIKACJA WIZUALNA JETPACKA</span>
-                </div>
-                <div class="cust-pills" id="cust-jetpack-pills">
-                  <button class="cust-pill active" data-jp="wingpack" type="button">🦅 Skrzydlaty (Wingpack)</button>
-                  <button class="cust-pill" data-jp="standard" type="button">📦 Klasyczny (Standard)</button>
-                  <button class="cust-pill" data-jp="twin_turbo" type="button">🔥 Twin-Turbo (2 Dysze)</button>
-                  <button class="cust-pill" data-jp="cyber" type="button">⚡ Cyber-Core</button>
-                </div>
-                <div class="cust-swatches" id="cust-flame-colors">
-                  <span style="font-size: 11px; color: #94a3b8; margin-right: 4px;">Płomień dyszy:</span>
-                  <button class="cust-swatch active" data-fcolor="" style="background: linear-gradient(135deg, #00e5ff, #f97316);" title="Domyślny drużynowy" type="button"></button>
-                  <button class="cust-swatch" data-fcolor="#00e5ff" style="background: #00e5ff;" title="Błękit Plazmowy" type="button"></button>
-                  <button class="cust-swatch" data-fcolor="#f97316" style="background: #f97316;" title="Ogień Dopalacza" type="button"></button>
-                  <button class="cust-swatch" data-fcolor="#4ade80" style="background: #4ade80;" title="Toksyczny Zielony" type="button"></button>
-                  <button class="cust-swatch" data-fcolor="#f43f5e" style="background: #f43f5e;" title="Karmazynowy Laser" type="button"></button>
-                  <button class="cust-swatch" data-fcolor="#a855f7" style="background: #a855f7;" title="Fioletowy Hipernapęd" type="button"></button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-footer">
-            <button id="customizer-reset-btn" class="ui-btn ui-btn-danger-outline" type="button">🔄 Domyślny Raptor</button>
-            <button id="customizer-save-btn" class="ui-btn ui-btn-primary" type="button">✓ Zapisz Wygląd i Wróć</button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Pływający przycisk pauzy na ekranie gry (HUD) -->
@@ -2708,7 +2385,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v71_raptor_customizer"></script>
+  <script type="module" src="./js/main.js?v=v72_three_classes"></script>
 </body>
 
 </html>
