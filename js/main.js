@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v74_creator_fix';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v75_fabric_folds';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v74_creator_fix';
+} from './world.js?v=v75_fabric_folds';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v74_creator_fix';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v74_creator_fix';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v74_creator_fix';
+} from './player.js?v=v75_fabric_folds';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v75_fabric_folds';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v75_fabric_folds';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v74_creator_fix';
+} from './ball.js?v=v75_fabric_folds';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v74_creator_fix';
-import { CLASSES } from './classes/index.js?v=v74_creator_fix';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v74_creator_fix';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v74_creator_fix';
+} from './obstacles.js?v=v75_fabric_folds';
+import { CLASSES } from './classes/index.js?v=v75_fabric_folds';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v75_fabric_folds';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v75_fabric_folds';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v74_creator_fix';
+} from './network.js?v=v75_fabric_folds';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v74_creator_fix';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v74_creator_fix';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v74_creator_fix';
+} from './mobileControls.js?v=v75_fabric_folds';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v75_fabric_folds';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v75_fabric_folds';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

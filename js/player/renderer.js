@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v74_creator_fix';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v75_fabric_folds';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v74_creator_fix';
-import { getRagdollRenderPose } from './death.js?v=v74_creator_fix';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v74_creator_fix';
+} from './actions.js?v=v75_fabric_folds';
+import { getRagdollRenderPose } from './death.js?v=v75_fabric_folds';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v75_fabric_folds';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -837,21 +837,57 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   } else if (sleeveLen > 0) {
     const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
     sleeveGrad.addColorStop(0.0, upperCol || v.armColorFront);
-    sleeveGrad.addColorStop(0.35, upperCol || v.armColorFront);
-    sleeveGrad.addColorStop(1.0, upperCol || v.armColorBack);
+    sleeveGrad.addColorStop(0.45, upperCol || v.armColorFront);
+    sleeveGrad.addColorStop(1.0, v.armColorBack || '#18181b');
 
+    // Organiczny obrys rękawa z naturalnym ułożeniem tkaniny i lekko podwiniętym mankietem
     ctx.beginPath();
-    ctx.moveTo(-deltoidW * 0.40, 0);
-    ctx.quadraticCurveTo(-deltoidW * 0.35, -deltoidW, sleeveLen * 0.3, -sleeveHalfH * 1.05);
-    ctx.lineTo(sleeveLen, -sleeveHalfH);
-    ctx.lineTo(sleeveLen, sleeveHalfH);
-    ctx.quadraticCurveTo(sleeveLen * 0.3, sleeveHalfH * 1.05, -deltoidW * 0.35, deltoidW);
+    ctx.moveTo(-deltoidW * 0.42, 0);
+    ctx.bezierCurveTo(
+      -deltoidW * 0.36, -deltoidW * 1.08,
+      sleeveLen * 0.38, -sleeveHalfH * 1.12,
+      sleeveLen, -sleeveHalfH * 0.94
+    );
+    // Zaokrąglona krawędź mankietu
+    ctx.quadraticCurveTo(sleeveLen + 0.9, 0, sleeveLen - 0.3, sleeveHalfH * 0.98);
+    // Dolna linia rękawa z lekkim pofalowaniem materiału pod pachą
+    ctx.bezierCurveTo(
+      sleeveLen * 0.62, sleeveHalfH * 1.08,
+      sleeveLen * 0.25, sleeveHalfH * 0.92,
+      -deltoidW * 0.35, deltoidW * 0.95
+    );
     ctx.closePath();
     ctx.fillStyle = sleeveGrad;
     ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
 
-    ctx.fillStyle = isFront ? 'rgba(255, 255, 255, 0.70)' : 'rgba(255, 255, 255, 0.35)';
-    ctx.fillRect(sleeveLen - 1.6, -sleeveHalfH, 1.6, sleeveHalfH * 2);
+    // Podwinięty brzeg rękawa (mankiet z tkaniny zamiast prostego białego paska)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(sleeveLen - 1.5, -sleeveHalfH * 0.92);
+    ctx.quadraticCurveTo(sleeveLen - 0.7, 0, sleeveLen - 1.7, sleeveHalfH * 0.94);
+    ctx.stroke();
+
+    // Fałdy napięcia materiału pod pachą i w zgięciu ramienia
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.30)';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(sleeveLen * 0.18, sleeveHalfH * 0.65);
+    ctx.quadraticCurveTo(sleeveLen * 0.45, sleeveHalfH * 0.15, sleeveLen * 0.72, -sleeveHalfH * 0.20);
+    ctx.moveTo(sleeveLen * 0.35, sleeveHalfH * 0.78);
+    ctx.quadraticCurveTo(sleeveLen * 0.58, sleeveHalfH * 0.38, sleeveLen * 0.82, sleeveHalfH * 0.12);
+    ctx.stroke();
+
+    // Subtelny blask na grzbiecie fałdy rękawa
+    ctx.strokeStyle = isFront ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(sleeveLen * 0.15, -sleeveHalfH * 0.55);
+    ctx.quadraticCurveTo(sleeveLen * 0.50, -sleeveHalfH * 0.65, sleeveLen * 0.85, -sleeveHalfH * 0.45);
+    ctx.stroke();
   }
 
   const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
@@ -1080,13 +1116,25 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   pantsGrad.addColorStop(0.4, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
   pantsGrad.addColorStop(1.0, isFrontLeg ? (v.shortsColor2 || '#18181b') : '#0f172a');
 
-  // Nogawka bojówek rozciągająca się na całą długość uda z zaokrąglonym stawem biodrowym
+  // Nogawka bojówek na udzie – organiczny krój z pofalowaniem tkaniny i marszczeniem nad kolanem
   ctx.beginPath();
   ctx.arc(0, 0, thighHalfH, Math.PI * 0.5, -Math.PI * 0.5, false);
-  ctx.lineTo(l1 - 1.5, -thighHalfH + 0.6);
-  ctx.lineTo(l1, -2.4);
-  ctx.lineTo(l1, 2.4);
-  ctx.lineTo(l1 - 1.5, thighHalfH - 0.6);
+  // Górny/przedni profil uda (lekko wypukły materiał pracujący na mięśniu czworogłowym)
+  ctx.bezierCurveTo(
+    l1 * 0.32, -thighHalfH * 1.08,
+    l1 * 0.68, -thighHalfH * 1.02,
+    l1 - 2.2, -thighHalfH * 0.78
+  );
+  // Marszczenie nad nakolannikiem
+  ctx.quadraticCurveTo(l1 - 0.6, -thighHalfH * 0.52, l1, -2.5);
+  ctx.lineTo(l1, 2.5);
+  // Dolny/tylny profil uda z fałdami zgięcia pod kolanem
+  ctx.quadraticCurveTo(l1 - 1.0, thighHalfH * 0.68, l1 - 2.8, thighHalfH * 0.88);
+  ctx.bezierCurveTo(
+    l1 * 0.65, thighHalfH * 1.06,
+    l1 * 0.28, thighHalfH * 0.96,
+    0, thighHalfH
+  );
   ctx.closePath();
   ctx.fillStyle = pantsGrad;
   ctx.fill();
@@ -1094,26 +1142,69 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
-  // Boczna kieszeń cargo (Cargo Pocket) z klapą i przeszyciami
-  const pocketX = l1 * 0.22;
-  const pocketW = l1 * 0.50;
-  const pocketH = thighHalfH * 0.85;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-  ctx.fillRect(pocketX, -pocketH - 0.4, pocketW, pocketH * 1.8);
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(pocketX, -pocketH - 0.4, pocketW, pocketH * 1.8);
-
-  // Klapa kieszeni cargo (Pocket Flap)
-  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.4)';
-  ctx.fillRect(pocketX - 0.5, -pocketH - 0.8, pocketW + 1.0, 2.2);
-
-  // Szew wzmacniający bojówek
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+  // Zagięcia materiału w pachwinie i z tyłu kolana (cień + światło na fałdach)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(l1, 0);
+  // Fałdy w pachwinie
+  ctx.moveTo(l1 * 0.08, -thighHalfH * 0.65);
+  ctx.quadraticCurveTo(l1 * 0.18, -thighHalfH * 0.10, l1 * 0.12, thighHalfH * 0.45);
+  ctx.moveTo(l1 * 0.16, -thighHalfH * 0.75);
+  ctx.quadraticCurveTo(l1 * 0.26, -thighHalfH * 0.25, l1 * 0.22, thighHalfH * 0.20);
+  // Fałdy kompresyjne z tyłu przed kolanem
+  ctx.moveTo(l1 * 0.76, thighHalfH * 0.72);
+  ctx.quadraticCurveTo(l1 * 0.84, thighHalfH * 0.20, l1 * 0.90, -thighHalfH * 0.25);
+  ctx.moveTo(l1 * 0.85, thighHalfH * 0.62);
+  ctx.quadraticCurveTo(l1 * 0.91, thighHalfH * 0.25, l1 * 0.95, -0.5);
+  ctx.stroke();
+
+  // Boczna kieszeń miechowa Cargo (wyprofilowana z fałdą i klapą zamiast prostego prostokąta)
+  const pocketX = l1 * 0.24;
+  const pocketW = l1 * 0.48;
+  const pocketH = thighHalfH * 0.82;
+
+  // Cień pod wypukłą kieszenią
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.moveTo(pocketX + 0.4, -pocketH);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.9, pocketX + pocketW + 0.4, -pocketH);
+  ctx.quadraticCurveTo(pocketX + pocketW + 0.9, 0, pocketX + pocketW + 0.3, pocketH * 0.82);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.98, pocketX + 0.3, pocketH * 0.82);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bryła kieszeni cargo
+  ctx.fillStyle = isFrontLeg ? (v.shortsColor0 || '#27272a') : 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath();
+  ctx.moveTo(pocketX, -pocketH);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.7, pocketX + pocketW, -pocketH);
+  ctx.quadraticCurveTo(pocketX + pocketW + 0.5, 0, pocketX + pocketW, pocketH * 0.76);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.92, pocketX, pocketH * 0.76);
+  ctx.quadraticCurveTo(pocketX - 0.4, 0, pocketX, -pocketH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.50)';
+  ctx.lineWidth = 0.75;
+  ctx.stroke();
+
+  // Pionowa fałda miechowa pośrodku kieszeni cargo
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.beginPath();
+  ctx.moveTo(pocketX + pocketW * 0.5, -pocketH + 1.2);
+  ctx.lineTo(pocketX + pocketW * 0.5, pocketH * 0.78);
+  ctx.stroke();
+
+  // Wyprofilowana klapa kieszeni cargo (Pocket Flap)
+  ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.moveTo(pocketX - 0.4, -pocketH - 0.5);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 1.2, pocketX + pocketW + 0.4, -pocketH - 0.5);
+  ctx.lineTo(pocketX + pocketW + 0.2, -pocketH + 1.5);
+  ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH + 2.1, pocketX - 0.2, -pocketH + 1.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = 0.7;
   ctx.stroke();
 
   // Rany postrzałowe i rozdarcia bojówek na udzie
@@ -1163,22 +1254,46 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  const calfBulge = (isSculpted ? 5.2 : 4.4) * muscle;
-  const achillesHalfW = 2.4 * muscle;
+  const calfBulge = (isSculpted ? 5.2 : 4.5) * muscle;
+  const achillesHalfW = 2.5 * muscle;
   const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
   const shinCol = isFrontLeg ? (v.legShinFront || '#3f3f46') : (v.legShinBack || '#27272a');
   pantsShinGrad.addColorStop(0.0, shinCol);
   pantsShinGrad.addColorStop(0.5, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
   pantsShinGrad.addColorStop(1.0, '#18181b');
 
+  // Cholewa buta bojowego (rysowana najpierw pod zbluzowaną nogawką, żeby materiał spodni naturalnie nachodził na but)
+  const collarGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
+  collarGrad.addColorStop(0.0, '#27272a');
+  collarGrad.addColorStop(0.5, '#18181b');
+  collarGrad.addColorStop(1.0, '#09090b');
+  ctx.fillStyle = collarGrad;
   ctx.beginPath();
-  ctx.moveTo(1.8, -calfBulge * 0.7);
-  ctx.lineTo(l2 * 0.15, -2.8 * muscle);
-  ctx.lineTo(l2 - 4.5, -achillesHalfW);
-  ctx.lineTo(l2 - 4.5, achillesHalfW);
-  ctx.quadraticCurveTo(l2 * 0.68, achillesHalfW * 1.15, l2 * 0.48, calfBulge * 0.75);
-  ctx.quadraticCurveTo(l2 * 0.30, calfBulge, l2 * 0.14, calfBulge * 0.78);
-  ctx.quadraticCurveTo(0.8, calfBulge * 0.8, 1.8, calfBulge * 0.6);
+  if (ctx.roundRect) ctx.roundRect(l2 - 5.5, -2.8, 5.2, 5.6, 1.2);
+  else ctx.rect(l2 - 5.5, -2.8, 5.2, 5.6);
+  ctx.fill();
+
+  // Nogawka na łydce z realistycznym zbluzowaniem (marszczeniem materiału) nad cholewką buta
+  const blouseEnd = l2 - 3.8;
+  ctx.beginPath();
+  ctx.moveTo(1.5, -calfBulge * 0.72);
+  // Przednia linia piszczeli z lekkim pofalowaniem tkaniny i wypukłym zbluzowaniem nad butem
+  ctx.bezierCurveTo(
+    l2 * 0.30, -3.4 * muscle,
+    l2 * 0.62, -3.6 * muscle,
+    blouseEnd - 1.6, -achillesHalfW * 1.42
+  );
+  // Wypukła fałda zbluzowania opadająca na przód cholewy buta
+  ctx.quadraticCurveTo(blouseEnd + 0.6, -achillesHalfW * 1.15, blouseEnd, -achillesHalfW * 0.85);
+  // Zaokrąglony dół nogawki wokół kostki
+  ctx.quadraticCurveTo(blouseEnd + 0.8, 0, blouseEnd, achillesHalfW * 0.92);
+  // Tylna fałda zbluzowania nad piętą i miękki łuk łydki
+  ctx.quadraticCurveTo(blouseEnd + 0.5, achillesHalfW * 1.38, blouseEnd - 2.2, achillesHalfW * 1.45);
+  ctx.bezierCurveTo(
+    l2 * 0.58, calfBulge * 0.98,
+    l2 * 0.28, calfBulge * 1.05,
+    1.5, calfBulge * 0.65
+  );
   ctx.closePath();
   ctx.fillStyle = pantsShinGrad;
   ctx.fill();
@@ -1186,12 +1301,40 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
+  // Zagięcia i fałdy materiału na łydce oraz w miejscu zbluzowania nad butem
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.34)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  // Fałda pod kolanem
+  ctx.moveTo(3.8, calfBulge * 0.55);
+  ctx.quadraticCurveTo(l2 * 0.26, calfBulge * 0.15, l2 * 0.34, -1.2);
+  // Harmonijkowe fałdy zbluzowania nad cholewą buta
+  ctx.moveTo(blouseEnd - 3.6, -achillesHalfW * 0.95);
+  ctx.quadraticCurveTo(blouseEnd - 1.4, 0.2, blouseEnd - 3.0, achillesHalfW * 1.10);
+  ctx.moveTo(blouseEnd - 1.8, -achillesHalfW * 0.85);
+  ctx.quadraticCurveTo(blouseEnd - 0.3, 0.0, blouseEnd - 1.4, achillesHalfW * 0.95);
+  ctx.stroke();
+
+  // Subtelne rozjaśnienie na grzbietach fałd nogawki
+  if (isFrontLeg) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(l2 * 0.22, -2.2 * muscle);
+    ctx.quadraticCurveTo(l2 * 0.52, -2.5 * muscle, blouseEnd - 2.2, -achillesHalfW * 0.95);
+    ctx.stroke();
+  }
+
   // NAKOLANNIK TAKTYCZNY (Hard-Shell Combat Knee Pad)
   const padR = 3.6 * (isSculpted ? muscle * 0.95 : muscle);
-  // Neoprenowy pas nośny nakolannika wokół stawu
+  // Neoprenowy pas nośny nakolannika wokół stawu (lekko wcinający się w materiał spodni)
   ctx.fillStyle = '#09090b';
   ctx.beginPath();
-  ctx.rect(-0.8, -padR * 1.15, 3.8, padR * 2.3);
+  ctx.moveTo(-0.8, -padR * 1.10);
+  ctx.quadraticCurveTo(1.1, -padR * 0.95, 2.8, -padR * 1.10);
+  ctx.lineTo(2.8, padR * 1.10);
+  ctx.quadraticCurveTo(1.1, padR * 0.95, -0.8, padR * 1.10);
+  ctx.closePath();
   ctx.fill();
 
   // Twarda polimerowa czasza nakolannika
@@ -1212,17 +1355,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.beginPath();
   ctx.arc(1.5, -padR * 0.65, 0.6, 0, Math.PI * 2);
   ctx.arc(1.5, padR * 0.65, 0.6, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Cholewa buta bojowego (Combat Boot Collar)
-  const collarGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
-  collarGrad.addColorStop(0.0, '#27272a');
-  collarGrad.addColorStop(0.5, '#18181b');
-  collarGrad.addColorStop(1.0, '#09090b');
-  ctx.fillStyle = collarGrad;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(l2 - 5.5, -2.8, 5.2, 5.6, 1.2);
-  else ctx.rect(l2 - 5.5, -2.8, 5.2, 5.6);
   ctx.fill();
 
   // Rany na łydce, uszkodzenia nakolannika i krew na cholewie buta
@@ -2752,30 +2884,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.closePath();
   ctx.fill();
 
-  // PAS TAKTYCZNY PMC (Duty / Riggers Belt)
-  const beltGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
-  beltGrad.addColorStop(0.0, '#09090b');
-  beltGrad.addColorStop(0.5, '#18181b');
-  beltGrad.addColorStop(1.0, '#09090b');
-
-  ctx.beginPath();
-  ctx.moveTo(-waistHalfW, 0);
-  ctx.quadraticCurveTo(0, 1.4, waistHalfW, 0);
-  ctx.lineTo(waistHalfW - 0.4, 4.6);
-  ctx.quadraticCurveTo(0, 6.2, -waistHalfW + 0.4, 4.6);
-  ctx.closePath();
-  ctx.fillStyle = beltGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 1.0;
-  ctx.stroke();
-
-  // Metalowa klamra pasa taktycznego Cobra
-  ctx.fillStyle = '#52525b';
-  ctx.fillRect(-1.6, 1.2, 3.2, 2.6);
-  ctx.fillStyle = '#71717a';
-  ctx.fillRect(-1.0, 1.7, 2.0, 1.6);
-
   // MIEDNICA, POŚLADKI I KROK (Pelvis, Gluteus & Inseam)
   // Wypełnia anatomiczną przestrzeń między pasem a udami, nadając postaci tyłek i łącząc stawy nóg
   const buttSign = -currentFacingDir;
@@ -2806,15 +2914,17 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
-  // Wzmocniony szew kroku / rozporek taktyczny
+  // Wzmocniony szew kroku / rozporek taktyczny i zagięcie materiału w kroku
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
   ctx.moveTo(cosYaw * 0.8, 4.6);
-  ctx.lineTo(cosYaw * 0.8, pelvisBottomY - 1.2);
+  ctx.lineTo(cosYaw * 0.8, pelvisBottomY - 1.0);
+  ctx.moveTo(-currentFacingDir * waistHalfW * 0.45, 5.2);
+  ctx.quadraticCurveTo(0, 6.8, currentFacingDir * waistHalfW * 0.35, 6.0);
   ctx.stroke();
 
-  // BAZA MUNDURU: TAKTYCZNY COMBAT SHIRT (Crye Precision Style)
+  // BAZA MUNDURU: TAKTYCZNY COMBAT SHIRT / T-SHIRT Z NATURALNYMI ZAGIĘCIAMI TKANINY
   const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
   const shirtBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
   const shirtLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
@@ -2829,15 +2939,45 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const scoopCenterX = !isLookingAway ? (cosYaw * 1.0) : (-absSin * 0.8);
   const scoopCenterY = !isLookingAway ? -22.5 : -23.5;
 
-  // Główny korpus bluzy bojowej
+  // Główny korpus koszulki/bluzy bojowej – organiczny krój z profilem klatki piersiowej, pleców i zbluzowaniem nad pasem
+  const fDir = currentFacingDir;
+  const frontShX = fDir * shoulderHalfW;
+  const backShX = -fDir * shoulderHalfW;
+  const frontWaistX = fDir * waistHalfW;
+  const backWaistX = -fDir * waistHalfW;
+  const chestOut = fDir * (shoulderHalfW + 1.15 * absCos);
+  const backOut = -fDir * (shoulderHalfW + 0.80 * absCos);
+  const ribInFront = fDir * (waistHalfW - 0.35 * absCos);
+  const lumbarInBack = -fDir * (waistHalfW - 0.55 * absCos);
+  const blouseFrontX = fDir * (waistHalfW + 0.65);
+  const blouseBackX = -fDir * (waistHalfW + 0.50);
+
   ctx.beginPath();
-  ctx.moveTo(-waistHalfW, waistY);
-  ctx.lineTo(-shoulderHalfW, -24.4);
-  ctx.lineTo(strapLeftX, -24.4);
-  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, strapRightX, -24.4);
-  ctx.lineTo(shoulderHalfW, -24.4);
-  ctx.lineTo(waistHalfW, waistY);
-  ctx.quadraticCurveTo(0, waistY + 0.8, -waistHalfW, waistY);
+  ctx.moveTo(backWaistX, waistY);
+  // Zbluzowanie materiału nad pasem z tyłu i profil lędźwi oraz łopatki
+  ctx.quadraticCurveTo(blouseBackX, waistY - 1.8, lumbarInBack, -6.5);
+  ctx.bezierCurveTo(
+    backOut * 0.92, -12.5,
+    backOut, -19.2,
+    backShX, -24.2
+  );
+  // Linia barku i wycięcie kołnierza przy szyi
+  ctx.lineTo(-fDir * Math.abs(strapLeftX), -24.6);
+  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY, fDir * Math.abs(strapRightX), -24.6);
+  ctx.lineTo(frontShX, -24.2);
+  // Profil klatki piersiowej (mięsień piersiowy), talii i zbluzowanie materiału nad pasem z przodu
+  ctx.bezierCurveTo(
+    chestOut, -18.5,
+    chestOut * 0.95, -12.0,
+    ribInFront, -6.2
+  );
+  ctx.quadraticCurveTo(blouseFrontX, waistY - 1.6, frontWaistX, waistY);
+  // Miękko pofalowany dół koszulki wchodzący w pas taktyczny
+  ctx.bezierCurveTo(
+    frontWaistX * 0.35, waistY + 1.1,
+    backWaistX * 0.35, waistY + 0.9,
+    backWaistX, waistY
+  );
   ctx.closePath();
   ctx.fillStyle = shirtGrad;
   ctx.fill();
@@ -2845,28 +2985,67 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
-  // Anatomiczne przeszycia taktyczne Combat Shirt (stójka z suwakiem 1/4 zip i panele elastyczne)
-  if (!isLookingAway && absCos > 0.20) {
-    const zipX = cosYaw * 0.8;
-    ctx.strokeStyle = '#52525b';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(zipX, scoopCenterY);
-    ctx.lineTo(zipX, -14.0);
-    ctx.stroke();
+  // Ściągacz kołnierzyka wokół szyi (miękki podwójny szew)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+  ctx.lineWidth = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(strapLeftX * 1.08, -24.0);
+  ctx.quadraticCurveTo(scoopCenterX, scoopCenterY + 1.3, strapRightX * 1.08, -24.0);
+  ctx.stroke();
 
-    ctx.fillStyle = '#71717a';
-    ctx.fillRect(zipX - 0.7, -14.5, 1.4, 2.0);
+  // Realistyczne fałdy i zagięcia materiału na koszulce (napięcie pod pachą, pod piersią i marszczenie nad pasem)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  // 1. Ukośna fałda napięcia od pachy ku klatce piersiowej
+  ctx.moveTo(-fDir * shoulderHalfW * 0.15, -18.2);
+  ctx.quadraticCurveTo(fDir * shoulderHalfW * 0.45, -15.4, fDir * shoulderHalfW * 0.82, -12.6);
+  // 2. Fałda materiału na żebrach / brzuchu
+  ctx.moveTo(-fDir * waistHalfW * 0.35, -11.5);
+  ctx.quadraticCurveTo(fDir * waistHalfW * 0.25, -9.2, fDir * waistHalfW * 0.72, -7.0);
+  // 3. Marszczenie (zbluzowanie) tkaniny tuż nad pasem taktycznym
+  ctx.moveTo(-waistHalfW * 0.48, -3.8);
+  ctx.quadraticCurveTo(-waistHalfW * 0.32, -1.0, -waistHalfW * 0.42, 0.4);
+  ctx.moveTo(waistHalfW * 0.12, -4.4);
+  ctx.quadraticCurveTo(waistHalfW * 0.28, -1.2, waistHalfW * 0.18, 0.5);
+  ctx.moveTo(waistHalfW * 0.55, -3.2);
+  ctx.quadraticCurveTo(waistHalfW * 0.68, -0.8, waistHalfW * 0.52, 0.4);
+  ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-shoulderHalfW * 0.65, -20.0);
-    ctx.quadraticCurveTo(-waistHalfW * 0.5, -10.0, -waistHalfW * 0.7, waistY);
-    ctx.moveTo(shoulderHalfW * 0.65, -20.0);
-    ctx.quadraticCurveTo(waistHalfW * 0.5, -10.0, waistHalfW * 0.7, waistY);
-    ctx.stroke();
-  }
+  // Subtelne rozjaśnienia na grzbietach fałd koszulki (nadają tkaninie trójwymiarowość)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(fDir * shoulderHalfW * 0.10, -20.5);
+  ctx.quadraticCurveTo(chestOut * 0.82, -16.2, fDir * shoulderHalfW * 0.55, -13.2);
+  ctx.moveTo(-fDir * waistHalfW * 0.25, -10.4);
+  ctx.quadraticCurveTo(fDir * waistHalfW * 0.30, -8.2, fDir * waistHalfW * 0.68, -6.2);
+  ctx.stroke();
+
+  // PAS TAKTYCZNY PMC (Duty / Riggers Belt – rysowany na wierzchu wpuszczonej koszulki)
+  const beltGrad = ctx.createLinearGradient(-waistHalfW, 0, waistHalfW, 0);
+  beltGrad.addColorStop(0.0, '#09090b');
+  beltGrad.addColorStop(0.5, '#18181b');
+  beltGrad.addColorStop(1.0, '#09090b');
+
+  ctx.beginPath();
+  ctx.moveTo(-waistHalfW, 0.4);
+  ctx.quadraticCurveTo(0, 1.6, waistHalfW, 0.4);
+  ctx.lineTo(waistHalfW - 0.3, 4.6);
+  ctx.quadraticCurveTo(0, 6.0, -waistHalfW + 0.3, 4.6);
+  ctx.closePath();
+  ctx.fillStyle = beltGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Metalowa klamra pasa taktycznego Cobra (z przodu pasa)
+  const buckleX = fDir * (waistHalfW * 0.45);
+  ctx.fillStyle = '#52525b';
+  ctx.fillRect(buckleX - 1.6, 1.3, 3.2, 2.6);
+  ctx.fillStyle = '#71717a';
+  ctx.fillRect(buckleX - 1.0, 1.8, 2.0, 1.6);
 
   // NAKŁADANA KAMIZELKA KULOODPORNA (MODULAR BULLETPROOF VEST / PLATE CARRIER)
   // Rysowana TYLKO wtedy, gdy gracz posiada pancerz lub ma ustawione p.hasVest / v.hasVest
