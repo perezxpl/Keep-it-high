@@ -1,7 +1,7 @@
 import { CONFIG, START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v73_creator_preview';
-import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v73_creator_preview';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v73_creator_preview';
+import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v74_creator_fix';
+import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v74_creator_fix';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v74_creator_fix';
 
 const _mapW = (typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : ARENA_WIDTH) || 3600;
 const _centerX = _mapW / 2; // 1800

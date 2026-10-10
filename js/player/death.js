@@ -4,10 +4,10 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X } from '../config.js';
-import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip, spawnBloodSpurt, isGroundAt } from '../world.js?v=v73_creator_preview';
-import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js?v=v73_creator_preview';
+import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip, spawnBloodSpurt, isGroundAt } from '../world.js?v=v74_creator_fix';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js?v=v74_creator_fix';
 import { getArmAnglesForTarget } from './ik.js';
-import { WEAPONS } from '../weapons.js?v=v73_creator_preview';
+import { WEAPONS } from '../weapons.js?v=v74_creator_fix';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)

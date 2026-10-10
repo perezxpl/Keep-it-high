@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v73_creator_preview';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v74_creator_fix';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v73_creator_preview';
-import { getRagdollRenderPose } from './death.js?v=v73_creator_preview';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v73_creator_preview';
+} from './actions.js?v=v74_creator_fix';
+import { getRagdollRenderPose } from './death.js?v=v74_creator_fix';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v74_creator_fix';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -2888,7 +2888,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.isProne && !p.isDead) {
     ctx.translate(-2.0 * currentFacingDir, -29.4 + ((p.headBob || 0) * 0.25));
   } else {
-    ctx.translate(0.0, -30.5 + (p.headBob * 0.35));
+    ctx.translate(0.0, -30.5 + ((p.headBob || 0) * 0.35));
   }
 
   if (p.isDead && (!p.hasHead || p.decapitated || p.severedHead)) {

@@ -775,20 +775,36 @@ export const uiManager = {
         isSliding: false,
         isIntro: false,
         isProne: false,
+        isCrouching: false,
+        state: 'STAND',
         currentGroundY: 0,
+        groundY: 0,
         pelvisY: -11.8,
         facing: 1,
         yaw: 0,
         gaitMode: 'IDLE',
         stridePhase: 0,
         torsoTilt: 0,
+        torsoTiltVel: 0,
         headPitch: 0,
-        thighLen: 19,
-        shinLen: 19,
-        upperArmLen: 13,
-        forearmLen: 12,
+        headBob: 0,
+        headBobVel: 0,
+        kneeJuggleWeight: 0,
+        thighLen: 25,
+        shinLen: 24,
+        upperArmLen: 14,
+        forearmLen: 13,
         hp: 100,
         maxHp: 100,
+        hasHead: true,
+        decapitated: false,
+        isGibbed: false,
+        dismembered: {
+          armFront: false,
+          armBack: false,
+          legFront: false,
+          legBack: false
+        },
         isDead: false,
         staggerTimer: 0,
         jetFuel: 150,
@@ -800,10 +816,10 @@ export const uiManager = {
         vestHp: 0,
         isHolstered: true,
         holsterWeight: 1.0,
-        currentWeapon: 'AK47',
+        currentWeapon: null,
         aimAngle: 0,
         currentClass: CLASSES.RAPTOR,
-        pose: {}
+        pose: { initialized: false }
       };
     }
 
@@ -835,7 +851,7 @@ export const uiManager = {
     ctx.save();
     ctx.strokeStyle = 'rgba(0, 229, 255, 0.06)';
     ctx.lineWidth = 1;
-    const gridStep = 24;
+    const gridStep = 20;
     for (let gx = gridStep; gx < cw; gx += gridStep) {
       ctx.beginPath();
       ctx.moveTo(gx, 0);
@@ -849,30 +865,30 @@ export const uiManager = {
       ctx.stroke();
     }
 
-    // 2. Linia podłoża (podest pod stopami postaci)
-    const floorScreenY = 238;
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+    // 2. Linia podłoża (podest pod stopami postaci z wyraźnym zapasem od dolnej krawędzi ramki)
+    const floorScreenY = ch - 34;
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.40)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(36, floorScreenY);
-    ctx.lineTo(cw - 36, floorScreenY);
+    ctx.moveTo(28, floorScreenY);
+    ctx.lineTo(cw - 28, floorScreenY);
     ctx.stroke();
 
     // Cień pod stopami
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.beginPath();
-    ctx.ellipse(cw / 2, floorScreenY + 2, 32, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cw / 2, floorScreenY + 2, 26, 5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // 3. Rysowanie całej postaci w skali dopasowanej tak, by w 100% mieściła się w ramce bez przesuwania
+    // 3. Rysowanie całej postaci w skali dopasowanej tak, by od stóp po czubek głowy mieściła się z dużym zapasem
     const dummy = this.creatorDummyPlayer;
     if (!dummy) return;
     dummy.currentClass = CLASSES.RAPTOR;
 
     ctx.save();
     ctx.translate(cw / 2, floorScreenY);
-    ctx.scale(2.15, 2.15);
+    ctx.scale(1.65, 1.65);
     drawPlayer(ctx, 0, dummy);
     ctx.restore();
   },
