@@ -7,8 +7,8 @@ import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   bodyGibs
-} from './world.js?v=v62_kick_slide_balance';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v62_kick_slide_balance';
+} from './world.js?v=v63_hud_hp_weapon_colors';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v63_hud_hp_weapon_colors';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import {

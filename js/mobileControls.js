@@ -5,9 +5,9 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v62_kick_slide_balance';
-import { ball } from './ball.js?v=v62_kick_slide_balance';
-import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v62_kick_slide_balance';
+import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v63_hud_hp_weapon_colors';
+import { ball } from './ball.js?v=v63_hud_hp_weapon_colors';
+import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v63_hud_hp_weapon_colors';
 
 export function isArena1() {
   const cur = (typeof window !== 'undefined' && window.activeArenaId)

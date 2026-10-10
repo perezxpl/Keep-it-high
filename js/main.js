@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v62_kick_slide_balance';
+} from './world.js?v=v63_hud_hp_weapon_colors';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -21,12 +21,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v62_kick_slide_balance';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v62_kick_slide_balance';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v62_kick_slide_balance';
+} from './player.js?v=v63_hud_hp_weapon_colors';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v63_hud_hp_weapon_colors';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v63_hud_hp_weapon_colors';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v62_kick_slide_balance';
+} from './ball.js?v=v63_hud_hp_weapon_colors';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -34,24 +34,24 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v62_kick_slide_balance';
-import { CLASSES } from './classes/index.js?v=v62_kick_slide_balance';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v62_kick_slide_balance';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v62_kick_slide_balance';
+} from './obstacles.js?v=v63_hud_hp_weapon_colors';
+import { CLASSES } from './classes/index.js?v=v63_hud_hp_weapon_colors';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v63_hud_hp_weapon_colors';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v63_hud_hp_weapon_colors';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v62_kick_slide_balance';
+} from './network.js?v=v63_hud_hp_weapon_colors';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v62_kick_slide_balance';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v62_kick_slide_balance';
+} from './mobileControls.js?v=v63_hud_hp_weapon_colors';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v63_hud_hp_weapon_colors';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

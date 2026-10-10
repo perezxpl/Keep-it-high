@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v62_kick_slide_balance';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v62_kick_slide_balance';
+export * from './player/index.js?v=v63_hud_hp_weapon_colors';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v63_hud_hp_weapon_colors';
 
