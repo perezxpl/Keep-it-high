@@ -4,14 +4,14 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js?v=v63_hud_hp_weapon_colors';
-import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v63_hud_hp_weapon_colors';
-import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v63_hud_hp_weapon_colors';
-import { WEAPONS, updateWeaponState } from '../weapons.js?v=v63_hud_hp_weapon_colors';
+import { activeArenaId, customObstacles } from '../obstacles.js?v=v64_jetpack_flight_hover';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v64_jetpack_flight_hover';
+import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v64_jetpack_flight_hover';
+import { WEAPONS, updateWeaponState } from '../weapons.js?v=v64_jetpack_flight_hover';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v63_hud_hp_weapon_colors';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v64_jetpack_flight_hover';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -63,16 +63,16 @@ import {
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
-} from './actions.js?v=v63_hud_hp_weapon_colors';
-import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v63_hud_hp_weapon_colors';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v63_hud_hp_weapon_colors';
+} from './actions.js?v=v64_jetpack_flight_hover';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v64_jetpack_flight_hover';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v64_jetpack_flight_hover';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v63_hud_hp_weapon_colors';
-export * from './actions.js?v=v63_hud_hp_weapon_colors';
-export * from './death.js?v=v63_hud_hp_weapon_colors';
-export * from './renderer.js?v=v63_hud_hp_weapon_colors';
+export * from './locomotion.js?v=v64_jetpack_flight_hover';
+export * from './actions.js?v=v64_jetpack_flight_hover';
+export * from './death.js?v=v64_jetpack_flight_hover';
+export * from './renderer.js?v=v64_jetpack_flight_hover';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1003,10 +1003,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
       }
     } else if (player.isJumping) {
+      const maxAirSpeed = player.isJetpacking ? (sprintMax * 1.1) : jogMax;
       if (Math.abs(inputAxisX) > 0.05) {
-        player.airVx += inputAxisX * accel * 0.7;
-        const maxAirSpeed = jogMax;
+        if (player.isJetpacking && leftStick && leftStick.active) {
+          const targetJetVx = inputAxisX * maxAirSpeed;
+          player.airVx += (targetJetVx - player.airVx) * 0.14;
+        } else {
+          player.airVx += inputAxisX * accel * 0.7;
+        }
         player.airVx = Math.max(-maxAirSpeed, Math.min(maxAirSpeed, player.airVx));
+      } else if (player.isJetpacking && leftStick && leftStick.active) {
+        player.airVx *= 0.92;
       }
       player.vx = player.airVx;
       player.airVx *= 0.995;
@@ -1267,7 +1274,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetTilt = 0.06 * player.facing;
   } else if (player.kickMode === 'SPIN_VOLLEY') {
     targetTilt = -0.10 * player.facing;
-  } else if (player.jumpTakeoffTimer > 0) {
+  } else if (player.jumpTakeoffTimer > 0 && !player.isJetpacking) {
     targetTilt = (player.jumpLaunchSpeed > 0.8 ? 0.20 : 0.08) * player.facing;
   } else if (player.isJumpCharging) {
     if (speed < 0.8) {
@@ -1331,10 +1338,27 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       // W miejscu (CROUCH) - stabilna pozycja taktyczna z ugiętymi kolanami i lekkim pochyleniem
       targetTilt = 0.20 * player.facing;
     }
+  } else if (player.isJumping || player.isJetpacking) {
+    const velXRatio = Math.max(-1.0, Math.min(1.0, (player.vx || 0) / (sprintMax || 6.8)));
+    const isUsingStick = !!(leftStick && leftStick.active && !player.isBot);
+    if (isUsingStick) {
+      // Na drążku dotykowym: płynne pochylenie bezpośrednio według wychylenia gałki i prędkości lotu
+      const stickX = leftStick.axisX || 0;
+      if (player.isJetpacking) {
+        targetTilt = Math.max(-0.50, Math.min(0.50, stickX * 0.36 + velXRatio * 0.14));
+      } else {
+        targetTilt = Math.max(-0.28, Math.min(0.28, stickX * 0.16 + velXRatio * 0.12));
+      }
+    } else {
+      // Na klawiaturze: umiarkowane, naturalne pochylenie w kierunku lotu
+      if (player.isJetpacking) {
+        targetTilt = Math.max(-0.26, Math.min(0.26, inputAxisX * 0.16 + velXRatio * 0.10));
+      } else {
+        targetTilt = Math.max(-0.18, Math.min(0.18, inputAxisX * 0.07 + velXRatio * 0.09));
+      }
+    }
   } else if (isMovingBackwards) {
     targetTilt = -0.08 * player.facing;
-  } else if (player.isJumping) {
-    targetTilt = (player.jumpTakeoffTimer > 0 ? (player.jumpLaunchSpeed > 0.8 ? 0.18 : 0.08) : 0.04) * player.facing;
   } else if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
     targetTilt = choreo.torsoLean;
@@ -1346,7 +1370,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
   }
 
-  if (player.shootPoseWeight > 0 && !player.isProne) {
+  if (player.shootPoseWeight > 0 && !player.isProne && !player.isJumping && !player.isJetpacking) {
     const shootingLean = player.isCrouching ? 0.09 : 0.075;
     targetTilt += shootingLean * player.facing * player.shootPoseWeight;
   }
@@ -1354,6 +1378,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.kickMode === 'BACKFLIP' || player.kickMode === 'SPARTAN' || player.staggerTimer > 0) {
     player.torsoTilt = targetTilt;
     player.torsoTiltVel = 0;
+  } else if (player.isJumping || player.isJetpacking) {
+    // Miękka, krytycznie tłumiona interpolacja kąta pochylenia w locie (bez szarpnięć)
+    const tiltForce = (targetTilt - player.torsoTilt) * 0.15;
+    player.torsoTiltVel = (player.torsoTiltVel + tiltForce) * 0.72;
+    player.torsoTilt += player.torsoTiltVel;
   } else {
     const tiltForce = (targetTilt - player.torsoTilt) * 0.22;
     player.torsoTiltVel = (player.torsoTiltVel + tiltForce) * 0.76;
@@ -1602,4 +1631,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js?v=v63_hud_hp_weapon_colors';
+export { throwTacticalGrenade } from './actions.js?v=v64_jetpack_flight_hover';

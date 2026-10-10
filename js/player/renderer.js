@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v63_hud_hp_weapon_colors';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v64_jetpack_flight_hover';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v63_hud_hp_weapon_colors';
-import { getRagdollRenderPose } from './death.js?v=v63_hud_hp_weapon_colors';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v63_hud_hp_weapon_colors';
+} from './actions.js?v=v64_jetpack_flight_hover';
+import { getRagdollRenderPose } from './death.js?v=v64_jetpack_flight_hover';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v64_jetpack_flight_hover';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -2208,38 +2208,26 @@ export function drawPlayer(ctx, GROUND_Y, p) {
         rawBackElbow = 0.60;
       }
     } else {
-      const isFalling = (p.vy > 0.8 || p.vy > 100);
-      const isRising = p.vy < -0.5;
+      // Płynne przejście pozycji nóg w locie (wznoszenie / zawis na jetpacku / opadanie)
+      // wraz z naturalnym odchyleniem nóg wzdłuż osi pochylenia tułowia w kierunku lotu
+      const vyVal = (typeof p.vy === 'number' && p.vy < 90) ? p.vy : 1.0;
+      const rawRise = Math.max(0, Math.min(1, (-vyVal + 0.6) / 4.2));
+      const riseBlend = p.isJetpacking ? Math.max(0.28, rawRise * 0.85) : rawRise;
+      const curTilt = (p.pose && typeof p.pose.torsoTilt === 'number') ? p.pose.torsoTilt : (p.torsoTilt || 0);
+      const flightTrailX = -Math.sin(curTilt) * 17.5 - Math.max(-5.5, Math.min(5.5, (p.vx || 0) * 0.55));
 
-      if (isRising) {
-        rawFootFrontTargetX = hipX + (12 * p.facing);
-        rawFootFrontTargetY = hipY + 24;
-        rawFootFrontAnkle = 0.20 * p.facing;
+      rawFootFrontTargetX = hipX + lerp(3, 10, riseBlend) * p.facing + flightTrailX;
+      rawFootFrontTargetY = hipY + lerp(44.5, 26.0, riseBlend);
+      rawFootFrontAnkle = lerp(0.15, 0.22, riseBlend) * p.facing + curTilt * 0.35;
 
-        rawFootBackTargetX = hipX - (8 * p.facing);
-        rawFootBackTargetY = hipY + 34;
-        rawFootBackAnkle = -0.15 * p.facing;
+      rawFootBackTargetX = hipX + lerp(-3, -7, riseBlend) * p.facing + flightTrailX;
+      rawFootBackTargetY = hipY + lerp(45.0, 34.5, riseBlend);
+      rawFootBackAnkle = lerp(0.08, -0.12, riseBlend) * p.facing + curTilt * 0.35;
 
-        rawFrontSwing = -0.35;
-        rawFrontElbow = 0.75;
-        rawBackSwing = 0.35;
-        rawBackElbow = 0.65;
-      } else {
-        // Naturalna, atletyczna poza spadania / opadania z wysokości:
-        // Nogi stabilnie wyprostowane w dół, stopy przygotowane do amortyzacji lądowania
-        rawFootFrontTargetX = hipX + (3 * p.facing);
-        rawFootFrontTargetY = hipY + 44.5;
-        rawFootFrontAnkle = 0.15 * p.facing;
-
-        rawFootBackTargetX = hipX - (3 * p.facing);
-        rawFootBackTargetY = hipY + 45.0;
-        rawFootBackAnkle = 0.08 * p.facing;
-
-        rawFrontSwing = -0.15;
-        rawFrontElbow = 0.45;
-        rawBackSwing = 0.15;
-        rawBackElbow = 0.45;
-      }
+      rawFrontSwing = lerp(-0.15, -0.35, riseBlend);
+      rawFrontElbow = lerp(0.45, 0.75, riseBlend);
+      rawBackSwing = lerp(0.15, 0.35, riseBlend);
+      rawBackElbow = lerp(0.45, 0.65, riseBlend);
     }
   } else if (p.gaitMode === 'CROUCH') {
     const braceW = (p.shootPoseWeight || 0);

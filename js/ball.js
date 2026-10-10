@@ -1,7 +1,7 @@
 import { CONFIG, START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v63_hud_hp_weapon_colors';
-import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v63_hud_hp_weapon_colors';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v63_hud_hp_weapon_colors';
+import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v64_jetpack_flight_hover';
+import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v64_jetpack_flight_hover';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v64_jetpack_flight_hover';
 
 const _mapW = (typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : ARENA_WIDTH) || 3600;
 const _centerX = _mapW / 2; // 1800

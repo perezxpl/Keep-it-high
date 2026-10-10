@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v63_hud_hp_weapon_colors';
+} from './world.js?v=v64_jetpack_flight_hover';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -21,12 +21,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v63_hud_hp_weapon_colors';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v63_hud_hp_weapon_colors';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v63_hud_hp_weapon_colors';
+} from './player.js?v=v64_jetpack_flight_hover';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v64_jetpack_flight_hover';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v64_jetpack_flight_hover';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v63_hud_hp_weapon_colors';
+} from './ball.js?v=v64_jetpack_flight_hover';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -34,24 +34,24 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v63_hud_hp_weapon_colors';
-import { CLASSES } from './classes/index.js?v=v63_hud_hp_weapon_colors';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v63_hud_hp_weapon_colors';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v63_hud_hp_weapon_colors';
+} from './obstacles.js?v=v64_jetpack_flight_hover';
+import { CLASSES } from './classes/index.js?v=v64_jetpack_flight_hover';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v64_jetpack_flight_hover';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v64_jetpack_flight_hover';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v63_hud_hp_weapon_colors';
+} from './network.js?v=v64_jetpack_flight_hover';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v63_hud_hp_weapon_colors';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v63_hud_hp_weapon_colors';
+} from './mobileControls.js?v=v64_jetpack_flight_hover';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v64_jetpack_flight_hover';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -234,7 +234,7 @@ canvas.addEventListener('touchstart', (e) => {
         // Nowe dotknięcie ekranu w powietrzu oznacza, że drążek był wcześniej zwolniony (zneutralizowany)
         leftStick.jetpackNeutralized = true;
       }
-      if (isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.25 && (player.jetFuel || 0) > 0) {
+      if (isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.16 && (player.jetFuel || 0) > 0) {
         leftStick.isJetpacking = true;
         isJetpackActive = true;
         player.isJetpacking = true;
@@ -466,21 +466,23 @@ canvas.addEventListener('touchmove', (e) => {
       // Aktualizacja kontekstu przycisków mobilnych (w tym pojawiania się przycisku leżenia)
       updateMobileControlStates(player, leftStick, btnCluster);
 
-      // Uniesienie drążka w górę (skok na ziemi lub jetpack w powietrzu)
+      // Uniesienie drążka w górę (skok na ziemi lub płynny analogowy jetpack w powietrzu)
       const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
 
-      // Jeśli drążek został odchylony z powrotem w stronę centrum (axisY > -0.20), uznaj go za zneutralizowany
-      if (leftStick.axisY > -0.20) {
+      // Jeśli drążek został odchylony z powrotem w stronę centrum (axisY > -0.12), uznaj go za zneutralizowany
+      if (leftStick.axisY > -0.12) {
         leftStick.jetpackNeutralized = true;
       }
 
-      if (leftStick.axisY < -0.30) {
-        player.crouchToggled = false;
-        player.isCrouching = false;
-        player.isProne = false;
+      if (leftStick.axisY < -0.16) {
+        if (leftStick.axisY < -0.30) {
+          player.crouchToggled = false;
+          player.isCrouching = false;
+          player.isProne = false;
+        }
 
         if (isAirborne) {
-          // W POWIETRZU: jetpack działa tylko po uprzednim puszczeniu / odchyleniu drążka po skoku z ziemi
+          // W POWIETRZU: jetpack działa po uprzednim puszczeniu / odchyleniu drążka po skoku z ziemi
           if (leftStick.jetpackNeutralized && (player.jetFuel || 0) > 0) {
             leftStick.isJetpacking = true;
             isJetpackActive = true;
@@ -498,7 +500,7 @@ canvas.addEventListener('touchmove', (e) => {
             leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
           }
         }
-      } else if (leftStick.axisY > -0.20) {
+      } else if (leftStick.axisY > -0.12) {
         // Powrót do centrum lub ruch w dół: odcięcie silników jetpacka i gotowość do odpalenia w locie
         leftStick.jumpTriggered = false;
         leftStick.jetpackNeutralized = true;
@@ -2954,33 +2956,88 @@ function update() {
     leftStick.jetpackNeutralized = true;
     player.jetpackKeyNeutralized = true;
   } else if (isAirborne) {
-    if (!leftStick.active || leftStick.axisY > -0.20) {
+    if (!leftStick.active || leftStick.axisY > -0.12) {
       leftStick.jetpackNeutralized = true;
     }
   }
 
-  const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.25 && leftStick.jetpackNeutralized);
+  const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.16 && leftStick.jetpackNeutralized);
   const isTouchFlight = !!(isStickRaised && isAirborne);
   const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
   const isFlightActive = (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
   if (isFlightActive) {
     player.isJetpacking = true;
-    player.jetFuel = Math.max(0, player.jetFuel - 0.95);
-    player.vy = Math.max(-8.5, player.vy - 0.95);
+
+    let sparkCount = 4;
+    if (isTouchFlight && !isKeyFlight) {
+      // Wersja mobilna: siła ciągu płynnie dostosowana do wychylenia drążka (umożliwia zawis w powietrzu)
+      const stickUp = Math.min(1.0, Math.max(0.0, (-leftStick.axisY - 0.15) / (0.90 - 0.15)));
+      player.jetpackPower = stickUp;
+
+      const grav = CONFIG.GRAVITY || 0.38;
+      if (stickUp < 0.28) {
+        // Lekkie wychylenie: wyhamowywanie opadania (miękkie szybowanie w dół)
+        const cushion = stickUp / 0.28;
+        player.vy -= grav * (0.35 + cushion * 0.65);
+        if (player.vy > 1.2) {
+          player.vy *= (1.0 - cushion * 0.18);
+        }
+      } else if (stickUp <= 0.52) {
+        // Środkowa strefa drążka (~połowa wychylenia w górę): stabilny ZAWIS W POWIETRZU (Hover)
+        player.vy -= grav;
+        player.vy *= 0.76;
+        if (Math.abs(player.vy) < 0.06) {
+          player.vy = 0;
+        }
+      } else {
+        // Wyższe wychylenie drążka (> 52%): płynne wznoszenie proporcjonalne do wychylenia aż do pełnej mocy
+        const climbT = (stickUp - 0.52) / (1.0 - 0.52);
+        const netUpThrust = 0.12 + climbT * ((0.95 - grav) - 0.12);
+        const maxClimbVy = -(1.2 + climbT * 7.3);
+        player.vy -= (grav + netUpThrust);
+        if (player.vy < maxClimbVy) {
+          player.vy += (maxClimbVy - player.vy) * 0.28;
+        }
+      }
+
+      const fuelDrain = 0.38 + stickUp * 0.57;
+      player.jetFuel = Math.max(0, player.jetFuel - fuelDrain);
+      sparkCount = Math.max(1, Math.round(1 + stickUp * 3));
+    } else {
+      // Klawiatura: klasyczna pełna siła ciągu
+      player.jetpackPower = 1.0;
+      player.jetFuel = Math.max(0, player.jetFuel - 0.95);
+      player.vy = Math.max(-8.5, player.vy - 0.95);
+    }
 
     let inputAxisX = 0;
     if (keys.left) inputAxisX -= 1;
     if (keys.right) inputAxisX += 1;
-    if (leftStick && leftStick.active && isStickRaised && Math.abs(leftStick.axisX) > 0.05) {
-      inputAxisX = leftStick.axisX;
+    if (leftStick && leftStick.active && isStickRaised) {
+      inputAxisX = Math.abs(leftStick.axisX) > 0.04 ? leftStick.axisX : 0;
     }
 
-    if (Math.abs(inputAxisX) > 0.05) {
-      player.vx += inputAxisX * 0.42;
-      const maxAirVx = CONFIG.SPRINT_MAX * 1.1;
+    const maxAirVx = (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 1.1;
+    if (Math.abs(inputAxisX) > 0.04) {
+      if (isTouchFlight && !isKeyFlight) {
+        // Na drążku prędkość pozioma lotu płynnie dąży do proporcji wychylenia gałki
+        const targetJetVx = inputAxisX * maxAirVx;
+        player.vx += (targetJetVx - player.vx) * 0.16;
+      } else {
+        player.vx += inputAxisX * 0.42;
+      }
       player.vx = Math.max(-maxAirVx, Math.min(maxAirVx, player.vx));
-      if (inputAxisX > 0.1) player.facing = 1;
-      else if (inputAxisX < -0.1) player.facing = -1;
+      player.airVx = player.vx;
+      const isAimingNow = player.isAiming || player.isShooting || (player.shootPoseTimer > 0);
+      if (!isAimingNow) {
+        if (inputAxisX > 0.1) player.facing = 1;
+        else if (inputAxisX < -0.1) player.facing = -1;
+      }
+    } else if (isTouchFlight) {
+      // W zawisie pionowym na drążku płynnie wygaszaj boczny dryf
+      player.vx *= 0.90;
+      if (Math.abs(player.vx) < 0.04) player.vx = 0;
+      player.airVx = player.vx;
     }
 
     player.isJumping = true;
@@ -2997,11 +3054,12 @@ function update() {
     const myJetColors = networkState.isHost
       ? ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
       : ['#f97316', '#fb923c', '#fdba74', '#ffffff'];
-    spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, 4, myJetColors, player.vx, player.vy, nozzle.angle);
+    spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, sparkCount, myJetColors, player.vx, player.vy, nozzle.angle);
   } else {
     isJetpackActive = false;
     if (leftStick) leftStick.isJetpacking = false;
     player.isJetpacking = false;
+    player.jetpackPower = 0;
   }
 
   if (leftStick && leftStick.active) {
