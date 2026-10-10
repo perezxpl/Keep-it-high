@@ -5,8 +5,8 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v61_prone_overhaul';
-import { spawnAeroSuperGrenade } from '../projectiles.js?v=v61_prone_overhaul';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v62_kick_slide_balance';
+import { spawnAeroSuperGrenade } from '../projectiles.js?v=v62_kick_slide_balance';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -66,16 +66,20 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   const isMovingBackwards = (char.vx * char.facing < -0.1);
   if (isMovingBackwards) return false;
   if (char.isIntro || char.isDead) return false;
+  if (char.kickState && char.kickState !== 'IDLE') return false;
 
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
 
-  const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
-  const speedOk = Math.abs(char.vx) > minSpeed;
+  const jogMax = char.currentClass?.stats?.jogMax || CONFIG.JOG_MAX || 4.2;
+  const sprintMax = char.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX || 6.8;
+  const minSprintSpeed = Math.max(jogMax + 0.15, sprintMax * 0.80);
+  const isSprinting = char.isBot
+    ? (Math.abs(char.vx) > (CONFIG.MIN_RUN_SPEED || 2.5))
+    : (char.gaitMode === 'SPRINT' && Math.abs(char.vx) >= minSprintSpeed && (char.sprintDuration || 0) >= 8);
   const cooldownOk = (!char.slideCooldown || char.slideCooldown <= 0);
 
-  // Warunek konieczny: Wślizg może wykonać się TYLKO WTEDY, GDY POSTAĆ BIEGNIE (|vx| > MIN_RUN_SPEED).
-  // Jeśli gracz stoi w miejscu i wciśnięty jest Shift, wślizg nie aktywuje się (brak przejścia w kucanie).
-  if (!isGrounded || !speedOk || !cooldownOk) {
+  // Wślizg dostępny po każdym rozpędzeniu postaci do sprintu, z blokadą spamowania bezpośrednio po ślizgu.
+  if (!isGrounded || !isSprinting || !cooldownOk) {
     return false;
   }
 
@@ -83,7 +87,7 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     char.isSliding = true;
     char.state = 'SLIDE';
     char.slideTimer = 56;
-    char.slideCooldown = 300;
+    char.slideCooldown = 24;
     char.sprintDuration = 0;
     char.isCrouching = false;
     char.isProne = false;
@@ -138,7 +142,13 @@ export function findMeleeTarget(p, potentialTargets) {
  * Inicjalizacja manewru Spartan Kick (czas trwania: 22 klatki)
  */
 export function triggerSpartanKick(p, meleeTarget) {
+  if (!p || p.isDead || p.isSliding || p.staggerTimer > 0) return null;
+  if (p.kickState !== 'IDLE' || (p.kickCooldown && p.kickCooldown > 0)) return null;
+
   const pwr = (p.chargePower !== undefined && p.chargePower > 0) ? p.chargePower : 1.0;
+  const classCooldownSec = p.kickCooldownTime ?? p.currentClass?.stats?.kickCooldown ?? p.classConfig?.stats?.kickCooldown ?? 0.50;
+  const baseCdFrames = Math.max(36, Math.round(classCooldownSec * 60) + 12);
+
   p.isCharging = false;
   p.kickPower = pwr;
   p.chargePower = pwr;
@@ -147,10 +157,17 @@ export function triggerSpartanKick(p, meleeTarget) {
   p.kickState = 'SWING';
   p.spartanTimer = 0;
   p.spartanDuration = 22;
+  p.kickCooldown = baseCdFrames;
   p.hitThisSwing = false;
   p.kickBufferTimer = 22;
   p.spartanTarget = meleeTarget || null;
   p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
+
+  // Zaparcie stopy podporowej w podłoże – przerwanie sprintu i wyhamowanie szarży w miejscu
+  p.sprintDuration = 0;
+  if (!p.isJumping) {
+    p.vx *= 0.40;
+  }
   return 'SPARTAN';
 }
 
@@ -284,6 +301,9 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     return triggerSpartanKick(p, meleeTarget);
   }
 
+  const classCooldownSec = p.kickCooldownTime ?? p.currentClass?.stats?.kickCooldown ?? p.classConfig?.stats?.kickCooldown ?? 0.50;
+  const defaultCooldownFrames = Math.max(24, Math.round(classCooldownSec * 60));
+
   const ball = ballParam || p._ball;
   const timing = evaluateKickTiming(p, ball);
 
@@ -299,13 +319,17 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     p.spinVolleyTimer = 0;
     p.spinVolleyDuration = 24;
     p.kickState = 'SWING';
+    p.kickCooldown = defaultCooldownFrames;
     p.hitThisSwing = false;
     p.kickBufferTimer = 24;
+    p.sprintDuration = 0;
     return 'SPIN_VOLLEY';
   }
 
   p.isCharging = false;
   p.kickPower = p.chargePower;
+  p.kickCooldown = defaultCooldownFrames;
+  p.sprintDuration = 0;
 
   const currentFloor = p.currentGroundY || p.groundY;
   const isAirborne = p.isJumping || (currentFloor > 0 && p.y < currentFloor - p.h - 4);
@@ -342,11 +366,18 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     p.kickAngle = 0;
     p.kickBufferTimer = 16;
 
+    // Zaparcie nogi podporowej przy wykopie z ziemi — brak możliwości szarżowania sprintem podczas kopania
+    if (timing === 'CANCEL') {
+      p.vx *= 0.45;
+    } else {
+      p.vx *= 0.80;
+    }
+
     const curSpeed = Math.abs(p.vx);
     const sprintMax = p.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX;
     const speedRatio = Math.min(1.0, curSpeed / sprintMax);
-    p.swingSpeed = (0.18 + p.chargePower * 0.14) * (1.0 + speedRatio * 0.95);
-    p.kickRecoverSpeed = (0.14 + p.chargePower * 0.06) * (1.0 + speedRatio * 0.85);
+    p.swingSpeed = (0.18 + p.chargePower * 0.14) * (1.0 + speedRatio * 0.65);
+    p.kickRecoverSpeed = (0.14 + p.chargePower * 0.06) * (1.0 + speedRatio * 0.60);
 
     const hipX = p.x + p.w / 2;
     const plantLead = curSpeed > 1.0 ? (10 + speedRatio * 8) : 4;
@@ -579,8 +610,7 @@ export function performKick(p, options = {}) {
   p.kickBufferTimer = 16;
 
   const classCooldownSec = p.kickCooldownTime ?? p.currentClass?.stats?.kickCooldown ?? p.classConfig?.stats?.kickCooldown ?? 0.50;
-  const defaultCooldownFrames = Math.round(classCooldownSec * 60);
-  p.kickCooldown = (typeof options.cooldown === 'number') ? options.cooldown : defaultCooldownFrames;
+  const defaultCooldownFrames = Math.max(24, Math.round(classCooldownSec * 60));
 
   const currentFloor = p.currentGroundY || p.groundY || 500;
   const isAirborne = p.isJumping || (currentFloor > 0 && p.y < currentFloor - p.h - 4);
@@ -594,8 +624,12 @@ export function performKick(p, options = {}) {
     p.scissorTimer = 0;
     p.scissorDuration = 22;
     p.kickState = 'SWING';
+    p.kickCooldown = (typeof options.cooldown === 'number') ? options.cooldown : defaultCooldownFrames;
   } else if (options.spartan || !options.ball || (meleeTarget && !meleeTarget.isDead) || isFullyChargedForSpartan || !isBallInKickReach(p, options.ball)) {
     triggerSpartanKick(p, meleeTarget);
+    if (typeof options.cooldown === 'number') {
+      p.kickCooldown = options.cooldown;
+    }
   } else {
     p.kickMode = 'GROUND';
     p.kickLeg = p.nextLeg || 'front';
@@ -604,6 +638,9 @@ export function performKick(p, options = {}) {
     p.swingSpeed = 0.24;
     p.kickRecoverSpeed = 0.18;
     p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
+    p.kickCooldown = (typeof options.cooldown === 'number') ? options.cooldown : defaultCooldownFrames;
+    p.sprintDuration = 0;
+    p.vx *= 0.78;
   }
 
   const footInit = getKickingFootPos(p);

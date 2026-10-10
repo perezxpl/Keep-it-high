@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v61_prone_overhaul';
+} from './world.js?v=v62_kick_slide_balance';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -21,12 +21,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v61_prone_overhaul';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v61_prone_overhaul';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v61_prone_overhaul';
+} from './player.js?v=v62_kick_slide_balance';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v62_kick_slide_balance';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v62_kick_slide_balance';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v61_prone_overhaul';
+} from './ball.js?v=v62_kick_slide_balance';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -34,24 +34,24 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v61_prone_overhaul';
-import { CLASSES } from './classes/index.js?v=v61_prone_overhaul';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v61_prone_overhaul';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v61_prone_overhaul';
+} from './obstacles.js?v=v62_kick_slide_balance';
+import { CLASSES } from './classes/index.js?v=v62_kick_slide_balance';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v62_kick_slide_balance';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v62_kick_slide_balance';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v61_prone_overhaul';
+} from './network.js?v=v62_kick_slide_balance';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v61_prone_overhaul';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v61_prone_overhaul';
+} from './mobileControls.js?v=v62_kick_slide_balance';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v62_kick_slide_balance';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -2354,7 +2354,7 @@ window.addEventListener('keydown', (e) => {
       player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
     }
   }
-  if (e.code === 'Space' && !keys.space) {
+  if (e.code === 'Space' && !e.repeat && !keys.space) {
     keys.space = true;
     // Spacja podrywa postać z leżenia/kucania do pionu i rozpoczyna wykop
     player.isProne = false;
@@ -2363,12 +2363,11 @@ window.addEventListener('keydown', (e) => {
     const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
     startKickCharge(player, meleeTargets);
   }
-  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !keys.slide) {
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !e.repeat && !keys.shift) {
     keys.slide = true;
     keys.shift = true;
     player.crouchToggled = false;
-    const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
-    if (player.onGround && Math.abs(player.vx) > minSpeed) {
+    if (player.onGround) {
       playerSlide(spawnGrass, GROUND_Y, player);
     }
   }

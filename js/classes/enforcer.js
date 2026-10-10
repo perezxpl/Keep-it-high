@@ -1,7 +1,7 @@
 // =========================================================================
 // KLASA: TARAN (ENFORCER) – Kolos / Siła / Rzeźbiona muskulatura
 // =========================================================================
-import { triggerScreenShake } from '../world.js?v=v61_prone_overhaul';
+import { triggerScreenShake } from '../world.js?v=v62_kick_slide_balance';
 
 export const EnforcerClass = {
   id: 'ENFORCER',

@@ -1,8 +1,8 @@
-import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js?v=v61_prone_overhaul';
-import { WEAPONS, shootWeapon } from './weapons.js?v=v61_prone_overhaul';
-import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js?v=v61_prone_overhaul';
-import { spawnJetpackSparks, GROUND_Y } from './world.js?v=v61_prone_overhaul';
-import { ball } from './ball.js?v=v61_prone_overhaul';
+import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js?v=v62_kick_slide_balance';
+import { WEAPONS, shootWeapon } from './weapons.js?v=v62_kick_slide_balance';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js?v=v62_kick_slide_balance';
+import { spawnJetpackSparks, GROUND_Y } from './world.js?v=v62_kick_slide_balance';
+import { ball } from './ball.js?v=v62_kick_slide_balance';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)

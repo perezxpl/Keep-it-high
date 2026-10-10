@@ -4,14 +4,14 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js?v=v61_prone_overhaul';
-import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v61_prone_overhaul';
-import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v61_prone_overhaul';
-import { WEAPONS, updateWeaponState } from '../weapons.js?v=v61_prone_overhaul';
+import { activeArenaId, customObstacles } from '../obstacles.js?v=v62_kick_slide_balance';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v62_kick_slide_balance';
+import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v62_kick_slide_balance';
+import { WEAPONS, updateWeaponState } from '../weapons.js?v=v62_kick_slide_balance';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v61_prone_overhaul';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v62_kick_slide_balance';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -63,16 +63,16 @@ import {
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
-} from './actions.js?v=v61_prone_overhaul';
-import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v61_prone_overhaul';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v61_prone_overhaul';
+} from './actions.js?v=v62_kick_slide_balance';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v62_kick_slide_balance';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v62_kick_slide_balance';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v61_prone_overhaul';
-export * from './actions.js?v=v61_prone_overhaul';
-export * from './death.js?v=v61_prone_overhaul';
-export * from './renderer.js?v=v61_prone_overhaul';
+export * from './locomotion.js?v=v62_kick_slide_balance';
+export * from './actions.js?v=v62_kick_slide_balance';
+export * from './death.js?v=v62_kick_slide_balance';
+export * from './renderer.js?v=v62_kick_slide_balance';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -564,8 +564,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.isMovingBackwards = isMovingBackwards;
 
   if (player.kickBufferTimer > 0) player.kickBufferTimer--;
-  if (player.kickCooldown > 0) player.kickCooldown--;
-  if (player.slideCooldown > 0) player.slideCooldown--;
+  if (player.kickCooldown > 0 && player.kickState === 'IDLE') player.kickCooldown--;
+  if (player.slideCooldown > 0 && !player.isSliding) player.slideCooldown--;
   if (player.shootCooldown > 0) player.shootCooldown--;
   if (player.dropThroughTimer > 0) player.dropThroughTimer--;
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;
@@ -771,8 +771,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
 
     if (keys.slide) {
-      const minSpeed = CONFIG.MIN_RUN_SPEED || 2.5;
-      if (player.onGround && Math.abs(player.vx) > minSpeed) {
+      if (player.onGround) {
         playerSlide(spawnGrass, GROUND_Y, player);
       }
       keys.slide = false;
@@ -891,6 +890,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.isJumpCharging && curSpeedPre < 0.8) {
     targetTopSpeed *= (1.0 - player.jumpChargePower * 0.55);
   }
+  if (!player.isJumping) {
+    if (player.kickMode === 'SPARTAN' && player.kickState !== 'IDLE') {
+      targetTopSpeed = 0;
+    } else if (player.kickState === 'SWING' || player.kickState === 'RECOVER') {
+      const ballInReach = ball && ball.active !== false && isBallInKickReach(player, ball);
+      targetTopSpeed = ballInReach ? (jogMax * 0.65) : (walkMax * 0.45);
+    } else if (player.isCharging) {
+      targetTopSpeed *= (1.0 - (player.chargePower || 0) * 0.40);
+    }
+  }
   player.intendedVx = Math.abs(inputAxisX) > 0.05 ? inputAxisX * targetTopSpeed : 0;
 
   if (player.isIntro) {
@@ -950,6 +959,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
       if (player.facing !== targetFacing && !player.isSliding) {
         player.facing = targetFacing;
+        player.sprintDuration = 0;
         player.turnMode = isHighSpeedTurn ? 'BACK' : 'FRONT';
         if (player.turnMode === 'FRONT') {
           if (player.yaw <= -Math.PI + 0.05) player.yaw = Math.PI;
@@ -985,6 +995,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
       if (player.slideTimer <= 0 || Math.abs(player.vx) < 0.4) {
         player.isSliding = false;
+        player.sprintDuration = 0;
+        player.slideCooldown = Math.max(player.slideCooldown || 0, 24);
+        const maxExitSpeed = jogMax * 0.85;
+        if (Math.abs(player.vx) > maxExitSpeed) {
+          player.vx = Math.sign(player.vx) * maxExitSpeed;
+        }
       }
     } else if (player.isJumping) {
       if (Math.abs(inputAxisX) > 0.05) {
@@ -994,12 +1010,22 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
       player.vx = player.airVx;
       player.airVx *= 0.995;
+    } else if (player.kickMode === 'SPARTAN' && player.kickState !== 'IDLE') {
+      // Podczas Spartan Kick na ziemi stopa podporowa jest wbita w grunt — brak szarżowania w biegu
+      player.vx *= 0.76;
+      player.sprintDuration = 0;
     } else {
       const targetVx = inputAxisX * targetTopSpeed;
       if (Math.abs(inputAxisX) > 0.05) {
         player.vx += (targetVx - player.vx) * accel;
       } else {
         player.vx *= decel;
+      }
+
+      if (player.kickState === 'SWING' || player.kickState === 'RECOVER') {
+        const ballInReach = ball && ball.active !== false && isBallInKickReach(player, ball);
+        player.vx *= ballInReach ? 0.90 : 0.80;
+        player.sprintDuration = 0;
       }
 
       if (player.shootPoseWeight > 0.2 && Math.abs(inputAxisX) < 0.15) {
@@ -1040,7 +1066,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       else player.gaitMode = 'SPRINT';
     }
 
-    if (player.gaitMode === 'SPRINT' && !player.isJumping && !player.isCrouching && !player.isProne && !player.isSliding) {
+    if (player.gaitMode === 'SPRINT' && !isMovingBackwards && !player.isJumping && !player.isCrouching && !player.isProne && !player.isSliding && player.kickState === 'IDLE' && !player.isCharging) {
       player.sprintDuration = (player.sprintDuration || 0) + 1;
     } else {
       player.sprintDuration = 0;
@@ -1083,6 +1109,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.kneeJuggleWeight += (targetKneeWeight - player.kneeJuggleWeight) * 0.18;
   if (player.kneeJuggleWeight < 0.005) player.kneeJuggleWeight = 0;
 
+  const classCooldownSec = player.kickCooldownTime ?? player.currentClass?.stats?.kickCooldown ?? player.classConfig?.stats?.kickCooldown ?? 0.50;
+  const baseKickCd = Math.max(24, Math.round(classCooldownSec * 60));
+
   if (player.kickMode === 'BACKFLIP') {
     player.bicycleTimer++;
     const flip = getBackflipTargets(player.bicycleTimer, player.bicycleDuration, hipX, hipY, player.facing);
@@ -1102,7 +1131,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickMode = 'GROUND';
       player.kickState = 'IDLE';
       player.hitThisSwing = false;
-      player.kickCooldown = 12;
+      player.kickCooldown = baseKickCd;
       player.kickingFootX = 0;
       player.kickingFootY = 0;
     }
@@ -1120,7 +1149,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickState = 'IDLE';
       player.kickMode = 'GROUND';
       player.hitThisSwing = false;
-      player.kickCooldown = 10;
+      player.kickCooldown = baseKickCd;
       player.kickingFootX = 0;
       player.kickingFootY = 0;
     }
@@ -1139,7 +1168,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickState = 'IDLE';
       player.kickMode = 'GROUND';
       player.hitThisSwing = false;
-      player.kickCooldown = 12;
+      player.kickCooldown = baseKickCd;
       player.yaw = (player.facing === 1) ? 0 : (player.turnMode === 'FRONT' ? Math.PI : -Math.PI);
       player.kickingFootX = 0;
       player.kickingFootY = 0;
@@ -1166,10 +1195,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
 
     if (player.spartanTimer >= duration) {
+      const whiffPenalty = player.hitThisSwing ? 0 : 10;
       player.kickState = 'IDLE';
       player.kickMode = 'GROUND';
       player.hitThisSwing = false;
-      player.kickCooldown = 18;
+      player.kickCooldown = Math.max(36, baseKickCd + 12 + whiffPenalty);
       player.spartanTarget = null;
       player.chargePower = 0;
       player.kickPower = 0;
@@ -1210,10 +1240,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.kickingFootY = kickTraj.kicking.y;
 
       if (player.kickAngle <= 0) {
+        const whiffPenalty = player.hitThisSwing ? 0 : 10;
         player.kickAngle = 0;
         player.kickState = 'IDLE';
         player.hitThisSwing = false;
-        player.kickCooldown = 8;
+        player.kickCooldown = Math.max(24, baseKickCd + whiffPenalty);
         player.stridePhase = (player.kickLeg === 'front') ? 0 : Math.PI;
         player.kickingFootX = 0;
         player.kickingFootY = 0;
@@ -1400,7 +1431,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           player.kickState = 'IDLE';
           player.kickMode = 'GROUND';
           player.scissorTimer = 0;
-          player.kickCooldown = 10;
+          player.kickCooldown = baseKickCd;
           player.kickingFootX = 0;
           player.kickingFootY = 0;
         }
@@ -1571,4 +1602,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js?v=v61_prone_overhaul';
+export { throwTacticalGrenade } from './actions.js?v=v62_kick_slide_balance';

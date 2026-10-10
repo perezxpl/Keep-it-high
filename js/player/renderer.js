@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v61_prone_overhaul';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v62_kick_slide_balance';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v61_prone_overhaul';
-import { getRagdollRenderPose } from './death.js?v=v61_prone_overhaul';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v61_prone_overhaul';
+} from './actions.js?v=v62_kick_slide_balance';
+import { getRagdollRenderPose } from './death.js?v=v62_kick_slide_balance';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v62_kick_slide_balance';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
