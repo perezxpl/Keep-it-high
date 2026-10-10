@@ -5,9 +5,9 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v58_no_overhead_reload';
-import { ball } from './ball.js?v=v58_no_overhead_reload';
-import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v58_no_overhead_reload';
+import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v59_reload_and_touch_pad';
+import { ball } from './ball.js?v=v59_reload_and_touch_pad';
+import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v59_reload_and_touch_pad';
 
 export function isArena1() {
   const cur = (typeof window !== 'undefined' && window.activeArenaId)
@@ -75,7 +75,7 @@ export const rightStick = {
 // KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (POCKETS) & DYNAMICZNY PRZYCISK RUCHU
 // =========================================================================
 export const pockets = {
-  // 1. Kieszeń na broń palną (kliknięcie = zmiana broni, przeciągnięcie = założenie na drążek)
+  // 1. Kieszeń na broń palną (puszczenie < 1s = zmiana broni, przytrzymanie 1s = przeładowanie, przeciągnięcie = założenie na drążek)
   firearm: {
     x: 0,
     y: 0,
@@ -85,7 +85,8 @@ export const pockets = {
     touchStartTime: 0,
     startX: 0,
     startY: 0,
-    isDragging: false
+    isDragging: false,
+    reloadTriggered: false
   },
 
   // 2. Kieszeń na broń miotaną (granat)

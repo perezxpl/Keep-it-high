@@ -12,7 +12,7 @@ import {
   LEFT_MASSIF_AND_RAMP_PROFILE, CENTRAL_HILL_PROFILE, RIGHT_MASSIF_PROFILE,
   getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
-} from './world.js?v=v58_no_overhead_reload';
+} from './world.js?v=v59_reload_and_touch_pad';
 import { clearExplosionParticles } from './particles.js';
 
 const _arenaResetCallbacks = [];

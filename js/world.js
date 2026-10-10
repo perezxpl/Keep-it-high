@@ -3049,10 +3049,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   if (!isTouchDevice || !ctx || !player) return;
 
   ctx.save();
+  // Zwiększona przezroczystość całego pada dotykowego
+  ctx.globalAlpha = 0.62;
   const time = performance.now();
 
   // -------------------------------------------------------------------------
-  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Czysty, transparentny, bez napisów)
+  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Czysty, bardziej transparentny, bez napisów)
   // -------------------------------------------------------------------------
   if (leftStick && leftStick.baseX > 0) {
     const isStickActive = leftStick.active;
@@ -3064,11 +3066,11 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Baza drążka: w pełni przezroczysta, delikatny kontur bez koloru
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)';
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)';
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.09)';
+    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     ctx.stroke();
 
     // Pozycja gałki
@@ -3077,8 +3079,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     // Dyskretna linia wychylenia
     if (isStickActive && (Math.abs(leftStick.axisX) > 0.05 || Math.abs(leftStick.axisY) > 0.05)) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.lineWidth = 1.1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
@@ -3091,13 +3093,13 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const knobR = 22;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive || isJetActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.38)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.16)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.28)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.12)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.05)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.12)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.05)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.04)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
     }
 
     ctx.beginPath();
@@ -3105,24 +3107,24 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.50)' : 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
-      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowBlur = 6;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     // Subtelny centralny punkt gałki
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.35)';
+    ctx.arc(knobX, knobY, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.25)';
     ctx.fill();
   }
 
   // -------------------------------------------------------------------------
-  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ, RZUT (Czysty, transparentny, bez napisów)
+  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ, RZUT (Czysty, bardziej transparentny, bez napisów)
   // -------------------------------------------------------------------------
   if (rightStick && rightStick.baseX > 0) {
     const isStickActive = rightStick.active;
@@ -3134,15 +3136,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Baza drążka: w pełni przezroczysta, delikatny obrys bez koloru
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)';
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)';
     ctx.fill();
 
     // Jeśli przeciągany jest slot w stronę drążka, drążek pulsuje lekko
     const isDragHover = rightStick.draggedSlot && (Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 45 || (rightStick.draggedSlot.curX || 0) >= bx - 35);
     ctx.strokeStyle = isDragHover
-      ? `rgba(255, 255, 255, ${0.45 + 0.35 * Math.sin(time * 0.01)})`
-      : (isStickActive ? 'rgba(255, 255, 255, 0.32)' : 'rgba(255, 255, 255, 0.12)');
-    ctx.lineWidth = (isDragHover || isStickActive) ? 1.8 : 1.2;
+      ? `rgba(255, 255, 255, ${0.38 + 0.30 * Math.sin(time * 0.01)})`
+      : (isStickActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.09)');
+    ctx.lineWidth = (isDragHover || isStickActive) ? 1.6 : 1.1;
     ctx.stroke();
 
     // Pozycja gałki
@@ -3159,8 +3161,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       knobY = by + normY * clampedDist;
 
       // Przerywana linia wychylenia
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1.1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
@@ -3173,13 +3175,13 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const knobR = 22;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.40)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.18)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.08)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.30)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.13)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.05)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.12)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.05)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
+      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.04)');
+      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
     }
 
     ctx.beginPath();
@@ -3187,11 +3189,11 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = isStickActive ? 1.6 : 1.2;
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
-      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.25)';
+      ctx.shadowBlur = 6;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -3208,12 +3210,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       drawWeaponSilhouette(ctx, curId, 0, 0, isStickActive);
     }
     ctx.restore();
-
-
   }
 
   // -------------------------------------------------------------------------
-  // 3. KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (LEDWO WIDOCZNE, PRZEZROCZYSTE, BEZ KOLORU)
+  // 3. KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (BARDZIEJ PRZEZROCZYSTE)
   const effPockets = (btnCluster && (btnCluster.firearm || btnCluster.action)) ? btnCluster : (window.pockets || btnCluster || {});
   const pFirearm = effPockets.firearm || window.pockets?.firearm;
   const pThrowable = effPockets.throwable || effPockets.grenade || window.pockets?.throwable;
@@ -3225,16 +3225,18 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const isPressed = pFirearm.active;
     const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
     const curId = curWep.id || 'AK47';
+    const ammoObj = player.ammo?.[curId];
+    const isRel = !!(ammoObj?.isReloading || player.isReloading);
 
     // Baza kieszeni: szkło z gradientem
     const grad = ctx.createRadialGradient(pFirearm.x - 2, pFirearm.y - 2, 2, pFirearm.x, pFirearm.y, pFirearm.r);
     if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.22)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.10)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.03)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.16)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.10)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
       grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
     }
     ctx.beginPath();
@@ -3244,12 +3246,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     // Główny pierścień zewnętrzny
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.55)'
-      : 'rgba(255, 255, 255, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.8 : 1.3;
+      ? 'rgba(255, 255, 255, 0.42)'
+      : 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
     if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
-      ctx.shadowBlur = 6;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowBlur = 5;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -3258,10 +3260,34 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.beginPath();
     ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 4, 0, Math.PI * 2);
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.22)'
-      : 'rgba(255, 255, 255, 0.10)';
+      ? 'rgba(255, 255, 255, 0.16)'
+      : 'rgba(255, 255, 255, 0.07)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
+
+    // Pierścień postępu 1-sekundowego przytrzymania (wyzwalającego przeładowanie)
+    if (isPressed && !pFirearm.isDragging && !pFirearm.reloadTriggered && !isRel) {
+      const holdProg = Math.max(0, Math.min(1, (time - (pFirearm.touchStartTime || time)) / 1000));
+      if (holdProg > 0.10) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + holdProg * Math.PI * 2, false);
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else if (isRel && ammoObj) {
+      const dur = ammoObj.reloadDuration || 120;
+      const prog = Math.max(0, Math.min(1, 1 - (ammoObj.reloadTimer / dur)));
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, false);
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.translate(pFirearm.x, pFirearm.y - 3);
@@ -3269,14 +3295,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
     ctx.restore();
 
-    const ammoObj = player.ammo?.[curId];
-    const cAmmo = ammoObj ? ammoObj.currentAmmo : (curId === 'SHOTGUN' ? 8 : 30);
-    const rAmmo = ammoObj ? ammoObj.reserveAmmo : (curId === 'SHOTGUN' ? 64 : 90);
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = isEquipped ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.50)';
+    const defM = curId === 'SHOTGUN' ? 8 : (curId === 'SNIPER' ? 5 : 30);
+    const defR = curId === 'SHOTGUN' ? 64 : (curId === 'SNIPER' ? 25 : 90);
+    const cAmmo = ammoObj ? ammoObj.currentAmmo : defM;
+    const rAmmo = ammoObj ? ammoObj.reserveAmmo : defR;
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = isRel ? 'rgba(250, 204, 21, 0.90)' : (isEquipped ? 'rgba(255, 255, 255, 0.72)' : 'rgba(255, 255, 255, 0.42)');
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`${cAmmo}/${rAmmo}`, pFirearm.x, pFirearm.y + pFirearm.r - 2);
+    ctx.fillText(isRel ? 'RELOAD' : `${cAmmo}/${rAmmo}`, pFirearm.x, pFirearm.y + pFirearm.r - 2);
   }
 
   // 3B. KIESZEŃ NA BROŃ MIOTANĄ (GRANAT) – PO ŚRODKU
@@ -3289,12 +3316,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     const grad = ctx.createRadialGradient(pThrowable.x - 2, pThrowable.y - 2, 2, pThrowable.x, pThrowable.y, pThrowable.r);
     if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.22)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.10)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.03)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.16)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.10)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
       grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
     }
     ctx.beginPath();
@@ -3303,12 +3330,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fill();
 
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.55)'
-      : 'rgba(255, 255, 255, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.8 : 1.3;
+      ? 'rgba(255, 255, 255, 0.42)'
+      : 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
     if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
-      ctx.shadowBlur = 6;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowBlur = 5;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -3317,8 +3344,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.beginPath();
     ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 4, 0, Math.PI * 2);
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.22)'
-      : 'rgba(255, 255, 255, 0.10)';
+      ? 'rgba(255, 255, 255, 0.16)'
+      : 'rgba(255, 255, 255, 0.07)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
@@ -3327,8 +3354,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.save();
       ctx.beginPath();
       ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 1.5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, false);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.lineWidth = 2.2;
       ctx.stroke();
       ctx.restore();
     }
@@ -3341,7 +3368,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     if (!isReady) {
       ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`${cd.toFixed(1)}s`, pThrowable.x, pThrowable.y + pThrowable.r - 2);
@@ -3355,12 +3382,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     const grad = ctx.createRadialGradient(pAction.x - 2, pAction.y - 2, 2, pAction.x, pAction.y, pAction.r);
     if (isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.24)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.12)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.04)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
+      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.10)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
       grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
     }
     ctx.beginPath();
@@ -3368,11 +3395,11 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.26)';
-    ctx.lineWidth = isPressed ? 1.8 : 1.3;
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = isPressed ? 1.6 : 1.1;
     if (isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
-      ctx.shadowBlur = 6;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowBlur = 5;
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -3380,7 +3407,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Wewnętrzny pierścień
     ctx.beginPath();
     ctx.arc(pAction.x, pAction.y, pAction.r - 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.10)';
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.07)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
