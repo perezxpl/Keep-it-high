@@ -1487,6 +1487,29 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
   const themeColor = isHost ? '#00e5ff' : '#f97316';
   const glowColor = isHost ? '#38bdf8' : '#fb923c';
 
+  const maxJet = p.jetMax || 100;
+  const curJet = Math.max(0, p.jetFuel ?? 0);
+  const jetRatio = Math.max(0, Math.min(1, curJet / maxJet));
+
+  // Segmentowy wskaźnik paliwa (4 segmenty LED w stylu retro / sci-fi)
+  const isLowFuel = curJet > 0 && jetRatio < 0.20;
+  const timeNow = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const blinkLow = !isLowFuel || (Math.floor(timeNow / 150) % 2 === 0);
+
+  const getSegmentColor = (idx) => {
+    if (idx === 0) return isLowFuel ? '#ef4444' : (jetRatio < 0.35 ? '#f59e0b' : themeColor);
+    if (idx === 1) return (jetRatio < 0.50 ? '#f59e0b' : themeColor);
+    return themeColor;
+  };
+
+  const isSegmentLit = (idx) => {
+    if (idx === 0) return curJet > 0.01 && blinkLow;
+    if (idx === 1) return jetRatio >= 0.25;
+    if (idx === 2) return jetRatio >= 0.50;
+    if (idx === 3) return jetRatio >= 0.75;
+    return false;
+  };
+
   ctx.save();
 
   if (isLookingAway) {
@@ -1555,13 +1578,46 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       }
     }
 
-    // Centralna dioda statusu energetycznego
-    ctx.fillStyle = isFiring ? '#ffffff' : themeColor;
-    ctx.shadowColor = themeColor;
-    ctx.shadowBlur = isFiring ? 10 : 4;
-    ctx.beginPath();
-    ctx.arc(0, packY + 8, 1.8, 0, Math.PI * 2);
-    ctx.fill();
+    // WSKAŹNIK STANU PALIWA: 4 SEGMENTY LED W CENTRALNEJ KIESZENI
+    const panelW = 3.2;
+    const panelH = 14.5;
+    const panelX = -panelW / 2;
+    const panelY = packY + 3.0;
+
+    // Gniazdo montażowe (ramka)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(panelX, panelY, panelW, panelH);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+    // 4 segmenty LED (indeksy 0..3 od dołu do góry)
+    const segW = 2.0;
+    const segH = 2.0;
+    const segX = -segW / 2;
+    const segOffsets = [10.5, 7.5, 4.5, 1.5]; // Y offset od panelY
+
+    for (let i = 0; i < 4; i++) {
+      const sY = panelY + segOffsets[i];
+      const lit = isSegmentLit(i);
+
+      if (lit) {
+        const segCol = getSegmentColor(i);
+        ctx.fillStyle = isFiring ? '#ffffff' : segCol;
+        ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
+        ctx.shadowBlur = isFiring ? 8 : 4;
+        ctx.fillRect(segX, sY, segW, segH);
+
+        if (isFiring) {
+          ctx.fillStyle = segCol;
+          ctx.fillRect(segX + 0.3, sY + 0.3, segW - 0.6, segH - 0.6);
+        }
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(segX, sY, segW, segH);
+      }
+    }
     ctx.shadowBlur = 0;
 
   } else {
@@ -1623,11 +1679,46 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
     ctx.fillRect(leftX, packTopY + 6, packW, 1.8);
     ctx.fillRect(leftX, packTopY + 13, packW, 1.8);
 
-    // Neonowy wskaźnik stanu / LED
-    ctx.fillStyle = isFiring ? '#ffffff' : themeColor;
-    ctx.shadowColor = themeColor;
-    ctx.shadowBlur = isFiring ? 10 : 5;
-    ctx.fillRect(leftX + (facingDir > 0 ? 1.0 : packW - 2.5), packTopY + 8, 1.5, 3.5);
+    // WSKAŹNIK STANU PALIWA: 4 SEGMENTY LED W PROFILU PLECAKA
+    const panelX = (facingDir > 0 ? leftX + 0.8 : rightX - 3.0);
+    const panelW = 2.2;
+    const panelH = 14.5;
+    const panelY = packTopY + 3.0;
+
+    // Gniazdo montażowe (ramka)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(panelX, panelY, panelW, panelH);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+    // 4 segmenty LED (indeksy 0..3 od dołu do góry)
+    const segW = panelW - 0.6;
+    const segH = 2.0;
+    const segX = panelX + 0.3;
+    const segOffsets = [10.5, 7.5, 4.5, 1.5]; // Y offset od panelY
+
+    for (let i = 0; i < 4; i++) {
+      const sY = panelY + segOffsets[i];
+      const lit = isSegmentLit(i);
+
+      if (lit) {
+        const segCol = getSegmentColor(i);
+        ctx.fillStyle = isFiring ? '#ffffff' : segCol;
+        ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
+        ctx.shadowBlur = isFiring ? 8 : 4;
+        ctx.fillRect(segX, sY, segW, segH);
+
+        if (isFiring) {
+          ctx.fillStyle = segCol;
+          ctx.fillRect(segX + 0.2, sY + 0.2, segW - 0.4, segH - 0.4);
+        }
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(segX, sY, segW, segH);
+      }
+    }
     ctx.shadowBlur = 0;
 
     // 3. Stożkowa dysza wylotowa (nozzle) u dołu plecaka
@@ -3207,23 +3298,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.closePath();
     ctx.fill();
 
-    // DWA CIENKIE, MINIMALISTYCZNE PASKI (34 px x 3 px) BEZPOŚREDNIO NAD GŁOWĄ, TUŻ POD CHEVRONEM:
-    // Górny pasek: Zdrowie (zielony/czerwony)
-    // Dolny pasek: Jetpack (jasny cyjan #06b6d4)
-    // Zero tekstu, zero cyfr – czysta minimalistyczna geometria
+    // MINIMALISTYCZNY PASEK ZDROWIA (34 px x 3 px) BEZPOŚREDNIO NAD GŁOWĄ, TUŻ POD CHEVRONEM:
+    // Pasek paliwa został przeniesiony bezpośrednio na model jetpacka jako 4-segmentowy wskaźnik LED.
     const barW = 34;
     const barH = 3;
     const barX = headTopX - (barW / 2);
-    const barY_hp = headTopY - 9;
-    const barY_jet = headTopY - 5;
+    const barY_hp = headTopY - 6.5;
 
     const maxHp = p.maxHp || 100;
     const curHp = Math.max(0, p.hp ?? 100);
     const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
-
-    const maxJet = p.jetMax || 100;
-    const curJet = Math.max(0, p.jetFuel ?? 0);
-    const jetRatio = Math.max(0, Math.min(1, curJet / maxJet));
 
     // Tło paska HP
     ctx.shadowBlur = 0;
@@ -3233,15 +3317,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     if (hpRatio > 0) {
       ctx.fillStyle = (hpRatio > 0.25) ? '#22c55e' : '#ef4444';
       ctx.fillRect(barX, barY_hp, barW * hpRatio, barH);
-    }
-
-    // Tło paska Jetpack
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-    ctx.fillRect(barX - 0.5, barY_jet - 0.5, barW + 1, barH + 1);
-    // Wypełnienie Jetpack (jasny cyjan #06b6d4)
-    if (jetRatio > 0) {
-      ctx.fillStyle = '#06b6d4';
-      ctx.fillRect(barX, barY_jet, barW * jetRatio, barH);
     }
 
     ctx.restore();
