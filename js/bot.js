@@ -32,7 +32,7 @@ export const bot = createPlayerInstance({
   w: 24,
   h: 70,
   dropThroughTimer: 0,
-  currentClass: CLASSES.SWEEPER || CLASSES.PLAYMAKER,
+  currentClass: CLASSES.STRIKER || CLASSES.RAPTOR,
 
   // Pola walki
   hp: 100,

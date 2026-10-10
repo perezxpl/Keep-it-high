@@ -49,25 +49,36 @@ export const KICK_CONFIG = {
   BASE_KNOCKBACK: 10.5,
   BASE_BARREL_IMPULSE: 9.5,
   CLASSES: {
-    AERO: {
-      kickForce: 0.85,      // Lekkie, szybkie podanie
+    RAPTOR: {
+      kickForce: 0.85,      // Lekkie, szybkie kopnięcie
       knockback: 0.70,      // Niski odrzut
       cooldown: 0.35        // Najkrótszy cooldown: 0.35s (~21 klatek)
+    },
+    STRIKER: {
+      kickForce: 1.30,      // Zbalansowana siła i precyzja
+      knockback: 1.00,      // Umiarkowany odrzut
+      cooldown: 0.50        // Zbalansowany cooldown: 0.50s (~30 klatek)
     },
     ENFORCER: {
       kickForce: 1.15,      // Ciężki wykop
       knockback: 1.50,      // Najwyższy knockback / taranowanie
       cooldown: 0.70        // Najdłuższy cooldown: 0.70s (~42 klatki)
     },
+    // Aliasy wstecznej kompatybilności
+    AERO: {
+      kickForce: 0.85,
+      knockback: 0.70,
+      cooldown: 0.35
+    },
     PLAYMAKER: {
-      kickForce: 1.30,      // Najwyższa siła i precyzja
-      knockback: 1.00,      // Umiarkowany odrzut
-      cooldown: 0.50        // Zbalansowany cooldown: 0.50s (~30 klatek)
+      kickForce: 1.30,
+      knockback: 1.00,
+      cooldown: 0.50
     },
     SWEEPER: {
-      kickForce: 1.25,      // Daleki wykop obronny
-      knockback: 1.25,      // Wysoki odrzut defensywny
-      cooldown: 0.55        // Cooldown: 0.55s (~33 klatki)
+      kickForce: 1.25,
+      knockback: 1.25,
+      cooldown: 0.55
     }
   }
 };

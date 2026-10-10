@@ -1,11 +1,12 @@
 // =========================================================================
-// KLASA: TARAN (ENFORCER) – Kolos / Siła / Rzeźbiona muskulatura
+// KLASA CIĘŻKA: ENFORCER – Kolos / Siła / Rzeźbiona muskulatura
 // =========================================================================
 import { triggerScreenShake } from '../world.js?v=v64_jetpack_flight_hover';
 
 export const EnforcerClass = {
   id: 'ENFORCER',
   name: 'Enforcer',
+  tier: 'HEAVY',
   role: 'Czołg / Siła',
 
   // 1. ANATOMIA SZKIELETU IK – Wyraźnie większa, masywna postura

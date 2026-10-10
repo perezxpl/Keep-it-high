@@ -406,12 +406,17 @@ export const player = createPlayerInstance({ isIntro: true });
 export function setPlayerClass(newClass, p = player) {
   if (!newClass || !p) return;
 
+  const resolvedClass = typeof newClass === 'string'
+    ? (CLASSES[newClass.toUpperCase()] || CLASSES[newClass] || DEFAULT_CLASS)
+    : newClass;
+
   p.currentClass?.onDestroy?.(p);
 
-  const merged = mergeClassWithSchema(newClass);
+  const merged = mergeClassWithSchema(resolvedClass);
   p.currentClass = merged;
   p.classConfig = merged;
   p.class = merged;
+  p.selectedClass = merged.id;
   p.kickForceMultiplier = merged.stats.kickForce || 1.0;
   p.knockbackMultiplier = merged.stats.knockback || 1.0;
   p.kickCooldownTime = merged.stats.kickCooldown || 0.50;
@@ -426,7 +431,7 @@ export function setPlayerClass(newClass, p = player) {
   p.jetFuel = p.currentClass.stats.jetMax;
   p.jetMax = p.currentClass.stats.jetMax;
 
-  newClass.onInit?.(p);
+  resolvedClass.onInit?.(p);
 }
 
 /**

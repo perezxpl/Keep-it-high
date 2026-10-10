@@ -6,6 +6,7 @@
 import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
+  spawnKnockedHelmet, spawnVestShreds,
   bodyGibs
 } from './world.js?v=v64_jetpack_flight_hover';
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v64_jetpack_flight_hover';
@@ -1132,15 +1133,66 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
       const isHeadshot = (hitPtY <= closestChar.y + 6);
       const isLegshot = (hitPtY >= closestChar.y + 40);
+      const isTorsoShot = !isHeadshot && !isLegshot;
 
       let damageMultiplier = 1.0;
+      let helmetAbsorbed = false;
+      let vestAbsorbed = false;
+
+      // 1. PANCERZ GŁOWY (HEŁM): redukuje obrażenia headshotu i spada po 2 trafieniach (lub 1 ze snajperki)
       if (isHeadshot) {
-        damageMultiplier = 2.5; // Trafienie w głowę: 250% obrażeń!
+        const hasHelm = !!(closestChar.hasHelmet || closestChar.visuals?.hasHelmet);
+        if (hasHelm) {
+          helmetAbsorbed = true;
+          damageMultiplier = 0.85; // Hełm chroni przed mnożnikiem 2.5x!
+          if (closestChar.helmetHits === undefined || closestChar.helmetHits <= 0) {
+            closestChar.helmetHits = 2;
+          }
+          const helmDmg = (b.weaponId === 'SNIPER') ? 2 : 1;
+          closestChar.helmetHits -= helmDmg;
+          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 10);
+
+          if (closestChar.helmetHits <= 0) {
+            closestChar.hasHelmet = false;
+            if (closestChar.visuals) closestChar.visuals.hasHelmet = false;
+            spawnKnockedHelmet(hitPtX, hitPtY - 4, b.vx, b.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
+            triggerScreenShake(3.2);
+            if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+              window.syncArmorDevButtons();
+            }
+          }
+        } else {
+          damageMultiplier = 2.5; // Trafienie w nieosłoniętą głowę: 250% obrażeń!
+        }
       } else if (isLegshot) {
         damageMultiplier = 0.75; // Rany nóg: 75% obrażeń
       }
 
-      const totalDamage = Math.round(b.damage * damageMultiplier);
+      let totalDamage = Math.round(b.damage * damageMultiplier);
+
+      // 2. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA): pochłania 55% obrażeń aż do zużycia, po czym znika
+      if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
+        if (closestChar.vestHp === undefined || closestChar.vestHp <= 0) {
+          closestChar.vestHp = 50;
+        }
+        vestAbsorbed = true;
+        const absorbed = Math.ceil(totalDamage * 0.55);
+        totalDamage = Math.max(1, totalDamage - absorbed);
+        closestChar.vestHp -= absorbed;
+        spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 6);
+
+        if (closestChar.vestHp <= 0) {
+          closestChar.vestHp = 0;
+          closestChar.hasVest = false;
+          if (closestChar.visuals) closestChar.visuals.hasVest = false;
+          spawnVestShreds(hitPtX, hitPtY, b.vx, b.vy, closestChar.visuals?.vestColor || '#18181b');
+          triggerScreenShake(2.4);
+          if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+            window.syncArmorDevButtons();
+          }
+        }
+      }
+
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
 
       const isShotgun = (b.weaponId === 'SHOTGUN');
@@ -1156,12 +1208,16 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
 
       if (isHeadshot) {
-        spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
-        spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.55, b.vy * 0.55, 12, 1.4);
+        if (!helmetAbsorbed) {
+          spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.55, b.vy * 0.55, 12, 1.4);
+        }
         triggerScreenShake(isShotgun ? 4.5 : 2.2);
       } else {
-        spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
-        spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 5, 0.8);
+        if (!vestAbsorbed) {
+          spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 5, 0.8);
+        }
         if (isShotgun) triggerScreenShake(2.0);
       }
 

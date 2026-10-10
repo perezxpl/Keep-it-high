@@ -684,6 +684,44 @@ export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing) {
   });
 }
 
+export function spawnKnockedHelmet(x, y, vx, vy, facing = 1, visuals = null) {
+  const dir = (vx && Math.abs(vx) > 0.2) ? Math.sign(vx) : -facing;
+  droppedWeapons.push({
+    isHelmet: true,
+    helmetColor: visuals?.helmetColor || '#27272a',
+    visorColor: visuals?.helmetVisorGlow || '#00e5ff',
+    x,
+    y,
+    vx: (vx || 0) * 0.18 + dir * (3.2 + Math.random() * 2.2),
+    vy: -Math.abs(vy || 0) * 0.12 - (4.8 + Math.random() * 2.0),
+    rot: 0,
+    vRot: dir * (0.24 + Math.random() * 0.18),
+    facing: facing || 1,
+    bounces: 0,
+    life: 420
+  });
+}
+
+export function spawnVestShreds(x, y, vx = 0, vy = 0, vestColor = '#18181b') {
+  for (let i = 0; i < 6; i++) {
+    const ang = -Math.PI * 0.85 + Math.random() * Math.PI * 0.7;
+    const spd = 2.2 + Math.random() * 3.8;
+    droppedWeapons.push({
+      isVestScrap: true,
+      scrapColor: i % 2 === 0 ? vestColor : '#27272a',
+      x: x + (Math.random() - 0.5) * 10,
+      y: y + (Math.random() - 0.5) * 12,
+      vx: Math.cos(ang) * spd + (vx || 0) * 0.1,
+      vy: Math.sin(ang) * spd - 2.0,
+      rot: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.35,
+      facing: 1,
+      bounces: 1,
+      life: 180 + Math.floor(Math.random() * 60)
+    });
+  }
+}
+
 export function updateGore(groundY, platforms = null, obstacles = null) {
   const plats = platforms || _worldPlatforms;
   const obsList = obstacles || _worldCustomObstacles;
@@ -1162,7 +1200,36 @@ export function drawGore(ctx) {
     ctx.rotate(dw.rot);
     ctx.scale(dw.facing, 1);
 
-    if (dw.weapon.id === 'AK47') {
+    if (dw.isHelmet) {
+      // Strącony hełm balistyczny FAST z wizjerem i montażem NVG
+      ctx.fillStyle = dw.helmetColor || '#27272a';
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(-5.5, 1.5);
+      ctx.lineTo(-6.8, -3.2);
+      ctx.quadraticCurveTo(-6.2, -7.2, -1.0, -7.5);
+      ctx.quadraticCurveTo(4.5, -7.2, 5.5, -3.0);
+      ctx.lineTo(4.8, 0.2);
+      ctx.quadraticCurveTo(-1.0, 0.5, -5.5, 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Szyna boczna ARC
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-4.2, -2.2, 6.2, 1.5);
+      // Wizjer
+      ctx.fillStyle = dw.visorColor || '#00e5ff';
+      ctx.fillRect(2.0, -1.2, 3.0, 1.8);
+    } else if (dw.isVestScrap) {
+      // Odłamek zniszczonej kamizelki kuloodpornej
+      ctx.fillStyle = dw.scrapColor || '#18181b';
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.7;
+      ctx.fillRect(-3.0, -2.0, 6.0, 4.0);
+      ctx.strokeRect(-3.0, -2.0, 6.0, 4.0);
+    } else if (dw.weapon && dw.weapon.id === 'AK47') {
       ctx.fillStyle = '#78350f';
       ctx.fillRect(-8, -1.5, 6, 3);
       ctx.fillStyle = '#1e293b';
@@ -1171,7 +1238,7 @@ export function drawGore(ctx) {
       ctx.fillRect(4, 2, 4, 5);
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(12, -1, 10, 2);
-    } else {
+    } else if (dw.weapon) {
       ctx.fillStyle = '#3f2712';
       ctx.fillRect(-7, -1.5, 6, 3.5);
       ctx.fillStyle = '#1e293b';

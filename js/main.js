@@ -12,7 +12,8 @@ import {
   weaponButtons,
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
-  setCameraMouseScreenPos
+  setCameraMouseScreenPos,
+  spawnKnockedHelmet, spawnVestShreds
 } from './world.js?v=v68_hud_pad_contrast';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -974,52 +975,40 @@ export let gameState = GAME_STATE.current;
 
 export const CLASS_CARDS = [
   {
-    id: 'AERO',
-    name: 'Aero',
+    id: 'RAPTOR',
+    name: 'Raptor',
     key: '1',
     color: '#10b981',
     glowColor: 'rgba(16, 185, 129, 0.45)',
-    role: 'LOTNIK / FREESTYLER',
-    attribute: '🪽 MOBILNOŚĆ',
-    desc: 'Ekstremalna mobilność powietrzna, długi lot i akrobatyczne woleje.',
-    stats: ['Jetpack: 150 Pojemności', 'Wysoka zwrotność w locie', 'Spin Volley w powietrzu'],
-    classObj: CLASSES.AERO
+    role: 'KLASA LEKKA • ZWIADOWCA / LOTNIK',
+    attribute: '🦅 PLECAK ODRZUTOWY (JETPACK)',
+    desc: 'Ekstremalna mobilność powietrzna, pełny ciąg jetpacka i zwinność w locie.',
+    stats: ['Jetpack: 150 Pojemności', 'Najwyższa prędkość i kontrola w locie', 'Lekki pancerz zwiadowczy'],
+    classObj: CLASSES.RAPTOR
+  },
+  {
+    id: 'STRIKER',
+    name: 'Striker',
+    key: '2',
+    color: '#38bdf8',
+    glowColor: 'rgba(56, 189, 248, 0.45)',
+    role: 'KLASA ŚREDNIA • SZTURMOWIEC',
+    attribute: '⚡ TURBO BUTY / PRECYZJA',
+    desc: 'Dynamiczny szturmowiec z dopalaczami w butach, szybkim unikiem i precyzją ognia.',
+    stats: ['Moduł ruchu: Turbo Buty', 'Zbalansowany pancerz (100 HP)', 'Wysoka precyzja i kontrola odrzutu'],
+    classObj: CLASSES.STRIKER
   },
   {
     id: 'ENFORCER',
     name: 'Enforcer',
-    key: '2',
+    key: '3',
     color: '#ef4444',
     glowColor: 'rgba(239, 68, 68, 0.45)',
-    role: 'KOLOS / PANCERZ',
-    attribute: '🛡️ PANCERZ / SIŁA',
-    desc: 'Masywna sylwetka, potężna odporność i niszczycielskie strzały.',
-    stats: ['Maksymalne Zdrowie: 160 HP', 'Odporność na odrzut', 'Brutalne uderzenia z ziemi'],
+    role: 'KLASA CIĘŻKA • KOLOS / TARAN',
+    attribute: '🛡️ ROCKET JUMP / PANCERZ',
+    desc: 'Masywna sylwetka, potężna odporność na ogień i wybuchowe wejścia w zwarciu.',
+    stats: ['Maksymalne Zdrowie: 160 HP', 'Moduł ruchu: Wybuchowy skok', 'Potężny Spartan Kick i taranowanie'],
     classObj: CLASSES.ENFORCER
-  },
-  {
-    id: 'PLAYMAKER',
-    name: 'Playmaker',
-    key: '3',
-    color: '#38bdf8',
-    glowColor: 'rgba(56, 189, 248, 0.45)',
-    role: 'TECHNIK / SNAJPER',
-    attribute: '🎯 KONTROLA PIŁKI',
-    desc: 'Chirurgiczna precyzja, niesamowity spin i błyskawiczny charge.',
-    stats: ['Ekstremalna rotacja piłki', 'Błyskawiczny Kick Charge', 'Podkręcane trajektorie'],
-    classObj: CLASSES.PLAYMAKER
-  },
-  {
-    id: 'SWEEPER',
-    name: 'Sweeper',
-    key: '4',
-    color: '#f59e0b',
-    glowColor: 'rgba(245, 158, 11, 0.45)',
-    role: 'LIBERO / DEFENSYWA',
-    attribute: '🧤 DEFENSYWA',
-    desc: 'Bramkarski mur, natychmiastowe gaszenie piłki i zasięg obrony.',
-    stats: ['Zwiększony zasięg wybicia', 'Pasywne wyhamowanie piłki', 'Żelazna obrona bramki'],
-    classObj: CLASSES.SWEEPER
   }
 ];
 
@@ -1143,7 +1132,7 @@ export function drawClassSelectModal(ctx) {
   // Podtytuł z instrukcją
   ctx.font = '600 12px "Segoe UI", monospace';
   ctx.fillStyle = '#94a3b8';
-  ctx.fillText('WYBIERZ KAFELEK KLASY [1-4] LUB KLIKNIJ KAFELEK MYSZKĄ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
+  ctx.fillText('WYBIERZ KAFELEK KLASY [1-3] LUB KLIKNIJ KAFELEK MYSZKĄ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
 
   // Linia podziału
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
@@ -2127,21 +2116,37 @@ export function initModularGearDevUI() {
   sep.textContent = '|';
   devMenu.appendChild(sep);
 
-  // Przełącznik modularnego hełmu (Hełm vs Czysta łysa głowa)
+  // Przełącznik modularnego hełmu (spada po strzałach w głowę)
   const helmBtn = document.createElement('button');
   helmBtn.className = 'dev-btn';
   helmBtn.id = 'dev-helmet-btn';
-  helmBtn.title = 'Przełącz modularny hełm balistyczny (Łysa głowa vs Hełm FAST)';
+  helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (spada z głowy po trafieniach!)';
   const updateHelmUI = () => {
     const hasH = !!player.hasHelmet;
-    helmBtn.textContent = hasH ? '🪖 HEŁM: WŁ' : '🧑‍🦲 GŁOWA: ŁYSA';
+    const hits = player.helmetHits || 2;
+    helmBtn.textContent = hasH ? `🪖 HEŁM (${hits})` : '🧑‍🦲 BEZ HEŁMU';
     helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
     helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
     helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
   };
   const handleHelm = (e) => {
     e.stopPropagation(); e.preventDefault();
-    player.hasHelmet = !player.hasHelmet;
+    if (player.hasHelmet) {
+      // Jeśli miał założony hełm – strąć go fizycznie w powietrze!
+      spawnKnockedHelmet(
+        player.x + player.w / 2,
+        player.y + 6,
+        -(player.facing || 1) * 5.2,
+        -7.0,
+        player.customVisuals?.helmetColor || player.currentClass?.visuals?.helmetColor || '#27272a',
+        '#00e5ff'
+      );
+      player.hasHelmet = false;
+      player.helmetHits = 0;
+    } else {
+      player.hasHelmet = true;
+      player.helmetHits = 2;
+    }
     updateHelmUI();
   };
   helmBtn.addEventListener('click', handleHelm);
@@ -2149,27 +2154,60 @@ export function initModularGearDevUI() {
   devMenu.appendChild(helmBtn);
   updateHelmUI();
 
-  // Przełącznik modularnej kamizelki (Czysty combat shirt vs Plate Carrier)
+  // Przełącznik modularnej kamizelki (znika po utracie HP)
   const vestBtn = document.createElement('button');
   vestBtn.className = 'dev-btn';
   vestBtn.id = 'dev-vest-btn';
-  vestBtn.title = 'Przełącz modularną kamizelkę kuloodporną (Mundur Combat Shirt vs Plate Carrier)';
+  vestBtn.title = 'Załóż / Zniszcz kamizelkę kuloodporną (znika po zużyciu wytrzymałości!)';
   const updateVestUI = () => {
     const hasV = !!player.hasVest;
-    vestBtn.textContent = hasV ? '🛡️ KAMIZELKA: WŁ' : '👕 MUNDUR: BAZA';
+    const vhp = Math.ceil(player.vestHp || 50);
+    vestBtn.textContent = hasV ? `🛡️ KAMIZELKA (${vhp})` : '👕 BEZ KAMIZELKI';
     vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
     vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
     vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
   };
   const handleVest = (e) => {
     e.stopPropagation(); e.preventDefault();
-    player.hasVest = !player.hasVest;
+    if (player.hasVest) {
+      spawnVestShreds(player.x + player.w / 2, player.y + player.h * 0.45, -(player.facing || 1) * 3.5);
+      player.hasVest = false;
+      player.vestHp = 0;
+    } else {
+      player.hasVest = true;
+      player.vestHp = 50;
+    }
     updateVestUI();
   };
   vestBtn.addEventListener('click', handleVest);
   vestBtn.addEventListener('touchend', handleVest);
   devMenu.appendChild(vestBtn);
   updateVestUI();
+
+  // Przycisk otwierający Koszary / Modyfikację Wyglądu prosto z paska DEV
+  const custDevBtn = document.createElement('button');
+  custDevBtn.className = 'dev-btn';
+  custDevBtn.id = 'dev-customizer-btn';
+  custDevBtn.title = 'Otwórz Koszary / Modyfikację Wyglądu Postaci (Ubrania, Włosy, Łańcuchy, Jetpack, Skiny)';
+  custDevBtn.textContent = '🎨 WYGLĄD';
+  custDevBtn.style.borderColor = '#4ade80';
+  custDevBtn.style.color = '#4ade80';
+  const handleCustDev = (e) => {
+    e.stopPropagation(); e.preventDefault();
+    if (window.uiManager && typeof window.uiManager.openCustomizer === 'function') {
+      window.uiManager.openCustomizer();
+    }
+  };
+  custDevBtn.addEventListener('click', handleCustDev);
+  custDevBtn.addEventListener('touchend', handleCustDev);
+  devMenu.appendChild(custDevBtn);
+
+  if (typeof window !== 'undefined') {
+    window.syncArmorDevButtons = () => {
+      updateHelmUI();
+      updateVestUI();
+    };
+  }
 }
 
 window.addEventListener('wheel', (e) => {
@@ -2359,33 +2397,28 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Tryb wyboru klasy na arenie (Klawisze 1-4 natychmiast zatwierdzają i spawnują postać)
+  // Tryb wyboru klasy na arenie (Klawisze 1-3 natychmiast zatwierdzają i spawnują postać)
   if (GAME_STATE.current === 'CLASS_SELECT' || gameState === GAME_STATES.CLASS_SELECT) {
     if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
       e.preventDefault();
       playUiClick();
-      selectPlayerClass(CLASSES.AERO);
+      selectPlayerClass(CLASSES.RAPTOR);
       return;
     } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
       e.preventDefault();
       playUiClick();
-      selectPlayerClass(CLASSES.ENFORCER);
+      selectPlayerClass(CLASSES.STRIKER);
       return;
     } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
       e.preventDefault();
       playUiClick();
-      selectPlayerClass(CLASSES.PLAYMAKER);
-      return;
-    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
-      e.preventDefault();
-      playUiClick();
-      selectPlayerClass(CLASSES.SWEEPER);
+      selectPlayerClass(CLASSES.ENFORCER);
       return;
     } else if (e.code === 'Space' || e.code === 'Enter') {
       e.preventDefault();
       playUiClick();
       const currentSelected = uiManager?.selectedClassId;
-      const cls = currentSelected ? (CLASSES[currentSelected] || CLASSES.PLAYMAKER) : CLASSES.PLAYMAKER;
+      const cls = currentSelected ? (CLASSES[currentSelected] || CLASSES.RAPTOR) : CLASSES.RAPTOR;
       selectPlayerClass(cls);
       return;
     } else if (e.code === 'Escape') {
@@ -2532,10 +2565,9 @@ window.addEventListener('keydown', (e) => {
     teleportToDistance(BIOME_TELEPORT_TARGETS.HELL);
   }
 
-  if (e.code === 'Digit6' || e.code === 'Numpad6' || e.key === '6') devSetClass('AERO');
-  else if (e.code === 'Digit7' || e.code === 'Numpad7' || e.key === '7') devSetClass('ENFORCER');
-  else if (e.code === 'Digit8' || e.code === 'Numpad8' || e.key === '8') devSetClass('PLAYMAKER');
-  else if (e.code === 'Digit9' || e.code === 'Numpad9' || e.key === '9') devSetClass('SWEEPER');
+  if (e.code === 'Digit6' || e.code === 'Numpad6' || e.key === '6') devSetClass('RAPTOR');
+  else if (e.code === 'Digit7' || e.code === 'Numpad7' || e.key === '7') devSetClass('STRIKER');
+  else if (e.code === 'Digit8' || e.code === 'Numpad8' || e.key === '8') devSetClass('ENFORCER');
 
   if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
 

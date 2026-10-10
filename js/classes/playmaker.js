@@ -1,12 +1,13 @@
 // =========================================================================
-// KLASA: WIRTUOZ (PLAYMAKER) – Technik / Snajper
-// Specjalność: Precyzyjny spin na piłce, szybkie ładowanie kopnięcia,
-//              zwiększony zasięg uderzenia i efekt poświaty snajperskiej.
+// KLASA ŚREDNIA: STRIKER – Szturmowiec / Strzelec
+// Specjalność: Turbo Buty, zbalansowany szturm, precyzyjne strzały,
+//              szybkie ładowanie kopnięcia i kontrola pola walki.
 // =========================================================================
-export const PlaymakerClass = {
-  id: 'PLAYMAKER',
-  name: 'Playmaker',
-  role: 'Technik / Snajper',
+export const StrikerClass = {
+  id: 'STRIKER',
+  name: 'Striker',
+  tier: 'MEDIUM',
+  role: 'Szturmowiec / Strzelec',
 
   // 1. Statystyki fizyczne i ruchowe
   stats: {
@@ -104,3 +105,5 @@ export const PlaymakerClass = {
   // Rysowanie nakładek / aury NAD postacią (po torsie)
   onDrawOverlay(ctx, player) {}
 };
+
+export const PlaymakerClass = StrikerClass;
