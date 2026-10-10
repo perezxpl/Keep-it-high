@@ -258,19 +258,42 @@ export function updateCamera(player, ball, options = {}) {
 
   const isSniperActive = !player?.isHolstered && (player?.currentWeapon?.id === 'SNIPER');
 
+  // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
+  // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
+  const groundFloor = getCameraGroundY();
+  const baseFloorY = isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor);
+  const target = player || ball;
+  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : groundFloor - 50)) : (isArena2 ? 910 : groundFloor - 50);
+  const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
+  const altitude = Math.max(0, baseFloorY - playerFootY);
+
+  // Martwa strefa 140px gwarantuje, że zwykłe podskoki na ziemi nie zmieniają zoomu ani kotwicy.
+  // Pełne maksimum (1.0) osiągane przy ~700px nad gruntem (wieże strażnicze i korony drzew w Arenie 3).
+  const rawElevationFactor = Math.max(0, Math.min(1, (altitude - 140) / 560));
+  if (typeof camera.elevationFactor !== 'number' || !camera._initialized) {
+    camera.elevationFactor = rawElevationFactor;
+  } else {
+    camera.elevationFactor += (rawElevationFactor - camera.elevationFactor) * 0.075;
+  }
+  const elev = camera.elevationFactor;
+
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
     // Domyślny zoom gry gwarantujący płynne i optymalne pole widzenia
-    // Na telefonach: domyślny zoom ustawiony na 0.50 według skali DEV
-    let defaultGameZoom = isMobile
-      ? Math.max(0.50, minZoom)
-      : (isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom)));
-
-    // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
-    if (isSniperActive && !isMobile) {
-      const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
-      defaultGameZoom = Math.max(minZoom, defaultGameZoom * sniperZoomMult);
+    // Na telefonach: bazowy zoom na ziemi 0.50, z płynnym taktycznym oddaleniem na wysokich wieżach (Punkt 3)
+    let defaultGameZoom;
+    if (isMobile) {
+      const elevationZoomMult = 1.0 - (elev * 0.25); // Na szczycie wieży płynne przejście z 0.50 do ~0.375
+      const mobileSniperHighMult = (isSniperActive && elev > 0.15) ? (1.0 - elev * 0.06) : 1.0;
+      defaultGameZoom = Math.max(minZoom, 0.50 * elevationZoomMult * mobileSniperHighMult);
+    } else {
+      defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom));
+      // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
+      if (isSniperActive) {
+        const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
+        defaultGameZoom = Math.max(minZoom, defaultGameZoom * sniperZoomMult);
+      }
     }
 
     camera.targetZoom = defaultGameZoom;
@@ -303,13 +326,14 @@ export function updateCamera(player, ball, options = {}) {
         const mobileRatioX = isSniperActive ? 0.26 : 0.20;
         const maxLeadX = Math.min(viewWidth * mobileRatioX, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_X || 340) * (isSniperActive ? 1.35 : 1.0));
 
-        // Asymetryczny zasięg pionowy (postać domyślnie jest na 65% wysokości):
-        // W górę (rs.axisY < 0): max 10% wysokości widoku, aby postać nigdy nie dotknęła dolnej krawędzi
-        // W dół (rs.axisY > 0): max 15% wysokości widoku, aby postać nigdy nie dotknęła górnej krawędzi
+        // Punkt 2: Odblokowanie głębszego spojrzenia w dół z wysokości (High-Ground Downward Aim)
+        // Na ziemi: 15% w dół (max 150px). Na wieży (elev -> 1): aż do 34% w dół (max 360-450px).
         const axisY = rs.axisY || 0;
+        const downwardRatio = 0.15 + (elev * 0.19);
+        const downwardMaxPx = ((CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 150) + (elev * 210)) * (isSniperActive ? 1.25 : 1.0);
         const maxLeadY = axisY < 0
           ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 120))
-          : Math.min(viewHeight * 0.15, (CONFIG.CAMERA_AIM_MOBILE_MAX_LEAD_Y || 150));
+          : Math.min(viewHeight * downwardRatio, downwardMaxPx);
 
         aimLeadX = (rs.axisX || 0) * rs.power * maxLeadX;
         aimLeadY = axisY * rs.power * maxLeadY;
@@ -346,9 +370,11 @@ export function updateCamera(player, ball, options = {}) {
         const leadMult = isSniperActive ? (CONFIG.CAMERA_SNIPER_LEAD_MULT || 1.40) : 1.0;
         const maxLeadX = (CONFIG.CAMERA_AIM_MAX_LEAD_X || 180) * leadMult;
 
+        const downwardRatioPC = 0.15 + (elev * 0.14);
+        const downwardMaxPxPC = ((CONFIG.CAMERA_AIM_MAX_LEAD_Y || 135) + (elev * 160)) * leadMult;
         const maxLeadY = filteredY < 0
           ? Math.min(viewHeight * 0.10, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 95) * leadMult)
-          : Math.min(viewHeight * 0.15, (CONFIG.CAMERA_AIM_MAX_LEAD_Y || 135) * leadMult);
+          : Math.min(viewHeight * downwardRatioPC, downwardMaxPxPC);
 
         aimLeadX = filteredX * maxLeadX;
         aimLeadY = filteredY * maxLeadY;
@@ -359,7 +385,6 @@ export function updateCamera(player, ball, options = {}) {
   camera.aimLeadX = aimLeadX;
   camera.aimLeadY = aimLeadY;
 
-  const target = player || ball;
   const targetX = target ? (target.x + (target.w ? target.w / 2 : 0)) : (camera.x + viewWidth / 2);
   const targetVx = (target && typeof target.vx === 'number') ? target.vx : 0;
   
@@ -376,10 +401,15 @@ export function updateCamera(player, ball, options = {}) {
     targetCamX = ARENA_LEFT;
   }
 
-  // Ograniczenie pionowe (Y): podłoga i podziemne bunkry
-  const groundFloor = getCameraGroundY();
-  const targetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : groundFloor - 50)) : (isArena2 ? 910 : groundFloor - 50);
-  let targetCamY = (targetY + aimLeadY) - (viewHeight * 0.65);
+  // Punkt 1: Dynamiczna kotwica wysokościowa (Altitude-Based Vertical Framing)
+  // Na ziemi (elev = 0): kotwica 0.65 (postać na dole ekranu, 65% kadru pokazuje górę).
+  // Na wieży / wysokości (elev -> 1): kotwica przesuwa się do 0.20 na telefonie (0.32 na PC),
+  // dzięki czemu postać jest w górnej części ekranu, a aż 80% ekranu odsłania ziemię pod wieżą!
+  const targetY = rawTargetY;
+  const verticalAnchor = isMobile
+    ? (0.65 - (elev * 0.45))
+    : (0.65 - (elev * 0.33));
+  let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
   const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor);
@@ -387,12 +417,14 @@ export function updateCamera(player, ball, options = {}) {
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
-  // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines (np. 18% widoku)
+  // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
   if (player && !player.isDead) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
-    const safeMarginTop = Math.max(70, viewHeight * 0.16);
+    // Na wysokości pozwalamy postaci zbliżyć się nieco wyżej do górnej krawędzi (do 11% zamiast 16%), by odsłonić więcej ziemi
+    const topMarginRatio = 0.16 - (elev * 0.05);
+    const safeMarginTop = Math.max(48, viewHeight * topMarginRatio);
     const safeMarginBottom = Math.max(75, viewHeight * 0.18);
 
     targetCamX = Math.max(pX - viewWidth + safeMarginX, Math.min(targetCamX, pX - safeMarginX));
@@ -443,7 +475,7 @@ export function updateCamera(player, ball, options = {}) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);
-    const hardPadTop = Math.max(50, viewHeight * 0.10);
+    const hardPadTop = Math.max(42, viewHeight * (0.10 - elev * 0.015));
     const hardPadBottom = Math.max(60, viewHeight * 0.12);
 
     if (pX < camera.x + hardPadX) {
