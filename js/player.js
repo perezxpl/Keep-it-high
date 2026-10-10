@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v64_jetpack_flight_hover';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v64_jetpack_flight_hover';
+export * from './player/index.js?v=v71_raptor_customizer';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v71_raptor_customizer';
 

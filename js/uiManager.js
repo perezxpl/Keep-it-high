@@ -3,9 +3,9 @@
 // Zarządza Menu Głównym, Oknem Ustawień oraz Panelem Pauzy
 // =============================================================================
 
-import { CONFIG } from './config.js';
-import { CLASSES, RAPTOR_OUTFITS } from './classes/index.js';
-import { drawPlayer } from './player/renderer.js';
+import { CONFIG } from './config.js?v=v71_raptor_customizer';
+import { CLASSES, RAPTOR_OUTFITS } from './classes/index.js?v=v71_raptor_customizer';
+import { drawPlayer } from './player/renderer.js?v=v71_raptor_customizer';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
@@ -378,6 +378,12 @@ export const uiManager = {
       vx: 0,
       vy: 0,
       facing: 1,
+      yaw: yaw,
+      torsoYaw: yaw,
+      torsoTilt: this.previewJetpackOn ? 0.08 : 0.02,
+      headPitch: 0,
+      gaitMode: 'IDLE',
+      stridePhase: 0,
       onGround: !this.previewJetpackOn,
       isJumping: this.previewJetpackOn,
       isJetpacking: this.previewJetpackOn,
@@ -391,23 +397,20 @@ export const uiManager = {
       hasVest: realP ? !!realP.hasVest : false,
       currentClass: CLASSES.RAPTOR,
       customVisuals: { ...this.customVisuals },
-      torsoYaw: yaw,
       headBob: Math.sin(t) * 0.6,
       pelvisY: -11.8 + (this.previewJetpackOn ? Math.sin(t * 2.5) * 1.5 : 0),
-      thighLen: 18,
-      shinLen: 18,
-      armUpperLen: 14,
-      armForeLen: 13,
+      thighLen: 25,
+      shinLen: 24,
+      upperArmLen: 14,
+      forearmLen: 13,
       aimX: 60,
       aimY: -45,
       pose: {
-        torsoTilt: this.previewJetpackOn ? 0.08 : 0.02,
-        headPitch: 0,
-        torsoYaw: yaw
+        initialized: false
       }
     };
 
-    ctx.translate(W / 2, H - 32);
+    ctx.translate(W / 2, H - 38);
     ctx.scale(2.15, 2.15);
 
     // Podest pod postacią

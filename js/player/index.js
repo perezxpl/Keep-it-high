@@ -4,14 +4,14 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js?v=v64_jetpack_flight_hover';
-import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v64_jetpack_flight_hover';
-import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v64_jetpack_flight_hover';
-import { WEAPONS, updateWeaponState } from '../weapons.js?v=v64_jetpack_flight_hover';
+import { activeArenaId, customObstacles } from '../obstacles.js?v=v71_raptor_customizer';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v71_raptor_customizer';
+import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v71_raptor_customizer';
+import { WEAPONS, updateWeaponState } from '../weapons.js?v=v71_raptor_customizer';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v64_jetpack_flight_hover';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v71_raptor_customizer';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -63,16 +63,16 @@ import {
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
-} from './actions.js?v=v64_jetpack_flight_hover';
-import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v64_jetpack_flight_hover';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v64_jetpack_flight_hover';
+} from './actions.js?v=v71_raptor_customizer';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v71_raptor_customizer';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v71_raptor_customizer';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v64_jetpack_flight_hover';
-export * from './actions.js?v=v64_jetpack_flight_hover';
-export * from './death.js?v=v64_jetpack_flight_hover';
-export * from './renderer.js?v=v64_jetpack_flight_hover';
+export * from './locomotion.js?v=v71_raptor_customizer';
+export * from './actions.js?v=v71_raptor_customizer';
+export * from './death.js?v=v71_raptor_customizer';
+export * from './renderer.js?v=v71_raptor_customizer';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1624,4 +1624,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js?v=v64_jetpack_flight_hover';
+export { throwTacticalGrenade } from './actions.js?v=v71_raptor_customizer';

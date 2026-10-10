@@ -1,6 +1,6 @@
-import { RaptorClass, RAPTOR_OUTFITS } from './aero.js';
-import { StrikerClass } from './playmaker.js';
-import { EnforcerClass } from './enforcer.js?v=v64_jetpack_flight_hover';
+import { RaptorClass, RAPTOR_OUTFITS } from './aero.js?v=v71_raptor_customizer';
+import { StrikerClass } from './playmaker.js?v=v71_raptor_customizer';
+import { EnforcerClass } from './enforcer.js?v=v71_raptor_customizer';
 
 export { RAPTOR_OUTFITS };
 

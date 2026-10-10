@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v71_raptor_customizer';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v68_hud_pad_contrast';
+} from './world.js?v=v71_raptor_customizer';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v64_jetpack_flight_hover';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v64_jetpack_flight_hover';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v64_jetpack_flight_hover';
+} from './player.js?v=v71_raptor_customizer';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v71_raptor_customizer';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v71_raptor_customizer';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v64_jetpack_flight_hover';
+} from './ball.js?v=v71_raptor_customizer';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v64_jetpack_flight_hover';
-import { CLASSES } from './classes/index.js?v=v64_jetpack_flight_hover';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v64_jetpack_flight_hover';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v64_jetpack_flight_hover';
+} from './obstacles.js?v=v71_raptor_customizer';
+import { CLASSES } from './classes/index.js?v=v71_raptor_customizer';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v71_raptor_customizer';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v71_raptor_customizer';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v64_jetpack_flight_hover';
+} from './network.js?v=v71_raptor_customizer';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v64_jetpack_flight_hover';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v64_jetpack_flight_hover';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
+} from './mobileControls.js?v=v71_raptor_customizer';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v71_raptor_customizer';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v71_raptor_customizer';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

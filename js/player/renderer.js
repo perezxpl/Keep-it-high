@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v64_jetpack_flight_hover';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v71_raptor_customizer';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v64_jetpack_flight_hover';
-import { getRagdollRenderPose } from './death.js?v=v64_jetpack_flight_hover';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v64_jetpack_flight_hover';
+} from './actions.js?v=v71_raptor_customizer';
+import { getRagdollRenderPose } from './death.js?v=v71_raptor_customizer';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v71_raptor_customizer';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {

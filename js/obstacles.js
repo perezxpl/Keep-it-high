@@ -12,7 +12,7 @@ import {
   LEFT_MASSIF_AND_RAMP_PROFILE, CENTRAL_HILL_PROFILE, RIGHT_MASSIF_PROFILE,
   getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
-} from './world.js?v=v64_jetpack_flight_hover';
+} from './world.js?v=v71_raptor_customizer';
 import { clearExplosionParticles } from './particles.js';
 
 const _arenaResetCallbacks = [];
