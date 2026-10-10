@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v60_mobile_reload_fix';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v61_prone_overhaul';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v60_mobile_reload_fix';
-import { getRagdollRenderPose } from './death.js?v=v60_mobile_reload_fix';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v60_mobile_reload_fix';
+} from './actions.js?v=v61_prone_overhaul';
+import { getRagdollRenderPose } from './death.js?v=v61_prone_overhaul';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v61_prone_overhaul';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -768,12 +768,25 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const armCurHp = playerRef ? Math.max(0, playerRef.hp ?? 100) : armMaxHp;
   const armDmgRatio = (playerRef && playerRef.isDead) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (armCurHp / armMaxHp)));
 
-  const elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
-  const elbowY = shY + Math.cos(swingAngle) * upperLen;
+  let elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
+  let elbowY = shY + Math.cos(swingAngle) * upperLen;
 
   const forearmAngle = swingAngle + elbowAngle;
-  const wristX = elbowX + Math.sin(forearmAngle) * foreLen * facing;
-  const wristY = elbowY + Math.cos(forearmAngle) * foreLen;
+  let wristX = elbowX + Math.sin(forearmAngle) * foreLen * facing;
+  let wristY = elbowY + Math.cos(forearmAngle) * foreLen;
+
+  // W pozycji leżącej (PRONE) łokieć i przedramię opierają się na podłożu i nie wnikają pod ziemię
+  if (playerRef && playerRef.isProne && !playerRef.isDead) {
+    const proneFloorY = (playerRef.currentGroundY || playerRef.groundY || (playerRef.y + (playerRef.h || 70))) - 2.0;
+    if (elbowY > proneFloorY) {
+      const dyOver = elbowY - proneFloorY;
+      elbowY = proneFloorY;
+      wristY -= dyOver * 0.45;
+    }
+    if (wristY > proneFloorY) {
+      wristY = proneFloorY;
+    }
+  }
 
   const armDir = Math.atan2(elbowY - shY, elbowX - shX);
   const foreDir = Math.atan2(wristY - elbowY, wristX - elbowX);
@@ -1040,6 +1053,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ));
 
   const safeFootY = isSpecialKickOrProne ? targetFootY : Math.max(hipY + 6, targetFootY);
+  if (playerRef && playerRef.isProne && !playerRef.isDead) {
+    // Projekcja 2.5D w leżeniu: przy podciąganiu kolana w bok po ziemi udo i łydka ulegają skrótowi perspektywicznemu,
+    // dzięki czemu nakolannik ślizga się płasko po powierzchni gruntu zamiast wbijać się pod ziemię lub sterczeć w górę
+    const dProne = Math.hypot(targetFootX - hipX, safeFootY - hipY);
+    const desiredTotalL = Math.min(l1 + l2, Math.sqrt(dProne * dProne + 32));
+    const proneScale = Math.max(0.62, desiredTotalL / Math.max(1, l1 + l2));
+    l1 = l1 * proneScale;
+    l2 = l2 * proneScale;
+  }
   const ik = solve2BoneIK(hipX, hipY, targetFootX, safeFootY, l1, l2, facing, -1, isSpecialKickOrProne);
   const thighAng = Math.atan2(ik.kneeY - hipY, ik.kneeX - hipX);
   const shinAng = Math.atan2(ik.footY - ik.kneeY, ik.footX - ik.kneeX);
@@ -1258,6 +1280,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   if (playerRef && playerRef.isDead) {
     targetEffAnkle = ankleRot;
     targetFlex = 0;
+  } else if (playerRef && playerRef.isProne) {
+    // W pozycji leżącej (PRONE) stopa jest skierowana czubkiem w dół ku ziemi,
+    // a palce buta zginają się płasko po podłożu, dając punkt podparcia przy czołganiu
+    targetEffAnkle = ankleRot;
+    const ankleMag = Math.abs(ankleRot);
+    targetFlex = Math.max(0.45, Math.min(0.95, (ankleMag - 0.85) * 1.35));
   } else if (isSpecialKick && Math.abs(ankleRot) > 1.1) {
     targetEffAnkle = ankleRot;
     targetFlex = 0;
@@ -2322,9 +2350,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
-  const isProneCrawling = p.isProne && speed > 0.08 && (!p.shootPoseWeight || p.shootPoseWeight < 0.2);
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
-  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !isProneCrawling && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
+  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
 
   if (hasActiveWeapon) {
     const hold = getWeaponHoldTransform(p);
@@ -2583,26 +2610,50 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       pose.headPitch = lerp(0.14, 0.0, w) * p.facing;
     }
   } else if (p.isProne) {
-    pose.torsoTilt = 1.48 * p.facing;
-    pose.headPitch = -0.45 * p.facing;
+    const isCrawlingNow = speed > 0.08;
+    let targetProneTilt = isCrawlingNow
+      ? (1.28 + Math.sin((p.crawlPhase || 0) * 2) * 0.025)
+      : 1.24;
+
+    let proneWorldAimPitch = isCrawlingNow ? (0.06 + Math.sin((p.crawlPhase || 0) * 2) * 0.03) : 0.02;
+    if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
+      const shEstX = hipX + 20 * currentFacingDir;
+      const shEstY = hipY - 7;
+      const rawAimP = Math.atan2(p.aimY - shEstY, Math.max(8, (p.aimX - shEstX) * currentFacingDir));
+      proneWorldAimPitch = Math.max(-0.55, Math.min(0.20, rawAimP));
+      targetProneTilt = Math.max(1.14, Math.min(1.34, targetProneTilt + proneWorldAimPitch * 0.18));
+    }
+
+    const finalProneTilt = targetProneTilt * currentFacingDir;
+    pose.torsoTilt += (finalProneTilt - pose.torsoTilt) * 0.28;
+
+    // Głowa uniesiona ku górze (-abs(torsoTilt)) + podążanie za kątem celowania + przyłożenie policzka do kolby
+    const absTorso = Math.abs(pose.torsoTilt);
+    const proneCheekWeld = (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) ? (0.12 * p.shootPoseWeight) : 0;
+    const targetProneHeadPitch = -absTorso + proneWorldAimPitch + proneCheekWeld;
+    pose.headPitch += (targetProneHeadPitch - pose.headPitch) * 0.28;
   } else {
     pose.torsoTilt += (p.torsoTilt - pose.torsoTilt) * 0.24;
     pose.headPitch += (p.headPitch - pose.headPitch) * 0.22;
+
+    // Przyłożenie policzka do baki kolby (Cheek Weld) podczas celowania/strzału
+    if (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) {
+      const cheekWeld = 0.10 * p.shootPoseWeight * currentFacingDir;
+      pose.headPitch += (cheekWeld - pose.headPitch) * 0.25;
+    }
   }
 
-  // Przyłożenie policzka do baki kolby (Cheek Weld) podczas celowania/strzału
-  if (hasActiveWeapon && (p.shootPoseWeight || 0) > 0.05) {
-    const cheekWeld = 0.10 * p.shootPoseWeight * currentFacingDir;
-    pose.headPitch += (cheekWeld - pose.headPitch) * 0.25;
+  let shoulderCounterTilt = 0;
+  if (!p.isDead && speed > 0.08) {
+    if (p.isProne) {
+      shoulderCounterTilt = -Math.cos(p.crawlPhase || 0) * 0.08 * currentFacingDir;
+    } else {
+      let targetShoulderAmp = 0.05;
+      if (p.gaitMode === 'SPRINT') targetShoulderAmp = 0.12;
+      else if (p.gaitMode === 'JOG') targetShoulderAmp = 0.08;
+      shoulderCounterTilt = -Math.sin(p.stridePhase) * targetShoulderAmp * currentFacingDir;
+    }
   }
-
-  let targetShoulderAmp = 0;
-  if (!p.isDead && speed > 0.1) {
-    if (p.gaitMode === 'SPRINT') targetShoulderAmp = 0.12;
-    else if (p.gaitMode === 'JOG') targetShoulderAmp = 0.08;
-    else targetShoulderAmp = 0.05;
-  }
-  const shoulderCounterTilt = p.isDead ? 0 : -Math.sin(p.stridePhase) * targetShoulderAmp * currentFacingDir;
   pose.shoulderTilt += (shoulderCounterTilt - pose.shoulderTilt) * 0.20;
 
   const cosTorsoT = Math.cos(pose.torsoTilt);
@@ -2846,7 +2897,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   // GŁOWA LUB KIKUT SZYI
   ctx.save();
-  ctx.translate(0.0, -30.5 + (p.headBob * 0.35));
+  if (p.isProne && !p.isDead) {
+    ctx.translate(-2.0 * currentFacingDir, -29.4 + ((p.headBob || 0) * 0.25));
+  } else {
+    ctx.translate(0.0, -30.5 + (p.headBob * 0.35));
+  }
 
   if (p.isDead && (!p.hasHead || p.decapitated || p.severedHead)) {
     ctx.fillStyle = '#7f1d1d';

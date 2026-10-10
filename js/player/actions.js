@@ -5,8 +5,8 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v60_mobile_reload_fix';
-import { spawnAeroSuperGrenade } from '../projectiles.js?v=v60_mobile_reload_fix';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v61_prone_overhaul';
+import { spawnAeroSuperGrenade } from '../projectiles.js?v=v61_prone_overhaul';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -899,50 +899,76 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
 
 export function getProneIKTargets(crawlPhase, isCrawling, hipX, plantFloorY, facing) {
   if (isCrawling) {
-    const legStride = Math.sin(crawlPhase) * 8;
+    const pFront = crawlPhase;
+    const pBack = crawlPhase + Math.PI;
+
+    // Nogi: naprzemienne podciąganie kolana po ziemi (31 px) i odpychanie ciała do wyprostu (46 px)
+    const frontDist = 38.5 + Math.sin(pFront) * 7.5;
+    const backDist = 38.5 + Math.sin(pBack) * 7.5;
+
+    // W fazie podciągania (cos < 0) stopa lekko unosi się nad grunt, w fazie odepchnięcia (cos > 0) mocno zapiera palcami
+    const frontLift = Math.max(0, -Math.cos(pFront)) * 1.8;
+    const backLift = Math.max(0, -Math.cos(pBack)) * 1.8;
+
+    const frontPush = Math.max(0, Math.cos(pFront));
+    const backPush = Math.max(0, Math.cos(pBack));
+
+    // Ręce (bez broni): naprzemienne sięganie dłonią w przód i podciąganie tułowia na łokciu po ziemi.
+    // Suma (swing + elbow) = foreAngle (~1.56-1.68 rad), dzięki czemu przedramię leży płasko na podłożu, a nie sterczy w górę!
+    const frontArmSwing = 0.36 + Math.cos(pFront) * 0.36;
+    const frontForeAngle = 1.56 + Math.max(0, -Math.sin(pFront)) * 0.12;
+    const frontArmElbow = frontForeAngle - frontArmSwing;
+
+    const backArmSwing = 0.36 + Math.cos(pBack) * 0.36;
+    const backForeAngle = 1.56 + Math.max(0, -Math.sin(pBack)) * 0.12;
+    const backArmElbow = backForeAngle - backArmSwing;
+
     return {
       front: {
-        x: hipX - (44 + legStride) * facing,
-        y: plantFloorY,
-        ankle: 0.05 * facing
+        x: hipX - frontDist * facing,
+        y: plantFloorY - 4.8 - frontLift,
+        ankle: (1.20 + frontPush * 0.24) * facing
       },
       back: {
-        x: hipX - (44 - legStride) * facing,
-        y: plantFloorY,
-        ankle: -0.05 * facing
+        x: hipX - backDist * facing,
+        y: plantFloorY - 5.0 - backLift,
+        ankle: (1.20 + backPush * 0.24) * facing
       },
       frontArm: {
-        swing: 0.85 + Math.cos(crawlPhase) * 0.35,
-        elbow: 1.40
+        swing: frontArmSwing,
+        elbow: frontArmElbow
       },
       backArm: {
-        swing: 0.85 - Math.cos(crawlPhase) * 0.35,
-        elbow: 1.40
+        swing: backArmSwing,
+        elbow: backArmElbow
       }
     };
   }
 
+  // W miejscu (PRONE IDLE): jedna noga swobodnie wyprostowana, druga lekko ugięta stabilizująco,
+  // postać oparta stabilnie na łokciach i przedramionach ułożonych płasko na ziemi (swing + elbow ≈ 1.58 rad)
   return {
     front: {
-      x: hipX - 44 * facing,
-      y: plantFloorY,
-      ankle: 0.0
+      x: hipX - 44.5 * facing,
+      y: plantFloorY - 4.8,
+      ankle: 1.24 * facing
     },
     back: {
-      x: hipX - 46 * facing,
-      y: plantFloorY,
-      ankle: 0.0
+      x: hipX - 37.5 * facing,
+      y: plantFloorY - 5.2,
+      ankle: 1.32 * facing
     },
     frontArm: {
-      swing: 0.70,
-      elbow: 1.30
+      swing: 0.34,
+      elbow: 1.24
     },
     backArm: {
-      swing: 0.65,
-      elbow: 1.25
+      swing: 0.48,
+      elbow: 1.10
     }
   };
 }
+
 
 /**
  * Rzut granatem taktycznym niszczącym teren (standardowe wyposażenie / 10s cooldown)

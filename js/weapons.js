@@ -7,8 +7,8 @@ import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   bodyGibs
-} from './world.js?v=v60_mobile_reload_fix';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v60_mobile_reload_fix';
+} from './world.js?v=v61_prone_overhaul';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v61_prone_overhaul';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import {
@@ -177,7 +177,10 @@ export function getShooterShoulderPos(shooter) {
   const charFacing = shooter.facing || 1;
   const hipX = shooter.x + shooter.w / 2;
   let hipY = shooter.y + shooter.h - 40 + (shooter.pelvisY || 0);
-  if (shooter.staggerTimer > 0) {
+  if (shooter.isProne) {
+    const floorY = shooter.currentGroundY || shooter.groundY || (shooter.y + (shooter.h || 70));
+    hipY = floorY - 6.0;
+  } else if (shooter.staggerTimer > 0) {
     const floorY = shooter.currentGroundY || shooter.groundY || (shooter.y + 15);
     hipY = floorY - 6;
   }
@@ -560,13 +563,34 @@ export function getWeaponHoldTransform(p) {
 
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
   let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback + reloadPivotShiftY;
+  let proneAimAngle = blendedAngle;
 
   if (p.isProne) {
-    const floorY = p.currentGroundY || p.groundY || 560;
-    finalPivotY = Math.max(floorY - 9.0, Math.min(floorY - 6.5, finalPivotY));
-  }
+    const floorY = p.currentGroundY || p.groundY || (p.y + (p.h || 70)) || 560;
+    const crawlP = p.crawlPhase || 0;
+    const isCrawling = speed > 0.08;
 
-  let proneAimAngle = p.isProne ? Math.max(-0.42, Math.min(0.08, blendedAngle)) : blendedAngle;
+    // 1. Pozycja strzelecka w leżeniu (podparcie na łokciach, kolba w barku, magazynek nad ziemią)
+    const fireAngle = Math.max(-0.56, Math.min(0.16, shoulderAimAngle + reloadAngleOffset));
+    const firePivotX = rightShoulderX + Math.cos(fireAngle) * (stockLen * 0.92) * charFacing - Math.cos(fireAngle) * kickback * 0.65 * charFacing + reloadPivotShiftX;
+    const firePivotY = Math.max(floorY - 16.5, Math.min(floorY - 10.5, (floorY - 12.2) + Math.sin(fireAngle) * (stockLen * 0.75) - Math.sin(fireAngle) * kickback * 0.65 + reloadPivotShiftY));
+
+    // 2. Pozycja czołgania z bronią w dłoniach (Tactical Cradle Crawl: broń blisko ziemi, lufa lekko uniesiona, kołysanie w rytm łokci)
+    const crawlSwayX = isCrawling ? Math.cos(crawlP) * 2.8 * charFacing : 0;
+    const crawlBobY = isCrawling ? Math.abs(Math.sin(crawlP)) * 1.4 : 0;
+    const crawlPitch = isCrawling
+      ? (-0.14 + Math.sin(crawlP) * 0.06 + reloadAngleOffset)
+      : Math.max(-0.52, Math.min(0.14, directAngle * 0.85 + reloadAngleOffset));
+
+    const cradlePivotX = rightShoulderX + 7.2 * charFacing + crawlSwayX + reloadPivotShiftX;
+    const cradlePivotY = (floorY - 11.2) - crawlBobY + reloadPivotShiftY;
+
+    // Płynny blend między czołganiem z bronią a stabilnym celowaniem/strzelaniem z podparcia na łokciach
+    const proneFireBlend = isCrawling ? Math.min(1.0, w * 1.15) : Math.max(0.65, w);
+    finalPivotX = lerp(cradlePivotX, firePivotX, proneFireBlend);
+    finalPivotY = lerp(cradlePivotY, firePivotY, proneFireBlend);
+    proneAimAngle = lerpAngle(crawlPitch, fireAngle, proneFireBlend);
+  }
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);

@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v60_mobile_reload_fix';
+} from './world.js?v=v61_prone_overhaul';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -21,12 +21,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v60_mobile_reload_fix';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v60_mobile_reload_fix';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v60_mobile_reload_fix';
+} from './player.js?v=v61_prone_overhaul';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v61_prone_overhaul';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v61_prone_overhaul';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v60_mobile_reload_fix';
+} from './ball.js?v=v61_prone_overhaul';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -34,24 +34,24 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v60_mobile_reload_fix';
-import { CLASSES } from './classes/index.js?v=v60_mobile_reload_fix';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v60_mobile_reload_fix';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v60_mobile_reload_fix';
+} from './obstacles.js?v=v61_prone_overhaul';
+import { CLASSES } from './classes/index.js?v=v61_prone_overhaul';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v61_prone_overhaul';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v61_prone_overhaul';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v60_mobile_reload_fix';
+} from './network.js?v=v61_prone_overhaul';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v60_mobile_reload_fix';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v60_mobile_reload_fix';
+} from './mobileControls.js?v=v61_prone_overhaul';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v61_prone_overhaul';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

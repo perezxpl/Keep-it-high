@@ -4,14 +4,14 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js?v=v60_mobile_reload_fix';
-import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v60_mobile_reload_fix';
-import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v60_mobile_reload_fix';
-import { WEAPONS, updateWeaponState } from '../weapons.js?v=v60_mobile_reload_fix';
+import { activeArenaId, customObstacles } from '../obstacles.js?v=v61_prone_overhaul';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v61_prone_overhaul';
+import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v61_prone_overhaul';
+import { WEAPONS, updateWeaponState } from '../weapons.js?v=v61_prone_overhaul';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v60_mobile_reload_fix';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v61_prone_overhaul';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -63,16 +63,16 @@ import {
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
-} from './actions.js?v=v60_mobile_reload_fix';
-import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v60_mobile_reload_fix';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v60_mobile_reload_fix';
+} from './actions.js?v=v61_prone_overhaul';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v61_prone_overhaul';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v61_prone_overhaul';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v60_mobile_reload_fix';
-export * from './actions.js?v=v60_mobile_reload_fix';
-export * from './death.js?v=v60_mobile_reload_fix';
-export * from './renderer.js?v=v60_mobile_reload_fix';
+export * from './locomotion.js?v=v61_prone_overhaul';
+export * from './actions.js?v=v61_prone_overhaul';
+export * from './death.js?v=v61_prone_overhaul';
+export * from './renderer.js?v=v61_prone_overhaul';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1023,7 +1023,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.gaitMode = speed > 0.08 ? 'CRAWL' : 'PRONE';
       player.state = 'PRONE';
       player.hitboxHeight = 26;
-      player.crawlPhase = (player.crawlPhase || 0) + speed * 0.14;
+      const crawlDir = isMovingBackwards ? -1 : 1;
+      player.crawlPhase = (player.crawlPhase || 0) + crawlDir * speed * 0.16;
     } else if (player.isCrouching) {
       player.gaitMode = speed > 0.1 ? 'CROUCH_WALK' : 'CROUCH';
       player.state = 'CROUCH';
@@ -1271,7 +1272,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.isSliding) {
     targetTilt = -0.75 * player.facing;
   } else if (player.isProne) {
-    targetTilt = 1.48 * player.facing;
+    // Klatka piersiowa i barki lekko uniesione na łokciach (~1.24 rad), podczas czołgania tors delikatnie niżej (~1.28 rad)
+    const isCrawlingNow = speed > 0.08;
+    let proneTilt = isCrawlingNow
+      ? (1.28 + Math.sin((player.crawlPhase || 0) * 2) * 0.025)
+      : 1.24;
+    // Podczas celowania w górę/dół w leżeniu klatka piersiowa lekko unosi się lub opuszcza za lufą
+    if (typeof player.aimX === 'number' && typeof player.aimY === 'number' && !isNaN(player.aimX) && !isNaN(player.aimY)) {
+      const shEstX = hipX + 20 * player.facing;
+      const shEstY = (player.currentGroundY || GROUND_Y) - 13;
+      const rawAimP = Math.atan2(player.aimY - shEstY, Math.max(8, (player.aimX - shEstX) * player.facing));
+      const clampedAimP = Math.max(-0.55, Math.min(0.18, rawAimP));
+      proneTilt = Math.max(1.14, Math.min(1.34, proneTilt + clampedAimP * 0.18));
+    }
+    targetTilt = proneTilt * player.facing;
   } else if (player.isCrouching) {
     if (player.gaitMode === 'CROUCH_WALK') {
       if (isMovingBackwards) {
@@ -1301,7 +1315,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     else if (player.gaitMode === 'SPRINT') targetTilt = (0.28 + ((speed - jogMax) / 2.6) * 0.10) * player.facing;
   }
 
-  if (player.shootPoseWeight > 0) {
+  if (player.shootPoseWeight > 0 && !player.isProne) {
     const shootingLean = player.isCrouching ? 0.09 : 0.075;
     targetTilt += shootingLean * player.facing * player.shootPoseWeight;
   }
@@ -1493,7 +1507,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const pelvisRate = (player.jumpSquatTimer > 0 || player.jumpTakeoffTimer > 0 || player.landingSquatTimer > 0) ? 0.45 : 0.18;
   player.pelvisY += (targetPelvisY - player.pelvisY) * pelvisRate;
 
-  const targetHeadBob = (player.pelvisY * 0.35) + (Math.abs(player.vx) > 0 ? Math.sin(player.stridePhase * 2) * 1.4 : 0);
+  const targetHeadBob = player.isProne
+    ? (speed > 0.08 ? Math.sin((player.crawlPhase || 0) * 2) * 1.1 : 0)
+    : ((player.pelvisY * 0.35) + (Math.abs(player.vx) > 0 ? Math.sin(player.stridePhase * 2) * 1.4 : 0));
   const headForce = (targetHeadBob - player.headBob) * 0.32;
   player.headBobVel = (player.headBobVel + headForce) * 0.65;
   player.headBob += player.headBobVel;
@@ -1522,6 +1538,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   let desiredPitch = 0;
   if (player.kickMode === 'BACKFLIP') {
     desiredPitch = 0.35;
+  } else if (player.isProne) {
+    const worldPitch = Math.max(-0.55, Math.min(0.22, Math.atan2(dyLook, Math.max(8, dxLook))));
+    const absTorso = Math.abs(player.torsoTilt) || 1.24;
+    desiredPitch = -absTorso + worldPitch;
   } else {
     const worldPitch = Math.atan2(dyLook, Math.max(8, dxLook));
     const compensatedPitch = worldPitch - (player.torsoTilt * player.facing);
@@ -1551,4 +1571,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js?v=v60_mobile_reload_fix';
+export { throwTacticalGrenade } from './actions.js?v=v61_prone_overhaul';
