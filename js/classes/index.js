@@ -1,6 +1,6 @@
-import { RaptorClass } from './aero.js?v=v75_fabric_folds';
-import { StrikerClass } from './playmaker.js?v=v75_fabric_folds';
-import { EnforcerClass } from './enforcer.js?v=v75_fabric_folds';
+import { RaptorClass } from './aero.js?v=v76_anatomy_boots_fix';
+import { StrikerClass } from './playmaker.js?v=v76_anatomy_boots_fix';
+import { EnforcerClass } from './enforcer.js?v=v76_anatomy_boots_fix';
 
 export const CLASSES = {
   // Kolejność od lekkiej do ciężkiej: 1. Raptor, 2. Striker, 3. Enforcer
