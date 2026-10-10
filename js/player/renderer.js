@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v53_weapon_reload_animation';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v54_jetpack_led_gauge';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v53_weapon_reload_animation';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v54_jetpack_led_gauge';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -1579,21 +1579,21 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
     }
 
     // WSKAŹNIK STANU PALIWA: 4 SEGMENTY LED W CENTRALNEJ KIESZENI
-    const panelW = 3.2;
+    const panelW = 4.0;
     const panelH = 14.5;
     const panelX = -panelW / 2;
-    const panelY = packY + 3.0;
+    const panelY = packY + 2.8;
 
     // Gniazdo montażowe (ramka)
-    ctx.fillStyle = '#090d16';
+    ctx.fillStyle = '#050811';
     ctx.fillRect(panelX, panelY, panelW, panelH);
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = '#334155';
     ctx.lineWidth = 0.6;
     ctx.strokeRect(panelX, panelY, panelW, panelH);
 
     // 4 segmenty LED (indeksy 0..3 od dołu do góry)
-    const segW = 2.0;
-    const segH = 2.0;
+    const segW = 2.8;
+    const segH = 2.2;
     const segX = -segW / 2;
     const segOffsets = [10.5, 7.5, 4.5, 1.5]; // Y offset od panelY
 
@@ -1603,19 +1603,21 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
 
       if (lit) {
         const segCol = getSegmentColor(i);
-        ctx.fillStyle = isFiring ? '#ffffff' : segCol;
+        ctx.fillStyle = segCol;
         ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
-        ctx.shadowBlur = isFiring ? 8 : 4;
+        ctx.shadowBlur = isFiring ? 12 : 6;
         ctx.fillRect(segX, sY, segW, segH);
 
-        if (isFiring) {
-          ctx.fillStyle = segCol;
-          ctx.fillRect(segX + 0.3, sY + 0.3, segW - 0.6, segH - 0.6);
-        }
+        // Wyraźny jasny rdzeń wyładowania
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(segX + 0.5, sY + 0.5, segW - 1.0, segH - 1.0);
       } else {
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(segX, sY, segW, segH);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 0.4;
+        ctx.strokeRect(segX, sY, segW, segH);
       }
     }
     ctx.shadowBlur = 0;
@@ -1680,22 +1682,22 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
     ctx.fillRect(leftX, packTopY + 13, packW, 1.8);
 
     // WSKAŹNIK STANU PALIWA: 4 SEGMENTY LED W PROFILU PLECAKA
-    const panelX = (facingDir > 0 ? leftX + 0.8 : rightX - 3.0);
-    const panelW = 2.2;
+    const panelW = 3.0;
     const panelH = 14.5;
-    const panelY = packTopY + 3.0;
+    const panelX = (facingDir > 0 ? leftX + 0.6 : rightX - panelW - 0.6);
+    const panelY = packTopY + 2.8;
 
     // Gniazdo montażowe (ramka)
-    ctx.fillStyle = '#090d16';
+    ctx.fillStyle = '#050811';
     ctx.fillRect(panelX, panelY, panelW, panelH);
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 0.6;
     ctx.strokeRect(panelX, panelY, panelW, panelH);
 
     // 4 segmenty LED (indeksy 0..3 od dołu do góry)
-    const segW = panelW - 0.6;
-    const segH = 2.0;
-    const segX = panelX + 0.3;
+    const segW = 2.0;
+    const segH = 2.2;
+    const segX = panelX + (panelW - segW) / 2;
     const segOffsets = [10.5, 7.5, 4.5, 1.5]; // Y offset od panelY
 
     for (let i = 0; i < 4; i++) {
@@ -1704,19 +1706,21 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
 
       if (lit) {
         const segCol = getSegmentColor(i);
-        ctx.fillStyle = isFiring ? '#ffffff' : segCol;
+        ctx.fillStyle = segCol;
         ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
-        ctx.shadowBlur = isFiring ? 8 : 4;
+        ctx.shadowBlur = isFiring ? 12 : 6;
         ctx.fillRect(segX, sY, segW, segH);
 
-        if (isFiring) {
-          ctx.fillStyle = segCol;
-          ctx.fillRect(segX + 0.2, sY + 0.2, segW - 0.4, segH - 0.4);
-        }
+        // Wyraźny jasny rdzeń wyładowania
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(segX + 0.4, sY + 0.4, segW - 0.8, segH - 0.8);
       } else {
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(segX, sY, segW, segH);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 0.4;
+        ctx.strokeRect(segX, sY, segW, segH);
       }
     }
     ctx.shadowBlur = 0;
