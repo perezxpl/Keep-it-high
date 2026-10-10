@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v64_jetpack_flight_hover';
+} from './world.js?v=v68_hud_pad_contrast';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -3429,7 +3429,7 @@ function draw() {
     drawClassSelectModal(ctx);
   } else {
     const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
-    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State });
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
   }
 
   if (editorState.active) {

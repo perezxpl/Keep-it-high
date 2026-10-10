@@ -2946,8 +2946,12 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
   ctx.translate(cx, cy);
 
-  const mainColor = isPressed ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.45)';
-  const faintColor = isPressed ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.22)';
+  const mainColor = isPressed ? 'rgba(255, 255, 255, 0.78)' : 'rgba(255, 255, 255, 0.48)';
+  const faintColor = isPressed ? 'rgba(255, 255, 255, 0.48)' : 'rgba(255, 255, 255, 0.25)';
+
+  // Ciemna mikro-otoczka (Dual-Stroke / Dark Halo): niewidoczna na ciemnym tle, daje ostry kontrast na bieli
+  ctx.shadowColor = isPressed ? 'rgba(0, 0, 0, 0.62)' : 'rgba(0, 0, 0, 0.48)';
+  ctx.shadowBlur = 2.5;
 
   ctx.strokeStyle = mainColor;
   ctx.fillStyle = mainColor;
@@ -3054,7 +3058,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   const time = performance.now();
 
   // -------------------------------------------------------------------------
-  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Czysty, bardziej transparentny, bez napisów)
+  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Dual-Stroke: ciemna mikro-otoczka + jasny rdzeń)
   // -------------------------------------------------------------------------
   if (leftStick && leftStick.baseX > 0) {
     const isStickActive = leftStick.active;
@@ -3063,13 +3067,19 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const bx = leftStick.baseX;
     const by = leftStick.baseY;
 
-    // Baza drążka: w pełni przezroczysta, delikatny kontur bez koloru
+    // Baza drążka: subtelne przydymienie (niewidoczne na czerni, czytelne na śniegu/bieli)
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)';
+    ctx.fillStyle = isStickActive ? 'rgba(15, 23, 42, 0.11)' : 'rgba(15, 23, 42, 0.06)';
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.09)';
+    // Warstwa 1 (Dark Halo): ciemny kontur pod spodem dla kontrastu na jasnym tle
+    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.36)' : 'rgba(0, 0, 0, 0.22)';
+    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 (Light Core): jasny kontur widoczny na ciemnym tle
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.11)';
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     ctx.stroke();
 
@@ -3077,29 +3087,32 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const knobX = bx + (leftStick.axisX * maxR);
     const knobY = by + (leftStick.axisY * maxR);
 
-    // Dyskretna linia wychylenia
+    // Dyskretna linia wychylenia (Dual-Stroke)
     if (isStickActive && (Math.abs(leftStick.axisX) > 0.05 || Math.abs(leftStick.axisY) > 0.05)) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
-      ctx.lineWidth = 1.1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
       ctx.lineTo(knobX, knobY);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1.1;
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // Gałka lewego drążka (subtelne intuicyjne podświetlenie)
+    // Gałka lewego drążka (subtelne intuicyjne podświetlenie + przydymiona krawędź)
     const knobR = 22;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive || isJetActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.28)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.12)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.05)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.30)');
+      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.12)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.14)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.04)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.11)');
+      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.10)');
     }
 
     ctx.beginPath();
@@ -3107,7 +3120,13 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.16)';
+    // Warstwa 1 obrysu gałki (Dark Halo)
+    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 obrysu gałki (Light Core)
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.40)' : 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     if (isStickActive) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
@@ -3116,15 +3135,20 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Subtelny centralny punkt gałki
+    // Subtelny centralny punkt gałki z ciemną otoczką
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 4.2, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? 'rgba(0, 0, 0, 0.36)' : 'rgba(0, 0, 0, 0.22)';
+    ctx.fill();
+
     ctx.beginPath();
     ctx.arc(knobX, knobY, 3.2, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.25)';
+    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.58)' : 'rgba(255, 255, 255, 0.28)';
     ctx.fill();
   }
 
   // -------------------------------------------------------------------------
-  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ, RZUT (Czysty, bardziej transparentny, bez napisów)
+  // 2. PRAWY DRĄŻEK: CELOWANIE, OGIEŃ, RZUT (Dual-Stroke: ciemna mikro-otoczka + jasny rdzeń)
   // -------------------------------------------------------------------------
   if (rightStick && rightStick.baseX > 0) {
     const isStickActive = rightStick.active;
@@ -3133,17 +3157,23 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const by = rightStick.baseY;
     const isGrenadeMode = (rightStick.armedMode === 'GRENADE');
 
-    // Baza drążka: w pełni przezroczysta, delikatny obrys bez koloru
+    // Baza drążka: subtelne przydymienie dla kontrastu na jasnym tle
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)';
+    ctx.fillStyle = isStickActive ? 'rgba(15, 23, 42, 0.11)' : 'rgba(15, 23, 42, 0.06)';
     ctx.fill();
 
-    // Jeśli przeciągany jest slot w stronę drążka, drążek pulsuje lekko
     const isDragHover = rightStick.draggedSlot && (Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 45 || (rightStick.draggedSlot.curX || 0) >= bx - 35);
+
+    // Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = (isDragHover || isStickActive) ? 'rgba(0, 0, 0, 0.38)' : 'rgba(0, 0, 0, 0.22)';
+    ctx.lineWidth = (isDragHover || isStickActive) ? 3.4 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 (Light Core)
     ctx.strokeStyle = isDragHover
-      ? `rgba(255, 255, 255, ${0.38 + 0.30 * Math.sin(time * 0.01)})`
-      : (isStickActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.09)');
+      ? `rgba(255, 255, 255, ${0.40 + 0.30 * Math.sin(time * 0.01)})`
+      : (isStickActive ? 'rgba(255, 255, 255, 0.26)' : 'rgba(255, 255, 255, 0.11)');
     ctx.lineWidth = (isDragHover || isStickActive) ? 1.6 : 1.1;
     ctx.stroke();
 
@@ -3160,28 +3190,31 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       knobX = bx + normX * clampedDist;
       knobY = by + normY * clampedDist;
 
-      // Przerywana linia wychylenia
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1.1;
+      // Przerywana linia wychylenia (Dual-Stroke)
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
       ctx.lineTo(knobX, knobY);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1.1;
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // Gałka prawego drążka (subtelne intuicyjne podświetlenie)
+    // Gałka prawego drążka (subtelne podświetlenie + przydymiona krawędź)
     const knobR = 22;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.30)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.13)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.05)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.32)');
+      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.13)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.14)');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      knobGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.04)');
-      knobGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
+      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.11)');
+      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.10)');
     }
 
     ctx.beginPath();
@@ -3189,7 +3222,13 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.16)';
+    // Warstwa 1 obrysu gałki (Dark Halo)
+    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 obrysu gałki (Light Core)
+    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     if (isStickActive) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.25)';
@@ -3213,7 +3252,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   }
 
   // -------------------------------------------------------------------------
-  // 3. KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (BARDZIEJ PRZEZROCZYSTE)
+  // 3. KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (Dual-Stroke: ciemna mikro-otoczka + jasny rdzeń)
   const effPockets = (btnCluster && (btnCluster.firearm || btnCluster.action)) ? btnCluster : (window.pockets || btnCluster || {});
   const pFirearm = effPockets.firearm || window.pockets?.firearm;
   const pThrowable = effPockets.throwable || effPockets.grenade || window.pockets?.throwable;
@@ -3228,26 +3267,31 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const ammoObj = player.ammo?.[curId];
     const isRel = !!(ammoObj?.isReloading || player.isReloading);
 
-    // Baza kieszeni: szkło z gradientem
+    // Baza kieszeni: szkło z gradientem i subtelnym przydymieniem na krawędzi
     const grad = ctx.createRadialGradient(pFirearm.x - 2, pFirearm.y - 2, 2, pFirearm.x, pFirearm.y, pFirearm.r);
     if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.16)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
     }
     ctx.beginPath();
     ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Główny pierścień zewnętrzny
+    // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    ctx.stroke();
+
+    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.42)'
-      : 'rgba(255, 255, 255, 0.18)';
+      ? 'rgba(255, 255, 255, 0.44)'
+      : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
     if (isEquipped || isPressed) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
@@ -3256,12 +3300,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Wewnętrzny pierścień w stylu drążka
+    // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
     ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.16)'
-      : 'rgba(255, 255, 255, 0.07)';
+      ? 'rgba(255, 255, 255, 0.18)'
+      : 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
@@ -3306,22 +3353,28 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     const grad = ctx.createRadialGradient(pThrowable.x - 2, pThrowable.y - 2, 2, pThrowable.x, pThrowable.y, pThrowable.r);
     if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.16)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
     }
     ctx.beginPath();
     ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
+    // Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 (Light Core)
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.42)'
-      : 'rgba(255, 255, 255, 0.18)';
+      ? 'rgba(255, 255, 255, 0.44)'
+      : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
     if (isEquipped || isPressed) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
@@ -3330,12 +3383,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Wewnętrzny pierścień w stylu drążka
+    // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
     ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
     ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.16)'
-      : 'rgba(255, 255, 255, 0.07)';
+      ? 'rgba(255, 255, 255, 0.18)'
+      : 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
@@ -3344,6 +3400,9 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.save();
       ctx.beginPath();
       ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r - 1.5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2, false);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 3.4;
+      ctx.stroke();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.lineWidth = 2.2;
       ctx.stroke();
@@ -3357,11 +3416,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.restore();
 
     if (!isReady) {
+      ctx.save();
       ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 2.5;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`${cd.toFixed(1)}s`, pThrowable.x, pThrowable.y + pThrowable.r - 2);
+      ctx.restore();
     }
   }
 
@@ -3372,20 +3435,26 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     const grad = ctx.createRadialGradient(pAction.x - 2, pAction.y - 2, 2, pAction.x, pAction.y, pAction.r);
     if (isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.20)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.02)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
     } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.07)');
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
       grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.01)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
     }
     ctx.beginPath();
     ctx.arc(pAction.x, pAction.y, pAction.r, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.18)';
+    // Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = isPressed ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = isPressed ? 3.3 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 (Light Core)
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.44)' : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = isPressed ? 1.6 : 1.1;
     if (isPressed) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
@@ -3394,10 +3463,13 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Wewnętrzny pierścień
+    // Wewnętrzny pierścień (Dual-Stroke)
     ctx.beginPath();
     ctx.arc(pAction.x, pAction.y, pAction.r - 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.07)';
+    ctx.strokeStyle = isPressed ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
+    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
@@ -3417,38 +3489,44 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       const sx = ds.startX || cx;
       const sy = ds.startY || cy;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.quadraticCurveTo((sx + cx) / 2, (sy + cy) / 2 - 10, cx, cy);
-    ctx.stroke();
-    ctx.setLineDash([]);
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo((sx + cx) / 2, (sy + cy) / 2 - 10, cx, cy);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 3.0;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-    ctx.beginPath();
-    ctx.arc(cx, cy, 26, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
-    ctx.lineWidth = 1.8;
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-    ctx.shadowBlur = 10;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.18)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.lineWidth = 3.4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(0.9, 0.9);
-    if (ds.type === 'GRENADE') {
-      drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, true);
-    } else {
-      const curId = player.currentWeapon?.id || 'AK47';
-      drawWeaponSilhouette(ctx, curId, 0, 0, true);
-    }
-    ctx.restore();
-    ctx.restore();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(0.9, 0.9);
+      if (ds.type === 'GRENADE') {
+        drawWeaponSilhouette(ctx, 'GRENADE', 0, 0, true);
+      } else {
+        const curId = player.currentWeapon?.id || 'AK47';
+        drawWeaponSilhouette(ctx, curId, 0, 0, true);
+      }
+      ctx.restore();
+      ctx.restore();
     }
   }
 
@@ -3557,13 +3635,13 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.shadowColor = customColor;
     ctx.shadowBlur = 4;
   } else if (isSelected) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.30)';
-    ctx.shadowBlur = 3;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.62)';
+    ctx.shadowBlur = 2.8;
   } else {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.40)';
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
+    ctx.shadowBlur = 2.5;
   }
 
   if (type === 'AK47') {
@@ -3917,12 +3995,71 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
   // =========================================================================
   ctx.save();
-  ctx.globalAlpha = 1.0;
 
   const hudX = isMobile ? 12 : 20;
   const hudY = isMobile ? 14 : 18;
   const barW = isMobile ? 172 : 220;
   const barH = isMobile ? 16 : 18;
+  const wepBoxH = isMobile ? 32 : 36;
+
+  // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
+  const hudRight = hudX + barW + 10;
+  const hudBottom = hudY + barH + 5 + wepBoxH + (isMobile ? 16 : 20);
+  const fadeMargin = isMobile ? 55 : 70;
+
+  let minHudDist = Infinity;
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = camera ? camera.x : 0;
+  const camY = camera ? camera.y : 0;
+
+  const checkEntityHudDist = (ent, padX = 14, padTop = 26, padBottom = 8) => {
+    if (!ent) return;
+    const ew = ent.w || (ent.r ? ent.r * 2 : 24);
+    const eh = ent.h || (ent.r ? ent.r * 2 : 70);
+    const ex = (ent.r !== undefined && ent.w === undefined) ? (ent.x - ent.r) : ent.x;
+    const ey = (ent.r !== undefined && ent.h === undefined) ? (ent.y - ent.r) : ent.y;
+
+    const sLeft = (ex - padX - camX) * camZoom;
+    const sRight = (ex + ew + padX - camX) * camZoom;
+    const sTop = (ey - padTop - camY) * camZoom;
+    const sBottom = (ey + eh + padBottom - camY) * camZoom;
+
+    if (sRight < 0 || sBottom < 0) return;
+
+    const dx = Math.max(0, sLeft - hudRight);
+    const dy = Math.max(0, sTop - hudBottom);
+    const d = Math.hypot(dx, dy);
+    if (d < minHudDist) minHudDist = d;
+  };
+
+  checkEntityHudDist(player, 16, 28, 10);
+  if (arenaInfo?.bot && arenaInfo.bot.active && !arenaInfo.bot.isDead) {
+    checkEntityHudDist(arenaInfo.bot, 14, 26, 8);
+  }
+  if (arenaInfo?.remotePlayer && arenaInfo.remotePlayer.active && !arenaInfo.remotePlayer.isDead) {
+    checkEntityHudDist(arenaInfo.remotePlayer, 14, 26, 8);
+  }
+  if (ball && ball.active) {
+    checkEntityHudDist(ball, 10, 10, 10);
+  }
+
+  const minHudAlpha = 0.22;
+  let targetHudAlpha = 1.0;
+  if (minHudDist <= 0) {
+    targetHudAlpha = minHudAlpha;
+  } else if (minHudDist < fadeMargin) {
+    const t = minHudDist / fadeMargin;
+    const smoothT = t * t * (3 - 2 * t);
+    targetHudAlpha = minHudAlpha + (1.0 - minHudAlpha) * smoothT;
+  }
+
+  if (typeof player._topLeftHudAlpha !== 'number' || isNaN(player._topLeftHudAlpha)) {
+    player._topLeftHudAlpha = targetHudAlpha;
+  } else {
+    player._topLeftHudAlpha += (targetHudAlpha - player._topLeftHudAlpha) * 0.20;
+  }
+
+  ctx.globalAlpha = Math.max(minHudAlpha, Math.min(1.0, player._topLeftHudAlpha));
 
   const maxHp = player.maxHp || 100;
   const curHp = Math.max(0, player.hp ?? 100);
@@ -4057,7 +4194,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
 
   const wepBoxY = hudY + barH + 5;
-  const wepBoxH = isMobile ? 32 : 36;
   const wepBoxW = barW;
 
   let cardBorderCol = wepAccent;
