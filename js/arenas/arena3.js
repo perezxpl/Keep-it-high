@@ -611,10 +611,16 @@ export function evaluateCanopyPlatformIntegrity(plat) {
         plat.isSplit = true;
         if (!plat._splitTriggered) {
           plat._splitTriggered = true;
-          plat.leftVRot = 0.14;
-          plat.rightVRot = -0.14;
-          plat.leftSwayVx = -1.8;
-          plat.rightSwayVx = 1.8;
+          plat.leftTiltAngle = plat.tiltAngle || 0;
+          plat.rightTiltAngle = plat.tiltAngle || 0;
+          plat.leftVRot = 0.85;
+          plat.rightVRot = -0.85;
+          plat.leftSwayX = plat.swayX || 0;
+          plat.rightSwayX = plat.swayX || 0;
+          plat.leftSwayVx = -1.6;
+          plat.rightSwayVx = 1.6;
+          plat.leftBounceY = plat.bounceY || 0;
+          plat.rightBounceY = plat.bounceY || 0;
           if (typeof triggerScreenShake === 'function') {
             triggerScreenShake(7);
           }
@@ -622,9 +628,23 @@ export function evaluateCanopyPlatformIntegrity(plat) {
           spawnBridgeSplinters(breakX, plat.origY + 10, 0, -3, 16);
         }
       } else if (hasLeftSegment && !hasRightSegment) {
+        if (plat.isSplit) {
+          plat.tiltAngle = plat.leftTiltAngle || 0;
+          plat.vRot = plat.leftVRot || 0;
+          plat.swayX = plat.leftSwayX || 0;
+          plat.swayVx = plat.leftSwayVx || 0;
+          plat.bounceY = plat.leftBounceY || 0;
+        }
         plat.isSplit = false;
         plat.ropeRight.intact = false;
       } else if (hasRightSegment && !hasLeftSegment) {
+        if (plat.isSplit) {
+          plat.tiltAngle = plat.rightTiltAngle || 0;
+          plat.vRot = plat.rightVRot || 0;
+          plat.swayX = plat.rightSwayX || 0;
+          plat.swayVx = plat.rightSwayVx || 0;
+          plat.bounceY = plat.rightBounceY || 0;
+        }
         plat.isSplit = false;
         plat.ropeLeft.intact = false;
       } else {
@@ -642,8 +662,9 @@ export function onCanopyRopeSnapped(plat, side) {
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(8);
   }
-  const snapX = (side === 'left' ? plat.ropeLeft.x : plat.ropeRight.x);
-  spawnBridgeSplinters(snapX, plat.origY, 0, -3, 14);
+  const snapX = (side === 'left' ? (plat.attachLX ?? plat.ropeLeft.x) : (plat.attachRX ?? plat.ropeRight.x));
+  const snapY = (side === 'left' ? (plat.attachLY ?? plat.origY) : (plat.attachRY ?? plat.origY));
+  spawnBridgeSplinters(snapX, snapY, 0, -3, 14);
 
   if (!plat.ropeLeft.intact && !plat.ropeRight.intact) {
     for (let i = 0; i < plat.blocks.length; i++) {
@@ -654,9 +675,10 @@ export function onCanopyRopeSnapped(plat, side) {
     }
   } else {
     evaluateCanopyPlatformIntegrity(plat);
-    // Rozpoczęcie gwałtownego wahadłowego kołysania na pozostałej linie
-    plat.vRot = (side === 'left' ? -0.14 : 0.14);
-    plat.swayVx = (side === 'left' ? -3.5 : 3.5);
+    // Impuls początkowy swobodnego wahadła po zerwaniu liny (opadanie od poziomu do pionu z bezwładnością)
+    plat.vRot = (plat.vRot || 0) + (side === 'left' ? -0.95 : 0.95);
+    plat.swayVx = (plat.swayVx || 0) + (side === 'left' ? 2.4 : -2.4);
+    plat.bounceVy = (plat.bounceVy || 0) + 35.0;
   }
 }
 
@@ -819,6 +841,10 @@ export function resetArena3() {
     plat.rightSwayVx = 0;
     plat.rightBounceY = 0;
     plat.rightBounceVy = 0;
+    plat.attachLX = plat.ropeLeft.x;
+    plat.attachLY = plat.origY;
+    plat.attachRX = plat.ropeRight.x;
+    plat.attachRY = plat.origY;
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
       const b = plat.blocks[bIdx];
       b.x = b.origX;
@@ -1504,24 +1530,44 @@ export function updateArena3(dt, players, ball) {
     }
 
     if (plat.isSplit) {
-      // 0. PLATFORMA PRZERWANA NA PÓŁ - DWIE OSOBNE POŁÓWKI WISZĄCE NA SWOICH LINACH
+      // 0. PLATFORMA PRZERWANA NA PÓŁ - DWIE OSOBNE POŁÓWKI WISZĄCE SWOBODNIE NA SWOICH LINACH
       if (plat.ropeLeft.intact) {
-        const targetAngle = 1.35;
-        const pendAcc = (targetAngle - plat.leftTiltAngle) * 7.2 - plat.leftVRot * 1.6;
+        const targetAngle = Math.PI * 0.5;
+        const angleDiff = targetAngle - plat.leftTiltAngle;
+        const pendAcc = Math.sin(angleDiff) * 14.5 - plat.leftVRot * 0.45 - plat.leftVRot * Math.abs(plat.leftVRot) * 0.05;
         plat.leftVRot += pendAcc * dt;
         plat.leftTiltAngle += plat.leftVRot * dt;
-        plat.leftSwayVx = ((plat.leftSwayVx || 0) - 0.03 * (plat.leftSwayX || 0)) * 0.98;
-        plat.leftSwayX = (plat.leftSwayX || 0) + plat.leftSwayVx;
-        plat.leftBounceY = Math.min(25, (plat.leftBounceY || 0) + 0.35);
+        if (Math.abs(angleDiff) < 0.002 && Math.abs(plat.leftVRot) < 0.01) {
+          plat.leftTiltAngle = targetAngle;
+          plat.leftVRot = 0;
+        }
+        const swayAcc = -0.05 * (plat.leftSwayX || 0) + Math.cos(plat.leftTiltAngle) * plat.leftVRot * 0.14;
+        plat.leftSwayVx = ((plat.leftSwayVx || 0) + swayAcc) * 0.968;
+        plat.leftSwayX = Math.max(-55, Math.min(55, (plat.leftSwayX || 0) + plat.leftSwayVx));
+        if (Math.abs(plat.leftSwayX) < 0.12 && Math.abs(plat.leftSwayVx) < 0.04 && plat.leftVRot === 0) {
+          plat.leftSwayX = 0;
+          plat.leftSwayVx = 0;
+        }
+        plat.leftBounceY = Math.max(0, Math.min(18, (plat.leftBounceY || 0) * 0.92 + Math.abs(plat.leftVRot) * 0.35));
       }
       if (plat.ropeRight.intact) {
-        const targetAngle = -1.35;
-        const pendAcc = (targetAngle - plat.rightTiltAngle) * 7.2 - plat.rightVRot * 1.6;
+        const targetAngle = -Math.PI * 0.5;
+        const angleDiff = targetAngle - plat.rightTiltAngle;
+        const pendAcc = Math.sin(angleDiff) * 14.5 - plat.rightVRot * 0.45 - plat.rightVRot * Math.abs(plat.rightVRot) * 0.05;
         plat.rightVRot += pendAcc * dt;
         plat.rightTiltAngle += plat.rightVRot * dt;
-        plat.rightSwayVx = ((plat.rightSwayVx || 0) - 0.03 * (plat.rightSwayX || 0)) * 0.98;
-        plat.rightSwayX = (plat.rightSwayX || 0) + plat.rightSwayVx;
-        plat.rightBounceY = Math.min(25, (plat.rightBounceY || 0) + 0.35);
+        if (Math.abs(angleDiff) < 0.002 && Math.abs(plat.rightVRot) < 0.01) {
+          plat.rightTiltAngle = targetAngle;
+          plat.rightVRot = 0;
+        }
+        const swayAcc = -0.05 * (plat.rightSwayX || 0) - Math.cos(plat.rightTiltAngle) * plat.rightVRot * 0.14;
+        plat.rightSwayVx = ((plat.rightSwayVx || 0) + swayAcc) * 0.968;
+        plat.rightSwayX = Math.max(-55, Math.min(55, (plat.rightSwayX || 0) + plat.rightSwayVx));
+        if (Math.abs(plat.rightSwayX) < 0.12 && Math.abs(plat.rightSwayVx) < 0.04 && plat.rightVRot === 0) {
+          plat.rightSwayX = 0;
+          plat.rightSwayVx = 0;
+        }
+        plat.rightBounceY = Math.max(0, Math.min(18, (plat.rightBounceY || 0) * 0.92 + Math.abs(plat.rightVRot) * 0.35));
       }
     } else if (plat.ropeLeft.intact && plat.ropeRight.intact) {
       // 1. OBYDWIE LINY CAŁE: fizyczne wahadło dwuliniowe + ugięcie sprężyste + wychył od ciężaru
@@ -1539,26 +1585,37 @@ export function updateArena3(dt, players, ball) {
       const tiltSpring = (playerTorque - plat.tiltAngle) * 32.0 - plat.vRot * 7.5;
       plat.vRot += tiltSpring * dt;
       plat.tiltAngle = Math.max(-0.24, Math.min(0.24, plat.tiltAngle + plat.vRot * dt));
-    } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
-      // 2. PRAWA LINA ZERWANA: swobodne fizyczne wahadło zawieszone na lewej linie!
-      const targetAngle = 1.32;
-      const pendAcc = (targetAngle - plat.tiltAngle) * 7.5 - plat.vRot * 1.5;
+    } else if ((plat.ropeLeft.intact && !plat.ropeRight.intact) || (!plat.ropeLeft.intact && plat.ropeRight.intact)) {
+      // 2 & 3. JEDNA LINA ZERWANA: swobodne fizyczne wahadło kołyszące się wokół zaczepu ocalałej liny aż do pionowego zatrzymania!
+      const isLeftRope = plat.ropeLeft.intact;
+      const targetAngle = isLeftRope ? (Math.PI * 0.5) : (-Math.PI * 0.5);
+      const angleDiff = targetAngle - plat.tiltAngle;
+      const pendAcc = Math.sin(angleDiff) * 13.5 - plat.vRot * 0.42 - plat.vRot * Math.abs(plat.vRot) * 0.045;
       plat.vRot += pendAcc * dt;
       plat.tiltAngle += plat.vRot * dt;
 
-      plat.swayVx = ((plat.swayVx || 0) - 0.03 * (plat.swayX || 0)) * 0.98;
-      plat.swayX = (plat.swayX || 0) + plat.swayVx;
-      plat.bounceY = Math.min(25, (plat.bounceY || 0) + 0.4);
-    } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
-      // 3. LEWA LINA ZERWANA: swobodne fizyczne wahadło zawieszone na prawej linie!
-      const targetAngle = -1.32;
-      const pendAcc = (targetAngle - plat.tiltAngle) * 7.5 - plat.vRot * 1.5;
-      plat.vRot += pendAcc * dt;
-      plat.tiltAngle += plat.vRot * dt;
+      if (Math.abs(angleDiff) < 0.002 && Math.abs(plat.vRot) < 0.01) {
+        plat.tiltAngle = targetAngle;
+        plat.vRot = 0;
+      }
 
-      plat.swayVx = ((plat.swayVx || 0) - 0.03 * (plat.swayX || 0)) * 0.98;
-      plat.swayX = (plat.swayX || 0) + plat.swayVx;
-      plat.bounceY = Math.min(25, (plat.bounceY || 0) + 0.4);
+      const swayPull = (isLeftRope ? 1 : -1) * Math.cos(plat.tiltAngle) * plat.vRot * 0.16;
+      const swayAcc = -0.05 * (plat.swayX || 0) + swayPull;
+      plat.swayVx = ((plat.swayVx || 0) + swayAcc) * 0.968;
+      plat.swayX = Math.max(-60, Math.min(60, (plat.swayX || 0) + plat.swayVx));
+      if (Math.abs(plat.swayX) < 0.12 && Math.abs(plat.swayVx) < 0.04 && plat.vRot === 0) {
+        plat.swayX = 0;
+        plat.swayVx = 0;
+      }
+
+      const targetBounce = Math.min(10, Math.abs(plat.vRot) * 1.4);
+      const bounceForce = -32.0 * ((plat.bounceY || 0) - targetBounce) - 6.5 * (plat.bounceVy || 0);
+      plat.bounceVy = (plat.bounceVy || 0) + bounceForce * dt;
+      plat.bounceY = Math.max(-4, Math.min(18, (plat.bounceY || 0) + plat.bounceVy * dt));
+      if (plat.vRot === 0 && Math.abs(plat.bounceY) < 0.1 && Math.abs(plat.bounceVy) < 0.1) {
+        plat.bounceY = 0;
+        plat.bounceVy = 0;
+      }
     } else {
       // 4. OBYDWIE LINY ZERWANE: wszystkie klocki odczepiają się i spadają
       for (let i = 0; i < plat.blocks.length; i++) {
@@ -1569,55 +1626,129 @@ export function updateArena3(dt, players, ball) {
       }
     }
 
-    // Aktualizacja pozycji każdego bloku na pomostach wiszących
-    const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
-    const platCenterY = plat.origY + (plat.bounceY || 0);
+    // Aktualizacja punktów zaczepienia lin i pozycji każdego bloku na pomostach wiszących
+    const anchorLX = plat.ropeLeft.anchorX || plat.ropeLeft.x;
+    const anchorRX = plat.ropeRight.anchorX || plat.ropeRight.x;
+    const ropeLen = plat.origY;
 
-    for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
-      const b = plat.blocks[bIdx];
-      if (b.intact) {
-        if (plat.isSplit) {
-          const isLeftHalf = (bIdx < plat.blocks.length / 2);
-          const tilt = isLeftHalf ? plat.leftTiltAngle : plat.rightTiltAngle;
-          const swayX = isLeftHalf ? (plat.leftSwayX || 0) : (plat.rightSwayX || 0);
-          const bounceY = isLeftHalf ? (plat.leftBounceY || 0) : (plat.rightBounceY || 0);
-          const pivotX = isLeftHalf ? (plat.ropeLeft.anchorX || plat.ropeLeft.x) : (plat.ropeRight.anchorX || plat.ropeRight.x);
-          const pivotY = plat.origY + bounceY;
+    if (plat.isSplit) {
+      const swayLX = plat.leftSwayX || 0;
+      const swayRX = plat.rightSwayX || 0;
+      plat.attachLX = anchorLX + swayLX;
+      plat.attachLY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayLX * swayLX)) + (plat.leftBounceY || 0);
+      plat.attachRX = anchorRX + swayRX;
+      plat.attachRY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayRX * swayRX)) + (plat.rightBounceY || 0);
 
-          const relX = (b.origX + b.w * 0.5) - pivotX;
-          const cosA = Math.cos(tilt);
-          const sinA = Math.sin(tilt);
+      for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+        const b = plat.blocks[bIdx];
+        if (!b.intact) continue;
+        const isLeftHalf = (bIdx < plat.blocks.length / 2);
+        const tilt = isLeftHalf ? plat.leftTiltAngle : plat.rightTiltAngle;
+        const pivotOrigX = isLeftHalf ? plat.ropeLeft.x : plat.ropeRight.x;
+        const attachX = isLeftHalf ? plat.attachLX : plat.attachRX;
+        const attachY = isLeftHalf ? plat.attachLY : plat.attachRY;
 
-          b.x = pivotX + swayX + relX * cosA - b.w * 0.5;
-          b.y = pivotY + relX * sinA - b.h * 0.5;
-          b.angle = tilt;
+        const relX = (b.origX + b.w * 0.5) - pivotOrigX;
+        const cosA = Math.cos(tilt);
+        const sinA = Math.sin(tilt);
 
-          if (Math.abs(tilt) < 0.88) {
-            b.solid = true;
-            b.isPlatform = true;
-            b.oneWay = true;
-          } else {
-            b.solid = false;
-            b.isPlatform = false;
-          }
+        b.x = attachX + relX * cosA - b.w * 0.5;
+        b.y = attachY + relX * sinA - b.h * 0.5;
+        b.angle = tilt;
+
+        if (Math.abs(tilt) < 0.88) {
+          b.solid = true;
+          b.isPlatform = true;
+          b.oneWay = true;
         } else {
-          const relX = (b.origX + b.w * 0.5) - (plat.origX + plat.w * 0.5);
-          const cosA = Math.cos(plat.tiltAngle);
-          const sinA = Math.sin(plat.tiltAngle);
+          b.solid = false;
+          b.isPlatform = false;
+        }
+      }
+    } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
+      // Obrót wokół punktu zaczepienia LEWEJ liny
+      const swayX = plat.swayX || 0;
+      plat.attachLX = anchorLX + swayX;
+      plat.attachLY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayX * swayX)) + (plat.bounceY || 0);
+      const cosA = Math.cos(plat.tiltAngle);
+      const sinA = Math.sin(plat.tiltAngle);
+      const relRX = plat.ropeRight.x - plat.ropeLeft.x;
+      plat.attachRX = plat.attachLX + relRX * cosA;
+      plat.attachRY = plat.attachLY + relRX * sinA;
 
-          b.x = platCenterX + relX * cosA - b.w * 0.5;
-          b.y = platCenterY + relX * sinA - b.h * 0.5;
-          b.angle = plat.tiltAngle;
+      for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+        const b = plat.blocks[bIdx];
+        if (!b.intact) continue;
+        const relX = (b.origX + b.w * 0.5) - plat.ropeLeft.x;
+        b.x = plat.attachLX + relX * cosA - b.w * 0.5;
+        b.y = plat.attachLY + relX * sinA - b.h * 0.5;
+        b.angle = plat.tiltAngle;
 
-          // Jeśli pomost nie wisi pionowo (poniżej ~50 stopni), można po nim stąpać
-          if (Math.abs(plat.tiltAngle) < 0.88) {
-            b.solid = true;
-            b.isPlatform = true;
-            b.oneWay = true;
-          } else {
-            b.solid = false;
-            b.isPlatform = false;
-          }
+        if (Math.abs(plat.tiltAngle) < 0.88) {
+          b.solid = true;
+          b.isPlatform = true;
+          b.oneWay = true;
+        } else {
+          b.solid = false;
+          b.isPlatform = false;
+        }
+      }
+    } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
+      // Obrót wokół punktu zaczepienia PRAWEJ liny
+      const swayX = plat.swayX || 0;
+      plat.attachRX = anchorRX + swayX;
+      plat.attachRY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayX * swayX)) + (plat.bounceY || 0);
+      const cosA = Math.cos(plat.tiltAngle);
+      const sinA = Math.sin(plat.tiltAngle);
+      const relLX = plat.ropeLeft.x - plat.ropeRight.x;
+      plat.attachLX = plat.attachRX + relLX * cosA;
+      plat.attachLY = plat.attachRY + relLX * sinA;
+
+      for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+        const b = plat.blocks[bIdx];
+        if (!b.intact) continue;
+        const relX = (b.origX + b.w * 0.5) - plat.ropeRight.x;
+        b.x = plat.attachRX + relX * cosA - b.w * 0.5;
+        b.y = plat.attachRY + relX * sinA - b.h * 0.5;
+        b.angle = plat.tiltAngle;
+
+        if (Math.abs(plat.tiltAngle) < 0.88) {
+          b.solid = true;
+          b.isPlatform = true;
+          b.oneWay = true;
+        } else {
+          b.solid = false;
+          b.isPlatform = false;
+        }
+      }
+    } else {
+      // Obydwie liny całe (lub obydwie zerwane) - obrót wokół środka pomostu
+      const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
+      const platCenterY = plat.origY + (plat.bounceY || 0);
+      const cosA = Math.cos(plat.tiltAngle);
+      const sinA = Math.sin(plat.tiltAngle);
+      const relLX = plat.ropeLeft.x - (plat.origX + plat.w * 0.5);
+      plat.attachLX = platCenterX + relLX * cosA;
+      plat.attachLY = platCenterY + relLX * sinA;
+      const relRX = plat.ropeRight.x - (plat.origX + plat.w * 0.5);
+      plat.attachRX = platCenterX + relRX * cosA;
+      plat.attachRY = platCenterY + relRX * sinA;
+
+      for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
+        const b = plat.blocks[bIdx];
+        if (!b.intact) continue;
+        const relX = (b.origX + b.w * 0.5) - (plat.origX + plat.w * 0.5);
+        b.x = platCenterX + relX * cosA - b.w * 0.5;
+        b.y = platCenterY + relX * sinA - b.h * 0.5;
+        b.angle = plat.tiltAngle;
+
+        if (Math.abs(plat.tiltAngle) < 0.88) {
+          b.solid = true;
+          b.isPlatform = true;
+          b.oneWay = true;
+        } else {
+          b.solid = false;
+          b.isPlatform = false;
         }
       }
     }
@@ -3305,44 +3436,55 @@ export function drawArena3Foreground(ctx, camera) {
     const pw = plat.w;
     const ph = plat.h;
 
-    if (px + pw + 60 < camL || px - 60 > camR) return;
+    if (px + pw * 2 + 80 < camL || px - pw - 80 > camR) return;
 
     ctx.save();
     // 1. Długie liny nośne z baldachimu dżungli biegnące prosto do punktów zaczepienia
-    let attachLX, attachLY, attachRX, attachRY;
-    if (plat.isSplit) {
-      const pivotLX = plat.ropeLeft.anchorX || plat.ropeLeft.x;
-      const pivotLY = plat.origY + (plat.leftBounceY || 0);
-      const relLX = plat.ropeLeft.x - pivotLX;
-      const cosL = Math.cos(plat.leftTiltAngle);
-      const sinL = Math.sin(plat.leftTiltAngle);
-      attachLX = pivotLX + (plat.leftSwayX || 0) + relLX * cosL;
-      attachLY = pivotLY + relLX * sinL;
+    const anchorLX = plat.ropeLeft.anchorX || plat.ropeLeft.x;
+    const anchorRX = plat.ropeRight.anchorX || plat.ropeRight.x;
+    let attachLX = plat.attachLX;
+    let attachLY = plat.attachLY;
+    let attachRX = plat.attachRX;
+    let attachRY = plat.attachRY;
 
-      const pivotRX = plat.ropeRight.anchorX || plat.ropeRight.x;
-      const pivotRY = plat.origY + (plat.rightBounceY || 0);
-      const relRX = plat.ropeRight.x - pivotRX;
-      const cosR = Math.cos(plat.rightTiltAngle);
-      const sinR = Math.sin(plat.rightTiltAngle);
-      attachRX = pivotRX + (plat.rightSwayX || 0) + relRX * cosR;
-      attachRY = pivotRY + relRX * sinR;
-    } else {
-      const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
-      const platCenterY = plat.origY + (plat.bounceY || 0);
-      const cosA = Math.cos(plat.tiltAngle);
-      const sinA = Math.sin(plat.tiltAngle);
-
-      const relLX = plat.ropeLeft.x - (plat.origX + plat.w * 0.5);
-      attachLX = platCenterX + relLX * cosA;
-      attachLY = platCenterY + relLX * sinA;
-
-      const relRX = plat.ropeRight.x - (plat.origX + plat.w * 0.5);
-      attachRX = platCenterX + relRX * cosA;
-      attachRY = platCenterY + relRX * sinA;
+    if (attachLX === undefined || attachLY === undefined || attachRX === undefined || attachRY === undefined) {
+      const ropeLen = plat.origY;
+      if (plat.isSplit) {
+        const swayLX = plat.leftSwayX || 0;
+        const swayRX = plat.rightSwayX || 0;
+        attachLX = anchorLX + swayLX;
+        attachLY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayLX * swayLX)) + (plat.leftBounceY || 0);
+        attachRX = anchorRX + swayRX;
+        attachRY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayRX * swayRX)) + (plat.rightBounceY || 0);
+      } else if (plat.ropeLeft.intact && !plat.ropeRight.intact) {
+        const swayX = plat.swayX || 0;
+        attachLX = anchorLX + swayX;
+        attachLY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayX * swayX)) + (plat.bounceY || 0);
+        const relRX = plat.ropeRight.x - plat.ropeLeft.x;
+        attachRX = attachLX + relRX * Math.cos(plat.tiltAngle);
+        attachRY = attachLY + relRX * Math.sin(plat.tiltAngle);
+      } else if (!plat.ropeLeft.intact && plat.ropeRight.intact) {
+        const swayX = plat.swayX || 0;
+        attachRX = anchorRX + swayX;
+        attachRY = Math.sqrt(Math.max(3600, ropeLen * ropeLen - swayX * swayX)) + (plat.bounceY || 0);
+        const relLX = plat.ropeLeft.x - plat.ropeRight.x;
+        attachLX = attachRX + relLX * Math.cos(plat.tiltAngle);
+        attachLY = attachRY + relLX * Math.sin(plat.tiltAngle);
+      } else {
+        const platCenterX = plat.origX + plat.w * 0.5 + (plat.swayX || 0);
+        const platCenterY = plat.origY + (plat.bounceY || 0);
+        const cosA = Math.cos(plat.tiltAngle);
+        const sinA = Math.sin(plat.tiltAngle);
+        const relLX = plat.ropeLeft.x - (plat.origX + plat.w * 0.5);
+        attachLX = platCenterX + relLX * cosA;
+        attachLY = platCenterY + relLX * sinA;
+        const relRX = plat.ropeRight.x - (plat.origX + plat.w * 0.5);
+        attachRX = platCenterX + relRX * cosA;
+        attachRY = platCenterY + relRX * sinA;
+      }
     }
 
     // Lewa lina nośna
-    const anchorLX = plat.ropeLeft.anchorX || plat.ropeLeft.x;
     if (plat.ropeLeft.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
@@ -4017,6 +4159,22 @@ export function onArena3BulletHit(bullet) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
         spawnBridgeSplinters(bx, by, (bullet.vx || 0) * 0.25, -2, 6);
+        const parentPlat = ARENA_3_CANOPY_PLATFORMS.find(p => p.id === b.parentPlatId);
+        if (parentPlat) {
+          const pushX = (bullet.vx || 0) * 0.035;
+          if (parentPlat.isSplit) {
+            if (b.blockIndex < parentPlat.blocks.length / 2) {
+              parentPlat.leftVRot = (parentPlat.leftVRot || 0) - pushX * 0.45;
+              parentPlat.leftSwayVx = (parentPlat.leftSwayVx || 0) + pushX * 0.35;
+            } else {
+              parentPlat.rightVRot = (parentPlat.rightVRot || 0) - pushX * 0.45;
+              parentPlat.rightSwayVx = (parentPlat.rightSwayVx || 0) + pushX * 0.35;
+            }
+          } else {
+            parentPlat.vRot = (parentPlat.vRot || 0) - pushX * 0.45;
+            parentPlat.swayVx = (parentPlat.swayVx || 0) + pushX * 0.35;
+          }
+        }
         if (b.hp <= 0) {
           const impX = (bullet.vx || 0) * 0.1;
           const impY = Math.min(3.5, Math.max(1.2, (bullet.vy || 0) * 0.1 + 1.5));
@@ -4167,6 +4325,21 @@ export function onArena3KickHit(player, kickBox) {
       if (b.intact) {
         b.hp -= kickDamage;
         spawnBridgeSplinters(kx, ky, dirX * 5, -2, 10);
+        const parentPlat = ARENA_3_CANOPY_PLATFORMS.find(p => p.id === b.parentPlatId);
+        if (parentPlat) {
+          if (parentPlat.isSplit) {
+            if (b.blockIndex < parentPlat.blocks.length / 2) {
+              parentPlat.leftVRot = (parentPlat.leftVRot || 0) - dirX * 1.35;
+              parentPlat.leftSwayVx = (parentPlat.leftSwayVx || 0) + dirX * 2.2;
+            } else {
+              parentPlat.rightVRot = (parentPlat.rightVRot || 0) - dirX * 1.35;
+              parentPlat.rightSwayVx = (parentPlat.rightSwayVx || 0) + dirX * 2.2;
+            }
+          } else {
+            parentPlat.vRot = (parentPlat.vRot || 0) - dirX * 1.35;
+            parentPlat.swayVx = (parentPlat.swayVx || 0) + dirX * 2.2;
+          }
+        }
         if (b.hp <= 0) {
           breakCanopyBlock(b, dirX * 3.5, 3.5, dirX * 0.25);
         }
@@ -4186,10 +4359,13 @@ export function onArena3KickHit(player, kickBox) {
   // 3. Spartan Kick w liny pomostów wiszących
   for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
     const plat = ARENA_3_CANOPY_PLATFORMS[pIdx];
-    if (plat.ropeLeft.intact && Math.abs(kx - plat.ropeLeft.x) <= 25 && ky >= 0 && ky <= plat.origY + 20) {
+    const curAttachLX = plat.attachLX ?? plat.ropeLeft.x;
+    const curAttachLY = plat.attachLY ?? plat.origY;
+    if (plat.ropeLeft.intact && Math.abs(kx - curAttachLX) <= 25 && ky >= 0 && ky <= curAttachLY + 20) {
       hitAny = true;
       plat.ropeLeft.hp -= kickDamage;
-      spawnBridgeSplinters(plat.ropeLeft.x, ky, dirX * 3, -2, 8);
+      plat.swayVx = (plat.swayVx || 0) + dirX * 1.8;
+      spawnBridgeSplinters(curAttachLX, ky, dirX * 3, -2, 8);
       if (plat.ropeLeft.hp <= 0) {
         plat.ropeLeft.intact = false;
         onCanopyRopeSnapped(plat, 'left');
@@ -4197,10 +4373,13 @@ export function onArena3KickHit(player, kickBox) {
       if (typeof triggerScreenShake === 'function') triggerScreenShake(6);
       return true;
     }
-    if (plat.ropeRight.intact && Math.abs(kx - plat.ropeRight.x) <= 25 && ky >= 0 && ky <= plat.origY + 20) {
+    const curAttachRX = plat.attachRX ?? plat.ropeRight.x;
+    const curAttachRY = plat.attachRY ?? plat.origY;
+    if (plat.ropeRight.intact && Math.abs(kx - curAttachRX) <= 25 && ky >= 0 && ky <= curAttachRY + 20) {
       hitAny = true;
       plat.ropeRight.hp -= kickDamage;
-      spawnBridgeSplinters(plat.ropeRight.x, ky, dirX * 3, -2, 8);
+      plat.swayVx = (plat.swayVx || 0) + dirX * 1.8;
+      spawnBridgeSplinters(curAttachRX, ky, dirX * 3, -2, 8);
       if (plat.ropeRight.hp <= 0) {
         plat.ropeRight.intact = false;
         onCanopyRopeSnapped(plat, 'right');
@@ -4386,6 +4565,21 @@ export function onArena3Explosion(expX, expY, radius, context) {
       const angularImpulse = (dirX >= 0 ? 1 : -1) * (0.12 + Math.random() * 0.24) * intensity;
 
       if (b.intact) {
+        const parentPlat = ARENA_3_CANOPY_PLATFORMS.find(p => p.id === b.parentPlatId);
+        if (parentPlat) {
+          if (parentPlat.isSplit) {
+            if (b.blockIndex < parentPlat.blocks.length / 2) {
+              parentPlat.leftVRot = (parentPlat.leftVRot || 0) - dirX * intensity * 1.1;
+              parentPlat.leftSwayVx = (parentPlat.leftSwayVx || 0) + dirX * intensity * 1.6;
+            } else {
+              parentPlat.rightVRot = (parentPlat.rightVRot || 0) - dirX * intensity * 1.1;
+              parentPlat.rightSwayVx = (parentPlat.rightSwayVx || 0) + dirX * intensity * 1.6;
+            }
+          } else {
+            parentPlat.vRot = (parentPlat.vRot || 0) - dirX * intensity * 1.1;
+            parentPlat.swayVx = (parentPlat.swayVx || 0) + dirX * intensity * 1.6;
+          }
+        }
         b.hp -= intensity * 160;
         if (b.hp <= 0 || d <= blastRad) {
           breakCanopyBlock(b, impulseX, impulseY, angularImpulse);
@@ -4406,8 +4600,10 @@ export function onArena3Explosion(expX, expY, radius, context) {
 
     // Lewa lina
     if (plat.ropeLeft.intact) {
-      const clampRopeY = Math.max(0, Math.min(plat.origY, expY));
-      const distL = Math.hypot(plat.ropeLeft.x - expX, clampRopeY - expY);
+      const curAttachLX = plat.attachLX ?? plat.ropeLeft.x;
+      const curAttachLY = plat.attachLY ?? plat.origY;
+      const clampRopeY = Math.max(0, Math.min(curAttachLY, expY));
+      const distL = Math.hypot(curAttachLX - expX, clampRopeY - expY);
       if (distL <= blastRad + 25) {
         hitAny = true;
         const intensity = 1 - distL / (blastRad + 25);
@@ -4421,8 +4617,10 @@ export function onArena3Explosion(expX, expY, radius, context) {
 
     // Prawa lina
     if (plat.ropeRight.intact) {
-      const clampRopeY = Math.max(0, Math.min(plat.origY, expY));
-      const distR = Math.hypot(plat.ropeRight.x - expX, clampRopeY - expY);
+      const curAttachRX = plat.attachRX ?? plat.ropeRight.x;
+      const curAttachRY = plat.attachRY ?? plat.origY;
+      const clampRopeY = Math.max(0, Math.min(curAttachRY, expY));
+      const distR = Math.hypot(curAttachRX - expX, clampRopeY - expY);
       if (distR <= blastRad + 25) {
         hitAny = true;
         const intensity = 1 - distR / (blastRad + 25);
