@@ -12,8 +12,8 @@ import { triggerScreenShake } from '../camera.js';
 export const ARENA_2_CONFIG = {
   id: 'ARENA_2',
   alias: 'ARENA_2_SECTOR_X',
-  name: 'Sektor X',
-  subtitle: 'Industrial Foundry & Waste Facility',
+  name: 'Toksyczna Rafineria',
+  subtitle: 'Sektor X // Ciężki przemysłowy kompleks',
   width: 3600,
   height: 1400,
   bounds: { minX: 0, maxX: 3600, minY: 0, maxY: 1400 },
@@ -2231,7 +2231,7 @@ export function updateArena2(dt, players) {
 const arena2 = {
   id: 'arena-2',
   alias: 'ARENA_2_SECTOR_X',
-  name: 'Sektor X (Industrial Foundry)',
+  name: 'Toksyczna Rafineria',
   width: 3600,
   height: 1400,
   spawns: ARENA_2_CONFIG.spawns,

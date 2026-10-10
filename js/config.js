@@ -82,14 +82,41 @@ export const ARENA_LEFT = START_X; // 0
 export const ARENA_RIGHT = START_X + ARENA_WIDTH; // 3600
 
 // =========================================================================
-// DEFINICJA ARENY 2: SEKTOR X // INDUSTRIAL FOUNDRY & WASTE FACILITY
+// OFICJALNA KONFIGURACJA MAP I AREN BITWY
+// =========================================================================
+export const ARENA_CONFIGS = {
+  ARENA_1: {
+    id: 'ARENA_1',
+    name: 'Neonowe Miasto',
+    displayName: 'Neonowe Miasto',
+    sector: 'SEKTOR 01',
+    desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i miejski klimat.'
+  },
+  ARENA_2: {
+    id: 'ARENA_2',
+    name: 'Toksyczna Rafineria',
+    displayName: 'Toksyczna Rafineria (Sektor X)',
+    sector: 'SEKTOR X',
+    desc: 'Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.'
+  },
+  ARENA_3: {
+    id: 'ARENA_3',
+    name: 'Tajemnicza Dżungla',
+    displayName: 'Tajemnicza Dżungla',
+    sector: 'SEKTOR 03',
+    desc: 'Gęsta roślinność, organiczne platformy i dzikie pole walki.'
+  }
+};
+
+// =========================================================================
+// DEFINICJA ARENY 2: TOKSYCZNA RAFINERIA (SEKTOR X)
 // Turniejowy układ „X / Klepsydra” w stylu SOLDAT (3600x1400 PX)
 // =========================================================================
 export const ARENA_2_SECTOR_X = {
   id: 'ARENA_2',
   alias: 'ARENA_2_SECTOR_X',
-  name: 'Sektor X',
-  subtitle: 'Industrial Foundry & Waste Facility',
+  name: 'Toksyczna Rafineria',
+  subtitle: 'Sektor X // Ciężki przemysłowy kompleks',
   width: 3600,
   height: 1400,
   bounds: { minX: 0, maxX: 3600, minY: 0, maxY: 1400 },

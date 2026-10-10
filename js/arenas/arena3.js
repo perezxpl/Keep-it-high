@@ -4748,7 +4748,7 @@ const arena3 = {
   id: 'arena-3',
   alias: 'JUNGLE_ARENA',
   mapId: 'jungle_arena_01',
-  name: 'Jungle Arena (Militarna Dżungla)',
+  name: 'Tajemnicza Dżungla',
   width: 4400,
   height: 1400,
   physics: {

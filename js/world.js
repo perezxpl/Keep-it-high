@@ -4395,7 +4395,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.fillStyle = '#f59e0b';
     ctx.shadowColor = '#d97706';
     ctx.shadowBlur = 0;
-    ctx.fillText('☣️ SEKTOR X // INDUSTRIAL FOUNDRY ☣️', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
+    ctx.fillText('☣️ TOKSYCZNA RAFINERIA (SEKTOR X) ☣️', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
     ctx.restore();
   } else if (isDeathmatch) {
     const scoreBoxW = isMobile ? 220 : 280;

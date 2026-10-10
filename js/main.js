@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH } from './config.js';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -967,6 +967,7 @@ export function setGameState(newState) {
 if (typeof window !== 'undefined') {
   window.setGameState = setGameState;
   window.GAME_STATE = GAME_STATE;
+  window.ARENA_CONFIGS = ARENA_CONFIGS;
 }
 
 export let gameState = GAME_STATE.current;
@@ -3660,7 +3661,9 @@ if (typeof window !== 'undefined') {
     },
     getMatchInfo: () => {
       const arena = getActiveArena();
-      const arenaName = arena?.name || (activeArenaId === 'ARENA_2' ? 'Sektor X' : activeArenaId === 'ARENA_3' ? 'Kolebka Mistrzów' : 'Champions Stadium');
+      const arenaName = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
+                        (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
+                        (arena?.name || 'Neonowe Miasto');
       return `ARENA: ${arenaName.toUpperCase()} • KLASA: ${player.currentClass?.name || 'PLAYMAKER'}`;
     }
   });

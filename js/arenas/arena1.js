@@ -414,7 +414,7 @@ export function onArena1KickHit(player, kickBox) {
 // =========================================================================
 const arena1 = {
   id: 'arena-1',
-  name: 'Soldat Night Ops',
+  name: 'Neonowe Miasto',
   spawns: [
     { x: 240, y: 580 }, // Spawn gracza (Cyan) na platformie bramkowej (650 - 70)
     { x: _mapW - 240, y: 580 }, // Spawn bota (Orange) na platformie bramkowej (650 - 70)
