@@ -41,7 +41,7 @@ export {
   getPlatformSurfaceY,
   OBSTACLE_RENDERERS,
   normalizeObstacleType
-} from './obstacles.js';
+} from './obstacles.js?v=v57_hud_fix';
 
 export {
   drawMineCaveBackground,
@@ -97,7 +97,7 @@ export {
   activeProjectiles,
   rubbleParticles,
   explosionEffects
-} from './projectiles.js';
+} from './projectiles.js?v=v57_hud_fix';
 
 export {
   drawGround,
@@ -141,18 +141,18 @@ export {
   LOWER_CAVERN_CEILING_Y,
   drawHazardStripes,
   ladders
-} from './world.js';
+} from './world.js?v=v57_hud_fix';
 
 export function drawLadderRungs() {}
 
 export {
   throwTacticalGrenade,
   executeAeroUlt
-} from './player/actions.js';
+} from './player/actions.js?v=v57_hud_fix';
 
-import { ARENA_PLATFORMS, customObstacles } from './obstacles.js';
+import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v57_hud_fix';
 import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
-import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js';
+import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v57_hud_fix';
 
 export { getActiveArena, setActiveArena, ARENAS };
 

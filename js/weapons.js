@@ -7,8 +7,8 @@ import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   bodyGibs
-} from './world.js';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
+} from './world.js?v=v57_hud_fix';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v57_hud_fix';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import {

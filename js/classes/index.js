@@ -1,5 +1,5 @@
 import { AeroClass } from './aero.js';
-import { EnforcerClass } from './enforcer.js';
+import { EnforcerClass } from './enforcer.js?v=v57_hud_fix';
 import { PlaymakerClass } from './playmaker.js';
 import { SweeperClass } from './sweeper.js';
 

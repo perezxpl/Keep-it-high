@@ -1,8 +1,8 @@
-import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
-import { WEAPONS, shootWeapon } from './weapons.js';
-import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y } from './world.js';
-import { ball } from './ball.js';
+import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js?v=v57_hud_fix';
+import { WEAPONS, shootWeapon } from './weapons.js?v=v57_hud_fix';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js?v=v57_hud_fix';
+import { spawnJetpackSparks, GROUND_Y } from './world.js?v=v57_hud_fix';
+import { ball } from './ball.js?v=v57_hud_fix';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
