@@ -4049,7 +4049,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // - PC: 4 kompaktowe sloty 38x38 px w lewym dolnym rogu ekranu
   // - EKRAN DOTYKOWY (MOBILE): Przeniesione na dolny środek ekranu w 1 ikonę
   // =========================================================================
-  const curWepId = player.currentWeapon?.id || 'AK47';
 
   if (isTouchDevice) {
     // Na ekranie dotykowym sloty broni znajdują się w przezroczystych kieszeniach wokół prawego drążka (pockets)
