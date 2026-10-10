@@ -4018,6 +4018,12 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11.5px monospace';
     ctx.fillStyle = `rgba(250, 204, 21, ${0.5 + pulse * 0.5})`;
     ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
+
+    const dur = curAmmoObj?.reloadDuration || player.reloadDuration || 120;
+    const tmr = curAmmoObj?.reloadTimer ?? player.reloadTimer ?? 0;
+    const prog = Math.max(0, Math.min(1, 1 - (tmr / dur)));
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - 3, (wepBoxW - 4) * prog, 2);
   } else if (isNoAmmo) {
     ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
     ctx.fillStyle = '#ef4444';

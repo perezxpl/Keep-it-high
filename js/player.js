@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v57_hud_fix';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v57_hud_fix';
+export * from './player/index.js?v=v58_no_overhead_reload';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v58_no_overhead_reload';
 

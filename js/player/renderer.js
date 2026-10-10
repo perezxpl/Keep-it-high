@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v57_hud_fix';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v58_no_overhead_reload';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v57_hud_fix';
-import { getRagdollRenderPose } from './death.js?v=v57_hud_fix';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v57_hud_fix';
+} from './actions.js?v=v58_no_overhead_reload';
+import { getRagdollRenderPose } from './death.js?v=v58_no_overhead_reload';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v58_no_overhead_reload';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -3209,28 +3209,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 6;
     ctx.fillText(`💀 RESPAWN ZA ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
-    ctx.restore();
-  } else if (p.isReloading) {
-    ctx.save();
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-    ctx.font = 'bold 9.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = `rgba(250, 204, 21, ${0.55 + pulse * 0.45})`;
-    ctx.shadowColor = '#facc15';
-    ctx.shadowBlur = 6;
-    ctx.fillText('⚡ RELOADING...', p.x + p.w / 2, p.y - 18);
-
-    if (p.reloadDuration > 0) {
-      const prog = Math.max(0, Math.min(1, 1 - ((p.reloadTimer || 0) / p.reloadDuration)));
-      const barW = 34;
-      const barH = 3;
-      const barX = p.x + p.w / 2 - barW / 2;
-      const barY = p.y - 13;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(barX, barY, barW * prog, barH);
-    }
     ctx.restore();
   } else if (p.emptyAmmoAlert > 0) {
     ctx.save();
