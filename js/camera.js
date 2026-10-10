@@ -25,7 +25,7 @@ const initialMobile = (typeof window !== 'undefined' && (
   (navigator && navigator.maxTouchPoints > 0) ||
   (window.innerWidth <= 850)
 ));
-const initialDefaultZoom = initialMobile ? 0.35 : 0.60;
+const initialDefaultZoom = initialMobile ? 0.50 : 0.60;
 
 export function setCameraCanvas(c) {
   _cameraCanvas = c;
@@ -262,9 +262,9 @@ export function updateCamera(player, ball, options = {}) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
     // Domyślny zoom gry gwarantujący płynne i optymalne pole widzenia
-    // Na telefonach: maksymalne oddalenie kamery według limitu DEV (0.35) jako wartość domyślna
+    // Na telefonach: domyślny zoom ustawiony na 0.50 według skali DEV
     let defaultGameZoom = isMobile
-      ? Math.max(0.35, minZoom)
+      ? Math.max(0.50, minZoom)
       : (isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom)));
 
     // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
