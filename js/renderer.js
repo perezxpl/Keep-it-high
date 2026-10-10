@@ -146,8 +146,7 @@ export {
 export function drawLadderRungs() {}
 
 export {
-  throwTacticalGrenade,
-  executeAeroUlt
+  throwTacticalGrenade
 } from './player/actions.js?v=v64_jetpack_flight_hover';
 
 import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v64_jetpack_flight_hover';

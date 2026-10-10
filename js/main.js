@@ -19,7 +19,7 @@ import {
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
-  executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
+  throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js?v=v64_jetpack_flight_hover';
 import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v64_jetpack_flight_hover';
@@ -52,6 +52,7 @@ import {
   checkRightStickFlickOrTap
 } from './mobileControls.js?v=v64_jetpack_flight_hover';
 import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v64_jetpack_flight_hover';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -138,7 +139,7 @@ window.addEventListener('touchstart', () => {
 }, { once: true });
 
 canvas.addEventListener('touchstart', (e) => {
-  if (gameState === GAME_STATES.CLASS_SELECT) return;
+  if (GAME_STATE.current !== 'PLAYING') return;
   e.preventDefault();
   if (!isTouchDevice) {
     setTouchDevice(true);
@@ -924,7 +925,6 @@ window.world = (typeof world !== 'undefined' && world) ? world : {
 };
 window.camera = (typeof camera !== 'undefined') ? camera : null;
 window.resetArena = resetArena;
-window.executeAeroUlt = () => executeAeroUlt(player);
 window.throwTacticalGrenade = () => throwTacticalGrenade(player);
 
 export function startRound() {
@@ -932,8 +932,6 @@ export function startRound() {
   if (player) {
     player.hp = 100;
     player.isDead = false;
-    player.ultCooldown = 0;
-    player.ultMeter = 100;
   }
   if (bot && bot.active) {
     bot.hp = 100;
@@ -950,7 +948,28 @@ window.startRound = startRound;
 let mouseScreenX = 640;
 let mouseScreenY = 360;
 
-export let gameState = GAME_STATES.CLASS_SELECT;
+export const GAME_STATE = {
+  current: 'MENU', // 'MENU' | 'PLAYING' | 'SETTINGS' | 'PAUSED' | 'ARENA_SELECT' | 'CLASS_SELECT'
+  previous: 'MENU'
+};
+
+export function setGameState(newState) {
+  if (GAME_STATE.current === newState) return;
+  GAME_STATE.previous = GAME_STATE.current;
+  GAME_STATE.current = newState;
+  gameState = newState;
+  resetInputState();
+  if (typeof window !== 'undefined' && window.uiManager) {
+    window.uiManager.syncUI(newState);
+  }
+  updateCursorVisibility();
+}
+if (typeof window !== 'undefined') {
+  window.setGameState = setGameState;
+  window.GAME_STATE = GAME_STATE;
+}
+
+export let gameState = GAME_STATE.current;
 
 export const CLASS_CARDS = [
   {
@@ -1123,7 +1142,7 @@ export function drawClassSelectModal(ctx) {
   // Podtytuł z instrukcją
   ctx.font = '600 12px "Segoe UI", monospace';
   ctx.fillStyle = '#94a3b8';
-  ctx.fillText('WYBIERZ KAFELEK [1-4] LUB KLIKNIJ DOWOLNE MIEJSCE / SPACJĘ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
+  ctx.fillText('WYBIERZ KAFELEK KLASY [1-4] LUB KLIKNIJ KAFELEK MYSZKĄ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
 
   // Linia podziału
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
@@ -1315,7 +1334,7 @@ export function selectPlayerClass(targetClass) {
   if (!cls) cls = CLASSES.AERO;
 
   setPlayerClass(cls, player);
-  gameState = GAME_STATES.PLAYING;
+  setGameState('PLAYING');
 
   // Reset i respawn gracza po zatwierdzeniu wyboru klasy
   player.isDead = false;
@@ -1364,7 +1383,7 @@ export function selectPlayerClass(targetClass) {
 window.selectPlayerClass = selectPlayerClass;
 
 export function openClassSelect() {
-  gameState = GAME_STATES.CLASS_SELECT;
+  setGameState('CLASS_SELECT');
   if (canvas && canvas.parentElement) {
     canvas.parentElement.classList.add('cursor-visible');
   }
@@ -1609,6 +1628,9 @@ export const toggleArena = (e) => {
   window.activeArenaId = activeArenaId;
   sendArenaSwitch(nextArena);
   syncDevArenaButtonUI();
+  if (typeof uiManager !== 'undefined' && uiManager && typeof uiManager.updateMpArenaUI === 'function') {
+    uiManager.updateMpArenaUI(nextArena);
+  }
   camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
   camera.x = camera.targetX;
   camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
@@ -1624,6 +1646,10 @@ window.switchArena = (id) => {
   window.activeArenaId = activeArenaId;
   sendArenaSwitch(id);
   syncDevArenaButtonUI();
+  if (typeof uiManager !== 'undefined' && uiManager) {
+    if (typeof uiManager.updateMpArenaUI === 'function') uiManager.updateMpArenaUI(id);
+    if (typeof uiManager.updateArenaSelectUI === 'function') uiManager.updateArenaSelectUI(id);
+  }
   camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
   camera.x = camera.targetX;
   camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
@@ -2228,39 +2254,8 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
   }
 
-  // Tryb wyboru klasy przed rozpoczęciem gry
-  if (gameState === GAME_STATES.CLASS_SELECT) {
-    if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyW' || e.key === 'w' || e.key === 'W')) {
-      e.preventDefault();
-      return;
-    }
-    if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
-      e.preventDefault();
-      selectPlayerClass(CLASSES.AERO);
-      return;
-    } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
-      e.preventDefault();
-      selectPlayerClass(CLASSES.ENFORCER);
-      return;
-    } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
-      e.preventDefault();
-      selectPlayerClass(CLASSES.PLAYMAKER);
-      return;
-    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
-      e.preventDefault();
-      selectPlayerClass(CLASSES.SWEEPER);
-      return;
-    } else if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD') {
-      e.preventDefault();
-      selectPlayerClass(CLASSES.PLAYMAKER);
-      return;
-    }
-    // Podczas wyboru klasy blokujemy wszystkie pozostałe akcje gry
-    return;
-  }
-
   // Obsługa otwierania czatu sieciowego klawiszem "T"
-  if (e.code === 'KeyT' && !isChatActive) {
+  if (e.code === 'KeyT' && !isChatActive && GAME_STATE.current === 'PLAYING') {
     const activeEl = document.activeElement;
     const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
     if (!isInput) {
@@ -2278,6 +2273,125 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape' && isChatActive) {
       e.preventDefault();
       closeChat();
+    }
+    return;
+  }
+
+  // Obsługa klawisza Escape oraz P dla Pauzy / Menu / Ustawień
+  if (e.code === 'Escape' || (e.code === 'KeyP' && (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED'))) {
+    const mpModal = document.getElementById('mp-modal');
+    if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) {
+      e.preventDefault();
+      mpModal.classList.add('mp-modal-hidden');
+      updateCursorVisibility();
+      return;
+    }
+
+    e.preventDefault();
+    if (GAME_STATE.current === 'PLAYING') {
+      playUiPause();
+      setGameState('PAUSED');
+    } else if (GAME_STATE.current === 'PAUSED') {
+      playUiResume();
+      setGameState('PLAYING');
+    } else if (GAME_STATE.current === 'SETTINGS') {
+      playUiClick();
+      setGameState(GAME_STATE.previous || 'MENU');
+    } else if (GAME_STATE.current === 'ARENA_SELECT') {
+      playUiClick();
+      setGameState('MENU');
+    } else if (GAME_STATE.current === 'CLASS_SELECT') {
+      playUiClick();
+      setGameState('ARENA_SELECT');
+    }
+    return;
+  }
+
+  // Obsługa klawiszy w Menu Głównym (Start: Spacja / Enter otwiera wybór areny)
+  if (GAME_STATE.current === 'MENU') {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      playUiClick();
+      setGameState('ARENA_SELECT');
+      return;
+    }
+    return; // Blokada pozostałych klawiszy gry w Menu
+  }
+
+  // Obsługa klawiszy na ekranie wyboru areny (1-3 wybiera arenę, Spacja / Enter zatwierdza aktywną)
+  if (GAME_STATE.current === 'ARENA_SELECT') {
+    if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+      e.preventDefault();
+      playUiClick();
+      if (typeof window.switchArena === 'function') window.switchArena('ARENA_1');
+      setGameState('CLASS_SELECT');
+      return;
+    }
+    if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
+      e.preventDefault();
+      playUiClick();
+      if (typeof window.switchArena === 'function') window.switchArena('ARENA_2');
+      setGameState('CLASS_SELECT');
+      return;
+    }
+    if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+      e.preventDefault();
+      playUiClick();
+      if (typeof window.switchArena === 'function') window.switchArena('ARENA_3');
+      setGameState('CLASS_SELECT');
+      return;
+    }
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      playUiClick();
+      const activeCard = document.querySelector('#screen-arena-select .arena-card.active');
+      const chosenArena = activeCard?.dataset?.arena || window.activeArenaId || 'ARENA_2';
+      if (typeof window.switchArena === 'function') window.switchArena(chosenArena);
+      setGameState('CLASS_SELECT');
+      return;
+    }
+    return; // Blokada pozostałych klawiszy gry na ekranie wyboru areny
+  }
+
+  // Blokada klawiszy gry gdy gra jest wstrzymana lub w ustawieniach
+  if (GAME_STATE.current === 'PAUSED' || GAME_STATE.current === 'SETTINGS') {
+    return;
+  }
+
+  // Tryb wyboru klasy na arenie (Klawisze 1-4 natychmiast zatwierdzają i spawnują postać)
+  if (GAME_STATE.current === 'CLASS_SELECT' || gameState === GAME_STATES.CLASS_SELECT) {
+    if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+      e.preventDefault();
+      playUiClick();
+      selectPlayerClass(CLASSES.AERO);
+      return;
+    } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
+      e.preventDefault();
+      playUiClick();
+      selectPlayerClass(CLASSES.ENFORCER);
+      return;
+    } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
+      e.preventDefault();
+      playUiClick();
+      selectPlayerClass(CLASSES.PLAYMAKER);
+      return;
+    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
+      e.preventDefault();
+      playUiClick();
+      selectPlayerClass(CLASSES.SWEEPER);
+      return;
+    } else if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      playUiClick();
+      const currentSelected = uiManager?.selectedClassId;
+      const cls = currentSelected ? (CLASSES[currentSelected] || CLASSES.PLAYMAKER) : CLASSES.PLAYMAKER;
+      selectPlayerClass(cls);
+      return;
+    } else if (e.code === 'Escape') {
+      e.preventDefault();
+      playUiClick();
+      setGameState('MENU');
+      return;
     }
     return;
   }
@@ -2300,8 +2414,8 @@ window.addEventListener('keydown', (e) => {
     const hasModifier = e.ctrlKey || e.shiftKey || e.altKey || e.metaKey;
     const isGameKey = (
       e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
-      e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' || e.code === 'KeyF' ||
-      e.code === 'KeyB' || e.code === 'KeyQ' || e.code === 'KeyZ' ||
+      e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' ||
+      e.code === 'KeyB' || e.code === 'KeyZ' ||
       e.code === 'Space' ||
       (typeof e.code === 'string' && (e.code.startsWith('Arrow') || e.code.startsWith('Digit') || e.code.startsWith('Numpad')))
     );
@@ -2379,10 +2493,7 @@ window.addEventListener('keydown', (e) => {
       reloadWeapon(player, player.currentWeapon);
     }
   }
-  if (e.code === 'KeyQ') {
-    // Klawisz 'Q' zwolniony z rzutu granatem (ult nie jest zużywany przy rzucie)
-  }
-  if (e.code === 'KeyG' || e.code === 'KeyF') {
+  if (e.code === 'KeyG') {
     if (gameState === GAME_STATES.PLAYING && !player.isDead) {
       if (!e.repeat) {
         prepareGrenadeThrow(player);
@@ -2520,7 +2631,7 @@ window.addEventListener('keyup', (e) => {
     keys.slide = false;
     keys.shift = false;
   }
-  if (e.code === 'KeyG' || e.code === 'KeyF') {
+  if (e.code === 'KeyG') {
     if (gameState === GAME_STATES.PLAYING && !player.isDead) {
       if (player.throwAnim && player.throwAnim.active) {
         releaseGrenadeThrow(player);
@@ -2574,11 +2685,16 @@ window.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('touchstart', (e) => {
-  if (gameState === GAME_STATES.CLASS_SELECT && e.touches && e.touches[0]) {
-    const touch = e.touches[0];
-    const card = getHoveredClassCard(touch.clientX, touch.clientY);
-    e.preventDefault();
-    selectPlayerClass(card ? card.classObj : CLASSES.PLAYMAKER);
+  if (GAME_STATE.current !== 'PLAYING') {
+    if ((gameState === GAME_STATES.CLASS_SELECT || GAME_STATE.current === 'CLASS_SELECT') && e.touches && e.touches[0]) {
+      const touch = e.touches[0];
+      const card = getHoveredClassCard(touch.clientX, touch.clientY);
+      if (card) {
+        e.preventDefault();
+        playUiClick();
+        selectPlayerClass(card.classObj);
+      }
+    }
     return;
   }
 }, { passive: false });
@@ -2588,10 +2704,13 @@ canvas.addEventListener('mousedown', (e) => {
   mouseScreenY = e.clientY;
   setCameraMouseScreenPos(e.clientX, e.clientY);
 
-  if (gameState === GAME_STATES.CLASS_SELECT) {
-    if (e.button === 0) {
+  if (GAME_STATE.current !== 'PLAYING') {
+    if ((gameState === GAME_STATES.CLASS_SELECT || GAME_STATE.current === 'CLASS_SELECT') && e.button === 0) {
       const card = getHoveredClassCard(e.clientX, e.clientY);
-      selectPlayerClass(card ? card.classObj : CLASSES.PLAYMAKER);
+      if (card) {
+        playUiClick();
+        selectPlayerClass(card.classObj);
+      }
     }
     return;
   }
@@ -2812,7 +2931,20 @@ function update() {
     return;
   }
 
-  // Stan wyboru klasy: pauzujemy fizykę gracza, botów i piłki
+  // Obsługa maszyny stanów: PAUSED, MENU, SETTINGS
+  if (GAME_STATE.current === 'PAUSED') {
+    return; // Pełna pauza fizyki i animacji gry
+  }
+
+  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARENA_SELECT') {
+    mouseState.lmbDown = false;
+    mouseState.rmbDown = false;
+    updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
+    updateParticles();
+    return;
+  }
+
+  // Stan wyboru klasy: pauzujemy fizykę gracza, botów i piłki (kompatybilność wsteczna)
   if (gameState === GAME_STATES.CLASS_SELECT) {
     if (canvas.parentElement && !canvas.parentElement.classList.contains('cursor-visible')) {
       canvas.parentElement.classList.add('cursor-visible');
@@ -3398,7 +3530,7 @@ function draw() {
   const isDevOpenForCrosshair = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
 
-  let shouldDrawCrosshair = !player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && gameState === GAME_STATES.PLAYING;
+  let shouldDrawCrosshair = !player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && GAME_STATE.current === 'PLAYING';
   if (isThrowingGrenade || isWeaponHolstered || (rightStick && rightStick.armedMode === 'GRENADE')) shouldDrawCrosshair = false;
   if (isTouchDevice && !isAimingWithStick) shouldDrawCrosshair = false;
 
@@ -3425,11 +3557,13 @@ function draw() {
     ctx.restore();
   }
 
-  if (gameState === GAME_STATES.CLASS_SELECT) {
-    drawClassSelectModal(ctx);
-  } else {
+  if (GAME_STATE.current === 'PLAYING') {
     const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
     drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
+  } else if (GAME_STATE.current === 'PAUSED') {
+    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, false, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
+  } else if (gameState === GAME_STATES.CLASS_SELECT) {
+    drawClassSelectModal(ctx);
   }
 
   if (editorState.active) {
@@ -3482,11 +3616,62 @@ if (typeof window !== 'undefined') {
   window.pockets = pockets;
   window.rightStick = rightStick;
   window.leftStick = leftStick;
+
+  // Inicjalizacja interfejsu Menu Głównego, Ustawień oraz Pauzy
+  uiManager.init({
+    onStartGame: () => {
+      setGameState('ARENA_SELECT');
+    },
+    onSelectArena: (arenaId) => {
+      if (typeof window.switchArena === 'function') {
+        window.switchArena(arenaId);
+      }
+      setGameState('CLASS_SELECT');
+    },
+    onBackToMenu: () => {
+      setGameState('MENU');
+    },
+    onSelectClass: (classId) => {
+      const cls = CLASSES[classId] || CLASSES.PLAYMAKER;
+      selectPlayerClass(cls);
+    },
+    onOpenSettings: () => {
+      setGameState('SETTINGS');
+    },
+    onCloseSettings: () => {
+      setGameState(GAME_STATE.previous || 'MENU');
+    },
+    onPause: () => {
+      setGameState('PAUSED');
+    },
+    onResume: () => {
+      setGameState('PLAYING');
+    },
+    onRestartRound: () => {
+      startRound();
+      setGameState('PLAYING');
+    },
+    onChangeClass: () => {
+      setGameState('CLASS_SELECT');
+    },
+    onReturnToMenu: () => {
+      startRound();
+      setGameState('MENU');
+    },
+    getMatchInfo: () => {
+      const arena = getActiveArena();
+      const arenaName = arena?.name || (activeArenaId === 'ARENA_2' ? 'Sektor X' : activeArenaId === 'ARENA_3' ? 'Kolebka Mistrzów' : 'Champions Stadium');
+      return `ARENA: ${arenaName.toUpperCase()} • KLASA: ${player.currentClass?.name || 'PLAYMAKER'}`;
+    }
+  });
+
   if (window.location) {
     const urlParams = new URLSearchParams(window.location.search);
     const autostartClass = urlParams.get('class') || urlParams.get('autostart');
     if (autostartClass) {
       selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.PLAYMAKER);
+    } else {
+      setGameState('MENU');
     }
     if (urlParams.has('breach')) {
       const bx = Number(urlParams.get('breach')) || 1400;
@@ -3496,6 +3681,8 @@ if (typeof window !== 'undefined') {
         }
       }, 300);
     }
+  } else {
+    setGameState('MENU');
   }
 }
 

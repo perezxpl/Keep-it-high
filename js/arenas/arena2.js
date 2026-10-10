@@ -289,6 +289,8 @@ let _acidSirenCtx = null;
  */
 export function playAcidSurgeSiren() {
   if (typeof window === 'undefined') return;
+  if (window.ACID_SIREN_ENABLED === false) return;
+  if (window.uiManager && window.uiManager.settings && window.uiManager.settings.muteAll) return;
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
@@ -318,9 +320,11 @@ export function playAcidSurgeSiren() {
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(1200, now);
 
+    const masterVol = (window.uiManager?.settings?.masterVolume ?? 80) / 100;
+    const targetGain = 0.18 * masterVol;
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.18, now + 0.1);
-    gain.gain.setValueAtTime(0.18, now + 3.0);
+    gain.gain.linearRampToValueAtTime(targetGain, now + 0.1);
+    gain.gain.setValueAtTime(targetGain, now + 3.0);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
 
     osc.connect(filter);

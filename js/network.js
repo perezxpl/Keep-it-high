@@ -296,6 +296,9 @@ function handleNetworkData(data) {
       if (data.arenaId && data.arenaId !== activeArenaId) {
         switchArena(data.arenaId, player, remotePlayer, ball);
         updateDevArenaButtonUI(data.arenaId);
+        if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
+          window.uiManager.updateMpArenaUI(data.arenaId);
+        }
       }
       if (data.customObstacles) {
         setCustomObstacles(data.customObstacles);
@@ -450,6 +453,9 @@ function handleNetworkData(data) {
       if (data.arenaId) {
         switchArena(data.arenaId, player, remotePlayer, ball);
         updateDevArenaButtonUI(data.arenaId);
+        if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
+          window.uiManager.updateMpArenaUI(data.arenaId);
+        }
       }
       break;
     }
@@ -931,8 +937,9 @@ export function updateCursorVisibility() {
   const isMpOpen = mpModal && !mpModal.classList.contains('mp-modal-hidden');
   const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
   const isChatOpen = !!isChatActive;
+  const isNotInGame = (typeof window !== 'undefined' && window.GAME_STATE && window.GAME_STATE.current !== 'PLAYING');
 
-  const showCursor = isMpOpen || isDevOpen || isChatOpen || isHoveringUI;
+  const showCursor = isMpOpen || isDevOpen || isChatOpen || isHoveringUI || isNotInGame;
 
   if (gameContainer) {
     if (showCursor) {

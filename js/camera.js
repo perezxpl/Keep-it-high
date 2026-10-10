@@ -119,10 +119,12 @@ export function setDevZoom(val) {
 }
 
 export function triggerScreenShake(intensity) {
+  if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
   camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
 }
 
 export function shakeImpulse(intensity = 14, duration = 0.15) {
+  if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
   camera.shakeIntensity = Math.min(32, Math.max(camera.shakeIntensity || 0, intensity));
   camera.shakeDecay = (typeof duration === 'number' && duration <= 0.25) ? 0.72 : 0.85;
 }

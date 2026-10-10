@@ -338,9 +338,6 @@ export function createPlayerInstance(overrides = {}) {
     spartanTimer: 0,
     spartanDuration: 22,
     spartanTarget: null,
-    ultMeter: 100,
-    ultMax: 100,
-    ultCooldown: 0,
     _ball: null,
     _targets: null,
 
@@ -642,15 +639,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   let inputAxisX = 0;
   let inputAxisY = 0;
-
-  // Odnawianie super-umiejętności (Ult)
-  if (player.ultCooldown > 0) {
-    player.ultCooldown--;
-    player.ultMeter = Math.min(100, Math.floor((1 - player.ultCooldown / (8 * 60)) * 100));
-  } else {
-    player.ultCooldown = 0;
-    player.ultMeter = 100;
-  }
 
   // Wciśnięcie skoku / wykopu natychmiast podrywa postać na nogi z leżenia i kucania
   const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered) || (leftStick && leftStick.axisY < -0.40));
