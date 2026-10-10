@@ -5,6 +5,7 @@
 
 import { CONFIG } from './config.js';
 import { CLASSES } from './classes/index.js';
+import { drawPlayer } from './player/renderer.js';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
@@ -296,6 +297,7 @@ export const uiManager = {
   syncUI(gameState) {
     const menuEl = document.getElementById('main-menu-overlay');
     const settingsEl = document.getElementById('settings-overlay');
+    const creatorEl = document.getElementById('creator-overlay');
     const pauseEl = document.getElementById('pause-overlay');
     const hudPauseBtn = document.getElementById('hud-pause-btn');
     const devPanel = document.getElementById('dev-panel-container');
@@ -305,7 +307,9 @@ export const uiManager = {
     // Ukryj domyślnie wszystkie ekrany UI
     if (menuEl) menuEl.style.display = 'none';
     if (settingsEl) settingsEl.style.display = 'none';
+    if (creatorEl) creatorEl.style.display = 'none';
     if (pauseEl) pauseEl.style.display = 'none';
+    this.stopCreatorPreview();
 
     const isCursorActive = (gameState !== 'PLAYING');
 
@@ -359,6 +363,12 @@ export const uiManager = {
         if (settingsEl) settingsEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         this.syncFormControls();
+        break;
+
+      case 'CREATOR':
+        if (creatorEl) creatorEl.style.display = 'flex';
+        if (hudPauseBtn) hudPauseBtn.style.display = 'none';
+        this.startCreatorPreview();
         break;
 
       case 'PAUSED':
@@ -428,6 +438,18 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onStartGame === 'function') {
           this.callbacks.onStartGame();
+        }
+      });
+    }
+
+    // MENU GŁÓWNE: Przycisk "KREATOR POSTACI"
+    const creatorBtn = document.getElementById('menu-btn-creator');
+    if (creatorBtn) {
+      creatorBtn.addEventListener('mouseenter', () => playUiHover());
+      creatorBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onOpenCreator === 'function') {
+          this.callbacks.onOpenCreator();
         }
       });
     }
@@ -529,6 +551,17 @@ export const uiManager = {
       });
     }
 
+    const pauseCreatorBtn = document.getElementById('pause-btn-creator');
+    if (pauseCreatorBtn) {
+      pauseCreatorBtn.addEventListener('mouseenter', () => playUiHover());
+      pauseCreatorBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onOpenCreator === 'function') {
+          this.callbacks.onOpenCreator();
+        }
+      });
+    }
+
     const pauseSettingsBtn = document.getElementById('pause-btn-settings');
     if (pauseSettingsBtn) {
       pauseSettingsBtn.addEventListener('mouseenter', () => playUiHover());
@@ -547,6 +580,29 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onReturnToMenu === 'function') {
           this.callbacks.onReturnToMenu();
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // OKNO KREATORA POSTACI: Zamykanie / Wróć
+    // -------------------------------------------------------------------------
+    const creatorCloseBtn = document.getElementById('creator-close-btn');
+    if (creatorCloseBtn) {
+      creatorCloseBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
+          this.callbacks.onCloseCreator();
+        }
+      });
+    }
+
+    const creatorBackBtn = document.getElementById('creator-back-btn');
+    if (creatorBackBtn) {
+      creatorBackBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
+          this.callbacks.onCloseCreator();
         }
       });
     }
@@ -699,6 +755,126 @@ export const uiManager = {
         this.applySettings();
       });
     }
+  },
+
+  creatorRafId: null,
+  creatorDummyPlayer: null,
+
+  startCreatorPreview() {
+    this.stopCreatorPreview();
+    if (!this.creatorDummyPlayer) {
+      this.creatorDummyPlayer = {
+        x: -12,
+        y: -70,
+        w: 24,
+        h: 70,
+        vx: 0,
+        vy: 0,
+        onGround: true,
+        isJumping: false,
+        isSliding: false,
+        isIntro: false,
+        isProne: false,
+        currentGroundY: 0,
+        pelvisY: -11.8,
+        facing: 1,
+        yaw: 0,
+        gaitMode: 'IDLE',
+        stridePhase: 0,
+        torsoTilt: 0,
+        headPitch: 0,
+        thighLen: 19,
+        shinLen: 19,
+        upperArmLen: 13,
+        forearmLen: 12,
+        hp: 100,
+        maxHp: 100,
+        isDead: false,
+        staggerTimer: 0,
+        jetFuel: 150,
+        jetMax: 150,
+        isJetpacking: false,
+        hasHelmet: false,
+        helmetHp: 0,
+        hasVest: false,
+        vestHp: 0,
+        isHolstered: true,
+        holsterWeight: 1.0,
+        currentWeapon: 'AK47',
+        aimAngle: 0,
+        currentClass: CLASSES.RAPTOR,
+        pose: {}
+      };
+    }
+
+    const tick = () => {
+      this.drawCreatorPreviewFrame();
+      this.creatorRafId = requestAnimationFrame(tick);
+    };
+    this.creatorRafId = requestAnimationFrame(tick);
+  },
+
+  stopCreatorPreview() {
+    if (this.creatorRafId) {
+      cancelAnimationFrame(this.creatorRafId);
+      this.creatorRafId = null;
+    }
+  },
+
+  drawCreatorPreviewFrame() {
+    const canvas = document.getElementById('creator-preview-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // 1. Subtelna siatka techniczna w tle (w stylu okna podglądu Soldat)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.06)';
+    ctx.lineWidth = 1;
+    const gridStep = 24;
+    for (let gx = gridStep; gx < cw; gx += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, ch);
+      ctx.stroke();
+    }
+    for (let gy = gridStep; gy < ch; gy += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(cw, gy);
+      ctx.stroke();
+    }
+
+    // 2. Linia podłoża (podest pod stopami postaci)
+    const floorScreenY = 238;
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(36, floorScreenY);
+    ctx.lineTo(cw - 36, floorScreenY);
+    ctx.stroke();
+
+    // Cień pod stopami
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(cw / 2, floorScreenY + 2, 32, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 3. Rysowanie całej postaci w skali dopasowanej tak, by w 100% mieściła się w ramce bez przesuwania
+    const dummy = this.creatorDummyPlayer;
+    if (!dummy) return;
+    dummy.currentClass = CLASSES.RAPTOR;
+
+    ctx.save();
+    ctx.translate(cw / 2, floorScreenY);
+    ctx.scale(2.15, 2.15);
+    drawPlayer(ctx, 0, dummy);
+    ctx.restore();
   },
 
   switchTab(tabName) {

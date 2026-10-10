@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v72_three_classes';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v73_creator_preview';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v72_three_classes';
+} from './world.js?v=v73_creator_preview';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v72_three_classes';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v72_three_classes';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v72_three_classes';
+} from './player.js?v=v73_creator_preview';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v73_creator_preview';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v73_creator_preview';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v72_three_classes';
+} from './ball.js?v=v73_creator_preview';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v72_three_classes';
-import { CLASSES } from './classes/index.js?v=v72_three_classes';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v72_three_classes';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v72_three_classes';
+} from './obstacles.js?v=v73_creator_preview';
+import { CLASSES } from './classes/index.js?v=v73_creator_preview';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v73_creator_preview';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v73_creator_preview';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v72_three_classes';
+} from './network.js?v=v73_creator_preview';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v72_three_classes';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v72_three_classes';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v72_three_classes';
+} from './mobileControls.js?v=v73_creator_preview';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v73_creator_preview';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v73_creator_preview';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -2315,7 +2315,7 @@ window.addEventListener('keydown', (e) => {
     } else if (GAME_STATE.current === 'PAUSED') {
       playUiResume();
       setGameState('PLAYING');
-    } else if (GAME_STATE.current === 'SETTINGS') {
+    } else if (GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'CREATOR') {
       playUiClick();
       setGameState(GAME_STATE.previous || 'MENU');
     } else if (GAME_STATE.current === 'ARENA_SELECT') {
@@ -2374,8 +2374,8 @@ window.addEventListener('keydown', (e) => {
     return; // Blokada pozostałych klawiszy gry na ekranie wyboru areny
   }
 
-  // Blokada klawiszy gry gdy gra jest wstrzymana lub w ustawieniach
-  if (GAME_STATE.current === 'PAUSED' || GAME_STATE.current === 'SETTINGS') {
+  // Blokada klawiszy gry gdy gra jest wstrzymana, w ustawieniach lub w kreatorze
+  if (GAME_STATE.current === 'PAUSED' || GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'CREATOR') {
     return;
   }
 
@@ -2951,7 +2951,7 @@ function update() {
     return; // Pełna pauza fizyki i animacji gry
   }
 
-  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARENA_SELECT') {
+  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'CREATOR' || GAME_STATE.current === 'ARENA_SELECT') {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
     updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
@@ -3654,6 +3654,12 @@ if (typeof window !== 'undefined') {
       setGameState('SETTINGS');
     },
     onCloseSettings: () => {
+      setGameState(GAME_STATE.previous || 'MENU');
+    },
+    onOpenCreator: () => {
+      setGameState('CREATOR');
+    },
+    onCloseCreator: () => {
       setGameState(GAME_STATE.previous || 'MENU');
     },
     onPause: () => {

@@ -13,28 +13,28 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/uiManager.js": "./js/uiManager.js?v=v72_three_classes",
-      "./js/config.js": "./js/config.js?v=v72_three_classes",
-      "./js/classes/index.js": "./js/classes/index.js?v=v72_three_classes",
-      "./js/classes/aero.js": "./js/classes/aero.js?v=v72_three_classes",
-      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v72_three_classes",
-      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v72_three_classes",
-      "./js/world.js": "./js/world.js?v=v72_three_classes",
-      "./js/player.js": "./js/player.js?v=v72_three_classes",
-      "./js/player/index.js": "./js/player/index.js?v=v72_three_classes",
-      "./js/player/renderer.js": "./js/player/renderer.js?v=v72_three_classes",
-      "./js/player/actions.js": "./js/player/actions.js?v=v72_three_classes",
-      "./js/player/death.js": "./js/player/death.js?v=v72_three_classes",
-      "./js/weapons.js": "./js/weapons.js?v=v72_three_classes",
-      "./js/ball.js": "./js/ball.js?v=v72_three_classes",
-      "./js/obstacles.js": "./js/obstacles.js?v=v72_three_classes",
-      "./js/arenas/index.js": "./js/arenas/index.js?v=v72_three_classes",
-      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v72_three_classes",
-      "./js/projectiles.js": "./js/projectiles.js?v=v72_three_classes",
-      "./js/renderer.js": "./js/renderer.js?v=v72_three_classes",
-      "./js/network.js": "./js/network.js?v=v72_three_classes",
-      "./js/bot.js": "./js/bot.js?v=v72_three_classes",
-      "./js/mobileControls.js": "./js/mobileControls.js?v=v72_three_classes"
+      "./js/uiManager.js": "./js/uiManager.js?v=v73_creator_preview",
+      "./js/config.js": "./js/config.js?v=v73_creator_preview",
+      "./js/classes/index.js": "./js/classes/index.js?v=v73_creator_preview",
+      "./js/classes/aero.js": "./js/classes/aero.js?v=v73_creator_preview",
+      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v73_creator_preview",
+      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v73_creator_preview",
+      "./js/world.js": "./js/world.js?v=v73_creator_preview",
+      "./js/player.js": "./js/player.js?v=v73_creator_preview",
+      "./js/player/index.js": "./js/player/index.js?v=v73_creator_preview",
+      "./js/player/renderer.js": "./js/player/renderer.js?v=v73_creator_preview",
+      "./js/player/actions.js": "./js/player/actions.js?v=v73_creator_preview",
+      "./js/player/death.js": "./js/player/death.js?v=v73_creator_preview",
+      "./js/weapons.js": "./js/weapons.js?v=v73_creator_preview",
+      "./js/ball.js": "./js/ball.js?v=v73_creator_preview",
+      "./js/obstacles.js": "./js/obstacles.js?v=v73_creator_preview",
+      "./js/arenas/index.js": "./js/arenas/index.js?v=v73_creator_preview",
+      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v73_creator_preview",
+      "./js/projectiles.js": "./js/projectiles.js?v=v73_creator_preview",
+      "./js/renderer.js": "./js/renderer.js?v=v73_creator_preview",
+      "./js/network.js": "./js/network.js?v=v73_creator_preview",
+      "./js/bot.js": "./js/bot.js?v=v73_creator_preview",
+      "./js/mobileControls.js": "./js/mobileControls.js?v=v73_creator_preview"
     }
   }
   </script>
@@ -1678,6 +1678,104 @@
     }
 
     /* -------------------------------------------------------------------------
+       2B. OKNO KREATORA POSTACI (CHARACTER CREATOR)
+       ------------------------------------------------------------------------- */
+    .creator-modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 720px;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(0, 229, 255, 0.45);
+      border-radius: 16px;
+      box-shadow: 0 0 45px rgba(0, 229, 255, 0.25), 0 25px 50px rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      color: #f8fafc;
+    }
+
+    .creator-body {
+      display: flex;
+      gap: 18px;
+      padding: 18px 20px;
+      align-items: stretch;
+    }
+
+    .creator-preview-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 240px;
+      flex-shrink: 0;
+    }
+
+    .creator-preview-frame {
+      position: relative;
+      width: 240px;
+      height: 290px;
+      background: radial-gradient(circle at 50% 60%, rgba(16, 185, 129, 0.10), rgba(2, 6, 23, 0.92));
+      border: 1.5px solid rgba(0, 229, 255, 0.35);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.75);
+    }
+
+    #creator-preview-canvas {
+      display: block;
+      width: 240px;
+      height: 290px;
+    }
+
+    .creator-class-label {
+      margin-top: 8px;
+      font-family: 'Orbitron', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      color: #10b981;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .creator-options-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(2, 6, 23, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 290px;
+    }
+
+    .creator-options-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      font-weight: 800;
+      color: #00e5ff;
+      letter-spacing: 0.8px;
+      margin: 0 0 10px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .creator-options-placeholder {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 16px;
+    }
+
+    /* -------------------------------------------------------------------------
        3. OKNO PAUZY (PAUSE)
        ------------------------------------------------------------------------- */
     .pause-modal-box {
@@ -2109,6 +2207,11 @@
             </button>
 
             <div class="menu-actions-row">
+              <button id="menu-btn-creator" class="ui-btn ui-btn-secondary" type="button" title="Edytuj wygląd postaci">
+                <span class="btn-icon">🎨</span>
+                <span class="btn-text">KREATOR POSTACI</span>
+              </button>
+
               <button id="menu-btn-settings" class="ui-btn ui-btn-secondary" type="button" title="Konfiguracja dźwięku i grafiki">
                 <span class="btn-icon">⚙️</span>
                 <span class="btn-text">USTAWIENIA</span>
@@ -2121,7 +2224,7 @@
 
               <button id="menu-btn-controls" class="ui-btn ui-btn-secondary" type="button" title="Zobacz sterowanie i klawisze">
                 <span class="btn-icon">⌨️</span>
-                <span class="btn-text">STEROWANIE</span>
+                <span class="btn-text">KLAWISZE</span>
               </button>
             </div>
           </div>
@@ -2336,6 +2439,45 @@
         </div>
       </div>
 
+      <!-- 2B. OKNO KREATORA POSTACI -->
+      <div id="creator-overlay" class="ui-view-overlay" style="display: none;">
+        <div class="creator-modal-box">
+          <div class="settings-header">
+            <div class="settings-title-group">
+              <span class="settings-icon">🎨</span>
+              <div>
+                <h2>KREATOR POSTACI</h2>
+                <p>Podgląd sylwetki i modyfikacja wyglądu</p>
+              </div>
+            </div>
+            <button id="creator-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
+          </div>
+
+          <div class="creator-body">
+            <!-- Lewa kolumna: Stałe okno z pełnym podglądem postaci z profilu -->
+            <div class="creator-preview-col">
+              <div class="creator-preview-frame">
+                <canvas id="creator-preview-canvas" width="240" height="290"></canvas>
+              </div>
+              <div class="creator-class-label" id="creator-preview-label">KLASA LEKKA: RAPTOR</div>
+            </div>
+
+            <!-- Prawa kolumna: Panel opcji edycji (do wspólnego ustalenia w kolejnym kroku) -->
+            <div class="creator-options-col">
+              <h3 class="creator-options-title">OPCJE EDYCJI WYGLĄDU</h3>
+              <div class="creator-options-placeholder" id="creator-options-container">
+                Miejsce na opcje modyfikacji postaci (kolejny krok).
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-footer">
+            <span></span>
+            <button id="creator-back-btn" class="ui-btn ui-btn-primary" type="button">← Wróć</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 3. OKNO PAUZY -->
       <div id="pause-overlay" class="ui-view-overlay" style="display: none;">
         <div class="pause-modal-box">
@@ -2362,6 +2504,11 @@
               <span class="btn-text">ZMIEŃ KLASĘ POSTACI</span>
             </button>
 
+            <button id="pause-btn-creator" class="ui-btn ui-btn-secondary" type="button">
+              <span class="btn-icon">🎨</span>
+              <span class="btn-text">KREATOR POSTACI</span>
+            </button>
+
             <button id="pause-btn-settings" class="ui-btn ui-btn-secondary" type="button">
               <span class="btn-icon">⚙️</span>
               <span class="btn-text">USTAWIENIA</span>
@@ -2385,7 +2532,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v72_three_classes"></script>
+  <script type="module" src="./js/main.js?v=v73_creator_preview"></script>
 </body>
 
 </html>

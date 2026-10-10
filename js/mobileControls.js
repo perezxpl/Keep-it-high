@@ -5,9 +5,9 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v72_three_classes';
-import { ball } from './ball.js?v=v72_three_classes';
-import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v72_three_classes';
+import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v73_creator_preview';
+import { ball } from './ball.js?v=v73_creator_preview';
+import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v73_creator_preview';
 
 export function isArena1() {
   const cur = (typeof window !== 'undefined' && window.activeArenaId)

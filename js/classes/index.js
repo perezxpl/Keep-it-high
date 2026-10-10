@@ -1,6 +1,6 @@
-import { RaptorClass } from './aero.js?v=v72_three_classes';
-import { StrikerClass } from './playmaker.js?v=v72_three_classes';
-import { EnforcerClass } from './enforcer.js?v=v72_three_classes';
+import { RaptorClass } from './aero.js?v=v73_creator_preview';
+import { StrikerClass } from './playmaker.js?v=v73_creator_preview';
+import { EnforcerClass } from './enforcer.js?v=v73_creator_preview';
 
 export const CLASSES = {
   // Kolejność od lekkiej do ciężkiej: 1. Raptor, 2. Striker, 3. Enforcer
