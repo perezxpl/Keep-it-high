@@ -3522,7 +3522,6 @@ export function drawArena3Foreground(ctx, camera) {
     }
 
     // Prawa lina nośna
-    const anchorRX = plat.ropeRight.anchorX || plat.ropeRight.x;
     if (plat.ropeRight.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
