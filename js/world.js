@@ -3267,8 +3267,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
 
     // Pierścień postępu 1-sekundowego przytrzymania (wyzwalającego przeładowanie)
     if (isPressed && !pFirearm.isDragging && !pFirearm.reloadTriggered && !isRel) {
-      const holdProg = Math.max(0, Math.min(1, (time - (pFirearm.touchStartTime || time)) / 1000));
-      if (holdProg > 0.10) {
+      const holdProg = Math.max(0, Math.min(1, (time - (pFirearm.touchStartTime || time)) / 850));
+      if (holdProg > 0.05) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r - 1.5, -Math.PI / 2, -Math.PI / 2 + holdProg * Math.PI * 2, false);

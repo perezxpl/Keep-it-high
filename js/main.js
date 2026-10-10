@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos
-} from './world.js?v=v59_reload_and_touch_pad';
+} from './world.js?v=v60_mobile_reload_fix';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -21,12 +21,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   executeAeroUlt, throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v59_reload_and_touch_pad';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v59_reload_and_touch_pad';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v59_reload_and_touch_pad';
+} from './player.js?v=v60_mobile_reload_fix';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v60_mobile_reload_fix';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v60_mobile_reload_fix';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v59_reload_and_touch_pad';
+} from './ball.js?v=v60_mobile_reload_fix';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -34,24 +34,24 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v59_reload_and_touch_pad';
-import { CLASSES } from './classes/index.js?v=v59_reload_and_touch_pad';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v59_reload_and_touch_pad';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v59_reload_and_touch_pad';
+} from './obstacles.js?v=v60_mobile_reload_fix';
+import { CLASSES } from './classes/index.js?v=v60_mobile_reload_fix';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v60_mobile_reload_fix';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v60_mobile_reload_fix';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v59_reload_and_touch_pad';
+} from './network.js?v=v60_mobile_reload_fix';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v59_reload_and_touch_pad';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v59_reload_and_touch_pad';
+} from './mobileControls.js?v=v60_mobile_reload_fix';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v60_mobile_reload_fix';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -243,6 +243,30 @@ canvas.addEventListener('touchstart', (e) => {
       }
     }
 
+    // Sprawdzenie dotknięcia karty broni w lewym górnym rogu (1s przytrzymanie = przeładowanie, <1s puszczenie = zmiana broni)
+    const pFarmTop = pockets.firearm;
+    if (pFarmTop && t.clientX >= 10 && t.clientX <= 235 && t.clientY >= 28 && t.clientY <= 78) {
+      if (pFarmTop.holdTimerId) clearTimeout(pFarmTop.holdTimerId);
+      rightStick.draggedSlot = null;
+      pFarmTop.active = true;
+      pFarmTop.id = t.identifier;
+      pFarmTop.startX = t.clientX;
+      pFarmTop.startY = t.clientY;
+      pFarmTop.touchStartTime = performance.now();
+      pFarmTop.isDragging = false;
+      pFarmTop.reloadTriggered = false;
+      pFarmTop.holdTimerId = setTimeout(() => {
+        pFarmTop.holdTimerId = null;
+        if (pFarmTop.active && !pFarmTop.isDragging && !pFarmTop.reloadTriggered) {
+          pFarmTop.reloadTriggered = true;
+          player.isHolstered = false;
+          rightStick.armedMode = 'FIREARM';
+          reloadWeapon(player, player.currentWeapon);
+        }
+      }, 850);
+      continue;
+    }
+
     // =======================================================================
     // PRAWA STRONA EKRANU: PRZYCISKI (KOP, WŚLIZG, KUCANIE, GRANAT) I DRĄŻEK CELOWANIA
     // =======================================================================
@@ -263,7 +287,7 @@ canvas.addEventListener('touchstart', (e) => {
       const maxRightTouchDist = (rightStick.maxRadius || 58) + 24;
 
       const minDist = Math.min(distToAct, distToFarm, distToThrow);
-      if (minDist === distToAct && pAct && distToAct < pAct.r + 15) {
+      if (minDist === distToAct && pAct && distToAct < pAct.r + 18) {
         pAct.active = true;
         pAct.id = t.identifier;
         handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, {
@@ -271,7 +295,8 @@ canvas.addEventListener('touchstart', (e) => {
           targets: [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean),
           obstacles: obstacles
         });
-      } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 15) {
+      } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 20) {
+        if (pFarm.holdTimerId) clearTimeout(pFarm.holdTimerId);
         rightStick.draggedSlot = null;
         pFarm.active = true;
         pFarm.id = t.identifier;
@@ -280,7 +305,16 @@ canvas.addEventListener('touchstart', (e) => {
         pFarm.touchStartTime = performance.now();
         pFarm.isDragging = false;
         pFarm.reloadTriggered = false;
-      } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 15) {
+        pFarm.holdTimerId = setTimeout(() => {
+          pFarm.holdTimerId = null;
+          if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered) {
+            pFarm.reloadTriggered = true;
+            player.isHolstered = false;
+            rightStick.armedMode = 'FIREARM';
+            reloadWeapon(player, player.currentWeapon);
+          }
+        }, 850);
+      } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 18) {
         rightStick.draggedSlot = null;
         pThrow.active = true;
         pThrow.id = t.identifier;
@@ -290,7 +324,7 @@ canvas.addEventListener('touchstart', (e) => {
         pThrow.isDragging = false;
       } else if (!rightStick.active && distToRightStick <= maxRightTouchDist) {
         // Zabezpieczenie przed nakładaniem się stref kieszeni i prawego drążka
-        if (distToAct < pAct.r + 12 || distToFarm < pFarm.r + 12 || distToThrow < pThrow.r + 12) continue;
+        if (distToAct < pAct.r + 14 || distToFarm < pFarm.r + 16 || distToThrow < pThrow.r + 14) continue;
 
         rightStick.active = true;
         rightStick.id = t.identifier;
@@ -477,10 +511,16 @@ canvas.addEventListener('touchmove', (e) => {
       updateDoubleFlickDetection(leftStick.axisY);
     }
 
-    // A. Przeciąganie kieszeni na broń palną
+    // A. Przeciąganie kieszeni na broń palną (tylko gdy faktycznie przeciągano w prawo na drążek celowania)
     if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
-      const d = Math.hypot(t.clientX - pockets.firearm.startX, t.clientY - pockets.firearm.startY);
-      if (!pockets.firearm.reloadTriggered && (d > 18 || pockets.firearm.isDragging)) {
+      const dxRight = t.clientX - pockets.firearm.startX;
+      const distFromPocket = Math.hypot(t.clientX - pockets.firearm.x, t.clientY - pockets.firearm.y);
+      const canDragToEquip = (rightStick.armedMode !== 'FIREARM' || player.isHolstered);
+      if (!pockets.firearm.reloadTriggered && canDragToEquip && (dxRight > 38 && distFromPocket > pockets.firearm.r + 12 || pockets.firearm.isDragging)) {
+        if (pockets.firearm.holdTimerId) {
+          clearTimeout(pockets.firearm.holdTimerId);
+          pockets.firearm.holdTimerId = null;
+        }
         pockets.firearm.isDragging = true;
         rightStick.draggedSlot = {
           type: 'FIREARM',
@@ -648,6 +688,10 @@ function endTouch(e) {
       rightStick.draggedSlot?.type === 'FIREARM'
     );
     if (isFarmTouch) {
+      if (pockets.firearm.holdTimerId) {
+        clearTimeout(pockets.firearm.holdTimerId);
+        pockets.firearm.holdTimerId = null;
+      }
       const wasDragging = pockets.firearm.isDragging || (rightStick.draggedSlot?.type === 'FIREARM');
       const wasReloadTriggered = !!pockets.firearm.reloadTriggered;
       const touchStartTime = pockets.firearm.touchStartTime || 0;
@@ -662,24 +706,23 @@ function endTouch(e) {
         const dropX = t.clientX;
         const dropY = t.clientY;
         const distToStick = Math.hypot(dropX - rightStick.baseX, dropY - rightStick.baseY);
-        // Jeśli przeciągnięto w stronę prawego drążka (w prawo o min. 20px LUB w promieniu 140px LUB w strefie drążka):
-        if (dropX >= startX + 20 || distToStick < 140 || dropX >= rightStick.baseX - 60) {
+        if (dropX >= startX + 35 || distToStick < 75) {
           rightStick.armedMode = 'FIREARM';
           player.isHolstered = false;
           if (typeof triggerScreenShake === 'function') triggerScreenShake(2.0);
         }
         rightStick.draggedSlot = null;
       } else if (!wasReloadTriggered) {
-        // Puszczenie kieszeni broni palnej (bez przeciągania i bez wcześniejszego wywołania przeładowania):
+        // Puszczenie kieszeni broni palnej:
         const now = performance.now();
         const touchDur = now - touchStartTime;
-        if (touchDur >= 1000) {
-          // Przytrzymanie przez co najmniej 1 sekundę -> przeładowanie bez zmiany broni
+        if (touchDur >= 850) {
+          // Przytrzymanie (~1 sekunda) -> przeładowanie bez zmiany broni
           player.isHolstered = false;
           rightStick.armedMode = 'FIREARM';
           reloadWeapon(player, player.currentWeapon);
         } else {
-          // Puszczenie ikony poniżej 1 sekundy (< 1000 ms) -> zmiana broni po puszczeniu!
+          // Puszczenie ikony poniżej 1 sekundy (< 850 ms) -> zmiana broni po puszczeniu!
           if (player.isHolstered || rightStick.armedMode !== 'FIREARM') {
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
@@ -770,6 +813,10 @@ function endTouch(e) {
   if (!e.touches || e.touches.length === 0) {
     rightStick.draggedSlot = null;
     if (pockets.firearm) {
+      if (pockets.firearm.holdTimerId) {
+        clearTimeout(pockets.firearm.holdTimerId);
+        pockets.firearm.holdTimerId = null;
+      }
       pockets.firearm.isDragging = false;
       pockets.firearm.active = false;
       pockets.firearm.id = null;
@@ -2552,6 +2599,34 @@ canvas.addEventListener('mousedown', (e) => {
   const mpModal = document.getElementById('mp-modal');
   if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) return;
 
+  // 0a. Obsługa kieszeni broni palnej (oraz karty broni w lewym górnym rogu) dla myszy / pada dotykowego
+  if (e.button === 0 && isTouchDevice && pockets.firearm) {
+    const pFarm = pockets.firearm;
+    const distToFarm = dist(e.clientX, e.clientY, pFarm.x, pFarm.y);
+    const inTopCard = (e.clientX >= 10 && e.clientX <= 235 && e.clientY >= 28 && e.clientY <= 78);
+    if (distToFarm < pFarm.r + 20 || inTopCard) {
+      if (pFarm.holdTimerId) clearTimeout(pFarm.holdTimerId);
+      rightStick.draggedSlot = null;
+      pFarm.active = true;
+      pFarm.id = 'mouse';
+      pFarm.startX = e.clientX;
+      pFarm.startY = e.clientY;
+      pFarm.touchStartTime = performance.now();
+      pFarm.isDragging = false;
+      pFarm.reloadTriggered = false;
+      pFarm.holdTimerId = setTimeout(() => {
+        pFarm.holdTimerId = null;
+        if (pFarm.active && !pFarm.isDragging && !pFarm.reloadTriggered) {
+          pFarm.reloadTriggered = true;
+          player.isHolstered = false;
+          rightStick.armedMode = 'FIREARM';
+          reloadWeapon(player, player.currentWeapon);
+        }
+      }, 850);
+      return;
+    }
+  }
+
   // 0. Obsługa kliknięcia myszą w kafelki broni (dolny lewy róg)
   for (const btn of weaponButtons) {
     if (e.clientX >= btn.x && e.clientX <= btn.x + btn.w &&
@@ -2601,6 +2676,39 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 window.addEventListener('mouseup', (e) => {
+  if (e.button === 0 && pockets.firearm && pockets.firearm.active && pockets.firearm.id === 'mouse') {
+    if (pockets.firearm.holdTimerId) {
+      clearTimeout(pockets.firearm.holdTimerId);
+      pockets.firearm.holdTimerId = null;
+    }
+    const wasReloadTriggered = !!pockets.firearm.reloadTriggered;
+    const touchStartTime = pockets.firearm.touchStartTime || 0;
+    pockets.firearm.active = false;
+    pockets.firearm.isDragging = false;
+    pockets.firearm.id = null;
+    pockets.firearm.reloadTriggered = false;
+
+    if (!wasReloadTriggered) {
+      const touchDur = performance.now() - touchStartTime;
+      if (touchDur >= 850) {
+        player.isHolstered = false;
+        rightStick.armedMode = 'FIREARM';
+        reloadWeapon(player, player.currentWeapon);
+      } else {
+        if (player.isHolstered || rightStick.armedMode !== 'FIREARM') {
+          player.isHolstered = false;
+          rightStick.armedMode = 'FIREARM';
+        } else {
+          const curId = player.currentWeapon?.id || 'AK47';
+          if (curId === 'AK47') player.currentWeapon = WEAPONS.SHOTGUN;
+          else if (curId === 'SHOTGUN') player.currentWeapon = WEAPONS.SNIPER;
+          else player.currentWeapon = WEAPONS.AK47;
+        }
+      }
+    }
+    return;
+  }
+
   if (editorState.active) {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
@@ -2791,7 +2899,11 @@ function update() {
   // 1-SEKUNDOWE PRZYTRZYMANIE KIESZENI BRONI PALNEJ NA EKRANIE DOTYKOWYM -> PRZEŁADOWANIE
   if (pockets.firearm && pockets.firearm.active && !pockets.firearm.isDragging && !pockets.firearm.reloadTriggered) {
     const holdElapsed = performance.now() - (pockets.firearm.touchStartTime || 0);
-    if (holdElapsed >= 1000) {
+    if (holdElapsed >= 850) {
+      if (pockets.firearm.holdTimerId) {
+        clearTimeout(pockets.firearm.holdTimerId);
+        pockets.firearm.holdTimerId = null;
+      }
       pockets.firearm.reloadTriggered = true;
       player.isHolstered = false;
       rightStick.armedMode = 'FIREARM';

@@ -1,5 +1,5 @@
 import { AeroClass } from './aero.js';
-import { EnforcerClass } from './enforcer.js?v=v59_reload_and_touch_pad';
+import { EnforcerClass } from './enforcer.js?v=v60_mobile_reload_fix';
 import { PlaymakerClass } from './playmaker.js';
 import { SweeperClass } from './sweeper.js';
 

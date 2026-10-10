@@ -41,7 +41,7 @@ export {
   getPlatformSurfaceY,
   OBSTACLE_RENDERERS,
   normalizeObstacleType
-} from './obstacles.js?v=v59_reload_and_touch_pad';
+} from './obstacles.js?v=v60_mobile_reload_fix';
 
 export {
   drawMineCaveBackground,
@@ -97,7 +97,7 @@ export {
   activeProjectiles,
   rubbleParticles,
   explosionEffects
-} from './projectiles.js?v=v59_reload_and_touch_pad';
+} from './projectiles.js?v=v60_mobile_reload_fix';
 
 export {
   drawGround,
@@ -141,18 +141,18 @@ export {
   LOWER_CAVERN_CEILING_Y,
   drawHazardStripes,
   ladders
-} from './world.js?v=v59_reload_and_touch_pad';
+} from './world.js?v=v60_mobile_reload_fix';
 
 export function drawLadderRungs() {}
 
 export {
   throwTacticalGrenade,
   executeAeroUlt
-} from './player/actions.js?v=v59_reload_and_touch_pad';
+} from './player/actions.js?v=v60_mobile_reload_fix';
 
-import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v59_reload_and_touch_pad';
+import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v60_mobile_reload_fix';
 import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
-import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v59_reload_and_touch_pad';
+import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v60_mobile_reload_fix';
 
 export { getActiveArena, setActiveArena, ARENAS };
 
