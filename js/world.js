@@ -3893,56 +3893,155 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
 
   // =========================================================================
-  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (KLASA, BROŃ, FPS)
+  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
   // =========================================================================
   ctx.save();
-  ctx.globalAlpha = isMobile ? 0.80 : 0.88;
-  ctx.textAlign = 'left';
+  ctx.globalAlpha = isMobile ? 0.90 : 0.95;
 
-  const statsX = isMobile ? 12 : 20;
-  const lineGap = isMobile ? 15 : 18;
-  let curY = isMobile ? 16 : 22;
+  const hudX = isMobile ? 12 : 20;
+  const hudY = isMobile ? 14 : 18;
+  const barW = isMobile ? 165 : 215;
+  const barH = isMobile ? 14 : 16;
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = isMobile ? 'bold 9.5px monospace' : '700 12px monospace';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}`, statsX, curY);
+  const maxHp = player.maxHp || 100;
+  const curHp = Math.max(0, player.hp ?? 100);
+  const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
 
-  curY += lineGap;
-  // Status aktywnej broni i amunicji w lewym górnym rogu
-  const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
-  const wepShort = curWep.id === 'SHOTGUN' ? 'SG' : (curWep.id === 'SNIPER' ? 'SR' : 'AK');
-  const curAmmoObj = player.ammo?.[curWep.id];
-  const defM = curWep.id === 'SHOTGUN' ? 8 : (curWep.id === 'SNIPER' ? 5 : 30);
-  const defR = curWep.id === 'SHOTGUN' ? 64 : (curWep.id === 'SNIPER' ? 25 : 90);
-  const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
-  const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
-  const mSize = curAmmoObj ? (curAmmoObj.magSize || defM) : defM;
-  const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
-  const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
-  const isLow = (!isNoAmmo && cAmmo <= Math.ceil(mSize * 0.25));
+  // --- A. PASEK ZDROWIA (HP) ---
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.0;
+  if (ctx.roundRect) ctx.roundRect(hudX, hudY, barW, barH, 3);
+  else ctx.rect(hudX, hudY, barW, barH);
+  ctx.fill();
+  ctx.stroke();
 
-  let wepTextColor = '#facc15';
-  let wepStatusText = `${wepShort} ${cAmmo}/${rAmmo}`;
-  if (isRel) {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.009);
-    wepTextColor = `rgba(250, 204, 21, ${0.5 + pulse * 0.5})`;
-    wepStatusText = `${wepShort} RELOADING...`;
-  } else if (isNoAmmo) {
-    wepTextColor = '#ef4444';
-    wepStatusText = `${wepShort} NO AMMO`;
-  } else if (isLow) {
-    wepTextColor = cAmmo === 0 ? '#ef4444' : '#f97316';
+  if (hpRatio > 0) {
+    const fillW = Math.max(2, (barW - 2) * hpRatio);
+    const hpGrad = ctx.createLinearGradient(hudX + 1, 0, hudX + 1 + fillW, 0);
+    if (hpRatio > 0.50) {
+      hpGrad.addColorStop(0.0, '#16a34a');
+      hpGrad.addColorStop(1.0, '#22c55e');
+    } else if (hpRatio > 0.25) {
+      hpGrad.addColorStop(0.0, '#ca8a04');
+      hpGrad.addColorStop(1.0, '#eab308');
+    } else {
+      hpGrad.addColorStop(0.0, '#dc2626');
+      hpGrad.addColorStop(1.0, '#ef4444');
+    }
+
+    if (hpRatio <= 0.20) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 6 * pulse;
+    }
+
+    ctx.fillStyle = hpGrad;
+    if (ctx.roundRect) ctx.roundRect(hudX + 1, hudY + 1, fillW, barH - 2, [2, 0, 0, 2]);
+    else ctx.fillRect(hudX + 1, hudY + 1, fillW, barH - 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
-  ctx.fillStyle = wepTextColor;
-  ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
-  ctx.fillText(`BROŃ: ${wepStatusText}`, statsX, curY);
+  // Etykieta tekstu wewnątrz paska HP
+  ctx.save();
+  ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10.5px monospace';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = '#ffffff';
 
-  curY += lineGap;
-  // Powiększony, czytelny licznik klatek (FPS)
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = isMobile ? 'bold 11px monospace' : 'bold 14px monospace';
-  ctx.fillText(`FPS: ${currentFps}`, statsX, curY);
+  ctx.textAlign = 'left';
+  ctx.fillText('✚ HP', hudX + 5, hudY + (isMobile ? 10.5 : 12));
+
+  ctx.textAlign = 'right';
+  ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 5, hudY + (isMobile ? 10.5 : 12));
+  ctx.restore();
+
+  // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
+  const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
+  const curWepId = curWep.id || 'AK47';
+  const wepName = curWep.fullName || curWep.name || (curWepId === 'SHOTGUN' ? 'SHOTGUN' : (curWepId === 'SNIPER' ? 'BARRETT .50' : 'AK-47'));
+
+  const curAmmoObj = player.ammo?.[curWepId];
+  const defM = curWepId === 'SHOTGUN' ? 8 : (curWepId === 'SNIPER' ? 5 : (curWepId === 'GRENADE' ? 1 : 30));
+  const defR = curWepId === 'SHOTGUN' ? 64 : (curWepId === 'SNIPER' ? 25 : (curWepId === 'GRENADE' ? 0 : 90));
+  const cAmmo = curAmmoObj ? curAmmoObj.currentAmmo : defM;
+  const rAmmo = curAmmoObj ? curAmmoObj.reserveAmmo : defR;
+  const isRel = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
+  const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
+  const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
+
+  const wepBoxY = hudY + barH + 5;
+  const wepBoxH = isMobile ? 30 : 34;
+  const wepBoxW = barW;
+
+  let cardBorderCol = '#334155';
+  if (isNoAmmo) cardBorderCol = 'rgba(239, 68, 68, 0.85)';
+  else if (isLow) cardBorderCol = 'rgba(249, 115, 22, 0.85)';
+  else if (isRel) cardBorderCol = 'rgba(250, 204, 21, 0.85)';
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.84)';
+  ctx.strokeStyle = cardBorderCol;
+  ctx.lineWidth = 1.0;
+  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 3);
+  else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
+  ctx.fill();
+  ctx.stroke();
+
+  // Rysowanie sylwetki broni po lewej stronie karty
+  const silX = hudX + (isMobile ? 20 : 24);
+  const silY = wepBoxY + wepBoxH / 2;
+  drawWeaponSilhouette(ctx, curWepId, silX, silY, true);
+
+  // Nazwa broni
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+  ctx.fillStyle = '#f8fafc';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(wepName, hudX + (isMobile ? 42 : 50), wepBoxY + (isMobile ? 13 : 15));
+
+  // Amunicja po prawej stronie karty
+  ctx.textAlign = 'right';
+  const ammoRightX = hudX + wepBoxW - 8;
+  const ammoMidY = wepBoxY + wepBoxH / 2 + (isMobile ? 4 : 5);
+
+  if (curWepId === 'GRENADE') {
+    const cd = (player.grenadeCooldownTimer || 0) / 60;
+    const isReady = (cd <= 0);
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+    ctx.fillStyle = isReady ? '#22c55e' : '#f59e0b';
+    ctx.fillText(isReady ? 'READY' : `${cd.toFixed(1)}s`, ammoRightX, ammoMidY);
+  } else if (isRel) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11.5px monospace';
+    ctx.fillStyle = `rgba(250, 204, 21, ${0.5 + pulse * 0.5})`;
+    ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
+  } else if (isNoAmmo) {
+    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('NO AMMO', ammoRightX, ammoMidY);
+  } else {
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+    const resAmmoText = ` / ${rAmmo}`;
+    const resW = ctx.measureText(resAmmoText).width;
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(resAmmoText, ammoRightX, ammoMidY);
+
+    ctx.font = isMobile ? 'bold 13px monospace' : 'bold 15px monospace';
+    ctx.fillStyle = isLow ? '#f97316' : '#ffffff';
+    ctx.fillText(`${cAmmo}`, ammoRightX - resW, ammoMidY);
+  }
+  ctx.restore();
+
+  // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
+  const metaY = wepBoxY + wepBoxH + (isMobile ? 11 : 13);
+  ctx.textAlign = 'left';
+  ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
+
   ctx.restore();
 
   // =========================================================================

@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v54_jetpack_led_gauge';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v55_hud_health_weapon_redesign';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
 } from './actions.js';
 import { getRagdollRenderPose } from './death.js';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v54_jetpack_led_gauge';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v55_hud_health_weapon_redesign';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -3243,88 +3243,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.restore();
   }
 
-  // TAKTYCZNY CHEVRON / HOLOGRAM DRUŻYNY (CYAN vs ORANGE) UNOSZĄCY SIĘ 16 PX NAD GŁOWĄ
-  if (!p.isDead && !isDissolving) {
-    ctx.save();
-    const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
-    const teamNeon = isCyan ? '#00f0ff' : '#f97316';
-    const teamCore = isCyan ? '#a5f3fc' : '#fed7aa';
-    const teamGlow = isCyan ? 'rgba(6, 182, 212, ' : 'rgba(249, 115, 22, ';
 
-    const headTopX = p.head ? p.head.x : (hipX + (36 * Math.sin(pose.torsoTilt)));
-    const headTopY = p.head ? p.head.y : (hipY - (36 * Math.cos(pose.torsoTilt)) + (p.headBob * 0.35));
-
-    const now = performance.now();
-    const hoverY = Math.sin(now * 0.005) * 1.5;
-    const pulse = 0.65 + 0.35 * Math.sin(now * 0.007);
-
-    const chevX = headTopX;
-    const chevY = headTopY - 8 + hoverY;
-
-    // Poświata neonowa hologramu
-    ctx.shadowColor = teamNeon;
-    ctx.shadowBlur = 8 + pulse * 6;
-
-    // Pierścień / emiter projekcji holograficznej
-    ctx.strokeStyle = `${teamGlow}${0.35 * pulse})`;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.ellipse(chevX, headTopY - 4, 7.0, 2.2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Taktyczne nawiasy HUD
-    ctx.strokeStyle = `${teamGlow}${0.55 * pulse})`;
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(chevX - 7.5, chevY - 3.5);
-    ctx.lineTo(chevX - 6.0, chevY - 5.5);
-    ctx.lineTo(chevX - 3.0, chevY - 5.5);
-    ctx.moveTo(chevX + 7.5, chevY - 3.5);
-    ctx.lineTo(chevX + 6.0, chevY - 5.5);
-    ctx.lineTo(chevX + 3.0, chevY - 5.5);
-    ctx.stroke();
-
-    // Holograficzny taktyczny chevron (▼)
-    ctx.fillStyle = teamNeon;
-    ctx.beginPath();
-    ctx.moveTo(chevX - 4.8, chevY - 4.5);
-    ctx.lineTo(chevX + 4.8, chevY - 4.5);
-    ctx.lineTo(chevX, chevY + 2.8);
-    ctx.closePath();
-    ctx.fill();
-
-    // Wewnętrzny rdzeń neonu
-    ctx.fillStyle = teamCore;
-    ctx.beginPath();
-    ctx.moveTo(chevX - 2.8, chevY - 3.8);
-    ctx.lineTo(chevX + 2.8, chevY - 3.8);
-    ctx.lineTo(chevX, chevY + 0.8);
-    ctx.closePath();
-    ctx.fill();
-
-    // MINIMALISTYCZNY PASEK ZDROWIA (34 px x 3 px) BEZPOŚREDNIO NAD GŁOWĄ, TUŻ POD CHEVRONEM:
-    // Pasek paliwa został przeniesiony bezpośrednio na model jetpacka jako 4-segmentowy wskaźnik LED.
-    const barW = 34;
-    const barH = 3;
-    const barX = headTopX - (barW / 2);
-    const barY_hp = headTopY - 6.5;
-
-    const maxHp = p.maxHp || 100;
-    const curHp = Math.max(0, p.hp ?? 100);
-    const hpRatio = Math.max(0, Math.min(1, curHp / maxHp));
-
-    // Tło paska HP
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-    ctx.fillRect(barX - 0.5, barY_hp - 0.5, barW + 1, barH + 1);
-    // Wypełnienie HP (zielony / czerwony)
-    if (hpRatio > 0) {
-      ctx.fillStyle = (hpRatio > 0.25) ? '#22c55e' : '#ef4444';
-      ctx.fillRect(barX, barY_hp, barW * hpRatio, barH);
-    }
-
-    ctx.restore();
-  }
 
   if (isDissolving) {
     // 4. Błyskawiczny, lekki zielony blask (jeden prosty okrąg zamiast filtrów blur)

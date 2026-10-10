@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v54_jetpack_led_gauge';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v54_jetpack_led_gauge';
+export * from './player/index.js?v=v55_hud_health_weapon_redesign';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v55_hud_health_weapon_redesign';
 
