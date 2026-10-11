@@ -3,15 +3,15 @@
 // Zarządza Menu Głównym, Oknem Ustawień oraz Panelem Pauzy
 // =============================================================================
 
-import { CONFIG } from './config.js?v=v77_hair_creator';
-import { CLASSES } from './classes/index.js?v=v77_hair_creator';
+import { CONFIG } from './config.js?v=v78_hair_fluid_side';
+import { CLASSES } from './classes/index.js?v=v78_hair_fluid_side';
 import {
   drawPlayer,
   drawHeadHairPreview,
   HAIR_STYLE_LIST,
   HAIR_COLOR_LIST,
   setLocalPlayerCustomVisuals
-} from './player/renderer.js?v=v77_hair_creator';
+} from './player/renderer.js?v=v78_hair_fluid_side';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';

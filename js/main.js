@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v77_hair_creator';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v78_hair_fluid_side';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v77_hair_creator';
+} from './world.js?v=v78_hair_fluid_side';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v77_hair_creator';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v77_hair_creator';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v77_hair_creator';
+} from './player.js?v=v78_hair_fluid_side';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v78_hair_fluid_side';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v78_hair_fluid_side';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v77_hair_creator';
+} from './ball.js?v=v78_hair_fluid_side';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v77_hair_creator';
-import { CLASSES } from './classes/index.js?v=v77_hair_creator';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v77_hair_creator';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v77_hair_creator';
+} from './obstacles.js?v=v78_hair_fluid_side';
+import { CLASSES } from './classes/index.js?v=v78_hair_fluid_side';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v78_hair_fluid_side';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v78_hair_fluid_side';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v77_hair_creator';
+} from './network.js?v=v78_hair_fluid_side';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v77_hair_creator';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v77_hair_creator';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v77_hair_creator';
+} from './mobileControls.js?v=v78_hair_fluid_side';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v78_hair_fluid_side';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v78_hair_fluid_side';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

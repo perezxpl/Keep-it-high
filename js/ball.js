@@ -1,7 +1,7 @@
 import { CONFIG, START_X, ARENA_WIDTH, MAP_WIDTH, ARENA_LEFT, ARENA_RIGHT } from './config.js';
-import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v77_hair_creator';
-import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v77_hair_creator';
-import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v77_hair_creator';
+import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt } from './world.js?v=v78_hair_fluid_side';
+import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js?v=v78_hair_fluid_side';
+import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js?v=v78_hair_fluid_side';
 
 const _mapW = (typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : ARENA_WIDTH) || 3600;
 const _centerX = _mapW / 2; // 1800

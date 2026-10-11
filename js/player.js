@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v77_hair_creator';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v77_hair_creator';
+export * from './player/index.js?v=v78_hair_fluid_side';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v78_hair_fluid_side';
 

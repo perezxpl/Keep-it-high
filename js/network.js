@@ -1,8 +1,8 @@
-import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js?v=v77_hair_creator';
-import { WEAPONS, shootWeapon } from './weapons.js?v=v77_hair_creator';
-import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js?v=v77_hair_creator';
-import { spawnJetpackSparks, GROUND_Y } from './world.js?v=v77_hair_creator';
-import { ball } from './ball.js?v=v77_hair_creator';
+import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js?v=v78_hair_fluid_side';
+import { WEAPONS, shootWeapon } from './weapons.js?v=v78_hair_fluid_side';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js?v=v78_hair_fluid_side';
+import { spawnJetpackSparks, GROUND_Y } from './world.js?v=v78_hair_fluid_side';
+import { ball } from './ball.js?v=v78_hair_fluid_side';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
