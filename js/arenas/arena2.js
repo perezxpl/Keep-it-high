@@ -28,7 +28,10 @@ import {
   drawArena2Geometry,
   drawArena2Foreground,
   drawAcidLevel,
-  drawAcidLake
+  drawAcidLake,
+  drawSewerPipes,
+  drawSewerImpacts,
+  ARENA_2_SEWER_PIPES
 } from './arena2/renderer.js';
 
 export * from './arena2/state.js';
@@ -50,6 +53,7 @@ const arena2 = {
   barrels: ARENA_2_BARRELS,
   supply: ARENA_2_SUPPLY,
   acidSurge: ACID_SURGE_SYSTEM,
+  sewerPipes: ARENA_2_SEWER_PIPES,
   customObjects: [],
   reset() {
     ACID_SURGE_SYSTEM.state = 'CALM';

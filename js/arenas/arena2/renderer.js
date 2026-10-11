@@ -13,6 +13,17 @@ import {
   getAcidSurfaceY,
   drawAcidDeathEffects
 } from './state.js';
+import {
+  drawSewerPipes,
+  drawSewerImpacts,
+  ARENA_2_SEWER_PIPES
+} from './sewerPipes.js';
+
+export {
+  drawSewerPipes,
+  drawSewerImpacts,
+  ARENA_2_SEWER_PIPES
+};
 
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
 // Symetryczny punkt centralny areny w osi litery „X” (fanCenterX = 2000, fanCenterY = 680)
@@ -332,6 +343,9 @@ export function drawArena2Background(ctx, camera) {
   ctx.scale(camZoom, camZoom);
   ctx.translate(-camX, -camY);
 
+  // KOLEKTORY ŚCIEKOWE W CIEMNEJ PRZESTRZENI PO BOKACH WENTYLATORA (SEWER PIPES)
+  drawSewerPipes(ctx, time);
+
   drawMonumentalCenterTurbine(ctx, time);
   drawRotatingHazardBeacons(ctx, time);
 
@@ -450,7 +464,10 @@ export function drawArena2Geometry(ctx, camera) {
   // 1B. DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ BECZKI, CZASZKI, KOŚCI I OŚCI RYB
   drawAcidFlotsam(ctx, time);
 
-  // 1C. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
+  // 1C. WPŁYW ŚCIEKÓW DO KWASU - PIANA I BĄBLE W MIEJSCACH UDERZENIA STRUMIENI
+  drawSewerImpacts(ctx, time);
+
+  // 1D. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
   drawAcidSurfaceBubbles(ctx, time);
 
   // 1D. GŁÓWNA ŁUNA OD KWASU (ACID UPWARD UNDERGLOW)
