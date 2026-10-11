@@ -22,6 +22,7 @@ export const DEFAULT_VISUALS = {
   headgearColor: '#18181b',
   maskStyle: 'none',
   maskColor: '#18181b',
+  neckStyle: 'none',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',

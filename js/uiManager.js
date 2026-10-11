@@ -11,6 +11,7 @@ import {
   drawHeadBeardPreview,
   drawHeadHeadgearPreview,
   drawHeadMaskPreview,
+  drawHeadNeckPreview,
   HAIR_STYLE_LIST,
   HAIR_COLOR_LIST,
   BEARD_STYLE_LIST,
@@ -19,6 +20,7 @@ import {
   HEADGEAR_COLOR_LIST,
   MASK_STYLE_LIST,
   MASK_COLOR_LIST,
+  NECK_STYLE_LIST,
   doesMaskSupportColor,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
@@ -48,7 +50,8 @@ const DEFAULT_APPEARANCE = {
   headgearStyle: 'none',
   headgearColor: '#18181b',
   maskStyle: 'none',
-  maskColor: '#18181b'
+  maskColor: '#18181b',
+  neckStyle: 'none'
 };
 
 // =============================================================================
@@ -248,7 +251,8 @@ export const uiManager = {
       headgearStyle: this.appearance.headgearStyle || 'none',
       headgearColor: this.appearance.headgearColor || '#18181b',
       maskStyle: this.appearance.maskStyle || 'none',
-      maskColor: this.appearance.maskColor || '#18181b'
+      maskColor: this.appearance.maskColor || '#18181b',
+      neckStyle: this.appearance.neckStyle || 'none'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -446,6 +450,7 @@ export const uiManager = {
         this.initCreatorBeardUI();
         this.initCreatorHeadgearUI();
         this.initCreatorMaskUI();
+        this.initCreatorNeckUI();
         this.switchCreatorTab(this.activeCreatorTab || 'hair');
         this.startCreatorPreview();
         break;
@@ -850,6 +855,7 @@ export const uiManager = {
     this.initCreatorBeardUI();
     this.initCreatorHeadgearUI();
     this.initCreatorMaskUI();
+    this.initCreatorNeckUI();
   },
 
   initCreatorHairUI() {
@@ -1073,6 +1079,7 @@ export const uiManager = {
         this.syncCreatorHeadgearSelectionUI();
         this.renderCreatorHeadgearTiles();
         this.renderCreatorMaskTiles();
+        this.renderCreatorNeckTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -1099,6 +1106,7 @@ export const uiManager = {
         this.syncCreatorHeadgearSelectionUI();
         this.renderCreatorHeadgearTiles();
         this.renderCreatorMaskTiles();
+        this.renderCreatorNeckTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -1168,6 +1176,7 @@ export const uiManager = {
         this.applyAppearance();
         this.syncCreatorMaskSelectionUI();
         this.renderCreatorMaskTiles();
+        this.renderCreatorNeckTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -1193,6 +1202,7 @@ export const uiManager = {
         this.applyAppearance();
         this.syncCreatorMaskSelectionUI();
         this.renderCreatorMaskTiles();
+        this.renderCreatorNeckTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -1251,6 +1261,84 @@ export const uiManager = {
     });
   },
 
+  initCreatorNeckUI() {
+    const gridEl = document.getElementById('creator-neck-grid');
+    if (!gridEl) return;
+
+    gridEl.innerHTML = '';
+
+    // Kafelki ze stylem ozdób szyi (brak, nieśmiertelnik wojskowy, złoty łańcuch)
+    NECK_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.neckStyle = styleId;
+      if ((this.appearance.neckStyle || 'none') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.neckStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorNeckSelectionUI();
+        this.renderCreatorNeckTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    this.syncCreatorNeckSelectionUI();
+    this.renderCreatorNeckTiles();
+  },
+
+  syncCreatorNeckSelectionUI() {
+    const curStyle = this.appearance.neckStyle || 'none';
+    document.querySelectorAll('#creator-neck-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.neckStyle === curStyle);
+    });
+  },
+
+  renderCreatorNeckTiles() {
+    const curHeadgearStyle = this.appearance.headgearStyle || 'none';
+    const curHeadgearColor = this.appearance.headgearColor || '#18181b';
+    const curMaskStyle = this.appearance.maskStyle || 'none';
+    const curMaskColor = this.appearance.maskColor || '#18181b';
+    const curHairStyle = this.appearance.hairStyle || 'buzzcut';
+    const curHairColor = this.appearance.hairColor || '#18181b';
+    const curBeardStyle = this.appearance.beardStyle || 'clean';
+    const curBeardColor = this.appearance.beardColor || '#18181b';
+
+    document.querySelectorAll('#creator-neck-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.neckStyle || 'none';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawHeadNeckPreview(
+          ctx,
+          cvs.width,
+          cvs.height,
+          styleId,
+          curHeadgearStyle,
+          curHeadgearColor,
+          curMaskStyle,
+          curMaskColor,
+          curHairStyle,
+          curHairColor,
+          curBeardStyle,
+          curBeardColor
+        );
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1271,6 +1359,7 @@ export const uiManager = {
     } else if (tabId === 'headgear') {
       this.renderCreatorHeadgearTiles();
       this.renderCreatorMaskTiles();
+      this.renderCreatorNeckTiles();
     }
   },
 
@@ -1345,7 +1434,8 @@ export const uiManager = {
           headgearStyle: this.appearance.headgearStyle || 'none',
           headgearColor: this.appearance.headgearColor || '#18181b',
           maskStyle: this.appearance.maskStyle || 'none',
-          maskColor: this.appearance.maskColor || '#18181b'
+          maskColor: this.appearance.maskColor || '#18181b',
+          neckStyle: this.appearance.neckStyle || 'none'
         },
         pose: { initialized: false }
       };
@@ -1356,6 +1446,7 @@ export const uiManager = {
     this.syncCreatorBeardSelectionUI();
     this.syncCreatorHeadgearSelectionUI();
     this.syncCreatorMaskSelectionUI();
+    this.syncCreatorNeckSelectionUI();
     this.renderCreatorHairTiles();
 
     const tick = () => {

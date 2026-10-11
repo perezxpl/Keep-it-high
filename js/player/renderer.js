@@ -55,6 +55,13 @@ import {
 } from './mask.js';
 
 import {
+  NECK_STYLE_LIST,
+  doesNeckSupportColor,
+  drawCharacterNeckProfile,
+  drawHeadNeckPreview
+} from './neck.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -102,6 +109,10 @@ export {
   getMaskPalette,
   drawCharacterMaskProfile,
   drawHeadMaskPreview,
+  NECK_STYLE_LIST,
+  doesNeckSupportColor,
+  drawCharacterNeckProfile,
+  drawHeadNeckPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1468,6 +1479,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Maska na twarz, okulary przeciwsłoneczne lub chusta
     drawCharacterMaskProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
+
+    // Ozdoba szyi (nieśmiertelnik wojskowy lub złoty łańcuch) z pełną fizyką 2D
+    drawCharacterNeckProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch);
 
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);
