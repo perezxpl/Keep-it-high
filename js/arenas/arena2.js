@@ -75,24 +75,12 @@ const arena2 = {
         p.vAngle = 0;
       }
     }
-    if (typeof ACID_BLACKOUT_STATE !== 'undefined' && typeof ACID_BLACKOUT_STATE.reset === 'function') {
-      ACID_BLACKOUT_STATE.reset();
-    }
   },
   drawBackground(ctx, camera) {
     drawArena2Background(ctx, camera);
   },
   draw(ctx, camera) {
     drawArena2Geometry(ctx, camera);
-  },
-  drawForeground(ctx, camera) {
-    const chars = [];
-    if (typeof window !== 'undefined') {
-      if (window.player) chars.push(window.player);
-      if (window.bot && window.bot.active) chars.push(window.bot);
-      if (window.remotePlayer && window.remotePlayer.active) chars.push(window.remotePlayer);
-    }
-    drawArena2Foreground(ctx, camera, chars);
   },
   update(dt, players) {
     updateArena2(dt, players);

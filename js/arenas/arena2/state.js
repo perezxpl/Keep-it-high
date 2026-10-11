@@ -5,23 +5,6 @@
 // =========================================================================
 
 import { triggerScreenShake } from '../../camera.js';
-import {
-  ARENA_2_FUSE_BOXES,
-  ACID_BLACKOUT_STATE,
-  updateAcidBlackout,
-  drawFuseBoxes,
-  drawFuseSparks,
-  drawAcidBlackoutOverlay
-} from './blackout.js';
-
-export {
-  ARENA_2_FUSE_BOXES,
-  ACID_BLACKOUT_STATE,
-  updateAcidBlackout,
-  drawFuseBoxes,
-  drawFuseSparks,
-  drawAcidBlackoutOverlay
-};
 
 // =========================================================================
 // 1. KONFIGURACJA ARENY (ARENA_2_CONFIG)
@@ -1172,9 +1155,6 @@ export function updateArena2(dt, players) {
 
   // 5. Aktualizacja cząstek iskier rykoszetu na platformach sufitowych
   updateCeilingPipeSparks(safeDt);
-
-  // 6. Chemiczna awaria zasilania (Acid Blackout)
-  updateAcidBlackout(safeDt, ACID_SURGE_SYSTEM.currentY, ACID_SURGE_SYSTEM.state);
 }
 
 // =========================================================================

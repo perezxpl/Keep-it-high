@@ -23,19 +23,12 @@ import {
 import {
   drawSubmergedAcidSkeletons
 } from './submergedSkeletons.js';
-import {
-  drawFuseBoxes,
-  drawFuseSparks,
-  drawAcidBlackoutOverlay,
-  ACID_BLACKOUT_STATE
-} from './blackout.js';
 
 export {
   drawSewerPipes,
   drawSewerImpacts,
   ARENA_2_SEWER_PIPES,
-  drawSubmergedAcidSkeletons,
-  drawAcidBlackoutOverlay
+  drawSubmergedAcidSkeletons
 };
 
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
@@ -284,15 +277,6 @@ export function drawArena2Background(ctx, camera) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
-  // Wpływ chemicznej awarii zasilania (Acid Blackout) na oświetlenie tła hali
-  const blackoutLvl = (typeof ACID_BLACKOUT_STATE !== 'undefined') ? ACID_BLACKOUT_STATE.blackoutLevel : 0;
-  const flickerCut = (typeof ACID_BLACKOUT_STATE !== 'undefined') ? (ACID_BLACKOUT_STATE.currentFlicker * ACID_BLACKOUT_STATE.flickerIntensity) : 0;
-  if (blackoutLvl > 0.02) {
-    const bgDarkness = Math.max(0, blackoutLvl * (1.0 - flickerCut * 0.85));
-    ctx.fillStyle = `rgba(1, 3, 7, ${bgDarkness * 0.75})`;
-    ctx.fillRect(0, 0, W_screen, H_screen);
-  }
-
   // Pionowe dylatacje i płyty pancerne w tle (Paralaksa 0.015)
   ctx.save();
   const seamPeriod = 360;
@@ -506,12 +490,6 @@ export function drawArena2Geometry(ctx, camera) {
   }
 
   // -----------------------------------------------------------------------
-  // 5B. SKRZYNKI BEZPIECZNIKOWE I ROZDZIELNICE ZASILANIA (INSTALACJA DOLNA)
-  // -----------------------------------------------------------------------
-  drawFuseBoxes(ctx, time, curAcidY, viewLeft, viewRight);
-  drawFuseSparks(ctx);
-
-  // -----------------------------------------------------------------------
   // 1. ZBIORNIK TOKSYCZNEGO KWASU (HAZARD LAKE // Y = currentY DO BOTTOM_Y)
   // -----------------------------------------------------------------------
   drawAcidLevel(ctx, curAcidY, BOTTOM_Y, camera);
@@ -555,11 +533,8 @@ export function renderPandoraTerrain(ctx, camera) {
   drawArena2Geometry(ctx, camera);
 }
 
-export function drawArena2Foreground(ctx, camera, players) {
-  const time = performance.now() * 0.001;
-  const curAcidY = Math.floor((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440);
-  const chars = players || (window.player ? [window.player] : []);
-  drawAcidBlackoutOverlay(ctx, time, camera, curAcidY, chars);
+export function drawArena2Foreground(ctx, camera) {
+  drawArena2Geometry(ctx, camera);
 }
 
 // =========================================================================
