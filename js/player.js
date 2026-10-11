@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v79_hair_free_strands';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v79_hair_free_strands';
+export * from './player/index.js?v=v80_hair_smooth_directional';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v80_hair_smooth_directional';
 

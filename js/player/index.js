@@ -4,14 +4,14 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js?v=v79_hair_free_strands';
-import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v79_hair_free_strands';
-import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v79_hair_free_strands';
-import { WEAPONS, updateWeaponState } from '../weapons.js?v=v79_hair_free_strands';
+import { activeArenaId, customObstacles } from '../obstacles.js?v=v80_hair_smooth_directional';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js?v=v80_hair_smooth_directional';
+import { DEFAULT_CLASS, CLASSES } from '../classes/index.js?v=v80_hair_smooth_directional';
+import { WEAPONS, updateWeaponState } from '../weapons.js?v=v80_hair_smooth_directional';
 import { getActiveArena } from '../arenas/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
-import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v79_hair_free_strands';
+import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js?v=v80_hair_smooth_directional';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -63,16 +63,16 @@ import {
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
   updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
-} from './actions.js?v=v79_hair_free_strands';
-import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v79_hair_free_strands';
-import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v79_hair_free_strands';
+} from './actions.js?v=v80_hair_smooth_directional';
+import { handlePlayerDeath, getRagdollRenderPose } from './death.js?v=v80_hair_smooth_directional';
+import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js?v=v80_hair_smooth_directional';
 
 // Re-eksporty modułów dla zachowania pełnej kompatybilności wstecznej
 export * from './ik.js';
-export * from './locomotion.js?v=v79_hair_free_strands';
-export * from './actions.js?v=v79_hair_free_strands';
-export * from './death.js?v=v79_hair_free_strands';
-export * from './renderer.js?v=v79_hair_free_strands';
+export * from './locomotion.js?v=v80_hair_smooth_directional';
+export * from './actions.js?v=v80_hair_smooth_directional';
+export * from './death.js?v=v80_hair_smooth_directional';
+export * from './renderer.js?v=v80_hair_smooth_directional';
 
 export const DEFAULT_BODY = {
   w: 24,
@@ -1624,4 +1624,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js?v=v79_hair_free_strands';
+export { throwTacticalGrenade } from './actions.js?v=v80_hair_smooth_directional';

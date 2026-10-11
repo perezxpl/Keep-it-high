@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v79_hair_free_strands';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v80_hair_smooth_directional';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v79_hair_free_strands';
-import { getRagdollRenderPose } from './death.js?v=v79_hair_free_strands';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v79_hair_free_strands';
+} from './actions.js?v=v80_hair_smooth_directional';
+import { getRagdollRenderPose } from './death.js?v=v80_hair_smooth_directional';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v80_hair_smooth_directional';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -3713,6 +3713,15 @@ const HAIR_REST_PROFILES = {
   topknot:      [2.58, 2.22, 1.90, 1.72, 1.70, 1.84]
 };
 
+function applyHairDeadzone(val, deadzone = 0.42) {
+  const absV = Math.abs(val);
+  if (absV <= deadzone) return val * 0.06;
+  const excess = absV - deadzone;
+  // Nieliniowa (kwadratowa) krzywa narastania: drobny ruch prawie nie rusza włosów, pełny bieg/spadanie działa z pełną siłą
+  const scale = excess / (excess + 1.45);
+  return Math.sign(val) * (deadzone * 0.06 + excess * scale);
+}
+
 function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, strandOpts = {}) {
   const NUM_SEGS = 6;
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -3741,6 +3750,8 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
       lastFacing: currentFacingDir || 1,
       lastHeadBob: (p && p.headBob) || 0,
       lastVy: (p && p.vy) || 0,
+      smoothVx: 0,
+      smoothVy: 0,
       dBob: 0,
       dvY: 0,
       flipImpulse: 0,
@@ -3758,27 +3769,39 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
       phys.lastFrameTime = now;
       phys.frameId++;
 
+      const rawVx = ((p && p.vx) || 0) * currentFacingDir;
+      const rawVy = (p && p.vy) || 0;
+      const rawSpeed = Math.hypot(rawVx, rawVy);
+
+      // Wygładzenie prędkości (filtr dolnoprzepustowy), aby mikro-drgania pozycji nie szarpały włosami
+      const velBlend = Math.min(1.0, phys.dt * 14.0);
+      phys.smoothVx += (rawVx - phys.smoothVx) * velBlend;
+      phys.smoothVy += (rawVy - phys.smoothVy) * velBlend;
+
       phys.flipImpulse = 0;
       if (phys.lastFacing !== currentFacingDir) {
-        phys.flipImpulse = 1.0;
+        // Obrót w miejscu daje tylko bardzo miękkie ułożenie włosów; mocniejszy impuls tylko w pełnym biegu
+        phys.flipImpulse = 0.20 + Math.min(0.80, rawSpeed * 0.25);
         phys.lastFacing = currentFacingDir;
+        // Przy obrocie odwracamy znak wygładzonej prędkości względnej
+        phys.smoothVx = -phys.smoothVx * 0.5;
       }
 
       phys.extImpulse = p._hairImpulse || 0;
       p._hairImpulse = 0;
 
       const curBob = (p && p.headBob) || 0;
-      phys.dBob = curBob - phys.lastHeadBob;
+      // Head-bob wpływa na włosy tylko podczas wyraźnego biegu (ignorujemy oddech w staniu i drobny krok)
+      const bobActivity = Math.min(1.0, Math.max(0, rawSpeed - 0.85) * 0.45);
+      phys.dBob = (curBob - phys.lastHeadBob) * bobActivity;
       phys.lastHeadBob = curBob;
 
-      const curVy = (p && p.vy) || 0;
-      phys.dvY = curVy - phys.lastVy;
-      phys.lastVy = curVy;
+      phys.dvY = rawVy - phys.lastVy;
+      phys.lastVy = rawVy;
 
-      const vxMag = Math.abs((p && p.vx) || 0);
-      const vyMag = Math.abs(curVy);
-      const motionMag = Math.hypot(vxMag, vyMag) + (p._isCreatorPreview ? 1.8 : 0);
-      const waveSpeed = p.isJetpacking ? 11.5 : (3.6 + Math.min(8.5, motionMag * 1.35));
+      const effSpeed = Math.hypot(applyHairDeadzone(phys.smoothVx, 0.42), applyHairDeadzone(phys.smoothVy, 0.42));
+      const previewFlow = p._isCreatorPreview ? 0.45 : 0;
+      const waveSpeed = p.isJetpacking ? 10.5 : (1.4 + Math.min(7.5, (effSpeed + previewFlow) * 1.45));
       phys.waveTime += phys.dt * waveSpeed;
     }
   }
@@ -3799,127 +3822,152 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
     strand.lastFrameId = phys.frameId;
     const dt = phys.dt;
 
-    // Impuls przy obrocie postaci (fala bezwładności od nasady po końcówki)
-    if (phys.flipImpulse) {
+    // Miękki impuls przy obrocie postaci
+    if (phys.flipImpulse > 0) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += 4.2 * opts.liftMult * (0.25 + i * 0.35);
+        strand.omegas[i] += 1.65 * phys.flipImpulse * opts.liftMult * (0.20 + i * 0.25);
       }
     }
 
     // Impuls z obrotu suwakiem w Kreatorze lub odrzutu broni
     if (phys.extImpulse) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.55 + i * 0.55);
+        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.40 + i * 0.45);
       }
     }
 
-    // Impuls bezwładności przy lądowaniu lub wybiciu (gwałtowna zmiana vy)
-    if (Math.abs(phys.dvY) > 0.35) {
-      const landSnap = Math.max(-4.5, Math.min(4.5, phys.dvY)) * 0.75 * opts.liftMult;
+    // Impuls bezwładności tylko przy wyraźnym lądowaniu z wysokości lub wybiciu (ignoruje drobne nierówności)
+    if (Math.abs(phys.dvY) > 1.35) {
+      const excessDv = phys.dvY - Math.sign(phys.dvY) * 1.35;
+      const landSnap = Math.max(-3.2, Math.min(3.2, excessDv)) * 0.55 * opts.liftMult;
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += landSnap * (0.25 + i * 0.28);
+        strand.omegas[i] += landSnap * (0.20 + i * 0.24);
       }
     }
 
     const rot = (torsoTilt * currentFacingDir) + headPitch;
-    const relVx = ((p && p.vx) || 0) * currentFacingDir;
-    const rawVy = (p && p.vy) || 0;
-    const effVy = rawVy + phys.dBob * 9.5;
 
-    // Żywy, swobodny powiew w podglądzie Kreatora (z delikatnymi podmuchami pionowymi) oraz naturalny ruch powietrza w grze
+    // Zastosowanie strefy nieczułości (deadzone) – drobny ruch nie wywołuje gwałtownego odchylania włosów
+    const effVx = applyHairDeadzone(phys.smoothVx, 0.42);
+    const effVy = applyHairDeadzone(phys.smoothVy, 0.45) + phys.dBob * 3.2;
+
+    // Bardzo subtelny, naturalny powiew w podglądzie Kreatora (bez sztucznego wichru w spoczynku)
     const breezeVx = p._isCreatorPreview
-      ? (0.85 + Math.sin(now * 0.0022 + opts.phase) * 0.65 + Math.sin(now * 0.0051) * 0.35)
-      : (Math.sin(now * 0.0020 + opts.phase) * 0.14);
+      ? (0.18 + Math.sin(now * 0.0018 + opts.phase) * 0.14)
+      : 0;
     const breezeVy = p._isCreatorPreview
-      ? (Math.sin(now * 0.0017 + opts.phase * 0.7) * 0.55 + Math.cos(now * 0.0038) * 0.25)
+      ? (Math.sin(now * 0.0014 + opts.phase * 0.7) * 0.06)
       : 0;
 
-    const totalVx = relVx + breezeVx;
+    const totalVx = effVx + breezeVx;
     const totalVy = effVy + breezeVy;
+    const isFalling = (totalVy > 0.55);
+    const isMovingBackward = (totalVx < -0.15);
 
     const isHeavy = (hairStyle === 'dreadlocks');
-    // Mniejsza sztywność i wyższa bezwładność = swobodny, miękki ruch włosów
-    const baseStiff = (isHeavy ? 11.5 : 13.5) * opts.stiffMult;
-    const damping = isHeavy ? 0.88 : 0.90;
+    const baseStiff = (isHeavy ? 11.0 : 12.8) * opts.stiffMult;
+    const damping = isHeavy ? 0.86 : 0.88;
 
     for (let i = 0; i < NUM_SEGS; i++) {
       const segProgress = i / (NUM_SEGS - 1); // 0.0 u nasady -> 1.0 na końcówce
-      const segLeverage = 0.65 + segProgress * 0.95;
+      const segLeverage = 0.55 + segProgress * 0.95;
 
-      // 1. Grawitacja (ciągnie w dół: +Y)
-      const gravY = 0.82 * opts.gravMult * (1.0 - segProgress * 0.18);
+      // 1. Grawitacja (ciągnie pionowo w dół: +Y)
+      const gravY = 0.88 * opts.gravMult * (1.0 - segProgress * 0.16);
 
-      // 2. Opór powietrza w poziomie (podczas biegu odchyla włosy w tył: -X)
-      const skullClearanceX = -(0.34 + Math.max(0, opts.restOffset) * 0.45) * (1.0 - segProgress * 0.25);
-      let airDragX = -totalVx * 0.62 * opts.liftMult * segLeverage;
+      // 2. Opór powietrza w poziomie:
+      // - Ruch do przodu (totalVx > 0): pęd powietrza odchyla włosy w tył (-X)
+      // - Ruch do tyłu (totalVx < 0): pęd powietrza zza pleców pcha dolne segmenty włosów i kosmyki boczne w przód (+X)!
+      const backClearance = -(0.32 + Math.max(0, opts.restOffset) * 0.40) * (1.0 - segProgress * 0.35);
+      let airDragX = 0;
+      if (totalVx >= 0) {
+        airDragX = -totalVx * 0.58 * opts.liftMult * segLeverage;
+      } else {
+        // Przy ruchu do tyłu nasada na potylicy (i=0) przylega do karku, a środkowe i dolne odcinki (i>=1) zawiewają w przód (+X)
+        const forwardSweepFactor = (i === 0) ? 0.18 : (0.45 + segProgress * 0.85);
+        airDragX = (-totalVx) * 0.52 * opts.liftMult * forwardSweepFactor;
+      }
 
-      // Podczas spadania (totalVy > 0) pęd powietrza od dołu lekko rozchyla pasma na boki/tył, by nie przechodziły przez twarz
-      if (totalVy > 0.15) {
-        airDragX -= totalVy * (0.22 + Math.max(-0.08, opts.restOffset) * 0.55) * opts.liftMult * (0.6 + segProgress * 0.6);
+      // Podczas szybkiego spadania (totalVy > 0.55) pęd powietrza od dołu lekko rozchyla pasma
+      if (isFalling && !isMovingBackward) {
+        airDragX -= (totalVy - 0.55) * (0.20 + Math.max(-0.08, opts.restOffset) * 0.45) * opts.liftMult * (0.5 + segProgress * 0.6);
       }
 
       // 3. Opór powietrza w pionie:
-      // - Podczas SPADANIA (totalVy > 0): silny ciąg powietrza w GÓRĘ (-Y), podwiewający włosy ponad głowę!
-      // - Podczas SKOKU W GÓRĘ (totalVy < 0): opór powietrza ciągnie włosy w DÓŁ (+Y)
-      // - Podczas BIEGU: siła nośna unosi pasma lekko ku górze (-Y)
+      // - Podczas SPADANIA (totalVy > 0): ciąg powietrza od dołu unosi włosy do góry (-Y)
+      // - Podczas SKOKU W GÓRĘ (totalVy < 0): pęd powietrza ciągnie włosy w dół (+Y)
+      // - Podczas BIEGU DO PRZODU: siła nośna lekko unosi pasma z tyłu (-Y); przy biegu do tyłu wiatr dociska je wzdłuż szyi/obojczyka
       let airDragY = 0;
       if (totalVy > 0) {
-        airDragY = -totalVy * 0.96 * opts.liftMult * (0.80 + segProgress * 0.75);
+        airDragY = -totalVy * 0.92 * opts.liftMult * (0.75 + segProgress * 0.75);
       } else {
-        airDragY = -totalVy * 0.48 * opts.liftMult * segLeverage;
+        airDragY = -totalVy * 0.45 * opts.liftMult * segLeverage;
       }
-      const runLiftY = -Math.abs(totalVx) * 0.22 * opts.liftMult * (0.5 + segProgress * 0.7);
-      const jetpackDownwashY = (p && p.isJetpacking) ? (-1.35 * opts.liftMult * segLeverage) : 0;
+      const runLiftY = (totalVx > 0)
+        ? (-totalVx * 0.20 * opts.liftMult * (0.45 + segProgress * 0.65))
+        : (Math.abs(totalVx) * 0.08 * segProgress);
+      const jetpackDownwashY = (p && p.isJetpacking) ? (-1.30 * opts.liftMult * segLeverage) : 0;
 
-      const worldFx = skullClearanceX + airDragX;
+      const worldFx = backClearance + airDragX;
       const worldFy = gravY + airDragY + runLiftY + jetpackDownwashY;
 
       // Transformacja wektora sił do lokalnego układu współrzędnych głowy
       const localFx = worldFx * Math.cos(rot) + worldFy * Math.sin(rot);
       const localFy = -worldFx * Math.sin(rot) + worldFy * Math.cos(rot);
 
-      // Kąt wypadkowy wektora sił w układzie głowy (odwinięty do przedziału [0, 2*PI), gdzie:
-      // ~1.57 (0.5*PI) = pionowo w dół, ~3.14 (PI) = poziomo w tył, ~4.0..4.55 (1.27..1.45*PI) = wysoko w górę podczas spadania!)
+      // Ciągłe wyznaczenie kąta bez przeskoku na granicy +/-PI:
+      // - [0.22*PI .. 0.50*PI]: zawiewanie w PRZÓD i w dół (gdy postać porusza się do tyłu!)
+      // - [0.50*PI]: pionowo w dół (spoczynek)
+      // - [0.50*PI .. 1.00*PI]: zawiewanie w TYŁ (gdy postać biegnie do przodu)
+      // - [1.00*PI .. 1.62*PI]: podwiewanie DO GÓRY podczas spadania (zarówno w przód, pionowo, jak i do tyłu!)
       let forceTheta = Math.atan2(localFy, localFx);
-      if (forceTheta < 0) forceTheta += Math.PI * 2;
+      if (isFalling && worldFy < 0) {
+        // Gdy postać spada i siła wypadkowa skierowana jest w górę (-Y), pasma unoszą się górą (przez tył/czubek głowy: PI .. 1.62*PI)
+        if (forceTheta < 0) forceTheta += Math.PI * 2;
+      } else {
+        // Na ziemi lub podczas wznoszenia: odwijamy tylko kąty za plecami (< -0.5*PI), zostawiając dodatnie kąty przednie (0.20*PI..0.50*PI) dla ruchu w tył!
+        if (forceTheta < -Math.PI * 0.5) forceTheta += Math.PI * 2;
+        forceTheta = Math.max(Math.PI * 0.20, Math.min(Math.PI * 1.15, forceTheta));
+      }
 
-      // Płynne przejście między naturalnym profilem spoczynkowym a pełnym kątem pędu powietrza
-      const restAngle = restProfile[i] + opts.restOffset * (0.55 + segProgress * 0.65);
-      const airSpeed = Math.hypot(totalVx, totalVy) + ((p && p.isJetpacking) ? 2.5 : 0);
-      const motionBlend = Math.min(1.0, airSpeed * 0.42);
-      const rootFreedom = (i === 0) ? 0.68 : (0.88 + segProgress * 0.12);
+      // W spoczynku włosy trzymają naturalny profil S skorygowany o pochylenie głowy (-rot * 0.72), by wisieć zgodnie z grawitacją
+      const restAngle = restProfile[i] + opts.restOffset * (0.50 + segProgress * 0.60) - rot * (0.35 + segProgress * 0.45);
+      const effAirSpeed = Math.hypot(totalVx, totalVy) + ((p && p.isJetpacking) ? 2.2 : 0);
+      const motionBlend = Math.min(1.0, effAirSpeed * 0.52);
+      const rootFreedom = (i === 0) ? 0.58 : (0.82 + segProgress * 0.18);
 
       let targetTheta = restAngle + (forceTheta - restAngle) * motionBlend * rootFreedom;
 
-      // Żywa fala sinusoidalna (efekt płynnej wstęgi S oraz trzepotania na wietrze / podczas spadania)
-      const waveAmp = (0.055 + Math.min(0.32, airSpeed * 0.085)) * opts.liftMult * (0.25 + segProgress * 0.95);
+      // Fala sinusoidalna proporcjonalna do rzeczywistego ruchu (w staniu prawie zerowa, żywa w biegu i podczas spadania)
+      const waveAmp = (0.008 + Math.min(0.26, effAirSpeed * 0.075)) * opts.liftMult * (0.20 + segProgress * 0.90);
       const sWave = Math.sin(phys.waveTime + opts.phase * 2.4 - i * 0.95) * waveAmp
-                  + Math.cos(phys.waveTime * 1.65 + opts.phase * 1.7 - i * 1.30) * (waveAmp * 0.38);
+                  + Math.cos(phys.waveTime * 1.60 + opts.phase * 1.7 - i * 1.30) * (waveAmp * 0.35);
 
       targetTheta += sWave;
 
-      // Miękkie, elastyczne przekazywanie krzywizny z poprzedniego segmentu (bez usztywniania łańcucha!)
+      // Miękkie przekazywanie krzywizny z poprzedniego segmentu
       if (i > 0) {
-        const naturalDelta = (restProfile[i] - restProfile[i - 1]) * (1.0 - motionBlend * 0.65);
+        const naturalDelta = (restProfile[i] - restProfile[i - 1]) * (1.0 - motionBlend * 0.70);
         const parentFollow = strand.thetas[i - 1] + naturalDelta;
-        targetTheta = targetTheta * 0.78 + parentFollow * 0.22;
+        targetTheta = targetTheta * 0.76 + parentFollow * 0.24;
       }
 
-      // Zakres kątów pozwalający na swobodne opadanie w dół (~0.42*PI) oraz wysokie podwiewanie do góry podczas spadania (~1.46*PI)
-      const minTheta = (i === 0) ? (Math.PI * 0.44) : (Math.PI * 0.40);
-      const maxTheta = (i === 0) ? (Math.PI * 1.34) : (Math.PI * 1.46);
+      // Dolny limit pozwala dolnym segmentom zawiewać do przodu (do 0.22*PI) podczas ruchu w tył,
+      // a górny limit pozwala na wysokie podwiewanie do góry (do 1.60*PI) podczas spadania
+      const minTheta = (i === 0) ? (Math.PI * 0.44) : Math.max(Math.PI * 0.22, Math.PI * (0.42 - segProgress * 0.22));
+      const maxTheta = (i === 0) ? (Math.PI * 1.32) : (Math.PI * 1.60);
       targetTheta = Math.max(minTheta, Math.min(maxTheta, targetTheta));
 
-      const segStiff = baseStiff * (1.12 - segProgress * 0.32);
+      const segStiff = baseStiff * (1.10 - segProgress * 0.30);
       strand.omegas[i] = (strand.omegas[i] + (targetTheta - strand.thetas[i]) * segStiff * dt) * damping;
-      strand.thetas[i] += strand.omegas[i] * dt * 7.2;
+      strand.thetas[i] += strand.omegas[i] * dt * 6.6;
 
       if (strand.thetas[i] < minTheta) {
         strand.thetas[i] = minTheta;
-        strand.omegas[i] *= -0.20;
+        strand.omegas[i] *= -0.15;
       } else if (strand.thetas[i] > maxTheta) {
         strand.thetas[i] = maxTheta;
-        strand.omegas[i] *= -0.20;
+        strand.omegas[i] *= -0.15;
       }
     }
   }
