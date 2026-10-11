@@ -41,7 +41,7 @@ import { updateDevTouchButtonUI } from '../dev/devPanel.js';
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
 
-function updateDoubleFlickDetection(axisY) {
+export function updateDoubleFlickDetection(axisY) {
   const now = performance.now();
   if (axisY > 0.65) {
     if (flickFirstDownTime > 0 && flickReturnedToCenter) {

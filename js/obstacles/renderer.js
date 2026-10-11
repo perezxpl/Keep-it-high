@@ -1249,7 +1249,23 @@ export function drawJungleRockPlatform(ctx, plat, groundY) {
   // 3. RENDEROWANIE PROPSÓW PRZYPISANYCH DO PLATFORMY (BUNKER, SANDBAGS)
   if (plat.props) {
     for (const prop of plat.props) {
-      const propTopY = getPlatformSurfaceY(plat, x + prop.rx, groundY);
+      const px = x + prop.rx;
+      let propTopY = groundY - (plat.relY || 100);
+      if (polyPoints.length >= 2) {
+        if (px <= polyPoints[0].x) propTopY = polyPoints[0].y;
+        else if (px >= polyPoints[polyPoints.length - 1].x) propTopY = polyPoints[polyPoints.length - 1].y;
+        else {
+          for (let i = 0; i < polyPoints.length - 1; i++) {
+            const p0 = polyPoints[i];
+            const p1 = polyPoints[i + 1];
+            if (px >= p0.x && px <= p1.x) {
+              const dx = p1.x - p0.x;
+              propTopY = dx > 0 ? p0.y + ((px - p0.x) / dx) * (p1.y - p0.y) : p0.y;
+              break;
+            }
+          }
+        }
+      }
       const bx = x + prop.rx;
       const by = propTopY - prop.h;
 

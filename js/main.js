@@ -80,6 +80,12 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 let jetpackAirborneSession = false;
 let lastSPressTime = 0;
+let jumpKeyPressed = false;
+let lastWPressTime = 0;
+let isJetpackActive = false;
+const DOUBLE_TAP_WINDOW_MS = 300;
+let ctrlPressStartTime = 0;
+let ctrlWasToggledOnKeyDown = false;
 
 export { leftStick, rightStick, btnCluster, updateButtonLayout };
 if (typeof window !== 'undefined') {
@@ -131,7 +137,7 @@ window.addEventListener('resize', () => {
   updateButtonLayout(W, H);
 });
 
-import { initTouchInputHandlers } from './input/touchHandlers.js';
+import { initTouchInputHandlers, updateDoubleFlickDetection } from './input/touchHandlers.js';
 
 export const BIOME_TELEPORT_TARGETS = {
   STADIUM: 0,
@@ -646,13 +652,6 @@ initDevZoomUI();
 initTouchControlsDevUI();
 initModularGearDevUI();
 initNetwork();
-
-let jumpKeyPressed = false;
-let lastWPressTime = 0;
-let isJetpackActive = false;
-const DOUBLE_TAP_WINDOW_MS = 300;
-let ctrlPressStartTime = 0;
-let ctrlWasToggledOnKeyDown = false;
 
 export function resetInputState() {
   for (const k in keys) {

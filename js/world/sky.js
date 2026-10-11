@@ -6,9 +6,7 @@
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 import { drawPandoraBackground } from '../background.js';
 import { camera } from '../camera.js';
-import { W, H, activeArenaId, skyCacheVersion, invalidateSkyCache } from './state.js';
-
-export { invalidateSkyCache };
+import { W, H, activeArenaId, skyCacheVersion } from './state.js';
 
 // =========================================================================
 // OFFSCREEN SKYLINE CANVAS CACHE (Eliminacja migotania okien i sub-pixel aliasingu)
