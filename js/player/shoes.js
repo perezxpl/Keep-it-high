@@ -3,7 +3,7 @@
 // Dedykowany moduł fasonów obuwia: ciężkie buty, sneakersy, korki, hi-topy, wysokie glany
 // =========================================================================
 
-import { DEFAULT_VISUALS } from './state.js';
+import { DEFAULT_VISUALS } from './hair.js';
 
 export const SHOES_STYLE_LIST = [
   'combat_boots',
