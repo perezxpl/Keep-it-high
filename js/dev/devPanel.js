@@ -1,12 +1,14 @@
 // =========================================================================
-// DEV/DEVPANEL.JS - NARZĘDZIA DEWELOPERSKIE (ZOOM, PAD DOTYKOWY, PANCERZ)
+// DEV/DEVPANEL.JS - NARZĘDZIA DEWELOPERSKIE (PANEL DEV, BOT, ARENA, ZOOM, PAD, PANCERZ)
 // Wydzielony moduł z js/main.js
 // =========================================================================
 
 import {
   W,
   H,
+  GROUND_Y,
   camera,
+  clampCamera,
   devZoomLevel,
   setDevZoom,
   isTouchDevice,
@@ -15,7 +17,291 @@ import {
   spawnVestShreds
 } from '../world.js';
 import { player } from '../player.js';
+import { bot } from '../bot.js';
+import { ball } from '../ball.js';
+import { switchArena, activeArenaId } from '../obstacles.js';
+import { getActiveArena } from '../renderer.js';
+import { sendArenaSwitch, updateCursorVisibility } from '../network.js';
+import { uiManager } from '../uiManager.js';
 import { updateButtonLayout } from '../mobileControls.js';
+import { editorState, renderEditorPalette } from './obstacleEditor.js';
+
+// =========================================================================
+// PANEL DEWELOPERSKI (PRZECIĄGANIE, PRZEŁĄCZANIE, BOT, ARENA)
+// =========================================================================
+export function toggleDevPanel() {
+  const devMenu = document.getElementById('dev-menu');
+  const devToggleBtn = document.getElementById('dev-toggle-btn');
+  if (!devMenu) return;
+  const isHidden = devMenu.classList.toggle('dev-menu-hidden');
+  if (devToggleBtn) {
+    if (isHidden) devToggleBtn.classList.remove('active');
+    else devToggleBtn.classList.add('active');
+  }
+  updateCursorVisibility();
+}
+if (typeof window !== 'undefined') {
+  window.toggleDevPanel = toggleDevPanel;
+}
+
+export function syncDevBotButtonUI() {
+  const btn = document.getElementById('dev-bot-toggle-btn');
+  if (!btn) return;
+  if (bot.active) {
+    btn.textContent = '🤖 BOT: ON';
+    btn.style.background = 'rgba(168, 85, 247, 0.35)';
+    btn.style.borderColor = '#c084fc';
+    btn.style.color = '#ffffff';
+    btn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
+  } else {
+    btn.textContent = '🤖 BOT: OFF';
+    btn.style.background = '';
+    btn.style.borderColor = '#a855f7';
+    btn.style.color = '#c084fc';
+    btn.style.boxShadow = '';
+  }
+}
+
+export function syncDevArenaButtonUI() {
+  const devArenaBtn = document.getElementById('dev-arena-btn');
+  if (!devArenaBtn) return;
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
+  if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
+    devArenaBtn.textContent = '🌴 Arena: 3 (Dżungla)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';
+    devArenaBtn.style.borderColor = '#22c55e';
+    devArenaBtn.style.color = '#86efac';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
+    devArenaBtn.textContent = '🏭 Arena: 2 (Sektor X)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.25))';
+    devArenaBtn.style.borderColor = '#f59e0b';
+    devArenaBtn.style.color = '#fde68a';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.55)';
+  } else {
+    devArenaBtn.textContent = '🏟️ Arena: 1';
+    devArenaBtn.style.background = '';
+    devArenaBtn.style.borderColor = '#06b6d4';
+    devArenaBtn.style.color = '#22d3ee';
+    devArenaBtn.style.boxShadow = '';
+  }
+}
+
+let lastArenaToggleTime = 0;
+export const toggleArena = (e) => {
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+  }
+  const now = performance.now();
+  if (now - lastArenaToggleTime < 300) return;
+  lastArenaToggleTime = now;
+
+  let nextArena = 'ARENA_1';
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
+  if (curId === 'arena-1' || curId === 'ARENA_1') {
+    nextArena = 'ARENA_2';
+  } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
+    nextArena = 'ARENA_3';
+  } else {
+    nextArena = 'ARENA_1';
+  }
+  switchArena(nextArena, player, bot, ball);
+  window.activeArenaId = activeArenaId;
+  sendArenaSwitch(nextArena);
+  syncDevArenaButtonUI();
+  if (typeof uiManager !== 'undefined' && uiManager && typeof uiManager.updateMpArenaUI === 'function') {
+    uiManager.updateMpArenaUI(nextArena);
+  }
+  camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+  camera.x = camera.targetX;
+  camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+  camera.y = camera.targetY;
+  clampCamera();
+  if (editorState.active) {
+    renderEditorPalette();
+  }
+};
+
+export function initDevMainControls({ teleportToDistance, devSetClass }) {
+  const devPanelContainer = document.getElementById('dev-panel-container');
+  const devToggleBtn = document.getElementById('dev-toggle-btn');
+  const devMenu = document.getElementById('dev-menu');
+
+  let isDraggingDev = false;
+  let devDragStartX = 0;
+  let devDragStartY = 0;
+  let devPanelStartLeft = 0;
+  let devPanelStartTop = 0;
+  let devHasMoved = false;
+
+  if (devToggleBtn && devPanelContainer) {
+    devToggleBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      isDraggingDev = true;
+      devHasMoved = false;
+      devDragStartX = e.clientX;
+      devDragStartY = e.clientY;
+      devPanelStartLeft = devPanelContainer.offsetLeft;
+      devPanelStartTop = devPanelContainer.offsetTop;
+      try { devToggleBtn.setPointerCapture(e.pointerId); } catch (_) { }
+    });
+
+    devToggleBtn.addEventListener('pointermove', (e) => {
+      if (!isDraggingDev) return;
+      e.stopPropagation();
+      const dx = e.clientX - devDragStartX;
+      const dy = e.clientY - devDragStartY;
+      if (!devHasMoved && Math.hypot(dx, dy) >= 6) {
+        devHasMoved = true;
+      }
+      if (devHasMoved) {
+        const newLeft = devPanelStartLeft + dx;
+        const newTop = devPanelStartTop + dy;
+        const maxLeft = Math.max(10, window.innerWidth - devToggleBtn.offsetWidth - 10);
+        const maxTop = Math.max(10, window.innerHeight - devToggleBtn.offsetHeight - 10);
+        devPanelContainer.style.left = Math.max(8, Math.min(maxLeft, newLeft)) + 'px';
+        devPanelContainer.style.top = Math.max(8, Math.min(maxTop, newTop)) + 'px';
+      }
+    });
+
+    const handleDevPointerUp = (e) => {
+      if (!isDraggingDev) return;
+      e.stopPropagation();
+      isDraggingDev = false;
+      try { devToggleBtn.releasePointerCapture(e.pointerId); } catch (_) { }
+      if (!devHasMoved) {
+        toggleDevPanel();
+      }
+    };
+
+    devToggleBtn.addEventListener('pointerup', handleDevPointerUp);
+    devToggleBtn.addEventListener('pointercancel', handleDevPointerUp);
+    devPanelContainer.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+  }
+
+  document.querySelectorAll('.dev-btn[data-meters]').forEach((btn) => {
+    const handler = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const meters = parseInt(btn.getAttribute('data-meters'), 10);
+      if (!isNaN(meters) && typeof teleportToDistance === 'function') teleportToDistance(meters);
+    };
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchend', handler);
+  });
+
+  document.querySelectorAll('.dev-class-btn').forEach((btn) => {
+    const handler = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const classId = btn.getAttribute('data-class');
+      if (typeof devSetClass === 'function') devSetClass(classId);
+    };
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchend', handler);
+  });
+
+  const devBotToggleBtn = document.getElementById('dev-bot-toggle-btn');
+  let devBotFreezeBtn = document.getElementById('dev-bot-freeze-btn');
+
+  if (devBotToggleBtn) {
+    const toggleBot = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      bot.active = !bot.active;
+      if (bot.active) {
+        devBotToggleBtn.textContent = '🤖 BOT: ON';
+        devBotToggleBtn.style.background = 'rgba(168, 85, 247, 0.35)';
+        devBotToggleBtn.style.borderColor = '#c084fc';
+        devBotToggleBtn.style.color = '#ffffff';
+        devBotToggleBtn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
+
+        bot.x = player.x + (player.facing || 1) * 350;
+        bot.y = GROUND_Y - bot.h;
+        bot.vx = 0;
+        bot.vy = 0;
+        bot.facing = -(player.facing || 1);
+        bot.isJumping = false;
+        bot.isSliding = false;
+        bot.isCharging = false;
+        bot.kickState = 'IDLE';
+        bot.gaitMode = 'IDLE';
+        bot.dropThroughTimer = 0;
+        bot.airVx = 0;
+      } else {
+        devBotToggleBtn.textContent = '🤖 BOT: OFF';
+        devBotToggleBtn.style.background = '';
+        devBotToggleBtn.style.borderColor = '#a855f7';
+        devBotToggleBtn.style.color = '#c084fc';
+        devBotToggleBtn.style.boxShadow = '';
+      }
+    };
+    devBotToggleBtn.addEventListener('click', toggleBot);
+    devBotToggleBtn.addEventListener('touchend', toggleBot);
+  }
+
+  if (!devBotFreezeBtn && devMenu) {
+    devBotFreezeBtn = document.createElement('button');
+    devBotFreezeBtn.className = 'dev-btn';
+    devBotFreezeBtn.id = 'dev-bot-freeze-btn';
+    devBotFreezeBtn.style.cssText = 'border-color: #eab308; color: #facc15; font-weight: 600; margin-left: 2px;';
+    devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+
+    if (devBotToggleBtn && devBotToggleBtn.parentNode) {
+      devBotToggleBtn.parentNode.insertBefore(devBotFreezeBtn, devBotToggleBtn.nextSibling);
+    } else {
+      devMenu.appendChild(devBotFreezeBtn);
+    }
+  }
+
+  if (devBotFreezeBtn) {
+    const toggleFreeze = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      bot.frozen = !bot.frozen;
+      if (bot.frozen) {
+        devBotFreezeBtn.textContent = '🛑 BOT: STOI';
+        devBotFreezeBtn.style.background = 'rgba(234, 179, 8, 0.35)';
+        devBotFreezeBtn.style.borderColor = '#facc15';
+        devBotFreezeBtn.style.color = '#ffffff';
+        devBotFreezeBtn.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.6)';
+      } else {
+        devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+        devBotFreezeBtn.style.background = '';
+        devBotFreezeBtn.style.borderColor = '#eab308';
+        devBotFreezeBtn.style.color = '#facc15';
+        devBotFreezeBtn.style.boxShadow = '';
+      }
+    };
+    devBotFreezeBtn.addEventListener('click', toggleFreeze);
+    devBotFreezeBtn.addEventListener('touchend', toggleFreeze);
+  }
+
+  window.toggleArena = toggleArena;
+  window.switchArena = (id) => {
+    switchArena(id, player, bot, ball);
+    window.activeArenaId = activeArenaId;
+    sendArenaSwitch(id);
+    syncDevArenaButtonUI();
+    if (typeof uiManager !== 'undefined' && uiManager) {
+      if (typeof uiManager.updateMpArenaUI === 'function') uiManager.updateMpArenaUI(id);
+      if (typeof uiManager.updateArenaSelectUI === 'function') uiManager.updateArenaSelectUI(id);
+    }
+    camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+    camera.x = camera.targetX;
+    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+    camera.y = camera.targetY;
+    clampCamera();
+  };
+
+  const devArenaBtn = document.getElementById('dev-arena-btn');
+  if (devArenaBtn) {
+    devArenaBtn.addEventListener('click', toggleArena);
+    devArenaBtn.addEventListener('touchend', toggleArena);
+    syncDevArenaButtonUI();
+  }
+}
 
 // =========================================================================
 // DEV ZOOM CONTROLS (PRZYBLIŻANIE / ODDALANIE KAMERY W MENU DEV)
@@ -259,5 +545,3 @@ window.addEventListener('wheel', (e) => {
     updateDevZoomLabel();
   }
 }, { passive: false });
-
-
