@@ -461,6 +461,87 @@ export function drawTaperedHairStrand(ctx, pts, norms, widths, fillStyle, stroke
   }
 }
 
+/**
+ * Renderuje wstęgę tkaniny (np. końce bandany) z prostym, prostopadłym ścięciem na końcu (blunt cut)
+ * zachowując pełną, swobodną 2D fizykę wieloczłonowego łańcucha segmentów.
+ */
+export function drawRibbonBluntStrand(ctx, pts, norms, widths, fillStyle, strokeStyle = '#09090b', highlightStyle = null) {
+  const leftPts = [];
+  const rightPts = [];
+  for (let i = 0; i < pts.length; i++) {
+    const w = widths[i] ?? 0;
+    leftPts.push({
+      x: pts[i].x + norms[i].x * w,
+      y: pts[i].y + norms[i].y * w
+    });
+    rightPts.push({
+      x: pts[i].x - norms[i].x * w,
+      y: pts[i].y - norms[i].y * w
+    });
+  }
+
+  const lastIdx = leftPts.length - 1;
+
+  ctx.beginPath();
+  ctx.moveTo(leftPts[0].x, leftPts[0].y);
+  for (let i = 1; i < lastIdx; i++) {
+    const xc = (leftPts[i].x + leftPts[i + 1].x) * 0.5;
+    const yc = (leftPts[i].y + leftPts[i + 1].y) * 0.5;
+    ctx.quadraticCurveTo(leftPts[i].x, leftPts[i].y, xc, yc);
+  }
+  // Proste zakończenie wstęgi (blunt cut) – z lewej do prawej krawędzi
+  ctx.lineTo(leftPts[lastIdx].x, leftPts[lastIdx].y);
+  ctx.lineTo(rightPts[lastIdx].x, rightPts[lastIdx].y);
+  for (let i = lastIdx - 1; i >= 1; i--) {
+    const xc = (rightPts[i].x + rightPts[i - 1].x) * 0.5;
+    const yc = (rightPts[i].y + rightPts[i - 1].y) * 0.5;
+    ctx.quadraticCurveTo(rightPts[i].x, rightPts[i].y, xc, yc);
+  }
+  ctx.lineTo(rightPts[0].x, rightPts[0].y);
+  ctx.closePath();
+
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+
+  if (strokeStyle) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = 0.85;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(leftPts[0].x, leftPts[0].y);
+    for (let i = 1; i < lastIdx; i++) {
+      const xc = (leftPts[i].x + leftPts[i + 1].x) * 0.5;
+      const yc = (leftPts[i].y + leftPts[i + 1].y) * 0.5;
+      ctx.quadraticCurveTo(leftPts[i].x, leftPts[i].y, xc, yc);
+    }
+    // Prosta krawędź na końcu wstęgi!
+    ctx.lineTo(leftPts[lastIdx].x, leftPts[lastIdx].y);
+    ctx.lineTo(rightPts[lastIdx].x, rightPts[lastIdx].y);
+    for (let i = lastIdx - 1; i >= 1; i--) {
+      const xc = (rightPts[i].x + rightPts[i - 1].x) * 0.5;
+      const yc = (rightPts[i].y + rightPts[i - 1].y) * 0.5;
+      ctx.quadraticCurveTo(rightPts[i].x, rightPts[i].y, xc, yc);
+    }
+    ctx.lineTo(rightPts[0].x, rightPts[0].y);
+    ctx.stroke();
+  }
+
+  // Wewnętrzny szew / akcent światła wzdłuż środka wstęgi
+  if (highlightStyle && pts.length >= 4) {
+    ctx.strokeStyle = highlightStyle;
+    ctx.lineWidth = 0.65;
+    ctx.beginPath();
+    ctx.moveTo((leftPts[0].x + rightPts[0].x) * 0.5, (leftPts[0].y + rightPts[0].y) * 0.5);
+    for (let i = 1; i <= lastIdx; i++) {
+      const mx = (leftPts[i].x + rightPts[i].x) * 0.5;
+      const my = (leftPts[i].y + rightPts[i].y) * 0.5;
+      ctx.lineTo(mx, my);
+    }
+    ctx.stroke();
+  }
+}
+
 export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt, headPitch, hasHelmet) {
   const rawStyle = String(v.hairStyle || 'buzzcut').toLowerCase();
   const style = (rawStyle === 'shaved' || rawStyle === 'none') ? 'buzzcut' : rawStyle;
@@ -675,32 +756,37 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, highMidChain.pts, highMidChain.norms, [1.5, 1.8, 1.65, 1.3, 0.90, 0.48, 0.0], hairGrad, '#09090b', pal.highlight);
     drawTaperedHairStrand(ctx, flyChain.pts, flyChain.norms, [1.0, 1.25, 1.15, 0.85, 0.60, 0.32, 0.0], hairGrad, '#09090b', pal.highlight);
 
+    // Zaczesane włosy pokrywające potylicę, skroń i bok głowy wchodzące głęboko pod nakrycie głowy (eliminuje jakiekolwiek przerwy)
+    ctx.beginPath();
+    ctx.moveTo(-4.8, 2.3);
+    ctx.quadraticCurveTo(-6.5, 0.0, -6.4, -3.2);
     if (!hasHelmet && !hasHat) {
-      // Zaczesane włosy pokrywające górę, skroń i bok głowy oraz przysłaniające górną połowę ucha
-      ctx.beginPath();
-      ctx.moveTo(-4.8, 2.3);
-      ctx.quadraticCurveTo(-6.5, 0.0, -6.4, -3.2);
       ctx.quadraticCurveTo(-5.7, -7.7, -1.0, -7.8);
       ctx.quadraticCurveTo(2.9, -7.5, 4.2, -5.2);
-      ctx.quadraticCurveTo(2.2, -4.6, 1.0, -3.2);
-      ctx.quadraticCurveTo(-0.2, -1.4, -1.8, -0.5);
-      ctx.quadraticCurveTo(-3.2, 0.1, -4.8, 2.3);
-      ctx.closePath();
-      ctx.fillStyle = hairGrad;
-      ctx.fill();
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.9;
-      ctx.stroke();
+    } else {
+      ctx.quadraticCurveTo(-5.6, -6.0, -1.0, -6.2);
+      ctx.quadraticCurveTo(2.0, -5.8, 4.0, -4.4);
+    }
+    ctx.quadraticCurveTo(2.2, -4.6, 1.0, -3.2);
+    ctx.quadraticCurveTo(-0.2, -1.4, -1.8, -0.5);
+    ctx.quadraticCurveTo(-3.2, 0.1, -4.8, 2.3);
+    ctx.closePath();
+    ctx.fillStyle = hairGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
 
-      ctx.strokeStyle = pal.highlight;
-      ctx.lineWidth = 0.72;
-      ctx.beginPath();
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 0.72;
+    ctx.beginPath();
+    if (!hasHelmet && !hasHat) {
       ctx.moveTo(2.6, -6.2);
       ctx.quadraticCurveTo(-1.5, -6.2, -5.8, -3.1);
-      ctx.moveTo(0.8, -4.1);
-      ctx.quadraticCurveTo(-2.4, -3.5, -5.7, -2.2);
-      ctx.stroke();
     }
+    ctx.moveTo(0.8, -4.1);
+    ctx.quadraticCurveTo(-2.4, -3.5, -5.7, -2.2);
+    ctx.stroke();
 
   } else if (style === 'long_flowing') {
     // 1. Warstwa głębokiego podkładu (3 pasma przy karku i potylicy eliminujące jakiekolwiek prześwity)
@@ -720,33 +806,39 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, deepMid.pts, deepMid.norms, [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], pal.dark, '#09090b', null);
     drawTaperedHairStrand(ctx, deepBack.pts, deepBack.norms, [2.0, 2.3, 2.15, 1.8, 1.25, 0.68, 0.0], pal.dark, '#09090b', null);
 
+    // Baza u nasady potylicy i sklepienia czaszki (wchodzi głęboko pod nakrycie głowy, eliminując przerwę)
+    ctx.beginPath();
+    ctx.moveTo(-5.6, -1.5);
+    ctx.quadraticCurveTo(-6.6, -4.5, -5.6, -6.4);
     if (!hasHelmet && !hasHat) {
-      // Baza u nasady sklepienia czaszki (rysowana POD pasmami na całej głowie)
-      ctx.beginPath();
-      ctx.moveTo(-5.6, -1.5);
-      ctx.quadraticCurveTo(-6.6, -4.5, -5.6, -7.2);
       ctx.quadraticCurveTo(-4.2, -8.6, -0.8, -8.6);
       ctx.quadraticCurveTo(2.8, -8.4, 4.4, -5.8);
-      ctx.lineTo(4.7, -4.4);
-      ctx.quadraticCurveTo(2.2, -4.4, 0.4, -3.2);
-      ctx.quadraticCurveTo(-2.2, -1.8, -5.6, -1.5);
-      ctx.closePath();
-      ctx.fillStyle = pal.dark;
-      ctx.fill();
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.85;
-      ctx.stroke();
+    } else {
+      ctx.quadraticCurveTo(-3.8, -6.5, -0.8, -6.2);
+      ctx.quadraticCurveTo(2.2, -6.0, 4.0, -4.6);
     }
+    ctx.lineTo(4.7, -4.4);
+    ctx.quadraticCurveTo(2.2, -4.4, 0.4, -3.2);
+    ctx.quadraticCurveTo(-2.2, -1.8, -5.6, -1.5);
+    ctx.closePath();
+    ctx.fillStyle = pal.dark;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
 
-    // 2. BOGATE NIEZALEŻNE PASMA ROZMIESZCZONYCH NA GŁOWIE
+    // 2. BOGATE NIEZALEŻNE PASMA ZE SWOBODNĄ FIZYKĄ 2D
     const strandsOnHead = (hasHelmet || hasHat)
       ? [
-          // Pasma karku, potylicy i ramion wychodzące od dołu spod nakrycia głowy (beret, czapka, kapelusz, hełm)
-          { id: 'lf_h1', x: -5.4, y: -2.8, len: 2.75, widths: [1.8, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.14, archRoot: 0.10, liftMult: 1.12 } },
-          { id: 'lf_h2', x: -4.2, y: -2.2, len: 2.70, widths: [1.8, 2.1, 1.9, 1.55, 1.1, 0.58, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.4, restOffset: 0.02, archRoot: 0.06, liftMult: 1.00 } },
-          { id: 'lf_h3', x: -2.4, y: -1.8, len: 2.55, widths: [1.65, 1.95, 1.8, 1.45, 1.0, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.6, restOffset: -0.06, archRoot: 0.04, liftMult: 1.08 } },
-          { id: 'lf_h4', x: -0.6, y: -2.0, len: 2.30, widths: [1.3, 1.55, 1.4, 1.1, 0.75, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 4.8, restOffset: -0.14, archRoot: 0.02, liftMult: 1.15 } },
-          { id: 'lf_h5', x: -5.8, y: -1.8, len: 2.65, widths: [1.6, 1.95, 1.8, 1.45, 1.05, 0.52, 0.0], col: pal.base, hl: null,          opts: { phase: 5.6, restOffset: 0.08, archRoot: 0.08, liftMult: 1.05 } }
+          // Pasma karku, potylicy i ramion zakotwiczone głęboko pod nakryciem (od y = -4.8 do -3.0)
+          // ze swobodną, bogatą fizyką 2D powiewającą za postacią
+          { id: 'lf_h1', x: -5.4, y: -4.8, len: 3.10, widths: [1.8, 2.15, 2.0, 1.65, 1.20, 0.65, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.18, archRoot: 0.22, liftMult: 1.28, gravMult: 0.85, stiffMult: 0.98 } },
+          { id: 'lf_h2', x: -4.8, y: -4.2, len: 3.00, widths: [1.8, 2.10, 1.95, 1.60, 1.15, 0.60, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 1.8, restOffset: 0.10, archRoot: 0.16, liftMult: 1.20, gravMult: 0.90, stiffMult: 0.96 } },
+          { id: 'lf_h3', x: -4.0, y: -3.8, len: 2.95, widths: [1.7, 2.05, 1.90, 1.55, 1.10, 0.58, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.6, restOffset: 0.02, archRoot: 0.12, liftMult: 1.15, gravMult: 0.94, stiffMult: 0.95 } },
+          { id: 'lf_h4', x: -3.0, y: -3.6, len: 2.85, widths: [1.6, 1.95, 1.80, 1.45, 1.05, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.4, restOffset: -0.04, archRoot: 0.08, liftMult: 1.12, gravMult: 0.96, stiffMult: 0.96 } },
+          { id: 'lf_h5', x: -1.8, y: -3.8, len: 2.75, widths: [1.5, 1.85, 1.70, 1.35, 0.95, 0.48, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 4.2, restOffset: -0.08, archRoot: 0.06, liftMult: 1.15, gravMult: 0.94, stiffMult: 0.98 } },
+          { id: 'lf_h6', x: -0.6, y: -4.0, len: 2.60, widths: [1.3, 1.60, 1.45, 1.15, 0.80, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 5.0, restOffset: -0.14, archRoot: 0.04, liftMult: 1.22, gravMult: 0.90, stiffMult: 1.02 } },
+          { id: 'lf_h7', x: -5.8, y: -3.2, len: 2.90, widths: [1.7, 2.00, 1.85, 1.50, 1.08, 0.55, 0.0], col: pal.base, hl: null,          opts: { phase: 5.8, restOffset: 0.12, archRoot: 0.14, liftMult: 1.22, gravMult: 0.88, stiffMult: 0.97 } }
         ]
       : [
           // A. Tylna potylica i kaskada karku
@@ -798,23 +890,28 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, baseNape2.pts, baseNape2.norms, [1.7, 2.0, 1.85, 1.50, 1.10, 0.58, 0.0], pal.dark, '#09090b', null);
     drawTaperedHairStrand(ctx, baseBack.pts, baseBack.norms, [1.8, 2.1, 1.95, 1.55, 1.15, 0.60, 0.0], pal.dark, '#09090b', null);
 
+    // B. Baza sklepienia czaszki zebrana ku nasadzie kucyka / karku (wchodzi pod nakrycie głowy, eliminując przerwę)
+    ctx.beginPath();
+    ctx.moveTo(-5.5, -1.8);
+    ctx.quadraticCurveTo(-6.6, -4.4, -5.6, -6.4);
     if (!hasHelmet && !hasHat) {
-      // B. Baza sklepienia czaszki zebrana ku nasadzie kucyka
-      ctx.beginPath();
-      ctx.moveTo(-5.5, -1.8);
-      ctx.quadraticCurveTo(-6.6, -4.4, -5.6, -6.8);
       ctx.quadraticCurveTo(-4.0, -8.3, -0.8, -8.3);
       ctx.quadraticCurveTo(2.8, -8.1, 4.3, -5.6);
-      ctx.lineTo(4.6, -4.2);
-      ctx.quadraticCurveTo(2.4, -4.2, 0.8, -3.2);
-      ctx.quadraticCurveTo(-1.8, -1.8, -5.5, -1.8);
-      ctx.closePath();
-      ctx.fillStyle = hairGrad;
-      ctx.fill();
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.90;
-      ctx.stroke();
+    } else {
+      ctx.quadraticCurveTo(-3.8, -6.5, -0.8, -6.2);
+      ctx.quadraticCurveTo(2.2, -6.0, 4.0, -4.4);
+    }
+    ctx.lineTo(4.6, -4.2);
+    ctx.quadraticCurveTo(2.4, -4.2, 0.8, -3.2);
+    ctx.quadraticCurveTo(-1.8, -1.8, -5.5, -1.8);
+    ctx.closePath();
+    ctx.fillStyle = hairGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.90;
+    ctx.stroke();
 
+    if (!hasHelmet && !hasHat) {
       // Płynne linie zaczesu biegnące od czoła i skroni w stronę nasady kucyka
       ctx.strokeStyle = pal.highlight;
       ctx.lineWidth = 0.70;
@@ -826,12 +923,14 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
       ctx.stroke();
     }
 
-    // C. Rozpuszczone pasma opadające na kark i ramiona (o długościach segmentów 2.10–2.45, krótszych niż w long_flowing)
+    // C. Rozpuszczone pasma opadające na kark i ramiona (o długościach segmentów 2.10–2.65, swobodna fizyka 2D)
     const looseStrands = (hasHelmet || hasHat)
       ? [
-          { id: 'hu_ls_h1', x: -5.2, y: -2.8, len: 2.45, widths: [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.12, archRoot: 0.10, liftMult: 1.10 } },
-          { id: 'hu_ls_h2', x: -3.8, y: -2.2, len: 2.35, widths: [1.6, 1.9, 1.75, 1.4, 0.95, 0.50, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.0, restOffset: 0.02, archRoot: 0.06, liftMult: 1.05 } },
-          { id: 'hu_ls_h3', x: -2.0, y: -1.8, len: 2.25, widths: [1.4, 1.65, 1.5, 1.2, 0.80, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.0, restOffset: -0.08, archRoot: 0.04, liftMult: 1.12 } }
+          { id: 'hu_ls_h1', x: -5.4, y: -4.4, len: 2.65, widths: [1.75, 2.10, 1.95, 1.55, 1.10, 0.58, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.16, archRoot: 0.18, liftMult: 1.25, gravMult: 0.88, stiffMult: 0.98 } },
+          { id: 'hu_ls_h2', x: -4.8, y: -3.8, len: 2.55, widths: [1.70, 2.05, 1.90, 1.50, 1.05, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 1.8, restOffset: 0.08, archRoot: 0.14, liftMult: 1.18, gravMult: 0.92, stiffMult: 0.96 } },
+          { id: 'hu_ls_h3', x: -3.8, y: -3.4, len: 2.45, widths: [1.60, 1.95, 1.80, 1.40, 0.95, 0.48, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.6, restOffset: 0.00, archRoot: 0.10, liftMult: 1.14, gravMult: 0.95, stiffMult: 0.96 } },
+          { id: 'hu_ls_h4', x: -2.6, y: -3.2, len: 2.35, widths: [1.50, 1.80, 1.65, 1.30, 0.88, 0.44, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.4, restOffset: -0.06, archRoot: 0.06, liftMult: 1.15, gravMult: 0.94, stiffMult: 0.98 } },
+          { id: 'hu_ls_h5', x: -5.6, y: -2.8, len: 2.50, widths: [1.65, 1.95, 1.80, 1.45, 1.00, 0.50, 0.0], col: pal.base, hl: null,          opts: { phase: 4.2, restOffset: 0.10, archRoot: 0.12, liftMult: 1.20, gravMult: 0.90, stiffMult: 0.97 } }
         ]
       : [
           { id: 'hu_ls_backtop', x: -5.4, y: -4.4, len: 2.45, widths: [1.65, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.12, archRoot: 0.18, liftMult: 1.12, gravMult: 0.94, stiffMult: 1.0 } },

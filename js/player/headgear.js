@@ -10,7 +10,8 @@ import {
   drawCharacterHairProfile,
   drawCharacterHairOverEarProfile,
   updateAndBuildHairChain,
-  drawTaperedHairStrand
+  drawTaperedHairStrand,
+  drawRibbonBluntStrand
 } from './hair.js';
 import { drawCharacterFacialHairProfile } from './facialHair.js';
 
@@ -371,27 +372,27 @@ export function drawCharacterHeadgearProfile(
     ctx.quadraticCurveTo(0.0, -4.1, -5.2, -3.3);
     ctx.stroke();
 
-    // B. Dwa długie, swobodne końce bandany z pełną fizyką 2D (Verlet / Spring chain)
+    // B. Dwa długie, swobodne końce bandany z prostym zakończeniem (blunt cut) i pełną fizyką 2D (Verlet / Spring chain)
     // 1. Dolna wstęga (nieco krótsza, powiewająca niezależnie pod spodem)
     const ribbonBotChain = updateAndBuildHairChain(
       p, 'bandana_bot', currentFacingDir, torsoTilt, headPitch,
-      -5.4, -2.2, 2.55,
+      -5.4, -2.2, 2.70,
       {
         id: 'bd_ribbon_bot',
         phase: 1.6,
         restOffset: -0.06,
         archRoot: 0.22,
-        liftMult: 1.40,
-        gravMult: 0.88,
-        stiffMult: 0.90,
+        liftMult: 1.45,
+        gravMult: 0.85,
+        stiffMult: 0.88,
         restProfile: [2.32, 2.04, 1.80, 1.65, 1.70, 1.78]
       }
     );
-    drawTaperedHairStrand(
+    drawRibbonBluntStrand(
       ctx,
       ribbonBotChain.pts,
       ribbonBotChain.norms,
-      [1.25, 1.60, 1.45, 1.20, 0.85, 0.45, 0.0],
+      [1.25, 1.55, 1.50, 1.45, 1.40, 1.35, 1.30],
       pal.dark,
       '#09090b',
       null
@@ -400,23 +401,23 @@ export function drawCharacterHeadgearProfile(
     // 2. Górna wstęga (dłuższa, główna wstęga powiewająca swobodnie na wietrze)
     const ribbonTopChain = updateAndBuildHairChain(
       p, 'bandana_top', currentFacingDir, torsoTilt, headPitch,
-      -5.6, -2.5, 2.95,
+      -5.6, -2.5, 3.15,
       {
         id: 'bd_ribbon_top',
         phase: 0.0,
         restOffset: 0.14,
         archRoot: 0.34,
-        liftMult: 1.50,
-        gravMult: 0.80,
-        stiffMult: 0.86,
+        liftMult: 1.55,
+        gravMult: 0.78,
+        stiffMult: 0.84,
         restProfile: [2.54, 2.20, 1.90, 1.70, 1.74, 1.84]
       }
     );
-    drawTaperedHairStrand(
+    drawRibbonBluntStrand(
       ctx,
       ribbonTopChain.pts,
       ribbonTopChain.norms,
-      [1.35, 1.75, 1.65, 1.40, 1.05, 0.55, 0.0],
+      [1.35, 1.70, 1.65, 1.60, 1.55, 1.50, 1.45],
       headGrad,
       '#09090b',
       pal.highlight
