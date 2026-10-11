@@ -501,9 +501,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Bezpieczne pobranie referencji do aktywnej areny
-  const activeArena = (typeof curArenaObj !== 'undefined')
-    ? curArenaObj
-    : ((typeof getActiveArena === 'function' ? getActiveArena() : null) || (typeof window !== 'undefined' ? (window.curArenaObj || window.currentArena) : null));
+  const activeArena = (typeof getActiveArena === 'function' ? getActiveArena() : null) ||
+    (typeof window !== 'undefined' ? (window.curArenaObj || window.currentArena) : null);
 
   const activeArenaRefId = activeArena?.id || (typeof activeArenaId !== 'undefined' ? activeArenaId : null);
   const isA2Active = (activeArenaRefId === 'arena-2' || activeArenaRefId === 'ARENA_2' || activeArenaRefId === 'ARENA_2_PANDORA' || activeArenaRefId === 'ARENA_2_SECTOR_X');
