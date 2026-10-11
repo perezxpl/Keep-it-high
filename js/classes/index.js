@@ -1,6 +1,6 @@
-import { RaptorClass } from './aero.js?v=v81_hair_fullhead_gravity';
-import { StrikerClass } from './playmaker.js?v=v81_hair_fullhead_gravity';
-import { EnforcerClass } from './enforcer.js?v=v81_hair_fullhead_gravity';
+import { RaptorClass } from './aero.js';
+import { StrikerClass } from './playmaker.js';
+import { EnforcerClass } from './enforcer.js';
 
 export const CLASSES = {
   // Kolejność od lekkiej do ciężkiej: 1. Raptor, 2. Striker, 3. Enforcer

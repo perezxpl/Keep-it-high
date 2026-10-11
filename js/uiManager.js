@@ -3,15 +3,15 @@
 // Zarządza Menu Głównym, Oknem Ustawień oraz Panelem Pauzy
 // =============================================================================
 
-import { CONFIG } from './config.js?v=v81_hair_fullhead_gravity';
-import { CLASSES } from './classes/index.js?v=v81_hair_fullhead_gravity';
+import { CONFIG } from './config.js';
+import { CLASSES } from './classes/index.js';
 import {
   drawPlayer,
   drawHeadHairPreview,
   HAIR_STYLE_LIST,
   HAIR_COLOR_LIST,
   setLocalPlayerCustomVisuals
-} from './player/renderer.js?v=v81_hair_fullhead_gravity';
+} from './player/renderer.js';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';

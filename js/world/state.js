@@ -1,0 +1,639 @@
+// =========================================================================
+// WORLD.JS - MODUŁ ZAMKNIĘTEJ ARENY BOJOWEJ + SYSTEM GORE & KINEMATYKA ŚMIERCI
+// =========================================================================
+
+import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, MAP_WIDTH, isTouchDevice, setTouchDevice, ARENA_2_PANDORA } from '../config.js';
+import { spawnConcreteDebris, spawnRicochetSparks } from '../particles.js';
+import { drawPandoraBackground } from '../background.js';
+import { goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS } from '../arenas/arena1.js';
+import {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight,
+  shakeImpulse,
+  setCameraCanvas,
+  setCameraGroundY,
+  setCameraArenaId,
+  getCameraArenaId,
+  setCameraMouseScreenPos,
+  mouseScreenPos
+} from '../camera.js';
+export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
+
+export const centerX = MAP_WIDTH / 2; // 1800
+
+export let _worldPlatforms = [];
+export let _worldCustomObstacles = [];
+export let platforms = [];
+export let slopes = [];
+export let walls = [];
+export let obstacles = [];
+
+export function resetColliders() {
+  platforms = [];
+  slopes = [];
+  walls = [];
+  obstacles = [];
+  _worldPlatforms = [];
+  _worldCustomObstacles = [];
+}
+
+export var activeArenaId = 'ARENA_1';
+export const ladders = [];
+export let _worldArenaState = {
+  get activeArenaId() { return activeArenaId; },
+  set activeArenaId(val) { activeArenaId = val; },
+  arenaScore: { cyan: 0, orange: 0 },
+  arena1State: null
+};
+
+export function registerWorldObstacles(platforms, obstacles, arenaState) {
+  if (platforms) _worldPlatforms = platforms;
+  if (obstacles) _worldCustomObstacles = obstacles;
+  if (arenaState) {
+    if (arenaState.activeArenaId) {
+      activeArenaId = arenaState.activeArenaId;
+      if (typeof setCameraArenaId === 'function') setCameraArenaId(activeArenaId);
+    }
+    if (arenaState.arenaScore) _worldArenaState.arenaScore = arenaState.arenaScore;
+    if (arenaState.arena1State) _worldArenaState.arena1State = arenaState.arena1State;
+  }
+}
+
+export function setActiveArenaId(id) {
+  activeArenaId = id;
+  if (typeof setCameraArenaId === 'function') {
+    setCameraArenaId(id);
+  }
+}
+
+export const goalCelebration = {
+  active: false,
+  timer: 0,
+  team: '',
+  color: '#00F0FF'
+};
+
+export function triggerGoalCelebration(team, color) {
+  goalCelebration.active = true;
+  goalCelebration.timer = 110;
+  goalCelebration.team = team;
+  goalCelebration.color = color || (team === 'CYAN' ? '#00F0FF' : '#FF8800');
+}
+
+export let canvas = null;
+export let ctx = null;
+export let W = window.innerWidth;
+export let H = window.innerHeight;
+export let DPR = Math.min(window.devicePixelRatio || 1, 2);
+export let GROUND_Y = 1000;
+
+/**
+ * Renderuje pasy ostrzegawcze (żółto-czarne skośne pasy przemysłowe)
+ */
+export function drawHazardStripes(ctx, x, y, w, h) {
+  if (!ctx || w <= 0 || h <= 0) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#18181b';
+  for (let sx = x - h; sx < x + w + h; sx += 12) {
+    ctx.beginPath();
+    ctx.moveTo(sx, y);
+    ctx.lineTo(sx + 6, y);
+    ctx.lineTo(sx - 2, y + h);
+    ctx.lineTo(sx - 8, y + h);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// =========================================================================
+// SEGMENTOWA ARCHITEKTURA PODŁOŻA I INDUSTRIALNE FUNDAMENTY
+// =========================================================================
+export const GROUND_SLAB_HEIGHT = 36; // realna grubość kładki przemysłowej
+export const GROUND_SEG_WIDTH = 32;   // siatka segmentów o szerokości 30–40 px
+export const PILLAR_SPACING = 120;    // industrialne belki nośne / filary schodzące w dół co 120 px
+export const groundSegments = [];
+
+let _nextGroundId = 1;
+export function generateGroundId() {
+  return 'ground_seg_' + (_nextGroundId++);
+}
+
+export function initGroundSegments() {
+  groundSegments.length = 0;
+  const startX = ARENA_LEFT - 320;
+  const endX = ARENA_RIGHT + 320;
+  for (let x = startX; x < endX; x += GROUND_SEG_WIDTH) {
+    groundSegments.push({
+      id: generateGroundId(),
+      x: x,
+      y: GROUND_Y,
+      width: GROUND_SEG_WIDTH,
+      height: GROUND_SLAB_HEIGHT,
+      destroyed: false,
+      scorchLeft: false,
+      scorchRight: false
+    });
+  }
+}
+
+// Inicjalizacja segmentów poziomu zerowego
+initGroundSegments();
+
+export function isGroundAt(x, margin = 4) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+    return false;
+  }
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+    if (x >= seg.x - margin && x <= seg.x + seg.width + margin) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isGroundSupporting(minX, maxX) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+    return false;
+  }
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+    if (seg.x + seg.width > minX && seg.x < maxX) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function findGroundHoleAt(x) {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+    return { holeStart: -600, holeEnd: 4600 };
+  }
+  if (isGroundAt(x, 0)) return null;
+  let holeStart = ARENA_LEFT - 320;
+  let holeEnd = ARENA_RIGHT + 320;
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (!seg.destroyed) {
+      if (seg.x + seg.width <= x && seg.x + seg.width > holeStart) {
+        holeStart = seg.x + seg.width;
+      }
+      if (seg.x >= x && seg.x < holeEnd) {
+        holeEnd = seg.x;
+      }
+    }
+  }
+  return { holeStart, holeEnd };
+}
+
+export function updateGroundEdgeFlags() {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    seg.scorchLeft = false;
+    seg.scorchRight = false;
+    if (seg.destroyed) continue;
+
+    const prev = groundSegments[i - 1];
+    if (prev && prev.destroyed) {
+      seg.scorchLeft = true;
+    }
+    const next = groundSegments[i + 1];
+    if (next && next.destroyed) {
+      seg.scorchRight = true;
+    }
+  }
+}
+
+export function resetGroundSegments() {
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    seg.destroyed = false;
+    seg.scorchLeft = false;
+    seg.scorchRight = false;
+    seg.y = GROUND_Y;
+  }
+}
+
+export function carveGroundHole(expX, expY, blastRadius = 85) {
+  const topY = GROUND_Y;
+  const bottomY = GROUND_Y + GROUND_SLAB_HEIGHT;
+  const nearestY = Math.max(topY, Math.min(expY, bottomY));
+  const distY = Math.abs(expY - nearestY);
+
+  if (distY > blastRadius) {
+    return [];
+  }
+
+  const reachX = Math.sqrt(Math.max(0, blastRadius * blastRadius - distY * distY));
+  const effectiveRadius = Math.max(blastRadius * 0.70, reachX);
+  const holeStart = expX - effectiveRadius;
+  const holeEnd = expX + effectiveRadius;
+
+  const destroyed = [];
+  for (let i = 0; i < groundSegments.length; i++) {
+    const seg = groundSegments[i];
+    if (seg.destroyed) continue;
+
+    const segLeft = seg.x;
+    const segRight = seg.x + seg.width;
+
+    if (segRight > holeStart && segLeft < holeEnd) {
+      seg.destroyed = true;
+      destroyed.push(seg);
+
+      const segCenterX = seg.x + seg.width / 2;
+      const segCenterY = seg.y + seg.height / 2;
+      const sDx = segCenterX - expX;
+      const sDy = segCenterY - expY;
+      const dist = Math.hypot(sDx, sDy) || 1;
+      const normX = sDx / dist;
+      const normY = sDy / dist;
+      const speed = 150 + Math.random() * 160;
+      if (typeof spawnConcreteDebris === 'function') {
+        spawnConcreteDebris(segCenterX, segCenterY, 3, normX * speed, normY * speed - 50);
+      }
+      if (typeof spawnRicochetSparks === 'function') {
+        spawnRicochetSparks(segCenterX, seg.y, 0, -1, 3);
+      }
+    }
+  }
+
+  updateGroundEdgeFlags();
+  return destroyed;
+}
+
+
+
+setCameraArenaId(activeArenaId);
+setCameraGroundY(GROUND_Y);
+
+export {
+  camera,
+  updateCamera,
+  clampCamera,
+  getArenaBounds,
+  world,
+  devZoomLevel,
+  setDevZoom,
+  triggerScreenShake,
+  shakeImpulse,
+  applyCameraTransform,
+  restoreCameraTransform,
+  worldToScreen,
+  screenToWorld,
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight,
+  setCameraCanvas,
+  setCameraGroundY,
+  setCameraArenaId,
+  getCameraArenaId,
+  setCameraMouseScreenPos,
+  mouseScreenPos
+};
+
+// =========================================================================
+// SYSTEM HITSTOP (ZAMROŻENIE KLATKI PRZY EFEKTOWNEJ ŚMIERCI)
+// =========================================================================
+export let hitstopFrames = 0;
+export function triggerHitstop(frames = 5) {
+  hitstopFrames = Math.max(hitstopFrames, frames);
+}
+export function consumeHitstop() {
+  if (hitstopFrames > 0) {
+    hitstopFrames--;
+    return true;
+  }
+  return false;
+}
+
+export let currentDist = 0;
+export let bestDistance = 0;
+export const grassParticles = [];
+
+// =========================================================================
+// INTERFEJS WYBORU BRONI W DOLNYM LEWYM ROGU (PIONOWE MAŁE IKONY)
+// =========================================================================
+export const weaponButtons = [
+  { id: 'AK47', name: 'AK', fullName: 'AK-47', type: 'AUTO', key: '1', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'SHOTGUN', name: 'SG', fullName: 'SHOTGUN', type: 'SEMI', key: '2', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'SNIPER', name: 'SR', fullName: 'BARRETT .50', type: 'SNIPER', key: '3', x: 20, y: 0, w: 36, h: 36 },
+  { id: 'GRENADE', name: 'HE', fullName: 'GRENADE', type: 'TACTICAL', key: 'G', x: 20, y: 0, w: 36, h: 36 }
+];
+
+export function initCanvas(canvasEl) {
+  canvas = canvasEl;
+  setCameraCanvas(canvasEl);
+  ctx = canvas.getContext('2d');
+  resize();
+}
+
+export function resize(player) {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  if (canvas && ctx) {
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    ctx.resetTransform();
+    ctx.scale(DPR, DPR);
+  }
+  GROUND_Y = 1000;
+  setCameraGroundY(GROUND_Y);
+  if (Array.isArray(groundSegments)) {
+    for (const seg of groundSegments) {
+      seg.y = GROUND_Y;
+    }
+  }
+  invalidateSkyCache();
+  const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  if (player && !isA3 && !isA2) {
+    if (player.y >= GROUND_Y - player.h - 5 && player.currentGroundY === GROUND_Y) {
+      player.y = GROUND_Y - player.h;
+    }
+  }
+}
+
+
+
+export function updateDistance(ballX) {
+  currentDist = Math.max(0, Math.floor((ballX - START_X) / 14));
+  if (currentDist > bestDistance) {
+    bestDistance = currentDist;
+  }
+}
+
+export function spawnGrass(x, y, dir) {
+  const colors = ['#166534', '#78350f', '#f59e0b', '#334155'];
+  for (let i = 0; i < 2; i++) {
+    grassParticles.push({
+      x: x + (Math.random() * 8 - 4),
+      y: y - 2,
+      vx: -dir * (Math.random() * 3.5 + 1.2) + (Math.random() * 1.5 - 0.75),
+      vy: -(Math.random() * 3.2 + 1.2),
+      size: Math.random() * 2.8 + 1.6,
+      life: 1.0,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
+}
+
+/**
+ * Spawnuje mały obłok pyłu / kurzu uderzeniowego pod plecami powalonej postaci
+ * @param {number} x - Środek postaci
+ * @param {number} y - Poziom podłoża/platformy
+ */
+export function spawnGroundPuff(x, y) {
+  const puffColors = ['#94a3b8', '#cbd5e1', '#64748b', '#78350f', '#475569'];
+  for (let i = 0; i < 7; i++) {
+    grassParticles.push({
+      x: x + (Math.random() * 24 - 12),
+      y: y - 1,
+      vx: (Math.random() * 3.6 - 1.8),
+      vy: -(Math.random() * 2.0 + 0.6),
+      size: Math.random() * 3.2 + 1.8,
+      life: 0.85 + Math.random() * 0.3,
+      color: puffColors[Math.floor(Math.random() * puffColors.length)]
+    });
+  }
+}
+
+export function updateParticles() {
+  for (let i = grassParticles.length - 1; i >= 0; i--) {
+    const gp = grassParticles[i];
+    gp.x += gp.vx;
+    gp.y += gp.vy;
+    gp.vy += 0.25;
+    gp.life -= 0.04;
+    if (gp.life <= 0 || gp.y >= GROUND_Y) {
+      grassParticles.splice(i, 1);
+    }
+  }
+}
+
+export function drawParticles(ctx) {
+  for (const gp of grassParticles) {
+    ctx.fillStyle = gp.color || '#166534';
+    ctx.fillRect(gp.x, gp.y, gp.size, gp.size * 1.5);
+  }
+}
+
+
+export let skyCacheVersion = 0;
+export function invalidateSkyCache() {
+  skyCacheVersion++;
+}
+
+// =========================================================================
+// NEONOWY SYSTEM CZĄSTECZEK JETPACKA (CYJAN, BŁĘKIT, FIOLET)
+// =========================================================================
+export const jetpackParticles = [];
+
+export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2) {
+  const colors = customColors || ['#00e5ff', '#38bdf8', '#ffffff'];
+
+  for (let i = 0; i < count; i++) {
+    // Stożkowy rozrzut wokół wektora dyszy (+/- 14 stopni)
+    const coneAngle = nozzleAngle + (Math.random() - 0.5) * 0.48;
+    const thrustSpeed = Math.random() * 5.0 + 4.0;
+
+    // Prędkość wylotowa z uwzględnieniem części wektora prędkości gracza
+    const vx = Math.cos(coneAngle) * thrustSpeed + inheritVx * 0.35;
+    const vy = Math.sin(coneAngle) * thrustSpeed + inheritVy * 0.35;
+
+    const isSmoke = Math.random() < 0.35;
+    const col = isSmoke 
+      ? '#64748b' 
+      : colors[Math.floor(Math.random() * colors.length)];
+
+    jetpackParticles.push({
+      x: x + (Math.random() * 2.0 - 1.0),
+      y: y + (Math.random() * 2.0 - 1.0),
+      vx,
+      vy,
+      size: isSmoke ? (Math.random() * 2.0 + 3.0) : (Math.random() * 1.5 + 2.5),
+      maxSize: isSmoke ? 8.5 : 5.5,
+      life: 1.0,
+      decay: isSmoke ? 0.032 : 0.046,
+      isFlame: !isSmoke,
+      color: col,
+      glowColor: colors[0] || '#00e5ff'
+    });
+  }
+
+  if (jetpackParticles.length > 200) {
+    jetpackParticles.splice(0, jetpackParticles.length - 200);
+  }
+}
+
+export function updateJetpackParticles() {
+  for (let i = jetpackParticles.length - 1; i >= 0; i--) {
+    const p = jetpackParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Opór powietrza
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+    p.life -= p.decay;
+
+    // Chłodzenie ognia w rozszerzający się dym
+    if (p.isFlame) {
+      if (p.life < 0.55) {
+        p.isFlame = false;
+        p.color = '#64748b';
+      }
+    } else {
+      // Dym rozszerza się i lekko unosi
+      p.size = Math.min(p.maxSize, p.size + 0.18);
+      p.vy -= 0.04;
+    }
+
+    if (p.life <= 0) {
+      jetpackParticles.splice(i, 1);
+    }
+  }
+}
+
+export function drawJetpackParticles(ctx) {
+  if (jetpackParticles.length === 0) return;
+
+  for (let i = 0; i < jetpackParticles.length; i++) {
+    const p = jetpackParticles[i];
+    ctx.save();
+
+    if (p.isFlame) {
+      // Gorący płomień z neonowym blaskiem
+      ctx.shadowColor = p.glowColor || p.color;
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Białe jądro w środku świeżego płomienia
+      if (p.life > 0.8) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Rozszerzający się, gasnący dym (fade-out przez alpha)
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color || '#64748b';
+      ctx.globalAlpha = Math.max(0, p.life * 0.35);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+export function dist(x1, y1, x2, y2) {
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+export function distToSegment(px, py, x1, y1, x2, y2) {
+  const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+  if (l2 === 0) return { dist: Math.hypot(px - x1, py - y1), t: 0 };
+  const t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2));
+  return { dist: Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))), t };
+}
+
+export function resolveSegmentCollision(b, x1, y1, x2, y2, thickness, v1x, v1y, v2x, v2y, restitution, friction) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return false;
+
+  const t = Math.max(0, Math.min(1, ((b.x - x1) * dx + (b.y - y1) * dy) / l2));
+  const px = x1 + t * dx;
+  const py = y1 + t * dy;
+  const d = Math.hypot(b.x - px, b.y - py);
+  const cR = b.colRadius !== undefined ? b.colRadius : b.radius;
+  const minDist = cR + thickness;
+
+  if (d < minDist) {
+    let nx = 0;
+    let ny = -1;
+    if (d > 0.0001) {
+      nx = (b.x - px) / d;
+      ny = (b.y - py) / d;
+    } else {
+      const len = Math.hypot(dx, dy);
+      if (len > 0) {
+        nx = -dy / len;
+        ny = dx / len;
+      }
+    }
+
+    const pen = minDist - d;
+    b.x += nx * pen;
+    b.y += ny * pen;
+
+    const svx = v1x + t * (v2x - v1x);
+    const svy = v1y + t * (v2y - v1y);
+
+    const rvx = b.vx - svx;
+    const rvy = b.vy - svy;
+    const vn = rvx * nx + rvy * ny;
+
+    if (vn < 0) {
+      const rest = restitution !== undefined ? restitution : 0.72;
+      const fric = friction !== undefined ? friction : 0.35;
+      const jn = -(1 + rest) * vn;
+      const tx = -ny;
+      const ty = nx;
+      const vt = rvx * tx + rvy * ty;
+      const jt = -vt * fric;
+
+      b.vx += (jn * nx) + (jt * tx);
+      b.vy += (jn * ny) + (jt * ty);
+      b.spin += jt * 0.08;
+    }
+    return true;
+  }
+  return false;
+}
+
+
+let lastTime = performance.now();
+let frameCount = 0;
+export let currentFps = 60;
+
+export function updateFps() {
+  frameCount++;
+  const now = performance.now();
+  const elapsed = now - lastTime;
+  if (elapsed >= 500) {
+    currentFps = Math.round((frameCount * 1000) / elapsed);
+    frameCount = 0;
+    lastTime = now;
+  }
+}
+

@@ -4,6 +4,6 @@
 // Ten plik zapewnia 100% kompatybilności wstecznej dla reszty silnika gry.
 // =========================================================================
 
-export * from './player/index.js?v=v81_hair_fullhead_gravity';
-export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js?v=v81_hair_fullhead_gravity';
+export * from './player/index.js';
+export { drawHeldWeapon, drawSniperLaserSight } from './weapons.js';
 

@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v81_hair_fullhead_gravity';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v81_hair_fullhead_gravity';
+} from './world.js';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v81_hair_fullhead_gravity';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v81_hair_fullhead_gravity';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v81_hair_fullhead_gravity';
+} from './player.js';
+import { updateProjectiles, drawProjectiles } from './projectiles.js';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v81_hair_fullhead_gravity';
+} from './ball.js';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v81_hair_fullhead_gravity';
-import { CLASSES } from './classes/index.js?v=v81_hair_fullhead_gravity';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v81_hair_fullhead_gravity';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v81_hair_fullhead_gravity';
+} from './obstacles.js';
+import { CLASSES } from './classes/index.js';
+import { bot, botKeys, updateBotBrain } from './bot.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v81_hair_fullhead_gravity';
+} from './network.js';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v81_hair_fullhead_gravity';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v81_hair_fullhead_gravity';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v81_hair_fullhead_gravity';
+} from './mobileControls.js';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -973,348 +973,40 @@ if (typeof window !== 'undefined') {
 
 export let gameState = GAME_STATE.current;
 
-export const CLASS_CARDS = [
-  {
-    id: 'RAPTOR',
-    name: 'Raptor',
-    key: '1',
-    color: '#10b981',
-    glowColor: 'rgba(16, 185, 129, 0.45)',
-    role: 'KLASA LEKKA • ZWIADOWCA / LOTNIK',
-    attribute: '🦅 PLECAK ODRZUTOWY (JETPACK)',
-    desc: 'Ekstremalna mobilność powietrzna, pełny ciąg jetpacka i zwinność w locie.',
-    stats: ['Jetpack: 150 Pojemności', 'Najwyższa prędkość i kontrola w locie', 'Lekki pancerz zwiadowczy'],
-    classObj: CLASSES.RAPTOR
-  },
-  {
-    id: 'STRIKER',
-    name: 'Striker',
-    key: '2',
-    color: '#38bdf8',
-    glowColor: 'rgba(56, 189, 248, 0.45)',
-    role: 'KLASA ŚREDNIA • SZTURMOWIEC',
-    attribute: '⚡ TURBO BUTY / PRECYZJA',
-    desc: 'Dynamiczny szturmowiec z dopalaczami w butach, szybkim unikiem i precyzją ognia.',
-    stats: ['Moduł ruchu: Turbo Buty', 'Zbalansowany pancerz (100 HP)', 'Wysoka precyzja i kontrola odrzutu'],
-    classObj: CLASSES.STRIKER
-  },
-  {
-    id: 'ENFORCER',
-    name: 'Enforcer',
-    key: '3',
-    color: '#ef4444',
-    glowColor: 'rgba(239, 68, 68, 0.45)',
-    role: 'KLASA CIĘŻKA • KOLOS / TARAN',
-    attribute: '🛡️ ROCKET JUMP / PANCERZ',
-    desc: 'Masywna sylwetka, potężna odporność na ogień i wybuchowe wejścia w zwarciu.',
-    stats: ['Maksymalne Zdrowie: 160 HP', 'Moduł ruchu: Wybuchowy skok', 'Potężny Spartan Kick i taranowanie'],
-    classObj: CLASSES.ENFORCER
-  }
-];
+import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
+import {
+  editorState,
+  initObstacleEditorUI,
+  renderEditorPalette,
+  updateEditorPaletteHighlight,
+  placeSelectedObstacle,
+  handleEditorRightClick
+} from './dev/obstacleEditor.js';
+import {
+  updateDevZoomLabel,
+  initDevZoomUI,
+  updateDevTouchButtonUI,
+  toggleTouchControls,
+  initTouchControlsDevUI,
+  initModularGearDevUI
+} from './dev/devPanel.js';
 
-function wrapText(context, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(' ');
-  let line = '';
-  let curY = y;
-  for (let n = 0; n < words.length; n++) {
-    const testLine = line + words[n] + ' ';
-    const metrics = context.measureText(testLine);
-    if (metrics.width > maxWidth && n > 0) {
-      context.fillText(line.trim(), x, curY);
-      line = words[n] + ' ';
-      curY += lineHeight;
-    } else {
-      line = testLine;
-    }
-  }
-  context.fillText(line.trim(), x, curY);
-  return curY + lineHeight;
-}
-
-export function getClassCardRects(modalW = Math.min(940, W - 32), modalH = Math.min(500, H - 32)) {
-  const modalX = (W - modalW) / 2;
-  const modalY = (H - modalH) / 2;
-  const cardPadding = 18;
-  const gap = 14;
-  const totalGaps = gap * (CLASS_CARDS.length - 1);
-  const availableW = modalW - (cardPadding * 2) - totalGaps;
-  const cardW = Math.floor(availableW / CLASS_CARDS.length);
-  const cardH = modalH - 114;
-  const startY = modalY + 98;
-
-  return CLASS_CARDS.map((card, i) => ({
-    card,
-    x: modalX + cardPadding + i * (cardW + gap),
-    y: startY,
-    w: cardW,
-    h: cardH
-  }));
-}
-
-export function getHoveredClassCard(screenX, screenY) {
-  if (gameState !== GAME_STATES.CLASS_SELECT) return null;
-  const rects = getClassCardRects();
-  for (const item of rects) {
-    if (screenX >= item.x && screenX <= item.x + item.w &&
-      screenY >= item.y && screenY <= item.y + item.h) {
-      return item.card;
-    }
-  }
-  return null;
-}
-
-export function drawClassSelectModal(ctx) {
-  ctx.save();
-
-  // 1. Półprzezroczyste ciemne tło (vignette / backdrop)
-  ctx.fillStyle = 'rgba(5, 8, 18, 0.78)';
-  ctx.fillRect(0, 0, W, H);
-
-  // Radialny glow w tle modalu
-  const bgGlow = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, Math.max(W, H) * 0.55);
-  bgGlow.addColorStop(0, 'rgba(0, 229, 255, 0.10)');
-  bgGlow.addColorStop(0.5, 'rgba(15, 23, 42, 0.25)');
-  bgGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = bgGlow;
-  ctx.fillRect(0, 0, W, H);
-
-  // 2. Wymiary i pozycjonowanie modalu
-  const modalW = Math.min(940, W - 32);
-  const modalH = Math.min(500, H - 32);
-  const modalX = (W - modalW) / 2;
-  const modalY = (H - modalH) / 2;
-
-  // Główny korpus okna modalu z neonową ramką
-  ctx.save();
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.45)';
-  ctx.shadowBlur = 24;
-
-  const panelGrad = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalH);
-  panelGrad.addColorStop(0, 'rgba(15, 23, 42, 0.96)');
-  panelGrad.addColorStop(1, 'rgba(9, 14, 26, 0.98)');
-  ctx.fillStyle = panelGrad;
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.65)';
-  ctx.lineWidth = 1.8;
-
-  if (ctx.roundRect) {
-    ctx.beginPath();
-    ctx.roundRect(modalX, modalY, modalW, modalH, 16);
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.rect(modalX, modalY, modalW, modalH);
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Wewnętrzny pasek nagłówkowy
-  ctx.save();
-  ctx.textAlign = 'center';
-
-  // Badge kategorii
-  ctx.font = 'bold 10px monospace';
-  ctx.fillStyle = '#00e5ff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 6;
-  ctx.fillText('⚡ PROTOKÓŁ ROZGRYWKI • WYBIERZ SPECJALIZACJĘ ⚡', W / 2, modalY + 34);
-  ctx.shadowBlur = 0;
-
-  // Główny nagłówek
-  ctx.font = '900 24px "Segoe UI", system-ui, sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
-  ctx.shadowBlur = 10;
-  ctx.fillText('WYBIERZ SWOJĄ KLASĘ / SELECT YOUR CLASS', W / 2, modalY + 62);
-  ctx.shadowBlur = 0;
-
-  // Podtytuł z instrukcją
-  ctx.font = '600 12px "Segoe UI", monospace';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText('WYBIERZ KAFELEK KLASY [1-3] LUB KLIKNIJ KAFELEK MYSZKĄ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
-
-  // Linia podziału
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(modalX + 24, modalY + 92);
-  ctx.lineTo(modalX + modalW - 24, modalY + 92);
-  ctx.stroke();
-  ctx.restore();
-
-  // 3. Rysowanie 4 kafelków klas
-  const cardRects = getClassCardRects(modalW, modalH);
-
-  cardRects.forEach(({ card, x, y, w, h }) => {
-    const isHovered = mouseScreenX >= x && mouseScreenX <= x + w &&
-      mouseScreenY >= y && mouseScreenY <= y + h;
-
-    ctx.save();
-
-    // Tło kafelka
-    const cardBg = ctx.createLinearGradient(x, y, x, y + h);
-    if (isHovered) {
-      cardBg.addColorStop(0, 'rgba(30, 41, 59, 0.95)');
-      cardBg.addColorStop(1, 'rgba(15, 23, 42, 0.98)');
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 18;
-      ctx.strokeStyle = card.color;
-      ctx.lineWidth = 2.4;
-    } else {
-      cardBg.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
-      cardBg.addColorStop(1, 'rgba(10, 15, 26, 0.88)');
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1.2;
-    }
-
-    ctx.fillStyle = cardBg;
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 12);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.rect(x, y, w, h);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Akcent górny kafelka w kolorze klasy
-    ctx.save();
-    ctx.fillStyle = card.color;
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(x + 12, y + 2, w - 24, 3, 2);
-      ctx.fill();
-    } else {
-      ctx.fillRect(x + 12, y + 2, w - 24, 3);
-    }
-    ctx.restore();
-
-    // Badge klawisza skrótu [ 1 ], [ 2 ], itd.
-    ctx.save();
-    const badgeW = 34;
-    const badgeH = 22;
-    const badgeX = x + w - badgeW - 12;
-    const badgeY = y + 14;
-
-    ctx.fillStyle = isHovered ? card.color : 'rgba(255, 255, 255, 0.08)';
-    ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-      ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-    }
-
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isHovered ? '#0f172a' : '#f1f5f9';
-    ctx.fillText(`[${card.key}]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
-    ctx.restore();
-
-    // Nazwa klasy
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.font = '900 20px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = isHovered ? '#ffffff' : '#f8fafc';
-    if (isHovered) {
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 8;
-    }
-    ctx.fillText(card.name, x + 16, y + 32);
-    ctx.shadowBlur = 0;
-
-    // Atrybut główny
-    ctx.font = 'bold 11px "Segoe UI", monospace';
-    ctx.fillStyle = card.color;
-    ctx.fillText(card.attribute, x + 16, y + 50);
-
-    // Rola / kategoria
-    ctx.font = '600 10px monospace';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(card.role, x + 16, y + 66);
-
-    // Linia wewnątrz kafelka
-    ctx.strokeStyle = isHovered ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.07)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 16, y + 76);
-    ctx.lineTo(x + w - 16, y + 76);
-    ctx.stroke();
-
-    // Krótki opis roli
-    ctx.font = '11px "Segoe UI", sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    wrapText(ctx, card.desc, x + 16, y + 94, w - 32, 16);
-
-    // Wypunktowane atrybuty / statystyki
-    let statY = y + 155;
-    for (const stat of card.stats) {
-      ctx.font = 'bold 10px "Segoe UI", monospace';
-      ctx.fillStyle = isHovered ? '#f1f5f9' : '#cbd5e1';
-      ctx.fillText(`• ${stat}`, x + 16, statY);
-      statY += 20;
-    }
-
-    // Dolny przycisk "WYBIERZ [klawisz]"
-    const btnH = 34;
-    const btnY = y + h - btnH - 14;
-    const btnW = w - 32;
-    const btnX = x + 16;
-
-    const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-    if (isHovered) {
-      btnGrad.addColorStop(0, card.color);
-      btnGrad.addColorStop(1, card.color);
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = '#ffffff';
-    } else {
-      btnGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-      btnGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03)');
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
-    }
-
-    ctx.fillStyle = btnGrad;
-    ctx.lineWidth = 1.2;
-
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(btnX, btnY, btnW, btnH, 8);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.rect(btnX, btnY, btnW, btnH);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    ctx.font = 'bold 11px "Segoe UI", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isHovered ? '#0f172a' : '#f1f5f9';
-    ctx.fillText(isHovered ? `▶ WYBIERZ KLASĘ [${card.key}]` : `WYBIERZ [${card.key}]`, btnX + btnW / 2, btnY + btnH / 2);
-
-    ctx.restore();
-  });
-
-  ctx.restore();
-}
+export {
+  CLASS_CARDS,
+  getClassCardRects,
+  getHoveredClassCard,
+  drawClassSelectModal,
+  editorState,
+  initObstacleEditorUI,
+  renderEditorPalette,
+  updateEditorPaletteHighlight,
+  updateDevZoomLabel,
+  initDevZoomUI,
+  updateDevTouchButtonUI,
+  toggleTouchControls,
+  initTouchControlsDevUI,
+  initModularGearDevUI
+};
 
 export function selectPlayerClass(targetClass) {
   let cls = targetClass;
@@ -1654,555 +1346,7 @@ if (devArenaBtn) {
   syncDevArenaButtonUI();
 }
 
-// =========================================================================
-// EDYTOR PRZESZKÓD (OBSTACLE EDITOR)
-// =========================================================================
-export const editorState = {
-  active: false,
-  selectedType: null,
-  snapToGrid: true,
-  gridSize: 20,
-  surfaceSnap: true,
-  snapThreshold: 16,
-  hoverX: 0,
-  hoverY: 0,
-  cursorWorldX: 0,
-  cursorWorldY: 0
-};
-
-let devEditorBtn = null;
-let devEditorSubpanel = null;
-let devGridBtn = null;
-let devMagnetBtn = null;
-let devPaletteContainer = null;
-
-export function initObstacleEditorUI() {
-  const devMenu = document.getElementById('dev-menu');
-  if (!devMenu) return;
-
-  const sep = document.createElement('span');
-  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
-  sep.textContent = '|';
-  devMenu.appendChild(sep);
-
-  devEditorBtn = document.createElement('button');
-  devEditorBtn.className = 'dev-btn';
-  devEditorBtn.id = 'dev-editor-toggle-btn';
-  devEditorBtn.title = 'Włącz / Wyłącz interaktywny Edytor Przeszkód na żywo';
-  devEditorBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 700;';
-  devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
-  devMenu.appendChild(devEditorBtn);
-
-  devEditorSubpanel = document.createElement('div');
-  devEditorSubpanel.id = 'dev-editor-subpanel';
-  devEditorSubpanel.style.cssText = 'display: none; align-items: center; gap: 4px; flex-wrap: wrap; margin-left: 2px;';
-
-  devGridBtn = document.createElement('button');
-  devGridBtn.className = 'dev-btn';
-  devGridBtn.id = 'dev-grid-btn';
-  devGridBtn.title = 'Włącz/Wyłącz przyciąganie do siatki (20px)';
-  devGridBtn.style.cssText = 'border-color: #06b6d4; color: #22d3ee;';
-  devGridBtn.textContent = '📐 SIATKA: 20px';
-  devGridBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    editorState.snapToGrid = !editorState.snapToGrid;
-    devGridBtn.textContent = editorState.snapToGrid ? '📐 SIATKA: 20px' : '📐 SIATKA: WYŁ';
-    devGridBtn.style.color = editorState.snapToGrid ? '#22d3ee' : '#94a3b8';
-  });
-  devEditorSubpanel.appendChild(devGridBtn);
-
-  devMagnetBtn = document.createElement('button');
-  devMagnetBtn.className = 'dev-btn';
-  devMagnetBtn.id = 'dev-magnet-btn';
-  devMagnetBtn.title = 'Włącz/Wyłącz inteligentne przyciąganie do powierzchni platform i gruntu (Surface Magnet 16px)';
-  devMagnetBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 600;';
-  devMagnetBtn.textContent = '🧲 MAGNET: 16px';
-  devMagnetBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    editorState.surfaceSnap = !editorState.surfaceSnap;
-    devMagnetBtn.textContent = editorState.surfaceSnap ? '🧲 MAGNET: 16px' : '🧲 MAGNET: WYŁ';
-    devMagnetBtn.style.color = editorState.surfaceSnap ? '#34d399' : '#94a3b8';
-    devMagnetBtn.style.borderColor = editorState.surfaceSnap ? '#10b981' : 'rgba(148, 163, 184, 0.3)';
-  });
-  devEditorSubpanel.appendChild(devMagnetBtn);
-
-  devPaletteContainer = document.createElement('div');
-  devPaletteContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;';
-  devEditorSubpanel.appendChild(devPaletteContainer);
-
-  const undoBtn = document.createElement('button');
-  undoBtn.className = 'dev-btn';
-  undoBtn.title = 'Cofnij ostatnio postawiony obiekt (Ctrl+Z)';
-  undoBtn.textContent = '↩️ COFNIJ OSTATNIĄ';
-  undoBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    undoCustomObstacle();
-    sendObstacleUndo();
-  });
-  devEditorSubpanel.appendChild(undoBtn);
-
-  const clearBtn = document.createElement('button');
-  clearBtn.className = 'dev-btn';
-  clearBtn.title = 'Wyczyść wszystkie postawione przeszkody';
-  clearBtn.style.cssText = 'border-color: rgba(239, 68, 68, 0.4); color: #ef4444;';
-  clearBtn.textContent = '🗑️ WYCZYŚĆ WSZYSTKO';
-  clearBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    clearCustomObstacles();
-    sendObstacleClear();
-  });
-  devEditorSubpanel.appendChild(clearBtn);
-
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'dev-btn';
-  copyBtn.title = 'Skopiuj aktualny układ postawionych przeszkód do schowka jako JSON';
-  copyBtn.style.cssText = 'border-color: #a855f7; color: #c084fc; font-weight: 600;';
-  copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
-  copyBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    const jsonStr = JSON.stringify(customObstacles, null, 2);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(jsonStr).then(() => {
-        copyBtn.textContent = '✅ SKOPIOWANO!';
-        copyBtn.style.color = '#34d399';
-        setTimeout(() => {
-          copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
-          copyBtn.style.color = '#c084fc';
-        }, 1800);
-      }).catch(() => {
-        prompt('Skopiuj JSON układu przeszkód:', jsonStr);
-      });
-    } else {
-      prompt('Skopiuj JSON układu przeszkód:', jsonStr);
-    }
-  });
-  devEditorSubpanel.appendChild(copyBtn);
-
-  devMenu.appendChild(devEditorSubpanel);
-
-  const toggleEditor = (e) => {
-    if (e) { e.stopPropagation(); e.preventDefault(); }
-    editorState.active = !editorState.active;
-    if (editorState.active) {
-      devEditorBtn.textContent = '🏗️ EDYTOR: ON';
-      devEditorBtn.style.background = 'rgba(168, 85, 247, 0.3)';
-      devEditorBtn.style.borderColor = '#c084fc';
-      devEditorBtn.style.color = '#ffffff';
-      devEditorBtn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.55)';
-      devEditorSubpanel.style.display = 'inline-flex';
-      renderEditorPalette();
-    } else {
-      devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
-      devEditorBtn.style.background = '';
-      devEditorBtn.style.borderColor = '#10b981';
-      devEditorBtn.style.color = '#34d399';
-      devEditorBtn.style.boxShadow = '';
-      devEditorSubpanel.style.display = 'none';
-      editorState.selectedType = null;
-    }
-  };
-
-  devEditorBtn.addEventListener('click', toggleEditor);
-  devEditorBtn.addEventListener('touchend', toggleEditor);
-
-  renderEditorPalette();
-}
-
-export function renderEditorPalette() {
-  if (!devPaletteContainer) return;
-  devPaletteContainer.innerHTML = '';
-
-  const arenaKey = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY') ? 'ARENA_3' : ((activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
-  const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
-
-  const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA' || arenaKey === 'ARENA_2_SECTOR_X') ? {
-    platforms: '🏗️ Belki / Pomosty',
-    defense: '🛡️ Osłony / Barykady',
-    traps: '☣️ Zbiorniki Kwasu / Para'
-  } : {
-    platforms: '🪜 Kładki / Wieże',
-    defense: '🛡️ Mury / Osłony',
-    traps: '💥 Interaktywne / Pułapki'
-  };
-
-  const categories = ['platforms', 'defense', 'traps'];
-
-  for (const cat of categories) {
-    const items = palette.filter(p => p.category === cat);
-    if (items.length === 0) continue;
-
-    const catGroup = document.createElement('div');
-    catGroup.style.cssText = 'display: inline-flex; align-items: center; gap: 3px; background: rgba(15, 23, 42, 0.65); padding: 2px 5px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.08); margin: 1px 2px;';
-
-    const catBadge = document.createElement('span');
-    catBadge.style.cssText = 'font-size: 8.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-right: 2px; white-space: nowrap;';
-    catBadge.textContent = catTitles[cat] || cat;
-    catGroup.appendChild(catBadge);
-
-    for (const item of items) {
-      const btn = document.createElement('button');
-      btn.className = 'dev-btn dev-tool-btn';
-      btn.dataset.tool = item.type;
-      btn.title = item.name + ` (${item.w}x${item.h})`;
-      btn.textContent = item.label || item.name;
-
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation(); e.preventDefault();
-        if (editorState.selectedType === item.type) {
-          editorState.selectedType = null;
-        } else {
-          editorState.selectedType = item.type;
-        }
-        updateEditorPaletteHighlight();
-      });
-
-      catGroup.appendChild(btn);
-    }
-
-    devPaletteContainer.appendChild(catGroup);
-  }
-
-  updateEditorPaletteHighlight();
-}
-
-export function updateEditorPaletteHighlight() {
-  if (!devPaletteContainer) return;
-  const buttons = devPaletteContainer.querySelectorAll('.dev-tool-btn');
-  const selNorm = normalizeObstacleType(editorState.selectedType);
-  buttons.forEach(btn => {
-    const btnTool = btn.dataset.tool;
-    const btnNorm = normalizeObstacleType(btnTool);
-    if (btnTool === editorState.selectedType || (selNorm && btnNorm === selNorm)) {
-      btn.style.background = 'rgba(0, 229, 255, 0.35)';
-      btn.style.borderColor = '#00e5ff';
-      btn.style.color = '#ffffff';
-      btn.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.6)';
-    } else {
-      btn.style.background = '';
-      btn.style.borderColor = '';
-      btn.style.color = '';
-      btn.style.boxShadow = '';
-    }
-  });
-}
-
-function placeSelectedObstacle() {
-  if (!editorState.selectedType) return;
-  const def = getObstacleDef(editorState.selectedType);
-  if (!def) return;
-
-  const worldX = camera.x + mouseScreenX / camera.zoom;
-  const worldY = camera.y + mouseScreenY / camera.zoom;
-
-  const placement = calculateObstaclePlacement(def, worldX, worldY, {
-    snapToGrid: editorState.snapToGrid,
-    gridSize: editorState.gridSize,
-    groundY: GROUND_Y,
-    surfaceSnapActive: editorState.surfaceSnap,
-    snapThreshold: editorState.snapThreshold
-  });
-
-  const px = placement.x;
-  const py = placement.y;
-  const normType = normalizeObstacleType(def.type);
-  let w = placement.w;
-  let h = placement.h;
-  if (!w || w <= 0) {
-    w = normType === 'ammo_depot' ? 32 : (normType === 'sandbags' ? 48 : (def.w || 40));
-  }
-  if (!h || h <= 0) {
-    h = normType === 'ammo_depot' ? 24 : (normType === 'sandbags' ? 24 : (def.h || 20));
-  }
-
-  const newObs = {
-    id: 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-    type: def.type,
-    name: def.name,
-    x: px,
-    y: py,
-    w: w,
-    h: h,
-    size: def.size || w,
-    relY: GROUND_Y - py,
-    thickness: h,
-    isPlatform: def.isPlatform || false,
-    solid: def.solid || false,
-    isPickup: def.isPickup !== undefined ? def.isPickup : (normType === 'ammo_depot'),
-    isInteractable: def.isInteractable !== undefined ? def.isInteractable : (normType === 'ammo_depot')
-  };
-
-  customObstacles.push(newObs);
-  obstacles.push(newObs);
-  spawnJetpackSparks(px + w / 2, py + h / 2, 0, 4);
-  sendObstacleAdd(newObs);
-}
-
-function handleEditorRightClick() {
-  const worldX = camera.x + mouseScreenX / camera.zoom;
-  const worldY = camera.y + mouseScreenY / camera.zoom;
-
-  for (let i = customObstacles.length - 1; i >= 0; i--) {
-    const obs = customObstacles[i];
-    const topY = obs.y !== undefined ? obs.y : (GROUND_Y - obs.relY);
-    if (worldX >= obs.x - 10 && worldX <= obs.x + obs.w + 10 &&
-      worldY >= topY - 10 && worldY <= topY + obs.h + 10) {
-      spawnJetpackSparks(obs.x + obs.w / 2, topY + obs.h / 2, 0, 6);
-      sendObstacleRemove(obs);
-      customObstacles.splice(i, 1);
-      const obsIdx = obstacles.indexOf(obs);
-      if (obsIdx >= 0) obstacles.splice(obsIdx, 1);
-      return;
-    }
-  }
-
-  editorState.selectedType = null;
-  updateEditorPaletteHighlight();
-}
-
 initObstacleEditorUI();
-
-// =========================================================================
-// DEV ZOOM CONTROLS (PRZYBLIŻANIE / ODDALANIE KAMERY W MENU DEV)
-// =========================================================================
-let devZoomLabel = null;
-
-export function updateDevZoomLabel() {
-  if (!devZoomLabel) return;
-  if (devZoomLevel !== null) {
-    devZoomLabel.textContent = `ZOOM: ${devZoomLevel.toFixed(2)}x`;
-    devZoomLabel.style.color = '#38bdf8';
-    devZoomLabel.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-  } else {
-    devZoomLabel.textContent = `ZOOM: Auto`;
-    devZoomLabel.style.color = '#94a3b8';
-    devZoomLabel.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-  }
-}
-
-export function initDevZoomUI() {
-  const devMenu = document.getElementById('dev-menu');
-  if (!devMenu) return;
-
-  const sep = document.createElement('span');
-  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
-  sep.textContent = '|';
-  devMenu.appendChild(sep);
-
-  devZoomLabel = document.createElement('span');
-  devZoomLabel.className = 'dev-btn';
-  devZoomLabel.id = 'dev-zoom-label';
-  devZoomLabel.style.cssText = 'color: #94a3b8; font-weight: 700; cursor: default; user-select: none;';
-  devZoomLabel.textContent = 'ZOOM: Auto';
-  devMenu.appendChild(devZoomLabel);
-
-  const zoomOutBtn = document.createElement('button');
-  zoomOutBtn.className = 'dev-btn';
-  zoomOutBtn.id = 'dev-zoom-out-btn';
-  zoomOutBtn.title = 'Oddal widok kamery (-0.25x)';
-  zoomOutBtn.textContent = '🔍 - Oddal';
-  const handleZoomOut = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
-    setDevZoom(cur - 0.25);
-    updateDevZoomLabel();
-  };
-  zoomOutBtn.addEventListener('click', handleZoomOut);
-  zoomOutBtn.addEventListener('touchend', handleZoomOut);
-  devMenu.appendChild(zoomOutBtn);
-
-  const zoomResetBtn = document.createElement('button');
-  zoomResetBtn.className = 'dev-btn';
-  zoomResetBtn.id = 'dev-zoom-reset-btn';
-  zoomResetBtn.title = 'Ustaw zoom dokładnie na 1.0x (widok 1:1)';
-  zoomResetBtn.textContent = '🔍 Reset (1.0x)';
-  const handleZoomReset = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    setDevZoom(1.0);
-    updateDevZoomLabel();
-  };
-  zoomResetBtn.addEventListener('click', handleZoomReset);
-  zoomResetBtn.addEventListener('touchend', handleZoomReset);
-  devMenu.appendChild(zoomResetBtn);
-
-  const zoomInBtn = document.createElement('button');
-  zoomInBtn.className = 'dev-btn';
-  zoomInBtn.id = 'dev-zoom-in-btn';
-  zoomInBtn.title = 'Przybliż widok kamery (+0.25x, max 2.5x)';
-  zoomInBtn.textContent = '🔍 + Przybliż';
-  const handleZoomIn = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
-    setDevZoom(cur + 0.25);
-    updateDevZoomLabel();
-  };
-  zoomInBtn.addEventListener('click', handleZoomIn);
-  zoomInBtn.addEventListener('touchend', handleZoomIn);
-  devMenu.appendChild(zoomInBtn);
-
-  const zoomAutoBtn = document.createElement('button');
-  zoomAutoBtn.className = 'dev-btn';
-  zoomAutoBtn.id = 'dev-zoom-auto-btn';
-  zoomAutoBtn.title = 'Przywróć domyślny automatyczny zoom kamery';
-  zoomAutoBtn.textContent = '🔍 Auto';
-  const handleZoomAuto = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    setDevZoom(null);
-    updateDevZoomLabel();
-  };
-  zoomAutoBtn.addEventListener('click', handleZoomAuto);
-  zoomAutoBtn.addEventListener('touchend', handleZoomAuto);
-  devMenu.appendChild(zoomAutoBtn);
-
-  updateDevZoomLabel();
-}
-
-let devTouchBtn = null;
-export function updateDevTouchButtonUI() {
-  if (!devTouchBtn) return;
-  if (isTouchDevice) {
-    devTouchBtn.textContent = '🕹️ PAD: WŁ';
-    devTouchBtn.style.borderColor = '#0284c7';
-    devTouchBtn.style.color = '#38bdf8';
-    devTouchBtn.style.background = 'rgba(2, 132, 199, 0.22)';
-    devTouchBtn.style.boxShadow = '0 0 10px rgba(56, 189, 248, 0.35)';
-  } else {
-    devTouchBtn.textContent = '🕹️ PAD: WYŁ';
-    devTouchBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-    devTouchBtn.style.color = '#94a3b8';
-    devTouchBtn.style.background = 'transparent';
-    devTouchBtn.style.boxShadow = 'none';
-  }
-}
-
-export function toggleTouchControls(forceVal) {
-  const nextVal = (typeof forceVal === 'boolean') ? forceVal : !isTouchDevice;
-  setTouchDevice(nextVal);
-  if (nextVal) {
-    updateButtonLayout(W, H);
-  }
-  updateDevTouchButtonUI();
-}
-window.toggleTouchControls = toggleTouchControls;
-
-export function initTouchControlsDevUI() {
-  const devMenu = document.getElementById('dev-menu');
-  if (!devMenu) return;
-
-  const sep = document.createElement('span');
-  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
-  sep.textContent = '|';
-  devMenu.appendChild(sep);
-
-  devTouchBtn = document.createElement('button');
-  devTouchBtn.className = 'dev-btn';
-  devTouchBtn.id = 'dev-touch-toggle-btn';
-  devTouchBtn.title = 'Włącz / Wyłącz ekranowy pad dotykowy (Wirtualny joystick i przyciski akcji) [Skrót: P]';
-  const handleToggle = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    toggleTouchControls();
-  };
-  devTouchBtn.addEventListener('click', handleToggle);
-  devTouchBtn.addEventListener('touchend', handleToggle);
-  devMenu.appendChild(devTouchBtn);
-  updateDevTouchButtonUI();
-}
-
-export function initModularGearDevUI() {
-  const devMenu = document.getElementById('dev-menu');
-  if (!devMenu) return;
-
-  const sep = document.createElement('span');
-  sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
-  sep.textContent = '|';
-  devMenu.appendChild(sep);
-
-  // Przełącznik modularnego hełmu (spada po strzałach w głowę)
-  const helmBtn = document.createElement('button');
-  helmBtn.className = 'dev-btn';
-  helmBtn.id = 'dev-helmet-btn';
-  helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (spada z głowy po trafieniach!)';
-  const updateHelmUI = () => {
-    const hasH = !!player.hasHelmet;
-    const hits = player.helmetHits || 2;
-    helmBtn.textContent = hasH ? `🪖 HEŁM (${hits})` : '🧑‍🦲 BEZ HEŁMU';
-    helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
-    helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
-    helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
-  };
-  const handleHelm = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    if (player.hasHelmet) {
-      // Jeśli miał założony hełm – strąć go fizycznie w powietrze!
-      spawnKnockedHelmet(
-        player.x + player.w / 2,
-        player.y + 6,
-        -(player.facing || 1) * 5.2,
-        -7.0,
-        player.customVisuals?.helmetColor || player.currentClass?.visuals?.helmetColor || '#27272a',
-        '#00e5ff'
-      );
-      player.hasHelmet = false;
-      player.helmetHits = 0;
-    } else {
-      player.hasHelmet = true;
-      player.helmetHits = 2;
-    }
-    updateHelmUI();
-  };
-  helmBtn.addEventListener('click', handleHelm);
-  helmBtn.addEventListener('touchend', handleHelm);
-  devMenu.appendChild(helmBtn);
-  updateHelmUI();
-
-  // Przełącznik modularnej kamizelki (znika po utracie HP)
-  const vestBtn = document.createElement('button');
-  vestBtn.className = 'dev-btn';
-  vestBtn.id = 'dev-vest-btn';
-  vestBtn.title = 'Załóż / Zniszcz kamizelkę kuloodporną (znika po zużyciu wytrzymałości!)';
-  const updateVestUI = () => {
-    const hasV = !!player.hasVest;
-    const vhp = Math.ceil(player.vestHp || 50);
-    vestBtn.textContent = hasV ? `🛡️ KAMIZELKA (${vhp})` : '👕 BEZ KAMIZELKI';
-    vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
-    vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
-    vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
-  };
-  const handleVest = (e) => {
-    e.stopPropagation(); e.preventDefault();
-    if (player.hasVest) {
-      spawnVestShreds(player.x + player.w / 2, player.y + player.h * 0.45, -(player.facing || 1) * 3.5);
-      player.hasVest = false;
-      player.vestHp = 0;
-    } else {
-      player.hasVest = true;
-      player.vestHp = 50;
-    }
-    updateVestUI();
-  };
-  vestBtn.addEventListener('click', handleVest);
-  vestBtn.addEventListener('touchend', handleVest);
-  devMenu.appendChild(vestBtn);
-  updateVestUI();
-
-  if (typeof window !== 'undefined') {
-    window.syncArmorDevButtons = () => {
-      updateHelmUI();
-      updateVestUI();
-    };
-  }
-}
-
-window.addEventListener('wheel', (e) => {
-  const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
-  if (isDevOpen || e.altKey) {
-    e.preventDefault();
-    const current = devZoomLevel !== null ? devZoomLevel : camera.zoom;
-    const delta = e.deltaY < 0 ? 0.15 : -0.15;
-    setDevZoom(current + delta);
-    updateDevZoomLabel();
-  }
-}, { passive: false });
-
 initDevZoomUI();
 initTouchControlsDevUI();
 initModularGearDevUI();
@@ -2788,11 +1932,11 @@ canvas.addEventListener('mousedown', (e) => {
 
   if (editorState.active) {
     if (e.button === 0 && editorState.selectedType) {
-      placeSelectedObstacle();
+      placeSelectedObstacle(mouseScreenX, mouseScreenY);
       return;
     }
     if (e.button === 2) {
-      handleEditorRightClick();
+      handleEditorRightClick(mouseScreenX, mouseScreenY);
       return;
     }
   }
@@ -3578,7 +2722,7 @@ function draw() {
   } else if (GAME_STATE.current === 'PAUSED') {
     drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, false, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
   } else if (gameState === GAME_STATES.CLASS_SELECT) {
-    drawClassSelectModal(ctx);
+    drawClassSelectModal(ctx, mouseScreenX, mouseScreenY);
   }
 
   if (editorState.active) {
