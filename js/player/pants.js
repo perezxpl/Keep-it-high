@@ -143,67 +143,103 @@ export function drawPantsPreview(
   ctx.lineWidth = 0.95;
   ctx.stroke();
 
-  // 3. Udo (thigh)
+  // 3. Udo (thigh) oraz kolano i łydka (shin)
   const thighLen = 13.5;
-  const thighW = 5.2;
-
-  const buildPreviewThighPath = () => {
-    ctx.beginPath();
-    ctx.moveTo(-4.5, -4.5);
-    ctx.lineTo(4.5, -4.5);
-    ctx.quadraticCurveTo(5.2, 2.0, 3.8, thighLen * 0.65);
-    ctx.lineTo(-3.8, thighLen * 0.65);
-    ctx.quadraticCurveTo(-5.2, 2.0, -4.5, -4.5);
-    ctx.closePath();
-  };
-
-  buildPreviewThighPath();
-  if (camo) {
-    ctx.save();
-    ctx.clip();
-    drawCamoSplotches(ctx, camo, -5.5, -5, 5.5, thighLen * 0.7);
-    ctx.restore();
-    buildPreviewThighPath();
-  } else {
-    ctx.fillStyle = pal.base;
-    ctx.fill();
-  }
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.95;
-  ctx.stroke();
-
-  // Boczna kieszeń Cargo na udzie
-  ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.28)' : pal.dark;
-  ctx.fillRect(1.5, -1.0, 3.4, 6.2);
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.75;
-  ctx.strokeRect(1.5, -1.0, 3.4, 6.2);
-
-  // Klapa kieszeni
-  ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.40)' : pal.base;
-  ctx.fillRect(1.3, -2.2, 3.8, 1.6);
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.65;
-  ctx.strokeRect(1.3, -2.2, 3.8, 1.6);
-
-  // 4. Kolano i łydka (shin)
   const kneeY = thighLen * 0.65;
   const shinLen = 12.0;
 
   if (isShort) {
-    // KRÓTKIE SPODENKI: Odsłonięta skóra kolana i łydki (bez dziwnych kółek!)
+    // A. KRÓTKIE SPODENKI BOJÓWKI (Szerokie nogawki cargo, odsłonięte udo i anatomiczne kolano)
+    const shortsEnd = thighLen * 0.52;
+    const cuffHalfW = 6.2; // Szeroki, luźny mankiet
+
+    // 1. Odsłonięta dolna część uda pod mankietem
+    const distalThighGrad = ctx.createLinearGradient(-3.5, 0, 3.5, 0);
+    distalThighGrad.addColorStop(0.0, v.skinDark);
+    distalThighGrad.addColorStop(0.4, v.skinMid);
+    distalThighGrad.addColorStop(1.0, v.skinLight);
+
+    ctx.beginPath();
+    ctx.moveTo(-3.4, shortsEnd - 2.0);
+    ctx.lineTo(3.4, shortsEnd - 2.0);
+    ctx.lineTo(3.3, kneeY);
+    ctx.lineTo(-3.3, kneeY);
+    ctx.closePath();
+    ctx.fillStyle = distalThighGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // 2. Cień wewnątrz szerokiej nogawki
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, shortsEnd, cuffHalfW, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Szeroka bryła spodenek cargo na udzie
+    const buildShortsPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(-4.5, -4.5);
+      ctx.lineTo(4.5, -4.5);
+      ctx.quadraticCurveTo(5.4, 0.5, cuffHalfW, shortsEnd);
+      ctx.lineTo(-cuffHalfW, shortsEnd);
+      ctx.quadraticCurveTo(-5.4, 0.5, -4.5, -4.5);
+      ctx.closePath();
+    };
+
+    buildShortsPath();
+    if (camo) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camo, -7, -5, 7, shortsEnd + 1);
+      ctx.restore();
+      buildShortsPath();
+    } else {
+      ctx.fillStyle = pal.base;
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.95;
+    ctx.stroke();
+
+    // Podwinięty brzeg mankietu z podwójnym szwem
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(-cuffHalfW + 0.3, shortsEnd - 2.0, cuffHalfW * 2 - 0.6, 2.0);
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(-cuffHalfW + 0.3, shortsEnd - 2.0);
+    ctx.lineTo(cuffHalfW - 0.3, shortsEnd - 2.0);
+    ctx.stroke();
+
+    // Boczna kieszeń Cargo na spodenkach
+    ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.28)' : pal.dark;
+    ctx.fillRect(1.6, -1.2, 3.4, 5.0);
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.75;
+    ctx.strokeRect(1.6, -1.2, 3.4, 5.0);
+
+    // Klapa kieszeni
+    ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.40)' : pal.base;
+    ctx.fillRect(1.4, -2.4, 3.8, 1.5);
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.65;
+    ctx.strokeRect(1.4, -2.4, 3.8, 1.5);
+
+    // 4. Odsłonięte anatomiczne kolano i łydka ze skóry
     const legGrad = ctx.createLinearGradient(-3.5, 0, 3.5, 0);
     legGrad.addColorStop(0.0, v.skinDark);
     legGrad.addColorStop(0.4, v.skinMid);
     legGrad.addColorStop(1.0, v.skinLight);
 
-    // Naturalna rzepka i łydka
     ctx.beginPath();
-    ctx.moveTo(-3.4, kneeY);
-    ctx.lineTo(3.4, kneeY);
-    ctx.quadraticCurveTo(4.2, kneeY + 5.0, 2.8, kneeY + shinLen - 2.5);
-    ctx.lineTo(-2.8, kneeY + shinLen - 2.5);
-    ctx.quadraticCurveTo(-4.2, kneeY + 5.0, -3.4, kneeY);
+    ctx.moveTo(-3.3, kneeY);
+    ctx.lineTo(3.3, kneeY);
+    ctx.quadraticCurveTo(4.4, kneeY + 5.0, 2.7, kneeY + shinLen - 2.5);
+    ctx.lineTo(-2.7, kneeY + shinLen - 2.5);
+    ctx.quadraticCurveTo(-4.4, kneeY + 5.0, -3.3, kneeY);
     ctx.closePath();
     ctx.fillStyle = legGrad;
     ctx.fill();
@@ -211,15 +247,72 @@ export function drawPantsPreview(
     ctx.lineWidth = 0.95;
     ctx.stroke();
 
-    // Anatomiczne, miękkie cieniowanie rzepki kolanowej (delikatna fałda, bez plastikowego kółka)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = 0.75;
+    // Wyrazista tarcza rzepki kolanowej z rozjaśnieniem
+    const patellaGrad = ctx.createRadialGradient(0.2, kneeY + 2.3, 0.2, 0.3, kneeY + 2.4, 1.8);
+    patellaGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.45)');
+    patellaGrad.addColorStop(0.4, v.skinLight);
+    patellaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = patellaGrad;
     ctx.beginPath();
-    ctx.arc(0.2, kneeY + 2.4, 1.6, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.arc(0.2, kneeY + 2.4, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.30)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(0.2, kneeY + 2.4, 1.7, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+
+    // Więzadło rzepki łączące rzepkę z guzowatością piszczeli
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.30)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0.2, kneeY + 4.2);
+    ctx.lineTo(0.2, kneeY + 6.0);
     ctx.stroke();
 
   } else {
-    // DŁUGIE BOJÓWKI: Materiał nogawki opada w dół z marszczeniem nad butem
+    // B. DŁUGIE BOJÓWKI CARGO
+    const buildPreviewThighPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(-4.5, -4.5);
+      ctx.lineTo(4.5, -4.5);
+      ctx.quadraticCurveTo(5.2, 2.0, 3.8, kneeY);
+      ctx.lineTo(-3.8, kneeY);
+      ctx.quadraticCurveTo(-5.2, 2.0, -4.5, -4.5);
+      ctx.closePath();
+    };
+
+    buildPreviewThighPath();
+    if (camo) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camo, -5.5, -5, 5.5, kneeY + 1);
+      ctx.restore();
+      buildPreviewThighPath();
+    } else {
+      ctx.fillStyle = pal.base;
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.95;
+    ctx.stroke();
+
+    // Boczna kieszeń Cargo na udzie
+    ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.28)' : pal.dark;
+    ctx.fillRect(1.5, -1.0, 3.4, 6.2);
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.75;
+    ctx.strokeRect(1.5, -1.0, 3.4, 6.2);
+
+    // Klapa kieszeni
+    ctx.fillStyle = camo ? 'rgba(0, 0, 0, 0.40)' : pal.base;
+    ctx.fillRect(1.3, -2.2, 3.8, 1.6);
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.65;
+    ctx.strokeRect(1.3, -2.2, 3.8, 1.6);
+
+    // Nogawka na łydce z ergonomicznym panelem kolanowym
     const buildPreviewShinPath = () => {
       ctx.beginPath();
       ctx.moveTo(-3.8, kneeY);
@@ -245,12 +338,14 @@ export function drawPantsPreview(
     ctx.lineWidth = 0.95;
     ctx.stroke();
 
-    // Naturalne fałdy zgięcia materiału na kolanie (zamiast twardego owalnego kółka)
+    // Zintegrowany panel nakolannika bojowego z zaszewkami
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(-2.2, kneeY + 2.2);
-    ctx.quadraticCurveTo(0, kneeY + 3.4, 2.2, kneeY + 2.2);
+    ctx.moveTo(-2.4, kneeY + 2.0);
+    ctx.quadraticCurveTo(0, kneeY + 3.2, 2.4, kneeY + 2.0);
+    ctx.moveTo(-2.2, kneeY + 3.6);
+    ctx.quadraticCurveTo(0, kneeY + 4.8, 2.2, kneeY + 3.6);
     ctx.stroke();
 
     // Marszczenie materiału nad butem
