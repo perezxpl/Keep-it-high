@@ -29,6 +29,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/armor.js` — rysowanie kamizelek taktycznych, hełmów i pancerza.
 - `js/player/hair.js` — fizyka i rysowanie włosów / fryzur.
 - `js/player/facialHair.js` — style, kolory i rysowanie zarostu twarzy (brody, wąsy, kilkudniowy zarost).
+- `js/player/headgear.js` — style, taktyczne kolory i rysowanie nakryć głowy (beret, czapka, kominiarka, bandana, boonie, arafatka, gogle).
 
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
