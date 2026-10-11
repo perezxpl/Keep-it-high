@@ -69,5 +69,26 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 4. **Weryfikacja po każdej zmianie architektury**:
    - Upewnij się, że po przeniesieniu funkcji między plikami w starym pliku nie zostało żadne wywołanie niezaimportowanej funkcji (brak `ReferenceError`) ani zduplikowany `export`.
 
-## 4. Zarządzanie Gałęziami Git i Kopią Zapasową
+## 4. Procedura Wdrażania Całkowicie Nowych Podsystemów Gry
+Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (np. dźwięk/audio, power-upy/znajdźki, system umiejętności/perków, nowy tryb gry, system zapisu/ekwipunku, nowi wrogowie/bossowie):
+1. **Zakaz upychania do istniejących plików**:
+   - Nowy element NIE może być wklejany luzem do `js/main.js`, `js/world.js` ani `js/player.js`.
+2. **Stworzenie dedykowanego katalogu domenowego**:
+   - Utwórz nowy katalog `js/<nowy_moduł>/` (np. `js/audio/`, `js/powerups/`, `js/gamemodes/`, `js/skills/`).
+   - Zastosuj sprawdzony trójpodział:
+     - `state.js` — definicje, konfiguracja, stan instancji, lista aktywnych obiektów.
+     - `logic.js` (lub `physics.js`) — aktualizacja w każdej klatce (`update...`), kolizje, wygasanie timerów, reakcje na zdarzenia.
+     - `renderer.js` — rysowanie na płótnie (`draw...`).
+     - `index.js` — punkt wejścia wystawiający prosty, czysty interfejs na zewnątrz (np. `init...()`, `update...(dt)`, `draw...(ctx)`).
+3. **Zasada „Maksymalnie 3 linijek w `main.js`”**:
+   - `main.js` jest tylko koordynatorem — nie powinien znać wewnętrznej logiki nowego podsystemu.
+   - W `main.js` dopisujesz wyłącznie:
+     1. Import funkcji z `js/<nowy_moduł>/index.js`.
+     2. Inicjalizację przy starcie: `initX()`.
+     3. Wywołanie w pętli `update()`: `updateX(...)`.
+     4. Wywołanie w pętli `draw()`: `drawX(ctx, camera)`.
+4. **Obowiązkowa rejestracja**:
+   - Nowe pliki dopisz do `index.html` (`importmap`), zaktualizuj `AGENTS.md` (dopisz moduł do mapy w sekcji 2) i uruchom `codegraph sync`.
+
+## 5. Zarządzanie Gałęziami Git i Kopią Zapasową
 - **Bezwzględna ochrona `backup-main`**: NIGDY nie nadpisuj ani nie wypychaj zmian na gałąź `backup-main` bez wyraźnego, bezpośredniego polecenia użytkownika. Gdy użytkownik prosi o wypchnięcie na `main`, wypychaj wyłącznie `main`.
