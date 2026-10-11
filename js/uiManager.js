@@ -30,6 +30,9 @@ import {
   PANTS_COLOR_LIST,
   doesPantsSupportColor,
   drawPantsPreview,
+  SHOES_STYLE_LIST,
+  SHOES_COLOR_LIST,
+  drawShoesPreview,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -63,7 +66,9 @@ const DEFAULT_APPEARANCE = {
   torsoStyle: 'short_sleeve',
   torsoColor: '#18181b',
   pantsStyle: 'cargo_long',
-  pantsColor: '#18181b'
+  pantsColor: '#18181b',
+  shoesStyle: 'combat_boots',
+  shoesColor: '#18181b'
 };
 
 // =============================================================================
@@ -268,7 +273,9 @@ export const uiManager = {
       torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
       torsoColor: this.appearance.torsoColor || '#18181b',
       pantsStyle: this.appearance.pantsStyle || 'cargo_long',
-      pantsColor: this.appearance.pantsColor || '#18181b'
+      pantsColor: this.appearance.pantsColor || '#18181b',
+      shoesStyle: this.appearance.shoesStyle || 'combat_boots',
+      shoesColor: this.appearance.shoesColor || '#18181b'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -876,6 +883,7 @@ export const uiManager = {
     this.initCreatorNeckUI();
     this.initCreatorTorsoUI();
     this.initCreatorPantsUI();
+    this.initCreatorShoesUI();
   },
 
   initCreatorHairUI() {
@@ -1555,6 +1563,97 @@ export const uiManager = {
     });
   },
 
+  initCreatorShoesUI() {
+    const gridEl = document.getElementById('creator-shoes-grid');
+    const colorsEl = document.getElementById('creator-shoes-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z fasonami butów (ciężkie buty, sneakersy, korki, hi-top, wysokie buty z klamrami)
+    SHOES_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.shoesStyle = styleId;
+      if ((this.appearance.shoesStyle || 'combat_boots') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.shoesStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorShoesSelectionUI();
+        this.renderCreatorShoesTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów obuwia
+    SHOES_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.shoesColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      if (String(this.appearance.shoesColor || '#18181b').toLowerCase() === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.shoesColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorShoesSelectionUI();
+        this.renderCreatorShoesTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.syncCreatorShoesSelectionUI();
+    this.renderCreatorShoesTiles();
+  },
+
+  syncCreatorShoesSelectionUI() {
+    const curStyle = this.appearance.shoesStyle || 'combat_boots';
+    const curColor = String(this.appearance.shoesColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-shoes-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.shoesStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-shoes-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.shoesColor).toLowerCase() === curColor);
+    });
+  },
+
+  renderCreatorShoesTiles() {
+    const curColor = this.appearance.shoesColor || '#18181b';
+    const visuals = { ...this.appearance };
+
+    document.querySelectorAll('#creator-shoes-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.shoesStyle || 'combat_boots';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawShoesPreview(ctx, cvs.width, cvs.height, styleId, curColor, visuals);
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1587,6 +1686,9 @@ export const uiManager = {
     } else if (tabId === 'pants') {
       this.syncCreatorPantsSelectionUI();
       this.renderCreatorPantsTiles();
+    } else if (tabId === 'shoes') {
+      this.syncCreatorShoesSelectionUI();
+      this.renderCreatorShoesTiles();
     }
   },
 
@@ -1666,7 +1768,9 @@ export const uiManager = {
           torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
           torsoColor: this.appearance.torsoColor || '#18181b',
           pantsStyle: this.appearance.pantsStyle || 'cargo_long',
-          pantsColor: this.appearance.pantsColor || '#18181b'
+          pantsColor: this.appearance.pantsColor || '#18181b',
+          shoesStyle: this.appearance.shoesStyle || 'combat_boots',
+          shoesColor: this.appearance.shoesColor || '#18181b'
         },
         pose: { initialized: false }
       };
@@ -1680,6 +1784,7 @@ export const uiManager = {
     this.syncCreatorNeckSelectionUI();
     this.syncCreatorTorsoSelectionUI();
     this.syncCreatorPantsSelectionUI();
+    this.syncCreatorShoesSelectionUI();
     this.renderCreatorHairTiles();
 
     const tick = () => {

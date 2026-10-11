@@ -34,6 +34,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/neck.js` — ozdoby szyi i klatki piersiowej z pełną fizyką 2D (nieśmiertelnik wojskowy US Army, ciężki złoty łańcuch gangsta ze złotym medalionem).
 - `js/player/torso.js` — fasony ubrania torsu (krótki i długi rękaw, kamuflaże moro jasne i ciemne), proceduralne plamy moro oraz renderowanie koszulki bojowej.
 - `js/player/pants.js` — fasony spodni (długie bojówki bojowe, krótkie spodenki taktyczne, kamuflaże moro jasne i ciemne), paleta kolorów oraz renderowanie miniaturek spodni.
+- `js/player/shoes.js` — fasony i kolory obuwia (buty desantowe, niskie sneakersy, korki piłkarskie, wysokie trampki hi-top, wysokie glany z klamrami), renderowanie stopy i cholewki zakrywającej nogawkę spodni oraz kafelki podglądu w kreatorze.
 
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
@@ -44,7 +45,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### 🏟️ Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).
 - `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
-- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `sewerPipes.js`, `submergedSkeletons.js`.
+- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla / Odlewnia): `state.js`, `physics.js`, `renderer.js`.
 
 ### 🧱 Przeszkody i Kolizje (`js/obstacles/`)

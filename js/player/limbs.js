@@ -8,6 +8,7 @@ import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { DEFAULT_VISUALS } from './hair.js';
 import { isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
+import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1139,6 +1140,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const pantsCamo = getPantsCamoType(pantsStyle);
   const pantsPal = getPantsPalette(pantsColor);
   const isShorts = isPantsShorts(pantsStyle);
+  const shoesStyle = v.shoesStyle || 'combat_boots';
+  const shoesColor = v.shoesColor || colorBoot || v.bootColor || '#18181b';
 
   if (isShorts) {
     // 1. KRÓTKIE SPODENKI BOJÓWKI (LUŹNE, SZEROKIE NOGAWKI CARGO – SIĘGAJĄCE PRAWIE DO KOLAN)
@@ -1443,20 +1446,6 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const calfBulge = (isSculpted ? 5.2 : 4.5) * muscle;
   const achillesHalfW = 2.5 * muscle;
 
-  // Cholewa buta wojskowego (wchodząca pod nogawkę lub bezpośrednio na nodze w spodenkach)
-  const collarGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
-  collarGrad.addColorStop(0.0, '#27272a');
-  collarGrad.addColorStop(0.5, '#18181b');
-  collarGrad.addColorStop(1.0, '#09090b');
-  ctx.fillStyle = collarGrad;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(l2 - 6.2, -2.7, 6.2, 5.4, 1.0);
-  else ctx.rect(l2 - 6.2, -2.7, 6.2, 5.4);
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.9;
-  ctx.stroke();
-
   if (isShorts) {
     // 1. KRÓTKIE SPODENKI: Naturalny staw kolanowy i wysportowana łydka (estetyka tożsama z łokciem)
     const kneeR = 2.8 * muscle;
@@ -1672,6 +1661,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     }
   }
 
+  // Cholewka buta rysowana NA wierzchu nogawki (wyższe buty zakrywają dół spodni)
+  drawBootCollarOverPants(ctx, shoesStyle, shoesColor, isFrontLeg, muscle, l2, achillesHalfW, v);
+
   ctx.restore();
 
   // WOJSKOWY BUT TAKTYCZNY (MILITARY COMBAT BOOT – bez kolorowych pasków)
@@ -1733,92 +1725,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.rotate(effAnkle);
   ctx.scale(facing, 1);
 
-  const bootLen = 10.6 * (isSculpted ? muscle * 0.95 : muscle);
-  const bCol = colorBoot || v.bootColor || '#18181b';
-  const bootGrad = ctx.createLinearGradient(-4.5, -4.2, bootLen, 3.4);
-  if (isFrontLeg) {
-    bootGrad.addColorStop(0.0, '#27272a');
-    bootGrad.addColorStop(0.45, bCol);
-    bootGrad.addColorStop(1.0, '#09090b');
-  } else {
-    bootGrad.addColorStop(0.0, '#18181b');
-    bootGrad.addColorStop(1.0, '#09090b');
-  }
-
-  // 1. Główna bryła wojskowego buta desantowego (wysoka cholewka + wyprofilowane śródstopie + zaokrąglony militarny nosek)
-  ctx.beginPath();
-  // Tylna krawędź cholewki i usztywniona pięta
-  ctx.moveTo(-3.6, -3.8);
-  ctx.quadraticCurveTo(-4.4, -1.0, -4.4, 2.5);
-  // Spód pod podeszwę
-  ctx.lineTo(bootLen - 0.6, 2.5);
-  // Zaokrąglony, wysoki wojskowy nosek (Toe Box)
-  ctx.quadraticCurveTo(bootLen + 1.2, 2.2, bootLen + 0.8, 0.3);
-  ctx.quadraticCurveTo(bootLen + 0.2, -1.3, bootLen - 2.6, -1.5);
-  // Podbicie i język ze sznurowaniem w górę do cholewki
-  ctx.quadraticCurveTo(3.4, -1.8, 2.2, -3.8);
-  ctx.lineTo(-3.6, -3.8);
-  ctx.closePath();
-  ctx.fillStyle = bootGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 1.0;
-  ctx.stroke();
-
-  // 2. Wzmocniona łata pięty (Heel Counter) i przeszycie noska (Toe Cap Seam)
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  // Szew pięty
-  ctx.moveTo(-4.2, 0.2);
-  ctx.quadraticCurveTo(-1.5, 0.4, -1.0, 2.4);
-  // Szew noska
-  ctx.moveTo(bootLen - 3.0, -1.4);
-  ctx.quadraticCurveTo(bootLen - 2.2, 0.5, bootLen - 2.6, 2.4);
-  ctx.stroke();
-
-  // 3. Wojskowe sznurowanie na przodzie cholewki i podbiciu (ciemne przelotki bez kolorowych pasków)
-  if (isFrontLeg) {
-    ctx.strokeStyle = '#3f3f46';
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(1.2, -3.0); ctx.lineTo(2.4, -2.8);
-    ctx.moveTo(1.8, -2.0); ctx.lineTo(3.0, -1.8);
-    ctx.moveTo(2.6, -1.1); ctx.lineTo(3.8, -0.9);
-    ctx.stroke();
-
-    // Subtelny połysk na czubku skórzanego noska
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(bootLen - 2.0, -0.8);
-    ctx.quadraticCurveTo(bootLen + 0.1, -0.4, bootLen + 0.2, 0.8);
-    ctx.stroke();
-  }
-
-  // 4. Gruba, czarna ząbkowana podeszwa taktyczna (Vibram Combat Sole)
-  ctx.fillStyle = '#09090b';
-  ctx.beginPath();
-  ctx.moveTo(-4.5, 2.3);
-  ctx.lineTo(bootLen + 0.8, 2.3);
-  ctx.lineTo(bootLen + 0.5, 4.2);
-  // Wcięcie obcasa (tactical heel arch)
-  ctx.lineTo(2.2, 4.2);
-  ctx.lineTo(1.8, 3.6);
-  ctx.lineTo(-0.4, 3.6);
-  ctx.lineTo(-0.8, 4.3);
-  ctx.lineTo(-4.4, 4.3);
-  ctx.closePath();
-  ctx.fill();
-
-  // Bieżnik podeszwy (protektor)
-  ctx.fillStyle = '#000000';
-  for (let lx = -4.0; lx <= -1.4; lx += 1.3) {
-    ctx.fillRect(lx, 4.0, 0.9, 0.8);
-  }
-  for (let lx = 2.6; lx <= bootLen - 0.8; lx += 1.6) {
-    ctx.fillRect(lx, 3.9, 1.0, 0.8);
-  }
+  drawFootwear(ctx, shoesStyle, shoesColor, isFrontLeg, muscle, isSculpted, v);
 
   ctx.restore();
   ctx.restore();

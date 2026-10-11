@@ -84,6 +84,17 @@ import {
 } from './pants.js';
 
 import {
+  SHOES_STYLE_LIST,
+  SHOES_STYLE_NAMES,
+  SHOES_COLOR_LIST,
+  getShoesPalette,
+  isHighBoot,
+  drawBootCollarOverPants,
+  drawFootwear,
+  drawShoesPreview
+} from './shoes.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -151,6 +162,14 @@ export {
   doesPantsSupportColor,
   getPantsPalette,
   drawPantsPreview,
+  SHOES_STYLE_LIST,
+  SHOES_STYLE_NAMES,
+  SHOES_COLOR_LIST,
+  getShoesPalette,
+  isHighBoot,
+  drawBootCollarOverPants,
+  drawFootwear,
+  drawShoesPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,

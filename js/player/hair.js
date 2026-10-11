@@ -27,6 +27,8 @@ export const DEFAULT_VISUALS = {
   torsoColor: '#18181b',
   pantsStyle: 'cargo_long',
   pantsColor: '#18181b',
+  shoesStyle: 'combat_boots',
+  shoesColor: '#18181b',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',
