@@ -8,8 +8,8 @@ import {
   spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   spawnKnockedHelmet, spawnVestShreds,
   bodyGibs
-} from './world.js?v=v78_hair_fluid_side';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v78_hair_fluid_side';
+} from './world.js?v=v79_hair_free_strands';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js?v=v79_hair_free_strands';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import {

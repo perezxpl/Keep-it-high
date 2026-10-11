@@ -2,10 +2,10 @@
 // BOT.JS - SZTUCZNA INTELIGENCJA PRZECIWNIKA (AI CASUAL / INTERMEDIATE)
 // =========================================================================
 
-import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide } from './player.js?v=v78_hair_fluid_side';
-import { CLASSES } from './classes/index.js?v=v78_hair_fluid_side';
+import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide } from './player.js?v=v79_hair_free_strands';
+import { CLASSES } from './classes/index.js?v=v79_hair_free_strands';
 import { START_X, CONFIG } from './config.js';
-import { WEAPONS, shootWeapon } from './weapons.js?v=v78_hair_fluid_side';
+import { WEAPONS, shootWeapon } from './weapons.js?v=v79_hair_free_strands';
 
 /**
  * Wirtualny kontroler bota przekazywany do silnika fizyki updatePlayer

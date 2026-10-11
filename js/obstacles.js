@@ -12,7 +12,7 @@ import {
   LEFT_MASSIF_AND_RAMP_PROFILE, CENTRAL_HILL_PROFILE, RIGHT_MASSIF_PROFILE,
   getCaveCeilingY, getCaveCeilingInfo, drawCaveTerrain,
   LOWER_CAVERN_FLOOR, LOWER_CAVERN_SHELVES, getLowerCavernCeilingY
-} from './world.js?v=v78_hair_fluid_side';
+} from './world.js?v=v79_hair_free_strands';
 import { clearExplosionParticles } from './particles.js';
 
 const _arenaResetCallbacks = [];

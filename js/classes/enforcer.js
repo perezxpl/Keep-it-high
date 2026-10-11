@@ -1,7 +1,7 @@
 // =========================================================================
 // KLASA CIĘŻKA: ENFORCER – Kolos / Siła / Rzeźbiona muskulatura
 // =========================================================================
-import { triggerScreenShake } from '../world.js?v=v78_hair_fluid_side';
+import { triggerScreenShake } from '../world.js?v=v79_hair_free_strands';
 
 export const EnforcerClass = {
   id: 'ENFORCER',

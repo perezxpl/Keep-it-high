@@ -1,6 +1,6 @@
-import { RaptorClass } from './aero.js?v=v78_hair_fluid_side';
-import { StrikerClass } from './playmaker.js?v=v78_hair_fluid_side';
-import { EnforcerClass } from './enforcer.js?v=v78_hair_fluid_side';
+import { RaptorClass } from './aero.js?v=v79_hair_free_strands';
+import { StrikerClass } from './playmaker.js?v=v79_hair_free_strands';
+import { EnforcerClass } from './enforcer.js?v=v79_hair_free_strands';
 
 export const CLASSES = {
   // Kolejność od lekkiej do ciężkiej: 1. Raptor, 2. Striker, 3. Enforcer
