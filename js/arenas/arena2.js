@@ -21,14 +21,18 @@ import {
   spawnAcidBoilEmitter,
   isPlayerSubmergedInAcid,
   triggerPlayerAcidDeath,
-  updateArena2
+  updateArena2,
+  handleArena2BulletHit
 } from './arena2/state.js';
 import {
   drawArena2Background,
   drawArena2Geometry,
   drawArena2Foreground,
   drawAcidLevel,
-  drawAcidLake
+  drawAcidLake,
+  drawSewerPipes,
+  drawSewerImpacts,
+  ARENA_2_SEWER_PIPES
 } from './arena2/renderer.js';
 
 export * from './arena2/state.js';
@@ -50,6 +54,7 @@ const arena2 = {
   barrels: ARENA_2_BARRELS,
   supply: ARENA_2_SUPPLY,
   acidSurge: ACID_SURGE_SYSTEM,
+  sewerPipes: ARENA_2_SEWER_PIPES,
   customObjects: [],
   reset() {
     ACID_SURGE_SYSTEM.state = 'CALM';
@@ -61,6 +66,15 @@ const arena2 = {
     _acidDebrisList.length = 0;
     _acidSmokeParticles.length = 0;
     _acidBoilEmitters.length = 0;
+    for (let i = 0; i < ARENA_2_PLATFORMS.length; i++) {
+      const p = ARENA_2_PLATFORMS[i];
+      if (p.hangingPhysics) {
+        p.y = p.baseY;
+        p.vy = 0;
+        p.angle = 0;
+        p.vAngle = 0;
+      }
+    }
   },
   drawBackground(ctx, camera) {
     drawArena2Background(ctx, camera);
@@ -72,12 +86,26 @@ const arena2 = {
     updateArena2(dt, players);
   },
   onBulletHit(bullet) {
-    return false;
+    return handleArena2BulletHit(bullet);
   },
   onKickHit(player, kickBox) {
     return false;
   },
   onExplosion(expX, expY, radius, context) {
+    const rad = radius || 140;
+    for (let i = 0; i < ARENA_2_PLATFORMS.length; i++) {
+      const p = ARENA_2_PLATFORMS[i];
+      if (p.hangingPhysics) {
+        const cx = p.x + p.w * 0.5;
+        const cy = p.y;
+        const dist = Math.hypot(expX - cx, expY - cy);
+        if (dist < rad + 120) {
+          const power = Math.max(0, 1 - dist / (rad + 120));
+          p.vy += (expY > cy ? -1 : 1) * power * 4.5;
+          p.vAngle += (expX < cx ? 1 : -1) * power * 0.04;
+        }
+      }
+    }
     return false;
   }
 };
