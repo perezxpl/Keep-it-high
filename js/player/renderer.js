@@ -1345,8 +1345,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
     if (hasHelmet) {
-      const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
-      const visorNeon = isCyan ? '#00e5ff' : '#f97316';
       const helmGrad = ctx.createLinearGradient(-6.0, -11.0, 6.0, -2.0);
       helmGrad.addColorStop(0.0, '#18181b');
       helmGrad.addColorStop(0.5, v.helmetColor || '#27272a');
@@ -1385,19 +1383,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ctx.moveTo(-2.5, -1.5);
       ctx.lineTo(2.5, 3.6);
       ctx.stroke();
-
-      // Taktyczny neonowy wizjer / HUD Visor
-      ctx.fillStyle = visorNeon;
-      ctx.shadowColor = visorNeon;
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.moveTo(2.2, -4.2);
-      ctx.lineTo(5.2, -3.8);
-      ctx.lineTo(4.6, -1.8);
-      ctx.lineTo(2.2, -2.0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
     }
 
     const eyeCenterX = 2.7;
@@ -1513,9 +1498,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Hełm z przodu (jeśli założony)
     if (hasHelmet) {
-      const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
-      const visorNeon = isCyan ? '#00e5ff' : '#f97316';
-
       const helmFrontGrad = ctx.createLinearGradient(-5.5, -8.0, 5.5, 0);
       helmFrontGrad.addColorStop(0.0, '#18181b');
       helmFrontGrad.addColorStop(0.5, v.helmetColor || '#27272a');
@@ -1532,12 +1514,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
       ctx.fillStyle = '#52525b';
       ctx.fillRect(-1.4, -6.0, 2.8, 2.4);
-
-      ctx.fillStyle = visorNeon;
-      ctx.shadowColor = visorNeon;
-      ctx.shadowBlur = 6;
-      ctx.fillRect(-3.6, -2.8, 7.2, 1.8);
-      ctx.shadowBlur = 0;
     }
 
     ctx.fillStyle = '#ffffff';

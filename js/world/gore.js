@@ -792,9 +792,9 @@ export function drawGore(ctx) {
       // Szyna boczna ARC
       ctx.fillStyle = '#09090b';
       ctx.fillRect(-4.2, -2.2, 6.2, 1.5);
-      // Wizjer
-      ctx.fillStyle = dw.visorColor || '#00e5ff';
-      ctx.fillRect(2.0, -1.2, 3.0, 1.8);
+      // Montaż NVG shroud
+      ctx.fillStyle = '#52525b';
+      ctx.fillRect(4.0, -3.5, 1.4, 2.2);
     } else if (dw.isVestScrap) {
       // Odłamek zniszczonej kamizelki kuloodpornej
       ctx.fillStyle = dw.scrapColor || '#18181b';
