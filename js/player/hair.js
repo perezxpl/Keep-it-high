@@ -132,13 +132,10 @@ const HAIR_REST_PROFILES = {
 
 const PONYTAIL_ARCH_PROFILE = [2.35, 2.02, 1.76, 1.65, 1.72, 1.86];
 
-function applyHairDeadzone(val, deadzone = 0.45) {
+function applyHairDeadzone(val, deadzone = 0.05) {
   const absV = Math.abs(val);
   if (absV <= deadzone) return 0;
-  const excess = absV - deadzone;
-  // Nieliniowa (kwadratowa) krzywa narastania: drobny ruch nie porusza włosami, pełny bieg/spadanie działa płynnie
-  const scale = excess / (excess + 1.15);
-  return Math.sign(val) * (excess * scale);
+  return Math.sign(val) * (absV - deadzone);
 }
 
 export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, strandOpts = {}) {
@@ -162,9 +159,9 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
         restProfile: strandOpts.restProfile || restProfile
       };
 
-  if (!p._hairPhys || p._hairPhys.style !== hairStyle || !p._hairPhys.strands) {
+  // Trwały, współdzielony stan dynamiki gracza (wspólny dla fryzury i elementów nakrycia głowy)
+  if (!p._hairPhys || typeof p._hairPhys !== 'object' || !p._hairPhys.strands) {
     p._hairPhys = {
-      style: hairStyle,
       strands: {},
       waveTime: 0,
       frameId: 0,
@@ -184,7 +181,7 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
 
   const phys = p._hairPhys;
 
-  // Globalna aktualizacja stanu ruchu głowy raz na klatkę renderowania
+  // Globalna aktualizacja dynamiki ruchu gracza raz na klatkę renderowania (wspólna dla wszystkich pasm)
   if (!isStaticTile) {
     const dtRaw = (now - phys.lastFrameTime) / 1000;
     if (dtRaw >= 0.0035) {
@@ -196,38 +193,39 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
       const rawVy = (p && p.vy) || 0;
       const rawSpeed = Math.hypot(rawVx, rawVy);
 
-      // Wygładzenie prędkości (filtr dolnoprzepustowy), aby mikro-drgania pozycji nie szarpały włosami
-      const velBlend = Math.min(1.0, phys.dt * 12.0);
+      // Szybka, responsywna adaptacja prędkości (bez ospałego opóźnienia)
+      const velBlend = Math.min(1.0, phys.dt * 18.0);
       phys.smoothVx += (rawVx - phys.smoothVx) * velBlend;
       phys.smoothVy += (rawVy - phys.smoothVy) * velBlend;
 
       phys.flipImpulse = 0;
       if (phys.lastFacing !== currentFacingDir) {
-        phys.flipImpulse = 0.15 + Math.min(0.65, rawSpeed * 0.20);
+        phys.flipImpulse = 0.35 + Math.min(0.95, rawSpeed * 0.30);
         phys.lastFacing = currentFacingDir;
-        phys.smoothVx = -phys.smoothVx * 0.4;
+        phys.smoothVx = -phys.smoothVx * 0.35;
       }
 
       phys.extImpulse = p._hairImpulse || 0;
       p._hairImpulse = 0;
 
       const curBob = (p && p.headBob) || 0;
-      const bobActivity = Math.min(1.0, Math.max(0, rawSpeed - 1.1) * 0.40);
+      const bobActivity = Math.min(1.0, rawSpeed * 0.35);
       phys.dBob = (curBob - phys.lastHeadBob) * bobActivity;
       phys.lastHeadBob = curBob;
 
       phys.dvY = rawVy - phys.lastVy;
       phys.lastVy = rawVy;
 
-      const effSpeed = Math.hypot(applyHairDeadzone(phys.smoothVx, 0.45), applyHairDeadzone(phys.smoothVy, 0.50));
-      const previewFlow = p._isCreatorPreview ? 0.42 : 0;
-      const waveSpeed = 1.4 + Math.min(8.0, (effSpeed + previewFlow) * 1.55);
+      const effSpeed = Math.hypot(phys.smoothVx, phys.smoothVy);
+      const previewFlow = p._isCreatorPreview ? 0.90 : 0;
+      const waveSpeed = 2.4 + Math.min(14.0, (effSpeed + previewFlow) * 2.4);
       phys.waveTime += phys.dt * waveSpeed;
     }
   }
 
-  // Inicjalizacja niezależnego stanu fizycznego dla konkretnego pasma włosów
-  let strand = phys.strands[opts.id];
+  // Unikalny klucz pasma: pasma fryzury i wstęgi bandany żyją niezależnie w słowniku pasm
+  const strandKey = `${hairStyle}_${opts.id}`;
+  let strand = phys.strands[strandKey];
   if (!strand || !strand.thetas || strand.thetas.length !== NUM_SEGS) {
     strand = {
       thetas: restProfile.map((t, idx) => {
@@ -238,7 +236,7 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
       lastFrameId: -1,
       restProfile: restProfile
     };
-    phys.strands[opts.id] = strand;
+    phys.strands[strandKey] = strand;
   }
 
   // Niezależna symulacja fizyki 2D dla każdego pasma w bieżącej klatce
@@ -248,46 +246,43 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
 
     if (phys.flipImpulse > 0) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += 1.35 * phys.flipImpulse * opts.liftMult * (0.18 + i * 0.22);
+        strand.omegas[i] += 2.2 * phys.flipImpulse * opts.liftMult * (0.25 + i * 0.30);
       }
     }
 
     if (phys.extImpulse) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.35 + i * 0.40);
+        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.45 + i * 0.45);
       }
     }
 
-    if (Math.abs(phys.dvY) > 1.50) {
-      const excessDv = phys.dvY - Math.sign(phys.dvY) * 1.50;
-      const landSnap = Math.max(-2.8, Math.min(2.8, excessDv)) * 0.45 * opts.liftMult;
+    if (Math.abs(phys.dvY) > 0.8) {
+      const excessDv = phys.dvY - Math.sign(phys.dvY) * 0.8;
+      const landSnap = Math.max(-4.2, Math.min(4.2, excessDv)) * 0.55 * opts.liftMult;
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += landSnap * (0.18 + i * 0.22);
+        strand.omegas[i] += landSnap * (0.22 + i * 0.28);
       }
     }
 
     const rot = (torsoTilt * currentFacingDir) + headPitch;
-    const effVx = applyHairDeadzone(phys.smoothVx, 0.45);
-    const effVy = applyHairDeadzone(phys.smoothVy, 0.50);
+    const effVx = applyHairDeadzone(phys.smoothVx, 0.05);
+    const effVy = applyHairDeadzone(phys.smoothVy, 0.08);
 
     const breezeVx = p._isCreatorPreview
-      ? (0.24 + Math.sin(now * 0.0022 + opts.phase) * 0.16)
+      ? (0.55 + Math.sin(now * 0.0032 + opts.phase) * 0.38)
       : 0;
 
     const totalVx = effVx + breezeVx;
     const isGrounded = !!(p && p.onGround && !p.isJumping);
     const isJetpacking = !!(p && p.isJetpacking);
 
-    // Włosy unoszą się do góry WYŁĄCZNIE podczas rzeczywistego swobodnego spadania w dół (vy > 1.15, bez jetpacka i nie na ziemi).
-    // Podczas zawisu w powietrzu, lotu na jetpacku, wznoszenia czy chodzenia/lotu do tyłu włosy NIGDY nie są ciągnięte w górę!
-    const fallSpeed = (!isGrounded && !isJetpacking && phys.smoothVy > 1.15)
-      ? (phys.smoothVy - 1.15)
+    const fallSpeed = (!isGrounded && !isJetpacking && phys.smoothVy > 0.30)
+      ? (phys.smoothVy - 0.30)
       : 0;
-    const fallFactor = Math.min(1.0, fallSpeed / 4.5) * Math.min(1.35, opts.liftMult);
+    const fallFactor = Math.min(1.0, fallSpeed / 3.6) * Math.min(1.5, opts.liftMult);
 
-    const isHeavy = false;
-    const baseStiff = 8.8 * opts.stiffMult;
-    const damping = 0.90;
+    const baseStiff = 22.0 * opts.stiffMult;
+    const damping = 0.87;
 
     const curRest = strand.restProfile || restProfile;
 
@@ -300,56 +295,56 @@ export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTil
 
       // 2. Wpływ ruchu poziomego (przód vs tył):
       if (totalVx > 0) {
-        // Ruch DO PRZODU: wiatr z większą swobodą odchyla pasma w tył za plecy
-        const backBend = Math.min(1.15, totalVx * 0.24 * opts.liftMult) * (0.32 + segProgress * 0.95);
+        // Ruch DO PRZODU: wiatr z impetem odchyla pasma i wstęgi w tył za plecy!
+        const backBend = Math.min(1.75, totalVx * 0.34 * opts.liftMult) * (0.35 + segProgress * 1.15);
         targetTheta += backBend;
       } else if (totalVx < 0) {
-        // Ruch / lot DO TYŁU: wiatr wieje zza pleców – włosy nadal wiszą W DÓŁ pod działaniem grawitacji, podwijając się miękko w przód
-        const forwardSweep = Math.min(0.52, Math.abs(totalVx) * 0.16 * opts.liftMult) * (0.18 + segProgress * 0.90);
+        // Ruch DO TYŁU: wiatr wieje zza pleców
+        const forwardSweep = Math.min(0.85, Math.abs(totalVx) * 0.26 * opts.liftMult) * (0.22 + segProgress * 0.95);
         targetTheta -= forwardSweep;
       }
 
       // 3. Wpływ ruchu pionowego:
       if (fallFactor > 0) {
-        // SWOBODNE SPADANIE W DÓŁ: powietrze od dołu podwiewa pasma do góry z dużą swobodą
-        const upwardBillow = fallFactor * (0.68 + segProgress * 1.55);
+        // SWOBODNE SPADANIE W DÓŁ: pasma unoszą się i falują w górę
+        const upwardBillow = fallFactor * (0.80 + segProgress * 1.95);
         targetTheta += upwardBillow;
-      } else if (effVy < -0.25 || isJetpacking) {
-        // WZNOSZENIE W GÓRĘ / LOT NA JETPACKU / ZAWIS: pęd powietrza i grawitacja ściągają pasma w dół (w stronę pionu ~1.60 rad)
-        const verticalDownTheta = Math.PI * 0.52 - rot * 0.75 + opts.restOffset * 0.25;
+      } else if (effVy < -0.20 || isJetpacking) {
+        // WZNOSZENIE W GÓRĘ / JETPACK: pęd powietrza ściąga pasma w dół
+        const verticalDownTheta = Math.PI * 0.50 - rot * 0.70 + opts.restOffset * 0.20;
         const pullDownWeight = isJetpacking
-          ? Math.min(0.35, 0.12 + Math.max(0, -effVy) * 0.06)
-          : Math.min(0.45, Math.max(0, -effVy) * 0.10);
+          ? Math.min(0.55, 0.20 + Math.max(0, -effVy) * 0.08)
+          : Math.min(0.55, Math.max(0, -effVy) * 0.12);
         targetTheta += (verticalDownTheta - targetTheta) * pullDownWeight * (0.35 + segProgress * 0.65);
       }
 
       // 4. Żywa, naturalna fala S i mikro-ruch powietrza (ze zwiększoną swobodą w ruchu)
       const activeMotion = Math.hypot(totalVx, effVy) + fallSpeed;
-      const waveAmp = (0.010 + Math.min(0.30, activeMotion * 0.075)) * opts.liftMult * (0.20 + segProgress * 1.05);
+      const waveAmp = (0.018 + Math.min(0.42, activeMotion * 0.10)) * opts.liftMult * (0.25 + segProgress * 1.15);
       const sWave = Math.sin(phys.waveTime + opts.phase * 2.4 - i * 0.95) * waveAmp
-                  + Math.cos(phys.waveTime * 1.55 + opts.phase * 1.7 - i * 1.25) * (waveAmp * 0.35);
+                  + Math.cos(phys.waveTime * 1.55 + opts.phase * 1.7 - i * 1.25) * (waveAmp * 0.40);
 
-      targetTheta += sWave - phys.dBob * (0.35 + segProgress * 0.55);
+      targetTheta += sWave - phys.dBob * (0.40 + segProgress * 0.65);
 
       // 5. Miękkie przekazywanie krzywizny z poprzedniego segmentu
       if (i > 0) {
         const prevArch = opts.archRoot * Math.max(0, 1.0 - (i - 1) * 0.42);
         const naturalDelta = (curRest[i] + archAdd) - (curRest[i - 1] + prevArch);
         const parentFollow = strand.thetas[i - 1] + naturalDelta * (1.0 - fallFactor * 0.75);
-        targetTheta = targetTheta * 0.72 + parentFollow * 0.28;
+        targetTheta = targetTheta * 0.68 + parentFollow * 0.32;
       }
 
-      // Bezpieczne limity kątowe o zwiększonej swobodzie:
-      const minTheta = (i === 0) ? (Math.PI * 0.44) : (Math.PI * (0.42 - segProgress * 0.06));
+      // Elastyczne limity kątowe o pełnej swobodzie ruchu 2D:
+      const minTheta = (i === 0) ? (Math.PI * 0.38) : (Math.PI * (0.30 - segProgress * 0.08));
       const maxAllowed = (fallFactor > 0.01)
-        ? (Math.PI * (0.98 + fallFactor * 0.50))
-        : (Math.PI * 0.94);
-      const maxTheta = (i === 0) ? Math.min(Math.PI * 1.22, maxAllowed) : maxAllowed;
+        ? (Math.PI * (1.20 + fallFactor * 0.40))
+        : (Math.PI * 1.28);
+      const maxTheta = (i === 0) ? Math.min(Math.PI * 1.35, maxAllowed) : maxAllowed;
       targetTheta = Math.max(minTheta, Math.min(maxTheta, targetTheta));
 
-      const segStiff = baseStiff * (1.10 - segProgress * 0.28);
+      const segStiff = baseStiff * (1.15 - segProgress * 0.25);
       strand.omegas[i] = (strand.omegas[i] + (targetTheta - strand.thetas[i]) * segStiff * dt) * damping;
-      strand.thetas[i] += strand.omegas[i] * dt * 7.5;
+      strand.thetas[i] += strand.omegas[i] * dt * 3.5;
 
       if (strand.thetas[i] < minTheta) {
         strand.thetas[i] = minTheta;
