@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v80_hair_smooth_directional';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v81_hair_fullhead_gravity';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v80_hair_smooth_directional';
-import { getRagdollRenderPose } from './death.js?v=v80_hair_smooth_directional';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v80_hair_smooth_directional';
+} from './actions.js?v=v81_hair_fullhead_gravity';
+import { getRagdollRenderPose } from './death.js?v=v81_hair_fullhead_gravity';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v81_hair_fullhead_gravity';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -3713,13 +3713,13 @@ const HAIR_REST_PROFILES = {
   topknot:      [2.58, 2.22, 1.90, 1.72, 1.70, 1.84]
 };
 
-function applyHairDeadzone(val, deadzone = 0.42) {
+function applyHairDeadzone(val, deadzone = 0.45) {
   const absV = Math.abs(val);
-  if (absV <= deadzone) return val * 0.06;
+  if (absV <= deadzone) return 0;
   const excess = absV - deadzone;
-  // Nieliniowa (kwadratowa) krzywa narastania: drobny ruch prawie nie rusza włosów, pełny bieg/spadanie działa z pełną siłą
-  const scale = excess / (excess + 1.45);
-  return Math.sign(val) * (deadzone * 0.06 + excess * scale);
+  // Nieliniowa (kwadratowa) krzywa narastania: drobny ruch nie porusza włosami, pełny bieg/spadanie działa płynnie
+  const scale = excess / (excess + 1.65);
+  return Math.sign(val) * (excess * scale);
 }
 
 function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, strandOpts = {}) {
@@ -3729,11 +3729,12 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
   const restProfile = HAIR_REST_PROFILES[hairStyle] || HAIR_REST_PROFILES.long_flowing;
 
   const opts = (typeof strandOpts === 'number')
-    ? { id: `s_${Math.round(strandOpts * 100)}`, phase: strandOpts, restOffset: strandOpts * 0.45, liftMult: 1.0, gravMult: 1.0, stiffMult: 1.0 }
+    ? { id: `s_${Math.round(strandOpts * 100)}`, phase: strandOpts, restOffset: strandOpts * 0.45, archRoot: 0, liftMult: 1.0, gravMult: 1.0, stiffMult: 1.0 }
     : {
         id: strandOpts.id || 'main',
         phase: strandOpts.phase || 0,
         restOffset: strandOpts.restOffset || 0,
+        archRoot: strandOpts.archRoot || 0,
         liftMult: strandOpts.liftMult ?? 1.0,
         gravMult: strandOpts.gravMult ?? 1.0,
         stiffMult: strandOpts.stiffMult ?? 1.0
@@ -3774,34 +3775,31 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
       const rawSpeed = Math.hypot(rawVx, rawVy);
 
       // Wygładzenie prędkości (filtr dolnoprzepustowy), aby mikro-drgania pozycji nie szarpały włosami
-      const velBlend = Math.min(1.0, phys.dt * 14.0);
+      const velBlend = Math.min(1.0, phys.dt * 12.0);
       phys.smoothVx += (rawVx - phys.smoothVx) * velBlend;
       phys.smoothVy += (rawVy - phys.smoothVy) * velBlend;
 
       phys.flipImpulse = 0;
       if (phys.lastFacing !== currentFacingDir) {
-        // Obrót w miejscu daje tylko bardzo miękkie ułożenie włosów; mocniejszy impuls tylko w pełnym biegu
-        phys.flipImpulse = 0.20 + Math.min(0.80, rawSpeed * 0.25);
+        phys.flipImpulse = 0.15 + Math.min(0.65, rawSpeed * 0.20);
         phys.lastFacing = currentFacingDir;
-        // Przy obrocie odwracamy znak wygładzonej prędkości względnej
-        phys.smoothVx = -phys.smoothVx * 0.5;
+        phys.smoothVx = -phys.smoothVx * 0.4;
       }
 
       phys.extImpulse = p._hairImpulse || 0;
       p._hairImpulse = 0;
 
       const curBob = (p && p.headBob) || 0;
-      // Head-bob wpływa na włosy tylko podczas wyraźnego biegu (ignorujemy oddech w staniu i drobny krok)
-      const bobActivity = Math.min(1.0, Math.max(0, rawSpeed - 0.85) * 0.45);
+      const bobActivity = Math.min(1.0, Math.max(0, rawSpeed - 1.1) * 0.40);
       phys.dBob = (curBob - phys.lastHeadBob) * bobActivity;
       phys.lastHeadBob = curBob;
 
       phys.dvY = rawVy - phys.lastVy;
       phys.lastVy = rawVy;
 
-      const effSpeed = Math.hypot(applyHairDeadzone(phys.smoothVx, 0.42), applyHairDeadzone(phys.smoothVy, 0.42));
-      const previewFlow = p._isCreatorPreview ? 0.45 : 0;
-      const waveSpeed = p.isJetpacking ? 10.5 : (1.4 + Math.min(7.5, (effSpeed + previewFlow) * 1.45));
+      const effSpeed = Math.hypot(applyHairDeadzone(phys.smoothVx, 0.45), applyHairDeadzone(phys.smoothVy, 0.50));
+      const previewFlow = p._isCreatorPreview ? 0.35 : 0;
+      const waveSpeed = 1.2 + Math.min(7.0, (effSpeed + previewFlow) * 1.35);
       phys.waveTime += phys.dt * waveSpeed;
     }
   }
@@ -3810,7 +3808,10 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
   let strand = phys.strands[opts.id];
   if (!strand || !strand.thetas || strand.thetas.length !== NUM_SEGS) {
     strand = {
-      thetas: restProfile.map((t, idx) => t + opts.restOffset * (0.45 + idx * 0.14)),
+      thetas: restProfile.map((t, idx) => {
+        const archAdd = opts.archRoot * Math.max(0, 1.0 - idx * 0.42);
+        return t + archAdd + opts.restOffset * (0.45 + idx * 0.14);
+      }),
       omegas: new Array(NUM_SEGS).fill(0),
       lastFrameId: -1
     };
@@ -3822,145 +3823,111 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
     strand.lastFrameId = phys.frameId;
     const dt = phys.dt;
 
-    // Miękki impuls przy obrocie postaci
     if (phys.flipImpulse > 0) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += 1.65 * phys.flipImpulse * opts.liftMult * (0.20 + i * 0.25);
+        strand.omegas[i] += 1.35 * phys.flipImpulse * opts.liftMult * (0.18 + i * 0.22);
       }
     }
 
-    // Impuls z obrotu suwakiem w Kreatorze lub odrzutu broni
     if (phys.extImpulse) {
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.40 + i * 0.45);
+        strand.omegas[i] += phys.extImpulse * opts.liftMult * (0.35 + i * 0.40);
       }
     }
 
-    // Impuls bezwładności tylko przy wyraźnym lądowaniu z wysokości lub wybiciu (ignoruje drobne nierówności)
-    if (Math.abs(phys.dvY) > 1.35) {
-      const excessDv = phys.dvY - Math.sign(phys.dvY) * 1.35;
-      const landSnap = Math.max(-3.2, Math.min(3.2, excessDv)) * 0.55 * opts.liftMult;
+    if (Math.abs(phys.dvY) > 1.50) {
+      const excessDv = phys.dvY - Math.sign(phys.dvY) * 1.50;
+      const landSnap = Math.max(-2.8, Math.min(2.8, excessDv)) * 0.45 * opts.liftMult;
       for (let i = 0; i < NUM_SEGS; i++) {
-        strand.omegas[i] += landSnap * (0.20 + i * 0.24);
+        strand.omegas[i] += landSnap * (0.18 + i * 0.22);
       }
     }
 
     const rot = (torsoTilt * currentFacingDir) + headPitch;
+    const effVx = applyHairDeadzone(phys.smoothVx, 0.45);
+    const effVy = applyHairDeadzone(phys.smoothVy, 0.50);
 
-    // Zastosowanie strefy nieczułości (deadzone) – drobny ruch nie wywołuje gwałtownego odchylania włosów
-    const effVx = applyHairDeadzone(phys.smoothVx, 0.42);
-    const effVy = applyHairDeadzone(phys.smoothVy, 0.45) + phys.dBob * 3.2;
-
-    // Bardzo subtelny, naturalny powiew w podglądzie Kreatora (bez sztucznego wichru w spoczynku)
     const breezeVx = p._isCreatorPreview
-      ? (0.18 + Math.sin(now * 0.0018 + opts.phase) * 0.14)
-      : 0;
-    const breezeVy = p._isCreatorPreview
-      ? (Math.sin(now * 0.0014 + opts.phase * 0.7) * 0.06)
+      ? (0.14 + Math.sin(now * 0.0017 + opts.phase) * 0.10)
       : 0;
 
     const totalVx = effVx + breezeVx;
-    const totalVy = effVy + breezeVy;
-    const isFalling = (totalVy > 0.55);
-    const isMovingBackward = (totalVx < -0.15);
+    const isGrounded = !!(p && p.onGround && !p.isJumping);
+    const isJetpacking = !!(p && p.isJetpacking);
+
+    // Włosy unoszą się do góry WYŁĄCZNIE podczas rzeczywistego swobodnego spadania w dół (vy > 1.15, bez jetpacka i nie na ziemi).
+    // Podczas zawisu w powietrzu, lotu na jetpacku, wznoszenia czy chodzenia/lotu do tyłu włosy NIGDY nie są ciągnięte w górę!
+    const fallSpeed = (!isGrounded && !isJetpacking && phys.smoothVy > 1.15)
+      ? (phys.smoothVy - 1.15)
+      : 0;
+    const fallFactor = Math.min(1.0, fallSpeed / 5.0) * Math.min(1.25, opts.liftMult);
 
     const isHeavy = (hairStyle === 'dreadlocks');
-    const baseStiff = (isHeavy ? 11.0 : 12.8) * opts.stiffMult;
-    const damping = isHeavy ? 0.86 : 0.88;
+    const baseStiff = (isHeavy ? 11.5 : 13.2) * opts.stiffMult;
+    const damping = isHeavy ? 0.85 : 0.87;
 
     for (let i = 0; i < NUM_SEGS; i++) {
       const segProgress = i / (NUM_SEGS - 1); // 0.0 u nasady -> 1.0 na końcówce
-      const segLeverage = 0.55 + segProgress * 0.95;
 
-      // 1. Grawitacja (ciągnie pionowo w dół: +Y)
-      const gravY = 0.88 * opts.gravMult * (1.0 - segProgress * 0.16);
+      // 1. Kąt spoczynkowy wzdłuż głowy/karku skorygowany o pochylenie głowy (-rot), aby włosy wisiały pionowo w dół zgodnie z grawitacją
+      const archAdd = opts.archRoot * Math.max(0, 1.0 - i * 0.42);
+      let targetTheta = restProfile[i] + archAdd + opts.restOffset * (0.45 + segProgress * 0.55) - rot * (0.45 + segProgress * 0.40);
 
-      // 2. Opór powietrza w poziomie:
-      // - Ruch do przodu (totalVx > 0): pęd powietrza odchyla włosy w tył (-X)
-      // - Ruch do tyłu (totalVx < 0): pęd powietrza zza pleców pcha dolne segmenty włosów i kosmyki boczne w przód (+X)!
-      const backClearance = -(0.32 + Math.max(0, opts.restOffset) * 0.40) * (1.0 - segProgress * 0.35);
-      let airDragX = 0;
-      if (totalVx >= 0) {
-        airDragX = -totalVx * 0.58 * opts.liftMult * segLeverage;
-      } else {
-        // Przy ruchu do tyłu nasada na potylicy (i=0) przylega do karku, a środkowe i dolne odcinki (i>=1) zawiewają w przód (+X)
-        const forwardSweepFactor = (i === 0) ? 0.18 : (0.45 + segProgress * 0.85);
-        airDragX = (-totalVx) * 0.52 * opts.liftMult * forwardSweepFactor;
+      // 2. Wpływ ruchu poziomego (przód vs tył):
+      if (totalVx > 0) {
+        // Ruch DO PRZODU: wiatr odchyla pasma w tył za plecy (zwiększa kąt w stronę ~2.4..2.7 rad, ale nigdy powyżej poziomu!)
+        const backBend = Math.min(0.82, totalVx * 0.19 * opts.liftMult) * (0.35 + segProgress * 0.75);
+        targetTheta += backBend;
+      } else if (totalVx < 0) {
+        // Ruch / lot DO TYŁU: wiatr wieje zza pleców – włosy nadal wiszą W DÓŁ pod działaniem grawitacji,
+        // a ich środkowe i dolne odcinki miękko podwijają się w przód wzdłuż szyi i obojczyka (kąt ~1.32..1.65 rad, bez unoszenia w górę!)
+        const forwardSweep = Math.min(0.38, Math.abs(totalVx) * 0.12 * opts.liftMult) * (0.15 + segProgress * 0.85);
+        targetTheta -= forwardSweep;
       }
 
-      // Podczas szybkiego spadania (totalVy > 0.55) pęd powietrza od dołu lekko rozchyla pasma
-      if (isFalling && !isMovingBackward) {
-        airDragX -= (totalVy - 0.55) * (0.20 + Math.max(-0.08, opts.restOffset) * 0.45) * opts.liftMult * (0.5 + segProgress * 0.6);
+      // 3. Wpływ ruchu pionowego:
+      if (fallFactor > 0) {
+        // SWOBODNE SPADANIE W DÓŁ: powietrze od dołu podwiewa pasma do góry (w stronę ~3.2..4.1 rad)
+        const upwardBillow = fallFactor * (0.55 + segProgress * 1.25);
+        targetTheta += upwardBillow;
+      } else if (effVy < -0.25 || isJetpacking) {
+        // WZNOSZENIE W GÓRĘ / LOT NA JETPACKU / ZAWIS: pęd powietrza i grawitacja ściągają pasma w dół (w stronę pionu ~1.60 rad)
+        const verticalDownTheta = Math.PI * 0.52 - rot * 0.75 + opts.restOffset * 0.25;
+        const pullDownWeight = isJetpacking
+          ? Math.min(0.35, 0.12 + Math.max(0, -effVy) * 0.06)
+          : Math.min(0.45, Math.max(0, -effVy) * 0.10);
+        targetTheta += (verticalDownTheta - targetTheta) * pullDownWeight * (0.35 + segProgress * 0.65);
       }
 
-      // 3. Opór powietrza w pionie:
-      // - Podczas SPADANIA (totalVy > 0): ciąg powietrza od dołu unosi włosy do góry (-Y)
-      // - Podczas SKOKU W GÓRĘ (totalVy < 0): pęd powietrza ciągnie włosy w dół (+Y)
-      // - Podczas BIEGU DO PRZODU: siła nośna lekko unosi pasma z tyłu (-Y); przy biegu do tyłu wiatr dociska je wzdłuż szyi/obojczyka
-      let airDragY = 0;
-      if (totalVy > 0) {
-        airDragY = -totalVy * 0.92 * opts.liftMult * (0.75 + segProgress * 0.75);
-      } else {
-        airDragY = -totalVy * 0.45 * opts.liftMult * segLeverage;
-      }
-      const runLiftY = (totalVx > 0)
-        ? (-totalVx * 0.20 * opts.liftMult * (0.45 + segProgress * 0.65))
-        : (Math.abs(totalVx) * 0.08 * segProgress);
-      const jetpackDownwashY = (p && p.isJetpacking) ? (-1.30 * opts.liftMult * segLeverage) : 0;
-
-      const worldFx = backClearance + airDragX;
-      const worldFy = gravY + airDragY + runLiftY + jetpackDownwashY;
-
-      // Transformacja wektora sił do lokalnego układu współrzędnych głowy
-      const localFx = worldFx * Math.cos(rot) + worldFy * Math.sin(rot);
-      const localFy = -worldFx * Math.sin(rot) + worldFy * Math.cos(rot);
-
-      // Ciągłe wyznaczenie kąta bez przeskoku na granicy +/-PI:
-      // - [0.22*PI .. 0.50*PI]: zawiewanie w PRZÓD i w dół (gdy postać porusza się do tyłu!)
-      // - [0.50*PI]: pionowo w dół (spoczynek)
-      // - [0.50*PI .. 1.00*PI]: zawiewanie w TYŁ (gdy postać biegnie do przodu)
-      // - [1.00*PI .. 1.62*PI]: podwiewanie DO GÓRY podczas spadania (zarówno w przód, pionowo, jak i do tyłu!)
-      let forceTheta = Math.atan2(localFy, localFx);
-      if (isFalling && worldFy < 0) {
-        // Gdy postać spada i siła wypadkowa skierowana jest w górę (-Y), pasma unoszą się górą (przez tył/czubek głowy: PI .. 1.62*PI)
-        if (forceTheta < 0) forceTheta += Math.PI * 2;
-      } else {
-        // Na ziemi lub podczas wznoszenia: odwijamy tylko kąty za plecami (< -0.5*PI), zostawiając dodatnie kąty przednie (0.20*PI..0.50*PI) dla ruchu w tył!
-        if (forceTheta < -Math.PI * 0.5) forceTheta += Math.PI * 2;
-        forceTheta = Math.max(Math.PI * 0.20, Math.min(Math.PI * 1.15, forceTheta));
-      }
-
-      // W spoczynku włosy trzymają naturalny profil S skorygowany o pochylenie głowy (-rot * 0.72), by wisieć zgodnie z grawitacją
-      const restAngle = restProfile[i] + opts.restOffset * (0.50 + segProgress * 0.60) - rot * (0.35 + segProgress * 0.45);
-      const effAirSpeed = Math.hypot(totalVx, totalVy) + ((p && p.isJetpacking) ? 2.2 : 0);
-      const motionBlend = Math.min(1.0, effAirSpeed * 0.52);
-      const rootFreedom = (i === 0) ? 0.58 : (0.82 + segProgress * 0.18);
-
-      let targetTheta = restAngle + (forceTheta - restAngle) * motionBlend * rootFreedom;
-
-      // Fala sinusoidalna proporcjonalna do rzeczywistego ruchu (w staniu prawie zerowa, żywa w biegu i podczas spadania)
-      const waveAmp = (0.008 + Math.min(0.26, effAirSpeed * 0.075)) * opts.liftMult * (0.20 + segProgress * 0.90);
+      // 4. Delikatna fala S proporcjonalna do prędkości ruchu (w staniu i drobnym ruchu praktycznie zerowa)
+      const activeMotion = Math.hypot(totalVx, effVy) + fallSpeed;
+      const waveAmp = (0.005 + Math.min(0.20, activeMotion * 0.055)) * opts.liftMult * (0.18 + segProgress * 0.85);
       const sWave = Math.sin(phys.waveTime + opts.phase * 2.4 - i * 0.95) * waveAmp
-                  + Math.cos(phys.waveTime * 1.60 + opts.phase * 1.7 - i * 1.30) * (waveAmp * 0.35);
+                  + Math.cos(phys.waveTime * 1.55 + opts.phase * 1.7 - i * 1.25) * (waveAmp * 0.32);
 
-      targetTheta += sWave;
+      targetTheta += sWave - phys.dBob * (0.35 + segProgress * 0.55);
 
-      // Miękkie przekazywanie krzywizny z poprzedniego segmentu
+      // 5. Miękkie przekazywanie krzywizny z poprzedniego segmentu
       if (i > 0) {
-        const naturalDelta = (restProfile[i] - restProfile[i - 1]) * (1.0 - motionBlend * 0.70);
-        const parentFollow = strand.thetas[i - 1] + naturalDelta;
-        targetTheta = targetTheta * 0.76 + parentFollow * 0.24;
+        const prevArch = opts.archRoot * Math.max(0, 1.0 - (i - 1) * 0.42);
+        const naturalDelta = (restProfile[i] + archAdd) - (restProfile[i - 1] + prevArch);
+        const parentFollow = strand.thetas[i - 1] + naturalDelta * (1.0 - fallFactor * 0.75);
+        targetTheta = targetTheta * 0.75 + parentFollow * 0.25;
       }
 
-      // Dolny limit pozwala dolnym segmentom zawiewać do przodu (do 0.22*PI) podczas ruchu w tył,
-      // a górny limit pozwala na wysokie podwiewanie do góry (do 1.60*PI) podczas spadania
-      const minTheta = (i === 0) ? (Math.PI * 0.44) : Math.max(Math.PI * 0.22, Math.PI * (0.42 - segProgress * 0.22));
-      const maxTheta = (i === 0) ? (Math.PI * 1.32) : (Math.PI * 1.60);
+      // Bezpieczne limity kątowe:
+      // - minTheta (~1.26 rad = 72°): dolne pasma przy ruchu w tył zawiewają lekko w przód, ale zawsze wiszą w dół!
+      // - maxTheta: bez spadania max ~2.75 rad (poniżej poziomu!), a podczas spadania do ~4.25 rad (podwiewanie w górę)
+      const minTheta = (i === 0) ? (Math.PI * 0.46) : (Math.PI * (0.44 - segProgress * 0.05));
+      const maxAllowed = (fallFactor > 0.01)
+        ? (Math.PI * (0.95 + fallFactor * 0.42))
+        : (Math.PI * 0.88);
+      const maxTheta = (i === 0) ? Math.min(Math.PI * 1.18, maxAllowed) : maxAllowed;
       targetTheta = Math.max(minTheta, Math.min(maxTheta, targetTheta));
 
-      const segStiff = baseStiff * (1.10 - segProgress * 0.30);
+      const segStiff = baseStiff * (1.10 - segProgress * 0.28);
       strand.omegas[i] = (strand.omegas[i] + (targetTheta - strand.thetas[i]) * segStiff * dt) * damping;
-      strand.thetas[i] += strand.omegas[i] * dt * 6.6;
+      strand.thetas[i] += strand.omegas[i] * dt * 6.4;
 
       if (strand.thetas[i] < minTheta) {
         strand.thetas[i] = minTheta;
@@ -4294,128 +4261,117 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     }
 
   } else if (style === 'long_flowing') {
-    // 8 NIEZALEŻNYCH FRAGMENTÓW (PASM) ROZPUSZCZONYCH WŁOSÓW – każde z własną bezwładnością, wagą i siłą nośną:
-    // Warstwa głęboka (pod spodem, przy karku i potylicy)
+    // 1. Warstwa głębokiego podkładu (pod spodem przy szyi/karku oraz u samej nasady czaszki, by nie prześwitywała łysa skóra)
     const deepNape = updateAndBuildHairChain(
       p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -4.3, 0.3, 2.40, { id: 'lf_0_nape', phase: 0.0, restOffset: -0.16, liftMult: 0.78, gravMult: 1.15, stiffMult: 0.85 }
+      -3.8, -1.2, 2.45, { id: 'lf_0_nape', phase: 0.0, restOffset: -0.14, archRoot: 0.05, liftMult: 0.80, gravMult: 1.12, stiffMult: 0.88 }
     );
     const deepBack = updateAndBuildHairChain(
       p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -5.4, -1.8, 2.65, { id: 'lf_1_deepback', phase: 0.85, restOffset: -0.06, liftMult: 0.90, gravMult: 1.06, stiffMult: 0.92 }
+      -5.2, -3.2, 2.65, { id: 'lf_1_deepback', phase: 0.7, restOffset: -0.04, archRoot: 0.12, liftMult: 0.90, gravMult: 1.05, stiffMult: 0.92 }
     );
-    const crownBack = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -5.7, -4.5, 2.70, { id: 'lf_2_crown', phase: 1.75, restOffset: 0.22, liftMult: 1.28, gravMult: 0.82, stiffMult: 1.08 }
-    );
-
-    // Warstwa środkowa (główna masa rozdzielających się pasm)
-    const midLower = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -3.8, -0.8, 2.50, { id: 'lf_3_midlow', phase: 2.60, restOffset: -0.10, liftMult: 0.86, gravMult: 1.04, stiffMult: 0.90 }
-    );
-    const midCore = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -5.1, -3.0, 2.72, { id: 'lf_4_midcore', phase: 3.40, restOffset: 0.08, liftMult: 1.08, gravMult: 0.94, stiffMult: 1.00 }
-    );
-
-    drawTaperedHairStrand(ctx, deepNape.pts, deepNape.norms, [1.6, 1.85, 1.7, 1.35, 0.95, 0.5, 0.0], pal.dark, '#09090b', null);
-    drawTaperedHairStrand(ctx, deepBack.pts, deepBack.norms, [1.8, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0], pal.dark, '#09090b', null);
-    drawTaperedHairStrand(ctx, crownBack.pts, crownBack.norms, [1.7, 2.0, 1.85, 1.5, 1.1, 0.58, 0.0], pal.base, '#09090b', pal.highlight);
-    drawTaperedHairStrand(ctx, midLower.pts, midLower.norms, [1.6, 1.9, 1.75, 1.4, 1.0, 0.52, 0.0], pal.base, '#09090b', null);
-    drawTaperedHairStrand(ctx, midCore.pts, midCore.norms, [1.9, 2.2, 2.0, 1.65, 1.2, 0.62, 0.0], hairGrad, '#09090b', pal.highlight);
+    drawTaperedHairStrand(ctx, deepNape.pts, deepNape.norms, [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], pal.dark, '#09090b', null);
+    drawTaperedHairStrand(ctx, deepBack.pts, deepBack.norms, [1.9, 2.2, 2.05, 1.7, 1.2, 0.62, 0.0], pal.dark, '#09090b', null);
 
     if (!hasHelmet) {
-      // Czapa włosów na górze i boku głowy, schodząca przez skroń i zakrywająca ucho
+      // Baza u nasady sklepienia czaszki (rysowana POD pasmami, aby pasma były widoczne na CAŁEJ głowie od samego czubka!)
       ctx.beginPath();
-      ctx.moveTo(-5.2, 2.6);
-      ctx.quadraticCurveTo(-6.8, -0.4, -6.5, -3.8);
-      ctx.quadraticCurveTo(-5.8, -8.3, -0.9, -8.5);
-      ctx.quadraticCurveTo(3.3, -8.2, 4.6, -5.5);
-      ctx.lineTo(5.0, -4.1);
-      ctx.quadraticCurveTo(2.6, -4.2, 1.1, -2.8);
-      ctx.quadraticCurveTo(0.2, -0.8, -0.8, 1.2);
-      ctx.quadraticCurveTo(-2.8, 2.2, -5.2, 2.6);
+      ctx.moveTo(-5.6, -1.5);
+      ctx.quadraticCurveTo(-6.6, -4.5, -5.6, -7.2);
+      ctx.quadraticCurveTo(-4.2, -8.6, -0.8, -8.6);
+      ctx.quadraticCurveTo(2.8, -8.4, 4.4, -5.8);
+      ctx.lineTo(4.7, -4.4);
+      ctx.quadraticCurveTo(2.2, -4.4, 0.4, -3.2);
+      ctx.quadraticCurveTo(-2.2, -1.8, -5.6, -1.5);
       ctx.closePath();
-      ctx.fillStyle = hairGrad;
+      ctx.fillStyle = pal.dark;
       ctx.fill();
       ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = 0.85;
       ctx.stroke();
     }
 
-    // Warstwa wierzchnia i boczna: 3 niezależne pasma na boku głowy, uchu, skroni i koronie
-    const sideEarLock = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -2.5, -1.8, 2.48, { id: 'lf_5_sideear', phase: 4.25, restOffset: -0.02, liftMult: 1.14, gravMult: 0.90, stiffMult: 1.04 }
-    );
-    const flyawayTop = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -4.6, -5.0, 2.45, { id: 'lf_6_flytop', phase: 5.10, restOffset: 0.28, liftMult: 1.42, gravMult: 0.72, stiffMult: 1.18 }
-    );
-    const templeLock = updateAndBuildHairChain(
-      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
-      -0.6, -2.2, 2.05, { id: 'lf_7_temple', phase: 5.85, restOffset: -0.18, liftMult: 1.22, gravMult: 0.86, stiffMult: 1.10 }
-    );
+    // 2. 8 NIEZALEŻNYCH PASM ROZMIESZCZONYCH NA CAŁEJ GŁOWIE (od szczytu czoła, przez czubek głowy, skroń i bok, aż po potylicę)
+    const strandsOnHead = hasHelmet
+      ? [
+          // Gdy założony jest hełm, pasma wypływają spod dolnej krawędzi hełmu na bokach i tyle głowy
+          { id: 'lf_h1', x: -5.4, y: -3.2, len: 2.65, widths: [1.8, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.14, archRoot: 0.10, liftMult: 1.12 } },
+          { id: 'lf_h2', x: -4.2, y: -2.4, len: 2.60, widths: [1.8, 2.1, 1.9, 1.55, 1.1, 0.58, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.4, restOffset: 0.02, archRoot: 0.06, liftMult: 1.00 } },
+          { id: 'lf_h3', x: -2.4, y: -2.0, len: 2.45, widths: [1.65, 1.95, 1.8, 1.45, 1.0, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.6, restOffset: -0.06, archRoot: 0.04, liftMult: 1.08 } },
+          { id: 'lf_h4', x: -0.6, y: -2.2, len: 2.15, widths: [1.2, 1.45, 1.3, 1.0, 0.7, 0.36, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 4.8, restOffset: -0.14, archRoot: 0.02, liftMult: 1.15 } }
+        ]
+      : [
+          // Tylna górna potylica i korona głowy
+          { id: 'lf_2_backtop',   x: -4.8, y: -6.4, len: 3.05, widths: [1.7, 2.05, 1.95, 1.6, 1.15, 0.6, 0.0],  col: pal.base, hl: null,          opts: { phase: 1.4, restOffset: 0.16,  archRoot: 0.24, liftMult: 1.18, gravMult: 0.90, stiffMult: 1.04 } },
+          { id: 'lf_3_backmid',   x: -5.4, y: -4.4, len: 2.90, widths: [1.75, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 2.1, restOffset: 0.08,  archRoot: 0.16, liftMult: 1.06, gravMult: 0.96, stiffMult: 0.98 } },
+          // Szczyt czaszki (czubek głowy) – pasma biegnące przez całą wysokość głowy
+          { id: 'lf_4_crowntop',  x: -2.4, y: -7.7, len: 3.25, widths: [1.8, 2.15, 2.0, 1.65, 1.2, 0.62, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 2.9, restOffset: 0.10,  archRoot: 0.36, liftMult: 1.22, gravMult: 0.88, stiffMult: 1.06 } },
+          { id: 'lf_5_parietal',  x: -3.2, y: -5.2, len: 2.95, widths: [1.7, 2.0, 1.85, 1.5, 1.08, 0.56, 0.0],  col: pal.base, hl: null,          opts: { phase: 3.6, restOffset: -0.02, archRoot: 0.20, liftMult: 0.96, gravMult: 1.00, stiffMult: 0.95 } },
+          // Środek góry głowy i bok czaszki (przez ucho)
+          { id: 'lf_6_topcenter', x:  0.2, y: -7.6, len: 3.20, widths: [1.75, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 4.3, restOffset: 0.04,  archRoot: 0.42, liftMult: 1.15, gravMult: 0.92, stiffMult: 1.02 } },
+          { id: 'lf_7_sideear',   x: -1.2, y: -5.3, len: 2.85, widths: [1.65, 1.95, 1.8, 1.45, 1.02, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 5.0, restOffset: -0.06, archRoot: 0.22, liftMult: 1.08, gravMult: 0.95, stiffMult: 1.00 } },
+          // Przód góry głowy (znad czoła) oraz skroń (za okiem/brwią, przed uchem)
+          { id: 'lf_8_forehead',  x:  2.5, y: -6.5, len: 3.05, widths: [1.5, 1.85, 1.75, 1.4, 1.0, 0.52, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 5.7, restOffset: -0.04, archRoot: 0.48, liftMult: 1.26, gravMult: 0.86, stiffMult: 1.08 } },
+          { id: 'lf_9_temple',    x:  1.2, y: -4.5, len: 2.55, widths: [1.25, 1.5, 1.38, 1.1, 0.76, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 6.4, restOffset: -0.14, archRoot: 0.24, liftMult: 1.18, gravMult: 0.90, stiffMult: 1.05 } }
+        ];
 
-    drawTaperedHairStrand(ctx, sideEarLock.pts, sideEarLock.norms, [1.65, 1.95, 1.8, 1.45, 1.0, 0.52, 0.0], hairGrad, '#09090b', pal.highlight);
-    drawTaperedHairStrand(ctx, flyawayTop.pts, flyawayTop.norms, [1.15, 1.4, 1.3, 1.05, 0.72, 0.38, 0.0], hairGrad, '#09090b', pal.highlight);
-    if (!hasHelmet) {
-      drawTaperedHairStrand(ctx, templeLock.pts, templeLock.norms, [1.1, 1.35, 1.2, 0.95, 0.65, 0.34, 0.0], hairGrad, '#09090b', pal.highlight);
+    for (let s = 0; s < strandsOnHead.length; s++) {
+      const st = strandsOnHead[s];
+      const chain = updateAndBuildHairChain(
+        p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
+        st.x, st.y, st.len, { id: st.id, ...st.opts }
+      );
+      drawTaperedHairStrand(ctx, chain.pts, chain.norms, st.widths, st.col, '#09090b', st.hl);
     }
 
   } else if (style === 'dreadlocks') {
-    // 6 niezależnych, swobodnie pracujących dredów wyrastających z tyłu oraz z boku głowy (nad uchem)
-    const dreadConfigs = [
-      { id: 'dr_0', x: -5.5, y: -4.4, len: 2.50, phase: 0.0,  restOffset: 0.22,  liftMult: 1.22, col: pal.dark, hl: null },
-      { id: 'dr_1', x: -5.7, y: -2.6, len: 2.60, phase: 1.1,  restOffset: 0.08,  liftMult: 1.06, col: pal.base, hl: null },
-      { id: 'dr_2', x: -4.9, y: -0.6, len: 2.45, phase: 2.2,  restOffset: -0.10, liftMult: 0.86, col: pal.dark, hl: null },
-      { id: 'dr_3', x: -4.3, y: -3.2, len: 2.60, phase: 3.3,  restOffset: 0.14,  liftMult: 1.14, col: hairGrad, hl: pal.highlight },
-      { id: 'dr_4', x: -3.2, y: -1.6, len: 2.50, phase: 4.4,  restOffset: -0.02, liftMult: 0.98, col: pal.base, hl: pal.highlight },
-      { id: 'dr_5', x: -1.8, y: -1.8, len: 2.35, phase: 5.5,  restOffset: -0.14, liftMult: 1.10, col: hairGrad, hl: pal.highlight }
-    ];
+    if (!hasHelmet) {
+      // Podkład sekcji dredów u nasady czaszki (rysowany POD dredami)
+      ctx.beginPath();
+      ctx.moveTo(-5.4, -1.2);
+      ctx.quadraticCurveTo(-6.6, -4.2, -5.6, -7.0);
+      ctx.quadraticCurveTo(-4.2, -8.3, -0.8, -8.3);
+      ctx.quadraticCurveTo(2.8, -8.0, 4.2, -5.4);
+      ctx.quadraticCurveTo(1.8, -4.5, -0.5, -3.2);
+      ctx.quadraticCurveTo(-3.0, -2.0, -5.4, -1.2);
+      ctx.closePath();
+      ctx.fillStyle = pal.dark;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+    }
+
+    // 7 niezależnych dredów rozmieszczonych na całej głowie (od góry/przodu, przez bok i ucho, po potylicę)
+    const dreadConfigs = hasHelmet
+      ? [
+          { id: 'dr_0', x: -5.5, y: -3.4, len: 2.50, phase: 0.0, restOffset: 0.14,  archRoot: 0.08, liftMult: 1.12, col: pal.dark, hl: null },
+          { id: 'dr_1', x: -4.6, y: -2.2, len: 2.55, phase: 1.2, restOffset: 0.04,  archRoot: 0.05, liftMult: 1.02, col: pal.base, hl: pal.highlight },
+          { id: 'dr_2', x: -3.2, y: -1.8, len: 2.45, phase: 2.4, restOffset: -0.04, archRoot: 0.04, liftMult: 0.96, col: hairGrad, hl: pal.highlight },
+          { id: 'dr_3', x: -1.6, y: -1.8, len: 2.35, phase: 3.6, restOffset: -0.12, archRoot: 0.02, liftMult: 1.05, col: hairGrad, hl: pal.highlight }
+        ]
+      : [
+          { id: 'dr_0', x: -4.8, y: -6.4, len: 2.85, phase: 0.0, restOffset: 0.16,  archRoot: 0.24, liftMult: 1.15, col: pal.dark, hl: null },
+          { id: 'dr_1', x: -5.5, y: -3.8, len: 2.70, phase: 0.9, restOffset: 0.06,  archRoot: 0.14, liftMult: 1.02, col: pal.base, hl: null },
+          { id: 'dr_2', x: -4.6, y: -1.4, len: 2.50, phase: 1.8, restOffset: -0.08, archRoot: 0.06, liftMult: 0.88, col: pal.dark, hl: null },
+          { id: 'dr_3', x: -2.2, y: -7.5, len: 3.05, phase: 2.7, restOffset: 0.10,  archRoot: 0.36, liftMult: 1.18, col: hairGrad, hl: pal.highlight },
+          { id: 'dr_4', x: -2.8, y: -4.8, len: 2.75, phase: 3.6, restOffset: 0.00,  archRoot: 0.20, liftMult: 1.00, col: pal.base, hl: pal.highlight },
+          { id: 'dr_5', x:  0.4, y: -7.3, len: 3.00, phase: 4.5, restOffset: 0.02,  archRoot: 0.42, liftMult: 1.14, col: hairGrad, hl: pal.highlight },
+          { id: 'dr_6', x:  1.4, y: -5.4, len: 2.65, phase: 5.4, restOffset: -0.08, archRoot: 0.32, liftMult: 1.10, col: hairGrad, hl: pal.highlight }
+        ];
 
     for (let d = 0; d < dreadConfigs.length; d++) {
       const cfg = dreadConfigs[d];
       const chain = updateAndBuildHairChain(
         p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
         cfg.x, cfg.y, cfg.len,
-        { id: cfg.id, phase: cfg.phase, restOffset: cfg.restOffset, liftMult: cfg.liftMult, gravMult: 1.0, stiffMult: 0.95 }
+        { id: cfg.id, phase: cfg.phase, restOffset: cfg.restOffset, archRoot: cfg.archRoot, liftMult: cfg.liftMult, gravMult: 1.0, stiffMult: 0.95 }
       );
       drawTaperedHairStrand(
         ctx, chain.pts, chain.norms,
         [1.30, 1.48, 1.42, 1.28, 1.02, 0.62, 0.0],
         cfg.col, '#09090b', cfg.hl
       );
-    }
-
-    if (!hasHelmet) {
-      // Sekcje zaplecionych u nasady dredów pokrywające górę oraz bok głowy i przysłaniające ucho
-      ctx.beginPath();
-      ctx.moveTo(-5.2, 2.0);
-      ctx.quadraticCurveTo(-6.7, -1.0, -6.3, -4.4);
-      ctx.quadraticCurveTo(-5.4, -8.1, -1.0, -8.2);
-      ctx.quadraticCurveTo(2.9, -7.9, 4.2, -5.4);
-      ctx.quadraticCurveTo(2.0, -4.5, 0.8, -3.0);
-      ctx.quadraticCurveTo(-0.5, -1.2, -2.0, -0.3);
-      ctx.quadraticCurveTo(-3.6, 0.5, -5.2, 2.0);
-      ctx.closePath();
-      ctx.fillStyle = hairGrad;
-      ctx.fill();
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.9;
-      ctx.stroke();
-
-      ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.75;
-      ctx.beginPath();
-      ctx.moveTo(3.2, -6.4);
-      ctx.quadraticCurveTo(-1.0, -6.6, -5.6, -4.2);
-      ctx.moveTo(1.8, -4.8);
-      ctx.quadraticCurveTo(-1.6, -4.6, -5.4, -2.2);
-      ctx.moveTo(0.5, -3.1);
-      ctx.quadraticCurveTo(-1.8, -2.6, -4.2, -0.8);
-      ctx.stroke();
     }
 
   } else if (style === 'topknot') {

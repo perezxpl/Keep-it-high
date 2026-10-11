@@ -41,7 +41,7 @@ export {
   getPlatformSurfaceY,
   OBSTACLE_RENDERERS,
   normalizeObstacleType
-} from './obstacles.js?v=v80_hair_smooth_directional';
+} from './obstacles.js?v=v81_hair_fullhead_gravity';
 
 export {
   drawMineCaveBackground,
@@ -97,7 +97,7 @@ export {
   activeProjectiles,
   rubbleParticles,
   explosionEffects
-} from './projectiles.js?v=v80_hair_smooth_directional';
+} from './projectiles.js?v=v81_hair_fullhead_gravity';
 
 export {
   drawGround,
@@ -141,17 +141,17 @@ export {
   LOWER_CAVERN_CEILING_Y,
   drawHazardStripes,
   ladders
-} from './world.js?v=v80_hair_smooth_directional';
+} from './world.js?v=v81_hair_fullhead_gravity';
 
 export function drawLadderRungs() {}
 
 export {
   throwTacticalGrenade
-} from './player/actions.js?v=v80_hair_smooth_directional';
+} from './player/actions.js?v=v81_hair_fullhead_gravity';
 
-import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v80_hair_smooth_directional';
+import { ARENA_PLATFORMS, customObstacles } from './obstacles.js?v=v81_hair_fullhead_gravity';
 import { getActiveArena, setActiveArena, ARENAS } from './arenas/index.js';
-import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v80_hair_smooth_directional';
+import { drawSky, LOWER_CAVERN_CEILING_PROFILE } from './world.js?v=v81_hair_fullhead_gravity';
 
 export { getActiveArena, setActiveArena, ARENAS };
 

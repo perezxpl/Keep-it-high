@@ -5,9 +5,9 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
-import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v80_hair_smooth_directional';
-import { ball } from './ball.js?v=v80_hair_smooth_directional';
-import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v80_hair_smooth_directional';
+import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js?v=v81_hair_fullhead_gravity';
+import { ball } from './ball.js?v=v81_hair_fullhead_gravity';
+import { activeArenaId as obstacleArenaId } from './obstacles.js?v=v81_hair_fullhead_gravity';
 
 export function isArena1() {
   const cur = (typeof window !== 'undefined' && window.activeArenaId)

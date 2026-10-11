@@ -1,4 +1,4 @@
-import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v80_hair_smooth_directional';
+import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js?v=v81_hair_fullhead_gravity';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
   initCanvas, resize, updateCamera, updateDistance, clampCamera,
@@ -14,7 +14,7 @@ import {
   getCaveCeilingY,
   setCameraMouseScreenPos,
   spawnKnockedHelmet, spawnVestShreds
-} from './world.js?v=v80_hair_smooth_directional';
+} from './world.js?v=v81_hair_fullhead_gravity';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
@@ -22,12 +22,12 @@ import {
   updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
-} from './player.js?v=v80_hair_smooth_directional';
-import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v80_hair_smooth_directional';
-import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v80_hair_smooth_directional';
+} from './player.js?v=v81_hair_fullhead_gravity';
+import { updateProjectiles, drawProjectiles } from './projectiles.js?v=v81_hair_fullhead_gravity';
+import { renderArenaBackground, renderArenaForeground, getActiveArena } from './renderer.js?v=v81_hair_fullhead_gravity';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
-} from './ball.js?v=v80_hair_smooth_directional';
+} from './ball.js?v=v81_hair_fullhead_gravity';
 import {
   obstacles, checkObstacleCollisions, checkPlayerPlatformLanding, drawObstacles, resetObstacles,
   updateProceduralObstacles, updateProceduralBirds, switchArena, activeArenaId,
@@ -35,25 +35,25 @@ import {
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
   updateMovableObstacles, resetArena
-} from './obstacles.js?v=v80_hair_smooth_directional';
-import { CLASSES } from './classes/index.js?v=v80_hair_smooth_directional';
-import { bot, botKeys, updateBotBrain } from './bot.js?v=v80_hair_smooth_directional';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v80_hair_smooth_directional';
+} from './obstacles.js?v=v81_hair_fullhead_gravity';
+import { CLASSES } from './classes/index.js?v=v81_hair_fullhead_gravity';
+import { bot, botKeys, updateBotBrain } from './bot.js?v=v81_hair_fullhead_gravity';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js?v=v81_hair_fullhead_gravity';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   isChatActive, openChat, closeChat, updateCursorVisibility
-} from './network.js?v=v80_hair_smooth_directional';
+} from './network.js?v=v81_hair_fullhead_gravity';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
   handleDynamicActionButtonPress, handleSlideProneButtonPress, triggerRightStickKick,
   checkRightStickFlickOrTap
-} from './mobileControls.js?v=v80_hair_smooth_directional';
-import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v80_hair_smooth_directional';
-import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v80_hair_smooth_directional';
+} from './mobileControls.js?v=v81_hair_fullhead_gravity';
+import { DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js?v=v81_hair_fullhead_gravity';
+import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js?v=v81_hair_fullhead_gravity';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);

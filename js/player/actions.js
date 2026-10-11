@@ -5,8 +5,8 @@
 
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
-import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v80_hair_smooth_directional';
-import { spawnAeroSuperGrenade } from '../projectiles.js?v=v80_hair_smooth_directional';
+import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js?v=v81_hair_fullhead_gravity';
+import { spawnAeroSuperGrenade } from '../projectiles.js?v=v81_hair_fullhead_gravity';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
