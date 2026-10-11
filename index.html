@@ -13,28 +13,28 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/uiManager.js": "./js/uiManager.js?v=v76_anatomy_boots_fix",
-      "./js/config.js": "./js/config.js?v=v76_anatomy_boots_fix",
-      "./js/classes/index.js": "./js/classes/index.js?v=v76_anatomy_boots_fix",
-      "./js/classes/aero.js": "./js/classes/aero.js?v=v76_anatomy_boots_fix",
-      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v76_anatomy_boots_fix",
-      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v76_anatomy_boots_fix",
-      "./js/world.js": "./js/world.js?v=v76_anatomy_boots_fix",
-      "./js/player.js": "./js/player.js?v=v76_anatomy_boots_fix",
-      "./js/player/index.js": "./js/player/index.js?v=v76_anatomy_boots_fix",
-      "./js/player/renderer.js": "./js/player/renderer.js?v=v76_anatomy_boots_fix",
-      "./js/player/actions.js": "./js/player/actions.js?v=v76_anatomy_boots_fix",
-      "./js/player/death.js": "./js/player/death.js?v=v76_anatomy_boots_fix",
-      "./js/weapons.js": "./js/weapons.js?v=v76_anatomy_boots_fix",
-      "./js/ball.js": "./js/ball.js?v=v76_anatomy_boots_fix",
-      "./js/obstacles.js": "./js/obstacles.js?v=v76_anatomy_boots_fix",
-      "./js/arenas/index.js": "./js/arenas/index.js?v=v76_anatomy_boots_fix",
-      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v76_anatomy_boots_fix",
-      "./js/projectiles.js": "./js/projectiles.js?v=v76_anatomy_boots_fix",
-      "./js/renderer.js": "./js/renderer.js?v=v76_anatomy_boots_fix",
-      "./js/network.js": "./js/network.js?v=v76_anatomy_boots_fix",
-      "./js/bot.js": "./js/bot.js?v=v76_anatomy_boots_fix",
-      "./js/mobileControls.js": "./js/mobileControls.js?v=v76_anatomy_boots_fix"
+      "./js/uiManager.js": "./js/uiManager.js?v=v77_hair_creator",
+      "./js/config.js": "./js/config.js?v=v77_hair_creator",
+      "./js/classes/index.js": "./js/classes/index.js?v=v77_hair_creator",
+      "./js/classes/aero.js": "./js/classes/aero.js?v=v77_hair_creator",
+      "./js/classes/playmaker.js": "./js/classes/playmaker.js?v=v77_hair_creator",
+      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v77_hair_creator",
+      "./js/world.js": "./js/world.js?v=v77_hair_creator",
+      "./js/player.js": "./js/player.js?v=v77_hair_creator",
+      "./js/player/index.js": "./js/player/index.js?v=v77_hair_creator",
+      "./js/player/renderer.js": "./js/player/renderer.js?v=v77_hair_creator",
+      "./js/player/actions.js": "./js/player/actions.js?v=v77_hair_creator",
+      "./js/player/death.js": "./js/player/death.js?v=v77_hair_creator",
+      "./js/weapons.js": "./js/weapons.js?v=v77_hair_creator",
+      "./js/ball.js": "./js/ball.js?v=v77_hair_creator",
+      "./js/obstacles.js": "./js/obstacles.js?v=v77_hair_creator",
+      "./js/arenas/index.js": "./js/arenas/index.js?v=v77_hair_creator",
+      "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v77_hair_creator",
+      "./js/projectiles.js": "./js/projectiles.js?v=v77_hair_creator",
+      "./js/renderer.js": "./js/renderer.js?v=v77_hair_creator",
+      "./js/network.js": "./js/network.js?v=v77_hair_creator",
+      "./js/bot.js": "./js/bot.js?v=v77_hair_creator",
+      "./js/mobileControls.js": "./js/mobileControls.js?v=v77_hair_creator"
     }
   }
   </script>
@@ -1757,32 +1757,131 @@
       background: rgba(2, 6, 23, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
-      padding: 14px;
+      padding: 10px 12px;
       min-height: 0;
       overflow-y: auto;
+      gap: 10px;
     }
 
-    .creator-options-title {
-      font-family: 'Orbitron', monospace;
-      font-size: 13px;
-      font-weight: 800;
-      color: #00e5ff;
-      letter-spacing: 0.8px;
-      margin: 0 0 8px 0;
-      padding-bottom: 6px;
+    .creator-tabs-bar {
+      display: flex;
+      gap: 6px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 6px;
+      flex-shrink: 0;
     }
 
-    .creator-options-placeholder {
+    .creator-tab-btn {
+      padding: 6px 14px;
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 7px;
+      cursor: pointer !important;
+      transition: all 0.16s ease;
+    }
+
+    .creator-tab-btn:hover {
+      color: #f8fafc;
+      border-color: rgba(0, 229, 255, 0.35);
+    }
+
+    .creator-tab-btn.active {
+      color: #00e5ff;
+      background: rgba(0, 229, 255, 0.14);
+      border-color: rgba(0, 229, 255, 0.55);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.22);
+    }
+
+    .creator-tab-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       flex: 1;
+      min-height: 0;
+      justify-content: space-between;
+    }
+
+    .creator-hair-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      align-content: start;
+    }
+
+    .creator-hair-tile {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: radial-gradient(circle at 50% 55%, rgba(30, 41, 59, 0.75), rgba(2, 6, 23, 0.92));
+      border: 1.5px solid rgba(148, 163, 184, 0.22);
+      border-radius: 10px;
+      padding: 2px;
+      cursor: pointer !important;
       display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      color: #94a3b8;
-      font-size: 13px;
-      line-height: 1.5;
-      padding: 12px;
+      transition: all 0.15s ease;
+      overflow: hidden;
+    }
+
+    .creator-hair-tile:hover {
+      border-color: rgba(0, 229, 255, 0.55);
+      transform: translateY(-1px);
+      background: radial-gradient(circle at 50% 55%, rgba(0, 229, 255, 0.12), rgba(2, 6, 23, 0.92));
+    }
+
+    .creator-hair-tile.active {
+      border-color: #00e5ff;
+      background: radial-gradient(circle at 50% 55%, rgba(0, 229, 255, 0.20), rgba(2, 6, 23, 0.95));
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 229, 255, 0.18);
+    }
+
+    .creator-hair-tile canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .creator-hair-color-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .creator-color-swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+      padding: 0;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+    }
+
+    .creator-color-swatch:hover {
+      transform: scale(1.1);
+      border-color: rgba(255, 255, 255, 0.75);
+    }
+
+    .creator-color-swatch.active {
+      border-color: #00e5ff;
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.65), inset 0 1px 3px rgba(0, 0, 0, 0.4);
+      transform: scale(1.12);
     }
 
     @media (max-height: 520px) {
@@ -1809,6 +1908,28 @@
       .creator-class-label {
         margin-top: 4px;
         font-size: 10px;
+      }
+      .creator-options-col {
+        padding: 7px 10px;
+        gap: 6px;
+      }
+      .creator-tabs-bar {
+        padding-bottom: 4px;
+      }
+      .creator-tab-btn {
+        padding: 4px 10px;
+        font-size: 10px;
+      }
+      .creator-hair-grid {
+        gap: 5px;
+      }
+      .creator-hair-color-bar {
+        padding: 5px 8px;
+        gap: 6px;
+      }
+      .creator-color-swatch {
+        width: 22px;
+        height: 22px;
       }
       .creator-modal-box .settings-footer {
         padding: 8px 14px;
@@ -2502,11 +2623,18 @@
               <div class="creator-class-label" id="creator-preview-label">KLASA LEKKA: RAPTOR</div>
             </div>
 
-            <!-- Prawa kolumna: Panel opcji edycji (do wspólnego ustalenia w kolejnym kroku) -->
+            <!-- Prawa kolumna: Panel zakładek edycji wyglądu -->
             <div class="creator-options-col">
-              <h3 class="creator-options-title">OPCJE EDYCJI WYGLĄDU</h3>
-              <div class="creator-options-placeholder" id="creator-options-container">
-                Miejsce na opcje modyfikacji postaci (kolejny krok).
+              <div class="creator-tabs-bar">
+                <button class="creator-tab-btn active" type="button" data-creator-tab="hair">WŁOSY</button>
+              </div>
+
+              <div id="creator-tab-hair" class="creator-tab-pane">
+                <!-- Kafelki z samą głową i fryzurą (bez nazw i opisów) -->
+                <div id="creator-hair-grid" class="creator-hair-grid"></div>
+
+                <!-- Pasek wyboru koloru włosów pod oknem fryzur -->
+                <div id="creator-hair-colors" class="creator-hair-color-bar"></div>
               </div>
             </div>
           </div>
@@ -2572,7 +2700,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v76_anatomy_boots_fix"></script>
+  <script type="module" src="./js/main.js?v=v77_hair_creator"></script>
 </body>
 
 </html>

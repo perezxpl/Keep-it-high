@@ -3,12 +3,19 @@
 // Zarządza Menu Głównym, Oknem Ustawień oraz Panelem Pauzy
 // =============================================================================
 
-import { CONFIG } from './config.js';
-import { CLASSES } from './classes/index.js';
-import { drawPlayer } from './player/renderer.js';
+import { CONFIG } from './config.js?v=v77_hair_creator';
+import { CLASSES } from './classes/index.js?v=v77_hair_creator';
+import {
+  drawPlayer,
+  drawHeadHairPreview,
+  HAIR_STYLE_LIST,
+  HAIR_COLOR_LIST,
+  setLocalPlayerCustomVisuals
+} from './player/renderer.js?v=v77_hair_creator';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
+const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -21,6 +28,11 @@ const DEFAULT_SETTINGS = {
   cameraLead: true,
   cameraSmooth: true,
   debugColliders: false
+};
+
+const DEFAULT_APPEARANCE = {
+  hairStyle: 'buzzcut',
+  hairColor: '#18181b'
 };
 
 // =============================================================================
@@ -174,6 +186,7 @@ export function playTestTone() {
 // =============================================================================
 export const uiManager = {
   settings: { ...DEFAULT_SETTINGS },
+  appearance: { ...DEFAULT_APPEARANCE },
   selectedClassId: 'RAPTOR',
   callbacks: null,
   isInitialized: false,
@@ -182,9 +195,48 @@ export const uiManager = {
     if (this.isInitialized) return;
     this.callbacks = callbacks;
     this.loadSettings();
+    this.loadAppearance();
     this.bindDOM();
     this.applySettings();
+    this.applyAppearance();
     this.isInitialized = true;
+  },
+
+  loadAppearance() {
+    try {
+      const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        this.appearance = { ...DEFAULT_APPEARANCE, ...parsed };
+      }
+    } catch (e) {
+      console.warn('[UI] Błąd odczytu wyglądu postaci z localStorage:', e);
+      this.appearance = { ...DEFAULT_APPEARANCE };
+    }
+  },
+
+  saveAppearance() {
+    try {
+      localStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(this.appearance));
+    } catch (e) {
+      console.warn('[UI] Błąd zapisu wyglądu postaci do localStorage:', e);
+    }
+  },
+
+  applyAppearance() {
+    const custom = {
+      hairStyle: this.appearance.hairStyle || 'buzzcut',
+      hairColor: this.appearance.hairColor || '#18181b'
+    };
+    setLocalPlayerCustomVisuals(custom);
+    if (this.creatorDummyPlayer) {
+      this.creatorDummyPlayer.customVisuals = { ...custom };
+      this.creatorDummyPlayer._hairImpulse = 1.0;
+    }
+    if (typeof window !== 'undefined' && window.player) {
+      window.player.customVisuals = { ...(window.player.customVisuals || {}), ...custom };
+      window.player._hairImpulse = 1.0;
+    }
   },
 
   loadSettings() {
@@ -755,6 +807,95 @@ export const uiManager = {
         this.applySettings();
       });
     }
+
+    this.initCreatorHairUI();
+  },
+
+  initCreatorHairUI() {
+    const gridEl = document.getElementById('creator-hair-grid');
+    const colorsEl = document.getElementById('creator-hair-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z samą głową i fryzurą (bez nazw czy opisów)
+    HAIR_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.hairStyle = styleId;
+      if (this.appearance.hairStyle === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.hairStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorHairSelectionUI();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów włosów pod kafelkami fryzur
+    HAIR_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.hairColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      if (String(this.appearance.hairColor).toLowerCase() === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.hairColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorHairSelectionUI();
+        this.renderCreatorHairTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.renderCreatorHairTiles();
+  },
+
+  syncCreatorHairSelectionUI() {
+    const curStyle = this.appearance.hairStyle || 'buzzcut';
+    const curColor = String(this.appearance.hairColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-hair-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.hairStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-hair-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.hairColor).toLowerCase() === curColor);
+    });
+  },
+
+  renderCreatorHairTiles() {
+    const curColor = this.appearance.hairColor || '#18181b';
+    document.querySelectorAll('#creator-hair-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.hairStyle || 'buzzcut';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawHeadHairPreview(ctx, cvs.width, cvs.height, styleId, curColor);
+      }
+    });
   },
 
   creatorRafId: null,
@@ -764,6 +905,7 @@ export const uiManager = {
     this.stopCreatorPreview();
     if (!this.creatorDummyPlayer) {
       this.creatorDummyPlayer = {
+        _isCreatorPreview: true,
         x: -12,
         y: -70,
         w: 24,
@@ -819,9 +961,17 @@ export const uiManager = {
         currentWeapon: null,
         aimAngle: 0,
         currentClass: CLASSES.RAPTOR,
+        customVisuals: {
+          hairStyle: this.appearance.hairStyle || 'buzzcut',
+          hairColor: this.appearance.hairColor || '#18181b'
+        },
         pose: { initialized: false }
       };
     }
+
+    this.applyAppearance();
+    this.syncCreatorHairSelectionUI();
+    this.renderCreatorHairTiles();
 
     const tick = () => {
       this.drawCreatorPreviewFrame();

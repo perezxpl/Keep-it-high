@@ -5,8 +5,8 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js?v=v76_anatomy_boots_fix';
-import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js?v=v76_anatomy_boots_fix';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js?v=v77_hair_creator';
+import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js?v=v77_hair_creator';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,

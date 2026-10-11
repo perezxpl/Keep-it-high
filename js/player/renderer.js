@@ -5,14 +5,14 @@
 
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
-import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v76_anatomy_boots_fix';
+import { getFreestyleChoreography, getBiomechanicFootTrajectory } from './locomotion.js?v=v77_hair_creator';
 import {
   isBallInKickReach, getGroundKickTrajectory, getScissorLegTargets,
   getBackflipTargets, getSpartanKickTargets, getProneIKTargets,
   getThrowHandPosition
-} from './actions.js?v=v76_anatomy_boots_fix';
-import { getRagdollRenderPose } from './death.js?v=v76_anatomy_boots_fix';
-import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v76_anatomy_boots_fix';
+} from './actions.js?v=v77_hair_creator';
+import { getRagdollRenderPose } from './death.js?v=v77_hair_creator';
+import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js?v=v77_hair_creator';
 import { camera } from '../camera.js';
 
 export const DEFAULT_VISUALS = {
@@ -26,7 +26,8 @@ export const DEFAULT_VISUALS = {
   gloveColor: '#18181b',
   hasHeadband: false,
   headbandColor: '#ffffff',
-  hairStyle: 'shaved',
+  hairStyle: 'buzzcut',
+  hairColor: '#18181b',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',
@@ -64,6 +65,41 @@ export const DEFAULT_VISUALS = {
   crosshairColor: '#ef4444',
   number: '00'
 };
+
+export const HAIR_STYLE_LIST = [
+  'buzzcut',
+  'crewcut',
+  'mohawk',
+  'slickback',
+  'messy',
+  'ponytail',
+  'long_flowing',
+  'dreadlocks',
+  'topknot'
+];
+
+export const HAIR_COLOR_LIST = [
+  '#18181b', // Kruczoczarny
+  '#3b2314', // Ciemny brąz / Espresso
+  '#6b3e26', // Kasztanowy brąz
+  '#92400e', // Ciepły bursztyn / Brudny blond
+  '#eab308', // Złoty blond
+  '#c2410c', // Miedziany rudy
+  '#64748b', // Stalowosiwy
+  '#e2e8f0'  // Platynowy / Biały
+];
+
+let localPlayerCustomVisuals = {};
+
+export function setLocalPlayerCustomVisuals(custom) {
+  if (custom && typeof custom === 'object') {
+    localPlayerCustomVisuals = { ...localPlayerCustomVisuals, ...custom };
+  }
+}
+
+export function getLocalPlayerCustomVisuals() {
+  return { ...localPlayerCustomVisuals };
+}
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1951,7 +1987,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.globalAlpha = Math.max(0, 1 - dissolveProgress);
   }
 
-  const v = { ...DEFAULT_VISUALS, ...(p.currentClass?.visuals || {}) };
+  const isLocalOrCreator = !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
+  const v = {
+    ...DEFAULT_VISUALS,
+    ...(p.currentClass?.visuals || {}),
+    ...(isLocalOrCreator ? localPlayerCustomVisuals : {}),
+    ...(p.customVisuals || {})
+  };
   v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
@@ -3132,20 +3174,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
-    // Cieniowanie militarne czaszki (subtelny buzzcut fade na potylicy i skroniach)
-    const buzzGrad = ctx.createLinearGradient(-6.0, -6.0, 2.0, 0);
-    buzzGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
-    buzzGrad.addColorStop(0.6, 'rgba(15, 23, 42, 0.12)');
-    buzzGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    const hairPal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
 
-    ctx.beginPath();
-    ctx.moveTo(-6.0, -2.0);
-    ctx.quadraticCurveTo(-5.4, -6.8, -1.2, -7.0);
-    ctx.quadraticCurveTo(2.4, -6.8, 3.8, -5.0);
-    ctx.quadraticCurveTo(1.0, -3.0, -2.5, -1.0);
-    ctx.closePath();
-    ctx.fillStyle = buzzGrad;
-    ctx.fill();
+    // Włosy i fryzura (warstwa pod uchem / cieniowanie skroni oraz główna fryzura i fizyka długich włosów)
+    drawCharacterHairProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch, hasHelmet);
 
     // Małżowina uszna (anatomiczne ucho z cieniowaniem)
     ctx.fillStyle = v.skinBack;
@@ -3158,8 +3191,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
     ctx.stroke();
 
+    // Kosmyki nachodzące przed ucho / na skroń dla wybranych fryzur
+    drawCharacterHairOverEarProfile(ctx, v, hairPal, hasHelmet);
+
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
-    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
     if (hasHelmet) {
       const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
       const visorNeon = isCyan ? '#00e5ff' : '#f97316';
@@ -3249,7 +3284,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(eyeCenterX + lookX * 0.5 + 0.25, eyeCenterY + lookY * 0.5 - 0.25, 0.35, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#23120b';
+    ctx.strokeStyle = hairPal.dark;
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.moveTo(1.4, -3.3);
@@ -3276,19 +3311,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
-    // Buzzcut fade na potylicy
-    const buzzBackGrad = ctx.createLinearGradient(0, -8.0, 0, 1.0);
-    buzzBackGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
-    buzzBackGrad.addColorStop(0.7, 'rgba(15, 23, 42, 0.15)');
-    buzzBackGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-
-    ctx.beginPath();
-    ctx.ellipse(0, -2.5, 4.7, 4.5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = buzzBackGrad;
-    ctx.fill();
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    drawCharacterHairFrontOrBack(ctx, v, true, hasHelmet);
 
     // Hełm z tyłu (jeśli założony)
-    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
     if (hasHelmet) {
       const helmBackGrad = ctx.createLinearGradient(-5.5, -9.0, 5.5, 0);
       helmBackGrad.addColorStop(0.0, '#18181b');
@@ -3332,20 +3358,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
-    // Buzzcut fade na czubku głowy
-    const buzzFrontGrad = ctx.createLinearGradient(0, -6.5, 0, 0);
-    buzzFrontGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.35)');
-    buzzFrontGrad.addColorStop(0.6, 'rgba(15, 23, 42, 0.12)');
-    buzzFrontGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-
-    ctx.beginPath();
-    ctx.arc(0, -2.5, 4.8, Math.PI * 0.85, Math.PI * 0.15, true);
-    ctx.closePath();
-    ctx.fillStyle = buzzFrontGrad;
-    ctx.fill();
+    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
+    const hairPal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
+    drawCharacterHairFrontOrBack(ctx, v, false, hasHelmet);
 
     // Hełm z przodu (jeśli założony)
-    const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
     if (hasHelmet) {
       const isCyan = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
       const visorNeon = isCyan ? '#00e5ff' : '#f97316';
@@ -3386,7 +3403,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#23120b';
+    ctx.strokeStyle = hairPal.dark;
     ctx.lineWidth = 0.9;
     ctx.beginPath();
     ctx.moveTo(-3.2, -2.8);
@@ -3662,5 +3679,815 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
   }
   ctx.restore();
 }
+
+// =========================================================================
+// SYSTEM FRYZUR I FIZYKI DŁUGICH WŁOSÓW 2D (VERLET / SPRING CHAIN)
+// =========================================================================
+
+export function getHairPalette(hexColor = '#18181b') {
+  const clean = String(hexColor || '#18181b').replace('#', '');
+  const num = parseInt(clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean.padEnd(6, '0'), 16) || 0x18181b;
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  const rgb = (rr, gg, bb) => `rgb(${clamp(rr)}, ${clamp(gg)}, ${clamp(bb)})`;
+  const rgba = (rr, gg, bb, a) => `rgba(${clamp(rr)}, ${clamp(gg)}, ${clamp(bb)}, ${a})`;
+
+  return {
+    base: rgb(r, g, b),
+    dark: rgb(r * 0.62, g * 0.62, b * 0.62),
+    deep: rgb(r * 0.35, g * 0.35, b * 0.35),
+    light: rgb(r + (255 - r) * 0.28 + 14, g + (255 - g) * 0.28 + 14, b + (255 - b) * 0.28 + 14),
+    highlight: rgba(Math.min(255, r + 75), Math.min(255, g + 75), Math.min(255, b + 75), 0.32),
+    fadeStart: rgba(r * 0.65, g * 0.65, b * 0.65, 0.48),
+    fadeMid: rgba(r * 0.65, g * 0.65, b * 0.65, 0.18),
+    fadeEnd: rgba(r * 0.65, g * 0.65, b * 0.65, 0.0)
+  };
+}
+
+function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, phaseShift = 0) {
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const isStaticTile = !!(p && p._isStaticTile);
+
+  if (!p._hairPhys) {
+    p._hairPhys = {
+      thetas: [2.05, 1.98, 1.90, 1.82],
+      omegas: [0, 0, 0, 0],
+      lastUpdate: now,
+      lastFacing: currentFacingDir || 1,
+      lastHeadBob: (p && p.headBob) || 0
+    };
+  }
+
+  const phys = p._hairPhys;
+  const dtRaw = (now - phys.lastUpdate) / 1000;
+
+  // Aktualizacja fizyki raz na klatkę renderowania (gdy upłynęło >= 4ms)
+  if (!isStaticTile && dtRaw >= 0.004) {
+    const dt = Math.min(0.045, dtRaw);
+    phys.lastUpdate = now;
+
+    if (phys.lastFacing !== currentFacingDir) {
+      for (let i = 0; i < 4; i++) {
+        phys.omegas[i] += 5.5 * (1 + i * 0.25);
+      }
+      phys.lastFacing = currentFacingDir;
+    }
+
+    if (p._hairImpulse) {
+      for (let i = 0; i < 4; i++) {
+        phys.omegas[i] += p._hairImpulse * (2.8 + i * 0.9);
+      }
+      p._hairImpulse = 0;
+    }
+
+    const dBob = ((p.headBob || 0) - phys.lastHeadBob);
+    phys.lastHeadBob = p.headBob || 0;
+
+    const rot = (torsoTilt * currentFacingDir) + headPitch;
+    const gx = Math.sin(rot);
+    const gy = Math.cos(rot);
+
+    const relVx = (p.vx || 0) * currentFacingDir;
+    const relVy = (p.vy || 0) + dBob * 4.0;
+
+    // W podglądzie Kreatora dodajemy delikatny, żywy powiew wiatru, by było widać fizykę długich włosów
+    const breezeVx = p._isCreatorPreview
+      ? (0.95 + Math.sin(now * 0.0028) * 0.70 + Math.sin(now * 0.0064) * 0.30)
+      : (Math.sin(now * 0.0022) * 0.14);
+    const breezeVy = p._isCreatorPreview
+      ? (Math.cos(now * 0.0035) * 0.22)
+      : 0;
+
+    const wx = -(relVx + breezeVx) * 0.35;
+    const wy = -(relVy + breezeVy) * 0.28 + (p.isJetpacking ? 1.6 : 0);
+
+    const windLocalX = wx * Math.cos(rot) + wy * Math.sin(rot);
+    const windLocalY = -wx * Math.sin(rot) + wy * Math.cos(rot);
+    const flowMag = Math.hypot(wx, wy);
+
+    const isHeavy = (hairStyle === 'dreadlocks');
+    const stiffness = isHeavy ? 15.0 : 19.5;
+    const damping = isHeavy ? 0.82 : 0.85;
+
+    for (let i = 0; i < 4; i++) {
+      let rootPushX = -0.32 * (1 - i * 0.18);
+      let rootPushY = 0;
+      if (i === 0) {
+        if (hairStyle === 'topknot') {
+          rootPushX = -0.95;
+          rootPushY = -0.22;
+        } else if (hairStyle === 'ponytail') {
+          rootPushX = -0.72;
+          rootPushY = 0.05;
+        } else {
+          rootPushX = -0.45;
+          rootPushY = 0.15;
+        }
+      }
+
+      const waveFreq = p.isJetpacking ? 0.026 : (0.0038 + Math.min(0.016, flowMag * 0.007));
+      const flutter = Math.sin(now * waveFreq - i * 0.92) * (0.06 + Math.min(0.28, flowMag * 0.11)) * (0.35 + i * 0.25);
+
+      const fx = gx + windLocalX + rootPushX;
+      const fy = gy + windLocalY + rootPushY;
+
+      let targetTheta = Math.atan2(fy, fx) + flutter;
+      if (targetTheta < -Math.PI * 0.25) targetTheta += Math.PI * 2;
+
+      if (i > 0) {
+        targetTheta = targetTheta * 0.72 + phys.thetas[i - 1] * 0.28;
+      }
+
+      const minTheta = (hairStyle === 'topknot' && i === 0) ? Math.PI * 0.58 : Math.PI * 0.49;
+      const maxTheta = Math.PI * 1.38;
+      targetTheta = Math.max(minTheta, Math.min(maxTheta, targetTheta));
+
+      phys.omegas[i] = (phys.omegas[i] + (targetTheta - phys.thetas[i]) * stiffness * dt) * damping;
+      phys.thetas[i] += phys.omegas[i] * dt * 6.5;
+
+      if (phys.thetas[i] < minTheta) {
+        phys.thetas[i] = minTheta;
+        phys.omegas[i] = Math.max(0, phys.omegas[i] * -0.2);
+      } else if (phys.thetas[i] > maxTheta) {
+        phys.thetas[i] = maxTheta;
+        phys.omegas[i] = Math.min(0, phys.omegas[i] * -0.2);
+      }
+    }
+  }
+
+  const pts = [{ x: anchorX, y: anchorY }];
+  const norms = [];
+  for (let i = 0; i < 4; i++) {
+    const a = phys.thetas[i] + phaseShift * (0.35 + i * 0.22);
+    const nx = pts[i].x + Math.cos(a) * segLen;
+    const ny = pts[i].y + Math.sin(a) * segLen;
+    pts.push({ x: nx, y: ny });
+    norms.push({ x: -Math.sin(a), y: Math.cos(a) });
+  }
+  norms.push(norms[norms.length - 1]);
+  return { pts, norms };
+}
+
+function drawTaperedHairStrand(ctx, pts, norms, widths, fillStyle, strokeStyle = '#09090b', highlightStyle = null) {
+  const leftPts = [];
+  const rightPts = [];
+  for (let i = 0; i < pts.length; i++) {
+    const w = widths[i] ?? 0;
+    leftPts.push({
+      x: pts[i].x + norms[i].x * w,
+      y: pts[i].y + norms[i].y * w
+    });
+    rightPts.push({
+      x: pts[i].x - norms[i].x * w,
+      y: pts[i].y - norms[i].y * w
+    });
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(leftPts[0].x, leftPts[0].y);
+  for (let i = 1; i < leftPts.length - 1; i++) {
+    const xc = (leftPts[i].x + leftPts[i + 1].x) * 0.5;
+    const yc = (leftPts[i].y + leftPts[i + 1].y) * 0.5;
+    ctx.quadraticCurveTo(leftPts[i].x, leftPts[i].y, xc, yc);
+  }
+  const lastIdx = leftPts.length - 1;
+  ctx.lineTo(pts[lastIdx].x, pts[lastIdx].y);
+  for (let i = lastIdx - 1; i >= 1; i--) {
+    const xc = (rightPts[i].x + rightPts[i - 1].x) * 0.5;
+    const yc = (rightPts[i].y + rightPts[i - 1].y) * 0.5;
+    ctx.quadraticCurveTo(rightPts[i].x, rightPts[i].y, xc, yc);
+  }
+  ctx.lineTo(rightPts[0].x, rightPts[0].y);
+  ctx.closePath();
+
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+  if (strokeStyle) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+  }
+
+  if (highlightStyle) {
+    ctx.strokeStyle = highlightStyle;
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x + norms[0].x * (widths[0] * 0.35), pts[0].y + norms[0].y * (widths[0] * 0.35));
+    ctx.quadraticCurveTo(
+      pts[2].x + norms[2].x * (widths[2] * 0.35),
+      pts[2].y + norms[2].y * (widths[2] * 0.35),
+      pts[3].x,
+      pts[3].y
+    );
+    ctx.stroke();
+  }
+}
+
+export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt, headPitch, hasHelmet) {
+  const rawStyle = String(v.hairStyle || 'buzzcut').toLowerCase();
+  const style = (rawStyle === 'shaved' || rawStyle === 'none') ? 'buzzcut' : rawStyle;
+  const pal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
+
+  // 1. Subtelne cieniowanie wygolonych skroni / potylicy (fade bazowy dla krótkich/podgolonych fryzur)
+  if (style === 'buzzcut' || style === 'crewcut' || style === 'mohawk' || style === 'slickback' || style === 'topknot') {
+    const buzzGrad = ctx.createLinearGradient(-6.2, -6.5, 2.2, 0.5);
+    buzzGrad.addColorStop(0.0, pal.fadeStart);
+    buzzGrad.addColorStop(0.6, pal.fadeMid);
+    buzzGrad.addColorStop(1.0, pal.fadeEnd);
+
+    ctx.beginPath();
+    ctx.moveTo(-6.0, -1.8);
+    ctx.quadraticCurveTo(-5.4, -6.8, -1.2, -7.0);
+    ctx.quadraticCurveTo(2.4, -6.8, 3.8, -5.0);
+    ctx.quadraticCurveTo(1.0, -3.0, -2.5, -1.0);
+    ctx.closePath();
+    ctx.fillStyle = buzzGrad;
+    ctx.fill();
+  }
+
+  if (style === 'buzzcut') {
+    return;
+  }
+
+  const hairGrad = ctx.createLinearGradient(-6.5, -10.5, 4.5, 1.0);
+  hairGrad.addColorStop(0.0, pal.dark);
+  hairGrad.addColorStop(0.55, pal.base);
+  hairGrad.addColorStop(1.0, pal.light);
+
+  // 2. KRÓTKIE FRYZURY NA CZASZCE (ukrywane tylko gdy nałożony jest pełny hełm)
+  if (!hasHelmet) {
+    if (style === 'crewcut') {
+      // Wojskowy jeżyk (Flat Top / High & Tight)
+      ctx.beginPath();
+      ctx.moveTo(-5.6, -3.6);
+      ctx.quadraticCurveTo(-6.1, -6.4, -4.7, -8.3);
+      // Płaski, lekko wznoszący się ku przodowi wierzch szczotki
+      ctx.lineTo(0.2, -8.8);
+      ctx.lineTo(4.7, -8.5);
+      // Ostra przednia krawędź jeżyka nad czołem
+      ctx.quadraticCurveTo(4.6, -6.6, 4.1, -5.1);
+      // Wycięcie skroniowe (high & tight)
+      ctx.lineTo(1.8, -5.3);
+      ctx.quadraticCurveTo(0.4, -4.4, -1.8, -4.1);
+      ctx.quadraticCurveTo(-4.0, -4.0, -5.6, -3.6);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Tekstura krótkich nastroszonych włosków na koronie
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      for (let hx = -3.8; hx <= 3.8; hx += 1.25) {
+        ctx.moveTo(hx, -6.8);
+        ctx.lineTo(hx + 0.3, -8.3);
+      }
+      ctx.stroke();
+
+    } else if (style === 'mohawk') {
+      // Kultowy Irokez (Soldat Mohawk) – 5 ostrych, wygiętych w tył kolców od czoła po kark
+      ctx.beginPath();
+      ctx.moveTo(-5.7, 1.4);
+      // Kolec 5 (dolny na potylicy)
+      ctx.quadraticCurveTo(-7.6, 0.8, -8.8, -0.4);
+      ctx.quadraticCurveTo(-7.4, -1.3, -6.4, -1.8);
+      // Kolec 4 (tylny)
+      ctx.quadraticCurveTo(-8.6, -2.8, -9.8, -4.6);
+      ctx.quadraticCurveTo(-7.8, -5.1, -6.1, -5.2);
+      // Kolec 3 (środkowy szczytowy)
+      ctx.quadraticCurveTo(-7.2, -7.8, -7.4, -10.6);
+      ctx.quadraticCurveTo(-5.0, -9.2, -3.5, -7.4);
+      // Kolec 2 (przednio-górny)
+      ctx.quadraticCurveTo(-3.2, -10.2, -1.8, -12.0);
+      ctx.quadraticCurveTo(-0.2, -10.2, 0.7, -7.5);
+      // Kolec 1 (czołowy)
+      ctx.quadraticCurveTo(1.8, -10.0, 4.1, -11.2);
+      ctx.quadraticCurveTo(4.3, -8.2, 3.6, -5.6);
+      // Podstawa irokeza wzdłuż czaszki
+      ctx.quadraticCurveTo(0.8, -6.4, -2.2, -5.8);
+      ctx.quadraticCurveTo(-4.6, -4.0, -4.8, -0.8);
+      ctx.lineTo(-5.7, 1.4);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Wewnętrzne rozjaśnienia pasm irokeza
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(2.4, -6.4);
+      ctx.lineTo(3.4, -10.0);
+      ctx.moveTo(-0.8, -7.0);
+      ctx.lineTo(-1.5, -10.8);
+      ctx.moveTo(-4.4, -6.2);
+      ctx.lineTo(-6.6, -9.5);
+      ctx.stroke();
+
+    } else if (style === 'slickback') {
+      // Zaczes do tyłu / Undercut z warstwowymi końcówkami z tyłu głowy
+      ctx.beginPath();
+      ctx.moveTo(4.0, -5.2);
+      // Uniesiony przód (pompadour / slick back)
+      ctx.quadraticCurveTo(5.0, -7.2, 3.6, -8.5);
+      ctx.bezierCurveTo(0.8, -9.5, -3.5, -9.2, -7.8, -5.6);
+      // Trzy zaczesane w tył ostre pasma na potylicy
+      ctx.lineTo(-6.0, -4.7);
+      ctx.lineTo(-7.9, -3.5);
+      ctx.lineTo(-5.8, -2.8);
+      ctx.lineTo(-7.2, -1.5);
+      // Linia podcięcia nad uchem i skronią
+      ctx.quadraticCurveTo(-4.4, -1.8, -2.2, -3.2);
+      ctx.quadraticCurveTo(0.6, -3.8, 1.8, -5.1);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Linie zaczesania włosów (grzebień / pasma)
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(3.4, -7.0);
+      ctx.quadraticCurveTo(-0.5, -8.2, -5.8, -5.2);
+      ctx.moveTo(2.2, -5.8);
+      ctx.quadraticCurveTo(-1.2, -6.6, -5.5, -3.6);
+      ctx.stroke();
+
+    } else if (style === 'messy') {
+      // Krótkie potargane / Spiky Crop
+      ctx.beginPath();
+      ctx.moveTo(-5.2, 2.2);
+      ctx.lineTo(-6.8, 1.2);
+      ctx.lineTo(-5.9, 0.2);
+      ctx.lineTo(-7.4, -1.4);
+      ctx.lineTo(-6.2, -2.6);
+      ctx.lineTo(-7.6, -4.8);
+      ctx.lineTo(-5.8, -5.8);
+      ctx.lineTo(-6.2, -8.2);
+      ctx.lineTo(-4.0, -7.8);
+      ctx.lineTo(-3.2, -9.7);
+      ctx.lineTo(-1.1, -8.3);
+      ctx.lineTo(0.6, -9.8);
+      ctx.lineTo(2.1, -8.1);
+      ctx.lineTo(4.2, -9.0);
+      ctx.lineTo(3.8, -7.0);
+      // Kosmyki grzywki nad czołem
+      ctx.lineTo(5.4, -5.8);
+      ctx.lineTo(4.1, -5.1);
+      ctx.lineTo(5.0, -4.1);
+      ctx.quadraticCurveTo(2.8, -4.5, 1.4, -3.8);
+      // Wokół ucha do karku
+      ctx.quadraticCurveTo(-1.2, -3.2, -3.4, -1.6);
+      ctx.quadraticCurveTo(-4.6, 0.4, -5.2, 2.2);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Wewnętrzne linie potarganych kosmyków
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(-2.8, -8.4);
+      ctx.lineTo(-1.2, -5.8);
+      ctx.moveTo(0.4, -8.8);
+      ctx.lineTo(1.5, -5.6);
+      ctx.moveTo(-5.5, -4.4);
+      ctx.lineTo(-3.4, -3.2);
+      ctx.stroke();
+    }
+  }
+
+  // 3. DŁUGIE WŁOSY Z FIZYKĄ RUCHU 2D (działają zarówno bez hełmu, jak i wystając spod hełmu)
+  if (style === 'ponytail') {
+    if (!hasHelmet) {
+      // Ciasno ściągnięte do tyłu włosy na czaszce
+      ctx.beginPath();
+      ctx.moveTo(-4.8, 1.8);
+      ctx.quadraticCurveTo(-6.3, -0.5, -6.2, -3.2);
+      ctx.quadraticCurveTo(-5.6, -7.6, -1.0, -7.7);
+      ctx.quadraticCurveTo(2.8, -7.4, 4.1, -5.3);
+      ctx.quadraticCurveTo(1.8, -5.1, 0.2, -3.8);
+      ctx.quadraticCurveTo(-1.6, -3.0, -3.6, -1.4);
+      ctx.quadraticCurveTo(-4.4, 0.2, -4.8, 1.8);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Linie napięcia pasm ściągniętych do gumki
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(2.6, -6.2);
+      ctx.quadraticCurveTo(-1.5, -6.4, -5.8, -3.2);
+      ctx.moveTo(0.8, -4.6);
+      ctx.quadraticCurveTo(-2.5, -4.4, -5.8, -2.6);
+      ctx.stroke();
+    }
+
+    // Fizyczny łańcuch końskiego ogona (4 segmenty)
+    const { pts, norms } = updateAndBuildHairChain(
+      p, 'ponytail', currentFacingDir, torsoTilt, headPitch,
+      -6.0, -2.6, 3.6, 0
+    );
+
+    // Dolne cieńsze pasmo dla głębi
+    const subChain = updateAndBuildHairChain(
+      p, 'ponytail', currentFacingDir, torsoTilt, headPitch,
+      -5.9, -2.2, 3.3, -0.14
+    );
+    drawTaperedHairStrand(ctx, subChain.pts, subChain.norms, [1.1, 1.4, 1.2, 0.7, 0.0], pal.dark, '#09090b', null);
+
+    // Główny falujący koński ogon
+    drawTaperedHairStrand(ctx, pts, norms, [1.6, 2.3, 2.0, 1.2, 0.0], hairGrad, '#09090b', pal.highlight);
+
+    // Gumka / opaska taktyczna spinająca kucyk
+    ctx.fillStyle = '#09090b';
+    ctx.strokeStyle = '#52525b';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(-5.9, -2.6, 1.1, 1.7, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+  } else if (style === 'long_flowing') {
+    if (!hasHelmet) {
+      // Pełna czupryna długich włosów na górze głowy i skroniach (styl Rambo)
+      ctx.beginPath();
+      ctx.moveTo(-5.2, 2.4);
+      ctx.quadraticCurveTo(-6.8, -0.6, -6.5, -3.8);
+      ctx.quadraticCurveTo(-5.8, -8.2, -1.0, -8.4);
+      ctx.quadraticCurveTo(3.2, -8.1, 4.5, -5.6);
+      ctx.lineTo(4.9, -4.3);
+      ctx.quadraticCurveTo(2.6, -4.8, 0.8, -3.6);
+      ctx.quadraticCurveTo(-1.5, -2.8, -3.6, -1.0);
+      ctx.lineTo(-5.2, 2.4);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+    }
+
+    // 3 warstwowe, niezależnie falujące pasma długich rozpuszczonych włosów opadające na kark i plecy
+    const backStrand = updateAndBuildHairChain(
+      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
+      -5.8, -3.6, 3.8, 0.16
+    );
+    const midStrand = updateAndBuildHairChain(
+      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
+      -5.2, -1.6, 3.9, 0.0
+    );
+    const lowStrand = updateAndBuildHairChain(
+      p, 'long_flowing', currentFacingDir, torsoTilt, headPitch,
+      -4.5, 0.4, 3.5, -0.14
+    );
+
+    drawTaperedHairStrand(ctx, backStrand.pts, backStrand.norms, [2.0, 2.4, 2.1, 1.3, 0.0], pal.dark, '#09090b', null);
+    drawTaperedHairStrand(ctx, lowStrand.pts, lowStrand.norms, [1.8, 2.1, 1.8, 1.0, 0.0], pal.base, '#09090b', null);
+    drawTaperedHairStrand(ctx, midStrand.pts, midStrand.norms, [2.2, 2.6, 2.2, 1.3, 0.0], hairGrad, '#09090b', pal.highlight);
+
+  } else if (style === 'dreadlocks') {
+    if (!hasHelmet) {
+      // Sekcje zaplecionych u nasady dredów na czaszce
+      ctx.beginPath();
+      ctx.moveTo(-5.4, 1.4);
+      ctx.quadraticCurveTo(-6.6, -1.5, -6.2, -4.4);
+      ctx.quadraticCurveTo(-5.4, -8.0, -1.0, -8.1);
+      ctx.quadraticCurveTo(2.8, -7.8, 4.1, -5.4);
+      ctx.quadraticCurveTo(1.5, -4.8, -0.5, -3.6);
+      ctx.quadraticCurveTo(-2.8, -2.6, -4.2, -0.2);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      // Linie podziału warkoczyków przy skórze głowy
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(3.2, -6.4);
+      ctx.quadraticCurveTo(-1.0, -6.8, -5.6, -4.4);
+      ctx.moveTo(1.8, -5.2);
+      ctx.quadraticCurveTo(-2.0, -5.2, -5.8, -2.4);
+      ctx.stroke();
+    }
+
+    // 4 grube dredy bojowe z fizyką i metalowymi obrączkami
+    const anchors = [
+      { x: -5.4, y: -4.8, len: 3.6, phase: 0.22, col: pal.dark },
+      { x: -5.9, y: -3.0, len: 3.8, phase: 0.08, col: pal.base },
+      { x: -5.8, y: -1.2, len: 3.7, phase: -0.06, col: hairGrad },
+      { x: -5.0, y: 0.6, len: 3.4, phase: -0.18, col: pal.dark }
+    ];
+
+    for (let d = 0; d < anchors.length; d++) {
+      const cfg = anchors[d];
+      const { pts } = updateAndBuildHairChain(
+        p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+        cfg.x, cfg.y, cfg.len, cfg.phase
+      );
+
+      // Obrys pojedynczego grubego dreda
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.quadraticCurveTo(pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+      ctx.quadraticCurveTo(pts[3].x, pts[3].y, pts[4].x, pts[4].y);
+      ctx.stroke();
+
+      // Wypełnienie dreda
+      ctx.strokeStyle = cfg.col;
+      ctx.lineWidth = 1.9;
+      ctx.stroke();
+
+      // Metalowa obrączka / koralik taktyczny na dredzie (przy 3. węźle)
+      ctx.fillStyle = '#94a3b8';
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(pts[3].x, pts[3].y, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+  } else if (style === 'topknot') {
+    if (!hasHelmet) {
+      // Wygolone boki z pasmem włosów ściągniętym na sam czubek potylicy
+      ctx.beginPath();
+      ctx.moveTo(-5.2, -4.8);
+      ctx.quadraticCurveTo(-5.4, -7.6, -1.2, -7.8);
+      ctx.quadraticCurveTo(2.6, -7.5, 4.0, -5.4);
+      ctx.quadraticCurveTo(1.5, -5.2, -1.0, -4.6);
+      ctx.quadraticCurveTo(-3.4, -4.4, -5.2, -4.8);
+      ctx.closePath();
+      ctx.fillStyle = hairGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+    }
+
+    // Sprężysta kitka wojownika na czubku potylicy
+    const { pts, norms } = updateAndBuildHairChain(
+      p, 'topknot', currentFacingDir, torsoTilt, headPitch,
+      -4.8, -6.6, 3.1, 0.15
+    );
+
+    drawTaperedHairStrand(ctx, pts, norms, [1.5, 2.2, 1.9, 1.1, 0.0], hairGrad, '#09090b', pal.highlight);
+
+    // Owijka / węzeł u podstawy kitki
+    ctx.fillStyle = '#09090b';
+    ctx.strokeStyle = '#52525b';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(-4.6, -6.4, 1.3, 1.6, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+export function drawCharacterHairOverEarProfile(ctx, v, pal, hasHelmet) {
+  if (hasHelmet) return;
+  const style = String(v.hairStyle || 'buzzcut').toLowerCase();
+
+  if (style === 'messy') {
+    // Krótki pejs / kosmyk przed uchem
+    ctx.fillStyle = pal.base;
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(-1.8, -3.6);
+    ctx.lineTo(-0.4, -0.2);
+    ctx.lineTo(-1.5, -0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (style === 'long_flowing') {
+    // Dłuższe pasmo skroniowe opadające przed uchem
+    ctx.fillStyle = pal.base;
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(0.8, -4.2);
+    ctx.quadraticCurveTo(-0.6, -1.5, -0.9, 2.4);
+    ctx.quadraticCurveTo(-1.8, 0.4, -1.5, -2.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+export function drawCharacterHairFrontOrBack(ctx, v, isBackView, hasHelmet) {
+  const rawStyle = String(v.hairStyle || 'buzzcut').toLowerCase();
+  const style = (rawStyle === 'shaved' || rawStyle === 'none') ? 'buzzcut' : rawStyle;
+  const pal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
+
+  const buzzGrad = ctx.createLinearGradient(0, -8.0, 0, 1.0);
+  buzzGrad.addColorStop(0.0, pal.fadeStart);
+  buzzGrad.addColorStop(0.7, pal.fadeMid);
+  buzzGrad.addColorStop(1.0, pal.fadeEnd);
+
+  if (isBackView) {
+    ctx.beginPath();
+    ctx.ellipse(0, -2.5, 4.7, 4.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = buzzGrad;
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, -2.5, 4.8, Math.PI * 0.85, Math.PI * 0.15, true);
+    ctx.closePath();
+    ctx.fillStyle = buzzGrad;
+    ctx.fill();
+  }
+
+  if (hasHelmet || style === 'buzzcut') return;
+
+  ctx.fillStyle = pal.base;
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.9;
+
+  if (style === 'mohawk') {
+    ctx.beginPath();
+    ctx.moveTo(-1.6, -5.5);
+    ctx.lineTo(0, -11.5);
+    ctx.lineTo(1.6, -5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (style === 'crewcut') {
+    ctx.beginPath();
+    ctx.moveTo(-4.6, -4.5);
+    ctx.lineTo(-4.8, -8.2);
+    ctx.lineTo(4.8, -8.2);
+    ctx.lineTo(4.6, -4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, -2.8, 5.2, Math.PI * 0.92, Math.PI * 0.08, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+/**
+ * Renderuje samą głowę z wybraną fryzurą i kolorem włosów na kafelku wyboru w Kreatorze Postaci.
+ */
+export function drawHeadHairPreview(ctx, canvasW, canvasH, hairStyle = 'buzzcut', hairColor = '#18181b') {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  const v = {
+    ...DEFAULT_VISUALS,
+    hairStyle,
+    hairColor
+  };
+  const hairPal = getHairPalette(hairColor);
+
+  // Statyczny obiekt podglądu z naturalnie ułożonym łańcuchem fizyki dla kafelka
+  const tileDummy = {
+    _isStaticTile: true,
+    _hairPhys: {
+      thetas: [2.16, 2.04, 1.92, 1.80],
+      omegas: [0, 0, 0, 0],
+      lastUpdate: 0,
+      lastFacing: 1,
+      lastHeadBob: 0
+    }
+  };
+
+  ctx.save();
+  // Wyśrodkowanie głowy wraz z miejscem na wysokiego irokeza u góry oraz długie włosy z tyłu/dołu
+  ctx.translate(canvasW * 0.58, canvasH * 0.50);
+  const scale = Math.min(canvasW, canvasH) / 29.0;
+  ctx.scale(scale, scale);
+
+  // 1. Krótki odcinek szyi pod głową (by długie włosy naturalnie układały się za karkiem)
+  const neckGrad = ctx.createLinearGradient(-3.2, 0, 2.0, 0);
+  neckGrad.addColorStop(0.0, v.skinDark);
+  neckGrad.addColorStop(0.5, v.skinBack);
+  neckGrad.addColorStop(1.0, v.skinMid);
+
+  ctx.beginPath();
+  ctx.moveTo(-3.0, 2.2);
+  ctx.lineTo(-3.2, 7.6);
+  ctx.quadraticCurveTo(-0.5, 8.4, 2.0, 7.6);
+  ctx.lineTo(1.8, 3.2);
+  ctx.closePath();
+  ctx.fillStyle = neckGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+
+  // Cień pod żuchwą
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  ctx.beginPath();
+  ctx.moveTo(-0.8, 3.2);
+  ctx.lineTo(1.8, 3.8);
+  ctx.lineTo(1.7, 5.4);
+  ctx.lineTo(-0.8, 4.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Czaszka i profil twarzy
+  const faceGrad = ctx.createLinearGradient(-5.0, 0, 7.0, 0);
+  faceGrad.addColorStop(0.0, v.skinBack);
+  faceGrad.addColorStop(0.5, v.skinMid);
+  faceGrad.addColorStop(1.0, v.skinLight);
+
+  ctx.beginPath();
+  ctx.moveTo(-4.6, 2.5);
+  ctx.quadraticCurveTo(-6.4, 0.2, -6.0, -2.8);
+  ctx.quadraticCurveTo(-5.4, -7.2, -1.2, -7.2);
+  ctx.quadraticCurveTo(2.8, -7.0, 4.2, -5.2);
+  ctx.lineTo(4.4, -3.4);
+  ctx.lineTo(6.8, -1.0);
+  ctx.lineTo(5.1, -0.4);
+  ctx.lineTo(5.5, 0.6);
+  ctx.lineTo(4.9, 1.4);
+  ctx.lineTo(5.3, 2.3);
+  ctx.lineTo(4.3, 4.8);
+  ctx.lineTo(0.2, 4.4);
+  ctx.lineTo(-3.5, 3.8);
+  ctx.closePath();
+  ctx.fillStyle = faceGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // 3. Fryzura (warstwa główna i długie pasma)
+  drawCharacterHairProfile(ctx, tileDummy, v, 1, 0, 0, false);
+
+  // 4. Ucho
+  ctx.fillStyle = v.skinBack;
+  ctx.beginPath();
+  ctx.ellipse(-2.6, -0.6, 1.6, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = v.skinDark;
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
+  ctx.stroke();
+
+  // 5. Kosmyki przed uchem
+  drawCharacterHairOverEarProfile(ctx, v, hairPal, false);
+
+  // 6. Oko i brew
+  const eyeCenterX = 2.7;
+  const eyeCenterY = -2.1;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(eyeCenterX, eyeCenterY, 1.5, 1.0, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(eyeCenterX + 0.55, eyeCenterY, 0.72, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(eyeCenterX + 0.52, eyeCenterY - 0.25, 0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = hairPal.dark;
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(1.4, -3.3);
+  ctx.lineTo(4.4, -3.5);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 
 
