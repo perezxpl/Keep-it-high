@@ -1,8 +1,9 @@
 // =========================================================================
 // ARENAS/ARENA2/SEWERPIPES.JS - KOLEKTORY ŚCIEKOWE I WYCIEKI W TLE
 // Masywne pionowe rury ściekowe w ciemnej przestrzeni po bokach wentylatora
-// Cykliczne wycieki toksycznego kwasu, piana i bąble w miejscu uderzenia
-// 100% symetria osiowa (X = 2000), 0 alokacji GC w pętli renderującej
+// Płynny, organiczny laminarny strumień kwasu, piana i bąble w miejscu uderzenia
+// Pełna optymalizacja: Viewport culling, 0 alokacji gradientów/GC w pętli renderującej (stałe 60 FPS)
+// 100% symetria osiowa względem X = 2000
 // =========================================================================
 
 import { getAcidSurfaceY, ACID_SURGE_SYSTEM } from './state.js';
@@ -20,9 +21,9 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 570,
     cycleDuration: 16.0,
-    pourDuration: 4.8,
+    pourDuration: 5.0,
     phase: 0.0,
-    streamWidth: 16,
+    streamWidth: 18,
     label: 'SEW-01A'
   },
   {
@@ -32,9 +33,9 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 570,
     cycleDuration: 16.0,
-    pourDuration: 4.8,
+    pourDuration: 5.0,
     phase: 0.0,
-    streamWidth: 16,
+    streamWidth: 18,
     label: 'SEW-01B'
   },
 
@@ -46,9 +47,9 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 660,
     cycleDuration: 17.0,
-    pourDuration: 5.2,
+    pourDuration: 5.4,
     phase: 5.5,
-    streamWidth: 20,
+    streamWidth: 22,
     label: 'COL-02A'
   },
   {
@@ -58,9 +59,9 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 660,
     cycleDuration: 17.0,
-    pourDuration: 5.2,
+    pourDuration: 5.4,
     phase: 5.5,
-    streamWidth: 20,
+    streamWidth: 22,
     label: 'COL-02B'
   },
 
@@ -72,9 +73,9 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 760,
     cycleDuration: 18.0,
-    pourDuration: 4.6,
+    pourDuration: 4.8,
     phase: 11.0,
-    streamWidth: 18,
+    streamWidth: 20,
     label: 'DRN-03A'
   },
   {
@@ -84,23 +85,35 @@ export const ARENA_2_SEWER_PIPES = [
     topY: 0,
     nozzleY: 760,
     cycleDuration: 18.0,
-    pourDuration: 4.6,
+    pourDuration: 4.8,
     phase: 11.0,
-    streamWidth: 18,
+    streamWidth: 20,
     label: 'DRN-03B'
   }
 ];
 
 /**
- * Główna funkcja renderująca kolektory ściekowe i wycieki w tle
+ * Główna funkcja renderująca kolektory ściekowe i wycieki w warstwie tła
+ * Zawiera viewport culling na podstawie kamery
  */
-export function drawSewerPipes(ctx, time) {
+export function drawSewerPipes(ctx, time, camera) {
   if (!ctx) return;
   ctx.save();
   ctx.shadowBlur = 0;
 
+  // Viewport culling w układzie współrzędnych świata
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  const viewLeft = camX - 120;
+  const viewRight = camX + (canvasW / camZoom) + 120;
+
   for (let i = 0; i < ARENA_2_SEWER_PIPES.length; i++) {
     const pipe = ARENA_2_SEWER_PIPES[i];
+    // Odrzucenie niewidocznych rur poza ekranem (ogromny zysk FPS!)
+    if (pipe.x + pipe.width * 0.5 < viewLeft || pipe.x - pipe.width * 0.5 > viewRight) {
+      continue;
+    }
     drawSingleSewerPipe(ctx, pipe, time);
   }
 
@@ -108,7 +121,7 @@ export function drawSewerPipes(ctx, time) {
 }
 
 /**
- * Rysuje pojedynczy kolektor ściekowy wraz z dynamicznym wyciekiem
+ * Rysuje pojedynczy kolektor ściekowy wraz z dynamicznym wyciekiem (zero dynamicznych gradientów)
  */
 function drawSingleSewerPipe(ctx, pipe, time) {
   const px = pipe.x;
@@ -116,105 +129,74 @@ function drawSingleSewerPipe(ctx, pipe, time) {
   const halfW = pw * 0.5;
   const nozzleY = pipe.nozzleY;
   const topY = pipe.topY || 0;
+  const pipeH = nozzleY - topY;
 
-  // -------------------------------------------------------------------------
-  // 1. MASYWNY CYLINDER RURY (CIEMNOSZARY INDUSTRIALNY KORPUS Z METALICZNYM CIENIEM)
-  // -------------------------------------------------------------------------
-  const pipeGrad = ctx.createLinearGradient(px - halfW, 0, px + halfW, 0);
-  pipeGrad.addColorStop(0.00, '#070b10'); // głęboki cień krawędzi
-  pipeGrad.addColorStop(0.18, '#141d27');
-  pipeGrad.addColorStop(0.48, '#243242'); // oświetlony brzeg cylindra
-  pipeGrad.addColorStop(0.78, '#141c26');
-  pipeGrad.addColorStop(1.00, '#070b10');
-  ctx.fillStyle = pipeGrad;
-  ctx.fillRect(px - halfW, topY, pw, nozzleY - topY);
+  // 1. KORPUS RURY (CZARNO-STALOWY CYLINDER Z PRZETŁOCZENIAMI)
+  ctx.fillStyle = '#141d27';
+  ctx.fillRect(px - halfW, topY, pw, pipeH);
+
+  // Krawędziowe cienie głębi
+  ctx.fillStyle = '#06090e';
+  ctx.fillRect(px - halfW, topY, 8, pipeH);
+  ctx.fillRect(px + halfW - 8, topY, 8, pipeH);
+
+  // Jasny odblask cylindryczny
+  ctx.fillStyle = 'rgba(71, 85, 105, 0.25)';
+  ctx.fillRect(px - halfW * 0.18, topY, 7, pipeH);
 
   ctx.strokeStyle = '#0a0f16';
   ctx.lineWidth = 1.8;
-  ctx.strokeRect(px - halfW, topY, pw, nozzleY - topY);
+  ctx.strokeRect(px - halfW, topY, pw, pipeH);
 
-  // Wewnętrzny jaśniejszy pasek odblasku stali
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(px - halfW * 0.15, topY);
-  ctx.lineTo(px - halfW * 0.15, nozzleY);
-  ctx.stroke();
-
-  // -------------------------------------------------------------------------
-  // 2. KOŁNIERZE ŁĄCZENIOWE I ŚRUBY MONTAŻOWE (FLANGE JOINTS CO 95 PX)
-  // -------------------------------------------------------------------------
+  // 2. KOŁNIERZE ŁĄCZENIOWE (FLANGE JOINTS CO 95 PX - SZYBKI RENDER BEZ GRADIENTÓW)
   const flangeH = 14;
   const flangeExtra = 8;
-  for (let fy = topY + 70; fy < nozzleY - 30; fy += 95) {
-    const fx = px - halfW - flangeExtra * 0.5;
-    const fw = pw + flangeExtra;
+  const fx = px - halfW - flangeExtra * 0.5;
+  const fw = pw + flangeExtra;
 
-    const fGrad = ctx.createLinearGradient(fx, 0, fx + fw, 0);
-    fGrad.addColorStop(0.0, '#0a0f16');
-    fGrad.addColorStop(0.5, '#2f3e50');
-    fGrad.addColorStop(1.0, '#0a0f16');
-    ctx.fillStyle = fGrad;
+  for (let fy = topY + 70; fy < nozzleY - 30; fy += 95) {
+    // Korpus kołnierza
+    ctx.fillStyle = '#1e293b';
     ctx.fillRect(fx, fy, fw, flangeH);
 
-    ctx.strokeStyle = '#05070a';
+    // Górna krawędź odbijająca światło
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(fx, fy, fw, 2);
+
+    // Dolny głęboki cień
+    ctx.fillStyle = '#06090e';
+    ctx.fillRect(fx, fy + flangeH - 2, fw, 2);
+
+    ctx.strokeStyle = '#0a0f16';
     ctx.lineWidth = 1.2;
     ctx.strokeRect(fx, fy, fw, flangeH);
 
-    // Stalowe śruby na kołnierzu
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(fx + 4, fy + flangeH * 0.5, 1.8, 0, Math.PI * 2);
-    ctx.arc(fx + fw - 4, fy + flangeH * 0.5, 1.8, 0, Math.PI * 2);
-    ctx.arc(px, fy + flangeH * 0.5, 1.8, 0, Math.PI * 2);
-    ctx.fill();
+    // Śruby mocujące
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(fx + 3, fy + 5, 3, 3);
+    ctx.fillRect(px - 1.5, fy + 5, 3, 3);
+    ctx.fillRect(fx + fw - 6, fy + 5, 3, 3);
 
-    // Uchwyt ścienny (Heavy Wall Bracket mocujący rurę do bunkra w tle)
+    // Kotwy ścienne
     ctx.fillStyle = '#0a0f16';
-    ctx.fillRect(fx - 12, fy + 2, 12, flangeH - 4);
-    ctx.fillRect(fx + fw, fy + 2, 12, flangeH - 4);
+    ctx.fillRect(fx - 10, fy + 2, 10, flangeH - 4);
+    ctx.fillRect(fx + fw, fy + 2, 10, flangeH - 4);
   }
 
-  // -------------------------------------------------------------------------
-  // 3. ZACIEKI CHEMICZNE I KOROZJA (TOXIC STAIN SLIME ON PIPE CASING)
-  // -------------------------------------------------------------------------
-  ctx.save();
-  ctx.fillStyle = 'rgba(34, 197, 94, 0.12)';
-  ctx.beginPath();
-  ctx.moveTo(px - 6, nozzleY - 140);
-  ctx.lineTo(px + 4, nozzleY - 140);
-  ctx.lineTo(px + 8, nozzleY);
-  ctx.lineTo(px - 10, nozzleY);
-  ctx.closePath();
-  ctx.fill();
+  // 3. ZACIEKI CHEMICZNEJ KOROZJI NA PANCERZU
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+  ctx.fillRect(px - 6, nozzleY - 110, 12, 110);
+  ctx.fillStyle = 'rgba(16, 185, 129, 0.28)';
+  ctx.fillRect(px - 2, nozzleY - 60, 5, 60);
 
-  ctx.fillStyle = 'rgba(16, 185, 129, 0.22)';
-  ctx.beginPath();
-  ctx.moveTo(px - 2, nozzleY - 70);
-  ctx.lineTo(px + 3, nozzleY - 70);
-  ctx.lineTo(px + 5, nozzleY);
-  ctx.lineTo(px - 4, nozzleY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // -------------------------------------------------------------------------
-  // 4. KIELICH WYLOTOWY (HEAVY SEWER DISCHARGE NOZZLE / SPOUT)
-  // -------------------------------------------------------------------------
+  // 4. KIELICH WYLOTOWY (SEWER DISCHARGE SPOUT)
   const bellH = 22;
   const bellExtra = 14;
   const bellX = px - halfW - bellExtra * 0.5;
   const bellW = pw + bellExtra;
 
-  // Trapezowy kołnierz rozszerzający się ku wylotowi
-  const nGrad = ctx.createLinearGradient(bellX, 0, bellX + bellW, 0);
-  nGrad.addColorStop(0.0, '#06090e');
-  nGrad.addColorStop(0.2, '#1a2533');
-  nGrad.addColorStop(0.5, '#334458');
-  nGrad.addColorStop(0.8, '#1a2533');
-  nGrad.addColorStop(1.0, '#06090e');
-  ctx.fillStyle = nGrad;
-
+  // Trapezowy kołnierz wylewowy
+  ctx.fillStyle = '#1e293b';
   ctx.beginPath();
   ctx.moveTo(px - halfW, nozzleY - bellH);
   ctx.lineTo(px + halfW, nozzleY - bellH);
@@ -223,175 +205,260 @@ function drawSingleSewerPipe(ctx, pipe, time) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = '#05070a';
-  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.4;
   ctx.stroke();
 
-  // Wieniec nitów wylewowych
+  // Nity na kołnierzu
   ctx.fillStyle = '#94a3b8';
   for (let bx = bellX + 4; bx <= bellX + bellW - 4; bx += 8) {
-    ctx.fillRect(bx, nozzleY - 4, 2, 2);
+    ctx.fillRect(bx, nozzleY - 4, 2.2, 2.2);
   }
 
-  // Wewnętrzny otwór wylotu (Czeluść rury)
+  // Czeluść otworu wylotowego
   ctx.fillStyle = '#020406';
   ctx.beginPath();
-  ctx.ellipse(px, nozzleY, bellW * 0.45, 5.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, nozzleY, bellW * 0.44, 5.0, 0, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.strokeStyle = '#0f172a';
   ctx.lineWidth = 1.2;
   ctx.stroke();
 
-  // Tabliczka identyfikacyjna na kielichu
-  ctx.save();
+  // Etykieta techniczna
   ctx.font = '900 8px monospace';
   ctx.fillStyle = '#64748b';
   ctx.textAlign = 'center';
   ctx.fillText(pipe.label, px, nozzleY - 9);
-  ctx.restore();
 
-  // -------------------------------------------------------------------------
-  // 5. CYKL WYCIECIEK I ZRZUTU TOKSYCZNEGO ŚCIEKU DO KWASU
-  // -------------------------------------------------------------------------
+  // 5. OBSŁUGA CYKLU ZRZUTU
   const cycleTime = ((time + pipe.phase) % pipe.cycleDuration + pipe.cycleDuration) % pipe.cycleDuration;
-  const isPouring = cycleTime < pipe.pourDuration;
   const surfaceY = getAcidSurfaceY(px, time);
 
-  if (isPouring) {
-    // FAZA GŁÓWNEGO ZRZUTU: CIĄGŁA STRÓŻA / WODOSPAD ŚCIEKU
+  if (cycleTime < pipe.pourDuration) {
+    // Płynna funkcja natężenia przepływu: Smoothstep sinus (łagodne rozpoczęcie i łagodne zakończenie)
     const pourProgress = cycleTime / pipe.pourDuration;
-    // Płynne wejście i wygaszanie strumienia (ease-in / ease-out)
-    const intensity = Math.sin(pourProgress * Math.PI);
+    const rawSin = Math.sin(pourProgress * Math.PI);
+    // Smoothstep curve: eliminuje skoki i tworzy płynne napływanie cieczy
+    const intensity = rawSin * rawSin * (3.0 - 2.0 * rawSin);
+
     drawToxicCascadeStream(ctx, px, nozzleY, surfaceY, pipe.streamWidth * intensity, time, intensity);
   } else {
-    // FAZA SPOCZYNKU: OKRESOWE SKAPYWANIE POJEDYNCZYCH KROPEL (DRIPS)
+    // Spoczynek: płynnie skapujące krople
     drawToxicNozzleDrips(ctx, px, nozzleY, surfaceY, time, pipe.phase);
   }
 }
 
 /**
- * Rysuje ciągłą, turbulentną smugę zielonego ścieku spływającego do kwasu
+ * Rysuje PŁYNNY, laminarny, organiczny strumień zielonego kwasu
+ * Bez schodków, bez kanciastych segmentów, z ruchem falującym w dół (zgodnym z grawitacją)
  */
 function drawToxicCascadeStream(ctx, x, startY, endY, streamWidth, time, intensity) {
-  // Jeśli lustro kwasu zalało wylot, zamiast strumienia powietrznego rysujemy wrzenie w kwasie
-  if (endY <= startY + 6) {
+  if (intensity <= 0.01) return;
+
+  // Gdy wylot rury zalała wysoka fala kwasu (Y = 600)
+  if (endY <= startY + 8) {
     drawSubmergedNozzleBoil(ctx, x, endY, time, intensity);
     return;
   }
 
-  const sW = Math.max(3.5, streamWidth);
+  const sW = Math.max(2.5, streamWidth);
   const halfSW = sW * 0.5;
   const height = endY - startY;
+  if (height <= 4) return;
 
-  // 1. ZIELONA POŚWIATA ATMOSFERYCZNA WOKÓŁ STRUMIENIA (SCREEN GLOW)
+  // Krok próbkowania 10px zapewnia idealną, organiczną krzywiznę bez strat FPS
+  const step = 10;
+  const numSteps = Math.ceil(height / step);
+
+  // -------------------------------------------------------------------------
+  // 1. ZEWNĘTRZNA BIO-AURA (MIĘKKA POŚWIATA OPADU ŚCIEKU - SCREEN)
+  // -------------------------------------------------------------------------
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  const glowW = sW * 3.2;
-  const glowGrad = ctx.createLinearGradient(x - glowW, 0, x + glowW, 0);
-  glowGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
-  glowGrad.addColorStop(0.35, `rgba(34, 197, 94, ${0.15 * intensity})`);
-  glowGrad.addColorStop(0.50, `rgba(74, 222, 128, ${0.30 * intensity})`);
-  glowGrad.addColorStop(0.65, `rgba(34, 197, 94, ${0.15 * intensity})`);
-  glowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = glowGrad;
-  ctx.fillRect(x - glowW, startY, glowW * 2, height);
+  ctx.fillStyle = `rgba(34, 197, 94, ${0.16 * intensity})`;
+  ctx.beginPath();
+  const auraExtra = sW * 1.5;
+  ctx.rect(x - halfSW - auraExtra, startY, (halfSW + auraExtra) * 2, height);
+  ctx.fill();
   ctx.restore();
 
-  // 2. GŁÓWNE CIAŁO STRUMIENIA (PŁYNĄCY WODOSPAD KWASU)
+  // -------------------------------------------------------------------------
+  // 2. GŁÓWNY PŁYNNY KORPUS SZLAMU (CIEMNOZIELONA GĘSTA CIEŻ PIANKOWA)
+  // Laminarny spływ: fale przemieszczają się W DÓŁ (czas * 10 - y * 0.02)
+  // -------------------------------------------------------------------------
   ctx.save();
-  const streamGrad = ctx.createLinearGradient(x - halfSW, 0, x + halfSW, 0);
-  streamGrad.addColorStop(0.0, 'rgba(16, 185, 129, 0.85)');
-  streamGrad.addColorStop(0.25, 'rgba(34, 197, 94, 0.95)');
-  streamGrad.addColorStop(0.50, '#86efac'); // jasny radioaktywny rdzeń
-  streamGrad.addColorStop(0.75, 'rgba(34, 197, 94, 0.95)');
-  streamGrad.addColorStop(1.0, 'rgba(16, 185, 129, 0.85)');
-  ctx.fillStyle = streamGrad;
-
-  // Falująca kaskada z mikro-drganiami strumienia
+  ctx.fillStyle = `rgba(16, 185, 129, ${0.85 * intensity})`;
   ctx.beginPath();
-  const step = 20;
-  // Lewa krawędź opadającej cieczy
-  ctx.moveTo(x - halfSW, startY);
-  for (let cy = startY; cy <= endY; cy += step) {
-    const wave = Math.sin(time * 24 + cy * 0.05) * (1.8 * intensity);
-    // Grawitacyjne zwężenie strumienia
-    const taper = 1.0 - Math.min(0.25, (cy - startY) / (height + 1) * 0.25);
-    ctx.lineTo(x - halfSW * taper + wave, cy);
+
+  // Płynny menisk wylewowy na wylocie rury
+  ctx.moveTo(x - halfSW * 1.25, startY);
+
+  // Lewa krawędź strumienia opadająca w dół z grawitacyjnym zwężeniem
+  for (let i = 0; i <= numSteps; i++) {
+    const cy = Math.min(endY, startY + i * step);
+    const prog = (cy - startY) / height;
+    // Grawitacja: przyspieszająca ciecz naturalnie zwęża się w połowie wysokości
+    const gravityTaper = 1.0 - 0.28 * Math.sin(prog * Math.PI * 0.9);
+    // Płynna fala w dół z sumy dwóch harmonicznych
+    const wave = Math.sin(time * 9.5 - cy * 0.020) * (1.6 * intensity) +
+                 Math.sin(time * 15.0 - cy * 0.038) * (0.8 * intensity);
+    ctx.lineTo(x - (halfSW * gravityTaper) + wave, cy);
   }
-  ctx.lineTo(x + halfSW, endY);
+
+  // Podstawa na tafli kwasu (lekkie rozszerzenie przed zderzeniem)
+  ctx.lineTo(x + halfSW * 1.15, endY);
+
   // Prawa krawędź wznosząca się ku dyszy
-  for (let cy = endY; cy >= startY; cy -= step) {
-    const wave = Math.sin(time * 24 + cy * 0.05) * (1.8 * intensity);
-    const taper = 1.0 - Math.min(0.25, (cy - startY) / (height + 1) * 0.25);
-    ctx.lineTo(x + halfSW * taper + wave, cy);
+  for (let i = numSteps; i >= 0; i--) {
+    const cy = Math.min(endY, startY + i * step);
+    const prog = (cy - startY) / height;
+    const gravityTaper = 1.0 - 0.28 * Math.sin(prog * Math.PI * 0.9);
+    const wave = Math.sin(time * 9.5 - cy * 0.020) * (1.6 * intensity) +
+                 Math.sin(time * 15.0 - cy * 0.038) * (0.8 * intensity);
+    ctx.lineTo(x + (halfSW * gravityTaper) + wave, cy);
+  }
+
+  ctx.closePath();
+  ctx.fill();
+
+  // -------------------------------------------------------------------------
+  // 3. JASKRAWY RADIOAKTYWNY RDZEŃ STRUMIENIA (#86efac)
+  // Zapewnia głębię 3D i efekt płynącego ciekłego neonu
+  // -------------------------------------------------------------------------
+  const coreW = halfSW * 0.45;
+  ctx.fillStyle = `rgba(134, 239, 172, ${0.92 * intensity})`;
+  ctx.beginPath();
+  ctx.moveTo(x - coreW, startY);
+
+  for (let i = 0; i <= numSteps; i++) {
+    const cy = Math.min(endY, startY + i * step);
+    const wave = Math.sin(time * 9.5 - cy * 0.020 + 0.3) * (1.4 * intensity);
+    ctx.lineTo(x - coreW + wave, cy);
+  }
+  ctx.lineTo(x + coreW, endY);
+  for (let i = numSteps; i >= 0; i--) {
+    const cy = Math.min(endY, startY + i * step);
+    const wave = Math.sin(time * 9.5 - cy * 0.020 + 0.3) * (1.4 * intensity);
+    ctx.lineTo(x + coreW + wave, cy);
   }
   ctx.closePath();
   ctx.fill();
 
-  // 3. PĘDZĄCE STRUGI PRĘDKOŚCI (SPEED LINES WEWNĄTRZ WODOSPADU)
-  ctx.strokeStyle = '#dcfce7';
-  ctx.lineWidth = 1.2;
+  // -------------------------------------------------------------------------
+  // 4. LŚNIĄCA WSTĘGA LAMINARNA (SPECULAR FLUID RIBBON)
+  // Cienka biało-limonkowa linia płynąca w centrum strumienia
+  // -------------------------------------------------------------------------
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.60 * intensity})`;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  const speedOffset = (time * 620) % 36;
-  for (let sy = startY + speedOffset; sy < endY - 12; sy += 36) {
-    const swave = Math.sin(time * 24 + sy * 0.05) * 1.5;
-    ctx.moveTo(x + swave, sy);
-    ctx.lineTo(x + swave, sy + 18);
+  for (let i = 0; i <= numSteps; i++) {
+    const cy = Math.min(endY, startY + i * step);
+    const wave = Math.sin(time * 9.5 - cy * 0.020) * (1.5 * intensity);
+    if (i === 0) ctx.moveTo(x + wave, cy);
+    else ctx.lineTo(x + wave, cy);
   }
   ctx.stroke();
-  ctx.restore();
 
-  // 4. MIEJSCE UDERZENIA W KWAS (SPLASHDOWN IMPACT ZONE)
-  drawAcidImpactZone(ctx, x, endY, sW, time, intensity);
+  ctx.restore();
 }
 
 /**
- * Rysuje piane, bąble i rozbryzg w miejscu uderzenia strugi w kwas
+ * Rysuje piane, bąble i rozbryzgi w miejscu uderzenia strumienia w kwas
+ * Wywoływane w warstwie geometrii (drawArena2Geometry) bezpośrednio na tafli kwasu
+ */
+export function drawSewerImpacts(ctx, time, camera) {
+  if (!ctx) return;
+
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  const viewLeft = camX - 100;
+  const viewRight = camX + (canvasW / camZoom) + 100;
+
+  for (let i = 0; i < ARENA_2_SEWER_PIPES.length; i++) {
+    const pipe = ARENA_2_SEWER_PIPES[i];
+
+    // Viewport culling strefy uderzenia
+    if (pipe.x + 80 < viewLeft || pipe.x - 80 > viewRight) {
+      continue;
+    }
+
+    const cycleTime = ((time + pipe.phase) % pipe.cycleDuration + pipe.cycleDuration) % pipe.cycleDuration;
+    if (cycleTime < pipe.pourDuration) {
+      const pourProgress = cycleTime / pipe.pourDuration;
+      const rawSin = Math.sin(pourProgress * Math.PI);
+      const intensity = rawSin * rawSin * (3.0 - 2.0 * rawSin);
+
+      if (intensity > 0.02) {
+        const surfaceY = getAcidSurfaceY(pipe.x, time);
+        if (surfaceY > pipe.nozzleY + 8) {
+          drawAcidImpactZone(ctx, pipe.x, surfaceY, pipe.streamWidth * intensity, time, intensity);
+        } else {
+          drawSubmergedNozzleBoil(ctx, pipe.x, surfaceY, time, intensity);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Rysuje strefę uderzenia cieczy w kwas (bez alokacji gradientów)
  */
 function drawAcidImpactZone(ctx, x, surfaceY, streamWidth, time, intensity) {
   ctx.save();
+  const impactR = Math.max(14, streamWidth * 2.0);
 
-  // A. Promienista poświata uderzeniowa na tafli (glow impact spot)
+  // 1. ŁUNA ROZBLYSKU NA TAFLE (SCREEN Z WARSTWOWYMI ELIPSAMI - SZYBKIE I PŁYNNE)
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  const impactR = Math.max(18, streamWidth * 2.2);
-  const glowGrad = ctx.createRadialGradient(x, surfaceY, 2, x, surfaceY, impactR);
-  glowGrad.addColorStop(0.0, `rgba(134, 239, 172, ${0.85 * intensity})`);
-  glowGrad.addColorStop(0.35, `rgba(74, 222, 128, ${0.55 * intensity})`);
-  glowGrad.addColorStop(0.70, `rgba(34, 197, 94, ${0.20 * intensity})`);
-  glowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = glowGrad;
+  ctx.fillStyle = `rgba(34, 197, 94, ${0.28 * intensity})`;
   ctx.beginPath();
-  ctx.ellipse(x, surfaceY, impactR * 1.6, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, surfaceY, impactR * 1.6, 7.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = `rgba(134, 239, 172, ${0.45 * intensity})`;
+  ctx.beginPath();
+  ctx.ellipse(x, surfaceY, impactR * 0.9, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // B. Rozszerzające się pierścienie piany uderzeniowej (impact shockwaves)
-  const ringProgress = (time * 3.5) % 1.0;
-  const ringR = 8 + ringProgress * (impactR * 1.1);
-  const ringAlpha = (1.0 - ringProgress) * 0.75 * intensity;
-  ctx.strokeStyle = `rgba(167, 243, 208, ${ringAlpha})`;
-  ctx.lineWidth = 1.4;
+  // 2. ROZSZERZAJĄCE SIĘ PIERŚCIENIE PIANY (SHOCKWAVE RINGS)
+  const ringProgress1 = (time * 2.8) % 1.0;
+  const ringR1 = 6 + ringProgress1 * (impactR * 1.15);
+  const ringA1 = (1.0 - ringProgress1) * 0.70 * intensity;
+  ctx.strokeStyle = `rgba(167, 243, 208, ${ringA1})`;
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.ellipse(x, surfaceY, ringR * 1.4, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, surfaceY, ringR1 * 1.35, 4.0, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // C. Grzebień wrzącej piany wokół strugi (frothing foam crest)
-  ctx.fillStyle = 'rgba(240, 253, 244, 0.90)';
-  const foamW = streamWidth * 1.4;
+  const ringProgress2 = (time * 2.8 + 0.5) % 1.0;
+  const ringR2 = 6 + ringProgress2 * (impactR * 1.15);
+  const ringA2 = (1.0 - ringProgress2) * 0.65 * intensity;
+  ctx.strokeStyle = `rgba(134, 239, 172, ${ringA2})`;
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.ellipse(x, surfaceY - 1, foamW, 3.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, surfaceY, ringR2 * 1.35, 4.0, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3. PIENIĄCY SIĘ GRZEBIEŃ WRZENIA (FOAM CREST)
+  ctx.fillStyle = `rgba(240, 253, 244, ${0.92 * intensity})`;
+  const foamW = streamWidth * 1.3;
+  ctx.beginPath();
+  ctx.ellipse(x, surfaceY - 0.5, foamW, 3.2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // D. Wyrzucane rozbryzgi kropel (impact splash droplets)
+  // 4. KROPLE ROZPRYSKU W WYNIKU UDERZENIA (4 stałe trajektorie, 0 alokacji)
   ctx.fillStyle = '#86efac';
   for (let d = 0; d < 4; d++) {
-    const dProg = ((time * 4.5 + d * 0.25) % 1.0);
-    const angle = (d % 2 === 0 ? -1 : 1) * (0.55 + (d * 0.2));
-    const dist = 6 + dProg * 24;
-    const dropX = x + Math.sin(angle) * dist;
-    const dropY = surfaceY - Math.cos(angle) * dist * 0.7 + (dProg * dProg * 12);
-    const dropR = (1.0 - dProg) * 2.2 * intensity;
+    const dProg = ((time * 4.0 + d * 0.25) % 1.0);
+    const sign = (d % 2 === 0 ? -1 : 1);
+    const dDist = 5 + dProg * 22;
+    const dropX = x + sign * dDist * (0.8 + d * 0.1);
+    const dropY = surfaceY - Math.sin(dProg * Math.PI) * 14;
+    const dropR = (1.0 - dProg) * 2.0 * intensity;
 
     if (dropR > 0.4) {
       ctx.beginPath();
@@ -400,23 +467,23 @@ function drawAcidImpactZone(ctx, x, surfaceY, streamWidth, time, intensity) {
     }
   }
 
-  // E. Bąble gazu pęczniejące wokół punktu zrzutu (froth bubbles)
-  for (let b = 0; b < 5; b++) {
-    const bProg = ((time * 1.8 + b * 0.38) % 1.0);
-    const bx = x + Math.sin(b * 1.7) * (streamWidth * 1.2 * (bProg + 0.4));
-    const by = surfaceY + Math.cos(b * 2.1) * 2.0;
-    const br = 1.2 + bProg * 2.4;
-    const bAlpha = (1.0 - bProg * 0.5) * 0.85 * intensity;
+  // 5. BULGOCZĄCE BĄBLE PIANY WOKÓŁ PUNKTU UDERZENIA
+  for (let b = 0; b < 4; b++) {
+    const bProg = ((time * 1.6 + b * 0.25) % 1.0);
+    const bx = x + Math.sin(b * 2.3 + time * 2) * (streamWidth * 1.1);
+    const by = surfaceY + Math.cos(b * 1.9) * 1.5;
+    const br = 1.2 + bProg * 2.2;
+    const bAlpha = (1.0 - bProg * 0.4) * 0.85 * intensity;
 
     ctx.fillStyle = `rgba(167, 243, 208, ${bAlpha})`;
     ctx.beginPath();
     ctx.arc(bx, by, br, 0, Math.PI * 2);
     ctx.fill();
 
-    // Punktowy biały błysk na bąblu
+    // Punktowy biały błysk
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.35, 0, Math.PI * 2);
+    ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.32, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -424,13 +491,14 @@ function drawAcidImpactZone(ctx, x, surfaceY, streamWidth, time, intensity) {
 }
 
 /**
- * Okresowe skapywanie kropel z dyszy w fazie uśpienia
+ * Płynne skapywanie kropel w fazie spoczynku (trajektoria paraboliczna przyspieszenia)
  */
 function drawToxicNozzleDrips(ctx, x, startY, surfaceY, time, phase) {
   if (surfaceY <= startY + 4) return;
 
-  const dripCycle = (time * 1.4 + phase) % 1.0;
-  const dropY = startY + dripCycle * Math.min(220, surfaceY - startY);
+  const dripCycle = ((time * 1.35 + phase) % 1.0);
+  // Przyspieszenie grawitacyjne kropli
+  const dropY = startY + (dripCycle * dripCycle) * Math.min(260, surfaceY - startY);
 
   if (dropY < surfaceY) {
     ctx.save();
@@ -439,21 +507,21 @@ function drawToxicNozzleDrips(ctx, x, startY, surfaceY, time, phase) {
     ctx.arc(x, dropY, 2.0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ogon kropli
-    ctx.strokeStyle = 'rgba(74, 222, 128, 0.45)';
+    // Płynny smukły ogon kropli
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.40)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(x, dropY);
-    ctx.lineTo(x, dropY - 5);
+    ctx.lineTo(x, dropY - 6 * dripCycle);
     ctx.stroke();
     ctx.restore();
   }
 
-  // Mały zaciek na krawędzi wylotu
+  // Zaciek na dolnej wardze dyszy
   ctx.save();
-  ctx.fillStyle = '#4ade80';
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.85)';
   ctx.beginPath();
-  ctx.arc(x, startY + 1.5, 2.2, 0, Math.PI * 2);
+  ctx.arc(x, startY + 1.2, 2.0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -465,40 +533,17 @@ function drawSubmergedNozzleBoil(ctx, x, surfaceY, time, intensity) {
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
 
-  // Bulgotanie z zalanego wylotu ku powierzchni
-  for (let b = 0; b < 6; b++) {
-    const bProg = ((time * 2.5 + b * 0.22) % 1.0);
-    const bx = x + Math.sin(time * 3 + b) * 14;
-    const by = surfaceY - (1.0 - bProg) * 8;
-    const br = 1.5 + bProg * 3.5;
+  for (let b = 0; b < 5; b++) {
+    const bProg = ((time * 2.4 + b * 0.2) % 1.0);
+    const bx = x + Math.sin(time * 3 + b) * 12;
+    const by = surfaceY - (1.0 - bProg) * 7;
+    const br = 1.5 + bProg * 3.2;
 
-    ctx.fillStyle = `rgba(110, 231, 183, ${(1.0 - bProg) * 0.75 * intensity})`;
+    ctx.fillStyle = `rgba(110, 231, 183, ${(1.0 - bProg) * 0.70 * intensity})`;
     ctx.beginPath();
     ctx.arc(bx, by, br, 0, Math.PI * 2);
     ctx.fill();
   }
 
   ctx.restore();
-}
-
-/**
- * Rysuje pianę, bąble i rozbryzgi na tafli kwasu w miejscach uderzenia aktywnych strumieni ścieków
- * Wywoływane w warstwie geometrii (drawArena2Geometry) bezpośrednio na tafli kwasu
- */
-export function drawSewerImpacts(ctx, time) {
-  if (!ctx) return;
-  for (let i = 0; i < ARENA_2_SEWER_PIPES.length; i++) {
-    const pipe = ARENA_2_SEWER_PIPES[i];
-    const cycleTime = ((time + pipe.phase) % pipe.cycleDuration + pipe.cycleDuration) % pipe.cycleDuration;
-    if (cycleTime < pipe.pourDuration) {
-      const pourProgress = cycleTime / pipe.pourDuration;
-      const intensity = Math.sin(pourProgress * Math.PI);
-      const surfaceY = getAcidSurfaceY(pipe.x, time);
-      if (surfaceY > pipe.nozzleY + 6) {
-        drawAcidImpactZone(ctx, pipe.x, surfaceY, pipe.streamWidth * intensity, time, intensity);
-      } else {
-        drawSubmergedNozzleBoil(ctx, pipe.x, surfaceY, time, intensity);
-      }
-    }
-  }
 }

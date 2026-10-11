@@ -28,15 +28,27 @@ export {
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
 // Symetryczny punkt centralny areny w osi litery „X” (fanCenterX = 2000, fanCenterY = 680)
 // =========================================================================
-export function drawMonumentalCenterTurbine(ctx, time) {
-  ctx.save();
-  ctx.shadowBlur = 0;
-
+export function drawMonumentalCenterTurbine(ctx, time, camera) {
   const fanCenterX = 2000;
   const fanCenterY = 680;
   const fanRadius = 420; // Monumentalny powiększony promień (R = 420 px)
   const hubRadius = 75;  // Proporcjonalna piasta środkowa (75 px)
   const rotation = time * 0.45;
+
+  // Viewport culling: jeśli monumentalna turbina jest całkowicie poza ekranem, pomijamy cały render!
+  if (camera) {
+    const camZoom = camera.zoom || 1;
+    const camX = (typeof camera.x === 'number') ? camera.x : 0;
+    const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+    const vLeft = camX - 100;
+    const vRight = camX + (canvasW / camZoom) + 100;
+    if (fanCenterX + fanRadius + 20 < vLeft || fanCenterX - fanRadius - 20 > vRight) {
+      return;
+    }
+  }
+
+  ctx.save();
+  ctx.shadowBlur = 0;
 
   // 1. ZEWNĘTRZNA CZELUŚĆ SZYBU WENTYLACYJNEGO (GŁĘBOKI TUNEL)
   ctx.fillStyle = '#020406';
@@ -45,12 +57,7 @@ export function drawMonumentalCenterTurbine(ctx, time) {
   ctx.fill();
 
   // 2. STALOWY KOŁNIERZ MONTAŻOWY (CASING FLANGE // R = 420 do 440)
-  const flangeGrad = ctx.createRadialGradient(fanCenterX, fanCenterY, fanRadius - 6, fanCenterX, fanCenterY, fanRadius + 20);
-  flangeGrad.addColorStop(0.00, '#0a1017');
-  flangeGrad.addColorStop(0.55, '#151f2b');
-  flangeGrad.addColorStop(0.85, '#222f3e');
-  flangeGrad.addColorStop(1.00, '#090d14');
-  ctx.fillStyle = flangeGrad;
+  ctx.fillStyle = '#151f2b';
   ctx.beginPath();
   ctx.arc(fanCenterX, fanCenterY, fanRadius + 20, 0, Math.PI * 2);
   ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2, true);
@@ -87,15 +94,10 @@ export function drawMonumentalCenterTurbine(ctx, time) {
     ctx.fill();
   }
 
-  // 3. CHŁODNY RADIALNY BLASK SZYBU WENTYLACYJNEGO (#0e2a38 -> transparent)
+  // 3. CHŁODNY BLASK SZYBU WENTYLACYJNEGO (#0e2a38 -> transparent)
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
-  const ventGlow = ctx.createRadialGradient(fanCenterX, fanCenterY, 20, fanCenterX, fanCenterY, fanRadius);
-  ventGlow.addColorStop(0.00, 'rgba(14, 42, 56, 0.65)'); // #0e2a38
-  ventGlow.addColorStop(0.45, 'rgba(14, 42, 56, 0.35)');
-  ventGlow.addColorStop(0.75, 'rgba(10, 28, 38, 0.15)');
-  ventGlow.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = ventGlow;
+  ctx.fillStyle = 'rgba(14, 42, 56, 0.40)';
   ctx.beginPath();
   ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2);
   ctx.fill();
@@ -120,7 +122,7 @@ export function drawMonumentalCenterTurbine(ctx, time) {
   ctx.lineTo(fanCenterX, fanCenterY + fanRadius);
   ctx.stroke();
 
-  // 5. OBROTOWE ŁOPATKI WENTYLATORA (rotation = time * 0.45)
+  // 5. OBROTOWE ŁOPATKI WENTYLATORA (rotation = time * 0.45) - 0 ALOKACJI GRADIENTÓW W PĘTLI
   const bladeCount = 6;
   const bladeWidthAng = 0.28;
 
@@ -130,7 +132,6 @@ export function drawMonumentalCenterTurbine(ctx, time) {
     const sinAng = Math.sin(ang);
 
     // Cień łopatki rzucany w głąb szybu
-    ctx.save();
     ctx.fillStyle = 'rgba(2, 4, 8, 0.85)';
     ctx.beginPath();
     ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.4) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.4) * hubRadius + 10);
@@ -139,20 +140,9 @@ export function drawMonumentalCenterTurbine(ctx, time) {
     ctx.lineTo(fanCenterX + Math.cos(ang + bladeWidthAng * 0.4) * hubRadius, fanCenterY + Math.sin(ang + bladeWidthAng * 0.4) * hubRadius + 10);
     ctx.closePath();
     ctx.fill();
-    ctx.restore();
 
-    // Korpus stalowej aerodynamicznej łopatki z gradientem
-    ctx.save();
-    const bladeGrad = ctx.createLinearGradient(
-      fanCenterX + cosAng * hubRadius, fanCenterY + sinAng * hubRadius,
-      fanCenterX + cosAng * fanRadius, fanCenterY + sinAng * fanRadius
-    );
-    bladeGrad.addColorStop(0.00, '#0d131a');
-    bladeGrad.addColorStop(0.35, '#141d27');
-    bladeGrad.addColorStop(0.70, '#1c2836');
-    bladeGrad.addColorStop(1.00, '#0a0f15');
-    ctx.fillStyle = bladeGrad;
-
+    // Korpus stalowej aerodynamicznej łopatki
+    ctx.fillStyle = '#141d27';
     ctx.beginPath();
     ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
     ctx.lineTo(fanCenterX + Math.cos(ang - bladeWidthAng) * (fanRadius - 5), fanCenterY + Math.sin(ang - bladeWidthAng) * (fanRadius - 5));
@@ -162,7 +152,7 @@ export function drawMonumentalCenterTurbine(ctx, time) {
     ctx.fill();
 
     // Krawędź natarcia (jasny frezowany refleks stali)
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+    ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
@@ -170,25 +160,23 @@ export function drawMonumentalCenterTurbine(ctx, time) {
     ctx.stroke();
 
     // Przetłoczenie wzmacniające wzdłuż profilu łopatki
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(fanCenterX + cosAng * hubRadius, fanCenterY + sinAng * hubRadius);
     ctx.lineTo(fanCenterX + cosAng * (fanRadius - 8), fanCenterY + sinAng * (fanRadius - 8));
     ctx.stroke();
-
-    ctx.restore();
   }
 
   // 6. CENTRALNA PIASTA ROTORA (ROTOR HUB // hubRadius = 54)
-  const hubGrad = ctx.createRadialGradient(fanCenterX - 12, fanCenterY - 12, 6, fanCenterX, fanCenterY, hubRadius);
-  hubGrad.addColorStop(0.00, '#2d3748');
-  hubGrad.addColorStop(0.45, '#1a202c');
-  hubGrad.addColorStop(0.85, '#0f172a');
-  hubGrad.addColorStop(1.00, '#05080f');
-  ctx.fillStyle = hubGrad;
+  ctx.fillStyle = '#1a202c';
   ctx.beginPath();
   ctx.arc(fanCenterX, fanCenterY, hubRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#2d3748';
+  ctx.beginPath();
+  ctx.arc(fanCenterX - 8, fanCenterY - 8, hubRadius * 0.65, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = '#334155';
@@ -217,13 +205,14 @@ export function drawMonumentalCenterTurbine(ctx, time) {
   }
 
   // Centralny stożek aerodynamiczny wału silnika (spinner cone // R = 24)
-  const coneGrad = ctx.createRadialGradient(fanCenterX - 6, fanCenterY - 6, 3, fanCenterX, fanCenterY, 24);
-  coneGrad.addColorStop(0.00, '#475569');
-  coneGrad.addColorStop(0.50, '#1e293b');
-  coneGrad.addColorStop(1.00, '#090d16');
-  ctx.fillStyle = coneGrad;
+  ctx.fillStyle = '#1e293b';
   ctx.beginPath();
   ctx.arc(fanCenterX, fanCenterY, 24, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#475569';
+  ctx.beginPath();
+  ctx.arc(fanCenterX - 5, fanCenterY - 5, 12, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = '#020617';
@@ -245,6 +234,22 @@ export function drawMonumentalCenterTurbine(ctx, time) {
 // 4. RENDEROWANIE TŁA INDUSTRIALNEGO (DRAWARENA2BACKGROUND / SEKTOR X)
 // Ciemny bunkier przemysłowy, monumentalna turbina centralna, kratownice i rurociągi
 // =========================================================================
+let _cachedBgGrad = null;
+let _cachedBgH = -1;
+
+function getCachedBgGrad(ctx, h) {
+  if (!_cachedBgGrad || _cachedBgH !== h) {
+    _cachedBgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    _cachedBgGrad.addColorStop(0.00, '#06090e'); // Ciemny grafit sufitu hali
+    _cachedBgGrad.addColorStop(0.35, '#0a0f16'); // Ciemna stal bunkra
+    _cachedBgGrad.addColorStop(0.70, '#0d151c'); // Poziom środkowych pomostów
+    _cachedBgGrad.addColorStop(0.92, '#071813'); // Toksyczna poświata nad kwasem
+    _cachedBgGrad.addColorStop(1.00, '#040d0a'); // Dno zbiornika odpadów
+    _cachedBgH = h;
+  }
+  return _cachedBgGrad;
+}
+
 export function drawArena2Background(ctx, camera) {
   if (!ctx) return;
   ctx.save();
@@ -260,14 +265,9 @@ export function drawArena2Background(ctx, camera) {
   const camY = camera ? (camera.y || 0) : 0;
 
   // -----------------------------------------------------------------------
-  // WARSTWA 0: BAZOWY GRADIENT BETONOWO-STALOWEGO BUNKRU
+  // WARSTWA 0: BAZOWY GRADIENT BETONOWO-STALOWEGO BUNKRU (CACHED - 0 ALOKACJI GC)
   // -----------------------------------------------------------------------
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-  bgGrad.addColorStop(0.00, '#06090e'); // Ciemny grafit sufitu hali
-  bgGrad.addColorStop(0.35, '#0a0f16'); // Ciemna stal bunkra
-  bgGrad.addColorStop(0.70, '#0d151c'); // Poziom środkowych pomostów
-  bgGrad.addColorStop(0.92, '#071813'); // Toksyczna poświata nad kwasem
-  bgGrad.addColorStop(1.00, '#040d0a'); // Dno zbiornika odpadów
+  const bgGrad = getCachedBgGrad(ctx, H_screen);
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W_screen, H_screen);
 
@@ -344,10 +344,10 @@ export function drawArena2Background(ctx, camera) {
   ctx.translate(-camX, -camY);
 
   // KOLEKTORY ŚCIEKOWE W CIEMNEJ PRZESTRZENI PO BOKACH WENTYLATORA (SEWER PIPES)
-  drawSewerPipes(ctx, time);
+  drawSewerPipes(ctx, time, camera);
 
-  drawMonumentalCenterTurbine(ctx, time);
-  drawRotatingHazardBeacons(ctx, time);
+  drawMonumentalCenterTurbine(ctx, time, camera);
+  drawRotatingHazardBeacons(ctx, time, camera);
 
   ctx.restore();
 
@@ -410,83 +410,107 @@ export function drawArena2Geometry(ctx, camera) {
   ctx.fillRect(-200, curAcidY - 10, 4400, (BOTTOM_Y - curAcidY) + 210);
 
   // -----------------------------------------------------------------------
+  // OBLICZENIE ZAKRESU WIDOKU KAMERY (VIEWPORT CULLING DLA 60 FPS)
+  // -----------------------------------------------------------------------
+  const canvasW = (ctx.canvas && ctx.canvas.width) || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const viewLeft = camX - 100;
+  const viewRight = camX + (canvasW / camZoom) + 100;
+
+  // -----------------------------------------------------------------------
   // 2. SUFITOWE MAGISTRALE I BELKI TECHNICZNE (Y: 150-180)
   // -----------------------------------------------------------------------
-  drawCeilingInfrastructure(ctx, time);
+  drawCeilingInfrastructure(ctx, time, viewLeft, viewRight);
 
   // -----------------------------------------------------------------------
   // 3. GÓRNE BASTIONY A i B (X: 180-880 oraz 3120-3820, Y: 420)
   // -----------------------------------------------------------------------
-  drawIndustrialFortressPlatform(ctx, 180, 420, 700, 32, 'A - TOP WEST', true, time);
-  drawIndustrialFortressPlatform(ctx, 3120, 420, 700, 32, 'B - TOP EAST', false, time);
+  if (880 >= viewLeft && 180 <= viewRight) {
+    drawIndustrialFortressPlatform(ctx, 180, 420, 700, 32, 'A - TOP WEST', true, time);
+  }
+  if (3820 >= viewLeft && 3120 <= viewRight) {
+    drawIndustrialFortressPlatform(ctx, 3120, 420, 700, 32, 'B - TOP EAST', false, time);
+  }
 
   // -----------------------------------------------------------------------
   // 4. UKOŚNE RAMPY GÓRNE (POŁĄCZENIE BASTIONÓW ZE ŚRODKIEM)
   // Rampa A: (880, 420) -> (1560, 720)
   // Rampa B (Mirror): (3120, 420) -> (2440, 720)
   // -----------------------------------------------------------------------
-  drawIndustrialTrussRamp(ctx, 880, 420, 1560, 720, 18, true, time);
-  drawIndustrialTrussRamp(ctx, 3120, 420, 2440, 720, 18, false, time);
+  if (1560 >= viewLeft && 880 <= viewRight) {
+    drawIndustrialTrussRamp(ctx, 880, 420, 1560, 720, 18, true, time);
+  }
+  if (3120 >= viewLeft && 2440 <= viewRight) {
+    drawIndustrialTrussRamp(ctx, 3120, 420, 2440, 720, 18, false, time);
+  }
 
   // -----------------------------------------------------------------------
   // 6. UKOŚNE RAMPY DOLNE (ZE ŚRODKA NA DOLNE BASTIONY)
   // Rampa C: (1560, 720) -> (900, 1080)
   // Rampa D (Mirror): (2440, 720) -> (3100, 1080)
   // -----------------------------------------------------------------------
-  drawIndustrialTrussRamp(ctx, 1560, 720, 900, 1080, 18, false, time);
-  drawIndustrialTrussRamp(ctx, 2440, 720, 3100, 1080, 18, true, time);
+  if (1560 >= viewLeft && 900 <= viewRight) {
+    drawIndustrialTrussRamp(ctx, 1560, 720, 900, 1080, 18, false, time);
+  }
+  if (3100 >= viewLeft && 2440 <= viewRight) {
+    drawIndustrialTrussRamp(ctx, 2440, 720, 3100, 1080, 18, true, time);
+  }
 
   // -----------------------------------------------------------------------
   // 6B. WĘZŁY KRATOWNIC PRZY ŚRODKU (JUNCTION CAPS - LEWY I PRAWY)
-  // Symetryczne zwieńczenia wierzchołków przy X = 1560 oraz X = 2440
   // -----------------------------------------------------------------------
-  drawRampJunctionCap(ctx, 1560, 720, true);
-  drawRampJunctionCap(ctx, 2440, 720, false);
+  if (1585 >= viewLeft && 1535 <= viewRight) {
+    drawRampJunctionCap(ctx, 1560, 720, true);
+  }
+  if (2465 >= viewLeft && 2415 <= viewRight) {
+    drawRampJunctionCap(ctx, 2440, 720, false);
+  }
 
   // -----------------------------------------------------------------------
   // 7. DOLNE BASTIONY C i D (X: 180-900 oraz 3100-3820, Y: 1080)
   // -----------------------------------------------------------------------
-  drawIndustrialFortressPlatform(ctx, 180, 1080, 720, 32, 'C - HAZARD DECK', true, time);
-  drawIndustrialFortressPlatform(ctx, 3100, 1080, 720, 32, 'D - ACID PIER', false, time);
+  if (900 >= viewLeft && 180 <= viewRight) {
+    drawIndustrialFortressPlatform(ctx, 180, 1080, 720, 32, 'C - HAZARD DECK', true, time);
+  }
+  if (3820 >= viewLeft && 3100 <= viewRight) {
+    drawIndustrialFortressPlatform(ctx, 3100, 1080, 720, 32, 'D - ACID PIER', false, time);
+  }
 
   // -----------------------------------------------------------------------
   // 5. CENTRALNY HUB TAKTYCZNY (X: 1560-2440, Y: 720, W: 880, H: 26)
-  // Rysowany przed kwasem, aby przy kulminacji zalań (Y = 600) został całkowicie zatopiony!
   // -----------------------------------------------------------------------
-  drawCenterTacticalHub(ctx, 1560, 720, 880, 26, time);
+  if (2440 >= viewLeft && 1560 <= viewRight) {
+    drawCenterTacticalHub(ctx, 1560, 720, 880, 26, time);
+  }
 
   // -----------------------------------------------------------------------
   // 1. ZBIORNIK TOKSYCZNEGO KWASU (HAZARD LAKE // Y = currentY DO BOTTOM_Y)
-  // Jednolity, stały render cieczy niezależnie od stanu i fazy alarmu
   // -----------------------------------------------------------------------
-  drawAcidLevel(ctx, curAcidY, BOTTOM_Y);
+  drawAcidLevel(ctx, curAcidY, BOTTOM_Y, camera);
 
   // 1B. DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ BECZKI, CZASZKI, KOŚCI I OŚCI RYB
-  drawAcidFlotsam(ctx, time);
+  drawAcidFlotsam(ctx, time, camera);
 
   // 1C. WPŁYW ŚCIEKÓW DO KWASU - PIANA I BĄBLE W MIEJSCACH UDERZENIA STRUMIENI
-  drawSewerImpacts(ctx, time);
+  drawSewerImpacts(ctx, time, camera);
 
   // 1D. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
-  drawAcidSurfaceBubbles(ctx, time);
+  drawAcidSurfaceBubbles(ctx, time, camera, viewLeft, viewRight);
 
   // 1D. GŁÓWNA ŁUNA OD KWASU (ACID UPWARD UNDERGLOW)
-  drawAcidUpwardUnderglow(ctx);
+  drawAcidUpwardUnderglow(ctx, camera, viewLeft, viewRight);
 
   // 1E. DYNAMICZNE EFEKTY ZGONU W KWASIE (WRZENIE, GEJZERY KROPEL, DYM, WYRZUCONY EKWIPUNEK)
   drawAcidDeathEffects(ctx, time);
 
   // 7B. ZIELONY AKCENT NA KRAWĘDZIACH PLATFORM I RAMP (RIM LIGHT // SCREEN)
-  drawPlatformRimLighting(ctx);
+  drawPlatformRimLighting(ctx, viewLeft, viewRight);
 
   // -----------------------------------------------------------------------
   // 8. ELEMENTY ATMOSFERYCZNE: OPARY KWASU I OSTRZEGAWCZE ŚWIATŁA STROBOSKOPOWE
   // -----------------------------------------------------------------------
-  drawToxicVaporMotes(ctx, time);
-  drawAcidVaporAndHazards(ctx, time);
-
-  // KOGUTY ALARMOWE (renderowane w geometrii w przypadku braku tła)
-  drawRotatingHazardBeacons(ctx, time);
+  drawToxicVaporMotes(ctx, time, camera, viewLeft, viewRight);
+  drawAcidVaporAndHazards(ctx, time, viewLeft, viewRight);
 
   // -----------------------------------------------------------------------
   // 9. TAKTYCZNE OSTRZEŻENIE O ZALANIU / SYRENY WIZUALNE
@@ -509,48 +533,70 @@ export function drawArena2Foreground(ctx, camera) {
 // =========================================================================
 
 // Jednolity, stały render cieczy niezależnie od stanu i fazy alarmu
-export function drawAcidLevel(ctx, currentY, bottomY = 1600) {
+let _cachedAcidGrad = null;
+let _cachedAcidCurY = -1;
+let _cachedAcidBottomY = -1;
+
+function getCachedAcidGrad(ctx, curY, bottomY) {
+  if (!_cachedAcidGrad || Math.abs(_cachedAcidCurY - curY) > 1 || Math.abs(_cachedAcidBottomY - bottomY) > 1) {
+    _cachedAcidGrad = ctx.createLinearGradient(0, curY, 0, bottomY);
+    _cachedAcidGrad.addColorStop(0.00, '#22c55e'); // standardowa zieleń na powierzchni
+    _cachedAcidGrad.addColorStop(0.18, '#15803d');
+    _cachedAcidGrad.addColorStop(0.55, '#052e16');
+    _cachedAcidGrad.addColorStop(1.00, '#010a05'); // 100% kryjące dno
+    _cachedAcidCurY = curY;
+    _cachedAcidBottomY = bottomY;
+  }
+  return _cachedAcidGrad;
+}
+
+// Jednolity, stały render cieczy zoptymalizowany pod kątem 60 FPS (cached gradient + culling)
+export function drawAcidLevel(ctx, currentY, bottomY = 1600, camera) {
   const curY = (currentY !== undefined && currentY !== null)
     ? currentY
     : ((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440);
-  const BOTTOM_Y = Math.max(1600, bottomY || 1600); // lub dynamiczna dolna granica ekranu
+  const BOTTOM_Y = Math.max(1600, bottomY || 1600);
   const time = performance.now() * 0.001;
 
   ctx.save();
   ctx.globalAlpha = 1.0;
   ctx.globalCompositeOperation = 'source-over';
 
-  // 1. Zawsze ten sam, niezmienny gradient głębinowy
-  const acidGrad = ctx.createLinearGradient(0, curY, 0, BOTTOM_Y);
-  acidGrad.addColorStop(0.00, '#22c55e'); // standardowa zieleń na powierzchni
-  acidGrad.addColorStop(0.18, '#15803d');
-  acidGrad.addColorStop(0.55, '#052e16');
-  acidGrad.addColorStop(1.00, '#010a05'); // 100% kryjące dno
+  const acidGrad = getCachedAcidGrad(ctx, curY, BOTTOM_Y);
 
-  // 2. Ta sama standardowa powierzchnia fal
+  // Viewport-aware horizontal range (brak liczenia niewidocznych fal)
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  const step = 20;
+
+  const rawLeft = Math.max(0, Math.floor((camX - 60) / step) * step);
+  const rawRight = Math.min(4000, Math.ceil((camX + canvasW / camZoom + 60) / step) * step);
+  const startX = (rawRight > rawLeft && rawLeft >= 0 && rawRight <= 4000) ? rawLeft : 0;
+  const endX = (rawRight > rawLeft && rawLeft >= 0 && rawRight <= 4000) ? rawRight : 4000;
+
+  // 1. Wypełnienie kwasu
   ctx.fillStyle = acidGrad;
   ctx.beginPath();
-  ctx.moveTo(0, BOTTOM_Y);
-  ctx.lineTo(0, curY);
+  ctx.moveTo(startX, BOTTOM_Y);
+  ctx.lineTo(startX, curY);
 
-  // Stała formuła fal bez względu na to, czy kwas stoi, czy się podnosi (do X = 4000)
-  const step = 20;
-  for (let x = 0; x <= 4000; x += step) {
+  for (let x = startX; x <= endX; x += step) {
     const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
     ctx.lineTo(x, waveY);
   }
 
-  ctx.lineTo(4000, BOTTOM_Y);
+  ctx.lineTo(endX, BOTTOM_Y);
   ctx.closePath();
   ctx.fill();
 
-  // 3. Ta sama, delikatna linia grzbietu fali
+  // 2. Grzbiet fali kwasu
   ctx.strokeStyle = '#86efac';
   ctx.lineWidth = 2.0;
   ctx.beginPath();
-  for (let x = 0; x <= 4000; x += step) {
+  for (let x = startX; x <= endX; x += step) {
     const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
-    if (x === 0) ctx.moveTo(x, waveY);
+    if (x === startX) ctx.moveTo(x, waveY);
     else ctx.lineTo(x, waveY);
   }
   ctx.stroke();
@@ -559,9 +605,9 @@ export function drawAcidLevel(ctx, currentY, bottomY = 1600) {
 }
 
 /** Alias kompatybilności */
-export function drawAcidLake(ctx, time, bottomY) {
+export function drawAcidLake(ctx, time, bottomY, camera) {
   const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
-  drawAcidLevel(ctx, curY, bottomY);
+  drawAcidLevel(ctx, curY, bottomY, camera);
 }
 
 // =========================================================================
@@ -569,8 +615,14 @@ export function drawAcidLake(ctx, time, bottomY) {
 // Beczki z wyciekiem i dymem, czaszki, kości oraz ości ryb (100% symetria X = 2000, 0 alokacji GC)
 // =========================================================================
 
-export function drawAcidFlotsam(ctx, time) {
+export function drawAcidFlotsam(ctx, time, camera) {
   if (!ctx || !_acidFlotsam || _acidFlotsam.length === 0) return;
+
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  const viewLeft = camX - 70;
+  const viewRight = camX + (canvasW / camZoom) + 70;
 
   ctx.save();
   ctx.shadowBlur = 0;
@@ -578,6 +630,10 @@ export function drawAcidFlotsam(ctx, time) {
   for (let i = 0; i < _acidFlotsam.length; i++) {
     const item = _acidFlotsam[i];
     const curX = item.baseX + Math.sin(time * item.driftSpeed + item.phase) * item.driftAmp;
+
+    // Viewport culling unoszących się śmieci (zero kosztu poza ekranem)
+    if (curX + 60 < viewLeft || curX - 60 > viewRight) continue;
+
     const curY = getAcidSurfaceY(curX, time) + (item.yOffset || 0);
 
     // Dynamiczny kąt nachylenia grzbietu fali pod dryfującym obiektem
@@ -612,36 +668,29 @@ export function drawAcidFlotsam(ctx, time) {
   ctx.restore();
 }
 
-/** 1. Unosząca się industrialna beczka z wyciekiem neonowego kwasu i dymem */
+/** 1. Unosząca się industrialna beczka z wyciekiem neonowego kwasu i dymem (0 alokacji gradientów) */
 function drawFloatingBarrel(ctx, size, time, item) {
   const w = size;
   const h = size * 1.3;
   const halfW = w * 0.5;
   const halfH = h * 0.5;
 
-  // A. Fosforyzująca plama toksycznego wycieku na tafli (glow puddle)
+  // A. Fosforyzująca plama toksycznego wycieku na tafli (glow puddle - screen)
   ctx.save();
   ctx.globalCompositeOperation = 'screen';
   const leakPulse = 0.55 + 0.45 * Math.sin(time * 3.5 + item.phase);
-  const glowGrad = ctx.createRadialGradient(0, 4, 2, 0, 4, w * 1.2);
-  glowGrad.addColorStop(0.0, `rgba(74, 222, 128, ${0.75 * leakPulse})`);
-  glowGrad.addColorStop(0.4, `rgba(34, 197, 94, ${0.35 * leakPulse})`);
-  glowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = glowGrad;
+  ctx.fillStyle = `rgba(74, 222, 128, ${0.45 * leakPulse})`;
   ctx.beginPath();
-  ctx.ellipse(0, 4, w * 1.2, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, w * 1.2, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(134, 239, 172, ${0.65 * leakPulse})`;
+  ctx.beginPath();
+  ctx.ellipse(0, 4, w * 0.6, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // B. Stalowy korpus beczki (industrialny hazmat yellow/amber z cieniami)
-  const bGrad = ctx.createLinearGradient(-halfW, 0, halfW, 0);
-  bGrad.addColorStop(0.00, '#451a03');
-  bGrad.addColorStop(0.25, '#b45309');
-  bGrad.addColorStop(0.55, '#f59e0b');
-  bGrad.addColorStop(0.85, '#d97706');
-  bGrad.addColorStop(1.00, '#78350f');
-  ctx.fillStyle = bGrad;
-
+  // B. Stalowy korpus beczki (industrialny hazmat amber z cieniami)
+  ctx.fillStyle = '#b45309';
   ctx.beginPath();
   if (typeof ctx.roundRect === 'function') {
     ctx.roundRect(-halfW, -halfH, w, h, 3);
@@ -649,6 +698,14 @@ function drawFloatingBarrel(ctx, size, time, item) {
     ctx.rect(-halfW, -halfH, w, h);
   }
   ctx.fill();
+
+  // Cylindryczny odblask
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(-halfW * 0.2, -halfH, halfW * 0.5, h);
+
+  // Krawędziowy cień
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(-halfW, -halfH, halfW * 0.35, h);
 
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 1.4;
@@ -684,14 +741,12 @@ function drawFloatingBarrel(ctx, size, time, item) {
   ctx.fill();
 
   // E. Zanurzona dolna część w kwasie (przeźroczyste zielone zabarwienie)
-  const submergedGrad = ctx.createLinearGradient(0, 0, 0, halfH);
-  submergedGrad.addColorStop(0.0, 'rgba(34, 197, 94, 0.45)');
-  submergedGrad.addColorStop(0.5, 'rgba(21, 128, 61, 0.80)');
-  submergedGrad.addColorStop(1.0, 'rgba(5, 46, 22, 0.95)');
-  ctx.fillStyle = submergedGrad;
+  ctx.fillStyle = 'rgba(21, 128, 61, 0.82)';
   ctx.beginPath();
   ctx.rect(-halfW - 0.5, 0, w + 1, halfH + 1);
   ctx.fill();
+  ctx.fillStyle = 'rgba(5, 46, 22, 0.55)';
+  ctx.fillRect(-halfW - 0.5, halfH * 0.4, w + 1, halfH * 0.6 + 1);
 
   // F. Toksyczny wyciek ze szczeliny (cieknący szlam chemiczny)
   ctx.fillStyle = '#0f172a';
@@ -732,7 +787,7 @@ function drawFloatingBarrel(ctx, size, time, item) {
   ctx.stroke();
 }
 
-/** 2. Dryfująca ludzka czaszka częściowo zanurzona w kwasie */
+/** 2. Dryfująca ludzka czaszka częściowo zanurzona w kwasie (0 alokacji gradientów) */
 function drawFloatingSkull(ctx, size, time, item) {
   const r = size * 0.5;
 
@@ -746,13 +801,7 @@ function drawFloatingSkull(ctx, size, time, item) {
   ctx.restore();
 
   // B. Sklepienie czaszki i kości twarzy
-  const skullGrad = ctx.createLinearGradient(0, -r * 1.2, 0, r * 0.8);
-  skullGrad.addColorStop(0.0, '#f1f5f9');
-  skullGrad.addColorStop(0.4, '#cbd5e1');
-  skullGrad.addColorStop(0.7, '#94a3b8');
-  skullGrad.addColorStop(1.0, '#475569');
-  ctx.fillStyle = skullGrad;
-
+  ctx.fillStyle = '#cbd5e1';
   ctx.beginPath();
   ctx.arc(0, -r * 0.25, r * 0.75, Math.PI, 0);
   ctx.lineTo(r * 0.55, r * 0.35);
@@ -760,6 +809,12 @@ function drawFloatingSkull(ctx, size, time, item) {
   ctx.lineTo(-r * 0.35, r * 0.65);
   ctx.lineTo(-r * 0.55, r * 0.35);
   ctx.closePath();
+  ctx.fill();
+
+  // Jasne sklepienie czaszki
+  ctx.fillStyle = '#f1f5f9';
+  ctx.beginPath();
+  ctx.arc(0, -r * 0.35, r * 0.45, Math.PI, 0);
   ctx.fill();
 
   ctx.strokeStyle = '#334155';
@@ -801,10 +856,7 @@ function drawFloatingSkull(ctx, size, time, item) {
   ctx.fillRect(r * 0.16,  r * 0.45, r * 0.12, r * 0.16);
 
   // F. Zanurzenie w kwasie
-  const acidDip = ctx.createLinearGradient(0, 0, 0, r * 0.8);
-  acidDip.addColorStop(0.0, 'rgba(34, 197, 94, 0.45)');
-  acidDip.addColorStop(1.0, 'rgba(5, 46, 22, 0.90)');
-  ctx.fillStyle = acidDip;
+  ctx.fillStyle = 'rgba(21, 128, 61, 0.78)';
   ctx.beginPath();
   ctx.rect(-r * 0.6, 0, r * 1.2, r * 0.85);
   ctx.fill();
@@ -817,7 +869,7 @@ function drawFloatingSkull(ctx, size, time, item) {
   ctx.stroke();
 }
 
-/** 3. Dryfujące ludzkie kości (skrzyżowane kości długie) */
+/** 3. Dryfujące ludzkie kości (skrzyżowane kości długie - 0 alokacji gradientów) */
 function drawFloatingBones(ctx, size, time, item) {
   const len = size;
   const halfLen = len * 0.5;
@@ -835,11 +887,7 @@ function drawFloatingBones(ctx, size, time, item) {
     ctx.rotate(angle);
     ctx.scale(scale, scale);
 
-    const bGrad = ctx.createLinearGradient(0, -3, 0, 3);
-    bGrad.addColorStop(0.0, '#f8fafc');
-    bGrad.addColorStop(0.5, '#cbd5e1');
-    bGrad.addColorStop(1.0, '#64748b');
-    ctx.fillStyle = bGrad;
+    ctx.fillStyle = '#cbd5e1';
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 0.9;
 
@@ -848,6 +896,10 @@ function drawFloatingBones(ctx, size, time, item) {
     ctx.fill();
     ctx.stroke();
 
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-halfLen * 0.6, -1.2, halfLen * 1.2, 1.4);
+
+    ctx.fillStyle = '#cbd5e1';
     ctx.beginPath();
     ctx.arc(-halfLen * 0.75, -2.5, 2.8, 0, Math.PI * 2);
     ctx.arc(-halfLen * 0.75, 2.5, 2.8, 0, Math.PI * 2);
@@ -961,8 +1013,8 @@ function drawFloatingFishBones(ctx, size, time, item) {
   ctx.stroke();
 }
 
-/** Rysuje rury i kratownice sufitowe (Y = 150-180 - symetria X = 2000) */
-function drawCeilingInfrastructure(ctx, time) {
+/** Rysuje rury i kratownice sufitowe (Y = 150-180 - symetria X = 2000, 0 alokacji GC) */
+function drawCeilingInfrastructure(ctx, time, viewLeft, viewRight) {
   const pipes = [
     { x: 650,  y: 180, w: 550, h: 16, id: 'pipe_A' },
     { x: 1700, y: 150, w: 600, h: 16, id: 'pipe_Mid' },
@@ -971,6 +1023,10 @@ function drawCeilingInfrastructure(ctx, time) {
 
   ctx.save();
   for (const p of pipes) {
+    if (viewLeft !== undefined && (p.x + p.w < viewLeft || p.x > viewRight)) {
+      continue;
+    }
+
     // Zawiesia sufitowe łączące rurę ze stropem hali
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 3.0;
@@ -988,14 +1044,13 @@ function drawCeilingInfrastructure(ctx, time) {
       ctx.strokeRect(hx - 6, p.y - 8, 12, 10);
     }
 
-    // Korpus rury przemysłowej z metalicznym gradientem
-    const pGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
-    pGrad.addColorStop(0.0, '#475569');
-    pGrad.addColorStop(0.3, '#94a3b8');
-    pGrad.addColorStop(0.6, '#334155');
-    pGrad.addColorStop(1.0, '#0f172a');
-    ctx.fillStyle = pGrad;
+    // Korpus rury przemysłowej z metalicznym wykończeniem (zero alokacji)
+    ctx.fillStyle = '#334155';
     ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(p.x, p.y, p.w, 3);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
 
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 1.6;
@@ -1028,18 +1083,17 @@ function drawCeilingInfrastructure(ctx, time) {
   ctx.restore();
 }
 
-/** Rysuje pancerny bastion ze stalowymi płytami i pasami ostrzegawczymi */
+/** Rysuje pancerny bastion ze stalowymi płytami i pasami ostrzegawczymi (0 alokacji GC) */
 function drawIndustrialFortressPlatform(ctx, x, y, w, h, label, isLeft, time) {
   ctx.save();
 
   // Główny blok platformy (Hartowana stal pancerna - prosta, czysta belka)
-  const platGrad = ctx.createLinearGradient(x, y, x, y + h);
-  platGrad.addColorStop(0.0, '#334155');
-  platGrad.addColorStop(0.2, '#1e293b');
-  platGrad.addColorStop(0.8, '#0f172a');
-  platGrad.addColorStop(1.0, '#020617');
-  ctx.fillStyle = platGrad;
+  ctx.fillStyle = '#1e293b';
   ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(x, y, w, 4);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(x, y + h - 6, w, 6);
 
   // Krawędź nośna platformy
   ctx.strokeStyle = '#475569';
@@ -1147,13 +1201,13 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness = 18, isAscendin
     ctx.stroke();
   }
 
-  // B. Płyta bieżna rampy (Ryflowana stal antypoślizgowa na górnej krawędzi)
-  const rGrad = ctx.createLinearGradient(0, 0, 0, thickness);
-  rGrad.addColorStop(0.0, '#475569');
-  rGrad.addColorStop(0.3, '#334155');
-  rGrad.addColorStop(1.0, '#0f172a');
-  ctx.fillStyle = rGrad;
+  // B. Płyta bieżna rampy (Ryflowana stal antypoślizgowa na górnej krawędzi - 0 alokacji GC)
+  ctx.fillStyle = '#334155';
   ctx.fillRect(0, 0, len, thickness);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(0, 0, len, 2.5);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, thickness - 3, len, 3);
 
   ctx.strokeStyle = '#64748b';
   ctx.lineWidth = 1.8;
@@ -1179,7 +1233,7 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness = 18, isAscendin
   ctx.restore();
 }
 
-/** Rysuje trójkątne zwieńczenie węzła kratownic przy środkowym podeście (Junction Cap) */
+/** Rysuje trójkątne zwieńczenie węzła kratownic przy środkowym podeście (Junction Cap - 0 alokacji GC) */
 function drawRampJunctionCap(ctx, jx, jy, isLeft) {
   ctx.save();
   ctx.beginPath();
@@ -1195,11 +1249,7 @@ function drawRampJunctionCap(ctx, jx, jy, isLeft) {
   ctx.lineTo(jx, jy + 26);   // (1440 / 2160, 746) - dolny narożnik profilu podestu
   ctx.closePath();
 
-  const gGrad = ctx.createLinearGradient(jx, jy, apexX, apexY);
-  gGrad.addColorStop(0.0, '#334155');
-  gGrad.addColorStop(0.5, '#1e293b');
-  gGrad.addColorStop(1.0, '#0f172a');
-  ctx.fillStyle = gGrad;
+  ctx.fillStyle = '#1e293b';
   ctx.fill();
 
   ctx.strokeStyle = '#475569';
@@ -1239,7 +1289,7 @@ function drawRampJunctionCap(ctx, jx, jy, isLeft) {
   ctx.restore();
 }
 
-/** Rysuje centralny podwieszany hub taktyczny */
+/** Rysuje centralny podwieszany hub taktyczny (0 alokacji GC) */
 function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.save();
 
@@ -1258,14 +1308,13 @@ function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.lineWidth = 1.6;
   ctx.stroke();
 
-
   // Korpus platformy huba (Ażurowy pomost techniczny - kratownica)
-  const hGrad = ctx.createLinearGradient(x, y, x, y + h);
-  hGrad.addColorStop(0.0, '#384656');
-  hGrad.addColorStop(0.4, '#1e293b');
-  hGrad.addColorStop(1.0, '#0b111a');
-  ctx.fillStyle = hGrad;
+  ctx.fillStyle = '#1e293b';
   ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#384656';
+  ctx.fillRect(x, y, w, 3);
+  ctx.fillStyle = '#0b111a';
+  ctx.fillRect(x, y + h - 5, w, 5);
 
   ctx.strokeStyle = '#64748b';
   ctx.lineWidth = 2.2;
@@ -1299,31 +1348,44 @@ function drawCenterTacticalHub(ctx, x, y, w, h, time) {
 // NOWE FUNKCJE ŚWIETLNE I EFEKTÓW CZĄSTECZKOWYCH (KROK 3 - LIGHTING & FX)
 // =========================================================================
 
+let _cachedUnderglowGrad = null;
+let _cachedUnderglowCurY = -1;
+
+function getCachedUnderglowGrad(ctx, curY) {
+  if (!_cachedUnderglowGrad || Math.abs(_cachedUnderglowCurY - curY) > 1) {
+    _cachedUnderglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 280);
+    _cachedUnderglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.28)');
+    _cachedUnderglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.12)');
+    _cachedUnderglowGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
+    _cachedUnderglowCurY = curY;
+  }
+  return _cachedUnderglowGrad;
+}
+
 /**
- * 1. Podświetlenie od spodu kwasem (Acid Upward Underglow)
- * Poziomy, rozmyty gradient unoszącego się zielonego blasku tuż nad kwasem (Y = 1260 -> 980 px)
+ * 1. Podświetlenie od spodu kwasem (Acid Upward Underglow - cached gradient + horizontal culling)
  */
-export function drawAcidUpwardUnderglow(ctx) {
+export function drawAcidUpwardUnderglow(ctx, camera, viewLeft, viewRight) {
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
 
   const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
-  const underglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 280);
-  underglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.28)');
-  underglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.12)');
-  underglowGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
+  const underglowGrad = getCachedUnderglowGrad(ctx, curY);
+
+  const left = (typeof viewLeft === 'number') ? viewLeft : -100;
+  const right = (typeof viewRight === 'number') ? viewRight : 4100;
+  const w = Math.max(100, right - left);
 
   ctx.fillStyle = underglowGrad;
-  ctx.fillRect(-200, curY - 280, 4400, 280);
+  ctx.fillRect(left, curY - 280, w, 280);
   ctx.restore();
 }
 
 /**
  * 1B. Zielony akcent na krawędziach platform (Rim Light)
- * Cienka fosforyzująca linia (rgba(74, 222, 128, 0.35), lineWidth: 1.8) symulująca odbijanie światła kwasu
  */
-export function drawPlatformRimLighting(ctx) {
+export function drawPlatformRimLighting(ctx, viewLeft, viewRight) {
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
@@ -1332,23 +1394,25 @@ export function drawPlatformRimLighting(ctx) {
   ctx.lineCap = 'round';
 
   ctx.beginPath();
-  // Dolne krawędzie platform C i D (Y: 1112 tuż nad kwasem - symetria X = 2000)
-  ctx.moveTo(180, 1112);
-  ctx.lineTo(900, 1112);
-  ctx.moveTo(3100, 1112);
-  ctx.lineTo(3820, 1112);
+  if (viewLeft === undefined || (900 >= viewLeft && 180 <= viewRight)) {
+    ctx.moveTo(180, 1112);
+    ctx.lineTo(900, 1112);
+  }
+  if (viewLeft === undefined || (3820 >= viewLeft && 3100 <= viewRight)) {
+    ctx.moveTo(3100, 1112);
+    ctx.lineTo(3820, 1112);
+  }
   ctx.stroke();
 
   ctx.restore();
 }
 
 /**
- * 2. Przemysłowe koguty alarmowe (Rotating Emergency Beacons)
- * 2 lampy na pionowych słupach z obracającym się snopem światła (bursztynowy/czerwony stożek 45°, R=165 px)
+ * 2. Przemysłowe koguty alarmowe (Rotating Emergency Beacons - culling + 0 alokacji gradientów)
  */
 let _lastBeaconsTime = -1;
 
-export function drawRotatingHazardBeacons(ctx, time, force = false) {
+export function drawRotatingHazardBeacons(ctx, time, camera, force = false) {
   if (!force && _lastBeaconsTime === time) return;
   _lastBeaconsTime = time;
 
@@ -1363,10 +1427,20 @@ export function drawRotatingHazardBeacons(ctx, time, force = false) {
   const spread = 45 * Math.PI / 180; // Kąt rozwarcia ~45°
   const halfSpread = spread * 0.5;
 
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  const viewLeft = camX - 180;
+  const viewRight = camX + (canvasW / camZoom) + 180;
+
   for (let i = 0; i < ARENA_2_EMERGENCY_BEACONS.length; i++) {
     const beacon = ARENA_2_EMERGENCY_BEACONS[i];
     const bx = beacon.x;
     const by = beacon.y;
+
+    // Viewport culling kogutów
+    if (bx + beamLength < viewLeft || bx - beamLength > viewRight) continue;
+
     const angle = (time * rotSpeed + i * 1.57) % (Math.PI * 2);
 
     // A. PIONOWY SŁUPEK / STALOWY WSPORNIK NA ŚCIANIE W TLE
@@ -1381,46 +1455,31 @@ export function drawRotatingHazardBeacons(ctx, time, force = false) {
     ctx.fillRect(bx - 1.5, by - 20, 3, 3);
     ctx.fillRect(bx - 1.5, by + 18, 3, 3);
 
-    // B. OBRACAJĄCY SIĘ SNOP ŚWIATŁA (TRYB 'SCREEN')
+    // B. OBRACAJĄCY SIĘ SNOP ŚWIATŁA (TRYB 'SCREEN' - ZERO ALOKACJI GC)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
 
-    // Główny stożek światła z miękkim radialnym gradientem (bursztynowy/czerwony alarm)
+    // Główny stożek światła
     ctx.beginPath();
     ctx.moveTo(bx, by - 2);
     ctx.arc(bx, by - 2, beamLength, angle - halfSpread, angle + halfSpread);
     ctx.closePath();
-
-    const beamGrad = ctx.createRadialGradient(bx, by - 2, 2, bx, by - 2, beamLength);
-    beamGrad.addColorStop(0.00, isAlarm ? 'rgba(239, 68, 68, 0.65)' : 'rgba(245, 158, 11, 0.45)');
-    beamGrad.addColorStop(0.35, isAlarm ? 'rgba(249, 115, 22, 0.35)' : 'rgba(245, 158, 11, 0.24)');
-    beamGrad.addColorStop(0.70, isAlarm ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)');
-    beamGrad.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
-    ctx.fillStyle = beamGrad;
+    ctx.fillStyle = isAlarm ? 'rgba(239, 68, 68, 0.26)' : 'rgba(245, 158, 11, 0.20)';
     ctx.fill();
 
     // Wewnętrzny jaśniejszy rdzeń snopu
-    const innerHalfSpread = halfSpread * 0.4;
+    const innerHalfSpread = halfSpread * 0.42;
     ctx.beginPath();
     ctx.moveTo(bx, by - 2);
-    ctx.arc(bx, by - 2, beamLength * 0.85, angle - innerHalfSpread, angle + innerHalfSpread);
+    ctx.arc(bx, by - 2, beamLength * 0.75, angle - innerHalfSpread, angle + innerHalfSpread);
     ctx.closePath();
-
-    const innerGrad = ctx.createRadialGradient(bx, by - 2, 1, bx, by - 2, beamLength * 0.85);
-    innerGrad.addColorStop(0.00, 'rgba(254, 240, 138, 0.45)');
-    innerGrad.addColorStop(0.45, isAlarm ? 'rgba(239, 68, 68, 0.20)' : 'rgba(245, 158, 11, 0.12)');
-    innerGrad.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
-    ctx.fillStyle = innerGrad;
+    ctx.fillStyle = isAlarm ? 'rgba(254, 202, 202, 0.35)' : 'rgba(254, 240, 138, 0.30)';
     ctx.fill();
 
-    // Radialna poświata żarówki
-    const bulbGlow = ctx.createRadialGradient(bx, by - 2, 1, bx, by - 2, 18);
-    bulbGlow.addColorStop(0.00, 'rgba(254, 215, 170, 0.65)');
-    bulbGlow.addColorStop(0.50, isAlarm ? 'rgba(239, 68, 68, 0.30)' : 'rgba(245, 158, 11, 0.20)');
-    bulbGlow.addColorStop(1.00, 'rgba(245, 158, 11, 0.00)');
-    ctx.fillStyle = bulbGlow;
+    // Poświata żarówki
+    ctx.fillStyle = isAlarm ? 'rgba(239, 68, 68, 0.45)' : 'rgba(245, 158, 11, 0.38)';
     ctx.beginPath();
-    ctx.arc(bx, by - 2, 18, 0, Math.PI * 2);
+    ctx.arc(bx, by - 2, 14, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -1479,18 +1538,21 @@ export function drawRotatingHazardBeacons(ctx, time, force = false) {
 }
 
 /**
- * 3. Cząstki unoszących się oparów toksycznych (Steam Motes)
- * 28 cząstek pary dryfujących pionowo od poziomu kwasu w górę z falowaniem poziomym
+ * 3. Cząstki unoszących się oparów toksycznych (Steam Motes - culling)
  */
-export function drawToxicVaporMotes(ctx, time) {
+export function drawToxicVaporMotes(ctx, time, camera, viewLeft, viewRight) {
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
 
   const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  const left = (viewLeft !== undefined) ? viewLeft - 30 : -100;
+  const right = (viewRight !== undefined) ? viewRight + 30 : 4100;
 
   for (let i = 0; i < _toxicVaporParticles.length; i++) {
     const p = _toxicVaporParticles[i];
+    if (p.baseX < left || p.baseX > right) continue;
+
     const progress = ((time * p.driftSpeed + p.phase) % 1.0 + 1.0) % 1.0;
     const y = curY - progress * 180;
     const x = p.baseX + Math.sin(time * p.speed + p.phase) * p.amp;
@@ -1509,16 +1571,20 @@ export function drawToxicVaporMotes(ctx, time) {
 }
 
 /**
- * 3B. Pęcherze gazu na powierzchni (Bubbles)
- * Bąble (promień 2–4 px) pęczniejące na tafli kwasu i pękające, wyrzucające 2–3 mikro-kropelki
+ * 3B. Pęcherze gazu na powierzchni (Bubbles - culling)
  */
-export function drawAcidSurfaceBubbles(ctx, time) {
+export function drawAcidSurfaceBubbles(ctx, time, camera, viewLeft, viewRight) {
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
 
+  const left = (viewLeft !== undefined) ? viewLeft - 20 : -100;
+  const right = (viewRight !== undefined) ? viewRight + 20 : 4100;
+
   for (let i = 0; i < _surfaceBubbles.length; i++) {
     const b = _surfaceBubbles[i];
+    if (b.x < left || b.x > right) continue;
+
     const cycleTime = (time + b.phase) % b.cycleDuration;
     const cycleProgress = cycleTime / b.cycleDuration;
     const surfaceY = getAcidSurfaceY(b.x, time);
@@ -1572,8 +1638,8 @@ export function drawAcidSurfaceBubbles(ctx, time) {
   ctx.restore();
 }
 
-/** Rysuje narożne stroboskopy ostrzegawcze na platformach dolnych (symetria X = 2000) */
-function drawAcidVaporAndHazards(ctx, time) {
+/** Rysuje narożne stroboskopy ostrzegawcze na platformach dolnych (symetria X = 2000, culling) */
+function drawAcidVaporAndHazards(ctx, time, viewLeft, viewRight) {
   ctx.save();
 
   // Pulsujące stroboskopy ostrzegawcze na rogach dolnych bastionów
@@ -1588,6 +1654,7 @@ function drawAcidVaporAndHazards(ctx, time) {
   ctx.globalCompositeOperation = 'screen';
   for (let sIdx = 0; sIdx < strobeList.length; sIdx++) {
     const st = strobeList[sIdx];
+    if (viewLeft !== undefined && (st.x < viewLeft || st.x > viewRight)) continue;
     const flash = Math.pow(Math.sin(time * 4.0 + sIdx * 1.57), 8); // Ostre impulsy
     ctx.fillStyle = `rgba(239, 68, 68, ${0.2 + flash * 0.8})`;
     ctx.beginPath();
