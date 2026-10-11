@@ -1479,10 +1479,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Maska na twarz, okulary przeciwsłoneczne lub chusta
     drawCharacterMaskProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
-
-    // Ozdoba szyi (nieśmiertelnik wojskowy lub złoty łańcuch) z pełną fizyką 2D
-    drawCharacterNeckProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch);
-
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);
 
@@ -1597,6 +1593,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   ctx.restore();
+
+  // OZDOBA SZYI I KLATKI PIERSIOWEJ (nieśmiertelnik wojskowy / złoty łańcuch)
+  // Rysowana na torsie na dekolcie koszulki – całkowicie niezależna od obrotu głowy (headPitch)
+  if (isNearProfile && (!p.isDead || p.hasHead)) {
+    const headBobOffset = (p.headBob || 0);
+    const neckBaseX = (p.isProne && !p.isDead) ? -2.0 * currentFacingDir : 0.0;
+    const neckBaseY = (p.isProne && !p.isDead) ? -29.4 + (headBobOffset * 0.25) : -30.5 + (headBobOffset * 0.35);
+
+    ctx.save();
+    ctx.translate(neckBaseX, neckBaseY);
+    ctx.scale(currentFacingDir, 1);
+    drawCharacterNeckProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, 0);
+    ctx.restore();
+  }
+
   ctx.restore();
 
   drawHeldWeapon(ctx, p);

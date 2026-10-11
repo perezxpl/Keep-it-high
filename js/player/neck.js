@@ -56,16 +56,17 @@ export function drawCharacterNeckProfile(
   let bounceY = 0;
 
   if (!isStaticTile) {
+    // Łańcuch spoczywa na klatce piersiowej torsu – headPitch ustawiony na 0
     const chainData = updateAndBuildHairChain(
-      p, 'neck_chain', currentFacingDir, torsoTilt, headPitch,
+      p, 'neck_chain', currentFacingDir, torsoTilt, 0,
       1.0, 7.5, 3.2,
       {
         id: 'neck_pendant',
         phase: 0.9,
         restOffset: 0.0,
         archRoot: 0.0,
-        liftMult: 1.75, // wyższa podatność na przyspieszenia i pęd
-        gravMult: 1.10, // mocniejszy powrót do pionu grawitacyjnego
+        liftMult: 1.60, // wyższa podatność na przyspieszenia i pęd
+        gravMult: 1.15, // mocniejszy powrót do pionu grawitacyjnego
         stiffMult: 0.90,
         restProfile: [1.57, 1.57, 1.57, 1.57, 1.57, 1.57] // kąt 90 st. (zwis pionowo w dół)
       }
@@ -87,15 +88,15 @@ export function drawCharacterNeckProfile(
   if (style === 'dogtags') {
     // Kotwice łańcuszka na obwodzie kołnierza szyi:
     // 1. Boczna krawędź kołnierza (bok szyi)
-    const neckSideX = 0.8;
-    const neckSideY = 7.5;
+    const neckSideX = 1.0;
+    const neckSideY = 7.6;
     // 2. Przednia krawędź kołnierza (dołek szyjny z przodu)
-    const neckFrontX = 2.3;
+    const neckFrontX = 2.4;
     const neckFrontY = 7.8;
 
-    // Punkt zwisu blaszek: na górnej części mostka (tuż pod wycięciem kołnierza)
-    const pendantBaseX = 2.5;
-    const pendantBaseY = 11.2 + bounceY;
+    // Punkt zwisu blaszek: leży na klatce piersiowej pod szyją
+    const pendantBaseX = 4.2;
+    const pendantBaseY = 11.8 + bounceY;
     const swingX = Math.sin(swingAngle) * 1.5;
     const pendantX = pendantBaseX + swingX;
     const pendantY = pendantBaseY - Math.abs(swingX) * 0.25;
@@ -105,16 +106,16 @@ export function drawCharacterNeckProfile(
     ctx.lineWidth = 0.85;
     ctx.setLineDash([0.8, 1.2]);
 
-    // 1. Boczna gałąź łańcuszka (schodzi z boku szyi na klatkę piersiową)
+    // 1. Boczna gałąź łańcuszka (schodzi z boku szyi wzdłuż profilu klatki piersiowej)
     ctx.beginPath();
     ctx.moveTo(neckSideX, neckSideY);
-    ctx.quadraticCurveTo(1.2, 9.6, pendantX - 0.2, pendantY);
+    ctx.quadraticCurveTo(2.4, 9.6, pendantX - 0.2, pendantY);
     ctx.stroke();
 
     // 2. Przednia gałąź łańcuszka (schodzi z przodu szyi)
     ctx.beginPath();
     ctx.moveTo(neckFrontX, neckFrontY);
-    ctx.quadraticCurveTo(2.6, 9.4, pendantX, pendantY);
+    ctx.quadraticCurveTo(3.6, 9.8, pendantX, pendantY);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -221,15 +222,15 @@ export function drawCharacterNeckProfile(
   } else if (style === 'gold_chain') {
     // Kotwice łańcucha na obwodzie kołnierza szyi:
     // 1. Boczna krawędź kołnierza
-    const neckSideX = 0.8;
-    const neckSideY = 7.4;
+    const neckSideX = 1.0;
+    const neckSideY = 7.5;
     // 2. Przednia krawędź kołnierza
-    const neckFrontX = 2.3;
+    const neckFrontX = 2.4;
     const neckFrontY = 7.7;
 
-    // Punkt zwisu medalionu: na środku klatki piersiowej
-    const pendantBaseX = 2.5;
-    const pendantBaseY = 10.8 + bounceY;
+    // Punkt zwisu medalionu: na klatce piersiowej
+    const pendantBaseX = 4.1;
+    const pendantBaseY = 11.4 + bounceY;
     const swingX = Math.sin(swingAngle) * 1.5;
     const pendantX = pendantBaseX + swingX;
     const pendantY = pendantBaseY - Math.abs(swingX) * 0.25;
@@ -239,21 +240,21 @@ export function drawCharacterNeckProfile(
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(neckSideX, neckSideY + 0.4);
-    ctx.quadraticCurveTo(1.3, 9.4, pendantX, pendantY + 0.4);
-    ctx.quadraticCurveTo(2.7, 9.3, neckFrontX, neckFrontY + 0.4);
+    ctx.quadraticCurveTo(2.3, 9.6, pendantX - 0.2, pendantY + 0.4);
+    ctx.quadraticCurveTo(3.4, 9.6, neckFrontX, neckFrontY + 0.4);
     ctx.stroke();
 
-    // Punkty splotu pancerka (Cuban Curb Links) - naturalna pętla naszyjnika wokół wycięcia kołnierza
+    // Punkty splotu pancerka (Cuban Curb Links) - naturalna pętla naszyjnika wokół wycięcia kołnierza i na mostku
     const chainPoints = [
-      { x: neckSideX, y: neckSideY, angle: 0.85 },
-      { x: 1.1, y: 8.3,  angle: 0.70 },
-      { x: 1.5, y: 9.2,  angle: 0.52 },
-      { x: 2.0, y: 10.1, angle: 0.32 },
+      { x: neckSideX, y: neckSideY, angle: 0.90 },
+      { x: 1.5, y: 8.4,  angle: 0.78 },
+      { x: 2.2, y: 9.3,  angle: 0.65 },
+      { x: 3.1, y: 10.3, angle: 0.48 },
       { x: pendantX, y: pendantY, angle: swingAngle * 0.7 },
-      { x: 2.8, y: 10.0, angle: -0.32 },
-      { x: 2.7, y: 9.2,  angle: -0.55 },
-      { x: 2.5, y: 8.4,  angle: -0.75 },
-      { x: neckFrontX, y: neckFrontY, angle: -0.95 }
+      { x: 3.8, y: 10.4, angle: -0.42 },
+      { x: 3.2, y: 9.4,  angle: -0.65 },
+      { x: 2.7, y: 8.5,  angle: -0.85 },
+      { x: neckFrontX, y: neckFrontY, angle: -1.02 }
     ];
 
     // Rysowanie poszczególnych trójwymiarowych, polerowanych ogniw
