@@ -1254,6 +1254,7 @@ export const uiManager = {
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
+    if (tabId === 'mask') tabId = 'headgear';
     this.activeCreatorTab = tabId;
     document.querySelectorAll('.creator-tab-btn').forEach((b) => {
       b.classList.toggle('active', b.dataset.creatorTab === tabId);
@@ -1269,7 +1270,6 @@ export const uiManager = {
       this.renderCreatorBeardTiles();
     } else if (tabId === 'headgear') {
       this.renderCreatorHeadgearTiles();
-    } else if (tabId === 'mask') {
       this.renderCreatorMaskTiles();
     }
   },

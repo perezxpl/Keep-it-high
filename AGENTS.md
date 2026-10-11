@@ -30,7 +30,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/hair.js` — fizyka i rysowanie włosów / fryzur.
 - `js/player/facialHair.js` — style, kolory i rysowanie zarostu twarzy (brody, wąsy, kilkudniowy zarost).
 - `js/player/headgear.js` — style, taktyczne kolory i rysowanie nakryć głowy (beret, czapka, kominiarka, bandana, boonie, gogle).
-- `js/player/mask.js` — maski twarzowe, okulary i chusty (arafatka / shemagh, okulary ciemne, okulary muchy z przezroczystością, półmaska Ghost, maska gazowa SAS, maska hokejowa, maska balistyczna, maska Oni, respirator).
+- `js/player/mask.js` — maski twarzowe, okulary, chusty i ozdoby (okulary ciemne, okulary muchy z przezroczystością, arafatka / shemagh, nieśmiertelnik wojskowy, złoty łańcuch gangsta, półmaska Ghost, maska gazowa SAS, maska hokejowa, maska balistyczna, maska Oni, respirator).
 
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
