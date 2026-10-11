@@ -1268,49 +1268,29 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.quadraticCurveTo(l1 * 0.55, shortsCuffHalfW * 0.18, shortsEnd - 3.2, shortsCuffHalfW * 0.35);
     ctx.stroke();
 
-    // Boczna kieszeń cargo na spodenkach
-    const pocketX = l1 * 0.20;
-    const pocketW = l1 * 0.45;
-    const pocketH = thighHalfH * 0.82;
+    // Boczna kieszeń cargo na spodenkach (dokładnie jak na kafelkach wyboru)
+    const pocketX = l1 * 0.22;
+    const pocketW = l1 * 0.46;
+    const pocketH = thighHalfH * 0.78;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    // Korpus kieszeni cargo
+    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.22)' : (isFrontLeg ? pantsPal.base : pantsPal.dark);
     ctx.beginPath();
-    ctx.moveTo(pocketX + 0.4, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.9, pocketX + pocketW + 0.4, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW + 0.9, 0, pocketX + pocketW + 0.3, pocketH * 0.82);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.98, pocketX + 0.3, pocketH * 0.82);
-    ctx.closePath();
+    if (ctx.roundRect) ctx.roundRect(pocketX, -pocketH, pocketW, pocketH * 1.9, 0.8);
+    else ctx.rect(pocketX, -pocketH, pocketW, pocketH * 1.9);
     ctx.fill();
-
-    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.28)' : (isFrontLeg ? pantsPal.base : pantsPal.dark);
-    ctx.beginPath();
-    ctx.moveTo(pocketX, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.7, pocketX + pocketW, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW + 0.5, 0, pocketX + pocketW, pocketH * 0.76);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.92, pocketX, pocketH * 0.76);
-    ctx.quadraticCurveTo(pocketX - 0.4, 0, pocketX, -pocketH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.50)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.lineWidth = 0.75;
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+    // Patka kieszeni cargo
+    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.32)' : (isFrontLeg ? pantsPal.dark : '#09090b');
     ctx.beginPath();
-    ctx.moveTo(pocketX + pocketW * 0.5, -pocketH + 1.2);
-    ctx.lineTo(pocketX + pocketW * 0.5, pocketH * 0.78);
-    ctx.stroke();
-
-    ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.35)';
-    ctx.beginPath();
-    ctx.moveTo(pocketX - 0.4, -pocketH - 0.5);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 1.2, pocketX + pocketW + 0.4, -pocketH - 0.5);
-    ctx.lineTo(pocketX + pocketW + 0.2, -pocketH + 1.5);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH + 2.1, pocketX - 0.2, -pocketH + 1.5);
-    ctx.closePath();
+    if (ctx.roundRect) ctx.roundRect(pocketX - 0.4, -pocketH - 1.2, pocketW + 0.8, 2.4, 0.6);
+    else ctx.rect(pocketX - 0.4, -pocketH - 1.2, pocketW + 0.8, 2.4);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.lineWidth = 0.7;
+    ctx.lineWidth = 0.75;
     ctx.stroke();
 
   } else {
@@ -1387,49 +1367,29 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.quadraticCurveTo(l1 * 0.91, thighHalfH * 0.25, l1 * 0.95, -0.5);
     ctx.stroke();
 
-    // Boczna kieszeń miechowa Cargo
+    // Boczna kieszeń miechowa Cargo (dokładnie jak na kafelkach wyboru)
     const pocketX = l1 * 0.24;
     const pocketW = l1 * 0.48;
-    const pocketH = thighHalfH * 0.82;
+    const pocketH = thighHalfH * 0.80;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    // Korpus kieszeni cargo
+    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.22)' : (isFrontLeg ? pantsPal.base : pantsPal.dark);
     ctx.beginPath();
-    ctx.moveTo(pocketX + 0.4, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.9, pocketX + pocketW + 0.4, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW + 0.9, 0, pocketX + pocketW + 0.3, pocketH * 0.82);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.98, pocketX + 0.3, pocketH * 0.82);
-    ctx.closePath();
+    if (ctx.roundRect) ctx.roundRect(pocketX, -pocketH, pocketW, pocketH * 1.9, 0.8);
+    else ctx.rect(pocketX, -pocketH, pocketW, pocketH * 1.9);
     ctx.fill();
-
-    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.28)' : (isFrontLeg ? pantsPal.base : pantsPal.dark);
-    ctx.beginPath();
-    ctx.moveTo(pocketX, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.7, pocketX + pocketW, -pocketH);
-    ctx.quadraticCurveTo(pocketX + pocketW + 0.5, 0, pocketX + pocketW, pocketH * 0.76);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, pocketH * 0.92, pocketX, pocketH * 0.76);
-    ctx.quadraticCurveTo(pocketX - 0.4, 0, pocketX, -pocketH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.50)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.lineWidth = 0.75;
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+    // Patka kieszeni cargo
+    ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.32)' : (isFrontLeg ? pantsPal.dark : '#09090b');
     ctx.beginPath();
-    ctx.moveTo(pocketX + pocketW * 0.5, -pocketH + 1.2);
-    ctx.lineTo(pocketX + pocketW * 0.5, pocketH * 0.78);
-    ctx.stroke();
-
-    ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.35)';
-    ctx.beginPath();
-    ctx.moveTo(pocketX - 0.4, -pocketH - 0.5);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 1.2, pocketX + pocketW + 0.4, -pocketH - 0.5);
-    ctx.lineTo(pocketX + pocketW + 0.2, -pocketH + 1.5);
-    ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH + 2.1, pocketX - 0.2, -pocketH + 1.5);
-    ctx.closePath();
+    if (ctx.roundRect) ctx.roundRect(pocketX - 0.4, -pocketH - 1.2, pocketW + 0.8, 2.4, 0.6);
+    else ctx.rect(pocketX - 0.4, -pocketH - 1.2, pocketW + 0.8, 2.4);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.lineWidth = 0.7;
+    ctx.lineWidth = 0.75;
     ctx.stroke();
   }
 
@@ -1543,18 +1503,20 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.fillStyle = calfGrad;
     ctx.fill();
 
+    // Naturalny obrys boczny nogi (TYLKO przednia i tylna krawędź – ZERO czarnej kreski w poprzek kolana!)
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.9;
-    ctx.stroke();
-
-    // C. Subtelny, naturalny zarys rzepki kolanowej (delikatny łuk, estetyka tożsama z łokciem)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.arc(0.2, -0.2, kneeR * 0.70, -0.45 * Math.PI, 0.45 * Math.PI);
+    // Przednia krawędź piszczeli (od kolana do buta)
+    ctx.moveTo(0, -kneeR * 0.85);
+    ctx.quadraticCurveTo(l2 * 0.35, -kneeR * 0.90, l2 - 3.2, -achillesHalfW);
+    // Tylna krawędź łydki (od buta do kolana)
+    ctx.moveTo(l2 - 3.2, achillesHalfW);
+    ctx.quadraticCurveTo(l2 * 0.65, achillesHalfW * 1.15, l2 * 0.35, calfBulge * 1.05);
+    ctx.quadraticCurveTo(l2 * 0.12, calfBulge * 0.85, 0, kneeR * 0.85);
     ctx.stroke();
 
-    // D. Subtelny blask na przedniej krawędzi piszczeli
+    // C. Subtelny blask na przedniej krawędzi piszczeli (delikatne światło, brak jakiejkolwiek kreski dzielenia)
     if (isFrontLeg) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
       ctx.lineWidth = 0.85;
@@ -1568,9 +1530,27 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     // 2. DŁUGIE BOJÓWKI: Zbluzowana nogawka materiału z ergonomicznym panelem kolanowym
     const blouseEnd = l2 - 4.2;
 
+    // Gładka główka stawu kolanowego materiału bojówek (spaja udo i łydkę w jedną całość bez przerw)
+    const kneeCapR = 3.3 * muscle;
+    ctx.beginPath();
+    ctx.arc(0, 0, kneeCapR, 0, Math.PI * 2);
+    if (pantsCamo) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, pantsCamo, -kneeCapR, -kneeCapR, kneeCapR, kneeCapR);
+      ctx.restore();
+    } else {
+      const kneeGrad = ctx.createLinearGradient(0, -kneeCapR, 0, kneeCapR);
+      kneeGrad.addColorStop(0.0, pantsPal.light);
+      kneeGrad.addColorStop(0.5, pantsPal.base);
+      kneeGrad.addColorStop(1.0, pantsPal.dark);
+      ctx.fillStyle = kneeGrad;
+      ctx.fill();
+    }
+
     const traceShinPants = () => {
       ctx.beginPath();
-      ctx.moveTo(0.8, -3.2 * muscle);
+      ctx.moveTo(0, -3.2 * muscle);
       // Wyprofilowanie rzepki pod materiałem bojówek
       ctx.quadraticCurveTo(1.8, -3.75 * muscle, 2.8, -3.6 * muscle);
       ctx.bezierCurveTo(
@@ -1584,7 +1564,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
       ctx.bezierCurveTo(
         l2 * 0.58, calfBulge * 0.98,
         l2 * 0.28, calfBulge * 1.05,
-        0.8, 3.0 * muscle
+        0, 3.0 * muscle
       );
       ctx.closePath();
     };
@@ -1606,11 +1586,12 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
       ctx.fill();
     }
 
-    // Obrys zewnętrzny nogawki na łydce
+    // Obrys zewnętrzny nogawki na łydce (TYLKO przednia i tylna krawędź – ZERO kresek w poprzek kolana!)
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.moveTo(0.8, -3.2 * muscle);
+    // Przednia krawędź nogawki schodząca do buta
+    ctx.moveTo(0, -3.2 * muscle);
     ctx.quadraticCurveTo(1.8, -3.75 * muscle, 2.8, -3.6 * muscle);
     ctx.bezierCurveTo(
       l2 * 0.30, -3.4 * muscle,
@@ -1620,25 +1601,13 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.quadraticCurveTo(blouseEnd + 0.6, -achillesHalfW * 1.15, blouseEnd, -achillesHalfW * 0.85);
     ctx.quadraticCurveTo(blouseEnd + 0.8, 0, blouseEnd, achillesHalfW * 0.92);
     ctx.quadraticCurveTo(blouseEnd + 0.5, achillesHalfW * 1.38, blouseEnd - 2.2, achillesHalfW * 1.45);
+    // Tylna krawędź nogawki
+    ctx.moveTo(blouseEnd - 2.2, achillesHalfW * 1.45);
     ctx.bezierCurveTo(
       l2 * 0.58, calfBulge * 0.98,
       l2 * 0.28, calfBulge * 1.05,
-      0.8, 3.0 * muscle
+      0, 3.0 * muscle
     );
-    ctx.stroke();
-
-    // Ergonomiczny zintegrowany panel kolanowy z zaszewkami zgięcia (Articulated Knee Panel)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(0.2, -2.8 * muscle);
-    ctx.lineTo(0.2, 2.4 * muscle);
-    ctx.moveTo(3.8, -2.6 * muscle);
-    ctx.lineTo(3.8, 2.2 * muscle);
-    ctx.moveTo(1.2, -2.5 * muscle);
-    ctx.quadraticCurveTo(2.0, 0, 1.2, 2.2 * muscle);
-    ctx.moveTo(2.6, -2.4 * muscle);
-    ctx.quadraticCurveTo(3.2, 0, 2.6, 2.1 * muscle);
     ctx.stroke();
 
     // Fałdy zbluzowania materiału nad butem

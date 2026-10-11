@@ -308,13 +308,6 @@ export function drawPantsPreview(
     ctx.lineWidth = 0.7;
     ctx.stroke();
 
-    // Ergonomiczne zaszewki profilujące kolano (subtelny miękki cień materiału, ZERO czarnej kreski dzielenia!)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(3.6, 4.5);
-    ctx.quadraticCurveTo(2.8, 6.5, 1.4, 6.5);
-    ctx.stroke();
 
     // Naturalny cień zbluzowanego mankietu opadającego na but
     ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
