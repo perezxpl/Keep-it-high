@@ -427,8 +427,9 @@ export const uiManager = {
       case 'CREATOR':
         if (creatorEl) creatorEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
-        this.renderCreatorHairTiles();
-        this.renderCreatorBeardTiles();
+        this.initCreatorHairUI();
+        this.initCreatorBeardUI();
+        this.switchCreatorTab(this.activeCreatorTab || 'hair');
         this.startCreatorPreview();
         break;
 
@@ -670,19 +671,12 @@ export const uiManager = {
 
     // Zakładki Kreatora Postaci (WŁOSY / ZAROST)
     document.querySelectorAll('.creator-tab-btn').forEach((btn) => {
+      btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         const tabId = btn.dataset.creatorTab;
         if (!tabId) return;
         playUiClick();
-        document.querySelectorAll('.creator-tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.creator-tab-pane').forEach((pane) => {
-          pane.classList.toggle('active', pane.id === `creator-tab-${tabId}`);
-        });
-        if (tabId === 'hair') {
-          this.renderCreatorHairTiles();
-        } else if (tabId === 'beard') {
-          this.renderCreatorBeardTiles();
-        }
+        this.switchCreatorTab(tabId);
       });
     });
 
@@ -958,6 +952,7 @@ export const uiManager = {
         this.saveAppearance();
         this.applyAppearance();
         this.syncCreatorBeardSelectionUI();
+        this.renderCreatorBeardTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -1017,6 +1012,25 @@ export const uiManager = {
         drawHeadBeardPreview(ctx, cvs.width, cvs.height, styleId, curBeardColor, curHairStyle, curHairColor);
       }
     });
+  },
+
+  activeCreatorTab: 'hair',
+
+  switchCreatorTab(tabId = 'hair') {
+    this.activeCreatorTab = tabId;
+    document.querySelectorAll('.creator-tab-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.creatorTab === tabId);
+    });
+    document.querySelectorAll('.creator-tab-pane').forEach((pane) => {
+      const isTarget = (pane.id === `creator-tab-${tabId}`);
+      pane.style.display = isTarget ? 'flex' : 'none';
+      pane.classList.toggle('active', isTarget);
+    });
+    if (tabId === 'hair') {
+      this.renderCreatorHairTiles();
+    } else if (tabId === 'beard') {
+      this.renderCreatorBeardTiles();
+    }
   },
 
   creatorRafId: null,

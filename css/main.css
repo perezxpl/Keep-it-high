@@ -1724,37 +1724,48 @@ button, .dev-btn {
 
 .creator-tabs-bar {
   display: flex;
-  gap: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 6px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 8px;
   flex-shrink: 0;
 }
 
 .creator-tab-btn {
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
   font-family: 'Orbitron', monospace;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: #94a3b8;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
   cursor: pointer !important;
   transition: all 0.16s ease;
+  user-select: none;
+}
+
+.creator-tab-btn .btn-icon {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .creator-tab-btn:hover {
   color: #f8fafc;
-  border-color: rgba(0, 229, 255, 0.35);
+  border-color: rgba(0, 229, 255, 0.55);
+  background: rgba(15, 23, 42, 0.95);
+  transform: translateY(-1px);
 }
 
 .creator-tab-btn.active {
   color: #00e5ff;
-  background: rgba(0, 229, 255, 0.14);
-  border-color: rgba(0, 229, 255, 0.55);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.22);
+  background: rgba(0, 229, 255, 0.18);
+  border-color: #00e5ff;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
 }
 
 .creator-tab-pane {
