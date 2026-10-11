@@ -95,6 +95,14 @@ import {
 } from './shoes.js';
 
 import {
+  JETPACK_STYLE_LIST,
+  JETPACK_STYLE_NAMES,
+  JETPACK_COLOR_LIST,
+  getJetpackFlamePalette,
+  drawJetpackPreview
+} from './jetpack.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -170,6 +178,11 @@ export {
   drawBootCollarOverPants,
   drawFootwear,
   drawShoesPreview,
+  JETPACK_STYLE_LIST,
+  JETPACK_STYLE_NAMES,
+  JETPACK_COLOR_LIST,
+  getJetpackFlamePalette,
+  drawJetpackPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1272,7 +1285,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   drawTorsoWounds(ctx, dmgRatio, absCos, absSin, cosYaw, plateW, waistHalfW, shoulderHalfW, isLookingAway);
 
   // MODEL JETPACKA NA PLECACH POSTACI
-  drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW);
+  drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v);
 
   // GŁOWA LUB KIKUT SZYI
   ctx.save();

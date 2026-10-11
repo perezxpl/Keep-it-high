@@ -3,6 +3,7 @@ import { WEAPONS, shootWeapon } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
 import { spawnJetpackSparks, GROUND_Y } from './world.js';
 import { ball } from './ball.js';
+import { getJetpackFlamePalette } from './player/jetpack.js';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
@@ -114,12 +115,12 @@ export function updateRemotePlayer(groundY) {
     }
   }
 
-  // Cząsteczki płomienia jetpacka u zdalnego gracza w barwach drużyny
+  // Cząsteczki płomienia jetpacka u zdalnego gracza w barwach drużyny lub jego custom koloru
   if (remotePlayer.isJetpacking) {
     const nozzle = getJetpackNozzlePos(remotePlayer);
-    const remoteJetColors = networkState.isHost
-      ? ['#f97316', '#fb923c', '#fdba74', '#ffffff'] // Zdalny to Klient (P2 Orange)
-      : ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']; // Zdalny to Host (P1 Cyan)
+    const defaultCol = networkState.isHost ? '#f97316' : '#00e5ff';
+    const remoteFlameCol = remotePlayer.customVisuals?.jetpackColor || defaultCol;
+    const remoteJetColors = getJetpackFlamePalette(remoteFlameCol).particles;
     spawnJetpackSparks(nozzle.x, nozzle.y, remotePlayer.facing, 4, remoteJetColors, remotePlayer.vx || 0, remotePlayer.vy || 0, nozzle.angle);
   }
 }

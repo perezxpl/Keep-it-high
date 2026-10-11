@@ -9,6 +9,7 @@ import { DEFAULT_VISUALS } from './hair.js';
 import { isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
+import { getJetpackFlamePalette } from './jetpack.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1782,11 +1783,14 @@ export function getJetpackNozzlePos(p) {
   };
 }
 
-export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW) {
+export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v = {}) {
   const isFiring = !!p.isJetpacking;
   const isHost = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
-  const themeColor = isHost ? '#00e5ff' : '#f97316';
-  const glowColor = isHost ? '#38bdf8' : '#fb923c';
+  const defaultCol = isHost ? '#00e5ff' : '#f97316';
+  const flameCol = v.jetpackColor || p.customVisuals?.jetpackColor || defaultCol;
+  const flamePal = getJetpackFlamePalette(flameCol);
+  const themeColor = flamePal.base;
+  const glowColor = flamePal.glow;
 
   const maxJet = p.jetMax || 100;
   const curJet = Math.max(0, p.jetFuel ?? 0);
@@ -1875,6 +1879,18 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
         ctx.shadowColor = glowColor;
         ctx.shadowBlur = 8;
         ctx.fillRect(nzX, nzY + nzH - 1.5, nzW, 2.0);
+
+        const flameGradBack = ctx.createLinearGradient(0, nzY + nzH, 0, nzY + nzH + 7);
+        flameGradBack.addColorStop(0.0, '#ffffff');
+        flameGradBack.addColorStop(0.45, themeColor);
+        flameGradBack.addColorStop(1.0, flamePal.alphaZero);
+        ctx.fillStyle = flameGradBack;
+        ctx.beginPath();
+        ctx.moveTo(nzX, nzY + nzH);
+        ctx.lineTo(nzX + nzW / 2, nzY + nzH + 5.0 + Math.random() * 3.0);
+        ctx.lineTo(nzX + nzW, nzY + nzH);
+        ctx.closePath();
+        ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
@@ -2066,7 +2082,7 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       const flameGrad = ctx.createLinearGradient(0, nzTopY + nzH, 0, nzTopY + nzH + 8);
       flameGrad.addColorStop(0.0, '#ffffff');
       flameGrad.addColorStop(0.4, themeColor);
-      flameGrad.addColorStop(1.0, 'rgba(0, 229, 255, 0)');
+      flameGrad.addColorStop(1.0, flamePal.alphaZero);
 
       ctx.fillStyle = flameGrad;
       ctx.beginPath();

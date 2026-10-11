@@ -29,6 +29,8 @@ export const DEFAULT_VISUALS = {
   pantsColor: '#18181b',
   shoesStyle: 'combat_boots',
   shoesColor: '#18181b',
+  jetpackStyle: 'classic',
+  jetpackColor: '#00e5ff',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',

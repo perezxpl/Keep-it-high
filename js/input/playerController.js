@@ -6,6 +6,7 @@
 import { CONFIG, FRAME_DURATION } from '../config.js';
 import { camera, isTouchDevice, spawnJetpackSparks } from '../world.js';
 import { player, getJetpackNozzlePos } from '../player.js';
+import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapons.js';
 import { networkState, sendShootEvent } from '../network.js';
 import { leftStick, rightStick, pockets } from '../mobileControls.js';
@@ -231,9 +232,8 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     }
 
     const nozzle = getJetpackNozzlePos(player);
-    const myJetColors = networkState.isHost
-      ? ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
-      : ['#f97316', '#fb923c', '#fdba74', '#ffffff'];
+    const customFlame = player.customVisuals?.jetpackColor || (networkState.isHost ? '#00e5ff' : '#f97316');
+    const myJetColors = getJetpackFlamePalette(customFlame).particles;
     spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, sparkCount, myJetColors, player.vx, player.vy, nozzle.angle);
   } else {
     inputSession.isJetpackActive = false;

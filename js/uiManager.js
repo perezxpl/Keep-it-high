@@ -33,6 +33,9 @@ import {
   SHOES_STYLE_LIST,
   SHOES_COLOR_LIST,
   drawShoesPreview,
+  JETPACK_STYLE_LIST,
+  JETPACK_COLOR_LIST,
+  drawJetpackPreview,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -68,7 +71,9 @@ const DEFAULT_APPEARANCE = {
   pantsStyle: 'cargo_long',
   pantsColor: '#18181b',
   shoesStyle: 'combat_boots',
-  shoesColor: '#18181b'
+  shoesColor: '#18181b',
+  jetpackStyle: 'classic',
+  jetpackColor: '#00e5ff'
 };
 
 // =============================================================================
@@ -275,7 +280,9 @@ export const uiManager = {
       pantsStyle: this.appearance.pantsStyle || 'cargo_long',
       pantsColor: this.appearance.pantsColor || '#18181b',
       shoesStyle: this.appearance.shoesStyle || 'combat_boots',
-      shoesColor: this.appearance.shoesColor || '#18181b'
+      shoesColor: this.appearance.shoesColor || '#18181b',
+      jetpackStyle: this.appearance.jetpackStyle || 'classic',
+      jetpackColor: this.appearance.jetpackColor || '#00e5ff'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -884,6 +891,7 @@ export const uiManager = {
     this.initCreatorTorsoUI();
     this.initCreatorPantsUI();
     this.initCreatorShoesUI();
+    this.initCreatorJetpackUI();
   },
 
   initCreatorHairUI() {
@@ -1654,6 +1662,97 @@ export const uiManager = {
     });
   },
 
+  initCreatorJetpackUI() {
+    const gridEl = document.getElementById('creator-jetpack-grid');
+    const colorsEl = document.getElementById('creator-jetpack-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z fasonami jetpacka (obecnie model podstawowy: Mk.I)
+    JETPACK_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.jetpackStyle = styleId;
+      if ((this.appearance.jetpackStyle || 'classic') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.jetpackStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorJetpackSelectionUI();
+        this.renderCreatorJetpackTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów ognia i napędu jetpacka
+    JETPACK_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.jetpackColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      if (String(this.appearance.jetpackColor || '#00e5ff').toLowerCase() === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.jetpackColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorJetpackSelectionUI();
+        this.renderCreatorJetpackTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.syncCreatorJetpackSelectionUI();
+    this.renderCreatorJetpackTiles();
+  },
+
+  syncCreatorJetpackSelectionUI() {
+    const curStyle = this.appearance.jetpackStyle || 'classic';
+    const curColor = String(this.appearance.jetpackColor || '#00e5ff').toLowerCase();
+
+    document.querySelectorAll('#creator-jetpack-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.jetpackStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-jetpack-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.jetpackColor).toLowerCase() === curColor);
+    });
+  },
+
+  renderCreatorJetpackTiles() {
+    const curColor = this.appearance.jetpackColor || '#00e5ff';
+    const visuals = { ...this.appearance };
+
+    document.querySelectorAll('#creator-jetpack-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.jetpackStyle || 'classic';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawJetpackPreview(ctx, cvs.width, cvs.height, styleId, curColor, visuals);
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1689,6 +1788,9 @@ export const uiManager = {
     } else if (tabId === 'shoes') {
       this.syncCreatorShoesSelectionUI();
       this.renderCreatorShoesTiles();
+    } else if (tabId === 'jetpack') {
+      this.syncCreatorJetpackSelectionUI();
+      this.renderCreatorJetpackTiles();
     }
   },
 
@@ -1770,7 +1872,9 @@ export const uiManager = {
           pantsStyle: this.appearance.pantsStyle || 'cargo_long',
           pantsColor: this.appearance.pantsColor || '#18181b',
           shoesStyle: this.appearance.shoesStyle || 'combat_boots',
-          shoesColor: this.appearance.shoesColor || '#18181b'
+          shoesColor: this.appearance.shoesColor || '#18181b',
+          jetpackStyle: this.appearance.jetpackStyle || 'classic',
+          jetpackColor: this.appearance.jetpackColor || '#00e5ff'
         },
         pose: { initialized: false }
       };
@@ -1785,6 +1889,7 @@ export const uiManager = {
     this.syncCreatorTorsoSelectionUI();
     this.syncCreatorPantsSelectionUI();
     this.syncCreatorShoesSelectionUI();
+    this.syncCreatorJetpackSelectionUI();
     this.renderCreatorHairTiles();
 
     const tick = () => {
@@ -1849,6 +1954,13 @@ export const uiManager = {
     const dummy = this.creatorDummyPlayer;
     if (!dummy) return;
     dummy.currentClass = CLASSES.RAPTOR;
+    if (this.activeCreatorTab === 'jetpack') {
+      dummy.isJetpacking = true;
+      dummy.yaw = 0.55;
+    } else {
+      dummy.isJetpacking = false;
+      dummy.yaw = 0;
+    }
 
     ctx.save();
     ctx.translate(cw / 2, floorScreenY);
