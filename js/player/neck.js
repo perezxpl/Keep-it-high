@@ -85,44 +85,44 @@ export function drawCharacterNeckProfile(
   // 1. NIEŚMIERTELNIK WOJSKOWY (Military Dog Tags)
   // ---------------------------------------------------------------------------
   if (style === 'dogtags') {
-    // Kotwice łańcuszka:
-    // Tylna strona szyi (kark, skąd łańcuszek wychodzi zza szyi)
-    const neckBackX = -1.8;
-    const neckBackY = 7.4;
-    // Przednia strona szyi (przy kołnierzu koszulki z przodu)
-    const neckFrontX = 2.8;
-    const neckFrontY = 8.8;
+    // Kotwice łańcuszka na obwodzie kołnierza szyi:
+    // 1. Boczna krawędź kołnierza (bok szyi)
+    const neckSideX = 0.8;
+    const neckSideY = 7.5;
+    // 2. Przednia krawędź kołnierza (dołek szyjny z przodu)
+    const neckFrontX = 2.3;
+    const neckFrontY = 7.8;
 
-    // Punkt zwisu wisiorka: Z PRZODU na klatce piersiowej (mostek pod podbródkiem)
-    const pendantBaseX = 4.6;
-    const pendantBaseY = 17.6 + bounceY;
-    const swingX = Math.sin(swingAngle) * 2.2;
+    // Punkt zwisu blaszek: na górnej części mostka (tuż pod wycięciem kołnierza)
+    const pendantBaseX = 2.5;
+    const pendantBaseY = 11.2 + bounceY;
+    const swingX = Math.sin(swingAngle) * 1.5;
     const pendantX = pendantBaseX + swingX;
-    const pendantY = pendantBaseY - Math.abs(swingX) * 0.3;
+    const pendantY = pendantBaseY - Math.abs(swingX) * 0.25;
 
     // Stalowy łańcuszek kulkowy (ball chain)
     ctx.strokeStyle = '#94a3b8';
     ctx.lineWidth = 0.85;
     ctx.setLineDash([0.8, 1.2]);
 
-    // 1. Tylna gałąź łańcuszka (otacza szyję od karku ku przodowi klatki)
+    // 1. Boczna gałąź łańcuszka (schodzi z boku szyi na klatkę piersiową)
     ctx.beginPath();
-    ctx.moveTo(neckBackX, neckBackY);
-    ctx.quadraticCurveTo(0.6, 12.0, pendantX - 0.4, pendantY);
+    ctx.moveTo(neckSideX, neckSideY);
+    ctx.quadraticCurveTo(1.2, 9.6, pendantX - 0.2, pendantY);
     ctx.stroke();
 
-    // 2. Przednia gałąź łańcuszka (biegnie z przodu szyi wprost w dół po piersi)
+    // 2. Przednia gałąź łańcuszka (schodzi z przodu szyi)
     ctx.beginPath();
     ctx.moveTo(neckFrontX, neckFrontY);
-    ctx.quadraticCurveTo(4.2, 12.6, pendantX, pendantY);
+    ctx.quadraticCurveTo(2.6, 9.4, pendantX, pendantY);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Błysk światła na kulce łańcuszka z przodu
+    // Błysk światła na kulce łańcuszka
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 0.55;
     ctx.beginPath();
-    ctx.arc(pendantX - 0.2, pendantY - 2.8, 0.4, 0, Math.PI * 2);
+    ctx.arc(pendantX - 0.1, pendantY - 2.2, 0.4, 0, Math.PI * 2);
     ctx.stroke();
 
     // 1. Pierwsza blaszka (główna) – wisi z przodu na klatce piersiowej
@@ -133,11 +133,11 @@ export function drawCharacterNeckProfile(
     // Czarna gumowa wyciszka (silencer) wokół rantu blaszki
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.roundRect(-2.0, 0, 4.0, 5.6, 1.1);
+    ctx.roundRect(-1.6, 0, 3.2, 4.4, 0.9);
     ctx.fill();
 
     // Stalowy wkład blaszki z metalicznym odbiciem
-    const tagGrad1 = ctx.createLinearGradient(-1.6, 0, 1.6, 0);
+    const tagGrad1 = ctx.createLinearGradient(-1.3, 0, 1.3, 0);
     tagGrad1.addColorStop(0.0, '#64748b');
     tagGrad1.addColorStop(0.35, '#f1f5f9');
     tagGrad1.addColorStop(0.75, '#cbd5e1');
@@ -145,73 +145,73 @@ export function drawCharacterNeckProfile(
 
     ctx.fillStyle = tagGrad1;
     ctx.beginPath();
-    ctx.roundRect(-1.5, 0.4, 3.0, 4.8, 0.75);
+    ctx.roundRect(-1.2, 0.3, 2.4, 3.8, 0.6);
     ctx.fill();
 
     // Otwór montażowy
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.arc(0, 1.1, 0.45, 0, Math.PI * 2);
+    ctx.arc(0, 0.9, 0.4, 0, Math.PI * 2);
     ctx.fill();
 
     // Wytłoczone linie danych żołnierza (US Army Dog Tag Lines)
     ctx.strokeStyle = 'rgba(15, 23, 42, 0.48)';
     ctx.lineWidth = 0.45;
     ctx.beginPath();
-    ctx.moveTo(-1.1, 2.3); ctx.lineTo(1.0, 2.3);
-    ctx.moveTo(-1.1, 3.1); ctx.lineTo(1.1, 3.1);
-    ctx.moveTo(-1.1, 3.9); ctx.lineTo(0.7, 3.9);
+    ctx.moveTo(-0.9, 1.9); ctx.lineTo(0.8, 1.9);
+    ctx.moveTo(-0.9, 2.6); ctx.lineTo(0.9, 2.6);
+    ctx.moveTo(-0.9, 3.3); ctx.lineTo(0.6, 3.3);
     ctx.stroke();
 
     // Krawędziowy refleks światła na rancie
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 0.45;
     ctx.beginPath();
-    ctx.moveTo(-1.3, 1.8); ctx.lineTo(-1.3, 4.6);
+    ctx.moveTo(-1.0, 1.4); ctx.lineTo(-1.0, 3.7);
     ctx.stroke();
     ctx.restore();
 
     // 2. Druga blaszka (zapasowa) – wisi na osobnym małym łańcuszku pod spodem
     ctx.save();
-    ctx.translate(pendantX + 1.0, pendantY + 1.6);
-    ctx.rotate(-0.10 + swingAngle * 0.95);
+    ctx.translate(pendantX + 0.8, pendantY + 1.1);
+    ctx.rotate(-0.08 + swingAngle * 0.90);
 
     // Małe kółeczko łączące
     ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 0.6;
+    ctx.lineWidth = 0.55;
     ctx.beginPath();
-    ctx.arc(0, -0.6, 0.65, 0, Math.PI * 2);
+    ctx.arc(0, -0.5, 0.55, 0, Math.PI * 2);
     ctx.stroke();
 
     // Gumowa wyciszka
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.roundRect(-1.9, 0, 3.8, 5.4, 1.0);
+    ctx.roundRect(-1.5, 0, 3.0, 4.2, 0.85);
     ctx.fill();
 
     // Stalowa blaszka
-    const tagGrad2 = ctx.createLinearGradient(-1.5, 0, 1.5, 0);
+    const tagGrad2 = ctx.createLinearGradient(-1.2, 0, 1.2, 0);
     tagGrad2.addColorStop(0.0, '#475569');
-    tagGrad2.addColorStop(0.45, '#cbd5e1');
+    tagGrad2.addColorStop(0.35, '#cbd5e1');
     tagGrad2.addColorStop(1.0, '#64748b');
 
     ctx.fillStyle = tagGrad2;
     ctx.beginPath();
-    ctx.roundRect(-1.4, 0.4, 2.8, 4.6, 0.65);
+    ctx.roundRect(-1.1, 0.3, 2.2, 3.6, 0.55);
     ctx.fill();
 
     // Otwór montażowy
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.arc(0, 1.0, 0.4, 0, Math.PI * 2);
+    ctx.arc(0, 0.8, 0.35, 0, Math.PI * 2);
     ctx.fill();
 
     // Linie wytłoczenia
     ctx.strokeStyle = 'rgba(15, 23, 42, 0.42)';
     ctx.lineWidth = 0.4;
     ctx.beginPath();
-    ctx.moveTo(-1.0, 2.2); ctx.lineTo(0.9, 2.2);
-    ctx.moveTo(-1.0, 3.0); ctx.lineTo(1.0, 3.0);
+    ctx.moveTo(-0.8, 1.8); ctx.lineTo(0.7, 1.8);
+    ctx.moveTo(-0.8, 2.5); ctx.lineTo(0.8, 2.5);
     ctx.stroke();
     ctx.restore();
 
@@ -219,41 +219,41 @@ export function drawCharacterNeckProfile(
   // 2. ZŁOTY ŁAŃCUCH GANGSTA (Heavy Cuban Curb Gold Chain)
   // ---------------------------------------------------------------------------
   } else if (style === 'gold_chain') {
-    // Kotwice łańcucha:
-    // Tylna strona szyi (kark)
-    const neckBackX = -1.8;
-    const neckBackY = 7.2;
-    // Przednia strona szyi (kołnierz z przodu)
-    const neckFrontX = 2.9;
-    const neckFrontY = 8.6;
+    // Kotwice łańcucha na obwodzie kołnierza szyi:
+    // 1. Boczna krawędź kołnierza
+    const neckSideX = 0.8;
+    const neckSideY = 7.4;
+    // 2. Przednia krawędź kołnierza
+    const neckFrontX = 2.3;
+    const neckFrontY = 7.7;
 
-    // Punkt zwisu medalionu: Z PRZODU na klatce piersiowej
-    const pendantBaseX = 4.7;
-    const pendantBaseY = 16.0 + bounceY;
-    const swingX = Math.sin(swingAngle) * 2.0;
+    // Punkt zwisu medalionu: na środku klatki piersiowej
+    const pendantBaseX = 2.5;
+    const pendantBaseY = 10.8 + bounceY;
+    const swingX = Math.sin(swingAngle) * 1.5;
     const pendantX = pendantBaseX + swingX;
-    const pendantY = pendantBaseY - Math.abs(swingX) * 0.3;
+    const pendantY = pendantBaseY - Math.abs(swingX) * 0.25;
 
-    // Miękki cień rzucany przez ciężki łańcuch na klatkę piersiową
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-    ctx.lineWidth = 2.6;
+    // Miękki cień rzucany przez łańcuch na klatkę piersiową
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(neckBackX, neckBackY + 0.6);
-    ctx.quadraticCurveTo(1.2, 11.4, pendantX - 0.4, pendantY + 0.6);
+    ctx.moveTo(neckSideX, neckSideY + 0.4);
+    ctx.quadraticCurveTo(1.3, 9.4, pendantX, pendantY + 0.4);
+    ctx.quadraticCurveTo(2.7, 9.3, neckFrontX, neckFrontY + 0.4);
     ctx.stroke();
 
-    // Punkty splotu pancerka (Cuban Curb Links) - owijają szyję i spoczywają Z PRZODU na piersi
+    // Punkty splotu pancerka (Cuban Curb Links) - naturalna pętla naszyjnika wokół wycięcia kołnierza
     const chainPoints = [
-      { x: neckBackX, y: neckBackY, angle: 0.95 },
-      { x: -0.8, y: 9.2,  angle: 0.85 },
-      { x: 0.4,  y: 11.2, angle: 0.72 },
-      { x: 1.8,  y: 13.0, angle: 0.58 },
-      { x: 3.2,  y: 14.6, angle: 0.40 },
+      { x: neckSideX, y: neckSideY, angle: 0.85 },
+      { x: 1.1, y: 8.3,  angle: 0.70 },
+      { x: 1.5, y: 9.2,  angle: 0.52 },
+      { x: 2.0, y: 10.1, angle: 0.32 },
       { x: pendantX, y: pendantY, angle: swingAngle * 0.7 },
-      { x: 4.6,  y: 14.2, angle: -0.42 },
-      { x: 4.2,  y: 12.2, angle: -0.68 },
-      { x: 3.6,  y: 10.4, angle: -0.88 },
-      { x: neckFrontX, y: neckFrontY, angle: -1.05 }
+      { x: 2.8, y: 10.0, angle: -0.32 },
+      { x: 2.7, y: 9.2,  angle: -0.55 },
+      { x: 2.5, y: 8.4,  angle: -0.75 },
+      { x: neckFrontX, y: neckFrontY, angle: -0.95 }
     ];
 
     // Rysowanie poszczególnych trójwymiarowych, polerowanych ogniw
@@ -265,11 +265,11 @@ export function drawCharacterNeckProfile(
       // Ciemne złoto podłoża
       ctx.fillStyle = '#78350f';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 1.7, 1.1, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 1.5, 0.95, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Polerowane żółte złoto (bogaty gradient metaliczny)
-      const goldGrad = ctx.createLinearGradient(-1.5, -0.9, 1.5, 0.9);
+      const goldGrad = ctx.createLinearGradient(-1.3, -0.8, 1.3, 0.8);
       goldGrad.addColorStop(0.0, '#ca8a04');
       goldGrad.addColorStop(0.35, '#fef08a');
       goldGrad.addColorStop(0.70, '#eab308');
@@ -277,14 +277,14 @@ export function drawCharacterNeckProfile(
 
       ctx.fillStyle = goldGrad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 1.4, 0.85, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 1.25, 0.75, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Błysk specular na wypukłości ogniwa
       if (idx % 2 === 0) {
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(-0.4, -0.3, 0.38, 0, Math.PI * 2);
+        ctx.arc(-0.35, -0.25, 0.32, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -293,18 +293,18 @@ export function drawCharacterNeckProfile(
 
     // Masywny złoty medalion na środku łańcucha (kołysze się na wietrze)
     ctx.save();
-    ctx.translate(pendantX, pendantY + 0.6);
-    ctx.rotate(swingAngle * 1.15);
+    ctx.translate(pendantX, pendantY + 0.4);
+    ctx.rotate(swingAngle * 1.1);
 
     // Kółko montażowe
     ctx.strokeStyle = '#ca8a04';
-    ctx.lineWidth = 0.9;
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.arc(0, 0.5, 0.65, 0, Math.PI * 2);
+    ctx.arc(0, 0.4, 0.55, 0, Math.PI * 2);
     ctx.stroke();
 
     // Złota tarcza / medalion
-    const medalGrad = ctx.createRadialGradient(-0.4, 2.2, 0.2, 0, 2.6, 2.4);
+    const medalGrad = ctx.createRadialGradient(-0.3, 2.0, 0.2, 0, 2.3, 2.0);
     medalGrad.addColorStop(0.0, '#fef08a');
     medalGrad.addColorStop(0.45, '#eab308');
     medalGrad.addColorStop(0.85, '#ca8a04');
@@ -312,26 +312,26 @@ export function drawCharacterNeckProfile(
 
     ctx.fillStyle = medalGrad;
     ctx.beginPath();
-    ctx.arc(0, 2.6, 2.0, 0, Math.PI * 2);
+    ctx.arc(0, 2.3, 1.7, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 0.6;
+    ctx.lineWidth = 0.55;
     ctx.stroke();
 
     // Tłoczenie w medalionie (krzyż)
     ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 0.7;
+    ctx.lineWidth = 0.65;
     ctx.beginPath();
-    ctx.moveTo(0, 1.3); ctx.lineTo(0, 3.9);
-    ctx.moveTo(-1.0, 2.2); ctx.lineTo(1.0, 2.2);
+    ctx.moveTo(0, 1.2); ctx.lineTo(0, 3.4);
+    ctx.moveTo(-0.8, 2.0); ctx.lineTo(0.8, 2.0);
     ctx.stroke();
 
     // Rozbłysk diamentowy (+)
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 0.65;
+    ctx.lineWidth = 0.55;
     ctx.beginPath();
-    ctx.moveTo(-0.9, 1.5); ctx.lineTo(0.1, 1.5);
-    ctx.moveTo(-0.4, 1.0); ctx.lineTo(-0.4, 2.0);
+    ctx.moveTo(-0.7, 1.4); ctx.lineTo(0.1, 1.4);
+    ctx.moveTo(-0.3, 1.0); ctx.lineTo(-0.3, 1.8);
     ctx.stroke();
 
     ctx.restore();
