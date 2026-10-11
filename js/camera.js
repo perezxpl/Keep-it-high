@@ -170,7 +170,7 @@ export function getArenaBounds() {
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const minX = isArena3 ? 0 : (isArena2 ? 0 : CFG_ARENA_LEFT);
-  const maxX = isArena3 ? 4400 : (isArena2 ? 3600 : CFG_ARENA_RIGHT);
+  const maxX = isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT);
   const groundFloor = getCameraGroundY();
 
   return {
@@ -178,7 +178,7 @@ export function getArenaBounds() {
     maxX,
     arenaWidth: maxX - minX,
     minY: (isArena3 || isArena2) ? 0 : (groundFloor - 3000),
-    maxY: isArena3 ? 1400 : (isArena2 ? 1400 : groundFloor)
+    maxY: isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)
   };
 }
 
@@ -233,7 +233,7 @@ export function clampCamera(cam = camera) {
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
-  const maxCamY = (isArena3 || isArena2) ? Math.max(0, 1400 - viewHeight) : (groundFloor - (viewHeight * 0.72));
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -290,7 +290,7 @@ export function updateCamera(player, ball, options = {}) {
       const mobileSniperHighMult = (isSniperActive && elev > 0.15) ? (1.0 - elev * 0.06) : 1.0;
       defaultGameZoom = Math.max(minZoom, 0.50 * elevationZoomMult * mobileSniperHighMult);
     } else {
-      defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.55, minZoom) : Math.max(0.60, minZoom));
+      defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.52, minZoom) : Math.max(0.60, minZoom));
       // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
       if (isSniperActive) {
         const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
@@ -414,8 +414,8 @@ export function updateCamera(player, ball, options = {}) {
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
   const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
-  const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 2000 : groundFloor);
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 2000 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
+  const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor);
+  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):

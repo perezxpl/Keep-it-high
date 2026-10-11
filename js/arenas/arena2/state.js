@@ -1,7 +1,7 @@
 // =========================================================================
 // ARENAS/ARENA2.JS - SEKTOR X // INDUSTRIAL FOUNDRY & WASTE FACILITY
 // Profesjonalna arena turniejowa w układzie „X / Klepsydra” w stylu SOLDAT
-// Wymiary: 3600 x 1400 px
+// Wymiary: 4000 x 1600 px
 // =========================================================================
 
 import { triggerScreenShake } from '../../camera.js';
@@ -14,16 +14,16 @@ export const ARENA_2_CONFIG = {
   alias: 'ARENA_2_SECTOR_X',
   name: 'Toksyczna Rafineria',
   subtitle: 'Sektor X // Ciężki przemysłowy kompleks',
-  width: 3600,
-  height: 1400,
-  bounds: { minX: 0, maxX: 3600, minY: 0, maxY: 1400 },
-  hazardZoneY: 1260, // Poziom lustra toksycznego kwasu
-  abyssDeathY: 1350,
+  width: 4000,
+  height: 1600,
+  bounds: { minX: 0, maxX: 4000, minY: 0, maxY: 1600 },
+  hazardZoneY: 1440, // Poziom lustra toksycznego kwasu
+  abyssDeathY: 1530,
   spawns: [
-    { x: 520,  y: 390, facing: 1 },  // Platforma A (Góra-Lewo)
-    { x: 3080, y: 390, facing: -1 }, // Platforma B (Góra-Prawo)
-    { x: 520,  y: 970, facing: 1 },  // Platforma C (Dół-Lewo)
-    { x: 3080, y: 970, facing: -1 }  // Platforma D (Dół-Prawo)
+    { x: 530,  y: 350,  facing: 1 },  // Platforma A (Góra-Lewo)
+    { x: 3470, y: 350,  facing: -1 }, // Platforma B (Góra-Prawo - lustrzane odbicie)
+    { x: 540,  y: 1010, facing: 1 },  // Platforma C (Dół-Lewo)
+    { x: 3460, y: 1010, facing: -1 }  // Platforma D (Dół-Prawo - lustrzane odbicie)
   ]
 };
 
@@ -32,16 +32,16 @@ export const ARENA_2_PANDORA = ARENA_2_CONFIG; // Alias wstecznej kompatybilnoś
 
 // =========================================================================
 // 2. TABLICA FIZYCZNYCH PLATFORM (ARENA_2_PLATFORMS)
-// Turniejowy układ „X / Klepsydra” ze zjazdami pochyłymi (slopes)
+// Turniejowy układ „X / Klepsydra” ze zjazdami pochyłymi (slopes) - 100% symetria X = 2000
 // =========================================================================
 export const ARENA_2_PLATFORMS = [
   // 1. SUFIT: Wąskie belki techniczne i kratownice (drop-through)
   {
     id: 'ceil_pipe_left',
     name: 'Kratownica Sufitowa Lewa',
-    x: 600,
+    x: 650,
     y: 180,
-    w: 520,
+    w: 550,
     h: 16,
     isPlatform: true,
     isDropThrough: true,
@@ -50,9 +50,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'ceil_pipe_mid',
     name: 'Magistrala Sufitowa Środek',
-    x: 1540,
+    x: 1700,
     y: 150,
-    w: 520,
+    w: 600,
     h: 16,
     isPlatform: true,
     isDropThrough: true,
@@ -61,9 +61,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'ceil_pipe_right',
     name: 'Kratownica Sufitowa Prawa',
-    x: 2480,
+    x: 2800,
     y: 180,
-    w: 520,
+    w: 550,
     h: 16,
     isPlatform: true,
     isDropThrough: true,
@@ -74,9 +74,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'plat_A_top_left',
     name: 'Bastion Górny A (Lewy)',
-    x: 260,
-    y: 460,
-    w: 620,
+    x: 180,
+    y: 420,
+    w: 700,
     h: 32,
     isSolid: true,
     solid: true,
@@ -85,9 +85,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'plat_B_top_right',
     name: 'Bastion Górny B (Prawy)',
-    x: 2720,
-    y: 460,
-    w: 620,
+    x: 3120,
+    y: 420,
+    w: 700,
     h: 32,
     isSolid: true,
     solid: true,
@@ -95,60 +95,60 @@ export const ARENA_2_PLATFORMS = [
   },
 
   // 3. RAMPY GÓRNE (Ukośne zjazdy łączące bastiony ze środkiem)
-  // Z Platformy A ku centrum: od (880, 460) do (1440, 720)
+  // Z Platformy A ku centrum: od (880, 420) do (1560, 720)
   {
     id: 'ramp_top_left',
     name: 'Rampa Górna Lewa',
     x1: 880,
-    y1: 460,
-    x2: 1440,
+    y1: 420,
+    x2: 1560,
     y2: 720,
     thickness: 18,
     isSlope: true,
     isPlatform: true,
     oneWay: true,
     x: 880,
-    w: 560,
-    y: 460,
-    h: 260,
-    startY: 460,
+    w: 680,
+    y: 420,
+    h: 300,
+    startY: 420,
     endY: 720,
     surfacePoints: [
-      { x: 880, y: 460 },
-      { x: 1440, y: 720 }
+      { x: 880, y: 420 },
+      { x: 1560, y: 720 }
     ]
   },
-  // Z Platformy B ku centrum: od (2720, 460) do (2160, 720)
+  // Z Platformy B ku centrum (lustrzane odbicie): od (3120, 420) do (2440, 720)
   {
     id: 'ramp_top_right',
     name: 'Rampa Górna Prawa',
-    x1: 2720,
-    y1: 460,
-    x2: 2160,
+    x1: 3120,
+    y1: 420,
+    x2: 2440,
     y2: 720,
     thickness: 18,
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    x: 2160,
-    w: 560,
-    y: 460,
-    h: 260,
+    x: 2440,
+    w: 680,
+    y: 420,
+    h: 300,
     startY: 720,
-    endY: 460,
+    endY: 420,
     surfacePoints: [
-      { x: 2160, y: 720 },
-      { x: 2720, y: 460 }
+      { x: 2440, y: 720 },
+      { x: 3120, y: 420 }
     ]
   },
 
-  // 4. [ŚRODEK] - Centralny hub taktyczny (kratownica drop-through)
+  // 4. [ŚRODEK] - Centralny hub taktyczny (kratownica drop-through, idealnie wyśrodkowany X: 1560-2440)
   {
     id: 'center_hub',
     name: 'Centralny Hub Taktyczny',
-    x: 1440,
+    x: 1560,
     y: 720,
-    w: 720,
+    w: 880,
     h: 26,
     isPlatform: true,
     isDropThrough: true,
@@ -156,50 +156,50 @@ export const ARENA_2_PLATFORMS = [
   },
 
   // 5. RAMPY DOLNE (Ukośne zjazdy ze środka na dolne platformy)
-  // Ze Środka do Platformy C: od (1440, 720) do (900, 1040)
+  // Ze Środka do Platformy C: od (1560, 720) do (900, 1080)
   {
     id: 'ramp_bot_left',
     name: 'Rampa Dolna Lewa',
-    x1: 1440,
+    x1: 1560,
     y1: 720,
     x2: 900,
-    y2: 1040,
+    y2: 1080,
     thickness: 18,
     isSlope: true,
     isPlatform: true,
     oneWay: true,
     x: 900,
-    w: 540,
+    w: 660,
     y: 720,
-    h: 320,
-    startY: 1040,
+    h: 360,
+    startY: 1080,
     endY: 720,
     surfacePoints: [
-      { x: 900, y: 1040 },
-      { x: 1440, y: 720 }
+      { x: 900, y: 1080 },
+      { x: 1560, y: 720 }
     ]
   },
-  // Ze Środka do Platformy D: od (2160, 720) do (2700, 1040)
+  // Ze Środka do Platformy D (lustrzane odbicie): od (2440, 720) do (3100, 1080)
   {
     id: 'ramp_bot_right',
     name: 'Rampa Dolna Prawa',
-    x1: 2160,
+    x1: 2440,
     y1: 720,
-    x2: 2700,
-    y2: 1040,
+    x2: 3100,
+    y2: 1080,
     thickness: 18,
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    x: 2160,
-    w: 540,
+    x: 2440,
+    w: 660,
     y: 720,
-    h: 320,
+    h: 360,
     startY: 720,
-    endY: 1040,
+    endY: 1080,
     surfacePoints: [
-      { x: 2160, y: 720 },
-      { x: 2700, y: 1040 }
+      { x: 2440, y: 720 },
+      { x: 3100, y: 1080 }
     ]
   },
 
@@ -207,9 +207,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'plat_C_bot_left',
     name: 'Bastion Dolny C (Lewy)',
-    x: 260,
-    y: 1040,
-    w: 640,
+    x: 180,
+    y: 1080,
+    w: 720,
     h: 32,
     isSolid: true,
     solid: true,
@@ -218,9 +218,9 @@ export const ARENA_2_PLATFORMS = [
   {
     id: 'plat_D_bot_right',
     name: 'Bastion Dolny D (Prawy)',
-    x: 2700,
-    y: 1040,
-    w: 640,
+    x: 3100,
+    y: 1080,
+    w: 720,
     h: 32,
     isSolid: true,
     solid: true,
@@ -246,29 +246,29 @@ export function checkPandoraUpdraft() { return false; }
 // 2B. ELEMENTY TAKTYCZNE I OSŁONY (LEVEL DESIGN - SEKTOR X)
 // =========================================================================
 
-// 1. METALOWE SKRZYNIE / OSŁONY BALISTYCZNE (Blokują pociski i graczy)
+// 1. METALOWE SKRZYNIE / OSŁONY BALISTYCZNE (Blokują pociski i graczy - symetria X = 2000)
 export const ARENA_2_COVERS = [
   // Bastion górny lewy (A) - osłona od strony środka
-  { id: 'cover_A', x: 680, y: 418, w: 54, h: 42, isSolid: true, blocksBullets: true },
-  // Bastion górny prawy (B) - osłona od strony środka (idealny mirror: 3600 - (680 + 54) = 2866)
-  { id: 'cover_B', x: 2866, y: 418, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  { id: 'cover_A', x: 740, y: 378, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  // Bastion górny prawy (B) - osłona od strony środka (idealny mirror: 4000 - (740 + 54) = 3206)
+  { id: 'cover_B', x: 3206, y: 378, w: 54, h: 42, isSolid: true, blocksBullets: true },
   // Bastion dolny lewy (C)
-  { id: 'cover_C', x: 480, y: 998, w: 54, h: 42, isSolid: true, blocksBullets: true },
-  // Bastion dolny prawy (D) (idealny mirror: 3600 - (480 + 54) = 3066)
-  { id: 'cover_D', x: 3066, y: 998, w: 54, h: 42, isSolid: true, blocksBullets: true }
+  { id: 'cover_C', x: 580, y: 1038, w: 54, h: 42, isSolid: true, blocksBullets: true },
+  // Bastion dolny prawy (D) (idealny mirror: 4000 - (580 + 54) = 3366)
+  { id: 'cover_D', x: 3366, y: 1038, w: 54, h: 42, isSolid: true, blocksBullets: true }
 ];
 
-// 2. WYBUCHOWE BECZKI Z TOKSYNAMI (Niszczalne przeszkody środowiskowe)
+// 2. WYBUCHOWE BECZKI Z TOKSYNAMI (Niszczalne przeszkody środowiskowe - symetria X = 2000)
 export const ARENA_2_BARRELS = [
-  { id: 'barrel_A_edge', x: 830, y: 424, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
-  { id: 'barrel_B_edge', x: 2744, y: 424, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
-  { id: 'barrel_C_mid',  x: 740, y: 1004, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
-  { id: 'barrel_D_mid',  x: 2834, y: 1004, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false }
+  { id: 'barrel_A_edge', x: 830, y: 384, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_B_edge', x: 3144, y: 384, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_C_mid',  x: 820, y: 1044, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false },
+  { id: 'barrel_D_mid',  x: 3154, y: 1044, w: 26, h: 36, hp: 30, maxHp: 30, exploded: false }
 ];
 
-// 3. CENTRALNY TERMINAL ZAOPATRZENIA (Pick-up w sercu areny)
+// 3. CENTRALNY TERMINAL ZAOPATRZENIA (Pick-up w sercu areny: X = 2000)
 export const ARENA_2_SUPPLY = {
-  x: 1800,
+  x: 1982,
   y: 700,
   w: 36,
   h: 20,
@@ -339,10 +339,10 @@ export function playAcidSurgeSiren() {
 }
 
 export const ACID_SURGE_SYSTEM = {
-  // Poziomy kwasu (wysokość świata = 1400 px)
-  baseY: 1260,       // Poziom spoczynkowy
-  peakY: 720,        // Połowa mapy (wysokość podestu centralnego)
-  currentY: 1260,    // Aktualny poziom Y (interpolowany)
+  // Poziomy kwasu (wysokość świata = 1600 px)
+  baseY: 1440,       // Poziom spoczynkowy
+  peakY: 600,        // Kulminacyjny moment zalań: poziom Y = 600 (zalewa kładkę środkową Y = 720 i zmusza do ucieczki na bastiony Y = 420)
+  currentY: 1440,    // Aktualny poziom Y (interpolowany)
 
   // Maszyna stanów: 'CALM' | 'WARNING' | 'RISING' | 'FLOODED' | 'DRAINING'
   state: 'CALM',
@@ -427,8 +427,8 @@ const ACID_BUBBLES_COUNT = 28;
 export const _acidBubbles = [];
 for (let i = 0; i < ACID_BUBBLES_COUNT; i++) {
   _acidBubbles.push({
-    x: 100 + (i * 123.4) % 3400,
-    y: 1260 + (i * 17.8) % 120,
+    x: 100 + (i * 135.4) % 3800,
+    y: 1440 + (i * 17.8) % 120,
     size: 2.5 + (i % 4) * 1.5,
     speedY: 0.6 + (i % 3) * 0.4,
     phase: i * 0.52,
@@ -441,8 +441,8 @@ const INDUSTRIAL_DUST_COUNT = 32;
 export const _industrialDust = [];
 for (let i = 0; i < INDUSTRIAL_DUST_COUNT; i++) {
   _industrialDust.push({
-    baseX: 80 + (i * 110.5) % 3440,
-    baseY: 200 + (i * 35.7) % 950,
+    baseX: 80 + (i * 120.5) % 3840,
+    baseY: 200 + (i * 38.7) % 1150,
     size: 1.4 + (i % 3) * 0.8,
     speedX: ((i % 5) - 2) * 3.5,
     speedY: -4.0 - (i % 4) * 2.5,
@@ -451,10 +451,10 @@ for (let i = 0; i < INDUSTRIAL_DUST_COUNT; i++) {
   });
 }
 
-// Górne przemysłowe koguty alarmowe (Rotating Emergency Beacons) na ścianach w tle
+// Górne przemysłowe koguty alarmowe (Rotating Emergency Beacons) na ścianach w tle (symetria X = 2000)
 export const ARENA_2_EMERGENCY_BEACONS = [
-  { x: 720,  y: 560, id: 'beacon_1', label: 'BEACON-01' }, // pod górną lewą rampą
-  { x: 2880, y: 560, id: 'beacon_4', label: 'BEACON-04' }  // pod górną prawą rampą
+  { x: 1000, y: 560, id: 'beacon_1', label: 'BEACON-01' }, // pod górną lewą rampą
+  { x: 3000, y: 560, id: 'beacon_4', label: 'BEACON-04' }  // pod górną prawą rampą (lustrzane odbicie)
 ];
 
 // Stała tablica 28 cząstek unoszących się oparów toksycznych (Steam Motes)
@@ -462,7 +462,7 @@ export const TOXIC_VAPOR_COUNT = 28;
 export const _toxicVaporParticles = [];
 for (let i = 0; i < TOXIC_VAPOR_COUNT; i++) {
   _toxicVaporParticles.push({
-    baseX: 100 + (i * 123.7) % 3400,
+    baseX: 100 + (i * 135.7) % 3800,
     radius: 14 + (i % 5) * 2.8, // promień w przedziale 14–26 px
     speed: 1.15 + (i % 4) * 0.42, // szybkość falowania poziomego
     amp: 12 + (i % 5) * 3.2, // amplituda falowania (12–25 px)
@@ -476,7 +476,7 @@ export const SURFACE_BUBBLES_COUNT = 32;
 export const _surfaceBubbles = [];
 for (let i = 0; i < SURFACE_BUBBLES_COUNT; i++) {
   _surfaceBubbles.push({
-    x: 100 + (i * 107.5) % 3400,
+    x: 100 + (i * 118.5) % 3800,
     maxRadius: 2.2 + (i % 4) * 0.58, // promień 2–4 px
     cycleDuration: 1.8 + (i % 5) * 0.35, // 1.8–3.2 sekundy
     phase: i * 0.38,
@@ -490,9 +490,39 @@ for (let i = 0; i < SURFACE_BUBBLES_COUNT; i++) {
 
 /** Zwraca falujące lustro toksycznego kwasu (jednolita, stała formuła fali) */
 export function getAcidSurfaceY(x, time) {
-  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
   return curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
 }
+
+// =========================================================================
+// DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ OBIEKTY (ACID FLOTSAM)
+// 100% symetria osiowa względem X = 2000 (prealokowane obiekty, 0 alokacji GC w pętli renderującej)
+// =========================================================================
+export const _acidFlotsam = [
+  // 1. Toksyczne beczki z wyciekiem i dymem (symetria X = 2000: |X - 2000| = 1580 oraz 680)
+  { type: 'barrel', baseX: 420,  driftAmp: 18, driftSpeed: 0.60, phase: 0.00, tiltAmp: 0.15, size: 28, yOffset: 6 },
+  { type: 'barrel', baseX: 3580, driftAmp: 18, driftSpeed: 0.60, phase: Math.PI, tiltAmp: -0.15, size: 28, yOffset: 6 },
+  { type: 'barrel', baseX: 1320, driftAmp: 14, driftSpeed: 0.75, phase: 1.50, tiltAmp: 0.18, size: 26, yOffset: 5 },
+  { type: 'barrel', baseX: 2680, driftAmp: 14, driftSpeed: 0.75, phase: 1.50 + Math.PI, tiltAmp: -0.18, size: 26, yOffset: 5 },
+
+  // 2. Dryfujące ludzkie czaszki (symetria X = 2000: |X - 2000| = 1280 oraz 250)
+  { type: 'skull',  baseX: 720,  driftAmp: 12, driftSpeed: 0.80, phase: 0.70, tiltAmp: 0.12, size: 18, yOffset: 4 },
+  { type: 'skull',  baseX: 3280, driftAmp: 12, driftSpeed: 0.80, phase: 0.70 + Math.PI, tiltAmp: -0.12, size: 18, yOffset: 4 },
+  { type: 'skull',  baseX: 1750, driftAmp: 10, driftSpeed: 0.90, phase: 2.10, tiltAmp: 0.10, size: 16, yOffset: 3 },
+  { type: 'skull',  baseX: 2250, driftAmp: 10, driftSpeed: 0.90, phase: 2.10 + Math.PI, tiltAmp: -0.10, size: 16, yOffset: 3 },
+
+  // 3. Dryfujące ludzkie kości (symetria X = 2000: |X - 2000| = 920)
+  { type: 'bones',  baseX: 1080, driftAmp: 15, driftSpeed: 0.65, phase: 1.10, tiltAmp: 0.20, size: 22, yOffset: 2 },
+  { type: 'bones',  baseX: 2920, driftAmp: 15, driftSpeed: 0.65, phase: 1.10 + Math.PI, tiltAmp: -0.20, size: 22, yOffset: 2 },
+
+  // 4. Ości ryb / szkielety rybie (symetria X = 2000: |X - 2000| = 1760, 500 oraz 100)
+  { type: 'fish_skeleton', baseX: 240,  driftAmp: 16, driftSpeed: 0.70, phase: 0.40, tiltAmp: 0.25, size: 24, yOffset: 2 },
+  { type: 'fish_skeleton', baseX: 3760, driftAmp: 16, driftSpeed: 0.70, phase: 0.40 + Math.PI, tiltAmp: -0.25, size: 24, yOffset: 2 },
+  { type: 'fish_skeleton', baseX: 1500, driftAmp: 12, driftSpeed: 0.85, phase: 2.70, tiltAmp: 0.20, size: 20, yOffset: 2 },
+  { type: 'fish_skeleton', baseX: 2500, driftAmp: 12, driftSpeed: 0.85, phase: 2.70 + Math.PI, tiltAmp: -0.20, size: 20, yOffset: 2 },
+  { type: 'fish_skeleton', baseX: 1900, driftAmp: 8,  driftSpeed: 1.00, phase: 3.50, tiltAmp: 0.18, size: 18, yOffset: 1 },
+  { type: 'fish_skeleton', baseX: 2100, driftAmp: 8,  driftSpeed: 1.00, phase: 3.50 + Math.PI, tiltAmp: -0.18, size: 18, yOffset: 1 }
+];
 
 // =========================================================================
 
@@ -804,10 +834,10 @@ export function drawAcidDeathEffects(ctx, time) {
 /**
  * Sprawdza, czy stopy postaci są fizycznie zanurzone w widocznej tafli kwasu (z marginesem zanurzenia)
  */
-export function isPlayerSubmergedInAcid(p, submergeDepth = 18) {
+export function isPlayerSubmergedInAcid(p, submergeDepth = 15) {
   if (!p) return false;
   const time = performance.now() * 0.001;
-  const acidY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : (ARENA_2_CONFIG.hazardZoneY || 1260);
+  const acidY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : (ARENA_2_CONFIG.hazardZoneY || 1440);
   const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
   const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
   const exactSurfaceY = acidY + waveOffset;
@@ -963,13 +993,13 @@ export function updateArena2(dt, players) {
 
     if (p.isDead) continue;
 
-    // Etap 1: Wykrycie rzeczywistego zanurzenia stóp w widocznej cieczy (margines zanurzenia 18 px)
+    // Etap 1: Wykrycie rzeczywistego zanurzenia stóp w widocznej cieczy (margines zanurzenia 15 px)
     const time = performance.now() * 0.001;
     const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
     const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
     const exactSurfaceY = hazardZoneY + waveOffset;
     const playerFeetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
-    const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb widocznego kwasu
+    const SUBMERGE_DEPTH = 15; // margines zanurzenia: 15 pikseli w głąb widocznego kwasu
 
     if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
       triggerPlayerAcidDeath(p, exactSurfaceY);

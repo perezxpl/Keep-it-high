@@ -297,7 +297,7 @@ export function updateBall(GROUND_Y) {
         ball.vx = 0;
         ball.vy = 0;
       } else if (isA2Goal) {
-        ball.x = 1800;
+        ball.x = 2000;
         ball.y = 560;
         ball.isLevitating = false;
         ball.vx = 0;
@@ -403,7 +403,7 @@ export function updateBall(GROUND_Y) {
     const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
     const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
     const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
-    const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
+    const wallRight = isArena3 ? 4400 : (isArena2 ? 4000 : ARENA_RIGHT);
     const wallTop = isArena2 ? 0 : (GROUND_Y - (isArena3 ? 1300 : 3000));
 
     if (ball.y >= wallTop) {
@@ -454,7 +454,7 @@ export function updateBall(GROUND_Y) {
         ball.vy = 0;
         ball.spin = 0;
       } else if (isArena2) {
-        ball.x = 1800;
+        ball.x = 2000;
         ball.y = 560;
         ball.isLevitating = false;
         ball.vx = 0;
@@ -489,7 +489,7 @@ export function updateBall(GROUND_Y) {
       if (ball.stuckFrames > 14) {
         const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
         const isA2Anti = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
-        const centerX = isA3 ? 2200 : (isA2Anti ? 1800 : 960);
+        const centerX = isA3 ? 2200 : (isA2Anti ? 2000 : 960);
         ball.vy = -4.5;
         ball.vx = (ball.x < centerX) ? 3.5 : -3.5;
         ball.stuckFrames = 0;

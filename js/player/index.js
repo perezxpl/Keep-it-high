@@ -1027,13 +1027,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     // Strefa toksycznego kwasu i otchłani śmierci w Sektorze X (Arena 2)
     if (isA2) {
       const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
-      const hazardY = curArenaObj?.acidSurge?.currentY || (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM ? window.ACID_SURGE_SYSTEM.currentY : 1260);
+      const hazardY = curArenaObj?.acidSurge?.currentY || (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM ? window.ACID_SURGE_SYSTEM.currentY : 1440);
       const px = player.x + (player.w || 24) * 0.5;
       const time = performance.now() * 0.001;
       const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
       const exactSurfaceY = hazardY + waveOffset;
       const playerFeetY = (player.origin === 'bottom') ? player.y : (player.y + (player.h || 70));
-      const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb kwasu
+      const SUBMERGE_DEPTH = 15; // margines zanurzenia: 15 pikseli w głąb kwasu
 
       if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
         if (!player.isDead && !player.isAcidDying && (!player.acidDeath || !player.acidDeath.active)) {
@@ -1167,7 +1167,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
-  const wallRight = isArena3 ? 4400 : (isArena2 ? 3600 : ARENA_RIGHT);
+  const wallRight = isArena3 ? 4400 : (isArena2 ? 4000 : ARENA_RIGHT);
   const groundFloorY = 1000;
   const wallTop = isArena2 ? 0 : (groundFloorY - (isArena3 ? 1300 : 3000));
 

@@ -121,23 +121,23 @@ export const ARENA_CONFIGS = {
 
 // =========================================================================
 // DEFINICJA ARENY 2: TOKSYCZNA RAFINERIA (SEKTOR X)
-// Turniejowy układ „X / Klepsydra” w stylu SOLDAT (3600x1400 PX)
+// Turniejowy układ „X / Klepsydra” w stylu SOLDAT (4000x1600 PX)
 // =========================================================================
 export const ARENA_2_SECTOR_X = {
   id: 'ARENA_2',
   alias: 'ARENA_2_SECTOR_X',
   name: 'Toksyczna Rafineria',
   subtitle: 'Sektor X // Ciężki przemysłowy kompleks',
-  width: 3600,
-  height: 1400,
-  bounds: { minX: 0, maxX: 3600, minY: 0, maxY: 1400 },
-  hazardZoneY: 1260, // Poziom lustra toksycznego kwasu
-  abyssDeathY: 1350,
+  width: 4000,
+  height: 1600,
+  bounds: { minX: 0, maxX: 4000, minY: 0, maxY: 1600 },
+  hazardZoneY: 1440, // Poziom lustra toksycznego kwasu
+  abyssDeathY: 1530,
   spawns: [
-    { x: 520,  y: 390, facing: 1 },  // Platforma A (Góra-Lewo)
-    { x: 3080, y: 390, facing: -1 }, // Platforma B (Góra-Prawo)
-    { x: 520,  y: 970, facing: 1 },  // Platforma C (Dół-Lewo)
-    { x: 3080, y: 970, facing: -1 }  // Platforma D (Dół-Prawo)
+    { x: 530,  y: 350,  facing: 1 },  // Platforma A (Góra-Lewo)
+    { x: 3470, y: 350,  facing: -1 }, // Platforma B (Góra-Prawo - lustrzane odbicie)
+    { x: 540,  y: 1010, facing: 1 },  // Platforma C (Dół-Lewo)
+    { x: 3460, y: 1010, facing: -1 }  // Platforma D (Dół-Prawo - lustrzane odbicie)
   ]
 };
 export const ARENA_2_CONFIG = ARENA_2_SECTOR_X;

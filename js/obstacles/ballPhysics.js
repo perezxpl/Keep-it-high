@@ -622,9 +622,9 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#06b6d4' : '#f97316');
         resetArena();
 
-        ball.x = 1800;
+        ball.x = 2000;
         ball.y = 560;
-        ball.prevX = 1800;
+        ball.prevX = 2000;
         ball.prevY = 560;
         ball.vx = 0;
         ball.vy = 0;

@@ -9,21 +9,22 @@ import {
   ARENA_2_EMERGENCY_BEACONS,
   _toxicVaporParticles,
   _surfaceBubbles,
+  _acidFlotsam,
   getAcidSurfaceY,
   drawAcidDeathEffects
 } from './state.js';
 
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
-// Symetryczny punkt centralny areny w osi litery „X” (fanCenterX = 1800, fanCenterY = 580)
+// Symetryczny punkt centralny areny w osi litery „X” (fanCenterX = 2000, fanCenterY = 680)
 // =========================================================================
 export function drawMonumentalCenterTurbine(ctx, time) {
   ctx.save();
   ctx.shadowBlur = 0;
 
-  const fanCenterX = 1800;
-  const fanCenterY = 580;
-  const fanRadius = 300; // Kompaktowy promień (ok. 25% mniejszy, zgrabnie mieszczący się za kładką)
-  const hubRadius = 54;  // Proporcjonalna piasta środkowa (54 px)
+  const fanCenterX = 2000;
+  const fanCenterY = 680;
+  const fanRadius = 420; // Monumentalny powiększony promień (R = 420 px)
+  const hubRadius = 75;  // Proporcjonalna piasta środkowa (75 px)
   const rotation = time * 0.45;
 
   // 1. ZEWNĘTRZNA CZELUŚĆ SZYBU WENTYLACYJNEGO (GŁĘBOKI TUNEL)
@@ -32,7 +33,7 @@ export function drawMonumentalCenterTurbine(ctx, time) {
   ctx.arc(fanCenterX, fanCenterY, fanRadius + 20, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2. STALOWY KOŁNIERZ MONTAŻOWY (CASING FLANGE // R = 300 do 320)
+  // 2. STALOWY KOŁNIERZ MONTAŻOWY (CASING FLANGE // R = 420 do 440)
   const flangeGrad = ctx.createRadialGradient(fanCenterX, fanCenterY, fanRadius - 6, fanCenterX, fanCenterY, fanRadius + 20);
   flangeGrad.addColorStop(0.00, '#0a1017');
   flangeGrad.addColorStop(0.55, '#151f2b');
@@ -56,8 +57,8 @@ export function drawMonumentalCenterTurbine(ctx, time) {
   ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Nity i śruby montażowe na obwodzie kołnierza (co 15 stopni)
-  const boltCount = 24;
+  // Nity i śruby montażowe na obwodzie kołnierza
+  const boltCount = 32;
   const boltR = fanRadius + 10;
   for (let i = 0; i < boltCount; i++) {
     const bAngle = (i * Math.PI * 2) / boltCount;
@@ -309,7 +310,7 @@ export function drawArena2Background(ctx, camera) {
   }
 
   // Pionowe rury zrzutowe opadające w dół po bokach
-  for (let rx = 240; rx < 3400; rx += 680) {
+  for (let rx = 240; rx < 3800; rx += 680) {
     const screenRx = (rx - pipeParallaxX) % pipeWrap - 200;
     if (screenRx < -80 || screenRx > W_screen + 80) continue;
 
@@ -324,7 +325,7 @@ export function drawArena2Background(ctx, camera) {
   // -----------------------------------------------------------------------
   // WARSTWA 2: MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
   // ORAZ PRZEMYSŁOWE KOGUTY ALARMOWE W TLE (ROTATING EMERGENCY BEACONS)
-  // Dokładny środek areny: X = 1800, Y = 580 (promień 300 px, piasta 54 px)
+  // Dokładny środek areny: X = 2000, Y = 680 (promień 420 px, piasta 75 px)
   // -----------------------------------------------------------------------
   ctx.save();
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
@@ -390,9 +391,9 @@ export function drawArena2Geometry(ctx, camera) {
   // 0. ABSOLUTNY, W 100% KRYJĄCY MONOLITYCZNY PODKŁAD POD CAŁĄ ARENĄ
   // Zero widocznego tła od dynamicznego poziomu kwasu w dół
   // -----------------------------------------------------------------------
-  const curAcidY = Math.floor((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260);
+  const curAcidY = Math.floor((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440);
   ctx.fillStyle = '#010403';
-  ctx.fillRect(-200, curAcidY - 10, 4000, (BOTTOM_Y - curAcidY) + 210);
+  ctx.fillRect(-200, curAcidY - 10, 4400, (BOTTOM_Y - curAcidY) + 210);
 
   // -----------------------------------------------------------------------
   // 2. SUFITOWE MAGISTRALE I BELKI TECHNICZNE (Y: 150-180)
@@ -400,39 +401,45 @@ export function drawArena2Geometry(ctx, camera) {
   drawCeilingInfrastructure(ctx, time);
 
   // -----------------------------------------------------------------------
-  // 3. GÓRNE BASTIONY A i B (X: 260-880 oraz 2720-3340, Y: 460)
+  // 3. GÓRNE BASTIONY A i B (X: 180-880 oraz 3120-3820, Y: 420)
   // -----------------------------------------------------------------------
-  drawIndustrialFortressPlatform(ctx, 260, 460, 620, 32, 'A - TOP WEST', true, time);
-  drawIndustrialFortressPlatform(ctx, 2720, 460, 620, 32, 'B - TOP EAST', false, time);
+  drawIndustrialFortressPlatform(ctx, 180, 420, 700, 32, 'A - TOP WEST', true, time);
+  drawIndustrialFortressPlatform(ctx, 3120, 420, 700, 32, 'B - TOP EAST', false, time);
 
   // -----------------------------------------------------------------------
   // 4. UKOŚNE RAMPY GÓRNE (POŁĄCZENIE BASTIONÓW ZE ŚRODKIEM)
-  // Rampa A: (880, 460) -> (1440, 720)
-  // Rampa B (Mirror): (2720, 460) -> (2160, 720)
+  // Rampa A: (880, 420) -> (1560, 720)
+  // Rampa B (Mirror): (3120, 420) -> (2440, 720)
   // -----------------------------------------------------------------------
-  drawIndustrialTrussRamp(ctx, 880, 460, 1440, 720, 18, true, time);
-  drawIndustrialTrussRamp(ctx, 2720, 460, 2160, 720, 18, false, time);
+  drawIndustrialTrussRamp(ctx, 880, 420, 1560, 720, 18, true, time);
+  drawIndustrialTrussRamp(ctx, 3120, 420, 2440, 720, 18, false, time);
 
   // -----------------------------------------------------------------------
   // 6. UKOŚNE RAMPY DOLNE (ZE ŚRODKA NA DOLNE BASTIONY)
-  // Rampa C: (1440, 720) -> (900, 1040)
-  // Rampa D (Mirror): (2160, 720) -> (2700, 1040)
+  // Rampa C: (1560, 720) -> (900, 1080)
+  // Rampa D (Mirror): (2440, 720) -> (3100, 1080)
   // -----------------------------------------------------------------------
-  drawIndustrialTrussRamp(ctx, 1440, 720, 900, 1040, 18, false, time);
-  drawIndustrialTrussRamp(ctx, 2160, 720, 2700, 1040, 18, true, time);
+  drawIndustrialTrussRamp(ctx, 1560, 720, 900, 1080, 18, false, time);
+  drawIndustrialTrussRamp(ctx, 2440, 720, 3100, 1080, 18, true, time);
 
   // -----------------------------------------------------------------------
   // 6B. WĘZŁY KRATOWNIC PRZY ŚRODKU (JUNCTION CAPS - LEWY I PRAWY)
-  // Symetryczne zwieńczenia wierzchołków przy X = 1440 oraz X = 2160
+  // Symetryczne zwieńczenia wierzchołków przy X = 1560 oraz X = 2440
   // -----------------------------------------------------------------------
-  drawRampJunctionCap(ctx, 1440, 720, true);
-  drawRampJunctionCap(ctx, 2160, 720, false);
+  drawRampJunctionCap(ctx, 1560, 720, true);
+  drawRampJunctionCap(ctx, 2440, 720, false);
 
   // -----------------------------------------------------------------------
-  // 7. DOLNE BASTIONY C i D (X: 260-900 oraz 2700-3340, Y: 1040)
+  // 7. DOLNE BASTIONY C i D (X: 180-900 oraz 3100-3820, Y: 1080)
   // -----------------------------------------------------------------------
-  drawIndustrialFortressPlatform(ctx, 260, 1040, 640, 32, 'C - HAZARD DECK', true, time);
-  drawIndustrialFortressPlatform(ctx, 2700, 1040, 640, 32, 'D - ACID PIER', false, time);
+  drawIndustrialFortressPlatform(ctx, 180, 1080, 720, 32, 'C - HAZARD DECK', true, time);
+  drawIndustrialFortressPlatform(ctx, 3100, 1080, 720, 32, 'D - ACID PIER', false, time);
+
+  // -----------------------------------------------------------------------
+  // 5. CENTRALNY HUB TAKTYCZNY (X: 1560-2440, Y: 720, W: 880, H: 26)
+  // Rysowany przed kwasem, aby przy kulminacji zalań (Y = 600) został całkowicie zatopiony!
+  // -----------------------------------------------------------------------
+  drawCenterTacticalHub(ctx, 1560, 720, 880, 26, time);
 
   // -----------------------------------------------------------------------
   // 1. ZBIORNIK TOKSYCZNEGO KWASU (HAZARD LAKE // Y = currentY DO BOTTOM_Y)
@@ -440,20 +447,17 @@ export function drawArena2Geometry(ctx, camera) {
   // -----------------------------------------------------------------------
   drawAcidLevel(ctx, curAcidY, BOTTOM_Y);
 
-  // 1B. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
+  // 1B. DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ BECZKI, CZASZKI, KOŚCI I OŚCI RYB
+  drawAcidFlotsam(ctx, time);
+
+  // 1C. PĘCZNIENIE I PĘKANIE PĘCHERZY GAZU NA POWIERZCHNI KWASU
   drawAcidSurfaceBubbles(ctx, time);
 
-  // 1C. GŁÓWNA ŁUNA OD KWASU (ACID UPWARD UNDERGLOW)
+  // 1D. GŁÓWNA ŁUNA OD KWASU (ACID UPWARD UNDERGLOW)
   drawAcidUpwardUnderglow(ctx);
 
-  // 1D. DYNAMICZNE EFEKTY ZGONU W KWASIE (WRZENIE, GEJZERY KROPEL, DYM, WYRZUCONY EKWIPUNEK)
+  // 1E. DYNAMICZNE EFEKTY ZGONU W KWASIE (WRZENIE, GEJZERY KROPEL, DYM, WYRZUCONY EKWIPUNEK)
   drawAcidDeathEffects(ctx, time);
-
-  // -----------------------------------------------------------------------
-  // 5. CENTRALNY HUB TAKTYCZNY (X: 1440-2160, Y: 720, W: 720, H: 26)
-  // Renderowany na szczycie fali zalania (Y = 720)
-  // -----------------------------------------------------------------------
-  drawCenterTacticalHub(ctx, 1440, 720, 720, 26, time);
 
   // 7B. ZIELONY AKCENT NA KRAWĘDZIACH PLATFORM I RAMP (RIM LIGHT // SCREEN)
   drawPlatformRimLighting(ctx);
@@ -488,11 +492,11 @@ export function drawArena2Foreground(ctx, camera) {
 // =========================================================================
 
 // Jednolity, stały render cieczy niezależnie od stanu i fazy alarmu
-export function drawAcidLevel(ctx, currentY, bottomY = 1400) {
+export function drawAcidLevel(ctx, currentY, bottomY = 1600) {
   const curY = (currentY !== undefined && currentY !== null)
     ? currentY
-    : ((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260);
-  const BOTTOM_Y = Math.max(1400, bottomY || 1400); // lub dynamiczna dolna granica ekranu
+    : ((typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440);
+  const BOTTOM_Y = Math.max(1600, bottomY || 1600); // lub dynamiczna dolna granica ekranu
   const time = performance.now() * 0.001;
 
   ctx.save();
@@ -512,14 +516,14 @@ export function drawAcidLevel(ctx, currentY, bottomY = 1400) {
   ctx.moveTo(0, BOTTOM_Y);
   ctx.lineTo(0, curY);
 
-  // Stała formuła fal bez względu na to, czy kwas stoi, czy się podnosi
+  // Stała formuła fal bez względu na to, czy kwas stoi, czy się podnosi (do X = 4000)
   const step = 20;
-  for (let x = 0; x <= 3600; x += step) {
+  for (let x = 0; x <= 4000; x += step) {
     const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
     ctx.lineTo(x, waveY);
   }
 
-  ctx.lineTo(3600, BOTTOM_Y);
+  ctx.lineTo(4000, BOTTOM_Y);
   ctx.closePath();
   ctx.fill();
 
@@ -527,7 +531,7 @@ export function drawAcidLevel(ctx, currentY, bottomY = 1400) {
   ctx.strokeStyle = '#86efac';
   ctx.lineWidth = 2.0;
   ctx.beginPath();
-  for (let x = 0; x <= 3600; x += step) {
+  for (let x = 0; x <= 4000; x += step) {
     const waveY = curY + Math.sin(time * 3.0 + x * 0.02) * 5.0;
     if (x === 0) ctx.moveTo(x, waveY);
     else ctx.lineTo(x, waveY);
@@ -539,16 +543,413 @@ export function drawAcidLevel(ctx, currentY, bottomY = 1400) {
 
 /** Alias kompatybilności */
 export function drawAcidLake(ctx, time, bottomY) {
-  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
   drawAcidLevel(ctx, curY, bottomY);
 }
 
-/** Rysuje rury i kratownice sufitowe (Y = 150-180) */
+// =========================================================================
+// DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ OBIEKTY (ACID FLOTSAM)
+// Beczki z wyciekiem i dymem, czaszki, kości oraz ości ryb (100% symetria X = 2000, 0 alokacji GC)
+// =========================================================================
+
+export function drawAcidFlotsam(ctx, time) {
+  if (!ctx || !_acidFlotsam || _acidFlotsam.length === 0) return;
+
+  ctx.save();
+  ctx.shadowBlur = 0;
+
+  for (let i = 0; i < _acidFlotsam.length; i++) {
+    const item = _acidFlotsam[i];
+    const curX = item.baseX + Math.sin(time * item.driftSpeed + item.phase) * item.driftAmp;
+    const curY = getAcidSurfaceY(curX, time) + (item.yOffset || 0);
+
+    // Dynamiczny kąt nachylenia grzbietu fali pod dryfującym obiektem
+    const dx = 14;
+    const yL = getAcidSurfaceY(curX - dx, time);
+    const yR = getAcidSurfaceY(curX + dx, time);
+    const waveSlope = Math.atan2(yR - yL, dx * 2);
+    const totalAngle = waveSlope + Math.sin(time * 2.2 + item.phase) * item.tiltAmp;
+
+    ctx.save();
+    ctx.translate(curX, curY);
+    ctx.rotate(totalAngle);
+
+    switch (item.type) {
+      case 'barrel':
+        drawFloatingBarrel(ctx, item.size, time, item);
+        break;
+      case 'skull':
+        drawFloatingSkull(ctx, item.size, time, item);
+        break;
+      case 'bones':
+        drawFloatingBones(ctx, item.size, time, item);
+        break;
+      case 'fish_skeleton':
+        drawFloatingFishBones(ctx, item.size, time, item);
+        break;
+    }
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/** 1. Unosząca się industrialna beczka z wyciekiem neonowego kwasu i dymem */
+function drawFloatingBarrel(ctx, size, time, item) {
+  const w = size;
+  const h = size * 1.3;
+  const halfW = w * 0.5;
+  const halfH = h * 0.5;
+
+  // A. Fosforyzująca plama toksycznego wycieku na tafli (glow puddle)
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const leakPulse = 0.55 + 0.45 * Math.sin(time * 3.5 + item.phase);
+  const glowGrad = ctx.createRadialGradient(0, 4, 2, 0, 4, w * 1.2);
+  glowGrad.addColorStop(0.0, `rgba(74, 222, 128, ${0.75 * leakPulse})`);
+  glowGrad.addColorStop(0.4, `rgba(34, 197, 94, ${0.35 * leakPulse})`);
+  glowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 4, w * 1.2, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // B. Stalowy korpus beczki (industrialny hazmat yellow/amber z cieniami)
+  const bGrad = ctx.createLinearGradient(-halfW, 0, halfW, 0);
+  bGrad.addColorStop(0.00, '#451a03');
+  bGrad.addColorStop(0.25, '#b45309');
+  bGrad.addColorStop(0.55, '#f59e0b');
+  bGrad.addColorStop(0.85, '#d97706');
+  bGrad.addColorStop(1.00, '#78350f');
+  ctx.fillStyle = bGrad;
+
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(-halfW, -halfH, w, h, 3);
+  } else {
+    ctx.rect(-halfW, -halfH, w, h);
+  }
+  ctx.fill();
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  // C. Wzmacniające obręcze stalowe (hoops)
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(-halfW, -halfH * 0.55);
+  ctx.lineTo(halfW, -halfH * 0.55);
+  ctx.moveTo(-halfW, 0);
+  ctx.lineTo(halfW, 0);
+  ctx.moveTo(-halfW, halfH * 0.55);
+  ctx.lineTo(halfW, halfH * 0.55);
+  ctx.stroke();
+
+  // Nity na obręczach
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-halfW + 3, -halfH * 0.55 - 1.5, 2, 3);
+  ctx.fillRect(halfW - 5, -halfH * 0.55 - 1.5, 2, 3);
+  ctx.fillRect(-halfW + 3, -1.5, 2, 3);
+  ctx.fillRect(halfW - 5, -1.5, 2, 3);
+
+  // D. Symbol ostrzegawczy na środkowym pasie
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(0, -halfH * 0.28, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f59e0b';
+  ctx.beginPath();
+  ctx.arc(0, -halfH * 0.28, 1.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // E. Zanurzona dolna część w kwasie (przeźroczyste zielone zabarwienie)
+  const submergedGrad = ctx.createLinearGradient(0, 0, 0, halfH);
+  submergedGrad.addColorStop(0.0, 'rgba(34, 197, 94, 0.45)');
+  submergedGrad.addColorStop(0.5, 'rgba(21, 128, 61, 0.80)');
+  submergedGrad.addColorStop(1.0, 'rgba(5, 46, 22, 0.95)');
+  ctx.fillStyle = submergedGrad;
+  ctx.beginPath();
+  ctx.rect(-halfW - 0.5, 0, w + 1, halfH + 1);
+  ctx.fill();
+
+  // F. Toksyczny wyciek ze szczeliny (cieknący szlam chemiczny)
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(halfW * 0.45, -halfH * 0.1, 2.0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(halfW * 0.45, -halfH * 0.1);
+  ctx.quadraticCurveTo(halfW * 0.5 + Math.sin(time * 5 + item.phase) * 1.5, halfH * 0.2, halfW * 0.35, halfH * 0.45);
+  ctx.stroke();
+
+  // G. Toksyczny zielony dym ulatujący w górę (analityczne cząstki motes)
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let s = 0; s < 3; s++) {
+    const sProg = ((time * 0.75 + s * 0.33 + item.phase) % 1.0 + 1.0) % 1.0;
+    const smX = (halfW * 0.45) + Math.sin(time * 3.5 + s * 2) * (3.5 + sProg * 7);
+    const smY = -halfH * 0.3 - sProg * 28;
+    const smR = 2.4 + sProg * 6.5;
+    const smA = Math.sin(sProg * Math.PI) * 0.42;
+
+    ctx.fillStyle = `rgba(74, 222, 128, ${smA})`;
+    ctx.beginPath();
+    ctx.arc(smX, smY, smR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // H. Piana kontaktowa na krawędzi styku z taflą
+  ctx.strokeStyle = 'rgba(134, 239, 172, 0.75)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, halfW + 3.0, 2.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** 2. Dryfująca ludzka czaszka częściowo zanurzona w kwasie */
+function drawFloatingSkull(ctx, size, time, item) {
+  const r = size * 0.5;
+
+  // A. Poświata na powierzchni
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(0, 1, r * 1.5, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // B. Sklepienie czaszki i kości twarzy
+  const skullGrad = ctx.createLinearGradient(0, -r * 1.2, 0, r * 0.8);
+  skullGrad.addColorStop(0.0, '#f1f5f9');
+  skullGrad.addColorStop(0.4, '#cbd5e1');
+  skullGrad.addColorStop(0.7, '#94a3b8');
+  skullGrad.addColorStop(1.0, '#475569');
+  ctx.fillStyle = skullGrad;
+
+  ctx.beginPath();
+  ctx.arc(0, -r * 0.25, r * 0.75, Math.PI, 0);
+  ctx.lineTo(r * 0.55, r * 0.35);
+  ctx.lineTo(r * 0.35, r * 0.65);
+  ctx.lineTo(-r * 0.35, r * 0.65);
+  ctx.lineTo(-r * 0.55, r * 0.35);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // C. Oczodoły z zieloną fosforyzacją kwasu
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.32, -r * 0.12, r * 0.22, r * 0.28, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(r * 0.32, -r * 0.12, r * 0.22, r * 0.28, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.85)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.32, -r * 0.10, 1.2, 0, Math.PI * 2);
+  ctx.arc(r * 0.32, -r * 0.10, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // D. Otwór nosowy
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.moveTo(0, r * 0.05);
+  ctx.lineTo(-r * 0.12, r * 0.25);
+  ctx.lineTo(r * 0.12, r * 0.25);
+  ctx.closePath();
+  ctx.fill();
+
+  // E. Szczęka i zęby
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(-r * 0.28, r * 0.45, r * 0.12, r * 0.16);
+  ctx.fillRect(-r * 0.12, r * 0.45, r * 0.10, r * 0.16);
+  ctx.fillRect(0.02,     r * 0.45, r * 0.10, r * 0.16);
+  ctx.fillRect(r * 0.16,  r * 0.45, r * 0.12, r * 0.16);
+
+  // F. Zanurzenie w kwasie
+  const acidDip = ctx.createLinearGradient(0, 0, 0, r * 0.8);
+  acidDip.addColorStop(0.0, 'rgba(34, 197, 94, 0.45)');
+  acidDip.addColorStop(1.0, 'rgba(5, 46, 22, 0.90)');
+  ctx.fillStyle = acidDip;
+  ctx.beginPath();
+  ctx.rect(-r * 0.6, 0, r * 1.2, r * 0.85);
+  ctx.fill();
+
+  // G. Piana kontaktowa
+  ctx.strokeStyle = 'rgba(134, 239, 172, 0.70)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.85, 2.0, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** 3. Dryfujące ludzkie kości (skrzyżowane kości długie) */
+function drawFloatingBones(ctx, size, time, item) {
+  const len = size;
+  const halfLen = len * 0.5;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.20)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, halfLen + 4, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  function drawSingleBone(angle, scale = 1.0) {
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.scale(scale, scale);
+
+    const bGrad = ctx.createLinearGradient(0, -3, 0, 3);
+    bGrad.addColorStop(0.0, '#f8fafc');
+    bGrad.addColorStop(0.5, '#cbd5e1');
+    bGrad.addColorStop(1.0, '#64748b');
+    ctx.fillStyle = bGrad;
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 0.9;
+
+    ctx.beginPath();
+    ctx.rect(-halfLen * 0.7, -2.0, halfLen * 1.4, 4.0);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(-halfLen * 0.75, -2.5, 2.8, 0, Math.PI * 2);
+    ctx.arc(-halfLen * 0.75, 2.5, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(halfLen * 0.75, -2.5, 2.8, 0, Math.PI * 2);
+    ctx.arc(halfLen * 0.75, 2.5, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawSingleBone(0.28, 1.0);
+  drawSingleBone(-0.35, 0.88);
+
+  ctx.strokeStyle = 'rgba(134, 239, 172, 0.65)';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, halfLen + 2, 2.0, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** 4. Dryfujące ości ryb / szkielety mutantów wodnych */
+function drawFloatingFishBones(ctx, size, time, item) {
+  const len = size;
+  const halfLen = len * 0.5;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.20)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, halfLen + 4, 3.0, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  // Szkielet pyska ryby
+  ctx.fillStyle = '#e2e8f0';
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.0;
+
+  ctx.beginPath();
+  ctx.moveTo(-halfLen + 8, -4.5);
+  ctx.lineTo(-halfLen, 0);
+  ctx.lineTo(-halfLen + 8, 4.5);
+  ctx.lineTo(-halfLen + 7, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Oczodół
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(-halfLen + 4.5, -1.0, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Kręgosłup
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-halfLen + 7, 0);
+  ctx.lineTo(halfLen - 6, 0);
+  ctx.stroke();
+
+  // Ości boczne (żebra ryby)
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.1;
+  ctx.lineCap = 'round';
+  const ribCount = 6;
+  const spineStart = -halfLen + 9;
+  const spineEnd = halfLen - 8;
+  const ribStep = (spineEnd - spineStart) / ribCount;
+
+  for (let r = 0; r < ribCount; r++) {
+    const rx = spineStart + r * ribStep;
+    const ribLen = 4.2 - (r / ribCount) * 2.0;
+
+    ctx.beginPath();
+    ctx.moveTo(rx, 0);
+    ctx.quadraticCurveTo(rx + 1.2, -ribLen * 0.6, rx + 2.5, -ribLen);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(rx, 0);
+    ctx.quadraticCurveTo(rx + 1.2, ribLen * 0.6, rx + 2.5, ribLen);
+    ctx.stroke();
+  }
+
+  // Płetwa ogonowa
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(halfLen - 6, 0);
+  ctx.lineTo(halfLen, -5.5);
+  ctx.moveTo(halfLen - 6, 0);
+  ctx.lineTo(halfLen - 2, 0);
+  ctx.moveTo(halfLen - 6, 0);
+  ctx.lineTo(halfLen, 5.5);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Piana na fali
+  ctx.strokeStyle = 'rgba(134, 239, 172, 0.60)';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, halfLen + 2, 1.8, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** Rysuje rury i kratownice sufitowe (Y = 150-180 - symetria X = 2000) */
 function drawCeilingInfrastructure(ctx, time) {
   const pipes = [
-    { x: 600,  y: 180, w: 520, h: 16, id: 'pipe_A' },
-    { x: 1540, y: 150, w: 520, h: 16, id: 'pipe_Mid' },
-    { x: 2480, y: 180, w: 520, h: 16, id: 'pipe_B' }
+    { x: 650,  y: 180, w: 550, h: 16, id: 'pipe_A' },
+    { x: 1700, y: 150, w: 600, h: 16, id: 'pipe_Mid' },
+    { x: 2800, y: 180, w: 550, h: 16, id: 'pipe_B' }
   ];
 
   ctx.save();
@@ -890,14 +1291,14 @@ export function drawAcidUpwardUnderglow(ctx) {
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
 
-  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1260;
+  const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
   const underglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 280);
   underglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.28)');
   underglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.12)');
   underglowGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
 
   ctx.fillStyle = underglowGrad;
-  ctx.fillRect(-200, curY - 280, 4000, 280);
+  ctx.fillRect(-200, curY - 280, 4400, 280);
   ctx.restore();
 }
 
@@ -914,11 +1315,11 @@ export function drawPlatformRimLighting(ctx) {
   ctx.lineCap = 'round';
 
   ctx.beginPath();
-  // Dolne krawędzie platform C i D (Y: 1072 tuż nad kwasem)
-  ctx.moveTo(260, 1072);
-  ctx.lineTo(900, 1072);
-  ctx.moveTo(2700, 1072);
-  ctx.lineTo(3340, 1072);
+  // Dolne krawędzie platform C i D (Y: 1112 tuż nad kwasem - symetria X = 2000)
+  ctx.moveTo(180, 1112);
+  ctx.lineTo(900, 1112);
+  ctx.moveTo(3100, 1112);
+  ctx.lineTo(3820, 1112);
   ctx.stroke();
 
   ctx.restore();
@@ -1154,16 +1555,16 @@ export function drawAcidSurfaceBubbles(ctx, time) {
   ctx.restore();
 }
 
-/** Rysuje narożne stroboskopy ostrzegawcze na platformach dolnych */
+/** Rysuje narożne stroboskopy ostrzegawcze na platformach dolnych (symetria X = 2000) */
 function drawAcidVaporAndHazards(ctx, time) {
   ctx.save();
 
   // Pulsujące stroboskopy ostrzegawcze na rogach dolnych bastionów
   const strobeList = [
-    { x: 265, y: 1040 },
-    { x: 895, y: 1040 },
-    { x: 2705, y: 1040 },
-    { x: 3335, y: 1040 }
+    { x: 185, y: 1080 },
+    { x: 895, y: 1080 },
+    { x: 3105, y: 1080 },
+    { x: 3815, y: 1080 }
   ];
 
   ctx.save();

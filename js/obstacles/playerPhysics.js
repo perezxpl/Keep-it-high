@@ -500,17 +500,29 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
+  // Bezpieczne pobranie referencji do aktywnej areny
+  const activeArena = (typeof curArenaObj !== 'undefined')
+    ? curArenaObj
+    : ((typeof getActiveArena === 'function' ? getActiveArena() : null) || (typeof window !== 'undefined' ? (window.curArenaObj || window.currentArena) : null));
+
+  const activeArenaRefId = activeArena?.id || (typeof activeArenaId !== 'undefined' ? activeArenaId : null);
+  const isA2Active = (activeArenaRefId === 'arena-2' || activeArenaRefId === 'ARENA_2' || activeArenaRefId === 'ARENA_2_PANDORA' || activeArenaRefId === 'ARENA_2_SECTOR_X');
+  const isA3Active = (activeArenaRefId === 'arena-3' || activeArenaRefId === 'ARENA_3' || activeArenaRefId === 'ARENA_FOUNDRY');
+
+  // Bezpieczne wyznaczenie poziomu kwasu / strefy zagrożenia
+  const hazardLevelY = (typeof ACID_SURGE_SYSTEM !== 'undefined' && ACID_SURGE_SYSTEM.currentY)
+    ? ACID_SURGE_SYSTEM.currentY
+    : (activeArena?.acidSurge?.currentY ?? activeArena?.hazardZoneY ?? 1440);
+
   // Obsługa strefy kwasu toksycznego w Sektorze X (Arena 2)
-  if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
+  if (isA2Active) {
     if (p && !p.isDead && !p.isAcidDying && (!p.acidDeath || !p.acidDeath.active)) {
-      const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-      const hazardY = curArena?.acidSurge?.currentY || (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM ? window.ACID_SURGE_SYSTEM.currentY : 1260);
       const px = (p.x !== undefined ? p.x : 0) + (p.w || 24) * 0.5;
       const time = performance.now() * 0.001;
       const waveOffset = Math.sin(time * 3.0 + px * 0.02) * 5.0;
-      const exactSurfaceY = hazardY + waveOffset;
+      const exactSurfaceY = hazardLevelY + waveOffset;
       const playerFeetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
-      const SUBMERGE_DEPTH = 18; // margines zanurzenia: 15–20 pikseli w głąb kwasu
+      const SUBMERGE_DEPTH = 15; // margines zanurzenia: 15 pikseli w głąb kwasu
 
       if (playerFeetY >= (exactSurfaceY + SUBMERGE_DEPTH)) {
         if (typeof window !== 'undefined' && typeof window.triggerPlayerAcidDeath === 'function') {
@@ -521,8 +533,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Górny limit otwartego nieba w Arenie 3 (Y = 0)
-  const curArenaObj = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const isA3Active = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   if (isA3Active) {
     if (p.y < 0) {
       p.y = 0;
@@ -563,9 +573,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu
-  const deathLimitY = isA3Active ? 1420 : (groundY + 160);
-  if (!p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
+  // Wpadnięcie do strefy śmierci poniżej spągu (na Arenie 2 śmierć sterowana jest WYŁĄCZNIE przez kwas)
+  const deathLimitY = isA3Active ? 1420 : (isA2Active ? 2000 : (groundY + 160));
+  if (!isA2Active && !p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
     p.respawnTimer = 75;
