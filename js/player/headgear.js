@@ -22,8 +22,7 @@ export const HEADGEAR_STYLE_LIST = [
   'balaclava',  // 4. Kominiarka taktyczna SpecOps (zakrywająca szyję i twarz)
   'bandana',    // 5. Bandana bojowa komandosa (opaska na czole z 2 powiewającymi końcami)
   'boonie',     // 6. Wojskowy kapelusz polowy Boonie Hat (szerokie rondo i taśma maskująca)
-  'shemagh',    // 7. Chusta taktyczna / Shemagh (Arafatka na szyję i dolną twarz)
-  'goggles'     // 8. Gogle balistyczne na czole (ze stylowym paskiem wokół głowy)
+  'goggles'     // 7. Gogle balistyczne na czole (ze stylowym paskiem wokół głowy)
 ];
 
 export const HEADGEAR_COLOR_LIST = [
@@ -97,9 +96,9 @@ export function drawCharacterHeadgearProfile(
   if (style === 'none') return;
 
   // Jeśli gracz ma założony hełm pancerza FAST:
-  // - kominiarka i arafatka (shemagh) są noszone POD hełmem i pozostają widoczne na szyi/twarzy
+  // - kominiarka jest noszona POD hełmem i pozostaje widoczna na szyi/twarzy
   // - sztywne czapki, berety, kapelusze i gogle ustępują miejsca hełmowi balistycznemu
-  if (hasHelmet && style !== 'balaclava' && style !== 'shemagh') {
+  if (hasHelmet && style !== 'balaclava') {
     return;
   }
 
@@ -525,71 +524,6 @@ export function drawCharacterHeadgearProfile(
     ctx.beginPath();
     ctx.moveTo(-2.4, -3.2);
     ctx.quadraticCurveTo(-0.6, 0.8, 0.2, 4.4);
-    ctx.stroke();
-
-  } else if (style === 'shemagh') {
-    // -------------------------------------------------------------------------
-    // 6. CHUSTA TAKTYCZNA / SHEMAGH (Arafatka na dolną twarz i szyję)
-    // -------------------------------------------------------------------------
-    // Owinięta wokół szyi, karku, podbródka i nosa, z taktycznym deseniem
-    const shemGrad = ctx.createLinearGradient(-3.0, -1.0, 3.0, 8.0);
-    shemGrad.addColorStop(0.0, pal.light);
-    shemGrad.addColorStop(0.55, pal.base);
-    shemGrad.addColorStop(1.0, pal.dark);
-
-    ctx.beginPath();
-    // Od nasady nosa pod okiem
-    ctx.moveTo(4.6, -1.6);
-    ctx.lineTo(6.8, -1.0); // czubek nosa zakryty chustą
-    ctx.lineTo(5.8, 1.2);
-    ctx.lineTo(5.6, 3.2);
-    ctx.lineTo(4.8, 5.2);  // podbródek
-    // Obfita kaskada fałd wokół szyi i kołnierza
-    ctx.lineTo(3.6, 8.2);
-    ctx.quadraticCurveTo(0.2, 8.8, -2.8, 8.4);
-    ctx.lineTo(-4.4, 5.0);
-    ctx.lineTo(-4.2, 1.8);
-    ctx.quadraticCurveTo(-1.0, -0.2, 1.2, -1.4);
-    ctx.lineTo(4.6, -1.6);
-    ctx.closePath();
-    ctx.fillStyle = shemGrad;
-    ctx.fill();
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.95;
-    ctx.stroke();
-
-    // Fałdy i zagniecenia tkaniny
-    ctx.strokeStyle = pal.deep;
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(1.2, -1.4);
-    ctx.quadraticCurveTo(3.2, 1.2, 4.8, 4.0);
-    ctx.moveTo(-1.8, 1.2);
-    ctx.quadraticCurveTo(1.0, 3.8, 2.8, 7.2);
-    ctx.moveTo(-3.2, 4.0);
-    ctx.quadraticCurveTo(-0.8, 5.6, 1.0, 8.0);
-    ctx.stroke();
-
-    // Tradycyjny deseń w jodełkę / kratkę na chuście
-    ctx.strokeStyle = pal.light;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    for (let sy = 0; sy <= 6.5; sy += 1.8) {
-      ctx.moveTo(0.5, sy);
-      ctx.lineTo(3.5, sy + 1.2);
-      ctx.moveTo(-2.5, sy + 1.0);
-      ctx.lineTo(0.5, sy + 2.2);
-    }
-    ctx.stroke();
-
-    // Frędzle na dole chusty
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(2.8, 8.2); ctx.lineTo(3.2, 9.4);
-    ctx.moveTo(1.2, 8.5); ctx.lineTo(1.4, 9.8);
-    ctx.moveTo(-0.8, 8.6); ctx.lineTo(-0.7, 9.7);
-    ctx.moveTo(-2.4, 8.4); ctx.lineTo(-2.6, 9.5);
     ctx.stroke();
 
   } else if (style === 'goggles') {

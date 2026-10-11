@@ -20,6 +20,8 @@ export const DEFAULT_VISUALS = {
   beardColor: '#18181b',
   headgearStyle: 'none',
   headgearColor: '#18181b',
+  maskStyle: 'none',
+  maskColor: '#18181b',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',

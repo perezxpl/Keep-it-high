@@ -46,6 +46,15 @@ import {
 } from './headgear.js';
 
 import {
+  MASK_STYLE_LIST,
+  MASK_COLOR_LIST,
+  doesMaskSupportColor,
+  getMaskPalette,
+  drawCharacterMaskProfile,
+  drawHeadMaskPreview
+} from './mask.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -87,6 +96,12 @@ export {
   getHeadgearPalette,
   drawCharacterHeadgearProfile,
   drawHeadHeadgearPreview,
+  MASK_STYLE_LIST,
+  MASK_COLOR_LIST,
+  doesMaskSupportColor,
+  getMaskPalette,
+  drawCharacterMaskProfile,
+  drawHeadMaskPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1450,6 +1465,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     if (!isBalaclava) {
       drawHeadWoundsProfile(ctx, dmgRatio);
     }
+
+    // Maska na twarz, okulary przeciwsłoneczne lub chusta
+    drawCharacterMaskProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
 
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);

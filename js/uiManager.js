@@ -10,12 +10,16 @@ import {
   drawHeadHairPreview,
   drawHeadBeardPreview,
   drawHeadHeadgearPreview,
+  drawHeadMaskPreview,
   HAIR_STYLE_LIST,
   HAIR_COLOR_LIST,
   BEARD_STYLE_LIST,
   BEARD_COLOR_LIST,
   HEADGEAR_STYLE_LIST,
   HEADGEAR_COLOR_LIST,
+  MASK_STYLE_LIST,
+  MASK_COLOR_LIST,
+  doesMaskSupportColor,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -42,7 +46,9 @@ const DEFAULT_APPEARANCE = {
   beardStyle: 'clean',
   beardColor: '#18181b',
   headgearStyle: 'none',
-  headgearColor: '#18181b'
+  headgearColor: '#18181b',
+  maskStyle: 'none',
+  maskColor: '#18181b'
 };
 
 // =============================================================================
@@ -240,7 +246,9 @@ export const uiManager = {
       beardStyle: this.appearance.beardStyle || 'clean',
       beardColor: this.appearance.beardColor || (this.appearance.hairColor || '#18181b'),
       headgearStyle: this.appearance.headgearStyle || 'none',
-      headgearColor: this.appearance.headgearColor || '#18181b'
+      headgearColor: this.appearance.headgearColor || '#18181b',
+      maskStyle: this.appearance.maskStyle || 'none',
+      maskColor: this.appearance.maskColor || '#18181b'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -437,6 +445,7 @@ export const uiManager = {
         this.initCreatorHairUI();
         this.initCreatorBeardUI();
         this.initCreatorHeadgearUI();
+        this.initCreatorMaskUI();
         this.switchCreatorTab(this.activeCreatorTab || 'hair');
         this.startCreatorPreview();
         break;
@@ -840,6 +849,7 @@ export const uiManager = {
     this.initCreatorHairUI();
     this.initCreatorBeardUI();
     this.initCreatorHeadgearUI();
+    this.initCreatorMaskUI();
   },
 
   initCreatorHairUI() {
@@ -874,6 +884,7 @@ export const uiManager = {
         this.syncCreatorHairSelectionUI();
         this.renderCreatorBeardTiles();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -900,6 +911,7 @@ export const uiManager = {
         this.renderCreatorHairTiles();
         this.renderCreatorBeardTiles();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -965,6 +977,7 @@ export const uiManager = {
         this.syncCreatorBeardSelectionUI();
         this.renderCreatorBeardTiles();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -991,6 +1004,7 @@ export const uiManager = {
         this.syncCreatorBeardSelectionUI();
         this.renderCreatorBeardTiles();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -1058,6 +1072,7 @@ export const uiManager = {
         this.applyAppearance();
         this.syncCreatorHeadgearSelectionUI();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -1083,6 +1098,7 @@ export const uiManager = {
         this.applyAppearance();
         this.syncCreatorHeadgearSelectionUI();
         this.renderCreatorHeadgearTiles();
+        this.renderCreatorMaskTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -1121,6 +1137,120 @@ export const uiManager = {
     });
   },
 
+  initCreatorMaskUI() {
+    const gridEl = document.getElementById('creator-mask-grid');
+    const colorsEl = document.getElementById('creator-mask-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z maskami / okularami (bez nazw i opisów)
+    MASK_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.maskStyle = styleId;
+      if ((this.appearance.maskStyle || 'none') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.maskStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorMaskSelectionUI();
+        this.renderCreatorMaskTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów maski (wyświetlane tylko gdy dany styl obsługuje kolory)
+    MASK_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.maskColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      const curCol = String(this.appearance.maskColor || '#18181b').toLowerCase();
+      if (curCol === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.maskColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorMaskSelectionUI();
+        this.renderCreatorMaskTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.syncCreatorMaskSelectionUI();
+    this.renderCreatorMaskTiles();
+  },
+
+  syncCreatorMaskSelectionUI() {
+    const curStyle = this.appearance.maskStyle || 'none';
+    const curColor = String(this.appearance.maskColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-mask-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.maskStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-mask-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.maskColor).toLowerCase() === curColor);
+    });
+
+    const colorsEl = document.getElementById('creator-mask-colors');
+    if (colorsEl) {
+      colorsEl.style.display = doesMaskSupportColor(curStyle) ? 'flex' : 'none';
+    }
+  },
+
+  renderCreatorMaskTiles() {
+    const curMaskColor = this.appearance.maskColor || '#18181b';
+    const curHeadgearStyle = this.appearance.headgearStyle || 'none';
+    const curHeadgearColor = this.appearance.headgearColor || '#18181b';
+    const curHairStyle = this.appearance.hairStyle || 'buzzcut';
+    const curHairColor = this.appearance.hairColor || '#18181b';
+    const curBeardStyle = this.appearance.beardStyle || 'clean';
+    const curBeardColor = this.appearance.beardColor || '#18181b';
+
+    document.querySelectorAll('#creator-mask-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.maskStyle || 'none';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawHeadMaskPreview(
+          ctx,
+          cvs.width,
+          cvs.height,
+          styleId,
+          curMaskColor,
+          curHeadgearStyle,
+          curHeadgearColor,
+          curHairStyle,
+          curHairColor,
+          curBeardStyle,
+          curBeardColor
+        );
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1139,6 +1269,8 @@ export const uiManager = {
       this.renderCreatorBeardTiles();
     } else if (tabId === 'headgear') {
       this.renderCreatorHeadgearTiles();
+    } else if (tabId === 'mask') {
+      this.renderCreatorMaskTiles();
     }
   },
 
@@ -1207,7 +1339,13 @@ export const uiManager = {
         currentClass: CLASSES.RAPTOR,
         customVisuals: {
           hairStyle: this.appearance.hairStyle || 'buzzcut',
-          hairColor: this.appearance.hairColor || '#18181b'
+          hairColor: this.appearance.hairColor || '#18181b',
+          beardStyle: this.appearance.beardStyle || 'clean',
+          beardColor: this.appearance.beardColor || '#18181b',
+          headgearStyle: this.appearance.headgearStyle || 'none',
+          headgearColor: this.appearance.headgearColor || '#18181b',
+          maskStyle: this.appearance.maskStyle || 'none',
+          maskColor: this.appearance.maskColor || '#18181b'
         },
         pose: { initialized: false }
       };
@@ -1215,6 +1353,9 @@ export const uiManager = {
 
     this.applyAppearance();
     this.syncCreatorHairSelectionUI();
+    this.syncCreatorBeardSelectionUI();
+    this.syncCreatorHeadgearSelectionUI();
+    this.syncCreatorMaskSelectionUI();
     this.renderCreatorHairTiles();
 
     const tick = () => {
