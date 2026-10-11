@@ -62,6 +62,17 @@ import {
 } from './neck.js';
 
 import {
+  TORSO_STYLE_LIST,
+  TORSO_COLOR_LIST,
+  isLongSleeve,
+  getCamoType,
+  doesTorsoSupportColor,
+  getTorsoPalette,
+  drawTorsoShirt,
+  drawTorsoPreview
+} from './torso.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -113,6 +124,14 @@ export {
   doesNeckSupportColor,
   drawCharacterNeckProfile,
   drawHeadNeckPreview,
+  TORSO_STYLE_LIST,
+  TORSO_COLOR_LIST,
+  isLongSleeve,
+  getCamoType,
+  doesTorsoSupportColor,
+  getTorsoPalette,
+  drawTorsoShirt,
+  drawTorsoPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1152,117 +1171,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.quadraticCurveTo(0, 3.2, fDir * waistHalfW * 0.55, 2.4);
   ctx.stroke();
 
-  // BAZA MUNDURU: TAKTYCZNY COMBAT SHIRT / T-SHIRT Z NATURALNYMI ZAGIĘCIAMI TKANINY
-  const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
-  const shirtBaseCol = isLookingAway ? (v.jerseyBack1 || '#18181b') : (v.jerseyFront1 || '#27272a');
-  const shirtLightCol = isLookingAway ? (v.jerseyBack0 || '#27272a') : (v.jerseyFront2 || '#3f3f46');
-  const shirtDarkCol = isLookingAway ? (v.jerseyBack2 || '#09090b') : (v.jerseyFront0 || '#18181b');
-  shirtGrad.addColorStop(0.0, shirtDarkCol);
-  shirtGrad.addColorStop(0.35, shirtBaseCol);
-  shirtGrad.addColorStop(0.75, shirtLightCol);
-  shirtGrad.addColorStop(1.0, shirtDarkCol);
-
-  const backCollarX = neckBackX * 1.12;
-  const frontCollarX = neckFrontX * 1.22;
-  const backCollarY = -24.2;
-  const frontCollarY = -22.8;
-
-  // Główny korpus koszulki/bluzy bojowej – anatomiczny kołnierz przy szyi, profil klatki piersiowej, pleców i zbluzowanie nad pasem
-  const frontShX = fDir * (shoulderHalfW * 0.78);
-  const backShX = -fDir * (shoulderHalfW * 0.82);
-  const frontWaistX = fDir * waistHalfW;
-  const backWaistX = -fDir * waistHalfW;
-  const chestOut = fDir * (shoulderHalfW + 0.95 * absCos);
-  const backOut = -fDir * (shoulderHalfW + 0.65 * absCos);
-  const ribInFront = fDir * (waistHalfW - 0.25 * absCos);
-  const lumbarInBack = -fDir * (waistHalfW - 0.45 * absCos);
-  const blouseFrontX = fDir * (waistHalfW + 0.55);
-  const blouseBackX = -fDir * (waistHalfW + 0.45);
-
-  ctx.beginPath();
-  ctx.moveTo(backWaistX, waistY);
-  // Zbluzowanie materiału nad pasem z tyłu i profil lędźwi oraz łopatki
-  ctx.quadraticCurveTo(blouseBackX, waistY - 1.5, lumbarInBack, -8.5);
-  ctx.bezierCurveTo(
-    backOut * 0.94, -13.5,
-    backOut, -19.0,
-    backShX, -22.8
+  // BAZA MUNDURU: TAKTYCZNY COMBAT SHIRT / T-SHIRT (KRÓTKI / DŁUGI RĘKAW, MORO JASNE I CIEMNE)
+  drawTorsoShirt(
+    ctx, p, v, absCos, absSin, cosYaw, isLookingAway,
+    shoulderHalfW, waistHalfW, waistY, fDir, neckBackX, neckFrontX
   );
-  // Kark i anatomiczny kołnierz wokół podstawy szyi (crew-neck)
-  ctx.quadraticCurveTo(backCollarX * 1.05, -24.0, backCollarX, backCollarY);
-  ctx.quadraticCurveTo(
-    (backCollarX + frontCollarX) * 0.5, -23.1,
-    frontCollarX, frontCollarY
-  );
-  // Górna część piersi od grdyki do klatki piersiowej
-  ctx.quadraticCurveTo(frontShX * 0.92, -22.2, frontShX, -21.0);
-  // Profil klatki piersiowej (mięsień piersiowy), talii i zbluzowanie materiału nad pasem z przodu
-  ctx.bezierCurveTo(
-    chestOut, -17.5,
-    chestOut * 0.94, -12.5,
-    ribInFront, -8.0
-  );
-  ctx.quadraticCurveTo(blouseFrontX, waistY - 1.4, frontWaistX, waistY);
-  // Miękko pofalowany dół koszulki wchodzący w pas taktyczny
-  ctx.bezierCurveTo(
-    frontWaistX * 0.35, waistY + 0.9,
-    backWaistX * 0.35, waistY + 0.8,
-    backWaistX, waistY
-  );
-  ctx.closePath();
-  ctx.fillStyle = shirtGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 1.0;
-  ctx.stroke();
-
-  // Taktyczny ściągacz kołnierza (ribbed crew-neck collar band) wokół nasady szyi
-  ctx.fillStyle = shirtDarkCol;
-  ctx.beginPath();
-  ctx.moveTo(backCollarX, backCollarY);
-  ctx.quadraticCurveTo(
-    (backCollarX + frontCollarX) * 0.5, -23.1,
-    frontCollarX, frontCollarY
-  );
-  ctx.lineTo(frontCollarX + fDir * 0.4, frontCollarY + 1.3);
-  ctx.quadraticCurveTo(
-    (backCollarX + frontCollarX) * 0.5, -21.7,
-    backCollarX - fDir * 0.3, backCollarY + 1.3
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-
-  // Realistyczne fałdy i zagięcia materiału na koszulce (napięcie pod pachą, pod piersią i marszczenie nad pasem)
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  // 1. Ukośna fałda napięcia od pachy ku klatce piersiowej
-  ctx.moveTo(-fDir * shoulderHalfW * 0.10, -17.8);
-  ctx.quadraticCurveTo(fDir * shoulderHalfW * 0.42, -15.2, fDir * shoulderHalfW * 0.78, -12.8);
-  // 2. Fałda materiału na żebrach / brzuchu
-  ctx.moveTo(-fDir * waistHalfW * 0.30, -12.2);
-  ctx.quadraticCurveTo(fDir * waistHalfW * 0.25, -10.2, fDir * waistHalfW * 0.68, -8.4);
-  // 3. Marszczenie (zbluzowanie) tkaniny tuż nad pasem taktycznym
-  ctx.moveTo(-waistHalfW * 0.45, -7.2);
-  ctx.quadraticCurveTo(-waistHalfW * 0.30, -5.5, -waistHalfW * 0.40, waistY - 0.4);
-  ctx.moveTo(waistHalfW * 0.12, -7.6);
-  ctx.quadraticCurveTo(waistHalfW * 0.26, -5.6, waistHalfW * 0.18, waistY - 0.3);
-  ctx.moveTo(waistHalfW * 0.52, -6.8);
-  ctx.quadraticCurveTo(waistHalfW * 0.64, -5.2, waistHalfW * 0.48, waistY - 0.4);
-  ctx.stroke();
-
-  // Subtelne rozjaśnienia na grzbietach fałd koszulki (nadają tkaninie trójwymiarowość)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
-  ctx.lineWidth = 0.7;
-  ctx.beginPath();
-  ctx.moveTo(fDir * shoulderHalfW * 0.12, -19.5);
-  ctx.quadraticCurveTo(chestOut * 0.80, -15.8, fDir * shoulderHalfW * 0.52, -13.2);
-  ctx.moveTo(-fDir * waistHalfW * 0.22, -11.2);
-  ctx.quadraticCurveTo(fDir * waistHalfW * 0.28, -9.2, fDir * waistHalfW * 0.64, -7.6);
-  ctx.stroke();
 
   // PAS TAKTYCZNY PMC (Duty / Riggers Belt – na wysokości anatomicznej talii powyżej stawu biodrowego)
   const beltTopY = -4.6;

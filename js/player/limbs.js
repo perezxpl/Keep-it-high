@@ -6,6 +6,7 @@
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { DEFAULT_VISUALS } from './hair.js';
+import { isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -737,7 +738,11 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.translate(shX, shY);
   ctx.rotate(armDir);
 
-  const sleeveLen = v.sleeveless ? 0 : (upperLen * 0.58 * (v.sleeveLengthMult ?? 1.0));
+  const isLong = isLongSleeve(v.torsoStyle);
+  const camoType = getCamoType(v.torsoStyle);
+  const pal = getTorsoPalette(v.torsoColor || upperCol || v.armColorFront);
+
+  const sleeveLen = v.sleeveless ? 0 : (isLong ? upperLen * 1.04 : (upperLen * 0.58 * (v.sleeveLengthMult ?? 1.0)));
   const sleeveHalfH = 3.9 * muscle;
   const armHalfH = 2.8 * muscle;
 
@@ -776,9 +781,9 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     }
   } else if (sleeveLen > 0) {
     const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
-    sleeveGrad.addColorStop(0.0, upperCol || v.armColorFront);
-    sleeveGrad.addColorStop(0.45, upperCol || v.armColorFront);
-    sleeveGrad.addColorStop(1.0, v.armColorBack || '#18181b');
+    sleeveGrad.addColorStop(0.0, pal.light);
+    sleeveGrad.addColorStop(0.45, pal.base);
+    sleeveGrad.addColorStop(1.0, pal.dark);
 
     // Organiczny obrys rękawa z gładką główką barku i lekko podwiniętym mankietem
     ctx.beginPath();
@@ -797,19 +802,30 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       0, sleeveHalfH * 0.92
     );
     ctx.closePath();
-    ctx.fillStyle = sleeveGrad;
-    ctx.fill();
+
+    if (camoType) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camoType, -2, -sleeveHalfH * 1.3, sleeveLen + 2, sleeveHalfH * 1.3);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = sleeveGrad;
+      ctx.fill();
+    }
+
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.85;
     ctx.stroke();
 
     // Podwinięty brzeg rękawa (mankiet z tkaniny zamiast prostego białego paska)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(sleeveLen - 1.5, -sleeveHalfH * 0.92);
-    ctx.quadraticCurveTo(sleeveLen - 0.7, 0, sleeveLen - 1.7, sleeveHalfH * 0.94);
-    ctx.stroke();
+    if (!isLong) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(sleeveLen - 1.5, -sleeveHalfH * 0.92);
+      ctx.quadraticCurveTo(sleeveLen - 0.7, 0, sleeveLen - 1.7, sleeveHalfH * 0.94);
+      ctx.stroke();
+    }
 
     // Fałdy napięcia materiału pod pachą i w zgięciu ramienia
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.30)';
@@ -830,36 +846,38 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.stroke();
   }
 
-  const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
-  if (isFront) {
-    bicepGrad.addColorStop(0.0, v.skinLight);
-    bicepGrad.addColorStop(0.35, v.skinMid);
-    bicepGrad.addColorStop(0.85, v.skinDark);
-    bicepGrad.addColorStop(1.0, '#78350f');
-  } else {
-    bicepGrad.addColorStop(0.0, v.skinMid);
-    bicepGrad.addColorStop(0.4, v.skinBack);
-    bicepGrad.addColorStop(1.0, v.skinDark);
-  }
+  if (!isLong) {
+    const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
+    if (isFront) {
+      bicepGrad.addColorStop(0.0, v.skinLight);
+      bicepGrad.addColorStop(0.35, v.skinMid);
+      bicepGrad.addColorStop(0.85, v.skinDark);
+      bicepGrad.addColorStop(1.0, '#78350f');
+    } else {
+      bicepGrad.addColorStop(0.0, v.skinMid);
+      bicepGrad.addColorStop(0.4, v.skinBack);
+      bicepGrad.addColorStop(1.0, v.skinDark);
+    }
 
-  ctx.beginPath();
-  if (isSculpted) {
-    const startX = v.sleeveless ? deltoidLen * 0.35 : sleeveLen;
-    ctx.moveTo(startX, -armHalfH * 1.05);
-    ctx.quadraticCurveTo(upperLen * 0.35, -armHalfH * 1.55, upperLen * 0.65, -armHalfH * 1.25);
-    ctx.lineTo(upperLen, -armHalfH * 0.75);
-    ctx.lineTo(upperLen, armHalfH * 0.65);
-    ctx.quadraticCurveTo(upperLen * 0.55, armHalfH * 1.60, upperLen * 0.25, armHalfH * 1.15);
-    ctx.quadraticCurveTo(startX, armHalfH * 0.95, startX, -armHalfH * 1.05);
-  } else {
-    const startX = v.sleeveless ? 0 : sleeveLen;
-    const bareLen = upperLen - startX + 1.2;
-    if (ctx.roundRect) ctx.roundRect(startX, -armHalfH, bareLen, armHalfH * 2, 2);
-    else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
+    ctx.beginPath();
+    if (isSculpted) {
+      const startX = v.sleeveless ? deltoidLen * 0.35 : sleeveLen;
+      ctx.moveTo(startX, -armHalfH * 1.05);
+      ctx.quadraticCurveTo(upperLen * 0.35, -armHalfH * 1.55, upperLen * 0.65, -armHalfH * 1.25);
+      ctx.lineTo(upperLen, -armHalfH * 0.75);
+      ctx.lineTo(upperLen, armHalfH * 0.65);
+      ctx.quadraticCurveTo(upperLen * 0.55, armHalfH * 1.60, upperLen * 0.25, armHalfH * 1.15);
+      ctx.quadraticCurveTo(startX, armHalfH * 0.95, startX, -armHalfH * 1.05);
+    } else {
+      const startX = v.sleeveless ? 0 : sleeveLen;
+      const bareLen = upperLen - startX + 1.2;
+      if (ctx.roundRect) ctx.roundRect(startX, -armHalfH, bareLen, armHalfH * 2, 2);
+      else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = bicepGrad;
+    ctx.fill();
   }
-  ctx.closePath();
-  ctx.fillStyle = bicepGrad;
-  ctx.fill();
 
   if (isSculpted) {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
@@ -912,43 +930,96 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   const elbowR = 2.9 * muscle;
   const wristR = 1.9 * (isSculpted ? Math.max(1.1, muscle * 0.85) : muscle);
 
-  const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
-  jointGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-  jointGrad.addColorStop(0.5, isFront ? v.skinMid : v.skinBack);
-  jointGrad.addColorStop(1.0, v.skinDark);
+  if (isLong) {
+    // 1. Łokieć w bluzie bojowej
+    const elbowCol = camoType ? (camoType === 'light' ? '#7a8c6a' : '#2f3b2f') : pal.dark;
+    ctx.beginPath();
+    ctx.arc(0, 0, elbowR * 0.85, 0, Math.PI * 2);
+    ctx.fillStyle = elbowCol;
+    ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
-  ctx.fillStyle = jointGrad;
-  ctx.fill();
-
-  const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
-  if (isFront) {
-    forearmGrad.addColorStop(0.0, v.skinLight);
-    forearmGrad.addColorStop(0.35, v.skinMid);
-    forearmGrad.addColorStop(1.0, v.skinDark);
-  } else {
-    forearmGrad.addColorStop(0.0, v.skinMid);
-    forearmGrad.addColorStop(0.4, v.skinBack);
-    forearmGrad.addColorStop(1.0, v.skinDark);
-  }
-
-  ctx.beginPath();
-  if (isSculpted) {
-    ctx.moveTo(0, -elbowR * 0.85);
-    ctx.quadraticCurveTo(foreLen * 0.28, -elbowR * 1.45, foreLen * 0.65, -wristR * 1.15);
-    ctx.lineTo(foreLen * 0.85, -wristR);
-    ctx.lineTo(foreLen * 0.85, wristR);
-    ctx.quadraticCurveTo(foreLen * 0.35, elbowR * 1.25, 0, elbowR * 0.85);
-  } else {
+    // 2. Długi rękaw przedramienia z mankietem
+    ctx.beginPath();
     ctx.moveTo(0, -elbowR);
-    ctx.lineTo(foreLen * 0.78, -wristR);
-    ctx.lineTo(foreLen * 0.78, wristR);
+    ctx.lineTo(foreLen * 0.82, -wristR * 1.05);
+    ctx.lineTo(foreLen * 0.82, wristR * 1.05);
     ctx.lineTo(0, elbowR);
+    ctx.closePath();
+
+    if (camoType) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camoType, -1, -elbowR * 1.3, foreLen * 0.9, elbowR * 1.3);
+      ctx.restore();
+    } else {
+      const foreSleeveGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
+      foreSleeveGrad.addColorStop(0.0, pal.light);
+      foreSleeveGrad.addColorStop(0.5, pal.base);
+      foreSleeveGrad.addColorStop(1.0, pal.dark);
+      ctx.fillStyle = foreSleeveGrad;
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+
+    // 3. Wzmocniona łata ochronna na łokciu (Tactical Elbow Pad)
+    const patchCol = camoType === 'light' ? '#42372d' : (camoType === 'dark' ? '#090c09' : pal.dark);
+    ctx.fillStyle = patchCol;
+    ctx.beginPath();
+    ctx.ellipse(foreLen * 0.16, 0, elbowR * 0.75, elbowR * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.65;
+    ctx.stroke();
+
+    // Szew mankietu nad rękawicą
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(foreLen * 0.76, -wristR * 1.02);
+    ctx.lineTo(foreLen * 0.76, wristR * 1.02);
+    ctx.stroke();
+
+  } else {
+    const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
+    jointGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
+    jointGrad.addColorStop(0.5, isFront ? v.skinMid : v.skinBack);
+    jointGrad.addColorStop(1.0, v.skinDark);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = jointGrad;
+    ctx.fill();
+
+    const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
+    if (isFront) {
+      forearmGrad.addColorStop(0.0, v.skinLight);
+      forearmGrad.addColorStop(0.35, v.skinMid);
+      forearmGrad.addColorStop(1.0, v.skinDark);
+    } else {
+      forearmGrad.addColorStop(0.0, v.skinMid);
+      forearmGrad.addColorStop(0.4, v.skinBack);
+      forearmGrad.addColorStop(1.0, v.skinDark);
+    }
+
+    ctx.beginPath();
+    if (isSculpted) {
+      ctx.moveTo(0, -elbowR * 0.85);
+      ctx.quadraticCurveTo(foreLen * 0.28, -elbowR * 1.45, foreLen * 0.65, -wristR * 1.15);
+      ctx.lineTo(foreLen * 0.85, -wristR);
+      ctx.lineTo(foreLen * 0.85, wristR);
+      ctx.quadraticCurveTo(foreLen * 0.35, elbowR * 1.25, 0, elbowR * 0.85);
+    } else {
+      ctx.moveTo(0, -elbowR);
+      ctx.lineTo(foreLen * 0.78, -wristR);
+      ctx.lineTo(foreLen * 0.78, wristR);
+      ctx.lineTo(0, elbowR);
+    }
+    ctx.closePath();
+    ctx.fillStyle = forearmGrad;
+    ctx.fill();
   }
-  ctx.closePath();
-  ctx.fillStyle = forearmGrad;
-  ctx.fill();
 
   if (isSculpted) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';

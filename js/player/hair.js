@@ -23,6 +23,8 @@ export const DEFAULT_VISUALS = {
   maskStyle: 'none',
   maskColor: '#18181b',
   neckStyle: 'none',
+  torsoStyle: 'short_sleeve',
+  torsoColor: '#18181b',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',

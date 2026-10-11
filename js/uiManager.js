@@ -22,6 +22,10 @@ import {
   MASK_COLOR_LIST,
   NECK_STYLE_LIST,
   doesMaskSupportColor,
+  TORSO_STYLE_LIST,
+  TORSO_COLOR_LIST,
+  doesTorsoSupportColor,
+  drawTorsoPreview,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -51,7 +55,9 @@ const DEFAULT_APPEARANCE = {
   headgearColor: '#18181b',
   maskStyle: 'none',
   maskColor: '#18181b',
-  neckStyle: 'none'
+  neckStyle: 'none',
+  torsoStyle: 'short_sleeve',
+  torsoColor: '#18181b'
 };
 
 // =============================================================================
@@ -252,7 +258,9 @@ export const uiManager = {
       headgearColor: this.appearance.headgearColor || '#18181b',
       maskStyle: this.appearance.maskStyle || 'none',
       maskColor: this.appearance.maskColor || '#18181b',
-      neckStyle: this.appearance.neckStyle || 'none'
+      neckStyle: this.appearance.neckStyle || 'none',
+      torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
+      torsoColor: this.appearance.torsoColor || '#18181b'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -856,6 +864,7 @@ export const uiManager = {
     this.initCreatorHeadgearUI();
     this.initCreatorMaskUI();
     this.initCreatorNeckUI();
+    this.initCreatorTorsoUI();
   },
 
   initCreatorHairUI() {
@@ -1339,6 +1348,104 @@ export const uiManager = {
     });
   },
 
+  initCreatorTorsoUI() {
+    const gridEl = document.getElementById('creator-torso-grid');
+    const colorsEl = document.getElementById('creator-torso-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z fasonami ubrania torsu (krótki/długi rękaw, moro jasne/ciemne)
+    TORSO_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.torsoStyle = styleId;
+      if ((this.appearance.torsoStyle || 'short_sleeve') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.torsoStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorTorsoSelectionUI();
+        this.renderCreatorTorsoTiles();
+        this.renderCreatorNeckTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów koszulki dla fasonów jednolitych
+    TORSO_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.torsoColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      if (String(this.appearance.torsoColor || '#18181b').toLowerCase() === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.torsoColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorTorsoSelectionUI();
+        this.renderCreatorTorsoTiles();
+        this.renderCreatorNeckTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.syncCreatorTorsoSelectionUI();
+    this.renderCreatorTorsoTiles();
+  },
+
+  syncCreatorTorsoSelectionUI() {
+    const curStyle = this.appearance.torsoStyle || 'short_sleeve';
+    const curColor = String(this.appearance.torsoColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-torso-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.torsoStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-torso-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.torsoColor).toLowerCase() === curColor);
+    });
+
+    const colorsEl = document.getElementById('creator-torso-colors');
+    if (colorsEl) {
+      colorsEl.style.display = doesTorsoSupportColor(curStyle) ? 'flex' : 'none';
+    }
+  },
+
+  renderCreatorTorsoTiles() {
+    const curColor = this.appearance.torsoColor || '#18181b';
+    const visuals = { ...this.appearance };
+
+    document.querySelectorAll('#creator-torso-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.torsoStyle || 'short_sleeve';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawTorsoPreview(ctx, cvs.width, cvs.height, styleId, curColor, visuals);
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1360,6 +1467,8 @@ export const uiManager = {
       this.renderCreatorHeadgearTiles();
       this.renderCreatorMaskTiles();
       this.renderCreatorNeckTiles();
+    } else if (tabId === 'torso') {
+      this.renderCreatorTorsoTiles();
     }
   },
 

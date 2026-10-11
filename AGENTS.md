@@ -32,6 +32,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/headgear.js` — style, taktyczne kolory i rysowanie nakryć głowy (beret, czapka, kominiarka, bandana, boonie, gogle).
 - `js/player/mask.js` — maski twarzowe, okulary i chusty (okulary ciemne, okulary muchy z przezroczystością, arafatka / shemagh, półmaska Ghost, maska gazowa SAS, maska hokejowa, maska balistyczna, maska Oni, respirator).
 - `js/player/neck.js` — ozdoby szyi i klatki piersiowej z pełną fizyką 2D (nieśmiertelnik wojskowy US Army, ciężki złoty łańcuch gangsta ze złotym medalionem).
+- `js/player/torso.js` — fasony ubrania torsu (krótki i długi rękaw, kamuflaże moro jasne i ciemne), proceduralne plamy moro oraz renderowanie koszulki bojowej.
 
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
