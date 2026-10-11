@@ -1141,11 +1141,11 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   const isShorts = isPantsShorts(pantsStyle);
 
   if (isShorts) {
-    // 1. KRÓTKIE SPODENKI BOJÓWKI (LUŹNE, SZEROKIE NOGAWKI CARGO – BEZ CIENKICH RUREK)
-    const shortsEnd = l1 * 0.72; // Spodenki kończą się w 72% długości uda nad kolanem
-    const shortsCuffHalfW = thighHalfH * 1.18; // Szeroka, luźna nogawka (nie rurka!)
+    // 1. KRÓTKIE SPODENKI BOJÓWKI (LUŹNE, SZEROKIE NOGAWKI CARGO – SIĘGAJĄCE PRAWIE DO KOLAN)
+    const shortsEnd = l1 * 0.90; // Spodenki wydłużone prawie do kolan
+    const shortsCuffHalfW = thighHalfH * 1.15; // Szeroki, luźny mankiet cargo
 
-    // A. Odsłonięta dolna część uda wychodząca z szerokiego mankietu nogawki (Distal Thigh Skin)
+    // A. Odsłonięta dolna część uda tuż nad kolanem (Distal Thigh Skin)
     const skinGrad = ctx.createLinearGradient(0, -3.2 * muscle, 0, 3.2 * muscle);
     if (isFrontLeg) {
       skinGrad.addColorStop(0.0, v.skinLight);
@@ -1158,54 +1158,47 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     }
 
     ctx.beginPath();
-    ctx.moveTo(shortsEnd - 3.5, -3.2 * muscle);
-    ctx.quadraticCurveTo(l1 * 0.86, -3.0 * muscle, l1, -2.6 * muscle);
+    ctx.moveTo(shortsEnd - 2.5, -2.8 * muscle);
+    ctx.lineTo(l1, -2.6 * muscle);
     ctx.lineTo(l1, 2.4 * muscle);
-    ctx.quadraticCurveTo(l1 * 0.86, 2.8 * muscle, shortsEnd - 3.5, 3.0 * muscle);
+    ctx.lineTo(shortsEnd - 2.5, 2.6 * muscle);
     ctx.closePath();
     ctx.fillStyle = skinGrad;
     ctx.fill();
 
-    // Naturalny kontur mięśnia czworogłowego nad kolanem
+    // Naturalny obrys przejścia w kolano
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.moveTo(shortsEnd - 1.0, -3.2 * muscle);
-    ctx.quadraticCurveTo(l1 * 0.86, -3.0 * muscle, l1, -2.6 * muscle);
+    ctx.moveTo(shortsEnd - 0.5, -2.8 * muscle);
+    ctx.lineTo(l1, -2.6 * muscle);
     ctx.moveTo(l1, 2.4 * muscle);
-    ctx.quadraticCurveTo(l1 * 0.86, 2.8 * muscle, shortsEnd - 1.0, 3.0 * muscle);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.16)';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(shortsEnd + 1.0, -1.8 * muscle);
-    ctx.quadraticCurveTo(l1 * 0.88, -1.5 * muscle, l1 - 0.5, -2.1 * muscle);
+    ctx.lineTo(shortsEnd - 0.5, 2.6 * muscle);
     ctx.stroke();
 
     // B. Cień wewnątrz szerokiej nogawki (Inner cuff shadow)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.beginPath();
-    ctx.ellipse(shortsEnd, 0, 1.8, shortsCuffHalfW, 0, 0, Math.PI * 2);
+    ctx.ellipse(shortsEnd, 0, 1.6, shortsCuffHalfW, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // C. Szeroka nogawka spodenek cargo
+    // C. Szeroka nogawka spodenek cargo sięgająca prawie do kolana
     const traceShorts = () => {
       ctx.beginPath();
       ctx.moveTo(0, thighHalfH);
       ctx.quadraticCurveTo(-thighHalfH * 0.42, 0, 0, -thighHalfH);
       // Górna/przednia krawędź – swobodnie opadający luźny materiał
       ctx.bezierCurveTo(
-        l1 * 0.22, -thighHalfH * 1.06,
-        l1 * 0.48, -shortsCuffHalfW * 1.02,
+        l1 * 0.28, -thighHalfH * 1.06,
+        l1 * 0.65, -shortsCuffHalfW * 1.02,
         shortsEnd, -shortsCuffHalfW
       );
       // Mankiet nogawki
       ctx.lineTo(shortsEnd, shortsCuffHalfW);
       // Dolna/tylna krawędź
       ctx.bezierCurveTo(
-        l1 * 0.48, shortsCuffHalfW * 1.02,
-        l1 * 0.22, thighHalfH * 1.04,
+        l1 * 0.65, shortsCuffHalfW * 1.02,
+        l1 * 0.28, thighHalfH * 1.04,
         0, thighHalfH
       );
       ctx.closePath();
@@ -1234,14 +1227,14 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.beginPath();
     ctx.moveTo(3.2, -thighHalfH * 1.01);
     ctx.bezierCurveTo(
-      l1 * 0.22, -thighHalfH * 1.06,
-      l1 * 0.48, -shortsCuffHalfW * 1.02,
+      l1 * 0.28, -thighHalfH * 1.06,
+      l1 * 0.65, -shortsCuffHalfW * 1.02,
       shortsEnd, -shortsCuffHalfW
     );
     ctx.lineTo(shortsEnd, shortsCuffHalfW);
     ctx.bezierCurveTo(
-      l1 * 0.48, shortsCuffHalfW * 1.02,
-      l1 * 0.22, thighHalfH * 1.04,
+      l1 * 0.65, shortsCuffHalfW * 1.02,
+      l1 * 0.28, thighHalfH * 1.04,
       3.4, thighHalfH * 0.96
     );
     ctx.stroke();
@@ -1276,8 +1269,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.stroke();
 
     // Boczna kieszeń cargo na spodenkach
-    const pocketX = l1 * 0.16;
-    const pocketW = l1 * 0.40;
+    const pocketX = l1 * 0.20;
+    const pocketW = l1 * 0.45;
     const pocketH = thighHalfH * 0.82;
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -1505,7 +1498,27 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.stroke();
 
   if (isShorts) {
-    // 1. KRÓTKIE SPODENKI: Odsłonięte anatomiczne kolano (z rzepką, ścięgnem i dołkiem) oraz wysportowana łydka ze skóry
+    // 1. KRÓTKIE SPODENKI: Naturalny staw kolanowy i wysportowana łydka (estetyka tożsama z łokciem)
+    const kneeR = 2.8 * muscle;
+
+    // A. Gładka główka stawu kolanowego (w dokładnie takiej samej technice jak łokieć ręki)
+    const jointGrad = ctx.createLinearGradient(0, -kneeR, 0, kneeR);
+    if (isFrontLeg) {
+      jointGrad.addColorStop(0.0, v.skinLight);
+      jointGrad.addColorStop(0.45, v.skinMid);
+      jointGrad.addColorStop(1.0, v.skinDark);
+    } else {
+      jointGrad.addColorStop(0.0, v.skinMid);
+      jointGrad.addColorStop(0.45, v.skinBack);
+      jointGrad.addColorStop(1.0, v.skinDark);
+    }
+
+    ctx.beginPath();
+    ctx.arc(0, 0, kneeR * 0.85, 0, Math.PI * 2);
+    ctx.fillStyle = jointGrad;
+    ctx.fill();
+
+    // B. Płynny profil kości piszczelowej i brzuśca łydki
     const calfGrad = ctx.createLinearGradient(0, -calfBulge, 0, calfBulge);
     if (isFrontLeg) {
       calfGrad.addColorStop(0.0, v.skinLight);
@@ -1517,87 +1530,39 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
       calfGrad.addColorStop(1.0, v.skinDark);
     }
 
-    // Wyrazisty, anatomiczny profil kolana z rzepką (patella) z przodu i brzuścem łydki z tyłu
     ctx.beginPath();
-    // Górna krawędź stawu kolanowego łącząca się z udem
-    ctx.moveTo(0, -2.6 * muscle);
-    // Wyraźna przednia wypukłość rzepki kolanowej (patella prominence)
-    ctx.quadraticCurveTo(0.2, -3.75 * muscle, 1.2, -3.85 * muscle);
-    ctx.quadraticCurveTo(2.2, -3.80 * muscle, 2.9, -3.10 * muscle);
-    // Przewężenie więzadła rzepki i guzowatość piszczeli (tibial tuberosity)
-    ctx.quadraticCurveTo(3.7, -2.35 * muscle, 4.8, -2.70 * muscle);
-    // Przednia krawędź kości piszczelowej schodząca do buta
-    ctx.quadraticCurveTo(l2 * 0.42, -2.50 * muscle, l2 - 3.2, -achillesHalfW);
-    // Krawędź cholewy buta
+    ctx.moveTo(0, -kneeR * 0.85);
+    // Przednia krawędź kości piszczelowej schodząca czysto do buta
+    ctx.quadraticCurveTo(l2 * 0.35, -kneeR * 0.90, l2 - 3.2, -achillesHalfW);
     ctx.lineTo(l2 - 3.2, achillesHalfW);
-    // Ścięgno Achillesa i tylna krzywizna łydki
-    ctx.quadraticCurveTo(l2 * 0.70, achillesHalfW * 1.15, l2 * 0.42, calfBulge * 1.08);
-    // Mięsień brzuchaty łydki (gastrocnemius)
-    ctx.quadraticCurveTo(l2 * 0.18, calfBulge * 0.85, 0.4, 2.30 * muscle);
-    // Dół podkolanowy (zgięcie z tyłu kolana)
-    ctx.lineTo(0, -2.6 * muscle);
+    // Ścięgno Achillesa i brzusiec mięśnia łydki (gastrocnemius)
+    ctx.quadraticCurveTo(l2 * 0.65, achillesHalfW * 1.15, l2 * 0.35, calfBulge * 1.05);
+    ctx.quadraticCurveTo(l2 * 0.12, calfBulge * 0.85, 0, kneeR * 0.85);
     ctx.closePath();
 
     ctx.fillStyle = calfGrad;
     ctx.fill();
 
     ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.95;
+    ctx.lineWidth = 0.9;
     ctx.stroke();
 
-    // Tarcza kostna rzepki kolanowej z trójwymiarowym rozjaśnieniem
-    const patellaGrad = ctx.createRadialGradient(1.0, -2.7 * muscle, 0.2, 1.1, -2.6 * muscle, 1.6 * muscle);
-    patellaGrad.addColorStop(0.0, isFrontLeg ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.22)');
-    patellaGrad.addColorStop(0.4, isFrontLeg ? v.skinLight : v.skinMid);
-    patellaGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = patellaGrad;
-    ctx.beginPath();
-    ctx.arc(1.1, -2.65 * muscle, 1.55 * muscle, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Wyrazisty kontur rzepki kolana (anatomiczny zarys kości)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    ctx.arc(1.1, -2.65 * muscle, 1.55 * muscle, -0.65 * Math.PI, 0.55 * Math.PI);
-    ctx.stroke();
-
-    // Więzadło rzepki łączące rzepkę z guzowatością piszczeli (Ligamentum Patellae)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.lineWidth = 0.95;
-    ctx.beginPath();
-    ctx.moveTo(2.6, -2.5 * muscle);
-    ctx.lineTo(4.6, -2.1 * muscle);
-    ctx.stroke();
-
+    // C. Subtelny, naturalny zarys rzepki kolanowej (delikatny łuk, estetyka tożsama z łokciem)
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(2.7, -1.9 * muscle);
-    ctx.lineTo(4.7, -1.6 * muscle);
-    ctx.stroke();
-
-    // Punkt guzowatości piszczeli (Tibial Tuberosity)
-    ctx.fillStyle = isFrontLeg ? 'rgba(255, 255, 255, 0.20)' : 'rgba(0, 0, 0, 0.12)';
-    ctx.beginPath();
-    ctx.ellipse(4.8, -2.2 * muscle, 0.9, 0.6, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Naturalna fałda w dole podkolanowym (Popliteal crease)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(-0.2, 2.3 * muscle);
-    ctx.quadraticCurveTo(0.8, 1.6 * muscle, 1.6, 2.4 * muscle);
+    ctx.arc(0.2, -0.2, kneeR * 0.70, -0.45 * Math.PI, 0.45 * Math.PI);
     ctx.stroke();
 
-    // Zarys mięśnia brzuchatego łydki
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(l2 * 0.22, calfBulge * 0.45);
-    ctx.quadraticCurveTo(l2 * 0.42, calfBulge * 0.65, l2 * 0.62, achillesHalfW * 0.6);
-    ctx.stroke();
+    // D. Subtelny blask na przedniej krawędzi piszczeli
+    if (isFrontLeg) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(kneeR * 0.6, -kneeR * 0.4);
+      ctx.lineTo(l2 * 0.55, -achillesHalfW * 0.7);
+      ctx.stroke();
+    }
 
   } else {
     // 2. DŁUGIE BOJÓWKI: Zbluzowana nogawka materiału z ergonomicznym panelem kolanowym

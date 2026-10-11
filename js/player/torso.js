@@ -367,9 +367,9 @@ export function drawTorsoPreview(
   };
 
   ctx.save();
-  // Centrowanie sylwetki torsu i ramienia w kadrze
-  ctx.translate(canvasW * 0.48, canvasH * 0.52);
-  const scale = Math.min(canvasW, canvasH) / 36.0;
+  // Centrowanie sylwetki torsu i ramienia w kadrze kafelka (profil boczny jak w grze)
+  ctx.translate(canvasW * 0.46, canvasH * 0.50);
+  const scale = Math.min(canvasW, canvasH) / 44.0;
   ctx.scale(scale, scale);
 
   // 1. Szyja z kołnierzem
@@ -378,40 +378,37 @@ export function drawTorsoPreview(
   neckGrad.addColorStop(0.5, v.skinBack);
   neckGrad.addColorStop(1.0, v.skinMid);
 
-  ctx.fillStyle = neckGrad;
   ctx.beginPath();
-  ctx.moveTo(-2.8, -9.0);
-  ctx.lineTo(-3.0, -4.5);
-  ctx.quadraticCurveTo(-0.5, -3.5, 2.2, -4.5);
-  ctx.lineTo(2.0, -9.0);
+  ctx.moveTo(-3.0, -17.0);
+  ctx.lineTo(-3.2, -11.5);
+  ctx.quadraticCurveTo(-0.5, -10.5, 2.5, -11.5);
+  ctx.lineTo(2.2, -17.0);
   ctx.closePath();
+  ctx.fillStyle = neckGrad;
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.85;
   ctx.stroke();
 
-  // 2. Tors (korpus koszulki z wycięciem dekoltu)
-  const buildPreviewShirtPath = () => {
+  // 2. Tors (korpus koszulki w profilu bocznym)
+  const traceTorso = () => {
     ctx.beginPath();
-    ctx.moveTo(-5.5, 8.5);
-    ctx.lineTo(-6.2, -4.2);
-    ctx.quadraticCurveTo(-3.2, -5.5, -3.0, -4.5);
-    ctx.quadraticCurveTo(-0.5, -3.5, 2.2, -4.5);
-    ctx.lineTo(5.2, -3.8);
-    ctx.quadraticCurveTo(6.2, 0.0, 5.5, 4.0);
-    ctx.lineTo(5.0, 8.5);
+    ctx.moveTo(-5.5, 6.0);
+    ctx.lineTo(-6.0, -11.5);
+    ctx.quadraticCurveTo(-2.0, -13.0, 2.5, -11.5);
+    ctx.quadraticCurveTo(5.5, -7.0, 5.0, 0.0);
+    ctx.lineTo(4.2, 6.0);
     ctx.closePath();
   };
 
-  ctx.save();
-  buildPreviewShirtPath();
+  traceTorso();
 
   if (camo) {
     ctx.save();
     ctx.clip();
-    drawCamoSplotches(ctx, camo, -6.5, -6, 6.5, 9);
+    drawCamoSplotches(ctx, camo, -7.0, -14.0, 7.0, 7.0);
     ctx.restore();
-    buildPreviewShirtPath();
+    traceTorso();
   } else {
     const shirtGrad = ctx.createLinearGradient(-5, 0, 5, 0);
     shirtGrad.addColorStop(0.0, pal.dark);
@@ -429,100 +426,131 @@ export function drawTorsoPreview(
   const collarCol = camo === 'light' ? '#4a3f35' : (camo === 'dark' ? '#0f140f' : pal.dark);
   ctx.fillStyle = collarCol;
   ctx.beginPath();
-  ctx.moveTo(-3.0, -4.5);
-  ctx.quadraticCurveTo(-0.5, -3.5, 2.2, -4.5);
-  ctx.lineTo(2.0, -3.6);
-  ctx.quadraticCurveTo(-0.5, -2.5, -2.8, -3.6);
+  ctx.moveTo(-3.2, -11.5);
+  ctx.quadraticCurveTo(-0.5, -10.0, 2.5, -11.5);
+  ctx.lineTo(2.2, -10.2);
+  ctx.quadraticCurveTo(-0.5, -8.8, -3.0, -10.2);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.75;
   ctx.stroke();
 
-  // 3. Pas na dole
+  // 3. Pas taktyczny na dole
   ctx.fillStyle = '#27272a';
-  ctx.fillRect(-5.8, 8.0, 11.2, 2.6);
+  ctx.fillRect(-5.8, 5.5, 10.5, 3.2);
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.8;
-  ctx.strokeRect(-5.8, 8.0, 11.2, 2.6);
+  ctx.strokeRect(-5.8, 5.5, 10.5, 3.2);
 
-  // 4. Ramię z rękawem (widoczne na pierwszym planie)
-  // Ramię opada w dół lekko ukośnie
-  const armShX = 2.0;
-  const armShY = -3.5;
-  const armLen = 11.5;
-  const foreLen = 10.5;
+  // Klamra pasa
+  ctx.fillStyle = '#71717a';
+  ctx.fillRect(1.2, 6.0, 2.4, 2.2);
 
+  // 4. Ramię z rękawem w pozycji gotowości bojowej (dokładnie jak na ubranej postaci)
+  const shX = 0.5;
+  const shY = -9.0;
+  const upperLen = 13.5;
+  const foreLen = 12.5;
+  const armDir = 0.42; // naturalne pochylenie ramienia
+  const foreDir = 0.75; // naturalne ugięcie łokcia
+
+  const elbowX = shX + Math.cos(armDir) * upperLen;
+  const elbowY = shY + Math.sin(armDir) * upperLen;
+
+  // RAMIĘ
   ctx.save();
-  ctx.translate(armShX, armShY);
-  ctx.rotate(0.35); // lekki wymach ramienia
+  ctx.translate(shX, shY);
+  ctx.rotate(armDir);
 
-  const armHalfW = 2.5;
-  const sleeveLen = isLong ? armLen + 0.5 : armLen * 0.52;
+  const armHalfH = 3.2;
+  const sleeveLen = isLong ? upperLen + 0.5 : upperLen * 0.58;
+  const sleeveHalfH = 3.8;
 
-  // Główny rękaw na ramieniu
-  const buildPreviewArmPath = () => {
+  // Główny rękaw
+  const traceSleeve = () => {
     ctx.beginPath();
-    ctx.arc(0, 0, armHalfW * 1.15, Math.PI * 0.5, -Math.PI * 0.5, false);
-    ctx.lineTo(sleeveLen, -armHalfW * 0.95);
-    ctx.lineTo(sleeveLen, armHalfW * 0.95);
+    ctx.arc(0, 0, sleeveHalfH * 0.95, Math.PI * 0.5, -Math.PI * 0.5, false);
+    ctx.bezierCurveTo(sleeveLen * 0.3, -sleeveHalfH * 1.05, sleeveLen * 0.7, -sleeveHalfH * 1.02, sleeveLen, -sleeveHalfH * 0.94);
+    ctx.lineTo(sleeveLen, sleeveHalfH * 0.94);
+    ctx.bezierCurveTo(sleeveLen * 0.7, sleeveHalfH * 1.02, sleeveLen * 0.3, sleeveHalfH * 0.96, 0, sleeveHalfH * 0.92);
     ctx.closePath();
   };
 
-  ctx.save();
-  buildPreviewArmPath();
+  traceSleeve();
 
   if (camo) {
     ctx.save();
     ctx.clip();
-    drawCamoSplotches(ctx, camo, -1, -armHalfW * 1.15, sleeveLen, armHalfW * 1.15);
+    drawCamoSplotches(ctx, camo, -2, -sleeveHalfH * 1.1, sleeveLen + 1, sleeveHalfH * 1.1);
     ctx.restore();
-    buildPreviewArmPath();
+    traceSleeve();
   } else {
     ctx.fillStyle = pal.base;
     ctx.fill();
   }
   ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.85;
+  ctx.lineWidth = 0.9;
   ctx.stroke();
 
   // Mankiet rękawa
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(sleeveLen - 0.8, -armHalfW * 0.95);
-  ctx.lineTo(sleeveLen - 0.8, armHalfW * 0.95);
-  ctx.stroke();
+  if (!isLong) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.42)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(sleeveLen - 1.2, -sleeveHalfH * 0.92);
+    ctx.lineTo(sleeveLen - 1.2, sleeveHalfH * 0.92);
+    ctx.stroke();
+
+    // Odsłonięte ramię / biceps pod rękawem
+    ctx.beginPath();
+    ctx.moveTo(sleeveLen, -armHalfH * 0.9);
+    ctx.lineTo(upperLen, -armHalfH * 0.85);
+    ctx.lineTo(upperLen, armHalfH * 0.85);
+    ctx.lineTo(sleeveLen, armHalfH * 0.9);
+    ctx.closePath();
+    ctx.fillStyle = v.skinMid;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+  }
+
   ctx.restore();
 
-  // Przedramię (odsłonięte ciało lub długi rękaw)
-  const elbowX = armLen;
-  const elbowY = 0;
-
+  // PRZEDRAMIĘ
   ctx.save();
   ctx.translate(elbowX, elbowY);
-  ctx.rotate(0.20); // lekkie zgięcie w łokciu
+  ctx.rotate(foreDir);
 
-  const foreHalfW = 1.9;
-
-  const buildPreviewForearmPath = () => {
-    ctx.beginPath();
-    ctx.arc(0, 0, foreHalfW * 1.05, Math.PI * 0.5, -Math.PI * 0.5, false);
-    ctx.lineTo(foreLen * 0.78, -foreHalfW * 0.75);
-    ctx.lineTo(foreLen * 0.78, foreHalfW * 0.75);
-    ctx.closePath();
-  };
-
-  buildPreviewForearmPath();
+  const elbowR = 2.8;
+  const wristR = 1.9;
 
   if (isLong) {
-    // Długi rękaw na przedramieniu
+    // Staw łokciowy
+    ctx.beginPath();
+    ctx.arc(0, 0, elbowR * 0.85, 0, Math.PI * 2);
+    ctx.fillStyle = pal.dark;
+    ctx.fill();
+
+    // Długi rękaw przedramienia
+    const traceForeSleeve = () => {
+      ctx.beginPath();
+      ctx.moveTo(0, -elbowR);
+      ctx.lineTo(foreLen * 0.8, -wristR * 1.05);
+      ctx.lineTo(foreLen * 0.8, wristR * 1.05);
+      ctx.lineTo(0, elbowR);
+      ctx.closePath();
+    };
+
+    traceForeSleeve();
+
     if (camo) {
       ctx.save();
       ctx.clip();
-      drawCamoSplotches(ctx, camo, 0, -foreHalfW * 1.05, foreLen * 0.78, foreHalfW * 1.05);
+      drawCamoSplotches(ctx, camo, 0, -elbowR * 1.1, foreLen * 0.85, elbowR * 1.1);
       ctx.restore();
-      buildPreviewForearmPath();
+      traceForeSleeve();
     } else {
       ctx.fillStyle = pal.base;
       ctx.fill();
@@ -534,34 +562,47 @@ export function drawTorsoPreview(
     // Wzmocniona łata na łokciu (Tactical Elbow Reinforcement)
     ctx.fillStyle = camo === 'light' ? '#4a3f35' : (camo === 'dark' ? '#0f140f' : pal.dark);
     ctx.beginPath();
-    ctx.ellipse(foreLen * 0.18, 0, 2.0, 1.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(foreLen * 0.16, 0, elbowR * 0.75, elbowR * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.65;
     ctx.stroke();
   } else {
-    // Odsłonięta skóra przedramienia
-    const foreGrad = ctx.createLinearGradient(0, -foreHalfW, 0, foreHalfW);
-    foreGrad.addColorStop(0.0, v.skinLight);
-    foreGrad.addColorStop(0.5, v.skinMid);
-    foreGrad.addColorStop(1.0, v.skinDark);
-    ctx.fillStyle = foreGrad;
+    // Odsłonięty łokieć (dokładnie jak na postaci!)
+    ctx.beginPath();
+    ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
+    ctx.fillStyle = v.skinMid;
+    ctx.fill();
+
+    // Odsłonięte przedramię
+    ctx.beginPath();
+    ctx.moveTo(0, -elbowR * 0.85);
+    ctx.quadraticCurveTo(foreLen * 0.3, -elbowR * 1.3, foreLen * 0.78, -wristR);
+    ctx.lineTo(foreLen * 0.78, wristR);
+    ctx.quadraticCurveTo(foreLen * 0.35, elbowR * 1.15, 0, elbowR * 0.85);
+    ctx.closePath();
+    ctx.fillStyle = v.skinMid;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.85;
+    ctx.stroke();
+
+    // Subtelna linia definicji mięśnia
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(foreLen * 0.22, -elbowR * 0.3);
+    ctx.lineTo(foreLen * 0.60, -wristR * 0.2);
     ctx.stroke();
   }
 
   // Rękawica taktyczna na dłoni
   ctx.fillStyle = '#18181b';
-  ctx.fillRect(foreLen * 0.75, -foreHalfW * 0.85, 3.2, foreHalfW * 1.7);
+  ctx.fillRect(foreLen * 0.76, -wristR * 0.95, 3.8, wristR * 1.9);
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.75;
-  ctx.strokeRect(foreLen * 0.75, -foreHalfW * 0.85, 3.2, foreHalfW * 1.7);
+  ctx.strokeRect(foreLen * 0.76, -wristR * 0.95, 3.8, wristR * 1.9);
 
   ctx.restore();
-  ctx.restore();
-
-  // Tekstura etykiety w rogu kafelka
   ctx.restore();
 }
