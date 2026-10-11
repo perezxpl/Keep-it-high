@@ -44,7 +44,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### 🏟️ Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).
 - `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
-- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`.
+- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla / Odlewnia): `state.js`, `physics.js`, `renderer.js`.
 
 ### 🧱 Przeszkody i Kolizje (`js/obstacles/`)
