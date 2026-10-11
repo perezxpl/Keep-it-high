@@ -74,63 +74,50 @@ export function getTorsoPalette(baseHex = '#18181b') {
 }
 
 /**
- * Renderuje organiczne plamy kamuflażu moro wewnątrz aktywnego obrysu clipping mask
+ * Renderuje organiczne plamy kamuflażu moro wewnątrz aktywnego obrysu clipping mask.
+ * Znormalizowane współrzędne gwarantują, że plamy nigdy nie wykraczają poza zadany prostokąt.
  */
 export function drawCamoSplotches(ctx, camoType = 'light', minX = -12, minY = -25, maxX = 12, maxY = 5) {
   if (!camoType) return;
+  const w = Math.max(1, maxX - minX);
+  const h = Math.max(1, maxY - minY);
   ctx.save();
 
   if (camoType === 'light') {
     // 1. MORO JASNE (Pustynny / Arid Desert Camo)
     // Tło piaskowo-khaki
     ctx.fillStyle = '#cfbe9f';
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.fillRect(minX, minY, w, h);
 
     // Plamy szałwiowej oliwki (Sage Olive)
     ctx.fillStyle = '#7a8c6a';
     const oliveBlobs = [
-      { x: minX + 2.5, y: minY + 3.0, rx: 3.8, ry: 2.2, a: 0.3 },
-      { x: minX + 8.5, y: minY + 6.0, rx: 3.2, ry: 2.6, a: -0.4 },
-      { x: minX + 4.0, y: minY + 12.0, rx: 4.2, ry: 2.8, a: 0.2 },
-      { x: minX + 11.0, y: minY + 16.0, rx: 3.6, ry: 2.2, a: -0.2 },
-      { x: minX + 3.0, y: minY + 21.0, rx: 3.9, ry: 2.4, a: 0.4 },
-      { x: minX + 9.5, y: minY + 24.0, rx: 4.5, ry: 2.5, a: -0.3 }
+      { u: 0.20, v: 0.16, rx: w * 0.20, ry: h * 0.15, a: 0.3 },
+      { u: 0.75, v: 0.25, rx: w * 0.18, ry: h * 0.16, a: -0.4 },
+      { u: 0.38, v: 0.50, rx: w * 0.22, ry: h * 0.16, a: 0.2 },
+      { u: 0.82, v: 0.65, rx: w * 0.19, ry: h * 0.15, a: -0.2 },
+      { u: 0.28, v: 0.82, rx: w * 0.20, ry: h * 0.16, a: 0.4 },
+      { u: 0.72, v: 0.88, rx: w * 0.21, ry: h * 0.15, a: -0.3 }
     ];
     oliveBlobs.forEach(b => {
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.rx, b.ry, b.a, 0, Math.PI * 2);
+      ctx.ellipse(minX + w * b.u, minY + h * b.v, Math.max(1.2, b.rx), Math.max(1.0, b.ry), b.a, 0, Math.PI * 2);
       ctx.fill();
     });
 
     // Plamy ziemistego brązu (Earth Coyote)
     ctx.fillStyle = '#94724b';
     const brownBlobs = [
-      { x: minX + 7.0, y: minY + 2.0, rx: 2.8, ry: 2.0, a: -0.2 },
-      { x: minX + 2.0, y: minY + 8.5, rx: 3.4, ry: 2.2, a: 0.5 },
-      { x: minX + 9.0, y: minY + 11.5, rx: 3.5, ry: 2.4, a: -0.3 },
-      { x: minX + 5.0, y: minY + 17.0, rx: 3.8, ry: 2.2, a: 0.1 },
-      { x: minX + 12.0, y: minY + 21.5, rx: 3.2, ry: 2.0, a: -0.4 },
-      { x: minX + 5.5, y: minY + 25.5, rx: 3.0, ry: 2.0, a: 0.2 }
+      { u: 0.55, v: 0.12, rx: w * 0.16, ry: h * 0.14, a: -0.2 },
+      { u: 0.15, v: 0.38, rx: w * 0.18, ry: h * 0.15, a: 0.5 },
+      { u: 0.70, v: 0.48, rx: w * 0.19, ry: h * 0.15, a: -0.3 },
+      { u: 0.45, v: 0.72, rx: w * 0.20, ry: h * 0.15, a: 0.1 },
+      { u: 0.86, v: 0.85, rx: w * 0.17, ry: h * 0.14, a: -0.4 },
+      { u: 0.48, v: 0.94, rx: w * 0.17, ry: h * 0.13, a: 0.2 }
     ];
     brownBlobs.forEach(b => {
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.rx, b.ry, b.a, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Ciemne mikroplamki grafitowo-ziemiste (Dark Speckles)
-    ctx.fillStyle = '#42372d';
-    const darkSpecks = [
-      { x: minX + 4.5, y: minY + 5.5, r: 1.1 },
-      { x: minX + 9.5, y: minY + 9.0, r: 0.9 },
-      { x: minX + 3.2, y: minY + 15.0, r: 1.2 },
-      { x: minX + 7.8, y: minY + 19.5, r: 1.0 },
-      { x: minX + 11.2, y: minY + 25.0, r: 1.1 },
-      { x: minX + 2.0, y: minY + 24.0, r: 0.95 }
-    ];
-    darkSpecks.forEach(s => {
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.ellipse(minX + w * b.u, minY + h * b.v, Math.max(1.0, b.rx), Math.max(0.9, b.ry), b.a, 0, Math.PI * 2);
       ctx.fill();
     });
 
@@ -138,53 +125,53 @@ export function drawCamoSplotches(ctx, camoType = 'light', minX = -12, minY = -2
     // 2. MORO CIEMNE (Nocny Woodland / Tactical Urban Camo)
     // Tło ciemnooliwkowo-grafitowe
     ctx.fillStyle = '#1e261e';
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.fillRect(minX, minY, w, h);
 
     // Plamy zgaszonej leśnej zieleni (Forest Moss)
     ctx.fillStyle = '#344534';
     const greenBlobs = [
-      { x: minX + 3.0, y: minY + 3.0, rx: 4.2, ry: 2.5, a: 0.2 },
-      { x: minX + 9.5, y: minY + 7.0, rx: 3.6, ry: 2.8, a: -0.3 },
-      { x: minX + 4.5, y: minY + 12.5, rx: 4.5, ry: 2.6, a: 0.3 },
-      { x: minX + 11.5, y: minY + 17.0, rx: 3.8, ry: 2.4, a: -0.2 },
-      { x: minX + 3.5, y: minY + 21.5, rx: 4.0, ry: 2.6, a: 0.4 },
-      { x: minX + 10.0, y: minY + 25.0, rx: 4.2, ry: 2.4, a: -0.3 }
+      { u: 0.22, v: 0.14, rx: w * 0.21, ry: h * 0.16, a: 0.2 },
+      { u: 0.78, v: 0.26, rx: w * 0.19, ry: h * 0.17, a: -0.3 },
+      { u: 0.36, v: 0.52, rx: w * 0.22, ry: h * 0.16, a: 0.3 },
+      { u: 0.85, v: 0.68, rx: w * 0.20, ry: h * 0.15, a: -0.2 },
+      { u: 0.28, v: 0.84, rx: w * 0.21, ry: h * 0.16, a: 0.4 },
+      { u: 0.76, v: 0.92, rx: w * 0.21, ry: h * 0.15, a: -0.3 }
     ];
     greenBlobs.forEach(b => {
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.rx, b.ry, b.a, 0, Math.PI * 2);
+      ctx.ellipse(minX + w * b.u, minY + h * b.v, Math.max(1.2, b.rx), Math.max(1.0, b.ry), b.a, 0, Math.PI * 2);
       ctx.fill();
     });
 
     // Plamy ciemnobrązowo-ziemiste (Deep Mud Brown)
     ctx.fillStyle = '#2f241a';
     const darkBrownBlobs = [
-      { x: minX + 7.5, y: minY + 2.5, rx: 3.2, ry: 2.2, a: -0.3 },
-      { x: minX + 2.5, y: minY + 8.0, rx: 3.5, ry: 2.4, a: 0.4 },
-      { x: minX + 9.0, y: minY + 12.0, rx: 3.6, ry: 2.2, a: -0.2 },
-      { x: minX + 5.5, y: minY + 17.5, rx: 4.0, ry: 2.4, a: 0.2 },
-      { x: minX + 12.0, y: minY + 22.0, rx: 3.4, ry: 2.0, a: -0.4 },
-      { x: minX + 6.0, y: minY + 26.0, rx: 3.2, ry: 2.0, a: 0.3 }
+      { u: 0.60, v: 0.12, rx: w * 0.18, ry: h * 0.14, a: -0.3 },
+      { u: 0.18, v: 0.35, rx: w * 0.19, ry: h * 0.15, a: 0.4 },
+      { u: 0.72, v: 0.48, rx: w * 0.20, ry: h * 0.14, a: -0.2 },
+      { u: 0.44, v: 0.74, rx: w * 0.21, ry: h * 0.15, a: 0.2 },
+      { u: 0.88, v: 0.86, rx: w * 0.18, ry: h * 0.13, a: -0.4 },
+      { u: 0.50, v: 0.95, rx: w * 0.18, ry: h * 0.13, a: 0.3 }
     ];
     darkBrownBlobs.forEach(b => {
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.rx, b.ry, b.a, 0, Math.PI * 2);
+      ctx.ellipse(minX + w * b.u, minY + h * b.v, Math.max(1.0, b.rx), Math.max(0.9, b.ry), b.a, 0, Math.PI * 2);
       ctx.fill();
     });
 
     // Czysta czerń taktyczna (Shadow Black)
     ctx.fillStyle = '#090c09';
     const blackBlobs = [
-      { x: minX + 4.8, y: minY + 5.0, rx: 2.2, ry: 1.4, a: 0.2 },
-      { x: minX + 10.2, y: minY + 9.5, rx: 2.0, ry: 1.6, a: -0.4 },
-      { x: minX + 3.0, y: minY + 15.5, rx: 2.4, ry: 1.5, a: 0.3 },
-      { x: minX + 8.2, y: minY + 19.8, rx: 2.5, ry: 1.4, a: -0.1 },
-      { x: minX + 11.5, y: minY + 25.5, rx: 2.2, ry: 1.3, a: -0.3 },
-      { x: minX + 2.2, y: minY + 24.5, rx: 1.9, ry: 1.3, a: 0.4 }
+      { u: 0.40, v: 0.22, rx: w * 0.15, ry: h * 0.12, a: 0.2 },
+      { u: 0.82, v: 0.38, rx: w * 0.14, ry: h * 0.12, a: -0.4 },
+      { u: 0.24, v: 0.62, rx: w * 0.16, ry: h * 0.13, a: 0.3 },
+      { u: 0.66, v: 0.78, rx: w * 0.16, ry: h * 0.12, a: -0.1 },
+      { u: 0.88, v: 0.95, rx: w * 0.15, ry: h * 0.11, a: -0.3 },
+      { u: 0.18, v: 0.94, rx: w * 0.13, ry: h * 0.11, a: 0.4 }
     ];
     blackBlobs.forEach(b => {
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.rx, b.ry, b.a, 0, Math.PI * 2);
+      ctx.ellipse(minX + w * b.u, minY + h * b.v, Math.max(1.0, b.rx), Math.max(0.9, b.ry), b.a, 0, Math.PI * 2);
       ctx.fill();
     });
   }
@@ -232,40 +219,46 @@ export function drawTorsoShirt(
   const blouseBackX = -fDir * (waistHalfW + 0.45);
 
   // 1. ŚCIEŻKA KONTURU KOSZULKI
+  const buildShirtPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(backWaistX, waistY);
+    ctx.quadraticCurveTo(blouseBackX, waistY - 1.5, lumbarInBack, -8.5);
+    ctx.bezierCurveTo(
+      backOut * 0.94, -13.5,
+      backOut, -19.0,
+      backShX, -22.8
+    );
+    ctx.quadraticCurveTo(backCollarX * 1.05, -24.0, backCollarX, backCollarY);
+    ctx.quadraticCurveTo(
+      (backCollarX + frontCollarX) * 0.5, -23.1,
+      frontCollarX, frontCollarY
+    );
+    ctx.quadraticCurveTo(frontShX * 0.92, -22.2, frontShX, -21.0);
+    ctx.bezierCurveTo(
+      chestOut, -17.5,
+      chestOut * 0.94, -12.5,
+      ribInFront, -8.0
+    );
+    ctx.quadraticCurveTo(blouseFrontX, waistY - 1.4, frontWaistX, waistY);
+    ctx.bezierCurveTo(
+      frontWaistX * 0.35, waistY + 0.9,
+      backWaistX * 0.35, waistY + 0.8,
+      backWaistX, waistY
+    );
+    ctx.closePath();
+  };
+
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(backWaistX, waistY);
-  ctx.quadraticCurveTo(blouseBackX, waistY - 1.5, lumbarInBack, -8.5);
-  ctx.bezierCurveTo(
-    backOut * 0.94, -13.5,
-    backOut, -19.0,
-    backShX, -22.8
-  );
-  ctx.quadraticCurveTo(backCollarX * 1.05, -24.0, backCollarX, backCollarY);
-  ctx.quadraticCurveTo(
-    (backCollarX + frontCollarX) * 0.5, -23.1,
-    frontCollarX, frontCollarY
-  );
-  ctx.quadraticCurveTo(frontShX * 0.92, -22.2, frontShX, -21.0);
-  ctx.bezierCurveTo(
-    chestOut, -17.5,
-    chestOut * 0.94, -12.5,
-    ribInFront, -8.0
-  );
-  ctx.quadraticCurveTo(blouseFrontX, waistY - 1.4, frontWaistX, waistY);
-  ctx.bezierCurveTo(
-    frontWaistX * 0.35, waistY + 0.9,
-    backWaistX * 0.35, waistY + 0.8,
-    backWaistX, waistY
-  );
-  ctx.closePath();
+  buildShirtPath();
 
   // Wypełnienie tła koszulki
   if (camoType) {
     ctx.save();
     ctx.clip();
-    drawCamoSplotches(ctx, camoType, -shoulderHalfW * 1.3, -26, shoulderHalfW * 1.3, waistY + 2);
+    drawCamoSplotches(ctx, camoType, -shoulderHalfW * 1.25, -25, shoulderHalfW * 1.25, waistY + 1);
     ctx.restore();
+    // Przywracamy ścieżkę koszulki, aby stroke obrysował kontur koszulki, a nie plamy camo
+    buildShirtPath();
   } else {
     const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
     shirtGrad.addColorStop(0.0, pal.dark);
@@ -340,10 +333,10 @@ export function drawArmSleeveCamo(ctx, camoType, len, halfH, isForearm = false) 
   if (!camoType) return;
   ctx.save();
   ctx.clip();
-  const startX = isForearm ? 0 : -2;
-  const endX = len + 2;
-  const minH = -halfH * 1.5;
-  const maxH = halfH * 1.5;
+  const startX = isForearm ? 0 : -1;
+  const endX = len;
+  const minH = -halfH * 1.05;
+  const maxH = halfH * 1.05;
   drawCamoSplotches(ctx, camoType, startX, minH, endX, maxH);
   ctx.restore();
 }
@@ -398,22 +391,27 @@ export function drawTorsoPreview(
   ctx.stroke();
 
   // 2. Tors (korpus koszulki z wycięciem dekoltu)
+  const buildPreviewShirtPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-5.5, 8.5);
+    ctx.lineTo(-6.2, -4.2);
+    ctx.quadraticCurveTo(-3.2, -5.5, -3.0, -4.5);
+    ctx.quadraticCurveTo(-0.5, -3.5, 2.2, -4.5);
+    ctx.lineTo(5.2, -3.8);
+    ctx.quadraticCurveTo(6.2, 0.0, 5.5, 4.0);
+    ctx.lineTo(5.0, 8.5);
+    ctx.closePath();
+  };
+
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(-5.5, 8.5);
-  ctx.lineTo(-6.2, -4.2);
-  ctx.quadraticCurveTo(-3.2, -5.5, -3.0, -4.5);
-  ctx.quadraticCurveTo(-0.5, -3.5, 2.2, -4.5);
-  ctx.lineTo(5.2, -3.8);
-  ctx.quadraticCurveTo(6.2, 0.0, 5.5, 4.0);
-  ctx.lineTo(5.0, 8.5);
-  ctx.closePath();
+  buildPreviewShirtPath();
 
   if (camo) {
     ctx.save();
     ctx.clip();
-    drawCamoSplotches(ctx, camo, -7, -7, 7, 10);
+    drawCamoSplotches(ctx, camo, -6.5, -6, 6.5, 9);
     ctx.restore();
+    buildPreviewShirtPath();
   } else {
     const shirtGrad = ctx.createLinearGradient(-5, 0, 5, 0);
     shirtGrad.addColorStop(0.0, pal.dark);
@@ -463,18 +461,23 @@ export function drawTorsoPreview(
   const sleeveLen = isLong ? armLen + 0.5 : armLen * 0.52;
 
   // Główny rękaw na ramieniu
+  const buildPreviewArmPath = () => {
+    ctx.beginPath();
+    ctx.arc(0, 0, armHalfW * 1.15, Math.PI * 0.5, -Math.PI * 0.5, false);
+    ctx.lineTo(sleeveLen, -armHalfW * 0.95);
+    ctx.lineTo(sleeveLen, armHalfW * 0.95);
+    ctx.closePath();
+  };
+
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(0, 0, armHalfW * 1.15, Math.PI * 0.5, -Math.PI * 0.5, false);
-  ctx.lineTo(sleeveLen, -armHalfW * 0.95);
-  ctx.lineTo(sleeveLen, armHalfW * 0.95);
-  ctx.closePath();
+  buildPreviewArmPath();
 
   if (camo) {
     ctx.save();
     ctx.clip();
-    drawCamoSplotches(ctx, camo, -2, -armHalfW * 1.5, sleeveLen + 1, armHalfW * 1.5);
+    drawCamoSplotches(ctx, camo, -1, -armHalfW * 1.15, sleeveLen, armHalfW * 1.15);
     ctx.restore();
+    buildPreviewArmPath();
   } else {
     ctx.fillStyle = pal.base;
     ctx.fill();
@@ -502,19 +505,24 @@ export function drawTorsoPreview(
 
   const foreHalfW = 1.9;
 
-  ctx.beginPath();
-  ctx.arc(0, 0, foreHalfW * 1.05, Math.PI * 0.5, -Math.PI * 0.5, false);
-  ctx.lineTo(foreLen * 0.78, -foreHalfW * 0.75);
-  ctx.lineTo(foreLen * 0.78, foreHalfW * 0.75);
-  ctx.closePath();
+  const buildPreviewForearmPath = () => {
+    ctx.beginPath();
+    ctx.arc(0, 0, foreHalfW * 1.05, Math.PI * 0.5, -Math.PI * 0.5, false);
+    ctx.lineTo(foreLen * 0.78, -foreHalfW * 0.75);
+    ctx.lineTo(foreLen * 0.78, foreHalfW * 0.75);
+    ctx.closePath();
+  };
+
+  buildPreviewForearmPath();
 
   if (isLong) {
     // Długi rękaw na przedramieniu
     if (camo) {
       ctx.save();
       ctx.clip();
-      drawCamoSplotches(ctx, camo, -1, -foreHalfW * 1.5, foreLen * 0.85, foreHalfW * 1.5);
+      drawCamoSplotches(ctx, camo, 0, -foreHalfW * 1.05, foreLen * 0.78, foreHalfW * 1.05);
       ctx.restore();
+      buildPreviewForearmPath();
     } else {
       ctx.fillStyle = pal.base;
       ctx.fill();

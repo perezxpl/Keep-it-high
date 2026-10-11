@@ -786,28 +786,34 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     sleeveGrad.addColorStop(1.0, pal.dark);
 
     // Organiczny obrys rękawa z gładką główką barku i lekko podwiniętym mankietem
-    ctx.beginPath();
-    ctx.arc(0, 0, sleeveHalfH * 0.92, Math.PI * 0.5, -Math.PI * 0.5, false);
-    ctx.bezierCurveTo(
-      sleeveLen * 0.28, -sleeveHalfH * 1.02,
-      sleeveLen * 0.65, -sleeveHalfH * 1.06,
-      sleeveLen, -sleeveHalfH * 0.94
-    );
-    // Zaokrąglona krawędź mankietu
-    ctx.quadraticCurveTo(sleeveLen + 0.9, 0, sleeveLen - 0.3, sleeveHalfH * 0.98);
-    // Dolna linia rękawa z lekkim pofalowaniem materiału pod pachą
-    ctx.bezierCurveTo(
-      sleeveLen * 0.62, sleeveHalfH * 1.06,
-      sleeveLen * 0.28, sleeveHalfH * 0.96,
-      0, sleeveHalfH * 0.92
-    );
-    ctx.closePath();
+    const traceSleeve = () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, sleeveHalfH * 0.92, Math.PI * 0.5, -Math.PI * 0.5, false);
+      ctx.bezierCurveTo(
+        sleeveLen * 0.28, -sleeveHalfH * 1.02,
+        sleeveLen * 0.65, -sleeveHalfH * 1.06,
+        sleeveLen, -sleeveHalfH * 0.94
+      );
+      // Zaokrąglona krawędź mankietu
+      ctx.quadraticCurveTo(sleeveLen + 0.9, 0, sleeveLen - 0.3, sleeveHalfH * 0.98);
+      // Dolna linia rękawa z lekkim pofalowaniem materiału pod pachą
+      ctx.bezierCurveTo(
+        sleeveLen * 0.62, sleeveHalfH * 1.06,
+        sleeveLen * 0.28, sleeveHalfH * 0.96,
+        0, sleeveHalfH * 0.92
+      );
+      ctx.closePath();
+    };
+
+    traceSleeve();
 
     if (camoType) {
       ctx.save();
       ctx.clip();
-      drawCamoSplotches(ctx, camoType, -2, -sleeveHalfH * 1.3, sleeveLen + 2, sleeveHalfH * 1.3);
+      drawCamoSplotches(ctx, camoType, -1, -sleeveHalfH * 1.05, sleeveLen, sleeveHalfH * 1.05);
       ctx.restore();
+      // Przywracamy obrys rękawa, aby stroke nie obrysował plam ani kropek
+      traceSleeve();
     } else {
       ctx.fillStyle = sleeveGrad;
       ctx.fill();
@@ -939,18 +945,24 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.fill();
 
     // 2. Długi rękaw przedramienia z mankietem
-    ctx.beginPath();
-    ctx.moveTo(0, -elbowR);
-    ctx.lineTo(foreLen * 0.82, -wristR * 1.05);
-    ctx.lineTo(foreLen * 0.82, wristR * 1.05);
-    ctx.lineTo(0, elbowR);
-    ctx.closePath();
+    const traceForeSleeve = () => {
+      ctx.beginPath();
+      ctx.moveTo(0, -elbowR);
+      ctx.lineTo(foreLen * 0.82, -wristR * 1.05);
+      ctx.lineTo(foreLen * 0.82, wristR * 1.05);
+      ctx.lineTo(0, elbowR);
+      ctx.closePath();
+    };
+
+    traceForeSleeve();
 
     if (camoType) {
       ctx.save();
       ctx.clip();
-      drawCamoSplotches(ctx, camoType, -1, -elbowR * 1.3, foreLen * 0.9, elbowR * 1.3);
+      drawCamoSplotches(ctx, camoType, 0, -elbowR * 1.02, foreLen * 0.82, elbowR * 1.02);
       ctx.restore();
+      // Przywracamy obrys przedramienia, aby stroke nie obrysował plam ani kropek
+      traceForeSleeve();
     } else {
       const foreSleeveGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
       foreSleeveGrad.addColorStop(0.0, pal.light);
