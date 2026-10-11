@@ -123,10 +123,12 @@ export function getHairPalette(hexColor = '#18181b') {
 
 const HAIR_REST_PROFILES = {
   long_flowing: [1.84, 1.66, 1.56, 1.62, 1.74, 1.88],
-  dreadlocks:   [1.90, 1.72, 1.62, 1.66, 1.76, 1.88],
+  dreadlocks:   [1.86, 1.68, 1.58, 1.64, 1.76, 1.88],
   ponytail:     [2.28, 1.96, 1.72, 1.62, 1.72, 1.86],
   topknot:      [2.58, 2.22, 1.90, 1.72, 1.70, 1.84]
 };
+
+const PONYTAIL_ARCH_PROFILE = [2.35, 2.02, 1.76, 1.65, 1.72, 1.86];
 
 function applyHairDeadzone(val, deadzone = 0.45) {
   const absV = Math.abs(val);
@@ -141,10 +143,12 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
   const NUM_SEGS = 6;
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const isStaticTile = !!(p && p._isStaticTile);
-  const restProfile = HAIR_REST_PROFILES[hairStyle] || HAIR_REST_PROFILES.long_flowing;
+  const restProfile = (typeof strandOpts === 'object' && strandOpts.restProfile)
+    ? strandOpts.restProfile
+    : (HAIR_REST_PROFILES[hairStyle] || HAIR_REST_PROFILES.long_flowing);
 
   const opts = (typeof strandOpts === 'number')
-    ? { id: `s_${Math.round(strandOpts * 100)}`, phase: strandOpts, restOffset: strandOpts * 0.45, archRoot: 0, liftMult: 1.0, gravMult: 1.0, stiffMult: 1.0 }
+    ? { id: `s_${Math.round(strandOpts * 100)}`, phase: strandOpts, restOffset: strandOpts * 0.45, archRoot: 0, liftMult: 1.0, gravMult: 1.0, stiffMult: 1.0, restProfile }
     : {
         id: strandOpts.id || 'main',
         phase: strandOpts.phase || 0,
@@ -152,7 +156,8 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
         archRoot: strandOpts.archRoot || 0,
         liftMult: strandOpts.liftMult ?? 1.0,
         gravMult: strandOpts.gravMult ?? 1.0,
-        stiffMult: strandOpts.stiffMult ?? 1.0
+        stiffMult: strandOpts.stiffMult ?? 1.0,
+        restProfile: strandOpts.restProfile || restProfile
       };
 
   if (!p._hairPhys || p._hairPhys.style !== hairStyle || !p._hairPhys.strands) {
@@ -228,7 +233,8 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
         return t + archAdd + opts.restOffset * (0.45 + idx * 0.14);
       }),
       omegas: new Array(NUM_SEGS).fill(0),
-      lastFrameId: -1
+      lastFrameId: -1,
+      restProfile: restProfile
     };
     phys.strands[opts.id] = strand;
   }
@@ -277,16 +283,18 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
       : 0;
     const fallFactor = Math.min(1.0, fallSpeed / 4.5) * Math.min(1.35, opts.liftMult);
 
-    const isHeavy = (hairStyle === 'dreadlocks');
-    const baseStiff = (isHeavy ? 7.6 : 8.8) * opts.stiffMult;
-    const damping = isHeavy ? 0.88 : 0.90;
+    const isHeavy = false;
+    const baseStiff = 8.8 * opts.stiffMult;
+    const damping = 0.90;
+
+    const curRest = strand.restProfile || restProfile;
 
     for (let i = 0; i < NUM_SEGS; i++) {
       const segProgress = i / (NUM_SEGS - 1); // 0.0 u nasady -> 1.0 na końcówce
 
       // 1. Kąt spoczynkowy wzdłuż głowy/karku skorygowany o pochylenie głowy (-rot), aby włosy wisiały pionowo w dół zgodnie z grawitacją
       const archAdd = opts.archRoot * Math.max(0, 1.0 - i * 0.42);
-      let targetTheta = restProfile[i] + archAdd + opts.restOffset * (0.45 + segProgress * 0.55) - rot * (0.45 + segProgress * 0.40);
+      let targetTheta = curRest[i] + archAdd + opts.restOffset * (0.45 + segProgress * 0.55) - rot * (0.45 + segProgress * 0.40);
 
       // 2. Wpływ ruchu poziomego (przód vs tył):
       if (totalVx > 0) {
@@ -324,7 +332,7 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
       // 5. Miękkie przekazywanie krzywizny z poprzedniego segmentu
       if (i > 0) {
         const prevArch = opts.archRoot * Math.max(0, 1.0 - (i - 1) * 0.42);
-        const naturalDelta = (restProfile[i] + archAdd) - (restProfile[i - 1] + prevArch);
+        const naturalDelta = (curRest[i] + archAdd) - (curRest[i - 1] + prevArch);
         const parentFollow = strand.thetas[i - 1] + naturalDelta * (1.0 - fallFactor * 0.75);
         targetTheta = targetTheta * 0.72 + parentFollow * 0.28;
       }
@@ -755,57 +763,125 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
       drawTaperedHairStrand(ctx, chain.pts, chain.norms, st.widths, st.col, '#09090b', st.hl);
     }
 
-  } else if (style === 'dreadlocks') {
+  } else if (style === 'dreadlocks' || style === 'half_up') {
+    // 3. PÓŁ-ROZPUSZCZONE Z DODATKOWYM KUCYKIEM (HALF-UP HALF-DOWN)
+    // Krótsza długa wersja: rozpuszczone włosy do karku i ramion z dodatkowym kucykiem spiętym na koronie głowy
+
+    // A. Warstwa głębokiego podkładu przy karku (3 pasma eliminujące jakiekolwiek prześwity)
+    const baseNape1 = updateAndBuildHairChain(
+      p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+      -3.8, -1.2, 2.20, { id: 'hu_b_nape1', phase: 0.0, restOffset: -0.16, archRoot: 0.04, liftMult: 0.85, gravMult: 1.10, stiffMult: 0.90 }
+    );
+    const baseNape2 = updateAndBuildHairChain(
+      p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+      -4.5, -2.2, 2.30, { id: 'hu_b_nape2', phase: 0.5, restOffset: -0.10, archRoot: 0.06, liftMult: 0.88, gravMult: 1.05, stiffMult: 0.92 }
+    );
+    const baseBack = updateAndBuildHairChain(
+      p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+      -5.2, -3.2, 2.40, { id: 'hu_b_back', phase: 1.0, restOffset: -0.04, archRoot: 0.10, liftMult: 0.92, gravMult: 1.02, stiffMult: 0.94 }
+    );
+    drawTaperedHairStrand(ctx, baseNape1.pts, baseNape1.norms, [1.6, 1.9, 1.75, 1.45, 1.05, 0.55, 0.0], pal.dark, '#09090b', null);
+    drawTaperedHairStrand(ctx, baseNape2.pts, baseNape2.norms, [1.7, 2.0, 1.85, 1.50, 1.10, 0.58, 0.0], pal.dark, '#09090b', null);
+    drawTaperedHairStrand(ctx, baseBack.pts, baseBack.norms, [1.8, 2.1, 1.95, 1.55, 1.15, 0.60, 0.0], pal.dark, '#09090b', null);
+
     if (!hasHelmet) {
-      // Podkład sekcji dredów u nasady czaszki
+      // B. Baza sklepienia czaszki zebrana ku nasadzie kucyka
       ctx.beginPath();
-      ctx.moveTo(-5.4, -1.2);
-      ctx.quadraticCurveTo(-6.6, -4.2, -5.6, -7.0);
-      ctx.quadraticCurveTo(-4.2, -8.3, -0.8, -8.3);
-      ctx.quadraticCurveTo(2.8, -8.0, 4.2, -5.4);
-      ctx.quadraticCurveTo(1.8, -4.5, -0.5, -3.2);
-      ctx.quadraticCurveTo(-3.0, -2.0, -5.4, -1.2);
+      ctx.moveTo(-5.5, -1.8);
+      ctx.quadraticCurveTo(-6.6, -4.4, -5.6, -6.8);
+      ctx.quadraticCurveTo(-4.0, -8.3, -0.8, -8.3);
+      ctx.quadraticCurveTo(2.8, -8.1, 4.3, -5.6);
+      ctx.lineTo(4.6, -4.2);
+      ctx.quadraticCurveTo(2.4, -4.2, 0.8, -3.2);
+      ctx.quadraticCurveTo(-1.8, -1.8, -5.5, -1.8);
       ctx.closePath();
-      ctx.fillStyle = pal.dark;
+      ctx.fillStyle = hairGrad;
       ctx.fill();
       ctx.strokeStyle = '#09090b';
-      ctx.lineWidth = 0.85;
+      ctx.lineWidth = 0.90;
+      ctx.stroke();
+
+      // Płynne linie zaczesu biegnące od czoła i skroni w stronę nasady kucyka
+      ctx.strokeStyle = pal.highlight;
+      ctx.lineWidth = 0.70;
+      ctx.beginPath();
+      ctx.moveTo(3.2, -6.4);
+      ctx.quadraticCurveTo(0.2, -7.2, -4.2, -6.0);
+      ctx.moveTo(1.8, -4.6);
+      ctx.quadraticCurveTo(-1.0, -5.2, -4.4, -5.4);
       ctx.stroke();
     }
 
-    // 10 niezależnych dredów rozmieszczonych na całej głowie
-    const dreadConfigs = hasHelmet
+    // C. Rozpuszczone pasma opadające na kark i ramiona (o długościach segmentów 2.10–2.45, krótszych niż w long_flowing)
+    const looseStrands = hasHelmet
       ? [
-          { id: 'dr_0', x: -5.5, y: -3.4, len: 2.50, phase: 0.0, restOffset: 0.14,  archRoot: 0.08, liftMult: 1.12, col: pal.dark, hl: null },
-          { id: 'dr_1', x: -4.6, y: -2.2, len: 2.55, phase: 1.2, restOffset: 0.04,  archRoot: 0.05, liftMult: 1.02, col: pal.base, hl: pal.highlight },
-          { id: 'dr_2', x: -3.2, y: -1.8, len: 2.45, phase: 2.4, restOffset: -0.04, archRoot: 0.04, liftMult: 0.96, col: hairGrad, hl: pal.highlight },
-          { id: 'dr_3', x: -1.6, y: -1.8, len: 2.35, phase: 3.6, restOffset: -0.12, archRoot: 0.02, liftMult: 1.05, col: hairGrad, hl: pal.highlight }
+          { id: 'hu_ls_h1', x: -5.2, y: -3.2, len: 2.35, widths: [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.12, archRoot: 0.10, liftMult: 1.10 } },
+          { id: 'hu_ls_h2', x: -3.8, y: -2.4, len: 2.25, widths: [1.6, 1.9, 1.75, 1.4, 0.95, 0.50, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.0, restOffset: 0.02, archRoot: 0.06, liftMult: 1.05 } },
+          { id: 'hu_ls_h3', x: -2.0, y: -2.0, len: 2.15, widths: [1.4, 1.65, 1.5, 1.2, 0.80, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.0, restOffset: -0.08, archRoot: 0.04, liftMult: 1.12 } }
         ]
       : [
-          { id: 'dr_0',  x: -4.8, y: -6.4, len: 2.85, phase: 0.0, restOffset: 0.16,  archRoot: 0.24, liftMult: 1.18, col: pal.dark, hl: null },
-          { id: 'dr_1',  x: -5.5, y: -3.8, len: 2.70, phase: 0.8, restOffset: 0.08,  archRoot: 0.14, liftMult: 1.06, col: pal.base, hl: null },
-          { id: 'dr_1b', x: -5.2, y: -2.4, len: 2.60, phase: 1.5, restOffset: 0.00,  archRoot: 0.10, liftMult: 0.98, col: pal.dark, hl: null },
-          { id: 'dr_2',  x: -4.4, y: -1.4, len: 2.50, phase: 2.2, restOffset: -0.08, archRoot: 0.06, liftMult: 0.92, col: pal.dark, hl: null },
-          { id: 'dr_3',  x: -2.2, y: -7.5, len: 3.05, phase: 2.9, restOffset: 0.10,  archRoot: 0.36, liftMult: 1.22, col: hairGrad, hl: pal.highlight },
-          { id: 'dr_3b', x: -1.5, y: -6.4, len: 2.90, phase: 3.6, restOffset: 0.04,  archRoot: 0.28, liftMult: 1.14, col: pal.base, hl: pal.highlight },
-          { id: 'dr_4',  x: -2.8, y: -4.8, len: 2.75, phase: 4.3, restOffset: -0.02, archRoot: 0.20, liftMult: 1.04, col: pal.base, hl: pal.highlight },
-          { id: 'dr_5',  x:  0.4, y: -7.3, len: 3.00, phase: 5.0, restOffset: 0.02,  archRoot: 0.42, liftMult: 1.18, col: hairGrad, hl: pal.highlight },
-          { id: 'dr_6',  x:  1.4, y: -5.4, len: 2.65, phase: 5.7, restOffset: -0.08, archRoot: 0.32, liftMult: 1.12, col: hairGrad, hl: pal.highlight },
-          { id: 'dr_7',  x:  0.2, y: -4.0, len: 2.55, phase: 6.4, restOffset: -0.14, archRoot: 0.18, liftMult: 1.08, col: hairGrad, hl: pal.highlight }
+          { id: 'hu_ls_backtop', x: -5.4, y: -4.4, len: 2.45, widths: [1.65, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.12, archRoot: 0.18, liftMult: 1.12, gravMult: 0.94, stiffMult: 1.0 } },
+          { id: 'hu_ls_backmid', x: -5.6, y: -2.6, len: 2.40, widths: [1.6, 1.9, 1.75, 1.4, 1.0, 0.50, 0.0],    col: pal.base, hl: null,          opts: { phase: 1.8, restOffset: 0.04, archRoot: 0.12, liftMult: 1.06, gravMult: 0.98, stiffMult: 0.96 } },
+          { id: 'hu_ls_sideear', x: -2.8, y: -4.8, len: 2.35, widths: [1.55, 1.85, 1.7, 1.35, 0.95, 0.48, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.5, restOffset: -0.04, archRoot: 0.22, liftMult: 1.10, gravMult: 0.95, stiffMult: 1.0 } },
+          { id: 'hu_ls_overear', x: -1.2, y: -4.2, len: 2.25, widths: [1.45, 1.75, 1.6, 1.25, 0.88, 0.44, 0.0], col: pal.base, hl: null,          opts: { phase: 3.2, restOffset: -0.08, archRoot: 0.18, liftMult: 1.08, gravMult: 0.98, stiffMult: 0.98 } },
+          { id: 'hu_ls_temple',  x:  0.6, y: -4.2, len: 2.10, widths: [1.2, 1.45, 1.3, 1.0, 0.70, 0.35, 0.0],   col: hairGrad, hl: pal.highlight, opts: { phase: 3.9, restOffset: -0.14, archRoot: 0.14, liftMult: 1.15, gravMult: 0.92, stiffMult: 1.02 } },
+          { id: 'hu_ls_fly',     x: -2.2, y: -6.0, len: 2.25, widths: [0.95, 1.2, 1.05, 0.8, 0.55, 0.28, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 4.6, restOffset: 0.18, archRoot: 0.26, liftMult: 1.35, gravMult: 0.80, stiffMult: 1.12 } }
         ];
 
-    for (let d = 0; d < dreadConfigs.length; d++) {
-      const cfg = dreadConfigs[d];
+    for (let s = 0; s < looseStrands.length; s++) {
+      const st = looseStrands[s];
       const chain = updateAndBuildHairChain(
         p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
-        cfg.x, cfg.y, cfg.len,
-        { id: cfg.id, phase: cfg.phase, restOffset: cfg.restOffset, archRoot: cfg.archRoot, liftMult: cfg.liftMult, gravMult: 1.0, stiffMult: 0.95 }
+        st.x, st.y, st.len, { id: st.id, ...st.opts }
       );
-      drawTaperedHairStrand(
-        ctx, chain.pts, chain.norms,
-        [1.30, 1.48, 1.42, 1.28, 1.02, 0.62, 0.0],
-        cfg.col, '#09090b', cfg.hl
+      drawTaperedHairStrand(ctx, chain.pts, chain.norms, st.widths, st.col, '#09090b', st.hl);
+    }
+
+    // D. Dodatkowy kucyk spięty na koronie głowy (half-up ponytail z frotką)
+    if (!hasHelmet) {
+      const ptUnder = updateAndBuildHairChain(
+        p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+        -4.7, -5.6, 2.25,
+        { id: 'hu_pt_under', phase: -0.6, restOffset: -0.10, archRoot: 0.24, liftMult: 0.94, gravMult: 1.06, stiffMult: 0.95, restProfile: PONYTAIL_ARCH_PROFILE }
       );
+      const ptMain = updateAndBuildHairChain(
+        p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+        -4.9, -5.9, 2.45,
+        { id: 'hu_pt_main', phase: 0.3, restOffset: 0.06, archRoot: 0.32, liftMult: 1.16, gravMult: 0.92, stiffMult: 1.02, restProfile: PONYTAIL_ARCH_PROFILE }
+      );
+      const ptTop = updateAndBuildHairChain(
+        p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+        -5.1, -6.2, 2.30,
+        { id: 'hu_pt_top', phase: 1.0, restOffset: 0.14, archRoot: 0.38, liftMult: 1.26, gravMult: 0.86, stiffMult: 1.06, restProfile: PONYTAIL_ARCH_PROFILE }
+      );
+      const ptFly = updateAndBuildHairChain(
+        p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
+        -5.2, -6.5, 2.10,
+        { id: 'hu_pt_fly', phase: 1.7, restOffset: 0.22, archRoot: 0.44, liftMult: 1.42, gravMult: 0.76, stiffMult: 1.15, restProfile: PONYTAIL_ARCH_PROFILE }
+      );
+
+      drawTaperedHairStrand(ctx, ptUnder.pts, ptUnder.norms, [1.3, 1.55, 1.4, 1.1, 0.75, 0.38, 0.0], pal.dark, '#09090b', null);
+      drawTaperedHairStrand(ctx, ptMain.pts, ptMain.norms, [1.9, 2.25, 2.05, 1.65, 1.20, 0.62, 0.0], hairGrad, '#09090b', pal.highlight);
+      drawTaperedHairStrand(ctx, ptTop.pts, ptTop.norms, [1.4, 1.7, 1.55, 1.2, 0.85, 0.44, 0.0], hairGrad, '#09090b', pal.highlight);
+      drawTaperedHairStrand(ctx, ptFly.pts, ptFly.norms, [0.9, 1.15, 1.0, 0.75, 0.50, 0.25, 0.0], hairGrad, '#09090b', pal.highlight);
+
+      // Frotka / opaska spinająca kucyk u nasady
+      ctx.save();
+      ctx.translate(-4.8, -5.8);
+      ctx.rotate(0.35);
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 1.15, 1.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.ellipse(-0.2, 0, 0.85, 1.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = pal.light;
+      ctx.beginPath();
+      ctx.ellipse(-0.3, 0, 0.35, 1.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
   } else if (style === 'topknot') {
@@ -855,15 +931,15 @@ export function drawCharacterHairOverEarProfile(ctx, v, pal, hasHelmet) {
   if (hasHelmet) return;
   const style = String(v.hairStyle || 'buzzcut').toLowerCase();
 
-  if (style === 'messy') {
-    // Dodatkowy krótki kosmyk skroniowy przy uchu
+  if (style === 'messy' || style === 'dreadlocks' || style === 'half_up') {
+    // Kosmyk skroniowy przy uchu opadający przed małżowinę uszną
     ctx.fillStyle = pal.base;
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.75;
     ctx.beginPath();
-    ctx.moveTo(-0.4, -2.6);
-    ctx.lineTo(0.3, 0.2);
-    ctx.lineTo(-1.0, -0.5);
+    ctx.moveTo(-0.6, -2.6);
+    ctx.lineTo(0.2, 0.4);
+    ctx.lineTo(-1.1, -0.2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -916,6 +992,20 @@ export function drawCharacterHairFrontOrBack(ctx, v, isBackView, hasHelmet) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  } else if (style === 'dreadlocks' || style === 'half_up') {
+    ctx.beginPath();
+    ctx.arc(0, -2.8, 5.2, Math.PI * 0.92, Math.PI * 0.08, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    if (isBackView) {
+      // Zebrany kucyk na górze widoczny od tyłu
+      ctx.fillStyle = pal.dark;
+      ctx.beginPath();
+      ctx.ellipse(0, -7.0, 1.5, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
   } else {
     ctx.beginPath();
     ctx.arc(0, -2.8, 5.2, Math.PI * 0.92, Math.PI * 0.08, true);
