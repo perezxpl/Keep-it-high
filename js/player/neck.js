@@ -85,17 +85,17 @@ export function drawCharacterNeckProfile(
   // 1. NIEŚMIERTELNIK WOJSKOWY (Military Dog Tags)
   // ---------------------------------------------------------------------------
   if (style === 'dogtags') {
-    // Kotwice łańcuszka na szyi
-    const neckBackX = -2.6;
-    const neckBackY = 5.2;
-    const neckFrontX = 1.7;
-    const neckFrontY = 6.6;
+    // Kotwice łańcuszka u nasady szyi (kołnierz koszulki)
+    const neckBackX = -2.8;
+    const neckBackY = 7.6;
+    const neckFrontX = 1.9;
+    const neckFrontY = 8.8;
 
-    // Pozycja głównego wisiorka (obniżona na mostek, reagująca na fizykę)
-    const pendantBaseX = 1.2;
-    const pendantBaseY = 14.2 + bounceY;
-    const pendantX = pendantBaseX + Math.sin(swingAngle) * 4.2;
-    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.8;
+    // Pozycja głównego wisiorka (obniżona na mostek / splot słoneczny, reagująca na fizykę)
+    const pendantBaseX = 1.5;
+    const pendantBaseY = 18.2 + bounceY;
+    const pendantX = pendantBaseX + Math.sin(swingAngle) * 4.6;
+    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.9;
 
     // Stalowy łańcuszek kulkowy (ball chain) z kuleczek i metalicznych błysków
     ctx.strokeStyle = '#94a3b8';
@@ -103,12 +103,12 @@ export function drawCharacterNeckProfile(
     ctx.setLineDash([0.8, 1.2]);
     ctx.beginPath();
     ctx.moveTo(neckBackX, neckBackY);
-    ctx.quadraticCurveTo(-0.8, 9.8, pendantX, pendantY);
+    ctx.quadraticCurveTo(-0.6, 13.5, pendantX, pendantY);
     ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(neckFrontX, neckFrontY);
-    ctx.quadraticCurveTo(2.4, 10.4, pendantX, pendantY);
+    ctx.quadraticCurveTo(3.2, 14.0, pendantX, pendantY);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -213,36 +213,36 @@ export function drawCharacterNeckProfile(
   // 2. ZŁOTY ŁAŃCUCH GANGSTA (Heavy Cuban Curb Gold Chain)
   // ---------------------------------------------------------------------------
   } else if (style === 'gold_chain') {
-    const neckBackX = -2.6;
-    const neckBackY = 4.8;
-    const neckFrontX = 1.8;
-    const neckFrontY = 6.2;
+    const neckBackX = -2.8;
+    const neckBackY = 7.4;
+    const neckFrontX = 1.9;
+    const neckFrontY = 8.6;
 
-    const pendantBaseX = 1.4;
-    const pendantBaseY = 13.0 + bounceY;
-    const pendantX = pendantBaseX + Math.sin(swingAngle) * 3.8;
-    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.7;
+    const pendantBaseX = 1.7;
+    const pendantBaseY = 16.5 + bounceY;
+    const pendantX = pendantBaseX + Math.sin(swingAngle) * 4.2;
+    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.8;
 
     // Miękki cień rzucany przez ciężki łańcuch na klatkę piersiową
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.moveTo(neckBackX, neckBackY + 0.8);
-    ctx.quadraticCurveTo(-0.4, 9.4, pendantX, pendantY + 0.8);
+    ctx.quadraticCurveTo(-0.2, 12.5, pendantX, pendantY + 0.8);
     ctx.stroke();
 
     // Punkty splotu pancerka (Cuban Curb Links) dopasowane do profilu szyi i klatki
     const chainPoints = [
-      { x: neckBackX, y: neckBackY, angle: 0.85 },
-      { x: -1.8, y: 6.2, angle: 0.75 },
-      { x: -0.9, y: 7.8, angle: 0.65 },
-      { x: 0.0,  y: 9.6, angle: 0.50 },
-      { x: 0.9,  y: 11.4, angle: 0.35 },
+      { x: neckBackX, y: neckBackY, angle: 0.95 },
+      { x: -2.0, y: 9.6,  angle: 0.84 },
+      { x: -1.0, y: 11.8, angle: 0.70 },
+      { x: 0.0,  y: 13.8, angle: 0.55 },
+      { x: 0.9,  y: 15.6, angle: 0.38 },
       { x: pendantX, y: pendantY, angle: swingAngle * 0.8 },
-      { x: 2.2,  y: 11.2, angle: -0.40 },
-      { x: 2.3,  y: 9.4,  angle: -0.65 },
-      { x: 2.1,  y: 7.8,  angle: -0.85 },
-      { x: neckFrontX, y: neckFrontY, angle: -1.0 }
+      { x: 2.7,  y: 15.2, angle: -0.42 },
+      { x: 2.9,  y: 13.2, angle: -0.68 },
+      { x: 2.6,  y: 11.0, angle: -0.88 },
+      { x: neckFrontX, y: neckFrontY, angle: -1.05 }
     ];
 
     // Rysowanie poszczególnych trójwymiarowych, polerowanych ogniw
@@ -370,8 +370,8 @@ export function drawHeadNeckPreview(
 
   ctx.save();
   // Wyśrodkowanie z naciskiem na szyję i klatkę piersiową
-  ctx.translate(canvasW * 0.58, canvasH * 0.40);
-  const scale = Math.min(canvasW, canvasH) / 33.0;
+  ctx.translate(canvasW * 0.57, canvasH * 0.34);
+  const scale = Math.min(canvasW, canvasH) / 38.5;
   ctx.scale(scale, scale);
 
   // 1. Szyja
@@ -395,10 +395,10 @@ export function drawHeadNeckPreview(
   // Baza kołnierza koszulki (ramiona i klatka piersiowa pod szyją)
   ctx.fillStyle = '#1e293b';
   ctx.beginPath();
-  ctx.moveTo(-7.0, 19.0);
+  ctx.moveTo(-8.0, 28.0);
   ctx.lineTo(-3.2, 7.6);
   ctx.quadraticCurveTo(-0.5, 8.8, 2.0, 7.6);
-  ctx.lineTo(6.6, 19.0);
+  ctx.lineTo(8.0, 28.0);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = '#09090b';
