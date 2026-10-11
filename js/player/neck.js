@@ -85,44 +85,50 @@ export function drawCharacterNeckProfile(
   // 1. NIEŚMIERTELNIK WOJSKOWY (Military Dog Tags)
   // ---------------------------------------------------------------------------
   if (style === 'dogtags') {
-    // Kotwice łańcuszka u nasady szyi (kołnierz koszulki)
-    const neckBackX = -2.8;
-    const neckBackY = 7.6;
-    const neckFrontX = 1.9;
+    // Kotwice łańcuszka:
+    // Tylna strona szyi (kark, skąd łańcuszek wychodzi zza szyi)
+    const neckBackX = -1.8;
+    const neckBackY = 7.4;
+    // Przednia strona szyi (przy kołnierzu koszulki z przodu)
+    const neckFrontX = 2.8;
     const neckFrontY = 8.8;
 
-    // Pozycja głównego wisiorka (obniżona na mostek / splot słoneczny, reagująca na fizykę)
-    const pendantBaseX = 1.5;
-    const pendantBaseY = 18.2 + bounceY;
-    const pendantX = pendantBaseX + Math.sin(swingAngle) * 4.6;
-    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.9;
+    // Punkt zwisu wisiorka: Z PRZODU na klatce piersiowej (mostek pod podbródkiem)
+    const pendantBaseX = 4.6;
+    const pendantBaseY = 17.6 + bounceY;
+    const swingX = Math.sin(swingAngle) * 2.2;
+    const pendantX = pendantBaseX + swingX;
+    const pendantY = pendantBaseY - Math.abs(swingX) * 0.3;
 
-    // Stalowy łańcuszek kulkowy (ball chain) z kuleczek i metalicznych błysków
+    // Stalowy łańcuszek kulkowy (ball chain)
     ctx.strokeStyle = '#94a3b8';
     ctx.lineWidth = 0.85;
     ctx.setLineDash([0.8, 1.2]);
+
+    // 1. Tylna gałąź łańcuszka (otacza szyję od karku ku przodowi klatki)
     ctx.beginPath();
     ctx.moveTo(neckBackX, neckBackY);
-    ctx.quadraticCurveTo(-0.6, 13.5, pendantX, pendantY);
+    ctx.quadraticCurveTo(0.6, 12.0, pendantX - 0.4, pendantY);
     ctx.stroke();
 
+    // 2. Przednia gałąź łańcuszka (biegnie z przodu szyi wprost w dół po piersi)
     ctx.beginPath();
     ctx.moveTo(neckFrontX, neckFrontY);
-    ctx.quadraticCurveTo(3.2, 14.0, pendantX, pendantY);
+    ctx.quadraticCurveTo(4.2, 12.6, pendantX, pendantY);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Błysk światła na kulce łańcuszka
+    // Błysk światła na kulce łańcuszka z przodu
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 0.55;
     ctx.beginPath();
-    ctx.arc(pendantX + 0.3, pendantY - 2.8, 0.4, 0, Math.PI * 2);
+    ctx.arc(pendantX - 0.2, pendantY - 2.8, 0.4, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 1. Pierwsza blaszka (główna) – wisi na klatce piersiowej
+    // 1. Pierwsza blaszka (główna) – wisi z przodu na klatce piersiowej
     ctx.save();
     ctx.translate(pendantX, pendantY);
-    ctx.rotate(0.14 + swingAngle * 0.85);
+    ctx.rotate(0.08 + swingAngle * 0.75);
 
     // Czarna gumowa wyciszka (silencer) wokół rantu blaszki
     ctx.fillStyle = '#1e293b';
@@ -167,8 +173,8 @@ export function drawCharacterNeckProfile(
 
     // 2. Druga blaszka (zapasowa) – wisi na osobnym małym łańcuszku pod spodem
     ctx.save();
-    ctx.translate(pendantX + 1.2, pendantY + 1.6);
-    ctx.rotate(-0.16 + swingAngle * 1.05);
+    ctx.translate(pendantX + 1.0, pendantY + 1.6);
+    ctx.rotate(-0.10 + swingAngle * 0.95);
 
     // Małe kółeczko łączące
     ctx.strokeStyle = '#94a3b8';
@@ -213,35 +219,40 @@ export function drawCharacterNeckProfile(
   // 2. ZŁOTY ŁAŃCUCH GANGSTA (Heavy Cuban Curb Gold Chain)
   // ---------------------------------------------------------------------------
   } else if (style === 'gold_chain') {
-    const neckBackX = -2.8;
-    const neckBackY = 7.4;
-    const neckFrontX = 1.9;
+    // Kotwice łańcucha:
+    // Tylna strona szyi (kark)
+    const neckBackX = -1.8;
+    const neckBackY = 7.2;
+    // Przednia strona szyi (kołnierz z przodu)
+    const neckFrontX = 2.9;
     const neckFrontY = 8.6;
 
-    const pendantBaseX = 1.7;
-    const pendantBaseY = 16.5 + bounceY;
-    const pendantX = pendantBaseX + Math.sin(swingAngle) * 4.2;
-    const pendantY = pendantBaseY - Math.cos(swingAngle) * 0.8;
+    // Punkt zwisu medalionu: Z PRZODU na klatce piersiowej
+    const pendantBaseX = 4.7;
+    const pendantBaseY = 16.0 + bounceY;
+    const swingX = Math.sin(swingAngle) * 2.0;
+    const pendantX = pendantBaseX + swingX;
+    const pendantY = pendantBaseY - Math.abs(swingX) * 0.3;
 
     // Miękki cień rzucany przez ciężki łańcuch na klatkę piersiową
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
     ctx.lineWidth = 2.6;
     ctx.beginPath();
-    ctx.moveTo(neckBackX, neckBackY + 0.8);
-    ctx.quadraticCurveTo(-0.2, 12.5, pendantX, pendantY + 0.8);
+    ctx.moveTo(neckBackX, neckBackY + 0.6);
+    ctx.quadraticCurveTo(1.2, 11.4, pendantX - 0.4, pendantY + 0.6);
     ctx.stroke();
 
-    // Punkty splotu pancerka (Cuban Curb Links) dopasowane do profilu szyi i klatki
+    // Punkty splotu pancerka (Cuban Curb Links) - owijają szyję i spoczywają Z PRZODU na piersi
     const chainPoints = [
       { x: neckBackX, y: neckBackY, angle: 0.95 },
-      { x: -2.0, y: 9.6,  angle: 0.84 },
-      { x: -1.0, y: 11.8, angle: 0.70 },
-      { x: 0.0,  y: 13.8, angle: 0.55 },
-      { x: 0.9,  y: 15.6, angle: 0.38 },
-      { x: pendantX, y: pendantY, angle: swingAngle * 0.8 },
-      { x: 2.7,  y: 15.2, angle: -0.42 },
-      { x: 2.9,  y: 13.2, angle: -0.68 },
-      { x: 2.6,  y: 11.0, angle: -0.88 },
+      { x: -0.8, y: 9.2,  angle: 0.85 },
+      { x: 0.4,  y: 11.2, angle: 0.72 },
+      { x: 1.8,  y: 13.0, angle: 0.58 },
+      { x: 3.2,  y: 14.6, angle: 0.40 },
+      { x: pendantX, y: pendantY, angle: swingAngle * 0.7 },
+      { x: 4.6,  y: 14.2, angle: -0.42 },
+      { x: 4.2,  y: 12.2, angle: -0.68 },
+      { x: 3.6,  y: 10.4, angle: -0.88 },
       { x: neckFrontX, y: neckFrontY, angle: -1.05 }
     ];
 
