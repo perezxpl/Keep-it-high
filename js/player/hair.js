@@ -466,6 +466,16 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
   const style = (rawStyle === 'shaved' || rawStyle === 'none') ? 'buzzcut' : rawStyle;
   const pal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
 
+  const rawHeadgear = String((v && v.headgearStyle) || 'none').toLowerCase();
+  const headgear = (rawHeadgear === 'brak' || rawHeadgear === 'shaved') ? 'none' : rawHeadgear;
+  const isBalaclava = (headgear === 'balaclava');
+  const hasHat = (headgear === 'beret' || headgear === 'cap' || headgear === 'boonie');
+
+  // W pełnej kominiarce taktycznej cała głowa i fryzura są szczelnie schowane pod materiałem
+  if (isBalaclava) {
+    return;
+  }
+
   // 1. Subtelne cieniowanie wygolonych skroni / potylicy (fade bazowy dla krótkich/podgolonych fryzur)
   if (style === 'buzzcut' || style === 'crewcut' || style === 'mohawk' || style === 'slickback' || style === 'topknot') {
     const buzzGrad = ctx.createLinearGradient(-6.2, -6.5, 2.2, 0.5);
@@ -492,8 +502,8 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
   hairGrad.addColorStop(0.55, pal.base);
   hairGrad.addColorStop(1.0, pal.light);
 
-  // 2. KRÓTKIE FRYZURY NA CZASZCE (ukrywane tylko gdy nałożony jest pełny hełm)
-  if (!hasHelmet) {
+  // 2. KRÓTKIE FRYZURY NA CZASZCE (ukrywane gdy nałożony jest pełny hełm balistyczny, beret, czapka lub kapelusz)
+  if (!hasHelmet && !hasHat) {
     if (style === 'crewcut') {
       // Wojskowy jeżyk (Flat Top / High & Tight)
       ctx.beginPath();
@@ -665,7 +675,7 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, highMidChain.pts, highMidChain.norms, [1.5, 1.8, 1.65, 1.3, 0.90, 0.48, 0.0], hairGrad, '#09090b', pal.highlight);
     drawTaperedHairStrand(ctx, flyChain.pts, flyChain.norms, [1.0, 1.25, 1.15, 0.85, 0.60, 0.32, 0.0], hairGrad, '#09090b', pal.highlight);
 
-    if (!hasHelmet) {
+    if (!hasHelmet && !hasHat) {
       // Zaczesane włosy pokrywające górę, skroń i bok głowy oraz przysłaniające górną połowę ucha
       ctx.beginPath();
       ctx.moveTo(-4.8, 2.3);
@@ -710,7 +720,7 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, deepMid.pts, deepMid.norms, [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], pal.dark, '#09090b', null);
     drawTaperedHairStrand(ctx, deepBack.pts, deepBack.norms, [2.0, 2.3, 2.15, 1.8, 1.25, 0.68, 0.0], pal.dark, '#09090b', null);
 
-    if (!hasHelmet) {
+    if (!hasHelmet && !hasHat) {
       // Baza u nasady sklepienia czaszki (rysowana POD pasmami na całej głowie)
       ctx.beginPath();
       ctx.moveTo(-5.6, -1.5);
@@ -728,13 +738,15 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
       ctx.stroke();
     }
 
-    // 2. 12 BOGATYCH NIEZALEŻNYCH PASM ROZMIESZCZONYCH NA CAŁEJ GŁOWIE
-    const strandsOnHead = hasHelmet
+    // 2. BOGATE NIEZALEŻNE PASMA ROZMIESZCZONYCH NA GŁOWIE
+    const strandsOnHead = (hasHelmet || hasHat)
       ? [
-          { id: 'lf_h1', x: -5.4, y: -3.2, len: 2.65, widths: [1.8, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.14, archRoot: 0.10, liftMult: 1.12 } },
-          { id: 'lf_h2', x: -4.2, y: -2.4, len: 2.60, widths: [1.8, 2.1, 1.9, 1.55, 1.1, 0.58, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.4, restOffset: 0.02, archRoot: 0.06, liftMult: 1.00 } },
-          { id: 'lf_h3', x: -2.4, y: -2.0, len: 2.45, widths: [1.65, 1.95, 1.8, 1.45, 1.0, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.6, restOffset: -0.06, archRoot: 0.04, liftMult: 1.08 } },
-          { id: 'lf_h4', x: -0.6, y: -2.2, len: 2.15, widths: [1.2, 1.45, 1.3, 1.0, 0.7, 0.36, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 4.8, restOffset: -0.14, archRoot: 0.02, liftMult: 1.15 } }
+          // Pasma karku, potylicy i ramion wychodzące od dołu spod nakrycia głowy (beret, czapka, kapelusz, hełm)
+          { id: 'lf_h1', x: -5.4, y: -2.8, len: 2.75, widths: [1.8, 2.1, 1.95, 1.6, 1.15, 0.6, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.14, archRoot: 0.10, liftMult: 1.12 } },
+          { id: 'lf_h2', x: -4.2, y: -2.2, len: 2.70, widths: [1.8, 2.1, 1.9, 1.55, 1.1, 0.58, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.4, restOffset: 0.02, archRoot: 0.06, liftMult: 1.00 } },
+          { id: 'lf_h3', x: -2.4, y: -1.8, len: 2.55, widths: [1.65, 1.95, 1.8, 1.45, 1.0, 0.52, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.6, restOffset: -0.06, archRoot: 0.04, liftMult: 1.08 } },
+          { id: 'lf_h4', x: -0.6, y: -2.0, len: 2.30, widths: [1.3, 1.55, 1.4, 1.1, 0.75, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 4.8, restOffset: -0.14, archRoot: 0.02, liftMult: 1.15 } },
+          { id: 'lf_h5', x: -5.8, y: -1.8, len: 2.65, widths: [1.6, 1.95, 1.8, 1.45, 1.05, 0.52, 0.0], col: pal.base, hl: null,          opts: { phase: 5.6, restOffset: 0.08, archRoot: 0.08, liftMult: 1.05 } }
         ]
       : [
           // A. Tylna potylica i kaskada karku
@@ -786,7 +798,7 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     drawTaperedHairStrand(ctx, baseNape2.pts, baseNape2.norms, [1.7, 2.0, 1.85, 1.50, 1.10, 0.58, 0.0], pal.dark, '#09090b', null);
     drawTaperedHairStrand(ctx, baseBack.pts, baseBack.norms, [1.8, 2.1, 1.95, 1.55, 1.15, 0.60, 0.0], pal.dark, '#09090b', null);
 
-    if (!hasHelmet) {
+    if (!hasHelmet && !hasHat) {
       // B. Baza sklepienia czaszki zebrana ku nasadzie kucyka
       ctx.beginPath();
       ctx.moveTo(-5.5, -1.8);
@@ -815,11 +827,11 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     }
 
     // C. Rozpuszczone pasma opadające na kark i ramiona (o długościach segmentów 2.10–2.45, krótszych niż w long_flowing)
-    const looseStrands = hasHelmet
+    const looseStrands = (hasHelmet || hasHat)
       ? [
-          { id: 'hu_ls_h1', x: -5.2, y: -3.2, len: 2.35, widths: [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.12, archRoot: 0.10, liftMult: 1.10 } },
-          { id: 'hu_ls_h2', x: -3.8, y: -2.4, len: 2.25, widths: [1.6, 1.9, 1.75, 1.4, 0.95, 0.50, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.0, restOffset: 0.02, archRoot: 0.06, liftMult: 1.05 } },
-          { id: 'hu_ls_h3', x: -2.0, y: -2.0, len: 2.15, widths: [1.4, 1.65, 1.5, 1.2, 0.80, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.0, restOffset: -0.08, archRoot: 0.04, liftMult: 1.12 } }
+          { id: 'hu_ls_h1', x: -5.2, y: -2.8, len: 2.45, widths: [1.7, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0], col: pal.base, hl: pal.highlight, opts: { phase: 1.0, restOffset: 0.12, archRoot: 0.10, liftMult: 1.10 } },
+          { id: 'hu_ls_h2', x: -3.8, y: -2.2, len: 2.35, widths: [1.6, 1.9, 1.75, 1.4, 0.95, 0.50, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 2.0, restOffset: 0.02, archRoot: 0.06, liftMult: 1.05 } },
+          { id: 'hu_ls_h3', x: -2.0, y: -1.8, len: 2.25, widths: [1.4, 1.65, 1.5, 1.2, 0.80, 0.40, 0.0], col: hairGrad, hl: pal.highlight, opts: { phase: 3.0, restOffset: -0.08, archRoot: 0.04, liftMult: 1.12 } }
         ]
       : [
           { id: 'hu_ls_backtop', x: -5.4, y: -4.4, len: 2.45, widths: [1.65, 2.0, 1.85, 1.5, 1.05, 0.55, 0.0],  col: hairGrad, hl: pal.highlight, opts: { phase: 1.2, restOffset: 0.12, archRoot: 0.18, liftMult: 1.12, gravMult: 0.94, stiffMult: 1.0 } },
@@ -840,7 +852,7 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     }
 
     // D. Dodatkowy kucyk spięty na koronie głowy (half-up ponytail z frotką)
-    if (!hasHelmet) {
+    if (!hasHelmet && !hasHat) {
       const ptUnder = updateAndBuildHairChain(
         p, 'dreadlocks', currentFacingDir, torsoTilt, headPitch,
         -4.7, -5.6, 2.25,
@@ -887,6 +899,9 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
     }
 
   } else if (style === 'topknot') {
+    if (hasHelmet || hasHat) {
+      return;
+    }
     // 3 niezależne pasma kitki wojownika
     const tkUnder = updateAndBuildHairChain(
       p, 'topknot', currentFacingDir, torsoTilt, headPitch,
@@ -931,6 +946,8 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
 
 export function drawCharacterHairOverEarProfile(ctx, v, pal, hasHelmet) {
   if (hasHelmet) return;
+  const rawHeadgear = String((v && v.headgearStyle) || 'none').toLowerCase();
+  if (rawHeadgear === 'balaclava') return;
   const style = String(v.hairStyle || 'buzzcut').toLowerCase();
 
   if (style === 'messy' || style === 'dreadlocks' || style === 'half_up') {

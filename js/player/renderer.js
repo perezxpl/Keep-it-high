@@ -1338,16 +1338,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const hasHelmet = !!(p.hasHelmet || v.hasHelmet);
     const hairPal = getHairPalette(v.hairColor || v.hairColor0 || '#18181b');
 
-    // Małżowina uszna (rysowana przed główną masą włosów, by długie włosy i boki fryzur naturalnie przysłaniały/zasłaniały ucho)
-    ctx.fillStyle = v.skinBack;
-    ctx.beginPath();
-    ctx.ellipse(-2.6, -0.6, 1.6, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = v.skinDark;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
-    ctx.stroke();
+    const rawHeadgear = String((v && v.headgearStyle) || 'none').toLowerCase();
+    const isBalaclava = (rawHeadgear === 'balaclava');
+
+    // Małżowina uszna (ukrywana gdy założona jest pełna kominiarka)
+    if (!isBalaclava) {
+      ctx.fillStyle = v.skinBack;
+      ctx.beginPath();
+      ctx.ellipse(-2.6, -0.6, 1.6, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = v.skinDark;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
+      ctx.stroke();
+    }
 
     // Zarost twarzy (broda, wąs, kilkudniowy cień zarostu na żuchwie i podbródku - rysowany pod włosami)
     drawCharacterFacialHairProfile(ctx, v, hasHelmet);
@@ -1441,8 +1446,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.lineTo(4.4, -3.5);
     ctx.stroke();
 
-    // Rany na twarzy w profilu
-    drawHeadWoundsProfile(ctx, dmgRatio);
+    // Rany na twarzy w profilu (tylko na odsłoniętej twarzy)
+    if (!isBalaclava) {
+      drawHeadWoundsProfile(ctx, dmgRatio);
+    }
 
   } else if (isLookingAway) {
     ctx.rotate(pose.headPitch * 0.5);

@@ -69,6 +69,9 @@ export function getBeardPalette(hexColor) {
  * dzięki czemu zarost NIGDY nie zasłania ucha!
  */
 export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
+  const rawHeadgear = String((v && v.headgearStyle) || 'none').toLowerCase();
+  if (rawHeadgear === 'balaclava') return;
+
   const rawStyle = String(v.beardStyle || 'clean').toLowerCase();
   const style = (rawStyle === 'none' || rawStyle === 'shaved') ? 'clean' : rawStyle;
   if (style === 'clean') return;
