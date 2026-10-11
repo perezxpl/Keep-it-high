@@ -267,28 +267,17 @@ function drawToxicCascadeStream(ctx, x, startY, endY, streamWidth, time, intensi
   const height = endY - startY;
   if (height <= 4) return;
 
-  // Krok próbkowania 10px zapewnia idealną, organiczną krzywiznę bez strat FPS
-  const step = 10;
+  // Krok próbkowania 22px zapewnia idealną, organiczną krzywiznę przy maksymalnym FPS (zero lagów)
+  const step = 22;
   const numSteps = Math.ceil(height / step);
 
   // -------------------------------------------------------------------------
-  // 1. ZEWNĘTRZNA BIO-AURA (MIĘKKA POŚWIATA OPADU ŚCIEKU - SCREEN)
-  // -------------------------------------------------------------------------
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = `rgba(34, 197, 94, ${0.16 * intensity})`;
-  ctx.beginPath();
-  const auraExtra = sW * 1.5;
-  ctx.rect(x - halfSW - auraExtra, startY, (halfSW + auraExtra) * 2, height);
-  ctx.fill();
-  ctx.restore();
-
-  // -------------------------------------------------------------------------
-  // 2. GŁÓWNY PŁYNNY KORPUS SZLAMU (CIEMNOZIELONA GĘSTA CIEŻ PIANKOWA)
+  // 1. GŁÓWNY PŁYNNY KORPUS SZLAMU (CIEMNOZIELONA GĘSTA CIECZ PIANKOWA)
   // Laminarny spływ: fale przemieszczają się W DÓŁ (czas * 10 - y * 0.02)
+  // Czysty, organiczny strumień bez kanciastej poświaty/ramki w tle
   // -------------------------------------------------------------------------
   ctx.save();
-  ctx.fillStyle = `rgba(16, 185, 129, ${0.85 * intensity})`;
+  ctx.fillStyle = `rgba(16, 185, 129, ${0.88 * intensity})`;
   ctx.beginPath();
 
   // Płynny menisk wylewowy na wylocie rury
@@ -410,19 +399,16 @@ function drawAcidImpactZone(ctx, x, surfaceY, streamWidth, time, intensity) {
   ctx.save();
   const impactR = Math.max(14, streamWidth * 2.0);
 
-  // 1. ŁUNA ROZBLYSKU NA TAFLE (SCREEN Z WARSTWOWYMI ELIPSAMI - SZYBKIE I PŁYNNE)
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = `rgba(34, 197, 94, ${0.28 * intensity})`;
+  // 1. ŁUNA ROZBLYSKU NA TAFLE (PŁYNNA I WYDAJNA BEZ TRYBU SCREEN)
+  ctx.fillStyle = `rgba(34, 197, 94, ${0.30 * intensity})`;
   ctx.beginPath();
-  ctx.ellipse(x, surfaceY, impactR * 1.6, 7.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, surfaceY, impactR * 1.5, 7.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = `rgba(134, 239, 172, ${0.45 * intensity})`;
   ctx.beginPath();
-  ctx.ellipse(x, surfaceY, impactR * 0.9, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, surfaceY, impactR * 0.85, 4.0, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
   // 2. ROZSZERZAJĄCE SIĘ PIERŚCIENIE PIANY (SHOCKWAVE RINGS)
   const ringProgress1 = (time * 2.8) % 1.0;

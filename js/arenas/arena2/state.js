@@ -532,34 +532,26 @@ export function getAcidSurfaceY(x, time) {
 // 100% symetria osiowa względem X = 2000 (prealokowane obiekty, 0 alokacji GC w pętli renderującej)
 // =========================================================================
 export const _acidFlotsam = [
-  // 1. Toksyczne beczki z wyciekiem i dymem (symetria X = 2000: |X - 2000| = 1580 oraz 680)
-  { type: 'barrel', baseX: 420,  driftAmp: 18, driftSpeed: 0.60, phase: 0.00, tiltAmp: 0.15, size: 28, yOffset: 6 },
-  { type: 'barrel', baseX: 3580, driftAmp: 18, driftSpeed: 0.60, phase: Math.PI, tiltAmp: -0.15, size: 28, yOffset: 6 },
-  { type: 'barrel', baseX: 1320, driftAmp: 14, driftSpeed: 0.75, phase: 1.50, tiltAmp: 0.18, size: 26, yOffset: 5 },
-  { type: 'barrel', baseX: 2680, driftAmp: 14, driftSpeed: 0.75, phase: 1.50 + Math.PI, tiltAmp: -0.18, size: 26, yOffset: 5 },
+  // 1. Toksyczne beczki z wyciekiem i dymem (symetria X = 2000: |X - 2000| = 1480)
+  { type: 'barrel', baseX: 520,  driftAmp: 16, driftSpeed: 0.60, phase: 0.00, tiltAmp: 0.15, size: 28, yOffset: 6 },
+  { type: 'barrel', baseX: 3480, driftAmp: 16, driftSpeed: 0.60, phase: Math.PI, tiltAmp: -0.15, size: 28, yOffset: 6 },
 
-  // 2. Dryfujące ludzkie czaszki (symetria X = 2000: |X - 2000| = 1280 oraz 250)
-  { type: 'skull',  baseX: 720,  driftAmp: 12, driftSpeed: 0.80, phase: 0.70, tiltAmp: 0.12, size: 18, yOffset: 4 },
-  { type: 'skull',  baseX: 3280, driftAmp: 12, driftSpeed: 0.80, phase: 0.70 + Math.PI, tiltAmp: -0.12, size: 18, yOffset: 4 },
-  { type: 'skull',  baseX: 1750, driftAmp: 10, driftSpeed: 0.90, phase: 2.10, tiltAmp: 0.10, size: 16, yOffset: 3 },
-  { type: 'skull',  baseX: 2250, driftAmp: 10, driftSpeed: 0.90, phase: 2.10 + Math.PI, tiltAmp: -0.10, size: 16, yOffset: 3 },
+  // 2. Dryfujące ludzkie czaszki (symetria X = 2000: |X - 2000| = 820)
+  { type: 'skull',  baseX: 1180, driftAmp: 12, driftSpeed: 0.80, phase: 0.70, tiltAmp: 0.12, size: 18, yOffset: 4 },
+  { type: 'skull',  baseX: 2820, driftAmp: 12, driftSpeed: 0.80, phase: 0.70 + Math.PI, tiltAmp: -0.12, size: 18, yOffset: 4 },
 
-  // 3. Dryfujące ludzkie kości (symetria X = 2000: |X - 2000| = 920)
-  { type: 'bones',  baseX: 1080, driftAmp: 15, driftSpeed: 0.65, phase: 1.10, tiltAmp: 0.20, size: 22, yOffset: 2 },
-  { type: 'bones',  baseX: 2920, driftAmp: 15, driftSpeed: 0.65, phase: 1.10 + Math.PI, tiltAmp: -0.20, size: 22, yOffset: 2 },
+  // 3. Dryfujące ludzkie kości (symetria X = 2000: |X - 2000| = 1280)
+  { type: 'bones',  baseX: 720,  driftAmp: 14, driftSpeed: 0.65, phase: 1.10, tiltAmp: 0.20, size: 22, yOffset: 2 },
+  { type: 'bones',  baseX: 3280, driftAmp: 14, driftSpeed: 0.65, phase: 1.10 + Math.PI, tiltAmp: -0.20, size: 22, yOffset: 2 },
 
-  // 4. Ości ryb / szkielety rybie (symetria X = 2000: |X - 2000| = 1760, 500 oraz 100)
-  { type: 'fish_skeleton', baseX: 240,  driftAmp: 16, driftSpeed: 0.70, phase: 0.40, tiltAmp: 0.25, size: 24, yOffset: 2 },
-  { type: 'fish_skeleton', baseX: 3760, driftAmp: 16, driftSpeed: 0.70, phase: 0.40 + Math.PI, tiltAmp: -0.25, size: 24, yOffset: 2 },
-  { type: 'fish_skeleton', baseX: 1500, driftAmp: 12, driftSpeed: 0.85, phase: 2.70, tiltAmp: 0.20, size: 20, yOffset: 2 },
-  { type: 'fish_skeleton', baseX: 2500, driftAmp: 12, driftSpeed: 0.85, phase: 2.70 + Math.PI, tiltAmp: -0.20, size: 20, yOffset: 2 },
-  { type: 'fish_skeleton', baseX: 1900, driftAmp: 8,  driftSpeed: 1.00, phase: 3.50, tiltAmp: 0.18, size: 18, yOffset: 1 },
-  { type: 'fish_skeleton', baseX: 2100, driftAmp: 8,  driftSpeed: 1.00, phase: 3.50 + Math.PI, tiltAmp: -0.18, size: 18, yOffset: 1 }
+  // 4. Ości ryb / szkielety rybie (symetria X = 2000: |X - 2000| = 350)
+  { type: 'fish_skeleton', baseX: 1650, driftAmp: 10, driftSpeed: 0.85, phase: 2.70, tiltAmp: 0.20, size: 20, yOffset: 2 },
+  { type: 'fish_skeleton', baseX: 2350, driftAmp: 10, driftSpeed: 0.85, phase: 2.70 + Math.PI, tiltAmp: -0.20, size: 20, yOffset: 2 }
 ];
 
 // =========================================================================
 // ZANURZONE SZKIELETY W GŁĘBI KWASU (SUBMERGED SKELETONS - LUDZKIE I RYBIE)
-// Pływają w toni cieczy (30-240px pod taflą) z dynamicznym falowaniem, prądem i bąblami
+// Pływają w toni cieczy (50-130px pod taflą) z dynamicznym falowaniem i prądem
 // 100% symetria osiowa względem X = 2000 (0 alokacji GC w pętli renderującej)
 // =========================================================================
 export const _submergedSkeletons = [
@@ -567,7 +559,7 @@ export const _submergedSkeletons = [
   {
     type: 'human_full',
     baseX: 850,
-    depth: 48,
+    depth: 55,
     bobAmp: 9,
     bobSpeed: 0.65,
     driftAmp: 22,
@@ -580,7 +572,7 @@ export const _submergedSkeletons = [
   {
     type: 'human_full',
     baseX: 3150,
-    depth: 48,
+    depth: 55,
     bobAmp: 9,
     bobSpeed: 0.65,
     driftAmp: 22,
@@ -621,102 +613,44 @@ export const _submergedSkeletons = [
     facing: -1
   },
 
-  // 3. Głęboki dryfujący ludzki szkielet w pozycji pływaka (para 3: symetria |X - 2000| = 220)
-  {
-    type: 'human_full',
-    baseX: 1780,
-    depth: 135,
-    bobAmp: 11,
-    bobSpeed: 0.45,
-    driftAmp: 18,
-    driftSpeed: 0.38,
-    phase: 2.40,
-    size: 36,
-    tiltAmp: 0.22,
-    facing: -1
-  },
-  {
-    type: 'human_full',
-    baseX: 2220,
-    depth: 135,
-    bobAmp: 11,
-    bobSpeed: 0.45,
-    driftAmp: 18,
-    driftSpeed: 0.38,
-    phase: 2.40 + Math.PI,
-    size: 36,
-    tiltAmp: -0.22,
-    facing: 1
-  },
-
-  // 4. Gigantyczny drapieżnik rybi w toni (para 4: symetria |X - 2000| = 1480)
-  {
-    type: 'mutant_fish',
-    baseX: 520,
-    depth: 110,
-    bobAmp: 16,
-    bobSpeed: 0.50,
-    driftAmp: 32,
-    driftSpeed: 0.40,
-    phase: 0.90,
-    size: 72,
-    tiltAmp: 0.16,
-    swimSpeed: 2.4,
-    facing: 1
-  },
-  {
-    type: 'mutant_fish',
-    baseX: 3480,
-    depth: 110,
-    bobAmp: 16,
-    bobSpeed: 0.50,
-    driftAmp: 32,
-    driftSpeed: 0.40,
-    phase: 0.90 + Math.PI,
-    size: 72,
-    tiltAmp: -0.16,
-    swimSpeed: 2.4,
-    facing: -1
-  },
-
-  // 5. Zanurzony korpus ludzki z żebrami i kręgosłupem (para 5: symetria |X - 2000| = 860)
+  // 3. Zanurzony korpus ludzki na skrajach areny (para 3: symetria |X - 2000| = 1580)
   {
     type: 'human_torso',
-    baseX: 1140,
-    depth: 165,
-    bobAmp: 8,
-    bobSpeed: 0.60,
-    driftAmp: 16,
-    driftSpeed: 0.35,
-    phase: 3.10,
-    size: 32,
-    tiltAmp: 0.25,
+    baseX: 420,
+    depth: 120,
+    bobAmp: 10,
+    bobSpeed: 0.55,
+    driftAmp: 18,
+    driftSpeed: 0.38,
+    phase: 0.80,
+    size: 34,
+    tiltAmp: 0.20,
     facing: 1
   },
   {
     type: 'human_torso',
-    baseX: 2860,
-    depth: 165,
-    bobAmp: 8,
-    bobSpeed: 0.60,
-    driftAmp: 16,
-    driftSpeed: 0.35,
-    phase: 3.10 + Math.PI,
-    size: 32,
-    tiltAmp: -0.25,
+    baseX: 3580,
+    depth: 120,
+    bobAmp: 10,
+    bobSpeed: 0.55,
+    driftAmp: 18,
+    driftSpeed: 0.38,
+    phase: 0.80 + Math.PI,
+    size: 34,
+    tiltAmp: -0.20,
     facing: -1
   },
 
-  // 6. Szybki szkielet ryby w płytszej strefie przy centrum (para 6: symetria |X - 2000| = 60)
+  // 4. Szybki szkielet ryby w pobliżu centrum (para 4: symetria |X - 2000| = 80)
   {
     type: 'mutant_fish',
-    baseX: 1940,
-    depth: 62,
+    baseX: 1920,
+    depth: 65,
     bobAmp: 10,
     bobSpeed: 0.85,
     driftAmp: 20,
     driftSpeed: 0.65,
-    phase: 4.00,
+    phase: 3.50,
     size: 46,
     tiltAmp: 0.20,
     swimSpeed: 3.6,
@@ -724,72 +658,16 @@ export const _submergedSkeletons = [
   },
   {
     type: 'mutant_fish',
-    baseX: 2060,
-    depth: 62,
+    baseX: 2080,
+    depth: 65,
     bobAmp: 10,
     bobSpeed: 0.85,
     driftAmp: 20,
     driftSpeed: 0.65,
-    phase: 4.00 + Math.PI,
+    phase: 3.50 + Math.PI,
     size: 46,
     tiltAmp: -0.20,
     swimSpeed: 3.6,
-    facing: -1
-  },
-
-  // 7. Prastary szkielet w głębinach przy dnie (para 7: symetria |X - 2000| = 720)
-  {
-    type: 'human_full',
-    baseX: 1280,
-    depth: 230,
-    bobAmp: 12,
-    bobSpeed: 0.35,
-    driftAmp: 14,
-    driftSpeed: 0.28,
-    phase: 1.80,
-    size: 40,
-    tiltAmp: 0.18,
-    facing: 1
-  },
-  {
-    type: 'human_full',
-    baseX: 2720,
-    depth: 230,
-    bobAmp: 12,
-    bobSpeed: 0.35,
-    driftAmp: 14,
-    driftSpeed: 0.28,
-    phase: 1.80 + Math.PI,
-    size: 40,
-    tiltAmp: -0.18,
-    facing: -1
-  },
-
-  // 8. Zanurzona sylwetka szkieletu na skrajach areny (para 8: symetria |X - 2000| = 1680)
-  {
-    type: 'human_torso',
-    baseX: 320,
-    depth: 95,
-    bobAmp: 9,
-    bobSpeed: 0.55,
-    driftAmp: 16,
-    driftSpeed: 0.40,
-    phase: 0.50,
-    size: 34,
-    tiltAmp: 0.22,
-    facing: 1
-  },
-  {
-    type: 'human_torso',
-    baseX: 3680,
-    depth: 95,
-    bobAmp: 9,
-    bobSpeed: 0.55,
-    driftAmp: 16,
-    driftSpeed: 0.40,
-    phase: 0.50 + Math.PI,
-    size: 34,
-    tiltAmp: -0.22,
     facing: -1
   }
 ];
@@ -1037,17 +915,16 @@ export function drawAcidDeathEffects(ctx, time) {
     }
   }
 
-  // B. Kropelki gejzeru (Acid Splash)
+  // B. Kropelki gejzeru (Acid Splash) - bez ctx.save/restore w pętli
   for (let i = 0; i < _acidSplashParticles.length; i++) {
     const sp = _acidSplashParticles[i];
-    ctx.save();
     ctx.globalAlpha = sp.alpha;
     ctx.fillStyle = sp.color;
     ctx.beginPath();
     ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
+  ctx.globalAlpha = 1.0;
 
   // C. Wyrzucone bronie / hełmy (Debris)
   for (let i = 0; i < _acidDebrisList.length; i++) {
@@ -1084,17 +961,16 @@ export function drawAcidDeathEffects(ctx, time) {
     ctx.restore();
   }
 
-  // D. Cząstki ulatującego dymu (lekki render bez kosztownych radial gradientów)
+  // D. Cząstki ulatującego dymu - bez ctx.save/restore w pętli
   for (let i = 0; i < _acidSmokeParticles.length; i++) {
     const sm = _acidSmokeParticles[i];
-    ctx.save();
     ctx.globalAlpha = Math.max(0, (sm.currentAlpha || 0.4) * 0.45);
     ctx.fillStyle = sm.color || '#4ade80';
     ctx.beginPath();
     ctx.arc(sm.x, sm.y, sm.radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
+  ctx.globalAlpha = 1.0;
 
   ctx.restore();
 }

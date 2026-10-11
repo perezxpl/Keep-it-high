@@ -1393,9 +1393,9 @@ let _cachedUnderglowCurY = -1;
 
 function getCachedUnderglowGrad(ctx, curY) {
   if (!_cachedUnderglowGrad || Math.abs(_cachedUnderglowCurY - curY) > 1) {
-    _cachedUnderglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 280);
-    _cachedUnderglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.28)');
-    _cachedUnderglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.12)');
+    _cachedUnderglowGrad = ctx.createLinearGradient(0, curY, 0, curY - 240);
+    _cachedUnderglowGrad.addColorStop(0.00, 'rgba(34, 197, 94, 0.22)');
+    _cachedUnderglowGrad.addColorStop(0.50, 'rgba(16, 185, 129, 0.08)');
     _cachedUnderglowGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
     _cachedUnderglowCurY = curY;
   }
@@ -1406,10 +1406,6 @@ function getCachedUnderglowGrad(ctx, curY) {
  * 1. Podświetlenie od spodu kwasem (Acid Upward Underglow - cached gradient + horizontal culling)
  */
 export function drawAcidUpwardUnderglow(ctx, camera, viewLeft, viewRight) {
-  ctx.save();
-  ctx.shadowBlur = 0;
-  ctx.globalCompositeOperation = 'screen';
-
   const curY = (typeof ACID_SURGE_SYSTEM !== 'undefined') ? ACID_SURGE_SYSTEM.currentY : 1440;
   const underglowGrad = getCachedUnderglowGrad(ctx, curY);
 
@@ -1418,18 +1414,14 @@ export function drawAcidUpwardUnderglow(ctx, camera, viewLeft, viewRight) {
   const w = Math.max(100, right - left);
 
   ctx.fillStyle = underglowGrad;
-  ctx.fillRect(left, curY - 280, w, 280);
-  ctx.restore();
+  ctx.fillRect(left, curY - 240, w, 240);
 }
 
 /**
  * 1B. Zielony akcent na krawędziach platform (Rim Light)
  */
 export function drawPlatformRimLighting(ctx, viewLeft, viewRight) {
-  ctx.save();
-  ctx.shadowBlur = 0;
-  ctx.globalCompositeOperation = 'screen';
-  ctx.strokeStyle = 'rgba(74, 222, 128, 0.35)';
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.40)';
   ctx.lineWidth = 1.8;
   ctx.lineCap = 'round';
 
@@ -1443,8 +1435,6 @@ export function drawPlatformRimLighting(ctx, viewLeft, viewRight) {
     ctx.lineTo(3820, 1112);
   }
   ctx.stroke();
-
-  ctx.restore();
 }
 
 /**

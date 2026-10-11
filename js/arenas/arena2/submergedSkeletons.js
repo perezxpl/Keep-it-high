@@ -1,7 +1,7 @@
 // =========================================================================
 // ARENAS/ARENA2/SUBMERGEDSKELETONS.JS - ZANURZONE SZKIELETY W KWASIE
 // Renderowanie szkieletów ludzkich i rybich pływających w głębi kwasu (Arena 2)
-// 100% symetria osiowa względem X = 2000, 0 alokacji GC w pętli renderującej
+// Czyste kości bezpośrednio w cieczy bez otoczek/bąbli, 0 alokacji GC
 // =========================================================================
 
 import {
@@ -41,9 +41,9 @@ export function drawSubmergedAcidSkeletons(ctx, time, camera) {
     // Dynamiczna głębokość z pionowym falowaniem i prądami konwekcyjnymi
     const curY = acidSurfY + item.depth + Math.sin(time * item.bobSpeed + item.phase) * item.bobAmp;
 
-    // Współczynnik przejrzystości i fosforyzacji w zależności od głębokości (im głębiej, tym bardziej zielono-mętny)
+    // Współczynnik przejrzystości kości w zależności od głębokości (im głębiej, tym bardziej wtopiony w ciecz)
     const depthFactor = Math.max(0.24, Math.min(0.95, 1.0 - (item.depth - 30) / 260));
-    const opacity = depthFactor * 0.92;
+    const opacity = depthFactor * 0.90;
 
     // Kąt kołysania / pływania
     let totalAngle = Math.sin(time * 1.4 + item.phase) * item.tiltAmp;
@@ -77,21 +77,12 @@ export function drawSubmergedAcidSkeletons(ctx, time, camera) {
 
 /**
  * 1. Kompletny ludzki szkielet dryfujący w głębi kwasu
- * Zawiera czaszkę, żebra, kręgosłup, miednicę oraz luźno pływające kończyny
+ * Czysta struktura kości bezpośrednio w cieczy bez sztucznej obramówki/bąbla
  */
 function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   const scale = size / 38;
 
-  // A. Fosforyzująca aura rozpuszczanych kości w kwasie (screen)
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.22)';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 18 * scale, 32 * scale, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // B. Płynne kołysanie kończyn w gęstym kwasie
+  // Płynne kołysanie kończyn w gęstym kwasie
   const armSway1 = Math.sin(time * 1.8 + item.phase) * 0.25;
   const armSway2 = Math.cos(time * 1.5 + item.phase) * 0.20;
   const legSway1 = Math.sin(time * 1.3 + item.phase) * 0.18;
@@ -104,7 +95,6 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.lineJoin = 'round';
 
   // --- CZASZKA I TWARZOCZASZKA ---
-  // Sklepienie czaszki
   ctx.beginPath();
   ctx.arc(0, -22 * scale, 6.5 * scale, Math.PI, 0);
   ctx.lineTo(4.5 * scale, -16 * scale);
@@ -115,21 +105,18 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.fill();
   ctx.stroke();
 
-  // Oczodoły z fosforyzującym zielonym blaskiem
+  // Oczodoły z zielonym blaskiem (wydajny render bez przełączania trybu screen)
   ctx.fillStyle = '#064e3b';
   ctx.beginPath();
   ctx.arc(-2.4 * scale, -18 * scale, 1.8 * scale, 0, Math.PI * 2);
   ctx.arc(2.4 * scale, -18 * scale, 1.8 * scale, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.85)';
+  ctx.fillStyle = '#86efac';
   ctx.beginPath();
   ctx.arc(-2.4 * scale, -18 * scale, 0.9 * scale, 0, Math.PI * 2);
   ctx.arc(2.4 * scale, -18 * scale, 0.9 * scale, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
   // Otwór nosowy i szczęka z zębami
   ctx.fillStyle = '#064e3b';
@@ -200,10 +187,9 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.rotate(armSway1 - 0.25);
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(-5 * scale, 8 * scale); // Kość ramienna
-  ctx.lineTo(-8 * scale, 16 * scale); // Kości przedramienia
+  ctx.lineTo(-5 * scale, 8 * scale);
+  ctx.lineTo(-8 * scale, 16 * scale);
   ctx.stroke();
-  // Dłoń / palce
   ctx.beginPath();
   ctx.moveTo(-8 * scale, 16 * scale);
   ctx.lineTo(-9.5 * scale, 19 * scale);
@@ -221,7 +207,6 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.lineTo(6 * scale, 7 * scale);
   ctx.lineTo(10 * scale, 15 * scale);
   ctx.stroke();
-  // Dłoń / palce
   ctx.beginPath();
   ctx.moveTo(10 * scale, 15 * scale);
   ctx.lineTo(11.5 * scale, 18 * scale);
@@ -237,9 +222,9 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.rotate(legSway1);
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(-2 * scale, 11 * scale); // Udo
-  ctx.lineTo(-3.5 * scale, 22 * scale); // Podudzie
-  ctx.lineTo(-1 * scale, 24 * scale); // Stopa
+  ctx.lineTo(-2 * scale, 11 * scale);
+  ctx.lineTo(-3.5 * scale, 22 * scale);
+  ctx.lineTo(-1 * scale, 24 * scale);
   ctx.stroke();
   ctx.restore();
 
@@ -254,27 +239,15 @@ function drawSubmergedHumanSkeleton(ctx, size, time, item, depthFactor) {
   ctx.lineTo(7 * scale, 23 * scale);
   ctx.stroke();
   ctx.restore();
-
-  // --- MIKRO-BĄBLE ROZPUSZCZANIA KOŚCI ---
-  drawSkeletonBubbles(ctx, scale, time, item);
 }
 
 /**
  * 2. Zmutowany prehistoryczny szkielet ryby kwasowej
- * Drapieżna paszcza z igłowatymi kłami, 10-segmentowy falujący kręgosłup i wachlarz płetw
+ * Czyste ości bez obramówki i bez trybu screen
  */
 function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
   const scale = size / 64;
   const swimFreq = item.swimSpeed || 2.8;
-
-  // A. Fosforyzująca radioaktywna poświata drapieżnika (screen)
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 32 * scale, 16 * scale, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
 
   ctx.strokeStyle = '#94a3b8';
   ctx.fillStyle = '#cbd5e1';
@@ -291,7 +264,7 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
   // Górna część czaszki i pysk
   ctx.beginPath();
   ctx.moveTo(0, -6 * scale);
-  ctx.lineTo(12 * scale, -2 * scale); // Dziób/czubek pyska
+  ctx.lineTo(12 * scale, -2 * scale);
   ctx.lineTo(8 * scale, 1 * scale);
   ctx.lineTo(0, 0);
   ctx.closePath();
@@ -320,19 +293,16 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
     ctx.stroke();
   }
 
-  // Fosforyzujący zielony oczodół
+  // Zielony oczodół bez screen mode
   ctx.fillStyle = '#064e3b';
   ctx.beginPath();
   ctx.arc(3 * scale, -2.5 * scale, 2.4 * scale, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.95)';
+  ctx.fillStyle = '#86efac';
   ctx.beginPath();
   ctx.arc(3 * scale, -2.5 * scale, 1.3 * scale, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
   // Pokrywa skrzelowa (operculum) ze spiczastymi wyrostkami
   ctx.strokeStyle = '#64748b';
@@ -355,7 +325,6 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
   for (let v = 0; v < numVerts; v++) {
     const vFraction = v / numVerts;
     const vX = headX - (v + 1) * vertSpacing;
-    // Falowanie sinusoidalne zwiększające amplitudę ku ogonowi
     const waveAmp = (2.0 + v * 1.1) * scale;
     const vY = Math.sin(time * swimFreq - v * 0.52) * waveAmp;
 
@@ -372,27 +341,24 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
     ctx.arc(vX, vY, 1.5 * scale, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ości grzbietowe i brzuszne (żebra rybie)
-    // Dłuższe przy brzuchu (v = 1..4), zanikające ku ogonowi (v = 8..9)
+    // Ości grzbietowe i brzuszne
     const ribLen = Math.max(2.0, (1.0 - vFraction) * 14.0) * scale;
     const ribSlope = 0.35 + vFraction * 0.45;
 
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 1.0 * scale;
 
-    // Ość górna (grzbietowa)
     ctx.beginPath();
     ctx.moveTo(vX, vY);
     ctx.lineTo(vX - ribSlope * ribLen * 0.6, vY - ribLen);
     ctx.stroke();
 
-    // Ość dolna (brzuszna)
     ctx.beginPath();
     ctx.moveTo(vX, vY);
     ctx.lineTo(vX - ribSlope * ribLen * 0.6, vY + ribLen * 0.85);
     ctx.stroke();
 
-    // Płetwa grzbietowa promieniowa (dorsal fin spines na kręgach 2-5)
+    // Płetwa grzbietowa promieniowa
     if (v >= 2 && v <= 5) {
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.75)';
       ctx.lineWidth = 0.9 * scale;
@@ -406,8 +372,7 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
     prevY = vY;
   }
 
-  // --- PŁETWA OGONOWA (CAUDAL FIN - WIDŁY OGONOWE) ---
-  // Płetwa ogonowa na końcu kręgosłupa dynamicznie bije w wodzie
+  // --- PŁETWA OGONOWA (CAUDAL FIN) ---
   const tailX = prevX;
   const tailY = prevY;
   const tailAngle = Math.cos(time * swimFreq - numVerts * 0.52) * 0.55;
@@ -419,7 +384,6 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1.2 * scale;
 
-  // Promienie płetwy ogonowej
   const finRays = [
     { dx: -12, dy: -12 },
     { dx: -14, dy: -7 },
@@ -437,8 +401,8 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
     ctx.stroke();
   }
 
-  // Błona między promieniami ogona (zielony fosfor)
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.35)';
+  // Błona między promieniami ogona
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.30)';
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(-12 * scale, -12 * scale);
@@ -450,27 +414,14 @@ function drawSubmergedFishSkeleton(ctx, size, time, item, depthFactor) {
   ctx.fill();
 
   ctx.restore();
-
-  // Bąble za płetwą ogonową
-  drawFishTailBubbles(ctx, tailX, tailY, scale, time, item);
 }
 
 /**
  * 3. Częściowo rozpuszczony korpus ludzki (torso) pływający w kwasie
- * Czaszka, klatka piersiowa, poszarpany kręgosłup i wyciekające chemikalia
+ * Czyste żebra i kręgosłup bez obramówki
  */
 function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   const scale = size / 32;
-
-  // A. Zielona łuna wokół trawiącej się tkanki
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.20)';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 16 * scale, 24 * scale, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
   const armSway = Math.sin(time * 1.6 + item.phase) * 0.28;
 
   ctx.strokeStyle = '#94a3b8';
@@ -490,21 +441,18 @@ function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   ctx.fill();
   ctx.stroke();
 
-  // Płonące zielone oczodoły
+  // Oczodoły
   ctx.fillStyle = '#064e3b';
   ctx.beginPath();
   ctx.arc(-2.0 * scale, -15 * scale, 1.5 * scale, 0, Math.PI * 2);
   ctx.arc(2.0 * scale, -15 * scale, 1.5 * scale, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(74, 222, 128, 0.85)';
+  ctx.fillStyle = '#86efac';
   ctx.beginPath();
   ctx.arc(-2.0 * scale, -15 * scale, 0.8 * scale, 0, Math.PI * 2);
   ctx.arc(2.0 * scale, -15 * scale, 0.8 * scale, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
   // --- KRĘGOSŁUP Z POSZARPANĄ KOŃCÓWKĄ ---
   ctx.strokeStyle = '#64748b';
@@ -514,7 +462,7 @@ function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   ctx.lineTo(0, 8 * scale);
   ctx.stroke();
 
-  // Wystające odłamki złamanego kręgosłupa
+  // Odłamki złamanego kręgosłupa
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1.0 * scale;
   ctx.beginPath();
@@ -540,7 +488,6 @@ function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1.1 * scale;
 
-  // Lewa ręka
   ctx.save();
   ctx.translate(-5.5 * scale, -6 * scale);
   ctx.rotate(armSway);
@@ -551,7 +498,6 @@ function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   ctx.stroke();
   ctx.restore();
 
-  // Prawa ręka
   ctx.save();
   ctx.translate(5.5 * scale, -6 * scale);
   ctx.rotate(-armSway + 0.2);
@@ -560,46 +506,5 @@ function drawSubmergedTorsoSkeleton(ctx, size, time, item, depthFactor) {
   ctx.lineTo(5 * scale, 6 * scale);
   ctx.lineTo(7 * scale, 12 * scale);
   ctx.stroke();
-  ctx.restore();
-
-  // Chemiczne bąble unoszące się z odłamków kręgosłupa
-  drawSkeletonBubbles(ctx, scale, time, item);
-}
-
-/** Pomocnicza procedura rysowania mikroskopijnych bąbli uciekających ze szkieletu ku powierzchni */
-function drawSkeletonBubbles(ctx, scale, time, item) {
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  for (let b = 0; b < 2; b++) {
-    const bProg = ((time * 0.6 + b * 0.5 + item.phase) % 1.0 + 1.0) % 1.0;
-    const bX = Math.sin(time * 3.0 + b * 4) * (4 * scale);
-    const bY = - (bProg * (item.depth + 15));
-    const bR = (1.2 + bProg * 2.2) * scale;
-    const bAlpha = Math.sin(bProg * Math.PI) * 0.55;
-
-    ctx.fillStyle = `rgba(134, 239, 172, ${bAlpha})`;
-    ctx.beginPath();
-    ctx.arc(bX, bY, bR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-/** Pomocnicza procedura bąbli za płetwą ryby */
-function drawFishTailBubbles(ctx, tailX, tailY, scale, time, item) {
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  for (let b = 0; b < 2; b++) {
-    const bProg = ((time * 0.8 + b * 0.5 + item.phase) % 1.0 + 1.0) % 1.0;
-    const bX = tailX - bProg * (18 * scale);
-    const bY = tailY + Math.sin(time * 4.0 + b * 2) * (3 * scale);
-    const bR = (1.0 + bProg * 1.8) * scale;
-    const bAlpha = Math.sin(bProg * Math.PI) * 0.45;
-
-    ctx.fillStyle = `rgba(134, 239, 172, ${bAlpha})`;
-    ctx.beginPath();
-    ctx.arc(bX, bY, bR, 0, Math.PI * 2);
-    ctx.fill();
-  }
   ctx.restore();
 }
