@@ -141,7 +141,7 @@ function applyHairDeadzone(val, deadzone = 0.45) {
   return Math.sign(val) * (excess * scale);
 }
 
-function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, strandOpts = {}) {
+export function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, headPitch, anchorX, anchorY, segLen, strandOpts = {}) {
   const NUM_SEGS = 6;
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const isStaticTile = !!(p && p._isStaticTile);
@@ -386,7 +386,7 @@ function updateAndBuildHairChain(p, hairStyle, currentFacingDir, torsoTilt, head
   return { pts, norms: smoothNorms };
 }
 
-function drawTaperedHairStrand(ctx, pts, norms, widths, fillStyle, strokeStyle = '#09090b', highlightStyle = null) {
+export function drawTaperedHairStrand(ctx, pts, norms, widths, fillStyle, strokeStyle = '#09090b', highlightStyle = null) {
   const leftPts = [];
   const rightPts = [];
   for (let i = 0; i < pts.length; i++) {

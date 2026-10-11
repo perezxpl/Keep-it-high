@@ -4,7 +4,14 @@
 // shemagh, gogle) oraz ich renderowaniem na profilu postaci i w Kreatorze.
 // =========================================================================
 
-import { DEFAULT_VISUALS, getHairPalette, drawCharacterHairProfile, drawCharacterHairOverEarProfile } from './hair.js';
+import {
+  DEFAULT_VISUALS,
+  getHairPalette,
+  drawCharacterHairProfile,
+  drawCharacterHairOverEarProfile,
+  updateAndBuildHairChain,
+  drawTaperedHairStrand
+} from './hair.js';
 import { drawCharacterFacialHairProfile } from './facialHair.js';
 
 export const HEADGEAR_STYLE_LIST = [
@@ -75,7 +82,15 @@ export function getHeadgearPalette(hexColor = '#18181b') {
  * @param {Object} v - właściwości wizualne gracza (visuals)
  * @param {boolean} hasHelmet - czy gracz posiada nałożony pancerz hełmu FAST
  */
-export function drawCharacterHeadgearProfile(ctx, p, v, hasHelmet = false) {
+export function drawCharacterHeadgearProfile(
+  ctx,
+  p,
+  v,
+  hasHelmet = false,
+  currentFacingDir = 1,
+  torsoTilt = 0,
+  headPitch = 0
+) {
   const rawStyle = String(v.headgearStyle || 'none').toLowerCase();
   const style = (rawStyle === 'brak' || rawStyle === 'shaved') ? 'none' : rawStyle;
   if (style === 'none') return;
@@ -333,7 +348,7 @@ export function drawCharacterHeadgearProfile(ctx, p, v, hasHelmet = false) {
 
   } else if (style === 'bandana') {
     // -------------------------------------------------------------------------
-    // 4. BANDANA BOJOWA KOMANDOSA (Combat Bandana z powiewającymi końcami)
+    // 4. BANDANA BOJOWA KOMANDOSA (Combat Bandana z długimi końcami i fizyką 2D)
     // -------------------------------------------------------------------------
     // A. Opaska opasająca czoło i potylicę
     ctx.beginPath();
@@ -356,47 +371,77 @@ export function drawCharacterHeadgearProfile(ctx, p, v, hasHelmet = false) {
     ctx.quadraticCurveTo(0.0, -4.1, -5.2, -3.3);
     ctx.stroke();
 
-    // Węzeł z tyłu potylicy
+    // B. Dwa długie, swobodne końce bandany z pełną fizyką 2D (Verlet / Spring chain)
+    // 1. Dolna wstęga (nieco krótsza, powiewająca niezależnie pod spodem)
+    const ribbonBotChain = updateAndBuildHairChain(
+      p, 'bandana_bot', currentFacingDir, torsoTilt, headPitch,
+      -5.4, -2.2, 2.55,
+      {
+        id: 'bd_ribbon_bot',
+        phase: 1.6,
+        restOffset: -0.06,
+        archRoot: 0.22,
+        liftMult: 1.40,
+        gravMult: 0.88,
+        stiffMult: 0.90,
+        restProfile: [2.32, 2.04, 1.80, 1.65, 1.70, 1.78]
+      }
+    );
+    drawTaperedHairStrand(
+      ctx,
+      ribbonBotChain.pts,
+      ribbonBotChain.norms,
+      [1.25, 1.60, 1.45, 1.20, 0.85, 0.45, 0.0],
+      pal.dark,
+      '#09090b',
+      null
+    );
+
+    // 2. Górna wstęga (dłuższa, główna wstęga powiewająca swobodnie na wietrze)
+    const ribbonTopChain = updateAndBuildHairChain(
+      p, 'bandana_top', currentFacingDir, torsoTilt, headPitch,
+      -5.6, -2.5, 2.95,
+      {
+        id: 'bd_ribbon_top',
+        phase: 0.0,
+        restOffset: 0.14,
+        archRoot: 0.34,
+        liftMult: 1.50,
+        gravMult: 0.80,
+        stiffMult: 0.86,
+        restProfile: [2.54, 2.20, 1.90, 1.70, 1.74, 1.84]
+      }
+    );
+    drawTaperedHairStrand(
+      ctx,
+      ribbonTopChain.pts,
+      ribbonTopChain.norms,
+      [1.35, 1.75, 1.65, 1.40, 1.05, 0.55, 0.0],
+      headGrad,
+      '#09090b',
+      pal.highlight
+    );
+
+    // C. Węzeł chusty z tyłu potylicy (przykrywający nasadę powiewających wstęg)
     ctx.fillStyle = pal.dark;
     ctx.beginPath();
-    ctx.ellipse(-5.6, -2.8, 1.0, 1.3, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(-5.6, -2.5, 1.30, 1.60, 0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.85;
+    ctx.lineWidth = 0.95;
     ctx.stroke();
 
-    // B. Dwa powiewające końce bandany z tyłu głowy
-    // Fizyka lub dynamiczne falowanie końców wiatrem
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    const isStatic = !!(p && p._isStaticTile);
-    const vx = (p && p.vx) ? p.vx : 0;
-    const vy = (p && p.vy) ? p.vy : 0;
-    const wave = isStatic ? 0.35 : Math.sin(now * 0.006) * 0.45 + (vx * 0.12);
-
-    // Górny pasek
+    // Środek węzła ze zagnieceniami
+    ctx.fillStyle = pal.base;
     ctx.beginPath();
-    ctx.moveTo(-5.6, -2.8);
-    ctx.quadraticCurveTo(-7.5 - wave, -3.2, -10.2 - wave * 1.5, -3.8);
-    ctx.lineTo(-9.8 - wave * 1.5, -2.7);
-    ctx.quadraticCurveTo(-7.2 - wave, -2.2, -5.4, -2.2);
-    ctx.closePath();
-    ctx.fillStyle = headGrad;
+    ctx.ellipse(-5.8, -2.4, 0.80, 1.10, 0.35, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
 
-    // Dolny pasek opadający nieco niżej
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 0.65;
     ctx.beginPath();
-    ctx.moveTo(-5.4, -2.2);
-    ctx.quadraticCurveTo(-7.2 - wave * 0.8, -1.8, -9.6 - wave * 1.3, -1.2);
-    ctx.lineTo(-9.3 - wave * 1.3, -0.2);
-    ctx.quadraticCurveTo(-6.8 - wave * 0.8, -0.9, -5.2, -1.7);
-    ctx.closePath();
-    ctx.fillStyle = pal.dark;
-    ctx.fill();
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.8;
+    ctx.moveTo(-5.9, -3.2);
+    ctx.quadraticCurveTo(-5.5, -2.5, -5.7, -1.7);
     ctx.stroke();
 
   } else if (style === 'boonie') {
@@ -709,7 +754,7 @@ export function drawHeadHeadgearPreview(
   drawCharacterHairOverEarProfile(ctx, v, hairPal, false);
 
   // 6. Nakrycie głowy (rysowane na fryzurze)
-  drawCharacterHeadgearProfile(ctx, tileDummy, v, false);
+  drawCharacterHeadgearProfile(ctx, tileDummy, v, false, 1, 0, 0);
 
   // 7. Oko i brew (dla kominiarki i innych stylów widoczne w otworze)
   const eyeCenterX = 2.7;

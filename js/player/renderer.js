@@ -1362,7 +1362,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     drawCharacterHairOverEarProfile(ctx, v, hairPal, hasHelmet);
 
     // Nakrycie głowy (beret, czapka z daszkiem, kominiarka, bandana, boonie hat, arafatka, gogle)
-    drawCharacterHeadgearProfile(ctx, p, v, hasHelmet);
+    drawCharacterHeadgearProfile(ctx, p, v, hasHelmet, currentFacingDir, pose.torsoTilt, pose.headPitch);
 
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
     if (hasHelmet) {
