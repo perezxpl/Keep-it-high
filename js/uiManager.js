@@ -26,6 +26,10 @@ import {
   TORSO_COLOR_LIST,
   doesTorsoSupportColor,
   drawTorsoPreview,
+  PANTS_STYLE_LIST,
+  PANTS_COLOR_LIST,
+  doesPantsSupportColor,
+  drawPantsPreview,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -57,7 +61,9 @@ const DEFAULT_APPEARANCE = {
   maskColor: '#18181b',
   neckStyle: 'none',
   torsoStyle: 'short_sleeve',
-  torsoColor: '#18181b'
+  torsoColor: '#18181b',
+  pantsStyle: 'cargo_long',
+  pantsColor: '#18181b'
 };
 
 // =============================================================================
@@ -260,7 +266,9 @@ export const uiManager = {
       maskColor: this.appearance.maskColor || '#18181b',
       neckStyle: this.appearance.neckStyle || 'none',
       torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
-      torsoColor: this.appearance.torsoColor || '#18181b'
+      torsoColor: this.appearance.torsoColor || '#18181b',
+      pantsStyle: this.appearance.pantsStyle || 'cargo_long',
+      pantsColor: this.appearance.pantsColor || '#18181b'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -865,6 +873,7 @@ export const uiManager = {
     this.initCreatorMaskUI();
     this.initCreatorNeckUI();
     this.initCreatorTorsoUI();
+    this.initCreatorPantsUI();
   },
 
   initCreatorHairUI() {
@@ -1380,6 +1389,7 @@ export const uiManager = {
         this.syncCreatorTorsoSelectionUI();
         this.renderCreatorTorsoTiles();
         this.renderCreatorNeckTiles();
+        this.renderCreatorPantsTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -1405,6 +1415,7 @@ export const uiManager = {
         this.syncCreatorTorsoSelectionUI();
         this.renderCreatorTorsoTiles();
         this.renderCreatorNeckTiles();
+        this.renderCreatorPantsTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -1446,6 +1457,102 @@ export const uiManager = {
     });
   },
 
+  initCreatorPantsUI() {
+    const gridEl = document.getElementById('creator-pants-grid');
+    const colorsEl = document.getElementById('creator-pants-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z fasonami spodni (długie bojówki, krótkie spodenki, moro jasne/ciemne)
+    PANTS_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.pantsStyle = styleId;
+      if ((this.appearance.pantsStyle || 'cargo_long') === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.pantsStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorPantsSelectionUI();
+        this.renderCreatorPantsTiles();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów spodni dla fasonów jednolitych
+    PANTS_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.pantsColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      if (String(this.appearance.pantsColor || '#18181b').toLowerCase() === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.pantsColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorPantsSelectionUI();
+        this.renderCreatorPantsTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.syncCreatorPantsSelectionUI();
+    this.renderCreatorPantsTiles();
+  },
+
+  syncCreatorPantsSelectionUI() {
+    const curStyle = this.appearance.pantsStyle || 'cargo_long';
+    const curColor = String(this.appearance.pantsColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-pants-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.pantsStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-pants-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.pantsColor).toLowerCase() === curColor);
+    });
+
+    const colorsEl = document.getElementById('creator-pants-colors');
+    if (colorsEl) {
+      colorsEl.style.display = doesPantsSupportColor(curStyle) ? 'flex' : 'none';
+    }
+  },
+
+  renderCreatorPantsTiles() {
+    const curColor = this.appearance.pantsColor || '#18181b';
+    const visuals = { ...this.appearance };
+
+    document.querySelectorAll('#creator-pants-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.pantsStyle || 'cargo_long';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawPantsPreview(ctx, cvs.width, cvs.height, styleId, curColor, visuals);
+      }
+    });
+  },
+
   activeCreatorTab: 'hair',
 
   switchCreatorTab(tabId = 'hair') {
@@ -1469,6 +1576,8 @@ export const uiManager = {
       this.renderCreatorNeckTiles();
     } else if (tabId === 'torso') {
       this.renderCreatorTorsoTiles();
+    } else if (tabId === 'pants') {
+      this.renderCreatorPantsTiles();
     }
   },
 

@@ -73,6 +73,16 @@ import {
 } from './torso.js';
 
 import {
+  PANTS_STYLE_LIST,
+  PANTS_COLOR_LIST,
+  isPantsShorts,
+  getPantsCamoType,
+  doesPantsSupportColor,
+  getPantsPalette,
+  drawPantsPreview
+} from './pants.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -132,6 +142,13 @@ export {
   getTorsoPalette,
   drawTorsoShirt,
   drawTorsoPreview,
+  PANTS_STYLE_LIST,
+  PANTS_COLOR_LIST,
+  isPantsShorts,
+  getPantsCamoType,
+  doesPantsSupportColor,
+  getPantsPalette,
+  drawPantsPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1120,29 +1137,46 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const pelvisBackBottomX = -fDir * (thighMatchHalfW - 0.35 * absCos);
   const pelvisFrontBottomX = fDir * (thighMatchHalfW + 0.35 * absCos);
 
-  const pelvisGrad = ctx.createLinearGradient(0, pelvisTopY, -fDir * waistHalfW, pelvisBottomY);
-  pelvisGrad.addColorStop(0.0, v.legThighFront || '#3f3f46');
-  pelvisGrad.addColorStop(0.45, v.shortsColor1 || '#334155');
-  pelvisGrad.addColorStop(1.0, v.shortsColor2 || '#18181b');
+  const pantsStyle = v.pantsStyle || 'cargo_long';
+  const pantsColor = v.pantsColor || v.legThighFront || '#18181b';
+  const pantsCamo = getPantsCamoType(pantsStyle);
+  const pantsPal = getPantsPalette(pantsColor);
 
-  ctx.beginPath();
-  ctx.moveTo(-fDir * waistHalfW, pelvisTopY);
-  // Profil pośladka (gluteus) płynnie przechodzący w tylną krawędź uda
-  ctx.bezierCurveTo(
-    gluteOutX, -0.4,
-    gluteOutX * 0.96, 2.2,
-    pelvisBackBottomX, pelvisBottomY
-  );
-  // Dolne połączenie w kroku (wewnątrz obrysu uda, bez poziomej kreski odcinającej nogę!)
-  ctx.lineTo(pelvisFrontBottomX, pelvisBottomY - 0.4);
-  // Przedni profil biodra / rozporka do pasa
-  ctx.quadraticCurveTo(
-    fDir * (waistHalfW + 0.20 * absCos), 0.8,
-    fDir * waistHalfW, pelvisTopY
-  );
-  ctx.closePath();
-  ctx.fillStyle = pelvisGrad;
-  ctx.fill();
+  const tracePelvis = () => {
+    ctx.beginPath();
+    ctx.moveTo(-fDir * waistHalfW, pelvisTopY);
+    // Profil pośladka (gluteus) płynnie przechodzący w tylną krawędź uda
+    ctx.bezierCurveTo(
+      gluteOutX, -0.4,
+      gluteOutX * 0.96, 2.2,
+      pelvisBackBottomX, pelvisBottomY
+    );
+    // Dolne połączenie w kroku (wewnątrz obrysu uda, bez poziomej kreski odcinającej nogę!)
+    ctx.lineTo(pelvisFrontBottomX, pelvisBottomY - 0.4);
+    // Przedni profil biodra / rozporka do pasa
+    ctx.quadraticCurveTo(
+      fDir * (waistHalfW + 0.20 * absCos), 0.8,
+      fDir * waistHalfW, pelvisTopY
+    );
+    ctx.closePath();
+  };
+
+  tracePelvis();
+
+  if (pantsCamo) {
+    ctx.save();
+    ctx.clip();
+    drawCamoSplotches(ctx, pantsCamo, -waistHalfW * 1.25, pelvisTopY - 1, waistHalfW * 1.25, pelvisBottomY + 1);
+    ctx.restore();
+    tracePelvis();
+  } else {
+    const pelvisGrad = ctx.createLinearGradient(0, pelvisTopY, -fDir * waistHalfW, pelvisBottomY);
+    pelvisGrad.addColorStop(0.0, pantsPal.light);
+    pelvisGrad.addColorStop(0.45, pantsPal.base);
+    pelvisGrad.addColorStop(1.0, pantsPal.dark);
+    ctx.fillStyle = pelvisGrad;
+    ctx.fill();
+  }
 
   // Zewnętrzny obrys bioder i pośladka (tylko boczne krawędzie przechodzące w udo, bez zamykania dołu!)
   ctx.strokeStyle = '#09090b';

@@ -7,6 +7,7 @@ import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { DEFAULT_VISUALS } from './hair.js';
 import { isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
+import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1133,35 +1134,52 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.rotate(thighAng);
 
   const thighHalfH = 4.15 * muscle;
-  const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
-  const pantsThighCol = isFrontLeg ? (v.legThighFront || '#3f3f46') : (v.legThighBack || '#27272a');
-  pantsGrad.addColorStop(0.0, pantsThighCol);
-  pantsGrad.addColorStop(0.4, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
-  pantsGrad.addColorStop(1.0, isFrontLeg ? (v.shortsColor2 || '#18181b') : '#0f172a');
+  const pantsStyle = v.pantsStyle || 'cargo_long';
+  const pantsColor = v.pantsColor || (isFrontLeg ? v.legThighFront : v.legThighBack) || '#18181b';
+  const pantsCamo = getPantsCamoType(pantsStyle);
+  const pantsPal = getPantsPalette(pantsColor);
+  const isShorts = isPantsShorts(pantsStyle);
 
   // Nogawka bojówek na udzie – płynne przejście z miednicy bez czarnego obrysu wokół kulki biodra
-  ctx.beginPath();
-  ctx.moveTo(0, thighHalfH);
-  ctx.quadraticCurveTo(-thighHalfH * 0.42, 0, 0, -thighHalfH);
-  // Górny/przedni profil uda
-  ctx.bezierCurveTo(
-    l1 * 0.32, -thighHalfH * 1.06,
-    l1 * 0.68, -thighHalfH * 1.00,
-    l1 - 2.2, -thighHalfH * 0.78
-  );
-  // Marszczenie nad nakolannikiem
-  ctx.quadraticCurveTo(l1 - 0.6, -thighHalfH * 0.52, l1, -2.5);
-  ctx.lineTo(l1, 2.5);
-  // Dolny/tylny profil uda
-  ctx.quadraticCurveTo(l1 - 1.0, thighHalfH * 0.68, l1 - 2.8, thighHalfH * 0.88);
-  ctx.bezierCurveTo(
-    l1 * 0.65, thighHalfH * 1.04,
-    l1 * 0.28, thighHalfH * 0.96,
-    0, thighHalfH
-  );
-  ctx.closePath();
-  ctx.fillStyle = pantsGrad;
-  ctx.fill();
+  const traceThigh = () => {
+    ctx.beginPath();
+    ctx.moveTo(0, thighHalfH);
+    ctx.quadraticCurveTo(-thighHalfH * 0.42, 0, 0, -thighHalfH);
+    // Górny/przedni profil uda
+    ctx.bezierCurveTo(
+      l1 * 0.32, -thighHalfH * 1.06,
+      l1 * 0.68, -thighHalfH * 1.00,
+      l1 - 2.2, -thighHalfH * 0.78
+    );
+    // Łagodne przejście w kolano (naturalne zgięcie nogawki)
+    ctx.quadraticCurveTo(l1 - 0.6, -thighHalfH * 0.52, l1, -2.5);
+    ctx.lineTo(l1, 2.5);
+    // Dolny/tylny profil uda
+    ctx.quadraticCurveTo(l1 - 1.0, thighHalfH * 0.68, l1 - 2.8, thighHalfH * 0.88);
+    ctx.bezierCurveTo(
+      l1 * 0.65, thighHalfH * 1.04,
+      l1 * 0.28, thighHalfH * 0.96,
+      0, thighHalfH
+    );
+    ctx.closePath();
+  };
+
+  traceThigh();
+
+  if (pantsCamo) {
+    ctx.save();
+    ctx.clip();
+    drawCamoSplotches(ctx, pantsCamo, 0, -thighHalfH * 1.05, l1, thighHalfH * 1.05);
+    ctx.restore();
+    traceThigh();
+  } else {
+    const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
+    pantsGrad.addColorStop(0.0, pantsPal.light);
+    pantsGrad.addColorStop(0.4, pantsPal.base);
+    pantsGrad.addColorStop(1.0, pantsPal.dark);
+    ctx.fillStyle = pantsGrad;
+    ctx.fill();
+  }
 
   // Obrys zewnętrzny nogawki (tylko wzdłuż uda od x = 3.2, bez zamykania kółka na biodrze!)
   ctx.strokeStyle = '#09090b';
@@ -1209,7 +1227,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = isFrontLeg ? (v.shortsColor0 || '#27272a') : 'rgba(0, 0, 0, 0.25)';
+  ctx.fillStyle = pantsCamo ? 'rgba(0, 0, 0, 0.28)' : (isFrontLeg ? pantsPal.base : pantsPal.dark);
   ctx.beginPath();
   ctx.moveTo(pocketX, -pocketH);
   ctx.quadraticCurveTo(pocketX + pocketW * 0.5, -pocketH - 0.7, pocketX + pocketW, -pocketH);
@@ -1289,13 +1307,8 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const calfBulge = (isSculpted ? 5.2 : 4.5) * muscle;
   const achillesHalfW = 2.5 * muscle;
-  const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
-  const shinCol = isFrontLeg ? (v.legShinFront || '#3f3f46') : (v.legShinBack || '#27272a');
-  pantsShinGrad.addColorStop(0.0, shinCol);
-  pantsShinGrad.addColorStop(0.5, isFrontLeg ? (v.shortsColor1 || '#334155') : '#1e293b');
-  pantsShinGrad.addColorStop(1.0, '#18181b');
 
-  // Cholewa buta wojskowego (wchodząca pod zbluzowaną nogawkę)
+  // Cholewa buta wojskowego (wchodząca pod nogawkę lub bezpośrednio na nodze w spodenkach)
   const collarGrad = ctx.createLinearGradient(0, -3.2, 0, 3.2);
   collarGrad.addColorStop(0.0, '#27272a');
   collarGrad.addColorStop(0.5, '#18181b');
@@ -1309,81 +1322,117 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.lineWidth = 0.9;
   ctx.stroke();
 
-  // Nogawka na łydce z realistycznym zbluzowaniem (marszczeniem materiału) nad cholewką buta
-  const blouseEnd = l2 - 4.2;
-  ctx.beginPath();
-  ctx.moveTo(1.5, -calfBulge * 0.72);
-  ctx.bezierCurveTo(
-    l2 * 0.30, -3.4 * muscle,
-    l2 * 0.62, -3.6 * muscle,
-    blouseEnd - 1.6, -achillesHalfW * 1.42
-  );
-  ctx.quadraticCurveTo(blouseEnd + 0.6, -achillesHalfW * 1.15, blouseEnd, -achillesHalfW * 0.85);
-  ctx.quadraticCurveTo(blouseEnd + 0.8, 0, blouseEnd, achillesHalfW * 0.92);
-  ctx.quadraticCurveTo(blouseEnd + 0.5, achillesHalfW * 1.38, blouseEnd - 2.2, achillesHalfW * 1.45);
-  ctx.bezierCurveTo(
-    l2 * 0.58, calfBulge * 0.98,
-    l2 * 0.28, calfBulge * 1.05,
-    1.5, calfBulge * 0.65
-  );
-  ctx.closePath();
-  ctx.fillStyle = pantsShinGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 1.0;
-  ctx.stroke();
+  if (isShorts) {
+    // 1. KRÓTKIE SPODENKI: Odsłonięta, wysportowana łydka ze skóry (bez spodni na łydce)
+    const calfGrad = ctx.createLinearGradient(0, -calfBulge, 0, calfBulge);
+    if (isFrontLeg) {
+      calfGrad.addColorStop(0.0, v.skinLight);
+      calfGrad.addColorStop(0.40, v.skinMid);
+      calfGrad.addColorStop(1.0, v.skinDark);
+    } else {
+      calfGrad.addColorStop(0.0, v.skinMid);
+      calfGrad.addColorStop(0.45, v.skinBack);
+      calfGrad.addColorStop(1.0, v.skinDark);
+    }
 
-  // Zagięcia i fałdy materiału na łydce oraz w miejscu zbluzowania nad butem
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.34)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(3.8, calfBulge * 0.55);
-  ctx.quadraticCurveTo(l2 * 0.26, calfBulge * 0.15, l2 * 0.34, -1.2);
-  ctx.moveTo(blouseEnd - 3.6, -achillesHalfW * 0.95);
-  ctx.quadraticCurveTo(blouseEnd - 1.4, 0.2, blouseEnd - 3.0, achillesHalfW * 1.10);
-  ctx.moveTo(blouseEnd - 1.8, -achillesHalfW * 0.85);
-  ctx.quadraticCurveTo(blouseEnd - 0.3, 0.0, blouseEnd - 1.4, achillesHalfW * 0.95);
-  ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -2.6 * muscle);
+    ctx.quadraticCurveTo(l2 * 0.30, -calfBulge * 0.95, l2 * 0.70, -achillesHalfW * 1.15);
+    ctx.lineTo(l2 - 3.2, -achillesHalfW);
+    ctx.lineTo(l2 - 3.2, achillesHalfW);
+    ctx.quadraticCurveTo(l2 * 0.70, achillesHalfW * 1.15, l2 * 0.32, calfBulge * 0.85);
+    ctx.quadraticCurveTo(0, 2.6 * muscle, 0, -2.6 * muscle);
+    ctx.closePath();
+    ctx.fillStyle = calfGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
 
-  if (isFrontLeg) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+    // Naturalny zarys mięśnia brzuchatego łydki i ścięgna Achillesa
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
     ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.moveTo(l2 * 0.22, -2.2 * muscle);
-    ctx.quadraticCurveTo(l2 * 0.52, -2.5 * muscle, blouseEnd - 2.2, -achillesHalfW * 0.95);
+    ctx.moveTo(l2 * 0.25, -calfBulge * 0.35);
+    ctx.quadraticCurveTo(l2 * 0.55, -calfBulge * 0.25, l2 * 0.75, -achillesHalfW * 0.5);
     ctx.stroke();
+
+    // Naturalna rzepka kolana (miękki anatomiczny łuk patelli, BEZ plastikowego kółka)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.24)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(0.5, 0, 1.8 * muscle, -0.45 * Math.PI, 0.45 * Math.PI);
+    ctx.stroke();
+
+  } else {
+    // 2. DŁUGIE BOJÓWKI: Zbluzowana nogawka materiału nad cholewką buta
+    const blouseEnd = l2 - 4.2;
+
+    const traceShinPants = () => {
+      ctx.beginPath();
+      ctx.moveTo(0.8, -calfBulge * 0.72);
+      ctx.bezierCurveTo(
+        l2 * 0.30, -3.4 * muscle,
+        l2 * 0.62, -3.6 * muscle,
+        blouseEnd - 1.6, -achillesHalfW * 1.42
+      );
+      ctx.quadraticCurveTo(blouseEnd + 0.6, -achillesHalfW * 1.15, blouseEnd, -achillesHalfW * 0.85);
+      ctx.quadraticCurveTo(blouseEnd + 0.8, 0, blouseEnd, achillesHalfW * 0.92);
+      ctx.quadraticCurveTo(blouseEnd + 0.5, achillesHalfW * 1.38, blouseEnd - 2.2, achillesHalfW * 1.45);
+      ctx.bezierCurveTo(
+        l2 * 0.58, calfBulge * 0.98,
+        l2 * 0.28, calfBulge * 1.05,
+        0.8, calfBulge * 0.65
+      );
+      ctx.closePath();
+    };
+
+    traceShinPants();
+
+    if (pantsCamo) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, pantsCamo, 0, -calfBulge * 1.05, blouseEnd, calfBulge * 1.05);
+      ctx.restore();
+      traceShinPants();
+    } else {
+      const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
+      pantsShinGrad.addColorStop(0.0, pantsPal.light);
+      pantsShinGrad.addColorStop(0.5, pantsPal.base);
+      pantsShinGrad.addColorStop(1.0, pantsPal.dark);
+      ctx.fillStyle = pantsShinGrad;
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Naturalne zagięcia tkaniny na kolanie i nad butem (BEZ sztucznego kółka na kolanie)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.34)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    // Miękka fałda zgięcia materiału na kolanie
+    ctx.moveTo(0.8, -calfBulge * 0.45);
+    ctx.quadraticCurveTo(2.4, 0, 0.8, calfBulge * 0.45);
+    // Fałdy zbluzowania materiału nad butem
+    ctx.moveTo(blouseEnd - 3.6, -achillesHalfW * 0.95);
+    ctx.quadraticCurveTo(blouseEnd - 1.4, 0.2, blouseEnd - 3.0, achillesHalfW * 1.10);
+    ctx.moveTo(blouseEnd - 1.8, -achillesHalfW * 0.85);
+    ctx.quadraticCurveTo(blouseEnd - 0.3, 0.0, blouseEnd - 1.4, achillesHalfW * 0.95);
+    ctx.stroke();
+
+    if (isFrontLeg) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(l2 * 0.22, -2.2 * muscle);
+      ctx.quadraticCurveTo(l2 * 0.52, -2.5 * muscle, blouseEnd - 2.2, -achillesHalfW * 0.95);
+      ctx.stroke();
+    }
   }
 
-  // NAKOLANNIK TAKTYCZNY (Hard-Shell Combat Knee Pad)
-  const padR = 3.6 * (isSculpted ? muscle * 0.95 : muscle);
-  ctx.fillStyle = '#09090b';
-  ctx.beginPath();
-  ctx.moveTo(-0.8, -padR * 1.10);
-  ctx.quadraticCurveTo(1.1, -padR * 0.95, 2.8, -padR * 1.10);
-  ctx.lineTo(2.8, padR * 1.10);
-  ctx.quadraticCurveTo(1.1, padR * 0.95, -0.8, padR * 1.10);
-  ctx.closePath();
-  ctx.fill();
-
-  const padGrad = ctx.createLinearGradient(-1.0, -padR, 3.5, padR);
-  padGrad.addColorStop(0.0, '#3f3f46');
-  padGrad.addColorStop(0.5, '#27272a');
-  padGrad.addColorStop(1.0, '#18181b');
-  ctx.fillStyle = padGrad;
-  ctx.strokeStyle = '#52525b';
-  ctx.lineWidth = 0.9;
-  ctx.beginPath();
-  ctx.ellipse(1.5, 0, padR * 0.85, padR * 1.15, 0.05, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#a1a1aa';
-  ctx.beginPath();
-  ctx.arc(1.5, -padR * 0.65, 0.6, 0, Math.PI * 2);
-  ctx.arc(1.5, padR * 0.65, 0.6, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Rany na łydce, uszkodzenia nakolannika i krew na cholewie buta
+  // Rany na łydce / uszkodzenia tkaniny
   if (legDmgRatio >= 0.15) {
     const t1 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.15) / 0.22));
     const t2 = Math.min(1.0, Math.max(0.0, (legDmgRatio - 0.37) / 0.25));
@@ -1391,10 +1440,10 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
     if (isFrontLeg) {
       if (t1 > 0) {
-        drawShrapnelSlash(ctx, 0.5, -padR * 0.5, 2.5, padR * 0.3, 0.65, t1 * 0.8);
+        drawShrapnelSlash(ctx, 0.5, -calfBulge * 0.25, 2.5, calfBulge * 0.15, 0.65, t1 * 0.8);
       }
       if (t2 > 0) {
-        drawShrapnelSlash(ctx, 0.2, -padR * 0.6, 2.8, padR * 0.5, 0.9, t2);
+        drawShrapnelSlash(ctx, 0.2, -calfBulge * 0.3, 2.8, calfBulge * 0.25, 0.9, t2);
         drawBloodSoak(ctx, 1.5, 0.0, 2.8, 2.4, t2 * 0.75);
         drawShrapnelSlash(ctx, l2 * 0.32, calfBulge * 0.30, l2 * 0.54, calfBulge * 0.50, 0.85, t2);
         drawBloodTrickle(ctx, l2 * 0.40, calfBulge * 0.35, 5.0, l2 * 0.15, 0.8, t2);
@@ -1411,7 +1460,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         drawShrapnelSlash(ctx, l2 * 0.35, -calfBulge * 0.3, l2 * 0.52, -calfBulge * 0.1, 0.7, t1 * 0.75);
       }
       if (t2 > 0) {
-        drawShrapnelSlash(ctx, 0.5, -padR * 0.4, 2.5, padR * 0.2, 0.8, t2 * 0.8);
+        drawShrapnelSlash(ctx, 0.5, -calfBulge * 0.2, 2.5, calfBulge * 0.1, 0.8, t2 * 0.8);
         drawBloodSoak(ctx, 1.5, 0.0, 2.2, 1.8, t2 * 0.7);
         drawBloodTrickle(ctx, l2 * 0.45, -calfBulge * 0.2, 4.5, l2 * 0.15, 0.75, t2);
       }

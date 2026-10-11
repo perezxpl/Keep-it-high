@@ -25,6 +25,8 @@ export const DEFAULT_VISUALS = {
   neckStyle: 'none',
   torsoStyle: 'short_sleeve',
   torsoColor: '#18181b',
+  pantsStyle: 'cargo_long',
+  pantsColor: '#18181b',
   hasHelmet: false,
   helmetColor: '#27272a',
   helmetVisorGlow: '#00e5ff',
