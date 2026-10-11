@@ -11,18 +11,24 @@ import {
   _surfaceBubbles,
   _acidFlotsam,
   getAcidSurfaceY,
-  drawAcidDeathEffects
+  drawAcidDeathEffects,
+  ARENA_2_HANGING_PIPES,
+  drawCeilingPipeSparks
 } from './state.js';
 import {
   drawSewerPipes,
   drawSewerImpacts,
   ARENA_2_SEWER_PIPES
 } from './sewerPipes.js';
+import {
+  drawSubmergedAcidSkeletons
+} from './submergedSkeletons.js';
 
 export {
   drawSewerPipes,
   drawSewerImpacts,
-  ARENA_2_SEWER_PIPES
+  ARENA_2_SEWER_PIPES,
+  drawSubmergedAcidSkeletons
 };
 
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
@@ -488,7 +494,10 @@ export function drawArena2Geometry(ctx, camera) {
   // -----------------------------------------------------------------------
   drawAcidLevel(ctx, curAcidY, BOTTOM_Y, camera);
 
-  // 1B. DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ BECZKI, CZASZKI, KOŚCI I OŚCI RYB
+  // 1B. ZANURZONE SZKIELETY W GŁĘBI KWASU (LUDZKIE I RYBIE PŁYWAJĄCE POD POWIERZCHNIĄ)
+  drawSubmergedAcidSkeletons(ctx, time, camera);
+
+  // 1C. DETALE WIZUALNE KWASU - UNOSZĄCE SIĘ BECZKI, CZASZKI, KOŚCI I OŚCI RYB
   drawAcidFlotsam(ctx, time, camera);
 
   // 1C. WPŁYW ŚCIEKÓW DO KWASU - PIANA I BĄBLE W MIEJSCACH UDERZENIA STRUMIENI
@@ -1013,74 +1022,105 @@ function drawFloatingFishBones(ctx, size, time, item) {
   ctx.stroke();
 }
 
-/** Rysuje rury i kratownice sufitowe (Y = 150-180 - symetria X = 2000, 0 alokacji GC) */
+/** Rysuje rury i kratownice sufitowe z fizyką uginania i kołysania (Y = 150-180 - symetria X = 2000, 0 alokacji GC) */
 function drawCeilingInfrastructure(ctx, time, viewLeft, viewRight) {
-  const pipes = [
-    { x: 650,  y: 180, w: 550, h: 16, id: 'pipe_A' },
-    { x: 1700, y: 150, w: 600, h: 16, id: 'pipe_Mid' },
-    { x: 2800, y: 180, w: 550, h: 16, id: 'pipe_B' }
-  ];
+  const pipes = (ARENA_2_HANGING_PIPES && ARENA_2_HANGING_PIPES.length > 0)
+    ? ARENA_2_HANGING_PIPES
+    : [
+      { x: 650,  y: 180, w: 550, h: 16, id: 'ceil_pipe_left' },
+      { x: 1700, y: 150, w: 600, h: 16, id: 'ceil_pipe_mid' },
+      { x: 2800, y: 180, w: 550, h: 16, id: 'ceil_pipe_right' }
+    ];
 
   ctx.save();
-  for (const p of pipes) {
+  for (let i = 0; i < pipes.length; i++) {
+    const p = pipes[i];
     if (viewLeft !== undefined && (p.x + p.w < viewLeft || p.x > viewRight)) {
       continue;
     }
 
+    const cx = p.x + p.w * 0.5;
+    const cy = p.y + (p.h || 16) * 0.5;
+    const angle = p.angle || 0;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const halfW = p.w * 0.5;
+    const halfH = (p.h || 16) * 0.5;
+
     // Zawiesia sufitowe łączące rurę ze stropem hali
+    // Dynamicznie śledzą ugięcie i nachylenie belki
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 3.0;
     for (let hx = p.x + 40; hx < p.x + p.w; hx += 110) {
+      const relX = hx - cx;
+      const relY = -halfH;
+      const clampX = cx + relX * cosA - relY * sinA;
+      const clampY = cy + relX * sinA + relY * cosA;
+
       ctx.beginPath();
       ctx.moveTo(hx, 0);
-      ctx.lineTo(hx, p.y);
+      ctx.lineTo(clampX, clampY);
       ctx.stroke();
+    }
 
-      // Klamra mocująca
+    // Transformacja dla korpusu rury (kąt i przesunięcie pionowe)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+
+    // Klamry mocujące na belce
+    for (let hx = p.x + 40; hx < p.x + p.w; hx += 110) {
+      const relX = hx - cx;
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(hx - 6, p.y - 8, 12, 10);
+      ctx.fillRect(relX - 6, -halfH - 8, 12, 10);
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1.2;
-      ctx.strokeRect(hx - 6, p.y - 8, 12, 10);
+      ctx.strokeRect(relX - 6, -halfH - 8, 12, 10);
     }
 
     // Korpus rury przemysłowej z metalicznym wykończeniem (zero alokacji)
     ctx.fillStyle = '#334155';
-    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillRect(-halfW, -halfH, p.w, p.h || 16);
     ctx.fillStyle = '#64748b';
-    ctx.fillRect(p.x, p.y, p.w, 3);
+    ctx.fillRect(-halfW, -halfH, p.w, 3);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
+    ctx.fillRect(-halfW, halfH - 3, p.w, 3);
 
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 1.6;
-    ctx.strokeRect(p.x, p.y, p.w, p.h);
+    ctx.strokeRect(-halfW, -halfH, p.w, p.h || 16);
 
     // Górny pomost inspekcyjny (kratownica do biegania)
     ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + p.w, p.y);
+    ctx.moveTo(-halfW, -halfH);
+    ctx.lineTo(halfW, -halfH);
     ctx.stroke();
 
     // Pierścienie uszczelniające co 60 px
     for (let rx = p.x + 30; rx < p.x + p.w; rx += 60) {
+      const relX = rx - cx;
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(rx - 3, p.y - 2, 6, p.h + 4);
+      ctx.fillRect(relX - 3, -halfH - 2, 6, (p.h || 16) + 4);
       ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 1.0;
-      ctx.strokeRect(rx - 3, p.y - 2, 6, p.h + 4);
+      ctx.strokeRect(relX - 3, -halfH - 2, 6, (p.h || 16) + 4);
     }
 
     // Neonowa linia wskaźnika telemetrycznego (bursztyn/cyjan)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.fillStyle = p.id === 'pipe_Mid' ? '#38bdf8' : '#fbbf24';
-    ctx.fillRect(p.x + 6, p.y + p.h / 2 - 1, p.w - 12, 2);
+    ctx.fillStyle = (p.id === 'ceil_pipe_mid' || p.id === 'pipe_Mid') ? '#38bdf8' : '#fbbf24';
+    ctx.fillRect(-halfW + 6, -1, p.w - 12, 2);
+    ctx.restore();
+
     ctx.restore();
   }
   ctx.restore();
+
+  // Rysowanie iskier po rykoszetach od zablokowanych kul na platformach sufitowych
+  drawCeilingPipeSparks(ctx);
 }
 
 /** Rysuje pancerny bastion ze stalowymi płytami i pasami ostrzegawczymi (0 alokacji GC) */
