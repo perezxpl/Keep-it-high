@@ -1758,12 +1758,16 @@ button, .dev-btn {
 }
 
 .creator-tab-pane {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 10px;
   flex: 1;
   min-height: 0;
   justify-content: space-between;
+}
+
+.creator-tab-pane.active {
+  display: flex;
 }
 
 .creator-hair-grid {

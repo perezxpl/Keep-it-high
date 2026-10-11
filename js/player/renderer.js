@@ -30,6 +30,14 @@ import {
 } from './hair.js';
 
 import {
+  BEARD_STYLE_LIST,
+  BEARD_COLOR_LIST,
+  getBeardPalette,
+  drawCharacterFacialHairProfile,
+  drawHeadBeardPreview
+} from './facialHair.js';
+
+import {
   drawLimbStump,
   drawHandheldGrenade,
   drawBulletPuncture,
@@ -61,6 +69,11 @@ export {
   drawCharacterHairOverEarProfile,
   drawCharacterHairFrontOrBack,
   drawHeadHairPreview,
+  BEARD_STYLE_LIST,
+  BEARD_COLOR_LIST,
+  getBeardPalette,
+  drawCharacterFacialHairProfile,
+  drawHeadBeardPreview,
   drawLimbStump,
   drawHandheldGrenade,
   drawPlateCarrierOverlay,
@@ -1325,6 +1338,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // Włosy i fryzura (pokrywające górę, bok głowy, skroń oraz przysłaniające/zasłaniające ucho wraz z płynną fizyką pasm)
     drawCharacterHairProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch, hasHelmet);
+
+    // Zarost twarzy (broda, wąs, kilkudniowy cień zarostu na żuchwie i podbródku)
+    drawCharacterFacialHairProfile(ctx, v, hasHelmet);
 
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
     if (hasHelmet) {

@@ -8,8 +8,11 @@ import { CLASSES } from './classes/index.js';
 import {
   drawPlayer,
   drawHeadHairPreview,
+  drawHeadBeardPreview,
   HAIR_STYLE_LIST,
   HAIR_COLOR_LIST,
+  BEARD_STYLE_LIST,
+  BEARD_COLOR_LIST,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
@@ -32,7 +35,9 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_APPEARANCE = {
   hairStyle: 'buzzcut',
-  hairColor: '#18181b'
+  hairColor: '#18181b',
+  beardStyle: 'clean',
+  beardColor: '#18181b'
 };
 
 // =============================================================================
@@ -226,7 +231,9 @@ export const uiManager = {
   applyAppearance() {
     const custom = {
       hairStyle: this.appearance.hairStyle || 'buzzcut',
-      hairColor: this.appearance.hairColor || '#18181b'
+      hairColor: this.appearance.hairColor || '#18181b',
+      beardStyle: this.appearance.beardStyle || 'clean',
+      beardColor: this.appearance.beardColor || (this.appearance.hairColor || '#18181b')
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -420,6 +427,8 @@ export const uiManager = {
       case 'CREATOR':
         if (creatorEl) creatorEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
+        this.renderCreatorHairTiles();
+        this.renderCreatorBeardTiles();
         this.startCreatorPreview();
         break;
 
@@ -659,6 +668,24 @@ export const uiManager = {
       });
     }
 
+    // Zakładki Kreatora Postaci (WŁOSY / ZAROST)
+    document.querySelectorAll('.creator-tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.dataset.creatorTab;
+        if (!tabId) return;
+        playUiClick();
+        document.querySelectorAll('.creator-tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.creator-tab-pane').forEach((pane) => {
+          pane.classList.toggle('active', pane.id === `creator-tab-${tabId}`);
+        });
+        if (tabId === 'hair') {
+          this.renderCreatorHairTiles();
+        } else if (tabId === 'beard') {
+          this.renderCreatorBeardTiles();
+        }
+      });
+    });
+
     // -------------------------------------------------------------------------
     // OKNO USTAWIEŃ: Zakładki (Tabs)
     // -------------------------------------------------------------------------
@@ -809,6 +836,7 @@ export const uiManager = {
     }
 
     this.initCreatorHairUI();
+    this.initCreatorBeardUI();
   },
 
   initCreatorHairUI() {
@@ -841,6 +869,7 @@ export const uiManager = {
         this.saveAppearance();
         this.applyAppearance();
         this.syncCreatorHairSelectionUI();
+        this.renderCreatorBeardTiles();
       });
 
       gridEl.appendChild(tileBtn);
@@ -865,6 +894,7 @@ export const uiManager = {
         this.applyAppearance();
         this.syncCreatorHairSelectionUI();
         this.renderCreatorHairTiles();
+        this.renderCreatorBeardTiles();
       });
 
       colorsEl.appendChild(swatchBtn);
@@ -894,6 +924,97 @@ export const uiManager = {
       if (cvs) {
         const ctx = cvs.getContext('2d');
         drawHeadHairPreview(ctx, cvs.width, cvs.height, styleId, curColor);
+      }
+    });
+  },
+
+  initCreatorBeardUI() {
+    const gridEl = document.getElementById('creator-beard-grid');
+    const colorsEl = document.getElementById('creator-beard-colors');
+    if (!gridEl || !colorsEl) return;
+
+    gridEl.innerHTML = '';
+    colorsEl.innerHTML = '';
+
+    // 1. Kafelki z samą głową i stylem zarostu (bez nazw i opisów)
+    BEARD_STYLE_LIST.forEach((styleId) => {
+      const tileBtn = document.createElement('button');
+      tileBtn.type = 'button';
+      tileBtn.className = 'creator-hair-tile';
+      tileBtn.dataset.beardStyle = styleId;
+      if (this.appearance.beardStyle === styleId) {
+        tileBtn.classList.add('active');
+      }
+
+      const cvs = document.createElement('canvas');
+      cvs.width = 68;
+      cvs.height = 68;
+      tileBtn.appendChild(cvs);
+
+      tileBtn.addEventListener('mouseenter', () => playUiHover());
+      tileBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.beardStyle = styleId;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorBeardSelectionUI();
+      });
+
+      gridEl.appendChild(tileBtn);
+    });
+
+    // 2. Próbki kolorów zarostu pod kafelkami zarostów
+    BEARD_COLOR_LIST.forEach((hexCol) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'creator-color-swatch';
+      swatchBtn.dataset.beardColor = hexCol;
+      swatchBtn.style.backgroundColor = hexCol;
+      const curCol = String(this.appearance.beardColor || this.appearance.hairColor || '#18181b').toLowerCase();
+      if (curCol === hexCol.toLowerCase()) {
+        swatchBtn.classList.add('active');
+      }
+
+      swatchBtn.addEventListener('mouseenter', () => playUiHover());
+      swatchBtn.addEventListener('click', () => {
+        playUiClick();
+        this.appearance.beardColor = hexCol;
+        this.saveAppearance();
+        this.applyAppearance();
+        this.syncCreatorBeardSelectionUI();
+        this.renderCreatorBeardTiles();
+      });
+
+      colorsEl.appendChild(swatchBtn);
+    });
+
+    this.renderCreatorBeardTiles();
+  },
+
+  syncCreatorBeardSelectionUI() {
+    const curStyle = this.appearance.beardStyle || 'clean';
+    const curColor = String(this.appearance.beardColor || this.appearance.hairColor || '#18181b').toLowerCase();
+
+    document.querySelectorAll('#creator-beard-grid .creator-hair-tile').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.beardStyle === curStyle);
+    });
+
+    document.querySelectorAll('#creator-beard-colors .creator-color-swatch').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.beardColor).toLowerCase() === curColor);
+    });
+  },
+
+  renderCreatorBeardTiles() {
+    const curBeardColor = this.appearance.beardColor || this.appearance.hairColor || '#18181b';
+    const curHairStyle = this.appearance.hairStyle || 'buzzcut';
+    const curHairColor = this.appearance.hairColor || '#18181b';
+
+    document.querySelectorAll('#creator-beard-grid .creator-hair-tile').forEach((btn) => {
+      const styleId = btn.dataset.beardStyle || 'clean';
+      const cvs = btn.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        drawHeadBeardPreview(ctx, cvs.width, cvs.height, styleId, curBeardColor, curHairStyle, curHairColor);
       }
     });
   },

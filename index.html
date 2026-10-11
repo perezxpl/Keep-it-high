@@ -54,8 +54,9 @@
       "./js/particles.js": "./js/particles.js?v=v85_input_arch",
       "./js/player.js": "./js/player.js?v=v85_input_arch",
       "./js/player/actions.js": "./js/player/actions.js?v=v85_input_arch",
-      "./js/player/death.js": "./js/player/death.js?v=v85_input_arch",
-      "./js/player/hair.js": "./js/player/hair.js?v=v85_input_arch",
+      "./js/player/death.js": "./js/player/death.js?v=v86_facial_hair",
+      "./js/player/facialHair.js": "./js/player/facialHair.js?v=v86_facial_hair",
+      "./js/player/hair.js": "./js/player/hair.js?v=v86_facial_hair",
       "./js/player/ik.js": "./js/player/ik.js?v=v85_input_arch",
       "./js/player/index.js": "./js/player/index.js?v=v85_input_arch",
       "./js/player/limbs.js": "./js/player/limbs.js?v=v85_input_arch",
@@ -540,14 +541,23 @@
             <div class="creator-options-col">
               <div class="creator-tabs-bar">
                 <button class="creator-tab-btn active" type="button" data-creator-tab="hair">WŁOSY</button>
+                <button class="creator-tab-btn" type="button" data-creator-tab="beard">ZAROST</button>
               </div>
 
-              <div id="creator-tab-hair" class="creator-tab-pane">
+              <div id="creator-tab-hair" class="creator-tab-pane active">
                 <!-- Kafelki z samą głową i fryzurą (bez nazw i opisów) -->
                 <div id="creator-hair-grid" class="creator-hair-grid"></div>
 
                 <!-- Pasek wyboru koloru włosów pod oknem fryzur -->
                 <div id="creator-hair-colors" class="creator-hair-color-bar"></div>
+              </div>
+
+              <div id="creator-tab-beard" class="creator-tab-pane">
+                <!-- Kafelki z samą głową i zarostem (bez nazw i opisów) -->
+                <div id="creator-beard-grid" class="creator-hair-grid"></div>
+
+                <!-- Pasek wyboru koloru zarostu pod oknem zarostów -->
+                <div id="creator-beard-colors" class="creator-hair-color-bar"></div>
               </div>
             </div>
           </div>
