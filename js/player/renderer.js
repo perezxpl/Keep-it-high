@@ -1336,11 +1336,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
     ctx.stroke();
 
-    // Włosy i fryzura (pokrywające górę, bok głowy, skroń oraz przysłaniające/zasłaniające ucho wraz z płynną fizyką pasm)
-    drawCharacterHairProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch, hasHelmet);
-
-    // Zarost twarzy (broda, wąs, kilkudniowy cień zarostu na żuchwie i podbródku)
+    // Zarost twarzy (broda, wąs, kilkudniowy cień zarostu na żuchwie i podbródku - rysowany pod włosami)
     drawCharacterFacialHairProfile(ctx, v, hasHelmet);
+
+    // Włosy i fryzura (pokrywające górę, bok głowy, skroń oraz opadające NA zarost wraz z płynną fizyką pasm)
+    drawCharacterHairProfile(ctx, p, v, currentFacingDir, pose.torsoTilt, pose.headPitch, hasHelmet);
+    drawCharacterHairOverEarProfile(ctx, v, hairPal, hasHelmet);
 
     // 2. MODULARNE NAKRYCIE GŁOWY: HEŁM BALISTYCZNY FAST (jeśli założony)
     if (hasHelmet) {

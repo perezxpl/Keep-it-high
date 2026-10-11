@@ -6,13 +6,12 @@
 import { DEFAULT_VISUALS, getHairPalette, drawCharacterHairProfile, drawCharacterHairOverEarProfile } from './hair.js';
 
 export const BEARD_STYLE_LIST = [
-  'clean',         // Gładko ogolony (brak zarostu)
-  'stubble',       // Krótki, militarny 3-dniowy zarost (cień taktyczny)
-  'mustache',      // Klasyczny gęsty wąs wojskowy / komandos
-  'goatee',        // Kozia bródka z wąsem (van dyke / circle beard)
-  'short_beard',   // Krótka, przycięta broda taktyczna
-  'full_beard',    // Gęsta, pełna broda drwala / specops
-  'spartan_beard'  // Bojowa spartańska długa broda ze szpicem
+  'clean',              // 1. Gładko ogolony (brak zarostu)
+  'stubble',            // 2. Delikatny, jednolity cień zarostu (bez kropek)
+  'mustache',           // 3. Klasyczny gęsty wąs wojskowy / komandos
+  'goatee',             // 4. Kozia bródka z wąsem (van dyke / circle beard)
+  'short_beard',        // 5. Krótka, przycięta broda taktyczna z wąsem
+  'beard_no_mustache'   // 6. Pełna broda wzdłuż żuchwy i podbródka bez wąsów (chin curtain)
 ];
 
 export const BEARD_COLOR_LIST = [
@@ -48,8 +47,8 @@ export function getBeardPalette(hexColor) {
     deep: rgb(r * 0.35, g * 0.35, b * 0.35),
     light: rgb(r + (255 - r) * 0.25 + 10, g + (255 - g) * 0.25 + 10, b + (255 - b) * 0.25 + 10),
     highlight: rgba(Math.min(255, r + 70), Math.min(255, g + 70), Math.min(255, b + 70), 0.35),
-    stubbleDark: rgba(r * 0.50, g * 0.50, b * 0.50, 0.45),
-    stubbleMid: rgba(r, g, b, 0.30),
+    stubbleDark: rgba(r * 0.42, g * 0.42, b * 0.42, 0.26),
+    stubbleMid: rgba(r * 0.50, g * 0.50, b * 0.50, 0.14),
     stubbleFade: rgba(r, g, b, 0.0)
   };
 }
@@ -64,7 +63,10 @@ export function getBeardPalette(hexColor) {
  * - Warga dolna: (5.3, 2.3)
  * - Podbródek: (4.3, 4.8)
  * - Żuchwa: (0.2, 4.4) do kąta żuchwy (-3.5, 3.8)
- * - Ucho: (-2.6, -0.6)
+ * - Ucho: (-2.6, -0.6), promień poziomy 1.6, promień pionowy 2.2 -> przednia krawędź ucha to x = -1.0.
+ *
+ * Wszystkie linie zarostu i baczki leżą ściśle przed uchem (x >= -0.9) lub pod płatkiem ucha (y >= 2.0),
+ * dzięki czemu zarost NIGDY nie zasłania ucha!
  */
 export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
   const rawStyle = String(v.beardStyle || 'clean').toLowerCase();
@@ -82,16 +84,17 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
   ctx.save();
 
   if (style === 'stubble') {
-    // 1. KILKUDNIOWY ZAROST (STUBBLE / CIEŃ TAKTYCZNY)
-    // Miękki cień zarostu na żuchwie, podbródku, policzku i nad górną wargą
-    const stubGrad = ctx.createLinearGradient(-3.0, 1.0, 5.0, 4.5);
+    // 1. DELIKATNY, JEDNOLITY 3-DNIOWY ZAROST (STUBBLE - GŁADKI I MIĘKKI CIEŃ BEZ KROPEK)
+    // Miękki, półprzezroczysty gradient rozłożony wzdłuż żuchwy, podbródka i nad wargą.
+    const stubGrad = ctx.createLinearGradient(-0.8, 1.0, 5.0, 4.5);
     stubGrad.addColorStop(0.0, pal.stubbleDark);
-    stubGrad.addColorStop(0.7, pal.stubbleMid);
+    stubGrad.addColorStop(0.65, pal.stubbleMid);
     stubGrad.addColorStop(1.0, pal.stubbleFade);
 
     ctx.beginPath();
-    ctx.moveTo(-2.2, 0.5); // przed uchem (baczki)
-    ctx.quadraticCurveTo(-0.5, 1.5, 1.8, 1.6); // linia policzka
+    // Baczki ściśle przed uchem (ucho kończy się na x = -1.0)
+    ctx.moveTo(-0.9, 0.6);
+    ctx.quadraticCurveTo(0.2, 1.4, 2.0, 1.5); // łagodna linia policzka
     ctx.lineTo(3.8, 0.2); // pod nosem
     ctx.lineTo(5.1, 0.0);
     ctx.lineTo(5.4, 0.8); // warga górna
@@ -99,23 +102,11 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
     ctx.lineTo(5.2, 2.4); // warga dolna
     ctx.lineTo(4.4, 4.8); // podbródek
     ctx.lineTo(0.2, 4.5); // dolna krawędź żuchwy
-    ctx.lineTo(-3.4, 3.9);
-    ctx.lineTo(-2.2, 0.5);
+    ctx.lineTo(-2.0, 3.8); // kąt żuchwy (pod płatkiem ucha)
+    ctx.lineTo(-0.9, 0.6);
     ctx.closePath();
     ctx.fillStyle = stubGrad;
     ctx.fill();
-
-    // Drobne punkciki zarostu (tekstura mikro-włosków)
-    ctx.fillStyle = pal.dark;
-    const stubDots = [
-      [4.2, 0.4], [4.6, 0.3], [4.9, 0.5],
-      [4.4, 2.8], [4.7, 3.2], [4.1, 3.8], [4.3, 4.4],
-      [3.0, 4.2], [2.1, 4.1], [1.2, 4.0], [0.3, 3.9],
-      [-1.0, 3.4], [-2.0, 2.8], [-1.8, 1.4], [1.5, 2.6], [2.8, 2.9]
-    ];
-    for (let i = 0; i < stubDots.length; i++) {
-      ctx.fillRect(stubDots[i][0], stubDots[i][1], 0.65, 0.65);
-    }
 
   } else if (style === 'mustache') {
     // 2. KLASYCZNY WOJSKOWY WĄS
@@ -190,13 +181,13 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
     ctx.stroke();
 
   } else if (style === 'short_beard') {
-    // 4. KRÓTKA BRODA TAKTYCZNA (Baczki, linia żuchwy, podbródek i wąs)
+    // 4. KRÓTKA BRODA TAKTYCZNA Z WĄSEM (Baczki przed uchem, żuchwa, podbródek i wąs)
     ctx.beginPath();
-    // Baczki przed uchem
-    ctx.moveTo(-2.4, -0.2);
-    ctx.lineTo(-1.6, -0.2);
+    // Baczki ściśle przed uchem (ucho jest na x = -2.6 do -1.0)
+    ctx.moveTo(-0.9, 0.2);
+    ctx.lineTo(-0.1, 0.2);
     // Przejście przez policzek
-    ctx.quadraticCurveTo(0.2, 1.2, 2.5, 1.3);
+    ctx.quadraticCurveTo(1.2, 1.2, 2.5, 1.3);
     // Wąs pod nosem
     ctx.lineTo(3.8, -0.1);
     ctx.quadraticCurveTo(4.7, -0.5, 5.4, -0.2);
@@ -208,8 +199,8 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
     ctx.quadraticCurveTo(5.2, 5.3, 4.4, 5.5);
     // Linia dolna żuchwy
     ctx.lineTo(0.0, 5.0);
-    ctx.lineTo(-3.6, 4.2);
-    ctx.lineTo(-2.4, -0.2);
+    ctx.lineTo(-2.2, 4.0); // poniżej ucha
+    ctx.lineTo(-0.9, 0.2); // powrót przed uchem
     ctx.closePath();
     ctx.fillStyle = beardGrad;
     ctx.fill();
@@ -231,100 +222,52 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
     ctx.strokeStyle = pal.highlight;
     ctx.lineWidth = 0.65;
     ctx.beginPath();
-    ctx.moveTo(-1.2, 0.8);
-    ctx.lineTo(1.8, 3.6);
+    ctx.moveTo(0.2, 1.6);
+    ctx.lineTo(2.0, 3.6);
     ctx.moveTo(3.4, 3.2);
     ctx.lineTo(4.4, 5.0);
     ctx.stroke();
 
-  } else if (style === 'full_beard') {
-    // 5. GĘSTA, PEŁNA BRODA DRWALA / SPECOPS (Schodząca obficie poniżej linii żuchwy)
+  } else if (style === 'beard_no_mustache') {
+    // 5. PEŁNA BRODA CAŁEGO PODBRÓDKA I ŻUCHWY BEZ WĄSÓW (CHIN CURTAIN / SHENANDOAH)
+    // Wąs pod nosem i nad górną wargą jest całkowicie wygolony / gładki
     ctx.beginPath();
-    // Baczki łączące się z włosami
-    ctx.moveTo(-2.6, -1.0);
-    ctx.lineTo(-1.4, -1.0);
-    // Wyrazista linia policzka
-    ctx.quadraticCurveTo(0.5, 0.9, 2.8, 1.1);
-    // Gęsty wąs
-    ctx.lineTo(3.8, -0.2);
-    ctx.quadraticCurveTo(4.8, -0.6, 5.6, -0.2);
-    ctx.quadraticCurveTo(6.2, 0.7, 5.9, 1.6);
-    ctx.lineTo(5.1, 1.7);
-    ctx.lineTo(5.6, 2.5);
-    // Obfita, zaokrąglona masa brody wysunięta w dół i przód
-    ctx.quadraticCurveTo(6.4, 4.2, 5.8, 6.2);
-    ctx.quadraticCurveTo(4.8, 7.4, 3.2, 7.2);
-    ctx.quadraticCurveTo(0.2, 6.8, -2.2, 5.6);
-    ctx.lineTo(-3.8, 4.4);
-    ctx.lineTo(-2.6, -1.0);
+    // Baczki ściśle przed uchem (ucho jest na x = -2.6 do -1.0)
+    ctx.moveTo(-0.9, 0.2);
+    ctx.lineTo(-0.1, 0.2);
+    // Linia policzka schodząca wprost do podbródka, omijając wąs
+    ctx.quadraticCurveTo(1.2, 1.4, 2.4, 1.8);
+    // Krawędź omijająca usta – biegnie pod dolną wargą (brak wąsa pod nosem!)
+    ctx.lineTo(4.2, 2.5);
+    ctx.lineTo(5.2, 2.8);
+    ctx.lineTo(5.6, 4.0); // mocny zarys podbródka
+    ctx.quadraticCurveTo(5.2, 5.5, 4.4, 5.6);
+    // Linia dolna żuchwy
+    ctx.lineTo(0.0, 5.1);
+    ctx.lineTo(-2.2, 4.1); // poniżej ucha
+    ctx.lineTo(-0.9, 0.2); // powrót przed uchem
     ctx.closePath();
     ctx.fillStyle = beardGrad;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.95;
+    ctx.lineWidth = 0.90;
     ctx.stroke();
 
-    // Wewnętrzne cienie i warstwy włosów
-    ctx.strokeStyle = pal.dark;
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(0.5, 3.0);
-    ctx.quadraticCurveTo(2.4, 4.8, 3.8, 6.4);
-    ctx.moveTo(-1.0, 2.5);
-    ctx.quadraticCurveTo(0.8, 4.6, 1.6, 6.2);
-    ctx.stroke();
-
-    // Złociste / jasne refleksy na wierzchu brody
+    // Akcenty pasm brody
     ctx.strokeStyle = pal.highlight;
-    ctx.lineWidth = 0.75;
+    ctx.lineWidth = 0.70;
     ctx.beginPath();
-    ctx.moveTo(4.2, 0.2);
-    ctx.lineTo(5.4, 1.1);
-    ctx.moveTo(4.6, 3.4);
-    ctx.lineTo(5.2, 5.6);
-    ctx.stroke();
-
-  } else if (style === 'spartan_beard') {
-    // 6. BOJOWA SPARTAŃSKA BRODA (Wydłużona, klinowata, wysunięta w przód)
-    ctx.beginPath();
-    ctx.moveTo(-2.5, -0.8);
-    ctx.lineTo(-1.5, -0.8);
-    ctx.quadraticCurveTo(0.4, 0.8, 2.6, 1.0);
-    // Wąs
-    ctx.lineTo(3.8, -0.2);
-    ctx.quadraticCurveTo(4.8, -0.6, 5.6, -0.2);
-    ctx.quadraticCurveTo(6.1, 0.7, 5.8, 1.5);
-    ctx.lineTo(5.0, 1.6);
-    ctx.lineTo(5.5, 2.4);
-    // Ostry klin spartański wysunięty mocno w przód
-    ctx.lineTo(6.8, 4.8);
-    ctx.lineTo(6.2, 6.8); // ostry szpic brody
-    ctx.quadraticCurveTo(4.4, 7.2, 2.4, 6.0);
-    ctx.lineTo(-0.8, 5.2);
-    ctx.lineTo(-3.6, 4.2);
-    ctx.lineTo(-2.5, -0.8);
-    ctx.closePath();
-    ctx.fillStyle = beardGrad;
-    ctx.fill();
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.95;
-    ctx.stroke();
-
-    // Ostre pasma zbiegające się do szpica
-    ctx.strokeStyle = pal.highlight;
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(3.6, 2.6);
-    ctx.lineTo(5.8, 5.8);
-    ctx.moveTo(1.8, 3.8);
-    ctx.lineTo(5.0, 6.4);
+    ctx.moveTo(0.5, 2.2);
+    ctx.lineTo(2.6, 4.2);
+    ctx.moveTo(3.5, 3.4);
+    ctx.lineTo(4.6, 5.2);
     ctx.stroke();
 
     ctx.strokeStyle = pal.dark;
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 0.75;
     ctx.beginPath();
-    ctx.moveTo(0.0, 4.6);
-    ctx.lineTo(3.6, 5.8);
+    ctx.moveTo(-0.2, 2.8);
+    ctx.lineTo(1.8, 4.6);
     ctx.stroke();
   }
 
@@ -334,6 +277,13 @@ export function drawCharacterFacialHairProfile(ctx, v, hasHelmet = false) {
 /**
  * Renderuje samą głowę z wybranym stylem zarostu, kolorem zarostu, fryzurą i kolorem włosów
  * na kafelku wyboru w Kreatorze Postaci (zakładka "ZAROST").
+ *
+ * KOLEJNOŚĆ WARSTW:
+ * 1. Szyja i czaszka (twarz)
+ * 2. Ucho
+ * 3. ZAROST TWARZY (drawCharacterFacialHairProfile)
+ * 4. WŁOSY Z GŁOWY (drawCharacterHairProfile + overEar) - opadają NA zarost i baczki
+ * 5. Oko i brew
  */
 export function drawHeadBeardPreview(
   ctx,
@@ -421,7 +371,7 @@ export function drawHeadBeardPreview(
   ctx.lineWidth = 1.0;
   ctx.stroke();
 
-  // 3. Ucho
+  // 3. Ucho (zarost nie zasłania ucha)
   ctx.fillStyle = v.skinBack;
   ctx.beginPath();
   ctx.ellipse(-2.6, -0.6, 1.6, 2.2, 0, 0, Math.PI * 2);
@@ -432,12 +382,12 @@ export function drawHeadBeardPreview(
   ctx.arc(-2.5, -0.6, 1.1, 0.4 * Math.PI, 1.7 * Math.PI, false);
   ctx.stroke();
 
-  // 4. Fryzura postaci
+  // 4. Zarost twarzy (rysowany POD włosami z głowy!)
+  drawCharacterFacialHairProfile(ctx, v, false);
+
+  // 5. Fryzura postaci (włosy z głowy nakładające się z góry NA zarost i baczki)
   drawCharacterHairProfile(ctx, tileDummy, v, 1, 0, 0, false);
   drawCharacterHairOverEarProfile(ctx, v, hairPal, false);
-
-  // 5. Zarost twarzy
-  drawCharacterFacialHairProfile(ctx, v, false);
 
   // 6. Oko i brew
   const eyeCenterX = 2.7;
