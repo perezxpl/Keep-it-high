@@ -68,6 +68,7 @@ import {
   getCamoType,
   doesTorsoSupportColor,
   getTorsoPalette,
+  drawCamoSplotches,
   drawTorsoShirt,
   drawTorsoPreview
 } from './torso.js';
@@ -140,6 +141,7 @@ export {
   getCamoType,
   doesTorsoSupportColor,
   getTorsoPalette,
+  drawCamoSplotches,
   drawTorsoShirt,
   drawTorsoPreview,
   PANTS_STYLE_LIST,

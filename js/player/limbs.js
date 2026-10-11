@@ -1213,6 +1213,16 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.quadraticCurveTo(l1 * 0.91, thighHalfH * 0.25, l1 * 0.95, -0.5);
   ctx.stroke();
 
+  if (isShorts) {
+    // Podwinięty brzeg nogawki spodenek taktycznych (Shorts Hem Seam)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(l1 - 1.2, -2.4);
+    ctx.lineTo(l1 - 1.2, 2.4);
+    ctx.stroke();
+  }
+
   // Boczna kieszeń miechowa Cargo (wyprofilowana z fałdą i klapą)
   const pocketX = l1 * 0.24;
   const pocketW = l1 * 0.48;
@@ -1404,8 +1414,24 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
       ctx.fill();
     }
 
+    // Obrys zewnętrzny nogawki na łydce (bez kreski odcinającej staw kolanowy)
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(0.8, -calfBulge * 0.72);
+    ctx.bezierCurveTo(
+      l2 * 0.30, -3.4 * muscle,
+      l2 * 0.62, -3.6 * muscle,
+      blouseEnd - 1.6, -achillesHalfW * 1.42
+    );
+    ctx.quadraticCurveTo(blouseEnd + 0.6, -achillesHalfW * 1.15, blouseEnd, -achillesHalfW * 0.85);
+    ctx.quadraticCurveTo(blouseEnd + 0.8, 0, blouseEnd, achillesHalfW * 0.92);
+    ctx.quadraticCurveTo(blouseEnd + 0.5, achillesHalfW * 1.38, blouseEnd - 2.2, achillesHalfW * 1.45);
+    ctx.bezierCurveTo(
+      l2 * 0.58, calfBulge * 0.98,
+      l2 * 0.28, calfBulge * 1.05,
+      0.8, calfBulge * 0.65
+    );
     ctx.stroke();
 
     // Naturalne zagięcia tkaniny na kolanie i nad butem (BEZ sztucznego kółka na kolanie)

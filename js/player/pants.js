@@ -102,8 +102,8 @@ export function drawPantsPreview(
 
   ctx.save();
   // Centrowanie nogi w kadrze kafelka
-  ctx.translate(canvasW * 0.44, canvasH * 0.48);
-  const scale = Math.min(canvasW, canvasH) / 42.0;
+  ctx.translate(canvasW * 0.48, canvasH * 0.44);
+  const scale = Math.min(canvasW, canvasH) / 47.0;
   ctx.scale(scale, scale);
 
   // 1. Pas taktyczny na górze

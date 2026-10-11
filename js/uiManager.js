@@ -467,6 +467,8 @@ export const uiManager = {
         this.initCreatorHeadgearUI();
         this.initCreatorMaskUI();
         this.initCreatorNeckUI();
+        this.initCreatorTorsoUI();
+        this.initCreatorPantsUI();
         this.switchCreatorTab(this.activeCreatorTab || 'hair');
         this.startCreatorPreview();
         break;
@@ -1567,16 +1569,23 @@ export const uiManager = {
       pane.classList.toggle('active', isTarget);
     });
     if (tabId === 'hair') {
+      this.syncCreatorHairSelectionUI();
       this.renderCreatorHairTiles();
     } else if (tabId === 'beard') {
+      this.syncCreatorBeardSelectionUI();
       this.renderCreatorBeardTiles();
     } else if (tabId === 'headgear') {
+      this.syncCreatorHeadgearSelectionUI();
+      this.syncCreatorMaskSelectionUI();
+      this.syncCreatorNeckSelectionUI();
       this.renderCreatorHeadgearTiles();
       this.renderCreatorMaskTiles();
       this.renderCreatorNeckTiles();
     } else if (tabId === 'torso') {
+      this.syncCreatorTorsoSelectionUI();
       this.renderCreatorTorsoTiles();
     } else if (tabId === 'pants') {
+      this.syncCreatorPantsSelectionUI();
       this.renderCreatorPantsTiles();
     }
   },
@@ -1653,7 +1662,11 @@ export const uiManager = {
           headgearColor: this.appearance.headgearColor || '#18181b',
           maskStyle: this.appearance.maskStyle || 'none',
           maskColor: this.appearance.maskColor || '#18181b',
-          neckStyle: this.appearance.neckStyle || 'none'
+          neckStyle: this.appearance.neckStyle || 'none',
+          torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
+          torsoColor: this.appearance.torsoColor || '#18181b',
+          pantsStyle: this.appearance.pantsStyle || 'cargo_long',
+          pantsColor: this.appearance.pantsColor || '#18181b'
         },
         pose: { initialized: false }
       };
@@ -1665,6 +1678,8 @@ export const uiManager = {
     this.syncCreatorHeadgearSelectionUI();
     this.syncCreatorMaskSelectionUI();
     this.syncCreatorNeckSelectionUI();
+    this.syncCreatorTorsoSelectionUI();
+    this.syncCreatorPantsSelectionUI();
     this.renderCreatorHairTiles();
 
     const tick = () => {
