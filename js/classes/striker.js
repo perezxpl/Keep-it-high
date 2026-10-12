@@ -135,20 +135,23 @@ export function initRocketBootsState(p) {
     dashDirY: 0,
     dashType: 'NONE', // 'GROUND' | 'AIR'
     dashSpeed: 0,
+    dashInputSource: 'NONE', // 'KEYBOARD' | 'STICK'
 
-    // Klawiatura – podwójne naciśnięcie (okno do 300 ms)
+    // Ziemia – podwójne naciśnięcie klawisza (okno do 300 ms)
     lastTapLeftTime: 0,
     lastTapRightTime: 0,
-    lastTapUpTime: 0,
     prevKeyLeft: false,
     prevKeyRight: false,
     prevKeyUp: false,
 
-    // Drążek analogowy / dotykowy – podwójny wyrzut drążka (okno do 300 ms)
-    lastStickFlickTime: 0,
-    lastStickFlickDirX: 0,
-    lastStickFlickDirY: 0,
-    stickWasCentered: true
+    // Ziemia – podwójny wyrzut drążka w lewo/prawo (okno do 300 ms)
+    lastGroundStickFlickTime: 0,
+    lastGroundStickFlickDir: 0,
+    groundStickWasCentered: true,
+
+    // Powietrze – gotowość drążka na pojedynczy wyrzut po uprzednim cofnięciu / wyskoku
+    airStickReady: false,
+    prevAirborne: false
   };
 }
 
@@ -162,7 +165,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   const rb = player.rocketBoots;
   const now = performance.now();
-  const FLICK_WINDOW_MS = 300; // Okno czasowe na podwójny wyrzut drążka / tapnięcie (do 300 ms)
+  const FLICK_WINDOW_MS = 300; // Okno czasowe na podwójny wyrzut drążka / tapnięcie (do 300 ms) na ziemi
 
   const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
 
@@ -191,54 +194,127 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   }
 
   const stickMag = Math.hypot(stickX, stickY);
-
-  let requestedDashX = 0;
-  let requestedDashY = 0;
-
-  // =========================================================================
-  // DETEKCJA A: DRĄŻEK ANALOGOWY – PODWÓJNY WYRZUT (DOUBLE-FLICK W OKNIE DO 300 MS)
-  // "buty mają reagowac na podwójny wyrzut drążka np do 300ms w dowolnym kierunku jak jetpack"
-  // "jetpack takze nie lata w dół" -> wykluczenie dołu!
-  // =========================================================================
   const isStickAimingDown = stickY > 0.38 && (stickY > Math.abs(stickX) * 0.7);
 
-  if (stickMag < 0.35) {
-    // Drążek wrócił w okolicę środka (neutral)
-    rb.stickWasCentered = true;
-  } else if (stickMag >= 0.65 && !isStickAimingDown) {
-    // Zdecydowany wyrzut drążka w dowolnym kierunku OPRÓCZ DOŁU
-    if (rb.stickWasCentered) {
-      rb.stickWasCentered = false;
-      const normX = stickX / stickMag;
-      const normY = stickY / stickMag;
+  // =========================================================================
+  // OBSŁUGA PRZEJŚĆ ZIEMIA <-> POWIETRZE
+  // =========================================================================
+  if (isAirborne && !rb.prevAirborne) {
+    // Właśnie nastąpił wyskok / oderwanie od ziemi!
+    if (rb.dashType === 'GROUND') {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+      rb.dashInputSource = 'NONE';
+    }
+    // "w przypadku wyskoku trzeba puscic drążek lub go cofnąć"
+    // Jeśli drążek był już wychylony podczas wybicia, gracz musi go najpierw puścić/cofnąć do środka
+    rb.airStickReady = (stickMag < 0.35);
+  } else if (!isAirborne && rb.prevAirborne) {
+    // Właśnie nastąpiło lądowanie na ziemi
+    rb.airStickReady = false;
+    if (rb.dashType === 'AIR') {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+    }
+  }
+  rb.prevAirborne = isAirborne;
 
-      const dt = now - (rb.lastStickFlickTime || 0);
-      const dot = normX * (rb.lastStickFlickDirX || 0) + normY * (rb.lastStickFlickDirY || 0);
+  // =========================================================================
+  // TRYB 1: POWIETRZE (AIR SUPER DASH)
+  // "A w górę wystarczy ze bedzie w powietrzu juz bez tych 300ms ale w przypadku wyskoku
+  // trzeba puscic drążek lub go cofnąć lub powtórzyc przycisk na klawiaturze"
+  // =========================================================================
+  if (isAirborne) {
+    let reqAirX = 0;
+    let reqAirY = 0;
 
-      if (dt >= 40 && dt <= FLICK_WINDOW_MS && dot >= 0.5) {
-        // SUKCES: Drugi wyrzut drążka w tym samym kierunku w oknie do 300 ms!
-        requestedDashX = normX;
-        requestedDashY = normY;
-        rb.lastStickFlickTime = 0;
-      } else {
-        // Pierwszy wyrzut drążka
-        rb.lastStickFlickTime = now;
-        rb.lastStickFlickDirX = normX;
-        rb.lastStickFlickDirY = normY;
+    // A. DRĄŻEK W POWIETRZU:
+    // Wystarczy 1 zdecydowane wychylenie po uprzednim puszczeniu/cofnięciu do środka (< 0.35)
+    if (stickMag < 0.35) {
+      rb.airStickReady = true;
+    } else if (rb.airStickReady && stickMag >= 0.60 && !isStickAimingDown) {
+      rb.airStickReady = false;
+      reqAirX = stickX / stickMag;
+      reqAirY = stickY / stickMag;
+    }
+
+    // B. KLAWIATURA W POWIETRZU:
+    // Wystarczy powtórzyć/nacisnąć przycisk w powietrzu (justPressed)!
+    if (!keyDown && reqAirX === 0 && reqAirY === 0) {
+      if (justPressedUp) {
+        if (keyLeft) { reqAirX = -0.707; reqAirY = -0.707; }
+        else if (keyRight) { reqAirX = 0.707; reqAirY = -0.707; }
+        else { reqAirX = 0; reqAirY = -1.0; }
+      } else if (justPressedLeft) {
+        if (keyUp) { reqAirX = -0.707; reqAirY = -0.707; }
+        else { reqAirX = -1.0; reqAirY = 0; }
+      } else if (justPressedRight) {
+        if (keyUp) { reqAirX = 0.707; reqAirY = -0.707; }
+        else { reqAirX = 1.0; reqAirY = 0; }
       }
     }
+
+    // Jeśli gracz wyzwolił Super Dash w powietrzu:
+    if (reqAirX !== 0 || reqAirY !== 0) {
+      const fuelCost = (player.jetMax || 100) * 0.50; // Dokładnie 50% paliwa
+      if ((player.jetFuel || 0) >= fuelCost) {
+        player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+        triggerStrikerAirDash(player, reqAirX, reqAirY);
+      }
+    }
+
+    return;
   }
 
   // =========================================================================
-  // DETEKCJA B: KLAWIATURA – PODWÓJNE TAPNIĘCIE KLAWISZA (W OKNIE DO 300 MS)
-  // Reakcja w każdym kierunku OPRÓCZ DOŁU (klawisz S / strzałka w dół blokuje dash)
+  // TRYB 2: ZIEMIA (GROUND ROCKET DASH)
+  // "Gdy striker stoi, trzeba nacisnac przycisk kierunku lub drążek wychylic szybko 2x do 300ms
+  // aby daszował po ziemi i bedzie to robil tak dlugo dopoki nie puszcze przycisku lub drążka nie puszcze lub cofnę"
   // =========================================================================
-  if (!keyDown && requestedDashX === 0 && requestedDashY === 0) {
+
+  // A. JEŚLI GROUND DASH JUŻ TRWA: SPRAWDZAMY CZY GRACZ NADAL TRZYMA KIERUNEK
+  if (rb.dashing && rb.dashType === 'GROUND') {
+    let continueGroundDash = false;
+
+    // Sprawdzenie czy nie uderzyliśmy w lewą lub prawą krawędź areny
+    const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
+    if ((rb.dashDir < 0 && player.x <= 15) || (rb.dashDir > 0 && player.x >= arenaRightLimit)) {
+      continueGroundDash = false;
+    } else if (rb.dashInputSource === 'KEYBOARD') {
+      if (rb.dashDir === -1 && keyLeft && !keyDown) continueGroundDash = true;
+      if (rb.dashDir === 1 && keyRight && !keyDown) continueGroundDash = true;
+    } else if (rb.dashInputSource === 'STICK') {
+      // Drążek nadal wychylony w tym samym kierunku poziomym i nie cofnięty poniżej 0.45
+      if (!isStickAimingDown && Math.abs(stickX) >= 0.45 && Math.sign(stickX) === rb.dashDir) {
+        continueGroundDash = true;
+      }
+    }
+
+    if (!continueGroundDash) {
+      // Gracz puścił przycisk lub puścił / cofnął drążek!
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+      rb.dashInputSource = 'NONE';
+    } else {
+      // Utrzymujemy rakietowy pęd po murawie dopóki trzyma
+      rb.dashSpeed = 17.5;
+      player.facing = rb.dashDir;
+      player.vx = rb.dashDir * 17.5;
+      return;
+    }
+  }
+
+  // B. JEŚLI GROUND DASH NIE TRWA: DETEKCJA STARTU (PODWÓJNE WYCHYLENIE / TAP W 300 MS)
+  let triggerGroundDir = 0;
+  let triggerSource = 'NONE';
+
+  // 1. KLAWIATURA NA ZIEMI: 2x szybki tap klawisza lewo/prawo w oknie do 300 ms
+  if (!keyDown) {
     if (justPressedLeft) {
       const dt = now - (rb.lastTapLeftTime || 0);
       if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
-        requestedDashX = -1.0;
-        requestedDashY = keyUp ? -0.707 : 0;
+        triggerGroundDir = -1;
+        triggerSource = 'KEYBOARD';
         rb.lastTapLeftTime = 0;
       } else {
         rb.lastTapLeftTime = now;
@@ -246,60 +322,41 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     } else if (justPressedRight) {
       const dt = now - (rb.lastTapRightTime || 0);
       if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
-        requestedDashX = 1.0;
-        requestedDashY = keyUp ? -0.707 : 0;
+        triggerGroundDir = 1;
+        triggerSource = 'KEYBOARD';
         rb.lastTapRightTime = 0;
       } else {
         rb.lastTapRightTime = now;
       }
-    } else if (justPressedUp) {
-      const dt = now - (rb.lastTapUpTime || 0);
-      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
-        if (keyLeft) { requestedDashX = -0.707; requestedDashY = -0.707; }
-        else if (keyRight) { requestedDashX = 0.707; requestedDashY = -0.707; }
-        else { requestedDashX = 0; requestedDashY = -1.0; }
-        rb.lastTapUpTime = 0;
-      } else {
-        rb.lastTapUpTime = now;
-      }
     }
   }
 
-  // Normalizacja wektora jika ukośny z klawiatury
-  if (requestedDashX !== 0 && requestedDashY !== 0) {
-    const mag = Math.hypot(requestedDashX, requestedDashY);
-    requestedDashX /= mag;
-    requestedDashY /= mag;
-  }
+  // 2. DRĄŻEK NA ZIEMI: 2x szybki wyrzut drążka lewo/prawo w oknie do 300 ms
+  if (triggerGroundDir === 0) {
+    const isHorizFlick = Math.abs(stickX) >= 0.65 && !isStickAimingDown;
 
-  // =========================================================================
-  // WYKONANIE DASHU (POWIETRZE LUB ZIEMIA)
-  // =========================================================================
-  if (requestedDashX !== 0 || requestedDashY !== 0) {
-    if (isAirborne) {
-      // W POWIETRZU: Koszt 50% paliwa na Super Dash (dokładnie 2 dashe przy 100% paliwa)
-      const fuelCost = (player.jetMax || 100) * 0.50;
-      if ((player.jetFuel || 0) >= fuelCost) {
-        player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-        triggerStrikerAirDash(player, requestedDashX, requestedDashY);
-      }
-    } else {
-      // NA ZIEMI:
-      if (requestedDashY < -0.4) {
-        // Wyrzut w górę lub po skosie w górę z murawy (aktywuje lot rakietowy za 50% paliwa)
-        const fuelCost = (player.jetMax || 100) * 0.50;
-        if ((player.jetFuel || 0) >= fuelCost) {
-          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-          player.onGround = false;
-          player.isJumping = true;
-          player.y -= 4;
-          triggerStrikerAirDash(player, requestedDashX, requestedDashY);
+    if (stickMag < 0.35) {
+      rb.groundStickWasCentered = true;
+    } else if (isHorizFlick) {
+      if (rb.groundStickWasCentered) {
+        rb.groundStickWasCentered = false;
+        const flickDir = Math.sign(stickX);
+        const dt = now - (rb.lastGroundStickFlickTime || 0);
+
+        if (dt >= 40 && dt <= FLICK_WINDOW_MS && flickDir === rb.lastGroundStickFlickDir) {
+          triggerGroundDir = flickDir;
+          triggerSource = 'STICK';
+          rb.lastGroundStickFlickTime = 0;
+        } else {
+          rb.lastGroundStickFlickTime = now;
+          rb.lastGroundStickFlickDir = flickDir;
         }
-      } else if (Math.abs(requestedDashX) > 0.3) {
-        // Poziomy rakietowy odskok po murawie (Ground Dash)
-        triggerStrikerGroundDash(player, Math.sign(requestedDashX));
       }
     }
+  }
+
+  if (triggerGroundDir !== 0) {
+    triggerStrikerGroundDash(player, triggerGroundDir, triggerSource);
   }
 }
 
@@ -332,18 +389,18 @@ function triggerStrikerAirDash(player, dirX, dirY) {
 /**
  * Odpala dopalacz w butach na ziemi (Ground Rocket Dash)
  */
-function triggerStrikerGroundDash(player, dir) {
+function triggerStrikerGroundDash(player, dir, source = 'STICK') {
   const rb = player.rocketBoots;
   rb.dashing = true;
   rb.dashType = 'GROUND';
+  rb.dashInputSource = source;
+  rb.dashDir = dir;
   rb.dashDirX = dir;
   rb.dashDirY = 0;
-  rb.dashDir = dir;
-  rb.dashTimer = 20;
-  rb.dashSpeed = 19.0;
+  rb.dashSpeed = 17.5;
   player.facing = dir;
-  player.vx = dir * 19.0;
-  triggerScreenShake(2.8);
+  player.vx = dir * 17.5;
+  triggerScreenShake(2.5);
 
   // Wybuch płomieni z pięt na poziomie murawy
   emitBootsBurstParticles(player, -dir, 0, 12);
@@ -374,12 +431,7 @@ export function updateRocketBootsPhysics(player) {
   if (!player || !player.rocketBoots) return;
   const rb = player.rocketBoots;
 
-  if (!rb.dashing || rb.dashTimer <= 0) {
-    rb.dashing = false;
-    return;
-  }
-
-  rb.dashTimer--;
+  if (!rb.dashing) return;
 
   // Emisja płomieni z butów przez cały czas trwania zrywu
   if (typeof spawnJetpackSparks === 'function') {
@@ -394,19 +446,19 @@ export function updateRocketBootsPhysics(player) {
   }
 
   if (rb.dashType === 'AIR') {
+    rb.dashTimer--;
     // W powietrzu: utrzymujemy pełny wektor kierunkowy (góra, skosy, boki)
     player.vx = rb.dashDirX * rb.dashSpeed;
     player.vy = rb.dashDirY * rb.dashSpeed;
     player.airVx = player.vx;
     rb.dashSpeed *= 0.985;
-  } else {
-    // Na ziemi: gwałtowny zryw ze stopniowym wyhamowywaniem do sprintu
+    if (rb.dashTimer <= 0) {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+    }
+  } else if (rb.dashType === 'GROUND') {
+    // Na ziemi: ciągła prędkość rakietowa dopóki gracz trzyma przycisk lub drążek
     player.vx = rb.dashDirX * rb.dashSpeed;
-    rb.dashSpeed *= 0.94;
-  }
-
-  if (rb.dashTimer <= 0) {
-    rb.dashing = false;
   }
 }
 
