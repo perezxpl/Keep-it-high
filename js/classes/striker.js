@@ -129,25 +129,26 @@ export function initRocketBootsState(p) {
   p.rocketBoots = {
     dashing: false,
     dashTimer: 0,
-    dashMaxTimer: 12,
+    dashMaxTimer: 18,
     dashDir: 0,
+    dashDirX: 0,
+    dashDirY: 0,
     dashType: 'NONE', // 'GROUND' | 'AIR'
     dashSpeed: 0,
 
-    // Klawiatura / Pad D-pad – podwójne naciśnięcie
+    // Klawiatura – podwójne naciśnięcie (okno do 300 ms)
     lastTapLeftTime: 0,
     lastTapRightTime: 0,
+    lastTapUpTime: 0,
     prevKeyLeft: false,
     prevKeyRight: false,
+    prevKeyUp: false,
 
-    // Drążek analogowy / dotykowy – podwójne wychylenie na ziemi (maksymalne -> cofnięcie -> maksymalne)
-    stickPhaseX: 'IDLE', // 'IDLE' | 'PEAK_1' | 'CENTERED'
-    stickFlickDir: 0,
-    stickFlickTime: 0,
-
-    // Drążek analogowy w powietrzu – ponowne wychylenie
-    airStickEngaged: false,
-    prevAirborne: false
+    // Drążek analogowy / dotykowy – podwójny wyrzut drążka (okno do 300 ms)
+    lastStickFlickTime: 0,
+    lastStickFlickDirX: 0,
+    lastStickFlickDirY: 0,
+    stickWasCentered: true
   };
 }
 
@@ -161,6 +162,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   const rb = player.rocketBoots;
   const now = performance.now();
+  const FLICK_WINDOW_MS = 300; // Okno czasowe na podwójny wyrzut drążka / tapnięcie (do 300 ms)
 
   const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
 
@@ -190,128 +192,114 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   const stickMag = Math.hypot(stickX, stickY);
 
-  // =========================================================================
-  // TRYB POWIETRZNY: WIELOKIERUNKOWY SUPER DASH W POWIETRZU (KOSZT: 50% PALIWA)
-  // "na drążku musi reagować w kazdym kierunku oprócz dołu. Na klawiaturze w dół też nie powinno reagować"
-  // =========================================================================
-  if (isAirborne) {
-    // Resetuj stan sekwencji naziemnego flicku
-    rb.stickPhaseX = 'IDLE';
+  let requestedDashX = 0;
+  let requestedDashY = 0;
 
-    let reqDirX = 0;
-    let reqDirY = 0;
+  // =========================================================================
+  // DETEKCJA A: DRĄŻEK ANALOGOWY – PODWÓJNY WYRZUT (DOUBLE-FLICK W OKNIE DO 300 MS)
+  // "buty mają reagowac na podwójny wyrzut drążka np do 300ms w dowolnym kierunku jak jetpack"
+  // "jetpack takze nie lata w dół" -> wykluczenie dołu!
+  // =========================================================================
+  const isStickAimingDown = stickY > 0.38 && (stickY > Math.abs(stickX) * 0.7);
 
-    // A. KLAWIATURA: reakcja w każdym kierunku oprócz dołu
-    if (!keyDown) {
-      if (justPressedUp) {
-        if (keyLeft) { reqDirX = -0.707; reqDirY = -0.707; }
-        else if (keyRight) { reqDirX = 0.707; reqDirY = -0.707; }
-        else { reqDirX = 0; reqDirY = -1.0; } // Wystrzał pionowo w górę!
-      } else if (justPressedLeft) {
-        if (keyUp) { reqDirX = -0.707; reqDirY = -0.707; }
-        else { reqDirX = -1.0; reqDirY = 0; }
-      } else if (justPressedRight) {
-        if (keyUp) { reqDirX = 0.707; reqDirY = -0.707; }
-        else { reqDirX = 1.0; reqDirY = 0; }
+  if (stickMag < 0.35) {
+    // Drążek wrócił w okolicę środka (neutral)
+    rb.stickWasCentered = true;
+  } else if (stickMag >= 0.65 && !isStickAimingDown) {
+    // Zdecydowany wyrzut drążka w dowolnym kierunku OPRÓCZ DOŁU
+    if (rb.stickWasCentered) {
+      rb.stickWasCentered = false;
+      const normX = stickX / stickMag;
+      const normY = stickY / stickMag;
+
+      const dt = now - (rb.lastStickFlickTime || 0);
+      const dot = normX * (rb.lastStickFlickDirX || 0) + normY * (rb.lastStickFlickDirY || 0);
+
+      if (dt >= 40 && dt <= FLICK_WINDOW_MS && dot >= 0.5) {
+        // SUKCES: Drugi wyrzut drążka w tym samym kierunku w oknie do 300 ms!
+        requestedDashX = normX;
+        requestedDashY = normY;
+        rb.lastStickFlickTime = 0;
+      } else {
+        // Pierwszy wyrzut drążka
+        rb.lastStickFlickTime = now;
+        rb.lastStickFlickDirX = normX;
+        rb.lastStickFlickDirY = normY;
       }
     }
+  }
 
-    // B. DRĄŻEK: reakcja w każdym kierunku OPRÓCZ DOŁU
-    // Sprawdzamy czy drążek nie jest skierowany w dół (kąt w dół: stickY > 0.40)
-    const isStickAimingDown = stickY > 0.38 && (stickY > Math.abs(stickX) * 0.7);
-
-    if (stickMag < 0.28) {
-      // Drążek wrócił do strefy martwej
-      rb.airStickEngaged = false;
-    } else if (stickMag >= 0.58 && !isStickAimingDown) {
-      // Ponowne zdecydowane wychylenie gałki w dowolną stronę OPRÓCZ DOŁU
-      if (!rb.airStickEngaged) {
-        rb.airStickEngaged = true;
-        reqDirX = stickX / stickMag;
-        reqDirY = stickY / stickMag;
+  // =========================================================================
+  // DETEKCJA B: KLAWIATURA – PODWÓJNE TAPNIĘCIE KLAWISZA (W OKNIE DO 300 MS)
+  // Reakcja w każdym kierunku OPRÓCZ DOŁU (klawisz S / strzałka w dół blokuje dash)
+  // =========================================================================
+  if (!keyDown && requestedDashX === 0 && requestedDashY === 0) {
+    if (justPressedLeft) {
+      const dt = now - (rb.lastTapLeftTime || 0);
+      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
+        requestedDashX = -1.0;
+        requestedDashY = keyUp ? -0.707 : 0;
+        rb.lastTapLeftTime = 0;
+      } else {
+        rb.lastTapLeftTime = now;
+      }
+    } else if (justPressedRight) {
+      const dt = now - (rb.lastTapRightTime || 0);
+      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
+        requestedDashX = 1.0;
+        requestedDashY = keyUp ? -0.707 : 0;
+        rb.lastTapRightTime = 0;
+      } else {
+        rb.lastTapRightTime = now;
+      }
+    } else if (justPressedUp) {
+      const dt = now - (rb.lastTapUpTime || 0);
+      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
+        if (keyLeft) { requestedDashX = -0.707; requestedDashY = -0.707; }
+        else if (keyRight) { requestedDashX = 0.707; requestedDashY = -0.707; }
+        else { requestedDashX = 0; requestedDashY = -1.0; }
+        rb.lastTapUpTime = 0;
+      } else {
+        rb.lastTapUpTime = now;
       }
     }
+  }
 
-    // Wyzwolenie Super Dashu w wybranym kierunku (jeśli gracz ma >= 50% paliwa)
-    if (reqDirX !== 0 || reqDirY !== 0) {
-      const fuelCost = (player.jetMax || 100) * 0.50; // Dokładnie 50% paliwa
+  // Normalizacja wektora jika ukośny z klawiatury
+  if (requestedDashX !== 0 && requestedDashY !== 0) {
+    const mag = Math.hypot(requestedDashX, requestedDashY);
+    requestedDashX /= mag;
+    requestedDashY /= mag;
+  }
+
+  // =========================================================================
+  // WYKONANIE DASHU (POWIETRZE LUB ZIEMIA)
+  // =========================================================================
+  if (requestedDashX !== 0 || requestedDashY !== 0) {
+    if (isAirborne) {
+      // W POWIETRZU: Koszt 50% paliwa na Super Dash (dokładnie 2 dashe przy 100% paliwa)
+      const fuelCost = (player.jetMax || 100) * 0.50;
       if ((player.jetFuel || 0) >= fuelCost) {
         player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-        triggerStrikerAirDash(player, reqDirX, reqDirY);
+        triggerStrikerAirDash(player, requestedDashX, requestedDashY);
       }
-    }
-
-    rb.prevAirborne = true;
-    return;
-  }
-
-  // =========================================================================
-  // TRYB NAZIEMNY: GROUND ROCKET DASH (DOPALACZ W BUTACH NA ZIEMI)
-  // Podwójne naciśnięcie strzałki lewo/prawo lub podwójne wychylenie drążka
-  // =========================================================================
-  rb.airStickEngaged = false;
-  rb.prevAirborne = false;
-
-  let triggeredGroundDashDir = 0;
-
-  // A. KLAWIATURA – PODWÓJNE NACIŚNIĘCIE STRZAŁKI / KLAWISZA KIERUNKU (okno 40-460 ms)
-  if (justPressedLeft) {
-    const dt = now - rb.lastTapLeftTime;
-    if (dt >= 40 && dt <= 460) {
-      triggeredGroundDashDir = -1;
-      rb.lastTapLeftTime = 0;
     } else {
-      rb.lastTapLeftTime = now;
-    }
-  }
-
-  if (justPressedRight) {
-    const dt = now - rb.lastTapRightTime;
-    if (dt >= 40 && dt <= 460) {
-      triggeredGroundDashDir = 1;
-      rb.lastTapRightTime = 0;
-    } else {
-      rb.lastTapRightTime = now;
-    }
-  }
-
-  // B. DRĄŻEK ANALOGOWY – PODWÓJNE WYCHYLENIE
-  const isMaxFlick = Math.abs(stickX) >= 0.68;
-  const isMinimalCofniecie = Math.abs(stickX) <= 0.46;
-
-  switch (rb.stickPhaseX) {
-    case 'IDLE':
-      if (isMaxFlick) {
-        rb.stickPhaseX = 'PEAK_1';
-        rb.stickFlickDir = Math.sign(stickX);
-        rb.stickFlickTime = now;
-      }
-      break;
-
-    case 'PEAK_1':
-      if (now - rb.stickFlickTime > 550) {
-        rb.stickPhaseX = isMaxFlick ? 'PEAK_1' : 'IDLE';
-        if (isMaxFlick) {
-          rb.stickFlickDir = Math.sign(stickX);
-          rb.stickFlickTime = now;
+      // NA ZIEMI:
+      if (requestedDashY < -0.4) {
+        // Wyrzut w górę lub po skosie w górę z murawy (aktywuje lot rakietowy za 50% paliwa)
+        const fuelCost = (player.jetMax || 100) * 0.50;
+        if ((player.jetFuel || 0) >= fuelCost) {
+          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+          player.onGround = false;
+          player.isJumping = true;
+          player.y -= 4;
+          triggerStrikerAirDash(player, requestedDashX, requestedDashY);
         }
-      } else if (isMinimalCofniecie || Math.sign(stickX) !== rb.stickFlickDir) {
-        rb.stickPhaseX = 'CENTERED';
+      } else if (Math.abs(requestedDashX) > 0.3) {
+        // Poziomy rakietowy odskok po murawie (Ground Dash)
+        triggerStrikerGroundDash(player, Math.sign(requestedDashX));
       }
-      break;
-
-    case 'CENTERED':
-      if (now - rb.stickFlickTime > 650) {
-        rb.stickPhaseX = 'IDLE';
-      } else if (isMaxFlick && Math.sign(stickX) === rb.stickFlickDir) {
-        triggeredGroundDashDir = rb.stickFlickDir;
-        rb.stickPhaseX = 'IDLE';
-      }
-      break;
-  }
-
-  if (triggeredGroundDashDir !== 0) {
-    triggerStrikerGroundDash(player, triggeredGroundDashDir);
+    }
   }
 }
 
@@ -325,15 +313,15 @@ function triggerStrikerAirDash(player, dirX, dirY) {
   rb.dashDirX = dirX;
   rb.dashDirY = dirY;
   rb.dashDir = Math.sign(dirX) || (player.facing || 1);
-  rb.dashTimer = 16;
-  rb.dashSpeed = 22.0;
+  rb.dashTimer = 18;
+  rb.dashSpeed = 23.5;
 
   if (Math.abs(dirX) > 0.1) {
     player.facing = Math.sign(dirX);
   }
 
-  player.vx = dirX * 22.0;
-  player.vy = dirY * 22.0;
+  player.vx = dirX * 23.5;
+  player.vy = dirY * 23.5;
   player.airVx = player.vx;
   triggerScreenShake(3.5);
 
@@ -351,14 +339,14 @@ function triggerStrikerGroundDash(player, dir) {
   rb.dashDirX = dir;
   rb.dashDirY = 0;
   rb.dashDir = dir;
-  rb.dashTimer = 18;
-  rb.dashSpeed = 16.5;
+  rb.dashTimer = 20;
+  rb.dashSpeed = 19.0;
   player.facing = dir;
-  player.vx = dir * 16.5;
-  triggerScreenShake(2.5);
+  player.vx = dir * 19.0;
+  triggerScreenShake(2.8);
 
   // Wybuch płomieni z pięt na poziomie murawy
-  emitBootsBurstParticles(player, -dir, 0, 10);
+  emitBootsBurstParticles(player, -dir, 0, 12);
 }
 
 /**

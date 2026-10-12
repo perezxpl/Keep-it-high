@@ -239,8 +239,8 @@ export function getSprintFootTrajectory(p, strideMult = 1.0) {
  */
 export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   const p = ((phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  const isStriker = !!(playerRef && (playerRef.currentClass?.id === 'STRIKER' || playerRef.classConfig?.id === 'STRIKER'));
-  const strideMult = isStriker ? 1.48 : 1.0;
+  const isGroundDashing = !!(playerRef?.rocketBoots?.dashing && playerRef?.rocketBoots?.dashType === 'GROUND');
+  const strideMult = isGroundDashing ? 1.45 : 1.0;
 
   if (mode === 'SPRINT') {
     return getSprintFootTrajectory(p, strideMult);
