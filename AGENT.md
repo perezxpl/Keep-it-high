@@ -1,5 +1,12 @@
 # Instrukcje i Architektura dla Agenta AI (Projekt: Keep-it-high)
 
+## 0. Obowiązkowy Start Każdego Zadania — Synchronizacja z Git
+- **Zasada Bezwzględna**: Przed przystąpieniem do analizy kodu, planowania czy jakiejkolwiek edycji plików, agent ma BEZWZGLĘDNY OBOWIĄZEK sprawdzić stan zdalnego repozytorium i pobrać najnowsze zmiany:
+  ```bash
+  git pull origin main
+  ```
+- **Weryfikacja zmian**: Jeśli na gałęzi `main` pojawiły się nowe commity (np. zmiany wprowadzone przez brata lub z innego urządzenia), agent analizuje co doszło i kontynuuje zadanie bezpośrednio na zaktualizowanym kodzie, aby nigdy nie nadpisać cudzej pracy.
+
 ## 1. Korzystanie z CodeGraph (MCP)
 - **Zasada Główna**: Przed rozpoczęciem analizy kodu, szukaniem funkcji, zmiennych czy powiązań między plikami JS, ZAWSZE używaj narzędzia CodeGraph (`codegraph_explore` lub `codegraph explore "<zapytanie>"`).
 - **Synchronizacja**: Po każdym dodaniu nowego pliku `.js` lub większej refaktoryzacji uruchom `codegraph sync`, aby zaktualizować graf powiązań.
@@ -28,6 +35,20 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/limbs.js` — rysowanie detali kończyn, butów, dłoni i stawów.
 - `js/player/armor.js` — rysowanie kamizelek taktycznych, hełmów i pancerza.
 - `js/player/hair.js` — fizyka i rysowanie włosów / fryzur.
+- `js/player/facialHair.js` — style, kolory i rysowanie zarostu twarzy (brody, wąsy, kilkudniowy zarost).
+- `js/player/headgear.js` — style, taktyczne kolory i rysowanie nakryć głowy (beret, czapka, kominiarka, bandana, boonie, gogle).
+- `js/player/mask.js` — maski twarzowe, okulary i chusty (okulary ciemne, okulary muchy z przezroczystością, arafatka / shemagh, półmaska Ghost, maska gazowa SAS, maska hokejowa, maska balistyczna, maska Oni, respirator).
+- `js/player/neck.js` — ozdoby szyi i klatki piersiowej z pełną fizyką 2D (nieśmiertelnik wojskowy US Army, ciężki złoty łańcuch gangsta ze złotym medalionem).
+- `js/player/torso.js` — fasony ubrania torsu (krótki i długi rękaw, kamuflaże moro jasne i ciemne), proceduralne plamy moro oraz renderowanie koszulki bojowej.
+- `js/player/pants.js` — fasony spodni (długie bojówki bojowe, krótkie spodenki taktyczne, kamuflaże moro jasne i ciemne), paleta kolorów oraz renderowanie miniaturek spodni.
+- `js/player/shoes.js` — fasony i kolory obuwia (buty desantowe, niskie sneakersy, korki piłkarskie, wysokie trampki hi-top, wysokie glany z klamrami), renderowanie stopy i cholewki zakrywającej nogawkę spodni oraz kafelki podglądu w kreatorze.
+- `js/player/jetpack.js` — fasony (`JETPACK_STYLE_LIST`) i palety kolorów ognia jetpacka (`JETPACK_COLOR_LIST`, 8 kolorów), `getJetpackFlamePalette(color)` zwracające pełną paletę (base, glow, light, deep, particles) oraz `drawJetpackPreview` do kafelka w kreatorze (zakładka JETPACK).
+
+### 🥋 Klasy Postaci (`js/classes/`)
+- `js/classes/index.js` — rejestr klas (`CLASSES`, `CLASS_LIST`, `DEFAULT_CLASS`).
+- `js/classes/aero.js` — Klasa 1: Raptor (Zwiadowca / Lotnik, plecak odrzutowy, zwrotność w powietrzu).
+- `js/classes/striker.js` — Klasa 2: Striker (Szturmowiec / Strzelec, buty odrzutowe Rocket Boots, super dashe w powietrzu za 50% paliwa, dopalacz naziemny z podwójnego wychylenia).
+- `js/classes/enforcer.js` — Klasa 3: Enforcer (Kolos / Czołg, potężna masa, wstrząsy ziemi, taran).
 
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
@@ -38,7 +59,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### 🏟️ Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).
 - `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
-- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`.
+- `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla / Odlewnia): `state.js`, `physics.js`, `renderer.js`.
 
 ### 🧱 Przeszkody i Kolizje (`js/obstacles/`)
@@ -56,6 +77,10 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/uiManager.js` — obsługa ekranów HTML/CSS (Menu główne, Wybór areny, Ustawienia, Kreator, Pauza).
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
+
+### 🎖️ Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
+- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oparty na punktach XP zapisywanych w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getCurrentRank`, `getNextRank`, `getRankProgress`).
+- `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+200 XP).
 
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:
@@ -91,4 +116,5 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
    - Nowe pliki dopisz do `index.html` (`importmap`), zaktualizuj `AGENTS.md` (dopisz moduł do mapy w sekcji 2) i uruchom `codegraph sync`.
 
 ## 5. Zarządzanie Gałęziami Git i Kopią Zapasową
+- **Automatyczny `git pull origin main` przed startem**: Zgodnie z punktem 0, każde nowe zadanie zaczynaj od pobrania aktualizacji z `origin/main`.
 - **Bezwzględna ochrona `backup-main`**: NIGDY nie nadpisuj ani nie wypychaj zmian na gałąź `backup-main` bez wyraźnego, bezpośredniego polecenia użytkownika. Gdy użytkownik prosi o wypchnięcie na `main`, wypychaj wyłącznie `main`.

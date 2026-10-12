@@ -1,5 +1,12 @@
 # Instrukcje i Architektura dla Agenta AI (Projekt: Keep-it-high)
 
+## 0. Obowiązkowy Start Każdego Zadania — Synchronizacja z Git
+- **Zasada Bezwzględna**: Przed przystąpieniem do analizy kodu, planowania czy jakiejkolwiek edycji plików, agent ma BEZWZGLĘDNY OBOWIĄZEK sprawdzić stan zdalnego repozytorium i pobrać najnowsze zmiany:
+  ```bash
+  git pull origin main
+  ```
+- **Weryfikacja zmian**: Jeśli na gałęzi `main` pojawiły się nowe commity (np. zmiany wprowadzone przez brata lub z innego urządzenia), agent analizuje co doszło i kontynuuje zadanie bezpośrednio na zaktualizowanym kodzie, aby nigdy nie nadpisać cudzej pracy.
+
 ## 1. Korzystanie z CodeGraph (MCP)
 - **Zasada Główna**: Przed rozpoczęciem analizy kodu, szukaniem funkcji, zmiennych czy powiązań między plikami JS, ZAWSZE używaj narzędzia CodeGraph (`codegraph_explore` lub `codegraph explore "<zapytanie>"`).
 - **Synchronizacja**: Po każdym dodaniu nowego pliku `.js` lub większej refaktoryzacji uruchom `codegraph sync`, aby zaktualizować graf powiązań.
@@ -109,4 +116,5 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
    - Nowe pliki dopisz do `index.html` (`importmap`), zaktualizuj `AGENTS.md` (dopisz moduł do mapy w sekcji 2) i uruchom `codegraph sync`.
 
 ## 5. Zarządzanie Gałęziami Git i Kopią Zapasową
+- **Automatyczny `git pull origin main` przed startem**: Zgodnie z punktem 0, każde nowe zadanie zaczynaj od pobrania aktualizacji z `origin/main`.
 - **Bezwzględna ochrona `backup-main`**: NIGDY nie nadpisuj ani nie wypychaj zmian na gałąź `backup-main` bez wyraźnego, bezpośredniego polecenia użytkownika. Gdy użytkownik prosi o wypchnięcie na `main`, wypychaj wyłącznie `main`.
