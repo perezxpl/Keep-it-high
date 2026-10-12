@@ -36,6 +36,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const feetY = p.y + colH;
   const centerX = p.x + p.w / 2;
   const wantDrop = (p.dropThroughTimer > 0);
+  const wasGrounded = !!(p.onGround && !p.isJumping);
 
   if (wantDrop) {
     for (const plat of ARENA_PLATFORMS) {
@@ -220,20 +221,46 @@ export function checkPlayerPlatformLanding(p, groundY) {
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
     const bnds = getPlatformBounds(plat);
-    if (centerX >= bnds.minX - 6 && centerX <= bnds.maxX + 6) {
-      const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
-      const topY = surf.surfaceY;
-      const prevFeetY = feetY - p.vy;
+    // Histereza na krawędziach: postać już stojąca na platformie ma bezpieczny margines 14px,
+    // lądowanie z powietrza wymaga trafienia w obręb 8px od krawędzi
+    const isCurrent = (p.onGround && p.currentPlatform === plat);
+    const horizMargin = isCurrent ? 14 : 8;
 
+    if (centerX >= bnds.minX - horizMargin && centerX <= bnds.maxX + horizMargin) {
+      const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
+      let topY = surf.surfaceY;
+
+      // Sprawdzenie podwyższeń i cokołów bezpośrednio na platformie (np. centralny ołtarz z cokołem w Arenie 1)
+      if (plat.props && plat.props.length > 0) {
+        const tier = plat.props.find(pr => (pr.type === 'altar_pedestal' || pr.type === 'sandbag_trench'));
+        if (tier) {
+          const tierLeft = plat.x + tier.rx;
+          const tierRight = tierLeft + tier.w;
+          if (centerX >= tierLeft - 4 && centerX <= tierRight + 4) {
+            topY = surf.surfaceY - tier.h;
+          }
+        }
+      }
+
+      const prevFeetY = feetY - p.vy;
       const isFallenDebris = (plat.intact === false) || plat.isDebris;
 
-      let isLanding = p.vy >= 0 && (
-        (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12)) ||
-        (p.onGround && p.currentPlatform === plat && Math.abs(feetY - topY) < 28)
+      // 1. Lądowanie z powietrza (opadanie p.vy >= 0)
+      const isAirLanding = p.vy >= 0 && (
+        (prevFeetY <= topY + 14 && feetY >= topY - 12 && feetY <= topY + Math.max(22, p.vy + 12))
       );
 
+      // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
+      // Gracz nie odpada od platformy przy mikro-wahaniach pionowych (np. mikro-odrzut, pochyłość, krok),
+      // chyba że intencjonalnie wyskoczył z dużą prędkością lub wykonuje rakietowy dash w powietrzu
+      const isGroundedRetention = isCurrent && !(p.isJumping && p.vy < -2.0) && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR') && Math.abs(feetY - topY) <= 30;
+
+      // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach):
+      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= 24;
+
+      let isLanding = isAirLanding || isGroundedRetention || isStepOver;
+
       // Wejście na zawalony / leżący klocek (Step-up mechanic na leżący gruz):
-      // Jeśli gracz biegnie po ziemi lub innej platformie i napotyka leżący blok o wysokości stopnia <= 34px:
       if (!isLanding && isFallenDebris) {
         const stepDiff = feetY - topY;
         if (stepDiff >= 0 && stepDiff <= 34 && feetY >= bnds.minY - 12 && feetY <= bnds.maxY + 18) {
@@ -268,39 +295,56 @@ export function checkPlayerPlatformLanding(p, groundY) {
       continue;
     }
 
-    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+    const baseTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+    const isCurrentObs = (p.onGround && p.currentPlatform === obs);
+    const obsMargin = isCurrentObs ? 12 : 6;
 
     if (obs.type === 'metal_ramp_left') {
-      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
         const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-        const rampSurfaceY = topY + t * obs.h;
+        const rampSurfaceY = baseTopY + t * obs.h;
         const prevFeetY = feetY - p.vy;
-        const isLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
-        if (isLanding) {
+        const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
+        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 28;
+        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 24;
+
+        if (isAirLanding || isGroundedRetention || isStepOver) {
           if (landedSurface === null || rampSurfaceY < landedSurface) {
             landedSurface = rampSurfaceY;
+            landedPlatform = obs;
+            landedSlope = obs.h / (obs.w || 1);
           }
         }
       }
     } else if (obs.type === 'metal_ramp_right') {
-      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
         const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-        const rampSurfaceY = topY + (1 - t) * obs.h;
+        const rampSurfaceY = baseTopY + (1 - t) * obs.h;
         const prevFeetY = feetY - p.vy;
-        const isLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
-        if (isLanding) {
+        const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + 12 && feetY >= rampSurfaceY - 10 && feetY <= rampSurfaceY + Math.max(20, p.vy + 10);
+        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 28;
+        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 24;
+
+        if (isAirLanding || isGroundedRetention || isStepOver) {
           if (landedSurface === null || rampSurfaceY < landedSurface) {
             landedSurface = rampSurfaceY;
+            landedPlatform = obs;
+            landedSlope = -obs.h / (obs.w || 1);
           }
         }
       }
     } else {
-      if (centerX >= obs.x - 4 && centerX <= obs.x + obs.w + 4) {
+      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
         const prevFeetY = feetY - p.vy;
-        const isLanding = p.vy >= 0 && prevFeetY <= topY + 12 && feetY >= topY - 10 && feetY <= topY + Math.max(20, p.vy + 10);
-        if (isLanding) {
-          if (landedSurface === null || topY < landedSurface) {
-            landedSurface = topY;
+        const isAirLanding = p.vy >= 0 && prevFeetY <= baseTopY + 12 && feetY >= baseTopY - 10 && feetY <= baseTopY + Math.max(20, p.vy + 10);
+        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - baseTopY) <= 28;
+        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - baseTopY) <= 24;
+
+        if (isAirLanding || isGroundedRetention || isStepOver) {
+          if (landedSurface === null || baseTopY < landedSurface) {
+            landedSurface = baseTopY;
+            landedPlatform = obs;
+            landedSlope = 0;
           }
         }
       }
@@ -408,11 +452,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
         if (tier) {
           const tierLeft = plat.x + tier.rx;
           const tierRight = tierLeft + tier.w;
-          if (centerX >= tierLeft - 3 && centerX <= tierRight + 3) {
+          if (centerX >= tierLeft - 6 && centerX <= tierRight + 6) {
             const tierTopY = getPlatformSurfaceY(plat, centerX, groundY) - tier.h;
             const prevFeetY = feetY - p.vy;
-            if (p.vy >= 0 && prevFeetY <= tierTopY + 12 && feetY >= tierTopY - 8 && feetY <= tierTopY + Math.max(18, p.vy + 10)) {
+            const isAirLanding = p.vy >= 0 && prevFeetY <= tierTopY + 12 && feetY >= tierTopY - 8 && feetY <= tierTopY + Math.max(18, p.vy + 10);
+            const isGrounded = p.onGround && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - tierTopY) <= 28;
+            if (isAirLanding || isGrounded) {
               landedSurface = tierTopY;
+              landedPlatform = plat;
               break;
             }
           }
@@ -431,7 +478,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.currentGroundY = landedSurface;
     p.currentPlatform = landedPlatform;
 
-    if (impactVy > 1.8 && !(p.staggerTimer > 0) && !p.isSliding) {
+    if (!wasGrounded && impactVy > 1.8 && !(p.staggerTimer > 0) && !p.isSliding) {
       p.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);
       p.landingSquatTimer = Math.min(5, Math.max(2, Math.round(p.landingSquatIntensity * 5)));
     }
