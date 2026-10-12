@@ -79,7 +79,11 @@ export const RaptorClass = {
   onUpdate(player, ball, keys) {
     if (player.isJumping && typeof player.airVx === 'number') {
       if (player.intendedVx !== undefined && Math.abs(player.intendedVx) > 0.05) {
-        player.airVx += (player.intendedVx - player.airVx) * 0.08;
+        if (Math.sign(player.airVx) === Math.sign(player.intendedVx) && Math.abs(player.airVx) >= Math.abs(player.intendedVx)) {
+          // Nie wyhamowuj wyższego pędu z wyskoku ze sprintu / super-biegu
+        } else {
+          player.airVx += (player.intendedVx - player.airVx) * 0.08;
+        }
       }
     }
   },

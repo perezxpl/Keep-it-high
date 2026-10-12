@@ -473,6 +473,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.y = landedSurface - colH;
     p.vy = 0;
     p.isJumping = false;
+    p.isSprintJump = false;
+    p.sprintJumpTimer = 0;
+    p.coyoteTimer = 8;
+    p.lastGroundVx = p.vx;
+    p.lastGroundedFloorY = landedSurface;
     p.onGround = true;
     p.airVx = 0;
     p.currentGroundY = landedSurface;

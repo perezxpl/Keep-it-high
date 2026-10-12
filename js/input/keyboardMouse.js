@@ -345,7 +345,8 @@ export function initKeyboardMouseHandlers({
       player.isCrouching = false;
       player.crouchToggled = false;
 
-      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(player.vy || 0) < 4.0);
+      const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
       if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {
         // W POWIETRZU: uruchomienie jetpacka (tylko jeśli klawisz W został puszczony po wyskoku z ziemi)
@@ -353,7 +354,7 @@ export function initKeyboardMouseHandlers({
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
       } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
-        // NA ZIEMI: normalny skok z podłoża (natychmiastowy)
+        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (natychmiastowy)
         initiatePlayerJump(player, spawnGrass);
         player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       }

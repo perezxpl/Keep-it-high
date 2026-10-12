@@ -508,6 +508,12 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     }
 
     if (!continueGroundDash) {
+      if (isAirborne && Math.abs(player.vx) > 5.0) {
+        player.isSprintJump = true;
+        player.sprintJumpTimer = 65;
+        player.airVx = player.vx;
+        player.jumpLaunchSpeed = Math.abs(player.vx);
+      }
       rb.dashing = false;
       rb.dashType = 'NONE';
       rb.dashInputSource = 'NONE';
@@ -516,6 +522,12 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       const fuelDrain = 0.50 + 0.65 * power;
       player.jetFuel = Math.max(0, (player.jetFuel || 0) - fuelDrain);
       if (player.jetFuel <= 0) {
+        if (isAirborne && Math.abs(player.vx) > 5.0) {
+          player.isSprintJump = true;
+          player.sprintJumpTimer = 65;
+          player.airVx = player.vx;
+          player.jumpLaunchSpeed = Math.abs(player.vx);
+        }
         rb.dashing = false;
         rb.dashType = 'NONE';
         rb.dashInputSource = 'NONE';
@@ -868,6 +880,7 @@ export function updateRocketBootsPhysics(player) {
   } else if (rb.dashType === 'GROUND') {
     // Na ziemi: ciągła prędkość rakietowa dopóki gracz trzyma przycisk lub drążek
     player.vx = rb.dashDirX * rb.dashSpeed;
+    player.airVx = player.vx;
   }
 }
 

@@ -105,6 +105,28 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
+  // Obsługa Coyote Time i śledzenia stanu super-biegu przed opuszczeniem podłoża
+  const sprintMaxSpeedVal = player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX || 6.8;
+  const isCurrentlyGrounded = (player.onGround !== undefined ? player.onGround : true) && !player.isJumping;
+
+  if (isCurrentlyGrounded) {
+    player.coyoteTimer = 8;
+    player.lastGroundedFloorY = player.currentGroundY || player.groundY || GROUND_Y;
+    player.lastGroundVx = player.vx || 0;
+    player.wasSprintingBeforeAir = (
+      player.gaitMode === 'SPRINT' ||
+      (player.sprintDuration || 0) >= 3 ||
+      Math.abs(player.vx || 0) >= sprintMaxSpeedVal * 0.72 ||
+      !!(player.rocketBoots && player.rocketBoots.dashing)
+    );
+  } else if (!player.isJumping) {
+    if ((player.coyoteTimer || 0) > 0) {
+      player.coyoteTimer--;
+    }
+  } else {
+    player.coyoteTimer = 0;
+  }
+
   if (ball) player._ball = ball;
   if (spawnGrass) player._spawnGrass = spawnGrass;
 
@@ -542,9 +564,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       // AKTYWNY RAKIETOWY DASH (KLASA STRIKER / ROCKET BOOTS)
       // Wektor prędkości jest w 100% narzucany przez silniki butów odrzutowych
       player.vx = player.rocketBoots.dashDirX * player.rocketBoots.dashSpeed;
+      player.airVx = player.vx;
       if (player.rocketBoots.dashType === 'AIR') {
         player.vy = player.rocketBoots.dashDirY * player.rocketBoots.dashSpeed;
-        player.airVx = player.vx;
       }
     } else if (player.isSliding) {
       player.vx *= slideDecel;
@@ -564,7 +586,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
       }
     } else if (player.isJumping) {
-      const maxAirSpeed = player.isJetpacking ? (sprintMax * 1.1) : jogMax;
+      if (player.sprintJumpTimer > 0) player.sprintJumpTimer--;
+      const isSprintLeap = !!(player.isSprintJump || (player.sprintJumpTimer > 0));
+      const sprintSpeed = (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX);
+      const launchSpeed = Math.max(sprintSpeed, Math.abs(player.jumpLaunchSpeed || player.airVx || 0));
+      const maxAirSpeed = player.isJetpacking
+        ? (sprintSpeed * 1.1)
+        : (isSprintLeap ? (launchSpeed * 1.05) : jogMax);
+
       if (Math.abs(inputAxisX) > 0.05) {
         if (player.isJetpacking && leftStick && leftStick.active) {
           const targetJetVx = inputAxisX * maxAirSpeed;
@@ -573,10 +602,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           } else {
             player.airVx += (targetJetVx - player.airVx) * 0.14;
           }
+        } else if (isSprintLeap && Math.sign(inputAxisX) === Math.sign(player.airVx)) {
+          // Trzymanie kierunku podczas wyskoku ze sprintu/super-biegu:
+          // Pełne podtrzymanie pędu dalekiego skoku bez wyhamowywania do prędkości truchtu
+          if (Math.abs(player.airVx) < launchSpeed) {
+            player.airVx += inputAxisX * accel * 0.8;
+          }
         } else {
           player.airVx += inputAxisX * accel * 0.7;
         }
-        // Zachowanie pędu szybowania: nie przycinaj gwałtownie jeśli postać leci szybciej
+        // Zachowanie pędu: nie przycinaj jeśli postać leci z prędkością wyskoku ze sprintu
         const effectiveMax = Math.max(maxAirSpeed, Math.abs(player.airVx));
         player.airVx = Math.max(-effectiveMax, Math.min(effectiveMax, player.airVx));
       } else if (player.isJetpacking && leftStick && leftStick.active) {
@@ -586,7 +621,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
       }
       player.vx = player.airVx;
-      player.airVx *= 0.995;
+      player.airVx *= isSprintLeap ? 0.9985 : 0.995;
     } else if (player.kickMode === 'SPARTAN' && player.kickState !== 'IDLE') {
       // Podczas Spartan Kick na ziemi stopa podporowa jest wbita w grunt — brak szarżowania w biegu
       player.vx *= 0.76;
@@ -1008,6 +1043,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.y = groundFloorLimit;
         player.vy = 0;
         player.isJumping = false;
+        player.isSprintJump = false;
+        player.sprintJumpTimer = 0;
+        player.coyoteTimer = 8;
+        player.lastGroundVx = player.vx;
         player.onGround = true;
         player.jetpackKeyNeutralized = true;
         player.airVx = 0;

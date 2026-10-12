@@ -399,8 +399,9 @@ canvas.addEventListener('touchmove', (e) => {
       // Aktualizacja kontekstu przycisków mobilnych (w tym pojawiania się przycisku leżenia)
       updateMobileControlStates(player, leftStick, btnCluster);
 
-      // Uniesienie drążka w górę (skok na ziemi lub płynny analogowy jetpack w powietrzu)
-      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+      // Uniesienie drążka w górę (skok na ziemi/krawędzi platformy lub płynny analogowy jetpack w powietrzu)
+      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(player.vy || 0) < 4.0);
+      const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
       // Jeśli drążek został odchylony z powrotem w stronę centrum (axisY > -0.12), uznaj go za zneutralizowany
       if (leftStick.axisY > -0.12) {

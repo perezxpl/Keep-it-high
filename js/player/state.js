@@ -5,7 +5,7 @@
 
 import { CONFIG, START_X } from '../config.js';
 import { activeArenaId, customObstacles } from '../obstacles.js';
-import { spawnGroundPuff } from '../world.js';
+import { spawnGroundPuff, triggerScreenShake } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './renderer.js';
@@ -307,6 +307,13 @@ export function createPlayerInstance(overrides = {}) {
     slideTimer: 0,
     slideCooldown: 0,
     sprintDuration: 0,
+    coyoteTimer: 0,
+    coyoteMax: 8,
+    isSprintJump: false,
+    sprintJumpTimer: 0,
+    wasSprintingBeforeAir: false,
+    lastGroundVx: 0,
+    lastGroundedFloorY: 0,
     dropThroughTimer: 0,
     isMovingBackwards: false,
     spinVolleyTimer: 0,
@@ -420,10 +427,11 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
   if (!p || p.isDead || p.isIntro || p.isSliding || (p.staggerTimer > 0) || p.isAcidDying) return false;
   if (p.isJumping) return false;
 
-  const currentFloor = p.currentGroundY || p.groundY || (p.y + (p.h || 70));
+  const currentFloor = p.currentGroundY || p.groundY || p.lastGroundedFloorY || (p.y + (p.h || 70));
+  const hasCoyote = ((p.coyoteTimer || 0) > 0 && !p.isJumping && Math.abs(p.vy || 0) < 4.5);
   const isGrounded = (p.onGround !== undefined)
-    ? p.onGround
-    : (p.y >= currentFloor - (p.h || 70) - 4);
+    ? (p.onGround || hasCoyote)
+    : (p.y >= currentFloor - (p.h || 70) - 4 || hasCoyote);
 
   if (!isGrounded && Math.abs(p.vy) > 0.8) return false;
 
@@ -434,25 +442,59 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
   p.state = 'STAND';
   p.hitboxHeight = p.h || 70;
 
-  // 1. Natychmiastowy wyskok pionowy z ziemi (100% responsywność bez opóźnień)
-  const jumpForce = p.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+  // Sprawdzenie, czy postać wyskakuje w super-biegu (sprint lub dopalacz Rocket Boots)
+  const sprintMax = p.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX || 6.8;
+  const isGroundDashing = !!(p.rocketBoots && p.rocketBoots.dashing && p.rocketBoots.dashType === 'GROUND');
+  const isSuperRunning = isGroundDashing ||
+    (p.gaitMode === 'SPRINT' && (p.sprintDuration || 0) >= 3) ||
+    (p.wasSprintingBeforeAir && (p.coyoteTimer || 0) > 0) ||
+    (Math.abs(p.vx) >= sprintMax * 0.72) ||
+    (Math.abs(p.lastGroundVx || 0) >= sprintMax * 0.72 && (p.coyoteTimer || 0) > 0);
+
+  let jumpForce = p.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
+
+  if (isSuperRunning) {
+    p.isSprintJump = true;
+    p.sprintJumpTimer = 65;
+    const baseVx = Math.abs(p.vx) > 0.2
+      ? p.vx
+      : ((p.lastGroundVx && Math.abs(p.lastGroundVx) > 0.2) ? p.lastGroundVx : (p.facing * sprintMax));
+    // Dynamiczne zachowanie pędu biegu i podbicie poziomego zasięgu skoku w dal (Long Jump)
+    const forwardBoost = isGroundDashing ? 1.05 : 1.12;
+    p.airVx = baseVx * forwardBoost;
+    p.vx = p.airVx;
+    p.jumpLaunchSpeed = Math.abs(p.airVx);
+    // Płaski, aerodynamiczny łuk dalekiego skoku
+    jumpForce *= 1.05;
+  } else {
+    p.isSprintJump = false;
+    p.sprintJumpTimer = 0;
+    p.airVx = p.vx;
+    p.jumpLaunchSpeed = Math.abs(p.vx);
+  }
+
+  p.coyoteTimer = 0;
   p.vy = -jumpForce;
   p.isJumping = true;
   p.onGround = false;
-  p.airVx = p.vx;
-  p.jetpackKeyNeutralized = false; // Kluczowe: po wyskoku z ziemi wymagamy puszczenia klawisza W, blokując natychmiastowe odpalenie jetpacka!
+  p.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
   p.jumpSquatTimer = 0;
 
-  // 2. Rejestracja parametrów dla procedury pchnięcia tłokowego stóp (Piston Takeoff)
+  // Rejestracja parametrów dla procedury pchnięcia tłokowego stóp (Piston Takeoff)
   p.jumpLaunchFloorY = currentFloor;
-  p.jumpLaunchSpeed = Math.abs(p.vx);
-  p.jumpTakeoffTimer = p.jumpTakeoffMax || 8; // 8 klatek wyraźnego, fizycznego pchnięcia o podłoże
+  p.jumpTakeoffTimer = p.jumpTakeoffMax || 8;
 
   const grassFn = spawnGrass || p._spawnGrass;
   if (typeof grassFn === 'function' && currentFloor) {
     grassFn(p.x + (p.w || 24) / 2, currentFloor, p.facing);
+    if (isSuperRunning) {
+      grassFn(p.x + (p.w || 24) / 2 - p.facing * 14, currentFloor, p.facing);
+    }
   }
   spawnGroundPuff(p.x + (p.w || 24) / 2, currentFloor);
+  if (isSuperRunning) {
+    triggerScreenShake(1.3);
+  }
   p.currentClass?.onJump?.(p, grassFn);
 
   return true;
