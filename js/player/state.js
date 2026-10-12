@@ -106,7 +106,7 @@ export function mergeClassWithSchema(classDef) {
 }
 
 export function createPlayerInstance(overrides = {}) {
-  const baseClass = overrides.currentClass || DEFAULT_CLASS;
+  const baseClass = overrides.currentClass || DEFAULT_CLASS || {};
   const mergedClass = mergeClassWithSchema(baseClass);
 
   return {

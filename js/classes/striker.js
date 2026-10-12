@@ -6,7 +6,11 @@
 // =========================================================================
 import { triggerScreenShake, spawnJetpackSparks } from '../world.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
-import { networkState } from '../network.js';
+
+function getStrikerFlameColor(player) {
+  if (player?.customVisuals?.jetpackColor) return player.customVisuals.jetpackColor;
+  return (player?.team === 'ORANGE') ? '#f97316' : '#00e5ff';
+}
 
 export const StrikerClass = {
   id: 'STRIKER',
@@ -105,7 +109,7 @@ export const StrikerClass = {
     if (ball && typeof spawnJetpackSparks === 'function') {
       const footX = player.x + (player.w || 24) / 2 + (player.facing || 1) * 16;
       const footY = player.y + (player.h || 70) - 8;
-      const customFlame = player.customVisuals?.jetpackColor || (networkState.isHost ? '#00e5ff' : '#f97316');
+      const customFlame = getStrikerFlameColor(player);
       const colors = getJetpackFlamePalette(customFlame).particles;
       spawnJetpackSparks(footX, footY, player.facing, 6, colors, player.facing * 5, -2, 0);
     }
@@ -337,7 +341,7 @@ function triggerStrikerGroundDash(player, dir) {
 function emitBootsBurstParticles(player, dir, count = 8) {
   if (typeof spawnJetpackSparks !== 'function') return;
 
-  const customFlame = player.customVisuals?.jetpackColor || (networkState.isHost ? '#00e5ff' : '#f97316');
+  const customFlame = getStrikerFlameColor(player);
   const colors = getJetpackFlamePalette(customFlame).particles;
 
   const footX1 = player.x + (player.w || 24) / 2 - dir * 10;
@@ -365,7 +369,7 @@ export function updateRocketBootsPhysics(player) {
 
   // Emisja płomieni z butów przez cały czas trwania zrywu
   if (typeof spawnJetpackSparks === 'function') {
-    const customFlame = player.customVisuals?.jetpackColor || (networkState.isHost ? '#00e5ff' : '#f97316');
+    const customFlame = getStrikerFlameColor(player);
     const colors = getJetpackFlamePalette(customFlame).particles;
     const footX = player.x + (player.w || 24) / 2 - rb.dashDir * 6;
     const footY = player.y + (player.h || 70) - 3;
