@@ -6,7 +6,7 @@
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { DEFAULT_VISUALS } from './hair.js';
-import { isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
+import { isSleeveless, isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette } from './jetpack.js';
@@ -22,8 +22,9 @@ export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) 
   ctx.scale(facing, 1);
 
   if (type === 'arm') {
-    if (!v.sleeveless) {
-      ctx.fillStyle = isFront ? (v.armColorFront || '#dc2626') : (v.armColorBack || '#991b1b');
+    const isSleevelessArm = isSleeveless(v.torsoStyle) || (Boolean(v.sleeveless) && !v.torsoStyle);
+    if (!isSleevelessArm) {
+      ctx.fillStyle = isFront ? (v.torsoColor || v.armColorFront || '#dc2626') : (v.torsoColor || v.armColorBack || '#991b1b');
       ctx.beginPath();
       ctx.moveTo(-3, -3.5);
       ctx.lineTo(4.5, -3.5);
@@ -741,11 +742,13 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.translate(shX, shY);
   ctx.rotate(armDir);
 
-  const isLong = isLongSleeve(v.torsoStyle);
+  const isSleevelessArm = isSleeveless(v.torsoStyle) || (Boolean(v.sleeveless) && !v.torsoStyle);
+  const isLong = !isSleevelessArm && isLongSleeve(v.torsoStyle);
   const camoType = getCamoType(v.torsoStyle);
   const pal = getTorsoPalette(v.torsoColor || upperCol || v.armColorFront);
 
-  const sleeveLen = v.sleeveless ? 0 : (isLong ? upperLen * 1.04 : (upperLen * 0.58 * (v.sleeveLengthMult ?? 1.0)));
+  const sleeveMult = (typeof v.sleeveLengthMult === 'number' && v.sleeveLengthMult > 0) ? v.sleeveLengthMult : 1.0;
+  const sleeveLen = isSleevelessArm ? 0 : (isLong ? upperLen * 1.04 : (upperLen * 0.58 * sleeveMult));
   const sleeveHalfH = 3.9 * muscle;
   const armHalfH = 2.8 * muscle;
 
@@ -764,25 +767,84 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     deltoidGrad.addColorStop(1.0, v.skinDark);
   }
 
-  if (v.sleeveless) {
+  // 1. Odsłonięty bark i biceps (rysowane pod rękawem, aby mankiet krótkiego rękawa czysto przykrywał skórę)
+  if (!isLong) {
+    if (isSleevelessArm) {
+      ctx.beginPath();
+      ctx.arc(0, 0, deltoidW * 0.92, Math.PI * 0.5, -Math.PI * 0.5, false);
+      ctx.quadraticCurveTo(deltoidLen * 0.55, -deltoidW * 0.92, deltoidLen, -armHalfH * 0.65);
+      ctx.lineTo(deltoidLen, armHalfH * 0.65);
+      ctx.quadraticCurveTo(deltoidLen * 0.55, deltoidW * 0.92, 0, deltoidW * 0.92);
+      ctx.closePath();
+      ctx.fillStyle = deltoidGrad;
+      ctx.fill();
+
+      if (isSculpted) {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.20)';
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(deltoidLen * 0.15, -deltoidW * 0.55);
+        ctx.quadraticCurveTo(deltoidLen * 0.52, -deltoidW * 0.22, deltoidLen * 0.85, 0);
+        ctx.stroke();
+      }
+    }
+
+    const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
+    if (isFront) {
+      bicepGrad.addColorStop(0.0, v.skinLight);
+      bicepGrad.addColorStop(0.35, v.skinMid);
+      bicepGrad.addColorStop(0.85, v.skinDark);
+      bicepGrad.addColorStop(1.0, '#78350f');
+    } else {
+      bicepGrad.addColorStop(0.0, v.skinMid);
+      bicepGrad.addColorStop(0.4, v.skinBack);
+      bicepGrad.addColorStop(1.0, v.skinDark);
+    }
+
     ctx.beginPath();
-    ctx.arc(0, 0, deltoidW * 0.92, Math.PI * 0.5, -Math.PI * 0.5, false);
-    ctx.quadraticCurveTo(deltoidLen * 0.55, -deltoidW * 0.92, deltoidLen, -armHalfH * 0.65);
-    ctx.lineTo(deltoidLen, armHalfH * 0.65);
-    ctx.quadraticCurveTo(deltoidLen * 0.55, deltoidW * 0.92, 0, deltoidW * 0.92);
+    if (isSculpted) {
+      if (isSleevelessArm) {
+        const startX = deltoidLen * 0.35;
+        ctx.moveTo(startX, -armHalfH * 1.05);
+        ctx.quadraticCurveTo(upperLen * 0.35, -armHalfH * 1.55, upperLen * 0.65, -armHalfH * 1.25);
+        ctx.lineTo(upperLen, -armHalfH * 0.75);
+        ctx.lineTo(upperLen, armHalfH * 0.65);
+        ctx.quadraticCurveTo(upperLen * 0.55, armHalfH * 1.60, upperLen * 0.25, armHalfH * 1.15);
+        ctx.quadraticCurveTo(startX, armHalfH * 0.95, startX, -armHalfH * 1.05);
+      } else {
+        const startX = sleeveLen * 0.72;
+        const midX1 = startX + (upperLen - startX) * 0.38;
+        const midX2 = startX + (upperLen - startX) * 0.68;
+        ctx.moveTo(startX, -armHalfH * 0.95);
+        ctx.quadraticCurveTo(midX1, -armHalfH * 1.38, midX2, -armHalfH * 1.18);
+        ctx.lineTo(upperLen, -armHalfH * 0.75);
+        ctx.lineTo(upperLen, armHalfH * 0.65);
+        ctx.quadraticCurveTo(midX2, armHalfH * 1.38, midX1, armHalfH * 1.08);
+        ctx.quadraticCurveTo(startX, armHalfH * 0.90, startX, -armHalfH * 0.95);
+      }
+    } else {
+      const startX = isSleevelessArm ? 0 : sleeveLen * 0.85;
+      const bareLen = upperLen - startX + 1.2;
+      if (ctx.roundRect) ctx.roundRect(startX, -armHalfH, bareLen, armHalfH * 2, 2);
+      else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
+    }
     ctx.closePath();
-    ctx.fillStyle = deltoidGrad;
+    ctx.fillStyle = bicepGrad;
     ctx.fill();
 
     if (isSculpted) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.20)';
-      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
-      ctx.moveTo(deltoidLen * 0.15, -deltoidW * 0.55);
-      ctx.quadraticCurveTo(deltoidLen * 0.52, -deltoidW * 0.22, deltoidLen * 0.85, 0);
+      const creaseStartX = isSleevelessArm ? (upperLen * 0.38) : Math.max(sleeveLen + 0.6, upperLen * 0.60);
+      ctx.moveTo(creaseStartX, -armHalfH * 0.2);
+      ctx.quadraticCurveTo((creaseStartX + upperLen * 0.82) * 0.5, 0, upperLen * 0.82, armHalfH * 0.2);
       ctx.stroke();
     }
-  } else if (sleeveLen > 0) {
+  }
+
+  // 2. Rękaw koszulki / bluzy (krótki lub długi – rysowany na wierzchu ramienia)
+  if (!isSleevelessArm && sleeveLen > 0) {
     const sleeveGrad = ctx.createLinearGradient(0, -deltoidW, 0, deltoidW);
     sleeveGrad.addColorStop(0.0, pal.light);
     sleeveGrad.addColorStop(0.45, pal.base);
@@ -852,48 +914,6 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.beginPath();
     ctx.moveTo(sleeveLen * 0.15, -sleeveHalfH * 0.55);
     ctx.quadraticCurveTo(sleeveLen * 0.50, -sleeveHalfH * 0.65, sleeveLen * 0.85, -sleeveHalfH * 0.45);
-    ctx.stroke();
-  }
-
-  if (!isLong) {
-    const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.4, 0, armHalfH * 1.4);
-    if (isFront) {
-      bicepGrad.addColorStop(0.0, v.skinLight);
-      bicepGrad.addColorStop(0.35, v.skinMid);
-      bicepGrad.addColorStop(0.85, v.skinDark);
-      bicepGrad.addColorStop(1.0, '#78350f');
-    } else {
-      bicepGrad.addColorStop(0.0, v.skinMid);
-      bicepGrad.addColorStop(0.4, v.skinBack);
-      bicepGrad.addColorStop(1.0, v.skinDark);
-    }
-
-    ctx.beginPath();
-    if (isSculpted) {
-      const startX = v.sleeveless ? deltoidLen * 0.35 : sleeveLen;
-      ctx.moveTo(startX, -armHalfH * 1.05);
-      ctx.quadraticCurveTo(upperLen * 0.35, -armHalfH * 1.55, upperLen * 0.65, -armHalfH * 1.25);
-      ctx.lineTo(upperLen, -armHalfH * 0.75);
-      ctx.lineTo(upperLen, armHalfH * 0.65);
-      ctx.quadraticCurveTo(upperLen * 0.55, armHalfH * 1.60, upperLen * 0.25, armHalfH * 1.15);
-      ctx.quadraticCurveTo(startX, armHalfH * 0.95, startX, -armHalfH * 1.05);
-    } else {
-      const startX = v.sleeveless ? 0 : sleeveLen;
-      const bareLen = upperLen - startX + 1.2;
-      if (ctx.roundRect) ctx.roundRect(startX, -armHalfH, bareLen, armHalfH * 2, 2);
-      else ctx.rect(startX, -armHalfH, bareLen, armHalfH * 2);
-    }
-    ctx.closePath();
-    ctx.fillStyle = bicepGrad;
-    ctx.fill();
-  }
-
-  if (isSculpted) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(upperLen * 0.38, -armHalfH * 0.2);
-    ctx.quadraticCurveTo(upperLen * 0.58, 0, upperLen * 0.78, armHalfH * 0.2);
     ctx.stroke();
   }
 

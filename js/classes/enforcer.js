@@ -35,7 +35,7 @@ export const EnforcerClass = {
     baseKickSpeed: 30.0,
     kickPowerMult: 1.52,    // Najpotężniejsze uderzenie w grze
     spinMult: 0.30,         // Prawie czysta trajektoria balistyczna
-    jetMax: 55,             // Paliwo jetpacka szybko się zużywa
+    jetMax: 0,              // Enforcer nie posiada jetpacka (ciężka masa piechoty pancernej)
     spartanKnockback: 18.0, // Potężny odrzut kinetyczny i twardy knockback
     spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
     spartanDamage: 18,
@@ -46,15 +46,15 @@ export const EnforcerClass = {
     kickCooldown: 0.70
   },
 
-  // 3. WŁAŚCIWOŚCI WIZUALNE: RZEŹBIONA ANATOMIA I BRAK RĘKAWKÓW
+  // 3. WŁAŚCIWOŚCI WIZUALNE: RZEŹBIONA ANATOMIA KOLOSA
   visuals: {
     sculptedMuscles: true,     // Aktywuje asymetryczne krzywe brzuśców mięśniowych
     muscleMult: 1.40,          // +40% do obwodów ramion, barków i nóg
-    sleeveless: true,          // Odsłonięte ramiona (tank-top bez rękawków)
-    sleeveLengthMult: 0.0,
+    torsoStyle: 'sleeveless',  // Domyślny styl ubioru: bezrękawnik bojowy (tank-top)
+    headgearStyle: 'marcus_bandana', // Domyślna chusta bojowa COG w stylu Marcusa Fenixa
 
     hasWristband: true,        // Jasny bandaż bokserski na dłoniach
-    wristbandColor: '#f8fafc', // Jasny bandaż bokserski kontrastujący z ciemnoczerwoną koszulką
+    wristbandColor: '#f8fafc', // Jasny bandaż bokserski kontrastujący z koszulką
     hasHeadband: false,        // Brak opaski (krótko ścięte ciemne włosy)
 
     hairColor0: '#09090b',
@@ -99,8 +99,8 @@ export const EnforcerClass = {
 
   // 4. CYKL ŻYCIA I KINETYKA
   onInit(player) {
-    player.jetFuel = this.stats.jetMax;
-    player.jetMax = this.stats.jetMax;
+    player.jetFuel = 0;
+    player.jetMax = 0;
   },
 
   onDestroy(player) {},
