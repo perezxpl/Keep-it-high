@@ -189,10 +189,33 @@ export function isPlayerCrouchingOrProne(player) {
  * Wywoływane co klatkę z playerController.js.
  */
 export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
-  if (!player || player.isDead || player.isIntro || player.isSliding) return;
+  if (!player || player.isDead || player.isIntro) return;
   if (!player.rocketBoots) initRocketBootsState(player);
 
   const rb = player.rocketBoots;
+
+  // =========================================================================
+  // WYKLUCZENIE DASHU PODCZAS WŚLIZGU (SLIDE):
+  // Wślizg i dash są wzajemnie rozłączne – podczas wślizgu wygaszamy ewentualny
+  // aktywny dash oraz przerywamy ładowanie energii.
+  // =========================================================================
+  if (player.isSliding) {
+    if (rb.dashing) {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+      rb.dashInputSource = 'NONE';
+    }
+    rb.isTouchCharging = false;
+    rb.touchChargeStartTime = 0;
+    rb.touchChargeRatio = 0;
+    rb.touchChargePower = 0;
+    rb.touchAirDashReady = false;
+    rb.isKeyCharging = false;
+    rb.keyChargeStartTime = 0;
+    rb.keyChargeRatio = 0;
+    rb.keyChargePower = 0;
+    return;
+  }
 
   // =========================================================================
   // WYKLUCZENIE MOŻLIWOŚCI DASHU PODCZAS KLĘKANIA LUB LEŻENIA:
@@ -765,6 +788,10 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
  */
 function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   if (isPlayerCrouchingOrProne(player)) return;
+  // Wzajemna rozłączność: natychmiastowe zakończenie ewentualnego wślizgu
+  player.isSliding = false;
+  player.slideTimer = 0;
+
   const rb = player.rocketBoots;
   rb.dashing = true;
   rb.dashType = 'AIR';
@@ -797,6 +824,10 @@ function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
  */
 function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 1.0) {
   if (isPlayerCrouchingOrProne(player)) return;
+  // Wzajemna rozłączność: natychmiastowe zakończenie ewentualnego wślizgu
+  player.isSliding = false;
+  player.slideTimer = 0;
+
   const rb = player.rocketBoots;
   rb.dashing = true;
   rb.dashType = 'GROUND';

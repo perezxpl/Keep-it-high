@@ -201,7 +201,8 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
     !player.isJumping &&
     player.gaitMode === 'SPRINT' &&
     Math.abs(player.vx) >= minSprintSpeed &&
-    (player.sprintDuration || 0) >= 8
+    (player.sprintDuration || 0) >= 8 &&
+    !(player.rocketBoots && player.rocketBoots.dashing)
   );
   const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
 
@@ -237,7 +238,7 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
   const mode = pockets.action.currentMode || 'KICK';
 
   if (mode === 'SLIDE') {
-    if (player.onGround) {
+    if (player.onGround && !(player.rocketBoots && player.rocketBoots.dashing)) {
       return playerSlide(spawnGrass, GROUND_Y, player);
     }
   } else if (mode === 'PRONE') {

@@ -562,7 +562,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
     if (player.rocketBoots && player.rocketBoots.dashing) {
       // AKTYWNY RAKIETOWY DASH (KLASA STRIKER / ROCKET BOOTS)
-      // Wektor prędkości jest w 100% narzucany przez silniki butów odrzutowych
+      // Wektor prędkości jest w 100% narzucany przez silniki butów odrzutowych.
+      // Bezwzględna rozłączność z wślizgiem: wyklucza zapętlenie w nieskończonym ślizgu.
+      player.isSliding = false;
+      player.slideTimer = 0;
       player.vx = player.rocketBoots.dashDirX * player.rocketBoots.dashSpeed;
       player.airVx = player.vx;
       if (player.rocketBoots.dashType === 'AIR') {

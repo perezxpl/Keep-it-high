@@ -68,6 +68,9 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
   if (char.isIntro || char.isDead) return false;
   if (char.kickState && char.kickState !== 'IDLE') return false;
 
+  // Wślizg wykluczony podczas aktywnego dasha rakietowego (Rocket Boots Striker)
+  if (char.rocketBoots && char.rocketBoots.dashing) return false;
+
   const isGrounded = (char.onGround !== undefined) ? (char.onGround && !char.isJumping) : (!char.isJumping);
 
   const jogMax = char.currentClass?.stats?.jogMax || CONFIG.JOG_MAX || 4.2;
@@ -92,6 +95,14 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     char.isCrouching = false;
     char.isProne = false;
     char.isJumpCharging = false;
+
+    if (char.rocketBoots) {
+      char.rocketBoots.dashing = false;
+      char.rocketBoots.dashType = 'NONE';
+      char.rocketBoots.dashInputSource = 'NONE';
+      char.rocketBoots.isTouchCharging = false;
+      char.rocketBoots.isKeyCharging = false;
+    }
 
     const slideDash = char.currentClass?.stats?.slideDashSpeed || CONFIG.SLIDE_DASH_SPEED || 13.5;
     char.vx = char.facing * slideDash;
