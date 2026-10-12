@@ -240,7 +240,7 @@ export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
-  const greaveW = achillesHalfW * 1.45;
+  const greaveW = achillesHalfW * 1.20;
   if (ctx.roundRect) {
     ctx.roundRect(strutTop, -greaveW, strutH, greaveW * 0.9, 1.2);
   } else {
