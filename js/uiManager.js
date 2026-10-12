@@ -45,7 +45,7 @@ const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
 const CLASS_APPEARANCES_STORAGE_KEY = 'keep_it_high_class_appearances_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
-import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats } from './progression.js';
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats, RANKS, XP_RULES, XP_REWARDS } from './progression.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -343,6 +343,138 @@ export const uiManager = {
     if (elGoals) elGoals.textContent = stats.goalsScored;
   },
 
+  openRanksModal() {
+    this.renderRanksModal();
+    const modalEl = document.getElementById('ranks-modal');
+    if (modalEl) {
+      modalEl.classList.remove('ranks-modal-hidden');
+    }
+  },
+
+  closeRanksModal() {
+    const modalEl = document.getElementById('ranks-modal');
+    if (modalEl) {
+      modalEl.classList.add('ranks-modal-hidden');
+    }
+  },
+
+  switchRanksTab(tabId) {
+    const ladderBtn = document.getElementById('ranks-tab-ladder-btn');
+    const rulesBtn = document.getElementById('ranks-tab-rules-btn');
+    const ladderView = document.getElementById('ranks-tab-ladder-view');
+    const rulesView = document.getElementById('ranks-tab-rules-view');
+
+    if (tabId === 'rules') {
+      if (ladderBtn) ladderBtn.classList.remove('active');
+      if (rulesBtn) rulesBtn.classList.add('active');
+      if (ladderView) ladderView.style.display = 'none';
+      if (rulesView) rulesView.style.display = 'block';
+    } else {
+      if (ladderBtn) ladderBtn.classList.add('active');
+      if (rulesBtn) rulesBtn.classList.remove('active');
+      if (ladderView) ladderView.style.display = 'block';
+      if (rulesView) rulesView.style.display = 'none';
+    }
+  },
+
+  renderRanksModal() {
+    const currentXp = getPlayerXP();
+    const rank = getCurrentRank(currentXp);
+    const nextRank = getNextRank(currentXp);
+    const progress = getRankProgress(currentXp);
+
+    // 1. Karta Hero (Aktualny stopień)
+    const heroIcon = document.getElementById('ranks-hero-icon');
+    const heroName = document.getElementById('ranks-hero-name');
+    const heroXp = document.getElementById('ranks-hero-xp-val');
+    const heroNext = document.getElementById('ranks-hero-next');
+    const heroFill = document.getElementById('ranks-hero-progress-fill');
+
+    if (heroIcon) heroIcon.textContent = rank.icon;
+    if (heroName) heroName.textContent = rank.name.toUpperCase();
+    if (heroXp) heroXp.textContent = `${currentXp.toLocaleString('pl-PL')} XP`;
+    if (heroFill) heroFill.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
+    if (heroNext) {
+      if (nextRank) {
+        const left = Math.max(0, nextRank.minXp - currentXp);
+        const percent = Math.min(100, Math.round(progress * 100));
+        heroNext.textContent = `NASTĘPNY: ${nextRank.name} (${nextRank.minXp.toLocaleString('pl-PL')} XP / brakuje ${left.toLocaleString('pl-PL')} XP) [${percent}%]`;
+      } else {
+        heroNext.textContent = `MAKSYMALNY STOPIEŃ WOJSKOWY: ELITA ARENY [100%]`;
+      }
+    }
+
+    // 2. Generowanie listy 12 rang wojskowych
+    const ladderContainer = document.getElementById('ranks-ladder-container');
+    if (ladderContainer && Array.isArray(RANKS)) {
+      ladderContainer.innerHTML = '';
+      RANKS.forEach((r, idx) => {
+        const tierNum = (r.tier !== undefined ? r.tier : (idx + 1)).toString().padStart(2, '0');
+        const isCurrent = (r.id === rank.id);
+        const isUnlocked = (currentXp >= r.minXp);
+        const missingXp = Math.max(0, r.minXp - currentXp);
+
+        const card = document.createElement('div');
+        card.className = `rank-ladder-card ${isCurrent ? 'current-rank' : (isUnlocked ? 'unlocked' : 'locked')}`;
+
+        let statusHtml = '';
+        if (isCurrent) {
+          statusHtml = `<span class="rank-status-tag tag-current"><span class="tag-pulse-dot"></span>TWÓJ AKTUALNY STOPIEŃ</span>`;
+        } else if (isUnlocked) {
+          statusHtml = `<span class="rank-status-tag tag-unlocked">✔ ODBLOKOWANY</span>`;
+        } else {
+          statusHtml = `<span class="rank-status-tag tag-locked">🔒 DO ZDOBYCIA (brakuje ${missingXp.toLocaleString('pl-PL')} XP)</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="rank-card-insignia">
+            <span class="rank-insignia-text">${r.icon}</span>
+          </div>
+          <div class="rank-card-details">
+            <div class="rank-card-meta-row">
+              <span class="rank-card-tier">TIER ${tierNum}</span>
+              <span class="rank-card-xp-req">${r.minXp.toLocaleString('pl-PL')} XP</span>
+            </div>
+            <div class="rank-card-name-row">
+              <span class="rank-card-name">${r.name}</span>
+              <span class="rank-card-short">[${r.short.toUpperCase()}]</span>
+            </div>
+            <div class="rank-card-desc">${r.desc || 'Stopień bojowy Modern Military.'}</div>
+            <div class="rank-card-status-row">
+              ${statusHtml}
+            </div>
+          </div>
+        `;
+        ladderContainer.appendChild(card);
+      });
+    }
+
+    // 3. Generowanie tabeli zasad XP
+    const rulesContainer = document.getElementById('ranks-rules-container');
+    if (rulesContainer && Array.isArray(XP_RULES)) {
+      rulesContainer.innerHTML = '';
+      XP_RULES.forEach(rule => {
+        const card = document.createElement('div');
+        card.className = 'ranks-rule-card';
+        card.innerHTML = `
+          <div class="rule-icon-box">
+            <span>${rule.icon}</span>
+          </div>
+          <div class="rule-details">
+            <div class="rule-header-row">
+              <span class="rule-category-badge">${rule.category.toUpperCase()}</span>
+              <span class="rule-xp-badge ${rule.badgeClass}">${rule.xp > 0 ? `+${rule.xp} XP` : `${rule.xp} XP`}</span>
+            </div>
+            <div class="rule-title">${rule.title}</div>
+            <div class="rule-desc">${rule.desc}</div>
+            <div class="rule-tip">🎯 ${rule.tip}</div>
+          </div>
+        `;
+        rulesContainer.appendChild(card);
+      });
+    }
+  },
+
   loadAppearance() {
     try {
       const rawClassData = localStorage.getItem(CLASS_APPEARANCES_STORAGE_KEY);
@@ -578,6 +710,7 @@ export const uiManager = {
     if (settingsEl) settingsEl.style.display = 'none';
     if (creatorEl) creatorEl.style.display = 'none';
     if (pauseEl) pauseEl.style.display = 'none';
+    if (gameState === 'PLAYING') this.closeRanksModal();
     this.stopCreatorPreview();
 
     const isCursorActive = (gameState !== 'PLAYING');
@@ -679,6 +812,76 @@ export const uiManager = {
         }
       });
     }
+
+    // -------------------------------------------------------------------------
+    // KARTA GRACZA I MENU: PODGLĄD STOPNI WOJSKOWYCH I PREMII XP
+    // -------------------------------------------------------------------------
+    const handleOpenRanksModal = () => {
+      playUiClick();
+      this.openRanksModal();
+    };
+
+    const ranksPreviewBtn = document.getElementById('menu-btn-ranks-preview');
+    if (ranksPreviewBtn) {
+      ranksPreviewBtn.addEventListener('mouseenter', () => playUiHover());
+      ranksPreviewBtn.addEventListener('click', handleOpenRanksModal);
+    }
+
+    const rankClickableEl = document.getElementById('menu-player-rank-clickable');
+    if (rankClickableEl) {
+      rankClickableEl.addEventListener('mouseenter', () => playUiHover());
+      rankClickableEl.addEventListener('click', handleOpenRanksModal);
+    }
+
+    const ranksMainBtn = document.getElementById('menu-btn-ranks-main');
+    if (ranksMainBtn) {
+      ranksMainBtn.addEventListener('mouseenter', () => playUiHover());
+      ranksMainBtn.addEventListener('click', handleOpenRanksModal);
+    }
+
+    const ranksCloseBtn = document.getElementById('ranks-close-btn');
+    if (ranksCloseBtn) {
+      ranksCloseBtn.addEventListener('mouseenter', () => playUiHover());
+      ranksCloseBtn.addEventListener('click', () => {
+        playUiClick();
+        this.closeRanksModal();
+      });
+    }
+
+    const ranksBackdrop = document.getElementById('ranks-backdrop');
+    if (ranksBackdrop) {
+      ranksBackdrop.addEventListener('click', () => {
+        playUiClick();
+        this.closeRanksModal();
+      });
+    }
+
+    const tabLadderBtn = document.getElementById('ranks-tab-ladder-btn');
+    if (tabLadderBtn) {
+      tabLadderBtn.addEventListener('mouseenter', () => playUiHover());
+      tabLadderBtn.addEventListener('click', () => {
+        playUiClick();
+        this.switchRanksTab('ladder');
+      });
+    }
+
+    const tabRulesBtn = document.getElementById('ranks-tab-rules-btn');
+    if (tabRulesBtn) {
+      tabRulesBtn.addEventListener('mouseenter', () => playUiHover());
+      tabRulesBtn.addEventListener('click', () => {
+        playUiClick();
+        this.switchRanksTab('rules');
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const ranksModal = document.getElementById('ranks-modal');
+        if (ranksModal && !ranksModal.classList.contains('ranks-modal-hidden')) {
+          this.closeRanksModal();
+        }
+      }
+    });
 
     // -------------------------------------------------------------------------
     // LOBBY MULTIPLAYER: Wybór mapy / areny

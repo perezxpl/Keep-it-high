@@ -4,19 +4,89 @@
  */
 
 export const RANKS = [
-  { id: 'SZEREGOWY', name: 'Szeregowy', short: 'Szer.', minXp: 0, icon: '━' },
-  { id: 'ST_SZEREGOWY', name: 'Starszy Szeregowy', short: 'St. szer.', minXp: 400, icon: '━━' },
-  { id: 'KAPRAL', name: 'Kapral', short: 'Kpr.', minXp: 1000, icon: '▲▲' },
-  { id: 'ST_KAPRAL', name: 'Starszy Kapral', short: 'St. kpr.', minXp: 1800, icon: '▲▲━' },
-  { id: 'PLUTONOWY', name: 'Plutonowy', short: 'Plut.', minXp: 3000, icon: '▲▲▲' },
-  { id: 'SIERZANT', name: 'Sierżant', short: 'Sierż.', minXp: 4600, icon: '▲▲▲━' },
-  { id: 'CHORAZY', name: 'Chorąży', short: 'Chor.', minXp: 6800, icon: '★' },
-  { id: 'PODPORUCZNIK', name: 'Podporucznik', short: 'Ppor.', minXp: 9500, icon: '★★' },
-  { id: 'KAPITAN', name: 'Kapitan', short: 'Kpt.', minXp: 13000, icon: '★★★' },
-  { id: 'MAJOR', name: 'Major', short: 'Mjr.', minXp: 18000, icon: '✦' },
-  { id: 'PULKOWNIK', name: 'Pułkownik', short: 'Płk.', minXp: 25000, icon: '✦✦' },
-  { id: 'GENERAL', name: 'Generał Areny', short: 'Gen.', minXp: 35000, icon: '⚔ ★' }
+  { id: 'SZEREGOWY', tier: 1, name: 'Szeregowy', short: 'Szer.', minXp: 0, icon: '━', desc: 'Podstawowy stopień rekruta. Chrzest bojowy na arenie walki.' },
+  { id: 'ST_SZEREGOWY', tier: 2, name: 'Starszy Szeregowy', short: 'St. szer.', minXp: 400, icon: '━━', desc: 'Weteran pierwszych potyczek o potwierdzonej dyscyplinie.' },
+  { id: 'KAPRAL', tier: 3, name: 'Kapral', short: 'Kpr.', minXp: 1000, icon: '▲▲', desc: 'Młodszy podoficer. Wysoka skuteczność w starciach kontaktowych.' },
+  { id: 'ST_KAPRAL', tier: 4, name: 'Starszy Kapral', short: 'St. kpr.', minXp: 1800, icon: '▲▲━', desc: 'Doświadczony operator sekcji szturmowej na arenie.' },
+  { id: 'PLUTONOWY', tier: 5, name: 'Plutonowy', short: 'Plut.', minXp: 3000, icon: '▲▲▲', desc: 'Lider natarcia. Doskonała precyzja i mobilność jetpacka.' },
+  { id: 'SIERZANT', tier: 6, name: 'Sierżant', short: 'Sierż.', minXp: 4600, icon: '▲▲▲━', desc: 'Taktyczny kręgosłup drużyny w defensywie i ataku.' },
+  { id: 'CHORAZY', tier: 7, name: 'Chorąży', short: 'Chor.', minXp: 6800, icon: '★', desc: 'Starszy podoficer koordynujący kluczowe przełamania wroga.' },
+  { id: 'PODPORUCZNIK', tier: 8, name: 'Podporucznik', short: 'Ppor.', minXp: 9500, icon: '★★', desc: 'Oficer polowy o bezwzględnej celności i instynkcie walki.' },
+  { id: 'KAPITAN', tier: 9, name: 'Kapitan', short: 'Kpt.', minXp: 13000, icon: '★★★', desc: 'Dowódca operacji specjalnych. Prowadzi drużynę do wiktorii.' },
+  { id: 'MAJOR', tier: 10, name: 'Major', short: 'Mjr.', minXp: 18000, icon: '✦', desc: 'Starszy oficer areny i mistrz manewrów powietrznych.' },
+  { id: 'PULKOWNIK', tier: 11, name: 'Pułkownik', short: 'Płk.', minXp: 25000, icon: '✦✦', desc: 'Żywa legenda frontu budząca respekt wszystkich rywali.' },
+  { id: 'GENERAL', tier: 12, name: 'Generał Areny', short: 'Gen.', minXp: 35000, icon: '⚔ ★', desc: 'Maksymalny stopień wojskowy. Absolutna elita Modern Military.' }
 ];
+
+export const XP_REWARDS = {
+  MATCH_WIN: 40,
+  GOAL_SCORED: 15,
+  ENEMY_KILL: 10
+};
+
+export const XP_RULES = [
+  {
+    id: 'WIN',
+    title: 'Zwycięstwo w Meczu',
+    category: 'Turniej',
+    xp: 40,
+    icon: '🏆',
+    badgeClass: 'xp-badge-win',
+    desc: 'Wygranie meczu (3 bramki na Arenie 1 / 5 eliminacji na Arenie 3).',
+    tip: 'Zgranie taktyczne i obrona prowadzą do pewnego triumfu.'
+  },
+  {
+    id: 'GOAL',
+    title: 'Zdobycie Bramki',
+    category: 'Cel Meczu',
+    xp: 15,
+    icon: '⚽',
+    badgeClass: 'xp-badge-goal',
+    desc: 'Celny strzał umieszczający piłkę bezpośrednio w siatce rywali.',
+    tip: 'Uderzenia z woleja, Spartan Kick lub rykoszety sufitowe.'
+  },
+  {
+    id: 'KILL',
+    title: 'Eliminacja Wroga (Frag)',
+    category: 'Walka',
+    xp: 10,
+    icon: '⚔️',
+    badgeClass: 'xp-badge-kill',
+    desc: 'Zlikwidowanie wrogiego bota lub przeciwnika bronią lub granatem.',
+    tip: 'Prowadź ogień ciągły lub eliminuj cele jednym strzałem snajperki.'
+  },
+  {
+    id: 'SPARTAN',
+    title: 'Spartan Kick / Wślizg',
+    category: 'Walka Wręcz',
+    xp: 10,
+    icon: '💥',
+    badgeClass: 'xp-badge-melee',
+    desc: 'Wepchnięcie rywala potężnym kopnięciem lub wślizgiem w kwas lub przepaść.',
+    tip: 'Użyj klawisza F lub X, aby odrzucić nacierającego wroga.'
+  },
+  {
+    id: 'LOSS',
+    title: 'Porażka w Meczu',
+    category: 'Wynik',
+    xp: 0,
+    icon: '💀',
+    badgeClass: 'xp-badge-loss',
+    desc: 'Koniec spotkania zwycięstwem drużyny przeciwnej.',
+    tip: 'Zero kary punktowej — zgromadzone wcześniej XP nie przepada.'
+  }
+];
+
+let _xpNotificationCallback = null;
+export function setXpNotificationCallback(fn) {
+  _xpNotificationCallback = fn;
+}
+
+export function notifyXpGained(text, amount, color) {
+  if (typeof _xpNotificationCallback === 'function') {
+    _xpNotificationCallback(text, amount, color);
+  }
+}
 
 export function getPlayerXP() {
   const parsed = parseInt(localStorage.getItem('fragball_xp') || '0', 10);
@@ -117,8 +187,12 @@ export function recordMatchResult(result) {
 
 export function recordKill(amount = 1) {
   const stats = getPlayerStats();
-  stats.kills = (stats.kills || 0) + Math.max(1, parseInt(amount, 10) || 1);
+  const count = Math.max(1, parseInt(amount, 10) || 1);
+  stats.kills = (stats.kills || 0) + count;
   savePlayerStats(stats);
+  const xpEarned = XP_REWARDS.ENEMY_KILL * count;
+  addPlayerXP(xpEarned);
+  notifyXpGained(`+${xpEarned} XP ELIMINACJA!`, xpEarned, '#38bdf8');
   return stats;
 }
 
@@ -131,8 +205,12 @@ export function recordDeath(amount = 1) {
 
 export function recordGoal(amount = 1) {
   const stats = getPlayerStats();
-  stats.goalsScored = (stats.goalsScored || 0) + Math.max(1, parseInt(amount, 10) || 1);
+  const count = Math.max(1, parseInt(amount, 10) || 1);
+  stats.goalsScored = (stats.goalsScored || 0) + count;
   savePlayerStats(stats);
+  const xpEarned = XP_REWARDS.GOAL_SCORED * count;
+  addPlayerXP(xpEarned);
+  notifyXpGained(`+${xpEarned} XP GOL!`, xpEarned, '#facc15');
   return stats;
 }
 
@@ -166,6 +244,10 @@ export function getPlayerStatsSummary() {
 if (typeof window !== 'undefined') {
   window.FragballProgression = {
     RANKS,
+    XP_REWARDS,
+    XP_RULES,
+    setXpNotificationCallback,
+    notifyXpGained,
     getPlayerXP,
     addPlayerXP,
     getCurrentRank,

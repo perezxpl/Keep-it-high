@@ -28,7 +28,7 @@ export const ball = {
 
 export function resetBallToPlayer(p, GROUND_Y) {
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   if (isA3) {
     p.x = 600;
     p.y = 1130;
@@ -422,7 +422,7 @@ export function updateBall(GROUND_Y) {
 
 
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
-    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
     const isGroundUnderBall = (!hasNoFloor && typeof isGroundAt === 'function')
       ? isGroundAt(ball.x, ball.colRadius * 0.6)
       : (!hasNoFloor);

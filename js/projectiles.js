@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import {
   spawnShrapnelStreak,
@@ -105,6 +105,8 @@ export class AeroSuperGrenade {
     // Określenie granic aktualnej areny
     const curArena = getActiveArena?.();
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+    const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
+    const activePlats = platforms || ARENA_PLATFORMS;
     const arenaLeft = (typeof curArena?.bounds?.minX === 'number') ? curArena.bounds.minX : ARENA_LEFT;
     const arenaRight = isA3 ? 4400 : ((typeof curArena?.width === 'number') ? curArena.width : ((typeof curArena?.bounds?.maxX === 'number') ? curArena.bounds.maxX : ARENA_RIGHT));
 
@@ -121,8 +123,19 @@ export class AeroSuperGrenade {
       this.bounces++;
     }
 
-    // 2. Odbicie od poziomu terenu / rzeki
-    if (isA3) {
+    // 2. Odbicie od poziomu terenu / rzeki / kwasu
+    if (isA2) {
+      const acidLevelY = (typeof curArena?.acidSurge?.currentY === 'number')
+        ? curArena.acidSurge.currentY
+        : (curArena?.hazardZoneY ?? 1440);
+      if (this.y + this.radius >= acidLevelY) {
+        if (typeof window.spawnAcidSplash === 'function') {
+          window.spawnAcidSplash(this.x, acidLevelY, 18);
+        }
+        this.detonate(acidLevelY + 40, activePlats, customObs, combatants, ball);
+        return false;
+      }
+    } else if (isA3) {
       let terrainY = 1200;
       const gx = this.x;
       if (gx < 1150) {
@@ -167,7 +180,8 @@ export class AeroSuperGrenade {
         }
       }
     } else {
-      if (this.y + this.radius >= groundY) {
+      const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(this.x, 2) : true;
+      if (hasGround && this.y + this.radius >= groundY) {
         this.y = groundY - this.radius;
         this.vy = -this.vy * this.restitution;
         this.vx *= 0.82;
@@ -181,7 +195,6 @@ export class AeroSuperGrenade {
     }
 
     // 3. Kolizje z platformami, ścianami i pylonami
-    const activePlats = platforms || ARENA_PLATFORMS;
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
         if (!plat || plat.solid === false) continue;
@@ -430,6 +443,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
   // 3. FIZYCZNE NISZCZENIE PLATFORM I WYCINKA PODŁOŻA (Real Geometry Carving)
   const isA3Explosion = (activeArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA2Explosion = (activeArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
   if (isA3Explosion) {
     // Wybuch w wodzie rzeki: potężny gejzer wodny
     if (expY >= 1290 && expX >= 1620 && expX <= 2780) {
@@ -437,6 +451,13 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         window.spawnArena3WaterSplash(expX, 1305, 36, true);
       }
     }
+  } else if (isA2Explosion) {
+    const targetPlatforms = platforms || ARENA_PLATFORMS;
+    const terrainRadius = 90;
+    if (Array.isArray(targetPlatforms)) {
+      destroyPlatformSegments(targetPlatforms, expX, expY, terrainRadius, groundY);
+    }
+    // W Arenie 2 brak podłoża (GROUND_Y) do wycinania
   } else {
     const targetPlatforms = platforms || ARENA_PLATFORMS;
     const terrainRadius = 90;
@@ -659,6 +680,10 @@ export function spawnRubbleDebris(x, y, count = 15) {
 }
 
 export function updateRubbleParticles(groundY, platforms) {
+  const curArena = getActiveArena?.();
+  const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
+  const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+
   for (let i = rubbleParticles.length - 1; i >= 0; i--) {
     const r = rubbleParticles[i];
     r.life--;
@@ -677,9 +702,26 @@ export function updateRubbleParticles(groundY, platforms) {
       r.y += r.vy;
       r.angle += r.vRot;
 
-      // Odbicie od podłoża
-      if (r.y >= groundY) {
-        r.y = groundY;
+      // Sprawdzenie kolizji z platformami
+      let platFloorY = Infinity;
+      const activePlats = platforms || ARENA_PLATFORMS;
+      if (Array.isArray(activePlats)) {
+        for (let j = 0; j < activePlats.length; j++) {
+          const p = activePlats[j];
+          if (!p || p.solid === false) continue;
+          if (r.x >= p.x - 4 && r.x <= p.x + p.w + 4) {
+            const py = (p.surfacePoints && typeof getPlatformSurfaceY === 'function')
+              ? getPlatformSurfaceY(p, r.x, groundY)
+              : ((p.y !== undefined) ? p.y : (groundY - (p.relY || 0)));
+            if (py < platFloorY && r.y >= py - 8 && r.y <= py + 20) {
+              platFloorY = py;
+            }
+          }
+        }
+      }
+
+      if (platFloorY !== Infinity) {
+        r.y = platFloorY;
         r.vy = -r.vy * 0.45;
         r.vx *= 0.65;
         r.bounces++;
@@ -688,6 +730,25 @@ export function updateRubbleParticles(groundY, platforms) {
           r.vy = 0;
           r.vx = 0;
         }
+      } else if (!isA2 && !isA3 && (typeof isGroundAt === 'function' ? isGroundAt(r.x, 2) : true)) {
+        // Odbicie od twardego podłoża (tylko na mapach ze stałym gruntem)
+        if (r.y >= groundY) {
+          r.y = groundY;
+          r.vy = -r.vy * 0.45;
+          r.vx *= 0.65;
+          r.bounces++;
+          if (r.bounces >= r.maxBounces || Math.abs(r.vy) < 0.6) {
+            r.isGrounded = true;
+            r.vy = 0;
+            r.vx = 0;
+          }
+        }
+      } else if (isA2 && r.y >= 1440) {
+        rubbleParticles.splice(i, 1);
+        continue;
+      } else if (r.y > 1700) {
+        rubbleParticles.splice(i, 1);
+        continue;
       }
     }
   }

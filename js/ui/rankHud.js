@@ -3,7 +3,7 @@
  * Rysowanie w HUD podczas gry oraz obsługa nagród XP za wygrany mecz.
  */
 
-import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult } from '../progression.js';
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult, XP_REWARDS, setXpNotificationCallback } from '../progression.js';
 
 // Stan powiadomień XP i zwycięstwa w meczu
 export const matchWinState = {
@@ -12,12 +12,12 @@ export const matchWinState = {
   timer: 0,
   maxTimer: 240, // ~4 sekundy przy 60 fps
   xpAwarded: false,
-  rewardXp: 40, // Zredukowane z 200 do 40 XP - awans wymaga 10 wygranych zamiast 2
+  rewardXp: XP_REWARDS?.MATCH_WIN || 40,
   previousRankName: '',
   newRankName: ''
 };
 
-// Pływające powiadomienia o zyskanym XP w HUD (+40 XP)
+// Pływające powiadomienia o zyskanym XP w HUD
 const floatingXpPopups = [];
 
 export function spawnXpPopup(text, amount, color = '#facc15') {
@@ -30,6 +30,9 @@ export function spawnXpPopup(text, amount, color = '#facc15') {
     life: 90
   });
 }
+
+// Rejestracja callbacku do wyświetlania pływających powiadomień XP z modułu progresji
+setXpNotificationCallback(spawnXpPopup);
 
 /**
  * Sprawdza warunek zwycięstwa w meczu i przyznaje +40 XP dla gracza (drużyna CYAN)

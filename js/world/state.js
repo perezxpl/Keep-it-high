@@ -33,12 +33,12 @@ export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTr
 
 export const centerX = MAP_WIDTH / 2; // 1800
 
-export let _worldPlatforms = [];
-export let _worldCustomObstacles = [];
-export let platforms = [];
-export let slopes = [];
-export let walls = [];
-export let obstacles = [];
+export var _worldPlatforms = [];
+export var _worldCustomObstacles = [];
+export var platforms = [];
+export var slopes = [];
+export var walls = [];
+export var obstacles = [];
 
 export function resetColliders() {
   platforms = [];
@@ -158,7 +158,7 @@ export function initGroundSegments() {
 initGroundSegments();
 
 export function isGroundAt(x, margin = 4) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -171,8 +171,12 @@ export function isGroundAt(x, margin = 4) {
   return false;
 }
 
+if (typeof window !== 'undefined') {
+  window.isGroundAt = isGroundAt;
+}
+
 export function isGroundSupporting(minX, maxX) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     return false;
   }
   for (let i = 0; i < groundSegments.length; i++) {
@@ -186,7 +190,7 @@ export function isGroundSupporting(minX, maxX) {
 }
 
 export function findGroundHoleAt(x) {
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     return { holeStart: -600, holeEnd: 4600 };
   }
   if (isGroundAt(x, 0)) return null;
@@ -366,7 +370,7 @@ export function resize(player) {
   }
   invalidateSkyCache();
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2');
+  const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   if (player && !isA3 && !isA2) {
     if (player.y >= GROUND_Y - player.h - 5 && player.currentGroundY === GROUND_Y) {
       player.y = GROUND_Y - player.h;

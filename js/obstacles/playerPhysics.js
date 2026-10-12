@@ -38,19 +38,24 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const wantDrop = (p.dropThroughTimer > 0);
   const wasGrounded = !!(p.onGround && !p.isJumping);
 
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
+  const hasNoFloor = isA3 || isA2;
+
   if (wantDrop) {
     for (const plat of ARENA_PLATFORMS) {
       if (!plat || plat.solid || plat.isCanyonTerrain) continue;
       if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
         const topY = getPlatformSurfaceY(plat, centerX, groundY);
 
-        if (Math.abs(feetY - topY) <= 14 && p.y < groundY - p.h - 2) {
+        if (Math.abs(feetY - topY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
           p.y = topY - p.h + 12;
           p.vy = 2.8;
           p.isJumping = true;
           p.isCrouching = false;
           p.airVx = p.vx;
-          p.currentGroundY = groundY;
+          p.currentGroundY = hasNoFloor ? null : groundY;
           return;
         }
 
@@ -61,13 +66,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
             const tierRight = tierLeft + tier.w;
             if (centerX >= tierLeft - 4 && centerX <= tierRight + 4) {
               const tierTopY = topY - tier.h;
-              if (Math.abs(feetY - tierTopY) <= 14 && p.y < groundY - p.h - 2) {
+              if (Math.abs(feetY - tierTopY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
                 p.y = tierTopY - p.h + 12;
                 p.vy = 2.8;
                 p.isJumping = true;
                 p.isCrouching = false;
                 p.airVx = p.vx;
-                p.currentGroundY = groundY;
+                p.currentGroundY = hasNoFloor ? null : groundY;
                 return;
               }
             }
@@ -88,20 +93,20 @@ export function checkPlayerPlatformLanding(p, groundY) {
             const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
             surfaceY = topY + (1 - t) * obs.h;
           }
-          if (Math.abs(feetY - surfaceY) <= 16 && p.y < groundY - p.h - 2) {
+          if (Math.abs(feetY - surfaceY) <= 16 && (hasNoFloor || p.y < groundY - p.h - 2)) {
             p.y = surfaceY - p.h + 12;
             p.vy = 2.8;
             p.isJumping = true;
             p.isCrouching = false;
             p.airVx = p.vx;
-            p.currentGroundY = groundY;
+            p.currentGroundY = hasNoFloor ? null : groundY;
             return;
           }
         }
       }
     }
 
-    p.currentGroundY = groundY;
+    p.currentGroundY = hasNoFloor ? null : groundY;
     return;
   }
 

@@ -133,28 +133,32 @@ export class BulletCasing {
 
     // Sprawdzenie kolizji z podłożem i platformami
     const floorY = findPlatformLandingY(this.x, prevY, this.y, groundY, obstaclesList);
-    const surfaceY = floorY - this.height * 0.5;
+    if (floorY !== Infinity) {
+      const surfaceY = floorY - this.height * 0.5;
 
-    if (this.y >= surfaceY && this.vy > 0) {
-      this.y = surfaceY;
-
-      if (this.bounces < this.maxBounces && Math.abs(this.vy) > 25) {
-        // Gdy łuska uderzy w platformę lub ziemię:
-        // odwróć prędkość z tłumieniem (vy = -vy * 0.35, vx *= 0.6, vRot *= 0.5)
-        this.vy = -this.vy * 0.35;
-        this.vx *= 0.6;
-        this.vRot *= 0.5;
-        this.bounces++;
-      } else {
-        // Po 2-3 odbiciach zatrzymaj ją (isGrounded = true, vy = 0, vx = 0)
-        this.isGrounded = true;
-        this.vy = 0;
-        this.vx = 0;
-        this.vRot = 0;
+      if (this.y >= surfaceY && this.vy > 0) {
         this.y = surfaceY;
-        // Wyrównanie poziome do podłoża dla estetycznego leżenia łuski
-        this.angle = Math.round(this.angle / Math.PI) * Math.PI;
+
+        if (this.bounces < this.maxBounces && Math.abs(this.vy) > 25) {
+          // Gdy łuska uderzy w platformę lub ziemię:
+          // odwróć prędkość z tłumieniem (vy = -vy * 0.35, vx *= 0.6, vRot *= 0.5)
+          this.vy = -this.vy * 0.35;
+          this.vx *= 0.6;
+          this.vRot *= 0.5;
+          this.bounces++;
+        } else {
+          // Po 2-3 odbiciach zatrzymaj ją (isGrounded = true, vy = 0, vx = 0)
+          this.isGrounded = true;
+          this.vy = 0;
+          this.vx = 0;
+          this.vRot = 0;
+          this.y = surfaceY;
+          // Wyrównanie poziome do podłoża dla estetycznego leżenia łuski
+          this.angle = Math.round(this.angle / Math.PI) * Math.PI;
+        }
       }
+    } else if (this.y >= 1440) {
+      return false;
     }
 
     return true;
@@ -170,14 +174,20 @@ export const bulletCasings = [];
  * Wyszukanie powierzchni do lądowania (platformy lub ziemia)
  */
 export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstaclesList = null) {
-  let bestFloorY = groundY;
+  const hasGround = (groundY < 1500) && (
+    typeof window !== 'undefined' && typeof window.isGroundAt === 'function'
+      ? window.isGroundAt(x, 4)
+      : true
+  );
+
+  let bestFloorY = hasGround ? groundY : Infinity;
 
   if (obstaclesList && Array.isArray(obstaclesList)) {
     for (let i = 0; i < obstaclesList.length; i++) {
       const obs = obstaclesList[i];
       if (!obs || typeof obs.x !== 'number' || typeof obs.w !== 'number') continue;
 
-      if (x >= obs.x - 2 && x <= obs.x + obs.w + 2) {
+      if (x >= obs.x - 4 && x <= obs.x + obs.w + 4) {
         let topY = obs.y;
         if (topY === undefined) {
           if (typeof obs.relY === 'number') {
@@ -190,7 +200,17 @@ export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstacle
         }
 
         // Obsługa ramp pochyłych
-        if (obs.type === 'metal_ramp_left') {
+        if (obs.surfacePoints && Array.isArray(obs.surfacePoints) && obs.surfacePoints.length >= 2) {
+          const p0 = obs.surfacePoints[0];
+          const p1 = obs.surfacePoints[1];
+          const minPx = Math.min(p0.x, p1.x);
+          const maxPx = Math.max(p0.x, p1.x);
+          if (x >= minPx && x <= maxPx) {
+            const dx = p1.x - p0.x;
+            const t = dx !== 0 ? (x - p0.x) / dx : 0;
+            topY = p0.y + t * (p1.y - p0.y);
+          }
+        } else if (obs.type === 'metal_ramp_left') {
           const t = Math.max(0, Math.min(1, (x - obs.x) / obs.w));
           topY = topY + t * obs.h;
         } else if (obs.type === 'metal_ramp_right') {
@@ -198,7 +218,7 @@ export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstacle
           topY = topY + (1 - t) * obs.h;
         }
 
-        if (prevY <= topY + 6 && currentY >= topY - 4 && topY < bestFloorY) {
+        if (prevY <= topY + 8 && currentY >= topY - 6 && topY < bestFloorY) {
           bestFloorY = topY;
         }
       }
@@ -522,22 +542,26 @@ export class ConcreteDebris {
 
     // Sprawdzenie kolizji z platformami lub ziemią
     const floorY = findPlatformLandingY(this.x, this.prevY, this.y, groundY, platforms);
-    const surfaceY = floorY - this.size * 0.4;
+    if (floorY !== Infinity) {
+      const surfaceY = floorY - this.size * 0.4;
 
-    if (this.y >= surfaceY && this.vy > 0) {
-      this.y = surfaceY;
-      if (this.bounces < this.maxBounces && Math.abs(this.vy) > 30) {
-        this.vy = -this.vy * 0.3;
-        this.vx *= 0.5;
-        this.vRot *= 0.5;
-        this.bounces++;
-      } else {
-        this.grounded = true;
-        this.vx = 0;
-        this.vy = 0;
-        this.vRot = 0;
+      if (this.y >= surfaceY && this.vy > 0) {
         this.y = surfaceY;
+        if (this.bounces < this.maxBounces && Math.abs(this.vy) > 30) {
+          this.vy = -this.vy * 0.3;
+          this.vx *= 0.5;
+          this.vRot *= 0.5;
+          this.bounces++;
+        } else {
+          this.grounded = true;
+          this.vx = 0;
+          this.vy = 0;
+          this.vRot = 0;
+          this.y = surfaceY;
+        }
       }
+    } else if (this.y >= 1440) {
+      return false;
     }
 
     return true;
@@ -729,8 +753,14 @@ export class RicochetSpark {
  * Wykrywanie przecięcia promienia szrapnela z platformą lub podłożem
  */
 export function checkShrapnelRayHit(x1, y1, x2, y2, groundY = 500, platforms = null) {
-  // 1. Sprawdzenie przecięcia z podłożem
-  if (y1 < groundY && y2 >= groundY) {
+  const hasGround = (groundY < 1500) && (
+    typeof window !== 'undefined' && typeof window.isGroundAt === 'function'
+      ? window.isGroundAt(x2, 4)
+      : true
+  );
+
+  // 1. Sprawdzenie przecięcia z podłożem (tylko na mapach ze stałym gruntem)
+  if (hasGround && y1 < groundY && y2 >= groundY) {
     const t = (groundY - y1) / (y2 - y1);
     return {
       x: x1 + (x2 - x1) * t,
@@ -745,8 +775,8 @@ export function checkShrapnelRayHit(x1, y1, x2, y2, groundY = 500, platforms = n
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       if (!p || typeof p.x !== 'number' || typeof p.w !== 'number') continue;
-      const topY = groundY - (p.relY || 0);
-      const thick = p.thickness || 20;
+      const topY = (p.y !== undefined) ? p.y : (groundY - (p.relY || 0));
+      const thick = p.thickness || p.h || 20;
       const bottomY = topY + thick;
       const left = p.x;
       const right = p.x + p.w;

@@ -25,7 +25,7 @@
       "./js/arenas/arena3/state.js": "./js/arenas/arena3/state.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ball.js": "./js/ball.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
       "./js/bot.js": "./js/bot.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/camera.js": "./js/camera.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v141_super_run_jump_momentum_and_coyote_time",
@@ -41,17 +41,17 @@
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v141_super_run_jump_momentum_and_coyote_time",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v141_super_run_jump_momentum_and_coyote_time",
-      "./js/main.js": "./js/main.js?v=v144_class_cards_and_separate_appearances_in_creator",
+      "./js/main.js": "./js/main.js?v=v145_arena2_remove_invisible_platform",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v142_fix_infinite_slide_during_dash",
       "./js/network.js": "./js/network.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/obstacles.js": "./js/obstacles.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v141_super_run_jump_momentum_and_coyote_time",
+      "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/renderer.js": "./js/obstacles/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/state.js": "./js/obstacles/state.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/particles.js": "./js/particles.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/particles.js": "./js/particles.js?v=v146_fix_circular_dependency_and_hoisting",
       "./js/player.js": "./js/player.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/actions.js": "./js/player/actions.js?v=v142_fix_infinite_slide_during_dash",
       "./js/player/death.js": "./js/player/death.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -70,20 +70,20 @@
       "./js/player/torso.js": "./js/player/torso.js?v=v143_striker_middleweight_muscular_body",
       "./js/player/renderer.js": "./js/player/renderer.js?v=v144_class_cards_and_separate_appearances_in_creator",
       "./js/player/state.js": "./js/player/state.js?v=v144_class_cards_and_separate_appearances_in_creator",
-      "./js/progression.js": "./js/progression.js?v=v136_player_card_dossier_and_combat_stats",
-      "./js/projectiles.js": "./js/projectiles.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/progression.js": "./js/progression.js?v=v147_military_ranks_and_xp_rules_modal",
+      "./js/projectiles.js": "./js/projectiles.js?v=v146_fix_circular_dependency_and_hoisting",
       "./js/renderer.js": "./js/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v143_striker_middleweight_muscular_body",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v136_player_card_dossier_and_combat_stats",
-      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v136_player_card_dossier_and_combat_stats",
-      "./js/uiManager.js": "./js/uiManager.js?v=v145_creator_two_step_class_cards_and_customizer",
+      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v147_military_ranks_and_xp_rules_modal",
+      "./js/uiManager.js": "./js/uiManager.js?v=v147_military_ranks_and_xp_rules_modal",
       "./js/weapons.js": "./js/weapons.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world.js": "./js/world.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world/gore.js": "./js/world/gore.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world/sky.js": "./js/world/sky.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/world/state.js": "./js/world/state.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/world/state.js": "./js/world/state.js?v=v146_fix_circular_dependency_and_hoisting",
       "./js/world/terrain.js": "./js/world/terrain.js?v=v134_striker_mobile_air_dash_flames_spread"
     }
   }
@@ -262,6 +262,75 @@
       </div>
     </div>
 
+    <!-- Modal: Stopnie Wojskowe i Premie XP (Kariera i Progresja) -->
+    <div id="ranks-modal" class="ranks-modal-hidden">
+      <div class="ranks-modal-backdrop" id="ranks-backdrop"></div>
+      <div class="ranks-modal-box" id="ranks-panel">
+        <div class="ranks-header">
+          <div class="ranks-title-wrap">
+            <div class="ranks-title-badge">🎖️ MODERN MILITARY // REJESTR KARIERY</div>
+            <h2 class="ranks-main-title">STOPNIE WOJSKOWE I PREMIE XP</h2>
+            <div class="ranks-sub-title">Hierarchia awansów bojowych, wymagania punktowe oraz zasady zdobywania doświadczenia</div>
+          </div>
+          <button id="ranks-close-btn" class="ranks-close-btn" type="button" title="Zamknij podgląd (Esc)">✕</button>
+        </div>
+
+        <div class="ranks-body">
+          <!-- Karta aktualnego stopnia gracza -->
+          <div class="ranks-hero-card" id="ranks-hero-card">
+            <div class="ranks-hero-badge-shield">
+              <span class="ranks-hero-icon" id="ranks-hero-icon">━</span>
+            </div>
+            <div class="ranks-hero-info">
+              <div class="ranks-hero-top-row">
+                <span class="ranks-hero-status-pill">TWÓJ AKTUALNY STOPIEŃ BOJOWY</span>
+                <span class="ranks-hero-xp-val" id="ranks-hero-xp-val">0 XP</span>
+              </div>
+              <div class="ranks-hero-name-row">
+                <span class="ranks-hero-name" id="ranks-hero-name">SZEREGOWY</span>
+                <span class="ranks-hero-next" id="ranks-hero-next">NASTĘPNY: Starszy Szeregowy (400 XP)</span>
+              </div>
+              <div class="ranks-hero-progress-bg">
+                <div class="ranks-hero-progress-fill" id="ranks-hero-progress-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nawigacja po zakładkach -->
+          <div class="ranks-tabs-bar">
+            <button type="button" class="ranks-tab-btn active" id="ranks-tab-ladder-btn" data-ranks-tab="ladder">
+              <span class="ranks-tab-icon">🎖️</span>
+              <span class="ranks-tab-text">DRABINA STOPNI (12 RANG)</span>
+            </button>
+            <button type="button" class="ranks-tab-btn" id="ranks-tab-rules-btn" data-ranks-tab="rules">
+              <span class="ranks-tab-icon">⚡</span>
+              <span class="ranks-tab-text">ZASADY ZDOBYWANIA XP</span>
+            </button>
+          </div>
+
+          <!-- Widok Zakładki 1: Drabina stopni wojskowych -->
+          <div class="ranks-tab-content active" id="ranks-tab-ladder-view">
+            <div class="ranks-ladder-grid" id="ranks-ladder-container">
+              <!-- Renderowane dynamicznie przez uiManager.renderRanksModal() -->
+            </div>
+          </div>
+
+          <!-- Widok Zakładki 2: Tabela i zasady XP -->
+          <div class="ranks-tab-content" id="ranks-tab-rules-view" style="display: none;">
+            <div class="ranks-rules-grid" id="ranks-rules-container">
+              <!-- Renderowane dynamicznie przez uiManager.renderRanksModal() -->
+            </div>
+            <div class="ranks-rules-footer-note">
+              <div class="note-icon">💡</div>
+              <div class="note-text">
+                <strong>Taktyka Awansu:</strong> Punkty XP sumują się po każdej akcji i zapisują automatycznie w profilu gracza. Najszybszą ścieżką awansu jest połączenie agresywnej gry bramkowej (+15 XP) z likwidacją wrogów (+10 XP) oraz wygrywaniem całych meczów (+40 XP). Porażka w meczu nie odejmuje Twojego dotychczasowego XP.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Online Chat System (Klawisz T) -->
     <div id="game-chat" class="chat-hidden">
       <div id="chat-messages"></div>
@@ -291,6 +360,10 @@
                 <span class="card-id-text">KARTA GRACZA</span>
               </div>
               <div class="player-card-header-actions">
+                <button id="menu-btn-ranks-preview" class="player-card-tool-btn player-card-ranks-btn" type="button" title="Zobacz stopnie wojskowe i zasady zdobywania XP">
+                  <span class="tool-btn-icon">🎖️</span>
+                  <span class="tool-btn-text">RANGI & XP</span>
+                </button>
                 <button id="menu-btn-reset-stats" class="player-card-tool-btn" type="button" title="Resetuj statystyki bojowe">
                   <span class="tool-btn-icon">↺</span>
                   <span class="tool-btn-text">RESET</span>
@@ -298,14 +371,14 @@
               </div>
             </div>
 
-            <!-- Sekcja Rangi Wojskowej -->
-            <div class="player-card-rank-section">
+            <!-- Sekcja Rangi Wojskowej (Klikalna) -->
+            <div class="player-card-rank-section clickable" id="menu-player-rank-clickable" title="Kliknij, aby otworzyć rejestr stopni wojskowych i premii XP">
               <div class="rank-badge-shield">
                 <span class="rank-icon" id="menu-rank-icon">━</span>
               </div>
               <div class="rank-details">
                 <div class="rank-title-row">
-                  <span class="rank-label">STOPIEŃ WOJSKOWY</span>
+                  <span class="rank-label">STOPIEŃ WOJSKOWY <span class="rank-click-hint">↗ PODGLĄD</span></span>
                   <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
                 </div>
                 <div class="rank-name-row">
@@ -398,6 +471,11 @@
               <button id="menu-btn-creator" class="ui-btn ui-btn-secondary" type="button" title="Edytuj wygląd postaci">
                 <span class="btn-icon">🎨</span>
                 <span class="btn-text">KREATOR POSTACI</span>
+              </button>
+
+              <button id="menu-btn-ranks-main" class="ui-btn ui-btn-amber" type="button" title="Zobacz stopnie wojskowe i premie XP">
+                <span class="btn-icon">🎖️</span>
+                <span class="btn-text">RANGI & XP</span>
               </button>
 
               <button id="menu-btn-settings" class="ui-btn ui-btn-secondary" type="button" title="Konfiguracja dźwięku i grafiki">

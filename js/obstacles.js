@@ -49,7 +49,7 @@ export function drawObstacles(ctx, groundY) {
       // W Arenie 3 cała autorska architektura i platformy rysowane są w drawArena3Foreground
       continue;
     }
-    if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2') {
+    if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
       // W Arenie 2 (Święta Dżungla) cała autorska architektura, świątynia i mosty rysowane są w drawArena2Foreground
       continue;
     }
@@ -83,7 +83,7 @@ export function drawObstacles(ctx, groundY) {
 
   drawBarrelExplosionParticles(ctx);
 
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2') {
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2' && activeArenaId !== 'ARENA_2_SECTOR_X') {
     drawNeonGoals(ctx, groundY, GOALS);
   }
 

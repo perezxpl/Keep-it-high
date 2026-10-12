@@ -423,6 +423,10 @@ function update() {
     (ball && !ball.active)
   );
 
+  const isA3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const isA2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
+  const effectiveGroundY = isA2Active ? 1600 : (isA3Active ? 1200 : GROUND_Y);
+
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);
     return;
@@ -494,18 +498,18 @@ function update() {
 
   const mainMeleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
   updateMobileControlStates(player, leftStick, btnCluster);
-  updatePlayer(keys, leftStick, GROUND_Y, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
+  updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
 
   updateParticles();
   updateJetpackParticles();
-  updateMovableObstacles(GROUND_Y);
-  updateGore(GROUND_Y, ARENA_PLATFORMS, customObstacles);
+  updateMovableObstacles(effectiveGroundY);
+  updateGore(effectiveGroundY, ARENA_PLATFORMS, customObstacles);
 
   const headEntities = [player];
   if (bot.active) headEntities.push(bot);
   if (remotePlayer.active) headEntities.push(remotePlayer);
-  updateSeveredHeads(headEntities, GROUND_Y, ARENA_PLATFORMS);
+  updateSeveredHeads(headEntities, effectiveGroundY, ARENA_PLATFORMS);
 
   // Aktualizacja cyklu życia specyficznego dla aktywnej areny (np. spadające skały, łańcuchy, wózki)
   const activeArena = getActiveArena();
@@ -513,26 +517,26 @@ function update() {
 
   if (!isDeathmatch) {
     if (networkState.isHost || !networkState.isConnected) {
-      updateBall(GROUND_Y);
-      checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+      updateBall(effectiveGroundY);
+      checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
       if (remotePlayer.active) {
-        checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
-        checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+        checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
+        checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, GROUND_Y, player, bot);
-      if (remotePlayer.active) checkObstacleCollisions(ball, GROUND_Y, remotePlayer, bot);
+      checkObstacleCollisions(ball, effectiveGroundY, player, bot);
+      if (remotePlayer.active) checkObstacleCollisions(ball, effectiveGroundY, remotePlayer, bot);
       sendBallState(ball);
     } else {
       // Klient – autorytatywna pozycja piłki z sieci P2P
-      checkBallPlayerCollisions(player, GROUND_Y, spawnGrass);
+      checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
       if (remotePlayer.active) {
-        checkBallPlayerCollisions(remotePlayer, GROUND_Y, spawnGrass);
-        checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+        checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
+        checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, GROUND_Y, player, bot);
+      checkObstacleCollisions(ball, effectiveGroundY, player, bot);
     }
   } else {
-    // W trybie Team Deathmatch (Arena 3) piłka jest całkowicie wycofana z gry
+    // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
     if (ball.active) {
       ball.active = false;
       ball.x = -9999;
@@ -540,9 +544,9 @@ function update() {
       ball.vx = 0;
       ball.vy = 0;
     }
-    checkObstacleCollisions(null, GROUND_Y, player, bot);
+    checkObstacleCollisions(null, effectiveGroundY, player, bot);
     if (remotePlayer.active) {
-      checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
+      checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
 
     // Zliczanie fragów w trybie Team Deathmatch oraz statystyk gracza
@@ -610,18 +614,16 @@ function update() {
   }
 
   if (bot.active) {
-    updateBotBrain(isDeathmatch ? null : ball, player, GROUND_Y, spawnGrass);
+    updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass);
     if (!isDeathmatch) {
-      checkBallPlayerCollisions(bot, GROUND_Y, spawnGrass);
+      checkBallPlayerCollisions(bot, effectiveGroundY, spawnGrass);
     }
-    checkPlayerPlatformLanding(bot, GROUND_Y);
+    checkPlayerPlatformLanding(bot, effectiveGroundY);
   }
 
   const combatants = [player];
   if (bot.active) combatants.push(bot);
   if (remotePlayer.active) combatants.push(remotePlayer);
-  const isA3Combat = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
-  const effectiveGroundY = isA3Combat ? 1200 : GROUND_Y;
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
