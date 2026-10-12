@@ -152,7 +152,8 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.16 && leftStick.jetpackNeutralized);
   const isTouchFlight = !!(isStickRaised && isAirborne);
   const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
-  const isFlightActive = !isStriker && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
+  const isRaptor = (!player.currentClass || player.currentClass.id === 'RAPTOR');
+  const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
   if (isFlightActive) {
     player.isJetpacking = true;
 

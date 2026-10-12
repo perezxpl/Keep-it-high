@@ -111,12 +111,12 @@ export const DEFAULT_CLASS_APPEARANCES = {
     hairColor: '#18181b',
     beardStyle: 'full_beard',
     beardColor: '#18181b',
-    headgearStyle: 'beret',
-    headgearColor: '#7f1d1d',
+    headgearStyle: 'marcus_bandana',
+    headgearColor: '#18181b',
     maskStyle: 'none',
     maskColor: '#18181b',
     neckStyle: 'heavy_chain',
-    torsoStyle: 'short_sleeve',
+    torsoStyle: 'sleeveless',
     torsoColor: '#b91c1c', // bojowa czerwień kolosa
     pantsStyle: 'cargo_long',
     pantsColor: '#111827',
@@ -492,6 +492,14 @@ export const uiManager = {
           STRIKER: { ...DEFAULT_CLASS_APPEARANCES.STRIKER, ...(parsed.STRIKER || {}) },
           ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER, ...(parsed.ENFORCER || {}) }
         };
+        // Migracja starego beretu i koszulki z rękawami Enforcera na chustę Marcusa i bezrękawnik
+        if (parsed.ENFORCER && parsed.ENFORCER.headgearStyle === 'beret' && parsed.ENFORCER.headgearColor === '#7f1d1d') {
+          this.classAppearances.ENFORCER.headgearStyle = 'marcus_bandana';
+          this.classAppearances.ENFORCER.headgearColor = '#18181b';
+        }
+        if (parsed.ENFORCER && parsed.ENFORCER.torsoStyle === 'short_sleeve' && parsed.ENFORCER.torsoColor === '#b91c1c') {
+          this.classAppearances.ENFORCER.torsoStyle = 'sleeveless';
+        }
       } else {
         // Wsteczna kompatybilność: migracja ze starego pojedynczego profilu APPEARANCE_STORAGE_KEY
         const legacyRaw = localStorage.getItem(APPEARANCE_STORAGE_KEY);
@@ -2253,15 +2261,19 @@ export const uiManager = {
     let tooltip = 'Fason i płomień napędu jetpacka';
 
     if (cid === 'STRIKER') {
+      if (tabBtn) tabBtn.style.display = '';
       icon = '⚡';
       tabLabel = 'ROCKET BOOTS';
       headerText = 'BUTY ODRZUTOWE (ROCKET BOOTS)';
       tooltip = 'Fason i płomień dysz butów odrzutowych';
     } else if (cid === 'ENFORCER') {
-      icon = '💥';
-      tabLabel = 'MODUŁ SKOKU';
-      headerText = 'MODUŁ SKOKU (ROCKET JUMP)';
-      tooltip = 'Fason i energia kinetycznego modułu skoku';
+      if (tabBtn) tabBtn.style.display = 'none';
+      if (this.activeCreatorTab === 'jetpack') {
+        this.switchCreatorTab('head');
+      }
+      return;
+    } else {
+      if (tabBtn) tabBtn.style.display = '';
     }
 
     if (tabBtn) tabBtn.title = tooltip;

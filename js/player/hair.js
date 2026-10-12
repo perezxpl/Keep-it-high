@@ -556,7 +556,7 @@ export function drawCharacterHairProfile(ctx, p, v, currentFacingDir, torsoTilt,
   const rawHeadgear = String((v && v.headgearStyle) || 'none').toLowerCase();
   const headgear = (rawHeadgear === 'brak' || rawHeadgear === 'shaved') ? 'none' : rawHeadgear;
   const isBalaclava = (headgear === 'balaclava');
-  const hasHat = (headgear === 'beret' || headgear === 'cap' || headgear === 'boonie');
+  const hasHat = (headgear === 'beret' || headgear === 'cap' || headgear === 'boonie' || headgear === 'marcus_bandana');
 
   // W pełnej kominiarce taktycznej cała głowa i fryzura są szczelnie schowane pod materiałem
   if (isBalaclava) {

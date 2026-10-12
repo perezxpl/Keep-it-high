@@ -16,13 +16,14 @@ import {
 import { drawCharacterFacialHairProfile } from './facialHair.js';
 
 export const HEADGEAR_STYLE_LIST = [
-  'none',       // 1. Brak nakrycia (sama fryzura)
-  'beret',      // 2. Wojskowy beret spadochroniarzy / komandosa (na bakier z orzełkiem)
-  'cap',        // 3. Czapka z daszkiem wojskowa / Operator Patrol Cap (z rzepem Velcro)
-  'balaclava',  // 4. Kominiarka taktyczna SpecOps (zakrywająca szyję i twarz)
-  'bandana',    // 5. Bandana bojowa komandosa (opaska na czole z 2 powiewającymi końcami)
-  'boonie',     // 6. Wojskowy kapelusz polowy Boonie Hat (szerokie rondo i taśma maskująca)
-  'goggles'     // 7. Gogle balistyczne na czole (ze stylowym paskiem wokół głowy)
+  'none',           // 1. Brak nakrycia (sama fryzura)
+  'marcus_bandana', // 2. Chusta bojowa Gears / Marcus Fenix (ściśle opięty taktyczny do-rag z przeszyciami)
+  'beret',          // 3. Wojskowy beret spadochroniarzy / komandosa (na bakier z orzełkiem)
+  'cap',            // 4. Czapka z daszkiem wojskowa / Operator Patrol Cap (z rzepem Velcro)
+  'balaclava',      // 5. Kominiarka taktyczna SpecOps (zakrywająca szyję i twarz)
+  'bandana',        // 6. Bandana bojowa komandosa (opaska na czole z 2 powiewającymi końcami)
+  'boonie',         // 7. Wojskowy kapelusz polowy Boonie Hat (szerokie rondo i taśma maskująca)
+  'goggles'         // 8. Gogle balistyczne na czole (ze stylowym paskiem wokół głowy)
 ];
 
 export const HEADGEAR_COLOR_LIST = [
@@ -442,6 +443,156 @@ export function drawCharacterHeadgearProfile(
     ctx.beginPath();
     ctx.moveTo(-5.9, -3.2);
     ctx.quadraticCurveTo(-5.5, -2.5, -5.7, -1.7);
+    ctx.stroke();
+
+  } else if (style === 'marcus_bandana') {
+    // -------------------------------------------------------------------------
+    // CHUSTA BOJOWA GEARS / MARCUS FENIX (Opięty taktyczny do-rag z przeszyciami)
+    // -------------------------------------------------------------------------
+    // 1. Główna kopuła chusty szczelnie opinająca sklepienie czaszki
+    ctx.beginPath();
+    ctx.moveTo(4.6, -3.5);
+    ctx.lineTo(4.4, -5.2);
+    ctx.quadraticCurveTo(3.2, -7.7, -1.2, -7.9);
+    ctx.quadraticCurveTo(-5.8, -7.8, -6.3, -2.8);
+    ctx.quadraticCurveTo(-6.2, -1.6, -5.5, -1.1);
+    ctx.quadraticCurveTo(-2.8, -2.9, 0.5, -3.4);
+    ctx.quadraticCurveTo(2.8, -3.6, 4.6, -3.5);
+    ctx.closePath();
+    ctx.fillStyle = headGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.95;
+    ctx.stroke();
+
+    // 2. Wzmocniony otok czołowy (Marcus Fenix Brow Band / Sweatband)
+    const bandGrad = ctx.createLinearGradient(4.6, -4.5, -5.5, -2.0);
+    bandGrad.addColorStop(0.0, pal.dark);
+    bandGrad.addColorStop(0.5, pal.base);
+    bandGrad.addColorStop(1.0, pal.deep);
+
+    ctx.beginPath();
+    ctx.moveTo(4.6, -3.5);
+    ctx.lineTo(4.4, -5.2);
+    ctx.quadraticCurveTo(0.6, -5.0, -6.0, -2.6);
+    ctx.lineTo(-5.5, -1.1);
+    ctx.quadraticCurveTo(-2.8, -2.9, 0.5, -3.4);
+    ctx.quadraticCurveTo(2.8, -3.6, 4.6, -3.5);
+    ctx.closePath();
+    ctx.fillStyle = bandGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+
+    // Podwójne przeszycia taktyczne wzdłuż otoku czołowego (Tactical Brow Stitching)
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(4.4, -4.6);
+    ctx.quadraticCurveTo(0.6, -4.4, -5.6, -2.2);
+    ctx.moveTo(4.5, -3.9);
+    ctx.quadraticCurveTo(0.6, -3.7, -5.3, -1.5);
+    ctx.stroke();
+
+    // 3. Segmentowe szwy konstrukcyjne COG na sklepieniu czaszki
+    ctx.strokeStyle = pal.deep;
+    ctx.lineWidth = 0.70;
+    ctx.beginPath();
+    // Szew grzbietowy przez szczyt czaszki
+    ctx.moveTo(3.6, -6.0);
+    ctx.quadraticCurveTo(-1.0, -7.5, -5.6, -4.2);
+    // Boczny szew anatomiczny czaszki
+    ctx.moveTo(2.0, -5.0);
+    ctx.quadraticCurveTo(-1.6, -6.4, -5.8, -3.0);
+    ctx.stroke();
+
+    // Rozjaśnienia uwypuklające krągłość czaszki i naprężenie materiału
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(2.8, -6.8);
+    ctx.quadraticCurveTo(-0.8, -7.6, -4.4, -6.6);
+    ctx.stroke();
+
+    // Zmarszczki materiału zbiegające się ku węzłowi potylicznemu
+    ctx.strokeStyle = pal.deep;
+    ctx.lineWidth = 0.60;
+    ctx.beginPath();
+    ctx.moveTo(-4.0, -3.6);
+    ctx.quadraticCurveTo(-4.8, -2.8, -5.5, -1.6);
+    ctx.moveTo(-4.6, -4.8);
+    ctx.quadraticCurveTo(-5.4, -3.8, -5.8, -2.0);
+    ctx.stroke();
+
+    // 4. Dwa sprężyste, zwarte końce chusty na karku z fizyką 2D (Verlet / Spring chain)
+    const marcusBotChain = updateAndBuildHairChain(
+      p, 'marcus_bot', currentFacingDir, torsoTilt, headPitch,
+      -5.6, -1.4, 2.05,
+      {
+        id: 'mf_tail_bot',
+        phase: 1.2,
+        restOffset: -0.04,
+        archRoot: 0.18,
+        liftMult: 1.30,
+        gravMult: 0.90,
+        stiffMult: 0.92,
+        restProfile: [2.20, 1.95, 1.70, 1.55, 1.50, 1.45]
+      }
+    );
+    drawRibbonBluntStrand(
+      ctx,
+      marcusBotChain.pts,
+      marcusBotChain.norms,
+      [1.30, 1.55, 1.45, 1.35, 1.25, 1.15, 1.05],
+      pal.dark,
+      '#09090b',
+      null
+    );
+
+    const marcusTopChain = updateAndBuildHairChain(
+      p, 'marcus_top', currentFacingDir, torsoTilt, headPitch,
+      -5.7, -1.6, 2.35,
+      {
+        id: 'mf_tail_top',
+        phase: 0.2,
+        restOffset: 0.10,
+        archRoot: 0.26,
+        liftMult: 1.38,
+        gravMult: 0.82,
+        stiffMult: 0.88,
+        restProfile: [2.35, 2.05, 1.75, 1.55, 1.55, 1.50]
+      }
+    );
+    drawRibbonBluntStrand(
+      ctx,
+      marcusTopChain.pts,
+      marcusTopChain.norms,
+      [1.40, 1.70, 1.60, 1.50, 1.40, 1.30, 1.20],
+      headGrad,
+      '#09090b',
+      pal.highlight
+    );
+
+    // 5. Twardy węzeł wojskowy na karku
+    ctx.fillStyle = pal.dark;
+    ctx.beginPath();
+    ctx.ellipse(-5.6, -1.4, 1.25, 1.55, 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.90;
+    ctx.stroke();
+
+    ctx.fillStyle = pal.base;
+    ctx.beginPath();
+    ctx.ellipse(-5.7, -1.3, 0.75, 1.00, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 0.60;
+    ctx.beginPath();
+    ctx.moveTo(-5.8, -2.0);
+    ctx.quadraticCurveTo(-5.4, -1.4, -5.6, -0.8);
     ctx.stroke();
 
   } else if (style === 'boonie') {

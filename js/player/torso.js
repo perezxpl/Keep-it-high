@@ -5,12 +5,15 @@
 import { DEFAULT_VISUALS } from './hair.js';
 
 export const TORSO_STYLE_LIST = [
-  'short_sleeve',      // Krótki rękaw (jednolity z paletą barw)
-  'long_sleeve',       // Długi rękaw (bluza bojowa / jednolita)
-  'camo_light_short',  // Moro jasne (krótki rękaw / pustynne arid)
-  'camo_light_long',   // Moro jasne (długi rękaw / pustynne arid)
-  'camo_dark_short',   // Moro ciemne (krótki rękaw / nocny woodland)
-  'camo_dark_long'     // Długi rękaw (moro ciemne / nocny woodland)
+  'sleeveless',            // Bezrękawnik bojowy (tank-top odsłaniający ramiona)
+  'short_sleeve',          // Krótki rękaw (jednolity z paletą barw)
+  'long_sleeve',           // Długi rękaw (bluza bojowa / jednolita)
+  'camo_light_sleeveless', // Moro jasne bezrękawnik (arid tank-top)
+  'camo_light_short',      // Moro jasne (krótki rękaw / pustynne arid)
+  'camo_light_long',       // Moro jasne (długi rękaw / pustynne arid)
+  'camo_dark_sleeveless',  // Moro ciemne bezrękawnik (woodland tank-top)
+  'camo_dark_short',       // Moro ciemne (krótki rękaw / nocny woodland)
+  'camo_dark_long'         // Długi rękaw (moro ciemne / nocny woodland)
 ];
 
 export const TORSO_COLOR_LIST = [
@@ -23,6 +26,14 @@ export const TORSO_COLOR_LIST = [
   '#57534e', // Ziemisty khaki (Earth Warm)
   '#991b1b'  // Bordowy taktyczny (Crimson Operator)
 ];
+
+/**
+ * Sprawdza czy dany styl to bezrękawnik (tank-top)
+ */
+export function isSleeveless(style = 'short_sleeve') {
+  const s = String(style).toLowerCase();
+  return s === 'sleeveless' || s.includes('sleeveless') || s === 'tank_top';
+}
 
 /**
  * Sprawdza czy dany styl to długi rękaw
@@ -198,6 +209,7 @@ export function drawTorsoShirt(
   neckFrontX
 ) {
   const torsoStyle = v.torsoStyle || 'short_sleeve';
+  const isTank = isSleeveless(torsoStyle);
   const torsoColor = v.torsoColor || v.jerseyFront1 || '#18181b';
   const camoType = getCamoType(torsoStyle);
   const pal = getTorsoPalette(torsoColor);
@@ -207,12 +219,12 @@ export function drawTorsoShirt(
   const backCollarY = -24.2;
   const frontCollarY = -22.8;
 
-  const frontShX = fDir * (shoulderHalfW * 0.78);
-  const backShX = -fDir * (shoulderHalfW * 0.82);
+  const frontShX = fDir * (shoulderHalfW * (isTank ? 0.64 : 0.78));
+  const backShX = -fDir * (shoulderHalfW * (isTank ? 0.68 : 0.82));
   const frontWaistX = fDir * waistHalfW;
   const backWaistX = -fDir * waistHalfW;
-  const chestOut = fDir * (shoulderHalfW + 0.95 * absCos);
-  const backOut = -fDir * (shoulderHalfW + 0.65 * absCos);
+  const chestOut = fDir * (shoulderHalfW + (isTank ? 0.65 : 0.95) * absCos);
+  const backOut = -fDir * (shoulderHalfW + (isTank ? 0.45 : 0.65) * absCos);
   const ribInFront = fDir * (waistHalfW - 0.25 * absCos);
   const lumbarInBack = -fDir * (waistHalfW - 0.45 * absCos);
   const blouseFrontX = fDir * (waistHalfW + 0.55);
@@ -323,6 +335,17 @@ export function drawTorsoShirt(
   ctx.quadraticCurveTo(fDir * waistHalfW * 0.28, -9.2, fDir * waistHalfW * 0.64, -7.6);
   ctx.stroke();
 
+  // Ściągacz wycięcia pachy bezrękawnika (Tank-top Armhole Binding)
+  if (isTank) {
+    const armholeCol = camoType === 'light' ? '#4a3f35' : (camoType === 'dark' ? '#0f140f' : pal.dark);
+    ctx.strokeStyle = armholeCol;
+    ctx.lineWidth = 0.95;
+    ctx.beginPath();
+    ctx.moveTo(frontShX, -21.0);
+    ctx.bezierCurveTo(chestOut * 0.90, -17.0, chestOut * 0.86, -12.5, ribInFront, -8.0);
+    ctx.stroke();
+  }
+
   // 4. ANATOMICZNE RZEŹBIENIE KLATKI I BRZUCHA DLA POSTACI O ROZWINIĘTEJ MUSKULATURZE
   if (v.sculptedMuscles) {
     const isHeavy = (v.muscleMult && v.muscleMult >= 1.35);
@@ -387,7 +410,8 @@ export function drawTorsoPreview(
   if (!ctx) return;
   ctx.clearRect(0, 0, canvasW, canvasH);
 
-  const isLong = isLongSleeve(torsoStyle);
+  const isTank = isSleeveless(torsoStyle);
+  const isLong = !isTank && isLongSleeve(torsoStyle);
   const camo = getCamoType(torsoStyle);
   const pal = getTorsoPalette(torsoColor);
 
@@ -428,7 +452,7 @@ export function drawTorsoPreview(
     ctx.moveTo(-5.5, 6.0);
     ctx.lineTo(-6.0, -11.5);
     ctx.quadraticCurveTo(-2.0, -13.0, 2.5, -11.5);
-    ctx.quadraticCurveTo(5.5, -7.0, 5.0, 0.0);
+    ctx.quadraticCurveTo(isTank ? 4.0 : 5.5, -7.0, isTank ? 3.8 : 5.0, 0.0);
     ctx.lineTo(4.2, 6.0);
     ctx.closePath();
   };
@@ -499,53 +523,81 @@ export function drawTorsoPreview(
   const sleeveLen = isLong ? upperLen + 0.5 : upperLen * 0.58;
   const sleeveHalfH = 3.8;
 
-  // Główny rękaw
-  const traceSleeve = () => {
+  if (isTank) {
+    // Bezrękawnik: całe ramię (deltoid i biceps) odsłonięte
+    const bicepGrad = ctx.createLinearGradient(0, -armHalfH * 1.2, 0, armHalfH * 1.2);
+    bicepGrad.addColorStop(0.0, v.skinLight);
+    bicepGrad.addColorStop(0.4, v.skinMid);
+    bicepGrad.addColorStop(1.0, v.skinDark);
+
     ctx.beginPath();
-    ctx.arc(0, 0, sleeveHalfH * 0.95, Math.PI * 0.5, -Math.PI * 0.5, false);
-    ctx.bezierCurveTo(sleeveLen * 0.3, -sleeveHalfH * 1.05, sleeveLen * 0.7, -sleeveHalfH * 1.02, sleeveLen, -sleeveHalfH * 0.94);
-    ctx.lineTo(sleeveLen, sleeveHalfH * 0.94);
-    ctx.bezierCurveTo(sleeveLen * 0.7, sleeveHalfH * 1.02, sleeveLen * 0.3, sleeveHalfH * 0.96, 0, sleeveHalfH * 0.92);
+    ctx.arc(0, 0, armHalfH * 1.15, Math.PI * 0.5, -Math.PI * 0.5, false);
+    ctx.quadraticCurveTo(upperLen * 0.5, -armHalfH * 1.35, upperLen, -armHalfH * 0.95);
+    ctx.lineTo(upperLen, armHalfH * 0.95);
+    ctx.quadraticCurveTo(upperLen * 0.5, armHalfH * 1.35, 0, armHalfH * 1.15);
     ctx.closePath();
-  };
-
-  traceSleeve();
-
-  if (camo) {
-    ctx.save();
-    ctx.clip();
-    drawCamoSplotches(ctx, camo, -2, -sleeveHalfH * 1.1, sleeveLen + 1, sleeveHalfH * 1.1);
-    ctx.restore();
-    traceSleeve();
-  } else {
-    ctx.fillStyle = pal.base;
-    ctx.fill();
-  }
-  ctx.strokeStyle = '#09090b';
-  ctx.lineWidth = 0.9;
-  ctx.stroke();
-
-  // Mankiet rękawa
-  if (!isLong) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.42)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(sleeveLen - 1.2, -sleeveHalfH * 0.92);
-    ctx.lineTo(sleeveLen - 1.2, sleeveHalfH * 0.92);
-    ctx.stroke();
-
-    // Odsłonięte ramię / biceps pod rękawem
-    ctx.beginPath();
-    ctx.moveTo(sleeveLen, -armHalfH * 0.9);
-    ctx.lineTo(upperLen, -armHalfH * 0.85);
-    ctx.lineTo(upperLen, armHalfH * 0.85);
-    ctx.lineTo(sleeveLen, armHalfH * 0.9);
-    ctx.closePath();
-    ctx.fillStyle = v.skinMid;
+    ctx.fillStyle = bicepGrad;
     ctx.fill();
     ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.85;
+    ctx.lineWidth = 0.9;
     ctx.stroke();
+
+    // Wyrazisty zarys mięśnia ramienia
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(upperLen * 0.35, -armHalfH * 0.3);
+    ctx.quadraticCurveTo(upperLen * 0.55, 0, upperLen * 0.75, armHalfH * 0.3);
+    ctx.stroke();
+  } else {
+    // Główny rękaw (krótki lub długi)
+    const traceSleeve = () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, sleeveHalfH * 0.95, Math.PI * 0.5, -Math.PI * 0.5, false);
+      ctx.bezierCurveTo(sleeveLen * 0.3, -sleeveHalfH * 1.05, sleeveLen * 0.7, -sleeveHalfH * 1.02, sleeveLen, -sleeveHalfH * 0.94);
+      ctx.lineTo(sleeveLen, sleeveHalfH * 0.94);
+      ctx.bezierCurveTo(sleeveLen * 0.7, sleeveHalfH * 1.02, sleeveLen * 0.3, sleeveHalfH * 0.96, 0, sleeveHalfH * 0.92);
+      ctx.closePath();
+    };
+
+    traceSleeve();
+
+    if (camo) {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camo, -2, -sleeveHalfH * 1.1, sleeveLen + 1, sleeveHalfH * 1.1);
+      ctx.restore();
+      traceSleeve();
+    } else {
+      ctx.fillStyle = pal.base;
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // Mankiet rękawa
+    if (!isLong) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.42)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(sleeveLen - 1.2, -sleeveHalfH * 0.92);
+      ctx.lineTo(sleeveLen - 1.2, sleeveHalfH * 0.92);
+      ctx.stroke();
+
+      // Odsłonięte ramię / biceps pod rękawem
+      ctx.beginPath();
+      ctx.moveTo(sleeveLen, -armHalfH * 0.9);
+      ctx.lineTo(upperLen, -armHalfH * 0.85);
+      ctx.lineTo(upperLen, armHalfH * 0.85);
+      ctx.lineTo(sleeveLen, armHalfH * 0.9);
+      ctx.closePath();
+      ctx.fillStyle = v.skinMid;
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
