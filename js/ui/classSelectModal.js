@@ -28,8 +28,8 @@ export const CLASS_CARDS = [
     glowColor: 'rgba(56, 189, 248, 0.45)',
     role: 'KLASA ŚREDNIA • SZTURMOWIEC',
     attribute: '⚡ TURBO BUTY / PRECYZJA',
-    desc: 'Dynamiczny szturmowiec z dopalaczami w butach, szybkim unikiem i precyzją ognia.',
-    stats: ['Moduł ruchu: Turbo Buty', 'Zbalansowany pancerz (100 HP)', 'Wysoka precyzja i kontrola odrzutu'],
+    desc: 'Atletyczny szturmowiec wagi średniej z dopalaczami w butach, wyważoną muskulaturą i precyzją ognia.',
+    stats: ['Moduł ruchu: Turbo Buty', 'Sylwetka: Atletyczna Waga Średnia', 'Wysoka precyzja i kontrola odrzutu'],
     classObj: CLASSES.STRIKER
   },
   {

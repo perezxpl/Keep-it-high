@@ -323,6 +323,38 @@ export function drawTorsoShirt(
   ctx.quadraticCurveTo(fDir * waistHalfW * 0.28, -9.2, fDir * waistHalfW * 0.64, -7.6);
   ctx.stroke();
 
+  // 4. ANATOMICZNE RZEŹBIENIE KLATKI I BRZUCHA DLA POSTACI O ROZWINIĘTEJ MUSKULATURZE
+  if (v.sculptedMuscles) {
+    const isHeavy = (v.muscleMult && v.muscleMult >= 1.35);
+    const shadowAlpha = isHeavy ? 0.34 : 0.22;
+    const highlightAlpha = isHeavy ? 0.18 : 0.12;
+
+    // Cienie pod dolnym łukiem klatki piersiowej (Pectoralis Major) i mostkiem
+    ctx.strokeStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    // Dolny kontur mięśnia piersiowego
+    ctx.moveTo(fDir * (shoulderHalfW * 0.10), -14.6);
+    ctx.quadraticCurveTo(fDir * (shoulderHalfW * 0.46), -13.6, fDir * (shoulderHalfW * 0.82), -15.0);
+    // Pionowa linia mostka
+    ctx.moveTo(fDir * (shoulderHalfW * 0.10), -18.8);
+    ctx.quadraticCurveTo(fDir * (shoulderHalfW * 0.06), -16.5, fDir * (shoulderHalfW * 0.10), -14.6);
+    // Zarys mięśni brzucha / zębatych pod koszulką
+    ctx.moveTo(fDir * (waistHalfW * 0.12), -11.4);
+    ctx.quadraticCurveTo(fDir * (waistHalfW * 0.36), -10.8, fDir * (waistHalfW * 0.65), -11.5);
+    ctx.moveTo(fDir * (waistHalfW * 0.10), -8.6);
+    ctx.quadraticCurveTo(fDir * (waistHalfW * 0.34), -8.0, fDir * (waistHalfW * 0.60), -8.7);
+    ctx.stroke();
+
+    // Rozjaśnienia uwypuklające mięśnie klatki piersiowej
+    ctx.strokeStyle = pal.highlight || `rgba(255, 255, 255, ${highlightAlpha})`;
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(fDir * (shoulderHalfW * 0.14), -18.2);
+    ctx.quadraticCurveTo(fDir * (shoulderHalfW * 0.50), -17.2, chestOut * 0.80, -16.0);
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 

@@ -18,7 +18,19 @@ export const StrikerClass = {
   tier: 'MEDIUM',
   role: 'Szturmowiec / Strzelec',
 
-  // 1. Statystyki fizyczne i ruchowe
+  // 1. ANATOMIA SZKIELETU IK – Wyważona postura klasy średniej (Middleweight Operator)
+  // Wyraźnie bardziej umięśniony i postawniejszy niż lekki zwiadowca (Raptor),
+  // zachowujący pełną dynamikę i zwinność (pomiędzy zwiadowcą 70h/24w a kolosem 74h/30w)
+  body: {
+    w: 26,           // Średnia szerokość korpusu (Raptor 24, Enforcer 30)
+    h: 72,           // Postawny żołnierz szturmowy (Raptor 70, Enforcer 74)
+    thighLen: 26.5,  // Sprężyste, mocne kości udowe pod skoki i odrzut (Raptor 25, Enforcer 28)
+    shinLen: 25,     // Podudzie stabilizujące rakietowe buty (Raptor 24, Enforcer 26)
+    upperArmLen: 15.5,// Atletyczne, muskularne ramiona operatora (Raptor 14, Enforcer 17)
+    forearmLen: 14   // Silne przedramiona do kontroli odrzutu i walki (Raptor 13, Enforcer 15)
+  },
+
+  // 2. Statystyki fizyczne i ruchowe
   // Biega wolniej niż Raptor (sprintMax 6.6 vs 7.4 Raptora), ale dysponuje rakietowymi zrywami
   stats: {
     walkMax: 2.1,          // Wolniejszy chód niż Raptor (2.4)
@@ -46,9 +58,12 @@ export const StrikerClass = {
     kickCooldown: 0.45
   },
 
-  // 2. Kolorystyka i dane wizualne renderera – Grafit / Urban Slate PMC
+  // 3. Kolorystyka i dane wizualne renderera – Grafit / Urban Slate PMC
   visuals: {
-    hasRocketBoots: true,  // Aktywuje dysze dopalaczy na butach
+    sculptedMuscles: true,     // Aktywuje rzeźbioną muskulaturę (bicepsy, tricepsy, barki, łydki)
+    muscleMult: 1.18,          // +18% do masy i obwodów mięśni (klasa średnia: pomiędzy 1.0 a 1.40)
+    sleeveLengthMult: 0.90,    // Dopasowany rękaw bojowy eksponujący zarys rzeźbionego bicepsa
+    hasRocketBoots: true,      // Aktywuje dysze dopalaczy na butach
     jerseyFront0: '#18181b',
     jerseyFront1: '#334155',
     jerseyFront2: '#475569',
