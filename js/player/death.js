@@ -320,6 +320,11 @@ export function handlePlayerDeath(player, groundY) {
     player.isDead = false;
     player.isAcidDying = false;
     player.hp = player.maxHp;
+    player.killer = null;
+    player.lastAttacker = null;
+    player.lastAttackerTimer = 0;
+    player._fragRecorded = false;
+    player._dmDeathRecorded = false;
     player.acidDeath = {
       active: false,
       timer: 0,

@@ -534,6 +534,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
 
       closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
+      if (b.shooter && b.shooter !== closestChar) {
+        closestChar.lastAttacker = b.shooter;
+        closestChar.lastAttackerTimer = 240; // 4 sekundy aktywnego okna walki
+      }
 
       const isShotgun = (b.weaponId === 'SHOTGUN');
 
@@ -566,6 +570,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       // =====================================================================
       if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
         closestChar.isDead = true;
+        closestChar.killer = (b.shooter && b.shooter !== closestChar) ? b.shooter : closestChar.lastAttacker;
         closestChar.respawnTimer = 180;
         closestChar.corpseAngle = 0;
         closestChar.corpseRotVel = 0;

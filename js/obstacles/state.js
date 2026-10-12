@@ -32,6 +32,7 @@ import arena2, {
   ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
+import { initDeathmatch, resetDeathmatchState } from '../deathmatch/index.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -533,6 +534,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   const targetBot = botObj || _activeBot;
 
   if (activeArenaId === 'ARENA_3') {
+    resetDeathmatchState();
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
     GOALS.length = 0; // W militarnej dżungli brak piłki i bramek - czysty tryb taktyczny / Deathmatch
     arena1State.waitingForKickoff = false;
@@ -577,7 +579,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.active = false;
     }
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
-    GOALS.length = 0; // W Sektorze X brak bramek i piłki - tryb turniejowy i walki
+    GOALS.length = 0; // W Sektorze X brak bramek i piłki - 5-minutowy Deathmatch
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;
@@ -598,7 +600,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     if (targetBot) {
-      // Bot nie pojawia się samoczynnie – aktywacja wyłącznie przez panel dev
+      targetBot.active = true;
       targetBot.x = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3080;
       targetBot.y = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 390;
       targetBot.vx = 0;
@@ -625,7 +627,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ballObj.spin = 0;
       ballObj.trail = [];
     }
+
+    // Inicjalizacja 5-minutowego Deathmatch na Arenie 2
+    initDeathmatch(playerObj, targetBot, null);
   } else {
+    resetDeathmatchState();
     GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
     GOALS.push(...ARENA_1_GOALS);
 

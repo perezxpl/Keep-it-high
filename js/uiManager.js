@@ -46,6 +46,13 @@ const CLASS_APPEARANCES_STORAGE_KEY = 'keep_it_high_class_appearances_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
 import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats, RANKS, XP_RULES, XP_REWARDS } from './progression.js';
+import {
+  deathmatchConfig,
+  setDeathmatchMode,
+  setDeathmatchPlayerTeam,
+  DEATHMATCH_MODES,
+  TEAMS
+} from './deathmatch/index.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -693,6 +700,25 @@ export const uiManager = {
       const isTarget = b.dataset.arena === norm;
       b.classList.toggle('active', isTarget);
     });
+    this.syncDeathmatchUI();
+  },
+
+  syncDeathmatchUI() {
+    const curMode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
+    const curTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
+
+    document.querySelectorAll('#dm-mode-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.dmMode === curMode);
+    });
+
+    const teamRow = document.getElementById('dm-team-select-row');
+    if (teamRow) {
+      teamRow.style.display = (curMode === DEATHMATCH_MODES.FFA) ? 'none' : 'flex';
+    }
+
+    document.querySelectorAll('#dm-team-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.dmTeam === curTeam);
+    });
   },
 
   syncUI(gameState) {
@@ -726,24 +752,38 @@ export const uiManager = {
     switch (gameState) {
       case 'MENU':
         this.updateMenuRankDisplay();
-        if (menuEl) menuEl.style.display = 'flex';
+        if (menuEl) {
+          menuEl.style.display = 'flex';
+          menuEl.classList.remove('in-arena-select');
+        }
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'none';
         {
+          const brandEl = document.getElementById('menu-brand') || document.querySelector('.menu-brand');
+          const playerCardEl = document.getElementById('menu-player-card');
           const menuActionsEl = document.getElementById('menu-main-actions');
           const arenaSelectEl = document.getElementById('screen-arena-select');
+          if (brandEl) brandEl.style.display = '';
+          if (playerCardEl) playerCardEl.style.display = '';
           if (menuActionsEl) menuActionsEl.classList.remove('hidden');
           if (arenaSelectEl) arenaSelectEl.classList.add('hidden');
         }
         break;
 
       case 'ARENA_SELECT':
-        if (menuEl) menuEl.style.display = 'flex';
+        if (menuEl) {
+          menuEl.style.display = 'flex';
+          menuEl.classList.add('in-arena-select');
+        }
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'none';
         {
+          const brandEl = document.getElementById('menu-brand') || document.querySelector('.menu-brand');
+          const playerCardEl = document.getElementById('menu-player-card');
           const menuActionsEl = document.getElementById('menu-main-actions');
           const arenaSelectEl = document.getElementById('screen-arena-select');
+          if (brandEl) brandEl.style.display = 'none';
+          if (playerCardEl) playerCardEl.style.display = 'none';
           if (menuActionsEl) menuActionsEl.classList.add('hidden');
           if (arenaSelectEl) arenaSelectEl.classList.remove('hidden');
           if (typeof window !== 'undefined' && window.activeArenaId) {
@@ -904,13 +944,44 @@ export const uiManager = {
     // -------------------------------------------------------------------------
     document.querySelectorAll('#screen-arena-select .arena-card').forEach(card => {
       card.addEventListener('mouseenter', () => playUiHover());
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        // Ignoruj kliknięcie w opcje konfiguracyjne trybu i drużyny, aby gracz mógł je zmieniać bez natychmiastowego startu
+        if (e.target && e.target.closest('.arena-options-box')) return;
         playUiClick();
         const arenaId = card.dataset.arena;
         if (!arenaId) return;
         this.updateArenaSelectUI(arenaId);
         if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
           this.callbacks.onSelectArena(arenaId);
+        }
+      });
+    });
+
+    // Obsługa przełączników trybu i drużyny dla Areny 2 (Deathmatch)
+    this.syncDeathmatchUI();
+
+    document.querySelectorAll('#dm-mode-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const mode = btn.dataset.dmMode;
+        if (mode) {
+          setDeathmatchMode(mode);
+          this.syncDeathmatchUI();
+        }
+      });
+    });
+
+    document.querySelectorAll('#dm-team-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const team = btn.dataset.dmTeam;
+        if (team) {
+          setDeathmatchPlayerTeam(team);
+          this.syncDeathmatchUI();
         }
       });
     });

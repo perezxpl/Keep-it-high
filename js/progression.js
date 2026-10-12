@@ -21,18 +21,62 @@ export const RANKS = [
 export const XP_REWARDS = {
   MATCH_WIN: 40,
   GOAL_SCORED: 15,
-  ENEMY_KILL: 10
+  ENEMY_KILL: 10,
+  DEATHMATCH_1ST: 100,
+  DEATHMATCH_2ND: 80,
+  DEATHMATCH_3RD: 60,
+  DEATHMATCH_PARTICIPATION: 40
 };
 
 export const XP_RULES = [
   {
+    id: 'DM_1ST',
+    title: '1. Miejsce — Deathmatch (5 min)',
+    category: 'Deathmatch 5 Min',
+    xp: 100,
+    icon: '🥇',
+    badgeClass: 'xp-badge-goal',
+    desc: 'Najwięcej eliminacji w 5-minutowej bitwie na Arenie 2 (Sektor X).',
+    tip: 'Zdominuj platformy, unikaj kwasu i eliminuj rywali seriami.'
+  },
+  {
+    id: 'DM_2ND',
+    title: '2. Miejsce — Deathmatch (5 min)',
+    category: 'Deathmatch 5 Min',
+    xp: 80,
+    icon: '🥈',
+    badgeClass: 'xp-badge-win',
+    desc: 'Drugi wynik eliminacji w 5-minutowym starciu na Arenie 2.',
+    tip: 'Wicemistrzostwo bitwy z wysoką premią doświadczenia.'
+  },
+  {
+    id: 'DM_3RD',
+    title: '3. Miejsce — Deathmatch (5 min)',
+    category: 'Deathmatch 5 Min',
+    xp: 60,
+    icon: '🥉',
+    badgeClass: 'xp-badge-kill',
+    desc: 'Trzecie miejsce na podium w 5-minutowej bitwie na Arenie 2.',
+    tip: 'Utrzymanie się na podium w dynamicznym starciu wielu rywali.'
+  },
+  {
+    id: 'DM_PARTICIPATION',
+    title: 'Udział w Deathmatch (5 min)',
+    category: 'Deathmatch 5 Min',
+    xp: 40,
+    icon: '🎖️',
+    badgeClass: 'xp-badge-win',
+    desc: 'Ukończenie 5-minutowej bitwy na Arenie 2 poza podium.',
+    tip: 'Gwarantowana premia bojowa za rozegranie pełnego 5-minutowego meczu.'
+  },
+  {
     id: 'WIN',
-    title: 'Zwycięstwo w Meczu',
+    title: 'Zwycięstwo w Meczu (Fragball)',
     category: 'Turniej',
     xp: 40,
     icon: '🏆',
     badgeClass: 'xp-badge-win',
-    desc: 'Wygranie meczu (3 bramki na Arenie 1 / 5 eliminacji na Arenie 3).',
+    desc: 'Wygranie meczu piłkarskiego (3 bramki na Arenie 1).',
     tip: 'Zgranie taktyczne i obrona prowadzą do pewnego triumfu.'
   },
   {

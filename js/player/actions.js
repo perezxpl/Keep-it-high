@@ -527,6 +527,8 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         const baseDmg = classStats.spartanDamage || 12;
         const dmg = Math.round(baseDmg * (knockbackMultiplier >= 1.5 ? 1.25 : 1.0) + pwr * 6);
         enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
+        enemy.lastAttacker = player;
+        enemy.lastAttackerTimer = 240;
 
         player.hitThisSwing = true;
         triggerScreenShake(6);
@@ -535,6 +537,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
 
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
+          enemy.killer = player;
           enemy.respawnTimer = 180;
           enemy.bleedTimer = 90;
           enemy.corpseAngle = 0;
@@ -888,6 +891,8 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
 
     const dmg = 11;
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
+    enemy.lastAttacker = player;
+    enemy.lastAttackerTimer = 240;
 
     // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
     enemy.facing = -player.facing;
@@ -908,6 +913,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
 
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
+      enemy.killer = player;
       enemy.respawnTimer = 180;
       enemy.bleedTimer = 90;
       enemy.corpseAngle = 0;

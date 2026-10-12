@@ -62,6 +62,12 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla / Odlewnia): `state.js`, `physics.js`, `renderer.js`.
 
+### 💀 Tryb Deathmatch (`js/deathmatch/`)
+- `js/deathmatch/state.js` — konfiguracja, stałe czasu (5 minut, 300s), nagrody XP (100, 80, 60, 40 XP), tryby (TDM, FFA), drużyny (CYAN, ORANGE) oraz stan sesji `deathmatchState`.
+- `js/deathmatch/logic.js` — pętla bitwy (`updateDeathmatch`), śledzenie zabójstw i zgonów, dynamiczny leaderboard i finalizacja meczu (`finishDeathmatch`).
+- `js/deathmatch/renderer.js` — rysowanie HUD-u bitwy (`drawDeathmatchHUD`) z zegarem 5:00 i fragami oraz uroczystego podium z nagrodami XP (`drawDeathmatchPodium`).
+- `js/deathmatch/index.js` — główny punkt wejścia i eksport modułu deathmatch.
+
 ### 🧱 Przeszkody i Kolizje (`js/obstacles/`)
 - `js/obstacles/state.js` — stan przeszkód, wyniki (`arenaScore`), platformy (`ARENA_PLATFORMS`) i przełączanie aren (`switchArena`).
 - `js/obstacles/palette.js` — katalog obiektów edytora (`OBSTACLE_PALETTE`, `getObstacleDef`).

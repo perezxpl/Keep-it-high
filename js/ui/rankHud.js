@@ -42,6 +42,11 @@ setXpNotificationCallback(spawnXpPopup);
 export function checkMatchWin(arenaId, scoreObj) {
   if (!scoreObj || matchWinState.won) return;
 
+  // Na Arenie 2 obowiązuje 5-minutowy Deathmatch – rozliczany wyłącznie na koniec w module deathmatch
+  if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X') {
+    return;
+  }
+
   const isDeathmatch = (arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY');
   const winThreshold = isDeathmatch ? 5 : 3;
 

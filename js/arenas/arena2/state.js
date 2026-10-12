@@ -998,6 +998,9 @@ export function triggerPlayerAcidDeath(p, hazardZoneY) {
   if (p.isDead) return;
 
   p.isAcidDying = true;
+  p.killer = null;
+  p.lastAttacker = null;
+  p.lastAttackerTimer = 0;
   p.acidDeath = {
     active: true,
     timer: 0,
@@ -1130,6 +1133,9 @@ export function updateArena2(dt, players) {
         p.acidDeath.dissolved = true;
         p.hp = 0;
         p.isDead = true;
+        p.killer = null;
+        p.lastAttacker = null;
+        p.lastAttackerTimer = 0;
         p.respawnTimer = 90; // Respawn po rozpuszczeniu
       }
       continue;

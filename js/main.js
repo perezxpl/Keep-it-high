@@ -54,6 +54,7 @@ import {
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
+import { updateDeathmatch } from './deathmatch/index.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
   editorState,
@@ -549,38 +550,40 @@ function update() {
       checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
 
-    // Zliczanie fragów w trybie Team Deathmatch oraz statystyk gracza
-    if (player.isDead) {
-      if (!player._fragRecorded) {
-        arenaScore.orange++;
-        recordDeath();
-        player._fragRecorded = true;
-      }
-    } else {
-      player._fragRecorded = false;
-    }
-
-    if (bot.active) {
-      if (bot.isDead) {
-        if (!bot._fragRecorded) {
-          arenaScore.cyan++;
-          recordKill();
-          bot._fragRecorded = true;
+    // Zliczanie fragów poza dedykowanym modułem Deathmatch Areny 2
+    if (!isA2Active) {
+      if (player.isDead) {
+        if (!player._fragRecorded) {
+          arenaScore.orange++;
+          recordDeath();
+          player._fragRecorded = true;
         }
       } else {
-        bot._fragRecorded = false;
+        player._fragRecorded = false;
       }
-    }
 
-    if (remotePlayer.active) {
-      if (remotePlayer.isDead) {
-        if (!remotePlayer._fragRecorded) {
-          arenaScore.cyan++;
-          recordKill();
-          remotePlayer._fragRecorded = true;
+      if (bot.active) {
+        if (bot.isDead) {
+          if (!bot._fragRecorded) {
+            arenaScore.cyan++;
+            recordKill();
+            bot._fragRecorded = true;
+          }
+        } else {
+          bot._fragRecorded = false;
         }
-      } else {
-        remotePlayer._fragRecorded = false;
+      }
+
+      if (remotePlayer.active) {
+        if (remotePlayer.isDead) {
+          if (!remotePlayer._fragRecorded) {
+            arenaScore.cyan++;
+            recordKill();
+            remotePlayer._fragRecorded = true;
+          }
+        } else {
+          remotePlayer._fragRecorded = false;
+        }
       }
     }
   }
@@ -630,6 +633,9 @@ function update() {
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive)
   });
+  if (isA2Active) {
+    updateDeathmatch(1 / 60, player, bot, remotePlayer, arenaScore);
+  }
   if (!isDeathmatch) {
     updateDistance(ball.x);
   }

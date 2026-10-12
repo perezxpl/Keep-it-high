@@ -15,6 +15,7 @@ import {
   goalCelebration
 } from '../world/state.js';
 import { drawRankHUD, drawMatchVictoryHUD, checkMatchWin, updateMatchWinState } from './rankHud.js';
+import { drawDeathmatchHUD, drawDeathmatchPodium } from '../deathmatch/index.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
 
@@ -1526,29 +1527,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isMatchArena = (curArenaId === 'ARENA_1');
 
   if (isSectorXArena) {
-    const bannerW = isMobile ? 220 : 290;
-    const bannerH = isMobile ? 26 : 32;
-    const bannerX = (W - bannerW) / 2;
-    const bannerY = isMobile ? 10 : 16;
-
-    ctx.save();
-    ctx.globalAlpha = isMobile ? 0.85 : 0.92;
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
-    ctx.lineWidth = 1.4;
-    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
-    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.font = isMobile ? '900 8.5px monospace' : '900 10.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#f59e0b';
-    ctx.shadowColor = '#d97706';
-    ctx.shadowBlur = 0;
-    ctx.fillText('☣️ TOKSYCZNA RAFINERIA (SEKTOR X) ☣️', bannerX + bannerW / 2, bannerY + (isMobile ? 16 : 20));
-    ctx.restore();
+    drawDeathmatchHUD(ctx, W, H, isMobile);
   } else if (isDeathmatch) {
     const scoreBoxW = isMobile ? 220 : 280;
     const scoreBoxH = isMobile ? 32 : 40;
@@ -1673,10 +1652,15 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.restore();
   }
 
-  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +40 XP
-  checkMatchWin(curArenaId, curScore);
-  updateMatchWinState(curScore);
-  drawMatchVictoryHUD(ctx, W, H, isMobile);
+  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +40 XP (TYLKO DLA ARENY 1 I ARENY 3)
+  if (!isSectorXArena) {
+    checkMatchWin(curArenaId, curScore);
+    updateMatchWinState(curScore);
+    drawMatchVictoryHUD(ctx, W, H, isMobile);
+  } else {
+    // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENA 2 - ROZLICZANE NA KONIEC BITWY 5:00)
+    drawDeathmatchPodium(ctx, W, H, isMobile);
+  }
 
   ctx.restore();
 

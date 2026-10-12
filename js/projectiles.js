@@ -407,10 +407,15 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       ch.vy += normY * impulse - 3.8;
 
       ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - damage);
+      if (shooter && shooter !== ch) {
+        ch.lastAttacker = shooter;
+        ch.lastAttackerTimer = 240;
+      }
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
 
       if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;
+        ch.killer = (shooter && shooter !== ch) ? shooter : ch.lastAttacker;
         ch.respawnTimer = 180;
         ch.corpseFloorY = groundY;
         ch.isGibbed = true;
