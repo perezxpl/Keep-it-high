@@ -574,6 +574,7 @@ function endTouch(e) {
         player.rocketBoots.touchChargeStartTime = 0;
         player.rocketBoots.touchChargeRatio = 0;
         player.rocketBoots.touchChargePower = 0;
+        player.rocketBoots.touchAirDashReady = false;
       }
 
       if (leftStick.downIntent) {

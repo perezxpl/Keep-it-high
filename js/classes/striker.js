@@ -152,7 +152,7 @@ export function initRocketBootsState(p) {
     // Powietrze – gotowość drążka na pojedynczy wyrzut po uprzednim cofnięciu / wyskoku
     airStickReady: false,
     prevAirborne: false,
-    touchAirDashReady: true,
+    touchAirDashReady: false,
 
     // Klawiatura PC – ładowanie siły klawiszem X (PC Charge Dash)
     isKeyCharging: false,
@@ -225,34 +225,34 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     if (isAirborne) {
       // =====================================================================
       // W POWIETRZU NA TELEFONIE:
-      // Dash zawsze odpala w PEŁNEJ MOCY (1.0) w kierunku wychylonego drążka!
-      // Każde powtórzenie wymaga przynajmniej lekkiego cofnięcia (stickMag < 0.40)
+      // Dash aktywuje się DOPIERO po nowym wychyleniu drążka ze środka!
+      // Każde powtórzenie wymaga powrotu drążka do środka (stickMag < 0.35)
       // i posiadania odpowiedniej ilości paliwa (50%).
       // =====================================================================
       rb.isTouchCharging = false;
       rb.touchChargeRatio = 0;
       rb.touchChargePower = 0;
 
-      if (stickMag < 0.40) {
-        // Lekkie cofnięcie drążka w stronę centrum odnawia gotowość do kolejnego dasha
+      if (stickMag < 0.35) {
+        // Drążek jest w strefie neutralnej – zyskuje gotowość do wyzwolenia dasha przy nowym wychyleniu!
         rb.touchAirDashReady = true;
-      } else if (rb.touchAirDashReady && stickMag >= 0.52) {
+      } else if (rb.touchAirDashReady && stickMag >= 0.55) {
+        // Nowe, świadome wychylenie ze środka na zewnątrz w zadanym kierunku!
         const fuelCost = (player.jetMax || 100) * 0.50;
         if ((player.jetFuel || 0) >= fuelCost) {
           player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
           const nx = stickX / stickMag;
           const ny = stickY / stickMag;
           triggerStrikerAirDash(player, nx, ny, 1.0);
-          rb.touchAirDashReady = false; // Wymaga cofnięcia drążka przed kolejnym dashem!
+          rb.touchAirDashReady = false; // Zużyte – wymaga powrotu do środka przed kolejnym dashem!
           return;
         }
       }
     } else {
       // =====================================================================
-      // NA ZIEMI NA TELEFONIE: Ładowanie siły przed wychyleniem (Charge Dash)
+      // NA ZIEMI NA TELEFONIE:
+      // Swobodne skakanie z nóg bez dasha + chwilowe opóźnienie ładowania (220 ms)
       // =====================================================================
-      rb.touchAirDashReady = true; // Na ziemi zawsze odnawia gotowość do skoku w locie
-
       if (isHoldingChargeZone) {
         if ((player.jetFuel || 0) >= 5) {
           if (!rb.isTouchCharging) {
@@ -262,13 +262,17 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             rb.touchChargePower = 0;
           } else {
             const holdMs = now - rb.touchChargeStartTime;
-            const MIN_HOLD = 100;
-            const FULL_CHARGE = 580;
-            if (holdMs >= MIN_HOLD) {
-              const rawRatio = Math.min(1.0, (holdMs - MIN_HOLD) / (FULL_CHARGE - MIN_HOLD));
+            // Chwilowe opóźnienie: 220 ms w centrum (pozwala na swobodny podskok i bieg), 80 ms w dół
+            const CHARGE_DELAY = isStickAimingDown ? 80 : 220;
+            const FULL_CHARGE = 460;
+            if (holdMs >= CHARGE_DELAY) {
+              const rawRatio = Math.min(1.0, (holdMs - CHARGE_DELAY) / FULL_CHARGE);
               const maxFuelRatio = Math.min(1.0, Math.max(0.1, (player.jetFuel || 0) / 50));
               rb.touchChargeRatio = Math.min(rawRatio, maxFuelRatio);
               rb.touchChargePower = 0.35 + 0.65 * rb.touchChargeRatio;
+            } else {
+              rb.touchChargeRatio = 0;
+              rb.touchChargePower = 0;
             }
           }
           if (rb.touchChargeRatio > 0.05) {
@@ -280,12 +284,14 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
           rb.touchChargePower = 0;
         }
       } else if (stickMag >= 0.55 && !isStickAimingDown) {
-        if (rb.isTouchCharging && rb.touchChargeRatio > 0.05) {
+        // Wychylenie drążka odpala dash na ziemi TYLKO JEŚLI gracz celowo naładował siłę (> 0.15):
+        if (rb.isTouchCharging && rb.touchChargeRatio >= 0.15) {
           const power = rb.touchChargePower || 0.35;
           const nx = stickX / stickMag;
           const ny = stickY / stickMag;
 
           if (stickY <= -0.50) {
+            // Celowo naładowany wyskok dashem w górę:
             const fuelCost = (player.jetMax || 100) * 0.50 * power;
             player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
             player.onGround = false;
@@ -293,6 +299,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             player.y -= 3;
             triggerStrikerAirDash(player, nx, ny, power);
           } else if (Math.abs(stickX) >= 0.45) {
+            // Celowo naładowany Ground Dash po ziemi:
             const startFuel = 12.0 * power;
             player.jetFuel = Math.max(0, player.jetFuel - startFuel);
             triggerStrikerGroundDash(player, Math.sign(stickX), 'STICK', power);
@@ -303,6 +310,11 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
           rb.touchChargeRatio = 0;
           rb.touchChargePower = 0;
           return;
+        } else {
+          // Brak naładowania: postać swobodnie podskakuje z nóg lub biegnie!
+          rb.isTouchCharging = false;
+          rb.touchChargeRatio = 0;
+          rb.touchChargePower = 0;
         }
       }
     }
@@ -486,11 +498,11 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   if (isAirborne && !rb.prevAirborne) {
     if (!rb.dashing) {
       rb.airStickReady = (stickMag < 0.35);
-      rb.touchAirDashReady = (stickMag < 0.42);
+      rb.touchAirDashReady = (stickMag < 0.35);
     }
   } else if (!isAirborne && rb.prevAirborne) {
     rb.airStickReady = false;
-    rb.touchAirDashReady = true;
+    rb.touchAirDashReady = false;
     if (rb.dashType === 'AIR') {
       rb.dashing = false;
       rb.dashType = 'NONE';
