@@ -1741,6 +1741,11 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p) {
   const hipY = p.y + p.h - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8);
 
   const v = { ...DEFAULT_VISUALS, ...(p.currentClass?.visuals || {}) };
+  v.jetFuel = p.jetFuel;
+  v.jetMax = p.jetMax;
+  if (p.currentClass?.id === 'STRIKER') {
+    v.hasRocketBoots = true;
+  }
 
   renderIKLeg(
     ctx,

@@ -538,7 +538,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
-    if (player.isSliding) {
+    if (player.rocketBoots && player.rocketBoots.dashing) {
+      // AKTYWNY RAKIETOWY DASH (KLASA STRIKER / ROCKET BOOTS)
+      // Prędkość pozioma jest w 100% narzucana przez silniki butów odrzutowych
+      player.vx = player.rocketBoots.dashDir * player.rocketBoots.dashSpeed;
+      if (player.isJumping) {
+        player.airVx = player.vx;
+      }
+    } else if (player.isSliding) {
       player.vx *= slideDecel;
       player.slideTimer--;
       const currentFloor = player.currentGroundY || GROUND_Y;
@@ -969,7 +976,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.currentGroundY = null;
     player.currentPlatform = null;
   } else {
-    player.vy += CONFIG.GRAVITY;
+    if (player.rocketBoots && player.rocketBoots.dashing && player.rocketBoots.dashType === 'AIR') {
+      player.vy = 0; // Płaski, poziomy przelot rakietowy bez ściągania grawitacją w dół
+    } else {
+      player.vy += CONFIG.GRAVITY;
+    }
     player.y += player.vy;
 
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;

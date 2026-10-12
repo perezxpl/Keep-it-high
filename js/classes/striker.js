@@ -167,11 +167,14 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   // 1. ODCZYT KLAWISZY (Klawiatura / D-pad)
   const keyLeft = !!(keys && (keys.left || keys.KeyA));
   const keyRight = !!(keys && (keys.right || keys.KeyD));
+  const keyFlightOrJump = !!(keys && (keys.up || keys.space || keys.KeyW));
 
   const justPressedLeft = keyLeft && !rb.prevKeyLeft;
   const justPressedRight = keyRight && !rb.prevKeyRight;
+  const justPressedFlight = keyFlightOrJump && !rb.prevFlightKey;
   rb.prevKeyLeft = keyLeft;
   rb.prevKeyRight = keyRight;
+  rb.prevFlightKey = keyFlightOrJump;
 
   // 2. ODCZYT DRĄŻKA ANALOGOWEGO (Dotykowy leftStick lub Gałka Pad)
   let stickX = 0;
@@ -196,13 +199,16 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       requestedAirDashDir = -1;
     } else if (justPressedRight) {
       requestedAirDashDir = 1;
+    } else if (justPressedFlight) {
+      // Wciśnięcie Spacji / W w powietrzu odpala dash w kierunku patrzenia lub drążka
+      requestedAirDashDir = Math.abs(stickX) > 0.20 ? Math.sign(stickX) : (player.facing || 1);
     }
 
     // B. Drążek w powietrzu: ponowne wychylenie gałki
-    if (Math.abs(stickX) < 0.32) {
+    if (Math.abs(stickX) < 0.28) {
       // Drążek wrócił w okolice środka / spoczynku
       rb.airStickEngaged = false;
-    } else if (Math.abs(stickX) >= 0.68) {
+    } else if (Math.abs(stickX) >= 0.60) {
       // Wychylenie gałki na zewnątrz
       if (!rb.airStickEngaged) {
         rb.airStickEngaged = true;
@@ -233,10 +239,10 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   let triggeredGroundDashDir = 0;
 
-  // A. KLAWIATURA – PODWÓJNE NACIŚNIĘCIE STRZAŁKI / KLAWISZA KIERUNKU
+  // A. KLAWIATURA – PODWÓJNE NACIŚNIĘCIE STRZAŁKI / KLAWISZA KIERUNKU (okno 50-460 ms)
   if (justPressedLeft) {
     const dt = now - rb.lastTapLeftTime;
-    if (dt >= 60 && dt <= 320) {
+    if (dt >= 40 && dt <= 460) {
       triggeredGroundDashDir = -1;
       rb.lastTapLeftTime = 0;
     } else {
@@ -246,7 +252,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   if (justPressedRight) {
     const dt = now - rb.lastTapRightTime;
-    if (dt >= 60 && dt <= 320) {
+    if (dt >= 40 && dt <= 460) {
       triggeredGroundDashDir = 1;
       rb.lastTapRightTime = 0;
     } else {
@@ -255,8 +261,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   }
 
   // B. DRĄŻEK ANALOGOWY – PODWÓJNE WYCHYLENIE (FLICK -> COFNIĘCIE -> PONOWNY FLICK)
-  const isMaxFlick = Math.abs(stickX) >= 0.72;
-  const isMinimalCofniecie = Math.abs(stickX) <= 0.42;
+  const isMaxFlick = Math.abs(stickX) >= 0.68;
+  const isMinimalCofniecie = Math.abs(stickX) <= 0.46;
 
   switch (rb.stickPhaseX) {
     case 'IDLE':
@@ -268,8 +274,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       break;
 
     case 'PEAK_1':
-      if (now - rb.stickFlickTime > 360) {
-        // Zbyt długi czas bez cofnięcia – wygaśnięcie
+      if (now - rb.stickFlickTime > 550) {
+        // Zbyt długi czas bez cofnięcia – reset
         rb.stickPhaseX = isMaxFlick ? 'PEAK_1' : 'IDLE';
         if (isMaxFlick) {
           rb.stickFlickDir = Math.sign(stickX);
@@ -282,7 +288,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       break;
 
     case 'CENTERED':
-      if (now - rb.stickFlickTime > 420) {
+      if (now - rb.stickFlickTime > 650) {
         rb.stickPhaseX = 'IDLE';
       } else if (isMaxFlick && Math.sign(stickX) === rb.stickFlickDir) {
         // Ponowne maksymalne wychylenie drążka w tym samym kierunku – ODPAL BUTY!
@@ -305,16 +311,16 @@ function triggerStrikerAirDash(player, dir) {
   rb.dashing = true;
   rb.dashType = 'AIR';
   rb.dashDir = dir;
-  rb.dashTimer = 14;      // 14 klatek potężnego rakietowego pędu
-  rb.dashSpeed = 17.5;    // Bardzo wysoka prędkość pozioma
+  rb.dashTimer = 16;      // 16 klatek potężnego rakietowego pędu
+  rb.dashSpeed = 22.0;    // Wyraźny, atomowy przeskok w powietrzu
   player.facing = dir;
-  player.vx = dir * 17.5;
-  player.vy = -1.8;       // Lekkie uniesienie, anuluje spadanie grawitacyjne
+  player.vx = dir * 22.0;
+  player.vy = 0;          // Czysto poziomy tor lotu
   player.airVx = player.vx;
-  triggerScreenShake(3.0);
+  triggerScreenShake(3.5);
 
   // Wybuch płomieni z dysz obu butów
-  emitBootsBurstParticles(player, dir, 12);
+  emitBootsBurstParticles(player, dir, 14);
 }
 
 /**
@@ -325,14 +331,14 @@ function triggerStrikerGroundDash(player, dir) {
   rb.dashing = true;
   rb.dashType = 'GROUND';
   rb.dashDir = dir;
-  rb.dashTimer = 16;
-  rb.dashSpeed = 13.5;
+  rb.dashTimer = 18;
+  rb.dashSpeed = 16.5;    // Bardzo wybuchowy zryw z murawy
   player.facing = dir;
-  player.vx = dir * 13.5;
-  triggerScreenShake(2.0);
+  player.vx = dir * 16.5;
+  triggerScreenShake(2.5);
 
   // Wybuch płomieni z pięt na poziomie murawy
-  emitBootsBurstParticles(player, dir, 8);
+  emitBootsBurstParticles(player, dir, 10);
 }
 
 /**

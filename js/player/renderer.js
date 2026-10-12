@@ -251,6 +251,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ...(isLocalOrCreator ? localPlayerCustomVisuals : {}),
     ...(p.customVisuals || {})
   };
+  v.jetFuel = p.jetFuel;
+  v.jetMax = p.jetMax;
+  if (p.currentClass?.id === 'STRIKER') {
+    v.hasRocketBoots = true;
+  }
   v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;

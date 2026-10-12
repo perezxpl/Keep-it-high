@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { DEFAULT_VISUALS } from './hair.js';
+import { getJetpackFlamePalette } from './jetpack.js';
 
 export const SHOES_STYLE_LIST = [
   'combat_boots',
@@ -213,6 +214,123 @@ export function drawBootCollarOverPants(ctx, style, color, isFrontLeg, muscle, l
     ctx.lineWidth = 0.85;
     ctx.stroke();
   }
+
+  // =========================================================================
+  // NAKŁADKA EGZOSZKIELETOWA I WSKAŹNIK MOCY LED NA ŁYDCE (KLASA STRIKER)
+  // Nakładka z buta wchodząca w górę łydki z pionowym wskaźnikiem energii
+  // =========================================================================
+  if (v.hasRocketBoots) {
+    drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle, l2, achillesHalfW, v);
+  }
+}
+
+/**
+ * Renderuje opancerzoną nakładkę egzoszkieletową na łydce wraz z pionowym wskaźnikiem LED mocy
+ */
+export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24.0, achillesHalfW = 2.4, v = {}) {
+  const strutTop = l2 - 13.0 * muscle;
+  const strutH = 12.8 * muscle;
+  const flameCol = v.jetpackColor || '#00e5ff';
+  const flamePal = getJetpackFlamePalette ? getJetpackFlamePalette(flameCol) : { base: flameCol, glow: flameCol };
+
+  ctx.save();
+
+  // 1. TYTANOWA SZYNOPŁYTA EGZOSZKIELETU NA TYLE ŁYDKI
+  ctx.fillStyle = isFrontLeg ? '#1f2937' : '#111827';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  const greaveW = achillesHalfW * 1.45;
+  if (ctx.roundRect) {
+    ctx.roundRect(strutTop, -greaveW, strutH, greaveW * 0.9, 1.2);
+  } else {
+    ctx.rect(strutTop, -greaveW, strutH, greaveW * 0.9);
+  }
+  ctx.fill();
+  ctx.stroke();
+
+  // Krawędź wzmacniająca z fazowaniem
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(strutTop + 0.8, -greaveW + 0.5);
+  ctx.lineTo(strutTop + strutH - 0.8, -greaveW + 0.5);
+  ctx.stroke();
+
+  // 2. METALOWE KLAMRY MOCUJĄCE DO ŁYDKI
+  const strapCol = '#0f172a';
+  const clampCol = '#94a3b8';
+  // Górna klamra
+  ctx.fillStyle = strapCol;
+  ctx.fillRect(strutTop + 1.6, -greaveW - 0.3, 1.8, greaveW * 1.8);
+  ctx.fillStyle = clampCol;
+  ctx.fillRect(strutTop + 1.9, -greaveW + 0.2, 1.2, 1.0);
+
+  // Dolna klamra przy stawie skokowym
+  ctx.fillStyle = strapCol;
+  ctx.fillRect(l2 - 3.4, -greaveW - 0.3, 1.8, greaveW * 1.8);
+  ctx.fillStyle = clampCol;
+  ctx.fillRect(l2 - 3.1, -greaveW + 0.2, 1.2, 1.0);
+
+  // Tłoczek siłownika hydraulicznego biegnący do buta
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(l2 - 2.0, -greaveW * 0.75, 2.8, 1.2);
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(l2 - 2.0, -greaveW * 0.75, 2.8, 1.2);
+
+  // 3. PIONOWY WSKAŹNIK MOCY LED (FUEL/POWER INDICATOR)
+  // Wyfrezowane czarne korytko pod diody
+  const gaugeX = strutTop + 3.8;
+  const gaugeW = 6.8 * muscle;
+  const gaugeY = -greaveW * 0.75;
+  const gaugeH = 2.0;
+
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(gaugeX, gaugeY, gaugeW, gaugeH);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(gaugeX, gaugeY, gaugeW, gaugeH);
+
+  // Obliczenie poziomu paliwa / gotowości do Dashu
+  const curFuel = (typeof v.jetFuel === 'number') ? v.jetFuel : 100;
+  const maxFuel = (typeof v.jetMax === 'number' && v.jetMax > 0) ? v.jetMax : 100;
+  const ratio = Math.max(0, Math.min(1.0, curFuel / maxFuel));
+
+  // 4 segmenty LED wskaźnika energii
+  // Segment 1 (>= 20%): podstawa
+  // Segment 2 (>= 50%): GOTOWY 1 SUPER DASH!
+  // Segment 3 (>= 75%): ładowanie drugiego
+  // Segment 4 (>= 98%): GOTOWE 2 SUPER DASHE (PEŁNY BAK)!
+  const segW = (gaugeW - 2.0) / 4;
+  const isBlinkLow = (ratio < 0.50) && (Math.floor(performance.now() / 200) % 2 === 0);
+
+  for (let i = 0; i < 4; i++) {
+    const segX = gaugeX + 0.5 + i * (segW + 0.3);
+    const reqRatio = (i + 1) * 0.25;
+    const isLit = ratio >= reqRatio || (i === 0 && ratio > 0.08);
+
+    if (isLit) {
+      if (ratio < 0.50 && i === 0 && isBlinkLow) {
+        // Ostrzeżenie: brak energii na kolejny Super Dash (miga na czerwono)
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 4;
+      } else {
+        // Pełna moc w kolorze płomienia jetpacka
+        ctx.fillStyle = flamePal.base || flameCol;
+        ctx.shadowColor = flamePal.glow || flameCol;
+        ctx.shadowBlur = 4;
+      }
+    } else {
+      ctx.fillStyle = '#1e293b'; // Wygaszona dioda
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillRect(segX, gaugeY + 0.35, segW - 0.3, gaugeH - 0.7);
+  }
+
+  ctx.restore();
 }
 
 /**
