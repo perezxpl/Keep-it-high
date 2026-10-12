@@ -5,8 +5,14 @@
 //              które w momencie puszczenia uderzają w ziemię pod butami i
 //              wystrzeliwują Enforcera wysoko na platformy!
 // =========================================================================
-import { triggerScreenShake, spawnJetpackSparks } from '../world.js';
+import { triggerScreenShake, spawnJetpackSparks, spawnGroundPuff } from '../world.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
+import {
+  spawnExplosionFirePuff,
+  spawnHeavySmokePuff,
+  spawnStretchedSparks,
+  spawnShockwaveRing
+} from '../particles.js';
 
 export const ENFORCER_BOMB_CHARGE_MS = 1000; // Min. 1000ms przytrzymania w górę uzbraja bomby na pasie
 
@@ -294,12 +300,21 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
         }
 
         if (belt.isArmed && !wasArmed) {
-          // Przekroczono 1000ms: bomby na pasie są w pełni podpalone i gotowe do zrzutu pod buty!
-          triggerScreenShake(2.2);
-          emitBeltFuseSparks(player, 1.0, true, 12);
+          // Przekroczono 1000ms: ładunki na pasie wybuchają pełnym płomieniem (bez paska HUD - czysty ogień i dym!)
+          triggerScreenShake(3.2);
+          const centerX = player.x + (player.w || 30) / 2;
+          const beltY = player.y + (player.h || 74) * 0.52;
+          emitBeltFuseSparks(player, 1.0, true, 20);
+          if (typeof spawnExplosionFirePuff === 'function') {
+            spawnExplosionFirePuff(centerX, beltY + 2, 7);
+          }
+          if (typeof spawnHeavySmokePuff === 'function') {
+            spawnHeavySmokePuff(centerX, beltY - 4, 6);
+          }
         } else {
-          // Iskry i płomyki z podpalonych lontów na pasie
-          emitBeltFuseSparks(player, belt.chargeRatio, belt.isArmed, belt.isArmed ? 3 : 2);
+          // Narastający ogień, iskry i dym z podpalonych ładunków na pasie
+          const sparkCount = belt.isArmed ? 6 : (1 + Math.floor(belt.chargeRatio * 4));
+          emitBeltFuseSparks(player, belt.chargeRatio, belt.isArmed, sparkCount);
         }
       }
     }
@@ -331,31 +346,46 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
 }
 
 /**
- * Emituje iskry i płomienie z podpalonych ładunków na pasie Enforcera podczas trzymania kierunku w górę
+ * Emituje narastający ogień, iskry i gęsty dym z podpalonych ładunków na pasie Enforcera podczas trzymania kierunku w górę
  */
 function emitBeltFuseSparks(player, chargeRatio = 0.5, isArmed = false, count = 2) {
-  if (typeof spawnJetpackSparks !== 'function') return;
   const customFlame = getEnforcerFlameColor(player);
   const colors = getJetpackFlamePalette(customFlame).particles;
   const facing = player.facing || 1;
   const centerX = player.x + (player.w || 30) / 2;
   const beltY = player.y + (player.h || 74) * 0.52;
 
-  // Iskry sypiące się z kaset wybuchowych na pasie w dół ku butom
-  const spreadX = (Math.random() - 0.5) * 18;
-  const vx = (Math.random() - 0.5) * (isArmed ? 4.5 : 2.5);
-  const vy = isArmed ? (2.5 + Math.random() * 3.5) : (1.0 + chargeRatio * 2.2);
+  if (typeof spawnJetpackSparks === 'function') {
+    // Iskry i języki ognia sypiące się z kaset wybuchowych na pasie w dół ku butom
+    const spreadX = (Math.random() - 0.5) * (16 + chargeRatio * 10);
+    const vx = (Math.random() - 0.5) * (isArmed ? 6.2 : (2.2 + chargeRatio * 2.5));
+    const vy = isArmed ? (3.2 + Math.random() * 4.5) : (1.2 + chargeRatio * 2.8);
 
-  spawnJetpackSparks(
-    centerX + spreadX,
-    beltY,
-    facing,
-    count,
-    colors,
-    vx,
-    vy,
-    Math.PI * 0.5
-  );
+    spawnJetpackSparks(
+      centerX + spreadX,
+      beltY + 2,
+      facing,
+      count,
+      colors,
+      vx,
+      vy,
+      Math.PI * 0.5
+    );
+  }
+
+  // Dodatkowe kłęby dymu i buchający ogień na pasie w miarę rozpalania ładunków
+  if (isArmed) {
+    if (Math.random() < 0.45 && typeof spawnExplosionFirePuff === 'function') {
+      spawnExplosionFirePuff(centerX + (Math.random() - 0.5) * 14, beltY + 4, 1);
+    }
+    if (Math.random() < 0.55 && typeof spawnHeavySmokePuff === 'function') {
+      spawnHeavySmokePuff(centerX + (Math.random() - 0.5) * 16, beltY - 2, 1);
+    }
+  } else if (chargeRatio > 0.35 && Math.random() < chargeRatio * 0.40) {
+    if (typeof spawnHeavySmokePuff === 'function') {
+      spawnHeavySmokePuff(centerX + (Math.random() - 0.5) * 12, beltY - 2, 1);
+    }
+  }
 }
 
 /**
@@ -379,38 +409,38 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   const centerX = player.x + (player.w || 30) / 2;
   const beltY = player.y + (player.h || 74) * 0.52;
 
-  // Potężny impuls pionowy (wystrzeliwuje Enforcera wysoko na każdą platformę)
-  player.vy = -16.2;
+  // Potężny impuls pionowy (+30% wyższy wyskok wybuchowy: vy = -20.2 zamiast -16.2)
+  player.vy = -20.2;
   player.onGround = false;
   player.isJumping = true;
   player.coyoteTimer = 0;
   player.jumpSquatTimer = 0;
   player.jumpLaunchFloorY = currentFloor;
-  player.jumpTakeoffTimer = 12;
+  player.jumpTakeoffTimer = 14;
 
   // Silny pęd poziomy w kierunku wychylenia (umożliwia dalekie wskakiwanie na platformy)
   const sprintMax = player.currentClass?.stats?.sprintMax || 5.6;
   if (Math.abs(dirX) > 0.12) {
-    const launchVx = dirX * (sprintMax * 1.48);
+    const launchVx = dirX * (sprintMax * 1.55);
     if (Math.sign(launchVx) === Math.sign(player.vx)) {
-      player.vx = Math.sign(launchVx) * Math.max(Math.abs(player.vx) * 1.15, Math.abs(launchVx));
+      player.vx = Math.sign(launchVx) * Math.max(Math.abs(player.vx) * 1.18, Math.abs(launchVx));
     } else {
       player.vx = launchVx;
     }
     player.facing = Math.sign(dirX) || player.facing;
     player.isSprintJump = true;
-    player.sprintJumpTimer = 65;
+    player.sprintJumpTimer = 75;
   } else if (Math.abs(player.vx) > 0.4) {
-    player.vx *= 1.18;
+    player.vx *= 1.22;
     player.isSprintJump = true;
-    player.sprintJumpTimer = 55;
+    player.sprintJumpTimer = 65;
   }
   player.airVx = player.vx;
   player.jumpLaunchSpeed = Math.abs(player.vx);
 
   // Rejestracja wizualnej detonacji ładunków uderzających z pasa w ziemię pod butami
   const flameColor = getEnforcerFlameColor(player);
-  belt.blastJumpTimer = 28;
+  belt.blastJumpTimer = 38;
   belt.pendingBallImpulse = true;
   belt.lastBlastX = centerX;
   belt.lastBlastY = currentFloor;
@@ -419,27 +449,49 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
     y: currentFloor,
     beltY: beltY,
     frame: 0,
-    maxFrames: 26,
+    maxFrames: 38,
     color: flameColor
   });
 
-  // Mocny wstrząs kamery i snop ognia/odłamków pod stopami
-  triggerScreenShake(9.5);
+  // Potężny wstrząs kamery oraz masywna chmura ognia, dymu i iskier pod butami
+  triggerScreenShake(12.0);
   const pal = getJetpackFlamePalette(flameColor);
   const colors = pal.particles;
 
+  if (typeof spawnShockwaveRing === 'function') {
+    spawnShockwaveRing(centerX, currentFloor - 4);
+  }
+  if (typeof spawnExplosionFirePuff === 'function') {
+    spawnExplosionFirePuff(centerX, currentFloor - 8, 22);
+    spawnExplosionFirePuff(centerX - 14, currentFloor - 4, 8);
+    spawnExplosionFirePuff(centerX + 14, currentFloor - 4, 8);
+  }
+  if (typeof spawnHeavySmokePuff === 'function') {
+    spawnHeavySmokePuff(centerX, currentFloor - 6, 20);
+    spawnHeavySmokePuff(centerX - 18, currentFloor - 4, 8);
+    spawnHeavySmokePuff(centerX + 18, currentFloor - 4, 8);
+  }
+  if (typeof spawnStretchedSparks === 'function') {
+    spawnStretchedSparks(centerX, currentFloor - 6, 32);
+  }
+  if (typeof spawnGroundPuff === 'function') {
+    spawnGroundPuff(centerX - 16, currentFloor);
+    spawnGroundPuff(centerX, currentFloor);
+    spawnGroundPuff(centerX + 16, currentFloor);
+  }
+
   if (typeof spawnJetpackSparks === 'function') {
-    // 1. Fala wybuchu rozchodząca się w lewo i w prawo po ziemi
-    spawnJetpackSparks(centerX - 8, currentFloor - 2, -1, 14, colors, -9.2, -1.5, Math.PI, currentFloor);
-    spawnJetpackSparks(centerX + 8, currentFloor - 2, 1, 14, colors, 9.2, -1.5, 0, currentFloor);
-    // 2. Słup ognia wybuchający pionowo w górę pod butami
-    spawnJetpackSparks(centerX, currentFloor - 4, player.facing || 1, 16, colors, 0, -8.0, -Math.PI * 0.5);
+    // 1. Fala wybuchu rozchodząca się szeroko w lewo i w prawo po ziemi
+    spawnJetpackSparks(centerX - 10, currentFloor - 2, -1, 22, colors, -11.0, -2.0, Math.PI, currentFloor);
+    spawnJetpackSparks(centerX + 10, currentFloor - 2, 1, 22, colors, 11.0, -2.0, 0, currentFloor);
+    // 2. Potężny słup ognia wybuchający pionowo w górę pod butami
+    spawnJetpackSparks(centerX, currentFloor - 4, player.facing || 1, 28, colors, 0, -10.5, -Math.PI * 0.5);
   }
 
   const grassFn = spawnGrass || player._spawnGrass;
   if (typeof grassFn === 'function' && currentFloor) {
-    for (let i = 0; i < 8; i++) {
-      grassFn(centerX + (i - 3.5) * 7, currentFloor, (i % 2 === 0) ? 1 : -1);
+    for (let i = 0; i < 10; i++) {
+      grassFn(centerX + (i - 4.5) * 7, currentFloor, (i % 2 === 0) ? 1 : -1);
     }
   }
 }
@@ -458,24 +510,33 @@ export function updateEnforcerBeltPhysics(player, ball) {
       const dx = ball.x - belt.lastBlastX;
       const dy = ball.y - (belt.lastBlastY - 15);
       const dist = Math.hypot(dx, dy);
-      if (dist < 120) {
-        const power = 1.0 - (dist / 120);
+      if (dist < 135) {
+        const power = 1.0 - (dist / 135);
         const pushDirX = Math.abs(dx) > 4 ? Math.sign(dx) : (player.facing || 1);
-        ball.vx += pushDirX * (8.0 + 12.0 * power);
-        ball.vy = Math.min(ball.vy, -(10.0 + 10.0 * power));
+        ball.vx += pushDirX * (9.0 + 13.0 * power);
+        ball.vy = Math.min(ball.vy, -(11.0 + 11.0 * power));
       }
     }
   }
 
-  // Smuga dymu i iskier ciągnąca się za butami Enforcera po wystrzeleniu wybuchem
+  // Gęsty warkocz ognia, dymu prochowego i iskier ciągnący się za butami Enforcera podczas lotu w górę
   if (belt.blastJumpTimer > 0) {
     belt.blastJumpTimer--;
-    if (player.vy < 0 && typeof spawnJetpackSparks === 'function' && (belt.blastJumpTimer % 2 === 0)) {
+    if (player.vy < 1.5) {
       const customFlame = getEnforcerFlameColor(player);
       const colors = getJetpackFlamePalette(customFlame).particles;
       const footX = player.x + (player.w || 30) / 2;
       const footY = player.y + (player.h || 74) - 2;
-      spawnJetpackSparks(footX, footY, player.facing || 1, 2, colors, -player.vx * 0.3, 3.5, Math.PI * 0.5);
+
+      if (typeof spawnJetpackSparks === 'function') {
+        spawnJetpackSparks(footX + (Math.random() - 0.5) * 10, footY, player.facing || 1, 3, colors, -player.vx * 0.35, 4.2, Math.PI * 0.5);
+      }
+      if (belt.blastJumpTimer % 2 === 0 && typeof spawnHeavySmokePuff === 'function') {
+        spawnHeavySmokePuff(footX + (Math.random() - 0.5) * 8, footY + 2, 2);
+      }
+      if (belt.blastJumpTimer > 18 && belt.blastJumpTimer % 2 === 1 && typeof spawnExplosionFirePuff === 'function') {
+        spawnExplosionFirePuff(footX + (Math.random() - 0.5) * 6, footY, 2);
+      }
     }
   }
 
@@ -491,7 +552,8 @@ export function updateEnforcerBeltPhysics(player, ball) {
 }
 
 /**
- * Rysuje Pas Ładunków Wybuchowych (3 pancerne kasety C4/termitowe z zapalnikami) na pasie taktycznym Enforcera
+ * Rysuje Pas Ładunków Wybuchowych (3 pancerne kasety C4/termitowe z zapalnikami) na pasie taktycznym Enforcera.
+ * Zamiast paska nad głową: płomienie na pasie narastają wizualnie wraz z trzymaniem góry i buchają żywym ogniem po uzbrojeniu!
  */
 export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY, beltBotY) {
   const flameColor = v?.jetpackColor || getEnforcerFlameColor(p);
@@ -503,6 +565,24 @@ export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY,
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
 
   ctx.save();
+
+  // Gorąca łuna wokół całego pasa narastająca wraz z rozpalaniem ładunków
+  if (isCharging && chargeRatio > 0.15) {
+    const auraR = (waistHalfW * 1.4) + (isArmed ? 8 + Math.sin(now * 0.04) * 3 : chargeRatio * 5);
+    const beltMidY = (beltTopY + beltBotY) * 0.5 + 2;
+    const auraGrad = ctx.createRadialGradient(0, beltMidY, 1, 0, beltMidY, auraR);
+    auraGrad.addColorStop(0.0, isArmed ? 'rgba(255, 255, 255, 0.65)' : flamePal.light);
+    auraGrad.addColorStop(0.45, flamePal.base);
+    auraGrad.addColorStop(1.0, flamePal.alphaZero);
+
+    ctx.save();
+    ctx.globalAlpha = isArmed ? 0.75 : (0.20 + chargeRatio * 0.45);
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, beltMidY, auraR, auraR * 0.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // Pozycje 3 ładunków wybuchowych zamontowanych w uchwytach wzdłuż pasa
   const canisterOffsets = [
@@ -516,7 +596,9 @@ export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY,
   const canTopY = beltTopY - 0.7;
 
   canisterOffsets.forEach((cx, idx) => {
-    const jitterX = isArmed ? Math.sin(now * 0.06 + idx * 2.1) * 0.45 : 0;
+    const jitterX = isArmed
+      ? Math.sin(now * 0.08 + idx * 2.1) * 0.65
+      : (isCharging ? Math.sin(now * 0.04 + idx) * chargeRatio * 0.3 : 0);
     const x = cx + jitterX - canW * 0.5;
 
     // 1. Pancerna obudowa ładunku wybuchowego
@@ -537,7 +619,7 @@ export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY,
     ctx.save();
     if (isCharging) {
       ctx.shadowColor = flamePal.glow;
-      ctx.shadowBlur = isArmed ? 8 : (3 + chargeRatio * 4);
+      ctx.shadowBlur = isArmed ? 12 : (4 + chargeRatio * 6);
     }
     ctx.fillStyle = isArmed ? '#ffffff' : (isCharging ? flamePal.light : flamePal.base);
     ctx.fillRect(x + 0.4, canTopY + 1.4, canW - 0.8, 1.5);
@@ -547,30 +629,78 @@ export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY,
     ctx.fillStyle = '#09090b';
     ctx.fillRect(x + 0.5, canTopY + canH, canW - 1.0, 0.9);
 
-    // 3. Płonący lont / iskrownik pod kasetą podczas przytrzymania kierunku w górę
+    // 3. Narastający płomień i dym pod kasetą (pokazuje stopień naładowania zamiast paska nad głową!)
     if (isCharging) {
       const nozzleX = cx + jitterX;
       const nozzleY = canTopY + canH + 0.9;
-      const flameLen = (1.8 + chargeRatio * 3.8) * (0.85 + 0.3 * Math.sin(now * 0.04 + idx));
+      const flicker = 0.82 + 0.36 * Math.sin(now * 0.055 + idx * 1.7);
+      const baseLen = isArmed ? 13.5 : (2.2 + Math.pow(chargeRatio, 1.35) * 9.0);
+      const flameLen = baseLen * flicker;
+      const halfW = isArmed ? 2.8 : (1.1 + chargeRatio * 1.4);
 
       ctx.save();
-      ctx.shadowColor = flamePal.glow;
-      ctx.shadowBlur = isArmed ? 10 : 5;
 
-      // Język ognia pod ładunkiem na pasie
-      ctx.fillStyle = isArmed ? '#ffffff' : flamePal.light;
+      // Kłęby ciemnego dymu prochowego unoszące się znad rozpalonych dysz
+      const smokeCount = isArmed ? 3 : (chargeRatio > 0.35 ? 2 : 1);
+      for (let s = 0; s < smokeCount; s++) {
+        const sPhase = ((now * 0.004 + idx * 0.33 + s * 0.45) % 1.0);
+        const smokeX = nozzleX + Math.sin(now * 0.015 + idx + s * 2) * (1.5 + sPhase * 3.5);
+        const smokeY = canTopY - sPhase * (isArmed ? 10.0 : (4.0 + chargeRatio * 5.0));
+        const smokeR = (1.4 + sPhase * (isArmed ? 3.2 : 2.0)) * (0.4 + chargeRatio * 0.6);
+        const smokeAlpha = (1.0 - sPhase) * (isArmed ? 0.55 : (0.20 + chargeRatio * 0.30));
+
+        ctx.fillStyle = `rgba(24, 24, 27, ${smokeAlpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(smokeX, smokeY, smokeR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Zewnętrzny płaszcz ognia (szeroki, buchający płomień)
+      ctx.shadowColor = flamePal.glow;
+      ctx.shadowBlur = isArmed ? 14 : (5 + chargeRatio * 6);
+      ctx.fillStyle = flamePal.base;
       ctx.beginPath();
-      ctx.moveTo(nozzleX - 1.1, nozzleY);
-      ctx.lineTo(nozzleX, nozzleY + flameLen);
-      ctx.lineTo(nozzleX + 1.1, nozzleY);
+      ctx.moveTo(nozzleX - halfW, nozzleY);
+      ctx.quadraticCurveTo(nozzleX - halfW * 0.6, nozzleY + flameLen * 0.6, nozzleX, nozzleY + flameLen);
+      ctx.quadraticCurveTo(nozzleX + halfW * 0.6, nozzleY + flameLen * 0.6, nozzleX + halfW, nozzleY);
       ctx.closePath();
       ctx.fill();
 
-      // Iskry odpryskujące z podpalonego ładunku
-      ctx.fillStyle = flamePal.base;
+      // Środkowy, jasny język ognia
+      const midW = halfW * 0.68;
+      const midLen = flameLen * 0.78;
+      ctx.fillStyle = flamePal.light;
       ctx.beginPath();
-      ctx.arc(nozzleX + Math.sin(now * 0.03 + idx) * 1.6, nozzleY + flameLen * 0.7, 0.75, 0, Math.PI * 2);
+      ctx.moveTo(nozzleX - midW, nozzleY);
+      ctx.lineTo(nozzleX, nozzleY + midLen);
+      ctx.lineTo(nozzleX + midW, nozzleY);
+      ctx.closePath();
       ctx.fill();
+
+      // Biało-żółty gorący rdzeń (szczególnie intensywny po pełnym rozpaleniu >= 1000ms)
+      if (chargeRatio > 0.4 || isArmed) {
+        const coreW = halfW * (isArmed ? 0.45 : 0.30);
+        const coreLen = flameLen * (isArmed ? 0.58 : 0.42);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(nozzleX - coreW, nozzleY);
+        ctx.lineTo(nozzleX, nozzleY + coreLen);
+        ctx.lineTo(nozzleX + coreW, nozzleY);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Odpryskujące iskry termitowe pod płomieniem
+      const sparkCountVis = isArmed ? 3 : 1;
+      for (let sp = 0; sp < sparkCountVis; sp++) {
+        const spX = nozzleX + Math.sin(now * 0.045 + idx * 2 + sp * 2.3) * (halfW * 1.3);
+        const spY = nozzleY + flameLen * (0.55 + ((now * 0.01 + sp * 0.37) % 0.55));
+        ctx.fillStyle = (sp % 2 === 0 && isArmed) ? '#ffffff' : flamePal.light;
+        ctx.beginPath();
+        ctx.arc(spX, spY, isArmed ? 1.05 : 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.restore();
     }
   });
@@ -579,36 +709,36 @@ export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY,
 }
 
 /**
- * Rysuje uderzające z pasa w ziemię ładunki oraz eksplozję pod butami Enforcera
+ * Rysuje uderzające z pasa w ziemię ładunki oraz potężną eksplozję ognia i dymu pod butami Enforcera
  */
 function drawEnforcerActiveBlasts(ctx, player) {
   const belt = player?.blastBelt;
   if (!belt || !belt.activeBlasts || belt.activeBlasts.length === 0) return;
 
   for (const b of belt.activeBlasts) {
-    const t = b.frame / b.maxFrames;
     const pal = getJetpackFlamePalette(b.color || '#ef4444');
 
     ctx.save();
 
-    // FAZA 1 (klatki 0..4): 3 uzbrojone bomby wystrzeliwują z pasa pionowo w ziemię pod butami
-    if (b.frame <= 4) {
-      const dropT = Math.min(1.0, b.frame / 3.0);
-      const offsets = [-11, 0, 11];
+    // FAZA 1 (klatki 0..5): 3 uzbrojone bomby wystrzeliwują z pasa pionowo w ziemię pod butami
+    if (b.frame <= 5) {
+      const dropT = Math.min(1.0, b.frame / 3.5);
+      const offsets = [-13, 0, 13];
       for (const ox of offsets) {
         const startX = b.x + ox * 0.65;
         const endX = b.x + ox;
         const curX = startX + (endX - startX) * dropT;
         const curY = b.beltY + (b.y - 3 - b.beltY) * dropT;
 
-        // Smuga uderzeniowa z pasa do ziemi
+        // Gruba smuga ogniowa z pasa do ziemi
         const trailGrad = ctx.createLinearGradient(startX, b.beltY, curX, curY);
         trailGrad.addColorStop(0.0, pal.alphaZero);
-        trailGrad.addColorStop(0.5, pal.base);
+        trailGrad.addColorStop(0.4, pal.base);
+        trailGrad.addColorStop(0.8, pal.light);
         trailGrad.addColorStop(1.0, '#ffffff');
 
         ctx.strokeStyle = trailGrad;
-        ctx.lineWidth = 2.6;
+        ctx.lineWidth = 3.8;
         ctx.beginPath();
         ctx.moveTo(startX, b.beltY);
         ctx.lineTo(curX, curY);
@@ -617,43 +747,64 @@ function drawEnforcerActiveBlasts(ctx, player) {
         // Rozżarzony ładunek uderzający w podłoże
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 14;
         ctx.beginPath();
-        ctx.arc(curX, curY, 2.8, 0, Math.PI * 2);
+        ctx.arc(curX, curY, 3.6, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // FAZA 2 (klatki 1..16): Potężna eksplozja ładunków na ziemi pod stopami
-    if (b.frame >= 1 && b.frame <= 16) {
-      const expT = (b.frame - 1) / 15.0;
+    // FAZA 2 (klatki 1..22): Potężna eksplozja ognia na ziemi pod stopami
+    if (b.frame >= 1 && b.frame <= 22) {
+      const expT = (b.frame - 1) / 21.0;
       const alpha = Math.max(0, 1.0 - expT);
 
-      // 1. Pierścień fali uderzeniowej rozchodzący się po ziemi
-      const ringRx = 12 + expT * 52;
-      const ringRy = 3.5 + expT * 7.5;
+      // 1. Podwójny pierścień fali uderzeniowej rozchodzący się szeroko po ziemi
+      const ringRx = 16 + expT * 74;
+      const ringRy = 4.5 + expT * 10.5;
       ctx.save();
-      ctx.globalAlpha = alpha * 0.9;
+      ctx.globalAlpha = alpha * 0.92;
       ctx.strokeStyle = expT < 0.35 ? '#ffffff' : pal.light;
-      ctx.lineWidth = Math.max(1.0, 3.8 * (1.0 - expT));
+      ctx.lineWidth = Math.max(1.2, 4.8 * (1.0 - expT));
       ctx.shadowColor = pal.glow;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.beginPath();
       ctx.ellipse(b.x, b.y - 1, ringRx, ringRy, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // 2. Kula ognia pod butami (potrójna kopuła wybuchu)
-      if (expT < 0.75) {
-        const domeT = expT / 0.75;
-        const domeAlpha = 1.0 - domeT;
-        const domeR = 14 + domeT * 26;
+      // 2. Pionowy słup ognia wystrzeliwujący w górę za Enforcerem
+      if (expT < 0.65) {
+        const pillarT = expT / 0.65;
+        const pillarH = 28 + pillarT * 78;
+        const pillarW = (18 - pillarT * 8);
+        const pillarGrad = ctx.createLinearGradient(b.x, b.y - 2, b.x, b.y - pillarH);
+        pillarGrad.addColorStop(0.0, '#ffffff');
+        pillarGrad.addColorStop(0.35, pal.light);
+        pillarGrad.addColorStop(0.75, pal.base);
+        pillarGrad.addColorStop(1.0, pal.alphaZero);
 
-        const fireGrad = ctx.createRadialGradient(b.x, b.y - 4, 2, b.x, b.y - 6, domeR);
+        ctx.globalAlpha = (1.0 - pillarT) * 0.85;
+        ctx.fillStyle = pillarGrad;
+        ctx.beginPath();
+        ctx.moveTo(b.x - pillarW, b.y - 2);
+        ctx.quadraticCurveTo(b.x, b.y - pillarH * 1.15, b.x + pillarW, b.y - 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 3. Masywna kula ognia pod butami (wielowarstwowa kopuła wybuchu)
+      if (expT < 0.82) {
+        const domeT = expT / 0.82;
+        const domeAlpha = 1.0 - domeT;
+        const domeR = 20 + domeT * 42;
+
+        const fireGrad = ctx.createRadialGradient(b.x, b.y - 5, 3, b.x, b.y - 8, domeR);
         fireGrad.addColorStop(0.0, `rgba(255, 255, 255, ${domeAlpha})`);
-        fireGrad.addColorStop(0.35, pal.light);
-        fireGrad.addColorStop(0.70, pal.base);
+        fireGrad.addColorStop(0.30, pal.light);
+        fireGrad.addColorStop(0.68, pal.base);
         fireGrad.addColorStop(1.0, pal.alphaZero);
 
+        ctx.globalAlpha = 1.0;
         ctx.fillStyle = fireGrad;
         ctx.beginPath();
         ctx.arc(b.x, b.y - 2, domeR, Math.PI, 0, false);
@@ -663,18 +814,21 @@ function drawEnforcerActiveBlasts(ctx, player) {
       ctx.restore();
     }
 
-    // FAZA 3 (klatki 4..26): Gęste kłęby dymu prochowego po wybuchu
-    if (b.frame >= 4) {
-      const smokeT = (b.frame - 4) / (b.maxFrames - 4);
-      const smokeAlpha = Math.max(0, (1.0 - smokeT) * 0.55);
-      const puffs = [-24, -10, 0, 12, 26];
+    // FAZA 3 (klatki 2..38): Gęste, wielowarstwowe kłęby czarnego i szarego dymu prochowego po wybuchu
+    if (b.frame >= 2) {
+      const smokeT = (b.frame - 2) / (b.maxFrames - 2);
+      const smokeAlpha = Math.max(0, (1.0 - smokeT) * 0.72);
+      const puffs = [-38, -26, -15, -6, 0, 7, 16, 27, 39];
 
       ctx.save();
-      ctx.fillStyle = `rgba(24, 24, 27, ${smokeAlpha.toFixed(3)})`;
       puffs.forEach((px, idx) => {
-        const puffX = b.x + px * (0.5 + smokeT * 0.9);
-        const puffY = b.y - 4 - smokeT * (14 + (idx % 2) * 8);
-        const puffR = 7 + smokeT * (12 + (idx % 3) * 4);
+        const puffX = b.x + px * (0.45 + smokeT * 1.15);
+        const puffY = b.y - 5 - smokeT * (22 + (idx % 3) * 14);
+        const puffR = 10 + smokeT * (18 + (idx % 4) * 5);
+
+        ctx.fillStyle = (idx % 2 === 0)
+          ? `rgba(24, 24, 27, ${smokeAlpha.toFixed(3)})`
+          : `rgba(63, 63, 70, ${(smokeAlpha * 0.82).toFixed(3)})`;
         ctx.beginPath();
         ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2);
         ctx.fill();
@@ -687,7 +841,8 @@ function drawEnforcerActiveBlasts(ctx, player) {
 }
 
 /**
- * Rysuje wskaźnik podpalania bomb (0..1000ms) oraz wiązki celownicze pod buty podczas trzymania W / drążka w górę
+ * Zamiast paska ładowania nad głową: rysuje buchające języki ognia, żar i gęsty dym wokół pasa
+ * Enforcera, które palą się coraz mocniej w miarę trzymania kierunku w górę (0..1000ms+).
  */
 function drawEnforcerBeltChargeHUD(ctx, player) {
   if (!player || player._isCreatorDummy || player.isDead) return;
@@ -706,62 +861,66 @@ function drawEnforcerBeltChargeHUD(ctx, player) {
 
   ctx.save();
 
-  // 1. Gdy ładunki są uzbrojone (>= 1000ms), rysuj gorące linie zrzutu z pasa prosto pod buty
-  if (isArmed || ratio > 0.65) {
-    const lineAlpha = isArmed ? (0.55 + 0.35 * Math.sin(now * 0.025)) : ((ratio - 0.65) / 0.35) * 0.4;
-    ctx.strokeStyle = isArmed ? pal.light : pal.base;
-    ctx.globalAlpha = lineAlpha;
-    ctx.lineWidth = isArmed ? 1.6 : 1.0;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.moveTo(centerX - 7, beltY);
-    ctx.lineTo(centerX - 10, floorY - 2);
-    ctx.moveTo(centerX + 7, beltY);
-    ctx.lineTo(centerX + 10, floorY - 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+  // 1. Kłęby dymu unoszące się wokół pasa podczas palenia się lontów
+  const smokeClouds = isArmed ? 6 : Math.max(2, Math.ceil(ratio * 4));
+  for (let i = 0; i < smokeClouds; i++) {
+    const phase = ((now * 0.0032 + i * (1 / smokeClouds)) % 1.0);
+    const side = (i % 2 === 0 ? -1 : 1);
+    const sx = centerX + side * (5 + phase * 14) + Math.sin(now * 0.012 + i) * 3;
+    const sy = beltY - 2 - phase * (isArmed ? 28 : (12 + ratio * 12));
+    const sr = (3.5 + phase * (isArmed ? 8.5 : 5.5)) * (0.45 + ratio * 0.55);
+    const sAlpha = (1.0 - phase) * (isArmed ? 0.52 : (0.18 + ratio * 0.28));
 
-    // Pulsujący krąg detonacji pod stopami
+    ctx.fillStyle = `rgba(24, 24, 27, ${sAlpha.toFixed(3)})`;
     ctx.beginPath();
-    ctx.ellipse(centerX, floorY - 1, 14 + (isArmed ? Math.sin(now * 0.03) * 2 : 0), 3.2, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // 2. Kompaktowy pasek zapłonu lontu nad głową / obok pasa
-  const barW = 34;
-  const barH = 4.5;
-  const barX = centerX - barW / 2;
-  const barY = player.y - 14;
+  // 2. Buchające z pasa języki ognia (im bliżej 1000ms, tym mocniej i niżej ku butom płoną!)
+  const nozzleOffsets = [-9, 0, 9];
+  nozzleOffsets.forEach((ox, idx) => {
+    const nx = centerX + ox + (isArmed ? Math.sin(now * 0.07 + idx) * 1.2 : 0);
+    const ny = beltY + 3;
+    const pulse = 0.80 + 0.35 * Math.sin(now * 0.05 + idx * 2.1);
+    const flameLen = (isArmed ? 22 : (4 + Math.pow(ratio, 1.4) * 14)) * pulse;
+    const flameW = isArmed ? 5.2 : (1.8 + ratio * 2.6);
 
-  ctx.globalAlpha = 0.92;
-  ctx.fillStyle = 'rgba(9, 9, 11, 0.85)';
-  ctx.strokeStyle = isArmed ? '#facc15' : 'rgba(255, 255, 255, 0.25)';
-  ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(barX, barY, barW, barH, 2);
-  else ctx.rect(barX, barY, barW, barH);
-  ctx.fill();
-  ctx.stroke();
+    const fGrad = ctx.createLinearGradient(nx, ny, nx, ny + flameLen);
+    fGrad.addColorStop(0.0, '#ffffff');
+    fGrad.addColorStop(0.35, pal.light);
+    fGrad.addColorStop(0.75, pal.base);
+    fGrad.addColorStop(1.0, pal.alphaZero);
 
-  // Wypełnienie paska lontu
-  const fillW = Math.max(2, barW * ratio);
-  ctx.fillStyle = isArmed ? (Math.floor(now / 90) % 2 === 0 ? '#facc15' : pal.light) : pal.base;
-  if (isArmed) {
+    ctx.save();
+    ctx.globalAlpha = isArmed ? 0.92 : (0.45 + ratio * 0.45);
     ctx.shadowColor = pal.glow;
-    ctx.shadowBlur = 8;
-  }
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(barX, barY, fillW, barH, 2);
-  else ctx.rect(barX, barY, fillW, barH);
-  ctx.fill();
+    ctx.shadowBlur = isArmed ? 16 : (6 + ratio * 8);
+    ctx.fillStyle = fGrad;
+    ctx.beginPath();
+    ctx.moveTo(nx - flameW, ny);
+    ctx.quadraticCurveTo(nx - flameW * 0.5, ny + flameLen * 0.65, nx, ny + flameLen);
+    ctx.quadraticCurveTo(nx + flameW * 0.5, ny + flameLen * 0.65, nx + flameW, ny);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
 
-  // Iskra na końcu palącego się lontu
-  const sparkX = barX + fillW;
-  const sparkY = barY + barH / 2;
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(sparkX, sparkY, isArmed ? 2.6 : 2.0, 0, Math.PI * 2);
-  ctx.fill();
+  // 3. Gdy ładunki są w pełni rozpalone (>= 1000ms), ogień liże już ziemię pod butami Enforcera
+  if (isArmed) {
+    const groundFireR = 16 + Math.sin(now * 0.04) * 4;
+    const gGrad = ctx.createRadialGradient(centerX, floorY - 2, 2, centerX, floorY - 2, groundFireR);
+    gGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.75)');
+    gGrad.addColorStop(0.45, pal.light);
+    gGrad.addColorStop(0.80, pal.base);
+    gGrad.addColorStop(1.0, pal.alphaZero);
+
+    ctx.fillStyle = gGrad;
+    ctx.beginPath();
+    ctx.ellipse(centerX, floorY - 1, groundFireR * 1.25, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
+
