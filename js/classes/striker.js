@@ -396,52 +396,71 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   } else if (justReleasedKeyCharge) {
     const power = rb.keyChargePower || 0.35;
 
-    if (isAirborne) {
-      let nx = 0;
-      let ny = 0;
-      if (keyUp) {
-        if (keyLeft) { nx = -0.707; ny = -0.707; }
-        else if (keyRight) { nx = 0.707; ny = -0.707; }
-        else { nx = 0; ny = -1.0; }
-      } else if (keyDown) {
-        if (keyLeft) { nx = -0.707; ny = 0.707; }
-        else if (keyRight) { nx = 0.707; ny = 0.707; }
-        else { nx = 0; ny = 1.0; }
-      } else if (keyLeft) {
-        nx = -1.0; ny = 0;
-      } else if (keyRight) {
-        nx = 1.0; ny = 0;
-      } else {
-        // Domyślnie w powietrzu bez wciśniętych kierunków: wyskok w górę
-        nx = 0; ny = -1.0;
-      }
+    // Odczyt trzymanego kierunku (WASD / Strzałki)
+    const dirUp = !!(keys && (keys.up || keys.KeyW));
+    const dirLeft = !!(keys && (keys.left || keys.KeyA));
+    const dirRight = !!(keys && (keys.right || keys.KeyD));
+    const dirDown = !!(keys && (keys.down || keys.KeyS));
+    const hasDirection = dirUp || dirLeft || dirRight || (isAirborne && dirDown);
 
-      const fuelCost = (player.jetMax || 100) * 0.50 * power;
-      player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-      triggerStrikerAirDash(player, nx, ny, power);
-    } else {
-      // NA ZIEMI:
-      if (keyUp || (!keyLeft && !keyRight)) {
-        // Natychmiastowy wyskok dashem w górę (ZAMIAST 2x W!)
+    // KIERUNEK JEST ZAWSZE WYMAGANY:
+    // Klawisz X służy wyłącznie do ładowania siły.
+    // Aktywacja po puszczeniu następuje TYLKO POD WARUNKIEM trzymania kierunku!
+    if (hasDirection) {
+      if (isAirborne) {
         let nx = 0;
-        let ny = -1.0;
-        if (keyLeft) { nx = -0.707; ny = -0.707; }
-        else if (keyRight) { nx = 0.707; ny = -0.707; }
+        let ny = 0;
+        if (dirUp) {
+          if (dirLeft) { nx = -0.707; ny = -0.707; }
+          else if (dirRight) { nx = 0.707; ny = -0.707; }
+          else { nx = 0; ny = -1.0; }
+        } else if (dirDown) {
+          if (dirLeft) { nx = -0.707; ny = 0.707; }
+          else if (dirRight) { nx = 0.707; ny = 0.707; }
+          else { nx = 0; ny = 1.0; }
+        } else if (dirLeft) {
+          nx = -1.0; ny = 0;
+        } else if (dirRight) {
+          nx = 1.0; ny = 0;
+        }
 
         const fuelCost = (player.jetMax || 100) * 0.50 * power;
-        player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-        player.onGround = false;
-        player.isJumping = true;
-        player.y -= 3;
-        triggerStrikerAirDash(player, nx, ny, power);
-      } else if (keyLeft) {
-        const startFuel = 12.0 * power;
-        player.jetFuel = Math.max(0, player.jetFuel - startFuel);
-        triggerStrikerGroundDash(player, -1, 'KEYBOARD', power);
-      } else if (keyRight) {
-        const startFuel = 12.0 * power;
-        player.jetFuel = Math.max(0, player.jetFuel - startFuel);
-        triggerStrikerGroundDash(player, 1, 'KEYBOARD', power);
+        if ((player.jetFuel || 0) >= fuelCost) {
+          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+          triggerStrikerAirDash(player, nx, ny, power);
+        }
+      } else {
+        // NA ZIEMI:
+        if (dirUp) {
+          // Trzymane W (lub W+A / W+D) przy puszczeniu X: rakietowy wyskok dashem w górę ze skalowaną siłą!
+          let nx = 0;
+          let ny = -1.0;
+          if (dirLeft) { nx = -0.707; ny = -0.707; }
+          else if (dirRight) { nx = 0.707; ny = -0.707; }
+
+          const fuelCost = (player.jetMax || 100) * 0.50 * power;
+          if ((player.jetFuel || 0) >= fuelCost) {
+            player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+            player.onGround = false;
+            player.isJumping = true;
+            player.y -= 3;
+            triggerStrikerAirDash(player, nx, ny, power);
+          }
+        } else if (dirLeft) {
+          // Trzymane A przy puszczeniu X: Ground Dash w lewo ze skalowaną siłą
+          const startFuel = 12.0 * power;
+          if ((player.jetFuel || 0) >= startFuel) {
+            player.jetFuel = Math.max(0, player.jetFuel - startFuel);
+            triggerStrikerGroundDash(player, -1, 'KEYBOARD', power);
+          }
+        } else if (dirRight) {
+          // Trzymane D przy puszczeniu X: Ground Dash w prawo ze skalowaną siłą
+          const startFuel = 12.0 * power;
+          if ((player.jetFuel || 0) >= startFuel) {
+            player.jetFuel = Math.max(0, player.jetFuel - startFuel);
+            triggerStrikerGroundDash(player, 1, 'KEYBOARD', power);
+          }
+        }
       }
     }
 
@@ -568,27 +587,18 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   let triggerGroundDir = 0;
   let triggerSource = 'NONE';
 
-  // Klawiatura na ziemi: 2x tap w 300 ms
+  // Klawiatura na ziemi: 2x tap w 300 ms (lewo / prawo)
   if (!keyDown) {
-    if (justPressedUp) {
-      const dt = now - (rb.lastTapUpTime || 0);
+    if (justPressedLeft) {
+      const dt = now - (rb.lastTapLeftTime || 0);
       if (dt > 0 && dt <= FLICK_WINDOW_MS) {
-        rb.lastTapUpTime = 0;
-        const fuelCost = (player.jetMax || 100) * 0.50;
-        if ((player.jetFuel || 0) >= fuelCost) {
-          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-          player.onGround = false;
-          player.isJumping = true;
-          player.y -= 3;
-          const xDir = keyLeft ? -0.707 : (keyRight ? 0.707 : 0);
-          const yDir = keyLeft || keyRight ? -0.707 : -1.0;
-          triggerStrikerAirDash(player, xDir, yDir, 1.0);
-          return;
-        }
+        triggerGroundDir = -1;
+        triggerSource = 'KEYBOARD';
+        rb.lastTapLeftTime = 0;
       } else {
-        rb.lastTapUpTime = now;
+        rb.lastTapLeftTime = now;
       }
-    } else if (justPressedLeft) {
+    } else if (justPressedRight) {
       const dt = now - (rb.lastTapLeftTime || 0);
       if (dt > 0 && dt <= FLICK_WINDOW_MS) {
         triggerGroundDir = -1;
