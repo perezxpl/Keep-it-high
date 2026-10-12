@@ -117,75 +117,7 @@ export const StrikerClass = {
 
   onBallPassiveContact(player, ball) {},
   onDrawUnder(ctx, player) {},
-  onDrawOverlay(ctx, player) {
-    const rb = player?.rocketBoots;
-    if (!rb) return;
-    const ratio = rb.keyChargeRatio || rb.touchChargeRatio || 0;
-    if (ratio <= 0.05) return;
-
-    const customFlame = getStrikerFlameColor(player);
-    const flamePal = getJetpackFlamePalette(customFlame);
-    const footX = player.x + (player.w || 24) / 2;
-    const footY = player.y + (player.h || 70) - 2;
-
-    ctx.save();
-    // 1. Pulsujący neonowy pierścień naładowania pod stopami (Energy Ring)
-    const baseRadius = 13 + 9 * ratio;
-    ctx.beginPath();
-    ctx.ellipse(footX, footY, baseRadius, baseRadius * 0.40, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = flamePal.base || '#00e5ff';
-    ctx.lineWidth = 2.0 + 1.8 * ratio;
-    ctx.shadowColor = flamePal.glow || '#00d0ff';
-    ctx.shadowBlur = 8 + 14 * ratio;
-    ctx.globalAlpha = 0.50 + 0.45 * ratio;
-    ctx.stroke();
-
-    // 2. Plazmowy blask pod butami
-    const grad = ctx.createRadialGradient(footX, footY, 2, footX, footY, baseRadius);
-    grad.addColorStop(0, flamePal.light || '#ffffff');
-    grad.addColorStop(0.55, flamePal.base || '#00e5ff');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.globalAlpha = 0.22 + 0.35 * ratio;
-    ctx.fill();
-
-    // 3. Wskaźnik Circular Gauge energii nad głową gracza
-    const headX = player.x + (player.w || 24) / 2;
-    const headY = player.y - 12;
-    const gaugeR = 10;
-    const startA = -Math.PI / 2;
-    const endA = startA + Math.PI * 2 * ratio;
-
-    // Tło łuku
-    ctx.beginPath();
-    ctx.arc(headX, headY, gaugeR, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
-    ctx.lineWidth = 2.8;
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.85;
-    ctx.stroke();
-
-    // Pasek postępu
-    ctx.beginPath();
-    ctx.arc(headX, headY, gaugeR, startA, endA);
-    ctx.strokeStyle = (ratio >= 0.95) ? '#ffffff' : (flamePal.base || '#00e5ff');
-    ctx.lineWidth = 2.8;
-    ctx.shadowColor = flamePal.glow || '#00d0ff';
-    ctx.shadowBlur = 8 + 8 * ratio;
-    ctx.globalAlpha = 0.95;
-    ctx.stroke();
-
-    // Symbol pioruna w centrum wskaźnika
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = (ratio >= 0.95) ? '#ffffff' : (flamePal.light || '#e0ffff');
-    ctx.shadowColor = flamePal.glow || '#00d0ff';
-    ctx.shadowBlur = 4;
-    ctx.fillText('⚡', headX, headY + 0.5);
-
-    ctx.restore();
-  }
+  onDrawOverlay(ctx, player) {}
 };
 
 // =========================================================================
@@ -307,8 +239,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             rb.touchChargePower = 0.35 + 0.65 * rb.touchChargeRatio;
           }
         }
-        if (rb.touchChargeRatio > 0.15 && Math.random() < 0.25) {
-          emitBootsChargeSparks(player);
+        if (rb.touchChargeRatio > 0.05) {
+          emitBootsChargeSparks(player, rb.touchChargeRatio);
         }
       } else {
         rb.isTouchCharging = false;
@@ -383,8 +315,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       }
       rb.touchChargeRatio = rb.keyChargeRatio;
       rb.touchChargePower = rb.keyChargePower;
-      if (rb.keyChargeRatio > 0.08 && Math.random() < 0.32) {
-        emitBootsChargeSparks(player);
+      if (rb.keyChargeRatio > 0.05) {
+        emitBootsChargeSparks(player, rb.keyChargeRatio);
       }
     } else {
       rb.isKeyCharging = false;
@@ -667,15 +599,44 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 }
 
 /**
- * Emituje subtelne iskierki pod stopami podczas ładowania siły dasha
+ * Emituje wzniecające się płomienie z dysz butów podczas ładowania siły dasha
  */
-function emitBootsChargeSparks(player) {
+function emitBootsChargeSparks(player, chargeRatio = 0.5) {
   if (typeof spawnJetpackSparks !== 'function') return;
   const customFlame = getStrikerFlameColor(player);
   const colors = getJetpackFlamePalette(customFlame).particles;
-  const footX = player.x + (player.w || 24) / 2 + (Math.random() * 14 - 7);
-  const footY = player.y + (player.h || 70) - 2;
-  spawnJetpackSparks(footX, footY, player.facing || 1, 2, colors, (Math.random() - 0.5) * 2, -Math.random() * 2 - 0.5, 0);
+  const facing = player.facing || 1;
+  const ratio = Math.max(0.08, Math.min(1.0, chargeRatio));
+
+  // Dokładne pozycje dysz na piętach obu butów (IK lub geometria ciała)
+  let footBackX, footBackY, footFrontX, footFrontY;
+  if (typeof player.pose?.footBackX === 'number' && typeof player.pose?.footFrontX === 'number') {
+    footFrontX = player.pose.footFrontX - facing * 4;
+    footFrontY = player.pose.footFrontY + 1;
+    footBackX = player.pose.footBackX - facing * 4;
+    footBackY = player.pose.footBackY + 1;
+  } else {
+    const hipX = player.x + (player.w || 24) / 2;
+    const groundFeetY = player.y + (player.h || 70) - 2;
+    footFrontX = hipX + facing * 4;
+    footFrontY = groundFeetY;
+    footBackX = hipX - facing * 6;
+    footBackY = groundFeetY;
+  }
+
+  // Kąt wylotu ognia z dyszy: skierowany w dół i lekko w tył
+  const thrustAngle = Math.PI * 0.5 - facing * 0.20;
+
+  // Wzniecający się strumień: gęstość i prędkość ognia rosną wraz z naładowaniem
+  const sparkCount = Math.max(1, Math.round(1 + 3 * ratio));
+  const thrustVx = -facing * (1.2 + 3.8 * ratio);
+  const thrustVy = 2.0 + 4.5 * ratio;
+
+  // Płomienie buchające z obu butów
+  spawnJetpackSparks(footBackX, footBackY, facing, sparkCount, colors, thrustVx, thrustVy, thrustAngle);
+  if (ratio > 0.20 || Math.random() < 0.70) {
+    spawnJetpackSparks(footFrontX, footFrontY, facing, Math.max(1, sparkCount - 1), colors, thrustVx, thrustVy, thrustAngle);
+  }
 }
 
 /**
