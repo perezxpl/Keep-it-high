@@ -279,6 +279,7 @@ export const uiManager = {
     ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER }
   },
   activeCreatorClass: 'RAPTOR',
+  creatorView: 'class_select',
   appearance: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR },
   selectedClassId: 'RAPTOR',
   callbacks: null,
@@ -637,10 +638,6 @@ export const uiManager = {
       case 'CREATOR':
         if (creatorEl) creatorEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
-        const targetClassId = (typeof window !== 'undefined' && window.player?.currentClass?.id)
-          ? window.player.currentClass.id
-          : (this.activeCreatorClass || 'RAPTOR');
-        this.switchCreatorClass(targetClassId, false);
         this.initCreatorHairUI();
         this.initCreatorBeardUI();
         this.initCreatorHeadgearUI();
@@ -650,8 +647,7 @@ export const uiManager = {
         this.initCreatorPantsUI();
         this.initCreatorShoesUI();
         this.initCreatorJetpackUI();
-        this.switchCreatorTab(this.activeCreatorTab || 'hair');
-        this.startCreatorPreview();
+        this.showCreatorClassSelectView();
         break;
 
       case 'PAUSED':
@@ -896,6 +892,7 @@ export const uiManager = {
 
     const creatorBackBtn = document.getElementById('creator-back-btn');
     if (creatorBackBtn) {
+      creatorBackBtn.addEventListener('mouseenter', () => playUiHover());
       creatorBackBtn.addEventListener('click', () => {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
@@ -904,16 +901,38 @@ export const uiManager = {
       });
     }
 
-    // Selektor klas w Kreatorze Postaci (RAPTOR, STRIKER, ENFORCER)
-    document.querySelectorAll('.creator-class-card').forEach((btn) => {
+    // Karty wyboru klasy w Kreatorze Postaci (RAPTOR, STRIKER, ENFORCER)
+    document.querySelectorAll('.creator-class-select-card').forEach((btn) => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         const classId = btn.dataset.creatorClass;
         if (!classId) return;
         playUiClick();
-        this.switchCreatorClass(classId);
+        this.openCreatorClassEditor(classId);
       });
     });
+
+    // Przycisk "← Wybierz Inną Klasę" w edytorze (powrót do wyboru klas)
+    const editorBackBtn = document.getElementById('creator-editor-back-btn');
+    if (editorBackBtn) {
+      editorBackBtn.addEventListener('mouseenter', () => playUiHover());
+      editorBackBtn.addEventListener('click', () => {
+        playUiClick();
+        this.showCreatorClassSelectView();
+      });
+    }
+
+    // Przycisk "✓ Wróć do Menu" w edytorze
+    const editorDoneBtn = document.getElementById('creator-editor-done-btn');
+    if (editorDoneBtn) {
+      editorDoneBtn.addEventListener('mouseenter', () => playUiHover());
+      editorDoneBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
+          this.callbacks.onCloseCreator();
+        }
+      });
+    }
 
     // Zakładki Kreatora Postaci (WŁOSY / ZAROST)
     document.querySelectorAll('.creator-tab-btn').forEach((btn) => {
@@ -1976,6 +1995,47 @@ export const uiManager = {
     if (tabText) tabText.textContent = tabLabel;
     if (headerIcon) headerIcon.textContent = icon;
     if (headerTitle) headerTitle.textContent = headerText;
+  },
+
+  showCreatorClassSelectView() {
+    this.creatorView = 'class_select';
+    this.stopCreatorPreview();
+
+    const selectView = document.getElementById('creator-class-select-view');
+    const editorView = document.getElementById('creator-editor-view');
+    if (selectView) selectView.style.display = 'flex';
+    if (editorView) editorView.style.display = 'none';
+
+    const titleEl = document.getElementById('creator-modal-title');
+    const subEl = document.getElementById('creator-modal-subtitle');
+    if (titleEl) titleEl.textContent = 'KREATOR POSTACI';
+    if (subEl) subEl.textContent = 'Wybierz klasę operatora do modyfikacji wyglądu';
+  },
+
+  openCreatorClassEditor(classId = 'RAPTOR') {
+    const cid = String(classId || 'RAPTOR').toUpperCase();
+    this.creatorView = 'editor';
+    this.switchCreatorClass(cid, false);
+
+    const selectView = document.getElementById('creator-class-select-view');
+    const editorView = document.getElementById('creator-editor-view');
+    if (selectView) selectView.style.display = 'none';
+    if (editorView) editorView.style.display = 'flex';
+
+    const titleEl = document.getElementById('creator-modal-title');
+    const subEl = document.getElementById('creator-modal-subtitle');
+    if (cid === 'RAPTOR') {
+      if (titleEl) titleEl.textContent = 'KREATOR: RAPTOR (KLASA LEKKA)';
+      if (subEl) subEl.textContent = 'Zwiadowca i lotnik – modyfikacja sylwetki i plecaka odrzutowego';
+    } else if (cid === 'STRIKER') {
+      if (titleEl) titleEl.textContent = 'KREATOR: STRIKER (KLASA ŚREDNIA)';
+      if (subEl) subEl.textContent = 'Szturmowiec i strzelec – modyfikacja sylwetki i butów Rocket Boots';
+    } else if (cid === 'ENFORCER') {
+      if (titleEl) titleEl.textContent = 'KREATOR: ENFORCER (KLASA CIĘŻKA)';
+      if (subEl) subEl.textContent = 'Kolos i czołg – modyfikacja sylwetki i modułu skoku';
+    }
+
+    this.startCreatorPreview();
   },
 
   switchCreatorClass(classId = 'RAPTOR', playSound = true) {

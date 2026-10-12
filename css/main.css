@@ -1942,103 +1942,201 @@ button, .dev-btn {
   color: #f8fafc;
 }
 
-/* Selektor kart klas w Kreatorze Postaci */
-.creator-class-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 10px 18px 2px 18px;
-  flex-shrink: 0;
-}
-
-.creator-class-card {
-  position: relative;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 8px 10px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.creator-view-pane {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 1. Ekran wyboru klasy w Kreatorze Postaci */
+.creator-class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 16px 18px;
+  flex: 1;
+  align-items: stretch;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.creator-class-select-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.90);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 16px 14px 14px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
   color: #f8fafc;
   outline: none;
+  overflow: hidden;
 }
 
-.creator-class-card:hover {
-  background: rgba(30, 41, 59, 0.95);
-  transform: translateY(-2px);
-  border-color: rgba(0, 229, 255, 0.5);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+.creator-class-select-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
 }
 
-.creator-class-card .class-card-top {
+.creator-class-select-card .cc-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 6px;
 }
 
-.creator-class-card .class-card-badge {
+.creator-class-select-card .cc-badge {
   font-family: 'Orbitron', monospace;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.8px;
-  color: #94a3b8;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
-.creator-class-card .class-card-icon {
-  font-size: 14px;
+.creator-class-select-card .cc-icon {
+  font-size: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
-.creator-class-card .class-card-name {
+.creator-class-select-card .cc-name {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   line-height: 1.1;
   color: #ffffff;
 }
 
-.creator-class-card .class-card-gear-desc {
+.creator-class-select-card .cc-role {
+  font-family: 'Orbitron', monospace;
   font-size: 10px;
+  font-weight: 600;
   color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  margin-bottom: 8px;
 }
 
-/* Warianty aktywne dla poszczególnych klas */
-.creator-class-card[data-creator-class="RAPTOR"].active {
-  border-color: #10b981;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(15, 23, 42, 0.95));
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), inset 0 0 10px rgba(16, 185, 129, 0.15);
+.creator-class-select-card .cc-desc {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.35;
+  flex: 1;
+  margin-bottom: 12px;
 }
-.creator-class-card[data-creator-class="RAPTOR"].active .class-card-badge,
-.creator-class-card[data-creator-class="RAPTOR"].active .class-card-name {
+
+.creator-class-select-card .cc-gear-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 9px;
+  margin-bottom: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.creator-class-select-card .cc-action {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+/* Wariant Raptor */
+.creator-class-select-card.card-raptor {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.creator-class-select-card.card-raptor .cc-badge,
+.creator-class-select-card.card-raptor .cc-name {
   color: #34d399;
 }
-
-.creator-class-card[data-creator-class="STRIKER"].active {
-  border-color: #38bdf8;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(15, 23, 42, 0.95));
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), inset 0 0 10px rgba(56, 189, 248, 0.15);
+.creator-class-select-card.card-raptor .cc-gear-tag {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #a7f3d0;
 }
-.creator-class-card[data-creator-class="STRIKER"].active .class-card-badge,
-.creator-class-card[data-creator-class="STRIKER"].active .class-card-name {
+.creator-class-select-card.card-raptor .cc-action {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+.creator-class-select-card.card-raptor:hover {
+  border-color: #10b981;
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+}
+.creator-class-select-card.card-raptor:hover .cc-action {
+  background: #10b981;
+  color: #022c22;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+}
+
+/* Wariant Striker */
+.creator-class-select-card.card-striker {
+  border-color: rgba(56, 189, 248, 0.35);
+}
+.creator-class-select-card.card-striker .cc-badge,
+.creator-class-select-card.card-striker .cc-name {
   color: #38bdf8;
 }
-
-.creator-class-card[data-creator-class="ENFORCER"].active {
-  border-color: #ef4444;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(15, 23, 42, 0.95));
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.35), inset 0 0 10px rgba(239, 68, 68, 0.15);
+.creator-class-select-card.card-striker .cc-gear-tag {
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #bae6fd;
 }
-.creator-class-card[data-creator-class="ENFORCER"].active .class-card-badge,
-.creator-class-card[data-creator-class="ENFORCER"].active .class-card-name {
+.creator-class-select-card.card-striker .cc-action {
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: #38bdf8;
+}
+.creator-class-select-card.card-striker:hover {
+  border-color: #38bdf8;
+  background: linear-gradient(145deg, rgba(56, 189, 248, 0.18), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+}
+.creator-class-select-card.card-striker:hover .cc-action {
+  background: #38bdf8;
+  color: #082f49;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+}
+
+/* Wariant Enforcer */
+.creator-class-select-card.card-enforcer {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.creator-class-select-card.card-enforcer .cc-badge,
+.creator-class-select-card.card-enforcer .cc-name {
   color: #f87171;
+}
+.creator-class-select-card.card-enforcer .cc-gear-tag {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fecaca;
+}
+.creator-class-select-card.card-enforcer .cc-action {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+.creator-class-select-card.card-enforcer:hover {
+  border-color: #ef4444;
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.18), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+}
+.creator-class-select-card.card-enforcer:hover .cc-action {
+  background: #ef4444;
+  color: #450a0a;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
 }
 
 .creator-body {
@@ -2270,22 +2368,27 @@ button, .dev-btn {
   .creator-modal-box .settings-header {
     padding: 8px 14px;
   }
-  .creator-class-selector {
-    padding: 4px 12px 1px 12px;
-    gap: 6px;
+  .creator-class-grid {
+    padding: 8px 12px;
+    gap: 8px;
   }
-  .creator-class-card {
-    padding: 4px 6px;
-    gap: 1px;
+  .creator-class-select-card {
+    padding: 8px 10px;
   }
-  .creator-class-card .class-card-badge {
-    font-size: 8px;
-  }
-  .creator-class-card .class-card-name {
-    font-size: 12px;
-  }
-  .creator-class-card .class-card-gear-desc {
+  .creator-class-select-card .cc-desc {
     display: none;
+  }
+  .creator-class-select-card .cc-name {
+    font-size: 17px;
+  }
+  .creator-class-select-card .cc-gear-tag {
+    margin-bottom: 6px;
+    padding: 4px 7px;
+    font-size: 9px;
+  }
+  .creator-class-select-card .cc-action {
+    padding: 5px 8px;
+    font-size: 9px;
   }
   .creator-modal-box .settings-title-group h2 {
     font-size: 13px;
@@ -2476,18 +2579,24 @@ button, .dev-btn {
   .settings-tab-content {
     max-height: 44vh;
   }
-  .creator-class-selector {
-    padding: 8px 10px 2px 10px;
-    gap: 6px;
+  .creator-class-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+    overflow-y: auto;
   }
-  .creator-class-card {
-    padding: 6px 8px;
+  .creator-class-select-card {
+    padding: 12px 14px;
   }
-  .creator-class-card .class-card-name {
-    font-size: 13px;
-  }
-  .creator-class-card .class-card-gear-desc {
+  .creator-class-select-card .cc-desc {
     display: none;
+  }
+  .creator-class-select-card .cc-gear-tag {
+    margin-bottom: 8px;
+  }
+  .creator-class-select-card .cc-action {
+    padding: 6px 10px;
+    font-size: 10px;
   }
 }
 

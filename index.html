@@ -76,7 +76,7 @@
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v143_striker_middleweight_muscular_body",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v136_player_card_dossier_and_combat_stats",
-      "./js/uiManager.js": "./js/uiManager.js?v=v144_class_cards_and_separate_appearances_in_creator",
+      "./js/uiManager.js": "./js/uiManager.js?v=v145_creator_two_step_class_cards_and_customizer",
       "./js/weapons.js": "./js/weapons.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -88,7 +88,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v144_class_cards_and_separate_appearances_in_creator">
+  <link rel="stylesheet" href="./css/main.css?v=v145_creator_two_step_class_cards_and_customizer">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -634,167 +634,200 @@
             <div class="settings-title-group">
               <span class="settings-icon">🎨</span>
               <div>
-                <h2>KREATOR POSTACI</h2>
-                <p>Podgląd sylwetki i modyfikacja wyglądu</p>
+                <h2 id="creator-modal-title">KREATOR POSTACI</h2>
+                <p id="creator-modal-subtitle">Wybierz klasę operatora do modyfikacji wyglądu</p>
               </div>
             </div>
             <button id="creator-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
           </div>
 
-          <!-- SELEKTOR KLASY POSTACI W KREATORZE -->
-          <div class="creator-class-selector" id="creator-class-selector">
-            <button class="creator-class-card active" type="button" data-creator-class="RAPTOR" title="Klasa Lekka: Zwiadowca / Lotnik">
-              <div class="class-card-top">
-                <span class="class-card-badge">KLASA LEKKA</span>
-                <span class="class-card-icon">🚀</span>
-              </div>
-              <div class="class-card-name">RAPTOR</div>
-              <div class="class-card-gear-desc">Plecak Odrzutowy (Jetpack)</div>
-            </button>
-            <button class="creator-class-card" type="button" data-creator-class="STRIKER" title="Klasa Średnia: Szturmowiec / Strzelec">
-              <div class="class-card-top">
-                <span class="class-card-badge">KLASA ŚREDNIA</span>
-                <span class="class-card-icon">⚡</span>
-              </div>
-              <div class="class-card-name">STRIKER</div>
-              <div class="class-card-gear-desc">Buty Odrzutowe (Rocket Boots)</div>
-            </button>
-            <button class="creator-class-card" type="button" data-creator-class="ENFORCER" title="Klasa Ciężka: Kolos / Czołg">
-              <div class="class-card-top">
-                <span class="class-card-badge">KLASA CIĘŻKA</span>
-                <span class="class-card-icon">💥</span>
-              </div>
-              <div class="class-card-name">ENFORCER</div>
-              <div class="class-card-gear-desc">Moduł Skoku (Rocket Jump)</div>
-            </button>
-          </div>
+          <!-- 1. EKRAN WYBORU KLASY DO MODYFIKACJI -->
+          <div id="creator-class-select-view" class="creator-view-pane" style="display: flex;">
+            <div class="creator-class-grid">
+              <!-- KARTA RAPTOR -->
+              <button class="creator-class-select-card card-raptor" type="button" data-creator-class="RAPTOR" title="Modyfikuj wygląd klasy Raptor">
+                <div class="cc-header">
+                  <span class="cc-badge">KLASA LEKKA</span>
+                  <span class="cc-icon">🚀</span>
+                </div>
+                <div class="cc-name">RAPTOR</div>
+                <div class="cc-role">Zwiadowca / Lotnik</div>
+                <div class="cc-desc">Maksymalna zwrotność i swoboda lotu. Niska masa własna i plecak odrzutowy.</div>
+                <div class="cc-gear-tag">
+                  <span class="tag-icon">🚀</span>
+                  <span class="tag-label">Plecak Odrzutowy Mk.I</span>
+                </div>
+                <div class="cc-action">MODYFIKUJ WYGLĄD →</div>
+              </button>
 
-          <div class="creator-body">
-            <!-- Lewa kolumna: Stałe okno z pełnym podglądem postaci z profilu -->
-            <div class="creator-preview-col">
-              <div class="creator-preview-frame">
-                <canvas id="creator-preview-canvas" width="200" height="220"></canvas>
-              </div>
-              <div class="creator-class-label" id="creator-preview-label">KLASA LEKKA: RAPTOR</div>
+              <!-- KARTA STRIKER -->
+              <button class="creator-class-select-card card-striker" type="button" data-creator-class="STRIKER" title="Modyfikuj wygląd klasy Striker">
+                <div class="cc-header">
+                  <span class="cc-badge">KLASA ŚREDNIA</span>
+                  <span class="cc-icon">⚡</span>
+                </div>
+                <div class="cc-name">STRIKER</div>
+                <div class="cc-role">Szturmowiec / Strzelec</div>
+                <div class="cc-desc">Wyważona, atletyczna muskulatura bojowa. Egzoszkielet butów Rocket Boots i powietrzne dashe.</div>
+                <div class="cc-gear-tag">
+                  <span class="tag-icon">⚡</span>
+                  <span class="tag-label">Buty Odrzutowe (Rocket Boots)</span>
+                </div>
+                <div class="cc-action">MODYFIKUJ WYGLĄD →</div>
+              </button>
+
+              <!-- KARTA ENFORCER -->
+              <button class="creator-class-select-card card-enforcer" type="button" data-creator-class="ENFORCER" title="Modyfikuj wygląd klasy Enforcer">
+                <div class="cc-header">
+                  <span class="cc-badge">KLASA CIĘŻKA</span>
+                  <span class="cc-icon">💥</span>
+                </div>
+                <div class="cc-name">ENFORCER</div>
+                <div class="cc-role">Kolos / Siła / Czołg</div>
+                <div class="cc-desc">Potężna masa, stalowe opancerzenie i niszczycielskie tąpnięcia z kinetycznym modułem udarowym.</div>
+                <div class="cc-gear-tag">
+                  <span class="tag-icon">💥</span>
+                  <span class="tag-label">Moduł Skoku (Rocket Jump)</span>
+                </div>
+                <div class="cc-action">MODYFIKUJ WYGLĄD →</div>
+              </button>
             </div>
 
-            <!-- Prawa kolumna: Panel zakładek edycji wyglądu -->
-            <div class="creator-options-col">
-              <div class="creator-tabs-bar">
-                <button class="creator-tab-btn active" type="button" data-creator-tab="hair" title="Fryzury i kolor włosów">
-                  <span class="btn-icon">💇</span>
-                  <span class="btn-text">WŁOSY</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="beard" title="Zarost twarzy i kolor brody">
-                  <span class="btn-icon">🧔</span>
-                  <span class="btn-text">ZAROST</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="headgear" title="Nakrycia głowy, twarzy i ozdoby">
-                  <span class="btn-icon">🧢</span>
-                  <span class="btn-text">NAKRYCIA GŁOWY I OZDOBY</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="torso" title="Ubranie torsu i rękawy">
-                  <span class="btn-icon">👕</span>
-                  <span class="btn-text">UBRANIE TORSU</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="pants" title="Spodnie i spodenki bojowe">
-                  <span class="btn-icon">👖</span>
-                  <span class="btn-text">SPODNIE</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="shoes" title="Fason i kolor obuwia">
-                  <span class="btn-icon">🥾</span>
-                  <span class="btn-text">BUTY</span>
-                </button>
-                <button class="creator-tab-btn" type="button" data-creator-tab="jetpack" id="creator-tab-btn-gear" title="Fason i płomień napędu">
-                  <span class="btn-icon" id="creator-gear-tab-icon">🚀</span>
-                  <span class="btn-text" id="creator-gear-tab-text">JETPACK</span>
-                </button>
-              </div>
-
-              <div id="creator-tab-hair" class="creator-tab-pane active" style="display: flex;">
-                <!-- Kafelki z samą głową i fryzurą (bez nazw i opisów) -->
-                <div id="creator-hair-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru włosów pod oknem fryzur -->
-                <div id="creator-hair-colors" class="creator-hair-color-bar"></div>
-              </div>
-
-              <div id="creator-tab-beard" class="creator-tab-pane" style="display: none;">
-                <!-- Kafelki z samą głową i zarostem (bez nazw i opisów) -->
-                <div id="creator-beard-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru zarostu pod oknem zarostów -->
-                <div id="creator-beard-colors" class="creator-hair-color-bar"></div>
-              </div>
-
-              <div id="creator-tab-headgear" class="creator-tab-pane" style="display: none;">
-                <!-- Sekcja 1: Nakrycie głowy -->
-                <div class="creator-section-header">
-                  <span class="creator-section-icon">🧢</span>
-                  <span class="creator-section-title">NAKRYCIE GŁOWY</span>
-                </div>
-                <div id="creator-headgear-grid" class="creator-hair-grid"></div>
-                <div id="creator-headgear-colors" class="creator-hair-color-bar"></div>
-
-                <!-- Sekcja 2: Twarz i Maska -->
-                <div class="creator-section-header" style="margin-top: 10px;">
-                  <span class="creator-section-icon">🎭</span>
-                  <span class="creator-section-title">TWARZ I MASKA</span>
-                </div>
-                <div id="creator-mask-grid" class="creator-hair-grid"></div>
-                <div id="creator-mask-colors" class="creator-hair-color-bar"></div>
-
-                <!-- Sekcja 3: Szyja i Ozdoby -->
-                <div class="creator-section-header" style="margin-top: 10px;">
-                  <span class="creator-section-icon">🎖️</span>
-                  <span class="creator-section-title">SZYJA I OZDOBY</span>
-                </div>
-                <div id="creator-neck-grid" class="creator-hair-grid"></div>
-              </div>
-
-              <div id="creator-tab-torso" class="creator-tab-pane" style="display: none;">
-                <!-- Kafelki z fasonami ubrania torsu (krótki/długi rękaw, moro jasne/ciemne) -->
-                <div id="creator-torso-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru koszulki dla fasonów jednolitych -->
-                <div id="creator-torso-colors" class="creator-hair-color-bar"></div>
-              </div>
-
-              <div id="creator-tab-pants" class="creator-tab-pane" style="display: none;">
-                <!-- Kafelki z fasonami spodni (bojówki długie/krótkie, moro jasne/ciemne) -->
-                <div id="creator-pants-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru spodni dla fasonów jednolitych -->
-                <div id="creator-pants-colors" class="creator-hair-color-bar"></div>
-              </div>
-
-              <div id="creator-tab-shoes" class="creator-tab-pane" style="display: none;">
-                <!-- Kafelki z fasonami butów (buty desantowe, sneakersy, korki, hi-top, glany z klamrami) -->
-                <div id="creator-shoes-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru butów -->
-                <div id="creator-shoes-colors" class="creator-hair-color-bar"></div>
-              </div>
-
-              <div id="creator-tab-jetpack" class="creator-tab-pane" style="display: none;">
-                <!-- Nagłówek narzędzia osobistego danej klasy -->
-                <div class="creator-section-header" id="creator-gear-section-header">
-                  <span class="creator-section-icon" id="creator-gear-header-icon">🚀</span>
-                  <span class="creator-section-title" id="creator-gear-header-title">PLECAK ODRZUTOWY (JETPACK)</span>
-                </div>
-
-                <!-- Kafelki z fasonami narzędzia osobistego -->
-                <div id="creator-jetpack-grid" class="creator-hair-grid"></div>
-
-                <!-- Pasek wyboru koloru napędu / energii -->
-                <div id="creator-jetpack-colors" class="creator-hair-color-bar"></div>
-              </div>
+            <div class="settings-footer">
+              <span></span>
+              <button id="creator-back-btn" class="ui-btn ui-btn-primary" type="button">← Wróć do Menu</button>
             </div>
           </div>
 
-          <div class="settings-footer">
-            <span></span>
-            <button id="creator-back-btn" class="ui-btn ui-btn-primary" type="button">← Wróć</button>
+          <!-- 2. EKRAN EDYTORA WYBRANEJ KLASY -->
+          <div id="creator-editor-view" class="creator-view-pane" style="display: none;">
+            <div class="creator-body">
+              <!-- Lewa kolumna: Stałe okno z pełnym podglądem postaci z profilu -->
+              <div class="creator-preview-col">
+                <div class="creator-preview-frame">
+                  <canvas id="creator-preview-canvas" width="200" height="220"></canvas>
+                </div>
+                <div class="creator-class-label" id="creator-preview-label">KLASA LEKKA: RAPTOR</div>
+              </div>
+
+              <!-- Prawa kolumna: Panel zakładek edycji wyglądu -->
+              <div class="creator-options-col">
+                <div class="creator-tabs-bar">
+                  <button class="creator-tab-btn active" type="button" data-creator-tab="hair" title="Fryzury i kolor włosów">
+                    <span class="btn-icon">💇</span>
+                    <span class="btn-text">WŁOSY</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="beard" title="Zarost twarzy i kolor brody">
+                    <span class="btn-icon">🧔</span>
+                    <span class="btn-text">ZAROST</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="headgear" title="Nakrycia głowy, twarzy i ozdoby">
+                    <span class="btn-icon">🧢</span>
+                    <span class="btn-text">NAKRYCIA GŁOWY I OZDOBY</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="torso" title="Ubranie torsu i rękawy">
+                    <span class="btn-icon">👕</span>
+                    <span class="btn-text">UBRANIE TORSU</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="pants" title="Spodnie i spodenki bojowe">
+                    <span class="btn-icon">👖</span>
+                    <span class="btn-text">SPODNIE</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="shoes" title="Fason i kolor obuwia">
+                    <span class="btn-icon">🥾</span>
+                    <span class="btn-text">BUTY</span>
+                  </button>
+                  <button class="creator-tab-btn" type="button" data-creator-tab="jetpack" id="creator-tab-btn-gear" title="Fason i płomień napędu">
+                    <span class="btn-icon" id="creator-gear-tab-icon">🚀</span>
+                    <span class="btn-text" id="creator-gear-tab-text">JETPACK</span>
+                  </button>
+                </div>
+
+                <div id="creator-tab-hair" class="creator-tab-pane active" style="display: flex;">
+                  <!-- Kafelki z samą głową i fryzurą (bez nazw i opisów) -->
+                  <div id="creator-hair-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru włosów pod oknem fryzur -->
+                  <div id="creator-hair-colors" class="creator-hair-color-bar"></div>
+                </div>
+
+                <div id="creator-tab-beard" class="creator-tab-pane" style="display: none;">
+                  <!-- Kafelki z samą głową i zarostem (bez nazw i opisów) -->
+                  <div id="creator-beard-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru zarostu pod oknem zarostów -->
+                  <div id="creator-beard-colors" class="creator-hair-color-bar"></div>
+                </div>
+
+                <div id="creator-tab-headgear" class="creator-tab-pane" style="display: none;">
+                  <!-- Sekcja 1: Nakrycie głowy -->
+                  <div class="creator-section-header">
+                    <span class="creator-section-icon">🧢</span>
+                    <span class="creator-section-title">NAKRYCIE GŁOWY</span>
+                  </div>
+                  <div id="creator-headgear-grid" class="creator-hair-grid"></div>
+                  <div id="creator-headgear-colors" class="creator-hair-color-bar"></div>
+
+                  <!-- Sekcja 2: Twarz i Maska -->
+                  <div class="creator-section-header" style="margin-top: 10px;">
+                    <span class="creator-section-icon">🎭</span>
+                    <span class="creator-section-title">TWARZ I MASKA</span>
+                  </div>
+                  <div id="creator-mask-grid" class="creator-hair-grid"></div>
+                  <div id="creator-mask-colors" class="creator-hair-color-bar"></div>
+
+                  <!-- Sekcja 3: Szyja i Ozdoby -->
+                  <div class="creator-section-header" style="margin-top: 10px;">
+                    <span class="creator-section-icon">🎖️</span>
+                    <span class="creator-section-title">SZYJA I OZDOBY</span>
+                  </div>
+                  <div id="creator-neck-grid" class="creator-hair-grid"></div>
+                </div>
+
+                <div id="creator-tab-torso" class="creator-tab-pane" style="display: none;">
+                  <!-- Kafelki z fasonami ubrania torsu (krótki/długi rękaw, moro jasne/ciemne) -->
+                  <div id="creator-torso-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru koszulki dla fasonów jednolitych -->
+                  <div id="creator-torso-colors" class="creator-hair-color-bar"></div>
+                </div>
+
+                <div id="creator-tab-pants" class="creator-tab-pane" style="display: none;">
+                  <!-- Kafelki z fasonami spodni (bojówki długie/krótkie, moro jasne/ciemne) -->
+                  <div id="creator-pants-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru spodni dla fasonów jednolitych -->
+                  <div id="creator-pants-colors" class="creator-hair-color-bar"></div>
+                </div>
+
+                <div id="creator-tab-shoes" class="creator-tab-pane" style="display: none;">
+                  <!-- Kafelki z fasonami butów (buty desantowe, sneakersy, korki, hi-top, glany z klamrami) -->
+                  <div id="creator-shoes-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru butów -->
+                  <div id="creator-shoes-colors" class="creator-hair-color-bar"></div>
+                </div>
+
+                <div id="creator-tab-jetpack" class="creator-tab-pane" style="display: none;">
+                  <!-- Nagłówek narzędzia osobistego danej klasy -->
+                  <div class="creator-section-header" id="creator-gear-section-header">
+                    <span class="creator-section-icon" id="creator-gear-header-icon">🚀</span>
+                    <span class="creator-section-title" id="creator-gear-header-title">PLECAK ODRZUTOWY (JETPACK)</span>
+                  </div>
+
+                  <!-- Kafelki z fasonami narzędzia osobistego -->
+                  <div id="creator-jetpack-grid" class="creator-hair-grid"></div>
+
+                  <!-- Pasek wyboru koloru napędu / energii -->
+                  <div id="creator-jetpack-colors" class="creator-hair-color-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-footer">
+              <button id="creator-editor-back-btn" class="ui-btn ui-btn-secondary" type="button">← Wybierz Inną Klasę</button>
+              <button id="creator-editor-done-btn" class="ui-btn ui-btn-primary" type="button">✓ Wróć do Menu</button>
+            </div>
           </div>
         </div>
       </div>
