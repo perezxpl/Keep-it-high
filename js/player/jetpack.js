@@ -270,3 +270,275 @@ export function drawJetpackPreview(
 
   ctx.restore();
 }
+
+/**
+ * Renderuje podgląd Butów Odrzutowych (Rocket Boots) Strikera w kafelku kreatora (68x68).
+ */
+export function drawRocketBootsPreview(
+  ctx,
+  canvasW,
+  canvasH,
+  styleId = 'classic',
+  flameColor = '#00e5ff',
+  visuals = {}
+) {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  const flamePal = getJetpackFlamePalette(flameColor || visuals.jetpackColor || '#00e5ff');
+
+  ctx.save();
+  ctx.translate(canvasW * 0.44, canvasH * 0.42);
+  const scale = Math.min(canvasW, canvasH) / 40.0;
+  ctx.scale(scale, scale);
+
+  // 1. Zarys bojowego buta i cholewki
+  ctx.fillStyle = '#18181b';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.9;
+
+  // Cholewka
+  ctx.beginPath();
+  ctx.rect(-3.5, -12, 8, 12);
+  ctx.fill();
+  ctx.stroke();
+
+  // Stopa i podeszwa
+  ctx.beginPath();
+  ctx.moveTo(-3.5, 0);
+  ctx.lineTo(8.5, 0);
+  ctx.lineTo(9.5, 3.2);
+  ctx.lineTo(-4.0, 3.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Gruby bieżnik podeszwy
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(-4.0, 2.2, 13.5, 1.2);
+
+  // 2. Tytanowa nakładka egzoszkieletu Rocket Boots na łydce i pięcie
+  const greaveGrad = ctx.createLinearGradient(-8, 0, -2, 0);
+  greaveGrad.addColorStop(0.0, '#0f172a');
+  greaveGrad.addColorStop(0.4, '#334155');
+  greaveGrad.addColorStop(1.0, '#1e293b');
+  ctx.fillStyle = greaveGrad;
+  ctx.strokeStyle = '#020617';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-8.5, -11, 5.2, 13.5, 1.5);
+  else ctx.rect(-8.5, -11, 5.2, 13.5);
+  ctx.fill();
+  ctx.stroke();
+
+  // Metalowe obejmy i hydrauliczny siłownik
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-8.0, -9.5, 4.2, 1.4);
+  ctx.fillRect(-8.0, -1.5, 4.2, 1.4);
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(-6.8, -7.5, 1.8, 5.5);
+
+  // Wskaźnik LED mocy na szynie buta
+  ctx.save();
+  ctx.fillStyle = flamePal.base;
+  ctx.shadowColor = flamePal.glow;
+  ctx.shadowBlur = 6;
+  ctx.fillRect(-5.2, -8.2, 1.4, 2.0);
+  ctx.fillRect(-5.2, -5.5, 1.4, 2.0);
+  ctx.fillRect(-5.2, -2.8, 1.4, 2.0);
+  ctx.restore();
+
+  // 3. Dysza dopalacza wylotowego na pięcie
+  const nzX = -8.2;
+  const nzY = 0.8;
+  const nzW = 4.2;
+  const nzH = 3.2;
+
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.moveTo(nzX, nzY);
+  ctx.lineTo(nzX + nzW, nzY);
+  ctx.lineTo(nzX + nzW + 0.6, nzY + nzH);
+  ctx.lineTo(nzX - 0.6, nzY + nzH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#020617';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+
+  // Pierścień żaroodporny
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(nzX - 0.6, nzY + nzH);
+  ctx.lineTo(nzX + nzW + 0.6, nzY + nzH);
+  ctx.stroke();
+
+  // 4. Strumień ognia rakietowego z dyszy buta
+  ctx.save();
+  ctx.shadowColor = flamePal.glow;
+  ctx.shadowBlur = 10;
+
+  const fH = 11;
+  const fGrad = ctx.createLinearGradient(0, nzY + nzH, 0, nzY + nzH + fH);
+  fGrad.addColorStop(0.0, '#ffffff');
+  fGrad.addColorStop(0.35, flamePal.base);
+  fGrad.addColorStop(1.0, flamePal.alphaZero);
+
+  ctx.fillStyle = fGrad;
+  ctx.beginPath();
+  ctx.moveTo(nzX - 0.4, nzY + nzH);
+  ctx.quadraticCurveTo(nzX + nzW * 0.5 - 1.5, nzY + nzH + fH * 0.4, nzX + nzW * 0.5 - 2, nzY + nzH + fH);
+  ctx.quadraticCurveTo(nzX + nzW * 0.5 + 0.5, nzY + nzH + fH * 0.4, nzX + nzW + 0.4, nzY + nzH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rdzeń płomienia
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(nzX + 0.4, nzY + nzH);
+  ctx.lineTo(nzX + nzW * 0.5 - 0.8, nzY + nzH + 4.5);
+  ctx.lineTo(nzX + nzW - 0.4, nzY + nzH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Renderuje podgląd Modułu Skoku i Tąpnięcia (Kinetic Stomp Module) Enforcera (68x68).
+ */
+export function drawStompModulePreview(
+  ctx,
+  canvasW,
+  canvasH,
+  styleId = 'classic',
+  flameColor = '#ef4444',
+  visuals = {}
+) {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  const flamePal = getJetpackFlamePalette(flameColor || visuals.jetpackColor || '#ef4444');
+
+  ctx.save();
+  ctx.translate(canvasW * 0.48, canvasH * 0.44);
+  const scale = Math.min(canvasW, canvasH) / 40.0;
+  ctx.scale(scale, scale);
+
+  // 1. Masywny, opancerzony but kolosa
+  ctx.fillStyle = '#111827';
+  ctx.strokeStyle = '#030712';
+  ctx.lineWidth = 1.0;
+
+  // Gruba cholewka
+  ctx.beginPath();
+  ctx.rect(-5.5, -13, 11, 13);
+  ctx.fill();
+  ctx.stroke();
+
+  // Stalowy nos buta i potężna podeszwa kinetyczna
+  ctx.beginPath();
+  ctx.moveTo(-5.5, 0);
+  ctx.lineTo(9.5, 0);
+  ctx.lineTo(11.0, 3.5);
+  ctx.lineTo(-6.5, 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Stalowa płyta ochronna nosa (Steel Toe Cap)
+  ctx.fillStyle = '#374151';
+  ctx.beginPath();
+  ctx.moveTo(5.0, 0);
+  ctx.lineTo(9.5, 0);
+  ctx.lineTo(11.0, 3.5);
+  ctx.lineTo(4.5, 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Ciężkie klamry balistyczne na cholewce
+  ctx.fillStyle = '#4b5563';
+  ctx.fillRect(-6.0, -10.5, 12, 1.8);
+  ctx.fillRect(-6.0, -5.5, 12, 1.8);
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillRect(-1.0, -11.0, 2.0, 2.8);
+  ctx.fillRect(-1.0, -6.0, 2.0, 2.8);
+
+  // Podwójny siłownik udarowy (Hydraulic Impact Piston) na pięcie
+  ctx.fillStyle = '#1f2937';
+  ctx.fillRect(-9.5, -8.0, 3.8, 10);
+  ctx.strokeStyle = '#030712';
+  ctx.lineWidth = 0.7;
+  ctx.strokeRect(-9.5, -8.0, 3.8, 10);
+
+  ctx.fillStyle = '#6b7280';
+  ctx.fillRect(-8.8, -5.5, 2.4, 6.5);
+
+  // 2. Fala uderzeniowa i wybuch kinetyczny pod podeszwą
+  ctx.save();
+  ctx.shadowColor = flamePal.glow;
+  ctx.shadowBlur = 12;
+
+  // Rozbłysk podeszwy
+  ctx.fillStyle = flamePal.base;
+  ctx.beginPath();
+  ctx.ellipse(1.5, 3.6, 9.5, 1.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Płomień/energia wybuchu kinetycznego w dół i na boki
+  const bH = 8.5;
+  const bGrad = ctx.createLinearGradient(0, 3.5, 0, 3.5 + bH);
+  bGrad.addColorStop(0.0, '#ffffff');
+  bGrad.addColorStop(0.4, flamePal.base);
+  bGrad.addColorStop(1.0, flamePal.alphaZero);
+
+  ctx.fillStyle = bGrad;
+  ctx.beginPath();
+  ctx.moveTo(-6.0, 3.5);
+  ctx.quadraticCurveTo(-9.0, 3.5 + bH * 0.7, -4.5, 3.5 + bH);
+  ctx.lineTo(0, 3.5 + bH * 0.5);
+  ctx.lineTo(4.5, 3.5 + bH);
+  ctx.quadraticCurveTo(9.0, 3.5 + bH * 0.7, 9.5, 3.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Promieniste iskry energii
+  ctx.strokeStyle = flamePal.light;
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(-8.0, 4.0); ctx.lineTo(-12.5, 8.5);
+  ctx.moveTo(10.0, 4.0); ctx.lineTo(14.5, 8.5);
+  ctx.moveTo(-2.0, 5.0); ctx.lineTo(-4.0, 11.5);
+  ctx.moveTo(3.0, 5.0); ctx.lineTo(5.0, 11.5);
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Zunifikowany punkt wejścia renderera podglądu wyposażenia osobistego / narzędzia mobilności
+ */
+export function drawPersonalGearPreview(
+  ctx,
+  canvasW,
+  canvasH,
+  classId = 'RAPTOR',
+  styleId = 'classic',
+  flameColor = '#00e5ff',
+  visuals = {}
+) {
+  const cid = String(classId || 'RAPTOR').toUpperCase();
+  if (cid === 'STRIKER') {
+    return drawRocketBootsPreview(ctx, canvasW, canvasH, styleId, flameColor, visuals);
+  } else if (cid === 'ENFORCER') {
+    return drawStompModulePreview(ctx, canvasW, canvasH, styleId, flameColor, visuals);
+  } else {
+    return drawJetpackPreview(ctx, canvasW, canvasH, styleId, flameColor, visuals);
+  }
+}
+

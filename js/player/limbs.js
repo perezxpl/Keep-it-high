@@ -1789,8 +1789,8 @@ export function getJetpackNozzlePos(p) {
 }
 
 export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v = {}) {
-  // Klasa Striker używa Butów Odrzutowych (Rocket Boots) – nie nosi plecaka na plecach
-  if (p.currentClass?.id === 'STRIKER' && !v.forceJetpackBackpack) {
+  // Klasy Striker (Rocket Boots) i Enforcer (Moduł Skoku) nie noszą plecaka odrzutowego na plecach
+  if ((p.currentClass?.id === 'STRIKER' || p.currentClass?.id === 'ENFORCER') && !v.forceJetpackBackpack) {
     return;
   }
 

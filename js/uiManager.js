@@ -36,11 +36,13 @@ import {
   JETPACK_STYLE_LIST,
   JETPACK_COLOR_LIST,
   drawJetpackPreview,
+  drawPersonalGearPreview,
   setLocalPlayerCustomVisuals
 } from './player/renderer.js';
 
 // Klucz do zapisu konfiguracji w localStorage
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
+const CLASS_APPEARANCES_STORAGE_KEY = 'keep_it_high_class_appearances_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
 import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats } from './progression.js';
@@ -58,25 +60,67 @@ const DEFAULT_SETTINGS = {
   debugColliders: false
 };
 
-const DEFAULT_APPEARANCE = {
-  hairStyle: 'buzzcut',
-  hairColor: '#18181b',
-  beardStyle: 'clean',
-  beardColor: '#18181b',
-  headgearStyle: 'none',
-  headgearColor: '#18181b',
-  maskStyle: 'none',
-  maskColor: '#18181b',
-  neckStyle: 'none',
-  torsoStyle: 'short_sleeve',
-  torsoColor: '#18181b',
-  pantsStyle: 'cargo_long',
-  pantsColor: '#18181b',
-  shoesStyle: 'combat_boots',
-  shoesColor: '#18181b',
-  jetpackStyle: 'classic',
-  jetpackColor: '#00e5ff'
+export const DEFAULT_CLASS_APPEARANCES = {
+  RAPTOR: {
+    hairStyle: 'buzzcut',
+    hairColor: '#18181b',
+    beardStyle: 'clean',
+    beardColor: '#18181b',
+    headgearStyle: 'none',
+    headgearColor: '#18181b',
+    maskStyle: 'none',
+    maskColor: '#18181b',
+    neckStyle: 'none',
+    torsoStyle: 'short_sleeve',
+    torsoColor: '#10b981', // lekki zielonkawy zwiadowca
+    pantsStyle: 'cargo_long',
+    pantsColor: '#18181b',
+    shoesStyle: 'combat_boots',
+    shoesColor: '#18181b',
+    jetpackStyle: 'classic',
+    jetpackColor: '#10b981'
+  },
+  STRIKER: {
+    hairStyle: 'spiky',
+    hairColor: '#18181b',
+    beardStyle: 'stubble',
+    beardColor: '#18181b',
+    headgearStyle: 'cap_forward',
+    headgearColor: '#1e293b',
+    maskStyle: 'none',
+    maskColor: '#18181b',
+    neckStyle: 'dogtags',
+    torsoStyle: 'short_sleeve',
+    torsoColor: '#0284c7', // taktyczny niebieski
+    pantsStyle: 'cargo_long',
+    pantsColor: '#0f172a',
+    shoesStyle: 'combat_boots',
+    shoesColor: '#18181b',
+    jetpackStyle: 'classic',
+    jetpackColor: '#00e5ff'
+  },
+  ENFORCER: {
+    hairStyle: 'buzzcut',
+    hairColor: '#18181b',
+    beardStyle: 'full_beard',
+    beardColor: '#18181b',
+    headgearStyle: 'beret',
+    headgearColor: '#7f1d1d',
+    maskStyle: 'none',
+    maskColor: '#18181b',
+    neckStyle: 'heavy_chain',
+    torsoStyle: 'short_sleeve',
+    torsoColor: '#b91c1c', // bojowa czerwień kolosa
+    pantsStyle: 'cargo_long',
+    pantsColor: '#111827',
+    shoesStyle: 'heavy_buckle_boots',
+    shoesColor: '#09090b',
+    jetpackStyle: 'classic',
+    jetpackColor: '#ef4444'
+  }
 };
+
+const DEFAULT_APPEARANCE = DEFAULT_CLASS_APPEARANCES.RAPTOR;
 
 // =============================================================================
 // 1. PROCEDURALNY SYNTEZATOR DŹWIĘKÓW UI (WEB AUDIO API)
@@ -229,7 +273,13 @@ export function playTestTone() {
 // =============================================================================
 export const uiManager = {
   settings: { ...DEFAULT_SETTINGS },
-  appearance: { ...DEFAULT_APPEARANCE },
+  classAppearances: {
+    RAPTOR: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR },
+    STRIKER: { ...DEFAULT_CLASS_APPEARANCES.STRIKER },
+    ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER }
+  },
+  activeCreatorClass: 'RAPTOR',
+  appearance: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR },
   selectedClassId: 'RAPTOR',
   callbacks: null,
   isInitialized: false,
@@ -294,44 +344,72 @@ export const uiManager = {
 
   loadAppearance() {
     try {
-      const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.appearance = { ...DEFAULT_APPEARANCE, ...parsed };
+      const rawClassData = localStorage.getItem(CLASS_APPEARANCES_STORAGE_KEY);
+      if (rawClassData) {
+        const parsed = JSON.parse(rawClassData);
+        this.classAppearances = {
+          RAPTOR: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR, ...(parsed.RAPTOR || {}) },
+          STRIKER: { ...DEFAULT_CLASS_APPEARANCES.STRIKER, ...(parsed.STRIKER || {}) },
+          ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER, ...(parsed.ENFORCER || {}) }
+        };
+      } else {
+        // Wsteczna kompatybilność: migracja ze starego pojedynczego profilu APPEARANCE_STORAGE_KEY
+        const legacyRaw = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+        let legacyParsed = null;
+        if (legacyRaw) {
+          try { legacyParsed = JSON.parse(legacyRaw); } catch (_) {}
+        }
+        this.classAppearances = {
+          RAPTOR: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR, ...(legacyParsed || {}) },
+          STRIKER: { ...DEFAULT_CLASS_APPEARANCES.STRIKER },
+          ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER }
+        };
+        this.saveAppearance();
       }
     } catch (e) {
       console.warn('[UI] Błąd odczytu wyglądu postaci z localStorage:', e);
-      this.appearance = { ...DEFAULT_APPEARANCE };
+      this.classAppearances = {
+        RAPTOR: { ...DEFAULT_CLASS_APPEARANCES.RAPTOR },
+        STRIKER: { ...DEFAULT_CLASS_APPEARANCES.STRIKER },
+        ENFORCER: { ...DEFAULT_CLASS_APPEARANCES.ENFORCER }
+      };
     }
+    if (!this.activeCreatorClass || !this.classAppearances[this.activeCreatorClass]) {
+      this.activeCreatorClass = 'RAPTOR';
+    }
+    this.appearance = this.classAppearances[this.activeCreatorClass];
   },
 
   saveAppearance() {
     try {
-      localStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(this.appearance));
+      localStorage.setItem(CLASS_APPEARANCES_STORAGE_KEY, JSON.stringify(this.classAppearances));
+      localStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(this.classAppearances[this.activeCreatorClass] || this.appearance));
     } catch (e) {
       console.warn('[UI] Błąd zapisu wyglądu postaci do localStorage:', e);
     }
   },
 
-  applyAppearance() {
+  applyAppearance(classId = this.activeCreatorClass) {
+    const cid = String(classId || 'RAPTOR').toUpperCase();
+    const app = this.classAppearances[cid] || this.appearance || DEFAULT_CLASS_APPEARANCES.RAPTOR;
     const custom = {
-      hairStyle: this.appearance.hairStyle || 'buzzcut',
-      hairColor: this.appearance.hairColor || '#18181b',
-      beardStyle: this.appearance.beardStyle || 'clean',
-      beardColor: this.appearance.beardColor || (this.appearance.hairColor || '#18181b'),
-      headgearStyle: this.appearance.headgearStyle || 'none',
-      headgearColor: this.appearance.headgearColor || '#18181b',
-      maskStyle: this.appearance.maskStyle || 'none',
-      maskColor: this.appearance.maskColor || '#18181b',
-      neckStyle: this.appearance.neckStyle || 'none',
-      torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
-      torsoColor: this.appearance.torsoColor || '#18181b',
-      pantsStyle: this.appearance.pantsStyle || 'cargo_long',
-      pantsColor: this.appearance.pantsColor || '#18181b',
-      shoesStyle: this.appearance.shoesStyle || 'combat_boots',
-      shoesColor: this.appearance.shoesColor || '#18181b',
-      jetpackStyle: this.appearance.jetpackStyle || 'classic',
-      jetpackColor: this.appearance.jetpackColor || '#00e5ff'
+      hairStyle: app.hairStyle || 'buzzcut',
+      hairColor: app.hairColor || '#18181b',
+      beardStyle: app.beardStyle || 'clean',
+      beardColor: app.beardColor || (app.hairColor || '#18181b'),
+      headgearStyle: app.headgearStyle || 'none',
+      headgearColor: app.headgearColor || '#18181b',
+      maskStyle: app.maskStyle || 'none',
+      maskColor: app.maskColor || '#18181b',
+      neckStyle: app.neckStyle || 'none',
+      torsoStyle: app.torsoStyle || 'short_sleeve',
+      torsoColor: app.torsoColor || '#18181b',
+      pantsStyle: app.pantsStyle || 'cargo_long',
+      pantsColor: app.pantsColor || '#18181b',
+      shoesStyle: app.shoesStyle || 'combat_boots',
+      shoesColor: app.shoesColor || '#18181b',
+      jetpackStyle: app.jetpackStyle || 'classic',
+      jetpackColor: app.jetpackColor || '#00e5ff'
     };
     setLocalPlayerCustomVisuals(custom);
     if (this.creatorDummyPlayer) {
@@ -339,8 +417,40 @@ export const uiManager = {
       this.creatorDummyPlayer._hairImpulse = 1.0;
     }
     if (typeof window !== 'undefined' && window.player) {
-      window.player.customVisuals = { ...(window.player.customVisuals || {}), ...custom };
-      window.player._hairImpulse = 1.0;
+      const curClassId = String(window.player.currentClass?.id || 'RAPTOR').toUpperCase();
+      if (curClassId === cid) {
+        window.player.customVisuals = { ...(window.player.customVisuals || {}), ...custom };
+        window.player._hairImpulse = 1.0;
+      }
+    }
+  },
+
+  applyAppearanceForClass(classId, targetPlayer = (typeof window !== 'undefined' ? window.player : null)) {
+    const cid = String(classId || 'RAPTOR').toUpperCase();
+    const app = this.classAppearances?.[cid] || this.classAppearances?.RAPTOR || DEFAULT_CLASS_APPEARANCES.RAPTOR;
+    const custom = {
+      hairStyle: app.hairStyle || 'buzzcut',
+      hairColor: app.hairColor || '#18181b',
+      beardStyle: app.beardStyle || 'clean',
+      beardColor: app.beardColor || (app.hairColor || '#18181b'),
+      headgearStyle: app.headgearStyle || 'none',
+      headgearColor: app.headgearColor || '#18181b',
+      maskStyle: app.maskStyle || 'none',
+      maskColor: app.maskColor || '#18181b',
+      neckStyle: app.neckStyle || 'none',
+      torsoStyle: app.torsoStyle || 'short_sleeve',
+      torsoColor: app.torsoColor || '#18181b',
+      pantsStyle: app.pantsStyle || 'cargo_long',
+      pantsColor: app.pantsColor || '#18181b',
+      shoesStyle: app.shoesStyle || 'combat_boots',
+      shoesColor: app.shoesColor || '#18181b',
+      jetpackStyle: app.jetpackStyle || 'classic',
+      jetpackColor: app.jetpackColor || '#00e5ff'
+    };
+    setLocalPlayerCustomVisuals(custom);
+    if (targetPlayer) {
+      targetPlayer.customVisuals = { ...(targetPlayer.customVisuals || {}), ...custom };
+      targetPlayer._hairImpulse = 1.0;
     }
   },
 
@@ -431,6 +541,7 @@ export const uiManager = {
 
   selectClass(classId) {
     this.selectedClassId = classId;
+    this.applyAppearanceForClass(classId);
   },
 
   updateMpArenaUI(arenaId) {
@@ -526,6 +637,10 @@ export const uiManager = {
       case 'CREATOR':
         if (creatorEl) creatorEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
+        const targetClassId = (typeof window !== 'undefined' && window.player?.currentClass?.id)
+          ? window.player.currentClass.id
+          : (this.activeCreatorClass || 'RAPTOR');
+        this.switchCreatorClass(targetClassId, false);
         this.initCreatorHairUI();
         this.initCreatorBeardUI();
         this.initCreatorHeadgearUI();
@@ -533,6 +648,8 @@ export const uiManager = {
         this.initCreatorNeckUI();
         this.initCreatorTorsoUI();
         this.initCreatorPantsUI();
+        this.initCreatorShoesUI();
+        this.initCreatorJetpackUI();
         this.switchCreatorTab(this.activeCreatorTab || 'hair');
         this.startCreatorPreview();
         break;
@@ -786,6 +903,17 @@ export const uiManager = {
         }
       });
     }
+
+    // Selektor klas w Kreatorze Postaci (RAPTOR, STRIKER, ENFORCER)
+    document.querySelectorAll('.creator-class-card').forEach((btn) => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        const classId = btn.dataset.creatorClass;
+        if (!classId) return;
+        playUiClick();
+        this.switchCreatorClass(classId);
+      });
+    });
 
     // Zakładki Kreatora Postaci (WŁOSY / ZAROST)
     document.querySelectorAll('.creator-tab-btn').forEach((btn) => {
@@ -1806,30 +1934,122 @@ export const uiManager = {
   renderCreatorJetpackTiles() {
     const curColor = this.appearance.jetpackColor || '#00e5ff';
     const visuals = { ...this.appearance };
+    const classId = this.activeCreatorClass || 'RAPTOR';
 
     document.querySelectorAll('#creator-jetpack-grid .creator-hair-tile').forEach((btn) => {
       const styleId = btn.dataset.jetpackStyle || 'classic';
       const cvs = btn.querySelector('canvas');
       if (cvs) {
         const ctx = cvs.getContext('2d');
-        drawJetpackPreview(ctx, cvs.width, cvs.height, styleId, curColor, visuals);
+        drawPersonalGearPreview(ctx, cvs.width, cvs.height, classId, styleId, curColor, visuals);
       }
     });
   },
 
-  activeCreatorTab: 'hair',
+  updatePersonalGearTabUI() {
+    const cid = String(this.activeCreatorClass || 'RAPTOR').toUpperCase();
+    const tabBtn = document.getElementById('creator-tab-btn-gear');
+    const tabIcon = document.getElementById('creator-gear-tab-icon');
+    const tabText = document.getElementById('creator-gear-tab-text');
+    const headerIcon = document.getElementById('creator-gear-header-icon');
+    const headerTitle = document.getElementById('creator-gear-header-title');
 
-  switchCreatorTab(tabId = 'hair') {
-    if (tabId === 'mask') tabId = 'headgear';
-    this.activeCreatorTab = tabId;
-    document.querySelectorAll('.creator-tab-btn').forEach((b) => {
-      b.classList.toggle('active', b.dataset.creatorTab === tabId);
+    let icon = '🚀';
+    let tabLabel = 'JETPACK';
+    let headerText = 'PLECAK ODRZUTOWY (JETPACK)';
+    let tooltip = 'Fason i płomień napędu jetpacka';
+
+    if (cid === 'STRIKER') {
+      icon = '⚡';
+      tabLabel = 'ROCKET BOOTS';
+      headerText = 'BUTY ODRZUTOWE (ROCKET BOOTS)';
+      tooltip = 'Fason i płomień dysz butów odrzutowych';
+    } else if (cid === 'ENFORCER') {
+      icon = '💥';
+      tabLabel = 'MODUŁ SKOKU';
+      headerText = 'MODUŁ SKOKU (ROCKET JUMP)';
+      tooltip = 'Fason i energia kinetycznego modułu skoku';
+    }
+
+    if (tabBtn) tabBtn.title = tooltip;
+    if (tabIcon) tabIcon.textContent = icon;
+    if (tabText) tabText.textContent = tabLabel;
+    if (headerIcon) headerIcon.textContent = icon;
+    if (headerTitle) headerTitle.textContent = headerText;
+  },
+
+  switchCreatorClass(classId = 'RAPTOR', playSound = true) {
+    const cid = String(classId || 'RAPTOR').toUpperCase();
+    this.activeCreatorClass = cid;
+    if (!this.classAppearances[cid]) {
+      this.classAppearances[cid] = { ...(DEFAULT_CLASS_APPEARANCES[cid] || DEFAULT_CLASS_APPEARANCES.RAPTOR) };
+    }
+    this.appearance = this.classAppearances[cid];
+
+    // 1. Zaznaczenie aktywnej karty klasy
+    document.querySelectorAll('.creator-class-card').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.creatorClass === cid);
     });
-    document.querySelectorAll('.creator-tab-pane').forEach((pane) => {
-      const isTarget = (pane.id === `creator-tab-${tabId}`);
-      pane.style.display = isTarget ? 'flex' : 'none';
-      pane.classList.toggle('active', isTarget);
-    });
+
+    // 2. Etykieta pod oknem podglądu postaci
+    const labelEl = document.getElementById('creator-preview-label');
+    if (labelEl) {
+      if (cid === 'RAPTOR') {
+        labelEl.textContent = 'KLASA LEKKA: RAPTOR';
+        labelEl.style.color = '#10b981';
+      } else if (cid === 'STRIKER') {
+        labelEl.textContent = 'KLASA ŚREDNIA: STRIKER';
+        labelEl.style.color = '#38bdf8';
+      } else if (cid === 'ENFORCER') {
+        labelEl.textContent = 'KLASA CIĘŻKA: ENFORCER';
+        labelEl.style.color = '#ef4444';
+      }
+    }
+
+    // 3. Aktualizacja parametrów i anatomii manekina IK (dummy player)
+    const activeClassObj = CLASSES[cid] || CLASSES.RAPTOR;
+    if (this.creatorDummyPlayer) {
+      this.creatorDummyPlayer.currentClass = activeClassObj;
+      this.creatorDummyPlayer.w = activeClassObj.body.w;
+      this.creatorDummyPlayer.h = activeClassObj.body.h;
+      this.creatorDummyPlayer.x = -activeClassObj.body.w / 2;
+      this.creatorDummyPlayer.y = -activeClassObj.body.h;
+      this.creatorDummyPlayer.thighLen = activeClassObj.body.thighLen;
+      this.creatorDummyPlayer.shinLen = activeClassObj.body.shinLen;
+      this.creatorDummyPlayer.upperArmLen = activeClassObj.body.upperArmLen;
+      this.creatorDummyPlayer.forearmLen = activeClassObj.body.forearmLen;
+      this.creatorDummyPlayer.customVisuals = { ...this.appearance };
+      this.creatorDummyPlayer._hairImpulse = 1.0;
+    }
+
+    // 4. Dostosowanie 7. zakładki (Narzędzie osobiste)
+    this.updatePersonalGearTabUI();
+
+    // 5. Synchronizacja stanu zaznaczeń wszystkich kafelków i palet barw
+    this.syncAllCreatorSelectionsUI();
+    this.renderCurrentCreatorTabTiles();
+
+    // 6. Odświeżenie kafelków wyposażenia osobistego pod nowy model (Jetpack / Buty / Moduł)
+    this.renderCreatorJetpackTiles();
+
+    // 7. Zastosowanie wyglądu
+    this.applyAppearance(cid);
+  },
+
+  syncAllCreatorSelectionsUI() {
+    this.syncCreatorHairSelectionUI();
+    this.syncCreatorBeardSelectionUI();
+    this.syncCreatorHeadgearSelectionUI();
+    this.syncCreatorMaskSelectionUI();
+    this.syncCreatorNeckSelectionUI();
+    this.syncCreatorTorsoSelectionUI();
+    this.syncCreatorPantsSelectionUI();
+    this.syncCreatorShoesSelectionUI();
+    this.syncCreatorJetpackSelectionUI();
+  },
+
+  renderCurrentCreatorTabTiles() {
+    const tabId = this.activeCreatorTab || 'hair';
     if (tabId === 'hair') {
       this.syncCreatorHairSelectionUI();
       this.renderCreatorHairTiles();
@@ -1858,18 +2078,47 @@ export const uiManager = {
     }
   },
 
+  renderAllCreatorTiles() {
+    this.renderCreatorHairTiles();
+    this.renderCreatorBeardTiles();
+    this.renderCreatorHeadgearTiles();
+    this.renderCreatorMaskTiles();
+    this.renderCreatorNeckTiles();
+    this.renderCreatorTorsoTiles();
+    this.renderCreatorPantsTiles();
+    this.renderCreatorShoesTiles();
+    this.renderCreatorJetpackTiles();
+  },
+
+  activeCreatorTab: 'hair',
+
+  switchCreatorTab(tabId = 'hair') {
+    if (tabId === 'mask') tabId = 'headgear';
+    this.activeCreatorTab = tabId;
+    document.querySelectorAll('.creator-tab-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.creatorTab === tabId);
+    });
+    document.querySelectorAll('.creator-tab-pane').forEach((pane) => {
+      const isTarget = (pane.id === `creator-tab-${tabId}`);
+      pane.style.display = isTarget ? 'flex' : 'none';
+      pane.classList.toggle('active', isTarget);
+    });
+    this.renderCurrentCreatorTabTiles();
+  },
+
   creatorRafId: null,
   creatorDummyPlayer: null,
 
   startCreatorPreview() {
     this.stopCreatorPreview();
+    const activeClassObj = CLASSES[this.activeCreatorClass] || CLASSES.RAPTOR;
     if (!this.creatorDummyPlayer) {
       this.creatorDummyPlayer = {
         _isCreatorPreview: true,
-        x: -12,
-        y: -70,
-        w: 24,
-        h: 70,
+        x: -activeClassObj.body.w / 2,
+        y: -activeClassObj.body.h,
+        w: activeClassObj.body.w,
+        h: activeClassObj.body.h,
         vx: 0,
         vy: 0,
         onGround: true,
@@ -1892,10 +2141,10 @@ export const uiManager = {
         headBob: 0,
         headBobVel: 0,
         kneeJuggleWeight: 0,
-        thighLen: 25,
-        shinLen: 24,
-        upperArmLen: 14,
-        forearmLen: 13,
+        thighLen: activeClassObj.body.thighLen,
+        shinLen: activeClassObj.body.shinLen,
+        upperArmLen: activeClassObj.body.upperArmLen,
+        forearmLen: activeClassObj.body.forearmLen,
         hp: 100,
         maxHp: 100,
         hasHead: true,
@@ -1920,41 +2169,28 @@ export const uiManager = {
         holsterWeight: 1.0,
         currentWeapon: null,
         aimAngle: 0,
-        currentClass: CLASSES.RAPTOR,
-        customVisuals: {
-          hairStyle: this.appearance.hairStyle || 'buzzcut',
-          hairColor: this.appearance.hairColor || '#18181b',
-          beardStyle: this.appearance.beardStyle || 'clean',
-          beardColor: this.appearance.beardColor || '#18181b',
-          headgearStyle: this.appearance.headgearStyle || 'none',
-          headgearColor: this.appearance.headgearColor || '#18181b',
-          maskStyle: this.appearance.maskStyle || 'none',
-          maskColor: this.appearance.maskColor || '#18181b',
-          neckStyle: this.appearance.neckStyle || 'none',
-          torsoStyle: this.appearance.torsoStyle || 'short_sleeve',
-          torsoColor: this.appearance.torsoColor || '#18181b',
-          pantsStyle: this.appearance.pantsStyle || 'cargo_long',
-          pantsColor: this.appearance.pantsColor || '#18181b',
-          shoesStyle: this.appearance.shoesStyle || 'combat_boots',
-          shoesColor: this.appearance.shoesColor || '#18181b',
-          jetpackStyle: this.appearance.jetpackStyle || 'classic',
-          jetpackColor: this.appearance.jetpackColor || '#00e5ff'
-        },
+        currentClass: activeClassObj,
+        customVisuals: { ...(this.appearance || DEFAULT_CLASS_APPEARANCES.RAPTOR) },
         pose: { initialized: false }
       };
+    } else {
+      this.creatorDummyPlayer.currentClass = activeClassObj;
+      this.creatorDummyPlayer.w = activeClassObj.body.w;
+      this.creatorDummyPlayer.h = activeClassObj.body.h;
+      this.creatorDummyPlayer.x = -activeClassObj.body.w / 2;
+      this.creatorDummyPlayer.y = -activeClassObj.body.h;
+      this.creatorDummyPlayer.thighLen = activeClassObj.body.thighLen;
+      this.creatorDummyPlayer.shinLen = activeClassObj.body.shinLen;
+      this.creatorDummyPlayer.upperArmLen = activeClassObj.body.upperArmLen;
+      this.creatorDummyPlayer.forearmLen = activeClassObj.body.forearmLen;
+      this.creatorDummyPlayer.customVisuals = { ...(this.appearance || DEFAULT_CLASS_APPEARANCES.RAPTOR) };
+      this.creatorDummyPlayer._hairImpulse = 1.0;
     }
 
     this.applyAppearance();
-    this.syncCreatorHairSelectionUI();
-    this.syncCreatorBeardSelectionUI();
-    this.syncCreatorHeadgearSelectionUI();
-    this.syncCreatorMaskSelectionUI();
-    this.syncCreatorNeckSelectionUI();
-    this.syncCreatorTorsoSelectionUI();
-    this.syncCreatorPantsSelectionUI();
-    this.syncCreatorShoesSelectionUI();
-    this.syncCreatorJetpackSelectionUI();
-    this.renderCreatorHairTiles();
+    this.updatePersonalGearTabUI();
+    this.syncAllCreatorSelectionsUI();
+    this.renderCurrentCreatorTabTiles();
 
     const tick = () => {
       this.drawCreatorPreviewFrame();
@@ -2017,10 +2253,24 @@ export const uiManager = {
     // 3. Rysowanie całej postaci w skali dopasowanej tak, by od stóp po czubek głowy mieściła się z dużym zapasem
     const dummy = this.creatorDummyPlayer;
     if (!dummy) return;
-    dummy.currentClass = CLASSES.RAPTOR;
+    const activeClassObj = CLASSES[this.activeCreatorClass] || CLASSES.RAPTOR;
+    dummy.currentClass = activeClassObj;
+    dummy.w = activeClassObj.body.w;
+    dummy.h = activeClassObj.body.h;
+    dummy.y = -activeClassObj.body.h;
+    dummy.thighLen = activeClassObj.body.thighLen;
+    dummy.shinLen = activeClassObj.body.shinLen;
+    dummy.upperArmLen = activeClassObj.body.upperArmLen;
+    dummy.forearmLen = activeClassObj.body.forearmLen;
+
     if (this.activeCreatorTab === 'jetpack') {
-      dummy.isJetpacking = true;
-      dummy.yaw = 0.55;
+      if (this.activeCreatorClass === 'RAPTOR') {
+        dummy.isJetpacking = true;
+        dummy.yaw = 0.55;
+      } else {
+        dummy.isJetpacking = false;
+        dummy.yaw = 0.35;
+      }
     } else {
       dummy.isJetpacking = false;
       dummy.yaw = 0;

@@ -414,6 +414,10 @@ export function setPlayerClass(newClass, p = player) {
   p.jetFuel = p.currentClass.stats.jetMax;
   p.jetMax = p.currentClass.stats.jetMax;
 
+  if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.applyAppearanceForClass === 'function') {
+    window.uiManager.applyAppearanceForClass(resolvedClass.id, p);
+  }
+
   resolvedClass.onInit?.(p);
 }
 

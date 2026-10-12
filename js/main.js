@@ -292,6 +292,9 @@ export function selectPlayerClass(targetClass) {
   if (!cls) cls = CLASSES.AERO;
 
   setPlayerClass(cls, player);
+  if (typeof uiManager !== 'undefined' && typeof uiManager.applyAppearanceForClass === 'function') {
+    uiManager.applyAppearanceForClass(cls.id, player);
+  }
   setGameState('PLAYING');
 
   // Reset i respawn gracza po zatwierdzeniu wyboru klasy

@@ -1942,6 +1942,105 @@ button, .dev-btn {
   color: #f8fafc;
 }
 
+/* Selektor kart klas w Kreatorze Postaci */
+.creator-class-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 10px 18px 2px 18px;
+  flex-shrink: 0;
+}
+
+.creator-class-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #f8fafc;
+  outline: none;
+}
+
+.creator-class-card:hover {
+  background: rgba(30, 41, 59, 0.95);
+  transform: translateY(-2px);
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.creator-class-card .class-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.creator-class-card .class-card-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.creator-class-card .class-card-icon {
+  font-size: 14px;
+}
+
+.creator-class-card .class-card-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.creator-class-card .class-card-gear-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Warianty aktywne dla poszczególnych klas */
+.creator-class-card[data-creator-class="RAPTOR"].active {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(15, 23, 42, 0.95));
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), inset 0 0 10px rgba(16, 185, 129, 0.15);
+}
+.creator-class-card[data-creator-class="RAPTOR"].active .class-card-badge,
+.creator-class-card[data-creator-class="RAPTOR"].active .class-card-name {
+  color: #34d399;
+}
+
+.creator-class-card[data-creator-class="STRIKER"].active {
+  border-color: #38bdf8;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(15, 23, 42, 0.95));
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), inset 0 0 10px rgba(56, 189, 248, 0.15);
+}
+.creator-class-card[data-creator-class="STRIKER"].active .class-card-badge,
+.creator-class-card[data-creator-class="STRIKER"].active .class-card-name {
+  color: #38bdf8;
+}
+
+.creator-class-card[data-creator-class="ENFORCER"].active {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(15, 23, 42, 0.95));
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.35), inset 0 0 10px rgba(239, 68, 68, 0.15);
+}
+.creator-class-card[data-creator-class="ENFORCER"].active .class-card-badge,
+.creator-class-card[data-creator-class="ENFORCER"].active .class-card-name {
+  color: #f87171;
+}
+
 .creator-body {
   display: flex;
   gap: 16px;
@@ -2171,6 +2270,23 @@ button, .dev-btn {
   .creator-modal-box .settings-header {
     padding: 8px 14px;
   }
+  .creator-class-selector {
+    padding: 4px 12px 1px 12px;
+    gap: 6px;
+  }
+  .creator-class-card {
+    padding: 4px 6px;
+    gap: 1px;
+  }
+  .creator-class-card .class-card-badge {
+    font-size: 8px;
+  }
+  .creator-class-card .class-card-name {
+    font-size: 12px;
+  }
+  .creator-class-card .class-card-gear-desc {
+    display: none;
+  }
   .creator-modal-box .settings-title-group h2 {
     font-size: 13px;
   }
@@ -2359,6 +2475,19 @@ button, .dev-btn {
   }
   .settings-tab-content {
     max-height: 44vh;
+  }
+  .creator-class-selector {
+    padding: 8px 10px 2px 10px;
+    gap: 6px;
+  }
+  .creator-class-card {
+    padding: 6px 8px;
+  }
+  .creator-class-card .class-card-name {
+    font-size: 13px;
+  }
+  .creator-class-card .class-card-gear-desc {
+    display: none;
   }
 }
 
