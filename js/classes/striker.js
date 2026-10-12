@@ -170,6 +170,21 @@ export function initRocketBootsState(p) {
 }
 
 /**
+ * Sprawdza, czy gracz znajduje się w pozycji klęczącej / kucającej lub leżącej.
+ * Podczas klękania (CROUCH) lub leżenia (PRONE) wszelkie formy dasha są bezwzględnie zablokowane.
+ */
+export function isPlayerCrouchingOrProne(player) {
+  if (!player) return false;
+  return !!(
+    player.isCrouching ||
+    player.isProne ||
+    player.state === 'CROUCH' ||
+    player.state === 'PRONE' ||
+    player.crouchToggled
+  );
+}
+
+/**
  * Przetwarza wejście gracza (klawisze, drążek, pad) dla Butów Odrzutowych Strikera.
  * Wywoływane co klatkę z playerController.js.
  */
@@ -178,6 +193,30 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   if (!player.rocketBoots) initRocketBootsState(player);
 
   const rb = player.rocketBoots;
+
+  // =========================================================================
+  // WYKLUCZENIE MOŻLIWOŚCI DASHU PODCZAS KLĘKANIA LUB LEŻENIA:
+  // Postać w pozycji klęczącej/kucającej (CROUCH) lub leżącej (PRONE)
+  // nie może ładować energii ani odpalać żadnego rodzaju dasha!
+  // =========================================================================
+  if (isPlayerCrouchingOrProne(player)) {
+    if (rb.dashing) {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+      rb.dashInputSource = 'NONE';
+    }
+    rb.isTouchCharging = false;
+    rb.touchChargeStartTime = 0;
+    rb.touchChargeRatio = 0;
+    rb.touchChargePower = 0;
+    rb.touchAirDashReady = false;
+    rb.isKeyCharging = false;
+    rb.keyChargeStartTime = 0;
+    rb.keyChargeRatio = 0;
+    rb.keyChargePower = 0;
+    return;
+  }
+
   const now = performance.now();
   const FLICK_WINDOW_MS = 300; // Okno czasowe na podwójny wyrzut drążka / tapnięcie (do 300 ms) na ziemi
 
@@ -212,14 +251,14 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   // =========================================================================
   // 3. STEROWANIE MOBILNE: ŁADOWANIE SIŁY PRZED WYCHYLENIEM (CHARGE DASH)
-  // Gdy gracz przytrzyma lewy drążek w centrum LUB w dół, drążek ładuje energię (touchChargeRatio 0..1).
-  // Wychylenie w dół NIE dezaktywuje energii!
+  // Gdy gracz przytrzyma lewy drążek w centrum, drążek ładuje energię (touchChargeRatio 0..1).
+  // Wychylenie w dół (klękanie / kucanie / zeskakiwanie) wyklucza ładowanie i dashowanie!
   // Wychylenie drążka w dowolnym kierunku poza dołem (lewo, prawo, góra, skos) uwalnia dash
   // z siłą zależną od naładowania, a zużycie paliwa i prędkość skalują się proporcjonalnie.
   // =========================================================================
   const isTouchStick = !!(leftStick && leftStick.active);
   const isStickCentered = (stickMag < 0.38);
-  const isHoldingChargeZone = isStickCentered || isStickAimingDown;
+  const isHoldingChargeZone = isStickCentered && !isStickAimingDown;
 
   if (isTouchStick) {
     if (isAirborne) {
@@ -262,8 +301,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             rb.touchChargePower = 0;
           } else {
             const holdMs = now - rb.touchChargeStartTime;
-            // Chwilowe opóźnienie: 220 ms w centrum (pozwala na swobodny podskok i bieg), 80 ms w dół
-            const CHARGE_DELAY = isStickAimingDown ? 80 : 220;
+            // Chwilowe opóźnienie: 220 ms w centrum (pozwala na swobodny podskok i bieg)
+            const CHARGE_DELAY = 220;
             const FULL_CHARGE = 460;
             if (holdMs >= CHARGE_DELAY) {
               const rawRatio = Math.min(1.0, (holdMs - CHARGE_DELAY) / FULL_CHARGE);
@@ -452,7 +491,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   if (rb.dashing && rb.dashType === 'GROUND') {
     let continueGroundDash = false;
 
-    if ((player.jetFuel || 0) <= 0) {
+    if ((player.jetFuel || 0) <= 0 || isPlayerCrouchingOrProne(player)) {
       continueGroundDash = false;
     } else {
       const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
@@ -713,6 +752,7 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
  * Odpala Super Dash w powietrzu ze skalowaną siłą (power: 0.35 .. 1.0)
  */
 function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
+  if (isPlayerCrouchingOrProne(player)) return;
   const rb = player.rocketBoots;
   rb.dashing = true;
   rb.dashType = 'AIR';
@@ -744,6 +784,7 @@ function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
  * Odpala dopalacz w butach na ziemi (Ground Rocket Dash) ze skalowaną siłą
  */
 function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 1.0) {
+  if (isPlayerCrouchingOrProne(player)) return;
   const rb = player.rocketBoots;
   rb.dashing = true;
   rb.dashType = 'GROUND';
@@ -788,6 +829,16 @@ function emitBootsBurstParticles(player, thrustDirX, thrustDirY, count = 10) {
 export function updateRocketBootsPhysics(player) {
   if (!player || !player.rocketBoots) return;
   const rb = player.rocketBoots;
+
+  // Podczas klękania lub leżenia natychmiast wygaś aktywny dash
+  if (isPlayerCrouchingOrProne(player)) {
+    if (rb.dashing) {
+      rb.dashing = false;
+      rb.dashType = 'NONE';
+      rb.dashInputSource = 'NONE';
+    }
+    return;
+  }
 
   if (!rb.dashing) return;
 
