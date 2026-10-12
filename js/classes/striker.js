@@ -117,7 +117,75 @@ export const StrikerClass = {
 
   onBallPassiveContact(player, ball) {},
   onDrawUnder(ctx, player) {},
-  onDrawOverlay(ctx, player) {}
+  onDrawOverlay(ctx, player) {
+    const rb = player?.rocketBoots;
+    if (!rb) return;
+    const ratio = rb.keyChargeRatio || rb.touchChargeRatio || 0;
+    if (ratio <= 0.05) return;
+
+    const customFlame = getStrikerFlameColor(player);
+    const flamePal = getJetpackFlamePalette(customFlame);
+    const footX = player.x + (player.w || 24) / 2;
+    const footY = player.y + (player.h || 70) - 2;
+
+    ctx.save();
+    // 1. Pulsujący neonowy pierścień naładowania pod stopami (Energy Ring)
+    const baseRadius = 13 + 9 * ratio;
+    ctx.beginPath();
+    ctx.ellipse(footX, footY, baseRadius, baseRadius * 0.40, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = flamePal.base || '#00e5ff';
+    ctx.lineWidth = 2.0 + 1.8 * ratio;
+    ctx.shadowColor = flamePal.glow || '#00d0ff';
+    ctx.shadowBlur = 8 + 14 * ratio;
+    ctx.globalAlpha = 0.50 + 0.45 * ratio;
+    ctx.stroke();
+
+    // 2. Plazmowy blask pod butami
+    const grad = ctx.createRadialGradient(footX, footY, 2, footX, footY, baseRadius);
+    grad.addColorStop(0, flamePal.light || '#ffffff');
+    grad.addColorStop(0.55, flamePal.base || '#00e5ff');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.22 + 0.35 * ratio;
+    ctx.fill();
+
+    // 3. Wskaźnik Circular Gauge energii nad głową gracza
+    const headX = player.x + (player.w || 24) / 2;
+    const headY = player.y - 12;
+    const gaugeR = 10;
+    const startA = -Math.PI / 2;
+    const endA = startA + Math.PI * 2 * ratio;
+
+    // Tło łuku
+    ctx.beginPath();
+    ctx.arc(headX, headY, gaugeR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
+    ctx.lineWidth = 2.8;
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+
+    // Pasek postępu
+    ctx.beginPath();
+    ctx.arc(headX, headY, gaugeR, startA, endA);
+    ctx.strokeStyle = (ratio >= 0.95) ? '#ffffff' : (flamePal.base || '#00e5ff');
+    ctx.lineWidth = 2.8;
+    ctx.shadowColor = flamePal.glow || '#00d0ff';
+    ctx.shadowBlur = 8 + 8 * ratio;
+    ctx.globalAlpha = 0.95;
+    ctx.stroke();
+
+    // Symbol pioruna w centrum wskaźnika
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = (ratio >= 0.95) ? '#ffffff' : (flamePal.light || '#e0ffff');
+    ctx.shadowColor = flamePal.glow || '#00d0ff';
+    ctx.shadowBlur = 4;
+    ctx.fillText('⚡', headX, headY + 0.5);
+
+    ctx.restore();
+  }
 };
 
 // =========================================================================
@@ -152,6 +220,12 @@ export function initRocketBootsState(p) {
     // Powietrze – gotowość drążka na pojedynczy wyrzut po uprzednim cofnięciu / wyskoku
     airStickReady: false,
     prevAirborne: false,
+
+    // Klawiatura PC – ładowanie siły klawiszem X (PC Charge Dash)
+    isKeyCharging: false,
+    keyChargeStartTime: 0,
+    keyChargeRatio: 0,
+    keyChargePower: 0,
 
     // Ładowanie siły drążka dotykowego przed wychyleniem (Mobile Charge Dash)
     touchChargeStartTime: 0,
@@ -278,6 +352,106 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     rb.touchChargeStartTime = 0;
     rb.touchChargeRatio = 0;
     rb.touchChargePower = 0;
+  }
+
+  // =========================================================================
+  // 3B. KLAWIATURA PC: ŁADOWANIE SIŁY BUTÓW KLAWISZEM X (PC CHARGE DASH)
+  // Gracz przytrzymuje klawisz X, ładując energię (0..1 w ~450ms).
+  // Zwolnienie klawisza X natychmiast uwalnia Rocket Boots Dash ze skalowaną siłą:
+  // - Sam klawisz X (lub X + W): wyskok dashem w górę (zastępuje 2x W!)
+  // - X + W + A / X + W + D: wyskok po skosie w górę
+  // - X + A / X + D: dash w lewo / w prawo (Ground Dash na ziemi, Air Dash w locie)
+  // - X + S (w locie): pikowanie w dół
+  // =========================================================================
+  const keyCharge = !!(keys && (keys.KeyX || keys.bootsCharge));
+  const justReleasedKeyCharge = (rb.isKeyCharging && !keyCharge);
+
+  if (keyCharge) {
+    if ((player.jetFuel || 0) >= 5) {
+      if (!rb.isKeyCharging) {
+        rb.isKeyCharging = true;
+        rb.keyChargeStartTime = now;
+        rb.keyChargeRatio = 0;
+        rb.keyChargePower = 0.35;
+      } else {
+        const holdMs = now - rb.keyChargeStartTime;
+        const FULL_CHARGE = 450;
+        const rawRatio = Math.min(1.0, holdMs / FULL_CHARGE);
+        const maxFuelRatio = Math.min(1.0, Math.max(0.1, (player.jetFuel || 0) / 50));
+        rb.keyChargeRatio = Math.min(rawRatio, maxFuelRatio);
+        rb.keyChargePower = 0.35 + 0.65 * rb.keyChargeRatio;
+      }
+      rb.touchChargeRatio = rb.keyChargeRatio;
+      rb.touchChargePower = rb.keyChargePower;
+      if (rb.keyChargeRatio > 0.08 && Math.random() < 0.32) {
+        emitBootsChargeSparks(player);
+      }
+    } else {
+      rb.isKeyCharging = false;
+      rb.keyChargeRatio = 0;
+      rb.keyChargePower = 0;
+      rb.touchChargeRatio = 0;
+      rb.touchChargePower = 0;
+    }
+  } else if (justReleasedKeyCharge) {
+    const power = rb.keyChargePower || 0.35;
+
+    if (isAirborne) {
+      let nx = 0;
+      let ny = 0;
+      if (keyUp) {
+        if (keyLeft) { nx = -0.707; ny = -0.707; }
+        else if (keyRight) { nx = 0.707; ny = -0.707; }
+        else { nx = 0; ny = -1.0; }
+      } else if (keyDown) {
+        if (keyLeft) { nx = -0.707; ny = 0.707; }
+        else if (keyRight) { nx = 0.707; ny = 0.707; }
+        else { nx = 0; ny = 1.0; }
+      } else if (keyLeft) {
+        nx = -1.0; ny = 0;
+      } else if (keyRight) {
+        nx = 1.0; ny = 0;
+      } else {
+        // Domyślnie w powietrzu bez wciśniętych kierunków: wyskok w górę
+        nx = 0; ny = -1.0;
+      }
+
+      const fuelCost = (player.jetMax || 100) * 0.50 * power;
+      player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+      triggerStrikerAirDash(player, nx, ny, power);
+    } else {
+      // NA ZIEMI:
+      if (keyUp || (!keyLeft && !keyRight)) {
+        // Natychmiastowy wyskok dashem w górę (ZAMIAST 2x W!)
+        let nx = 0;
+        let ny = -1.0;
+        if (keyLeft) { nx = -0.707; ny = -0.707; }
+        else if (keyRight) { nx = 0.707; ny = -0.707; }
+
+        const fuelCost = (player.jetMax || 100) * 0.50 * power;
+        player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+        player.onGround = false;
+        player.isJumping = true;
+        player.y -= 3;
+        triggerStrikerAirDash(player, nx, ny, power);
+      } else if (keyLeft) {
+        const startFuel = 12.0 * power;
+        player.jetFuel = Math.max(0, player.jetFuel - startFuel);
+        triggerStrikerGroundDash(player, -1, 'KEYBOARD', power);
+      } else if (keyRight) {
+        const startFuel = 12.0 * power;
+        player.jetFuel = Math.max(0, player.jetFuel - startFuel);
+        triggerStrikerGroundDash(player, 1, 'KEYBOARD', power);
+      }
+    }
+
+    rb.isKeyCharging = false;
+    rb.keyChargeStartTime = 0;
+    rb.keyChargeRatio = 0;
+    rb.keyChargePower = 0;
+    rb.touchChargeRatio = 0;
+    rb.touchChargePower = 0;
+    return;
   }
 
   // =========================================================================

@@ -52,7 +52,9 @@ export const keys = {
   shift: false,
   slide: false,
   ctrl: false,
-  crouch: false
+  crouch: false,
+  KeyX: false,
+  bootsCharge: false
 };
 
 export const inputSession = {
@@ -80,6 +82,11 @@ export function resetInputState() {
       player.isCharging = false;
       player.chargePower = 0;
       player.kickPower = 0;
+    }
+    if (player.rocketBoots) {
+      player.rocketBoots.isKeyCharging = false;
+      player.rocketBoots.keyChargeRatio = 0;
+      player.rocketBoots.keyChargePower = 0;
     }
   }
   mouseState.lmbDown = false;
@@ -368,6 +375,10 @@ export function initKeyboardMouseHandlers({
         playerSlide(spawnGrass, GROUND_Y, player);
       }
     }
+    if ((e.code === 'KeyX' || e.key === 'x' || e.key === 'X') && !e.repeat) {
+      keys.KeyX = true;
+      keys.bootsCharge = true;
+    }
     if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
       if (!e.repeat && !player.isDead) {
         if (player.isHolstered) player.isHolstered = false;
@@ -510,6 +521,10 @@ export function initKeyboardMouseHandlers({
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC' || e.key === 'Shift') {
       keys.slide = false;
       keys.shift = false;
+    }
+    if (e.code === 'KeyX' || e.key === 'x' || e.key === 'X') {
+      keys.KeyX = false;
+      keys.bootsCharge = false;
     }
     if (e.code === 'KeyG') {
       if ((GAME_STATE.current === 'PLAYING' || GAME_STATE.current === GAME_STATES.PLAYING) && !player.isDead) {
