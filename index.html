@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>FRAG BALL // Cyber Arena</title>
+  <title>MODERN MILITARY // Cyber Arena</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,11 +41,11 @@
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/main.js": "./js/main.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/main.js": "./js/main.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/network.js": "./js/network.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles.js": "./js/obstacles.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -70,13 +70,13 @@
       "./js/player/torso.js": "./js/player/torso.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/renderer.js": "./js/player/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/state.js": "./js/player/state.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/progression.js": "./js/progression.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/progression.js": "./js/progression.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/projectiles.js": "./js/projectiles.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/renderer.js": "./js/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/uiManager.js": "./js/uiManager.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v136_player_card_dossier_and_combat_stats",
+      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v136_player_card_dossier_and_combat_stats",
+      "./js/uiManager.js": "./js/uiManager.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/weapons.js": "./js/weapons.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -88,7 +88,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v134_striker_mobile_air_dash_flames_spread">
+  <link rel="stylesheet" href="./css/main.css?v=v137_modern_military_title_and_card_header">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -279,25 +279,109 @@
       <div id="main-menu-overlay" class="ui-view-overlay" style="display: flex;">
         <div class="menu-container">
           <div class="menu-brand">
-            <h1 class="menu-title">FRAG BALL</h1>
+            <h1 class="menu-title">MODERN MILITARY</h1>
           </div>
 
-          <!-- Karta Stopnia Wojskowego Gracza -->
-          <div class="menu-rank-card" id="menu-player-rank-card">
-            <div class="rank-badge-shield">
-              <span class="rank-icon" id="menu-rank-icon">━</span>
+          <!-- KARTA GRACZA I STATYSTYKI BOJOWE -->
+          <div class="menu-player-card" id="menu-player-card">
+            <!-- Nagłówek Karty Gracza -->
+            <div class="player-card-header">
+              <div class="player-card-id-badge">
+                <span class="card-pulse-dot"></span>
+                <span class="card-id-text">KARTA GRACZA</span>
+              </div>
+              <div class="player-card-header-actions">
+                <button id="menu-btn-reset-stats" class="player-card-tool-btn" type="button" title="Resetuj statystyki bojowe">
+                  <span class="tool-btn-icon">↺</span>
+                  <span class="tool-btn-text">RESET</span>
+                </button>
+              </div>
             </div>
-            <div class="rank-details">
-              <div class="rank-title-row">
-                <span class="rank-label">STOPIEŃ WOJSKOWY</span>
-                <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
+
+            <!-- Sekcja Rangi Wojskowej -->
+            <div class="player-card-rank-section">
+              <div class="rank-badge-shield">
+                <span class="rank-icon" id="menu-rank-icon">━</span>
               </div>
-              <div class="rank-name-row">
-                <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
-                <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: St. Szeregowy (400 XP)</span>
+              <div class="rank-details">
+                <div class="rank-title-row">
+                  <span class="rank-label">STOPIEŃ WOJSKOWY</span>
+                  <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
+                </div>
+                <div class="rank-name-row">
+                  <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
+                  <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: Starszy Szeregowy (400 XP)</span>
+                </div>
+                <div class="rank-progress-bar-bg">
+                  <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
+                </div>
               </div>
-              <div class="rank-progress-bar-bg">
-                <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
+            </div>
+
+            <!-- Siatka Statystyk Bojowych Gracza -->
+            <div class="player-stats-grid">
+              <div class="stat-pill" title="Łączna liczba zabójstw przeciwników">
+                <div class="stat-pill-icon">⚔️</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-cyan" id="menu-stat-kills">0</span>
+                  <span class="stat-pill-lbl">ZABÓJSTWA</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Łączna liczba śmierci gracza">
+                <div class="stat-pill-icon">💀</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-rose" id="menu-stat-deaths">0</span>
+                  <span class="stat-pill-lbl">ŚMIERCI</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Stosunek zabójstw do śmierci (K/D Ratio)">
+                <div class="stat-pill-icon">🎯</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-amber" id="menu-stat-kd">0.00</span>
+                  <span class="stat-pill-lbl">K/D RATIO</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Liczba wygranych meczów">
+                <div class="stat-pill-icon">🏆</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-emerald" id="menu-stat-wins">0</span>
+                  <span class="stat-pill-lbl">WYGRANE</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Liczba przegranych meczów">
+                <div class="stat-pill-icon">❌</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-red" id="menu-stat-losses">0</span>
+                  <span class="stat-pill-lbl">PRZEGRANE</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Łączna liczba rozegranych meczów">
+                <div class="stat-pill-icon">🎮</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-sky" id="menu-stat-matches">0</span>
+                  <span class="stat-pill-lbl">ROZEGRANE</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Procent wygranych meczów (Win Rate)">
+                <div class="stat-pill-icon">📈</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-purple" id="menu-stat-winrate">0%</span>
+                  <span class="stat-pill-lbl">WIN RATE</span>
+                </div>
+              </div>
+
+              <div class="stat-pill" title="Łączna liczba strzelonych bramek">
+                <div class="stat-pill-icon">⚽</div>
+                <div class="stat-pill-info">
+                  <span class="stat-pill-val text-yellow" id="menu-stat-goals">0</span>
+                  <span class="stat-pill-lbl">BRAMKI</span>
+                </div>
               </div>
             </div>
           </div>

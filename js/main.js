@@ -53,6 +53,7 @@ import {
   checkRightStickFlickOrTap
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
+import { recordKill, recordDeath } from './progression.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
   editorState,
@@ -541,10 +542,11 @@ function update() {
       checkPlayerPlatformLanding(remotePlayer, GROUND_Y);
     }
 
-    // Zliczanie fragów w trybie Team Deathmatch
+    // Zliczanie fragów w trybie Team Deathmatch oraz statystyk gracza
     if (player.isDead) {
       if (!player._fragRecorded) {
         arenaScore.orange++;
+        recordDeath();
         player._fragRecorded = true;
       }
     } else {
@@ -555,6 +557,7 @@ function update() {
       if (bot.isDead) {
         if (!bot._fragRecorded) {
           arenaScore.cyan++;
+          recordKill();
           bot._fragRecorded = true;
         }
       } else {
@@ -566,11 +569,24 @@ function update() {
       if (remotePlayer.isDead) {
         if (!remotePlayer._fragRecorded) {
           arenaScore.cyan++;
+          recordKill();
           remotePlayer._fragRecorded = true;
         }
       } else {
         remotePlayer._fragRecorded = false;
       }
+    }
+  }
+
+  // Rejestracja zgonu gracza poza trybem Deathmatch (np. kwas w Arenie 2)
+  if (!isDeathmatch) {
+    if (player.isDead) {
+      if (!player._fragRecorded) {
+        recordDeath();
+        player._fragRecorded = true;
+      }
+    } else {
+      player._fragRecorded = false;
     }
   }
 

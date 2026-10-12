@@ -43,7 +43,7 @@ import {
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
-import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress } from './progression.js';
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats } from './progression.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -259,7 +259,7 @@ export const uiManager = {
     const nextBadgeEl = document.getElementById('menu-rank-next-badge');
 
     if (iconEl) iconEl.textContent = rank.icon;
-    if (nameEl) nameEl.textContent = `${rank.short} ${rank.name.toUpperCase()}`;
+    if (nameEl) nameEl.textContent = rank.name.toUpperCase();
     if (xpEl) xpEl.textContent = `${currentXp} XP`;
     if (barFillEl) barFillEl.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
     if (nextBadgeEl) {
@@ -270,6 +270,26 @@ export const uiManager = {
         nextBadgeEl.textContent = `MAKSYMALNY STOPIEŃ WOJSKOWY: ELITA ARENY`;
       }
     }
+
+    // Aktualizacja statystyk Karty Gracza
+    const stats = getPlayerStatsSummary();
+    const elKills = document.getElementById('menu-stat-kills');
+    const elDeaths = document.getElementById('menu-stat-deaths');
+    const elKd = document.getElementById('menu-stat-kd');
+    const elWins = document.getElementById('menu-stat-wins');
+    const elLosses = document.getElementById('menu-stat-losses');
+    const elMatches = document.getElementById('menu-stat-matches');
+    const elWinRate = document.getElementById('menu-stat-winrate');
+    const elGoals = document.getElementById('menu-stat-goals');
+
+    if (elKills) elKills.textContent = stats.kills;
+    if (elDeaths) elDeaths.textContent = stats.deaths;
+    if (elKd) elKd.textContent = stats.kdRatio;
+    if (elWins) elWins.textContent = stats.matchesWon;
+    if (elLosses) elLosses.textContent = stats.matchesLost;
+    if (elMatches) elMatches.textContent = stats.matchesPlayed;
+    if (elWinRate) elWinRate.textContent = stats.winRate;
+    if (elGoals) elGoals.textContent = stats.goalsScored;
   },
 
   loadAppearance() {
@@ -532,6 +552,20 @@ export const uiManager = {
   },
 
   bindDOM() {
+    // -------------------------------------------------------------------------
+    // KARTA GRACZA: Resetowanie statystyk
+    // -------------------------------------------------------------------------
+    const resetStatsBtn = document.getElementById('menu-btn-reset-stats');
+    if (resetStatsBtn) {
+      resetStatsBtn.addEventListener('mouseenter', () => playUiHover());
+      resetStatsBtn.addEventListener('click', () => {
+        playUiClick();
+        if (confirm('Czy na pewno chcesz zresetować swoje statystyki bojowe (zabójstwa, mecze, bramki)?')) {
+          resetPlayerStats();
+          this.updateMenuRankDisplay();
+        }
+      });
+    }
 
     // -------------------------------------------------------------------------
     // LOBBY MULTIPLAYER: Wybór mapy / areny

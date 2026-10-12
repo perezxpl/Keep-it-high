@@ -1673,7 +1673,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.restore();
   }
 
-  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +200 XP
+  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +40 XP
   checkMatchWin(curArenaId, curScore);
   updateMatchWinState(curScore);
   drawMatchVictoryHUD(ctx, W, H, isMobile);

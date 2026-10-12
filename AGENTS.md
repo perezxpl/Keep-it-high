@@ -79,8 +79,8 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
 
 ### 🎖️ Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
-- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oparty na punktach XP zapisywanych w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getCurrentRank`, `getNextRank`, `getRankProgress`).
-- `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+200 XP).
+- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oraz statystyk bojowych gracza (zabójstwa, śmierci, wygrane, przegrane, rozegrane mecze, bramki, K/D, win rate) w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
+- `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+40 XP).
 
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:

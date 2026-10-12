@@ -3,7 +3,7 @@
  * Rysowanie w HUD podczas gry oraz obsługa nagród XP za wygrany mecz.
  */
 
-import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP } from '../progression.js';
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult } from '../progression.js';
 
 // Stan powiadomień XP i zwycięstwa w meczu
 export const matchWinState = {
@@ -12,12 +12,12 @@ export const matchWinState = {
   timer: 0,
   maxTimer: 240, // ~4 sekundy przy 60 fps
   xpAwarded: false,
-  rewardXp: 200,
+  rewardXp: 40, // Zredukowane z 200 do 40 XP - awans wymaga 10 wygranych zamiast 2
   previousRankName: '',
   newRankName: ''
 };
 
-// Pływające powiadomienia o zyskanym XP w HUD (+200 XP)
+// Pływające powiadomienia o zyskanym XP w HUD (+40 XP)
 const floatingXpPopups = [];
 
 export function spawnXpPopup(text, amount, color = '#facc15') {
@@ -32,7 +32,7 @@ export function spawnXpPopup(text, amount, color = '#facc15') {
 }
 
 /**
- * Sprawdza warunek zwycięstwa w meczu i przyznaje +200 XP dla gracza (drużyna CYAN)
+ * Sprawdza warunek zwycięstwa w meczu i przyznaje +40 XP dla gracza (drużyna CYAN)
  * - Arena 1 (Piłka / Neonowe Miasto): wygrana przy 3 bramkach
  * - Arena 3 (Team Deathmatch / Odlewnia): wygrana przy 5 fragach
  */
@@ -53,8 +53,9 @@ export function checkMatchWin(arenaId, scoreObj) {
     matchWinState.xpAwarded = true;
     matchWinState.previousRankName = rankBefore.name;
 
-    // Przyznanie +200 XP za wygrany mecz
+    // Przyznanie +40 XP za wygrany mecz oraz zapis statystyki
     addPlayerXP(matchWinState.rewardXp);
+    recordMatchResult('WIN');
 
     const rankAfter = getCurrentRank();
     matchWinState.newRankName = rankAfter.name;
@@ -65,6 +66,7 @@ export function checkMatchWin(arenaId, scoreObj) {
     matchWinState.winner = 'ORANGE';
     matchWinState.timer = matchWinState.maxTimer;
     matchWinState.xpAwarded = false;
+    recordMatchResult('LOSS');
   }
 }
 
@@ -181,7 +183,7 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
 }
 
 /**
- * Rysuje pełnoekranowy baner zwycięstwa w meczu z informacją o +200 XP
+ * Rysuje pełnoekranowy baner zwycięstwa w meczu z informacją o +40 XP
  */
 export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
   if (!matchWinState.won || matchWinState.timer <= 0) return;

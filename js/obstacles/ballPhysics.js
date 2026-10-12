@@ -11,6 +11,7 @@ import {
   resolveSegmentCollision
 } from '../world.js';
 import { arena1State, centerX } from '../arenas/arena1.js';
+import { recordGoal } from '../progression.js';
 import { normalizeObstacleType } from './palette.js';
 import { spawnAltarShockwave } from './renderer.js';
 import { checkPlayerPlatformLanding } from './playerPhysics.js';
@@ -574,6 +575,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
           const scoringTeam = isCyanGoal ? 'ORANGE' : 'CYAN';
           if (scoringTeam === 'CYAN') {
             arenaScore.cyan++;
+            recordGoal();
           } else {
             arenaScore.orange++;
           }
@@ -614,6 +616,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         const scoringTeam = (g.team === 'CYAN') ? 'ORANGE' : 'CYAN';
         if (scoringTeam === 'CYAN') {
           arenaScore.cyan++;
+          recordGoal();
         } else {
           arenaScore.orange++;
         }

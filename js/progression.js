@@ -5,9 +5,9 @@
 
 export const RANKS = [
   { id: 'SZEREGOWY', name: 'Szeregowy', short: 'Szer.', minXp: 0, icon: '━' },
-  { id: 'ST_SZEREGOWY', name: 'St. Szeregowy', short: 'St. szer.', minXp: 400, icon: '━━' },
+  { id: 'ST_SZEREGOWY', name: 'Starszy Szeregowy', short: 'St. szer.', minXp: 400, icon: '━━' },
   { id: 'KAPRAL', name: 'Kapral', short: 'Kpr.', minXp: 1000, icon: '▲▲' },
-  { id: 'ST_KAPRAL', name: 'St. Kapral', short: 'St. kpr.', minXp: 1800, icon: '▲▲━' },
+  { id: 'ST_KAPRAL', name: 'Starszy Kapral', short: 'St. kpr.', minXp: 1800, icon: '▲▲━' },
   { id: 'PLUTONOWY', name: 'Plutonowy', short: 'Plut.', minXp: 3000, icon: '▲▲▲' },
   { id: 'SIERZANT', name: 'Sierżant', short: 'Sierż.', minXp: 4600, icon: '▲▲▲━' },
   { id: 'CHORAZY', name: 'Chorąży', short: 'Chor.', minXp: 6800, icon: '★' },
@@ -62,6 +62,106 @@ export function getRankProgress(xp = getPlayerXP()) {
   return Math.min(1.0, Math.max(0.0, (xp - current.minXp) / span));
 }
 
+// =============================================================================
+// STATYSTYKI BOJOWE GRACZA (DOSSIER)
+// =============================================================================
+export const DEFAULT_PLAYER_STATS = {
+  matchesPlayed: 0,
+  matchesWon: 0,
+  matchesLost: 0,
+  kills: 0,
+  deaths: 0,
+  goalsScored: 0
+};
+
+const STATS_STORAGE_KEY = 'fragball_player_stats_v1';
+
+export function getPlayerStats() {
+  try {
+    const raw = localStorage.getItem(STATS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_PLAYER_STATS };
+    const p = JSON.parse(raw);
+    return {
+      matchesPlayed: Number.isFinite(p.matchesPlayed) && p.matchesPlayed >= 0 ? p.matchesPlayed : 0,
+      matchesWon: Number.isFinite(p.matchesWon) && p.matchesWon >= 0 ? p.matchesWon : 0,
+      matchesLost: Number.isFinite(p.matchesLost) && p.matchesLost >= 0 ? p.matchesLost : 0,
+      kills: Number.isFinite(p.kills) && p.kills >= 0 ? p.kills : 0,
+      deaths: Number.isFinite(p.deaths) && p.deaths >= 0 ? p.deaths : 0,
+      goalsScored: Number.isFinite(p.goalsScored) && p.goalsScored >= 0 ? p.goalsScored : 0
+    };
+  } catch (e) {
+    console.warn('[PROG] Błąd odczytu statystyk gracza:', e);
+    return { ...DEFAULT_PLAYER_STATS };
+  }
+}
+
+export function savePlayerStats(stats) {
+  try {
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+  } catch (e) {
+    console.warn('[PROG] Błąd zapisu statystyk gracza:', e);
+  }
+}
+
+export function recordMatchResult(result) {
+  const stats = getPlayerStats();
+  stats.matchesPlayed = (stats.matchesPlayed || 0) + 1;
+  if (result === 'WIN') {
+    stats.matchesWon = (stats.matchesWon || 0) + 1;
+  } else if (result === 'LOSS') {
+    stats.matchesLost = (stats.matchesLost || 0) + 1;
+  }
+  savePlayerStats(stats);
+  return stats;
+}
+
+export function recordKill(amount = 1) {
+  const stats = getPlayerStats();
+  stats.kills = (stats.kills || 0) + Math.max(1, parseInt(amount, 10) || 1);
+  savePlayerStats(stats);
+  return stats;
+}
+
+export function recordDeath(amount = 1) {
+  const stats = getPlayerStats();
+  stats.deaths = (stats.deaths || 0) + Math.max(1, parseInt(amount, 10) || 1);
+  savePlayerStats(stats);
+  return stats;
+}
+
+export function recordGoal(amount = 1) {
+  const stats = getPlayerStats();
+  stats.goalsScored = (stats.goalsScored || 0) + Math.max(1, parseInt(amount, 10) || 1);
+  savePlayerStats(stats);
+  return stats;
+}
+
+export function resetPlayerStats() {
+  const def = { ...DEFAULT_PLAYER_STATS };
+  savePlayerStats(def);
+  return def;
+}
+
+export function getPlayerStatsSummary() {
+  const s = getPlayerStats();
+  let kdRatio = '0.00';
+  if (s.deaths === 0) {
+    kdRatio = s.kills > 0 ? s.kills.toFixed(2) : '0.00';
+  } else {
+    kdRatio = (s.kills / s.deaths).toFixed(2);
+  }
+
+  const winRate = s.matchesPlayed === 0 
+    ? '0%' 
+    : `${Math.round((s.matchesWon / s.matchesPlayed) * 100)}%`;
+
+  return {
+    ...s,
+    kdRatio,
+    winRate
+  };
+}
+
 // Opcjonalne wystawienie w celach pomocniczych/debugowania w konsoli przeglądarki
 if (typeof window !== 'undefined') {
   window.FragballProgression = {
@@ -70,6 +170,14 @@ if (typeof window !== 'undefined') {
     addPlayerXP,
     getCurrentRank,
     getNextRank,
-    getRankProgress
+    getRankProgress,
+    getPlayerStats,
+    savePlayerStats,
+    recordMatchResult,
+    recordKill,
+    recordDeath,
+    recordGoal,
+    resetPlayerStats,
+    getPlayerStatsSummary
   };
 }
