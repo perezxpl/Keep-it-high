@@ -407,7 +407,7 @@ export function drawRocketBootsPreview(
 }
 
 /**
- * Renderuje podgląd Modułu Skoku i Tąpnięcia (Kinetic Stomp Module) Enforcera (68x68).
+ * Renderuje podgląd Pasa Ładunków Wybuchowych (Blast Belt) Enforcera (68x68).
  */
 export function drawStompModulePreview(
   ctx,
@@ -423,98 +423,88 @@ export function drawStompModulePreview(
   const flamePal = getJetpackFlamePalette(flameColor || visuals.jetpackColor || '#ef4444');
 
   ctx.save();
-  ctx.translate(canvasW * 0.48, canvasH * 0.44);
+  ctx.translate(canvasW * 0.50, canvasH * 0.40);
   const scale = Math.min(canvasW, canvasH) / 40.0;
   ctx.scale(scale, scale);
 
-  // 1. Masywny, opancerzony but kolosa
-  ctx.fillStyle = '#111827';
-  ctx.strokeStyle = '#030712';
-  ctx.lineWidth = 1.0;
-
-  // Gruba cholewka
+  // 1. Ciężki pas taktyczny saperski Enforcera
+  ctx.fillStyle = '#18181b';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.rect(-5.5, -13, 11, 13);
+  if (ctx.roundRect) ctx.roundRect(-14.5, -5.5, 29.0, 6.2, 1.5);
+  else ctx.rect(-14.5, -5.5, 29.0, 6.2);
   ctx.fill();
   ctx.stroke();
 
-  // Stalowy nos buta i potężna podeszwa kinetyczna
-  ctx.beginPath();
-  ctx.moveTo(-5.5, 0);
-  ctx.lineTo(9.5, 0);
-  ctx.lineTo(11.0, 3.5);
-  ctx.lineTo(-6.5, 3.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  // Metalowa klamra pasa pośrodku
+  ctx.fillStyle = '#52525b';
+  ctx.fillRect(-2.6, -4.8, 5.2, 4.8);
+  ctx.fillStyle = '#71717a';
+  ctx.fillRect(-1.5, -3.8, 3.0, 2.8);
 
-  // Stalowa płyta ochronna nosa (Steel Toe Cap)
-  ctx.fillStyle = '#374151';
-  ctx.beginPath();
-  ctx.moveTo(5.0, 0);
-  ctx.lineTo(9.5, 0);
-  ctx.lineTo(11.0, 3.5);
-  ctx.lineTo(4.5, 3.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  // 2. Trzy pancerne kasety ładunków wybuchowych (C4 / Blast Canisters) na pasie
+  const canPositions = [-10.0, 0.0, 10.0];
+  canPositions.forEach((cx) => {
+    const x = cx - 2.4;
+    const y = -7.0;
+    const w = 4.8;
+    const h = 9.2;
 
-  // Ciężkie klamry balistyczne na cholewce
-  ctx.fillStyle = '#4b5563';
-  ctx.fillRect(-6.0, -10.5, 12, 1.8);
-  ctx.fillRect(-6.0, -5.5, 12, 1.8);
-  ctx.fillStyle = '#9ca3af';
-  ctx.fillRect(-1.0, -11.0, 2.0, 2.8);
-  ctx.fillRect(-1.0, -6.0, 2.0, 2.8);
+    // Obudowa ładunku
+    ctx.fillStyle = '#27272a';
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 1.0);
+    else ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
 
-  // Podwójny siłownik udarowy (Hydraulic Impact Piston) na pięcie
-  ctx.fillStyle = '#1f2937';
-  ctx.fillRect(-9.5, -8.0, 3.8, 10);
-  ctx.strokeStyle = '#030712';
-  ctx.lineWidth = 0.7;
-  ctx.strokeRect(-9.5, -8.0, 3.8, 10);
+    // Górna zawleczka
+    ctx.fillStyle = '#71717a';
+    ctx.fillRect(x + 0.8, y - 1.0, w - 1.6, 1.1);
 
-  ctx.fillStyle = '#6b7280';
-  ctx.fillRect(-8.8, -5.5, 2.4, 6.5);
+    // Rozżarzony rdzeń ładunku
+    ctx.save();
+    ctx.shadowColor = flamePal.glow;
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = flamePal.light;
+    ctx.fillRect(x + 0.7, y + 2.6, w - 1.4, 3.0);
+    ctx.restore();
 
-  // 2. Fala uderzeniowa i wybuch kinetyczny pod podeszwą
+    // Dolna dysza wyrzutnika
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(x + 0.9, y + h, w - 1.8, 1.4);
+
+    // 3. Płomień podpalonego lontu i zrzut w dół
+    ctx.save();
+    ctx.shadowColor = flamePal.glow;
+    ctx.shadowBlur = 10;
+    const fGrad = ctx.createLinearGradient(cx, y + h + 1.0, cx, y + h + 11.0);
+    fGrad.addColorStop(0.0, '#ffffff');
+    fGrad.addColorStop(0.45, flamePal.base);
+    fGrad.addColorStop(1.0, flamePal.alphaZero);
+
+    ctx.fillStyle = fGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx - 2.0, y + h + 1.0);
+    ctx.lineTo(cx, y + h + 11.0);
+    ctx.lineTo(cx + 2.0, y + h + 1.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // 4. Fala uderzeniowa wybuchu na dole
   ctx.save();
   ctx.shadowColor = flamePal.glow;
-  ctx.shadowBlur = 12;
-
-  // Rozbłysk podeszwy
-  ctx.fillStyle = flamePal.base;
-  ctx.beginPath();
-  ctx.ellipse(1.5, 3.6, 9.5, 1.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Płomień/energia wybuchu kinetycznego w dół i na boki
-  const bH = 8.5;
-  const bGrad = ctx.createLinearGradient(0, 3.5, 0, 3.5 + bH);
-  bGrad.addColorStop(0.0, '#ffffff');
-  bGrad.addColorStop(0.4, flamePal.base);
-  bGrad.addColorStop(1.0, flamePal.alphaZero);
-
-  ctx.fillStyle = bGrad;
-  ctx.beginPath();
-  ctx.moveTo(-6.0, 3.5);
-  ctx.quadraticCurveTo(-9.0, 3.5 + bH * 0.7, -4.5, 3.5 + bH);
-  ctx.lineTo(0, 3.5 + bH * 0.5);
-  ctx.lineTo(4.5, 3.5 + bH);
-  ctx.quadraticCurveTo(9.0, 3.5 + bH * 0.7, 9.5, 3.5);
-  ctx.closePath();
-  ctx.fill();
-
-  // Promieniste iskry energii
+  ctx.shadowBlur = 10;
   ctx.strokeStyle = flamePal.light;
-  ctx.lineWidth = 1.0;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(-8.0, 4.0); ctx.lineTo(-12.5, 8.5);
-  ctx.moveTo(10.0, 4.0); ctx.lineTo(14.5, 8.5);
-  ctx.moveTo(-2.0, 5.0); ctx.lineTo(-4.0, 11.5);
-  ctx.moveTo(3.0, 5.0); ctx.lineTo(5.0, 11.5);
+  ctx.ellipse(0, 13.5, 13.5, 2.6, 0, 0, Math.PI * 2);
   ctx.stroke();
-
   ctx.restore();
 
   ctx.restore();

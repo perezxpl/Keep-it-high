@@ -427,8 +427,8 @@ canvas.addEventListener('touchmove', (e) => {
             player.isJetpacking = false;
           }
         } else {
-          // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (axisY < -0.55)
-          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+          // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (dla Raptora i Strikera; Enforcer skacze przy puszczeniu drążka)
+          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
             initiatePlayerJump(player, spawnGrass);
             leftStick.jumpTriggered = true;
             leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka

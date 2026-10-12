@@ -353,8 +353,8 @@ export function initKeyboardMouseHandlers({
         inputSession.isJetpackActive = true;
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
-      } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
-        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (natychmiastowy)
+      } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
+        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze przy puszczeniu W)
         initiatePlayerJump(player, spawnGrass);
         player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       }

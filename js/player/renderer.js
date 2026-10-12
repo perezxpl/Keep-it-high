@@ -1281,6 +1281,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   ctx.fillStyle = '#71717a';
   ctx.fillRect(buckleX - 0.9, beltTopY + 1.0, 1.8, 1.5);
 
+  // Wyposażenie pasa klasy (np. Pas Ładunków Wybuchowych Enforcera)
+  p.currentClass?.onDrawBelt?.(ctx, p, v, fDir, waistHalfW, beltTopY, beltBotY);
+
   // NAKŁADANA KAMIZELKA KULOODPORNA (MODULAR BULLETPROOF VEST / PLATE CARRIER)
   // Rysowana TYLKO wtedy, gdy gracz posiada pancerz lub ma ustawione p.hasVest / v.hasVest
   const hasEquippedVest = !!(p.hasVest || v.hasVest);

@@ -4,11 +4,12 @@
 // =========================================================================
 
 import { CONFIG, FRAME_DURATION } from '../config.js';
-import { camera, isTouchDevice, spawnJetpackSparks } from '../world.js';
-import { player, getJetpackNozzlePos } from '../player.js';
+import { camera, isTouchDevice, spawnJetpackSparks, spawnGrass } from '../world.js';
+import { player, getJetpackNozzlePos, initiatePlayerJump } from '../player.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapons.js';
 import { updateStrikerBootsInput } from '../classes/striker.js';
+import { updateEnforcerBeltInput } from '../classes/enforcer.js';
 import { networkState, sendShootEvent } from '../network.js';
 import { leftStick, rightStick, pockets } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
@@ -147,6 +148,12 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isStriker = (player.currentClass?.id === 'STRIKER');
   if (isStriker) {
     updateStrikerBootsInput(player, keys, leftStick, gamepadState);
+  }
+
+  // OBSŁUGA KLASY ENFORCER: Pas Ładunków Wybuchowych (Blast Belt) – skok po puszczeniu i bomby >= 1000ms
+  const isEnforcer = (player.currentClass?.id === 'ENFORCER');
+  if (isEnforcer) {
+    updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, initiatePlayerJump);
   }
 
   const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.16 && leftStick.jetpackNeutralized);

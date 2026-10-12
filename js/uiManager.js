@@ -2260,20 +2260,18 @@ export const uiManager = {
     let headerText = 'PLECAK ODRZUTOWY (JETPACK)';
     let tooltip = 'Fason i płomień napędu jetpacka';
 
+    if (tabBtn) tabBtn.style.display = '';
+
     if (cid === 'STRIKER') {
-      if (tabBtn) tabBtn.style.display = '';
       icon = '⚡';
       tabLabel = 'ROCKET BOOTS';
       headerText = 'BUTY ODRZUTOWE (ROCKET BOOTS)';
       tooltip = 'Fason i płomień dysz butów odrzutowych';
     } else if (cid === 'ENFORCER') {
-      if (tabBtn) tabBtn.style.display = 'none';
-      if (this.activeCreatorTab === 'jetpack') {
-        this.switchCreatorTab('head');
-      }
-      return;
-    } else {
-      if (tabBtn) tabBtn.style.display = '';
+      icon = '💣';
+      tabLabel = 'PAS ŁADUNKÓW';
+      headerText = 'PAS ŁADUNKÓW (BLAST BELT)';
+      tooltip = 'Pas z ładunkami wybuchowymi (przytrzymaj w górę 1s i puść)';
     }
 
     if (tabBtn) tabBtn.title = tooltip;
@@ -2612,17 +2610,25 @@ export const uiManager = {
     dummy.upperArmLen = bodyDef.upperArmLen;
     dummy.forearmLen = bodyDef.forearmLen;
 
+    dummy._isCreatorDummy = true;
     if (this.activeCreatorTab === 'jetpack') {
       if (this.activeCreatorClass === 'RAPTOR') {
         dummy.isJetpacking = true;
         dummy.yaw = 0.55;
+        if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
+      } else if (this.activeCreatorClass === 'ENFORCER') {
+        dummy.isJetpacking = false;
+        dummy.yaw = 0.20;
+        dummy.blastBelt = { isCharging: true, chargeRatio: 1.0, isArmed: true };
       } else {
         dummy.isJetpacking = false;
         dummy.yaw = 0.35;
+        if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
       }
     } else {
       dummy.isJetpacking = false;
       dummy.yaw = 0;
+      if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
     }
 
     ctx.save();

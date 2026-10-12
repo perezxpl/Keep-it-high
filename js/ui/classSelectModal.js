@@ -39,9 +39,9 @@ export const CLASS_CARDS = [
     color: '#ef4444',
     glowColor: 'rgba(239, 68, 68, 0.45)',
     role: 'KLASA CIĘŻKA • KOLOS / TARAN',
-    attribute: '🛡️ ROCKET JUMP / PANCERZ',
-    desc: 'Masywna sylwetka, potężna odporność na ogień i wybuchowe wejścia w zwarciu.',
-    stats: ['Maksymalne Zdrowie: 160 HP', 'Moduł ruchu: Wybuchowy skok', 'Potężny Spartan Kick i taranowanie'],
+    attribute: '💣 PAS ŁADUNKÓW / SKOK WYBUCHOWY',
+    desc: 'Skok odpala po puszczeniu W/drążka. Przytrzymanie góry min. 1000ms podpala ładunki na pasie i po puszczeniu wysadza ziemię pod butami!',
+    stats: ['Maksymalne Zdrowie: 160 HP', 'Pas Ładunków: przytrzymaj górę 1s i puść', 'Potężny Spartan Kick i taranowanie'],
     classObj: CLASSES.ENFORCER
   }
 ];

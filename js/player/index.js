@@ -340,7 +340,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
-    if (keys.up && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
+    if (keys.up && player.currentClass?.id !== 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
       initiatePlayerJump(player, spawnGrass);
       keys.up = false;
     }
