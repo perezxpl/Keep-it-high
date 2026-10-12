@@ -654,7 +654,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (player.gaitMode === 'CROUCH_WALK') freq = 0.055;
       if (player.gaitMode === 'WALK') freq = 0.1047;
       if (player.gaitMode === 'JOG') freq = 0.052;
-      if (player.gaitMode === 'SPRINT') freq = player.rocketBoots?.dashing ? 0.020 : 0.040;
+      if (player.gaitMode === 'SPRINT') freq = player.rocketBoots?.dashing ? 0.026 : 0.040;
 
       if (isMovingBackwards) {
         player.stridePhase -= speed * freq;

@@ -257,7 +257,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
             player.onGround = false;
             player.isJumping = true;
-            player.y -= 4;
+            player.y -= 3;
             triggerStrikerAirDash(player, nx, ny, power);
           } else if (Math.abs(stickX) >= 0.45) {
             const startFuel = 12.0 * power;
@@ -281,15 +281,60 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   }
 
   // =========================================================================
-  // OBSŁUGA PRZEJŚĆ ZIEMIA <-> POWIETRZE
+  // OBSŁUGA PODTRZYMANIA AKTYWNEGO GROUND DASHA (ZIEMIA, PLATFORMA ORAZ ZBIEG Z PLATFORMY)
+  // Gdy gracz rozpędza się na platformie i wybiega z niej w powietrze, dash NIE rozłącza się,
+  // dopóki gracz nadal trzyma kierunek i ma paliwo!
   // =========================================================================
-  if (isAirborne && !rb.prevAirborne) {
-    if (rb.dashType === 'GROUND') {
+  if (rb.dashing && rb.dashType === 'GROUND') {
+    let continueGroundDash = false;
+
+    if ((player.jetFuel || 0) <= 0) {
+      continueGroundDash = false;
+    } else {
+      const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
+      if ((rb.dashDir < 0 && player.x <= 15) || (rb.dashDir > 0 && player.x >= arenaRightLimit)) {
+        continueGroundDash = false;
+      } else if (rb.dashInputSource === 'KEYBOARD') {
+        if (rb.dashDir === -1 && keyLeft && !keyDown) continueGroundDash = true;
+        if (rb.dashDir === 1 && keyRight && !keyDown) continueGroundDash = true;
+      } else if (rb.dashInputSource === 'STICK') {
+        if (!isStickAimingDown && Math.abs(stickX) >= 0.40 && Math.sign(stickX) === rb.dashDir) {
+          continueGroundDash = true;
+        }
+      }
+    }
+
+    if (!continueGroundDash) {
       rb.dashing = false;
       rb.dashType = 'NONE';
       rb.dashInputSource = 'NONE';
+    } else {
+      const power = rb.dashPower || 1.0;
+      const fuelDrain = 0.50 + 0.65 * power;
+      player.jetFuel = Math.max(0, (player.jetFuel || 0) - fuelDrain);
+      if (player.jetFuel <= 0) {
+        rb.dashing = false;
+        rb.dashType = 'NONE';
+        rb.dashInputSource = 'NONE';
+        return;
+      }
+
+      // Zbalansowana prędkość wyższa od sprintu Raptora (7.4)
+      rb.dashSpeed = 9.2 + 2.6 * power;
+      player.facing = rb.dashDir;
+      player.vx = rb.dashDir * rb.dashSpeed;
+      player.airVx = player.vx;
+      return;
     }
-    rb.airStickReady = (stickMag < 0.35);
+  }
+
+  // =========================================================================
+  // OBSŁUGA PRZEJŚĆ ZIEMIA <-> POWIETRZE
+  // =========================================================================
+  if (isAirborne && !rb.prevAirborne) {
+    if (!rb.dashing) {
+      rb.airStickReady = (stickMag < 0.35);
+    }
   } else if (!isAirborne && rb.prevAirborne) {
     rb.airStickReady = false;
     if (rb.dashType === 'AIR') {
@@ -344,53 +389,8 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   }
 
   // =========================================================================
-  // TRYB 2: ZIEMIA (GROUND ROCKET DASH)
+  // TRYB 2: ZIEMIA – DETEKCJA STARTU DLA KLAWIATURY / PADA
   // =========================================================================
-
-  // A. JEŚLI GROUND DASH JUŻ TRWA: SPRAWDZAMY CZY GRACZ NADAL TRZYMA KIERUNEK I CZY MA PALIWO
-  if (rb.dashing && rb.dashType === 'GROUND') {
-    let continueGroundDash = false;
-
-    if ((player.jetFuel || 0) <= 0) {
-      continueGroundDash = false;
-    } else {
-      const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
-      if ((rb.dashDir < 0 && player.x <= 15) || (rb.dashDir > 0 && player.x >= arenaRightLimit)) {
-        continueGroundDash = false;
-      } else if (rb.dashInputSource === 'KEYBOARD') {
-        if (rb.dashDir === -1 && keyLeft && !keyDown) continueGroundDash = true;
-        if (rb.dashDir === 1 && keyRight && !keyDown) continueGroundDash = true;
-      } else if (rb.dashInputSource === 'STICK') {
-        if (!isStickAimingDown && Math.abs(stickX) >= 0.45 && Math.sign(stickX) === rb.dashDir) {
-          continueGroundDash = true;
-        }
-      }
-    }
-
-    if (!continueGroundDash) {
-      rb.dashing = false;
-      rb.dashType = 'NONE';
-      rb.dashInputSource = 'NONE';
-    } else {
-      // Zużycie paliwa zależne od użytej siły dasha
-      const power = rb.dashPower || 1.0;
-      const fuelDrain = 0.55 + 0.75 * power;
-      player.jetFuel = Math.max(0, (player.jetFuel || 0) - fuelDrain);
-      if (player.jetFuel <= 0) {
-        rb.dashing = false;
-        rb.dashType = 'NONE';
-        rb.dashInputSource = 'NONE';
-        return;
-      }
-
-      rb.dashSpeed = 13.5 + 5.5 * power;
-      player.facing = rb.dashDir;
-      player.vx = rb.dashDir * rb.dashSpeed;
-      return;
-    }
-  }
-
-  // B. JEŚLI GROUND DASH NIE TRWA: DETEKCJA STARTU DLA KLAWIATURY / PADA
   let triggerGroundDir = 0;
   let triggerSource = 'NONE';
 
@@ -405,7 +405,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
           player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
           player.onGround = false;
           player.isJumping = true;
-          player.y -= 4;
+          player.y -= 3;
           const xDir = keyLeft ? -0.707 : (keyRight ? 0.707 : 0);
           const yDir = keyLeft || keyRight ? -0.707 : -1.0;
           triggerStrikerAirDash(player, xDir, yDir, 1.0);
@@ -451,7 +451,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
               player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
               player.onGround = false;
               player.isJumping = true;
-              player.y -= 4;
+              player.y -= 3;
               triggerStrikerAirDash(player, stickX / stickMag, stickY / stickMag, 1.0);
               return;
             }
@@ -505,8 +505,10 @@ function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   rb.dashDirX = dirX;
   rb.dashDirY = dirY;
   rb.dashDir = Math.sign(dirX) || (player.facing || 1);
-  rb.dashTimer = Math.round(11 + 8 * power);
-  rb.dashSpeed = 16.0 + 9.5 * power;
+  // Krótszy, zwięzły wyskok dashem (8 - 11 klatek)
+  rb.dashTimer = Math.round(7 + 4 * power);
+  // Zbalansowana prędkość w powietrzu wyższa od sprintu Raptora (7.4)
+  rb.dashSpeed = 10.5 + 3.0 * power;
 
   if (Math.abs(dirX) > 0.05) {
     player.facing = Math.sign(dirX);
@@ -515,12 +517,12 @@ function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   player.vx = dirX * rb.dashSpeed;
   player.vy = dirY * rb.dashSpeed;
   player.airVx = player.vx;
-  player.x += player.vx * 0.5;
-  player.y += player.vy * 0.5;
-  triggerScreenShake(1.5 + 2.5 * power);
+  player.x += player.vx * 0.3;
+  player.y += player.vy * 0.3;
+  triggerScreenShake(1.2 + 1.8 * power);
 
   // Wybuch płomieni w kierunku przeciwnym do wektora lotu
-  emitBootsBurstParticles(player, -dirX, -dirY, Math.round(7 + 9 * power));
+  emitBootsBurstParticles(player, -dirX, -dirY, Math.round(6 + 6 * power));
 }
 
 /**
@@ -535,14 +537,16 @@ function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 1.0) {
   rb.dashDir = dir;
   rb.dashDirX = dir;
   rb.dashDirY = 0;
-  rb.dashSpeed = 13.5 + 5.5 * power;
+  // Zbalansowana prędkość naziemna wyższa od sprintu Raptora (7.4): 10.1 .. 11.8 px/klatkę
+  rb.dashSpeed = 9.2 + 2.6 * power;
   player.facing = dir;
   player.vx = dir * rb.dashSpeed;
-  player.x += player.vx * 0.5;
-  triggerScreenShake(1.2 + 1.8 * power);
+  player.airVx = player.vx;
+  player.x += player.vx * 0.3;
+  triggerScreenShake(1.0 + 1.4 * power);
 
   // Wybuch płomieni z pięt na poziomie murawy
-  emitBootsBurstParticles(player, -dir, 0, Math.round(6 + 8 * power));
+  emitBootsBurstParticles(player, -dir, 0, Math.round(5 + 6 * power));
 }
 
 /**
