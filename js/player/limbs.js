@@ -1784,6 +1784,11 @@ export function getJetpackNozzlePos(p) {
 }
 
 export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v = {}) {
+  // Klasa Striker używa Butów Odrzutowych (Rocket Boots) – nie nosi plecaka na plecach
+  if (p.currentClass?.id === 'STRIKER' && !v.forceJetpackBackpack) {
+    return;
+  }
+
   const isFiring = !!p.isJetpacking;
   const isHost = (p.team === 'CYAN' || (!p.team && (p.isLocal !== false)));
   const defaultCol = isHost ? '#00e5ff' : '#f97316';

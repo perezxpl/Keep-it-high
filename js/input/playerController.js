@@ -8,11 +8,12 @@ import { camera, isTouchDevice, spawnJetpackSparks } from '../world.js';
 import { player, getJetpackNozzlePos } from '../player.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapons.js';
+import { updateStrikerBootsInput } from '../classes/striker.js';
 import { networkState, sendShootEvent } from '../network.js';
 import { leftStick, rightStick, pockets } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
-import { pollGamepadInput } from './gamepad.js';
+import { pollGamepadInput, gamepadState } from './gamepad.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -142,10 +143,16 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     }
   }
 
+  // OBSŁUGA KLASY STRIKER: Buty odrzutowe (Rocket Boots) zamiast ciągłego lotu
+  const isStriker = (player.currentClass?.id === 'STRIKER');
+  if (isStriker) {
+    updateStrikerBootsInput(player, keys, leftStick, gamepadState);
+  }
+
   const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.16 && leftStick.jetpackNeutralized);
   const isTouchFlight = !!(isStickRaised && isAirborne);
   const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
-  const isFlightActive = (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
+  const isFlightActive = !isStriker && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
   if (isFlightActive) {
     player.isJetpacking = true;
 

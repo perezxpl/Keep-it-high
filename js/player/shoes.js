@@ -550,6 +550,40 @@ export function drawFootwear(ctx, style = 'combat_boots', color = '#18181b', isF
     for (let lx = -4.2; lx <= -1.2; lx += 1.4) ctx.fillRect(lx, 4.1, 1.0, 0.9);
     for (let lx = 2.4; lx <= bootLen - 0.6; lx += 1.5) ctx.fillRect(lx, 4.0, 1.0, 0.9);
   }
+
+  // =========================================================================
+  // DYSZA BUTA ODRZUTOWEGO (ROCKET BOOTS DLA KLASY STRIKER)
+  // =========================================================================
+  if (v.hasRocketBoots) {
+    const thrusterColor = v.jetpackColor || '#00e5ff';
+    ctx.save();
+    // Metalowa obudowa dyszy na pięcie
+    ctx.fillStyle = '#27272a';
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.rect(-5.8, -0.4, 1.8, 2.6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Wewnętrzny stożek wylotowy
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.moveTo(-5.8, -0.2);
+    ctx.lineTo(-7.2, -0.7);
+    ctx.lineTo(-7.2, 2.5);
+    ctx.lineTo(-5.8, 2.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Świecący rdzeń plazmowy
+    ctx.fillStyle = thrusterColor;
+    ctx.shadowColor = thrusterColor;
+    ctx.shadowBlur = 4;
+    ctx.fillRect(-7.0, 0.2, 1.0, 1.4);
+    ctx.restore();
+  }
 }
 
 /**

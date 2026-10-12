@@ -37,6 +37,12 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/shoes.js` — fasony i kolory obuwia (buty desantowe, niskie sneakersy, korki piłkarskie, wysokie trampki hi-top, wysokie glany z klamrami), renderowanie stopy i cholewki zakrywającej nogawkę spodni oraz kafelki podglądu w kreatorze.
 - `js/player/jetpack.js` — fasony (`JETPACK_STYLE_LIST`) i palety kolorów ognia jetpacka (`JETPACK_COLOR_LIST`, 8 kolorów), `getJetpackFlamePalette(color)` zwracające pełną paletę (base, glow, light, deep, particles) oraz `drawJetpackPreview` do kafelka w kreatorze (zakładka JETPACK).
 
+### 🥋 Klasy Postaci (`js/classes/`)
+- `js/classes/index.js` — rejestr klas (`CLASSES`, `CLASS_LIST`, `DEFAULT_CLASS`).
+- `js/classes/aero.js` — Klasa 1: Raptor (Zwiadowca / Lotnik, plecak odrzutowy, zwrotność w powietrzu).
+- `js/classes/striker.js` — Klasa 2: Striker (Szturmowiec / Strzelec, buty odrzutowe Rocket Boots, super dashe w powietrzu za 50% paliwa, dopalacz naziemny z podwójnego wychylenia).
+- `js/classes/enforcer.js` — Klasa 3: Enforcer (Kolos / Czołg, potężna masa, wstrząsy ziemi, taran).
+
 ### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
 - `js/weapons/bullets.js` — wystrzeliwanie (`shootWeapon`), balistyka pocisków (`updateBullets`), kolizje pocisków i przeładowanie (`reloadWeapon`).
