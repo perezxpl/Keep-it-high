@@ -2271,16 +2271,17 @@ export const uiManager = {
 
     // 3. Aktualizacja parametrów i anatomii manekina IK (dummy player)
     const activeClassObj = CLASSES[cid] || CLASSES.RAPTOR;
+    const bodyDef = activeClassObj?.body || { w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13 };
     if (this.creatorDummyPlayer) {
       this.creatorDummyPlayer.currentClass = activeClassObj;
-      this.creatorDummyPlayer.w = activeClassObj.body.w;
-      this.creatorDummyPlayer.h = activeClassObj.body.h;
-      this.creatorDummyPlayer.x = -activeClassObj.body.w / 2;
-      this.creatorDummyPlayer.y = -activeClassObj.body.h;
-      this.creatorDummyPlayer.thighLen = activeClassObj.body.thighLen;
-      this.creatorDummyPlayer.shinLen = activeClassObj.body.shinLen;
-      this.creatorDummyPlayer.upperArmLen = activeClassObj.body.upperArmLen;
-      this.creatorDummyPlayer.forearmLen = activeClassObj.body.forearmLen;
+      this.creatorDummyPlayer.w = bodyDef.w;
+      this.creatorDummyPlayer.h = bodyDef.h;
+      this.creatorDummyPlayer.x = -bodyDef.w / 2;
+      this.creatorDummyPlayer.y = -bodyDef.h;
+      this.creatorDummyPlayer.thighLen = bodyDef.thighLen;
+      this.creatorDummyPlayer.shinLen = bodyDef.shinLen;
+      this.creatorDummyPlayer.upperArmLen = bodyDef.upperArmLen;
+      this.creatorDummyPlayer.forearmLen = bodyDef.forearmLen;
       this.creatorDummyPlayer.customVisuals = { ...this.appearance };
       this.creatorDummyPlayer._hairImpulse = 1.0;
     }
@@ -2375,13 +2376,14 @@ export const uiManager = {
   startCreatorPreview() {
     this.stopCreatorPreview();
     const activeClassObj = CLASSES[this.activeCreatorClass] || CLASSES.RAPTOR;
+    const bodyDef = activeClassObj?.body || { w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13 };
     if (!this.creatorDummyPlayer) {
       this.creatorDummyPlayer = {
         _isCreatorPreview: true,
-        x: -activeClassObj.body.w / 2,
-        y: -activeClassObj.body.h,
-        w: activeClassObj.body.w,
-        h: activeClassObj.body.h,
+        x: -bodyDef.w / 2,
+        y: -bodyDef.h,
+        w: bodyDef.w,
+        h: bodyDef.h,
         vx: 0,
         vy: 0,
         onGround: true,
@@ -2404,10 +2406,10 @@ export const uiManager = {
         headBob: 0,
         headBobVel: 0,
         kneeJuggleWeight: 0,
-        thighLen: activeClassObj.body.thighLen,
-        shinLen: activeClassObj.body.shinLen,
-        upperArmLen: activeClassObj.body.upperArmLen,
-        forearmLen: activeClassObj.body.forearmLen,
+        thighLen: bodyDef.thighLen,
+        shinLen: bodyDef.shinLen,
+        upperArmLen: bodyDef.upperArmLen,
+        forearmLen: bodyDef.forearmLen,
         hp: 100,
         maxHp: 100,
         hasHead: true,
@@ -2438,14 +2440,14 @@ export const uiManager = {
       };
     } else {
       this.creatorDummyPlayer.currentClass = activeClassObj;
-      this.creatorDummyPlayer.w = activeClassObj.body.w;
-      this.creatorDummyPlayer.h = activeClassObj.body.h;
-      this.creatorDummyPlayer.x = -activeClassObj.body.w / 2;
-      this.creatorDummyPlayer.y = -activeClassObj.body.h;
-      this.creatorDummyPlayer.thighLen = activeClassObj.body.thighLen;
-      this.creatorDummyPlayer.shinLen = activeClassObj.body.shinLen;
-      this.creatorDummyPlayer.upperArmLen = activeClassObj.body.upperArmLen;
-      this.creatorDummyPlayer.forearmLen = activeClassObj.body.forearmLen;
+      this.creatorDummyPlayer.w = bodyDef.w;
+      this.creatorDummyPlayer.h = bodyDef.h;
+      this.creatorDummyPlayer.x = -bodyDef.w / 2;
+      this.creatorDummyPlayer.y = -bodyDef.h;
+      this.creatorDummyPlayer.thighLen = bodyDef.thighLen;
+      this.creatorDummyPlayer.shinLen = bodyDef.shinLen;
+      this.creatorDummyPlayer.upperArmLen = bodyDef.upperArmLen;
+      this.creatorDummyPlayer.forearmLen = bodyDef.forearmLen;
       this.creatorDummyPlayer.customVisuals = { ...(this.appearance || DEFAULT_CLASS_APPEARANCES.RAPTOR) };
       this.creatorDummyPlayer._hairImpulse = 1.0;
     }
@@ -2517,14 +2519,15 @@ export const uiManager = {
     const dummy = this.creatorDummyPlayer;
     if (!dummy) return;
     const activeClassObj = CLASSES[this.activeCreatorClass] || CLASSES.RAPTOR;
+    const bodyDef = activeClassObj?.body || { w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13 };
     dummy.currentClass = activeClassObj;
-    dummy.w = activeClassObj.body.w;
-    dummy.h = activeClassObj.body.h;
-    dummy.y = -activeClassObj.body.h;
-    dummy.thighLen = activeClassObj.body.thighLen;
-    dummy.shinLen = activeClassObj.body.shinLen;
-    dummy.upperArmLen = activeClassObj.body.upperArmLen;
-    dummy.forearmLen = activeClassObj.body.forearmLen;
+    dummy.w = bodyDef.w;
+    dummy.h = bodyDef.h;
+    dummy.y = -bodyDef.h;
+    dummy.thighLen = bodyDef.thighLen;
+    dummy.shinLen = bodyDef.shinLen;
+    dummy.upperArmLen = bodyDef.upperArmLen;
+    dummy.forearmLen = bodyDef.forearmLen;
 
     if (this.activeCreatorTab === 'jetpack') {
       if (this.activeCreatorClass === 'RAPTOR') {

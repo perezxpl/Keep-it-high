@@ -9,7 +9,17 @@ export const RaptorClass = {
   tier: 'LIGHT',
   role: 'Zwiadowca / Lotnik',
 
-  // 1. Statystyki fizyczne i ruchowe
+  // 1. ANATOMIA SZKIELETU IK – Lekka, zwinna sylwetka zwiadowcy (Lightweight Scout)
+  body: {
+    w: 24,
+    h: 70,
+    thighLen: 25,
+    shinLen: 24,
+    upperArmLen: 14,
+    forearmLen: 13
+  },
+
+  // 2. Statystyki fizyczne i ruchowe
   stats: {
     walkMax: 2.4,
     jogMax: 4.6,
