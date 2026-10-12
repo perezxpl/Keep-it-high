@@ -272,31 +272,45 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   // aby daszował po ziemi i bedzie to robil tak dlugo dopoki nie puszcze przycisku lub drążka nie puszcze lub cofnę"
   // =========================================================================
 
-  // A. JEŚLI GROUND DASH JUŻ TRWA: SPRAWDZAMY CZY GRACZ NADAL TRZYMA KIERUNEK
+  // A. JEŚLI GROUND DASH JUŻ TRWA: SPRAWDZAMY CZY GRACZ NADAL TRZYMA KIERUNEK I CZY MA PALIWO
   if (rb.dashing && rb.dashType === 'GROUND') {
     let continueGroundDash = false;
 
-    // Sprawdzenie czy nie uderzyliśmy w lewą lub prawą krawędź areny
-    const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
-    if ((rb.dashDir < 0 && player.x <= 15) || (rb.dashDir > 0 && player.x >= arenaRightLimit)) {
+    // Sprawdzenie stanu paliwa: bieg trwa wyłącznie do skończenia paliwa!
+    if ((player.jetFuel || 0) <= 0) {
       continueGroundDash = false;
-    } else if (rb.dashInputSource === 'KEYBOARD') {
-      if (rb.dashDir === -1 && keyLeft && !keyDown) continueGroundDash = true;
-      if (rb.dashDir === 1 && keyRight && !keyDown) continueGroundDash = true;
-    } else if (rb.dashInputSource === 'STICK') {
-      // Drążek nadal wychylony w tym samym kierunku poziomym i nie cofnięty poniżej 0.45
-      if (!isStickAimingDown && Math.abs(stickX) >= 0.45 && Math.sign(stickX) === rb.dashDir) {
-        continueGroundDash = true;
+    } else {
+      // Sprawdzenie czy nie uderzyliśmy w lewą lub prawą krawędź areny
+      const arenaRightLimit = (player.arenaWidth || 4350) - (player.w || 24) - 10;
+      if ((rb.dashDir < 0 && player.x <= 15) || (rb.dashDir > 0 && player.x >= arenaRightLimit)) {
+        continueGroundDash = false;
+      } else if (rb.dashInputSource === 'KEYBOARD') {
+        if (rb.dashDir === -1 && keyLeft && !keyDown) continueGroundDash = true;
+        if (rb.dashDir === 1 && keyRight && !keyDown) continueGroundDash = true;
+      } else if (rb.dashInputSource === 'STICK') {
+        // Drążek nadal wychylony w tym samym kierunku poziomym i nie cofnięty poniżej 0.45
+        if (!isStickAimingDown && Math.abs(stickX) >= 0.45 && Math.sign(stickX) === rb.dashDir) {
+          continueGroundDash = true;
+        }
       }
     }
 
     if (!continueGroundDash) {
-      // Gracz puścił przycisk lub puścił / cofnął drążek!
+      // Gracz puścił przycisk, puścił / cofnął drążek LUB skończyło się paliwo!
       rb.dashing = false;
       rb.dashType = 'NONE';
       rb.dashInputSource = 'NONE';
     } else {
-      // Utrzymujemy rakietowy pęd po murawie dopóki trzyma
+      // Ciągłe zużycie paliwa w trakcie rakietowego biegu po murawie aż do wyczerpania
+      player.jetFuel = Math.max(0, (player.jetFuel || 0) - 1.0);
+      if (player.jetFuel <= 0) {
+        rb.dashing = false;
+        rb.dashType = 'NONE';
+        rb.dashInputSource = 'NONE';
+        return;
+      }
+
+      // Utrzymujemy rakietowy pęd po murawie dopóki trzyma i ma paliwo
       rb.dashSpeed = 17.5;
       player.facing = rb.dashDir;
       player.vx = rb.dashDir * 17.5;
@@ -394,7 +408,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     }
   }
 
-  if (triggerGroundDir !== 0) {
+  if (triggerGroundDir !== 0 && (player.jetFuel || 0) >= 5) {
     triggerStrikerGroundDash(player, triggerGroundDir, triggerSource);
   }
 }

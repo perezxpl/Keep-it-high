@@ -452,7 +452,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.vx *= 0.70;
       spawnGroundPuff(centerX, landedSurface);
     }
-    if (p.jetFuel < p.jetMax) {
+    if (!p.rocketBoots?.dashing && p.jetFuel < p.jetMax) {
       p.jetFuel = Math.min(p.jetMax, p.jetFuel + 2.5);
     }
   } else {

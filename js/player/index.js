@@ -1015,7 +1015,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           spawnGroundPuff(player.x + (player.w || 24) / 2, GROUND_Y);
         }
 
-        if (player.jetFuel < player.jetMax) {
+        if (!player.rocketBoots?.dashing && player.jetFuel < player.jetMax) {
           player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
         }
 
