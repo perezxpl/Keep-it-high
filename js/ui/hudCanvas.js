@@ -15,6 +15,8 @@ import {
   goalCelebration
 } from '../world/state.js';
 import { drawRankHUD, drawMatchVictoryHUD, checkMatchWin, updateMatchWinState } from './rankHud.js';
+import { getJetpackFlamePalette } from '../player/jetpack.js';
+import { getStrikerFlameColor } from '../classes/striker.js';
 
 export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
@@ -157,6 +159,52 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
     ctx.stroke();
 
+    // WIZUALIZACJA ŁADOWANIA ENERGII DASHA (Striker Rocket Boots Charge)
+    const isStriker = (player.currentClass?.id === 'STRIKER');
+    const chargeRatio = (isStriker && player.rocketBoots) ? (player.rocketBoots.touchChargeRatio || 0) : 0;
+
+    if (chargeRatio > 0) {
+      const flameCol = (typeof getStrikerFlameColor === 'function') ? getStrikerFlameColor(player) : (player.jetpackColor || 'CYAN');
+      const flamePal = (typeof getJetpackFlamePalette === 'function') ? getJetpackFlamePalette(flameCol) : { base: '#00f0ff', glow: '#00d0ff', light: '#e0ffff' };
+
+      // 1. Plazmowe wypełnienie wnętrza bazy drążka
+      const energyR = maxR * Math.min(1.0, 0.22 + 0.78 * chargeRatio);
+      const energyGrad = ctx.createRadialGradient(bx, by, 3, bx, by, energyR);
+      energyGrad.addColorStop(0.0, flamePal.light || '#ffffff');
+      energyGrad.addColorStop(0.55, flamePal.base || '#00f0ff');
+      energyGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+      ctx.save();
+      ctx.globalAlpha = 0.28 + 0.45 * chargeRatio;
+      ctx.beginPath();
+      ctx.arc(bx, by, energyR, 0, Math.PI * 2);
+      ctx.fillStyle = energyGrad;
+      ctx.fill();
+
+      // 2. Neonowy promienisty łuk naładowania wokół bazy drążka (Circular Gauge)
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + Math.PI * 2 * chargeRatio;
+      ctx.beginPath();
+      ctx.arc(bx, by, maxR + 1.5, startAngle, endAngle);
+      ctx.strokeStyle = flamePal.base || '#00f0ff';
+      ctx.lineWidth = 3.5 + 2.5 * chargeRatio;
+      ctx.shadowColor = flamePal.glow || '#00d0ff';
+      ctx.shadowBlur = 8 + 14 * chargeRatio;
+      ctx.stroke();
+
+      // 3. Efekt pełnego naładowania (Błysk MAX CHARGE)
+      if (chargeRatio >= 0.96) {
+        ctx.beginPath();
+        ctx.arc(bx, by, maxR + 1.5, 0, Math.PI * 2);
+        ctx.strokeStyle = flamePal.light || '#ffffff';
+        ctx.lineWidth = 2.0 + Math.sin(time * 0.02) * 1.0;
+        ctx.shadowColor = flamePal.light || '#ffffff';
+        ctx.shadowBlur = 18;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // Pozycja gałki
     const knobX = bx + (leftStick.axisX * maxR);
     const knobY = by + (leftStick.axisY * maxR);
@@ -219,6 +267,32 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.arc(knobX, knobY, 3.2, 0, Math.PI * 2);
     ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.58)' : 'rgba(255, 255, 255, 0.28)';
     ctx.fill();
+
+    // Dodatkowa aura na gałce podczas ładowania dasha
+    if (chargeRatio > 0) {
+      const flameCol = (typeof getStrikerFlameColor === 'function') ? getStrikerFlameColor(player) : (player.jetpackColor || 'CYAN');
+      const flamePal = (typeof getJetpackFlamePalette === 'function') ? getJetpackFlamePalette(flameCol) : { base: '#00f0ff', glow: '#00d0ff', light: '#e0ffff' };
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(knobX, knobY, knobR + 1.5, 0, Math.PI * 2);
+      ctx.strokeStyle = flamePal.base || '#00f0ff';
+      ctx.lineWidth = 2.2 + 1.5 * chargeRatio;
+      ctx.shadowColor = flamePal.glow || '#00d0ff';
+      ctx.shadowBlur = 8 + 10 * chargeRatio;
+      ctx.stroke();
+
+      if (chargeRatio >= 0.96) {
+        ctx.beginPath();
+        ctx.arc(knobX, knobY, knobR + 3.0 + Math.sin(time * 0.025) * 1.8, 0, Math.PI * 2);
+        ctx.strokeStyle = flamePal.light || '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.shadowColor = flamePal.light || '#ffffff';
+        ctx.shadowBlur = 14;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
 
   // -------------------------------------------------------------------------

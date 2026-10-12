@@ -579,6 +579,13 @@ function endTouch(e) {
       leftStick.isJetpacking = false;
       player.isJetpacking = false;
 
+      if (player.rocketBoots) {
+        player.rocketBoots.isTouchCharging = false;
+        player.rocketBoots.touchChargeStartTime = 0;
+        player.rocketBoots.touchChargeRatio = 0;
+        player.rocketBoots.touchChargePower = 0;
+      }
+
       if (leftStick.downIntent) {
         const duration = performance.now() - leftStick.downStartTime;
         if (duration < 380 || leftStick.downFlickDetected) {
