@@ -198,7 +198,7 @@ export function getFreestyleChoreography(timer, hipBaseX, hipBaseY, groundY, fac
 /**
  * Trajektoria stóp w sprincie
  */
-export function getSprintFootTrajectory(p) {
+export function getSprintFootTrajectory(p, strideMult = 1.0) {
   const t = p / (Math.PI * 2);
   let lx, ly, ankle;
   const maxPushLift = 7.5;
@@ -206,13 +206,13 @@ export function getSprintFootTrajectory(p) {
   if (t < 0.32) {
     const u = t / 0.32;
     const eu = ease(u);
-    lx = 20 - eu * 58;
+    lx = (20 - eu * 58) * strideMult;
     ankle = lerp(0.08, 0.54, eu);
     ly = -Math.sin(ankle) * maxPushLift;
   } else if (t < 0.58) {
     const u = (t - 0.32) / 0.26;
     const eu = ease(u);
-    lx = -38 + eu * 22;
+    lx = (-38 + eu * 22) * strideMult;
     const startY = -Math.sin(0.54) * maxPushLift;
     const peakY = -42;
     ly = lerp(startY, peakY, Math.sin(eu * Math.PI * 0.5));
@@ -220,13 +220,13 @@ export function getSprintFootTrajectory(p) {
   } else if (t < 0.82) {
     const u = (t - 0.58) / 0.24;
     const eu = ease(u);
-    lx = -16 + eu * 54;
+    lx = (-16 + eu * 54) * strideMult;
     ly = -42 + (eu * 24);
     ankle = lerp(-0.12, 0.10, eu);
   } else {
     const u = (t - 0.82) / 0.18;
     const eu = ease(u);
-    lx = 38 - eu * 18;
+    lx = (38 - eu * 18) * strideMult;
     ly = -18 + eu * 18;
     ankle = lerp(0.10, 0.08, eu);
   }
@@ -239,9 +239,11 @@ export function getSprintFootTrajectory(p) {
  */
 export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   const p = ((phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const isStriker = !!(playerRef && (playerRef.currentClass?.id === 'STRIKER' || playerRef.classConfig?.id === 'STRIKER'));
+  const strideMult = isStriker ? 1.48 : 1.0;
 
   if (mode === 'SPRINT') {
-    return getSprintFootTrajectory(p);
+    return getSprintFootTrajectory(p, strideMult);
   }
 
   let lx = 0, ly = 0, ankle = 0;
@@ -285,7 +287,7 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   } else if (mode === 'WALK') {
     const stanceRatio = 0.58;
     const stanceLimit = Math.PI * 2 * stanceRatio;
-    const strideLen = 18.5;
+    const strideLen = 18.5 * strideMult;
     const stepHeight = 11.5;
     const toePinLiftMax = 5.8;
 
@@ -326,7 +328,7 @@ export function getBiomechanicFootTrajectory(phase, mode, speed, playerRef) {
   } else if (mode === 'JOG') {
     const stanceRatio = 0.42;
     const stanceLimit = Math.PI * 2 * stanceRatio;
-    const strideLen = 22 + ((speed - CONFIG.WALK_MAX) / (CONFIG.JOG_MAX - CONFIG.WALK_MAX)) * 4.5;
+    const strideLen = (22 + ((speed - CONFIG.WALK_MAX) / (CONFIG.JOG_MAX - CONFIG.WALK_MAX)) * 4.5) * strideMult;
     const stepHeight = 15.5;
     const toePinLiftMax = 7.5;
 

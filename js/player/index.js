@@ -540,9 +540,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
     if (player.rocketBoots && player.rocketBoots.dashing) {
       // AKTYWNY RAKIETOWY DASH (KLASA STRIKER / ROCKET BOOTS)
-      // Prędkość pozioma jest w 100% narzucana przez silniki butów odrzutowych
-      player.vx = player.rocketBoots.dashDir * player.rocketBoots.dashSpeed;
-      if (player.isJumping) {
+      // Wektor prędkości jest w 100% narzucany przez silniki butów odrzutowych
+      player.vx = player.rocketBoots.dashDirX * player.rocketBoots.dashSpeed;
+      if (player.rocketBoots.dashType === 'AIR') {
+        player.vy = player.rocketBoots.dashDirY * player.rocketBoots.dashSpeed;
         player.airVx = player.vx;
       }
     } else if (player.isSliding) {
@@ -640,11 +641,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
 
     if (!player.isSliding && player.gaitMode !== 'IDLE' && player.gaitMode !== 'CROUCH' && player.gaitMode !== 'PRONE' && player.gaitMode !== 'CRAWL' && !player.isJumping) {
+      const isStriker = !!(player.currentClass?.id === 'STRIKER' || player.classConfig?.id === 'STRIKER');
       let freq = 0.038;
       if (player.gaitMode === 'CROUCH_WALK') freq = 0.055;
-      if (player.gaitMode === 'WALK') freq = 0.1047;
-      if (player.gaitMode === 'JOG') freq = 0.052;
-      if (player.gaitMode === 'SPRINT') freq = 0.040;
+      if (player.gaitMode === 'WALK') freq = isStriker ? 0.062 : 0.1047;
+      if (player.gaitMode === 'JOG') freq = isStriker ? 0.030 : 0.052;
+      if (player.gaitMode === 'SPRINT') freq = isStriker ? (player.rocketBoots?.dashing ? 0.016 : 0.022) : 0.040;
 
       if (isMovingBackwards) {
         player.stridePhase -= speed * freq;
