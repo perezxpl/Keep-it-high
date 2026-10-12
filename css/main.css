@@ -857,6 +857,111 @@ button, .dev-btn {
   text-transform: uppercase;
 }
 
+/* Karta Stopnia Wojskowego Gracza w Menu Głównym */
+.menu-rank-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), 0 0 15px rgba(0, 229, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 18px;
+  max-width: 480px;
+  width: 92%;
+  margin: 0 auto 16px auto;
+  text-align: left;
+}
+
+.rank-badge-shield {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(15, 23, 42, 0.9));
+  border: 1.5px solid #00e5ff;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+
+.rank-badge-shield .rank-icon {
+  font-size: 20px;
+  font-weight: 900;
+  color: #38bdf8;
+  text-shadow: 0 0 10px #00e5ff;
+  letter-spacing: -1px;
+}
+
+.rank-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rank-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+}
+
+.rank-xp-current {
+  color: #facc15;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.4);
+}
+
+.rank-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rank-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.rank-next-badge {
+  font-family: monospace;
+  font-size: 10px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-progress-bar-bg {
+  width: 100%;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.rank-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #38bdf8, #facc15);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
 .menu-class-section {
   width: 100%;
   margin-bottom: 22px;

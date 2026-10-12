@@ -71,6 +71,10 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
 
+### 🎖️ Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
+- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oparty na punktach XP zapisywanych w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getCurrentRank`, `getNextRank`, `getRankProgress`).
+- `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+200 XP).
+
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:
    - **Miękki limit (~800–1000 linii)**: Gdy plik przekracza 1000 linii, wydziel nowe funkcje do osobnego podmodułu w odpowiednim katalogu.

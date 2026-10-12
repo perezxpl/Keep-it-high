@@ -14,6 +14,7 @@ import {
   _worldArenaState,
   goalCelebration
 } from '../world/state.js';
+import { drawRankHUD, drawMatchVictoryHUD, checkMatchWin, updateMatchWinState } from './rankHud.js';
 
 export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
@@ -1077,7 +1078,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
   const hudRight = hudX + barW + 10;
-  const hudBottom = hudY + barH + 5 + wepBoxH + (isMobile ? 16 : 20);
+  const hudBottom = hudY + barH + 5 + wepBoxH + (isMobile ? 32 : 38);
   const fadeMargin = isMobile ? 55 : 70;
 
   let minHudDist = Infinity;
@@ -1372,6 +1373,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.fillStyle = '#94a3b8';
   ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
 
+  // --- D. RANGA WOJSKOWA & PROGRES XP ---
+  const rankY = metaY + (isMobile ? 13 : 15);
+  drawRankHUD(ctx, hudX + 2, rankY, barW - 4, isMobile);
+
   ctx.restore();
 
   // =========================================================================
@@ -1593,6 +1598,12 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.fillText(`⚽ ${goalCelebration.team} GOAL! ⚽`, W / 2, H * 0.32);
     ctx.restore();
   }
+
+  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +200 XP
+  checkMatchWin(curArenaId, curScore);
+  updateMatchWinState(curScore);
+  drawMatchVictoryHUD(ctx, W, H, isMobile);
+
   ctx.restore();
 
   if (ball && ball.active && !isDeathmatch && !isSectorXArena) {

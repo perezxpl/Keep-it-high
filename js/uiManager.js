@@ -43,6 +43,8 @@ import {
 const SETTINGS_STORAGE_KEY = 'keep_it_high_settings_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress } from './progression.js';
+
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
   masterVolume: 80,
@@ -240,7 +242,34 @@ export const uiManager = {
     this.bindDOM();
     this.applySettings();
     this.applyAppearance();
+    this.updateMenuRankDisplay();
     this.isInitialized = true;
+  },
+
+  updateMenuRankDisplay() {
+    const currentXp = getPlayerXP();
+    const rank = getCurrentRank(currentXp);
+    const nextRank = getNextRank(currentXp);
+    const progress = getRankProgress(currentXp);
+
+    const iconEl = document.getElementById('menu-rank-icon');
+    const nameEl = document.getElementById('menu-rank-name');
+    const xpEl = document.getElementById('menu-rank-xp-text');
+    const barFillEl = document.getElementById('menu-rank-bar-fill');
+    const nextBadgeEl = document.getElementById('menu-rank-next-badge');
+
+    if (iconEl) iconEl.textContent = rank.icon;
+    if (nameEl) nameEl.textContent = `${rank.short} ${rank.name.toUpperCase()}`;
+    if (xpEl) xpEl.textContent = `${currentXp} XP`;
+    if (barFillEl) barFillEl.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
+    if (nextBadgeEl) {
+      if (nextRank) {
+        const left = Math.max(0, nextRank.minXp - currentXp);
+        nextBadgeEl.textContent = `NASTĘPNY: ${nextRank.name} (${nextRank.minXp} XP / brakuje ${left} XP)`;
+      } else {
+        nextBadgeEl.textContent = `MAKSYMALNY STOPIEŃ WOJSKOWY: ELITA ARENY`;
+      }
+    }
   },
 
   loadAppearance() {
@@ -431,6 +460,7 @@ export const uiManager = {
 
     switch (gameState) {
       case 'MENU':
+        this.updateMenuRankDisplay();
         if (menuEl) menuEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'none';

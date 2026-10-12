@@ -70,10 +70,12 @@
       "./js/player/torso.js": "./js/player/torso.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/player/renderer.js": "./js/player/renderer.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/player/state.js": "./js/player/state.js?v=v121_fix_utf8_encoding_and_striker",
+      "./js/progression.js": "./js/progression.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/projectiles.js": "./js/projectiles.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/renderer.js": "./js/renderer.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v121_fix_utf8_encoding_and_striker",
+      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/uiManager.js": "./js/uiManager.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/weapons.js": "./js/weapons.js?v=v121_fix_utf8_encoding_and_striker",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v121_fix_utf8_encoding_and_striker",
@@ -278,6 +280,26 @@
         <div class="menu-container">
           <div class="menu-brand">
             <h1 class="menu-title">FRAG BALL</h1>
+          </div>
+
+          <!-- Karta Stopnia Wojskowego Gracza -->
+          <div class="menu-rank-card" id="menu-player-rank-card">
+            <div class="rank-badge-shield">
+              <span class="rank-icon" id="menu-rank-icon">━</span>
+            </div>
+            <div class="rank-details">
+              <div class="rank-title-row">
+                <span class="rank-label">STOPIEŃ WOJSKOWY</span>
+                <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
+              </div>
+              <div class="rank-name-row">
+                <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
+                <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: St. Szeregowy (400 XP)</span>
+              </div>
+              <div class="rank-progress-bar-bg">
+                <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
+              </div>
+            </div>
           </div>
 
           <!-- Przyciski nawigacji głównej -->
