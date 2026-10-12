@@ -308,11 +308,29 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   let triggerGroundDir = 0;
   let triggerSource = 'NONE';
 
-  // 1. KLAWIATURA NA ZIEMI: 2x szybki tap klawisza lewo/prawo w oknie do 300 ms
+  // 1. KLAWIATURA NA ZIEMI: 2x szybki tap klawisza lewo/prawo w oknie do 300 ms (lub W w górę)
   if (!keyDown) {
-    if (justPressedLeft) {
+    if (justPressedUp) {
+      const dt = now - (rb.lastTapUpTime || 0);
+      if (dt > 0 && dt <= FLICK_WINDOW_MS) {
+        rb.lastTapUpTime = 0;
+        const fuelCost = (player.jetMax || 100) * 0.50;
+        if ((player.jetFuel || 0) >= fuelCost) {
+          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+          player.onGround = false;
+          player.isJumping = true;
+          player.y -= 4;
+          const xDir = keyLeft ? -0.707 : (keyRight ? 0.707 : 0);
+          const yDir = keyLeft || keyRight ? -0.707 : -1.0;
+          triggerStrikerAirDash(player, xDir, yDir);
+          return;
+        }
+      } else {
+        rb.lastTapUpTime = now;
+      }
+    } else if (justPressedLeft) {
       const dt = now - (rb.lastTapLeftTime || 0);
-      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
+      if (dt > 0 && dt <= FLICK_WINDOW_MS) {
         triggerGroundDir = -1;
         triggerSource = 'KEYBOARD';
         rb.lastTapLeftTime = 0;
@@ -321,7 +339,7 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
       }
     } else if (justPressedRight) {
       const dt = now - (rb.lastTapRightTime || 0);
-      if (dt >= 40 && dt <= FLICK_WINDOW_MS) {
+      if (dt > 0 && dt <= FLICK_WINDOW_MS) {
         triggerGroundDir = 1;
         triggerSource = 'KEYBOARD';
         rb.lastTapRightTime = 0;
@@ -331,25 +349,46 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
     }
   }
 
-  // 2. DRĄŻEK NA ZIEMI: 2x szybki wyrzut drążka lewo/prawo w oknie do 300 ms
+  // 2. DRĄŻEK NA ZIEMI: 2x szybki wyrzut drążka lewo/prawo/góra w oknie do 300 ms
   if (triggerGroundDir === 0) {
-    const isHorizFlick = Math.abs(stickX) >= 0.65 && !isStickAimingDown;
-
     if (stickMag < 0.35) {
       rb.groundStickWasCentered = true;
-    } else if (isHorizFlick) {
-      if (rb.groundStickWasCentered) {
-        rb.groundStickWasCentered = false;
-        const flickDir = Math.sign(stickX);
-        const dt = now - (rb.lastGroundStickFlickTime || 0);
+    } else if (stickMag >= 0.50) {
+      if (stickY <= -0.50) {
+        // Double-flick w górę z ziemi
+        if (rb.groundStickWasCentered) {
+          rb.groundStickWasCentered = false;
+          const dt = now - (rb.lastGroundUpFlickTime || 0);
+          if (dt > 0 && dt <= FLICK_WINDOW_MS) {
+            rb.lastGroundUpFlickTime = 0;
+            const fuelCost = (player.jetMax || 100) * 0.50;
+            if ((player.jetFuel || 0) >= fuelCost) {
+              player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+              player.onGround = false;
+              player.isJumping = true;
+              player.y -= 4;
+              triggerStrikerAirDash(player, stickX / stickMag, stickY / stickMag);
+              return;
+            }
+          } else {
+            rb.lastGroundUpFlickTime = now;
+          }
+        }
+      } else if (!isStickAimingDown && Math.abs(stickX) >= 0.45) {
+        // Double-flick poziomy po ziemi
+        if (rb.groundStickWasCentered) {
+          rb.groundStickWasCentered = false;
+          const flickDir = Math.sign(stickX);
+          const dt = now - (rb.lastGroundStickFlickTime || 0);
 
-        if (dt >= 40 && dt <= FLICK_WINDOW_MS && flickDir === rb.lastGroundStickFlickDir) {
-          triggerGroundDir = flickDir;
-          triggerSource = 'STICK';
-          rb.lastGroundStickFlickTime = 0;
-        } else {
-          rb.lastGroundStickFlickTime = now;
-          rb.lastGroundStickFlickDir = flickDir;
+          if (dt > 0 && dt <= FLICK_WINDOW_MS && flickDir === rb.lastGroundStickFlickDir) {
+            triggerGroundDir = flickDir;
+            triggerSource = 'STICK';
+            rb.lastGroundStickFlickTime = 0;
+          } else {
+            rb.lastGroundStickFlickTime = now;
+            rb.lastGroundStickFlickDir = flickDir;
+          }
         }
       }
     }
@@ -373,13 +412,15 @@ function triggerStrikerAirDash(player, dirX, dirY) {
   rb.dashTimer = 18;
   rb.dashSpeed = 23.5;
 
-  if (Math.abs(dirX) > 0.1) {
+  if (Math.abs(dirX) > 0.05) {
     player.facing = Math.sign(dirX);
   }
 
   player.vx = dirX * 23.5;
   player.vy = dirY * 23.5;
   player.airVx = player.vx;
+  player.x += player.vx * 0.5;
+  player.y += player.vy * 0.5;
   triggerScreenShake(3.5);
 
   // Wybuch płomieni w kierunku przeciwnym do wektora lotu
@@ -397,9 +438,10 @@ function triggerStrikerGroundDash(player, dir, source = 'STICK') {
   rb.dashDir = dir;
   rb.dashDirX = dir;
   rb.dashDirY = 0;
-  rb.dashSpeed = 17.5;
+  rb.dashSpeed = 18.0;
   player.facing = dir;
-  player.vx = dir * 17.5;
+  player.vx = dir * 18.0;
+  player.x += player.vx * 0.5;
   triggerScreenShake(2.5);
 
   // Wybuch płomieni z pięt na poziomie murawy

@@ -978,7 +978,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.currentPlatform = null;
   } else {
     if (player.rocketBoots && player.rocketBoots.dashing && player.rocketBoots.dashType === 'AIR') {
-      player.vy = 0; // Płaski, poziomy przelot rakietowy bez ściągania grawitacją w dół
+      // Wektor pionowy jest w 100% narzucany przez kierunek dasha butów odrzutowych (góra, skosy, boki)
+      player.vy = player.rocketBoots.dashDirY * player.rocketBoots.dashSpeed;
     } else {
       player.vy += CONFIG.GRAVITY;
     }
