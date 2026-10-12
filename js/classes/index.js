@@ -1,5 +1,5 @@
 import { RaptorClass } from './aero.js';
-import { StrikerClass } from './playmaker.js';
+import { StrikerClass } from './striker.js';
 import { EnforcerClass } from './enforcer.js';
 
 export const CLASSES = {
@@ -8,7 +8,7 @@ export const CLASSES = {
   STRIKER: StrikerClass,
   ENFORCER: EnforcerClass,
 
-  // Aliasy wstecznej kompatybilności
+  // Aliasy wstecznej kompatybilności (stare nazwy)
   AERO: RaptorClass,
   PLAYMAKER: StrikerClass,
   SWEEPER: StrikerClass
