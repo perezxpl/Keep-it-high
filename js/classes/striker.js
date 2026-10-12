@@ -167,9 +167,6 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   // 1. ODCZYT KLAWISZY (Klawiatura / D-pad)
   const keyLeft = !!(keys && (keys.left || keys.KeyA));
   const keyRight = !!(keys && (keys.right || keys.KeyD));
-  // 1. ODCZYT KLAWISZY (Klawiatura / D-pad)
-  const keyLeft = !!(keys && (keys.left || keys.KeyA));
-  const keyRight = !!(keys && (keys.right || keys.KeyD));
   const keyUp = !!(keys && (keys.up || keys.space || keys.KeyW));
   const keyDown = !!(keys && (keys.down || keys.KeyS)); // Dół - wykluczony z dashowania!
 
