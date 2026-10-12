@@ -133,62 +133,7 @@ canvas.addEventListener('touchstart', (e) => {
 
     updateButtonLayout(W, H);
 
-    // =======================================================================
-    // LEWA STRONA EKRANU: RUCH, SKOK I JETPACK (SZTYWNO UMIEJSCOWIONY DRĄŻEK)
-    // Dotyk wyłącznie w promieniu lewego drążka (ochrona przed przypadkowym ruchem)
-    // =======================================================================
-    const distToLeftStick = Math.hypot(t.clientX - leftStick.baseX, t.clientY - leftStick.baseY);
-    const maxLeftTouchDist = (leftStick.maxRadius || 55) + 26;
-    if (t.clientX < midX && !leftStick.active && distToLeftStick <= maxLeftTouchDist) {
-      leftStick.active = true;
-      leftStick.id = t.identifier;
-      leftStick.curX = t.clientX;
-      leftStick.curY = t.clientY;
-      leftStick.downIntent = false;
-      leftStick.downStartTime = 0;
-      leftStick.downFlickDetected = false;
-
-      const dx = t.clientX - leftStick.baseX;
-      const dy = t.clientY - leftStick.baseY;
-      const sDist = Math.hypot(dx, dy);
-      const maxR = leftStick.maxRadius || 55;
-      if (sDist > 5) {
-        const factor = Math.min(1.0, (sDist - 5) / (maxR - 5));
-        leftStick.axisX = (dx / sDist) * factor;
-        leftStick.axisY = (dy / sDist) * factor;
-      } else {
-        leftStick.axisX = 0;
-        leftStick.axisY = 0;
-      }
-
-      if (leftStick.axisY > 0.45) {
-        leftStick.downIntent = true;
-        leftStick.downStartTime = performance.now();
-        player.isCrouching = true;
-        player.state = 'CROUCH';
-        player.hitboxHeight = 45;
-        if (leftStick.axisY > 0.70) {
-          leftStick.downFlickDetected = true;
-        }
-      }
-
-      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
-      if (isAirborne) {
-        // Nowe dotknięcie ekranu w powietrzu oznacza, że drążek był wcześniej zwolniony (zneutralizowany)
-        leftStick.jetpackNeutralized = true;
-      }
-      const isStriker = (player.currentClass?.id === 'STRIKER');
-      if (!isStriker && isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.16 && (player.jetFuel || 0) > 0) {
-        leftStick.isJetpacking = true;
-        setJetpackActive(true);
-        player.isJetpacking = true;
-      } else {
-        leftStick.isJetpacking = false;
-        if (isStriker) player.isJetpacking = false;
-      }
-    }
-
-    // Sprawdzenie dotknięcia karty broni w lewym górnym rogu (1s przytrzymanie = przeładowanie, <1s puszczenie = zmiana broni)
+    // 1. Sprawdzenie dotknięcia karty broni w lewym górnym rogu (1s przytrzymanie = przeładowanie, <1s puszczenie = zmiana broni)
     const pFarmTop = pockets.firearm;
     if (pFarmTop && t.clientX >= 10 && t.clientX <= 235 && t.clientY >= 28 && t.clientY <= 78) {
       if (pFarmTop.holdTimerId) clearTimeout(pFarmTop.holdTimerId);
@@ -210,6 +155,39 @@ canvas.addEventListener('touchstart', (e) => {
         }
       }, 850);
       continue;
+    }
+
+    // =======================================================================
+    // LEWA STRONA EKRANU: PŁYWAJĄCY DRĄŻEK RUCHU (FLOATING / DYNAMIC JOYSTICK)
+    // Drążek nie jest przyklejony do jednego miejsca – natychmiast centruje się dokładnie tam, gdzie gracz dotknie!
+    // =======================================================================
+    if (t.clientX < midX && !leftStick.active) {
+      leftStick.active = true;
+      leftStick.id = t.identifier;
+
+      const maxR = leftStick.maxRadius || 55;
+      const screenH = typeof window !== 'undefined' ? window.innerHeight : 600;
+
+      // Centrowanie bazy drążka bezpośrednio w miejscu dotknięcia palca (z marginesem ekranu)
+      leftStick.baseX = Math.round(Math.max(maxR + 8, Math.min(midX - maxR - 8, t.clientX)));
+      leftStick.baseY = Math.round(Math.max(maxR + 8, Math.min(screenH - maxR - 8, t.clientY)));
+      leftStick.curX = leftStick.baseX;
+      leftStick.curY = leftStick.baseY;
+      leftStick.axisX = 0;
+      leftStick.axisY = 0;
+
+      leftStick.downIntent = false;
+      leftStick.downStartTime = 0;
+      leftStick.downFlickDetected = false;
+
+      const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
+      if (isAirborne) {
+        // Nowe dotknięcie ekranu w powietrzu oznacza, że drążek był wcześniej zwolniony (zneutralizowany)
+        leftStick.jetpackNeutralized = true;
+      }
+      const isStriker = (player.currentClass?.id === 'STRIKER');
+      leftStick.isJetpacking = false;
+      if (isStriker) player.isJetpacking = false;
     }
 
     // =======================================================================
@@ -343,12 +321,22 @@ canvas.addEventListener('touchmove', (e) => {
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.curX = t.clientX;
       leftStick.curY = t.clientY;
-      const dx = leftStick.curX - leftStick.baseX;
-      const dy = leftStick.curY - leftStick.baseY;
-      const sDist = Math.hypot(dx, dy);
-      const deadzone = 5;
+      let dx = leftStick.curX - leftStick.baseX;
+      let dy = leftStick.curY - leftStick.baseY;
+      let sDist = Math.hypot(dx, dy);
       const maxR = leftStick.maxRadius || 55;
 
+      // Dynamiczne podążanie bazy drążka za kciukiem gracza (floating joystick follow mode)
+      if (sDist > maxR + 12) {
+        const excess = sDist - (maxR + 12);
+        leftStick.baseX += (dx / sDist) * excess;
+        leftStick.baseY += (dy / sDist) * excess;
+        dx = leftStick.curX - leftStick.baseX;
+        dy = leftStick.curY - leftStick.baseY;
+        sDist = Math.hypot(dx, dy);
+      }
+
+      const deadzone = 5;
       if (sDist > deadzone) {
         const factor = Math.min(1.0, (sDist - deadzone) / (maxR - deadzone));
         leftStick.axisX = (dx / sDist) * factor;
@@ -626,6 +614,15 @@ function endTouch(e) {
       leftStick.axisX = 0;
       leftStick.axisY = 0;
       leftStick.jumpTriggered = false;
+
+      // Przywrócenie domyślnej ergonomicznej pozycji po zwolnieniu dotyku
+      if (leftStick.defaultBaseX) {
+        leftStick.baseX = leftStick.defaultBaseX;
+        leftStick.baseY = leftStick.defaultBaseY;
+        leftStick.curX = leftStick.baseX;
+        leftStick.curY = leftStick.baseY;
+      }
+
       updateMobileControlStates(player, leftStick, btnCluster);
     }
 

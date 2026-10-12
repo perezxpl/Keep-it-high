@@ -21,6 +21,8 @@ export const leftStick = {
   id: null,
   baseX: 0,
   baseY: 0,
+  defaultBaseX: 0,
+  defaultBaseY: 0,
   curX: 0,
   curY: 0,
   axisX: 0,
@@ -133,11 +135,13 @@ export function updateButtonLayout(W, H) {
   const curW = (typeof W === 'number' && W > 0) ? W : (typeof window !== 'undefined' ? window.innerWidth : 800);
   const curH = (typeof H === 'number' && H > 0) ? H : (typeof window !== 'undefined' ? window.innerHeight : 600);
 
-  // Sztywno umiejscowione, ergonomiczne pozycje drążków dotykowych
-  leftStick.baseX = Math.round(Math.min(135, Math.max(95, curW * 0.14)));
-  leftStick.baseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
+  // Domyślne ergonomiczne pozycje drążków dotykowych
+  leftStick.defaultBaseX = Math.round(Math.min(135, Math.max(95, curW * 0.14)));
+  leftStick.defaultBaseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
   leftStick.maxRadius = 55;
   if (!leftStick.active) {
+    leftStick.baseX = leftStick.defaultBaseX;
+    leftStick.baseY = leftStick.defaultBaseY;
     leftStick.curX = leftStick.baseX;
     leftStick.curY = leftStick.baseY;
   }
