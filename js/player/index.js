@@ -568,13 +568,22 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (Math.abs(inputAxisX) > 0.05) {
         if (player.isJetpacking && leftStick && leftStick.active) {
           const targetJetVx = inputAxisX * maxAirSpeed;
-          player.airVx += (targetJetVx - player.airVx) * 0.14;
+          if (Math.abs(player.airVx) > maxAirSpeed && Math.sign(inputAxisX) === Math.sign(player.airVx)) {
+            // Szybuje szybciej w tę samą stronę – nie wyhamowuj pędu
+          } else {
+            player.airVx += (targetJetVx - player.airVx) * 0.14;
+          }
         } else {
           player.airVx += inputAxisX * accel * 0.7;
         }
-        player.airVx = Math.max(-maxAirSpeed, Math.min(maxAirSpeed, player.airVx));
+        // Zachowanie pędu szybowania: nie przycinaj gwałtownie jeśli postać leci szybciej
+        const effectiveMax = Math.max(maxAirSpeed, Math.abs(player.airVx));
+        player.airVx = Math.max(-effectiveMax, Math.min(effectiveMax, player.airVx));
       } else if (player.isJetpacking && leftStick && leftStick.active) {
-        player.airVx *= 0.92;
+        // Tapnięcie w centrum drążka nie wygasza pędu szybowania
+        if (Math.abs(player.airVx) < 1.0) {
+          player.airVx *= 0.96;
+        }
       }
       player.vx = player.airVx;
       player.airVx *= 0.995;

@@ -177,12 +177,14 @@ canvas.addEventListener('touchstart', (e) => {
         // Nowe dotknięcie ekranu w powietrzu oznacza, że drążek był wcześniej zwolniony (zneutralizowany)
         leftStick.jetpackNeutralized = true;
       }
-      if (isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.16 && (player.jetFuel || 0) > 0) {
+      const isStriker = (player.currentClass?.id === 'STRIKER');
+      if (!isStriker && isAirborne && leftStick.jetpackNeutralized && leftStick.axisY < -0.16 && (player.jetFuel || 0) > 0) {
         leftStick.isJetpacking = true;
         setJetpackActive(true);
         player.isJetpacking = true;
       } else {
         leftStick.isJetpacking = false;
+        if (isStriker) player.isJetpacking = false;
       }
     }
 

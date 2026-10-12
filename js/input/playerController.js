@@ -210,11 +210,16 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       if (isTouchFlight && !isKeyFlight) {
         // Na drążku prędkość pozioma lotu płynnie dąży do proporcji wychylenia gałki
         const targetJetVx = inputAxisX * maxAirVx;
-        player.vx += (targetJetVx - player.vx) * 0.16;
+        if (Math.abs(player.vx) > maxAirVx && Math.sign(inputAxisX) === Math.sign(player.vx)) {
+          // Szybuje szybciej w tę samą stronę – nie wyhamowuj pędu
+        } else {
+          player.vx += (targetJetVx - player.vx) * 0.16;
+        }
       } else {
         player.vx += inputAxisX * 0.42;
       }
-      player.vx = Math.max(-maxAirVx, Math.min(maxAirVx, player.vx));
+      const effectiveMaxJet = Math.max(maxAirVx, Math.abs(player.vx));
+      player.vx = Math.max(-effectiveMaxJet, Math.min(effectiveMaxJet, player.vx));
       player.airVx = player.vx;
       const isAimingNow = player.isAiming || player.isShooting || (player.shootPoseTimer > 0);
       if (!isAimingNow) {
@@ -222,9 +227,13 @@ export function updatePlayerInputAndCombat(activeArenaId) {
         else if (inputAxisX < -0.1) player.facing = -1;
       }
     } else if (isTouchFlight) {
-      // W zawisie pionowym na drążku płynnie wygaszaj boczny dryf
-      player.vx *= 0.90;
-      if (Math.abs(player.vx) < 0.04) player.vx = 0;
+      // Tapnięcie w centrum lub lot pionowy nie wygasza pędu szybowania
+      if (Math.abs(player.vx) < 1.0) {
+        player.vx *= 0.95;
+        if (Math.abs(player.vx) < 0.04) player.vx = 0;
+      } else {
+        player.vx *= 0.995;
+      }
       player.airVx = player.vx;
     }
 
