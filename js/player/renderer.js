@@ -255,6 +255,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   };
   v.jetFuel = p.jetFuel;
   v.jetMax = p.jetMax;
+  v.isJetpacking = !!p.isJetpacking;
+  v.bootsDashing = !!(p.rocketBoots && p.rocketBoots.dashing);
   if (p.currentClass?.id === 'STRIKER') {
     v.hasRocketBoots = true;
   }

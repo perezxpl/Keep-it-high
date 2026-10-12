@@ -1134,6 +1134,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.save();
   ctx.translate(hipX, hipY);
   ctx.rotate(thighAng);
+  if (facing < 0) ctx.scale(1, -1);
 
   const thighHalfH = 4.15 * muscle;
   const pantsStyle = v.pantsStyle || 'cargo_long';
@@ -1443,6 +1444,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.save();
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
+  if (facing < 0) ctx.scale(1, -1);
 
   const baseCalf = isSculpted ? 4.7 : 4.5;
   const calfBulge = baseCalf * muscle;
@@ -1664,7 +1666,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   }
 
   // Cholewka buta rysowana NA wierzchu nogawki (wyższe buty zakrywają dół spodni)
-  drawBootCollarOverPants(ctx, shoesStyle, shoesColor, isFrontLeg, muscle, l2, achillesHalfW, v);
+  drawBootCollarOverPants(ctx, shoesStyle, shoesColor, isFrontLeg, muscle, l2, achillesHalfW, v, facing);
 
   ctx.restore();
 

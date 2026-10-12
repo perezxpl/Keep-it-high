@@ -55,7 +55,7 @@ export function isHighBoot(style = 'combat_boots') {
  * Renderuje cholewkę buta w układzie współrzędnych łydki (shin frame),
  * wywoływane PO narysowaniu nogawki spodni, tak aby wyższe buty zakrywały nogawkę.
  */
-export function drawBootCollarOverPants(ctx, style, color, isFrontLeg, muscle, l2, achillesHalfW, v) {
+export function drawBootCollarOverPants(ctx, style, color, isFrontLeg, muscle, l2, achillesHalfW, v, facing = 1) {
   const pal = getShoesPalette(color || v.shoesColor || '#18181b');
   const bCol = color || v.shoesColor || '#18181b';
 
@@ -220,14 +220,14 @@ export function drawBootCollarOverPants(ctx, style, color, isFrontLeg, muscle, l
   // Nakładka z buta wchodząca w górę łydki z pionowym wskaźnikiem energii
   // =========================================================================
   if (v.hasRocketBoots) {
-    drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle, l2, achillesHalfW, v);
+    drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle, l2, achillesHalfW, v, facing);
   }
 }
 
 /**
  * Renderuje opancerzoną nakładkę egzoszkieletową na łydce wraz z pionowym wskaźnikiem LED mocy
  */
-export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24.0, achillesHalfW = 2.4, v = {}) {
+export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24.0, achillesHalfW = 2.4, v = {}, facing = 1) {
   const strutTop = l2 - 13.0 * muscle;
   const strutH = 12.8 * muscle;
   const flameCol = v.jetpackColor || '#00e5ff';
@@ -235,16 +235,17 @@ export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24
 
   ctx.save();
 
-  // 1. TYTANOWA SZYNOPŁYTA EGZOSZKIELETU NA TYLE ŁYDKI
+  // 1. TYTANOWA SZYNOPŁYTA EGZOSZKIELETU NA TYLE ŁYDKI (ŚCIĘGNO ACHILLESA)
   ctx.fillStyle = isFrontLeg ? '#1f2937' : '#111827';
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
-  const greaveW = achillesHalfW * 1.20;
+  const greaveW = achillesHalfW * 1.15;
+  const greaveY = achillesHalfW * 0.15;
   if (ctx.roundRect) {
-    ctx.roundRect(strutTop, -greaveW, strutH, greaveW * 0.9, 1.2);
+    ctx.roundRect(strutTop, greaveY, strutH, greaveW * 0.9, 1.2);
   } else {
-    ctx.rect(strutTop, -greaveW, strutH, greaveW * 0.9);
+    ctx.rect(strutTop, greaveY, strutH, greaveW * 0.9);
   }
   ctx.fill();
   ctx.stroke();
@@ -253,37 +254,37 @@ export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24
   ctx.strokeStyle = '#475569';
   ctx.lineWidth = 0.6;
   ctx.beginPath();
-  ctx.moveTo(strutTop + 0.8, -greaveW + 0.5);
-  ctx.lineTo(strutTop + strutH - 0.8, -greaveW + 0.5);
+  ctx.moveTo(strutTop + 0.8, greaveY + greaveW * 0.9 - 0.5);
+  ctx.lineTo(strutTop + strutH - 0.8, greaveY + greaveW * 0.9 - 0.5);
   ctx.stroke();
 
   // 2. METALOWE KLAMRY MOCUJĄCE DO ŁYDKI
   const strapCol = '#0f172a';
   const clampCol = '#94a3b8';
-  // Górna klamra
+  // Górna klamra obejmująca całą łydkę
   ctx.fillStyle = strapCol;
-  ctx.fillRect(strutTop + 1.6, -greaveW - 0.3, 1.8, greaveW * 1.8);
+  ctx.fillRect(strutTop + 1.6, -achillesHalfW * 0.95, 1.8, achillesHalfW * 2.2);
   ctx.fillStyle = clampCol;
-  ctx.fillRect(strutTop + 1.9, -greaveW + 0.2, 1.2, 1.0);
+  ctx.fillRect(strutTop + 1.9, greaveY + greaveW * 0.3, 1.2, 1.0);
 
   // Dolna klamra przy stawie skokowym
   ctx.fillStyle = strapCol;
-  ctx.fillRect(l2 - 3.4, -greaveW - 0.3, 1.8, greaveW * 1.8);
+  ctx.fillRect(l2 - 3.4, -achillesHalfW * 0.95, 1.8, achillesHalfW * 2.2);
   ctx.fillStyle = clampCol;
-  ctx.fillRect(l2 - 3.1, -greaveW + 0.2, 1.2, 1.0);
+  ctx.fillRect(l2 - 3.1, greaveY + greaveW * 0.3, 1.2, 1.0);
 
-  // Tłoczek siłownika hydraulicznego biegnący do buta
+  // Tłoczek siłownika hydraulicznego biegnący do dyszy buta na pięcie
   ctx.fillStyle = '#64748b';
-  ctx.fillRect(l2 - 2.0, -greaveW * 0.75, 2.8, 1.2);
+  ctx.fillRect(l2 - 2.0, greaveY + greaveW * 0.25, 2.8, 1.2);
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.5;
-  ctx.strokeRect(l2 - 2.0, -greaveW * 0.75, 2.8, 1.2);
+  ctx.strokeRect(l2 - 2.0, greaveY + greaveW * 0.25, 2.8, 1.2);
 
   // 3. PIONOWY WSKAŹNIK MOCY LED (FUEL/POWER INDICATOR)
   // Wyfrezowane czarne korytko pod diody
   const gaugeX = strutTop + 3.8;
   const gaugeW = 6.8 * muscle;
-  const gaugeY = -greaveW * 0.75;
+  const gaugeY = greaveY + greaveW * 0.25;
   const gaugeH = 2.0;
 
   ctx.fillStyle = '#030712';
@@ -700,6 +701,23 @@ export function drawFootwear(ctx, style = 'combat_boots', color = '#18181b', isF
     ctx.shadowColor = thrusterColor;
     ctx.shadowBlur = 4;
     ctx.fillRect(-7.0, 0.2, 1.0, 1.4);
+
+    // Dynamiczny płomień odrzutowy przy locie / zrywie rakietowym
+    const isThrusting = !!(v.isJetpacking || v.bootsDashing);
+    if (isThrusting) {
+      const flameLen = 4.5 + Math.random() * 3.5;
+      const fGrad = ctx.createLinearGradient(-7.2, 0.9, -7.2 - flameLen, 0.9);
+      fGrad.addColorStop(0.0, '#ffffff');
+      fGrad.addColorStop(0.35, thrusterColor);
+      fGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = fGrad;
+      ctx.beginPath();
+      ctx.moveTo(-7.2, -0.2);
+      ctx.lineTo(-7.2 - flameLen, 0.9);
+      ctx.lineTo(-7.2, 2.0);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
   }
 }
