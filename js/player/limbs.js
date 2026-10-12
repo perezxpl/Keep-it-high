@@ -1444,8 +1444,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
   ctx.translate(ik.kneeX, ik.kneeY);
   ctx.rotate(shinAng);
 
-  const calfBulge = (isSculpted ? 5.2 : 4.5) * muscle;
-  const achillesHalfW = 2.5 * muscle;
+  const baseCalf = isSculpted ? 4.7 : 4.5;
+  const calfBulge = baseCalf * muscle;
+  const achillesHalfW = 2.35 * muscle;
 
   if (isShorts) {
     // 1. KRÓTKIE SPODENKI: Naturalny staw kolanowy i wysportowana łydka (estetyka tożsama z łokciem)
