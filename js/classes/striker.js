@@ -205,15 +205,17 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
 
   // =========================================================================
   // 3. STEROWANIE MOBILNE: ŁADOWANIE SIŁY PRZED WYCHYLENIEM (CHARGE DASH)
-  // Gdy gracz przytrzyma lewy drążek w centrum, drążek ładuje energię (touchChargeRatio 0..1).
-  // Wychylenie drążka uwalnia dash z siłą zależną od naładowania, a zużycie paliwa
-  // i prędkość skalują się proporcjonalnie do zgromadzonej mocy.
+  // Gdy gracz przytrzyma lewy drążek w centrum LUB w dół, drążek ładuje energię (touchChargeRatio 0..1).
+  // Wychylenie w dół NIE dezaktywuje energii!
+  // Wychylenie drążka w dowolnym kierunku poza dołem (lewo, prawo, góra, skos) uwalnia dash
+  // z siłą zależną od naładowania, a zużycie paliwa i prędkość skalują się proporcjonalnie.
   // =========================================================================
   const isTouchStick = !!(leftStick && leftStick.active);
   const isStickCentered = (stickMag < 0.38);
+  const isHoldingChargeZone = isStickCentered || isStickAimingDown;
 
   if (isTouchStick) {
-    if (isStickCentered) {
+    if (isHoldingChargeZone) {
       if ((player.jetFuel || 0) >= 5) {
         if (!rb.isTouchCharging) {
           rb.isTouchCharging = true;
@@ -239,42 +241,36 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
         rb.touchChargeRatio = 0;
         rb.touchChargePower = 0;
       }
-    } else if (stickMag >= 0.55) {
+    } else if (stickMag >= 0.55 && !isStickAimingDown) {
       if (rb.isTouchCharging && rb.touchChargeRatio > 0.05) {
-        if (!isStickAimingDown) {
-          const power = rb.touchChargePower || 0.35;
-          const nx = stickX / stickMag;
-          const ny = stickY / stickMag;
+        const power = rb.touchChargePower || 0.35;
+        const nx = stickX / stickMag;
+        const ny = stickY / stickMag;
 
-          if (isAirborne) {
+        if (isAirborne) {
+          const fuelCost = (player.jetMax || 100) * 0.50 * power;
+          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+          triggerStrikerAirDash(player, nx, ny, power);
+        } else {
+          if (stickY <= -0.50) {
             const fuelCost = (player.jetMax || 100) * 0.50 * power;
             player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+            player.onGround = false;
+            player.isJumping = true;
+            player.y -= 4;
             triggerStrikerAirDash(player, nx, ny, power);
-          } else {
-            if (stickY <= -0.50) {
-              const fuelCost = (player.jetMax || 100) * 0.50 * power;
-              player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-              player.onGround = false;
-              player.isJumping = true;
-              player.y -= 4;
-              triggerStrikerAirDash(player, nx, ny, power);
-            } else if (Math.abs(stickX) >= 0.45) {
-              const startFuel = 12.0 * power;
-              player.jetFuel = Math.max(0, player.jetFuel - startFuel);
-              triggerStrikerGroundDash(player, Math.sign(stickX), 'STICK', power);
-            }
+          } else if (Math.abs(stickX) >= 0.45) {
+            const startFuel = 12.0 * power;
+            player.jetFuel = Math.max(0, player.jetFuel - startFuel);
+            triggerStrikerGroundDash(player, Math.sign(stickX), 'STICK', power);
           }
-
-          rb.isTouchCharging = false;
-          rb.touchChargeStartTime = 0;
-          rb.touchChargeRatio = 0;
-          rb.touchChargePower = 0;
-          return;
-        } else {
-          rb.isTouchCharging = false;
-          rb.touchChargeRatio = 0;
-          rb.touchChargePower = 0;
         }
+
+        rb.isTouchCharging = false;
+        rb.touchChargeStartTime = 0;
+        rb.touchChargeRatio = 0;
+        rb.touchChargePower = 0;
+        return;
       }
     }
   } else {
