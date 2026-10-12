@@ -449,7 +449,7 @@ export function invalidateSkyCache() {
 // =========================================================================
 export const jetpackParticles = [];
 
-export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2) {
+export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2, floorY = null) {
   const colors = customColors || ['#00e5ff', '#38bdf8', '#ffffff'];
 
   for (let i = 0; i < count; i++) {
@@ -477,7 +477,8 @@ export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null,
       decay: isSmoke ? 0.032 : 0.046,
       isFlame: !isSmoke,
       color: col,
-      glowColor: colors[0] || '#00e5ff'
+      glowColor: colors[0] || '#00e5ff',
+      floorY: (typeof floorY === 'number') ? floorY : null
     });
   }
 
@@ -491,6 +492,15 @@ export function updateJetpackParticles() {
     const p = jetpackParticles[i];
     p.x += p.vx;
     p.y += p.vy;
+
+    // Zabezpieczenie przed przenikaniem przez podstawę pod postacią (ogień rozchodzi się na boki)
+    if (typeof p.floorY === 'number' && p.y >= p.floorY - 1) {
+      p.y = p.floorY - 1;
+      p.vy = -Math.abs(p.vy) * 0.10;
+      if (Math.abs(p.vx) < 1.5) {
+        p.vx = (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 2.8);
+      }
+    }
 
     // Opór powietrza
     p.vx *= 0.94;

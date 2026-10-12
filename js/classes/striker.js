@@ -152,6 +152,7 @@ export function initRocketBootsState(p) {
     // Powietrze – gotowość drążka na pojedynczy wyrzut po uprzednim cofnięciu / wyskoku
     airStickReady: false,
     prevAirborne: false,
+    touchAirDashReady: true,
 
     // Klawiatura PC – ładowanie siły klawiszem X (PC Charge Dash)
     isKeyCharging: false,
@@ -221,43 +222,69 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   const isHoldingChargeZone = isStickCentered || isStickAimingDown;
 
   if (isTouchStick) {
-    if (isHoldingChargeZone) {
-      if ((player.jetFuel || 0) >= 5) {
-        if (!rb.isTouchCharging) {
-          rb.isTouchCharging = true;
-          rb.touchChargeStartTime = now;
+    if (isAirborne) {
+      // =====================================================================
+      // W POWIETRZU NA TELEFONIE:
+      // Dash zawsze odpala w PEŁNEJ MOCY (1.0) w kierunku wychylonego drążka!
+      // Każde powtórzenie wymaga przynajmniej lekkiego cofnięcia (stickMag < 0.40)
+      // i posiadania odpowiedniej ilości paliwa (50%).
+      // =====================================================================
+      rb.isTouchCharging = false;
+      rb.touchChargeRatio = 0;
+      rb.touchChargePower = 0;
+
+      if (stickMag < 0.40) {
+        // Lekkie cofnięcie drążka w stronę centrum odnawia gotowość do kolejnego dasha
+        rb.touchAirDashReady = true;
+      } else if (rb.touchAirDashReady && stickMag >= 0.52) {
+        const fuelCost = (player.jetMax || 100) * 0.50;
+        if ((player.jetFuel || 0) >= fuelCost) {
+          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
+          const nx = stickX / stickMag;
+          const ny = stickY / stickMag;
+          triggerStrikerAirDash(player, nx, ny, 1.0);
+          rb.touchAirDashReady = false; // Wymaga cofnięcia drążka przed kolejnym dashem!
+          return;
+        }
+      }
+    } else {
+      // =====================================================================
+      // NA ZIEMI NA TELEFONIE: Ładowanie siły przed wychyleniem (Charge Dash)
+      // =====================================================================
+      rb.touchAirDashReady = true; // Na ziemi zawsze odnawia gotowość do skoku w locie
+
+      if (isHoldingChargeZone) {
+        if ((player.jetFuel || 0) >= 5) {
+          if (!rb.isTouchCharging) {
+            rb.isTouchCharging = true;
+            rb.touchChargeStartTime = now;
+            rb.touchChargeRatio = 0;
+            rb.touchChargePower = 0;
+          } else {
+            const holdMs = now - rb.touchChargeStartTime;
+            const MIN_HOLD = 100;
+            const FULL_CHARGE = 580;
+            if (holdMs >= MIN_HOLD) {
+              const rawRatio = Math.min(1.0, (holdMs - MIN_HOLD) / (FULL_CHARGE - MIN_HOLD));
+              const maxFuelRatio = Math.min(1.0, Math.max(0.1, (player.jetFuel || 0) / 50));
+              rb.touchChargeRatio = Math.min(rawRatio, maxFuelRatio);
+              rb.touchChargePower = 0.35 + 0.65 * rb.touchChargeRatio;
+            }
+          }
+          if (rb.touchChargeRatio > 0.05) {
+            emitBootsChargeSparks(player, rb.touchChargeRatio);
+          }
+        } else {
+          rb.isTouchCharging = false;
           rb.touchChargeRatio = 0;
           rb.touchChargePower = 0;
-        } else {
-          const holdMs = now - rb.touchChargeStartTime;
-          const MIN_HOLD = 100;
-          const FULL_CHARGE = 580;
-          if (holdMs >= MIN_HOLD) {
-            const rawRatio = Math.min(1.0, (holdMs - MIN_HOLD) / (FULL_CHARGE - MIN_HOLD));
-            const maxFuelRatio = Math.min(1.0, Math.max(0.1, (player.jetFuel || 0) / 50));
-            rb.touchChargeRatio = Math.min(rawRatio, maxFuelRatio);
-            rb.touchChargePower = 0.35 + 0.65 * rb.touchChargeRatio;
-          }
         }
-        if (rb.touchChargeRatio > 0.05) {
-          emitBootsChargeSparks(player, rb.touchChargeRatio);
-        }
-      } else {
-        rb.isTouchCharging = false;
-        rb.touchChargeRatio = 0;
-        rb.touchChargePower = 0;
-      }
-    } else if (stickMag >= 0.55 && !isStickAimingDown) {
-      if (rb.isTouchCharging && rb.touchChargeRatio > 0.05) {
-        const power = rb.touchChargePower || 0.35;
-        const nx = stickX / stickMag;
-        const ny = stickY / stickMag;
+      } else if (stickMag >= 0.55 && !isStickAimingDown) {
+        if (rb.isTouchCharging && rb.touchChargeRatio > 0.05) {
+          const power = rb.touchChargePower || 0.35;
+          const nx = stickX / stickMag;
+          const ny = stickY / stickMag;
 
-        if (isAirborne) {
-          const fuelCost = (player.jetMax || 100) * 0.50 * power;
-          player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
-          triggerStrikerAirDash(player, nx, ny, power);
-        } else {
           if (stickY <= -0.50) {
             const fuelCost = (player.jetMax || 100) * 0.50 * power;
             player.jetFuel = Math.max(0, player.jetFuel - fuelCost);
@@ -270,13 +297,13 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
             player.jetFuel = Math.max(0, player.jetFuel - startFuel);
             triggerStrikerGroundDash(player, Math.sign(stickX), 'STICK', power);
           }
-        }
 
-        rb.isTouchCharging = false;
-        rb.touchChargeStartTime = 0;
-        rb.touchChargeRatio = 0;
-        rb.touchChargePower = 0;
-        return;
+          rb.isTouchCharging = false;
+          rb.touchChargeStartTime = 0;
+          rb.touchChargeRatio = 0;
+          rb.touchChargePower = 0;
+          return;
+        }
       }
     }
   } else {
@@ -459,9 +486,11 @@ export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
   if (isAirborne && !rb.prevAirborne) {
     if (!rb.dashing) {
       rb.airStickReady = (stickMag < 0.35);
+      rb.touchAirDashReady = (stickMag < 0.42);
     }
   } else if (!isAirborne && rb.prevAirborne) {
     rb.airStickReady = false;
+    rb.touchAirDashReady = true;
     if (rb.dashType === 'AIR') {
       rb.dashing = false;
       rb.dashType = 'NONE';
@@ -608,6 +637,11 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
   const facing = player.facing || 1;
   const ratio = Math.max(0.08, Math.min(1.0, chargeRatio));
 
+  const currentFloor = player.currentGroundY || player.groundY || (player.y + (player.h || 70));
+  const isGrounded = (player.onGround !== undefined) 
+    ? (player.onGround && !player.isJumping) 
+    : (player.y >= currentFloor - (player.h || 70) - 4);
+
   // Dokładne pozycje dysz na piętach obu butów (IK lub geometria ciała)
   let footBackX, footBackY, footFrontX, footFrontY;
   if (typeof player.pose?.footBackX === 'number' && typeof player.pose?.footFrontX === 'number') {
@@ -624,18 +658,42 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
     footBackY = groundFeetY;
   }
 
-  // Kąt wylotu ognia z dyszy: skierowany w dół i lekko w tył
-  const thrustAngle = Math.PI * 0.5 - facing * 0.20;
+  if (isGrounded) {
+    // GDY POSTAĆ STOI NA PODSTAWIE (ZIEMIA / PLATFORMA):
+    // Ogień nie przenika przez podstawę, lecz rozchodzi się spektakularnie na boki wzdłuż powierzchni!
+    const floorY = currentFloor;
+    const sparkCount = Math.max(1, Math.round(1 + 2 * ratio));
+    const spreadSpeed = 3.2 + 6.0 * ratio;
 
-  // Wzniecający się strumień: gęstość i prędkość ognia rosną wraz z naładowaniem
-  const sparkCount = Math.max(1, Math.round(1 + 3 * ratio));
-  const thrustVx = -facing * (1.2 + 3.8 * ratio);
-  const thrustVy = 2.0 + 4.5 * ratio;
+    const feet = [
+      { x: footBackX, y: floorY - 2 },
+      { x: footFrontX, y: floorY - 2 }
+    ];
 
-  // Płomienie buchające z obu butów
-  spawnJetpackSparks(footBackX, footBackY, facing, sparkCount, colors, thrustVx, thrustVy, thrustAngle);
-  if (ratio > 0.20 || Math.random() < 0.70) {
-    spawnJetpackSparks(footFrontX, footFrontY, facing, Math.max(1, sparkCount - 1), colors, thrustVx, thrustVy, thrustAngle);
+    for (const f of feet) {
+      // 1. Strumień ognia rozchodzący się w lewo po powierzchni (nozzleAngle = Math.PI)
+      spawnJetpackSparks(
+        f.x - 2, f.y, facing, sparkCount, colors,
+        -spreadSpeed, -Math.random() * 0.5, Math.PI, floorY
+      );
+      // 2. Strumień ognia rozchodzący się w prawo po powierzchni (nozzleAngle = 0)
+      spawnJetpackSparks(
+        f.x + 2, f.y, facing, sparkCount, colors,
+        spreadSpeed, -Math.random() * 0.5, 0, floorY
+      );
+    }
+  } else {
+    // GDY POSTAĆ JEST W POWIETRZU:
+    // Płomienie swobodnie buchały w dół i tył w przestrzeń powietrzną
+    const thrustAngle = Math.PI * 0.5 - facing * 0.20;
+    const sparkCount = Math.max(1, Math.round(1 + 3 * ratio));
+    const thrustVx = -facing * (1.2 + 3.8 * ratio);
+    const thrustVy = 2.0 + 4.5 * ratio;
+
+    spawnJetpackSparks(footBackX, footBackY, facing, sparkCount, colors, thrustVx, thrustVy, thrustAngle);
+    if (ratio > 0.20 || Math.random() < 0.70) {
+      spawnJetpackSparks(footFrontX, footFrontY, facing, Math.max(1, sparkCount - 1), colors, thrustVx, thrustVy, thrustAngle);
+    }
   }
 }
 
