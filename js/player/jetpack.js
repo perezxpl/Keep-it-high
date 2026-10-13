@@ -423,7 +423,7 @@ export function drawStompModulePreview(
   const flamePal = getJetpackFlamePalette(flameColor || visuals.jetpackColor || '#ef4444');
 
   ctx.save();
-  ctx.translate(canvasW * 0.50, canvasH * 0.40);
+  ctx.translate(canvasW * 0.50, canvasH * 0.62);
   const scale = Math.min(canvasW, canvasH) / 40.0;
   ctx.scale(scale, scale);
 
@@ -432,80 +432,78 @@ export function drawStompModulePreview(
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.1;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(-14.5, -5.5, 29.0, 6.2, 1.5);
-  else ctx.rect(-14.5, -5.5, 29.0, 6.2);
+  if (ctx.roundRect) ctx.roundRect(-14.5, -3.0, 29.0, 6.2, 1.5);
+  else ctx.rect(-14.5, -3.0, 29.0, 6.2);
   ctx.fill();
   ctx.stroke();
 
   // Metalowa klamra pasa pośrodku
   ctx.fillStyle = '#52525b';
-  ctx.fillRect(-2.6, -4.8, 5.2, 4.8);
+  ctx.fillRect(-2.6, -2.3, 5.2, 4.8);
   ctx.fillStyle = '#71717a';
-  ctx.fillRect(-1.5, -3.8, 3.0, 2.8);
+  ctx.fillRect(-1.5, -1.3, 3.0, 2.8);
 
-  // 2. Trzy pancerne kasety ładunków wybuchowych (C4 / Blast Canisters) na pasie
+  // 2. Trzy ładunki wybuchowe (bomby z lontem od góry) na pasie
   const canPositions = [-10.0, 0.0, 10.0];
-  canPositions.forEach((cx) => {
+  canPositions.forEach((cx, idx) => {
     const x = cx - 2.4;
-    const y = -7.0;
+    const y = -4.5;
     const w = 4.8;
-    const h = 9.2;
+    const h = 9.0;
 
     // Obudowa ładunku
     ctx.fillStyle = '#27272a';
     ctx.strokeStyle = '#09090b';
     ctx.lineWidth = 0.9;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 1.0);
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 1.2);
     else ctx.rect(x, y, w, h);
     ctx.fill();
     ctx.stroke();
 
-    // Górna zawleczka
-    ctx.fillStyle = '#71717a';
-    ctx.fillRect(x + 0.8, y - 1.0, w - 1.6, 1.1);
-
-    // Rozżarzony rdzeń ładunku
+    // Opaska ładunku
     ctx.save();
     ctx.shadowColor = flamePal.glow;
     ctx.shadowBlur = 6;
     ctx.fillStyle = flamePal.light;
-    ctx.fillRect(x + 0.7, y + 2.6, w - 1.4, 3.0);
+    ctx.fillRect(x + 0.6, y + 2.8, w - 1.2, 2.6);
     ctx.restore();
 
-    // Dolna dysza wyrzutnika
-    ctx.fillStyle = '#09090b';
-    ctx.fillRect(x + 0.9, y + h, w - 1.8, 1.4);
+    // Górny lont
+    const fy = y - 2.2;
+    ctx.strokeStyle = '#a1a1aa';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(cx, y);
+    ctx.lineTo(cx, fy);
+    ctx.stroke();
 
-    // 3. Płomień podpalonego lontu i zrzut w dół
+    // Kłęby dymu unoszące się w górę
+    ctx.fillStyle = 'rgba(39, 39, 42, 0.55)';
+    ctx.beginPath();
+    ctx.arc(cx + (idx - 1) * 1.2, fy - 9.5, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Płomień palący się W GÓRĘ na loncie
     ctx.save();
     ctx.shadowColor = flamePal.glow;
     ctx.shadowBlur = 10;
-    const fGrad = ctx.createLinearGradient(cx, y + h + 1.0, cx, y + h + 11.0);
+    const fGrad = ctx.createLinearGradient(cx, fy + 1.0, cx, fy - 9.5);
     fGrad.addColorStop(0.0, '#ffffff');
-    fGrad.addColorStop(0.45, flamePal.base);
+    fGrad.addColorStop(0.45, flamePal.light);
+    fGrad.addColorStop(0.85, flamePal.base);
     fGrad.addColorStop(1.0, flamePal.alphaZero);
 
     ctx.fillStyle = fGrad;
     ctx.beginPath();
-    ctx.moveTo(cx - 2.0, y + h + 1.0);
-    ctx.lineTo(cx, y + h + 11.0);
-    ctx.lineTo(cx + 2.0, y + h + 1.0);
+    ctx.moveTo(cx - 2.6, fy);
+    ctx.quadraticCurveTo(cx - 2.0, fy - 5.5, cx, fy - 9.5);
+    ctx.quadraticCurveTo(cx + 2.0, fy - 5.5, cx + 2.6, fy);
+    ctx.arc(cx, fy, 2.6, 0, Math.PI, false);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
   });
-
-  // 4. Fala uderzeniowa wybuchu na dole
-  ctx.save();
-  ctx.shadowColor = flamePal.glow;
-  ctx.shadowBlur = 10;
-  ctx.strokeStyle = flamePal.light;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.ellipse(0, 13.5, 13.5, 2.6, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
 
   ctx.restore();
 }
