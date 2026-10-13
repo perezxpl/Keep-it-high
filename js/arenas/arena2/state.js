@@ -100,7 +100,7 @@ export const ARENA_2_PLATFORMS = [
     angularDamping: 6.2
   },
 
-  // 2. GÓRNE BASTIONY A i B (Lite, solidne platformy)
+  // 2. GÓRNE BASTIONY A i B (Pancerne kładki bojowe drop-through)
   {
     id: 'plat_A_top_left',
     name: 'Bastion Górny A (Lewy)',
@@ -108,9 +108,10 @@ export const ARENA_2_PLATFORMS = [
     y: 420,
     w: 700,
     h: 32,
-    isSolid: true,
-    solid: true,
-    isPlatform: true
+    thickness: 32,
+    isPlatform: true,
+    isDropThrough: true,
+    oneWay: true
   },
   {
     id: 'plat_B_top_right',
@@ -119,9 +120,10 @@ export const ARENA_2_PLATFORMS = [
     y: 420,
     w: 700,
     h: 32,
-    isSolid: true,
-    solid: true,
-    isPlatform: true
+    thickness: 32,
+    isPlatform: true,
+    isDropThrough: true,
+    oneWay: true
   },
 
   // 3. RAMPY GÓRNE (Ukośne zjazdy łączące bastiony ze środkiem)
@@ -137,6 +139,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    isDropThrough: true,
     x: 880,
     w: 680,
     y: 420,
@@ -160,6 +163,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    isDropThrough: true,
     x: 2440,
     w: 680,
     y: 420,
@@ -180,6 +184,7 @@ export const ARENA_2_PLATFORMS = [
     y: 720,
     w: 880,
     h: 26,
+    thickness: 26,
     isPlatform: true,
     isDropThrough: true,
     oneWay: true
@@ -198,6 +203,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    isDropThrough: true,
     x: 900,
     w: 660,
     y: 720,
@@ -221,6 +227,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    isDropThrough: true,
     x: 2440,
     w: 660,
     y: 720,
@@ -241,9 +248,10 @@ export const ARENA_2_PLATFORMS = [
     y: 1080,
     w: 720,
     h: 32,
-    isSolid: true,
-    solid: true,
-    isPlatform: true
+    thickness: 32,
+    isPlatform: true,
+    isDropThrough: true,
+    oneWay: true
   },
   {
     id: 'plat_D_bot_right',
@@ -252,9 +260,10 @@ export const ARENA_2_PLATFORMS = [
     y: 1080,
     w: 720,
     h: 32,
-    isSolid: true,
-    solid: true,
-    isPlatform: true
+    thickness: 32,
+    isPlatform: true,
+    isDropThrough: true,
+    oneWay: true
   }
 ];
 
@@ -1237,21 +1246,22 @@ export function updateHangingPlatformsPhysics(dt, players) {
       const feetY = p.y + pH;
       const pCenterX = p.x + pW * 0.5;
 
+      const isCurrentPlat = (p.currentPlatform === plat || (p.currentPlatform && p.currentPlatform.id === plat.id));
       const isOverPlatform = (pCenterX >= plat.x - 6 && pCenterX <= plat.x + plat.w + 6);
-      const isDroppingThrough = (p.dropThroughTimer > 0) || (p.dropThroughPlatform === plat) || (p.keys && p.keys.down);
+      const isDroppingThrough = (p.dropThroughTimer > 0 && (p.dropThroughPlatform === plat || (p.dropThroughPlatform && p.dropThroughPlatform.id === plat.id)));
 
       if (isDroppingThrough) {
-        if (p.currentPlatform === plat) {
+        if (isCurrentPlat) {
           p.currentPlatform = null;
           p.onGround = false;
         }
         continue;
       }
 
-      const isTouchingHeight = (Math.abs(feetY - plat.y) <= 16 || (p.currentPlatform === plat && Math.abs(feetY - plat.y) <= 24));
-      const isOnPlat = (p.currentPlatform === plat) || (p.onGround && isOverPlatform && isTouchingHeight) || (isOverPlatform && isTouchingHeight && p.vy >= 0 && (!p.isJumping || p.vy > 0));
+      const isTouchingHeight = (Math.abs(feetY - plat.y) <= 18 || (isCurrentPlat && Math.abs(feetY - plat.y) <= 26));
+      const isOnPlat = isCurrentPlat || (p.onGround && isOverPlatform && isTouchingHeight) || (isOverPlatform && isTouchingHeight && p.vy >= 0 && (!p.isJumping || p.vy > 0));
 
-      if (isOnPlat && (!p.dropThroughTimer || p.dropThroughTimer <= 0) && p.dropThroughPlatform !== plat) {
+      if (isOnPlat && (!p.dropThroughTimer || p.dropThroughTimer <= 0 || (p.dropThroughPlatform !== plat && (!p.dropThroughPlatform || p.dropThroughPlatform.id !== plat.id)))) {
         // Pozycja znormalizowana wzdłuż belki: [-1, 1]
         const relX = Math.max(-1.0, Math.min(1.0, (pCenterX - platCenterX) / (plat.w * 0.5)));
 
@@ -1273,7 +1283,7 @@ export function updateHangingPlatformsPhysics(dt, players) {
         totalTorque += relX * 0.48;
 
         // Synchronizacja stóp gracza z ruchem i nachyleniem platformy
-        if (p.onGround || p.currentPlatform === plat) {
+        if (p.onGround || isCurrentPlat) {
           p.currentPlatform = plat;
           const tiltOffsetY = (pCenterX - platCenterX) * Math.sin(plat.angle || 0);
           const surfaceY = plat.y + tiltOffsetY;

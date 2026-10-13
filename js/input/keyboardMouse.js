@@ -330,16 +330,23 @@ export function initKeyboardMouseHandlers({
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
       const now = performance.now();
       const isDoublePress = (now - inputSession.lastSPressTime < 280);
-      const isCurrentPlatDropThrough = !!(player.currentPlatform && (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk'));
+      const isCurrentPlatDropThrough = !!(
+        player.onGround &&
+        player.currentPlatform &&
+        (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk' || player.currentPlatform.type === 'cyber_catwalk' || player.currentPlatform.type === 'floating_hex')
+      );
 
       if (isDoublePress || isCurrentPlatDropThrough) {
-        player.dropThroughTimer = 24;
+        player.dropThroughTimer = 22;
+        player.dropThroughPlatform = player.currentPlatform || null;
         if (player.currentPlatform) {
-          player.dropThroughPlatform = player.currentPlatform;
+          const platThick = player.currentPlatform.thickness || player.currentPlatform.h || 20;
+          player.y += platThick + 12;
           player.currentPlatform = null;
           player.onGround = false;
           player.isJumping = true;
-          player.vy = Math.max(player.vy || 0, 4.0);
+          player.isCrouching = false;
+          player.vy = Math.max(player.vy || 0, 4.5);
         }
       }
       inputSession.lastSPressTime = now;

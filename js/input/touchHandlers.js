@@ -43,22 +43,39 @@ let flickReturnedToCenter = false;
 
 export function updateDoubleFlickDetection(axisY) {
   const now = performance.now();
-  const isCurrentPlatDropThrough = !!(player.currentPlatform && (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk'));
+  const isCurrentPlatDropThrough = !!(
+    player.onGround &&
+    player.currentPlatform &&
+    (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk' || player.currentPlatform.type === 'cyber_catwalk' || player.currentPlatform.type === 'floating_hex')
+  );
 
-  if (axisY > 0.65) {
+  const doDropThrough = () => {
+    player.dropThroughTimer = 22;
+    if (player.currentPlatform) {
+      const platThick = player.currentPlatform.thickness || player.currentPlatform.h || 20;
+      player.y += platThick + 12;
+      player.dropThroughPlatform = player.currentPlatform;
+      player.currentPlatform = null;
+      player.onGround = false;
+      player.isJumping = true;
+      player.isCrouching = false;
+      player.vy = Math.max(player.vy || 0, 4.5);
+    }
+    flickFirstDownTime = 0;
+    flickReturnedToCenter = false;
+  };
+
+  const isStrongDownIntent = (axisY > 0.65 && Math.abs((leftStick && leftStick.axisX) || 0) < 0.72);
+
+  if (isStrongDownIntent) {
     if (isCurrentPlatDropThrough) {
-      player.dropThroughTimer = 24;
-      if (player.currentPlatform) {
-        player.dropThroughPlatform = player.currentPlatform;
-        player.currentPlatform = null;
-        player.onGround = false;
-        player.isJumping = true;
-        player.vy = Math.max(player.vy || 0, 4.0);
-      }
+      doDropThrough();
     } else if (flickFirstDownTime > 0 && flickReturnedToCenter) {
       const dt = now - flickFirstDownTime;
       if (dt >= 80 && dt <= 350) {
-        player.dropThroughTimer = 24;
+        if (isCurrentPlatDropThrough) {
+          doDropThrough();
+        }
         flickFirstDownTime = 0;
         flickReturnedToCenter = false;
       } else if (dt > 350) {

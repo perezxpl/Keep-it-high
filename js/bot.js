@@ -187,8 +187,15 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
 
     // Cel znajduje się niżej o > 70 px - zeskok z kładki (drop-through)
     if (targetY > bot.y + 70) {
-      if (bot.y < groundY - bot.h - 10) {
-        bot.dropThroughTimer = 16;
+      if (bot.onGround && bot.currentPlatform && (bot.currentPlatform.oneWay || bot.currentPlatform.isDropThrough || bot.currentPlatform.type === 'catwalk' || bot.currentPlatform.type === 'cyber_catwalk')) {
+        bot.dropThroughTimer = 20;
+        bot.dropThroughPlatform = bot.currentPlatform;
+        const platThick = bot.currentPlatform.thickness || bot.currentPlatform.h || 20;
+        bot.y += platThick + 12;
+        bot.currentPlatform = null;
+        bot.onGround = false;
+        bot.isJumping = true;
+        bot.vy = Math.max(bot.vy || 0, 4.2);
       }
     }
 

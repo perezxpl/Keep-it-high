@@ -35,6 +35,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const colH = (p.staggerTimer > 0) ? 15 : (p.h || 70);
   const feetY = p.y + colH;
   const centerX = p.x + p.w / 2;
+  if (!p.dropThroughTimer || p.dropThroughTimer <= 0) {
+    p.dropThroughPlatform = null;
+    p.dropThroughTimer = 0;
+  }
   const wantDrop = (p.dropThroughTimer > 0);
   const wasGrounded = !!(p.onGround && !p.isJumping);
 
@@ -43,86 +47,23 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const hasNoFloor = isA3 || isA2;
 
-  if (wantDrop) {
-    for (const plat of ARENA_PLATFORMS) {
-      if (!plat || plat.solid || plat.isCanyonTerrain) continue;
-      if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
-        const topY = getPlatformSurfaceY(plat, centerX, groundY);
-
-        if (Math.abs(feetY - topY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-          const platThickness = plat.h || plat.thickness || 16;
-          p.onGround = false;
-          p.currentPlatform = null;
-          p.dropThroughPlatform = plat;
-          p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
-          p.y = topY + platThickness + 6 - colH;
-          p.vy = Math.max(p.vy || 0, 4.2);
-          p.isJumping = true;
-          p.isCrouching = false;
-          p.airVx = p.vx;
-          p.currentGroundY = hasNoFloor ? null : groundY;
-          return;
-        }
-
-        if (plat.props) {
-          const tier = plat.props.find(pr => pr.type === 'altar_pedestal');
-          if (tier) {
-            const tierLeft = plat.x + tier.rx;
-            const tierRight = tierLeft + tier.w;
-            if (centerX >= tierLeft - 4 && centerX <= tierRight + 4) {
-              const tierTopY = topY - tier.h;
-              if (Math.abs(feetY - tierTopY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-                p.onGround = false;
-                p.currentPlatform = null;
-                p.dropThroughPlatform = plat;
-                p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
-                p.y = tierTopY + (tier.h || 20) + 6 - colH;
-                p.vy = Math.max(p.vy || 0, 4.2);
-                p.isJumping = true;
-                p.isCrouching = false;
-                p.airVx = p.vx;
-                p.currentGroundY = hasNoFloor ? null : groundY;
-                return;
-              }
-            }
-          }
-        }
-      }
+  if (wantDrop && p.onGround && p.currentPlatform) {
+    const curPlat = p.currentPlatform;
+    const isDropAllowed = !!(curPlat.oneWay || curPlat.isDropThrough || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex');
+    if (isDropAllowed) {
+      p.dropThroughPlatform = curPlat;
+      p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 22);
+      p.currentPlatform = null;
+      p.onGround = false;
+      p.isJumping = true;
+      p.isCrouching = false;
+      const platThickness = curPlat.thickness || curPlat.h || 20;
+      p.y += platThickness + 12;
+      p.vy = Math.max(p.vy || 0, 4.5);
+      p.airVx = p.vx;
+      p.currentGroundY = hasNoFloor ? null : groundY;
+      return;
     }
-
-    for (const obs of customObstacles) {
-      if (obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex' || obs.type === 'sniper_tower' || obs.type === 'metal_ramp_left' || obs.type === 'metal_ramp_right') {
-        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-        if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
-          let surfaceY = topY;
-          if (obs.type === 'metal_ramp_left') {
-            const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-            surfaceY = topY + t * obs.h;
-          } else if (obs.type === 'metal_ramp_right') {
-            const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-            surfaceY = topY + (1 - t) * obs.h;
-          }
-          if (Math.abs(feetY - surfaceY) <= 16 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-            const obsThickness = obs.h || 16;
-            p.onGround = false;
-            p.currentPlatform = null;
-            p.dropThroughPlatform = obs;
-            p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
-            p.y = surfaceY + obsThickness + 6 - colH;
-            p.vy = Math.max(p.vy || 0, 4.2);
-            p.isJumping = true;
-            p.isCrouching = false;
-            p.airVx = p.vx;
-            p.currentGroundY = hasNoFloor ? null : groundY;
-            return;
-          }
-        }
-      }
-    }
-
-    p.onGround = false;
-    p.currentGroundY = hasNoFloor ? null : groundY;
-    return;
   }
 
   // Obsługa wyrzutni / gejzerów na platformach areny (np. industrial steam vents w tunelu Areny 3)
@@ -289,16 +230,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       if (isLanding) {
-        const isPlatOneWay = !!(plat.oneWay || plat.isDropThrough || plat.type === 'catwalk');
-        if (isPlatOneWay && (p.dropThroughTimer > 0 || (p.keys && p.keys.down)) && !isFallenDebris) {
+        if (p.dropThroughTimer > 0 && (plat === p.dropThroughPlatform || (p.dropThroughPlatform && plat.id === p.dropThroughPlatform.id)) && !isFallenDebris) {
           continue;
-        }
-        if (p.dropThroughPlatform === plat && !isFallenDebris) {
-          if (feetY > topY + (plat.h || 16) + 16) {
-            p.dropThroughPlatform = null;
-          } else {
-            continue;
-          }
         }
         if (p.onGround && p.currentPlatform === plat) {
           landedSurface = topY;
@@ -326,7 +259,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
     const baseTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const isCurrentObs = (p.onGround && p.currentPlatform === obs);
     const obsMargin = isCurrentObs ? 12 : 6;
-    const isObsOneWay = !!(obs.oneWay || obs.isDropThrough || obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex');
 
     if (obs.type === 'metal_ramp_left') {
       if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
@@ -338,6 +270,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 24;
 
         if (isAirLanding || isGroundedRetention || isStepOver) {
+          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
+            continue;
+          }
           if (landedSurface === null || rampSurfaceY < landedSurface) {
             landedSurface = rampSurfaceY;
             landedPlatform = obs;
@@ -355,6 +290,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 24;
 
         if (isAirLanding || isGroundedRetention || isStepOver) {
+          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
+            continue;
+          }
           if (landedSurface === null || rampSurfaceY < landedSurface) {
             landedSurface = rampSurfaceY;
             landedPlatform = obs;
@@ -370,10 +308,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - baseTopY) <= 24;
 
         if (isAirLanding || isGroundedRetention || isStepOver) {
-          if (isObsOneWay && (p.dropThroughTimer > 0 || (p.keys && p.keys.down) || p.dropThroughPlatform === obs)) {
-            if (p.dropThroughPlatform === obs && feetY > baseTopY + (obs.h || 16) + 16) {
-              p.dropThroughPlatform = null;
-            }
+          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
             continue;
           }
           if (landedSurface === null || baseTopY < landedSurface) {

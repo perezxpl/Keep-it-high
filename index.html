@@ -17,7 +17,7 @@
       "./js/arenas/arena2.js": "./js/arenas/arena2.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/arenas/arena2/renderer.js": "./js/arenas/arena2/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/arenas/arena2/sewerPipes.js": "./js/arenas/arena2/sewerPipes.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/arenas/arena2/state.js": "./js/arenas/arena2/state.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
+      "./js/arenas/arena2/state.js": "./js/arenas/arena2/state.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/arenas/arena2/submergedSkeletons.js": "./js/arenas/arena2/submergedSkeletons.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/arenas/arena3.js": "./js/arenas/arena3.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/arenas/arena3/destruction.js": "./js/arenas/arena3/destruction.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -26,7 +26,7 @@
       "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
-      "./js/bot.js": "./js/bot.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/bot.js": "./js/bot.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/camera.js": "./js/camera.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v149_fix_raptor_card_body_anatomy",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
@@ -42,16 +42,16 @@
       "./js/input.js": "./js/input.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/gamepad.js": "./js/input/gamepad.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/index.js": "./js/input/index.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
+      "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v153_enforcer_blast_belt_jump_on_release",
-      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
-      "./js/main.js": "./js/main.js?v=v152_factual_kills_only_no_suicide_points",
+      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v159_fix_ramps_and_bastions_drop_through",
+      "./js/main.js": "./js/main.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v142_fix_infinite_slide_during_dash",
       "./js/network.js": "./js/network.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
+      "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/renderer.js": "./js/obstacles/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/obstacles/state.js": "./js/obstacles/state.js?v=v149_arena2_deathmatch_5min_and_xp_rewards",
@@ -63,7 +63,7 @@
       "./js/player/hair.js": "./js/player/hair.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/headgear.js": "./js/player/headgear.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/ik.js": "./js/player/ik.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/player/index.js": "./js/player/index.js?v=v153_enforcer_blast_belt_jump_on_release",
+      "./js/player/index.js": "./js/player/index.js?v=v158_arena2_preview_and_platform_landing_fix",
       "./js/player/jetpack.js": "./js/player/jetpack.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/player/limbs.js": "./js/player/limbs.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/locomotion.js": "./js/player/locomotion.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -219,6 +219,9 @@
                   <div class="mp-arena-card-top">
                     <span class="mp-arena-badge">ARENA 2</span>
                     <span class="mp-arena-active-indicator">✓ WYBRANA</span>
+                  </div>
+                  <div class="mp-arena-preview-container">
+                    <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny 2" class="mp-arena-preview-img" loading="lazy">
                   </div>
                   <div class="mp-arena-name">Toksyczna Rafineria</div>
                   <div class="mp-arena-desc">Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.</div>
@@ -516,6 +519,12 @@
               <!-- ARENA 2 -->
               <div class="arena-card active" data-arena="ARENA_2">
                 <div class="arena-badge">SEKTOR X // DEATHMATCH 5 MIN</div>
+                <div class="arena-preview-container">
+                  <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny 2: Toksyczna Rafineria (Sektor X)" class="arena-preview-img" loading="lazy">
+                  <div class="arena-preview-overlay">
+                    <span class="arena-preview-tag">SEKTOR X // PODGLĄD</span>
+                  </div>
+                </div>
                 <div class="arena-name">TOKSYCZNA RAFINERIA</div>
                 <div class="arena-desc">5-minutowa bitwa o dominację w kompleksie z okresowymi zrzutami żrącego kwasu. Kto zdobędzie najwięcej eliminacji w ciągu 5 minut, wygrywa! Nagrody XP: 🥇 1. miejsce (100 XP), 🥈 2. miejsce (80 XP), 🥉 3. miejsce (60 XP), 🎖️ udział (40 XP).</div>
                 
@@ -987,7 +996,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v134_striker_mobile_air_dash_flames_spread"></script>
+  <script type="module" src="./js/main.js?v=v159_fix_ramps_and_bastions_drop_through"></script>
 </body>
 
 </html>

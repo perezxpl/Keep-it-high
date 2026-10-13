@@ -151,7 +151,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.kickCooldown > 0 && player.kickState === 'IDLE') player.kickCooldown--;
   if (player.slideCooldown > 0 && !player.isSliding) player.slideCooldown--;
   if (player.shootCooldown > 0) player.shootCooldown--;
-  if (player.dropThroughTimer > 0) player.dropThroughTimer--;
+  if (player.dropThroughTimer > 0) {
+    player.dropThroughTimer--;
+    if (player.dropThroughTimer <= 0) {
+      player.dropThroughPlatform = null;
+    }
+  }
   if (player.muzzleFlashTimer > 0) player.muzzleFlashTimer--;
   if (player.shootPoseTimer > 0) player.shootPoseTimer--;
   if (player.grenadeCooldown > 0) {
