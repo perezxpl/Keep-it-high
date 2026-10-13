@@ -230,7 +230,7 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     ctx.fillStyle = '#facc15';
     ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
     ctx.shadowBlur = 12;
-    ctx.fillText('🏆 ZWYCIĘSTWO W MECZU! 🏆', W / 2, bannerY + (isMobile ? 32 : 38));
+    ctx.fillText('ZWYCIĘSTWO W MECZU!', W / 2, bannerY + (isMobile ? 32 : 38));
 
     // Nagroda XP
     ctx.font = isMobile ? 'bold 15px monospace' : 'bold 18px monospace';
@@ -248,7 +248,7 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     if (leveledUp) {
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#00e5ff';
-      ctx.fillText(`⭐ AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()} ⭐`, W / 2, bannerY + (isMobile ? 95 : 112));
+      ctx.fillText(`AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()}`, W / 2, bannerY + (isMobile ? 95 : 112));
     } else {
       ctx.fillStyle = '#cbd5e1';
       ctx.shadowBlur = 0;
@@ -260,7 +260,7 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     ctx.fillStyle = '#ef4444';
     ctx.shadowColor = 'rgba(239, 68, 68, 0.6)';
     ctx.shadowBlur = 10;
-    ctx.fillText('💀 PRZEGRANA W MECZU', W / 2, bannerY + (isMobile ? 40 : 50));
+    ctx.fillText('PRZEGRANA W MECZU', W / 2, bannerY + (isMobile ? 40 : 50));
 
     ctx.font = isMobile ? 'bold 12px monospace' : 'bold 14px monospace';
     ctx.fillStyle = '#94a3b8';

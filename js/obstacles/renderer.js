@@ -501,7 +501,7 @@ export function drawExplosiveBarrel(ctx, x, y, w, h) {
   ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('🔥', x + w / 2, y + h * 0.72);
+  ctx.fillText('EXP', x + w / 2, y + h * 0.72);
 
   ctx.strokeStyle = '#450a0a';
   ctx.lineWidth = 1.2;
@@ -1453,7 +1453,7 @@ export function drawRockIsland(ctx, plat, groundY) {
         ctx.font = 'bold 9px monospace';
         ctx.fillStyle = '#38bdf8';
         ctx.textAlign = 'center';
-        ctx.fillText('⚡ ALTAR OF WAR ⚡', px + prop.w / 2, by + 16);
+        ctx.fillText('ALTAR OF WAR', px + prop.w / 2, by + 16);
       }
     }
   }
@@ -1836,7 +1836,7 @@ export function drawAltarSpotlightAndLevitation(ctx, groundY) {
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#00F0FF';
     ctx.shadowBlur = 0;
-    ctx.fillText('⚡ KICKOFF READY ⚡', altarX, hoverY - 26);
+    ctx.fillText('KICKOFF READY', altarX, hoverY - 26);
     ctx.restore();
   }
 

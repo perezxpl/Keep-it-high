@@ -428,9 +428,9 @@ export const uiManager = {
         if (isCurrent) {
           statusHtml = `<span class="rank-status-tag tag-current"><span class="tag-pulse-dot"></span>TWÓJ AKTUALNY STOPIEŃ</span>`;
         } else if (isUnlocked) {
-          statusHtml = `<span class="rank-status-tag tag-unlocked">✔ ODBLOKOWANY</span>`;
+          statusHtml = `<span class="rank-status-tag tag-unlocked">ODBLOKOWANY</span>`;
         } else {
-          statusHtml = `<span class="rank-status-tag tag-locked">🔒 DO ZDOBYCIA (brakuje ${missingXp.toLocaleString('pl-PL')} XP)</span>`;
+          statusHtml = `<span class="rank-status-tag tag-locked">DO ZDOBYCIA (brakuje ${missingXp.toLocaleString('pl-PL')} XP)</span>`;
         }
 
         card.innerHTML = `
@@ -474,7 +474,7 @@ export const uiManager = {
             </div>
             <div class="rule-title">${rule.title}</div>
             <div class="rule-desc">${rule.desc}</div>
-            <div class="rule-tip">🎯 ${rule.tip}</div>
+            <div class="rule-tip">WSKAZÓWKA: ${rule.tip}</div>
           </div>
         `;
         rulesContainer.appendChild(card);
@@ -647,7 +647,7 @@ export const uiManager = {
     // Aktualizacja wskaźnika szybkiego wyciszenia w stopce menu
     const quickMuteBtn = document.getElementById('menu-quick-mute-btn');
     if (quickMuteBtn) {
-      quickMuteBtn.textContent = this.settings.muteAll ? '🔇 DŹWIĘK: WYŁ' : '🔊 DŹWIĘK: WŁ';
+      quickMuteBtn.textContent = this.settings.muteAll ? 'DŹWIĘK: WYŁ' : 'DŹWIĘK: WŁ';
       quickMuteBtn.classList.toggle('muted', !!this.settings.muteAll);
     }
 
@@ -828,7 +828,7 @@ export const uiManager = {
         this.initCreatorPantsUI();
         this.initCreatorShoesUI();
         this.initCreatorJetpackUI();
-        this.showCreatorClassSelectView();
+        this.openCreatorClassEditor(this.activeCreatorClass || 'RAPTOR');
         break;
 
       case 'PAUSED':
@@ -1183,28 +1183,18 @@ export const uiManager = {
       });
     }
 
-    // Karty wyboru klasy w Kreatorze Postaci (RAPTOR, STRIKER, ENFORCER)
-    document.querySelectorAll('.creator-class-select-card').forEach((btn) => {
+    // Przyciski wyboru klasy w Kreatorze Postaci (RAPTOR, STRIKER, ENFORCER)
+    document.querySelectorAll('.creator-class-tab-btn').forEach((btn) => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         const classId = btn.dataset.creatorClass;
         if (!classId) return;
         playUiClick();
-        this.openCreatorClassEditor(classId);
+        this.switchCreatorClass(classId);
       });
     });
 
-    // Przycisk "← Wybierz Inną Klasę" w edytorze (powrót do wyboru klas)
-    const editorBackBtn = document.getElementById('creator-editor-back-btn');
-    if (editorBackBtn) {
-      editorBackBtn.addEventListener('mouseenter', () => playUiHover());
-      editorBackBtn.addEventListener('click', () => {
-        playUiClick();
-        this.showCreatorClassSelectView();
-      });
-    }
-
-    // Przycisk "✓ Wróć do Menu" w edytorze
+    // Przycisk "ZAPISZ I ZAMKNIJ" w edytorze
     const editorDoneBtn = document.getElementById('creator-editor-done-btn');
     if (editorDoneBtn) {
       editorDoneBtn.addEventListener('mouseenter', () => playUiHover());
@@ -2250,50 +2240,32 @@ export const uiManager = {
   updatePersonalGearTabUI() {
     const cid = String(this.activeCreatorClass || 'RAPTOR').toUpperCase();
     const tabBtn = document.getElementById('creator-tab-btn-gear');
-    const tabIcon = document.getElementById('creator-gear-tab-icon');
     const tabText = document.getElementById('creator-gear-tab-text');
-    const headerIcon = document.getElementById('creator-gear-header-icon');
     const headerTitle = document.getElementById('creator-gear-header-title');
 
-    let icon = '🚀';
     let tabLabel = 'JETPACK';
     let headerText = 'PLECAK ODRZUTOWY (JETPACK)';
-    let tooltip = 'Fason i płomień napędu jetpacka';
+    let tooltip = 'Fason i barwa napędu jetpacka';
 
     if (tabBtn) tabBtn.style.display = '';
 
     if (cid === 'STRIKER') {
-      icon = '⚡';
       tabLabel = 'ROCKET BOOTS';
       headerText = 'BUTY ODRZUTOWE (ROCKET BOOTS)';
-      tooltip = 'Fason i płomień dysz butów odrzutowych';
+      tooltip = 'Fason i barwa dysz butów odrzutowych';
     } else if (cid === 'ENFORCER') {
-      icon = '⚙️';
       tabLabel = 'TŁOKI KINETYCZNE';
       headerText = 'TŁOKI KINETYCZNE / SIŁOWNIKI ŁYDEK';
-      tooltip = 'Tłoki pneumatyczne i sprężyny kompresyjne (przytrzymaj w górę 1s do przysiadu i puść)';
+      tooltip = 'Tłoki pneumatyczne i sprężyny kompresyjne';
     }
 
     if (tabBtn) tabBtn.title = tooltip;
-    if (tabIcon) tabIcon.textContent = icon;
     if (tabText) tabText.textContent = tabLabel;
-    if (headerIcon) headerIcon.textContent = icon;
     if (headerTitle) headerTitle.textContent = headerText;
   },
 
   showCreatorClassSelectView() {
-    this.creatorView = 'class_select';
-    this.stopCreatorPreview();
-
-    const selectView = document.getElementById('creator-class-select-view');
-    const editorView = document.getElementById('creator-editor-view');
-    if (selectView) selectView.style.display = 'flex';
-    if (editorView) editorView.style.display = 'none';
-
-    const titleEl = document.getElementById('creator-modal-title');
-    const subEl = document.getElementById('creator-modal-subtitle');
-    if (titleEl) titleEl.textContent = 'KREATOR POSTACI';
-    if (subEl) subEl.textContent = 'Wybierz klasę operatora do modyfikacji wyglądu';
+    this.openCreatorClassEditor(this.activeCreatorClass || 'RAPTOR');
   },
 
   openCreatorClassEditor(classId = 'RAPTOR') {
@@ -2301,23 +2273,13 @@ export const uiManager = {
     this.creatorView = 'editor';
     this.switchCreatorClass(cid, false);
 
-    const selectView = document.getElementById('creator-class-select-view');
     const editorView = document.getElementById('creator-editor-view');
-    if (selectView) selectView.style.display = 'none';
     if (editorView) editorView.style.display = 'flex';
 
     const titleEl = document.getElementById('creator-modal-title');
     const subEl = document.getElementById('creator-modal-subtitle');
-    if (cid === 'RAPTOR') {
-      if (titleEl) titleEl.textContent = 'KREATOR: RAPTOR (KLASA LEKKA)';
-      if (subEl) subEl.textContent = 'Zwiadowca i lotnik – modyfikacja sylwetki i plecaka odrzutowego';
-    } else if (cid === 'STRIKER') {
-      if (titleEl) titleEl.textContent = 'KREATOR: STRIKER (KLASA ŚREDNIA)';
-      if (subEl) subEl.textContent = 'Szturmowiec i strzelec – modyfikacja sylwetki i butów Rocket Boots';
-    } else if (cid === 'ENFORCER') {
-      if (titleEl) titleEl.textContent = 'KREATOR: ENFORCER (KLASA CIĘŻKA)';
-      if (subEl) subEl.textContent = 'Kolos i czołg – modyfikacja sylwetki i modułu skoku';
-    }
+    if (titleEl) titleEl.textContent = 'KREATOR POSTACI';
+    if (subEl) subEl.textContent = 'PERSONALIZACJA WYGLĄDU OPERATORA';
 
     this.startCreatorPreview();
   },
@@ -2330,27 +2292,12 @@ export const uiManager = {
     }
     this.appearance = this.classAppearances[cid];
 
-    // 1. Zaznaczenie aktywnej karty klasy
-    document.querySelectorAll('.creator-class-card').forEach((btn) => {
+    // 1. Zaznaczenie aktywnego przycisku klasy w przełączniku nad podglądem
+    document.querySelectorAll('.creator-class-tab-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.creatorClass === cid);
     });
 
-    // 2. Etykieta pod oknem podglądu postaci
-    const labelEl = document.getElementById('creator-preview-label');
-    if (labelEl) {
-      if (cid === 'RAPTOR') {
-        labelEl.textContent = 'KLASA LEKKA: RAPTOR';
-        labelEl.style.color = '#10b981';
-      } else if (cid === 'STRIKER') {
-        labelEl.textContent = 'KLASA ŚREDNIA: STRIKER';
-        labelEl.style.color = '#38bdf8';
-      } else if (cid === 'ENFORCER') {
-        labelEl.textContent = 'KLASA CIĘŻKA: ENFORCER';
-        labelEl.style.color = '#ef4444';
-      }
-    }
-
-    // 3. Aktualizacja parametrów i anatomii manekina IK (dummy player)
+    // 2. Aktualizacja parametrów i anatomii manekina IK (dummy player)
     const activeClassObj = CLASSES[cid] || CLASSES.RAPTOR;
     const bodyDef = activeClassObj?.body || { w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13 };
     if (this.creatorDummyPlayer) {
@@ -2367,17 +2314,17 @@ export const uiManager = {
       this.creatorDummyPlayer._hairImpulse = 1.0;
     }
 
-    // 4. Dostosowanie 7. zakładki (Narzędzie osobiste)
+    // 3. Dostosowanie 7. zakładki (Narzędzie osobiste)
     this.updatePersonalGearTabUI();
 
-    // 5. Synchronizacja stanu zaznaczeń wszystkich kafelków i palet barw
+    // 4. Synchronizacja stanu zaznaczeń wszystkich kafelków i palet barw
     this.syncAllCreatorSelectionsUI();
     this.renderCurrentCreatorTabTiles();
 
-    // 6. Odświeżenie kafelków wyposażenia osobistego pod nowy model (Jetpack / Buty / Moduł)
+    // 5. Odświeżenie kafelków wyposażenia osobistego pod nowy model (Jetpack / Buty / Moduł)
     this.renderCreatorJetpackTiles();
 
-    // 7. Zastosowanie wyglądu
+    // 6. Zastosowanie wyglądu
     this.applyAppearance(cid);
   },
 
@@ -2611,24 +2558,12 @@ export const uiManager = {
     dummy.forearmLen = bodyDef.forearmLen;
 
     dummy._isCreatorDummy = true;
-    if (this.activeCreatorTab === 'jetpack') {
-      if (this.activeCreatorClass === 'RAPTOR') {
-        dummy.isJetpacking = true;
-        dummy.yaw = 0.55;
-        if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
-      } else if (this.activeCreatorClass === 'ENFORCER') {
-        dummy.isJetpacking = false;
-        dummy.yaw = 0.20;
-        dummy.blastBelt = { isCharging: true, chargeRatio: 1.0, isArmed: true };
-      } else {
-        dummy.isJetpacking = false;
-        dummy.yaw = 0.35;
-        if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
-      }
-    } else {
-      dummy.isJetpacking = false;
-      dummy.yaw = 0;
-      if (dummy.blastBelt) dummy.blastBelt.isCharging = false;
+    dummy.isJetpacking = false;
+    dummy.yaw = 0;
+    if (dummy.blastBelt) {
+      dummy.blastBelt.isCharging = false;
+      dummy.blastBelt.chargeRatio = 0;
+      dummy.blastBelt.isArmed = false;
     }
 
     ctx.save();

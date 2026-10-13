@@ -423,7 +423,7 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.font = 'bold 20px monospace';
     ctx.fillStyle = 'rgba(239, 68, 68, 0.50)';
     ctx.textAlign = 'center';
-    ctx.fillText('☠  GŁĘBIA RZEKI (ŚMIERTELNA)  ☠', 2200, 1370);
+    ctx.fillText('GŁĘBIA RZEKI (ŚMIERTELNA)', 2200, 1370);
     ctx.restore();
   }
 

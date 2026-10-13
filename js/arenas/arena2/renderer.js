@@ -1748,7 +1748,7 @@ export function drawAcidSurgeWarningBanner(ctx, time, camera) {
     ctx.fillStyle = `rgba(254, 240, 138, ${0.9 + 0.1 * pulse})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚠ ALARM: ZRZUT KWASU // EWAKUACJA DOLNYCH SEKTORÓW ⚠', screenCenterX, by + 16);
+    ctx.fillText('ALARM: ZRZUT KWASU // EWAKUACJA DOLNYCH SEKTORÓW', screenCenterX, by + 16);
 
     ctx.font = '700 11px monospace';
     ctx.fillStyle = '#f59e0b';
@@ -1770,7 +1770,7 @@ export function drawAcidSurgeWarningBanner(ctx, time, camera) {
     ctx.fillStyle = `rgba(167, 243, 208, ${0.9 * pulse})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`☣ SEKTOR X ZALANY // CZAS DO ODPŁYWU: ${Math.max(0, ACID_SURGE_SYSTEM.timer).toFixed(0)}s ☣`, screenCenterX, by + 13);
+    ctx.fillText(`SEKTOR X ZALANY // CZAS DO ODPŁYWU: ${Math.max(0, ACID_SURGE_SYSTEM.timer).toFixed(0)}s`, screenCenterX, by + 13);
   }
 
   ctx.restore();

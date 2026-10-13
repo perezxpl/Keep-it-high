@@ -1275,10 +1275,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textBaseline = 'middle';
 
     ctx.textAlign = 'left';
-    ctx.fillText('🛡️ KAMIZELKA (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+    ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
 
     ctx.textAlign = 'right';
-    const helmBadge = hasHelmet ? '🪖 ' : '';
+    const helmBadge = hasHelmet ? '[HEŁM] ' : '';
     ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
     ctx.restore();
   } else if (hasHelmet) {
@@ -1303,7 +1303,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textBaseline = 'middle';
 
     ctx.textAlign = 'left';
-    ctx.fillText('🪖 HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
+    ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
 
     ctx.textAlign = 'right';
     ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
@@ -1402,7 +1402,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'left';
-  ctx.fillText('✚ HP', hudX + 6, hpY + barH / 2 + 0.5);
+  ctx.fillText('HP', hudX + 6, hpY + barH / 2 + 0.5);
 
   ctx.textAlign = 'right';
   ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hpY + barH / 2 + 0.5);
@@ -1646,7 +1646,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ef4444';
     ctx.shadowBlur = 0;
-    ctx.fillText('💀 TEAM DEATHMATCH 💀', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 9.5 : 12));
+    ctx.fillText('TEAM DEATHMATCH', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 9.5 : 12));
 
     // Fragi obu drużyn
     ctx.font = isMobile ? '900 10.5px monospace' : 'bold 13px monospace';
@@ -1705,7 +1705,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       ctx.fillStyle = `rgba(56, 189, 248, ${0.80 + pulse * 0.20})`;
       ctx.shadowColor = '#00e5ff';
       ctx.shadowBlur = 0;
-      ctx.fillText('⚡ ROZPOCZNIJ MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1800) ⚡', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
+      ctx.fillText('MECZ: PIŁKA NA OŁTARZU CENTRALNYM (X: 1800)', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 16));
     }
 
     ctx.restore();
@@ -1729,7 +1729,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = goalCelebration.color;
     ctx.shadowBlur = 0;
-    ctx.fillText(`⚽ ${goalCelebration.team} GOAL! ⚽`, W / 2, H * 0.32);
+    ctx.fillText(`${goalCelebration.team} GOAL!`, W / 2, H * 0.32);
     ctx.restore();
   }
 

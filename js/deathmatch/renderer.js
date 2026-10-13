@@ -74,7 +74,6 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
   const pData = deathmatchState.participants.find(p => p.isPlayer);
   const pKills = pData ? pData.kills : 0;
   const pDeaths = pData ? pData.deaths : 0;
-  const medalIcon = (place === 1) ? '🥇' : ((place === 2) ? '🥈' : ((place === 3) ? '🥉' : '🎖️'));
   const placeColor = (place === 1) ? '#facc15' : ((place === 2) ? '#e2e8f0' : ((place === 3) ? '#f97316' : '#94a3b8'));
 
   // 1. Górny mikro-pasek: Czas (lewa strona) oraz Pozycja gracza (prawa strona)
@@ -84,12 +83,12 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
   // Timer (MM:SS) po lewej stronie
   ctx.textAlign = 'left';
   ctx.fillStyle = isUrgent ? '#ef4444' : '#facc15';
-  ctx.fillText(`⏱️ ${formatTime(timeLeft)}`, boxX + (isMobile ? 8 : 12), topTextY);
+  ctx.fillText(formatTime(timeLeft), boxX + (isMobile ? 8 : 12), topTextY);
 
   // Pozycja gracza po prawej stronie (zintegrowana wewnątrz pigułki HUD)
   ctx.textAlign = 'right';
   ctx.fillStyle = placeColor;
-  const posText = isMobile ? `${medalIcon} #${place} (${pKills}F/${pDeaths}Z)` : `${medalIcon} POZ. #${place} (${pKills} F / ${pDeaths} Z)`;
+  const posText = isMobile ? `#${place} (${pKills}F/${pDeaths}Z)` : `POZ. #${place} (${pKills} F / ${pDeaths} Z)`;
   ctx.fillText(posText, boxX + boxW - (isMobile ? 8 : 12), topTextY);
 
   // 2. Dolny pasek: Wynik punktowy drużyn lub FFA
@@ -126,7 +125,7 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
     ctx.fillStyle = '#facc15';
     const leaderName = leader ? leader.name : 'BRAK';
     const leaderKills = leader ? leader.kills : 0;
-    ctx.fillText(`👑 LIDER: ${leaderName} (${leaderKills} FRAGÓW)`, boxX + boxW / 2, scoreY);
+    ctx.fillText(`LIDER: ${leaderName} (${leaderKills} FRAGÓW)`, boxX + boxW / 2, scoreY);
   }
 
   ctx.restore();
@@ -167,27 +166,27 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
 
   if (isTdm) {
     if (cyanKills > orangeKills) {
-      teamWinnerText = `🔵 WYGRYWA DRUŻYNA NIEBIESCY! (${cyanKills} : ${orangeKills})`;
+      teamWinnerText = `WYGRYWA DRUŻYNA NIEBIESCY! (${cyanKills} : ${orangeKills})`;
       teamWinnerColor = '#00e5ff';
       if (playerTeam === TEAMS.CYAN) {
-        playerTeamStatus = '★ TWÓJ SKŁAD ODNIÓSŁ ZWYCIĘSTWO! ★';
+        playerTeamStatus = 'TWÓJ SKŁAD ODNIÓSŁ ZWYCIĘSTWO!';
         playerTeamColor = '#4ade80';
       } else {
         playerTeamStatus = 'TWÓJ SKŁAD PONIOSŁ PORAŻKĘ';
         playerTeamColor = '#ef4444';
       }
     } else if (orangeKills > cyanKills) {
-      teamWinnerText = `🔴 WYGRYWA DRUŻYNA CZERWONI! (${orangeKills} : ${cyanKills})`;
+      teamWinnerText = `WYGRYWA DRUŻYNA CZERWONI! (${orangeKills} : ${cyanKills})`;
       teamWinnerColor = '#f97316';
       if (playerTeam === TEAMS.ORANGE) {
-        playerTeamStatus = '★ TWÓJ SKŁAD ODNIÓSŁ ZWYCIĘSTWO! ★';
+        playerTeamStatus = 'TWÓJ SKŁAD ODNIÓSŁ ZWYCIĘSTWO!';
         playerTeamColor = '#4ade80';
       } else {
         playerTeamStatus = 'TWÓJ SKŁAD PONIOSŁ PORAŻKĘ';
         playerTeamColor = '#ef4444';
       }
     } else {
-      teamWinnerText = `🤝 REMIS DRUŻYNOWY! (${cyanKills} : ${orangeKills})`;
+      teamWinnerText = `REMIS DRUŻYNOWY! (${cyanKills} : ${orangeKills})`;
       teamWinnerColor = '#facc15';
       playerTeamStatus = 'ZACIĘTY REMIS NA POLU WALKI';
       playerTeamColor = '#cbd5e1';
@@ -196,10 +195,10 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
     const leader = deathmatchState.leaderboard[0];
     const leaderName = leader ? leader.name : 'BRAK';
     const leaderKills = leader ? leader.kills : 0;
-    teamWinnerText = `👑 MISTRZ BITWY: ${leaderName} (${leaderKills} FRAGÓW)`;
+    teamWinnerText = `MISTRZ BITWY: ${leaderName} (${leaderKills} FRAGÓW)`;
     teamWinnerColor = '#facc15';
     if (deathmatchState.playerPlace === 1) {
-      playerTeamStatus = '★ JESTEŚ NIEPOKONANYM MISTRZEM ARENY! ★';
+      playerTeamStatus = 'JESTEŚ NIEPOKONANYM MISTRZEM ARENY!';
       playerTeamColor = '#4ade80';
     } else {
       playerTeamStatus = 'BITWA KAŻDY NA KAŻDEGO ZAKOŃCZONA';
@@ -221,7 +220,7 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
   ctx.textAlign = 'center';
   ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
   ctx.fillStyle = '#94a3b8';
-  ctx.fillText('⏱️ BITWA ZAKOŃCZONA (5:00) // WYNIKI MECZU', W / 2, cardY + (isMobile ? 22 : 26));
+  ctx.fillText('BITWA ZAKOŃCZONA (5:00) // WYNIKI MECZU', W / 2, cardY + (isMobile ? 22 : 26));
 
   // 2. Główny baner zwycięzcy (KTÓRA DRUŻYNA WYGRAŁA)
   ctx.font = isMobile ? '900 16px monospace' : '900 22px monospace';
@@ -286,8 +285,8 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
     ctx.textAlign = 'left';
     ctx.font = isPlayer ? (isMobile ? '900 11px monospace' : '900 13px monospace') : (isMobile ? 'bold 10px monospace' : 'bold 12px monospace');
     ctx.fillStyle = isPlayer ? '#00e5ff' : '#cbd5e1';
-    const rankPrefix = (idx === 0) ? '🥇 #1' : (idx === 1 ? '🥈 #2' : (idx === 2 ? '🥉 #3' : `   #${idx + 1}`));
-    const nickText = isPlayer ? `${p.name} ★ [TY]` : p.name;
+    const rankPrefix = `#${idx + 1}`;
+    const nickText = isPlayer ? `${p.name} [TY]` : p.name;
     ctx.fillText(`${rankPrefix}  ${nickText}`, cardX + 22, ry - 4);
 
     // Drużyna (zawsze polska nazwa: NIEBIESCY lub CZERWONI)

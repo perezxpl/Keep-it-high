@@ -58,7 +58,7 @@ export function initObstacleEditorUI() {
   devEditorBtn.id = 'dev-editor-toggle-btn';
   devEditorBtn.title = 'Włącz / Wyłącz interaktywny Edytor Przeszkód na żywo';
   devEditorBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 700;';
-  devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
+  devEditorBtn.textContent = 'EDYTOR: OFF';
   devMenu.appendChild(devEditorBtn);
 
   devEditorSubpanel = document.createElement('div');
@@ -70,11 +70,11 @@ export function initObstacleEditorUI() {
   devGridBtn.id = 'dev-grid-btn';
   devGridBtn.title = 'Włącz/Wyłącz przyciąganie do siatki (20px)';
   devGridBtn.style.cssText = 'border-color: #06b6d4; color: #22d3ee;';
-  devGridBtn.textContent = '📐 SIATKA: 20px';
+  devGridBtn.textContent = 'SIATKA: 20px';
   devGridBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     editorState.snapToGrid = !editorState.snapToGrid;
-    devGridBtn.textContent = editorState.snapToGrid ? '📐 SIATKA: 20px' : '📐 SIATKA: WYŁ';
+    devGridBtn.textContent = editorState.snapToGrid ? 'SIATKA: 20px' : 'SIATKA: WYŁ';
     devGridBtn.style.color = editorState.snapToGrid ? '#22d3ee' : '#94a3b8';
   });
   devEditorSubpanel.appendChild(devGridBtn);
@@ -84,11 +84,11 @@ export function initObstacleEditorUI() {
   devMagnetBtn.id = 'dev-magnet-btn';
   devMagnetBtn.title = 'Włącz/Wyłącz inteligentne przyciąganie do powierzchni platform i gruntu (Surface Magnet 16px)';
   devMagnetBtn.style.cssText = 'border-color: #10b981; color: #34d399; font-weight: 600;';
-  devMagnetBtn.textContent = '🧲 MAGNET: 16px';
+  devMagnetBtn.textContent = 'MAGNET: 16px';
   devMagnetBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     editorState.surfaceSnap = !editorState.surfaceSnap;
-    devMagnetBtn.textContent = editorState.surfaceSnap ? '🧲 MAGNET: 16px' : '🧲 MAGNET: WYŁ';
+    devMagnetBtn.textContent = editorState.surfaceSnap ? 'MAGNET: 16px' : 'MAGNET: WYŁ';
     devMagnetBtn.style.color = editorState.surfaceSnap ? '#34d399' : '#94a3b8';
     devMagnetBtn.style.borderColor = editorState.surfaceSnap ? '#10b981' : 'rgba(148, 163, 184, 0.3)';
   });
@@ -101,7 +101,7 @@ export function initObstacleEditorUI() {
   const undoBtn = document.createElement('button');
   undoBtn.className = 'dev-btn';
   undoBtn.title = 'Cofnij ostatnio postawiony obiekt (Ctrl+Z)';
-  undoBtn.textContent = '↩️ COFNIJ OSTATNIĄ';
+  undoBtn.textContent = 'COFNIJ OSTATNIĄ';
   undoBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     undoCustomObstacle();
@@ -113,7 +113,7 @@ export function initObstacleEditorUI() {
   clearBtn.className = 'dev-btn';
   clearBtn.title = 'Wyczyść wszystkie postawione przeszkody';
   clearBtn.style.cssText = 'border-color: rgba(239, 68, 68, 0.4); color: #ef4444;';
-  clearBtn.textContent = '🗑️ WYCZYŚĆ WSZYSTKO';
+  clearBtn.textContent = 'WYCZYŚĆ WSZYSTKO';
   clearBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     clearCustomObstacles();
@@ -125,16 +125,16 @@ export function initObstacleEditorUI() {
   copyBtn.className = 'dev-btn';
   copyBtn.title = 'Skopiuj aktualny układ postawionych przeszkód do schowka jako JSON';
   copyBtn.style.cssText = 'border-color: #a855f7; color: #c084fc; font-weight: 600;';
-  copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
+  copyBtn.textContent = 'KOPIUJ UKŁAD (JSON)';
   copyBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     const jsonStr = JSON.stringify(customObstacles, null, 2);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(jsonStr).then(() => {
-        copyBtn.textContent = '✅ SKOPIOWANO!';
+        copyBtn.textContent = 'SKOPIOWANO!';
         copyBtn.style.color = '#34d399';
         setTimeout(() => {
-          copyBtn.textContent = '📋 KOPIUJ UKŁAD (JSON)';
+          copyBtn.textContent = 'KOPIUJ UKŁAD (JSON)';
           copyBtn.style.color = '#c084fc';
         }, 1800);
       }).catch(() => {
@@ -152,7 +152,7 @@ export function initObstacleEditorUI() {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     editorState.active = !editorState.active;
     if (editorState.active) {
-      devEditorBtn.textContent = '🏗️ EDYTOR: ON';
+      devEditorBtn.textContent = 'EDYTOR: ON';
       devEditorBtn.style.background = 'rgba(168, 85, 247, 0.3)';
       devEditorBtn.style.borderColor = '#c084fc';
       devEditorBtn.style.color = '#ffffff';
@@ -160,7 +160,7 @@ export function initObstacleEditorUI() {
       devEditorSubpanel.style.display = 'inline-flex';
       renderEditorPalette();
     } else {
-      devEditorBtn.textContent = '🏗️ EDYTOR: OFF';
+      devEditorBtn.textContent = 'EDYTOR: OFF';
       devEditorBtn.style.background = '';
       devEditorBtn.style.borderColor = '#10b981';
       devEditorBtn.style.color = '#34d399';
@@ -184,13 +184,13 @@ export function renderEditorPalette() {
   const palette = OBSTACLE_PALETTE[arenaKey] || OBSTACLE_PALETTE.ARENA_1;
 
   const catTitles = (arenaKey === 'ARENA_2' || arenaKey === 'ARENA_2_PANDORA' || arenaKey === 'ARENA_2_SECTOR_X') ? {
-    platforms: '🏗️ Belki / Pomosty',
-    defense: '🛡️ Osłony / Barykady',
-    traps: '☣️ Zbiorniki Kwasu / Para'
+    platforms: 'Belki / Pomosty',
+    defense: 'Osłony / Barykady',
+    traps: 'Zbiorniki Kwasu / Para'
   } : {
-    platforms: '🪜 Kładki / Wieże',
-    defense: '🛡️ Mury / Osłony',
-    traps: '💥 Interaktywne / Pułapki'
+    platforms: 'Kładki / Wieże',
+    defense: 'Mury / Osłony',
+    traps: 'Interaktywne / Pułapki'
   };
 
   const categories = ['platforms', 'defense', 'traps'];

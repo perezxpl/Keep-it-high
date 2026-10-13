@@ -48,13 +48,13 @@ export function syncDevBotButtonUI() {
   const btn = document.getElementById('dev-bot-toggle-btn');
   if (!btn) return;
   if (bot.active) {
-    btn.textContent = '🤖 BOT: ON';
+    btn.textContent = 'BOT: ON';
     btn.style.background = 'rgba(168, 85, 247, 0.35)';
     btn.style.borderColor = '#c084fc';
     btn.style.color = '#ffffff';
     btn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
   } else {
-    btn.textContent = '🤖 BOT: OFF';
+    btn.textContent = 'BOT: OFF';
     btn.style.background = '';
     btn.style.borderColor = '#a855f7';
     btn.style.color = '#c084fc';
@@ -68,19 +68,19 @@ export function syncDevArenaButtonUI() {
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
   const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
   if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
-    devArenaBtn.textContent = '🌴 Arena: 3 (Dżungla)';
+    devArenaBtn.textContent = 'Arena: 3 (Dżungla)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';
     devArenaBtn.style.borderColor = '#22c55e';
     devArenaBtn.style.color = '#86efac';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
   } else if (curId === 'arena-2' || curId === 'ARENA_2' || curId === 'ARENA_2_PANDORA' || curId === 'ARENA_2_SECTOR_X') {
-    devArenaBtn.textContent = '🏭 Arena: 2 (Sektor X)';
+    devArenaBtn.textContent = 'Arena: 2 (Sektor X)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.25))';
     devArenaBtn.style.borderColor = '#f59e0b';
     devArenaBtn.style.color = '#fde68a';
     devArenaBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.55)';
   } else {
-    devArenaBtn.textContent = '🏟️ Arena: 1';
+    devArenaBtn.textContent = 'Arena: 1';
     devArenaBtn.style.background = '';
     devArenaBtn.style.borderColor = '#06b6d4';
     devArenaBtn.style.color = '#22d3ee';
@@ -211,7 +211,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
       e.preventDefault();
       bot.active = !bot.active;
       if (bot.active) {
-        devBotToggleBtn.textContent = '🤖 BOT: ON';
+        devBotToggleBtn.textContent = 'BOT: ON';
         devBotToggleBtn.style.background = 'rgba(168, 85, 247, 0.35)';
         devBotToggleBtn.style.borderColor = '#c084fc';
         devBotToggleBtn.style.color = '#ffffff';
@@ -230,7 +230,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
         bot.dropThroughTimer = 0;
         bot.airVx = 0;
       } else {
-        devBotToggleBtn.textContent = '🤖 BOT: OFF';
+        devBotToggleBtn.textContent = 'BOT: OFF';
         devBotToggleBtn.style.background = '';
         devBotToggleBtn.style.borderColor = '#a855f7';
         devBotToggleBtn.style.color = '#c084fc';
@@ -246,7 +246,7 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     devBotFreezeBtn.className = 'dev-btn';
     devBotFreezeBtn.id = 'dev-bot-freeze-btn';
     devBotFreezeBtn.style.cssText = 'border-color: #eab308; color: #facc15; font-weight: 600; margin-left: 2px;';
-    devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+    devBotFreezeBtn.textContent = 'BOT: RUCH';
 
     if (devBotToggleBtn && devBotToggleBtn.parentNode) {
       devBotToggleBtn.parentNode.insertBefore(devBotFreezeBtn, devBotToggleBtn.nextSibling);
@@ -261,13 +261,13 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
       e.preventDefault();
       bot.frozen = !bot.frozen;
       if (bot.frozen) {
-        devBotFreezeBtn.textContent = '🛑 BOT: STOI';
+        devBotFreezeBtn.textContent = 'BOT: STOI';
         devBotFreezeBtn.style.background = 'rgba(234, 179, 8, 0.35)';
         devBotFreezeBtn.style.borderColor = '#facc15';
         devBotFreezeBtn.style.color = '#ffffff';
         devBotFreezeBtn.style.boxShadow = '0 0 10px rgba(234, 179, 8, 0.6)';
       } else {
-        devBotFreezeBtn.textContent = '⏸️ BOT: RUCH';
+        devBotFreezeBtn.textContent = 'BOT: RUCH';
         devBotFreezeBtn.style.background = '';
         devBotFreezeBtn.style.borderColor = '#eab308';
         devBotFreezeBtn.style.color = '#facc15';
@@ -341,7 +341,7 @@ export function initDevZoomUI() {
   zoomOutBtn.className = 'dev-btn';
   zoomOutBtn.id = 'dev-zoom-out-btn';
   zoomOutBtn.title = 'Oddal widok kamery (-0.25x)';
-  zoomOutBtn.textContent = '🔍 - Oddal';
+  zoomOutBtn.textContent = '- Oddal';
   const handleZoomOut = (e) => {
     e.stopPropagation(); e.preventDefault();
     const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
@@ -356,7 +356,7 @@ export function initDevZoomUI() {
   zoomResetBtn.className = 'dev-btn';
   zoomResetBtn.id = 'dev-zoom-reset-btn';
   zoomResetBtn.title = 'Ustaw zoom dokładnie na 1.0x (widok 1:1)';
-  zoomResetBtn.textContent = '🔍 Reset (1.0x)';
+  zoomResetBtn.textContent = 'Reset (1.0x)';
   const handleZoomReset = (e) => {
     e.stopPropagation(); e.preventDefault();
     setDevZoom(1.0);
@@ -370,7 +370,7 @@ export function initDevZoomUI() {
   zoomInBtn.className = 'dev-btn';
   zoomInBtn.id = 'dev-zoom-in-btn';
   zoomInBtn.title = 'Przybliż widok kamery (+0.25x, max 2.5x)';
-  zoomInBtn.textContent = '🔍 + Przybliż';
+  zoomInBtn.textContent = '+ Przybliż';
   const handleZoomIn = (e) => {
     e.stopPropagation(); e.preventDefault();
     const cur = devZoomLevel !== null ? devZoomLevel : camera.zoom;
@@ -385,7 +385,7 @@ export function initDevZoomUI() {
   zoomAutoBtn.className = 'dev-btn';
   zoomAutoBtn.id = 'dev-zoom-auto-btn';
   zoomAutoBtn.title = 'Przywróć domyślny automatyczny zoom kamery';
-  zoomAutoBtn.textContent = '🔍 Auto';
+  zoomAutoBtn.textContent = 'Auto';
   const handleZoomAuto = (e) => {
     e.stopPropagation(); e.preventDefault();
     setDevZoom(null);
@@ -402,13 +402,13 @@ let devTouchBtn = null;
 export function updateDevTouchButtonUI() {
   if (!devTouchBtn) return;
   if (isTouchDevice) {
-    devTouchBtn.textContent = '🕹️ PAD: WŁ';
+    devTouchBtn.textContent = 'PAD: WŁ';
     devTouchBtn.style.borderColor = '#0284c7';
     devTouchBtn.style.color = '#38bdf8';
     devTouchBtn.style.background = 'rgba(2, 132, 199, 0.22)';
     devTouchBtn.style.boxShadow = '0 0 10px rgba(56, 189, 248, 0.35)';
   } else {
-    devTouchBtn.textContent = '🕹️ PAD: WYŁ';
+    devTouchBtn.textContent = 'PAD: WYŁ';
     devTouchBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
     devTouchBtn.style.color = '#94a3b8';
     devTouchBtn.style.background = 'transparent';
@@ -465,7 +465,7 @@ export function initModularGearDevUI() {
   helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (chroni przed headshotem na krótko!)';
   const updateHelmUI = () => {
     const hasH = !!player.hasHelmet;
-    helmBtn.textContent = hasH ? '🪖 HEŁM (ON)' : '🧑‍🦲 BEZ HEŁMU';
+    helmBtn.textContent = hasH ? 'HEŁM: WŁ' : 'HEŁM: BRAK';
     helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
     helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
     helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
@@ -503,9 +503,9 @@ export function initModularGearDevUI() {
   const updateVestUI = () => {
     const hasV = !!(player.hasVest && (player.vestHp || 0) > 0);
     const vhp = Math.ceil(player.vestHp || (player.hasVest ? 60 : 0));
-    vestBtn.textContent = hasV ? `🛡️ KAMIZELKA (${vhp} HP)` : '👕 BEZ KAMIZELKI';
+    vestBtn.textContent = hasV ? `KAMIZELKA: ${vhp} HP` : 'KAMIZELKA: BRAK';
     vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
-    vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
+    vestBtn.style.color = '#34d399' : '#94a3b8';
     vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
   };
   const handleVest = (e) => {

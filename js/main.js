@@ -747,7 +747,7 @@ function draw() {
         ctx.font = 'bold 10px monospace';
         ctx.fillStyle = isSnapped ? '#34d399' : '#00e5ff';
         ctx.textAlign = 'center';
-        const magnetBadge = isSnapped ? ` [🧲 ${placement.surfaceName || 'POWIERZCHNIA'}]` : '';
+        const magnetBadge = isSnapped ? ` [SNAP: ${placement.surfaceName || 'POWIERZCHNIA'}]` : '';
         ctx.fillText(`${def.name} (${w}x${h})${magnetBadge}`, px + w / 2, py - 6);
         ctx.restore();
       }
@@ -860,7 +860,7 @@ function draw() {
     ctx.fillStyle = '#22c55e';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.shadowBlur = 4;
-    ctx.fillText('⚡ DEBUG COLLIDERS ON [F1 / ~ to toggle]', 16, 24);
+    ctx.fillText('DEBUG COLLIDERS ON [F1 / ~ to toggle]', 16, 24);
     ctx.restore();
   }
 
@@ -894,7 +894,7 @@ function draw() {
     ctx.shadowColor = '#00e5ff';
     ctx.shadowBlur = 6;
     const currentToolLabel = editorState.selectedType ? `[NARZĘDZIE: ${getObstacleDef(editorState.selectedType)?.name || editorState.selectedType}]` : '[WYBIERZ PRZESZKODĘ Z MENU DEV]';
-    ctx.fillText(`🏗️ EDYTOR: ${currentToolLabel} | LPM: Postaw | PPM: Usuń/Anuluj | Ctrl+Z: Cofnij`, W / 2, bannerY + 17);
+    ctx.fillText(`EDYTOR: ${currentToolLabel} | LPM: Postaw | PPM: Usuń/Anuluj | Ctrl+Z: Cofnij`, W / 2, bannerY + 17);
     ctx.restore();
   }
 }

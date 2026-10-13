@@ -205,7 +205,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 6;
     const secLeft = Math.max(1, Math.ceil(p.respawnTimer / 60));
-    ctx.fillText(`☠️ ROZPUSZCZONO // RESPAWN ZA ${secLeft}s`, p.x + p.w / 2, (p.acidDeath.hazardY || (p.y + (p.h || 70))) - 24);
+    ctx.fillText(`ROZPUSZCZONO // RESPAWN: ${secLeft}s`, p.x + p.w / 2, (p.acidDeath.hazardY || (p.y + (p.h || 70))) - 24);
     ctx.restore();
     return;
   }
@@ -217,7 +217,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.fillStyle = '#ef4444';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 6;
-    ctx.fillText(`💀 RESPAWN ZA ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
+    ctx.fillText(`RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
     ctx.restore();
     return;
   }
@@ -1664,7 +1664,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.fillStyle = '#ef4444';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 6;
-    ctx.fillText(`💀 RESPAWN ZA ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
+    ctx.fillText(`RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
     ctx.restore();
   } else if (p.emptyAmmoAlert > 0) {
     ctx.save();
@@ -1673,7 +1673,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.fillStyle = '#ef4444';
     ctx.shadowColor = '#ef4444';
     ctx.shadowBlur = 8;
-    ctx.fillText('⛔ NO AMMO', p.x + p.w / 2, p.y - 16);
+    ctx.fillText('BRAK AMUNICJI', p.x + p.w / 2, p.y - 16);
     ctx.restore();
   }
 

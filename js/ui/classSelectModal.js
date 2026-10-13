@@ -15,7 +15,7 @@ export const CLASS_CARDS = [
     color: '#10b981',
     glowColor: 'rgba(16, 185, 129, 0.45)',
     role: 'KLASA LEKKA • ZWIADOWCA / LOTNIK',
-    attribute: '🦅 PLECAK ODRZUTOWY (JETPACK)',
+    attribute: 'PLECAK ODRZUTOWY (JETPACK)',
     desc: 'Ekstremalna mobilność powietrzna, pełny ciąg jetpacka i zwinność w locie.',
     stats: ['Zdrowie: 85 HP (Klasa Lekka)', 'Jetpack: 150 Pojemności Paliwa', 'Najwyższa prędkość sprintu (7.4)'],
     classObj: CLASSES.RAPTOR
@@ -27,7 +27,7 @@ export const CLASS_CARDS = [
     color: '#38bdf8',
     glowColor: 'rgba(56, 189, 248, 0.45)',
     role: 'KLASA ŚREDNIA • SZTURMOWIEC',
-    attribute: '⚡ TURBO BUTY / PRECYZJA',
+    attribute: 'TURBO BUTY / PRECYZJA',
     desc: 'Atletyczny szturmowiec wagi średniej z dopalaczami w butach, wyważoną muskulaturą i precyzją ognia.',
     stats: ['Zdrowie: 100 HP (Klasa Średnia)', 'Moduł ruchu: Turbo Buty Rocket Dash', 'Zbalansowana siła ciosu i precyzja'],
     classObj: CLASSES.STRIKER
@@ -39,7 +39,7 @@ export const CLASS_CARDS = [
     color: '#ef4444',
     glowColor: 'rgba(239, 68, 68, 0.45)',
     role: 'KLASA CIĘŻKA • KOLOS / TARAN',
-    attribute: '⚙️ TŁOKI KINETYCZNE / PRZYSIAD',
+    attribute: 'TŁOKI KINETYCZNE / PRZYSIAD',
     desc: 'Przytrzymaj górę (W/drążek) min. 1000ms na ziemi – Enforcer zapiera się w głębokim przysiadzie, sprężając tłoki pneumatyczne na łydkach. Puszczenie wyzwala potężny wyskok!',
     stats: ['Maksymalne Zdrowie: 140 HP (Kolos)', 'Tłoki Łydek: przytrzymaj górę 1s na ziemi i puść', 'Druzgocący Spartan Kick (24 dmg) i taran'],
     classObj: CLASSES.ENFORCER
@@ -152,7 +152,7 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
   ctx.fillStyle = '#00e5ff';
   ctx.shadowColor = '#00e5ff';
   ctx.shadowBlur = 6;
-  ctx.fillText('⚡ PROTOKÓŁ ROZGRYWKI • WYBIERZ SPECJALIZACJĘ ⚡', W / 2, modalY + 34);
+  ctx.fillText('PROTOKÓŁ ROZGRYWKI • WYBIERZ SPECJALIZACJĘ', W / 2, modalY + 34);
   ctx.shadowBlur = 0;
 
   // Główny nagłówek

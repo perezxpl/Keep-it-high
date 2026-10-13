@@ -266,19 +266,19 @@ function updateDevArenaButtonUI(arenaId) {
   const arenaBtn = document.getElementById('dev-arena-btn');
   if (!arenaBtn) return;
   if (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY') {
-    arenaBtn.textContent = '🏟️ Arena: 3 (Dżungla)';
+    arenaBtn.textContent = 'Arena: 3 (Dżungla)';
     arenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))';
     arenaBtn.style.borderColor = '#22c55e';
     arenaBtn.style.color = '#86efac';
     arenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
   } else if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') {
-    arenaBtn.textContent = '🏭 Arena: 2 (Sektor X)';
+    arenaBtn.textContent = 'Arena: 2 (Sektor X)';
     arenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(239, 68, 68, 0.25))';
     arenaBtn.style.borderColor = '#eab308';
     arenaBtn.style.color = '#fef08a';
     arenaBtn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.55)';
   } else {
-    arenaBtn.textContent = '🏟️ Arena: 1';
+    arenaBtn.textContent = 'Arena: 1';
     arenaBtn.style.background = '';
     arenaBtn.style.borderColor = '#06b6d4';
     arenaBtn.style.color = '#22d3ee';
@@ -865,15 +865,15 @@ function updateUIStatus(status, message) {
 
   if (topBadge) {
     if (status === 'connected') {
-      topBadge.textContent = '🟢 MULTI (ON)';
+      topBadge.textContent = 'MULTI (ON)';
       topBadge.style.borderColor = '#4ade80';
       topBadge.style.color = '#4ade80';
     } else if (status === 'hosting' || status === 'connecting') {
-      topBadge.textContent = '🟡 MULTI (...)';
+      topBadge.textContent = 'MULTI (...)';
       topBadge.style.borderColor = '#facc15';
       topBadge.style.color = '#facc15';
     } else {
-      topBadge.textContent = '🌐 MULTI';
+      topBadge.textContent = 'MULTI';
       topBadge.style.borderColor = 'rgba(0, 229, 255, 0.5)';
       topBadge.style.color = '#00e5ff';
     }
@@ -1188,8 +1188,8 @@ export function initNetwork() {
     copyCodeBtn.onclick = () => {
       if (networkState.roomId) {
         navigator.clipboard.writeText(networkState.roomId).then(() => {
-          copyCodeBtn.textContent = '✅ Skopiowano!';
-          setTimeout(() => { copyCodeBtn.textContent = '📋 Kopiuj Kod'; }, 2000);
+          copyCodeBtn.textContent = 'SKOPIOWANO!';
+          setTimeout(() => { copyCodeBtn.textContent = 'KOPIUJ KOD'; }, 2000);
         });
       }
     };
@@ -1202,8 +1202,8 @@ export function initNetwork() {
       if (networkState.roomId) {
         const url = `${window.location.origin}${window.location.pathname}?room=${networkState.roomId}`;
         navigator.clipboard.writeText(url).then(() => {
-          copyLinkBtn.textContent = '✅ Link Skopiowany do Schowka!';
-          setTimeout(() => { copyLinkBtn.textContent = '🔗 Kopiuj Link z Zaproszeniem'; }, 2500);
+          copyLinkBtn.textContent = 'LINK SKOPIOWANY';
+          setTimeout(() => { copyLinkBtn.textContent = 'KOPIUJ LINK'; }, 2500);
         });
       }
     };

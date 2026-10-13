@@ -34,7 +34,7 @@ export const XP_RULES = [
     title: '1. Miejsce — Deathmatch (5 min)',
     category: 'Deathmatch 5 Min',
     xp: 100,
-    icon: '🥇',
+    icon: '#1',
     badgeClass: 'xp-badge-goal',
     desc: 'Najwięcej eliminacji w 5-minutowej bitwie na Arenie 2 (Sektor X).',
     tip: 'Zdominuj platformy, unikaj kwasu i eliminuj rywali seriami.'
@@ -44,7 +44,7 @@ export const XP_RULES = [
     title: '2. Miejsce — Deathmatch (5 min)',
     category: 'Deathmatch 5 Min',
     xp: 80,
-    icon: '🥈',
+    icon: '#2',
     badgeClass: 'xp-badge-win',
     desc: 'Drugi wynik eliminacji w 5-minutowym starciu na Arenie 2.',
     tip: 'Wicemistrzostwo bitwy z wysoką premią doświadczenia.'
@@ -54,7 +54,7 @@ export const XP_RULES = [
     title: '3. Miejsce — Deathmatch (5 min)',
     category: 'Deathmatch 5 Min',
     xp: 60,
-    icon: '🥉',
+    icon: '#3',
     badgeClass: 'xp-badge-kill',
     desc: 'Trzecie miejsce na podium w 5-minutowej bitwie na Arenie 2.',
     tip: 'Utrzymanie się na podium w dynamicznym starciu wielu rywali.'
@@ -64,7 +64,7 @@ export const XP_RULES = [
     title: 'Udział w Deathmatch (5 min)',
     category: 'Deathmatch 5 Min',
     xp: 40,
-    icon: '🎖️',
+    icon: 'DM',
     badgeClass: 'xp-badge-win',
     desc: 'Ukończenie 5-minutowej bitwy na Arenie 2 poza podium.',
     tip: 'Gwarantowana premia bojowa za rozegranie pełnego 5-minutowego meczu.'
@@ -74,7 +74,7 @@ export const XP_RULES = [
     title: 'Zwycięstwo w Meczu (Fragball)',
     category: 'Turniej',
     xp: 40,
-    icon: '🏆',
+    icon: 'WIN',
     badgeClass: 'xp-badge-win',
     desc: 'Wygranie meczu piłkarskiego (3 bramki na Arenie 1).',
     tip: 'Zgranie taktyczne i obrona prowadzą do pewnego triumfu.'
@@ -84,7 +84,7 @@ export const XP_RULES = [
     title: 'Zdobycie Bramki',
     category: 'Cel Meczu',
     xp: 15,
-    icon: '⚽',
+    icon: 'GOL',
     badgeClass: 'xp-badge-goal',
     desc: 'Celny strzał umieszczający piłkę bezpośrednio w siatce rywali.',
     tip: 'Uderzenia z woleja, Spartan Kick lub rykoszety sufitowe.'
@@ -94,7 +94,7 @@ export const XP_RULES = [
     title: 'Eliminacja Wroga (Frag)',
     category: 'Walka',
     xp: 10,
-    icon: '⚔️',
+    icon: 'FRAG',
     badgeClass: 'xp-badge-kill',
     desc: 'Zlikwidowanie wrogiego bota lub przeciwnika bronią lub granatem.',
     tip: 'Prowadź ogień ciągły lub eliminuj cele jednym strzałem snajperki.'
@@ -104,7 +104,7 @@ export const XP_RULES = [
     title: 'Spartan Kick / Wślizg',
     category: 'Walka Wręcz',
     xp: 10,
-    icon: '💥',
+    icon: 'KICK',
     badgeClass: 'xp-badge-melee',
     desc: 'Wepchnięcie rywala potężnym kopnięciem lub wślizgiem w kwas lub przepaść.',
     tip: 'Użyj klawisza F lub X, aby odrzucić nacierającego wroga.'
@@ -114,7 +114,7 @@ export const XP_RULES = [
     title: 'Porażka w Meczu',
     category: 'Wynik',
     xp: 0,
-    icon: '💀',
+    icon: 'LOSS',
     badgeClass: 'xp-badge-loss',
     desc: 'Koniec spotkania zwycięstwem drużyny przeciwnej.',
     tip: 'Zero kary punktowej — zgromadzone wcześniej XP nie przepada.'
