@@ -505,7 +505,7 @@ export function initModularGearDevUI() {
     const vhp = Math.ceil(player.vestHp || (player.hasVest ? 60 : 0));
     vestBtn.textContent = hasV ? `KAMIZELKA: ${vhp} HP` : 'KAMIZELKA: BRAK';
     vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
-    vestBtn.style.color = '#34d399' : '#94a3b8';
+    vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
     vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
   };
   const handleVest = (e) => {
