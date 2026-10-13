@@ -16,7 +16,7 @@ Projekt wykorzystuje natywne moduły ES (`type="module"`). **`js/main.js` (~970 
 
 Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 
-### 🎮 Sterowanie i Wejście (`js/input/`)
+### Sterowanie i Wejście (`js/input/`)
 - `js/input/index.js` — punkt wejścia łączący wszystkie urządzenia sterujące (`initAllInputHandlers`).
 - `js/input/keyboardMouse.js` — obsługa zdarzeń klawiatury i myszy PC (`keydown`, `keyup`, `mousemove`, `mousedown`, `mouseup`) oraz współdzielone obiekty stanu `keys`, `mouseState` i `inputSession`.
 - `js/input/touchHandlers.js` — obsługa zdarzeń dotykowych ekranu mobilnego (`touchstart`, `touchmove`, `touchend`), wirtualnych drążków i kieszeni (pockets).
@@ -24,7 +24,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/input/playerController.js` — logika wykonywana w każdej klatce `update()`: przeliczanie wejścia (mysz / dotyk / pad) na celowanie (`player.aimX/Y`), strzelanie (`triggerPlayerShoot`), auto-przeładowanie, timery drążków oraz ciąg jetpacka.
 - `js/mobileControls.js` — definicje i układ geometryczny wirtualnych drążków (`leftStick`, `rightStick`, `pockets`, `btnCluster`).
 
-### 🏃 Postać Gracza (`js/player/`)
+### Postać Gracza (`js/player/`)
 - `js/player/state.js` — domyślne statystyki (`DEFAULT_STATS`, `DEFAULT_BODY`), fabryka instancji (`createPlayerInstance`), zmiana klasy (`setPlayerClass`) oraz inicjalizacja skoku (`initiatePlayerJump`).
 - `js/player/index.js` — główna pętla fizyki i cyklu życia postaci w klatce (`updatePlayer`).
 - `js/player/actions.js` — akcje bojowe i piłkarskie: kopnięcia (zwykłe, nożyce, przewrotka, Spartan Kick), wślizg (`playerSlide`), rzut granatem (`prepareGrenadeThrow`, `releaseGrenadeThrow`).
@@ -44,31 +44,31 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/shoes.js` — fasony i kolory obuwia (buty desantowe, niskie sneakersy, korki piłkarskie, wysokie trampki hi-top, wysokie glany z klamrami), renderowanie stopy i cholewki zakrywającej nogawkę spodni oraz kafelki podglądu w kreatorze.
 - `js/player/jetpack.js` — fasony (`JETPACK_STYLE_LIST`) i palety kolorów ognia jetpacka (`JETPACK_COLOR_LIST`, 8 kolorów), `getJetpackFlamePalette(color)` zwracające pełną paletę (base, glow, light, deep, particles) oraz `drawJetpackPreview` do kafelka w kreatorze (zakładka JETPACK).
 
-### 🥋 Klasy Postaci (`js/classes/`)
+### Klasy Postaci (`js/classes/`)
 - `js/classes/index.js` — rejestr klas (`CLASSES`, `CLASS_LIST`, `DEFAULT_CLASS`).
 - `js/classes/aero.js` — Klasa 1: Raptor (Zwiadowca / Lotnik, plecak odrzutowy, zwrotność w powietrzu).
 - `js/classes/striker.js` — Klasa 2: Striker (Szturmowiec / Strzelec, buty odrzutowe Rocket Boots, super dashe w powietrzu za 50% paliwa, dopalacz naziemny z podwójnego wychylenia).
 - `js/classes/enforcer.js` — Klasa 3: Enforcer (Kolos / Czołg, potężna masa, wstrząsy ziemi, taran).
 
-### 🔫 Uzbrojenie i Pociski (`js/weapons/`)
+### Uzbrojenie i Pociski (`js/weapons/`)
 - `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
 - `js/weapons/bullets.js` — wystrzeliwanie (`shootWeapon`), balistyka pocisków (`updateBullets`), kolizje pocisków i przeładowanie (`reloadWeapon`).
 - `js/weapons/renderer.js` — rysowanie modeli broni, celownika laserowego (`drawSniperLaserSight`), łusek i smug.
 - `js/projectiles.js` — granaty taktyczne, eksplozje i trajektorie rzutów.
 
-### 🏟️ Areny (`js/arenas/`)
+### Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).
 - `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
 - `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla / Odlewnia): `state.js`, `physics.js`, `renderer.js`.
 
-### 💀 Tryb Deathmatch (`js/deathmatch/`)
+### Tryb Deathmatch (`js/deathmatch/`)
 - `js/deathmatch/state.js` — konfiguracja, stałe czasu (5 minut, 300s), nagrody XP (100, 80, 60, 40 XP), tryby (TDM, FFA), drużyny (CYAN, ORANGE) oraz stan sesji `deathmatchState`.
 - `js/deathmatch/logic.js` — pętla bitwy (`updateDeathmatch`), śledzenie zabójstw i zgonów, dynamiczny leaderboard i finalizacja meczu (`finishDeathmatch`).
 - `js/deathmatch/renderer.js` — rysowanie HUD-u bitwy (`drawDeathmatchHUD`) z zegarem 5:00 i fragami oraz uroczystego podium z nagrodami XP (`drawDeathmatchPodium`).
 - `js/deathmatch/index.js` — główny punkt wejścia i eksport modułu deathmatch.
 
-### 🧱 Przeszkody i Kolizje (`js/obstacles/`)
+### Przeszkody i Kolizje (`js/obstacles/`)
 - `js/obstacles/state.js` — stan przeszkód, wyniki (`arenaScore`), platformy (`ARENA_PLATFORMS`) i przełączanie aren (`switchArena`).
 - `js/obstacles/palette.js` — katalog obiektów edytora (`OBSTACLE_PALETTE`, `getObstacleDef`).
 - `js/obstacles/platforms.js` — fizyka lądowania na platformach i powierzchniach (`checkPlayerPlatformLanding`, `getPlatformSurfaceY`).
@@ -76,7 +76,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/obstacles/renderer.js` — rysowanie przeszkód i platform (`drawObstacles`).
 - `js/obstacles/procedural.js` — proceduralne generowanie przeszkód i ptaków na dystansie.
 
-### 🌍 Świat, Kamera, UI i Narzędzia (`js/world/`, `js/ui/`, `js/dev/`)
+### Świat, Kamera, UI i Narzędzia (`js/world/`, `js/ui/`, `js/dev/`)
 - `js/world/` — stan świata i kamery (`state.js`), niebo (`sky.js`), podłoże (`ground.js`), teren (`terrain.js`), gore/krew (`gore.js`), cząsteczki (`particles.js`).
 - `js/ui/hudCanvas.js` — rysowanie HUD-u na płótnie (`drawHUD`).
 - `js/ui/classSelectModal.js` — karty wyboru klas postaci na płótnie.
@@ -84,7 +84,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
 
-### 🎖️ Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
+### Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
 - `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oraz statystyk bojowych gracza (zabójstwa, śmierci, wygrane, przegrane, rozegrane mecze, bramki, K/D, win rate) w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
 - `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+40 XP).
 
@@ -124,3 +124,13 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
 ## 5. Zarządzanie Gałęziami Git i Kopią Zapasową
 - **Automatyczny `git pull origin main` przed startem**: Zgodnie z punktem 0, każde nowe zadanie zaczynaj od pobrania aktualizacji z `origin/main`.
 - **Bezwzględna ochrona `backup-main`**: NIGDY nie nadpisuj ani nie wypychaj zmian na gałąź `backup-main` bez wyraźnego, bezpośredniego polecenia użytkownika. Gdy użytkownik prosi o wypchnięcie na `main`, wypychaj wyłącznie `main`.
+
+## 6. Standard Wizualny UI i Minimalizm Wojskowy (Zasada Przeciw Zaśmiecaniu)
+- **Bezwzględny zakaz tanich emotikon (ZERO EMOJIS)**:
+  - Pod żadnym pozorem NIE dodawaj kolorowych, tanich emotikonek (`🔥`, `⚡`, `💀`, `🤖`, `🛡️`, `🪖`, `🏆`, `📱`, `🛑`, `👑`, `🎮`, `🔫`, `🧱` itp.) do menu, przycisków, zakładek, HUD-u, kafelków wyboru, powiadomień ani komunikatów w grze.
+  - Interfejs ma stosować czystą, profesjonalną typografię, surowe etykiety tekstowe (np. `[HEŁM]`, `PANCERZ (TORS)`, `HP`, `BOT: ON`, `EDYTOR`), minimalistyczne ikony wektorowe SVG lub wojskowe oznaczenia stopni (`★`, `✦`).
+- **Zakaz duplikowania informacji i zaśmiecania ekranu zbędnymi szczegółami**:
+  - **Kreator Postaci**: Zawsze otwiera się bezpośrednio do edytora ze zwięzłym, czystym 3-przyciskowym selektorem operatorów (`[RAPTOR] [STRIKER] [ENFORCER]`) nad podglądem postaci. Żadnych pośrednich ekranów z wypracowaniami tekstowymi ani powtórzonych podpisów pod modelem.
+  - **Czystość podglądu postaci**: W kreatorze postać stoi w neutralnej pozie garderoby (BEZ efektów bitewnych, ładowania zdolności, pary bojowej, iskier czy dymu).
+  - **Ekrany wyboru map i menu**: Krótkie, jednotaktowe streszczenia taktyczne. Żadnych ścian tekstu, list punktów XP, pucharów ani przeładowanych grafiką elementów.
+  - **Minimalizm HUD**: Wskaźniki bojowe mają być zwarte, czytelne w ułamku sekundy i pozbawione zbędnych ozdobników. Zawsze kieruj się zasadą: *„Jeśli element nie jest krytyczny dla czytelności walki lub obsługi, usuń go”*.
