@@ -130,6 +130,20 @@ export const EnforcerClass = {
   },
 
   onUpdate(player, ball, keys) {
+    const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
+      (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
+      ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
+    );
+    if (!isFirmlyGrounded && player.blastBelt) {
+      if (player.blastBelt.isCharging || player.isJumpCharging) {
+        player.blastBelt.isCharging = false;
+        player.blastBelt.chargeMs = 0;
+        player.blastBelt.chargeRatio = 0;
+        player.blastBelt.isArmed = false;
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
+      }
+    }
     updateEnforcerBeltPhysics(player, ball);
   },
 
@@ -223,36 +237,35 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   if (!player.blastBelt) initBlastBeltState(player);
   const belt = player.blastBelt;
 
-  if (player.isSliding || (player.staggerTimer > 0) || player.isAcidDying) {
-    belt.isCharging = false;
-    belt.chargeMs = 0;
-    belt.chargeRatio = 0;
-    belt.isArmed = false;
-    player.isJumpCharging = false;
-    player.jumpChargePower = 0;
+  // 1. ŚCISŁA WERYFIKACJA KONTAKTU Z PODŁOŻEM:
+  // Enforcer może używać tłoków i wykonywać siłowy przysiad WYŁĄCZNIE stojąc stabilnie na ziemi lub platformie!
+  // W powietrzu tłoki pneumatyczne są całkowicie zablokowane (brak oparcia o grunt).
+  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
+    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
+    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
+  );
+
+  if (!isFirmlyGrounded) {
+    // W POWIETRZU: natychmiastowe zerowanie ładowania tłoków i siłowego przysiadu!
+    if (belt.isCharging || player.isJumpCharging) {
+      belt.isCharging = false;
+      belt.chargeMs = 0;
+      belt.chargeRatio = 0;
+      belt.isArmed = false;
+      player.isJumpCharging = false;
+      player.jumpChargePower = 0;
+    }
     return;
   }
 
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
   const currentFloor = player.currentGroundY || player.groundY || player.lastGroundedFloorY || (player.y + (player.h || 74));
-  const hasCoyote = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(player.vy || 0) < 4.5);
-  const isGroundedNow = (player.onGround !== undefined)
-    ? (player.onGround || hasCoyote)
-    : (player.y >= currentFloor - (player.h || 74) - 4 || hasCoyote);
-
-  if (isGroundedNow && !player.isJumping) {
-    belt.lastGroundedTime = now;
-    belt.lastGroundedFloorY = currentFloor;
-  }
-
-  // Bufor 220ms przy zbieganiu z krawędzi platformy
-  const isGroundedWithGrace = (isGroundedNow && !player.isJumping) || ((now - (belt.lastGroundedTime || 0)) <= 220 && !player.isJumping);
 
   // Sprawdzenie czy gracz trzyma kierunek w górę (W / Up / Drążek w górę / Pad)
   const keyUpHeld = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
   const stickThreshold = belt.isCharging ? -0.30 : -0.45;
   const touchUpHeld = !!(leftStick && leftStick.active && leftStick.axisY < stickThreshold);
-  const padUpHeld = !!(gamepadState && gamepadState.connected && (gamepadState.jumpHeld || gamepadState.axisY < -0.50));
+  const padUpHeld = !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || (gamepadState.leftStick && gamepadState.leftStick.y < -0.50) || gamepadState.buttons?.dpadUp));
   const isHoldingUp = keyUpHeld || touchUpHeld || padUpHeld;
 
   // Bieżący kierunek poziomy (do skoku kierunkowego na platformę)
@@ -263,13 +276,13 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   }
   if (leftStick && leftStick.active && Math.abs(leftStick.axisX) > 0.12) {
     curDirX = leftStick.axisX;
-  } else if (gamepadState && gamepadState.connected && Math.abs(gamepadState.axisX) > 0.15) {
-    curDirX = gamepadState.axisX;
+  } else if (gamepadState && gamepadState.connected && Math.abs(gamepadState.leftStick?.x || 0) > 0.15) {
+    curDirX = gamepadState.leftStick.x;
   }
 
   if (isHoldingUp) {
     if (!belt.isCharging) {
-      if (isGroundedWithGrace && belt.blastJumpTimer <= 0) {
+      if (belt.blastJumpTimer <= 0) {
         belt.isCharging = true;
         belt.chargeStartTime = now;
         belt.chargeMs = 0;
@@ -285,47 +298,38 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
         player.jumpChargePower = 0;
       }
     } else {
-      if (!isGroundedWithGrace) {
-        belt.isCharging = false;
-        belt.chargeMs = 0;
-        belt.chargeRatio = 0;
-        belt.isArmed = false;
-        player.isJumpCharging = false;
-        player.jumpChargePower = 0;
+      belt.chargeMs = Math.max(0, now - belt.chargeStartTime);
+      belt.chargeRatio = Math.min(1.0, belt.chargeMs / ENFORCER_BOMB_CHARGE_MS);
+      const wasArmed = belt.isArmed;
+      belt.isArmed = (belt.chargeMs >= ENFORCER_BOMB_CHARGE_MS);
+
+      // Przekazanie głębokości przysiadu do szkieletu IK i tłoków na łydkach
+      player.isJumpCharging = true;
+      player.jumpChargePower = belt.chargeRatio;
+
+      if (Math.abs(curDirX) > 0.10) {
+        belt.lastDirX = curDirX;
       } else {
-        belt.chargeMs = Math.max(0, now - belt.chargeStartTime);
-        belt.chargeRatio = Math.min(1.0, belt.chargeMs / ENFORCER_BOMB_CHARGE_MS);
-        const wasArmed = belt.isArmed;
-        belt.isArmed = (belt.chargeMs >= ENFORCER_BOMB_CHARGE_MS);
+        belt.lastDirX *= 0.92;
+      }
 
-        // Przekazanie głębokości przysiadu do szkieletu IK i tłoków na łydkach
-        player.isJumpCharging = true;
-        player.jumpChargePower = belt.chargeRatio;
-
-        if (Math.abs(curDirX) > 0.10) {
-          belt.lastDirX = curDirX;
-        } else {
-          belt.lastDirX *= 0.92;
+      const centerX = player.x + (player.w || 30) / 2;
+      if (belt.isArmed && !wasArmed) {
+        // Przekroczono 1000ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
+        triggerScreenShake(2.2);
+        if (typeof spawnGroundPuff === 'function') {
+          spawnGroundPuff(centerX - 10, currentFloor);
+          spawnGroundPuff(centerX + 10, currentFloor);
         }
-
-        const centerX = player.x + (player.w || 30) / 2;
-        if (belt.isArmed && !wasArmed) {
-          // Przekroczono 1000ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
-          triggerScreenShake(2.2);
-          if (typeof spawnGroundPuff === 'function') {
-            spawnGroundPuff(centerX - 10, currentFloor);
-            spawnGroundPuff(centerX + 10, currentFloor);
-          }
-        } else if (belt.chargeRatio > 0.35 && Math.random() < 0.22) {
-          // Kurz spod ciężkich butów podczas wciskania nóg w podłoże
-          if (typeof spawnGroundPuff === 'function') {
-            spawnGroundPuff(centerX + (Math.random() - 0.5) * 18, currentFloor);
-          }
+      } else if (belt.chargeRatio > 0.35 && Math.random() < 0.22) {
+        // Kurz spod ciężkich butów podczas wciskania nóg w podłoże
+        if (typeof spawnGroundPuff === 'function') {
+          spawnGroundPuff(centerX + (Math.random() - 0.5) * 18, currentFloor);
         }
       }
     }
   } else if (belt.isCharging) {
-    // MOMENT PUSZCZENIA DRĄŻKA LUB KLAWISZA W!
+    // MOMENT PUSZCZENIA DRĄŻKA LUB KLAWISZA W NA ZIEMI!
     const heldMs = Math.max(belt.chargeMs, now - belt.chargeStartTime);
     const wasArmed = (heldMs >= ENFORCER_BOMB_CHARGE_MS) || belt.isArmed;
     const releaseDirX = Math.abs(curDirX) > 0.10 ? curDirX : (Math.abs(belt.lastDirX) > 0.12 ? belt.lastDirX : 0);
@@ -338,16 +342,14 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     player.isJumpCharging = false;
     player.jumpChargePower = 0;
 
-    if (isGroundedWithGrace) {
-      if (wasArmed) {
-        // Przytrzymano >= 1000ms -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
-        triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
-      } else {
-        // Przytrzymano < 1000ms -> zwykły skok po puszczeniu!
-        const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
-        if (typeof jumpCallback === 'function') {
-          jumpCallback(player, spawnGrass);
-        }
+    if (wasArmed) {
+      // Przytrzymano >= 1000ms na ziemi -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
+      triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
+    } else {
+      // Przytrzymano < 1000ms na ziemi -> zwykły skok z nóg po puszczeniu!
+      const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
+      if (typeof jumpCallback === 'function') {
+        jumpCallback(player, spawnGrass);
       }
     }
   }
@@ -360,6 +362,11 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
  */
 export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   if (!player || player.isDead) return;
+  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
+    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
+    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
+  );
+  if (!isFirmlyGrounded) return;
   if (!player.blastBelt) initBlastBeltState(player);
   const belt = player.blastBelt;
 
@@ -610,6 +617,11 @@ function drawEnforcerBeltChargeHUD(ctx, player) {
   if (!player || player._isCreatorDummy || player.isDead) return;
   const belt = player.blastBelt;
   if (!belt || !belt.isCharging) return;
+  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (
+    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
+    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
+  );
+  if (!isFirmlyGrounded) return;
 
   const ratio = Math.max(0, Math.min(1.0, belt.chargeRatio || 0));
   const isArmed = !!belt.isArmed;

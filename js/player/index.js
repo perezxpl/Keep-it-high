@@ -1131,7 +1131,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.isIntro) {
     const choreo = getFreestyleChoreography(player.juggleTimer, hipX, player.y + player.h - 40, GROUND_Y, player.facing, ball ? ball.radius : 8);
     targetPelvisY = -11.8 + choreo.pelvisDip;
-  } else if (player.isJumpCharging) {
+  } else if (player.isJumpCharging && player.onGround && !player.isJumping) {
     if (speed < 0.8) {
       targetPelvisY = -11.8 + (player.jumpChargePower * 14);
     } else {

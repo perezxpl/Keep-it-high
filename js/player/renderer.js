@@ -469,7 +469,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = proneTargets.frontArm.elbow;
     rawBackSwing = proneTargets.backArm.swing;
     rawBackElbow = proneTargets.backArm.elbow;
-  } else if (p.isJumpCharging && speed < 0.8) {
+  } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
     rawFootFrontTargetX = hipX + (4 * p.facing);
     rawFootFrontTargetY = plantFloorY;
     rawFootFrontAnkle = 0.08 * p.facing;
@@ -642,7 +642,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.55;
     rawBackSwing = -0.12;
     rawBackElbow = 0.55;
-  } else if (p.isJumpCharging && speed < 0.8) {
+  } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
     const cp = (p.jumpChargePower || 0);
     const frontOffset = (7 + cp * 10) * p.facing;
     const backOffset = (-7 - cp * 10) * p.facing;
@@ -730,7 +730,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       rawBackElbow = 1.48 + Math.max(0, armPhase) * 0.36 + Math.max(0, -armPhase) * 0.15;
     }
 
-    if (p.isJumpCharging) {
+    if (isGrounded && p.isJumpCharging) {
       rawFrontSwing -= p.jumpChargePower * 0.40;
       rawBackSwing -= p.jumpChargePower * 0.40;
       rawFrontElbow += p.jumpChargePower * 0.25;
@@ -929,7 +929,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.kickMode === 'BACKFLIP_LAND') {
     footBlend = 0.60;
     armBlend = 0.45;
-  } else if (p.isJumpCharging && speed < 0.8) {
+  } else if (isGrounded && p.isJumpCharging && speed < 0.8) {
     footBlend = 0.40;
     armBlend = 0.35;
   } else if (p.kickState === 'SWING') {
@@ -1090,7 +1090,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const legShinBack = v.legShinBack || '#b91c1c';
   const bootBack = v.bootBack || '#111827';
 
-  v.pistonCompression = p.jumpChargePower || (p.blastBelt ? p.blastBelt.chargeRatio : 0);
+  v.pistonCompression = (isGrounded && p.isJumpCharging) ? (p.jumpChargePower || (p.blastBelt ? p.blastBelt.chargeRatio : 0)) : 0;
   p.currentClass?.onDrawUnder?.(ctx, p);
 
   const isArmFrontDismembered = !!p.dismembered?.armFront;
