@@ -17,108 +17,117 @@ function formatTime(totalSeconds) {
 }
 
 /**
- * Rysuje główny HUD trybu Deathmatch na górze ekranu
+import { camera } from '../camera.js';
+
+/**
+ * Rysuje główny HUD trybu Deathmatch na górze ekranu.
+ * Zoptymalizowany pod kątem urządzeń mobilnych: ultra-kompaktowy rozmiar (26px),
+ * zintegrowana pozycja gracza wewnątrz kontenera (brak zwisających tekstów)
+ * oraz automatyczne przenikanie przezroczystości (proximity ghosting) przy suficie.
  */
-export function drawDeathmatchHUD(ctx, W, H, isMobile) {
+export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
   if (!deathmatchState.active) return;
 
   const isTdm = (deathmatchState.mode === DEATHMATCH_MODES.TDM);
-  const boxW = isMobile ? 280 : 360;
-  const boxH = isMobile ? 38 : 46;
+  // Kompaktowy kontener ze zintegrowanymi statystykami
+  const boxW = isMobile ? 220 : 310;
+  const boxH = isMobile ? 26 : 33;
   const boxX = (W - boxW) / 2;
-  const boxY = isMobile ? 8 : 14;
+  const boxY = isMobile ? 6 : 8;
 
   const timeLeft = deathmatchState.timeRemaining;
   const isUrgent = (timeLeft <= 30 && timeLeft > 0);
   const pulse = isUrgent ? (0.6 + 0.4 * Math.sin(performance.now() * 0.012)) : 1.0;
 
+  // Proximity Ghosting: jeśli postać gracza znajduje się blisko góry/sufitu pod HUD-em,
+  // HUD automatycznie staje się półprzezroczysty, by nie zasłaniać postaci ani celownika
+  let baseAlpha = isMobile ? 0.78 : 0.86;
+  if (player && typeof player.x === 'number') {
+    const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+    const camY = (camera && typeof camera.y === 'number') ? camera.y : 0;
+    const camZoom = (camera && typeof camera.zoom === 'number') ? camera.zoom : 1;
+    const pScreenX = (player.x + (player.w || 24) * 0.5 - camX) * camZoom;
+    const pScreenY = (player.y - camY) * camZoom;
+    const nearX = Math.abs(pScreenX - W / 2) < (boxW * 0.5 + 45);
+    const nearY = pScreenY < (boxY + boxH + 95);
+    if (nearX && nearY) {
+      const distRatio = Math.max(0, Math.min(1, (pScreenY - boxY) / (boxH + 95)));
+      baseAlpha = 0.20 + distRatio * 0.20; // 0.20 do 0.40 gdy postać jest pod sufitem
+    }
+  }
+
   ctx.save();
+  ctx.globalAlpha = baseAlpha;
 
   // Główny kontener HUD
   ctx.beginPath();
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-  ctx.strokeStyle = isUrgent ? `rgba(239, 68, 68, ${pulse})` : 'rgba(250, 204, 21, 0.5)';
-  ctx.lineWidth = isUrgent ? 2.0 : 1.4;
-  if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+  ctx.fillStyle = 'rgba(11, 19, 36, 0.78)';
+  ctx.strokeStyle = isUrgent ? `rgba(239, 68, 68, ${pulse})` : 'rgba(250, 204, 21, 0.45)';
+  ctx.lineWidth = isUrgent ? 1.8 : 1.2;
+  if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, isMobile ? 6 : 7);
   else ctx.rect(boxX, boxY, boxW, boxH);
   ctx.fill();
   ctx.stroke();
 
-  // 1. Górny pasek: Nazwa trybu i Timer bitwy (05:00)
-  ctx.font = isMobile ? '900 8.5px monospace' : '900 10px monospace';
+  // Dane pozycji i fragów gracza
+  const place = deathmatchState.playerPlace || 1;
+  const pData = deathmatchState.participants.find(p => p.isPlayer);
+  const pKills = pData ? pData.kills : 0;
+  const pDeaths = pData ? pData.deaths : 0;
+  const medalIcon = (place === 1) ? '🥇' : ((place === 2) ? '🥈' : ((place === 3) ? '🥉' : '🎖️'));
+  const placeColor = (place === 1) ? '#facc15' : ((place === 2) ? '#e2e8f0' : ((place === 3) ? '#f97316' : '#94a3b8'));
+
+  // 1. Górny mikro-pasek: Czas (lewa strona) oraz Pozycja gracza (prawa strona)
+  const topTextY = boxY + (isMobile ? 9.5 : 12);
+  ctx.font = isMobile ? '900 8px monospace' : '900 9.5px monospace';
+
+  // Timer (MM:SS) po lewej stronie
   ctx.textAlign = 'left';
-  ctx.fillStyle = isTdm ? '#38bdf8' : '#c084fc';
-  const modeText = isTdm ? '👥 TEAM DEATHMATCH' : '⚔️ KAŻDY NA KAŻDEGO (FFA)';
-  ctx.fillText(modeText, boxX + (isMobile ? 10 : 14), boxY + (isMobile ? 12 : 14));
-
-  // Zegar (MM:SS)
-  ctx.textAlign = 'right';
-  ctx.font = isMobile ? '900 10px monospace' : '900 12px monospace';
   ctx.fillStyle = isUrgent ? '#ef4444' : '#facc15';
-  ctx.shadowColor = isUrgent ? '#ef4444' : '#facc15';
-  ctx.shadowBlur = isUrgent ? 8 : 0;
-  ctx.fillText(`⏱️ ${formatTime(timeLeft)}`, boxX + boxW - (isMobile ? 10 : 14), boxY + (isMobile ? 12 : 14));
-  ctx.shadowBlur = 0;
+  ctx.fillText(`⏱️ ${formatTime(timeLeft)}`, boxX + (isMobile ? 8 : 12), topTextY);
 
-  // 2. Środkowy wynik: Fragi drużyn (TDM) lub Lider (FFA)
+  // Pozycja gracza po prawej stronie (zintegrowana wewnątrz pigułki HUD)
+  ctx.textAlign = 'right';
+  ctx.fillStyle = placeColor;
+  const posText = isMobile ? `${medalIcon} #${place} (${pKills}F/${pDeaths}Z)` : `${medalIcon} POZ. #${place} (${pKills} F / ${pDeaths} Z)`;
+  ctx.fillText(posText, boxX + boxW - (isMobile ? 8 : 12), topTextY);
+
+  // 2. Dolny pasek: Wynik punktowy drużyn lub FFA
+  const scoreY = boxY + (isMobile ? 20.5 : 26);
   if (isTdm) {
     const cyanKills = deathmatchState.teamScores[TEAMS.CYAN] || 0;
     const orangeKills = deathmatchState.teamScores[TEAMS.ORANGE] || 0;
-
     const isPlayerCyan = (deathmatchState.playerTeam === TEAMS.CYAN);
     const isPlayerOrange = (deathmatchState.playerTeam === TEAMS.ORANGE);
 
-    ctx.font = isMobile ? '900 11.5px monospace' : '900 14px monospace';
+    ctx.font = isMobile ? '900 10px monospace' : '900 12.5px monospace';
 
     // Niebiescy
     ctx.textAlign = 'right';
     ctx.fillStyle = '#00e5ff';
-    ctx.shadowColor = isPlayerCyan ? '#00e5ff' : 'transparent';
-    ctx.shadowBlur = isPlayerCyan ? 6 : 0;
-    ctx.fillText(`${cyanKills} NIEBIESCY${isPlayerCyan ? ' ★' : ''}`, boxX + boxW / 2 - (isMobile ? 10 : 14), boxY + (isMobile ? 28 : 34));
-    ctx.shadowBlur = 0;
+    const cyanLabel = `${cyanKills} NIEBIESCY${isPlayerCyan ? ' ★' : ''}`;
+    ctx.fillText(cyanLabel, boxX + boxW / 2 - (isMobile ? 7 : 10), scoreY);
 
-    // Separator
+    // Dwukropek
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(':', boxX + boxW / 2, boxY + (isMobile ? 27 : 33));
+    ctx.fillText(':', boxX + boxW / 2, scoreY);
 
     // Czerwoni
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
-    ctx.shadowColor = isPlayerOrange ? '#f97316' : 'transparent';
-    ctx.shadowBlur = isPlayerOrange ? 6 : 0;
-    ctx.fillText(`${isPlayerOrange ? '★ ' : ''}CZERWONI ${orangeKills}`, boxX + boxW / 2 + (isMobile ? 10 : 14), boxY + (isMobile ? 28 : 34));
-    ctx.shadowBlur = 0;
+    const orangeLabel = `${isPlayerOrange ? '★ ' : ''}CZERWONI ${orangeKills}`;
+    ctx.fillText(orangeLabel, boxX + boxW / 2 + (isMobile ? 7 : 10), scoreY);
   } else {
-    // Tryb Każdy na Każdego: Lider i aktualny stan
+    // Tryb Każdy na Każdego
     const leader = deathmatchState.leaderboard[0];
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 12px monospace';
+    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#facc15';
     const leaderName = leader ? leader.name : 'BRAK';
     const leaderKills = leader ? leader.kills : 0;
-    ctx.fillText(`👑 LIDER: ${leaderName} (${leaderKills} FRAGÓW)`, boxX + boxW / 2, boxY + (isMobile ? 28 : 34));
+    ctx.fillText(`👑 LIDER: ${leaderName} (${leaderKills} FRAGÓW)`, boxX + boxW / 2, scoreY);
   }
-
-  // 3. Pasek pod spodem: Aktualna pozycja gracza oraz drużyna
-  const place = deathmatchState.playerPlace;
-  const pData = deathmatchState.participants.find(p => p.isPlayer);
-  const pKills = pData ? pData.kills : 0;
-  const pDeaths = pData ? pData.deaths : 0;
-  const playerTeamName = (deathmatchState.playerTeam === TEAMS.CYAN) ? 'NIEBIESCY' : 'CZERWONI';
-
-  let placeColor = '#facc15';
-  let medalIcon = '🥇';
-  if (place === 2) { placeColor = '#e2e8f0'; medalIcon = '🥈'; }
-  else if (place === 3) { placeColor = '#f97316'; medalIcon = '🥉'; }
-  else if (place > 3) { placeColor = '#94a3b8'; medalIcon = '🎖️'; }
-
-  ctx.textAlign = 'center';
-  ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
-  ctx.fillStyle = placeColor;
-  const myTeamSuffix = isTdm ? ` | DRUŻYNA: ${playerTeamName}` : '';
-  ctx.fillText(`${medalIcon} TWOJA POZYCJA: #${place} (${pKills} F / ${pDeaths} Z)${myTeamSuffix}`, W / 2, boxY + boxH + (isMobile ? 12 : 15));
 
   ctx.restore();
 }

@@ -315,6 +315,7 @@ export function createPlayerInstance(overrides = {}) {
     lastGroundVx: 0,
     lastGroundedFloorY: 0,
     dropThroughTimer: 0,
+    dropThroughPlatform: null,
     isMovingBackwards: false,
     spinVolleyTimer: 0,
     spinVolleyDuration: 24,

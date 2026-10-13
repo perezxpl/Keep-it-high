@@ -232,7 +232,7 @@ export function clampCamera(cam = camera) {
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
+  const minCamY = (isArena3 || isArena2) ? -45 : (groundFloor - 3000);
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
@@ -405,15 +405,15 @@ export function updateCamera(player, ball, options = {}) {
 
   // Punkt 1: Dynamiczna kotwica wysokościowa (Altitude-Based Vertical Framing)
   // Na ziemi (elev = 0): kotwica 0.65 (postać na dole ekranu, 65% kadru pokazuje górę).
-  // Na wieży / wysokości (elev -> 1): kotwica przesuwa się do 0.20 na telefonie (0.32 na PC),
-  // dzięki czemu postać jest w górnej części ekranu, a aż 80% ekranu odsłania ziemię pod wieżą!
+  // Na wieży / wysokości (elev -> 1): kotwica zachowuje bezpieczny margines 0.40 na telefonie (0.42 na PC),
+  // dzięki czemu postać gracza nie jest spychana pod sufit i pozostaje w pełni widoczna!
   const targetY = rawTargetY;
   const verticalAnchor = isMobile
-    ? (0.65 - (elev * 0.45))
-    : (0.65 - (elev * 0.33));
+    ? (0.65 - (elev * 0.25))
+    : (0.65 - (elev * 0.23));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  const minCamY = (isArena3 || isArena2) ? 0 : (groundFloor - 3000);
+  const minCamY = (isArena3 || isArena2) ? -45 : (groundFloor - 3000);
   const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor);
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
@@ -424,9 +424,9 @@ export function updateCamera(player, ball, options = {}) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
-    // Na wysokości pozwalamy postaci zbliżyć się nieco wyżej do górnej krawędzi (do 11% zamiast 16%), by odsłonić więcej ziemi
-    const topMarginRatio = 0.16 - (elev * 0.05);
-    const safeMarginTop = Math.max(48, viewHeight * topMarginRatio);
+    // Bezpieczny prześwit od górnej krawędzi ekranu / HUD-u
+    const topMarginRatio = 0.20 - (elev * 0.04);
+    const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);
     const safeMarginBottom = Math.max(75, viewHeight * 0.18);
 
     targetCamX = Math.max(pX - viewWidth + safeMarginX, Math.min(targetCamX, pX - safeMarginX));
@@ -477,7 +477,7 @@ export function updateCamera(player, ball, options = {}) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);
-    const hardPadTop = Math.max(42, viewHeight * (0.10 - elev * 0.015));
+    const hardPadTop = Math.max(isMobile ? 50 : 60, viewHeight * 0.16);
     const hardPadBottom = Math.max(60, viewHeight * 0.12);
 
     if (pX < camera.x + hardPadX) {

@@ -43,11 +43,22 @@ let flickReturnedToCenter = false;
 
 export function updateDoubleFlickDetection(axisY) {
   const now = performance.now();
+  const isCurrentPlatDropThrough = !!(player.currentPlatform && (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk'));
+
   if (axisY > 0.65) {
-    if (flickFirstDownTime > 0 && flickReturnedToCenter) {
+    if (isCurrentPlatDropThrough) {
+      player.dropThroughTimer = 24;
+      if (player.currentPlatform) {
+        player.dropThroughPlatform = player.currentPlatform;
+        player.currentPlatform = null;
+        player.onGround = false;
+        player.isJumping = true;
+        player.vy = Math.max(player.vy || 0, 4.0);
+      }
+    } else if (flickFirstDownTime > 0 && flickReturnedToCenter) {
       const dt = now - flickFirstDownTime;
       if (dt >= 80 && dt <= 350) {
-        player.dropThroughTimer = 18;
+        player.dropThroughTimer = 24;
         flickFirstDownTime = 0;
         flickReturnedToCenter = false;
       } else if (dt > 350) {

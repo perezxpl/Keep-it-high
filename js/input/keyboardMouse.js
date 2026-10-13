@@ -329,8 +329,18 @@ export function initKeyboardMouseHandlers({
 
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
       const now = performance.now();
-      if (now - inputSession.lastSPressTime < 280) {
-        player.dropThroughTimer = 18;
+      const isDoublePress = (now - inputSession.lastSPressTime < 280);
+      const isCurrentPlatDropThrough = !!(player.currentPlatform && (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk'));
+
+      if (isDoublePress || isCurrentPlatDropThrough) {
+        player.dropThroughTimer = 24;
+        if (player.currentPlatform) {
+          player.dropThroughPlatform = player.currentPlatform;
+          player.currentPlatform = null;
+          player.onGround = false;
+          player.isJumping = true;
+          player.vy = Math.max(player.vy || 0, 4.0);
+        }
       }
       inputSession.lastSPressTime = now;
       keys.down = true;

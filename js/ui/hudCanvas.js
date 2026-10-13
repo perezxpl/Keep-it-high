@@ -1527,59 +1527,56 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isMatchArena = (curArenaId === 'ARENA_1');
 
   if (isSectorXArena) {
-    drawDeathmatchHUD(ctx, W, H, isMobile);
+    drawDeathmatchHUD(ctx, W, H, isMobile, player);
   } else if (isDeathmatch) {
-    const scoreBoxW = isMobile ? 220 : 280;
-    const scoreBoxH = isMobile ? 32 : 40;
+    const scoreBoxW = isMobile ? 210 : 270;
+    const scoreBoxH = isMobile ? 26 : 34;
     const scoreBoxX = (W - scoreBoxW) / 2;
-    const scoreBoxY = isMobile ? 10 : 16;
+    const scoreBoxY = isMobile ? 6 : 8;
+
+    let baseAlpha = isMobile ? 0.78 : 0.88;
+    if (player && typeof player.x === 'number') {
+      const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+      const camY = (camera && typeof camera.y === 'number') ? camera.y : 0;
+      const camZoom = (camera && typeof camera.zoom === 'number') ? camera.zoom : 1;
+      const pScreenX = (player.x + (player.w || 24) * 0.5 - camX) * camZoom;
+      const pScreenY = (player.y - camY) * camZoom;
+      if (Math.abs(pScreenX - W / 2) < (scoreBoxW * 0.5 + 40) && pScreenY < (scoreBoxY + scoreBoxH + 90)) {
+        baseAlpha = 0.22;
+      }
+    }
 
     ctx.save();
-    ctx.globalAlpha = isMobile ? 0.85 : 0.92;
+    ctx.globalAlpha = baseAlpha;
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.80)';
     ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.2;
     if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
     else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
     ctx.fill();
     ctx.stroke();
 
     // Nagłówek trybu TDM
-    ctx.font = isMobile ? '900 8.5px monospace' : '900 10px monospace';
+    ctx.font = isMobile ? '900 8px monospace' : '900 9.5px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#ef4444';
     ctx.shadowBlur = 0;
-    ctx.fillText('💀 TEAM DEATHMATCH 💀', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 11 : 13));
+    ctx.fillText('💀 TEAM DEATHMATCH 💀', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 9.5 : 12));
 
     // Fragi obu drużyn
-    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 14px monospace';
+    ctx.font = isMobile ? '900 10.5px monospace' : 'bold 13px monospace';
     ctx.textAlign = 'right';
     ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
+    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 20.5 : 27));
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 0;
-    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 24 : 29));
+    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 20.5 : 26));
 
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
-    ctx.shadowColor = '#f97316';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 12 : 16), scoreBoxY + (isMobile ? 24 : 30));
-
-    // Subtekst pod tablicą z celem eliminacji
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.004);
-    ctx.textAlign = 'center';
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = `rgba(248, 113, 113, ${0.75 + pulse * 0.25})`;
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 0;
-    ctx.fillText('⚔️ CEL: ELIMINACJA WROGA ⚔️', W / 2, scoreBoxY + scoreBoxH + (isMobile ? 12 : 14));
+    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 20.5 : 27));
 
     ctx.restore();
   } else if (isMatchArena) {

@@ -50,8 +50,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const topY = getPlatformSurfaceY(plat, centerX, groundY);
 
         if (Math.abs(feetY - topY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-          p.y = topY - p.h + 12;
-          p.vy = 2.8;
+          const platThickness = plat.h || plat.thickness || 16;
+          p.onGround = false;
+          p.currentPlatform = null;
+          p.dropThroughPlatform = plat;
+          p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
+          p.y = topY + platThickness + 6 - colH;
+          p.vy = Math.max(p.vy || 0, 4.2);
           p.isJumping = true;
           p.isCrouching = false;
           p.airVx = p.vx;
@@ -67,8 +72,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
             if (centerX >= tierLeft - 4 && centerX <= tierRight + 4) {
               const tierTopY = topY - tier.h;
               if (Math.abs(feetY - tierTopY) <= 14 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-                p.y = tierTopY - p.h + 12;
-                p.vy = 2.8;
+                p.onGround = false;
+                p.currentPlatform = null;
+                p.dropThroughPlatform = plat;
+                p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
+                p.y = tierTopY + (tier.h || 20) + 6 - colH;
+                p.vy = Math.max(p.vy || 0, 4.2);
                 p.isJumping = true;
                 p.isCrouching = false;
                 p.airVx = p.vx;
@@ -94,8 +103,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
             surfaceY = topY + (1 - t) * obs.h;
           }
           if (Math.abs(feetY - surfaceY) <= 16 && (hasNoFloor || p.y < groundY - p.h - 2)) {
-            p.y = surfaceY - p.h + 12;
-            p.vy = 2.8;
+            const obsThickness = obs.h || 16;
+            p.onGround = false;
+            p.currentPlatform = null;
+            p.dropThroughPlatform = obs;
+            p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 24);
+            p.y = surfaceY + obsThickness + 6 - colH;
+            p.vy = Math.max(p.vy || 0, 4.2);
             p.isJumping = true;
             p.isCrouching = false;
             p.airVx = p.vx;
@@ -106,6 +120,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     }
 
+    p.onGround = false;
     p.currentGroundY = hasNoFloor ? null : groundY;
     return;
   }
@@ -274,8 +289,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       if (isLanding) {
-        if (plat.oneWay && p.dropThroughTimer > 0 && !isFallenDebris) {
+        const isPlatOneWay = !!(plat.oneWay || plat.isDropThrough || plat.type === 'catwalk');
+        if (isPlatOneWay && (p.dropThroughTimer > 0 || (p.keys && p.keys.down)) && !isFallenDebris) {
           continue;
+        }
+        if (p.dropThroughPlatform === plat && !isFallenDebris) {
+          if (feetY > topY + (plat.h || 16) + 16) {
+            p.dropThroughPlatform = null;
+          } else {
+            continue;
+          }
         }
         if (p.onGround && p.currentPlatform === plat) {
           landedSurface = topY;
@@ -303,6 +326,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     const baseTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const isCurrentObs = (p.onGround && p.currentPlatform === obs);
     const obsMargin = isCurrentObs ? 12 : 6;
+    const isObsOneWay = !!(obs.oneWay || obs.isDropThrough || obs.type === 'catwalk' || obs.type === 'cyber_catwalk' || obs.type === 'floating_hex');
 
     if (obs.type === 'metal_ramp_left') {
       if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
@@ -346,6 +370,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - baseTopY) <= 24;
 
         if (isAirLanding || isGroundedRetention || isStepOver) {
+          if (isObsOneWay && (p.dropThroughTimer > 0 || (p.keys && p.keys.down) || p.dropThroughPlatform === obs)) {
+            if (p.dropThroughPlatform === obs && feetY > baseTopY + (obs.h || 16) + 16) {
+              p.dropThroughPlatform = null;
+            }
+            continue;
+          }
           if (landedSurface === null || baseTopY < landedSurface) {
             landedSurface = baseTopY;
             landedPlatform = obs;

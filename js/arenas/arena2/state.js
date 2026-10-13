@@ -1238,10 +1238,20 @@ export function updateHangingPlatformsPhysics(dt, players) {
       const pCenterX = p.x + pW * 0.5;
 
       const isOverPlatform = (pCenterX >= plat.x - 6 && pCenterX <= plat.x + plat.w + 6);
+      const isDroppingThrough = (p.dropThroughTimer > 0) || (p.dropThroughPlatform === plat) || (p.keys && p.keys.down);
+
+      if (isDroppingThrough) {
+        if (p.currentPlatform === plat) {
+          p.currentPlatform = null;
+          p.onGround = false;
+        }
+        continue;
+      }
+
       const isTouchingHeight = (Math.abs(feetY - plat.y) <= 16 || (p.currentPlatform === plat && Math.abs(feetY - plat.y) <= 24));
       const isOnPlat = (p.currentPlatform === plat) || (p.onGround && isOverPlatform && isTouchingHeight) || (isOverPlatform && isTouchingHeight && p.vy >= 0 && (!p.isJumping || p.vy > 0));
 
-      if (isOnPlat && (!p.dropThroughTimer || p.dropThroughTimer <= 0)) {
+      if (isOnPlat && (!p.dropThroughTimer || p.dropThroughTimer <= 0) && p.dropThroughPlatform !== plat) {
         // Pozycja znormalizowana wzdłuż belki: [-1, 1]
         const relX = Math.max(-1.0, Math.min(1.0, (pCenterX - platCenterX) / (plat.w * 0.5)));
 
