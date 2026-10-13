@@ -1052,19 +1052,6 @@ export const uiManager = {
       });
     }
 
-    // MENU GŁÓWNE: Przycisk "STEROWANIE" (otwiera zakładkę controls w ustawieniach)
-    const controlsBtn = document.getElementById('menu-btn-controls');
-    if (controlsBtn) {
-      controlsBtn.addEventListener('mouseenter', () => playUiHover());
-      controlsBtn.addEventListener('click', () => {
-        playUiClick();
-        if (this.callbacks && typeof this.callbacks.onOpenSettings === 'function') {
-          this.callbacks.onOpenSettings();
-          this.switchTab('controls');
-        }
-      });
-    }
-
     // MENU GŁÓWNE: Szybkie wyciszenie
     const quickMuteBtn = document.getElementById('menu-quick-mute-btn');
     if (quickMuteBtn) {
