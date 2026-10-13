@@ -2268,10 +2268,10 @@ export const uiManager = {
       headerText = 'BUTY ODRZUTOWE (ROCKET BOOTS)';
       tooltip = 'Fason i płomień dysz butów odrzutowych';
     } else if (cid === 'ENFORCER') {
-      icon = '💣';
-      tabLabel = 'PAS ŁADUNKÓW';
-      headerText = 'PAS ŁADUNKÓW (BLAST BELT)';
-      tooltip = 'Pas z ładunkami wybuchowymi (przytrzymaj w górę 1s i puść)';
+      icon = '⚙️';
+      tabLabel = 'TŁOKI KINETYCZNE';
+      headerText = 'TŁOKI KINETYCZNE / SIŁOWNIKI ŁYDEK';
+      tooltip = 'Tłoki pneumatyczne i sprężyny kompresyjne (przytrzymaj w górę 1s do przysiadu i puść)';
     }
 
     if (tabBtn) tabBtn.title = tooltip;

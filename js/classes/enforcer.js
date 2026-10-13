@@ -1,24 +1,22 @@
 // =========================================================================
-// KLASA CIĘŻKA: ENFORCER – Kolos / Siła / Pas Ładunków Wybuchowych (Blast Belt)
+// KLASA CIĘŻKA: ENFORCER – Kolos / Siła / Tłoki Pneumatyczne (Kinetic Pistons)
 // Specjalność: Skok odpalany przy puszczeniu kierunku w górę (W / drążek).
-//              Przytrzymanie w górę przez min. 1000ms podpala ładunki na pasie,
-//              które w momencie puszczenia uderzają w ziemię pod butami i
-//              wystrzeliwują Enforcera wysoko na platformy!
+//              Przytrzymanie w górę przez min. 1000ms sprawia, że Enforcer schodzi
+//              w głęboki siłowy przysiad (Power Squat), kompresując tłoki parowe
+//              na łydkach, a w momencie puszczenia kruszy ziemię pod butami i
+//              potężnym susem wybija się wysoko na platformy (bez ognia!).
 // =========================================================================
-import { triggerScreenShake, spawnJetpackSparks, spawnGroundPuff } from '../world.js';
-import { getJetpackFlamePalette } from '../player/jetpack.js';
+import { triggerScreenShake, spawnGroundPuff } from '../world.js';
 import {
-  spawnExplosionFirePuff,
   spawnHeavySmokePuff,
-  spawnStretchedSparks,
   spawnShockwaveRing
 } from '../particles.js';
 
-export const ENFORCER_BOMB_CHARGE_MS = 1000; // Min. 1000ms przytrzymania w górę uzbraja bomby na pasie
+export const ENFORCER_BOMB_CHARGE_MS = 1000; // Min. 1000ms przysiadu spręża tłoki pneumatyczne do pełnego wybicia
 
 export function getEnforcerFlameColor(player) {
   if (player?.customVisuals?.jetpackColor) return player.customVisuals.jetpackColor;
-  return '#ef4444';
+  return '#38bdf8';
 }
 
 export const EnforcerClass = {
@@ -53,7 +51,7 @@ export const EnforcerClass = {
     baseKickSpeed: 30.0,
     kickPowerMult: 1.52,    // Najpotężniejsze uderzenie w grze
     spinMult: 0.30,         // Prawie czysta trajektoria balistyczna
-    jetMax: 0,              // Brak plecaka odrzutowego (posiada Pas Ładunków Wybuchowych)
+    jetMax: 0,              // Brak plecaka odrzutowego (posiada Tłoki Pneumatyczne na łydkach)
     spartanKnockback: 18.0, // Potężny odrzut kinetyczny i twardy knockback
     spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
     spartanDamage: 18,
@@ -70,6 +68,7 @@ export const EnforcerClass = {
     muscleMult: 1.40,                // +40% do obwodów ramion, barków i nóg
     torsoStyle: 'sleeveless',        // Domyślny styl ubioru: bezrękawnik bojowy (tank-top)
     headgearStyle: 'marcus_bandana', // Domyślna chusta bojowa COG w stylu Marcusa Fenixa
+    hasKineticPistons: true,         // Przemysłowe siłowniki pneumatyczne ze sprężyną na łydkach
 
     hasWristband: true,              // Jasny bandaż bokserski na dłoniach
     wristbandColor: '#f8fafc',       // Jasny bandaż bokserski kontrastujący z koszulką
@@ -126,6 +125,8 @@ export const EnforcerClass = {
       player.blastBelt.isCharging = false;
       player.blastBelt.isArmed = false;
     }
+    player.isJumpCharging = false;
+    player.jumpChargePower = 0;
   },
 
   onUpdate(player, ball, keys) {
@@ -134,7 +135,7 @@ export const EnforcerClass = {
 
   onPrePhysics(player, keys) {},
 
-  // Tąpnięcie przy lądowaniu
+  // Ciężkie tąpnięcie przy lądowaniu
   onPostPhysics(player) {
     if (player.vy === 0 && player.isJumping) {
       triggerScreenShake(3.5);
@@ -173,7 +174,7 @@ export const EnforcerClass = {
     }
   },
 
-  // Rysowanie Pasa Ładunków Wybuchowych bezpośrednio na pasie taktycznym postaci
+  // Rysowanie standardowych wojskowych ładownic taktycznych na pasie (bez bomb i ognia)
   onDrawBelt(ctx, player, v, fDir, waistHalfW, beltTopY, beltBotY) {
     drawEnforcerBeltCanisters(ctx, player, v, fDir, waistHalfW, beltTopY, beltBotY);
   },
@@ -188,7 +189,7 @@ export const EnforcerClass = {
 };
 
 // =========================================================================
-// SYSTEM PASA ŁADUNKÓW WYBUCHOWYCH (BLAST BELT) DLA KLASY ENFORCER
+// SYSTEM SIŁOWEGO PRZYSIADU I TŁOKÓW PNEUMATYCZNYCH DLA KLASY ENFORCER
 // =========================================================================
 
 export function initBlastBeltState(p) {
@@ -214,8 +215,8 @@ export function initBlastBeltState(p) {
  * Obsługa wejścia gracza (klawisz W / Strzałka w górę / Lewy drążek / Pad) dla Enforcera.
  * Skok odpala się po PUSZCZENIU kierunku w górę:
  * - Przytrzymanie < 1000ms -> zwykły skok po puszczeniu.
- * - Przytrzymanie >= 1000ms -> podpala bomby na pasie, a w momencie puszczenia
- *   ładunki uderzają w ziemię pod butami i wystrzeliwują Enforcera wysoko w powietrze!
+ * - Przytrzymanie >= 1000ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
+ *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
   if (!player || player.isDead || player.isIntro) return;
@@ -227,6 +228,8 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     belt.chargeMs = 0;
     belt.chargeRatio = 0;
     belt.isArmed = false;
+    player.isJumpCharging = false;
+    player.jumpChargePower = 0;
     return;
   }
 
@@ -242,7 +245,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     belt.lastGroundedFloorY = currentFloor;
   }
 
-  // Bufor 220ms przy zbieganiu z krawędzi platformy, aby puszczenie klawisza tuż za krawędzią nadal zadziałało
+  // Bufor 220ms przy zbieganiu z krawędzi platformy
   const isGroundedWithGrace = (isGroundedNow && !player.isJumping) || ((now - (belt.lastGroundedTime || 0)) <= 220 && !player.isJumping);
 
   // Sprawdzenie czy gracz trzyma kierunek w górę (W / Up / Drążek w górę / Pad)
@@ -274,48 +277,50 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
         belt.isArmed = false;
         belt.lastDirX = curDirX;
 
-        // Podrywamy postać z kucania/leżenia podczas przygotowania do skoku
+        // Aktywacja fizycznego przysiadu skokowego (Power Squat)
         player.isProne = false;
         player.isCrouching = false;
         player.crouchToggled = false;
+        player.isJumpCharging = true;
+        player.jumpChargePower = 0;
       }
     } else {
       if (!isGroundedWithGrace) {
-        // Spadł z krawędzi bez puszczania przez dłuższy czas – anuluj ładowanie
         belt.isCharging = false;
         belt.chargeMs = 0;
         belt.chargeRatio = 0;
         belt.isArmed = false;
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
       } else {
         belt.chargeMs = Math.max(0, now - belt.chargeStartTime);
         belt.chargeRatio = Math.min(1.0, belt.chargeMs / ENFORCER_BOMB_CHARGE_MS);
         const wasArmed = belt.isArmed;
         belt.isArmed = (belt.chargeMs >= ENFORCER_BOMB_CHARGE_MS);
 
+        // Przekazanie głębokości przysiadu do szkieletu IK i tłoków na łydkach
+        player.isJumpCharging = true;
+        player.jumpChargePower = belt.chargeRatio;
+
         if (Math.abs(curDirX) > 0.10) {
           belt.lastDirX = curDirX;
         } else {
-          // Powolne wygaszanie pamięci kierunku bocznego (gdy gracz puszcza palec z drążka ekranowego)
           belt.lastDirX *= 0.92;
         }
 
+        const centerX = player.x + (player.w || 30) / 2;
         if (belt.isArmed && !wasArmed) {
-          // Przekroczono 1000ms: ładunki na pasie stają w pełnym płomieniu (ogień bucha w górę wokół pasa!)
-          triggerScreenShake(3.0);
-          const centerX = player.x + (player.w || 30) / 2;
-          const beltY = player.y + (player.h || 74) * 0.50;
-          if (typeof spawnExplosionFirePuff === 'function') {
-            spawnExplosionFirePuff(centerX, beltY - 4, 8);
+          // Przekroczono 1000ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
+          triggerScreenShake(2.2);
+          if (typeof spawnGroundPuff === 'function') {
+            spawnGroundPuff(centerX - 10, currentFloor);
+            spawnGroundPuff(centerX + 10, currentFloor);
           }
-          if (typeof spawnHeavySmokePuff === 'function') {
-            spawnHeavySmokePuff(centerX, beltY - 8, 7);
+        } else if (belt.chargeRatio > 0.35 && Math.random() < 0.22) {
+          // Kurz spod ciężkich butów podczas wciskania nóg w podłoże
+          if (typeof spawnGroundPuff === 'function') {
+            spawnGroundPuff(centerX + (Math.random() - 0.5) * 18, currentFloor);
           }
-          if (typeof spawnStretchedSparks === 'function') {
-            spawnStretchedSparks(centerX, beltY - 2, 12);
-          }
-        } else {
-          // Narastający ogień i dym unoszący się W GÓRĘ z podpalonych ładunków na pasie
-          emitBeltFuseSparks(player, belt.chargeRatio, belt.isArmed);
         }
       }
     }
@@ -330,10 +335,12 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     belt.chargeRatio = 0;
     belt.isArmed = false;
     belt.lastDirX = 0;
+    player.isJumpCharging = false;
+    player.jumpChargePower = 0;
 
     if (isGroundedWithGrace) {
       if (wasArmed) {
-        // Przytrzymano >= 1000ms -> ładunki z pasa spadają pod buty i eksplodują na ziemi!
+        // Przytrzymano >= 1000ms -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
         triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
       } else {
         // Przytrzymano < 1000ms -> zwykły skok po puszczeniu!
@@ -347,35 +354,9 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
 }
 
 /**
- * Emituje naturalny ogień i gęsty dym unoszący się W GÓRĘ z podpalonych ładunków na pasie
- * (bez żadnych strumieni rakietowych skierowanych w dół ku kolanom!)
- */
-function emitBeltFuseSparks(player, chargeRatio = 0.5, isArmed = false) {
-  const centerX = player.x + (player.w || 30) / 2;
-  const beltY = player.y + (player.h || 74) * 0.50;
-
-  if (isArmed) {
-    // Pełne rozpalenie (>= 1000ms): kłęby żywego ognia i dymu buchające w górę z pasa
-    if (Math.random() < 0.55 && typeof spawnExplosionFirePuff === 'function') {
-      spawnExplosionFirePuff(centerX + (Math.random() - 0.5) * 16, beltY - 3, 1);
-    }
-    if (Math.random() < 0.65 && typeof spawnHeavySmokePuff === 'function') {
-      spawnHeavySmokePuff(centerX + (Math.random() - 0.5) * 18, beltY - 8, 1);
-    }
-  } else if (chargeRatio > 0.25) {
-    // Narastające palenie się ładunków (250ms..1000ms)
-    if (Math.random() < chargeRatio * 0.35 && typeof spawnExplosionFirePuff === 'function') {
-      spawnExplosionFirePuff(centerX + (Math.random() - 0.5) * 12, beltY - 2, 1);
-    }
-    if (Math.random() < chargeRatio * 0.45 && typeof spawnHeavySmokePuff === 'function') {
-      spawnHeavySmokePuff(centerX + (Math.random() - 0.5) * 14, beltY - 6, 1);
-    }
-  }
-}
-
-/**
- * Odpala Wybuchowy Skok Enforcera (Blast Jump):
- * Podpalone bomby spadają z pasa pod buty i eksplodują na ziemi, wyrzucając kolosa wysoko falą uderzeniową!
+ * Odpala Siłowy Skok Tłokowy Enforcera (Kinetic Piston Leap):
+ * Kolos prostuje potężne nogi wspomagane tłokami pneumatycznymi, krusząc podłoże pod butami
+ * i wzbijając chmurę pyłu oraz gruzu bez żadnego ognia!
  */
 export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   if (!player || player.isDead) return;
@@ -387,14 +368,15 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   player.crouchToggled = false;
   player.isSliding = false;
   player.slideTimer = 0;
+  player.isJumpCharging = false;
+  player.jumpChargePower = 0;
   player.state = 'STAND';
   player.hitboxHeight = player.h || 74;
 
   const currentFloor = player.currentGroundY || player.groundY || belt.lastGroundedFloorY || (player.y + (player.h || 74));
   const centerX = player.x + (player.w || 30) / 2;
-  const beltY = player.y + (player.h || 74) * 0.50;
 
-  // Potężny impuls pionowy (+30% wyższy wyskok wybuchowy: vy = -20.2)
+  // Potężny impuls pionowy z wybicia tłokowego (vy = -20.2)
   player.vy = -20.2;
   player.onGround = false;
   player.isJumping = true;
@@ -423,88 +405,88 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   player.airVx = player.vx;
   player.jumpLaunchSpeed = Math.abs(player.vx);
 
-  // Rejestracja naziemnej eksplozji bomb pod stopami
-  const flameColor = getEnforcerFlameColor(player);
-  belt.blastJumpTimer = 26;
+  // Rejestracja fali uderzeniowej pyłu, pęknięcia ziemi i wyrzutu kamieni pod stopami
+  belt.blastJumpTimer = 20;
   belt.pendingBallImpulse = true;
   belt.lastBlastX = centerX;
   belt.lastBlastY = currentFloor;
+
+  // Wygeneruj losowe bryłki gruzu/kamieni odskakujące spod butów przy wybiciu
+  const pebbles = [];
+  for (let i = 0; i < 12; i++) {
+    const side = (i % 2 === 0 ? -1 : 1);
+    pebbles.push({
+      dx: side * (4 + Math.random() * 16),
+      vx: side * (1.8 + Math.random() * 4.5),
+      vy: -(2.5 + Math.random() * 5.0),
+      r: 1.5 + Math.random() * 2.2,
+      col: (i % 3 === 0) ? '#71717a' : ((i % 3 === 1) ? '#52525b' : '#3f3f46')
+    });
+  }
+
   belt.activeBlasts.push({
     x: centerX,
     y: currentFloor,
-    beltY: beltY,
     frame: 0,
-    maxFrames: 40,
-    color: flameColor
+    maxFrames: 34,
+    pebbles
   });
 
-  // Potężny wybuch bomb na podłożu (jak detonacja ładunków C4/granatów na ziemi, bez dysz rakietowych!)
-  triggerScreenShake(12.5);
+  // Mocne tąpnięcie ziemi oraz wyrzut pyłu i sprężonego powietrza (ZERO OGNIA!)
+  triggerScreenShake(8.5);
 
   if (typeof spawnShockwaveRing === 'function') {
-    spawnShockwaveRing(centerX, currentFloor - 6);
-  }
-  if (typeof spawnExplosionFirePuff === 'function') {
-    spawnExplosionFirePuff(centerX, currentFloor - 10, 24);
-    spawnExplosionFirePuff(centerX - 18, currentFloor - 6, 10);
-    spawnExplosionFirePuff(centerX + 18, currentFloor - 6, 10);
+    spawnShockwaveRing(centerX, currentFloor - 3);
   }
   if (typeof spawnHeavySmokePuff === 'function') {
-    spawnHeavySmokePuff(centerX, currentFloor - 8, 22);
-    spawnHeavySmokePuff(centerX - 22, currentFloor - 5, 10);
-    spawnHeavySmokePuff(centerX + 22, currentFloor - 5, 10);
-  }
-  if (typeof spawnStretchedSparks === 'function') {
-    spawnStretchedSparks(centerX, currentFloor - 8, 36);
+    spawnHeavySmokePuff(centerX, currentFloor - 5, 12);
+    spawnHeavySmokePuff(centerX - 18, currentFloor - 4, 6);
+    spawnHeavySmokePuff(centerX + 18, currentFloor - 4, 6);
   }
   if (typeof spawnGroundPuff === 'function') {
-    spawnGroundPuff(centerX - 20, currentFloor);
+    spawnGroundPuff(centerX - 22, currentFloor);
+    spawnGroundPuff(centerX - 10, currentFloor);
     spawnGroundPuff(centerX, currentFloor);
-    spawnGroundPuff(centerX + 20, currentFloor);
+    spawnGroundPuff(centerX + 10, currentFloor);
+    spawnGroundPuff(centerX + 22, currentFloor);
   }
 
   const grassFn = spawnGrass || player._spawnGrass;
   if (typeof grassFn === 'function' && currentFloor) {
-    for (let i = 0; i < 10; i++) {
-      grassFn(centerX + (i - 4.5) * 8, currentFloor, (i % 2 === 0) ? 1 : -1);
+    for (let i = 0; i < 12; i++) {
+      grassFn(centerX + (i - 5.5) * 7, currentFloor, (i % 2 === 0) ? 1 : -1);
     }
   }
 }
 
 /**
- * Aktualizacja fizyki wybuchowego skoku i efektów eksplozji w każdej klatce
+ * Aktualizacja fizyki siłowego skoku tłokowego w każdej klatce
  */
 export function updateEnforcerBeltPhysics(player, ball) {
   if (!player || !player.blastBelt) return;
   const belt = player.blastBelt;
 
-  // Fala uderzeniowa wybuchu pod stopami odrzuca pobliską piłkę
+  // Fala uderzeniowa tąpnięcia przy wybiciu podbija pobliską piłkę
   if (belt.pendingBallImpulse) {
     belt.pendingBallImpulse = false;
     if (ball && typeof ball.x === 'number' && typeof ball.y === 'number') {
       const dx = ball.x - belt.lastBlastX;
       const dy = ball.y - (belt.lastBlastY - 15);
       const dist = Math.hypot(dx, dy);
-      if (dist < 135) {
-        const power = 1.0 - (dist / 135);
+      if (dist < 125) {
+        const power = 1.0 - (dist / 125);
         const pushDirX = Math.abs(dx) > 4 ? Math.sign(dx) : (player.facing || 1);
-        ball.vx += pushDirX * (9.0 + 13.0 * power);
-        ball.vy = Math.min(ball.vy, -(11.0 + 11.0 * power));
+        ball.vx += pushDirX * (8.0 + 11.0 * power);
+        ball.vy = Math.min(ball.vy, -(9.5 + 9.5 * power));
       }
     }
   }
 
-  // Podczas lotu po wybuchu: wyłącznie delikatny dym prochowy zaraz po wybiciu (ZERO ognia rakietowego z butów/kolan!)
   if (belt.blastJumpTimer > 0) {
     belt.blastJumpTimer--;
-    if (belt.blastJumpTimer > 14 && belt.blastJumpTimer % 3 === 0 && typeof spawnHeavySmokePuff === 'function') {
-      const footX = player.x + (player.w || 30) / 2;
-      const footY = player.y + (player.h || 74) - 4;
-      spawnHeavySmokePuff(footX + (Math.random() - 0.5) * 10, footY, 1);
-    }
   }
 
-  // Aktualizacja klatek animacji wybuchów naziemnych
+  // Aktualizacja klatek animacji fali pyłu i odłamków podłoża
   if (belt.activeBlasts && belt.activeBlasts.length > 0) {
     for (let i = belt.activeBlasts.length - 1; i >= 0; i--) {
       belt.activeBlasts[i].frame++;
@@ -516,217 +498,113 @@ export function updateEnforcerBeltPhysics(player, ball) {
 }
 
 /**
- * Rysuje Pas Ładunków Wybuchowych (3 ładunki wybuchowe / laski dynamitu z lontami od góry) na pasie Enforcera.
- * Ogień i dym z lontów unoszą się NATURALNIE W GÓRĘ (nigdy w dół jak silnik rakietowy na kolanach!).
+ * Rysuje realistyczne wojskowe ładownice taktyczne na pasie Enforcera (bez bomb i bez ognia!)
  */
 export function drawEnforcerBeltCanisters(ctx, p, v, fDir, waistHalfW, beltTopY, beltBotY) {
-  const flameColor = v?.jetpackColor || getEnforcerFlameColor(p);
-  const flamePal = getJetpackFlamePalette(flameColor);
-  const belt = p?.blastBelt;
-  const isCharging = !!(belt && belt.isCharging);
-  const chargeRatio = isCharging ? (belt.chargeRatio || 0) : 0;
-  const isArmed = !!(belt && belt.isArmed);
-  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
-
   ctx.save();
 
-  // Pozycje 3 ładunków wybuchowych zamontowanych na pasie
-  const canisterOffsets = [
-    -fDir * (waistHalfW * 0.68),
-    -fDir * (waistHalfW * 0.08),
-    fDir * (waistHalfW * 0.72)
+  const pouchOffsets = [
+    -fDir * (waistHalfW * 0.65),
+    fDir * (waistHalfW * 0.68)
   ];
 
-  const canW = 3.0;
-  const canH = 4.6;
-  const canTopY = beltTopY - 0.8;
+  const pouchW = 2.8;
+  const pouchH = 3.8;
+  const pouchY = beltTopY - 0.3;
 
-  canisterOffsets.forEach((cx, idx) => {
-    const jitterX = isArmed
-      ? Math.sin(now * 0.08 + idx * 2.1) * 0.55
-      : (isCharging ? Math.sin(now * 0.04 + idx) * chargeRatio * 0.25 : 0);
-    const x = cx + jitterX - canW * 0.5;
-
-    // 1. Korpus ładunku wybuchowego (granat / bomba na pasie, bez dolnych dysz!)
-    ctx.fillStyle = isArmed ? '#3f3f46' : '#27272a';
+  pouchOffsets.forEach((px) => {
+    const x = px - pouchW * 0.5;
+    ctx.fillStyle = '#18181b';
     ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 0.7;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, canTopY, canW, canH, 0.9);
-    else ctx.rect(x, canTopY, canW, canH);
+    if (ctx.roundRect) ctx.roundRect(x, pouchY, pouchW, pouchH, 0.6);
+    else ctx.rect(x, pouchY, pouchW, pouchH);
     ctx.fill();
     ctx.stroke();
 
-    // Opaska / świecący pierścień na ładunku
-    ctx.save();
-    if (isCharging) {
-      ctx.shadowColor = flamePal.glow;
-      ctx.shadowBlur = isArmed ? 10 : (3 + chargeRatio * 5);
-    }
-    ctx.fillStyle = isArmed ? '#ffffff' : (isCharging ? flamePal.light : flamePal.base);
-    ctx.fillRect(x + 0.3, canTopY + 1.5, canW - 0.6, 1.4);
-    ctx.restore();
-
-    // Górny lont ładunku wystający ponad pas
-    const fuseBaseX = cx + jitterX;
-    const fuseTopY = canTopY - 1.4;
-    ctx.strokeStyle = '#a1a1aa';
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(fuseBaseX, canTopY);
-    ctx.lineTo(fuseBaseX + fDir * 0.5, fuseTopY);
-    ctx.stroke();
-
-    // 2. Płonący lont i żywy ogień unoszący się W GÓRĘ z ładunku podczas ładowania
-    if (isCharging) {
-      const fx = fuseBaseX + fDir * 0.5;
-      const fy = fuseTopY;
-      const wave = Math.sin(now * 0.035 + idx * 1.9);
-      const flameH = isArmed ? (7.5 + Math.sin(now * 0.05 + idx) * 2.0) : (2.2 + Math.pow(chargeRatio, 1.3) * 4.8);
-      const flameR = isArmed ? 2.8 : (1.1 + chargeRatio * 1.3);
-
-      ctx.save();
-      ctx.shadowColor = flamePal.glow;
-      ctx.shadowBlur = isArmed ? 12 : (4 + chargeRatio * 5);
-
-      // Zewnętrzny płomień unoszący się W GÓRĘ (kształt kropli ognia)
-      ctx.fillStyle = flamePal.base;
-      ctx.beginPath();
-      ctx.moveTo(fx - flameR, fy);
-      ctx.quadraticCurveTo(fx - flameR * 0.8, fy - flameH * 0.55, fx + wave * 1.2, fy - flameH);
-      ctx.quadraticCurveTo(fx + flameR * 0.8, fy - flameH * 0.55, fx + flameR, fy);
-      ctx.arc(fx, fy, flameR, 0, Math.PI, false);
-      ctx.closePath();
-      ctx.fill();
-
-      // Jasny środek płomienia
-      ctx.fillStyle = isArmed ? '#ffffff' : flamePal.light;
-      ctx.beginPath();
-      ctx.arc(fx + wave * 0.4, fy - flameH * 0.32, flameR * 0.58, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+    // Klapa ładownicy z zatrzaskiem
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(x + 0.2, pouchY, pouchW - 0.4, 1.3);
+    ctx.fillStyle = '#71717a';
+    ctx.fillRect(px - 0.35, pouchY + 1.1, 0.7, 0.7);
   });
 
   ctx.restore();
 }
 
 /**
- * Rysuje spadające bomby oraz eksplozję ładunków na ziemi pod stopami Enforcera
- * (szeroka, kulista detonacja naziemna i kłęby dymu, bez pionowych strumieni rakietowych!)
+ * Rysuje realistyczne pęknięcie ziemi, odskakujący gruz, pierścień sprężonego powietrza
+ * oraz gęstą chmurę pyłu i kurzu pod stopami Enforcera w momencie wybicia (ZERO OGNIA!)
  */
 function drawEnforcerActiveBlasts(ctx, player) {
   const belt = player?.blastBelt;
   if (!belt || !belt.activeBlasts || belt.activeBlasts.length === 0) return;
 
   for (const b of belt.activeBlasts) {
-    const pal = getJetpackFlamePalette(b.color || '#ef4444');
+    const t = b.frame / b.maxFrames;
+    const alpha = Math.max(0, 1.0 - t);
 
     ctx.save();
 
-    // FAZA 1 (klatki 0..3): 3 podpalone ładunki wybuchowe spadają z pasa na ziemię pod stopami
-    if (b.frame <= 3) {
-      const dropT = Math.min(1.0, b.frame / 3.0);
-      const offsets = [-12, 0, 12];
-      for (const ox of offsets) {
-        const curX = b.x + ox * (0.5 + 0.5 * dropT);
-        const curY = b.beltY + (b.y - 4 - b.beltY) * (dropT * dropT);
-
-        // Bryła spadającej bomby z rozżarzonym lontem
-        ctx.fillStyle = '#27272a';
-        ctx.strokeStyle = '#09090b';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.arc(curX, curY, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(curX, curY - 1.5, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // FAZA 2 (klatki 2..22): Szeroka, kulista eksplozja bomb na podłożu
-    if (b.frame >= 2 && b.frame <= 22) {
-      const expT = (b.frame - 2) / 20.0;
-      const alpha = Math.max(0, 1.0 - expT);
-
-      // 1. Pierścień fali uderzeniowej po ziemi
-      const ringRx = 18 + expT * 78;
-      const ringRy = 4.5 + expT * 10.0;
+    // 1. Pierścień sprężonego powietrza z tłoków rozchodzący się nisko nad ziemią
+    if (b.frame <= 18) {
+      const ringT = b.frame / 18.0;
+      const ringRx = 14 + ringT * 68;
+      const ringRy = 3.5 + ringT * 8.0;
       ctx.save();
-      ctx.globalAlpha = alpha * 0.90;
-      ctx.strokeStyle = expT < 0.30 ? '#ffffff' : pal.light;
-      ctx.lineWidth = Math.max(1.2, 4.5 * (1.0 - expT));
-      ctx.shadowColor = pal.glow;
-      ctx.shadowBlur = 14;
+      ctx.globalAlpha = (1.0 - ringT) * 0.75;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = Math.max(1.0, 3.5 * (1.0 - ringT));
       ctx.beginPath();
       ctx.ellipse(b.x, b.y - 1, ringRx, ringRy, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
+    }
 
-      // 2. Kulista eksplozja ognia na ziemi (3 nakładające się kule wybuchu C4)
-      if (expT < 0.80) {
-        const domeT = expT / 0.80;
-        const domeAlpha = 1.0 - domeT;
-        const fireCenters = [
-          { dx: 0, dy: -6, r: 24 + domeT * 42 },
-          { dx: -18 * (0.4 + domeT * 0.6), dy: -4, r: 16 + domeT * 28 },
-          { dx: 18 * (0.4 + domeT * 0.6), dy: -4, r: 16 + domeT * 28 }
-        ];
-
-        for (const fc of fireCenters) {
-          const cx = b.x + fc.dx;
-          const cy = b.y + fc.dy;
-          const fireGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, fc.r);
-          fireGrad.addColorStop(0.0, `rgba(255, 255, 255, ${domeAlpha})`);
-          fireGrad.addColorStop(0.32, pal.light);
-          fireGrad.addColorStop(0.68, pal.base);
-          fireGrad.addColorStop(1.0, pal.alphaZero);
-
-          ctx.fillStyle = fireGrad;
-          ctx.beginPath();
-          ctx.arc(cx, cy, fc.r, Math.PI, 0, false);
-          ctx.closePath();
-          ctx.fill();
-        }
+    // 2. Odłamki betonu / kamienie wyrzucone spod ciężkich butów
+    if (b.pebbles && b.frame <= 26) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1.0 - (b.frame / 26.0));
+      for (const peb of b.pebbles) {
+        const px = b.x + peb.dx + peb.vx * b.frame;
+        const py = Math.min(b.y - 1, (b.y - 3) + peb.vy * b.frame + 0.28 * b.frame * b.frame);
+        ctx.fillStyle = peb.col;
+        ctx.strokeStyle = '#09090b';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.arc(px, py, peb.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
       }
       ctx.restore();
     }
 
-    // FAZA 3 (klatki 3..40): Gęste, rozrastające się kłęby dymu prochowego po wybuchu na ziemi
-    if (b.frame >= 3) {
-      const smokeT = (b.frame - 3) / (b.maxFrames - 3);
-      const smokeAlpha = Math.max(0, (1.0 - smokeT) * 0.72);
-      const puffs = [-40, -27, -15, -6, 0, 7, 16, 28, 41];
+    // 3. Gęsta chmura pyłu, kurzu i pary rozchodząca się na boki po wybiciu
+    const dustPuffs = [-36, -24, -13, -4, 4, 13, 24, 36];
+    ctx.save();
+    dustPuffs.forEach((dx, idx) => {
+      const puffX = b.x + dx * (0.35 + t * 1.15);
+      const puffY = b.y - 4 - t * (14 + (idx % 3) * 8);
+      const puffR = 8 + t * (16 + (idx % 3) * 5);
+      const dAlpha = alpha * 0.55;
 
-      ctx.save();
-      puffs.forEach((px, idx) => {
-        const puffX = b.x + px * (0.45 + smokeT * 1.15);
-        const puffY = b.y - 6 - smokeT * (24 + (idx % 3) * 14);
-        const puffR = 11 + smokeT * (19 + (idx % 4) * 5);
-
-        ctx.fillStyle = (idx % 2 === 0)
-          ? `rgba(24, 24, 27, ${smokeAlpha.toFixed(3)})`
-          : `rgba(63, 63, 70, ${(smokeAlpha * 0.82).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.restore();
-    }
+      ctx.fillStyle = (idx % 2 === 0)
+        ? `rgba(161, 161, 170, ${dAlpha.toFixed(3)})`
+        : `rgba(113, 113, 122, ${(dAlpha * 0.85).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
 
     ctx.restore();
   }
 }
 
 /**
- * Zamiast paska ładowania nad głową i bez żadnych płomieni w dół na kolana:
- * Rysuje naturalne płomienie i dym unoszące się W GÓRĘ z podpalonych ładunków na pasie
- * oraz sypiące się z lontów iskry, które płoną coraz mocniej w miarę trzymania góry (0..1000ms+).
+ * Podczas schodzenia w głęboki siłowy przysiad (0..1000ms+) rysuje syczące obłoczki
+ * białej pary sprężonego powietrza z zaworów tłoków na łydkach oraz drżące kamyczki pod butami.
  */
 function drawEnforcerBeltChargeHUD(ctx, player) {
   if (!player || player._isCreatorDummy || player.isDead) return;
@@ -735,80 +613,50 @@ function drawEnforcerBeltChargeHUD(ctx, player) {
 
   const ratio = Math.max(0, Math.min(1.0, belt.chargeRatio || 0));
   const isArmed = !!belt.isArmed;
-  const flameColor = getEnforcerFlameColor(player);
-  const pal = getJetpackFlamePalette(flameColor);
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
 
   const centerX = player.x + (player.w || 30) / 2;
-  const beltY = player.y + (player.h || 74) * 0.48;
+  const floorY = player.currentGroundY || player.groundY || (player.y + (player.h || 74));
+  const calfY = floorY - 14;
 
   ctx.save();
 
-  // 1. Gęste kłęby dymu unoszące się W GÓRĘ znad pasa podczas palenia się lontów
-  const smokeClouds = isArmed ? 7 : Math.max(2, Math.ceil(ratio * 5));
-  for (let i = 0; i < smokeClouds; i++) {
-    const phase = ((now * 0.003 + i * (1 / smokeClouds)) % 1.0);
-    const sway = Math.sin(now * 0.01 + i * 1.7) * (4 + phase * 8);
-    const sx = centerX + ((i % 3) - 1) * 7 + sway;
-    const sy = beltY - 4 - phase * (isArmed ? 34 : (14 + ratio * 16));
-    const sr = (3.5 + phase * (isArmed ? 9.5 : 6.0)) * (0.45 + ratio * 0.55);
-    const sAlpha = (1.0 - phase) * (isArmed ? 0.55 : (0.20 + ratio * 0.30));
+  // 1. Syczące strumienie białej pary uchodzące na boki z zaworów ciśnieniowych na łydkach
+  const steamCount = isArmed ? 6 : Math.max(2, Math.ceil(ratio * 4));
+  for (let i = 0; i < steamCount; i++) {
+    const phase = ((now * 0.0045 + i * (1 / steamCount)) % 1.0);
+    const side = (i % 2 === 0 ? -1 : 1);
+    const sx = centerX + side * (8 + phase * (isArmed ? 22 : (8 + ratio * 10)));
+    const sy = calfY + (i % 3) * 2 - phase * (isArmed ? 10 : 5);
+    const sr = (2.2 + phase * (isArmed ? 6.5 : 4.2)) * (0.45 + ratio * 0.55);
+    const sAlpha = (1.0 - phase) * (isArmed ? 0.65 : (0.22 + ratio * 0.32));
 
-    ctx.fillStyle = `rgba(24, 24, 27, ${sAlpha.toFixed(3)})`;
+    ctx.fillStyle = `rgba(226, 232, 240, ${sAlpha.toFixed(3)})`;
     ctx.beginPath();
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 2. Naturalne języki ognia buchające W GÓRĘ z pasa (jak płonące ładunki / pochodnie, zero rakiet w dół!)
-  const flamePositions = [-8, 0, 8];
-  flamePositions.forEach((ox, idx) => {
-    const fx = centerX + ox;
-    const fy = beltY;
-    const sway = Math.sin(now * 0.032 + idx * 2.2) * (isArmed ? 2.5 : 1.2);
-    const pulse = 0.82 + 0.32 * Math.sin(now * 0.048 + idx * 1.9);
-    const flameH = (isArmed ? 18 : (4 + Math.pow(ratio, 1.35) * 11)) * pulse;
-    const flameW = isArmed ? 4.8 : (1.8 + ratio * 2.2);
-
-    // Gradient skierowany W GÓRĘ (od pasa ku klatce piersiowej)
-    const fGrad = ctx.createLinearGradient(fx, fy + 2, fx, fy - flameH);
-    fGrad.addColorStop(0.0, '#ffffff');
-    fGrad.addColorStop(0.35, pal.light);
-    fGrad.addColorStop(0.75, pal.base);
-    fGrad.addColorStop(1.0, pal.alphaZero);
-
-    ctx.save();
-    ctx.globalAlpha = isArmed ? 0.90 : (0.40 + ratio * 0.45);
-    ctx.shadowColor = pal.glow;
-    ctx.shadowBlur = isArmed ? 14 : (5 + ratio * 7);
-    ctx.fillStyle = fGrad;
+  // 2. Gdy tłoki są maksymalnie sprężone (>= 1000ms), ziemia pod butami pęka i podskakują drobne kamyczki
+  if (isArmed) {
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.55)';
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.moveTo(fx - flameW, fy);
-    ctx.quadraticCurveTo(fx - flameW * 0.7, fy - flameH * 0.55, fx + sway, fy - flameH);
-    ctx.quadraticCurveTo(fx + flameW * 0.7, fy - flameH * 0.55, fx + flameW, fy);
-    ctx.arc(fx, fy, flameW, 0, Math.PI, false);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  });
+    ctx.ellipse(centerX, floorY - 1, 16 + Math.sin(now * 0.04) * 2.5, 3.0, 0, 0, Math.PI * 2);
+    ctx.stroke();
 
-  // 3. Iskry prochowe odpryskujące na boki i w górę z palących się lontów na pasie
-  const sparkTotal = isArmed ? 8 : Math.ceil(ratio * 5);
-  for (let s = 0; s < sparkTotal; s++) {
-    const sPhase = ((now * 0.006 + s * 0.19) % 1.0);
-    const angle = -Math.PI * (0.15 + ((s * 0.29) % 0.70)); // kierunek w górę i na boki
-    const dist = sPhase * (isArmed ? 22 : (8 + ratio * 10));
-    const spX = centerX + ((s % 3) - 1) * 7 + Math.cos(angle) * dist;
-    const spY = beltY - 2 + Math.sin(angle) * dist + sPhase * sPhase * 6;
-
-    ctx.fillStyle = (s % 2 === 0) ? '#ffffff' : pal.light;
-    ctx.globalAlpha = 1.0 - sPhase;
-    ctx.beginPath();
-    ctx.arc(spX, spY, isArmed ? 1.5 : 1.1, 0, Math.PI * 2);
-    ctx.fill();
+    const pebbleOffsets = [-14, -7, 7, 14];
+    pebbleOffsets.forEach((ox, idx) => {
+      const bounce = Math.abs(Math.sin(now * 0.025 + idx * 1.4)) * 3.5;
+      ctx.fillStyle = '#71717a';
+      ctx.beginPath();
+      ctx.arc(centerX + ox, floorY - 1.5 - bounce, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 
   ctx.restore();
 }
+
 
 

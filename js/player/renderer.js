@@ -642,6 +642,23 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.55;
     rawBackSwing = -0.12;
     rawBackElbow = 0.55;
+  } else if (p.isJumpCharging && speed < 0.8) {
+    const cp = (p.jumpChargePower || 0);
+    const frontOffset = (7 + cp * 10) * p.facing;
+    const backOffset = (-7 - cp * 10) * p.facing;
+
+    rawFootFrontTargetX = hipX + frontOffset;
+    rawFootFrontTargetY = plantFloorY;
+    rawFootFrontAnkle = (0.08 + cp * 0.20) * p.facing;
+
+    rawFootBackTargetX = hipX + backOffset;
+    rawFootBackTargetY = plantFloorY;
+    rawFootBackAnkle = (-0.08 - cp * 0.20) * p.facing;
+
+    rawFrontSwing = -0.12 - cp * 0.30;
+    rawFrontElbow = 0.60 + cp * 0.40;
+    rawBackSwing = 0.12 + cp * 0.30;
+    rawBackElbow = 0.60 + cp * 0.40;
   } else if (p.gaitMode === 'IDLE') {
     const braceW = (p.shootPoseWeight || 0);
     const frontOffset = lerp(3, 16, braceW) * p.facing;
@@ -1073,6 +1090,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const legShinBack = v.legShinBack || '#b91c1c';
   const bootBack = v.bootBack || '#111827';
 
+  v.pistonCompression = p.jumpChargePower || (p.blastBelt ? p.blastBelt.chargeRatio : 0);
   p.currentClass?.onDrawUnder?.(ctx, p);
 
   const isArmFrontDismembered = !!p.dismembered?.armFront;

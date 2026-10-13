@@ -39,9 +39,9 @@ export const CLASS_CARDS = [
     color: '#ef4444',
     glowColor: 'rgba(239, 68, 68, 0.45)',
     role: 'KLASA CIĘŻKA • KOLOS / TARAN',
-    attribute: '💣 PAS ŁADUNKÓW / SKOK WYBUCHOWY',
-    desc: 'Skok odpala po puszczeniu W/drążka. Przytrzymanie góry min. 1000ms podpala ładunki na pasie i po puszczeniu wysadza ziemię pod butami!',
-    stats: ['Maksymalne Zdrowie: 160 HP', 'Pas Ładunków: przytrzymaj górę 1s i puść', 'Potężny Spartan Kick i taranowanie'],
+    attribute: '⚙️ TŁOKI KINETYCZNE / PRZYSIAD',
+    desc: 'Przytrzymaj górę (W/drążek) min. 1000ms na ziemi – Enforcer zapiera się w głębokim przysiadzie, sprężając tłoki pneumatyczne na łydkach. Puszczenie wyzwala potężny wyskok!',
+    stats: ['Maksymalne Zdrowie: 160 HP', 'Tłoki Łydek: przytrzymaj górę 1s (przysiad) i puść', 'Potężny Spartan Kick i taranowanie'],
     classObj: CLASSES.ENFORCER
   }
 ];

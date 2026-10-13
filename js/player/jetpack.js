@@ -407,7 +407,8 @@ export function drawRocketBootsPreview(
 }
 
 /**
- * Renderuje podgląd Pasa Ładunków Wybuchowych (Blast Belt) Enforcera (68x68).
+ * Renderuje podgląd Tłoków Kinetycznych / Siłowników Łydek Enforcera (68x68).
+ * Ciężki but bojowy z zamontowanym siłownikiem pneumatycznym, sprężyną i zaworem parowym.
  */
 export function drawStompModulePreview(
   ctx,
@@ -423,87 +424,140 @@ export function drawStompModulePreview(
   const flamePal = getJetpackFlamePalette(flameColor || visuals.jetpackColor || '#ef4444');
 
   ctx.save();
-  ctx.translate(canvasW * 0.50, canvasH * 0.62);
-  const scale = Math.min(canvasW, canvasH) / 40.0;
+  ctx.translate(canvasW * 0.44, canvasH * 0.58);
+  const scale = Math.min(canvasW, canvasH) / 48.0;
   ctx.scale(scale, scale);
 
-  // 1. Ciężki pas taktyczny saperski Enforcera
+  // 1. Cień pod butem
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(3.0, 15.5, 12.0, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Cholewka i podeszwa ciężkiego buta bojowego
+  // Gruba gumowa podeszwa z bieżnikiem
+  ctx.fillStyle = '#09090b';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-8.0, 11.0, 22.0, 4.5, 1.2);
+  else ctx.rect(-8.0, 11.0, 22.0, 4.5);
+  ctx.fill();
+
+  // Bieżnik
   ctx.fillStyle = '#18181b';
+  for (let tx = -7.0; tx <= 11.0; tx += 4.5) {
+    ctx.fillRect(tx, 13.0, 2.4, 2.5);
+  }
+
+  // Korpus buta (skóra bojowa)
+  ctx.fillStyle = '#1c1917';
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.1;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(-14.5, -3.0, 29.0, 6.2, 1.5);
-  else ctx.rect(-14.5, -3.0, 29.0, 6.2);
+  ctx.moveTo(-7.0, 11.0);
+  ctx.lineTo(-7.0, 0.0);
+  ctx.lineTo(-2.0, -2.0);
+  ctx.lineTo(2.0, -2.0);
+  ctx.lineTo(3.5, 5.0);
+  ctx.lineTo(13.0, 8.5);
+  ctx.lineTo(13.5, 11.0);
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // Metalowa klamra pasa pośrodku
-  ctx.fillStyle = '#52525b';
-  ctx.fillRect(-2.6, -2.3, 5.2, 4.8);
-  ctx.fillStyle = '#71717a';
-  ctx.fillRect(-1.5, -1.3, 3.0, 2.8);
+  // Ochraniacz noska buta
+  ctx.fillStyle = '#292524';
+  ctx.beginPath();
+  ctx.moveTo(4.0, 7.5);
+  ctx.lineTo(12.5, 8.8);
+  ctx.lineTo(13.5, 11.0);
+  ctx.lineTo(5.0, 11.0);
+  ctx.closePath();
+  ctx.fill();
 
-  // 2. Trzy ładunki wybuchowe (bomby z lontem od góry) na pasie
-  const canPositions = [-10.0, 0.0, 10.0];
-  canPositions.forEach((cx, idx) => {
-    const x = cx - 2.4;
-    const y = -4.5;
-    const w = 4.8;
-    const h = 9.0;
+  // 3. WSPORNIK PNEUMATYCZNY (Kinetic Piston Brace) na ścięgnie achillesa / łydce
+  // Karbonowy pałąk montażowy
+  ctx.fillStyle = '#27272a';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-10.5, -12.0, 5.0, 22.0, 1.5);
+  else ctx.rect(-10.5, -12.0, 5.0, 22.0);
+  ctx.fill();
+  ctx.stroke();
 
-    // Obudowa ładunku
-    ctx.fillStyle = '#27272a';
-    ctx.strokeStyle = '#09090b';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 1.2);
-    else ctx.rect(x, y, w, h);
-    ctx.fill();
-    ctx.stroke();
+  // Główny cylinder hydrauliczny / pneumatyczny
+  const cylGrad = ctx.createLinearGradient(-10.0, 0, -5.5, 0);
+  cylGrad.addColorStop(0.0, '#3f3f46');
+  cylGrad.addColorStop(0.45, '#71717a');
+  cylGrad.addColorStop(1.0, '#27272a');
+  ctx.fillStyle = cylGrad;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-9.8, -10.0, 3.8, 11.5, 1.0);
+  else ctx.rect(-9.8, -10.0, 3.8, 11.5);
+  ctx.fill();
+  ctx.stroke();
 
-    // Opaska ładunku
-    ctx.save();
-    ctx.shadowColor = flamePal.glow;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = flamePal.light;
-    ctx.fillRect(x + 0.6, y + 2.8, w - 1.2, 2.6);
-    ctx.restore();
+  // Akcent statusu ciśnienia (neonowy pierścień w wybranym kolorze klasy)
+  ctx.save();
+  ctx.shadowColor = flamePal.glow;
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = flamePal.light;
+  ctx.fillRect(-9.8, -5.5, 3.8, 1.8);
+  ctx.restore();
 
-    // Górny lont
-    const fy = y - 2.2;
-    ctx.strokeStyle = '#a1a1aa';
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    ctx.moveTo(cx, y);
-    ctx.lineTo(cx, fy);
-    ctx.stroke();
+  // Tłoczysko (lśniący chromowany tłok)
+  const rodGrad = ctx.createLinearGradient(-9.2, 0, -6.5, 0);
+  rodGrad.addColorStop(0.0, '#d4d4d8');
+  rodGrad.addColorStop(0.5, '#ffffff');
+  rodGrad.addColorStop(1.0, '#a1a1aa');
+  ctx.fillStyle = rodGrad;
+  ctx.fillRect(-9.0, 1.5, 2.2, 7.5);
 
-    // Kłęby dymu unoszące się w górę
-    ctx.fillStyle = 'rgba(39, 39, 42, 0.55)';
-    ctx.beginPath();
-    ctx.arc(cx + (idx - 1) * 1.2, fy - 9.5, 3.2, 0, Math.PI * 2);
-    ctx.fill();
+  // Sprężyna śrubowa (ciężka stal o wysokiej kompresji)
+  ctx.strokeStyle = '#e4e4e7';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  for (let sy = -2.5; sy <= 7.0; sy += 2.3) {
+    ctx.moveTo(-10.2, sy);
+    ctx.lineTo(-6.0, sy + 1.2);
+  }
+  ctx.stroke();
 
-    // 3. Płomień palący się W GÓRĘ na loncie
-    ctx.save();
-    ctx.shadowColor = flamePal.glow;
-    ctx.shadowBlur = 10;
-    const fGrad = ctx.createLinearGradient(cx, fy + 1.0, cx, fy - 9.5);
-    fGrad.addColorStop(0.0, '#ffffff');
-    fGrad.addColorStop(0.45, flamePal.light);
-    fGrad.addColorStop(0.85, flamePal.base);
-    fGrad.addColorStop(1.0, flamePal.alphaZero);
+  // Dolny punkt mocowania tłoka na pięcie
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.arc(-7.8, 9.5, 2.0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#a1a1aa';
+  ctx.beginPath();
+  ctx.arc(-7.8, 9.5, 0.9, 0, Math.PI * 2);
+  ctx.fill();
 
-    ctx.fillStyle = fGrad;
-    ctx.beginPath();
-    ctx.moveTo(cx - 2.6, fy);
-    ctx.quadraticCurveTo(cx - 2.0, fy - 5.5, cx, fy - 9.5);
-    ctx.quadraticCurveTo(cx + 2.0, fy - 5.5, cx + 2.6, fy);
-    ctx.arc(cx, fy, 2.6, 0, Math.PI, false);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  });
+  // 4. Mosiężny zawór bezpieczeństwa na górze cylindra
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(-11.8, -11.5, 2.4, 2.8);
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(-12.8, -11.0, 1.4, 1.8);
+
+  // 5. Wydobywająca się z zaworu delikatna para pod wysokim ciśnieniem
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.beginPath();
+  ctx.arc(-14.2, -10.0, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.beginPath();
+  ctx.arc(-17.0, -11.5, 2.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.beginPath();
+  ctx.arc(-20.5, -13.5, 4.0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }

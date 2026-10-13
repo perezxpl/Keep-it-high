@@ -221,7 +221,101 @@ export function drawBootCollarOverPants(ctx, style, color, isFrontLeg, muscle, l
   // =========================================================================
   if (v.hasRocketBoots) {
     drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle, l2, achillesHalfW, v, facing);
+  } else if (v.hasKineticPistons) {
+    drawKineticPistonCalfBrace(ctx, isFrontLeg, muscle, l2, achillesHalfW, v, facing, v.pistonCompression);
   }
+}
+
+/**
+ * Renderuje przemysłowy siłownik pneumatyczny / hydrauliczny na tyle łydki i pięcie buta (Klasa Enforcer).
+ * Tłok kompresuje się w czasie głębokiego siłowego przysiadu, a z bocznego zaworu ulatniają się obłoki pary!
+ */
+export function drawKineticPistonCalfBrace(ctx, isFrontLeg, muscle = 1.0, l2 = 26.0, achillesHalfW = 2.8, v = {}, facing = 1, compressionRatio = 0) {
+  const strutTop = l2 - 14.2 * muscle;
+  const strutH = 13.8 * muscle;
+  const comp = Math.max(0, Math.min(1.0, (typeof compressionRatio === 'number') ? compressionRatio : (v.pistonCompression || 0)));
+
+  ctx.save();
+
+  // 1. TYŁ ŁYDKI - PANCERNA PŁYTA MONTAŻOWA ZE STALI WĘGLOWEJ
+  const greaveW = achillesHalfW * 1.25;
+  const greaveY = achillesHalfW * 0.18;
+  ctx.fillStyle = isFrontLeg ? '#18181b' : '#09090b';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.85;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(strutTop, greaveY, strutH, greaveW, 1.2);
+  else ctx.rect(strutTop, greaveY, strutH, greaveW);
+  ctx.fill();
+  ctx.stroke();
+
+  // Klamry zaciskowe wokół łydki
+  ctx.fillStyle = '#27272a';
+  ctx.fillRect(strutTop + 1.2, -achillesHalfW * 0.95, 1.6, achillesHalfW * 2.1);
+  ctx.fillRect(l2 - 3.2, -achillesHalfW * 0.95, 1.6, achillesHalfW * 2.1);
+  ctx.fillStyle = '#71717a';
+  ctx.fillRect(strutTop + 1.4, greaveY + 0.3, 1.0, 1.0);
+  ctx.fillRect(l2 - 3.0, greaveY + 0.3, 1.0, 1.0);
+
+  // 2. CYLINDER PNEUMATYCZNY (GÓRNA CZĘŚĆ SIŁOWNIKA)
+  const cylX = strutTop + 2.2;
+  const cylLen = 6.0 * muscle;
+  const cylY = greaveY + greaveW * 0.22;
+  const cylH = greaveW * 0.58;
+
+  const cylGrad = ctx.createLinearGradient(cylX, cylY, cylX, cylY + cylH);
+  cylGrad.addColorStop(0.0, '#52525b');
+  cylGrad.addColorStop(0.5, '#71717a');
+  cylGrad.addColorStop(1.0, '#27272a');
+  ctx.fillStyle = cylGrad;
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cylX, cylY, cylLen, cylH, 0.8);
+  else ctx.rect(cylX, cylY, cylLen, cylH);
+  ctx.fill();
+  ctx.stroke();
+
+  // 3. TŁOK HYDRAULICZNY / CHROMOWANY RDZEŃ (ŚCIŚNIĘTY PROPORCJONALNIE DO PRZYSIADU)
+  const maxStroke = 4.6 * muscle;
+  const currentStroke = maxStroke * (1.0 - comp * 0.65);
+  const rodX = cylX + cylLen;
+  const rodY = cylY + cylH * 0.22;
+  const rodH = cylH * 0.56;
+
+  ctx.fillStyle = '#f4f4f5';
+  ctx.strokeStyle = '#71717a';
+  ctx.lineWidth = 0.5;
+  ctx.fillRect(rodX, rodY, currentStroke, rodH);
+  ctx.strokeRect(rodX, rodY, currentStroke, rodH);
+
+  // 4. PRZEMYSŁOWA SPRĘŻYNA SKOKOWA NAWINIĘTA NA TŁOK
+  ctx.strokeStyle = '#d4d4d8';
+  ctx.lineWidth = 0.9;
+  const coils = 5;
+  const coilSpacing = Math.max(0.6, currentStroke / coils);
+  ctx.beginPath();
+  for (let c = 0; c < coils; c++) {
+    const cx = rodX + c * coilSpacing;
+    ctx.moveTo(cx, rodY - 0.5);
+    ctx.lineTo(cx + coilSpacing * 0.5, rodY + rodH + 0.5);
+  }
+  ctx.stroke();
+
+  // 5. ZAWÓR UPUSTOWY CIŚNIENIA Z MOSIĄDZU
+  const valveX = cylX + cylLen * 0.35;
+  const valveY = cylY - 1.2;
+  ctx.fillStyle = '#eab308';
+  ctx.strokeStyle = '#713f12';
+  ctx.lineWidth = 0.5;
+  ctx.fillRect(valveX, valveY, 1.8, 1.2);
+  ctx.strokeRect(valveX, valveY, 1.8, 1.2);
+
+  // Głowica zaworu
+  ctx.fillStyle = comp > 0.85 ? '#ef4444' : '#ca8a04';
+  ctx.fillRect(valveX + 0.3, valveY - 0.7, 1.2, 0.7);
+
+  ctx.restore();
 }
 
 /**

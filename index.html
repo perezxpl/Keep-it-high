@@ -29,7 +29,7 @@
       "./js/bot.js": "./js/bot.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/camera.js": "./js/camera.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v149_fix_raptor_card_body_anatomy",
-      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v155_enforcer_upward_fuse_fire_no_rocket_knees",
+      "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/classes/index.js": "./js/classes/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/classes/striker.js": "./js/classes/striker.js?v=v146_striker_balanced_middleweight_proportions",
       "./js/config.js": "./js/config.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -64,23 +64,23 @@
       "./js/player/headgear.js": "./js/player/headgear.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/ik.js": "./js/player/ik.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/index.js": "./js/player/index.js?v=v153_enforcer_blast_belt_jump_on_release",
-      "./js/player/jetpack.js": "./js/player/jetpack.js?v=v155_enforcer_upward_fuse_fire_no_rocket_knees",
+      "./js/player/jetpack.js": "./js/player/jetpack.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/player/limbs.js": "./js/player/limbs.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/locomotion.js": "./js/player/locomotion.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/mask.js": "./js/player/mask.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/neck.js": "./js/player/neck.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/pants.js": "./js/player/pants.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/player/shoes.js": "./js/player/shoes.js?v=v148_fix_rocket_boots_and_shin_direction_flip",
+      "./js/player/shoes.js": "./js/player/shoes.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/player/torso.js": "./js/player/torso.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
-      "./js/player/renderer.js": "./js/player/renderer.js?v=v153_enforcer_blast_belt_jump_on_release",
+      "./js/player/renderer.js": "./js/player/renderer.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/player/state.js": "./js/player/state.js?v=v144_class_cards_and_separate_appearances_in_creator",
       "./js/progression.js": "./js/progression.js?v=v149_arena2_deathmatch_5min_and_xp_rewards",
       "./js/projectiles.js": "./js/projectiles.js?v=v152_factual_kills_only_no_suicide_points",
       "./js/renderer.js": "./js/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v153_enforcer_blast_belt_jump_on_release",
+      "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v151_deathmatch_team_winner_and_polish_hud",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v151_deathmatch_team_winner_and_polish_hud",
-      "./js/uiManager.js": "./js/uiManager.js?v=v153_enforcer_blast_belt_jump_on_release",
+      "./js/uiManager.js": "./js/uiManager.js?v=v156_enforcer_kinetic_pistons_power_squat_no_fire",
       "./js/weapons.js": "./js/weapons.js?v=v152_factual_kills_only_no_suicide_points",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -137,7 +137,7 @@
         <!-- Wybór klas postaci (od lekkiej do ciężkiej): 1. Raptor, 2. Striker, 3. Enforcer -->
         <button class="dev-btn dev-class-btn" data-class="RAPTOR" title="Klawisz 6 (Lekka - Jetpack)">🦅 Raptor</button>
         <button class="dev-btn dev-class-btn" data-class="STRIKER" title="Klawisz 7 (Średnia - Turbo Buty)">⚡ Striker</button>
-        <button class="dev-btn dev-class-btn" data-class="ENFORCER" title="Klawisz 8 (Ciężka - Rocket Jump)">🛡️ Enforcer</button>
+        <button class="dev-btn dev-class-btn" data-class="ENFORCER" title="Klawisz 8 (Ciężka - Tłoki Kinetyczne)">🛡️ Enforcer</button>
 
         <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
 
@@ -781,14 +781,14 @@
               <button class="creator-class-select-card card-enforcer" type="button" data-creator-class="ENFORCER" title="Modyfikuj wygląd klasy Enforcer">
                 <div class="cc-header">
                   <span class="cc-badge">KLASA CIĘŻKA</span>
-                  <span class="cc-icon">💣</span>
+                  <span class="cc-icon">⚙️</span>
                 </div>
                 <div class="cc-name">ENFORCER</div>
                 <div class="cc-role">Kolos / Siła / Czołg</div>
-                <div class="cc-desc">Potężna masa, stalowe opancerzenie i pas z ładunkami wybuchowymi odpalającymi pod butami przy skoku.</div>
+                <div class="cc-desc">Potężna masa, stalowe opancerzenie i pneumatyczne siłowniki na łydkach sprężające się w głębokim przysiadzie.</div>
                 <div class="cc-gear-tag">
-                  <span class="tag-icon">💣</span>
-                  <span class="tag-label">Pas Ładunków (Blast Belt)</span>
+                  <span class="tag-icon">⚙️</span>
+                  <span class="tag-label">Tłoki Kinetyczne (Calf Pistons)</span>
                 </div>
                 <div class="cc-action">MODYFIKUJ WYGLĄD →</div>
               </button>
