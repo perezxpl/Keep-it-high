@@ -148,6 +148,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.isMovingBackwards = isMovingBackwards;
 
   if (player.kickBufferTimer > 0) player.kickBufferTimer--;
+  if (player.headshotImmunityTimer > 0) player.headshotImmunityTimer--;
   if (player.kickCooldown > 0 && player.kickState === 'IDLE') player.kickCooldown--;
   if (player.slideCooldown > 0 && !player.isSliding) player.slideCooldown--;
   if (player.shootCooldown > 0) player.shootCooldown--;

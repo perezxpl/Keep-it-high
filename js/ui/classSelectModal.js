@@ -17,7 +17,7 @@ export const CLASS_CARDS = [
     role: 'KLASA LEKKA • ZWIADOWCA / LOTNIK',
     attribute: '🦅 PLECAK ODRZUTOWY (JETPACK)',
     desc: 'Ekstremalna mobilność powietrzna, pełny ciąg jetpacka i zwinność w locie.',
-    stats: ['Jetpack: 150 Pojemności', 'Najwyższa prędkość i kontrola w locie', 'Lekki pancerz zwiadowczy'],
+    stats: ['Zdrowie: 85 HP (Klasa Lekka)', 'Jetpack: 150 Pojemności Paliwa', 'Najwyższa prędkość sprintu (7.4)'],
     classObj: CLASSES.RAPTOR
   },
   {
@@ -29,7 +29,7 @@ export const CLASS_CARDS = [
     role: 'KLASA ŚREDNIA • SZTURMOWIEC',
     attribute: '⚡ TURBO BUTY / PRECYZJA',
     desc: 'Atletyczny szturmowiec wagi średniej z dopalaczami w butach, wyważoną muskulaturą i precyzją ognia.',
-    stats: ['Moduł ruchu: Turbo Buty', 'Sylwetka: Atletyczna Waga Średnia', 'Wysoka precyzja i kontrola odrzutu'],
+    stats: ['Zdrowie: 100 HP (Klasa Średnia)', 'Moduł ruchu: Turbo Buty Rocket Dash', 'Zbalansowana siła ciosu i precyzja'],
     classObj: CLASSES.STRIKER
   },
   {
@@ -41,7 +41,7 @@ export const CLASS_CARDS = [
     role: 'KLASA CIĘŻKA • KOLOS / TARAN',
     attribute: '⚙️ TŁOKI KINETYCZNE / PRZYSIAD',
     desc: 'Przytrzymaj górę (W/drążek) min. 1000ms na ziemi – Enforcer zapiera się w głębokim przysiadzie, sprężając tłoki pneumatyczne na łydkach. Puszczenie wyzwala potężny wyskok!',
-    stats: ['Maksymalne Zdrowie: 160 HP', 'Tłoki Łydek: przytrzymaj górę 1s (przysiad) i puść', 'Potężny Spartan Kick i taranowanie'],
+    stats: ['Maksymalne Zdrowie: 140 HP (Kolos)', 'Tłoki Łydek: przytrzymaj górę 1s na ziemi i puść', 'Druzgocący Spartan Kick (24 dmg) i taran'],
     classObj: CLASSES.ENFORCER
   }
 ];

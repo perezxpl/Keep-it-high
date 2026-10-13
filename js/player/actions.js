@@ -889,7 +889,8 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     spawnJetpackSparks(ex, ey, player.facing, 9);
     spawnBloodSpurt(ex + (player.facing * 8), ey, player.facing, -0.2, 10, 1.2);
 
-    const dmg = 11;
+    const baseSpartanDmg = player.currentClass?.stats?.spartanDamage || 14;
+    const dmg = Math.round(baseSpartanDmg * (player.knockbackMultiplier >= 1.5 ? 1.25 : 1.0));
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
     enemy.lastAttacker = player;
     enemy.lastAttackerTimer = 240;

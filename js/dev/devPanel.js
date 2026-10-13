@@ -462,11 +462,10 @@ export function initModularGearDevUI() {
   const helmBtn = document.createElement('button');
   helmBtn.className = 'dev-btn';
   helmBtn.id = 'dev-helmet-btn';
-  helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (spada z głowy po trafieniach!)';
+  helmBtn.title = 'Załóż / Zdejmij hełm balistyczny (chroni przed headshotem na krótko!)';
   const updateHelmUI = () => {
     const hasH = !!player.hasHelmet;
-    const hits = player.helmetHits || 2;
-    helmBtn.textContent = hasH ? `🪖 HEŁM (${hits})` : '🧑‍🦲 BEZ HEŁMU';
+    helmBtn.textContent = hasH ? '🪖 HEŁM (ON)' : '🧑‍🦲 BEZ HEŁMU';
     helmBtn.style.borderColor = hasH ? '#06b6d4' : '#64748b';
     helmBtn.style.color = hasH ? '#22d3ee' : '#94a3b8';
     helmBtn.style.background = hasH ? 'rgba(6, 182, 212, 0.2)' : 'transparent';
@@ -487,7 +486,7 @@ export function initModularGearDevUI() {
       player.helmetHits = 0;
     } else {
       player.hasHelmet = true;
-      player.helmetHits = 2;
+      player.helmetHits = 1;
     }
     updateHelmUI();
   };
@@ -496,28 +495,29 @@ export function initModularGearDevUI() {
   devMenu.appendChild(helmBtn);
   updateHelmUI();
 
-  // Przełącznik modularnej kamizelki (znika po utracie HP)
+  // Przełącznik modularnej kamizelki (chroni tylko tors, posiada 60 HP)
   const vestBtn = document.createElement('button');
   vestBtn.className = 'dev-btn';
   vestBtn.id = 'dev-vest-btn';
-  vestBtn.title = 'Załóż / Zniszcz kamizelkę kuloodporną (znika po zużyciu wytrzymałości!)';
+  vestBtn.title = 'Załóż / Zdejmij kamizelkę kuloodporną (posiada własne 60 HP na tors!)';
   const updateVestUI = () => {
-    const hasV = !!player.hasVest;
-    const vhp = Math.ceil(player.vestHp || 50);
-    vestBtn.textContent = hasV ? `🛡️ KAMIZELKA (${vhp})` : '👕 BEZ KAMIZELKI';
+    const hasV = !!(player.hasVest && (player.vestHp || 0) > 0);
+    const vhp = Math.ceil(player.vestHp || (player.hasVest ? 60 : 0));
+    vestBtn.textContent = hasV ? `🛡️ KAMIZELKA (${vhp} HP)` : '👕 BEZ KAMIZELKI';
     vestBtn.style.borderColor = hasV ? '#10b981' : '#64748b';
     vestBtn.style.color = hasV ? '#34d399' : '#94a3b8';
     vestBtn.style.background = hasV ? 'rgba(16, 185, 129, 0.2)' : 'transparent';
   };
   const handleVest = (e) => {
     e.stopPropagation(); e.preventDefault();
-    if (player.hasVest) {
+    if (player.hasVest && (player.vestHp || 0) > 0) {
       spawnVestShreds(player.x + player.w / 2, player.y + player.h * 0.45, -(player.facing || 1) * 3.5);
       player.hasVest = false;
       player.vestHp = 0;
     } else {
       player.hasVest = true;
-      player.vestHp = 50;
+      player.vestHp = 60;
+      player.vestMaxHp = 60;
     }
     updateVestUI();
   };

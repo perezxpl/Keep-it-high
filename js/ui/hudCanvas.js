@@ -1153,7 +1153,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
   const hudRight = hudX + barW + 10;
-  const hudBottom = hudY + barH + 5 + wepBoxH + (isMobile ? 32 : 38);
+  const hudBottom = hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + (isMobile ? 32 : 38);
   const fadeMargin = isMobile ? 55 : 70;
 
   let minHudDist = Infinity;
@@ -1226,16 +1226,100 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (hpRatio <= 0.25) hpBorderCol = '#ef4444';
   else if (hpRatio <= 0.55) hpBorderCol = '#facc15';
 
+  const hasVest = !!(player.hasVest && (player.vestHp || 0) > 0);
+  const vestHp = Math.max(0, player.vestHp || 0);
+  const vestMaxHp = player.vestMaxHp || 60;
+  const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
+
+  const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
+  const vestH = hasVest ? (isMobile ? 12 : 14) : (hasHelmet ? (isMobile ? 11 : 13) : 0);
+  const vestGap = (hasVest || hasHelmet) ? 3 : 0;
+
+  const vestY = hudY;
+  const hpY = hudY + vestH + vestGap;
+
+  // --- A0. PASEK PANCERZA KAMIZELKI I OCHRONY GŁOWY (HEŁM) ---
+  if (hasVest) {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.fill();
+
+    if (vestRatio > 0) {
+      const vFillW = Math.max(2, (barW - 3) * vestRatio);
+      const vestGrad = ctx.createLinearGradient(hudX + 1.5, vestY + 1.5, hudX + 1.5 + vFillW, vestY + 1.5);
+      vestGrad.addColorStop(0.0, '#0284c7');
+      vestGrad.addColorStop(0.5, '#0ea5e9');
+      vestGrad.addColorStop(1.0, '#38bdf8');
+
+      ctx.beginPath();
+      ctx.fillStyle = vestGrad;
+      if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
+      else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = '#e0f2fe';
+    ctx.textBaseline = 'middle';
+
+    ctx.textAlign = 'left';
+    ctx.fillText('🛡️ KAMIZELKA (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+
+    ctx.textAlign = 'right';
+    const helmBadge = hasHelmet ? '🪖 ' : '';
+    ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
+    ctx.restore();
+  } else if (hasHelmet) {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = '#22d3ee';
+    ctx.textBaseline = 'middle';
+
+    ctx.textAlign = 'left';
+    ctx.fillText('🪖 HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
+
+    ctx.textAlign = 'right';
+    ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
+    ctx.restore();
+  }
+
   // --- A. PASEK ZDROWIA (HP) ---
   // Ciemne, głębokie tło pustej części paska (wyraźny kontrast po utracie HP)
   ctx.beginPath();
   ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-  if (ctx.roundRect) ctx.roundRect(hudX, hudY, barW, barH, 4);
-  else ctx.rect(hudX, hudY, barW, barH);
+  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+  else ctx.rect(hudX, hpY, barW, barH);
   ctx.fill();
 
   const innerX = hudX + 1.5;
-  const innerY = hudY + 1.5;
+  const innerY = hpY + 1.5;
   const innerW = barW - 3;
   const innerH = barH - 3;
 
@@ -1295,8 +1379,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   for (let seg = 1; seg <= 3; seg++) {
     const sx = hudX + (barW * seg) / 4;
     ctx.beginPath();
-    ctx.moveTo(sx, hudY + 1);
-    ctx.lineTo(sx, hudY + barH - 1);
+    ctx.moveTo(sx, hpY + 1);
+    ctx.lineTo(sx, hpY + barH - 1);
     ctx.stroke();
   }
   ctx.restore();
@@ -1305,8 +1389,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.beginPath();
   ctx.strokeStyle = hpBorderCol;
   ctx.lineWidth = 1.4;
-  if (ctx.roundRect) ctx.roundRect(hudX, hudY, barW, barH, 4);
-  else ctx.rect(hudX, hudY, barW, barH);
+  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+  else ctx.rect(hudX, hpY, barW, barH);
   ctx.stroke();
 
   // Etykieta tekstu wewnątrz paska HP
@@ -1318,10 +1402,10 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'left';
-  ctx.fillText('✚ HP', hudX + 6, hudY + barH / 2 + 0.5);
+  ctx.fillText('✚ HP', hudX + 6, hpY + barH / 2 + 0.5);
 
   ctx.textAlign = 'right';
-  ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hudY + barH / 2 + 0.5);
+  ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hpY + barH / 2 + 0.5);
   ctx.restore();
 
   // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
@@ -1342,7 +1426,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
   const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
 
-  const wepBoxY = hudY + barH + 5;
+  const wepBoxY = hpY + barH + 5;
   const wepBoxW = barW;
 
   let cardBorderCol = wepAccent;

@@ -471,64 +471,108 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       const hitPtX = b.prevX + (b.x - b.prevX) * closestCharT;
       const hitPtY = b.prevY + (b.y - b.prevY) * closestCharT;
 
-      const isHeadshot = (hitPtY <= closestChar.y + 6);
-      const isLegshot = (hitPtY >= closestChar.y + 40);
-      const isTorsoShot = !isHeadshot && !isLegshot;
+      let isHeadshot = false;
+      let isLegshot = false;
+      let isTorsoShot = false;
+
+      if (closestChar.isProne || (closestChar.staggerTimer > 0)) {
+        // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X
+        if (closestChar.facing === 1) {
+          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.60);
+          isLegshot = (hitPtX <= closestChar.x - 4);
+          isTorsoShot = !isHeadshot && !isLegshot;
+        } else {
+          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * 0.40);
+          isLegshot = (hitPtX >= closestChar.x + closestChar.w + 4);
+          isTorsoShot = !isHeadshot && !isLegshot;
+        }
+      } else if (closestChar.isCrouching) {
+        isHeadshot = (hitPtY <= closestChar.y + 24);
+        isLegshot = (hitPtY >= closestChar.y + 46);
+        isTorsoShot = !isHeadshot && !isLegshot;
+      } else {
+        // Normalna sylwetka stojąca / w biegu:
+        isHeadshot = (hitPtY <= closestChar.y + 8);
+        isLegshot = (hitPtY >= closestChar.y + 38);
+        isTorsoShot = !isHeadshot && !isLegshot;
+      }
 
       let damageMultiplier = 1.0;
       let helmetAbsorbed = false;
       let vestAbsorbed = false;
 
-      // 1. PANCERZ GŁOWY (HEŁM): redukuje obrażenia headshotu i spada po 2 trafieniach (lub 1 ze snajperki)
+      // 1. GŁOWA (HEADSHOT) - NAJWYŻSZE OBRAŻENIA (2.25x), HEŁM CHRONI PRZED HEADSHOTEM NA KRÓTKO:
       if (isHeadshot) {
         const hasHelm = !!(closestChar.hasHelmet || closestChar.visuals?.hasHelmet);
-        if (hasHelm) {
-          helmetAbsorbed = true;
-          damageMultiplier = 0.85; // Hełm chroni przed mnożnikiem 2.5x!
-          if (closestChar.helmetHits === undefined || closestChar.helmetHits <= 0) {
-            closestChar.helmetHits = 2;
-          }
-          const helmDmg = (b.weaponId === 'SNIPER') ? 2 : 1;
-          closestChar.helmetHits -= helmDmg;
-          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 10);
+        const hasImmunity = ((closestChar.headshotImmunityTimer || 0) > 0);
 
-          if (closestChar.helmetHits <= 0) {
-            closestChar.hasHelmet = false;
-            if (closestChar.visuals) closestChar.visuals.hasHelmet = false;
-            spawnKnockedHelmet(hitPtX, hitPtY - 4, b.vx, b.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
-            triggerScreenShake(3.2);
-            if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-              window.syncArmorDevButtons();
-            }
+        if (hasImmunity) {
+          // Krótkie okno ochronne po zestrzeleniu hełmu: wygasza kolejne kule z tej samej salwy
+          damageMultiplier = 0.35;
+          helmetAbsorbed = true;
+          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 5);
+        } else if (hasHelm) {
+          // Hełm chroni przed headshotem na krótko: pochłania zabójczą siłę i odlatuje z głowy
+          helmetAbsorbed = true;
+          damageMultiplier = 0.40; // Redukcja zabójczego one-shota
+
+          closestChar.hasHelmet = false;
+          if (closestChar.visuals) closestChar.visuals.hasHelmet = false;
+          closestChar.helmetHits = 0;
+          closestChar.headshotImmunityTimer = 22; // ~360ms krótkiej osłony przed serią
+
+          spawnKnockedHelmet(hitPtX, hitPtY - 4, b.vx, b.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
+          triggerScreenShake(3.2);
+          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
+
+          if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+            window.syncArmorDevButtons();
           }
         } else {
-          damageMultiplier = 2.5; // Trafienie w nieosłoniętą głowę: 250% obrażeń!
+          // Czyste trafienie w nieosłoniętą głowę: najwięcej obrażeń (2.25x)!
+          damageMultiplier = 2.25;
         }
-      } else if (isLegshot) {
-        damageMultiplier = 0.75; // Rany nóg: 75% obrażeń
+      } else if (isTorsoShot) {
+        // 2. TORS (TORSO SHOT) - DRUGIE W HIERARCHII OBRAŻEŃ (1.25x):
+        damageMultiplier = 1.25;
+      } else {
+        // 3. NOGI / KOŃCZYNY (LEG SHOT) - NAJMNIEJ OBRAŻEŃ (0.75x):
+        damageMultiplier = 0.75;
       }
 
       let totalDamage = Math.round(b.damage * damageMultiplier);
 
-      // 2. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA): pochłania 55% obrażeń aż do zużycia, po czym znika
+      // 4. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA):
+      // Kamizelka posiada swoje własne HP nałożone na HP posiadacza i chroni TYLKO od obrażeń na tors!
       if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
-        if (closestChar.vestHp === undefined || closestChar.vestHp <= 0) {
-          closestChar.vestHp = 50;
+        if (closestChar.vestHp === undefined) {
+          closestChar.vestHp = 60;
+          closestChar.vestMaxHp = 60;
         }
-        vestAbsorbed = true;
-        const absorbed = Math.ceil(totalDamage * 0.55);
-        totalDamage = Math.max(1, totalDamage - absorbed);
-        closestChar.vestHp -= absorbed;
-        spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 6);
 
-        if (closestChar.vestHp <= 0) {
-          closestChar.vestHp = 0;
-          closestChar.hasVest = false;
-          if (closestChar.visuals) closestChar.visuals.hasVest = false;
-          spawnVestShreds(hitPtX, hitPtY, b.vx, b.vy, closestChar.visuals?.vestColor || '#18181b');
-          triggerScreenShake(2.4);
-          if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
-            window.syncArmorDevButtons();
+        if (closestChar.vestHp > 0) {
+          vestAbsorbed = true;
+          spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
+
+          if (closestChar.vestHp >= totalDamage) {
+            // Kamizelka przyjmuje CAŁOŚĆ obrażeń na tors – HP posiadacza nienaruszone!
+            closestChar.vestHp -= totalDamage;
+            totalDamage = 0;
+          } else {
+            // Kamizelka pochłania ile ma, reszta przechodzi na HP posiadacza
+            totalDamage -= closestChar.vestHp;
+            closestChar.vestHp = 0;
+          }
+
+          if (closestChar.vestHp <= 0) {
+            closestChar.vestHp = 0;
+            closestChar.hasVest = false;
+            if (closestChar.visuals) closestChar.visuals.hasVest = false;
+            spawnVestShreds(hitPtX, hitPtY, b.vx, b.vy, closestChar.visuals?.vestColor || '#18181b');
+            triggerScreenShake(2.5);
+            if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+              window.syncArmorDevButtons();
+            }
           }
         }
       }

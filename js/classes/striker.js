@@ -29,9 +29,11 @@ export const StrikerClass = {
     forearmLen: 13.5 // Silne przedramiona do kontroli odrzutu i walki (Raptor 13, Enforcer 15)
   },
 
-  // 2. Statystyki fizyczne i ruchowe
+  // 2. Statystyki fizyczne i ruchowe (Klasa Średnia: zbalansowane HP i siła ognia)
   // Biega wolniej niż Raptor (sprintMax 6.6 vs 7.4 Raptora), ale dysponuje rakietowymi zrywami
   stats: {
+    hp: 100,               // Zbalansowane zdrowie szturmowca: 100 HP
+    maxHp: 100,
     walkMax: 2.1,          // Wolniejszy chód niż Raptor (2.4)
     jogMax: 4.0,           // Wolniejszy trucht niż Raptor (4.6)
     sprintMax: 6.6,        // Wolniejszy bieg podstawowy niż Raptor (7.4)
@@ -49,7 +51,7 @@ export const StrikerClass = {
     jetMax: 100,           // 100 pkt paliwa = dokładnie 2 Super Dashe w powietrzu (po 50 pkt każdy)
     spartanKnockback: 12.0,
     spartanStagger: 18,
-    spartanDamage: 12,
+    spartanDamage: 14,
     kickForce: 1.25,
     kickForceMultiplier: 1.25,
     knockback: 1.10,

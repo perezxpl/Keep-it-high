@@ -247,11 +247,11 @@ window.throwTacticalGrenade = () => throwTacticalGrenade(player);
 export function startRound() {
   resetArena();
   if (player) {
-    player.hp = 100;
+    player.hp = player.maxHp || player.currentClass?.stats?.hp || 100;
     player.isDead = false;
   }
   if (bot && bot.active) {
-    bot.hp = 100;
+    bot.hp = bot.maxHp || bot.currentClass?.stats?.hp || 100;
     bot.isDead = false;
   }
   resetBallToPlayer(player, GROUND_Y);

@@ -19,8 +19,10 @@ export const RaptorClass = {
     forearmLen: 13
   },
 
-  // 2. Statystyki fizyczne i ruchowe
+  // 2. Statystyki fizyczne i ruchowe (Klasa Lekka: wysoka zwinność, niższe HP)
   stats: {
+    hp: 85,                 // Lekki pancerz zwiadowczy: 85 HP
+    maxHp: 85,
     walkMax: 2.4,
     jogMax: 4.6,
     sprintMax: 7.4,

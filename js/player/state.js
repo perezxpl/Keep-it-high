@@ -64,6 +64,8 @@ export const DEFAULT_BODY = {
 };
 
 export const DEFAULT_STATS = {
+  hp: 100,
+  maxHp: 100,
   walkMax: 2.2,
   jogMax: 4.2,
   sprintMax: 6.8,
@@ -126,8 +128,14 @@ export function createPlayerInstance(overrides = {}) {
     jetFuel: mergedClass.stats.jetMax,
     jetMax: mergedClass.stats.jetMax,
 
-    hp: 100,
-    maxHp: 100,
+    hp: mergedClass.stats.hp || 100,
+    maxHp: mergedClass.stats.maxHp || mergedClass.stats.hp || 100,
+    hasVest: false,
+    vestHp: 0,
+    vestMaxHp: 60,
+    hasHelmet: false,
+    helmetHits: 1,
+    headshotImmunityTimer: 0,
     currentWeapon: WEAPONS.AK47,
     isHolstered: (activeArenaId === 'ARENA_1'),
     holsterWeight: (activeArenaId === 'ARENA_1' ? 1.0 : 0.0),
@@ -414,6 +422,12 @@ export function setPlayerClass(newClass, p = player) {
 
   p.jetFuel = p.currentClass.stats.jetMax;
   p.jetMax = p.currentClass.stats.jetMax;
+
+  const oldMax = p.maxHp || 100;
+  const newMax = merged.stats.maxHp || merged.stats.hp || 100;
+  const hpRatio = (typeof p.hp === 'number' && oldMax > 0) ? Math.min(1.0, p.hp / oldMax) : 1.0;
+  p.maxHp = newMax;
+  p.hp = Math.round(newMax * hpRatio);
 
   if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.applyAppearanceForClass === 'function') {
     window.uiManager.applyAppearanceForClass(resolvedClass.id, p);

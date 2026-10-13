@@ -35,8 +35,10 @@ export const EnforcerClass = {
     forearmLen: 15    // Gruby, twardy szkielet przedramienia (domyślnie 13)
   },
 
-  // 2. FIZYKA I KINETYKA CIĘŻKIEJ MASY
+  // 2. FIZYKA I KINETYKA CIĘŻKIEJ MASY (Klasa Ciężka: potężne HP 140, tytaniczna siła ciosu)
   stats: {
+    hp: 140,                // Najtwardszy pancerz biologiczny i masa: 140 HP
+    maxHp: 140,
     walkMax: 1.8,
     jogMax: 3.4,
     sprintMax: 5.6,
@@ -49,16 +51,16 @@ export const EnforcerClass = {
     hitReach: 64,           // Duży zasięg dzięki długości kończyn
     whiffReach: 94,
     baseKickSpeed: 30.0,
-    kickPowerMult: 1.52,    // Najpotężniejsze uderzenie w grze
+    kickPowerMult: 1.65,    // Najpotężniejsze uderzenie w grze
     spinMult: 0.30,         // Prawie czysta trajektoria balistyczna
     jetMax: 0,              // Brak plecaka odrzutowego (posiada Tłoki Pneumatyczne na łydkach)
-    spartanKnockback: 18.0, // Potężny odrzut kinetyczny i twardy knockback
+    spartanKnockback: 19.0, // Potężny odrzut kinetyczny i twardy knockback
     spartanStagger: 28,     // Długi czas oszołomienia przeciwnika (~460ms)
-    spartanDamage: 18,
-    kickForce: 1.15,
-    kickForceMultiplier: 1.15,
-    knockback: 1.50,
-    knockbackMultiplier: 1.50,
+    spartanDamage: 24,      // Druzgocący cios kolosa (24 pkt obrażeń)
+    kickForce: 1.70,        // Najwyższa siła uderzenia wręcz i piłki
+    kickForceMultiplier: 1.70,
+    knockback: 1.65,
+    knockbackMultiplier: 1.65,
     kickCooldown: 0.70
   },
 
