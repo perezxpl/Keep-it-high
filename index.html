@@ -80,7 +80,7 @@
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v162_remove_emojis_streamline_ui",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v162_remove_emojis_streamline_ui",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v162_remove_emojis_streamline_ui",
-      "./js/uiManager.js": "./js/uiManager.js?v=v164_remove_redundant_menu_controls_btn",
+      "./js/uiManager.js": "./js/uiManager.js?v=v165_secure_reset_stats",
       "./js/weapons.js": "./js/weapons.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -368,9 +368,6 @@
                 <span class="card-id-text">KARTA GRACZA</span>
               </div>
               <div class="player-card-header-actions">
-                <button id="menu-btn-ranks-preview" class="player-card-tool-btn player-card-ranks-btn" type="button" title="Zobacz stopnie wojskowe i zasady zdobywania XP">
-                  <span class="tool-btn-text">RANGI & XP</span>
-                </button>
                 <button id="menu-btn-reset-stats" class="player-card-tool-btn" type="button" title="Resetuj statystyki bojowe">
                   <span class="tool-btn-icon">↺</span>
                   <span class="tool-btn-text">RESET</span>
@@ -492,7 +489,6 @@
             <div class="arena-grid">
               <!-- ARENA 1 -->
               <div class="arena-card" data-arena="ARENA_1">
-                <div class="arena-badge">SEKTOR 01</div>
                 <div class="arena-name">NEONOWE MIASTO</div>
                 <div class="arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i miejski klimat.</div>
                 <button class="btn-select-arena">WYBIERZ</button>
@@ -500,11 +496,10 @@
 
               <!-- ARENA 2 -->
               <div class="arena-card active" data-arena="ARENA_2">
-                <div class="arena-badge">SEKTOR X // DEATHMATCH 5 MIN</div>
                 <div class="arena-preview-container">
-                  <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny 2: Toksyczna Rafineria (Sektor X)" class="arena-preview-img" loading="lazy">
+                  <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny 2: Toksyczna Rafineria" class="arena-preview-img" loading="lazy">
                   <div class="arena-preview-overlay">
-                    <span class="arena-preview-tag">SEKTOR X // PODGLĄD</span>
+                    <span class="arena-preview-tag">PODGLĄD</span>
                   </div>
                 </div>
                 <div class="arena-name">TOKSYCZNA RAFINERIA</div>
@@ -533,7 +528,6 @@
 
               <!-- ARENA 3 -->
               <div class="arena-card" data-arena="ARENA_3">
-                <div class="arena-badge">SEKTOR 03</div>
                 <div class="arena-name">TAJEMNICZA DŻUNGLA</div>
                 <div class="arena-desc">Gęsta roślinność, organiczne platformy i dzikie pole walki.</div>
                 <button class="btn-select-arena">WYBIERZ</button>
@@ -904,7 +898,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v159_fix_ramps_and_bastions_drop_through"></script>
+  <script type="module" src="./js/main.js?v=v165_secure_reset_stats"></script>
 </body>
 
 </html>

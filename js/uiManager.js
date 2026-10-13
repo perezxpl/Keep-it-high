@@ -847,16 +847,19 @@ export const uiManager = {
 
   bindDOM() {
     // -------------------------------------------------------------------------
-    // KARTA GRACZA: Resetowanie statystyk
+    // KARTA GRACZA: Resetowanie statystyk (zabezpieczone potwierdzeniem)
     // -------------------------------------------------------------------------
-    const resetStatsBtn = document.getElementById('menu-btn-reset-stats');
+    const resetStatsBtn = document.getElementById('menu-btn-reset-stats') || document.getElementById('btn-reset-stats');
     if (resetStatsBtn) {
       resetStatsBtn.addEventListener('mouseenter', () => playUiHover());
-      resetStatsBtn.addEventListener('click', () => {
+      resetStatsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         playUiClick();
-        if (confirm('Czy na pewno chcesz zresetować swoje statystyki bojowe (zabójstwa, mecze, bramki)?')) {
-          resetPlayerStats();
-          this.updateMenuRankDisplay();
+        const confirmed = window.confirm('Czy na pewno chcesz zresetować wszystkie statystyki i postęp rang? Tej operacji nie można cofnąć.');
+        if (confirmed) {
+          localStorage.removeItem('fragball_xp');
+          localStorage.removeItem('player_stats');
+          location.reload();
         }
       });
     }
@@ -868,12 +871,6 @@ export const uiManager = {
       playUiClick();
       this.openRanksModal();
     };
-
-    const ranksPreviewBtn = document.getElementById('menu-btn-ranks-preview');
-    if (ranksPreviewBtn) {
-      ranksPreviewBtn.addEventListener('mouseenter', () => playUiHover());
-      ranksPreviewBtn.addEventListener('click', handleOpenRanksModal);
-    }
 
     const rankClickableEl = document.getElementById('menu-player-rank-clickable');
     if (rankClickableEl) {
