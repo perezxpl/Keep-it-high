@@ -139,7 +139,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    isDropThrough: true,
+    isDropThrough: false,
     x: 880,
     w: 680,
     y: 420,
@@ -163,7 +163,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    isDropThrough: true,
+    isDropThrough: false,
     x: 2440,
     w: 680,
     y: 420,
@@ -176,7 +176,7 @@ export const ARENA_2_PLATFORMS = [
     ]
   },
 
-  // 4. [ŚRODEK] - Centralny hub taktyczny (kratownica drop-through, idealnie wyśrodkowany X: 1560-2440)
+  // 4. [ŚRODEK] - Centralny hub taktyczny (kratownica nad jeziorem kwasu, idealnie wyśrodkowany X: 1560-2440)
   {
     id: 'center_hub',
     name: 'Centralny Hub Taktyczny',
@@ -186,7 +186,7 @@ export const ARENA_2_PLATFORMS = [
     h: 26,
     thickness: 26,
     isPlatform: true,
-    isDropThrough: true,
+    isDropThrough: false,
     oneWay: true
   },
 
@@ -203,7 +203,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    isDropThrough: true,
+    isDropThrough: false,
     x: 900,
     w: 660,
     y: 720,
@@ -227,7 +227,7 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
-    isDropThrough: true,
+    isDropThrough: false,
     x: 2440,
     w: 660,
     y: 720,
@@ -240,7 +240,7 @@ export const ARENA_2_PLATFORMS = [
     ]
   },
 
-  // 6. DOLNE BASTIONY C i D (Pozycje obronne nad kwasem)
+  // 6. DOLNE BASTIONY C i D (Pozycje obronne bezpośrednio nad kwasem)
   {
     id: 'plat_C_bot_left',
     name: 'Bastion Dolny C (Lewy)',
@@ -250,7 +250,7 @@ export const ARENA_2_PLATFORMS = [
     h: 32,
     thickness: 32,
     isPlatform: true,
-    isDropThrough: true,
+    isDropThrough: false,
     oneWay: true
   },
   {
@@ -262,7 +262,7 @@ export const ARENA_2_PLATFORMS = [
     h: 32,
     thickness: 32,
     isPlatform: true,
-    isDropThrough: true,
+    isDropThrough: false,
     oneWay: true
   }
 ];

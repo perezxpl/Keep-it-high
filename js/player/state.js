@@ -4,8 +4,8 @@
 // =========================================================================
 
 import { CONFIG, START_X } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js';
-import { spawnGroundPuff, triggerScreenShake } from '../world.js';
+import { customObstacles } from '../obstacles.js';
+import { spawnGroundPuff, triggerScreenShake, activeArenaId } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './renderer.js';
@@ -137,8 +137,8 @@ export function createPlayerInstance(overrides = {}) {
     helmetHits: 1,
     headshotImmunityTimer: 0,
     currentWeapon: WEAPONS.AK47,
-    isHolstered: (activeArenaId === 'ARENA_1'),
-    holsterWeight: (activeArenaId === 'ARENA_1' ? 1.0 : 0.0),
+    isHolstered: (typeof activeArenaId !== 'undefined' ? (activeArenaId === 'ARENA_1') : true),
+    holsterWeight: (typeof activeArenaId !== 'undefined' && activeArenaId !== 'ARENA_1' ? 0.0 : 1.0),
     shootCooldown: 0,
     grenadeCooldown: 0,
     grenadeMaxCooldown: 3.5, // 3.5 sekundy czasu odnowienia

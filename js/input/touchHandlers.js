@@ -46,7 +46,7 @@ export function updateDoubleFlickDetection(axisY) {
   const isCurrentPlatDropThrough = !!(
     player.onGround &&
     player.currentPlatform &&
-    (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk' || player.currentPlatform.type === 'cyber_catwalk' || player.currentPlatform.type === 'floating_hex')
+    player.currentPlatform.isDropThrough === true
   );
 
   const doDropThrough = () => {

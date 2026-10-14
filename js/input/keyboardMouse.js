@@ -328,12 +328,16 @@ export function initKeyboardMouseHandlers({
     }
 
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+      if (e.repeat) {
+        keys.down = true;
+        return;
+      }
       const now = performance.now();
       const isDoublePress = (now - inputSession.lastSPressTime < 280);
       const isCurrentPlatDropThrough = !!(
         player.onGround &&
         player.currentPlatform &&
-        (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk' || player.currentPlatform.type === 'cyber_catwalk' || player.currentPlatform.type === 'floating_hex')
+        player.currentPlatform.isDropThrough === true
       );
 
       if (isDoublePress && isCurrentPlatDropThrough) {

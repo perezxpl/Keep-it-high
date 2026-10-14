@@ -49,7 +49,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   if (wantDrop && p.onGround && p.currentPlatform) {
     const curPlat = p.currentPlatform;
-    const isDropAllowed = !!(curPlat.oneWay || curPlat.isDropThrough || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex');
+    const isDropAllowed = !!(curPlat.isDropThrough === true || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex');
     if (isDropAllowed) {
       p.dropThroughPlatform = curPlat;
       p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 22);

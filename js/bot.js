@@ -185,8 +185,9 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
  * lub null jeśli poniżej znajduje się śmiertelne niebezpieczeństwo (kwas w A2, głęboka rzeka w A3, przepaść).
  */
 export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
-  const isA2 = (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X' || arenaId === 'ARENA_2_PANDORA');
-  const isA3 = (arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY');
+  const effectiveId = arenaId || (typeof activeArenaId !== 'undefined' ? activeArenaId : '');
+  const isA2 = (effectiveId === 'ARENA_2' || effectiveId === 'arena-2' || effectiveId === 'ARENA_2_SECTOR_X' || effectiveId === 'ARENA_2_PANDORA');
+  const isA3 = (effectiveId === 'ARENA_3' || effectiveId === 'arena-3' || effectiveId === 'ARENA_FOUNDRY');
 
   if (isA2) {
     const hazardY = (ACID_SURGE_SYSTEM && typeof ACID_SURGE_SYSTEM.currentY === 'number')
@@ -203,7 +204,7 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
           if (plat.isSlope && typeof getPlatformSurfaceY === 'function') {
             topY = getPlatformSurfaceY(plat, x, 1600);
           }
-          if (typeof topY === 'number' && topY >= feetY - 6 && topY < closestTopY && topY < hazardY - 35) {
+          if (typeof topY === 'number' && topY >= feetY - 32 && topY < closestTopY && topY < hazardY - 35) {
             closestTopY = topY;
           }
         }
@@ -612,7 +613,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
     // Bezpieczny zeskok z kładki (drop-through) – wyłącznie jeśli pod spodem jest stabilny grunt
     if (targetY > botTarget.y + 70) {
-      if (botTarget.onGround && botTarget.currentPlatform && (botTarget.currentPlatform.oneWay || botTarget.currentPlatform.isDropThrough || botTarget.currentPlatform.type === 'catwalk' || botTarget.currentPlatform.type === 'cyber_catwalk')) {
+      if (botTarget.onGround && botTarget.currentPlatform && (botTarget.currentPlatform.isDropThrough === true || botTarget.currentPlatform.type === 'catwalk' || botTarget.currentPlatform.type === 'cyber_catwalk')) {
         const platThick = botTarget.currentPlatform.thickness || botTarget.currentPlatform.h || 20;
         const testFeetY = botTarget.y + botTarget.h + platThick + 14;
         const safeBelow = getSafeSurfaceBelow(botCenterX, testFeetY, currentArenaId);

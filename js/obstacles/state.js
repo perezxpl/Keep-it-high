@@ -15,8 +15,9 @@ import {
 } from '../world.js';
 import { clearExplosionParticles } from '../particles.js';
 
-const _arenaResetCallbacks = [];
+var _arenaResetCallbacks = [];
 export function registerArenaResetCallback(cb) {
+  if (!_arenaResetCallbacks) _arenaResetCallbacks = [];
   if (typeof cb === 'function' && !_arenaResetCallbacks.includes(cb)) {
     _arenaResetCallbacks.push(cb);
   }
