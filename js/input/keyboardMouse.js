@@ -336,7 +336,7 @@ export function initKeyboardMouseHandlers({
         (player.currentPlatform.oneWay || player.currentPlatform.isDropThrough || player.currentPlatform.type === 'catwalk' || player.currentPlatform.type === 'cyber_catwalk' || player.currentPlatform.type === 'floating_hex')
       );
 
-      if (isDoublePress || isCurrentPlatDropThrough) {
+      if (isDoublePress && isCurrentPlatDropThrough) {
         player.dropThroughTimer = 22;
         player.dropThroughPlatform = player.currentPlatform || null;
         if (player.currentPlatform) {

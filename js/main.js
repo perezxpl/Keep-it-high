@@ -525,31 +525,22 @@ function update() {
     if (networkState.isHost || !networkState.isConnected) {
       updateBall(effectiveGroundY);
       checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
+      checkPlayerPlatformLanding(player, effectiveGroundY);
       if (remotePlayer.active) {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      for (const b of activeBots) {
-        checkObstacleCollisions(ball, effectiveGroundY, player, b);
-        if (remotePlayer.active) checkObstacleCollisions(ball, effectiveGroundY, remotePlayer, b);
-      }
-      if (activeBots.length === 0) {
-        checkObstacleCollisions(ball, effectiveGroundY, player, null);
-      }
+      checkObstacleCollisions(ball, effectiveGroundY, null, null);
       sendBallState(ball);
     } else {
       // Klient – autorytatywna pozycja piłki z sieci P2P
       checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
+      checkPlayerPlatformLanding(player, effectiveGroundY);
       if (remotePlayer.active) {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      for (const b of activeBots) {
-        checkObstacleCollisions(ball, effectiveGroundY, player, b);
-      }
-      if (activeBots.length === 0) {
-        checkObstacleCollisions(ball, effectiveGroundY, player, null);
-      }
+      checkObstacleCollisions(ball, effectiveGroundY, null, null);
     }
   } else {
     // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
@@ -560,15 +551,12 @@ function update() {
       ball.vx = 0;
       ball.vy = 0;
     }
-    for (const b of activeBots) {
-      checkObstacleCollisions(null, effectiveGroundY, player, b);
-    }
-    if (activeBots.length === 0) {
-      checkObstacleCollisions(null, effectiveGroundY, player, null);
-    }
+    checkPlayerPlatformLanding(player, effectiveGroundY);
     if (remotePlayer.active) {
       checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
+    checkObstacleCollisions(null, effectiveGroundY, null, null);
+  }
 
     // Zliczanie fragów poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
     if (!isA2Active && !isA3Active) {

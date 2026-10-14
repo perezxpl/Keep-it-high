@@ -68,9 +68,7 @@ export function updateDoubleFlickDetection(axisY) {
   const isStrongDownIntent = (axisY > 0.65 && Math.abs((leftStick && leftStick.axisX) || 0) < 0.72);
 
   if (isStrongDownIntent) {
-    if (isCurrentPlatDropThrough) {
-      doDropThrough();
-    } else if (flickFirstDownTime > 0 && flickReturnedToCenter) {
+    if (flickFirstDownTime > 0 && flickReturnedToCenter) {
       const dt = now - flickFirstDownTime;
       if (dt >= 80 && dt <= 350) {
         if (isCurrentPlatDropThrough) {

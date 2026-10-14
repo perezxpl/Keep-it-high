@@ -1047,7 +1047,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))
         : true;
 
-      if (isSupported && player.y >= groundFloorLimit && player.y <= groundFloorLimit + 30) {
+      if (isSupported && player.y >= groundFloorLimit && player.y <= groundFloorLimit + Math.max(30, player.vy + 16)) {
         const impactVy = player.vy;
         player.y = groundFloorLimit;
         player.vy = 0;
@@ -1060,6 +1060,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.jetpackKeyNeutralized = true;
         player.airVx = 0;
         player.currentGroundY = GROUND_Y;
+        player.dropThroughTimer = 0;
+        player.dropThroughPlatform = null;
+
+        if (player.rocketBoots?.dashing && player.rocketBoots.dashType === 'AIR') {
+          player.rocketBoots.dashing = false;
+          player.rocketBoots.dashType = 'NONE';
+          player.rocketBoots.dashTimer = 0;
+        }
 
         if (impactVy > 1.8 && !(player.staggerTimer > 0) && !player.isSliding) {
           player.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);

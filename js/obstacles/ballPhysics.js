@@ -15,6 +15,7 @@ import { recordGoal } from '../progression.js';
 import { normalizeObstacleType } from './palette.js';
 import { spawnAltarShockwave } from './renderer.js';
 import { checkPlayerPlatformLanding } from './playerPhysics.js';
+import { getActiveBots } from '../bot.js';
 import {
   customObstacles,
   _activePlayer,
@@ -541,9 +542,19 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         const pCenterY = p ? p.y + p.h / 2 : Infinity;
         const distP = Math.hypot(ball.x - pCenterX, ball.y - pCenterY);
 
-        const bCenterX = (_activeBot && _activeBot.active) ? _activeBot.x + _activeBot.w / 2 : Infinity;
-        const bCenterY = (_activeBot && _activeBot.active) ? _activeBot.y + _activeBot.h / 2 : Infinity;
-        const distB = Math.hypot(ball.x - bCenterX, ball.y - bCenterY);
+        let nearestBot = null;
+        let distB = Infinity;
+        const activeBotsList = (typeof getActiveBots === 'function') ? getActiveBots() : (_activeBot ? [_activeBot] : []);
+        for (const b of activeBotsList) {
+          if (!b || !b.active) continue;
+          const bcx = b.x + b.w / 2;
+          const bcy = b.y + b.h / 2;
+          const d = Math.hypot(ball.x - bcx, ball.y - bcy);
+          if (d < distB) {
+            distB = d;
+            nearestBot = b;
+          }
+        }
 
         const isNear = distP < 55 || distB < 55;
         const isKicking = p && p.kickState === 'SWING' && distP < 85;
@@ -552,7 +563,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
           arena1State.waitingForKickoff = false;
           triggerScreenShake(7);
           ball.vy = -6.2;
-          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 6.5) : ((_activeBot?.facing || -1) * 6.5);
+          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 6.5) : ((nearestBot?.facing || -1) * 6.5);
           ball.spin = (ball.vx > 0 ? 1 : -1) * 0.6;
           spawnAltarShockwave(ball.x, ball.y);
         }
