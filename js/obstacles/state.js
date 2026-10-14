@@ -33,7 +33,6 @@ import arena2, {
 } from '../arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState } from '../deathmatch/index.js';
-import { getActiveBots } from '../bot.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -59,7 +58,7 @@ export function setActiveEntities(ball, p, botObj) {
   if (botObj) _activeBot = botObj;
 }
 
-let _onSpawnHitSparks = null;
+var _onSpawnHitSparks = null;
 export function registerHitSparkCallback(fn) { _onSpawnHitSparks = fn; }
 export function spawnObstacleSparks(x, y, nx = 0, ny = -1, count = 4) {
   if (typeof _onSpawnHitSparks === 'function') {
@@ -533,6 +532,16 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
   const groundY = (typeof GROUND_Y === 'number' && GROUND_Y > 0) ? GROUND_Y : 1000;
   const targetBot = botObj || _activeBot;
+  const getBotsList = () => {
+    if (Array.isArray(botObj)) return botObj;
+    if (botObj) return [botObj];
+    if (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') {
+      const wBots = window.getActiveBots();
+      if (Array.isArray(wBots) && wBots.length > 0) return wBots;
+    }
+    return targetBot ? [targetBot] : [];
+  };
+  const activeBots = getBotsList();
 
   if (activeArenaId === 'ARENA_3') {
     resetDeathmatchState();
@@ -561,7 +570,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
-    const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (targetBot ? [targetBot] : []);
     activeBots.forEach((b, idx) => {
       b.active = true;
       const baseSpawnX = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3350;
@@ -603,8 +611,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
-    const dmBots = (typeof getActiveBots === 'function') ? getActiveBots() : (targetBot ? [targetBot] : []);
-    dmBots.forEach((b, idx) => {
+    activeBots.forEach((b, idx) => {
       b.active = true;
       const spawnsList = currentArena.spawns || [];
       const sIdx = (spawnsList.length > 1) ? ((idx % (spawnsList.length - 1)) + 1) : 1;
@@ -637,7 +644,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
 
     // Inicjalizacja 5-minutowego Deathmatch na Arenie 2
-    initDeathmatch(playerObj, dmBots, null);
+    initDeathmatch(playerObj, activeBots, null);
   } else {
     resetDeathmatchState();
     GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
@@ -667,8 +674,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
-    const a1Bots = (typeof getActiveBots === 'function') ? getActiveBots() : (targetBot ? [targetBot] : []);
-    a1Bots.forEach((b, idx) => {
+    activeBots.forEach((b, idx) => {
       const baseX = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3360;
       const baseY = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 580;
       b.x = baseX + (idx * 40);

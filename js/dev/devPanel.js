@@ -108,7 +108,8 @@ export const toggleArena = (e) => {
   } else {
     nextArena = 'ARENA_1';
   }
-  switchArena(nextArena, player, bot, ball);
+  const currentBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') ? window.getActiveBots() : bot;
+  switchArena(nextArena, player, currentBots, ball);
   window.activeArenaId = activeArenaId;
   sendArenaSwitch(nextArena);
   syncDevArenaButtonUI();
@@ -280,7 +281,8 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
 
   window.toggleArena = toggleArena;
   window.switchArena = (id) => {
-    switchArena(id, player, bot, ball);
+    const currentBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') ? window.getActiveBots() : bot;
+    switchArena(id, player, currentBots, ball);
     window.activeArenaId = activeArenaId;
     sendArenaSwitch(id);
     syncDevArenaButtonUI();

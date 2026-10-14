@@ -136,10 +136,13 @@ if (canvas) {
 resize(player);
 updateButtonLayout(W, H);
 setActiveBot(bot);
+if (typeof window !== 'undefined') {
+  window.getActiveBots = getActiveBots;
+}
 // Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=3 / ?arena=2 / arena-1)
 const initialArena = getActiveArena();
 const initialArenaId = initialArena?.id || 'arena-1';
-switchArena(initialArenaId, player, bot, ball);
+switchArena(initialArenaId, player, getActiveBots(), ball);
 window.activeArenaId = activeArenaId;
 syncDevArenaButtonUI();
 syncDevBotButtonUI();
