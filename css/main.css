@@ -2555,14 +2555,14 @@ button, .dev-btn {
 .creator-modal-box {
   position: relative;
   width: 100%;
-  max-width: 680px;
-  max-height: 92vh;
-  max-height: 92dvh;
+  max-width: 760px;
+  max-height: 90vh;
+  max-height: 90dvh;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1.5px solid rgba(0, 229, 255, 0.45);
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: 0 0 45px rgba(0, 229, 255, 0.25), 0 25px 50px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
@@ -2578,199 +2578,12 @@ button, .dev-btn {
   overflow: hidden;
 }
 
-/* 1. Ekran wyboru klasy w Kreatorze Postaci */
-.creator-class-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  padding: 16px 18px;
-  flex: 1;
-  align-items: stretch;
-  min-height: 0;
-  overflow-y: auto;
-}
 
-.creator-class-select-card {
-  position: relative;
-  background: rgba(15, 23, 42, 0.90);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 16px 14px 14px 14px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
-  flex-direction: column;
-  color: #f8fafc;
-  outline: none;
-  overflow: hidden;
-}
-
-.creator-class-select-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
-}
-
-.creator-class-select-card .cc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.creator-class-select-card .cc-badge {
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.creator-class-select-card .cc-icon {
-  font-size: 20px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-}
-
-.creator-class-select-card .cc-name {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  line-height: 1.1;
-  color: #ffffff;
-}
-
-.creator-class-select-card .cc-role {
-  font-family: 'Orbitron', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  color: #94a3b8;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-  margin-bottom: 8px;
-}
-
-.creator-class-select-card .cc-desc {
-  font-size: 11px;
-  color: #cbd5e1;
-  line-height: 1.35;
-  flex: 1;
-  margin-bottom: 12px;
-}
-
-.creator-class-select-card .cc-gear-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(2, 6, 23, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 6px 9px;
-  margin-bottom: 12px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #f1f5f9;
-}
-
-.creator-class-select-card .cc-action {
-  font-family: 'Orbitron', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-align: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-/* Wariant Raptor */
-.creator-class-select-card.card-raptor {
-  border-color: rgba(16, 185, 129, 0.35);
-}
-.creator-class-select-card.card-raptor .cc-badge,
-.creator-class-select-card.card-raptor .cc-name {
-  color: #34d399;
-}
-.creator-class-select-card.card-raptor .cc-gear-tag {
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #a7f3d0;
-}
-.creator-class-select-card.card-raptor .cc-action {
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(16, 185, 129, 0.5);
-  color: #34d399;
-}
-.creator-class-select-card.card-raptor:hover {
-  border-color: #10b981;
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0.98));
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
-}
-.creator-class-select-card.card-raptor:hover .cc-action {
-  background: #10b981;
-  color: #022c22;
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
-}
-
-/* Wariant Striker */
-.creator-class-select-card.card-striker {
-  border-color: rgba(56, 189, 248, 0.35);
-}
-.creator-class-select-card.card-striker .cc-badge,
-.creator-class-select-card.card-striker .cc-name {
-  color: #38bdf8;
-}
-.creator-class-select-card.card-striker .cc-gear-tag {
-  border-color: rgba(56, 189, 248, 0.4);
-  color: #bae6fd;
-}
-.creator-class-select-card.card-striker .cc-action {
-  background: rgba(56, 189, 248, 0.18);
-  border: 1px solid rgba(56, 189, 248, 0.5);
-  color: #38bdf8;
-}
-.creator-class-select-card.card-striker:hover {
-  border-color: #38bdf8;
-  background: linear-gradient(145deg, rgba(56, 189, 248, 0.18), rgba(15, 23, 42, 0.98));
-  box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
-}
-.creator-class-select-card.card-striker:hover .cc-action {
-  background: #38bdf8;
-  color: #082f49;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
-}
-
-/* Wariant Enforcer */
-.creator-class-select-card.card-enforcer {
-  border-color: rgba(239, 68, 68, 0.35);
-}
-.creator-class-select-card.card-enforcer .cc-badge,
-.creator-class-select-card.card-enforcer .cc-name {
-  color: #f87171;
-}
-.creator-class-select-card.card-enforcer .cc-gear-tag {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #fecaca;
-}
-.creator-class-select-card.card-enforcer .cc-action {
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #f87171;
-}
-.creator-class-select-card.card-enforcer:hover {
-  border-color: #ef4444;
-  background: linear-gradient(145deg, rgba(239, 68, 68, 0.18), rgba(15, 23, 42, 0.98));
-  box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
-}
-.creator-class-select-card.card-enforcer:hover .cc-action {
-  background: #ef4444;
-  color: #450a0a;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
-}
 
 .creator-body {
   display: flex;
-  gap: 16px;
-  padding: 14px 18px;
+  gap: 12px;
+  padding: 10px 14px;
   align-items: stretch;
   flex: 1;
   min-height: 0;
@@ -2781,8 +2594,8 @@ button, .dev-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 200px;
+  justify-content: flex-start;
+  width: 170px;
   flex-shrink: 0;
   min-height: 0;
   gap: 8px;
@@ -2796,9 +2609,9 @@ button, .dev-btn {
 
 .creator-class-tab-btn {
   flex: 1;
-  padding: 6px 0;
+  padding: 5px 0;
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.5px;
   text-align: center;
@@ -2826,17 +2639,17 @@ button, .dev-btn {
 
 .creator-preview-frame {
   position: relative;
-  width: 200px;
-  height: 220px;
-  max-height: calc(92dvh - 140px);
-  background: radial-gradient(circle at 50% 60%, rgba(16, 185, 129, 0.10), rgba(2, 6, 23, 0.92));
+  width: 170px;
+  height: 210px;
+  max-height: calc(90dvh - 130px);
+  background: radial-gradient(circle at 50% 60%, rgba(0, 229, 255, 0.08), rgba(2, 6, 23, 0.95));
   border: 1.5px solid rgba(0, 229, 255, 0.35);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.75);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.75);
 }
 
 #creator-preview-canvas {
@@ -2852,43 +2665,43 @@ button, .dev-btn {
   flex-direction: column;
   background: rgba(2, 6, 23, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 8px 10px;
   min-height: 0;
   overflow-y: auto;
-  gap: 10px;
+  gap: 8px;
 }
 
 .creator-tabs-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   flex-shrink: 0;
 }
 
 .creator-tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 16px;
+  gap: 6px;
+  padding: 6px 11px;
   font-family: 'Orbitron', monospace;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
   color: #94a3b8;
   background: rgba(15, 23, 42, 0.7);
   border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer !important;
   transition: all 0.16s ease;
   user-select: none;
 }
 
 .creator-tab-btn .btn-icon {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
 }
 
@@ -2903,16 +2716,16 @@ button, .dev-btn {
   color: #00e5ff;
   background: rgba(0, 229, 255, 0.18);
   border-color: #00e5ff;
-  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
 }
 
 .creator-tab-pane {
   display: none;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .creator-tab-pane.active {
@@ -2922,39 +2735,42 @@ button, .dev-btn {
 .creator-section-header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.9px;
+  letter-spacing: 0.8px;
   color: #38bdf8;
   text-transform: uppercase;
-  padding: 4px 8px;
+  padding: 3px 7px;
   background: rgba(14, 165, 233, 0.08);
-  border-left: 3px solid #38bdf8;
+  border-left: 2.5px solid #38bdf8;
   border-radius: 4px;
-  margin-top: 2px;
-  margin-bottom: -2px;
+  margin-top: 3px;
+  margin-bottom: 2px;
 }
 
 .creator-section-header .creator-section-icon {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1;
 }
 
 .creator-hair-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 52px));
+  gap: 6px;
   align-content: start;
+  justify-content: start;
 }
 
 .creator-hair-tile {
   position: relative;
+  width: 50px;
+  height: 50px;
   aspect-ratio: 1 / 1;
   background: radial-gradient(circle at 50% 55%, rgba(30, 41, 59, 0.75), rgba(2, 6, 23, 0.92));
   border: 1.5px solid rgba(148, 163, 184, 0.22);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 2px;
   cursor: pointer !important;
   display: flex;
@@ -2962,6 +2778,7 @@ button, .dev-btn {
   justify-content: center;
   transition: all 0.15s ease;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .creator-hair-tile:hover {
@@ -2973,7 +2790,7 @@ button, .dev-btn {
 .creator-hair-tile.active {
   border-color: #00e5ff;
   background: radial-gradient(circle at 50% 55%, rgba(0, 229, 255, 0.20), rgba(2, 6, 23, 0.95));
-  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 229, 255, 0.18);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35), inset 0 0 6px rgba(0, 229, 255, 0.18);
 }
 
 .creator-hair-tile canvas {
@@ -2987,25 +2804,25 @@ button, .dev-btn {
 .creator-hair-color-bar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 10px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
   background: rgba(15, 23, 42, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border-radius: 8px;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
 
 .creator-color-swatch {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
   cursor: pointer !important;
   transition: all 0.15s ease;
   padding: 0;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 .creator-color-swatch:hover {
@@ -3015,35 +2832,13 @@ button, .dev-btn {
 
 .creator-color-swatch.active {
   border-color: #00e5ff;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.65), inset 0 1px 3px rgba(0, 0, 0, 0.4);
-  transform: scale(1.12);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.65), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  transform: scale(1.1);
 }
 
 @media (max-height: 520px) {
   .creator-modal-box .settings-header {
-    padding: 8px 14px;
-  }
-  .creator-class-grid {
-    padding: 8px 12px;
-    gap: 8px;
-  }
-  .creator-class-select-card {
-    padding: 8px 10px;
-  }
-  .creator-class-select-card .cc-desc {
-    display: none;
-  }
-  .creator-class-select-card .cc-name {
-    font-size: 17px;
-  }
-  .creator-class-select-card .cc-gear-tag {
-    margin-bottom: 6px;
-    padding: 4px 7px;
-    font-size: 9px;
-  }
-  .creator-class-select-card .cc-action {
-    padding: 5px 8px;
-    font-size: 9px;
+    padding: 6px 12px;
   }
   .creator-modal-box .settings-title-group h2 {
     font-size: 13px;
@@ -3052,44 +2847,59 @@ button, .dev-btn {
     display: none;
   }
   .creator-body {
-    padding: 8px 12px;
-    gap: 12px;
+    padding: 6px 10px;
+    gap: 8px;
   }
   .creator-preview-col {
-    width: 155px;
+    width: 130px;
+    gap: 6px;
+  }
+  .creator-class-tab-btn {
+    padding: 4px 0;
+    font-size: 8.5px;
   }
   .creator-preview-frame {
-    width: 155px;
-    height: 165px;
-  }
-  .creator-class-label {
-    margin-top: 4px;
-    font-size: 10px;
+    width: 130px;
+    height: 150px;
   }
   .creator-options-col {
-    padding: 7px 10px;
+    padding: 6px 8px;
     gap: 6px;
   }
   .creator-tabs-bar {
+    gap: 4px;
     padding-bottom: 4px;
   }
   .creator-tab-btn {
-    padding: 4px 10px;
-    font-size: 10px;
+    padding: 4px 8px;
+    font-size: 8.5px;
+    border-radius: 5px;
+  }
+  .creator-section-header {
+    padding: 2px 5px;
+    font-size: 8px;
+    margin: 1px 0;
   }
   .creator-hair-grid {
-    gap: 5px;
+    grid-template-columns: repeat(auto-fill, minmax(42px, 46px));
+    gap: 4px;
+  }
+  .creator-hair-tile {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
   }
   .creator-hair-color-bar {
-    padding: 5px 8px;
-    gap: 6px;
+    padding: 4px 6px;
+    gap: 5px;
   }
   .creator-color-swatch {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
   }
   .creator-modal-box .settings-footer {
-    padding: 8px 14px;
+    padding: 6px 12px;
   }
 }
 
@@ -3234,24 +3044,26 @@ button, .dev-btn {
   .settings-tab-content {
     max-height: 44vh;
   }
-  .creator-class-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 12px 14px;
+  .creator-body {
+    flex-direction: column;
+    align-items: center;
     overflow-y: auto;
+    gap: 8px;
+    padding: 8px;
   }
-  .creator-class-select-card {
-    padding: 12px 14px;
+  .creator-preview-col {
+    width: 100%;
+    max-width: 200px;
   }
-  .creator-class-select-card .cc-desc {
-    display: none;
+  .creator-preview-frame {
+    width: 140px;
+    height: 150px;
   }
-  .creator-class-select-card .cc-gear-tag {
-    margin-bottom: 8px;
+  .creator-options-col {
+    width: 100%;
   }
-  .creator-class-select-card .cc-action {
-    padding: 6px 10px;
-    font-size: 10px;
+  .creator-hair-grid {
+    justify-content: center;
   }
 }
 
