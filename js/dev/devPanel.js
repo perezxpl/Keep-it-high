@@ -284,9 +284,13 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     window.activeArenaId = activeArenaId;
     sendArenaSwitch(id);
     syncDevArenaButtonUI();
-    if (typeof uiManager !== 'undefined' && uiManager) {
+    if (typeof uiManager !== 'undefined' && uiManager && !uiManager._isSwitchingArena) {
       if (typeof uiManager.updateMpArenaUI === 'function') uiManager.updateMpArenaUI(id);
-      if (typeof uiManager.updateArenaSelectUI === 'function') uiManager.updateArenaSelectUI(id);
+      const norm = (id === 'ARENA_3' || id === 'arena-3') ? 'ARENA_3' : ((id === 'ARENA_2' || id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
+      const curSelected = uiManager.briefingArenas?.[uiManager.currentBriefingIndex]?.id;
+      if (curSelected !== norm && typeof uiManager.updateArenaSelectUI === 'function') {
+        uiManager.updateArenaSelectUI(id);
+      }
     }
     camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
     camera.x = camera.targetX;

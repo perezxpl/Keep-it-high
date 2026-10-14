@@ -326,6 +326,7 @@ export const uiManager = {
   ],
   currentBriefingIndex: 0,
   currentBriefingMode: 'solo', // 'solo' | 'multi'
+  _isSwitchingArena: false,
 
   init(callbacks) {
     if (this.isInitialized) return;
@@ -799,9 +800,17 @@ export const uiManager = {
     // 5. Synchronizacja stanu Deathmatch (Arena 2)
     this.syncDeathmatchUI();
 
-    // 6. Przełącz arenę w tle silnika gry
+    // 6. Przełącz arenę w tle silnika gry (tylko jeśli uległa zmianie)
     if (typeof window !== 'undefined' && typeof window.switchArena === 'function') {
-      window.switchArena(arena.id);
+      const curId = window.activeArenaId;
+      if (curId !== arena.id) {
+        this._isSwitchingArena = true;
+        try {
+          window.switchArena(arena.id);
+        } finally {
+          this._isSwitchingArena = false;
+        }
+      }
     }
   },
 
@@ -1347,19 +1356,30 @@ export const uiManager = {
     // -------------------------------------------------------------------------
     const arenaBackBtn = document.getElementById('btn-arena-back');
     if (arenaBackBtn) {
-      arenaBackBtn.addEventListener('mouseenter', () => playUiHover());
-      arenaBackBtn.addEventListener('click', () => {
+      const handleBack = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onBackToMenu === 'function') {
           this.callbacks.onBackToMenu();
+        } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+          window.setGameState('MENU');
         }
-      });
+      };
+      arenaBackBtn.addEventListener('mouseenter', () => playUiHover());
+      arenaBackBtn.addEventListener('click', handleBack);
+      arenaBackBtn.addEventListener('touchend', handleBack);
     }
 
     const launchMatchBtn = document.getElementById('btn-arena-launch');
     if (launchMatchBtn) {
-      launchMatchBtn.addEventListener('mouseenter', () => playUiHover());
-      launchMatchBtn.addEventListener('click', () => {
+      const handleLaunch = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
         playUiClick();
         const currentArena = this.briefingArenas[this.currentBriefingIndex];
         const arenaId = currentArena ? currentArena.id : 'ARENA_1';
@@ -1376,8 +1396,17 @@ export const uiManager = {
 
         if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
           this.callbacks.onSelectArena(arenaId);
+        } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+          if (typeof window.switchArena === 'function') {
+            try { window.switchArena(arenaId); } catch (_) {}
+          }
+          window.setGameState('CLASS_SELECT');
         }
-      });
+      };
+
+      launchMatchBtn.addEventListener('mouseenter', () => playUiHover());
+      launchMatchBtn.addEventListener('click', handleLaunch);
+      launchMatchBtn.addEventListener('touchend', handleLaunch);
     }
 
     // MENU GŁÓWNE: Przycisk "ROZPOCZNIJ ROZGRYWKĘ"

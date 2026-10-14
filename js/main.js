@@ -946,8 +946,12 @@ if (typeof window !== 'undefined') {
       setGameState('ARENA_SELECT');
     },
     onSelectArena: (arenaId) => {
-      if (typeof window.switchArena === 'function') {
-        window.switchArena(arenaId);
+      try {
+        if (typeof window.switchArena === 'function') {
+          window.switchArena(arenaId);
+        }
+      } catch (err) {
+        console.error('[ARENA SWITCH ERROR]', err);
       }
       setGameState('CLASS_SELECT');
     },
