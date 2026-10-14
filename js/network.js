@@ -42,37 +42,14 @@ export const networkState = {
 };
 
 // =============================================================================
-// STYLIZACJA WIZUALNA DRUŻYN (CYAN VS ORANGE)
+// =============================================================================
+// PRZYPISANIE DRUŻYNY SIECIOWEJ (CYAN VS ORANGE)
+// Kolor drużyny dotyczy wyłącznie nicku nad postacią sojuszników (brak przemalowywania ubrań)
 // =============================================================================
 export function applyTeamVisuals(isHost) {
-  if (!remotePlayer || !remotePlayer.visuals) return;
-  if (isHost) {
-    // Host to Cyan, Gracz 2 to Orange
-    remotePlayer.visuals.jerseyFront0 = '#c2410c';
-    remotePlayer.visuals.jerseyFront1 = '#ea580c';
-    remotePlayer.visuals.jerseyFront2 = '#f97316';
-    remotePlayer.visuals.jerseyFront3 = '#fb923c';
-    remotePlayer.visuals.jerseyBack0 = '#9a3412';
-    remotePlayer.visuals.jerseyBack1 = '#c2410c';
-    remotePlayer.visuals.jerseyBack2 = '#7c2d12';
-    remotePlayer.visuals.jerseyStripe = '#f97316';
-    remotePlayer.visuals.wristbandColor = '#fb923c';
-    remotePlayer.visuals.headbandColor = '#fb923c';
-    remotePlayer.name = 'P2 (ORANGE)';
-  } else {
-    // Client to Orange, Gracz 2 (Host) to Cyan
-    remotePlayer.visuals.jerseyFront0 = '#0e7490';
-    remotePlayer.visuals.jerseyFront1 = '#0891b2';
-    remotePlayer.visuals.jerseyFront2 = '#06b6d4';
-    remotePlayer.visuals.jerseyFront3 = '#22d3ee';
-    remotePlayer.visuals.jerseyBack0 = '#155e75';
-    remotePlayer.visuals.jerseyBack1 = '#0e7490';
-    remotePlayer.visuals.jerseyBack2 = '#164e63';
-    remotePlayer.visuals.jerseyStripe = '#06b6d4';
-    remotePlayer.visuals.wristbandColor = '#22d3ee';
-    remotePlayer.visuals.headbandColor = '#22d3ee';
-    remotePlayer.name = 'P1 (CYAN)';
-  }
+  if (!remotePlayer) return;
+  remotePlayer.team = isHost ? 'ORANGE' : 'CYAN';
+  remotePlayer.name = isHost ? 'GRACZ 2' : 'HOST';
 }
 
 // =============================================================================
@@ -161,6 +138,8 @@ export function sendPlayerState(localPlayer) {
       maxHp: localPlayer.maxHp || 100,
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass,
+      customVisuals: localPlayer.customVisuals,
+      team: localPlayer.team,
       currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'AK47',
       isHolstered: !!localPlayer.isHolstered,
       isJetpacking: !!localPlayer.isJetpacking,
@@ -338,7 +317,15 @@ function handleNetworkData(data) {
       remotePlayer.isDead = data.isDead;
       remotePlayer.isJetpacking = data.isJetpacking;
       remotePlayer.jetFuel = data.jetFuel;
-      if (data.gaitMode) remotePlayer.gaitMode = data.gaitMode;
+      if (data.customVisuals) {
+        remotePlayer.customVisuals = { ...(remotePlayer.customVisuals || {}), ...data.customVisuals };
+      }
+      if (data.team) {
+        remotePlayer.team = data.team;
+      }
+      if (data.name) {
+        remotePlayer.name = data.name;
+      }
 
       if (data.selectedClass && remotePlayer.selectedClass !== data.selectedClass) {
         setPlayerClass(data.selectedClass, remotePlayer);

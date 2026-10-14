@@ -49,6 +49,7 @@ export const bot = createPlayerInstance({
   burstPauseTimer: 0,
 
   // Pola wewnętrzne sztucznego mózgu
+  difficulty: 'recruit', // 'recruit' | 'veteran'
   decisionTimer: 0,
   aimErrorAngle: 0,
   strafeTimer: 0,
@@ -57,6 +58,10 @@ export const bot = createPlayerInstance({
   idleDecisionTimer: 0,
   crouchTimer: 0
 });
+
+export function setBotDifficulty(diff) {
+  bot.difficulty = (diff === 'veteran') ? 'veteran' : 'recruit';
+}
 
 /**
  * Główna pętla sztucznej inteligencji bota (reakcje, taktyka, celowanie, fizyka)
@@ -144,10 +149,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   // 2. CZAS REAKCJI I TAKTYCZNA MASZYNA STANÓW (Human Flaws: 6-10 klatek ~ 100-160ms)
   // =========================================================================
   if (bot.decisionTimer <= 0) {
-    bot.decisionTimer = Math.floor(Math.random() * 5 + 6);
+    const isVeteran = (bot.difficulty === 'veteran');
+    bot.decisionTimer = isVeteran ? Math.floor(Math.random() * 3 + 2) : Math.floor(Math.random() * 5 + 6);
 
-    // Dynamiczny błąd kąta celowania (losowy szum ±6° do ±14°)
-    const errorDeg = (6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1);
+    // Dynamiczny błąd kąta celowania (losowy szum: Rekrut ±6° do ±14°, Weteran ±2° do ±5°)
+    const errorDeg = isVeteran ? ((2 + Math.random() * 3) * (Math.random() < 0.5 ? -1 : 1)) : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1));
     bot.aimErrorAngle = errorDeg * (Math.PI / 180);
 
     // Przewidywany punkt celu (piłka w trybie meczowym, przeciwnik w trybie Deathmatch)

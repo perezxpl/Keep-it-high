@@ -53,6 +53,8 @@ import {
   DEATHMATCH_MODES,
   TEAMS
 } from './deathmatch/index.js';
+import { bot, setBotDifficulty } from './bot.js';
+import { syncDevBotButtonUI } from './dev/devPanel.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -291,6 +293,39 @@ export const uiManager = {
   selectedClassId: 'RAPTOR',
   callbacks: null,
   isInitialized: false,
+
+  // Dane karuzeli map w odprawie taktycznej (DOKŁADNIE 1 MAPA NA RAZ)
+  briefingArenas: [
+    {
+      id: 'ARENA_1',
+      badge: 'SEKTOR 01',
+      counter: 'MAPA 1 / 3',
+      name: 'NEONOWE MIASTO',
+      tag: 'COMBAT BALL',
+      desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.',
+      img: './assets/arena1_preview.svg'
+    },
+    {
+      id: 'ARENA_2',
+      badge: 'SEKTOR 02',
+      counter: 'MAPA 2 / 3',
+      name: 'TOKSYCZNA RAFINERIA',
+      tag: 'DEATHMATCH 5 MIN',
+      desc: 'Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.',
+      img: './assets/arena2_preview.png?v=clean_no_hud'
+    },
+    {
+      id: 'ARENA_3',
+      badge: 'SEKTOR 03',
+      counter: 'MAPA 3 / 3',
+      name: 'TAJEMNICZA DŻUNGLA',
+      tag: 'ARENA TAKTYCZNA',
+      desc: 'Gęsta roślinność, organiczne platformy i starcia na zróżnicowanych wysokościach.',
+      img: './assets/jungle_arena_bg.png'
+    }
+  ],
+  currentBriefingIndex: 0,
+  currentBriefingMode: 'solo', // 'solo' | 'multi'
 
   init(callbacks) {
     if (this.isInitialized) return;
@@ -704,11 +739,70 @@ export const uiManager = {
   updateArenaSelectUI(arenaId) {
     const norm = (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' :
                  (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'ARENA_2' : 'ARENA_1';
-    document.querySelectorAll('#screen-arena-select .arena-card').forEach(b => {
-      const isTarget = b.dataset.arena === norm;
-      b.classList.toggle('active', isTarget);
+    const foundIdx = this.briefingArenas.findIndex(a => a.id === norm);
+    if (foundIdx !== -1) {
+      this.currentBriefingIndex = foundIdx;
+    }
+    this.syncBriefingUI();
+  },
+
+  syncBriefingUI() {
+    if (this.currentBriefingIndex < 0) this.currentBriefingIndex = 0;
+    if (this.currentBriefingIndex >= this.briefingArenas.length) {
+      this.currentBriefingIndex = this.briefingArenas.length - 1;
+    }
+    const arena = this.briefingArenas[this.currentBriefingIndex];
+    if (!arena) return;
+
+    // 1. Zaktualizuj elementy aktywnej mapy w karuzeli
+    const badgeEl = document.getElementById('briefing-arena-badge');
+    const counterEl = document.getElementById('briefing-arena-counter');
+    const nameEl = document.getElementById('briefing-arena-name');
+    const tagEl = document.getElementById('briefing-arena-tag');
+    const descEl = document.getElementById('briefing-arena-desc');
+    const imgEl = document.getElementById('briefing-arena-img');
+
+    if (badgeEl) badgeEl.textContent = arena.badge;
+    if (counterEl) counterEl.textContent = arena.counter;
+    if (nameEl) nameEl.textContent = arena.name;
+    if (tagEl) tagEl.textContent = arena.tag;
+    if (descEl) descEl.textContent = arena.desc;
+    if (imgEl && imgEl.getAttribute('src') !== arena.img) {
+      imgEl.src = arena.img;
+      imgEl.alt = arena.name;
+    }
+
+    // 2. Kropki paginacji karuzeli
+    document.querySelectorAll('#briefing-carousel-dots .carousel-dot').forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === this.currentBriefingIndex);
     });
+
+    // 3. Nagłówek trybu Solo / Multi
+    const soloTabBtn = document.getElementById('briefing-tab-solo');
+    const multiTabBtn = document.getElementById('briefing-tab-multi');
+    if (soloTabBtn) soloTabBtn.classList.toggle('active', this.currentBriefingMode === 'solo');
+    if (multiTabBtn) multiTabBtn.classList.toggle('active', this.currentBriefingMode === 'multi');
+
+    const panelSolo = document.getElementById('briefing-panel-solo');
+    const panelMulti = document.getElementById('briefing-panel-multi');
+    if (panelSolo) panelSolo.style.display = (this.currentBriefingMode === 'solo') ? 'flex' : 'none';
+    if (panelMulti) panelMulti.style.display = (this.currentBriefingMode === 'multi') ? 'flex' : 'none';
+
+    // 4. Widoczność opcji poszczególnych map
+    const optMap1 = document.getElementById('arena-opts-ARENA_1');
+    const optMap2 = document.getElementById('arena-opts-ARENA_2');
+    const optMap3 = document.getElementById('arena-opts-ARENA_3');
+    if (optMap1) optMap1.style.display = (arena.id === 'ARENA_1') ? 'flex' : 'none';
+    if (optMap2) optMap2.style.display = (arena.id === 'ARENA_2') ? 'flex' : 'none';
+    if (optMap3) optMap3.style.display = (arena.id === 'ARENA_3') ? 'flex' : 'none';
+
+    // 5. Synchronizacja stanu Deathmatch (Arena 2)
     this.syncDeathmatchUI();
+
+    // 6. Przełącz arenę w tle silnika gry
+    if (typeof window !== 'undefined' && typeof window.switchArena === 'function') {
+      window.switchArena(arena.id);
+    }
   },
 
   syncDeathmatchUI() {
@@ -767,13 +861,9 @@ export const uiManager = {
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'none';
         {
-          const brandEl = document.getElementById('menu-brand') || document.querySelector('.menu-brand');
-          const playerCardEl = document.getElementById('menu-player-card');
-          const menuActionsEl = document.getElementById('menu-main-actions');
+          const menuMainView = document.getElementById('menu-main-view');
           const arenaSelectEl = document.getElementById('screen-arena-select');
-          if (brandEl) brandEl.style.display = '';
-          if (playerCardEl) playerCardEl.style.display = '';
-          if (menuActionsEl) menuActionsEl.classList.remove('hidden');
+          if (menuMainView) menuMainView.style.display = 'block';
           if (arenaSelectEl) arenaSelectEl.classList.add('hidden');
         }
         break;
@@ -786,17 +876,15 @@ export const uiManager = {
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'none';
         {
-          const brandEl = document.getElementById('menu-brand') || document.querySelector('.menu-brand');
-          const playerCardEl = document.getElementById('menu-player-card');
-          const menuActionsEl = document.getElementById('menu-main-actions');
+          const menuMainView = document.getElementById('menu-main-view');
           const arenaSelectEl = document.getElementById('screen-arena-select');
-          if (brandEl) brandEl.style.display = 'none';
-          if (playerCardEl) playerCardEl.style.display = 'none';
-          if (menuActionsEl) menuActionsEl.classList.add('hidden');
+          if (menuMainView) menuMainView.style.display = 'none';
           if (arenaSelectEl) arenaSelectEl.classList.remove('hidden');
           if (typeof window !== 'undefined' && window.activeArenaId) {
-            this.updateArenaSelectUI(window.activeArenaId);
+            const foundIdx = this.briefingArenas.findIndex(a => a.id === window.activeArenaId);
+            if (foundIdx !== -1) this.currentBriefingIndex = foundIdx;
           }
+          this.syncBriefingUI();
         }
         break;
 
@@ -919,11 +1007,63 @@ export const uiManager = {
       });
     }
 
+    // -------------------------------------------------------------------------
+    // ODPRAWA TAKTYCZNA: KARUZELA WYBORU MAPY (DOKŁADNIE 1 MAPA NA RAZ)
+    // -------------------------------------------------------------------------
+    const prevArenaBtn = document.getElementById('briefing-arena-prev');
+    const nextArenaBtn = document.getElementById('briefing-arena-next');
+
+    const handlePrevArena = () => {
+      playUiClick();
+      this.currentBriefingIndex = (this.currentBriefingIndex - 1 + this.briefingArenas.length) % this.briefingArenas.length;
+      this.syncBriefingUI();
+    };
+
+    const handleNextArena = () => {
+      playUiClick();
+      this.currentBriefingIndex = (this.currentBriefingIndex + 1) % this.briefingArenas.length;
+      this.syncBriefingUI();
+    };
+
     window.addEventListener('keydown', (e) => {
+      const ranksModal = document.getElementById('ranks-modal');
+      const isRanksOpen = (ranksModal && !ranksModal.classList.contains('ranks-modal-hidden'));
+
       if (e.key === 'Escape') {
-        const ranksModal = document.getElementById('ranks-modal');
-        if (ranksModal && !ranksModal.classList.contains('ranks-modal-hidden')) {
+        if (isRanksOpen) {
           this.closeRanksModal();
+          return;
+        }
+        const arenaSelectEl = document.getElementById('screen-arena-select');
+        if (arenaSelectEl && !arenaSelectEl.classList.contains('hidden')) {
+          if (this.callbacks && typeof this.callbacks.onBackToMenu === 'function') {
+            this.callbacks.onBackToMenu();
+          }
+          return;
+        }
+      }
+
+      // Klawisze nawigacji w Odprawie Taktycznej (ARENA_SELECT)
+      const arenaSelectEl = document.getElementById('screen-arena-select');
+      if (arenaSelectEl && !arenaSelectEl.classList.contains('hidden') && !isRanksOpen) {
+        if (e.key === 'ArrowLeft' || e.code === 'KeyA') {
+          handlePrevArena();
+        } else if (e.key === 'ArrowRight' || e.code === 'KeyD') {
+          handleNextArena();
+        } else if (e.key === 'Enter') {
+          const launchBtn = document.getElementById('btn-arena-launch');
+          if (launchBtn) launchBtn.click();
+        }
+        return;
+      }
+
+      // Klawisz Enter w Menu Głównym
+      const menuMainView = document.getElementById('menu-main-view');
+      const menuEl = document.getElementById('main-menu-overlay');
+      if (menuEl && menuEl.style.display !== 'none' && menuMainView && menuMainView.style.display !== 'none' && !isRanksOpen) {
+        if (e.key === 'Enter') {
+          const playBtn = document.getElementById('menu-btn-play');
+          if (playBtn) playBtn.click();
         }
       }
     });
@@ -944,25 +1084,117 @@ export const uiManager = {
       });
     });
 
-    // -------------------------------------------------------------------------
-    // EKRAN WYBORU ARENY (ARENA SELECT)
-    // -------------------------------------------------------------------------
-    document.querySelectorAll('#screen-arena-select .arena-card').forEach(card => {
-      card.addEventListener('mouseenter', () => playUiHover());
-      card.addEventListener('click', (e) => {
-        // Ignoruj kliknięcie w opcje konfiguracyjne trybu i drużyny, aby gracz mógł je zmieniać bez natychmiastowego startu
-        if (e.target && e.target.closest('.arena-options-box')) return;
+    if (prevArenaBtn) {
+      prevArenaBtn.addEventListener('mouseenter', () => playUiHover());
+      prevArenaBtn.addEventListener('click', handlePrevArena);
+    }
+
+    if (nextArenaBtn) {
+      nextArenaBtn.addEventListener('mouseenter', () => playUiHover());
+      nextArenaBtn.addEventListener('click', handleNextArena);
+    }
+
+    // Kropki paginacji karuzeli
+    document.querySelectorAll('#briefing-carousel-dots .carousel-dot').forEach(dot => {
+      dot.addEventListener('mouseenter', () => playUiHover());
+      dot.addEventListener('click', () => {
         playUiClick();
-        const arenaId = card.dataset.arena;
-        if (!arenaId) return;
-        this.updateArenaSelectUI(arenaId);
-        if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
-          this.callbacks.onSelectArena(arenaId);
+        const idx = parseInt(dot.dataset.index, 10);
+        if (!isNaN(idx)) {
+          this.currentBriefingIndex = idx;
+          this.syncBriefingUI();
         }
       });
     });
 
-    // Obsługa przełączników trybu i drużyny dla Areny 2 (Deathmatch)
+    // Gest swipe w lewo/prawo na karcie areny dla telefonów
+    const arenaCardEl = document.getElementById('briefing-arena-card');
+    if (arenaCardEl) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      arenaCardEl.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches[0]) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      arenaCardEl.addEventListener('touchend', (e) => {
+        if (e.changedTouches && e.changedTouches[0]) {
+          const deltaX = e.changedTouches[0].clientX - touchStartX;
+          const deltaY = e.changedTouches[0].clientY - touchStartY;
+          // Ignoruj jeśli ruch był głównie pionowy
+          if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+            if (deltaX < 0) {
+              handleNextArena();
+            } else {
+              handlePrevArena();
+            }
+          }
+        }
+      }, { passive: true });
+    }
+
+    // Przełącznik trybów: Solo (Boty) vs Multi (P2P)
+    const tabSoloBtn = document.getElementById('briefing-tab-solo');
+    const tabMultiBtn = document.getElementById('briefing-tab-multi');
+
+    if (tabSoloBtn) {
+      tabSoloBtn.addEventListener('mouseenter', () => playUiHover());
+      tabSoloBtn.addEventListener('click', () => {
+        playUiClick();
+        this.currentBriefingMode = 'solo';
+        this.syncBriefingUI();
+      });
+    }
+
+    if (tabMultiBtn) {
+      tabMultiBtn.addEventListener('mouseenter', () => playUiHover());
+      tabMultiBtn.addEventListener('click', () => {
+        playUiClick();
+        this.currentBriefingMode = 'multi';
+        this.syncBriefingUI();
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Opcje Areny 1 (Combat Ball)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('#ball-goals-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#ball-goals-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const limit = parseInt(btn.dataset.goalLimit, 10) || 5;
+        if (typeof window !== 'undefined') window.currentGoalLimit = limit;
+      });
+    });
+
+    document.querySelectorAll('#ball-bot-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        bot.active = (btn.dataset.botState === 'active');
+        syncDevBotButtonUI();
+      });
+    });
+
+    document.querySelectorAll('#ball-diff-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#ball-diff-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setBotDifficulty(btn.dataset.botDiff || 'recruit');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Opcje Areny 2 (Deathmatch)
+    // -------------------------------------------------------------------------
     this.syncDeathmatchUI();
 
     document.querySelectorAll('#dm-mode-toggle-group button').forEach(btn => {
@@ -991,6 +1223,128 @@ export const uiManager = {
       });
     });
 
+    document.querySelectorAll('#dm-diff-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#dm-diff-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setBotDifficulty(btn.dataset.botDiff || 'recruit');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Opcje Areny 3 (Tajemnicza Dżungla)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('#a3-bot-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        bot.active = (btn.dataset.botState === 'active');
+        syncDevBotButtonUI();
+      });
+    });
+
+    document.querySelectorAll('#a3-diff-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#a3-diff-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setBotDifficulty(btn.dataset.botDiff || 'recruit');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // ZINTEGROWANY MULTIPLAYER WEBRTC W ODPRAWIE TAKTYCZNEJ
+    // -------------------------------------------------------------------------
+    const subtabHostBtn = document.getElementById('briefing-subtab-host');
+    const subtabJoinBtn = document.getElementById('briefing-subtab-join');
+    const hostPane = document.getElementById('briefing-mp-host-view');
+    const joinPane = document.getElementById('briefing-mp-join-view');
+
+    if (subtabHostBtn && subtabJoinBtn && hostPane && joinPane) {
+      subtabHostBtn.addEventListener('click', () => {
+        playUiClick();
+        subtabHostBtn.classList.add('active');
+        subtabJoinBtn.classList.remove('active');
+        hostPane.style.display = 'block';
+        joinPane.style.display = 'none';
+      });
+      subtabJoinBtn.addEventListener('click', () => {
+        playUiClick();
+        subtabJoinBtn.classList.add('active');
+        subtabHostBtn.classList.remove('active');
+        joinPane.style.display = 'block';
+        hostPane.style.display = 'none';
+      });
+    }
+
+    const briefingHostBtn = document.getElementById('briefing-mp-host-btn');
+    if (briefingHostBtn) {
+      briefingHostBtn.addEventListener('click', () => {
+        playUiClick();
+        // Wywołaj utworzenie pokoju przez główny przycisk hosta
+        const modalHostBtn = document.getElementById('mp-host-btn');
+        if (modalHostBtn) modalHostBtn.click();
+
+        // Pokaż kontener z kodem pokoju w odprawie
+        const hostCreateRow = document.getElementById('briefing-mp-host-create-row');
+        const hostInfo = document.getElementById('briefing-mp-host-info');
+        if (hostCreateRow) hostCreateRow.style.display = 'none';
+        if (hostInfo) hostInfo.style.display = 'block';
+
+        // Obserwuj synchronizację kodu pokoju
+        const modalCodeVal = document.getElementById('mp-host-code-val');
+        const briefingCodeVal = document.getElementById('briefing-mp-code-val');
+        if (modalCodeVal && briefingCodeVal) {
+          const syncInterval = setInterval(() => {
+            if (modalCodeVal.textContent && modalCodeVal.textContent !== '------') {
+              briefingCodeVal.textContent = modalCodeVal.textContent;
+              clearInterval(syncInterval);
+            }
+          }, 300);
+        }
+      });
+    }
+
+    const briefingCopyCodeBtn = document.getElementById('briefing-mp-copy-code');
+    if (briefingCopyCodeBtn) {
+      briefingCopyCodeBtn.addEventListener('click', () => {
+        playUiClick();
+        const modalCopyCode = document.getElementById('mp-copy-code-btn');
+        if (modalCopyCode) modalCopyCode.click();
+      });
+    }
+
+    const briefingCopyLinkBtn = document.getElementById('briefing-mp-copy-link');
+    if (briefingCopyLinkBtn) {
+      briefingCopyLinkBtn.addEventListener('click', () => {
+        playUiClick();
+        const modalCopyLink = document.getElementById('mp-copy-link-btn');
+        if (modalCopyLink) modalCopyLink.click();
+      });
+    }
+
+    const briefingJoinBtn = document.getElementById('briefing-mp-join-btn');
+    if (briefingJoinBtn) {
+      briefingJoinBtn.addEventListener('click', () => {
+        playUiClick();
+        const joinInput = document.getElementById('briefing-mp-join-input');
+        const modalJoinInput = document.getElementById('mp-join-input');
+        const modalJoinBtn = document.getElementById('mp-join-btn');
+        if (joinInput && modalJoinInput && modalJoinBtn) {
+          modalJoinInput.value = joinInput.value.trim();
+          modalJoinBtn.click();
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // STOPKA ODPRAWY: POWRÓT I START ROZGRYWKI
+    // -------------------------------------------------------------------------
     const arenaBackBtn = document.getElementById('btn-arena-back');
     if (arenaBackBtn) {
       arenaBackBtn.addEventListener('mouseenter', () => playUiHover());
@@ -998,6 +1352,30 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onBackToMenu === 'function') {
           this.callbacks.onBackToMenu();
+        }
+      });
+    }
+
+    const launchMatchBtn = document.getElementById('btn-arena-launch');
+    if (launchMatchBtn) {
+      launchMatchBtn.addEventListener('mouseenter', () => playUiHover());
+      launchMatchBtn.addEventListener('click', () => {
+        playUiClick();
+        const currentArena = this.briefingArenas[this.currentBriefingIndex];
+        const arenaId = currentArena ? currentArena.id : 'ARENA_1';
+
+        if (this.currentBriefingMode === 'multi') {
+          // Jeśli wybrano tryb wieloosobowy, upewnij się że modal WebRTC jest aktywny jeśli nie jesteśmy połączeni
+          const mpModal = document.getElementById('mp-modal');
+          const isConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+          if (!isConnected && mpModal && mpModal.classList.contains('mp-modal-hidden')) {
+            mpModal.classList.remove('mp-modal-hidden');
+            return;
+          }
+        }
+
+        if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
+          this.callbacks.onSelectArena(arenaId);
         }
       });
     }

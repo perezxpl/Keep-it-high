@@ -26,7 +26,7 @@
       "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
-      "./js/bot.js": "./js/bot.js?v=v159_fix_ramps_and_bastions_drop_through",
+      "./js/bot.js": "./js/bot.js?v=v167_tactical_briefing_carousel",
       "./js/camera.js": "./js/camera.js?v=v157_compact_ceiling_hud_and_fix_drop_through",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v161_class_stats_body_damage_helmet_vest_hp",
@@ -45,9 +45,9 @@
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v159_fix_ramps_and_bastions_drop_through",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v153_enforcer_blast_belt_jump_on_release",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v159_fix_ramps_and_bastions_drop_through",
-      "./js/main.js": "./js/main.js?v=v162_remove_emojis_streamline_ui",
+      "./js/main.js": "./js/main.js?v=v167_tactical_briefing_carousel",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v142_fix_infinite_slide_during_dash",
-      "./js/network.js": "./js/network.js?v=v162_remove_emojis_streamline_ui",
+      "./js/network.js": "./js/network.js?v=v167_tactical_briefing_carousel",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v136_player_card_dossier_and_combat_stats",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v162_remove_emojis_streamline_ui",
@@ -80,7 +80,7 @@
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v162_remove_emojis_streamline_ui",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v162_remove_emojis_streamline_ui",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v162_remove_emojis_streamline_ui",
-      "./js/uiManager.js": "./js/uiManager.js?v=v165_secure_reset_stats",
+      "./js/uiManager.js": "./js/uiManager.js?v=v167_tactical_briefing_carousel",
       "./js/weapons.js": "./js/weapons.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -92,7 +92,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v164_remove_redundant_menu_controls_btn">
+  <link rel="stylesheet" href="./css/main.css?v=v167_tactical_briefing_carousel">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -352,194 +352,324 @@
 
     <!-- Game State UI Overlay Layers (Menu Główne, Ustawienia, Pauza) -->
     <div id="ui-overlay-container">
-      <!-- 1. GŁÓWNE MENU -->
+      <!-- 1. GŁÓWNE MENU I ODPRAWA TAKTYCZNA -->
       <div id="main-menu-overlay" class="ui-view-overlay" style="display: flex;">
         <div class="menu-container">
-          <div class="menu-brand" id="menu-brand">
-            <h1 class="menu-title">MODERN MILITARY</h1>
-          </div>
-
-          <!-- KARTA GRACZA I STATYSTYKI BOJOWE -->
-          <div class="menu-player-card" id="menu-player-card">
-            <!-- Nagłówek Karty Gracza -->
-            <div class="player-card-header">
-              <div class="player-card-id-badge">
-                <span class="card-pulse-dot"></span>
-                <span class="card-id-text">KARTA GRACZA</span>
+          <!-- WIDOK 1: MENU GŁÓWNE (UKŁAD DWUKOLUMNOWY DLA PC I TELEFONU W POZIOMIE) -->
+          <div id="menu-main-view" class="menu-view-active">
+            <div class="menu-header-bar" id="menu-brand">
+              <div class="menu-badge">
+                <span class="badge-dot"></span>
+                <span>SYSTEM BOJOWY // WERSJA 2.0</span>
               </div>
-              <div class="player-card-header-actions">
-                <button id="menu-btn-reset-stats" class="player-card-tool-btn" type="button" title="Resetuj statystyki bojowe">
-                  <span class="tool-btn-icon">↺</span>
-                  <span class="tool-btn-text">RESET</span>
+              <h1 class="menu-title">MODERN MILITARY</h1>
+              <div class="menu-subtitle">CYBER ARENA // PROTOKÓŁ ROZGRYWKI</div>
+            </div>
+
+            <div class="menu-columns-layout">
+              <!-- LEWA KOLUMNA: PROFIL I STATUS SŁUŻBY -->
+              <div class="menu-col-profile">
+                <div class="menu-player-card" id="menu-player-card">
+                  <!-- Nagłówek Karty Gracza -->
+                  <div class="player-card-header">
+                    <div class="player-card-id-badge">
+                      <span class="card-pulse-dot"></span>
+                      <span class="card-id-text">KARTA OPERATORA</span>
+                    </div>
+                    <div class="player-card-header-actions">
+                      <button id="menu-btn-reset-stats" class="player-card-tool-btn" type="button" title="Resetuj statystyki bojowe">
+                        <span class="tool-btn-icon">↺</span>
+                        <span class="tool-btn-text">RESET</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Sekcja Rangi Wojskowej (Klikalna) -->
+                  <div class="player-card-rank-section clickable" id="menu-player-rank-clickable" title="Kliknij, aby otworzyć rejestr stopni wojskowych i premii XP">
+                    <div class="rank-badge-shield">
+                      <span class="rank-icon" id="menu-rank-icon">━</span>
+                    </div>
+                    <div class="rank-details">
+                      <div class="rank-title-row">
+                        <span class="rank-label">STOPIEŃ WOJSKOWY <span class="rank-click-hint">↗ PODGLĄD</span></span>
+                        <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
+                      </div>
+                      <div class="rank-name-row">
+                        <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
+                        <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: Starszy Szeregowy (400 XP)</span>
+                      </div>
+                      <div class="rank-progress-bar-bg">
+                        <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Zwarta Siatka Statystyk Bojowych Gracza -->
+                  <div class="player-stats-compact-grid">
+                    <div class="stat-pill-mini" title="Stosunek zabójstw do śmierci">
+                      <span class="stat-mini-lbl">K/D</span>
+                      <span class="stat-mini-val text-amber" id="menu-stat-kd">0.00</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Procent wygranych meczów">
+                      <span class="stat-mini-lbl">WIN%</span>
+                      <span class="stat-mini-val text-purple" id="menu-stat-winrate">0%</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Łączna liczba zabójstw">
+                      <span class="stat-mini-lbl">FRAGI</span>
+                      <span class="stat-mini-val text-cyan" id="menu-stat-kills">0</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Łączna liczba śmierci">
+                      <span class="stat-mini-lbl">ZGONY</span>
+                      <span class="stat-mini-val text-rose" id="menu-stat-deaths">0</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Liczba wygranych meczów">
+                      <span class="stat-mini-lbl">WYGRANE</span>
+                      <span class="stat-mini-val text-emerald" id="menu-stat-wins">0</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Liczba przegranych meczów">
+                      <span class="stat-mini-lbl">PORAŻKI</span>
+                      <span class="stat-mini-val text-red" id="menu-stat-losses">0</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Rozegrane mecze">
+                      <span class="stat-mini-lbl">MECZE</span>
+                      <span class="stat-mini-val text-sky" id="menu-stat-matches">0</span>
+                    </div>
+                    <div class="stat-pill-mini" title="Strzelone bramki">
+                      <span class="stat-mini-lbl">GOLE</span>
+                      <span class="stat-mini-val text-yellow" id="menu-stat-goals">0</span>
+                    </div>
+                  </div>
+
+                  <button id="menu-btn-ranks-main" class="ui-btn ui-btn-outline ui-btn-small" type="button" title="Zobacz stopnie wojskowe i premie XP" style="width: 100%; margin-top: 8px;">
+                    <span class="btn-text">REJESTR SŁUŻBY: RANGI &amp; XP ↗</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- PRAWA KOLUMNA: PRZYCISKI OPERACYJNE -->
+              <div class="menu-col-actions" id="menu-main-actions">
+                <button id="menu-btn-play" class="ui-btn ui-btn-primary ui-btn-hero" type="button" title="Rozpocznij odprawę i grę">
+                  <span class="btn-hero-title">ROZPOCZNIJ ROZGRYWKĘ</span>
+                  <span class="btn-hero-sub">ODPRAWA TAKTYCZNA &amp; WYBÓR ARENY [ENTER]</span>
                 </button>
-              </div>
-            </div>
 
-            <!-- Sekcja Rangi Wojskowej (Klikalna) -->
-            <div class="player-card-rank-section clickable" id="menu-player-rank-clickable" title="Kliknij, aby otworzyć rejestr stopni wojskowych i premii XP">
-              <div class="rank-badge-shield">
-                <span class="rank-icon" id="menu-rank-icon">━</span>
-              </div>
-              <div class="rank-details">
-                <div class="rank-title-row">
-                  <span class="rank-label">STOPIEŃ WOJSKOWY <span class="rank-click-hint">↗ PODGLĄD</span></span>
-                  <span class="rank-xp-current" id="menu-rank-xp-text">0 XP</span>
-                </div>
-                <div class="rank-name-row">
-                  <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
-                  <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: Starszy Szeregowy (400 XP)</span>
-                </div>
-                <div class="rank-progress-bar-bg">
-                  <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
-                </div>
-              </div>
-            </div>
+                <div class="menu-sub-actions-grid">
+                  <button id="menu-btn-creator" class="ui-btn ui-btn-secondary" type="button" title="Edytuj wygląd postaci">
+                    <span class="btn-text">KREATOR POSTACI</span>
+                  </button>
 
-            <!-- Siatka Statystyk Bojowych Gracza -->
-            <div class="player-stats-grid">
-              <div class="stat-pill" title="Łączna liczba zabójstw przeciwników">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-cyan" id="menu-stat-kills">0</span>
-                  <span class="stat-pill-lbl">ZABÓJSTWA</span>
-                </div>
-              </div>
+                  <button id="menu-btn-settings" class="ui-btn ui-btn-secondary" type="button" title="Konfiguracja dźwięku, grafiki i sterowania">
+                    <span class="btn-text">USTAWIENIA</span>
+                  </button>
 
-              <div class="stat-pill" title="Łączna liczba śmierci gracza">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-rose" id="menu-stat-deaths">0</span>
-                  <span class="stat-pill-lbl">ŚMIERCI</span>
+                  <button id="menu-btn-multi" class="ui-btn ui-btn-cyan" type="button" title="Graj ze znajomym przez WebRTC">
+                    <span class="btn-text">MULTIPLAYER P2P</span>
+                  </button>
                 </div>
-              </div>
 
-              <div class="stat-pill" title="Stosunek zabójstw do śmierci (K/D Ratio)">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-amber" id="menu-stat-kd">0.00</span>
-                  <span class="stat-pill-lbl">K/D RATIO</span>
-                </div>
-              </div>
-
-              <div class="stat-pill" title="Liczba wygranych meczów">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-emerald" id="menu-stat-wins">0</span>
-                  <span class="stat-pill-lbl">WYGRANE</span>
-                </div>
-              </div>
-
-              <div class="stat-pill" title="Liczba przegranych meczów">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-red" id="menu-stat-losses">0</span>
-                  <span class="stat-pill-lbl">PRZEGRANE</span>
-                </div>
-              </div>
-
-              <div class="stat-pill" title="Łączna liczba rozegranych meczów">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-sky" id="menu-stat-matches">0</span>
-                  <span class="stat-pill-lbl">ROZEGRANE</span>
-                </div>
-              </div>
-
-              <div class="stat-pill" title="Procent wygranych meczów (Win Rate)">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-purple" id="menu-stat-winrate">0%</span>
-                  <span class="stat-pill-lbl">WIN RATE</span>
-                </div>
-              </div>
-
-              <div class="stat-pill" title="Łączna liczba strzelonych bramek">
-                <div class="stat-pill-info">
-                  <span class="stat-pill-val text-yellow" id="menu-stat-goals">0</span>
-                  <span class="stat-pill-lbl">BRAMKI</span>
+                <div class="menu-quick-sound-box">
+                  <button id="menu-quick-mute-btn" class="footer-sound-toggle" type="button" title="Przełącz dźwięk">DŹWIĘK: WŁ</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Przyciski nawigacji głównej -->
-          <div class="menu-actions" id="menu-main-actions">
-            <button id="menu-btn-play" class="ui-btn ui-btn-primary ui-btn-large" type="button" title="Rozpocznij grę">
-              <span class="btn-text">ROZPOCZNIJ ROZGRYWKĘ</span>
-              <span class="btn-badge">[SPACJA / ENTER]</span>
-            </button>
-
-            <div class="menu-actions-row">
-              <button id="menu-btn-creator" class="ui-btn ui-btn-secondary" type="button" title="Edytuj wygląd postaci">
-                <span class="btn-text">KREATOR POSTACI</span>
-              </button>
-
-              <button id="menu-btn-ranks-main" class="ui-btn ui-btn-amber" type="button" title="Zobacz stopnie wojskowe i premie XP">
-                <span class="btn-text">RANGI & XP</span>
-              </button>
-
-              <button id="menu-btn-settings" class="ui-btn ui-btn-secondary" type="button" title="Konfiguracja dźwięku, grafiki i sterowania">
-                <span class="btn-text">USTAWIENIA</span>
-              </button>
-
-              <button id="menu-btn-multi" class="ui-btn ui-btn-cyan" type="button" title="Graj ze znajomym przez WebRTC">
-                <span class="btn-text">MULTIPLAYER P2P</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- EKRAN WYBORU ARENY -->
-          <div id="screen-arena-select" class="menu-card hidden">
-            <h2 class="arena-select-title">WYBIERZ ARENĘ BITWY</h2>
-            <p class="arena-select-subtitle">ZDEFINIUJ POLE WALKI PRZED STARTEM</p>
-
-            <div class="arena-grid">
-              <!-- ARENA 1 -->
-              <div class="arena-card" data-arena="ARENA_1">
-                <div class="arena-name">NEONOWE MIASTO</div>
-                <div class="arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i miejski klimat.</div>
-                <button class="btn-select-arena">WYBIERZ</button>
+          <!-- WIDOK 2: ODPRAWA TAKTYCZNA (KREATOR ROZGRYWKI Z KARUZELĄ POJEDYNCZEJ MAPY) -->
+          <div id="screen-arena-select" class="briefing-container hidden">
+            <!-- Pasek nagłówka odprawy z przełącznikiem trybu Solo / Multi -->
+            <div class="briefing-header">
+              <div class="briefing-title-group">
+                <h2 class="briefing-title">ODPRAWA TAKTYCZNA</h2>
+                <p class="briefing-subtitle">ZDEFINIUJ POLE WALKI I ZASADY OPERACJI</p>
               </div>
 
-              <!-- ARENA 2 -->
-              <div class="arena-card active" data-arena="ARENA_2">
-                <div class="arena-preview-container">
-                  <img src="./assets/arena2_preview.png?v=clean_no_hud" alt="Podgląd Areny 2: Toksyczna Rafineria" class="arena-preview-img" loading="lazy">
-                  <div class="arena-preview-overlay">
-                    <span class="arena-preview-tag">PODGLĄD</span>
+              <div class="briefing-mode-tabs" id="briefing-mode-tabs">
+                <button type="button" class="briefing-tab-btn active" id="briefing-tab-solo" data-briefing-mode="solo">MISJA Z BOTAMI (SOLO)</button>
+                <button type="button" class="briefing-tab-btn" id="briefing-tab-multi" data-briefing-mode="multi">BITWA SIECIOWA (P2P)</button>
+              </div>
+            </div>
+
+            <!-- Główna strefa odprawy (2 kolumny) -->
+            <div class="briefing-columns-layout">
+              <!-- Lewa kolumna: KARUZELA MAPY (DOKŁADNIE 1 MAPA NA RAZ) -->
+              <div class="briefing-col-carousel">
+                <div class="briefing-carousel-card">
+                  <div class="carousel-nav-row">
+                    <button type="button" class="carousel-arrow-btn" id="briefing-arena-prev" title="Poprzednia mapa (A / ←)">‹</button>
+                    
+                    <div class="carousel-active-view" id="briefing-arena-card">
+                      <div class="carousel-badge-bar">
+                        <span class="briefing-badge" id="briefing-arena-badge">SEKTOR 01</span>
+                        <span class="briefing-counter" id="briefing-arena-counter">MAPA 1 / 3</span>
+                      </div>
+                      <div class="briefing-preview-frame">
+                        <img src="./assets/arena1_preview.svg" alt="Podgląd Areny" class="briefing-preview-img" id="briefing-arena-img">
+                        <div class="briefing-preview-overlay">
+                          <span class="briefing-tag" id="briefing-arena-tag">COMBAT BALL</span>
+                        </div>
+                      </div>
+                      <div class="briefing-arena-name" id="briefing-arena-name">NEONOWE MIASTO</div>
+                      <div class="briefing-arena-desc" id="briefing-arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.</div>
+                    </div>
+
+                    <button type="button" class="carousel-arrow-btn" id="briefing-arena-next" title="Następna mapa (D / →)">›</button>
+                  </div>
+
+                  <!-- Kropki paginacji karuzeli -->
+                  <div class="carousel-dots-row" id="briefing-carousel-dots">
+                    <button type="button" class="carousel-dot active" data-index="0" title="Neonowe Miasto"></button>
+                    <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
+                    <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
                   </div>
                 </div>
-                <div class="arena-name">TOKSYCZNA RAFINERIA</div>
-                <div class="arena-desc">5-minutowa bitwa deathmatch o dominację w sektorze z okresowymi zrzutami kwasu.</div>
-                
-                <!-- Konfigurator trybu Deathmatch Areny 2 -->
-                <div class="arena-options-box" id="arena-2-options-box">
-                  <div class="arena-option-row">
-                    <span class="arena-option-label">TRYB BITWY:</span>
-                    <div class="arena-toggle-group" id="dm-mode-toggle-group">
-                      <button type="button" class="arena-toggle-btn active" data-dm-mode="TDM" title="Drużynowy Deathmatch (Niebiescy vs Czerwoni)">DRUŻYNOWY</button>
-                      <button type="button" class="arena-toggle-btn" data-dm-mode="FFA" title="Każdy na Każdego (Free For All)">KAŻDY NA KAŻDEGO</button>
+              </div>
+
+              <!-- Prawa kolumna: PARAMETRY BITWY -->
+              <div class="briefing-col-options">
+                <!-- Panel A: Opcje dla trybu Solo (Boty AI) -->
+                <div class="briefing-options-panel active" id="briefing-panel-solo">
+                  <!-- Opcje Areny 1 (Neonowe Miasto) -->
+                  <div class="briefing-map-opts active" id="arena-opts-ARENA_1">
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRYB OPERACJI:</span>
+                      <span class="opt-val-badge text-cyan">COMBAT BALL (MECZ BRAMKOWY)</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">LIMIT BRAMEK:</span>
+                      <div class="briefing-toggle-group" id="ball-goals-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-goal-limit="3">3 GOLE</button>
+                        <button type="button" class="briefing-toggle-btn active" data-goal-limit="5">5 GOLI</button>
+                        <button type="button" class="briefing-toggle-btn" data-goal-limit="10">10 GOLI</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">PRZECIWNIK AI:</span>
+                      <div class="briefing-toggle-group" id="ball-bot-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRUDNOŚĆ AI:</span>
+                      <div class="briefing-toggle-group" id="ball-diff-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="recruit">REKRUT</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="veteran">WETERAN</button>
+                      </div>
                     </div>
                   </div>
-                  <div class="arena-option-row" id="dm-team-select-row">
-                    <span class="arena-option-label">TWOJA DRUŻYNA:</span>
-                    <div class="arena-toggle-group" id="dm-team-toggle-group">
-                      <button type="button" class="arena-toggle-btn team-cyan active" data-dm-team="CYAN" title="Dołącz do Niebieskich">NIEBIESCY</button>
-                      <button type="button" class="arena-toggle-btn team-orange" data-dm-team="ORANGE" title="Dołącz do Czerwonych">CZERWONI</button>
+
+                  <!-- Opcje Areny 2 (Toksyczna Rafineria - Deathmatch 5 Min) -->
+                  <div class="briefing-map-opts" id="arena-opts-ARENA_2" style="display: none;">
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRYB BITWY:</span>
+                      <div class="briefing-toggle-group" id="dm-mode-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-mode="TDM">DRUŻYNOWY (TDM)</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-mode="FFA">KAŻDY NA KAŻDEGO</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row" id="dm-team-select-row">
+                      <span class="opt-label">TWOJA DRUŻYNA:</span>
+                      <div class="briefing-toggle-group" id="dm-team-toggle-group">
+                        <button type="button" class="briefing-toggle-btn team-cyan active" data-dm-team="CYAN">NIEBIESCY</button>
+                        <button type="button" class="briefing-toggle-btn team-orange" data-dm-team="ORANGE">CZERWONI</button>
+                      </div>
+                    </div>
+                    <div class="briefing-note-row" id="dm-team-note-row">
+                      <span class="briefing-hint-note">Sojusznicy mają niebieski nick, rywale nie mają nic.</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRUDNOŚĆ BOTÓW:</span>
+                      <div class="briefing-toggle-group" id="dm-diff-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="recruit">REKRUT</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="veteran">WETERAN</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Opcje Areny 3 (Tajemnicza Dżungla) -->
+                  <div class="briefing-map-opts" id="arena-opts-ARENA_3" style="display: none;">
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRYB OPERACJI:</span>
+                      <span class="opt-val-badge text-cyan">STARCIE NA PLATFORMACH I W TUNELACH</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">PRZECIWNIK AI:</span>
+                      <div class="briefing-toggle-group" id="a3-bot-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRUDNOŚĆ AI:</span>
+                      <div class="briefing-toggle-group" id="a3-diff-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="recruit">REKRUT</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="veteran">WETERAN</button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <button class="btn-select-arena">WYBIERZ I GRAJ</button>
-              </div>
+                <!-- Panel B: Opcje dla trybu Sieciowego (Multiplayer P2P WebRTC) -->
+                <div class="briefing-options-panel" id="briefing-panel-multi" style="display: none;">
+                  <div class="briefing-multi-box">
+                    <div class="briefing-multi-status-row">
+                      <span class="mp-status-dot" id="briefing-mp-status-dot"></span>
+                      <span id="briefing-mp-status-text" class="briefing-mp-status-text">ROZŁĄCZONO / OFFLINE</span>
+                      <span id="briefing-mp-ping-tag" class="mp-ping-tag" style="display: none;">0 ms</span>
+                    </div>
 
-              <!-- ARENA 3 -->
-              <div class="arena-card" data-arena="ARENA_3">
-                <div class="arena-name">TAJEMNICZA DŻUNGLA</div>
-                <div class="arena-desc">Gęsta roślinność, organiczne platformy i dzikie pole walki.</div>
-                <button class="btn-select-arena">WYBIERZ</button>
+                    <div class="briefing-multi-tabs">
+                      <button type="button" class="briefing-subtab-btn active" id="briefing-subtab-host">STWÓRZ POKÓJ (HOST)</button>
+                      <button type="button" class="briefing-subtab-btn" id="briefing-subtab-join">DOŁĄCZ DO POKOJU (KLIENT)</button>
+                    </div>
+
+                    <!-- Host View -->
+                    <div id="briefing-mp-host-view" class="briefing-subtab-pane active">
+                      <div id="briefing-mp-host-create-row">
+                        <button id="briefing-mp-host-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%;">Utwórz Pokój Gry</button>
+                      </div>
+                      <div id="briefing-mp-host-info" style="display: none; margin-top: 8px;">
+                        <div class="mp-code-container">
+                          <span class="mp-code-label">KOD POKOJU:</span>
+                          <span class="mp-code-val" id="briefing-mp-code-val">------</span>
+                          <button id="briefing-mp-copy-code" class="mp-sub-btn" type="button">Kopiuj</button>
+                        </div>
+                        <div style="margin-top: 6px;">
+                          <button id="briefing-mp-copy-link" class="ui-btn ui-btn-small ui-btn-primary" type="button" style="width: 100%;">Kopiuj Link z Zaproszeniem</button>
+                        </div>
+                        <div class="mp-waiting-text" id="briefing-mp-waiting-text" style="font-size: 11px; margin-top: 6px;">
+                          Oczekiwanie na dołączenie drugiego gracza...
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Join View -->
+                    <div id="briefing-mp-join-view" class="briefing-subtab-pane" style="display: none;">
+                      <div class="mp-join-row">
+                        <input type="text" id="briefing-mp-join-input" class="mp-text-input" placeholder="Wklej kod pokoju..." autocomplete="off" spellcheck="false" />
+                        <button id="briefing-mp-join-btn" class="ui-btn ui-btn-orange" type="button">Połącz</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <button id="btn-arena-back" class="btn-back">← POWRÓT DO MENU</button>
-          </div>
-
-          <!-- Stopka informacyjna -->
-          <div class="menu-footer">
-            <button id="menu-quick-mute-btn" class="footer-sound-toggle" type="button" title="Przełącz dźwięk">DŹWIĘK: WŁ</button>
+            <!-- Stopka odprawy taktycznej -->
+            <div class="briefing-footer">
+              <button id="btn-arena-back" class="ui-btn ui-btn-secondary" type="button">‹ POWRÓT DO MENU</button>
+              <button id="btn-arena-launch" class="ui-btn ui-btn-primary ui-btn-large" type="button">
+                <span class="btn-text">WYBIERZ KLASĘ I START</span>
+                <span class="btn-badge">›</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -898,7 +1028,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v165_secure_reset_stats"></script>
+  <script type="module" src="./js/main.js?v=v166_ally_blue_nick_rival_no_tags"></script>
 </body>
 
 </html>

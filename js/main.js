@@ -790,36 +790,52 @@ function draw() {
 
   drawPlayer(ctx, GROUND_Y, player);
 
+  const playerTeam = player.team || 'CYAN';
+
   if (remotePlayer.active) {
     drawPlayer(ctx, GROUND_Y, remotePlayer);
 
-    ctx.save();
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    const tagColor = networkState.isHost ? '#f97316' : '#06b6d4';
-    const tagName = networkState.isHost ? '[P2: CLIENT]' : '[P1: HOST]';
-    ctx.fillStyle = tagColor;
-    ctx.shadowColor = tagColor;
-    ctx.shadowBlur = 6;
-    const tagX = remotePlayer.head ? remotePlayer.head.x : (remotePlayer.x + remotePlayer.w / 2);
-    const tagY = remotePlayer.head ? (remotePlayer.head.y - 26) : (remotePlayer.y - 28);
-    ctx.fillText(tagName, tagX, tagY);
-    ctx.restore();
+    // Identyfikacja drużynowa: sojusznicy mają zawsze niebieski nick, rywale nie mają nic
+    const remoteTeam = remotePlayer.team || (networkState.isHost ? 'ORANGE' : 'CYAN');
+    const isAlly = (remoteTeam === playerTeam);
+
+    if (isAlly) {
+      ctx.save();
+      ctx.font = 'bold 10px Rajdhani, monospace';
+      ctx.textAlign = 'center';
+      const allyColor = '#00e5ff';
+      const allyName = remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST');
+      ctx.fillStyle = allyColor;
+      ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
+      ctx.shadowBlur = 4;
+      const tagX = remotePlayer.head ? remotePlayer.head.x : (remotePlayer.x + remotePlayer.w / 2);
+      const tagY = remotePlayer.head ? (remotePlayer.head.y - 26) : (remotePlayer.y - 28);
+      ctx.fillText(allyName, tagX, tagY);
+      ctx.restore();
+    }
   }
 
   if (bot.active) {
     drawPlayer(ctx, GROUND_Y, bot);
 
-    ctx.save();
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#c084fc';
-    ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
-    ctx.shadowBlur = 4;
-    const botTagX = bot.head ? bot.head.x : (bot.x + bot.w / 2);
-    const botTagY = bot.head ? (bot.head.y - 26) : (bot.y - 26);
-    ctx.fillText(bot.frozen ? '[BOT: STOP]' : '[BOT]', botTagX, botTagY);
-    ctx.restore();
+    // Identyfikacja drużynowa: sojusznicy mają zawsze niebieski nick, rywale nie mają nic
+    const botTeam = bot.team || 'ORANGE';
+    const isAlly = (botTeam === playerTeam);
+
+    if (isAlly) {
+      ctx.save();
+      ctx.font = 'bold 10px Rajdhani, monospace';
+      ctx.textAlign = 'center';
+      const allyColor = '#00e5ff';
+      const allyName = bot.name || 'SGT. STRIKER';
+      ctx.fillStyle = allyColor;
+      ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
+      ctx.shadowBlur = 4;
+      const botTagX = bot.head ? bot.head.x : (bot.x + bot.w / 2);
+      const botTagY = bot.head ? (bot.head.y - 26) : (bot.y - 26);
+      ctx.fillText(allyName, botTagX, botTagY);
+      ctx.restore();
+    }
   }
 
   const isDeathmatch = (
