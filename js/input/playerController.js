@@ -194,16 +194,22 @@ export function updatePlayerInputAndCombat(activeArenaId) {
         if (player.vy < maxClimbVy) {
           player.vy += (maxClimbVy - player.vy) * 0.28;
         }
+        if (player.y <= 30 && player.vy < 0) {
+          player.vy = 0;
+        }
       }
 
       const fuelDrain = 0.38 + stickUp * 0.57;
       player.jetFuel = Math.max(0, player.jetFuel - fuelDrain);
       sparkCount = Math.max(1, Math.round(1 + stickUp * 3));
     } else {
-      // Klawiatura: klasyczna pełna siła ciągu
+      // Klawiatura: klasyczna pelna sila ciagu
       player.jetpackPower = 1.0;
       player.jetFuel = Math.max(0, player.jetFuel - 0.95);
       player.vy = Math.max(-8.5, player.vy - 0.95);
+      if (player.y <= 30 && player.vy < 0) {
+        player.vy = 0;
+      }
     }
 
     let inputAxisX = 0;

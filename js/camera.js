@@ -177,7 +177,7 @@ export function getArenaBounds() {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: (isArena3 || isArena2) ? 0 : (groundFloor - 3000),
+    minY: 0,
     maxY: isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)
   };
 }
@@ -232,7 +232,7 @@ export function clampCamera(cam = camera) {
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const minCamY = (isArena3 || isArena2) ? -45 : (groundFloor - 3000);
+  const minCamY = -45;
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
@@ -413,7 +413,7 @@ export function updateCamera(player, ball, options = {}) {
     : (0.65 - (elev * 0.23));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  const minCamY = (isArena3 || isArena2) ? -45 : (groundFloor - 3000);
+  const minCamY = -45;
   const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor);
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));

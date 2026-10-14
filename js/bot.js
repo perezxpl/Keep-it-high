@@ -14,6 +14,8 @@ import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } f
 import { ARENA_2_CONFIG, ACID_SURGE_SYSTEM } from './arenas/arena2.js';
 import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
 import { deathmatchState } from './deathmatch/state.js';
+import { camera } from './camera.js';
+import { W, H } from './world/state.js';
 
 /**
  * Wirtualny kontroler bota przekazywany do silnika fizyki updatePlayer
@@ -390,6 +392,29 @@ export function setBotDifficulty(diff) {
 }
 
 /**
+ * Sprawdza, czy bot znajduje sie w kadrze kamery gracza (na ekranie z bezpiecznym marginesem)
+ * Zgodnie z zasada fair play boty nie moga atakowac gracza z ukrycia / zza krawedzi ekranu.
+ */
+export function isBotVisibleToPlayer(botTarget, margin = 24) {
+  if (!camera || typeof camera.x !== 'number' || typeof camera.y !== 'number') return true;
+  if (!botTarget || typeof botTarget.x !== 'number' || typeof botTarget.y !== 'number') return false;
+  const zoom = (typeof camera.zoom === 'number' && camera.zoom > 0) ? camera.zoom : 1;
+  const viewW = camera.viewWidth || ((typeof W === 'number' ? W : 1920) / zoom);
+  const viewH = camera.viewHeight || ((typeof H === 'number' ? H : 1080) / zoom);
+  const camL = camera.x - margin;
+  const camR = camera.x + viewW + margin;
+  const camT = camera.y - margin;
+  const camB = camera.y + viewH + margin;
+
+  const botL = botTarget.x;
+  const botR = botTarget.x + (botTarget.w || 24);
+  const botT = botTarget.y;
+  const botB = botTarget.y + (botTarget.h || 70);
+
+  return (botR >= camL && botL <= camR && botB >= camT && botT <= camB);
+}
+
+/**
  * Główna pętla sztucznej inteligencji bota (reakcje, taktyka, celowanie, fizyka)
  */
 export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget = bot, allCombatants = null) {
@@ -538,7 +563,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
   // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
   if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
-    if (distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
+    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
+    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
+
+    if (canEngageTarget && distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
       const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
       const isEasy = (botTarget.difficulty === 'easy');
       const grenadeRoll = Math.random();
@@ -951,8 +979,18 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetY = ball.y + (ball.vy * 3);
     }
   } else if (targetEnemy && !targetEnemy.isDead) {
-    aimTargetX = targetEnemy.x + targetEnemy.w / 2;
-    aimTargetY = targetEnemy.y + targetEnemy.h / 2;
+    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
+    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
+
+    if (canEngageTarget) {
+      aimTargetX = targetEnemy.x + targetEnemy.w / 2;
+      aimTargetY = targetEnemy.y + targetEnemy.h / 2;
+    } else {
+      // Bot poza zasiegiem widzenia gracza: patrzy przed siebie w strone marszu
+      const lookDir = Math.sign((targetEnemy.x + targetEnemy.w / 2) - botCenterX) || botTarget.facing || 1;
+      aimTargetX = botCenterX + lookDir * 160;
+      aimTargetY = botCenterY;
+    }
   } else {
     aimTargetX = botCenterX + (botTarget.facing || 1) * 160;
     aimTargetY = botCenterY;
@@ -977,44 +1015,53 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
   // =========================================================================
   if (!isA1 && targetEnemy && !targetEnemy.isDead) {
-    const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
-    const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;
-    const shooterOriginY = botTarget.y + 20;
+    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
+    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
 
-    const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
-    const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
+    if (canEngageTarget) {
+      const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
+      const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;
+      const shooterOriginY = botTarget.y + 20;
 
-    let angleDiff = Math.abs(currentAimAngle - angleToEnemy);
-    while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
+      const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
+      const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
 
-    const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
-    const isAimedAtEnemy = angleDiff <= toleranceRad;
+      let angleDiff = Math.abs(currentAimAngle - angleToEnemy);
+      while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-    if (isAimedAtEnemy) {
-      botTarget.shootPoseTimer = Math.max(botTarget.shootPoseTimer || 0, 25);
-      if (botTarget.currentWeapon === WEAPONS.AK47) {
-        if (botTarget.burstShotsRemaining > 0) {
-          if (botTarget.shootCooldown <= 0) {
+      const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
+      const isAimedAtEnemy = angleDiff <= toleranceRad;
+
+      if (isAimedAtEnemy) {
+        botTarget.shootPoseTimer = Math.max(botTarget.shootPoseTimer || 0, 25);
+        if (botTarget.currentWeapon === WEAPONS.AK47) {
+          if (botTarget.burstShotsRemaining > 0) {
+            if (botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+              botTarget.burstShotsRemaining--;
+              if (botTarget.burstShotsRemaining <= 0) {
+                botTarget.burstPauseTimer = 25;
+              }
+            }
+          } else if (botTarget.burstPauseTimer <= 0 && botTarget.shootCooldown <= 0) {
+            botTarget.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
             shootWeapon(botTarget, botTarget.currentWeapon);
             botTarget.burstShotsRemaining--;
-            if (botTarget.burstShotsRemaining <= 0) {
-              botTarget.burstPauseTimer = 25;
-            }
           }
-        } else if (botTarget.burstPauseTimer <= 0 && botTarget.shootCooldown <= 0) {
-          botTarget.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
-          shootWeapon(botTarget, botTarget.currentWeapon);
-          botTarget.burstShotsRemaining--;
-        }
-      } else if (botTarget.currentWeapon === WEAPONS.SHOTGUN) {
-        if (distToEnemy < 180 && botTarget.shootCooldown <= 0) {
-          shootWeapon(botTarget, botTarget.currentWeapon);
-        }
-      } else if (botTarget.currentWeapon === WEAPONS.SNIPER) {
-        if (botTarget.shootCooldown <= 0) {
-          shootWeapon(botTarget, botTarget.currentWeapon);
+        } else if (botTarget.currentWeapon === WEAPONS.SHOTGUN) {
+          if (distToEnemy < 180 && botTarget.shootCooldown <= 0) {
+            shootWeapon(botTarget, botTarget.currentWeapon);
+          }
+        } else if (botTarget.currentWeapon === WEAPONS.SNIPER) {
+          if (botTarget.shootCooldown <= 0) {
+            shootWeapon(botTarget, botTarget.currentWeapon);
+          }
         }
       }
+    } else {
+      // Bot jest poza polem widzenia gracza - nie prowadzi ognia
+      botTarget.isShooting = false;
+      botTarget.burstShotsRemaining = 0;
     }
   }
 

@@ -1256,19 +1256,27 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const wallLeft = isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT);
   const wallRight = isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT);
-  const groundFloorY = 1000;
-  const wallTop = isArena2 ? 0 : (groundFloorY - (isArena3 ? 1300 : 3000));
+  const ceilingY = 30;
 
-  if (player.y >= wallTop) {
-    if (player.x < wallLeft) {
-      player.x = wallLeft;
-      if (player.vx < 0) player.vx = 0;
-      if (player.airVx < 0) player.airVx = 0;
-    } else if (player.x + player.w > wallRight) {
-      player.x = wallRight - player.w;
-      if (player.vx > 0) player.vx = 0;
-      if (player.airVx > 0) player.airVx = 0;
+  // 1. Twarda blokada gornej krawedzi mapy (Ceiling Clamping - postac nie wylatuje poza swiat)
+  if (player.y < ceilingY) {
+    player.y = ceilingY;
+    if (player.vy < 0) player.vy = 0;
+    if (player.airVy < 0) player.airVy = 0;
+    if (player.rocketBoots && player.rocketBoots.dashing && player.rocketBoots.dashDirY < 0) {
+      player.rocketBoots.dashDirY = 0;
     }
+  }
+
+  // 2. Twarda blokada bocznych scian areny (Left & Right Wall Clamping)
+  if (player.x < wallLeft) {
+    player.x = wallLeft;
+    if (player.vx < 0) player.vx = 0;
+    if (player.airVx < 0) player.airVx = 0;
+  } else if (player.x + player.w > wallRight) {
+    player.x = wallRight - player.w;
+    if (player.vx > 0) player.vx = 0;
+    if (player.airVx > 0) player.airVx = 0;
   }
 }
 
