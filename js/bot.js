@@ -311,6 +311,7 @@ export function createBotInstance(index = 0) {
     chargeTarget: 0.55,
     idleDecisionTimer: 0,
     crouchTimer: 0,
+    shootHesitationTimer: 0,
     strikerDashCooldown: 0,
     enforcerBlastCooldown: 0,
     raptorHoverTimer: 0,
@@ -366,6 +367,77 @@ export function getActiveBots() {
     bots.push(createBotInstance(bots.length));
   }
   return bots.slice(0, botCount).filter(b => b.active);
+}
+
+/**
+ * Konfiguracja parametrów 3 poziomów trudności botów:
+ * - easy: NOWY, przystępny poziom dla każdego gracza (ludzki czas reakcji ~0.5s-0.75s, duży rozrzut, brak granatów)
+ * - medium: dawny poziom ŁATWY (zbalansowany, umiarkowany rozrzut, 3-strzałowe serie)
+ * - hard: dawny poziom ŚREDNI (wymagający, taktyczny, bez nieludzkiego 1-klatkowego aimbota)
+ */
+export const BOT_DIFFICULTY_CONFIG = {
+  easy: {
+    decisionMin: 28,
+    decisionMax: 44,       // 28-44 klatek (~0.46s - 0.73s reakcji)
+    aimErrorMin: 30,
+    aimErrorMax: 48,       // Duży błąd celowania: ±30° do ±48°
+    aimLerp: 0.055,        // Płynny, powolny ruch celownika
+    grenadeChance: 0.0,    // Brak granatów odłamkowych
+    grenadeCooldown: 30.0,
+    enforcerClimbCooldown: 300,
+    enforcerStompCooldown: 340,
+    strikerAirCooldown: 280,
+    strikerGroundCooldown: 300,
+    akBurstShots: 2,       // Krótkie 2-strzałowe serie z AK-47
+    akBurstPause: 65,      // Długa pauza (~1.1s) pomiędzy seriami
+    shotHesitation: 20,    // Wahanie przed pociągnięciem za spust (~0.33s)
+    slideChance: 0.08,     // Rzadkie wślizgi
+    kickChance: 0.35,      // Rzadkie kopnięcia w zwarciu
+    kitingEnabled: false   // Raptor nie ucieka wysoko w niebo
+  },
+  medium: {
+    decisionMin: 14,
+    decisionMax: 23,       // 14-23 klatek (~0.23s - 0.38s)
+    aimErrorMin: 16,
+    aimErrorMax: 28,       // Umiarkowany błąd: ±16° do ±28°
+    aimLerp: 0.11,         // Średnia szybkość obrotu broni
+    grenadeChance: 0.05,   // Sporadyczne granaty (5%)
+    grenadeCooldown: 18.0,
+    enforcerClimbCooldown: 190,
+    enforcerStompCooldown: 210,
+    strikerAirCooldown: 170,
+    strikerGroundCooldown: 190,
+    akBurstShots: 3,       // 3-strzałowe serie
+    akBurstPause: 40,      // Średnia pauza (~0.66s)
+    shotHesitation: 9,     // Krótkie wahanie (~0.15s)
+    slideChance: 0.22,
+    kickChance: 0.70,
+    kitingEnabled: true
+  },
+  hard: {
+    decisionMin: 6,
+    decisionMax: 11,       // 6-11 klatek (~0.10s - 0.18s)
+    aimErrorMin: 6,
+    aimErrorMax: 14,       // Niewielki błąd: ±6° do ±14°
+    aimLerp: 0.18,         // Szybkie naprowadzanie celownika
+    grenadeChance: 0.16,   // Taktyczne granaty (16%)
+    grenadeCooldown: 12.0,
+    enforcerClimbCooldown: 125,
+    enforcerStompCooldown: 145,
+    strikerAirCooldown: 110,
+    strikerGroundCooldown: 125,
+    akBurstShots: 4,       // Długie 4-strzałowe serie
+    akBurstPause: 25,      // Krótka pauza (~0.4s)
+    shotHesitation: 0,     // Błyskawiczny strzał bez wahania
+    slideChance: 0.40,
+    kickChance: 1.0,
+    kitingEnabled: true
+  }
+};
+
+export function getBotDifficultyConfig(botTarget) {
+  const d = botTarget?.difficulty || 'medium';
+  return BOT_DIFFICULTY_CONFIG[d] || BOT_DIFFICULTY_CONFIG.medium;
 }
 
 function getStoredBotDifficulty() {
@@ -527,6 +599,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   if (botTarget.decisionTimer > 0) botTarget.decisionTimer--;
   if (botTarget.strafeTimer > 0) botTarget.strafeTimer--;
   if (botTarget.idleDecisionTimer > 0) botTarget.idleDecisionTimer--;
+  if (botTarget.shootHesitationTimer > 0) botTarget.shootHesitationTimer--;
   if (botTarget.grenadeCooldown > 0) {
     botTarget.grenadeCooldown = Math.max(0, botTarget.grenadeCooldown - (1 / 60));
   }
@@ -542,6 +615,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const isEnforcer = (botClassId === 'ENFORCER');
   const isStriker = (botClassId === 'STRIKER' || botClassId === 'PLAYMAKER' || botClassId === 'SWEEPER');
   const isRaptor = (botClassId === 'RAPTOR' || botClassId === 'AERO');
+  const diffCfg = getBotDifficultyConfig(botTarget);
 
   // =========================================================================
   // 1. WYBÓR BRONI NA BAZIE DYSTANSU DO WROGA I KLASY (ARENY BOJOWE 2 i 3)
@@ -567,13 +641,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
 
     if (canEngageTarget && distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
-      const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-      const isEasy = (botTarget.difficulty === 'easy');
       const grenadeRoll = Math.random();
-      const grenadeChance = isHard ? 0.35 : (isEasy ? 0.05 : 0.16);
-      if (grenadeRoll < grenadeChance) {
+      if (diffCfg.grenadeChance > 0 && grenadeRoll < diffCfg.grenadeChance) {
         throwTacticalGrenade(botTarget, targetEnemy.x + targetEnemy.w / 2, targetEnemy.y + targetEnemy.h / 2);
-        botTarget.grenadeCooldown = isHard ? 6.5 : (isEasy ? 18.0 : 12.0);
+        botTarget.grenadeCooldown = diffCfg.grenadeCooldown;
       }
     }
   }
@@ -585,19 +656,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY)));
 
   if (botTarget.decisionTimer <= 0) {
-    const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-    const isEasy = (botTarget.difficulty === 'easy');
-    botTarget.decisionTimer = isHard
-      ? Math.floor(Math.random() * 3 + 1)
-      : (isEasy ? Math.floor(Math.random() * 9 + 14) : Math.floor(Math.random() * 5 + 6));
+    const dRange = Math.max(1, diffCfg.decisionMax - diffCfg.decisionMin);
+    botTarget.decisionTimer = Math.floor(Math.random() * dRange + diffCfg.decisionMin);
 
     // Dynamiczny błąd kąta celowania:
-    // Łatwy: ±16° do ±28°, Średni (dawny rekrut): ±6° do ±14°, Trudny: ±1.5° do ±4°
-    const errorDeg = isHard
-      ? ((1.5 + Math.random() * 2.5) * (Math.random() < 0.5 ? -1 : 1))
-      : (isEasy
-        ? ((16 + Math.random() * 12) * (Math.random() < 0.5 ? -1 : 1))
-        : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1)));
+    // Łatwy (nowy): ±30° do ±48°, Średni (dawny łatwy): ±16° do ±28°, Trudny (dawny średni): ±6° do ±14°
+    const errRange = Math.max(1, diffCfg.aimErrorMax - diffCfg.aimErrorMin);
+    const errorDeg = (diffCfg.aimErrorMin + Math.random() * errRange) * (Math.random() < 0.5 ? -1 : 1);
     botTarget.aimErrorAngle = errorDeg * (Math.PI / 180);
 
     // Punkt docelowy nawigacji
@@ -660,9 +725,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           // Kolos wykonuje potężny wyskok pneumatyczny z kruszeniem ziemi na wyższą platformę
           const blastDirX = Math.abs(diffX) > 25 ? (Math.sign(diffX) * 0.9) : (botTarget.facing || 1) * 0.3;
           triggerEnforcerBlastJump(botTarget, blastDirX, spawnGrass);
-          const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-          const isEasy = (botTarget.difficulty === 'easy');
-          botTarget.enforcerBlastCooldown = isHard ? 75 : (isEasy ? 190 : 125);
+          botTarget.enforcerBlastCooldown = diffCfg.enforcerClimbCooldown;
         } else if (!isEnforcer) {
           bKeys.up = true;
         }
@@ -704,7 +767,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     } else if (targetEnemy && !targetEnemy.isDead) {
       const dxToEnemy = (targetEnemy.x + targetEnemy.w / 2) - botCenterX;
       const distToEnemyX = Math.abs(dxToEnemy);
-      const slideProb = isEnforcer ? 0.50 : 0.35; // Kolos częściej taranuje wślizgiem
+      const slideProb = isEnforcer ? (diffCfg.slideChance * 1.3) : diffCfg.slideChance;
       if (distToEnemyX >= 50 && distToEnemyX <= 135 && Math.abs(botTarget.vx) > 3.0 && (botTarget.vx * dxToEnemy > 0)) {
         if (Math.random() < slideProb) {
           playerSlide(spawnGrass, groundY, botTarget);
@@ -742,9 +805,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     if (shouldBlast) {
       triggerEnforcerBlastJump(botTarget, bDirX, spawnGrass);
       bKeys.up = false;
-      const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-      const isEasy = (botTarget.difficulty === 'easy');
-      botTarget.enforcerBlastCooldown = isHard ? 85 : (isEasy ? 210 : 145);
+      botTarget.enforcerBlastCooldown = diffCfg.enforcerStompCooldown;
     }
   }
 
@@ -790,9 +851,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (triggerAir) {
         botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 50);
         triggerStrikerAirDash(botTarget, nx, ny, 1.0);
-        const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-        const isEasy = (botTarget.difficulty === 'easy');
-        botTarget.strikerDashCooldown = isHard ? 65 : (isEasy ? 170 : 110);
+        botTarget.strikerDashCooldown = diffCfg.strikerAirCooldown;
       }
     }
     // 2. Ground Dash na ziemi (dopalacz rakietowy w butach)
@@ -814,9 +873,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (triggerGround && gDir !== 0) {
         botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 15);
         triggerStrikerGroundDash(botTarget, gDir, 'STICK', 1.0);
-        const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
-        const isEasy = (botTarget.difficulty === 'easy');
-        botTarget.strikerDashCooldown = isHard ? 75 : (isEasy ? 190 : 125);
+        botTarget.strikerDashCooldown = diffCfg.strikerGroundCooldown;
       }
     }
   }
@@ -857,7 +914,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     }
 
     // E. Klasa Lekka: RAPTOR – Aerial Superiority, Kiting i Hovering
-    if (isRaptor) {
+    if (isRaptor && diffCfg.kitingEnabled !== false) {
       if (targetEnemy && !targetEnemy.isDead) {
         // Kiting w zwarciu: ucieczka w górę i w tył przed wrogiem
         if (distToEnemy < 125) {
@@ -1008,8 +1065,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   if (typeof botTarget.aimX !== 'number' || isNaN(botTarget.aimX)) botTarget.aimX = desiredAimX;
   if (typeof botTarget.aimY !== 'number' || isNaN(botTarget.aimY)) botTarget.aimY = desiredAimY;
 
-  botTarget.aimX += (desiredAimX - botTarget.aimX) * 0.18;
-  botTarget.aimY += (desiredAimY - botTarget.aimY) * 0.18;
+  const aimLerp = diffCfg.aimLerp || 0.11;
+  botTarget.aimX += (desiredAimX - botTarget.aimX) * aimLerp;
+  botTarget.aimY += (desiredAimY - botTarget.aimY) * aimLerp;
 
   // =========================================================================
   // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
@@ -1033,35 +1091,53 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const isAimedAtEnemy = angleDiff <= toleranceRad;
 
       if (isAimedAtEnemy) {
-        botTarget.shootPoseTimer = Math.max(botTarget.shootPoseTimer || 0, 25);
-        if (botTarget.currentWeapon === WEAPONS.AK47) {
-          if (botTarget.burstShotsRemaining > 0) {
-            if (botTarget.shootCooldown <= 0) {
+        if (!botTarget._aimLocked) {
+          botTarget._aimLocked = true;
+          botTarget.shootHesitationTimer = diffCfg.shotHesitation || 0;
+        }
+
+        const canPullTrigger = (botTarget.shootHesitationTimer <= 0);
+
+        if (canPullTrigger) {
+          botTarget.shootPoseTimer = Math.max(botTarget.shootPoseTimer || 0, 25);
+          if (botTarget.currentWeapon === WEAPONS.AK47) {
+            if (botTarget.burstShotsRemaining > 0) {
+              if (botTarget.shootCooldown <= 0) {
+                shootWeapon(botTarget, botTarget.currentWeapon);
+                botTarget.burstShotsRemaining--;
+                if (botTarget.burstShotsRemaining <= 0) {
+                  botTarget.burstPauseTimer = diffCfg.akBurstPause;
+                }
+              }
+            } else if (botTarget.burstPauseTimer <= 0 && botTarget.shootCooldown <= 0) {
+              botTarget.burstShotsRemaining = diffCfg.akBurstShots;
               shootWeapon(botTarget, botTarget.currentWeapon);
               botTarget.burstShotsRemaining--;
-              if (botTarget.burstShotsRemaining <= 0) {
-                botTarget.burstPauseTimer = 25;
+            }
+          } else if (botTarget.currentWeapon === WEAPONS.SHOTGUN) {
+            if (distToEnemy < 180 && botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+              if (botTarget.difficulty === 'easy') {
+                botTarget.shootCooldown = Math.max(botTarget.shootCooldown || 0, 35);
               }
             }
-          } else if (botTarget.burstPauseTimer <= 0 && botTarget.shootCooldown <= 0) {
-            botTarget.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
-            shootWeapon(botTarget, botTarget.currentWeapon);
-            botTarget.burstShotsRemaining--;
-          }
-        } else if (botTarget.currentWeapon === WEAPONS.SHOTGUN) {
-          if (distToEnemy < 180 && botTarget.shootCooldown <= 0) {
-            shootWeapon(botTarget, botTarget.currentWeapon);
-          }
-        } else if (botTarget.currentWeapon === WEAPONS.SNIPER) {
-          if (botTarget.shootCooldown <= 0) {
-            shootWeapon(botTarget, botTarget.currentWeapon);
+          } else if (botTarget.currentWeapon === WEAPONS.SNIPER) {
+            if (botTarget.shootCooldown <= 0) {
+              shootWeapon(botTarget, botTarget.currentWeapon);
+              if (botTarget.difficulty === 'easy') {
+                botTarget.shootCooldown = Math.max(botTarget.shootCooldown || 0, 45);
+              }
+            }
           }
         }
+      } else {
+        botTarget._aimLocked = false;
       }
     } else {
       // Bot jest poza polem widzenia gracza - nie prowadzi ognia
       botTarget.isShooting = false;
       botTarget.burstShotsRemaining = 0;
+      botTarget._aimLocked = false;
     }
   }
 
@@ -1089,9 +1165,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const distToEnemyFromHip = Math.hypot((targetEnemy.x + targetEnemy.w / 2) - hipX, (targetEnemy.y + targetEnemy.h / 2) - hipY);
     if (distToEnemyFromHip <= hitReach + 20) {
       if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
-        botTarget.isCharging = true;
-        botTarget.chargePower = 0;
-        botTarget.chargeTarget = Math.random() * 0.40 + 0.45;
+        if (Math.random() < (diffCfg.kickChance !== undefined ? diffCfg.kickChance : 0.70)) {
+          botTarget.isCharging = true;
+          botTarget.chargePower = 0;
+          botTarget.chargeTarget = Math.random() * 0.40 + 0.45;
+        }
       } else if (botTarget.isCharging) {
         if (botTarget.chargePower >= botTarget.chargeTarget) {
           executeReleaseKick(null, botTarget, 0, meleeTargets);
