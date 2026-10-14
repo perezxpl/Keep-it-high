@@ -254,13 +254,23 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         if (slopeHit) recordHit(slopeHit, plat.id || 'ramp');
 
         if (plat.solid) {
-          const bottomY = Math.max(topY1, topY2) + (plat.h || 20);
-          const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, bottomY, plat.x + plat.w, bottomY);
-          if (bottomHit) recordHit(bottomHit, plat.id || 'ramp_bottom');
-          const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, bottomY);
-          if (leftHit) recordHit(leftHit, plat.id || 'ramp_left');
-          const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, bottomY);
-          if (rightHit) recordHit(rightHit, plat.id || 'ramp_right');
+          if (plat.fillToGround) {
+            const bottomY = Math.max(topY1, topY2) + (plat.h || 20);
+            const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, bottomY, plat.x + plat.w, bottomY);
+            if (bottomHit) recordHit(bottomHit, plat.id || 'ramp_bottom');
+            const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, bottomY);
+            if (leftHit) recordHit(leftHit, plat.id || 'ramp_left');
+            const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, bottomY);
+            if (rightHit) recordHit(rightHit, plat.id || 'ramp_right');
+          } else {
+            const thick = plat.thickness || 18;
+            const bottomHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1 + thick, plat.x + plat.w, topY2 + thick);
+            if (bottomHit) recordHit(bottomHit, (plat.id || 'ramp') + '_bottom');
+            const leftHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x, topY1, plat.x, topY1 + thick);
+            if (leftHit) recordHit(leftHit, (plat.id || 'ramp') + '_left');
+            const rightHit = getSegmentSegmentIntersection(x1, y1, x2, y2, plat.x + plat.w, topY2, plat.x + plat.w, topY2 + thick);
+            if (rightHit) recordHit(rightHit, (plat.id || 'ramp') + '_right');
+          }
         }
         continue;
       }
