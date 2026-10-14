@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
-import { activeArenaId, customObstacles } from '../obstacles.js';
+import { activeArenaId, customObstacles, getPlatformSurfaceY } from '../obstacles.js';
 import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
@@ -186,8 +186,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     if (player.staggerTimer === 0) {
       // 4. PŁYNNE WSTANIE PO UPŁYWIE OGŁUSZENIA:
       // Przywróć pełny collider stojący bez zacinania się w geometrii platformy (p.y wyrównane do gruntu)
-      const currentFloor = player.currentGroundY || GROUND_Y;
-      player.y = currentFloor - (player.h || 70);
+      const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
+      if (currentFloor) {
+        player.y = currentFloor - (player.h || 70);
+      }
       player.vy = 0;
       player.isJumping = false;
       player.onGround = true;
@@ -1019,8 +1021,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     // Przez resztę czasu ogłuszenia (do końca 2 sekund) postać leży nieruchomo płasko na powierzchni gruntu
     player.vy = 0;
     player.isJumping = false;
-    const currentFloor = player.currentGroundY || GROUND_Y;
-    player.y = currentFloor - colH;
+    const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
+    if (currentFloor) {
+      player.y = currentFloor - colH;
+    }
   } else if (player.isAcidDying || (player.acidDeath && player.acidDeath.active)) {
     // Spowolnienie opadania - ociężałe zanurzanie w gęstym kwasie
     player.vx = 0;

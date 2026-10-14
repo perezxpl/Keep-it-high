@@ -207,18 +207,20 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const isFallenDebris = (plat.intact === false) || plat.isDebris;
       const platThickness = plat.thickness || plat.h || 20;
 
-      // 1. Lądowanie z powietrza (opadanie p.vy >= 0):
-      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej
-      const isAirLanding = p.vy >= 0 && (
-        (prevFeetY <= topY + Math.max(18, platThickness * 0.8) && feetY >= topY - 12 && feetY <= topY + Math.max(24, p.vy + 16))
+      // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
+      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie
+      const airMarginTop = Math.max(30, platThickness * 0.9);
+      const isAirLanding = p.vy >= -1.0 && (
+        (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + Math.max(36, p.vy + 24))
       );
 
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
-      // Gracz nie odpada od platformy przy mikro-wahaniach pionowych, dopóki celowo nie skoczy lub nie leci w górę
-      const isGroundedRetention = isCurrent && !(p.isJumping && p.vy < -2.0) && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= 32;
+      // Gracz nie odpada od platformy przy mikro-wahaniach pionowych ani przy wstawaniu ze staggara
+      const maxRetentionDiff = (p.staggerTimer > 0 || (p.staggerRecoveryTimer || 0) > 0) ? 60 : 36;
+      const isGroundedRetention = isCurrent && !(p.isJumping && p.vy < -2.5) && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
 
-      // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach):
-      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= 26;
+      // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach i rampach):
+      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= 32;
 
       let isLanding = isAirLanding || isGroundedRetention || isStepOver;
 

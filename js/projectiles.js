@@ -457,12 +457,16 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       }
     }
   } else if (isA2Explosion) {
-    const targetPlatforms = platforms || ARENA_PLATFORMS;
-    const terrainRadius = 90;
-    if (Array.isArray(targetPlatforms)) {
-      destroyPlatformSegments(targetPlatforms, expX, expY, terrainRadius, groundY);
+    // W Arenie 2 (Sektor X) bastiony, kładki i rampy są stałymi konstrukcjami przemysłowymi nad jeziorem kwasu.
+    // Geometria platform nie ulega zniszczeniu ani wycinaniu przez granaty.
+    if (expY >= 1410) {
+      if (typeof window !== 'undefined' && typeof window.createAcidSplash === 'function') {
+        window.createAcidSplash(expX, 1440);
+      }
+      if (typeof window !== 'undefined' && typeof window.spawnAcidSmoke === 'function') {
+        window.spawnAcidSmoke(expX, 1440);
+      }
     }
-    // W Arenie 2 brak podłoża (GROUND_Y) do wycinania
   } else {
     const targetPlatforms = platforms || ARENA_PLATFORMS;
     const terrainRadius = 90;
@@ -533,7 +537,7 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
 
   for (let i = platforms.length - 1; i >= 0; i--) {
     const plat = platforms[i];
-    if (!plat || plat.isCanyonTerrain || plat.solid) continue;
+    if (!plat || plat.isCanyonTerrain || plat.solid || plat.indestructible || plat.isSlope || plat.isPlatform === true) continue;
 
     const platTopY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
     const platThick = plat.thickness || 22;

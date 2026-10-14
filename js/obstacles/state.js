@@ -518,7 +518,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   customObstacles.length = 0;
 
   if (currentArena && Array.isArray(currentArena.platforms)) {
-    ARENA_PLATFORMS.push(...currentArena.platforms);
+    const rawPlats = (activeArenaId === 'ARENA_2' && arenaSnapshot?.arena2Platforms)
+      ? arenaSnapshot.arena2Platforms
+      : currentArena.platforms;
+    const clonedPlats = JSON.parse(JSON.stringify(rawPlats));
+    ARENA_PLATFORMS.push(...clonedPlats);
     if (activeArenaId === 'ARENA_3') {
       arenaSnapshot.arena3Platforms = JSON.parse(JSON.stringify(currentArena.platforms));
     }

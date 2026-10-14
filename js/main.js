@@ -608,8 +608,13 @@ function update() {
   }
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
-  const currentFloor = player.currentGroundY || GROUND_Y;
-  const isPlayerGrounded = !player.isJumping && (player.y >= currentFloor - player.h - 3);
+  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const hasNoFlatFloor = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' || curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+
+  const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (hasNoFlatFloor ? effectiveGroundY : GROUND_Y);
+  const isPlayerGrounded = hasNoFlatFloor
+    ? !!(player.onGround && !player.isJumping && player.currentPlatform)
+    : (!player.isJumping && (player.y >= currentFloor - player.h - 3));
 
   if (isPlayerGrounded || player.isDead) {
     inputSession.jetpackAirborneSession = false;

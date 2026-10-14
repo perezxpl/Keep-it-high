@@ -519,10 +519,13 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         const falloff = getDistanceFalloff(ex, ey, footX, footY, kickReach);
         const finalKnockback = BASE_KNOCKBACK * knockbackMultiplier * (0.80 + pwr * 0.30) * falloff;
 
+        enemy.lastGroundedFloorY = enemy.currentGroundY || enemy.lastGroundedFloorY;
         enemy.vx = kickDirX * finalKnockback;
         enemy.vy = Math.min(-2.8, kickDirY * finalKnockback * 0.85);
         enemy.isJumping = true;
         enemy.staggerTimer = classStats.spartanStagger || 22;
+        enemy.staggerLanded = false;
+        enemy.staggerRecoveryTimer = 0;
 
         const baseDmg = classStats.spartanDamage || 12;
         const dmg = Math.round(baseDmg * (knockbackMultiplier >= 1.5 ? 1.25 : 1.0) + pwr * 6);
@@ -896,6 +899,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.lastAttackerTimer = 240;
 
     // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
+    enemy.lastGroundedFloorY = enemy.currentGroundY || enemy.lastGroundedFloorY;
     enemy.facing = -player.facing;
     enemy.vx = player.facing * 16.5;
     enemy.airVx = enemy.vx;

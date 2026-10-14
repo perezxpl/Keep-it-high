@@ -47,6 +47,8 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     isDropThrough: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     blocksBullets: true,
     hangingPhysics: true,
     vy: 0,
@@ -68,6 +70,8 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     isDropThrough: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     blocksBullets: true,
     hangingPhysics: true,
     vy: 0,
@@ -89,6 +93,8 @@ export const ARENA_2_PLATFORMS = [
     isPlatform: true,
     isDropThrough: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     blocksBullets: true,
     hangingPhysics: true,
     vy: 0,
@@ -111,7 +117,9 @@ export const ARENA_2_PLATFORMS = [
     thickness: 32,
     isPlatform: true,
     isDropThrough: true,
-    oneWay: true
+    oneWay: true,
+    solid: true,
+    indestructible: true
   },
   {
     id: 'plat_B_top_right',
@@ -123,7 +131,9 @@ export const ARENA_2_PLATFORMS = [
     thickness: 32,
     isPlatform: true,
     isDropThrough: true,
-    oneWay: true
+    oneWay: true,
+    solid: true,
+    indestructible: true
   },
 
   // 3. RAMPY GÓRNE (Ukośne zjazdy łączące bastiony ze środkiem)
@@ -139,6 +149,8 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     isDropThrough: false,
     x: 880,
     w: 680,
@@ -163,6 +175,8 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     isDropThrough: false,
     x: 2440,
     w: 680,
@@ -187,7 +201,9 @@ export const ARENA_2_PLATFORMS = [
     thickness: 26,
     isPlatform: true,
     isDropThrough: false,
-    oneWay: true
+    oneWay: true,
+    solid: true,
+    indestructible: true
   },
 
   // 5. RAMPY DOLNE (Ukośne zjazdy ze środka na dolne platformy)
@@ -203,6 +219,8 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     isDropThrough: false,
     x: 900,
     w: 660,
@@ -227,6 +245,8 @@ export const ARENA_2_PLATFORMS = [
     isSlope: true,
     isPlatform: true,
     oneWay: true,
+    solid: true,
+    indestructible: true,
     isDropThrough: false,
     x: 2440,
     w: 660,
@@ -251,7 +271,9 @@ export const ARENA_2_PLATFORMS = [
     thickness: 32,
     isPlatform: true,
     isDropThrough: false,
-    oneWay: true
+    oneWay: true,
+    solid: true,
+    indestructible: true
   },
   {
     id: 'plat_D_bot_right',
@@ -263,7 +285,9 @@ export const ARENA_2_PLATFORMS = [
     thickness: 32,
     isPlatform: true,
     isDropThrough: false,
-    oneWay: true
+    oneWay: true,
+    solid: true,
+    indestructible: true
   }
 ];
 
