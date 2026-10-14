@@ -556,7 +556,6 @@ function update() {
       checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
     checkObstacleCollisions(null, effectiveGroundY, null, null);
-  }
 
     // Zliczanie fragów poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
     if (!isA2Active && !isA3Active) {
