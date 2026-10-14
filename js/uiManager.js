@@ -53,7 +53,7 @@ import {
   DEATHMATCH_MODES,
   TEAMS
 } from './deathmatch/index.js';
-import { bot, setBotDifficulty } from './bot.js';
+import { bot, setBotDifficulty, setBotCount, getBotCount } from './bot.js';
 import { syncDevBotButtonUI } from './dev/devPanel.js';
 
 // Domyślna konfiguracja
@@ -800,7 +800,21 @@ export const uiManager = {
     // 5. Synchronizacja stanu Deathmatch (Arena 2)
     this.syncDeathmatchUI();
 
-    // 6. Przełącz arenę w tle silnika gry (tylko jeśli uległa zmianie)
+    // 6. Synchronizacja liczby botów i stanu AI
+    this.syncBotCountUI();
+    const ballCountRow = document.getElementById('ball-bot-count-row');
+    if (ballCountRow) ballCountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
+    const a3CountRow = document.getElementById('a3-bot-count-row');
+    if (a3CountRow) a3CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
+
+    document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => {
+      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
+    });
+    document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => {
+      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
+    });
+
+    // 7. Przełącz arenę w tle silnika gry (tylko jeśli uległa zmianie)
     if (typeof window !== 'undefined' && typeof window.switchArena === 'function') {
       const curId = window.activeArenaId;
       if (curId !== arena.id) {
@@ -812,6 +826,13 @@ export const uiManager = {
         }
       }
     }
+  },
+
+  syncBotCountUI(count = getBotCount()) {
+    const c = parseInt(count, 10) || 1;
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.botCount, 10) === c);
+    });
   },
 
   syncDeathmatchUI() {
@@ -1186,8 +1207,11 @@ export const uiManager = {
         playUiClick();
         document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        bot.active = (btn.dataset.botState === 'active');
+        const isActive = (btn.dataset.botState === 'active');
+        bot.active = isActive;
         syncDevBotButtonUI();
+        const countRow = document.getElementById('ball-bot-count-row');
+        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
       });
     });
 
@@ -1251,8 +1275,11 @@ export const uiManager = {
         playUiClick();
         document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        bot.active = (btn.dataset.botState === 'active');
+        const isActive = (btn.dataset.botState === 'active');
+        bot.active = isActive;
         syncDevBotButtonUI();
+        const countRow = document.getElementById('a3-bot-count-row');
+        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
       });
     });
 
@@ -1263,6 +1290,19 @@ export const uiManager = {
         document.querySelectorAll('#a3-diff-toggle-group button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         setBotDifficulty(btn.dataset.botDiff || 'recruit');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        const count = parseInt(btn.dataset.botCount, 10) || 1;
+        setBotCount(count);
+        this.syncBotCountUI(count);
       });
     });
 

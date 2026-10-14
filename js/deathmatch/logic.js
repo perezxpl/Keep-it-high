@@ -17,7 +17,7 @@ import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 /**
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
  */
-export function initDeathmatch(player, bot, remotePlayer) {
+export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.active = true;
   deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
   deathmatchState.playerTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
@@ -39,20 +39,31 @@ export function initDeathmatch(player, bot, remotePlayer) {
     player._dmDeathRecorded = false;
   }
 
-  // Aktywacja i konfiguracja bota
-  const botTeam = (deathmatchState.mode === DEATHMATCH_MODES.TDM)
-    ? (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN)
-    : TEAMS.ORANGE;
+  const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
+  const enemyTeam = (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN);
 
-  if (bot) {
-    bot.active = true;
-    bot.team = botTeam;
-    bot.isBot = true;
-    bot.killer = null;
-    bot.lastAttacker = null;
-    bot.lastAttackerTimer = 0;
-    bot._dmDeathRecorded = false;
-  }
+  // Aktywacja i konfiguracja botów
+  botList.forEach((b, idx) => {
+    if (!b) return;
+    b.active = true;
+    b.isBot = true;
+    b.killer = null;
+    b.lastAttacker = null;
+    b.lastAttackerTimer = 0;
+    b._dmDeathRecorded = false;
+
+    if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+      // W TDM przy 3 botach: 1 sojusznik (CYAN), 2 wrogów (ORANGE) -> mecz 2 vs 2!
+      // Przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> mecz 3 vs 3!
+      let isAlly = false;
+      if (botList.length === 3 && idx === 0) isAlly = true;
+      else if (botList.length >= 4 && idx < Math.floor(botList.length / 2)) isAlly = true;
+
+      b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+    } else {
+      b.team = TEAMS.ORANGE;
+    }
+  });
 
   // Rejestracja uczestników do rankingu
   const pList = [];
@@ -69,21 +80,22 @@ export function initDeathmatch(player, bot, remotePlayer) {
     });
   }
 
-  if (bot) {
+  botList.forEach((b, idx) => {
+    if (!b) return;
     pList.push({
-      id: 'bot_1',
-      name: 'SGT. STRIKER [AI]',
+      id: b.id || `bot_${idx + 1}`,
+      name: `${b.name || 'SGT. STRIKER'} [AI]`,
       isPlayer: false,
-      team: botTeam,
+      team: b.team,
       kills: 0,
       deaths: 0,
-      ref: bot
+      ref: b
     });
-  }
+  });
 
   if (remotePlayer && remotePlayer.active) {
     const remoteTeam = (deathmatchState.mode === DEATHMATCH_MODES.TDM)
-      ? (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN)
+      ? enemyTeam
       : TEAMS.ORANGE;
     remotePlayer.team = remoteTeam;
     pList.push({
@@ -119,7 +131,7 @@ export function updateLeaderboard() {
 /**
  * Główna pętla logiki Deathmatch wywoływana w każdej klatce gry
  */
-export function updateDeathmatch(dt, player, bot, remotePlayer, arenaScore) {
+export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore) {
   if (!deathmatchState.active) return;
 
   // Odliczanie po zakończeniu meczu (podium)
@@ -128,7 +140,7 @@ export function updateDeathmatch(dt, player, bot, remotePlayer, arenaScore) {
       deathmatchState.endCelebrationTimer--;
       if (deathmatchState.endCelebrationTimer <= 0) {
         // Po zakończeniu celebracji, restart sesji na nowe 5 minut
-        initDeathmatch(player, bot, remotePlayer);
+        initDeathmatch(player, botOrBots, remotePlayer);
       }
     }
     return;
@@ -139,9 +151,12 @@ export function updateDeathmatch(dt, player, bot, remotePlayer, arenaScore) {
   deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
 
   // 2. Obsługa faktycznych eliminacji w walce
+  const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
   const combatants = [];
   if (player) combatants.push(player);
-  if (bot && bot.active) combatants.push(bot);
+  for (const b of botList) {
+    if (b && b.active) combatants.push(b);
+  }
   if (remotePlayer && remotePlayer.active) combatants.push(remotePlayer);
 
   for (let i = 0; i < combatants.length; i++) {

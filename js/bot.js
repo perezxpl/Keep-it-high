@@ -19,151 +19,239 @@ export const botKeys = {
   slide: false
 };
 
+export const BOT_PROFILES = [
+  { name: 'SGT. STRIKER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1 },
+  { name: 'CPL. RAPTOR', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1 },
+  { name: 'LT. ENFORCER', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1 },
+  { name: 'PVT. VIPER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1 },
+  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1 }
+];
+
+export function createBotInstance(index = 0) {
+  const profile = BOT_PROFILES[index % BOT_PROFILES.length];
+  const botClass = (CLASSES && CLASSES[profile.classKey]) ? CLASSES[profile.classKey] : (CLASSES?.STRIKER || CLASSES?.RAPTOR);
+  const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false, slide: false };
+
+  const instance = createPlayerInstance({
+    isBot: true,
+    active: (index === 0),
+    frozen: false,
+    facing: profile.facing || -1,
+    x: START_X + 600 + (index * 80),
+    y: 0,
+    w: 24,
+    h: 70,
+    dropThroughTimer: 0,
+    currentClass: botClass,
+    name: profile.name,
+    id: `bot_${index + 1}`,
+
+    hp: botClass?.stats?.hp || 100,
+    maxHp: botClass?.stats?.hp || 100,
+    currentWeapon: profile.weapon || WEAPONS.AK47,
+    shootCooldown: 0,
+    isDead: false,
+    respawnTimer: 0,
+    deathTilt: 0,
+    deathRotVel: 0,
+    isSettled: false,
+    pelvisY: 0,
+    burstShotsRemaining: 0,
+    burstPauseTimer: 0,
+
+    difficulty: 'recruit',
+    decisionTimer: 0,
+    aimErrorAngle: 0,
+    strafeTimer: 0,
+    strafeDir: 0,
+    chargeTarget: 0.55,
+    idleDecisionTimer: 0,
+    crouchTimer: 0,
+    botKeys: instanceKeys
+  });
+  return instance;
+}
+
 /**
- * Instancja drugiego gracza kontrolowanego przez AI
+ * Główna instancja bota (Bot 1) dla 100% kompatybilności wstecznej
  */
-export const bot = createPlayerInstance({
-  isBot: true,
-  active: false,
-  frozen: false, // Flaga zamrożenia bota w miejscu (Standstill)
-  facing: -1,
-  x: START_X + 600,
-  y: 0,
-  w: 24,
-  h: 70,
-  dropThroughTimer: 0,
-  currentClass: CLASSES.STRIKER || CLASSES.RAPTOR,
+export const bot = createBotInstance(0);
 
-  // Pola walki
-  hp: 100,
-  maxHp: 100,
-  currentWeapon: WEAPONS.AK47,
-  shootCooldown: 0,
-  isDead: false,
-  respawnTimer: 0,
-  deathTilt: 0,
-  deathRotVel: 0,
-  isSettled: false,
-  pelvisY: 0,
-  burstShotsRemaining: 0,
-  burstPauseTimer: 0,
+/**
+ * Tablica wszystkich instancji botów
+ */
+export const bots = [bot];
 
-  // Pola wewnętrzne sztucznego mózgu
-  difficulty: 'recruit', // 'recruit' | 'veteran'
-  decisionTimer: 0,
-  aimErrorAngle: 0,
-  strafeTimer: 0,
-  strafeDir: 0,
-  chargeTarget: 0.55,
-  idleDecisionTimer: 0,
-  crouchTimer: 0
-});
+export let botCount = 1;
+
+export function setBotCount(count) {
+  const num = Math.max(1, Math.min(5, parseInt(count, 10) || 1));
+  botCount = num;
+  while (bots.length < num) {
+    bots.push(createBotInstance(bots.length));
+  }
+  for (let i = 0; i < bots.length; i++) {
+    bots[i].active = (i < num);
+  }
+  try {
+    localStorage.setItem('kih_bot_count_v1', String(num));
+  } catch (_) {}
+  return botCount;
+}
+
+export function getBotCount() {
+  try {
+    const stored = localStorage.getItem('kih_bot_count_v1');
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 1 && parsed <= 5) {
+        botCount = parsed;
+        return parsed;
+      }
+    }
+  } catch (_) {}
+  return botCount;
+}
+
+export function getActiveBots() {
+  while (bots.length < botCount) {
+    bots.push(createBotInstance(bots.length));
+  }
+  return bots.slice(0, botCount).filter(b => b.active);
+}
 
 export function setBotDifficulty(diff) {
-  bot.difficulty = (diff === 'veteran') ? 'veteran' : 'recruit';
+  const d = (diff === 'veteran') ? 'veteran' : 'recruit';
+  bots.forEach(b => { b.difficulty = d; });
 }
 
 /**
  * Główna pętla sztucznej inteligencji bota (reakcje, taktyka, celowanie, fizyka)
  */
-export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
-  if (!bot.active) return;
+export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget = bot, allCombatants = null) {
+  if (!botTarget || !botTarget.active) return;
+  const bKeys = botTarget.botKeys || botKeys;
+
+  // Wyszukanie wrogiego celu do ataku (najbliższy przeciwnik)
+  let targetEnemy = (humanPlayer && !humanPlayer.isDead) ? humanPlayer : null;
+  if (Array.isArray(allCombatants) && allCombatants.length > 0) {
+    let closestDist = Infinity;
+    let closestCand = null;
+    const botMidX = botTarget.x + botTarget.w / 2;
+    const botMidY = botTarget.y + botTarget.h / 2;
+
+    for (const c of allCombatants) {
+      if (!c || c === botTarget || c.isDead || (c.isBot && !c.active)) continue;
+      // W trybie drużynowym (TDM) sojusznicy z tej samej drużyny nie są celem
+      if (botTarget.team && c.team && botTarget.team === c.team) continue;
+      const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
+      if (d < closestDist) {
+        closestDist = d;
+        closestCand = c;
+      }
+    }
+    if (closestCand) {
+      targetEnemy = closestCand;
+    }
+  }
+
+  const meleeTargets = targetEnemy ? [targetEnemy] : (humanPlayer ? [humanPlayer] : []);
 
   // Obsługa stanu śmierci oraz rozpuszczania w kwasie
-  if (bot.isDead || bot.isAcidDying || (bot.acidDeath && bot.acidDeath.active)) {
-    botKeys.left = false;
-    botKeys.right = false;
-    botKeys.up = false;
-    botKeys.down = false;
-    botKeys.space = false;
-    botKeys.slide = false;
-    bot.isShooting = false;
-    bot.isCharging = false;
-    bot.isJumpCharging = false;
-    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
+  if (botTarget.isDead || botTarget.isAcidDying || (botTarget.acidDeath && botTarget.acidDeath.active)) {
+    bKeys.left = false;
+    bKeys.right = false;
+    bKeys.up = false;
+    bKeys.down = false;
+    bKeys.space = false;
+    bKeys.slide = false;
+    botTarget.isShooting = false;
+    botTarget.isCharging = false;
+    botTarget.isJumpCharging = false;
+    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
     return;
   }
 
   // Obsługa oszołomienia po Spartan Kick
-  if (bot.staggerTimer > 0) {
-    botKeys.left = false;
-    botKeys.right = false;
-    botKeys.up = false;
-    botKeys.down = false;
-    botKeys.space = false;
-    botKeys.slide = false;
-    bot.isShooting = false;
-    bot.isCharging = false;
-    bot.decisionTimer = 0;
-    bot.shootPoseTimer = 0;
-    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
+  if (botTarget.staggerTimer > 0) {
+    bKeys.left = false;
+    bKeys.right = false;
+    bKeys.up = false;
+    bKeys.down = false;
+    bKeys.space = false;
+    bKeys.slide = false;
+    botTarget.isShooting = false;
+    botTarget.isCharging = false;
+    botTarget.decisionTimer = 0;
+    botTarget.shootPoseTimer = 0;
+    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
     return;
   }
 
   // =========================================================================
   // TRYB ZATRZYMANIA W MIEJSCU (BOT FROZEN / STANDSTILL)
   // =========================================================================
-  if (bot.frozen) {
-    botKeys.left = false;
-    botKeys.right = false;
-    botKeys.up = false;
-    botKeys.down = false;
-    botKeys.space = false;
-    botKeys.slide = false;
-    bot.vx = 0;
-    bot.airVx = 0;
-    bot.isShooting = false;
-    bot.isCharging = false;
-    bot.shootPoseTimer = 0;
-    updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
+  if (botTarget.frozen) {
+    bKeys.left = false;
+    bKeys.right = false;
+    bKeys.up = false;
+    bKeys.down = false;
+    bKeys.space = false;
+    bKeys.slide = false;
+    botTarget.vx = 0;
+    botTarget.airVx = 0;
+    botTarget.isShooting = false;
+    botTarget.isCharging = false;
+    botTarget.shootPoseTimer = 0;
+    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
     return;
   }
 
-  const botCenterX = bot.x + bot.w / 2;
-  const botCenterY = bot.y + bot.h / 2;
+  const botCenterX = botTarget.x + botTarget.w / 2;
+  const botCenterY = botTarget.y + botTarget.h / 2;
 
   // Dekrementacja timerów decyzyjnych i strzeleckich
-  if (bot.burstPauseTimer > 0) bot.burstPauseTimer--;
-  if (bot.decisionTimer > 0) bot.decisionTimer--;
-  if (bot.strafeTimer > 0) bot.strafeTimer--;
-  if (bot.idleDecisionTimer > 0) bot.idleDecisionTimer--;
-  if (bot.crouchTimer > 0) {
-    bot.crouchTimer--;
-    if (bot.crouchTimer <= 0) botKeys.down = false;
+  if (botTarget.burstPauseTimer > 0) botTarget.burstPauseTimer--;
+  if (botTarget.decisionTimer > 0) botTarget.decisionTimer--;
+  if (botTarget.strafeTimer > 0) botTarget.strafeTimer--;
+  if (botTarget.idleDecisionTimer > 0) botTarget.idleDecisionTimer--;
+  if (botTarget.crouchTimer > 0) {
+    botTarget.crouchTimer--;
+    if (botTarget.crouchTimer <= 0) bKeys.down = false;
   }
 
   // =========================================================================
-  // 1. WYBÓR BRONI NA BAZIE DYSTANSU DO GRACZA
+  // 1. WYBÓR BRONI NA BAZIE DYSTANSU DO WROGA
   // =========================================================================
-  const distToPlayer = humanPlayer ? Math.hypot((humanPlayer.x + humanPlayer.w / 2) - botCenterX, (humanPlayer.y + humanPlayer.h / 2) - botCenterY) : Infinity;
+  const distToEnemy = targetEnemy ? Math.hypot((targetEnemy.x + targetEnemy.w / 2) - botCenterX, (targetEnemy.y + targetEnemy.h / 2) - botCenterY) : Infinity;
 
-  if (distToPlayer < 180) {
-    bot.currentWeapon = WEAPONS.SHOTGUN;
-  } else if (distToPlayer > 480) {
-    bot.currentWeapon = WEAPONS.SNIPER;
+  if (distToEnemy < 180) {
+    botTarget.currentWeapon = WEAPONS.SHOTGUN;
+  } else if (distToEnemy > 480) {
+    botTarget.currentWeapon = WEAPONS.SNIPER;
   } else {
-    bot.currentWeapon = WEAPONS.AK47;
+    botTarget.currentWeapon = WEAPONS.AK47;
   }
 
   // =========================================================================
   // 2. CZAS REAKCJI I TAKTYCZNA MASZYNA STANÓW (Human Flaws: 6-10 klatek ~ 100-160ms)
   // =========================================================================
-  if (bot.decisionTimer <= 0) {
-    const isVeteran = (bot.difficulty === 'veteran');
-    bot.decisionTimer = isVeteran ? Math.floor(Math.random() * 3 + 2) : Math.floor(Math.random() * 5 + 6);
+  if (botTarget.decisionTimer <= 0) {
+    const isVeteran = (botTarget.difficulty === 'veteran');
+    botTarget.decisionTimer = isVeteran ? Math.floor(Math.random() * 3 + 2) : Math.floor(Math.random() * 5 + 6);
 
     // Dynamiczny błąd kąta celowania (losowy szum: Rekrut ±6° do ±14°, Weteran ±2° do ±5°)
     const errorDeg = isVeteran ? ((2 + Math.random() * 3) * (Math.random() < 0.5 ? -1 : 1)) : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1));
-    bot.aimErrorAngle = errorDeg * (Math.PI / 180);
+    botTarget.aimErrorAngle = errorDeg * (Math.PI / 180);
 
-    // Przewidywany punkt celu (piłka w trybie meczowym, przeciwnik w trybie Deathmatch)
+    // Przewidywany punkt celu (piłka w trybie meczowym, wróg w trybie bojowym)
     const hasBall = (ball && ball.active);
     let targetX;
     if (hasBall) {
       const predOffset = Math.sin(performance.now() * 0.002) * 20;
       targetX = ball.x + (ball.vx * 12) + predOffset;
-    } else if (humanPlayer && !humanPlayer.isDead) {
-      targetX = humanPlayer.x + humanPlayer.w / 2;
+    } else if (targetEnemy && !targetEnemy.isDead) {
+      targetX = targetEnemy.x + targetEnemy.w / 2;
     } else {
       targetX = botCenterX;
     }
@@ -171,37 +259,37 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
     // Martwa strefa (deadzone): nie szarp lewo-prawo, gdy cel jest blisko w poziomie
     const diffX = targetX - botCenterX;
     if (Math.abs(diffX) < 35) {
-      botKeys.left = false;
-      botKeys.right = false;
+      bKeys.left = false;
+      bKeys.right = false;
     } else if (diffX > 0) {
-      botKeys.right = true;
-      botKeys.left = false;
+      bKeys.right = true;
+      bKeys.left = false;
     } else {
-      botKeys.left = true;
-      botKeys.right = false;
+      bKeys.left = true;
+      bKeys.right = false;
     }
 
     // Nawigacja wertykalna: wspinaczka i zeskok
-    const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (humanPlayer ? humanPlayer.y : groundY);
+    const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : groundY);
 
     // Cel znajduje się wyżej o > 50 px - skok na platformę lub rampę
-    if (targetY < bot.y - 50) {
-      if (!bot.isJumping && !bot.isSliding) {
-        botKeys.up = true;
+    if (targetY < botTarget.y - 50) {
+      if (!botTarget.isJumping && !botTarget.isSliding) {
+        bKeys.up = true;
       }
     }
 
     // Cel znajduje się niżej o > 70 px - zeskok z kładki (drop-through)
-    if (targetY > bot.y + 70) {
-      if (bot.onGround && bot.currentPlatform && (bot.currentPlatform.oneWay || bot.currentPlatform.isDropThrough || bot.currentPlatform.type === 'catwalk' || bot.currentPlatform.type === 'cyber_catwalk')) {
-        bot.dropThroughTimer = 20;
-        bot.dropThroughPlatform = bot.currentPlatform;
-        const platThick = bot.currentPlatform.thickness || bot.currentPlatform.h || 20;
-        bot.y += platThick + 12;
-        bot.currentPlatform = null;
-        bot.onGround = false;
-        bot.isJumping = true;
-        bot.vy = Math.max(bot.vy || 0, 4.2);
+    if (targetY > botTarget.y + 70) {
+      if (botTarget.onGround && botTarget.currentPlatform && (botTarget.currentPlatform.oneWay || botTarget.currentPlatform.isDropThrough || botTarget.currentPlatform.type === 'catwalk' || botTarget.currentPlatform.type === 'cyber_catwalk')) {
+        botTarget.dropThroughTimer = 20;
+        botTarget.dropThroughPlatform = botTarget.currentPlatform;
+        const platThick = botTarget.currentPlatform.thickness || botTarget.currentPlatform.h || 20;
+        botTarget.y += platThick + 12;
+        botTarget.currentPlatform = null;
+        botTarget.onGround = false;
+        botTarget.isJumping = true;
+        botTarget.vy = Math.max(botTarget.vy || 0, 4.2);
       }
     }
 
@@ -212,18 +300,18 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
       const isBallMovingTowardsBot = (ball.vx * dxToBall < 0);
       const distToBallX = Math.abs(dxToBall);
 
-      if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(bot.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
+      if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(botTarget.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
         if (Math.random() < 0.40) {
-          playerSlide(spawnGrass, groundY, bot);
+          playerSlide(spawnGrass, groundY, botTarget);
         }
       }
-    } else if (humanPlayer && !humanPlayer.isDead) {
-      // W trybie Deathmatch: wślizg powalający w stronę gracza
-      const dxToEnemy = (humanPlayer.x + humanPlayer.w / 2) - botCenterX;
+    } else if (targetEnemy && !targetEnemy.isDead) {
+      // W trybie bojowym: wślizg powalający w stronę wroga
+      const dxToEnemy = (targetEnemy.x + targetEnemy.w / 2) - botCenterX;
       const distToEnemyX = Math.abs(dxToEnemy);
-      if (distToEnemyX >= 50 && distToEnemyX <= 120 && Math.abs(bot.vx) > 3.2 && (bot.vx * dxToEnemy > 0)) {
+      if (distToEnemyX >= 50 && distToEnemyX <= 120 && Math.abs(botTarget.vx) > 3.2 && (botTarget.vx * dxToEnemy > 0)) {
         if (Math.random() < 0.35) {
-          playerSlide(spawnGrass, groundY, bot);
+          playerSlide(spawnGrass, groundY, botTarget);
         }
       }
     }
@@ -235,30 +323,30 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   const distToBallTotal = (ball && ball.active) ? Math.hypot(ball.x - botCenterX, ball.y - botCenterY) : Infinity;
 
   if (distToBallTotal > 260) {
-    if (bot.idleDecisionTimer <= 0) {
-      bot.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
+    if (botTarget.idleDecisionTimer <= 0) {
+      botTarget.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
 
       const roll = Math.random();
       if (roll < 0.40) {
-        bot.strafeDir = Math.random() < 0.5 ? -1 : 1;
-        bot.strafeTimer = Math.floor(Math.random() * 16 + 12);
+        botTarget.strafeDir = Math.random() < 0.5 ? -1 : 1;
+        botTarget.strafeTimer = Math.floor(Math.random() * 16 + 12);
       } else if (roll < 0.65) {
-        if (!bot.isJumping && !bot.isSliding) {
-          botKeys.up = true;
+        if (!botTarget.isJumping && !botTarget.isSliding) {
+          bKeys.up = true;
         }
       } else if (roll < 0.80) {
-        botKeys.down = true;
-        bot.crouchTimer = Math.floor(Math.random() * 20 + 10);
+        bKeys.down = true;
+        botTarget.crouchTimer = Math.floor(Math.random() * 20 + 10);
       }
     }
 
-    if (bot.strafeTimer > 0) {
-      if (bot.strafeDir > 0) {
-        botKeys.right = true;
-        botKeys.left = false;
-      } else if (bot.strafeDir < 0) {
-        botKeys.left = true;
-        botKeys.right = false;
+    if (botTarget.strafeTimer > 0) {
+      if (botTarget.strafeDir > 0) {
+        bKeys.right = true;
+        bKeys.left = false;
+      } else if (botTarget.strafeDir < 0) {
+        bKeys.left = true;
+        bKeys.right = false;
       }
     }
   }
@@ -266,82 +354,82 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   // =========================================================================
   // 4. CELOWANIE Z LUDZKIM BŁĘDEM (LERP + SZUM KĄTOWY)
   // =========================================================================
-  const hitReach = bot.currentClass?.stats?.hitReach || 56;
+  const hitReach = botTarget.currentClass?.stats?.hitReach || 56;
   const hipX = botCenterX;
-  const hipY = bot.y + bot.h - 40 + (bot.pelvisY || 0);
+  const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
   const ballDistFromHip = (ball && ball.active) ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
   let aimTargetX, aimTargetY;
   if (ball && ball.active) {
     aimTargetX = ball.x + (ball.vx * 3);
     aimTargetY = ball.y + (ball.vy * 3);
-    if (humanPlayer && !humanPlayer.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
-      aimTargetX = humanPlayer.x + humanPlayer.w / 2;
-      aimTargetY = humanPlayer.y + humanPlayer.h / 2;
+    if (targetEnemy && !targetEnemy.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
+      aimTargetX = targetEnemy.x + targetEnemy.w / 2;
+      aimTargetY = targetEnemy.y + targetEnemy.h / 2;
     }
-  } else if (humanPlayer && !humanPlayer.isDead) {
-    aimTargetX = humanPlayer.x + humanPlayer.w / 2;
-    aimTargetY = humanPlayer.y + humanPlayer.h / 2;
+  } else if (targetEnemy && !targetEnemy.isDead) {
+    aimTargetX = targetEnemy.x + targetEnemy.w / 2;
+    aimTargetY = targetEnemy.y + targetEnemy.h / 2;
   } else {
-    aimTargetX = botCenterX + (bot.facing || 1) * 160;
+    aimTargetX = botCenterX + (botTarget.facing || 1) * 160;
     aimTargetY = botCenterY;
   }
 
   const dxAim = aimTargetX - botCenterX;
   const dyAim = aimTargetY - botCenterY;
   const baseAngle = Math.atan2(dyAim, dxAim);
-  const finalAimAngle = baseAngle + (bot.aimErrorAngle || 0);
+  const finalAimAngle = baseAngle + (botTarget.aimErrorAngle || 0);
 
   const aimDist = 160;
   const desiredAimX = botCenterX + Math.cos(finalAimAngle) * aimDist;
   const desiredAimY = botCenterY + Math.sin(finalAimAngle) * aimDist;
 
-  if (typeof bot.aimX !== 'number' || isNaN(bot.aimX)) bot.aimX = desiredAimX;
-  if (typeof bot.aimY !== 'number' || isNaN(bot.aimY)) bot.aimY = desiredAimY;
+  if (typeof botTarget.aimX !== 'number' || isNaN(botTarget.aimX)) botTarget.aimX = desiredAimX;
+  if (typeof botTarget.aimY !== 'number' || isNaN(botTarget.aimY)) botTarget.aimY = desiredAimY;
 
-  bot.aimX += (desiredAimX - bot.aimX) * 0.15;
-  bot.aimY += (desiredAimY - bot.aimY) * 0.15;
+  botTarget.aimX += (desiredAimX - botTarget.aimX) * 0.15;
+  botTarget.aimY += (desiredAimY - botTarget.aimY) * 0.15;
 
   // =========================================================================
   // 5. OSTRZAŁ BOTA
   // =========================================================================
-  if (humanPlayer && !humanPlayer.isDead) {
-    const playerCenterX = humanPlayer.x + humanPlayer.w / 2;
-    const playerCenterY = humanPlayer.y + humanPlayer.h / 2;
-    const shooterOriginY = bot.y + 20;
+  if (targetEnemy && !targetEnemy.isDead) {
+    const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
+    const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;
+    const shooterOriginY = botTarget.y + 20;
 
-    const angleToPlayer = Math.atan2(playerCenterY - shooterOriginY, playerCenterX - botCenterX);
-    const currentAimAngle = Math.atan2(bot.aimY - shooterOriginY, bot.aimX - botCenterX);
+    const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
+    const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
 
-    let angleDiff = Math.abs(currentAimAngle - angleToPlayer);
+    let angleDiff = Math.abs(currentAimAngle - angleToEnemy);
     while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-    const toleranceRad = (bot.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
-    const isAimedAtPlayer = angleDiff <= toleranceRad;
+    const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
+    const isAimedAtEnemy = angleDiff <= toleranceRad;
 
-    if (isAimedAtPlayer) {
-      bot.shootPoseTimer = Math.max(bot.shootPoseTimer || 0, 25);
-      if (bot.currentWeapon === WEAPONS.AK47) {
-        if (bot.burstShotsRemaining > 0) {
-          if (bot.shootCooldown <= 0) {
-            shootWeapon(bot, bot.currentWeapon);
-            bot.burstShotsRemaining--;
-            if (bot.burstShotsRemaining <= 0) {
-              bot.burstPauseTimer = 25;
+    if (isAimedAtEnemy) {
+      botTarget.shootPoseTimer = Math.max(botTarget.shootPoseTimer || 0, 25);
+      if (botTarget.currentWeapon === WEAPONS.AK47) {
+        if (botTarget.burstShotsRemaining > 0) {
+          if (botTarget.shootCooldown <= 0) {
+            shootWeapon(botTarget, botTarget.currentWeapon);
+            botTarget.burstShotsRemaining--;
+            if (botTarget.burstShotsRemaining <= 0) {
+              botTarget.burstPauseTimer = 25;
             }
           }
-        } else if (bot.burstPauseTimer <= 0 && bot.shootCooldown <= 0) {
-          bot.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
-          shootWeapon(bot, bot.currentWeapon);
-          bot.burstShotsRemaining--;
+        } else if (botTarget.burstPauseTimer <= 0 && botTarget.shootCooldown <= 0) {
+          botTarget.burstShotsRemaining = Math.floor(Math.random() * 2) + 3;
+          shootWeapon(botTarget, botTarget.currentWeapon);
+          botTarget.burstShotsRemaining--;
         }
-      } else if (bot.currentWeapon === WEAPONS.SHOTGUN) {
-        if (distToPlayer < 180 && bot.shootCooldown <= 0) {
-          shootWeapon(bot, bot.currentWeapon);
+      } else if (botTarget.currentWeapon === WEAPONS.SHOTGUN) {
+        if (distToEnemy < 180 && botTarget.shootCooldown <= 0) {
+          shootWeapon(botTarget, botTarget.currentWeapon);
         }
-      } else if (bot.currentWeapon === WEAPONS.SNIPER) {
-        if (bot.shootCooldown <= 0) {
-          shootWeapon(bot, bot.currentWeapon);
+      } else if (botTarget.currentWeapon === WEAPONS.SNIPER) {
+        if (botTarget.shootCooldown <= 0) {
+          shootWeapon(botTarget, botTarget.currentWeapon);
         }
       }
     }
@@ -352,40 +440,40 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass) {
   // =========================================================================
   if (ball && ball.active) {
     if (ballDistFromHip <= hitReach + 10) {
-      if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
-        bot.isCharging = true;
-        bot.chargePower = 0;
-        bot.chargeTarget = Math.random() * 0.55 + 0.30;
-      } else if (bot.isCharging) {
-        if (bot.chargePower >= bot.chargeTarget) {
-          executeReleaseKick(ball, bot);
+      if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
+        botTarget.isCharging = true;
+        botTarget.chargePower = 0;
+        botTarget.chargeTarget = Math.random() * 0.55 + 0.30;
+      } else if (botTarget.isCharging) {
+        if (botTarget.chargePower >= botTarget.chargeTarget) {
+          executeReleaseKick(ball, botTarget);
         }
       }
-    } else if (bot.isCharging) {
-      if (bot.chargePower >= bot.chargeTarget || ballDistFromHip > hitReach + 40) {
-        executeReleaseKick(ball, bot, 0, [humanPlayer]);
+    } else if (botTarget.isCharging) {
+      if (botTarget.chargePower >= botTarget.chargeTarget || ballDistFromHip > hitReach + 40) {
+        executeReleaseKick(ball, botTarget, 0, meleeTargets);
       }
     }
-  } else if (humanPlayer && !humanPlayer.isDead) {
-    // Tryb Deathmatch: Spartan Kick wręcz w gracza
-    const distToEnemyFromHip = Math.hypot((humanPlayer.x + humanPlayer.w / 2) - hipX, (humanPlayer.y + humanPlayer.h / 2) - hipY);
+  } else if (targetEnemy && !targetEnemy.isDead) {
+    // Tryb Deathmatch: Spartan Kick wręcz we wroga
+    const distToEnemyFromHip = Math.hypot((targetEnemy.x + targetEnemy.w / 2) - hipX, (targetEnemy.y + targetEnemy.h / 2) - hipY);
     if (distToEnemyFromHip <= hitReach + 20) {
-      if (!bot.isCharging && bot.kickState === 'IDLE' && bot.kickCooldown <= 0) {
-        bot.isCharging = true;
-        bot.chargePower = 0;
-        bot.chargeTarget = Math.random() * 0.40 + 0.45;
-      } else if (bot.isCharging) {
-        if (bot.chargePower >= bot.chargeTarget) {
-          executeReleaseKick(null, bot, 0, [humanPlayer]);
+      if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
+        botTarget.isCharging = true;
+        botTarget.chargePower = 0;
+        botTarget.chargeTarget = Math.random() * 0.40 + 0.45;
+      } else if (botTarget.isCharging) {
+        if (botTarget.chargePower >= botTarget.chargeTarget) {
+          executeReleaseKick(null, botTarget, 0, meleeTargets);
         }
       }
-    } else if (bot.isCharging) {
-      executeReleaseKick(null, bot, 0, [humanPlayer]);
+    } else if (botTarget.isCharging) {
+      executeReleaseKick(null, botTarget, 0, meleeTargets);
     }
   }
 
   // =========================================================================
   // 7. WYWOŁANIE FIZYKI POSTACI
   // =========================================================================
-  updatePlayer(botKeys, null, groundY, ball, spawnGrass, bot, [humanPlayer]);
+  updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
 }

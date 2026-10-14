@@ -442,6 +442,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     for (const ch of charList) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
+      if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;

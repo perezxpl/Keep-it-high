@@ -37,7 +37,7 @@ import {
   updateMovableObstacles, resetArena
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
-import { bot, botKeys, updateBotBrain } from './bot.js';
+import { bot, botKeys, updateBotBrain, getActiveBots } from './bot.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
@@ -497,7 +497,8 @@ function update() {
     updateRemotePlayer(GROUND_Y);
   }
 
-  const mainMeleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+  const mainMeleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
   updateMobileControlStates(player, leftStick, btnCluster);
   updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
@@ -507,8 +508,7 @@ function update() {
   updateMovableObstacles(effectiveGroundY);
   updateGore(effectiveGroundY, ARENA_PLATFORMS, customObstacles);
 
-  const headEntities = [player];
-  if (bot.active) headEntities.push(bot);
+  const headEntities = [player, ...activeBots];
   if (remotePlayer.active) headEntities.push(remotePlayer);
   updateSeveredHeads(headEntities, effectiveGroundY, ARENA_PLATFORMS);
 
@@ -524,8 +524,13 @@ function update() {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, effectiveGroundY, player, bot);
-      if (remotePlayer.active) checkObstacleCollisions(ball, effectiveGroundY, remotePlayer, bot);
+      for (const b of activeBots) {
+        checkObstacleCollisions(ball, effectiveGroundY, player, b);
+        if (remotePlayer.active) checkObstacleCollisions(ball, effectiveGroundY, remotePlayer, b);
+      }
+      if (activeBots.length === 0) {
+        checkObstacleCollisions(ball, effectiveGroundY, player, null);
+      }
       sendBallState(ball);
     } else {
       // Klient – autorytatywna pozycja piłki z sieci P2P
@@ -534,7 +539,12 @@ function update() {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, effectiveGroundY, player, bot);
+      for (const b of activeBots) {
+        checkObstacleCollisions(ball, effectiveGroundY, player, b);
+      }
+      if (activeBots.length === 0) {
+        checkObstacleCollisions(ball, effectiveGroundY, player, null);
+      }
     }
   } else {
     // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
@@ -616,17 +626,17 @@ function update() {
     player.isJetpacking = false;
   }
 
-  if (bot.active) {
-    updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass);
+  const combatants = [player, ...activeBots];
+  if (remotePlayer.active) combatants.push(remotePlayer);
+
+  for (const b of activeBots) {
+    updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass, b, combatants);
     if (!isDeathmatch) {
-      checkBallPlayerCollisions(bot, effectiveGroundY, spawnGrass);
+      checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
     }
-    checkPlayerPlatformLanding(bot, effectiveGroundY);
+    checkPlayerPlatformLanding(b, effectiveGroundY);
   }
 
-  const combatants = [player];
-  if (bot.active) combatants.push(bot);
-  if (remotePlayer.active) combatants.push(remotePlayer);
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
@@ -634,7 +644,7 @@ function update() {
     disableAimLead: !!(editorState?.active || isChatActive)
   });
   if (isA2Active) {
-    updateDeathmatch(1 / 60, player, bot, remotePlayer, arenaScore);
+    updateDeathmatch(1 / 60, player, activeBots, remotePlayer, arenaScore);
   }
   if (!isDeathmatch) {
     updateDistance(ball.x);
@@ -756,8 +766,8 @@ function draw() {
 
   drawBullets(ctx);
   drawProjectiles(ctx);
-  drawGore(ctx);
-  drawSeveredHeads(ctx, remotePlayer.active ? [player, bot, remotePlayer] : [player, bot]);
+  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+  drawSeveredHeads(ctx, [player, ...activeBots, ...(remotePlayer.active ? [remotePlayer] : [])]);
   drawJetpackParticles(ctx);
 
   // Celownik laserowy snajperki Barrett .50 w stylu Soldat
@@ -770,8 +780,8 @@ function draw() {
   if (shouldDrawPlayerSniperLaser) {
     drawSniperLaserSight(ctx, player);
   }
-  if (bot.active) {
-    drawSniperLaserSight(ctx, bot);
+  for (const b of activeBots) {
+    drawSniperLaserSight(ctx, b);
   }
   if (remotePlayer.active) {
     drawSniperLaserSight(ctx, remotePlayer);
@@ -815,11 +825,11 @@ function draw() {
     }
   }
 
-  if (bot.active) {
-    drawPlayer(ctx, GROUND_Y, bot);
+  for (const b of activeBots) {
+    drawPlayer(ctx, GROUND_Y, b);
 
     // Identyfikacja drużynowa: sojusznicy mają zawsze niebieski nick, rywale nie mają nic
-    const botTeam = bot.team || 'ORANGE';
+    const botTeam = b.team || 'ORANGE';
     const isAlly = (botTeam === playerTeam);
 
     if (isAlly) {
@@ -827,12 +837,12 @@ function draw() {
       ctx.font = 'bold 10px Rajdhani, monospace';
       ctx.textAlign = 'center';
       const allyColor = '#00e5ff';
-      const allyName = bot.name || 'SGT. STRIKER';
+      const allyName = b.name || 'SGT. STRIKER';
       ctx.fillStyle = allyColor;
       ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
       ctx.shadowBlur = 4;
-      const botTagX = bot.head ? bot.head.x : (bot.x + bot.w / 2);
-      const botTagY = bot.head ? (bot.head.y - 26) : (bot.y - 26);
+      const botTagX = b.head ? b.head.x : (b.x + b.w / 2);
+      const botTagY = b.head ? (b.head.y - 26) : (b.y - 26);
       ctx.fillText(allyName, botTagX, botTagY);
       ctx.restore();
     }
