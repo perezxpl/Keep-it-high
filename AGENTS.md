@@ -77,7 +77,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/obstacles/procedural.js` — proceduralne generowanie przeszkód i ptaków na dystansie.
 
 ### Sztuczna Inteligencja i Boty (`js/bot.js`)
-- `js/bot.js` — konfiguracja profili botów bojowych (`BOT_PROFILES`), fabryka instancji botów (`createBotInstance`), pula aktywnych botów (`bots`, `botCount`, `setBotCount`, `getBotCount`, `getActiveBots`), logika sztucznej inteligencji (`updateBotBrain` z celowaniem wielopodmiotowym i dynamicznym doborem celów wrogich w TDM/FFA) oraz stopnie trudności (`setBotDifficulty`).
+- `js/bot.js` — konfiguracja profili botów bojowych (`BOT_PROFILES`, `BOT_CLASS_PROFILES`, `BOT_NAMES_BY_CLASS`), fabryka instancji botów (`createBotInstance`), pula aktywnych botów (`bots`, `botCount`, `setBotCount`, `getBotCount`, `getActiveBots`), automatyczny dobór zrównoważonych klas (`balanceBotClasses`, `applyBotClassAndConfig`), logika sztucznej inteligencji (`updateBotBrain` z celowaniem wielopodmiotowym, unikalnymi umiejętnościami specjalnymi klas: Blast Jump dla Enforcera, Rocket Boots Air/Ground Dash dla Strikera, kiting/hover dla Raptora) oraz stopnie trudności (`setBotDifficulty`).
 
 ### Świat, Kamera, UI i Narzędzia (`js/world/`, `js/ui/`, `js/dev/`)
 - `js/world/` — stan świata i kamery (`state.js`), niebo (`sky.js`), podłoże (`ground.js`), teren (`terrain.js`), gore/krew (`gore.js`), cząsteczki (`particles.js`).

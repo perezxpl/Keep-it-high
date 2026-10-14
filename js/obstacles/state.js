@@ -33,6 +33,7 @@ import arena2, {
 } from '../arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState } from '../deathmatch/index.js';
+import { balanceBotClasses } from '../bot.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -572,6 +573,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     activeBots.forEach((b, idx) => {
       b.active = true;
+      b.isHolstered = false;
+      b.holsterWeight = 0;
       const baseSpawnX = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3350;
       const baseSpawnY = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 1130;
       b.x = baseSpawnX + (idx * 60);
@@ -590,6 +593,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = false;
     }
+
+    // Inicjalizacja 5-minutowego Deathmatch na Arenie 3 (Militarna Dżungla)
+    initDeathmatch(playerObj, activeBots, null);
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     GOALS.length = 0; // W Sektorze X brak bramek i piłki - 5-minutowy Deathmatch
     arena1State.waitingForKickoff = false;
@@ -613,6 +619,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     activeBots.forEach((b, idx) => {
       b.active = true;
+      b.isHolstered = false;
+      b.holsterWeight = 0;
       const spawnsList = currentArena.spawns || [];
       const sIdx = (spawnsList.length > 1) ? ((idx % (spawnsList.length - 1)) + 1) : 1;
       const s = spawnsList[sIdx] || { x: 3080, y: 390, facing: -1 };
@@ -675,6 +683,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.gaitMode = 'IDLE';
     }
     activeBots.forEach((b, idx) => {
+      b.active = true;
+      b.isHolstered = true;
+      b.holsterWeight = 1.0;
+      b.team = 'ORANGE';
       const baseX = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3360;
       const baseY = (currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].y : 580;
       b.x = baseX + (idx * 40);
@@ -690,6 +702,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.ragdoll = null;
       b.gaitMode = 'IDLE';
     });
+    balanceBotClasses(playerObj, activeBots, 'TDM');
     if (ballObj) {
       ballObj.active = true;
       ballObj.isLevitating = false;

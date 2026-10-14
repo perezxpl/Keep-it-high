@@ -392,22 +392,35 @@ export function handlePlayerDeath(player, groundY) {
     if (player.pose) player.pose.initialized = false;
 
     const activeArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-    if (activeArena && Array.isArray(activeArena.spawns)) {
-      if (player.isBot && activeArena.spawns[1]) {
-        player.x = activeArena.spawns[1].x;
-        player.y = activeArena.spawns[1].y;
-        player.facing = -1;
-      } else if (!player.isBot && activeArena.spawns[0]) {
-        player.x = activeArena.spawns[0].x;
-        player.y = activeArena.spawns[0].y;
-        player.facing = 1;
+    const isCyan = (player.team === 'CYAN' || (!player.team && !player.isBot));
+    const botIdx = player.isBot ? ((parseInt(player.id?.replace('bot_', ''), 10) || 1) - 1) : 0;
+    const scatterX = player.isBot ? ((botIdx % 3) * 40 - 20) : 0;
+
+    if (activeArena && Array.isArray(activeArena.spawns) && activeArena.spawns.length > 0) {
+      if (activeArena.id === 'arena-2' || activeArena.alias === 'ARENA_2_SECTOR_X') {
+        // Arena 2 (Sektor X): Spawny [0, 2] to Cyan (lewa strona), [1, 3] to Orange (prawa strona)
+        const teamSpawns = isCyan
+          ? [activeArena.spawns[0], activeArena.spawns[2]].filter(Boolean)
+          : [activeArena.spawns[1], activeArena.spawns[3]].filter(Boolean);
+        const s = (teamSpawns.length > 0) ? teamSpawns[botIdx % teamSpawns.length] : activeArena.spawns[isCyan ? 0 : 1];
+        player.x = (s.x || (isCyan ? 530 : 3470)) + scatterX;
+        player.y = s.y || 350;
+        player.facing = s.facing || (isCyan ? 1 : -1);
+      } else if (activeArena.id === 'arena-3' || activeArena.alias === 'JUNGLE_ARENA') {
+        // Arena 3 (Tajemnicza Dżungla): Spawny [0] dla Cyan (X: 1050), [1] dla Orange (X: 3350)
+        const s = isCyan ? (activeArena.spawns[0] || { x: 1050, y: 1130 }) : (activeArena.spawns[1] || { x: 3350, y: 1130 });
+        player.x = (s.x || (isCyan ? 1050 : 3350)) + scatterX;
+        player.y = s.y || 1130;
+        player.facing = isCyan ? 1 : -1;
       } else {
-        player.x = player.isBot ? (START_X + 600) : (START_X - 60);
-        player.y = groundY - player.h;
-        player.facing = player.isBot ? -1 : 1;
+        // Arena 1 (Neonowe Miasto / Stadion): Spawn [0] (240, 580) dla Cyan, [1] (3360, 580) dla Orange
+        const s = isCyan ? (activeArena.spawns[0] || { x: 240, y: 580 }) : (activeArena.spawns[1] || { x: 3360, y: 580 });
+        player.x = (s.x || (isCyan ? 240 : 3360)) + scatterX;
+        player.y = s.y || 580;
+        player.facing = isCyan ? 1 : -1;
       }
     } else {
-      player.x = player.isBot ? (START_X + 600) : (START_X - 60);
+      player.x = player.isBot ? (START_X + 600 + scatterX) : (START_X - 60);
       player.y = groundY - player.h;
       player.facing = player.isBot ? -1 : 1;
     }

@@ -802,7 +802,7 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
 /**
  * Odpala Super Dash w powietrzu ze skalowaną siłą (power: 0.35 .. 1.0)
  */
-function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
+export function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   if (isPlayerCrouchingOrProne(player)) return;
   // Wzajemna rozłączność: natychmiastowe zakończenie ewentualnego wślizgu
   player.isSliding = false;
@@ -838,7 +838,7 @@ function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
 /**
  * Odpala dopalacz w butach na ziemi (Ground Rocket Dash) ze skalowaną siłą
  */
-function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 1.0) {
+export function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 1.0) {
   if (isPlayerCrouchingOrProne(player)) return;
   // Wzajemna rozłączność: natychmiastowe zakończenie ewentualnego wślizgu
   player.isSliding = false;

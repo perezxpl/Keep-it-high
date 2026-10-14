@@ -37,7 +37,7 @@ import {
   updateMovableObstacles, resetArena
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
-import { bot, botKeys, updateBotBrain, getActiveBots } from './bot.js';
+import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
@@ -299,6 +299,8 @@ export function selectPlayerClass(targetClass) {
   if (typeof uiManager !== 'undefined' && typeof uiManager.applyAppearanceForClass === 'function') {
     uiManager.applyAppearanceForClass(cls.id, player);
   }
+  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+  balanceBotClasses(player, activeBots);
   setGameState('PLAYING');
 
   // Reset i respawn gracza po zatwierdzeniu wyboru klasy
@@ -558,13 +560,18 @@ function update() {
       ball.vx = 0;
       ball.vy = 0;
     }
-    checkObstacleCollisions(null, effectiveGroundY, player, bot);
+    for (const b of activeBots) {
+      checkObstacleCollisions(null, effectiveGroundY, player, b);
+    }
+    if (activeBots.length === 0) {
+      checkObstacleCollisions(null, effectiveGroundY, player, null);
+    }
     if (remotePlayer.active) {
       checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
 
-    // Zliczanie fragów poza dedykowanym modułem Deathmatch Areny 2
-    if (!isA2Active) {
+    // Zliczanie fragów poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
+    if (!isA2Active && !isA3Active) {
       if (player.isDead) {
         if (!player._fragRecorded) {
           arenaScore.orange++;
@@ -575,15 +582,15 @@ function update() {
         player._fragRecorded = false;
       }
 
-      if (bot.active) {
-        if (bot.isDead) {
-          if (!bot._fragRecorded) {
+      for (const b of activeBots) {
+        if (b.isDead) {
+          if (!b._fragRecorded) {
             arenaScore.cyan++;
             recordKill();
-            bot._fragRecorded = true;
+            b._fragRecorded = true;
           }
         } else {
-          bot._fragRecorded = false;
+          b._fragRecorded = false;
         }
       }
 
@@ -646,7 +653,7 @@ function update() {
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive)
   });
-  if (isA2Active) {
+  if (isA2Active || isA3Active) {
     updateDeathmatch(1 / 60, player, activeBots, remotePlayer, arenaScore);
   }
   if (!isDeathmatch) {
@@ -1012,6 +1019,8 @@ if (typeof window !== 'undefined') {
       return `ARENA: ${arenaName.toUpperCase()} • KLASA: ${player.currentClass?.name || 'PLAYMAKER'}`;
     }
   });
+
+  balanceBotClasses(player, (typeof getActiveBots === 'function') ? getActiveBots() : [bot]);
 
   if (window.location) {
     const urlParams = new URLSearchParams(window.location.search);

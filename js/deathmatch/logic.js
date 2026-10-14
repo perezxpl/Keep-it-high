@@ -13,6 +13,7 @@ import {
 } from './state.js';
 import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../progression.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
+import { balanceBotClasses } from '../bot.js';
 
 /**
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
@@ -64,6 +65,9 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
       b.team = TEAMS.ORANGE;
     }
   });
+
+  // Automatyczny dobór zróżnicowanych klas bez duplikatów (TDM: 2 pozostałe klasy dla botów; FFA: minimalna powtarzalność)
+  balanceBotClasses(player, botList, deathmatchState.mode);
 
   // Rejestracja uczestników do rankingu
   const pList = [];

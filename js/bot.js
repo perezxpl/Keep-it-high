@@ -2,10 +2,18 @@
 // BOT.JS - SZTUCZNA INTELIGENCJA PRZECIWNIKA (AI CASUAL / INTERMEDIATE)
 // =========================================================================
 
-import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide } from './player.js';
+import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide, throwTacticalGrenade, getJetpackNozzlePos, player, setPlayerClass } from './player.js';
 import { CLASSES } from './classes/index.js';
+import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/striker.js';
+import { triggerEnforcerBlastJump } from './classes/enforcer.js';
 import { START_X, CONFIG } from './config.js';
 import { WEAPONS, shootWeapon } from './weapons.js';
+import { spawnJetpackSparks } from './world.js';
+import { getJetpackFlamePalette } from './player/jetpack.js';
+import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
+import { ARENA_2_CONFIG, ACID_SURGE_SYSTEM } from './arenas/arena2.js';
+import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
+import { deathmatchState } from './deathmatch/state.js';
 
 /**
  * Wirtualny kontroler bota przekazywany do silnika fizyki updatePlayer
@@ -19,13 +27,239 @@ export const botKeys = {
   slide: false
 };
 
+export const BOT_CLASS_PROFILES = {
+  RAPTOR: {
+    name: 'CPL. RAPTOR',
+    weapon: WEAPONS.SNIPER,
+    visuals: {
+      headgearStyle: 'boonie',
+      headgearColor: '#283618',
+      torsoStyle: 'short_sleeve',
+      pantsStyle: 'cargo_long',
+      shoesStyle: 'combat_boots'
+    }
+  },
+  STRIKER: {
+    name: 'SGT. STRIKER',
+    weapon: WEAPONS.AK47,
+    visuals: {
+      headgearStyle: 'beret',
+      headgearColor: '#1e293b',
+      torsoStyle: 'long_sleeve',
+      pantsStyle: 'cargo_long',
+      shoesStyle: 'combat_boots'
+    }
+  },
+  ENFORCER: {
+    name: 'LT. ENFORCER',
+    weapon: WEAPONS.SHOTGUN,
+    visuals: {
+      headgearStyle: 'marcus_bandana',
+      headgearColor: '#18181b',
+      torsoStyle: 'sleeveless',
+      pantsStyle: 'cargo_long',
+      shoesStyle: 'combat_boots'
+    }
+  }
+};
+
+export const BOT_NAMES_BY_CLASS = {
+  RAPTOR: ['CPL. RAPTOR', 'CAPT. RAPTOR', 'WO. RAPTOR', 'PVT. RAPTOR', 'SPEC. RAPTOR'],
+  STRIKER: ['SGT. STRIKER', 'MAJ. STRIKER', 'LT. STRIKER', 'CPL. STRIKER', 'STAFF STRIKER'],
+  ENFORCER: ['LT. ENFORCER', 'COL. ENFORCER', 'GEN. ENFORCER', 'SGT. ENFORCER', 'CHIEF ENFORCER']
+};
+
 export const BOT_PROFILES = [
-  { name: 'SGT. STRIKER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1 },
-  { name: 'CPL. RAPTOR', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1 },
-  { name: 'LT. ENFORCER', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1 },
-  { name: 'PVT. VIPER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1 },
-  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1 }
+  { name: 'SGT. STRIKER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1, team: 'ORANGE' },
+  { name: 'CPL. RAPTOR', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1, team: 'ORANGE' },
+  { name: 'LT. ENFORCER', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' },
+  { name: 'PVT. VIPER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1, team: 'ORANGE' },
+  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' }
 ];
+
+/**
+ * Konfiguruje klasę, uzbrojenie, wygląd i stopień wojskowy dla instancji bota
+ */
+export function applyBotClassAndConfig(botTarget, classKey, team = 'ORANGE') {
+  if (!botTarget) return;
+  const key = String(classKey || 'STRIKER').toUpperCase();
+  const cls = CLASSES[key] || CLASSES.STRIKER || CLASSES.RAPTOR;
+
+  setPlayerClass(cls, botTarget);
+
+  botTarget.team = team;
+  const isCyan = (team === 'CYAN');
+  const flameCol = isCyan ? '#00e5ff' : '#f97316';
+
+  const botIdx = botTarget.id ? (parseInt(botTarget.id.replace('bot_', ''), 10) - 1) : 0;
+  const namePool = BOT_NAMES_BY_CLASS[key] || BOT_NAMES_BY_CLASS.STRIKER;
+  botTarget.name = namePool[Math.abs(botIdx) % namePool.length];
+
+  if (key === 'RAPTOR') {
+    botTarget.currentWeapon = WEAPONS.SNIPER;
+  } else if (key === 'ENFORCER') {
+    botTarget.currentWeapon = WEAPONS.SHOTGUN;
+  } else {
+    botTarget.currentWeapon = WEAPONS.AK47;
+  }
+
+  const prof = BOT_CLASS_PROFILES[key] || BOT_CLASS_PROFILES.STRIKER;
+  botTarget.customVisuals = {
+    ...(botTarget.customVisuals || {}),
+    ...(prof.visuals || {}),
+    jetpackColor: flameCol
+  };
+
+  botTarget.strikerDashCooldown = Math.floor(Math.random() * 25 + 15);
+  botTarget.enforcerBlastCooldown = Math.floor(Math.random() * 35 + 20);
+  botTarget.raptorHoverTimer = 0;
+}
+
+/**
+ * Automatyczny dobór zróżnicowanych klas dla botów na bazie wyboru gracza:
+ * - W trybie drużynowym (TDM): po jednej różnej klasie na drużynę; jeśli gracz wybierze daną klasę,
+ *   automat dobiera 2 pozostałe dla botów bez duplikatów.
+ * - W trybie FFA (Każdy na Każdego): zróżnicowane klasy z minimalną powtarzalnością.
+ */
+export function balanceBotClasses(humanPlayer = player, activeBotsList = null, mode = null) {
+  const bList = Array.isArray(activeBotsList) ? activeBotsList : getActiveBots();
+  if (!bList || bList.length === 0) return;
+
+  const curMode = mode || (deathmatchState && deathmatchState.active ? deathmatchState.mode : 'TDM');
+  const isFFA = (curMode === 'FFA');
+
+  const pClassRaw = (humanPlayer?.currentClass?.id || 'RAPTOR').toUpperCase();
+  const pClassId = (pClassRaw === 'AERO') ? 'RAPTOR' : ((pClassRaw === 'PLAYMAKER' || pClassRaw === 'SWEEPER') ? 'STRIKER' : pClassRaw);
+
+  const ALL_CLASSES = ['RAPTOR', 'STRIKER', 'ENFORCER'];
+  const remainingClasses = ALL_CLASSES.filter(c => c !== pClassId);
+
+  if (isFFA) {
+    // Tryb FFA: Minimalna powtarzalność. Rotacja: 2 pozostałe klasy, następnie klasa gracza
+    const ffaRoster = [remainingClasses[0], remainingClasses[1], pClassId];
+    bList.forEach((b, idx) => {
+      const targetClassKey = ffaRoster[idx % ffaRoster.length];
+      applyBotClassAndConfig(b, targetClassKey, b.team || 'ORANGE');
+    });
+  } else {
+    // Tryb Drużynowy (TDM):
+    // Po jednej różnej klasie w drużynach.
+    const pTeam = humanPlayer?.team || 'CYAN';
+    const enemyTeam = (pTeam === 'CYAN' ? 'ORANGE' : 'CYAN');
+
+    const allies = [];
+    const enemies = [];
+
+    bList.forEach((b) => {
+      if (b.team === pTeam) {
+        allies.push(b);
+      } else {
+        enemies.push(b);
+      }
+    });
+
+    // Sojusznicy gracza: Gracz ma pClassId, więc sojusznicy dobierają pozostałe klasy
+    const allyPool = [...remainingClasses];
+    allies.forEach((ally, i) => {
+      const clsKey = allyPool[i % allyPool.length];
+      applyBotClassAndConfig(ally, clsKey, pTeam);
+    });
+
+    // Drużyna przeciwna: Wróg 1 otrzymuje drugą z pozostałych klas, kolejni bez duplikatu
+    let enemyPool;
+    if (allies.length > 0) {
+      enemyPool = [remainingClasses[1], pClassId, remainingClasses[0]];
+    } else {
+      enemyPool = [remainingClasses[0], remainingClasses[1], pClassId];
+    }
+
+    enemies.forEach((enemy, i) => {
+      const clsKey = enemyPool[i % enemyPool.length];
+      applyBotClassAndConfig(enemy, clsKey, enemyTeam);
+    });
+  }
+}
+
+/**
+ * Zwraca wysokość bezpiecznego podłoża/platformy pod pozycją (x, feetY),
+ * lub null jeśli poniżej znajduje się śmiertelne niebezpieczeństwo (kwas w A2, głęboka rzeka w A3, przepaść).
+ */
+export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
+  const isA2 = (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X' || arenaId === 'ARENA_2_PANDORA');
+  const isA3 = (arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY');
+
+  if (isA2) {
+    const hazardY = (ACID_SURGE_SYSTEM && typeof ACID_SURGE_SYSTEM.currentY === 'number')
+      ? ACID_SURGE_SYSTEM.currentY
+      : ((ARENA_2_CONFIG && ARENA_2_CONFIG.hazardZoneY) || 1440);
+
+    let closestTopY = Infinity;
+    if (Array.isArray(ARENA_PLATFORMS)) {
+      for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
+        const plat = ARENA_PLATFORMS[i];
+        if (!plat || plat.solid === false || plat.isWall) continue;
+        if (x >= plat.x - 12 && x <= plat.x + plat.w + 12) {
+          let topY = plat.y;
+          if (plat.isSlope && typeof getPlatformSurfaceY === 'function') {
+            topY = getPlatformSurfaceY(plat, x, 1600);
+          }
+          if (typeof topY === 'number' && topY >= feetY - 6 && topY < closestTopY && topY < hazardY - 35) {
+            closestTopY = topY;
+          }
+        }
+      }
+    }
+    return closestTopY < Infinity ? closestTopY : null;
+  }
+
+  if (isA3) {
+    // Kanał rzeczny: śmiertelna woda między X: 1560 a 2840
+    if (x >= 1560 && x <= 2840) {
+      if (Array.isArray(ARENA_3_BRIDGE_BLOCKS)) {
+        for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+          const block = ARENA_3_BRIDGE_BLOCKS[i];
+          if (block && block.intact && x >= block.x - 4 && x <= block.x + block.w + 4) {
+            if (block.y >= feetY - 6) {
+              return block.y;
+            }
+          }
+        }
+      }
+      return null; // Brak nienaruszonego przęsła mostu – bezpośrednio pod stopami jest głęboka woda!
+    }
+
+    // Poza otwartą rzeką: stałe podłoże i platformy dżungli
+    let closestTopY = Infinity;
+    if (Array.isArray(ARENA_PLATFORMS)) {
+      for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
+        const plat = ARENA_PLATFORMS[i];
+        if (!plat || plat.solid === false || plat.isWall || plat.type === 'water') continue;
+        if (plat.intact === false) continue;
+        if (x >= plat.x - 10 && x <= plat.x + plat.w + 10) {
+          if (typeof plat.y === 'number' && plat.y >= feetY - 6 && plat.y < closestTopY) {
+            closestTopY = plat.y;
+          }
+        }
+      }
+    }
+    return closestTopY < Infinity ? closestTopY : 1200;
+  }
+
+  // Arena 1 (Stadion) lub domyślny grunt
+  let closestTopY = Infinity;
+  if (Array.isArray(ARENA_PLATFORMS)) {
+    for (let i = 0; i < ARENA_PLATFORMS.length; i++) {
+      const plat = ARENA_PLATFORMS[i];
+      if (!plat || plat.solid === false || plat.isWall) continue;
+      if (x >= plat.x - 10 && x <= plat.x + plat.w + 10) {
+        if (typeof plat.y === 'number' && plat.y >= feetY - 6 && plat.y < closestTopY) {
+          closestTopY = plat.y;
+        }
+      }
+    }
+  }
+  return closestTopY < Infinity ? closestTopY : 1000;
+}
 
 export function createBotInstance(index = 0) {
   const profile = BOT_PROFILES[index % BOT_PROFILES.length];
@@ -36,6 +270,7 @@ export function createBotInstance(index = 0) {
     isBot: true,
     active: (index === 0),
     frozen: false,
+    team: profile.team || 'ORANGE',
     facing: profile.facing || -1,
     x: START_X + 600 + (index * 80),
     y: 0,
@@ -58,6 +293,12 @@ export function createBotInstance(index = 0) {
     pelvisY: 0,
     burstShotsRemaining: 0,
     burstPauseTimer: 0,
+    grenadeCooldown: 0,
+
+    isJetpacking: false,
+    jetpackPower: 0,
+    jetFuel: botClass?.stats?.jetMax || 100,
+    jetMax: botClass?.stats?.jetMax || 100,
 
     difficulty: 'recruit',
     decisionTimer: 0,
@@ -67,6 +308,9 @@ export function createBotInstance(index = 0) {
     chargeTarget: 0.55,
     idleDecisionTimer: 0,
     crouchTimer: 0,
+    strikerDashCooldown: 0,
+    enforcerBlastCooldown: 0,
+    raptorHoverTimer: 0,
     botKeys: instanceKeys
   });
   return instance;
@@ -96,6 +340,7 @@ export function setBotCount(count) {
   try {
     localStorage.setItem('kih_bot_count_v1', String(num));
   } catch (_) {}
+  balanceBotClasses(player, bots.slice(0, num));
   return botCount;
 }
 
@@ -132,7 +377,23 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   if (!botTarget || !botTarget.active) return;
   const bKeys = botTarget.botKeys || botKeys;
 
+  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const currentArenaId = (curArenaObj?.id) || activeArenaId || 'ARENA_1';
+  const isA1 = (currentArenaId === 'arena-1' || currentArenaId === 'ARENA_1');
+  const isA2 = (currentArenaId === 'arena-2' || currentArenaId === 'ARENA_2' || currentArenaId === 'ARENA_2_SECTOR_X' || currentArenaId === 'ARENA_2_PANDORA');
+  const isA3 = (currentArenaId === 'arena-3' || currentArenaId === 'ARENA_3' || currentArenaId === 'ARENA_FOUNDRY');
+
+  // W Arenie 1 (mecz piłkarski) broń palna jest regulaminowo schowana w kaburze
+  if (isA1) {
+    botTarget.isHolstered = true;
+    botTarget.holsterWeight = 1.0;
+  } else {
+    botTarget.isHolstered = false;
+    botTarget.holsterWeight = 0.0;
+  }
+
   // Wyszukanie wrogiego celu do ataku (najbliższy przeciwnik)
+  const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
   let targetEnemy = (humanPlayer && !humanPlayer.isDead) ? humanPlayer : null;
   if (Array.isArray(allCombatants) && allCombatants.length > 0) {
     let closestDist = Infinity;
@@ -140,10 +401,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const botMidX = botTarget.x + botTarget.w / 2;
     const botMidY = botTarget.y + botTarget.h / 2;
 
-    for (const c of allCombatants) {
+    for (let i = 0; i < allCombatants.length; i++) {
+      const c = allCombatants[i];
       if (!c || c === botTarget || c.isDead || (c.isBot && !c.active)) continue;
-      // W trybie drużynowym (TDM) sojusznicy z tej samej drużyny nie są celem
-      if (botTarget.team && c.team && botTarget.team === c.team) continue;
+      // W trybie drużynowym (TDM lub mecze ligowe) sojusznicy z tej samej drużyny nie są celem
+      if (!isFFA && botTarget.team && c.team && botTarget.team === c.team) continue;
       const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
       if (d < closestDist) {
         closestDist = d;
@@ -165,6 +427,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.down = false;
     bKeys.space = false;
     bKeys.slide = false;
+    botTarget.isJetpacking = false;
+    botTarget.jetpackPower = 0;
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.isJumpCharging = false;
@@ -180,6 +444,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.down = false;
     bKeys.space = false;
     bKeys.slide = false;
+    botTarget.isJetpacking = false;
+    botTarget.jetpackPower = 0;
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.decisionTimer = 0;
@@ -198,6 +464,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     bKeys.down = false;
     bKeys.space = false;
     bKeys.slide = false;
+    botTarget.isJetpacking = false;
+    botTarget.jetpackPower = 0;
     botTarget.vx = 0;
     botTarget.airVx = 0;
     botTarget.isShooting = false;
@@ -210,42 +478,72 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const botCenterX = botTarget.x + botTarget.w / 2;
   const botCenterY = botTarget.y + botTarget.h / 2;
 
-  // Dekrementacja timerów decyzyjnych i strzeleckich
+  // Dekrementacja timerów decyzyjnych, strzeleckich oraz umiejętności klasowych
   if (botTarget.burstPauseTimer > 0) botTarget.burstPauseTimer--;
   if (botTarget.decisionTimer > 0) botTarget.decisionTimer--;
   if (botTarget.strafeTimer > 0) botTarget.strafeTimer--;
   if (botTarget.idleDecisionTimer > 0) botTarget.idleDecisionTimer--;
+  if (botTarget.grenadeCooldown > 0) {
+    botTarget.grenadeCooldown = Math.max(0, botTarget.grenadeCooldown - (1 / 60));
+  }
   if (botTarget.crouchTimer > 0) {
     botTarget.crouchTimer--;
     if (botTarget.crouchTimer <= 0) bKeys.down = false;
   }
+  if (botTarget.strikerDashCooldown > 0) botTarget.strikerDashCooldown--;
+  if (botTarget.enforcerBlastCooldown > 0) botTarget.enforcerBlastCooldown--;
+  if (botTarget.raptorHoverTimer > 0) botTarget.raptorHoverTimer--;
+
+  const botClassId = (botTarget.currentClass?.id || 'STRIKER').toUpperCase();
+  const isEnforcer = (botClassId === 'ENFORCER');
+  const isStriker = (botClassId === 'STRIKER' || botClassId === 'PLAYMAKER' || botClassId === 'SWEEPER');
+  const isRaptor = (botClassId === 'RAPTOR' || botClassId === 'AERO');
 
   // =========================================================================
-  // 1. WYBÓR BRONI NA BAZIE DYSTANSU DO WROGA
+  // 1. WYBÓR BRONI NA BAZIE DYSTANSU DO WROGA I KLASY (ARENY BOJOWE 2 i 3)
   // =========================================================================
   const distToEnemy = targetEnemy ? Math.hypot((targetEnemy.x + targetEnemy.w / 2) - botCenterX, (targetEnemy.y + targetEnemy.h / 2) - botCenterY) : Infinity;
 
-  if (distToEnemy < 180) {
-    botTarget.currentWeapon = WEAPONS.SHOTGUN;
-  } else if (distToEnemy > 480) {
-    botTarget.currentWeapon = WEAPONS.SNIPER;
-  } else {
-    botTarget.currentWeapon = WEAPONS.AK47;
+  if (!isA1) {
+    if (isRaptor) {
+      // Raptor: zwiadowca z karabinem wyborowym, przełączający na AK-47 tylko w zwarciu
+      botTarget.currentWeapon = (distToEnemy <= 220) ? WEAPONS.AK47 : WEAPONS.SNIPER;
+    } else if (isEnforcer) {
+      // Enforcer: kolos bojowy preferujący strzelbę z bliska i w średnim dystansie
+      botTarget.currentWeapon = (distToEnemy <= 260) ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+    } else {
+      // Striker: szturmowiec z karabinkiem, błyskawicznie dobywający strzelby w szarży z dasha
+      botTarget.currentWeapon = (distToEnemy <= 160) ? WEAPONS.SHOTGUN : (distToEnemy > 480 ? WEAPONS.SNIPER : WEAPONS.AK47);
+    }
+  }
+
+  // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
+  if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
+    if (distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
+      const grenadeRoll = Math.random();
+      const grenadeChance = (botTarget.difficulty === 'veteran') ? 0.30 : 0.16;
+      if (grenadeRoll < grenadeChance) {
+        throwTacticalGrenade(botTarget, targetEnemy.x + targetEnemy.w / 2, targetEnemy.y + targetEnemy.h / 2);
+        botTarget.grenadeCooldown = (botTarget.difficulty === 'veteran') ? 7.5 : 12.0;
+      }
+    }
   }
 
   // =========================================================================
-  // 2. CZAS REAKCJI I TAKTYCZNA MASZYNA STANÓW (Human Flaws: 6-10 klatek ~ 100-160ms)
+  // 2. CZAS REAKCJI I TAKTYCZNA MASZYNA STANÓW
   // =========================================================================
+  const hasBall = (ball && ball.active);
+  const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY)));
+
   if (botTarget.decisionTimer <= 0) {
     const isVeteran = (botTarget.difficulty === 'veteran');
     botTarget.decisionTimer = isVeteran ? Math.floor(Math.random() * 3 + 2) : Math.floor(Math.random() * 5 + 6);
 
-    // Dynamiczny błąd kąta celowania (losowy szum: Rekrut ±6° do ±14°, Weteran ±2° do ±5°)
+    // Dynamiczny błąd kąta celowania (Rekrut ±6° do ±14°, Weteran ±2° do ±5°)
     const errorDeg = isVeteran ? ((2 + Math.random() * 3) * (Math.random() < 0.5 ? -1 : 1)) : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1));
     botTarget.aimErrorAngle = errorDeg * (Math.PI / 180);
 
-    // Przewidywany punkt celu (piłka w trybie meczowym, wróg w trybie bojowym)
-    const hasBall = (ball && ball.active);
+    // Punkt docelowy nawigacji
     let targetX;
     if (hasBall) {
       const predOffset = Math.sin(performance.now() * 0.002) * 20;
@@ -253,10 +551,18 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     } else if (targetEnemy && !targetEnemy.isDead) {
       targetX = targetEnemy.x + targetEnemy.w / 2;
     } else {
-      targetX = botCenterX;
+      targetX = isA2 ? 2000 : (isA3 ? 2200 : botCenterX);
     }
 
-    // Martwa strefa (deadzone): nie szarp lewo-prawo, gdy cel jest blisko w poziomie
+    // Ewakuacja przed falą kwasu w Arenie 2
+    if (isA2 && ACID_SURGE_SYSTEM && (ACID_SURGE_SYSTEM.state === 'WARNING' || ACID_SURGE_SYSTEM.state === 'RISING' || ACID_SURGE_SYSTEM.state === 'FLOODED')) {
+      if (botTarget.y > 900) {
+        // Natychmiastowa ucieczka na wyższy poziom (Centralny Hub X: 2000 lub rampy)
+        targetX = (botCenterX < 2000) ? 1750 : 2250;
+      }
+    }
+
+    // Martwa strefa (deadzone)
     const diffX = targetX - botCenterX;
     if (Math.abs(diffX) < 35) {
       bKeys.left = false;
@@ -269,31 +575,62 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       bKeys.right = false;
     }
 
-    // Nawigacja wertykalna: wspinaczka i zeskok
-    const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : groundY);
-
-    // Cel znajduje się wyżej o > 50 px - skok na platformę lub rampę
-    if (targetY < botTarget.y - 50) {
-      if (!botTarget.isJumping && !botTarget.isSliding) {
-        bKeys.up = true;
+    // Bezpieczeństwo krawędzi platform: zapobieganie spadaniu w kwas lub głęboką rzekę
+    if (botTarget.onGround && !botTarget.isJumping) {
+      const moveDir = bKeys.right ? 1 : (bKeys.left ? -1 : 0);
+      if (moveDir !== 0) {
+        const lookaheadX = botCenterX + moveDir * 32;
+        const safeAhead = getSafeSurfaceBelow(lookaheadX, botTarget.y + botTarget.h + 8, currentArenaId);
+        if (safeAhead === null) {
+          // Przed botem jest otchłań kwasu lub rwąca woda bez mostu
+          if (Math.abs(diffX) > 60 && (botTarget.jetFuel || 0) > 15) {
+            bKeys.up = true; // Przeskocz wyrwę z użyciem odrzutu!
+          } else if (isEnforcer && botTarget.enforcerBlastCooldown <= 0) {
+            triggerEnforcerBlastJump(botTarget, moveDir * 0.95, spawnGrass);
+            botTarget.enforcerBlastCooldown = 85;
+          } else {
+            bKeys.left = false;
+            bKeys.right = false;
+          }
+        }
       }
     }
 
-    // Cel znajduje się niżej o > 70 px - zeskok z kładki (drop-through)
+    // Nawigacja wertykalna: wspinaczka
+    if (targetY < botTarget.y - 48) {
+      if (!botTarget.isJumping && !botTarget.isSliding) {
+        if (isEnforcer && botTarget.enforcerBlastCooldown <= 0 && botTarget.onGround) {
+          // Kolos wykonuje potężny wyskok pneumatyczny z kruszeniem ziemi na wyższą platformę
+          const blastDirX = Math.abs(diffX) > 25 ? (Math.sign(diffX) * 0.9) : (botTarget.facing || 1) * 0.3;
+          triggerEnforcerBlastJump(botTarget, blastDirX, spawnGrass);
+          botTarget.enforcerBlastCooldown = (botTarget.difficulty === 'veteran') ? 85 : 125;
+        } else if (!isEnforcer) {
+          bKeys.up = true;
+        }
+      }
+    }
+
+    // Bezpieczny zeskok z kładki (drop-through) – wyłącznie jeśli pod spodem jest stabilny grunt
     if (targetY > botTarget.y + 70) {
       if (botTarget.onGround && botTarget.currentPlatform && (botTarget.currentPlatform.oneWay || botTarget.currentPlatform.isDropThrough || botTarget.currentPlatform.type === 'catwalk' || botTarget.currentPlatform.type === 'cyber_catwalk')) {
-        botTarget.dropThroughTimer = 20;
-        botTarget.dropThroughPlatform = botTarget.currentPlatform;
         const platThick = botTarget.currentPlatform.thickness || botTarget.currentPlatform.h || 20;
-        botTarget.y += platThick + 12;
-        botTarget.currentPlatform = null;
-        botTarget.onGround = false;
-        botTarget.isJumping = true;
-        botTarget.vy = Math.max(botTarget.vy || 0, 4.2);
+        const testFeetY = botTarget.y + botTarget.h + platThick + 14;
+        const safeBelow = getSafeSurfaceBelow(botCenterX, testFeetY, currentArenaId);
+
+        // Zeskok dozwolony WYŁĄCZNIE wtedy, gdy poniżej jest potwierdzona bezpieczna platforma
+        if (safeBelow !== null && safeBelow <= targetY + 140) {
+          botTarget.dropThroughTimer = 20;
+          botTarget.dropThroughPlatform = botTarget.currentPlatform;
+          botTarget.y += platThick + 12;
+          botTarget.currentPlatform = null;
+          botTarget.onGround = false;
+          botTarget.isJumping = true;
+          botTarget.vy = Math.max(botTarget.vy || 0, 4.2);
+        }
       }
     }
 
-    // Wślizg (Soldat Tackle)
+    // Wślizg taktyczny (Soldat Slide Tackle / Enforcer Ram)
     if (hasBall) {
       const ballSpeed = Math.hypot(ball.vx, ball.vy);
       const dxToBall = ball.x - botCenterX;
@@ -306,11 +643,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         }
       }
     } else if (targetEnemy && !targetEnemy.isDead) {
-      // W trybie bojowym: wślizg powalający w stronę wroga
       const dxToEnemy = (targetEnemy.x + targetEnemy.w / 2) - botCenterX;
       const distToEnemyX = Math.abs(dxToEnemy);
-      if (distToEnemyX >= 50 && distToEnemyX <= 120 && Math.abs(botTarget.vx) > 3.2 && (botTarget.vx * dxToEnemy > 0)) {
-        if (Math.random() < 0.35) {
+      const slideProb = isEnforcer ? 0.50 : 0.35; // Kolos częściej taranuje wślizgiem
+      if (distToEnemyX >= 50 && distToEnemyX <= 135 && Math.abs(botTarget.vx) > 3.0 && (botTarget.vx * dxToEnemy > 0)) {
+        if (Math.random() < slideProb) {
           playerSlide(spawnGrass, groundY, botTarget);
         }
       }
@@ -318,25 +655,204 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // =========================================================================
-  // 3. STRAFE BOJOWY I ZACHOWANIA IDLE
+  // UMIEJĘTNOŚCI SPECJALNE KLAS:
   // =========================================================================
-  const distToBallTotal = (ball && ball.active) ? Math.hypot(ball.x - botCenterX, ball.y - botCenterY) : Infinity;
 
-  if (distToBallTotal > 260) {
-    if (botTarget.idleDecisionTimer <= 0) {
-      botTarget.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
+  // A. KLASA CIĘŻKA: ENFORCER – KINETIC PISTON LEAP (BLAST JUMP)
+  if (isEnforcer && botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding && botTarget.enforcerBlastCooldown <= 0) {
+    let shouldBlast = false;
+    let bDirX = 0;
 
-      const roll = Math.random();
-      if (roll < 0.40) {
-        botTarget.strafeDir = Math.random() < 0.5 ? -1 : 1;
-        botTarget.strafeTimer = Math.floor(Math.random() * 16 + 12);
-      } else if (roll < 0.65) {
-        if (!botTarget.isJumping && !botTarget.isSliding) {
-          bKeys.up = true;
+    // 1. Tąpnięcie kinetyczne i fala uderzeniowa w walce wręcz
+    if (targetEnemy && !targetEnemy.isDead && distToEnemy < 100) {
+      shouldBlast = true;
+      bDirX = Math.sign(targetEnemy.x - botCenterX) * 0.6;
+    }
+    // 2. Kinetyczny wystrzał piłki na bramkę w Arenie 1
+    else if (hasBall && ballDistFromHip < 110) {
+      shouldBlast = true;
+      const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
+      bDirX = Math.sign(enemyGoalX - botCenterX);
+    }
+    // 3. Awaryjna ucieczka przed kwasem / rwącą rzeką
+    else if ((isA2 && botTarget.y > 900) || (isA3 && botCenterX >= 1540 && botCenterX <= 2860 && botTarget.y > 1150)) {
+      shouldBlast = true;
+      bDirX = (botCenterX < 2000 ? 1.0 : -1.0);
+    }
+
+    if (shouldBlast) {
+      triggerEnforcerBlastJump(botTarget, bDirX, spawnGrass);
+      bKeys.up = false;
+      botTarget.enforcerBlastCooldown = (botTarget.difficulty === 'veteran') ? 95 : 145;
+    }
+  }
+
+  // B. KLASA ŚREDNIA: STRIKER – ROCKET BOOTS (AIR DASH & GROUND DASH)
+  if (isStriker && botTarget.strikerDashCooldown <= 0) {
+    const isAirborneNow = botTarget.isJumping || !botTarget.onGround;
+    const isGroundedNow = botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding;
+
+    // 1. Air Dash w powietrzu (wymaga >= 50 paliwa)
+    if (isAirborneNow && (botTarget.jetFuel || 0) >= 50) {
+      let triggerAir = false;
+      let nx = 0;
+      let ny = 0;
+
+      // Szarża powietrzna na przeciwnika z rakietowym przyspieszeniem
+      if (targetEnemy && !targetEnemy.isDead && distToEnemy >= 120 && distToEnemy <= 380) {
+        const dxE = (targetEnemy.x + targetEnemy.w / 2) - botCenterX;
+        const dyE = (targetEnemy.y + targetEnemy.h / 2) - botCenterY;
+        const dMag = Math.hypot(dxE, dyE) || 1;
+        nx = dxE / dMag;
+        ny = Math.max(-0.8, Math.min(0.6, dyE / dMag));
+        triggerAir = true;
+      }
+      // Przechwyt piłki w powietrzu w Arenie 1
+      else if (hasBall && ballDistFromHip > 80 && ballDistFromHip < 320) {
+        const dxB = ball.x - botCenterX;
+        const dyB = ball.y - botCenterY;
+        const bMag = Math.hypot(dxB, dyB) || 1;
+        nx = dxB / bMag;
+        ny = dyB / bMag;
+        triggerAir = true;
+      }
+      // Awaryjny doskok do bezpiecznej kładki nad kwasem/wodą
+      else {
+        const safeUnder = getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId);
+        if (safeUnder === null && (botTarget.vy || 0) > -1.0) {
+          nx = (botCenterX < 2000 ? 1 : -1) * 0.85;
+          ny = -0.52;
+          triggerAir = true;
         }
-      } else if (roll < 0.80) {
-        bKeys.down = true;
-        botTarget.crouchTimer = Math.floor(Math.random() * 20 + 10);
+      }
+
+      if (triggerAir) {
+        botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 50);
+        triggerStrikerAirDash(botTarget, nx, ny, 1.0);
+        botTarget.strikerDashCooldown = (botTarget.difficulty === 'veteran') ? 75 : 110;
+      }
+    }
+    // 2. Ground Dash na ziemi (dopalacz rakietowy w butach)
+    else if (isGroundedNow && (botTarget.jetFuel || 0) >= 15) {
+      let triggerGround = false;
+      let gDir = 0;
+
+      if (targetEnemy && !targetEnemy.isDead && distToEnemy > 280) {
+        gDir = Math.sign(targetEnemy.x - botCenterX) || botTarget.facing || 1;
+        triggerGround = true;
+      } else if (targetEnemy && !targetEnemy.isDead && botTarget.hp < 35 && distToEnemy < 180) {
+        gDir = -Math.sign(targetEnemy.x - botCenterX) || -botTarget.facing || -1;
+        triggerGround = true;
+      } else if (hasBall && ballDistFromHip > 180) {
+        gDir = Math.sign(ball.x - botCenterX) || botTarget.facing || 1;
+        triggerGround = true;
+      }
+
+      if (triggerGround && gDir !== 0) {
+        botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 15);
+        triggerStrikerGroundDash(botTarget, gDir, 'STICK', 1.0);
+        botTarget.strikerDashCooldown = (botTarget.difficulty === 'veteran') ? 85 : 125;
+      }
+    }
+  }
+
+  // =========================================================================
+  // 3. LOT JETPACKIEM I NAPĘD ODRZUTOWY BOTA
+  // =========================================================================
+  const isAirborne = botTarget.isJumping || !botTarget.onGround;
+  let wantsJetpack = false;
+
+  // Enforcer nie posiada jetpacka
+  if (!isEnforcer && isAirborne && (botTarget.jetFuel || 0) > 4) {
+    // A. Awaryjny ciąg ratunkowy przed kwasem (Arena 2)
+    if (isA2) {
+      const hazardY = (ACID_SURGE_SYSTEM && typeof ACID_SURGE_SYSTEM.currentY === 'number')
+        ? ACID_SURGE_SYSTEM.currentY
+        : ((ARENA_2_CONFIG && ARENA_2_CONFIG.hazardZoneY) || 1440);
+      if (botTarget.y + botTarget.h > hazardY - 170) {
+        wantsJetpack = true;
+      }
+    }
+    // B. Awaryjny ciąg ratunkowy przed utonięciem w rzece (Arena 3)
+    else if (isA3) {
+      if (botCenterX >= 1540 && botCenterX <= 2860 && botTarget.y + botTarget.h > 1200) {
+        wantsJetpack = true;
+      }
+    }
+
+    // C. Wspinaczka ku platformie znajdującej się powyżej
+    if (targetY < botTarget.y - 45) {
+      wantsJetpack = true;
+    }
+
+    // D. Pokonywanie przepaści w powietrzu
+    const safeDirectlyUnder = getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId);
+    if (safeDirectlyUnder === null && (botTarget.vy || 0) > -1.2) {
+      wantsJetpack = true;
+    }
+
+    // E. Klasa Lekka: RAPTOR – Aerial Superiority, Kiting i Hovering
+    if (isRaptor) {
+      if (targetEnemy && !targetEnemy.isDead) {
+        // Kiting w zwarciu: ucieczka w górę i w tył przed wrogiem
+        if (distToEnemy < 125) {
+          bKeys.up = true;
+          wantsJetpack = true;
+          if (targetEnemy.x > botCenterX) {
+            bKeys.left = true;
+            bKeys.right = false;
+          } else {
+            bKeys.right = true;
+            bKeys.left = false;
+          }
+        }
+        // Utrzymywanie przewagi wysokości i zawis
+        else if (botTarget.y > targetEnemy.y - 110) {
+          wantsJetpack = true;
+        }
+        if (botTarget.y < targetEnemy.y - 60 && (botTarget.vy || 0) > 0.1) {
+          botTarget.vy = Math.min(botTarget.vy * 0.45, 0.35);
+          wantsJetpack = true;
+        }
+      } else if (hasBall && ball.y < groundY - 60 && ballDistFromHip < 280) {
+        bKeys.up = true;
+        wantsJetpack = true;
+      }
+    }
+  }
+
+  if (wantsJetpack) {
+    botTarget.isJetpacking = true;
+    botTarget.jetpackPower = 1.0;
+    botTarget.vy = Math.max(-6.8, (botTarget.vy || 0) - 0.72);
+    botTarget.jetFuel = Math.max(0, (botTarget.jetFuel || 0) - 0.70);
+
+    const nozzle = getJetpackNozzlePos(botTarget);
+    const flameCol = (botTarget.team === 'CYAN') ? '#00e5ff' : '#f97316';
+    const flameColors = getJetpackFlamePalette(flameCol).particles;
+    spawnJetpackSparks(nozzle.x, nozzle.y, botTarget.facing, 2, flameColors, botTarget.vx || 0, botTarget.vy || 0, nozzle.angle);
+  } else {
+    botTarget.isJetpacking = false;
+    botTarget.jetpackPower = 0;
+  }
+
+  // =========================================================================
+  // 4. STRAFE BOJOWY I ZACHOWANIA TAKTYCZNE
+  // =========================================================================
+  if (!hasBall && targetEnemy && !targetEnemy.isDead) {
+    // W trybie bojowym: taktyczne manewry w zależności od posiadanej broni
+    if (botTarget.idleDecisionTimer <= 0) {
+      botTarget.idleDecisionTimer = Math.floor(Math.random() * 45 + 30);
+      if (botTarget.currentWeapon === WEAPONS.SNIPER) {
+        // Snajper kuca dla stabilizacji celownika laserowego
+        if (distToEnemy > 280 && Math.random() < 0.45) {
+          bKeys.down = true;
+          botTarget.crouchTimer = Math.floor(Math.random() * 35 + 25);
+        }
+      } else if (botTarget.currentWeapon === WEAPONS.AK47) {
+        // Karabinek szturmowy: krótkie serie strafe lewo-prawo
+        botTarget.strafeDir = Math.random() < 0.5 ? -1 : 1;
+        botTarget.strafeTimer = Math.floor(Math.random() * 16 + 10);
       }
     }
 
@@ -349,23 +865,53 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         bKeys.right = false;
       }
     }
+  } else if (hasBall) {
+    const distToBallTotal = Math.hypot(ball.x - botCenterX, ball.y - botCenterY);
+    if (distToBallTotal > 260) {
+      if (botTarget.idleDecisionTimer <= 0) {
+        botTarget.idleDecisionTimer = Math.floor(Math.random() * 60 + 60);
+        const roll = Math.random();
+        if (roll < 0.40) {
+          botTarget.strafeDir = Math.random() < 0.5 ? -1 : 1;
+          botTarget.strafeTimer = Math.floor(Math.random() * 16 + 12);
+        } else if (roll < 0.65) {
+          if (!botTarget.isJumping && !botTarget.isSliding) {
+            bKeys.up = true;
+          }
+        }
+      }
+      if (botTarget.strafeTimer > 0) {
+        if (botTarget.strafeDir > 0) {
+          bKeys.right = true;
+          bKeys.left = false;
+        } else if (botTarget.strafeDir < 0) {
+          bKeys.left = true;
+          bKeys.right = false;
+        }
+      }
+    }
   }
 
   // =========================================================================
-  // 4. CELOWANIE Z LUDZKIM BŁĘDEM (LERP + SZUM KĄTOWY)
+  // 5. CELOWANIE (PIŁKA NA BRAMKĘ / WRÓG W WALCE)
   // =========================================================================
   const hitReach = botTarget.currentClass?.stats?.hitReach || 56;
   const hipX = botCenterX;
   const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
-  const ballDistFromHip = (ball && ball.active) ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
+  const ballDistFromHip = hasBall ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
   let aimTargetX, aimTargetY;
-  if (ball && ball.active) {
-    aimTargetX = ball.x + (ball.vx * 3);
-    aimTargetY = ball.y + (ball.vy * 3);
-    if (targetEnemy && !targetEnemy.isDead && (ballDistFromHip > hitReach + 20 || distToBallTotal > 160)) {
-      aimTargetX = targetEnemy.x + targetEnemy.w / 2;
-      aimTargetY = targetEnemy.y + targetEnemy.h / 2;
+  if (hasBall) {
+    // W Arenie 1 celowanie w piłkę przy prowadzeniu, a w bramkę rywala przy strzale
+    const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
+    const enemyGoalY = 580;
+
+    if (ballDistFromHip <= hitReach + 20 || botTarget.isCharging) {
+      aimTargetX = enemyGoalX;
+      aimTargetY = enemyGoalY;
+    } else {
+      aimTargetX = ball.x + (ball.vx * 3);
+      aimTargetY = ball.y + (ball.vy * 3);
     }
   } else if (targetEnemy && !targetEnemy.isDead) {
     aimTargetX = targetEnemy.x + targetEnemy.w / 2;
@@ -387,13 +933,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   if (typeof botTarget.aimX !== 'number' || isNaN(botTarget.aimX)) botTarget.aimX = desiredAimX;
   if (typeof botTarget.aimY !== 'number' || isNaN(botTarget.aimY)) botTarget.aimY = desiredAimY;
 
-  botTarget.aimX += (desiredAimX - botTarget.aimX) * 0.15;
-  botTarget.aimY += (desiredAimY - botTarget.aimY) * 0.15;
+  botTarget.aimX += (desiredAimX - botTarget.aimX) * 0.18;
+  botTarget.aimY += (desiredAimY - botTarget.aimY) * 0.18;
 
   // =========================================================================
-  // 5. OSTRZAŁ BOTA
+  // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
   // =========================================================================
-  if (targetEnemy && !targetEnemy.isDead) {
+  if (!isA1 && targetEnemy && !targetEnemy.isDead) {
     const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
     const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;
     const shooterOriginY = botTarget.y + 20;
@@ -436,9 +982,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // =========================================================================
-  // 6. KOPANIE PIŁKI I SPARTAN MELEE KICK
+  // 7. KOPANIE PIŁKI I SPARTAN MELEE KICK
   // =========================================================================
-  if (ball && ball.active) {
+  if (hasBall) {
     if (ballDistFromHip <= hitReach + 10) {
       if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
         botTarget.isCharging = true;
@@ -446,7 +992,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         botTarget.chargeTarget = Math.random() * 0.55 + 0.30;
       } else if (botTarget.isCharging) {
         if (botTarget.chargePower >= botTarget.chargeTarget) {
-          executeReleaseKick(ball, botTarget);
+          executeReleaseKick(ball, botTarget, 0, meleeTargets);
         }
       }
     } else if (botTarget.isCharging) {
@@ -473,7 +1019,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // =========================================================================
-  // 7. WYWOŁANIE FIZYKI POSTACI
+  // 8. WYWOŁANIE FIZYKI POSTACI
   // =========================================================================
   updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
 }
