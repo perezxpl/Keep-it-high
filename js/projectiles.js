@@ -395,6 +395,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     const dist = Math.hypot(chCenterX - expX, chCenterY - expY);
 
     if (dist <= radius) {
+      if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (shooter && shooter.spawnProtectionTimer && shooter.spawnProtectionTimer > 0)) {
+        continue;
+      }
       const factor = Math.max(0, 1 - (dist / radius));
       // 120-150 dmg w centrum ze spadkiem liniowym
       const damage = Math.round(145 * factor);

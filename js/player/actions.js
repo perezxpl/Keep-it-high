@@ -515,6 +515,9 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
       const isAhead = (dxToEnemy * player.facing) >= -20;
 
       if (distEnemy <= kickReach + 18 && isAhead) {
+        if ((enemy.spawnProtectionTimer && enemy.spawnProtectionTimer > 0) || (player.spawnProtectionTimer && player.spawnProtectionTimer > 0)) {
+          continue;
+        }
         const pwr = player.kickPower || 0.70;
         const falloff = getDistanceFalloff(ex, ey, footX, footY, kickReach);
         const finalKnockback = BASE_KNOCKBACK * knockbackMultiplier * (0.80 + pwr * 0.30) * falloff;
@@ -884,6 +887,9 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
   const enemy = player.spartanTarget || findMeleeTarget(player, activeTargets);
 
   if (enemy && !enemy.isDead) {
+    if ((enemy.spawnProtectionTimer && enemy.spawnProtectionTimer > 0) || (player.spawnProtectionTimer && player.spawnProtectionTimer > 0)) {
+      return;
+    }
     const ex = enemy.x + (enemy.w || 24) / 2;
     const ey = enemy.y + (enemy.h || 70) * 0.45;
 

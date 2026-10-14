@@ -301,7 +301,7 @@ export function createBotInstance(index = 0) {
     jetFuel: botClass?.stats?.jetMax || 100,
     jetMax: botClass?.stats?.jetMax || 100,
 
-    difficulty: 'recruit',
+    difficulty: getStoredBotDifficulty(),
     decisionTimer: 0,
     aimErrorAngle: 0,
     strafeTimer: 0,
@@ -366,9 +366,27 @@ export function getActiveBots() {
   return bots.slice(0, botCount).filter(b => b.active);
 }
 
+function getStoredBotDifficulty() {
+  try {
+    const val = localStorage.getItem('kih_bot_diff_v1');
+    if (val === 'easy' || val === 'medium' || val === 'hard') return val;
+  } catch (_) {}
+  return 'medium';
+}
+
 export function setBotDifficulty(diff) {
-  const d = (diff === 'veteran') ? 'veteran' : 'recruit';
+  let d = 'medium';
+  if (diff === 'easy' || diff === 'latwy') {
+    d = 'easy';
+  } else if (diff === 'hard' || diff === 'trudny' || diff === 'veteran') {
+    d = 'hard';
+  } else {
+    d = 'medium';
+  }
   bots.forEach(b => { b.difficulty = d; });
+  try {
+    localStorage.setItem('kih_bot_diff_v1', d);
+  } catch (_) {}
 }
 
 /**
@@ -521,11 +539,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
   if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
     if (distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
+      const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+      const isEasy = (botTarget.difficulty === 'easy');
       const grenadeRoll = Math.random();
-      const grenadeChance = (botTarget.difficulty === 'veteran') ? 0.30 : 0.16;
+      const grenadeChance = isHard ? 0.35 : (isEasy ? 0.05 : 0.16);
       if (grenadeRoll < grenadeChance) {
         throwTacticalGrenade(botTarget, targetEnemy.x + targetEnemy.w / 2, targetEnemy.y + targetEnemy.h / 2);
-        botTarget.grenadeCooldown = (botTarget.difficulty === 'veteran') ? 7.5 : 12.0;
+        botTarget.grenadeCooldown = isHard ? 6.5 : (isEasy ? 18.0 : 12.0);
       }
     }
   }
@@ -537,11 +557,19 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY)));
 
   if (botTarget.decisionTimer <= 0) {
-    const isVeteran = (botTarget.difficulty === 'veteran');
-    botTarget.decisionTimer = isVeteran ? Math.floor(Math.random() * 3 + 2) : Math.floor(Math.random() * 5 + 6);
+    const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+    const isEasy = (botTarget.difficulty === 'easy');
+    botTarget.decisionTimer = isHard
+      ? Math.floor(Math.random() * 3 + 1)
+      : (isEasy ? Math.floor(Math.random() * 9 + 14) : Math.floor(Math.random() * 5 + 6));
 
-    // Dynamiczny błąd kąta celowania (Rekrut ±6° do ±14°, Weteran ±2° do ±5°)
-    const errorDeg = isVeteran ? ((2 + Math.random() * 3) * (Math.random() < 0.5 ? -1 : 1)) : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1));
+    // Dynamiczny błąd kąta celowania:
+    // Łatwy: ±16° do ±28°, Średni (dawny rekrut): ±6° do ±14°, Trudny: ±1.5° do ±4°
+    const errorDeg = isHard
+      ? ((1.5 + Math.random() * 2.5) * (Math.random() < 0.5 ? -1 : 1))
+      : (isEasy
+        ? ((16 + Math.random() * 12) * (Math.random() < 0.5 ? -1 : 1))
+        : ((6 + Math.random() * 8) * (Math.random() < 0.5 ? -1 : 1)));
     botTarget.aimErrorAngle = errorDeg * (Math.PI / 180);
 
     // Punkt docelowy nawigacji
@@ -604,7 +632,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           // Kolos wykonuje potężny wyskok pneumatyczny z kruszeniem ziemi na wyższą platformę
           const blastDirX = Math.abs(diffX) > 25 ? (Math.sign(diffX) * 0.9) : (botTarget.facing || 1) * 0.3;
           triggerEnforcerBlastJump(botTarget, blastDirX, spawnGrass);
-          botTarget.enforcerBlastCooldown = (botTarget.difficulty === 'veteran') ? 85 : 125;
+          const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+          const isEasy = (botTarget.difficulty === 'easy');
+          botTarget.enforcerBlastCooldown = isHard ? 75 : (isEasy ? 190 : 125);
         } else if (!isEnforcer) {
           bKeys.up = true;
         }
@@ -684,7 +714,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     if (shouldBlast) {
       triggerEnforcerBlastJump(botTarget, bDirX, spawnGrass);
       bKeys.up = false;
-      botTarget.enforcerBlastCooldown = (botTarget.difficulty === 'veteran') ? 95 : 145;
+      const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+      const isEasy = (botTarget.difficulty === 'easy');
+      botTarget.enforcerBlastCooldown = isHard ? 85 : (isEasy ? 210 : 145);
     }
   }
 
@@ -730,7 +762,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (triggerAir) {
         botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 50);
         triggerStrikerAirDash(botTarget, nx, ny, 1.0);
-        botTarget.strikerDashCooldown = (botTarget.difficulty === 'veteran') ? 75 : 110;
+        const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+        const isEasy = (botTarget.difficulty === 'easy');
+        botTarget.strikerDashCooldown = isHard ? 65 : (isEasy ? 170 : 110);
       }
     }
     // 2. Ground Dash na ziemi (dopalacz rakietowy w butach)
@@ -752,7 +786,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (triggerGround && gDir !== 0) {
         botTarget.jetFuel = Math.max(0, botTarget.jetFuel - 15);
         triggerStrikerGroundDash(botTarget, gDir, 'STICK', 1.0);
-        botTarget.strikerDashCooldown = (botTarget.difficulty === 'veteran') ? 85 : 125;
+        const isHard = (botTarget.difficulty === 'hard' || botTarget.difficulty === 'veteran');
+        const isEasy = (botTarget.difficulty === 'easy');
+        botTarget.strikerDashCooldown = isHard ? 75 : (isEasy ? 190 : 125);
       }
     }
   }

@@ -23,7 +23,10 @@ export const ARENA_2_CONFIG = {
     { x: 530,  y: 350,  facing: 1 },  // Platforma A (Góra-Lewo)
     { x: 3470, y: 350,  facing: -1 }, // Platforma B (Góra-Prawo - lustrzane odbicie)
     { x: 540,  y: 1010, facing: 1 },  // Platforma C (Dół-Lewo)
-    { x: 3460, y: 1010, facing: -1 }  // Platforma D (Dół-Prawo - lustrzane odbicie)
+    { x: 3460, y: 1010, facing: -1 }, // Platforma D (Dół-Prawo - lustrzane odbicie)
+    { x: 1250, y: 650,  facing: 1 },  // Kładka Górna-Środkowa Lewa
+    { x: 2750, y: 650,  facing: -1 }, // Kładka Górna-Środkowa Prawa
+    { x: 2000, y: 650,  facing: 1 }   // Hub Centralny
   ]
 };
 
@@ -1027,6 +1030,7 @@ export function isPlayerSubmergedInAcid(p, submergeDepth = 15) {
  */
 export function triggerPlayerAcidDeath(p, hazardZoneY) {
   if (!p) return;
+  if (p.spawnProtectionTimer && p.spawnProtectionTimer > 0) return;
   if (p.acidDeath && p.acidDeath.active) return;
   if (p.isDead) return;
 

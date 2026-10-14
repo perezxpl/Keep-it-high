@@ -498,6 +498,13 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         isTorsoShot = !isHeadshot && !isLegshot;
       }
 
+      // Ochrona odrodzenia: nietykalność celu oraz brak możliwości ranienia innych przez gracza pod osłoną
+      if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (b.shooter && b.shooter.spawnProtectionTimer && b.shooter.spawnProtectionTimer > 0)) {
+        spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
+        b.life = 0;
+        continue;
+      }
+
       let damageMultiplier = 1.0;
       let helmetAbsorbed = false;
       let vestAbsorbed = false;

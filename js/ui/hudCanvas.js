@@ -18,6 +18,7 @@ import { drawRankHUD, drawMatchVictoryHUD, checkMatchWin, updateMatchWinState } 
 import { drawDeathmatchHUD, drawDeathmatchPodium } from '../deathmatch/index.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
+import { drawCombatFeedBanner } from './combatFeed.js';
 
 export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   ctx.save();
@@ -1752,5 +1753,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (isTouchDevice) {
     drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isSectorXArena) ? null : ball, inKickRange);
   }
+
+  drawCombatFeedBanner(ctx, W, H, isMobile);
 }
 

@@ -14,6 +14,7 @@ import {
 import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../progression.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
+import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
 
 /**
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
@@ -153,6 +154,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   // 1. Odliczanie czasu bitwy (5 minut = 300s)
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : (1 / 60);
   deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
+  updateCombatFeed(stepTime);
 
   // 2. Obsługa faktycznych eliminacji w walce
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
@@ -186,6 +188,8 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
         }
         if (c === player) {
           recordDeath();
+          const killerName = c.killer?.name || (c.acidDeath?.active ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
+          triggerCombatFeedBanner('DEATH', killerName);
         }
 
         // Sprawdzenie, czy ofiara została FAKTYCZNIE zabita przez przeciwnika
@@ -205,6 +209,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
 
           if (killerRef === player) {
             recordKill();
+            triggerCombatFeedBanner('KILL', c.name || 'PRZECIWNIK');
           }
         }
         // Jeśli przeciwnik zginął sam (kwas, upadek, samobójstwo) –

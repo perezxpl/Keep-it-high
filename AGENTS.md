@@ -82,6 +82,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### Świat, Kamera, UI i Narzędzia (`js/world/`, `js/ui/`, `js/dev/`)
 - `js/world/` — stan świata i kamery (`state.js`), niebo (`sky.js`), podłoże (`ground.js`), teren (`terrain.js`), gore/krew (`gore.js`), cząsteczki (`particles.js`).
 - `js/ui/hudCanvas.js` — rysowanie HUD-u na płótnie (`drawHUD`).
+- `js/ui/combatFeed.js` — dolny taktyczny baner eliminacji i zgonów (`ZABIŁEŚ [NICK]` / `ZABITY PRZEZ [NICK]`) z animacją wejścia i wygasania.
 - `js/ui/classSelectModal.js` — karty wyboru klas postaci na płótnie.
 - `js/uiManager.js` — obsługa ekranów HTML/CSS (Menu główne, Wybór areny, Ustawienia, Kreator, Pauza).
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).

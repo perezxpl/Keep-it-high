@@ -56,8 +56,14 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (keys) player.keys = keys;
   if (leftStick) player.leftStick = leftStick;
 
+  if (targets) player._targets = targets;
+
+  if (player.spawnProtectionTimer > 0) {
+    player.spawnProtectionTimer--;
+  }
+
   if (player.isDead) {
-    handlePlayerDeath(player, GROUND_Y);
+    handlePlayerDeath(player, GROUND_Y, targets || player._targets);
     return;
   }
 

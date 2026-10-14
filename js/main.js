@@ -38,6 +38,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
+import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
 import {
   remotePlayer, networkState, initNetwork,
@@ -564,6 +565,8 @@ function update() {
           arenaScore.orange++;
           recordDeath();
           player._fragRecorded = true;
+          const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
+          triggerCombatFeedBanner('DEATH', kName);
         }
       } else {
         player._fragRecorded = false;
@@ -575,6 +578,9 @@ function update() {
             arenaScore.cyan++;
             recordKill();
             b._fragRecorded = true;
+            if (b.killer === player || b.lastAttacker === player) {
+              triggerCombatFeedBanner('KILL', b.name || 'BOT');
+            }
           }
         } else {
           b._fragRecorded = false;
@@ -647,6 +653,8 @@ function update() {
   });
   if (isA2Active || isA3Active) {
     updateDeathmatch(1 / 60, player, activeBots, remotePlayer, arenaScore);
+  } else {
+    updateCombatFeed(1 / 60);
   }
   if (!isDeathmatch) {
     updateDistance(ball.x);

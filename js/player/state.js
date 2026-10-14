@@ -300,6 +300,7 @@ export function createPlayerInstance(overrides = {}) {
     staggerTimer: 0,
     staggerLanded: false,
     staggerRecoveryTimer: 0,
+    spawnProtectionTimer: 0,
     isJumping: false,
     jumpSquatTimer: 0,
     jumpSquatMax: 3,

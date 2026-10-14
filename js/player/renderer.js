@@ -244,6 +244,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
     // 2. Płynne zanikanie (zwykła przezroczystość nie obciąża karty ani CPU)
     ctx.globalAlpha = Math.max(0, 1 - dissolveProgress);
+  } else if (p.spawnProtectionTimer > 0 && !p.isDead) {
+    const pulse = 0.55 + 0.35 * Math.sin(performance.now() * 0.016);
+    ctx.globalAlpha = pulse;
   }
 
   const isLocalOrCreator = !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
@@ -1686,6 +1689,27 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.beginPath();
     ctx.arc(p.x + (p.w || 24) / 2, p.y + (p.h || 70) / 2, 24 * (1 - dissolveProgress * 0.5), 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  if (p.spawnProtectionTimer > 0 && !p.isDead) {
+    const shieldAlpha = (0.28 + 0.22 * Math.sin(performance.now() * 0.015)) * Math.min(1.0, p.spawnProtectionTimer / 30);
+    const cx = p.x + (p.w || 24) * 0.5;
+    const cy = p.y + (p.h || 70) * 0.5;
+    ctx.save();
+    ctx.strokeStyle = `rgba(0, 240, 255, ${shieldAlpha * 1.6})`;
+    ctx.fillStyle = `rgba(0, 240, 255, ${shieldAlpha * 0.22})`;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, (p.w || 24) * 0.9 + 12, (p.h || 70) * 0.55 + 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Wskaźnik taktyczny OSŁONA
+    ctx.font = '900 9.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(0, 240, 255, ${Math.min(1.0, shieldAlpha * 2.2)})`;
+    ctx.fillText('OSŁONA', cx, p.y - 12);
+    ctx.restore();
   }
 
   ctx.restore();

@@ -1215,13 +1215,28 @@ export const uiManager = {
       });
     });
 
-    document.querySelectorAll('#ball-diff-toggle-group button').forEach(btn => {
+    const syncDiffButtons = (diff) => {
+      document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button').forEach(b => {
+        if (b.dataset.botDiff === diff) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    };
+
+    let initialDiff = 'medium';
+    try {
+      const s = localStorage.getItem('kih_bot_diff_v1');
+      if (s === 'easy' || s === 'medium' || s === 'hard') initialDiff = s;
+    } catch (_) {}
+    setBotDifficulty(initialDiff);
+    syncDiffButtons(initialDiff);
+
+    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
-        document.querySelectorAll('#ball-diff-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        setBotDifficulty(btn.dataset.botDiff || 'recruit');
+        const diff = btn.dataset.botDiff || 'medium';
+        setBotDifficulty(diff);
+        syncDiffButtons(diff);
       });
     });
 
@@ -1256,16 +1271,6 @@ export const uiManager = {
       });
     });
 
-    document.querySelectorAll('#dm-diff-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#dm-diff-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        setBotDifficulty(btn.dataset.botDiff || 'recruit');
-      });
-    });
-
     // -------------------------------------------------------------------------
     // PARAMETRY BITWY: Opcje Areny 3 (Tajemnicza Dżungla)
     // -------------------------------------------------------------------------
@@ -1280,16 +1285,6 @@ export const uiManager = {
         syncDevBotButtonUI();
         const countRow = document.getElementById('a3-bot-count-row');
         if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
-      });
-    });
-
-    document.querySelectorAll('#a3-diff-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#a3-diff-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        setBotDifficulty(btn.dataset.botDiff || 'recruit');
       });
     });
 

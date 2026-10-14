@@ -8,6 +8,8 @@ import { triggerScreenShake, spawnBloodDecal, spawnBloodFountain, spawnBloodDrip
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
+import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
+import { deathmatchState } from '../deathmatch/state.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -264,9 +266,96 @@ export function getRagdollRenderPose(p, groundY) {
 }
 
 /**
+ * Wybiera punkt odrodzenia maksymalnie oddalony od wszystkich żywych przeciwników
+ */
+export function getFarthestSpawnPoint(activeArena, respawningChar, combatantsList = null) {
+  let candidates = [];
+  if (activeArena && Array.isArray(activeArena.spawns) && activeArena.spawns.length > 0) {
+    candidates = [...activeArena.spawns];
+  } else {
+    candidates = [
+      { x: START_X - 60, y: 580, facing: 1 },
+      { x: START_X + 600, y: 580, facing: -1 }
+    ];
+  }
+
+  // W Arenie 2 (Sektor X) odfiltruj punkty zalane przez kwas (podczas zalań)
+  if (activeArena?.id === 'arena-2' || activeArena?.alias === 'ARENA_2_SECTOR_X') {
+    const curAcidY = (typeof ACID_SURGE_SYSTEM !== 'undefined' && typeof ACID_SURGE_SYSTEM.currentY === 'number')
+      ? ACID_SURGE_SYSTEM.currentY
+      : 1440;
+    const safeCandidates = candidates.filter(s => (s.y + 70) < (curAcidY - 40));
+    if (safeCandidates.length > 0) {
+      candidates = safeCandidates;
+    } else {
+      candidates = [
+        { x: 530, y: 350, facing: 1 },
+        { x: 3470, y: 350, facing: -1 }
+      ];
+    }
+  }
+
+  const isCyan = (respawningChar.team === 'CYAN' || (!respawningChar.team && !respawningChar.isBot));
+  const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
+
+  // Wyszukaj wszystkich żywych przeciwników
+  const livingEnemies = [];
+  let sourceCombatants = Array.isArray(combatantsList) && combatantsList.length > 0 ? combatantsList : null;
+  if (!sourceCombatants && Array.isArray(respawningChar._targets) && respawningChar._targets.length > 0) {
+    sourceCombatants = respawningChar._targets;
+  }
+  if (!sourceCombatants && typeof deathmatchState !== 'undefined' && Array.isArray(deathmatchState.participants)) {
+    sourceCombatants = deathmatchState.participants.map(p => p.ref).filter(Boolean);
+  }
+
+  if (Array.isArray(sourceCombatants)) {
+    for (const c of sourceCombatants) {
+      if (!c || c === respawningChar || c.isDead || (c.isBot && !c.active)) continue;
+      // W trybie drużynowym pomijaj sojuszników
+      if (!isFFA && respawningChar.team && c.team && respawningChar.team === c.team) continue;
+      livingEnemies.push(c);
+    }
+  }
+
+  // Jeśli brak żywych wrogów, wybierz spawn według drużyny
+  if (livingEnemies.length === 0) {
+    const teamSpawns = candidates.filter(s => (isCyan ? (s.facing >= 0 || s.x < 2000) : (s.facing < 0 || s.x >= 2000)));
+    const pool = (teamSpawns.length > 0) ? teamSpawns : candidates;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Oblicz min-odległość do wroga dla każdego kandydata i wybierz ten o największej odległości
+  let maxMinDist = -1;
+  const scored = [];
+
+  for (const s of candidates) {
+    let minDist = Infinity;
+    for (const enemy of livingEnemies) {
+      const ex = enemy.x + (enemy.w || 24) * 0.5;
+      const ey = enemy.y + (enemy.h || 70) * 0.5;
+      const d = Math.hypot(s.x - ex, s.y - ey);
+      if (d < minDist) {
+        minDist = d;
+      }
+    }
+    scored.push({ spawn: s, dist: minDist });
+    if (minDist > maxMinDist) {
+      maxMinDist = minDist;
+    }
+  }
+
+  // Wybierz losowo spośród najlepszych (w obrębie 140px od maksimum)
+  const topTier = scored.filter(item => item.dist >= maxMinDist - 140);
+  if (topTier.length > 0) {
+    return topTier[Math.floor(Math.random() * topTier.length)].spawn;
+  }
+  return candidates[0];
+}
+
+/**
  * Pętla aktualizacji stanu śmierci i respawnu (wywoływana w pętli gracza)
  */
-export function handlePlayerDeath(player, groundY) {
+export function handlePlayerDeath(player, groundY, combatants = null) {
   player.respawnTimer--;
 
   player.kickMode = 'GROUND';
@@ -391,34 +480,17 @@ export function handlePlayerDeath(player, groundY) {
 
     if (player.pose) player.pose.initialized = false;
 
+    player.spawnProtectionTimer = 150; // 2.5 sekundy nietykalności i zakazu zadawania obrażeń
+
     const activeArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isCyan = (player.team === 'CYAN' || (!player.team && !player.isBot));
-    const botIdx = player.isBot ? ((parseInt(player.id?.replace('bot_', ''), 10) || 1) - 1) : 0;
-    const scatterX = player.isBot ? ((botIdx % 3) * 40 - 20) : 0;
+    const scatterX = (Math.random() - 0.5) * 24;
 
-    if (activeArena && Array.isArray(activeArena.spawns) && activeArena.spawns.length > 0) {
-      if (activeArena.id === 'arena-2' || activeArena.alias === 'ARENA_2_SECTOR_X') {
-        // Arena 2 (Sektor X): Spawny [0, 2] to Cyan (lewa strona), [1, 3] to Orange (prawa strona)
-        const teamSpawns = isCyan
-          ? [activeArena.spawns[0], activeArena.spawns[2]].filter(Boolean)
-          : [activeArena.spawns[1], activeArena.spawns[3]].filter(Boolean);
-        const s = (teamSpawns.length > 0) ? teamSpawns[botIdx % teamSpawns.length] : activeArena.spawns[isCyan ? 0 : 1];
-        player.x = (s.x || (isCyan ? 530 : 3470)) + scatterX;
-        player.y = s.y || 350;
-        player.facing = s.facing || (isCyan ? 1 : -1);
-      } else if (activeArena.id === 'arena-3' || activeArena.alias === 'JUNGLE_ARENA') {
-        // Arena 3 (Tajemnicza Dżungla): Spawny [0] dla Cyan (X: 1050), [1] dla Orange (X: 3350)
-        const s = isCyan ? (activeArena.spawns[0] || { x: 1050, y: 1130 }) : (activeArena.spawns[1] || { x: 3350, y: 1130 });
-        player.x = (s.x || (isCyan ? 1050 : 3350)) + scatterX;
-        player.y = s.y || 1130;
-        player.facing = isCyan ? 1 : -1;
-      } else {
-        // Arena 1 (Neonowe Miasto / Stadion): Spawn [0] (240, 580) dla Cyan, [1] (3360, 580) dla Orange
-        const s = isCyan ? (activeArena.spawns[0] || { x: 240, y: 580 }) : (activeArena.spawns[1] || { x: 3360, y: 580 });
-        player.x = (s.x || (isCyan ? 240 : 3360)) + scatterX;
-        player.y = s.y || 580;
-        player.facing = isCyan ? 1 : -1;
-      }
+    const chosenSpawn = getFarthestSpawnPoint(activeArena, player, combatants);
+    if (chosenSpawn) {
+      player.x = (chosenSpawn.x || (isCyan ? 530 : 3470)) + scatterX;
+      player.y = chosenSpawn.y || 350;
+      player.facing = chosenSpawn.facing || (chosenSpawn.x < 2000 ? 1 : -1);
     } else {
       player.x = player.isBot ? (START_X + 600 + scatterX) : (START_X - 60);
       player.y = groundY - player.h;

@@ -143,7 +143,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY >= topY && p.y <= bottomY) {
         p.vx *= 0.45;
         obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
-        if (obs.wireDmgTick % 18 === 0) {
+        if (obs.wireDmgTick % 18 === 0 && (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0)) {
           p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 1);
           if (p.hp <= 0 && !p.isDead) {
             p.isDead = true;
@@ -158,7 +158,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
     } else if (obs.type === 'laser_gate') {
       if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
         if (!p.laserCooldown || p.laserCooldown <= 0) {
-          p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
+          if (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0) {
+            p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
+          }
           p.laserCooldown = 30;
           triggerScreenShake(4.0);
           spawnObstacleSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);

@@ -416,9 +416,13 @@ const arena1 = {
   id: 'arena-1',
   name: 'Neonowe Miasto',
   spawns: [
-    { x: 240, y: 580 }, // Spawn gracza (Cyan) na platformie bramkowej (650 - 70)
-    { x: _mapW - 240, y: 580 }, // Spawn bota (Orange) na platformie bramkowej (650 - 70)
-    { x: centerX, y: 750 } // Punkt rozpoczęcia piłki (1800, 750)
+    { x: 240, y: 580, facing: 1 }, // Platforma bramkowa zachodnia
+    { x: _mapW - 240, y: 580, facing: -1 }, // Platforma bramkowa wschodnia
+    { x: 380, y: 790, facing: 1 }, // Bastion dolny zachodni
+    { x: _mapW - 380, y: 790, facing: -1 }, // Bastion dolny wschodni
+    { x: 950, y: 880, facing: 1 }, // Płaski grunt zachodni
+    { x: _mapW - 950, y: 880, facing: -1 }, // Płaski grunt wschodni
+    { x: centerX, y: 690, facing: 1 } // Ołtarz centralny
   ],
   platforms: ARENA_1_PLATFORMS,
   customObjects: [

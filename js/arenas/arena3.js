@@ -782,10 +782,13 @@ const arena3 = {
     waterDrag: 0.6
   },
   spawns: [
-    // Team A (Cyan): na płaskim gruncie tuż przed rampą mostu (X: 1050, Y: 1130)
-    { x: 1050, y: 1130 },
-    // Team B (Orange): na płaskim gruncie tuż przed prawym podejściem (X: 3350, Y: 1130)
-    { x: 3350, y: 1130 }
+    { x: 1050, y: 1130, facing: 1 }, // Team A (Cyan): rampa mostu lewa
+    { x: 3350, y: 1130, facing: -1 }, // Team B (Orange): rampa mostu prawa
+    { x: 800, y: 730, facing: 1 }, // Platforma snajperska lewa
+    { x: 3600, y: 730, facing: -1 }, // Platforma snajperska prawa
+    { x: 500, y: 1130, facing: 1 }, // Dolny poziom zachodni
+    { x: 3900, y: 1130, facing: -1 }, // Dolny poziom wschodni
+    { x: 2200, y: 780, facing: 1 } // Środek mostu kamiennego
   ],
   detailedSpawns: ARENA_3_SPAWNS,
   platforms: ARENA_3_PLATFORMS,
