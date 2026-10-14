@@ -92,7 +92,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v169_compact_tactical_creator_tiles">
+  <link rel="stylesheet" href="./css/main.css?v=v170_creator_header_class_switcher">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -845,26 +845,27 @@
       <!-- 2B. OKNO KREATORA POSTACI -->
       <div id="creator-overlay" class="ui-view-overlay" style="display: none;">
         <div class="creator-modal-box">
-          <div class="settings-header">
-            <div class="settings-title-group">
-              <div>
-                <h2 id="creator-modal-title">KREATOR POSTACI</h2>
-                <p id="creator-modal-subtitle">PERSONALIZACJA WYGLĄDU OPERATORA</p>
+          <div class="settings-header creator-header">
+            <div class="creator-header-left">
+              <h2 id="creator-modal-title" class="creator-header-title">KREATOR POSTACI</h2>
+              <div class="creator-class-bar">
+                <span class="creator-class-bar-label">KLASA:</span>
+                <div class="creator-class-switcher">
+                  <button type="button" class="creator-class-tab-btn active" data-creator-class="RAPTOR">RAPTOR</button>
+                  <button type="button" class="creator-class-tab-btn" data-creator-class="STRIKER">STRIKER</button>
+                  <button type="button" class="creator-class-tab-btn" data-creator-class="ENFORCER">ENFORCER</button>
+                </div>
               </div>
             </div>
+            <p id="creator-modal-subtitle" style="display: none;"></p>
             <button id="creator-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
           </div>
 
           <!-- EKRAN EDYTORA WYBRANEJ KLASY -->
           <div id="creator-editor-view" class="creator-view-pane" style="display: flex;">
             <div class="creator-body">
-              <!-- Lewa kolumna: Wybór klasy operatora + Podgląd postaci z profilu -->
+              <!-- Lewa kolumna: Podgląd postaci z profilu -->
               <div class="creator-preview-col">
-                <div class="creator-class-switcher">
-                  <button type="button" class="creator-class-tab-btn active" data-creator-class="RAPTOR">RAPTOR</button>
-                  <button type="button" class="creator-class-tab-btn" data-creator-class="STRIKER">STRIKER</button>
-                  <button type="button" class="creator-class-tab-btn" data-creator-class="ENFORCER">ENFORCER</button>
-                </div>
                 <div class="creator-preview-frame">
                   <canvas id="creator-preview-canvas" width="200" height="220"></canvas>
                 </div>

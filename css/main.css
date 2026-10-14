@@ -2580,6 +2580,89 @@ button, .dev-btn {
 
 
 
+.creator-modal-box .settings-header.creator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(2, 6, 23, 0.55);
+  gap: 12px;
+}
+
+.creator-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.creator-header-title {
+  margin: 0;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.creator-class-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.creator-class-bar-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.creator-class-switcher {
+  display: inline-flex;
+  gap: 4px;
+  background: rgba(2, 6, 23, 0.65);
+  padding: 2px 4px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.creator-class-tab-btn {
+  padding: 4px 10px;
+  font-family: 'Orbitron', monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-align: center;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer !important;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.creator-class-tab-btn:hover {
+  color: #f8fafc;
+  border-color: rgba(0, 229, 255, 0.45);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.creator-class-tab-btn.active {
+  color: #00e5ff;
+  border-color: #00e5ff;
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+}
+
 .creator-body {
   display: flex;
   gap: 12px;
@@ -2594,54 +2677,17 @@ button, .dev-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   width: 170px;
   flex-shrink: 0;
   min-height: 0;
-  gap: 8px;
-}
-
-.creator-class-switcher {
-  display: flex;
-  width: 100%;
-  gap: 4px;
-}
-
-.creator-class-tab-btn {
-  flex: 1;
-  padding: 5px 0;
-  font-family: 'Orbitron', monospace;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-align: center;
-  color: #94a3b8;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.creator-class-tab-btn:hover {
-  color: #f8fafc;
-  border-color: rgba(0, 229, 255, 0.5);
-  background: rgba(15, 23, 42, 0.95);
-}
-
-.creator-class-tab-btn.active {
-  color: #00e5ff;
-  border-color: #00e5ff;
-  background: rgba(0, 229, 255, 0.18);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
 }
 
 .creator-preview-frame {
   position: relative;
   width: 170px;
-  height: 210px;
-  max-height: calc(90dvh - 130px);
+  height: 220px;
+  max-height: calc(90dvh - 110px);
   background: radial-gradient(circle at 50% 60%, rgba(0, 229, 255, 0.08), rgba(2, 6, 23, 0.95));
   border: 1.5px solid rgba(0, 229, 255, 0.35);
   border-radius: 10px;
@@ -2837,11 +2883,26 @@ button, .dev-btn {
 }
 
 @media (max-height: 520px) {
-  .creator-modal-box .settings-header {
-    padding: 6px 12px;
+  .creator-modal-box .settings-header.creator-header {
+    padding: 5px 12px;
   }
+  .creator-header-left {
+    gap: 10px;
+  }
+  .creator-header-title,
   .creator-modal-box .settings-title-group h2 {
-    font-size: 13px;
+    font-size: 12px;
+  }
+  .creator-class-bar {
+    gap: 4px;
+  }
+  .creator-class-bar-label {
+    font-size: 8px;
+  }
+  .creator-class-tab-btn {
+    padding: 3px 7px;
+    font-size: 8.5px;
+    border-radius: 4px;
   }
   .creator-modal-box .settings-title-group p {
     display: none;
@@ -2852,15 +2913,10 @@ button, .dev-btn {
   }
   .creator-preview-col {
     width: 130px;
-    gap: 6px;
-  }
-  .creator-class-tab-btn {
-    padding: 4px 0;
-    font-size: 8.5px;
   }
   .creator-preview-frame {
     width: 130px;
-    height: 150px;
+    height: 155px;
   }
   .creator-options-col {
     padding: 6px 8px;
@@ -3064,6 +3120,21 @@ button, .dev-btn {
   }
   .creator-hair-grid {
     justify-content: center;
+  }
+  .creator-modal-box .settings-header.creator-header {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 10px;
+  }
+  .creator-header-left {
+    gap: 8px;
+  }
+  .creator-header-title {
+    font-size: 12px;
+  }
+  .creator-class-tab-btn {
+    padding: 3px 7px;
+    font-size: 8.5px;
   }
 }
 
