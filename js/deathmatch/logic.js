@@ -55,13 +55,19 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
     b._dmDeathRecorded = false;
 
     if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
-      // W TDM przy 3 botach: 1 sojusznik (CYAN), 2 wrogów (ORANGE) -> mecz 2 vs 2!
-      // Przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> mecz 3 vs 3!
-      let isAlly = false;
-      if (botList.length === 3 && idx === 0) isAlly = true;
-      else if (botList.length >= 4 && idx < Math.floor(botList.length / 2)) isAlly = true;
+      if (remotePlayer && remotePlayer.active) {
+        // W grze sieciowej 2-osobowej: podział botów 50/50 na CYAN i ORANGE
+        const isAlly = (idx % 2 === 0);
+        b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+      } else {
+        // W TDM przy 3 botach: 1 sojusznik (CYAN), 2 wrogów (ORANGE) -> mecz 2 vs 2!
+        // Przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> mecz 3 vs 3!
+        let isAlly = false;
+        if (botList.length === 3 && idx === 0) isAlly = true;
+        else if (botList.length >= 4 && idx < Math.floor(botList.length / 2)) isAlly = true;
 
-      b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+        b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+      }
     } else {
       b.team = TEAMS.ORANGE;
     }
@@ -86,7 +92,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   }
 
   botList.forEach((b, idx) => {
-    if (!b) return;
+    if (!b || !b.active) return;
     pList.push({
       id: b.id || `bot_${idx + 1}`,
       name: `${b.name || 'SGT. STRIKER'} [AI]`,
@@ -110,6 +116,83 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
       team: remoteTeam,
       kills: 0,
       deaths: 0,
+      ref: remotePlayer
+    });
+  }
+
+  deathmatchState.participants = pList;
+  updateLeaderboard();
+}
+
+/**
+ * Dynamiczne odświeżenie listy uczestników bez resetu zegara meczu (np. przy zmianie liczby botów przez Hosta)
+ */
+export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
+  if (!deathmatchState.active) return;
+  const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
+  const enemyTeam = (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN);
+
+  botList.forEach((b, idx) => {
+    if (!b) return;
+    if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+      if (remotePlayer && remotePlayer.active) {
+        b.team = (idx % 2 === 0) ? deathmatchState.playerTeam : enemyTeam;
+      } else {
+        let isAlly = false;
+        if (botList.length === 3 && idx === 0) isAlly = true;
+        else if (botList.length >= 4 && idx < Math.floor(botList.length / 2)) isAlly = true;
+        b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+      }
+    } else {
+      b.team = TEAMS.ORANGE;
+    }
+  });
+
+  balanceBotClasses(player, botList, deathmatchState.mode);
+
+  const prevParticipants = deathmatchState.participants || [];
+  const getPrev = (ref, id) => prevParticipants.find(p => p.ref === ref || p.id === id);
+
+  const pList = [];
+  if (player) {
+    const prev = getPrev(player, 'player');
+    pList.push({
+      id: 'player',
+      name: 'OPERATOR [TY]',
+      isPlayer: true,
+      team: deathmatchState.playerTeam,
+      kills: prev ? prev.kills : 0,
+      deaths: prev ? prev.deaths : 0,
+      ref: player
+    });
+  }
+
+  botList.forEach((b, idx) => {
+    if (!b || !b.active) return;
+    const bId = b.id || `bot_${idx + 1}`;
+    const prev = getPrev(b, bId);
+    pList.push({
+      id: bId,
+      name: `${b.name || 'SGT. STRIKER'} [AI]`,
+      isPlayer: false,
+      team: b.team,
+      kills: prev ? prev.kills : 0,
+      deaths: prev ? prev.deaths : 0,
+      ref: b
+    });
+  });
+
+  if (remotePlayer && remotePlayer.active) {
+    const remoteTeam = (deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE;
+    remotePlayer.team = remoteTeam;
+    const prev = getPrev(remotePlayer, 'remotePlayer');
+    pList.push({
+      id: 'remotePlayer',
+      name: 'OPERATOR [P2P]',
+      isPlayer: false,
+      team: remoteTeam,
+      kills: prev ? prev.kills : 0,
+      deaths: prev ? prev.deaths : 0,
       ref: remotePlayer
     });
   }

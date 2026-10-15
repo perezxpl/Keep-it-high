@@ -16,6 +16,7 @@ export {
 
 export {
   initDeathmatch,
+  refreshDeathmatchParticipants,
   updateDeathmatch,
   updateLeaderboard,
   finishDeathmatch

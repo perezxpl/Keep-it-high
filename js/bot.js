@@ -152,7 +152,12 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
     const allies = [];
     const enemies = [];
 
-    bList.forEach((b) => {
+    const isMpActive = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active);
+
+    bList.forEach((b, idx) => {
+      if (isMpActive) {
+        b.team = (idx % 2 === 0) ? pTeam : enemyTeam;
+      }
       if (b.team === pTeam) {
         allies.push(b);
       } else {
@@ -283,6 +288,7 @@ export function createBotInstance(index = 0) {
     currentClass: botClass,
     name: profile.name,
     id: `bot_${index + 1}`,
+    botIndex: index,
 
     hp: botClass?.stats?.hp || 100,
     maxHp: botClass?.stats?.hp || 100,
@@ -332,28 +338,37 @@ export const bots = [bot];
 
 export let botCount = 1;
 
-export function setBotCount(count) {
-  const num = Math.max(1, Math.min(5, parseInt(count, 10) || 1));
+export function setBotCount(count, options = {}) {
+  const parsed = parseInt(count, 10);
+  const num = Math.max(0, Math.min(5, isNaN(parsed) ? 1 : parsed));
   botCount = num;
   while (bots.length < num) {
     bots.push(createBotInstance(bots.length));
   }
   for (let i = 0; i < bots.length; i++) {
     bots[i].active = (i < num);
+    if (i >= num) {
+      bots[i].isDead = false;
+      bots[i].hp = 0;
+    }
   }
-  try {
-    localStorage.setItem('kih_bot_count_v1', String(num));
-  } catch (_) {}
-  balanceBotClasses(player, bots.slice(0, num));
+  if (!options.isRemote && !options.skipStorage) {
+    try {
+      localStorage.setItem('kih_bot_count_v1', String(num));
+    } catch (_) {}
+  }
+  if (num > 0) {
+    balanceBotClasses(player, bots.slice(0, num));
+  }
   return botCount;
 }
 
 export function getBotCount() {
   try {
     const stored = localStorage.getItem('kih_bot_count_v1');
-    if (stored) {
+    if (stored !== null && stored !== undefined) {
       const parsed = parseInt(stored, 10);
-      if (parsed >= 1 && parsed <= 5) {
+      if (parsed >= 0 && parsed <= 5) {
         botCount = parsed;
         return parsed;
       }
@@ -363,10 +378,63 @@ export function getBotCount() {
 }
 
 export function getActiveBots() {
+  if (botCount === 0) return [];
   while (bots.length < botCount) {
     bots.push(createBotInstance(bots.length));
   }
   return bots.slice(0, botCount).filter(b => b.active);
+}
+
+export function getStoredSinglePlayerBotCount() {
+  try {
+    const stored = localStorage.getItem('kih_bot_count_v1');
+    if (stored !== null && stored !== undefined) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 1 && parsed <= 5) return parsed;
+    }
+  } catch (_) {}
+  return 1;
+}
+
+export function getMpBotCount() {
+  try {
+    const stored = localStorage.getItem('kih_mp_bot_count');
+    if (stored !== null && stored !== undefined) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 0 && parsed <= 5) return parsed;
+    }
+  } catch (_) {}
+  return 2; // Domyślnie 2 boty w grze sieciowej (mecz 2v2)
+}
+
+export function setMpBotCount(count) {
+  const parsed = parseInt(count, 10);
+  const num = Math.max(0, Math.min(5, isNaN(parsed) ? 2 : parsed));
+  try {
+    localStorage.setItem('kih_mp_bot_count', String(num));
+  } catch (_) {}
+  setBotCount(num, { skipStorage: true });
+  return num;
+}
+
+export function getMpBotLayoutDescription(count) {
+  const num = parseInt(count, 10);
+  switch (num) {
+    case 0:
+      return 'Układ: Czysty pojedynek 1 na 1 (Host vs Klient, brak botów)';
+    case 1:
+      return 'Układ: 1 bot AI na arenie (mecz 3-osobowy)';
+    case 2:
+      return 'Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])';
+    case 3:
+      return 'Układ: 3 boty AI na arenie (skład mieszany)';
+    case 4:
+      return 'Układ: Mecz 3v3 (Drużyna CYAN [Host + 2 Boty] vs Drużyna ORANGE [Klient + 2 Boty])';
+    case 5:
+      return 'Układ: 5 botów AI na arenie (maksymalne zagęszczenie walki)';
+    default:
+      return `Układ: ${num} botów AI w meczu`;
+  }
 }
 
 /**

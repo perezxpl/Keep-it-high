@@ -4,6 +4,8 @@ import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, u
 import { spawnJetpackSparks, GROUND_Y } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
+import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
+import { refreshDeathmatchParticipants } from './deathmatch/index.js';
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
@@ -38,7 +40,8 @@ export const networkState = {
   status: 'disconnected', // 'disconnected' | 'hosting' | 'connecting' | 'connected'
   statusMsg: 'Offline',
   lastPingSent: 0,
-  lastStateSent: 0
+  lastStateSent: 0,
+  lastBotsStateSent: 0
 };
 
 // =============================================================================
@@ -241,6 +244,154 @@ export function sendArenaSwitch(arenaId) {
   } catch (e) { }
 }
 
+export function sendBotsState(activeBotsList) {
+  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  const now = performance.now();
+  if (now - (networkState.lastBotsStateSent || 0) < 22) return;
+  networkState.lastBotsStateSent = now;
+
+  try {
+    networkState.conn.send({
+      type: 'bots_state',
+      bots: activeBotsList.map((b, idx) => ({
+        idx,
+        id: b.id,
+        x: Math.round(b.x * 10) / 10,
+        y: Math.round(b.y * 10) / 10,
+        relY: Math.round((GROUND_Y - b.y) * 10) / 10,
+        vx: Math.round((b.vx || 0) * 10) / 10,
+        vy: Math.round((b.vy || 0) * 10) / 10,
+        facing: b.facing || 1,
+        aimX: Math.round(b.aimX || 0),
+        aimY: Math.round(b.aimY || 0),
+        relAimY: Math.round((GROUND_Y - (b.aimY || 0)) * 10) / 10,
+        aimAngle: Math.round((b.aimAngle || 0) * 100) / 100,
+        isJumping: !!b.isJumping,
+        isSliding: !!b.isSliding,
+        isProne: !!b.isProne,
+        isRunning: !!b.isRunning,
+        isJetpacking: !!b.isJetpacking,
+        hp: (typeof b.hp === 'number') ? b.hp : 100,
+        maxHp: b.maxHp || 100,
+        isDead: !!b.isDead,
+        selectedClass: b.selectedClass || b.currentClass?.id || 'STRIKER',
+        currentWeaponId: b.currentWeapon ? b.currentWeapon.id : 'AK47',
+        team: b.team || 'ORANGE',
+        name: b.name
+      }))
+    });
+  } catch (e) { }
+}
+
+export function sendBotShootEvent(botIdx, weaponId, muzzleX, muzzleY, aimAngle) {
+  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'bot_shoot',
+      botIdx: botIdx,
+      weaponId: weaponId,
+      x: Math.round(muzzleX * 10) / 10,
+      y: Math.round(muzzleY * 10) / 10,
+      relY: Math.round((GROUND_Y - muzzleY) * 10) / 10,
+      aimAngle: Math.round(aimAngle * 1000) / 1000
+    });
+  } catch (e) { }
+}
+
+export function updateRemoteBots(activeBots, groundY) {
+  if (!Array.isArray(activeBots) || activeBots.length === 0) return;
+  for (const b of activeBots) {
+    if (!b.active) continue;
+    b.groundY = groundY;
+    b.currentGroundY = groundY;
+    if (b.shootCooldown > 0) b.shootCooldown--;
+    if (b.shootPoseTimer > 0) b.shootPoseTimer--;
+    if (b.muzzleFlashTimer > 0) b.muzzleFlashTimer--;
+    if (b.weaponKickback > 0.05) b.weaponKickback *= 0.65; else b.weaponKickback = 0;
+    if (b.muzzleRise > 0.005) b.muzzleRise *= 0.72; else b.muzzleRise = 0;
+    if (b.pumpTimer > 0) b.pumpTimer--;
+
+    if (typeof b.targetX === 'number' && typeof b.targetY === 'number') {
+      const dx = b.targetX - b.x;
+      const dy = b.targetY - b.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 180) {
+        b.x = b.targetX;
+        b.y = b.targetY;
+      } else {
+        b.x += dx * 0.45;
+        b.y += dy * 0.45;
+      }
+    }
+
+    const speed = Math.abs(b.vx || 0);
+    if (b.isRunning || speed > 0.1) {
+      b.animTimer = (b.animTimer || 0) + 0.22;
+      if (!b.isJumping) {
+        b.stridePhase = (b.stridePhase || 0) + speed * 0.04;
+      }
+    }
+
+    if (b.isJetpacking) {
+      const nozzle = getJetpackNozzlePos(b);
+      const flameCol = b.team === 'CYAN' ? '#00e5ff' : '#f97316';
+      const jetColors = getJetpackFlamePalette(flameCol).particles;
+      spawnJetpackSparks(nozzle.x, nozzle.y, b.facing || 1, 3, jetColors, b.vx || 0, b.vy || 0, nozzle.angle);
+    }
+  }
+}
+
+export function syncMpBotUI(count = getMpBotCount()) {
+  const c = parseInt(count, 10);
+  const isHost = networkState.isHost || !networkState.isConnected;
+  const layoutDesc = getMpBotLayoutDescription(c);
+
+  document.querySelectorAll('#mp-bot-selector-row button, #mp-connected-bot-selector-row button, #briefing-mp-bot-selector-row button').forEach(btn => {
+    const bCount = parseInt(btn.dataset.mpBots, 10);
+    btn.classList.toggle('active', bCount === c);
+  });
+
+  const noteEl = document.getElementById('mp-bot-info-note');
+  if (noteEl) noteEl.textContent = layoutDesc;
+
+  const briefingNoteEl = document.getElementById('briefing-mp-bot-note');
+  if (briefingNoteEl) briefingNoteEl.textContent = layoutDesc;
+
+  const connectedValEl = document.getElementById('mp-connected-bots-val');
+  if (connectedValEl) {
+    const label = (c === 0) ? '0 (1v1 POJEDYNEK)' : `${c} BOTÓW (${c === 2 ? '2v2' : (c === 4 ? '3v3' : 'ASYSTA')})`;
+    connectedValEl.textContent = isHost ? label : `${label} [ZARZĄDZA HOST]`;
+  }
+
+  const connectedRow = document.getElementById('mp-connected-bots-row');
+  if (connectedRow) {
+    connectedRow.style.display = (networkState.isConnected && isHost) ? 'block' : 'none';
+  }
+
+  const hostDesc = document.getElementById('mp-bot-desc-text');
+  if (hostDesc) {
+    hostDesc.textContent = isHost
+      ? 'Wybierz liczbę botów AI uzupełniających drużyny w meczu sieciowym:'
+      : 'Liczbą botów w sesji zarządza Host gry:';
+  }
+}
+
+export function broadcastMpBotCount(count) {
+  const newCount = setMpBotCount(count);
+  syncMpBotUI(newCount);
+  balanceBotClasses(player, getActiveBots());
+  refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+
+  if (networkState.isConnected && networkState.isHost && networkState.conn) {
+    try {
+      networkState.conn.send({
+        type: 'mp_bot_count',
+        count: newCount
+      });
+    } catch (e) { }
+  }
+}
+
 function updateDevArenaButtonUI(arenaId) {
   const arenaBtn = document.getElementById('dev-arena-btn');
   if (!arenaBtn) return;
@@ -282,6 +433,12 @@ function handleNetworkData(data) {
       }
       if (data.customObstacles) {
         setCustomObstacles(data.customObstacles);
+      }
+      if (data.botCount !== undefined) {
+        setBotCount(data.botCount, { isRemote: true });
+        syncMpBotUI(data.botCount);
+        balanceBotClasses(player, getActiveBots());
+        refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
       }
       if (data.ball) {
         ball.x = data.ball.x;
@@ -444,6 +601,77 @@ function handleNetworkData(data) {
         if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
           window.uiManager.updateMpArenaUI(data.arenaId);
         }
+      }
+      break;
+    }
+
+    case 'mp_bot_count': {
+      if (data.count !== undefined) {
+        setBotCount(data.count, { isRemote: true });
+        syncMpBotUI(data.count);
+        balanceBotClasses(player, getActiveBots());
+        refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      }
+      break;
+    }
+
+    case 'bots_state': {
+      if (networkState.isHost) break;
+      const remoteBots = data.bots;
+      if (!Array.isArray(remoteBots)) break;
+
+      if (botCount !== remoteBots.length) {
+        setBotCount(remoteBots.length, { isRemote: true });
+        syncMpBotUI(remoteBots.length);
+        balanceBotClasses(player, getActiveBots());
+        refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      }
+
+      const localBots = getActiveBots();
+      remoteBots.forEach((rBot, idx) => {
+        const localBot = localBots[idx];
+        if (!localBot) return;
+        localBot.active = true;
+        localBot.targetX = rBot.x;
+        localBot.targetY = (rBot.relY !== undefined) ? (GROUND_Y - rBot.relY) : rBot.y;
+        localBot.vx = rBot.vx;
+        localBot.vy = rBot.vy;
+        localBot.facing = rBot.facing;
+        localBot.aimX = rBot.aimX;
+        localBot.aimY = (rBot.relAimY !== undefined) ? (GROUND_Y - rBot.relAimY) : rBot.aimY;
+        localBot.aimAngle = rBot.aimAngle;
+        localBot.isJumping = rBot.isJumping;
+        localBot.isSliding = rBot.isSliding;
+        localBot.isProne = rBot.isProne;
+        localBot.isRunning = rBot.isRunning;
+        localBot.isJetpacking = rBot.isJetpacking;
+        localBot.hp = rBot.hp;
+        localBot.maxHp = rBot.maxHp;
+        localBot.isDead = rBot.isDead;
+        if (rBot.team) localBot.team = rBot.team;
+        if (rBot.name) localBot.name = rBot.name;
+        if (rBot.selectedClass && localBot.selectedClass !== rBot.selectedClass) {
+          setPlayerClass(rBot.selectedClass, localBot);
+        }
+        const wepId = rBot.currentWeaponId;
+        if (wepId && WEAPONS[wepId]) {
+          localBot.currentWeapon = WEAPONS[wepId];
+        }
+      });
+      break;
+    }
+
+    case 'bot_shoot': {
+      const localBots = getActiveBots();
+      const b = localBots[data.botIdx];
+      if (b && b.active && !b.isDead) {
+        const wep = WEAPONS[data.weaponId] || b.currentWeapon || WEAPONS.AK47;
+        b.currentWeapon = wep;
+        b.aimAngle = data.aimAngle;
+        b.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
+        const originX = (typeof data.x === 'number') ? data.x : (b.x + b.w / 2);
+        const originY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+        shootWeapon(b, wep, originX, originY, data.aimAngle);
       }
       break;
     }
@@ -614,11 +842,12 @@ function setupConnection(conn, isHost) {
     remotePlayer.hp = 100;
     applyTeamVisuals(isHost);
 
-    // Host wysyła inicjalny stan mapy, areny i piłki (z pozycją Y względną do ziemi)
+    // Host wysyła inicjalny stan mapy, areny, botów i piłki (z pozycją Y względną do ziemi)
     if (isHost) {
       conn.send({
         type: 'init_sync',
         arenaId: activeArenaId,
+        botCount: getMpBotCount(),
         customObstacles: customObstacles,
         ball: {
           x: ball.x,
@@ -629,6 +858,8 @@ function setupConnection(conn, isHost) {
         }
       });
     }
+
+    syncMpBotUI(getMpBotCount());
 
     startPingLoop();
     initHeartbeatWorker();
@@ -813,6 +1044,12 @@ export function disconnectNetwork() {
   networkState.ping = 0;
   remotePlayer.active = false;
 
+  const spCount = getStoredSinglePlayerBotCount();
+  setBotCount(spCount);
+  balanceBotClasses(player, getActiveBots());
+  refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+  syncMpBotUI(getMpBotCount());
+
   updateUIStatus('disconnected', 'Rozłączono / Offline');
 }
 
@@ -822,7 +1059,15 @@ function handleDisconnect(reason) {
     try { heartbeatWorker.postMessage('stop'); } catch (e) { }
   }
   networkState.isConnected = false;
+  networkState.isHost = false;
   remotePlayer.active = false;
+
+  const spCount = getStoredSinglePlayerBotCount();
+  setBotCount(spCount);
+  balanceBotClasses(player, getActiveBots());
+  refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+  syncMpBotUI(getMpBotCount());
+
   updateUIStatus('disconnected', reason || 'Rozłączono');
 }
 
@@ -1255,10 +1500,22 @@ export function initNetwork() {
     }
   } catch (e) { }
 
-  // Obsługa powrotu z uśpienia / minimalizacji na urządzeniach mobilnych
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('pageshow', handleVisibilityChange);
-  window.addEventListener('focus', handleVisibilityChange);
+  // Obsługa wyboru liczby botów w grze sieciowej (0-4)
+  document.querySelectorAll('#mp-bot-selector-row button, #mp-connected-bot-selector-row button, #briefing-mp-bot-selector-row button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const count = parseInt(btn.dataset.mpBots, 10);
+      broadcastMpBotCount(count);
+    });
+  });
+
+  if (typeof window !== 'undefined') {
+    window.sendBotShootEvent = sendBotShootEvent;
+    window.broadcastMpBotCount = broadcastMpBotCount;
+    window.syncMpBotUI = syncMpBotUI;
+  }
+
+  syncMpBotUI(getMpBotCount());
 
   updateCursorVisibility();
 }

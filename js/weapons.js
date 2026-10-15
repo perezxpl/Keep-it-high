@@ -153,6 +153,13 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     }
 
     theta = Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
+
+    if (shooter.isBot && !shooter.isRemote && typeof window !== 'undefined' && window.networkState?.isHost && window.networkState?.isConnected) {
+      if (typeof window.sendBotShootEvent === 'function') {
+        const bIdx = (typeof shooter.botIndex === 'number') ? shooter.botIndex : (parseInt(String(shooter.id).replace('bot_', ''), 10) - 1 || 0);
+        window.sendBotShootEvent(bIdx, weapon.id, muzzleX, muzzleY, theta);
+      }
+    }
   }
 
   const activeSpread = weapon.spread * (isCrouch ? weapon.crouchSpreadMult : 1.0);

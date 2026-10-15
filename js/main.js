@@ -45,6 +45,7 @@ import {
   sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
+  sendBotsState, updateRemoteBots,
   isChatActive, openChat, closeChat, updateCursorVisibility
 } from './network.js';
 import {
@@ -637,12 +638,26 @@ function update() {
   const combatants = [player, ...activeBots];
   if (remotePlayer.active) combatants.push(remotePlayer);
 
-  for (const b of activeBots) {
-    updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass, b, combatants);
-    if (!isDeathmatch) {
-      checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
+  if (networkState.isHost || !networkState.isConnected) {
+    for (const b of activeBots) {
+      updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass, b, combatants);
+      if (!isDeathmatch) {
+        checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
+      }
+      checkPlayerPlatformLanding(b, effectiveGroundY);
     }
-    checkPlayerPlatformLanding(b, effectiveGroundY);
+    if (networkState.isHost && networkState.isConnected && activeBots.length > 0) {
+      sendBotsState(activeBots);
+    }
+  } else {
+    // Klient w grze sieciowej: odbiera autorytatywne pozycje botów od Hosta
+    updateRemoteBots(activeBots, effectiveGroundY);
+    for (const b of activeBots) {
+      if (!isDeathmatch) {
+        checkBallPlayerCollisions(b, effectiveGroundY, spawnGrass);
+      }
+      checkPlayerPlatformLanding(b, effectiveGroundY);
+    }
   }
 
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);

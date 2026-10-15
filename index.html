@@ -26,7 +26,7 @@
       "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
-      "./js/bot.js": "./js/bot.js?v=v180_rebalanced_bot_difficulty_three_tiers",
+      "./js/bot.js": "./js/bot.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/camera.js": "./js/camera.js?v=v179_ceiling_clamp_and_bot_vision_limit",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v161_class_stats_body_damage_helmet_vest_hp",
@@ -34,9 +34,9 @@
       "./js/classes/striker.js": "./js/classes/striker.js?v=v173_bot_ai_mixed_classes_and_special_abilities",
       "./js/config.js": "./js/config.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v152_factual_kills_only_no_suicide_points",
-      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v178_smart_respawn_spawn_protection_diff_banners",
+      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v162_remove_emojis_streamline_ui",
-      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v152_factual_kills_only_no_suicide_points",
+      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v172_fix_hitsparks_tdz_reference_error",
       "./js/dev/obstacleEditor.js": "./js/dev/obstacleEditor.js?v=v162_remove_emojis_streamline_ui",
       "./js/input.js": "./js/input.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -45,16 +45,16 @@
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v176_fix_arena2_platforms_drop_through",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v179_ceiling_clamp_and_bot_vision_limit",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v176_fix_arena2_platforms_drop_through",
-      "./js/main.js": "./js/main.js?v=v182_hide_enemy_laser_sights",
+      "./js/main.js": "./js/main.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v142_fix_infinite_slide_during_dash",
-      "./js/network.js": "./js/network.js?v=v167_tactical_briefing_carousel",
+      "./js/network.js": "./js/network.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v174_fix_platform_landing_and_drop_through",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v162_remove_emojis_streamline_ui",
       "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v178_smart_respawn_spawn_protection_diff_banners",
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v181_fix_arena2_ramp_phantom_walls",
       "./js/obstacles/renderer.js": "./js/obstacles/renderer.js?v=v162_remove_emojis_streamline_ui",
-      "./js/obstacles/state.js": "./js/obstacles/state.js?v=v177_fix_bot_grenade_platform_destruction_and_stagger",
+      "./js/obstacles/state.js": "./js/obstacles/state.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/particles.js": "./js/particles.js?v=v146_fix_circular_dependency_and_hoisting",
       "./js/player.js": "./js/player.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/actions.js": "./js/player/actions.js?v=v178_smart_respawn_spawn_protection_diff_banners",
@@ -82,7 +82,7 @@
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v178_smart_respawn_spawn_protection_diff_banners",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v162_remove_emojis_streamline_ui",
       "./js/uiManager.js": "./js/uiManager.js?v=v178_smart_respawn_spawn_protection_diff_banners",
-      "./js/weapons.js": "./js/weapons.js?v=v178_smart_respawn_spawn_protection_diff_banners",
+      "./js/weapons.js": "./js/weapons.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world.js": "./js/world.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -242,6 +242,22 @@
               </div>
             </div>
 
+            <!-- DOBÓR BOTÓW MULTIPLAYER (0-4 BOTÓW) -->
+            <div class="mp-card mp-card-blue" id="mp-bot-select-card">
+              <div class="mp-card-title">BOTY W GRZE SIECIOWEJ (AI SLOTS)</div>
+              <p class="mp-card-desc" id="mp-bot-desc-text">Wybierz liczbę botów AI uzupełniających drużyny w meczu sieciowym:</p>
+              <div class="mp-bot-selector-row" id="mp-bot-selector-row">
+                <button type="button" class="mp-bot-btn" data-mp-bots="0" title="Czysty pojedynek 1 na 1 bez botów">0 (1v1 POJEDYNEK)</button>
+                <button type="button" class="mp-bot-btn" data-mp-bots="1" title="1 bot w meczu">1 BOT</button>
+                <button type="button" class="mp-bot-btn active" data-mp-bots="2" title="Zbalansowany mecz 2 na 2: Host+Bot vs Klient+Bot">2 BOTY (2v2)</button>
+                <button type="button" class="mp-bot-btn" data-mp-bots="3" title="3 boty w meczu">3 BOTY</button>
+                <button type="button" class="mp-bot-btn" data-mp-bots="4" title="Zbalansowany mecz 3 na 3: Host+2 Boty vs Klient+2 Boty">4 BOTY (3v3)</button>
+              </div>
+              <div class="mp-bot-info-note" id="mp-bot-info-note">
+                Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])
+              </div>
+            </div>
+
             <!-- JOIN SECTION -->
             <div class="mp-card mp-card-orange">
               <div class="mp-card-title">DOŁĄCZ DO POKOJU (KLIENT)</div>
@@ -261,9 +277,20 @@
                 <div>Rola: <strong id="mp-role-val" style="color: #00e5ff;">HOST</strong></div>
                 <div>Status gracza 2: <strong style="color: #4ade80;">POŁĄCZONY</strong></div>
                 <div>Opóźnienie (Ping): <strong id="mp-live-ping" style="color: #facc15;">-- ms</strong></div>
+                <div>Boty AI: <strong id="mp-connected-bots-val" style="color: #38bdf8;">2 (2v2)</strong></div>
               </div>
-              <div class="mp-feature-bullets">
-                <div>Pełna synchronizacja postaci, broni i jetpacka w czasie rzeczywistym</div>
+              <div id="mp-connected-bots-row" style="margin-top: 10px; display: none;">
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 5px;">ZARZĄDZAJ BOTAMI W SESJI (HOST):</div>
+                <div class="mp-bot-selector-row" id="mp-connected-bot-selector-row">
+                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="0">0 (1v1)</button>
+                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="1">1 BOT</button>
+                  <button type="button" class="mp-bot-btn mp-bot-btn-sm active" data-mp-bots="2">2 (2v2)</button>
+                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="3">3 BOTY</button>
+                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="4">4 (3v3)</button>
+                </div>
+              </div>
+              <div class="mp-feature-bullets" style="margin-top: 10px;">
+                <div>Pełna synchronizacja postaci, botów, broni i jetpacka w czasie rzeczywistym</div>
                 <div>Wspólne stawianie i usuwanie przeszkód w edytorze DEV na żywo</div>
                 <div>Wspólne mecze piłki nożnej (Bramka Cyan vs Orange)</div>
               </div>
@@ -667,6 +694,17 @@
                       <div id="briefing-mp-host-create-row">
                         <button id="briefing-mp-host-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%;">Utwórz Pokój Gry</button>
                       </div>
+                      <div class="briefing-mp-bots-box" style="margin-top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
+                        <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">BOTY AI W MECZU SIECIOWYM:</div>
+                        <div class="mp-bot-selector-row" id="briefing-mp-bot-selector-row">
+                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="0">0 (1v1)</button>
+                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="1">1 BOT</button>
+                          <button type="button" class="mp-bot-btn mp-bot-btn-sm active" data-mp-bots="2">2 (2v2)</button>
+                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="3">3 BOTY</button>
+                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="4">4 (3v3)</button>
+                        </div>
+                        <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;" id="briefing-mp-bot-note">Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])</div>
+                      </div>
                       <div id="briefing-mp-host-info" style="display: none; margin-top: 8px;">
                         <div class="mp-code-container">
                           <span class="mp-code-label">KOD POKOJU:</span>
@@ -1061,7 +1099,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v182_hide_enemy_laser_sights"></script>
+  <script type="module" src="./js/main.js?v=v183_multiplayer_bots_matching_and_sync"></script>
 </body>
 
 </html>
