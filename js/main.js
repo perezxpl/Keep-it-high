@@ -988,10 +988,11 @@ function loop(now) {
   accumulator += delta;
 
   // Stała częstotliwość fizyki (dokładnie 60 Hz – stabilna prędkość gry na każdym ekranie)
+  // Próg 15.1ms zabezpiecza przed wahaniami zegara VSync przeglądarki na monitorach 60 Hz
   let steps = 0;
-  while (accumulator >= TICK_TIME && steps < 4) {
+  while (accumulator >= 15.1 && steps < 4) {
     update();
-    accumulator -= TICK_TIME;
+    accumulator = Math.max(0, accumulator - TICK_TIME);
     steps++;
   }
   if (steps >= 4) {

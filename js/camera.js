@@ -143,11 +143,14 @@ Object.defineProperty(camera, 'shake', {
  */
 export function getCanvasLogicalWidth() {
   const c = getCameraCanvas();
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 1.0) : 1;
+  if (c && c.clientWidth > 0) {
+    return c.clientWidth;
+  }
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2.0) : 1;
   if (c && c.width && dpr > 0) {
     return c.width / dpr;
   }
-  return (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  return (typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1920);
 }
 
 /**
@@ -155,11 +158,14 @@ export function getCanvasLogicalWidth() {
  */
 export function getCanvasLogicalHeight() {
   const c = getCameraCanvas();
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 1.0) : 1;
+  if (c && c.clientHeight > 0) {
+    return c.clientHeight;
+  }
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2.0) : 1;
   if (c && c.height && dpr > 0) {
     return c.height / dpr;
   }
-  return (typeof window !== 'undefined' ? window.innerHeight : 1080);
+  return (typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : 1080);
 }
 
 /**
