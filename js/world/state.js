@@ -96,7 +96,7 @@ export let canvas = null;
 export let ctx = null;
 export let W = window.innerWidth;
 export let H = window.innerHeight;
-export let DPR = Math.min(window.devicePixelRatio || 1, 1.0);
+export let DPR = Math.min(window.devicePixelRatio || 1, 2.0);
 export let GROUND_Y = 1000;
 
 /**
@@ -354,12 +354,13 @@ export function initCanvas(canvasEl) {
 export function resize(player) {
   W = window.innerWidth;
   H = window.innerHeight;
-  DPR = Math.min(window.devicePixelRatio || 1, 1.0);
+  DPR = Math.min(window.devicePixelRatio || 1, 2.0);
   if (canvas && ctx) {
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     ctx.resetTransform();
     ctx.scale(DPR, DPR);
+    ctx.imageSmoothingEnabled = true;
   }
   GROUND_Y = 1000;
   setCameraGroundY(GROUND_Y);

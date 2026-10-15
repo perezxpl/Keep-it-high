@@ -965,24 +965,40 @@ function draw() {
   }
 }
 
+const TICK_TIME = 1000 / 60; // 16.666 ms (stały krok fizyki: dokładnie 60 Hz)
+const MAX_DELTA = 150;        // Zabezpieczenie przed spiralą opóźnień przy lagach lub uśpieniu karty
+let accumulator = 0;
 let lastTime = 0;
+
 function loop(now) {
   requestAnimationFrame(loop);
   const currentTime = (typeof now === 'number' && now > 0) ? now : performance.now();
-  const delta = currentTime - lastTime;
-
-  // Bezpieczny próg dla monitorów 60Hz/120Hz/144Hz.
-  // Zabezpiecza przed odrzucaniem klatek przez sub-milisekundowe wahania zegara VSync (np. 16.0ms < 16.16ms),
-  // co wczesniej obcinalo dokladnie 1 klatke na 5, zrzucajac plynne 60 FPS do 48 FPS!
-  if (delta < 11.5) return;
-
-  if (delta > 250) {
+  if (lastTime === 0) {
     lastTime = currentTime;
-  } else {
-    lastTime = currentTime - (delta % FRAME_DURATION);
+    return;
   }
 
-  update();
+  let delta = currentTime - lastTime;
+  lastTime = currentTime;
+
+  if (delta > MAX_DELTA) {
+    delta = MAX_DELTA;
+  }
+
+  accumulator += delta;
+
+  // Stała częstotliwość fizyki (dokładnie 60 Hz – stabilna prędkość gry na każdym ekranie)
+  let steps = 0;
+  while (accumulator >= TICK_TIME && steps < 4) {
+    update();
+    accumulator -= TICK_TIME;
+    steps++;
+  }
+  if (steps >= 4) {
+    accumulator = 0;
+  }
+
+  // Płynne renderowanie powiązane bezpośrednio z VSync monitora (60 FPS na 60Hz, 120 FPS na 120Hz, 144 FPS na 144Hz)
   draw();
 }
 
