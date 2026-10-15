@@ -105,7 +105,14 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 3. **Obowiązkowa aktualizacja `importmap` w `index.html`**:
    - Po utworzeniu każdego nowego pliku `.js` dopisz go do `<script type="importmap">` w `index.html` i zaktualizuj wersję cache-bustera `?v=...`.
    - W samych plikach `.js` używaj czystych ścieżek względnych (np. `import { ... } from './state.js';` bez `?v=...`), ponieważ wersjonowaniem zarządza `importmap` w `index.html`.
-4. **Weryfikacja po każdej zmianie architektury**:
+4. **Bezwzględny wymóg walidacji składni przed commitem**:
+   - **Zakaz polegania na samym `node -c`**: Polecenie `node -c` traktuje pliki jak klasyczne skrypty CommonJS i NIE wyłapuje błędów specyficznych dla modułów ES (takich jak powtórzone `const`/`let` wewnątrz funkcji czy kolizje deklaracji), co prowadzi do błędów `SyntaxError` w przeglądarce.
+   - **Obowiązkowa weryfikacja automatyczna**: Przed KAŻDYM zatwierdzeniem zmian (`git commit`) i wypchnięciem (`git push`), agent ma BEZWZGLĘDNY OBOWIĄZEK uruchomić dedykowany skrypt walidacji składni modułów ES:
+     ```bash
+     node --experimental-vm-modules scripts/verify-syntax.js
+     ```
+   - Skrypt skanuje wszystkie pliki `.js` za pomocą natywnego kompilatora V8 `SourceTextModule` (dokładnie tak, jak kompiluje przeglądarka) i sprawdza brak zakazanych emotikonów w `git diff`. Jeśli skrypt zwróci jakikolwiek błąd, commit jest bezwzględnie wstrzymany do momentu naprawy.
+5. **Weryfikacja referencji po refaktoryzacji**:
    - Upewnij się, że po przeniesieniu funkcji między plikami w starym pliku nie zostało żadne wywołanie niezaimportowanej funkcji (brak `ReferenceError`) ani zduplikowany `export`.
 
 ## 4. Procedura Wdrażania Całkowicie Nowych Podsystemów Gry
