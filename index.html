@@ -42,12 +42,12 @@
       "./js/input.js": "./js/input.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/gamepad.js": "./js/input/gamepad.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/index.js": "./js/input/index.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v176_fix_arena2_platforms_drop_through",
+      "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v179_ceiling_clamp_and_bot_vision_limit",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v176_fix_arena2_platforms_drop_through",
-      "./js/main.js": "./js/main.js?v=v183_multiplayer_bots_matching_and_sync",
+      "./js/main.js": "./js/main.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v142_fix_infinite_slide_during_dash",
-      "./js/network.js": "./js/network.js?v=v183_multiplayer_bots_matching_and_sync",
+      "./js/network.js": "./js/network.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v174_fix_platform_landing_and_drop_through",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v162_remove_emojis_streamline_ui",
@@ -77,11 +77,11 @@
       "./js/progression.js": "./js/progression.js?v=v162_remove_emojis_streamline_ui",
       "./js/projectiles.js": "./js/projectiles.js?v=v178_smart_respawn_spawn_protection_diff_banners",
       "./js/renderer.js": "./js/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v162_remove_emojis_streamline_ui",
+      "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v178_smart_respawn_spawn_protection_diff_banners",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v178_smart_respawn_spawn_protection_diff_banners",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v162_remove_emojis_streamline_ui",
-      "./js/uiManager.js": "./js/uiManager.js?v=v178_smart_respawn_spawn_protection_diff_banners",
+      "./js/uiManager.js": "./js/uiManager.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/weapons.js": "./js/weapons.js?v=v183_multiplayer_bots_matching_and_sync",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -93,7 +93,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v170_creator_header_class_switcher">
+  <link rel="stylesheet" href="./css/main.css?v=v184_ui_selection_screen_fit_and_flow">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -294,7 +294,10 @@
                 <div>Wspólne stawianie i usuwanie przeszkód w edytorze DEV na żywo</div>
                 <div>Wspólne mecze piłki nożnej (Bramka Cyan vs Orange)</div>
               </div>
-              <button id="mp-disconnect-btn" class="mp-action-btn mp-btn-danger" type="button" style="margin-top: 10px;">Rozłącz Grę</button>
+              <div class="mp-connected-actions-row" style="margin-top: 12px; display: flex; gap: 8px;">
+                <button id="mp-launch-game-btn" class="mp-action-btn mp-btn-cyan" type="button" style="flex: 2; font-size: 13px; font-weight: 800; padding: 10px 14px;">▶ WEJDŹ DO GRY (START)</button>
+                <button id="mp-disconnect-btn" class="mp-action-btn mp-btn-danger" type="button" style="flex: 1; padding: 10px 10px;">Rozłącz Grę</button>
+              </div>
             </div>
           </div>
         </div>
@@ -508,7 +511,7 @@
             <div class="briefing-header">
               <div class="briefing-title-group">
                 <h2 class="briefing-title">ODPRAWA TAKTYCZNA</h2>
-                <p class="briefing-subtitle">ZDEFINIUJ POLE WALKI I ZASADY OPERACJI</p>
+                <p class="briefing-subtitle">KROK PO KROKU // ARENA • ZASADY • OPERATOR</p>
               </div>
 
               <div class="briefing-mode-tabs" id="briefing-mode-tabs">
@@ -517,47 +520,54 @@
               </div>
             </div>
 
-            <!-- Główna strefa odprawy (2 kolumny) -->
-            <div class="briefing-columns-layout">
-              <!-- Lewa kolumna: KARUZELA MAPY (DOKŁADNIE 1 MAPA NA RAZ) -->
-              <div class="briefing-col-carousel">
-                <div class="briefing-carousel-card">
-                  <div class="carousel-nav-row">
-                    <button type="button" class="carousel-arrow-btn" id="briefing-arena-prev" title="Poprzednia mapa (A / ←)">‹</button>
-                    
-                    <div class="carousel-active-view" id="briefing-arena-card">
-                      <div class="carousel-badge-bar">
-                        <span class="briefing-badge" id="briefing-arena-badge">SEKTOR 01</span>
-                        <span class="briefing-counter" id="briefing-arena-counter">MAPA 1 / 3</span>
-                      </div>
-                      <div class="briefing-preview-frame">
-                        <img src="./assets/arena1_preview.svg" alt="Podgląd Areny" class="briefing-preview-img" id="briefing-arena-img">
-                        <div class="briefing-preview-overlay">
-                          <span class="briefing-tag" id="briefing-arena-tag">COMBAT BALL</span>
+            <!-- Główna strefa odprawy (scrollowalna jeśli potrzeba, z widoczną stopką) -->
+            <div class="briefing-scroll-body" id="briefing-scroll-body">
+              <div class="briefing-columns-layout">
+                <!-- Lewa kolumna: KARUZELA MAPY (KROK 1) -->
+                <div class="briefing-col-carousel">
+                  <div class="briefing-step-label">
+                    <span class="step-num">1</span> WYBÓR ARENY (MAPA)
+                  </div>
+                  <div class="briefing-carousel-card">
+                    <div class="carousel-nav-row">
+                      <button type="button" class="carousel-arrow-btn" id="briefing-arena-prev" title="Poprzednia mapa (A / ←)">‹</button>
+                      
+                      <div class="carousel-active-view" id="briefing-arena-card">
+                        <div class="carousel-badge-bar">
+                          <span class="briefing-badge" id="briefing-arena-badge">SEKTOR 01</span>
+                          <span class="briefing-counter" id="briefing-arena-counter">MAPA 1 / 3</span>
                         </div>
+                        <div class="briefing-preview-frame">
+                          <img src="./assets/arena1_preview.svg" alt="Podgląd Areny" class="briefing-preview-img" id="briefing-arena-img">
+                          <div class="briefing-preview-overlay">
+                            <span class="briefing-tag" id="briefing-arena-tag">COMBAT BALL</span>
+                          </div>
+                        </div>
+                        <div class="briefing-arena-name" id="briefing-arena-name">NEONOWE MIASTO</div>
+                        <div class="briefing-arena-desc" id="briefing-arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.</div>
                       </div>
-                      <div class="briefing-arena-name" id="briefing-arena-name">NEONOWE MIASTO</div>
-                      <div class="briefing-arena-desc" id="briefing-arena-desc">Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.</div>
+
+                      <button type="button" class="carousel-arrow-btn" id="briefing-arena-next" title="Następna mapa (D / →)">›</button>
                     </div>
 
-                    <button type="button" class="carousel-arrow-btn" id="briefing-arena-next" title="Następna mapa (D / →)">›</button>
-                  </div>
-
-                  <!-- Kropki paginacji karuzeli -->
-                  <div class="carousel-dots-row" id="briefing-carousel-dots">
-                    <button type="button" class="carousel-dot active" data-index="0" title="Neonowe Miasto"></button>
-                    <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
-                    <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
+                    <!-- Kropki paginacji karuzeli -->
+                    <div class="carousel-dots-row" id="briefing-carousel-dots">
+                      <button type="button" class="carousel-dot active" data-index="0" title="Neonowe Miasto"></button>
+                      <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
+                      <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Prawa kolumna: PARAMETRY BITWY -->
-              <div class="briefing-col-options">
-                <!-- Panel A: Opcje dla trybu Solo (Boty AI) -->
-                <div class="briefing-options-panel active" id="briefing-panel-solo">
-                  <!-- Opcje Areny 1 (Neonowe Miasto) -->
-                  <div class="briefing-map-opts active" id="arena-opts-ARENA_1">
+                <!-- Prawa kolumna: PARAMETRY BITWY (KROK 2) -->
+                <div class="briefing-col-options">
+                  <div class="briefing-step-label">
+                    <span class="step-num">2</span> ZASADY &amp; PRZECIWNICY
+                  </div>
+                  <!-- Panel A: Opcje dla trybu Solo (Boty AI) -->
+                  <div class="briefing-options-panel active" id="briefing-panel-solo">
+                    <!-- Opcje Areny 1 (Neonowe Miasto) -->
+                    <div class="briefing-map-opts active" id="arena-opts-ARENA_1">
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRYB OPERACJI:</span>
                       <span class="opt-val-badge text-cyan">COMBAT BALL (MECZ BRAMKOWY)</span>
@@ -727,20 +737,59 @@
                         <button id="briefing-mp-join-btn" class="ui-btn ui-btn-orange" type="button">Połącz</button>
                       </div>
                     </div>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <!-- Stopka odprawy taktycznej -->
-            <div class="briefing-footer">
-              <button id="btn-arena-back" class="ui-btn ui-btn-secondary" type="button">‹ POWRÓT DO MENU</button>
-              <button id="btn-arena-launch" class="ui-btn ui-btn-primary ui-btn-large" type="button">
-                <span class="btn-text">WYBIERZ KLASĘ I START</span>
-                <span class="btn-badge">›</span>
-              </button>
+            <!-- KROK 3: WYBIERZ OPERATORA (KLASA) -->
+            <div class="briefing-operator-section">
+              <div class="briefing-step-label">
+                <span class="step-num">3</span> WYBIERZ OPERATORA (KLASA POSTACI)
+              </div>
+              <div class="briefing-operator-grid" id="briefing-operator-grid">
+                <button type="button" class="briefing-op-card" data-op-class="RAPTOR" title="Wybierz klasę: Raptor">
+                  <div class="op-card-header">
+                    <span class="op-badge op-badge-green">LEKKA // ZWIADOWCA</span>
+                    <span class="op-hp">85 HP</span>
+                  </div>
+                  <div class="op-name">RAPTOR</div>
+                  <div class="op-attr text-emerald">PLECAK ODRZUTOWY (JETPACK)</div>
+                  <div class="op-desc">Ekstremalna mobilność powietrzna, pełny ciąg i sprint 7.4.</div>
+                  <span class="op-status-tag">WYBRANY</span>
+                </button>
+
+                <button type="button" class="briefing-op-card active" data-op-class="STRIKER" title="Wybierz klasę: Striker">
+                  <div class="op-card-header">
+                    <span class="op-badge op-badge-blue">ŚREDNIA // SZTURMOWIEC</span>
+                    <span class="op-hp">100 HP</span>
+                  </div>
+                  <div class="op-name">STRIKER</div>
+                  <div class="op-attr text-sky">TURBO BUTY (ROCKET DASH)</div>
+                  <div class="op-desc">Dopalacze w butach, wyważona masa, precyzja ognia i doskok.</div>
+                  <span class="op-status-tag">WYBRANY</span>
+                </button>
+
+                <button type="button" class="briefing-op-card" data-op-class="ENFORCER" title="Wybierz klasę: Enforcer">
+                  <div class="op-card-header">
+                    <span class="op-badge op-badge-red">CIĘŻKA // KOLOS</span>
+                    <span class="op-hp">140 HP</span>
+                  </div>
+                  <div class="op-name">ENFORCER</div>
+                  <div class="op-attr text-rose">TŁOKI KINETYCZNE &amp; SPARTAN KICK</div>
+                  <div class="op-desc">Wyskok z przysiadu, potężny taran i niszczycielski cios (24 dmg).</div>
+                  <span class="op-status-tag">WYBRANY</span>
+                </button>
+              </div>
             </div>
+          </div> <!-- Koniec briefing-scroll-body -->
+
+          <!-- Stopka odprawy taktycznej (KROK 4: START) - ZAWSZE WIDOCZNA (STICKY) -->
+          <div class="briefing-footer">
+            <button id="btn-arena-back" class="ui-btn ui-btn-secondary" type="button">‹ POWRÓT DO MENU</button>
+            <button id="btn-arena-launch" class="ui-btn ui-btn-primary ui-btn-large" type="button">
+              <span class="btn-text">▶ ROZPOCZNIJ ROZGRYWKĘ</span>
+            </button>
           </div>
+        </div>
         </div>
       </div>
 

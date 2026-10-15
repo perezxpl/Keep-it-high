@@ -702,6 +702,14 @@ function handleNetworkData(data) {
       }
       break;
     }
+
+    case 'start_game': {
+      closeMultiplayerModal();
+      if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+        window.setGameState('PLAYING');
+      }
+      break;
+    }
   }
 }
 
@@ -1453,6 +1461,20 @@ export function initNetwork() {
       if (e.key === 'Enter') {
         const code = joinInput.value.trim();
         if (code) joinRoom(code);
+      }
+    };
+  }
+
+  // Wejście / start gry w trybie sieciowym
+  const launchGameBtn = document.getElementById('mp-launch-game-btn');
+  if (launchGameBtn) {
+    launchGameBtn.onclick = () => {
+      if (networkState.conn && networkState.isConnected) {
+        try { networkState.conn.send({ type: 'start_game' }); } catch (_) {}
+      }
+      closeMultiplayerModal();
+      if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+        window.setGameState('PLAYING');
       }
     };
   }

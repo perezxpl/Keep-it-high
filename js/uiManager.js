@@ -826,6 +826,41 @@ export const uiManager = {
         }
       }
     }
+
+    // 8. Synchronizacja wybranego operatora (KROK 3)
+    const activeOpClass = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
+    document.querySelectorAll('#briefing-operator-grid .briefing-op-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.opClass === activeOpClass);
+    });
+
+    // 9. Aktualizacja tekstu przycisku START (KROK 4)
+    const launchBtn = document.getElementById('btn-arena-launch');
+    if (launchBtn) {
+      const btnText = launchBtn.querySelector('.btn-text');
+      if (btnText) {
+        if (this.currentBriefingMode === 'multi') {
+          const isConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+          btnText.textContent = isConnected ? '▶ WEJDŹ DO GRY (START MULTI)' : 'POŁĄCZ W TRYBIE MULTI';
+        } else {
+          btnText.textContent = '▶ ROZPOCZNIJ ROZGRYWKĘ';
+        }
+      }
+    }
+  },
+
+  selectBriefingOperator(classId) {
+    if (!classId) return;
+    this.selectedClassId = classId;
+    document.querySelectorAll('#briefing-operator-grid .briefing-op-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.opClass === classId);
+    });
+    if (typeof window !== 'undefined' && window.CLASSES && window.CLASSES[classId]) {
+      const cls = window.CLASSES[classId];
+      if (typeof window.setPlayerClass === 'function' && window.player) {
+        window.setPlayerClass(cls, window.player);
+      }
+    }
+    this.applyAppearanceForClass(classId);
   },
 
   syncBotCountUI(count = getBotCount()) {
@@ -1408,6 +1443,19 @@ export const uiManager = {
       arenaBackBtn.addEventListener('touchend', handleBack);
     }
 
+    // KROK 3: Wybór operatora w odprawie taktycznej
+    document.querySelectorAll('#briefing-operator-grid .briefing-op-card').forEach(card => {
+      card.addEventListener('mouseenter', () => playUiHover());
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        playUiClick();
+        const opClass = card.dataset.opClass;
+        if (opClass) {
+          this.selectBriefingOperator(opClass);
+        }
+      });
+    });
+
     const launchMatchBtn = document.getElementById('btn-arena-launch');
     if (launchMatchBtn) {
       const handleLaunch = (e) => {
@@ -1420,22 +1468,42 @@ export const uiManager = {
         const arenaId = currentArena ? currentArena.id : 'ARENA_1';
 
         if (this.currentBriefingMode === 'multi') {
-          // Jeśli wybrano tryb wieloosobowy, upewnij się że modal WebRTC jest aktywny jeśli nie jesteśmy połączeni
           const mpModal = document.getElementById('mp-modal');
           const isConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
-          if (!isConnected && mpModal && mpModal.classList.contains('mp-modal-hidden')) {
-            mpModal.classList.remove('mp-modal-hidden');
+          if (!isConnected) {
+            if (mpModal && mpModal.classList.contains('mp-modal-hidden')) {
+              mpModal.classList.remove('mp-modal-hidden');
+            }
             return;
           }
+          if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
+            try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
+          }
+          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
+          }
+          return;
         }
 
+        // SOLO MODE:
+        const targetClassId = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
+
         if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
-          this.callbacks.onSelectArena(arenaId);
-        } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+          this.callbacks.onSelectArena(arenaId, targetClassId);
+        } else if (typeof window !== 'undefined') {
           if (typeof window.switchArena === 'function') {
             try { window.switchArena(arenaId); } catch (_) {}
           }
-          window.setGameState('CLASS_SELECT');
+          if (typeof window.selectPlayerClass === 'function' && window.CLASSES) {
+            const cls = window.CLASSES[targetClassId] || window.CLASSES.STRIKER || window.CLASSES.RAPTOR;
+            window.selectPlayerClass(cls);
+          }
+          if (typeof window.startRound === 'function') {
+            window.startRound();
+          }
+          if (typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
+          }
         }
       };
 

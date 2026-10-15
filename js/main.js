@@ -975,7 +975,7 @@ if (typeof window !== 'undefined') {
     onStartGame: () => {
       setGameState('ARENA_SELECT');
     },
-    onSelectArena: (arenaId) => {
+    onSelectArena: (arenaId, classId) => {
       try {
         if (typeof window.switchArena === 'function') {
           window.switchArena(arenaId);
@@ -983,7 +983,10 @@ if (typeof window !== 'undefined') {
       } catch (err) {
         console.error('[ARENA SWITCH ERROR]', err);
       }
-      setGameState('CLASS_SELECT');
+      const targetCls = (classId && CLASSES[classId]) ? CLASSES[classId] : (player.currentClass || CLASSES.STRIKER || CLASSES.RAPTOR);
+      selectPlayerClass(targetCls);
+      startRound();
+      setGameState('PLAYING');
     },
     onBackToMenu: () => {
       setGameState('MENU');

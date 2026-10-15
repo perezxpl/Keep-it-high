@@ -26,7 +26,7 @@ import {
 } from '../network.js';
 import { rightStick, pockets } from '../mobileControls.js';
 import { uiManager, playUiClick, playUiPause, playUiResume } from '../uiManager.js';
-import { getHoveredClassCard } from '../ui/classSelectModal.js';
+import { getHoveredClassCard, isClassSelectBackClicked } from '../ui/classSelectModal.js';
 import {
   editorState,
   updateEditorPaletteHighlight,
@@ -565,8 +565,9 @@ export function initKeyboardMouseHandlers({
     setCameraMouseScreenPos(e.clientX, e.clientY);
 
     if (GAME_STATE.current === 'CLASS_SELECT' || GAME_STATE.current === GAME_STATES.CLASS_SELECT) {
+      const isBack = isClassSelectBackClicked(mouseState.screenX, mouseState.screenY);
       const card = getHoveredClassCard(mouseState.screenX, mouseState.screenY);
-      canvas.style.cursor = card ? 'pointer' : 'default';
+      canvas.style.cursor = (isBack || card) ? 'pointer' : 'default';
     }
 
     if (editorState.active) {
@@ -602,6 +603,12 @@ export function initKeyboardMouseHandlers({
     if (GAME_STATE.current !== 'PLAYING') {
       if ((GAME_STATE.current === 'CLASS_SELECT' || GAME_STATE.current === GAME_STATES.CLASS_SELECT) && e.touches && e.touches[0]) {
         const touch = e.touches[0];
+        if (isClassSelectBackClicked(touch.clientX, touch.clientY)) {
+          e.preventDefault();
+          playUiClick();
+          setGameState(GAME_STATE.previous === 'PLAYING' ? 'PLAYING' : 'ARENA_SELECT');
+          return;
+        }
         const card = getHoveredClassCard(touch.clientX, touch.clientY);
         if (card) {
           e.preventDefault();
@@ -620,6 +627,11 @@ export function initKeyboardMouseHandlers({
 
     if (GAME_STATE.current !== 'PLAYING') {
       if ((GAME_STATE.current === 'CLASS_SELECT' || GAME_STATE.current === GAME_STATES.CLASS_SELECT) && e.button === 0) {
+        if (isClassSelectBackClicked(e.clientX, e.clientY)) {
+          playUiClick();
+          setGameState(GAME_STATE.previous === 'PLAYING' ? 'PLAYING' : 'ARENA_SELECT');
+          return;
+        }
         const card = getHoveredClassCard(e.clientX, e.clientY);
         if (card) {
           playUiClick();

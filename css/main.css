@@ -321,13 +321,37 @@ button, .dev-btn {
   z-index: 2;
   width: 100%;
   max-width: 480px;
+  max-height: calc(100vh - 28px);
   background: rgba(15, 23, 42, 0.94);
   border: 1px solid rgba(0, 229, 255, 0.45);
   border-radius: 12px;
   box-shadow: 0 0 35px rgba(0, 229, 255, 0.25), 0 15px 30px rgba(0, 0, 0, 0.7);
-  padding: 20px;
+  padding: 16px 20px;
   color: #f8fafc;
   font-family: monospace;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.mp-body::-webkit-scrollbar {
+  width: 5px;
+}
+.mp-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 3px;
+}
+.mp-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.4);
+  border-radius: 3px;
 }
 
 .mp-header {
@@ -1514,6 +1538,21 @@ button, .dev-btn {
 /* =========================================================================
    ODPRAWA TAKTYCZNA (KREATOR ROZGRYWKI Z KARUZELĄ POJEDYNCZEJ MAPY)
    ========================================================================= */
+#main-menu-overlay.in-arena-select {
+  padding: 8px 12px;
+}
+
+#main-menu-overlay.in-arena-select .menu-container {
+  max-height: calc(100vh - 16px);
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
 #main-menu-overlay.in-arena-select #menu-main-view {
   display: none !important;
 }
@@ -1521,20 +1560,24 @@ button, .dev-btn {
 .briefing-container {
   width: 100%;
   max-width: 960px;
+  height: 100%;
+  max-height: calc(100vh - 16px);
   display: flex;
   flex-direction: column;
-  animation: fadeInScale 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
   box-sizing: border-box;
+  animation: fadeInScale 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .briefing-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.25);
+  padding-bottom: 6px;
   box-sizing: border-box;
 }
 
@@ -1544,9 +1587,9 @@ button, .dev-btn {
 
 .briefing-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: clamp(18px, 2.6vw, 24px);
+  font-size: clamp(16px, 2.2vw, 22px);
   font-weight: 900;
-  letter-spacing: 2.5px;
+  letter-spacing: 2px;
   margin: 0;
   background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #00e5ff 100%);
   -webkit-background-clip: text;
@@ -1556,21 +1599,22 @@ button, .dev-btn {
 
 .briefing-subtitle {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #94a3b8;
-  letter-spacing: 2px;
-  margin: 2px 0 0 0;
+  letter-spacing: 1.5px;
+  margin: 1px 0 0 0;
   text-transform: uppercase;
 }
 
 .briefing-mode-tabs {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 3px;
+  flex-shrink: 0;
 }
 
 .briefing-tab-btn {
@@ -1578,10 +1622,10 @@ button, .dev-btn {
   border: none;
   color: #94a3b8;
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
-  padding: 6px 13px;
+  letter-spacing: 0.8px;
+  padding: 5px 11px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1595,21 +1639,71 @@ button, .dev-btn {
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
 }
 
+/* Scrollowalna strefa środkowa odprawy taktycznej */
+.briefing-scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.briefing-scroll-body::-webkit-scrollbar {
+  width: 5px;
+}
+.briefing-scroll-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 3px;
+}
+.briefing-scroll-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.4);
+  border-radius: 3px;
+}
+
+/* Numerowane etykiety kroków (KROK 1, 2, 3) */
+.briefing-step-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.briefing-step-label .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  background: rgba(0, 229, 255, 0.18);
+  border: 1px solid #00e5ff;
+  color: #00e5ff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
 .briefing-columns-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
   align-items: stretch;
 }
 
-/* =========================================================================
-   KARUZELA WYBORU MAPY (DOKŁADNIE 1 MAPA NA RAZ POD PC I TELEFON)
-   ========================================================================= */
+/* KROK 1: Karuzela wyboru mapy */
 .briefing-col-carousel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: stretch;
 }
 
@@ -1619,31 +1713,32 @@ button, .dev-btn {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1.5px solid rgba(0, 229, 255, 0.35);
-  border-radius: 14px;
-  padding: 12px 14px 10px 14px;
+  border-radius: 12px;
+  padding: 10px 12px 8px 12px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 16px rgba(0, 229, 255, 0.05);
   transition: all 0.22s ease;
+  flex: 1;
 }
 
 .carousel-nav-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
 .carousel-arrow-btn {
-  width: 38px;
-  min-width: 38px;
-  height: 90px;
+  width: 34px;
+  min-width: 34px;
+  height: 70px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(0, 229, 255, 0.3);
+  background: rgba(15, 23, 42, 0.75);
+  border: 1.5px solid rgba(0, 229, 255, 0.35);
   color: #00e5ff;
-  font-size: 26px;
+  font-size: 22px;
   font-family: 'Orbitron', monospace;
   font-weight: 700;
   cursor: pointer;
@@ -1660,8 +1755,8 @@ button, .dev-btn {
   background: rgba(0, 229, 255, 0.2);
   border-color: #00e5ff;
   color: #ffffff;
-  transform: scale(1.05);
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+  transform: scale(1.04);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.4);
 }
 
 .carousel-arrow-btn:active {
@@ -1684,36 +1779,36 @@ button, .dev-btn {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .briefing-badge {
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 1.5px;
-  padding: 3px 10px;
+  letter-spacing: 1px;
+  padding: 2px 8px;
   background: rgba(0, 229, 255, 0.15);
   border: 1px solid rgba(0, 229, 255, 0.45);
-  border-radius: 10px;
+  border-radius: 8px;
   color: #00e5ff;
 }
 
 .briefing-counter {
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #94a3b8;
 }
 
 .briefing-preview-frame {
   width: 100%;
-  height: 110px;
+  height: 84px;
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border: 1.5px solid rgba(0, 229, 255, 0.4);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0, 0, 0, 0.5);
   background: #090e17;
@@ -1737,29 +1832,29 @@ button, .dev-btn {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  padding: 6px 8px;
+  padding: 4px 6px;
 }
 
 .briefing-tag {
   font-family: 'Orbitron', monospace;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #00e5ff;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(0, 229, 255, 0.4);
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 4px;
   text-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
 }
 
 .briefing-arena-name {
   font-family: 'Orbitron', sans-serif;
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: 1px;
-  margin-bottom: 3px;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   overflow: hidden;
@@ -1769,12 +1864,12 @@ button, .dev-btn {
 
 .briefing-arena-desc {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #94a3b8;
-  line-height: 1.35;
-  margin-bottom: 6px;
-  height: 32px;
+  line-height: 1.25;
+  margin-bottom: 4px;
+  height: 28px;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1785,15 +1880,15 @@ button, .dev-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .carousel-dot {
-  width: 24px;
-  height: 5px;
-  border-radius: 3px;
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.18);
   border: none;
   padding: 0;
@@ -1808,7 +1903,7 @@ button, .dev-btn {
 .carousel-dot.active {
   background: #00e5ff;
   box-shadow: 0 0 8px #00e5ff;
-  width: 34px;
+  width: 30px;
 }
 
 /* Podgląd mapy w karcie multiplayer */
@@ -1837,13 +1932,11 @@ button, .dev-btn {
   transform: scale(1.05);
 }
 
-/* =========================================================================
-   PRAWY PANEL: PARAMETRY BITWY I KONTROLKI ODPRAWY
-   ========================================================================= */
+/* KROK 2: Prawy panel - parametry bitwy */
 .briefing-col-options {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .briefing-options-panel {
@@ -1851,46 +1944,45 @@ button, .dev-btn {
   background: rgba(10, 15, 29, 0.88);
   border: 1.5px solid rgba(0, 229, 255, 0.3);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 200px;
-  justify-content: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .briefing-map-opts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
 .briefing-opt-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   text-align: left;
 }
 
 .opt-label {
   font-family: 'Orbitron', monospace;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #94a3b8;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .opt-val-badge {
   font-family: 'Orbitron', monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   background: rgba(0, 229, 255, 0.1);
   border: 1px solid rgba(0, 229, 255, 0.3);
   border-radius: 6px;
@@ -1899,17 +1991,17 @@ button, .dev-btn {
 
 .briefing-toggle-group {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
 }
 
 .briefing-toggle-btn {
   flex: 1;
-  padding: 6px 6px;
+  padding: 5px 6px;
   font-family: 'Rajdhani', sans-serif;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   border-radius: 6px;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
@@ -1932,7 +2024,7 @@ button, .dev-btn {
   background: rgba(0, 229, 255, 0.22);
   border-color: #00e5ff;
   color: #00e5ff;
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
   font-weight: 800;
 }
 
@@ -1940,14 +2032,14 @@ button, .dev-btn {
   background: rgba(0, 229, 255, 0.25);
   border-color: #00e5ff;
   color: #00e5ff;
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
 }
 
 .briefing-toggle-btn.team-orange.active {
   background: rgba(249, 115, 22, 0.25);
   border-color: #f97316;
   color: #f97316;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
 }
 
 .briefing-note-row {
@@ -1956,7 +2048,7 @@ button, .dev-btn {
 
 .briefing-hint-note {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
+  font-size: 10.5px;
   color: #64748b;
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -1966,7 +2058,7 @@ button, .dev-btn {
 .briefing-multi-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -2023,16 +2115,182 @@ button, .dev-btn {
   animation: fadeIn 0.2s ease;
 }
 
-/* Stopka Odprawy */
+/* =========================================================================
+   KROK 3: WYBÓR OPERATORA (KLASY POSTACI) W ODPRAWIE TAKTYCZNEJ
+   ========================================================================= */
+.briefing-operator-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.briefing-operator-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.briefing-op-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.briefing-op-card:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(0, 229, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.2);
+}
+
+.briefing-op-card.active {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  border-color: #00e5ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 229, 255, 0.15);
+}
+
+.op-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.op-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.op-badge-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.op-badge-blue {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.op-badge-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.op-hp {
+  font-family: 'Orbitron', monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #facc15;
+}
+
+.op-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.8px;
+}
+
+.op-attr {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.op-desc {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10.5px;
+  color: #94a3b8;
+  line-height: 1.25;
+}
+
+.op-status-tag {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 800;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.18);
+  border: 1px solid #00e5ff;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.briefing-op-card.active .op-status-tag {
+  display: block;
+}
+
+/* =========================================================================
+   KROK 4: STOPKA ODPRAWY - ZAWSZE WIDOCZNA (STICKY)
+   ========================================================================= */
 .briefing-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+  padding: 8px 12px;
+  border-top: 1.5px solid rgba(0, 229, 255, 0.35);
+  background: rgba(10, 15, 29, 0.98);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+}
+
+#btn-arena-launch {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 10px 24px;
+  min-height: 42px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.3) 0%, rgba(6, 182, 212, 0.4) 100%);
+  border: 1.5px solid #00e5ff;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#btn-arena-launch:hover {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.5) 0%, rgba(6, 182, 212, 0.6) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.65);
+}
+
+#btn-arena-launch:active {
+  transform: scale(0.98);
 }
 
 .btn-back {
@@ -2059,6 +2317,20 @@ button, .dev-btn {
   border-color: rgba(0, 229, 255, 0.6);
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+@media (max-height: 640px) {
+  .briefing-header { margin-bottom: 4px; padding-bottom: 4px; }
+  .briefing-title { font-size: 16px; }
+  .briefing-preview-frame { height: 65px; }
+  .carousel-arrow-btn { height: 50px; }
+  .briefing-op-card { padding: 5px 8px; }
+  .briefing-op-card .op-desc { display: none; }
+}
+
+@media (max-width: 680px) {
+  .briefing-columns-layout { grid-template-columns: 1fr; }
+  .briefing-operator-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-height: 520px) {

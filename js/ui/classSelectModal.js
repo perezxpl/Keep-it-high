@@ -65,6 +65,38 @@ function wrapText(context, text, x, y, maxWidth, lineHeight) {
   return curY + lineHeight;
 }
 
+export function getCanvasCoords(screenX, screenY) {
+  if (typeof document === 'undefined') return { x: screenX, y: screenY };
+  const canvasEl = document.getElementById('game') || document.querySelector('canvas');
+  if (!canvasEl) return { x: screenX, y: screenY };
+  const rect = canvasEl.getBoundingClientRect();
+  if (!rect.width || !rect.height) return { x: screenX, y: screenY };
+  const scaleX = (canvasEl.width || W) / rect.width;
+  const scaleY = (canvasEl.height || H) / rect.height;
+  return {
+    x: (screenX - rect.left) * scaleX,
+    y: (screenY - rect.top) * scaleY
+  };
+}
+
+export function getClassSelectBackRect(modalW = Math.min(940, W - 32), modalH = Math.min(500, H - 32)) {
+  const modalX = (W - modalW) / 2;
+  const modalY = (H - modalH) / 2;
+  return {
+    x: modalX + modalW - 140,
+    y: modalY + 14,
+    w: 124,
+    h: 30
+  };
+}
+
+export function isClassSelectBackClicked(screenX, screenY) {
+  const canvasPos = getCanvasCoords(screenX, screenY);
+  const btn = getClassSelectBackRect();
+  return (canvasPos.x >= btn.x && canvasPos.x <= btn.x + btn.w &&
+          canvasPos.y >= btn.y && canvasPos.y <= btn.y + btn.h);
+}
+
 export function getClassCardRects(modalW = Math.min(940, W - 32), modalH = Math.min(500, H - 32)) {
   const modalX = (W - modalW) / 2;
   const modalY = (H - modalH) / 2;
@@ -86,11 +118,12 @@ export function getClassCardRects(modalW = Math.min(940, W - 32), modalH = Math.
 }
 
 export function getHoveredClassCard(screenX, screenY, currentGameState = (typeof window !== 'undefined' && window.GAME_STATE ? window.GAME_STATE.current : 'CLASS_SELECT')) {
-  if (currentGameState !== GAME_STATES.CLASS_SELECT) return null;
+  if (currentGameState !== GAME_STATES.CLASS_SELECT && currentGameState !== 'CLASS_SELECT') return null;
+  const canvasPos = getCanvasCoords(screenX, screenY);
   const rects = getClassCardRects();
   for (const item of rects) {
-    if (screenX >= item.x && screenX <= item.x + item.w &&
-      screenY >= item.y && screenY <= item.y + item.h) {
+    if (canvasPos.x >= item.x && canvasPos.x <= item.x + item.w &&
+      canvasPos.y >= item.y && canvasPos.y <= item.y + item.h) {
       return item.card;
     }
   }
@@ -168,6 +201,30 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
   ctx.fillStyle = '#94a3b8';
   ctx.fillText('WYBIERZ KAFELEK KLASY [1-3] LUB KLIKNIJ KAFELEK MYSZKĄ ABY ROZPOCZĄĆ', W / 2, modalY + 82);
 
+  // Przycisk "POWRÓT (ESC)" w prawym górnym rogu modalu
+  const mouseCanvas = getCanvasCoords(mouseScreenX, mouseScreenY);
+  const backBtn = getClassSelectBackRect(modalW, modalH);
+  const isBackHovered = (mouseCanvas.x >= backBtn.x && mouseCanvas.x <= backBtn.x + backBtn.w &&
+                         mouseCanvas.y >= backBtn.y && mouseCanvas.y <= backBtn.y + backBtn.h);
+
+  ctx.fillStyle = isBackHovered ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.08)';
+  ctx.strokeStyle = isBackHovered ? '#ef4444' : 'rgba(255, 255, 255, 0.22)';
+  ctx.lineWidth = 1.2;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(backBtn.x, backBtn.y, backBtn.w, backBtn.h, 6);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.fillRect(backBtn.x, backBtn.y, backBtn.w, backBtn.h);
+    ctx.strokeRect(backBtn.x, backBtn.y, backBtn.w, backBtn.h);
+  }
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = isBackHovered ? '#ffffff' : '#cbd5e1';
+  ctx.fillText('‹ POWRÓT (ESC)', backBtn.x + backBtn.w / 2, backBtn.y + backBtn.h / 2);
+
   // Linia podziału
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
   ctx.lineWidth = 1;
@@ -177,12 +234,12 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
   ctx.stroke();
   ctx.restore();
 
-  // 3. Rysowanie 4 kafelków klas
+  // 3. Rysowanie 3 kafelków klas
   const cardRects = getClassCardRects(modalW, modalH);
 
   cardRects.forEach(({ card, x, y, w, h }) => {
-    const isHovered = mouseScreenX >= x && mouseScreenX <= x + w &&
-      mouseScreenY >= y && mouseScreenY <= y + h;
+    const isHovered = mouseCanvas.x >= x && mouseCanvas.x <= x + w &&
+      mouseCanvas.y >= y && mouseCanvas.y <= y + h;
 
     ctx.save();
 
