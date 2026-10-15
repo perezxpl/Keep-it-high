@@ -1,7 +1,7 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
-import { WEAPONS, shootWeapon } from './weapons.js';
+import { WEAPONS, shootWeapon, spawnBulletSparks } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y, spawnBulletSparks, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, resize } from './world.js';
+import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, resize } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
