@@ -189,22 +189,38 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.jumpSquatTimer = 0;
     player.jumpTakeoffTimer = 0;
     player.landingSquatTimer = 0;
+    player.isJetpacking = false;
+    player.jetpackPower = 0;
+    if (player.throwAnim) {
+      player.throwAnim.active = false;
+      player.throwAnim.aiming = false;
+    }
     if (player.staggerTimer === 0) {
       // 4. PŁYNNE WSTANIE PO UPŁYWIE OGŁUSZENIA:
-      // Przywróć pełny collider stojący bez zacinania się w geometrii platformy (p.y wyrównane do gruntu)
-      const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
-      if (currentFloor) {
-        player.y = currentFloor - (player.h || 70);
+      // Przywróć pełny collider stojący tylko jeśli gracz faktycznie leży na ziemi lub platformie.
+      // Jeśli ogłuszenie wygasło w powietrzu (w locie), NIE teleportuj gracza – kontynuuje lot/opadanie.
+      if (player.onGround && player.staggerLanded) {
+        const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
+        if (currentFloor) {
+          player.y = currentFloor - (player.h || 70);
+        }
+        player.vy = 0;
+        player.isJumping = false;
+        player.onGround = true;
+      } else {
+        player.isJumping = true;
+        player.onGround = false;
       }
-      player.vy = 0;
-      player.isJumping = false;
-      player.onGround = true;
-      player.staggerRecoveryTimer = 8; // 6-8 klatek płynnego powrotu broni i ramion do Low-Ready
+      player.staggerRecoveryTimer = 14; // płynny powrót broni i ciała do stanu gotowości bojowej
+      player.staggerImmunityTimer = 65; // ~1.1s nietykalności przed pętlą ponownego powalenia / stagger-lock
       player.staggerLanded = false;
     }
   }
   if (player.staggerRecoveryTimer > 0) {
     player.staggerRecoveryTimer--;
+  }
+  if (player.staggerImmunityTimer > 0) {
+    player.staggerImmunityTimer--;
   }
 
   updateWeaponState(player);
@@ -602,6 +618,15 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           player.vx = Math.sign(player.vx) * maxExitSpeed;
         }
       }
+    } else if (player.staggerTimer > 0) {
+      // Podczas ogłuszenia (stagger po wykopie) gracz nie kontroluje ruchu (brak sterowania A/D)
+      if (player.onGround && player.staggerLanded) {
+        player.vx *= 0.82;
+      } else {
+        player.vx *= 0.985;
+      }
+      player.airVx = player.vx;
+      player.sprintDuration = 0;
     } else if (player.isJumping) {
       if (player.sprintJumpTimer > 0) player.sprintJumpTimer--;
       const isSprintLeap = !!(player.isSprintJump || (player.sprintJumpTimer > 0));

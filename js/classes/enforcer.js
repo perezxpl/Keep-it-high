@@ -235,14 +235,14 @@ export function initBlastBeltState(p) {
  *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
-  if (!player || player.isDead || player.isIntro) return;
+  if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
   if (!player.blastBelt) initBlastBeltState(player);
   const belt = player.blastBelt;
 
   // 1. ŚCISŁA WERYFIKACJA KONTAKTU Z PODŁOŻEM:
   // Enforcer może używać tłoków i wykonywać siłowy przysiad WYŁĄCZNIE stojąc stabilnie na ziemi lub platformie!
   // W powietrzu tłoki pneumatyczne są całkowicie zablokowane (brak oparcia o grunt).
-  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
+  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && !((player.staggerRecoveryTimer || 0) > 0) && (
     (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
     ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
   );

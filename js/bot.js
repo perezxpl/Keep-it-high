@@ -663,7 +663,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Obsługa oszołomienia po Spartan Kick
-  if (botTarget.staggerTimer > 0) {
+  if (botTarget.staggerTimer > 0 || ((botTarget.staggerRecoveryTimer || 0) > 0)) {
     bKeys.left = false;
     bKeys.right = false;
     bKeys.up = false;
@@ -801,7 +801,14 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const predOffset = Math.sin(performance.now() * 0.002) * 20;
       targetX = ball.x + (ball.vx * 12) + predOffset;
     } else if (targetEnemy && !targetEnemy.isDead) {
-      targetX = targetEnemy.x + targetEnemy.w / 2;
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
+      if (isEnemyDown && !isA1) {
+        const enemyX = targetEnemy.x + (targetEnemy.w || 24) / 2;
+        const dirFromEnemy = Math.sign(botCenterX - enemyX) || (botTarget.facing ? -botTarget.facing : 1);
+        targetX = enemyX + dirFromEnemy * 140;
+      } else {
+        targetX = targetEnemy.x + targetEnemy.w / 2;
+      }
     } else {
       targetX = isA2 ? 2000 : (isA3 ? 2200 : botCenterX);
     }
@@ -1161,8 +1168,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetY = ball.y + (ball.vy * 3);
     }
     if (canEngageTarget) {
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
       aimTargetX = targetEnemy.x + targetEnemy.w / 2;
-      aimTargetY = targetEnemy.y + targetEnemy.h / 2;
+      aimTargetY = isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2);
     } else {
       // Bot poza zasiegiem widzenia gracza: patrzy przed siebie w strone marszu
       const lookDir = Math.sign((targetEnemy.x + targetEnemy.w / 2) - botCenterX) || botTarget.facing || 1;
@@ -1195,8 +1203,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   if (!isA1 && targetEnemy && !targetEnemy.isDead) {
     if (canEngageTarget) {
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
       const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
-      const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;
+      const enemyCenterY = isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2);
       const shooterOriginY = botTarget.y + 20;
 
       const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
@@ -1283,8 +1292,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     }
   } else if (targetEnemy && !targetEnemy.isDead) {
     // Tryb Deathmatch: Spartan Kick wręcz we wroga
+    const isTargetVulnerableToKick = !(targetEnemy.staggerTimer > 0) && !((targetEnemy.staggerImmunityTimer || 0) > 0) && !targetEnemy.isProne;
     const distToEnemyFromHip = Math.hypot((targetEnemy.x + targetEnemy.w / 2) - hipX, (targetEnemy.y + targetEnemy.h / 2) - hipY);
-    if (distToEnemyFromHip <= hitReach + 20) {
+    if (distToEnemyFromHip <= hitReach + 20 && isTargetVulnerableToKick) {
       if (!botTarget.isCharging && botTarget.kickState === 'IDLE' && botTarget.kickCooldown <= 0) {
         if (Math.random() < (diffCfg.kickChance !== undefined ? diffCfg.kickChance : 0.70)) {
           botTarget.isCharging = true;
@@ -1297,7 +1307,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         }
       }
     } else if (botTarget.isCharging) {
-      executeReleaseKick(null, botTarget, 0, meleeTargets);
+      if (isTargetVulnerableToKick) {
+        executeReleaseKick(null, botTarget, 0, meleeTargets);
+      } else {
+        botTarget.isCharging = false;
+        botTarget.chargePower = 0;
+      }
     }
   }
 

@@ -98,27 +98,27 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
   window.activeArenaId = activeArenaId;
   const curWep = player.currentWeapon || WEAPONS.AK47;
-  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered;
-  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead && !player.isHolstered;
+  const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
+  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
 
   if (curWep.auto) {
     player.isShooting = isHoldingFire;
   } else {
-    player.isShooting = (!player.isHolstered) && (isTouchFiring || (player.shootPoseTimer > 0));
+    player.isShooting = (!player.isHolstered) && (isTouchFiring || (player.shootPoseTimer > 0)) && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   }
 
   const curAmmoObj = player.ammo?.[curWep.id];
   const isOutOfAmmo = curAmmoObj && curAmmoObj.currentAmmo <= 0;
   const isReloading = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
 
-  if (isTouchFiring) {
+  if (isTouchFiring && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
     // Automatyczne przeładowanie w boju, gdy amunicja spadnie do 0
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
       triggerPlayerShoot(player, curWep);
     }
-  } else if (mouseState.lmbDown && !player.isDead) {
+  } else if (mouseState.lmbDown && !player.isDead && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
@@ -160,7 +160,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isTouchFlight = !!(isStickRaised && isAirborne);
   const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
   const isRaptor = (!player.currentClass || player.currentClass.id === 'RAPTOR');
-  const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding;
+  const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   if (isFlightActive) {
     player.isJetpacking = true;
 

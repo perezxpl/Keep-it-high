@@ -196,7 +196,9 @@ export function isPlayerCrouchingOrProne(player) {
     player.isProne ||
     player.state === 'CROUCH' ||
     player.state === 'PRONE' ||
-    player.crouchToggled
+    player.crouchToggled ||
+    (player.staggerTimer > 0) ||
+    ((player.staggerRecoveryTimer || 0) > 0)
   );
 }
 
@@ -205,7 +207,7 @@ export function isPlayerCrouchingOrProne(player) {
  * Wywoływane co klatkę z playerController.js.
  */
 export function updateStrikerBootsInput(player, keys, leftStick, gamepadState) {
-  if (!player || player.isDead || player.isIntro) return;
+  if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
   if (!player.rocketBoots) initRocketBootsState(player);
 
   const rb = player.rocketBoots;

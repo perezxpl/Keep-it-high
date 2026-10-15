@@ -422,10 +422,9 @@ export function applyLocalPlayerDamage(data) {
     const isSpartan = (data.weaponId === 'SPARTAN_KICK');
     player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - (data.damage || 14));
     player.lastAttacker = remotePlayer;
-    player.lastAttackerTimer = 240;
-    player.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
-    player.staggerLanded = false;
-    player.staggerRecoveryTimer = 0;
+    const isPlayerImmune = !!(player.staggerImmunityTimer && player.staggerImmunityTimer > 0);
+    player.staggerTimer = isPlayerImmune ? 0 : (isSpartan ? (data.stagger || 50) : (data.stagger || 22));
+    if (!isPlayerImmune) { player.staggerLanded = false; player.staggerRecoveryTimer = 0; }
     player.isJumping = true;
     player.onGround = false;
     if (typeof data.vx === 'number') {
@@ -571,10 +570,9 @@ export function applyRemoteBotDamage(data) {
     const isSpartan = (data.weaponId === 'SPARTAN_KICK');
     b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - (data.damage || 14));
     b.lastAttacker = remotePlayer;
-    b.lastAttackerTimer = 240;
-    b.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
-    b.staggerLanded = false;
-    b.staggerRecoveryTimer = 0;
+    const isBotImmune = !!(b.staggerImmunityTimer && b.staggerImmunityTimer > 0);
+    b.staggerTimer = isBotImmune ? 0 : (isSpartan ? (data.stagger || 50) : (data.stagger || 22));
+    if (!isBotImmune) { b.staggerLanded = false; b.staggerRecoveryTimer = 0; }
     b.isJumping = true;
     b.onGround = false;
     if (typeof data.vx === 'number') {

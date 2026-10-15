@@ -540,9 +540,12 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         enemy.vx = kickDirX * finalKnockback;
         enemy.vy = Math.min(-2.8, kickDirY * finalKnockback * 0.85);
         enemy.isJumping = true;
-        enemy.staggerTimer = classStats.spartanStagger || 22;
-        enemy.staggerLanded = false;
-        enemy.staggerRecoveryTimer = 0;
+        const isEnemyImmune = !!(enemy.staggerImmunityTimer && enemy.staggerImmunityTimer > 0);
+        if (!isEnemyImmune) {
+          enemy.staggerTimer = classStats.spartanStagger || 22;
+          enemy.staggerLanded = false;
+          enemy.staggerRecoveryTimer = 0;
+        }
 
         const baseDmg = classStats.spartanDamage || 12;
         const dmg = Math.round(baseDmg * (knockbackMultiplier >= 1.5 ? 1.25 : 1.0) + pwr * 6);
@@ -962,7 +965,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.lastAttacker = player;
     enemy.lastAttackerTimer = 240;
 
-    // 5. Fizyka celu: potężny knockback i 2 sekundy ogłuszenia (120 klatek przy 60 FPS)
+    // 5. Fizyka celu: potężny knockback i zbalansowane ogłuszenie (50 klatek / ~0.83s przy 60 FPS)
     enemy.lastGroundedFloorY = enemy.currentGroundY || enemy.lastGroundedFloorY;
     enemy.facing = -player.facing;
     enemy.vx = player.facing * 16.5;
@@ -970,9 +973,13 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.vy = -4.5;
     enemy.isJumping = true;
     enemy.onGround = false;
-    enemy.staggerTimer = 120;
-    enemy.staggerLanded = false;
-    enemy.staggerRecoveryTimer = 0;
+    const isEnemyImmune = !!(enemy.staggerImmunityTimer && enemy.staggerImmunityTimer > 0);
+    const spartanStagger = isEnemyImmune ? 0 : 50;
+    if (!isEnemyImmune) {
+      enemy.staggerTimer = spartanStagger;
+      enemy.staggerLanded = false;
+      enemy.staggerRecoveryTimer = 0;
+    }
     enemy.isCharging = false;
     enemy.isShooting = false;
     enemy.isSliding = false;
@@ -995,7 +1002,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
           weaponId: 'SPARTAN_KICK',
           vx: player.facing * 16.5,
           vy: -4.5,
-          stagger: 120,
+          stagger: spartanStagger,
           facing: -player.facing
         });
       } else if (enemy.isBot && !netState.isHost) {
@@ -1013,7 +1020,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
             weaponId: 'SPARTAN_KICK',
             vx: player.facing * 16.5,
             vy: -4.5,
-            stagger: 120,
+            stagger: spartanStagger,
             facing: -player.facing
           });
         }
@@ -1166,7 +1173,7 @@ export function getThrowHandPosition(p) {
  * Rozpoczęcie zamachu i celowania granatem (przytrzymanie klawisza / wychylenie drążka)
  */
 export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPower = 1.0) {
-  if (!p || p.isDead || p.isIntro) return false;
+  if (!p || p.isDead || p.isIntro || (p.staggerTimer > 0) || ((p.staggerRecoveryTimer || 0) > 0)) return false;
 
   let aimX, aimY;
   if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
@@ -1247,7 +1254,7 @@ export function releaseGrenadeThrow(p, targetX = null, targetY = null, customPow
  * @returns {boolean} Czy rzut został zainicjowany
  */
 export function throwTacticalGrenade(p, targetX = null, targetY = null, customPower = 1.0) {
-  if (!p || p.isDead || p.isIntro) return false;
+  if (!p || p.isDead || p.isIntro || (p.staggerTimer > 0) || ((p.staggerRecoveryTimer || 0) > 0)) return false;
   if (p.grenadeCooldown !== undefined && p.grenadeCooldown > 0) return false;
 
   // Jeśli gracz już celuje, wyzwól wyrzut
