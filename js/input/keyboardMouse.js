@@ -19,7 +19,7 @@ import {
   getObstacleDef, calculateObstaclePlacement, undoCustomObstacle
 } from '../obstacles.js';
 import { CLASSES } from '../classes/index.js';
-import { bot } from '../bot.js';
+import { bot, getActiveBots } from '../bot.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import {
   remotePlayer, isChatActive, openChat, closeChat, updateCursorVisibility
@@ -388,7 +388,8 @@ export function initKeyboardMouseHandlers({
       player.isProne = false;
       player.isCrouching = false;
       player.crouchToggled = false;
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
       startKickCharge(player, meleeTargets);
     }
     if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') && !e.repeat && !keys.shift) {
@@ -539,7 +540,8 @@ export function initKeyboardMouseHandlers({
     }
     if (e.code === 'Space' || e.key === ' ') {
       keys.space = false;
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
       executeReleaseKick(ball, player, 0, meleeTargets);
     }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC' || e.key === 'Shift') {
@@ -718,7 +720,8 @@ export function initKeyboardMouseHandlers({
       player.isProne = false;
       player.isCrouching = false;
       player.crouchToggled = false;
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
       startKickCharge(player, meleeTargets);
     }
   });
@@ -767,7 +770,8 @@ export function initKeyboardMouseHandlers({
       mouseState.semiFired = false;
     } else if (e.button === 2) {
       mouseState.rmbDown = false;
-      const meleeTargets = [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
       executeReleaseKick(ball, player, 0, meleeTargets);
     }
   });

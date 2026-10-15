@@ -16,13 +16,16 @@ import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
 
+let _dmSyncTimer = 0;
+
 /**
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
  */
 export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.active = true;
   deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
-  deathmatchState.playerTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
+  const isMultiClient = (remotePlayer && remotePlayer.active && typeof networkState !== 'undefined' && !networkState.isHost);
+  deathmatchState.playerTeam = isMultiClient ? TEAMS.ORANGE : (deathmatchConfig.playerTeam || TEAMS.CYAN);
   deathmatchState.timeRemaining = DEATHMATCH_DURATION;
   deathmatchState.matchEnded = false;
   deathmatchState.endCelebrationTimer = 0;
@@ -33,8 +36,9 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.teamScores[TEAMS.ORANGE] = 0;
 
   // Ustawienie drużyny i reset flag walki gracza
+  const isFFA = (deathmatchState.mode === DEATHMATCH_MODES.FFA);
   if (player) {
-    player.team = deathmatchState.playerTeam;
+    player.team = isFFA ? 'FFA_PLAYER' : deathmatchState.playerTeam;
     player.killer = null;
     player.lastAttacker = null;
     player.lastAttackerTimer = 0;
@@ -54,7 +58,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
     b.lastAttackerTimer = 0;
     b._dmDeathRecorded = false;
 
-    if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+    if (!isFFA) {
       if (remotePlayer && remotePlayer.active) {
         // W grze sieciowej 2-osobowej: podział botów 50/50 na CYAN i ORANGE
         const isAlly = (idx % 2 === 0);
@@ -69,7 +73,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
         b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
       }
     } else {
-      b.team = TEAMS.ORANGE;
+      b.team = `FFA_BOT_${idx + 1}`;
     }
   });
 
@@ -84,7 +88,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
       id: 'player',
       name: 'OPERATOR [TY]',
       isPlayer: true,
-      team: deathmatchState.playerTeam,
+      team: player.team,
       kills: 0,
       deaths: 0,
       ref: player
@@ -105,9 +109,9 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   });
 
   if (remotePlayer && remotePlayer.active) {
-    const remoteTeam = (deathmatchState.mode === DEATHMATCH_MODES.TDM)
-      ? enemyTeam
-      : TEAMS.ORANGE;
+    const remoteTeam = isFFA
+      ? 'FFA_REMOTE'
+      : (deathmatchState.mode === DEATHMATCH_MODES.TDM ? enemyTeam : TEAMS.ORANGE);
     remotePlayer.team = remoteTeam;
     pList.push({
       id: 'remotePlayer',
@@ -129,12 +133,16 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
  */
 export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
   if (!deathmatchState.active) return;
+  const isFFA = (deathmatchState.mode === DEATHMATCH_MODES.FFA);
+  if (player) {
+    player.team = isFFA ? 'FFA_PLAYER' : deathmatchState.playerTeam;
+  }
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
   const enemyTeam = (deathmatchState.playerTeam === TEAMS.CYAN ? TEAMS.ORANGE : TEAMS.CYAN);
 
   botList.forEach((b, idx) => {
     if (!b) return;
-    if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+    if (!isFFA) {
       if (remotePlayer && remotePlayer.active) {
         b.team = (idx % 2 === 0) ? deathmatchState.playerTeam : enemyTeam;
       } else {
@@ -144,7 +152,7 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
         b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
       }
     } else {
-      b.team = TEAMS.ORANGE;
+      b.team = `FFA_BOT_${idx + 1}`;
     }
   });
 
@@ -160,7 +168,7 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
       id: 'player',
       name: 'OPERATOR [TY]',
       isPlayer: true,
-      team: deathmatchState.playerTeam,
+      team: player.team,
       kills: prev ? prev.kills : 0,
       deaths: prev ? prev.deaths : 0,
       ref: player
@@ -183,7 +191,7 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
   });
 
   if (remotePlayer && remotePlayer.active) {
-    const remoteTeam = (deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE;
+    const remoteTeam = isFFA ? 'FFA_REMOTE' : ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE);
     remotePlayer.team = remoteTeam;
     const prev = getPrev(remotePlayer, 'remotePlayer');
     pList.push({
@@ -238,6 +246,17 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : (1 / 60);
   deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
   updateCombatFeed(stepTime);
+
+  // Synchronizacja stanu deathmatch przez Hosta (zegar, wynik drużyn)
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
+  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
+    _dmSyncTimer = (_dmSyncTimer || 0) + stepTime;
+    if (_dmSyncTimer >= 1.0) {
+      _dmSyncTimer = 0;
+      sendDm(deathmatchState);
+    }
+  }
 
   // 2. Obsługa faktycznych eliminacji w walce
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
@@ -327,6 +346,12 @@ export function finishDeathmatch() {
   deathmatchState.matchEnded = true;
   deathmatchState.endCelebrationTimer = deathmatchState.maxEndCelebrationTimer;
   updateLeaderboard();
+
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
+  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
+    sendDm(deathmatchState);
+  }
 
   // Ustalenie miejsca gracza i nagrody XP (100 / 80 / 60 / 40 XP)
   const place = deathmatchState.playerPlace;

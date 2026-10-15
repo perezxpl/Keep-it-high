@@ -12,6 +12,7 @@ import {
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import {
   spawnBulletCasing,
   spawnDroppedMagazine,
@@ -48,6 +49,7 @@ import {
   drawSniperLaserSight,
   drawHeldWeapon
 } from './weapons/renderer.js';
+import { getActiveBots } from './bot.js';
 
 export {
   WEAPONS,
@@ -454,7 +456,18 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     for (const ch of charList) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
-      if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+      if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
+      // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
+      // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
+      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+      if (netState && netState.isConnected) {
+        if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
+        if (!netState.isHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+      }
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
@@ -476,7 +489,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       // Szybkie odrzucenie AABB przed precyzyjnym testem odcinka (Broadphase rejection)
       if (maxBx < charLeft || minBx > charRight || maxBy < charTop || minBy > charBottom) continue;
 
-      const charT = getSegmentAABBHitT(b.prevX, b.prevY, endX, endY, charLeft, charTop, charRight, charBottom);
+      const charT = getSegmentAABBHitT(b.prevX, b.prevY, b.x, b.y, charLeft, charTop, charRight, charBottom);
       if (charT !== null && charT <= maxT && charT < closestCharT) {
         closestCharT = charT;
         closestChar = ch;
@@ -604,6 +617,39 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (b.shooter && b.shooter !== closestChar) {
         closestChar.lastAttacker = b.shooter;
         closestChar.lastAttackerTimer = 240; // 4 sekundy aktywnego okna walki
+      }
+
+      // Synchronizacja zadanych obrażeń w grze sieciowej
+      const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+      if (netState && netState.isConnected && typeof sendDmg === 'function') {
+        if (closestChar.isRemote) {
+          sendDmg({
+            target: 'player',
+            damage: b.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+            weaponId: b.weaponId
+          });
+        } else if (closestChar.isBot && !netState.isHost) {
+          const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+          const bIdx = activeBots.indexOf(closestChar);
+          if (bIdx !== -1) {
+            sendDmg({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: b.damage,
+              isHeadshot,
+              isTorsoShot,
+              hitX: hitPtX,
+              hitY: hitPtY,
+              relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+              weaponId: b.weaponId
+            });
+          }
+        }
       }
 
       const isShotgun = (b.weaponId === 'SHOTGUN');

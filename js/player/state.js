@@ -8,7 +8,7 @@ import { customObstacles } from '../obstacles.js';
 import { spawnGroundPuff, triggerScreenShake, activeArenaId } from '../world.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
-import { DEFAULT_VISUALS } from './renderer.js';
+import { DEFAULT_VISUALS } from './hair.js';
 
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
@@ -91,7 +91,7 @@ export const DEFAULT_STATS = {
   kickCooldown: 0.50
 };
 
-export const DEFAULT_CLASS_SCHEMA = {
+export var DEFAULT_CLASS_SCHEMA = {
   body: DEFAULT_BODY,
   stats: DEFAULT_STATS,
   visuals: DEFAULT_VISUALS
@@ -99,11 +99,16 @@ export const DEFAULT_CLASS_SCHEMA = {
 
 export function mergeClassWithSchema(classDef) {
   const c = classDef || {};
+  const schema = (typeof DEFAULT_CLASS_SCHEMA !== 'undefined' && DEFAULT_CLASS_SCHEMA) ? DEFAULT_CLASS_SCHEMA : {
+    body: DEFAULT_BODY,
+    stats: DEFAULT_STATS,
+    visuals: DEFAULT_VISUALS
+  };
   return {
     ...c,
-    body: { ...DEFAULT_CLASS_SCHEMA.body, ...(c.body || {}) },
-    stats: { ...DEFAULT_CLASS_SCHEMA.stats, ...(c.stats || {}) },
-    visuals: { ...DEFAULT_CLASS_SCHEMA.visuals, ...(c.visuals || {}) }
+    body: { ...((schema && schema.body) || DEFAULT_BODY), ...(c.body || {}) },
+    stats: { ...((schema && schema.stats) || DEFAULT_STATS), ...(c.stats || {}) },
+    visuals: { ...((schema && schema.visuals) || DEFAULT_VISUALS), ...(c.visuals || {}) }
   };
 }
 

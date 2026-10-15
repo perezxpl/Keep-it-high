@@ -7,6 +7,8 @@ import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade } from '../projectiles.js';
+import { getActiveBots } from '../bot.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -133,6 +135,12 @@ export function findMeleeTarget(p, potentialTargets) {
 
   for (const t of targets) {
     if (!t || t === p || t.isDead) continue;
+    // Ochrona sojuszników przed atakami wręcz w trybie drużynowym (TDM)
+    const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+      (deathmatchState && deathmatchState.mode === 'FFA') ||
+      (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+      (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+    if (!isFFA && p.team && t.team && p.team === t.team) continue;
     const targetX = t.x + (t.w || 24) / 2;
     const targetY = t.y + (t.h || 70) - 40;
 
@@ -507,6 +515,12 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
     const targetList = Array.isArray(activeTargets) ? activeTargets : [activeTargets];
     for (const enemy of targetList) {
       if (!enemy || enemy === player || enemy.isDead) continue;
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+      if (!isFFA && player.team && enemy.team && player.team === enemy.team) continue;
+
       const ex = enemy.x + (enemy.w || 24) / 2;
       const ey = enemy.y + (enemy.h || 70) / 2;
 
@@ -535,6 +549,44 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
         enemy.lastAttacker = player;
         enemy.lastAttackerTimer = 240;
+
+        // Synchronizacja zadanych obrażeń i odrzutu w grze sieciowej
+        const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+        const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+        if (netState && netState.isConnected && typeof sendDmg === 'function') {
+          if (enemy.isRemote) {
+            sendDmg({
+              target: 'player',
+              damage: dmg,
+              isTorsoShot: true,
+              hitX: ex,
+              hitY: ey,
+              relHitY: (typeof groundY === 'number') ? (groundY - ey) : 0,
+              weaponId: 'KICK',
+              vx: kickDirX * finalKnockback,
+              vy: Math.min(-2.8, kickDirY * finalKnockback * 0.85),
+              stagger: classStats.spartanStagger || 22
+            });
+          } else if (enemy.isBot && !netState.isHost) {
+            const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+            const bIdx = activeBots.indexOf(enemy);
+            if (bIdx !== -1) {
+              sendDmg({
+                target: 'bot',
+                botIdx: bIdx,
+                damage: dmg,
+                isTorsoShot: true,
+                hitX: ex,
+                hitY: ey,
+                relHitY: (typeof groundY === 'number') ? (groundY - ey) : 0,
+                weaponId: 'KICK',
+                vx: kickDirX * finalKnockback,
+                vy: Math.min(-2.8, kickDirY * finalKnockback * 0.85),
+                stagger: classStats.spartanStagger || 22
+              });
+            }
+          }
+        }
 
         player.hitThisSwing = true;
         triggerScreenShake(6);
@@ -887,8 +939,14 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
   const enemy = player.spartanTarget || findMeleeTarget(player, activeTargets);
 
   if (enemy && !enemy.isDead) {
+    const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+      (deathmatchState && deathmatchState.mode === 'FFA') ||
+      (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+      (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+    if (!isFFA && player.team && enemy.team && player.team === enemy.team) return false;
+
     if ((enemy.spawnProtectionTimer && enemy.spawnProtectionTimer > 0) || (player.spawnProtectionTimer && player.spawnProtectionTimer > 0)) {
-      return;
+      return false;
     }
     const ex = enemy.x + (enemy.w || 24) / 2;
     const ey = enemy.y + (enemy.h || 70) * 0.45;
@@ -921,6 +979,46 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     enemy.isCrouching = false;
     enemy.crouchToggled = false;
     enemy.isProne = false;
+
+    // Synchronizacja Spartan Kick w grze sieciowej
+    const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+    const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+    if (netState && netState.isConnected && typeof sendDmg === 'function') {
+      if (enemy.isRemote) {
+        sendDmg({
+          target: 'player',
+          damage: dmg,
+          isTorsoShot: true,
+          hitX: ex,
+          hitY: ey,
+          relHitY: (typeof groundY === 'number') ? (groundY - ey) : 0,
+          weaponId: 'SPARTAN_KICK',
+          vx: player.facing * 16.5,
+          vy: -4.5,
+          stagger: 120,
+          facing: -player.facing
+        });
+      } else if (enemy.isBot && !netState.isHost) {
+        const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+        const bIdx = activeBots.indexOf(enemy);
+        if (bIdx !== -1) {
+          sendDmg({
+            target: 'bot',
+            botIdx: bIdx,
+            damage: dmg,
+            isTorsoShot: true,
+            hitX: ex,
+            hitY: ey,
+            relHitY: (typeof groundY === 'number') ? (groundY - ey) : 0,
+            weaponId: 'SPARTAN_KICK',
+            vx: player.facing * 16.5,
+            vy: -4.5,
+            stagger: 120,
+            facing: -player.facing
+          });
+        }
+      }
+    }
 
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
@@ -1237,6 +1335,13 @@ export function updatePlayerThrow(p) {
       tAnim.spawned = true;
       const handPos = getThrowHandPosition(p);
       spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+      if (!p.isRemote && !p.isBot) {
+        const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+        const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
+        if (netState && netState.isConnected && typeof sendGrenade === 'function') {
+          sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+        }
+      }
       p.grenadeMaxCooldown = 3.5;
       p.grenadeCooldown = 3.5;
       triggerScreenShake(2.0);

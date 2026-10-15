@@ -6,7 +6,9 @@
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,
@@ -398,6 +400,24 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (shooter && shooter.spawnProtectionTimer && shooter.spawnProtectionTimer > 0)) {
         continue;
       }
+
+      // Ochrona sojuszników przed obrażeniami z własnych granatów w trybie drużynowym (TDM)
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+      if (!isFFA && shooter && shooter !== ch && shooter.team && ch.team && shooter.team === ch.team) {
+        continue;
+      }
+
+      // W trybie sieciowym wybuchy granatów zdalnego gracza oraz granatów botów na maszynie klienta
+      // nie zadają bezpośrednich obrażeń lokalnemu graczowi (ponieważ autorytatywny rzucający / Host wysyła deal_dmg)
+      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+      if (netState && netState.isConnected) {
+        if (shooter && shooter.isRemote && !ch.isRemote) continue;
+        if (!netState.isHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+      }
+
       const factor = Math.max(0, 1 - (dist / radius));
       // 120-150 dmg w centrum ze spadkiem liniowym
       const damage = Math.round(145 * factor);
@@ -415,6 +435,39 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         ch.lastAttackerTimer = 240;
       }
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
+
+      // Synchronizacja obrażeń od wybuchu w grze sieciowej
+      const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+      if (typeof sendDmg === 'function' && netState && netState.isConnected && shooter && !shooter.isRemote) {
+        if (ch.isRemote) {
+          sendDmg({
+            target: 'player',
+            damage: damage,
+            isHeadshot: false,
+            isTorsoShot: true,
+            hitX: chCenterX,
+            hitY: chCenterY,
+            relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
+            weaponId: 'GRENADE'
+          });
+        } else if (ch.isBot && !netState.isHost) {
+          const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+          const bIdx = activeBots.indexOf(ch);
+          if (bIdx !== -1) {
+            sendDmg({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: damage,
+              isHeadshot: false,
+              isTorsoShot: true,
+              hitX: chCenterX,
+              hitY: chCenterY,
+              relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
+              weaponId: 'GRENADE'
+            });
+          }
+        }
+      }
 
       if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;

@@ -1,11 +1,42 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
-import { WEAPONS, shootWeapon } from './weapons.js';
+import { WEAPONS, shootWeapon, spawnBulletSparks } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y } from './world.js';
+import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, resize } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
-import { refreshDeathmatchParticipants } from './deathmatch/index.js';
+import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
+import { triggerCombatFeedBanner } from './ui/combatFeed.js';
+import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
+import { spawnAeroSuperGrenade } from './projectiles.js';
+import {
+  updateUIStatus,
+  updatePingUI,
+  displayHostRoomCode,
+  openMultiplayerModal,
+  closeMultiplayerModal,
+  updateCursorVisibility,
+  isChatActive,
+  openChat,
+  closeChat,
+  addChatMessageToUI,
+  syncMpBotUI,
+  initNetworkUI
+} from './networkUI.js';
+
+export {
+  updateUIStatus,
+  updatePingUI,
+  displayHostRoomCode,
+  openMultiplayerModal,
+  closeMultiplayerModal,
+  updateCursorVisibility,
+  isChatActive,
+  openChat,
+  closeChat,
+  addChatMessageToUI,
+  syncMpBotUI
+};
 
 // =============================================================================
 // ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
@@ -44,15 +75,24 @@ export const networkState = {
   lastBotsStateSent: 0
 };
 
-// =============================================================================
+if (typeof window !== 'undefined') {
+  window.networkState = networkState;
+  window.remotePlayer = remotePlayer;
+}
+
 // =============================================================================
 // PRZYPISANIE DRUŻYNY SIECIOWEJ (CYAN VS ORANGE)
-// Kolor drużyny dotyczy wyłącznie nicku nad postacią sojuszników (brak przemalowywania ubrań)
+// Symetryczne przypisanie: Host = CYAN, Klient = ORANGE
 // =============================================================================
 export function applyTeamVisuals(isHost) {
-  if (!remotePlayer) return;
-  remotePlayer.team = isHost ? 'ORANGE' : 'CYAN';
-  remotePlayer.name = isHost ? 'GRACZ 2' : 'HOST';
+  if (player) {
+    player.team = isHost ? 'CYAN' : 'ORANGE';
+    player.name = isHost ? 'HOST' : 'GRACZ 2';
+  }
+  if (remotePlayer) {
+    remotePlayer.team = isHost ? 'ORANGE' : 'CYAN';
+    remotePlayer.name = isHost ? 'GRACZ 2' : 'HOST';
+  }
 }
 
 // =============================================================================
@@ -298,6 +338,299 @@ export function sendBotShootEvent(botIdx, weaponId, muzzleX, muzzleY, aimAngle) 
   } catch (e) { }
 }
 
+export function sendDamageEvent(damageData) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'deal_dmg',
+      ...damageData
+    });
+  } catch (_) {}
+}
+
+export function sendKillBroadcast(killData) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'kill_event',
+      ...killData
+    });
+  } catch (_) {}
+}
+
+export function sendGrenadeThrow(targetX, targetY, power, originX, originY) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'grenade_throw',
+      x: Math.round(targetX * 10) / 10,
+      y: Math.round(targetY * 10) / 10,
+      relY: Math.round((GROUND_Y - targetY) * 10) / 10,
+      power: Math.round(power * 100) / 100,
+      originX: originX != null ? Math.round(originX * 10) / 10 : null,
+      originY: originY != null ? Math.round(originY * 10) / 10 : null,
+      relOriginY: originY != null ? Math.round((GROUND_Y - originY) * 10) / 10 : null
+    });
+  } catch (_) {}
+}
+
+export function sendDeathmatchSync(dmState) {
+  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'dm_sync',
+      timeRemaining: Math.round(dmState.timeRemaining * 10) / 10,
+      scoreCyan: dmState.teamScores ? (dmState.teamScores[TEAMS.CYAN] || 0) : 0,
+      scoreOrange: dmState.teamScores ? (dmState.teamScores[TEAMS.ORANGE] || 0) : 0,
+      matchEnded: !!dmState.matchEnded,
+      endCelebrationTimer: dmState.endCelebrationTimer || 0
+    });
+  } catch (_) {}
+}
+
+export function sendAcidSurgeSync(acidState) {
+  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'acid_sync',
+      state: acidState.state,
+      timer: Math.round(acidState.timer * 10) / 10,
+      currentY: Math.round(acidState.currentY)
+    });
+  } catch (_) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.sendDamageEvent = sendDamageEvent;
+  window.sendKillBroadcast = sendKillBroadcast;
+  window.sendGrenadeThrow = sendGrenadeThrow;
+  window.sendDeathmatchSync = sendDeathmatchSync;
+  window.sendAcidSurgeSync = sendAcidSurgeSync;
+}
+
+export function applyLocalPlayerDamage(data) {
+  if (!player || player.isDead) return;
+  if (player.spawnProtectionTimer && player.spawnProtectionTimer > 0) return;
+
+  const hitPtX = (typeof data.hitX === 'number') ? data.hitX : (player.x + player.w / 2);
+  const hitPtY = (data.relHitY !== undefined)
+    ? (GROUND_Y - data.relHitY)
+    : ((typeof data.hitY === 'number') ? data.hitY : (player.y + 20));
+
+  const isKick = (data.weaponId === 'KICK' || data.weaponId === 'SPARTAN_KICK');
+  if (isKick) {
+    const isSpartan = (data.weaponId === 'SPARTAN_KICK');
+    player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - (data.damage || 14));
+    player.lastAttacker = remotePlayer;
+    player.lastAttackerTimer = 240;
+    player.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
+    player.staggerLanded = false;
+    player.staggerRecoveryTimer = 0;
+    player.isJumping = true;
+    player.onGround = false;
+    if (typeof data.vx === 'number') {
+      player.vx = data.vx;
+      player.airVx = data.vx;
+    }
+    if (typeof data.vy === 'number') player.vy = data.vy;
+    if (data.facing !== undefined) player.facing = data.facing;
+    player.isCharging = false;
+    player.isShooting = false;
+    player.isSliding = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+    player.isProne = false;
+
+    spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
+    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+    triggerScreenShake(isSpartan ? 12 : 5);
+
+    if (player.hp <= 0 && !player.isDead) {
+      player.isDead = true;
+      player.killer = remotePlayer;
+      player.respawnTimer = 180;
+      triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
+      sendKillBroadcast({
+        killerId: 'remotePlayer',
+        killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+        victimId: 'player',
+        victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2')
+      });
+    }
+    return;
+  }
+
+  let damageMultiplier = 1.0;
+  let helmetAbsorbed = false;
+  let vestAbsorbed = false;
+
+  if (data.isHeadshot) {
+    const hasHelm = !!(player.hasHelmet || player.visuals?.hasHelmet);
+    const hasImmunity = ((player.headshotImmunityTimer || 0) > 0);
+    if (hasImmunity) {
+      damageMultiplier = 0.35;
+      helmetAbsorbed = true;
+      spawnBulletSparks(hitPtX, hitPtY, '#facc15', 5);
+    } else if (hasHelm) {
+      helmetAbsorbed = true;
+      damageMultiplier = 0.40;
+      player.hasHelmet = false;
+      if (player.visuals) player.visuals.hasHelmet = false;
+      player.helmetHits = 0;
+      player.headshotImmunityTimer = 22;
+      spawnKnockedHelmet(hitPtX, hitPtY - 4, (remotePlayer.facing || 1) * 8, -4, player.facing, player.visuals || player.currentClass?.visuals);
+      triggerScreenShake(3.2);
+      spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
+      if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+        window.syncArmorDevButtons();
+      }
+    } else {
+      damageMultiplier = 2.25;
+    }
+  } else if (data.isTorsoShot) {
+    damageMultiplier = 1.25;
+  } else {
+    damageMultiplier = 0.75;
+  }
+
+  let totalDamage = Math.round(data.damage * damageMultiplier);
+
+  if (data.isTorsoShot && (player.hasVest || player.visuals?.hasVest)) {
+    if (player.vestHp === undefined) {
+      player.vestHp = 60;
+      player.vestMaxHp = 60;
+    }
+    if (player.vestHp > 0) {
+      vestAbsorbed = true;
+      spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
+      if (player.vestHp >= totalDamage) {
+        player.vestHp -= totalDamage;
+        totalDamage = 0;
+      } else {
+        totalDamage -= player.vestHp;
+        player.vestHp = 0;
+      }
+      if (player.vestHp <= 0) {
+        player.vestHp = 0;
+        player.hasVest = false;
+        if (player.visuals) player.visuals.hasVest = false;
+        spawnVestShreds(hitPtX, hitPtY, (remotePlayer.facing || 1) * 6, -3, player.visuals?.vestColor || '#18181b');
+        triggerScreenShake(2.5);
+        if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+          window.syncArmorDevButtons();
+        }
+      }
+    }
+  }
+
+  player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - totalDamage);
+  player.lastAttacker = remotePlayer;
+  player.lastAttackerTimer = 240;
+
+  if (data.isHeadshot) {
+    if (!helmetAbsorbed) {
+      spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
+      spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 3, -2, 12, 1.4);
+    }
+    triggerScreenShake(data.weaponId === 'SHOTGUN' ? 4.5 : 2.5);
+  } else {
+    if (!vestAbsorbed) {
+      spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
+      spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, 5, 0.8);
+    }
+    triggerScreenShake(data.weaponId === 'SHOTGUN' ? 2.5 : 1.2);
+  }
+
+  if (player.hp <= 0 && !player.isDead) {
+    player.isDead = true;
+    player.killer = remotePlayer;
+    player.respawnTimer = 180;
+    triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
+    sendKillBroadcast({
+      killerId: 'remotePlayer',
+      killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+      victimId: 'player',
+      victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2')
+    });
+  }
+}
+
+export function applyRemoteBotDamage(data) {
+  if (!networkState.isHost) return;
+  const activeBots = getActiveBots();
+  const b = activeBots[data.botIdx];
+  if (!b || !b.active || b.isDead) return;
+
+  const hitPtX = (typeof data.hitX === 'number') ? data.hitX : (b.x + b.w / 2);
+  const hitPtY = (data.relHitY !== undefined)
+    ? (GROUND_Y - data.relHitY)
+    : ((typeof data.hitY === 'number') ? data.hitY : (b.y + 20));
+
+  const isKick = (data.weaponId === 'KICK' || data.weaponId === 'SPARTAN_KICK');
+  if (isKick) {
+    const isSpartan = (data.weaponId === 'SPARTAN_KICK');
+    b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - (data.damage || 14));
+    b.lastAttacker = remotePlayer;
+    b.lastAttackerTimer = 240;
+    b.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
+    b.staggerLanded = false;
+    b.staggerRecoveryTimer = 0;
+    b.isJumping = true;
+    b.onGround = false;
+    if (typeof data.vx === 'number') {
+      b.vx = data.vx;
+      b.airVx = data.vx;
+    }
+    if (typeof data.vy === 'number') b.vy = data.vy;
+    if (data.facing !== undefined) b.facing = data.facing;
+    b.isCharging = false;
+    b.isShooting = false;
+    b.isSliding = false;
+    b.isCrouching = false;
+    b.isProne = false;
+
+    spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
+    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+
+    if (b.hp <= 0 && !b.isDead) {
+      b.isDead = true;
+      b.killer = remotePlayer;
+      b.respawnTimer = 180;
+      sendKillBroadcast({
+        killerId: 'remotePlayer',
+        killerName: remotePlayer.name || 'GRACZ 2',
+        victimId: b.id || `bot_${data.botIdx + 1}`,
+        victimName: b.name || 'BOT AI'
+      });
+    }
+    return;
+  }
+
+  let dmg = data.damage || 25;
+  if (data.isHeadshot) dmg = Math.round(dmg * 2.25);
+  else if (data.isTorsoShot) dmg = Math.round(dmg * 1.25);
+  else dmg = Math.round(dmg * 0.75);
+
+  b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - dmg);
+  b.lastAttacker = remotePlayer;
+  b.lastAttackerTimer = 240;
+
+  spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 6);
+  spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, 6, 0.9);
+
+  if (b.hp <= 0 && !b.isDead) {
+    b.isDead = true;
+    b.killer = remotePlayer;
+    b.respawnTimer = 180;
+    sendKillBroadcast({
+      killerId: 'remotePlayer',
+      killerName: remotePlayer.name || 'GRACZ 2',
+      victimId: b.id || `bot_${data.botIdx + 1}`,
+      victimName: b.name || 'BOT AI'
+    });
+  }
+}
+
 export function updateRemoteBots(activeBots, groundY) {
   if (!Array.isArray(activeBots) || activeBots.length === 0) return;
   for (const b of activeBots) {
@@ -338,41 +671,6 @@ export function updateRemoteBots(activeBots, groundY) {
       const jetColors = getJetpackFlamePalette(flameCol).particles;
       spawnJetpackSparks(nozzle.x, nozzle.y, b.facing || 1, 3, jetColors, b.vx || 0, b.vy || 0, nozzle.angle);
     }
-  }
-}
-
-export function syncMpBotUI(count = getMpBotCount()) {
-  const c = parseInt(count, 10);
-  const isHost = networkState.isHost || !networkState.isConnected;
-  const layoutDesc = getMpBotLayoutDescription(c);
-
-  document.querySelectorAll('#mp-bot-selector-row button, #mp-connected-bot-selector-row button, #briefing-mp-bot-selector-row button').forEach(btn => {
-    const bCount = parseInt(btn.dataset.mpBots, 10);
-    btn.classList.toggle('active', bCount === c);
-  });
-
-  const noteEl = document.getElementById('mp-bot-info-note');
-  if (noteEl) noteEl.textContent = layoutDesc;
-
-  const briefingNoteEl = document.getElementById('briefing-mp-bot-note');
-  if (briefingNoteEl) briefingNoteEl.textContent = layoutDesc;
-
-  const connectedValEl = document.getElementById('mp-connected-bots-val');
-  if (connectedValEl) {
-    const label = (c === 0) ? '0 (1v1 POJEDYNEK)' : `${c} BOTÓW (${c === 2 ? '2v2' : (c === 4 ? '3v3' : 'ASYSTA')})`;
-    connectedValEl.textContent = isHost ? label : `${label} [ZARZĄDZA HOST]`;
-  }
-
-  const connectedRow = document.getElementById('mp-connected-bots-row');
-  if (connectedRow) {
-    connectedRow.style.display = (networkState.isConnected && isHost) ? 'block' : 'none';
-  }
-
-  const hostDesc = document.getElementById('mp-bot-desc-text');
-  if (hostDesc) {
-    hostDesc.textContent = isHost
-      ? 'Wybierz liczbę botów AI uzupełniających drużyny w meczu sieciowym:'
-      : 'Liczbą botów w sesji zarządza Host gry:';
   }
 }
 
@@ -445,6 +743,31 @@ function handleNetworkData(data) {
         ball.y = (data.ball.relY !== undefined) ? (GROUND_Y - data.ball.relY) : data.ball.y;
         ball.vx = data.ball.vx;
         ball.vy = data.ball.vy;
+      }
+      if (data.deathmatch) {
+        deathmatchState.timeRemaining = data.deathmatch.timeRemaining;
+        deathmatchState.mode = data.deathmatch.mode || deathmatchState.mode;
+        deathmatchState.playerTeam = TEAMS.ORANGE;
+        if (deathmatchState.teamScores) {
+          deathmatchState.teamScores[TEAMS.CYAN] = data.deathmatch.scoreCyan || 0;
+          deathmatchState.teamScores[TEAMS.ORANGE] = data.deathmatch.scoreOrange || 0;
+        }
+      }
+      if (data.acidState && typeof ACID_SURGE_SYSTEM !== 'undefined') {
+        ACID_SURGE_SYSTEM.state = data.acidState.state;
+        ACID_SURGE_SYSTEM.timer = data.acidState.timer;
+        ACID_SURGE_SYSTEM.currentY = data.acidState.currentY;
+      }
+      if (data.clientSpawn && player) {
+        player.x = data.clientSpawn.x;
+        player.y = data.clientSpawn.y;
+        player.facing = data.clientSpawn.facing || -1;
+        player.vx = 0;
+        player.vy = 0;
+        player.team = 'ORANGE';
+      }
+      if (typeof resize === 'function') {
+        resize(player);
       }
       break;
     }
@@ -703,10 +1026,67 @@ function handleNetworkData(data) {
       break;
     }
 
+    case 'deal_dmg': {
+      if (data.target === 'player') {
+        applyLocalPlayerDamage(data);
+      } else if (data.target === 'bot' && networkState.isHost) {
+        applyRemoteBotDamage(data);
+      }
+      break;
+    }
+
+    case 'kill_event': {
+      if (data.victimId === 'player') {
+        triggerCombatFeedBanner('DEATH', data.killerName || 'PRZECIWNIK');
+      } else if (data.killerId === 'player' || (data.killerId === 'remotePlayer' && !networkState.isHost)) {
+        triggerCombatFeedBanner('KILL', data.victimName || 'PRZECIWNIK');
+      }
+      break;
+    }
+
+    case 'grenade_throw': {
+      const originX = (typeof data.originX === 'number') ? data.originX : (remotePlayer.x + remotePlayer.w / 2);
+      const originY = (data.relOriginY !== undefined)
+        ? (GROUND_Y - data.relOriginY)
+        : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
+      const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      spawnAeroSuperGrenade(remotePlayer, data.x, targetY, data.power, originX, originY);
+      break;
+    }
+
+    case 'dm_sync': {
+      if (networkState.isHost) break;
+      deathmatchState.timeRemaining = data.timeRemaining;
+      if (deathmatchState.teamScores) {
+        deathmatchState.teamScores[TEAMS.CYAN] = data.scoreCyan;
+        deathmatchState.teamScores[TEAMS.ORANGE] = data.scoreOrange;
+      }
+      if (data.matchEnded && !deathmatchState.matchEnded) {
+        finishDeathmatch();
+      }
+      break;
+    }
+
+    case 'acid_sync': {
+      if (networkState.isHost) break;
+      if (typeof ACID_SURGE_SYSTEM !== 'undefined') {
+        if (data.state === 'WARNING' && ACID_SURGE_SYSTEM.state === 'CALM') {
+          playAcidSurgeSiren();
+        }
+        ACID_SURGE_SYSTEM.state = data.state;
+        ACID_SURGE_SYSTEM.timer = data.timer;
+        ACID_SURGE_SYSTEM.currentY = data.currentY;
+      }
+      break;
+    }
+
     case 'start_game': {
       closeMultiplayerModal();
       if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
         window.setGameState('PLAYING');
+      }
+      if (typeof resize === 'function') {
+        resize(player);
       }
       break;
     }
@@ -850,8 +1230,14 @@ function setupConnection(conn, isHost) {
     remotePlayer.hp = 100;
     applyTeamVisuals(isHost);
 
-    // Host wysyła inicjalny stan mapy, areny, botów i piłki (z pozycją Y względną do ziemi)
+    // Host wysyła inicjalny stan mapy, areny, botów, hazardów i punktu spawnu klienta
     if (isHost) {
+      const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_SECTOR_X' || activeArenaId === 'ARENA_2_PANDORA');
+      const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
+      const clientSpawn = isA2
+        ? { x: 3470, y: 350, facing: -1 }
+        : (isA3 ? { x: 3800, y: 880, facing: -1 } : { x: 2600, y: GROUND_Y - 70, facing: -1 });
+
       conn.send({
         type: 'init_sync',
         arenaId: activeArenaId,
@@ -863,7 +1249,19 @@ function setupConnection(conn, isHost) {
           relY: GROUND_Y - ball.y,
           vx: ball.vx,
           vy: ball.vy
-        }
+        },
+        deathmatch: {
+          timeRemaining: Math.round(deathmatchState.timeRemaining * 10) / 10,
+          mode: deathmatchState.mode,
+          scoreCyan: deathmatchState.teamScores ? (deathmatchState.teamScores[TEAMS.CYAN] || 0) : 0,
+          scoreOrange: deathmatchState.teamScores ? (deathmatchState.teamScores[TEAMS.ORANGE] || 0) : 0
+        },
+        acidState: isA2 && typeof ACID_SURGE_SYSTEM !== 'undefined' ? {
+          state: ACID_SURGE_SYSTEM.state,
+          timer: Math.round(ACID_SURGE_SYSTEM.timer * 10) / 10,
+          currentY: Math.round(ACID_SURGE_SYSTEM.currentY)
+        } : null,
+        clientSpawn
       });
     }
 
@@ -1080,455 +1478,14 @@ function handleDisconnect(reason) {
 }
 
 // =============================================================================
-// INTERFEJS UŻYTKOWNIKA (UI BINDINGS & HELPERS)
+// INICJALIZACJA PAKIETU SIECIOWEGO
 // =============================================================================
-function updateUIStatus(status, message) {
-  networkState.status = status;
-  networkState.statusMsg = message;
-
-  const dot = document.getElementById('mp-status-dot');
-  const text = document.getElementById('mp-status-text');
-  const pingTag = document.getElementById('mp-ping-tag');
-  const roleVal = document.getElementById('mp-role-val');
-  const setupView = document.getElementById('mp-setup-view');
-  const connectedView = document.getElementById('mp-connected-view');
-  const topBadge = document.getElementById('mp-open-btn');
-
-  if (dot) {
-    dot.className = 'mp-status-dot';
-    if (status === 'connected') dot.classList.add('dot-green');
-    else if (status === 'hosting' || status === 'connecting') dot.classList.add('dot-yellow');
-    else dot.classList.add('dot-red');
-  }
-
-  if (text) text.textContent = message.toUpperCase();
-
-  if (topBadge) {
-    if (status === 'connected') {
-      topBadge.textContent = 'MULTI (ON)';
-      topBadge.style.borderColor = '#4ade80';
-      topBadge.style.color = '#4ade80';
-    } else if (status === 'hosting' || status === 'connecting') {
-      topBadge.textContent = 'MULTI (...)';
-      topBadge.style.borderColor = '#facc15';
-      topBadge.style.color = '#facc15';
-    } else {
-      topBadge.textContent = 'MULTI';
-      topBadge.style.borderColor = 'rgba(0, 229, 255, 0.5)';
-      topBadge.style.color = '#00e5ff';
-    }
-  }
-
-  if (status === 'connected') {
-    if (setupView) setupView.style.display = 'none';
-    if (connectedView) connectedView.style.display = 'block';
-    if (pingTag) pingTag.style.display = 'inline-block';
-    if (roleVal) {
-      roleVal.textContent = networkState.isHost ? 'HOST (Baza Cyan / Władca Fizyki)' : 'KLIENT (Baza Orange)';
-      roleVal.style.color = networkState.isHost ? '#00e5ff' : '#f97316';
-    }
-  } else {
-    if (setupView) setupView.style.display = 'block';
-    if (connectedView) connectedView.style.display = 'none';
-    if (pingTag) pingTag.style.display = 'none';
-  }
-}
-
-function updatePingUI(ping) {
-  const pingTag = document.getElementById('mp-ping-tag');
-  const livePing = document.getElementById('mp-live-ping');
-  const str = `${ping} ms`;
-  if (pingTag) pingTag.textContent = str;
-  if (livePing) livePing.textContent = str;
-}
-
-function displayHostRoomCode(id) {
-  const hostInit = document.getElementById('mp-host-start-row');
-  const hostInfo = document.getElementById('mp-host-info-row');
-  const codeVal = document.getElementById('mp-host-code-val');
-
-  if (hostInit) hostInit.style.display = 'none';
-  if (hostInfo) hostInfo.style.display = 'block';
-  if (codeVal) codeVal.textContent = id;
-}
-
-export function openMultiplayerModal() {
-  const modal = document.getElementById('mp-modal');
-  if (modal) modal.classList.remove('mp-modal-hidden');
-  updateCursorVisibility();
-}
-
-export function closeMultiplayerModal() {
-  const modal = document.getElementById('mp-modal');
-  if (modal) modal.classList.add('mp-modal-hidden');
-  updateCursorVisibility();
-}
-
-// =============================================================================
-// ZARZĄDZANIE WIDOCZNOŚCIĄ KURSORA (DEV MENU / MULTI / CZAT)
-// =============================================================================
-let isHoveringUI = false;
-
-export function updateCursorVisibility() {
-  const gameContainer = document.getElementById('game-container');
-  const canvasEl = document.getElementById('game');
-  const mpModal = document.getElementById('mp-modal');
-  const devMenu = document.getElementById('dev-menu');
-
-  const isMpOpen = mpModal && !mpModal.classList.contains('mp-modal-hidden');
-  const isDevOpen = devMenu && !devMenu.classList.contains('dev-menu-hidden');
-  const isChatOpen = !!isChatActive;
-  const isNotInGame = (typeof window !== 'undefined' && window.GAME_STATE && window.GAME_STATE.current !== 'PLAYING');
-
-  const showCursor = isMpOpen || isDevOpen || isChatOpen || isHoveringUI || isNotInGame;
-
-  if (gameContainer) {
-    if (showCursor) {
-      gameContainer.classList.add('cursor-visible');
-    } else {
-      gameContainer.classList.remove('cursor-visible');
-    }
-  }
-  if (canvasEl) {
-    canvasEl.style.cursor = showCursor ? 'default' : 'none';
-  }
-}
-
-// =============================================================================
-// SYSTEM CZATU TEKSTOWEGO ONLINE (KLAWISZ "T")
-// =============================================================================
-export let isChatActive = false;
-
-function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  })[m]);
-}
-
-export function addChatMessageToUI(sender, text, color = '#00e5ff') {
-  const chatMessages = document.getElementById('chat-messages');
-  const chatContainer = document.getElementById('game-chat');
-  if (!chatMessages) return;
-
-  const msgEl = document.createElement('div');
-  msgEl.className = 'chat-msg';
-  msgEl.style.borderLeftColor = color;
-  msgEl.innerHTML = `<span class="chat-sender" style="color: ${color}">[${escapeHtml(sender)}]:</span><span class="chat-text">${escapeHtml(text)}</span>`;
-
-  chatMessages.appendChild(msgEl);
-
-  // Ogranicz do ostatnich 20 wiadomości w historii
-  while (chatMessages.children.length > 20) {
-    chatMessages.removeChild(chatMessages.firstChild);
-  }
-
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Odśwież widoczność czatu dla nowej wiadomości
-  if (chatContainer) {
-    chatContainer.style.opacity = '1';
-  }
-
-  // Płynne wygaszenie po 7 sekundach
-  setTimeout(() => {
-    msgEl.classList.add('msg-fading');
-  }, 7000);
-}
-
-export function sendChatMessage(text) {
-  if (!text || !text.trim()) return;
-  text = text.trim();
-
-  const myName = networkState.isHost ? 'P1 (TY)' : (networkState.isConnected ? 'P2 (TY)' : 'TY');
-  const myColor = networkState.isHost ? '#00e5ff' : '#f97316';
-
-  if (networkState.conn && networkState.isConnected) {
-    try {
-      networkState.conn.send({
-        type: 'chat_msg',
-        text: text,
-        sender: networkState.isHost ? 'P1' : 'P2',
-        color: networkState.isHost ? '#00e5ff' : '#f97316'
-      });
-    } catch (e) {
-      console.warn('[P2P] Send chat error:', e);
-    }
-  }
-
-  addChatMessageToUI(myName, text, myColor);
-}
-
-export function openChat() {
-  const chatContainer = document.getElementById('game-chat');
-  const chatInput = document.getElementById('chat-input');
-  if (!chatContainer || !chatInput) return;
-
-  isChatActive = true;
-  chatContainer.classList.remove('chat-hidden');
-  chatContainer.style.opacity = '1';
-
-  // Przywróć pełną widoczność wszystkich ostatnich wiadomości
-  const msgs = chatContainer.querySelectorAll('.chat-msg');
-  msgs.forEach((m) => m.classList.remove('msg-fading'));
-
-  chatInput.value = '';
-  setTimeout(() => {
-    chatInput.focus();
-    chatInput.select();
-  }, 10);
-
-  updateCursorVisibility();
-}
-
-export function closeChat() {
-  const chatContainer = document.getElementById('game-chat');
-  const chatInput = document.getElementById('chat-input');
-  if (!chatContainer) return;
-
-  isChatActive = false;
-  chatContainer.classList.add('chat-hidden');
-  if (chatInput) {
-    chatInput.value = '';
-    chatInput.blur();
-  }
-
-  updateCursorVisibility();
-}
-
-function initChatUI() {
-  const chatInput = document.getElementById('chat-input');
-  const chatWrapper = document.getElementById('chat-input-wrapper');
-  const sendBtn = document.getElementById('chat-send-btn');
-  const closeChatBtn = document.getElementById('chat-close-btn');
-  const mobileChatBtn = document.getElementById('mobile-chat-btn');
-  if (!chatInput) return;
-
-  let isInteractingWithChatControls = false;
-  const preventBlurControls = [sendBtn, closeChatBtn, mobileChatBtn].filter(Boolean);
-  preventBlurControls.forEach((btn) => {
-    btn.addEventListener('pointerdown', (e) => {
-      isInteractingWithChatControls = true;
-      e.stopPropagation();
-    });
-    btn.addEventListener('touchstart', (e) => {
-      isInteractingWithChatControls = true;
-      e.stopPropagation();
-    }, { passive: false });
-    btn.addEventListener('pointerup', () => {
-      setTimeout(() => { isInteractingWithChatControls = false; }, 300);
-    });
-    btn.addEventListener('touchend', () => {
-      setTimeout(() => { isInteractingWithChatControls = false; }, 300);
-    });
-  });
-
-  if (chatWrapper) {
-    chatWrapper.addEventListener('mousedown', (e) => e.stopPropagation());
-    chatWrapper.addEventListener('pointerdown', (e) => e.stopPropagation());
-    chatWrapper.addEventListener('touchstart', (e) => e.stopPropagation());
-  }
-
-  const handleSend = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    const text = chatInput.value.trim();
-    if (text) {
-      sendChatMessage(text);
-    }
-    closeChat();
-  };
-
-  const handleClose = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    closeChat();
-  };
-
-  const handleMobileToggle = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    if (isChatActive) {
-      closeChat();
-    } else {
-      openChat();
-    }
-  };
-
-  if (sendBtn) {
-    sendBtn.addEventListener('click', handleSend);
-    sendBtn.addEventListener('touchend', handleSend);
-  }
-
-  if (closeChatBtn) {
-    closeChatBtn.addEventListener('click', handleClose);
-    closeChatBtn.addEventListener('touchend', handleClose);
-  }
-
-  if (mobileChatBtn) {
-    mobileChatBtn.addEventListener('click', handleMobileToggle);
-    mobileChatBtn.addEventListener('touchend', handleMobileToggle);
-  }
-
-  chatInput.addEventListener('keydown', (e) => {
-    e.stopPropagation(); // Blokuj propagację do silnika gry!
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSend();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      handleClose();
-    }
-  });
-
-  chatInput.addEventListener('keyup', (e) => e.stopPropagation());
-  chatInput.addEventListener('keypress', (e) => e.stopPropagation());
-
-  chatInput.addEventListener('blur', () => {
-    setTimeout(() => {
-      if (isChatActive && !isInteractingWithChatControls) {
-        closeChat();
-      }
-    }, 250);
-  });
-}
-
 export function initNetwork() {
-  // Przycisk otwierający w nagłówku
-  const openBtn = document.getElementById('mp-open-btn');
-  if (openBtn) openBtn.onclick = () => openMultiplayerModal();
-
-  // Przycisk otwierający w menu DEV
-  const devMpBtn = document.getElementById('dev-mp-btn');
-  if (devMpBtn) devMpBtn.onclick = () => openMultiplayerModal();
-
-  // Przycisk zamykający
-  const closeBtn = document.getElementById('mp-close-btn');
-  if (closeBtn) closeBtn.onclick = () => closeMultiplayerModal();
-
-  const backdrop = document.getElementById('mp-backdrop');
-  if (backdrop) backdrop.onclick = () => closeMultiplayerModal();
-
-  // Przycisk tworzenia pokoju (Host)
-  const hostBtn = document.getElementById('mp-host-btn');
-  if (hostBtn) hostBtn.onclick = () => hostRoom();
-
-  // Kopiowanie kodu pokoju
-  const copyCodeBtn = document.getElementById('mp-copy-code-btn');
-  if (copyCodeBtn) {
-    copyCodeBtn.onclick = () => {
-      if (networkState.roomId) {
-        navigator.clipboard.writeText(networkState.roomId).then(() => {
-          copyCodeBtn.textContent = 'SKOPIOWANO!';
-          setTimeout(() => { copyCodeBtn.textContent = 'KOPIUJ KOD'; }, 2000);
-        });
-      }
-    };
-  }
-
-  // Kopiowanie linku z zaproszeniem
-  const copyLinkBtn = document.getElementById('mp-copy-link-btn');
-  if (copyLinkBtn) {
-    copyLinkBtn.onclick = () => {
-      if (networkState.roomId) {
-        const url = `${window.location.origin}${window.location.pathname}?room=${networkState.roomId}`;
-        navigator.clipboard.writeText(url).then(() => {
-          copyLinkBtn.textContent = 'LINK SKOPIOWANY';
-          setTimeout(() => { copyLinkBtn.textContent = 'KOPIUJ LINK'; }, 2500);
-        });
-      }
-    };
-  }
-
-  // Dołączanie do pokoju
-  const joinBtn = document.getElementById('mp-join-btn');
-  const joinInput = document.getElementById('mp-join-input');
-  if (joinBtn && joinInput) {
-    joinBtn.onclick = () => {
-      const code = joinInput.value.trim();
-      if (code) joinRoom(code);
-    };
-    joinInput.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        const code = joinInput.value.trim();
-        if (code) joinRoom(code);
-      }
-    };
-  }
-
-  // Wejście / start gry w trybie sieciowym
-  const launchGameBtn = document.getElementById('mp-launch-game-btn');
-  if (launchGameBtn) {
-    launchGameBtn.onclick = () => {
-      if (networkState.conn && networkState.isConnected) {
-        try { networkState.conn.send({ type: 'start_game' }); } catch (_) {}
-      }
-      closeMultiplayerModal();
-      if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
-        window.setGameState('PLAYING');
-      }
-    };
-  }
-
-  // Rozłączenie gry
-  const disconnectBtn = document.getElementById('mp-disconnect-btn');
-  if (disconnectBtn) {
-    disconnectBtn.onclick = () => disconnectNetwork();
-  }
-
-  // Inicjalizacja czatu tekstowego
-  initChatUI();
-
-  // Nasłuchiwanie najechania kursorem na panele UI
-  const bindHover = (elId) => {
-    const el = document.getElementById(elId);
-    if (el) {
-      el.addEventListener('mouseenter', () => { isHoveringUI = true; updateCursorVisibility(); });
-      el.addEventListener('mouseleave', () => { isHoveringUI = false; updateCursorVisibility(); });
-    }
-  };
-
-  bindHover('dev-panel-container');
-  bindHover('mp-modal');
-  bindHover('game-chat');
-
-  // Monitorowanie przycisku przełączania menu DEV
-  const devToggleBtn = document.getElementById('dev-toggle-btn');
-  if (devToggleBtn) {
-    devToggleBtn.addEventListener('click', () => {
-      setTimeout(updateCursorVisibility, 50);
-    });
-  }
-
-  // Auto-connect jeśli w adresie URL przekazano ?room=... lub ?join=...
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetRoom = urlParams.get('room') || urlParams.get('join');
-    if (targetRoom) {
-      openMultiplayerModal();
-      if (joinInput) joinInput.value = targetRoom;
-      setTimeout(() => {
-        joinRoom(targetRoom);
-      }, 500);
-    }
-  } catch (e) { }
-
-  // Obsługa wyboru liczby botów w grze sieciowej (0-4)
-  document.querySelectorAll('#mp-bot-selector-row button, #mp-connected-bot-selector-row button, #briefing-mp-bot-selector-row button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (networkState.isConnected && !networkState.isHost) return;
-      const count = parseInt(btn.dataset.mpBots, 10);
-      broadcastMpBotCount(count);
-    });
+  initNetworkUI({
+    hostRoom,
+    joinRoom,
+    disconnectNetwork,
+    broadcastMpBotCount
   });
 
   if (typeof window !== 'undefined') {
@@ -1536,8 +1493,5 @@ export function initNetwork() {
     window.broadcastMpBotCount = broadcastMpBotCount;
     window.syncMpBotUI = syncMpBotUI;
   }
-
-  syncMpBotUI(getMpBotCount());
-
-  updateCursorVisibility();
 }
+

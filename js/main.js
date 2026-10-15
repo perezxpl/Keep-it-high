@@ -57,6 +57,7 @@ import {
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch } from './deathmatch/index.js';
+import { checkMatchWin, updateMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
   editorState,
@@ -254,10 +255,20 @@ export function startRound() {
   if (player) {
     player.hp = player.maxHp || player.currentClass?.stats?.hp || 100;
     player.isDead = false;
+    player.ragdoll = null;
+    player.staggerTimer = 0;
   }
-  if (bot && bot.active) {
-    bot.hp = bot.maxHp || bot.currentClass?.stats?.hp || 100;
-    bot.isDead = false;
+  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+  for (const b of activeBots) {
+    if (b.active) {
+      b.hp = b.maxHp || b.currentClass?.stats?.hp || 100;
+      b.isDead = false;
+      b.isAcidDying = false;
+      if (b.acidDeath) b.acidDeath.active = false;
+      b.ragdoll = null;
+      b.staggerTimer = 0;
+      b.respawnTimer = 0;
+    }
   }
   resetBallToPlayer(player, GROUND_Y);
 }
@@ -544,6 +555,8 @@ function update() {
       }
       checkObstacleCollisions(ball, effectiveGroundY, null, null);
     }
+    checkMatchWin(activeArenaId, arenaScore);
+    updateMatchWinState(arenaScore);
   } else {
     // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
     if (ball.active) {
@@ -986,9 +999,10 @@ if (typeof window !== 'undefined') {
       setGameState('ARENA_SELECT');
     },
     onSelectArena: (arenaId, classId) => {
+      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [bot];
       try {
         if (typeof window.switchArena === 'function') {
-          window.switchArena(arenaId);
+          window.switchArena(arenaId, player, activeBots, ball);
         }
       } catch (err) {
         console.error('[ARENA SWITCH ERROR]', err);

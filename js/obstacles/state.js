@@ -33,7 +33,7 @@ import arena2, {
   ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
-import { initDeathmatch, resetDeathmatchState } from '../deathmatch/index.js';
+import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
 
 export {
@@ -464,14 +464,22 @@ export function resetArena() {
       _activePlayer.isIntro = false;
       _activePlayer.gaitMode = 'IDLE';
     }
-    if (_activeBot) {
-      _activeBot.x = 3360;
-      _activeBot.y = 580;
-      _activeBot.vx = 0;
-      _activeBot.vy = 0;
-      _activeBot.facing = -1;
-      _activeBot.gaitMode = 'IDLE';
-    }
+    const botsList = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+      ? window.getActiveBots()
+      : (_activeBot ? [_activeBot] : []);
+
+    botsList.forEach((b, idx) => {
+      const isCyan = (b.team === 'CYAN');
+      const baseX = isCyan
+        ? 240 + ((Math.floor(idx / 2) + 1) * 60)
+        : 3360 - ((Math.floor(idx / 2) + 1) * 60);
+      b.x = baseX;
+      b.y = 580;
+      b.vx = 0;
+      b.vy = 0;
+      b.facing = isCyan ? 1 : -1;
+      b.gaitMode = 'IDLE';
+    });
   }
 }
 
@@ -540,11 +548,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   const targetBot = botObj || _activeBot;
   const getBotsList = () => {
     if (Array.isArray(botObj)) return botObj;
-    if (botObj) return [botObj];
     if (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') {
       const wBots = window.getActiveBots();
       if (Array.isArray(wBots) && wBots.length > 0) return wBots;
     }
+    if (botObj) return [botObj];
     return targetBot ? [targetBot] : [];
   };
   const activeBots = getBotsList();
@@ -562,11 +570,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 1130;
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const spawnIdx = isClient ? 1 : 0;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3800 : 600);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (isClient ? 880 : 1130);
       playerObj.vx = 0;
       playerObj.vy = 0;
-      playerObj.facing = 1;
+      playerObj.facing = isClient ? -1 : 1;
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
@@ -578,13 +588,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
+    // Inicjalizacja sesji Deathmatch (przypisanie drużyn i zbalansowanie klas) przed ustawieniem współrzędnych
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
     activeBots.forEach((b, idx) => {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
-      if (rPlayer) {
-        b.team = (idx % 2 === 0) ? 'CYAN' : 'ORANGE';
-      }
       const isCyan = (b.team === 'CYAN');
       const baseSpawnX = isCyan
         ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600) + ((Math.floor(idx / 2) + 1) * 60)
@@ -606,9 +616,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = false;
     }
-
-    // Inicjalizacja 5-minutowego Deathmatch na Arenie 3 (Militarna Dżungla)
-    initDeathmatch(playerObj, activeBots, rPlayer);
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     GOALS.length = 0; // W Sektorze X brak bramek i piłki - 5-minutowy Deathmatch
     arena1State.waitingForKickoff = false;
@@ -618,11 +625,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 520;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 390;
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const spawnIdx = isClient ? 1 : 0;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3470 : 520);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : 390;
       playerObj.vx = 0;
       playerObj.vy = 0;
-      playerObj.facing = 1;
+      playerObj.facing = isClient ? -1 : 1;
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
@@ -632,22 +641,35 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
+
+    // Inicjalizacja 5-minutowego Deathmatch na Arenie 2 przed kalkulacją spawnów (żeby sojusznicy i wrogowie mieli prawidłowe pozycje)
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
     activeBots.forEach((b, idx) => {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
-      if (rPlayer) {
-        b.team = (idx % 2 === 0) ? 'CYAN' : 'ORANGE';
-      }
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA');
       const isCyan = (b.team === 'CYAN');
-      const s = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) || { x: 520, y: 390, facing: 1 })
-        : ((currentArena.spawns && currentArena.spawns[1]) || { x: 3080, y: 390, facing: -1 });
-      b.x = s.x + (isCyan ? ((Math.floor(idx / 2) + 1) * 60) : -((Math.floor(idx / 2) + 1) * 60));
-      b.y = s.y;
+      let s;
+      if (isFFA && currentArena.spawns && currentArena.spawns.length > 2) {
+        const spawnIdx = ((idx + 1) % (currentArena.spawns.length - 1)) + 1;
+        s = currentArena.spawns[spawnIdx] || currentArena.spawns[1];
+        b.x = s.x;
+        b.y = s.y;
+        b.facing = s.facing || (b.x < 2000 ? 1 : -1);
+      } else {
+        s = isCyan
+          ? ((currentArena.spawns && currentArena.spawns[0]) || { x: 520, y: 390, facing: 1 })
+          : ((currentArena.spawns && currentArena.spawns[1]) || { x: 3080, y: 390, facing: -1 });
+        b.x = s.x + (isCyan ? ((Math.floor(idx / 2) + 1) * 60) : -((Math.floor(idx / 2) + 1) * 60));
+        b.y = s.y;
+        b.facing = s.facing || (isCyan ? 1 : -1);
+      }
       b.vx = 0;
       b.vy = 0;
-      b.facing = s.facing || (isCyan ? 1 : -1);
       b.isJumping = false;
       b.isSliding = false;
       b.isDead = false;

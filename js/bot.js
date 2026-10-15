@@ -13,7 +13,7 @@ import { getJetpackFlamePalette } from './player/jetpack.js';
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
 import { ARENA_2_CONFIG, ACID_SURGE_SYSTEM } from './arenas/arena2.js';
 import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
-import { deathmatchState } from './deathmatch/state.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/state.js';
 import { camera } from './camera.js';
 import { W, H } from './world/state.js';
 
@@ -127,8 +127,8 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
   const bList = Array.isArray(activeBotsList) ? activeBotsList : getActiveBots();
   if (!bList || bList.length === 0) return;
 
-  const curMode = mode || (deathmatchState && deathmatchState.active ? deathmatchState.mode : 'TDM');
-  const isFFA = (curMode === 'FFA');
+  const curMode = mode || (deathmatchState && deathmatchState.active ? deathmatchState.mode : deathmatchConfig?.mode || 'TDM');
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) || (curMode === 'FFA');
 
   const pClassRaw = (humanPlayer?.currentClass?.id || 'RAPTOR').toUpperCase();
   const pClassId = (pClassRaw === 'AERO') ? 'RAPTOR' : ((pClassRaw === 'PLAYMAKER' || pClassRaw === 'SWEEPER') ? 'STRIKER' : pClassRaw);
@@ -269,14 +269,25 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
   return closestTopY < Infinity ? closestTopY : 1000;
 }
 
-export function createBotInstance(index = 0) {
+export function getStoredSinglePlayerBotCount() {
+  try {
+    const stored = localStorage.getItem('kih_bot_count_v1');
+    if (stored !== null && stored !== undefined) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 1 && parsed <= 5) return parsed;
+    }
+  } catch (_) {}
+  return 1;
+}
+
+export function createBotInstance(index = 0, isActive = true) {
   const profile = BOT_PROFILES[index % BOT_PROFILES.length];
   const botClass = (CLASSES && CLASSES[profile.classKey]) ? CLASSES[profile.classKey] : (CLASSES?.STRIKER || CLASSES?.RAPTOR);
   const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false, slide: false };
 
   const instance = createPlayerInstance({
     isBot: true,
-    active: (index === 0),
+    active: isActive,
     frozen: false,
     team: profile.team || 'ORANGE',
     facing: profile.facing || -1,
@@ -329,27 +340,40 @@ export function createBotInstance(index = 0) {
 /**
  * Główna instancja bota (Bot 1) dla 100% kompatybilności wstecznej
  */
-export const bot = createBotInstance(0);
+export const bot = createBotInstance(0, true);
 
 /**
  * Tablica wszystkich instancji botów
  */
 export const bots = [bot];
 
-export let botCount = 1;
+export let botCount = getStoredSinglePlayerBotCount();
+
+// Natychmiastowa inicjalizacja instancji botów pod kątem zapisanego stanu
+while (bots.length < botCount) {
+  bots.push(createBotInstance(bots.length, true));
+}
+for (let i = 0; i < bots.length; i++) {
+  bots[i].active = (i < botCount);
+}
 
 export function setBotCount(count, options = {}) {
   const parsed = parseInt(count, 10);
   const num = Math.max(0, Math.min(5, isNaN(parsed) ? 1 : parsed));
   botCount = num;
   while (bots.length < num) {
-    bots.push(createBotInstance(bots.length));
+    bots.push(createBotInstance(bots.length, true));
   }
   for (let i = 0; i < bots.length; i++) {
     bots[i].active = (i < num);
     if (i >= num) {
       bots[i].isDead = false;
       bots[i].hp = 0;
+    } else {
+      bots[i].isDead = false;
+      if (bots[i].hp <= 0) {
+        bots[i].hp = bots[i].maxHp || bots[i].currentClass?.stats?.hp || 100;
+      }
     }
   }
   if (!options.isRemote && !options.skipStorage) {
@@ -360,6 +384,11 @@ export function setBotCount(count, options = {}) {
   if (num > 0) {
     balanceBotClasses(player, bots.slice(0, num));
   }
+  if (typeof window !== 'undefined' && window.deathmatchState && window.deathmatchState.active) {
+    if (typeof window.refreshDeathmatchParticipants === 'function') {
+      window.refreshDeathmatchParticipants(player, getActiveBots(), window.remotePlayer);
+    }
+  }
   return botCount;
 }
 
@@ -369,7 +398,9 @@ export function getBotCount() {
     if (stored !== null && stored !== undefined) {
       const parsed = parseInt(stored, 10);
       if (parsed >= 0 && parsed <= 5) {
-        botCount = parsed;
+        if (botCount !== parsed) {
+          setBotCount(parsed, { skipStorage: true });
+        }
         return parsed;
       }
     }
@@ -380,20 +411,14 @@ export function getBotCount() {
 export function getActiveBots() {
   if (botCount === 0) return [];
   while (bots.length < botCount) {
-    bots.push(createBotInstance(bots.length));
+    bots.push(createBotInstance(bots.length, true));
   }
-  return bots.slice(0, botCount).filter(b => b.active);
-}
-
-export function getStoredSinglePlayerBotCount() {
-  try {
-    const stored = localStorage.getItem('kih_bot_count_v1');
-    if (stored !== null && stored !== undefined) {
-      const parsed = parseInt(stored, 10);
-      if (parsed >= 1 && parsed <= 5) return parsed;
+  for (let i = 0; i < botCount; i++) {
+    if (bots[i]) {
+      bots[i].active = true;
     }
-  } catch (_) {}
-  return 1;
+  }
+  return bots.slice(0, botCount).filter(b => b && b.active);
 }
 
 export function getMpBotCount() {
@@ -577,7 +602,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Wyszukanie wrogiego celu do ataku (z pamięcią celu na ~14-20 klatek, unikając skanowania O(N^2) co klatkę)
-  const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+    (typeof deathmatchState !== 'undefined' && deathmatchState.mode === 'FFA') ||
+    (typeof deathmatchConfig !== 'undefined' && deathmatchConfig.mode === 'FFA') ||
+    (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
   botTarget._targetScanTimer = (botTarget._targetScanTimer || 0) - 1;
   let targetEnemy = botTarget._lockedTarget;
 
@@ -615,7 +643,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     botTarget._lockedTarget = targetEnemy;
   }
 
-  const meleeTargets = targetEnemy ? [targetEnemy] : (humanPlayer ? [humanPlayer] : []);
+  const meleeTargets = targetEnemy ? [targetEnemy] : [];
 
   // Obsługa stanu śmierci oraz rozpuszczania w kwasie
   if (botTarget.isDead || botTarget.isAcidDying || (botTarget.acidDeath && botTarget.acidDeath.active)) {
@@ -705,15 +733,31 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const distToEnemy = targetEnemy ? Math.hypot((targetEnemy.x + targetEnemy.w / 2) - botCenterX, (targetEnemy.y + targetEnemy.h / 2) - botCenterY) : Infinity;
 
   if (!isA1) {
+    const curWepId = botTarget.currentWeapon?.id || 'AK47';
     if (isRaptor) {
-      // Raptor: zwiadowca z karabinem wyborowym, przełączający na AK-47 tylko w zwarciu
-      botTarget.currentWeapon = (distToEnemy <= 220) ? WEAPONS.AK47 : WEAPONS.SNIPER;
+      // Raptor: karabin wyborowy z histerezą (zbliżenie <= 180px -> AK-47, oddalenie >= 250px -> SNIPER)
+      if (curWepId === 'SNIPER' && distToEnemy <= 180) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId !== 'SNIPER' && distToEnemy >= 250) {
+        botTarget.currentWeapon = WEAPONS.SNIPER;
+      }
     } else if (isEnforcer) {
-      // Enforcer: kolos bojowy preferujący strzelbę z bliska i w średnim dystansie
-      botTarget.currentWeapon = (distToEnemy <= 260) ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+      // Enforcer: strzelba w zwarciu (oddalenie >= 300px -> AK-47, zbliżenie <= 220px -> SHOTGUN)
+      if (curWepId === 'SHOTGUN' && distToEnemy >= 300) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId !== 'SHOTGUN' && distToEnemy <= 220) {
+        botTarget.currentWeapon = WEAPONS.SHOTGUN;
+      }
     } else {
-      // Striker: szturmowiec z karabinkiem, błyskawicznie dobywający strzelby w szarży z dasha
-      botTarget.currentWeapon = (distToEnemy <= 160) ? WEAPONS.SHOTGUN : (distToEnemy > 480 ? WEAPONS.SNIPER : WEAPONS.AK47);
+      // Striker: karabinek uniwersalny (szarża <= 140px -> SHOTGUN, wycofanie >= 210px -> AK-47, daleki dystans > 520px -> SNIPER, powrót < 440px -> AK-47)
+      if (curWepId === 'SHOTGUN' && distToEnemy >= 210) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId === 'SNIPER' && distToEnemy < 440) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId === 'AK47') {
+        if (distToEnemy <= 140) botTarget.currentWeapon = WEAPONS.SHOTGUN;
+        else if (distToEnemy > 520) botTarget.currentWeapon = WEAPONS.SNIPER;
+      }
     }
   }
 
@@ -1158,11 +1202,14 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
       const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
 
-      let angleDiff = Math.abs(currentAimAngle - angleToEnemy);
+      let angleDiff = Math.abs(currentAimAngle - finalAimAngle);
       while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-      const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
-      const isAimedAtEnemy = angleDiff <= toleranceRad;
+      let directDiff = Math.abs(currentAimAngle - angleToEnemy);
+      while (directDiff > Math.PI) directDiff = Math.abs(directDiff - Math.PI * 2);
+
+      const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 10 : 16) * (Math.PI / 180);
+      const isAimedAtEnemy = (angleDiff <= toleranceRad) || (directDiff <= toleranceRad);
 
       if (isAimedAtEnemy) {
         if (!botTarget._aimLocked) {

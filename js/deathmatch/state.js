@@ -49,9 +49,14 @@ export const deathmatchConfig = {
   killLimit: 20 // Opcjonalny pułap fragów
 };
 
+export function isDeathmatchFFA() {
+  return deathmatchState.mode === DEATHMATCH_MODES.FFA || deathmatchConfig.mode === DEATHMATCH_MODES.FFA;
+}
+
 export function setDeathmatchMode(mode) {
   if (mode === DEATHMATCH_MODES.TDM || mode === DEATHMATCH_MODES.FFA) {
     deathmatchConfig.mode = mode;
+    deathmatchState.mode = mode;
     try { localStorage.setItem(STORAGE_KEY_MODE, mode); } catch (_) {}
   }
 }
@@ -59,14 +64,15 @@ export function setDeathmatchMode(mode) {
 export function setDeathmatchPlayerTeam(team) {
   if (team === TEAMS.CYAN || team === TEAMS.ORANGE) {
     deathmatchConfig.playerTeam = team;
+    deathmatchState.playerTeam = team;
     try { localStorage.setItem(STORAGE_KEY_TEAM, team); } catch (_) {}
   }
 }
 
 export const deathmatchState = {
   active: false,
-  mode: DEATHMATCH_MODES.TDM,
-  playerTeam: TEAMS.CYAN,
+  mode: deathmatchConfig.mode,
+  playerTeam: deathmatchConfig.playerTeam,
   timeRemaining: DEATHMATCH_DURATION, // Sekundy (odliczanie 300 -> 0)
   matchEnded: false,
   endCelebrationTimer: 0,
@@ -102,4 +108,10 @@ export function resetDeathmatchState() {
   deathmatchState.teamScores[TEAMS.ORANGE] = 0;
   deathmatchState.participants.length = 0;
   deathmatchState.leaderboard.length = 0;
+}
+
+if (typeof window !== 'undefined') {
+  window.deathmatchState = deathmatchState;
+  window.deathmatchConfig = deathmatchConfig;
+  window.isDeathmatchFFA = isDeathmatchFFA;
 }
