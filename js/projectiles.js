@@ -8,6 +8,7 @@ import { getActiveArena } from './arenas/index.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,
@@ -401,8 +402,10 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       }
 
       // Ochrona sojuszników przed obrażeniami z własnych granatów w trybie drużynowym (TDM)
-      const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
-      const isFFA = (dm && dm.active && dm.mode === 'FFA');
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
       if (!isFFA && shooter && shooter !== ch && shooter.team && ch.team && shooter.team === ch.team) {
         continue;
       }

@@ -8,6 +8,7 @@ import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade } from '../projectiles.js';
 import { getActiveBots } from '../bot.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -135,8 +136,10 @@ export function findMeleeTarget(p, potentialTargets) {
   for (const t of targets) {
     if (!t || t === p || t.isDead) continue;
     // Ochrona sojuszników przed atakami wręcz w trybie drużynowym (TDM)
-    const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
-    const isFFA = (dm && dm.active && dm.mode === 'FFA');
+    const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+      (deathmatchState && deathmatchState.mode === 'FFA') ||
+      (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+      (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
     if (!isFFA && p.team && t.team && p.team === t.team) continue;
     const targetX = t.x + (t.w || 24) / 2;
     const targetY = t.y + (t.h || 70) - 40;
@@ -512,8 +515,10 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
     const targetList = Array.isArray(activeTargets) ? activeTargets : [activeTargets];
     for (const enemy of targetList) {
       if (!enemy || enemy === player || enemy.isDead) continue;
-      const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
-      const isFFA = (dm && dm.active && dm.mode === 'FFA');
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
       if (!isFFA && player.team && enemy.team && player.team === enemy.team) continue;
 
       const ex = enemy.x + (enemy.w || 24) / 2;
@@ -934,8 +939,10 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
   const enemy = player.spartanTarget || findMeleeTarget(player, activeTargets);
 
   if (enemy && !enemy.isDead) {
-    const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
-    const isFFA = (dm && dm.active && dm.mode === 'FFA');
+    const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+      (deathmatchState && deathmatchState.mode === 'FFA') ||
+      (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+      (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
     if (!isFFA && player.team && enemy.team && player.team === enemy.team) return false;
 
     if ((enemy.spawnProtectionTimer && enemy.spawnProtectionTimer > 0) || (player.spawnProtectionTimer && player.spawnProtectionTimer > 0)) {

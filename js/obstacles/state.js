@@ -33,7 +33,7 @@ import arena2, {
   ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
 import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
-import { initDeathmatch, resetDeathmatchState } from '../deathmatch/index.js';
+import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
 
 export {
@@ -649,15 +649,27 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA');
       const isCyan = (b.team === 'CYAN');
-      const s = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) || { x: 520, y: 390, facing: 1 })
-        : ((currentArena.spawns && currentArena.spawns[1]) || { x: 3080, y: 390, facing: -1 });
-      b.x = s.x + (isCyan ? ((Math.floor(idx / 2) + 1) * 60) : -((Math.floor(idx / 2) + 1) * 60));
-      b.y = s.y;
+      let s;
+      if (isFFA && currentArena.spawns && currentArena.spawns.length > 2) {
+        const spawnIdx = ((idx + 1) % (currentArena.spawns.length - 1)) + 1;
+        s = currentArena.spawns[spawnIdx] || currentArena.spawns[1];
+        b.x = s.x;
+        b.y = s.y;
+        b.facing = s.facing || (b.x < 2000 ? 1 : -1);
+      } else {
+        s = isCyan
+          ? ((currentArena.spawns && currentArena.spawns[0]) || { x: 520, y: 390, facing: 1 })
+          : ((currentArena.spawns && currentArena.spawns[1]) || { x: 3080, y: 390, facing: -1 });
+        b.x = s.x + (isCyan ? ((Math.floor(idx / 2) + 1) * 60) : -((Math.floor(idx / 2) + 1) * 60));
+        b.y = s.y;
+        b.facing = s.facing || (isCyan ? 1 : -1);
+      }
       b.vx = 0;
       b.vy = 0;
-      b.facing = s.facing || (isCyan ? 1 : -1);
       b.isJumping = false;
       b.isSliding = false;
       b.isDead = false;

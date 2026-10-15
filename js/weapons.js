@@ -12,6 +12,7 @@ import {
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import {
   spawnBulletCasing,
   spawnDroppedMagazine,
@@ -450,8 +451,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     for (const ch of charList) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
-      const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
-      const isFFA = (dm && dm.active && dm.mode === 'FFA');
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
       if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
       // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
@@ -478,7 +481,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         charTop = ch.y + 12;
       }
 
-      const charT = getSegmentAABBHitT(b.prevX, b.prevY, endX, endY, charLeft, charTop, charRight, charBottom);
+      const charT = getSegmentAABBHitT(b.prevX, b.prevY, b.x, b.y, charLeft, charTop, charRight, charBottom);
       if (charT !== null && charT <= maxT && charT < closestCharT) {
         closestCharT = charT;
         closestChar = ch;

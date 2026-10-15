@@ -11,7 +11,8 @@ export {
   deathmatchState,
   setDeathmatchMode,
   setDeathmatchPlayerTeam,
-  resetDeathmatchState
+  resetDeathmatchState,
+  isDeathmatchFFA
 } from './state.js';
 
 export {

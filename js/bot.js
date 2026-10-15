@@ -13,7 +13,7 @@ import { getJetpackFlamePalette } from './player/jetpack.js';
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
 import { ARENA_2_CONFIG, ACID_SURGE_SYSTEM } from './arenas/arena2.js';
 import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
-import { deathmatchState } from './deathmatch/state.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/state.js';
 import { camera } from './camera.js';
 import { W, H } from './world/state.js';
 
@@ -127,8 +127,8 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
   const bList = Array.isArray(activeBotsList) ? activeBotsList : getActiveBots();
   if (!bList || bList.length === 0) return;
 
-  const curMode = mode || (deathmatchState && deathmatchState.active ? deathmatchState.mode : 'TDM');
-  const isFFA = (curMode === 'FFA');
+  const curMode = mode || (deathmatchState && deathmatchState.active ? deathmatchState.mode : deathmatchConfig?.mode || 'TDM');
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) || (curMode === 'FFA');
 
   const pClassRaw = (humanPlayer?.currentClass?.id || 'RAPTOR').toUpperCase();
   const pClassId = (pClassRaw === 'AERO') ? 'RAPTOR' : ((pClassRaw === 'PLAYMAKER' || pClassRaw === 'SWEEPER') ? 'STRIKER' : pClassRaw);
@@ -602,7 +602,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Wyszukanie wrogiego celu do ataku (najbliższy przeciwnik)
-  const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+    (typeof deathmatchState !== 'undefined' && deathmatchState.mode === 'FFA') ||
+    (typeof deathmatchConfig !== 'undefined' && deathmatchConfig.mode === 'FFA') ||
+    (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
   const isHumanTeammate = (!isFFA && botTarget.team && humanPlayer && humanPlayer.team && botTarget.team === humanPlayer.team);
   let targetEnemy = (humanPlayer && !humanPlayer.isDead && !isHumanTeammate) ? humanPlayer : null;
 
