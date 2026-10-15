@@ -15,7 +15,6 @@ import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../prog
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
-import { networkState, sendDeathmatchSync } from '../network.js';
 
 let _dmSyncTimer = 0;
 
@@ -244,11 +243,13 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   updateCombatFeed(stepTime);
 
   // Synchronizacja stanu deathmatch przez Hosta (zegar, wynik drużyn)
-  if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendDeathmatchSync === 'function') {
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
+  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
     _dmSyncTimer = (_dmSyncTimer || 0) + stepTime;
     if (_dmSyncTimer >= 1.0) {
       _dmSyncTimer = 0;
-      sendDeathmatchSync(deathmatchState);
+      sendDm(deathmatchState);
     }
   }
 
@@ -341,8 +342,10 @@ export function finishDeathmatch() {
   deathmatchState.endCelebrationTimer = deathmatchState.maxEndCelebrationTimer;
   updateLeaderboard();
 
-  if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendDeathmatchSync === 'function') {
-    sendDeathmatchSync(deathmatchState);
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
+  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
+    sendDm(deathmatchState);
   }
 
   // Ustalenie miejsca gracza i nagrody XP (100 / 80 / 60 / 40 XP)

@@ -75,6 +75,11 @@ export const networkState = {
   lastBotsStateSent: 0
 };
 
+if (typeof window !== 'undefined') {
+  window.networkState = networkState;
+  window.remotePlayer = remotePlayer;
+}
+
 // =============================================================================
 // PRZYPISANIE DRUŻYNY SIECIOWEJ (CYAN VS ORANGE)
 // Symetryczne przypisanie: Host = CYAN, Klient = ORANGE
@@ -393,6 +398,14 @@ export function sendAcidSurgeSync(acidState) {
       currentY: Math.round(acidState.currentY)
     });
   } catch (_) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.sendDamageEvent = sendDamageEvent;
+  window.sendKillBroadcast = sendKillBroadcast;
+  window.sendGrenadeThrow = sendGrenadeThrow;
+  window.sendDeathmatchSync = sendDeathmatchSync;
+  window.sendAcidSurgeSync = sendAcidSurgeSync;
 }
 
 export function applyLocalPlayerDamage(data) {

@@ -6,7 +6,6 @@
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
-import { networkState, sendDamageEvent, remotePlayer } from './network.js';
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import {
@@ -419,9 +418,11 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
 
       // Synchronizacja obrażeń od wybuchu w grze sieciowej
-      if (typeof sendDamageEvent === 'function' && networkState && networkState.isConnected && shooter && !shooter.isRemote) {
+      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+      const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+      if (typeof sendDmg === 'function' && netState && netState.isConnected && shooter && !shooter.isRemote) {
         if (ch.isRemote) {
-          sendDamageEvent({
+          sendDmg({
             target: 'player',
             damage: damage,
             isHeadshot: false,
@@ -431,11 +432,11 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
             weaponId: 'GRENADE'
           });
-        } else if (ch.isBot && !networkState.isHost) {
+        } else if (ch.isBot && !netState.isHost) {
           const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
           const bIdx = activeBots.indexOf(ch);
           if (bIdx !== -1) {
-            sendDamageEvent({
+            sendDmg({
               target: 'bot',
               botIdx: bIdx,
               damage: damage,

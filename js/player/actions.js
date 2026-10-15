@@ -7,7 +7,6 @@ import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade } from '../projectiles.js';
-import { networkState, sendGrenadeThrow } from '../network.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -1238,8 +1237,12 @@ export function updatePlayerThrow(p) {
       tAnim.spawned = true;
       const handPos = getThrowHandPosition(p);
       spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
-      if (!p.isRemote && !p.isBot && networkState && networkState.isConnected && typeof sendGrenadeThrow === 'function') {
-        sendGrenadeThrow(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+      if (!p.isRemote && !p.isBot) {
+        const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+        const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
+        if (netState && netState.isConnected && typeof sendGrenade === 'function') {
+          sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+        }
       }
       p.grenadeMaxCooldown = 3.5;
       p.grenadeCooldown = 3.5;

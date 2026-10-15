@@ -5,7 +5,6 @@
 // =========================================================================
 
 import { triggerScreenShake } from '../../camera.js';
-import { networkState, sendAcidSurgeSync } from '../../network.js';
 
 // =========================================================================
 // 1. KONFIGURACJA ARENY (ARENA_2_CONFIG)
@@ -493,11 +492,13 @@ export const ACID_SURGE_SYSTEM = {
       }
     }
 
-    if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendAcidSurgeSync === 'function') {
+    const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+    const sendAcid = (typeof window !== 'undefined' && window.sendAcidSurgeSync) ? window.sendAcidSurgeSync : null;
+    if (netState && netState.isHost && netState.isConnected && typeof sendAcid === 'function') {
       this._syncTimer = (this._syncTimer || 0) + dt;
       if (prevState !== this.state || this._syncTimer >= 1.0) {
         this._syncTimer = 0;
-        sendAcidSurgeSync(this);
+        sendAcid(this);
       }
     }
   }

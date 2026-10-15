@@ -48,7 +48,6 @@ import {
   drawSniperLaserSight,
   drawHeldWeapon
 } from './weapons/renderer.js';
-import { networkState, sendDamageEvent, remotePlayer } from './network.js';
 import { getActiveBots } from './bot.js';
 
 export {
@@ -454,7 +453,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza nie zadają obrażeń bezpośrednio lokalnemu graczowi
       // (ponieważ strzelający autorytatywnie wysyła pakiet deal_dmg po trafieniu na swoim ekranie)
-      if (networkState && networkState.isConnected && b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
+      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+      if (netState && netState.isConnected && b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
@@ -604,9 +604,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
 
       // Synchronizacja zadanych obrażeń w grze sieciowej
-      if (networkState && networkState.isConnected) {
+      const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+      if (netState && netState.isConnected && typeof sendDmg === 'function') {
         if (closestChar.isRemote) {
-          sendDamageEvent({
+          sendDmg({
             target: 'player',
             damage: b.damage,
             isHeadshot,
@@ -616,11 +617,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
             weaponId: b.weaponId
           });
-        } else if (closestChar.isBot && !networkState.isHost) {
+        } else if (closestChar.isBot && !netState.isHost) {
           const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
           const bIdx = activeBots.indexOf(closestChar);
           if (bIdx !== -1) {
-            sendDamageEvent({
+            sendDmg({
               target: 'bot',
               botIdx: bIdx,
               damage: b.damage,
