@@ -269,14 +269,25 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
   return closestTopY < Infinity ? closestTopY : 1000;
 }
 
-export function createBotInstance(index = 0) {
+export function getStoredSinglePlayerBotCount() {
+  try {
+    const stored = localStorage.getItem('kih_bot_count_v1');
+    if (stored !== null && stored !== undefined) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 1 && parsed <= 5) return parsed;
+    }
+  } catch (_) {}
+  return 1;
+}
+
+export function createBotInstance(index = 0, isActive = true) {
   const profile = BOT_PROFILES[index % BOT_PROFILES.length];
   const botClass = (CLASSES && CLASSES[profile.classKey]) ? CLASSES[profile.classKey] : (CLASSES?.STRIKER || CLASSES?.RAPTOR);
   const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false, slide: false };
 
   const instance = createPlayerInstance({
     isBot: true,
-    active: (index === 0),
+    active: isActive,
     frozen: false,
     team: profile.team || 'ORANGE',
     facing: profile.facing || -1,
@@ -329,27 +340,40 @@ export function createBotInstance(index = 0) {
 /**
  * Główna instancja bota (Bot 1) dla 100% kompatybilności wstecznej
  */
-export const bot = createBotInstance(0);
+export const bot = createBotInstance(0, true);
 
 /**
  * Tablica wszystkich instancji botów
  */
 export const bots = [bot];
 
-export let botCount = 1;
+export let botCount = getStoredSinglePlayerBotCount();
+
+// Natychmiastowa inicjalizacja instancji botów pod kątem zapisanego stanu
+while (bots.length < botCount) {
+  bots.push(createBotInstance(bots.length, true));
+}
+for (let i = 0; i < bots.length; i++) {
+  bots[i].active = (i < botCount);
+}
 
 export function setBotCount(count, options = {}) {
   const parsed = parseInt(count, 10);
   const num = Math.max(0, Math.min(5, isNaN(parsed) ? 1 : parsed));
   botCount = num;
   while (bots.length < num) {
-    bots.push(createBotInstance(bots.length));
+    bots.push(createBotInstance(bots.length, true));
   }
   for (let i = 0; i < bots.length; i++) {
     bots[i].active = (i < num);
     if (i >= num) {
       bots[i].isDead = false;
       bots[i].hp = 0;
+    } else {
+      bots[i].isDead = false;
+      if (bots[i].hp <= 0) {
+        bots[i].hp = bots[i].maxHp || bots[i].currentClass?.stats?.hp || 100;
+      }
     }
   }
   if (!options.isRemote && !options.skipStorage) {
@@ -360,6 +384,11 @@ export function setBotCount(count, options = {}) {
   if (num > 0) {
     balanceBotClasses(player, bots.slice(0, num));
   }
+  if (typeof window !== 'undefined' && window.deathmatchState && window.deathmatchState.active) {
+    if (typeof window.refreshDeathmatchParticipants === 'function') {
+      window.refreshDeathmatchParticipants(player, getActiveBots(), window.remotePlayer);
+    }
+  }
   return botCount;
 }
 
@@ -369,7 +398,9 @@ export function getBotCount() {
     if (stored !== null && stored !== undefined) {
       const parsed = parseInt(stored, 10);
       if (parsed >= 0 && parsed <= 5) {
-        botCount = parsed;
+        if (botCount !== parsed) {
+          setBotCount(parsed, { skipStorage: true });
+        }
         return parsed;
       }
     }
@@ -380,20 +411,14 @@ export function getBotCount() {
 export function getActiveBots() {
   if (botCount === 0) return [];
   while (bots.length < botCount) {
-    bots.push(createBotInstance(bots.length));
+    bots.push(createBotInstance(bots.length, true));
   }
-  return bots.slice(0, botCount).filter(b => b.active);
-}
-
-export function getStoredSinglePlayerBotCount() {
-  try {
-    const stored = localStorage.getItem('kih_bot_count_v1');
-    if (stored !== null && stored !== undefined) {
-      const parsed = parseInt(stored, 10);
-      if (parsed >= 1 && parsed <= 5) return parsed;
+  for (let i = 0; i < botCount; i++) {
+    if (bots[i]) {
+      bots[i].active = true;
     }
-  } catch (_) {}
-  return 1;
+  }
+  return bots.slice(0, botCount).filter(b => b && b.active);
 }
 
 export function getMpBotCount() {
@@ -578,7 +603,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
   // Wyszukanie wrogiego celu do ataku (najbliższy przeciwnik)
   const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
-  let targetEnemy = (humanPlayer && !humanPlayer.isDead) ? humanPlayer : null;
+  const isHumanTeammate = (!isFFA && botTarget.team && humanPlayer && humanPlayer.team && botTarget.team === humanPlayer.team);
+  let targetEnemy = (humanPlayer && !humanPlayer.isDead && !isHumanTeammate) ? humanPlayer : null;
+
   if (Array.isArray(allCombatants) && allCombatants.length > 0) {
     let closestDist = Infinity;
     let closestCand = null;
@@ -596,12 +623,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         closestCand = c;
       }
     }
-    if (closestCand) {
-      targetEnemy = closestCand;
-    }
+    targetEnemy = closestCand;
   }
 
-  const meleeTargets = targetEnemy ? [targetEnemy] : (humanPlayer ? [humanPlayer] : []);
+  const meleeTargets = targetEnemy ? [targetEnemy] : [];
 
   // Obsługa stanu śmierci oraz rozpuszczania w kwasie
   if (botTarget.isDead || botTarget.isAcidDying || (botTarget.acidDeath && botTarget.acidDeath.active)) {

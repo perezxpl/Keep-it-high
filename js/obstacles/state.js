@@ -464,14 +464,22 @@ export function resetArena() {
       _activePlayer.isIntro = false;
       _activePlayer.gaitMode = 'IDLE';
     }
-    if (_activeBot) {
-      _activeBot.x = 3360;
-      _activeBot.y = 580;
-      _activeBot.vx = 0;
-      _activeBot.vy = 0;
-      _activeBot.facing = -1;
-      _activeBot.gaitMode = 'IDLE';
-    }
+    const botsList = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+      ? window.getActiveBots()
+      : (_activeBot ? [_activeBot] : []);
+
+    botsList.forEach((b, idx) => {
+      const isCyan = (b.team === 'CYAN');
+      const baseX = isCyan
+        ? 240 + ((Math.floor(idx / 2) + 1) * 60)
+        : 3360 - ((Math.floor(idx / 2) + 1) * 60);
+      b.x = baseX;
+      b.y = 580;
+      b.vx = 0;
+      b.vy = 0;
+      b.facing = isCyan ? 1 : -1;
+      b.gaitMode = 'IDLE';
+    });
   }
 }
 
@@ -540,11 +548,11 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   const targetBot = botObj || _activeBot;
   const getBotsList = () => {
     if (Array.isArray(botObj)) return botObj;
-    if (botObj) return [botObj];
     if (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') {
       const wBots = window.getActiveBots();
       if (Array.isArray(wBots) && wBots.length > 0) return wBots;
     }
+    if (botObj) return [botObj];
     return targetBot ? [targetBot] : [];
   };
   const activeBots = getBotsList();
@@ -580,13 +588,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
+    // Inicjalizacja sesji Deathmatch (przypisanie drużyn i zbalansowanie klas) przed ustawieniem współrzędnych
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
     activeBots.forEach((b, idx) => {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
-      if (rPlayer) {
-        b.team = (idx % 2 === 0) ? 'CYAN' : 'ORANGE';
-      }
       const isCyan = (b.team === 'CYAN');
       const baseSpawnX = isCyan
         ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600) + ((Math.floor(idx / 2) + 1) * 60)
@@ -608,9 +616,6 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (ballObj) {
       ballObj.active = false;
     }
-
-    // Inicjalizacja 5-minutowego Deathmatch na Arenie 3 (Militarna Dżungla)
-    initDeathmatch(playerObj, activeBots, rPlayer);
   } else if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
     GOALS.length = 0; // W Sektorze X brak bramek i piłki - 5-minutowy Deathmatch
     arena1State.waitingForKickoff = false;
@@ -636,13 +641,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
+
+    // Inicjalizacja 5-minutowego Deathmatch na Arenie 2 przed kalkulacją spawnów (żeby sojusznicy i wrogowie mieli prawidłowe pozycje)
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
     activeBots.forEach((b, idx) => {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
-      if (rPlayer) {
-        b.team = (idx % 2 === 0) ? 'CYAN' : 'ORANGE';
-      }
       const isCyan = (b.team === 'CYAN');
       const s = isCyan
         ? ((currentArena.spawns && currentArena.spawns[0]) || { x: 520, y: 390, facing: 1 })

@@ -450,7 +450,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     for (const ch of charList) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
-      if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
+      const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
+      const isFFA = (dm && dm.active && dm.mode === 'FFA');
+      if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
       // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
       const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;

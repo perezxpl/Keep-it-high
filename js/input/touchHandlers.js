@@ -24,7 +24,7 @@ import {
 } from '../player.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import { ball } from '../ball.js';
-import { bot } from '../bot.js';
+import { bot, getActiveBots } from '../bot.js';
 import { remotePlayer } from '../network.js';
 import { obstacles } from '../obstacles.js';
 import {
@@ -239,9 +239,10 @@ canvas.addEventListener('touchstart', (e) => {
       if (minDist === distToAct && pAct && distToAct < pAct.r + 18) {
         pAct.active = true;
         pAct.id = t.identifier;
+        const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
         handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, {
           ball: ball,
-          targets: [bot.active ? bot : null, remotePlayer.active ? remotePlayer : null].filter(Boolean),
+          targets: [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean),
           obstacles: obstacles
         });
       } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 20) {
