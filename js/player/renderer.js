@@ -197,6 +197,29 @@ export {
 };
 
 export function drawPlayer(ctx, GROUND_Y, p) {
+  if (!p) return;
+
+  // Frustum culling: pomiń kosztowny render postaci znajdujących się całkowicie poza widokiem kamery
+  if (!p._isCreatorPreview && camera && typeof camera.x === 'number' && typeof camera.y === 'number') {
+    const margin = 160;
+    const zoom = camera.zoom || 0.6;
+    const viewW = (camera.viewWidth || (window.innerWidth / zoom));
+    const viewH = (camera.viewHeight || (window.innerHeight / zoom));
+    const camL = camera.x - margin;
+    const camR = camera.x + viewW + margin;
+    const camT = camera.y - margin;
+    const camB = camera.y + viewH + margin;
+
+    const pL = p.x - 20;
+    const pR = p.x + (p.w || 26) + 20;
+    const pT = p.y - 45;
+    const pB = p.y + (p.h || 70) + 25;
+
+    if (pR < camL || pL > camR || pB < camT || pT > camB) {
+      return;
+    }
+  }
+
   if (p.isDead && p.acidDeath && p.acidDeath.dissolved) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
@@ -250,12 +273,16 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const isLocalOrCreator = !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
-  const v = {
-    ...DEFAULT_VISUALS,
-    ...(p.currentClass?.visuals || {}),
-    ...(isLocalOrCreator ? localPlayerCustomVisuals : {}),
-    ...(p.customVisuals || {})
-  };
+  if (!p._cachedVisuals || p._visualsDirty || isLocalOrCreator) {
+    p._cachedVisuals = {
+      ...DEFAULT_VISUALS,
+      ...(p.currentClass?.visuals || {}),
+      ...(isLocalOrCreator ? localPlayerCustomVisuals : {}),
+      ...(p.customVisuals || {})
+    };
+    p._visualsDirty = false;
+  }
+  const v = p._cachedVisuals;
   v.jetFuel = p.jetFuel;
   v.jetMax = p.jetMax;
   v.isJetpacking = !!p.isJetpacking;

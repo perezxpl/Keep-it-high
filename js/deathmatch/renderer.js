@@ -5,6 +5,7 @@
 // =========================================================================
 
 import { deathmatchState, DEATHMATCH_MODES, TEAMS, DEATHMATCH_XP_REWARDS } from './state.js';
+import { camera } from '../camera.js';
 
 /**
  * Formatowanie sekund do postaci MM:SS (np. 04:59)
@@ -15,9 +16,6 @@ function formatTime(totalSeconds) {
   const secs = s % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
-
-/**
-import { camera } from '../camera.js';
 
 /**
  * Rysuje główny HUD trybu Deathmatch na górze ekranu.
@@ -71,7 +69,14 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
 
   // Dane pozycji i fragów gracza
   const place = deathmatchState.playerPlace || 1;
-  const pData = deathmatchState.participants.find(p => p.isPlayer);
+  let pData = null;
+  const parts = deathmatchState.participants;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].isPlayer) {
+      pData = parts[i];
+      break;
+    }
+  }
   const pKills = pData ? pData.kills : 0;
   const pDeaths = pData ? pData.deaths : 0;
   const placeColor = (place === 1) ? '#facc15' : ((place === 2) ? '#e2e8f0' : ((place === 3) ? '#f97316' : '#94a3b8'));

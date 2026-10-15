@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { CONFIG } from './config.js';
+import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight } from './camera.js';
 
 // Domyślna wartość grawitacji w px/s^2 (dla dt w sekundach)
 export const CASING_GRAVITY = 820;
@@ -283,7 +284,7 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
     groundTimer: 1.2 + Math.random() * 0.6
   });
 
-  if (bulletCasings.length > 160) {
+  if (bulletCasings.length > 50) {
     bulletCasings.shift();
   }
   bulletCasings.push(casing);
@@ -395,8 +396,22 @@ export function drawBulletCasing(ctx, casing) {
  */
 export function drawBulletCasings(ctx) {
   if (!ctx || bulletCasings.length === 0) return;
+
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 40;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
   for (let i = 0; i < bulletCasings.length; i++) {
-    drawBulletCasing(ctx, bulletCasings[i]);
+    const c = bulletCasings[i];
+    if (c.x < minX || c.x > maxX || c.y < minY || c.y > maxY) continue;
+    drawBulletCasing(ctx, c);
   }
 }
 
@@ -826,11 +841,14 @@ export const powderSmokeList = [];
 export const dustClouds = [];
 export const ricochetSparks = [];
 
-export function spawnShrapnelStreak(x, y, count = 20) {
+export function spawnShrapnelStreak(x, y, count = 14) {
+  if (shrapnelStreaks.length > 25) {
+    shrapnelStreaks.splice(0, shrapnelStreaks.length - 25);
+  }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 1400 + Math.random() * 400; // 1400–1800 px/s
-    const life = 0.08 + Math.random() * 0.06; // 0.08–0.14s
+    const life = 0.08 + Math.random() * 0.05; // 0.08–0.13s
     shrapnelStreaks.push(new ShrapnelStreak({
       x,
       y,
@@ -842,13 +860,19 @@ export function spawnShrapnelStreak(x, y, count = 20) {
   }
 }
 
-export function spawnRicochetSparks(x, y, nx, ny, count = 4) {
+export function spawnRicochetSparks(x, y, nx, ny, count = 3) {
+  if (ricochetSparks.length > 25) {
+    ricochetSparks.splice(0, ricochetSparks.length - 25);
+  }
   for (let i = 0; i < count; i++) {
     ricochetSparks.push(new RicochetSpark(x, y, nx, ny));
   }
 }
 
-export function spawnConcreteDebris(x, y, count = 15, baseVx = 0, baseVy = 0) {
+export function spawnConcreteDebris(x, y, count = 10, baseVx = 0, baseVy = 0) {
+  if (concreteDebrisList.length > 25) {
+    concreteDebrisList.splice(0, concreteDebrisList.length - 25);
+  }
   const concreteColors = ['#2A2D34', '#333842', '#3E4450', '#262930', '#4A505D'];
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -874,7 +898,10 @@ export function spawnConcreteDebris(x, y, count = 15, baseVx = 0, baseVy = 0) {
   }
 }
 
-export function spawnPowderSmoke(x, y, count = 12) {
+export function spawnPowderSmoke(x, y, count = 8) {
+  if (powderSmokeList.length > 16) {
+    powderSmokeList.splice(0, powderSmokeList.length - 16);
+  }
   const darkColors = ['#1E1E22', '#26262B', '#333333', '#202024'];
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -895,7 +922,10 @@ export function spawnPowderSmoke(x, y, count = 12) {
   }
 }
 
-export function spawnDustCloud(x, y, count = 18) {
+export function spawnDustCloud(x, y, count = 10) {
+  if (dustClouds.length > 20) {
+    dustClouds.splice(0, dustClouds.length - 20);
+  }
   const dustColors = ['#94A3B8', '#A0AEC0', '#8D99AE', '#CBD5E1'];
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -961,25 +991,91 @@ export function updateExplosionParticles(dt = 1 / 60, groundY = 500, platforms =
   }
 }
 
-// Kolejność renderowania: Pył w tle -> Gruz -> Smugi szrapnela -> Dym prochowy na wierzchu
+function getParticleViewBounds(ctx, pad = 100) {
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx && ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : (typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920);
+  return {
+    viewLeft: camX - pad,
+    viewRight: camX + (canvasW / camZoom) + pad
+  };
+}
+
+// Kolejność renderowania: Pył w tle -> Gruz -> Smugi szrapnela -> Dym prochowy na wierzchu (batching dla 60 FPS)
 export function drawDustClouds(ctx) {
-  for (let i = 0; i < dustClouds.length; i++) dustClouds[i].draw(ctx);
+  if (!ctx || dustClouds.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
+  ctx.save();
+  for (let i = 0; i < dustClouds.length; i++) {
+    const d = dustClouds[i];
+    if (!d || d.alpha <= 0) continue;
+    if (d.x + d.radius < viewLeft || d.x - d.radius > viewRight) continue;
+    ctx.globalAlpha = d.alpha;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export function drawConcreteDebris(ctx) {
-  for (let i = 0; i < concreteDebrisList.length; i++) concreteDebrisList[i].draw(ctx);
+  if (!ctx || concreteDebrisList.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
+  for (let i = 0; i < concreteDebrisList.length; i++) {
+    const d = concreteDebrisList[i];
+    if (d.x + 30 < viewLeft || d.x - 30 > viewRight) continue;
+    d.draw(ctx);
+  }
 }
 
 export function drawShrapnelStreaks(ctx) {
-  for (let i = 0; i < shrapnelStreaks.length; i++) shrapnelStreaks[i].draw(ctx);
+  if (!ctx || shrapnelStreaks.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
+  ctx.save();
+  ctx.strokeStyle = '#FFF2B2';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < shrapnelStreaks.length; i++) {
+    const s = shrapnelStreaks[i];
+    if (!s || s.alpha <= 0) continue;
+    if (Math.max(s.x, s.prevX) < viewLeft || Math.min(s.x, s.prevX) > viewRight) continue;
+    ctx.moveTo(s.prevX, s.prevY);
+    ctx.lineTo(s.x, s.y);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function drawRicochetSparks(ctx) {
-  for (let i = 0; i < ricochetSparks.length; i++) ricochetSparks[i].draw(ctx);
+  if (!ctx || ricochetSparks.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
+  ctx.save();
+  for (let i = 0; i < ricochetSparks.length; i++) {
+    const s = ricochetSparks[i];
+    if (!s || s.life <= 0) continue;
+    if (s.x < viewLeft || s.x > viewRight) continue;
+    ctx.fillStyle = s.color || '#ffffff';
+    ctx.fillRect(s.x - 1, s.y - 1, 2.5, 2.5);
+  }
+  ctx.restore();
 }
 
 export function drawPowderSmoke(ctx) {
-  for (let i = 0; i < powderSmokeList.length; i++) powderSmokeList[i].draw(ctx);
+  if (!ctx || powderSmokeList.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
+  ctx.save();
+  for (let i = 0; i < powderSmokeList.length; i++) {
+    const ps = powderSmokeList[i];
+    if (!ps || ps.alpha <= 0) continue;
+    if (ps.x + ps.radius < viewLeft || ps.x - ps.radius > viewRight) continue;
+    ctx.globalAlpha = ps.alpha * 0.45;
+    ctx.fillStyle = ps.color;
+    ctx.beginPath();
+    ctx.arc(ps.x, ps.y, ps.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export function drawAllExplosionParticles(ctx) {
@@ -1007,13 +1103,76 @@ export function clearExplosionParticles() {
 // NOWE DYNAMICZNE TYPY CZĄSTECZEK WYBUCHU (GAME JUICE)
 // =========================================================================
 
+let _smokePuffCanvas = null;
+function getSmokePuffCanvas() {
+  if (!_smokePuffCanvas && typeof document !== 'undefined') {
+    _smokePuffCanvas = document.createElement('canvas');
+    _smokePuffCanvas.width = 64;
+    _smokePuffCanvas.height = 64;
+    const sctx = _smokePuffCanvas.getContext('2d');
+    const grad = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0.0, '#1F2937');
+    grad.addColorStop(0.55, '#374151');
+    grad.addColorStop(1.0, 'rgba(31, 41, 55, 0)');
+    sctx.fillStyle = grad;
+    sctx.beginPath();
+    sctx.arc(32, 32, 32, 0, Math.PI * 2);
+    sctx.fill();
+  }
+  return _smokePuffCanvas;
+}
+
+let _firePuffHotCanvas = null;
+let _firePuffMidCanvas = null;
+let _firePuffDarkCanvas = null;
+
+function getFirePuffSprite(stage) {
+  if (typeof document === 'undefined') return null;
+  if (!_firePuffHotCanvas) {
+    _firePuffHotCanvas = document.createElement('canvas');
+    _firePuffHotCanvas.width = 64;
+    _firePuffHotCanvas.height = 64;
+    let sctx = _firePuffHotCanvas.getContext('2d');
+    let g = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0.0, '#FFFFFF');
+    g.addColorStop(0.45, '#FDE047');
+    g.addColorStop(0.85, '#FB923C');
+    g.addColorStop(1.0, 'rgba(251, 146, 60, 0)');
+    sctx.fillStyle = g;
+    sctx.beginPath(); sctx.arc(32, 32, 32, 0, Math.PI * 2); sctx.fill();
+
+    _firePuffMidCanvas = document.createElement('canvas');
+    _firePuffMidCanvas.width = 64;
+    _firePuffMidCanvas.height = 64;
+    sctx = _firePuffMidCanvas.getContext('2d');
+    g = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0.0, '#FDE047');
+    g.addColorStop(0.45, '#FB923C');
+    g.addColorStop(0.85, '#EF4444');
+    g.addColorStop(1.0, 'rgba(239, 68, 68, 0)');
+    sctx.fillStyle = g;
+    sctx.beginPath(); sctx.arc(32, 32, 32, 0, Math.PI * 2); sctx.fill();
+
+    _firePuffDarkCanvas = document.createElement('canvas');
+    _firePuffDarkCanvas.width = 64;
+    _firePuffDarkCanvas.height = 64;
+    sctx = _firePuffDarkCanvas.getContext('2d');
+    g = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0.0, '#EF4444');
+    g.addColorStop(0.5, '#374151');
+    g.addColorStop(0.85, '#1F2937');
+    g.addColorStop(1.0, 'rgba(31, 41, 55, 0)');
+    sctx.fillStyle = g;
+    sctx.beginPath(); sctx.arc(32, 32, 32, 0, Math.PI * 2); sctx.fill();
+  }
+  if (stage <= 0.25) return _firePuffHotCanvas;
+  if (stage <= 0.65) return _firePuffMidCanvas;
+  return _firePuffDarkCanvas;
+}
+
 /**
  * A. Pęczniejąca kula ognia (ExplosionFirePuff)
- * - Promień szybko rośnie na starcie (ease-out): radius = maxRadius * Math.sin((1 - life/maxLife) * Math.PI * 0.5)
- * - Płynne przejście barw:
- *   0.0 - 0.2: gorąca biel/żółć (#FFF7D6 / #FDE047)
- *   0.2 - 0.6: głęboki pomarańcz/czerwień (#FB923C / #EF4444)
- *   0.6 - 1.0: ciemny węgiel/dym (#374151 / #1F2937) z zanikającym alpha
+ * - Zoptymalizowana: używa pre-renderowanych sprajtów z bufora Canvas zamiast tworzenia gradientów w każdej klatce
  */
 export class ExplosionFirePuff {
   constructor({
@@ -1056,42 +1215,15 @@ export class ExplosionFirePuff {
 
   draw(ctx) {
     if (!ctx || this.radius <= 0) return;
+    const sprite = getFirePuffSprite(this.colorStage);
+    if (!sprite) return;
     const p = this.colorStage;
-
-    let coreColor, edgeColor, alpha;
-
-    if (p <= 0.2) {
-      // 0.0 - 0.2: gorąca biel/żółć (#FFF7D6 / #FDE047)
-      const t = p / 0.2;
-      coreColor = '#FFFFFF';
-      edgeColor = t < 0.5 ? '#FFF7D6' : '#FDE047';
-      alpha = 1.0;
-    } else if (p <= 0.6) {
-      // 0.2 - 0.6: głęboki pomarańcz/czerwień (#FB923C / #EF4444)
-      const t = (p - 0.2) / 0.4;
-      coreColor = t < 0.5 ? '#FDE047' : '#FB923C';
-      edgeColor = t < 0.5 ? '#FB923C' : '#EF4444';
-      alpha = 0.95 - t * 0.25;
-    } else {
-      // 0.6 - 1.0: ciemny węgiel/dym (#374151 / #1F2937) z zanikającym alpha
-      const t = (p - 0.6) / 0.4;
-      coreColor = t < 0.5 ? '#EF4444' : '#374151';
-      edgeColor = t < 0.5 ? '#374151' : '#1F2937';
-      alpha = Math.max(0, (1 - t) * 0.70);
-    }
-
+    const alpha = (p <= 0.2) ? 1.0 : ((p <= 0.6) ? (0.95 - (p - 0.2) * 0.6) : Math.max(0, (1 - (p - 0.6) / 0.4) * 0.7));
     if (alpha <= 0) return;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-    grad.addColorStop(0.0, coreColor);
-    grad.addColorStop(0.55, edgeColor);
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.drawImage(sprite, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
     ctx.restore();
   }
 }
@@ -1256,20 +1388,13 @@ export class HeavySmokePuff {
 
   draw(ctx) {
     if (!ctx || this.alpha <= 0 || this.radius <= 0) return;
+    const sprite = getSmokePuffCanvas();
+    if (!sprite) return;
     ctx.save();
     ctx.globalAlpha = this.alpha;
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-
-    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius);
-    grad.addColorStop(0.0, '#1F2937');
-    grad.addColorStop(0.55, '#374151');
-    grad.addColorStop(1.0, 'rgba(31, 41, 55, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.drawImage(sprite, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
     ctx.restore();
   }
 }
@@ -1280,7 +1405,10 @@ export const stretchedSparks = [];
 export const shockwaveRings = [];
 export const heavySmokePuffs = [];
 
-export function spawnExplosionFirePuff(x, y, count = 16) {
+export function spawnExplosionFirePuff(x, y, count = 12) {
+  if (explosionFirePuffs.length > 25) {
+    explosionFirePuffs.splice(0, explosionFirePuffs.length - 25);
+  }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.random() * 20; // w promieniu 20px
@@ -1299,7 +1427,10 @@ export function spawnExplosionFirePuff(x, y, count = 16) {
   }
 }
 
-export function spawnStretchedSparks(x, y, count = 35) {
+export function spawnStretchedSparks(x, y, count = 22) {
+  if (stretchedSparks.length > 35) {
+    stretchedSparks.splice(0, stretchedSparks.length - 35);
+  }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 500 + Math.random() * 400; // 500–900 px/s
@@ -1317,6 +1448,9 @@ export function spawnStretchedSparks(x, y, count = 35) {
 }
 
 export function spawnShockwaveRing(x, y) {
+  if (shockwaveRings.length > 6) {
+    shockwaveRings.shift();
+  }
   shockwaveRings.push(new ShockwaveRing({
     x,
     y,
@@ -1327,7 +1461,10 @@ export function spawnShockwaveRing(x, y) {
   }));
 }
 
-export function spawnHeavySmokePuff(x, y, count = 12) {
+export function spawnHeavySmokePuff(x, y, count = 8) {
+  if (heavySmokePuffs.length > 16) {
+    heavySmokePuffs.splice(0, heavySmokePuffs.length - 16);
+  }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.random() * 25;
@@ -1350,14 +1487,14 @@ export function spawnJuiceExplosion(expX, expY) {
   // 1. Fala uderzeniowa: 1x ShockwaveRing
   spawnShockwaveRing(expX, expY);
 
-  // 2. Rdzeń ognia: 14–18 cząsteczek ExplosionFirePuff
-  spawnExplosionFirePuff(expX, expY, Math.floor(Math.random() * 5 + 14));
+  // 2. Rdzeń ognia: 10–14 cząsteczek ExplosionFirePuff
+  spawnExplosionFirePuff(expX, expY, Math.floor(Math.random() * 5 + 10));
 
-  // 3. Snop iskier: 30–40 cząsteczek StretchedSparks
-  spawnStretchedSparks(expX, expY, Math.floor(Math.random() * 11 + 30));
+  // 3. Snop iskier: 20–26 cząsteczek StretchedSparks
+  spawnStretchedSparks(expX, expY, Math.floor(Math.random() * 7 + 20));
 
-  // 4. Chmura dymu: 10–14 cząsteczek HeavySmokePuff
-  spawnHeavySmokePuff(expX, expY, Math.floor(Math.random() * 5 + 10));
+  // 4. Chmura dymu: 7–10 cząsteczek HeavySmokePuff
+  spawnHeavySmokePuff(expX, expY, Math.floor(Math.random() * 4 + 7));
 }
 
 /**
@@ -1369,10 +1506,13 @@ export function spawnJuiceExplosion(expX, expY) {
  */
 export function drawExplosionSmokeBackground(ctx) {
   if (!ctx || heavySmokePuffs.length === 0) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   for (let i = 0; i < heavySmokePuffs.length; i++) {
-    heavySmokePuffs[i].draw(ctx);
+    const p = heavySmokePuffs[i];
+    if (p.x + p.radius < viewLeft || p.x - p.radius > viewRight) continue;
+    p.draw(ctx);
   }
   ctx.restore();
 }
@@ -1383,27 +1523,42 @@ export function drawExplosionSmokeBackground(ctx) {
  * ctx.globalCompositeOperation = 'lighter'; // Additive blending daje jaskrawy, świecący efekt
  * Wyrenderuj ShockwaveRing (kolor: biało-błękitny #E0F2FE lub neonowo-żółty).
  * Wyrenderuj ExplosionFirePuff (nakładające się na siebie kule ognia zlewają się w rozżarzone białe jądro).
- * Wyrenderuj StretchedSparks (cienkie, świecące linie żaru o szerokości 2px).
+ * Wyrenderuj StretchedSparks (cienkie, świecące linie żaru o szerokości 2px w jednej ścieżce).
  * ctx.restore();
  */
 export function drawExplosionFireAndSparks(ctx) {
   if (!ctx || (shockwaveRings.length === 0 && explosionFirePuffs.length === 0 && stretchedSparks.length === 0)) return;
+  const { viewLeft, viewRight } = getParticleViewBounds(ctx);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
 
   // 1. ShockwaveRing
   for (let i = 0; i < shockwaveRings.length; i++) {
-    shockwaveRings[i].draw(ctx);
+    const r = shockwaveRings[i];
+    if (r.x + r.radius < viewLeft || r.x - r.radius > viewRight) continue;
+    r.draw(ctx);
   }
 
-  // 2. ExplosionFirePuff
+  // 2. ExplosionFirePuff (pre-rendered sprites)
   for (let i = 0; i < explosionFirePuffs.length; i++) {
-    explosionFirePuffs[i].draw(ctx);
+    const p = explosionFirePuffs[i];
+    if (p.x + p.radius < viewLeft || p.x - p.radius > viewRight) continue;
+    p.draw(ctx);
   }
 
-  // 3. StretchedSparks
-  for (let i = 0; i < stretchedSparks.length; i++) {
-    stretchedSparks[i].draw(ctx);
+  // 3. StretchedSparks - zgrupowane w 1 ścieżkę (redukcja do 1 draw-calla)
+  if (stretchedSparks.length > 0) {
+    ctx.strokeStyle = '#FACC15';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    for (let i = 0; i < stretchedSparks.length; i++) {
+      const sp = stretchedSparks[i];
+      if (sp.life <= 0) continue;
+      if (sp.x < viewLeft || sp.x > viewRight) continue;
+      ctx.moveTo(sp.x, sp.y);
+      ctx.lineTo(sp.x - sp.vx * 0.035, sp.y - sp.vy * 0.035);
+    }
+    ctx.stroke();
   }
 
   ctx.restore();

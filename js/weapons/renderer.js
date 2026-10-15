@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { drawBulletCasings } from '../particles.js';
+import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight } from '../camera.js';
 import {
   bullets,
   bulletParticles,
@@ -14,70 +15,92 @@ import {
 export function drawBullets(ctx) {
   drawBulletCasings(ctx);
 
-  for (const p of bulletParticles) {
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 80;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
+  for (let i = 0; i < bulletParticles.length; i++) {
+    const p = bulletParticles[i];
+    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
     ctx.fillStyle = p.color;
     ctx.fillRect(p.x, p.y, p.size, p.size);
   }
 
   ctx.save();
-  for (const b of bullets) {
-    if (b.isSniper || b.weaponId === 'SNIPER') {
-      // Długa, świecąca smuga energii balistycznej (Soldat Barrett .50 ballistic tracer line)
-      const tailLen = 1.4;
-      const tailX = b.x - b.vx * tailLen;
-      const tailY = b.y - b.vy * tailLen;
+  // KROK 1: Rysowanie smug zwykłych pocisków (AK-47, Shotgun) w jednym przebiegu ścieżki
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  let hasStandardBullets = false;
+  for (let i = 0; i < bullets.length; i++) {
+    const b = bullets[i];
+    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
+    if (b.isSniper || b.weaponId === 'SNIPER') continue;
 
-      ctx.save();
-      // 1. Szeroka zewnętrzna poświata energii
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
-      ctx.lineWidth = 4.8;
-      ctx.shadowColor = '#0284c7';
-      ctx.shadowBlur = 14;
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    ctx.moveTo(b.x - b.vx * 0.7, b.y - b.vy * 0.7);
+    ctx.lineTo(b.x, b.y);
+    hasStandardBullets = true;
+  }
+  if (hasStandardBullets) {
+    ctx.stroke();
+  }
 
-      // 2. Środkowa smuga błękitna
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2.4;
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.moveTo(tailX + b.vx * 0.25, tailY + b.vy * 0.25);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+  // KROK 2: Rysowanie białych wierzchołków pocisków (zbiorczy fill)
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < bullets.length; i++) {
+    const b = bullets[i];
+    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
+    if (b.isSniper || b.weaponId === 'SNIPER') continue;
+    ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+  }
 
-      // 3. Jaskrawy biały rdzeń pocisku
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.2;
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.moveTo(tailX + b.vx * 0.55, tailY + b.vy * 0.55);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+  // KROK 3: Rysowanie pocisków snajperskich (wysokowydajny tracer)
+  for (let i = 0; i < bullets.length; i++) {
+    const b = bullets[i];
+    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
+    if (!b.isSniper && b.weaponId !== 'SNIPER') continue;
 
-      // 4. Świecący wierzchołek pocisku
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    } else {
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = 2.0;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.moveTo(b.x - b.vx * 0.7, b.y - b.vy * 0.7);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    // Długa, świecąca smuga energii balistycznej (Soldat Barrett .50 ballistic tracer line)
+    const tailLen = 1.4;
+    const tailX = b.x - b.vx * tailLen;
+    const tailY = b.y - b.vy * tailLen;
 
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
-    }
+    // 1. Szeroka zewnętrzna poświata energii
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
+    ctx.lineWidth = 4.8;
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    // 2. Środkowa smuga błękitna
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(tailX + b.vx * 0.25, tailY + b.vy * 0.25);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    // 3. Jaskrawy biały rdzeń pocisku
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(tailX + b.vx * 0.55, tailY + b.vy * 0.55);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    // 4. Świecący wierzchołek pocisku
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -112,26 +135,33 @@ export function drawSniperLaserSight(ctx, playerObj) {
   const targetY = (typeof playerObj.aimY === 'number' && !isNaN(playerObj.aimY)) ? playerObj.aimY : startY;
 
   ctx.save();
-  // Przerywana czerwona wiązka celownika laserowego w stylu Soldat
+  // Przerywana czerwona wiązka celownika laserowego w stylu Soldat (zero kosztu shadowBlur)
   ctx.setLineDash([5, 5]);
   ctx.lineDashOffset = (performance.now() * -0.03) % 10;
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-  ctx.lineWidth = 1.2;
-  ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 6;
 
+  // Zewnętrzna poświata lasera
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.28)';
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
   ctx.moveTo(startX, startY);
   ctx.lineTo(targetX, targetY);
   ctx.stroke();
 
+  // Ostra linia rdzenia lasera
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
   // Kropka lasera celowniczego w punkcie (aimX, aimY)
   ctx.setLineDash([]);
-  ctx.fillStyle = '#ef4444';
-  ctx.shadowColor = '#f87171';
-  ctx.shadowBlur = 8;
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
   ctx.beginPath();
-  ctx.arc(targetX, targetY, 2.2, 0, Math.PI * 2);
+  ctx.arc(targetX, targetY, 4.0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(targetX, targetY, 1.6, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -439,9 +469,19 @@ function drawMuzzleFlash(ctx, mx, my, size, isShotgun) {
   ctx.save();
   ctx.translate(mx, my);
 
+  // Zewnętrzny obłok żaru (zastępuje ciężki shadowBlur)
+  ctx.fillStyle = 'rgba(251, 146, 60, 0.35)';
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.55);
+  ctx.lineTo(size * 1.2, -size * 0.22);
+  ctx.lineTo(size * 1.6, 0);
+  ctx.lineTo(size * 1.2, size * 0.22);
+  ctx.lineTo(0, size * 0.55);
+  ctx.lineTo(size * 0.35, 0);
+  ctx.closePath();
+  ctx.fill();
+
   ctx.fillStyle = '#f97316';
-  ctx.shadowColor = '#facc15';
-  ctx.shadowBlur = 10;
   ctx.beginPath();
   ctx.moveTo(0, -size * 0.35);
   ctx.lineTo(size * 0.9, -size * 0.15);
@@ -472,10 +512,20 @@ function drawSniperMuzzleFlash(ctx, mx, my, size) {
   ctx.save();
   ctx.translate(mx, my);
 
+  // Zewnętrzna poświata energii balistycznej (zastępuje shadowBlur)
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.30)';
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.55);
+  ctx.lineTo(size * 1.4, -size * 0.18);
+  ctx.lineTo(size * 1.9, 0);
+  ctx.lineTo(size * 1.4, size * 0.18);
+  ctx.lineTo(0, size * 0.55);
+  ctx.lineTo(size * 0.4, 0);
+  ctx.closePath();
+  ctx.fill();
+
   // Potężny błysk centralny z lufy .50 BMG
   ctx.fillStyle = '#f97316';
-  ctx.shadowColor = '#38bdf8';
-  ctx.shadowBlur = 14;
   ctx.beginPath();
   ctx.moveTo(0, -size * 0.35);
   ctx.lineTo(size * 1.1, -size * 0.12);

@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { CONFIG } from '../config.js';
+import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight } from '../camera.js';
 import {
   GROUND_Y,
   _worldPlatforms,
@@ -165,7 +166,7 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0) {
     }
   }
 
-  if (bloodDecals.length >= (CONFIG.MAX_BLOOD_DECALS || 120)) {
+  if (bloodDecals.length >= (CONFIG.MAX_BLOOD_DECALS || 70)) {
     bloodDecals.shift();
   }
 
@@ -301,6 +302,10 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
 
   // Uaktualnij czas życia i alpha plam krwi (zanikanie po 5 sekundach)
   updateBloodDecals();
+
+  if (bloodParticles.length > 70) {
+    bloodParticles.splice(0, bloodParticles.length - 70);
+  }
 
   for (let i = bloodParticles.length - 1; i >= 0; i--) {
     const p = bloodParticles[i];
@@ -616,17 +621,21 @@ export function drawSeveredHeads(ctx, chars) {
 export function updateBloodDecals() {
   for (let i = bloodDecals.length - 1; i >= 0; i--) {
     const d = bloodDecals[i];
-    // Jeśli podłoże pod plamą zniknęło (np. zniszczona platforma lub wycięty krater w ziemi):
-    if (getDecalSupportingSurfaceY(d.x, d.y, 20) === null) {
-      bloodDecals.splice(i, 1);
-      continue;
+    // Sprawdzaj stabilność podłoża pod plamą krwi rzadziej (co ~45 klatek per plama, rozłożone w czasie):
+    d._checkTimer = (d._checkTimer || 0) - 1;
+    if (d._checkTimer <= 0) {
+      d._checkTimer = 45 + (i % 15);
+      if (getDecalSupportingSurfaceY(d.x, d.y, 20) === null) {
+        bloodDecals.splice(i, 1);
+        continue;
+      }
     }
     if (d.lifeTime === undefined) {
       // Stare dekale bez lifetime – dodaj pola
       d.lifeTime = 300;
       d.fadeDuration = 60;
       d.fadeTimer = 60;
-      d.baseAlpha = d.alpha;
+      d.baseAlpha = d.alpha !== undefined ? d.alpha : 0.7;
     }
     if (d.lifeTime > 0) {
       d.lifeTime--;
@@ -645,22 +654,37 @@ export function updateBloodDecals() {
 
 export function drawBloodDecals(ctx) {
   if (!CONFIG.GORE_ENABLED || bloodDecals.length === 0) return;
+
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 80;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
   ctx.save();
-  for (const d of bloodDecals) {
-    const alphaStr = (d.alpha || 0.7).toFixed(3);
-    ctx.fillStyle = `rgba(136, 19, 19, ${alphaStr})`;
+  ctx.fillStyle = '#881313';
+  for (let i = 0; i < bloodDecals.length; i++) {
+    const d = bloodDecals[i];
+    if (d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
+
+    ctx.globalAlpha = d.alpha !== undefined ? d.alpha : 0.7;
     ctx.beginPath();
     ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
-    ctx.fill();
 
-    // Rysowanie drobnych rozbryzgów / kropel wokół plamy
+    // Zgrupowanie mikro-odprysków w tę samą ścieżkę (1 draw-call zamiast N)
     if (d.splats && d.splats.length > 0) {
-      for (const sp of d.splats) {
-        ctx.beginPath();
+      for (let s = 0; s < d.splats.length; s++) {
+        const sp = d.splats[s];
+        ctx.moveTo(d.x + sp.dx + sp.r, d.y + sp.dy);
         ctx.arc(d.x + sp.dx, d.y + sp.dy, sp.r, 0, Math.PI * 2);
-        ctx.fill();
       }
     }
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -668,33 +692,63 @@ export function drawBloodDecals(ctx) {
 export function drawGore(ctx) {
   if (!CONFIG.GORE_ENABLED) return;
 
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 70;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
   if (bloodParticles.length > 0) {
     ctx.save();
-    for (const p of bloodParticles) {
+    // Przebieg 1: Rozciągnięte smugi krwi w locie (pojedynczy stroke)
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let hasStreaks = false;
+    for (let i = 0; i < bloodParticles.length; i++) {
+      const p = bloodParticles[i];
+      if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
       const spd = Math.hypot(p.vx, p.vy);
       if (spd > 1.2) {
-        // Płynna, rozciągnięta kropla krwi w locie (liquid streak / teardrop)
         const tailLen = Math.min(9.0, spd * 1.6);
         const tailX = p.x - (p.vx / spd) * tailLen;
         const tailY = p.y - (p.vy / spd) * tailLen;
-        ctx.strokeStyle = p.color || '#991b1b';
-        ctx.lineWidth = p.size || 2.2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
         ctx.moveTo(tailX, tailY);
         ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = p.color || '#991b1b';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, (p.size || 2.0) * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        hasStreaks = true;
       }
     }
+    if (hasStreaks) ctx.stroke();
+
+    // Przebieg 2: Wolne krople krwi (pojedynczy fill)
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    let hasDrops = false;
+    for (let i = 0; i < bloodParticles.length; i++) {
+      const p = bloodParticles[i];
+      if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
+      const spd = Math.hypot(p.vx, p.vy);
+      if (spd <= 1.2) {
+        const r = (p.size || 2.0) * 0.5;
+        ctx.moveTo(p.x + r, p.y);
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        hasDrops = true;
+      }
+    }
+    if (hasDrops) ctx.fill();
     ctx.restore();
   }
 
-  for (const hg of headGibs) {
+  for (let i = 0; i < headGibs.length; i++) {
+    const hg = headGibs[i];
+    if (hg.x < minX || hg.x > maxX || hg.y < minY || hg.y > maxY) continue;
+
     ctx.save();
     ctx.translate(hg.x, hg.y);
     ctx.rotate(hg.rot);
@@ -737,7 +791,10 @@ export function drawGore(ctx) {
     ctx.restore();
   }
 
-  for (const bg of bodyGibs) {
+  for (let i = 0; i < bodyGibs.length; i++) {
+    const bg = bodyGibs[i];
+    if (bg.x < minX || bg.x > maxX || bg.y < minY || bg.y > maxY) continue;
+
     ctx.save();
     ctx.translate(bg.x, bg.y);
     ctx.rotate(bg.rot);
@@ -767,7 +824,10 @@ export function drawGore(ctx) {
     ctx.restore();
   }
 
-  for (const dw of droppedWeapons) {
+  for (let i = 0; i < droppedWeapons.length; i++) {
+    const dw = droppedWeapons[i];
+    if (dw.x < minX || dw.x > maxX || dw.y < minY || dw.y > maxY) continue;
+
     ctx.save();
     ctx.translate(dw.x, dw.y);
     ctx.rotate(dw.rot);

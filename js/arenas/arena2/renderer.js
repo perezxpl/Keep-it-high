@@ -23,6 +23,10 @@ import {
 import {
   drawSubmergedAcidSkeletons
 } from './submergedSkeletons.js';
+import {
+  getCanvasLogicalWidth,
+  getCanvasLogicalHeight
+} from '../../camera.js';
 
 export {
   drawSewerPipes,
@@ -33,12 +37,225 @@ export {
 
 // MONUMENTALNY PRZEMYSŁOWY WENTYLATOR CENTRALNY (SEKTOR X)
 // Symetryczny punkt centralny areny w osi litery „X” (fanCenterX = 2000, fanCenterY = 680)
+// Zoptymalizowany: dwuwarstwowy bufor offscreen (statyczna obudowa + rotujący wirnik), redukcja setek wywołań Canvas do 2 drawImage
 // =========================================================================
+let _cachedTurbineCasingCanvas = null;
+let _cachedTurbineRotorCanvas = null;
+
+function ensureTurbineCanvases() {
+  if (_cachedTurbineCasingCanvas && _cachedTurbineRotorCanvas) return;
+  if (typeof document === 'undefined') return;
+
+  const size = 900;
+  const cx = 450;
+  const cy = 450;
+  const fanRadius = 420;
+  const hubRadius = 75;
+
+  // 1. Statyczna obudowa i kołnierz szybu (renderowane jednorazowo)
+  _cachedTurbineCasingCanvas = document.createElement('canvas');
+  _cachedTurbineCasingCanvas.width = size;
+  _cachedTurbineCasingCanvas.height = size;
+  const cctx = _cachedTurbineCasingCanvas.getContext('2d');
+  cctx.shadowBlur = 0;
+
+  // Szyb wentylacyjny
+  cctx.fillStyle = '#020406';
+  cctx.beginPath();
+  cctx.arc(cx, cy, fanRadius + 20, 0, Math.PI * 2);
+  cctx.fill();
+
+  // Stalowy kołnierz montażowy
+  cctx.fillStyle = '#151f2b';
+  cctx.beginPath();
+  cctx.arc(cx, cy, fanRadius + 20, 0, Math.PI * 2);
+  cctx.arc(cx, cy, fanRadius, 0, Math.PI * 2, true);
+  cctx.fill();
+
+  cctx.strokeStyle = '#2d3748';
+  cctx.lineWidth = 3.0;
+  cctx.beginPath();
+  cctx.arc(cx, cy, fanRadius + 20, 0, Math.PI * 2);
+  cctx.stroke();
+
+  cctx.strokeStyle = '#1a202c';
+  cctx.lineWidth = 1.8;
+  cctx.beginPath();
+  cctx.arc(cx, cy, fanRadius, 0, Math.PI * 2);
+  cctx.stroke();
+
+  // 32 śruby na kołnierzu
+  const boltCount = 32;
+  const boltR = fanRadius + 10;
+  cctx.fillStyle = '#334155';
+  cctx.beginPath();
+  for (let i = 0; i < boltCount; i++) {
+    const bAngle = (i * Math.PI * 2) / boltCount;
+    const bx = cx + Math.cos(bAngle) * boltR;
+    const by = cy + Math.sin(bAngle) * boltR;
+    cctx.moveTo(bx + 3.0, by);
+    cctx.arc(bx, by, 3.0, 0, Math.PI * 2);
+  }
+  cctx.fill();
+
+  cctx.fillStyle = '#64748b';
+  cctx.beginPath();
+  for (let i = 0; i < boltCount; i++) {
+    const bAngle = (i * Math.PI * 2) / boltCount;
+    const bx = cx + Math.cos(bAngle) * boltR;
+    const by = cy + Math.sin(bAngle) * boltR;
+    cctx.moveTo(bx - 0.8 + 1.4, by - 0.8);
+    cctx.arc(bx - 0.8, by - 0.8, 1.4, 0, Math.PI * 2);
+  }
+  cctx.fill();
+
+  // Blask szybu
+  cctx.fillStyle = 'rgba(14, 42, 56, 0.40)';
+  cctx.beginPath();
+  cctx.arc(cx, cy, fanRadius, 0, Math.PI * 2);
+  cctx.fill();
+
+  // Belki nośne krzyżaka
+  cctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+  cctx.lineWidth = 10;
+  cctx.beginPath();
+  cctx.moveTo(cx - fanRadius, cy);
+  cctx.lineTo(cx + fanRadius, cy);
+  cctx.moveTo(cx, cy - fanRadius);
+  cctx.lineTo(cx, cy + fanRadius);
+  cctx.stroke();
+
+  cctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
+  cctx.lineWidth = 2.2;
+  cctx.beginPath();
+  cctx.moveTo(cx - fanRadius, cy);
+  cctx.lineTo(cx + fanRadius, cy);
+  cctx.moveTo(cx, cy - fanRadius);
+  cctx.lineTo(cx, cy + fanRadius);
+  cctx.stroke();
+
+  // 2. Wirnik obrotowy (łopatki + piasta) renderowany pod kątem 0
+  _cachedTurbineRotorCanvas = document.createElement('canvas');
+  _cachedTurbineRotorCanvas.width = size;
+  _cachedTurbineRotorCanvas.height = size;
+  const rctx = _cachedTurbineRotorCanvas.getContext('2d');
+  rctx.shadowBlur = 0;
+
+  const bladeCount = 6;
+  const bladeWidthAng = 0.28;
+
+  for (let b = 0; b < bladeCount; b++) {
+    const ang = (b * Math.PI * 2) / bladeCount;
+    const cosAng = Math.cos(ang);
+    const sinAng = Math.sin(ang);
+
+    // Cień łopatki
+    rctx.fillStyle = 'rgba(2, 4, 8, 0.85)';
+    rctx.beginPath();
+    rctx.moveTo(cx + Math.cos(ang - bladeWidthAng * 0.4) * hubRadius, cy + Math.sin(ang - bladeWidthAng * 0.4) * hubRadius + 10);
+    rctx.lineTo(cx + Math.cos(ang - bladeWidthAng) * fanRadius, cy + Math.sin(ang - bladeWidthAng) * fanRadius + 10);
+    rctx.lineTo(cx + Math.cos(ang + bladeWidthAng) * fanRadius, cy + Math.sin(ang + bladeWidthAng) * fanRadius + 10);
+    rctx.lineTo(cx + Math.cos(ang + bladeWidthAng * 0.4) * hubRadius, cy + Math.sin(ang + bladeWidthAng * 0.4) * hubRadius + 10);
+    rctx.closePath();
+    rctx.fill();
+
+    // Korpus łopatki
+    rctx.fillStyle = '#141d27';
+    rctx.beginPath();
+    rctx.moveTo(cx + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, cy + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
+    rctx.lineTo(cx + Math.cos(ang - bladeWidthAng) * (fanRadius - 5), cy + Math.sin(ang - bladeWidthAng) * (fanRadius - 5));
+    rctx.arc(cx, cy, fanRadius - 5, ang - bladeWidthAng, ang + bladeWidthAng);
+    rctx.lineTo(cx + Math.cos(ang + bladeWidthAng * 0.35) * hubRadius, cy + Math.sin(ang + bladeWidthAng * 0.35) * hubRadius);
+    rctx.closePath();
+    rctx.fill();
+
+    // Krawędź natarcia
+    rctx.strokeStyle = '#64748b';
+    rctx.lineWidth = 1.8;
+    rctx.beginPath();
+    rctx.moveTo(cx + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, cy + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
+    rctx.lineTo(cx + Math.cos(ang - bladeWidthAng) * (fanRadius - 5), cy + Math.sin(ang - bladeWidthAng) * (fanRadius - 5));
+    rctx.stroke();
+
+    // Przetłoczenie wzmacniające
+    rctx.strokeStyle = '#334155';
+    rctx.lineWidth = 1.4;
+    rctx.beginPath();
+    rctx.moveTo(cx + cosAng * hubRadius, cy + sinAng * hubRadius);
+    rctx.lineTo(cx + cosAng * (fanRadius - 8), cy + sinAng * (fanRadius - 8));
+    rctx.stroke();
+  }
+
+  // Centralna piasta rotora
+  rctx.fillStyle = '#1a202c';
+  rctx.beginPath();
+  rctx.arc(cx, cy, hubRadius, 0, Math.PI * 2);
+  rctx.fill();
+
+  rctx.fillStyle = '#2d3748';
+  rctx.beginPath();
+  rctx.arc(cx - 8, cy - 8, hubRadius * 0.65, 0, Math.PI * 2);
+  rctx.fill();
+
+  rctx.strokeStyle = '#334155';
+  rctx.lineWidth = 2.8;
+  rctx.beginPath();
+  rctx.arc(cx, cy, hubRadius, 0, Math.PI * 2);
+  rctx.stroke();
+
+  // Wieniec śrub na obwodzie piasty
+  const hubBoltCount = 8;
+  const hubBoltR = 37;
+  rctx.fillStyle = '#475569';
+  rctx.beginPath();
+  for (let i = 0; i < hubBoltCount; i++) {
+    const hAngle = (i * Math.PI * 2) / hubBoltCount;
+    const hbx = cx + Math.cos(hAngle) * hubBoltR;
+    const hby = cy + Math.sin(hAngle) * hubBoltR;
+    rctx.moveTo(hbx + 2.5, hby);
+    rctx.arc(hbx, hby, 2.5, 0, Math.PI * 2);
+  }
+  rctx.fill();
+
+  rctx.fillStyle = '#94a3b8';
+  rctx.beginPath();
+  for (let i = 0; i < hubBoltCount; i++) {
+    const hAngle = (i * Math.PI * 2) / hubBoltCount;
+    const hbx = cx + Math.cos(hAngle) * hubBoltR;
+    const hby = cy + Math.sin(hAngle) * hubBoltR;
+    rctx.moveTo(hbx - 0.6 + 1.1, hby - 0.6);
+    rctx.arc(hbx - 0.6, hby - 0.6, 1.1, 0, Math.PI * 2);
+  }
+  rctx.fill();
+
+  // Spinner cone
+  rctx.fillStyle = '#1e293b';
+  rctx.beginPath();
+  rctx.arc(cx, cy, 24, 0, Math.PI * 2);
+  rctx.fill();
+
+  rctx.fillStyle = '#475569';
+  rctx.beginPath();
+  rctx.arc(cx - 5, cy - 5, 12, 0, Math.PI * 2);
+  rctx.fill();
+
+  rctx.strokeStyle = '#020617';
+  rctx.lineWidth = 2.0;
+  rctx.beginPath();
+  rctx.arc(cx, cy, 24, 0, Math.PI * 2);
+  rctx.stroke();
+
+  // Centralna dioda wału
+  rctx.fillStyle = '#10b981';
+  rctx.beginPath();
+  rctx.arc(cx, cy, 2.8, 0, Math.PI * 2);
+  rctx.fill();
+}
+
 export function drawMonumentalCenterTurbine(ctx, time, camera) {
   const fanCenterX = 2000;
   const fanCenterY = 680;
   const fanRadius = 420; // Monumentalny powiększony promień (R = 420 px)
-  const hubRadius = 75;  // Proporcjonalna piasta środkowa (75 px)
   const rotation = time * 0.45;
 
   // Viewport culling: jeśli monumentalna turbina jest całkowicie poza ekranem, pomijamy cały render!
@@ -53,185 +270,21 @@ export function drawMonumentalCenterTurbine(ctx, time, camera) {
     }
   }
 
+  ensureTurbineCanvases();
+  if (!_cachedTurbineCasingCanvas || !_cachedTurbineRotorCanvas) return;
+
   ctx.save();
   ctx.shadowBlur = 0;
 
-  // 1. ZEWNĘTRZNA CZELUŚĆ SZYBU WENTYLACYJNEGO (GŁĘBOKI TUNEL)
-  ctx.fillStyle = '#020406';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, fanRadius + 20, 0, Math.PI * 2);
-  ctx.fill();
+  // 1. Statyczna obudowa i kołnierz szybu (1 szybkie wywołanie drawImage bez alokacji)
+  ctx.drawImage(_cachedTurbineCasingCanvas, fanCenterX - 450, fanCenterY - 450);
 
-  // 2. STALOWY KOŁNIERZ MONTAŻOWY (CASING FLANGE // R = 420 do 440)
-  ctx.fillStyle = '#151f2b';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, fanRadius + 20, 0, Math.PI * 2);
-  ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2, true);
-  ctx.fill();
-
-  ctx.strokeStyle = '#2d3748';
-  ctx.lineWidth = 3.0;
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, fanRadius + 20, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#1a202c';
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Nity i śruby montażowe na obwodzie kołnierza
-  const boltCount = 32;
-  const boltR = fanRadius + 10;
-  for (let i = 0; i < boltCount; i++) {
-    const bAngle = (i * Math.PI * 2) / boltCount;
-    const bx = fanCenterX + Math.cos(bAngle) * boltR;
-    const by = fanCenterY + Math.sin(bAngle) * boltR;
-
-    ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.arc(bx, by, 3.0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(bx - 0.8, by - 0.8, 1.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 3. CHŁODNY BLASK SZYBU WENTYLACYJNEGO (#0e2a38 -> transparent)
+  // 2. Obracający się wirnik (łopatki + piasta z transformacją kątową)
   ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = 'rgba(14, 42, 56, 0.40)';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, fanRadius, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.translate(fanCenterX, fanCenterY);
+  ctx.rotate(rotation);
+  ctx.drawImage(_cachedTurbineRotorCanvas, -450, -450);
   ctx.restore();
-
-  // 4. STALOWE BELKI NOŚNE KRZYŻAKA SZYBU (KRATOWNICA W TLE ZA ŁOPATKAMI)
-  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.lineWidth = 10;
-  ctx.beginPath();
-  ctx.moveTo(fanCenterX - fanRadius, fanCenterY);
-  ctx.lineTo(fanCenterX + fanRadius, fanCenterY);
-  ctx.moveTo(fanCenterX, fanCenterY - fanRadius);
-  ctx.lineTo(fanCenterX, fanCenterY + fanRadius);
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.moveTo(fanCenterX - fanRadius, fanCenterY);
-  ctx.lineTo(fanCenterX + fanRadius, fanCenterY);
-  ctx.moveTo(fanCenterX, fanCenterY - fanRadius);
-  ctx.lineTo(fanCenterX, fanCenterY + fanRadius);
-  ctx.stroke();
-
-  // 5. OBROTOWE ŁOPATKI WENTYLATORA (rotation = time * 0.45) - 0 ALOKACJI GRADIENTÓW W PĘTLI
-  const bladeCount = 6;
-  const bladeWidthAng = 0.28;
-
-  for (let b = 0; b < bladeCount; b++) {
-    const ang = rotation + (b * Math.PI * 2) / bladeCount;
-    const cosAng = Math.cos(ang);
-    const sinAng = Math.sin(ang);
-
-    // Cień łopatki rzucany w głąb szybu
-    ctx.fillStyle = 'rgba(2, 4, 8, 0.85)';
-    ctx.beginPath();
-    ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.4) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.4) * hubRadius + 10);
-    ctx.lineTo(fanCenterX + Math.cos(ang - bladeWidthAng) * fanRadius, fanCenterY + Math.sin(ang - bladeWidthAng) * fanRadius + 10);
-    ctx.lineTo(fanCenterX + Math.cos(ang + bladeWidthAng) * fanRadius, fanCenterY + Math.sin(ang + bladeWidthAng) * fanRadius + 10);
-    ctx.lineTo(fanCenterX + Math.cos(ang + bladeWidthAng * 0.4) * hubRadius, fanCenterY + Math.sin(ang + bladeWidthAng * 0.4) * hubRadius + 10);
-    ctx.closePath();
-    ctx.fill();
-
-    // Korpus stalowej aerodynamicznej łopatki
-    ctx.fillStyle = '#141d27';
-    ctx.beginPath();
-    ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
-    ctx.lineTo(fanCenterX + Math.cos(ang - bladeWidthAng) * (fanRadius - 5), fanCenterY + Math.sin(ang - bladeWidthAng) * (fanRadius - 5));
-    ctx.arc(fanCenterX, fanCenterY, fanRadius - 5, ang - bladeWidthAng, ang + bladeWidthAng);
-    ctx.lineTo(fanCenterX + Math.cos(ang + bladeWidthAng * 0.35) * hubRadius, fanCenterY + Math.sin(ang + bladeWidthAng * 0.35) * hubRadius);
-    ctx.closePath();
-    ctx.fill();
-
-    // Krawędź natarcia (jasny frezowany refleks stali)
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(fanCenterX + Math.cos(ang - bladeWidthAng * 0.35) * hubRadius, fanCenterY + Math.sin(ang - bladeWidthAng * 0.35) * hubRadius);
-    ctx.lineTo(fanCenterX + Math.cos(ang - bladeWidthAng) * (fanRadius - 5), fanCenterY + Math.sin(ang - bladeWidthAng) * (fanRadius - 5));
-    ctx.stroke();
-
-    // Przetłoczenie wzmacniające wzdłuż profilu łopatki
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(fanCenterX + cosAng * hubRadius, fanCenterY + sinAng * hubRadius);
-    ctx.lineTo(fanCenterX + cosAng * (fanRadius - 8), fanCenterY + sinAng * (fanRadius - 8));
-    ctx.stroke();
-  }
-
-  // 6. CENTRALNA PIASTA ROTORA (ROTOR HUB // hubRadius = 54)
-  ctx.fillStyle = '#1a202c';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, hubRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#2d3748';
-  ctx.beginPath();
-  ctx.arc(fanCenterX - 8, fanCenterY - 8, hubRadius * 0.65, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2.8;
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, hubRadius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Wieniec śrub na obwodzie piasty
-  const hubBoltCount = 8;
-  const hubBoltR = 37;
-  for (let i = 0; i < hubBoltCount; i++) {
-    const hAngle = rotation + (i * Math.PI * 2) / hubBoltCount;
-    const hbx = fanCenterX + Math.cos(hAngle) * hubBoltR;
-    const hby = fanCenterY + Math.sin(hAngle) * hubBoltR;
-
-    ctx.fillStyle = '#475569';
-    ctx.beginPath();
-    ctx.arc(hbx, hby, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath();
-    ctx.arc(hbx - 0.6, hby - 0.6, 1.1, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Centralny stożek aerodynamiczny wału silnika (spinner cone // R = 24)
-  ctx.fillStyle = '#1e293b';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, 24, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#475569';
-  ctx.beginPath();
-  ctx.arc(fanCenterX - 5, fanCenterY - 5, 12, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#020617';
-  ctx.lineWidth = 2.0;
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, 24, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Wskaźnik statusu osi / centralna dioda
-  ctx.fillStyle = '#10b981';
-  ctx.beginPath();
-  ctx.arc(fanCenterX, fanCenterY, 2.8, 0, Math.PI * 2);
-  ctx.fill();
 
   ctx.restore();
 }
@@ -263,8 +316,8 @@ export function drawArena2Background(ctx, camera) {
   ctx.globalAlpha = 1.0;
   ctx.globalCompositeOperation = 'source-over';
 
-  const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
-  const H_screen = ctx.canvas?.height || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+  const W_screen = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : (window.innerWidth || 1920);
+  const H_screen = (typeof getCanvasLogicalHeight === 'function') ? getCanvasLogicalHeight() : (window.innerHeight || 1080);
   const time = performance.now() * 0.001;
 
   const camX = camera ? (camera.x || 0) : 0;
@@ -283,14 +336,16 @@ export function drawArena2Background(ctx, camera) {
   const seamOffset = ((camX * 0.015) % seamPeriod + seamPeriod) % seamPeriod;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.lineWidth = 1.5;
+  ctx.beginPath();
   for (let sx = -seamOffset; sx < W_screen + seamPeriod; sx += seamPeriod) {
-    ctx.beginPath();
     ctx.moveTo(sx, 0);
     ctx.lineTo(sx, H_screen);
-    ctx.stroke();
+  }
+  ctx.stroke();
 
-    // Nitowania na łączeniach płyt
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+  // Nitowania na łączeniach płyt
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+  for (let sx = -seamOffset; sx < W_screen + seamPeriod; sx += seamPeriod) {
     for (let sy = 40; sy < H_screen; sy += 120) {
       ctx.fillRect(sx - 2, sy - 2, 4, 4);
     }
@@ -358,26 +413,47 @@ export function drawArena2Background(ctx, camera) {
   ctx.restore();
 
   // -----------------------------------------------------------------------
-  // WARSTWA 3: UNOSZĄCE SIĘ CZĄSTECZKI PYŁU I OPARÓW PRZEMYSŁOWYCH (60 FPS)
+  // WARSTWA 3: UNOSZĄCE SIĘ CZĄSTECZKI PYŁU I OPARÓW PRZEMYSŁOWYCH (60 FPS BATCHED)
   // -----------------------------------------------------------------------
   ctx.save();
+  // Batch 0: Bursztynowy pył
+  ctx.fillStyle = 'rgba(245, 158, 11, 0.45)';
+  ctx.beginPath();
   for (let i = 0; i < _industrialDust.length; i++) {
     const d = _industrialDust[i];
+    if (d.colorType !== 0) continue;
     const dx = (d.baseX + Math.sin(time * 1.2 + d.phase) * 20 - camX * 0.03 % W_screen + W_screen) % W_screen;
     const dy = ((d.baseY + time * d.speedY) % H_screen + H_screen) % H_screen;
-    const pulse = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(time * 2.0 + d.phase));
-
-    if (d.colorType === 0) {
-      ctx.fillStyle = `rgba(245, 158, 11, ${pulse * 0.6})`; // Bursztynowy pył
-    } else if (d.colorType === 1) {
-      ctx.fillStyle = `rgba(148, 163, 184, ${pulse * 0.35})`; // Szary dym
-    } else {
-      ctx.fillStyle = `rgba(52, 211, 153, ${pulse * 0.65})`; // Cyjanowo-kwasowa drobina
-    }
-    ctx.beginPath();
+    ctx.moveTo(dx + d.size, dy);
     ctx.arc(dx, dy, d.size, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
+
+  // Batch 1: Szary dym
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+  ctx.beginPath();
+  for (let i = 0; i < _industrialDust.length; i++) {
+    const d = _industrialDust[i];
+    if (d.colorType !== 1) continue;
+    const dx = (d.baseX + Math.sin(time * 1.2 + d.phase) * 20 - camX * 0.03 % W_screen + W_screen) % W_screen;
+    const dy = ((d.baseY + time * d.speedY) % H_screen + H_screen) % H_screen;
+    ctx.moveTo(dx + d.size, dy);
+    ctx.arc(dx, dy, d.size, 0, Math.PI * 2);
+  }
+  ctx.fill();
+
+  // Batch 2: Cyjanowo-kwasowa drobina
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.50)';
+  ctx.beginPath();
+  for (let i = 0; i < _industrialDust.length; i++) {
+    const d = _industrialDust[i];
+    if (d.colorType !== 2) continue;
+    const dx = (d.baseX + Math.sin(time * 1.2 + d.phase) * 20 - camX * 0.03 % W_screen + W_screen) % W_screen;
+    const dy = ((d.baseY + time * d.speedY) % H_screen + H_screen) % H_screen;
+    ctx.moveTo(dx + d.size, dy);
+    ctx.arc(dx, dy, d.size, 0, Math.PI * 2);
+  }
+  ctx.fill();
   ctx.restore();
 
   ctx.restore();
@@ -510,7 +586,7 @@ export function drawArena2Geometry(ctx, camera) {
   drawAcidUpwardUnderglow(ctx, camera, viewLeft, viewRight);
 
   // 1E. DYNAMICZNE EFEKTY ZGONU W KWASIE (WRZENIE, GEJZERY KROPEL, DYM, WYRZUCONY EKWIPUNEK)
-  drawAcidDeathEffects(ctx, time);
+  drawAcidDeathEffects(ctx, time, camera, viewLeft, viewRight);
 
   // 7B. ZIELONY AKCENT NA KRAWĘDZIACH PLATFORM I RAMP (RIM LIGHT // SCREEN)
   drawPlatformRimLighting(ctx, viewLeft, viewRight);
@@ -1051,17 +1127,17 @@ function drawCeilingInfrastructure(ctx, time, viewLeft, viewRight) {
     // Dynamicznie śledzą ugięcie i nachylenie belki
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 3.0;
+    ctx.beginPath();
     for (let hx = p.x + 40; hx < p.x + p.w; hx += 110) {
       const relX = hx - cx;
       const relY = -halfH;
       const clampX = cx + relX * cosA - relY * sinA;
       const clampY = cy + relX * sinA + relY * cosA;
 
-      ctx.beginPath();
       ctx.moveTo(hx, 0);
       ctx.lineTo(clampX, clampY);
-      ctx.stroke();
     }
+    ctx.stroke();
 
     // Transformacja dla korpusu rury (kąt i przesunięcie pionowe)
     ctx.save();
@@ -1120,7 +1196,7 @@ function drawCeilingInfrastructure(ctx, time, viewLeft, viewRight) {
   ctx.restore();
 
   // Rysowanie iskier po rykoszetach od zablokowanych kul na platformach sufitowych
-  drawCeilingPipeSparks(ctx);
+  drawCeilingPipeSparks(ctx, viewLeft, viewRight);
 }
 
 /** Rysuje pancerny bastion ze stalowymi płytami i pasami ostrzegawczymi (0 alokacji GC) */
@@ -1149,24 +1225,25 @@ function drawIndustrialFortressPlatform(ctx, x, y, w, h, label, isLeft, time) {
   ctx.fillRect(x, y, w, 14);
 
   ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
   for (let hx = x - 20; hx < x + w + 20; hx += 24) {
-    ctx.beginPath();
     ctx.moveTo(hx, y);
     ctx.lineTo(hx + 12, y);
     ctx.lineTo(hx + 2, y + 14);
     ctx.lineTo(hx - 10, y + 14);
     ctx.closePath();
-    ctx.fill();
   }
+  ctx.fill();
   ctx.restore();
 
-  // Nitowania konstrukcyjne na dolnej krawędzi
+  // Nitowania konstrukcyjne na dolnej krawędzi (zgrupowane w jedną ścieżkę)
   ctx.fillStyle = '#475569';
+  ctx.beginPath();
   for (let nx = x + 18; nx < x + w - 10; nx += 38) {
-    ctx.beginPath();
+    ctx.moveTo(nx + 2.5, y + h - 8);
     ctx.arc(nx, y + h - 8, 2.5, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
 
   // Neonowy pasek taktyczny i napis identyfikacyjny platformy
   ctx.save();
@@ -1229,17 +1306,17 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness = 18, isAscendin
   ctx.lineTo(len, thickness + 26);
   ctx.stroke();
 
-  // Ukośne rygle kratownicy
+  // Ukośne rygle kratownicy (zgrupowane w jedną ścieżkę)
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1.8;
   const trussStep = 34;
+  ctx.beginPath();
   for (let tx = 0; tx < len - 20; tx += trussStep) {
-    ctx.beginPath();
     ctx.moveTo(tx, thickness);
     ctx.lineTo(tx + trussStep / 2, thickness + 26);
     ctx.lineTo(tx + trussStep, thickness);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // B. Płyta bieżna rampy (Ryflowana stal antypoślizgowa na górnej krawędzi - 0 alokacji GC)
   ctx.fillStyle = '#334155';
@@ -1253,15 +1330,15 @@ function drawIndustrialTrussRamp(ctx, x1, y1, x2, y2, thickness = 18, isAscendin
   ctx.lineWidth = 1.8;
   ctx.strokeRect(0, 0, len, thickness);
 
-  // Poprzeczne rowki ryflowania antypoślizgowego
+  // Poprzeczne rowki ryflowania antypoślizgowego (zgrupowane w jedną ścieżkę)
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 1.4;
+  ctx.beginPath();
   for (let rx = 10; rx < len - 6; rx += 14) {
-    ctx.beginPath();
     ctx.moveTo(rx, 2);
     ctx.lineTo(rx, thickness - 2);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // C. Prowadnica świetlna wzdłuż krawędzi (LED guide strip)
   ctx.save();
@@ -1304,18 +1381,19 @@ function drawRampJunctionCap(ctx, jx, jy, isLeft) {
   ctx.lineTo(apexX, apexY);
   ctx.stroke();
 
-  // Śruby węzłowe
+  // Śruby węzłowe (zgrupowane w jedną ścieżkę)
   ctx.fillStyle = '#94a3b8';
   const bolts = [
     { dx: sign * 5, dy: 8 },
     { dx: sign * 14, dy: 28 },
     { dx: sign * 5, dy: 20 }
   ];
+  ctx.beginPath();
   for (const b of bolts) {
-    ctx.beginPath();
+    ctx.moveTo(jx + b.dx + 2.0, jy + b.dy);
     ctx.arc(jx + b.dx, jy + b.dy, 2.0, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
 
   // Neonowy punkt telemetryczny LED na węźle
   ctx.save();
@@ -1360,15 +1438,15 @@ function drawCenterTacticalHub(ctx, x, y, w, h, time) {
   ctx.lineWidth = 2.2;
   ctx.strokeRect(x, y, w, h);
 
-  // Ażurowa siatka kratownicy (Catwalk mesh)
+  // Ażurowa siatka kratownicy (Catwalk mesh - zgrupowane w jedną ścieżkę)
   ctx.strokeStyle = '#111827';
   ctx.lineWidth = 1.2;
+  ctx.beginPath();
   for (let mx = x + 8; mx < x + w - 4; mx += 16) {
-    ctx.beginPath();
     ctx.moveTo(mx, y + 2);
     ctx.lineTo(mx, y + h - 2);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // Ostrzegawcze żółte obramowanie krawędzi wejściowych
   ctx.fillStyle = '#f59e0b';

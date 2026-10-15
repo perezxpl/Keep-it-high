@@ -2,6 +2,7 @@
 // OBSTACLES.JS - FASADA SYSTEMU PRZESZKÓD, PLATFORM, FIZYKI I RENDEROWANIA
 // =========================================================================
 
+import { camera, getCanvasLogicalWidth } from './camera.js';
 import { getActiveArena } from './arenas/index.js';
 import { normalizeObstacleType } from './obstacles/palette.js';
 import {
@@ -33,8 +34,16 @@ export * from './obstacles/raycast.js';
 export * from './obstacles/renderer.js';
 
 export function drawObstacles(ctx, groundY) {
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : (ctx.canvas ? ctx.canvas.width : 1920);
+  const zoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewLeft = (camera && typeof camera.x === 'number') ? camera.x - 100 : -100;
+  const viewRight = (camera && typeof camera.x === 'number') ? camera.x + viewW + 100 : 5000;
+
   for (const bar of GROUND_BARRICADES) {
     if (!bar) continue;
+    const barW = bar.w || bar.size || 60;
+    if (bar.x + barW < viewLeft || bar.x > viewRight) continue;
     const bType = normalizeObstacleType(bar.type);
     if (bType === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
     else if (bType === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
@@ -43,6 +52,8 @@ export function drawObstacles(ctx, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.isCrossbar || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
+    const platW = plat.w || 200;
+    if (plat.x + platW < viewLeft || plat.x > viewRight) continue;
     const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     if (isA3) {
@@ -73,15 +84,17 @@ export function drawObstacles(ctx, groundY) {
     if (obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') continue;
     renderedSet.add(obs);
 
-    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const norm = normalizeObstacleType(obs.type);
     const w = (obs.w && obs.w > 0) ? obs.w : (norm === 'ammo_depot' ? 32 : (norm === 'sandbags' ? 48 : 40));
+    if (obs.x + w < viewLeft || obs.x > viewRight) continue;
+
+    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
     const h = (obs.h && obs.h > 0) ? obs.h : (norm === 'ammo_depot' ? 24 : (norm === 'sandbags' ? 24 : 20));
 
     drawSingleObstacleByType(ctx, obs.type, obs.x, topY, w, h, groundY, obs.hitTimer || 0);
   }
 
-  drawBarrelExplosionParticles(ctx);
+  drawBarrelExplosionParticles(ctx, viewLeft, viewRight);
 
   if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2' && activeArenaId !== 'ARENA_2_SECTOR_X') {
     drawNeonGoals(ctx, groundY, GOALS);

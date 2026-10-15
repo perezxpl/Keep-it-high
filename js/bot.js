@@ -576,29 +576,43 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     botTarget.holsterWeight = 0.0;
   }
 
-  // Wyszukanie wrogiego celu do ataku (najbliższy przeciwnik)
+  // Wyszukanie wrogiego celu do ataku (z pamięcią celu na ~14-20 klatek, unikając skanowania O(N^2) co klatkę)
   const isFFA = (typeof deathmatchState !== 'undefined' && deathmatchState.active && deathmatchState.mode === 'FFA');
-  let targetEnemy = (humanPlayer && !humanPlayer.isDead) ? humanPlayer : null;
-  if (Array.isArray(allCombatants) && allCombatants.length > 0) {
+  botTarget._targetScanTimer = (botTarget._targetScanTimer || 0) - 1;
+  let targetEnemy = botTarget._lockedTarget;
+
+  // Walidacja obecnego celu
+  if (!targetEnemy || targetEnemy.isDead || (targetEnemy.isBot && !targetEnemy.active) || (!isFFA && botTarget.team && targetEnemy.team && botTarget.team === targetEnemy.team)) {
+    targetEnemy = null;
+    botTarget._lockedTarget = null;
+    botTarget._targetScanTimer = 0;
+  }
+
+  if (!targetEnemy || botTarget._targetScanTimer <= 0) {
+    botTarget._targetScanTimer = 14 + Math.floor(Math.random() * 8);
     let closestDist = Infinity;
-    let closestCand = null;
+    let closestCand = (humanPlayer && !humanPlayer.isDead && (isFFA || !botTarget.team || !humanPlayer.team || botTarget.team !== humanPlayer.team)) ? humanPlayer : null;
     const botMidX = botTarget.x + botTarget.w / 2;
     const botMidY = botTarget.y + botTarget.h / 2;
 
-    for (let i = 0; i < allCombatants.length; i++) {
-      const c = allCombatants[i];
-      if (!c || c === botTarget || c.isDead || (c.isBot && !c.active)) continue;
-      // W trybie drużynowym (TDM lub mecze ligowe) sojusznicy z tej samej drużyny nie są celem
-      if (!isFFA && botTarget.team && c.team && botTarget.team === c.team) continue;
-      const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
-      if (d < closestDist) {
-        closestDist = d;
-        closestCand = c;
+    if (closestCand) {
+      closestDist = Math.hypot((closestCand.x + closestCand.w / 2) - botMidX, (closestCand.y + closestCand.h / 2) - botMidY);
+    }
+
+    if (Array.isArray(allCombatants) && allCombatants.length > 0) {
+      for (let i = 0; i < allCombatants.length; i++) {
+        const c = allCombatants[i];
+        if (!c || c === botTarget || c.isDead || (c.isBot && !c.active)) continue;
+        if (!isFFA && botTarget.team && c.team && botTarget.team === c.team) continue;
+        const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
+        if (d < closestDist) {
+          closestDist = d;
+          closestCand = c;
+        }
       }
     }
-    if (closestCand) {
-      targetEnemy = closestCand;
-    }
+    targetEnemy = closestCand;
+    botTarget._lockedTarget = targetEnemy;
   }
 
   const meleeTargets = targetEnemy ? [targetEnemy] : (humanPlayer ? [humanPlayer] : []);
@@ -704,10 +718,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
 
   // Taktyczny rzut granatem odłamkowym (Arena 2 i 3)
-  if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
-    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
-    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
+  const isTargetingHuman = targetEnemy ? (!targetEnemy.isBot || targetEnemy === humanPlayer) : false;
+  const canEngageTarget = targetEnemy ? (!isTargetingHuman || isBotVisibleToPlayer(botTarget)) : false;
 
+  if (!isA1 && targetEnemy && !targetEnemy.isDead && (botTarget.grenadeCooldown <= 0)) {
     if (canEngageTarget && distToEnemy >= 230 && distToEnemy <= 520 && botTarget.decisionTimer <= 1) {
       const grenadeRoll = Math.random();
       if (diffCfg.grenadeChance > 0 && grenadeRoll < diffCfg.grenadeChance) {
@@ -722,6 +736,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   const hasBall = (ball && ball.active);
   const targetY = (hasBall && ball.y < groundY - 20) ? ball.y : (targetEnemy ? targetEnemy.y : (isA2 ? 420 : (isA3 ? 1130 : groundY)));
+  const hitReach = botTarget.currentClass?.stats?.hitReach || 56;
+  const hipX = botCenterX;
+  const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
+  const ballDistFromHip = hasBall ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
   if (botTarget.decisionTimer <= 0) {
     const dRange = Math.max(1, diffCfg.decisionMax - diffCfg.decisionMin);
@@ -908,7 +926,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       }
       // Awaryjny doskok do bezpiecznej kładki nad kwasem/wodą
       else {
-        const safeUnder = getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId);
+        const safeUnder = isAirborneNow ? getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId) : null;
         if (safeUnder === null && (botTarget.vy || 0) > -1.0) {
           nx = (botCenterX < 2000 ? 1 : -1) * 0.85;
           ny = -0.52;
@@ -1085,11 +1103,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // 5. CELOWANIE (PIŁKA NA BRAMKĘ / WRÓG W WALCE)
   // =========================================================================
-  const hitReach = botTarget.currentClass?.stats?.hitReach || 56;
-  const hipX = botCenterX;
-  const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
-  const ballDistFromHip = hasBall ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
-
   let aimTargetX, aimTargetY;
   if (hasBall) {
     // W Arenie 1 celowanie w piłkę przy prowadzeniu, a w bramkę rywala przy strzale
@@ -1103,10 +1116,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetX = ball.x + (ball.vx * 3);
       aimTargetY = ball.y + (ball.vy * 3);
     }
-  } else if (targetEnemy && !targetEnemy.isDead) {
-    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
-    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
-
     if (canEngageTarget) {
       aimTargetX = targetEnemy.x + targetEnemy.w / 2;
       aimTargetY = targetEnemy.y + targetEnemy.h / 2;
@@ -1141,9 +1150,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
   // =========================================================================
   if (!isA1 && targetEnemy && !targetEnemy.isDead) {
-    const isTargetingHuman = (!targetEnemy.isBot || targetEnemy === humanPlayer);
-    const canEngageTarget = !isTargetingHuman || isBotVisibleToPlayer(botTarget);
-
     if (canEngageTarget) {
       const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
       const enemyCenterY = targetEnemy.y + targetEnemy.h / 2;

@@ -903,6 +903,13 @@ export const uiManager = {
     if (settingsEl) settingsEl.style.display = 'none';
     if (creatorEl) creatorEl.style.display = 'none';
     if (pauseEl) pauseEl.style.display = 'none';
+    const arenaSelectEl = document.getElementById('screen-arena-select');
+    if (arenaSelectEl && gameState !== 'ARENA_SELECT') {
+      arenaSelectEl.classList.add('hidden');
+    }
+    if (menuEl && gameState !== 'ARENA_SELECT') {
+      menuEl.classList.remove('in-arena-select');
+    }
     if (gameState === 'PLAYING') this.closeRanksModal();
     this.stopCreatorPreview();
 
@@ -1093,14 +1100,16 @@ export const uiManager = {
     window.addEventListener('keydown', (e) => {
       const ranksModal = document.getElementById('ranks-modal');
       const isRanksOpen = (ranksModal && !ranksModal.classList.contains('ranks-modal-hidden'));
+      const menuEl = document.getElementById('main-menu-overlay');
+      const arenaSelectEl = document.getElementById('screen-arena-select');
+      const isArenaSelectOpen = (menuEl && menuEl.style.display !== 'none' && arenaSelectEl && !arenaSelectEl.classList.contains('hidden'));
 
       if (e.key === 'Escape') {
         if (isRanksOpen) {
           this.closeRanksModal();
           return;
         }
-        const arenaSelectEl = document.getElementById('screen-arena-select');
-        if (arenaSelectEl && !arenaSelectEl.classList.contains('hidden')) {
+        if (isArenaSelectOpen) {
           if (this.callbacks && typeof this.callbacks.onBackToMenu === 'function') {
             this.callbacks.onBackToMenu();
           }
@@ -1108,24 +1117,27 @@ export const uiManager = {
         }
       }
 
-      // Klawisze nawigacji w Odprawie Taktycznej (ARENA_SELECT)
-      const arenaSelectEl = document.getElementById('screen-arena-select');
-      if (arenaSelectEl && !arenaSelectEl.classList.contains('hidden') && !isRanksOpen) {
-        if (e.key === 'ArrowLeft' || e.code === 'KeyA') {
+      // Klawisze nawigacji w Odprawie Taktycznej (ARENA_SELECT) – WYŁĄCZNIE gdy ekran odprawy jest otwarty i widoczny
+      if (isArenaSelectOpen && !isRanksOpen) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
           handlePrevArena();
-        } else if (e.key === 'ArrowRight' || e.code === 'KeyD') {
+          return;
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
           handleNextArena();
+          return;
         } else if (e.key === 'Enter') {
+          e.preventDefault();
           const launchBtn = document.getElementById('btn-arena-launch');
           if (launchBtn) launchBtn.click();
+          return;
         }
-        return;
       }
 
       // Klawisz Enter w Menu Głównym
       const menuMainView = document.getElementById('menu-main-view');
-      const menuEl = document.getElementById('main-menu-overlay');
-      if (menuEl && menuEl.style.display !== 'none' && menuMainView && menuMainView.style.display !== 'none' && !isRanksOpen) {
+      if (menuEl && menuEl.style.display !== 'none' && menuMainView && menuMainView.style.display !== 'none' && !isRanksOpen && !isArenaSelectOpen) {
         if (e.key === 'Enter') {
           const playBtn = document.getElementById('menu-btn-play');
           if (playBtn) playBtn.click();

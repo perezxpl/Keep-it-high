@@ -65,24 +65,12 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
 
   // Kolory motywu
   const mainColor = isKill ? '#00e5ff' : '#ef4444';
-  const glowColor = isKill ? 'rgba(0, 229, 255, 0.45)' : 'rgba(239, 68, 68, 0.45)';
-  const bgGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX + bannerW, bannerY + bannerH);
-  if (isKill) {
-    bgGrad.addColorStop(0, 'rgba(4, 18, 30, 0.92)');
-    bgGrad.addColorStop(0.5, 'rgba(6, 26, 44, 0.95)');
-    bgGrad.addColorStop(1, 'rgba(4, 18, 30, 0.92)');
-  } else {
-    bgGrad.addColorStop(0, 'rgba(30, 6, 6, 0.92)');
-    bgGrad.addColorStop(0.5, 'rgba(44, 10, 10, 0.95)');
-    bgGrad.addColorStop(1, 'rgba(30, 6, 6, 0.92)');
-  }
+  const bgColor = isKill ? 'rgba(6, 26, 44, 0.95)' : 'rgba(44, 10, 10, 0.95)';
 
   // Tło płytki
-  ctx.fillStyle = bgGrad;
+  ctx.fillStyle = bgColor;
   ctx.strokeStyle = mainColor;
   ctx.lineWidth = 1.5;
-  ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 10;
 
   if (ctx.roundRect) {
     ctx.beginPath();
@@ -93,8 +81,6 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
     ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
     ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
   }
-
-  ctx.shadowBlur = 0;
 
   // Boczne akcenty taktyczne
   ctx.fillStyle = mainColor;

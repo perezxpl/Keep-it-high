@@ -1249,13 +1249,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     if (vestRatio > 0) {
       const vFillW = Math.max(2, (barW - 3) * vestRatio);
-      const vestGrad = ctx.createLinearGradient(hudX + 1.5, vestY + 1.5, hudX + 1.5 + vFillW, vestY + 1.5);
-      vestGrad.addColorStop(0.0, '#0284c7');
-      vestGrad.addColorStop(0.5, '#0ea5e9');
-      vestGrad.addColorStop(1.0, '#38bdf8');
-
       ctx.beginPath();
-      ctx.fillStyle = vestGrad;
+      ctx.fillStyle = '#0284c7';
       if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
       else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
       ctx.fill();
@@ -1270,8 +1265,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     ctx.save();
     ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
-    ctx.shadowBlur = 3;
     ctx.fillStyle = '#e0f2fe';
     ctx.textBaseline = 'middle';
 
@@ -1298,8 +1291,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     ctx.save();
     ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
-    ctx.shadowBlur = 3;
     ctx.fillStyle = '#22d3ee';
     ctx.textBaseline = 'middle';
 
@@ -1337,34 +1328,18 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // Właściwe wypełnienie aktualnego HP w żywych kolorach
   if (hpRatio > 0) {
     const fillW = Math.max(2, innerW * hpRatio);
-    const hpGrad = ctx.createLinearGradient(innerX, innerY, innerX + fillW, innerY);
-    if (hpRatio > 0.55) {
-      hpGrad.addColorStop(0.0, '#10b981');
-      hpGrad.addColorStop(0.5, '#22c55e');
-      hpGrad.addColorStop(1.0, '#4ade80');
-    } else if (hpRatio > 0.25) {
-      hpGrad.addColorStop(0.0, '#d97706');
-      hpGrad.addColorStop(0.5, '#f59e0b');
-      hpGrad.addColorStop(1.0, '#fde047');
-    } else {
-      hpGrad.addColorStop(0.0, '#dc2626');
-      hpGrad.addColorStop(0.5, '#ef4444');
-      hpGrad.addColorStop(1.0, '#fb7185');
-    }
-
-    ctx.save();
+    let hpColor = '#22c55e';
     if (hpRatio <= 0.25) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 8 * pulse;
+      hpColor = '#ef4444';
+    } else if (hpRatio <= 0.55) {
+      hpColor = '#f59e0b';
     }
 
     ctx.beginPath();
-    ctx.fillStyle = hpGrad;
+    ctx.fillStyle = hpColor;
     if (ctx.roundRect) ctx.roundRect(innerX, innerY, fillW, innerH, 2.5);
     else ctx.rect(innerX, innerY, fillW, innerH);
     ctx.fill();
-    ctx.restore();
 
     // Połysk na górnej krawędzi paska HP dla żywego efektu
     ctx.beginPath();
@@ -1397,8 +1372,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // Etykieta tekstu wewnątrz paska HP
   ctx.save();
   ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
-  ctx.shadowBlur = 4;
   ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'middle';
 
@@ -1435,24 +1408,16 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   else if (isLow) cardBorderCol = '#f97316';
   else if (isRel) cardBorderCol = '#facc15';
 
-  // Tło kafelka broni z wyraźnym kontrastem i kolorowym gradientem akcentu
-  const cardGrad = ctx.createLinearGradient(hudX, wepBoxY, hudX + wepBoxW, wepBoxY);
+  // Tło kafelka broni z wyraźnym kontrastem
+  let cardBgCol = 'rgba(15, 23, 42, 0.95)';
   if (curWepId === 'SHOTGUN') {
-    cardGrad.addColorStop(0.0, 'rgba(67, 20, 7, 0.94)');
-    cardGrad.addColorStop(0.55, 'rgba(15, 23, 42, 0.94)');
-    cardGrad.addColorStop(1.0, 'rgba(9, 13, 22, 0.95)');
+    cardBgCol = 'rgba(28, 14, 10, 0.95)';
   } else if (curWepId === 'SNIPER') {
-    cardGrad.addColorStop(0.0, 'rgba(8, 47, 73, 0.94)');
-    cardGrad.addColorStop(0.55, 'rgba(15, 23, 42, 0.94)');
-    cardGrad.addColorStop(1.0, 'rgba(9, 13, 22, 0.95)');
-  } else {
-    cardGrad.addColorStop(0.0, 'rgba(69, 26, 3, 0.94)');
-    cardGrad.addColorStop(0.55, 'rgba(15, 23, 42, 0.94)');
-    cardGrad.addColorStop(1.0, 'rgba(9, 13, 22, 0.95)');
+    cardBgCol = 'rgba(10, 24, 40, 0.95)';
   }
 
   ctx.beginPath();
-  ctx.fillStyle = cardGrad;
+  ctx.fillStyle = cardBgCol;
   if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
   else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
   ctx.fill();
@@ -1483,8 +1448,6 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.textBaseline = 'middle';
   ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-  ctx.shadowBlur = 4;
   ctx.fillText(wepName, hudX + (isMobile ? 44 : 52), wepBoxY + wepBoxH / 2);
 
   // Amunicja po prawej stronie karty

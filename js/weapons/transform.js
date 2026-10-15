@@ -99,6 +99,9 @@ export const bullets = [];
 export const bulletParticles = [];
 
 export function spawnBulletSparks(x, y, color = '#facc15', count = 4) {
+  if (bulletParticles.length > 50) {
+    bulletParticles.splice(0, bulletParticles.length - 50);
+  }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const spd = Math.random() * 3.5 + 1.0;
@@ -115,6 +118,9 @@ export function spawnBulletSparks(x, y, color = '#facc15', count = 4) {
 }
 
 export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
+  if (bulletParticles.length > 50) {
+    bulletParticles.splice(0, bulletParticles.length - 50);
+  }
   const baseAngle = Math.atan2(ny, nx);
   for (let i = 0; i < count; i++) {
     const spread = (Math.random() - 0.5) * (Math.PI * 0.7);

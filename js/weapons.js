@@ -446,6 +446,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     let closestChar = null;
     let closestCharT = Infinity;
 
+    const minBx = b.prevX < endX ? b.prevX : endX;
+    const maxBx = b.prevX > endX ? b.prevX : endX;
+    const minBy = b.prevY < endY ? b.prevY : endY;
+    const maxBy = b.prevY > endY ? b.prevY : endY;
+
     for (const ch of charList) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
@@ -467,6 +472,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
+
+      // Szybkie odrzucenie AABB przed precyzyjnym testem odcinka (Broadphase rejection)
+      if (maxBx < charLeft || minBx > charRight || maxBy < charTop || minBy > charBottom) continue;
 
       const charT = getSegmentAABBHitT(b.prevX, b.prevY, endX, endY, charLeft, charTop, charRight, charBottom);
       if (charT !== null && charT <= maxT && charT < closestCharT) {
@@ -707,7 +715,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 55;
 
-          triggerHitstop(6);
+          triggerHitstop(2);
           triggerScreenShake(isSniper ? 20 : 18);
 
           spawnHeadGib(
@@ -728,7 +736,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
 
-          triggerHitstop(5);
+          triggerHitstop(2);
           triggerScreenShake(16);
 
           if (isLegshot) {
@@ -775,7 +783,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
 
-          triggerHitstop(4);
+          triggerHitstop(1);
           triggerScreenShake(10);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.65, -2.2, 18, 1.3);
         } else {
@@ -785,7 +793,6 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
 
-          triggerHitstop(2);
           triggerScreenShake(isLegshot ? 4 : 6);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, -1.0, 8, 0.8);
         }

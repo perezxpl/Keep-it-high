@@ -752,33 +752,45 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 export function getPlatformBounds(plat) {
   if (!plat) return { minX: 0, maxX: 0, minY: 0, maxY: 0, cx: 0, cy: 0 };
   const thick = plat.h || plat.thickness || 20;
-  if (plat.angle && Math.abs(plat.angle) > 0.01) {
-    const cx = plat.x + plat.w / 2;
-    const cy = plat.y + thick / 2;
-    const cosA = Math.abs(Math.cos(plat.angle));
-    const sinA = Math.abs(Math.sin(plat.angle));
+  const angle = plat.angle || 0;
+
+  // Sprawdź pamięć podręczną granic platformy (unika 20k+ alokacji obiektów i trygonometrii na sekundę)
+  const b = plat._cachedBounds;
+  if (b && plat._cbX === plat.x && plat._cbY === plat.y && plat._cbW === plat.w && plat._cbH === thick && plat._cbA === angle) {
+    return b;
+  }
+
+  let minX, maxX, minY, maxY, cx, cy;
+  if (Math.abs(angle) > 0.01) {
+    cx = plat.x + plat.w / 2;
+    cy = plat.y + thick / 2;
+    const cosA = Math.abs(Math.cos(angle));
+    const sinA = Math.abs(Math.sin(angle));
     const hw = plat.w / 2;
     const hh = thick / 2;
     const halfBoxW = hw * cosA + hh * sinA;
     const halfBoxH = hw * sinA + hh * cosA;
-    return {
-      minX: cx - halfBoxW,
-      maxX: cx + halfBoxW,
-      minY: cy - halfBoxH,
-      maxY: cy + halfBoxH,
-      cx,
-      cy
-    };
+    minX = cx - halfBoxW;
+    maxX = cx + halfBoxW;
+    minY = cy - halfBoxH;
+    maxY = cy + halfBoxH;
+  } else {
+    const topY = (plat.y !== undefined) ? plat.y : 0;
+    minX = plat.x;
+    maxX = plat.x + plat.w;
+    minY = topY;
+    maxY = topY + thick;
+    cx = plat.x + plat.w / 2;
+    cy = topY + thick / 2;
   }
-  const topY = (plat.y !== undefined) ? plat.y : 0;
-  return {
-    minX: plat.x,
-    maxX: plat.x + plat.w,
-    minY: topY,
-    maxY: topY + thick,
-    cx: plat.x + plat.w / 2,
-    cy: topY + thick / 2
-  };
+
+  plat._cbX = plat.x;
+  plat._cbY = plat.y;
+  plat._cbW = plat.w;
+  plat._cbH = thick;
+  plat._cbA = angle;
+  plat._cachedBounds = { minX, maxX, minY, maxY, cx, cy };
+  return plat._cachedBounds;
 }
 
 export function getPlatformSurfaceInfo(plat, px, groundY) {
@@ -990,13 +1002,15 @@ export function updateBarrelExplosionParticles() {
   }
 }
 
-export function drawBarrelExplosionParticles(ctx) {
+export function drawBarrelExplosionParticles(ctx, viewLeft, viewRight) {
+  if (!barrelExplosionParticles || barrelExplosionParticles.length === 0) return;
+  const vL = (typeof viewLeft === 'number') ? viewLeft : -100;
+  const vR = (typeof viewRight === 'number') ? viewRight : 5000;
   for (const p of barrelExplosionParticles) {
+    if (p.x + p.size < vL || p.x - p.size > vR) continue;
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.life);
     if (p.type === 'fire') {
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 0;
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, Math.max(1, p.size * p.life), 0, Math.PI * 2);
@@ -1054,7 +1068,7 @@ function applyExplosionToEntity(ent, cx, cy, radius, maxDmg, groundY) {
         ent.hasHead = false;
         ent.decapitated = false;
 
-        triggerHitstop(6);
+        triggerHitstop(2);
         triggerScreenShake(20);
 
         spawnBodyGibs(
@@ -1074,7 +1088,6 @@ function applyExplosionToEntity(ent, cx, cy, radius, maxDmg, groundY) {
         ent.vy = -13.5 - Math.random() * 3.5;
         ent.corpseRotVel = nx * (0.16 + Math.random() * 0.12);
 
-        triggerHitstop(3);
         triggerScreenShake(12);
 
         spawnBloodSpurt(ex, ey, nx, -1, 15, 1.2);

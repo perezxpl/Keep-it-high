@@ -907,15 +907,27 @@ export function updateAcidDeathEffects(dt) {
 /**
  * Renderowanie efektów zgonu w kwasie
  */
-export function drawAcidDeathEffects(ctx, time) {
+export function drawAcidDeathEffects(ctx, time, camera, viewLeft, viewRight) {
   ctx.save();
   ctx.shadowBlur = 0;
+
+  let vL = viewLeft;
+  let vR = viewRight;
+  if (typeof vL !== 'number' || typeof vR !== 'number') {
+    const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+    const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+    const canvasW = (ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+    vL = camX - 100;
+    vR = camX + (canvasW / camZoom) + 100;
+  }
 
   // A. Emitery wrzenia na tafli kwasu
   for (let i = 0; i < _acidBoilEmitters.length; i++) {
     const em = _acidBoilEmitters[i];
+    if (em.x + 80 < vL || em.x - 80 > vR) continue;
     for (let b = 0; b < em.bubbles.length; b++) {
       const bub = em.bubbles[b];
+      if (bub.x < vL || bub.x > vR) continue;
       const surfaceY = getAcidSurfaceY(bub.x, time);
       const progress = bub.life / bub.maxLife;
 
@@ -942,6 +954,7 @@ export function drawAcidDeathEffects(ctx, time) {
         ctx.fillStyle = `rgba(167, 243, 208, ${Math.max(0, 0.8 * (1 - popProg))})`;
         for (const dr of bub.droplets) {
           const dx = bub.x + dr.vx * popProg * 8.0;
+          if (dx < vL || dx > vR) continue;
           const dy = surfaceY + dr.vy * popProg * 10.0 + 0.5 * 18.0 * popProg * popProg;
           ctx.beginPath();
           ctx.arc(dx, dy, dr.size, 0, Math.PI * 2);
@@ -954,6 +967,7 @@ export function drawAcidDeathEffects(ctx, time) {
   // B. Kropelki gejzeru (Acid Splash) - bez ctx.save/restore w pętli
   for (let i = 0; i < _acidSplashParticles.length; i++) {
     const sp = _acidSplashParticles[i];
+    if (sp.x < vL || sp.x > vR) continue;
     ctx.globalAlpha = sp.alpha;
     ctx.fillStyle = sp.color;
     ctx.beginPath();
@@ -965,6 +979,7 @@ export function drawAcidDeathEffects(ctx, time) {
   // C. Wyrzucone bronie / hełmy (Debris)
   for (let i = 0; i < _acidDebrisList.length; i++) {
     const d = _acidDebrisList[i];
+    if (d.x + 30 < vL || d.x - 30 > vR) continue;
     ctx.save();
     ctx.translate(d.x, d.y);
     ctx.rotate(d.rot);
@@ -1000,6 +1015,7 @@ export function drawAcidDeathEffects(ctx, time) {
   // D. Cząstki ulatującego dymu - bez ctx.save/restore w pętli
   for (let i = 0; i < _acidSmokeParticles.length; i++) {
     const sm = _acidSmokeParticles[i];
+    if (sm.x + sm.radius < vL || sm.x - sm.radius > vR) continue;
     ctx.globalAlpha = Math.max(0, (sm.currentAlpha || 0.4) * 0.45);
     ctx.fillStyle = sm.color || '#4ade80';
     ctx.beginPath();
@@ -1236,13 +1252,16 @@ export function updateCeilingPipeSparks(dt) {
   }
 }
 
-export function drawCeilingPipeSparks(ctx) {
+export function drawCeilingPipeSparks(ctx, viewLeft, viewRight) {
   if (!_ceilingPipeSparks || _ceilingPipeSparks.length === 0) return;
+  const vL = (typeof viewLeft === 'number') ? viewLeft : -100;
+  const vR = (typeof viewRight === 'number') ? viewRight : 5000;
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalCompositeOperation = 'screen';
   for (let i = 0; i < _ceilingPipeSparks.length; i++) {
     const sp = _ceilingPipeSparks[i];
+    if (sp.x < vL || sp.x > vR) continue;
     const alpha = Math.max(0, 1.0 - sp.life / sp.maxLife);
     ctx.fillStyle = sp.color;
     ctx.globalAlpha = alpha;

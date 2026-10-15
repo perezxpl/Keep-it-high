@@ -171,7 +171,9 @@ export function initKeyboardMouseHandlers({
     }
 
     // Obsługa klawisza Escape oraz P dla Pauzy / Menu / Ustawień
-    if (e.code === 'Escape' || (e.code === 'KeyP' && (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED'))) {
+    const isEscapeKey = (e.code === 'Escape' || e.key === 'Escape');
+    const isPauseKey = (e.code === 'KeyP' || e.key === 'p' || e.key === 'P');
+    if (isEscapeKey || (isPauseKey && (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED'))) {
       const mpModal = document.getElementById('mp-modal');
       if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) {
         e.preventDefault();

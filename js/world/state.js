@@ -96,7 +96,7 @@ export let canvas = null;
 export let ctx = null;
 export let W = window.innerWidth;
 export let H = window.innerHeight;
-export let DPR = Math.min(window.devicePixelRatio || 1, 2);
+export let DPR = Math.min(window.devicePixelRatio || 1, 1.0);
 export let GROUND_Y = 1000;
 
 /**
@@ -354,10 +354,10 @@ export function initCanvas(canvasEl) {
 export function resize(player) {
   W = window.innerWidth;
   H = window.innerHeight;
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.0);
   if (canvas && ctx) {
-    canvas.width = W * DPR;
-    canvas.height = H * DPR;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
     ctx.resetTransform();
     ctx.scale(DPR, DPR);
   }
@@ -532,14 +532,24 @@ export function updateJetpackParticles() {
 export function drawJetpackParticles(ctx) {
   if (jetpackParticles.length === 0) return;
 
+  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
+  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
+  const zoom = camera && camera.zoom ? camera.zoom : 1;
+  const viewW = camera.viewWidth || (camW / zoom);
+  const viewH = camera.viewHeight || (camH / zoom);
+  const margin = 80;
+  const minX = camera.x - margin;
+  const maxX = camera.x + viewW + margin;
+  const minY = camera.y - margin;
+  const maxY = camera.y + viewH + margin;
+
+  ctx.save();
   for (let i = 0; i < jetpackParticles.length; i++) {
     const p = jetpackParticles[i];
-    ctx.save();
+    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
 
     if (p.isFlame) {
       // Gorący płomień z neonowym blaskiem
-      ctx.shadowColor = p.glowColor || p.color;
-      ctx.shadowBlur = 0;
       ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
       ctx.beginPath();
@@ -549,23 +559,20 @@ export function drawJetpackParticles(ctx) {
       // Białe jądro w środku świeżego płomienia
       if (p.life > 0.8) {
         ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
         ctx.fill();
       }
     } else {
       // Rozszerzający się, gasnący dym (fade-out przez alpha)
-      ctx.shadowBlur = 0;
       ctx.fillStyle = p.color || '#64748b';
       ctx.globalAlpha = Math.max(0, p.life * 0.35);
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
     }
-
-    ctx.restore();
   }
+  ctx.restore();
 }
 
 export function dist(x1, y1, x2, y2) {

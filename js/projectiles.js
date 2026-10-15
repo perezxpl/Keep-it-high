@@ -425,7 +425,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         const expImpX = Math.max(-18, Math.min(18, normX * impulse * 1.0));
         const expImpY = Math.max(-6.5, Math.min(10, normY * impulse * 0.75 - 1.5));
         ch.deathImpulse = { vx: expImpX, vy: expImpY };
-        triggerHitstop(8);
+        triggerHitstop(2);
       }
     }
   }
@@ -510,15 +510,15 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   spawnJuiceExplosion(expX, expY);
 
   // Odpalenie dodatkowej fali cząsteczek otoczenia:
-  spawnShrapnelStreak(expX, expY, 20);
-  spawnPowderSmoke(expX, expY, 12);
-  spawnDustCloud(expX, expY, 18);
+  spawnShrapnelStreak(expX, expY, 14);
+  spawnPowderSmoke(expX, expY, 8);
+  spawnDustCloud(expX, expY, 10);
 
   // 6. Krótkotrwały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF'), kula ognia
   spawnExplosionEffect(expX, expY, radius);
   // (Usunięto addExplosionCrater - zastąpiono realną wyrwą w geometrii kładki)
 
-  // 7. Kamera: camera.shake = 16 oraz krótkie spowolnienie czasu / hitstop (freeze na 2 klatki)
+  // 7. Kamera: camera.shake = 16 (płynny shake bez zatrzymywania pętli)
   if (typeof camera !== 'undefined' && camera) {
     camera.shake = 16;
     if (typeof camera.shakeImpulse === 'function') {
@@ -529,7 +529,6 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   } else {
     triggerScreenShake(16);
   }
-  triggerHitstop(2);
 }
 
 /**
@@ -766,8 +765,21 @@ export function updateRubbleParticles(groundY, platforms) {
   }
 }
 
+function getProjectileViewBounds(ctx, pad = 100) {
+  const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
+  const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
+  const canvasW = (ctx && ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : 1920;
+  return {
+    viewLeft: camX - pad,
+    viewRight: camX + (canvasW / camZoom) + pad
+  };
+}
+
 export function drawRubbleParticles(ctx) {
+  if (!ctx || rubbleParticles.length === 0) return;
+  const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
   for (const r of rubbleParticles) {
+    if (r.x + (r.size || 10) < viewLeft || r.x - (r.size || 10) > viewRight) continue;
     ctx.save();
     ctx.globalAlpha = r.alpha;
     ctx.translate(r.x, r.y);
@@ -822,7 +834,12 @@ export function updateExplosionEffects() {
 }
 
 export function drawExplosionEffects(ctx) {
+  if (!ctx || explosionEffects.length === 0) return;
+  const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
   for (const ef of explosionEffects) {
+    const maxR = Math.max(ef.currentRadius || 40, ef.shockwaveRadius || 60, ef.flashRadius || 60);
+    if (ef.x + maxR < viewLeft || ef.x - maxR > viewRight) continue;
+
     const progress = 1 - (ef.life / ef.maxLife);
     const alpha = Math.max(0, 1 - progress);
 
@@ -841,22 +858,31 @@ export function drawExplosionEffects(ctx) {
     ctx.arc(ef.x, ef.y, ef.currentRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Pierścień uderzeniowy (Shockwave ring)
-    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.85})`;
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 14;
-    ctx.lineWidth = 3.5 * alpha;
+    // 2. Pierścień uderzeniowy (Shockwave ring - zero shadowBlur)
+    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.9})`;
+    ctx.lineWidth = 3.2 * alpha;
     ctx.beginPath();
     ctx.arc(ef.x, ef.y, ef.shockwaveRadius, 0, Math.PI * 2);
     ctx.stroke();
 
+    // Zewnętrzna poświata fali
+    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.28})`;
+    ctx.lineWidth = 7.5 * alpha;
+    ctx.stroke();
+
     // 3. Krótkotrwały intensywny biały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF')
     if (ef.flashFrames > 0) {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.shadowColor = '#FFFFFF';
-      ctx.shadowBlur = 30;
+      const fRad = ef.flashRadius || 60;
+      // Zewnętrzna poświata błysku
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.beginPath();
-      ctx.arc(ef.x, ef.y, ef.flashRadius || 60, 0, Math.PI * 2);
+      ctx.arc(ef.x, ef.y, fRad * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Jaskrawy rdzeń
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(ef.x, ef.y, fRad, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -893,10 +919,13 @@ if (typeof registerArenaResetCallback === 'function') {
 }
 
 /**
- * Smugi dymu z lecącego granatu
+ * Smugi dymu z lecącego granatu (zoptymalizowane pod 60 FPS)
  */
 const grenadeSmokeParticles = [];
 export function spawnGrenadeSmokePuff(x, y) {
+  if (grenadeSmokeParticles.length > 30) {
+    grenadeSmokeParticles.shift();
+  }
   grenadeSmokeParticles.push({
     x: x + (Math.random() - 0.5) * 4,
     y: y + (Math.random() - 0.5) * 4,
@@ -925,14 +954,19 @@ export function updateGrenadeSmoke() {
 }
 
 export function drawGrenadeSmoke(ctx) {
-  for (const s of grenadeSmokeParticles) {
-    ctx.save();
-    ctx.fillStyle = `rgba(148, 163, 184, ${s.alpha})`;
+  if (grenadeSmokeParticles.length === 0) return;
+  const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
+  ctx.save();
+  ctx.fillStyle = '#94a3b8';
+  for (let i = 0; i < grenadeSmokeParticles.length; i++) {
+    const s = grenadeSmokeParticles[i];
+    if (s.x + s.size < viewLeft || s.x - s.size > viewRight) continue;
+    ctx.globalAlpha = Math.max(0, s.alpha);
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
+  ctx.restore();
 }
 
 /**
@@ -999,7 +1033,9 @@ export function drawProjectiles(ctx) {
   drawRicochetSparks(ctx);
 
   // 7. Pociski lecące
+  const { viewLeft, viewRight } = getProjectileViewBounds(ctx);
   for (const p of activeProjectiles) {
+    if (p.x + 40 < viewLeft || p.x - 40 > viewRight) continue;
     p.draw(ctx);
   }
 

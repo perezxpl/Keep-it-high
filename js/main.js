@@ -845,6 +845,11 @@ function draw() {
     }
   }
 
+  const tagCamL = camera.x - 80;
+  const tagCamR = camera.x + (camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6))) + 80;
+  const tagCamT = camera.y - 80;
+  const tagCamB = camera.y + (camera.viewHeight || (window.innerHeight / (camera.zoom || 0.6))) + 80;
+
   for (const b of activeBots) {
     drawPlayer(ctx, GROUND_Y, b);
 
@@ -853,18 +858,20 @@ function draw() {
     const isAlly = (botTeam === playerTeam);
 
     if (isAlly) {
-      ctx.save();
-      ctx.font = 'bold 10px Rajdhani, monospace';
-      ctx.textAlign = 'center';
-      const allyColor = '#00e5ff';
-      const allyName = b.name || 'SGT. STRIKER';
-      ctx.fillStyle = allyColor;
-      ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
-      ctx.shadowBlur = 4;
       const botTagX = b.head ? b.head.x : (b.x + b.w / 2);
       const botTagY = b.head ? (b.head.y - 26) : (b.y - 26);
-      ctx.fillText(allyName, botTagX, botTagY);
-      ctx.restore();
+      if (botTagX >= tagCamL && botTagX <= tagCamR && botTagY >= tagCamT && botTagY <= tagCamB) {
+        ctx.save();
+        ctx.font = 'bold 10px Rajdhani, monospace';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#050810';
+        ctx.lineWidth = 2.5;
+        ctx.fillStyle = '#00e5ff';
+        const allyName = b.name || 'SGT. STRIKER';
+        ctx.strokeText(allyName, botTagX, botTagY);
+        ctx.fillText(allyName, botTagX, botTagY);
+        ctx.restore();
+      }
     }
   }
 
@@ -945,18 +952,21 @@ function draw() {
   }
 }
 
-let lastTime = performance.now();
-function loop() {
+let lastTime = 0;
+function loop(now) {
   requestAnimationFrame(loop);
-  const now = performance.now();
-  const delta = now - lastTime;
+  const currentTime = (typeof now === 'number' && now > 0) ? now : performance.now();
+  const delta = currentTime - lastTime;
 
-  if (delta < FRAME_DURATION - 0.5) return;
+  // Bezpieczny próg dla monitorów 60Hz/120Hz/144Hz.
+  // Zabezpiecza przed odrzucaniem klatek przez sub-milisekundowe wahania zegara VSync (np. 16.0ms < 16.16ms),
+  // co wczesniej obcinalo dokladnie 1 klatke na 5, zrzucajac plynne 60 FPS do 48 FPS!
+  if (delta < 11.5) return;
+
   if (delta > 250) {
-    lastTime = now;
+    lastTime = currentTime;
   } else {
-    lastTime += FRAME_DURATION;
-    if (now - lastTime > FRAME_DURATION) lastTime = now;
+    lastTime = currentTime - (delta % FRAME_DURATION);
   }
 
   update();

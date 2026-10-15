@@ -143,7 +143,7 @@ Object.defineProperty(camera, 'shake', {
  */
 export function getCanvasLogicalWidth() {
   const c = getCameraCanvas();
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 1.0) : 1;
   if (c && c.width && dpr > 0) {
     return c.width / dpr;
   }
@@ -155,7 +155,7 @@ export function getCanvasLogicalWidth() {
  */
 export function getCanvasLogicalHeight() {
   const c = getCameraCanvas();
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 1.0) : 1;
   if (c && c.height && dpr > 0) {
     return c.height / dpr;
   }
