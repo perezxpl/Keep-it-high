@@ -434,7 +434,6 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
 
       // Synchronizacja obrażeń od wybuchu w grze sieciowej
-      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
       const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
       if (typeof sendDmg === 'function' && netState && netState.isConnected && shooter && !shooter.isRemote) {
         if (ch.isRemote) {
