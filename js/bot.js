@@ -691,15 +691,31 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const distToEnemy = targetEnemy ? Math.hypot((targetEnemy.x + targetEnemy.w / 2) - botCenterX, (targetEnemy.y + targetEnemy.h / 2) - botCenterY) : Infinity;
 
   if (!isA1) {
+    const curWepId = botTarget.currentWeapon?.id || 'AK47';
     if (isRaptor) {
-      // Raptor: zwiadowca z karabinem wyborowym, przełączający na AK-47 tylko w zwarciu
-      botTarget.currentWeapon = (distToEnemy <= 220) ? WEAPONS.AK47 : WEAPONS.SNIPER;
+      // Raptor: karabin wyborowy z histerezą (zbliżenie <= 180px -> AK-47, oddalenie >= 250px -> SNIPER)
+      if (curWepId === 'SNIPER' && distToEnemy <= 180) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId !== 'SNIPER' && distToEnemy >= 250) {
+        botTarget.currentWeapon = WEAPONS.SNIPER;
+      }
     } else if (isEnforcer) {
-      // Enforcer: kolos bojowy preferujący strzelbę z bliska i w średnim dystansie
-      botTarget.currentWeapon = (distToEnemy <= 260) ? WEAPONS.SHOTGUN : WEAPONS.AK47;
+      // Enforcer: strzelba w zwarciu (oddalenie >= 300px -> AK-47, zbliżenie <= 220px -> SHOTGUN)
+      if (curWepId === 'SHOTGUN' && distToEnemy >= 300) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId !== 'SHOTGUN' && distToEnemy <= 220) {
+        botTarget.currentWeapon = WEAPONS.SHOTGUN;
+      }
     } else {
-      // Striker: szturmowiec z karabinkiem, błyskawicznie dobywający strzelby w szarży z dasha
-      botTarget.currentWeapon = (distToEnemy <= 160) ? WEAPONS.SHOTGUN : (distToEnemy > 480 ? WEAPONS.SNIPER : WEAPONS.AK47);
+      // Striker: karabinek uniwersalny (szarża <= 140px -> SHOTGUN, wycofanie >= 210px -> AK-47, daleki dystans > 520px -> SNIPER, powrót < 440px -> AK-47)
+      if (curWepId === 'SHOTGUN' && distToEnemy >= 210) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId === 'SNIPER' && distToEnemy < 440) {
+        botTarget.currentWeapon = WEAPONS.AK47;
+      } else if (curWepId === 'AK47') {
+        if (distToEnemy <= 140) botTarget.currentWeapon = WEAPONS.SHOTGUN;
+        else if (distToEnemy > 520) botTarget.currentWeapon = WEAPONS.SNIPER;
+      }
     }
   }
 
@@ -1152,11 +1168,14 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);
       const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
 
-      let angleDiff = Math.abs(currentAimAngle - angleToEnemy);
+      let angleDiff = Math.abs(currentAimAngle - finalAimAngle);
       while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
-      const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 12 : 18) * (Math.PI / 180);
-      const isAimedAtEnemy = angleDiff <= toleranceRad;
+      let directDiff = Math.abs(currentAimAngle - angleToEnemy);
+      while (directDiff > Math.PI) directDiff = Math.abs(directDiff - Math.PI * 2);
+
+      const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 10 : 16) * (Math.PI / 180);
+      const isAimedAtEnemy = (angleDiff <= toleranceRad) || (directDiff <= toleranceRad);
 
       if (isAimedAtEnemy) {
         if (!botTarget._aimLocked) {

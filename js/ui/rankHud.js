@@ -37,18 +37,21 @@ setXpNotificationCallback(spawnXpPopup);
 /**
  * Sprawdza warunek zwycięstwa w meczu i przyznaje +40 XP dla gracza (drużyna CYAN)
  * - Arena 1 (Piłka / Neonowe Miasto): wygrana przy 3 bramkach
- * - Arena 3 (Team Deathmatch / Odlewnia): wygrana przy 5 fragach
+ * - Areny 2 i 3 (Deathmatch): 5-minutowy mecz rozliczany wyłącznie na koniec w module deathmatch
  */
 export function checkMatchWin(arenaId, scoreObj) {
   if (!scoreObj || matchWinState.won) return;
 
-  // Na Arenie 2 obowiązuje 5-minutowy Deathmatch – rozliczany wyłącznie na koniec w module deathmatch
-  if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X') {
+  // Na Arenie 2 i Arenie 3 obowiązuje 5-minutowy Deathmatch – rozliczany wyłącznie na koniec w module deathmatch
+  const isDeathmatch = (
+    arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X' ||
+    arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY'
+  );
+  if (isDeathmatch) {
     return;
   }
 
-  const isDeathmatch = (arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY');
-  const winThreshold = isDeathmatch ? 5 : 3;
+  const winThreshold = 3;
 
   const cyanScore = scoreObj.cyan || 0;
   const orangeScore = scoreObj.orange || 0;

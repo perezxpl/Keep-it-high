@@ -103,3 +103,7 @@ export function resetDeathmatchState() {
   deathmatchState.participants.length = 0;
   deathmatchState.leaderboard.length = 0;
 }
+
+if (typeof window !== 'undefined') {
+  window.deathmatchState = deathmatchState;
+}

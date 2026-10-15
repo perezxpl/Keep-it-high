@@ -14,7 +14,7 @@ import {
   _worldArenaState,
   goalCelebration
 } from '../world/state.js';
-import { drawRankHUD, drawMatchVictoryHUD, checkMatchWin, updateMatchWinState } from './rankHud.js';
+import { drawRankHUD, drawMatchVictoryHUD } from './rankHud.js';
 import { drawDeathmatchHUD, drawDeathmatchPodium } from '../deathmatch/index.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
@@ -1608,62 +1608,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curA1State = aState.arena1State;
   const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
-  const isJungleArena = isSectorXArena; // Wsteczna kompatybilność
   const isMatchArena = (curArenaId === 'ARENA_1');
+  const isDmArena = (isSectorXArena || isDeathmatch);
 
-  if (isSectorXArena) {
+  if (isDmArena) {
     drawDeathmatchHUD(ctx, W, H, isMobile, player);
-  } else if (isDeathmatch) {
-    const scoreBoxW = isMobile ? 210 : 270;
-    const scoreBoxH = isMobile ? 26 : 34;
-    const scoreBoxX = (W - scoreBoxW) / 2;
-    const scoreBoxY = isMobile ? 6 : 8;
-
-    let baseAlpha = isMobile ? 0.78 : 0.88;
-    if (player && typeof player.x === 'number') {
-      const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
-      const camY = (camera && typeof camera.y === 'number') ? camera.y : 0;
-      const camZoom = (camera && typeof camera.zoom === 'number') ? camera.zoom : 1;
-      const pScreenX = (player.x + (player.w || 24) * 0.5 - camX) * camZoom;
-      const pScreenY = (player.y - camY) * camZoom;
-      if (Math.abs(pScreenX - W / 2) < (scoreBoxW * 0.5 + 40) && pScreenY < (scoreBoxY + scoreBoxH + 90)) {
-        baseAlpha = 0.22;
-      }
-    }
-
-    ctx.save();
-    ctx.globalAlpha = baseAlpha;
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.80)';
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
-    else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
-    ctx.fill();
-    ctx.stroke();
-
-    // Nagłówek trybu TDM
-    ctx.font = isMobile ? '900 8px monospace' : '900 9.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ef4444';
-    ctx.shadowBlur = 0;
-    ctx.fillText('TEAM DEATHMATCH', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 9.5 : 12));
-
-    // Fragi obu drużyn
-    ctx.font = isMobile ? '900 10.5px monospace' : 'bold 13px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#06b6d4';
-    ctx.fillText(`CYAN ${curScore.cyan}`, scoreBoxX + scoreBoxW / 2 - (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 20.5 : 27));
-
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(':', scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 20.5 : 26));
-
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#f97316';
-    ctx.fillText(`${curScore.orange} ORANGE`, scoreBoxX + scoreBoxW / 2 + (isMobile ? 10 : 14), scoreBoxY + (isMobile ? 20.5 : 27));
-
-    ctx.restore();
   } else if (isMatchArena) {
     const scoreBoxW = isMobile ? 180 : 230;
     const scoreBoxH = isMobile ? 26 : 34;
@@ -1713,7 +1662,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   }
 
   // 4. BANER CELEBRACJI GOLA (tylko w trybie meczowym z piłką)
-  if (!isDeathmatch && !isSectorXArena && goalCelebration.active && goalCelebration.timer > 0) {
+  if (!isDmArena && goalCelebration.active && goalCelebration.timer > 0) {
     goalCelebration.timer--;
     if (goalCelebration.timer <= 0) goalCelebration.active = false;
 
@@ -1734,24 +1683,22 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.restore();
   }
 
-  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU I NAGRODY +40 XP (TYLKO DLA ARENY 1 I ARENY 3)
-  if (!isSectorXArena) {
-    checkMatchWin(curArenaId, curScore);
-    updateMatchWinState(curScore);
+  // 5. OBSŁUGA ZWYCIĘSTWA W MECZU (ARENA 1) LUB PODIUM DEATHMATCH (ARENY 2 I 3)
+  if (!isDmArena) {
     drawMatchVictoryHUD(ctx, W, H, isMobile);
   } else {
-    // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENA 2 - ROZLICZANE NA KONIEC BITWY 5:00)
+    // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENY 2 I 3 - ROZLICZANE NA KONIEC BITWY 5:00)
     drawDeathmatchPodium(ctx, W, H, isMobile);
   }
 
   ctx.restore();
 
-  if (ball && ball.active && !isDeathmatch && !isSectorXArena) {
+  if (ball && ball.active && !isDmArena) {
     drawOffscreenBallIndicator(ctx, ball, camera, player);
   }
 
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, (isDeathmatch || isSectorXArena) ? null : ball, inKickRange);
+    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
   }
 
   drawCombatFeedBanner(ctx, W, H, isMobile);

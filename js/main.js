@@ -57,6 +57,7 @@ import {
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch } from './deathmatch/index.js';
+import { checkMatchWin, updateMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
   editorState,
@@ -544,6 +545,8 @@ function update() {
       }
       checkObstacleCollisions(ball, effectiveGroundY, null, null);
     }
+    checkMatchWin(activeArenaId, arenaScore);
+    updateMatchWinState(arenaScore);
   } else {
     // W trybie Team Deathmatch (Arena 2 & 3) piłka jest całkowicie wycofana z gry
     if (ball.active) {

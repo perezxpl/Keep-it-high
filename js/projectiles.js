@@ -399,6 +399,22 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (shooter && shooter.spawnProtectionTimer && shooter.spawnProtectionTimer > 0)) {
         continue;
       }
+
+      // Ochrona sojuszników przed obrażeniami z własnych granatów w trybie drużynowym (TDM)
+      const dm = (typeof window !== 'undefined' && window.deathmatchState) ? window.deathmatchState : null;
+      const isFFA = (dm && dm.active && dm.mode === 'FFA');
+      if (!isFFA && shooter && shooter !== ch && shooter.team && ch.team && shooter.team === ch.team) {
+        continue;
+      }
+
+      // W trybie sieciowym wybuchy granatów zdalnego gracza oraz granatów botów na maszynie klienta
+      // nie zadają bezpośrednich obrażeń lokalnemu graczowi (ponieważ autorytatywny rzucający / Host wysyła deal_dmg)
+      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+      if (netState && netState.isConnected) {
+        if (shooter && shooter.isRemote && !ch.isRemote) continue;
+        if (!netState.isHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+      }
+
       const factor = Math.max(0, 1 - (dist / radius));
       // 120-150 dmg w centrum ze spadkiem liniowym
       const damage = Math.round(145 * factor);

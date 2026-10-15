@@ -417,6 +417,49 @@ export function applyLocalPlayerDamage(data) {
     ? (GROUND_Y - data.relHitY)
     : ((typeof data.hitY === 'number') ? data.hitY : (player.y + 20));
 
+  const isKick = (data.weaponId === 'KICK' || data.weaponId === 'SPARTAN_KICK');
+  if (isKick) {
+    const isSpartan = (data.weaponId === 'SPARTAN_KICK');
+    player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - (data.damage || 14));
+    player.lastAttacker = remotePlayer;
+    player.lastAttackerTimer = 240;
+    player.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
+    player.staggerLanded = false;
+    player.staggerRecoveryTimer = 0;
+    player.isJumping = true;
+    player.onGround = false;
+    if (typeof data.vx === 'number') {
+      player.vx = data.vx;
+      player.airVx = data.vx;
+    }
+    if (typeof data.vy === 'number') player.vy = data.vy;
+    if (data.facing !== undefined) player.facing = data.facing;
+    player.isCharging = false;
+    player.isShooting = false;
+    player.isSliding = false;
+    player.isCrouching = false;
+    player.crouchToggled = false;
+    player.isProne = false;
+
+    spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
+    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+    triggerScreenShake(isSpartan ? 12 : 5);
+
+    if (player.hp <= 0 && !player.isDead) {
+      player.isDead = true;
+      player.killer = remotePlayer;
+      player.respawnTimer = 180;
+      triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
+      sendKillBroadcast({
+        killerId: 'remotePlayer',
+        killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+        victimId: 'player',
+        victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2')
+      });
+    }
+    return;
+  }
+
   let damageMultiplier = 1.0;
   let helmetAbsorbed = false;
   let vestAbsorbed = false;
@@ -522,6 +565,46 @@ export function applyRemoteBotDamage(data) {
   const hitPtY = (data.relHitY !== undefined)
     ? (GROUND_Y - data.relHitY)
     : ((typeof data.hitY === 'number') ? data.hitY : (b.y + 20));
+
+  const isKick = (data.weaponId === 'KICK' || data.weaponId === 'SPARTAN_KICK');
+  if (isKick) {
+    const isSpartan = (data.weaponId === 'SPARTAN_KICK');
+    b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - (data.damage || 14));
+    b.lastAttacker = remotePlayer;
+    b.lastAttackerTimer = 240;
+    b.staggerTimer = isSpartan ? 120 : (data.stagger || 22);
+    b.staggerLanded = false;
+    b.staggerRecoveryTimer = 0;
+    b.isJumping = true;
+    b.onGround = false;
+    if (typeof data.vx === 'number') {
+      b.vx = data.vx;
+      b.airVx = data.vx;
+    }
+    if (typeof data.vy === 'number') b.vy = data.vy;
+    if (data.facing !== undefined) b.facing = data.facing;
+    b.isCharging = false;
+    b.isShooting = false;
+    b.isSliding = false;
+    b.isCrouching = false;
+    b.isProne = false;
+
+    spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
+    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+
+    if (b.hp <= 0 && !b.isDead) {
+      b.isDead = true;
+      b.killer = remotePlayer;
+      b.respawnTimer = 180;
+      sendKillBroadcast({
+        killerId: 'remotePlayer',
+        killerName: remotePlayer.name || 'GRACZ 2',
+        victimId: b.id || `bot_${data.botIdx + 1}`,
+        victimName: b.name || 'BOT AI'
+      });
+    }
+    return;
+  }
 
   let dmg = data.damage || 25;
   if (data.isHeadshot) dmg = Math.round(dmg * 2.25);

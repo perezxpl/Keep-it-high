@@ -451,10 +451,13 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
       if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
-      // W trybie sieciowym kule zdalnego gracza nie zadają obrażeń bezpośrednio lokalnemu graczowi
-      // (ponieważ strzelający autorytatywnie wysyła pakiet deal_dmg po trafieniu na swoim ekranie)
+      // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
+      // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
       const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
-      if (netState && netState.isConnected && b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
+      if (netState && netState.isConnected) {
+        if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
+        if (!netState.isHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+      }
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
