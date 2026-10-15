@@ -395,6 +395,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
   const charList = characters || [];
   const obs = obstaclesList || obstacles;
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   updateBulletCasings(1 / 60, groundY, obs);
 
   for (let i = bullets.length - 1; i >= 0; i--) {
@@ -458,7 +459,6 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
       // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
-      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
       if (netState && netState.isConnected) {
         if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
         if (!netState.isHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
@@ -522,6 +522,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (b.shooter && b.shooter.spawnProtectionTimer && b.shooter.spawnProtectionTimer > 0)) {
         spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
         b.life = 0;
+        bullets.splice(i, 1);
         continue;
       }
 
@@ -622,7 +623,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             isTorsoShot,
             hitX: hitPtX,
             hitY: hitPtY,
-            relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+            relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
             weaponId: b.weaponId
           });
         } else if (closestChar.isBot && !netState.isHost) {
@@ -637,7 +638,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
               isTorsoShot,
               hitX: hitPtX,
               hitY: hitPtY,
-              relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+              relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
               weaponId: b.weaponId
             });
           }

@@ -390,6 +390,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
   // 1. Obrażenia i odrzut graczy / botów
   const targets = Array.isArray(combatants) ? combatants : [];
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   for (const ch of targets) {
     if (!ch || ch.isDead) continue;
     const chCenterX = ch.x + ch.w / 2;
@@ -412,7 +413,6 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       // W trybie sieciowym wybuchy granatów zdalnego gracza oraz granatów botów na maszynie klienta
       // nie zadają bezpośrednich obrażeń lokalnemu graczowi (ponieważ autorytatywny rzucający / Host wysyła deal_dmg)
-      const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
       if (netState && netState.isConnected) {
         if (shooter && shooter.isRemote && !ch.isRemote) continue;
         if (!netState.isHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
