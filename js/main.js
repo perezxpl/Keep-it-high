@@ -790,12 +790,7 @@ function draw() {
   if (shouldDrawPlayerSniperLaser) {
     drawSniperLaserSight(ctx, player);
   }
-  for (const b of activeBots) {
-    drawSniperLaserSight(ctx, b);
-  }
-  if (remotePlayer.active) {
-    drawSniperLaserSight(ctx, remotePlayer);
-  }
+  // Celowniki snajperskie botow i zdalnego gracza niewidoczne dla lokalnego gracza
 
   // Trajektoria balistyczna rzutu bronią miotaną (granatem) - białe kropki Soldat
   const isStickGrenadeAim = !!(rightStick && rightStick.active && rightStick.armedMode === 'GRENADE' && (typeof rightStick.power === 'number' ? rightStick.power > 0.03 : true));
