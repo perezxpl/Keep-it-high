@@ -48,6 +48,8 @@ import {
   drawSniperLaserSight,
   drawHeldWeapon
 } from './weapons/renderer.js';
+import { networkState, sendDamageEvent, remotePlayer } from './network.js';
+import { getActiveBots } from './bot.js';
 
 export {
   WEAPONS,
@@ -450,6 +452,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (!ch || ch === b.shooter || ch.isDead) continue;
       if (ch.isBot && !ch.active) continue;
       if (b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
+      // W trybie sieciowym kule zdalnego gracza nie zadają obrażeń bezpośrednio lokalnemu graczowi
+      // (ponieważ strzelający autorytatywnie wysyła pakiet deal_dmg po trafieniu na swoim ekranie)
+      if (networkState && networkState.isConnected && b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
@@ -596,6 +601,38 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (b.shooter && b.shooter !== closestChar) {
         closestChar.lastAttacker = b.shooter;
         closestChar.lastAttackerTimer = 240; // 4 sekundy aktywnego okna walki
+      }
+
+      // Synchronizacja zadanych obrażeń w grze sieciowej
+      if (networkState && networkState.isConnected) {
+        if (closestChar.isRemote) {
+          sendDamageEvent({
+            target: 'player',
+            damage: b.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+            weaponId: b.weaponId
+          });
+        } else if (closestChar.isBot && !networkState.isHost) {
+          const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+          const bIdx = activeBots.indexOf(closestChar);
+          if (bIdx !== -1) {
+            sendDamageEvent({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: b.damage,
+              isHeadshot,
+              isTorsoShot,
+              hitX: hitPtX,
+              hitY: hitPtY,
+              relHitY: (typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0,
+              weaponId: b.weaponId
+            });
+          }
+        }
       }
 
       const isShotgun = (b.weaponId === 'SHOTGUN');

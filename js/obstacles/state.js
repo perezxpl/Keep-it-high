@@ -562,11 +562,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 600;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 1130;
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const spawnIdx = isClient ? 1 : 0;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3800 : 600);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (isClient ? 880 : 1130);
       playerObj.vx = 0;
       playerObj.vy = 0;
-      playerObj.facing = 1;
+      playerObj.facing = isClient ? -1 : 1;
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;
@@ -618,11 +620,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 520;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 390;
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const spawnIdx = isClient ? 1 : 0;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3470 : 520);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : 390;
       playerObj.vx = 0;
       playerObj.vy = 0;
-      playerObj.facing = 1;
+      playerObj.facing = isClient ? -1 : 1;
       playerObj.isIntro = false;
       playerObj.isJumping = false;
       playerObj.isSliding = false;

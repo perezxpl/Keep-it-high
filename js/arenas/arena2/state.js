@@ -5,6 +5,7 @@
 // =========================================================================
 
 import { triggerScreenShake } from '../../camera.js';
+import { networkState, sendAcidSurgeSync } from '../../network.js';
 
 // =========================================================================
 // 1. KONFIGURACJA ARENY (ARENA_2_CONFIG)
@@ -431,6 +432,12 @@ export const ACID_SURGE_SYSTEM = {
   },
 
   update(dt) {
+    if (typeof networkState !== 'undefined' && networkState.isConnected && !networkState.isHost) {
+      // Klient w grze sieciowej: stan i pozycję kwasu synchronizuje autorytatywnie Host
+      return;
+    }
+
+    const prevState = this.state;
     this.timer -= dt;
 
     switch (this.state) {
@@ -483,6 +490,14 @@ export const ACID_SURGE_SYSTEM = {
           this.currentY = this.baseY;
         }
         break;
+      }
+    }
+
+    if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendAcidSurgeSync === 'function') {
+      this._syncTimer = (this._syncTimer || 0) + dt;
+      if (prevState !== this.state || this._syncTimer >= 1.0) {
+        this._syncTimer = 0;
+        sendAcidSurgeSync(this);
       }
     }
   }

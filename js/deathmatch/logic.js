@@ -15,6 +15,9 @@ import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../prog
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
+import { networkState, sendDeathmatchSync } from '../network.js';
+
+let _dmSyncTimer = 0;
 
 /**
  * Inicjalizacja sesji Deathmatch przy wejściu na Arenę 2
@@ -22,7 +25,8 @@ import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
 export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.active = true;
   deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
-  deathmatchState.playerTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
+  const isMultiClient = (remotePlayer && remotePlayer.active && typeof networkState !== 'undefined' && !networkState.isHost);
+  deathmatchState.playerTeam = isMultiClient ? TEAMS.ORANGE : (deathmatchConfig.playerTeam || TEAMS.CYAN);
   deathmatchState.timeRemaining = DEATHMATCH_DURATION;
   deathmatchState.matchEnded = false;
   deathmatchState.endCelebrationTimer = 0;
@@ -239,6 +243,15 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
   updateCombatFeed(stepTime);
 
+  // Synchronizacja stanu deathmatch przez Hosta (zegar, wynik drużyn)
+  if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendDeathmatchSync === 'function') {
+    _dmSyncTimer = (_dmSyncTimer || 0) + stepTime;
+    if (_dmSyncTimer >= 1.0) {
+      _dmSyncTimer = 0;
+      sendDeathmatchSync(deathmatchState);
+    }
+  }
+
   // 2. Obsługa faktycznych eliminacji w walce
   const botList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
   const combatants = [];
@@ -327,6 +340,10 @@ export function finishDeathmatch() {
   deathmatchState.matchEnded = true;
   deathmatchState.endCelebrationTimer = deathmatchState.maxEndCelebrationTimer;
   updateLeaderboard();
+
+  if (typeof networkState !== 'undefined' && networkState.isHost && networkState.isConnected && typeof sendDeathmatchSync === 'function') {
+    sendDeathmatchSync(deathmatchState);
+  }
 
   // Ustalenie miejsca gracza i nagrody XP (100 / 80 / 60 / 40 XP)
   const place = deathmatchState.playerPlace;

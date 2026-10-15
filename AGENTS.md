@@ -79,6 +79,10 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### Sztuczna Inteligencja i Boty (`js/bot.js`)
 - `js/bot.js` — konfiguracja profili botów bojowych (`BOT_PROFILES`, `BOT_CLASS_PROFILES`, `BOT_NAMES_BY_CLASS`), fabryka instancji botów (`createBotInstance`), pula aktywnych botów (`bots`, `botCount`, `setBotCount`, `getBotCount`, `getActiveBots`), automatyczny dobór zrównoważonych klas (`balanceBotClasses`, `applyBotClassAndConfig`), logika sztucznej inteligencji (`updateBotBrain` z celowaniem wielopodmiotowym, unikalnymi umiejętnościami specjalnymi klas: Blast Jump dla Enforcera, Rocket Boots Air/Ground Dash dla Strikera, kiting/hover dla Raptora) oraz stopnie trudności (`setBotDifficulty`).
 
+### Rozgrywka Sieciowa i P2P (`js/network.js`, `js/networkUI.js`)
+- `js/network.js` — architektura P2P WebRTC (PeerJS), synchronizacja pozycji graczy i botów, autorytatywna synchronizacja obrażeń (`deal_dmg`), rzutów granatów, stanu deathmatch, kwasu na Arenie 2 oraz eliminacji (`kill_event`).
+- `js/networkUI.js` — obsługa interfejsu trybu wieloosobowego, modale połączenia, kod pokoju, czat tekstowy w grze (klawisz T), wskaźnik pingu i synchronizacja konfiguracji botów w lobby.
+
 ### Świat, Kamera, UI i Narzędzia (`js/world/`, `js/ui/`, `js/dev/`)
 - `js/world/` — stan świata i kamery (`state.js`), niebo (`sky.js`), podłoże (`ground.js`), teren (`terrain.js`), gore/krew (`gore.js`), cząsteczki (`particles.js`).
 - `js/ui/hudCanvas.js` — rysowanie HUD-u na płótnie (`drawHUD`).

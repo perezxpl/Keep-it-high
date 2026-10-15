@@ -6,6 +6,8 @@
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { networkState, sendDamageEvent, remotePlayer } from './network.js';
+import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import {
   spawnShrapnelStreak,
@@ -415,6 +417,38 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         ch.lastAttackerTimer = 240;
       }
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
+
+      // Synchronizacja obrażeń od wybuchu w grze sieciowej
+      if (typeof sendDamageEvent === 'function' && networkState && networkState.isConnected && shooter && !shooter.isRemote) {
+        if (ch.isRemote) {
+          sendDamageEvent({
+            target: 'player',
+            damage: damage,
+            isHeadshot: false,
+            isTorsoShot: true,
+            hitX: chCenterX,
+            hitY: chCenterY,
+            relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
+            weaponId: 'GRENADE'
+          });
+        } else if (ch.isBot && !networkState.isHost) {
+          const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+          const bIdx = activeBots.indexOf(ch);
+          if (bIdx !== -1) {
+            sendDamageEvent({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: damage,
+              isHeadshot: false,
+              isTorsoShot: true,
+              hitX: chCenterX,
+              hitY: chCenterY,
+              relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
+              weaponId: 'GRENADE'
+            });
+          }
+        }
+      }
 
       if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;
