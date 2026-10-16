@@ -34,6 +34,11 @@ canvas {
   height: 100%;
   touch-action: none;
   cursor: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
 }
 
 #dev-menu, #dev-menu *, #multi-panel, #multi-panel * {
@@ -980,6 +985,85 @@ button, .dev-btn {
   font-size: 10px;
 }
 
+/* -------------------------------------------------------------------------
+   WIERSZ IDENTYFIKACJI OPERATORA (CALLSIGN / NICK)
+   ------------------------------------------------------------------------- */
+.operator-callsign-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  margin-bottom: 2px;
+}
+
+.operator-callsign-box:focus-within {
+  border-color: #00e5ff;
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+
+.callsign-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 1.2px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.operator-callsign-box:focus-within .callsign-label {
+  color: #00e5ff;
+}
+
+.callsign-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.callsign-input::placeholder {
+  color: #475569;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+}
+
+.callsign-edit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.callsign-edit-icon:hover {
+  color: #00e5ff;
+  transform: scale(1.15);
+}
+
+.callsign-edit-svg {
+  display: block;
+}
+
 .player-card-rank-section {
   display: flex;
   align-items: center;
@@ -1143,28 +1227,66 @@ button, .dev-btn {
 .rank-name-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .rank-name {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1.1;
+}
+
+.rank-tier-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.rank-progress-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  margin-top: 3px;
 }
 
 .rank-next-badge {
-  font-family: monospace;
-  font-size: 10px;
-  color: #64748b;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 1;
+  flex: 1;
+  text-align: left;
+}
+
+.rank-missing-xp {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #facc15;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.4);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
   text-align: right;
 }
 
@@ -1224,6 +1346,111 @@ button, .dev-btn {
   border-color: #facc15;
   background: rgba(250, 204, 21, 0.22);
   box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+}
+
+/* -------------------------------------------------------------------------
+   TAKTYCZNY PRZYCISK REJESTRU SŁUŻBY (RANGI & XP)
+   ------------------------------------------------------------------------- */
+.menu-ranks-tile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(2, 6, 23, 0.98) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.28);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0, 229, 255, 0.04);
+  cursor: pointer !important;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.menu-ranks-tile-btn:hover {
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.28) 0%, rgba(15, 23, 42, 0.96) 100%);
+  border-color: #00e5ff;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.35), 0 6px 20px rgba(0, 0, 0, 0.6);
+  transform: translateY(-1.5px);
+}
+
+.menu-ranks-tile-btn:active {
+  transform: scale(0.985);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+}
+
+.ranks-tile-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 6px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+.menu-ranks-tile-btn:hover .ranks-tile-icon-box {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00e5ff;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.55);
+}
+
+.ranks-tile-svg {
+  display: block;
+}
+
+.ranks-tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.ranks-tile-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #f1f5f9;
+  transition: color 0.2s ease;
+}
+
+.menu-ranks-tile-btn:hover .ranks-tile-title {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.ranks-tile-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.ranks-tile-arrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #00e5ff;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.menu-ranks-tile-btn:hover .ranks-tile-arrow {
+  opacity: 1;
+  transform: translate(2px, -2px);
+  text-shadow: 0 0 8px #00e5ff;
 }
 
 .ui-btn-amber {

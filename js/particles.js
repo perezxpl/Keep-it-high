@@ -994,7 +994,7 @@ export function updateExplosionParticles(dt = 1 / 60, groundY = 500, platforms =
 function getParticleViewBounds(ctx, pad = 100) {
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
   const camX = (camera && typeof camera.x === 'number') ? camera.x : 0;
-  const canvasW = (ctx && ctx.canvas && ctx.canvas.width) ? ctx.canvas.width : (typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920);
+  const canvasW = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : ((ctx && ctx.canvas && ctx.canvas.clientWidth) ? ctx.canvas.clientWidth : 1920);
   return {
     viewLeft: camX - pad,
     viewRight: camX + (canvasW / camZoom) + pad

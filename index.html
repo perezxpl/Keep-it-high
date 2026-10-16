@@ -27,7 +27,7 @@
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
       "./js/bot.js": "./js/bot.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
-      "./js/camera.js": "./js/camera.js?v=v194_fix_camera_dpr_dimensions_and_vsync_pacing",
+      "./js/camera.js": "./js/camera.js?v=v200_universal_60fps_every_browser",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
       "./js/classes/index.js": "./js/classes/index.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -45,7 +45,7 @@
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v196_touch_weapon_pocket_tap_select_and_500ms_hold_reload",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v196_touch_weapon_pocket_tap_select_and_500ms_hold_reload",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v197_enforcer_mobile_flick_down_up_instant_ability",
-      "./js/main.js": "./js/main.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
+      "./js/main.js": "./js/main.js?v=v200_universal_60fps_every_browser",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
       "./js/network.js": "./js/network.js?v=v195_fix_stagger_flight_teleport_and_bot_kick_loop",
       "./js/networkUI.js": "./js/networkUI.js?v=v192_perf_and_multiplayer_sync",
@@ -56,7 +56,7 @@
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v181_fix_arena2_ramp_phantom_walls",
       "./js/obstacles/renderer.js": "./js/obstacles/renderer.js?v=v162_remove_emojis_streamline_ui",
       "./js/obstacles/state.js": "./js/obstacles/state.js?v=v192_perf_and_multiplayer_sync",
-      "./js/particles.js": "./js/particles.js?v=v192_perf_and_multiplayer_sync",
+      "./js/particles.js": "./js/particles.js?v=v200_universal_60fps_every_browser",
       "./js/player.js": "./js/player.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/actions.js": "./js/player/actions.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
       "./js/player/death.js": "./js/player/death.js?v=v178_smart_respawn_spawn_protection_diff_banners",
@@ -82,19 +82,19 @@
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v192_perf_and_multiplayer_sync",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v196_touch_weapon_pocket_tap_select_and_500ms_hold_reload",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v192_perf_and_multiplayer_sync",
-      "./js/uiManager.js": "./js/uiManager.js?v=v192_perf_and_multiplayer_sync",
+      "./js/uiManager.js": "./js/uiManager.js?v=v201_operator_card_callsign_and_tactical_ranks_tile",
       "./js/weapons.js": "./js/weapons.js?v=v192_perf_and_multiplayer_sync",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v192_perf_and_multiplayer_sync",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v192_perf_and_multiplayer_sync",
       "./js/world.js": "./js/world.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world/gore.js": "./js/world/gore.js?v=v192_perf_and_multiplayer_sync",
       "./js/world/sky.js": "./js/world/sky.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/world/state.js": "./js/world/state.js?v=v193_fix_dpr_retina_blur_and_120fps_accumulator_loop",
+      "./js/world/state.js": "./js/world/state.js?v=v200_universal_60fps_every_browser",
       "./js/world/terrain.js": "./js/world/terrain.js?v=v134_striker_mobile_air_dash_flames_spread"
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v184_ui_selection_screen_fit_and_flow">
+  <link rel="stylesheet" href="./css/main.css?v=v201_operator_card_callsign_and_tactical_ranks_tile">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -401,7 +401,7 @@
             <div class="menu-columns-layout">
               <!-- LEWA KOLUMNA: PROFIL I STATUS SŁUŻBY -->
               <div class="menu-col-profile">
-                <div class="menu-player-card" id="menu-player-card">
+                <div class="menu-player-card card-operator karta-gracza" id="menu-player-card">
                   <!-- Nagłówek Karty Gracza -->
                   <div class="player-card-header">
                     <div class="player-card-id-badge">
@@ -416,7 +416,27 @@
                     </div>
                   </div>
 
-                  <!-- Sekcja Rangi Wojskowej (Klikalna) -->
+                  <!-- 1. Pole edycji nicku Operatora (Callsign / Nick) -->
+                  <div class="operator-callsign-box">
+                    <span class="callsign-label">OPERATOR //</span>
+                    <input 
+                      type="text" 
+                      id="operator-nick-input" 
+                      class="callsign-input" 
+                      maxlength="14" 
+                      placeholder="REKRUT_01" 
+                      spellcheck="false" 
+                      autocomplete="off"
+                    />
+                    <span class="callsign-edit-icon" title="Edytuj pseudonim bojowy">
+                      <svg class="callsign-edit-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                      </svg>
+                    </span>
+                  </div>
+
+                  <!-- 2. Sekcja Rangi Wojskowej (Klikalna) z czytelnym paskiem XP -->
                   <div class="player-card-rank-section clickable" id="menu-player-rank-clickable" title="Kliknij, aby otworzyć rejestr stopni wojskowych i premii XP">
                     <div class="rank-badge-shield">
                       <span class="rank-icon" id="menu-rank-icon">━</span>
@@ -428,10 +448,14 @@
                       </div>
                       <div class="rank-name-row">
                         <span class="rank-name" id="menu-rank-name">SZEREGOWY</span>
-                        <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: Starszy Szeregowy (400 XP)</span>
+                        <span class="rank-tier-badge" id="menu-rank-tier">TIER 01</span>
                       </div>
                       <div class="rank-progress-bar-bg">
                         <div class="rank-progress-bar-fill" id="menu-rank-bar-fill" style="width: 0%;"></div>
+                      </div>
+                      <div class="rank-progress-meta-row">
+                        <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: STARSZY SZEREGOWY</span>
+                        <span class="rank-missing-xp" id="menu-rank-missing-xp">BRAKUJE 400 XP</span>
                       </div>
                     </div>
                   </div>
@@ -472,8 +496,18 @@
                     </div>
                   </div>
 
-                  <button id="menu-btn-ranks-main" class="ui-btn ui-btn-outline ui-btn-small" type="button" title="Zobacz stopnie wojskowe i premie XP" style="width: 100%; margin-top: 8px;">
-                    <span class="btn-text">REJESTR SŁUŻBY: RANGI &amp; XP ↗</span>
+                  <!-- 3. Nowy taktyczny kafelek Rejestru Służby z neonowym akcentem -->
+                  <button id="menu-btn-ranks-main" class="menu-ranks-tile-btn" type="button" title="Zobacz stopnie wojskowe i premie XP">
+                    <span class="ranks-tile-icon-box">
+                      <svg class="ranks-tile-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                      </svg>
+                    </span>
+                    <div class="ranks-tile-content">
+                      <span class="ranks-tile-title">REJESTR SŁUŻBY</span>
+                      <span class="ranks-tile-sub">RANGI WOJSKOWE &amp; PREMIE XP</span>
+                    </div>
+                    <span class="ranks-tile-arrow">↗</span>
                   </button>
                 </div>
               </div>
@@ -1153,7 +1187,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v194_fix_camera_dpr_dimensions_and_vsync_pacing"></script>
+  <script type="module" src="./js/main.js?v=v200_universal_60fps_every_browser"></script>
 </body>
 
 </html>

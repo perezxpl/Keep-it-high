@@ -348,21 +348,38 @@ export const uiManager = {
 
     const iconEl = document.getElementById('menu-rank-icon');
     const nameEl = document.getElementById('menu-rank-name');
+    const tierEl = document.getElementById('menu-rank-tier');
     const xpEl = document.getElementById('menu-rank-xp-text');
     const barFillEl = document.getElementById('menu-rank-bar-fill');
     const nextBadgeEl = document.getElementById('menu-rank-next-badge');
+    const missingXpEl = document.getElementById('menu-rank-missing-xp');
 
     if (iconEl) iconEl.textContent = rank.icon;
     if (nameEl) nameEl.textContent = rank.name.toUpperCase();
-    if (xpEl) xpEl.textContent = `${currentXp} XP`;
+    if (tierEl) tierEl.textContent = `TIER ${(rank.tier !== undefined ? rank.tier : 1).toString().padStart(2, '0')}`;
+    if (xpEl) xpEl.textContent = `${currentXp.toLocaleString('pl-PL')} XP`;
     if (barFillEl) barFillEl.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
-    if (nextBadgeEl) {
-      if (nextRank) {
-        const left = Math.max(0, nextRank.minXp - currentXp);
+    if (nextRank) {
+      const left = Math.max(0, nextRank.minXp - currentXp);
+      if (nextBadgeEl) nextBadgeEl.textContent = `NASTĘPNY: ${nextRank.name.toUpperCase()}`;
+      if (missingXpEl) {
+        missingXpEl.textContent = `BRAKUJE ${left.toLocaleString('pl-PL')} XP`;
+      } else if (nextBadgeEl) {
         nextBadgeEl.textContent = `NASTĘPNY: ${nextRank.name} (${nextRank.minXp} XP / brakuje ${left} XP)`;
-      } else {
-        nextBadgeEl.textContent = `MAKSYMALNY STOPIEŃ WOJSKOWY: ELITA ARENY`;
       }
+    } else {
+      if (nextBadgeEl) nextBadgeEl.textContent = `ELITA ARENY (MAX)`;
+      if (missingXpEl) missingXpEl.textContent = `STOPIEŃ MAKSYMALNY`;
+    }
+
+    // Synchronizacja nicku operatora
+    const nickInput = document.getElementById('operator-nick-input');
+    const savedNick = (typeof localStorage !== 'undefined' ? (localStorage.getItem('kih_operator_nick') || localStorage.getItem('kih_player_nick')) : '') || '';
+    if (nickInput && !nickInput.value && savedNick) {
+      nickInput.value = savedNick;
+    }
+    if (savedNick && typeof window !== 'undefined' && window.player) {
+      window.player.name = savedNick;
     }
 
     // Aktualizacja statystyk Karty Gracza
@@ -1007,7 +1024,7 @@ export const uiManager = {
 
   bindDOM() {
     // -------------------------------------------------------------------------
-    // KARTA GRACZA: Resetowanie statystyk (zabezpieczone potwierdzeniem)
+    // KARTA OPERATORA: Resetowanie statystyk (zabezpieczone potwierdzeniem)
     // -------------------------------------------------------------------------
     const resetStatsBtn = document.getElementById('menu-btn-reset-stats') || document.getElementById('btn-reset-stats');
     if (resetStatsBtn) {
@@ -1021,6 +1038,51 @@ export const uiManager = {
           localStorage.removeItem('player_stats');
           location.reload();
         }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // KARTA OPERATORA: Edycja i zapis nicku bojowego w localStorage
+    // -------------------------------------------------------------------------
+    const nickInput = document.getElementById('operator-nick-input');
+    const editIcon = document.querySelector('.callsign-edit-icon');
+    const storedNick = (typeof localStorage !== 'undefined' ? (localStorage.getItem('kih_operator_nick') || localStorage.getItem('kih_player_nick')) : '') || '';
+
+    if (nickInput) {
+      if (storedNick) {
+        nickInput.value = storedNick;
+        if (typeof window !== 'undefined' && window.player) {
+          window.player.name = storedNick;
+        }
+      }
+
+      const saveNickAction = () => {
+        let clean = (nickInput.value || '').trim();
+        if (clean.length > 14) clean = clean.substring(0, 14);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('kih_operator_nick', clean);
+          localStorage.setItem('kih_player_nick', clean);
+        }
+        if (typeof window !== 'undefined' && window.player) {
+          window.player.name = clean || 'REKRUT_01';
+        }
+      };
+
+      nickInput.addEventListener('input', () => saveNickAction());
+      nickInput.addEventListener('change', () => saveNickAction());
+      nickInput.addEventListener('blur', () => saveNickAction());
+      nickInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          saveNickAction();
+          nickInput.blur();
+        }
+      });
+    }
+
+    if (editIcon && nickInput) {
+      editIcon.addEventListener('click', () => {
+        nickInput.focus();
+        nickInput.select();
       });
     }
 

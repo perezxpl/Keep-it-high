@@ -146,7 +146,8 @@ export function getCanvasLogicalWidth() {
   if (c && c.clientWidth > 0) {
     return c.clientWidth;
   }
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2.0) : 1;
+  const isTouchMobile = typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio && isTouchMobile) ? Math.min(window.devicePixelRatio, 2.0) : 1.0;
   if (c && c.width && dpr > 0) {
     return c.width / dpr;
   }
@@ -161,7 +162,8 @@ export function getCanvasLogicalHeight() {
   if (c && c.clientHeight > 0) {
     return c.clientHeight;
   }
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2.0) : 1;
+  const isTouchMobile = typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio && isTouchMobile) ? Math.min(window.devicePixelRatio, 2.0) : 1.0;
   if (c && c.height && dpr > 0) {
     return c.height / dpr;
   }

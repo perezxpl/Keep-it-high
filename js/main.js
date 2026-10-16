@@ -965,42 +965,107 @@ function draw() {
   }
 }
 
-const TICK_TIME = 1000 / 60; // 16.666 ms (stały krok fizyki: dokładnie 60 Hz)
-const MAX_DELTA = 150;        // Zabezpieczenie przed spiralą opóźnień przy lagach lub uśpieniu karty
+const TICK_MS = 1000 / 60; // 16.666667 ms (stały krok fizyki: dokładnie 60 Hz)
+const MAX_DELTA = 100;      // Zabezpieczenie przed spiralą opóźnień przy lagach lub uśpieniu karty
 let accumulator = 0;
 let lastTime = 0;
+
+// Automatyczna adaptacja do częstotliwości odświeżania monitora gracza (60Hz / 75Hz / 120Hz / 144Hz / 240Hz)
+let detectedRefreshRate = 60;
+let refreshSampleCount = 0;
+let refreshSampleSum = 0;
 
 function loop(now) {
   requestAnimationFrame(loop);
   const currentTime = (typeof now === 'number' && now > 0) ? now : performance.now();
   if (lastTime === 0) {
     lastTime = currentTime;
+    update();
+    draw();
     return;
   }
 
   let delta = currentTime - lastTime;
   lastTime = currentTime;
 
-  if (delta > MAX_DELTA) {
-    delta = MAX_DELTA;
+  if (delta > MAX_DELTA) delta = MAX_DELTA;
+  if (delta < 0) delta = 0;
+
+  // Kalibracja częstotliwości odświeżania monitora w pierwszych 30 klatkach gry
+  if (refreshSampleCount < 30 && delta >= 3.0 && delta <= 30.0) {
+    refreshSampleSum += delta;
+    refreshSampleCount++;
+    if (refreshSampleCount === 30) {
+      const avg = refreshSampleSum / 30;
+      if (avg >= 14.5 && avg <= 19.0) {
+        detectedRefreshRate = 60;
+      } else if (avg >= 12.0 && avg <= 14.4) {
+        detectedRefreshRate = 75;
+      } else if (avg >= 7.0 && avg <= 9.5) {
+        detectedRefreshRate = 120;
+      } else if (avg >= 5.8 && avg <= 7.5) {
+        detectedRefreshRate = 144;
+      } else if (avg >= 3.5 && avg <= 5.0) {
+        detectedRefreshRate = 240;
+      } else {
+        detectedRefreshRate = 60;
+      }
+    }
+  }
+
+  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć i spadków do 48 FPS w Opera GX, Chrome, Firefox, Safari i Edge)
+  if (detectedRefreshRate === 60) {
+    // Na monitorach 60 Hz fluktuacje zegara przeglądarki (11.5ms - 23.0ms) wyrównujemy dokładnie do 16.666667 ms
+    if (delta >= 11.5 && delta <= 23.0) {
+      delta = TICK_MS;
+    }
+  } else if (detectedRefreshRate === 120) {
+    if (Math.abs(delta - 8.333) < 1.6) delta = 8.333333;
+  } else if (detectedRefreshRate === 144) {
+    if (Math.abs(delta - 6.944) < 1.4) delta = 6.944444;
+  } else if (detectedRefreshRate === 75) {
+    if (Math.abs(delta - 13.333) < 1.2) delta = 13.333333;
+  } else if (detectedRefreshRate === 240) {
+    if (Math.abs(delta - 4.167) < 0.8) delta = 4.166667;
+  } else {
+    if (Math.abs(delta - TICK_MS) < 3.5) {
+      delta = TICK_MS;
+    }
   }
 
   accumulator += delta;
 
-  // Stała częstotliwość fizyki (dokładnie 60 Hz – stabilna prędkość gry na każdym ekranie)
-  // Próg 15.1ms zabezpiecza przed wahaniami zegara VSync przeglądarki na monitorach 60 Hz
+  // 2. Krok fizyki o stałej częstotliwości 60 Hz
   let steps = 0;
-  while (accumulator >= 15.1 && steps < 4) {
+  while (accumulator >= TICK_MS - 0.5 && steps < 3) {
     update();
-    accumulator = Math.max(0, accumulator - TICK_TIME);
+    accumulator -= TICK_MS;
     steps++;
   }
-  if (steps >= 4) {
+
+  // Ochrona przed spiralą opóźnień oraz ujemnym dryfem akumulatora
+  if (steps >= 3 || accumulator < -TICK_MS) {
     accumulator = 0;
   }
 
-  // Płynne renderowanie powiązane bezpośrednio z VSync monitora (60 FPS na 60Hz, 120 FPS na 120Hz, 144 FPS na 144Hz)
-  draw();
+  // 3. Renderowanie ściśle zsynchronizowane z krokiem fizyki (dokładnie 60 FPS):
+  // Na monitorach 60Hz: steps === 1 w każdej klatce -> idealne 60 FPS bez gubienia klatek.
+  // Na monitorach 120Hz/144Hz/240Hz: renderujemy dokładnie wtedy, gdy fizyka wykonała krok (stabilne 60 FPS bez przeciążania GPU).
+  if (steps > 0) {
+    draw();
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      lastTime = 0;
+      accumulator = 0;
+    } else {
+      lastTime = performance.now();
+      accumulator = 0;
+    }
+  });
 }
 
 if (typeof window !== 'undefined') {
