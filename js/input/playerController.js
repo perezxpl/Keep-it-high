@@ -80,10 +80,10 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     }
   }
 
-  // 1-SEKUNDOWE PRZYTRZYMANIE KIESZENI BRONI PALNEJ NA EKRANIE DOTYKOWYM -> PRZEŁADOWANIE
-  if (pockets.firearm && pockets.firearm.active && !pockets.firearm.isDragging && !pockets.firearm.reloadTriggered) {
+  // 500-MS PRZYTRZYMANIE KIESZENI BRONI PALNEJ NA EKRANIE DOTYKOWYM -> PRZEŁADOWANIE
+  if (pockets.firearm && pockets.firearm.active && !pockets.firearm.reloadTriggered) {
     const holdElapsed = performance.now() - (pockets.firearm.touchStartTime || 0);
-    if (holdElapsed >= 850) {
+    if (holdElapsed >= 500) {
       if (pockets.firearm.holdTimerId) {
         clearTimeout(pockets.firearm.holdTimerId);
         pockets.firearm.holdTimerId = null;

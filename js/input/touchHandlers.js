@@ -179,7 +179,7 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.armedMode = 'FIREARM';
           reloadWeapon(player, player.currentWeapon);
         }
-      }, 850);
+      }, 500);
       continue;
     }
 
@@ -263,7 +263,7 @@ canvas.addEventListener('touchstart', (e) => {
             rightStick.armedMode = 'FIREARM';
             reloadWeapon(player, player.currentWeapon);
           }
-        }, 850);
+        }, 500);
       } else if (minDist === distToThrow && pThrow && distToThrow < pThrow.r + 18) {
         rightStick.draggedSlot = null;
         pThrow.active = true;
@@ -474,41 +474,7 @@ canvas.addEventListener('touchmove', (e) => {
       updateDoubleFlickDetection(leftStick.axisY);
     }
 
-    // A. Przeciąganie kieszeni na broń palną (tylko gdy faktycznie przeciągano w prawo na drążek celowania)
-    if (pockets.firearm && pockets.firearm.active && t.identifier === pockets.firearm.id) {
-      const dxRight = t.clientX - pockets.firearm.startX;
-      const distFromPocket = Math.hypot(t.clientX - pockets.firearm.x, t.clientY - pockets.firearm.y);
-      const canDragToEquip = (rightStick.armedMode !== 'FIREARM' || player.isHolstered);
-      if (!pockets.firearm.reloadTriggered && canDragToEquip && (dxRight > 38 && distFromPocket > pockets.firearm.r + 12 || pockets.firearm.isDragging)) {
-        if (pockets.firearm.holdTimerId) {
-          clearTimeout(pockets.firearm.holdTimerId);
-          pockets.firearm.holdTimerId = null;
-        }
-        pockets.firearm.isDragging = true;
-        rightStick.draggedSlot = {
-          type: 'FIREARM',
-          startX: pockets.firearm.x,
-          startY: pockets.firearm.y,
-          curX: t.clientX,
-          curY: t.clientY
-        };
-      }
-    }
-
-    // B. Przeciąganie kieszeni na broń miotaną (granat)
-    if (pockets.throwable && pockets.throwable.active && t.identifier === pockets.throwable.id) {
-      const d = Math.hypot(t.clientX - pockets.throwable.startX, t.clientY - pockets.throwable.startY);
-      if (d > 8 || pockets.throwable.isDragging) {
-        pockets.throwable.isDragging = true;
-        rightStick.draggedSlot = {
-          type: 'GRENADE',
-          startX: pockets.throwable.x,
-          startY: pockets.throwable.y,
-          curX: t.clientX,
-          curY: t.clientY
-        };
-      }
-    }
+    // Kieszenie broni na ekranie dotykowym: przeciąganie na drążek zostało usunięte na rzecz bezpośredniego wyboru przez kliknięcie i przytrzymania 500ms do przeładowania
 
     // C. Wychylenie prawego drążka (celowanie, natychmiastowy ogień lub miotanie)
     if (rightStick.active && t.identifier === rightStick.id) {
@@ -661,48 +627,33 @@ function endTouch(e) {
       pockets.action.id = null;
     }
 
-    // B. Zwolnienie kieszeni na broń palną
+    // B. Zwolnienie kieszeni na broń palną (kliknięcie = wybór/zmiana broni, przytrzymanie 500ms = przeładowanie)
     const isFarmTouch = pockets.firearm && (
-      (pockets.firearm.active && (pockets.firearm.id === null || t.identifier === pockets.firearm.id)) ||
-      pockets.firearm.isDragging ||
-      rightStick.draggedSlot?.type === 'FIREARM'
+      pockets.firearm.active && (pockets.firearm.id === null || t.identifier === pockets.firearm.id)
     );
     if (isFarmTouch) {
       if (pockets.firearm.holdTimerId) {
         clearTimeout(pockets.firearm.holdTimerId);
         pockets.firearm.holdTimerId = null;
       }
-      const wasDragging = pockets.firearm.isDragging || (rightStick.draggedSlot?.type === 'FIREARM');
       const wasReloadTriggered = !!pockets.firearm.reloadTriggered;
       const touchStartTime = pockets.firearm.touchStartTime || 0;
-      const startX = pockets.firearm.startX || pockets.firearm.x;
       pockets.firearm.active = false;
       pockets.firearm.isDragging = false;
       pockets.firearm.id = null;
       pockets.firearm.reloadTriggered = false;
+      rightStick.draggedSlot = null;
 
-      if (wasDragging) {
-        // Przeciągnięcie na prawy drążek (założenie broni palnej na ręce)
-        const dropX = t.clientX;
-        const dropY = t.clientY;
-        const distToStick = Math.hypot(dropX - rightStick.baseX, dropY - rightStick.baseY);
-        if (dropX >= startX + 35 || distToStick < 75) {
-          rightStick.armedMode = 'FIREARM';
-          player.isHolstered = false;
-          if (typeof triggerScreenShake === 'function') triggerScreenShake(2.0);
-        }
-        rightStick.draggedSlot = null;
-      } else if (!wasReloadTriggered) {
-        // Puszczenie kieszeni broni palnej:
+      if (!wasReloadTriggered) {
         const now = performance.now();
         const touchDur = now - touchStartTime;
-        if (touchDur >= 850) {
-          // Przytrzymanie (~1 sekunda) -> przeładowanie bez zmiany broni
+        if (touchDur >= 500) {
+          // Przytrzymanie 500ms -> przeładowanie bez zmiany broni
           player.isHolstered = false;
           rightStick.armedMode = 'FIREARM';
           reloadWeapon(player, player.currentWeapon);
         } else {
-          // Puszczenie ikony poniżej 1 sekundy (< 850 ms) -> zmiana broni po puszczeniu!
+          // Zwykłe kliknięcie (< 500ms) -> wybór broni palnej / zmiana typu broni
           if (player.isHolstered || rightStick.armedMode !== 'FIREARM') {
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
@@ -720,34 +671,23 @@ function endTouch(e) {
       }
     }
 
-    // C. Zwolnienie kieszeni na broń miotaną (granat)
+    // C. Zwolnienie kieszeni na broń miotaną (granat) - wybór przez kliknięcie
     const isThrowTouch = pockets.throwable && (
-      (pockets.throwable.active && (pockets.throwable.id === null || t.identifier === pockets.throwable.id)) ||
-      pockets.throwable.isDragging ||
-      rightStick.draggedSlot?.type === 'GRENADE'
+      pockets.throwable.active && (pockets.throwable.id === null || t.identifier === pockets.throwable.id)
     );
     if (isThrowTouch) {
-      const wasDragging = pockets.throwable.isDragging || (rightStick.draggedSlot?.type === 'GRENADE');
-      const startX = pockets.throwable.startX || pockets.throwable.x;
       pockets.throwable.active = false;
       pockets.throwable.isDragging = false;
       pockets.throwable.id = null;
+      rightStick.draggedSlot = null;
 
-      if (wasDragging) {
-        // Przeciągnięcie na prawy drążek (uzbrojenie broni miotanej / granatu na drążku)
-        const dropX = t.clientX;
-        const dropY = t.clientY;
-        const distToStick = Math.hypot(dropX - rightStick.baseX, dropY - rightStick.baseY);
-        // Jeśli przeciągnięto w stronę prawego drążka (w prawo o min. 20px LUB w promieniu 140px LUB w strefie drążka):
-        if (dropX >= startX + 20 || distToStick < 140 || dropX >= rightStick.baseX - 60) {
-          rightStick.armedMode = 'GRENADE';
-          if (typeof triggerScreenShake === 'function') triggerScreenShake(2.0);
-        }
-        rightStick.draggedSlot = null;
+      // Kliknięcie / tap ikony granatu -> uzbrojenie granatu lub powrót do broni palnej
+      if (rightStick.armedMode === 'GRENADE') {
+        rightStick.armedMode = 'FIREARM';
+        player.isHolstered = false;
       } else {
-        // Zwykłe kliknięcie / dotknięcie ikony granatu:
-        // Wybór między bronią miotaną a palną ma być WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
-        // Dlatego tap NIE rzuca granatu i NIE zmienia trybu drążka.
+        rightStick.armedMode = 'GRENADE';
+        player.isHolstered = false;
       }
     }
 

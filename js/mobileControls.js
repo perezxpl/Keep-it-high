@@ -77,7 +77,7 @@ export const rightStick = {
 // KIESZENIE WOKÓŁ PRAWEGO DRĄŻKA (POCKETS) & DYNAMICZNY PRZYCISK RUCHU
 // =========================================================================
 export const pockets = {
-  // 1. Kieszeń na broń palną (puszczenie < 1s = zmiana broni, przytrzymanie 1s = przeładowanie, przeciągnięcie = założenie na drążek)
+  // 1. Kieszeń na broń palną (kliknięcie = wybór/zmiana broni, przytrzymanie 500ms = przeładowanie)
   firearm: {
     x: 0,
     y: 0,

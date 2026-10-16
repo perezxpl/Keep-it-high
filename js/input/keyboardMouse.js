@@ -672,7 +672,7 @@ export function initKeyboardMouseHandlers({
             rightStick.armedMode = 'FIREARM';
             reloadWeapon(player, player.currentWeapon);
           }
-        }, 850);
+        }, 500);
         return;
       }
     }
@@ -741,7 +741,7 @@ export function initKeyboardMouseHandlers({
 
       if (!wasReloadTriggered) {
         const touchDur = performance.now() - touchStartTime;
-        if (touchDur >= 850) {
+        if (touchDur >= 500) {
           player.isHolstered = false;
           rightStick.armedMode = 'FIREARM';
           reloadWeapon(player, player.currentWeapon);
