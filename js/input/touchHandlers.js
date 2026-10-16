@@ -22,6 +22,7 @@ import {
   prepareGrenadeThrow,
   releaseGrenadeThrow
 } from '../player.js';
+import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import { ball } from '../ball.js';
 import { bot, getActiveBots } from '../bot.js';
@@ -40,6 +41,8 @@ import { updateDevTouchButtonUI } from '../dev/devPanel.js';
 
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
+let enforcerFlickDownTime = 0;
+let enforcerFlickDownDetected = false;
 
 export function updateDoubleFlickDetection(axisY) {
   const now = performance.now();
@@ -214,6 +217,17 @@ canvas.addEventListener('touchstart', (e) => {
       const isStriker = (player.currentClass?.id === 'STRIKER');
       leftStick.isJetpacking = false;
       if (isStriker) player.isJetpacking = false;
+
+      if (player.blastBelt) {
+        player.blastBelt.isCharging = false;
+        player.blastBelt.isArmed = false;
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
+      }
+      if (performance.now() - enforcerFlickDownTime > 450) {
+        enforcerFlickDownDetected = false;
+        enforcerFlickDownTime = 0;
+      }
     }
 
     // =======================================================================
@@ -390,7 +404,9 @@ canvas.addEventListener('touchmove', (e) => {
         if (leftStick.downIntent) {
           const duration = performance.now() - leftStick.downStartTime;
           // Pojedyncze szybkie wysunięcie gałki w dół i powrót (< 380 ms lub flick): przełącz stan kucania (toggle)
-          if (duration < 380 || leftStick.downFlickDetected) {
+          // Dla Enforcera w trakcie szybkiej kombinacji dół-góra nie włączamy trwałego kucania toggle!
+          const skipToggleForEnforcer = (player.currentClass?.id === 'ENFORCER' && enforcerFlickDownDetected);
+          if (!skipToggleForEnforcer && (duration < 380 || leftStick.downFlickDetected)) {
             player.crouchToggled = !player.crouchToggled;
             if (player.crouchToggled) {
               player.isCrouching = true;
@@ -413,6 +429,24 @@ canvas.addEventListener('touchmove', (e) => {
           leftStick.downIntent = false;
           leftStick.downStartTime = 0;
           leftStick.downFlickDetected = false;
+        }
+      }
+
+      const isEnforcer = (player.currentClass?.id === 'ENFORCER');
+      const now = performance.now();
+      const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isIntro && (player.onGround || ((player.coyoteTimer || 0) > 0)) && Math.abs(player.vy || 0) < 2.5;
+
+      // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra)
+      if (isEnforcer) {
+        if (leftStick.axisY > 0.42 && isFirmlyGrounded) {
+          if (!enforcerFlickDownDetected) {
+            enforcerFlickDownTime = now;
+            enforcerFlickDownDetected = true;
+          } else if (now - enforcerFlickDownTime > 450) {
+            enforcerFlickDownDetected = false;
+          }
+        } else if (enforcerFlickDownDetected && (now - enforcerFlickDownTime > 450)) {
+          enforcerFlickDownDetected = false;
         }
       }
 
@@ -454,11 +488,42 @@ canvas.addEventListener('touchmove', (e) => {
             player.isJetpacking = false;
           }
         } else {
-          // NA ZIEMI: natychmiastowy skok przy wychyleniu w górę (dla Raptora i Strikera; Enforcer skacze przy puszczeniu drążka)
-          if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
-            initiatePlayerJump(player, spawnGrass);
-            leftStick.jumpTriggered = true;
-            leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
+          // NA ZIEMI:
+          if (isEnforcer) {
+            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 450);
+            if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
+              // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (NATYCHMIAST BEZ ŻADNEGO ŁADOWANIA)
+              enforcerFlickDownDetected = false;
+              enforcerFlickDownTime = 0;
+              flickFirstDownTime = 0;
+              flickReturnedToCenter = false;
+
+              player.crouchToggled = false;
+              player.isCrouching = false;
+              player.isProne = false;
+              player.state = 'STAND';
+              player.hitboxHeight = player.h || 74;
+              leftStick.downIntent = false;
+
+              triggerEnforcerBlastJump(player, leftStick.axisX, spawnGrass);
+              leftStick.jumpTriggered = true;
+              leftStick.jetpackNeutralized = false;
+            } else if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+              // Zwykły skok Enforcera z nóg (gdy nie wykonano szybkiej sekwencji dół-góra)
+              enforcerFlickDownDetected = false;
+              enforcerFlickDownTime = 0;
+
+              initiatePlayerJump(player, spawnGrass);
+              leftStick.jumpTriggered = true;
+              leftStick.jetpackNeutralized = false;
+            }
+          } else {
+            // Skok dla pozostałych klas (Raptor, Striker)
+            if (leftStick.axisY < -0.55 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro) {
+              initiatePlayerJump(player, spawnGrass);
+              leftStick.jumpTriggered = true;
+              leftStick.jetpackNeutralized = false; // Po skoku z ziemi wymagamy puszczenia/odchylenia drążka
+            }
           }
         }
       } else if (leftStick.axisY > -0.12) {
@@ -571,11 +636,25 @@ function endTouch(e) {
         player.rocketBoots.touchAirDashReady = false;
       }
 
+      if (player.blastBelt) {
+        player.blastBelt.isCharging = false;
+        player.blastBelt.isArmed = false;
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
+      }
+      if (performance.now() - enforcerFlickDownTime > 450) {
+        enforcerFlickDownDetected = false;
+        enforcerFlickDownTime = 0;
+      }
+
       if (leftStick.downIntent) {
         const duration = performance.now() - leftStick.downStartTime;
         if (duration < 380 || leftStick.downFlickDetected) {
           // Szybkie pojedyncze wysunięcie w dół i puszczenie: przełącz stałe kucanie (toggle crouch)
-          player.crouchToggled = !player.crouchToggled;
+          const skipToggleForEnforcer = (player.currentClass?.id === 'ENFORCER' && enforcerFlickDownDetected);
+          if (!skipToggleForEnforcer) {
+            player.crouchToggled = !player.crouchToggled;
+          }
           if (player.crouchToggled) {
             player.isCrouching = true;
             player.state = 'CROUCH';

@@ -263,12 +263,24 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
   const currentFloor = player.currentGroundY || player.groundY || player.lastGroundedFloorY || (player.y + (player.h || 74));
 
-  // Sprawdzenie czy gracz trzyma kierunek w górę (W / Up / Drążek w górę / Pad)
-  const keyUpHeld = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
-  const stickThreshold = belt.isCharging ? -0.30 : -0.45;
-  const touchUpHeld = !!(leftStick && leftStick.active && leftStick.axisY < stickThreshold);
-  const padUpHeld = !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || (gamepadState.leftStick && gamepadState.leftStick.y < -0.50) || gamepadState.buttons?.dpadUp));
-  const isHoldingUp = keyUpHeld || touchUpHeld || padUpHeld;
+  // W wersji mobilnej (lewy drążek dotykowy) Enforcer nie ładuje umiejętności przytrzymaniem góry –
+  // zdolność odpala natychmiast szybką kombinacją dół-góra bez żadnego ładowania!
+  const isTouchActive = !!(leftStick && leftStick.active);
+  if (isTouchActive) {
+    if (belt.isCharging || player.isJumpCharging) {
+      belt.isCharging = false;
+      belt.chargeMs = 0;
+      belt.chargeRatio = 0;
+      belt.isArmed = false;
+      player.isJumpCharging = false;
+      player.jumpChargePower = 0;
+    }
+  }
+
+  // Sprawdzenie czy gracz trzyma kierunek w górę (W / Up / Pad PC)
+  const keyUpHeld = !isTouchActive && !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
+  const padUpHeld = !isTouchActive && !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || (gamepadState.leftStick && gamepadState.leftStick.y < -0.50) || gamepadState.buttons?.dpadUp));
+  const isHoldingUp = keyUpHeld || padUpHeld;
 
   // Bieżący kierunek poziomy (do skoku kierunkowego na platformę)
   let curDirX = 0;
