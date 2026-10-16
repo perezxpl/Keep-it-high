@@ -34,7 +34,12 @@ import {
   handleEditorRightClick
 } from '../dev/obstacleEditor.js';
 import { toggleTouchControls } from '../dev/devPanel.js';
-import { killstreakState, activateNextAvailableStreak } from '../killstreaks/index.js';
+import {
+  killstreakState,
+  activateNextAvailableStreak,
+  confirmMortarStrikeTarget,
+  cancelMortarStrikeTargeting
+} from '../killstreaks/index.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -179,6 +184,12 @@ export function initKeyboardMouseHandlers({
 
     // Obsługa klawisza Escape oraz P dla Pauzy / Menu / Ustawień
     const isEscapeKey = (e.code === 'Escape' || e.key === 'Escape');
+    if (isEscapeKey && killstreakState.mortarTargeting) {
+      e.preventDefault();
+      cancelMortarStrikeTargeting();
+      return;
+    }
+
     const isPauseKey = (e.code === 'KeyP' || e.key === 'p' || e.key === 'P');
     if (isEscapeKey || (isPauseKey && (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED'))) {
       const mpModal = document.getElementById('mp-modal');
@@ -588,6 +599,10 @@ export function initKeyboardMouseHandlers({
     mouseState.screenY = e.clientY;
     setCameraMouseScreenPos(e.clientX, e.clientY);
 
+    if (killstreakState.mortarTargeting) {
+      killstreakState.mortarTargetX = camera.x + mouseState.screenX / camera.zoom;
+    }
+
     if (GAME_STATE.current === 'CLASS_SELECT' || GAME_STATE.current === GAME_STATES.CLASS_SELECT) {
       const isBack = isClassSelectBackClicked(mouseState.screenX, mouseState.screenY);
       const card = getHoveredClassCard(mouseState.screenX, mouseState.screenY);
@@ -695,6 +710,28 @@ export function initKeyboardMouseHandlers({
         }, 500);
         return;
       }
+    }
+
+    // 00. Obsługa celowania nalotu moździerzowego (kliknięcie lewym przyciskiem myszy)
+    if (killstreakState.mortarTargeting) {
+      const cb = killstreakState.mortarCancelButtonBounds;
+      const kb = killstreakState.hudButtonBounds;
+
+      if (cb && e.clientX >= cb.x && e.clientX <= (cb.x + cb.w) &&
+          e.clientY >= cb.y && e.clientY <= (cb.y + cb.h)) {
+        cancelMortarStrikeTargeting();
+        return;
+      }
+
+      if (kb && e.clientX >= kb.x && e.clientX <= (kb.x + kb.w) &&
+          e.clientY >= kb.y && e.clientY <= (kb.y + kb.h)) {
+        cancelMortarStrikeTargeting();
+        return;
+      }
+
+      const worldX = camera.x + e.clientX / camera.zoom;
+      confirmMortarStrikeTarget(worldX, player);
+      return;
     }
 
     // 0a. Obsługa kliknięcia myszą w widget serii zabójstw

@@ -38,7 +38,13 @@ import {
   handleDynamicActionButtonPress
 } from '../mobileControls.js';
 import { updateDevTouchButtonUI } from '../dev/devPanel.js';
-import { killstreakState, activateNextAvailableStreak } from '../killstreaks/index.js';
+import { screenToWorld } from '../camera.js';
+import {
+  killstreakState,
+  activateNextAvailableStreak,
+  confirmMortarStrikeTarget,
+  cancelMortarStrikeTargeting
+} from '../killstreaks/index.js';
 
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
@@ -122,6 +128,34 @@ canvas.addEventListener('touchstart', (e) => {
 
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    // =======================================================================
+    // 00. TRYB WYBORU CELU NALOTU MOŹDZIERZOWEGO (MORTAR TARGETING)
+    // =======================================================================
+    if (killstreakState.mortarTargeting) {
+      const cb = killstreakState.mortarCancelButtonBounds;
+      const kb = killstreakState.hudButtonBounds;
+
+      // Sprawdzenie przycisku [ANULUJ]
+      if (cb && t.clientX >= cb.x && t.clientX <= (cb.x + cb.w) &&
+          t.clientY >= cb.y && t.clientY <= (cb.y + cb.h)) {
+        cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Sprawdzenie ponownego dotknięcia widgetu HUD
+      if (kb && t.clientX >= (kb.x - 12) && t.clientX <= (kb.x + kb.w + 12) &&
+          t.clientY >= (kb.y - 12) && t.clientY <= (kb.y + kb.h + 12)) {
+        cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Rejestracja dotknięcia i aktualizacja pozycji celu na mapie
+      killstreakState.mortarTargetTouchId = t.identifier;
+      const worldPos = screenToWorld(t.clientX, t.clientY);
+      killstreakState.mortarTargetX = worldPos.x;
+      continue;
+    }
 
     // =======================================================================
     // 0a. DOTKNIĘCIE WIDGETU SERII ZABÓJSTW (KILLSTREAKS)
@@ -370,6 +404,12 @@ canvas.addEventListener('touchmove', (e) => {
   e.preventDefault();
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    if (killstreakState.mortarTargeting && t.identifier === killstreakState.mortarTargetTouchId) {
+      const worldPos = screenToWorld(t.clientX, t.clientY);
+      killstreakState.mortarTargetX = worldPos.x;
+      continue;
+    }
 
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.curX = t.clientX;
@@ -629,6 +669,33 @@ function endTouch(e) {
   }
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    if (killstreakState.mortarTargeting && t.identifier === killstreakState.mortarTargetTouchId) {
+      killstreakState.mortarTargetTouchId = null;
+
+      // Sprawdzenie czy puszczenie nastąpiło nad przyciskiem [ANULUJ]
+      const cb = killstreakState.mortarCancelButtonBounds;
+      if (cb && t.clientX >= cb.x && t.clientX <= (cb.x + cb.w) &&
+          t.clientY >= cb.y && t.clientY <= (cb.y + cb.h)) {
+        cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Sprawdzenie czy nie puszczono nad widgetem HUD
+      const kb = killstreakState.hudButtonBounds;
+      if (kb && t.clientX >= (kb.x - 12) && t.clientX <= (kb.x + kb.w + 12) &&
+          t.clientY >= (kb.y - 12) && t.clientY <= (kb.y + kb.h + 12)) {
+        cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Potwierdzenie nalotu we wskazanym punkcie świata!
+      const targetX = (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX))
+        ? killstreakState.mortarTargetX
+        : screenToWorld(t.clientX, t.clientY).x;
+      confirmMortarStrikeTarget(targetX, player);
+      continue;
+    }
 
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.active = false;

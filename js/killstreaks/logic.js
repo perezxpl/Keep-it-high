@@ -25,6 +25,10 @@ export function initKillstreaks() {
   killstreakState.recentNotification = null;
   killstreakState.notificationTimer = 0;
   killstreakState.hudButtonBounds = null;
+  killstreakState.mortarTargeting = false;
+  killstreakState.mortarTargetX = 0;
+  killstreakState.mortarTargetTouchId = null;
+  killstreakState.mortarCancelButtonBounds = null;
   initCarePackages();
   initSentryGuns();
 }
@@ -158,16 +162,24 @@ export function activateKillstreak(streakId) {
 
   // Obsługa nagrody: MORTAR_STRIKE (Nalot Moździerzowy)
   if (streakId === 'MORTAR_STRIKE') {
-    killstreakState.availableStreaks.splice(idx, 1);
-    const strikeTargetX = (player?.x || 600) + (player?.facing || 1) * 260;
-    spawnMortarStrike(strikeTargetX, player);
+    // Ponowne kliknięcie w trybie celowania anuluje celowanie
+    if (killstreakState.mortarTargeting) {
+      cancelMortarStrikeTargeting();
+      return false;
+    }
+
+    // Przejście w tryb wyboru miejsca nalotu na ekranie
+    killstreakState.mortarTargeting = true;
+    const defaultX = (player?.x || 600) + (player?.facing || 1) * 220;
+    killstreakState.mortarTargetX = defaultX;
+    killstreakState.mortarTargetTouchId = null;
 
     killstreakState.recentNotification = {
-      title: '[NALOT] MOŹDZIERZ TAKTYCZNY',
-      text: 'SALWA 5 POCISKÓW ARTYLERYJSKICH W DRODZE',
+      title: '[NALOT] WYBIERZ PUNKT UDERZENIA',
+      text: 'DOTKNIJ MIEJSCA NA EKRANIE, ABY WEZWAĆ NALOT',
       color: '#ef4444'
     };
-    killstreakState.notificationTimer = 3.5;
+    killstreakState.notificationTimer = 4.0;
     return true;
   }
 
@@ -245,6 +257,57 @@ export function activateNextAvailableStreak() {
   }
   const nextId = killstreakState.availableStreaks[0];
   return activateKillstreak(nextId);
+}
+
+/**
+ * Potwierdza i uruchamia nalot moździerzowy we wskazanym punkcie świata X
+ * @param {number} worldX
+ * @param {object} firingPlayer
+ */
+export function confirmMortarStrikeTarget(worldX, firingPlayer = player) {
+  if (!killstreakState.mortarTargeting) return false;
+
+  const idx = killstreakState.availableStreaks.indexOf('MORTAR_STRIKE');
+  if (idx === -1) {
+    killstreakState.mortarTargeting = false;
+    return false;
+  }
+
+  // Usunięcie nagrody z ekwipunku serii zabójstw
+  killstreakState.availableStreaks.splice(idx, 1);
+  killstreakState.mortarTargeting = false;
+  killstreakState.mortarTargetTouchId = null;
+
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
+  const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 80) : ((typeof curArena?.width === 'number') ? (curArena.width - 80) : 2800);
+  const safeX = Math.max(minX, Math.min(maxX, (typeof worldX === 'number' && !isNaN(worldX)) ? worldX : 600));
+
+  spawnMortarStrike(safeX, firingPlayer || player);
+
+  killstreakState.recentNotification = {
+    title: '[NALOT] CEL POTWIERDZONY',
+    text: 'SALWA 5 POCISKÓW ARTYLERYJSKICH W DRODZE',
+    color: '#ef4444'
+  };
+  killstreakState.notificationTimer = 3.5;
+  return true;
+}
+
+/**
+ * Anuluje aktywny tryb celowania nalotu
+ */
+export function cancelMortarStrikeTargeting() {
+  if (!killstreakState.mortarTargeting) return false;
+  killstreakState.mortarTargeting = false;
+  killstreakState.mortarTargetTouchId = null;
+  killstreakState.recentNotification = {
+    title: '[NALOT] ANULOWANO',
+    text: 'CELOWANIE NALOTU PRZERWANE',
+    color: '#94a3b8'
+  };
+  killstreakState.notificationTimer = 2.0;
+  return true;
 }
 
 /**

@@ -17,7 +17,9 @@ export {
   activateNextAvailableStreak,
   isKillstreakActive,
   getKillstreakTimeRemaining,
-  updateKillstreaks
+  updateKillstreaks,
+  confirmMortarStrikeTarget,
+  cancelMortarStrikeTargeting
 } from './logic.js';
 
 export {
