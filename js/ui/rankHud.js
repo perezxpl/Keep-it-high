@@ -3,7 +3,7 @@
  * Rysowanie w HUD podczas gry oraz obsługa nagród XP za wygrany mecz.
  */
 
-import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult, XP_REWARDS, setXpNotificationCallback } from '../progression.js';
+import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult, XP_REWARDS, setXpNotificationCallback, setRankUpCallback } from '../progression.js';
 
 // Stan powiadomień XP i zwycięstwa w meczu
 export const matchWinState = {
@@ -33,6 +33,29 @@ export function spawnXpPopup(text, amount, color = '#facc15') {
 
 // Rejestracja callbacku do wyświetlania pływających powiadomień XP z modułu progresji
 setXpNotificationCallback(spawnXpPopup);
+
+// Stan powiadomienia o awansie na nowy stopień wojskowy
+export const rankUpAlertState = {
+  active: false,
+  rankName: '',
+  rankIcon: '',
+  rewardText: '',
+  timer: 0,
+  maxTimer: 180
+};
+
+export function triggerRankUpAlert(rank) {
+  if (!rank) return;
+  rankUpAlertState.active = true;
+  rankUpAlertState.rankName = rank.name;
+  rankUpAlertState.rankIcon = rank.icon;
+  rankUpAlertState.rewardText = (rank.unlocks && rank.unlocks.length > 0)
+    ? `ODBLOKOWANO: ${rank.unlocks.join(' • ').toUpperCase()}`
+    : 'NOWY TYTUŁ WOJSKOWY';
+  rankUpAlertState.timer = 180;
+}
+
+setRankUpCallback(triggerRankUpAlert);
 
 /**
  * Sprawdza warunek zwycięstwa w meczu i przyznaje +40 XP dla gracza (drużyna CYAN)
@@ -168,6 +191,18 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
   else ctx.rect(x, barY, width, barH);
   ctx.stroke();
 
+  // Podgląd nagrody za następny awans (Call of Duty Style)
+  if (nextRank && nextRank.unlocks && nextRank.unlocks.length > 0) {
+    const rewardY = barY + barH + (isMobile ? 7 : 8);
+    ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#94a3b8';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 2;
+    const rewardPreview = nextRank.unlocks[0];
+    ctx.fillText(`NAGRODA: ${rewardPreview.toUpperCase()}`, x, rewardY);
+  }
+
   // Animacja unoszących się powiadomień XP
   for (let i = floatingXpPopups.length - 1; i >= 0; i--) {
     const p = floatingXpPopups[i];
@@ -190,6 +225,49 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
     }
   }
 
+  // Animacja baneru awansu rangi w centrum ekranu
+  if (rankUpAlertState.active && rankUpAlertState.timer > 0) {
+    rankUpAlertState.timer--;
+    if (rankUpAlertState.timer <= 0) {
+      rankUpAlertState.active = false;
+    } else {
+      const sw = typeof window !== 'undefined' ? window.innerWidth : 800;
+      const alpha = Math.min(1.0, rankUpAlertState.timer / 25);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const bw = Math.min(360, sw - 32);
+      const bh = 54;
+      const bx = Math.round((sw - bw) / 2);
+      const by = isMobile ? 80 : 96;
+
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6);
+      else ctx.rect(bx, by, bw, bh);
+      ctx.fillStyle = 'rgba(8, 20, 36, 0.95)';
+      ctx.fill();
+
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      ctx.font = isMobile ? '900 12px monospace' : '900 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#facc15';
+      ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + 9);
+
+      ctx.font = isMobile ? 'bold 9px monospace' : 'bold 10px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 2;
+      ctx.fillText(rankUpAlertState.rewardText, bx + bw / 2, by + 29);
+
+      ctx.restore();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -209,8 +287,9 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
   ctx.fillStyle = isCyanWinner ? 'rgba(8, 25, 45, 0.78)' : 'rgba(45, 15, 10, 0.78)';
   ctx.fillRect(0, 0, W, H);
 
+  const leveledUp = matchWinState.previousRankName && matchWinState.previousRankName !== matchWinState.newRankName;
   const bannerW = isMobile ? Math.min(W - 30, 360) : 480;
-  const bannerH = isMobile ? 140 : 170;
+  const bannerH = isMobile ? (leveledUp ? 156 : 140) : (leveledUp ? 190 : 170);
   const bannerX = (W - bannerW) / 2;
   const bannerY = (H - bannerH) * 0.38;
 
@@ -251,7 +330,12 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     if (leveledUp) {
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#00e5ff';
-      ctx.fillText(`AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()}`, W / 2, bannerY + (isMobile ? 95 : 112));
+      ctx.fillText(`AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()}`, W / 2, bannerY + (isMobile ? 93 : 108));
+      if (currentRank.unlocks && currentRank.unlocks.length > 0) {
+        ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
+        ctx.fillStyle = '#00e5ff';
+        ctx.fillText(`ODBLOKOWANO: ${currentRank.unlocks.join(' • ').toUpperCase()}`, W / 2, bannerY + (isMobile ? 110 : 128));
+      }
     } else {
       ctx.fillStyle = '#cbd5e1';
       ctx.shadowBlur = 0;

@@ -188,17 +188,20 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   if (!player) return;
 
   const { W, H } = getScreenSize(canvas);
-  const isMobile = isTouchDevice();
+  const isMobile = !!(
+    isTouchDevice ||
+    (typeof window !== 'undefined' && (window.innerWidth <= 850 || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+  );
 
   ctx.save();
 
   // Wymiary i ergonomiczna pozycja widgetu:
-  // Na telefonie: w prawym górnym rogu (pod przyciskiem pauzy, z dala od drążków i kieszeni!)
-  // Na PC: w prawym dolnym rogu (nad slotami broni)
-  const widgetW = isMobile ? 122 : 142;
-  const widgetH = isMobile ? 38 : 44;
-  const posX = W - widgetW - (isMobile ? 14 : 24);
-  const posY = isMobile ? 56 : (H - widgetH - 80);
+  // Na telefonie: w prawym górnym rogu pod przyciskiem pauzy (z dala od drążków i kieszeni!)
+  // Na PC: w prawym dolnym rogu (standard Call of Duty HUD)
+  const widgetW = isMobile ? 134 : 156;
+  const widgetH = isMobile ? 42 : 48;
+  const posX = W - widgetW - (isMobile ? 14 : 20);
+  const posY = isMobile ? 56 : (H - widgetH - 24);
 
   // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku (współrzędne CSS)
   killstreakState.hudButtonBounds = {
@@ -219,19 +222,19 @@ export function drawKillstreakHUD(ctx, canvas, player) {
 
   if (hasReadyStreak) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-    ctx.fillStyle = `rgba(8, 28, 44, ${0.85 + pulse * 0.10})`;
+    ctx.fillStyle = `rgba(8, 36, 56, ${0.88 + pulse * 0.10})`;
   } else {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+    ctx.fillStyle = 'rgba(10, 18, 32, 0.90)';
   }
   ctx.fill();
 
   // 2. RAMKA WIDGETU
-  let strokeColor = 'rgba(100, 116, 139, 0.40)';
+  let strokeColor = 'rgba(100, 116, 139, 0.45)';
   if (hasReadyStreak) {
     strokeColor = '#00e5ff';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2.0;
   } else {
-    ctx.lineWidth = 1.0;
+    ctx.lineWidth = 1.2;
   }
   ctx.strokeStyle = strokeColor;
   ctx.stroke();
@@ -241,49 +244,58 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     // STAN: NAGRODA GOTOWA DO UŻYCIA
     const keyHint = isMobile ? '[DOTKNIJ]' : '[KLAWISZ 4]';
 
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
     ctx.fillStyle = '#00e5ff';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 7);
+    ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
 
-    ctx.font = 'bold 8.5px monospace';
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(keyHint, posX + 10, posY + 24);
+    ctx.fillText(keyHint, posX + 10, posY + (isMobile ? 24 : 27));
 
     // Ikona taktyczna po prawej
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#00e5ff';
-    ctx.fillText(readyDef.icon || '◆', posX + widgetW - 10, posY + 16);
+    ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
   } else {
     // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA
     const streak = killstreakState.currentStreak || 0;
     const nextGoal = getNextKillstreakGoal(streak);
     const goalReq = nextGoal ? nextGoal.killsRequired : (streak + 1);
     const goalTag = nextGoal ? nextGoal.tag : '[MAX]';
+    const goalShort = nextGoal ? nextGoal.short : '';
 
-    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10px monospace';
-    ctx.fillStyle = '#e2e8f0';
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+    ctx.fillStyle = '#38bdf8';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 10, posY + 7);
 
-    ctx.font = 'bold 8px monospace';
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 8.5px monospace';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`CEL: ${goalTag}`, posX + 10, posY + 23);
+    ctx.fillText(`CEL: ${goalTag} ${goalShort}`, posX + 10, posY + (isMobile ? 22 : 24));
+
+    // Ikona po prawej
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(nextGoal ? nextGoal.icon : '◆', posX + widgetW - 10, posY + (isMobile ? 18 : 20));
 
     // Pasek postępu
     const barX = posX + 10;
-    const barY = posY + widgetH - 6;
+    const barY = posY + widgetH - (isMobile ? 7 : 8);
     const barW = widgetW - 20;
-    const barH = 2.5;
+    const barH = 3.0;
     const progress = Math.max(0, Math.min(1, streak / goalReq));
 
     ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
     ctx.fillRect(barX, barY, barW, barH);
 
-    ctx.fillStyle = streak > 0 ? '#38bdf8' : 'rgba(148, 163, 184, 0.40)';
+    ctx.fillStyle = streak > 0 ? '#00e5ff' : 'rgba(148, 163, 184, 0.40)';
     ctx.fillRect(barX, barY, barW * progress, barH);
   }
 
@@ -292,15 +304,15 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
     if (uavStreak) {
       const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
-      const badgeW = 110;
+      const badgeW = 120;
       const badgeH = 18;
       const badgeX = posX + (widgetW - badgeW) / 2;
-      const badgeY = isMobile ? (posY + widgetH + 5) : (posY - badgeH - 6);
+      const badgeY = isMobile ? (posY + widgetH + 6) : (posY - badgeH - 6);
 
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
       else ctx.rect(badgeX, badgeY, badgeW, badgeH);
-      ctx.fillStyle = 'rgba(6, 24, 38, 0.92)';
+      ctx.fillStyle = 'rgba(6, 24, 38, 0.94)';
       ctx.fill();
 
       ctx.strokeStyle = '#00e5ff';
@@ -323,30 +335,30 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    const bannerW = Math.min(290, W - 32);
-    const bannerH = 34;
+    const bannerW = Math.min(320, W - 32);
+    const bannerH = 38;
     const bannerX = Math.round((W - bannerW) / 2);
-    const bannerY = isMobile ? 40 : 64;
+    const bannerY = isMobile ? 42 : 54;
 
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
     else ctx.rect(bannerX, bannerY, bannerW, bannerH);
-    ctx.fillStyle = 'rgba(10, 15, 26, 0.94)';
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
     ctx.fill();
 
     ctx.strokeStyle = notif.color || '#00e5ff';
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    ctx.font = 'bold 9.5px monospace';
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
     ctx.fillStyle = notif.color || '#00e5ff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 5);
+    ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 6);
 
-    ctx.font = 'bold 9px monospace';
+    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 9.5px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 18);
+    ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 20);
 
     ctx.restore();
   }

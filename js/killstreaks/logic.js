@@ -33,7 +33,10 @@ export function registerKillstreakKill() {
   }
 
   const streak = killstreakState.currentStreak;
-  const isMobile = isTouchDevice();
+  const isMobile = !!(
+    isTouchDevice ||
+    (typeof window !== 'undefined' && (window.innerWidth <= 850 || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+  );
   const keyHint = isMobile ? '[DOTKNIJ WIDGET]' : '[KLAWISZ 4]';
 
   // Sprawdzamy czy osiągnięto próg którejkolwiek nagrody

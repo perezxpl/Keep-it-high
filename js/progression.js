@@ -270,6 +270,11 @@ export function setXpNotificationCallback(fn) {
   _xpNotificationCallback = fn;
 }
 
+let _rankUpCallback = null;
+export function setRankUpCallback(fn) {
+  _rankUpCallback = fn;
+}
+
 export function notifyXpGained(text, amount, color) {
   if (typeof _xpNotificationCallback === 'function') {
     _xpNotificationCallback(text, amount, color);
@@ -285,8 +290,15 @@ export function addPlayerXP(amount) {
   const delta = parseInt(amount, 10);
   if (!Number.isFinite(delta) || Number.isNaN(delta)) return getPlayerXP();
   const current = getPlayerXP();
+  const prevRank = getCurrentRank(current);
   const updated = Math.max(0, current + delta);
   localStorage.setItem('fragball_xp', updated.toString());
+  const newRank = getCurrentRank(updated);
+  if (newRank.id !== prevRank.id) {
+    if (typeof _rankUpCallback === 'function') {
+      _rankUpCallback(newRank);
+    }
+  }
   return updated;
 }
 
