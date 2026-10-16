@@ -98,6 +98,8 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 
 ### Serie Zabójstw — Killstreaks (`js/killstreaks/`)
 - `js/killstreaks/state.js` — rejestr serii zabójstw w stylu Call of Duty (`KILLSTREAKS`: UAV, Care Package, Mortar Strike, Sentry Gun, Attack Drone, Juggernaut) oraz obiekt stanu sesji `killstreakState` (bieżąca seria na jedno życie, odblokowane nagrody `availableStreaks`, aktywne efekty `activeStreaks`).
+- `js/killstreaks/carePackage.js` — zrzut zaopatrzenia (Care Package): skrzynia airdrop z opadaniem na spadochronie, lądowanie na platformach/ziemi (`getCarePackageSurfaceY`), flary dymne na podłożu, okrągły pierścień postępu przechwytywania (1.2s dla gracza z [E] lub dotykiem, 1.8s dla botów) oraz pełna tabela łupów (Ciężki Pancerz 100 HP + hełm FAST, Odnowienie amunicji i granatów, Nalot Moździerzowy, Dron Bojowy, Juggernaut 250 HP).
+- `js/killstreaks/supportStrikes.js` — nalot moździerzowy (kaskadowa salwa 5 pocisków artyleryjskich spadających z nieba z detonacją obszarową) oraz dron bojowy (quadcopter stealth podążający za operatorem, namierzający cele laserem i prowadzący ogień ciągły przez 25s).
 - `js/killstreaks/logic.js` — zliczanie eliminacji na jedno życie (`registerKillstreakKill`), reset po zgonie (`resetKillstreak`), aktywacja wsparcia bojowego (`activateKillstreak`, `activateNextAvailableStreak`) oraz cykl życia timerów (`updateKillstreaks`).
 - `js/killstreaks/renderer.js` — potok renderowania efektów świata (skaner radarowy UAV, taktyczne ramki namierzania wrogów `[BRACKETS]`, odległości w metrach oraz wskaźniki krawędziowe celów poza ekranem) oraz minimalistyczny widget HUD serii zabójstw (`drawKillstreakHUD`).
 - `js/killstreaks/index.js` — główny punkt wejścia i eksport modułu serii zabójstw.

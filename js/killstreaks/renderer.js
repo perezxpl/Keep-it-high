@@ -8,6 +8,8 @@ import { isKillstreakActive } from './logic.js';
 import { isTouchDevice } from '../config.js';
 import { W as stateW, H as stateH } from '../world/state.js';
 import { camera as globalCamera, worldToScreen } from '../camera.js';
+import { drawCarePackages } from './carePackage.js';
+import { drawMortarStrikes, drawAttackDrones } from './supportStrikes.js';
 
 function getScreenSize(canvas) {
   let sw = (typeof stateW === 'number' && stateW > 0) ? stateW : 0;
@@ -29,13 +31,24 @@ function getScreenSize(canvas) {
  * @param {object} player - lokalny gracz
  */
 export function drawKillstreakWorld(ctx, camera, combatants, player) {
-  if (!player || player.isDead) return;
-
   const cam = camera || globalCamera || { x: 0, y: 0, zoom: 1 };
   const zoom = cam.zoom || 1;
   const { W, H } = getScreenSize(ctx?.canvas);
 
-  // 1. OBSŁUGA AKTYWNEGO RADARU UAV
+  // 1. OBIEKTY FIZYCZNE W ŚWIECIE GRY (Skrzynie zrzutowe, naloty artyleryjskie, drony)
+  ctx.save();
+  ctx.scale(zoom, zoom);
+  ctx.translate(-cam.x, -cam.y);
+
+  drawCarePackages(ctx, cam, player);
+  drawMortarStrikes(ctx, cam);
+  drawAttackDrones(ctx, cam);
+
+  ctx.restore();
+
+  if (!player || player.isDead) return;
+
+  // 2. OBSŁUGA AKTYWNEGO RADARU UAV (Nakładki ekranowe)
   if (isKillstreakActive('UAV')) {
     ctx.save();
 

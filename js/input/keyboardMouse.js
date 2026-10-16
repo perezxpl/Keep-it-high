@@ -55,7 +55,9 @@ export const keys = {
   ctrl: false,
   crouch: false,
   KeyX: false,
-  bootsCharge: false
+  bootsCharge: false,
+  KeyE: false,
+  interact: false
 };
 
 export const inputSession = {
@@ -305,7 +307,7 @@ export function initKeyboardMouseHandlers({
       const hasModifier = e.ctrlKey || e.shiftKey || e.altKey || e.metaKey;
       const isGameKey = (
         e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
-        e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' ||
+        e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' || e.code === 'KeyE' ||
         e.code === 'KeyB' || e.code === 'KeyZ' ||
         e.code === 'Space' ||
         (typeof e.code === 'string' && (e.code.startsWith('Arrow') || e.code.startsWith('Digit') || e.code.startsWith('Numpad')))
@@ -315,6 +317,11 @@ export function initKeyboardMouseHandlers({
       if (isControlKey || (hasModifier && isGameKey)) {
         e.preventDefault();
       }
+    }
+
+    if (e.code === 'KeyE') {
+      keys.KeyE = true;
+      keys.interact = true;
     }
 
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -492,6 +499,11 @@ export function initKeyboardMouseHandlers({
     }
     const activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) return;
+
+    if (e.code === 'KeyE') {
+      keys.KeyE = false;
+      keys.interact = false;
+    }
 
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;

@@ -24,3 +24,17 @@ export {
   drawKillstreakWorld,
   drawKillstreakHUD
 } from './renderer.js';
+
+export {
+  activeCarePackages,
+  spawnCarePackage,
+  getCarePackageSurfaceY
+} from './carePackage.js';
+
+export {
+  activeMortarStrikes,
+  activeAttackDrones,
+  spawnMortarStrike,
+  spawnAttackDrone
+} from './supportStrikes.js';
+

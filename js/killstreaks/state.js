@@ -26,8 +26,8 @@ export const KILLSTREAKS = [
     short: 'ZRZUT',
     killsRequired: 4,
     icon: '■',
-    desc: 'Skrzynia zrzucana na spadochronie zawierająca ciężki pancerz kevlarowy, odnowienie amunicji lub broń specjalną.',
-    implemented: false
+    desc: 'Skrzynia zrzucana na spadochronie zawierająca ciężki pancerz kevlarowy, odnowienie amunicji, nalot lub wsparcie bojowe.',
+    implemented: true
   },
   {
     id: 'MORTAR_STRIKE',
@@ -37,7 +37,7 @@ export const KILLSTREAKS = [
     killsRequired: 5,
     icon: '▲',
     desc: 'Salwa pocisków artyleryjskich spadająca na pozycje wroga i platformy z potężną falą uderzeniową.',
-    implemented: false
+    implemented: true
   },
   {
     id: 'SENTRY_GUN',
@@ -58,7 +58,7 @@ export const KILLSTREAKS = [
     duration: 25,
     icon: '►',
     desc: 'Zaawansowany dron asystujący graczowi z powietrza ciągłym ogniem w kierunku celowania.',
-    implemented: false
+    implemented: true
   },
   {
     id: 'JUGGERNAUT',
@@ -68,7 +68,7 @@ export const KILLSTREAKS = [
     killsRequired: 11,
     icon: '■■',
     desc: 'Ciężki pancerz balistyczny (250 HP) oraz wielolufowy Minigun kosztem obniżonej mobilności operatora.',
-    implemented: false
+    implemented: true
   }
 ];
 

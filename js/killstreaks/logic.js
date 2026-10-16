@@ -6,6 +6,12 @@
 import { KILLSTREAKS, killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { isTouchDevice } from '../config.js';
+import { player } from '../player/state.js';
+import { getActiveBots } from '../bot.js';
+import { remotePlayer } from '../network.js';
+import { getActiveArena } from '../obstacles.js';
+import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
+import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
 
 /**
  * Inicjalizacja / reset całego stanu sesji serii zabójstw (np. nowy mecz)
@@ -20,6 +26,7 @@ export function initKillstreaks() {
   killstreakState.recentNotification = null;
   killstreakState.notificationTimer = 0;
   killstreakState.hudButtonBounds = null;
+  initCarePackages();
 }
 
 /**
@@ -130,6 +137,79 @@ export function activateKillstreak(streakId) {
     return true;
   }
 
+  // Obsługa nagrody: CARE_PACKAGE (Zrzut Zaopatrzenia)
+  if (streakId === 'CARE_PACKAGE') {
+    killstreakState.availableStreaks.splice(idx, 1);
+    const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
+    const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 80) : ((typeof curArena?.width === 'number') ? (curArena.width - 80) : 2800);
+    const dropTargetX = Math.max(minX, Math.min(maxX, (player?.x || 600) + (player?.facing || 1) * 75));
+
+    spawnCarePackage(player, dropTargetX);
+
+    killstreakState.recentNotification = {
+      title: '[ZRZUT] FLARA TAKTYCZNA',
+      text: 'TRANSPORT ZAOPATRZENIA W DRODZE',
+      color: '#f97316'
+    };
+    killstreakState.notificationTimer = 3.5;
+    return true;
+  }
+
+  // Obsługa nagrody: MORTAR_STRIKE (Nalot Moździerzowy)
+  if (streakId === 'MORTAR_STRIKE') {
+    killstreakState.availableStreaks.splice(idx, 1);
+    const strikeTargetX = (player?.x || 600) + (player?.facing || 1) * 260;
+    spawnMortarStrike(strikeTargetX, player);
+
+    killstreakState.recentNotification = {
+      title: '[NALOT] MOŹDZIERZ TAKTYCZNY',
+      text: 'SALWA 5 POCISKÓW ARTYLERYJSKICH W DRODZE',
+      color: '#ef4444'
+    };
+    killstreakState.notificationTimer = 3.5;
+    return true;
+  }
+
+  // Obsługa nagrody: ATTACK_DRONE (Dron Bojowy)
+  if (streakId === 'ATTACK_DRONE') {
+    killstreakState.availableStreaks.splice(idx, 1);
+    spawnAttackDrone(player);
+
+    killstreakState.recentNotification = {
+      title: '[DRON] WSPARCIE POWIETRZNE',
+      text: 'DRON BOJOWY AKTYWNY PRZEZ 25S',
+      color: '#00e5ff'
+    };
+    killstreakState.notificationTimer = 3.5;
+    return true;
+  }
+
+  // Obsługa nagrody: JUGGERNAUT (Pancerz Juggernaut)
+  if (streakId === 'JUGGERNAUT') {
+    killstreakState.availableStreaks.splice(idx, 1);
+    if (player) {
+      player.maxHp = 250;
+      player.hp = 250;
+      player.hasVest = true;
+      player.vestHp = 200;
+      player.hasHelmet = true;
+      if (player.visuals) {
+        player.visuals.hasVest = true;
+        player.visuals.hasHelmet = true;
+      }
+    }
+
+    killstreakState.recentNotification = {
+      title: '[KOLOS] PANCERZ JUGGERNAUT',
+      text: 'CIĘŻKI BALISTYCZNY PANCERZ 250 HP I 200 KEVLARU',
+      color: '#eab308'
+    };
+    killstreakState.notificationTimer = 4.5;
+    triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP)!');
+    return true;
+  }
+
   // W przypadku kolejnych nagród w trakcie wdrażania informujemy gracza bez utraty slotu
   killstreakState.recentNotification = {
     title: `${def.tag} ${def.name.toUpperCase()}`,
@@ -205,4 +285,12 @@ export function updateKillstreaks(dt = (1 / 60)) {
       killstreakState.notificationTimer = 2.0;
     }
   }
+
+  // Aktualizacja skrzyń zrzutowych, nalotów artyleryjskich i dronów bojowych
+  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+  const combatantsList = [player, ...activeBots, ...(remotePlayer?.active ? [remotePlayer] : [])];
+
+  updateCarePackages(safeDt, player, combatantsList);
+  updateMortarStrikes(safeDt, combatantsList);
+  updateAttackDrones(safeDt, combatantsList);
 }
