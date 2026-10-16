@@ -12,6 +12,7 @@ import { WEAPONS, getWeaponAmmo } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { killstreakState } from './state.js';
 import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
+import { spawnSentryGun } from './sentryGun.js';
 
 function getKeys() {
   if (typeof window !== 'undefined' && window.keys) return window.keys;
@@ -119,14 +120,16 @@ export function spawnCarePackage(owner, targetX) {
  * 35% Ciężki Pancerz (100 HP kamizelki + hełm FAST + 100 HP)
  * 25% Pełna Amunicja (wszystkie bronie na max + reset granatów)
  * 20% Nalot Moździerzowy [NALOT] (5-killstreak)
- * 15% Dron Bojowy [DRON] (9-killstreak wsparcia z powietrza)
- * 5% Pancerz Juggernaut [KOLOS] (11-killstreak 250 HP)
+ * 12% Wieżyczka Strażnicza [SENTRY] (7-killstreak)
+ * 9% Dron Bojowy [DRON] (9-killstreak wsparcia z powietrza)
+ * 4% Pancerz Juggernaut [KOLOS] (11-killstreak 250 HP)
  */
 function rollCarePackageLoot() {
   const roll = Math.random() * 100;
-  if (roll < 35) return 'HEAVY_ARMOR';
-  if (roll < 60) return 'FULL_AMMO';
-  if (roll < 80) return 'MORTAR_STRIKE';
+  if (roll < 30) return 'HEAVY_ARMOR';
+  if (roll < 52) return 'FULL_AMMO';
+  if (roll < 72) return 'MORTAR_STRIKE';
+  if (roll < 85) return 'SENTRY_GUN';
   if (roll < 95) return 'ATTACK_DRONE';
   return 'JUGGERNAUT';
 }
@@ -220,6 +223,26 @@ function awardCarePackageLoot(crate, recipient, player) {
       } else {
         spawnMortarStrike(player ? player.x : crate.x, recipient);
         triggerCombatFeedBanner('DEATH', `[UWAGA] BOT WEZWAŁ: ${label}!`);
+      }
+      break;
+    }
+
+    case 'SENTRY_GUN': {
+      const label = 'WIEŻYCZKA STRAŻNICZA [SENTRY]';
+      crate.floatingNotice = { text: `[+] ${label}`, color: '#00e5ff', y: crate.y - 12, alpha: 1.0 };
+
+      if (isPlayer) {
+        killstreakState.availableStreaks.push('SENTRY_GUN');
+        triggerCombatFeedBanner('KILL', `[ZRZUT] ODBLOKOWANO: ${label} [KLAWISZ 4]`);
+        killstreakState.recentNotification = {
+          title: '[ZRZUT] SERIA ZABÓJSTW',
+          text: `${label} GOTOWA DO ROZSTAWIENIA [KLAWISZ 4]`,
+          color: '#00e5ff'
+        };
+        killstreakState.notificationTimer = 4.0;
+      } else {
+        spawnSentryGun(recipient, recipient.x + (recipient.facing || 1) * 45);
+        triggerCombatFeedBanner('DEATH', `[UWAGA] BOT ROZSTAWIŁ: ${label}!`);
       }
       break;
     }

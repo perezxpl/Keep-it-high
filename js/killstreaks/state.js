@@ -47,7 +47,7 @@ export const KILLSTREAKS = [
     killsRequired: 7,
     icon: '◈',
     desc: 'Automatyczne działko obrotowe z celownikiem laserowym, prowadzące ogień zaporowy do celów w zasięgu wzroku.',
-    implemented: false
+    implemented: true
   },
   {
     id: 'ATTACK_DRONE',

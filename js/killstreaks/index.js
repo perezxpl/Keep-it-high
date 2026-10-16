@@ -38,3 +38,11 @@ export {
   spawnAttackDrone
 } from './supportStrikes.js';
 
+export {
+  activeSentryGuns,
+  spawnSentryGun,
+  updateSentryGuns,
+  drawSentryGuns,
+  initSentryGuns
+} from './sentryGun.js';
+

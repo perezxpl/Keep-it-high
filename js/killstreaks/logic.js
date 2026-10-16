@@ -10,6 +10,7 @@ import { player } from '../player/state.js';
 import { getActiveArena } from '../obstacles.js';
 import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
+import { initSentryGuns, spawnSentryGun, updateSentryGuns } from './sentryGun.js';
 
 /**
  * Inicjalizacja / reset całego stanu sesji serii zabójstw (np. nowy mecz)
@@ -25,6 +26,7 @@ export function initKillstreaks() {
   killstreakState.notificationTimer = 0;
   killstreakState.hudButtonBounds = null;
   initCarePackages();
+  initSentryGuns();
 }
 
 /**
@@ -169,6 +171,22 @@ export function activateKillstreak(streakId) {
     return true;
   }
 
+  // Obsługa nagrody: SENTRY_GUN (Wieżyczka Strażnicza)
+  if (streakId === 'SENTRY_GUN') {
+    killstreakState.availableStreaks.splice(idx, 1);
+    const facing = player?.facing || 1;
+    const deployX = (player?.x || 600) + facing * 42;
+    spawnSentryGun(player, deployX);
+
+    killstreakState.recentNotification = {
+      title: '[SENTRY] WIEŻYCZKA STRAŻNICZA',
+      text: 'SYSTEM ROZSTAWIONY - OBRONA SEKTORA (30S)',
+      color: '#00e5ff'
+    };
+    killstreakState.notificationTimer = 3.5;
+    return true;
+  }
+
   // Obsługa nagrody: ATTACK_DRONE (Dron Bojowy)
   if (streakId === 'ATTACK_DRONE') {
     killstreakState.availableStreaks.splice(idx, 1);
@@ -293,4 +311,5 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
   updateCarePackages(safeDt, activePlayer, combatantsList);
   updateMortarStrikes(safeDt, combatantsList);
   updateAttackDrones(safeDt, combatantsList);
+  updateSentryGuns(safeDt, combatantsList);
 }

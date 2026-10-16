@@ -10,6 +10,7 @@ import { W as stateW, H as stateH } from '../world/state.js';
 import { camera as globalCamera, worldToScreen } from '../camera.js';
 import { drawCarePackages } from './carePackage.js';
 import { drawMortarStrikes, drawAttackDrones } from './supportStrikes.js';
+import { drawSentryGuns } from './sentryGun.js';
 
 function getScreenSize(canvas) {
   let sw = (typeof stateW === 'number' && stateW > 0) ? stateW : 0;
@@ -43,6 +44,7 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
   drawCarePackages(ctx, cam, player);
   drawMortarStrikes(ctx, cam);
   drawAttackDrones(ctx, cam);
+  drawSentryGuns(ctx, cam);
 
   ctx.restore();
 
