@@ -127,8 +127,9 @@ canvas.addEventListener('touchstart', (e) => {
     // 0a. DOTKNIĘCIE WIDGETU SERII ZABÓJSTW (KILLSTREAKS)
     // =======================================================================
     const kb = killstreakState.hudButtonBounds;
-    if (kb && t.clientX >= kb.x && t.clientX <= kb.x + kb.w &&
-      t.clientY >= kb.y && t.clientY <= kb.y + kb.h) {
+    const pad = 12;
+    if (kb && t.clientX >= (kb.x - pad) && t.clientX <= (kb.x + kb.w + pad) &&
+      t.clientY >= (kb.y - pad) && t.clientY <= (kb.y + kb.h + pad)) {
       activateNextAvailableStreak();
       continue;
     }

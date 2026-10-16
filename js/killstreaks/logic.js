@@ -3,8 +3,9 @@
 // Obsługa liczników na jedno życie, wygasania timerów i uruchamiania wsparcia
 // =============================================================================
 
-import { KILLSTREAKS, killstreakState, getKillstreakDef } from './state.js';
+import { KILLSTREAKS, killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
+import { isTouchDevice } from '../config.js';
 
 /**
  * Inicjalizacja / reset całego stanu sesji serii zabójstw (np. nowy mecz)
@@ -32,6 +33,8 @@ export function registerKillstreakKill() {
   }
 
   const streak = killstreakState.currentStreak;
+  const isMobile = isTouchDevice();
+  const keyHint = isMobile ? '[DOTKNIJ WIDGET]' : '[KLAWISZ 4]';
 
   // Sprawdzamy czy osiągnięto próg którejkolwiek nagrody
   const awarded = KILLSTREAKS.find(k => k.killsRequired === streak);
@@ -41,10 +44,10 @@ export function registerKillstreakKill() {
     killstreakState.lastAwardedThreshold = streak;
 
     // Powiadomienie bojowe na ekranie
-    const notifMsg = `SERIA ${streak}: ODBLOKOWANO ${awarded.name.toUpperCase()}! [4]`;
+    const notifMsg = `SERIA ${streak}: ODBLOKOWANO ${awarded.name.toUpperCase()}! ${keyHint}`;
     killstreakState.recentNotification = {
       title: `SERIA ZABÓJSTW [${streak}]`,
-      text: `${awarded.tag} ${awarded.name.toUpperCase()} GOTOWY DO UŻYCIA [4]`,
+      text: `${awarded.tag} ${awarded.name.toUpperCase()} GOTOWY DO UŻYCIA ${keyHint}`,
       color: '#00e5ff'
     };
     killstreakState.notificationTimer = 4.0;
@@ -52,6 +55,19 @@ export function registerKillstreakKill() {
     // Banner w feedzie bojowym
     triggerCombatFeedBanner('KILL', notifMsg);
     return awarded;
+  } else {
+    // Natychmiastowy feedback o postępie w serii na bieżące zabójstwo (dla każdego fraga)
+    const nextGoal = getNextKillstreakGoal(streak);
+    if (nextGoal) {
+      const left = nextGoal.killsRequired - streak;
+      const fragUnit = left === 1 ? 'FRAG' : ((left >= 2 && left <= 4) ? 'FRAGI' : 'FRAGÓW');
+      killstreakState.recentNotification = {
+        title: `SERIA ZABÓJSTW: ${streak}`,
+        text: `CEL: ${nextGoal.tag} ${nextGoal.name.toUpperCase()} ZA ${left} ${fragUnit}`,
+        color: '#38bdf8'
+      };
+      killstreakState.notificationTimer = 2.2;
+    }
   }
 
   return null;

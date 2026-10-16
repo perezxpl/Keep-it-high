@@ -7,22 +7,10 @@ import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
+import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade } from './projectiles.js';
-import {
-  updateUIStatus,
-  updatePingUI,
-  displayHostRoomCode,
-  openMultiplayerModal,
-  closeMultiplayerModal,
-  updateCursorVisibility,
-  isChatActive,
-  openChat,
-  closeChat,
-  addChatMessageToUI,
-  syncMpBotUI,
-  initNetworkUI
-} from './networkUI.js';
+import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
 
 export {
   updateUIStatus,
@@ -1035,8 +1023,10 @@ function handleNetworkData(data) {
 
     case 'kill_event': {
       if (data.victimId === 'player') {
+        resetKillstreak();
         triggerCombatFeedBanner('DEATH', data.killerName || 'PRZECIWNIK');
       } else if (data.killerId === 'player' || (data.killerId === 'remotePlayer' && !networkState.isHost)) {
+        registerKillstreakKill();
         triggerCombatFeedBanner('KILL', data.victimName || 'PRZECIWNIK');
       }
       break;

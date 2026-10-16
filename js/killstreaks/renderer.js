@@ -6,21 +6,34 @@
 import { killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
 import { isKillstreakActive } from './logic.js';
 import { isTouchDevice } from '../config.js';
+import { W as stateW, H as stateH } from '../world/state.js';
+import { camera as globalCamera, worldToScreen } from '../camera.js';
+
+function getScreenSize(canvas) {
+  let sw = (typeof stateW === 'number' && stateW > 0) ? stateW : 0;
+  let sh = (typeof stateH === 'number' && stateH > 0) ? stateH : 0;
+  if (!sw && typeof window !== 'undefined') sw = window.innerWidth;
+  if (!sh && typeof window !== 'undefined') sh = window.innerHeight;
+  if (!sw && canvas?.clientWidth) sw = canvas.clientWidth;
+  if (!sh && canvas?.clientHeight) sh = canvas.clientHeight;
+  if (!sw) sw = 800;
+  if (!sh) sh = 600;
+  return { W: sw, H: sh };
+}
 
 /**
  * Renderuje efekty killstreaków w świecie gry (np. taktyczne ramki radaru UAV, wskaźniki celów)
  * @param {CanvasRenderingContext2D} ctx
- * @param {object} camera - { x, y }
+ * @param {object} camera - { x, y, zoom }
  * @param {Array} combatants - lista aktywnych uczestników (gracz, boty, zdalny gracz)
  * @param {object} player - lokalny gracz
  */
 export function drawKillstreakWorld(ctx, camera, combatants, player) {
   if (!player || player.isDead) return;
 
-  const camX = camera?.x || 0;
-  const camY = camera?.y || 0;
-  const W = ctx.canvas.width;
-  const H = ctx.canvas.height;
+  const cam = camera || globalCamera || { x: 0, y: 0, zoom: 1 };
+  const zoom = cam.zoom || 1;
+  const { W, H } = getScreenSize(ctx?.canvas);
 
   // 1. OBSŁUGA AKTYWNEGO RADARU UAV
   if (isKillstreakActive('UAV')) {
@@ -55,10 +68,11 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
       const isAlly = (c.team && player.team && c.team === player.team);
       if (isAlly) continue;
 
-      const ew = c.w || 32;
-      const eh = c.h || 58;
-      const sx = c.x - camX;
-      const sy = c.y - camY;
+      const ew = (c.w || 32) * zoom;
+      const eh = (c.h || 58) * zoom;
+      const spos = worldToScreen(c.x, c.y, cam);
+      const sx = spos.x;
+      const sy = spos.y;
 
       const distPx = Math.hypot(c.x - player.x, c.y - player.y);
       const distM = Math.max(1, Math.round(distPx / 40));
@@ -107,10 +121,11 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
         // --- CEL POZA EKRANEM: Wskaźnik krawędziowy (Edge Pointer) ---
         const cx = W / 2;
         const cy = H / 2;
-        const targetScreenX = (c.x + ew / 2) - camX;
-        const targetScreenY = (c.y + eh / 2) - camY;
-        const dx = targetScreenX - cx;
-        const dy = targetScreenY - cy;
+        const centerWorldX = c.x + (c.w || 32) / 2;
+        const centerWorldY = c.y + (c.h || 58) / 2;
+        const centerPos = worldToScreen(centerWorldX, centerWorldY, cam);
+        const dx = centerPos.x - cx;
+        const dy = centerPos.y - cy;
 
         if (dx !== 0 || dy !== 0) {
           const angle = Math.atan2(dy, dx);
@@ -172,19 +187,20 @@ export function drawKillstreakWorld(ctx, camera, combatants, player) {
 export function drawKillstreakHUD(ctx, canvas, player) {
   if (!player) return;
 
-  const W = canvas.width;
-  const H = canvas.height;
+  const { W, H } = getScreenSize(canvas);
   const isMobile = isTouchDevice();
 
   ctx.save();
 
-  // Wymiary i pozycja widgetu w prawym dolnym obszarze ekranu (nie nachodzi na broń)
-  const widgetW = isMobile ? 128 : 142;
-  const widgetH = isMobile ? 42 : 44;
-  const posX = W - widgetW - (isMobile ? 18 : 24);
-  const posY = H - widgetH - (isMobile ? 86 : 76);
+  // Wymiary i ergonomiczna pozycja widgetu:
+  // Na telefonie: w prawym górnym rogu (pod przyciskiem pauzy, z dala od drążków i kieszeni!)
+  // Na PC: w prawym dolnym rogu (nad slotami broni)
+  const widgetW = isMobile ? 122 : 142;
+  const widgetH = isMobile ? 38 : 44;
+  const posX = W - widgetW - (isMobile ? 14 : 24);
+  const posY = isMobile ? 56 : (H - widgetH - 80);
 
-  // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku
+  // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku (współrzędne CSS)
   killstreakState.hudButtonBounds = {
     x: posX,
     y: posY,
@@ -279,7 +295,7 @@ export function drawKillstreakHUD(ctx, canvas, player) {
       const badgeW = 110;
       const badgeH = 18;
       const badgeX = posX + (widgetW - badgeW) / 2;
-      const badgeY = posY - badgeH - 6;
+      const badgeY = isMobile ? (posY + widgetH + 5) : (posY - badgeH - 6);
 
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
@@ -307,10 +323,10 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    const bannerW = 280;
+    const bannerW = Math.min(290, W - 32);
     const bannerH = 34;
-    const bannerX = W / 2 - bannerW / 2;
-    const bannerY = isMobile ? 54 : 64;
+    const bannerX = Math.round((W - bannerW) / 2);
+    const bannerY = isMobile ? 40 : 64;
 
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);

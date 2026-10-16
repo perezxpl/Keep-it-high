@@ -297,7 +297,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
         }
 
         // Sprawdzenie, czy ofiara została FAKTYCZNIE zabita przez przeciwnika
-        const killerRef = c.killer;
+        const killerRef = c.killer || c.lastAttacker;
         const isSelfKill = !killerRef || (killerRef === c);
         const isFriendlyFire = (deathmatchState.mode === DEATHMATCH_MODES.TDM) && killerRef && (killerRef.team === c.team);
 
