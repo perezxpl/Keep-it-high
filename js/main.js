@@ -1007,45 +1007,42 @@ function loop(now) {
   if (delta > MAX_DELTA) delta = MAX_DELTA;
   if (delta < 0) delta = 0;
 
-  // Kalibracja częstotliwości odświeżania monitora w pierwszych 30 klatkach gry
-  if (refreshSampleCount < 30 && delta >= 3.0 && delta <= 30.0) {
+  // Kalibracja częstotliwości odświeżania monitora w pierwszych 30 klatkach gry (60/75/100/120/144/165/240Hz)
+  if (refreshSampleCount < 30 && delta >= 2.0 && delta <= 30.0) {
     refreshSampleSum += delta;
     refreshSampleCount++;
     if (refreshSampleCount === 30) {
       const avg = refreshSampleSum / 30;
-      if (avg >= 14.5 && avg <= 19.0) {
+      if (avg >= 14.8 && avg <= 19.0) {
         detectedRefreshRate = 60;
-      } else if (avg >= 12.0 && avg <= 14.4) {
+      } else if (avg >= 12.2 && avg <= 14.5) {
         detectedRefreshRate = 75;
-      } else if (avg >= 7.0 && avg <= 9.5) {
+      } else if (avg >= 9.2 && avg <= 11.2) {
+        detectedRefreshRate = 100;
+      } else if (avg >= 7.6 && avg <= 9.1) {
         detectedRefreshRate = 120;
-      } else if (avg >= 5.8 && avg <= 7.5) {
+      } else if (avg >= 6.5 && avg <= 7.5) {
         detectedRefreshRate = 144;
-      } else if (avg >= 3.5 && avg <= 5.0) {
+      } else if (avg >= 5.6 && avg <= 6.4) {
+        detectedRefreshRate = 165;
+      } else if (avg >= 3.6 && avg <= 4.8) {
         detectedRefreshRate = 240;
       } else {
-        detectedRefreshRate = 60;
+        detectedRefreshRate = Math.round(1000 / avg);
       }
     }
   }
 
-  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć i spadków do 48 FPS w Opera GX, Chrome, Firefox, Safari i Edge)
-  if (detectedRefreshRate === 60) {
-    // Na monitorach 60 Hz fluktuacje zegara przeglądarki (11.5ms - 23.0ms) wyrównujemy dokładnie do 16.666667 ms
-    if (delta >= 11.5 && delta <= 23.0) {
-      delta = TICK_MS;
-    }
-  } else if (detectedRefreshRate === 120) {
-    if (Math.abs(delta - 8.333) < 1.6) delta = 8.333333;
-  } else if (detectedRefreshRate === 144) {
-    if (Math.abs(delta - 6.944) < 1.4) delta = 6.944444;
-  } else if (detectedRefreshRate === 75) {
-    if (Math.abs(delta - 13.333) < 1.2) delta = 13.333333;
-  } else if (detectedRefreshRate === 240) {
-    if (Math.abs(delta - 4.167) < 0.8) delta = 4.166667;
-  } else {
-    if (Math.abs(delta - TICK_MS) < 3.5) {
-      delta = TICK_MS;
+  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć zegara przeglądarki w Opera GX, Chrome, Firefox, Edge)
+  if (detectedRefreshRate > 0) {
+    const idealFrameMs = 1000 / detectedRefreshRate;
+    if (detectedRefreshRate === 60) {
+      // Na monitorach 60 Hz fluktuacje zegara (12.0ms - 22.0ms) wyrównujemy dokładnie do 16.666667 ms
+      if (delta >= 12.0 && delta <= 22.0) {
+        delta = TICK_MS;
+      }
+    } else if (Math.abs(delta - idealFrameMs) < 0.65) {
+      delta = idealFrameMs;
     }
   }
 

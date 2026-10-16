@@ -637,7 +637,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         : (isSprintLeap ? (launchSpeed * 1.05) : jogMax);
 
       if (Math.abs(inputAxisX) > 0.05) {
-        if (player.isJetpacking && leftStick && leftStick.active) {
+        if (player.isJetpacking) {
           const targetJetVx = inputAxisX * maxAirSpeed;
           if (Math.abs(player.airVx) > maxAirSpeed && Math.sign(inputAxisX) === Math.sign(player.airVx)) {
             // Szybuje szybciej w tę samą stronę – nie wyhamowuj pędu
@@ -656,14 +656,16 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         // Zachowanie pędu: nie przycinaj jeśli postać leci z prędkością wyskoku ze sprintu
         const effectiveMax = Math.max(maxAirSpeed, Math.abs(player.airVx));
         player.airVx = Math.max(-effectiveMax, Math.min(effectiveMax, player.airVx));
-      } else if (player.isJetpacking && leftStick && leftStick.active) {
-        // Tapnięcie w centrum drążka nie wygasza pędu szybowania
+      } else if (player.isJetpacking) {
+        // Puszczenie wejścia w locie na jetpacku: wygaszanie pędu szybowania (PC i Mobile)
         if (Math.abs(player.airVx) < 1.0) {
-          player.airVx *= 0.96;
+          player.airVx *= 0.94;
+        } else {
+          player.airVx *= 0.97;
         }
       }
       player.vx = player.airVx;
-      player.airVx *= isSprintLeap ? 0.9985 : 0.995;
+      player.airVx *= isSprintLeap ? 0.9985 : (player.isJetpacking ? 0.985 : 0.995);
     } else if (player.kickMode === 'SPARTAN' && player.kickState !== 'IDLE') {
       // Dynamiczny Running Spartan Kick w pełnym biegu z zachowaniem pędu natarcia
       const isRunningKick = (Math.abs(player.vx) > 2.0);

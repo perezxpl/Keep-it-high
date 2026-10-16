@@ -211,13 +211,22 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       player.jetFuel = Math.max(0, player.jetFuel - fuelDrain);
       sparkCount = Math.max(1, Math.round(1 + stickUp * 3));
     } else {
-      // Klawiatura: klasyczna pelna sila ciagu
+      // Klawiatura PC: zbalansowany, płynny ciąg pionowy (dopasowany do fizyki mobilnej)
       player.jetpackPower = 1.0;
-      player.jetFuel = Math.max(0, player.jetFuel - 0.95);
-      player.vy = Math.max(-8.5, player.vy - 0.95);
+      const grav = CONFIG.GRAVITY || 0.38;
+      const netUpThrust = 0.32; // Zrównoważony ciąg wznoszący (zamiast natychmiastowego -0.95)
+      const maxClimbVy = -5.8;  // Komfortowy sufit prędkości wznoszenia (zamiast rakietowego -8.5)
+
+      player.vy -= (grav + netUpThrust);
+      if (player.vy < maxClimbVy) {
+        player.vy += (maxClimbVy - player.vy) * 0.25;
+      }
       if (player.y <= 30 && player.vy < 0) {
         player.vy = 0;
       }
+
+      player.jetFuel = Math.max(0, player.jetFuel - 0.70);
+      sparkCount = 3;
     }
 
     let inputAxisX = 0;
@@ -229,16 +238,12 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
     const maxAirVx = (player.currentClass?.stats?.sprintMax || CONFIG.SPRINT_MAX) * 1.1;
     if (Math.abs(inputAxisX) > 0.04) {
-      if (isTouchFlight && !isKeyFlight) {
-        // Na drążku prędkość pozioma lotu płynnie dąży do proporcji wychylenia gałki
-        const targetJetVx = inputAxisX * maxAirVx;
-        if (Math.abs(player.vx) > maxAirVx && Math.sign(inputAxisX) === Math.sign(player.vx)) {
-          // Szybuje szybciej w tę samą stronę – nie wyhamowuj pędu
-        } else {
-          player.vx += (targetJetVx - player.vx) * 0.16;
-        }
+      const targetJetVx = inputAxisX * maxAirVx;
+      if (Math.abs(player.vx) > maxAirVx && Math.sign(inputAxisX) === Math.sign(player.vx)) {
+        // Szybuje szybciej w tę samą stronę – nie wyhamowuj pędu
       } else {
-        player.vx += inputAxisX * 0.42;
+        const lerpRate = (isTouchFlight && !isKeyFlight) ? 0.16 : 0.14;
+        player.vx += (targetJetVx - player.vx) * lerpRate;
       }
       const effectiveMaxJet = Math.max(maxAirVx, Math.abs(player.vx));
       player.vx = Math.max(-effectiveMaxJet, Math.min(effectiveMaxJet, player.vx));
@@ -248,13 +253,13 @@ export function updatePlayerInputAndCombat(activeArenaId) {
         if (inputAxisX > 0.1) player.facing = 1;
         else if (inputAxisX < -0.1) player.facing = -1;
       }
-    } else if (isTouchFlight) {
-      // Tapnięcie w centrum lub lot pionowy nie wygasza pędu szybowania
+    } else {
+      // Puszczenie drążka lub klawiszy A/D w locie: naturalny opór aerodynamiczny (zarówno PC, jak i Mobile)
       if (Math.abs(player.vx) < 1.0) {
-        player.vx *= 0.95;
+        player.vx *= 0.94;
         if (Math.abs(player.vx) < 0.04) player.vx = 0;
       } else {
-        player.vx *= 0.995;
+        player.vx *= 0.97;
       }
       player.airVx = player.vx;
     }
