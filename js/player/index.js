@@ -665,8 +665,13 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       player.vx = player.airVx;
       player.airVx *= isSprintLeap ? 0.9985 : 0.995;
     } else if (player.kickMode === 'SPARTAN' && player.kickState !== 'IDLE') {
-      // Podczas Spartan Kick na ziemi stopa podporowa jest wbita w grunt — brak szarżowania w biegu
-      player.vx *= 0.76;
+      // Dynamiczny Running Spartan Kick w pełnym biegu z zachowaniem pędu natarcia
+      const isRunningKick = (Math.abs(player.vx) > 2.0);
+      if (isRunningKick) {
+        player.vx *= 0.94;
+      } else {
+        player.vx *= 0.76;
+      }
       player.sprintDuration = 0;
     } else {
       const targetVx = inputAxisX * targetTopSpeed;

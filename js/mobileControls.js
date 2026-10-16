@@ -8,11 +8,11 @@ import { CONFIG } from './config.js';
 import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget } from './player/actions.js';
 import { ball } from './ball.js';
 import { activeArenaId as obstacleArenaId } from './obstacles.js';
+import { getActiveArena } from './arenas/index.js';
 
 export function isArena1() {
-  const cur = (typeof window !== 'undefined' && window.activeArenaId)
-    ? window.activeArenaId
-    : obstacleArenaId;
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const cur = curArena?.id || ((typeof window !== 'undefined' && window.activeArenaId) ? window.activeArenaId : obstacleArenaId);
   return (cur === 'ARENA_1' || cur === 'arena-1' || cur === '1');
 }
 
@@ -190,7 +190,7 @@ export function updateButtonLayout(W, H) {
  * @param {Object} [lStick] - Lewy drążek
  * @param {Object} [bCluster] - Zespół przycisków
  */
-export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster) {
+export function updateMobileControlStates(player, lStick = leftStick, bCluster = btnCluster, extraOptions = {}) {
   if (!player) return;
 
   const jogMax = player.currentClass?.stats?.jogMax || CONFIG.JOG_MAX || 4.2;
@@ -205,23 +205,28 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
     !(player.rocketBoots && player.rocketBoots.dashing)
   );
   const cooldownOk = (!player.slideCooldown || player.slideCooldown <= 0);
+  const ballArena = isArena1();
 
   if (player.isProne) {
     pockets.action.currentMode = 'STAND';
   } else if (player.isCrouching) {
     // Tryb leżenia jest dostępny WYŁĄCZNIE kiedy gracz kuca!
     pockets.action.currentMode = 'PRONE';
-  } else if (isSprinting && cooldownOk) {
-    pockets.action.currentMode = 'SLIDE';
+  } else if (ballArena && isSprinting && cooldownOk) {
+    // Wślizg dozwolony WYŁĄCZNIE w trybie z piłką (Arena 1)
+    // Jeśli jednak piłka znajduje się bezpośrednio w zasięgu – priorytet ma natychmiastowy KICK!
+    const activeBall = extraOptions.ball || ball;
+    const canKickBall = activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall);
+    pockets.action.currentMode = canKickBall ? 'KICK' : 'SLIDE';
   } else {
-    // Kiedy stoi normalnie (nie kuca, nie leży, nie jest rozpędzony do sprintu) – KICK (Spartan Kick / wykop piłki w Arenie 1)
+    // W pozostałych stanach oraz ZAWSZE w trybach bojowych (Arena 2 i 3): KOPNIAK (KICK)
     pockets.action.currentMode = 'KICK';
   }
 }
 
 /**
  * Obsługa wciśnięcia zunifikowanego przycisku akcji dynamicznej:
- * - 'SLIDE': wślizg po rozpędzeniu do sprintu
+ * - 'SLIDE': wślizg po rozpędzeniu do sprintu (wyłącznie w trybach z piłką)
  * - 'PRONE': położenie się na ziemi (dostępne TYLKO podczas kucania)
  * - 'STAND': wstanie na równe nogi
  * - 'KICK': wykop piłki w Arenie 1 LUB Spartan Kick w starciu wręcz / Arenach 2 i 3
@@ -235,9 +240,10 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
 export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, extraOptions = {}) {
   if (!player || player.isDead || player.isIntro) return false;
 
+  const ballArena = isArena1();
   const mode = pockets.action.currentMode || 'KICK';
 
-  if (mode === 'SLIDE') {
+  if (mode === 'SLIDE' && ballArena) {
     if (player.onGround && !(player.rocketBoots && player.rocketBoots.dashing)) {
       return playerSlide(spawnGrass, GROUND_Y, player);
     }
@@ -262,6 +268,13 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     return true;
   } else {
     // Mode KICK: wykop piłki w Arenie 1 LUB przywrócony SPARTAN KICK w walce
+    // Przerwanie wślizgu wykopem (Slide-Cancel into Kick)
+    if (player.isSliding) {
+      player.isSliding = false;
+      player.slideTimer = 0;
+      player.slideCooldown = Math.max(player.slideCooldown || 0, 16);
+    }
+
     if (player.kickState !== 'IDLE' || (player.kickCooldown && player.kickCooldown > 0)) return false;
 
     player.isProne = false;
@@ -269,9 +282,10 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     player.crouchToggled = false;
 
     // Jeśli Arena 1 i piłka jest w zasięgu – wykop piłki
-    if (isArena1() && extraOptions.ball && extraOptions.ball.active !== false && isBallInKickReach(player, extraOptions.ball)) {
+    const activeBall = extraOptions.ball || ball;
+    if (ballArena && activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall)) {
       return triggerRightStickKick(player, rightStick, {
-        ball: extraOptions.ball || ball,
+        ball: activeBall,
         targets: extraOptions.targets,
         obstacles: extraOptions.obstacles,
         spawnGrass: spawnGrass

@@ -9,6 +9,7 @@ import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip
 import { spawnAeroSuperGrenade } from '../projectiles.js';
 import { getActiveBots } from '../bot.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
+import { getActiveArena } from '../arenas/index.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -64,6 +65,12 @@ export function playerSlide(spawnGrass, GROUND_Y, p) {
     groundYVal = p;
   }
   if (!char) return false;
+
+  // Wślizg dozwolony WYŁĄCZNIE w trybach z piłką (Arena 1) – w trybach bojowych (Arena 2 i 3) całkowicie wyeliminowany
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const arenaId = curArena?.id || (typeof window !== 'undefined' && window.activeArenaId) || '';
+  const isBallArena = (arenaId === 'arena-1' || arenaId === 'ARENA_1' || arenaId === '1');
+  if (!isBallArena) return false;
 
   const isMovingBackwards = (char.vx * char.facing < -0.1);
   if (isMovingBackwards) return false;
@@ -161,7 +168,15 @@ export function findMeleeTarget(p, potentialTargets) {
  * Inicjalizacja manewru Spartan Kick (czas trwania: 22 klatki)
  */
 export function triggerSpartanKick(p, meleeTarget) {
-  if (!p || p.isDead || p.isSliding || p.staggerTimer > 0) return null;
+  if (!p || p.isDead || p.staggerTimer > 0) return null;
+
+  // Przerwanie wślizgu potężnym kopem (Slide-Cancel into Kick)
+  if (p.isSliding) {
+    p.isSliding = false;
+    p.slideTimer = 0;
+    p.slideCooldown = Math.max(p.slideCooldown || 0, 16);
+  }
+
   if (p.kickState !== 'IDLE' || (p.kickCooldown && p.kickCooldown > 0)) return null;
 
   const pwr = (p.chargePower !== undefined && p.chargePower > 0) ? p.chargePower : 1.0;
@@ -182,16 +197,28 @@ export function triggerSpartanKick(p, meleeTarget) {
   p.spartanTarget = meleeTarget || null;
   p.nextLeg = (p.kickLeg === 'front') ? 'back' : 'front';
 
-  // Zaparcie stopy podporowej w podłoże – przerwanie sprintu i wyhamowanie szarży w miejscu
+  // Dynamiczny pęd kopa w biegu (Running Spartan Kick):
+  const isRunning = Math.abs(p.vx || 0) > 1.8;
   p.sprintDuration = 0;
-  if (!p.isJumping) {
+  if (isRunning) {
+    // W biegu postać dynamicznie wyskakuje do przodu lunge'em z zachowaniem pędu uderzenia
+    p.vx = Math.sign(p.vx || p.facing) * Math.max(Math.abs(p.vx) * 0.88, 3.2);
+  } else if (!p.isJumping) {
     p.vx *= 0.40;
   }
   return 'SPARTAN';
 }
 
 export function startKickCharge(p, targets) {
-  if (!p || p.isSliding || p.staggerTimer > 0) return;
+  if (!p || p.staggerTimer > 0) return;
+
+  // Przerwanie wślizgu wykopem (Slide-Cancel)
+  if (p.isSliding) {
+    p.isSliding = false;
+    p.slideTimer = 0;
+    p.slideCooldown = Math.max(p.slideCooldown || 0, 16);
+  }
+
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) return;
 
   p.isCharging = true;
@@ -307,6 +334,13 @@ export function isBallInKickReach(playerObj, ballObj) {
 export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targets) {
   if (!p || p.staggerTimer > 0) return null;
 
+  // Przerwanie wślizgu wykopem (Slide-Cancel)
+  if (p.isSliding) {
+    p.isSliding = false;
+    p.slideTimer = 0;
+    p.slideCooldown = Math.max(p.slideCooldown || 0, 16);
+  }
+
   if (!p.isCharging && !p.isIntro) return null;
   if (p.kickState !== 'IDLE' || p.kickCooldown > 0) {
     p.isCharging = false;
@@ -385,11 +419,11 @@ export function executeReleaseKick(ballParam, p, comboFlipWindowUntil = 0, targe
     p.kickAngle = 0;
     p.kickBufferTimer = 16;
 
-    // Zaparcie nogi podporowej przy wykopie z ziemi — brak możliwości szarżowania sprintem podczas kopania
+    // Dynamiczny wykop z ziemi (Running Kick w biegu z zachowaniem pędu)
     if (timing === 'CANCEL') {
-      p.vx *= 0.45;
+      p.vx *= (Math.abs(p.vx || 0) > 2.0) ? 0.72 : 0.45;
     } else {
-      p.vx *= 0.80;
+      p.vx *= 0.85;
     }
 
     const curSpeed = Math.abs(p.vx);

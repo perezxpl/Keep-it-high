@@ -44,9 +44,9 @@ export const EnforcerClass = {
     sprintMax: 5.6,
     accel: 0.15,            // Duża bezwładność przy ruszaniu
     decel: 0.88,            // Trudno go wyhamować
-    slideDecel: 0.989,      // Niezwykle długi wślizg taranujący
+    slideDecel: 0.958,      // Ciężki wślizg taranujący z mocnym tarciem o grunt (zwarty, taranujący zasięg)
     jumpForce: 8.5,         // Cięższy zwykły skok (przy krótkim tapnięciu < 1000ms)
-    slideDashSpeed: 18.5,   // Wybuchowy dash z darni
+    slideDashSpeed: 12.8,   // Zwarte, dynamiczne wbicie korków w darń zamiast nadmiernego wystrzału
     chargeSpeed: 0.024,
     hitReach: 64,           // Duży zasięg dzięki długości kończyn
     whiffReach: 94,

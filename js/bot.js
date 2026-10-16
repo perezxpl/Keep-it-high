@@ -889,8 +889,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       }
     }
 
-    // Wślizg taktyczny (Soldat Slide Tackle / Enforcer Ram)
-    if (hasBall) {
+    // Wślizg taktyczny (Soldat Slide Tackle) – WYŁĄCZNIE w trybie z piłką (Arena 1)
+    if (hasBall && isA1) {
       const ballSpeed = Math.hypot(ball.vx, ball.vy);
       const dxToBall = ball.x - botCenterX;
       const isBallMovingTowardsBot = (ball.vx * dxToBall < 0);
@@ -898,15 +898,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
 
       if (distToBallX >= 60 && distToBallX <= 110 && Math.abs(botTarget.vx) > 3.0 && (ballSpeed > 3.0 || isBallMovingTowardsBot)) {
         if (Math.random() < 0.40) {
-          playerSlide(spawnGrass, groundY, botTarget);
-        }
-      }
-    } else if (targetEnemy && !targetEnemy.isDead) {
-      const dxToEnemy = (targetEnemy.x + targetEnemy.w / 2) - botCenterX;
-      const distToEnemyX = Math.abs(dxToEnemy);
-      const slideProb = isEnforcer ? (diffCfg.slideChance * 1.3) : diffCfg.slideChance;
-      if (distToEnemyX >= 50 && distToEnemyX <= 135 && Math.abs(botTarget.vx) > 3.0 && (botTarget.vx * dxToEnemy > 0)) {
-        if (Math.random() < slideProb) {
           playerSlide(spawnGrass, groundY, botTarget);
         }
       }

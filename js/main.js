@@ -517,7 +517,7 @@ function update() {
 
   const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
   const mainMeleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-  updateMobileControlStates(player, leftStick, btnCluster);
+  updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
   updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
 
