@@ -60,6 +60,10 @@ export const keys = {
   interact: false
 };
 
+if (typeof window !== 'undefined') {
+  window.keys = keys;
+}
+
 export const inputSession = {
   jetpackAirborneSession: false,
   lastSPressTime: 0,

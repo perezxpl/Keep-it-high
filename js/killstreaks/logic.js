@@ -7,8 +7,6 @@ import { KILLSTREAKS, killstreakState, getKillstreakDef, getNextKillstreakGoal }
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { isTouchDevice } from '../config.js';
 import { player } from '../player/state.js';
-import { getActiveBots } from '../bot.js';
-import { remotePlayer } from '../network.js';
 import { getActiveArena } from '../obstacles.js';
 import { initCarePackages, spawnCarePackage, updateCarePackages } from './carePackage.js';
 import { spawnMortarStrike, updateMortarStrikes, spawnAttackDrone, updateAttackDrones } from './supportStrikes.js';
@@ -252,7 +250,8 @@ export function getKillstreakTimeRemaining(id) {
  * Pętla aktualizacji logiki killstreaków w każdej klatce gry
  * @param {number} dt - krok czasu w sekundach
  */
-export function updateKillstreaks(dt = (1 / 60)) {
+  // Aktualizacja skrzyń zrzutowych, nalotów artyleryjskich i dronów bojowych
+export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatantsOverride = null) {
   const safeDt = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : (1 / 60);
 
   // Aktualizacja animacji radaru UAV
@@ -286,11 +285,12 @@ export function updateKillstreaks(dt = (1 / 60)) {
     }
   }
 
-  // Aktualizacja skrzyń zrzutowych, nalotów artyleryjskich i dronów bojowych
-  const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
-  const combatantsList = [player, ...activeBots, ...(remotePlayer?.active ? [remotePlayer] : [])];
+  const activePlayer = playerOverride || player;
+  const combatantsList = Array.isArray(combatantsOverride)
+    ? combatantsOverride
+    : (activePlayer ? [activePlayer] : []);
 
-  updateCarePackages(safeDt, player, combatantsList);
+  updateCarePackages(safeDt, activePlayer, combatantsList);
   updateMortarStrikes(safeDt, combatantsList);
   updateAttackDrones(safeDt, combatantsList);
 }

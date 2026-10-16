@@ -98,6 +98,67 @@ for (const [filePath, mod] of modulesMap.entries()) {
 console.log(`Powiazano i zweryfikowano importy w ${linkedCount} modulach.`);
 
 // -----------------------------------------------------------------------------
+// 2.5. Weryfikacja wykonania modulow w srodowisku V8 (Runtime Module Evaluation)
+// Wykrywa bledy Temporal Dead Zone (TDZ), cykliczne referencje przed inicjalizacja
+// -----------------------------------------------------------------------------
+console.log('\n--- 2.5. Weryfikacja wykonania startowego gry (Runtime Evaluation) ---');
+try {
+  const mockContext = {
+    fillRect: () => {}, clearRect: () => {}, save: () => {}, restore: () => {},
+    beginPath: () => {}, closePath: () => {}, stroke: () => {}, fill: () => {},
+    arc: () => {}, moveTo: () => {}, lineTo: () => {}, resetTransform: () => {},
+    scale: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {}
+  };
+  const mockElement = {
+    style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+    addEventListener: () => {}, setAttribute: () => {}, getAttribute: () => null,
+    dataset: {}, offsetWidth: 100, offsetHeight: 50, offsetLeft: 0, offsetTop: 0,
+    appendChild: () => {}, querySelectorAll: () => [], querySelector: () => null,
+    getContext: () => mockContext, width: 1280, height: 720, clientWidth: 1280, clientHeight: 720,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 720 })
+  };
+
+  globalThis.window = { innerWidth: 1280, innerHeight: 720, addEventListener: () => {}, requestAnimationFrame: () => {} };
+  globalThis.requestAnimationFrame = () => {};
+  globalThis.document = {
+    querySelector: () => mockElement, querySelectorAll: () => [], getElementById: () => mockElement,
+    createElement: () => mockElement, appendChild: () => {}, body: mockElement, addEventListener: () => {}
+  };
+  Object.defineProperty(globalThis, 'navigator', { value: { maxTouchPoints: 0 }, configurable: true });
+  globalThis.location = { search: '', hash: '' };
+  globalThis.performance = { now: () => Date.now() };
+  globalThis.Image = class {};
+  globalThis.Audio = class {};
+  globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+
+  const evalModules = new Map();
+  function evalLinker(specifier, referencingModule) {
+    let p = specifier.startsWith('.')
+      ? path.resolve(path.dirname(referencingModule.identifier), specifier)
+      : path.resolve(rootDir, 'js', specifier);
+    if (!p.endsWith('.js') && fs.existsSync(p + '.js')) p += '.js';
+    const norm = p.toLowerCase();
+    if (!evalModules.has(norm)) {
+      const code = fs.readFileSync(p, 'utf8');
+      evalModules.set(norm, new vm.SourceTextModule(code, { identifier: p }));
+    }
+    return evalModules.get(norm);
+  }
+
+  const mainPath = path.resolve(jsDir, 'main.js');
+  const mainCode = fs.readFileSync(mainPath, 'utf8');
+  const mainMod = new vm.SourceTextModule(mainCode, { identifier: mainPath });
+  evalModules.set(mainPath.toLowerCase(), mainMod);
+
+  await mainMod.link(evalLinker);
+  await mainMod.evaluate();
+  console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');
+} catch (evalErr) {
+  console.error(`[RUNTIME EVALUATION ERROR] ${evalErr.stack || evalErr.message}`);
+  hasErrors = true;
+}
+
+// -----------------------------------------------------------------------------
 // 3. Weryfikacja braku emotikonów w git diff (ZERO EMOJIS)
 // -----------------------------------------------------------------------------
 console.log('\n--- 3. Weryfikacja braku emotikonow w git diff (ZERO EMOJIS) ---');

@@ -10,9 +10,13 @@ import { GROUND_Y, spawnGroundPuff, spawnJetpackSparks } from '../world/state.js
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from '../obstacles.js';
 import { WEAPONS, getWeaponAmmo } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
-import { keys } from '../input/keyboardMouse.js';
 import { killstreakState } from './state.js';
 import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
+
+function getKeys() {
+  if (typeof window !== 'undefined' && window.keys) return window.keys;
+  return {};
+}
 
 export const activeCarePackages = [];
 export const activeFlares = [];
@@ -354,7 +358,8 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
         const distToPlayer = Math.hypot(px - cx, py - cy);
 
         if (distToPlayer <= 68) {
-          const isHoldingInteract = isMobile || !!(keys.KeyE || keys.interact);
+          const k = getKeys();
+          const isHoldingInteract = isMobile || !!(k.KeyE || k.interact);
           if (isHoldingInteract) {
             capturingEntity = player;
           }
@@ -579,9 +584,10 @@ export function drawCarePackages(ctx, camera, player) {
           // Etykieta zachęty do przechwycenia
           ctx.font = 'bold 9px monospace';
           ctx.fillStyle = (crate.captureProgress > 0) ? '#38bdf8' : '#e2e8f0';
+          const k = getKeys();
           const promptText = isMobile
             ? (crate.captureProgress > 0 ? '[PRZECHWYTYWANIE...]' : '[STAŃ BLISKO]')
-            : ((keys.KeyE || keys.interact) ? '[PRZECHWYTYWANIE...]' : '[E] PRZECHWYĆ ZRZUT');
+            : ((k.KeyE || k.interact) ? '[PRZECHWYTYWANIE...]' : '[E] PRZECHWYĆ ZRZUT');
           ctx.fillText(promptText, cx, ringY - 14);
         }
       }

@@ -10,6 +10,49 @@ import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './hair.js';
 
+export var DEFAULT_BODY = {
+  w: 24,
+  h: 70,
+  thighLen: 25,
+  shinLen: 24,
+  upperArmLen: 14,
+  forearmLen: 13
+};
+
+export var DEFAULT_STATS = {
+  hp: 100,
+  maxHp: 100,
+  walkMax: 2.2,
+  jogMax: 4.2,
+  sprintMax: 6.8,
+  accel: 0.24,
+  decel: 0.84,
+  slideDecel: 0.978,
+  jumpForce: 9.8,
+  slideDashSpeed: 13.5,
+  chargeSpeed: 0.035,
+  hitReach: 56,
+  whiffReach: 88,
+  baseKickSpeed: 30.0,
+  kickPowerMult: 1.0,
+  spinMult: 1.0,
+  jetMax: 100,
+  spartanKnockback: 11.0,
+  spartanStagger: 25,
+  spartanDamage: 10,
+  kickForce: 1.0,
+  kickForceMultiplier: 1.0,
+  knockback: 1.0,
+  knockbackMultiplier: 1.0,
+  kickCooldown: 0.50
+};
+
+export var DEFAULT_CLASS_SCHEMA = {
+  body: DEFAULT_BODY,
+  stats: DEFAULT_STATS,
+  visuals: DEFAULT_VISUALS
+};
+
 /**
  * Sprawdza, czy nad głową gracza znajduje się przeszkoda lub sufit uniemożliwiający wyprostowanie się (powrót do STAND)
  * @param {Object} player - Obiekt gracza
@@ -54,61 +97,25 @@ export function isCeilingBlockingStand(player, groundY = 500) {
   return false;
 }
 
-export const DEFAULT_BODY = {
-  w: 24,
-  h: 70,
-  thighLen: 25,
-  shinLen: 24,
-  upperArmLen: 14,
-  forearmLen: 13
-};
-
-export const DEFAULT_STATS = {
-  hp: 100,
-  maxHp: 100,
-  walkMax: 2.2,
-  jogMax: 4.2,
-  sprintMax: 6.8,
-  accel: 0.24,
-  decel: 0.84,
-  slideDecel: 0.978,
-  jumpForce: 9.8,
-  slideDashSpeed: 13.5,
-  chargeSpeed: 0.035,
-  hitReach: 56,
-  whiffReach: 88,
-  baseKickSpeed: 30.0,
-  kickPowerMult: 1.0,
-  spinMult: 1.0,
-  jetMax: 100,
-  spartanKnockback: 11.0,
-  spartanStagger: 25,
-  spartanDamage: 10,
-  kickForce: 1.0,
-  kickForceMultiplier: 1.0,
-  knockback: 1.0,
-  knockbackMultiplier: 1.0,
-  kickCooldown: 0.50
-};
-
-export var DEFAULT_CLASS_SCHEMA = {
-  body: DEFAULT_BODY,
-  stats: DEFAULT_STATS,
-  visuals: DEFAULT_VISUALS
-};
-
 export function mergeClassWithSchema(classDef) {
   const c = classDef || {};
+  const baseBody = (typeof DEFAULT_BODY !== 'undefined' && DEFAULT_BODY) ? DEFAULT_BODY : {
+    w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
+  };
+  const baseStats = (typeof DEFAULT_STATS !== 'undefined' && DEFAULT_STATS) ? DEFAULT_STATS : {
+    hp: 100, maxHp: 100, walkMax: 2.2, jogMax: 4.2, sprintMax: 6.8, accel: 0.24, decel: 0.84, slideDecel: 0.978, jumpForce: 9.8, slideDashSpeed: 13.5, chargeSpeed: 0.035, hitReach: 56, whiffReach: 88, baseKickSpeed: 30.0, kickPowerMult: 1.0, spinMult: 1.0, jetMax: 100, spartanKnockback: 11.0, spartanStagger: 25, spartanDamage: 10, kickForce: 1.0, kickForceMultiplier: 1.0, knockback: 1.0, knockbackMultiplier: 1.0, kickCooldown: 0.50
+  };
+  const baseVisuals = (typeof DEFAULT_VISUALS !== 'undefined' && DEFAULT_VISUALS) ? DEFAULT_VISUALS : {};
   const schema = (typeof DEFAULT_CLASS_SCHEMA !== 'undefined' && DEFAULT_CLASS_SCHEMA) ? DEFAULT_CLASS_SCHEMA : {
-    body: DEFAULT_BODY,
-    stats: DEFAULT_STATS,
-    visuals: DEFAULT_VISUALS
+    body: baseBody,
+    stats: baseStats,
+    visuals: baseVisuals
   };
   return {
     ...c,
-    body: { ...((schema && schema.body) || DEFAULT_BODY), ...(c.body || {}) },
-    stats: { ...((schema && schema.stats) || DEFAULT_STATS), ...(c.stats || {}) },
-    visuals: { ...((schema && schema.visuals) || DEFAULT_VISUALS), ...(c.visuals || {}) }
+    body: { ...((schema && schema.body) || baseBody), ...(c.body || {}) },
+    stats: { ...((schema && schema.stats) || baseStats), ...(c.stats || {}) },
+    visuals: { ...((schema && schema.visuals) || baseVisuals), ...(c.visuals || {}) }
   };
 }
 

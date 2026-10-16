@@ -634,7 +634,9 @@ function update() {
   }
 
   // Aktualizacja logiki serii zabójstw (Killstreaks)
-  updateKillstreaks((FRAME_DURATION / 1000) || (1 / 60));
+  const curActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot?.active ? [bot] : []);
+  const curCombatants = [player, ...curActiveBots, ...(remotePlayer?.active ? [remotePlayer] : [])];
+  updateKillstreaks((FRAME_DURATION / 1000) || (1 / 60), player, curCombatants);
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
