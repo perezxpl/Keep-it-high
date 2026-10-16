@@ -34,6 +34,7 @@ import {
   handleEditorRightClick
 } from '../dev/obstacleEditor.js';
 import { toggleTouchControls } from '../dev/devPanel.js';
+import { killstreakState, activateNextAvailableStreak } from '../killstreaks/index.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -442,8 +443,11 @@ export function initKeyboardMouseHandlers({
         player.currentWeapon = WEAPONS.SNIPER;
         player.isHolstered = false;
       }
-    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4') {
-      teleportToDistance(BIOME_TELEPORT_TARGETS.JUNGLE);
+    } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4' || e.code === 'KeyK') {
+      const activated = activateNextAvailableStreak();
+      if (!activated && (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4')) {
+        teleportToDistance(BIOME_TELEPORT_TARGETS.JUNGLE);
+      }
     } else if (e.code === 'Digit5' || e.code === 'Numpad5' || e.key === '5') {
       teleportToDistance(BIOME_TELEPORT_TARGETS.HELL);
     }
@@ -675,6 +679,14 @@ export function initKeyboardMouseHandlers({
         }, 500);
         return;
       }
+    }
+
+    // 0a. Obsługa kliknięcia myszą w widget serii zabójstw
+    const kb = killstreakState.hudButtonBounds;
+    if (kb && e.clientX >= kb.x && e.clientX <= kb.x + kb.w &&
+      e.clientY >= kb.y && e.clientY <= kb.y + kb.h) {
+      activateNextAvailableStreak();
+      return;
     }
 
     // 0. Obsługa kliknięcia myszą w kafelki broni (dolny lewy róg)

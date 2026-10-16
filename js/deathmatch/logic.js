@@ -12,6 +12,7 @@ import {
   deathmatchState
 } from './state.js';
 import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../progression.js';
+import { registerKillstreakKill, resetKillstreak } from '../killstreaks/index.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
@@ -290,6 +291,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
         }
         if (c === player) {
           recordDeath();
+          resetKillstreak();
           const killerName = c.killer?.name || (c.acidDeath?.active ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
           triggerCombatFeedBanner('DEATH', killerName);
         }
@@ -311,6 +313,7 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
 
           if (killerRef === player) {
             recordKill();
+            registerKillstreakKill();
             triggerCombatFeedBanner('KILL', c.name || 'PRZECIWNIK');
           }
         }

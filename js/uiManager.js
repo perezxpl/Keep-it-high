@@ -486,6 +486,17 @@ export const uiManager = {
           statusHtml = `<span class="rank-status-tag tag-locked">DO ZDOBYCIA (brakuje ${missingXp.toLocaleString('pl-PL')} XP)</span>`;
         }
 
+        let unlocksHtml = '';
+        if (Array.isArray(r.unlocks) && r.unlocks.length > 0) {
+          const badges = r.unlocks.map(u => `<span class="rank-unlock-badge ${isUnlocked ? 'badge-unlocked' : 'badge-locked'}">${u.label}</span>`).join('');
+          unlocksHtml = `
+            <div class="rank-card-unlocks-row">
+              <span class="rank-unlocks-label">ODBLOKOWUJE:</span>
+              <div class="rank-unlocks-list">${badges}</div>
+            </div>
+          `;
+        }
+
         card.innerHTML = `
           <div class="rank-card-insignia">
             <span class="rank-insignia-text">${r.icon}</span>
@@ -500,6 +511,7 @@ export const uiManager = {
               <span class="rank-card-short">[${r.short.toUpperCase()}]</span>
             </div>
             <div class="rank-card-desc">${r.desc || 'Stopień bojowy Modern Military.'}</div>
+            ${unlocksHtml}
             <div class="rank-card-status-row">
               ${statusHtml}
             </div>

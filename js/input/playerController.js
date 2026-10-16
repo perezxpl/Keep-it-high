@@ -15,6 +15,7 @@ import { leftStick, rightStick, pockets } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
 import { pollGamepadInput, gamepadState } from './gamepad.js';
+import { activateNextAvailableStreak } from '../killstreaks/index.js';
 
 export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
@@ -31,6 +32,13 @@ export function triggerPlayerShoot(p, wep) {
 export function updatePlayerInputAndCombat(activeArenaId) {
   // Odczyt stanu kontrolera (Gamepad API), jeśli podłączony
   pollGamepadInput();
+
+  if (gamepadState && gamepadState.buttons) {
+    if (gamepadState.buttons.dpadUp && !gamepadState._lastDpadUp) {
+      activateNextAvailableStreak();
+    }
+    gamepadState._lastDpadUp = !!gamepadState.buttons.dpadUp;
+  }
 
   if (!isTouchDevice) {
     const worldMouseX = camera.x + mouseState.screenX / camera.zoom;

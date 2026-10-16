@@ -1,0 +1,26 @@
+// =============================================================================
+// JS/KILLSTREAKS/INDEX.JS - GŁÓWNY PUNKT WEJŚCIA DLA MODUŁU SERII ZABÓJSTW
+// =============================================================================
+
+export {
+  KILLSTREAKS,
+  killstreakState,
+  getKillstreakDef,
+  getNextKillstreakGoal
+} from './state.js';
+
+export {
+  initKillstreaks,
+  registerKillstreakKill,
+  resetKillstreak,
+  activateKillstreak,
+  activateNextAvailableStreak,
+  isKillstreakActive,
+  getKillstreakTimeRemaining,
+  updateKillstreaks
+} from './logic.js';
+
+export {
+  drawKillstreakWorld,
+  drawKillstreakHUD
+} from './renderer.js';

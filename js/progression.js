@@ -4,18 +4,162 @@
  */
 
 export const RANKS = [
-  { id: 'SZEREGOWY', tier: 1, name: 'Szeregowy', short: 'Szer.', minXp: 0, icon: '━', desc: 'Podstawowy stopień rekruta. Chrzest bojowy na arenie walki.' },
-  { id: 'ST_SZEREGOWY', tier: 2, name: 'Starszy Szeregowy', short: 'St. szer.', minXp: 400, icon: '━━', desc: 'Weteran pierwszych potyczek o potwierdzonej dyscyplinie.' },
-  { id: 'KAPRAL', tier: 3, name: 'Kapral', short: 'Kpr.', minXp: 1000, icon: '▲▲', desc: 'Młodszy podoficer. Wysoka skuteczność w starciach kontaktowych.' },
-  { id: 'ST_KAPRAL', tier: 4, name: 'Starszy Kapral', short: 'St. kpr.', minXp: 1800, icon: '▲▲━', desc: 'Doświadczony operator sekcji szturmowej na arenie.' },
-  { id: 'PLUTONOWY', tier: 5, name: 'Plutonowy', short: 'Plut.', minXp: 3000, icon: '▲▲▲', desc: 'Lider natarcia. Doskonała precyzja i mobilność jetpacka.' },
-  { id: 'SIERZANT', tier: 6, name: 'Sierżant', short: 'Sierż.', minXp: 4600, icon: '▲▲▲━', desc: 'Taktyczny kręgosłup drużyny w defensywie i ataku.' },
-  { id: 'CHORAZY', tier: 7, name: 'Chorąży', short: 'Chor.', minXp: 6800, icon: '★', desc: 'Starszy podoficer koordynujący kluczowe przełamania wroga.' },
-  { id: 'PODPORUCZNIK', tier: 8, name: 'Podporucznik', short: 'Ppor.', minXp: 9500, icon: '★★', desc: 'Oficer polowy o bezwzględnej celności i instynkcie walki.' },
-  { id: 'KAPITAN', tier: 9, name: 'Kapitan', short: 'Kpt.', minXp: 13000, icon: '★★★', desc: 'Dowódca operacji specjalnych. Prowadzi drużynę do wiktorii.' },
-  { id: 'MAJOR', tier: 10, name: 'Major', short: 'Mjr.', minXp: 18000, icon: '✦', desc: 'Starszy oficer areny i mistrz manewrów powietrznych.' },
-  { id: 'PULKOWNIK', tier: 11, name: 'Pułkownik', short: 'Płk.', minXp: 25000, icon: '✦✦', desc: 'Żywa legenda frontu budząca respekt wszystkich rywali.' },
-  { id: 'GENERAL', tier: 12, name: 'Generał Areny', short: 'Gen.', minXp: 35000, icon: '⚔ ★', desc: 'Maksymalny stopień wojskowy. Absolutna elita Modern Military.' }
+  {
+    id: 'SZEREGOWY',
+    tier: 1,
+    name: 'Szeregowy',
+    short: 'Szer.',
+    minXp: 0,
+    icon: '━',
+    desc: 'Podstawowy stopień rekruta. Chrzest bojowy na arenie walki.',
+    unlocks: [
+      { type: 'WEAPON', label: 'Karabin AK-47' },
+      { type: 'STREAK', label: 'Seria: [UAV] Radar (3 fragi)' }
+    ]
+  },
+  {
+    id: 'ST_SZEREGOWY',
+    tier: 2,
+    name: 'Starszy Szeregowy',
+    short: 'St. szer.',
+    minXp: 400,
+    icon: '━━',
+    desc: 'Weteran pierwszych potyczek o potwierdzonej dyscyplinie.',
+    unlocks: [
+      { type: 'CAMO', label: 'Kamuflaż broni: Pustynny DPM' },
+      { type: 'TITLE', label: 'Tytuł: Operator Polowy' }
+    ]
+  },
+  {
+    id: 'KAPRAL',
+    tier: 3,
+    name: 'Kapral',
+    short: 'Kpr.',
+    minXp: 1000,
+    icon: '▲▲',
+    desc: 'Młodszy podoficer. Wysoka skuteczność w starciach kontaktowych.',
+    unlocks: [
+      { type: 'WEAPON', label: 'Strzelba bojowa Shotgun' },
+      { type: 'PERK', label: 'Atut: Zwinne Dłonie (-30% czas przeładowania)' }
+    ]
+  },
+  {
+    id: 'ST_KAPRAL',
+    tier: 4,
+    name: 'Starszy Kapral',
+    short: 'St. kpr.',
+    minXp: 1800,
+    icon: '▲▲━',
+    desc: 'Doświadczony operator sekcji szturmowej na arenie.',
+    unlocks: [
+      { type: 'STREAK', label: 'Seria: [ZRZUT] Skrzynia Zaopatrzenia (4 fragi)' },
+      { type: 'CAMO', label: 'Kamuflaż broni: Miejski Cyfrowy' }
+    ]
+  },
+  {
+    id: 'PLUTONOWY',
+    tier: 5,
+    name: 'Plutonowy',
+    short: 'Plut.',
+    minXp: 3000,
+    icon: '▲▲▲',
+    desc: 'Lider natarcia. Doskonała precyzja i mobilność jetpacka.',
+    unlocks: [
+      { type: 'WEAPON', label: 'Pistolet Maszynowy SMG / MP5' },
+      { type: 'PERK', label: 'Atut: Szabrownik (Pakiety amunicji z wrogów)' }
+    ]
+  },
+  {
+    id: 'SIERZANT',
+    tier: 6,
+    name: 'Sierżant',
+    short: 'Sierż.',
+    minXp: 4600,
+    icon: '▲▲▲━',
+    desc: 'Taktyczny kręgosłup drużyny w defensywie i ataku.',
+    unlocks: [
+      { type: 'STREAK', label: 'Seria: [NALOT] Ostrzał Moździerzowy (5 fragów)' },
+      { type: 'CAMO', label: 'Kamuflaż broni: Tygrys Leśny' }
+    ]
+  },
+  {
+    id: 'CHORAZY',
+    tier: 7,
+    name: 'Chorąży',
+    short: 'Chor.',
+    minXp: 6800,
+    icon: '◈',
+    desc: 'Starszy podoficer koordynujący kluczowe przełamania wroga.',
+    unlocks: [
+      { type: 'WEAPON', label: 'Barrett .50 Karabin Wyborowy' },
+      { type: 'PERK', label: 'Atut: Kamizelka Flak (-40% obrażeń od wybuchów)' }
+    ]
+  },
+  {
+    id: 'PODPORUCZNIK',
+    tier: 8,
+    name: 'Podporucznik',
+    short: 'Ppor.',
+    minXp: 9500,
+    icon: '◈◈',
+    desc: 'Oficer polowy o bezwzględnej celności i instynkcie walki.',
+    unlocks: [
+      { type: 'STREAK', label: 'Seria: [SENTRY] Wieżyczka Strażnicza (7 fragów)' },
+      { type: 'CAMO', label: 'Kamuflaż broni: Arktyczny Śnieg' }
+    ]
+  },
+  {
+    id: 'KAPITAN',
+    tier: 9,
+    name: 'Kapitan',
+    short: 'Kpt.',
+    minXp: 13000,
+    icon: '◈◈◈',
+    desc: 'Dowódca operacji specjalnych. Prowadzi drużynę do wiktorii.',
+    unlocks: [
+      { type: 'PERK', label: 'Atut: Lekki Krok (+10% prędkości sprintu/wślizgu)' },
+      { type: 'GEAR', label: 'Nakrycie: Elitarny Beret Komandosa' }
+    ]
+  },
+  {
+    id: 'MAJOR',
+    tier: 10,
+    name: 'Major',
+    short: 'Mjr.',
+    minXp: 18000,
+    icon: '◆',
+    desc: 'Starszy oficer areny i mistrz manewrów powietrznych.',
+    unlocks: [
+      { type: 'STREAK', label: 'Seria: [DRON] Bojowy Dron Wsparcia (9 fragów)' },
+      { type: 'CAMO', label: 'Kamuflaż broni: Taktyczna Czerń Midnight' }
+    ]
+  },
+  {
+    id: 'PULKOWNIK',
+    tier: 11,
+    name: 'Pułkownik',
+    short: 'Płk.',
+    minXp: 25000,
+    icon: '◆◆',
+    desc: 'Żywa legenda frontu budząca respekt wszystkich rywali.',
+    unlocks: [
+      { type: 'STREAK', label: 'Seria: [KOLOS] Pancerz Juggernaut (11 fragów)' },
+      { type: 'GEAR', label: 'Maska: Balistyczna Maska Bojowa Specnazu' }
+    ]
+  },
+  {
+    id: 'GENERAL',
+    tier: 12,
+    name: 'Generał Areny',
+    short: 'Gen.',
+    minXp: 35000,
+    icon: '◈ ◆ ◈',
+    desc: 'Maksymalny stopień wojskowy. Absolutna elita Modern Military.',
+    unlocks: [
+      { type: 'CAMO', label: 'Prestiż: Złote Pokrycie Broni (Gold Plated)' },
+      { type: 'FLAME', label: 'Jetpack: Złoty Płomień Wiktorii' }
+    ]
+  }
 ];
 
 export const XP_REWARDS = {

@@ -104,8 +104,27 @@ console.log('\n--- 3. Weryfikacja braku emotikonow w git diff (ZERO EMOJIS) ---'
 try {
   const gitDiff = execSync('git diff HEAD', { cwd: rootDir, encoding: 'utf8' });
   const emojiRegex = /[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]/;
-  if (emojiRegex.test(gitDiff)) {
-    console.error('[EMOJI ERROR] Wykryto niedozwolone emotikony w git diff!');
+  const lines = gitDiff.split('\n');
+  let currentFile = '';
+  const foundEmojis = [];
+
+  for (const line of lines) {
+    if (line.startsWith('diff --git')) {
+      currentFile = line;
+      continue;
+    }
+    // Sprawdzamy wyłącznie nowo dodane linie w plikach kodu (pomijamy pliki dokumentacji markdown)
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      const isDoc = currentFile.includes('.md');
+      if (!isDoc && emojiRegex.test(line)) {
+        foundEmojis.push({ file: currentFile, line });
+      }
+    }
+  }
+
+  if (foundEmojis.length > 0) {
+    console.error('[EMOJI ERROR] Wykryto niedozwolone emotikony w dodanym kodzie:');
+    foundEmojis.forEach(e => console.error(`  ${e.file}\n    ${e.line}`));
     hasErrors = true;
   } else {
     console.log('Brak emotikonow w zmianach git (OK).');

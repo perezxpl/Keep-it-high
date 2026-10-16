@@ -57,6 +57,7 @@ import {
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch } from './deathmatch/index.js';
+import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { checkMatchWin, updateMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
@@ -380,6 +381,7 @@ initDevZoomUI();
 initTouchControlsDevUI();
 initModularGearDevUI();
 initNetwork();
+initKillstreaks();
 
 initAllInputHandlers({
   GAME_STATE,
@@ -578,6 +580,7 @@ function update() {
         if (!player._fragRecorded) {
           arenaScore.orange++;
           recordDeath();
+          resetKillstreak();
           player._fragRecorded = true;
           const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
           triggerCombatFeedBanner('DEATH', kName);
@@ -593,6 +596,7 @@ function update() {
             recordKill();
             b._fragRecorded = true;
             if (b.killer === player || b.lastAttacker === player) {
+              registerKillstreakKill();
               triggerCombatFeedBanner('KILL', b.name || 'BOT');
             }
           }
@@ -606,6 +610,7 @@ function update() {
           if (!remotePlayer._fragRecorded) {
             arenaScore.cyan++;
             recordKill();
+            registerKillstreakKill();
             remotePlayer._fragRecorded = true;
           }
         } else {
@@ -620,12 +625,16 @@ function update() {
     if (player.isDead) {
       if (!player._fragRecorded) {
         recordDeath();
+        resetKillstreak();
         player._fragRecorded = true;
       }
     } else {
       player._fragRecorded = false;
     }
   }
+
+  // Aktualizacja logiki serii zabójstw (Killstreaks)
+  updateKillstreaks((FRAME_DURATION / 1000) || (1 / 60));
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
@@ -933,8 +942,13 @@ function draw() {
   if (GAME_STATE.current === 'PLAYING') {
     const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
     drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
+    const currentActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+    const combatants = [player, ...currentActiveBots, ...(remotePlayer.active ? [remotePlayer] : [])];
+    drawKillstreakWorld(ctx, camera, combatants, player);
+    drawKillstreakHUD(ctx, canvas, player);
   } else if (GAME_STATE.current === 'PAUSED') {
     drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, false, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
+    drawKillstreakHUD(ctx, canvas, player);
   } else if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx, mouseState.screenX, mouseState.screenY);
   }

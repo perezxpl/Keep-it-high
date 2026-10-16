@@ -1,0 +1,339 @@
+// =============================================================================
+// JS/KILLSTREAKS/RENDERER.JS - RENDEROWANIE EFEKTÓW SERII ZABÓJSTW I WIDGETU HUD
+// Czysty styl Modern Military (ZERO EMOJIS, wektorowe ramki taktyczne i wskaźniki)
+// =============================================================================
+
+import { killstreakState, getKillstreakDef, getNextKillstreakGoal } from './state.js';
+import { isKillstreakActive } from './logic.js';
+import { isTouchDevice } from '../config.js';
+
+/**
+ * Renderuje efekty killstreaków w świecie gry (np. taktyczne ramki radaru UAV, wskaźniki celów)
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} camera - { x, y }
+ * @param {Array} combatants - lista aktywnych uczestników (gracz, boty, zdalny gracz)
+ * @param {object} player - lokalny gracz
+ */
+export function drawKillstreakWorld(ctx, camera, combatants, player) {
+  if (!player || player.isDead) return;
+
+  const camX = camera?.x || 0;
+  const camY = camera?.y || 0;
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+
+  // 1. OBSŁUGA AKTYWNEGO RADARU UAV
+  if (isKillstreakActive('UAV')) {
+    ctx.save();
+
+    // A. Efekt sonaru / siatki skanera taktycznego
+    const scanPhase = killstreakState.uavScanPhase || 0;
+    const scanY = (Math.sin(scanPhase) * 0.5 + 0.5) * H;
+
+    // Pozioma linia skanowania radaru
+    const grad = ctx.createLinearGradient(0, scanY - 30, 0, scanY + 30);
+    grad.addColorStop(0, 'rgba(0, 229, 255, 0)');
+    grad.addColorStop(0.5, 'rgba(0, 229, 255, 0.09)');
+    grad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, scanY - 30, W, 60);
+
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.28)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(0, scanY);
+    ctx.lineTo(W, scanY);
+    ctx.stroke();
+
+    // B. Namierzanie i obrysowywanie każdego żywego wroga
+    const list = Array.isArray(combatants) ? combatants : [];
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      if (!c || c === player || c.isDead || c.active === false) continue;
+
+      // Sprawdzenie relacji drużynowej (oznaczamy wyłącznie wrogów)
+      const isAlly = (c.team && player.team && c.team === player.team);
+      if (isAlly) continue;
+
+      const ew = c.w || 32;
+      const eh = c.h || 58;
+      const sx = c.x - camX;
+      const sy = c.y - camY;
+
+      const distPx = Math.hypot(c.x - player.x, c.y - player.y);
+      const distM = Math.max(1, Math.round(distPx / 40));
+
+      const margin = 40;
+      const isOnScreen = (sx + ew >= -margin && sx <= W + margin && sy + eh >= -margin && sy <= H + margin);
+
+      if (isOnScreen) {
+        // --- CEL NA EKRANIE: Taktyczne narożniki [BRACKETS] i etykieta odległości ---
+        const pad = 6;
+        const bx = sx - pad;
+        const by = sy - pad;
+        const bw = ew + pad * 2;
+        const bh = eh + pad * 2;
+        const arm = Math.min(10, Math.floor(bw * 0.28));
+
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'square';
+
+        // 4 narożniki taktycznego celownika
+        ctx.beginPath();
+        // Lewy górny
+        ctx.moveTo(bx, by + arm); ctx.lineTo(bx, by); ctx.lineTo(bx + arm, by);
+        // Prawy górny
+        ctx.moveTo(bx + bw - arm, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + arm);
+        // Lewy dolny
+        ctx.moveTo(bx, by + bh - arm); ctx.lineTo(bx, by + bh); ctx.lineTo(bx + arm, by + bh);
+        // Prawy dolny
+        ctx.moveTo(bx + bw - arm, by + bh); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw, by + bh - arm);
+        ctx.stroke();
+
+        // Etykieta namierzonego wroga nad głową
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillText(`[CEL // ${distM}m]`, bx + bw / 2, by - 3);
+
+        // Subtelna kropka w centrum masy
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(bx + bw / 2, by + bh / 2, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // --- CEL POZA EKRANEM: Wskaźnik krawędziowy (Edge Pointer) ---
+        const cx = W / 2;
+        const cy = H / 2;
+        const targetScreenX = (c.x + ew / 2) - camX;
+        const targetScreenY = (c.y + eh / 2) - camY;
+        const dx = targetScreenX - cx;
+        const dy = targetScreenY - cy;
+
+        if (dx !== 0 || dy !== 0) {
+          const angle = Math.atan2(dy, dx);
+          const edgeMargin = 45;
+          const minX = edgeMargin;
+          const maxX = W - edgeMargin;
+          const minY = edgeMargin;
+          const maxY = H - edgeMargin;
+
+          let t = Infinity;
+          if (dx > 0) t = Math.min(t, (maxX - cx) / dx);
+          else if (dx < 0) t = Math.min(t, (minX - cx) / dx);
+
+          if (dy > 0) t = Math.min(t, (maxY - cy) / dy);
+          else if (dy < 0) t = Math.min(t, (minY - cy) / dy);
+
+          const ix = Math.max(minX, Math.min(maxX, cx + dx * t));
+          const iy = Math.max(minY, Math.min(maxY, cy + dy * t));
+
+          ctx.save();
+          ctx.translate(ix, iy);
+
+          // Rysowanie strzałki namiaru obróconej w stronę celu
+          ctx.save();
+          ctx.rotate(angle);
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.moveTo(11, 0);
+          ctx.lineTo(-7, -6);
+          ctx.lineTo(-4, 0);
+          ctx.lineTo(-7, 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+
+          // Tekst z odległością w metrach
+          ctx.font = 'bold 9px monospace';
+          ctx.fillStyle = '#f43f5e';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const tagOffsetY = (iy > H - 60) ? -16 : 16;
+          ctx.fillText(`[${distM}m]`, 0, tagOffsetY);
+
+          ctx.restore();
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+}
+
+/**
+ * Renderuje kompaktowy, wojskowy widget serii zabójstw na interfejsie HUD
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} player
+ */
+export function drawKillstreakHUD(ctx, canvas, player) {
+  if (!player) return;
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const isMobile = isTouchDevice();
+
+  ctx.save();
+
+  // Wymiary i pozycja widgetu w prawym dolnym obszarze ekranu (nie nachodzi na broń)
+  const widgetW = isMobile ? 128 : 142;
+  const widgetH = isMobile ? 42 : 44;
+  const posX = W - widgetW - (isMobile ? 18 : 24);
+  const posY = H - widgetH - (isMobile ? 86 : 76);
+
+  // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku
+  killstreakState.hudButtonBounds = {
+    x: posX,
+    y: posY,
+    w: widgetW,
+    h: widgetH
+  };
+
+  const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
+  const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
+  const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
+
+  // 1. TŁO WIDGETU (Modern Military Dark Glass)
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, 6);
+  else ctx.rect(posX, posY, widgetW, widgetH);
+
+  if (hasReadyStreak) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
+    ctx.fillStyle = `rgba(8, 28, 44, ${0.85 + pulse * 0.10})`;
+  } else {
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+  }
+  ctx.fill();
+
+  // 2. RAMKA WIDGETU
+  let strokeColor = 'rgba(100, 116, 139, 0.40)';
+  if (hasReadyStreak) {
+    strokeColor = '#00e5ff';
+    ctx.lineWidth = 1.8;
+  } else {
+    ctx.lineWidth = 1.0;
+  }
+  ctx.strokeStyle = strokeColor;
+  ctx.stroke();
+
+  // 3. TREŚĆ WIDGETU
+  if (hasReadyStreak && readyDef) {
+    // STAN: NAGRODA GOTOWA DO UŻYCIA
+    const keyHint = isMobile ? '[DOTKNIJ]' : '[KLAWISZ 4]';
+
+    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+    ctx.fillStyle = '#00e5ff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 7);
+
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(keyHint, posX + 10, posY + 24);
+
+    // Ikona taktyczna po prawej
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText(readyDef.icon || '◆', posX + widgetW - 10, posY + 16);
+  } else {
+    // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA
+    const streak = killstreakState.currentStreak || 0;
+    const nextGoal = getNextKillstreakGoal(streak);
+    const goalReq = nextGoal ? nextGoal.killsRequired : (streak + 1);
+    const goalTag = nextGoal ? nextGoal.tag : '[MAX]';
+
+    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10px monospace';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 10, posY + 7);
+
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`CEL: ${goalTag}`, posX + 10, posY + 23);
+
+    // Pasek postępu
+    const barX = posX + 10;
+    const barY = posY + widgetH - 6;
+    const barW = widgetW - 20;
+    const barH = 2.5;
+    const progress = Math.max(0, Math.min(1, streak / goalReq));
+
+    ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = streak > 0 ? '#38bdf8' : 'rgba(148, 163, 184, 0.40)';
+    ctx.fillRect(barX, barY, barW * progress, barH);
+  }
+
+  // 4. WSKAŹNIK CZASU AKTYWNEGO UAV (jeśli aktualnie trwa)
+  if (isKillstreakActive('UAV')) {
+    const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
+    if (uavStreak) {
+      const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
+      const badgeW = 110;
+      const badgeH = 18;
+      const badgeX = posX + (widgetW - badgeW) / 2;
+      const badgeY = posY - badgeH - 6;
+
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+      else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      ctx.fillStyle = 'rgba(6, 24, 38, 0.92)';
+      ctx.fill();
+
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      ctx.font = 'bold 8.5px monospace';
+      ctx.fillStyle = '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`[UAV AKTYWNY: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    }
+  }
+
+  // 5. BANNER POWIADOMIENIA (jeśli jest aktywne)
+  if (killstreakState.recentNotification && killstreakState.notificationTimer > 0) {
+    const notif = killstreakState.recentNotification;
+    const alpha = Math.min(1.0, killstreakState.notificationTimer * 1.5);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    const bannerW = 280;
+    const bannerH = 34;
+    const bannerX = W / 2 - bannerW / 2;
+    const bannerY = isMobile ? 54 : 64;
+
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.94)';
+    ctx.fill();
+
+    ctx.strokeStyle = notif.color || '#00e5ff';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = notif.color || '#00e5ff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 5);
+
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 18);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}

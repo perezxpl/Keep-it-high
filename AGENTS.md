@@ -93,8 +93,14 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
 
 ### Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
-- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) oraz statystyk bojowych gracza (zabójstwa, śmierci, wygrane, przegrane, rozegrane mecze, bramki, K/D, win rate) w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
+- `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) z odblokowaniami nagród (`unlocks`: bronie, perki, serie zabójstw, kamuflaże) oraz statystyk bojowych gracza w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
 - `js/ui/rankHud.js` — wizualna prezentacja stopni wojskowych i paska XP w HUD, animowane powiadomienia XP oraz baner zwycięstwa w meczu (+40 XP).
+
+### Serie Zabójstw — Killstreaks (`js/killstreaks/`)
+- `js/killstreaks/state.js` — rejestr serii zabójstw w stylu Call of Duty (`KILLSTREAKS`: UAV, Care Package, Mortar Strike, Sentry Gun, Attack Drone, Juggernaut) oraz obiekt stanu sesji `killstreakState` (bieżąca seria na jedno życie, odblokowane nagrody `availableStreaks`, aktywne efekty `activeStreaks`).
+- `js/killstreaks/logic.js` — zliczanie eliminacji na jedno życie (`registerKillstreakKill`), reset po zgonie (`resetKillstreak`), aktywacja wsparcia bojowego (`activateKillstreak`, `activateNextAvailableStreak`) oraz cykl życia timerów (`updateKillstreaks`).
+- `js/killstreaks/renderer.js` — potok renderowania efektów świata (skaner radarowy UAV, taktyczne ramki namierzania wrogów `[BRACKETS]`, odległości w metrach oraz wskaźniki krawędziowe celów poza ekranem) oraz minimalistyczny widget HUD serii zabójstw (`drawKillstreakHUD`).
+- `js/killstreaks/index.js` — główny punkt wejścia i eksport modułu serii zabójstw.
 
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:
@@ -143,7 +149,7 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
 ## 6. Standard Wizualny UI i Minimalizm Wojskowy (Zasada Przeciw Zaśmiecaniu)
 - **Bezwzględny zakaz tanich emotikon (ZERO EMOJIS)**:
   - Pod żadnym pozorem NIE dodawaj kolorowych, tanich emotikonek (`🔥`, `⚡`, `💀`, `🤖`, `🛡️`, `🪖`, `🏆`, `📱`, `🛑`, `👑`, `🎮`, `🔫`, `🧱` itp.) do menu, przycisków, zakładek, HUD-u, kafelków wyboru, powiadomień ani komunikatów w grze.
-  - Interfejs ma stosować czystą, profesjonalną typografię, surowe etykiety tekstowe (np. `[HEŁM]`, `PANCERZ (TORS)`, `HP`, `BOT: ON`, `EDYTOR`), minimalistyczne ikony wektorowe SVG lub wojskowe oznaczenia stopni (`★`, `✦`).
+  - Interfejs ma stosować czystą, profesjonalną typografię, surowe etykiety tekstowe (np. `[HEŁM]`, `PANCERZ (TORS)`, `HP`, `BOT: ON`, `EDYTOR`), minimalistyczne ikony wektorowe SVG lub wojskowe oznaczenia stopni (`▲`, `◆`, `◈`).
 - **Zakaz duplikowania informacji i zaśmiecania ekranu zbędnymi szczegółami**:
   - **Kreator Postaci**: Zawsze otwiera się bezpośrednio do edytora ze zwięzłym, czystym 3-przyciskowym selektorem operatorów (`[RAPTOR] [STRIKER] [ENFORCER]`) nad podglądem postaci. Żadnych pośrednich ekranów z wypracowaniami tekstowymi ani powtórzonych podpisów pod modelem.
   - **Czystość podglądu postaci**: W kreatorze postać stoi w neutralnej pozie garderoby (BEZ efektów bitewnych, ładowania zdolności, pary bojowej, iskier czy dymu).

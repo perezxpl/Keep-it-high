@@ -38,6 +38,7 @@ import {
   handleDynamicActionButtonPress
 } from '../mobileControls.js';
 import { updateDevTouchButtonUI } from '../dev/devPanel.js';
+import { killstreakState, activateNextAvailableStreak } from '../killstreaks/index.js';
 
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
@@ -121,6 +122,16 @@ canvas.addEventListener('touchstart', (e) => {
 
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+
+    // =======================================================================
+    // 0a. DOTKNIĘCIE WIDGETU SERII ZABÓJSTW (KILLSTREAKS)
+    // =======================================================================
+    const kb = killstreakState.hudButtonBounds;
+    if (kb && t.clientX >= kb.x && t.clientX <= kb.x + kb.w &&
+      t.clientY >= kb.y && t.clientY <= kb.y + kb.h) {
+      activateNextAvailableStreak();
+      continue;
+    }
 
     // =======================================================================
     // 0. KLIKNIĘCIE W DEDYKOWANE PRZYCISKI WYBORU BRONI
