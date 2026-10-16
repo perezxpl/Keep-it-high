@@ -49,8 +49,11 @@ export function triggerRankUpAlert(rank) {
   rankUpAlertState.active = true;
   rankUpAlertState.rankName = rank.name;
   rankUpAlertState.rankIcon = rank.icon;
-  rankUpAlertState.rewardText = (rank.unlocks && rank.unlocks.length > 0)
-    ? `ODBLOKOWANO: ${rank.unlocks.join(' • ').toUpperCase()}`
+  const labels = Array.isArray(rank.unlocks)
+    ? rank.unlocks.map(u => (typeof u === 'string' ? u : (u?.label || u?.name || ''))).filter(Boolean)
+    : [];
+  rankUpAlertState.rewardText = labels.length > 0
+    ? `ODBLOKOWANO: ${labels.join(' • ').toUpperCase()}`
     : 'NOWY TYTUŁ WOJSKOWY';
   rankUpAlertState.timer = 180;
 }
@@ -192,15 +195,18 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
   ctx.stroke();
 
   // Podgląd nagrody za następny awans (Call of Duty Style)
-  if (nextRank && nextRank.unlocks && nextRank.unlocks.length > 0) {
-    const rewardY = barY + barH + (isMobile ? 7 : 8);
-    ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#94a3b8';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 2;
-    const rewardPreview = nextRank.unlocks[0];
-    ctx.fillText(`NAGRODA: ${rewardPreview.toUpperCase()}`, x, rewardY);
+  if (nextRank && Array.isArray(nextRank.unlocks) && nextRank.unlocks.length > 0) {
+    const rawPreview = nextRank.unlocks[0];
+    const previewLabel = typeof rawPreview === 'string' ? rawPreview : (rawPreview?.label || rawPreview?.name || '');
+    if (previewLabel) {
+      const rewardY = barY + barH + (isMobile ? 7 : 8);
+      ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#94a3b8';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 2;
+      ctx.fillText(`NAGRODA: ${previewLabel.toUpperCase()}`, x, rewardY);
+    }
   }
 
   // Animacja unoszących się powiadomień XP
@@ -331,10 +337,13 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#00e5ff';
       ctx.fillText(`AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()}`, W / 2, bannerY + (isMobile ? 93 : 108));
-      if (currentRank.unlocks && currentRank.unlocks.length > 0) {
-        ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
-        ctx.fillStyle = '#00e5ff';
-        ctx.fillText(`ODBLOKOWANO: ${currentRank.unlocks.join(' • ').toUpperCase()}`, W / 2, bannerY + (isMobile ? 110 : 128));
+      if (Array.isArray(currentRank.unlocks) && currentRank.unlocks.length > 0) {
+        const uLabels = currentRank.unlocks.map(u => (typeof u === 'string' ? u : (u?.label || u?.name || ''))).filter(Boolean);
+        if (uLabels.length > 0) {
+          ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
+          ctx.fillStyle = '#00e5ff';
+          ctx.fillText(`ODBLOKOWANO: ${uLabels.join(' • ').toUpperCase()}`, W / 2, bannerY + (isMobile ? 110 : 128));
+        }
       }
     } else {
       ctx.fillStyle = '#cbd5e1';
