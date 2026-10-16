@@ -75,17 +75,22 @@ export function spawnCarePackage(owner, targetX) {
   const safeX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : 500;
   const landingY = getCarePackageSurfaceY(safeX);
 
+  const crateId = `cp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
   // 1. Dodanie flary dymnej na podłożu
   activeFlares.push({
+    id: `flare_${crateId}`,
+    crateId,
     x: safeX,
     y: landingY,
     timer: 16.0,
+    extinguishing: false,
     particles: []
   });
 
   // 2. Utworzenie skrzyni spadającej z powietrza na spadochronie
   activeCarePackages.push({
-    id: `cp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: crateId,
     owner,
     x: safeX - 19,
     y: landingY - 480,
@@ -284,8 +289,8 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
     const flare = activeFlares[i];
     flare.timer -= safeDt;
 
-    // Generowanie cząsteczek pomarańczowego dymu
-    if (Math.random() < 0.65) {
+    // Generowanie cząsteczek pomarańczowego dymu TYLKO gdy flara jeszcze płonie
+    if (!flare.extinguishing && flare.timer > 0 && Math.random() < 0.65) {
       flare.particles.push({
         x: flare.x + (Math.random() - 0.5) * 8,
         y: flare.y - 2,
@@ -296,17 +301,18 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
       });
     }
 
-    // Aktualizacja istniejących kłębów dymu
+    // Aktualizacja istniejących kłębów dymu (szybsze wygaszanie po wylądowaniu)
+    const fadeSpeed = flare.extinguishing ? 1.4 : 0.42;
     for (let p = flare.particles.length - 1; p >= 0; p--) {
       const part = flare.particles[p];
       part.x += part.vx;
       part.y += part.vy;
       part.r += safeDt * 7.5;
-      part.alpha -= safeDt * 0.42;
+      part.alpha -= safeDt * fadeSpeed;
       if (part.alpha <= 0.02) flare.particles.splice(p, 1);
     }
 
-    if (flare.timer <= 0 && flare.particles.length === 0) {
+    if ((flare.timer <= 0 || flare.extinguishing) && flare.particles.length === 0) {
       activeFlares.splice(i, 1);
     }
   }
@@ -339,6 +345,14 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
         crate.isGrounded = true;
         triggerScreenShake(3.0);
         spawnGroundPuff(crate.x + crate.w / 2, crate.y + crate.h);
+
+        // Flara natychmiast wygasa po wylądowaniu paczki
+        for (const flare of activeFlares) {
+          if (flare.crateId === crate.id || Math.hypot(flare.x - (crate.x + crate.w / 2), flare.y - (crate.y + crate.h)) < 75) {
+            flare.extinguishing = true;
+            flare.timer = 0;
+          }
+        }
       }
     } else if (crate.isGrounded) {
       // Wygasanie spadochronu na ziemi
@@ -426,16 +440,22 @@ export function drawCarePackages(ctx, camera, player) {
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(flare.x - 3, flare.y - 6, 6, 6);
 
-    // Palący się czubek flary
-    ctx.fillStyle = '#f97316';
-    ctx.fillRect(flare.x - 2, flare.y - 8, 4, 3);
+    if (!flare.extinguishing) {
+      // Palący się czubek flary
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(flare.x - 2, flare.y - 8, 4, 3);
 
-    // Poświata termiczna flary
-    const glow = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
-    ctx.fillStyle = `rgba(249, 115, 22, ${0.15 + glow * 0.12})`;
-    ctx.beginPath();
-    ctx.arc(flare.x, flare.y - 6, 22, 0, Math.PI * 2);
-    ctx.fill();
+      // Poświata termiczna flary
+      const glow = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
+      ctx.fillStyle = `rgba(249, 115, 22, ${0.15 + glow * 0.12})`;
+      ctx.beginPath();
+      ctx.arc(flare.x, flare.y - 6, 22, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Wypalony kikut zgaszonej flary
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(flare.x - 2, flare.y - 7, 4, 2);
+    }
   }
 
   // 2. Rysowanie skrzyń zrzutowych i spadochronów
