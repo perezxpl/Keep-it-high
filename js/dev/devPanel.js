@@ -321,7 +321,10 @@ export function updateDevZoomLabel() {
     devZoomLabel.style.color = '#38bdf8';
     devZoomLabel.style.borderColor = 'rgba(56, 189, 248, 0.4)';
   } else {
-    devZoomLabel.textContent = `ZOOM: Auto`;
+    const liveVal = (typeof camera !== 'undefined' && camera && typeof camera.zoom === 'number')
+      ? ` (${camera.zoom.toFixed(2)}x)`
+      : '';
+    devZoomLabel.textContent = `ZOOM: Auto${liveVal}`;
     devZoomLabel.style.color = '#94a3b8';
     devZoomLabel.style.borderColor = 'rgba(148, 163, 184, 0.2)';
   }

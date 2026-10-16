@@ -11,21 +11,72 @@ let _cameraArenaId = 'ARENA_1';
 
 export function isMobileDevice() {
   if (typeof window === 'undefined') return false;
-  return !!(
-    isTouchDevice ||
-    ('ontouchstart' in window) ||
-    (navigator && (navigator.maxTouchPoints > 0)) ||
-    (window.innerWidth <= 850)
-  );
+  
+  if (window.location && (new URLSearchParams(window.location.search).has('mobile') || new URLSearchParams(window.location.search).has('touch'))) {
+    return true;
+  }
+
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+  const isSmallScreen = (window.innerWidth <= 850) || (window.innerHeight <= 520);
+  const isPureTouch = (typeof window.matchMedia === 'function') &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    !window.matchMedia('(pointer: fine)').matches;
+
+  return isMobileUA || (isTouchDevice && isSmallScreen) || isPureTouch;
 }
 
-const initialMobile = (typeof window !== 'undefined' && (
-  isTouchDevice ||
-  ('ontouchstart' in window) ||
-  (navigator && navigator.maxTouchPoints > 0) ||
-  (window.innerWidth <= 850)
-));
-const initialDefaultZoom = initialMobile ? 0.50 : 0.60;
+/**
+ * Dynamicznie oblicza optymalny bazowy zoom kamery dopasowany do rozmiaru i rozdzielczości ekranu:
+ * - Smartfony w poziomie (np. 6.8", wysokość logiczna <= 520px): dokładnie 0.50
+ * - Monitor PC 27" Full HD (1920x1080): dokładnie 0.75 (widok ~2560px w świecie, cała mapa nie jest odsłonięta)
+ * - Monitor PC 1440p (2560x1440) / 4K / Ultrawide: proporcjonalnie przeskalowany (1.0x przy 1440p, 1.5x przy 4K),
+ *   aby widoczne pole bitwy w świecie pozostało stałe (~2560px)
+ * - Laptopy / tablety (720p - 900p): płynne, ergonomiczne dopasowanie w zakresie 0.60 - 0.72
+ */
+export function calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile) {
+  const w = canvasWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  const h = canvasHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+
+  // 1. Smartfony w orientacji poziomej (wysokość logiczna typowego telefonu: 360 - 520 px)
+  if (isMobile && h <= 520) {
+    return 0.50;
+  }
+
+  // 2. Tablety dotykowe (iPady / tablety o wysokości 520 - 900 px)
+  if (isMobile) {
+    const t = Math.max(0, Math.min(1, (h - 420) / 400));
+    return Math.round((0.50 + t * 0.14) * 100) / 100; // 0.50 -> 0.64
+  }
+
+  // 3. Ekrany Desktop / PC / Laptopy:
+  // Złoty standard: Monitor 27" 1080p -> zoom dokładnie 0.75
+  // Widok referencyjny w świecie: szerokość 1920 / 0.75 = 2560 px, wysokość 1080 / 0.75 = 1440 px
+  let zoomByHeight;
+  if (h >= 1000) {
+    // Ekrany 1080p, 1440p (QHD), 4K (UHD):
+    // 1080p -> 0.75, 1440p -> 1.00, 4K -> 1.50
+    zoomByHeight = 0.75 * (h / 1080);
+  } else {
+    // Mniejsze ekrany laptopów (720p - 900p):
+    // Płynna interpolacja od 0.64 (dla 720p) do 0.75 (dla 1080p),
+    // by postacie były duże i czytelne, a zarazem widok nie ujawniał całej mapy.
+    const t = Math.max(0, Math.min(1, (h - 680) / 360));
+    zoomByHeight = 0.64 + t * 0.11;
+  }
+
+  // Ochrona przed zbyt szerokim polem widzenia na monitorach Ultrawide (21:9 / 32:9):
+  // Widok w poziomie (viewWidth = canvasWidth / zoom) NIE MOŻE przekroczyć 2560 px
+  const maxAllowedWorldWidth = 2560;
+  const zoomByWidth = w / maxAllowedWorldWidth;
+
+  const finalZoom = Math.max(zoomByHeight, zoomByWidth);
+  return Math.round(finalZoom * 100) / 100;
+}
+
+const initialCanvasW = typeof window !== 'undefined' ? window.innerWidth : 1920;
+const initialCanvasH = typeof window !== 'undefined' ? window.innerHeight : 1080;
+const initialMobile = isMobileDevice();
+const initialDefaultZoom = calculateOptimalBaseZoom(initialCanvasW, initialCanvasH, initialMobile);
 
 export function setCameraCanvas(c) {
   _cameraCanvas = c;
@@ -290,16 +341,23 @@ export function updateCamera(player, ball, options = {}) {
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
   } else {
-    // Domyślny zoom gry gwarantujący płynne i optymalne pole widzenia
-    // Na telefonach: bazowy zoom na ziemi 0.50, z płynnym taktycznym oddaleniem na wysokich wieżach (Punkt 3)
+    // Dynamicznie dopasowany bazowy zoom gry dla aktualnego ekranu/urządzenia:
+    // - Telefon 6.8": 0.50
+    // - Monitor PC 27" 1080p: 0.75
+    // - Monitor PC 1440p / 4K / Ultrawide: proporcjonalnie przeskalowany, by widok w świecie wynosił ~2560px
+    // - Laptopy / tablety: płynne dopasowanie 0.60 - 0.72
+    const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
+
     let defaultGameZoom;
     if (isMobile) {
-      const elevationZoomMult = 1.0 - (elev * 0.25); // Na szczycie wieży płynne przejście z 0.50 do ~0.375
+      const elevationZoomMult = 1.0 - (elev * 0.25); // Na szczycie wieży płynne taktyczne oddalenie (np. z 0.50 do ~0.375)
       const mobileSniperHighMult = (isSniperActive && elev > 0.15) ? (1.0 - elev * 0.06) : 1.0;
-      defaultGameZoom = Math.max(minZoom, 0.50 * elevationZoomMult * mobileSniperHighMult);
+      defaultGameZoom = Math.max(minZoom, optimalBaseZoom * elevationZoomMult * mobileSniperHighMult);
     } else {
-      defaultGameZoom = isArena3 ? Math.max(0.48, minZoom) : (isArena2 ? Math.max(0.52, minZoom) : Math.max(0.60, minZoom));
-      // Tryb snajperski na PC: lekkie oddalenie pola widzenia w stylu Soldat (taktyczny przegląd areny)
+      // Na PC: subtelne taktyczne oddalenie na wieżach oraz tryb snajperski
+      const elevationZoomMult = 1.0 - (elev * 0.10);
+      defaultGameZoom = Math.max(minZoom, optimalBaseZoom * elevationZoomMult);
+
       if (isSniperActive) {
         const sniperZoomMult = CONFIG.CAMERA_SNIPER_ZOOM_MULT || 0.88;
         defaultGameZoom = Math.max(minZoom, defaultGameZoom * sniperZoomMult);
