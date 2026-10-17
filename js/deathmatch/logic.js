@@ -16,6 +16,7 @@ import { registerKillstreakKill, resetKillstreak } from '../killstreaks/index.js
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
+import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
 
 let _dmSyncTimer = 0;
 
@@ -24,9 +25,14 @@ let _dmSyncTimer = 0;
  */
 export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.active = true;
-  deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
-  const isMultiClient = (remotePlayer && remotePlayer.active && typeof networkState !== 'undefined' && !networkState.isHost);
-  deathmatchState.playerTeam = isMultiClient ? TEAMS.ORANGE : (deathmatchConfig.playerTeam || TEAMS.CYAN);
+  const isMulti = (remotePlayer && remotePlayer.active);
+  if (isMulti && mpMatchConfig) {
+    deathmatchState.mode = (mpMatchConfig.mode === 'FFA') ? DEATHMATCH_MODES.FFA : DEATHMATCH_MODES.TDM;
+    deathmatchState.playerTeam = player?.team || (mpMatchConfig.hostTeam || TEAMS.CYAN);
+  } else {
+    deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
+    deathmatchState.playerTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
+  }
   deathmatchState.timeRemaining = DEATHMATCH_DURATION;
   deathmatchState.matchEnded = false;
   deathmatchState.endCelebrationTimer = 0;
@@ -61,9 +67,8 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
 
     if (!isFFA) {
       if (remotePlayer && remotePlayer.active) {
-        // W grze sieciowej 2-osobowej: podział botów 50/50 na CYAN i ORANGE
-        const isAlly = (idx % 2 === 0);
-        b.team = isAlly ? deathmatchState.playerTeam : enemyTeam;
+        const mpBotTeams = getMpBotTeamsList();
+        b.team = (mpBotTeams && mpBotTeams[idx]) ? mpBotTeams[idx] : (b.team || enemyTeam);
       } else {
         // W TDM przy 3 botach: 1 sojusznik (CYAN), 2 wrogów (ORANGE) -> mecz 2 vs 2!
         // Przy 5 botach: 2 sojuszników (CYAN), 3 wrogów (ORANGE) -> mecz 3 vs 3!
@@ -112,7 +117,7 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   if (remotePlayer && remotePlayer.active) {
     const remoteTeam = isFFA
       ? 'FFA_REMOTE'
-      : (deathmatchState.mode === DEATHMATCH_MODES.TDM ? enemyTeam : TEAMS.ORANGE);
+      : (remotePlayer.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
     remotePlayer.team = remoteTeam;
     pList.push({
       id: 'remotePlayer',
@@ -145,7 +150,8 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
     if (!b) return;
     if (!isFFA) {
       if (remotePlayer && remotePlayer.active) {
-        b.team = (idx % 2 === 0) ? deathmatchState.playerTeam : enemyTeam;
+        const mpBotTeams = getMpBotTeamsList();
+        b.team = (mpBotTeams && mpBotTeams[idx]) ? mpBotTeams[idx] : (b.team || enemyTeam);
       } else {
         let isAlly = false;
         if (botList.length === 3 && idx === 0) isAlly = true;
@@ -192,7 +198,7 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
   });
 
   if (remotePlayer && remotePlayer.active) {
-    const remoteTeam = isFFA ? 'FFA_REMOTE' : ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE);
+    const remoteTeam = isFFA ? 'FFA_REMOTE' : (remotePlayer.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
     remotePlayer.team = remoteTeam;
     const prev = getPrev(remotePlayer, 'remotePlayer');
     pList.push({

@@ -5,6 +5,18 @@
 
 import { networkState } from './network.js';
 import { getMpBotCount, getMpBotLayoutDescription } from './bot.js';
+import {
+  mpMatchConfig,
+  applyMpPreset,
+  setMpPlayerTeam,
+  setMpTeamBots,
+  setMpFFABots,
+  setMpMode,
+  getTotalMpBotCount,
+  getMpMatchRosterSummary,
+  MP_PRESETS,
+  MP_TEAMS
+} from './networkMatch.js';
 
 // =============================================================================
 // STATUS UI I WSKAŹNIKI
@@ -313,6 +325,134 @@ function initChatUI() {
 }
 
 // =============================================================================
+// SYNCHRONIZACJA SKŁADU BITWY (SMASH BROS ROSTER SYSTEM)
+// =============================================================================
+export function syncMpRosterUI() {
+  const isHost = networkState.isHost || !networkState.isConnected;
+  const cfg = mpMatchConfig;
+  const summaryText = getMpMatchRosterSummary(cfg);
+
+  // 1. Aktualizacja pasków podsumowania taktycznego
+  document.querySelectorAll('#mp-roster-summary-bar, #mp-connected-roster-summary-bar, #briefing-mp-roster-summary-bar, #mp-bot-info-note, #briefing-mp-bot-note').forEach(el => {
+    el.textContent = summaryText;
+  });
+
+  // 2. Podświetlenie aktywnego presetu
+  document.querySelectorAll('.mp-preset-btn').forEach(btn => {
+    const p = btn.dataset.mpPreset;
+    btn.classList.toggle('active', p === cfg.preset);
+  });
+
+  // 3. Etykieta trybu
+  const modeBadge = document.getElementById('mp-roster-mode-badge');
+  if (modeBadge) {
+    modeBadge.textContent = (cfg.mode === 'FFA') ? 'TRYB: FFA' : 'TRYB: DRUŻYNY';
+  }
+
+  // 4. Przełączanie widoków Siatka Drużyn vs FFA
+  const teamsGrid = document.getElementById('mp-roster-teams-grid');
+  const ffaView = document.getElementById('mp-roster-ffa-view');
+  if (teamsGrid && ffaView) {
+    if (cfg.mode === 'FFA') {
+      teamsGrid.style.display = 'none';
+      ffaView.style.display = 'block';
+    } else {
+      teamsGrid.style.display = 'grid';
+      ffaView.style.display = 'none';
+    }
+  }
+
+  // 5. Wartości stepperów botów
+  const alphaBotsVal = document.getElementById('mp-alpha-bots-val');
+  if (alphaBotsVal) alphaBotsVal.textContent = cfg.botsAlpha || 0;
+
+  const betaBotsVal = document.getElementById('mp-beta-bots-val');
+  if (betaBotsVal) betaBotsVal.textContent = cfg.botsBeta || 0;
+
+  const ffaBotsVal = document.getElementById('mp-ffa-bots-val');
+  if (ffaBotsVal) ffaBotsVal.textContent = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 2;
+
+  // 6. Łączna liczba uczestników w kolumnach
+  const alphaCountEl = document.getElementById('mp-alpha-total-count');
+  const betaCountEl = document.getElementById('mp-beta-total-count');
+  const hT = cfg.hostTeam || 'CYAN';
+  const cT = cfg.clientTeam || 'ORANGE';
+  const aHumans = (hT === 'CYAN' ? 1 : 0) + (cT === 'CYAN' ? 1 : 0);
+  const bHumans = (hT === 'ORANGE' ? 1 : 0) + (cT === 'ORANGE' ? 1 : 0);
+  if (alphaCountEl) alphaCountEl.textContent = aHumans + (cfg.botsAlpha || 0);
+  if (betaCountEl) betaCountEl.textContent = bHumans + (cfg.botsBeta || 0);
+
+  // 7. Dynamiczne renderowanie slotów drużyn
+  const alphaMembersEl = document.getElementById('mp-alpha-members');
+  const betaMembersEl = document.getElementById('mp-beta-members');
+
+  const renderSlots = (teamName) => {
+    let html = '';
+    // Gracz Host
+    if (hT === teamName) {
+      const isMyHost = networkState.isHost || !networkState.isConnected;
+      const toggleBtn = isMyHost
+        ? `<button type="button" class="mp-slot-team-toggle-btn" data-player-role="host" title="Zmień drużynę dla Hosta">[PRZENIEŚ]</button>`
+        : '';
+      html += `
+        <div class="mp-member-slot mp-slot-human mp-slot-host">
+          <div class="mp-slot-info">
+            <span class="mp-slot-name">HOST ${isMyHost ? '[TY]' : '[P1]'}</span>
+            <span class="mp-slot-role-tag">DOWÓDCA</span>
+          </div>
+          ${toggleBtn}
+        </div>
+      `;
+    }
+    // Gracz Klient
+    if (cT === teamName) {
+      const isMyClient = !networkState.isHost && networkState.isConnected;
+      const canToggle = isHost || isMyClient;
+      const toggleBtn = canToggle
+        ? `<button type="button" class="mp-slot-team-toggle-btn" data-player-role="client" title="Zmień drużynę dla Klienta">[PRZENIEŚ]</button>`
+        : '';
+      const clientLabel = networkState.isConnected ? (isMyClient ? 'KLIENT [TY]' : 'KLIENT [P2]') : 'KLIENT (OCZEKUJE)';
+      html += `
+        <div class="mp-member-slot mp-slot-human mp-slot-client ${networkState.isConnected ? '' : 'mp-slot-waiting'}">
+          <div class="mp-slot-info">
+            <span class="mp-slot-name">${clientLabel}</span>
+            <span class="mp-slot-role-tag">${networkState.isConnected ? 'OPERATOR' : 'SLOT P2'}</span>
+          </div>
+          ${toggleBtn}
+        </div>
+      `;
+    }
+
+    // Boty
+    const bCount = (teamName === 'CYAN') ? (cfg.botsAlpha || 0) : (cfg.botsBeta || 0);
+    for (let i = 0; i < bCount; i++) {
+      html += `
+        <div class="mp-member-slot mp-slot-bot">
+          <div class="mp-slot-info">
+            <span class="mp-slot-name">BOT ${i + 1} [AI]</span>
+            <span class="mp-slot-role-tag">WSPARCIE</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (!html) {
+      html = `<div class="mp-slot-empty">BRAK JEDNOSTEK</div>`;
+    }
+    return html;
+  };
+
+  if (alphaMembersEl) alphaMembersEl.innerHTML = renderSlots('CYAN');
+  if (betaMembersEl) betaMembersEl.innerHTML = renderSlots('ORANGE');
+
+  // 8. Aktualizacja widoku w sekcji Connected
+  const connectedValEl = document.getElementById('mp-connected-bots-val');
+  if (connectedValEl) {
+    connectedValEl.textContent = summaryText;
+  }
+}
+
+// =============================================================================
 // SYNCHRONIZACJA UI BOTÓW
 // =============================================================================
 export function syncMpBotUI(count = getMpBotCount()) {
@@ -479,7 +619,63 @@ export function initNetworkUI(handlers = {}) {
     }
   } catch (e) { }
 
-  // Wybór liczby botów w grze sieciowej (0-4)
+  const broadcastRoster = handlers.broadcastMpRoster || handlers.broadcastMpBotCount;
+
+  // Wybór szablonu składu (Koop, 2v2, 3v3, 1v1, FFA)
+  document.querySelectorAll('.mp-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const preset = btn.dataset.mpPreset;
+      if (preset) {
+        applyMpPreset(preset);
+        if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+      }
+    });
+  });
+
+  // Przełącznik drużyny dla graczy
+  document.addEventListener('click', (e) => {
+    const toggleBtn = e.target.closest('.mp-slot-team-toggle-btn');
+    if (!toggleBtn) return;
+    const role = toggleBtn.dataset.playerRole;
+    if (role === 'host') {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const newTeam = (mpMatchConfig.hostTeam === 'CYAN') ? 'ORANGE' : 'CYAN';
+      setMpPlayerTeam('host', newTeam);
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    } else if (role === 'client') {
+      const isMyClient = !networkState.isHost && networkState.isConnected;
+      if (networkState.isConnected && !networkState.isHost && !isMyClient) return;
+      const newTeam = (mpMatchConfig.clientTeam === 'CYAN') ? 'ORANGE' : 'CYAN';
+      setMpPlayerTeam('client', newTeam);
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    }
+  });
+
+  // Steppery liczby botów w drużynach Alpha/Beta oraz FFA
+  document.querySelectorAll('[data-team-bot-delta]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const parts = btn.dataset.teamBotDelta.split(':');
+      const teamKey = parts[0];
+      const delta = parseInt(parts[1], 10) || 0;
+      const cur = (teamKey === 'alpha') ? (mpMatchConfig.botsAlpha || 0) : (mpMatchConfig.botsBeta || 0);
+      setMpTeamBots(teamKey, cur + delta);
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    });
+  });
+
+  document.querySelectorAll('[data-ffa-bot-delta]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const delta = parseInt(btn.dataset.ffaBotDelta, 10) || 0;
+      const cur = (mpMatchConfig.botsFFA !== undefined) ? mpMatchConfig.botsFFA : 2;
+      setMpFFABots(cur + delta);
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    });
+  });
+
+  // Wybór liczby botów w grze sieciowej (0-4, dla wstecznej kompatybilności przycisków)
   if (typeof broadcastMpBotCount === 'function') {
     document.querySelectorAll('#mp-bot-selector-row button, #mp-connected-bot-selector-row button, #briefing-mp-bot-selector-row button').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -491,5 +687,9 @@ export function initNetworkUI(handlers = {}) {
   }
 
   syncMpBotUI(getMpBotCount());
+  syncMpRosterUI();
+  if (typeof window !== 'undefined') {
+    window.syncMpRosterUI = syncMpRosterUI;
+  }
   updateCursorVisibility();
 }

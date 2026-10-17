@@ -16,6 +16,7 @@ import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/state.js';
 import { camera } from './camera.js';
 import { W, H } from './world/state.js';
+import { getMpBotTeamsList, getTotalMpBotCount, getMpMatchRosterSummary, mpMatchConfig } from './networkMatch.js';
 
 /**
  * Wirtualny kontroler bota przekazywany do silnika fizyki updatePlayer
@@ -153,10 +154,11 @@ export function balanceBotClasses(humanPlayer = player, activeBotsList = null, m
     const enemies = [];
 
     const isMpActive = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active);
+    const mpBotTeams = isMpActive ? getMpBotTeamsList() : null;
 
     bList.forEach((b, idx) => {
-      if (isMpActive) {
-        b.team = (idx % 2 === 0) ? pTeam : enemyTeam;
+      if (isMpActive && mpBotTeams && mpBotTeams[idx]) {
+        b.team = mpBotTeams[idx];
       }
       if (b.team === pTeam) {
         allies.push(b);
@@ -422,14 +424,7 @@ export function getActiveBots() {
 }
 
 export function getMpBotCount() {
-  try {
-    const stored = localStorage.getItem('kih_mp_bot_count');
-    if (stored !== null && stored !== undefined) {
-      const parsed = parseInt(stored, 10);
-      if (parsed >= 0 && parsed <= 5) return parsed;
-    }
-  } catch (_) {}
-  return 2; // Domyślnie 2 boty w grze sieciowej (mecz 2v2)
+  return getTotalMpBotCount();
 }
 
 export function setMpBotCount(count) {
@@ -443,23 +438,7 @@ export function setMpBotCount(count) {
 }
 
 export function getMpBotLayoutDescription(count) {
-  const num = parseInt(count, 10);
-  switch (num) {
-    case 0:
-      return 'Układ: Czysty pojedynek 1 na 1 (Host vs Klient, brak botów)';
-    case 1:
-      return 'Układ: 1 bot AI na arenie (mecz 3-osobowy)';
-    case 2:
-      return 'Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])';
-    case 3:
-      return 'Układ: 3 boty AI na arenie (skład mieszany)';
-    case 4:
-      return 'Układ: Mecz 3v3 (Drużyna CYAN [Host + 2 Boty] vs Drużyna ORANGE [Klient + 2 Boty])';
-    case 5:
-      return 'Układ: 5 botów AI na arenie (maksymalne zagęszczenie walki)';
-    default:
-      return `Układ: ${num} botów AI w meczu`;
-  }
+  return getMpMatchRosterSummary(mpMatchConfig);
 }
 
 /**

@@ -26,7 +26,7 @@
       "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
-      "./js/bot.js": "./js/bot.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
+      "./js/bot.js": "./js/bot.js?v=v215_smash_bros_multiplayer_roster",
       "./js/camera.js": "./js/camera.js?v=v214_mortar_free_camera_panning",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
@@ -34,7 +34,7 @@
       "./js/classes/striker.js": "./js/classes/striker.js?v=v195_fix_stagger_flight_teleport_and_bot_kick_loop",
       "./js/config.js": "./js/config.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v192_perf_and_multiplayer_sync",
-      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v203_mobile_killstreaks_dpr_and_position_fix",
+      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v215_smash_bros_multiplayer_roster",
       "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v192_perf_and_multiplayer_sync",
       "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v192_perf_and_multiplayer_sync",
       "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v172_fix_hitsparks_tdz_reference_error",
@@ -53,9 +53,9 @@
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v211_drone_visual_overhaul_and_tactical_targeting",
       "./js/main.js": "./js/main.js?v=v210_fix_pc_jetpack_speed_and_vsync_pacing",
-      "./js/mobileControls.js": "./js/mobileControls.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
-      "./js/network.js": "./js/network.js?v=v203_mobile_killstreaks_dpr_and_position_fix",
-      "./js/networkUI.js": "./js/networkUI.js?v=v192_perf_and_multiplayer_sync",
+      "./js/network.js": "./js/network.js?v=v215_smash_bros_multiplayer_roster",
+      "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
+      "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v174_fix_platform_landing_and_drop_through",
       "./js/obstacles/palette.js": "./js/obstacles/palette.js?v=v162_remove_emojis_streamline_ui",
@@ -250,19 +250,95 @@
               </div>
             </div>
 
-            <!-- DOBÓR BOTÓW MULTIPLAYER (0-4 BOTÓW) -->
-            <div class="mp-card mp-card-blue" id="mp-bot-select-card">
-              <div class="mp-card-title">BOTY W GRZE SIECIOWEJ (AI SLOTS)</div>
-              <p class="mp-card-desc" id="mp-bot-desc-text">Wybierz liczbę botów AI uzupełniających drużyny w meczu sieciowym:</p>
-              <div class="mp-bot-selector-row" id="mp-bot-selector-row">
-                <button type="button" class="mp-bot-btn" data-mp-bots="0" title="Czysty pojedynek 1 na 1 bez botów">0 (1v1 POJEDYNEK)</button>
-                <button type="button" class="mp-bot-btn" data-mp-bots="1" title="1 bot w meczu">1 BOT</button>
-                <button type="button" class="mp-bot-btn active" data-mp-bots="2" title="Zbalansowany mecz 2 na 2: Host+Bot vs Klient+Bot">2 BOTY (2v2)</button>
-                <button type="button" class="mp-bot-btn" data-mp-bots="3" title="3 boty w meczu">3 BOTY</button>
-                <button type="button" class="mp-bot-btn" data-mp-bots="4" title="Zbalansowany mecz 3 na 3: Host+2 Boty vs Klient+2 Boty">4 BOTY (3v3)</button>
+            <!-- KONFIGURACJA SKŁADÓW I DRUŻYN (SMASH BROS ROSTER) -->
+            <div class="mp-card mp-card-roster" id="mp-roster-card">
+              <div class="mp-card-title-row">
+                <span class="mp-card-title">SKŁAD BITWY I DRUŻYNY (ROSTER)</span>
+                <span class="mp-roster-mode-badge" id="mp-roster-mode-badge">TRYB: DRUŻYNY</span>
               </div>
-              <div class="mp-bot-info-note" id="mp-bot-info-note">
-                Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])
+              <p class="mp-card-desc">Wybierz szablon taktyczny lub dostosuj przydział graczy i botów:</p>
+
+              <!-- Szybkie szablony taktyczne (Presets) -->
+              <div class="mp-roster-presets-row" id="mp-roster-presets">
+                <button type="button" class="mp-preset-btn" data-mp-preset="COOP" title="Host i Klient razem w Team Alpha vs Boty w Team Beta">KOOP VS BOTY</button>
+                <button type="button" class="mp-preset-btn active" data-mp-preset="VERSUS_2V2" title="Host+Bot vs Klient+Bot">RYWALIZACJA 2v2</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="VERSUS_3V3" title="Host+2 Boty vs Klient+2 Boty">RYWALIZACJA 3v3</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="DUEL_1V1" title="Czysty pojedynek 1 na 1 bez botów">POJEDYNEK 1v1</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="FFA" title="Każdy na każdego bez drużyn">FFA</button>
+              </div>
+
+              <!-- Siatka drużyn Alpha & Beta (dla trybu DRUŻYNY) -->
+              <div class="mp-roster-grid" id="mp-roster-teams-grid">
+                <!-- KOLUMNA TEAM ALPHA (CYAN) -->
+                <div class="mp-roster-col mp-col-cyan">
+                  <div class="mp-roster-col-header">
+                    <span class="mp-col-tag">TEAM ALPHA (CYAN)</span>
+                    <span class="mp-col-count" id="mp-alpha-total-count">2</span>
+                  </div>
+                  <div class="mp-roster-members" id="mp-alpha-members"></div>
+                  <div class="mp-bot-stepper-wrap">
+                    <span class="mp-stepper-label">BOTY AI:</span>
+                    <div class="mp-stepper-ctrls">
+                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:-1">-</button>
+                      <span class="mp-stepper-val" id="mp-alpha-bots-val">1</span>
+                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:1">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VS DIVIDER -->
+                <div class="mp-roster-vs-divider">
+                  <span>VS</span>
+                </div>
+
+                <!-- KOLUMNA TEAM BETA (ORANGE) -->
+                <div class="mp-roster-col mp-col-orange">
+                  <div class="mp-roster-col-header">
+                    <span class="mp-col-tag">TEAM BETA (ORANGE)</span>
+                    <span class="mp-col-count" id="mp-beta-total-count">2</span>
+                  </div>
+                  <div class="mp-roster-members" id="mp-beta-members"></div>
+                  <div class="mp-bot-stepper-wrap">
+                    <span class="mp-stepper-label">BOTY AI:</span>
+                    <div class="mp-stepper-ctrls">
+                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:-1">-</button>
+                      <span class="mp-stepper-val" id="mp-beta-bots-val">1</span>
+                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:1">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Widok FFA (widoczny gdy mode === 'FFA') -->
+              <div class="mp-roster-ffa-view" id="mp-roster-ffa-view" style="display: none;">
+                <div class="mp-ffa-header">TRYB KAŻDY NA KAŻDEGO (BEZ SOJUSZY)</div>
+                <div class="mp-ffa-members-list">
+                  <div class="mp-member-slot mp-slot-human mp-slot-host">
+                    <div class="mp-slot-info">
+                      <span class="mp-slot-name">HOST [TY]</span>
+                      <span class="mp-slot-role-tag">GRACZ 1</span>
+                    </div>
+                  </div>
+                  <div class="mp-member-slot mp-slot-human mp-slot-client">
+                    <div class="mp-slot-info">
+                      <span class="mp-slot-name">KLIENT [P2]</span>
+                      <span class="mp-slot-role-tag">GRACZ 2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="mp-bot-stepper-wrap mp-ffa-stepper" style="margin-top: 8px;">
+                  <span class="mp-stepper-label">BOTY AI W FFA:</span>
+                  <div class="mp-stepper-ctrls">
+                    <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="-1">-</button>
+                    <span class="mp-stepper-val" id="mp-ffa-bots-val">2</span>
+                    <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="1">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pasek podsumowania taktycznego -->
+              <div class="mp-roster-summary-bar" id="mp-roster-summary-bar">
+                BITWA 2v2: ALPHA [HOST + 1 BOT] VS BETA [KLIENT + 1 BOT]
               </div>
             </div>
 
@@ -288,13 +364,16 @@
                 <div>Boty AI: <strong id="mp-connected-bots-val" style="color: #38bdf8;">2 (2v2)</strong></div>
               </div>
               <div id="mp-connected-bots-row" style="margin-top: 10px; display: none;">
-                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 5px;">ZARZĄDZAJ BOTAMI W SESJI (HOST):</div>
-                <div class="mp-bot-selector-row" id="mp-connected-bot-selector-row">
-                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="0">0 (1v1)</button>
-                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="1">1 BOT</button>
-                  <button type="button" class="mp-bot-btn mp-bot-btn-sm active" data-mp-bots="2">2 (2v2)</button>
-                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="3">3 BOTY</button>
-                  <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="4">4 (3v3)</button>
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 5px;">ZARZĄDZAJ SKŁADEM BITWY (HOST):</div>
+                <div class="mp-roster-summary-bar" id="mp-connected-roster-summary-bar" style="margin-bottom: 8px;">
+                  BITWA 2v2: ALPHA [HOST + 1 BOT] VS BETA [KLIENT + 1 BOT]
+                </div>
+                <div class="mp-roster-presets-row" id="mp-connected-roster-presets">
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="FFA">FFA</button>
                 </div>
               </div>
               <div class="mp-feature-bullets" style="margin-top: 10px;">
@@ -749,15 +828,15 @@
                         <button id="briefing-mp-host-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%;">Utwórz Pokój Gry</button>
                       </div>
                       <div class="briefing-mp-bots-box" style="margin-top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">BOTY AI W MECZU SIECIOWYM:</div>
-                        <div class="mp-bot-selector-row" id="briefing-mp-bot-selector-row">
-                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="0">0 (1v1)</button>
-                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="1">1 BOT</button>
-                          <button type="button" class="mp-bot-btn mp-bot-btn-sm active" data-mp-bots="2">2 (2v2)</button>
-                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="3">3 BOTY</button>
-                          <button type="button" class="mp-bot-btn mp-bot-btn-sm" data-mp-bots="4">4 (3v3)</button>
+                        <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">SZABLONY SKŁADU BITWY (ROSTER):</div>
+                        <div class="mp-roster-presets-row" id="briefing-mp-roster-presets">
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="FFA">FFA</button>
                         </div>
-                        <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;" id="briefing-mp-bot-note">Układ: Mecz 2v2 (Drużyna CYAN [Host + Bot] vs Drużyna ORANGE [Klient + Bot])</div>
+                        <div class="mp-roster-summary-bar" id="briefing-mp-roster-summary-bar" style="margin-top: 6px; font-size: 9px;">BITWA 2v2: ALPHA [HOST + 1 BOT] VS BETA [KLIENT + 1 BOT]</div>
                       </div>
                       <div id="briefing-mp-host-info" style="display: none; margin-top: 8px;">
                         <div class="mp-code-container">

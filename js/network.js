@@ -11,6 +11,15 @@ import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js'
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade } from './projectiles.js';
 import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
+import {
+  mpMatchConfig,
+  applyMpTeamVisuals,
+  getMpSpawnPositions,
+  getTotalMpBotCount,
+  setMpPlayerTeam,
+  setMpTeamBots,
+  saveMpMatchConfig
+} from './networkMatch.js';
 
 export {
   updateUIStatus,
@@ -23,7 +32,8 @@ export {
   openChat,
   closeChat,
   addChatMessageToUI,
-  syncMpBotUI
+  syncMpBotUI,
+  mpMatchConfig
 };
 
 // =============================================================================
@@ -36,31 +46,17 @@ export const remotePlayer = createPlayerInstance({
   y: initialGroundY - 70,
   facing: -1
 });
-remotePlayer.active = false;
-remotePlayer.isRemote = true;
-remotePlayer.name = 'Gracz 2';
-remotePlayer.targetX = 2600;
-remotePlayer.targetY = initialGroundY - 70;
-remotePlayer.groundY = initialGroundY;
-remotePlayer.currentGroundY = initialGroundY;
-remotePlayer.stridePhase = 0;
-remotePlayer.isJetpacking = false;
+Object.assign(remotePlayer, {
+  active: false, isRemote: true, name: 'Gracz 2', targetX: 2600, targetY: initialGroundY - 70,
+  groundY: initialGroundY, currentGroundY: initialGroundY, stridePhase: 0, isJetpacking: false
+});
 
 // =============================================================================
 // STAN SIECI I POŁĄCZENIA
 // =============================================================================
 export const networkState = {
-  isHost: false,
-  isConnected: false,
-  roomId: null,
-  peer: null,
-  conn: null,
-  ping: 0,
-  status: 'disconnected', // 'disconnected' | 'hosting' | 'connecting' | 'connected'
-  statusMsg: 'Offline',
-  lastPingSent: 0,
-  lastStateSent: 0,
-  lastBotsStateSent: 0
+  isHost: false, isConnected: false, roomId: null, peer: null, conn: null, ping: 0,
+  status: 'disconnected', statusMsg: 'Offline', lastPingSent: 0, lastStateSent: 0, lastBotsStateSent: 0
 };
 
 if (typeof window !== 'undefined') {
@@ -69,18 +65,10 @@ if (typeof window !== 'undefined') {
 }
 
 // =============================================================================
-// PRZYPISANIE DRUŻYNY SIECIOWEJ (CYAN VS ORANGE)
-// Symetryczne przypisanie: Host = CYAN, Klient = ORANGE
+// PRZYPISANIE DRUŻYNY SIECIOWEJ (SMASH BROS ROSTER SYSTEM)
 // =============================================================================
 export function applyTeamVisuals(isHost) {
-  if (player) {
-    player.team = isHost ? 'CYAN' : 'ORANGE';
-    player.name = isHost ? 'HOST' : 'GRACZ 2';
-  }
-  if (remotePlayer) {
-    remotePlayer.team = isHost ? 'ORANGE' : 'CYAN';
-    remotePlayer.name = isHost ? 'GRACZ 2' : 'HOST';
-  }
+  applyMpTeamVisuals(isHost, player, remotePlayer);
 }
 
 // =============================================================================
@@ -227,49 +215,33 @@ export function sendKickEvent(vx, vy, spin = 0) {
 }
 
 export function sendObstacleAdd(obstacle) {
-  if (!networkState.conn || !networkState.isConnected) return;
-  try {
-    networkState.conn.send({
-      type: 'obs_add',
-      obs: obstacle
-    });
-  } catch (e) { }
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'obs_add', obs: obstacle }); } catch (_) {}
+  }
 }
 
 export function sendObstacleRemove(obs) {
-  if (!networkState.conn || !networkState.isConnected) return;
-  try {
-    networkState.conn.send({
-      type: 'obs_rem',
-      x: obs.x,
-      y: obs.y,
-      type: obs.type
-    });
-  } catch (e) { }
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'obs_rem', x: obs.x, y: obs.y, type: obs.type }); } catch (_) {}
+  }
 }
 
 export function sendObstacleClear() {
-  if (!networkState.conn || !networkState.isConnected) return;
-  try {
-    networkState.conn.send({ type: 'obs_clr' });
-  } catch (e) { }
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'obs_clr' }); } catch (_) {}
+  }
 }
 
 export function sendObstacleUndo() {
-  if (!networkState.conn || !networkState.isConnected) return;
-  try {
-    networkState.conn.send({ type: 'obs_undo' });
-  } catch (e) { }
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'obs_undo' }); } catch (_) {}
+  }
 }
 
 export function sendArenaSwitch(arenaId) {
-  if (!networkState.conn || !networkState.isConnected) return;
-  try {
-    networkState.conn.send({
-      type: 'arena_sw',
-      arenaId: arenaId
-    });
-  } catch (e) { }
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'arena_sw', arenaId }); } catch (_) {}
+  }
 }
 
 export function sendBotsState(activeBotsList) {
@@ -660,44 +632,49 @@ export function updateRemoteBots(activeBots, groundY) {
   }
 }
 
-export function broadcastMpBotCount(count) {
-  const newCount = setMpBotCount(count);
-  syncMpBotUI(newCount);
+export function broadcastMpRoster() {
+  const totalBots = getTotalMpBotCount();
+  setBotCount(totalBots);
+  applyTeamVisuals(networkState.isHost);
   balanceBotClasses(player, getActiveBots());
   refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+  if (typeof window !== 'undefined' && typeof window.syncMpRosterUI === 'function') {
+    window.syncMpRosterUI();
+  }
 
-  if (networkState.isConnected && networkState.isHost && networkState.conn) {
+  if (networkState.isConnected && networkState.conn) {
     try {
-      networkState.conn.send({
-        type: 'mp_bot_count',
-        count: newCount
-      });
-    } catch (e) { }
+      if (networkState.isHost) {
+        networkState.conn.send({
+          type: 'mp_roster_sync',
+          mpMatchConfig: mpMatchConfig,
+          botCount: totalBots
+        });
+      } else {
+        networkState.conn.send({
+          type: 'mp_client_team_request',
+          team: mpMatchConfig.clientTeam
+        });
+      }
+    } catch (_) {}
   }
 }
 
+export function broadcastMpBotCount(count) {
+  setMpTeamBots('beta', count);
+  broadcastMpRoster();
+}
+
 function updateDevArenaButtonUI(arenaId) {
-  const arenaBtn = document.getElementById('dev-arena-btn');
-  if (!arenaBtn) return;
-  if (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY') {
-    arenaBtn.textContent = 'Arena: 3 (Dżungla)';
-    arenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))';
-    arenaBtn.style.borderColor = '#22c55e';
-    arenaBtn.style.color = '#86efac';
-    arenaBtn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.45)';
-  } else if (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') {
-    arenaBtn.textContent = 'Arena: 2 (Sektor X)';
-    arenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(239, 68, 68, 0.25))';
-    arenaBtn.style.borderColor = '#eab308';
-    arenaBtn.style.color = '#fef08a';
-    arenaBtn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.55)';
-  } else {
-    arenaBtn.textContent = 'Arena: 1';
-    arenaBtn.style.background = '';
-    arenaBtn.style.borderColor = '#06b6d4';
-    arenaBtn.style.color = '#22d3ee';
-    arenaBtn.style.boxShadow = '';
-  }
+  const btn = document.getElementById('dev-arena-btn');
+  if (!btn) return;
+  const isA3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const isA2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X');
+  btn.textContent = isA3 ? 'Arena: 3 (Dżungla)' : (isA2 ? 'Arena: 2 (Sektor X)' : 'Arena: 1');
+  btn.style.background = isA3 ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(234, 179, 8, 0.25))' : (isA2 ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(239, 68, 68, 0.25))' : '');
+  btn.style.borderColor = isA3 ? '#22c55e' : (isA2 ? '#eab308' : '#06b6d4');
+  btn.style.color = isA3 ? '#86efac' : (isA2 ? '#fef08a' : '#22d3ee');
+  btn.style.boxShadow = isA3 ? '0 0 12px rgba(34, 197, 94, 0.45)' : (isA2 ? '0 0 12px rgba(234, 179, 8, 0.55)' : '');
 }
 
 // =============================================================================
@@ -718,11 +695,19 @@ function handleNetworkData(data) {
       if (data.customObstacles) {
         setCustomObstacles(data.customObstacles);
       }
+      if (data.mpMatchConfig) {
+        Object.assign(mpMatchConfig, data.mpMatchConfig);
+        saveMpMatchConfig();
+      }
       if (data.botCount !== undefined) {
         setBotCount(data.botCount, { isRemote: true });
         syncMpBotUI(data.botCount);
-        balanceBotClasses(player, getActiveBots());
-        refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      }
+      applyTeamVisuals(false);
+      balanceBotClasses(player, getActiveBots());
+      refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      if (typeof window !== 'undefined' && typeof window.syncMpRosterUI === 'function') {
+        window.syncMpRosterUI();
       }
       if (data.ball) {
         ball.x = data.ball.x;
@@ -733,7 +718,7 @@ function handleNetworkData(data) {
       if (data.deathmatch) {
         deathmatchState.timeRemaining = data.deathmatch.timeRemaining;
         deathmatchState.mode = data.deathmatch.mode || deathmatchState.mode;
-        deathmatchState.playerTeam = TEAMS.ORANGE;
+        deathmatchState.playerTeam = player ? player.team : TEAMS.ORANGE;
         if (deathmatchState.teamScores) {
           deathmatchState.teamScores[TEAMS.CYAN] = data.deathmatch.scoreCyan || 0;
           deathmatchState.teamScores[TEAMS.ORANGE] = data.deathmatch.scoreOrange || 0;
@@ -750,7 +735,6 @@ function handleNetworkData(data) {
         player.facing = data.clientSpawn.facing || -1;
         player.vx = 0;
         player.vy = 0;
-        player.team = 'ORANGE';
       }
       if (typeof resize === 'function') {
         resize(player);
@@ -910,6 +894,32 @@ function handleNetworkData(data) {
         if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
           window.uiManager.updateMpArenaUI(data.arenaId);
         }
+      }
+      break;
+    }
+
+    case 'mp_roster_sync': {
+      if (data.mpMatchConfig) {
+        Object.assign(mpMatchConfig, data.mpMatchConfig);
+        saveMpMatchConfig();
+      }
+      if (data.botCount !== undefined) {
+        setBotCount(data.botCount, { isRemote: true });
+        syncMpBotUI(data.botCount);
+      }
+      applyTeamVisuals(false);
+      balanceBotClasses(player, getActiveBots());
+      refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      if (typeof window !== 'undefined' && typeof window.syncMpRosterUI === 'function') {
+        window.syncMpRosterUI();
+      }
+      break;
+    }
+
+    case 'mp_client_team_request': {
+      if (networkState.isHost && data.team) {
+        setMpPlayerTeam('client', data.team);
+        broadcastMpRoster();
       }
       break;
     }
@@ -1101,11 +1111,7 @@ let pingInterval = null;
 let lastReceivedDataTime = 0;
 
 const savedSession = {
-  isHost: false,
-  roomId: null,
-  targetJoinId: null,
-  reconnecting: false,
-  reconnectAttempts: 0
+  isHost: false, roomId: null, targetJoinId: null, reconnecting: false, reconnectAttempts: 0
 };
 
 // Web Worker utrzymujący heartbeat w tle na urządzeniach mobilnych (gdy setInterval jest dławiony)
@@ -1113,19 +1119,7 @@ let heartbeatWorker = null;
 function initHeartbeatWorker() {
   if (heartbeatWorker) return;
   try {
-    const blobCode = `
-      let timer = null;
-      self.onmessage = function(e) {
-        if (e.data === 'start') {
-          if (timer) clearInterval(timer);
-          timer = setInterval(function() {
-            self.postMessage('hb_tick');
-          }, 1200);
-        } else if (e.data === 'stop') {
-          if (timer) { clearInterval(timer); timer = null; }
-        }
-      };
-    `;
+    const blobCode = `let timer=null;self.onmessage=function(e){if(e.data==='start'){if(timer)clearInterval(timer);timer=setInterval(function(){self.postMessage('hb_tick');},1200);}else if(e.data==='stop'){if(timer){clearInterval(timer);timer=null;}}};`;
     const blob = new Blob([blobCode], { type: 'application/javascript' });
     heartbeatWorker = new Worker(URL.createObjectURL(blob));
     heartbeatWorker.onmessage = () => {
@@ -1220,16 +1214,19 @@ function setupConnection(conn, isHost) {
 
     // Host wysyła inicjalny stan mapy, areny, botów, hazardów i punktu spawnu klienta
     if (isHost) {
+      const spawns = getMpSpawnPositions(activeArenaId, mpMatchConfig, GROUND_Y);
+      if (player && spawns.host) {
+        player.x = spawns.host.x;
+        player.y = spawns.host.y;
+        player.facing = spawns.host.facing;
+      }
       const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_SECTOR_X' || activeArenaId === 'ARENA_2_PANDORA');
-      const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
-      const clientSpawn = isA2
-        ? { x: 3470, y: 350, facing: -1 }
-        : (isA3 ? { x: 3800, y: 880, facing: -1 } : { x: 2600, y: GROUND_Y - 70, facing: -1 });
 
       conn.send({
         type: 'init_sync',
         arenaId: activeArenaId,
-        botCount: getMpBotCount(),
+        mpMatchConfig: mpMatchConfig,
+        botCount: getTotalMpBotCount(),
         customObstacles: customObstacles,
         ball: {
           x: ball.x,
@@ -1249,7 +1246,7 @@ function setupConnection(conn, isHost) {
           timer: Math.round(ACID_SURGE_SYSTEM.timer * 10) / 10,
           currentY: Math.round(ACID_SURGE_SYSTEM.currentY)
         } : null,
-        clientSpawn
+        clientSpawn: spawns.client
       });
     }
 
@@ -1473,12 +1470,14 @@ export function initNetwork() {
     hostRoom,
     joinRoom,
     disconnectNetwork,
-    broadcastMpBotCount
+    broadcastMpBotCount,
+    broadcastMpRoster
   });
 
   if (typeof window !== 'undefined') {
     window.sendBotShootEvent = sendBotShootEvent;
     window.broadcastMpBotCount = broadcastMpBotCount;
+    window.broadcastMpRoster = broadcastMpRoster;
     window.syncMpBotUI = syncMpBotUI;
   }
 }
