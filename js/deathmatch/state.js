@@ -91,7 +91,10 @@ export const deathmatchState = {
   participants: [],
 
   // Posortowana tablica wyników (Leaderboard)
-  leaderboard: []
+  leaderboard: [],
+
+  // Granice przycisku powrotu do lobby na ekranie podium
+  returnButtonBounds: null
 };
 
 export function resetDeathmatchState() {
@@ -108,6 +111,7 @@ export function resetDeathmatchState() {
   deathmatchState.teamScores[TEAMS.ORANGE] = 0;
   deathmatchState.participants.length = 0;
   deathmatchState.leaderboard.length = 0;
+  deathmatchState.returnButtonBounds = null;
 }
 
 if (typeof window !== 'undefined') {

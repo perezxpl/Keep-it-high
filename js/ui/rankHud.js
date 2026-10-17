@@ -14,7 +14,8 @@ export const matchWinState = {
   xpAwarded: false,
   rewardXp: XP_REWARDS?.MATCH_WIN || 40,
   previousRankName: '',
-  newRankName: ''
+  newRankName: '',
+  returnButtonBounds: null
 };
 
 // Pływające powiadomienia o zyskanym XP w HUD
@@ -119,9 +120,13 @@ export function updateMatchWinState(scoreObj) {
       matchWinState.won = false;
       matchWinState.winner = null;
       matchWinState.xpAwarded = false;
+      matchWinState.returnButtonBounds = null;
       if (scoreObj) {
         scoreObj.cyan = 0;
         scoreObj.orange = 0;
+      }
+      if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+        window.concludeMatchAndReturnToLobby();
       }
     }
   }
@@ -132,6 +137,7 @@ export function resetMatchWinState() {
   matchWinState.winner = null;
   matchWinState.timer = 0;
   matchWinState.xpAwarded = false;
+  matchWinState.returnButtonBounds = null;
 }
 
 /**
@@ -295,7 +301,7 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
 
   const leveledUp = matchWinState.previousRankName && matchWinState.previousRankName !== matchWinState.newRankName;
   const bannerW = isMobile ? Math.min(W - 30, 360) : 480;
-  const bannerH = isMobile ? (leveledUp ? 156 : 140) : (leveledUp ? 190 : 170);
+  const bannerH = isMobile ? (leveledUp ? 172 : 156) : (leveledUp ? 204 : 184);
   const bannerX = (W - bannerW) / 2;
   const bannerY = (H - bannerH) * 0.38;
 
@@ -364,12 +370,34 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     ctx.fillText('DRUŻYNA ORANGE ZDOBYŁA PRZEWAGĘ', W / 2, bannerY + (isMobile ? 75 : 90));
   }
 
-  // Odliczanie do nowej rundy
+  // Przycisk i odliczanie powrotu do lobby
   const secondsLeft = Math.ceil(matchWinState.timer / 60);
-  ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 11px monospace';
-  ctx.fillStyle = '#64748b';
-  ctx.shadowBlur = 0;
-  ctx.fillText(`Restart rundy za: ${secondsLeft}s`, W / 2, bannerY + bannerH - (isMobile ? 16 : 20));
+  const btnW = isMobile ? Math.min(bannerW - 40, 230) : 260;
+  const btnH = isMobile ? 28 : 32;
+  const btnX = (W - btnW) / 2;
+  const btnY = bannerY + bannerH - btnH - (isMobile ? 8 : 12);
+
+  matchWinState.returnButtonBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
+  ctx.save();
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+  else ctx.rect(btnX, btnY, btnW, btnH);
+  ctx.fillStyle = `rgba(14, 116, 144, ${0.45 + pulse * 0.15})`;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(56, 189, 248, ${0.75 + pulse * 0.25})`;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = isMobile ? '900 10.5px monospace' : '900 12px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 6;
+  ctx.fillText(`POWRÓT DO LOBBY (${secondsLeft}s)`, W / 2, btnY + btnH / 2);
+  ctx.restore();
 
   ctx.restore();
 }

@@ -45,6 +45,8 @@ import {
   confirmMortarStrikeTarget,
   cancelMortarStrikeTargeting
 } from '../killstreaks/index.js';
+import { deathmatchState } from '../deathmatch/index.js';
+import { matchWinState } from '../ui/rankHud.js';
 
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
@@ -132,6 +134,25 @@ canvas.addEventListener('touchstart', (e) => {
       hudPauseBtn.style.display = 'flex';
     }
   }
+
+  // Obsługa dotknięcia ekranu podczas prezentacji wyników (podium / zwycięstwo)
+  const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
+  const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
+  if (isDmEnded || isWinEnded) {
+    const t0 = e.changedTouches[0];
+    const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+    const isOverBtn = b && t0 && (t0.clientX >= b.x && t0.clientX <= b.x + b.w && t0.clientY >= b.y && t0.clientY <= b.y + b.h);
+    const canSkip = isDmEnded
+      ? ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60)
+      : ((matchWinState.maxTimer - matchWinState.timer) > 60);
+    if (isOverBtn || canSkip) {
+      if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+        window.concludeMatchAndReturnToLobby();
+        return;
+      }
+    }
+  }
+
   const midX = W / 2;
 
   for (let i = 0; i < e.changedTouches.length; i++) {

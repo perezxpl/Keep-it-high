@@ -242,8 +242,12 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
     if (deathmatchState.endCelebrationTimer > 0) {
       deathmatchState.endCelebrationTimer--;
       if (deathmatchState.endCelebrationTimer <= 0) {
-        // Po zakończeniu celebracji, restart sesji na nowe 5 minut
-        initDeathmatch(player, botOrBots, remotePlayer);
+        // Po zakończeniu prezentacji wyników, powrót do lobby
+        if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+          window.concludeMatchAndReturnToLobby();
+        } else {
+          resetDeathmatchState();
+        }
       }
     }
     return;

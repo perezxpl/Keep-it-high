@@ -308,12 +308,34 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
     ctx.fillText(`${p.kills} F / ${p.deaths} Z`, cardX + cardW - 22, ry - 4);
   });
 
-  // Odliczanie do nowej bitwy
+  // Przycisk i odliczanie powrotu do lobby
   const secLeft = Math.ceil(timer / 60);
+  const btnW = isMobile ? Math.min(cardW - 40, 240) : 280;
+  const btnH = isMobile ? 30 : 34;
+  const btnX = (W - btnW) / 2;
+  const btnY = cardY + cardH - btnH - (isMobile ? 10 : 14);
+
+  deathmatchState.returnButtonBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
+  ctx.save();
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+  else ctx.rect(btnX, btnY, btnW, btnH);
+  ctx.fillStyle = `rgba(14, 116, 144, ${0.45 + pulse * 0.15})`;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(56, 189, 248, ${0.75 + pulse * 0.25})`;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
   ctx.textAlign = 'center';
-  ctx.font = isMobile ? 'bold 9px monospace' : 'bold 11px monospace';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText(`Restart nowej rundy za: ${secLeft}s`, W / 2, cardY + cardH - (isMobile ? 14 : 18));
+  ctx.textBaseline = 'middle';
+  ctx.font = isMobile ? '900 11px monospace' : '900 12.5px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 6;
+  ctx.fillText(`POWRÓT DO LOBBY (${secLeft}s)`, W / 2, btnY + btnH / 2);
+  ctx.restore();
 
   ctx.restore();
 }

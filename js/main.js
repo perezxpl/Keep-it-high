@@ -46,8 +46,10 @@ import {
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
   sendArenaSwitch, updateRemotePlayer,
   sendBotsState, updateRemoteBots,
+  sendReturnToLobby,
   isChatActive, openChat, closeChat, updateCursorVisibility
 } from './network.js';
+import { syncMpRosterUI } from './networkUI.js';
 import {
   leftStick, rightStick, btnCluster, pockets,
   updateButtonLayout, updateMobileControlStates,
@@ -56,9 +58,9 @@ import {
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
-import { updateDeathmatch } from './deathmatch/index.js';
+import { updateDeathmatch, resetDeathmatchState } from './deathmatch/index.js';
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
-import { checkMatchWin, updateMatchWinState } from './ui/rankHud.js';
+import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
   editorState,
@@ -274,6 +276,52 @@ export function startRound() {
   resetBallToPlayer(player, GROUND_Y);
 }
 window.startRound = startRound;
+
+let isMatchConcluding = false;
+/**
+ * Zakończenie rozgrywki i powrót do lobby (Odprawa taktyczna / Pokój meczu)
+ */
+export function concludeMatchAndReturnToLobby(options = {}) {
+  if (isMatchConcluding) return;
+  isMatchConcluding = true;
+
+  // 1. Zakończenie rozgrywki i reset wszystkich stanów bitewnych
+  resetMatchWinState();
+  resetDeathmatchState();
+  if (typeof resetKillstreak === 'function') {
+    resetKillstreak();
+  }
+  startRound();
+
+  // 2. Obsługa trybu sieciowego P2P
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const isMultiplayer = !!(netState && netState.isConnected);
+
+  if (isMultiplayer && !options.isRemoteTrigger && netState.isHost) {
+    if (typeof sendReturnToLobby === 'function') {
+      sendReturnToLobby();
+    }
+  }
+
+  // 3. Przełączenie do widoku lobby (ODPRAWA TAKTYCZNA)
+  setGameState('ARENA_SELECT');
+
+  if (isMultiplayer) {
+    const tabMultiBtn = document.getElementById('briefing-tab-multi');
+    if (tabMultiBtn) tabMultiBtn.click();
+    if (typeof syncMpRosterUI === 'function') {
+      syncMpRosterUI();
+    }
+  } else {
+    const tabSoloBtn = document.getElementById('briefing-tab-solo');
+    if (tabSoloBtn) tabSoloBtn.click();
+  }
+
+  setTimeout(() => {
+    isMatchConcluding = false;
+  }, 400);
+}
+window.concludeMatchAndReturnToLobby = concludeMatchAndReturnToLobby;
 
 // ==========================================
 // STAN GRY I SYSTEM WYBORU KLAS POSTACI

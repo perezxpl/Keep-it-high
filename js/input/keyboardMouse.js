@@ -40,6 +40,8 @@ import {
   confirmMortarStrikeTarget,
   cancelMortarStrikeTargeting
 } from '../killstreaks/index.js';
+import { deathmatchState } from '../deathmatch/index.js';
+import { matchWinState } from '../ui/rankHud.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -493,6 +495,17 @@ export function initKeyboardMouseHandlers({
       }
     }
 
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') {
+      const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
+      const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
+      if (isDmEnded || isWinEnded) {
+        if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+          window.concludeMatchAndReturnToLobby();
+          return;
+        }
+      }
+    }
+
     if (e.code === 'Escape') {
       if (killstreakState.mortarTargeting) {
         cancelMortarStrikeTargeting();
@@ -622,6 +635,14 @@ export function initKeyboardMouseHandlers({
       canvas.style.cursor = (isBack || card) ? 'pointer' : 'default';
     }
 
+    const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
+    const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
+    if (isDmEnded || isWinEnded) {
+      const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+      const isOverBtn = b && (mouseState.screenX >= b.x && mouseState.screenX <= b.x + b.w && mouseState.screenY >= b.y && mouseState.screenY <= b.y + b.h);
+      canvas.style.cursor = isOverBtn ? 'pointer' : 'default';
+    }
+
     if (editorState.active) {
       const worldX = camera.x + mouseState.screenX / camera.zoom;
       const worldY = camera.y + mouseState.screenY / camera.zoom;
@@ -691,6 +712,23 @@ export function initKeyboardMouseHandlers({
         }
       }
       return;
+    }
+
+    // Obsługa kliknięcia w przycisk "POWRÓT DO LOBBY" na ekranie zakończenia meczu
+    const isDmEnded = (deathmatchState.matchEnded && deathmatchState.endCelebrationTimer > 0);
+    const isWinEnded = (matchWinState.won && matchWinState.timer > 0);
+    if ((isDmEnded || isWinEnded) && e.button === 0) {
+      const b = isDmEnded ? deathmatchState.returnButtonBounds : matchWinState.returnButtonBounds;
+      const isOverBtn = b && (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h);
+      const canSkip = isDmEnded
+        ? ((deathmatchState.maxEndCelebrationTimer - deathmatchState.endCelebrationTimer) > 60)
+        : ((matchWinState.maxTimer - matchWinState.timer) > 60);
+      if (isOverBtn || canSkip) {
+        if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+          window.concludeMatchAndReturnToLobby();
+          return;
+        }
+      }
     }
 
     if (isChatActive) return;

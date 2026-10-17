@@ -244,6 +244,12 @@ export function sendArenaSwitch(arenaId) {
   }
 }
 
+export function sendReturnToLobby() {
+  if (networkState.conn && networkState.isConnected) {
+    try { networkState.conn.send({ type: 'return_to_lobby' }); } catch (_) {}
+  }
+}
+
 export function sendBotsState(activeBotsList) {
   if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
   const now = performance.now();
@@ -1085,6 +1091,13 @@ function handleNetworkData(data) {
       }
       if (typeof resize === 'function') {
         resize(player);
+      }
+      break;
+    }
+
+    case 'return_to_lobby': {
+      if (typeof window !== 'undefined' && typeof window.concludeMatchAndReturnToLobby === 'function') {
+        window.concludeMatchAndReturnToLobby({ isRemoteTrigger: true });
       }
       break;
     }
