@@ -3462,125 +3462,248 @@ button, .dev-btn {
 /* -------------------------------------------------------------------------
    3. OKNO PAUZY (PAUSE)
    ------------------------------------------------------------------------- */
+#pause-overlay {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
 .pause-modal-box {
   position: relative;
+  margin: auto;
   width: 100%;
   max-width: 440px;
+  max-height: calc(100vh - 28px);
+  max-height: calc(100dvh - 28px);
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1.5px solid rgba(0, 229, 255, 0.5);
-  border-radius: 16px;
-  box-shadow: 0 0 50px rgba(0, 229, 255, 0.3), 0 25px 60px rgba(0, 0, 0, 0.85);
-  padding: 26px 22px;
+  border-radius: 14px;
+  box-shadow: 0 0 45px rgba(0, 229, 255, 0.28), 0 20px 50px rgba(0, 0, 0, 0.85);
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   color: #f8fafc;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pause-modal-box::-webkit-scrollbar {
+  width: 5px;
+}
+.pause-modal-box::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 3px;
+}
+.pause-modal-box::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.4);
+  border-radius: 3px;
 }
 
 .pause-header {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 
 .pause-badge {
   font-family: 'Orbitron', monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #f59e0b;
-  letter-spacing: 2px;
-  padding: 3px 12px;
+  letter-spacing: 1.8px;
+  padding: 2px 10px;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.4);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: 10px;
+  margin-bottom: 6px;
 }
 
 .pause-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   letter-spacing: 2px;
   margin: 0;
   color: #fff;
-  text-shadow: 0 0 18px rgba(0, 229, 255, 0.5);
+  text-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
 }
 
 .pause-arena-info {
   font-family: monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   color: #00e5ff;
-  margin-top: 6px;
+  margin-top: 5px;
   font-weight: 700;
   background: rgba(0, 229, 255, 0.08);
-  padding: 3px 10px;
-  border-radius: 6px;
+  padding: 2px 9px;
+  border-radius: 5px;
   border: 1px solid rgba(0, 229, 255, 0.2);
 }
 
 .pause-menu-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
 .pause-menu-actions .ui-btn {
   width: 100%;
-  padding: 12px 18px;
-  font-size: 15px;
+  padding: 10px 16px;
+  font-size: 13.5px;
   font-weight: 700;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
 }
 
 .pause-footer-hint {
-  margin-top: 18px;
+  margin-top: 14px;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   color: #64748b;
 }
 
 /* -------------------------------------------------------------------------
-   4. PŁYWAJĄCY PRZYCISK PAUZY NA EKRANIE GRY (HUD)
+   4. MINIMALISTYCZNY PRZYCISK PAUZY NA EKRANIE GRY (HUD - WERSJA DOTYKOWA)
    ------------------------------------------------------------------------- */
 .hud-pause-button {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
   z-index: 120;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.70);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 229, 255, 0.45);
-  color: #00e5ff;
-  border-radius: 8px;
-  padding: 6px 13px;
-  font-family: 'Rajdhani', monospace, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  display: flex;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: #38bdf8;
+  border-radius: 6px;
+  padding: 0;
+  display: none; /* Domyślnie ukryty na PC, widoczny WYŁĄCZNIE na ekranach dotykowych */
   align-items: center;
-  gap: 7px;
+  justify-content: center;
   cursor: pointer !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-  transition: all 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: all 0.16s ease;
   touch-action: manipulation;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hud-pause-button:hover {
-  background: rgba(0, 229, 255, 0.25);
+  background: rgba(0, 229, 255, 0.22);
+  border-color: #00e5ff;
   color: #ffffff;
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.6);
-  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
 }
 
 .hud-pause-button:active {
-  transform: scale(0.96);
+  transform: scale(0.92);
+  background: rgba(0, 229, 255, 0.35);
+}
+
+.hud-pause-icon {
+  display: block;
+  pointer-events: none;
+}
+
+/* Responsywność okna pauzy dla ekranów poziomych (Landscape / niskie ekrany) */
+@media (max-height: 540px) {
+  #pause-overlay {
+    padding: 6px;
+  }
+  .pause-modal-box {
+    max-width: 520px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    max-height: calc(100vh - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+  .pause-header {
+    margin-bottom: 7px;
+  }
+  .pause-badge {
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    padding: 1px 7px;
+    margin-bottom: 2px;
+  }
+  .pause-title {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .pause-arena-info {
+    font-size: 9px;
+    padding: 1px 6px;
+    margin-top: 2px;
+  }
+  .pause-menu-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .pause-menu-actions .ui-btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+    min-height: 32px;
+    gap: 5px;
+  }
+  .pause-footer-hint {
+    margin-top: 6px;
+    font-size: 9px;
+  }
+}
+
+/* Responsywność dla wąskich ekranów pionowych (Portrait) */
+@media (max-width: 480px) and (min-height: 541px) {
+  #pause-overlay {
+    padding: 10px;
+  }
+  .pause-modal-box {
+    padding: 16px 14px;
+    max-width: 95%;
+  }
+  .pause-title {
+    font-size: 19px;
+  }
+  .pause-menu-actions .ui-btn {
+    padding: 9px 12px;
+    font-size: 12.5px;
+    min-height: 38px;
+  }
+}
+
+/* Ekstremalnie małe ekrany (wysokość poniżej 340px) */
+@media (max-height: 340px) {
+  .pause-header {
+    margin-bottom: 4px;
+  }
+  .pause-title {
+    font-size: 14px;
+  }
+  .pause-badge,
+  .pause-footer-hint {
+    display: none;
+  }
+  .pause-menu-actions .ui-btn {
+    padding: 4px 6px;
+    font-size: 10.5px;
+    min-height: 26px;
+  }
 }
 
 /* Responsywność urządzeń mobilnych */

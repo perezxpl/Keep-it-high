@@ -3,7 +3,7 @@
 // Zarządza Menu Głównym, Oknem Ustawień oraz Panelem Pauzy
 // =============================================================================
 
-import { CONFIG } from './config.js';
+import { CONFIG, isTouchDevice } from './config.js';
 import { CLASSES } from './classes/index.js';
 import {
   drawPlayer,
@@ -995,7 +995,12 @@ export const uiManager = {
         break;
 
       case 'PLAYING':
-        if (hudPauseBtn) hudPauseBtn.style.display = 'flex';
+        if (hudPauseBtn) {
+          const isTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean')
+            ? window.isTouchDevice
+            : !!isTouchDevice;
+          hudPauseBtn.style.display = isTouch ? 'flex' : 'none';
+        }
         if (devPanel) devPanel.style.display = 'flex';
         break;
 

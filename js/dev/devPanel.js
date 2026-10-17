@@ -432,6 +432,16 @@ export function toggleTouchControls(forceVal) {
     updateButtonLayout(W, H);
   }
   updateDevTouchButtonUI();
+  const hudPauseBtn = document.getElementById('hud-pause-btn');
+  if (hudPauseBtn) {
+    const isOverlayOpen = document.getElementById('pause-overlay')?.style.display === 'flex' ||
+                          document.getElementById('main-menu-overlay')?.style.display === 'flex' ||
+                          document.getElementById('settings-overlay')?.style.display === 'flex' ||
+                          document.getElementById('creator-overlay')?.style.display === 'flex';
+    if (!isOverlayOpen) {
+      hudPauseBtn.style.display = nextVal ? 'flex' : 'none';
+    }
+  }
 }
 window.toggleTouchControls = toggleTouchControls;
 

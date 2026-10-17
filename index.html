@@ -1314,9 +1314,12 @@
       </div>
     </div>
 
-    <!-- Pływający przycisk pauzy na ekranie gry (HUD) -->
-    <button id="hud-pause-btn" class="hud-pause-button" type="button" title="Pauza (ESC / P)" style="display: none;">
-      <span class="pause-label">PAUZA</span>
+    <!-- Minimalistyczny przycisk pauzy na ekranie gry (HUD - wersja dotykowa) -->
+    <button id="hud-pause-btn" class="hud-pause-button" type="button" title="Pauza" aria-label="Pauza" style="display: none;">
+      <svg class="hud-pause-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        <rect x="5" y="4" width="4" height="16" rx="1.5" />
+        <rect x="15" y="4" width="4" height="16" rx="1.5" />
+      </svg>
     </button>
   </div>
 

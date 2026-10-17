@@ -113,6 +113,10 @@ window.addEventListener('touchstart', () => {
     setTouchDevice(true);
     updateButtonLayout(W, H);
     updateDevTouchButtonUI();
+    const hudPauseBtn = document.getElementById('hud-pause-btn');
+    if (hudPauseBtn && GAME_STATE.current === 'PLAYING') {
+      hudPauseBtn.style.display = 'flex';
+    }
   }
 }, { once: true });
 
@@ -123,6 +127,10 @@ canvas.addEventListener('touchstart', (e) => {
     setTouchDevice(true);
     updateButtonLayout(W, H);
     updateDevTouchButtonUI();
+    const hudPauseBtn = document.getElementById('hud-pause-btn');
+    if (hudPauseBtn) {
+      hudPauseBtn.style.display = 'flex';
+    }
   }
   const midX = W / 2;
 
