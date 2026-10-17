@@ -77,7 +77,9 @@ export const BOT_PROFILES = [
   { name: 'CPL. RAPTOR', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1, team: 'ORANGE' },
   { name: 'LT. ENFORCER', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' },
   { name: 'PVT. VIPER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1, team: 'ORANGE' },
-  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' }
+  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' },
+  { name: 'SPEC. GHOST', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1, team: 'ORANGE' },
+  { name: 'COL. HAVOC', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' }
 ];
 
 /**
@@ -361,7 +363,7 @@ for (let i = 0; i < bots.length; i++) {
 
 export function setBotCount(count, options = {}) {
   const parsed = parseInt(count, 10);
-  const num = Math.max(0, Math.min(5, isNaN(parsed) ? 1 : parsed));
+  const num = Math.max(0, Math.min(7, isNaN(parsed) ? 1 : parsed));
   botCount = num;
   while (bots.length < num) {
     bots.push(createBotInstance(bots.length, true));
@@ -399,7 +401,7 @@ export function getBotCount() {
     const stored = localStorage.getItem('kih_bot_count_v1');
     if (stored !== null && stored !== undefined) {
       const parsed = parseInt(stored, 10);
-      if (parsed >= 0 && parsed <= 5) {
+      if (parsed >= 0 && parsed <= 7) {
         if (botCount !== parsed) {
           setBotCount(parsed, { skipStorage: true });
         }
@@ -429,7 +431,7 @@ export function getMpBotCount() {
 
 export function setMpBotCount(count) {
   const parsed = parseInt(count, 10);
-  const num = Math.max(0, Math.min(5, isNaN(parsed) ? 2 : parsed));
+  const num = Math.max(0, Math.min(6, isNaN(parsed) ? 2 : parsed));
   try {
     localStorage.setItem('kih_mp_bot_count', String(num));
   } catch (_) {}

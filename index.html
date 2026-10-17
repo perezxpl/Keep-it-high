@@ -256,15 +256,27 @@
                 <span class="mp-card-title">SKŁAD BITWY I DRUŻYNY (ROSTER)</span>
                 <span class="mp-roster-mode-badge" id="mp-roster-mode-badge">TRYB: DRUŻYNY</span>
               </div>
-              <p class="mp-card-desc">Wybierz szablon taktyczny lub dostosuj przydział graczy i botów:</p>
+              <p class="mp-card-desc">Dowolny dobór graczy i botów na arenie (maksymalnie 8 postaci):</p>
+
+              <!-- Wskaźnik pojemności areny (Max 8 postaci) -->
+              <div class="mp-roster-capacity-indicator" id="mp-roster-capacity-indicator">
+                <div class="mp-cap-text-row">
+                  <span class="mp-cap-label">POJEMNOŚĆ ARENY:</span>
+                  <span class="mp-cap-value" id="mp-cap-count-text">4 / 8 POSTACI</span>
+                </div>
+                <div class="mp-cap-bar-track">
+                  <div class="mp-cap-bar-fill" id="mp-cap-bar-fill" style="width: 50%;"></div>
+                </div>
+              </div>
 
               <!-- Szybkie szablony taktyczne (Presets) -->
               <div class="mp-roster-presets-row" id="mp-roster-presets">
-                <button type="button" class="mp-preset-btn" data-mp-preset="COOP" title="Host i Klient razem w Team Alpha vs Boty w Team Beta">KOOP VS BOTY</button>
-                <button type="button" class="mp-preset-btn active" data-mp-preset="VERSUS_2V2" title="Host+Bot vs Klient+Bot">RYWALIZACJA 2v2</button>
-                <button type="button" class="mp-preset-btn" data-mp-preset="VERSUS_3V3" title="Host+2 Boty vs Klient+2 Boty">RYWALIZACJA 3v3</button>
-                <button type="button" class="mp-preset-btn" data-mp-preset="DUEL_1V1" title="Czysty pojedynek 1 na 1 bez botów">POJEDYNEK 1v1</button>
-                <button type="button" class="mp-preset-btn" data-mp-preset="FFA" title="Każdy na każdego bez drużyn">FFA</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="COOP" title="Kooperacja: Host + Klient vs Boty">KOOP</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="VERSUS_4V4" title="Bitwa 4v4: Host+3 Boty vs Klient+3 Boty (Maksymalne starcie 8 postaci)">4v4</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="VERSUS_3V3" title="Bitwa 3v3: Host+2 Boty vs Klient+2 Boty">3v3</button>
+                <button type="button" class="mp-preset-btn active" data-mp-preset="VERSUS_2V2" title="Bitwa 2v2: Host+1 Bot vs Klient+1 Bot">2v2</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="DUEL_1V1" title="Pojedynek 1v1: Host vs Klient">1v1</button>
+                <button type="button" class="mp-preset-btn" data-mp-preset="FFA" title="Każdy na każdego bez drużyn (8 postaci)">FFA</button>
               </div>
 
               <!-- Siatka drużyn Alpha & Beta (dla trybu DRUŻYNY) -->
@@ -277,11 +289,22 @@
                   </div>
                   <div class="mp-roster-members" id="mp-alpha-members"></div>
                   <div class="mp-bot-stepper-wrap">
-                    <span class="mp-stepper-label">BOTY AI:</span>
-                    <div class="mp-stepper-ctrls">
-                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:-1">-</button>
-                      <span class="mp-stepper-val" id="mp-alpha-bots-val">1</span>
-                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:1">+</button>
+                    <div class="mp-stepper-top-row">
+                      <span class="mp-stepper-label">BOTY AI:</span>
+                      <div class="mp-stepper-ctrls">
+                        <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:-1">-</button>
+                        <span class="mp-stepper-val" id="mp-alpha-bots-val">1</span>
+                        <button type="button" class="mp-stepper-btn" data-team-bot-delta="alpha:1">+</button>
+                      </div>
+                    </div>
+                    <div class="mp-quick-chips-row" data-team-chips="alpha">
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:0">0</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:1">1</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:2">2</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:3">3</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:4">4</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:5">5</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="alpha:6">6</button>
                     </div>
                   </div>
                 </div>
@@ -299,11 +322,22 @@
                   </div>
                   <div class="mp-roster-members" id="mp-beta-members"></div>
                   <div class="mp-bot-stepper-wrap">
-                    <span class="mp-stepper-label">BOTY AI:</span>
-                    <div class="mp-stepper-ctrls">
-                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:-1">-</button>
-                      <span class="mp-stepper-val" id="mp-beta-bots-val">1</span>
-                      <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:1">+</button>
+                    <div class="mp-stepper-top-row">
+                      <span class="mp-stepper-label">BOTY AI:</span>
+                      <div class="mp-stepper-ctrls">
+                        <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:-1">-</button>
+                        <span class="mp-stepper-val" id="mp-beta-bots-val">1</span>
+                        <button type="button" class="mp-stepper-btn" data-team-bot-delta="beta:1">+</button>
+                      </div>
+                    </div>
+                    <div class="mp-quick-chips-row" data-team-chips="beta">
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:0">0</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:1">1</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:2">2</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:3">3</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:4">4</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:5">5</button>
+                      <button type="button" class="mp-chip-btn" data-set-team-bot="beta:6">6</button>
                     </div>
                   </div>
                 </div>
@@ -327,11 +361,22 @@
                   </div>
                 </div>
                 <div class="mp-bot-stepper-wrap mp-ffa-stepper" style="margin-top: 8px;">
-                  <span class="mp-stepper-label">BOTY AI W FFA:</span>
-                  <div class="mp-stepper-ctrls">
-                    <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="-1">-</button>
-                    <span class="mp-stepper-val" id="mp-ffa-bots-val">2</span>
-                    <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="1">+</button>
+                  <div class="mp-stepper-top-row">
+                    <span class="mp-stepper-label">BOTY AI W FFA:</span>
+                    <div class="mp-stepper-ctrls">
+                      <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="-1">-</button>
+                      <span class="mp-stepper-val" id="mp-ffa-bots-val">4</span>
+                      <button type="button" class="mp-stepper-btn" data-ffa-bot-delta="1">+</button>
+                    </div>
+                  </div>
+                  <div class="mp-quick-chips-row" data-team-chips="ffa">
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="0">0</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="1">1</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="2">2</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="3">3</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="4">4</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="5">5</button>
+                    <button type="button" class="mp-chip-btn" data-set-ffa-bot="6">6</button>
                   </div>
                 </div>
               </div>
@@ -370,6 +415,7 @@
                 </div>
                 <div class="mp-roster-presets-row" id="mp-connected-roster-presets">
                   <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
+                  <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_4V4">4v4</button>
                   <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
                   <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
                   <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>
@@ -831,6 +877,7 @@
                         <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">SZABLONY SKŁADU BITWY (ROSTER):</div>
                         <div class="mp-roster-presets-row" id="briefing-mp-roster-presets">
                           <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
+                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_4V4">4v4</button>
                           <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
                           <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
                           <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>

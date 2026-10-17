@@ -3813,6 +3813,49 @@ button, .dev-btn {
   letter-spacing: 0.5px;
 }
 
+.mp-roster-capacity-indicator {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-top: 5px;
+  margin-bottom: 6px;
+}
+
+.mp-cap-text-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.mp-cap-label {
+  color: #94a3b8;
+}
+
+.mp-cap-value {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
+.mp-cap-bar-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.mp-cap-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #38bdf8);
+  border-radius: 2px;
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
 .mp-roster-presets-row {
   display: flex;
   flex-wrap: wrap;
@@ -4000,11 +4043,18 @@ button, .dev-btn {
 
 .mp-bot-stepper-wrap {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mp-stepper-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .mp-stepper-label {
@@ -4048,6 +4098,45 @@ button, .dev-btn {
   font-weight: 800;
   font-size: 11px;
   color: #38bdf8;
+}
+
+.mp-quick-chips-row {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.mp-chip-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: #94a3b8;
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mp-chip-btn:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.mp-chip-btn.active {
+  background: rgba(14, 116, 144, 0.55);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
 }
 
 .mp-roster-ffa-view {

@@ -10,10 +10,15 @@ import {
   applyMpPreset,
   setMpPlayerTeam,
   setMpTeamBots,
+  adjustMpTeamBots,
   setMpFFABots,
+  adjustMpFFABots,
   setMpMode,
   getTotalMpBotCount,
+  getTotalMpCombatants,
   getMpMatchRosterSummary,
+  MAX_ARENA_COMBATANTS,
+  MAX_MP_BOTS,
   MP_PRESETS,
   MP_TEAMS
 } from './networkMatch.js';
@@ -370,7 +375,47 @@ export function syncMpRosterUI() {
   if (betaBotsVal) betaBotsVal.textContent = cfg.botsBeta || 0;
 
   const ffaBotsVal = document.getElementById('mp-ffa-bots-val');
-  if (ffaBotsVal) ffaBotsVal.textContent = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 2;
+  if (ffaBotsVal) ffaBotsVal.textContent = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 4;
+
+  // 5.5. Wskaźnik pojemności areny (Max 8 postaci)
+  const totalCombatants = getTotalMpCombatants(cfg);
+  const capTextEl = document.getElementById('mp-cap-count-text');
+  const capFillEl = document.getElementById('mp-cap-bar-fill');
+  if (capTextEl) {
+    const isAtLimit = (totalCombatants >= MAX_ARENA_COMBATANTS);
+    capTextEl.textContent = isAtLimit
+      ? `${totalCombatants} / ${MAX_ARENA_COMBATANTS} [MAKSIMUM]`
+      : `${totalCombatants} / ${MAX_ARENA_COMBATANTS} POSTACI`;
+    capTextEl.style.color = isAtLimit ? '#facc15' : '#38bdf8';
+  }
+  if (capFillEl) {
+    const pct = Math.min(100, Math.round((totalCombatants / MAX_ARENA_COMBATANTS) * 100));
+    capFillEl.style.width = `${pct}%`;
+    capFillEl.style.background = (totalCombatants >= MAX_ARENA_COMBATANTS)
+      ? 'linear-gradient(90deg, #facc15, #ef4444)'
+      : 'linear-gradient(90deg, #00e5ff, #38bdf8)';
+  }
+
+  // 5.6. Chipy szybkiego wyboru botów (0-6)
+  document.querySelectorAll('[data-set-team-bot]').forEach(btn => {
+    const [teamKey, countStr] = btn.dataset.setTeamBot.split(':');
+    const val = parseInt(countStr, 10);
+    const curVal = (teamKey === 'alpha') ? (cfg.botsAlpha || 0) : (cfg.botsBeta || 0);
+    btn.classList.toggle('active', val === curVal);
+  });
+
+  document.querySelectorAll('[data-set-ffa-bot]').forEach(btn => {
+    const val = parseInt(btn.dataset.setFfaBot, 10);
+    const curVal = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 4;
+    btn.classList.toggle('active', val === curVal);
+  });
+
+  // Ograniczenie stepperów przy limicie 8 postaci
+  const isLimitReached = (totalCombatants >= MAX_ARENA_COMBATANTS);
+  document.querySelectorAll('[data-team-bot-delta$=":1"], [data-ffa-bot-delta="1"]').forEach(btn => {
+    btn.style.opacity = isLimitReached ? '0.35' : '1';
+    btn.style.cursor = isLimitReached ? 'not-allowed' : 'pointer';
+  });
 
   // 6. Łączna liczba uczestników w kolumnach
   const alphaCountEl = document.getElementById('mp-alpha-total-count');
@@ -652,6 +697,25 @@ export function initNetworkUI(handlers = {}) {
     }
   });
 
+  // Szybkie chipy numeryczne botów dla Team Alpha i Beta (0, 1, 2, 3, 4, 5, 6)
+  document.querySelectorAll('[data-set-team-bot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      const parts = btn.dataset.setTeamBot.split(':');
+      setMpTeamBots(parts[0], parseInt(parts[1], 10));
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    });
+  });
+
+  // Szybkie chipy numeryczne botów dla trybu FFA (0-6)
+  document.querySelectorAll('[data-set-ffa-bot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (networkState.isConnected && !networkState.isHost) return;
+      setMpFFABots(parseInt(btn.dataset.setFfaBot, 10));
+      if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
+    });
+  });
+
   // Steppery liczby botów w drużynach Alpha/Beta oraz FFA
   document.querySelectorAll('[data-team-bot-delta]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -659,8 +723,7 @@ export function initNetworkUI(handlers = {}) {
       const parts = btn.dataset.teamBotDelta.split(':');
       const teamKey = parts[0];
       const delta = parseInt(parts[1], 10) || 0;
-      const cur = (teamKey === 'alpha') ? (mpMatchConfig.botsAlpha || 0) : (mpMatchConfig.botsBeta || 0);
-      setMpTeamBots(teamKey, cur + delta);
+      adjustMpTeamBots(teamKey, delta);
       if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
     });
   });
@@ -669,8 +732,7 @@ export function initNetworkUI(handlers = {}) {
     btn.addEventListener('click', () => {
       if (networkState.isConnected && !networkState.isHost) return;
       const delta = parseInt(btn.dataset.ffaBotDelta, 10) || 0;
-      const cur = (mpMatchConfig.botsFFA !== undefined) ? mpMatchConfig.botsFFA : 2;
-      setMpFFABots(cur + delta);
+      adjustMpFFABots(delta);
       if (typeof broadcastRoster === 'function') broadcastRoster(); else syncMpRosterUI();
     });
   });

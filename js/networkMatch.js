@@ -14,10 +14,14 @@ export const MP_MODES = {
   FFA: 'FFA'
 };
 
+export const MAX_ARENA_COMBATANTS = 8;
+export const MAX_MP_BOTS = 6;
+
 export const MP_PRESETS = {
   COOP: 'COOP',
-  VERSUS_2V2: 'VERSUS_2V2',
+  VERSUS_4V4: 'VERSUS_4V4',
   VERSUS_3V3: 'VERSUS_3V3',
+  VERSUS_2V2: 'VERSUS_2V2',
   DUEL_1V1: 'DUEL_1V1',
   FFA: 'FFA',
   CUSTOM: 'CUSTOM'
@@ -31,13 +35,15 @@ function loadStoredConfig() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
+        const bA = Math.max(0, Math.min(MAX_MP_BOTS, parseInt(parsed.botsAlpha, 10) || 0));
+        const bB = Math.max(0, Math.min(MAX_MP_BOTS - bA, parseInt(parsed.botsBeta, 10) || 0));
         return {
           mode: parsed.mode === 'FFA' ? 'FFA' : 'TEAMS',
           hostTeam: parsed.hostTeam === 'ORANGE' ? 'ORANGE' : 'CYAN',
           clientTeam: parsed.clientTeam === 'CYAN' ? 'CYAN' : 'ORANGE',
-          botsAlpha: Math.max(0, Math.min(3, parseInt(parsed.botsAlpha, 10) || 0)),
-          botsBeta: Math.max(0, Math.min(4, parseInt(parsed.botsBeta, 10) || 0)),
-          botsFFA: Math.max(0, Math.min(5, parseInt(parsed.botsFFA, 10) || 2)),
+          botsAlpha: bA,
+          botsBeta: bB,
+          botsFFA: Math.max(0, Math.min(MAX_MP_BOTS, parseInt(parsed.botsFFA, 10) || 4)),
           preset: parsed.preset || 'VERSUS_2V2'
         };
       }
@@ -49,7 +55,7 @@ function loadStoredConfig() {
     clientTeam: 'ORANGE',
     botsAlpha: 1,
     botsBeta: 1,
-    botsFFA: 2,
+    botsFFA: 4,
     preset: 'VERSUS_2V2'
   };
 }
@@ -69,27 +75,27 @@ export function saveMpMatchConfig() {
 export function applyMpPreset(presetName) {
   switch (presetName) {
     case MP_PRESETS.COOP:
-      // KOOPERACJA: Host i Klient razem w Team Alpha (Cyan) vs 2 lub 3 boty w Team Beta (Orange)
+      // KOOPERACJA: Host i Klient razem w Team Alpha (Cyan) vs wrogie boty w Team Beta (Orange)
       mpMatchConfig.mode = 'TEAMS';
       mpMatchConfig.hostTeam = 'CYAN';
       mpMatchConfig.clientTeam = 'CYAN';
       mpMatchConfig.botsAlpha = 0;
-      mpMatchConfig.botsBeta = 3;
+      mpMatchConfig.botsBeta = 4;
       mpMatchConfig.preset = MP_PRESETS.COOP;
       break;
 
-    case MP_PRESETS.VERSUS_2V2:
-      // RYWALIZACJA 2v2: Host+Bot (Alpha) vs Klient+Bot (Beta)
+    case MP_PRESETS.VERSUS_4V4:
+      // RYWALIZACJA 4v4: Host+3 Boty (Alpha) vs Klient+3 Boty (Beta) -> Pełne 8 postaci na arenie!
       mpMatchConfig.mode = 'TEAMS';
       mpMatchConfig.hostTeam = 'CYAN';
       mpMatchConfig.clientTeam = 'ORANGE';
-      mpMatchConfig.botsAlpha = 1;
-      mpMatchConfig.botsBeta = 1;
-      mpMatchConfig.preset = MP_PRESETS.VERSUS_2V2;
+      mpMatchConfig.botsAlpha = 3;
+      mpMatchConfig.botsBeta = 3;
+      mpMatchConfig.preset = MP_PRESETS.VERSUS_4V4;
       break;
 
     case MP_PRESETS.VERSUS_3V3:
-      // RYWALIZACJA 3v3: Host+2 Boty (Alpha) vs Klient+2 Boty (Beta)
+      // RYWALIZACJA 3v3: Host+2 Boty (Alpha) vs Klient+2 Boty (Beta) -> 6 postaci
       mpMatchConfig.mode = 'TEAMS';
       mpMatchConfig.hostTeam = 'CYAN';
       mpMatchConfig.clientTeam = 'ORANGE';
@@ -98,8 +104,18 @@ export function applyMpPreset(presetName) {
       mpMatchConfig.preset = MP_PRESETS.VERSUS_3V3;
       break;
 
+    case MP_PRESETS.VERSUS_2V2:
+      // RYWALIZACJA 2v2: Host+1 Bot (Alpha) vs Klient+1 Bot (Beta) -> 4 postacie
+      mpMatchConfig.mode = 'TEAMS';
+      mpMatchConfig.hostTeam = 'CYAN';
+      mpMatchConfig.clientTeam = 'ORANGE';
+      mpMatchConfig.botsAlpha = 1;
+      mpMatchConfig.botsBeta = 1;
+      mpMatchConfig.preset = MP_PRESETS.VERSUS_2V2;
+      break;
+
     case MP_PRESETS.DUEL_1V1:
-      // CZYSTY POJEDYNEK 1v1: Host vs Klient (brak botów)
+      // CZYSTY POJEDYNEK 1v1: Host vs Klient (brak botów) -> 2 postacie
       mpMatchConfig.mode = 'TEAMS';
       mpMatchConfig.hostTeam = 'CYAN';
       mpMatchConfig.clientTeam = 'ORANGE';
@@ -109,13 +125,11 @@ export function applyMpPreset(presetName) {
       break;
 
     case MP_PRESETS.FFA:
-      // KAŻDY NA KAŻDEGO: brak drużyn, 2 graczy + boty FFA
+      // KAŻDY NA KAŻDEGO: brak drużyn, 2 graczy + 6 botów FFA -> 8 postaci!
       mpMatchConfig.mode = 'FFA';
       mpMatchConfig.hostTeam = 'FFA_HOST';
       mpMatchConfig.clientTeam = 'FFA_CLIENT';
-      if (mpMatchConfig.botsFFA === undefined || mpMatchConfig.botsFFA < 0) {
-        mpMatchConfig.botsFFA = 2;
-      }
+      mpMatchConfig.botsFFA = 6;
       mpMatchConfig.preset = MP_PRESETS.FFA;
       break;
 
@@ -146,21 +160,20 @@ export function setMpPlayerTeam(role, team) {
 
 /**
  * Zmiana liczby botów przypisanych do danej drużyny (Team Alpha lub Team Beta)
+ * Maksymalna łączna liczba botów w multiplayer = 6 (2 graczy + 6 botów = 8 postaci na arenie!)
  */
 export function setMpTeamBots(teamKey, count) {
-  const num = Math.max(0, Math.min(4, parseInt(count, 10) || 0));
-  if (teamKey === 'alpha' || teamKey === 'CYAN') {
-    mpMatchConfig.botsAlpha = num;
-  } else if (teamKey === 'beta' || teamKey === 'ORANGE') {
-    mpMatchConfig.botsBeta = num;
-  }
+  const target = Math.max(0, Math.min(MAX_MP_BOTS, parseInt(count, 10) || 0));
 
-  // Ochrona przed przekroczeniem 5 botów łącznie
-  if (mpMatchConfig.botsAlpha + mpMatchConfig.botsBeta > 5) {
-    if (teamKey === 'alpha') {
-      mpMatchConfig.botsBeta = Math.max(0, 5 - mpMatchConfig.botsAlpha);
-    } else {
-      mpMatchConfig.botsAlpha = Math.max(0, 5 - mpMatchConfig.botsBeta);
+  if (teamKey === 'alpha' || teamKey === 'CYAN') {
+    mpMatchConfig.botsAlpha = target;
+    if (mpMatchConfig.botsAlpha + mpMatchConfig.botsBeta > MAX_MP_BOTS) {
+      mpMatchConfig.botsBeta = Math.max(0, MAX_MP_BOTS - mpMatchConfig.botsAlpha);
+    }
+  } else if (teamKey === 'beta' || teamKey === 'ORANGE') {
+    mpMatchConfig.botsBeta = target;
+    if (mpMatchConfig.botsAlpha + mpMatchConfig.botsBeta > MAX_MP_BOTS) {
+      mpMatchConfig.botsAlpha = Math.max(0, MAX_MP_BOTS - mpMatchConfig.botsBeta);
     }
   }
 
@@ -171,14 +184,39 @@ export function setMpTeamBots(teamKey, count) {
 }
 
 /**
- * Zmiana liczby botów w trybie Każdy na Każdego (FFA)
+ * Wygodny stepper botów z ochroną limitu 8 postaci
+ */
+export function adjustMpTeamBots(teamKey, delta) {
+  const curAlpha = mpMatchConfig.botsAlpha || 0;
+  const curBeta = mpMatchConfig.botsBeta || 0;
+  const total = curAlpha + curBeta;
+
+  if (teamKey === 'alpha' || teamKey === 'CYAN') {
+    if (delta > 0 && total >= MAX_MP_BOTS) return mpMatchConfig;
+    const nextVal = Math.max(0, Math.min(MAX_MP_BOTS, curAlpha + delta));
+    return setMpTeamBots('alpha', nextVal);
+  } else {
+    if (delta > 0 && total >= MAX_MP_BOTS) return mpMatchConfig;
+    const nextVal = Math.max(0, Math.min(MAX_MP_BOTS, curBeta + delta));
+    return setMpTeamBots('beta', nextVal);
+  }
+}
+
+/**
+ * Zmiana liczby botów w trybie Każdy na Każdego (FFA, 0 do 6 botów)
  */
 export function setMpFFABots(count) {
-  mpMatchConfig.botsFFA = Math.max(0, Math.min(5, parseInt(count, 10) || 0));
+  mpMatchConfig.botsFFA = Math.max(0, Math.min(MAX_MP_BOTS, parseInt(count, 10) || 0));
   mpMatchConfig.mode = 'FFA';
   mpMatchConfig.preset = MP_PRESETS.FFA;
   saveMpMatchConfig();
   return mpMatchConfig;
+}
+
+export function adjustMpFFABots(delta) {
+  const cur = (mpMatchConfig.botsFFA !== undefined) ? mpMatchConfig.botsFFA : 4;
+  const nextVal = Math.max(0, Math.min(MAX_MP_BOTS, cur + delta));
+  return setMpFFABots(nextVal);
 }
 
 /**
@@ -195,7 +233,7 @@ export function setMpMode(mode) {
   return mpMatchConfig;
 }
 
-function detectCurrentPreset() {
+export function detectCurrentPreset() {
   if (mpMatchConfig.mode === 'FFA') return MP_PRESETS.FFA;
   const hT = mpMatchConfig.hostTeam;
   const cT = mpMatchConfig.clientTeam;
@@ -203,10 +241,21 @@ function detectCurrentPreset() {
   const bB = mpMatchConfig.botsBeta;
 
   if (hT === 'CYAN' && cT === 'CYAN' && bA === 0 && bB > 0) return MP_PRESETS.COOP;
-  if (hT === 'CYAN' && cT === 'ORANGE' && bA === 1 && bB === 1) return MP_PRESETS.VERSUS_2V2;
+  if (hT === 'CYAN' && cT === 'ORANGE' && bA === 3 && bB === 3) return MP_PRESETS.VERSUS_4V4;
   if (hT === 'CYAN' && cT === 'ORANGE' && bA === 2 && bB === 2) return MP_PRESETS.VERSUS_3V3;
+  if (hT === 'CYAN' && cT === 'ORANGE' && bA === 1 && bB === 1) return MP_PRESETS.VERSUS_2V2;
   if (hT === 'CYAN' && cT === 'ORANGE' && bA === 0 && bB === 0) return MP_PRESETS.DUEL_1V1;
   return MP_PRESETS.CUSTOM;
+}
+
+/**
+ * Zwraca łączną liczbę wszystkich postaci na arenie (Gracze + Boty <= 8)
+ */
+export function getTotalMpCombatants(cfg = mpMatchConfig) {
+  if (cfg.mode === 'FFA') {
+    return 2 + ((cfg.botsFFA !== undefined) ? cfg.botsFFA : 4);
+  }
+  return 2 + (cfg.botsAlpha || 0) + (cfg.botsBeta || 0);
 }
 
 /**
@@ -250,9 +299,12 @@ export function getMpBotTeamsList() {
  * Generuje profesjonalny, taktyczny opis aktualnego składu drużyn (ZERO EMOJIS)
  */
 export function getMpMatchRosterSummary(cfg = mpMatchConfig) {
+  const total = getTotalMpCombatants(cfg);
+  const tag = (total >= MAX_ARENA_COMBATANTS) ? `[${total}/${MAX_ARENA_COMBATANTS} MAKS]` : `[${total}/${MAX_ARENA_COMBATANTS}]`;
+
   if (cfg.mode === 'FFA') {
-    const bCount = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 2;
-    return `KAŻDY NA KAŻDEGO (FFA): 2 GRACZY + ${bCount} BOTÓW [BEZ SOJUSZY]`;
+    const bCount = (cfg.botsFFA !== undefined) ? cfg.botsFFA : 4;
+    return `${tag} KAŻDY NA KAŻDEGO (FFA): 2 GRACZY + ${bCount} BOTÓW [BEZ SOJUSZY]`;
   }
 
   const hT = cfg.hostTeam || 'CYAN';
@@ -273,13 +325,13 @@ export function getMpMatchRosterSummary(cfg = mpMatchConfig) {
     const allyBots = (hT === 'CYAN') ? bA : bB;
     const enemyBots = (hT === 'CYAN') ? bB : bA;
 
-    const allySuffix = (allyBots > 0) ? ` + ${allyBots} BOT` : '';
-    return `KOOPERACJA: TEAM ${teamName} [HOST + KLIENT${allySuffix}] VS TEAM ${enemyName} [${enemyBots} BOTÓW AI]`;
+    const allySuffix = (allyBots > 0) ? ` + ${allyBots} BOT${allyBots > 1 ? 'Y' : ''}` : '';
+    return `${tag} KOOPERACJA: TEAM ${teamName} [HOST + KLIENT${allySuffix}] VS TEAM ${enemyName} [${enemyBots} BOTÓW AI]`;
   }
 
   // Czysty pojedynek 1v1
   if (bA === 0 && bB === 0) {
-    return 'POJEDYNEK 1V1: HOST (TEAM ALPHA) VS KLIENT (TEAM BETA)';
+    return `${tag} POJEDYNEK 1V1: HOST (ALPHA) VS KLIENT (BETA)`;
   }
 
   // Mecz drużynowy symetryczny lub asymetryczny
@@ -293,7 +345,7 @@ export function getMpMatchRosterSummary(cfg = mpMatchConfig) {
   if (cT === 'ORANGE') betaDetails.push('KLIENT');
   if (bB > 0) betaDetails.push(`${bB} BOT${bB > 1 ? 'Y' : ''}`);
 
-  return `BITWA ${alphaTotal}v${betaTotal}: ALPHA [${alphaDetails.join(' + ')}] VS BETA [${betaDetails.join(' + ')}]`;
+  return `${tag} BITWA ${alphaTotal}v${betaTotal}: ALPHA [${alphaDetails.join(' + ')}] VS BETA [${betaDetails.join(' + ')}]`;
 }
 
 /**
@@ -351,7 +403,7 @@ export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800)
     const totalEntities = bList.length + 2;
     const minX = alphaBaseX;
     const maxX = betaBaseX;
-    const span = Math.max(250, (maxX - minX) / Math.max(1, totalEntities - 1));
+    const span = Math.max(220, (maxX - minX) / Math.max(1, totalEntities - 1));
     for (let i = 0; i < bList.length; i++) {
       botSpawns.push({
         x: Math.round(minX + span * (i + 1)),
@@ -365,7 +417,7 @@ export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800)
     for (let i = 0; i < bList.length; i++) {
       const bTeam = bList[i];
       if (bTeam === 'CYAN') {
-        const offsetX = 380 + (cyanBotOffset * 150);
+        const offsetX = 300 + (cyanBotOffset * 125);
         cyanBotOffset++;
         botSpawns.push({
           x: alphaBaseX + offsetX,
@@ -373,7 +425,7 @@ export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800)
           facing: 1
         });
       } else {
-        const offsetX = 380 + (orangeBotOffset * 150);
+        const offsetX = 300 + (orangeBotOffset * 125);
         orangeBotOffset++;
         botSpawns.push({
           x: betaBaseX - offsetX,
