@@ -104,9 +104,19 @@ export const killstreakState = {
 
   // Tryb celowania nalotu moździerzowego (dotyk / mysz na ekranie)
   mortarTargeting: false,
+  mortarCameraX: 0,
   mortarTargetX: 0,
   mortarTargetTouchId: null,
-  mortarCancelButtonBounds: null
+  lastTouchScreenX: null,
+  touchStartX: null,
+  touchStartY: null,
+  lastTapTime: 0,
+  lastTapX: 0,
+  mortarCancelButtonBounds: null,
+  mortarPlayerButtonBounds: null,
+  mortarConfirmButtonBounds: null,
+  mortarLeftNavBounds: null,
+  mortarRightNavBounds: null
 };
 
 /**

@@ -26,9 +26,15 @@ export function initKillstreaks() {
   killstreakState.notificationTimer = 0;
   killstreakState.hudButtonBounds = null;
   killstreakState.mortarTargeting = false;
+  killstreakState.mortarCameraX = 0;
   killstreakState.mortarTargetX = 0;
   killstreakState.mortarTargetTouchId = null;
+  killstreakState.lastTouchScreenX = null;
   killstreakState.mortarCancelButtonBounds = null;
+  killstreakState.mortarPlayerButtonBounds = null;
+  killstreakState.mortarConfirmButtonBounds = null;
+  killstreakState.mortarLeftNavBounds = null;
+  killstreakState.mortarRightNavBounds = null;
   initCarePackages();
   initSentryGuns();
 }
@@ -172,11 +178,15 @@ export function activateKillstreak(streakId) {
     killstreakState.mortarTargeting = true;
     const defaultX = (player?.x || 600) + (player?.facing || 1) * 220;
     killstreakState.mortarTargetX = defaultX;
+    killstreakState.mortarCameraX = player?.x || defaultX;
     killstreakState.mortarTargetTouchId = null;
+    killstreakState.lastTouchScreenX = null;
+    killstreakState.touchStartX = null;
+    killstreakState.touchStartY = null;
 
     killstreakState.recentNotification = {
       title: '[NALOT] WYBIERZ PUNKT UDERZENIA',
-      text: 'DOTKNIJ MIEJSCA NA EKRANIE, ABY WEZWAĆ NALOT',
+      text: 'STERUJ KAMERĄ I WSKAŻ PUNKT SALWY ARTYLERYJSKIEJ',
       color: '#ef4444'
     };
     killstreakState.notificationTimer = 4.0;
@@ -277,6 +287,14 @@ export function confirmMortarStrikeTarget(worldX, firingPlayer = player) {
   killstreakState.availableStreaks.splice(idx, 1);
   killstreakState.mortarTargeting = false;
   killstreakState.mortarTargetTouchId = null;
+  killstreakState.lastTouchScreenX = null;
+  killstreakState.touchStartX = null;
+  killstreakState.touchStartY = null;
+  killstreakState.mortarCancelButtonBounds = null;
+  killstreakState.mortarPlayerButtonBounds = null;
+  killstreakState.mortarConfirmButtonBounds = null;
+  killstreakState.mortarLeftNavBounds = null;
+  killstreakState.mortarRightNavBounds = null;
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
@@ -301,6 +319,14 @@ export function cancelMortarStrikeTargeting() {
   if (!killstreakState.mortarTargeting) return false;
   killstreakState.mortarTargeting = false;
   killstreakState.mortarTargetTouchId = null;
+  killstreakState.lastTouchScreenX = null;
+  killstreakState.touchStartX = null;
+  killstreakState.touchStartY = null;
+  killstreakState.mortarCancelButtonBounds = null;
+  killstreakState.mortarPlayerButtonBounds = null;
+  killstreakState.mortarConfirmButtonBounds = null;
+  killstreakState.mortarLeftNavBounds = null;
+  killstreakState.mortarRightNavBounds = null;
   killstreakState.recentNotification = {
     title: '[NALOT] ANULOWANO',
     text: 'CELOWANIE NALOTU PRZERWANE',
@@ -325,6 +351,71 @@ export function getKillstreakTimeRemaining(id) {
   if (!id || !killstreakState.activeStreaks) return 0;
   const found = killstreakState.activeStreaks.find(s => s.id === id);
   return found ? Math.max(0, found.timeRemaining) : 0;
+}
+
+/**
+ * Obsługa płynnego przesuwania kamery w trybie wyboru celu nalotu (PC: klawisze A/D, strzałki, panning krawędziowy; Mobile: panning krawędziowy dotyku)
+ */
+export function updateMortarTargetingControls(safeDt, activePlayer) {
+  if (!killstreakState.mortarTargeting) return;
+
+  const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const minX = (typeof curArena?.bounds?.minX === 'number') ? (curArena.bounds.minX + 80) : 120;
+  const maxX = (typeof curArena?.bounds?.maxX === 'number') ? (curArena.bounds.maxX - 80) : ((typeof curArena?.width === 'number') ? (curArena.width - 80) : 2800);
+
+  const activeKeys = (typeof window !== 'undefined' && window.keys) ? window.keys : null;
+  const isShift = !!activeKeys?.shift;
+  const panSpeed = isShift ? 2200 : 1300;
+
+  // 1. Klawiatura PC (A / D, Strzałki w lewo / w prawo)
+  if (activeKeys?.left || activeKeys?.KeyA || activeKeys?.ArrowLeft) {
+    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - panSpeed * safeDt;
+  }
+  if (activeKeys?.right || activeKeys?.KeyD || activeKeys?.ArrowRight) {
+    killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + panSpeed * safeDt;
+  }
+
+  // 2. Panning krawędziowy myszą na PC
+  const isTouch = !!(
+    isTouchDevice ||
+    (typeof window !== 'undefined' && (window.innerWidth <= 850 || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+  );
+
+  const activeMouse = (typeof window !== 'undefined' && window.mouseState) ? window.mouseState : null;
+  if (!isTouch && activeMouse && typeof activeMouse.screenX === 'number') {
+    const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
+    const edgeMargin = Math.max(90, winW * 0.16);
+
+    if (activeMouse.screenX < edgeMargin && activeMouse.screenX >= 0) {
+      const edgeFactor = Math.min(1.0, (edgeMargin - activeMouse.screenX) / edgeMargin);
+      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - (450 + edgeFactor * 1350) * safeDt;
+    } else if (activeMouse.screenX > winW - edgeMargin && activeMouse.screenX <= winW) {
+      const edgeFactor = Math.min(1.0, (activeMouse.screenX - (winW - edgeMargin)) / edgeMargin);
+      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + (450 + edgeFactor * 1350) * safeDt;
+    }
+  }
+
+  // 3. Panning krawędziowy dotykiem na ekranie mobilnym
+  if (killstreakState.mortarTargetTouchId !== null && typeof killstreakState.lastTouchScreenX === 'number') {
+    const winW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 800;
+    const touchEdgeMargin = Math.max(70, winW * 0.18);
+
+    if (killstreakState.lastTouchScreenX < touchEdgeMargin) {
+      const edgeFactor = Math.min(1.0, (touchEdgeMargin - killstreakState.lastTouchScreenX) / touchEdgeMargin);
+      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) - (400 + edgeFactor * 1200) * safeDt;
+    } else if (killstreakState.lastTouchScreenX > winW - touchEdgeMargin) {
+      const edgeFactor = Math.min(1.0, (killstreakState.lastTouchScreenX - (winW - touchEdgeMargin)) / touchEdgeMargin);
+      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (activePlayer?.x || 600)) + (400 + edgeFactor * 1200) * safeDt;
+    }
+  }
+
+  // Ograniczenie współrzędnych do areny
+  if (typeof killstreakState.mortarCameraX === 'number' && !isNaN(killstreakState.mortarCameraX)) {
+    killstreakState.mortarCameraX = Math.max(minX, Math.min(maxX, killstreakState.mortarCameraX));
+  }
+  if (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX)) {
+    killstreakState.mortarTargetX = Math.max(minX, Math.min(maxX, killstreakState.mortarTargetX));
+  }
 }
 
 /**
@@ -371,6 +462,7 @@ export function updateKillstreaks(dt = (1 / 60), playerOverride = null, combatan
     ? combatantsOverride
     : (activePlayer ? [activePlayer] : []);
 
+  updateMortarTargetingControls(safeDt, activePlayer);
   updateCarePackages(safeDt, activePlayer, combatantsList);
   updateMortarStrikes(safeDt, combatantsList);
   updateAttackDrones(safeDt, combatantsList);

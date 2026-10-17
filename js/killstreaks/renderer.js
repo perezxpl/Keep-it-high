@@ -505,40 +505,111 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     ctx.textBaseline = 'middle';
     ctx.fillText('[TRYB CELOWANIA NALOTU ARTYLERII]', W / 2, bannerY + 14);
 
-    ctx.font = 'bold 9px monospace';
+    ctx.font = 'bold 8.5px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(isMobile ? 'DOTKNIJ MIEJSCA NA EKRANIE, ABY WEZWAĆ SALWĘ' : 'KLIKNIJ NA EKRANIE, ABY WEZWAĆ SALWĘ', W / 2, bannerY + 29);
+    ctx.fillText(isMobile ? 'PRZECIĄGNIJ / STRZAŁKI = RUCH KAMERY // KLIKNIJ [POTWIERDŹ]' : '[A]/[D] LUB KRAWĘDŹ = RUCH KAMERY // LPM = ODPALENIE // [ESC] = ANULUJ', W / 2, bannerY + 29);
 
-    // C. Przycisk [ANULUJ]
-    const cancelW = 110;
-    const cancelH = 30;
-    const cancelX = (W - cancelW) / 2;
-    const cancelY = bannerY + bannerH + 8;
+    // C. Przyciski taktyczne pod bannerem (ANULUJ, MOJA POZYCJA, POTWIERDŹ)
+    const btnH = isMobile ? 30 : 28;
+    const btnY = bannerY + bannerH + 7;
 
-    killstreakState.mortarCancelButtonBounds = {
-      x: cancelX,
-      y: cancelY,
-      w: cancelW,
-      h: cancelH
-    };
+    const cancelW = isMobile ? 88 : 96;
+    const playerW = isMobile ? 112 : 120;
+    const confirmW = isMobile ? 134 : 144;
+    const spacing = 8;
+    const totalW = cancelW + playerW + confirmW + spacing * 2;
+    const startX = Math.round((W - totalW) / 2);
 
-    ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
+    const cancelX = startX;
+    const playerX = cancelX + cancelW + spacing;
+    const confirmX = playerX + playerW + spacing;
+
+    killstreakState.mortarCancelButtonBounds = { x: cancelX, y: btnY, w: cancelW, h: btnH };
+    killstreakState.mortarPlayerButtonBounds = { x: playerX, y: btnY, w: playerW, h: btnH };
+    killstreakState.mortarConfirmButtonBounds = { x: confirmX, y: btnY, w: confirmW, h: btnH };
+
+    // 1. [ANULUJ X]
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.94)';
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(cancelX, cancelY, cancelW, cancelH, 4);
-    else ctx.rect(cancelX, cancelY, cancelW, cancelH);
+    if (ctx.roundRect) ctx.roundRect(cancelX, btnY, cancelW, btnH, 4);
+    else ctx.rect(cancelX, btnY, cancelW, btnH);
     ctx.fill();
-
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.7)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
-
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#cbd5e1';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('[ANULUJ X]', W / 2, cancelY + cancelH / 2);
+    ctx.fillText('[ANULUJ X]', cancelX + cancelW / 2, btnY + btnH / 2);
+
+    // 2. [MOJA POZYCJA]
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(playerX, btnY, playerW, btnH, 4);
+    else ctx.rect(playerX, btnY, playerW, btnH);
+    ctx.fill();
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText('[MOJA POZYCJA]', playerX + playerW / 2, btnY + btnH / 2);
+
+    // 3. [POTWIERDŹ NALOT]
+    ctx.fillStyle = 'rgba(185, 28, 28, 0.94)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(confirmX, btnY, confirmW, btnH, 4);
+    else ctx.rect(confirmX, btnY, confirmW, btnH);
+    ctx.fill();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('[POTWIERDŹ NALOT]', confirmX + confirmW / 2, btnY + btnH / 2);
+
+    // D. Boczne przyciski przewijania mapy (Flank Navigation)
+    const navW = isMobile ? 62 : 54;
+    const navH = isMobile ? 50 : 44;
+    const navY = Math.round((H - navH) / 2);
+    const leftNavX = 12;
+    const rightNavX = W - 12 - navW;
+
+    killstreakState.mortarLeftNavBounds = { x: leftNavX, y: navY, w: navW, h: navH };
+    killstreakState.mortarRightNavBounds = { x: rightNavX, y: navY, w: navW, h: navH };
+
+    // Przycisk [◄ LEWA]
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(leftNavX, navY, navW, navH, 4);
+    else ctx.rect(leftNavX, navY, navW, navH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('[◄ LEWA]', leftNavX + navW / 2, navY + navH / 2);
+
+    // Przycisk [PRAWA ►]
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(rightNavX, navY, navW, navH, 4);
+    else ctx.rect(rightNavX, navY, navW, navH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('[PRAWA ►]', rightNavX + navW / 2, navY + navH / 2);
   } else {
     killstreakState.mortarCancelButtonBounds = null;
+    killstreakState.mortarPlayerButtonBounds = null;
+    killstreakState.mortarConfirmButtonBounds = null;
+    killstreakState.mortarLeftNavBounds = null;
+    killstreakState.mortarRightNavBounds = null;
   }
 
   ctx.restore();

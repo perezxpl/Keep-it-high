@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT, isTouchDevice } from './config.js';
+import { killstreakState } from './killstreaks/state.js';
 
 let _cameraCanvas = null;
 let _cameraGroundY = null;
@@ -340,6 +341,11 @@ export function updateCamera(player, ball, options = {}) {
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
+  } else if (killstreakState && killstreakState.mortarTargeting) {
+    // Tryb celowania nalotu artylerii: szeroki, taktyczny satelitarny rzut oka na mapę
+    const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
+    const tacticalOverviewMult = isMobile ? 0.74 : 0.80;
+    camera.targetZoom = Math.max(minZoom, optimalBaseZoom * tacticalOverviewMult);
   } else {
     // Dynamicznie dopasowany bazowy zoom gry dla aktualnego ekranu/urządzenia:
     // - Telefon 6.8": 0.50
@@ -462,7 +468,17 @@ export function updateCamera(player, ball, options = {}) {
   const lookAhead = Math.max(-maxVelLead, Math.min(maxVelLead, rawVelLead));
 
   let targetCamX;
-  if (viewWidth < arenaWidth) {
+  if (killstreakState && killstreakState.mortarTargeting) {
+    const focusX = (typeof killstreakState.mortarCameraX === 'number' && !isNaN(killstreakState.mortarCameraX))
+      ? killstreakState.mortarCameraX
+      : ((typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX)) ? killstreakState.mortarTargetX : (targetX || 600));
+    targetCamX = focusX - (viewWidth / 2);
+    if (viewWidth < arenaWidth) {
+      targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
+    } else {
+      targetCamX = ARENA_LEFT;
+    }
+  } else if (viewWidth < arenaWidth) {
     targetCamX = (targetX + lookAhead + aimLeadX) - (viewWidth / 2);
     targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
   } else {
@@ -484,9 +500,15 @@ export function updateCamera(player, ball, options = {}) {
   const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
+  if (killstreakState && killstreakState.mortarTargeting) {
+    // Podczas nalotu: kadr obejmuje podłoże i przestrzeń powietrzną
+    targetCamY = baseFloorY - (viewHeight * 0.70);
+    targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
+  }
+
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
   // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
-  if (player && !player.isDead) {
+  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
@@ -521,8 +543,12 @@ export function updateCamera(player, ball, options = {}) {
   }
 
   // 4. Interpolacja pozycji (Lerp):
-  const baseLerpSpeed = CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08;
-  const lerpSpeed = isMobile ? Math.min(baseLerpSpeed, 0.085) : baseLerpSpeed;
+  const baseLerpSpeed = (killstreakState && killstreakState.mortarTargeting)
+    ? 0.12
+    : (CONFIG.CAMERA_SMOOTH_SPEED || camera.lerpSpeed || camera.smoothSpeed || 0.08);
+  const lerpSpeed = (killstreakState && killstreakState.mortarTargeting)
+    ? 0.12
+    : (isMobile ? Math.min(baseLerpSpeed, 0.085) : baseLerpSpeed);
 
   if (!camera._initialized) {
     camera._initialized = true;
@@ -539,7 +565,7 @@ export function updateCamera(player, ball, options = {}) {
   // Nawet przy gwałtownym przyspieszeniu, odrzucie czy zrywach jetpacka,
   // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
   // =========================================================================
-  if (player && !player.isDead) {
+  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);

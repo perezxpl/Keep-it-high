@@ -134,12 +134,45 @@ canvas.addEventListener('touchstart', (e) => {
     // =======================================================================
     if (killstreakState.mortarTargeting) {
       const cb = killstreakState.mortarCancelButtonBounds;
+      const pb = killstreakState.mortarPlayerButtonBounds;
+      const cfb = killstreakState.mortarConfirmButtonBounds;
+      const lb = killstreakState.mortarLeftNavBounds;
+      const rb = killstreakState.mortarRightNavBounds;
       const kb = killstreakState.hudButtonBounds;
 
       // Sprawdzenie przycisku [ANULUJ]
       if (cb && t.clientX >= cb.x && t.clientX <= (cb.x + cb.w) &&
           t.clientY >= cb.y && t.clientY <= (cb.y + cb.h)) {
         cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Sprawdzenie przycisku [MOJA POZYCJA]
+      if (pb && t.clientX >= pb.x && t.clientX <= (pb.x + pb.w) &&
+          t.clientY >= pb.y && t.clientY <= (pb.y + pb.h)) {
+        killstreakState.mortarCameraX = player?.x || 600;
+        killstreakState.mortarTargetX = player?.x || 600;
+        continue;
+      }
+
+      // Sprawdzenie przycisku [POTWIERDŹ NALOT]
+      if (cfb && t.clientX >= cfb.x && t.clientX <= (cfb.x + cfb.w) &&
+          t.clientY >= cfb.y && t.clientY <= (cfb.y + cfb.h)) {
+        confirmMortarStrikeTarget(killstreakState.mortarTargetX, player);
+        continue;
+      }
+
+      // Sprawdzenie bocznych przycisków nawigacyjnych
+      if (lb && t.clientX >= lb.x && t.clientX <= (lb.x + lb.w) &&
+          t.clientY >= lb.y && t.clientY <= (lb.y + lb.h)) {
+        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) - 420;
+        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) - 420;
+        continue;
+      }
+      if (rb && t.clientX >= rb.x && t.clientX <= (rb.x + rb.w) &&
+          t.clientY >= rb.y && t.clientY <= (rb.y + rb.h)) {
+        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) + 420;
+        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) + 420;
         continue;
       }
 
@@ -150,8 +183,22 @@ canvas.addEventListener('touchstart', (e) => {
         continue;
       }
 
+      // Wykrywanie szybkiego dwukliku (double-tap < 360ms w ten sam obszar)
+      const now = performance.now();
+      if (now - (killstreakState.lastTapTime || 0) < 360 && Math.abs(t.clientX - (killstreakState.lastTapX || 0)) < 40) {
+        const worldPos = screenToWorld(t.clientX, t.clientY);
+        confirmMortarStrikeTarget(worldPos.x, player);
+        killstreakState.lastTapTime = 0;
+        continue;
+      }
+      killstreakState.lastTapTime = now;
+      killstreakState.lastTapX = t.clientX;
+
       // Rejestracja dotknięcia i aktualizacja pozycji celu na mapie
       killstreakState.mortarTargetTouchId = t.identifier;
+      killstreakState.lastTouchScreenX = t.clientX;
+      killstreakState.touchStartX = t.clientX;
+      killstreakState.touchStartY = t.clientY;
       const worldPos = screenToWorld(t.clientX, t.clientY);
       killstreakState.mortarTargetX = worldPos.x;
       continue;
@@ -406,6 +453,14 @@ canvas.addEventListener('touchmove', (e) => {
     const t = e.changedTouches[i];
 
     if (killstreakState.mortarTargeting && t.identifier === killstreakState.mortarTargetTouchId) {
+      const lastX = (typeof killstreakState.lastTouchScreenX === 'number') ? killstreakState.lastTouchScreenX : t.clientX;
+      const dx = t.clientX - lastX;
+      killstreakState.lastTouchScreenX = t.clientX;
+
+      if (Math.abs(dx) > 1) {
+        const zoom = (typeof camera !== 'undefined' && camera.zoom) ? camera.zoom : 1;
+        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) - (dx / zoom);
+      }
       const worldPos = screenToWorld(t.clientX, t.clientY);
       killstreakState.mortarTargetX = worldPos.x;
       continue;
@@ -672,12 +727,30 @@ function endTouch(e) {
 
     if (killstreakState.mortarTargeting && t.identifier === killstreakState.mortarTargetTouchId) {
       killstreakState.mortarTargetTouchId = null;
+      killstreakState.lastTouchScreenX = null;
 
       // Sprawdzenie czy puszczenie nastąpiło nad przyciskiem [ANULUJ]
       const cb = killstreakState.mortarCancelButtonBounds;
       if (cb && t.clientX >= cb.x && t.clientX <= (cb.x + cb.w) &&
           t.clientY >= cb.y && t.clientY <= (cb.y + cb.h)) {
         cancelMortarStrikeTargeting();
+        continue;
+      }
+
+      // Sprawdzenie czy puszczenie nastąpiło nad przyciskiem [MOJA POZYCJA]
+      const pb = killstreakState.mortarPlayerButtonBounds;
+      if (pb && t.clientX >= pb.x && t.clientX <= (pb.x + pb.w) &&
+          t.clientY >= pb.y && t.clientY <= (pb.y + pb.h)) {
+        killstreakState.mortarCameraX = player?.x || 600;
+        killstreakState.mortarTargetX = player?.x || 600;
+        continue;
+      }
+
+      // Sprawdzenie czy puszczenie nastąpiło nad przyciskiem [POTWIERDŹ NALOT]
+      const cfb = killstreakState.mortarConfirmButtonBounds;
+      if (cfb && t.clientX >= cfb.x && t.clientX <= (cfb.x + cfb.w) &&
+          t.clientY >= cfb.y && t.clientY <= (cfb.y + cfb.h)) {
+        confirmMortarStrikeTarget(killstreakState.mortarTargetX, player);
         continue;
       }
 
@@ -689,11 +762,9 @@ function endTouch(e) {
         continue;
       }
 
-      // Potwierdzenie nalotu we wskazanym punkcie świata!
-      const targetX = (typeof killstreakState.mortarTargetX === 'number' && !isNaN(killstreakState.mortarTargetX))
-        ? killstreakState.mortarTargetX
-        : screenToWorld(t.clientX, t.clientY).x;
-      confirmMortarStrikeTarget(targetX, player);
+      // Po puszczeniu palca zachowujemy wybrany punkt celowania bez wymuszania strzału
+      const worldPos = screenToWorld(t.clientX, t.clientY);
+      killstreakState.mortarTargetX = worldPos.x;
       continue;
     }
 

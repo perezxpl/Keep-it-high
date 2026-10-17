@@ -67,6 +67,7 @@ export const keys = {
 
 if (typeof window !== 'undefined') {
   window.keys = keys;
+  window.mouseState = mouseState;
 }
 
 export const inputSession = {
@@ -493,6 +494,10 @@ export function initKeyboardMouseHandlers({
     }
 
     if (e.code === 'Escape') {
+      if (killstreakState.mortarTargeting) {
+        cancelMortarStrikeTargeting();
+        return;
+      }
       if (editorState.active) {
         if (editorState.selectedType) {
           editorState.selectedType = null;
@@ -506,6 +511,14 @@ export function initKeyboardMouseHandlers({
       }
     }
   });
+
+  window.addEventListener('wheel', (e) => {
+    if (killstreakState.mortarTargeting) {
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) + delta * 1.5;
+    }
+  }, { passive: false });
 
   window.addEventListener('keyup', (e) => {
     if (isChatActive) {
@@ -713,13 +726,44 @@ export function initKeyboardMouseHandlers({
     }
 
     // 00. Obsługa celowania nalotu moździerzowego (kliknięcie lewym przyciskiem myszy)
-    if (killstreakState.mortarTargeting) {
+    if (killstreakState.mortarTargeting && e.button === 0) {
       const cb = killstreakState.mortarCancelButtonBounds;
+      const pb = killstreakState.mortarPlayerButtonBounds;
+      const cfb = killstreakState.mortarConfirmButtonBounds;
+      const lb = killstreakState.mortarLeftNavBounds;
+      const rb = killstreakState.mortarRightNavBounds;
       const kb = killstreakState.hudButtonBounds;
 
       if (cb && e.clientX >= cb.x && e.clientX <= (cb.x + cb.w) &&
           e.clientY >= cb.y && e.clientY <= (cb.y + cb.h)) {
         cancelMortarStrikeTargeting();
+        return;
+      }
+
+      if (pb && e.clientX >= pb.x && e.clientX <= (pb.x + pb.w) &&
+          e.clientY >= pb.y && e.clientY <= (pb.y + pb.h)) {
+        killstreakState.mortarCameraX = player?.x || 600;
+        killstreakState.mortarTargetX = player?.x || 600;
+        return;
+      }
+
+      if (cfb && e.clientX >= cfb.x && e.clientX <= (cfb.x + cfb.w) &&
+          e.clientY >= cfb.y && e.clientY <= (cfb.y + cfb.h)) {
+        confirmMortarStrikeTarget(killstreakState.mortarTargetX, player);
+        return;
+      }
+
+      if (lb && e.clientX >= lb.x && e.clientX <= (lb.x + lb.w) &&
+          e.clientY >= lb.y && e.clientY <= (lb.y + lb.h)) {
+        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) - 450;
+        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) - 450;
+        return;
+      }
+
+      if (rb && e.clientX >= rb.x && e.clientX <= (rb.x + rb.w) &&
+          e.clientY >= rb.y && e.clientY <= (rb.y + rb.h)) {
+        killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) + 450;
+        killstreakState.mortarTargetX = (killstreakState.mortarTargetX || (player?.x || 600)) + 450;
         return;
       }
 
