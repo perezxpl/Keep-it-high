@@ -476,15 +476,15 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
     const _mapW = ARENA_WIDTH || 3600;
     const centerX = _mapW / 2; // 1800
     const altarX = arena1State.altarX || centerX;
-    const altarY = arena1State.altarY || 760;
-    const spawnBallY = altarY - (ball?.radius || 8) - 2; // 750
+    const altarY = arena1State.altarY || 570;
+    const spawnBallY = altarY;
 
     if (!arena1State.initialSetupDone) {
       arena1State.initialSetupDone = true;
       arena1State.waitingForKickoff = true;
       if (p) {
-        p.x = 240;
-        p.y = 580;
+        p.x = 220;
+        p.y = 420;
         p.vx = 0;
         p.vy = 0;
         p.facing = 1;
@@ -506,8 +506,8 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
     if (p && p.isIntro) {
       p.isIntro = false;
       p.gaitMode = 'IDLE';
-      p.x = 240;
-      p.y = 580;
+      p.x = 220;
+      p.y = 420;
       p.facing = 1;
       arena1State.waitingForKickoff = true;
       arena1State.kickoffCooldown = 0;
@@ -529,12 +529,15 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
     if (arena1State.waitingForKickoff && ball) {
       const time = performance.now() * 0.003;
-      const hoverY = spawnBallY + Math.sin(time) * 4;
+      const hoverY = spawnBallY + Math.sin(time) * 5;
       ball.x = altarX;
       ball.y = hoverY;
+      ball.prevX = altarX;
+      ball.prevY = hoverY;
       ball.vx = 0;
       ball.vy = 0;
       ball.spin = 0;
+      ball.rotation += 0.015;
       ball.trail = [];
 
       if (arena1State.kickoffCooldown <= 0) {
@@ -544,7 +547,7 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
         let nearestBot = null;
         let distB = Infinity;
-        const activeBotsList = (typeof getActiveBots === 'function') ? getActiveBots() : (_activeBot ? [_activeBot] : []);
+        const activeBotsList = (typeof getActiveBots === 'function') ? getActiveBots() : (botObj ? (Array.isArray(botObj) ? botObj : [botObj]) : (_activeBot ? [_activeBot] : []));
         for (const b of activeBotsList) {
           if (!b || !b.active) continue;
           const bcx = b.x + b.w / 2;
@@ -557,13 +560,14 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
         }
 
         const isNear = distP < 55 || distB < 55;
-        const isKicking = p && p.kickState === 'SWING' && distP < 85;
+        const isKicking = (p && (p.kickState === 'SWING' || p.kickBufferTimer > 0) && distP < 85) ||
+                          (nearestBot && nearestBot.kickState === 'SWING' && distB < 85);
 
         if (isNear || isKicking) {
           arena1State.waitingForKickoff = false;
           triggerScreenShake(7);
-          ball.vy = -6.2;
-          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 6.5) : ((nearestBot?.facing || -1) * 6.5);
+          ball.vy = -6.5;
+          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 7.5) : ((nearestBot?.facing || -1) * 7.5);
           ball.spin = (ball.vx > 0 ? 1 : -1) * 0.6;
           spawnAltarShockwave(ball.x, ball.y);
         }

@@ -9,7 +9,7 @@ import {
   spawnKnockedHelmet, spawnVestShreds,
   bodyGibs
 } from './world.js';
-import { checkRayObstacleCollision, obstacles, registerHitSparkCallback } from './obstacles.js';
+import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, arena1State, spawnAltarShockwave } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
@@ -424,6 +424,13 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
       if (distToBall <= cR + 5) {
         ball.isLevitating = false;
+        if (arena1State && arena1State.waitingForKickoff) {
+          arena1State.waitingForKickoff = false;
+          triggerScreenShake(7);
+          if (typeof spawnAltarShockwave === 'function') {
+            spawnAltarShockwave(ball.x, ball.y);
+          }
+        }
         ball.vx += b.vx * b.ballPush;
         ball.vy += b.vy * b.ballPush;
         ball.spin += (b.vx > 0 ? 0.25 : -0.25);

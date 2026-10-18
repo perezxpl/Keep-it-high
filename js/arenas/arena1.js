@@ -8,9 +8,9 @@ import { START_X, ARENA_WIDTH, MAP_WIDTH, MAP_HEIGHT, ARENA_LEFT, ARENA_RIGHT } 
 const _mapW = MAP_WIDTH || ARENA_WIDTH || 3600;
 const _mapH = MAP_HEIGHT || 1300;
 export const centerX = _mapW / 2; // 1800
-export const goalPlatformY = _mapH * 0.5; // 650 (dokładnie w połowie obszaru gry)
+export const goalPlatformY = 490; // Wyniesione wysoko bramki (Górny poziom 3)
 export const goalH = 140;
-export const goalTopY = goalPlatformY - goalH; // 510
+export const goalTopY = goalPlatformY - goalH; // 350
 
 // =========================================================================
 // DEFINICJE BRAMEK (CYAN & ORANGE NEON GOALS)
@@ -19,11 +19,11 @@ export const goalTriggerLeft = {
   id: 'goal_arena1_west',
   team: 'CYAN',
   x: 0,
-  y: goalTopY, // 510
-  w: 220,
+  y: goalTopY, // 350
+  w: 240,
   h: goalH, // 140
-  bottomY: goalPlatformY, // 650 (spód bramki spoczywa bezpośrednio na platformie)
-  lineX: 220,
+  bottomY: goalPlatformY, // 490 (spód bramki spoczywa bezpośrednio na platformie)
+  lineX: 240,
   facing: 1,
   color: '#00F0FF',
   glowColor: 'rgba(0, 240, 255, 0.85)'
@@ -32,12 +32,12 @@ export const goalTriggerLeft = {
 export const goalTriggerRight = {
   id: 'goal_arena1_east',
   team: 'ORANGE',
-  x: _mapW - 220, // 3380
-  y: goalTopY, // 510
-  w: 220,
+  x: _mapW - 240, // 3360
+  y: goalTopY, // 350
+  w: 240,
   h: goalH, // 140
-  bottomY: goalPlatformY, // 650 (spód bramki spoczywa bezpośrednio na platformie)
-  lineX: _mapW - 220,
+  bottomY: goalPlatformY, // 490 (spód bramki spoczywa bezpośrednio na platformie)
+  lineX: _mapW - 240,
   facing: -1,
   color: '#FF8800',
   glowColor: 'rgba(255, 136, 0, 0.85)'
@@ -46,21 +46,24 @@ export const goalTriggerRight = {
 export const ARENA_1_GOALS = [goalTriggerLeft, goalTriggerRight];
 
 // =========================================================================
-// STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE
+// STATYCZNA GEOMETRIA I PLATFORMY KOLIZYJNE - 3 POZIOMY WYSOKOŚCI
 // =========================================================================
 export const ARENA_1_PLATFORMS = [
-  // 1. Lewa platforma bramkowa: x: 0 do 300, y: MAP_HEIGHT * 0.5, wysokość: 30 px
+  // =======================================================================
+  // POZIOM 3 - WYSOKI POZIOM (HIGH TIER: Y = 490 / Poprzeczki Y = 350)
+  // =======================================================================
+  // 1. Lewa wysoka platforma bramkowa (Cyan Goal Deck)
   {
     id: 'goal_platform_west',
     type: 'catwalk',
     isGoalPlatform: true,
     theme: 'cyan',
     x: 0,
-    w: 300,
-    y: goalPlatformY, // 650
-    h: 30,
-    relY: 350,
-    thickness: 30
+    w: 320,
+    y: goalPlatformY, // 490
+    h: 26,
+    relY: 510,
+    thickness: 26
   },
   // Poprzeczka lewej bramki (odbijająca piłkę)
   {
@@ -68,12 +71,108 @@ export const ARENA_1_PLATFORMS = [
     type: 'catwalk',
     isCrossbar: true,
     x: 0,
-    w: 220,
-    y: goalTopY, // 510
+    w: 240,
+    y: goalTopY, // 350
     h: 14,
-    relY: 490,
+    relY: 650,
     thickness: 14
   },
+  // Zachodni wysoki pomost snajperski / platforma obserwacyjna
+  {
+    id: 'high_overlook_west',
+    type: 'catwalk',
+    theme: 'cyan',
+    x: 960,
+    w: 340,
+    y: 490,
+    h: 22,
+    relY: 510,
+    thickness: 22
+  },
+  // Wschodni wysoki pomost snajperski / platforma obserwacyjna
+  {
+    id: 'high_overlook_east',
+    type: 'catwalk',
+    theme: 'orange',
+    x: _mapW - 1300, // 2300
+    w: 340,
+    y: 490,
+    h: 22,
+    relY: 510,
+    thickness: 22
+  },
+  // 2. Prawa wysoka platforma bramkowa (Orange Goal Deck)
+  {
+    id: 'goal_platform_east',
+    type: 'catwalk',
+    isGoalPlatform: true,
+    theme: 'orange',
+    x: _mapW - 320, // 3280
+    w: 320,
+    y: goalPlatformY, // 490
+    h: 26,
+    relY: 510,
+    thickness: 26
+  },
+  // Poprzeczka prawej bramki (odbijająca piłkę)
+  {
+    id: 'crossbar_goal_east',
+    type: 'catwalk',
+    isCrossbar: true,
+    x: _mapW - 240, // 3360
+    w: 240,
+    y: goalTopY, // 350
+    h: 14,
+    relY: 650,
+    thickness: 14
+  },
+
+  // =======================================================================
+  // POZIOM 2 - ŚREDNI POZIOM (MID TIER: Y = 680)
+  // =======================================================================
+  // Zachodnia kładka pośrednia łącząca bastion z poziomem wysokim
+  {
+    id: 'mid_catwalk_west',
+    type: 'catwalk',
+    theme: 'cyan',
+    x: 480,
+    w: 360,
+    y: 680,
+    h: 22,
+    relY: 320,
+    thickness: 22
+  },
+  // Platforma centralna z ołtarzem i cokołem pod lewitującą piłką
+  {
+    id: 'central_altar_platform',
+    type: 'altar_island',
+    isAltar: true,
+    x: centerX - 180, // 1620
+    w: 360,
+    y: 680,
+    h: 24,
+    relY: 320,
+    thickness: 24,
+    props: [
+      { type: 'altar_pedestal', rx: 110, w: 140, h: 20 }
+    ]
+  },
+  // Wschodnia kładka pośrednia łącząca bastion z poziomem wysokim
+  {
+    id: 'mid_catwalk_east',
+    type: 'catwalk',
+    theme: 'orange',
+    x: _mapW - 840, // 2760
+    w: 360,
+    y: 680,
+    h: 22,
+    relY: 320,
+    thickness: 22
+  },
+
+  // =======================================================================
+  // POZIOM 1 - NISKI POZIOM (LOW TIER: Y = 860)
+  // =======================================================================
   // Dolny bastion zachodni
   {
     id: 'west_bastion_fortress',
@@ -88,20 +187,29 @@ export const ARENA_1_PLATFORMS = [
     thickness: 22,
     props: []
   },
-  // Platforma centralna z ołtarzem i cokołem (x: 1640, w: 320, y: 760)
+  // Zachodni niski posterunek skrzydłowy
   {
-    id: 'central_altar_platform',
-    type: 'altar_island',
-    isAltar: true,
-    x: centerX - 160, // 1640 (dokładnie centerX - platformWidth / 2)
+    id: 'low_outpost_west',
+    type: 'catwalk',
+    theme: 'cyan',
+    x: 1080,
     w: 320,
-    y: 760,
-    h: 24,
-    relY: 240,
-    thickness: 24,
-    props: [
-      { type: 'altar_pedestal', rx: 90, w: 140, h: 20 }
-    ]
+    y: 860,
+    h: 22,
+    relY: 140,
+    thickness: 22
+  },
+  // Wschodni niski posterunek skrzydłowy
+  {
+    id: 'low_outpost_east',
+    type: 'catwalk',
+    theme: 'orange',
+    x: _mapW - 1400, // 2200
+    w: 320,
+    y: 860,
+    h: 22,
+    relY: 140,
+    thickness: 22
   },
   // Dolny bastion wschodni
   {
@@ -116,31 +224,6 @@ export const ARENA_1_PLATFORMS = [
     relY: 140,
     thickness: 22,
     props: []
-  },
-  // 2. Prawa platforma bramkowa: x: 3300 do 3600, y: MAP_HEIGHT * 0.5, wysokość: 30 px
-  {
-    id: 'goal_platform_east',
-    type: 'catwalk',
-    isGoalPlatform: true,
-    theme: 'orange',
-    x: _mapW - 300, // 3300
-    w: 300,
-    y: goalPlatformY, // 650
-    h: 30,
-    relY: 350,
-    thickness: 30
-  },
-  // Poprzeczka prawej bramki (odbijająca piłkę)
-  {
-    id: 'crossbar_goal_east',
-    type: 'catwalk',
-    isCrossbar: true,
-    x: _mapW - 220, // 3380
-    w: 220,
-    y: goalTopY, // 510
-    h: 14,
-    relY: 490,
-    thickness: 14
   }
 ];
 
@@ -151,8 +234,9 @@ export const arena1State = {
   kickoffCooldown: 0,
   initialSetupDone: false,
   altarX: centerX, // 1800
-  altarY: 760,
-  altarRelY: 240,
+  altarY: 570, // Lewitacja w powietrzu w snopie światła
+  altarRelY: 430,
+  altarPlatformY: 680,
   altarPulse: 0
 };
 
@@ -360,9 +444,9 @@ export function drawArena1Background(ctx, camera) {
 // =========================================================================
 export function drawArena1Foreground(ctx, camera) {
   if (!ctx) return;
-  // Subtelna poświata centralnego ołtarza
+  // Subtelna poświata lewitującej w powietrzu piłki w centrum
   const altarX = arena1State.altarX || centerX;
-  const altarY = arena1State.altarY || 760;
+  const altarY = arena1State.altarY || 570;
   const pulse = Math.sin(performance.now() * 0.003) * 0.5 + 0.5;
 
   ctx.save();
@@ -387,11 +471,15 @@ export function updateArena1(dt, players) {
 // =========================================================================
 export function onArena1BulletHit(bullet) {
   if (!bullet) return false;
-  // Ołtarz centralny odbija/pochłania pociski w samym środku
+  // Lewitująca piłka / rdzeń ołtarza w centrum
   const altarX = arena1State.altarX || centerX;
-  const altarY = arena1State.altarY || 760;
+  const altarY = arena1State.altarY || 570;
   const dist = Math.hypot(bullet.x - altarX, bullet.y - altarY);
-  if (dist < 26) {
+  if (dist < 28) {
+    if (arena1State.waitingForKickoff) {
+      arena1State.waitingForKickoff = false;
+      return false; // Nie pochłaniaj - pocisk wyzwala kickoff i nadaje piłce pęd!
+    }
     return true; // Kula pochłonięta przez pole siłowe ołtarza
   }
   return false;
@@ -400,10 +488,12 @@ export function onArena1BulletHit(bullet) {
 export function onArena1KickHit(player, kickBox) {
   if (!player || !kickBox) return false;
   const altarX = arena1State.altarX || centerX;
-  const altarY = arena1State.altarY || 760;
+  const altarY = arena1State.altarY || 570;
   const dist = Math.hypot((player.x + (player.w || 24) / 2) - altarX, (player.y + 35) - altarY);
-  if (dist < 85) {
-    // Spartan kick w ołtarz wyzwala impuls
+  if (dist < 90) {
+    if (arena1State.waitingForKickoff) {
+      arena1State.waitingForKickoff = false;
+    }
     return true;
   }
   return false;
@@ -416,18 +506,18 @@ const arena1 = {
   id: 'arena-1',
   name: 'Neonowe Miasto',
   spawns: [
-    { x: 240, y: 580, facing: 1 }, // Platforma bramkowa zachodnia
-    { x: _mapW - 240, y: 580, facing: -1 }, // Platforma bramkowa wschodnia
-    { x: 380, y: 790, facing: 1 }, // Bastion dolny zachodni
-    { x: _mapW - 380, y: 790, facing: -1 }, // Bastion dolny wschodni
-    { x: 950, y: 880, facing: 1 }, // Płaski grunt zachodni
-    { x: _mapW - 950, y: 880, facing: -1 }, // Płaski grunt wschodni
-    { x: centerX, y: 690, facing: 1 } // Ołtarz centralny
+    { x: 220, y: 420, facing: 1 }, // Platforma bramkowa zachodnia (Poziom 3)
+    { x: _mapW - 220, y: 420, facing: -1 }, // Platforma bramkowa wschodnia (Poziom 3)
+    { x: 240, y: 790, facing: 1 }, // Bastion dolny zachodni (Poziom 1)
+    { x: _mapW - 240, y: 790, facing: -1 }, // Bastion dolny wschodni (Poziom 1)
+    { x: 660, y: 610, facing: 1 }, // Kładka pośrednia zachodnia (Poziom 2)
+    { x: _mapW - 660, y: 610, facing: -1 }, // Kładka pośrednia wschodnia (Poziom 2)
+    { x: centerX - 120, y: 610, facing: 1 } // Ołtarz centralny (Poziom 2)
   ],
   platforms: ARENA_1_PLATFORMS,
   customObjects: [
     ...ARENA_1_GOALS,
-    { id: 'altar_core', type: 'altar', x: centerX, y: 760, w: 80, h: 40 }
+    { id: 'altar_core', type: 'altar', x: centerX, y: 680, w: 80, h: 40 }
   ],
   drawBackground(ctx, camera) {
     drawArena1Background(ctx, camera);

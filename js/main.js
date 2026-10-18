@@ -1,7 +1,7 @@
 import { CONFIG, FRAME_DURATION, START_X, GAME_STATES, ARENA_LEFT, ARENA_RIGHT, ARENA_WIDTH, ARENA_CONFIGS } from './config.js';
 import {
   canvas, ctx, W, H, GROUND_Y, camera, world,
-  initCanvas, resize, updateCamera, updateDistance, clampCamera,
+  initCanvas, setupCanvas, resize, resizeCanvas, updateCamera, updateDistance, clampCamera,
   spawnGrass, updateParticles, dist,
   drawSky, drawGround, drawParticles, drawDistanceMarkers, drawHUD,
   clearDesertSandstorm, clearWinterBlizzard,
@@ -13,7 +13,7 @@ import {
   devZoomLevel, setDevZoom,
   getCaveCeilingY,
   setCameraMouseScreenPos,
-  spawnKnockedHelmet, spawnVestShreds
+  spawnKnockedHelmet, spawnVestShreds, triggerScreenShake
 } from './world.js';
 import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
@@ -34,7 +34,7 @@ import {
   customObstacles, OBSTACLE_PALETTE, getObstacleDef, clearCustomObstacles, undoCustomObstacle,
   drawSingleObstacleByType, arenaScore, arena1State, ARENA_PLATFORMS, setActiveBot,
   calculateObstaclePlacement, findSupportingSurface, isBottomAnchored, normalizeObstacleType,
-  updateMovableObstacles, resetArena
+  updateMovableObstacles, resetArena, spawnAltarShockwave
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
@@ -122,7 +122,11 @@ export {
   updateDevTouchButtonUI,
   toggleTouchControls,
   initTouchControlsDevUI,
-  initModularGearDevUI
+  initModularGearDevUI,
+  initCanvas,
+  setupCanvas,
+  resize,
+  resizeCanvas
 };
 
 if (typeof window !== 'undefined') {
@@ -130,6 +134,10 @@ if (typeof window !== 'undefined') {
   window.leftStick = leftStick;
   window.rightStick = rightStick;
   window.btnCluster = btnCluster;
+  window.initCanvas = initCanvas;
+  window.setupCanvas = initCanvas;
+  window.resize = resize;
+  window.resizeCanvas = resize;
 }
 
 const canvasEl = document.getElementById('game');
@@ -586,14 +594,33 @@ function update() {
 
   if (!isDeathmatch) {
     if (networkState.isHost || !networkState.isConnected) {
-      updateBall(effectiveGroundY);
+      if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff) {
+        // Piłka lewituje w powietrzu na środku areny w snopie światła i czeka na pierwszy kontakt
+        const time = performance.now() * 0.003;
+        ball.x = arena1State.altarX || 1800;
+        ball.y = (arena1State.altarY || 570) + Math.sin(time) * 5;
+        ball.prevX = ball.x;
+        ball.prevY = ball.y;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.spin = 0;
+        ball.rotation += 0.015;
+        ball.trail = [];
+      } else {
+        updateBall(effectiveGroundY);
+      }
       checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
       checkPlayerPlatformLanding(player, effectiveGroundY);
       if (remotePlayer.active) {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, effectiveGroundY, null, null);
+      if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff && Math.hypot(ball.vx, ball.vy) > 0.5) {
+        arena1State.waitingForKickoff = false;
+        triggerScreenShake(7);
+        spawnAltarShockwave(ball.x, ball.y);
+      }
+      checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
       sendBallState(ball);
     } else {
       // Klient – autorytatywna pozycja piłki z sieci P2P
@@ -603,7 +630,7 @@ function update() {
         checkBallPlayerCollisions(remotePlayer, effectiveGroundY, spawnGrass);
         checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
       }
-      checkObstacleCollisions(ball, effectiveGroundY, null, null);
+      checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
     }
     checkMatchWin(activeArenaId, arenaScore);
     updateMatchWinState(arenaScore);
@@ -763,7 +790,6 @@ function dismissLoadingOverlay() {
 
 function draw() {
   dismissLoadingOverlay();
-  ctx.clearRect(0, 0, W, H);
   renderArenaBackground(ctx, camera);
 
   ctx.save();
@@ -1098,7 +1124,7 @@ function loop(now) {
 
   // 2. Krok fizyki o stałej częstotliwości 60 Hz
   let steps = 0;
-  while (accumulator >= TICK_MS - 0.5 && steps < 3) {
+  while (accumulator >= TICK_MS - 1.0 && steps < 3) {
     update();
     accumulator -= TICK_MS;
     steps++;

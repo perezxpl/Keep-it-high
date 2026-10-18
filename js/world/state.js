@@ -367,15 +367,29 @@ export function initCanvas(canvasEl) {
   resize();
 }
 
+export const setupCanvas = initCanvas;
+export const resizeCanvas = resize;
+
 export function resize(player) {
   W = window.innerWidth;
   H = window.innerHeight;
   DPR = getOptimizedDPR();
   if (canvas && ctx) {
-    canvas.width = Math.floor(W * DPR);
-    canvas.height = Math.floor(H * DPR);
+    // Fill-Rate Limiter dla Chrome, monitorów Ultrawide (21:9 / 32:9) oraz ekranów 1440p / 4K / DPR > 1.0
+    // Maksymalny bufor pikseli bezpieczny dla Canvas 2D bez dławienia pamięci GPU: standard Full HD (1920 x 1080)
+    const MAX_PIXELS = 1920 * 1080;
+    const currentPixels = (W * DPR) * (H * DPR);
+    let scaleDown = 1.0;
+    if (currentPixels > MAX_PIXELS) {
+      scaleDown = Math.sqrt(MAX_PIXELS / currentPixels);
+    }
+    const bufferW = Math.max(960, Math.floor(W * DPR * scaleDown));
+    const bufferH = Math.max(540, Math.floor(H * DPR * scaleDown));
+
+    canvas.width = bufferW;
+    canvas.height = bufferH;
     ctx.resetTransform();
-    ctx.scale(DPR, DPR);
+    ctx.scale(bufferW / W, bufferH / H);
     ctx.imageSmoothingEnabled = true;
   }
   GROUND_Y = 1000;

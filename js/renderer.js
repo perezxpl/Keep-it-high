@@ -140,7 +140,11 @@ export {
   LOWER_CAVERN_FLOOR_Y,
   LOWER_CAVERN_CEILING_Y,
   drawHazardStripes,
-  ladders
+  ladders,
+  initCanvas,
+  setupCanvas,
+  resize,
+  resizeCanvas
 } from './world.js';
 
 export function drawLadderRungs() {}

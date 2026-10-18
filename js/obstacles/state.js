@@ -704,14 +704,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     const _cX = ARENA_WIDTH / 2; // 1800
     const _altarX = arena1State.altarX || _cX;
-    const _altarY = arena1State.altarY || 760;
-    const _spawnBallY = _altarY - (ballObj?.radius || 8) - 2; // 750
+    const _altarY = arena1State.altarY || 570;
+    const _spawnBallY = _altarY;
 
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 240;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 580;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 220;
+      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 420;
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = 1;
@@ -736,9 +736,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       }
       const isCyan = (b.team === 'CYAN');
       const baseX = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 240) + ((Math.floor(idx / 2) + 1) * 60)
-        : ((currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3360) - ((Math.floor(idx / 2) + 1) * 60);
-      const baseY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 1]) ? currentArena.spawns[isCyan ? 0 : 1].y : 580;
+        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 220) + ((Math.floor(idx / 2) + 1) * 60)
+        : ((currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 3380) - ((Math.floor(idx / 2) + 1) * 60);
+      const baseY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 1]) ? currentArena.spawns[isCyan ? 0 : 1].y : 420;
       b.x = baseX;
       b.y = baseY;
       b.vx = 0;

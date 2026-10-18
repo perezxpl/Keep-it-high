@@ -1300,7 +1300,7 @@ export function drawRockIsland(ctx, plat, groundY) {
     drawJungleRockPlatform(ctx, plat, groundY);
     return;
   }
-  const topY = groundY - plat.relY;
+  const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
   const thick = plat.thickness || 20;
 
   ctx.save();
@@ -1738,9 +1738,9 @@ export function drawNeonGoals(ctx, groundY, goals) {
 export function drawAltarSpotlightAndLevitation(ctx, groundY) {
   const centerX = ARENA_WIDTH / 2; // 1800
   const altarX = arena1State.altarX || centerX;
-  const topY = arena1State.altarY || 760;
-  const pedestalY = topY;
-  const hoverY = (topY - 10) + Math.sin(performance.now() * 0.003) * 4;
+  const platformY = arena1State.altarPlatformY || 680;
+  const hoverBaseY = arena1State.altarY || 570;
+  const hoverY = hoverBaseY + Math.sin(performance.now() * 0.003) * 5;
   const gantryY = 0;
   const time = performance.now() * 0.001;
 
@@ -1752,7 +1752,7 @@ export function drawAltarSpotlightAndLevitation(ctx, groundY) {
   const beamBottomW = 260;
 
   // Pionowy snop światła (spotlight) - oś musi pokrywać się dokładnie ze środkiem platformy (altarX)
-  const beamGrad = ctx.createLinearGradient(altarX, gantryY, altarX, topY);
+  const beamGrad = ctx.createLinearGradient(altarX, gantryY, altarX, platformY);
   beamGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.65)');
   beamGrad.addColorStop(0.12, 'rgba(186, 230, 253, 0.40)');
   beamGrad.addColorStop(0.50, 'rgba(56, 189, 248, 0.22)');
@@ -1763,12 +1763,12 @@ export function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.beginPath();
   ctx.moveTo(altarX - beamTopW / 2, gantryY);
   ctx.lineTo(altarX + beamTopW / 2, gantryY);
-  ctx.lineTo(altarX + beamBottomW / 2, topY + 4);
-  ctx.lineTo(altarX - beamBottomW / 2, topY + 4);
+  ctx.lineTo(altarX + beamBottomW / 2, platformY + 4);
+  ctx.lineTo(altarX - beamBottomW / 2, platformY + 4);
   ctx.closePath();
   ctx.fill();
 
-  const coreGrad = ctx.createLinearGradient(altarX, gantryY, altarX, topY);
+  const coreGrad = ctx.createLinearGradient(altarX, gantryY, altarX, platformY);
   coreGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.85)');
   coreGrad.addColorStop(0.35, 'rgba(224, 242, 254, 0.38)');
   coreGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
@@ -1777,13 +1777,13 @@ export function drawAltarSpotlightAndLevitation(ctx, groundY) {
   ctx.beginPath();
   ctx.moveTo(altarX - 16, gantryY);
   ctx.lineTo(altarX + 16, gantryY);
-  ctx.lineTo(altarX + 70, topY);
-  ctx.lineTo(altarX - 70, topY);
+  ctx.lineTo(altarX + 70, platformY);
+  ctx.lineTo(altarX - 70, platformY);
   ctx.closePath();
   ctx.fill();
 
   // Plama świetlna na cokole (pedestal light pool)
-  const poolGrad = ctx.createRadialGradient(altarX, pedestalY, 10, altarX, pedestalY, 130);
+  const poolGrad = ctx.createRadialGradient(altarX, platformY, 10, altarX, platformY, 130);
   poolGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.60)');
   poolGrad.addColorStop(0.35, 'rgba(56, 189, 248, 0.35)');
   poolGrad.addColorStop(0.80, 'rgba(0, 240, 255, 0.10)');
@@ -1791,7 +1791,7 @@ export function drawAltarSpotlightAndLevitation(ctx, groundY) {
 
   ctx.fillStyle = poolGrad;
   ctx.beginPath();
-  ctx.ellipse(altarX, pedestalY, 130, 26, 0, 0, Math.PI * 2);
+  ctx.ellipse(altarX, platformY, 130, 26, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = '#ffffff';

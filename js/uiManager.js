@@ -303,7 +303,7 @@ export const uiManager = {
       name: 'NEONOWE MIASTO',
       tag: 'COMBAT BALL',
       desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.',
-      img: './assets/arena1_preview.svg'
+      img: './assets/arena1_preview.png?v=v216_neon_stadium_preview'
     },
     {
       id: 'ARENA_2',
@@ -337,6 +337,7 @@ export const uiManager = {
     this.applySettings();
     this.applyAppearance();
     this.updateMenuRankDisplay();
+    this.updateMainMenuOperatorPreview();
     this.isInitialized = true;
   },
 
@@ -709,11 +710,17 @@ export const uiManager = {
       window.ACID_SIREN_ENABLED = !!this.settings.acidSiren;
     }
 
-    // Aktualizacja wskaźnika szybkiego wyciszenia w stopce menu
+    // Aktualizacja wskaźnika szybkiego wyciszenia w nagłówku menu
     const quickMuteBtn = document.getElementById('menu-quick-mute-btn');
     if (quickMuteBtn) {
-      quickMuteBtn.textContent = this.settings.muteAll ? 'DŹWIĘK: WYŁ' : 'DŹWIĘK: WŁ';
-      quickMuteBtn.classList.toggle('muted', !!this.settings.muteAll);
+      const isMuted = !!this.settings.muteAll;
+      const textSpan = quickMuteBtn.querySelector('.sound-btn-text');
+      if (textSpan) {
+        textSpan.textContent = isMuted ? 'DŹWIĘK: WYŁ' : 'DŹWIĘK: WŁ';
+      } else {
+        quickMuteBtn.textContent = isMuted ? 'DŹWIĘK: WYŁ' : 'DŹWIĘK: WŁ';
+      }
+      quickMuteBtn.classList.toggle('muted', isMuted);
     }
 
     this.syncFormControls();
@@ -890,6 +897,68 @@ export const uiManager = {
       }
     }
     this.applyAppearanceForClass(classId);
+    this.updateMainMenuOperatorPreview();
+  },
+
+  updateMainMenuOperatorPreview() {
+    if (!document.getElementById('menu-status-card')) return;
+    const classId = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
+    const classConfig = {
+      RAPTOR: {
+        name: 'RAPTOR',
+        badge: 'LEKKA // ZWIADOWCA',
+        hp: '85 HP',
+        badgeClass: 'op-badge-raptor op-badge-green',
+        traitText: 'PLECAK ODRZUTOWY (JETPACK)',
+        traitClass: 'text-raptor text-emerald',
+        traitDesc: 'Maksymalna mobilność powietrzna, pełny ciąg i sprint 7.4'
+      },
+      STRIKER: {
+        name: 'STRIKER',
+        badge: 'ŚREDNIA // SZTURMOWIEC',
+        hp: '100 HP',
+        badgeClass: 'op-badge-striker op-badge-blue',
+        traitText: 'TURBO BUTY (ROCKET DASH)',
+        traitClass: 'text-striker text-sky',
+        traitDesc: 'Dopalacze w butach, wyważona masa i uniki powietrzne'
+      },
+      ENFORCER: {
+        name: 'ENFORCER',
+        badge: 'CIĘŻKA // KOLOS',
+        hp: '140 HP',
+        badgeClass: 'op-badge-enforcer op-badge-red',
+        traitText: 'TŁOKI KINETYCZNE & SPARTAN KICK',
+        traitClass: 'text-enforcer text-rose',
+        traitDesc: 'Wyskok z przysiadu, potężny taran i niszczycielski cios'
+      }
+    };
+
+    const cfg = classConfig[classId] || classConfig.STRIKER;
+
+    const nameEl = document.getElementById('menu-op-active-name');
+    if (nameEl) nameEl.textContent = cfg.name;
+
+    const badgeEl = document.getElementById('menu-op-class-badge');
+    if (badgeEl) {
+      badgeEl.textContent = cfg.badge;
+      badgeEl.className = `menu-op-class-badge ${cfg.badgeClass}`;
+    }
+
+    const hpEl = document.getElementById('menu-op-hp-badge');
+    if (hpEl) hpEl.textContent = cfg.hp;
+
+    const traitEl = document.getElementById('menu-op-trait-text');
+    if (traitEl) {
+      traitEl.textContent = cfg.traitText;
+      traitEl.className = `menu-op-trait-text ${cfg.traitClass}`;
+    }
+
+    const descEl = document.getElementById('menu-op-trait-desc');
+    if (descEl) descEl.textContent = cfg.traitDesc;
+
+    document.querySelectorAll('#menu-op-quick-selector .menu-op-pill-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.menuOp === classId);
+    });
   },
 
   syncBotCountUI(count = getBotCount()) {
@@ -1660,6 +1729,19 @@ export const uiManager = {
         this.applySettings();
       });
     }
+
+    // MENU GŁÓWNE: Pigułki szybkiego wyboru operatora (Karta Gotowości Bojowej)
+    document.querySelectorAll('#menu-op-quick-selector .menu-op-pill-btn').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        const op = btn.dataset.menuOp;
+        if (op) {
+          this.selectBriefingOperator(op);
+          this.updateMainMenuOperatorPreview();
+        }
+      });
+    });
 
     // -------------------------------------------------------------------------
     // HUD: Przycisk Pauzy

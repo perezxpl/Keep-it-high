@@ -839,10 +839,59 @@ button, .dev-btn {
 }
 
 .menu-header-bar {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
   margin-bottom: 12px;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
+}
+
+.menu-sound-toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 6px;
+  color: #00e5ff;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.15);
+  user-select: none;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.menu-sound-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: #00e5ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+}
+
+.menu-sound-toggle-btn.muted {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.65);
+  box-shadow: none;
+}
+
+.menu-sound-toggle-btn.muted .sound-wave-path {
+  opacity: 0;
+}
+
+.sound-svg-icon {
+  flex-shrink: 0;
 }
 
 .menu-brand {
@@ -910,6 +959,7 @@ button, .dev-btn {
    KARTA GRACZA I STATYSTYKI BOJOWE W MENU
    ========================================================================= */
 .menu-player-card,
+.menu-status-card,
 .menu-rank-card {
   display: flex;
   flex-direction: column;
@@ -920,10 +970,9 @@ button, .dev-btn {
   border: 1px solid rgba(0, 229, 255, 0.35);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 18px rgba(0, 229, 255, 0.14);
   border-radius: 12px;
-  padding: 12px 18px 14px 18px;
-  max-width: 520px;
-  width: 94%;
-  margin: 0 auto 16px auto;
+  padding: 12px 16px;
+  width: 100%;
+  margin: 0;
   text-align: left;
   box-sizing: border-box;
 }
@@ -959,19 +1008,21 @@ button, .dev-btn {
 
 .player-card-tool-btn {
   background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: #94a3b8;
   font-family: 'Orbitron', monospace;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 3px 8px;
+  letter-spacing: 0.6px;
+  padding: 5px 10px;
+  min-height: 32px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .player-card-tool-btn:hover {
@@ -982,7 +1033,7 @@ button, .dev-btn {
 }
 
 .player-card-tool-btn .tool-btn-icon {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* -------------------------------------------------------------------------
@@ -996,7 +1047,8 @@ button, .dev-btn {
   background: rgba(2, 6, 23, 0.72);
   border: 1px solid rgba(0, 229, 255, 0.22);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 7px 12px;
+  min-height: 38px;
   box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   margin-bottom: 2px;
@@ -1656,7 +1708,7 @@ button, .dev-btn {
 .menu-col-profile {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   width: 100%;
 }
 
@@ -1664,7 +1716,246 @@ button, .dev-btn {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
+  width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+   KARTA STATUSU GOTOWOŚCI BOJOWEJ OPERATORA (PRAWA KOLUMNA)
+   ------------------------------------------------------------------------- */
+.status-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.16);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.status-card-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #00e5ff;
+  letter-spacing: 1.5px;
+}
+
+.status-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulseDot 1.5s infinite ease-in-out;
+}
+
+.status-sys-tag {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #10b981;
+  letter-spacing: 0.8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.menu-op-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.menu-op-primary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.menu-op-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.menu-op-role-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+
+.menu-op-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+}
+
+.menu-op-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-op-class-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.6px;
+}
+
+.menu-op-hp-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.menu-op-trait-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.menu-op-trait-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.menu-op-trait-desc {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-op-quick-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.menu-op-pill-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.menu-op-pill-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.menu-op-pill-btn.active {
+  background: rgba(0, 229, 255, 0.18);
+  border: 1.5px solid #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+}
+
+.menu-op-pill-btn.op-pill-raptor.active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+.menu-op-pill-btn.op-pill-enforcer.active {
+  background: rgba(249, 115, 22, 0.18);
+  border-color: #f97316;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.35);
+}
+
+.menu-op-pill-btn .pill-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #ffffff;
+}
+
+.menu-op-pill-btn .pill-hp {
+  font-family: 'Orbitron', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.menu-loadout-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.loadout-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loadout-meta-lbl {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.loadout-meta-val {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.4px;
+}
+
+.menu-action-buttons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
 }
 
@@ -1751,7 +2042,7 @@ button, .dev-btn {
 
 .menu-sub-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   width: 100%;
 }
@@ -2045,16 +2336,16 @@ button, .dev-btn {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 65%;
+  object-position: center center;
   display: block;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
-  filter: brightness(0.95) contrast(1.08);
+  filter: brightness(1.0) contrast(1.05);
 }
 
 .briefing-preview-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.2) 50%, rgba(15, 23, 42, 0.8) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.12) 50%, rgba(15, 23, 42, 0.72) 100%);
   pointer-events: none;
   display: flex;
   align-items: flex-end;
@@ -2364,27 +2655,105 @@ button, .dev-btn {
   background: rgba(15, 23, 42, 0.88);
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   cursor: pointer;
   text-align: left;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 2px;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 
-.briefing-op-card:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(0, 229, 255, 0.5);
+/* 1. Klasa RAPTOR (Lekka - Szmaragd / Limonka #10b981 / #84cc16) */
+.briefing-op-card[data-op-class="RAPTOR"]:hover,
+.briefing-op-card.op-card-raptor:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.6);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.22);
 }
 
-.briefing-op-card.active {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+.briefing-op-card[data-op-class="RAPTOR"].active,
+.briefing-op-card.op-card-raptor.active {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 2px solid #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45), inset 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.briefing-op-card[data-op-class="RAPTOR"].active .op-name,
+.briefing-op-card.op-card-raptor.active .op-name {
+  color: #a7f3d0;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.briefing-op-card[data-op-class="RAPTOR"] .op-status-tag,
+.briefing-op-card.op-card-raptor .op-status-tag {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+/* 2. Klasa STRIKER (Średnia - Klasyczny Cyjan Bojowy #00e5ff) */
+.briefing-op-card[data-op-class="STRIKER"]:hover,
+.briefing-op-card.op-card-striker:hover {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 229, 255, 0.22);
+}
+
+.briefing-op-card[data-op-class="STRIKER"].active,
+.briefing-op-card.op-card-striker.active {
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.15) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 2px solid #00e5ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.45), inset 0 0 10px rgba(0, 229, 255, 0.15);
+}
+
+.briefing-op-card[data-op-class="STRIKER"].active .op-name,
+.briefing-op-card.op-card-striker.active .op-name {
+  color: #e0f2fe;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.briefing-op-card[data-op-class="STRIKER"] .op-status-tag,
+.briefing-op-card.op-card-striker .op-status-tag {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.18);
   border-color: #00e5ff;
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35), inset 0 0 8px rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+}
+
+/* 3. Klasa ENFORCER (Ciężka - Tytanowy Pomarańcz / Czerwień #f97316 / #ef4444) */
+.briefing-op-card[data-op-class="ENFORCER"]:hover,
+.briefing-op-card.op-card-enforcer:hover {
+  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.22);
+}
+
+.briefing-op-card[data-op-class="ENFORCER"].active,
+.briefing-op-card.op-card-enforcer.active {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.15) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 2px solid #f97316;
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.45), inset 0 0 10px rgba(249, 115, 22, 0.15);
+}
+
+.briefing-op-card[data-op-class="ENFORCER"].active .op-name,
+.briefing-op-card.op-card-enforcer.active .op-name {
+  color: #ffedd5;
+  text-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
+}
+
+.briefing-op-card[data-op-class="ENFORCER"] .op-status-tag,
+.briefing-op-card.op-card-enforcer .op-status-tag {
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.18);
+  border-color: #f97316;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.35);
 }
 
 .op-card-header {
@@ -2392,6 +2761,7 @@ button, .dev-btn {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2px;
+  width: 100%;
 }
 
 .op-badge {
@@ -2403,22 +2773,25 @@ button, .dev-btn {
   border-radius: 4px;
 }
 
+.op-badge-raptor,
 .op-badge-green {
   background: rgba(16, 185, 129, 0.15);
   color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
+.op-badge-striker,
 .op-badge-blue {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(0, 229, 255, 0.15);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.4);
 }
 
+.op-badge-enforcer,
 .op-badge-red {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.4);
 }
 
 .op-hp {
@@ -2426,6 +2799,12 @@ button, .dev-btn {
   font-size: 9.5px;
   font-weight: 800;
   color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 4px;
+  padding: 1.5px 5px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .op-name {
@@ -2443,6 +2822,21 @@ button, .dev-btn {
   letter-spacing: 0.4px;
 }
 
+.text-raptor,
+.text-emerald {
+  color: #34d399 !important;
+}
+
+.text-striker,
+.text-sky {
+  color: #38bdf8 !important;
+}
+
+.text-enforcer,
+.text-rose {
+  color: #fb923c !important;
+}
+
 .op-desc {
   font-family: 'Rajdhani', sans-serif;
   font-size: 10.5px;
@@ -2453,20 +2847,22 @@ button, .dev-btn {
 .op-status-tag {
   display: none;
   position: absolute;
-  top: 6px;
-  right: 6px;
+  bottom: 6px;
+  right: 8px;
   font-family: 'Orbitron', monospace;
   font-size: 8px;
   font-weight: 800;
-  color: #00e5ff;
-  background: rgba(0, 229, 255, 0.18);
-  border: 1px solid #00e5ff;
+  letter-spacing: 0.5px;
+  border: 1px solid;
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 1.5px 5px;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
 .briefing-op-card.active .op-status-tag {
-  display: block;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* =========================================================================
@@ -2555,86 +2951,428 @@ button, .dev-btn {
   .briefing-op-card .op-desc { display: none; }
 }
 
-@media (max-width: 680px) {
-  .briefing-columns-layout { grid-template-columns: 1fr; }
+@media (max-width: 680px) and (min-height: 521px) {
+  .menu-columns-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .menu-header-bar {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .menu-sound-toggle-btn {
+    position: static;
+    transform: none;
+  }
+  .briefing-columns-layout { grid-template-columns: 1fr; gap: 10px; }
   .briefing-operator-grid { grid-template-columns: 1fr; }
+  .carousel-arrow-btn { height: 90px; }
+  .briefing-preview-frame { height: 110px; }
 }
 
 @media (max-height: 520px) {
-  .menu-container {
-    padding: 10px 14px 10px 14px;
-    gap: 8px;
+  #main-menu-overlay {
+    padding: 4px 8px;
+    align-items: center;
+    justify-content: center;
+  }
+  #main-menu-overlay .menu-container {
+    max-height: calc(100vh - 6px);
+    padding: 0;
+    gap: 3px;
+    width: 98%;
+    max-width: 920px;
   }
   .menu-header-bar {
-    margin-bottom: 6px;
+    margin-bottom: 3px;
+    width: 100%;
   }
-  .briefing-header {
-    margin-bottom: 6px;
-  }
-  .briefing-title {
+  .menu-title {
     font-size: 15px;
+    letter-spacing: 2px;
+    margin: 0;
+    line-height: 1;
   }
-  .briefing-subtitle {
+  .menu-sound-toggle-btn {
+    padding: 3px 8px;
+    font-size: 8.5px;
+    min-height: 24px;
+    gap: 4px;
+  }
+  .menu-sound-toggle-btn .sound-svg-icon {
+    width: 11px;
+    height: 11px;
+  }
+  .menu-columns-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    align-items: stretch;
+  }
+  .menu-col-profile,
+  .menu-col-actions {
+    gap: 5px;
+  }
+  .menu-player-card,
+  .menu-status-card {
+    padding: 5px 8px;
+    gap: 3px;
+    border-radius: 8px;
+  }
+  .player-card-header,
+  .status-card-header {
+    padding-bottom: 2px;
+    margin-bottom: 1px;
+  }
+  .player-card-id-badge,
+  .status-card-badge {
+    font-size: 8.5px;
+    letter-spacing: 0.8px;
+  }
+  .player-card-tool-btn {
+    padding: 2px 6px;
+    min-height: 22px;
+    font-size: 8px;
+  }
+  .operator-callsign-box {
+    min-height: 26px;
+    padding: 2px 6px;
+    margin-bottom: 1px;
+  }
+  .callsign-label {
+    font-size: 8px;
+    letter-spacing: 0.8px;
+  }
+  .callsign-input {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .callsign-edit-svg {
+    width: 11px;
+    height: 11px;
+  }
+  .player-card-rank-section {
+    padding: 3px 6px;
+    gap: 4px;
+  }
+  .rank-badge-shield {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+  .rank-label, .rank-xp-current {
+    font-size: 7.5px;
+  }
+  .rank-name-row {
+    margin-top: 1px;
+  }
+  .rank-name {
     font-size: 10.5px;
   }
+  .rank-tier-badge {
+    font-size: 7px;
+    padding: 1px 3px;
+  }
+  .rank-progress-bar-bg {
+    height: 3.5px;
+    margin-top: 2px;
+  }
+  .rank-progress-meta-row {
+    display: none;
+  }
+  .player-stats-compact-grid {
+    gap: 2px;
+    margin-top: 1px;
+  }
+  .stat-pill-mini {
+    padding: 1.5px 3px;
+    border-radius: 4px;
+    gap: 1px;
+  }
+  .stat-mini-lbl {
+    font-size: 7px;
+    letter-spacing: 0.2px;
+  }
+  .stat-mini-val {
+    font-size: 9.5px;
+  }
+  .menu-ranks-tile-btn {
+    padding: 2.5px 6px;
+    border-radius: 5px;
+    margin-top: 1px;
+    min-height: 22px;
+  }
+  .ranks-tile-icon-box {
+    width: 16px;
+    height: 16px;
+  }
+  .ranks-tile-svg {
+    width: 11px;
+    height: 11px;
+  }
+  .ranks-tile-title {
+    font-size: 9px;
+  }
+  .ranks-tile-sub {
+    display: none;
+  }
+  .ranks-tile-arrow {
+    font-size: 9px;
+  }
+  .status-sys-tag {
+    font-size: 7.5px;
+    padding: 1px 4px;
+  }
+  .menu-op-info-box {
+    padding: 3px 6px;
+    gap: 2px;
+    border-radius: 5px;
+  }
+  .menu-op-role-label {
+    font-size: 7.5px;
+  }
+  .menu-op-name {
+    font-size: 11.5px;
+  }
+  .menu-op-class-badge {
+    font-size: 7px;
+    padding: 1px 4px;
+  }
+  .menu-op-hp-badge {
+    font-size: 7.5px;
+    padding: 1px 4px;
+  }
+  .menu-op-trait-row {
+    font-size: 8.5px;
+  }
+  .menu-op-trait-text {
+    font-size: 9px;
+  }
+  .menu-op-trait-desc {
+    display: none;
+  }
+  .menu-op-quick-selector {
+    gap: 3px;
+  }
+  .menu-op-pill-btn {
+    padding: 2px 3px;
+    min-height: 24px;
+    border-radius: 4px;
+    gap: 1px;
+  }
+  .menu-op-pill-btn .pill-name {
+    font-size: 8px;
+  }
+  .menu-op-pill-btn .pill-hp {
+    font-size: 6.5px;
+  }
+  .menu-loadout-meta-row {
+    display: none;
+  }
+  .menu-action-buttons-group {
+    gap: 4px;
+  }
+  .ui-btn-hero {
+    padding: 5px 8px;
+    border-radius: 6px;
+    gap: 1px;
+  }
+  .btn-hero-title {
+    font-size: 11px;
+    letter-spacing: 0.8px;
+  }
+  .btn-hero-sub {
+    font-size: 8px;
+    letter-spacing: 0.4px;
+  }
+  .menu-sub-actions-grid {
+    gap: 4px;
+  }
+  .menu-sub-actions-grid .ui-btn {
+    padding: 4px 6px;
+    font-size: 9.5px;
+    min-height: 24px;
+    border-radius: 5px;
+  }
+  #main-menu-overlay.in-arena-select {
+    padding: 4px 8px;
+  }
+  #main-menu-overlay.in-arena-select .menu-container {
+    max-height: calc(100vh - 8px);
+    padding: 0;
+  }
+  .briefing-container {
+    max-height: calc(100vh - 8px);
+  }
+  .briefing-header {
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+  }
+  .briefing-title {
+    font-size: 13.5px;
+    letter-spacing: 1px;
+  }
+  .briefing-subtitle {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .briefing-mode-tabs {
+    padding: 2px;
+    gap: 3px;
+  }
+  .briefing-tab-btn {
+    padding: 3px 7px;
+    font-size: 9.5px;
+  }
+  .briefing-scroll-body {
+    gap: 4px;
+    padding-right: 2px;
+    overflow-y: auto;
+  }
+  .briefing-step-label {
+    font-size: 8.5px;
+    margin-bottom: 2px;
+    gap: 4px;
+  }
+  .briefing-step-label .step-num {
+    width: 14px;
+    height: 14px;
+    font-size: 8.5px;
+  }
   .briefing-columns-layout {
-    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
   .briefing-carousel-card {
-    padding: 8px 10px 6px 10px;
+    padding: 5px 7px 4px 7px;
+    border-radius: 8px;
+  }
+  .carousel-badge-bar {
+    margin-bottom: 2px;
+  }
+  .briefing-badge, .briefing-counter {
+    font-size: 8px;
+    padding: 1px 5px;
   }
   .carousel-arrow-btn {
-    height: 72px;
-    font-size: 22px;
-    width: 34px;
-    min-width: 34px;
+    height: 50px;
+    width: 26px;
+    min-width: 26px;
+    font-size: 18px;
+    border-radius: 6px;
   }
   .briefing-preview-frame {
-    height: 80px;
-    margin-bottom: 5px;
+    height: 52px;
+    margin-bottom: 2px;
+    border-radius: 6px;
+  }
+  .briefing-tag {
+    font-size: 7.5px;
+    padding: 1px 4px;
   }
   .briefing-arena-name {
-    font-size: 13px;
+    font-size: 11.5px;
+    margin-bottom: 1px;
   }
   .briefing-arena-desc {
-    font-size: 11px;
-    height: 26px;
-    margin-bottom: 3px;
+    font-size: 9.5px;
+    height: 15px;
+    line-height: 1.15;
+    margin-bottom: 1px;
+    -webkit-line-clamp: 1;
+  }
+  .carousel-dots-row {
+    margin-top: 1px;
+    gap: 4px;
+  }
+  .carousel-dot {
+    width: 14px;
+    height: 3px;
+  }
+  .carousel-dot.active {
+    width: 22px;
   }
   .briefing-options-panel {
     min-height: unset;
-    padding: 8px 10px;
-    gap: 5px;
+    padding: 5px 7px;
+    border-radius: 8px;
+    gap: 3px;
   }
   .briefing-map-opts {
-    gap: 5px;
+    gap: 3px;
   }
   .briefing-opt-row {
-    gap: 2px;
+    gap: 1px;
   }
   .opt-label {
+    font-size: 7.5px;
+    letter-spacing: 0.4px;
+  }
+  .opt-val-badge {
     font-size: 8.5px;
+    padding: 2px 5px;
+  }
+  .briefing-toggle-group {
+    gap: 3px;
   }
   .briefing-toggle-btn {
-    padding: 4px 3px;
+    padding: 3px 4px;
+    font-size: 10px;
+    letter-spacing: 0.2px;
+    border-radius: 4px;
+  }
+  .briefing-note-row {
+    display: none;
+  }
+  .briefing-operator-section {
+    gap: 2px;
+  }
+  .briefing-operator-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .briefing-op-card {
+    padding: 4px 6px;
+    border-radius: 6px;
+    gap: 1px;
+  }
+  .op-badge {
+    font-size: 7px;
+    padding: 1px 3px;
+  }
+  .op-hp {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+  .op-name {
     font-size: 11px;
   }
+  .op-attr {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .briefing-op-card .op-desc {
+    display: none;
+  }
+  .op-status-tag {
+    font-size: 7px;
+    padding: 1px 3px;
+    bottom: 3px;
+    right: 5px;
+  }
   .briefing-footer {
-    margin-top: 6px;
-    padding-top: 6px;
+    margin-top: 4px;
+    padding-top: 4px;
+    gap: 8px;
   }
-}
-
-@media (max-width: 680px) and (min-height: 521px) {
-  .briefing-columns-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .carousel-arrow-btn {
-    height: 90px;
-  }
-  .briefing-preview-frame {
-    height: 110px;
+  .briefing-footer .ui-btn {
+    padding: 5px 12px;
+    font-size: 11px;
   }
 }
 
