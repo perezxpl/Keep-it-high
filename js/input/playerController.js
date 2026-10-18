@@ -30,6 +30,16 @@ export function triggerPlayerShoot(p, wep) {
 }
 
 export function updatePlayerInputAndCombat(activeArenaId) {
+  // W menu taktycznym (PAUSED) oraz ustawieniach w trakcie meczu gracz nie strzela ani nie steruje jetpackiem (gra online toczy się na żywo)
+  const isMenuOverlayActive = (typeof window !== 'undefined' && window.GAME_STATE && (window.GAME_STATE.current === 'PAUSED' || (window.GAME_STATE.current === 'SETTINGS' && window.GAME_STATE.previous !== 'MENU')));
+  if (isMenuOverlayActive) {
+    player.isShooting = false;
+    player.isAiming = false;
+    mouseState.lmbDown = false;
+    mouseState.rmbDown = false;
+    return;
+  }
+
   // Odczyt stanu kontrolera (Gamepad API), jeśli podłączony
   pollGamepadInput();
 

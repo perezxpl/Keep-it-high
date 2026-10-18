@@ -4256,13 +4256,32 @@ button, .dev-btn {
   font-family: 'Orbitron', monospace;
   font-size: 10px;
   font-weight: 700;
-  color: #f59e0b;
+  color: #10b981;
   letter-spacing: 1.8px;
-  padding: 2px 10px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 3px 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.45);
   border-radius: 10px;
   margin-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pause-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: liveBadgeDotPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes liveBadgeDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.85); }
 }
 
 .pause-title {

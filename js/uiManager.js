@@ -1771,17 +1771,6 @@ export const uiManager = {
       });
     }
 
-    const pauseRestartBtn = document.getElementById('pause-btn-restart');
-    if (pauseRestartBtn) {
-      pauseRestartBtn.addEventListener('mouseenter', () => playUiHover());
-      pauseRestartBtn.addEventListener('click', () => {
-        playUiClick();
-        if (this.callbacks && typeof this.callbacks.onRestartRound === 'function') {
-          this.callbacks.onRestartRound();
-        }
-      });
-    }
-
     const pauseClassBtn = document.getElementById('pause-btn-class');
     if (pauseClassBtn) {
       pauseClassBtn.addEventListener('mouseenter', () => playUiHover());
@@ -1789,17 +1778,6 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onChangeClass === 'function') {
           this.callbacks.onChangeClass();
-        }
-      });
-    }
-
-    const pauseCreatorBtn = document.getElementById('pause-btn-creator');
-    if (pauseCreatorBtn) {
-      pauseCreatorBtn.addEventListener('mouseenter', () => playUiHover());
-      pauseCreatorBtn.addEventListener('click', () => {
-        playUiClick();
-        if (this.callbacks && typeof this.callbacks.onOpenCreator === 'function') {
-          this.callbacks.onOpenCreator();
         }
       });
     }

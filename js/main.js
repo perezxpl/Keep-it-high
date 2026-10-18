@@ -509,12 +509,11 @@ function update() {
     return;
   }
 
-  // Obsługa maszyny stanów: PAUSED, MENU, SETTINGS
-  if (GAME_STATE.current === 'PAUSED') {
-    return; // Pełna pauza fizyki i animacji gry
-  }
+  // W grze sieciowej/online mecze toczą się bez zatrzymywania czasu (brak pauzy).
+  // Wyświetlenie menu taktycznego (PAUSED) ani wejście w ustawienia w trakcie meczu nie wstrzymuje fizyki, botów ani odliczania.
+  const isSettingsInLiveMatch = (GAME_STATE.current === 'SETTINGS' && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
 
-  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'CREATOR' || GAME_STATE.current === 'ARENA_SELECT') {
+  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'CREATOR' || GAME_STATE.current === 'ARENA_SELECT' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
     updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
@@ -539,13 +538,14 @@ function update() {
     return;
   }
 
-  // Wymuszenie stanu kursora systemowego w menu DEV / MULTI / CZAT
+  // Wymuszenie stanu kursora systemowego w menu DEV / MULTI / CZAT / MENU TAKTYCZNE (PAUZA) / USTAWIENIA
   const mpModalEl = document.getElementById('mp-modal');
   const devMenuEl = document.getElementById('dev-menu');
   const isMpOpen = mpModalEl && !mpModalEl.classList.contains('mp-modal-hidden');
   const isDevOpen = devMenuEl && !devMenuEl.classList.contains('dev-menu-hidden');
+  const isPauseOrSettingsOverlay = (GAME_STATE.current === 'PAUSED' || isSettingsInLiveMatch);
 
-  if (isMpOpen || isDevOpen || isChatActive) {
+  if (isMpOpen || isDevOpen || isChatActive || isPauseOrSettingsOverlay) {
     if (canvas.style.cursor !== 'default') canvas.style.cursor = 'default';
     if (canvas.parentElement && !canvas.parentElement.classList.contains('cursor-visible')) {
       canvas.parentElement.classList.add('cursor-visible');
@@ -763,7 +763,7 @@ function update() {
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
 
   updateCamera(player, isDeathmatch ? null : ball, {
-    disableAimLead: !!(editorState?.active || isChatActive)
+    disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
   });
   if (isA2Active || isA3Active) {
     updateDeathmatch(1 / 60, player, activeBots, remotePlayer, arenaScore);
@@ -1015,15 +1015,13 @@ function draw() {
     ctx.restore();
   }
 
-  if (GAME_STATE.current === 'PLAYING') {
+  const isMatchRunning = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));
+  if (isMatchRunning) {
     const inKickRange = (!isDeathmatch && ball && typeof isBallInKickReach === 'function') ? isBallInKickReach(player, ball) : false;
     drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, inKickRange, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
     const currentActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
     const combatants = [player, ...currentActiveBots, ...(remotePlayer.active ? [remotePlayer] : [])];
     drawKillstreakWorld(ctx, camera, combatants, player);
-    drawKillstreakHUD(ctx, canvas, player);
-  } else if (GAME_STATE.current === 'PAUSED') {
-    drawHUD(ctx, player, leftStick, btnCluster, rightStick, isDeathmatch ? null : ball, false, { activeArenaId, arenaScore, arena1State, bot, remotePlayer });
     drawKillstreakHUD(ctx, canvas, player);
   } else if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx, mouseState.screenX, mouseState.screenY);
@@ -1143,16 +1141,67 @@ function loop(now) {
   }
 }
 
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      lastTime = 0;
-      accumulator = 0;
-    } else {
-      lastTime = performance.now();
-      accumulator = 0;
+let bgSimulationInterval = null;
+let lastBgTickTime = 0;
+
+function handleBackgroundSimulation() {
+  if (typeof document === 'undefined') return;
+
+  if (document.hidden) {
+    // Karta zminimalizowana lub w tle: gra sieciowa toczy się nieprzerwanie w czasie rzeczywistym
+    if (!bgSimulationInterval) {
+      lastBgTickTime = performance.now();
+      bgSimulationInterval = setInterval(() => {
+        if (!document.hidden) {
+          if (bgSimulationInterval) {
+            clearInterval(bgSimulationInterval);
+            bgSimulationInterval = null;
+          }
+          return;
+        }
+
+        const isMatchActive = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));
+        if (!isMatchActive) {
+          lastBgTickTime = performance.now();
+          return;
+        }
+
+        const now = performance.now();
+        const elapsed = now - lastBgTickTime;
+        lastBgTickTime = now;
+
+        // Stały krok fizyki TICK_MS (60 Hz). Nadrabiamy upływający czas do max 60 kroków na cykl.
+        const steps = Math.min(60, Math.max(1, Math.floor(elapsed / TICK_MS)));
+        for (let i = 0; i < steps; i++) {
+          update();
+        }
+      }, 1000 / 60);
     }
-  });
+  } else {
+    // Powrót do karty: zatrzymujemy interwał tła i płynnie wznawiamy pętlę renderowania
+    if (bgSimulationInterval) {
+      clearInterval(bgSimulationInterval);
+      bgSimulationInterval = null;
+    }
+
+    const isMatchActive = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || (GAME_STATE.current === 'SETTINGS' && GAME_STATE.previous !== 'MENU'));
+    if (lastBgTickTime > 0 && isMatchActive) {
+      const now = performance.now();
+      const elapsed = now - lastBgTickTime;
+      const steps = Math.min(30, Math.floor(elapsed / TICK_MS));
+      for (let i = 0; i < steps; i++) {
+        update();
+      }
+    }
+
+    lastBgTickTime = 0;
+    lastTime = performance.now();
+    accumulator = 0;
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', handleBackgroundSimulation);
 }
 
 if (typeof window !== 'undefined') {

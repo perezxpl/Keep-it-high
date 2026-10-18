@@ -43,7 +43,7 @@
       "./js/input/gamepad.js": "./js/input/gamepad.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/index.js": "./js/input/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v214_mortar_free_camera_panning",
-      "./js/input/playerController.js": "./js/input/playerController.js?v=v210_fix_pc_jetpack_speed_and_vsync_pacing",
+      "./js/input/playerController.js": "./js/input/playerController.js?v=v219_online_continuous_simulation_and_tactical_pause",
       "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/carePackage.js": "./js/killstreaks/carePackage.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/index.js": "./js/killstreaks/index.js?v=v214_mortar_free_camera_panning",
@@ -52,7 +52,7 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v211_drone_visual_overhaul_and_tactical_targeting",
-      "./js/main.js": "./js/main.js?v=v215_smash_bros_multiplayer_roster",
+      "./js/main.js": "./js/main.js?v=v219_online_continuous_simulation_and_tactical_pause",
       "./js/network.js": "./js/network.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -89,7 +89,7 @@
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v192_perf_and_multiplayer_sync",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v205_fix_rewardPreview_and_restore_touch_controls",
-      "./js/uiManager.js": "./js/uiManager.js?v=v218_remove_status_card_and_center_menu_buttons",
+      "./js/uiManager.js": "./js/uiManager.js?v=v219_online_continuous_simulation_and_tactical_pause",
       "./js/weapons.js": "./js/weapons.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v192_perf_and_multiplayer_sync",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v192_perf_and_multiplayer_sync",
@@ -101,7 +101,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v218_remove_status_card_and_center_menu_buttons">
+  <link rel="stylesheet" href="./css/main.css?v=v219_online_continuous_simulation_and_tactical_pause">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -650,7 +650,6 @@
               <div class="menu-col-actions" id="menu-main-actions">
                 <button id="menu-btn-play" class="ui-btn ui-btn-primary ui-btn-hero" type="button" title="Rozpocznij odprawę i grę">
                   <span class="btn-hero-title">ROZPOCZNIJ ROZGRYWKĘ</span>
-                  <span class="btn-hero-sub">ODPRAWA TAKTYCZNA &amp; WYBÓR ARENY [ENTER]</span>
                 </button>
 
                 <div class="menu-sub-actions-grid">
@@ -1267,31 +1266,23 @@
         </div>
       </div>
 
-      <!-- 3. OKNO PAUZY -->
+      <!-- 3. OKNO PAUZY (MENU TAKTYCZNE // GRA NA ŻYWO) -->
       <div id="pause-overlay" class="ui-view-overlay" style="display: none;">
         <div class="pause-modal-box">
           <div class="pause-header">
-            <div class="pause-badge">SYSTEM ZAWIESZONY</div>
-            <h2 class="pause-title">GRA WSTRZYMANA</h2>
+            <div class="pause-badge">GRA W TOKU // ONLINE</div>
+            <h2 class="pause-title">MENU TAKTYCZNE</h2>
             <div class="pause-arena-info" id="pause-match-info">ARENA 1: NEONOWE MIASTO</div>
           </div>
 
           <div class="pause-menu-actions">
             <button id="pause-btn-resume" class="ui-btn ui-btn-primary" type="button">
-              <span class="btn-text">WZNÓW GRĘ</span>
+              <span class="btn-text">POWRÓT DO WALKI</span>
               <span class="btn-badge">[ESC]</span>
-            </button>
-
-            <button id="pause-btn-restart" class="ui-btn ui-btn-secondary" type="button">
-              <span class="btn-text">RESTART RUNDY</span>
             </button>
 
             <button id="pause-btn-class" class="ui-btn ui-btn-secondary" type="button">
               <span class="btn-text">ZMIEŃ KLASĘ POSTACI</span>
-            </button>
-
-            <button id="pause-btn-creator" class="ui-btn ui-btn-secondary" type="button">
-              <span class="btn-text">KREATOR POSTACI</span>
             </button>
 
             <button id="pause-btn-settings" class="ui-btn ui-btn-secondary" type="button">
@@ -1303,7 +1294,7 @@
             </button>
           </div>
 
-          <div class="pause-footer-hint">Naciśnij [ESC] lub [P] aby natychmiast wrócić do gry</div>
+          <div class="pause-footer-hint">Naciśnij [ESC] lub [P] aby natychmiast wrócić do walki</div>
         </div>
       </div>
     </div>
