@@ -5,7 +5,6 @@
 
 import {
   animTime,
-  LEAF_PARTICLES,
   WATER_RIPPLES,
   getRiverbankGroundY,
   ARENA_3_BRIDGE_BLOCKS,
@@ -65,224 +64,293 @@ export function drawArena3Foreground(ctx, camera) {
     { x: 4400, y: 1200 }
   ];
 
-  // A. Lewy brzeg - owalna płaszczyzna schodząca do wody (X: 0 do 1750)
-  if (camL < 1850 && camR > -50) {
+  // -----------------------------------------------------------------------
+  // 1. PODŁOŻE: BAZALTOWY KLIF NADRZECZNY I ZAROŚNIĘTE SKARPY (LEWY I PRAWY BRZEG)
+  // Przekształcone w litą formację skalną z prastarymi korzeniami figowców,
+  // blokami megalitycznymi, wylotami rurociągów i nocnym mchem z rim-lightingiem
+  // -----------------------------------------------------------------------
+  function drawBasaltRiverCliff(isLeft, ovalPoints) {
+    const isL = isLeft;
+    const startX = isL ? 0 : 4400;
+    const edgeX = isL ? 1750 : 2650;
+
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(0, 1400);
-    ctx.lineTo(0, 1200);
-    for (let i = 1; i < leftOvalPoints.length; i++) {
-      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
+    ctx.moveTo(startX, 1400);
+    ctx.lineTo(startX, 1200);
+    if (isL) {
+      for (let i = 1; i < ovalPoints.length; i++) {
+        ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+      }
+    } else {
+      for (let i = ovalPoints.length - 1; i >= 0; i--) {
+        ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+      }
     }
-    ctx.lineTo(1750, 1400);
+    ctx.lineTo(edgeX, 1400);
     ctx.closePath();
 
-    const gGradL = ctx.createLinearGradient(0, 1200, 0, 1400);
-    gGradL.addColorStop(0.0, '#42321e');
-    gGradL.addColorStop(0.18, '#2e2214');
-    gGradL.addColorStop(0.55, '#1e160c');
-    gGradL.addColorStop(1.0, '#100c06');
-    ctx.fillStyle = gGradL;
+    // A. BAZOWY GRADIENT BAZALTOWO-ŁUPKOWY (Głęboka nocna czerń i chłodny grafit)
+    const cliffGrad = ctx.createLinearGradient(0, 1200, 0, 1400);
+    cliffGrad.addColorStop(0.00, '#131c26');
+    cliffGrad.addColorStop(0.20, '#0e161f');
+    cliffGrad.addColorStop(0.55, '#090e13');
+    cliffGrad.addColorStop(1.00, '#04070a');
+    ctx.fillStyle = cliffGrad;
     ctx.fill();
 
-    // Detale starożytnych bloków kamiennych zatopionych w gruncie
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let kx = 60; kx < 1520; kx += 110) {
-      const ky = 1200 + Math.pow(kx / 1750, 2) * 135;
-      ctx.fillRect(kx, ky + 26, 60, 22);
-      ctx.fillRect(kx + 35, ky + 62, 50, 20);
+    // B. POZIOME WARSTWY GEOLOGICZNE (STRATA) I SPĘKANIA SKALNE
+    ctx.save();
+    ctx.strokeStyle = 'rgba(4, 7, 10, 0.70)';
+    ctx.lineWidth = 2.4;
+    const strataY = [1235, 1275, 1315, 1355];
+    for (let sy of strataY) {
+      ctx.beginPath();
+      const x0 = isL ? 0 : 2700;
+      const x1 = isL ? 1700 : 4400;
+      ctx.moveTo(x0, sy);
+      for (let sx = x0; sx <= x1; sx += 80) {
+        const wave = Math.sin(sx * 0.015 + sy) * 5;
+        ctx.lineTo(sx, sy + wave);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // C. EMBEDDED MEGALITHS (Ciosane bloki kamienne wtopione w skałę)
+    const blockList = isL ? [
+      { x: 120, y: 1228, w: 85, h: 28 },
+      { x: 260, y: 1242, w: 70, h: 24 },
+      { x: 420, y: 1230, w: 90, h: 30 },
+      { x: 620, y: 1245, w: 65, h: 26 },
+      { x: 780, y: 1232, w: 80, h: 28 },
+      { x: 960, y: 1248, w: 75, h: 25 },
+      { x: 1140, y: 1255, w: 80, h: 28 },
+      { x: 1300, y: 1285, w: 65, h: 24 },
+      { x: 1450, y: 1310, w: 55, h: 22 },
+      { x: 200, y: 1290, w: 95, h: 32 },
+      { x: 520, y: 1300, w: 85, h: 30 },
+      { x: 860, y: 1310, w: 70, h: 28 }
+    ] : [
+      { x: 4195, y: 1228, w: 85, h: 28 },
+      { x: 4070, y: 1242, w: 70, h: 24 },
+      { x: 3890, y: 1230, w: 90, h: 30 },
+      { x: 3715, y: 1245, w: 65, h: 26 },
+      { x: 3540, y: 1232, w: 80, h: 28 },
+      { x: 3365, y: 1248, w: 75, h: 25 },
+      { x: 3180, y: 1255, w: 80, h: 28 },
+      { x: 3035, y: 1285, w: 65, h: 24 },
+      { x: 2895, y: 1310, w: 55, h: 22 },
+      { x: 4105, y: 1290, w: 95, h: 32 },
+      { x: 3795, y: 1300, w: 85, h: 30 },
+      { x: 3470, y: 1310, w: 70, h: 28 }
+    ];
+
+    for (let b of blockList) {
+      ctx.fillStyle = '#141e28';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = 'rgba(186, 230, 253, 0.15)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x + b.w, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = '#05080c';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + b.h);
+      ctx.lineTo(b.x + b.w, b.y + b.h);
+      ctx.lineTo(b.x + b.w, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(5, 9, 13, 0.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.w * 0.35, b.y);
+      ctx.lineTo(b.x + b.w * 0.42, b.y + b.h * 0.55);
+      ctx.lineTo(b.x + b.w * 0.38, b.y + b.h);
+      ctx.stroke();
     }
 
-    // Warstwa mchu i dżunglowej trawy na owalnej krawędzi
+    // D. PRASTARE KORZENIE DRZEW FIGOWCÓW / BANYAN ROOTS
+    const rootSystems = isL ? [
+      { startX: 180, startY: 1200, points: [{ x: 195, y: 1235 }, { x: 210, y: 1270 }, { x: 205, y: 1320 }, { x: 215, y: 1380 }], w: 5.5 },
+      { startX: 540, startY: 1200, points: [{ x: 550, y: 1240 }, { x: 565, y: 1285 }, { x: 580, y: 1340 }, { x: 575, y: 1395 }], w: 4.8 },
+      { startX: 1020, startY: 1200, points: [{ x: 1040, y: 1230 }, { x: 1055, y: 1275 }, { x: 1080, y: 1325 }, { x: 1110, y: 1385 }], w: 5.2 },
+      { startX: 1380, startY: 1235, points: [{ x: 1410, y: 1270 }, { x: 1445, y: 1305 }, { x: 1490, y: 1345 }, { x: 1540, y: 1390 }], w: 4.5 },
+      { startX: 1620, startY: 1295, points: [{ x: 1645, y: 1315 }, { x: 1675, y: 1340 }, { x: 1710, y: 1370 }, { x: 1740, y: 1395 }], w: 3.8 }
+    ] : [
+      { startX: 4220, startY: 1200, points: [{ x: 4205, y: 1235 }, { x: 4190, y: 1270 }, { x: 4195, y: 1320 }, { x: 4185, y: 1380 }], w: 5.5 },
+      { startX: 3860, startY: 1200, points: [{ x: 3850, y: 1240 }, { x: 3835, y: 1285 }, { x: 3820, y: 1340 }, { x: 3825, y: 1395 }], w: 4.8 },
+      { startX: 3380, startY: 1200, points: [{ x: 3360, y: 1230 }, { x: 3345, y: 1275 }, { x: 3320, y: 1325 }, { x: 3290, y: 1385 }], w: 5.2 },
+      { startX: 3020, startY: 1235, points: [{ x: 2990, y: 1270 }, { x: 2955, y: 1305 }, { x: 2910, y: 1345 }, { x: 2860, y: 1390 }], w: 4.5 },
+      { startX: 2780, startY: 1295, points: [{ x: 2755, y: 1315 }, { x: 2725, y: 1340 }, { x: 2690, y: 1370 }, { x: 2660, y: 1395 }], w: 3.8 }
+    ];
+
     ctx.save();
-    ctx.strokeStyle = '#3e7025';
-    ctx.lineWidth = 14;
+    for (let r of rootSystems) {
+      ctx.strokeStyle = '#0a0604';
+      ctx.lineWidth = r.w + 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(r.startX, r.startY);
+      for (let p of r.points) ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#261b14';
+      ctx.lineWidth = r.w;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#38281e';
+      ctx.lineWidth = Math.max(1, r.w * 0.35);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // E. TAKTYCZNA KRATA DRENAŻOWA / WYLOT RUROCIĄGU
+    const drainX = isL ? 1520 : 2880;
+    const drainY = 1310;
+    ctx.save();
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(drainX, drainY, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#020408';
+    ctx.beginPath();
+    ctx.arc(drainX, drainY, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(drainX - 11, drainY);
+    ctx.lineTo(drainX + 11, drainY);
+    ctx.moveTo(drainX, drainY - 11);
+    ctx.lineTo(drainX, drainY + 11);
+    ctx.stroke();
+
+    ctx.fillStyle = '#94a3b8';
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+      ctx.fillRect(drainX + Math.cos(a) * 13 - 1, drainY + Math.sin(a) * 13 - 1, 2, 2);
+    }
+
+    ctx.strokeStyle = 'rgba(30, 80, 115, 0.40)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(drainX, drainY + 11);
+    ctx.quadraticCurveTo(drainX + (isL ? 8 : -8), drainY + 25, drainX + (isL ? 15 : -15), 1345);
+    ctx.stroke();
+    ctx.restore();
+
+    // F. NOCNY LEŚNY MECH I SREBRZYSTY RIM-LIGHT NA KRAWĘDZI STOKU
+    ctx.save();
+    ctx.strokeStyle = '#102415';
+    ctx.lineWidth = 13;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y);
-    for (let i = 1; i < leftOvalPoints.length; i++) {
-      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
+    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y);
+    for (let i = 1; i < ovalPoints.length; i++) {
+      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     }
     ctx.stroke();
 
-    // Jaśniejsza trawa
-    ctx.strokeStyle = '#589e34';
+    ctx.strokeStyle = '#18381e';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y - 2);
-    for (let i = 1; i < leftOvalPoints.length; i++) {
-      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y - 2);
+    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y - 2);
+    for (let i = 1; i < ovalPoints.length; i++) {
+      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y - 2);
     }
     ctx.stroke();
 
-    // Rim lighting (światło na owalnej krawędzi stoku)
-    ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.45)';
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(leftOvalPoints[0].x, leftOvalPoints[0].y - 4);
-    for (let i = 1; i < leftOvalPoints.length; i++) {
-      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y - 4);
+    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y - 4);
+    for (let i = 1; i < ovalPoints.length; i++) {
+      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y - 4);
     }
     ctx.stroke();
 
-    // Kępki trawy / paprocie wzdłuż owalnego zbocza (aż do linii wody)
-    ctx.fillStyle = '#4fa32c';
-    for (let i = 0; i < leftOvalPoints.length - 2; i++) {
-      const pA = leftOvalPoints[i];
-      const pB = leftOvalPoints[i + 1];
-      for (let t = 0.2; t <= 0.8; t += 0.3) {
+    ctx.fillStyle = '#14301a';
+    for (let i = 0; i < ovalPoints.length - 2; i++) {
+      const pA = ovalPoints[i];
+      const pB = ovalPoints[i + 1];
+      for (let t = 0.25; t <= 0.75; t += 0.35) {
         const gx = pA.x + (pB.x - pA.x) * t;
         const gy = pA.y + (pB.y - pA.y) * t;
         if (gy < 1290) {
           ctx.beginPath();
           ctx.moveTo(gx - 4, gy);
-          ctx.lineTo(gx, gy - 7);
+          ctx.lineTo(gx, gy - 6);
           ctx.lineTo(gx + 4, gy);
           ctx.fill();
         }
       }
     }
+    ctx.restore();
 
-    // Zaokrąglone, gładkie kamienie rzeczne przy i pod linią wody (schodzenie do wody)
-    ctx.fillStyle = '#2d3748';
-    ctx.strokeStyle = '#1a202c';
-    ctx.lineWidth = 1.5;
-    const riverStonesL = [
+    // G. OTOCZAKI BAZALTOWE PRZY WODZIE
+    const riverStones = isL ? [
       { x: 1620, y: 1290, rx: 14, ry: 8 },
       { x: 1655, y: 1298, rx: 16, ry: 9 },
       { x: 1690, y: 1308, rx: 18, ry: 10 },
       { x: 1725, y: 1320, rx: 20, ry: 11 },
       { x: 1745, y: 1332, rx: 15, ry: 9 }
-    ];
-    for (const st of riverStonesL) {
-      ctx.beginPath();
-      ctx.ellipse(st.x, st.y, st.rx, st.ry, 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    // Kontur stoku
-    ctx.strokeStyle = '#18120a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 1200);
-    for (let i = 1; i < leftOvalPoints.length; i++) {
-      ctx.lineTo(leftOvalPoints[i].x, leftOvalPoints[i].y);
-    }
-    ctx.lineTo(1750, 1400);
-    ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-  }
-
-  // B. Prawy brzeg - owalna płaszczyzna schodząca do wody (X: 2650 do 4400)
-  if (camL < 4450 && camR > 2600) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(4400, 1400);
-    ctx.lineTo(4400, 1200);
-    for (let i = rightOvalPoints.length - 1; i >= 0; i--) {
-      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
-    }
-    ctx.lineTo(2650, 1400);
-    ctx.closePath();
-
-    const gGradR = ctx.createLinearGradient(4400, 1200, 4400, 1400);
-    gGradR.addColorStop(0.0, '#42321e');
-    gGradR.addColorStop(0.18, '#2e2214');
-    gGradR.addColorStop(0.55, '#1e160c');
-    gGradR.addColorStop(1.0, '#100c06');
-    ctx.fillStyle = gGradR;
-    ctx.fill();
-
-    // Detale starożytnych bloków kamiennych
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let kx = 2860; kx < 4350; kx += 110) {
-      const u = (4400 - kx) / 1750;
-      const ky = 1200 + Math.pow(u, 2) * 135;
-      ctx.fillRect(kx, ky + 26, 60, 22);
-      ctx.fillRect(kx + 35, ky + 62, 50, 20);
-    }
-
-    // Warstwa mchu i dżunglowej trawy
-    ctx.save();
-    ctx.strokeStyle = '#3e7025';
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y);
-    for (let i = 1; i < rightOvalPoints.length; i++) {
-      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = '#589e34';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y - 2);
-    for (let i = 1; i < rightOvalPoints.length; i++) {
-      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y - 2);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(125, 220, 60, 0.75)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(rightOvalPoints[0].x, rightOvalPoints[0].y - 4);
-    for (let i = 1; i < rightOvalPoints.length; i++) {
-      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y - 4);
-    }
-    ctx.stroke();
-
-    // Kępki trawy
-    ctx.fillStyle = '#4fa32c';
-    for (let i = 1; i < rightOvalPoints.length - 1; i++) {
-      const pA = rightOvalPoints[i];
-      const pB = rightOvalPoints[i + 1];
-      for (let t = 0.2; t <= 0.8; t += 0.3) {
-        const gx = pA.x + (pB.x - pA.x) * t;
-        const gy = pA.y + (pB.y - pA.y) * t;
-        if (gy < 1290) {
-          ctx.beginPath();
-          ctx.moveTo(gx - 4, gy);
-          ctx.lineTo(gx, gy - 7);
-          ctx.lineTo(gx + 4, gy);
-          ctx.fill();
-        }
-      }
-    }
-
-    // Zaokrąglone kamienie rzeczne
-    ctx.fillStyle = '#2d3748';
-    ctx.strokeStyle = '#1a202c';
-    ctx.lineWidth = 1.5;
-    const riverStonesR = [
+    ] : [
       { x: 2660, y: 1332, rx: 15, ry: 9 },
       { x: 2685, y: 1320, rx: 19, ry: 11 },
       { x: 2720, y: 1308, rx: 17, ry: 10 },
       { x: 2755, y: 1298, rx: 16, ry: 9 },
       { x: 2790, y: 1290, rx: 14, ry: 8 }
     ];
-    for (const st of riverStonesR) {
+
+    ctx.save();
+    for (let st of riverStones) {
+      ctx.fillStyle = '#16202b';
+      ctx.strokeStyle = '#090e14';
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.ellipse(st.x, st.y, st.rx, st.ry, -0.1, 0, Math.PI * 2);
+      ctx.ellipse(st.x, st.y, st.rx, st.ry, isL ? 0.1 : -0.1, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-    }
 
-    // Kontur stoku
-    ctx.strokeStyle = '#18120a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(2650, 1400);
-    for (let i = 0; i < rightOvalPoints.length; i++) {
-      ctx.lineTo(rightOvalPoints[i].x, rightOvalPoints[i].y);
+      ctx.strokeStyle = 'rgba(186, 230, 253, 0.25)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.arc(st.x, st.y - 1, st.rx * 0.65, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
     }
+    ctx.restore();
+
+    // H. KONTUR PODSTAWY
+    ctx.strokeStyle = '#05080c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(startX, 1200);
+    if (isL) {
+      for (let i = 1; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+    } else {
+      for (let i = 0; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+    }
+    ctx.lineTo(edgeX, 1400);
     ctx.stroke();
+
     ctx.restore();
-    ctx.restore();
+  }
+
+  // A. Lewy brzeg - bazaltowy klif nadrzeczny (X: 0 do 1750)
+  if (camL < 1850 && camR > -50) {
+    drawBasaltRiverCliff(true, leftOvalPoints);
+  }
+
+  // B. Prawy brzeg - bazaltowy klif nadrzeczny (X: 2650 do 4400)
+  if (camL < 4450 && camR > 2600) {
+    drawBasaltRiverCliff(false, rightOvalPoints);
   }
 
   // -----------------------------------------------------------------------

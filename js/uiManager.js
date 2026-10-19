@@ -321,7 +321,7 @@ export const uiManager = {
       name: 'TAJEMNICZA DŻUNGLA',
       tag: 'ARENA TAKTYCZNA',
       desc: 'Gęsta roślinność, organiczne platformy i starcia na zróżnicowanych wysokościach.',
-      img: './assets/jungle_arena_bg.png'
+      img: './assets/arena3_preview.svg?v=v221_nocturnal_jungle_preview'
     }
   ],
   currentBriefingIndex: 0,

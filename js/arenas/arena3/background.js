@@ -11,7 +11,7 @@
 // - Nocne odbicie światła księżyca w toni rzeki
 // =========================================================================
 
-import { animTime, LEAF_PARTICLES } from './state.js';
+import { animTime } from './state.js';
 
 // =========================================================================
 // 1. ZAINICJALIZOWANE WARSTWY GWIAZD (DETERMINISTYCZNY STARFIELD)
@@ -466,24 +466,6 @@ export function drawArena3Background(ctx, camera) {
     ctx.fillStyle = `rgba(255, 255, 220, ${(ffAlpha * 0.95).toFixed(2)})`;
     ctx.beginPath();
     ctx.arc(fx, fy, ff.size * 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // 6C. Nocne opadające liście dżungli (zgaszona, tajemnicza nocna paleta)
-  const NOCTURNE_LEAF_COLORS = ['#1a3d24', '#214728', '#14362b', '#1b4d32', '#2d4a22'];
-  for (let i = 0; i < LEAF_PARTICLES.length; i += 2) {
-    const leaf = LEAF_PARTICLES[i];
-    if (leaf.x < camX - 50 || leaf.x > camX + (W_screen / camZoom) + 50) continue;
-    if (leaf.y < camY - 50 || leaf.y > camY + (H_screen / camZoom) + 50) continue;
-
-    ctx.save();
-    ctx.globalAlpha = leaf.alpha * 0.45;
-    ctx.translate(leaf.x, leaf.y);
-    ctx.rotate(leaf.rot);
-    ctx.fillStyle = NOCTURNE_LEAF_COLORS[i % NOCTURNE_LEAF_COLORS.length];
-    ctx.beginPath();
-    ctx.ellipse(0, 0, leaf.size, leaf.size * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

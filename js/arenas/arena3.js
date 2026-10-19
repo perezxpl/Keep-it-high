@@ -6,10 +6,8 @@
 
 import { triggerScreenShake } from '../camera.js';
 import {
-  bgImg,
   animTime,
   addArena3AnimTime,
-  LEAF_PARTICLES,
   WATER_RIPPLES,
   LEFT_OVAL_POINTS,
   RIGHT_OVAL_POINTS,
@@ -114,23 +112,7 @@ export {
 export function updateArena3(dt, players, ball) {
   addArena3AnimTime(dt);
 
-  // 1. Animacja liści dżungli
-  for (let i = 0; i < LEAF_PARTICLES.length; i++) {
-    const leaf = LEAF_PARTICLES[i];
-    leaf.x += leaf.vx * 60 * dt;
-    leaf.y += leaf.vy * 60 * dt;
-    leaf.rot += leaf.rotSpeed * dt;
-    leaf.x += Math.sin(animTime * 1.5 + i * 0.7) * 0.35;
 
-    if (leaf.x < -40) {
-      leaf.x = 4440;
-      leaf.y = Math.random() * 1000 + 40;
-    }
-    if (leaf.y > 1380) {
-      leaf.y = -30;
-      leaf.x = Math.random() * 4400;
-    }
-  }
 
   // 2. Fizyka strefy wody (Trigger Area - X: 1600 do 2800, Y: 1300 do 1400)
   // W PŁYTKIEJ WODZIE (BRZEG) GRACZ ZWALNIA (DRAG), A PO WEJŚCIU GŁĘBIEJ TONIE

@@ -19,22 +19,8 @@ export const bgImg = null;
 export let animTime = 0;
 export function addArena3AnimTime(dt) { animTime += dt; }
 
-// Cząsteczki opadających liści dżungli
+// Cząsteczki opadających liści dżungli (wyłączone w nocnym motywie)
 export const LEAF_PARTICLES = [];
-const MAX_LEAVES = 24;
-for (let i = 0; i < MAX_LEAVES; i++) {
-  LEAF_PARTICLES.push({
-    x: Math.random() * 4400,
-    y: Math.random() * 1200 + 50,
-    vx: -(0.6 + Math.random() * 1.4),
-    vy: 0.4 + Math.random() * 0.6,
-    rot: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 2.0,
-    size: 7 + Math.random() * 9,
-    alpha: 0.45 + Math.random() * 0.45,
-    color: ['#2d6e2d', '#3a7c3a', '#4a9e4a', '#5aae3a', '#78b832', '#99a826'][Math.floor(Math.random() * 6)]
-  });
-}
 
 // Bąbelki / pluski w strefie wody
 export const WATER_RIPPLES = [];
