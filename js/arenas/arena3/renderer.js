@@ -18,11 +18,53 @@ import {
   ARENA_3_SNIPER_SLABS,
   ARENA_3_TOWER_PILLARS,
   ARENA_3_TOWER_BLOCKS,
-  ARENA_3_PLATFORMS
+  ARENA_3_PLATFORMS,
+  GROUND_LEFT_POINTS,
+  GROUND_RIGHT_POINTS,
+  ARENA_3_CRATERS,
+  GROUND_WATER_TABLE_Y,
+  GROUND_BEDROCK_Y
 } from './state.js';
 
 import { drawArena3Background } from './background.js';
 export { drawArena3Background };
+
+function drawGroundwaterPool(ctx, seg) {
+  if (!seg || seg.length < 2) return;
+  const xStart = seg[0].x - 2;
+  const xEnd = seg[seg.length - 1].x + 2;
+
+  ctx.save();
+  // Woda podziemna / gruntowa
+  const poolGrad = ctx.createLinearGradient(0, GROUND_WATER_TABLE_Y, 0, GROUND_BEDROCK_Y);
+  poolGrad.addColorStop(0, 'rgba(10, 42, 48, 0.88)');
+  poolGrad.addColorStop(1, 'rgba(4, 18, 22, 0.98)');
+  ctx.fillStyle = poolGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(xStart, GROUND_WATER_TABLE_Y);
+  for (let i = 0; i < seg.length; i++) {
+    ctx.lineTo(seg[i].x, seg[i].y);
+  }
+  ctx.lineTo(xEnd, GROUND_WATER_TABLE_Y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tafla wody z seledynowo-wodnym rimem
+  ctx.strokeStyle = 'rgba(125, 215, 235, 0.75)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(xStart, GROUND_WATER_TABLE_Y);
+  ctx.lineTo(xEnd, GROUND_WATER_TABLE_Y);
+  ctx.stroke();
+
+  // Ciemny mulisty brzeg przy krawędzi wody
+  ctx.fillStyle = '#0a1012';
+  ctx.fillRect(xStart - 1, GROUND_WATER_TABLE_Y - 1, 3, 3);
+  ctx.fillRect(xEnd - 2, GROUND_WATER_TABLE_Y - 1, 3, 3);
+
+  ctx.restore();
+}
 
 // =========================================================================
 // 7. RENDEROWANIE PIERWSZEGO PLANU (PLATFORMY, TEREN, WIEŻE, BRAMKI Y, RZEKA)
@@ -41,8 +83,7 @@ export function drawArena3Foreground(ctx, camera) {
   // Przekształcone w naturalne, owalne wzgórza łagodnie zanurzające się w rzece
   // -----------------------------------------------------------------------
   const leftOvalPoints = [
-    { x: 0, y: 1200 },
-    { x: 1150, y: 1200 },
+    ...GROUND_LEFT_POINTS,
     { x: 1300, y: 1225 },
     { x: 1450, y: 1260 },
     { x: 1580, y: 1295 },
@@ -56,8 +97,7 @@ export function drawArena3Foreground(ctx, camera) {
     { x: 2820, y: 1295 },
     { x: 2950, y: 1260 },
     { x: 3100, y: 1225 },
-    { x: 3250, y: 1200 },
-    { x: 4400, y: 1200 }
+    ...GROUND_RIGHT_POINTS
   ];
 
   // -----------------------------------------------------------------------
@@ -69,11 +109,12 @@ export function drawArena3Foreground(ctx, camera) {
     const isL = isLeft;
     const startX = isL ? 0 : 4400;
     const edgeX = isL ? 1750 : 2650;
+    const startY = isL ? ovalPoints[0].y : ovalPoints[ovalPoints.length - 1].y;
 
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(startX, 1400);
-    ctx.lineTo(startX, 1200);
+    ctx.lineTo(startX, startY);
     if (isL) {
       for (let i = 1; i < ovalPoints.length; i++) {
         ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
@@ -113,6 +154,24 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.restore();
 
+    // C. ZWĘGLONE ŚLADY PO KRATERACH I EKSPLOZJACH (SCORCH MARKS)
+    if (ARENA_3_CRATERS && ARENA_3_CRATERS.length > 0) {
+      ctx.save();
+      for (let cr of ARENA_3_CRATERS) {
+        if ((isL && cr.x < 1850) || (!isL && cr.x > 2600)) {
+          const scorchGrad = ctx.createRadialGradient(cr.x, cr.y, cr.r * 0.15, cr.x, cr.y, cr.r * 1.15);
+          scorchGrad.addColorStop(0, 'rgba(8, 6, 5, 0.85)');
+          scorchGrad.addColorStop(0.5, 'rgba(18, 14, 12, 0.55)');
+          scorchGrad.addColorStop(0.85, 'rgba(28, 22, 18, 0.25)');
+          scorchGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = scorchGrad;
+          ctx.beginPath();
+          ctx.arc(cr.x, cr.y, cr.r * 1.15, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
 
     // E. TAKTYCZNA KRATA DRENAŻOWA / WYLOT RUROCIĄGU
     const drainX = isL ? 1520 : 2880;
@@ -223,7 +282,7 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.strokeStyle = '#05080c';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(startX, 1200);
+    ctx.moveTo(startX, startY);
     if (isL) {
       for (let i = 1; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     } else {
@@ -231,6 +290,30 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.lineTo(edgeX, 1400);
     ctx.stroke();
+
+    // I. ZALEWY WÓD GRUNTOWYCH W GŁĘBOKICH KRATERACH
+    const groundPts = isL ? GROUND_LEFT_POINTS : GROUND_RIGHT_POINTS;
+    let poolSeg = [];
+    for (let i = 0; i < groundPts.length; i++) {
+      const pt = groundPts[i];
+      if (pt.y > GROUND_WATER_TABLE_Y) {
+        if (poolSeg.length === 0 && i > 0) {
+          const prev = groundPts[i - 1];
+          const frac = (GROUND_WATER_TABLE_Y - prev.y) / (pt.y - prev.y);
+          poolSeg.push({ x: prev.x + (pt.x - prev.x) * frac, y: GROUND_WATER_TABLE_Y });
+        }
+        poolSeg.push(pt);
+      } else if (poolSeg.length > 0) {
+        const prev = poolSeg[poolSeg.length - 1];
+        const frac = (GROUND_WATER_TABLE_Y - prev.y) / (pt.y - prev.y);
+        poolSeg.push({ x: prev.x + (pt.x - prev.x) * frac, y: GROUND_WATER_TABLE_Y });
+        drawGroundwaterPool(ctx, poolSeg);
+        poolSeg = [];
+      }
+    }
+    if (poolSeg.length > 0) {
+      drawGroundwaterPool(ctx, poolSeg);
+    }
 
     ctx.restore();
   }

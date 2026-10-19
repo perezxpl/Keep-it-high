@@ -49,7 +49,13 @@ import {
   ARENA_3_SPAWNS,
   ARENA_3_MINECARTS,
   resetArena3Minecarts,
-  resetArena3Breaches
+  resetArena3Breaches,
+  GROUND_LEFT_POINTS,
+  GROUND_RIGHT_POINTS,
+  ARENA_3_CRATERS,
+  carveTerrainCrater,
+  GROUND_WATER_TABLE_Y,
+  GROUND_BEDROCK_Y
 } from './arena3/state.js';
 
 import {
@@ -99,6 +105,12 @@ export {
   ARENA_3_MINECARTS,
   resetArena3Minecarts,
   resetArena3Breaches,
+  GROUND_LEFT_POINTS,
+  GROUND_RIGHT_POINTS,
+  ARENA_3_CRATERS,
+  carveTerrainCrater,
+  GROUND_WATER_TABLE_Y,
+  GROUND_BEDROCK_Y,
   drawArena3Background,
   drawArena3Foreground,
   onArena3BulletHit,
@@ -167,7 +179,23 @@ export function updateArena3(dt, players, ball) {
           p.vx *= 0.82;
           if (p.vy > 0) p.vy *= 0.92;
         }
+      } else if (!inWaterX && pFeetY >= GROUND_WATER_TABLE_Y && !p.isDead) {
+        // 2B. Brodzenie w wodzie gruntowej na dnie głębokich kraterów wyciętych eksplozjami
+        p.vx *= 0.88;
+        if (p.vy > 0) p.vy *= 0.94;
+        if (Math.abs(p.vx) > 0.5 && Math.random() < 0.25) {
+          spawnArena3WaterSplash(pCenterX, GROUND_WATER_TABLE_Y, 2, false);
+        }
       }
+    }
+  }
+
+  // Opór wody gruntowej dla piłki w lejach
+  if (ball && typeof ball.y === 'number') {
+    const ballBottomY = ball.y + (ball.radius || 12);
+    if (ballBottomY >= GROUND_WATER_TABLE_Y) {
+      ball.vx *= 0.92;
+      ball.vy *= 0.92;
     }
   }
 

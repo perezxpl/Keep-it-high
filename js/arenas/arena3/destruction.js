@@ -24,7 +24,8 @@ import {
   ARENA_3_TOWER_PILLARS,
   ARENA_3_TOWER_BLOCKS,
   breakTowerBlock,
-  destroyTowerPillar
+  destroyTowerPillar,
+  carveTerrainCrater
 } from './state.js';
 
 function rayIntersectsAABB(x1, y1, x2, y2, left, top, right, bottom) {
@@ -514,6 +515,15 @@ export function onArena3KickHit(player, kickBox) {
 export function onArena3Explosion(expX, expY, radius, context) {
   let hitAny = false;
   const blastRad = radius || 140;
+
+  // 0. Destrukcja podłoża w stylu Worms (wybijanie lejków/kraterów w ziemi)
+  if (expY >= 1000 && expY <= 1420) {
+    if ((expX >= -80 && expX <= 1250) || (expX >= 3150 && expX <= 4480)) {
+      if (carveTerrainCrater(expX, expY, blastRad)) {
+        hitAny = true;
+      }
+    }
+  }
 
   // 1. Wybuch w klocki ramp podejścia do mostu
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {

@@ -37,6 +37,109 @@ for (let i = 0; i < 14; i++) {
 // =========================================================================
 // 2B. FIZYKA TERENU I MODUŁOWYCH BLOKÓW MOSTU (ANGRY BIRDS STYLE COLLAPSE)
 // =========================================================================
+// =========================================================================
+// 1B. DESTRUKCYJNE PODŁOŻE W STYLU WORMS / LIERO
+// Granulowane punkty powierzchni gruntu (X: 0-1150 oraz X: 3250-4400)
+// Podatne na wycinanie lejków/kraterów przez eksplozje
+// Dno kraterów ograniczone niezniszczalną płytą bazaltową (Y: 1370)
+// oraz podsiąkającą wodą gruntową (Y: 1345)
+// =========================================================================
+export const GROUND_WATER_TABLE_Y = 1345;
+export const GROUND_BEDROCK_Y = 1370;
+
+export const ARENA_3_CRATERS = [];
+
+function createGroundPoints(startX, endX, step = 10, defaultY = 1200) {
+  const pts = [];
+  for (let x = startX; x <= endX; x += step) {
+    pts.push({ x, y: defaultY, origY: defaultY });
+  }
+  if (pts[pts.length - 1].x < endX) {
+    pts.push({ x: endX, y: defaultY, origY: defaultY });
+  }
+  return pts;
+}
+
+export const GROUND_LEFT_POINTS = createGroundPoints(0, 1150, 10, 1200);
+export const GROUND_RIGHT_POINTS = createGroundPoints(3250, 4400, 10, 1200);
+
+export function getDestructibleGroundY(x) {
+  if (x >= 0 && x <= 1150) {
+    const idx = Math.floor(x / 10);
+    if (idx >= 0 && idx < GROUND_LEFT_POINTS.length - 1) {
+      const p0 = GROUND_LEFT_POINTS[idx];
+      const p1 = GROUND_LEFT_POINTS[idx + 1];
+      const dx = p1.x - p0.x;
+      const t = dx > 0 ? (x - p0.x) / dx : 0;
+      return p0.y + t * (p1.y - p0.y);
+    }
+    return 1200;
+  }
+  if (x >= 3250 && x <= 4400) {
+    const idx = Math.floor((x - 3250) / 10);
+    if (idx >= 0 && idx < GROUND_RIGHT_POINTS.length - 1) {
+      const p0 = GROUND_RIGHT_POINTS[idx];
+      const p1 = GROUND_RIGHT_POINTS[idx + 1];
+      const dx = p1.x - p0.x;
+      const t = dx > 0 ? (x - p0.x) / dx : 0;
+      return p0.y + t * (p1.y - p0.y);
+    }
+    return 1200;
+  }
+  return 1200;
+}
+
+export function carveTerrainCrater(expX, expY, radius = 140) {
+  // Promień wycięcia leja w ziemi (skalowany z siły wybuchu, optymalny 38-64 px)
+  const carveR = Math.min(64, Math.max(38, radius * 0.38));
+  let carvedAny = false;
+  let reachedWater = false;
+
+  const targetPointSets = [];
+  if (expX - carveR <= 1200) targetPointSets.push(GROUND_LEFT_POINTS);
+  if (expX + carveR >= 3200) targetPointSets.push(GROUND_RIGHT_POINTS);
+
+  for (const pts of targetPointSets) {
+    for (let i = 0; i < pts.length; i++) {
+      const pt = pts[i];
+      const distH = Math.abs(pt.x - expX);
+      if (distH < carveR) {
+        // Czasza sferyczna krateru
+        const dy = Math.sqrt(carveR * carveR - distH * distH);
+        const targetY = expY + dy;
+        if (targetY > pt.y) {
+          pt.y = Math.min(GROUND_BEDROCK_Y, Math.max(pt.y, targetY));
+          carvedAny = true;
+          if (pt.y >= GROUND_WATER_TABLE_Y) {
+            reachedWater = true;
+          }
+        }
+      }
+    }
+  }
+
+  if (carvedAny) {
+    ARENA_3_CRATERS.push({
+      x: expX,
+      y: expY,
+      r: carveR
+    });
+    if (ARENA_3_CRATERS.length > 50) {
+      ARENA_3_CRATERS.shift();
+    }
+    // Wyrzucenie odłamków ziemi i skalnego pyłu
+    spawnStoneDebris(expX, Math.min(1350, expY + 10), (Math.random() - 0.5) * 5, -3.5, 16);
+    spawnBridgeSplinters(expX, Math.min(1350, expY + 10), (Math.random() - 0.5) * 6, -4.0, 12);
+
+    // Jeśli wykopano rów aż do wody gruntowej -> rozbryzg wody i błota
+    if (reachedWater) {
+      spawnArena3WaterSplash(expX, GROUND_WATER_TABLE_Y, 20, false);
+    }
+  }
+
+  return carvedAny;
+}
+
 export const LEFT_OVAL_POINTS = [
   { x: 1150, y: 1200 },
   { x: 1300, y: 1225 },
@@ -56,8 +159,8 @@ export const RIGHT_OVAL_POINTS = [
 ];
 
 export function getRiverbankGroundY(x) {
-  if (x <= 1150) return 1200;
-  if (x >= 3250) return 1200;
+  if (x <= 1150) return getDestructibleGroundY(x);
+  if (x >= 3250) return getDestructibleGroundY(x);
   if (x >= 1150 && x <= 1750) {
     for (let i = 0; i < LEFT_OVAL_POINTS.length - 1; i++) {
       if (x >= LEFT_OVAL_POINTS[i].x && x <= LEFT_OVAL_POINTS[i + 1].x) {
@@ -926,6 +1029,15 @@ export function resetArena3() {
     }
   }
 
+  // 6. Reset destrukcyjnego podłoża i kraterów
+  for (let i = 0; i < GROUND_LEFT_POINTS.length; i++) {
+    GROUND_LEFT_POINTS[i].y = GROUND_LEFT_POINTS[i].origY;
+  }
+  for (let i = 0; i < GROUND_RIGHT_POINTS.length; i++) {
+    GROUND_RIGHT_POINTS[i].y = GROUND_RIGHT_POINTS[i].origY;
+  }
+  ARENA_3_CRATERS.length = 0;
+
   BRIDGE_SPLINTERS.length = 0;
   STONE_DEBRIS.length = 0;
 }
@@ -1224,7 +1336,7 @@ export const ARENA_3_PLATFORMS = [
   // - Owalne brzegi rzeczne schodzące do wody (X: 1150-1750 oraz X: 2650-3250, Y: 1200 do 1335)
   // -----------------------------------------------------------------------
   // -----------------------------------------------------------------------
-  // LEWY BRZEG (SEKTOR ALFA / CYAN) - PŁASKIE PODŁOŻE (X: 0 do 1150, Y: 1200)
+  // LEWY BRZEG (SEKTOR ALFA / CYAN) - DESTRUKCYJNE PODŁOŻE (X: 0 do 1150, Y: 1200)
   // -----------------------------------------------------------------------
   {
     id: 'ground_left',
@@ -1235,7 +1347,8 @@ export const ARENA_3_PLATFORMS = [
     h: 200,
     thickness: 200,
     solid: true,
-    isPlatform: true
+    isPlatform: true,
+    surfacePoints: GROUND_LEFT_POINTS
   },
   // -----------------------------------------------------------------------
   // ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (X: 1150-1750 oraz 2650-3250)
@@ -1281,7 +1394,7 @@ export const ARENA_3_PLATFORMS = [
     ]
   },
   // -----------------------------------------------------------------------
-  // PRAWY BRZEG (SEKTOR BRAVO / ORANGE) - PŁASKIE PODŁOŻE (X: 3250 do 4400, Y: 1200)
+  // PRAWY BRZEG (SEKTOR BRAVO / ORANGE) - DESTRUKCYJNE PODŁOŻE (X: 3250 do 4400, Y: 1200)
   // -----------------------------------------------------------------------
   {
     id: 'ground_right',
@@ -1292,7 +1405,8 @@ export const ARENA_3_PLATFORMS = [
     h: 200,
     thickness: 200,
     solid: true,
-    isPlatform: true
+    isPlatform: true,
+    surfacePoints: GROUND_RIGHT_POINTS
   },
 
   // -----------------------------------------------------------------------
