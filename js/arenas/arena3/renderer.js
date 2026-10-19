@@ -21,7 +21,6 @@ import {
   ARENA_3_PLATFORMS,
   GROUND_LEFT_POINTS,
   GROUND_RIGHT_POINTS,
-  ARENA_3_CRATERS,
   GROUND_WATER_TABLE_Y,
   GROUND_BEDROCK_Y
 } from './state.js';
@@ -62,6 +61,272 @@ function drawGroundwaterPool(ctx, seg) {
   ctx.fillStyle = '#0a1012';
   ctx.fillRect(xStart - 1, GROUND_WATER_TABLE_Y - 1, 3, 3);
   ctx.fillRect(xEnd - 2, GROUND_WATER_TABLE_Y - 1, 3, 3);
+
+  ctx.restore();
+}
+
+function drawCraterWalls(ctx, ovalPoints) {
+  if (!ovalPoints || ovalPoints.length < 2) return;
+
+  let inCrater = false;
+  let seg = [];
+
+  for (let i = 0; i < ovalPoints.length; i++) {
+    const pt = ovalPoints[i];
+    if (pt.y > 1201.2) {
+      if (!inCrater) {
+        inCrater = true;
+        if (i > 0) seg.push(ovalPoints[i - 1]);
+      }
+      seg.push(pt);
+    } else {
+      if (inCrater) {
+        seg.push(pt);
+        renderCraterSegment(ctx, seg);
+        seg = [];
+        inCrater = false;
+      }
+    }
+  }
+  if (seg.length >= 2) {
+    renderCraterSegment(ctx, seg);
+  }
+}
+
+function renderCraterSegment(ctx, seg) {
+  if (seg.length < 2) return;
+  ctx.save();
+
+  // 1. Zewnętrzny obrys spalonej, zwęglonej ziemi wewnątrz wykopu
+  ctx.strokeStyle = '#05070a';
+  ctx.lineWidth = 6.0;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(seg[0].x, seg[0].y);
+  for (let i = 1; i < seg.length; i++) {
+    ctx.lineTo(seg[i].x, seg[i].y);
+  }
+  ctx.stroke();
+
+  // 2. Warstwa spękanego bazaltu i ciemnego łupka
+  ctx.strokeStyle = '#12171e';
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(seg[0].x, seg[0].y);
+  for (let i = 1; i < seg.length; i++) {
+    ctx.lineTo(seg[i].x, seg[i].y);
+  }
+  ctx.stroke();
+
+  // 3. Spękania skalne na ścianie leja
+  ctx.strokeStyle = '#202936';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(seg[0].x, seg[0].y + 1);
+  for (let i = 1; i < seg.length; i++) {
+    ctx.lineTo(seg[i].x, seg[i].y + 1);
+  }
+  ctx.stroke();
+
+  // 4. Opalone krawędzie wlotowe krateru (scorch rims na poziomie 1200)
+  const lipL = seg[0];
+  const lipR = seg[seg.length - 1];
+  ctx.fillStyle = '#18110a';
+  ctx.fillRect(lipL.x - 6, 1198, 12, 3);
+  ctx.fillRect(lipR.x - 6, 1198, 12, 3);
+
+  ctx.restore();
+}
+
+function getSurfaceYFromPoints(pts, x) {
+  if (x <= pts[0].x) return pts[0].y;
+  if (x >= pts[pts.length - 1].x) return pts[pts.length - 1].y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (x >= pts[i].x && x <= pts[i + 1].x) {
+      const dx = pts[i + 1].x - pts[i].x;
+      const t = dx > 0 ? (x - pts[i].x) / dx : 0;
+      return pts[i].y + t * (pts[i + 1].y - pts[i].y);
+    }
+  }
+  return 1200;
+}
+
+function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
+  if (!ovalPoints || ovalPoints.length < 2) return;
+
+  const minX = isL ? 0 : 2650;
+  const maxX = isL ? 1680 : 4400; // Przed samą wodą rzeki
+  const startX = Math.max(minX, camL - 20);
+  const endX = Math.min(maxX, camR + 20);
+  if (startX >= endX) return;
+
+  ctx.save();
+
+  // A. Podkładowa warstwa mchu i darni glebowej (tylko na nienaruszonym gruncie, omija kratery)
+  ctx.strokeStyle = '#0a160d';
+  ctx.lineWidth = 4.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let inTurf = false;
+  for (let i = 0; i < ovalPoints.length; i++) {
+    const pt = ovalPoints[i];
+    if (pt.y <= 1201.2 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
+      if (!inTurf) {
+        ctx.moveTo(pt.x, pt.y);
+        inTurf = true;
+      } else {
+        ctx.lineTo(pt.x, pt.y);
+      }
+    } else {
+      inTurf = false;
+    }
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#142d1b';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  inTurf = false;
+  for (let i = 0; i < ovalPoints.length; i++) {
+    const pt = ovalPoints[i];
+    if (pt.y <= 1201.2 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
+      if (!inTurf) {
+        ctx.moveTo(pt.x, pt.y - 1);
+        inTurf = true;
+      } else {
+        ctx.lineTo(pt.x, pt.y - 1);
+      }
+    } else {
+      inTurf = false;
+    }
+  }
+  ctx.stroke();
+
+  // B. Generowanie proceduralnych źdźbeł trawy (Grass Blades) i tropikalnych paproci
+  const pathDark = new Path2D();
+  const pathLush = new Path2D();
+  const pathHighlight = new Path2D();
+  const pathStubble = new Path2D();
+
+  const ferns = [];
+
+  for (let x = startX; x <= endX; x += 3.4) {
+    const y = getSurfaceYFromPoints(ovalPoints, x);
+
+    // Jeśli punkt jest wewnątrz krateru lub głęboko w rzece: BRAK TRAWY!
+    if (y > 1201.2 || y > 1315) {
+      continue;
+    }
+
+    // Sprawdzenie bliskości wargi krateru (opalone, spalone kikuty trawy na krawędzi)
+    const yL = getSurfaceYFromPoints(ovalPoints, x - 10);
+    const yR = getSurfaceYFromPoints(ovalPoints, x + 10);
+    const isNearCraterLip = (yL > 1201.2 || yR > 1201.2);
+
+    if (isNearCraterLip) {
+      // Przypalone, krótkie kikuty trawy (stubble)
+      const stubH = 2.5 + Math.abs(Math.sin(x * 7.7)) * 3.5;
+      pathStubble.moveTo(x, y);
+      pathStubble.lineTo(x + (Math.sin(x * 3.1) * 2), y - stubH);
+      continue;
+    }
+
+    // Pseudolosowe deterministyczne cechy źdźbła na podstawie X
+    const n1 = Math.sin(x * 12.9898 + (isL ? 0.0 : 42.1)) * 43758.5453;
+    const f1 = n1 - Math.floor(n1);
+    const n2 = Math.sin(x * 78.233 + (isL ? 1.0 : 53.7)) * 43758.5453;
+    const f2 = n2 - Math.floor(n2);
+    const n3 = Math.sin(x * 45.164 + (isL ? 2.0 : 64.3)) * 43758.5453;
+    const f3 = n3 - Math.floor(n3);
+
+    // Wysokość kępki trawy: 9px do 22px
+    const bladeH = 9.0 + f1 * 13.0;
+
+    // Falowanie na wietrze zależne od czasu animacji
+    const wind = Math.sin(animTime * 2.3 + x * 0.034) * (bladeH * 0.32);
+    const lean = (f2 - 0.5) * 5.0;
+    const swayX = lean + wind;
+
+    const tipX = x + swayX;
+    const tipY = y - bladeH;
+    const cpX = x + swayX * 0.45;
+    const cpY = y - bladeH * 0.55;
+
+    // 1. Ciemne tło / podszyt
+    pathDark.moveTo(x - 0.9, y);
+    pathDark.quadraticCurveTo(cpX - 0.5, cpY, tipX - 0.8, tipY + 2);
+
+    // 2. Soczyste, nasycone źdźbło dżungli
+    pathLush.moveTo(x, y);
+    pathLush.quadraticCurveTo(cpX, cpY, tipX, tipY);
+
+    // 3. Końcówka oświetlona księżycem
+    pathHighlight.moveTo(x + 0.9, y - 2);
+    pathHighlight.quadraticCurveTo(cpX + 0.6, cpY, tipX + 0.9, tipY - 1);
+
+    // Kępki dzikich paproci dżungli co 38-55 px
+    if (f3 > 0.74 && x > minX + 30 && x < maxX - 30) {
+      ferns.push({ x, y, f1, f2 });
+    }
+  }
+
+  // Wyrenderowanie spalonych kikutów przy wargach kraterów
+  ctx.strokeStyle = '#1e140d';
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  ctx.stroke(pathStubble);
+
+  // Warstwa 1: Ciemne podszycie leśne
+  ctx.strokeStyle = '#0d2213';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.stroke(pathDark);
+
+  // Warstwa 2: Bogata, żywa dżunglowa zieleń
+  ctx.strokeStyle = '#1b4423';
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round';
+  ctx.stroke(pathLush);
+
+  // Warstwa 3: Księżycowe rozświetlenia końcówek traw (delikatny srebrzysty seledyn)
+  ctx.strokeStyle = 'rgba(126, 212, 146, 0.75)';
+  ctx.lineWidth = 1.1;
+  ctx.lineCap = 'round';
+  ctx.stroke(pathHighlight);
+
+  // C. Dzikie paprocie dżungli (Jungle Fern Fronds)
+  for (const fn of ferns) {
+    const fernH = 15 + fn.f1 * 10;
+    const dir = fn.f2 > 0.5 ? 1 : -1;
+    const fSway = Math.sin(animTime * 2.0 + fn.x * 0.03) * 5;
+
+    ctx.save();
+    ctx.strokeStyle = '#173c1f';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(fn.x, fn.y);
+    const endFx = fn.x + (dir * (fernH * 0.65)) + fSway;
+    const endFy = fn.y - fernH;
+    ctx.quadraticCurveTo(fn.x + (dir * (fernH * 0.3)), fn.y - (fernH * 0.6), endFx, endFy);
+    ctx.stroke();
+
+    // Listki boczne pióropusza paproci
+    ctx.strokeStyle = 'rgba(82, 168, 102, 0.85)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    for (let step = 0.35; step <= 0.9; step += 0.22) {
+      const lx = fn.x + (endFx - fn.x) * step;
+      const ly = fn.y + (endFy - fn.y) * step;
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + dir * 6 + fSway * 0.3, ly - 3);
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - dir * 4 + fSway * 0.3, ly - 2);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.restore();
 }
@@ -154,24 +419,8 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.restore();
 
-    // C. ZWĘGLONE ŚLADY PO KRATERACH I EKSPLOZJACH (SCORCH MARKS)
-    if (ARENA_3_CRATERS && ARENA_3_CRATERS.length > 0) {
-      ctx.save();
-      for (let cr of ARENA_3_CRATERS) {
-        if ((isL && cr.x < 1850) || (!isL && cr.x > 2600)) {
-          const scorchGrad = ctx.createRadialGradient(cr.x, cr.y, cr.r * 0.15, cr.x, cr.y, cr.r * 1.15);
-          scorchGrad.addColorStop(0, 'rgba(8, 6, 5, 0.85)');
-          scorchGrad.addColorStop(0.5, 'rgba(18, 14, 12, 0.55)');
-          scorchGrad.addColorStop(0.85, 'rgba(28, 22, 18, 0.25)');
-          scorchGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = scorchGrad;
-          ctx.beginPath();
-          ctx.arc(cr.x, cr.y, cr.r * 1.15, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-    }
+    // C. ŚCIANY WYBITYCH KRATERÓW (Zniszczona, zwęglona skała bazaltowa w lejach)
+    drawCraterWalls(ctx, ovalPoints);
 
     // E. TAKTYCZNA KRATA DRENAŻOWA / WYLOT RUROCIĄGU
     const drainX = isL ? 1520 : 2880;
@@ -212,40 +461,7 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.stroke();
     ctx.restore();
 
-    // F. NOCNY LEŚNY MECH I SREBRZYSTY RIM-LIGHT NA KRAWĘDZI STOKU
-    ctx.save();
-    ctx.strokeStyle = '#102415';
-    ctx.lineWidth = 13;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y);
-    for (let i = 1; i < ovalPoints.length; i++) {
-      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = '#18381e';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y - 2);
-    for (let i = 1; i < ovalPoints.length; i++) {
-      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y - 2);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(186, 230, 253, 0.45)';
-    ctx.lineWidth = 2.0;
-    ctx.beginPath();
-    ctx.moveTo(ovalPoints[0].x, ovalPoints[0].y - 4);
-    for (let i = 1; i < ovalPoints.length; i++) {
-      ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y - 4);
-    }
-    ctx.stroke();
-
-    ctx.restore();
-
-    // G. OTOCZAKI BAZALTOWE PRZY WODZIE
+    // F. OTOCZAKI BAZALTOWE PRZY WODZIE
     const riverStones = isL ? [
       { x: 1620, y: 1290, rx: 14, ry: 8 },
       { x: 1655, y: 1298, rx: 16, ry: 9 },
@@ -278,7 +494,7 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.restore();
 
-    // H. KONTUR PODSTAWY
+    // G. KONTUR PODSTAWY
     ctx.strokeStyle = '#05080c';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -290,6 +506,9 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.lineTo(edgeX, 1400);
     ctx.stroke();
+
+    // H. GĘSTA, ŻYWA TRAWA DŻUNGLI Z KOŁYSANIEM NA WIETRZE (Tylko nienaruszony grunt, omija kratery)
+    drawJungleGrass(ctx, ovalPoints, isL, camL, camR);
 
     // I. ZALEWY WÓD GRUNTOWYCH W GŁĘBOKICH KRATERACH
     const groundPts = isL ? GROUND_LEFT_POINTS : GROUND_RIGHT_POINTS;

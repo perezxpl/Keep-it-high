@@ -9,6 +9,7 @@ import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpul
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
+import { getRiverbankGroundY } from './arenas/arena3/state.js';
 import {
   spawnShrapnelStreak,
   spawnConcreteDebris,
@@ -138,29 +139,19 @@ export class AeroSuperGrenade {
         return false;
       }
     } else if (isA3) {
-      let terrainY = 1200;
       const gx = this.x;
-      if (gx < 1150) {
-        terrainY = 1200;
-      } else if (gx >= 1150 && gx <= 1750) {
-        const t = (gx - 1150) / 600;
-        terrainY = 1200 + t * 135; // Owalny lewy brzeg (Y: 1200 do 1335)
-      } else if (gx > 1750 && gx < 2650) {
-        terrainY = 1390; // Koryto / dno rzeki w głębi wąwozu
-      } else if (gx >= 2650 && gx <= 3250) {
-        const t = (gx - 2650) / 600;
-        terrainY = 1335 - t * 135; // Owalny prawy brzeg (Y: 1335 do 1200)
-      } else {
-        terrainY = 1200;
-      }
+      const terrainY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(gx) : 1200;
 
-      // Woda rzeki (X: 1650 do 2750, lustro wody Y: 1305)
+      // Woda rzeki (X: 1650 do 2750, lustro wody Y: 1305) lub woda gruntowa na dnie krateru (Y >= 1345)
       const inRiverZone = (gx >= 1650 && gx <= 2750);
-      if (inRiverZone && this.y + this.radius >= 1305) {
+      const waterSurfaceY = inRiverZone ? 1305 : 1345;
+      const inWater = (inRiverZone && this.y + this.radius >= 1305) || (!inRiverZone && terrainY >= 1345 && this.y + this.radius >= 1345);
+
+      if (inWater) {
         // Wejście do wody: rozbryzg wodny
-        if (this.prevY + this.radius < 1305) {
+        if (this.prevY + this.radius < waterSurfaceY) {
           if (typeof window.spawnArena3WaterSplash === 'function') {
-            window.spawnArena3WaterSplash(this.x, 1305, 14);
+            window.spawnArena3WaterSplash(this.x, waterSurfaceY, inRiverZone ? 14 : 8);
           }
         }
         // Wyporność, opór wody i tłumienie prędkości
@@ -169,16 +160,25 @@ export class AeroSuperGrenade {
         this.vRot *= 0.75;
       }
 
-      // Odbicie od twardego podłoża lub dna rzeki
+      // Odbicie i toczenie się po zboczu krateru lub podłożu
       if (this.y + this.radius >= terrainY) {
         this.y = terrainY - this.radius;
-        this.vy = -this.vy * (inRiverZone ? 0.35 : this.restitution);
-        this.vx *= (inRiverZone ? 0.65 : 0.82);
+
+        // Nachylenie zbocza krateru / skarpy: granat stacza się w dół leja
+        if (typeof getRiverbankGroundY === 'function') {
+          const slope = (getRiverbankGroundY(gx + 4) - getRiverbankGroundY(gx - 4)) / 8;
+          if (Math.abs(slope) > 0.03) {
+            this.vx -= slope * 0.45;
+          }
+        }
+
+        this.vy = -this.vy * (inWater ? 0.22 : (this.restitution * 0.7));
+        this.vx *= (inWater ? 0.65 : 0.82);
         this.vRot *= 0.75;
         this.bounces++;
         if (this.bounces > this.maxBounces) {
           this.vy = 0;
-          this.vx *= 0.65;
+          this.vx *= 0.75;
         }
       }
     } else {

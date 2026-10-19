@@ -10,6 +10,7 @@ import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } f
 import { detonateGrenadeExplosion } from '../projectiles.js';
 import { bullets } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 
 export const activeMortarStrikes = [];
 export const activeAttackDrones = [];
@@ -28,11 +29,7 @@ function getSurfaceY(x) {
       ? (curArena.acidSurge.currentY - 10)
       : (curArena?.hazardZoneY ?? 1440);
   } else if (isA3) {
-    if (x < 1150) groundY = 1200;
-    else if (x <= 1750) groundY = 1200 + ((x - 1150) / 600) * 135;
-    else if (x < 2650) groundY = 1390;
-    else if (x <= 3250) groundY = 1335 - ((x - 2650) / 600) * 135;
-    else groundY = 1200;
+    groundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : 1200;
   }
 
   let highestY = groundY;
