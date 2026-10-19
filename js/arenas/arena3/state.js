@@ -9,10 +9,9 @@
 // - Ruchome elementy: falująca rzeka, cząsteczki liści, promienie słońca, pulsujące kielichy
 // =========================================================================
 
-// 1. ZASOBY GRAFICZNE PNG (Statyczne tło)
+// 1. ZASOBY GRAFICZNE (Proceduralne tło nocne)
 import { triggerScreenShake } from '../../camera.js';
-export const bgImg = new Image();
-bgImg.src = 'assets/jungle_arena_bg.png';
+export const bgImg = null;
 
 // =========================================================================
 // 2. STAN ANIMACJI I EFEKTY RUCHOME

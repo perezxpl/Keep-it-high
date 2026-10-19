@@ -4,7 +4,6 @@
 // =========================================================================
 
 import {
-  bgImg,
   animTime,
   LEAF_PARTICLES,
   WATER_RIPPLES,
@@ -23,75 +22,8 @@ import {
   ARENA_3_PLATFORMS
 } from './state.js';
 
-// =========================================================================
-// 6. RENDEROWANIE TŁA (PNG + WARSTWY RUCHOME)
-// =========================================================================
-export function drawArena3Background(ctx, camera) {
-  if (!ctx) return;
-
-  // 1. Zmierzchowe / tropikalne niebo jako ekranowy podkład
-  const W_screen = ctx.canvas?.width || (typeof window !== 'undefined' ? window.innerWidth : 1920);
-  const H_screen = ctx.canvas?.height || (typeof window !== 'undefined' ? window.innerHeight : 1080);
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, H_screen);
-  skyGrad.addColorStop(0.0, '#78b0d0');
-  skyGrad.addColorStop(0.4, '#a2cda2');
-  skyGrad.addColorStop(0.8, '#3d6829');
-  skyGrad.addColorStop(1.0, '#1a3a12');
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, W_screen, H_screen);
-
-  ctx.save();
-  if (camera) {
-    ctx.scale(camera.zoom, camera.zoom);
-    ctx.translate(-camera.x, -camera.y);
-  }
-
-  // 2. Rysowanie statycznego obrazu tła (4400 x 1400 px na współrzędnych [0, 0])
-  if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
-    ctx.drawImage(bgImg, 0, 0, 4400, 1400);
-  } else {
-    // Rezerwowy gradient gdy obraz się ładuje
-    const g = ctx.createLinearGradient(0, 0, 0, 1400);
-    g.addColorStop(0, '#8ec5e5');
-    g.addColorStop(0.3, '#c2e0b8');
-    g.addColorStop(0.65, '#3b6a2e');
-    g.addColorStop(1.0, '#142e0d');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 4400, 1400);
-  }
-
-  // 3. Promienie słońca przebijające się przez korony drzew (God Rays)
-  ctx.save();
-  ctx.globalAlpha = 0.08 + Math.sin(animTime * 0.8) * 0.03;
-  ctx.fillStyle = '#fffbe8';
-  for (let r = 0; r < 5; r++) {
-    const rx = 800 + r * 650;
-    ctx.beginPath();
-    ctx.moveTo(rx, 0);
-    ctx.lineTo(rx + 220, 0);
-    ctx.lineTo(rx + 480, 1400);
-    ctx.lineTo(rx + 160, 1400);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // 4. Liście opadające w tle (pomiędzy tłem a postaciami)
-  for (let i = 0; i < LEAF_PARTICLES.length; i += 2) {
-    const leaf = LEAF_PARTICLES[i];
-    ctx.save();
-    ctx.globalAlpha = leaf.alpha * 0.55;
-    ctx.translate(leaf.x, leaf.y);
-    ctx.rotate(leaf.rot);
-    ctx.fillStyle = leaf.color;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, leaf.size, leaf.size * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  ctx.restore();
-}
+import { drawArena3Background } from './background.js';
+export { drawArena3Background };
 
 // =========================================================================
 // 7. RENDEROWANIE PIERWSZEGO PLANU (PLATFORMY, TEREN, WIEŻE, BRAMKI Y, RZEKA)
