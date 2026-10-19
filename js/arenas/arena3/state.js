@@ -119,6 +119,12 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
   }
 
   if (carvedAny) {
+    if (GROUND_LEFT_POINTS.length > 0 && LEFT_OVAL_POINTS.length > 0) {
+      LEFT_OVAL_POINTS[0].y = GROUND_LEFT_POINTS[GROUND_LEFT_POINTS.length - 1].y;
+    }
+    if (GROUND_RIGHT_POINTS.length > 0 && RIGHT_OVAL_POINTS.length > 0) {
+      RIGHT_OVAL_POINTS[RIGHT_OVAL_POINTS.length - 1].y = GROUND_RIGHT_POINTS[0].y;
+    }
     ARENA_3_CRATERS.push({
       x: expX,
       y: expY,
@@ -1035,6 +1041,12 @@ export function resetArena3() {
   }
   for (let i = 0; i < GROUND_RIGHT_POINTS.length; i++) {
     GROUND_RIGHT_POINTS[i].y = GROUND_RIGHT_POINTS[i].origY;
+  }
+  if (LEFT_OVAL_POINTS.length > 0) {
+    LEFT_OVAL_POINTS[0].y = 1200;
+  }
+  if (RIGHT_OVAL_POINTS.length > 0) {
+    RIGHT_OVAL_POINTS[RIGHT_OVAL_POINTS.length - 1].y = 1200;
   }
   ARENA_3_CRATERS.length = 0;
 

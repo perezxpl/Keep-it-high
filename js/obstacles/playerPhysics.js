@@ -22,6 +22,7 @@ import {
   getPlatformSurfaceInfo,
   getPlatformSurfaceY
 } from './state.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
@@ -208,6 +209,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const prevFeetY = feetY - p.vy;
       const isFallenDebris = (plat.intact === false) || plat.isDebris;
       const platThickness = plat.thickness || plat.h || 20;
+      const isA3Ground = isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval');
 
       // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
       // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie
@@ -218,7 +220,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
       // Gracz nie odpada od platformy przy mikro-wahaniach pionowych ani przy wstawaniu ze staggara
-      const maxRetentionDiff = (p.staggerTimer > 0 || (p.staggerRecoveryTimer || 0) > 0) ? 60 : 36;
+      const maxRetentionDiff = isA3Ground ? 85 : ((p.staggerTimer > 0 || (p.staggerRecoveryTimer || 0) > 0) ? 60 : 36);
       const isGroundedRetention = isCurrent && !(p.isJumping && p.vy < -2.5) && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
 
       // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach i rampach):
@@ -230,6 +232,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (!isLanding && isFallenDebris) {
         const stepDiff = feetY - topY;
         if (stepDiff >= 0 && stepDiff <= 34 && feetY >= bnds.minY - 12 && feetY <= bnds.maxY + 18) {
+          isLanding = true;
+        }
+      }
+
+      // Twarde zabezpieczenie przed zapadaniem się w lity grunt / kratery na Arenie 3
+      if (!isLanding && isA3Ground && !(p.isJumping && p.vy < -2.5)) {
+        if (feetY >= topY - 14 && feetY <= topY + platThickness) {
           isLanding = true;
         }
       }
@@ -514,9 +523,24 @@ export function checkPlayerPlatformLanding(p, groundY) {
         p.y = cartFloor - colH;
       }
     } else if (hasNoFloor) {
-      // W Arenie 3 oraz Arenie 2 (Pandora) brak płaskiej podłogi – mapa składa się wyłącznie z zawieszonych w powietrzu wysp i otchłani
-      p.onGround = false;
-      p.currentGroundY = null;
+      if (isA3 && (centerX <= 1750 || centerX >= 2650)) {
+        // W Arenie 3 na lądzie pod postacią zawsze znajduje się lita skała / dno krateru
+        const maxFloorY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(centerX) : 1200;
+        if (feetY >= maxFloorY - 14) {
+          p.y = maxFloorY - colH;
+          p.vy = 0;
+          p.isJumping = false;
+          p.onGround = true;
+          p.currentGroundY = maxFloorY;
+        } else {
+          p.onGround = false;
+          p.currentGroundY = null;
+        }
+      } else {
+        // W Arenie 3 (nad rzeką) oraz Arenie 2 (Pandora) brak płaskiej podłogi – mapa składa się wyłącznie z zawieszonych w powietrzu wysp i otchłani
+        p.onGround = false;
+        p.currentGroundY = null;
+      }
     } else {
       // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
       const isSupported = (typeof isGroundAt === 'function')

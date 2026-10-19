@@ -9,6 +9,7 @@ import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCav
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
 import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js';
@@ -1142,6 +1143,50 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.onGround = false;
         player.currentGroundY = null;
       }
+    } else if (isA3) {
+      // W Arenie 3 na stałym lądzie (sektory X <= 1750 oraz X >= 2650) podłoże jest litą skałą z lejami po wybuchach
+      const pCenterX = player.x + (player.w || 24) * 0.5;
+      if (pCenterX <= 1750 || pCenterX >= 2650) {
+        const floorY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(pCenterX) : 1200;
+        const groundFloorLimit = floorY - colH;
+        if (player.y >= groundFloorLimit - 4) {
+          const impactVy = player.vy;
+          player.y = groundFloorLimit;
+          player.vy = 0;
+          player.isJumping = false;
+          player.isSprintJump = false;
+          player.sprintJumpTimer = 0;
+          player.coyoteTimer = 8;
+          player.lastGroundVx = player.vx;
+          player.onGround = true;
+          player.jetpackKeyNeutralized = true;
+          player.airVx = 0;
+          player.currentGroundY = floorY;
+          player.dropThroughTimer = 0;
+          player.dropThroughPlatform = null;
+
+          if (player.rocketBoots?.dashing && player.rocketBoots.dashType === 'AIR') {
+            player.rocketBoots.dashing = false;
+            player.rocketBoots.dashType = 'NONE';
+            player.rocketBoots.dashTimer = 0;
+          }
+
+          if (impactVy > 1.8 && !(player.staggerTimer > 0) && !player.isSliding) {
+            player.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);
+            player.landingSquatTimer = Math.min(5, Math.max(2, Math.round(player.landingSquatIntensity * 5)));
+          }
+
+          if (player.staggerTimer > 0 && !player.staggerLanded) {
+            player.staggerLanded = true;
+            player.vx *= 0.70;
+            spawnGroundPuff(pCenterX, floorY);
+          }
+
+          if (!player.rocketBoots?.dashing && player.jetFuel < player.jetMax) {
+            player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
+          }
+        }
+      }
     }
 
     // Strefa toksycznego kwasu i otchłani śmierci w Sektorze X (Arena 2)
@@ -1166,7 +1211,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       // Wpadnięcie do strefy śmierci w dolnym kanale technicznym (zabezpieczenie pasażera wagonika)
       const isA3Death = isA3;
       const deathLimitY = isA3Death ? 1390 : (GROUND_Y + 160);
-      if (!player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead) {
+      const pCenterX = player.x + (player.w || 24) * 0.5;
+      const isA3Void = isA3Death ? (pCenterX > 1750 && pCenterX < 2650) : true;
+      if (!player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead && isA3Void) {
         player.hp = 0;
         player.isDead = true;
         player.respawnTimer = 75;

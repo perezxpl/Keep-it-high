@@ -402,7 +402,9 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fill();
 
     // B. POZIOME WARSTWY GEOLOGICZNE (STRATA) I SPĘKANIA SKALNE
+    // Ścisły clip do sylwetki klifu: żadne linie wewnętrzne nie pojawią się w pustym powietrzu kraterów
     ctx.save();
+    ctx.clip();
     ctx.strokeStyle = 'rgba(4, 7, 10, 0.70)';
     ctx.lineWidth = 2.4;
     const strataY = [1235, 1275, 1315, 1355];
@@ -1514,7 +1516,7 @@ export function drawArena3Foreground(ctx, camera) {
 
     // 5. Oznaczenie wejściowe na gruntowej krawędzi rampy
     const entryX = isLeft ? 1150 : 3250;
-    const entryY = 1200;
+    const entryY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(entryX) : 1200;
     ctx.fillStyle = '#3a200a';
     ctx.fillRect(entryX - 6, entryY - 45, 12, 45);
     ctx.strokeStyle = '#1a0e05';
@@ -1748,23 +1750,27 @@ export function drawArena3Foreground(ctx, camera) {
 
   // C. MONOLITYCZNE BLOKI KOTWIĄCE I KABLE ODCIĄGOWE (Tension Anchor Blocks & Backstays)
   const anchorLeftX = 1140;
-  const anchorLeftY = 1185;
+  const curGroundLY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(anchorLeftX) : 1200;
+  const anchorLeftY = curGroundLY - 15;
+
   const anchorRightX = 3260;
-  const anchorRightY = 1185;
+  const curGroundRY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(anchorRightX) : 1200;
+  const anchorRightY = curGroundRY - 15;
 
   function drawAnchorBlock(ax, ay) {
     if (ax + 50 < camL || ax - 50 > camR) return;
     ctx.save();
-    // 1. Monolityczny kamienny blok kotwiący wkopany w lity grunt
+    // 1. Monolityczny kamienny blok kotwiący wkopany w lity grunt (fundament sięga w głąb skały)
+    const blockH = Math.max(42, 1400 - (ay - 24));
     const aGrad = ctx.createLinearGradient(ax - 26, ay - 24, ax + 26, ay + 18);
     aGrad.addColorStop(0.0, '#3e473b');
     aGrad.addColorStop(0.5, '#283126');
     aGrad.addColorStop(1.0, '#151b14');
     ctx.fillStyle = aGrad;
-    ctx.fillRect(ax - 26, ay - 24, 52, 42);
+    ctx.fillRect(ax - 26, ay - 24, 52, blockH);
     ctx.strokeStyle = '#0f140e';
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(ax - 26, ay - 24, 52, 42);
+    ctx.strokeRect(ax - 26, ay - 24, 52, blockH);
 
     // Warstwa mchu
     ctx.fillStyle = '#4e8d2e';
