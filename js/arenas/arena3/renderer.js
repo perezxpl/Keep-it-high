@@ -42,8 +42,10 @@ export function drawArena3Foreground(ctx, camera) {
   // -----------------------------------------------------------------------
   const leftOvalPoints = [
     { x: 0, y: 1200 },
-    { x: 500, y: 1200 },
-    { x: 1000, y: 1200 },
+    { x: 450, y: 1200 },
+    { x: 530, y: 1265 },
+    { x: 850, y: 1265 },
+    { x: 930, y: 1200 },
     { x: 1150, y: 1200 },
     { x: 1300, y: 1225 },
     { x: 1450, y: 1260 },
@@ -59,8 +61,10 @@ export function drawArena3Foreground(ctx, camera) {
     { x: 2950, y: 1260 },
     { x: 3100, y: 1225 },
     { x: 3250, y: 1200 },
-    { x: 3400, y: 1200 },
-    { x: 3900, y: 1200 },
+    { x: 3470, y: 1200 },
+    { x: 3550, y: 1265 },
+    { x: 3870, y: 1265 },
+    { x: 3950, y: 1200 },
     { x: 4400, y: 1200 }
   ];
 
@@ -117,186 +121,299 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.restore();
 
-    // C. PODZIEMNY MUROWANY BUNKIER BOJOWY (SUBTERRANEAN BRICK BUNKER)
-    // Prawdziwy ceglany schron ze schodami zejściowymi, stropem i strzelnicą
-    const bunkerX = isL ? 540 : 3420;
-    const bunkerW = 440;
-    const bunkerFloorY = 1320;
-    const bunkerRoofY = 1200;
-    const chamberH = bunkerFloorY - bunkerRoofY; // 120 px
+    // C. ZAGŁĘBIONY SCHRON OKOPOWY (SUNKEN TRENCH BUNKER / PILLBOX)
+    // Wojskowe stanowisko ogniowe wkomponowane w profil okopu z balami tekowymi,
+    // trapem podłogowym (duckboards), workami z piaskiem, ziemianką i lampą taktyczną.
+    const trenchFloorX1 = isL ? 530 : 3550;
+    const trenchFloorX2 = isL ? 850 : 3870;
+    const trenchFloorY = 1265;
+    const groundRimY = 1200;
 
     ctx.save();
-    // 1. Tło komory podziemnej
-    ctx.fillStyle = '#18100b';
-    ctx.fillRect(bunkerX, bunkerRoofY, bunkerW, chamberH);
 
-    // 2. Regularny mur z cegły fortecznej (Ceglane ściany z fugami)
-    const brickH = 12;
-    const brickW = 28;
-    for (let by = bunkerRoofY + 16; by < bunkerFloorY - 6; by += brickH) {
-      const rowIdx = Math.floor((by - bunkerRoofY) / brickH);
-      const rowOffset = (rowIdx % 2 === 0) ? 0 : brickW * 0.5;
-      for (let bx = bunkerX - rowOffset; bx < bunkerX + bunkerW; bx += brickW) {
-        const drawBx = Math.max(bunkerX, bx);
-        const drawBw = Math.min(bunkerX + bunkerW - drawBx, (bx + brickW) - drawBx);
-        if (drawBw <= 2) continue;
+    // 1. DREWNIANY TRAP OKOPOWY (DUCKBOARDS) NA POSADZCE OKOPU
+    // Ciemne deski tekowe z drenażem chroniące przed błotem
+    const duckboardY = trenchFloorY;
+    // Podłużne legary pod trapem
+    ctx.fillStyle = '#1c1006';
+    ctx.fillRect(trenchFloorX1, duckboardY, trenchFloorX2 - trenchFloorX1, 10);
 
-        // Wariacja odcienia palonej cegły klinkierowej
-        const hash = Math.sin(drawBx * 12.9898 + by * 78.233) * 43758.5453;
-        const shade = (hash - Math.floor(hash));
-        ctx.fillStyle = shade > 0.6 ? '#562417' : (shade > 0.3 ? '#471d12' : '#3d170e');
-        ctx.fillRect(drawBx + 1, by + 1, drawBw - 2, brickH - 2);
+    // Poprzeczne klepki trapu
+    const slatW = 9;
+    const slatGap = 4;
+    for (let sx = trenchFloorX1 + 2; sx < trenchFloorX2 - slatW; sx += (slatW + slatGap)) {
+      ctx.fillStyle = '#3c230e';
+      ctx.fillRect(sx, duckboardY, slatW, 6);
+      ctx.fillStyle = '#563517';
+      ctx.fillRect(sx, duckboardY, slatW, 1.5);
+      // Nity / gwoździe mocujące
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(sx + 2, duckboardY + 3, 1.5, 1.5);
+      ctx.fillRect(sx + slatW - 3.5, duckboardY + 3, 1.5, 1.5);
+    }
 
-        // Subtelna krawędź cegły
-        ctx.strokeStyle = 'rgba(255, 180, 140, 0.08)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(drawBx + 1, by + 1, drawBw - 2, brickH - 2);
+    // 2. SZALUNEK OPOROWY Z BALI TEKOWYCH NA SKOSACH WEJŚCIOWYCH
+    // Poziome bale drewniane z pionowymi palami stalowymi
+    function drawTrenchWallRevetment(xStart, xEnd, yStart, yEnd) {
+      const revSteps = 5;
+      const dx = (xEnd - xStart) / revSteps;
+      const dy = (yEnd - yStart) / revSteps;
+      for (let s = 0; s < revSteps; s++) {
+        const lx1 = xStart + s * dx;
+        const ly1 = yStart + s * dy;
+        const lx2 = lx1 + dx;
+        const ly2 = ly1 + dy;
+        // Gruba belka oporowa
+        ctx.strokeStyle = '#321b0b';
+        ctx.lineWidth = 9;
+        ctx.lineCap = 'butt';
+        ctx.beginPath();
+        ctx.moveTo(lx1, ly1 + 5);
+        ctx.lineTo(lx2, ly2 + 5);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#4e2d14';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(lx1, ly1 + 2);
+        ctx.lineTo(lx2, ly2 + 2);
+        ctx.stroke();
+      }
+      // Pionowe słupki stalowe zabezpieczające deski
+      const stakeCount = 3;
+      for (let st = 0; st <= stakeCount; st++) {
+        const stX = xStart + (xEnd - xStart) * (st / stakeCount);
+        const stY = yStart + (yEnd - yStart) * (st / stakeCount);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(stX, stY - 4);
+        ctx.lineTo(stX, stY + 22);
+        ctx.stroke();
+        // Stalowy kołpak
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(stX - 3, stY - 6, 6, 3);
       }
     }
 
-    // 3. Ciepła lampa naftowa / wojskowa lampa w klatce ochronnej
-    const lampX = isL ? 740 : 3660;
-    const lampY = 1228;
-
-    // Ciepła łuna światła bursztynowego na cegłach
-    const lGrad = ctx.createRadialGradient(lampX, lampY, 6, lampX, lampY, 150);
-    lGrad.addColorStop(0.0, 'rgba(251, 191, 36, 0.42)');
-    lGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.18)');
-    lGrad.addColorStop(1.0, 'rgba(245, 158, 11, 0)');
-    ctx.fillStyle = lGrad;
-    ctx.beginPath();
-    ctx.arc(lampX, lampY, 150, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Kabel i oprawa lampy
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(lampX, bunkerRoofY);
-    ctx.lineTo(lampX, lampY - 8);
-    ctx.stroke();
-
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.arc(lampX, lampY, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.4;
-    ctx.strokeRect(lampX - 6, lampY - 7, 12, 14);
-
-    // 4. Stalowe dwuteowniki stropowe (I-Beams)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(bunkerX, bunkerRoofY, bunkerW, 14);
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(bunkerX, bunkerRoofY + 14);
-    ctx.lineTo(bunkerX + bunkerW, bunkerRoofY + 14);
-    ctx.stroke();
-
-    // Nity na stalowym stropie
-    ctx.fillStyle = '#64748b';
-    for (let nx = bunkerX + 20; nx < bunkerX + bunkerW; nx += 45) {
-      ctx.fillRect(nx, bunkerRoofY + 5, 3, 3);
+    if (isL) {
+      drawTrenchWallRevetment(450, 530, groundRimY, trenchFloorY);
+      drawTrenchWallRevetment(850, 930, trenchFloorY, groundRimY);
+    } else {
+      drawTrenchWallRevetment(3470, 3550, groundRimY, trenchFloorY);
+      drawTrenchWallRevetment(3870, 3950, trenchFloorY, groundRimY);
     }
 
-    // Pionowy słup nośny ze stali pośrodku komory
-    const pillarX = isL ? 820 : 3580;
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(pillarX - 7, bunkerRoofY + 14, 14, chamberH - 22);
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.6;
-    ctx.strokeRect(pillarX - 7, bunkerRoofY + 14, 14, chamberH - 22);
+    // 3. ZADASZONY SCHRON / ZIEMIANKA DOWODZENIA (DUGOUT CASEMATE)
+    // Zlokalizowany po zewnętrznej stronie okopu (z tyłu pozycji)
+    const dugoutX = isL ? 450 : 3750;
+    const dugoutW = 200;
+    const dugoutFloorY = trenchFloorY;
+    const dugoutRoofY = 1192;
+    const dugoutH = dugoutFloorY - dugoutRoofY;
 
-    // 5. Murowane schody zejściowe do podziemi (Stairs)
-    const stairsStartX = isL ? 420 : 3980;
-    const stairsEndX = isL ? 540 : 3860;
-    const stepCount = 6;
-    const stepW = (stairsEndX - stairsStartX) / stepCount;
-    const stepH = (bunkerFloorY - bunkerRoofY) / stepCount;
+    // Tylna ściana schronu z ciemnego betonu fortecznego
+    ctx.fillStyle = '#161e27';
+    ctx.fillRect(dugoutX, dugoutRoofY + 10, dugoutW, dugoutH - 6);
 
-    for (let s = 0; s < stepCount; s++) {
-      const curStepX = stairsStartX + s * stepW;
-      const curStepY = bunkerRoofY + (s + 1) * stepH;
-      const nextStepX = curStepX + stepW;
-
-      // Stopień ceglany
-      ctx.fillStyle = '#451b10';
-      ctx.fillRect(Math.min(curStepX, nextStepX), curStepY - stepH, Math.abs(stepW), 1400 - (curStepY - stepH));
-
-      // Okucie noska stopnia
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(Math.min(curStepX, nextStepX), curStepY - stepH, Math.abs(stepW), 3);
-    }
-
-    // Stalowa poręcz schodowa
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(stairsStartX, bunkerRoofY - 20);
-    ctx.lineTo(stairsEndX, bunkerFloorY - 20);
-    ctx.stroke();
-
-    // Słupki poręczy
-    for (let p = 0; p <= 3; p++) {
-      const px = stairsStartX + (stairsEndX - stairsStartX) * (p / 3);
-      const py = bunkerRoofY + (bunkerFloorY - bunkerRoofY) * (p / 3);
+    // Poziome deskowanie / szalunek betonu
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.7)';
+    ctx.lineWidth = 1.2;
+    for (let fy = dugoutRoofY + 22; fy < dugoutFloorY - 8; fy += 12) {
       ctx.beginPath();
-      ctx.moveTo(px, py - 20);
-      ctx.lineTo(px, py);
+      ctx.moveTo(dugoutX, fy);
+      ctx.lineTo(dugoutX + dugoutW, fy);
       ctx.stroke();
     }
 
-    // 6. Strzelnica / Szczelina obserwacyjna (Bunker Embrasure)
-    // Zlokalizowana w przedniej ścianie bunkra, z widokiem na rzekę i most
-    const embX = isL ? 980 : 3390;
-    const embY = 1250;
-    const embW = 32;
-    const embH = 24;
+    // Masywne zadaszenie z bali drewnianych (Overhead log timber roof)
+    const logRadius = 7;
+    for (let lx = dugoutX; lx <= dugoutX + dugoutW; lx += 14) {
+      ctx.fillStyle = '#2b1708';
+      ctx.strokeStyle = '#150b03';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(lx + 7, dugoutRoofY + logRadius, logRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
 
-    // Rozglifienie strzelnicy w betonie
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    if (isL) {
-      ctx.moveTo(embX, embY + 4);
-      ctx.lineTo(embX + embW, embY);
-      ctx.lineTo(embX + embW, embY + embH);
-      ctx.lineTo(embX, embY + embH - 4);
-    } else {
-      ctx.moveTo(embX + embW, embY + 4);
-      ctx.lineTo(embX, embY);
-      ctx.lineTo(embX, embY + embH);
-      ctx.lineTo(embX + embW, embY + embH - 4);
+      // Słoje drewna
+      ctx.fillStyle = '#452710';
+      ctx.beginPath();
+      ctx.arc(lx + 7, dugoutRoofY + logRadius, 3.5, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.closePath();
+
+    // Stalowa belka nośna (dwuteownik) podtrzymująca bale od spodu
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(dugoutX, dugoutRoofY + 14, dugoutW, 6);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(dugoutX, dugoutRoofY + 14, dugoutW, 6);
+
+    // Potężny filar pionowy przy wejściu do ziemianki
+    const pillarX = isL ? (dugoutX + dugoutW - 14) : dugoutX;
+    ctx.fillStyle = '#2d1808';
+    ctx.fillRect(pillarX, dugoutRoofY + 18, 14, dugoutH - 24);
+    ctx.strokeStyle = '#472810';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(pillarX, dugoutRoofY + 18, 14, dugoutH - 24);
+
+    // Stalowe obejmy z nitami na filarze
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(pillarX - 1, dugoutRoofY + 32, 16, 5);
+    ctx.fillRect(pillarX - 1, dugoutFloorY - 24, 16, 5);
+
+    // 4. WOJSKOWA LAMPA NAFTOWA / KLATKOWA (WARM TACTICAL LANTERN)
+    const lanternX = isL ? 560 : 3840;
+    const lanternY = dugoutRoofY + 28;
+
+    // Ciepła bursztynowa poświata na wnętrze schronu i trap
+    const lg = ctx.createRadialGradient(lanternX, lanternY, 4, lanternX, lanternY, 130);
+    lg.addColorStop(0.0, 'rgba(251, 191, 36, 0.40)');
+    lg.addColorStop(0.35, 'rgba(245, 158, 11, 0.16)');
+    lg.addColorStop(1.0, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = lg;
+    ctx.beginPath();
+    ctx.arc(lanternX, lanternY, 130, 0, Math.PI * 2);
     ctx.fill();
 
-    // Chłodne nocne światło wpadające przez strzelnicę
-    ctx.fillStyle = 'rgba(186, 230, 253, 0.35)';
-    ctx.fillRect(isL ? embX + embW - 6 : embX, embY + 4, 6, embH - 8);
-
-    // 7. Skrzynka amunicyjna w kącie posadzki
-    const crateX = isL ? 930 : 3445;
-    const crateY = bunkerFloorY - 26;
-    ctx.fillStyle = '#2d3b24';
-    ctx.fillRect(crateX, crateY, 36, 24);
-    ctx.strokeStyle = '#1a2415';
+    // Łańcuch i zawieszenie lampy
+    ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1.8;
-    ctx.strokeRect(crateX, crateY, 36, 24);
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText('7.62', crateX + 7, crateY + 15);
-
-    // 8. Betonowa posadzka bunkra
-    ctx.fillStyle = '#1e2530';
-    ctx.fillRect(bunkerX, bunkerFloorY - 2, bunkerW, 8);
-    ctx.strokeStyle = '#0f141c';
-    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(bunkerX, bunkerFloorY - 2);
-    ctx.lineTo(bunkerX + bunkerW, bunkerFloorY - 2);
+    ctx.moveTo(lanternX, dugoutRoofY + 16);
+    ctx.lineTo(lanternX, lanternY - 7);
     ctx.stroke();
+
+    // Świecący rdzeń
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(lanternX, lanternY, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Klatka ochronna lampy
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(lanternX - 5, lanternY - 6, 10, 13);
+    ctx.beginPath();
+    ctx.moveTo(lanternX - 5, lanternY);
+    ctx.lineTo(lanternX + 5, lanternY);
+    ctx.stroke();
+
+    // 5. WOJSKOWY EKWIPUNEK POLOWY W ZIEMIANCE
+    // Skrzynia amunicyjna 7.62
+    const crateX = isL ? (dugoutX + 22) : (dugoutX + dugoutW - 56);
+    const crateY = dugoutFloorY - 20;
+    ctx.fillStyle = '#263320';
+    ctx.fillRect(crateX, crateY, 34, 19);
+    ctx.strokeStyle = '#161f13';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(crateX, crateY, 34, 19);
+    // Stalowe okucia rogów
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(crateX, crateY, 4, 4);
+    ctx.fillRect(crateX + 30, crateY, 4, 4);
+    ctx.fillRect(crateX, crateY + 15, 4, 4);
+    ctx.fillRect(crateX + 30, crateY + 15, 4, 4);
+    // Wojskowy szablon kalibru
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText('7.62', crateX + 7, crateY + 12);
+
+    // Radiostacja polowa z anteną
+    const radioX = isL ? (dugoutX + 64) : (dugoutX + dugoutW - 96);
+    const radioY = dugoutFloorY - 16;
+    ctx.fillStyle = '#1e2820';
+    ctx.fillRect(radioX, radioY, 22, 15);
+    ctx.strokeStyle = '#0f1710';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(radioX, radioY, 22, 15);
+    // Dioda zielona i pokrętła
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(radioX + 5, radioY + 5, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(radioX + 11, radioY + 4, 2, 2);
+    ctx.fillRect(radioX + 16, radioY + 4, 2, 2);
+    // Bat antenowy
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(radioX + 4, radioY);
+    ctx.lineTo(radioX + 1, radioY - 26);
+    ctx.stroke();
+
+    // 6. PRZEDPIERSIE Z WORKAMI Z PIASKIEM I SZCZELINA STRZELECKA (SANDBAG PARAPET)
+    // Zlokalizowane na wewnętrznej krawędzi okopu z widokiem na rzekę i most
+    const sandbagStartX = isL ? 835 : 3465;
+    const sandbagW = 95;
+    const sandbagBaseY = groundRimY;
+
+    // Funkcja pomocnicza do rysowania pojedynczego worka z piaskiem
+    function drawSandbag(bx, by, bw, bh) {
+      ctx.save();
+      ctx.fillStyle = '#443f30';
+      ctx.strokeStyle = '#28251b';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(bx, by, bw, bh, 3);
+      } else {
+        ctx.rect(bx, by, bw, bh);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Rozjaśnienie górnej krawędzi worka
+      ctx.strokeStyle = '#5a5441';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx + 3, by + 1.5);
+      ctx.lineTo(bx + bw - 3, by + 1.5);
+      ctx.stroke();
+
+      // Przeszycie szwem / węzeł na końcu
+      ctx.fillStyle = '#221f16';
+      ctx.fillRect(bx + bw - 2, by + bh * 0.35, 2, bh * 0.3);
+      ctx.restore();
+    }
+
+    // Dolna warstwa worków (Tier 1 - spoczywa na krawędzi okopu)
+    const bagW = 28;
+    const bagH = 10;
+    for (let bx = sandbagStartX; bx < sandbagStartX + sandbagW - 4; bx += (bagW - 3)) {
+      drawSandbag(bx, sandbagBaseY - bagH, bagW, bagH);
+    }
+
+    // Górna warstwa worków z przerwą na strzelnicę (Tier 2 ze szczeliną ogniową)
+    const embrasureX = isL ? (sandbagStartX + 36) : (sandbagStartX + 32);
+    const embrasureW = 24;
+
+    // Worki po lewej stronie strzelnicy
+    for (let bx = sandbagStartX + 4; bx < embrasureX - 6; bx += (bagW - 4)) {
+      drawSandbag(bx, sandbagBaseY - bagH * 2 + 1, bagW, bagH);
+    }
+    // Worki po prawej stronie strzelnicy
+    for (let bx = embrasureX + embrasureW; bx < sandbagStartX + sandbagW - 4; bx += (bagW - 4)) {
+      drawSandbag(bx, sandbagBaseY - bagH * 2 + 1, bagW, bagH);
+    }
+
+    // Drewniane nadproże / belka nad strzelnicą
+    ctx.fillStyle = '#2d1808';
+    ctx.fillRect(embrasureX - 4, sandbagBaseY - bagH * 2 - 2, embrasureW + 8, 4);
+    ctx.strokeStyle = '#452810';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(embrasureX - 4, sandbagBaseY - bagH * 2 - 2, embrasureW + 8, 4);
+
+    // Ciemne wnętrze szczeliny ogniowej
+    ctx.fillStyle = '#060a0f';
+    ctx.fillRect(embrasureX, sandbagBaseY - bagH * 2 + 2, embrasureW, bagH - 1);
+
+    // Chłodny błysk księżycowy w szczelinie strzeleckiej
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.40)';
+    ctx.fillRect(isL ? (embrasureX + embrasureW - 5) : embrasureX, sandbagBaseY - bagH * 2 + 3, 5, bagH - 3);
 
     ctx.restore();
 
@@ -429,7 +546,7 @@ export function drawArena3Foreground(ctx, camera) {
     if (isL) {
       for (let i = 1; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     } else {
-      for (let i = 0; i < ovalPoints.length; i++) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
+      for (let i = ovalPoints.length - 1; i >= 0; i--) ctx.lineTo(ovalPoints[i].x, ovalPoints[i].y);
     }
     ctx.lineTo(edgeX, 1400);
     ctx.stroke();

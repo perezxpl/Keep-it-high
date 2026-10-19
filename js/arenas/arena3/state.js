@@ -1208,63 +1208,44 @@ export const ARENA_3_PLATFORMS = [
   // - Owalne brzegi rzeczne schodzące do wody (X: 1150-1750 oraz X: 2650-3250, Y: 1200 do 1335)
   // -----------------------------------------------------------------------
   // -----------------------------------------------------------------------
-  // LEWY BRZEG (SEKTOR ALFA / CYAN) - POWIERZCHNIA ORAZ MUROWANY BUNKIER
+  // LEWY BRZEG (SEKTOR ALFA / CYAN) - PRZEDPOLE I ZAGŁĘBIONY SCHRON OKOPOWY
+  // Ciągły profil podłoża: gracz zbiega z Y: 1200 do Y: 1265 i wbiega na Y: 1200.
+  // Brak kolidujących stropów dachowych, 100% czysta fizyka i pewne oparcie!
   // -----------------------------------------------------------------------
   {
     id: 'ground_left_outer',
-    name: 'Lewy Brzeg - Przedpole Bunkra',
+    name: 'Lewy Brzeg - Przedpole Zewnętrzne',
     x: 0,
     y: 1200,
-    w: 420,
+    w: 450,
     h: 200,
     thickness: 200,
     solid: true,
     isPlatform: true
   },
   {
-    id: 'bunker_left_stairs',
-    name: 'Bunkier Lewy - Schody Zejściowe',
-    x: 420,
+    id: 'bunker_left_trench',
+    name: 'Schron Okopowy Alfa - Zagłębione Stanowisko Bojowe',
+    x: 450,
     y: 1200,
-    w: 120,
-    h: 130,
+    w: 480,
+    h: 200,
+    thickness: 200,
     solid: true,
     isPlatform: true,
     surfacePoints: [
-      { x: 420, y: 1200 },
-      { x: 540, y: 1320 }
+      { x: 450, y: 1200 },
+      { x: 530, y: 1265 },
+      { x: 850, y: 1265 },
+      { x: 930, y: 1200 }
     ]
-  },
-  {
-    id: 'bunker_left_floor',
-    name: 'Bunkier Lewy - Posadzka',
-    x: 420,
-    y: 1320,
-    w: 560,
-    h: 80,
-    thickness: 80,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'bunker_left_roof',
-    name: 'Bunkier Lewy - Strop (Właz Dachowy)',
-    x: 540,
-    y: 1200,
-    w: 440,
-    h: 24,
-    thickness: 24,
-    solid: true,
-    isPlatform: true,
-    isDropThrough: true,
-    type: 'catwalk'
   },
   {
     id: 'ground_left_inner',
     name: 'Lewy Brzeg - Przedpole Mostu',
-    x: 980,
+    x: 930,
     y: 1200,
-    w: 170,
+    w: 220,
     h: 200,
     thickness: 200,
     solid: true,
@@ -1321,56 +1302,35 @@ export const ARENA_3_PLATFORMS = [
     name: 'Prawy Brzeg - Przedpole Mostu',
     x: 3250,
     y: 1200,
-    w: 170,
+    w: 220,
     h: 200,
     thickness: 200,
     solid: true,
     isPlatform: true
   },
   {
-    id: 'bunker_right_roof',
-    name: 'Bunkier Prawy - Strop (Właz Dachowy)',
-    x: 3420,
+    id: 'bunker_right_trench',
+    name: 'Schron Okopowy Bravo - Zagłębione Stanowisko Bojowe',
+    x: 3470,
     y: 1200,
-    w: 440,
-    h: 24,
-    thickness: 24,
-    solid: true,
-    isPlatform: true,
-    isDropThrough: true,
-    type: 'catwalk'
-  },
-  {
-    id: 'bunker_right_floor',
-    name: 'Bunkier Prawy - Posadzka',
-    x: 3420,
-    y: 1320,
-    w: 560,
-    h: 80,
-    thickness: 80,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'bunker_right_stairs',
-    name: 'Bunkier Prawy - Schody Zejściowe',
-    x: 3860,
-    y: 1200,
-    w: 120,
-    h: 130,
+    w: 480,
+    h: 200,
+    thickness: 200,
     solid: true,
     isPlatform: true,
     surfacePoints: [
-      { x: 3860, y: 1320 },
-      { x: 3980, y: 1200 }
+      { x: 3470, y: 1200 },
+      { x: 3550, y: 1265 },
+      { x: 3870, y: 1265 },
+      { x: 3950, y: 1200 }
     ]
   },
   {
     id: 'ground_right_outer',
-    name: 'Prawy Brzeg - Przedpole Bunkra',
-    x: 3980,
+    name: 'Prawy Brzeg - Przedpole Zewnętrzne',
+    x: 3950,
     y: 1200,
-    w: 420,
+    w: 450,
     h: 200,
     thickness: 200,
     solid: true,
