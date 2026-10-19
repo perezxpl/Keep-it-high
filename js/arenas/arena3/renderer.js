@@ -117,93 +117,187 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.restore();
 
-    // C. EMBEDDED MEGALITHS (Ciosane bloki kamienne wtopione w skałę)
-    const blockList = isL ? [
-      { x: 120, y: 1228, w: 85, h: 28 },
-      { x: 260, y: 1242, w: 70, h: 24 },
-      { x: 420, y: 1230, w: 90, h: 30 },
-      { x: 620, y: 1245, w: 65, h: 26 },
-      { x: 780, y: 1232, w: 80, h: 28 },
-      { x: 960, y: 1248, w: 75, h: 25 },
-      { x: 1140, y: 1255, w: 80, h: 28 },
-      { x: 1300, y: 1285, w: 65, h: 24 },
-      { x: 1450, y: 1310, w: 55, h: 22 },
-      { x: 200, y: 1290, w: 95, h: 32 },
-      { x: 520, y: 1300, w: 85, h: 30 },
-      { x: 860, y: 1310, w: 70, h: 28 }
-    ] : [
-      { x: 4195, y: 1228, w: 85, h: 28 },
-      { x: 4070, y: 1242, w: 70, h: 24 },
-      { x: 3890, y: 1230, w: 90, h: 30 },
-      { x: 3715, y: 1245, w: 65, h: 26 },
-      { x: 3540, y: 1232, w: 80, h: 28 },
-      { x: 3365, y: 1248, w: 75, h: 25 },
-      { x: 3180, y: 1255, w: 80, h: 28 },
-      { x: 3035, y: 1285, w: 65, h: 24 },
-      { x: 2895, y: 1310, w: 55, h: 22 },
-      { x: 4105, y: 1290, w: 95, h: 32 },
-      { x: 3795, y: 1300, w: 85, h: 30 },
-      { x: 3470, y: 1310, w: 70, h: 28 }
-    ];
-
-    for (let b of blockList) {
-      ctx.fillStyle = '#141e28';
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-      ctx.strokeStyle = 'rgba(186, 230, 253, 0.15)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x + b.w, b.y);
-      ctx.stroke();
-      ctx.strokeStyle = '#05080c';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y + b.h);
-      ctx.lineTo(b.x + b.w, b.y + b.h);
-      ctx.lineTo(b.x + b.w, b.y);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(5, 9, 13, 0.55)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(b.x + b.w * 0.35, b.y);
-      ctx.lineTo(b.x + b.w * 0.42, b.y + b.h * 0.55);
-      ctx.lineTo(b.x + b.w * 0.38, b.y + b.h);
-      ctx.stroke();
-    }
-
-    // D. PRASTARE KORZENIE DRZEW FIGOWCÓW / BANYAN ROOTS
-    const rootSystems = isL ? [
-      { startX: 180, startY: 1200, points: [{ x: 195, y: 1235 }, { x: 210, y: 1270 }, { x: 205, y: 1320 }, { x: 215, y: 1380 }], w: 5.5 },
-      { startX: 540, startY: 1200, points: [{ x: 550, y: 1240 }, { x: 565, y: 1285 }, { x: 580, y: 1340 }, { x: 575, y: 1395 }], w: 4.8 },
-      { startX: 1020, startY: 1200, points: [{ x: 1040, y: 1230 }, { x: 1055, y: 1275 }, { x: 1080, y: 1325 }, { x: 1110, y: 1385 }], w: 5.2 },
-      { startX: 1380, startY: 1235, points: [{ x: 1410, y: 1270 }, { x: 1445, y: 1305 }, { x: 1490, y: 1345 }, { x: 1540, y: 1390 }], w: 4.5 },
-      { startX: 1620, startY: 1295, points: [{ x: 1645, y: 1315 }, { x: 1675, y: 1340 }, { x: 1710, y: 1370 }, { x: 1740, y: 1395 }], w: 3.8 }
-    ] : [
-      { startX: 4220, startY: 1200, points: [{ x: 4205, y: 1235 }, { x: 4190, y: 1270 }, { x: 4195, y: 1320 }, { x: 4185, y: 1380 }], w: 5.5 },
-      { startX: 3860, startY: 1200, points: [{ x: 3850, y: 1240 }, { x: 3835, y: 1285 }, { x: 3820, y: 1340 }, { x: 3825, y: 1395 }], w: 4.8 },
-      { startX: 3380, startY: 1200, points: [{ x: 3360, y: 1230 }, { x: 3345, y: 1275 }, { x: 3320, y: 1325 }, { x: 3290, y: 1385 }], w: 5.2 },
-      { startX: 3020, startY: 1235, points: [{ x: 2990, y: 1270 }, { x: 2955, y: 1305 }, { x: 2910, y: 1345 }, { x: 2860, y: 1390 }], w: 4.5 },
-      { startX: 2780, startY: 1295, points: [{ x: 2755, y: 1315 }, { x: 2725, y: 1340 }, { x: 2690, y: 1370 }, { x: 2660, y: 1395 }], w: 3.8 }
-    ];
+    // C. PODZIEMNY MUROWANY BUNKIER BOJOWY (SUBTERRANEAN BRICK BUNKER)
+    // Prawdziwy ceglany schron ze schodami zejściowymi, stropem i strzelnicą
+    const bunkerX = isL ? 540 : 3420;
+    const bunkerW = 440;
+    const bunkerFloorY = 1320;
+    const bunkerRoofY = 1200;
+    const chamberH = bunkerFloorY - bunkerRoofY; // 120 px
 
     ctx.save();
-    for (let r of rootSystems) {
-      ctx.strokeStyle = '#0a0604';
-      ctx.lineWidth = r.w + 2;
-      ctx.lineCap = 'round';
+    // 1. Tło komory podziemnej
+    ctx.fillStyle = '#18100b';
+    ctx.fillRect(bunkerX, bunkerRoofY, bunkerW, chamberH);
+
+    // 2. Regularny mur z cegły fortecznej (Ceglane ściany z fugami)
+    const brickH = 12;
+    const brickW = 28;
+    for (let by = bunkerRoofY + 16; by < bunkerFloorY - 6; by += brickH) {
+      const rowIdx = Math.floor((by - bunkerRoofY) / brickH);
+      const rowOffset = (rowIdx % 2 === 0) ? 0 : brickW * 0.5;
+      for (let bx = bunkerX - rowOffset; bx < bunkerX + bunkerW; bx += brickW) {
+        const drawBx = Math.max(bunkerX, bx);
+        const drawBw = Math.min(bunkerX + bunkerW - drawBx, (bx + brickW) - drawBx);
+        if (drawBw <= 2) continue;
+
+        // Wariacja odcienia palonej cegły klinkierowej
+        const hash = Math.sin(drawBx * 12.9898 + by * 78.233) * 43758.5453;
+        const shade = (hash - Math.floor(hash));
+        ctx.fillStyle = shade > 0.6 ? '#562417' : (shade > 0.3 ? '#471d12' : '#3d170e');
+        ctx.fillRect(drawBx + 1, by + 1, drawBw - 2, brickH - 2);
+
+        // Subtelna krawędź cegły
+        ctx.strokeStyle = 'rgba(255, 180, 140, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(drawBx + 1, by + 1, drawBw - 2, brickH - 2);
+      }
+    }
+
+    // 3. Ciepła lampa naftowa / wojskowa lampa w klatce ochronnej
+    const lampX = isL ? 740 : 3660;
+    const lampY = 1228;
+
+    // Ciepła łuna światła bursztynowego na cegłach
+    const lGrad = ctx.createRadialGradient(lampX, lampY, 6, lampX, lampY, 150);
+    lGrad.addColorStop(0.0, 'rgba(251, 191, 36, 0.42)');
+    lGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.18)');
+    lGrad.addColorStop(1.0, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = lGrad;
+    ctx.beginPath();
+    ctx.arc(lampX, lampY, 150, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Kabel i oprawa lampy
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(lampX, bunkerRoofY);
+    ctx.lineTo(lampX, lampY - 8);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(lampX, lampY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(lampX - 6, lampY - 7, 12, 14);
+
+    // 4. Stalowe dwuteowniki stropowe (I-Beams)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(bunkerX, bunkerRoofY, bunkerW, 14);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bunkerX, bunkerRoofY + 14);
+    ctx.lineTo(bunkerX + bunkerW, bunkerRoofY + 14);
+    ctx.stroke();
+
+    // Nity na stalowym stropie
+    ctx.fillStyle = '#64748b';
+    for (let nx = bunkerX + 20; nx < bunkerX + bunkerW; nx += 45) {
+      ctx.fillRect(nx, bunkerRoofY + 5, 3, 3);
+    }
+
+    // Pionowy słup nośny ze stali pośrodku komory
+    const pillarX = isL ? 820 : 3580;
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(pillarX - 7, bunkerRoofY + 14, 14, chamberH - 22);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(pillarX - 7, bunkerRoofY + 14, 14, chamberH - 22);
+
+    // 5. Murowane schody zejściowe do podziemi (Stairs)
+    const stairsStartX = isL ? 420 : 3980;
+    const stairsEndX = isL ? 540 : 3860;
+    const stepCount = 6;
+    const stepW = (stairsEndX - stairsStartX) / stepCount;
+    const stepH = (bunkerFloorY - bunkerRoofY) / stepCount;
+
+    for (let s = 0; s < stepCount; s++) {
+      const curStepX = stairsStartX + s * stepW;
+      const curStepY = bunkerRoofY + (s + 1) * stepH;
+      const nextStepX = curStepX + stepW;
+
+      // Stopień ceglany
+      ctx.fillStyle = '#451b10';
+      ctx.fillRect(Math.min(curStepX, nextStepX), curStepY - stepH, Math.abs(stepW), 1400 - (curStepY - stepH));
+
+      // Okucie noska stopnia
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(Math.min(curStepX, nextStepX), curStepY - stepH, Math.abs(stepW), 3);
+    }
+
+    // Stalowa poręcz schodowa
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(stairsStartX, bunkerRoofY - 20);
+    ctx.lineTo(stairsEndX, bunkerFloorY - 20);
+    ctx.stroke();
+
+    // Słupki poręczy
+    for (let p = 0; p <= 3; p++) {
+      const px = stairsStartX + (stairsEndX - stairsStartX) * (p / 3);
+      const py = bunkerRoofY + (bunkerFloorY - bunkerRoofY) * (p / 3);
       ctx.beginPath();
-      ctx.moveTo(r.startX, r.startY);
-      for (let p of r.points) ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#261b14';
-      ctx.lineWidth = r.w;
-      ctx.stroke();
-
-      ctx.strokeStyle = '#38281e';
-      ctx.lineWidth = Math.max(1, r.w * 0.35);
+      ctx.moveTo(px, py - 20);
+      ctx.lineTo(px, py);
       ctx.stroke();
     }
+
+    // 6. Strzelnica / Szczelina obserwacyjna (Bunker Embrasure)
+    // Zlokalizowana w przedniej ścianie bunkra, z widokiem na rzekę i most
+    const embX = isL ? 980 : 3390;
+    const embY = 1250;
+    const embW = 32;
+    const embH = 24;
+
+    // Rozglifienie strzelnicy w betonie
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    if (isL) {
+      ctx.moveTo(embX, embY + 4);
+      ctx.lineTo(embX + embW, embY);
+      ctx.lineTo(embX + embW, embY + embH);
+      ctx.lineTo(embX, embY + embH - 4);
+    } else {
+      ctx.moveTo(embX + embW, embY + 4);
+      ctx.lineTo(embX, embY);
+      ctx.lineTo(embX, embY + embH);
+      ctx.lineTo(embX + embW, embY + embH - 4);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Chłodne nocne światło wpadające przez strzelnicę
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.35)';
+    ctx.fillRect(isL ? embX + embW - 6 : embX, embY + 4, 6, embH - 8);
+
+    // 7. Skrzynka amunicyjna w kącie posadzki
+    const crateX = isL ? 930 : 3445;
+    const crateY = bunkerFloorY - 26;
+    ctx.fillStyle = '#2d3b24';
+    ctx.fillRect(crateX, crateY, 36, 24);
+    ctx.strokeStyle = '#1a2415';
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(crateX, crateY, 36, 24);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 8px monospace';
+    ctx.fillText('7.62', crateX + 7, crateY + 15);
+
+    // 8. Betonowa posadzka bunkra
+    ctx.fillStyle = '#1e2530';
+    ctx.fillRect(bunkerX, bunkerFloorY - 2, bunkerW, 8);
+    ctx.strokeStyle = '#0f141c';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(bunkerX, bunkerFloorY - 2);
+    ctx.lineTo(bunkerX + bunkerW, bunkerFloorY - 2);
+    ctx.stroke();
+
     ctx.restore();
 
     // E. TAKTYCZNA KRATA DRENAŻOWA / WYLOT RUROCIĄGU

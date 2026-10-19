@@ -1207,22 +1207,68 @@ export const ARENA_3_PLATFORMS = [
   // - Łagodne podejścia na most (X: 1150-1750 oraz X: 2650-3250, Y: 1200 do 1000)
   // - Owalne brzegi rzeczne schodzące do wody (X: 1150-1750 oraz X: 2650-3250, Y: 1200 do 1335)
   // -----------------------------------------------------------------------
+  // -----------------------------------------------------------------------
+  // LEWY BRZEG (SEKTOR ALFA / CYAN) - POWIERZCHNIA ORAZ MUROWANY BUNKIER
+  // -----------------------------------------------------------------------
   {
-    id: 'ground_left',
-    name: 'Lewy Brzeg - Płaski Grunt',
+    id: 'ground_left_outer',
+    name: 'Lewy Brzeg - Przedpole Bunkra',
     x: 0,
     y: 1200,
-    w: 1150,
+    w: 420,
     h: 200,
     thickness: 200,
     solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'bunker_left_stairs',
+    name: 'Bunkier Lewy - Schody Zejściowe',
+    x: 420,
+    y: 1200,
+    w: 120,
+    h: 130,
+    solid: true,
     isPlatform: true,
     surfacePoints: [
-      { x: 0, y: 1200 },
-      { x: 500, y: 1200 },
-      { x: 1000, y: 1200 },
-      { x: 1150, y: 1200 }
+      { x: 420, y: 1200 },
+      { x: 540, y: 1320 }
     ]
+  },
+  {
+    id: 'bunker_left_floor',
+    name: 'Bunkier Lewy - Posadzka',
+    x: 420,
+    y: 1320,
+    w: 560,
+    h: 80,
+    thickness: 80,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'bunker_left_roof',
+    name: 'Bunkier Lewy - Strop (Właz Dachowy)',
+    x: 540,
+    y: 1200,
+    w: 440,
+    h: 24,
+    thickness: 24,
+    solid: true,
+    isPlatform: true,
+    isDropThrough: true,
+    type: 'catwalk'
+  },
+  {
+    id: 'ground_left_inner',
+    name: 'Lewy Brzeg - Przedpole Mostu',
+    x: 980,
+    y: 1200,
+    w: 170,
+    h: 200,
+    thickness: 200,
+    solid: true,
+    isPlatform: true
   },
   // -----------------------------------------------------------------------
   // ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (X: 1150-1750 oraz 2650-3250)
@@ -1267,22 +1313,68 @@ export const ARENA_3_PLATFORMS = [
       { x: 3250, y: 1200 }
     ]
   },
+  // -----------------------------------------------------------------------
+  // PRAWY BRZEG (SEKTOR BRAVO / ORANGE) - POWIERZCHNIA ORAZ MUROWANY BUNKIER
+  // -----------------------------------------------------------------------
   {
-    id: 'ground_right',
-    name: 'Prawy Brzeg - Płaski Grunt',
+    id: 'ground_right_inner',
+    name: 'Prawy Brzeg - Przedpole Mostu',
     x: 3250,
     y: 1200,
-    w: 1150,
+    w: 170,
     h: 200,
     thickness: 200,
     solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'bunker_right_roof',
+    name: 'Bunkier Prawy - Strop (Właz Dachowy)',
+    x: 3420,
+    y: 1200,
+    w: 440,
+    h: 24,
+    thickness: 24,
+    solid: true,
+    isPlatform: true,
+    isDropThrough: true,
+    type: 'catwalk'
+  },
+  {
+    id: 'bunker_right_floor',
+    name: 'Bunkier Prawy - Posadzka',
+    x: 3420,
+    y: 1320,
+    w: 560,
+    h: 80,
+    thickness: 80,
+    solid: true,
+    isPlatform: true
+  },
+  {
+    id: 'bunker_right_stairs',
+    name: 'Bunkier Prawy - Schody Zejściowe',
+    x: 3860,
+    y: 1200,
+    w: 120,
+    h: 130,
+    solid: true,
     isPlatform: true,
     surfacePoints: [
-      { x: 3250, y: 1200 },
-      { x: 3400, y: 1200 },
-      { x: 3900, y: 1200 },
-      { x: 4400, y: 1200 }
+      { x: 3860, y: 1320 },
+      { x: 3980, y: 1200 }
     ]
+  },
+  {
+    id: 'ground_right_outer',
+    name: 'Prawy Brzeg - Przedpole Bunkra',
+    x: 3980,
+    y: 1200,
+    w: 420,
+    h: 200,
+    thickness: 200,
+    solid: true,
+    isPlatform: true
   },
 
   // -----------------------------------------------------------------------

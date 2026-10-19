@@ -95,34 +95,64 @@
 
   <!-- Left Basalt Cliff -->
   <path d="M 0 340 L 0 250 Q 80 250 150 254 Q 185 260 215 285 L 215 340 Z" fill="url(#cliffGrad)"/>
-  <!-- Left Cliff Blocks & Stratum -->
-  <rect x="30" y="265" width="55" height="18" fill="#1b2530" opacity="0.6"/>
-  <rect x="100" y="272" width="48" height="16" fill="#1b2530" opacity="0.5"/>
-  <line x1="0" y1="290" x2="160" y2="290" stroke="#070b0f" stroke-width="2" opacity="0.7"/>
 
-  <!-- Left Ancient Tree Roots Clinging to Rock -->
-  <path d="M 40 250 Q 60 280 50 310 Q 45 325 35 340" stroke="#251a13" stroke-width="4.5" fill="none"/>
-  <path d="M 120 252 Q 135 275 140 295 Q 165 310 185 340" stroke="#251a13" stroke-width="3.8" fill="none"/>
-  <path d="M 170 260 Q 185 275 195 295 L 210 320" stroke="#1d140e" stroke-width="2.5" fill="none"/>
+  <!-- Left Subterranean Brick Bunker -->
+  <!-- Bunker Chamber (Underground) -->
+  <rect x="50" y="260" width="85" height="42" fill="#18100b" rx="2"/>
+  <rect x="50" y="260" width="85" height="42" stroke="#562417" stroke-width="1.2" fill="none"/>
+  <!-- Brick Courses -->
+  <line x1="50" y1="268" x2="135" y2="268" stroke="#3d170e" stroke-width="1"/>
+  <line x1="50" y1="276" x2="135" y2="276" stroke="#3d170e" stroke-width="1"/>
+  <line x1="50" y1="284" x2="135" y2="284" stroke="#3d170e" stroke-width="1"/>
+  <line x1="50" y1="292" x2="135" y2="292" stroke="#3d170e" stroke-width="1"/>
+  <!-- Warm Bunker Light Glow -->
+  <circle cx="85" cy="272" r="18" fill="#f59e0b" opacity="0.3"/>
+  <circle cx="85" cy="270" r="2.5" fill="#fef08a"/>
+  <!-- Firing Embrasure looking into gorge -->
+  <rect x="135" y="268" width="10" height="7" fill="#020408"/>
+  <line x1="145" y1="271.5" x2="152" y2="271.5" stroke="#bae6fd" stroke-width="1.5" opacity="0.6"/>
+  <!-- Concrete Roof & Ceiling Hatch -->
+  <rect x="50" y="250" width="85" height="8" fill="#1e293b"/>
+  <line x1="50" y1="258" x2="135" y2="258" stroke="#334155" stroke-width="1"/>
+  <!-- Descent Stairs -->
+  <polygon points="35,250 50,250 50,285 35,285" fill="#0d141c"/>
+  <line x1="35" y1="256" x2="50" y2="256" stroke="#475569" stroke-width="1.5"/>
+  <line x1="38" y1="263" x2="50" y2="263" stroke="#475569" stroke-width="1.5"/>
+  <line x1="42" y1="270" x2="50" y2="270" stroke="#475569" stroke-width="1.5"/>
 
   <!-- Left Edge Moss & Rim Light -->
-  <path d="M 0 250 Q 80 250 150 254 Q 185 260 215 285" stroke="#14331a" stroke-width="6" fill="none"/>
+  <path d="M 0 250 Q 80 250 150 254 Q 185 260 215 285" stroke="#14331a" stroke-width="5" fill="none"/>
   <path d="M 0 249 Q 80 249 150 253 Q 185 259 215 284" stroke="#bae6fd" stroke-width="1.6" opacity="0.55" fill="none"/>
 
   <!-- Right Basalt Cliff -->
   <path d="M 600 340 L 600 250 Q 520 250 450 254 Q 415 260 385 285 L 385 340 Z" fill="url(#cliffGrad)"/>
-  <!-- Right Cliff Blocks & Stratum -->
-  <rect x="515" y="265" width="55" height="18" fill="#1b2530" opacity="0.6"/>
-  <rect x="450" y="272" width="50" height="16" fill="#1b2530" opacity="0.5"/>
-  <line x1="440" y1="290" x2="600" y2="290" stroke="#070b0f" stroke-width="2" opacity="0.7"/>
 
-  <!-- Right Ancient Tree Roots -->
-  <path d="M 560 250 Q 540 280 550 310 Q 555 325 565 340" stroke="#251a13" stroke-width="4.5" fill="none"/>
-  <path d="M 480 252 Q 465 275 460 295 Q 435 310 415 340" stroke="#251a13" stroke-width="3.8" fill="none"/>
-  <path d="M 430 260 Q 415 275 405 295 L 390 320" stroke="#1d140e" stroke-width="2.5" fill="none"/>
+  <!-- Right Subterranean Brick Bunker -->
+  <!-- Bunker Chamber (Underground) -->
+  <rect x="465" y="260" width="85" height="42" fill="#18100b" rx="2"/>
+  <rect x="465" y="260" width="85" height="42" stroke="#562417" stroke-width="1.2" fill="none"/>
+  <!-- Brick Courses -->
+  <line x1="465" y1="268" x2="550" y2="268" stroke="#3d170e" stroke-width="1"/>
+  <line x1="465" y1="276" x2="550" y2="276" stroke="#3d170e" stroke-width="1"/>
+  <line x1="465" y1="284" x2="550" y2="284" stroke="#3d170e" stroke-width="1"/>
+  <line x1="465" y1="292" x2="550" y2="292" stroke="#3d170e" stroke-width="1"/>
+  <!-- Warm Bunker Light Glow -->
+  <circle cx="515" cy="272" r="18" fill="#f59e0b" opacity="0.3"/>
+  <circle cx="515" cy="270" r="2.5" fill="#fef08a"/>
+  <!-- Firing Embrasure looking into gorge -->
+  <rect x="455" y="268" width="10" height="7" fill="#020408"/>
+  <line x1="448" y1="271.5" x2="455" y2="271.5" stroke="#bae6fd" stroke-width="1.5" opacity="0.6"/>
+  <!-- Concrete Roof & Ceiling Hatch -->
+  <rect x="465" y="250" width="85" height="8" fill="#1e293b"/>
+  <line x1="465" y1="258" x2="550" y2="258" stroke="#334155" stroke-width="1"/>
+  <!-- Descent Stairs -->
+  <polygon points="550,250 565,250 565,285 550,285" fill="#0d141c"/>
+  <line x1="550" y1="256" x2="565" y2="256" stroke="#475569" stroke-width="1.5"/>
+  <line x1="550" y1="263" x2="562" y2="263" stroke="#475569" stroke-width="1.5"/>
+  <line x1="550" y1="270" x2="558" y2="270" stroke="#475569" stroke-width="1.5"/>
 
   <!-- Right Edge Moss & Rim Light -->
-  <path d="M 600 250 Q 520 250 450 254 Q 415 260 385 285" stroke="#14331a" stroke-width="6" fill="none"/>
+  <path d="M 600 250 Q 520 250 450 254 Q 415 260 385 285" stroke="#14331a" stroke-width="5" fill="none"/>
   <path d="M 600 249 Q 520 249 450 253 Q 415 259 385 284" stroke="#bae6fd" stroke-width="1.6" opacity="0.55" fill="none"/>
 
   <!-- Suspension Bridge across Gorge -->
