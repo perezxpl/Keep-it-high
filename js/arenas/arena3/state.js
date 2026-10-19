@@ -339,7 +339,9 @@ export const ARENA_3_PYLONS = {
     intact: true,
     tiltAngle: 0,
     vRot: 0,
-    collapsed: false
+    collapsed: false,
+    fallDropY: 0,
+    fallDropVy: 0
   },
   right: {
     id: 'pylon_right',
@@ -355,7 +357,9 @@ export const ARENA_3_PYLONS = {
     intact: true,
     tiltAngle: 0,
     vRot: 0,
-    collapsed: false
+    collapsed: false,
+    fallDropY: 0,
+    fallDropVy: 0
   }
 };
 
@@ -364,6 +368,8 @@ export function destroyPylon(k) {
   if (!p || !p.intact) return;
   p.intact = false;
   p.vRot = (k === 'left' ? 0.022 : -0.022);
+  p.fallDropY = 0;
+  p.fallDropVy = 0;
   spawnBridgeSplinters(p.x, 1025, (k === 'left' ? 6 : -6), -4, 25);
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(14);
@@ -750,6 +756,8 @@ export function resetArena3() {
     p.tiltAngle = 0;
     p.vRot = 0;
     p.collapsed = false;
+    p.fallDropY = 0;
+    p.fallDropVy = 0;
   }
 
   // 2. Reset kładki mostu
@@ -876,6 +884,8 @@ export function resetArena3() {
     pillar.tiltAngle = 0;
     pillar.vRot = 0;
     pillar.collapsed = false;
+    pillar.fallDropY = 0;
+    pillar.fallDropVy = 0;
   }
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
@@ -1029,7 +1039,9 @@ export const ARENA_3_TOWER_PILLARS = {
     intact: true,
     tiltAngle: 0,
     vRot: 0,
-    collapsed: false
+    collapsed: false,
+    fallDropY: 0,
+    fallDropVy: 0
   },
   right: {
     id: 'tower_pillar_right',
@@ -1045,7 +1057,9 @@ export const ARENA_3_TOWER_PILLARS = {
     intact: true,
     tiltAngle: 0,
     vRot: 0,
-    collapsed: false
+    collapsed: false,
+    fallDropY: 0,
+    fallDropVy: 0
   }
 };
 
@@ -1135,9 +1149,11 @@ export function destroyTowerPillar(side) {
   const pillar = ARENA_3_TOWER_PILLARS[side];
   if (!pillar || !pillar.intact) return;
   pillar.intact = false;
-  pillar.vRot = (side === 'left' ? -0.024 : 0.024);
+  pillar.vRot = (side === 'left' ? 0.024 : -0.024);
+  pillar.fallDropY = 0;
+  pillar.fallDropVy = 0;
 
-  spawnBridgeSplinters(pillar.stemX, 600, (side === 'left' ? -7 : 7), -4, 28);
+  spawnBridgeSplinters(pillar.stemX, 600, (side === 'left' ? 7 : -7), -4, 28);
   if (typeof triggerScreenShake === 'function') {
     triggerScreenShake(14);
   }

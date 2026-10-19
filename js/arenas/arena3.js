@@ -171,19 +171,39 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3A. Fizyka i upadek pylonów mostu (Angry Birds Style Tower Collapse)
+  // 3A. Fizyka i całkowity upadek pylonów mostu do rzeki (Complete Pylon Collapse)
   for (const k of ['left', 'right']) {
     const p = ARENA_3_PYLONS[k];
     if (!p.intact && !p.collapsed) {
+      const pDir = (k === 'left' ? 1 : -1);
+      // Grawitacyjne przyspieszenie kątowe obalania się wieży pylonu ku środkowi rzeki
+      p.vRot += pDir * (0.0018 + Math.sin(Math.abs(p.tiltAngle)) * 0.0042) * dt * 60;
       p.tiltAngle += p.vRot;
-      const maxTilt = (k === 'left' ? 0.38 : -0.38);
-      if ((k === 'left' && p.tiltAngle >= maxTilt) || (k === 'right' && p.tiltAngle <= maxTilt)) {
-        p.tiltAngle = maxTilt;
+
+      // Zsuwanie się / zapadanie odłamanego pylonu z kesonu w dół do rzeki (Y: 1100 -> 1305)
+      if (Math.abs(p.tiltAngle) > 0.22) {
+        p.fallDropVy = (p.fallDropVy || 0) + 0.38 * dt * 60;
+        p.fallDropY = Math.min(205, (p.fallDropY || 0) + p.fallDropVy);
+      }
+
+      // Moment uderzenia o taflę rzeki i dno (kąt ~90 stopni lub pełne zanurzenie w wodzie)
+      const hitWater = (k === 'left' && p.tiltAngle >= 1.50) || (k === 'right' && p.tiltAngle <= -1.50) || (p.fallDropY >= 200);
+      if (hitWater) {
+        p.tiltAngle = (k === 'left' ? 1.52 : -1.52);
         p.vRot = 0;
+        p.fallDropVy = 0;
+        p.fallDropY = 205;
         p.collapsed = true;
-        spawnBridgeSplinters(p.x + (k === 'left' ? 70 : -70), 1220, 0, -2, 12);
+
+        const impactX = p.x + (k === 'left' ? 170 : -170);
+        // Potężny gejzer rozbryzgu wody w rzece
+        spawnArena3WaterSplash(impactX, 1305, 38, true);
+        spawnArena3WaterSplash(impactX + (k === 'left' ? -60 : 60), 1305, 24, false);
+        // Deszcz drzazg i pękających belek pylonu
+        spawnBridgeSplinters(impactX, 1280, (k === 'left' ? 6 : -6), -4, 28);
+        spawnBridgeSplinters(p.x, 1120, (k === 'left' ? 3 : -3), -3, 16);
         if (typeof triggerScreenShake === 'function') {
-          triggerScreenShake(6);
+          triggerScreenShake(16);
         }
       }
     }
@@ -449,19 +469,37 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3A2. Fizyka upadku filarów wież bojowych (Tower Pillars Collapse)
+  // 3A2. Fizyka całkowitego zwalenia się filarów wież bojowych na ziemię (Complete Tower Pillar Collapse)
   for (const side of ['left', 'right']) {
     const pillar = ARENA_3_TOWER_PILLARS[side];
     if (!pillar.intact && !pillar.collapsed) {
+      const dir = (side === 'left' ? 1 : -1);
+      // Grawitacyjne przyspieszenie kątowe obalania się wieży ku środkowi mapy
+      pillar.vRot += dir * (0.0016 + Math.sin(Math.abs(pillar.tiltAngle)) * 0.0040) * dt * 60;
       pillar.tiltAngle += pillar.vRot;
-      const maxTilt = (side === 'left' ? -0.32 : 0.32);
-      if ((side === 'left' && pillar.tiltAngle <= maxTilt) || (side === 'right' && pillar.tiltAngle >= maxTilt)) {
-        pillar.tiltAngle = maxTilt;
+
+      // Opadanie złamanego pnia słupa ku poziomowi gruntu (Y: 1200)
+      if (Math.abs(pillar.tiltAngle) > 0.28) {
+        pillar.fallDropVy = (pillar.fallDropVy || 0) + 0.35 * dt * 60;
+        pillar.fallDropY = Math.min(70, (pillar.fallDropY || 0) + pillar.fallDropVy);
+      }
+
+      // Moment uderzenia pnia wieży o ziemię (kąt ~90 stopni / poziomo na gruncie Y: 1200)
+      const hitGround = (side === 'left' && pillar.tiltAngle >= 1.50) || (side === 'right' && pillar.tiltAngle <= -1.50);
+      if (hitGround) {
+        pillar.tiltAngle = (side === 'left' ? 1.52 : -1.52);
         pillar.vRot = 0;
+        pillar.fallDropVy = 0;
+        pillar.fallDropY = 70;
         pillar.collapsed = true;
-        spawnBridgeSplinters(pillar.stemX + (side === 'left' ? -50 : 50), 1200, 0, -2, 16);
+
+        // Potężne uderzenie pnia o ziemię z kaskadową falą drzazg wzdłuż całego pnia
+        spawnBridgeSplinters(pillar.stemX + dir * 180, 1195, dir * 4.5, -3.5, 22);
+        spawnBridgeSplinters(pillar.stemX + dir * 420, 1195, dir * 3.0, -4.0, 24);
+        spawnBridgeSplinters(pillar.stemX + dir * 650, 1195, dir * 2.0, -3.0, 20);
+        spawnStoneDebris(pillar.stemX + dir * 300, 1200, 0, -2.5, 12);
         if (typeof triggerScreenShake === 'function') {
-          triggerScreenShake(7);
+          triggerScreenShake(18);
         }
       }
     }

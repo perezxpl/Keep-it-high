@@ -414,15 +414,29 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.closePath();
       ctx.fill();
 
-      // Przechylony pień słupa
+      // Przechylony i powalony na ziemię pień słupa
+      const dropY = pillar.fallDropY || 0;
+      const isL = (sideKey === 'left');
+      const shiftX = isL ? dropY * 0.4 : -dropY * 0.4;
       ctx.save();
-      ctx.translate(tx + tw / 2, ty + th - 70);
+      ctx.translate(tx + tw / 2 + shiftX, ty + th - 70 + dropY);
       ctx.rotate(pillar.tiltAngle);
       const fallenGrad = ctx.createLinearGradient(-tw / 2, -th + 70, tw / 2, 0);
       fallenGrad.addColorStop(0, '#533418');
       fallenGrad.addColorStop(1, '#251406');
       ctx.fillStyle = fallenGrad;
       ctx.fillRect(-tw / 2, -th + 70, tw, th - 90);
+
+      // Pęknięcia w poprzek powalonego pnia
+      ctx.strokeStyle = '#0f0501';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-tw / 2 - 2, -th * 0.5);
+      ctx.lineTo(tw / 2 + 2, -th * 0.5 + 8);
+      ctx.moveTo(-tw / 2 - 2, -th * 0.25);
+      ctx.lineTo(tw / 2 + 2, -th * 0.25 - 6);
+      ctx.stroke();
+
       ctx.restore();
     }
 
@@ -950,9 +964,14 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.closePath();
       ctx.fill();
 
-      // B. Przechylony / zawalony korpus wieży pylonu
+      // B. Przechylony i zapadający się w rzece korpus wieży pylonu
+      const dropY = p.fallDropY || 0;
+      const isL = (pylonKey === 'left');
+      const pivotX = px + (isL ? dropY * 0.35 : -dropY * 0.35);
+      const pivotY = caissonTopY - 25 + dropY;
+
       ctx.save();
-      ctx.translate(px, caissonTopY - 25);
+      ctx.translate(pivotX, pivotY);
       ctx.rotate(p.tiltAngle);
 
       const towerLen = caissonTopY - pylonTopY;
@@ -974,6 +993,21 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-30, -towerLen - 14, 60, 16);
       ctx.restore();
+
+      // C. Piana wodna i fale wokół zatopionego w rzece pylonu
+      if (p.collapsed || pivotY >= 1260) {
+        const waterImpactX = px + (isL ? 170 : -170);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.ellipse(waterImpactX, 1306, 70, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(waterImpactX + (isL ? -40 : 40), 1308, 45, 4.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     ctx.restore();
@@ -1497,9 +1531,9 @@ export function drawArena3Foreground(ctx, camera) {
   if (bridgeX2 + 80 >= camL && bridgeX1 - 80 <= camR) {
     ctx.save();
     const leftAnchorX = ARENA_3_PYLONS.left.intact ? pylonLeftX : (pylonLeftX + 40);
-    const leftAnchorY = ARENA_3_PYLONS.left.intact ? (pylonTopY - 6) : 1150;
+    const leftAnchorY = ARENA_3_PYLONS.left.intact ? (pylonTopY - 6) : Math.min(1305, 1100 + (ARENA_3_PYLONS.left.fallDropY || 0));
     const rightAnchorX = ARENA_3_PYLONS.right.intact ? pylonRightX : (pylonRightX - 40);
-    const rightAnchorY = ARENA_3_PYLONS.right.intact ? (pylonTopY - 6) : 1150;
+    const rightAnchorY = ARENA_3_PYLONS.right.intact ? (pylonTopY - 6) : Math.min(1305, 1100 + (ARENA_3_PYLONS.right.fallDropY || 0));
     const midSagY = (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) ? 970 : 1260;
 
     // 1. Górna główna lina nośna (Main Cable)
