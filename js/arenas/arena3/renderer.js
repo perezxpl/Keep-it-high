@@ -1936,27 +1936,6 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  // -----------------------------------------------------------------------
-  // 7. LIŚCIE OPADAJĄCE NA PIERWSZYM PLANIE (PRZED PLATFORMAMI)
-  // -----------------------------------------------------------------------
-  for (let i = 1; i < LEAF_PARTICLES.length; i += 2) {
-    const leaf = LEAF_PARTICLES[i];
-    if (leaf.x < camL - 40 || leaf.x > camR + 40) continue;
-
-    ctx.save();
-    ctx.globalAlpha = leaf.alpha;
-    ctx.translate(leaf.x, leaf.y);
-    ctx.rotate(leaf.rot + 0.3);
-    ctx.fillStyle = leaf.color;
-    ctx.strokeStyle = 'rgba(10, 45, 10, 0.55)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, leaf.size * 1.15, leaf.size * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
   ctx.restore();
 }
 
