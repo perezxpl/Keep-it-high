@@ -184,22 +184,6 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.stroke();
 
-    ctx.fillStyle = '#14301a';
-    for (let i = 0; i < ovalPoints.length - 2; i++) {
-      const pA = ovalPoints[i];
-      const pB = ovalPoints[i + 1];
-      for (let t = 0.25; t <= 0.75; t += 0.35) {
-        const gx = pA.x + (pB.x - pA.x) * t;
-        const gy = pA.y + (pB.y - pA.y) * t;
-        if (gy < 1290) {
-          ctx.beginPath();
-          ctx.moveTo(gx - 4, gy);
-          ctx.lineTo(gx, gy - 6);
-          ctx.lineTo(gx + 4, gy);
-          ctx.fill();
-        }
-      }
-    }
     ctx.restore();
 
     // G. OTOCZAKI BAZALTOWE PRZY WODZIE
@@ -387,16 +371,6 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineTo(tx + 21, ty + th);
       ctx.stroke();
 
-      // D. Drewniane zastrzały / krzyżulce wzmacniające wieżę
-      ctx.strokeStyle = '#3e240e';
-      ctx.lineWidth = 8;
-      for (let sy = ty + 40; sy < ty + th - 60; sy += 90) {
-        ctx.beginPath();
-        const spreadX = isLeft ? (tx - 50) : (tx + 50 + tw);
-        ctx.moveTo(tx + tw / 2, sy);
-        ctx.lineTo(spreadX, sy + 60);
-        ctx.stroke();
-      }
 
       // E. Kute żelazne obejmy i pasy nitowane
       for (let by = ty + 50; by < ty + th - 40; by += 90) {
@@ -513,56 +487,7 @@ export function drawArena3Foreground(ctx, camera) {
     }
 
     // Podpory pomostu od dołu (drewniane zastrzały)
-    if (pillar && pillar.intact) {
-      const deckX = isLeft ? 120 : 4120;
-      const deckW = 160;
-      const deckY = 600;
-      const deckH = 24;
-      ctx.strokeStyle = '#3a220c';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(deckX + 25, deckY + deckH);
-      ctx.lineTo(tx + tw / 2, deckY + deckH + 50);
-      ctx.moveTo(deckX + deckW - 25, deckY + deckH);
-      ctx.lineTo(tx + tw / 2, deckY + deckH + 50);
-      ctx.stroke();
 
-      // G. Zwisający z boku wieży militarny proporzec drużyny (Field Banner)
-      const bannerX = isLeft ? 90 : 4270;
-      const bannerY = 635;
-      const bannerW = 42;
-      const bannerH = 110;
-      const teamColDark = isLeft ? '#0e7490' : '#c2410c';
-      const teamColLight = isLeft ? '#06b6d4' : '#f97316';
-
-      ctx.fillStyle = '#221508';
-      ctx.fillRect(bannerX - 4, bannerY - 6, bannerW + 8, 6);
-
-      ctx.save();
-      ctx.fillStyle = teamColDark;
-      ctx.beginPath();
-      ctx.moveTo(bannerX, bannerY);
-      ctx.lineTo(bannerX + bannerW, bannerY);
-      ctx.lineTo(bannerX + bannerW, bannerY + bannerH);
-      ctx.lineTo(bannerX + bannerW / 2, bannerY + bannerH - 20);
-      ctx.lineTo(bannerX, bannerY + bannerH);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.fillStyle = teamColLight;
-      ctx.font = '900 13px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(isLeft ? 'A' : 'B', bannerX + bannerW / 2, bannerY + 45);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.fillRect(bannerX + 5, bannerY + 60, bannerW - 10, 4);
-      ctx.fillRect(bannerX + 8, bannerY + 70, bannerW - 16, 3);
-      ctx.restore();
-    }
 
     ctx.restore();
   }
@@ -632,15 +557,7 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.stroke();
       }
 
-      // B. Drewniane zastrzały podtrzymujące górny pomost snajperski
-      ctx.strokeStyle = '#321c08';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(stemX + 15, 470);
-      ctx.lineTo(deckX + 30, 422);
-      ctx.moveTo(stemX + 15, 470);
-      ctx.lineTo(deckX + deckW - 30, 422);
-      ctx.stroke();
+
     }
 
     // C. MODUŁOWE PŁYTY PODŁOGOWE GNIAZDA SNAJPERSKIEGO (Y: 400)
@@ -846,14 +763,6 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
         ctx.fillRect(px + 8, py + 14, pw - 16, 12);
 
-        // E. Zwieszające się pnącza (liany) pod platformą
-        ctx.strokeStyle = '#3d6325';
-        ctx.lineWidth = 2.8;
-        const vineLen = 32 + Math.sin(slab.origX * 0.3) * 14;
-        ctx.beginPath();
-        ctx.moveTo(px + pw * 0.5, py + ph);
-        ctx.quadraticCurveTo(px + pw * 0.5 + 8, py + ph + vineLen * 0.5, px + pw * 0.5 - 4, py + ph + vineLen);
-        ctx.stroke();
 
         // F. Obrys płyty
         ctx.strokeStyle = '#1b231b';
@@ -1116,21 +1025,7 @@ export function drawArena3Foreground(ctx, camera) {
           ctx.fillRect(b.stiltX - 7, Math.max(y1, y2) + 18, 14, 7);
           ctx.fillRect(b.stiltX - 7, groundY - 14, 14, 7);
 
-          // Zastrzały krzyżowe do sąsiedniego pala jeśli oba są całe
-          if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
-            const nextB = rampBlocks[rIdx + 1];
-            const nextY = Math.max(getApproachInclineY(nextB.origX, isLeft), getApproachInclineY(nextB.origX + nextB.w, isLeft));
-            const nextGroundY = getRiverbankGroundY(nextB.stiltX);
 
-            ctx.strokeStyle = '#281507';
-            ctx.lineWidth = 3.5;
-            ctx.beginPath();
-            ctx.moveTo(b.stiltX, Math.max(y1, y2) + 26);
-            ctx.lineTo(nextB.stiltX, Math.min(nextGroundY, nextY + 60));
-            ctx.moveTo(nextB.stiltX, nextY + 26);
-            ctx.lineTo(b.stiltX, Math.min(groundY, Math.max(y1, y2) + 60));
-            ctx.stroke();
-          }
         }
 
         // 2. Belka podestu rampy
@@ -1371,17 +1266,6 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineTo(attachLX, attachLY);
       ctx.stroke();
 
-      // Owijające się liany wokół lin
-      ctx.strokeStyle = '#3e6822';
-      ctx.lineWidth = 2;
-      for (let t = 0.15; t <= 0.85; t += 0.18) {
-        const lx = anchorLX + (attachLX - anchorLX) * t;
-        const ly = attachLY * t;
-        ctx.beginPath();
-        ctx.arc(lx, ly, 6, 0, Math.PI);
-        ctx.stroke();
-      }
-
       // Nacięcia / postrzępienia jeśli lina jest uszkodzona
       if (plat.ropeLeft.hp < plat.ropeLeft.maxHp) {
         ctx.strokeStyle = '#92400e';
@@ -1407,16 +1291,6 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.moveTo(anchorRX, 0);
       ctx.lineTo(attachRX, attachRY);
       ctx.stroke();
-
-      ctx.strokeStyle = '#3e6822';
-      ctx.lineWidth = 2;
-      for (let t = 0.2; t <= 0.85; t += 0.18) {
-        const rx = anchorRX + (attachRX - anchorRX) * t;
-        const ry = attachRY * t;
-        ctx.beginPath();
-        ctx.arc(rx, ry, 6, 0, Math.PI);
-        ctx.stroke();
-      }
 
       if (plat.ropeRight.hp < plat.ropeRight.maxHp) {
         ctx.strokeStyle = '#92400e';
@@ -1738,17 +1612,7 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineWidth = 1.8;
       ctx.strokeRect(b.x, currentY, b.w, b.h);
 
-      // Zwisające pnącza co kilka segmentów
-      if (b.blockIndex % 3 === 0) {
-        ctx.strokeStyle = '#32571e';
-        ctx.lineWidth = 2.2;
-        const vLen = 22 + Math.sin(b.x * 0.15) * 10;
-        const vSway = Math.sin(animTime * 2.2 + b.x * 0.05) * 6;
-        ctx.beginPath();
-        ctx.moveTo(b.x + b.w / 2, currentY + b.h);
-        ctx.quadraticCurveTo(b.x + b.w / 2 + vSway * 0.5, currentY + b.h + vLen * 0.5, b.x + b.w / 2 + vSway, currentY + b.h + vLen);
-        ctx.stroke();
-      }
+
       ctx.restore();
     } else {
       // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Falling / Floating Rubble)
