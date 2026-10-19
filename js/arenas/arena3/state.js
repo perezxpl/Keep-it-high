@@ -1208,44 +1208,14 @@ export const ARENA_3_PLATFORMS = [
   // - Owalne brzegi rzeczne schodzące do wody (X: 1150-1750 oraz X: 2650-3250, Y: 1200 do 1335)
   // -----------------------------------------------------------------------
   // -----------------------------------------------------------------------
-  // LEWY BRZEG (SEKTOR ALFA / CYAN) - PRZEDPOLE I ZAGŁĘBIONY SCHRON OKOPOWY
-  // Ciągły profil podłoża: gracz zbiega z Y: 1200 do Y: 1265 i wbiega na Y: 1200.
-  // Brak kolidujących stropów dachowych, 100% czysta fizyka i pewne oparcie!
+  // LEWY BRZEG (SEKTOR ALFA / CYAN) - PŁASKIE PODŁOŻE (X: 0 do 1150, Y: 1200)
   // -----------------------------------------------------------------------
   {
-    id: 'ground_left_outer',
-    name: 'Lewy Brzeg - Przedpole Zewnętrzne',
+    id: 'ground_left',
+    name: 'Lewy Brzeg - Podłoże',
     x: 0,
     y: 1200,
-    w: 450,
-    h: 200,
-    thickness: 200,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'bunker_left_trench',
-    name: 'Schron Okopowy Alfa - Zagłębione Stanowisko Bojowe',
-    x: 450,
-    y: 1200,
-    w: 480,
-    h: 200,
-    thickness: 200,
-    solid: true,
-    isPlatform: true,
-    surfacePoints: [
-      { x: 450, y: 1200 },
-      { x: 530, y: 1265 },
-      { x: 850, y: 1265 },
-      { x: 930, y: 1200 }
-    ]
-  },
-  {
-    id: 'ground_left_inner',
-    name: 'Lewy Brzeg - Przedpole Mostu',
-    x: 930,
-    y: 1200,
-    w: 220,
+    w: 1150,
     h: 200,
     thickness: 200,
     solid: true,
@@ -1295,42 +1265,14 @@ export const ARENA_3_PLATFORMS = [
     ]
   },
   // -----------------------------------------------------------------------
-  // PRAWY BRZEG (SEKTOR BRAVO / ORANGE) - POWIERZCHNIA ORAZ MUROWANY BUNKIER
+  // PRAWY BRZEG (SEKTOR BRAVO / ORANGE) - PŁASKIE PODŁOŻE (X: 3250 do 4400, Y: 1200)
   // -----------------------------------------------------------------------
   {
-    id: 'ground_right_inner',
-    name: 'Prawy Brzeg - Przedpole Mostu',
+    id: 'ground_right',
+    name: 'Prawy Brzeg - Podłoże',
     x: 3250,
     y: 1200,
-    w: 220,
-    h: 200,
-    thickness: 200,
-    solid: true,
-    isPlatform: true
-  },
-  {
-    id: 'bunker_right_trench',
-    name: 'Schron Okopowy Bravo - Zagłębione Stanowisko Bojowe',
-    x: 3470,
-    y: 1200,
-    w: 480,
-    h: 200,
-    thickness: 200,
-    solid: true,
-    isPlatform: true,
-    surfacePoints: [
-      { x: 3470, y: 1200 },
-      { x: 3550, y: 1265 },
-      { x: 3870, y: 1265 },
-      { x: 3950, y: 1200 }
-    ]
-  },
-  {
-    id: 'ground_right_outer',
-    name: 'Prawy Brzeg - Przedpole Zewnętrzne',
-    x: 3950,
-    y: 1200,
-    w: 450,
+    w: 1150,
     h: 200,
     thickness: 200,
     solid: true,

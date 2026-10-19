@@ -93,57 +93,19 @@
   <line x1="260" y1="305" x2="310" y2="305" stroke="#bae6fd" stroke-width="1" opacity="0.35"/>
   <line x1="320" y1="318" x2="360" y2="318" stroke="#bae6fd" stroke-width="1.2" opacity="0.4"/>
 
-  <!-- Left Basalt Cliff with Sunken Trench Profile -->
-  <path d="M 0 340 L 0 250 L 50 250 L 62 263 L 105 263 L 117 250 Q 150 252 185 260 Q 200 270 215 285 L 215 340 Z" fill="url(#cliffGrad)"/>
+  <!-- Left Basalt Cliff -->
+  <path d="M 0 340 L 0 250 Q 80 250 150 254 Q 185 260 215 285 L 215 340 Z" fill="url(#cliffGrad)"/>
 
-  <!-- Left Sunken Trench Bunker (Option 2) -->
-  <!-- Duckboards on Trench Floor -->
-  <line x1="62" y1="263" x2="105" y2="263" stroke="#3c230e" stroke-width="2.5"/>
-  <line x1="65" y1="262" x2="103" y2="262" stroke="#563517" stroke-width="0.8"/>
-  <!-- Timber Dugout Shelter & Roof -->
-  <rect x="50" y="247" width="28" height="4" fill="#2b1708" rx="1"/>
-  <rect x="50" y="249" width="28" height="1.5" fill="#1e293b"/>
-  <rect x="76" y="250.5" width="2.5" height="12.5" fill="#2d1808"/>
-  <!-- Warm Bunker Lantern Glow -->
-  <circle cx="68" cy="254" r="14" fill="#f59e0b" opacity="0.32"/>
-  <circle cx="68" cy="253" r="2" fill="#fef08a"/>
-  <!-- Ammo Crate in Dugout -->
-  <rect x="55" y="258" width="8" height="5" fill="#263320" stroke="#161f13" stroke-width="0.6"/>
-  <!-- Sandbag Parapet facing river with Embrasure -->
-  <rect x="105" y="246" width="15" height="4" fill="#443f30" rx="1"/>
-  <rect x="106" y="243" width="6" height="3" fill="#443f30" rx="0.5"/>
-  <rect x="114" y="243" width="6" height="3" fill="#443f30" rx="0.5"/>
-  <rect x="112" y="243.5" width="2" height="2" fill="#060a0f"/>
+  <!-- Left Edge Moss & Rim Light -->
+  <path d="M 0 250 Q 80 250 150 254 Q 185 260 215 285" stroke="#14331a" stroke-width="5" fill="none"/>
+  <path d="M 0 249 Q 80 249 150 253 Q 185 259 215 284" stroke="#bae6fd" stroke-width="1.6" opacity="0.55" fill="none"/>
 
-  <!-- Left Edge Moss & Rim Light Following Trench -->
-  <path d="M 0 250 L 50 250 L 62 263 L 105 263 L 117 250 Q 150 252 185 260 Q 200 270 215 285" stroke="#14331a" stroke-width="4.5" fill="none"/>
-  <path d="M 0 249 L 50 249 L 62 262 L 105 262 L 117 249 Q 150 251 185 259 Q 200 269 215 284" stroke="#bae6fd" stroke-width="1.4" opacity="0.55" fill="none"/>
+  <!-- Right Basalt Cliff -->
+  <path d="M 600 340 L 600 250 Q 520 250 450 254 Q 415 260 385 285 L 385 340 Z" fill="url(#cliffGrad)"/>
 
-  <!-- Right Basalt Cliff with Sunken Trench Profile -->
-  <path d="M 600 340 L 600 250 L 550 250 L 538 263 L 495 263 L 483 250 Q 450 252 415 260 Q 400 270 385 285 L 385 340 Z" fill="url(#cliffGrad)"/>
-
-  <!-- Right Sunken Trench Bunker (Option 2) -->
-  <!-- Duckboards on Trench Floor -->
-  <line x1="495" y1="263" x2="538" y2="263" stroke="#3c230e" stroke-width="2.5"/>
-  <line x1="497" y1="262" x2="535" y2="262" stroke="#563517" stroke-width="0.8"/>
-  <!-- Timber Dugout Shelter & Roof -->
-  <rect x="522" y="247" width="28" height="4" fill="#2b1708" rx="1"/>
-  <rect x="522" y="249" width="28" height="1.5" fill="#1e293b"/>
-  <rect x="521.5" y="250.5" width="2.5" height="12.5" fill="#2d1808"/>
-  <!-- Warm Bunker Lantern Glow -->
-  <circle cx="532" cy="254" r="14" fill="#f59e0b" opacity="0.32"/>
-  <circle cx="532" cy="253" r="2" fill="#fef08a"/>
-  <!-- Ammo Crate in Dugout -->
-  <rect x="537" y="258" width="8" height="5" fill="#263320" stroke="#161f13" stroke-width="0.6"/>
-  <!-- Sandbag Parapet facing river with Embrasure -->
-  <rect x="480" y="246" width="15" height="4" fill="#443f30" rx="1"/>
-  <rect x="480" y="243" width="6" height="3" fill="#443f30" rx="0.5"/>
-  <rect x="488" y="243" width="6" height="3" fill="#443f30" rx="0.5"/>
-  <rect x="486" y="243.5" width="2" height="2" fill="#060a0f"/>
-
-  <!-- Right Edge Moss & Rim Light Following Trench -->
-  <path d="M 600 250 L 550 250 L 538 263 L 495 263 L 483 250 Q 450 252 415 260 Q 400 270 385 285" stroke="#14331a" stroke-width="4.5" fill="none"/>
-  <path d="M 600 249 L 550 249 L 538 262 L 495 262 L 483 249 Q 450 251 415 259 Q 400 269 385 284" stroke="#bae6fd" stroke-width="1.4" opacity="0.55" fill="none"/>
+  <!-- Right Edge Moss & Rim Light -->
+  <path d="M 600 250 Q 520 250 450 254 Q 415 260 385 285" stroke="#14331a" stroke-width="5" fill="none"/>
+  <path d="M 600 249 Q 520 249 450 253 Q 415 259 385 284" stroke="#bae6fd" stroke-width="1.6" opacity="0.55" fill="none"/>
 
   <!-- Suspension Bridge across Gorge -->
   <!-- Main Suspension Cable (Catenary curve) -->
