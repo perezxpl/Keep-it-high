@@ -75,7 +75,8 @@ function drawCraterWalls(ctx, ovalPoints) {
 
   for (let i = 0; i < ovalPoints.length; i++) {
     const pt = ovalPoints[i];
-    if (pt.y > 1201.2) {
+    const origY = (pt.origY !== undefined) ? pt.origY : 1200;
+    if (pt.y > origY + 1.8) {
       if (!inCrater) {
         inCrater = true;
         if (i > 0) seg.push(ovalPoints[i - 1]);
@@ -99,9 +100,9 @@ function renderCraterSegment(ctx, seg) {
   if (seg.length < 2) return;
   ctx.save();
 
-  // 1. Zewnętrzny obrys spalonej, zwęglonej ziemi wewnątrz wykopu
-  ctx.strokeStyle = '#05070a';
-  ctx.lineWidth = 6.0;
+  // 1. Głęboki gradient przypalenia i zwęglenia skały w leju wybuchu
+  ctx.strokeStyle = 'rgba(5, 7, 10, 0.95)';
+  ctx.lineWidth = 7.5;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -111,9 +112,9 @@ function renderCraterSegment(ctx, seg) {
   }
   ctx.stroke();
 
-  // 2. Warstwa spękanego bazaltu i ciemnego łupka
-  ctx.strokeStyle = '#12171e';
-  ctx.lineWidth = 3.2;
+  // 2. Chropowata warstwa zwęglonego bazaltu i spalonej gleby
+  ctx.strokeStyle = '#151c24';
+  ctx.lineWidth = 4.0;
   ctx.beginPath();
   ctx.moveTo(seg[0].x, seg[0].y);
   for (let i = 1; i < seg.length; i++) {
@@ -121,22 +122,37 @@ function renderCraterSegment(ctx, seg) {
   }
   ctx.stroke();
 
-  // 3. Spękania skalne na ścianie leja
-  ctx.strokeStyle = '#202936';
-  ctx.lineWidth = 1.3;
+  // 3. Spękania geologiczne i postrzępione krawędzie odłamu
+  ctx.strokeStyle = '#273444';
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(seg[0].x, seg[0].y + 1);
   for (let i = 1; i < seg.length; i++) {
-    ctx.lineTo(seg[i].x, seg[i].y + 1);
+    const pt = seg[i];
+    const jag = ((i % 2 === 0) ? 1.8 : -1.2);
+    ctx.lineTo(pt.x, pt.y + 1 + jag);
   }
   ctx.stroke();
 
-  // 4. Opalone krawędzie wlotowe krateru (scorch rims na poziomie 1200)
+  // 4. Bryły wyrwanego bazaltu spoczywające na dnie leja
+  ctx.fillStyle = '#0a0f15';
+  for (let i = 1; i < seg.length - 1; i += 2) {
+    const pt = seg[i];
+    ctx.beginPath();
+    ctx.arc(pt.x + ((i * 13) % 7 - 3), pt.y - 1, 2.5 + ((i * 7) % 3), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. Osmolone wargi wlotowe krateru na rzeczywistym poziomie wlotu leja
   const lipL = seg[0];
   const lipR = seg[seg.length - 1];
-  ctx.fillStyle = '#18110a';
-  ctx.fillRect(lipL.x - 6, 1198, 12, 3);
-  ctx.fillRect(lipR.x - 6, 1198, 12, 3);
+  ctx.fillStyle = 'rgba(15, 10, 5, 0.85)';
+  ctx.beginPath();
+  ctx.ellipse(lipL.x, lipL.y, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(lipR.x, lipR.y, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
@@ -152,6 +168,247 @@ function getSurfaceYFromPoints(pts, x) {
     }
   }
   return 1200;
+}
+
+function getOrigSurfaceY(x, isL) {
+  if (isL) {
+    if (x <= 1150) return 1200;
+    if (x >= 1750) return 1335;
+    for (let i = 0; i < LEFT_OVAL_POINTS.length - 1; i++) {
+      const p1 = LEFT_OVAL_POINTS[i];
+      const p2 = LEFT_OVAL_POINTS[i + 1];
+      if (x >= p1.x && x <= p2.x) {
+        const t = (x - p1.x) / (p2.x - p1.x);
+        return p1.origY + t * (p2.origY - p1.origY);
+      }
+    }
+    return 1200;
+  } else {
+    if (x <= 2650) return 1335;
+    if (x >= 3250) return 1200;
+    for (let i = 0; i < RIGHT_OVAL_POINTS.length - 1; i++) {
+      const p1 = RIGHT_OVAL_POINTS[i];
+      const p2 = RIGHT_OVAL_POINTS[i + 1];
+      if (x >= p1.x && x <= p2.x) {
+        const t = (x - p1.x) / (p2.x - p1.x);
+        return p1.origY + t * (p2.origY - p1.origY);
+      }
+    }
+    return 1200;
+  }
+}
+
+// =========================================================================
+// GRAFIKA ZNISZCZONYCH ELEMENTÓW (DAMAGED / DESTRUCTIBLE ASSETS)
+// Poszarpane, wyszczerbione profile połamanych belek, odłupy skalne,
+// zwęglenia po wybuchach i rozplecione liny
+// =========================================================================
+
+function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle || 0);
+
+  const halfW = w / 2;
+  const halfH = h / 2;
+  const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(cx * 7 + cy * 13) % 100);
+  const isWet = (cy + halfH >= 1290);
+  const scorchSide = options.scorchSide || (seed % 2 === 0 ? 'left' : 'right');
+
+  // 1. Poszarpany, wyszczerbiony profil połamanej belki ze sterczącymi drzazgami
+  ctx.beginPath();
+  // Górna krawędź
+  ctx.moveTo(-halfW + 4, -halfH + ((seed % 3) - 1));
+  ctx.lineTo(-halfW * 0.3, -halfH + ((seed % 2) - 0.5));
+  ctx.lineTo(0, -halfH);
+  ctx.lineTo(halfW * 0.4, -halfH + (((seed + 1) % 3) - 1));
+  ctx.lineTo(halfW - 3, -halfH + 1);
+
+  // Prawy przełam z ostrymi zębami włókien drewna
+  ctx.lineTo(halfW + 5, -halfH * 0.4);
+  ctx.lineTo(halfW - 3, -halfH * 0.1);
+  ctx.lineTo(halfW + 6, halfH * 0.2);
+  ctx.lineTo(halfW - 2, halfH * 0.6);
+  ctx.lineTo(halfW + 2, halfH);
+
+  // Dolna krawędź
+  ctx.lineTo(halfW * 0.5, halfH + (((seed + 2) % 3) - 1));
+  ctx.lineTo(0, halfH);
+  ctx.lineTo(-halfW * 0.4, halfH - (seed % 2));
+  ctx.lineTo(-halfW + 3, halfH);
+
+  // Lewy przełam ze sterczącymi drzazgami
+  ctx.lineTo(-halfW - 3, halfH * 0.5);
+  ctx.lineTo(-halfW + 4, halfH * 0.2);
+  ctx.lineTo(-halfW - 5, -halfH * 0.2);
+  ctx.lineTo(-halfW + 1, -halfH * 0.6);
+  ctx.closePath();
+
+  // 2. Wielowarstwowy gradient drewna z pociemnieniem
+  const bGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
+  if (isWet) {
+    bGrad.addColorStop(0.0, '#3f2510');
+    bGrad.addColorStop(0.5, '#2b1708');
+    bGrad.addColorStop(1.0, '#160a03');
+  } else {
+    bGrad.addColorStop(0.0, '#664019');
+    bGrad.addColorStop(0.4, '#492c10');
+    bGrad.addColorStop(0.8, '#2d1807');
+    bGrad.addColorStop(1.0, '#1c0d03');
+  }
+  ctx.fillStyle = bGrad;
+  ctx.fill();
+
+  // 3. Zwęglenie i osmolenie po wybuchu (scorch mark)
+  const sx = scorchSide === 'left' ? -halfW + 4 : halfW - 4;
+  const sGrad = ctx.createRadialGradient(sx, -halfH * 0.2, 2, sx, -halfH * 0.2, w * 0.65);
+  sGrad.addColorStop(0.0, 'rgba(10, 5, 2, 0.95)');
+  sGrad.addColorStop(0.4, 'rgba(25, 12, 4, 0.75)');
+  sGrad.addColorStop(1.0, 'rgba(40, 20, 8, 0.0)');
+  ctx.fillStyle = sGrad;
+  ctx.fill();
+
+  // 4. Ciemny kontur pęknięć
+  ctx.strokeStyle = '#120702';
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+
+  // 5. Wzdłużne rozwarstwienia słojów drewna
+  ctx.strokeStyle = '#0a0401';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 8, -halfH * 0.3);
+  ctx.lineTo(halfW * 0.2, -halfH * 0.1);
+  ctx.lineTo(halfW - 10, -halfH * 0.4);
+  ctx.moveTo(-halfW + 12, halfH * 0.3);
+  ctx.lineTo(-halfW * 0.1, halfH * 0.15);
+  ctx.lineTo(halfW - 6, halfH * 0.4);
+  ctx.stroke();
+
+  // Rim light na krawędziach
+  ctx.strokeStyle = 'rgba(215, 170, 85, 0.60)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 6, -halfH + 1);
+  ctx.lineTo(halfW - 6, -halfH + 1);
+  ctx.stroke();
+
+  // 6. Stalowe okucie lub wystający zgięty gwóźdź
+  if (options.hasMetal !== false) {
+    const metalX = (seed % 2 === 0) ? -halfW + 7 : halfW - 11;
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(metalX, -halfH - 2, 5, 7);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(metalX, -halfH - 2, 5, 7);
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(metalX + 2, -halfH - 2);
+    ctx.lineTo(metalX + 3, -halfH - 6);
+    ctx.lineTo(metalX + 6, -halfH - 7);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(146, 64, 14, 0.65)';
+    ctx.fillRect(metalX + 1, -halfH + 4, 3, 2.5);
+  }
+
+  // 7. Piana wodna i falowanie, gdy leży w rzece
+  if (isWet) {
+    ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(0, halfH + 2, halfW * 0.85, 3.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawSplinteredRockSlab(ctx, slab) {
+  const cx = slab.x + slab.w / 2;
+  const cy = slab.y + slab.h / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(slab.angle);
+
+  const halfW = slab.w / 2;
+  const halfH = slab.h / 2;
+
+  // 1. Ostry, kanciasty wielokąt łupanego głazu dolomitowego
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 10, -halfH + 2);
+  ctx.lineTo(-halfW * 0.2, -halfH - 3);
+  ctx.lineTo(halfW * 0.4, -halfH + 1);
+  ctx.lineTo(halfW - 6, -halfH + 5);
+  ctx.lineTo(halfW + 4, 0);
+  ctx.lineTo(halfW - 4, halfH - 2);
+  ctx.lineTo(halfW * 0.2, halfH + 4);
+  ctx.lineTo(-halfW * 0.3, halfH + 2);
+  ctx.lineTo(-halfW - 5, halfH - 4);
+  ctx.lineTo(-halfW - 2, -halfH * 0.2);
+  ctx.closePath();
+
+  // 2. Główny gradient skały
+  const rGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
+  rGrad.addColorStop(0.0, '#4b574b');
+  rGrad.addColorStop(0.35, '#343f34');
+  rGrad.addColorStop(0.70, '#202820');
+  rGrad.addColorStop(1.0, '#101610');
+  ctx.fillStyle = rGrad;
+  ctx.fill();
+
+  // 3. Facet lighting (fasetowane cieniowanie ścian odłamu)
+  ctx.fillStyle = 'rgba(125, 155, 125, 0.25)';
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 10, -halfH + 2);
+  ctx.lineTo(halfW - 6, -halfH + 5);
+  ctx.lineTo(halfW * 0.3, -halfH * 0.2);
+  ctx.lineTo(-halfW * 0.2, -halfH * 0.1);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(5, 10, 5, 0.55)';
+  ctx.beginPath();
+  ctx.moveTo(-halfW - 5, halfH - 4);
+  ctx.lineTo(halfW - 4, halfH - 2);
+  ctx.lineTo(halfW * 0.2, halfH + 4);
+  ctx.lineTo(-halfW * 0.3, halfH + 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // 4. Zwęglenie po wybuchu
+  const scorchGrad = ctx.createRadialGradient(-halfW * 0.3, -halfH * 0.3, 3, -halfW * 0.3, -halfH * 0.3, halfW * 0.8);
+  scorchGrad.addColorStop(0.0, 'rgba(8, 12, 8, 0.95)');
+  scorchGrad.addColorStop(0.5, 'rgba(15, 20, 15, 0.7)');
+  scorchGrad.addColorStop(1.0, 'rgba(25, 35, 25, 0.0)');
+  ctx.fillStyle = scorchGrad;
+  ctx.fill();
+
+  // 5. Ciemny kontur bryły skalnej
+  ctx.strokeStyle = '#0b110b';
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  // 6. Głębokie spękania skalne
+  ctx.strokeStyle = '#070b07';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-halfW + 12, -halfH + 6);
+  ctx.lineTo(0, -halfH * 0.1);
+  ctx.lineTo(halfW * 0.5, -halfH * 0.3);
+  ctx.moveTo(0, -halfH * 0.1);
+  ctx.lineTo(-halfW * 0.1, halfH * 0.4);
+  ctx.stroke();
+
+  // 7. Skrawki mchu
+  ctx.fillStyle = '#3f7023';
+  ctx.fillRect(-halfW + 14, -halfH + 3, 16, 3);
+  ctx.fillStyle = '#5ca033';
+  ctx.fillRect(-halfW + 16, -halfH + 3, 10, 1.8);
+
+  ctx.restore();
 }
 
 function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
@@ -174,7 +431,8 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   let inTurf = false;
   for (let i = 0; i < ovalPoints.length; i++) {
     const pt = ovalPoints[i];
-    if (pt.y <= 1201.2 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
+    const pOrigY = (pt.origY !== undefined) ? pt.origY : 1200;
+    if (pt.y <= pOrigY + 2.0 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
       if (!inTurf) {
         ctx.moveTo(pt.x, pt.y);
         inTurf = true;
@@ -193,7 +451,8 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   inTurf = false;
   for (let i = 0; i < ovalPoints.length; i++) {
     const pt = ovalPoints[i];
-    if (pt.y <= 1201.2 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
+    const pOrigY = (pt.origY !== undefined) ? pt.origY : 1200;
+    if (pt.y <= pOrigY + 2.0 && pt.y < 1315 && pt.x >= startX - 20 && pt.x <= endX + 20) {
       if (!inTurf) {
         ctx.moveTo(pt.x, pt.y - 1);
         inTurf = true;
@@ -218,14 +477,17 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
     const y = getSurfaceYFromPoints(ovalPoints, x);
 
     // Jeśli punkt jest wewnątrz krateru lub głęboko w rzece: BRAK TRAWY!
-    if (y > 1201.2 || y > 1315) {
+    const origY = getOrigSurfaceY(x, isL);
+    if (y > origY + 2.0 || y > 1315) {
       continue;
     }
 
     // Sprawdzenie bliskości wargi krateru (opalone, spalone kikuty trawy na krawędzi)
     const yL = getSurfaceYFromPoints(ovalPoints, x - 10);
     const yR = getSurfaceYFromPoints(ovalPoints, x + 10);
-    const isNearCraterLip = (yL > 1201.2 || yR > 1201.2);
+    const origYL = getOrigSurfaceY(x - 10, isL);
+    const origYR = getOrigSurfaceY(x + 10, isL);
+    const isNearCraterLip = (yL > origYL + 2.0 || yR > origYR + 2.0);
 
     if (isNearCraterLip) {
       // Przypalone, krótkie kikuty trawy (stubble)
@@ -779,39 +1041,93 @@ export function drawArena3Foreground(ctx, camera) {
       }
     } else if (pillar) {
       // ZAWALONY FILAR WIEŻY (PO ZNISZCZENIU)
-      // Wyszczerbiony kikut przy fundamencie
-      ctx.fillStyle = '#3a210b';
+      // A. Wyszczerbiony, postrzępiony kikut przy fundamencie
+      ctx.save();
+      ctx.fillStyle = '#2d1807';
       ctx.beginPath();
       ctx.moveTo(tx - 10, ty + th - 60);
-      ctx.lineTo(tx - 10, ty + th - 85);
-      ctx.lineTo(tx + 8, ty + th - 110);
-      ctx.lineTo(tx + tw + 10, ty + th - 75);
+      ctx.lineTo(tx - 10, ty + th - 95);
+      ctx.lineTo(tx - 3, ty + th - 120);
+      ctx.lineTo(tx + 5, ty + th - 90);
+      ctx.lineTo(tx + 14, ty + th - 130);
+      ctx.lineTo(tx + 22, ty + th - 85);
+      ctx.lineTo(tx + tw + 10, ty + th - 105);
       ctx.lineTo(tx + tw + 10, ty + th - 60);
       ctx.closePath();
       ctx.fill();
 
-      // Przechylony i powalony na ziemię pień słupa
+      // Ciemne zwęglenie przełomu
+      ctx.fillStyle = 'rgba(8, 4, 1, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(tx - 8, ty + th - 80);
+      ctx.lineTo(tx + 14, ty + th - 120);
+      ctx.lineTo(tx + tw + 8, ty + th - 75);
+      ctx.lineTo(tx + tw + 5, ty + th - 60);
+      ctx.lineTo(tx - 5, ty + th - 60);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#0c0501';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+
+      // B. Przechylony i powalony na ziemię potężny pień słupa ze zgiętymi okuciami
       const dropY = pillar.fallDropY || 0;
       const isL = (sideKey === 'left');
       const shiftX = isL ? dropY * 0.4 : -dropY * 0.4;
       ctx.save();
       ctx.translate(tx + tw / 2 + shiftX, ty + th - 70 + dropY);
       ctx.rotate(pillar.tiltAngle);
-      const fallenGrad = ctx.createLinearGradient(-tw / 2, -th + 70, tw / 2, 0);
-      fallenGrad.addColorStop(0, '#533418');
-      fallenGrad.addColorStop(1, '#251406');
-      ctx.fillStyle = fallenGrad;
-      ctx.fillRect(-tw / 2, -th + 70, tw, th - 90);
 
-      // Pęknięcia w poprzek powalonego pnia
-      ctx.strokeStyle = '#0f0501';
-      ctx.lineWidth = 3.5;
+      const logLen = th - 90;
       ctx.beginPath();
-      ctx.moveTo(-tw / 2 - 2, -th * 0.5);
-      ctx.lineTo(tw / 2 + 2, -th * 0.5 + 8);
-      ctx.moveTo(-tw / 2 - 2, -th * 0.25);
-      ctx.lineTo(tw / 2 + 2, -th * 0.25 - 6);
+      ctx.moveTo(-tw / 2, -logLen);
+      ctx.lineTo(-tw / 2 + 6, -logLen - 12);
+      ctx.lineTo(0, -logLen - 4);
+      ctx.lineTo(tw / 2 - 4, -logLen - 15);
+      ctx.lineTo(tw / 2, -logLen);
+      ctx.lineTo(tw / 2, 0);
+      ctx.lineTo(tw / 2 - 6, 14);
+      ctx.lineTo(0, 5);
+      ctx.lineTo(-tw / 2 + 5, 18);
+      ctx.lineTo(-tw / 2, 0);
+      ctx.closePath();
+
+      const fallenGrad = ctx.createLinearGradient(-tw / 2, -logLen, tw / 2, 0);
+      fallenGrad.addColorStop(0, '#533418');
+      fallenGrad.addColorStop(0.5, '#3b220e');
+      fallenGrad.addColorStop(1, '#1e0d04');
+      ctx.fillStyle = fallenGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = '#120702';
+      ctx.lineWidth = 2.2;
       ctx.stroke();
+
+      // Pęknięcia wzdłużne i rozwarstwienia
+      ctx.strokeStyle = '#0a0401';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.2, -logLen + 30);
+      ctx.lineTo(-tw * 0.1, -logLen * 0.5);
+      ctx.lineTo(tw * 0.2, -30);
+      ctx.moveTo(tw * 0.25, -logLen + 60);
+      ctx.lineTo(tw * 0.15, -logLen * 0.3);
+      ctx.stroke();
+
+      // Wygięte pasy kute z nitami
+      for (let my = -logLen + 70; my < -30; my += 110) {
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-tw / 2 - 4, my, tw + 8, 10);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(-tw / 2 - 4, my, tw + 8, 10);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-tw / 2 - 2, my + 2.5, 3, 5);
+        ctx.fillRect(tw / 2 - 1, my + 2.5, 3, 5);
+      }
 
       ctx.restore();
     }
@@ -857,21 +1173,7 @@ export function drawArena3Foreground(ctx, camera) {
         // Zniszczona belka pomostu w powietrzu lub w wodzie
         const cx = b.x + b.w / 2;
         const cy = b.y + b.h / 2;
-        ctx.translate(cx, cy);
-        ctx.rotate(b.angle);
-
-        const halfW = b.w / 2;
-        const halfH = b.h / 2;
-
-        const deckGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-        deckGrad.addColorStop(0, '#4d2e12');
-        deckGrad.addColorStop(1, '#1e0e04');
-        ctx.fillStyle = deckGrad;
-        ctx.fillRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#120802';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 37 });
       }
       ctx.restore();
     }
@@ -1041,24 +1343,10 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.fillStyle = '#110903';
         ctx.fillRect(b.x + b.w * 0.5 - 9, b.y - 22, 18, 12);
       } else {
-        // Odłamany segment podestu gniazda snajperskiego
+        // Odłamany segment podestu gniazda snajperskiego ze szczątkami balustrady
         const cx = b.x + b.w / 2;
         const cy = b.y + b.h / 2;
-        ctx.translate(cx, cy);
-        ctx.rotate(b.angle);
-
-        const halfW = b.w / 2;
-        const halfH = b.h / 2;
-
-        const bGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-        bGrad.addColorStop(0, '#533418');
-        bGrad.addColorStop(1, '#211003');
-        ctx.fillStyle = bGrad;
-        ctx.fillRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#110903';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 43 });
       }
       ctx.restore();
     }
@@ -1204,41 +1492,8 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.lineWidth = 2.2;
         ctx.strokeRect(px, py, pw, ph);
       } else {
-        // Zniszczona płyta skalna (boulder spadający w powietrzu lub spoczywający na dnie)
-        const cx = slab.x + slab.w / 2;
-        const cy = slab.y + slab.h / 2;
-        ctx.translate(cx, cy);
-        ctx.rotate(slab.angle);
-
-        const halfW = slab.w / 2;
-        const halfH = slab.h / 2;
-
-        const rockGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-        rockGrad.addColorStop(0.0, '#3f4b3f');
-        rockGrad.addColorStop(0.5, '#2b352b');
-        rockGrad.addColorStop(1.0, '#151c15');
-        ctx.fillStyle = rockGrad;
-
-        // Wyszczerbiony nieregularny kamień
-        ctx.beginPath();
-        ctx.moveTo(-halfW + 6, -halfH);
-        ctx.lineTo(halfW - 8, -halfH + 3);
-        ctx.lineTo(halfW, halfH - 4);
-        ctx.lineTo(-halfW + 4, halfH);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = '#111811';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-
-        ctx.strokeStyle = '#090d09';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(-halfW + 12, -halfH + 4);
-        ctx.lineTo(2, 0);
-        ctx.lineTo(-halfW + 10, halfH - 4);
-        ctx.stroke();
+        // Zniszczona płyta skalna - ostry łupany głaz dolomitowy
+        drawSplinteredRockSlab(ctx, slab);
       }
       ctx.restore();
     }
@@ -1360,29 +1615,43 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.fill();
     } else {
       // PYLON ZNISZCZONY (ANGRY BIRDS RUBBLE / FALLEN TOWER)
-      // A. Wyszczerbione kikuty przy szczycie kesonu
+      // A. Wyszczerbione, postrzępione kikuty włókien tekowych przy szczycie kesonu
+      ctx.save();
       ctx.fillStyle = '#3a210b';
       ctx.beginPath();
-      ctx.moveTo(px - 24, caissonTopY);
-      ctx.lineTo(px - 24, caissonTopY - 25);
-      ctx.lineTo(px - 16, caissonTopY - 40);
-      ctx.lineTo(px - 12, caissonTopY - 20);
-      ctx.lineTo(px - 6, caissonTopY - 30);
-      ctx.lineTo(px - 6, caissonTopY);
+      ctx.moveTo(px - 26, caissonTopY);
+      ctx.lineTo(px - 26, caissonTopY - 32);
+      ctx.lineTo(px - 20, caissonTopY - 55);
+      ctx.lineTo(px - 14, caissonTopY - 22);
+      ctx.lineTo(px - 8, caissonTopY - 45);
+      ctx.lineTo(px - 4, caissonTopY - 18);
+      ctx.lineTo(px - 4, caissonTopY);
       ctx.closePath();
       ctx.fill();
 
+      // Prawy kikut
       ctx.beginPath();
-      ctx.moveTo(px + 6, caissonTopY);
-      ctx.lineTo(px + 6, caissonTopY - 35);
-      ctx.lineTo(px + 14, caissonTopY - 20);
-      ctx.lineTo(px + 18, caissonTopY - 45);
-      ctx.lineTo(px + 24, caissonTopY - 30);
-      ctx.lineTo(px + 24, caissonTopY);
+      ctx.moveTo(px + 4, caissonTopY);
+      ctx.lineTo(px + 4, caissonTopY - 20);
+      ctx.lineTo(px + 10, caissonTopY - 50);
+      ctx.lineTo(px + 16, caissonTopY - 26);
+      ctx.lineTo(px + 22, caissonTopY - 60);
+      ctx.lineTo(px + 26, caissonTopY - 35);
+      ctx.lineTo(px + 26, caissonTopY);
       ctx.closePath();
       ctx.fill();
 
-      // B. Przechylony i zapadający się w rzece korpus wieży pylonu
+      // Ciemne osmolenie kikutów po wybuchu
+      ctx.fillStyle = 'rgba(10, 5, 2, 0.85)';
+      ctx.fillRect(px - 26, caissonTopY - 14, 22, 14);
+      ctx.fillRect(px + 4, caissonTopY - 14, 22, 14);
+
+      ctx.strokeStyle = '#120702';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+
+      // B. Przechylony i zapadający się w rzece korpus wieży pylonu ze złamanymi belkami
       const dropY = p.fallDropY || 0;
       const isL = (pylonKey === 'left');
       const pivotX = px + (isL ? dropY * 0.35 : -dropY * 0.35);
@@ -1395,21 +1664,61 @@ export function drawArena3Foreground(ctx, camera) {
       const towerLen = caissonTopY - pylonTopY;
       const pFallenGrad = ctx.createLinearGradient(-25, -towerLen, 25, 0);
       pFallenGrad.addColorStop(0, '#533418');
-      pFallenGrad.addColorStop(1, '#251406');
+      pFallenGrad.addColorStop(0.5, '#3b220e');
+      pFallenGrad.addColorStop(1, '#1e0d04');
       ctx.fillStyle = pFallenGrad;
 
-      ctx.fillRect(-24, -towerLen, 18, towerLen - 25);
-      ctx.fillRect(6, -towerLen, 18, towerLen - 25);
+      // Poszarpana lewa noga
+      ctx.beginPath();
+      ctx.moveTo(-24, -towerLen);
+      ctx.lineTo(-6, -towerLen);
+      ctx.lineTo(-6, -25);
+      ctx.lineTo(-12, -10);
+      ctx.lineTo(-18, -35);
+      ctx.lineTo(-24, -18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#150902';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
 
-      ctx.strokeStyle = '#2a1608';
+      // Poszarpana prawa noga
+      ctx.beginPath();
+      ctx.moveTo(6, -towerLen);
+      ctx.lineTo(24, -towerLen);
+      ctx.lineTo(24, -20);
+      ctx.lineTo(18, -38);
+      ctx.lineTo(12, -12);
+      ctx.lineTo(6, -28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Pęknięty, zwisający rygiel krzyżowy
+      ctx.strokeStyle = '#3e240e';
       ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(-20, -towerLen + 50);
-      ctx.lineTo(20, -towerLen + 110);
+      ctx.lineTo(10, -towerLen + 100);
+      ctx.lineTo(18, -towerLen + 130);
       ctx.stroke();
 
+      // Siodło linowe
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(-30, -towerLen - 14, 60, 16);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(-30, -towerLen - 14, 60, 16);
+
+      // Zerwane, rozplecione stalowe liny powiewające od siodła
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-20, -towerLen - 14);
+      ctx.quadraticCurveTo(-35, -towerLen + 20, -45, -towerLen + 55);
+      ctx.moveTo(20, -towerLen - 14);
+      ctx.quadraticCurveTo(35, -towerLen + 20, 48, -towerLen + 60);
+      ctx.stroke();
       ctx.restore();
 
       // C. Piana wodna i fale wokół zatopionego w rzece pylonu
@@ -1467,6 +1776,36 @@ export function drawArena3Foreground(ctx, camera) {
 
         ctx.fillStyle = '#334155';
         ctx.fillRect(b.stiltX - 7, deckBottomY + 6, 14, 7);
+      } else {
+        // Złamany kikut pala (splintered broken stilt) wkopany w podłoże aż do spągu Y: 1400
+        const breakTopY = deckBottomY + 22 + ((b.seed % 17) - 8);
+        ctx.strokeStyle = '#2d1808';
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(b.stiltX, breakTopY);
+        ctx.lineTo(b.stiltX, 1400);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#44260f';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(b.stiltX - 3, breakTopY);
+        ctx.lineTo(b.stiltX - 3, 1400);
+        ctx.stroke();
+
+        // Poszarpana korona złamania ze sterczącymi drzazgami i zwęgleniem
+        ctx.fillStyle = '#221104';
+        ctx.beginPath();
+        ctx.moveTo(b.stiltX - 5, breakTopY + 2);
+        ctx.lineTo(b.stiltX - 2, breakTopY - 14);
+        ctx.lineTo(b.stiltX + 1, breakTopY - 4);
+        ctx.lineTo(b.stiltX + 4, breakTopY - 16);
+        ctx.lineTo(b.stiltX + 5, breakTopY + 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(8, 4, 1, 0.90)';
+        ctx.fillRect(b.stiltX - 5, breakTopY - 3, 10, 8);
       }
     }
     ctx.restore();
@@ -1587,47 +1926,10 @@ export function drawArena3Foreground(ctx, camera) {
           ctx.stroke();
         }
       } else {
-        // ZNISZCZONY SEGMENT RAMPY (Wyrwa na podejściu - klocek spadający lub spoczywający na zboczu/rzece)
-        // A. Wyszczerbiony kikut pala podestu
-        if (groundY > Math.max(y1, y2) + 14) {
-          ctx.strokeStyle = '#251406';
-          ctx.lineWidth = 8;
-          ctx.beginPath();
-          ctx.moveTo(b.stiltX, groundY + 12);
-          ctx.lineTo(b.stiltX, groundY - 20);
-          ctx.stroke();
-        }
-
-        // B. Spadający / spoczywający modularny drewniany segment
-        ctx.save();
+        // ZNISZCZONY SEGMENT RAMPY (Poszarpana belka podestu ze zniszczoną listwą antypoślizgową)
         const bcx = b.x + b.w / 2;
         const bcy = b.y + b.h / 2;
-        ctx.translate(bcx, bcy);
-        ctx.rotate(b.angle);
-
-        const halfW = b.w / 2;
-        const halfH = b.h / 2;
-
-        const rotGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
-        rotGrad.addColorStop(0, '#533614');
-        rotGrad.addColorStop(0.6, '#37200b');
-        rotGrad.addColorStop(1, '#1e0e04');
-        ctx.fillStyle = rotGrad;
-        ctx.fillRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#150901';
-        ctx.lineWidth = 2.2;
-        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#0f0501';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(-halfW + 6, -halfH);
-        ctx.lineTo(4, 0);
-        ctx.lineTo(-halfW + 10, halfH);
-        ctx.stroke();
-
-        ctx.restore();
+        drawSplinteredWoodRubble(ctx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
 
         // Piana jeśli klocek wpadł do rzeki
         if (b.y + b.h >= 1300) {
@@ -1738,13 +2040,25 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.strokeRect(attachLX - 3, attachLY - 25, 6, 12);
       }
     } else {
-      // Zerwana lina powiewająca na wietrze z baldachimu
+      // Zerwana lina powiewająca na wietrze z baldachimu z rozplecionymi włóknami konopnymi
       const vSway = Math.sin(animTime * 3.0 + px * 0.05) * 8;
       ctx.strokeStyle = '#3a200a';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.2;
       ctx.beginPath();
       ctx.moveTo(anchorLX, 0);
       ctx.quadraticCurveTo(anchorLX + vSway * 0.5, 45, anchorLX + vSway, 85);
+      ctx.stroke();
+
+      // Rozplecione włókna konopne (frayed rope end)
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(anchorLX + vSway, 85);
+      ctx.lineTo(anchorLX + vSway - 5, 96);
+      ctx.moveTo(anchorLX + vSway, 85);
+      ctx.lineTo(anchorLX + vSway, 98);
+      ctx.moveTo(anchorLX + vSway, 85);
+      ctx.lineTo(anchorLX + vSway + 6, 95);
       ctx.stroke();
     }
 
@@ -1765,10 +2079,22 @@ export function drawArena3Foreground(ctx, camera) {
     } else {
       const vSway = Math.sin(animTime * 3.0 + px * 0.05 + 1.2) * 8;
       ctx.strokeStyle = '#3a200a';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.2;
       ctx.beginPath();
       ctx.moveTo(anchorRX, 0);
       ctx.quadraticCurveTo(anchorRX + vSway * 0.5, 45, anchorRX + vSway, 85);
+      ctx.stroke();
+
+      // Rozplecione włókna konopne
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(anchorRX + vSway, 85);
+      ctx.lineTo(anchorRX + vSway - 5, 96);
+      ctx.moveTo(anchorRX + vSway, 85);
+      ctx.lineTo(anchorRX + vSway, 98);
+      ctx.moveTo(anchorRX + vSway, 85);
+      ctx.lineTo(anchorRX + vSway + 6, 95);
       ctx.stroke();
     }
 
@@ -1832,28 +2158,12 @@ export function drawArena3Foreground(ctx, camera) {
           ctx.lineTo(2, 0);
           ctx.stroke();
         }
+        ctx.restore();
       } else {
-        // Zniszczona deska (spadająca / unosząca się w wodzie)
-        const rotGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-        rotGrad.addColorStop(0, '#533614');
-        rotGrad.addColorStop(0.6, '#37200b');
-        rotGrad.addColorStop(1, '#1e0e04');
-        ctx.fillStyle = rotGrad;
-        ctx.fillRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#150901';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = '#0f0501';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(-halfW + 4, -halfH);
-        ctx.lineTo(2, 0);
-        ctx.lineTo(-halfW + 6, halfH);
-        ctx.stroke();
+        // Zniszczona deska kładki ze sterczącymi drzazgami
+        ctx.restore();
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: Math.floor(Math.abs(cx * 3)) });
       }
-      ctx.restore();
 
       // Piana wodna wokół klocka w wodzie
       if (!b.intact && b.y + b.h >= 1300) {
@@ -2040,42 +2350,11 @@ export function drawArena3Foreground(ctx, camera) {
 
       ctx.restore();
     } else {
-      // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Falling / Floating Rubble)
+      // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Wyszczerbiona poszarpana belka ze zwęgleniem)
       const cx = b.x + b.w / 2;
       const cy = b.y + b.h / 2;
-      ctx.translate(cx, cy);
-      ctx.rotate(b.angle);
-
-      const halfW = b.w / 2;
-      const halfH = b.h / 2;
-
-      // Ciemniejsze, wyszczerbione drewno odłamka
-      const bGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-      bGrad.addColorStop(0.0, '#664019');
-      bGrad.addColorStop(0.5, '#45280c');
-      bGrad.addColorStop(1.0, '#231204');
-      ctx.fillStyle = bGrad;
-      ctx.fillRect(-halfW, -halfH, b.w, b.h);
-
-      // Wyszczerbione, pęknięte krawędzie
-      ctx.strokeStyle = '#150901';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-halfW, -halfH, b.w, b.h);
-
-      // Pęknięcie w poprzek klocka
-      ctx.strokeStyle = '#0f0501';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(-halfW + 4, -halfH);
-      ctx.lineTo(2, 0);
-      ctx.lineTo(-halfW + 6, halfH);
-      ctx.stroke();
-
-      // Stalowe okucie lub wygięta klamra
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(-halfW + 2, -halfH + 2, 4, 4);
-
       ctx.restore();
+      drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
 
       // Piana wodna i fale wokół unoszącego się klocka w rzece
       if (b.y + b.h >= 1300) {
@@ -2090,7 +2369,7 @@ export function drawArena3Foreground(ctx, camera) {
     }
   }
 
-  // F. CZĄSTECZKI DRZAZG DREWNIANYCH (Bridge Splinters)
+  // F. CZĄSTECZKI OSTRYCH DRZAZG DREWNIANYCH (Bridge Splinters)
   for (let i = 0; i < BRIDGE_SPLINTERS.length; i++) {
     const sp = BRIDGE_SPLINTERS[i];
     if (sp.x < camL - 20 || sp.x > camR + 20) continue;
@@ -2098,11 +2377,19 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.translate(sp.x, sp.y);
     ctx.rotate(sp.rot);
     ctx.fillStyle = sp.color;
-    ctx.fillRect(-sp.size / 2, -sp.size * 0.3, sp.size, sp.size * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(-sp.size * 0.7, 0);
+    ctx.lineTo(sp.size * 0.7, -sp.size * 0.22);
+    ctx.lineTo(sp.size * 0.25, sp.size * 0.25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#120803';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
     ctx.restore();
   }
 
-  // F2. CZĄSTECZKI ODŁAMKÓW SKALNYCH (Stone Debris)
+  // F2. CZĄSTECZKI OSTROKRAWĘDZIOWYCH ODŁAMKÓW SKALNYCH (Stone Debris)
   for (let i = 0; i < STONE_DEBRIS.length; i++) {
     const sd = STONE_DEBRIS[i];
     if (sd.x < camL - 20 || sd.x > camR + 20) continue;
@@ -2112,11 +2399,22 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fillStyle = sd.color;
     ctx.beginPath();
     ctx.moveTo(-sd.size / 2, -sd.size / 2);
-    ctx.lineTo(sd.size / 2, -sd.size * 0.3);
+    ctx.lineTo(sd.size * 0.6, -sd.size * 0.2);
     ctx.lineTo(sd.size * 0.3, sd.size / 2);
-    ctx.lineTo(-sd.size * 0.4, sd.size * 0.4);
+    ctx.lineTo(-sd.size * 0.5, sd.size * 0.3);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = '#080c08';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Jasna krawędź odłamu
+    ctx.strokeStyle = 'rgba(180, 210, 180, 0.45)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(-sd.size / 2, -sd.size / 2);
+    ctx.lineTo(sd.size * 0.6, -sd.size * 0.2);
+    ctx.stroke();
     ctx.restore();
   }
 
