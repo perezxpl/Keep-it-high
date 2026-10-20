@@ -1149,7 +1149,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (pCenterX <= 1750 || pCenterX >= 2650) {
         const floorY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(pCenterX) : 1200;
         const groundFloorLimit = floorY - colH;
-        if (player.y >= groundFloorLimit - 4) {
+        const isAscending = player.isJumping && (player.vy < 0);
+        if (!isAscending && player.y >= groundFloorLimit && player.y <= groundFloorLimit + Math.max(30, player.vy + 16)) {
           const impactVy = player.vy;
           player.y = groundFloorLimit;
           player.vy = 0;
@@ -1185,6 +1186,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           if (!player.rocketBoots?.dashing && player.jetFuel < player.jetMax) {
             player.jetFuel = Math.min(player.jetMax, player.jetFuel + 2.5);
           }
+        } else if (!isAscending && player.y > groundFloorLimit) {
+          player.y = groundFloorLimit;
+          player.vy = 0;
+          player.isJumping = false;
+          player.onGround = true;
+          player.currentGroundY = floorY;
         }
       }
     }

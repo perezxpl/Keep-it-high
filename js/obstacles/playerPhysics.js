@@ -221,7 +221,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
       // Gracz nie odpada od platformy przy mikro-wahaniach pionowych ani przy wstawaniu ze staggara
       const maxRetentionDiff = isA3Ground ? 85 : ((p.staggerTimer > 0 || (p.staggerRecoveryTimer || 0) > 0) ? 60 : 36);
-      const isGroundedRetention = isCurrent && !(p.isJumping && p.vy < -2.5) && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
+      const isGroundedRetention = isCurrent && !p.isJumping && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
 
       // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach i rampach):
       const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= 32;
@@ -237,7 +237,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       // Twarde zabezpieczenie przed zapadaniem się w lity grunt / kratery na Arenie 3
-      if (!isLanding && isA3Ground && !(p.isJumping && p.vy < -2.5)) {
+      if (!isLanding && isA3Ground && (!p.isJumping || p.vy >= 0)) {
         if (feetY >= topY - 14 && feetY <= topY + platThickness) {
           isLanding = true;
         }
@@ -526,12 +526,17 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (isA3 && (centerX <= 1750 || centerX >= 2650)) {
         // W Arenie 3 na lądzie pod postacią zawsze znajduje się lita skała / dno krateru
         const maxFloorY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(centerX) : 1200;
-        if (feetY >= maxFloorY - 14) {
+        const isAscendingJump = p.isJumping && (p.vy < 0);
+        if (!isAscendingJump && feetY >= maxFloorY - 6) {
           p.y = maxFloorY - colH;
           p.vy = 0;
           p.isJumping = false;
           p.onGround = true;
           p.currentGroundY = maxFloorY;
+          if (!p.currentPlatform) {
+            const groundPlat = ARENA_PLATFORMS.find(pl => pl && (pl.id === 'ground_left' || pl.id === 'ground_right' || pl.id === 'riverbank_left_oval' || pl.id === 'riverbank_right_oval') && centerX >= pl.x && centerX <= pl.x + pl.w);
+            if (groundPlat) p.currentPlatform = groundPlat;
+          }
         } else {
           p.onGround = false;
           p.currentGroundY = null;

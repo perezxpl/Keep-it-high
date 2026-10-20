@@ -32,7 +32,10 @@ import arena2, {
   ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY,
   ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
-import arena3, { ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS } from '../arenas/arena3.js';
+import arena3, {
+  ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
+  GROUND_LEFT_POINTS, GROUND_RIGHT_POINTS, LEFT_OVAL_POINTS, RIGHT_OVAL_POINTS
+} from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
 
@@ -533,6 +536,14 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     ARENA_PLATFORMS.push(...clonedPlats);
     if (activeArenaId === 'ARENA_3') {
       arenaSnapshot.arena3Platforms = JSON.parse(JSON.stringify(currentArena.platforms));
+      const gL = ARENA_PLATFORMS.find(p => p && p.id === 'ground_left');
+      if (gL) gL.surfacePoints = GROUND_LEFT_POINTS;
+      const gR = ARENA_PLATFORMS.find(p => p && p.id === 'ground_right');
+      if (gR) gR.surfacePoints = GROUND_RIGHT_POINTS;
+      const rL = ARENA_PLATFORMS.find(p => p && p.id === 'riverbank_left_oval');
+      if (rL) rL.surfacePoints = LEFT_OVAL_POINTS;
+      const rR = ARENA_PLATFORMS.find(p => p && p.id === 'riverbank_right_oval');
+      if (rR) rR.surfacePoints = RIGHT_OVAL_POINTS;
     }
   }
 
