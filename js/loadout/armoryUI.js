@@ -6,6 +6,7 @@
 import { WEAPONS } from '../weapons/transform.js';
 import { saveStoredLoadout } from './state.js';
 import { equipPocket1Slot } from './logic.js';
+import { playUiClick, playUiHover } from '../uiManager.js';
 
 /**
  * Katalog taktyczny uzbrojenia dla Zbrojowni
@@ -142,8 +143,54 @@ export const ARMORY_CATALOG = {
 };
 
 let _activeSlotIndex = 0; // 0 = Główna, 1 = Dodatkowa, 2 = Rezerwa, 3 = Miotana (Pocket 2)
+let _currentArmoryView = 'SLOTS'; // 'SLOTS' (Przegląd slotów) lub 'PICKER' (Okno wyboru broni dla slotu)
 let _playerRef = null;
 let _closeCallback = null;
+
+/**
+ * Pobranie danych uzbrojenia z katalogu taktycznego
+ */
+export function getCatalogWeapon(id, categoryType = null) {
+  if (categoryType === 'slot0') {
+    const found = ARMORY_CATALOG.pocket1.slot0.find(w => w.id === id);
+    if (found) return found;
+  } else if (categoryType === 'slot1') {
+    const found = ARMORY_CATALOG.pocket1.slot1.find(w => w.id === id);
+    if (found) return found;
+  } else if (categoryType === 'slot2') {
+    const found = ARMORY_CATALOG.pocket1.slot2.find(w => w.id === id);
+    if (found) return found;
+  } else if (categoryType === 'throw') {
+    const found = ARMORY_CATALOG.pocket2.find(w => w.id === id);
+    if (found) return found;
+  }
+
+  const all = [
+    ...ARMORY_CATALOG.pocket1.slot0,
+    ...ARMORY_CATALOG.pocket1.slot1,
+    ...ARMORY_CATALOG.pocket1.slot2,
+    ...ARMORY_CATALOG.pocket2
+  ];
+  const item = all.find(w => w.id === id);
+  if (item) return item;
+
+  const raw = (WEAPONS && WEAPONS[id]) ? WEAPONS[id] : (WEAPONS?.AK47 || {});
+  return {
+    id: id,
+    name: raw.name || id,
+    fullName: raw.fullName || raw.name || id,
+    category: raw.category || 'BROŃ',
+    caliber: raw.caliber || '7.62MM',
+    typeLabel: raw.auto ? 'AUTOMATYCZNY' : 'SEMI-AUTO',
+    dmg: raw.damage || 25,
+    rpm: Math.round(60 / ((raw.fireRate || 10) / 60)) || 600,
+    mag: raw.magSize || 30,
+    reserve: raw.maxReserve || 90,
+    reload: `${((raw.reloadTime || 120) / 60).toFixed(1)}s`,
+    stats: { dmgBar: 60, rpmBar: 70, magBar: 70, relBar: 65 },
+    desc: 'Standardowe wyposażenie taktyczne pola walki.'
+  };
+}
 
 /**
  * Inicjalizacja nasłuchu zdarzeń dla Zbrojowni
@@ -156,6 +203,8 @@ export function initArmoryUI(playerInstance) {
   const armoryOverlay = document.getElementById('armory-overlay');
   const closeBtn = document.getElementById('armory-close-btn');
   const saveBtn = document.getElementById('armory-save-btn');
+  const backBtn = document.getElementById('armory-picker-back-btn');
+  const footerBackBtn = document.getElementById('armory-picker-footer-back-btn');
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => closeArmory());
@@ -163,19 +212,44 @@ export function initArmoryUI(playerInstance) {
   if (saveBtn) {
     saveBtn.addEventListener('click', () => closeArmory());
   }
+  if (backBtn) {
+    backBtn.addEventListener('click', () => closeSlotPicker());
+  }
+  if (footerBackBtn) {
+    footerBackBtn.addEventListener('click', () => closeSlotPicker());
+  }
 
-  // Zamknięcie klawiszem ESC
+  // Kafelki slotów w widoku głównym ekwipunku
+  for (let i = 0; i < 3; i++) {
+    const slotCard = document.getElementById(`armory-slot-card-${i}`);
+    if (slotCard) {
+      slotCard.addEventListener('mouseenter', () => playUiHover());
+      slotCard.addEventListener('click', () => openSlotPicker(i));
+    }
+  }
+
+  const slotThrowCard = document.getElementById('armory-slot-card-throwable');
+  if (slotThrowCard) {
+    slotThrowCard.addEventListener('mouseenter', () => playUiHover());
+    slotThrowCard.addEventListener('click', () => openSlotPicker(3));
+  }
+
+  // Zamknięcie klawiszem ESC / Powrót z podokna do przeglądu slotów
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (armoryOverlay && armoryOverlay.style.display === 'flex') {
-        closeArmory();
+        if (_currentArmoryView === 'PICKER') {
+          closeSlotPicker();
+        } else {
+          closeArmory();
+        }
       }
     }
   });
 }
 
 /**
- * Otwarcie modalnego okna Zbrojowni
+ * Otwarcie modalnego okna Zbrojowni (zawsze zaczyna od widoku slotów)
  */
 export function openArmory(playerInstance = null, onClose = null) {
   if (playerInstance) _playerRef = playerInstance;
@@ -184,6 +258,7 @@ export function openArmory(playerInstance = null, onClose = null) {
   const overlay = document.getElementById('armory-overlay');
   if (!overlay) return;
 
+  _currentArmoryView = 'SLOTS';
   overlay.style.display = 'flex';
   renderArmoryUI();
 }
@@ -214,6 +289,25 @@ export function closeArmory() {
 }
 
 /**
+ * Wejście do dedykowanego okna wyboru broni dla danego slotu
+ */
+export function openSlotPicker(slotIndex) {
+  playUiClick();
+  _activeSlotIndex = slotIndex;
+  _currentArmoryView = 'PICKER';
+  renderArmoryUI();
+}
+
+/**
+ * Powrót z okna wyboru broni do przeglądu slotów ekwipunku
+ */
+export function closeSlotPicker() {
+  playUiClick();
+  _currentArmoryView = 'SLOTS';
+  renderArmoryUI();
+}
+
+/**
  * Renderowanie dynamicznej zawartości Zbrojowni
  */
 export function renderArmoryUI() {
@@ -221,157 +315,232 @@ export function renderArmoryUI() {
   if (!p || !p.loadout) return;
 
   const slots = p.loadout.pocket1?.slots || ['AK47', 'GLOCK', 'SNIPER'];
+  const throwables = p.loadout.pocket2?.throwables || ['GRENADE'];
 
-  // 1. Zaktualizuj kafelki slotów Kieszeni 1
-  for (let i = 0; i < 3; i++) {
-    const slotCard = document.getElementById(`armory-slot-card-${i}`);
-    const slotNameEl = document.getElementById(`armory-slot-name-${i}`);
-    const slotBadgeEl = document.getElementById(`armory-slot-badge-${i}`);
+  const slotsView = document.getElementById('armory-view-slots');
+  const pickerView = document.getElementById('armory-view-picker');
+  const footerInfo = document.getElementById('armory-footer-info');
+  const saveBtn = document.getElementById('armory-save-btn');
+  const footerBackBtn = document.getElementById('armory-picker-footer-back-btn');
 
-    const wepId = slots[i] || 'AK47';
-    const wepDef = WEAPONS[wepId] || WEAPONS.AK47;
+  if (_currentArmoryView === 'SLOTS') {
+    // -------------------------------------------------------------------------
+    // 1. WIDOK PRZEGLĄDU SLOTÓW EKWIPUNKU
+    // -------------------------------------------------------------------------
+    if (slotsView) slotsView.style.display = 'flex';
+    if (pickerView) pickerView.style.display = 'none';
+    if (saveBtn) saveBtn.style.display = 'inline-block';
+    if (footerBackBtn) footerBackBtn.style.display = 'none';
 
-    if (slotNameEl) slotNameEl.textContent = wepDef.fullName || wepDef.name || wepId;
-    if (slotBadgeEl) slotBadgeEl.textContent = `[${wepDef.category || 'BRON'}]`;
-
-    if (slotCard) {
-      slotCard.classList.toggle('active', _activeSlotIndex === i);
-      slotCard.onclick = () => {
-        _activeSlotIndex = i;
-        renderArmoryUI();
-      };
+    if (footerInfo) {
+      footerInfo.innerHTML = '<span>Kliknij w dowolny slot, aby otworzyć okno wyboru uzbrojenia dla tej pozycji bojowej.</span>';
     }
-  }
 
-  // 2. Kafelek Kieszeni 2 (Miotana)
-  const slotThrowCard = document.getElementById('armory-slot-card-throwable');
-  if (slotThrowCard) {
-    slotThrowCard.classList.toggle('active', _activeSlotIndex === 3);
-    slotThrowCard.onclick = () => {
-      _activeSlotIndex = 3;
-      renderArmoryUI();
-    };
-  }
+    // Aktualizacja kafelka Slot 1 (Główna)
+    const slot0Def = getCatalogWeapon(slots[0] || 'AK47', 'slot0');
+    const name0 = document.getElementById('armory-slot-name-0');
+    const det0 = document.getElementById('armory-slot-details-0');
+    const dmg0 = document.getElementById('armory-slot-stat-dmg-0');
+    const rpm0 = document.getElementById('armory-slot-stat-rpm-0');
+    const mag0 = document.getElementById('armory-slot-stat-mag-0');
+    if (name0) name0.textContent = slot0Def.fullName || slot0Def.name;
+    if (det0) det0.textContent = `${slot0Def.caliber} · ${slot0Def.typeLabel}`;
+    if (dmg0) dmg0.textContent = `DMG: ${slot0Def.dmg}`;
+    if (rpm0) rpm0.textContent = `RPM: ${slot0Def.rpm}`;
+    if (mag0) mag0.textContent = `MAG: ${slot0Def.mag}`;
 
-  // 3. Renderowanie listy dostępnych broni dla wybranego slotu
-  const listContainer = document.getElementById('armory-weapons-grid');
-  if (!listContainer) return;
+    // Aktualizacja kafelka Slot 2 (Dodatkowa)
+    const slot1Def = getCatalogWeapon(slots[1] || 'GLOCK', 'slot1');
+    const name1 = document.getElementById('armory-slot-name-1');
+    const det1 = document.getElementById('armory-slot-details-1');
+    const dmg1 = document.getElementById('armory-slot-stat-dmg-1');
+    const rpm1 = document.getElementById('armory-slot-stat-rpm-1');
+    const mag1 = document.getElementById('armory-slot-stat-mag-1');
+    if (name1) name1.textContent = slot1Def.fullName || slot1Def.name;
+    if (det1) det1.textContent = `${slot1Def.caliber} · ${slot1Def.typeLabel}`;
+    if (dmg1) dmg1.textContent = `DMG: ${slot1Def.dmg}`;
+    if (rpm1) rpm1.textContent = `RPM: ${slot1Def.rpm}`;
+    if (mag1) mag1.textContent = `MAG: ${slot1Def.mag}`;
 
-  listContainer.innerHTML = '';
+    // Aktualizacja kafelka Slot 3 (Rezerwa)
+    const slot2Def = getCatalogWeapon(slots[2] || 'SNIPER', 'slot2');
+    const name2 = document.getElementById('armory-slot-name-2');
+    const det2 = document.getElementById('armory-slot-details-2');
+    const dmg2 = document.getElementById('armory-slot-stat-dmg-2');
+    const rpm2 = document.getElementById('armory-slot-stat-rpm-2');
+    const mag2 = document.getElementById('armory-slot-stat-mag-2');
+    if (name2) name2.textContent = slot2Def.fullName || slot2Def.name;
+    if (det2) det2.textContent = `${slot2Def.caliber} · ${slot2Def.typeLabel}`;
+    if (dmg2) dmg2.textContent = `DMG: ${slot2Def.dmg}`;
+    if (rpm2) rpm2.textContent = `RPM: ${slot2Def.rpm}`;
+    if (mag2) mag2.textContent = `MAG: ${slot2Def.mag}`;
 
-  let availableList = [];
-  let currentEquippedId = '';
+    // Aktualizacja kafelka Kieszeń 2 (Miotana)
+    const throwDef = getCatalogWeapon(throwables[0] || 'GRENADE', 'throw');
+    const nameThrow = document.getElementById('armory-slot-name-throw');
+    const detThrow = document.getElementById('armory-slot-details-throw');
+    const dmgThrow = document.getElementById('armory-slot-stat-dmg-throw');
+    const radThrow = document.getElementById('armory-slot-stat-rad-throw');
+    const fuseThrow = document.getElementById('armory-slot-stat-fuse-throw');
+    if (nameThrow) nameThrow.textContent = throwDef.fullName || throwDef.name;
+    if (detThrow) detThrow.textContent = `${throwDef.caliber} · ZAPALNIK ${throwDef.fuse}`;
+    if (dmgThrow) dmgThrow.textContent = `DMG: ${throwDef.dmg}`;
+    if (radThrow) radThrow.textContent = `PROMIEŃ: ${throwDef.radius}`;
+    if (fuseThrow) fuseThrow.textContent = `CZAS: ${throwDef.fuse}`;
 
-  if (_activeSlotIndex === 0) {
-    availableList = ARMORY_CATALOG.pocket1.slot0;
-    currentEquippedId = slots[0];
-  } else if (_activeSlotIndex === 1) {
-    availableList = ARMORY_CATALOG.pocket1.slot1;
-    currentEquippedId = slots[1];
-  } else if (_activeSlotIndex === 2) {
-    availableList = ARMORY_CATALOG.pocket1.slot2;
-    currentEquippedId = slots[2];
   } else {
-    availableList = ARMORY_CATALOG.pocket2;
-    currentEquippedId = 'GRENADE';
-  }
+    // -------------------------------------------------------------------------
+    // 2. OKNO WYBORU BRONI DLA WYBRANEGO SLOTU (PICKER)
+    // -------------------------------------------------------------------------
+    if (slotsView) slotsView.style.display = 'none';
+    if (pickerView) pickerView.style.display = 'flex';
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (footerBackBtn) footerBackBtn.style.display = 'inline-block';
 
-  availableList.forEach((wep) => {
-    const isEquipped = (wep.id === currentEquippedId);
-    const cardEl = document.createElement('div');
-    cardEl.className = `armory-weapon-card ${isEquipped ? 'equipped' : ''}`;
+    if (footerInfo) {
+      footerInfo.innerHTML = '<span>Wybierz uzbrojenie z poniższej listy, aby przypisać je do tego slotu bojowego.</span>';
+    }
 
-    const isThrow = (_activeSlotIndex === 3);
+    const tagEl = document.getElementById('armory-picker-slot-tag');
+    const titleEl = document.getElementById('armory-picker-slot-title');
+    const counterEl = document.getElementById('armory-picker-counter');
+    const listContainer = document.getElementById('armory-weapons-grid');
 
-    let statsHtml = '';
-    if (!isThrow) {
-      statsHtml = `
-        <div class="armory-stats-grid">
-          <div class="armory-stat-row">
-            <span class="stat-lbl">OBRAŻENIA</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.dmgBar}%"></div></div>
-            <span class="stat-val">${wep.dmg}</span>
-          </div>
-          <div class="armory-stat-row">
-            <span class="stat-lbl">SZYBKOŚĆ OGNIA</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.rpmBar}%"></div></div>
-            <span class="stat-val">${wep.rpm} RPM</span>
-          </div>
-          <div class="armory-stat-row">
-            <span class="stat-lbl">MAGAZYNEK</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.magBar}%"></div></div>
-            <span class="stat-val">${wep.mag} / ${wep.reserve}</span>
-          </div>
-          <div class="armory-stat-row">
-            <span class="stat-lbl">PRZEŁADOWANIE</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.relBar}%"></div></div>
-            <span class="stat-val">${wep.reload}</span>
-          </div>
-        </div>
-      `;
+    let availableList = [];
+    let currentEquippedId = '';
+    let slotTagText = '';
+    let slotTitleText = '';
+
+    if (_activeSlotIndex === 0) {
+      slotTagText = 'SLOT 1 // KIESZEŃ 1: BROŃ GŁÓWNA';
+      slotTitleText = 'WYBIERZ BROŃ GŁÓWNĄ';
+      availableList = ARMORY_CATALOG.pocket1.slot0;
+      currentEquippedId = slots[0];
+    } else if (_activeSlotIndex === 1) {
+      slotTagText = 'SLOT 2 // KIESZEŃ 1: BROŃ DODATKOWA';
+      slotTitleText = 'WYBIERZ BROŃ DODATKOWĄ';
+      availableList = ARMORY_CATALOG.pocket1.slot1;
+      currentEquippedId = slots[1];
+    } else if (_activeSlotIndex === 2) {
+      slotTagText = 'SLOT 3 // KIESZEŃ 1: REZERWA BOJOWA';
+      slotTitleText = 'WYBIERZ BROŃ REZERWOWĄ';
+      availableList = ARMORY_CATALOG.pocket1.slot2;
+      currentEquippedId = slots[2];
     } else {
-      statsHtml = `
-        <div class="armory-stats-grid">
-          <div class="armory-stat-row">
-            <span class="stat-lbl">OBRAŻENIA OBSZAROWE</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.dmgBar}%"></div></div>
-            <span class="stat-val">${wep.dmg} MAX</span>
+      slotTagText = 'KIESZEŃ 2 // WYPOSAŻENIE MIOTANE & TAKTYCZNE';
+      slotTitleText = 'WYBIERZ BROŃ MIOTANĄ';
+      availableList = ARMORY_CATALOG.pocket2;
+      currentEquippedId = throwables[0] || 'GRENADE';
+    }
+
+    if (tagEl) tagEl.textContent = slotTagText;
+    if (titleEl) titleEl.textContent = slotTitleText;
+    if (counterEl) counterEl.textContent = `${availableList.length} DOSTĘPNE`;
+
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    availableList.forEach((wep) => {
+      const isEquipped = (wep.id === currentEquippedId);
+      const cardEl = document.createElement('div');
+      cardEl.className = `armory-weapon-card ${isEquipped ? 'equipped' : ''}`;
+
+      const isThrow = (_activeSlotIndex === 3);
+
+      let statsHtml = '';
+      if (!isThrow) {
+        statsHtml = `
+          <div class="armory-stats-grid">
+            <div class="armory-stat-row">
+              <span class="stat-lbl">OBRAŻENIA</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.dmgBar}%"></div></div>
+              <span class="stat-val">${wep.dmg}</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">SZYBKOŚĆ OGNIA</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.rpmBar}%"></div></div>
+              <span class="stat-val">${wep.rpm} RPM</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">MAGAZYNEK</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.magBar}%"></div></div>
+              <span class="stat-val">${wep.mag} / ${wep.reserve}</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">PRZEŁADOWANIE</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.relBar}%"></div></div>
+              <span class="stat-val">${wep.reload}</span>
+            </div>
           </div>
-          <div class="armory-stat-row">
-            <span class="stat-lbl">PROMIEŃ RAŻENIA</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.radBar}%"></div></div>
-            <span class="stat-val">${wep.radius}</span>
+        `;
+      } else {
+        statsHtml = `
+          <div class="armory-stats-grid">
+            <div class="armory-stat-row">
+              <span class="stat-lbl">OBRAŻENIA OBSZAROWE</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.dmgBar}%"></div></div>
+              <span class="stat-val">${wep.dmg} MAX</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">PROMIEŃ RAŻENIA</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.radBar}%"></div></div>
+              <span class="stat-val">${wep.radius}</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">ZAPALNIK CZASOWY</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.fuseBar}%"></div></div>
+              <span class="stat-val">${wep.fuse}</span>
+            </div>
           </div>
-          <div class="armory-stat-row">
-            <span class="stat-lbl">ZAPALNIK CZASOWY</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.fuseBar}%"></div></div>
-            <span class="stat-val">${wep.fuse}</span>
+        `;
+      }
+
+      cardEl.innerHTML = `
+        <div class="armory-card-header">
+          <div class="armory-card-title-col">
+            <h3 class="armory-card-name">${wep.fullName}</h3>
+            <div class="armory-card-meta">
+              <span class="armory-meta-tag">[${wep.category}]</span>
+              <span class="armory-meta-caliber">${wep.caliber}</span>
+              <span class="armory-meta-type">${wep.typeLabel}</span>
+            </div>
           </div>
+          <div class="armory-card-status">
+            ${isEquipped ? '<span class="equipped-badge">WYPOSAŻONO</span>' : ''}
+          </div>
+        </div>
+        <p class="armory-card-desc">${wep.desc}</p>
+        ${statsHtml}
+        <div class="armory-card-footer">
+          <button type="button" class="ui-btn ${isEquipped ? 'ui-btn-secondary' : 'ui-btn-primary'} armory-equip-btn" ${isEquipped ? 'disabled' : ''}>
+            ${isEquipped ? 'AKTUALNIE WYPOSAŻONA' : 'WYBIERZ I PRZYPISZ'}
+          </button>
         </div>
       `;
-    }
 
-    cardEl.innerHTML = `
-      <div class="armory-card-header">
-        <div class="armory-card-title-col">
-          <h3 class="armory-card-name">${wep.fullName}</h3>
-          <div class="armory-card-meta">
-            <span class="armory-meta-tag">[${wep.category}]</span>
-            <span class="armory-meta-caliber">${wep.caliber}</span>
-            <span class="armory-meta-type">${wep.typeLabel}</span>
-          </div>
-        </div>
-        <div class="armory-card-status">
-          ${isEquipped ? '<span class="equipped-badge">WYPOSAŻONO</span>' : ''}
-        </div>
-      </div>
-      <p class="armory-card-desc">${wep.desc}</p>
-      ${statsHtml}
-      <div class="armory-card-footer">
-        <button type="button" class="ui-btn ${isEquipped ? 'ui-btn-secondary' : 'ui-btn-primary'} armory-equip-btn" ${isEquipped ? 'disabled' : ''}>
-          ${isEquipped ? 'AKTUALNIE WYPOSAŻONA' : 'WYPOSAŻ BROŃ'}
-        </button>
-      </div>
-    `;
+      cardEl.addEventListener('mouseenter', () => playUiHover());
 
-    const equipBtn = cardEl.querySelector('.armory-equip-btn');
-    if (equipBtn && !isEquipped) {
-      equipBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        equipArmoryWeapon(_activeSlotIndex, wep.id);
-      });
-    }
+      const equipBtn = cardEl.querySelector('.armory-equip-btn');
+      if (equipBtn && !isEquipped) {
+        equipBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          equipArmoryWeapon(_activeSlotIndex, wep.id);
+        });
+      }
 
-    listContainer.appendChild(cardEl);
-  });
+      listContainer.appendChild(cardEl);
+    });
+  }
 }
 
 /**
- * Wyposażenie broni w wybranym slocie
+ * Wyposażenie broni w wybranym slocie i powrót do widoku slotów
  */
 export function equipArmoryWeapon(slotIndex, weaponId) {
   const p = _playerRef || window.player;
   if (!p || !p.loadout) return;
+
+  playUiClick();
 
   if (slotIndex >= 0 && slotIndex <= 2) {
     p.loadout.pocket1.slots[slotIndex] = weaponId;
@@ -381,7 +550,15 @@ export function equipArmoryWeapon(slotIndex, weaponId) {
     if (p.loadout.pocket1.activeSlotIndex === slotIndex) {
       equipPocket1Slot(p, slotIndex);
     }
+  } else if (slotIndex === 3) {
+    if (!Array.isArray(p.loadout.pocket2.throwables)) {
+      p.loadout.pocket2.throwables = ['GRENADE'];
+    }
+    p.loadout.pocket2.throwables[0] = weaponId;
+    saveStoredLoadout(p.loadout);
   }
 
+  // Płynny powrót do widoku slotów po wyborze broni
+  _currentArmoryView = 'SLOTS';
   renderArmoryUI();
 }

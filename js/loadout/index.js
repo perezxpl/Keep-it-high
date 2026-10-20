@@ -23,6 +23,9 @@ export {
   initArmoryUI,
   openArmory,
   closeArmory,
+  openSlotPicker,
+  closeSlotPicker,
   renderArmoryUI,
+  getCatalogWeapon,
   equipArmoryWeapon
 } from './armoryUI.js';
