@@ -52,7 +52,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 
 ### Uzbrojenie i Pociski (`js/weapons/`, `js/weapons.js`)
 - `js/weapons/transform.js` — katalog uzbrojenia (`WEAPONS`: Główna: AK-47, Shotgun SPAS-12, Barrett .50; Dodatkowa: Glock 17, Magnum .44, Obrzyn 12G; Biała: Nóż Bojowy M9, Maczeta Kukri, Toporek Tomahawk), procedury chwytu 2D (IK rąk, pchnięcia/cięcia wręcz), balistyka i mechanika odrzutu.
-- `js/weapons/renderer.js` — procedury renderowania modeli broni (AK-47, Shotgun, Sniper, Glock 17 z ruchomym zamkiem blowbacku, Magnum .44, Obrzyn 12G, Nóż Bojowy M9, Maczeta Kukri, Toporek Tomahawk), celownika laserowego, łusek i smug.
+- `js/weapons/renderer.js` — procedury renderowania modeli broni w walce (filmowe modułowe warstwy sprite'ów: korpus, ruchomy zamek/suwadło blowbacku, odpinany magazynek łukowy IK dłoni dla AK-47; Shotgun, Sniper, Glock 17, Magnum .44, Obrzyn 12G, Nóż Bojowy M9, Maczeta Kukri, Toporek Tomahawk), celownika laserowego, łusek i smug.
 - `js/weapons.js` — wystrzeliwanie (`shootWeapon`), walka wręcz bronią białą (`executeMeleeAttack`), pętla balistyki pocisków (`updateBullets`), kolizje z przeszkodami i postaciami oraz przeładowanie (`reloadWeapon`).
 - `js/projectiles.js` — granaty taktyczne, eksplozje i trajektorie rzutów.
 

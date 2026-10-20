@@ -167,6 +167,35 @@ export function drawSniperLaserSight(ctx, playerObj) {
   ctx.restore();
 }
 
+// =========================================================================
+// PRE-RENDEROWANE MODULARNE SPRITE'Y UZBROJENIA W ROZGRYWCE
+// =========================================================================
+
+const WEAPON_PARTS_PATHS = {
+  AK47_BODY: './assets/weapons/ak47_body.png?v=v253_ak47_modular_gameplay_layers',
+  AK47_MAG: './assets/weapons/ak47_mag.png?v=v253_ak47_modular_gameplay_layers',
+  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v253_ak47_modular_gameplay_layers'
+};
+
+const _partSpriteCache = {};
+
+export function getWeaponPartSprite(partId) {
+  if (_partSpriteCache[partId]) return _partSpriteCache[partId];
+  const p = WEAPON_PARTS_PATHS[partId];
+  if (!p) return null;
+  const img = new Image();
+  img.src = p;
+  _partSpriteCache[partId] = img;
+  return img;
+}
+
+// Natychmiastowe pre-loadowanie sprite'ów w przeglądarce
+if (typeof window !== 'undefined') {
+  for (const k of Object.keys(WEAPON_PARTS_PATHS)) {
+    getWeaponPartSprite(k);
+  }
+}
+
 /**
  * Renderowanie broni w rękach strzelca
  */
@@ -191,87 +220,136 @@ export function drawHeldWeapon(ctx, p) {
   }
 
   if (weapon.id === 'AK47') {
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.moveTo(0, -1);
-    ctx.lineTo(-10.2, 1.5);
-    ctx.lineTo(-10.2, 6.2);
-    ctx.lineTo(-5.2, 4.5);
-    ctx.lineTo(0, 2.5);
-    ctx.closePath();
-    ctx.fill();
+    const imgBody = getWeaponPartSprite('AK47_BODY');
+    const imgMag = getWeaponPartSprite('AK47_MAG');
+    const imgBolt = getWeaponPartSprite('AK47_BOLT');
 
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(-10.8, 1.5, 1.4, 4.8);
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0 &&
+        imgMag && imgMag.complete && imgMag.naturalWidth > 0 &&
+        imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
+      
+      const s = 44.8 / 1272; // Skala z pikseli sprite\'a do jednostek gry
+      const pivotSpriteX = 306.6; // Punkt obrotu w pikselach sprite\'a
+      const pivotSpriteY = 85.0;  // Oś lufy (boreline) w pikselach sprite\'a
 
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.moveTo(1, 2);
-    ctx.lineTo(-1, 7);
-    ctx.lineTo(2.2, 7.5);
-    ctx.lineTo(4, 2);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, -2.5, 14, 4.5);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, -1.8, 14, 3.5);
-
-    if (hold.isMagInGun !== false) {
-      ctx.fillStyle = '#334155';
-      ctx.beginPath();
-      ctx.moveTo(6.5, 2.0);
-      ctx.quadraticCurveTo(8.5, 8.5, 13.5, 10.5);
-      ctx.lineTo(11.2, 11.5);
-      ctx.quadraticCurveTo(5.5, 9.5, 4.0, 2.0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-    }
-
-    if (hold.heldMag && hold.heldMag.type === 'AK47') {
+      // 1. Rysowanie korpusu broni, magazynka i suwadła w osi broni
       ctx.save();
-      ctx.translate(hold.heldMag.x, hold.heldMag.y);
-      ctx.rotate(hold.heldMag.angle);
-      ctx.fillStyle = '#334155';
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+
+      // A. Magazynek wpięty w gnieździe broni (gdy nie jest wypięty)
+      if (hold.isMagInGun !== false) {
+        ctx.drawImage(imgMag, 546, 120);
+      }
+
+      // B. Korpus bazowy (kolba, komora, lufa, łoże, chwyt i przyrządy celownicze)
+      ctx.drawImage(imgBody, 0, 0);
+
+      // C. Suwadło zamka z rączką (ruchome blowback przy strzale oraz odciąganie przy przeładowaniu)
+      const boltPx = (hold.boltOffset || 0) * (1272 / 44.8);
+      ctx.drawImage(imgBolt, 556 + boltPx, 50);
+
+      ctx.restore();
+
+      // 2. Magazynek trzymany w lewej dłoni podczas przeładowania (IK lewej ręki)
+      if (hold.heldMag && hold.heldMag.type === 'AK47') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        ctx.scale(s, s);
+        // Środek chwytu dłoni na korpusie magazynka
+        ctx.drawImage(imgMag, -90, -90);
+        ctx.restore();
+      }
+
+      // 3. Płomień wylotowy ze szczelin kompensatora na końcu lufy
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 34.0, -0.2, 11, false);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#78350f';
       ctx.beginPath();
-      ctx.moveTo(-1.0, -3.5);
-      ctx.quadraticCurveTo(1.0, 3.0, 6.0, 5.0);
-      ctx.lineTo(3.8, 6.0);
-      ctx.quadraticCurveTo(-1.8, 3.8, -3.5, -3.5);
+      ctx.moveTo(0, -1);
+      ctx.lineTo(-10.2, 1.5);
+      ctx.lineTo(-10.2, 6.2);
+      ctx.lineTo(-5.2, 4.5);
+      ctx.lineTo(0, 2.5);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-      ctx.restore();
-    }
 
-    const akBolt = hold.boltOffset || 0;
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(4.0 + akBolt, -2.8, 3.2, 1.4);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(4.0 + akBolt, -2.4, 2.2, 1.0);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-10.8, 1.5, 1.4, 4.8);
 
-    ctx.fillStyle = '#78350f';
-    ctx.fillRect(14, -2.2, 8.5, 3.8);
-    ctx.fillStyle = '#92400e';
-    ctx.fillRect(14, -2.2, 8.5, 1.0);
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.moveTo(1, 2);
+      ctx.lineTo(-1, 7);
+      ctx.lineTo(2.2, 7.5);
+      ctx.lineTo(4, 2);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(22.5, -1.4, 11.5, 2.4);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(22.5, -2.2, 4, 1.2);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(29.5, -3.2, 1.5, 2.0);
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(32.5, -1.6, 1.5, 2.8);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, -2.5, 14, 4.5);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, -1.8, 14, 3.5);
 
-    if (p.muzzleFlashTimer > 0) {
-      drawMuzzleFlash(ctx, 34, -0.2, 11, false);
+      if (hold.isMagInGun !== false) {
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.moveTo(6.5, 2.0);
+        ctx.quadraticCurveTo(8.5, 8.5, 13.5, 10.5);
+        ctx.lineTo(11.2, 11.5);
+        ctx.quadraticCurveTo(5.5, 9.5, 4.0, 2.0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+
+      if (hold.heldMag && hold.heldMag.type === 'AK47') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle);
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.moveTo(-1.0, -3.5);
+        ctx.quadraticCurveTo(1.0, 3.0, 6.0, 5.0);
+        ctx.lineTo(3.8, 6.0);
+        ctx.quadraticCurveTo(-1.8, 3.8, -3.5, -3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const akBolt = hold.boltOffset || 0;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(4.0 + akBolt, -2.8, 3.2, 1.4);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(4.0 + akBolt, -2.4, 2.2, 1.0);
+
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(14, -2.2, 8.5, 3.8);
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(14, -2.2, 8.5, 1.0);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(22.5, -1.4, 11.5, 2.4);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(22.5, -2.2, 4, 1.2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(29.5, -3.2, 1.5, 2.0);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(32.5, -1.6, 1.5, 2.8);
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 34, -0.2, 11, false);
+      }
     }
   } else if (weapon.id === 'SHOTGUN') {
     ctx.fillStyle = '#3f2712';
