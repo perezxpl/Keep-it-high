@@ -301,7 +301,8 @@ export function updateWeaponState(p) {
       p.reloadProgress = u;
 
       // Obsługa wyrzutu pustego magazynka (Fizyczna cząsteczka spadająca na ziemię)
-      if (u >= 0.24 && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER' || curWepId === 'GLOCK')) {
+      const magThreshold = (curWepId === 'GLOCK') ? 0.14 : 0.24;
+      if (u >= magThreshold && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER' || curWepId === 'GLOCK')) {
         ammo._magEjected = true;
         const hold = getWeaponHoldTransform(p);
         const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);

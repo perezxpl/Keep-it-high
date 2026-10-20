@@ -442,10 +442,6 @@ canvas.addEventListener('touchstart', (e) => {
             }
             // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
             rightStick.isShooting = (factor >= 0.90);
-            if (factor < 0.70) {
-              rightStick.semiFired = false;
-              rightStick.shotgunFiredThisTap = false;
-            }
           } else if (rightStick.armedMode === 'GRENADE') {
             rightStick.isShooting = false;
             if (factor > 0.03 && !player.isDead) {
@@ -708,10 +704,6 @@ canvas.addEventListener('touchmove', (e) => {
           }
           // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
           rightStick.isShooting = (power >= 0.90);
-          if (power < 0.70) {
-            rightStick.semiFired = false;
-            rightStick.shotgunFiredThisTap = false;
-          }
         } else if (rightStick.armedMode === 'GRENADE') {
           rightStick.isShooting = false;
           if (power > 0.03 && !player.isDead) {
@@ -969,8 +961,6 @@ function endTouch(e) {
         // Zakończenie ognia z broni palnej
         rightStick.isShooting = false;
         player.isShooting = false;
-        rightStick.semiFired = false;
-        rightStick.shotgunFiredThisTap = false;
       }
 
       player.isCharging = false;

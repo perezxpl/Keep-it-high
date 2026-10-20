@@ -119,45 +119,24 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
 
-  if (curWep.auto) {
-    player.isShooting = isHoldingFire;
-  } else {
-    player.isShooting = (!player.isHolstered) && (isTouchFiring || (player.shootPoseTimer > 0)) && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
-  }
+  player.isShooting = isHoldingFire;
 
   const curAmmoObj = player.ammo?.[curWep.id];
   const isOutOfAmmo = curAmmoObj && curAmmoObj.currentAmmo <= 0;
   const isReloading = curAmmoObj ? curAmmoObj.isReloading : !!player.isReloading;
-
-  // Reset flagi strzału semi-auto dla drążka dotykowego, gdy gracz odpuści drążek lub zmniejszy wychylenie
-  if (!rightStick.active || rightStick.power < 0.70) {
-    rightStick.semiFired = false;
-    rightStick.shotgunFiredThisTap = false;
-  }
 
   if (isTouchFiring && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
     // Automatyczne przeładowanie w boju, gdy amunicja spadnie do 0
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
-      if (curWep.auto) {
-        triggerPlayerShoot(player, curWep);
-      } else if (!rightStick.semiFired) {
-        triggerPlayerShoot(player, curWep);
-        rightStick.semiFired = true;
-        rightStick.shotgunFiredThisTap = true;
-      }
+      triggerPlayerShoot(player, curWep);
     }
   } else if (mouseState.lmbDown && !player.isDead && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
-      if (curWep.auto) {
-        triggerPlayerShoot(player, curWep);
-      } else if (!mouseState.semiFired) {
-        triggerPlayerShoot(player, curWep);
-        mouseState.semiFired = true;
-      }
+      triggerPlayerShoot(player, curWep);
     }
   }
 

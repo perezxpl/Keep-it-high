@@ -516,10 +516,6 @@ export function getWeaponHoldTransform(p) {
         leftHandLocalX = lerp(foreGripDistX, -2.0, ease(t));
         leftHandLocalY = lerp(foreGripDistY, 14.0, ease(t));
         isMagInGun = (u < 0.12);
-        if (u >= 0.12 && !ammo._magEjected) {
-          ammo._magEjected = true;
-          spawnDroppedMagazine(hold.pivotX + 1.0 * charFacing, hold.pivotY + 5.0, 'GLOCK', charFacing, p.vx || 0, p.vy || 0);
-        }
       } else if (u < 0.45) {
         // Faza 2: Chwyt nowego magazynka 9mm przy ładownicy
         const t = (u - 0.22) / 0.23;
