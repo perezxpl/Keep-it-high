@@ -42,7 +42,7 @@ export const explosionCraters = [];
  * Klasa super-granatu dla klasy Aero
  */
 export class AeroSuperGrenade {
-  constructor(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
+  constructor(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null, initialFuse = null) {
     this.id = 'grenade_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     this.shooter = shooter;
     this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
@@ -77,9 +77,11 @@ export class AeroSuperGrenade {
     this.maxBounces = 5;
     this.restitution = 0.58;
 
-    // Zapalnik czasowy: 5.0 sekund (300 klatek przy 60 FPS)
-    this.fuse = 300;
+    // Zapalnik czasowy: 5.0 sekund (300 klatek przy 60 FPS), liczony od startu celowania
     this.maxFuse = 300;
+    this.fuse = (typeof initialFuse === 'number' && !isNaN(initialFuse) && initialFuse > 0)
+      ? Math.max(1, Math.min(300, Math.round(initialFuse)))
+      : 300;
     this.detonated = false;
 
     this.blastRadius = 145; // Promień wybuchu R = 130-150 px
@@ -406,8 +408,8 @@ export class AeroSuperGrenade {
 /**
  * Wystrzelenie super-granatu z postaci
  */
-export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
-  const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower, spawnOriginX, spawnOriginY);
+export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null, initialFuse = null) {
+  const grenade = new AeroSuperGrenade(shooter, targetX, targetY, customPower, spawnOriginX, spawnOriginY, initialFuse);
   activeProjectiles.push(grenade);
   if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
     window.activeProjectiles.push(grenade);

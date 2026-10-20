@@ -291,6 +291,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     v.hasRocketBoots = true;
   }
   v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
+  v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
 
@@ -1768,6 +1769,23 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
   ctx.save();
   const numDots = 14;
   const zoom = (camera && typeof camera.zoom === 'number' && camera.zoom > 0) ? camera.zoom : 1.0;
+
+  // Taktyczny licznik zapalnika czasowego podczas celowania granatem (Cooking the grenade)
+  if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
+    const cookTimer = p.throwAnim.cookTimer || 0;
+    const remainingSec = Math.max(0, (300 - cookTimer) / 60);
+    const timeStr = remainingSec.toFixed(1) + 's';
+
+    ctx.save();
+    ctx.font = '900 11px monospace';
+    ctx.textAlign = 'center';
+    const timeCol = (remainingSec <= 1.5) ? '#ef4444' : (remainingSec <= 3.0 ? '#eab308' : '#00e5ff');
+    ctx.fillStyle = timeCol;
+    ctx.shadowColor = timeCol;
+    ctx.shadowBlur = (remainingSec <= 1.5) ? 8 : 4;
+    ctx.fillText('[ZAPALNIK: ' + timeStr + ']', startX, startY - 26);
+    ctx.restore();
+  }
 
   for (let step = 1; step <= numDots; step++) {
     const tFrames = step * 3.5;

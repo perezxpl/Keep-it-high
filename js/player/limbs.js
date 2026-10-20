@@ -89,7 +89,7 @@ export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) 
 /**
  * Rysuje uzbrojony granat w dłoni rzucającej (z pulsującą diodą zapalnika i łyżką)
  */
-export function drawHandheldGrenade(ctx, x, y, scale = 1.0) {
+export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
@@ -1079,7 +1079,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpted, v);
 
   if (isFront && visuals && visuals.heldGrenade) {
-    drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0);
+    drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);
   }
 
   // Rany i rozcięcia na przedramieniu i dłoni

@@ -6,7 +6,7 @@
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
-import { spawnAeroSuperGrenade } from '../projectiles.js';
+import { spawnAeroSuperGrenade, detonateGrenadeExplosion } from '../projectiles.js';
 import { getActiveBots } from '../bot.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -15,7 +15,8 @@ import {
   spawnExplosionFirePuff,
   spawnStretchedSparks,
   spawnHeavySmokePuff,
-  spawnJuiceExplosion
+  spawnJuiceExplosion,
+  spawnRicochetSparks
 } from '../particles.js';
 
 export function startJumpCharge(p) {
@@ -1230,11 +1231,25 @@ export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPow
     p.facing = dx > 0 ? 1 : -1;
   }
 
+  // Jeśli rzut jest już aktywny i gracz celuje (trzyma klawisz/drążek):
+  // NIE resetujemy timera gotowania zapalnika (cookTimer), a jedynie aktualizujemy cel i moc!
+  if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
+    p.throwAnim.targetX = aimX;
+    p.throwAnim.targetY = aimY;
+    p.throwAnim.aimAngle = aimAngle;
+    if (typeof customPower === 'number' && customPower > 0) {
+      p.throwAnim.power = customPower;
+    }
+    return true;
+  }
+
   p.throwAnim = {
     active: true,
     aiming: true,
     phase: 'WINDUP',
     timer: 0,
+    cookTimer: 0,
+    maxFuse: 300,
     windupDuration: 6,
     throwDuration: 5,
     recoveryDuration: 8,
@@ -1322,6 +1337,8 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null, customPo
     aiming: false,
     phase: 'WINDUP',
     timer: 0,
+    cookTimer: 0,
+    maxFuse: 300,
     windupDuration: 5,
     throwDuration: 5,
     recoveryDuration: 8,
@@ -1341,6 +1358,49 @@ export function throwTacticalGrenade(p, targetX = null, targetY = null, customPo
 export function updatePlayerThrow(p) {
   if (!p || !p.throwAnim || !p.throwAnim.active) return;
   const tAnim = p.throwAnim;
+
+  // Odliczanie czasu do detonacji od momentu rozpoczęcia celowania (Cooking the grenade)
+  if (!tAnim.spawned) {
+    tAnim.cookTimer = (tAnim.cookTimer || 0) + 1;
+
+    // Iskry zapalnika w dłoni ostrzegające przed wybuchem w ostatnich 1.5s (cookTimer >= 210)
+    if (tAnim.cookTimer >= 210 && tAnim.cookTimer % 4 === 0) {
+      const handPos = getThrowHandPosition(p);
+      spawnRicochetSparks(handPos.x, handPos.y - 4, (Math.random() - 0.5) * 2, -1, 1);
+    }
+
+    // Detonacja bezpośrednio w dłoni gracza po upływie 5.0 sekund (300 klatek przy 60 fps)!
+    if (tAnim.cookTimer >= (tAnim.maxFuse || 300)) {
+      tAnim.active = false;
+      tAnim.aiming = false;
+      tAnim.spawned = true;
+      p.grenadeMaxCooldown = 3.5;
+      p.grenadeCooldown = 3.5;
+
+      const handPos = getThrowHandPosition(p);
+      const activeArena = getActiveArena ? getActiveArena() : null;
+      const arenaPlatforms = activeArena?.platforms || null;
+      const allCombatants = [p, ...getActiveBots()];
+      if (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) {
+        allCombatants.push(window.remotePlayer);
+      }
+
+      detonateGrenadeExplosion(
+        handPos.x,
+        handPos.y,
+        145,
+        p,
+        p.currentGroundY || p.groundY || 500,
+        arenaPlatforms,
+        null,
+        allCombatants,
+        null,
+        'GRENADE'
+      );
+      triggerScreenShake(14);
+      return;
+    }
+  }
 
   // Jeśli gracz aktywnie celuje (trzyma klawisz/drążek):
   if (tAnim.aiming) {
@@ -1371,16 +1431,17 @@ export function updatePlayerThrow(p) {
     }
   } else if (tAnim.phase === 'THROW') {
     tAnim.timer++;
-    // Kulminacyjny moment wyprostu ręki (klatka 2): odrywa się granat!
+    // Kulminacyjny moment wyprostu ręki (klatka 2): odrywa się granat z pozostałym czasem zapalnika!
     if (tAnim.timer >= 2 && !tAnim.spawned) {
       tAnim.spawned = true;
       const handPos = getThrowHandPosition(p);
-      spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+      const remainingFuse = Math.max(1, (tAnim.maxFuse || 300) - (tAnim.cookTimer || 0));
+      spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
       if (!p.isRemote && !p.isBot) {
         const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
         const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
         if (netState && netState.isConnected && typeof sendGrenade === 'function') {
-          sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+          sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
         }
       }
       p.grenadeMaxCooldown = 3.5;

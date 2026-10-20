@@ -324,7 +324,7 @@ export function sendKillBroadcast(killData) {
   } catch (_) {}
 }
 
-export function sendGrenadeThrow(targetX, targetY, power, originX, originY) {
+export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse = null) {
   if (!networkState.conn || !networkState.isConnected) return;
   try {
     networkState.conn.send({
@@ -335,7 +335,8 @@ export function sendGrenadeThrow(targetX, targetY, power, originX, originY) {
       power: Math.round(power * 100) / 100,
       originX: originX != null ? Math.round(originX * 10) / 10 : null,
       originY: originY != null ? Math.round(originY * 10) / 10 : null,
-      relOriginY: originY != null ? Math.round((GROUND_Y - originY) * 10) / 10 : null
+      relOriginY: originY != null ? Math.round((GROUND_Y - originY) * 10) / 10 : null,
+      fuse: (typeof fuse === 'number' && fuse > 0) ? Math.round(fuse) : null
     });
   } catch (_) {}
 }
@@ -1054,7 +1055,7 @@ function handleNetworkData(data) {
         ? (GROUND_Y - data.relOriginY)
         : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
       const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
-      spawnAeroSuperGrenade(remotePlayer, data.x, targetY, data.power, originX, originY);
+      spawnAeroSuperGrenade(remotePlayer, data.x, targetY, data.power, originX, originY, data.fuse);
       break;
     }
 
