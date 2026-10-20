@@ -24,6 +24,7 @@ import {
 } from '../player.js';
 import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
+import { cyclePocket1, equipPocket1Slot } from '../loadout/index.js';
 import { ball } from '../ball.js';
 import { bot, getActiveBots } from '../bot.js';
 import { remotePlayer } from '../network.js';
@@ -254,15 +255,8 @@ canvas.addEventListener('touchstart', (e) => {
         // Sprawdź czy to pojedyncza zunifikowana ikona na ekranie dotykowym
         const isSingleMobileIcon = (weaponButtons[1] && weaponButtons[1].x < 0);
         if (isSingleMobileIcon) {
-          // Dotknięcie pojedynczej ikony w dolnym centrum przełącza broń (cykl: AK-47 -> Shotgun -> Sniper)
-          const curId = player.currentWeapon?.id || 'AK47';
-          if (curId === 'AK47') {
-            player.currentWeapon = WEAPONS.SHOTGUN;
-          } else if (curId === 'SHOTGUN') {
-            player.currentWeapon = WEAPONS.SNIPER;
-          } else {
-            player.currentWeapon = WEAPONS.AK47;
-          }
+          // Dotknięcie ikony przełącza slot w Kieszeni 1
+          cyclePocket1(player, 1);
         } else {
           if (btn.id === 'GRENADE') {
             const throwAngle = -0.62;
@@ -916,13 +910,19 @@ function endTouch(e) {
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
           } else {
-            const curId = player.currentWeapon?.id || 'AK47';
-            if (curId === 'AK47') {
-              player.currentWeapon = WEAPONS.SHOTGUN;
-            } else if (curId === 'SHOTGUN') {
-              player.currentWeapon = WEAPONS.SNIPER;
+            if (player.loadout) {
+              cyclePocket1(player, 1);
             } else {
-              player.currentWeapon = WEAPONS.AK47;
+              const curId = player.currentWeapon?.id || 'AK47';
+              if (curId === 'AK47') {
+                player.currentWeapon = WEAPONS.GLOCK || WEAPONS.SHOTGUN;
+              } else if (curId === 'GLOCK') {
+                player.currentWeapon = WEAPONS.SHOTGUN;
+              } else if (curId === 'SHOTGUN') {
+                player.currentWeapon = WEAPONS.SNIPER;
+              } else {
+                player.currentWeapon = WEAPONS.AK47;
+              }
             }
           }
         }

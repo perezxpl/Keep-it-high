@@ -83,6 +83,32 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG.SNIPER.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.SNIPER.reloadTime * 60)
   },
+  GLOCK: {
+    id: 'GLOCK',
+    name: 'Glock 17',
+    fullName: 'GLOCK 17',
+    category: 'SECONDARY',
+    auto: false,             // Semi-auto precyzyjny pistolet
+    fireRate: 9,             // Zwinny cykl spustu (~6-7 strzałów/s)
+    damage: 22,              // 5 celnych trafień eliminuje cel (100 HP)
+    bulletSpeed: 30,         // Szybki pocisk 9x19mm Luger
+    spread: 0.022,           // Precyzyjny pierwszy strzał
+    crouchSpreadMult: 0.60,
+    recoil: 1.1,             // Sprężysty odrzut zamka pistoletu
+    crouchRecoilMult: 0.50,
+    muzzleRise: 0.075,
+    kickbackDistance: 2.0,
+    ballPush: 0.14,
+    bodyPush: 0.026,
+    ragdollPushMult: 0.90,
+    pellets: 1,
+    bulletColor: '#fde047',
+    magSize: WEAPON_CONFIG.GLOCK.magSize,
+    currentAmmo: WEAPON_CONFIG.GLOCK.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.GLOCK.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.GLOCK.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.GLOCK.reloadTime * 60)
+  },
   GRENADE: {
     id: 'GRENADE',
     name: 'GRENADE',
@@ -208,6 +234,7 @@ export function getWeaponHoldTransform(p) {
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
+  const isPistol = (weapon.id === 'GLOCK');
   const isCrouch = !!(p.isCrouching || p.isProne);
 
   const isStaggered = (p.staggerTimer > 0);
@@ -235,7 +262,7 @@ export function getWeaponHoldTransform(p) {
     const rightHandWorldY = slingPivotY + 3;
     const leftHandWorldX = slingPivotX + (isSniper ? 18 : 14) * charFacing;
     const leftHandWorldY = slingPivotY + 2;
-    const barrelLength = isSniper ? 45 : (isShotgun ? 28 : 34);
+    const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? 13 : 34));
 
     return {
       pivotX: slingPivotX,
@@ -263,8 +290,8 @@ export function getWeaponHoldTransform(p) {
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry)
   const headBobOffset = (p.headBob || 0) * 0.70;
   const crouchDropY = isCrouch ? 4 : 0;
-  let loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : 5.8)) * charFacing;
-  let loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : 10.5)) + headBobOffset + crouchDropY;
+  let loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
+  let loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
 
   let directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
   if (directAngle < -Math.PI / 2) {
@@ -272,7 +299,7 @@ export function getWeaponHoldTransform(p) {
   } else if (directAngle > Math.PI / 2 + 0.35) {
     directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
   }
-  const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26);
+  const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : (isPistol ? 0.16 : 0.26));
   let looseAimAngle = directAngle + idleDroop;
 
   // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
@@ -315,10 +342,10 @@ export function getWeaponHoldTransform(p) {
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance - Uniesienie broni do oka)
   const braceOffsetY = isCrouch ? 1.0 : 0;
-  const shoulderPocketX = rightShoulderX - 0.5 * charFacing;
-  const shoulderPocketY = rightShoulderY - 2.2 + braceOffsetY;
+  const shoulderPocketX = rightShoulderX + (isPistol ? 6.5 : -0.5) * charFacing;
+  const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
 
-  const stockLen = isSniper ? 11.5 : (isShotgun ? 10.4 : 10.2);
+  const stockLen = isSniper ? 11.5 : (isShotgun ? 10.4 : (isPistol ? 4.0 : 10.2));
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
   let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
@@ -336,12 +363,12 @@ export function getWeaponHoldTransform(p) {
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
   // Punkty podparcia dłoni w spoczynku / strzale
-  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : 1.5);
-  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : 4.2);
+  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : (isPistol ? 1.0 : 1.5));
+  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : (isPistol ? 3.5 : 4.2));
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
-  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : 16.0) + pumpShift);
-  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : 1.0);
+  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : (isPistol ? 2.0 : 16.0)) + pumpShift);
+  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : (isPistol ? 3.2 : 1.0));
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
   const u = p.isReloading
@@ -359,9 +386,9 @@ export function getWeaponHoldTransform(p) {
 
   if (p.isReloading && u > 0 && u < 1.0) {
     const reloadEnv = Math.sin(u * Math.PI);
-    reloadAngleOffset = (isShotgun ? -0.28 : -0.20) * reloadEnv;
-    reloadPivotShiftX = -2.5 * reloadEnv * charFacing;
-    reloadPivotShiftY = 1.8 * reloadEnv;
+    reloadAngleOffset = (isShotgun ? -0.28 : (isPistol ? -0.24 : -0.20)) * reloadEnv;
+    reloadPivotShiftX = (isPistol ? -1.5 : -2.5) * reloadEnv * charFacing;
+    reloadPivotShiftY = (isPistol ? 1.2 : 1.8) * reloadEnv;
 
     if (isSniper) {
       // -------------------------------------------------------------
@@ -479,6 +506,62 @@ export function getWeaponHoldTransform(p) {
         leftHandLocalX = foreGripDistX;
         leftHandLocalY = foreGripDistY;
       }
+    } else if (isPistol) {
+      // -------------------------------------------------------------
+      // GLOCK 17 RELOAD ANIMATION (TACTICAL 9MM MAG SWAP & SLIDE RACK)
+      // -------------------------------------------------------------
+      if (u < 0.22) {
+        // Faza 1: Zwolnienie zatrzasku magazynka i opuszczenie lewej ręki do pasa
+        const t = u / 0.22;
+        leftHandLocalX = lerp(foreGripDistX, -2.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 14.0, ease(t));
+        isMagInGun = (u < 0.12);
+        if (u >= 0.12 && !ammo._magEjected) {
+          ammo._magEjected = true;
+          spawnDroppedMagazine(hold.pivotX + 1.0 * charFacing, hold.pivotY + 5.0, 'GLOCK', charFacing, p.vx || 0, p.vy || 0);
+        }
+      } else if (u < 0.45) {
+        // Faza 2: Chwyt nowego magazynka 9mm przy ładownicy
+        const t = (u - 0.22) / 0.23;
+        leftHandLocalX = lerp(-2.0, -1.0, ease(t));
+        leftHandLocalY = lerp(14.0, 12.0, ease(t));
+        isMagInGun = false;
+        heldMag = { type: 'GLOCK', x: leftHandLocalX, y: leftHandLocalY, angle: -0.25 };
+      } else if (u < 0.70) {
+        // Faza 3: Uniesienie magazynka i wprowadzenie do gniazda w chwycie
+        const t = (u - 0.45) / 0.25;
+        leftHandLocalX = lerp(-1.0, 0.8, ease(t));
+        leftHandLocalY = lerp(12.0, 6.0, ease(t));
+        isMagInGun = false;
+        heldMag = { type: 'GLOCK', x: leftHandLocalX, y: leftHandLocalY, angle: -0.15 };
+        if (t > 0.85) {
+          // Zatrzaśnięcie magazynka w chwycie (Mag slap)
+          const snapT = (t - 0.85) / 0.15;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.09;
+          reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 1.2;
+        }
+      } else if (u < 0.84) {
+        // Faza 4: Magazynek zaryglowany, ruch ręki w górę na zamek (Slide Rack)
+        isMagInGun = true;
+        const t = (u - 0.70) / 0.14;
+        leftHandLocalX = lerp(0.8, 1.5, ease(t));
+        leftHandLocalY = lerp(6.0, -3.2, ease(t));
+      } else if (u < 0.92) {
+        // Faza 5: Odciągnięcie zamka i zrzut (Chambering 9mm round)
+        isMagInGun = true;
+        const t = (u - 0.84) / 0.08;
+        const pull = Math.sin(t * Math.PI);
+        boltOffset = -pull * 2.8;
+        leftHandLocalX = 1.5 + boltOffset;
+        leftHandLocalY = -3.2;
+        if (t > 0.5) reloadAngleOffset += Math.sin(t * Math.PI) * 0.05;
+      } else {
+        // Faza 6: Powrót ręki do dwuręcznego chwytu pistoletu
+        isMagInGun = true;
+        const t = (u - 0.92) / 0.08;
+        leftHandLocalX = lerp(1.5, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(-3.2, foreGripDistY, ease(t));
+      }
     } else {
       // -------------------------------------------------------------
       // AK-47 RELOAD ANIMATION (ROCK & LOCK + CHARGING HANDLE)
@@ -591,7 +674,7 @@ export function getWeaponHoldTransform(p) {
     leftHandWorldY = lerp(leftHandWorldY, slingPivotY + 2, slingWeight);
   }
 
-  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : 34);
+  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? 13 : 34));
 
   return {
     pivotX: finalPivotX,

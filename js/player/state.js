@@ -9,6 +9,7 @@ import { spawnGroundPuff, triggerScreenShake, activeArenaId } from '../world.js'
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './hair.js';
+import { getStoredLoadout } from '../loadout/index.js';
 
 export var DEFAULT_BODY = {
   w: 24,
@@ -204,8 +205,26 @@ export function createPlayerInstance(overrides = {}) {
         reloadTime: 2.8,
         isReloading: false,
         reloadTimer: 0
+      },
+      GLOCK: {
+        magSize: 17,
+        currentAmmo: 17,
+        reserveAmmo: 68,
+        reloadDuration: 84,
+        reloadTime: 1.4,
+        isReloading: false,
+        reloadTimer: 0
       }
     },
+    loadout: overrides.loadout || (overrides.isBot ? {
+      pocket1: { slots: [overrides.currentWeapon?.id || 'AK47'], activeSlotIndex: 0 },
+      pocket2: { throwables: ['GRENADE'], activeThrowableIndex: 0 },
+      previousSlotIndex: 0
+    } : (typeof getStoredLoadout === 'function' ? getStoredLoadout() : {
+      pocket1: { slots: ['AK47', 'GLOCK', 'SNIPER'], activeSlotIndex: 0 },
+      pocket2: { throwables: ['GRENADE'], activeThrowableIndex: 0 },
+      previousSlotIndex: 1
+    })),
     get currentAmmo() {
       const wepId = this.currentWeapon?.id || 'AK47';
       return this.ammo?.[wepId]?.currentAmmo ?? 0;

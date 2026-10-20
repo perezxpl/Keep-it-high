@@ -108,6 +108,10 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 34);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+  } else if (weapon.id === 'GLOCK') {
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 20);
+    shooter.weaponKickback = weapon.kickbackDistance;
+    shooter.muzzleRise = Math.min(0.18, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   } else {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -145,7 +149,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
       // Wyrzut łuski z zamka broni przy strzale
       const hold = getWeaponHoldTransform(shooter);
-      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : 10));
+      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
       const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (hold.charFacing || 1);
       const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
       const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
@@ -224,11 +228,11 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
   if (shooter && overrideX === undefined) {
     const hold = getWeaponHoldTransform(shooter);
-    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : 10));
+    const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
     breechX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
     breechY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
   } else {
-    const backDist = (weapon.id === 'SHOTGUN' ? 18 : (weapon.id === 'SNIPER' ? 26 : 22));
+    const backDist = (weapon.id === 'SHOTGUN' ? 18 : (weapon.id === 'SNIPER' ? 26 : (weapon.id === 'GLOCK' ? 7 : 22)));
     breechX = muzzleX - Math.cos(theta) * backDist;
     breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
   }
@@ -297,12 +301,12 @@ export function updateWeaponState(p) {
       p.reloadProgress = u;
 
       // Obsługa wyrzutu pustego magazynka (Fizyczna cząsteczka spadająca na ziemię)
-      if (u >= 0.24 && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER')) {
+      if (u >= 0.24 && !ammo._magEjected && (curWepId === 'AK47' || curWepId === 'SNIPER' || curWepId === 'GLOCK')) {
         ammo._magEjected = true;
         const hold = getWeaponHoldTransform(p);
         const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
-        const magDist = curWepId === 'SNIPER' ? 7.0 : 6.5;
-        const magYOffset = curWepId === 'SNIPER' ? 5.5 : 5.0;
+        const magDist = curWepId === 'SNIPER' ? 7.0 : (curWepId === 'GLOCK' ? 1.0 : 6.5);
+        const magYOffset = curWepId === 'SNIPER' ? 5.5 : (curWepId === 'GLOCK' ? 6.0 : 5.0);
         const mX = hold.pivotX + (Math.cos(hold.angle) * magDist - Math.sin(hold.angle) * magYOffset) * charFacing;
         const mY = hold.pivotY + (Math.sin(hold.angle) * magDist + Math.cos(hold.angle) * magYOffset);
         spawnDroppedMagazine(mX, mY, curWepId, charFacing, p.vx || 0, p.vy || 0);

@@ -460,6 +460,111 @@ export function drawHeldWeapon(ctx, p) {
     if (p.muzzleFlashTimer > 0) {
       drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
     }
+  } else if (weapon.id === 'GLOCK') {
+    // -------------------------------------------------------------
+    // GLOCK 17 TACTICAL HANDGUN RENDERER
+    // -------------------------------------------------------------
+    const glockSlideOffset = hold.boltOffset || 0;
+    const isSlideBack = (p.muzzleFlashTimer > 0) ? -2.2 : glockSlideOffset;
+
+    // 1. Polimerowy szkielet (Polymer Frame - ergonomiczny chwyt 22 deg i kabłąk spustowy)
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.moveTo(1.2, 0.5);
+    ctx.lineTo(-2.2, 7.2);
+    ctx.lineTo(1.8, 7.5);
+    ctx.lineTo(4.2, 1.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Żebrowanie chwytu / faktura antypoślizgowa (RTF)
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-0.2, 2.5); ctx.lineTo(2.8, 2.8);
+    ctx.moveTo(-1.0, 4.5); ctx.lineTo(2.2, 4.8);
+    ctx.moveTo(-1.8, 6.2); ctx.lineTo(1.5, 6.5);
+    ctx.stroke();
+
+    // Kabłąk spustu (Trigger guard)
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(3.5, 1.2);
+    ctx.lineTo(3.5, 3.8);
+    ctx.lineTo(1.0, 3.8);
+    ctx.stroke();
+
+    // Język spustowy Safe-Action
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(2.4, 2.0);
+    ctx.lineTo(1.8, 3.2);
+    ctx.stroke();
+
+    // Szyna akcesoryjna pod lufą
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(4.0, -0.6, 7.0, 2.2);
+
+    // 2. Magazynek 9mm
+    if (hold.isMagInGun !== false) {
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-2.2, 7.0, 3.8, 1.2);
+    }
+
+    if (hold.heldMag && hold.heldMag.type === 'GLOCK') {
+      ctx.save();
+      ctx.translate(hold.heldMag.x, hold.heldMag.y);
+      ctx.rotate(hold.heldMag.angle);
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-1.8, -4.0, 3.5, 7.5);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-1.0, -5.2, 2.2, 1.4);
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-2.2, 3.2, 4.2, 1.2);
+      ctx.restore();
+    }
+
+    // 3. Stalowa lufa wewnętrzna widoczna przy cofnięciu zamka
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(8.5, -2.0, 4.5, 1.8);
+
+    // 4. Zamek stalowy (Tenifer Slide) z ruchem blowbacku
+    ctx.save();
+    ctx.translate(isSlideBack, 0);
+
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(-2.0, -3.2, 14.5, 3.0);
+    ctx.fillStyle = '#3f3f46';
+    ctx.fillRect(-2.0, -3.2, 14.5, 0.8);
+
+    // Żłobienia w tylnej części zamka
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(-1.0, -3.0, 0.8, 2.4);
+    ctx.fillRect(0.6, -3.0, 0.8, 2.4);
+    ctx.fillRect(2.2, -3.0, 0.8, 2.4);
+
+    // Okno wyrzutnika łusek
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(4.5, -3.0, 3.2, 1.6);
+    ctx.fillStyle = '#52525b';
+    ctx.fillRect(7.2, -2.6, 0.8, 1.0);
+
+    // Przyrządy celownicze z białymi kropkami (Glock night sights)
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(-1.8, -4.2, 1.2, 1.2);
+    ctx.fillRect(11.0, -4.2, 1.2, 1.2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-1.5, -3.8, 0.6, 0.6);
+    ctx.fillRect(11.3, -3.8, 0.6, 0.6);
+
+    ctx.restore();
+
+    // 5. Błysk wylotowy
+    if (p.muzzleFlashTimer > 0) {
+      drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+    }
   }
 
   ctx.restore();

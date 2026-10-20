@@ -42,6 +42,7 @@ import {
 } from '../killstreaks/index.js';
 import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
+import { equipPocket1Slot, cyclePocket1, quickSwitchPocket1 } from '../loadout/index.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -326,7 +327,7 @@ export function initKeyboardMouseHandlers({
       const isGameKey = (
         e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' ||
         e.code === 'KeyC' || e.code === 'KeyR' || e.code === 'KeyG' || e.code === 'KeyE' ||
-        e.code === 'KeyB' || e.code === 'KeyZ' ||
+        e.code === 'KeyQ' || e.code === 'KeyB' || e.code === 'KeyZ' ||
         e.code === 'Space' ||
         (typeof e.code === 'string' && (e.code.startsWith('Arrow') || e.code.startsWith('Digit') || e.code.startsWith('Numpad')))
       );
@@ -436,6 +437,11 @@ export function initKeyboardMouseHandlers({
         reloadWeapon(player, player.currentWeapon);
       }
     }
+    if (e.code === 'KeyQ') {
+      if ((GAME_STATE.current === 'PLAYING' || GAME_STATE.current === GAME_STATES.PLAYING) && !player.isDead) {
+        quickSwitchPocket1(player);
+      }
+    }
     if (e.code === 'KeyG') {
       if ((GAME_STATE.current === 'PLAYING' || GAME_STATE.current === GAME_STATES.PLAYING) && !player.isDead) {
         if (!e.repeat) {
@@ -448,26 +454,11 @@ export function initKeyboardMouseHandlers({
     }
 
     if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
-      if (player.currentWeapon?.id === 'AK47' && !player.isHolstered) {
-        player.isHolstered = true;
-      } else {
-        player.currentWeapon = WEAPONS.AK47;
-        player.isHolstered = false;
-      }
+      equipPocket1Slot(player, 0);
     } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
-      if (player.currentWeapon?.id === 'SHOTGUN' && !player.isHolstered) {
-        player.isHolstered = true;
-      } else {
-        player.currentWeapon = WEAPONS.SHOTGUN;
-        player.isHolstered = false;
-      }
+      equipPocket1Slot(player, 1);
     } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '3') {
-      if (player.currentWeapon?.id === 'SNIPER' && !player.isHolstered) {
-        player.isHolstered = true;
-      } else {
-        player.currentWeapon = WEAPONS.SNIPER;
-        player.isHolstered = false;
-      }
+      equipPocket1Slot(player, 2);
     } else if (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4' || e.code === 'KeyK') {
       const activated = activateNextAvailableStreak();
       if (!activated && (e.code === 'Digit4' || e.code === 'Numpad4' || e.key === '4')) {
@@ -530,6 +521,10 @@ export function initKeyboardMouseHandlers({
       e.preventDefault();
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       killstreakState.mortarCameraX = (killstreakState.mortarCameraX || (player?.x || 600)) + delta * 1.5;
+    } else if (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === GAME_STATES.PLAYING) {
+      if (Math.abs(e.deltaY) > 5) {
+        cyclePocket1(player, e.deltaY > 0 ? 1 : -1);
+      }
     }
   }, { passive: false });
 
@@ -841,8 +836,13 @@ export function initKeyboardMouseHandlers({
             player.isHolstered = false;
           }
         } else {
-          player.currentWeapon = WEAPONS[btn.id];
-          player.isHolstered = false;
+          const slotIdx = player.loadout?.pocket1?.slots?.indexOf(btn.id);
+          if (typeof slotIdx === 'number' && slotIdx >= 0) {
+            equipPocket1Slot(player, slotIdx);
+          } else {
+            player.currentWeapon = WEAPONS[btn.id] || WEAPONS.AK47;
+            player.isHolstered = false;
+          }
         }
         return;
       }
@@ -897,10 +897,15 @@ export function initKeyboardMouseHandlers({
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
           } else {
-            const curId = player.currentWeapon?.id || 'AK47';
-            if (curId === 'AK47') player.currentWeapon = WEAPONS.SHOTGUN;
-            else if (curId === 'SHOTGUN') player.currentWeapon = WEAPONS.SNIPER;
-            else player.currentWeapon = WEAPONS.AK47;
+            if (player.loadout) {
+              cyclePocket1(player, 1);
+            } else {
+              const curId = player.currentWeapon?.id || 'AK47';
+              if (curId === 'AK47') player.currentWeapon = WEAPONS.GLOCK || WEAPONS.SHOTGUN;
+              else if (curId === 'GLOCK') player.currentWeapon = WEAPONS.SHOTGUN;
+              else if (curId === 'SHOTGUN') player.currentWeapon = WEAPONS.SNIPER;
+              else player.currentWeapon = WEAPONS.AK47;
+            }
           }
         }
       }

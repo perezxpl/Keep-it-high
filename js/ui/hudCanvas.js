@@ -491,6 +491,17 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.scale(0.92, 0.92);
     drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
     ctx.restore();
+    if (player.loadout?.pocket1?.slots) {
+      const activeIdx = (player.loadout.pocket1.activeSlotIndex || 0) + 1;
+      const totalSlots = player.loadout.pocket1.slots.length;
+      ctx.save();
+      ctx.font = 'bold 8px Rajdhani, monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${activeIdx}/${totalSlots}`, pFirearm.x + pFirearm.r - 3, pFirearm.y - pFirearm.r + 9);
+      ctx.restore();
+    }
   }
 
   // 3B. KIESZEŃ NA BROŃ MIOTANĄ (GRANAT) – PO ŚRODKU
@@ -832,6 +843,23 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     ctx.fillRect(3, -1.2, 11, 1.8);
     // Masywny hamulec wylotowy
     ctx.fillRect(14, -2.2, 3, 3.8);
+  } else if (type === 'GLOCK') {
+    // 1. Zamek pistoletu Tenifer (Slide)
+    ctx.fillRect(-6, -2.8, 13, 3.2);
+    // Przyrządy celownicze (Muszka i szczerbinka)
+    ctx.fillRect(-5.5, -3.8, 1.4, 1.2);
+    ctx.fillRect(5.5, -3.8, 1.2, 1.2);
+    // 2. Chwyt polimerowy z kątem 22 stopni
+    ctx.beginPath();
+    ctx.moveTo(-1.2, 0.4);
+    ctx.lineTo(-4.2, 6.2);
+    ctx.lineTo(-0.8, 6.5);
+    ctx.lineTo(2.0, 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // 3. Kabłąk spustu
+    ctx.fillRect(0.4, 0.8, 3.2, 0.9);
+    ctx.fillRect(3.2, 0.8, 0.8, 2.2);
   } else if (type === 'GRENADE') {
     // Korpus granatu odłamkowego
     ctx.beginPath();
@@ -1528,24 +1556,32 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     const panelX = 14;
     const panelY = H - slotSize - 14;
 
+    const slot0Id = player.loadout?.pocket1?.slots?.[0] || 'AK47';
+    const slot1Id = player.loadout?.pocket1?.slots?.[1] || 'GLOCK';
+    const slot2Id = player.loadout?.pocket1?.slots?.[2] || 'SNIPER';
+    const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
+
     weaponButtons[0].x = panelX;
     weaponButtons[0].y = panelY;
     weaponButtons[0].w = slotSize;
     weaponButtons[0].h = slotSize;
-    weaponButtons[0].id = 'AK47';
+    weaponButtons[0].id = slot0Id;
+    weaponButtons[0].key = '1';
 
     weaponButtons[1].x = panelX + slotSize + slotGap;
     weaponButtons[1].y = panelY;
     weaponButtons[1].w = slotSize;
     weaponButtons[1].h = slotSize;
-    weaponButtons[1].id = 'SHOTGUN';
+    weaponButtons[1].id = slot1Id;
+    weaponButtons[1].key = '2';
 
     if (weaponButtons[2]) {
       weaponButtons[2].x = panelX + (slotSize + slotGap) * 2;
       weaponButtons[2].y = panelY;
       weaponButtons[2].w = slotSize;
       weaponButtons[2].h = slotSize;
-      weaponButtons[2].id = 'SNIPER';
+      weaponButtons[2].id = slot2Id;
+      weaponButtons[2].key = '3';
     }
 
     if (weaponButtons[3]) {
@@ -1553,7 +1589,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       weaponButtons[3].y = panelY;
       weaponButtons[3].w = slotSize;
       weaponButtons[3].h = slotSize;
-      weaponButtons[3].id = 'GRENADE';
+      weaponButtons[3].id = throwId;
+      weaponButtons[3].key = '4';
     }
 
     for (const btn of weaponButtons) {

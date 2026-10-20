@@ -165,6 +165,12 @@ export const WEAPON_CONFIG = {
     currentAmmo: 5,
     reserveAmmo: 25,
     reloadTime: 2.8 // ok. 2.8s (~168 klatek przy 60 FPS)
+  },
+  GLOCK: {
+    magSize: 17,
+    currentAmmo: 17,
+    reserveAmmo: 68,
+    reloadTime: 1.4 // ok. 1.4s (~84 klatki przy 60 FPS)
   }
 };
 

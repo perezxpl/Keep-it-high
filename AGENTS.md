@@ -50,11 +50,16 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/classes/striker.js` — Klasa 2: Striker (Szturmowiec / Strzelec, buty odrzutowe Rocket Boots, super dashe w powietrzu za 50% paliwa, dopalacz naziemny z podwójnego wychylenia).
 - `js/classes/enforcer.js` — Klasa 3: Enforcer (Kolos / Czołg, potężna masa, wstrząsy ziemi, taran).
 
-### Uzbrojenie i Pociski (`js/weapons/`)
-- `js/weapons/definitions.js` — parametry i statystyki broni (`WEAPONS`: AK-47, Shotgun, Sniper).
-- `js/weapons/bullets.js` — wystrzeliwanie (`shootWeapon`), balistyka pocisków (`updateBullets`), kolizje pocisków i przeładowanie (`reloadWeapon`).
-- `js/weapons/renderer.js` — rysowanie modeli broni, celownika laserowego (`drawSniperLaserSight`), łusek i smug.
+### Uzbrojenie i Pociski (`js/weapons/`, `js/weapons.js`)
+- `js/weapons/transform.js` — katalog uzbrojenia (`WEAPONS`: AK-47, Shotgun SPAS-12, Barrett .50 Sniper, Glock 17), procedury chwytu 2D (IK rąk), balistyka i mechanika odrzutu.
+- `js/weapons/renderer.js` — procedury renderowania modeli broni (AK-47, Shotgun, Sniper, Glock 17 z ruchomym zamkiem blowbacku), celownika laserowego, łusek i smug.
+- `js/weapons.js` — wystrzeliwanie (`shootWeapon`), pętla balistyki pocisków (`updateBullets`), kolizje z przeszkodami i postaciami oraz przeładowanie (`reloadWeapon`).
 - `js/projectiles.js` — granaty taktyczne, eksplozje i trajektorie rzutów.
+
+### Ekwipunek i Zestawy Bojowe (`js/loadout/`)
+- `js/loadout/state.js` — konfiguracja slotów i kieszeni (`DEFAULT_LOADOUT`, `STORAGE_KEY_LOADOUT`, `getDefaultLoadout`, `getStoredLoadout`, `saveStoredLoadout`, `initPlayerLoadout`).
+- `js/loadout/logic.js` — mechanika doboru i szybkiego przełączania broni (`equipPocket1Slot`, `cyclePocket1`, `quickSwitchPocket1`, `cyclePocket2`).
+- `js/loadout/index.js` — główny punkt wejścia i eksport modułu ekwipunku.
 
 ### Areny (`js/arenas/`)
 - `js/arenas/index.js` — rejestr i przełączanie aren (`getActiveArena`).

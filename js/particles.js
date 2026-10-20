@@ -43,6 +43,17 @@ export const CASING_CONFIGS = {
     bounces: 3,
     type: 'SNIPER'
   },
+  GLOCK: {
+    width: 3.2,
+    height: 1.8,
+    color: '#FACC15',
+    rimColor: null,
+    hasRim: false,
+    speedMin: 160,
+    speedMax: 240,
+    bounces: 3,
+    type: 'GLOCK'
+  },
   DEFAULT: {
     width: 4,
     height: 2,
@@ -242,8 +253,9 @@ export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstacle
 export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
   const normType = String(weaponType || 'AK47').toUpperCase();
   const cfg = CASING_CONFIGS[normType] ||
+    (normType.includes('GLOCK') ? CASING_CONFIGS.GLOCK :
     (normType.includes('SHOTGUN') ? CASING_CONFIGS.SHOTGUN :
-    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47));
+    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47)));
 
   // Kąt wyrzutu: w tył i do góry względem kierunku celowania (aimAngle + Math.PI + losowy rozrzut +/- 0.3 rad)
   const upwardTilt = (facing >= 0 ? 0.42 : -0.42);
@@ -303,6 +315,7 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
 export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
   const normType = String(weaponType || 'AK47').toUpperCase();
   const isSniper = normType.includes('SNIPER');
+  const isGlock = normType.includes('GLOCK');
 
   const vx = inheritVx * 0.35 + (facing * (-24 - Math.random() * 25));
   const vy = inheritVy * 0.35 + (20 + Math.random() * 25);
@@ -313,15 +326,15 @@ export function spawnDroppedMagazine(x, y, weaponType = 'AK47', facing = 1, inhe
     y,
     vx,
     vy,
-    angle: isSniper ? 0.15 : 0.45,
+    angle: isSniper ? 0.15 : (isGlock ? 0.25 : 0.45),
     vRot,
-    width: isSniper ? 6 : 7,
-    height: isSniper ? 9 : 11,
-    color: '#334155',
+    width: isGlock ? 4.5 : (isSniper ? 6 : 7),
+    height: isGlock ? 7.5 : (isSniper ? 9 : 11),
+    color: isGlock ? '#18181b' : '#334155',
     maxBounces: 2,
     life: 5.5,
     alpha: 1.0,
-    type: isSniper ? 'SNIPER' : 'AK47',
+    type: isGlock ? 'GLOCK' : (isSniper ? 'SNIPER' : 'AK47'),
     groundTimer: 4.5
   });
   casing.isMagazine = true;

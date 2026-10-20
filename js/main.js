@@ -40,6 +40,7 @@ import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
+import { initPlayerLoadout } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -438,6 +439,7 @@ initTouchControlsDevUI();
 initModularGearDevUI();
 initNetwork();
 initKillstreaks();
+initPlayerLoadout(player);
 
 initAllInputHandlers({
   GAME_STATE,

@@ -965,6 +965,13 @@ export function drawGore(ctx) {
       ctx.fillRect(4, 2, 4, 5);
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(12, -1, 10, 2);
+    } else if (dw.weapon && dw.weapon.id === 'GLOCK') {
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-2, 0, 3.5, 5.5);
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(-4, -2.5, 11, 2.8);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(7, -1.8, 2, 1.6);
     } else if (dw.weapon) {
       ctx.fillStyle = '#3f2712';
       ctx.fillRect(-7, -1.5, 6, 3.5);
