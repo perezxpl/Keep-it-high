@@ -89,55 +89,88 @@ export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) 
 /**
  * Rysuje uzbrojony granat w dłoni rzucającej (z pulsującą diodą zapalnika i łyżką)
  */
+const GRENADE_SPRITE_PATH = './assets/weapons/grenade.png?v=v257_m67_grenade_gameplay_sprite';
+let _handheldGrenadeSprite = null;
+
+function getHandheldGrenadeSprite() {
+  if (_handheldGrenadeSprite) return _handheldGrenadeSprite;
+  if (typeof Image === 'undefined') return null;
+  _handheldGrenadeSprite = new Image();
+  _handheldGrenadeSprite.src = GRENADE_SPRITE_PATH;
+  return _handheldGrenadeSprite;
+}
+
+if (typeof window !== 'undefined') {
+  getHandheldGrenadeSprite();
+}
+
 export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
 
-  // Korpus granatu – fasetowany, ciemno-stalowy aero-kanister
-  const gGrad = ctx.createLinearGradient(-3.5, -4, 3.5, 4);
-  gGrad.addColorStop(0.0, '#334155');
-  gGrad.addColorStop(0.4, '#1e293b');
-  gGrad.addColorStop(1.0, '#0f172a');
+  const img = getHandheldGrenadeSprite();
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Skalowanie fotorealistycznego granatu M67 w dłoni postaci
+    const s = 0.016;
+    ctx.save();
+    ctx.scale(s, s);
+    ctx.drawImage(img, -333, -520);
+    ctx.restore();
 
-  ctx.fillStyle = gGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 3.6, 4.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#090d16';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
+    // Pulsująca dioda LED uzbrojonego zapalnika (Pulsing Armed LED)
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
+    ctx.fillStyle = 
+gba(239, 68, 68, );
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6 * pulse;
+    ctx.beginPath();
+    ctx.arc(0, -7.5, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  } else {
+    // Korpus granatu – fasetowany, ciemno-stalowy aero-kanister (fallback)
+    const gGrad = ctx.createLinearGradient(-3.5, -4, 3.5, 4);
+    gGrad.addColorStop(0.0, '#334155');
+    gGrad.addColorStop(0.4, '#1e293b');
+    gGrad.addColorStop(1.0, '#0f172a');
 
-  // Żebrowania segmentów odłamkowych
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.lineWidth = 0.6;
-  ctx.beginPath();
-  ctx.moveTo(-3.0, -1.6); ctx.lineTo(3.0, -1.6);
-  ctx.moveTo(-3.4, 0);    ctx.lineTo(3.4, 0);
-  ctx.moveTo(-3.0, 1.6);  ctx.lineTo(3.0, 1.6);
-  ctx.stroke();
+    ctx.fillStyle = gGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 3.6, 4.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#090d16';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
 
-  // Zespół zapalnika (fuse assembly)
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(-1.4, -5.8, 2.8, 1.8);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-3.0, -1.6); ctx.lineTo(3.0, -1.6);
+    ctx.moveTo(-3.4, 0);    ctx.lineTo(3.4, 0);
+    ctx.moveTo(-3.0, 1.6);  ctx.lineTo(3.0, 1.6);
+    ctx.stroke();
 
-  // Odgięta łyżka bezpiecznika (safety lever)
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 0.9;
-  ctx.beginPath();
-  ctx.moveTo(1.0, -5.6);
-  ctx.quadraticCurveTo(3.2, -4.2, 2.6, -1.0);
-  ctx.stroke();
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-1.4, -5.8, 2.8, 1.8);
 
-  // Pulsująca dioda LED uzbrojonego zapalnika (Pulsing Armed LED)
-  const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
-  ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
-  ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 6 * pulse;
-  ctx.beginPath();
-  ctx.arc(0, -1.0, 1.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(1.0, -5.6);
+    ctx.quadraticCurveTo(3.2, -4.2, 2.6, -1.0);
+    ctx.stroke();
+
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
+    ctx.fillStyle = 
+gba(239, 68, 68, );
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6 * pulse;
+    ctx.beginPath();
+    ctx.arc(0, -1.0, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
 
   ctx.restore();
 }

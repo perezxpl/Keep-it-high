@@ -33,6 +33,21 @@ import {
   clearExplosionParticles
 } from './particles.js';
 
+const GRENADE_SPRITE_PATH = './assets/weapons/grenade.png?v=v257_m67_grenade_gameplay_sprite';
+let _grenadeSprite = null;
+
+function getGrenadeSprite() {
+  if (_grenadeSprite) return _grenadeSprite;
+  if (typeof Image === 'undefined') return null;
+  _grenadeSprite = new Image();
+  _grenadeSprite.src = GRENADE_SPRITE_PATH;
+  return _grenadeSprite;
+}
+
+if (typeof window !== 'undefined') {
+  getGrenadeSprite();
+}
+
 export const activeProjectiles = [];
 export const rubbleParticles = [];
 export const explosionEffects = [];
@@ -364,42 +379,61 @@ export class AeroSuperGrenade {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
 
-    // Korpuc granatu – taktyczny wojskowy aero-kanister
-    ctx.fillStyle = '#2d3748';
-    ctx.strokeStyle = '#4a5568';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(-6, -9, 12, 18, 4);
-    else ctx.rect(-6, -9, 12, 18);
-    ctx.fill();
-    ctx.stroke();
+    const img = getGrenadeSprite();
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Skalowanie fotorealistycznego modelu M67 HE do promienia fizyki (radius = 8)
+      const s = 0.0212;
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.drawImage(img, -333, -520);
+      ctx.restore();
 
-    // Pierścień ozdobny Aero (Oliwka / Neon Lime)
-    ctx.fillStyle = '#65a30d';
-    ctx.fillRect(-6, -2, 12, 4);
+      // Pulsująca czerwona dioda zapalnika – spokojne tykanie, przyspieszające pod koniec
+      const progress = Math.max(0, Math.min(1, (this.maxFuse - this.fuse) / this.maxFuse));
+      const blinkSpeed = 0.08 + Math.pow(progress, 2.5) * 0.70;
+      const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
 
-    // Zapalnik i łyżka
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(-2, -12, 4, 3);
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(2, -11);
-    ctx.lineTo(6, -6);
-    ctx.lineTo(6, 4);
-    ctx.stroke();
+      ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
+      ctx.beginPath();
+      ctx.arc(0, -9.5, 2.0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Korpuc granatu – taktyczny wojskowy aero-kanister (fallback proceduralny)
+      ctx.fillStyle = '#2d3748';
+      ctx.strokeStyle = '#4a5568';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-6, -9, 12, 18, 4);
+      else ctx.rect(-6, -9, 12, 18);
+      ctx.fill();
+      ctx.stroke();
 
-    // Pulsująca czerwona dioda zapalnika – spokojne tykanie, przyspieszające pod koniec
-    const progress = Math.max(0, Math.min(1, (this.maxFuse - this.fuse) / this.maxFuse));
-    const blinkSpeed = 0.08 + Math.pow(progress, 2.5) * 0.70;
-    const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
+      ctx.fillStyle = '#65a30d';
+      ctx.fillRect(-6, -2, 12, 4);
 
-    ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
-    ctx.beginPath();
-    ctx.arc(0, -5, 2.2, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-2, -12, 4, 3);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(2, -11);
+      ctx.lineTo(6, -6);
+      ctx.lineTo(6, 4);
+      ctx.stroke();
+
+      const progress = Math.max(0, Math.min(1, (this.maxFuse - this.fuse) / this.maxFuse));
+      const blinkSpeed = 0.08 + Math.pow(progress, 2.5) * 0.70;
+      const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
+
+      ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
+      ctx.beginPath();
+      ctx.arc(0, -5, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
