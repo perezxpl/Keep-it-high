@@ -172,22 +172,25 @@ export function drawSniperLaserSight(ctx, playerObj) {
 // =========================================================================
 
 const WEAPON_PARTS_PATHS = {
-  AK47_BODY: './assets/weapons/ak47_body.png?v=v255_modular_secondary_weapons',
-  AK47_MAG: './assets/weapons/ak47_mag.png?v=v255_modular_secondary_weapons',
-  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v255_modular_secondary_weapons',
-  SHOTGUN_BODY: './assets/weapons/shotgun_body.png?v=v255_modular_secondary_weapons',
-  SHOTGUN_PUMP: './assets/weapons/shotgun_pump.png?v=v255_modular_secondary_weapons',
-  SHOTGUN_SHELL: './assets/weapons/shotgun_shell.png?v=v255_modular_secondary_weapons',
-  SNIPER_BODY: './assets/weapons/sniper_body.png?v=v255_modular_secondary_weapons',
-  SNIPER_MAG: './assets/weapons/sniper_mag.png?v=v255_modular_secondary_weapons',
-  SNIPER_BOLT: './assets/weapons/sniper_bolt.png?v=v255_modular_secondary_weapons',
-  GLOCK_FRAME: './assets/weapons/glock_frame.png?v=v255_modular_secondary_weapons',
-  GLOCK_SLIDE: './assets/weapons/glock_slide.png?v=v255_modular_secondary_weapons',
-  GLOCK_MAG: './assets/weapons/glock_mag.png?v=v255_modular_secondary_weapons',
-  REVOLVER_BODY: './assets/weapons/revolver_body.png?v=v255_modular_secondary_weapons',
-  REVOLVER_CYLINDER: './assets/weapons/revolver_cylinder.png?v=v255_modular_secondary_weapons',
-  SAWED_OFF_BODY: './assets/weapons/sawed_off_body.png?v=v255_modular_secondary_weapons',
-  SAWED_OFF_BARRELS: './assets/weapons/sawed_off_barrels.png?v=v255_modular_secondary_weapons'
+  AK47_BODY: './assets/weapons/ak47_body.png?v=v256_modular_melee_weapons',
+  AK47_MAG: './assets/weapons/ak47_mag.png?v=v256_modular_melee_weapons',
+  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v256_modular_melee_weapons',
+  SHOTGUN_BODY: './assets/weapons/shotgun_body.png?v=v256_modular_melee_weapons',
+  SHOTGUN_PUMP: './assets/weapons/shotgun_pump.png?v=v256_modular_melee_weapons',
+  SHOTGUN_SHELL: './assets/weapons/shotgun_shell.png?v=v256_modular_melee_weapons',
+  SNIPER_BODY: './assets/weapons/sniper_body.png?v=v256_modular_melee_weapons',
+  SNIPER_MAG: './assets/weapons/sniper_mag.png?v=v256_modular_melee_weapons',
+  SNIPER_BOLT: './assets/weapons/sniper_bolt.png?v=v256_modular_melee_weapons',
+  GLOCK_FRAME: './assets/weapons/glock_frame.png?v=v256_modular_melee_weapons',
+  GLOCK_SLIDE: './assets/weapons/glock_slide.png?v=v256_modular_melee_weapons',
+  GLOCK_MAG: './assets/weapons/glock_mag.png?v=v256_modular_melee_weapons',
+  REVOLVER_BODY: './assets/weapons/revolver_body.png?v=v256_modular_melee_weapons',
+  REVOLVER_CYLINDER: './assets/weapons/revolver_cylinder.png?v=v256_modular_melee_weapons',
+  SAWED_OFF_BODY: './assets/weapons/sawed_off_body.png?v=v256_modular_melee_weapons',
+  SAWED_OFF_BARRELS: './assets/weapons/sawed_off_barrels.png?v=v256_modular_melee_weapons',
+  KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
+  MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
+  AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
 };
 
 const _partSpriteCache = {};
@@ -906,82 +909,118 @@ export function drawHeldWeapon(ctx, p) {
     // -------------------------------------------------------------
     // M9 BAYONET COMBAT KNIFE RENDERER
     // -------------------------------------------------------------
-    // 1. Chwyt taktyczny kompozytowy (Olive/black ribbed handle)
-    ctx.fillStyle = '#1c1917';
-    ctx.fillRect(-4.0, -1.6, 5.0, 3.2);
-    ctx.fillStyle = '#292524';
-    ctx.fillRect(-3.0, -1.6, 1.0, 3.2);
-    ctx.fillRect(-1.5, -1.6, 1.0, 3.2);
+    const imgKnife = getWeaponPartSprite('KNIFE');
+    if (imgKnife && imgKnife.complete && imgKnife.naturalWidth > 0) {
+      const s = 24.7 / 1275;
+      const pivotSpriteX = 268.4;
+      const pivotSpriteY = 188.5;
 
-    // 2. Stalowa głowica chwytu (Steel pommel)
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(-5.2, -2.0, 1.2, 4.0);
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgKnife, 2, 2);
+      ctx.restore();
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#1c1917';
+      ctx.fillRect(-4.0, -1.6, 5.0, 3.2);
+      ctx.fillStyle = '#292524';
+      ctx.fillRect(-3.0, -1.6, 1.0, 3.2);
+      ctx.fillRect(-1.5, -1.6, 1.0, 3.2);
 
-    // 3. Stalowy jelec z pierścieniem bagnetu (Crossguard)
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(1.0, -4.0, 1.5, 8.0);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(-5.2, -2.0, 1.2, 4.0);
 
-    // 4. Ostrze bojowe M9 ze zbroczem i ząbkowaniem (Sawback Blade)
-    ctx.fillStyle = '#cbd5e1';
-    ctx.beginPath();
-    ctx.moveTo(2.5, -2.2);
-    ctx.lineTo(16.5, -2.2);
-    ctx.lineTo(19.5, 0.5);
-    ctx.lineTo(15.5, 2.2);
-    ctx.lineTo(2.5, 2.2);
-    ctx.closePath();
-    ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(1.0, -4.0, 1.5, 8.0);
 
-    // Zbrocze (Fuller groove)
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(4.5, -0.6, 9.0, 1.2);
-    // Ząbki na grzbiecie (Sawback teeth)
-    ctx.fillStyle = '#64748b';
-    for (let s = 4; s < 12; s += 2) {
-      ctx.fillRect(s, -3.0, 1.0, 0.9);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(2.5, -2.2);
+      ctx.lineTo(16.5, -2.2);
+      ctx.lineTo(19.5, 0.5);
+      ctx.lineTo(15.5, 2.2);
+      ctx.lineTo(2.5, 2.2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(4.5, -0.6, 9.0, 1.2);
+      ctx.fillStyle = '#64748b';
+      for (let s = 4; s < 12; s += 2) {
+        ctx.fillRect(s, -3.0, 1.0, 0.9);
+      }
     }
   } else if (weapon.id === 'MACHETE') {
     // -------------------------------------------------------------
     // TACTICAL KUKRI MACHETE RENDERER
     // -------------------------------------------------------------
-    ctx.fillStyle = '#451a03';
-    ctx.fillRect(-5.0, -1.5, 6.0, 3.0);
-    ctx.fillStyle = '#78350f';
-    ctx.fillRect(-6.0, -2.2, 1.2, 4.4);
+    const imgMachete = getWeaponPartSprite('MACHETE');
+    if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
+      const s = 28.0 / 1242;
+      const pivotSpriteX = 266.0;
+      const pivotSpriteY = 100.0;
 
-    ctx.fillStyle = '#e2e8f0';
-    ctx.beginPath();
-    ctx.moveTo(1.0, -1.8);
-    ctx.lineTo(12.0, -3.5);
-    ctx.lineTo(22.0, 1.0);
-    ctx.lineTo(16.0, 4.5);
-    ctx.lineTo(6.0, 2.2);
-    ctx.lineTo(1.0, 1.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(3.0, -0.4, 11.0, 1.0);
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgMachete, 2, 2);
+      ctx.restore();
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(-5.0, -1.5, 6.0, 3.0);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-6.0, -2.2, 1.2, 4.4);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.moveTo(1.0, -1.8);
+      ctx.lineTo(12.0, -3.5);
+      ctx.lineTo(22.0, 1.0);
+      ctx.lineTo(16.0, 4.5);
+      ctx.lineTo(6.0, 2.2);
+      ctx.lineTo(1.0, 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(3.0, -0.4, 11.0, 1.0);
+    }
   } else if (weapon.id === 'AXE') {
     // -------------------------------------------------------------
     // TACTICAL TOMAHAWK AXE RENDERER
     // -------------------------------------------------------------
-    ctx.fillStyle = '#27272a';
-    ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath();
-    ctx.moveTo(11.0, -7.0);
-    ctx.lineTo(15.5, -5.5);
-    ctx.lineTo(14.0, 6.5);
-    ctx.lineTo(9.5, 5.0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.moveTo(10.0, -1.5);
-    ctx.lineTo(5.5, -1.0);
-    ctx.lineTo(10.0, 0.5);
-    ctx.closePath();
-    ctx.fill();
+    const imgAxe = getWeaponPartSprite('AXE');
+    if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
+      const s = 19.5 / 1115;
+      const pivotSpriteX = 228.7;
+      const pivotSpriteY = 206.0;
+
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgAxe, 2, 2);
+      ctx.restore();
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(11.0, -7.0);
+      ctx.lineTo(15.5, -5.5);
+      ctx.lineTo(14.0, 6.5);
+      ctx.lineTo(9.5, 5.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.moveTo(10.0, -1.5);
+      ctx.lineTo(5.5, -1.0);
+      ctx.lineTo(10.0, 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   ctx.restore();
