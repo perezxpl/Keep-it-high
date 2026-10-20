@@ -97,6 +97,8 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
 
   const targetPointSets = [];
   if (expX - carveR <= 1200) targetPointSets.push(GROUND_LEFT_POINTS);
+  if (expX + carveR >= 1150 && expX - carveR <= 1800) targetPointSets.push(LEFT_OVAL_POINTS);
+  if (expX + carveR >= 2600 && expX - carveR <= 3250) targetPointSets.push(RIGHT_OVAL_POINTS);
   if (expX + carveR >= 3200) targetPointSets.push(GROUND_RIGHT_POINTS);
 
   for (const pts of targetPointSets) {
@@ -147,21 +149,21 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
 }
 
 export const LEFT_OVAL_POINTS = [
-  { x: 1150, y: 1200 },
-  { x: 1300, y: 1225 },
-  { x: 1450, y: 1260 },
-  { x: 1580, y: 1295 },
-  { x: 1680, y: 1320 },
-  { x: 1750, y: 1335 }
+  { x: 1150, y: 1200, origY: 1200 },
+  { x: 1300, y: 1225, origY: 1225 },
+  { x: 1450, y: 1260, origY: 1260 },
+  { x: 1580, y: 1295, origY: 1295 },
+  { x: 1680, y: 1320, origY: 1320 },
+  { x: 1750, y: 1335, origY: 1335 }
 ];
 
 export const RIGHT_OVAL_POINTS = [
-  { x: 2650, y: 1335 },
-  { x: 2720, y: 1320 },
-  { x: 2820, y: 1295 },
-  { x: 2950, y: 1260 },
-  { x: 3100, y: 1225 },
-  { x: 3250, y: 1200 }
+  { x: 2650, y: 1335, origY: 1335 },
+  { x: 2720, y: 1320, origY: 1320 },
+  { x: 2820, y: 1295, origY: 1295 },
+  { x: 2950, y: 1260, origY: 1260 },
+  { x: 3100, y: 1225, origY: 1225 },
+  { x: 3250, y: 1200, origY: 1200 }
 ];
 
 export function getRiverbankGroundY(x) {
@@ -1042,6 +1044,12 @@ export function resetArena3() {
   for (let i = 0; i < GROUND_RIGHT_POINTS.length; i++) {
     GROUND_RIGHT_POINTS[i].y = GROUND_RIGHT_POINTS[i].origY;
   }
+  for (let i = 0; i < LEFT_OVAL_POINTS.length; i++) {
+    LEFT_OVAL_POINTS[i].y = LEFT_OVAL_POINTS[i].origY;
+  }
+  for (let i = 0; i < RIGHT_OVAL_POINTS.length; i++) {
+    RIGHT_OVAL_POINTS[i].y = RIGHT_OVAL_POINTS[i].origY;
+  }
   if (LEFT_OVAL_POINTS.length > 0) {
     LEFT_OVAL_POINTS[0].y = 1200;
   }
@@ -1449,7 +1457,7 @@ export const ARENA_3_PLATFORMS = [
     x: 185,
     y: 624,
     w: 30,
-    h: 576,
+    h: 776,
     solid: true,
     isPlatform: false,
     isWall: true
@@ -1461,7 +1469,7 @@ export const ARENA_3_PLATFORMS = [
     x: 4185,
     y: 624,
     w: 30,
-    h: 576,
+    h: 776,
     solid: true,
     isPlatform: false,
     isWall: true

@@ -138,6 +138,14 @@ export function onArena3BulletHit(bullet) {
     }
   }
 
+  // 3B. Żelbetowe monolityczne bloki kotwiące odciągi mostu (X: 1140 oraz X: 3260)
+  for (const ax of [1140, 3260]) {
+    if (rayIntersectsAABB(bx0, by0, bx, by, ax - 28, 1154, ax + 28, 1400)) {
+      spawnStoneDebris(bx, by, (bullet.vx || 0) * 0.2, -1.5, 6);
+      return true;
+    }
+  }
+
   // 4. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS) - całe i zawalone
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
@@ -297,6 +305,15 @@ export function onArena3KickHit(player, kickBox) {
   const kickPower = (player.chargePower || 0) > 0 ? (1.0 + player.chargePower * 1.5) : 1.0;
   const kickDamage = 85 * kickPower;
   const dirX = player.facing || 1;
+
+  // 0. Spartan Kick w żelbetowe bloki kotwiące (X: 1140 oraz X: 3260)
+  for (const ax of [1140, 3260]) {
+    if (Math.abs(kx - ax) <= 35 && ky >= 1154 && ky <= 1400) {
+      spawnStoneDebris(kx, ky, dirX * 4, -2, 8);
+      if (typeof triggerScreenShake === 'function') triggerScreenShake(4);
+      return true;
+    }
+  }
 
   // 1. Spartan Kick w klocki ramp podejścia do mostu
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {

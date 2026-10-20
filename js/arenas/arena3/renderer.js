@@ -21,6 +21,8 @@ import {
   ARENA_3_PLATFORMS,
   GROUND_LEFT_POINTS,
   GROUND_RIGHT_POINTS,
+  LEFT_OVAL_POINTS,
+  RIGHT_OVAL_POINTS,
   GROUND_WATER_TABLE_Y,
   GROUND_BEDROCK_Y
 } from './state.js';
@@ -349,21 +351,19 @@ export function drawArena3Foreground(ctx, camera) {
   // -----------------------------------------------------------------------
   const leftOvalPoints = [
     ...GROUND_LEFT_POINTS,
-    { x: 1300, y: 1225 },
-    { x: 1450, y: 1260 },
-    { x: 1580, y: 1295 },
-    { x: 1680, y: 1320 },
-    { x: 1750, y: 1335 }
+    ...LEFT_OVAL_POINTS.slice(1)
   ];
 
   const rightOvalPoints = [
-    { x: 2650, y: 1335 },
-    { x: 2720, y: 1320 },
-    { x: 2820, y: 1295 },
-    { x: 2950, y: 1260 },
-    { x: 3100, y: 1225 },
+    ...RIGHT_OVAL_POINTS.slice(0, -1),
     ...GROUND_RIGHT_POINTS
   ];
+
+  const anchorLeftX = 1140;
+  const anchorRightX = 3260;
+  const pylonLeftX = 1755;
+  const pylonRightX = 2645;
+  const pylonTopY = 850;
 
   // -----------------------------------------------------------------------
   // 1. PODŁOŻE: BAZALTOWY KLIF NADRZECZNY I ZAROŚNIĘTE SKARPY (LEWY I PRAWY BRZEG)
@@ -539,23 +539,12 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  // A. Lewy brzeg - bazaltowy klif nadrzeczny (X: 0 do 1750)
-  if (camL < 1850 && camR > -50) {
-    drawBasaltRiverCliff(true, leftOvalPoints);
-  }
 
-  // B. Prawy brzeg - bazaltowy klif nadrzeczny (X: 2650 do 4400)
-  if (camL < 4450 && camR > 2600) {
-    drawBasaltRiverCliff(false, rightOvalPoints);
-  }
 
-  // -----------------------------------------------------------------------
-  // 2. STREFA WODY - RZEKA (X: 1600 do 2800, Y: 1300 do 1400)
-  // Falująca powierzchnia wody, głębia, odbicia
-  // -----------------------------------------------------------------------
-  if (camL < 2850 && camR > 1550) {
+  function drawRiverWaterZone() {
+    if (camL >= 2850 || camR <= 1550) return;
+
     // A. Wypełnienie toni wodnej (płycizny przy brzegach i mroczna, śmiertelna głębia w środku)
-    // Brzegi: przezroczysta woda rzeczna
     const shoreGrad = ctx.createLinearGradient(1600, 1300, 1600, 1400);
     shoreGrad.addColorStop(0.0, 'rgba(28, 120, 180, 0.70)');
     shoreGrad.addColorStop(0.5, 'rgba(16, 85, 145, 0.82)');
@@ -631,6 +620,75 @@ export function drawArena3Foreground(ctx, camera) {
   // 3. DREWNIANE WIEŻE NOŚNE (X: 185 oraz X: 4185)
   // Fortyfikacje w stylu militarnej dżungli z zniszczalnymi pilarami i podestami
   // -----------------------------------------------------------------------
+  function drawAnchorBlock(ax) {
+    if (ax + 50 < camL || ax - 50 > camR) return;
+    ctx.save();
+    // 1. Monolityczny żelbetonowy filar kotwiący wkopany w lity grunt (od Y: 1180 aż do spągu Y: 1400)
+    const blockTopY = 1180;
+    const blockBottomY = 1400;
+    const blockW = 56;
+    const blockLeft = ax - blockW / 2;
+    const blockH = blockBottomY - blockTopY;
+
+    // Żelbeton z szalunkiem i chłodnym grafitem
+    const aGrad = ctx.createLinearGradient(blockLeft, blockTopY, blockLeft + blockW, blockBottomY);
+    aGrad.addColorStop(0.0, '#4e5650');
+    aGrad.addColorStop(0.35, '#3a423d');
+    aGrad.addColorStop(0.70, '#262d28');
+    aGrad.addColorStop(1.0, '#151a16');
+    ctx.fillStyle = aGrad;
+    ctx.fillRect(blockLeft, blockTopY, blockW, blockH);
+    ctx.strokeStyle = '#0f1410';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(blockLeft, blockTopY, blockW, blockH);
+
+    // Poziome linie szalunku deskowania i nity ściągów
+    ctx.strokeStyle = 'rgba(15, 20, 16, 0.75)';
+    ctx.lineWidth = 1.6;
+    for (let sy = blockTopY + 24; sy < blockBottomY; sy += 26) {
+      ctx.beginPath();
+      ctx.moveTo(blockLeft + 2, sy);
+      ctx.lineTo(blockLeft + blockW - 2, sy);
+      ctx.stroke();
+
+      ctx.fillStyle = '#111612';
+      ctx.fillRect(blockLeft + 8, sy - 13, 4, 4);
+      ctx.fillRect(blockLeft + blockW - 12, sy - 13, 4, 4);
+    }
+
+    // Ścięta fazowana korona bloku (chamfer)
+    ctx.fillStyle = '#657067';
+    ctx.beginPath();
+    ctx.moveTo(blockLeft, blockTopY + 5);
+    ctx.lineTo(blockLeft + 5, blockTopY);
+    ctx.lineTo(blockLeft + blockW - 5, blockTopY);
+    ctx.lineTo(blockLeft + blockW, blockTopY + 5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Kute żelazne obejmy wzmacniające z nitami
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(blockLeft - 2, blockTopY + 14, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 52, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 104, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 156, blockW + 4, 10);
+
+    // Śruba rzymska (Turnbuckle) i stalowe ucho kotwiące
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(ax - 8, blockTopY - 26, 16, 26);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ax - 8, blockTopY - 26, 16, 26);
+
+    // Otwór ściągacza kabla
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(ax, blockTopY - 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   function drawTowerStructure(isLeft) {
     const sideKey = isLeft ? 'left' : 'right';
     const pillar = ARENA_3_TOWER_PILLARS[sideKey];
@@ -641,20 +699,34 @@ export function drawArena3Foreground(ctx, camera) {
     if (tx + tw + 160 < camL || tx - 160 > camR) return;
 
     ctx.save();
-    // A. Kamienna podstawa / cokół na gruncie (zawsze niezniszczalny)
-    const stoneGrad = ctx.createLinearGradient(tx - 15, ty + th - 60, tx + tw + 15, ty + th);
+    // A. Kamienno-betonowa podstawa i fundament w głąb gruntu (od Y: 1140 aż do Y: 1400)
+    const stoneTopY = ty + th - 60; // 1140
+    const stoneBottomY = 1400;
+    const stoneH = stoneBottomY - stoneTopY;
+    const stoneGrad = ctx.createLinearGradient(tx - 15, stoneTopY, tx + tw + 15, stoneBottomY);
     stoneGrad.addColorStop(0, '#3f4738');
-    stoneGrad.addColorStop(0.5, '#2b3325');
-    stoneGrad.addColorStop(1, '#1b2117');
+    stoneGrad.addColorStop(0.35, '#2b3325');
+    stoneGrad.addColorStop(0.70, '#1b2117');
+    stoneGrad.addColorStop(1.0, '#10140e');
     ctx.fillStyle = stoneGrad;
-    ctx.fillRect(tx - 12, ty + th - 60, tw + 24, 60);
+    ctx.fillRect(tx - 12, stoneTopY, tw + 24, stoneH);
     ctx.strokeStyle = '#12170f';
     ctx.lineWidth = 2;
-    ctx.strokeRect(tx - 12, ty + th - 60, tw + 24, 60);
+    ctx.strokeRect(tx - 12, stoneTopY, tw + 24, stoneH);
+
+    // Poziome ciosy kamienne i spoiny fundamentu
+    ctx.strokeStyle = 'rgba(10, 15, 10, 0.7)';
+    ctx.lineWidth = 1.6;
+    for (let by = stoneTopY + 28; by < stoneBottomY; by += 28) {
+      ctx.beginPath();
+      ctx.moveTo(tx - 12, by);
+      ctx.lineTo(tx + tw + 12, by);
+      ctx.stroke();
+    }
 
     // Mech na cokole
     ctx.fillStyle = '#4d8028';
-    ctx.fillRect(tx - 12, ty + th - 60, tw + 24, 6);
+    ctx.fillRect(tx - 12, stoneTopY, tw + 24, 6);
 
     if (pillar && pillar.intact) {
       // B. Główny pionowy drewniany słup (filar z bali tekowych)
@@ -810,8 +882,53 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
+
+
+  // =========================================================================
+  // WARSTWA 1: FUNDAMENTY, GŁĘBOKIE SŁUPY I KESONY ZANURZONE W ZIEMI I WODZIE
+  // Rysowane PRZED podłożem i wodą - przykrywane przez nienaruszony grunt i wodę,
+  // a odsłaniane w wybuchach po zniszczeniu ziemi (kratery) lub w toni rzeki!
+  // =========================================================================
+
+  // 1A. Monolityczne żelbetowe bloki kotwiące (X: 1140 oraz X: 3260)
+  drawAnchorBlock(anchorLeftX);
+  drawAnchorBlock(anchorRightX);
+
+  // 1B. Główne pionowe słupy i kamienne cokoły wież (X: 185 oraz X: 4185)
   drawTowerStructure(true);
   drawTowerStructure(false);
+
+  // 1C. Pylony mostu (wieże A-frame oraz masywne podwodne kesony fundamentowe)
+  drawBridgePylon('left');
+  drawBridgePylon('right');
+
+  // 1D. Drewniane pale nośne ramp podejściowych zakotwiczone w głąb gruntu
+  drawGentleApproachStilts(true);
+  drawGentleApproachStilts(false);
+
+  // =========================================================================
+  // WARSTWA 2: LITOBRAZALTOWE PODŁOŻE DŻUNGLI I ZAROŚNIĘTE SKARPY
+  // Przykrywa podziemne części fundamentów, słupów i kesonów.
+  // Gdy wybuch tworzy krater, odsłania ukryte w ziemi struktury!
+  // =========================================================================
+  if (camL < 1850 && camR > -50) {
+    drawBasaltRiverCliff(true, leftOvalPoints);
+  }
+  if (camL < 4450 && camR > 2600) {
+    drawBasaltRiverCliff(false, rightOvalPoints);
+  }
+
+  // =========================================================================
+  // WARSTWA 3: STREFA WODY - RZEKA I GŁĘBIA ŚMIERTELNA (X: 1600 do 2800)
+  // Przykrywa podwodne części kesonów, kamieni i głębi rzeki
+  // =========================================================================
+  drawRiverWaterZone();
+
+  // =========================================================================
+  // WARSTWA 4: POMOSTY, KŁADKI RAMP, GNIAZDA OBSERWACYJNE I LINY NOŚNE
+  // =========================================================================
+  drawGentleBridgeApproach(true);
+  drawGentleBridgeApproach(false);
 
   // -----------------------------------------------------------------------
   // 4. WOJSKOWE WIEŻE OBSERWACYJNE I GNIAZDA SNAJPERSKIE (X: 200 oraz X: 4200)
@@ -1136,9 +1253,6 @@ export function drawArena3Foreground(ctx, camera) {
   const bridgeX1 = 1750;
   const bridgeX2 = 2650;
   const bridgeY = 1000;
-  const pylonLeftX = 1755;
-  const pylonRightX = 2645;
-  const pylonTopY = 850;
 
   // A. PYLONY NOŚNE MOSTU (Drewniano-kamienne wieże bramowe na brzegach rzeki)
   function drawBridgePylon(pylonKey) {
@@ -1317,10 +1431,47 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  drawBridgePylon('left');
-  drawBridgePylon('right');
+
 
   // B. ZNISZCZALNE MODUŁOWE RAMPY PODEJŚCIOWE NA MOST (Łączące grunt z kładką)
+  function drawGentleApproachStilts(isLeft) {
+    const rx1 = isLeft ? 1150 : 2650;
+    const rx2 = isLeft ? 1750 : 3250;
+    if (rx2 < camL || rx1 > camR) return;
+
+    ctx.save();
+    const rampBlocks = ARENA_3_RAMP_BLOCKS.filter(b => isLeft ? b.side === 'left' : b.side === 'right');
+    for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
+      const b = rampBlocks[rIdx];
+      if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
+
+      const y1 = getApproachInclineY(b.origX, isLeft);
+      const y2 = getApproachInclineY(b.origX + b.w, isLeft);
+      const deckBottomY = Math.max(y1, y2) + 12;
+
+      if (b.intact) {
+        // Pal nośny (stilt) schodzący od kładki w głąb podłoża aż do spągu Y: 1400
+        ctx.strokeStyle = '#38200b';
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(b.stiltX, deckBottomY);
+        ctx.lineTo(b.stiltX, 1400);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#5a3818';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(b.stiltX - 3, deckBottomY);
+        ctx.lineTo(b.stiltX - 3, 1400);
+        ctx.stroke();
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(b.stiltX - 7, deckBottomY + 6, 14, 7);
+      }
+    }
+    ctx.restore();
+  }
+
   function drawGentleBridgeApproach(isLeft) {
     const rx1 = isLeft ? 1150 : 2650;
     const rx2 = isLeft ? 1750 : 3250;
@@ -1341,30 +1492,7 @@ export function drawArena3Foreground(ctx, camera) {
       const groundY = getRiverbankGroundY(b.stiltX);
 
       if (b.intact) {
-        // 1. Drewniany pal nośny (stilt) pod kładką zakotwiczony w podłożu
-        if (groundY > Math.max(y1, y2) + 14) {
-          ctx.strokeStyle = '#38200b';
-          ctx.lineWidth = 9;
-          ctx.beginPath();
-          ctx.moveTo(b.stiltX, Math.max(y1, y2) + 12);
-          ctx.lineTo(b.stiltX, groundY + 12);
-          ctx.stroke();
 
-          // Światło na krawędzi pala
-          ctx.strokeStyle = '#5a3818';
-          ctx.lineWidth = 2.4;
-          ctx.beginPath();
-          ctx.moveTo(b.stiltX - 3, Math.max(y1, y2) + 12);
-          ctx.lineTo(b.stiltX - 3, groundY + 12);
-          ctx.stroke();
-
-          // Żelazne klamry mocujące pal do podłoża i kładki
-          ctx.fillStyle = '#334155';
-          ctx.fillRect(b.stiltX - 7, Math.max(y1, y2) + 18, 14, 7);
-          ctx.fillRect(b.stiltX - 7, groundY - 14, 14, 7);
-
-
-        }
 
         // 2. Belka podestu rampy
         ctx.beginPath();
@@ -1529,8 +1657,7 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  drawGentleBridgeApproach(true);
-  drawGentleBridgeApproach(false);
+
 
   // -----------------------------------------------------------------------
   // PLATFORMY DUŻO WYŻEJ NAD POMOSTEM (Y: 620, most Y: 1000)
@@ -1748,92 +1875,48 @@ export function drawArena3Foreground(ctx, camera) {
     drawHighCanopyPlatform(ARENA_3_CANOPY_PLATFORMS[pIdx]);
   }
 
-  // C. MONOLITYCZNE BLOKI KOTWIĄCE I KABLE ODCIĄGOWE (Tension Anchor Blocks & Backstays)
-  const anchorLeftX = 1140;
-  const curGroundLY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(anchorLeftX) : 1200;
-  const anchorLeftY = curGroundLY - 15;
-
-  const anchorRightX = 3260;
-  const curGroundRY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(anchorRightX) : 1200;
-  const anchorRightY = curGroundRY - 15;
-
-  function drawAnchorBlock(ax, ay) {
-    if (ax + 50 < camL || ax - 50 > camR) return;
+  // Kable odciągowe od pylonów do bloków kotwiących (w powietrzu)
+  function drawAnchorCables() {
     ctx.save();
-    // 1. Monolityczny kamienny blok kotwiący wkopany w lity grunt (fundament sięga w głąb skały)
-    const blockH = Math.max(42, 1400 - (ay - 24));
-    const aGrad = ctx.createLinearGradient(ax - 26, ay - 24, ax + 26, ay + 18);
-    aGrad.addColorStop(0.0, '#3e473b');
-    aGrad.addColorStop(0.5, '#283126');
-    aGrad.addColorStop(1.0, '#151b14');
-    ctx.fillStyle = aGrad;
-    ctx.fillRect(ax - 26, ay - 24, 52, blockH);
-    ctx.strokeStyle = '#0f140e';
+    ctx.strokeStyle = '#4e3316';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    const anchorCableY = 1154; // Otwór w uchu ściągacza na szczycie bloku kotwiącego
+    if (ARENA_3_PYLONS.left.intact) {
+      ctx.moveTo(pylonLeftX, pylonTopY - 6);
+      ctx.lineTo(anchorLeftX, anchorCableY);
+    } else {
+      const vSway = Math.sin(animTime * 2.5) * 12;
+      ctx.moveTo(anchorLeftX, anchorCableY);
+      ctx.quadraticCurveTo(anchorLeftX + 150, anchorCableY + 20 + vSway, anchorLeftX + 280, anchorCableY + 15);
+    }
+    if (ARENA_3_PYLONS.right.intact) {
+      ctx.moveTo(pylonRightX, pylonTopY - 6);
+      ctx.lineTo(anchorRightX, anchorCableY);
+    } else {
+      const vSway = Math.sin(animTime * 2.5 + 1.2) * 12;
+      ctx.moveTo(anchorRightX, anchorCableY);
+      ctx.quadraticCurveTo(anchorRightX - 150, anchorCableY + 20 + vSway, anchorRightX - 280, anchorCableY + 15);
+    }
+    ctx.stroke();
+
+    // Druga lina odciągowa (podwójna lina stalowa)
+    ctx.strokeStyle = '#2d1c0a';
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(ax - 26, ay - 24, 52, blockH);
-
-    // Warstwa mchu
-    ctx.fillStyle = '#4e8d2e';
-    ctx.fillRect(ax - 26, ay - 24, 52, 5);
-
-    // Kute żelazne pasy kotwiczne z nitami
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(ax - 22, ay - 14, 44, 9);
-    ctx.fillRect(ax - 22, ay + 4, 44, 9);
-
-    // Śruba rzymska (Turnbuckle) i ucho kotwiące ze stali
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(ax - 7, ay - 34, 14, 14);
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(ax - 7, ay - 34, 14, 14);
-
-    // Otwór ściągacza
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(ax - 3, ay - 30, 6, 6);
+    ctx.beginPath();
+    if (ARENA_3_PYLONS.left.intact) {
+      ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
+      ctx.lineTo(anchorLeftX + 3, anchorCableY);
+    }
+    if (ARENA_3_PYLONS.right.intact) {
+      ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
+      ctx.lineTo(anchorRightX - 3, anchorCableY);
+    }
+    ctx.stroke();
     ctx.restore();
   }
 
-  drawAnchorBlock(anchorLeftX, anchorLeftY);
-  drawAnchorBlock(anchorRightX, anchorRightY);
-
-  // Kable odciągowe od pylonów do bloków kotwiących
-  ctx.save();
-  ctx.strokeStyle = '#4e3316';
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  if (ARENA_3_PYLONS.left.intact) {
-    ctx.moveTo(pylonLeftX, pylonTopY - 6);
-    ctx.lineTo(anchorLeftX, anchorLeftY - 26);
-  } else {
-    const vSway = Math.sin(animTime * 2.5) * 12;
-    ctx.moveTo(anchorLeftX, anchorLeftY - 26);
-    ctx.quadraticCurveTo(anchorLeftX + 150, anchorLeftY + 20 + vSway, anchorLeftX + 280, anchorLeftY + 15);
-  }
-  if (ARENA_3_PYLONS.right.intact) {
-    ctx.moveTo(pylonRightX, pylonTopY - 6);
-    ctx.lineTo(anchorRightX, anchorRightY - 26);
-  } else {
-    const vSway = Math.sin(animTime * 2.5 + 1.2) * 12;
-    ctx.moveTo(anchorRightX, anchorRightY - 26);
-    ctx.quadraticCurveTo(anchorRightX - 150, anchorRightY + 20 + vSway, anchorRightX - 280, anchorRightY + 15);
-  }
-  ctx.stroke();
-
-  // Druga lina odciągowa (podwójna lina stalowa)
-  ctx.strokeStyle = '#2d1c0a';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  if (ARENA_3_PYLONS.left.intact) {
-    ctx.moveTo(pylonLeftX + 4, pylonTopY - 6);
-    ctx.lineTo(anchorLeftX + 3, anchorLeftY - 26);
-  }
-  if (ARENA_3_PYLONS.right.intact) {
-    ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
-    ctx.lineTo(anchorRightX - 3, anchorRightY - 26);
-  }
-  ctx.stroke();
-  ctx.restore();
+  drawAnchorCables();
 
   // D. GŁÓWNE LINY NOŚNE PRZĘSŁA (Łuk paraboliczny od pylonu do pylonu)
   if (bridgeX2 + 80 >= camL && bridgeX1 - 80 <= camR) {
