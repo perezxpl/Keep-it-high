@@ -53,11 +53,11 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v229_jungle_grass_crater_collision_and_scorch_cleanup",
-      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v239_armory_slot_windows",
-      "./js/loadout/index.js": "./js/loadout/index.js?v=v239_armory_slot_windows",
-      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v239_armory_slot_windows",
-      "./js/loadout/state.js": "./js/loadout/state.js?v=v239_armory_slot_windows",
-      "./js/main.js": "./js/main.js?v=v239_armory_slot_windows",
+      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v240_armory_picker_modal",
+      "./js/loadout/index.js": "./js/loadout/index.js?v=v240_armory_picker_modal",
+      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v240_armory_picker_modal",
+      "./js/loadout/state.js": "./js/loadout/state.js?v=v240_armory_picker_modal",
+      "./js/main.js": "./js/main.js?v=v240_armory_picker_modal",
       "./js/network.js": "./js/network.js?v=v236_grenade_cooking_from_aim",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -1289,106 +1289,85 @@
             <button id="armory-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">&times;</button>
           </div>
 
-          <div class="armory-content">
-            <!-- 1. WIDOK PRZEGLĄDU SLOTÓW EKWIPUNKU -->
-            <div id="armory-view-slots" class="armory-view-container">
-              <div class="armory-slots-panel">
-                <div class="armory-pocket-title">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA</div>
-                <div class="armory-slots-row">
-                  <!-- Slot 1: Broń Główna -->
-                  <div class="armory-slot-card" id="armory-slot-card-0" title="Kliknij, aby otworzyć okno wyboru broni głównej">
-                    <div class="slot-card-badge-line">
-                      <span class="slot-card-number">SLOT 1</span>
-                      <span class="slot-card-tag" id="armory-slot-badge-0">[GŁÓWNA]</span>
-                    </div>
-                    <div class="slot-card-name" id="armory-slot-name-0">AK-47</div>
-                    <div class="slot-card-details" id="armory-slot-details-0">7.62x39MM · AUTOMATYCZNY</div>
-                    <div class="slot-card-stats-mini" id="armory-slot-stats-0">
-                      <span class="slot-mini-stat" id="armory-slot-stat-dmg-0">DMG: 26</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-rpm-0">RPM: 600</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-mag-0">MAG: 30</span>
-                    </div>
-                    <div class="slot-card-action">
-                      <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
-                    </div>
+          <!-- PRZEGLĄD SLOTÓW EKWIPUNKU -->
+          <div class="armory-content" id="armory-view-slots">
+            <div class="armory-slots-panel">
+              <div class="armory-pocket-title">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA</div>
+              <div class="armory-slots-row">
+                <!-- Slot 1: Broń Główna -->
+                <div class="armory-slot-card" id="armory-slot-card-0" onclick="window.openSlotPicker && window.openSlotPicker(0)" title="Kliknij, aby otworzyć okno wyboru broni głównej">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 1</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-0">[GŁÓWNA]</span>
                   </div>
-
-                  <!-- Slot 2: Broń Dodatkowa -->
-                  <div class="armory-slot-card" id="armory-slot-card-1" title="Kliknij, aby otworzyć okno wyboru broni dodatkowej">
-                    <div class="slot-card-badge-line">
-                      <span class="slot-card-number">SLOT 2</span>
-                      <span class="slot-card-tag" id="armory-slot-badge-1">[DODATKOWA]</span>
-                    </div>
-                    <div class="slot-card-name" id="armory-slot-name-1">GLOCK 17</div>
-                    <div class="slot-card-details" id="armory-slot-details-1">9x19MM · SEMI-AUTO</div>
-                    <div class="slot-card-stats-mini" id="armory-slot-stats-1">
-                      <span class="slot-mini-stat" id="armory-slot-stat-dmg-1">DMG: 24</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-rpm-1">RPM: 200</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-mag-1">MAG: 17</span>
-                    </div>
-                    <div class="slot-card-action">
-                      <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
-                    </div>
+                  <div class="slot-card-name" id="armory-slot-name-0">AK-47</div>
+                  <div class="slot-card-details" id="armory-slot-details-0">7.62x39MM · AUTOMATYCZNY</div>
+                  <div class="slot-card-stats-mini" id="armory-slot-stats-0">
+                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-0">DMG: 26</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-rpm-0">RPM: 600</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-mag-0">MAG: 30</span>
                   </div>
-
-                  <!-- Slot 3: Rezerwa Bojowa -->
-                  <div class="armory-slot-card" id="armory-slot-card-2" title="Kliknij, aby otworzyć okno wyboru broni rezerwowej">
-                    <div class="slot-card-badge-line">
-                      <span class="slot-card-number">SLOT 3</span>
-                      <span class="slot-card-tag" id="armory-slot-badge-2">[REZERWA]</span>
-                    </div>
-                    <div class="slot-card-name" id="armory-slot-name-2">BARRETT .50</div>
-                    <div class="slot-card-details" id="armory-slot-details-2">.50 BMG · BOLT-ACTION</div>
-                    <div class="slot-card-stats-mini" id="armory-slot-stats-2">
-                      <span class="slot-mini-stat" id="armory-slot-stat-dmg-2">DMG: 120</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-rpm-2">RPM: 55</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-mag-2">MAG: 5</span>
-                    </div>
-                    <div class="slot-card-action">
-                      <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
-                    </div>
+                  <div class="slot-card-action">
+                    <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
                 </div>
 
-                <div class="armory-pocket-title armory-pocket-title-throw">KIESZEŃ 2: WYPOSAŻENIE MIOTANE &amp; TAKTYCZNE</div>
-                <div class="armory-slots-row">
-                  <!-- Slot Miotany: Kieszeń 2 -->
-                  <div class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable" title="Kliknij, aby otworzyć okno wyboru wyposażenia miotanego">
-                    <div class="slot-card-badge-line">
-                      <span class="slot-card-number">KIESZEŃ 2</span>
-                      <span class="slot-card-tag">[TAKTYCZNA]</span>
-                    </div>
-                    <div class="slot-card-name" id="armory-slot-name-throw">GRANAT ODŁAMKOWY HE</div>
-                    <div class="slot-card-details" id="armory-slot-details-throw">MATERIAŁ COMP B (180G) · ZAPALNIK 5.0s</div>
-                    <div class="slot-card-stats-mini" id="armory-slot-stats-throw">
-                      <span class="slot-mini-stat" id="armory-slot-stat-dmg-throw">DMG: 130</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-rad-throw">PROMIEŃ: 180 PX</span>
-                      <span class="slot-mini-stat" id="armory-slot-stat-fuse-throw">CZAS: 5.0s</span>
-                    </div>
-                    <div class="slot-card-action">
-                      <span class="slot-action-btn slot-action-btn-throw">WYBIERZ WYPOSAŻENIE ▶</span>
-                    </div>
+                <!-- Slot 2: Broń Dodatkowa -->
+                <div class="armory-slot-card" id="armory-slot-card-1" onclick="window.openSlotPicker && window.openSlotPicker(1)" title="Kliknij, aby otworzyć okno wyboru broni dodatkowej">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 2</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-1">[DODATKOWA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-1">GLOCK 17</div>
+                  <div class="slot-card-details" id="armory-slot-details-1">9x19MM · SEMI-AUTO</div>
+                  <div class="slot-card-stats-mini" id="armory-slot-stats-1">
+                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-1">DMG: 24</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-rpm-1">RPM: 200</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-mag-1">MAG: 17</span>
+                  </div>
+                  <div class="slot-card-action">
+                    <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
+                  </div>
+                </div>
+
+                <!-- Slot 3: Rezerwa Bojowa -->
+                <div class="armory-slot-card" id="armory-slot-card-2" onclick="window.openSlotPicker && window.openSlotPicker(2)" title="Kliknij, aby otworzyć okno wyboru broni rezerwowej">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 3</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-2">[REZERWA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-2">BARRETT .50</div>
+                  <div class="slot-card-details" id="armory-slot-details-2">.50 BMG · BOLT-ACTION</div>
+                  <div class="slot-card-stats-mini" id="armory-slot-stats-2">
+                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-2">DMG: 120</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-rpm-2">RPM: 55</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-mag-2">MAG: 5</span>
+                  </div>
+                  <div class="slot-card-action">
+                    <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 2. OKNO WYBORU BRONI DLA WYBRANEGO SLOTU -->
-            <div id="armory-view-picker" class="armory-view-container" style="display: none;">
-              <div class="armory-picker-nav">
-                <button id="armory-picker-back-btn" class="ui-btn ui-btn-secondary armory-back-btn" type="button" title="Wróć do wyboru slotów">
-                  <span class="back-arrow">◀</span>
-                  <span>WRÓĆ DO EKWIPUNKU</span>
-                </button>
-                <div class="armory-picker-slot-info">
-                  <span class="picker-slot-tag" id="armory-picker-slot-tag">SLOT 1 // BROŃ GŁÓWNA</span>
-                  <h3 class="picker-slot-title" id="armory-picker-slot-title">WYBIERZ BROŃ GŁÓWNĄ</h3>
+              <div class="armory-pocket-title armory-pocket-title-throw">KIESZEŃ 2: WYPOSAŻENIE MIOTANE &amp; TAKTYCZNE</div>
+              <div class="armory-slots-row">
+                <!-- Slot Miotany: Kieszeń 2 -->
+                <div class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable" onclick="window.openSlotPicker && window.openSlotPicker(3)" title="Kliknij, aby otworzyć okno wyboru wyposażenia miotanego">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">KIESZEŃ 2</span>
+                    <span class="slot-card-tag">[TAKTYCZNA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-throw">GRANAT ODŁAMKOWY HE</div>
+                  <div class="slot-card-details" id="armory-slot-details-throw">MATERIAŁ COMP B (180G) · ZAPALNIK 5.0s</div>
+                  <div class="slot-card-stats-mini" id="armory-slot-stats-throw">
+                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-throw">DMG: 130</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-rad-throw">PROMIEŃ: 180 PX</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-fuse-throw">CZAS: 5.0s</span>
+                  </div>
+                  <div class="slot-card-action">
+                    <span class="slot-action-btn slot-action-btn-throw">WYBIERZ WYPOSAŻENIE ▶</span>
+                  </div>
                 </div>
-                <div class="armory-picker-counter" id="armory-picker-counter">3 DOSTĘPNE</div>
-              </div>
-
-              <div class="armory-weapons-grid" id="armory-weapons-grid">
-                <!-- Generowane dynamicznie przez renderArmoryUI() -->
               </div>
             </div>
           </div>
@@ -1398,8 +1377,36 @@
               <span>Kliknij w dowolny slot, aby otworzyć okno wyboru uzbrojenia dla tej pozycji bojowej.</span>
             </div>
             <div class="armory-footer-actions">
-              <button id="armory-picker-footer-back-btn" class="ui-btn ui-btn-secondary" type="button" style="display: none;">◀ WRÓĆ DO EKWIPUNKU</button>
               <button id="armory-save-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ</button>
+            </div>
+          </div>
+
+          <!-- DEDYKOWANE OKNO WYBORU BRONI DLA WYBRANEGO SLOTU (SUB-MODAL) -->
+          <div id="armory-picker-modal" class="armory-picker-modal" style="display: none;">
+            <div class="armory-picker-header">
+              <div class="picker-header-left">
+                <span class="picker-slot-tag" id="armory-picker-slot-tag">SLOT 1 // BROŃ GŁÓWNA</span>
+                <h3 class="picker-slot-title" id="armory-picker-slot-title">WYBIERZ BROŃ GŁÓWNĄ</h3>
+              </div>
+              <div class="picker-header-right">
+                <span class="armory-picker-counter" id="armory-picker-counter">3 DOSTĘPNE</span>
+                <button id="armory-picker-close-btn" class="ui-close-btn" type="button" title="Zamknij wybór (ESC)">&times;</button>
+              </div>
+            </div>
+
+            <div class="armory-picker-content">
+              <div class="armory-weapons-grid" id="armory-weapons-grid">
+                <!-- Generowane dynamicznie przez renderArmoryUI() -->
+              </div>
+            </div>
+
+            <div class="armory-picker-footer">
+              <div class="picker-footer-info">
+                <span>Kliknij "WYBIERZ I PRZYPISZ", aby natychmiast przypisać broń do tego slotu.</span>
+              </div>
+              <button id="armory-picker-back-btn" class="ui-btn ui-btn-secondary" type="button">
+                ◀ WRÓĆ DO EKWIPUNKU
+              </button>
             </div>
           </div>
         </div>
@@ -1451,7 +1458,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v206_auto_screen_adapted_zoom"></script>
+  <script type="module" src="./js/main.js?v=v240_armory_picker_modal"></script>
 </body>
 
 </html>

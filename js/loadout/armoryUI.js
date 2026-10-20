@@ -203,8 +203,8 @@ export function initArmoryUI(playerInstance) {
   const armoryOverlay = document.getElementById('armory-overlay');
   const closeBtn = document.getElementById('armory-close-btn');
   const saveBtn = document.getElementById('armory-save-btn');
-  const backBtn = document.getElementById('armory-picker-back-btn');
-  const footerBackBtn = document.getElementById('armory-picker-footer-back-btn');
+  const pickerCloseBtn = document.getElementById('armory-picker-close-btn');
+  const pickerBackBtn = document.getElementById('armory-picker-back-btn');
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => closeArmory());
@@ -212,11 +212,11 @@ export function initArmoryUI(playerInstance) {
   if (saveBtn) {
     saveBtn.addEventListener('click', () => closeArmory());
   }
-  if (backBtn) {
-    backBtn.addEventListener('click', () => closeSlotPicker());
+  if (pickerCloseBtn) {
+    pickerCloseBtn.addEventListener('click', () => closeSlotPicker());
   }
-  if (footerBackBtn) {
-    footerBackBtn.addEventListener('click', () => closeSlotPicker());
+  if (pickerBackBtn) {
+    pickerBackBtn.addEventListener('click', () => closeSlotPicker());
   }
 
   // Kafelki slotów w widoku głównym ekwipunku
@@ -238,7 +238,8 @@ export function initArmoryUI(playerInstance) {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (armoryOverlay && armoryOverlay.style.display === 'flex') {
-        if (_currentArmoryView === 'PICKER') {
+        const pickerModal = document.getElementById('armory-picker-modal');
+        if (pickerModal && pickerModal.style.display !== 'none') {
           closeSlotPicker();
         } else {
           closeArmory();
@@ -259,6 +260,11 @@ export function openArmory(playerInstance = null, onClose = null) {
   if (!overlay) return;
 
   _currentArmoryView = 'SLOTS';
+  const pickerModal = document.getElementById('armory-picker-modal');
+  if (pickerModal) {
+    pickerModal.style.display = 'none';
+  }
+
   overlay.style.display = 'flex';
   renderArmoryUI();
 }
@@ -271,6 +277,12 @@ export function closeArmory() {
   if (overlay) {
     overlay.style.display = 'none';
   }
+
+  const pickerModal = document.getElementById('armory-picker-modal');
+  if (pickerModal) {
+    pickerModal.style.display = 'none';
+  }
+  _currentArmoryView = 'SLOTS';
 
   if (_playerRef && _playerRef.loadout) {
     saveStoredLoadout(_playerRef.loadout);
@@ -295,6 +307,11 @@ export function openSlotPicker(slotIndex) {
   playUiClick();
   _activeSlotIndex = slotIndex;
   _currentArmoryView = 'PICKER';
+
+  const pickerModal = document.getElementById('armory-picker-modal');
+  if (pickerModal) {
+    pickerModal.style.display = 'flex';
+  }
   renderArmoryUI();
 }
 
@@ -304,7 +321,18 @@ export function openSlotPicker(slotIndex) {
 export function closeSlotPicker() {
   playUiClick();
   _currentArmoryView = 'SLOTS';
+
+  const pickerModal = document.getElementById('armory-picker-modal');
+  if (pickerModal) {
+    pickerModal.style.display = 'none';
+  }
   renderArmoryUI();
+}
+
+// Globalna ekspozycja dla pewności działania interakcji z HTML
+if (typeof window !== 'undefined') {
+  window.openSlotPicker = openSlotPicker;
+  window.closeSlotPicker = closeSlotPicker;
 }
 
 /**
@@ -317,88 +345,83 @@ export function renderArmoryUI() {
   const slots = p.loadout.pocket1?.slots || ['AK47', 'GLOCK', 'SNIPER'];
   const throwables = p.loadout.pocket2?.throwables || ['GRENADE'];
 
-  const slotsView = document.getElementById('armory-view-slots');
-  const pickerView = document.getElementById('armory-view-picker');
-  const footerInfo = document.getElementById('armory-footer-info');
-  const saveBtn = document.getElementById('armory-save-btn');
-  const footerBackBtn = document.getElementById('armory-picker-footer-back-btn');
+  const pickerModal = document.getElementById('armory-picker-modal');
 
-  if (_currentArmoryView === 'SLOTS') {
-    // -------------------------------------------------------------------------
-    // 1. WIDOK PRZEGLĄDU SLOTÓW EKWIPUNKU
-    // -------------------------------------------------------------------------
-    if (slotsView) slotsView.style.display = 'flex';
-    if (pickerView) pickerView.style.display = 'none';
-    if (saveBtn) saveBtn.style.display = 'inline-block';
-    if (footerBackBtn) footerBackBtn.style.display = 'none';
-
-    if (footerInfo) {
-      footerInfo.innerHTML = '<span>Kliknij w dowolny slot, aby otworzyć okno wyboru uzbrojenia dla tej pozycji bojowej.</span>';
+  // -------------------------------------------------------------------------
+  // 1. AKTUALIZACJA DANYCH I OBSŁUGI KLIKNIĘĆ W KAFELKI SLOTÓW EKWIPUNKU
+  // -------------------------------------------------------------------------
+  // Przypisanie obsługi kliknięć bezpośrednio w kafelki (potrójne zabezpieczenie)
+  for (let i = 0; i < 3; i++) {
+    const cardEl = document.getElementById(`armory-slot-card-${i}`);
+    if (cardEl) {
+      cardEl.onclick = () => openSlotPicker(i);
+      cardEl.style.cursor = 'pointer';
     }
+  }
+  const throwCardEl = document.getElementById('armory-slot-card-throwable');
+  if (throwCardEl) {
+    throwCardEl.onclick = () => openSlotPicker(3);
+    throwCardEl.style.cursor = 'pointer';
+  }
 
-    // Aktualizacja kafelka Slot 1 (Główna)
-    const slot0Def = getCatalogWeapon(slots[0] || 'AK47', 'slot0');
-    const name0 = document.getElementById('armory-slot-name-0');
-    const det0 = document.getElementById('armory-slot-details-0');
-    const dmg0 = document.getElementById('armory-slot-stat-dmg-0');
-    const rpm0 = document.getElementById('armory-slot-stat-rpm-0');
-    const mag0 = document.getElementById('armory-slot-stat-mag-0');
-    if (name0) name0.textContent = slot0Def.fullName || slot0Def.name;
-    if (det0) det0.textContent = `${slot0Def.caliber} · ${slot0Def.typeLabel}`;
-    if (dmg0) dmg0.textContent = `DMG: ${slot0Def.dmg}`;
-    if (rpm0) rpm0.textContent = `RPM: ${slot0Def.rpm}`;
-    if (mag0) mag0.textContent = `MAG: ${slot0Def.mag}`;
+  // Aktualizacja kafelka Slot 1 (Główna)
+  const slot0Def = getCatalogWeapon(slots[0] || 'AK47', 'slot0');
+  const name0 = document.getElementById('armory-slot-name-0');
+  const det0 = document.getElementById('armory-slot-details-0');
+  const dmg0 = document.getElementById('armory-slot-stat-dmg-0');
+  const rpm0 = document.getElementById('armory-slot-stat-rpm-0');
+  const mag0 = document.getElementById('armory-slot-stat-mag-0');
+  if (name0) name0.textContent = slot0Def.fullName || slot0Def.name;
+  if (det0) det0.textContent = `${slot0Def.caliber} · ${slot0Def.typeLabel}`;
+  if (dmg0) dmg0.textContent = `DMG: ${slot0Def.dmg}`;
+  if (rpm0) rpm0.textContent = `RPM: ${slot0Def.rpm}`;
+  if (mag0) mag0.textContent = `MAG: ${slot0Def.mag}`;
 
-    // Aktualizacja kafelka Slot 2 (Dodatkowa)
-    const slot1Def = getCatalogWeapon(slots[1] || 'GLOCK', 'slot1');
-    const name1 = document.getElementById('armory-slot-name-1');
-    const det1 = document.getElementById('armory-slot-details-1');
-    const dmg1 = document.getElementById('armory-slot-stat-dmg-1');
-    const rpm1 = document.getElementById('armory-slot-stat-rpm-1');
-    const mag1 = document.getElementById('armory-slot-stat-mag-1');
-    if (name1) name1.textContent = slot1Def.fullName || slot1Def.name;
-    if (det1) det1.textContent = `${slot1Def.caliber} · ${slot1Def.typeLabel}`;
-    if (dmg1) dmg1.textContent = `DMG: ${slot1Def.dmg}`;
-    if (rpm1) rpm1.textContent = `RPM: ${slot1Def.rpm}`;
-    if (mag1) mag1.textContent = `MAG: ${slot1Def.mag}`;
+  // Aktualizacja kafelka Slot 2 (Dodatkowa)
+  const slot1Def = getCatalogWeapon(slots[1] || 'GLOCK', 'slot1');
+  const name1 = document.getElementById('armory-slot-name-1');
+  const det1 = document.getElementById('armory-slot-details-1');
+  const dmg1 = document.getElementById('armory-slot-stat-dmg-1');
+  const rpm1 = document.getElementById('armory-slot-stat-rpm-1');
+  const mag1 = document.getElementById('armory-slot-stat-mag-1');
+  if (name1) name1.textContent = slot1Def.fullName || slot1Def.name;
+  if (det1) det1.textContent = `${slot1Def.caliber} · ${slot1Def.typeLabel}`;
+  if (dmg1) dmg1.textContent = `DMG: ${slot1Def.dmg}`;
+  if (rpm1) rpm1.textContent = `RPM: ${slot1Def.rpm}`;
+  if (mag1) mag1.textContent = `MAG: ${slot1Def.mag}`;
 
-    // Aktualizacja kafelka Slot 3 (Rezerwa)
-    const slot2Def = getCatalogWeapon(slots[2] || 'SNIPER', 'slot2');
-    const name2 = document.getElementById('armory-slot-name-2');
-    const det2 = document.getElementById('armory-slot-details-2');
-    const dmg2 = document.getElementById('armory-slot-stat-dmg-2');
-    const rpm2 = document.getElementById('armory-slot-stat-rpm-2');
-    const mag2 = document.getElementById('armory-slot-stat-mag-2');
-    if (name2) name2.textContent = slot2Def.fullName || slot2Def.name;
-    if (det2) det2.textContent = `${slot2Def.caliber} · ${slot2Def.typeLabel}`;
-    if (dmg2) dmg2.textContent = `DMG: ${slot2Def.dmg}`;
-    if (rpm2) rpm2.textContent = `RPM: ${slot2Def.rpm}`;
-    if (mag2) mag2.textContent = `MAG: ${slot2Def.mag}`;
+  // Aktualizacja kafelka Slot 3 (Rezerwa)
+  const slot2Def = getCatalogWeapon(slots[2] || 'SNIPER', 'slot2');
+  const name2 = document.getElementById('armory-slot-name-2');
+  const det2 = document.getElementById('armory-slot-details-2');
+  const dmg2 = document.getElementById('armory-slot-stat-dmg-2');
+  const rpm2 = document.getElementById('armory-slot-stat-rpm-2');
+  const mag2 = document.getElementById('armory-slot-stat-mag-2');
+  if (name2) name2.textContent = slot2Def.fullName || slot2Def.name;
+  if (det2) det2.textContent = `${slot2Def.caliber} · ${slot2Def.typeLabel}`;
+  if (dmg2) dmg2.textContent = `DMG: ${slot2Def.dmg}`;
+  if (rpm2) rpm2.textContent = `RPM: ${slot2Def.rpm}`;
+  if (mag2) mag2.textContent = `MAG: ${slot2Def.mag}`;
 
-    // Aktualizacja kafelka Kieszeń 2 (Miotana)
-    const throwDef = getCatalogWeapon(throwables[0] || 'GRENADE', 'throw');
-    const nameThrow = document.getElementById('armory-slot-name-throw');
-    const detThrow = document.getElementById('armory-slot-details-throw');
-    const dmgThrow = document.getElementById('armory-slot-stat-dmg-throw');
-    const radThrow = document.getElementById('armory-slot-stat-rad-throw');
-    const fuseThrow = document.getElementById('armory-slot-stat-fuse-throw');
-    if (nameThrow) nameThrow.textContent = throwDef.fullName || throwDef.name;
-    if (detThrow) detThrow.textContent = `${throwDef.caliber} · ZAPALNIK ${throwDef.fuse}`;
-    if (dmgThrow) dmgThrow.textContent = `DMG: ${throwDef.dmg}`;
-    if (radThrow) radThrow.textContent = `PROMIEŃ: ${throwDef.radius}`;
-    if (fuseThrow) fuseThrow.textContent = `CZAS: ${throwDef.fuse}`;
+  // Aktualizacja kafelka Kieszeń 2 (Miotana)
+  const throwDef = getCatalogWeapon(throwables[0] || 'GRENADE', 'throw');
+  const nameThrow = document.getElementById('armory-slot-name-throw');
+  const detThrow = document.getElementById('armory-slot-details-throw');
+  const dmgThrow = document.getElementById('armory-slot-stat-dmg-throw');
+  const radThrow = document.getElementById('armory-slot-stat-rad-throw');
+  const fuseThrow = document.getElementById('armory-slot-stat-fuse-throw');
+  if (nameThrow) nameThrow.textContent = throwDef.fullName || throwDef.name;
+  if (detThrow) detThrow.textContent = `${throwDef.caliber} · ZAPALNIK ${throwDef.fuse}`;
+  if (dmgThrow) dmgThrow.textContent = `DMG: ${throwDef.dmg}`;
+  if (radThrow) radThrow.textContent = `PROMIEŃ: ${throwDef.radius}`;
+  if (fuseThrow) fuseThrow.textContent = `CZAS: ${throwDef.fuse}`;
 
-  } else {
-    // -------------------------------------------------------------------------
-    // 2. OKNO WYBORU BRONI DLA WYBRANEGO SLOTU (PICKER)
-    // -------------------------------------------------------------------------
-    if (slotsView) slotsView.style.display = 'none';
-    if (pickerView) pickerView.style.display = 'flex';
-    if (saveBtn) saveBtn.style.display = 'none';
-    if (footerBackBtn) footerBackBtn.style.display = 'inline-block';
-
-    if (footerInfo) {
-      footerInfo.innerHTML = '<span>Wybierz uzbrojenie z poniższej listy, aby przypisać je do tego slotu bojowego.</span>';
+  // -------------------------------------------------------------------------
+  // 2. JEŚLI OTWARTE JEST OKNO WYBORU (PICKER), RENDERUJEMY BRONIE
+  // -------------------------------------------------------------------------
+  if (_currentArmoryView === 'PICKER') {
+    if (pickerModal) {
+      pickerModal.style.display = 'flex';
     }
 
     const tagEl = document.getElementById('armory-picker-slot-tag');
@@ -530,6 +553,10 @@ export function renderArmoryUI() {
 
       listContainer.appendChild(cardEl);
     });
+  } else {
+    if (pickerModal) {
+      pickerModal.style.display = 'none';
+    }
   }
 }
 
@@ -558,7 +585,6 @@ export function equipArmoryWeapon(slotIndex, weaponId) {
     saveStoredLoadout(p.loadout);
   }
 
-  // Płynny powrót do widoku slotów po wyborze broni
-  _currentArmoryView = 'SLOTS';
-  renderArmoryUI();
+  // Płynne zamknięcie okna wyboru i powrót do widoku slotów
+  closeSlotPicker();
 }
