@@ -277,6 +277,91 @@ export function playTestTone() {
   } catch (_) {}
 }
 
+/**
+ * Zabezpieczona obsługa szybkiego kliknięcia (Quick Tap / Click)
+ * Reaguje wyłącznie na celowe, szybkie kliknięcie / tapnięcie.
+ * Całkowicie ignoruje gesty przewijania (scroll), przeciągania oraz długie przytrzymanie palca.
+ */
+export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minDuration = 10 } = {}) {
+  if (!el || typeof handler !== 'function') return;
+
+  el._quickTapAction = handler;
+  if (el._quickTapBound) return;
+  el._quickTapBound = true;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isScrollOrDrag = false;
+  let lastTapHandledTime = 0;
+
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      isScrollOrDrag = false;
+    } else {
+      isScrollOrDrag = true;
+    }
+  }, { passive: true });
+
+  el.addEventListener('touchmove', (e) => {
+    if (isScrollOrDrag) return;
+    if (e.touches && e.touches.length > 0) {
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (Math.hypot(dx, dy) > maxDist) {
+        isScrollOrDrag = true; // Przewijanie strony - blokujemy akcję
+      }
+    }
+  }, { passive: true });
+
+  el.addEventListener('touchcancel', () => {
+    isScrollOrDrag = true;
+  }, { passive: true });
+
+  el.addEventListener('touchend', (e) => {
+    if (isScrollOrDrag) {
+      return; // Użytkownik przewijał stronę - ignorujemy
+    }
+
+    const duration = Date.now() - touchStartTime;
+    if (duration >= minDuration && duration <= maxDuration) {
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.hypot(dx, dy) > maxDist) {
+          isScrollOrDrag = true;
+          return;
+        }
+      }
+
+      lastTapHandledTime = Date.now();
+      e.stopPropagation();
+      if (typeof el._quickTapAction === 'function') {
+        el._quickTapAction(e);
+      }
+    }
+  }, { passive: false });
+
+  el.addEventListener('click', (e) => {
+    if (Date.now() - lastTapHandledTime < 500) {
+      e.stopPropagation();
+      return;
+    }
+    if (isScrollOrDrag) {
+      isScrollOrDrag = false;
+      e.stopPropagation();
+      return;
+    }
+    e.stopPropagation();
+    if (typeof el._quickTapAction === 'function') {
+      el._quickTapAction(e);
+    }
+  });
+}
+
 // =============================================================================
 // 2. OBIEKT GŁÓWNY UIMANAGER
 // =============================================================================

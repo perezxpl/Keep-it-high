@@ -27,5 +27,6 @@ export {
   closeSlotPicker,
   renderArmoryUI,
   getCatalogWeapon,
-  equipArmoryWeapon
+  equipArmoryWeapon,
+  bindQuickTap
 } from './armoryUI.js';

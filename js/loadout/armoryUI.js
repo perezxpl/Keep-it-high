@@ -194,6 +194,91 @@ export function getCatalogWeapon(id, categoryType = null) {
 }
 
 /**
+ * Zabezpieczona obsługa szybkiego kliknięcia (Quick Tap / Click)
+ * Reaguje wyłącznie na celowe, szybkie kliknięcie / tapnięcie.
+ * Całkowicie ignoruje gesty przewijania (scroll), przeciągania oraz długie przytrzymanie palca.
+ */
+export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minDuration = 10 } = {}) {
+  if (!el || typeof handler !== 'function') return;
+
+  el._quickTapAction = handler;
+  if (el._quickTapBound) return;
+  el._quickTapBound = true;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isScrollOrDrag = false;
+  let lastTapHandledTime = 0;
+
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      isScrollOrDrag = false;
+    } else {
+      isScrollOrDrag = true;
+    }
+  }, { passive: true });
+
+  el.addEventListener('touchmove', (e) => {
+    if (isScrollOrDrag) return;
+    if (e.touches && e.touches.length > 0) {
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (Math.hypot(dx, dy) > maxDist) {
+        isScrollOrDrag = true; // Przewijanie strony - blokujemy akcję
+      }
+    }
+  }, { passive: true });
+
+  el.addEventListener('touchcancel', () => {
+    isScrollOrDrag = true;
+  }, { passive: true });
+
+  el.addEventListener('touchend', (e) => {
+    if (isScrollOrDrag) {
+      return; // Użytkownik przewijał stronę - ignorujemy
+    }
+
+    const duration = Date.now() - touchStartTime;
+    if (duration >= minDuration && duration <= maxDuration) {
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.hypot(dx, dy) > maxDist) {
+          isScrollOrDrag = true;
+          return;
+        }
+      }
+
+      lastTapHandledTime = Date.now();
+      e.stopPropagation();
+      if (typeof el._quickTapAction === 'function') {
+        el._quickTapAction(e);
+      }
+    }
+  }, { passive: false });
+
+  el.addEventListener('click', (e) => {
+    if (Date.now() - lastTapHandledTime < 500) {
+      e.stopPropagation();
+      return;
+    }
+    if (isScrollOrDrag) {
+      isScrollOrDrag = false;
+      e.stopPropagation();
+      return;
+    }
+    e.stopPropagation();
+    if (typeof el._quickTapAction === 'function') {
+      el._quickTapAction(e);
+    }
+  });
+}
+
+/**
  * Inicjalizacja nasłuchu zdarzeń dla Zbrojowni
  */
 export function initArmoryUI(playerInstance) {
@@ -210,30 +295,18 @@ export function initArmoryUI(playerInstance) {
   const saveBtn = document.getElementById('armory-save-btn');
   const pickerCloseBtn = document.getElementById('armory-picker-close-btn');
 
-  const bindClickAndTouch = (el, handler) => {
-    if (!el) return;
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      handler(e);
-    });
-    el.addEventListener('touchend', (e) => {
-      e.stopPropagation();
-      handler(e);
-    });
-  };
+  bindQuickTap(headerBackBtn, () => closeArmory());
+  bindQuickTap(footerBackBtn, () => closeArmory());
+  bindQuickTap(closeBtn, () => closeArmory());
+  bindQuickTap(saveBtn, () => closeArmory());
 
-  bindClickAndTouch(headerBackBtn, () => closeArmory());
-  bindClickAndTouch(footerBackBtn, () => closeArmory());
-  bindClickAndTouch(closeBtn, () => closeArmory());
-  bindClickAndTouch(saveBtn, () => closeArmory());
-
-  bindClickAndTouch(pickerHeaderBackBtn, () => closeSlotPicker());
-  bindClickAndTouch(pickerBackBtn, () => closeSlotPicker());
-  bindClickAndTouch(pickerCloseBtn, () => closeSlotPicker());
+  bindQuickTap(pickerHeaderBackBtn, () => closeSlotPicker());
+  bindQuickTap(pickerBackBtn, () => closeSlotPicker());
+  bindQuickTap(pickerCloseBtn, () => closeSlotPicker());
 
   // Kliknięcie w ciemne tło (backdrop) poza oknem zamyka lub cofa okno
   if (armoryOverlay) {
-    bindClickAndTouch(armoryOverlay, (e) => {
+    bindQuickTap(armoryOverlay, (e) => {
       if (e.target === armoryOverlay) {
         if (_currentArmoryView === 'PICKER') {
           closeSlotPicker();
@@ -249,14 +322,14 @@ export function initArmoryUI(playerInstance) {
     const slotCard = document.getElementById(`armory-slot-card-${i}`);
     if (slotCard) {
       slotCard.addEventListener('mouseenter', () => playUiHover());
-      bindClickAndTouch(slotCard, () => openSlotPicker(i));
+      bindQuickTap(slotCard, () => openSlotPicker(i));
     }
   }
 
   const slotThrowCard = document.getElementById('armory-slot-card-throwable');
   if (slotThrowCard) {
     slotThrowCard.addEventListener('mouseenter', () => playUiHover());
-    bindClickAndTouch(slotThrowCard, () => openSlotPicker(3));
+    bindQuickTap(slotThrowCard, () => openSlotPicker(3));
   }
 
   // Zamknięcie klawiszem ESC / Powrót z podokna do przeglądu slotów
@@ -383,18 +456,13 @@ export function renderArmoryUI() {
   // -------------------------------------------------------------------------
   // 1. AKTUALIZACJA DANYCH I OBSŁUGI KLIKNIĘĆ W KAFELKI SLOTÓW EKWIPUNKU
   // -------------------------------------------------------------------------
-  // Przypisanie obsługi kliknięć i dotyku bezpośrednio w kafelki (redundancja)
+  // Zabezpieczona obsługa szybkiego kliknięcia (brak przypadkowego klikania przy scrollu)
   const bindSlot = (cardEl, idx) => {
     if (!cardEl) return;
-    cardEl.onclick = (e) => {
-      e.stopPropagation();
-      openSlotPicker(idx);
-    };
-    cardEl.ontouchend = (e) => {
-      e.stopPropagation();
-      openSlotPicker(idx);
-    };
+    cardEl.onclick = null;
+    cardEl.ontouchend = null;
     cardEl.style.cursor = 'pointer';
+    bindQuickTap(cardEl, () => openSlotPicker(idx));
   };
 
   for (let i = 0; i < 3; i++) {
@@ -582,21 +650,13 @@ export function renderArmoryUI() {
 
       cardEl.addEventListener('mouseenter', () => playUiHover());
 
-      const handleEquip = (e) => {
-        e.stopPropagation();
+      const handleEquip = () => {
         equipArmoryWeapon(_activeSlotIndex, wep.id);
       };
 
       if (!isEquipped) {
         cardEl.style.cursor = 'pointer';
-        cardEl.onclick = handleEquip;
-        cardEl.ontouchend = handleEquip;
-
-        const equipBtn = cardEl.querySelector('.armory-equip-btn');
-        if (equipBtn) {
-          equipBtn.onclick = handleEquip;
-          equipBtn.ontouchend = handleEquip;
-        }
+        bindQuickTap(cardEl, handleEquip);
       }
 
       listContainer.appendChild(cardEl);
