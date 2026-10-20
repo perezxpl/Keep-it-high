@@ -172,9 +172,15 @@ export function drawSniperLaserSight(ctx, playerObj) {
 // =========================================================================
 
 const WEAPON_PARTS_PATHS = {
-  AK47_BODY: './assets/weapons/ak47_body.png?v=v253_ak47_modular_gameplay_layers',
-  AK47_MAG: './assets/weapons/ak47_mag.png?v=v253_ak47_modular_gameplay_layers',
-  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v253_ak47_modular_gameplay_layers'
+  AK47_BODY: './assets/weapons/ak47_body.png?v=v254_modular_shotgun_sniper',
+  AK47_MAG: './assets/weapons/ak47_mag.png?v=v254_modular_shotgun_sniper',
+  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v254_modular_shotgun_sniper',
+  SHOTGUN_BODY: './assets/weapons/shotgun_body.png?v=v254_modular_shotgun_sniper',
+  SHOTGUN_PUMP: './assets/weapons/shotgun_pump.png?v=v254_modular_shotgun_sniper',
+  SHOTGUN_SHELL: './assets/weapons/shotgun_shell.png?v=v254_modular_shotgun_sniper',
+  SNIPER_BODY: './assets/weapons/sniper_body.png?v=v254_modular_shotgun_sniper',
+  SNIPER_MAG: './assets/weapons/sniper_mag.png?v=v254_modular_shotgun_sniper',
+  SNIPER_BOLT: './assets/weapons/sniper_bolt.png?v=v254_modular_shotgun_sniper'
 };
 
 const _partSpriteCache = {};
@@ -352,191 +358,266 @@ export function drawHeldWeapon(ctx, p) {
       }
     }
   } else if (weapon.id === 'SHOTGUN') {
-    ctx.fillStyle = '#3f2712';
-    ctx.beginPath();
-    ctx.moveTo(0, -1);
-    ctx.lineTo(-10.4, 1.8);
-    ctx.lineTo(-10.4, 6.8);
-    ctx.lineTo(-4.8, 4.8);
-    ctx.lineTo(0, 3.0);
-    ctx.closePath();
-    ctx.fill();
+    const imgBody = getWeaponPartSprite('SHOTGUN_BODY');
+    const imgPump = getWeaponPartSprite('SHOTGUN_PUMP');
+    const imgShell = getWeaponPartSprite('SHOTGUN_SHELL');
 
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(-11.0, 1.8, 1.4, 5.0);
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0 &&
+        imgPump && imgPump.complete && imgPump.naturalWidth > 0) {
+      
+      const s = 39.0 / 1334;
+      const pivotSpriteX = 401.3;
+      const pivotSpriteY = 65.0;
 
-    ctx.fillStyle = '#3f2712';
-    ctx.fillRect(0, 2.5, 3.2, 5);
-
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, -2.6, 11, 5.4);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, -3.2, 11, 1.2);
-
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(11, -2.4, 17, 3.0);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(11, 0.6, 14, 2.4);
-
-    const pumpX = 13 + (p.pumpOffset || 0);
-    ctx.fillStyle = '#3f2712';
-    ctx.fillRect(pumpX, -0.2, 7.5, 3.8);
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 0.7;
-    ctx.strokeRect(pumpX, -0.2, 7.5, 3.8);
-
-    if (hold.heldMag && hold.heldMag.type === 'SHOTGUN_SHELL') {
+      // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
-      ctx.translate(hold.heldMag.x, hold.heldMag.y);
-      ctx.rotate(hold.heldMag.angle);
-      // Czerwona łuska 12-gauge z mosiężną kryzą
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(-2.8, -1.2, 5.0, 2.4);
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(-4.0, -1.3, 1.4, 2.6);
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+
+      // A. Korpus bazowy (składana kolba z hakiem, komora, lufa z osłoną termiczną, magazynek rurowy)
+      ctx.drawImage(imgBody, 0, 0);
+
+      // B. Ruchome czółenko pump-action (ślizga się wzdłuż osi magazynka rurowego)
+      const pumpShiftPx = (p.pumpOffset || 0) * (1334 / 39.0);
+      ctx.drawImage(imgPump, 780 + pumpShiftPx, 65);
+
       ctx.restore();
-    }
 
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(26.5, -2.6, 1.5, 3.4);
+      // 2. Łuska 12-gauge trzymana w dłoni podczas ręcznego ładowania do komory
+      if (hold.heldMag && hold.heldMag.type === 'SHOTGUN_SHELL') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        if (imgShell && imgShell.complete && imgShell.naturalWidth > 0) {
+          const shellScale = 6.4 / 140;
+          ctx.scale(shellScale, shellScale);
+          ctx.drawImage(imgShell, -70, -28);
+        } else {
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(-2.8, -1.2, 5.0, 2.4);
+          ctx.fillStyle = '#eab308';
+          ctx.fillRect(-4.0, -1.3, 1.4, 2.6);
+        }
+        ctx.restore();
+      }
 
-    if (p.muzzleFlashTimer > 0) {
-      drawMuzzleFlash(ctx, 28, -0.9, 15, true);
+      // 3. Płomień wylotowy ze szczelin wylotowych strzelby
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 28.0, -0.9, 15, true);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#3f2712';
+      ctx.beginPath();
+      ctx.moveTo(0, -1);
+      ctx.lineTo(-10.4, 1.8);
+      ctx.lineTo(-10.4, 6.8);
+      ctx.lineTo(-4.8, 4.8);
+      ctx.lineTo(0, 3.0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-11.0, 1.8, 1.4, 5.0);
+
+      ctx.fillStyle = '#3f2712';
+      ctx.fillRect(0, 2.5, 3.2, 5);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, -2.6, 11, 5.4);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, -3.2, 11, 1.2);
+
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(11, -2.4, 17, 3.0);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(11, 0.6, 14, 2.4);
+
+      const pumpX = 13 + (p.pumpOffset || 0);
+      ctx.fillStyle = '#3f2712';
+      ctx.fillRect(pumpX, -0.2, 7.5, 3.8);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.7;
+      ctx.strokeRect(pumpX, -0.2, 7.5, 3.8);
+
+      if (hold.heldMag && hold.heldMag.type === 'SHOTGUN_SHELL') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-2.8, -1.2, 5.0, 2.4);
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-4.0, -1.3, 1.4, 2.6);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(26.5, -2.6, 1.5, 3.4);
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 28, -0.9, 15, true);
+      }
     }
   } else if (weapon.id === 'SNIPER') {
-    // 1. Kolba precyzyjna (Tactical PRS sniper stock z baką policzkową i stopką)
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.moveTo(0, -1.0);
-    ctx.lineTo(-11.5, 1.2);
-    ctx.lineTo(-12.2, 6.5);
-    ctx.lineTo(-5.5, 4.5);
-    ctx.lineTo(0, 2.5);
-    ctx.closePath();
-    ctx.fill();
+    const imgBody = getWeaponPartSprite('SNIPER_BODY');
+    const imgMag = getWeaponPartSprite('SNIPER_MAG');
+    const imgBolt = getWeaponPartSprite('SNIPER_BOLT');
 
-    // Gumowa stopka kolby amortyzująca odrzut .50 BMG (Buttpad)
-    ctx.fillStyle = '#020617';
-    ctx.fillRect(-13.0, 0.8, 1.8, 5.8);
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0 &&
+        imgMag && imgMag.complete && imgMag.naturalWidth > 0 &&
+        imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
+      
+      const s = 58.5 / 1353;
+      const pivotSpriteX = 320.7;
+      const pivotSpriteY = 138.5;
 
-    // Regulowana baka policzkowa (Cheek riser)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(-10.8, -2.8, 7.8, 3.2);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(-10.8, -2.8, 7.8, 0.9);
-
-    // Chwyt pistoletowy (Ergonomic combat grip)
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.moveTo(0.5, 2.0);
-    ctx.lineTo(-1.5, 7.5);
-    ctx.lineTo(1.8, 8.2);
-    ctx.lineTo(3.8, 2.0);
-    ctx.closePath();
-    ctx.fill();
-
-    // 2. Masywna komora zamkowa Barretta .50 (Upper & Lower receiver)
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, -3.2, 18, 5.8);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, -2.5, 17, 4.4);
-    // Suwadło i okno wyrzutnika łusek
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(3, -1.5, 6, 2.2);
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(4, -1.0, 4.5, 1.4);
-
-    // Dźwignia zamka czterotaktowego (Bolt handle) poruszająca się w cyklu przeładowania
-    const sniperBolt = hold.boltOffset || 0;
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(4.5 + sniperBolt, -2.2, 2.0, 2.8);
-    ctx.fillStyle = '#090d16';
-    ctx.beginPath();
-    ctx.arc(5.5 + sniperBolt, -2.6, 1.4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Masywny magazynek pudełkowy 5-nabojowy .50 BMG (znika po wypięciu)
-    if (hold.isMagInGun !== false) {
-      ctx.fillStyle = '#090d16';
-      ctx.fillRect(6.5, 2.6, 6.0, 7.2);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(6.5, 2.6, 6.0, 7.2);
-    }
-
-    // Magazynek pudełkowy trzymany w lewej ręce i wsuwany do gniazda
-    if (hold.heldMag && hold.heldMag.type === 'SNIPER') {
+      // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
-      ctx.translate(hold.heldMag.x, hold.heldMag.y);
-      ctx.rotate(hold.heldMag.angle);
-      ctx.fillStyle = '#090d16';
-      ctx.fillRect(-3.0, -3.6, 6.0, 7.2);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(-3.0, -3.6, 6.0, 7.2);
-      // Mosiężny wierzchołek pocisku .50 BMG wystający z warg magazynka
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(-1.5, -4.5, 3.0, 1.2);
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+
+      // A. Masywny magazynek pudełkowy 5-nabojowy .50 BMG (wpięty w gnieździe)
+      if (hold.isMagInGun !== false) {
+        ctx.drawImage(imgMag, 470, 160);
+      }
+
+      // B. Korpus bazowy (kolba PRS, komora, luneta snajperska, łoże, dwójnóg, lufa ryflowana, hamulec wylotowy)
+      ctx.drawImage(imgBody, 0, 0);
+
+      // C. Ruchoma dźwignia zamka czterotaktowego (ruch w tył przy przeładowaniu)
+      const boltPx = (hold.boltOffset || 0) * (1353 / 58.5);
+      ctx.drawImage(imgBolt, 480 + boltPx, 70);
+
       ctx.restore();
-    }
 
-    // Szyna montażowa Picatinny (Top rail)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(-2, -4.2, 22, 1.2);
+      // 2. Magazynek pudełkowy trzymany w lewej ręce i wsuwany do gniazda
+      if (hold.heldMag && hold.heldMag.type === 'SNIPER') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        ctx.scale(s, s);
+        // Środek chwytu dłoni na korpusie magazynka .50
+        ctx.drawImage(imgMag, -80, -90);
+        ctx.restore();
+      }
 
-    // 3. Luneta celownicza (High-power optical sniper scope)
-    // Montaże lunety (Scope mounting rings)
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(2.5, -5.4, 2.0, 1.4);
-    ctx.fillRect(11.5, -5.4, 2.0, 1.4);
-    // Tubus lunety (Central tube)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0.5, -7.0, 15, 2.2);
-    // Wieżyczka regulacji (Elevation turret)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(7, -8.4, 2.4, 1.6);
-    // Okular tylny (Ocular eyepiece)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(-3, -7.8, 3.8, 3.6);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(-3, -7.2, 1.2, 2.4);
-    // Obiektyw przedni z osłoną przeciwsłoneczną (Objective bell & sunshade)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(15, -8.2, 4.5, 4.4);
-    // Antyrefleksyjny błękitny błysk optyki (Glass optical reflection)
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(19.2, -7.5, 0.9, 3.0);
+      // 3. Potężny płomień wylotowy Barretta .50
+      if (p.muzzleFlashTimer > 0) {
+        drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(0, -1.0);
+      ctx.lineTo(-11.5, 1.2);
+      ctx.lineTo(-12.2, 6.5);
+      ctx.lineTo(-5.5, 4.5);
+      ctx.lineTo(0, 2.5);
+      ctx.closePath();
+      ctx.fill();
 
-    // 4. Łoże z perforacją chłodzącą (Ventilated handguard)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(15.5, -2.6, 13.5, 4.2);
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(17.5, -1.2, 2.0, 1.4);
-    ctx.fillRect(21.5, -1.2, 2.0, 1.4);
-    ctx.fillRect(25.5, -1.2, 2.0, 1.4);
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(-13.0, 0.8, 1.8, 5.8);
 
-    // Złożony dwójnóg pod łożem (Folded bipod)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(21, 2.0, 8, 1.3);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-10.8, -2.8, 7.8, 3.2);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-10.8, -2.8, 7.8, 0.9);
 
-    // 5. Długa stalowa lufa ryflowana (Heavy fluted steel barrel)
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(29, -1.7, 12, 2.4);
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(29, -1.1, 12, 0.7); // chromowo-stalowy refleks na lufie
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(0.5, 2.0);
+      ctx.lineTo(-1.5, 7.5);
+      ctx.lineTo(1.8, 8.2);
+      ctx.lineTo(3.8, 2.0);
+      ctx.closePath();
+      ctx.fill();
 
-    // 6. Potężny hamulec wylotowy Barretta .50 (Arrowhead muzzle brake)
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(41, -2.8, 4.5, 4.8);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(41, -2.2, 4.0, 3.6);
-    // Szczeliny gazowe (Port vents)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(42.0, -2.4, 1.0, 4.0);
-    ctx.fillRect(43.5, -2.4, 1.0, 4.0);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, -3.2, 18, 5.8);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, -2.5, 17, 4.4);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(3, -1.5, 6, 2.2);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(4, -1.0, 4.5, 1.4);
 
-    if (p.muzzleFlashTimer > 0) {
-      drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+      const sniperBolt = hold.boltOffset || 0;
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(4.5 + sniperBolt, -2.2, 2.0, 2.8);
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.arc(5.5 + sniperBolt, -2.6, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (hold.isMagInGun !== false) {
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(6.5, 2.6, 6.0, 7.2);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(6.5, 2.6, 6.0, 7.2);
+      }
+
+      if (hold.heldMag && hold.heldMag.type === 'SNIPER') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle);
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(-3.0, -3.6, 6.0, 7.2);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(-3.0, -3.6, 6.0, 7.2);
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-1.5, -4.5, 3.0, 1.2);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-2, -4.2, 22, 1.2);
+
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(2.5, -5.4, 2.0, 1.4);
+      ctx.fillRect(11.5, -5.4, 2.0, 1.4);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0.5, -7.0, 15, 2.2);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(7, -8.4, 2.4, 1.6);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-3, -7.8, 3.8, 3.6);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-3, -7.2, 1.2, 2.4);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(15, -8.2, 4.5, 4.4);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(19.2, -7.5, 0.9, 3.0);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(15.5, -2.6, 13.5, 4.2);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(17.5, -1.2, 2.0, 1.4);
+      ctx.fillRect(21.5, -1.2, 2.0, 1.4);
+      ctx.fillRect(25.5, -1.2, 2.0, 1.4);
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(21, 2.0, 8, 1.3);
+
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(29, -1.7, 12, 2.4);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(29, -1.1, 12, 0.7);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(41, -2.8, 4.5, 4.8);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(41, -2.2, 4.0, 3.6);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(42.0, -2.4, 1.0, 4.0);
+      ctx.fillRect(43.5, -2.4, 1.0, 4.0);
+
+      if (p.muzzleFlashTimer > 0) {
+        drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+      }
     }
   } else if (weapon.id === 'GLOCK') {
     // -------------------------------------------------------------
