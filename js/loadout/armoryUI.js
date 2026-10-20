@@ -7,6 +7,7 @@ import { WEAPONS } from '../weapons/transform.js';
 import { saveStoredLoadout } from './state.js';
 import { equipPocket1Slot } from './logic.js';
 import { playUiClick, playUiHover } from '../uiManager.js';
+import { drawWeaponPreview } from './weaponPreviews.js';
 
 /**
  * Katalog taktyczny uzbrojenia dla Zbrojowni
@@ -563,6 +564,16 @@ export function renderArmoryUI() {
   if (radThrow) radThrow.textContent = `PROMIEŃ: ${throwDef.radius}`;
   if (fuseThrow) fuseThrow.textContent = `CZAS: ${throwDef.fuse}`;
 
+  // 1.5. Renderowanie pełnych schematów wizualnych dla wyposażonych slotów
+  const canvas0 = document.getElementById('armory-slot-canvas-0');
+  const canvas1 = document.getElementById('armory-slot-canvas-1');
+  const canvas2 = document.getElementById('armory-slot-canvas-2');
+  const canvasThrow = document.getElementById('armory-slot-canvas-throw');
+  if (canvas0) drawWeaponPreview(canvas0, slots[0] || 'AK47');
+  if (canvas1) drawWeaponPreview(canvas1, slots[1] || 'GLOCK');
+  if (canvas2) drawWeaponPreview(canvas2, slots[2] || 'KNIFE');
+  if (canvasThrow) drawWeaponPreview(canvasThrow, throwables[0] || 'GRENADE');
+
   // -------------------------------------------------------------------------
   // 2. JEŚLI OTWARTE JEST OKNO WYBORU (PICKER), RENDERUJEMY BRONIE
   // -------------------------------------------------------------------------
@@ -701,6 +712,9 @@ export function renderArmoryUI() {
             ${isEquipped ? '<span class="equipped-badge">WYPOSAŻONO</span>' : ''}
           </div>
         </div>
+        <div class="armory-card-preview-frame">
+          <canvas class="armory-weapon-canvas" width="480" height="140"></canvas>
+        </div>
         <p class="armory-card-desc">${wep.desc}</p>
         ${statsHtml}
       `;
@@ -724,6 +738,11 @@ export function renderArmoryUI() {
       }
 
       listContainer.appendChild(cardEl);
+
+      const weaponCanvas = cardEl.querySelector('.armory-weapon-canvas');
+      if (weaponCanvas) {
+        drawWeaponPreview(weaponCanvas, wep.id);
+      }
     });
   } else {
     if (pickerModal) {

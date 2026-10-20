@@ -30,3 +30,7 @@ export {
   equipArmoryWeapon,
   bindQuickTap
 } from './armoryUI.js';
+
+export {
+  drawWeaponPreview
+} from './weaponPreviews.js';
