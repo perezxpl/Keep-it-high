@@ -68,9 +68,116 @@ export {
   drawHeldWeapon
 };
 
+function executeMeleeAttack(shooter, weapon) {
+  const reach = weapon.range || 55;
+  const facing = shooter.facing || 1;
+  const hipX = shooter.x + (shooter.w || 24) / 2;
+  const hipY = shooter.y + (shooter.h || 70) - 40;
+
+  const candidateTargets = [];
+  if (typeof window !== 'undefined') {
+    if (typeof window.getActiveBots === 'function') {
+      candidateTargets.push(...window.getActiveBots());
+    } else if (Array.isArray(window.bots)) {
+      candidateTargets.push(...window.bots);
+    }
+    if (window.remotePlayer && window.remotePlayer.active && !window.remotePlayer.isDead) {
+      candidateTargets.push(window.remotePlayer);
+    }
+    if (window.player && window.player !== shooter && !window.player.isDead) {
+      candidateTargets.push(window.player);
+    }
+  }
+
+  let hitTarget = null;
+  let minDist = reach;
+
+  for (const t of candidateTargets) {
+    if (!t || t === shooter || t.isDead) continue;
+    if (shooter.team && t.team && shooter.team === t.team) continue;
+
+    const tx = t.x + (t.w || 24) / 2;
+    const ty = t.y + (t.h || 70) - 40;
+    const dx = tx - hipX;
+    const dy = ty - hipY;
+
+    if (dx * facing < -10) continue;
+    const dist = Math.hypot(dx, dy);
+    if (dist <= minDist) {
+      minDist = dist;
+      hitTarget = t;
+    }
+  }
+
+  if (hitTarget) {
+    const isBackstab = (hitTarget.facing === facing);
+    const dmg = isBackstab ? Math.round(weapon.damage * 1.6) : weapon.damage;
+    const hitX = hitTarget.x + (hitTarget.w || 24) / 2;
+    const hitY = hitTarget.y + (hitTarget.h || 70) * 0.45;
+
+    triggerHitstop(3);
+    triggerScreenShake(isBackstab ? 12 : 7);
+    spawnBloodSpurt(hitX, hitY, facing, -0.25, isBackstab ? 18 : 10, 1.4);
+
+    hitTarget.hp = Math.max(0, (hitTarget.hp !== undefined ? hitTarget.hp : 100) - dmg);
+    hitTarget.lastAttacker = shooter;
+    hitTarget.lastAttackerTimer = 240;
+    hitTarget.vx += facing * (weapon.bodyPush || 3.5);
+
+    if (hitTarget.hp <= 0 && !hitTarget.isDead) {
+      hitTarget.isDead = true;
+      hitTarget.killer = shooter;
+      hitTarget.respawnTimer = 180;
+      hitTarget.corpseAngle = 0;
+      hitTarget.corpseRotVel = 0;
+      if (typeof window !== 'undefined') {
+        if (typeof window.recordKill === 'function' && shooter === window.player) {
+          window.recordKill();
+        }
+        if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
+          window.registerKillstreakKill();
+        }
+      }
+    }
+
+    if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
+      window.sendDamageEvent({
+        target: hitTarget.isRemote ? 'player' : 'bot',
+        botId: hitTarget.botId || hitTarget.id,
+        damage: dmg,
+        isHeadshot: isBackstab,
+        isTorsoShot: true,
+        hitX,
+        hitY
+      });
+    }
+  }
+
+  if (typeof window !== 'undefined' && window.ball && window.ball.active !== false) {
+    const b = window.ball;
+    const bdx = b.x - hipX;
+    const bdy = b.y - hipY;
+    if (bdx * facing >= -10 && Math.hypot(bdx, bdy) <= reach + 18) {
+      b.vx = facing * 12.0 * (weapon.ballPush || 0.8);
+      b.vy = -5.0 * (weapon.ballPush || 0.8);
+      triggerHitstop(2);
+      triggerScreenShake(5);
+    }
+  }
+}
+
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return false;
   if (shooter.shootCooldown > 0 && !shooter.isRemote) return false;
+
+  if (weapon.isMelee) {
+    if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate || 16;
+    shooter.meleeAttackTimer = 12;
+    shooter.shootPoseTimer = 18;
+    shooter.shootPoseWeight = 1.0;
+    executeMeleeAttack(shooter, weapon);
+    return true;
+  }
 
   // Weryfikacja amunicji dla gracza lokalnego
   if (!shooter.isRemote && !shooter.isBot) {
@@ -99,19 +206,19 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
   const isCrouch = !!(shooter.isCrouching || shooter.isProne);
 
-  if (weapon.id === 'SHOTGUN') {
-    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 30);
+  if (weapon.id === 'SHOTGUN' || weapon.id === 'SAWED_OFF') {
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, weapon.id === 'SAWED_OFF' ? 24 : 30);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = (shooter.muzzleRise || 0) + weapon.muzzleRise;
-    shooter.pumpTimer = 18;
+    if (weapon.id === 'SHOTGUN') shooter.pumpTimer = 18;
   } else if (weapon.id === 'SNIPER') {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 34);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
-  } else if (weapon.id === 'GLOCK') {
-    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 20);
+  } else if (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER') {
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, weapon.id === 'REVOLVER' ? 24 : 20);
     shooter.weaponKickback = weapon.kickbackDistance;
-    shooter.muzzleRise = Math.min(0.18, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+    shooter.muzzleRise = Math.min(0.24, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   } else {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -275,6 +382,10 @@ export function updateWeaponState(p) {
 
   if (p.emptyAmmoAlert > 0) {
     p.emptyAmmoAlert--;
+  }
+
+  if (p.meleeAttackTimer > 0) {
+    p.meleeAttackTimer--;
   }
 
   // Obsługa amunicji i przeładowania broni gracza

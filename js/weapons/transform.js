@@ -109,6 +109,124 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG.GLOCK.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.GLOCK.reloadTime * 60)
   },
+  REVOLVER: {
+    id: 'REVOLVER',
+    name: 'Magnum .44',
+    fullName: 'MAGNUM .44',
+    category: 'SECONDARY',
+    auto: false,
+    fireRate: 28,
+    damage: 55,
+    bulletSpeed: 38,
+    spread: 0.012,
+    crouchSpreadMult: 0.50,
+    recoil: 2.6,
+    crouchRecoilMult: 0.45,
+    muzzleRise: 0.16,
+    kickbackDistance: 4.2,
+    ballPush: 0.35,
+    bodyPush: 0.08,
+    ragdollPushMult: 1.8,
+    pellets: 1,
+    bulletColor: '#fbbf24',
+    magSize: WEAPON_CONFIG.REVOLVER.magSize,
+    currentAmmo: WEAPON_CONFIG.REVOLVER.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.REVOLVER.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.REVOLVER.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.REVOLVER.reloadTime * 60)
+  },
+  SAWED_OFF: {
+    id: 'SAWED_OFF',
+    name: 'Obrzyn 12G',
+    fullName: 'SAWED-OFF 12G',
+    category: 'SECONDARY',
+    auto: false,
+    fireRate: 20,
+    damage: 12,
+    bulletSpeed: 22,
+    spread: 0.22,
+    crouchSpreadMult: 0.70,
+    recoil: 3.2,
+    crouchRecoilMult: 0.50,
+    muzzleRise: 0.20,
+    kickbackDistance: 5.5,
+    ballPush: 0.45,
+    bodyPush: 0.12,
+    ragdollPushMult: 2.4,
+    pellets: 8,
+    bulletColor: '#fb923c',
+    magSize: WEAPON_CONFIG.SAWED_OFF.magSize,
+    currentAmmo: WEAPON_CONFIG.SAWED_OFF.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.SAWED_OFF.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.SAWED_OFF.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.SAWED_OFF.reloadTime * 60)
+  },
+  KNIFE: {
+    id: 'KNIFE',
+    name: 'Nóż M9',
+    fullName: 'Nóż Bojowy M9',
+    category: 'MELEE',
+    isMelee: true,
+    auto: false,
+    fireRate: 16,
+    damage: 65,
+    range: 55,
+    bulletSpeed: 0,
+    pellets: 0,
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0,
+    reloadDuration: 0,
+    recoil: 0,
+    ballPush: 0.65,
+    bodyPush: 0.25,
+    ragdollPushMult: 1.5
+  },
+  MACHETE: {
+    id: 'MACHETE',
+    name: 'Maczeta Kukri',
+    fullName: 'Maczeta Taktyczna Kukri',
+    category: 'MELEE',
+    isMelee: true,
+    auto: false,
+    fireRate: 24,
+    damage: 85,
+    range: 68,
+    bulletSpeed: 0,
+    pellets: 0,
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0,
+    reloadDuration: 0,
+    recoil: 0,
+    ballPush: 0.85,
+    bodyPush: 0.35,
+    ragdollPushMult: 2.0
+  },
+  AXE: {
+    id: 'AXE',
+    name: 'Toporek Tomahawk',
+    fullName: 'Toporek Bojowy Tomahawk',
+    category: 'MELEE',
+    isMelee: true,
+    auto: false,
+    fireRate: 32,
+    damage: 100,
+    range: 60,
+    bulletSpeed: 0,
+    pellets: 0,
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0,
+    reloadDuration: 0,
+    recoil: 0,
+    ballPush: 1.0,
+    bodyPush: 0.45,
+    ragdollPushMult: 2.5
+  },
   GRENADE: {
     id: 'GRENADE',
     name: 'GRENADE',
@@ -234,7 +352,8 @@ export function getWeaponHoldTransform(p) {
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
-  const isPistol = (weapon.id === 'GLOCK');
+  const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
+  const isMelee = !!(weapon.isMelee || weapon.id === 'KNIFE' || weapon.id === 'MACHETE' || weapon.id === 'AXE');
   const isCrouch = !!(p.isCrouching || p.isProne);
 
   const isStaggered = (p.staggerTimer > 0);
@@ -262,7 +381,14 @@ export function getWeaponHoldTransform(p) {
     const rightHandWorldY = slingPivotY + 3;
     const leftHandWorldX = slingPivotX + (isSniper ? 18 : 14) * charFacing;
     const leftHandWorldY = slingPivotY + 2;
-    const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? 13 : 34));
+    if (isMelee && (p.meleeAttackTimer > 0)) {
+    const meleeProg = p.meleeAttackTimer / 12;
+    const thrustDist = Math.sin(meleeProg * Math.PI) * 14.0;
+    finalPivotX += Math.cos(proneAimAngle) * thrustDist * charFacing;
+    finalPivotY += Math.sin(proneAimAngle) * thrustDist;
+  }
+
+  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? (weapon.id === 'SAWED_OFF' ? 18 : 13) : (isMelee ? 18 : 34)));
 
     return {
       pivotX: slingPivotX,
@@ -363,12 +489,12 @@ export function getWeaponHoldTransform(p) {
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
   // Punkty podparcia dłoni w spoczynku / strzale
-  const rearGripDistX = isSniper ? 1.4 : (isShotgun ? 1.6 : (isPistol ? 1.0 : 1.5));
-  const rearGripDistY = isSniper ? 4.0 : (isShotgun ? 4.5 : (isPistol ? 3.5 : 4.2));
+  const rearGripDistX = isMelee ? 0.8 : (isSniper ? 1.4 : (isShotgun ? 1.6 : (isPistol ? 1.0 : 1.5)));
+  const rearGripDistY = isMelee ? 2.5 : (isSniper ? 4.0 : (isShotgun ? 4.5 : (isPistol ? 3.5 : 4.2)));
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
-  const foreGripDistX = isSniper ? 16.5 : ((isShotgun ? 14.8 : (isPistol ? 2.0 : 16.0)) + pumpShift);
-  const foreGripDistY = isSniper ? 1.0 : (isShotgun ? 1.8 : (isPistol ? 3.2 : 1.0));
+  const foreGripDistX = isMelee ? -2.5 : (isSniper ? 16.5 : ((isShotgun ? 14.8 : (isPistol ? 2.0 : 16.0)) + pumpShift));
+  const foreGripDistY = isMelee ? 8.5 : (isSniper ? 1.0 : (isShotgun ? 1.8 : (isPistol ? 3.2 : 1.0)));
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
   const u = p.isReloading

@@ -171,6 +171,36 @@ export const WEAPON_CONFIG = {
     currentAmmo: 17,
     reserveAmmo: 68,
     reloadTime: 1.4 // ok. 1.4s (~84 klatki przy 60 FPS)
+  },
+  REVOLVER: {
+    magSize: 6,
+    currentAmmo: 6,
+    reserveAmmo: 30,
+    reloadTime: 2.2
+  },
+  SAWED_OFF: {
+    magSize: 2,
+    currentAmmo: 2,
+    reserveAmmo: 24,
+    reloadTime: 1.8
+  },
+  KNIFE: {
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0
+  },
+  MACHETE: {
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0
+  },
+  AXE: {
+    magSize: 0,
+    currentAmmo: 0,
+    reserveAmmo: 0,
+    reloadTime: 0
   }
 };
 

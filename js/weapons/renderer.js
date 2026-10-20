@@ -565,6 +565,159 @@ export function drawHeldWeapon(ctx, p) {
     if (p.muzzleFlashTimer > 0) {
       drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
     }
+  } else if (weapon.id === 'REVOLVER') {
+    // -------------------------------------------------------------
+    // MAGNUM .44 HEAVY REVOLVER RENDERER
+    // -------------------------------------------------------------
+    // 1. Drewniane okładziny chwytu (Rosewood combat grip)
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.moveTo(1.2, 0.5);
+    ctx.lineTo(-2.8, 8.5);
+    ctx.lineTo(-0.2, 8.8);
+    ctx.lineTo(3.2, 1.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Stalowy szkielet (Stainless Steel Frame)
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-2.5, -2.5, 15.5, 3.2);
+
+    // 3. Cylinder bębenka 6-komorowego (.44 Magnum fluted cylinder)
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(1.5, -3.2, 5.5, 4.8);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(2.5, -2.2, 3.5, 1.2);
+    ctx.fillRect(2.5, -0.2, 3.5, 1.2);
+
+    // 4. Masywna lufa 6 cali z wentylowaną szyną górną
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(7.0, -2.4, 9.5, 2.6);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(7.0, -3.4, 8.5, 1.0);
+
+    // 5. Kurek i muszka
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-3.2, -3.8, 1.6, 2.2);
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(15.5, -3.6, 1.0, 1.4);
+
+    if (p.muzzleFlashTimer > 0) {
+      drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+    }
+  } else if (weapon.id === 'SAWED_OFF') {
+    // -------------------------------------------------------------
+    // SAWED-OFF 12G DOUBLE-BARREL RENDERER
+    // -------------------------------------------------------------
+    // 1. Skrócony zaokrąglony chwyt z orzecha
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-3.5, 6.5);
+    ctx.lineTo(-0.8, 7.2);
+    ctx.lineTo(2.8, 1.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Stalowa baskila (Steel Receiver)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-1.5, -2.5, 7.5, 4.2);
+
+    // 3. Krótkie podwójne lufy 12 Gauge ze stali oksydowanej
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(6.0, -2.8, 13.0, 3.8);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(6.0, -1.2, 13.0, 0.8);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(19.0, -2.6, 0.8, 3.4);
+
+    // 4. Drewniane czółenko pod lufami
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(6.0, 1.0, 7.0, 1.8);
+
+    if (p.muzzleFlashTimer > 0) {
+      drawMuzzleFlash(ctx, 19.5, -1.0, 15, true);
+    }
+  } else if (weapon.id === 'KNIFE') {
+    // -------------------------------------------------------------
+    // M9 BAYONET COMBAT KNIFE RENDERER
+    // -------------------------------------------------------------
+    // 1. Chwyt taktyczny kompozytowy (Olive/black ribbed handle)
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(-4.0, -1.6, 5.0, 3.2);
+    ctx.fillStyle = '#292524';
+    ctx.fillRect(-3.0, -1.6, 1.0, 3.2);
+    ctx.fillRect(-1.5, -1.6, 1.0, 3.2);
+
+    // 2. Stalowa głowica chwytu (Steel pommel)
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-5.2, -2.0, 1.2, 4.0);
+
+    // 3. Stalowy jelec z pierścieniem bagnetu (Crossguard)
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(1.0, -4.0, 1.5, 8.0);
+
+    // 4. Ostrze bojowe M9 ze zbroczem i ząbkowaniem (Sawback Blade)
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(2.5, -2.2);
+    ctx.lineTo(16.5, -2.2);
+    ctx.lineTo(19.5, 0.5);
+    ctx.lineTo(15.5, 2.2);
+    ctx.lineTo(2.5, 2.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Zbrocze (Fuller groove)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(4.5, -0.6, 9.0, 1.2);
+    // Ząbki na grzbiecie (Sawback teeth)
+    ctx.fillStyle = '#64748b';
+    for (let s = 4; s < 12; s += 2) {
+      ctx.fillRect(s, -3.0, 1.0, 0.9);
+    }
+  } else if (weapon.id === 'MACHETE') {
+    // -------------------------------------------------------------
+    // TACTICAL KUKRI MACHETE RENDERER
+    // -------------------------------------------------------------
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(-5.0, -1.5, 6.0, 3.0);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(-6.0, -2.2, 1.2, 4.4);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(1.0, -1.8);
+    ctx.lineTo(12.0, -3.5);
+    ctx.lineTo(22.0, 1.0);
+    ctx.lineTo(16.0, 4.5);
+    ctx.lineTo(6.0, 2.2);
+    ctx.lineTo(1.0, 1.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(3.0, -0.4, 11.0, 1.0);
+  } else if (weapon.id === 'AXE') {
+    // -------------------------------------------------------------
+    // TACTICAL TOMAHAWK AXE RENDERER
+    // -------------------------------------------------------------
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.moveTo(11.0, -7.0);
+    ctx.lineTo(15.5, -5.5);
+    ctx.lineTo(14.0, 6.5);
+    ctx.lineTo(9.5, 5.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.moveTo(10.0, -1.5);
+    ctx.lineTo(5.5, -1.0);
+    ctx.lineTo(10.0, 0.5);
+    ctx.closePath();
+    ctx.fill();
   }
 
   ctx.restore();

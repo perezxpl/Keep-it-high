@@ -860,6 +860,56 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
     // 3. Kabłąk spustu
     ctx.fillRect(0.4, 0.8, 3.2, 0.9);
     ctx.fillRect(3.2, 0.8, 0.8, 2.2);
+  } else if (type === 'REVOLVER') {
+    ctx.fillRect(-4, -2.4, 15, 2.8);
+    ctx.fillRect(-1, -3.2, 5, 4.4);
+    ctx.beginPath();
+    ctx.moveTo(1.0, 0.4);
+    ctx.lineTo(-2.2, 6.0);
+    ctx.lineTo(0.5, 6.2);
+    ctx.lineTo(3.2, 0.4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'SAWED_OFF') {
+    ctx.fillRect(-2, -2.2, 13, 3.4);
+    ctx.beginPath();
+    ctx.moveTo(0, 0.4);
+    ctx.lineTo(-3.0, 5.5);
+    ctx.lineTo(-0.5, 6.0);
+    ctx.lineTo(2.2, 0.4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'KNIFE') {
+    ctx.fillRect(-6, -1.0, 5, 2.0);
+    ctx.fillRect(-1.5, -3.0, 1.2, 6.0);
+    ctx.beginPath();
+    ctx.moveTo(-0.2, -1.6);
+    ctx.lineTo(9.5, -1.6);
+    ctx.lineTo(12.5, 0.2);
+    ctx.lineTo(9.0, 1.6);
+    ctx.lineTo(-0.2, 1.6);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'MACHETE') {
+    ctx.fillRect(-6, -1.0, 5, 2.2);
+    ctx.beginPath();
+    ctx.moveTo(-1, -1.4);
+    ctx.lineTo(7, -2.4);
+    ctx.lineTo(14, 0.6);
+    ctx.lineTo(10, 3.2);
+    ctx.lineTo(4, 1.6);
+    ctx.lineTo(-1, 1.2);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === 'AXE') {
+    ctx.fillRect(-5, -1.2, 12, 2.4);
+    ctx.beginPath();
+    ctx.moveTo(7, -4.5);
+    ctx.lineTo(11, -3.5);
+    ctx.lineTo(10, 4.5);
+    ctx.lineTo(6, 3.5);
+    ctx.closePath();
+    ctx.fill();
   } else if (type === 'GRENADE') {
     // Korpus granatu odłamkowego
     ctx.beginPath();
@@ -1442,6 +1492,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     cardBgCol = 'rgba(28, 14, 10, 0.95)';
   } else if (curWepId === 'SNIPER') {
     cardBgCol = 'rgba(10, 24, 40, 0.95)';
+  } else if (curWep?.isMelee) {
+    cardBgCol = 'rgba(30, 10, 15, 0.95)';
   }
 
   ctx.beginPath();
@@ -1483,7 +1535,11 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const ammoRightX = hudX + wepBoxW - 8;
   const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
 
-  if (curWepId === 'GRENADE') {
+  if (curWep?.isMelee) {
+    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillText('ZWARCIE', ammoRightX, ammoMidY);
+  } else if (curWepId === 'GRENADE') {
     const cd = (player.grenadeCooldownTimer || 0) / 60;
     const isReady = (cd <= 0);
     ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
@@ -1558,7 +1614,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     const slot0Id = player.loadout?.pocket1?.slots?.[0] || 'AK47';
     const slot1Id = player.loadout?.pocket1?.slots?.[1] || 'GLOCK';
-    const slot2Id = player.loadout?.pocket1?.slots?.[2] || 'SNIPER';
+    const slot2Id = player.loadout?.pocket1?.slots?.[2] || 'KNIFE';
     const throwId = player.loadout?.pocket2?.throwables?.[0] || 'GRENADE';
 
     weaponButtons[0].x = panelX;

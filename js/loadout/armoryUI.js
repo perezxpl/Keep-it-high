@@ -75,53 +75,80 @@ export const ARMORY_CATALOG = {
         reload: '1.4s',
         stats: { dmgBar: 45, rpmBar: 60, magBar: 65, relBar: 92 },
         desc: 'Niezawodny pistolet boczny o błyskawicznym przeładowaniu. Idealny do szybkiego dobijania wrogów po wyczerpaniu magazynka.'
+      },
+      {
+        id: 'REVOLVER',
+        name: 'MAGNUM .44',
+        fullName: 'Ciężki Rewolwer Magnum .44',
+        category: 'DODATKOWA',
+        caliber: '.44 REMINGTON MAGNUM',
+        typeLabel: 'DOUBLE-ACTION',
+        dmg: 55,
+        rpm: 120,
+        mag: 6,
+        reserve: 30,
+        reload: '2.2s',
+        stats: { dmgBar: 82, rpmBar: 35, magBar: 25, relBar: 60 },
+        desc: 'Klasyczny rewolwer o dewastującej sile rażenia. Potężny pocisk .44 powala przeciwnika w dwóch celnych strzałach.'
+      },
+      {
+        id: 'SAWED_OFF',
+        name: 'OBRZYN 12G',
+        fullName: 'Jednoręczna Strzelba Obrzyn',
+        category: 'DODATKOWA',
+        caliber: '12 GAUGE BUCKSHOT',
+        typeLabel: 'BREAK-ACTION',
+        dmg: 96,
+        rpm: 180,
+        mag: 2,
+        reserve: 24,
+        reload: '1.8s',
+        stats: { dmgBar: 92, rpmBar: 45, magBar: 15, relBar: 75 },
+        desc: 'Skrócona dubeltówka do walki w zwarciu. Dwie natychmiastowe salwy śrutu czyszczą ciasne korytarze.'
       }
     ],
     slot2: [
       {
-        id: 'SNIPER',
-        name: 'BARRETT .50',
-        fullName: 'Barrett .50 (Rezerwa Wyborowa)',
-        category: 'REZERWA',
-        caliber: '.50 BMG',
-        typeLabel: 'BOLT-ACTION',
-        dmg: 120,
-        rpm: 55,
-        mag: 5,
-        reserve: 25,
-        reload: '2.8s',
-        stats: { dmgBar: 100, rpmBar: 18, magBar: 25, relBar: 40 },
-        desc: 'Konfiguracja rezerwowa pod daleki zasięg eliminacji celów.'
+        id: 'KNIFE',
+        name: 'NÓŻ M9',
+        fullName: 'Nóż Bojowy M9 Bayonet',
+        category: 'BIAŁA',
+        caliber: 'STAL 420HC',
+        typeLabel: 'BROŃ BIAŁA',
+        isMelee: true,
+        dmg: 65,
+        range: '55 PX',
+        speed: 'BŁYSKAWICZNA',
+        stats: { dmgBar: 70, reachBar: 55, speedBar: 95 },
+        desc: 'Standardowy nóż piechoty z ząbkowanym grzbietem. Błyskawiczne pchnięcia w zwarciu i cicha eliminacja celów.'
       },
       {
-        id: 'SHOTGUN',
-        name: 'SPAS-12',
-        fullName: 'SPAS-12 (Rezerwa Szturmowa)',
-        category: 'REZERWA',
-        caliber: '12 GAUGE',
-        typeLabel: 'PUMP-ACTION',
-        dmg: 112,
-        rpm: 75,
-        mag: 8,
-        reserve: 64,
-        reload: '2.4s',
-        stats: { dmgBar: 95, rpmBar: 25, magBar: 40, relBar: 55 },
-        desc: 'Zabezpieczenie na wypadek walki w ciasnych przejściach i korytarzach.'
+        id: 'MACHETE',
+        name: 'MACZETA KUKRI',
+        fullName: 'Maczeta Taktyczna Kukri',
+        category: 'BIAŁA',
+        caliber: 'STAL SPRĘŻYNOWA 1075',
+        typeLabel: 'BROŃ BIAŁA',
+        isMelee: true,
+        dmg: 85,
+        range: '68 PX',
+        speed: 'ŚREDNIA',
+        stats: { dmgBar: 88, reachBar: 75, speedBar: 65 },
+        desc: 'Ciężka nepalska maczeta o zakrzywionym profilu. Szeroki łuk cięcia i druzgocące obrażenia przy zamachu.'
       },
       {
-        id: 'AK47',
-        name: 'AK-47',
-        fullName: 'AK-47 (Rezerwa Bojowa)',
-        category: 'REZERWA',
-        caliber: '7.62x39MM',
-        typeLabel: 'AUTOMATYCZNY',
-        dmg: 26,
-        rpm: 600,
-        mag: 30,
-        reserve: 90,
-        reload: '2.2s',
-        stats: { dmgBar: 65, rpmBar: 85, magBar: 80, relBar: 65 },
-        desc: 'Wszechstronny karabin rezerwowy na każdą sytuację bojową.'
+        id: 'AXE',
+        name: 'TOMAHAWK',
+        fullName: 'Toporek Bojowy Tomahawk',
+        category: 'BIAŁA',
+        caliber: 'KUTA STAL SK-5',
+        typeLabel: 'BROŃ BIAŁA',
+        isMelee: true,
+        dmg: 100,
+        range: '60 PX',
+        speed: 'CIĘŻKA',
+        stats: { dmgBar: 100, reachBar: 65, speedBar: 45 },
+        desc: 'Militarny toporek szturmowy. Brutalna siła uderzenia eliminująca przeciwnika jednym celnym trafieniem.'
       }
     ]
   },
@@ -485,18 +512,18 @@ export function renderArmoryUI() {
   if (rpm1) rpm1.textContent = `RPM: ${slot1Def.rpm}`;
   if (mag1) mag1.textContent = `MAG: ${slot1Def.mag}`;
 
-  // Aktualizacja kafelka Slot 3 (Rezerwa)
-  const slot2Def = getCatalogWeapon(slots[2] || 'SNIPER', 'slot2');
+  // Aktualizacja kafelka Slot 3 (Broń Biała)
+  const slot2Def = getCatalogWeapon(slots[2] || 'KNIFE', 'slot2');
   const name2 = document.getElementById('armory-slot-name-2');
   const det2 = document.getElementById('armory-slot-details-2');
   const dmg2 = document.getElementById('armory-slot-stat-dmg-2');
-  const rpm2 = document.getElementById('armory-slot-stat-rpm-2');
-  const mag2 = document.getElementById('armory-slot-stat-mag-2');
+  const reach2 = document.getElementById('armory-slot-stat-reach-2');
+  const speed2 = document.getElementById('armory-slot-stat-speed-2');
   if (name2) name2.textContent = slot2Def.fullName || slot2Def.name;
   if (det2) det2.textContent = `${slot2Def.caliber} · ${slot2Def.typeLabel}`;
   if (dmg2) dmg2.textContent = `DMG: ${slot2Def.dmg}`;
-  if (rpm2) rpm2.textContent = `RPM: ${slot2Def.rpm}`;
-  if (mag2) mag2.textContent = `MAG: ${slot2Def.mag}`;
+  if (reach2) reach2.textContent = `ZASIĘG: ${slot2Def.range || '55 PX'}`;
+  if (speed2) speed2.textContent = slot2Def.speed || 'SZYBKI';
 
   // Aktualizacja kafelka Kieszeń 2 (Miotana)
   const throwDef = getCatalogWeapon(throwables[0] || 'GRENADE', 'throw');
@@ -541,8 +568,8 @@ export function renderArmoryUI() {
       availableList = ARMORY_CATALOG.pocket1.slot1;
       currentEquippedId = slots[1];
     } else if (_activeSlotIndex === 2) {
-      slotTagText = 'SLOT 3 // KIESZEŃ 1: REZERWA BOJOWA';
-      slotTitleText = 'WYBIERZ BROŃ REZERWOWĄ';
+      slotTagText = 'SLOT 3 // KIESZEŃ 1: BROŃ BIAŁA';
+      slotTitleText = 'WYBIERZ BROŃ BIAŁĄ';
       availableList = ARMORY_CATALOG.pocket1.slot2;
       currentEquippedId = slots[2];
     } else {
@@ -565,9 +592,30 @@ export function renderArmoryUI() {
       cardEl.className = `armory-weapon-card ${isEquipped ? 'equipped' : ''}`;
 
       const isThrow = (_activeSlotIndex === 3);
+      const isMelee = (_activeSlotIndex === 2);
 
       let statsHtml = '';
-      if (!isThrow) {
+      if (isMelee) {
+        statsHtml = `
+          <div class="armory-stats-grid">
+            <div class="armory-stat-row">
+              <span class="stat-lbl">OBRAŻENIA</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.dmgBar}%"></div></div>
+              <span class="stat-val">${wep.dmg}</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">ZASIĘG CIĘCIA</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.reachBar}%"></div></div>
+              <span class="stat-val">${wep.range}</span>
+            </div>
+            <div class="armory-stat-row">
+              <span class="stat-lbl">SZYBKOŚĆ ATAKU</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width: ${wep.stats.speedBar}%"></div></div>
+              <span class="stat-val">${wep.speed}</span>
+            </div>
+          </div>
+        `;
+      } else if (!isThrow) {
         statsHtml = `
           <div class="armory-stats-grid">
             <div class="armory-stat-row">

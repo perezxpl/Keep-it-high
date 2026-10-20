@@ -5910,6 +5910,18 @@ button, .dev-btn {
   box-shadow: 0 0 14px rgba(250, 204, 21, 0.25);
 }
 
+.armory-slot-card-melee:hover {
+  border-color: rgba(244, 63, 94, 0.65);
+  background: rgba(244, 63, 94, 0.08);
+  box-shadow: 0 4px 16px rgba(244, 63, 94, 0.2);
+}
+
+.armory-slot-card-melee.active {
+  border-color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.25);
+}
+
 .slot-card-badge-line {
   display: flex;
   justify-content: space-between;
@@ -5933,6 +5945,10 @@ button, .dev-btn {
 
 .armory-slot-card-throw .slot-card-tag {
   color: #facc15;
+}
+
+.armory-slot-card-melee .slot-card-tag {
+  color: #f43f5e;
 }
 
 .slot-card-name {
@@ -5979,6 +5995,12 @@ button, .dev-btn {
   color: #facc15;
   background: rgba(250, 204, 21, 0.08);
   border-color: rgba(250, 204, 21, 0.2);
+}
+
+.armory-slot-card-melee .slot-mini-stat {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.2);
 }
 
 .armory-picker-modal {

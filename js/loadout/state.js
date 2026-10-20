@@ -9,10 +9,10 @@ export const STORAGE_KEY_LOADOUT = 'keep_it_high_loadout';
 export function getDefaultLoadout() {
   return {
     pocket1: {
-      // Slot 1: Broń Główna (Primary)
-      // Slot 2: Broń Dodatkowa (Secondary - Glock 17)
-      // Slot 3: Broń Biała / Rezerwa (Melee / Reserve)
-      slots: ['AK47', 'GLOCK', 'SNIPER'],
+      // Slot 1: Broń Główna (Primary: AK47, SHOTGUN, SNIPER)
+      // Slot 2: Broń Dodatkowa (Secondary: GLOCK, REVOLVER, SAWED_OFF)
+      // Slot 3: Broń Biała (Melee: KNIFE, MACHETE, AXE)
+      slots: ['AK47', 'GLOCK', 'KNIFE'],
       activeSlotIndex: 0
     },
     pocket2: {
@@ -38,9 +38,18 @@ export function getStoredLoadout() {
     const raw = window.localStorage.getItem(STORAGE_KEY_LOADOUT);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
-    const slots = Array.isArray(parsed?.pocket1?.slots) ? parsed.pocket1.slots : fallback.pocket1.slots;
-    const validatedSlots = slots.map(id => ((WEAPONS && WEAPONS[id]) ? id : 'AK47'));
-    if (validatedSlots.length < 2) validatedSlots.push('GLOCK');
+    const rawSlots = Array.isArray(parsed?.pocket1?.slots) ? parsed.pocket1.slots : fallback.pocket1.slots;
+    
+    // Ścisła walidacja ról bojowych slotów:
+    const validSlot0 = ['AK47', 'SHOTGUN', 'SNIPER'];
+    const validSlot1 = ['GLOCK', 'REVOLVER', 'SAWED_OFF'];
+    const validSlot2 = ['KNIFE', 'MACHETE', 'AXE'];
+
+    const s0 = validSlot0.includes(rawSlots[0]) ? rawSlots[0] : 'AK47';
+    const s1 = validSlot1.includes(rawSlots[1]) ? rawSlots[1] : 'GLOCK';
+    const s2 = validSlot2.includes(rawSlots[2]) ? rawSlots[2] : 'KNIFE';
+
+    const validatedSlots = [s0, s1, s2];
 
     return {
       pocket1: {

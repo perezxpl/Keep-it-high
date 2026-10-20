@@ -33,7 +33,7 @@
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
       "./js/classes/index.js": "./js/classes/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/classes/striker.js": "./js/classes/striker.js?v=v195_fix_stagger_flight_teleport_and_bot_kick_loop",
-      "./js/config.js": "./js/config.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/config.js": "./js/config.js?v=v246_armory_slots_role_separation",
       "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v192_perf_and_multiplayer_sync",
       "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v192_perf_and_multiplayer_sync",
@@ -53,11 +53,11 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v229_jungle_grass_crater_collision_and_scorch_cleanup",
-      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v245_armory_minimalist_cleanup",
-      "./js/loadout/index.js": "./js/loadout/index.js?v=v245_armory_minimalist_cleanup",
-      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v245_armory_minimalist_cleanup",
-      "./js/loadout/state.js": "./js/loadout/state.js?v=v245_armory_minimalist_cleanup",
-      "./js/main.js": "./js/main.js?v=v245_armory_minimalist_cleanup",
+      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v246_armory_slots_role_separation",
+      "./js/loadout/index.js": "./js/loadout/index.js?v=v246_armory_slots_role_separation",
+      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v246_armory_slots_role_separation",
+      "./js/loadout/state.js": "./js/loadout/state.js?v=v246_armory_slots_role_separation",
+      "./js/main.js": "./js/main.js?v=v246_armory_slots_role_separation",
       "./js/network.js": "./js/network.js?v=v236_grenade_cooking_from_aim",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -92,12 +92,12 @@
       "./js/renderer.js": "./js/renderer.js?v=v210_chrome_fillrate_ultrawide_and_locked_60fps",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v232_crater_gravity_and_self_death_feed",
-      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
+      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v246_armory_slots_role_separation",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v205_fix_rewardPreview_and_restore_touch_controls",
       "./js/uiManager.js": "./js/uiManager.js?v=v244_quick_tap_scroll_protection",
-      "./js/weapons.js": "./js/weapons.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
-      "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v192_perf_and_multiplayer_sync",
-      "./js/weapons/transform.js": "./js/weapons/transform.js?v=v192_perf_and_multiplayer_sync",
+      "./js/weapons.js": "./js/weapons.js?v=v246_armory_slots_role_separation",
+      "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v246_armory_slots_role_separation",
+      "./js/weapons/transform.js": "./js/weapons/transform.js?v=v246_armory_slots_role_separation",
       "./js/world.js": "./js/world.js?v=v210_chrome_fillrate_ultrawide_and_locked_60fps",
       "./js/world/gore.js": "./js/world/gore.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/world/sky.js": "./js/world/sky.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -106,7 +106,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v245_armory_minimalist_cleanup">
+  <link rel="stylesheet" href="./css/main.css?v=v246_armory_slots_role_separation">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -1325,18 +1325,18 @@
                   </div>
                 </button>
 
-                <!-- Slot 3: Rezerwa Bojowa -->
-                <button type="button" class="armory-slot-card" id="armory-slot-card-2" title="Kliknij, aby wybrać broń rezerwową">
+                <!-- Slot 3: Broń Biała -->
+                <button type="button" class="armory-slot-card armory-slot-card-melee" id="armory-slot-card-2" title="Kliknij, aby wybrać broń białą">
                   <div class="slot-card-badge-line">
                     <span class="slot-card-number">SLOT 3</span>
-                    <span class="slot-card-tag" id="armory-slot-badge-2">[REZERWA]</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-2">[BIAŁA]</span>
                   </div>
-                  <div class="slot-card-name" id="armory-slot-name-2">BARRETT .50</div>
-                  <div class="slot-card-details" id="armory-slot-details-2">.50 BMG · BOLT-ACTION</div>
+                  <div class="slot-card-name" id="armory-slot-name-2">NÓŻ BOJOWY M9</div>
+                  <div class="slot-card-details" id="armory-slot-details-2">STAL 420HC · BROŃ BIAŁA</div>
                   <div class="slot-card-stats-mini" id="armory-slot-stats-2">
-                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-2">DMG: 120</span>
-                    <span class="slot-mini-stat" id="armory-slot-stat-rpm-2">RPM: 55</span>
-                    <span class="slot-mini-stat" id="armory-slot-stat-mag-2">MAG: 5</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-dmg-2">DMG: 65</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-reach-2">ZASIĘG: 55 PX</span>
+                    <span class="slot-mini-stat" id="armory-slot-stat-speed-2">SZYBKI</span>
                   </div>
                 </button>
 
@@ -1426,7 +1426,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v245_armory_minimalist_cleanup"></script>
+  <script type="module" src="./js/main.js?v=v246_armory_slots_role_separation"></script>
 </body>
 
 </html>

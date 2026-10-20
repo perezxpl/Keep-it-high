@@ -51,15 +51,15 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/classes/enforcer.js` — Klasa 3: Enforcer (Kolos / Czołg, potężna masa, wstrząsy ziemi, taran).
 
 ### Uzbrojenie i Pociski (`js/weapons/`, `js/weapons.js`)
-- `js/weapons/transform.js` — katalog uzbrojenia (`WEAPONS`: AK-47, Shotgun SPAS-12, Barrett .50 Sniper, Glock 17), procedury chwytu 2D (IK rąk), balistyka i mechanika odrzutu.
-- `js/weapons/renderer.js` — procedury renderowania modeli broni (AK-47, Shotgun, Sniper, Glock 17 z ruchomym zamkiem blowbacku), celownika laserowego, łusek i smug.
-- `js/weapons.js` — wystrzeliwanie (`shootWeapon`), pętla balistyki pocisków (`updateBullets`), kolizje z przeszkodami i postaciami oraz przeładowanie (`reloadWeapon`).
+- `js/weapons/transform.js` — katalog uzbrojenia (`WEAPONS`: Główna: AK-47, Shotgun SPAS-12, Barrett .50; Dodatkowa: Glock 17, Magnum .44, Obrzyn 12G; Biała: Nóż Bojowy M9, Maczeta Kukri, Toporek Tomahawk), procedury chwytu 2D (IK rąk, pchnięcia/cięcia wręcz), balistyka i mechanika odrzutu.
+- `js/weapons/renderer.js` — procedury renderowania modeli broni (AK-47, Shotgun, Sniper, Glock 17 z ruchomym zamkiem blowbacku, Magnum .44, Obrzyn 12G, Nóż Bojowy M9, Maczeta Kukri, Toporek Tomahawk), celownika laserowego, łusek i smug.
+- `js/weapons.js` — wystrzeliwanie (`shootWeapon`), walka wręcz bronią białą (`executeMeleeAttack`), pętla balistyki pocisków (`updateBullets`), kolizje z przeszkodami i postaciami oraz przeładowanie (`reloadWeapon`).
 - `js/projectiles.js` — granaty taktyczne, eksplozje i trajektorie rzutów.
 
 ### Ekwipunek i Zestawy Bojowe (`js/loadout/`)
 - `js/loadout/state.js` — konfiguracja slotów i kieszeni (`DEFAULT_LOADOUT`, `STORAGE_KEY_LOADOUT`, `getDefaultLoadout`, `getStoredLoadout`, `saveStoredLoadout`, `initPlayerLoadout`).
 - `js/loadout/logic.js` — mechanika doboru i szybkiego przełączania broni (`equipPocket1Slot`, `cyclePocket1`, `quickSwitchPocket1`, `cyclePocket2`).
-- `js/loadout/armoryUI.js` — interfejs wojskowej Zbrojowni (`ARMORY_CATALOG`, `initArmoryUI`, `openArmory`, `closeArmory`, `renderArmoryUI`, `equipArmoryWeapon`): sloty Kieszeni 1 (Główna, Pistolet, Rezerwa) i Kieszeni 2 (Miotana), karty taktyczne statystyk i natychmiastowe wyposażanie.
+- `js/loadout/armoryUI.js` — interfejs wojskowej Zbrojowni (`ARMORY_CATALOG`, `initArmoryUI`, `openArmory`, `closeArmory`, `renderArmoryUI`, `equipArmoryWeapon`): Slot 1 (Główna), Slot 2 (Dodatkowa — pistolety, rewolwery, obrzyny), Slot 3 (Broń Biała), Kieszeń 2 (Miotana), karty taktyczne statystyk i natychmiastowe wyposażanie.
 - `js/loadout/index.js` — główny punkt wejścia i eksport modułu ekwipunku.
 
 ### Areny (`js/arenas/`)
