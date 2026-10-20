@@ -12,6 +12,7 @@ import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch
 import { getRiverbankGroundY } from './arenas/arena3/state.js';
 import {
   spawnShrapnelStreak,
+  spawnRicochetSparks,
   spawnConcreteDebris,
   spawnPowderSmoke,
   spawnDustCloud,
@@ -73,12 +74,12 @@ export class AeroSuperGrenade {
     this.vRot = (Math.random() * 0.15 + 0.18) * (this.vx >= 0 ? 1 : -1);
 
     this.bounces = 0;
-    this.maxBounces = 2;
-    this.restitution = 0.62;
+    this.maxBounces = 5;
+    this.restitution = 0.58;
 
-    // Zapalnik czasowy: 1.5 sekundy (90 klatek)
-    this.fuse = 90;
-    this.maxFuse = 90;
+    // Zapalnik czasowy: 5.0 sekund (300 klatek przy 60 FPS)
+    this.fuse = 300;
+    this.maxFuse = 300;
     this.detonated = false;
 
     this.blastRadius = 145; // Promień wybuchu R = 130-150 px
@@ -132,11 +133,15 @@ export class AeroSuperGrenade {
         ? curArena.acidSurge.currentY
         : (curArena?.hazardZoneY ?? 1440);
       if (this.y + this.radius >= acidLevelY) {
-        if (typeof window.spawnAcidSplash === 'function') {
-          window.spawnAcidSplash(this.x, acidLevelY, 18);
+        if (this.prevY + this.radius < acidLevelY) {
+          if (typeof window.spawnAcidSplash === 'function') {
+            window.spawnAcidSplash(this.x, acidLevelY, 14);
+          }
         }
-        this.detonate(acidLevelY + 40, activePlats, customObs, combatants, ball);
-        return false;
+        // Wyporność, gęstość i opór kwasu (granat powoli tonie i detonuje wyłącznie po czasie 5s)
+        this.vx *= 0.82;
+        this.vy = Math.min(1.2, (this.vy + 0.06) * 0.74);
+        this.vRot *= 0.72;
       }
     } else if (isA3) {
       const gx = this.x;
@@ -308,7 +313,7 @@ export class AeroSuperGrenade {
       }
     }
 
-    // 4. Detekcja bezpośredniego kontaktu z wrogim graczem / botem
+    // 4. Detekcja bezpośredniego kontaktu z wrogim graczem / botem (odbicie rykoszetem, detonacja WYŁĄCZNIE po 5s)
     if (Array.isArray(combatants)) {
       for (const ch of combatants) {
         if (!ch || ch === this.shooter || ch.isDead) continue;
@@ -317,14 +322,23 @@ export class AeroSuperGrenade {
         const distToChar = Math.hypot(chCenterX - this.x, chCenterY - this.y);
 
         if (distToChar <= this.radius + Math.min(ch.w, ch.h) * 0.55) {
-          // Natychmiastowa detonacja przy uderzeniu we wroga!
-          this.detonate(groundY, activePlats, customObs, combatants, ball);
-          return false;
+          // Odbicie od ciała przeciwnika ze stratą energii
+          const hitAngle = Math.atan2(this.y - chCenterY, this.x - chCenterX);
+          this.vx = Math.cos(hitAngle) * Math.max(2.2, Math.abs(this.vx) * 0.55);
+          this.vy = Math.sin(hitAngle) * Math.max(1.8, Math.abs(this.vy) * 0.55);
+          this.vRot = (Math.random() - 0.5) * 0.35;
+          this.bounces++;
+          break;
         }
       }
     }
 
-    // 5. Odliczanie zapalnika czasowego (1.5 sekundy)
+    // Iskry zapalnika ostrzegające przed eksplozją w ostatnich 1.5 sekundy
+    if (this.fuse < 90 && this.fuse % 4 === 0) {
+      spawnRicochetSparks(this.x, this.y - 6, (Math.random() - 0.5) * 2, -1, 1);
+    }
+
+    // 5. Odliczanie zapalnika czasowego (5.0 sekund = 300 klatek)
     this.fuse--;
     if (this.fuse <= 0) {
       this.detonate(groundY, activePlats, customObs, combatants, ball);
@@ -373,13 +387,14 @@ export class AeroSuperGrenade {
     ctx.lineTo(6, 4);
     ctx.stroke();
 
-    // Pulsująca czerwona dioda zapalnika
-    const pulseRate = (this.maxFuse - this.fuse) / this.maxFuse;
-    const isLit = (Math.sin(this.fuse * (0.25 + pulseRate * 0.55)) > 0);
+    // Pulsująca czerwona dioda zapalnika – spokojne tykanie, przyspieszające pod koniec
+    const progress = Math.max(0, Math.min(1, (this.maxFuse - this.fuse) / this.maxFuse));
+    const blinkSpeed = 0.08 + Math.pow(progress, 2.5) * 0.70;
+    const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
 
     ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
     ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = isLit ? 10 : 0;
+    ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
     ctx.beginPath();
     ctx.arc(0, -5, 2.2, 0, Math.PI * 2);
     ctx.fill();
