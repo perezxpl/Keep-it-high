@@ -202,10 +202,13 @@ export function initArmoryUI(playerInstance) {
   }
 
   const armoryOverlay = document.getElementById('armory-overlay');
+  const headerBackBtn = document.getElementById('armory-header-back-btn');
+  const footerBackBtn = document.getElementById('armory-footer-back-btn');
+  const pickerHeaderBackBtn = document.getElementById('armory-picker-header-back-btn');
+  const pickerBackBtn = document.getElementById('armory-picker-back-btn');
   const closeBtn = document.getElementById('armory-close-btn');
   const saveBtn = document.getElementById('armory-save-btn');
   const pickerCloseBtn = document.getElementById('armory-picker-close-btn');
-  const pickerBackBtn = document.getElementById('armory-picker-back-btn');
 
   const bindClickAndTouch = (el, handler) => {
     if (!el) return;
@@ -219,10 +222,27 @@ export function initArmoryUI(playerInstance) {
     });
   };
 
+  bindClickAndTouch(headerBackBtn, () => closeArmory());
+  bindClickAndTouch(footerBackBtn, () => closeArmory());
   bindClickAndTouch(closeBtn, () => closeArmory());
   bindClickAndTouch(saveBtn, () => closeArmory());
-  bindClickAndTouch(pickerCloseBtn, () => closeSlotPicker());
+
+  bindClickAndTouch(pickerHeaderBackBtn, () => closeSlotPicker());
   bindClickAndTouch(pickerBackBtn, () => closeSlotPicker());
+  bindClickAndTouch(pickerCloseBtn, () => closeSlotPicker());
+
+  // Kliknięcie w ciemne tło (backdrop) poza oknem zamyka lub cofa okno
+  if (armoryOverlay) {
+    bindClickAndTouch(armoryOverlay, (e) => {
+      if (e.target === armoryOverlay) {
+        if (_currentArmoryView === 'PICKER') {
+          closeSlotPicker();
+        } else {
+          closeArmory();
+        }
+      }
+    });
+  }
 
   // Kafelki slotów w widoku głównym ekwipunku
   for (let i = 0; i < 3; i++) {

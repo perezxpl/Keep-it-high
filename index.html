@@ -53,11 +53,11 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v229_jungle_grass_crater_collision_and_scorch_cleanup",
-      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v242_armory_slot_picker_robust_fix",
-      "./js/loadout/index.js": "./js/loadout/index.js?v=v242_armory_slot_picker_robust_fix",
-      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v242_armory_slot_picker_robust_fix",
-      "./js/loadout/state.js": "./js/loadout/state.js?v=v242_armory_slot_picker_robust_fix",
-      "./js/main.js": "./js/main.js?v=v242_armory_slot_picker_robust_fix",
+      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v243_armory_compact_fit_and_window_back_buttons",
+      "./js/loadout/index.js": "./js/loadout/index.js?v=v243_armory_compact_fit_and_window_back_buttons",
+      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v243_armory_compact_fit_and_window_back_buttons",
+      "./js/loadout/state.js": "./js/loadout/state.js?v=v243_armory_compact_fit_and_window_back_buttons",
+      "./js/main.js": "./js/main.js?v=v243_armory_compact_fit_and_window_back_buttons",
       "./js/network.js": "./js/network.js?v=v236_grenade_cooking_from_aim",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -94,7 +94,7 @@
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v205_fix_rewardPreview_and_restore_touch_controls",
-      "./js/uiManager.js": "./js/uiManager.js?v=v221_nocturnal_jungle_preview",
+      "./js/uiManager.js": "./js/uiManager.js?v=v243_armory_compact_fit_and_window_back_buttons",
       "./js/weapons.js": "./js/weapons.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v192_perf_and_multiplayer_sync",
       "./js/weapons/transform.js": "./js/weapons/transform.js?v=v192_perf_and_multiplayer_sync",
@@ -106,7 +106,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v242_armory_slot_picker_robust_fix">
+  <link rel="stylesheet" href="./css/main.css?v=v243_armory_compact_fit_and_window_back_buttons">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -1151,7 +1151,10 @@
               </div>
             </div>
             <p id="creator-modal-subtitle" style="display: none;"></p>
-            <button id="creator-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
+            <div class="settings-header-actions">
+              <button id="creator-header-back-btn" class="ui-btn ui-btn-secondary creator-header-back-btn" type="button" title="Wróć (ESC)">◀ POWRÓT</button>
+              <button id="creator-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">&times;</button>
+            </div>
           </div>
 
           <!-- EKRAN EDYTORA WYBRANEJ KLASY -->
@@ -1268,8 +1271,8 @@
             </div>
 
             <div class="settings-footer">
-              <span></span>
-              <button id="creator-editor-done-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ</button>
+              <button id="creator-back-btn" class="ui-btn ui-btn-secondary" type="button">◀ POWRÓT</button>
+              <button id="creator-editor-done-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ ▶</button>
             </div>
           </div>
         </div>
@@ -1286,14 +1289,21 @@
               </div>
               <h2 class="armory-title">ZESTAW BOJOWY (LOADOUT)</h2>
             </div>
-            <button id="armory-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">&times;</button>
+            <div class="armory-header-actions">
+              <button id="armory-header-back-btn" class="ui-btn ui-btn-secondary armory-nav-back-btn" type="button" title="Wróć do menu (ESC)">◀ POWRÓT</button>
+              <button id="armory-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">&times;</button>
+            </div>
           </div>
 
           <!-- PRZEGLĄD SLOTÓW EKWIPUNKU -->
           <div class="armory-content" id="armory-view-slots">
             <div class="armory-slots-panel">
-              <div class="armory-pocket-title">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA</div>
-              <div class="armory-slots-row">
+              <div class="armory-pocket-legend">
+                <span class="legend-p1">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA (SLOTY 1-3)</span>
+                <span class="legend-divider">◈</span>
+                <span class="legend-p2">KIESZEŃ 2: WYPOSAŻENIE MIOTANE (SLOT 4)</span>
+              </div>
+              <div class="armory-slots-grid">
                 <!-- Slot 1: Broń Główna -->
                 <button type="button" class="armory-slot-card" id="armory-slot-card-0" onclick="window.openSlotPicker && window.openSlotPicker(0)" ontouchend="window.openSlotPicker && window.openSlotPicker(0)" title="Kliknij, aby otworzyć okno wyboru broni głównej">
                   <div class="slot-card-badge-line">
@@ -1347,10 +1357,7 @@
                     <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
                 </button>
-              </div>
 
-              <div class="armory-pocket-title armory-pocket-title-throw">KIESZEŃ 2: WYPOSAŻENIE MIOTANE &amp; TAKTYCZNE</div>
-              <div class="armory-slots-row">
                 <!-- Slot Miotany: Kieszeń 2 -->
                 <button type="button" class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable" onclick="window.openSlotPicker && window.openSlotPicker(3)" ontouchend="window.openSlotPicker && window.openSlotPicker(3)" title="Kliknij, aby otworzyć okno wyboru wyposażenia miotanego">
                   <div class="slot-card-badge-line">
@@ -1377,7 +1384,8 @@
               <span>Kliknij w dowolny slot, aby otworzyć okno wyboru uzbrojenia dla tej pozycji bojowej.</span>
             </div>
             <div class="armory-footer-actions">
-              <button id="armory-save-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ</button>
+              <button id="armory-footer-back-btn" class="ui-btn ui-btn-secondary" type="button" title="Wróć do menu (ESC)">◀ POWRÓT</button>
+              <button id="armory-save-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ ▶</button>
             </div>
           </div>
 
@@ -1390,7 +1398,8 @@
               </div>
               <div class="picker-header-right">
                 <span class="armory-picker-counter" id="armory-picker-counter">3 DOSTĘPNE</span>
-                <button id="armory-picker-close-btn" class="ui-close-btn" type="button" title="Zamknij wybór (ESC)">&times;</button>
+                <button id="armory-picker-header-back-btn" class="ui-btn ui-btn-secondary armory-nav-back-btn" type="button" title="Wróć do slotów (ESC)">◀ WRÓĆ DO SLOTÓW</button>
+                <button id="armory-picker-close-btn" class="ui-close-btn" type="button" title="Wróć do slotów (ESC)">&times;</button>
               </div>
             </div>
 
@@ -1402,14 +1411,15 @@
 
             <div class="armory-picker-footer">
               <div class="picker-footer-info">
-                <span>Kliknij "WYBIERZ I PRZYPISZ", aby natychmiast przypisać broń do tego slotu.</span>
+                <span>Kliknij "WYBIERZ I PRZYPISZ" lub na kafelek broni, aby ją przypisać.</span>
               </div>
               <button id="armory-picker-back-btn" class="ui-btn ui-btn-secondary" type="button">
-                ◀ WRÓĆ DO EKWIPUNKU
+                ◀ WRÓĆ DO SLOTÓW
               </button>
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- 3. OKNO PAUZY (MENU TAKTYCZNE // GRA NA ŻYWO) -->
@@ -1458,7 +1468,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v242_armory_slot_picker_robust_fix"></script>
+  <script type="module" src="./js/main.js?v=v243_armory_compact_fit_and_window_back_buttons"></script>
 </body>
 
 </html>

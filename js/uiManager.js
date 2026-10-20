@@ -1790,6 +1790,18 @@ export const uiManager = {
       });
     }
 
+    const pauseOverlay = document.getElementById('pause-overlay');
+    if (pauseOverlay) {
+      pauseOverlay.addEventListener('click', (e) => {
+        if (e.target === pauseOverlay) {
+          playUiResume();
+          if (this.callbacks && typeof this.callbacks.onResume === 'function') {
+            this.callbacks.onResume();
+          }
+        }
+      });
+    }
+
     const pauseArmoryBtn = document.getElementById('pause-btn-armory');
     if (pauseArmoryBtn) {
       pauseArmoryBtn.addEventListener('mouseenter', () => playUiHover());
@@ -1854,6 +1866,29 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
           this.callbacks.onCloseCreator();
+        }
+      });
+    }
+
+    const creatorHeaderBackBtn = document.getElementById('creator-header-back-btn');
+    if (creatorHeaderBackBtn) {
+      creatorHeaderBackBtn.addEventListener('mouseenter', () => playUiHover());
+      creatorHeaderBackBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
+          this.callbacks.onCloseCreator();
+        }
+      });
+    }
+
+    const creatorOverlay = document.getElementById('creator-overlay');
+    if (creatorOverlay) {
+      creatorOverlay.addEventListener('click', (e) => {
+        if (e.target === creatorOverlay) {
+          playUiClick();
+          if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
+            this.callbacks.onCloseCreator();
+          }
         }
       });
     }
@@ -1944,6 +1979,18 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onCloseSettings === 'function') {
           this.callbacks.onCloseSettings();
+        }
+      });
+    }
+
+    const settingsOverlay = document.getElementById('settings-overlay');
+    if (settingsOverlay) {
+      settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) {
+          playUiClick();
+          if (this.callbacks && typeof this.callbacks.onCloseSettings === 'function') {
+            this.callbacks.onCloseSettings();
+          }
         }
       });
     }
