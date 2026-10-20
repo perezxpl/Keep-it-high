@@ -581,6 +581,17 @@ export function renderArmoryUI() {
   if (canvas2) drawWeaponPreview(canvas2, slots[2] || 'KNIFE');
   if (canvasThrow) drawWeaponPreview(canvasThrow, throwables[0] || 'GRENADE');
 
+  requestAnimationFrame(() => {
+    const c0 = document.getElementById('armory-slot-canvas-0');
+    const c1 = document.getElementById('armory-slot-canvas-1');
+    const c2 = document.getElementById('armory-slot-canvas-2');
+    const cThrow = document.getElementById('armory-slot-canvas-throw');
+    if (c0) drawWeaponPreview(c0, slots[0] || 'AK47');
+    if (c1) drawWeaponPreview(c1, slots[1] || 'GLOCK');
+    if (c2) drawWeaponPreview(c2, slots[2] || 'KNIFE');
+    if (cThrow) drawWeaponPreview(cThrow, throwables[0] || 'GRENADE');
+  });
+
   // -------------------------------------------------------------------------
   // 2. JEŚLI OTWARTE JEST OKNO WYBORU (PICKER), RENDERUJEMY BRONIE
   // -------------------------------------------------------------------------
@@ -720,7 +731,7 @@ export function renderArmoryUI() {
           </div>
         </div>
         <div class="armory-card-preview-frame">
-          <canvas class="armory-weapon-canvas" width="480" height="140"></canvas>
+          <canvas class="armory-weapon-canvas" data-weapon-id="${wep.id}" width="480" height="140"></canvas>
         </div>
         <p class="armory-card-desc">${wep.desc}</p>
         ${statsHtml}
@@ -751,6 +762,22 @@ export function renderArmoryUI() {
         drawWeaponPreview(weaponCanvas, wep.id);
       }
     });
+
+    // Drugi przebieg w klatce animacji oraz po zakończeniu animacji (zapewnia dokładne wymiary i brak zwężenia)
+    requestAnimationFrame(() => {
+      const allCanvases = listContainer.querySelectorAll('.armory-weapon-canvas');
+      allCanvases.forEach((c) => {
+        const wid = c.getAttribute('data-weapon-id');
+        if (wid) drawWeaponPreview(c, wid);
+      });
+    });
+    setTimeout(() => {
+      const allCanvases = listContainer.querySelectorAll('.armory-weapon-canvas');
+      allCanvases.forEach((c) => {
+        const wid = c.getAttribute('data-weapon-id');
+        if (wid) drawWeaponPreview(c, wid);
+      });
+    }, 200);
   } else {
     if (pickerModal) {
       pickerModal.classList.remove('active');
