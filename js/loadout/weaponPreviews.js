@@ -1173,18 +1173,18 @@ function drawFlashGrenadeIllustration(ctx) {
 // =========================================================================
 
 const WEAPON_SPRITE_PATHS = {
-  AK47: './assets/weapons/ak47.png',
-  SHOTGUN: './assets/weapons/shotgun.png',
-  SNIPER: './assets/weapons/sniper.png',
-  GLOCK: './assets/weapons/glock.png',
-  REVOLVER: './assets/weapons/revolver.png',
-  SAWED_OFF: './assets/weapons/sawed_off.png',
-  KNIFE: './assets/weapons/knife.png',
-  MACHETE: './assets/weapons/machete.png',
-  AXE: './assets/weapons/axe.png',
-  GRENADE: './assets/weapons/grenade.png',
-  SMOKE: './assets/weapons/smoke.png',
-  FLASH: './assets/weapons/flash.png'
+  AK47: './assets/weapons/ak47.png?v=v249_ak47_sprite_preview',
+  SHOTGUN: './assets/weapons/shotgun.png?v=v249_ak47_sprite_preview',
+  SNIPER: './assets/weapons/sniper.png?v=v249_ak47_sprite_preview',
+  GLOCK: './assets/weapons/glock.png?v=v249_ak47_sprite_preview',
+  REVOLVER: './assets/weapons/revolver.png?v=v249_ak47_sprite_preview',
+  SAWED_OFF: './assets/weapons/sawed_off.png?v=v249_ak47_sprite_preview',
+  KNIFE: './assets/weapons/knife.png?v=v249_ak47_sprite_preview',
+  MACHETE: './assets/weapons/machete.png?v=v249_ak47_sprite_preview',
+  AXE: './assets/weapons/axe.png?v=v249_ak47_sprite_preview',
+  GRENADE: './assets/weapons/grenade.png?v=v249_ak47_sprite_preview',
+  SMOKE: './assets/weapons/smoke.png?v=v249_ak47_sprite_preview',
+  FLASH: './assets/weapons/flash.png?v=v249_ak47_sprite_preview'
 };
 
 const _spriteCache = {};
