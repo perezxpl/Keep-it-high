@@ -1223,6 +1223,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (!player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead && isA3Void) {
         player.hp = 0;
         player.isDead = true;
+        player.killer = { name: 'UPADEK W PRZEPAŚĆ', isSelf: true, cause: 'FALL' };
         player.respawnTimer = 75;
         if (typeof triggerScreenShake === 'function') {
           triggerScreenShake(12);

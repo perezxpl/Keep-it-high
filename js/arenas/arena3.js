@@ -154,6 +154,7 @@ export function updateArena3(dt, players, ball) {
             // Śmierć przez utonięcie w głębokiej toni rzeki
             p.hp = 0;
             p.isDead = true;
+            p.killer = { name: 'UTONIĘCIE W RZECE', isSelf: true, cause: 'DROWN' };
             p.respawnTimer = 85;
             p.vx = 0;
             p.vy = 2.0; // powolne tonięcie na dno rzeki
@@ -667,6 +668,7 @@ export function updateArena3(dt, players, ball) {
 
             if (p.hp <= 0 && !p.isDead) {
               p.isDead = true;
+              p.killer = { name: 'ZAWALENIE STRUKTURY', isSelf: true, cause: 'CRUSH' };
               p.respawnTimer = 180;
             }
           }

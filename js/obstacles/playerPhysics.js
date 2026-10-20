@@ -625,6 +625,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       if (isDeepWater) {
         p.hp = 0;
         p.isDead = true;
+        p.killer = { name: 'UTONIĘCIE W RZECE', isSelf: true, cause: 'DROWN' };
         p.respawnTimer = 85;
         p.vx = 0;
         p.vy = 2.0; // tonie w głąb rzeki
@@ -646,6 +647,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (!isA2Active && !p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
     p.hp = 0;
     p.isDead = true;
+    p.killer = { name: 'UPADEK W PRZEPAŚĆ', isSelf: true, cause: 'FALL' };
     p.respawnTimer = 75;
     if (typeof triggerScreenShake === 'function') {
       triggerScreenShake(12);

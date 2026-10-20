@@ -9,16 +9,26 @@ import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBound
 import { getArmAnglesForTarget } from './ik.js';
 import { WEAPONS } from '../weapons.js';
 import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
  */
 function getSurfaceUnderPoint(x, y, groundY) {
-  let floor = (typeof isGroundAt === 'function' && !isGroundAt(x)) ? (groundY + 600) : groundY;
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const isA3 = (curArena?.id === 'arena-3');
+  let baseGroundY = groundY;
+  if (isA3 && typeof getRiverbankGroundY === 'function') {
+    baseGroundY = getRiverbankGroundY(x);
+  }
+  const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(x) : true;
+  let floor = (!hasGround && !isA3) ? (groundY + 600) : baseGroundY;
+
   if (Array.isArray(ARENA_PLATFORMS)) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
+      if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
       const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
       if (x >= bnds.minX - 6 && x <= bnds.maxX + 6) {
         const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
@@ -160,6 +170,15 @@ export function updatePlayerRagdoll(p, groundY) {
     const floorY = getSurfaceUnderPoint(n.x, n.y, groundY);
     if (n.y >= floorY - n.r) {
       n.y = floorY - n.r;
+
+      const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+      let slope = 0;
+      if (curArena?.id === 'arena-3' && typeof getRiverbankGroundY === 'function') {
+        slope = (getRiverbankGroundY(n.x + 4) - getRiverbankGroundY(n.x - 4)) / 8;
+      }
+      if (Math.abs(slope) > 0.03) {
+        n.oldX -= slope * 0.25;
+      }
 
       const curVx = n.x - n.oldX;
       n.oldX = n.x - curVx * 0.68; // Tarcie o podłoże

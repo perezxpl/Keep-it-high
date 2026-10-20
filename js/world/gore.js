@@ -11,6 +11,8 @@ import {
   _worldCustomObstacles,
   isGroundAt
 } from './state.js';
+import { getActiveArena } from '../arenas/index.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 
 // =========================================================================
 // SYSTEM GORE: KREW, PLAMY, ODCIĘTA GŁOWA, GIBS I UPUSZCZONA BROŃ
@@ -404,8 +406,16 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       }
     }
 
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3');
+    let baseGroundY = groundY;
+    let slope = 0;
+    if (isA3 && typeof getRiverbankGroundY === 'function') {
+      baseGroundY = getRiverbankGroundY(hg.x);
+      slope = (getRiverbankGroundY(hg.x + 4) - getRiverbankGroundY(hg.x - 4)) / 8;
+    }
     const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(hg.x) : true;
-    let floorY = hasGround ? (groundY - hg.radius) : (groundY + 600);
+    let floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - hg.radius);
     let landed = false;
 
     if (hasGround && hg.y >= floorY) {
@@ -413,6 +423,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     } else if (Array.isArray(plats)) {
       for (const plat of plats) {
         if (!plat || plat.solid === false || plat.isWall) continue;
+        if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
         const minX = plat.x !== undefined ? plat.x : 0;
         const maxX = minX + (plat.w || 0);
         if (hg.x >= minX && hg.x <= maxX) {
@@ -431,13 +442,23 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       if (Math.abs(hg.vy) > 1.2 && hg.groundBounces < 4) {
         hg.vy = -hg.vy * 0.48;
         hg.vx *= 0.75;
+        if (Math.abs(slope) > 0.03) {
+          hg.vx += slope * 0.35;
+        }
         hg.vRot *= 0.7;
         hg.groundBounces++;
         addBloodDecal(hg.x, floorY + hg.radius);
       } else {
-        hg.vy = 0;
-        hg.vx *= 0.85;
-        hg.vRot = 0;
+        if (Math.abs(slope) > 0.03) {
+          hg.vx += slope * 0.30;
+          hg.vx *= 0.94;
+          hg.vy = hg.vx * slope;
+          hg.vRot = hg.vx * 0.18;
+        } else {
+          hg.vy = 0;
+          hg.vx *= 0.85;
+          hg.vRot = 0;
+        }
       }
     }
 
@@ -455,18 +476,36 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     bg.vx *= 0.98;
     bg.life--;
 
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3');
+    let baseGroundY = groundY;
+    let slope = 0;
+    if (isA3 && typeof getRiverbankGroundY === 'function') {
+      baseGroundY = getRiverbankGroundY(bg.x);
+      slope = (getRiverbankGroundY(bg.x + 4) - getRiverbankGroundY(bg.x - 4)) / 8;
+    }
     const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(bg.x) : true;
-    if (hasGround && bg.y >= groundY - 4) {
-      bg.y = groundY - 4;
+    const floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 4);
+    if (hasGround && bg.y >= floorY) {
+      bg.y = floorY;
       if (Math.abs(bg.vy) > 1.5 && bg.groundBounces < 3) {
         bg.vy = -bg.vy * 0.42;
         bg.vx *= 0.75;
+        if (Math.abs(slope) > 0.03) {
+          bg.vx += slope * 0.32;
+        }
         bg.groundBounces++;
-        addBloodDecal(bg.x, groundY);
+        addBloodDecal(bg.x, floorY + 4);
       } else {
-        bg.vy = 0;
-        bg.vx = 0;
-        bg.vRot = 0;
+        if (Math.abs(slope) > 0.03) {
+          bg.vx += slope * 0.28;
+          bg.vx *= 0.94;
+          bg.vy = bg.vx * slope;
+        } else {
+          bg.vy = 0;
+          bg.vx = 0;
+          bg.vRot = 0;
+        }
       }
     }
 
@@ -484,8 +523,16 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     dw.vx *= 0.98;
     dw.life--;
 
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    const isA3 = (curArena?.id === 'arena-3');
+    let baseGroundY = groundY;
+    let slope = 0;
+    if (isA3 && typeof getRiverbankGroundY === 'function') {
+      baseGroundY = getRiverbankGroundY(dw.x);
+      slope = (getRiverbankGroundY(dw.x + 4) - getRiverbankGroundY(dw.x - 4)) / 8;
+    }
     const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(dw.x) : true;
-    let floorY = hasGround ? (groundY - 4) : (groundY + 600);
+    let floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 4);
     let landed = false;
 
     if (hasGround && dw.y >= floorY) {
@@ -493,6 +540,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     } else if (Array.isArray(plats)) {
       for (const plat of plats) {
         if (!plat || plat.solid === false || plat.isWall) continue;
+        if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
         const minX = plat.x !== undefined ? plat.x : 0;
         const maxX = minX + (plat.w || 0);
         if (dw.x >= minX && dw.x <= maxX) {
@@ -511,12 +559,22 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       if (Math.abs(dw.vy) > 1.2 && dw.bounces < 3) {
         dw.vy = -dw.vy * 0.45;
         dw.vx *= 0.72;
+        if (Math.abs(slope) > 0.03) {
+          dw.vx += slope * 0.35;
+        }
         dw.vRot *= 0.6;
         dw.bounces++;
       } else {
-        dw.vy = 0;
-        dw.vx *= 0.82;
-        dw.vRot = 0;
+        if (Math.abs(slope) > 0.03) {
+          dw.vx += slope * 0.30;
+          dw.vx *= 0.94;
+          dw.vy = dw.vx * slope;
+          dw.vRot = dw.vx * 0.15;
+        } else {
+          dw.vy = 0;
+          dw.vx *= 0.82;
+          dw.vRot = 0;
+        }
       }
     }
 
@@ -539,18 +597,43 @@ export function updateSeveredHeads(chars, groundY, platforms = null) {
       head.x += head.vx;
       head.y += head.vy;
       head.rotation += head.rotSpeed;
+      const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+      const isA3 = (curArena?.id === 'arena-3');
+      let baseGroundY = groundY;
+      let slope = 0;
+      if (isA3 && typeof getRiverbankGroundY === 'function') {
+        baseGroundY = getRiverbankGroundY(head.x);
+        slope = (getRiverbankGroundY(head.x + 4) - getRiverbankGroundY(head.x - 4)) / 8;
+      }
       const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(head.x) : true;
-      if (hasGround && head.y >= groundY - 6) {
-        head.y = groundY - 6;
-        head.vy = -head.vy * 0.32;
-        head.vx *= 0.78;
-        head.rotSpeed *= 0.65;
-        if (Math.abs(head.vy) < 0.8) { head.vy = 0; head.onGround = true; }
-        addBloodDecal(head.x, groundY);
+      const floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 6);
+      if (hasGround && head.y >= floorY) {
+        head.y = floorY;
+        if (Math.abs(head.vy) > 1.2) {
+          head.vy = -head.vy * 0.32;
+          head.vx *= 0.78;
+          if (Math.abs(slope) > 0.03) {
+            head.vx += slope * 0.35;
+          }
+          head.rotSpeed *= 0.65;
+          addBloodDecal(head.x, floorY + 6);
+        } else {
+          if (Math.abs(slope) > 0.03) {
+            head.vx += slope * 0.32;
+            head.vx *= 0.94;
+            head.vy = head.vx * slope;
+            head.rotSpeed = head.vx * 0.18;
+            head.onGround = false;
+          } else {
+            head.vy = 0;
+            head.onGround = true;
+          }
+        }
       }
       if (Array.isArray(plats)) {
         for (const plat of plats) {
           if (!plat || plat.solid === false || plat.isWall) continue;
+          if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
           const minX = plat.x !== undefined ? plat.x : 0;
           const maxX = minX + (plat.w || 0);
           if (head.x >= minX && head.x <= maxX) {
@@ -568,8 +651,19 @@ export function updateSeveredHeads(chars, groundY, platforms = null) {
         }
       }
     } else {
-      head.vx *= 0.92;
-      head.rotSpeed *= 0.88;
+      const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+      const isA3 = (curArena?.id === 'arena-3');
+      let slope = 0;
+      if (isA3 && typeof getRiverbankGroundY === 'function') {
+        slope = (getRiverbankGroundY(head.x + 4) - getRiverbankGroundY(head.x - 4)) / 8;
+      }
+      if (Math.abs(slope) > 0.03) {
+        head.onGround = false;
+        head.vx += slope * 0.32;
+      } else {
+        head.vx *= 0.92;
+        head.rotSpeed *= 0.88;
+      }
     }
     head.life--;
     if (head.life <= head.fadeTimer) { head.alpha = Math.max(0, head.life / head.fadeTimer); }

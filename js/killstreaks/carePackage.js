@@ -8,6 +8,7 @@ import { isTouchDevice } from '../config.js';
 import { triggerScreenShake } from '../camera.js';
 import { GROUND_Y, spawnGroundPuff, spawnJetpackSparks } from '../world/state.js';
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from '../obstacles.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { WEAPONS, getWeaponAmmo } from '../weapons/transform.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { killstreakState } from './state.js';
@@ -36,17 +37,14 @@ export function getCarePackageSurfaceY(x) {
       ? (curArena.acidSurge.currentY - 10)
       : (curArena?.hazardZoneY ?? 1440);
   } else if (isA3) {
-    if (x < 1150) groundY = 1200;
-    else if (x <= 1750) groundY = 1200 + ((x - 1150) / 600) * 135;
-    else if (x < 2650) groundY = 1390;
-    else if (x <= 3250) groundY = 1335 - ((x - 2650) / 600) * 135;
-    else groundY = 1200;
+    groundY = (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : 1200;
   }
 
   let highestY = groundY;
   const plats = ARENA_PLATFORMS || [];
   for (const plat of plats) {
     if (!plat || plat.solid === false || plat.isWall) continue;
+    if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) continue;
     if (x >= plat.x - 12 && x <= plat.x + plat.w + 12) {
       const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
         ? getPlatformSurfaceY(plat, x, groundY)

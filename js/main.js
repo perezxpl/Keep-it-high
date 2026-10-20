@@ -653,7 +653,10 @@ function update() {
     if (!isA2Active && !isA3Active) {
       if (player.isDead) {
         if (!player._fragRecorded) {
-          arenaScore.orange++;
+          const isSelf = player.killer?.isSelf || (!player.killer && !player.lastAttacker);
+          if (!isSelf) {
+            arenaScore.orange++;
+          }
           recordDeath();
           resetKillstreak();
           player._fragRecorded = true;

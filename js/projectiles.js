@@ -164,21 +164,43 @@ export class AeroSuperGrenade {
       if (this.y + this.radius >= terrainY) {
         this.y = terrainY - this.radius;
 
-        // Nachylenie zbocza krateru / skarpy: granat stacza się w dół leja
+        let slope = 0;
         if (typeof getRiverbankGroundY === 'function') {
-          const slope = (getRiverbankGroundY(gx + 4) - getRiverbankGroundY(gx - 4)) / 8;
-          if (Math.abs(slope) > 0.03) {
-            this.vx -= slope * 0.45;
-          }
+          slope = (getRiverbankGroundY(gx + 4) - getRiverbankGroundY(gx - 4)) / 8;
         }
 
-        this.vy = -this.vy * (inWater ? 0.22 : (this.restitution * 0.7));
-        this.vx *= (inWater ? 0.65 : 0.82);
-        this.vRot *= 0.75;
-        this.bounces++;
-        if (this.bounces > this.maxBounces) {
-          this.vy = 0;
-          this.vx *= 0.75;
+        // Wektor normalny powierzchni (skierowany w stronę powietrza / ku górze): N = (slope, -1) / L
+        const len = Math.hypot(slope, 1);
+        const nx = slope / len;
+        const ny = -1 / len;
+
+        // Składowa prędkości wzdłuż normalnej (wnikanie w grunt: vDotN < 0)
+        const vDotN = this.vx * nx + this.vy * ny;
+
+        if (vDotN < -0.6 && this.bounces < this.maxBounces) {
+          // Dynamiczne odbicie fizyczne od nachylonej powierzchni krateru
+          const rest = inWater ? 0.22 : (this.restitution * 0.7);
+          this.vx = (this.vx - (1 + rest) * vDotN * nx) * (inWater ? 0.65 : 0.85);
+          this.vy = (this.vy - (1 + rest) * vDotN * ny) * (inWater ? 0.65 : 0.85);
+          this.vRot *= 0.75;
+          this.bounces++;
+        } else {
+          // Toczenie się / zsuwanie po pochyłości leja krateru
+          // Grawitacja ściąga granat w dół zbocza ku najniższemu punktowi leja
+          if (Math.abs(slope) > 0.02) {
+            this.vx += slope * (inWater ? 0.22 : 0.42);
+            this.vx *= (inWater ? 0.88 : 0.94);
+            this.vy = this.vx * slope;
+            this.vRot = (this.vx / this.radius) * 0.8;
+          } else {
+            // Płaskie dno leja krateru - wytłumienie i spoczynek
+            this.vy = 0;
+            this.vx *= (inWater ? 0.75 : 0.82);
+            if (Math.abs(this.vx) < 0.1) {
+              this.vx = 0;
+              this.vRot = 0;
+            }
+          }
         }
       }
     } else {
@@ -316,7 +338,7 @@ export class AeroSuperGrenade {
     if (this.detonated) return;
     this.detonated = true;
 
-    detonateGrenadeExplosion(this.x, this.y, this.blastRadius, this.shooter, groundY, platforms, customObs, combatants, ball);
+    detonateGrenadeExplosion(this.x, this.y, this.blastRadius, this.shooter, groundY, platforms, customObs, combatants, ball, 'GRENADE');
   }
 
   draw(ctx) {
@@ -381,7 +403,7 @@ export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1
 /**
  * Główna procedura wybuchu, obrażeń i niszczenia terenu (AoE Destruction)
  */
-export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball) {
+export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball, sourceWeapon = 'GRENADE') {
   // Przechwycenie wybuchu przez elementy aktywnej areny (np. odrzut wagoników kopalnianych)
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.onExplosion === 'function') {
@@ -471,9 +493,18 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;
-        ch.killer = (shooter && shooter !== ch) ? shooter : ch.lastAttacker;
+        const curArena = getActiveArena?.();
+        const isA3Target = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+        const isSelf = shooter && (shooter === ch || (shooter.id && ch.id && shooter.id === ch.id) || (!shooter.isBot && !ch.isBot && !shooter.isRemote && !ch.isRemote));
+        if (isSelf) {
+          ch.killer = { name: (sourceWeapon === 'MORTAR' ? 'WŁASNY NALOT' : 'WŁASNY GRANAT'), isSelf: true, cause: 'OWN_EXPLOSION' };
+        } else if (shooter && shooter !== ch) {
+          ch.killer = shooter;
+        } else {
+          ch.killer = ch.lastAttacker || { name: (sourceWeapon === 'MORTAR' ? 'NALOT MOŹDZIERZOWY' : 'EKSPLOZJA GRANATU'), isSelf: false };
+        }
         ch.respawnTimer = 180;
-        ch.corpseFloorY = groundY;
+        ch.corpseFloorY = (isA3Target && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(chCenterX) : groundY;
         ch.isGibbed = true;
         const expImpX = Math.max(-18, Math.min(18, normX * impulse * 1.0));
         const expImpY = Math.max(-6.5, Math.min(10, normY * impulse * 0.75 - 1.5));
