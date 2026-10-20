@@ -172,15 +172,22 @@ export function drawSniperLaserSight(ctx, playerObj) {
 // =========================================================================
 
 const WEAPON_PARTS_PATHS = {
-  AK47_BODY: './assets/weapons/ak47_body.png?v=v254_modular_shotgun_sniper',
-  AK47_MAG: './assets/weapons/ak47_mag.png?v=v254_modular_shotgun_sniper',
-  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v254_modular_shotgun_sniper',
-  SHOTGUN_BODY: './assets/weapons/shotgun_body.png?v=v254_modular_shotgun_sniper',
-  SHOTGUN_PUMP: './assets/weapons/shotgun_pump.png?v=v254_modular_shotgun_sniper',
-  SHOTGUN_SHELL: './assets/weapons/shotgun_shell.png?v=v254_modular_shotgun_sniper',
-  SNIPER_BODY: './assets/weapons/sniper_body.png?v=v254_modular_shotgun_sniper',
-  SNIPER_MAG: './assets/weapons/sniper_mag.png?v=v254_modular_shotgun_sniper',
-  SNIPER_BOLT: './assets/weapons/sniper_bolt.png?v=v254_modular_shotgun_sniper'
+  AK47_BODY: './assets/weapons/ak47_body.png?v=v255_modular_secondary_weapons',
+  AK47_MAG: './assets/weapons/ak47_mag.png?v=v255_modular_secondary_weapons',
+  AK47_BOLT: './assets/weapons/ak47_bolt.png?v=v255_modular_secondary_weapons',
+  SHOTGUN_BODY: './assets/weapons/shotgun_body.png?v=v255_modular_secondary_weapons',
+  SHOTGUN_PUMP: './assets/weapons/shotgun_pump.png?v=v255_modular_secondary_weapons',
+  SHOTGUN_SHELL: './assets/weapons/shotgun_shell.png?v=v255_modular_secondary_weapons',
+  SNIPER_BODY: './assets/weapons/sniper_body.png?v=v255_modular_secondary_weapons',
+  SNIPER_MAG: './assets/weapons/sniper_mag.png?v=v255_modular_secondary_weapons',
+  SNIPER_BOLT: './assets/weapons/sniper_bolt.png?v=v255_modular_secondary_weapons',
+  GLOCK_FRAME: './assets/weapons/glock_frame.png?v=v255_modular_secondary_weapons',
+  GLOCK_SLIDE: './assets/weapons/glock_slide.png?v=v255_modular_secondary_weapons',
+  GLOCK_MAG: './assets/weapons/glock_mag.png?v=v255_modular_secondary_weapons',
+  REVOLVER_BODY: './assets/weapons/revolver_body.png?v=v255_modular_secondary_weapons',
+  REVOLVER_CYLINDER: './assets/weapons/revolver_cylinder.png?v=v255_modular_secondary_weapons',
+  SAWED_OFF_BODY: './assets/weapons/sawed_off_body.png?v=v255_modular_secondary_weapons',
+  SAWED_OFF_BARRELS: './assets/weapons/sawed_off_barrels.png?v=v255_modular_secondary_weapons'
 };
 
 const _partSpriteCache = {};
@@ -623,179 +630,277 @@ export function drawHeldWeapon(ctx, p) {
     // -------------------------------------------------------------
     // GLOCK 17 TACTICAL HANDGUN RENDERER
     // -------------------------------------------------------------
+    const imgFrame = getWeaponPartSprite('GLOCK_FRAME');
+    const imgSlide = getWeaponPartSprite('GLOCK_SLIDE');
+    const imgMag = getWeaponPartSprite('GLOCK_MAG');
+
     const glockSlideOffset = hold.boltOffset || 0;
     const isSlideBack = (p.muzzleFlashTimer > 0) ? -2.2 : glockSlideOffset;
 
-    // 1. Polimerowy szkielet (Polymer Frame - ergonomiczny chwyt 22 deg i kabłąk spustowy)
-    ctx.fillStyle = '#18181b';
-    ctx.beginPath();
-    ctx.moveTo(1.2, 0.5);
-    ctx.lineTo(-2.2, 7.2);
-    ctx.lineTo(1.8, 7.5);
-    ctx.lineTo(4.2, 1.2);
-    ctx.closePath();
-    ctx.fill();
+    if (imgFrame && imgFrame.complete && imgFrame.naturalWidth > 0 &&
+        imgSlide && imgSlide.complete && imgSlide.naturalWidth > 0) {
+      
+      const s = 15.7 / 835;
+      const pivotSpriteX = 161.4;
+      const pivotSpriteY = 90.0;
 
-    // Żebrowanie chwytu / faktura antypoślizgowa (RTF)
-    ctx.strokeStyle = '#27272a';
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    ctx.moveTo(-0.2, 2.5); ctx.lineTo(2.8, 2.8);
-    ctx.moveTo(-1.0, 4.5); ctx.lineTo(2.2, 4.8);
-    ctx.moveTo(-1.8, 6.2); ctx.lineTo(1.5, 6.5);
-    ctx.stroke();
-
-    // Kabłąk spustu (Trigger guard)
-    ctx.strokeStyle = '#18181b';
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(3.5, 1.2);
-    ctx.lineTo(3.5, 3.8);
-    ctx.lineTo(1.0, 3.8);
-    ctx.stroke();
-
-    // Język spustowy Safe-Action
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(2.4, 2.0);
-    ctx.lineTo(1.8, 3.2);
-    ctx.stroke();
-
-    // Szyna akcesoryjna pod lufą
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(4.0, -0.6, 7.0, 2.2);
-
-    // 2. Magazynek 9mm
-    if (hold.isMagInGun !== false) {
-      ctx.fillStyle = '#09090b';
-      ctx.fillRect(-2.2, 7.0, 3.8, 1.2);
-    }
-
-    if (hold.heldMag && hold.heldMag.type === 'GLOCK') {
+      // 1. Warstwy pistoletu w osi broni
       ctx.save();
-      ctx.translate(hold.heldMag.x, hold.heldMag.y);
-      ctx.rotate(hold.heldMag.angle);
-      ctx.fillStyle = '#18181b';
-      ctx.fillRect(-1.8, -4.0, 3.5, 7.5);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(-1.0, -5.2, 2.2, 1.4);
-      ctx.fillStyle = '#09090b';
-      ctx.fillRect(-2.2, 3.2, 4.2, 1.2);
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+
+      // A. Polimerowy szkielet (chwyt, kabłąk, lufa wewnętrzna)
+      ctx.drawImage(imgFrame, 2, 140);
+
+      // B. Zamek stalowy (Tenifer Slide) z ruchem blowbacku
+      const slideShiftPx = isSlideBack * (835 / 15.7);
+      ctx.drawImage(imgSlide, 44 + slideShiftPx, 2);
+
       ctx.restore();
-    }
 
-    // 3. Stalowa lufa wewnętrzna widoczna przy cofnięciu zamka
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(8.5, -2.0, 4.5, 1.8);
+      // 2. Magazynek 9mm trzymany w lewej dłoni podczas przeładowania
+      if (hold.heldMag && hold.heldMag.type === 'GLOCK') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        if (imgMag && imgMag.complete && imgMag.naturalWidth > 0) {
+          const magScale = 7.5 / 220;
+          ctx.scale(magScale, magScale);
+          ctx.drawImage(imgMag, -50, -110);
+        } else {
+          ctx.fillStyle = '#18181b';
+          ctx.fillRect(-1.8, -4.0, 3.5, 7.5);
+          ctx.fillStyle = '#facc15';
+          ctx.fillRect(-1.0, -5.2, 2.2, 1.4);
+          ctx.fillStyle = '#09090b';
+          ctx.fillRect(-2.2, 3.2, 4.2, 1.2);
+        }
+        ctx.restore();
+      }
 
-    // 4. Zamek stalowy (Tenifer Slide) z ruchem blowbacku
-    ctx.save();
-    ctx.translate(isSlideBack, 0);
+      // 3. Płomień wylotowy
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#18181b';
+      ctx.beginPath();
+      ctx.moveTo(1.2, 0.5);
+      ctx.lineTo(-2.2, 7.2);
+      ctx.lineTo(1.8, 7.5);
+      ctx.lineTo(4.2, 1.2);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = '#27272a';
-    ctx.fillRect(-2.0, -3.2, 14.5, 3.0);
-    ctx.fillStyle = '#3f3f46';
-    ctx.fillRect(-2.0, -3.2, 14.5, 0.8);
+      ctx.strokeStyle = '#27272a';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-0.2, 2.5); ctx.lineTo(2.8, 2.8);
+      ctx.moveTo(-1.0, 4.5); ctx.lineTo(2.2, 4.8);
+      ctx.moveTo(-1.8, 6.2); ctx.lineTo(1.5, 6.5);
+      ctx.stroke();
 
-    // Żłobienia w tylnej części zamka
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(-1.0, -3.0, 0.8, 2.4);
-    ctx.fillRect(0.6, -3.0, 0.8, 2.4);
-    ctx.fillRect(2.2, -3.0, 0.8, 2.4);
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(3.5, 1.2);
+      ctx.lineTo(3.5, 3.8);
+      ctx.lineTo(1.0, 3.8);
+      ctx.stroke();
 
-    // Okno wyrzutnika łusek
-    ctx.fillStyle = '#09090b';
-    ctx.fillRect(4.5, -3.0, 3.2, 1.6);
-    ctx.fillStyle = '#52525b';
-    ctx.fillRect(7.2, -2.6, 0.8, 1.0);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(2.4, 2.0);
+      ctx.lineTo(1.8, 3.2);
+      ctx.stroke();
 
-    // Przyrządy celownicze z białymi kropkami (Glock night sights)
-    ctx.fillStyle = '#18181b';
-    ctx.fillRect(-1.8, -4.2, 1.2, 1.2);
-    ctx.fillRect(11.0, -4.2, 1.2, 1.2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-1.5, -3.8, 0.6, 0.6);
-    ctx.fillRect(11.3, -3.8, 0.6, 0.6);
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(4.0, -0.6, 7.0, 2.2);
 
-    ctx.restore();
+      if (hold.isMagInGun !== false) {
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-2.2, 7.0, 3.8, 1.2);
+      }
 
-    // 5. Błysk wylotowy
-    if (p.muzzleFlashTimer > 0) {
-      drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+      if (hold.heldMag && hold.heldMag.type === 'GLOCK') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-1.8, -4.0, 3.5, 7.5);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(-1.0, -5.2, 2.2, 1.4);
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-2.2, 3.2, 4.2, 1.2);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(8.5, -2.0, 4.5, 1.8);
+
+      ctx.save();
+      ctx.translate(isSlideBack, 0);
+
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(-2.0, -3.2, 14.5, 3.0);
+      ctx.fillStyle = '#3f3f46';
+      ctx.fillRect(-2.0, -3.2, 14.5, 0.8);
+
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-1.0, -3.0, 0.8, 2.4);
+      ctx.fillRect(0.6, -3.0, 0.8, 2.4);
+      ctx.fillRect(2.2, -3.0, 0.8, 2.4);
+
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(4.5, -3.0, 3.2, 1.6);
+      ctx.fillStyle = '#52525b';
+      ctx.fillRect(7.2, -2.6, 0.8, 1.0);
+
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-1.8, -4.2, 1.2, 1.2);
+      ctx.fillRect(11.0, -4.2, 1.2, 1.2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-1.5, -3.8, 0.6, 0.6);
+      ctx.fillRect(11.3, -3.8, 0.6, 0.6);
+
+      ctx.restore();
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+      }
     }
   } else if (weapon.id === 'REVOLVER') {
     // -------------------------------------------------------------
     // MAGNUM .44 HEAVY REVOLVER RENDERER
     // -------------------------------------------------------------
-    // 1. Drewniane okładziny chwytu (Rosewood combat grip)
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.moveTo(1.2, 0.5);
-    ctx.lineTo(-2.8, 8.5);
-    ctx.lineTo(-0.2, 8.8);
-    ctx.lineTo(3.2, 1.8);
-    ctx.closePath();
-    ctx.fill();
+    const imgBody = getWeaponPartSprite('REVOLVER_BODY');
+    const imgCyl = getWeaponPartSprite('REVOLVER_CYLINDER');
 
-    // 2. Stalowy szkielet (Stainless Steel Frame)
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(-2.5, -2.5, 15.5, 3.2);
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
+      const s = 20.2 / 1040;
+      const pivotSpriteX = 374.7;
+      const pivotSpriteY = 100.0;
 
-    // 3. Cylinder bębenka 6-komorowego (.44 Magnum fluted cylinder)
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(1.5, -3.2, 5.5, 4.8);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(2.5, -2.2, 3.5, 1.2);
-    ctx.fillRect(2.5, -0.2, 3.5, 1.2);
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
-    // 4. Masywna lufa 6 cali z wentylowaną szyną górną
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(7.0, -2.4, 9.5, 2.6);
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(7.0, -3.4, 8.5, 1.0);
+      // Korpus ze stali nierdzewnej i lufą 6 cali z wentylowaną szyną
+      ctx.drawImage(imgBody, 2, 2);
 
-    // 5. Kurek i muszka
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(-3.2, -3.8, 1.6, 2.2);
-    ctx.fillStyle = '#f97316';
-    ctx.fillRect(15.5, -3.6, 1.0, 1.4);
+      // Bębenek 6-komorowy .44 Magnum
+      if (imgCyl && imgCyl.complete && imgCyl.naturalWidth > 0) {
+        ctx.drawImage(imgCyl, 380, 90);
+      }
 
-    if (p.muzzleFlashTimer > 0) {
-      drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+      ctx.restore();
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.moveTo(1.2, 0.5);
+      ctx.lineTo(-2.8, 8.5);
+      ctx.lineTo(-0.2, 8.8);
+      ctx.lineTo(3.2, 1.8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-2.5, -2.5, 15.5, 3.2);
+
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(1.5, -3.2, 5.5, 4.8);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(2.5, -2.2, 3.5, 1.2);
+      ctx.fillRect(2.5, -0.2, 3.5, 1.2);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(7.0, -2.4, 9.5, 2.6);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(7.0, -3.4, 8.5, 1.0);
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(-3.2, -3.8, 1.6, 2.2);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(15.5, -3.6, 1.0, 1.4);
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+      }
     }
   } else if (weapon.id === 'SAWED_OFF') {
     // -------------------------------------------------------------
     // SAWED-OFF 12G DOUBLE-BARREL RENDERER
     // -------------------------------------------------------------
-    // 1. Skrócony zaokrąglony chwyt z orzecha
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-3.5, 6.5);
-    ctx.lineTo(-0.8, 7.2);
-    ctx.lineTo(2.8, 1.5);
-    ctx.closePath();
-    ctx.fill();
+    const imgBody = getWeaponPartSprite('SAWED_OFF_BODY');
+    const imgBarrels = getWeaponPartSprite('SAWED_OFF_BARRELS');
 
-    // 2. Stalowa baskila (Steel Receiver)
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(-1.5, -2.5, 7.5, 4.2);
+    if (imgBody && imgBody.complete && imgBody.naturalWidth > 0 &&
+        imgBarrels && imgBarrels.complete && imgBarrels.naturalWidth > 0) {
+      
+      const s = 23.0 / 1160;
+      const pivotSpriteX = 226.5;
+      const pivotSpriteY = 53.0;
 
-    // 3. Krótkie podwójne lufy 12 Gauge ze stali oksydowanej
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(6.0, -2.8, 13.0, 3.8);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(6.0, -1.2, 13.0, 0.8);
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(19.0, -2.6, 0.8, 3.4);
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
-    // 4. Drewniane czółenko pod lufami
-    ctx.fillStyle = '#92400e';
-    ctx.fillRect(6.0, 1.0, 7.0, 1.8);
+      // A. Drewniany zaokrąglony chwyt birdshead i stalowa baskila
+      ctx.drawImage(imgBody, 2, 2);
 
-    if (p.muzzleFlashTimer > 0) {
-      drawMuzzleFlash(ctx, 19.5, -1.0, 15, true);
+      // B. Skrócone podwójne lufy 12 Gauge z czółenkiem
+      const isReloadBreak = p.isReloading && (p.reloadProgress > 0.2 && p.reloadProgress < 0.85);
+      const breakAngle = isReloadBreak ? 0.38 : 0.0;
+
+      if (breakAngle > 0.01) {
+        ctx.save();
+        ctx.translate(510, 140);
+        ctx.rotate(breakAngle);
+        ctx.drawImage(imgBarrels, -10, -130);
+        ctx.restore();
+      } else {
+        ctx.drawImage(imgBarrels, 500, 10);
+      }
+
+      ctx.restore();
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 19.5, -1.0, 15, true);
+      }
+    } else {
+      // Proceduralny fallback w trakcie ładowania assetów
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-3.5, 6.5);
+      ctx.lineTo(-0.8, 7.2);
+      ctx.lineTo(2.8, 1.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(-1.5, -2.5, 7.5, 4.2);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(6.0, -2.8, 13.0, 3.8);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(6.0, -1.2, 13.0, 0.8);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(19.0, -2.6, 0.8, 3.4);
+
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(6.0, 1.0, 7.0, 1.8);
+
+      if (p.muzzleFlashTimer > 0) {
+        drawMuzzleFlash(ctx, 19.5, -1.0, 15, true);
+      }
     }
   } else if (weapon.id === 'KNIFE') {
     // -------------------------------------------------------------
