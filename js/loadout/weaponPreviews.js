@@ -1173,18 +1173,18 @@ function drawFlashGrenadeIllustration(ctx) {
 // =========================================================================
 
 const WEAPON_SPRITE_PATHS = {
-  AK47: './assets/weapons/ak47.png?v=v250_all_cinematic_sprites',
-  SHOTGUN: './assets/weapons/shotgun.png?v=v250_all_cinematic_sprites',
-  SNIPER: './assets/weapons/sniper.png?v=v250_all_cinematic_sprites',
-  GLOCK: './assets/weapons/glock.png?v=v250_all_cinematic_sprites',
-  REVOLVER: './assets/weapons/revolver.png?v=v250_all_cinematic_sprites',
-  SAWED_OFF: './assets/weapons/sawed_off.png?v=v250_all_cinematic_sprites',
-  KNIFE: './assets/weapons/knife.png?v=v250_all_cinematic_sprites',
-  MACHETE: './assets/weapons/machete.png?v=v250_all_cinematic_sprites',
-  AXE: './assets/weapons/axe.png?v=v250_all_cinematic_sprites',
-  GRENADE: './assets/weapons/grenade.png?v=v250_all_cinematic_sprites',
-  SMOKE: './assets/weapons/smoke.png?v=v250_all_cinematic_sprites',
-  FLASH: './assets/weapons/flash.png?v=v250_all_cinematic_sprites'
+  AK47: './assets/weapons/ak47.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  SHOTGUN: './assets/weapons/shotgun.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  SNIPER: './assets/weapons/sniper.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  GLOCK: './assets/weapons/glock.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  REVOLVER: './assets/weapons/revolver.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  SAWED_OFF: './assets/weapons/sawed_off.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  KNIFE: './assets/weapons/knife.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  MACHETE: './assets/weapons/machete.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  AXE: './assets/weapons/axe.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  GRENADE: './assets/weapons/grenade.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  SMOKE: './assets/weapons/smoke.png?v=v251_fix_weapon_aspect_ratio_and_proportions',
+  FLASH: './assets/weapons/flash.png?v=v251_fix_weapon_aspect_ratio_and_proportions'
 };
 
 const _spriteCache = {};
@@ -1203,11 +1203,33 @@ function getWeaponSprite(weaponId) {
 
 /**
  * Renderuje pełny rysunek broni na wskazanym elemencie canvas
+ * Ściśle zachowuje proporcje rusznikarskie (uniform aspect ratio, brak rozciągania)
  * @param {HTMLCanvasElement} canvas - element canvas w DOM
  * @param {string} weaponId - ID broni (np. 'AK47', 'SHOTGUN', 'GLOCK', 'KNIFE')
  */
 export function drawWeaponPreview(canvas, weaponId) {
   if (!canvas || !weaponId) return;
+
+  // 0. Dopasowanie wewnętrznej rozdzielczości płótna do rzeczywistych wymiarów kontenera (ochrona przed rozciąganiem)
+  let rectW = 0;
+  let rectH = 0;
+  if (typeof canvas.getBoundingClientRect === 'function') {
+    const rect = canvas.getBoundingClientRect();
+    rectW = rect.width;
+    rectH = rect.height;
+  }
+  const displayW = Math.max(160, Math.round(rectW || canvas.clientWidth || 320));
+  const displayH = Math.max(50, Math.round(rectH || canvas.clientHeight || 75));
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+
+  const targetW = Math.round(displayW * dpr);
+  const targetH = Math.round(displayH * dpr);
+
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+  }
+
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
@@ -1221,13 +1243,37 @@ export function drawWeaponPreview(canvas, weaponId) {
   const sprite = getWeaponSprite(weaponId);
   if (sprite) {
     if (sprite.complete && sprite.naturalWidth > 0) {
-      const maxW = w * 0.88;
-      const maxH = h * 0.74;
+      // Indywidualne, realistyczne dopasowanie wielkości broni w kadrze
+      // Pistolet nie powinien być wielkości karabinu, a granat nie powinien być nienaturalnie rozciągnięty
+      let maxWFactor = 0.86;
+      let maxHFactor = 0.76;
+
+      if (weaponId === 'GLOCK' || weaponId === 'REVOLVER') {
+        maxWFactor = 0.50; // Kompaktowy pistolet/rewolwer
+        maxHFactor = 0.72;
+      } else if (weaponId === 'SAWED_OFF') {
+        maxWFactor = 0.68; // Skrócona strzelba
+        maxHFactor = 0.72;
+      } else if (weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE') {
+        maxWFactor = 0.64; // Broń biała
+        maxHFactor = 0.72;
+      } else if (weaponId === 'GRENADE' || weaponId === 'SMOKE' || weaponId === 'FLASH') {
+        maxWFactor = 0.36; // Granaty pionowe
+        maxHFactor = 0.76;
+      } else {
+        // Długa broń główna (AK47, SPAS-12, Barrett .50)
+        maxWFactor = 0.86;
+        maxHFactor = 0.76;
+      }
+
+      const maxW = w * maxWFactor;
+      const maxH = h * maxHFactor;
+      // Ścisłe zachowanie proporcji (uniform aspect ratio - scaleX === scaleY)
       const scale = Math.min(maxW / sprite.naturalWidth, maxH / sprite.naturalHeight);
-      const drawW = sprite.naturalWidth * scale;
-      const drawH = sprite.naturalHeight * scale;
-      const dx = (w - drawW) * 0.50;
-      const dy = (h - drawH) * 0.50;
+      const drawW = Math.round(sprite.naturalWidth * scale);
+      const drawH = Math.round(sprite.naturalHeight * scale);
+      const dx = Math.round((w - drawW) * 0.50);
+      const dy = Math.round((h - drawH) * 0.50);
 
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
@@ -1244,25 +1290,20 @@ export function drawWeaponPreview(canvas, weaponId) {
     }
   }
 
-  // 2. Transformacja i centrowanie modelu broni
+  // 2. Fallback proceduralny (gdy sprite nie jest jeszcze gotowy)
   ctx.save();
   ctx.translate(w * 0.50, h * 0.50);
 
-  // Skalowanie proporcjonalne modelu do wielkości kafelka
-  // Długość typowego karabinu to ~220 px, wysokość granatu to ~90 px
-  const isThrowable = (weaponId === 'GRENADE' || weaponId === 'SMOKE' || weaponId === 'FLASH');
-  const isHandgun = (weaponId === 'GLOCK' || weaponId === 'REVOLVER' || weaponId === 'SAWED_OFF');
-  const isMelee = (weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE');
-
   let scale = 1.0;
-  if (isThrowable) {
-    scale = Math.min(w / 110, h / 80) * 0.85;
-  } else if (isHandgun) {
-    scale = Math.min(w / 160, h / 85) * 0.90;
-  } else if (isMelee) {
-    scale = Math.min(w / 190, h / 85) * 0.90;
+  if (weaponId === 'GRENADE' || weaponId === 'SMOKE' || weaponId === 'FLASH') {
+    scale = Math.min(w / 180, h / 75) * 0.70;
+  } else if (weaponId === 'GLOCK' || weaponId === 'REVOLVER') {
+    scale = Math.min(w / 220, h / 85) * 0.70;
+  } else if (weaponId === 'SAWED_OFF') {
+    scale = Math.min(w / 200, h / 85) * 0.80;
+  } else if (weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE') {
+    scale = Math.min(w / 200, h / 85) * 0.80;
   } else {
-    // Długa broń główna (AK47, Shotgun, Barrett .50)
     scale = Math.min(w / 250, h / 95) * 0.94;
   }
 

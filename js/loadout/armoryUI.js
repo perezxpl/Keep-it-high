@@ -369,6 +369,13 @@ export function initArmoryUI(playerInstance) {
       }
     }
   });
+
+  // Odświeżanie proporcji kafelków broni przy zmianie rozmiaru okna / rotacji urządzenia
+  window.addEventListener('resize', () => {
+    if (armoryOverlay && armoryOverlay.style.display === 'flex') {
+      renderArmoryUI();
+    }
+  });
 }
 
 /**
