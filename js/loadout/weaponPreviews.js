@@ -1172,6 +1172,35 @@ function drawFlashGrenadeIllustration(ctx) {
 // GŁÓWNA FUNKCJA RENDERUJĄCA DLA DOWOLNEGO KAFELKA / OKNA
 // =========================================================================
 
+const WEAPON_SPRITE_PATHS = {
+  AK47: './assets/weapons/ak47.png',
+  SHOTGUN: './assets/weapons/shotgun.png',
+  SNIPER: './assets/weapons/sniper.png',
+  GLOCK: './assets/weapons/glock.png',
+  REVOLVER: './assets/weapons/revolver.png',
+  SAWED_OFF: './assets/weapons/sawed_off.png',
+  KNIFE: './assets/weapons/knife.png',
+  MACHETE: './assets/weapons/machete.png',
+  AXE: './assets/weapons/axe.png',
+  GRENADE: './assets/weapons/grenade.png',
+  SMOKE: './assets/weapons/smoke.png',
+  FLASH: './assets/weapons/flash.png'
+};
+
+const _spriteCache = {};
+
+function getWeaponSprite(weaponId) {
+  const path = WEAPON_SPRITE_PATHS[weaponId];
+  if (!path) return null;
+  if (_spriteCache[weaponId]) return _spriteCache[weaponId];
+  if (typeof window === 'undefined' || typeof Image === 'undefined') return null;
+
+  const img = new Image();
+  img.src = path;
+  _spriteCache[weaponId] = img;
+  return img;
+}
+
 /**
  * Renderuje pełny rysunek broni na wskazanym elemencie canvas
  * @param {HTMLCanvasElement} canvas - element canvas w DOM
@@ -1187,6 +1216,33 @@ export function drawWeaponPreview(canvas, weaponId) {
 
   // 1. Rysowanie taktycznego tła schematu
   drawTacticalBackdrop(ctx, w, h, weaponId);
+
+  // 1.5. Sprawdzenie czy dostępny jest pre-renderowany sprite PNG wysokiej rozdzielczości
+  const sprite = getWeaponSprite(weaponId);
+  if (sprite) {
+    if (sprite.complete && sprite.naturalWidth > 0) {
+      const maxW = w * 0.88;
+      const maxH = h * 0.74;
+      const scale = Math.min(maxW / sprite.naturalWidth, maxH / sprite.naturalHeight);
+      const drawW = sprite.naturalWidth * scale;
+      const drawH = sprite.naturalHeight * scale;
+      const dx = (w - drawW) * 0.50;
+      const dy = (h - drawH) * 0.50;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 3;
+      ctx.drawImage(sprite, dx, dy, drawW, drawH);
+      ctx.restore();
+      return;
+    } else if (!sprite.complete) {
+      sprite.onload = () => {
+        drawWeaponPreview(canvas, weaponId);
+      };
+      // W międzyczasie rysujemy proceduralny schemat jako fallback
+    }
+  }
 
   // 2. Transformacja i centrowanie modelu broni
   ctx.save();
