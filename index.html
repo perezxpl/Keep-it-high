@@ -45,7 +45,7 @@
       "./js/input/index.js": "./js/input/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v214_mortar_free_camera_panning",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v219_online_continuous_simulation_and_tactical_pause",
-      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v214_mortar_free_camera_panning",
+      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v242_armory_slot_picker_robust_fix",
       "./js/killstreaks/carePackage.js": "./js/killstreaks/carePackage.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/killstreaks/index.js": "./js/killstreaks/index.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/logic.js": "./js/killstreaks/logic.js?v=v214_mortar_free_camera_panning",
@@ -53,11 +53,11 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v229_jungle_grass_crater_collision_and_scorch_cleanup",
-      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v240_armory_picker_modal",
-      "./js/loadout/index.js": "./js/loadout/index.js?v=v240_armory_picker_modal",
-      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v240_armory_picker_modal",
-      "./js/loadout/state.js": "./js/loadout/state.js?v=v240_armory_picker_modal",
-      "./js/main.js": "./js/main.js?v=v240_armory_picker_modal",
+      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v242_armory_slot_picker_robust_fix",
+      "./js/loadout/index.js": "./js/loadout/index.js?v=v242_armory_slot_picker_robust_fix",
+      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v242_armory_slot_picker_robust_fix",
+      "./js/loadout/state.js": "./js/loadout/state.js?v=v242_armory_slot_picker_robust_fix",
+      "./js/main.js": "./js/main.js?v=v242_armory_slot_picker_robust_fix",
       "./js/network.js": "./js/network.js?v=v236_grenade_cooking_from_aim",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -106,7 +106,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v219_online_continuous_simulation_and_tactical_pause">
+  <link rel="stylesheet" href="./css/main.css?v=v242_armory_slot_picker_robust_fix">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -1295,7 +1295,7 @@
               <div class="armory-pocket-title">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA</div>
               <div class="armory-slots-row">
                 <!-- Slot 1: Broń Główna -->
-                <div class="armory-slot-card" id="armory-slot-card-0" onclick="window.openSlotPicker && window.openSlotPicker(0)" title="Kliknij, aby otworzyć okno wyboru broni głównej">
+                <button type="button" class="armory-slot-card" id="armory-slot-card-0" onclick="window.openSlotPicker && window.openSlotPicker(0)" ontouchend="window.openSlotPicker && window.openSlotPicker(0)" title="Kliknij, aby otworzyć okno wyboru broni głównej">
                   <div class="slot-card-badge-line">
                     <span class="slot-card-number">SLOT 1</span>
                     <span class="slot-card-tag" id="armory-slot-badge-0">[GŁÓWNA]</span>
@@ -1310,10 +1310,10 @@
                   <div class="slot-card-action">
                     <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
-                </div>
+                </button>
 
                 <!-- Slot 2: Broń Dodatkowa -->
-                <div class="armory-slot-card" id="armory-slot-card-1" onclick="window.openSlotPicker && window.openSlotPicker(1)" title="Kliknij, aby otworzyć okno wyboru broni dodatkowej">
+                <button type="button" class="armory-slot-card" id="armory-slot-card-1" onclick="window.openSlotPicker && window.openSlotPicker(1)" ontouchend="window.openSlotPicker && window.openSlotPicker(1)" title="Kliknij, aby otworzyć okno wyboru broni dodatkowej">
                   <div class="slot-card-badge-line">
                     <span class="slot-card-number">SLOT 2</span>
                     <span class="slot-card-tag" id="armory-slot-badge-1">[DODATKOWA]</span>
@@ -1328,10 +1328,10 @@
                   <div class="slot-card-action">
                     <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
-                </div>
+                </button>
 
                 <!-- Slot 3: Rezerwa Bojowa -->
-                <div class="armory-slot-card" id="armory-slot-card-2" onclick="window.openSlotPicker && window.openSlotPicker(2)" title="Kliknij, aby otworzyć okno wyboru broni rezerwowej">
+                <button type="button" class="armory-slot-card" id="armory-slot-card-2" onclick="window.openSlotPicker && window.openSlotPicker(2)" ontouchend="window.openSlotPicker && window.openSlotPicker(2)" title="Kliknij, aby otworzyć okno wyboru broni rezerwowej">
                   <div class="slot-card-badge-line">
                     <span class="slot-card-number">SLOT 3</span>
                     <span class="slot-card-tag" id="armory-slot-badge-2">[REZERWA]</span>
@@ -1346,13 +1346,13 @@
                   <div class="slot-card-action">
                     <span class="slot-action-btn">WYBIERZ BROŃ ▶</span>
                   </div>
-                </div>
+                </button>
               </div>
 
               <div class="armory-pocket-title armory-pocket-title-throw">KIESZEŃ 2: WYPOSAŻENIE MIOTANE &amp; TAKTYCZNE</div>
               <div class="armory-slots-row">
                 <!-- Slot Miotany: Kieszeń 2 -->
-                <div class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable" onclick="window.openSlotPicker && window.openSlotPicker(3)" title="Kliknij, aby otworzyć okno wyboru wyposażenia miotanego">
+                <button type="button" class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable" onclick="window.openSlotPicker && window.openSlotPicker(3)" ontouchend="window.openSlotPicker && window.openSlotPicker(3)" title="Kliknij, aby otworzyć okno wyboru wyposażenia miotanego">
                   <div class="slot-card-badge-line">
                     <span class="slot-card-number">KIESZEŃ 2</span>
                     <span class="slot-card-tag">[TAKTYCZNA]</span>
@@ -1367,7 +1367,7 @@
                   <div class="slot-card-action">
                     <span class="slot-action-btn slot-action-btn-throw">WYBIERZ WYPOSAŻENIE ▶</span>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -1458,7 +1458,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v240_armory_picker_modal"></script>
+  <script type="module" src="./js/main.js?v=v242_armory_slot_picker_robust_fix"></script>
 </body>
 
 </html>

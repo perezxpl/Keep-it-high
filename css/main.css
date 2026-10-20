@@ -5732,6 +5732,7 @@ button, .dev-btn {
   position: relative;
   width: 100%;
   max-width: 960px;
+  min-height: 520px;
   max-height: 90vh;
   max-height: 90dvh;
   background: rgba(9, 13, 22, 0.97);
@@ -5843,6 +5844,13 @@ button, .dev-btn {
 }
 
 .armory-slot-card {
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+  box-sizing: border-box;
   background: rgba(15, 23, 42, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -5854,6 +5862,10 @@ button, .dev-btn {
   gap: 5px;
   position: relative;
   overflow: hidden;
+}
+
+.armory-slot-card * {
+  pointer-events: none;
 }
 
 .armory-slot-card:hover {
@@ -5992,7 +6004,7 @@ button, .dev-btn {
   position: absolute;
   inset: 0;
   z-index: 50;
-  display: flex;
+  display: none;
   flex-direction: column;
   background: rgba(9, 13, 22, 0.98);
   backdrop-filter: blur(24px);
@@ -6000,6 +6012,10 @@ button, .dev-btn {
   border-radius: 12px;
   overflow: hidden;
   animation: armoryPickerFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.armory-picker-modal.active {
+  display: flex !important;
 }
 
 @keyframes armoryPickerFadeIn {
@@ -6244,6 +6260,7 @@ button, .dev-btn {
 
 @media (max-width: 768px) {
   .armory-modal-box {
+    min-height: 480px;
     max-height: 96vh;
     max-height: 96dvh;
     border-radius: 8px;

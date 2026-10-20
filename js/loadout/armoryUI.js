@@ -146,6 +146,7 @@ let _activeSlotIndex = 0; // 0 = Główna, 1 = Dodatkowa, 2 = Rezerwa, 3 = Miota
 let _currentArmoryView = 'SLOTS'; // 'SLOTS' (Przegląd slotów) lub 'PICKER' (Okno wyboru broni dla slotu)
 let _playerRef = null;
 let _closeCallback = null;
+let _lastOpenPickerTime = 0;
 
 /**
  * Pobranie danych uzbrojenia z katalogu taktycznego
@@ -206,32 +207,36 @@ export function initArmoryUI(playerInstance) {
   const pickerCloseBtn = document.getElementById('armory-picker-close-btn');
   const pickerBackBtn = document.getElementById('armory-picker-back-btn');
 
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => closeArmory());
-  }
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => closeArmory());
-  }
-  if (pickerCloseBtn) {
-    pickerCloseBtn.addEventListener('click', () => closeSlotPicker());
-  }
-  if (pickerBackBtn) {
-    pickerBackBtn.addEventListener('click', () => closeSlotPicker());
-  }
+  const bindClickAndTouch = (el, handler) => {
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handler(e);
+    });
+    el.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      handler(e);
+    });
+  };
+
+  bindClickAndTouch(closeBtn, () => closeArmory());
+  bindClickAndTouch(saveBtn, () => closeArmory());
+  bindClickAndTouch(pickerCloseBtn, () => closeSlotPicker());
+  bindClickAndTouch(pickerBackBtn, () => closeSlotPicker());
 
   // Kafelki slotów w widoku głównym ekwipunku
   for (let i = 0; i < 3; i++) {
     const slotCard = document.getElementById(`armory-slot-card-${i}`);
     if (slotCard) {
       slotCard.addEventListener('mouseenter', () => playUiHover());
-      slotCard.addEventListener('click', () => openSlotPicker(i));
+      bindClickAndTouch(slotCard, () => openSlotPicker(i));
     }
   }
 
   const slotThrowCard = document.getElementById('armory-slot-card-throwable');
   if (slotThrowCard) {
     slotThrowCard.addEventListener('mouseenter', () => playUiHover());
-    slotThrowCard.addEventListener('click', () => openSlotPicker(3));
+    bindClickAndTouch(slotThrowCard, () => openSlotPicker(3));
   }
 
   // Zamknięcie klawiszem ESC / Powrót z podokna do przeglądu slotów
@@ -239,7 +244,7 @@ export function initArmoryUI(playerInstance) {
     if (e.key === 'Escape') {
       if (armoryOverlay && armoryOverlay.style.display === 'flex') {
         const pickerModal = document.getElementById('armory-picker-modal');
-        if (pickerModal && pickerModal.style.display !== 'none') {
+        if (pickerModal && (pickerModal.classList.contains('active') || pickerModal.style.display !== 'none')) {
           closeSlotPicker();
         } else {
           closeArmory();
@@ -262,7 +267,8 @@ export function openArmory(playerInstance = null, onClose = null) {
   _currentArmoryView = 'SLOTS';
   const pickerModal = document.getElementById('armory-picker-modal');
   if (pickerModal) {
-    pickerModal.style.display = 'none';
+    pickerModal.classList.remove('active');
+    pickerModal.style.setProperty('display', 'none', 'important');
   }
 
   overlay.style.display = 'flex';
@@ -280,7 +286,8 @@ export function closeArmory() {
 
   const pickerModal = document.getElementById('armory-picker-modal');
   if (pickerModal) {
-    pickerModal.style.display = 'none';
+    pickerModal.classList.remove('active');
+    pickerModal.style.setProperty('display', 'none', 'important');
   }
   _currentArmoryView = 'SLOTS';
 
@@ -304,13 +311,18 @@ export function closeArmory() {
  * Wejście do dedykowanego okna wyboru broni dla danego slotu
  */
 export function openSlotPicker(slotIndex) {
+  const now = Date.now();
+  if (now - _lastOpenPickerTime < 200) return;
+  _lastOpenPickerTime = now;
+
   playUiClick();
   _activeSlotIndex = slotIndex;
   _currentArmoryView = 'PICKER';
 
   const pickerModal = document.getElementById('armory-picker-modal');
   if (pickerModal) {
-    pickerModal.style.display = 'flex';
+    pickerModal.classList.add('active');
+    pickerModal.style.setProperty('display', 'flex', 'important');
   }
   renderArmoryUI();
 }
@@ -324,7 +336,8 @@ export function closeSlotPicker() {
 
   const pickerModal = document.getElementById('armory-picker-modal');
   if (pickerModal) {
-    pickerModal.style.display = 'none';
+    pickerModal.classList.remove('active');
+    pickerModal.style.setProperty('display', 'none', 'important');
   }
   renderArmoryUI();
 }
@@ -350,19 +363,24 @@ export function renderArmoryUI() {
   // -------------------------------------------------------------------------
   // 1. AKTUALIZACJA DANYCH I OBSŁUGI KLIKNIĘĆ W KAFELKI SLOTÓW EKWIPUNKU
   // -------------------------------------------------------------------------
-  // Przypisanie obsługi kliknięć bezpośrednio w kafelki (potrójne zabezpieczenie)
+  // Przypisanie obsługi kliknięć i dotyku bezpośrednio w kafelki (redundancja)
+  const bindSlot = (cardEl, idx) => {
+    if (!cardEl) return;
+    cardEl.onclick = (e) => {
+      e.stopPropagation();
+      openSlotPicker(idx);
+    };
+    cardEl.ontouchend = (e) => {
+      e.stopPropagation();
+      openSlotPicker(idx);
+    };
+    cardEl.style.cursor = 'pointer';
+  };
+
   for (let i = 0; i < 3; i++) {
-    const cardEl = document.getElementById(`armory-slot-card-${i}`);
-    if (cardEl) {
-      cardEl.onclick = () => openSlotPicker(i);
-      cardEl.style.cursor = 'pointer';
-    }
+    bindSlot(document.getElementById(`armory-slot-card-${i}`), i);
   }
-  const throwCardEl = document.getElementById('armory-slot-card-throwable');
-  if (throwCardEl) {
-    throwCardEl.onclick = () => openSlotPicker(3);
-    throwCardEl.style.cursor = 'pointer';
-  }
+  bindSlot(document.getElementById('armory-slot-card-throwable'), 3);
 
   // Aktualizacja kafelka Slot 1 (Główna)
   const slot0Def = getCatalogWeapon(slots[0] || 'AK47', 'slot0');
@@ -421,7 +439,8 @@ export function renderArmoryUI() {
   // -------------------------------------------------------------------------
   if (_currentArmoryView === 'PICKER') {
     if (pickerModal) {
-      pickerModal.style.display = 'flex';
+      pickerModal.classList.add('active');
+      pickerModal.style.setProperty('display', 'flex', 'important');
     }
 
     const tagEl = document.getElementById('armory-picker-slot-tag');
@@ -543,19 +562,29 @@ export function renderArmoryUI() {
 
       cardEl.addEventListener('mouseenter', () => playUiHover());
 
-      const equipBtn = cardEl.querySelector('.armory-equip-btn');
-      if (equipBtn && !isEquipped) {
-        equipBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          equipArmoryWeapon(_activeSlotIndex, wep.id);
-        });
+      const handleEquip = (e) => {
+        e.stopPropagation();
+        equipArmoryWeapon(_activeSlotIndex, wep.id);
+      };
+
+      if (!isEquipped) {
+        cardEl.style.cursor = 'pointer';
+        cardEl.onclick = handleEquip;
+        cardEl.ontouchend = handleEquip;
+
+        const equipBtn = cardEl.querySelector('.armory-equip-btn');
+        if (equipBtn) {
+          equipBtn.onclick = handleEquip;
+          equipBtn.ontouchend = handleEquip;
+        }
       }
 
       listContainer.appendChild(cardEl);
     });
   } else {
     if (pickerModal) {
-      pickerModal.style.display = 'none';
+      pickerModal.classList.remove('active');
+      pickerModal.style.setProperty('display', 'none', 'important');
     }
   }
 }

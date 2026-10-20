@@ -730,7 +730,7 @@ canvas.addEventListener('touchmove', (e) => {
 function endTouch(e) {
   if (e.target === canvas || (e.target && e.target.id === 'canvas-container')) {
     if (e.cancelable) e.preventDefault();
-  } else if (e.cancelable && !e.target?.closest?.('button, a, input, select, textarea, #dev-panel-container, #dev-menu, #mp-modal, .mp-modal-box')) {
+  } else if (e.cancelable && !e.target?.closest?.('button, a, input, select, textarea, #dev-panel-container, #dev-menu, #mp-modal, .mp-modal-box, #armory-overlay, .armory-modal-box, .ui-view-overlay, .armory-slot-card, .armory-weapon-card, .armory-picker-modal')) {
     e.preventDefault();
   }
   for (let i = 0; i < e.changedTouches.length; i++) {
