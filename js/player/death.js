@@ -461,6 +461,12 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
         player.ammo.SNIPER.isReloading = false;
         player.ammo.SNIPER.reloadTimer = 0;
       }
+      if (player.ammo.GLOCK) {
+        player.ammo.GLOCK.currentAmmo = 17;
+        player.ammo.GLOCK.reserveAmmo = 68;
+        player.ammo.GLOCK.isReloading = false;
+        player.ammo.GLOCK.reloadTimer = 0;
+      }
     }
     player.isReloading = false;
     player.reloadTimer = 0;

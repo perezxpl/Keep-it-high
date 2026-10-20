@@ -990,6 +990,7 @@ export const uiManager = {
     const menuEl = document.getElementById('main-menu-overlay');
     const settingsEl = document.getElementById('settings-overlay');
     const creatorEl = document.getElementById('creator-overlay');
+    const armoryEl = document.getElementById('armory-overlay');
     const pauseEl = document.getElementById('pause-overlay');
     const hudPauseBtn = document.getElementById('hud-pause-btn');
     const devPanel = document.getElementById('dev-panel-container');
@@ -1000,6 +1001,7 @@ export const uiManager = {
     if (menuEl) menuEl.style.display = 'none';
     if (settingsEl) settingsEl.style.display = 'none';
     if (creatorEl) creatorEl.style.display = 'none';
+    if (armoryEl) armoryEl.style.display = 'none';
     if (pauseEl) pauseEl.style.display = 'none';
     const arenaSelectEl = document.getElementById('screen-arena-select');
     if (arenaSelectEl && gameState !== 'ARENA_SELECT') {
@@ -1092,6 +1094,11 @@ export const uiManager = {
         this.initCreatorShoesUI();
         this.initCreatorJetpackUI();
         this.openCreatorClassEditor(this.activeCreatorClass || 'RAPTOR');
+        break;
+
+      case 'ARMORY':
+        if (armoryEl) armoryEl.style.display = 'flex';
+        if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         break;
 
       case 'PAUSED':
@@ -1684,6 +1691,18 @@ export const uiManager = {
       });
     }
 
+    // MENU GŁÓWNE: Przycisk "ZBROJOWNIA"
+    const armoryBtn = document.getElementById('menu-btn-armory');
+    if (armoryBtn) {
+      armoryBtn.addEventListener('mouseenter', () => playUiHover());
+      armoryBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onOpenArmory === 'function') {
+          this.callbacks.onOpenArmory();
+        }
+      });
+    }
+
     // MENU GŁÓWNE: Przycisk "KREATOR POSTACI"
     const creatorBtn = document.getElementById('menu-btn-creator');
     if (creatorBtn) {
@@ -1771,6 +1790,17 @@ export const uiManager = {
       });
     }
 
+    const pauseArmoryBtn = document.getElementById('pause-btn-armory');
+    if (pauseArmoryBtn) {
+      pauseArmoryBtn.addEventListener('mouseenter', () => playUiHover());
+      pauseArmoryBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onOpenArmory === 'function') {
+          this.callbacks.onOpenArmory();
+        }
+      });
+    }
+
     const pauseClassBtn = document.getElementById('pause-btn-class');
     if (pauseClassBtn) {
       pauseClassBtn.addEventListener('mouseenter', () => playUiHover());
@@ -1847,6 +1877,30 @@ export const uiManager = {
         playUiClick();
         if (this.callbacks && typeof this.callbacks.onCloseCreator === 'function') {
           this.callbacks.onCloseCreator();
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // OKNO ZBROJOWNI: Zamykanie / Wróć
+    // -------------------------------------------------------------------------
+    const armoryCloseBtn = document.getElementById('armory-close-btn');
+    if (armoryCloseBtn) {
+      armoryCloseBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseArmory === 'function') {
+          this.callbacks.onCloseArmory();
+        }
+      });
+    }
+
+    const armorySaveBtn = document.getElementById('armory-save-btn');
+    if (armorySaveBtn) {
+      armorySaveBtn.addEventListener('mouseenter', () => playUiHover());
+      armorySaveBtn.addEventListener('click', () => {
+        playUiClick();
+        if (this.callbacks && typeof this.callbacks.onCloseArmory === 'function') {
+          this.callbacks.onCloseArmory();
         }
       });
     }

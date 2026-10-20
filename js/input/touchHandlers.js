@@ -442,11 +442,9 @@ canvas.addEventListener('touchstart', (e) => {
             }
             // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
             rightStick.isShooting = (factor >= 0.90);
-            if (rightStick.isShooting && !player.isDead && !player.isHolstered) {
-              const curWep = player.currentWeapon || WEAPONS.AK47;
-              if (player.shootCooldown <= 0) {
-                triggerPlayerShoot(player, curWep);
-              }
+            if (factor < 0.70) {
+              rightStick.semiFired = false;
+              rightStick.shotgunFiredThisTap = false;
             }
           } else if (rightStick.armedMode === 'GRENADE') {
             rightStick.isShooting = false;
@@ -710,11 +708,9 @@ canvas.addEventListener('touchmove', (e) => {
           }
           // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
           rightStick.isShooting = (power >= 0.90);
-          if (rightStick.isShooting && !player.isDead && !player.isHolstered) {
-            const curWep = player.currentWeapon || WEAPONS.AK47;
-            if (player.shootCooldown <= 0) {
-              triggerPlayerShoot(player, curWep);
-            }
+          if (power < 0.70) {
+            rightStick.semiFired = false;
+            rightStick.shotgunFiredThisTap = false;
           }
         } else if (rightStick.armedMode === 'GRENADE') {
           rightStick.isShooting = false;
@@ -973,6 +969,7 @@ function endTouch(e) {
         // Zakończenie ognia z broni palnej
         rightStick.isShooting = false;
         player.isShooting = false;
+        rightStick.semiFired = false;
         rightStick.shotgunFiredThisTap = false;
       }
 

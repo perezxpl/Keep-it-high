@@ -389,6 +389,15 @@ export function drawBulletCasing(ctx, casing) {
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 0.6;
       ctx.strokeRect(-3, -4.5, 6, 9);
+    } else if (casing.type === 'GLOCK') {
+      // Magazynek polimerowy 9mm Glock (czarny z pomarańczową stopką)
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-2.2, -3.8, 4.4, 7.6);
+      ctx.strokeStyle = '#27272a';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(-2.2, -3.8, 4.4, 7.6);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(-2.2, 3.2, 4.4, 0.8);
     }
   } else {
     ctx.fillStyle = casing.color;

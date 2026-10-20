@@ -17,3 +17,12 @@ export {
   quickSwitchPocket1,
   cyclePocket2
 } from './logic.js';
+
+export {
+  ARMORY_CATALOG,
+  initArmoryUI,
+  openArmory,
+  closeArmory,
+  renderArmoryUI,
+  equipArmoryWeapon
+} from './armoryUI.js';

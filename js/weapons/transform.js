@@ -88,13 +88,13 @@ export const WEAPONS = {
     name: 'Glock 17',
     fullName: 'GLOCK 17',
     category: 'SECONDARY',
-    auto: false,             // Semi-auto precyzyjny pistolet
-    fireRate: 9,             // Zwinny cykl spustu (~6-7 strzałów/s)
-    damage: 22,              // 5 celnych trafień eliminuje cel (100 HP)
-    bulletSpeed: 30,         // Szybki pocisk 9x19mm Luger
-    spread: 0.022,           // Precyzyjny pierwszy strzał
+    auto: false,             // Semi-auto precyzyjny pistolet bojowy (pojedynczy strzał na kliknięcie)
+    fireRate: 18,            // Realistyczny cykl spustu semi-auto (~3.3 strzałów/s przy 60 FPS)
+    damage: 24,              // 4-5 celnych trafień eliminuje cel (100 HP), headshot x2.25 = 54
+    bulletSpeed: 30,         // Szybki pocisk 9x19mm Parabellum
+    spread: 0.020,           // Wysoka celność pierwszego strzału
     crouchSpreadMult: 0.60,
-    recoil: 1.1,             // Sprężysty odrzut zamka pistoletu
+    recoil: 1.1,             // Sprężysty odrzut zamka blowback
     crouchRecoilMult: 0.50,
     muzzleRise: 0.075,
     kickbackDistance: 2.0,

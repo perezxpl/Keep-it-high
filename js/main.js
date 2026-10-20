@@ -40,7 +40,7 @@ import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
-import { initPlayerLoadout } from './loadout/index.js';
+import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork,
   sendPlayerState, sendBallState, sendShootEvent,
@@ -336,7 +336,7 @@ window.concludeMatchAndReturnToLobby = concludeMatchAndReturnToLobby;
 // STAN GRY I SYSTEM WYBORU KLAS POSTACI
 // ==========================================
 export const GAME_STATE = {
-  current: 'MENU', // 'MENU' | 'PLAYING' | 'SETTINGS' | 'PAUSED' | 'ARENA_SELECT' | 'CLASS_SELECT'
+  current: 'MENU', // 'MENU' | 'PLAYING' | 'SETTINGS' | 'PAUSED' | 'ARENA_SELECT' | 'CLASS_SELECT' | 'CREATOR' | 'ARMORY'
   previous: 'MENU'
 };
 
@@ -440,6 +440,7 @@ initModularGearDevUI();
 initNetwork();
 initKillstreaks();
 initPlayerLoadout(player);
+initArmoryUI(player);
 
 initAllInputHandlers({
   GAME_STATE,
@@ -513,9 +514,9 @@ function update() {
 
   // W grze sieciowej/online mecze toczą się bez zatrzymywania czasu (brak pauzy).
   // Wyświetlenie menu taktycznego (PAUSED) ani wejście w ustawienia w trakcie meczu nie wstrzymuje fizyki, botów ani odliczania.
-  const isSettingsInLiveMatch = (GAME_STATE.current === 'SETTINGS' && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
+  const isSettingsInLiveMatch = ((GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARMORY') && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
 
-  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'CREATOR' || GAME_STATE.current === 'ARENA_SELECT' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
+  if (GAME_STATE.current === 'MENU' || GAME_STATE.current === 'CREATOR' || (GAME_STATE.current === 'ARMORY' && !isSettingsInLiveMatch) || GAME_STATE.current === 'ARENA_SELECT' || (GAME_STATE.current === 'SETTINGS' && !isSettingsInLiveMatch)) {
     mouseState.lmbDown = false;
     mouseState.rmbDown = false;
     updateCamera(player, isDeathmatch ? null : ball, { disableAimLead: true });
@@ -650,66 +651,50 @@ function update() {
       checkPlayerPlatformLanding(remotePlayer, effectiveGroundY);
     }
     checkObstacleCollisions(null, effectiveGroundY, null, null);
-
-    // Zliczanie fragów poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
-    if (!isA2Active && !isA3Active) {
-      if (player.isDead) {
-        if (!player._fragRecorded) {
-          const isSelf = player.killer?.isSelf || (!player.killer && !player.lastAttacker);
-          if (!isSelf) {
-            arenaScore.orange++;
-          }
-          recordDeath();
-          resetKillstreak();
-          player._fragRecorded = true;
-          const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
-          triggerCombatFeedBanner('DEATH', kName);
-        }
-      } else {
-        player._fragRecorded = false;
-      }
-
-      for (const b of activeBots) {
-        if (b.isDead) {
-          if (!b._fragRecorded) {
-            arenaScore.cyan++;
-            recordKill();
-            b._fragRecorded = true;
-            if (b.killer === player || b.lastAttacker === player) {
-              registerKillstreakKill();
-              triggerCombatFeedBanner('KILL', b.name || 'BOT');
-            }
-          }
-        } else {
-          b._fragRecorded = false;
-        }
-      }
-
-      if (remotePlayer.active) {
-        if (remotePlayer.isDead) {
-          if (!remotePlayer._fragRecorded) {
-            arenaScore.cyan++;
-            recordKill();
-            registerKillstreakKill();
-            remotePlayer._fragRecorded = true;
-          }
-        } else {
-          remotePlayer._fragRecorded = false;
-        }
-      }
-    }
   }
 
-  // Rejestracja zgonu gracza poza trybem Deathmatch (np. kwas w Arenie 2)
-  if (!isDeathmatch) {
+  // Zliczanie fragów i eliminacji poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
+  if (!isA2Active && !isA3Active) {
     if (player.isDead) {
       if (!player._fragRecorded) {
         recordDeath();
         resetKillstreak();
         player._fragRecorded = true;
+        const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
+        triggerCombatFeedBanner('DEATH', kName);
       }
     } else {
       player._fragRecorded = false;
+    }
+
+    for (const b of activeBots) {
+      if (b.isDead) {
+        if (!b._fragRecorded) {
+          b._fragRecorded = true;
+          if (b.killer === player || b.lastAttacker === player) {
+            recordKill();
+            registerKillstreakKill();
+            triggerCombatFeedBanner('KILL', b.name || 'BOT');
+          }
+        }
+      } else {
+        b._fragRecorded = false;
+      }
+    }
+
+    if (remotePlayer.active) {
+      if (remotePlayer.isDead) {
+        if (!remotePlayer._fragRecorded) {
+          remotePlayer._fragRecorded = true;
+          if (remotePlayer.killer === player || remotePlayer.lastAttacker === player) {
+            recordKill();
+            registerKillstreakKill();
+            triggerCombatFeedBanner('KILL', remotePlayer.name || 'GRACZ 2');
+          }
+        }
+      } else {
+        remotePlayer._fragRecorded = false;
+      }
     }
   }
 
@@ -1252,6 +1237,16 @@ if (typeof window !== 'undefined') {
       setGameState('CREATOR');
     },
     onCloseCreator: () => {
+      setGameState(GAME_STATE.previous || 'MENU');
+    },
+    onOpenArmory: () => {
+      openArmory(player, () => {
+        setGameState(GAME_STATE.previous || 'MENU');
+      });
+      setGameState('ARMORY');
+    },
+    onCloseArmory: () => {
+      closeArmory();
       setGameState(GAME_STATE.previous || 'MENU');
     },
     onPause: () => {

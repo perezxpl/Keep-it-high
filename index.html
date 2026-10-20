@@ -53,10 +53,11 @@
       "./js/killstreaks/sentryGun.js": "./js/killstreaks/sentryGun.js?v=v212_sentry_gun_implementation",
       "./js/killstreaks/state.js": "./js/killstreaks/state.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/supportStrikes.js": "./js/killstreaks/supportStrikes.js?v=v229_jungle_grass_crater_collision_and_scorch_cleanup",
-      "./js/loadout/index.js": "./js/loadout/index.js?v=v237_glock_and_loadout_pocket_system",
-      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v237_glock_and_loadout_pocket_system",
-      "./js/loadout/state.js": "./js/loadout/state.js?v=v237_glock_and_loadout_pocket_system",
-      "./js/main.js": "./js/main.js?v=v232_crater_gravity_and_self_death_feed",
+      "./js/loadout/armoryUI.js": "./js/loadout/armoryUI.js?v=v238_armory_and_glock_balance",
+      "./js/loadout/index.js": "./js/loadout/index.js?v=v238_armory_and_glock_balance",
+      "./js/loadout/logic.js": "./js/loadout/logic.js?v=v238_armory_and_glock_balance",
+      "./js/loadout/state.js": "./js/loadout/state.js?v=v238_armory_and_glock_balance",
+      "./js/main.js": "./js/main.js?v=v238_armory_and_glock_balance",
       "./js/network.js": "./js/network.js?v=v236_grenade_cooking_from_aim",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
@@ -657,6 +658,10 @@
                 </button>
 
                 <div class="menu-sub-actions-grid">
+                  <button id="menu-btn-armory" class="ui-btn ui-btn-secondary" type="button" title="Zbrojownia: konfiguracja uzbrojenia i kieszeni bojowych">
+                    <span class="btn-text">ZBROJOWNIA</span>
+                  </button>
+
                   <button id="menu-btn-creator" class="ui-btn ui-btn-secondary" type="button" title="Edytuj wygląd postaci">
                     <span class="btn-text">KREATOR POSTACI</span>
                   </button>
@@ -1270,6 +1275,86 @@
         </div>
       </div>
 
+      <!-- 2C. OKNO ZBROJOWNI (ARMORY MODAL // ZESTAWY BOJOWE) -->
+      <div id="armory-overlay" class="ui-view-overlay" style="display: none;">
+        <div class="armory-modal-box">
+          <div class="armory-header">
+            <div class="armory-header-left">
+              <div class="armory-badge-row">
+                <span class="armory-badge">ZBROJOWNIA ARENY // BAZA UZBROJENIA</span>
+                <span class="armory-subbadge">EKWIPUNEK OPERATORA</span>
+              </div>
+              <h2 class="armory-title">ZESTAW BOJOWY (LOADOUT)</h2>
+            </div>
+            <button id="armory-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">&times;</button>
+          </div>
+
+          <div class="armory-content">
+            <!-- Wybór Slotu w Kieszeni 1 i Kieszeni 2 -->
+            <div class="armory-slots-panel">
+              <div class="armory-pocket-title">KIESZEŃ 1: BROŃ PALNA &amp; REZERWA</div>
+              <div class="armory-slots-row">
+                <div class="armory-slot-card active" id="armory-slot-card-0">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 1</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-0">[GŁÓWNA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-0">AK-47</div>
+                  <div class="slot-card-hint">Klawisz [1] / Tap Pockets</div>
+                </div>
+
+                <div class="armory-slot-card" id="armory-slot-card-1">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 2</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-1">[DODATKOWA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-1">GLOCK 17</div>
+                  <div class="slot-card-hint">Klawisz [2] / Quick Switch [Q]</div>
+                </div>
+
+                <div class="armory-slot-card" id="armory-slot-card-2">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">SLOT 3</span>
+                    <span class="slot-card-tag" id="armory-slot-badge-2">[REZERWA]</span>
+                  </div>
+                  <div class="slot-card-name" id="armory-slot-name-2">BARRETT .50</div>
+                  <div class="slot-card-hint">Klawisz [3] / Kółko myszy</div>
+                </div>
+              </div>
+
+              <div class="armory-pocket-title armory-pocket-title-throw">KIESZEŃ 2: WYPOSAŻENIE MIOTANE &amp; TAKTYCZNE</div>
+              <div class="armory-slots-row">
+                <div class="armory-slot-card armory-slot-card-throw" id="armory-slot-card-throwable">
+                  <div class="slot-card-badge-line">
+                    <span class="slot-card-number">MIOTANA</span>
+                    <span class="slot-card-tag">[TAKTYCZNA]</span>
+                  </div>
+                  <div class="slot-card-name">GRANAT ODŁAMKOWY HE</div>
+                  <div class="slot-card-hint">Klawisz [G] / Drążek Kieszeni 2</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamiczny katalog broni dla wybranego slotu -->
+            <div class="armory-catalog-panel">
+              <div class="armory-catalog-header">
+                <span class="catalog-section-title">DOSTĘPNE UZBROJENIE DLA WYBRANEGO SLOTU</span>
+              </div>
+              <div class="armory-weapons-grid" id="armory-weapons-grid">
+                <!-- Generowane dynamicznie przez renderArmoryUI() -->
+              </div>
+            </div>
+          </div>
+
+          <div class="armory-footer">
+            <div class="armory-footer-info">
+              <span>Zmiany w zestawie bojowym są natychmiast zapisywane i aktywne we wszystkich trybach gry.</span>
+            </div>
+            <button id="armory-save-btn" class="ui-btn ui-btn-primary" type="button">ZAPISZ I ZAMKNIJ</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 3. OKNO PAUZY (MENU TAKTYCZNE // GRA NA ŻYWO) -->
       <div id="pause-overlay" class="ui-view-overlay" style="display: none;">
         <div class="pause-modal-box">
@@ -1283,6 +1368,10 @@
             <button id="pause-btn-resume" class="ui-btn ui-btn-primary" type="button">
               <span class="btn-text">POWRÓT DO WALKI</span>
               <span class="btn-badge">[ESC]</span>
+            </button>
+
+            <button id="pause-btn-armory" class="ui-btn ui-btn-secondary" type="button">
+              <span class="btn-text">ZBROJOWNIA</span>
             </button>
 
             <button id="pause-btn-class" class="ui-btn ui-btn-secondary" type="button">

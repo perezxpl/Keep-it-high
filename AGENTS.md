@@ -59,6 +59,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 ### Ekwipunek i Zestawy Bojowe (`js/loadout/`)
 - `js/loadout/state.js` — konfiguracja slotów i kieszeni (`DEFAULT_LOADOUT`, `STORAGE_KEY_LOADOUT`, `getDefaultLoadout`, `getStoredLoadout`, `saveStoredLoadout`, `initPlayerLoadout`).
 - `js/loadout/logic.js` — mechanika doboru i szybkiego przełączania broni (`equipPocket1Slot`, `cyclePocket1`, `quickSwitchPocket1`, `cyclePocket2`).
+- `js/loadout/armoryUI.js` — interfejs wojskowej Zbrojowni (`ARMORY_CATALOG`, `initArmoryUI`, `openArmory`, `closeArmory`, `renderArmoryUI`, `equipArmoryWeapon`): sloty Kieszeni 1 (Główna, Pistolet, Rezerwa) i Kieszeni 2 (Miotana), karty taktyczne statystyk i natychmiastowe wyposażanie.
 - `js/loadout/index.js` — główny punkt wejścia i eksport modułu ekwipunku.
 
 ### Areny (`js/arenas/`)

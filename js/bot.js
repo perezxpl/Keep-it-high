@@ -639,7 +639,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     botTarget.isShooting = false;
     botTarget.isCharging = false;
     botTarget.isJumpCharging = false;
-    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
+    updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, allCombatants || meleeTargets);
     return;
   }
 
