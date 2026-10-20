@@ -282,6 +282,8 @@ export function playTestTone() {
  * Reaguje wyłącznie na celowe, szybkie kliknięcie / tapnięcie.
  * Całkowicie ignoruje gesty przewijania (scroll), przeciągania oraz długie przytrzymanie palca.
  */
+let _globalUiLastTapTime = 0;
+
 export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minDuration = 10 } = {}) {
   if (!el || typeof handler !== 'function') return;
 
@@ -293,7 +295,6 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
   let touchStartY = 0;
   let touchStartTime = 0;
   let isScrollOrDrag = false;
-  let lastTapHandledTime = 0;
 
   el.addEventListener('touchstart', (e) => {
     if (e.touches && e.touches.length === 1) {
@@ -337,7 +338,10 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
         }
       }
 
-      lastTapHandledTime = Date.now();
+      _globalUiLastTapTime = Date.now();
+      if (typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
       e.stopPropagation();
       if (typeof el._quickTapAction === 'function') {
         el._quickTapAction(e);
@@ -346,12 +350,14 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
   }, { passive: false });
 
   el.addEventListener('click', (e) => {
-    if (Date.now() - lastTapHandledTime < 500) {
+    if (Date.now() - _globalUiLastTapTime < 500) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       e.stopPropagation();
       return;
     }
     if (isScrollOrDrag) {
       isScrollOrDrag = false;
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       e.stopPropagation();
       return;
     }

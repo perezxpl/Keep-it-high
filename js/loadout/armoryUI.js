@@ -225,6 +225,8 @@ export function getCatalogWeapon(id, categoryType = null) {
  * Reaguje wyłącznie na celowe, szybkie kliknięcie / tapnięcie.
  * Całkowicie ignoruje gesty przewijania (scroll), przeciągania oraz długie przytrzymanie palca.
  */
+let _globalLastTapTime = 0;
+
 export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minDuration = 10 } = {}) {
   if (!el || typeof handler !== 'function') return;
 
@@ -236,7 +238,6 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
   let touchStartY = 0;
   let touchStartTime = 0;
   let isScrollOrDrag = false;
-  let lastTapHandledTime = 0;
 
   el.addEventListener('touchstart', (e) => {
     if (e.touches && e.touches.length === 1) {
@@ -280,7 +281,11 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
         }
       }
 
-      lastTapHandledTime = Date.now();
+      _globalLastTapTime = Date.now();
+      // Kluczowe: e.preventDefault() z passive:false blokuje generowanie syntetycznego kliknięcia myszy przez przeglądarkę
+      if (typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
       e.stopPropagation();
       if (typeof el._quickTapAction === 'function') {
         el._quickTapAction(e);
@@ -289,12 +294,14 @@ export function bindQuickTap(el, handler, { maxDist = 8, maxDuration = 350, minD
   }, { passive: false });
 
   el.addEventListener('click', (e) => {
-    if (Date.now() - lastTapHandledTime < 500) {
+    if (Date.now() - _globalLastTapTime < 500) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       e.stopPropagation();
       return;
     }
     if (isScrollOrDrag) {
       isScrollOrDrag = false;
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       e.stopPropagation();
       return;
     }
@@ -419,10 +426,15 @@ export function closeArmory() {
 /**
  * Wejście do dedykowanego okna wyboru broni dla danego slotu
  */
+let _pickerOpenedTime = 0;
+let _slotsOpenedTime = 0;
+
 export function openSlotPicker(slotIndex) {
   const now = Date.now();
-  if (now - _lastOpenPickerTime < 200) return;
+  if (now - _slotsOpenedTime < 350) return;
+  if (now - _lastOpenPickerTime < 350) return;
   _lastOpenPickerTime = now;
+  _pickerOpenedTime = now;
 
   playUiClick();
   _activeSlotIndex = slotIndex;
@@ -440,6 +452,10 @@ export function openSlotPicker(slotIndex) {
  * Powrót z okna wyboru broni do przeglądu slotów ekwipunku
  */
 export function closeSlotPicker() {
+  const now = Date.now();
+  if (now - _pickerOpenedTime < 300) return;
+  _slotsOpenedTime = now;
+
   playUiClick();
   _currentArmoryView = 'SLOTS';
 
@@ -478,7 +494,16 @@ export function renderArmoryUI() {
     cardEl.onclick = null;
     cardEl.ontouchend = null;
     cardEl.style.cursor = 'pointer';
-    bindQuickTap(cardEl, () => openSlotPicker(idx));
+    bindQuickTap(cardEl, (e) => {
+      if (Date.now() - _slotsOpenedTime < 350) {
+        if (e) {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        }
+        return;
+      }
+      openSlotPicker(idx);
+    });
   };
 
   for (let i = 0; i < 3; i++) {
@@ -682,7 +707,14 @@ export function renderArmoryUI() {
 
       cardEl.addEventListener('mouseenter', () => playUiHover());
 
-      const handleEquip = () => {
+      const handleEquip = (e) => {
+        if (Date.now() - _pickerOpenedTime < 350) {
+          if (e) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          }
+          return;
+        }
         equipArmoryWeapon(_activeSlotIndex, wep.id);
       };
 
