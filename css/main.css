@@ -5854,32 +5854,6 @@ button, .dev-btn {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.armory-pocket-legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-family: 'Rajdhani', monospace;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.legend-p1 {
-  color: #00e5ff;
-}
-
-.legend-divider {
-  color: #64748b;
-  font-size: 8px;
-}
-
-.legend-p2 {
-  color: #facc15;
-}
-
 .armory-slots-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -6007,57 +5981,6 @@ button, .dev-btn {
   border-color: rgba(250, 204, 21, 0.2);
 }
 
-.slot-card-action {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.08);
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.slot-action-btn {
-  font-family: 'Rajdhani', monospace;
-  font-size: 10px;
-  font-weight: 800;
-  color: #00e5ff;
-  letter-spacing: 1px;
-  transition: transform 0.15s ease, color 0.15s ease;
-}
-
-.armory-slot-card:hover .slot-action-btn {
-  transform: translateX(3px);
-  color: #ffffff;
-}
-
-.slot-action-btn-throw {
-  color: #facc15;
-}
-
-.armory-slot-card-throw:hover .slot-action-btn-throw {
-  color: #ffffff;
-}
-
-.armory-footer {
-  padding: 8px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(4, 8, 16, 0.9);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 10px;
-  font-size: 11px;
-  color: #94a3b8;
-  font-family: 'Rajdhani', monospace;
-}
-
-.armory-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .armory-picker-modal {
   position: absolute;
   inset: 0;
@@ -6148,20 +6071,6 @@ button, .dev-btn {
   min-height: 0;
 }
 
-.armory-picker-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(4, 8, 16, 0.9);
-  font-family: 'Rajdhani', monospace;
-  font-size: 11px;
-  color: #94a3b8;
-  flex-shrink: 0;
-  gap: 10px;
-}
-
 .armory-weapons-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -6170,24 +6079,37 @@ button, .dev-btn {
 
 .armory-weapon-card {
   background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: all 0.18s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  user-select: none;
 }
 
-.armory-weapon-card:hover {
-  border-color: rgba(0, 229, 255, 0.5);
-  background: rgba(0, 229, 255, 0.04);
+.armory-weapon-card * {
+  pointer-events: none;
+}
+
+.armory-weapon-card:not(.equipped) {
+  cursor: pointer;
+}
+
+.armory-weapon-card:not(.equipped):hover {
+  border-color: rgba(0, 229, 255, 0.7);
+  background: rgba(0, 229, 255, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.2);
 }
 
 .armory-weapon-card.equipped {
   border-color: #00e5ff;
-  background: rgba(0, 229, 255, 0.08);
-  box-shadow: 0 0 14px rgba(0, 229, 255, 0.15);
+  background: rgba(0, 229, 255, 0.12);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
+  cursor: default;
 }
 
 .armory-card-header {
@@ -6291,19 +6213,6 @@ button, .dev-btn {
   font-weight: 800;
 }
 
-.armory-card-footer {
-  margin-top: auto;
-  padding-top: 2px;
-}
-
-.armory-equip-btn {
-  width: 100%;
-  font-size: 10.5px;
-  font-weight: 800;
-  padding: 5px 8px;
-  letter-spacing: 0.8px;
-}
-
 @media (max-width: 820px) {
   .armory-slots-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -6319,17 +6228,6 @@ button, .dev-btn {
   }
   .armory-content {
     padding: 6px 8px;
-  }
-  .armory-footer {
-    padding: 6px 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .armory-footer-info {
-    display: none;
-  }
-  .picker-footer-info {
-    display: none;
   }
   .armory-weapons-grid {
     grid-template-columns: 1fr;

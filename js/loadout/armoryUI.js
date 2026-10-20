@@ -287,22 +287,11 @@ export function initArmoryUI(playerInstance) {
   }
 
   const armoryOverlay = document.getElementById('armory-overlay');
-  const headerBackBtn = document.getElementById('armory-header-back-btn');
-  const footerBackBtn = document.getElementById('armory-footer-back-btn');
-  const pickerHeaderBackBtn = document.getElementById('armory-picker-header-back-btn');
-  const pickerBackBtn = document.getElementById('armory-picker-back-btn');
   const closeBtn = document.getElementById('armory-close-btn');
-  const saveBtn = document.getElementById('armory-save-btn');
-  const pickerCloseBtn = document.getElementById('armory-picker-close-btn');
+  const pickerBackBtn = document.getElementById('armory-picker-header-back-btn');
 
-  bindQuickTap(headerBackBtn, () => closeArmory());
-  bindQuickTap(footerBackBtn, () => closeArmory());
-  bindQuickTap(closeBtn, () => closeArmory());
-  bindQuickTap(saveBtn, () => closeArmory());
-
-  bindQuickTap(pickerHeaderBackBtn, () => closeSlotPicker());
-  bindQuickTap(pickerBackBtn, () => closeSlotPicker());
-  bindQuickTap(pickerCloseBtn, () => closeSlotPicker());
+  if (closeBtn) bindQuickTap(closeBtn, () => closeArmory());
+  if (pickerBackBtn) bindQuickTap(pickerBackBtn, () => closeSlotPicker());
 
   // Kliknięcie w ciemne tło (backdrop) poza oknem zamyka lub cofa okno
   if (armoryOverlay) {
@@ -641,11 +630,6 @@ export function renderArmoryUI() {
         </div>
         <p class="armory-card-desc">${wep.desc}</p>
         ${statsHtml}
-        <div class="armory-card-footer">
-          <button type="button" class="ui-btn ${isEquipped ? 'ui-btn-secondary' : 'ui-btn-primary'} armory-equip-btn" ${isEquipped ? 'disabled' : ''}>
-            ${isEquipped ? 'AKTUALNIE WYPOSAŻONA' : 'WYBIERZ I PRZYPISZ'}
-          </button>
-        </div>
       `;
 
       cardEl.addEventListener('mouseenter', () => playUiHover());
