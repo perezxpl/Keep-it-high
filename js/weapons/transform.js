@@ -343,6 +343,81 @@ export function getShooterShoulderPos(shooter) {
   };
 }
 
+export const WEAPON_GRIP_CONFIGS = {
+  AK47: {
+    rearGripX: 5.2,
+    rearGripY: 4.4,
+    foreGripX: 15.5,
+    foreGripY: 1.3,
+    barrelLen: 34.0,
+    stockLen: 10.2
+  },
+  SHOTGUN: {
+    rearGripX: 3.9,
+    rearGripY: 3.8,
+    foreGripX: 13.8,
+    foreGripY: 1.3,
+    barrelLen: 28.0,
+    stockLen: 10.4
+  },
+  SNIPER: {
+    rearGripX: 4.9,
+    rearGripY: 4.6,
+    foreGripX: 15.2,
+    foreGripY: 1.6,
+    barrelLen: 45.5,
+    stockLen: 11.5
+  },
+  GLOCK: {
+    rearGripX: 1.8,
+    rearGripY: 3.8,
+    foreGripX: 2.6,
+    foreGripY: 3.4,
+    barrelLen: 13.5,
+    stockLen: 4.0
+  },
+  REVOLVER: {
+    rearGripX: -2.2,
+    rearGripY: 3.0,
+    foreGripX: -1.4,
+    foreGripY: 3.6,
+    barrelLen: 17.0,
+    stockLen: 4.0
+  },
+  SAWED_OFF: {
+    rearGripX: -1.7,
+    rearGripY: 3.1,
+    foreGripX: 9.0,
+    foreGripY: 1.7,
+    barrelLen: 19.5,
+    stockLen: 4.5
+  },
+  KNIFE: {
+    rearGripX: -1.0,
+    rearGripY: 0.0,
+    foreGripX: -4.5,
+    foreGripY: -3.5,
+    barrelLen: 19.5,
+    stockLen: 3.0
+  },
+  MACHETE: {
+    rearGripX: -1.5,
+    rearGripY: 0.4,
+    foreGripX: -5.0,
+    foreGripY: -3.5,
+    barrelLen: 22.0,
+    stockLen: 3.0
+  },
+  AXE: {
+    rearGripX: -0.3,
+    rearGripY: 0.6,
+    foreGripX: -5.0,
+    foreGripY: -3.5,
+    barrelLen: 16.0,
+    stockLen: 3.0
+  }
+};
+
 /**
  * Wyliczenie transformacji broni i wektorów podparcia dłoni dla praworęcznego strzelca
  */
@@ -350,6 +425,8 @@ export function getWeaponHoldTransform(p) {
   const charFacing = p.facing || 1;
   const { rightShoulderX, rightShoulderY, hipX, hipY } = getShooterShoulderPos(p);
   const weapon = p.currentWeapon || WEAPONS.AK47;
+  const wepKey = (weapon && weapon.id && WEAPON_GRIP_CONFIGS[weapon.id]) ? weapon.id : 'AK47';
+  const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
@@ -381,14 +458,6 @@ export function getWeaponHoldTransform(p) {
     const rightHandWorldY = slingPivotY + 3;
     const leftHandWorldX = slingPivotX + (isSniper ? 18 : 14) * charFacing;
     const leftHandWorldY = slingPivotY + 2;
-    if (isMelee && (p.meleeAttackTimer > 0)) {
-    const meleeProg = p.meleeAttackTimer / 12;
-    const thrustDist = Math.sin(meleeProg * Math.PI) * 14.0;
-    finalPivotX += Math.cos(proneAimAngle) * thrustDist * charFacing;
-    finalPivotY += Math.sin(proneAimAngle) * thrustDist;
-  }
-
-  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? (weapon.id === 'SAWED_OFF' ? 18 : 13) : (isMelee ? 18 : 34)));
 
     return {
       pivotX: slingPivotX,
@@ -406,7 +475,7 @@ export function getWeaponHoldTransform(p) {
       muzzleRise: 0,
       rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
       leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
-      barrelLen: barrelLength
+      barrelLen: gripCfg.barrelLen
     };
   }
 
@@ -471,7 +540,7 @@ export function getWeaponHoldTransform(p) {
   const shoulderPocketX = rightShoulderX + (isPistol ? 6.5 : -0.5) * charFacing;
   const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
 
-  const stockLen = isSniper ? 11.5 : (isShotgun ? 10.4 : (isPistol ? 4.0 : 10.2));
+  const stockLen = gripCfg.stockLen;
 
   const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
   let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
@@ -488,13 +557,13 @@ export function getWeaponHoldTransform(p) {
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
-  // Punkty podparcia dłoni w spoczynku / strzale
-  const rearGripDistX = isMelee ? 0.8 : (isSniper ? 1.4 : (isShotgun ? 1.6 : (isPistol ? 1.0 : 1.5)));
-  const rearGripDistY = isMelee ? 2.5 : (isSniper ? 4.0 : (isShotgun ? 4.5 : (isPistol ? 3.5 : 4.2)));
+  // Punkty podparcia dłoni w spoczynku / strzale z precyzyjnej mapy geometrii WEAPON_GRIP_CONFIGS
+  const rearGripDistX = gripCfg.rearGripX;
+  const rearGripDistY = gripCfg.rearGripY;
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
-  // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia (ok. 25-35 stopni w stawie)
-  const foreGripDistX = isMelee ? -2.5 : (isSniper ? 16.5 : ((isShotgun ? 14.8 : (isPistol ? 2.0 : 16.0)) + pumpShift));
-  const foreGripDistY = isMelee ? 8.5 : (isSniper ? 1.0 : (isShotgun ? 1.8 : (isPistol ? 3.2 : 1.0)));
+  // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia
+  const foreGripDistX = gripCfg.foreGripX + pumpShift;
+  const foreGripDistY = gripCfg.foreGripY;
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
   const u = p.isReloading
@@ -752,6 +821,15 @@ export function getWeaponHoldTransform(p) {
 
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
   let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback + reloadPivotShiftY;
+
+  // Animacja pchnięcia/cięcia bronią białą w ataku wręcz
+  if (isMelee && (p.meleeAttackTimer > 0)) {
+    const meleeProg = p.meleeAttackTimer / 12;
+    const thrustDist = Math.sin(meleeProg * Math.PI) * 14.0;
+    finalPivotX += Math.cos(blendedAngle) * thrustDist * charFacing;
+    finalPivotY += Math.sin(blendedAngle) * thrustDist;
+  }
+
   let proneAimAngle = blendedAngle;
 
   if (p.isProne) {
@@ -796,7 +874,7 @@ export function getWeaponHoldTransform(p) {
     leftHandWorldY = lerp(leftHandWorldY, slingPivotY + 2, slingWeight);
   }
 
-  const barrelLength = isSniper ? 45 : (isShotgun ? 28 : (isPistol ? 13 : 34));
+  const barrelLength = gripCfg.barrelLen;
 
   return {
     pivotX: finalPivotX,
