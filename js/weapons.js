@@ -106,15 +106,15 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     cfg = (KNIFE_COMBO_MOVES && KNIFE_COMBO_MOVES[comboStep]) ? KNIFE_COMBO_MOVES[comboStep] : baseCfg;
     shooter.knifeComboTimer = cfg.totalFrames + 20;
   } else if (weapon.id === 'MACHETE') {
-    // Sekwencja 3 potężnych zamachów maczetą kukri (Machete 3-Hit Combo Chain)
+    // Sekwencja 2 potężnych, zamaszystych cięć maczetą kukri (Machete 2-Hit Continuous Cleave Chain)
     if ((shooter.macheteComboTimer || 0) > 0 && typeof shooter.macheteComboStep === 'number') {
-      comboStep = (shooter.macheteComboStep + 1) % 3;
+      comboStep = (shooter.macheteComboStep + 1) % 2;
     } else {
       comboStep = 0;
     }
     shooter.macheteComboStep = comboStep;
     cfg = (MACHETE_COMBO_MOVES && MACHETE_COMBO_MOVES[comboStep]) ? MACHETE_COMBO_MOVES[comboStep] : baseCfg;
-    shooter.macheteComboTimer = cfg.totalFrames + 24;
+    shooter.macheteComboTimer = cfg.totalFrames + 20;
   }
 
   shooter.meleeState = {
