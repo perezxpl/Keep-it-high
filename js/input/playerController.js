@@ -21,6 +21,9 @@ export function triggerPlayerShoot(p, wep) {
   if (wep && wep.isMelee && p.meleeNeedRelease && !p.isRemote) {
     return;
   }
+  if (wep && wep.id === 'AXE' && p.axeThrown && !p.isRemote) {
+    return;
+  }
   const muzzle = getMuzzlePosition(p, wep);
   const targetAimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : muzzle.aimX;
   const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;

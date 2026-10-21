@@ -12,6 +12,7 @@ import {
 import {
   player, initiatePlayerJump, startKickCharge, executeReleaseKick,
   playerSlide, prepareGrenadeThrow, releaseGrenadeThrow,
+  prepareTomahawkThrow, releaseTomahawkThrow,
   throwTacticalGrenade, isCeilingBlockingStand
 } from '../player.js';
 import { ball, resetBallToPlayer } from '../ball.js';
@@ -863,6 +864,10 @@ export function initKeyboardMouseHandlers({
     }
 
     if (e.button === 0) {
+      if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {
+        releaseTomahawkThrow(player);
+        return;
+      }
       mouseState.lmbDown = true;
       mouseState.semiFired = false;
     } else if (e.button === 2) {
@@ -870,9 +875,13 @@ export function initKeyboardMouseHandlers({
       player.isProne = false;
       player.isCrouching = false;
       player.crouchToggled = false;
-      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
-      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      startKickCharge(player, meleeTargets);
+      if (player.currentWeapon?.id === 'AXE' && !player.axeThrown) {
+        prepareTomahawkThrow(player);
+      } else {
+        const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+        const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+        startKickCharge(player, meleeTargets);
+      }
     }
   });
 
@@ -926,9 +935,13 @@ export function initKeyboardMouseHandlers({
       player.meleeNeedRelease = false;
     } else if (e.button === 2) {
       mouseState.rmbDown = false;
-      const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
-      const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
-      executeReleaseKick(ball, player, 0, meleeTargets);
+      if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {
+        releaseTomahawkThrow(player);
+      } else {
+        const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+        const meleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+        executeReleaseKick(ball, player, 0, meleeTargets);
+      }
     }
   });
 }

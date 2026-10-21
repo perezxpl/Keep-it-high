@@ -104,6 +104,50 @@ if (typeof window !== 'undefined') {
   getHandheldGrenadeSprite();
 }
 
+const AXE_SPRITE_PATH = './assets/weapons/axe.png?v=v256_modular_melee_weapons';
+let _handheldAxeSprite = null;
+
+function getHandheldAxeSprite() {
+  if (_handheldAxeSprite) return _handheldAxeSprite;
+  if (typeof Image === 'undefined') return null;
+  _handheldAxeSprite = new Image();
+  _handheldAxeSprite.src = AXE_SPRITE_PATH;
+  return _handheldAxeSprite;
+}
+
+if (typeof window !== 'undefined') {
+  getHandheldAxeSprite();
+}
+
+export function drawHandheldTomahawk(ctx, x, y, scale = 1.0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.rotate(-1.25);
+
+  const img = getHandheldAxeSprite();
+  if (img && img.complete && img.naturalWidth > 0) {
+    const s = 19.5 / 1115;
+    const pivotSpriteX = 228.7;
+    const pivotSpriteY = 206.0;
+    ctx.scale(s, s);
+    ctx.translate(-pivotSpriteX, -pivotSpriteY);
+    ctx.drawImage(img, 0, 0);
+  } else {
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.moveTo(11.0, -7.0);
+    ctx.lineTo(15.5, -5.5);
+    ctx.lineTo(14.0, 6.5);
+    ctx.lineTo(9.5, 5.0);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
   ctx.save();
   ctx.translate(x, y);
@@ -1113,6 +1157,8 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   if (isFront && visuals && visuals.heldGrenade) {
     drawHandheldGrenade(ctx, foreLen + 4.2, 0, 1.0, (visuals && visuals.grenadeCookRatio) || 0);
+  } else if (isFront && visuals && visuals.heldTomahawk) {
+    drawHandheldTomahawk(ctx, foreLen + 4.2, 0, 1.0);
   }
 
   // Rany i rozcięcia na przedramieniu i dłoni

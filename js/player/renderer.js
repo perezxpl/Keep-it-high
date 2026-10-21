@@ -290,7 +290,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.currentClass?.id === 'STRIKER') {
     v.hasRocketBoots = true;
   }
-  v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned);
+  v.heldGrenade = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType !== 'TOMAHAWK');
+  v.heldTomahawk = !!(p.throwAnim && p.throwAnim.active && !p.throwAnim.spawned && p.throwAnim.throwType === 'TOMAHAWK');
   v.grenadeCookRatio = (p.throwAnim && p.throwAnim.active && p.throwAnim.cookTimer) ? Math.min(1.0, p.throwAnim.cookTimer / 300) : 0;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
@@ -1745,16 +1746,22 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.restore();
   }
 
+  // Trajektoria celowania miotanego (Granat / Toporek Tomahawk)
+  if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
+    drawGrenadeTrajectory(ctx, p, p.throwAnim.targetX, p.throwAnim.targetY, p.throwAnim.power || 1.0, GROUND_Y);
+  }
+
   ctx.restore();
 }
 
 export { drawWeaponSilhouette, drawWeaponSlot, drawEntityHealthBar } from '../ui/hudCanvas.js';
 
 /**
- * Rysuje w czasie rzeczywistym trajektorię balistyczną rzutu granatem (oryginalne białe kropki)
+ * Rysuje w czasie rzeczywistym trajektorię balistyczną rzutu granatem lub toporkiem
  */
 export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, groundY = 500) {
   if (!p) return;
+  const isAxeThrow = (p.throwAnim?.throwType === 'TOMAHAWK');
   const pFacing = p.facing || 1;
   const handPos = (typeof getThrowHandPosition === 'function') ? getThrowHandPosition(p) : null;
   const startX = handPos ? handPos.x : (p.x + (p.w || 24) / 2 + pFacing * 14);
@@ -1766,10 +1773,10 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
 
   const pwr = (typeof power === 'number' && power > 0) ? Math.min(1.5, Math.max(0.4, power * 1.3)) : 1.0;
   const speedMult = pwr;
-  const initialSpeed = (960 / 60) * speedMult;
+  const initialSpeed = isAxeThrow ? (19.5 * speedMult) : ((960 / 60) * speedMult);
   const gVx = Math.cos(angle) * initialSpeed + (p.vx || 0) * 0.35;
-  const gVy = Math.sin(angle) * initialSpeed + (p.vy || 0) * 0.25 - (3.2 * Math.min(1.2, speedMult));
-  const grav = (CONFIG.GRAVITY || 0.38) * 0.95;
+  const gVy = Math.sin(angle) * initialSpeed + (p.vy || 0) * 0.25 - (isAxeThrow ? 2.4 : (3.2 * Math.min(1.2, speedMult)));
+  const grav = (CONFIG.GRAVITY || 0.38) * (isAxeThrow ? 0.82 : 0.95);
 
   ctx.save();
   const numDots = 14;
@@ -1777,18 +1784,25 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
 
   // Taktyczny licznik zapalnika czasowego podczas celowania granatem (Cooking the grenade)
   if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
-    const cookTimer = p.throwAnim.cookTimer || 0;
-    const remainingSec = Math.max(0, (300 - cookTimer) / 60);
-    const timeStr = remainingSec.toFixed(1) + 's';
-
     ctx.save();
     ctx.font = '900 11px monospace';
     ctx.textAlign = 'center';
-    const timeCol = (remainingSec <= 1.5) ? '#ef4444' : (remainingSec <= 3.0 ? '#eab308' : '#00e5ff');
-    ctx.fillStyle = timeCol;
-    ctx.shadowColor = timeCol;
-    ctx.shadowBlur = (remainingSec <= 1.5) ? 8 : 4;
-    ctx.fillText('[ZAPALNIK: ' + timeStr + ']', startX, startY - 26);
+
+    if (isAxeThrow) {
+      ctx.fillStyle = '#fb923c';
+      ctx.shadowColor = '#ea580c';
+      ctx.shadowBlur = 6;
+      ctx.fillText('[RZUT TOPOREK]', startX, startY - 26);
+    } else {
+      const cookTimer = p.throwAnim.cookTimer || 0;
+      const remainingSec = Math.max(0, (300 - cookTimer) / 60);
+      const timeStr = remainingSec.toFixed(1) + 's';
+      const timeCol = (remainingSec <= 1.5) ? '#ef4444' : (remainingSec <= 3.0 ? '#eab308' : '#00e5ff');
+      ctx.fillStyle = timeCol;
+      ctx.shadowColor = timeCol;
+      ctx.shadowBlur = (remainingSec <= 1.5) ? 8 : 4;
+      ctx.fillText('[ZAPALNIK: ' + timeStr + ']', startX, startY - 26);
+    }
     ctx.restore();
   }
 
@@ -1801,7 +1815,11 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
     const screenRadius = Math.max(2.2, 4.2 - step * 0.16);
     const worldRadius = screenRadius / zoom;
 
-    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    if (isAxeThrow) {
+      ctx.fillStyle = `rgba(251, 146, 60, ${alpha})`;
+    } else {
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    }
     ctx.beginPath();
     ctx.arc(wx, wy, worldRadius, 0, Math.PI * 2);
     ctx.fill();

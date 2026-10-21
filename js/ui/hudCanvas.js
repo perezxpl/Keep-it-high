@@ -1105,7 +1105,13 @@ export function drawWeaponSlot(ctx, btn, isSelected, player, isMobile = false) {
   ctx.textBaseline = 'bottom';
   const ammoY = tileY + tileSize - 2;
 
-  if (bIsReloading) {
+  if (btn.id === 'AXE' && player.axeThrown) {
+    ctx.font = 'bold 7px monospace';
+    ctx.fillStyle = '#f97316';
+    ctx.fillText('RZUCONY', tileX + tileSize / 2, ammoY);
+  } else if (btn.id === 'KNIFE' || btn.id === 'MACHETE' || btn.id === 'AXE') {
+    // Broń biała - minimalistyczny kafelek bez licznika amunicji
+  } else if (bIsReloading) {
     ctx.font = 'bold 7.5px monospace';
     ctx.fillStyle = accentCol;
     ctx.fillText('RELOAD', tileX + tileSize / 2, ammoY);
@@ -1549,6 +1555,12 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   if (curWep?.isMelee) {
     // Usunięty napis "ZWARCIE" - minimalistyczna ramka dla broni białej
+    if (curWepId === 'AXE' && player.axeThrown) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
+      ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+      ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
+      ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
+    }
   } else if (curWepId === 'GRENADE') {
     const cd = (player.grenadeCooldownTimer || 0) / 60;
     const isReady = (cd <= 0);

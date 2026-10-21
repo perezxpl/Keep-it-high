@@ -9,7 +9,7 @@ import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
-import { spawnAeroSuperGrenade } from './projectiles.js';
+import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
 import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
 import {
   mpMatchConfig,
@@ -341,6 +341,22 @@ export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse
   } catch (_) {}
 }
 
+export function sendTomahawkThrow(targetX, targetY, power, originX, originY) {
+  if (!networkState.conn || !networkState.isConnected) return;
+  try {
+    networkState.conn.send({
+      type: 'tomahawk_throw',
+      x: Math.round(targetX * 10) / 10,
+      y: Math.round(targetY * 10) / 10,
+      relY: Math.round((GROUND_Y - targetY) * 10) / 10,
+      power: Math.round(power * 100) / 100,
+      originX: originX != null ? Math.round(originX * 10) / 10 : null,
+      originY: originY != null ? Math.round(originY * 10) / 10 : null,
+      relOriginY: originY != null ? Math.round((GROUND_Y - originY) * 10) / 10 : null
+    });
+  } catch (_) {}
+}
+
 export function sendDeathmatchSync(dmState) {
   if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
   try {
@@ -371,6 +387,7 @@ if (typeof window !== 'undefined') {
   window.sendDamageEvent = sendDamageEvent;
   window.sendKillBroadcast = sendKillBroadcast;
   window.sendGrenadeThrow = sendGrenadeThrow;
+  window.sendTomahawkThrow = sendTomahawkThrow;
   window.sendDeathmatchSync = sendDeathmatchSync;
   window.sendAcidSurgeSync = sendAcidSurgeSync;
 }
@@ -1075,6 +1092,16 @@ function handleNetworkData(data) {
         : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
       const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
       spawnAeroSuperGrenade(remotePlayer, data.x, targetY, data.power, originX, originY, data.fuse);
+      break;
+    }
+
+    case 'tomahawk_throw': {
+      const originX = (typeof data.originX === 'number') ? data.originX : (remotePlayer.x + remotePlayer.w / 2);
+      const originY = (data.relOriginY !== undefined)
+        ? (GROUND_Y - data.relOriginY)
+        : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
+      const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      spawnThrownTomahawk(remotePlayer, data.x, targetY, data.power, originX, originY);
       break;
     }
 

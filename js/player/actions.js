@@ -6,7 +6,7 @@
 import { CONFIG, KICK_CONFIG, isTouchDevice } from '../config.js';
 import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
-import { spawnAeroSuperGrenade, detonateGrenadeExplosion } from '../projectiles.js';
+import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk } from '../projectiles.js';
 import { getActiveBots } from '../bot.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -1257,9 +1257,96 @@ export function prepareGrenadeThrow(p, targetX = null, targetY = null, customPow
     targetY: aimY,
     power: customPower,
     spawned: false,
-    aimAngle
+    aimAngle,
+    throwType: 'GRENADE'
   };
 
+  return true;
+}
+
+/**
+ * Rozpoczęcie zamachu i celowania toporkiem tomahawk (PPM lub przytrzymanie ataku)
+ */
+export function prepareTomahawkThrow(p, targetX = null, targetY = null, customPower = 1.0) {
+  if (!p || p.isDead || p.isIntro || (p.staggerTimer > 0) || ((p.staggerRecoveryTimer || 0) > 0)) return false;
+  if (p.axeThrown) return false;
+
+  let aimX, aimY;
+  if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+    aimX = targetX;
+    aimY = targetY;
+  } else if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
+    aimX = p.aimX;
+    aimY = p.aimY;
+  } else {
+    const throwAngle = -0.45;
+    const throwDist = 340;
+    aimX = p.x + p.w / 2 + (p.facing || 1) * Math.cos(throwAngle) * throwDist;
+    aimY = p.y + p.h * 0.42 + Math.sin(throwAngle) * throwDist;
+  }
+
+  const dx = aimX - (p.x + p.w / 2);
+  const dy = aimY - (p.y + p.h * 0.38);
+  const aimAngle = Math.atan2(dy, dx);
+  if (Math.abs(dx) > 10) {
+    p.facing = dx > 0 ? 1 : -1;
+  }
+
+  if (p.throwAnim && p.throwAnim.active && p.throwAnim.aiming) {
+    p.throwAnim.targetX = aimX;
+    p.throwAnim.targetY = aimY;
+    p.throwAnim.aimAngle = aimAngle;
+    if (typeof customPower === 'number' && customPower > 0) {
+      p.throwAnim.power = customPower;
+    }
+    return true;
+  }
+
+  p.throwAnim = {
+    active: true,
+    aiming: true,
+    phase: 'WINDUP',
+    timer: 0,
+    cookTimer: 0,
+    maxFuse: 999999, // Toporek nie eksploduje w dłoni
+    windupDuration: 5,
+    throwDuration: 5,
+    recoveryDuration: 7,
+    targetX: aimX,
+    targetY: aimY,
+    power: customPower,
+    spawned: false,
+    aimAngle,
+    throwType: 'TOMAHAWK'
+  };
+
+  return true;
+}
+
+/**
+ * Wyrzut toporka tomahawk po zwolnieniu przycisku (Release Tomahawk Throw)
+ */
+export function releaseTomahawkThrow(p, targetX = null, targetY = null, customPower = null) {
+  if (!p || p.isDead || !p.throwAnim || !p.throwAnim.active) return false;
+  if (p.throwAnim.throwType !== 'TOMAHAWK') return false;
+
+  if (targetX !== null && targetX !== undefined && targetY !== null && targetY !== undefined) {
+    p.throwAnim.targetX = targetX;
+    p.throwAnim.targetY = targetY;
+    const dx = targetX - (p.x + p.w / 2);
+    const dy = targetY - (p.y + p.h * 0.38);
+    p.throwAnim.aimAngle = Math.atan2(dy, dx);
+    if (Math.abs(dx) > 10) {
+      p.facing = dx > 0 ? 1 : -1;
+    }
+  }
+  if (typeof customPower === 'number' && customPower > 0) {
+    p.throwAnim.power = customPower;
+  }
+
+  p.throwAnim.aiming = false;
+  p.throwAnim.phase = 'THROW';
+  p.throwAnim.timer = 0;
   return true;
 }
 
@@ -1359,8 +1446,8 @@ export function updatePlayerThrow(p) {
   if (!p || !p.throwAnim || !p.throwAnim.active) return;
   const tAnim = p.throwAnim;
 
-  // Odliczanie czasu do detonacji od momentu rozpoczęcia celowania (Cooking the grenade)
-  if (!tAnim.spawned) {
+  // Odliczanie czasu do detonacji od momentu rozpoczęcia celowania (Cooking the grenade) - wyłącznie dla granatów
+  if (!tAnim.spawned && tAnim.throwType !== 'TOMAHAWK') {
     tAnim.cookTimer = (tAnim.cookTimer || 0) + 1;
 
     // Iskry zapalnika w dłoni ostrzegające przed wybuchem w ostatnich 1.5s (cookTimer >= 210)
@@ -1431,22 +1518,35 @@ export function updatePlayerThrow(p) {
     }
   } else if (tAnim.phase === 'THROW') {
     tAnim.timer++;
-    // Kulminacyjny moment wyprostu ręki (klatka 2): odrywa się granat z pozostałym czasem zapalnika!
+    // Kulminacyjny moment wyprostu ręki (klatka 2): odrywa się granat / tomahawk!
     if (tAnim.timer >= 2 && !tAnim.spawned) {
       tAnim.spawned = true;
       const handPos = getThrowHandPosition(p);
-      const remainingFuse = Math.max(1, (tAnim.maxFuse || 300) - (tAnim.cookTimer || 0));
-      spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
-      if (!p.isRemote && !p.isBot) {
-        const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
-        const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
-        if (netState && netState.isConnected && typeof sendGrenade === 'function') {
-          sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
+
+      if (tAnim.throwType === 'TOMAHAWK') {
+        spawnThrownTomahawk(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+        if (!p.isRemote && !p.isBot) {
+          const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+          const sendTomahawk = (typeof window !== 'undefined' && window.sendTomahawkThrow) ? window.sendTomahawkThrow : null;
+          if (netState && netState.isConnected && typeof sendTomahawk === 'function') {
+            sendTomahawk(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+          }
         }
+        triggerScreenShake(2.5);
+      } else {
+        const remainingFuse = Math.max(1, (tAnim.maxFuse || 300) - (tAnim.cookTimer || 0));
+        spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
+        if (!p.isRemote && !p.isBot) {
+          const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+          const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
+          if (netState && netState.isConnected && typeof sendGrenade === 'function') {
+            sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
+          }
+        }
+        p.grenadeMaxCooldown = 3.5;
+        p.grenadeCooldown = 3.5;
+        triggerScreenShake(2.0);
       }
-      p.grenadeMaxCooldown = 3.5;
-      p.grenadeCooldown = 3.5;
-      triggerScreenShake(2.0);
     }
     if (tAnim.timer >= (tAnim.throwDuration || 5)) {
       tAnim.phase = 'RECOVERY';

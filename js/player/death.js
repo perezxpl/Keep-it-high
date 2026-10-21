@@ -11,6 +11,7 @@ import { WEAPONS } from '../weapons.js';
 import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
+import { clearPlayerThrownTomahawks } from '../projectiles.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -426,6 +427,8 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
     player.isDead = false;
+    player.axeThrown = false;
+    clearPlayerThrownTomahawks(player);
     player.isAcidDying = false;
     player.hp = player.maxHp;
     player.killer = null;

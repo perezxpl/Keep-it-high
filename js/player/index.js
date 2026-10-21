@@ -31,7 +31,8 @@ import {
   getGroundKickTrajectory, getScissorLegTargets, getBackflipTargets,
   findMeleeTarget, triggerSpartanKick, getSpartanKickTargets, getProneIKTargets,
   applyKickInteractions, applySpartanKickHit,
-  updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade
+  updatePlayerThrow, prepareGrenadeThrow, releaseGrenadeThrow, throwTacticalGrenade,
+  prepareTomahawkThrow, releaseTomahawkThrow
 } from './actions.js';
 import { handlePlayerDeath, getRagdollRenderPose } from './death.js';
 import { renderArm, renderIKLeg, drawFrontLegOnly, drawPlayer, drawLimbStump, DEFAULT_VISUALS } from './renderer.js';
@@ -1367,4 +1368,4 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   }
 }
 
-export { throwTacticalGrenade } from './actions.js';
+export { throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow, prepareTomahawkThrow, releaseTomahawkThrow } from './actions.js';

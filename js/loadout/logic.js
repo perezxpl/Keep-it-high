@@ -25,9 +25,13 @@ export function equipPocket1Slot(p, slotIndex) {
   const wepId = slots[slotIndex];
   const targetWeapon = WEAPONS[wepId] || WEAPONS.AK47;
 
-  // Jeśli broń się zmieniła, anuluj trwające przeładowanie
+  // Jeśli broń się zmieniła, anuluj trwające przeładowanie oraz celowanie rzutem
   if (p.currentWeapon !== targetWeapon) {
     cancelReload(p, p.currentWeapon);
+    if (p.throwAnim && p.throwAnim.active) {
+      p.throwAnim.active = false;
+      p.throwAnim.aiming = false;
+    }
   }
 
   p.currentWeapon = targetWeapon;

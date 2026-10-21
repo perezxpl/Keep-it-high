@@ -49,6 +49,21 @@ if (typeof window !== 'undefined') {
   getGrenadeSprite();
 }
 
+const AXE_SPRITE_PATH = './assets/weapons/axe.png?v=v256_modular_melee_weapons';
+let _axeSprite = null;
+
+function getAxeSprite() {
+  if (_axeSprite) return _axeSprite;
+  if (typeof Image === 'undefined') return null;
+  _axeSprite = new Image();
+  _axeSprite.src = AXE_SPRITE_PATH;
+  return _axeSprite;
+}
+
+if (typeof window !== 'undefined') {
+  getAxeSprite();
+}
+
 export const activeProjectiles = [];
 export const rubbleParticles = [];
 export const explosionEffects = [];
@@ -450,6 +465,330 @@ export function spawnAeroSuperGrenade(shooter, targetX, targetY, customPower = 1
     window.activeProjectiles.push(grenade);
   }
   return grenade;
+}
+
+/**
+ * Rzucony Toporek Tomahawk (Thrown Ballistic Tomahawk)
+ * - Dynamiczny, rotujący pocisk balistyczny o wysokiej kinetyce i druzgocących obrażeniach
+ * - Odbija piłkę, dekapituje / szatkuje wrogów, wbija się w podłoże i platformy
+ * - Pozostaje na ziemi (GROUNDED) i może zostać podniesiony przez gracza (odzyskanie broni)
+ * - Po śmierci gracza automatycznie powraca do ekwipunku postaci przy respawnie
+ */
+export class ThrownTomahawk {
+  constructor(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
+    this.id = 'tomahawk_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    this.type = 'TOMAHAWK';
+    this.shooter = shooter;
+    this.team = shooter?.team || (shooter?.isBot ? 'BOT' : (shooter?.isRemote ? 'P2' : 'P1'));
+
+    const defStartX = shooter ? (shooter.x + (shooter.w || 24) * 0.5 + (shooter.facing || 1) * 16) : targetX;
+    const defStartY = shooter ? (shooter.y + (shooter.h || 70) * 0.40) : targetY;
+    const startX = (typeof spawnOriginX === 'number' && !isNaN(spawnOriginX)) ? spawnOriginX : defStartX;
+    const startY = (typeof spawnOriginY === 'number' && !isNaN(spawnOriginY)) ? spawnOriginY : defStartY;
+
+    this.x = startX;
+    this.y = startY;
+    this.prevX = startX;
+    this.prevY = startY;
+
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const angle = Math.atan2(dy, dx);
+
+    const speedMult = (typeof customPower === 'number' && customPower > 0) ? Math.max(0.4, Math.min(1.8, customPower)) : 1.0;
+    const initialSpeed = 19.5 * speedMult;
+
+    this.vx = Math.cos(angle) * initialSpeed + (shooter ? (shooter.vx || 0) * 0.35 : 0);
+    this.vy = Math.sin(angle) * initialSpeed + (shooter ? (shooter.vy || 0) * 0.25 : 0) - 2.4;
+
+    this.radius = 12;
+    this.rot = angle;
+    const throwDir = shooter?.facing || (this.vx >= 0 ? 1 : -1);
+    this.vRot = throwDir * 0.42;
+
+    this.state = 'FLYING'; // 'FLYING' | 'GROUNDED'
+    this.damage = 110;
+    this.stuckPlatform = null;
+    this.stuckOffsetX = 0;
+    this.stickAngle = 0;
+    this.pickupRadius = 42;
+    this.hitCombatants = new Set();
+    this.groundTimer = 0;
+
+    if (shooter) {
+      shooter.axeThrown = true;
+    }
+  }
+
+  update(groundY, platforms, customObs, combatants, ball) {
+    if (this.state === 'FLYING') {
+      this.prevX = this.x;
+      this.prevY = this.y;
+
+      const grav = (CONFIG.GRAVITY || 0.38) * 0.82;
+      this.vy += grav;
+
+      this.x += this.vx;
+      this.y += this.vy;
+      this.rot += this.vRot;
+
+      const curArena = getActiveArena?.();
+      const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+      const arenaLeft = (typeof curArena?.bounds?.minX === 'number') ? curArena.bounds.minX : ARENA_LEFT;
+      const arenaRight = isA3 ? 4400 : ((typeof curArena?.width === 'number') ? curArena.width : ((typeof curArena?.bounds?.maxX === 'number') ? curArena.bounds.maxX : ARENA_RIGHT));
+
+      // 1. Odbicia / ograniczenia na ścianach bocznych areny
+      if (this.x - this.radius <= arenaLeft) {
+        this.x = arenaLeft + this.radius;
+        this.vx = -this.vx * 0.35;
+        this.vRot = -this.vRot * 0.6;
+        spawnRicochetSparks(this.x, this.y, 1, 0, 4);
+      } else if (this.x + this.radius >= arenaRight) {
+        this.x = arenaRight - this.radius;
+        this.vx = -this.vx * 0.35;
+        this.vRot = -this.vRot * 0.6;
+        spawnRicochetSparks(this.x, this.y, -1, 0, 4);
+      }
+
+      // 2. Interakcja kinetyczna z piłką (Kinetic Ball Push / Spike)
+      if (ball && !ball.isPocketed) {
+        const dBall = Math.hypot(ball.x - this.x, ball.y - this.y);
+        if (dBall <= this.radius + (ball.radius || 12)) {
+          ball.vx += this.vx * 0.95;
+          ball.vy += this.vy * 0.95;
+          ball.spin = (this.vx > 0 ? 1 : -1) * 0.8;
+          spawnRicochetSparks(this.x, this.y, Math.sign(this.vx), -0.5, 6);
+          triggerScreenShake(4.5);
+          this.vx *= 0.45;
+          this.vy *= 0.45;
+          this.vRot *= -0.5;
+        }
+      }
+
+      // 3. Trafienie w przeciwników (Combatants Hit / Decapitation / Cleave)
+      if (Array.isArray(combatants)) {
+        for (const ch of combatants) {
+          if (!ch || ch === this.shooter || ch.isDead || this.hitCombatants.has(ch)) continue;
+          if (!isDeathmatchFFA() && this.team && ch.team && this.team === ch.team) continue;
+
+          const chLeft = ch.x;
+          const chRight = ch.x + (ch.w || 24);
+          const chTop = ch.y;
+          const chBottom = ch.y + (ch.h || 70);
+
+          if (this.x + this.radius >= chLeft && this.x - this.radius <= chRight &&
+              this.y + this.radius >= chTop && this.y - this.radius <= chBottom) {
+            this.hitCombatants.add(ch);
+            const isHeadshot = (this.y <= ch.y + 24);
+            const chVisuals = (typeof ch.visuals === 'object' && ch.visuals) ? ch.visuals : DEFAULT_VISUALS;
+
+            ch.hp = Math.max(0, (ch.hp || 100) - this.damage);
+            ch.killer = this.shooter;
+            ch.lastAttacker = this.shooter;
+            ch.lastAttackerTimer = 180;
+
+            if (ch.hp <= 0) {
+              if (isHeadshot) {
+                ch.hasHead = false;
+                ch.decapitated = true;
+                ch.neckFountainTimer = 75;
+                spawnHeadGib(ch.x + (ch.w || 24) * 0.5, ch.y + 2, Math.sign(this.vx || 1) * 6.5, -7.5, ch.facing || 1, chVisuals);
+                spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + 14, ch.facing || 1, 7);
+              } else {
+                if (ch.dismembered) ch.dismembered.armFront = true;
+                spawnLimbGib('arm', this.x, this.y, Math.sign(this.vx || 1) * 5.5, -4.5, ch.facing || 1, chVisuals);
+                spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + 16, ch.facing || 1, 6);
+              }
+            }
+
+            spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.5, -2, 7);
+            spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 8);
+            ch.vx += Math.sign(this.vx || 1) * 6.5;
+            ch.vy -= 2.2;
+            triggerScreenShake(20);
+            triggerHitstop(6);
+
+            // Po uderzeniu we wroga toporek traci większość energii i opada na ziemię
+            this.vx = Math.sign(this.vx || 1) * 1.5;
+            this.vy = -1.8;
+            this.vRot = (this.vx >= 0 ? 1 : -1) * 0.15;
+            break;
+          }
+        }
+      }
+
+      // 4. Kolizja z platformami (wbicie w platformę)
+      const activePlats = platforms || ARENA_PLATFORMS;
+      if (Array.isArray(activePlats)) {
+        for (const plat of activePlats) {
+          if (!plat || plat.solid === false) continue;
+          if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) {
+            continue;
+          }
+          const platX = plat.x;
+          const platW = plat.w;
+          const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
+            ? getPlatformSurfaceY(plat, this.x, groundY)
+            : ((plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0)));
+
+          if (this.x >= platX && this.x <= platX + platW && this.prevY <= topY + 4 && this.y >= topY - 4) {
+            this.state = 'GROUNDED';
+            this.y = topY - 3;
+            this.stickAngle = (this.vx >= 0 ? 0.38 : -0.38);
+            this.vx = 0;
+            this.vy = 0;
+            this.vRot = 0;
+            this.stuckPlatform = plat;
+            this.stuckOffsetX = this.x - platX;
+            spawnRicochetSparks(this.x, topY, 0, -1, 7);
+            triggerScreenShake(2.5);
+            break;
+          }
+        }
+      }
+
+      // 5. Kolizja z podłożem (wbicie w ziemię / spód areny)
+      if (this.state === 'FLYING') {
+        const floorY = (isA3 && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(this.x) : groundY;
+        if (this.y >= floorY - 4) {
+          this.state = 'GROUNDED';
+          this.y = floorY - 3;
+          this.stickAngle = (this.vx >= 0 ? 0.38 : -0.38);
+          this.vx = 0;
+          this.vy = 0;
+          this.vRot = 0;
+          spawnRicochetSparks(this.x, floorY, 0, -1, 7);
+          triggerScreenShake(2.5);
+        }
+      }
+    }
+
+    // STAN SPOCZYNKU NA PODŁOŻU (GROUNDED)
+    if (this.state === 'GROUNDED') {
+      this.groundTimer++;
+
+      // Podążanie za ruchem platformy (jeśli wbity w ruchomy element)
+      if (this.stuckPlatform) {
+        this.x = this.stuckPlatform.x + this.stuckOffsetX;
+        const platY = (this.stuckPlatform.y !== undefined) ? this.stuckPlatform.y : (groundY - (this.stuckPlatform.relY || 0));
+        this.y = platY - 3;
+      }
+
+      // Detekcja podniesienia przez gracza-właściciela
+      if (this.shooter && !this.shooter.isDead) {
+        const pX = this.shooter.x + (this.shooter.w || 24) * 0.5;
+        const pY = this.shooter.y + (this.shooter.h || 70) * 0.5;
+        const dist = Math.hypot(pX - this.x, pY - this.y);
+
+        if (dist <= this.pickupRadius) {
+          // PODNIESIENIE TOPOORKA DO RĄK GRACZA
+          this.shooter.axeThrown = false;
+          spawnRicochetSparks(this.x, this.y - 8, 0, -1, 6);
+          triggerScreenShake(1.5);
+          return false; // Usuwa toporek z activeProjectiles
+        }
+      }
+    }
+
+    return true;
+  }
+
+  draw(ctx) {
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    if (this.state === 'GROUNDED') {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.007);
+      ctx.fillStyle = `rgba(249, 115, 22, ${0.12 + pulse * 0.16})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 16 + pulse * 4, 5 + pulse * 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (this.shooter && !this.shooter.isDead) {
+        const pX = this.shooter.x + (this.shooter.w || 24) * 0.5;
+        const pY = this.shooter.y + (this.shooter.h || 70) * 0.5;
+        const dToShooter = Math.hypot(pX - this.x, pY - this.y);
+        if (dToShooter < 260) {
+          const alpha = Math.min(1.0, Math.max(0.2, 1.0 - (dToShooter - 120) / 140));
+          ctx.fillStyle = `rgba(251, 146, 60, ${alpha * (0.75 + pulse * 0.25)})`;
+          ctx.font = '900 8.5px monospace';
+          ctx.textAlign = 'center';
+          const bob = Math.sin(performance.now() * 0.006) * 3;
+          ctx.fillText('▼ [PODNIEŚ]', 0, -22 + bob);
+        }
+      }
+    }
+
+    ctx.rotate(this.state === 'GROUNDED' ? this.stickAngle : this.rot);
+
+    const imgAxe = getAxeSprite();
+    if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
+      const s = 19.5 / 1115;
+      const pivotSpriteX = 228.7;
+      const pivotSpriteY = 206.0;
+
+      ctx.save();
+      ctx.scale(s, s);
+      ctx.translate(-pivotSpriteX, -pivotSpriteY);
+      ctx.drawImage(imgAxe, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(-4.0, -1.8, 16.0, 2.6);
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(11.0, -7.0);
+      ctx.lineTo(15.5, -5.5);
+      ctx.lineTo(14.0, 6.5);
+      ctx.lineTo(9.5, 5.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.moveTo(10.0, -1.5);
+      ctx.lineTo(5.5, -1.0);
+      ctx.lineTo(10.0, 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+/**
+ * Wystrzelenie / rzucenie toporkiem tomahawk
+ */
+export function spawnThrownTomahawk(shooter, targetX, targetY, customPower = 1.0, spawnOriginX = null, spawnOriginY = null) {
+  const tomahawk = new ThrownTomahawk(shooter, targetX, targetY, customPower, spawnOriginX, spawnOriginY);
+  activeProjectiles.push(tomahawk);
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles) && window.activeProjectiles !== activeProjectiles) {
+    window.activeProjectiles.push(tomahawk);
+  }
+  return tomahawk;
+}
+
+/**
+ * Czyszczenie leżących w świecie toporków danego gracza (np. przy respawnie po śmierci)
+ */
+export function clearPlayerThrownTomahawks(shooter) {
+  if (!shooter) return;
+  for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+    const proj = activeProjectiles[i];
+    if (proj && proj.type === 'TOMAHAWK' && proj.shooter === shooter) {
+      activeProjectiles.splice(i, 1);
+    }
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles)) {
+    for (let i = window.activeProjectiles.length - 1; i >= 0; i--) {
+      const proj = window.activeProjectiles[i];
+      if (proj && proj.type === 'TOMAHAWK' && proj.shooter === shooter) {
+        window.activeProjectiles.splice(i, 1);
+      }
+    }
+  }
 }
 
 /**

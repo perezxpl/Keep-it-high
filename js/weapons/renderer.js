@@ -541,6 +541,7 @@ export function drawMeleeSlashTrail(ctx, p) {
  */
 export function drawHeldWeapon(ctx, p) {
   if (!p || !p.currentWeapon || p.isDead) return;
+  if (p.currentWeapon.id === 'AXE' && p.axeThrown) return;
 
   // Renderowanie smugi cięcia broni białej w przestrzeni świata
   drawMeleeSlashTrail(ctx, p);
