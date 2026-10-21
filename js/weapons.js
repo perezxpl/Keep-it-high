@@ -35,6 +35,7 @@ export {
 import {
   WEAPONS,
   MELEE_CONFIGS,
+  KNIFE_COMBO_MOVES,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -57,6 +58,7 @@ import { getActiveBots } from './bot.js';
 export {
   WEAPONS,
   MELEE_CONFIGS,
+  KNIFE_COMBO_MOVES,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -83,13 +85,30 @@ function getCharVisuals(ch) {
 
 export function startMeleeAttack(shooter, weapon, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return;
-  const cfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
+  const baseCfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
   const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;
   const aimAngle = overrideAngle !== undefined ? overrideAngle : (typeof shooter.aimAngle === 'number' ? shooter.aimAngle : 0);
+
+  let comboStep = 0;
+  let cfg = baseCfg;
+
+  if (weapon.id === 'KNIFE') {
+    // Sekwencja 3 uderzeń nożem (Combo Chain 1 -> 2 -> 3)
+    if ((shooter.knifeComboTimer || 0) > 0 && typeof shooter.knifeComboStep === 'number') {
+      comboStep = (shooter.knifeComboStep + 1) % 3;
+    } else {
+      comboStep = 0;
+    }
+    shooter.knifeComboStep = comboStep;
+    cfg = (KNIFE_COMBO_MOVES && KNIFE_COMBO_MOVES[comboStep]) ? KNIFE_COMBO_MOVES[comboStep] : baseCfg;
+    shooter.knifeComboTimer = cfg.totalFrames + 16;
+  }
 
   shooter.meleeState = {
     weaponId: weapon.id,
     cfg,
+    baseCfg,
+    comboStep,
     timer: 0,
     phase: 'WINDUP',
     aimAngle,
@@ -99,10 +118,10 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
   };
 
   if (!shooter.isRemote) {
-    shooter.shootCooldown = weapon.fireRate || cfg.totalFrames;
+    shooter.shootCooldown = cfg.cooldownFrames || weapon.fireRate || cfg.totalFrames;
   }
   shooter.meleeAttackTimer = cfg.totalFrames;
-  shooter.shootPoseTimer = cfg.totalFrames + 4;
+  shooter.shootPoseTimer = cfg.totalFrames + 6;
   shooter.shootPoseWeight = 1.0;
 
   // Lunge / pchnięcie kinetyczne w kierunku ataku
@@ -111,7 +130,7 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     const lungeVy = Math.sin(aimAngle) * (cfg.lungeForce * 0.4);
     shooter.vx += lungeVx;
     shooter.vy += lungeVy;
-  } else if (cfg.type === 'SLASH') {
+  } else if (cfg.type === 'SLASH' || cfg.type === 'BACKHAND') {
     shooter.vx += facing * cfg.lungeForce;
   } else if (cfg.type === 'OVERHEAD_CHOP') {
     shooter.vx += facing * cfg.lungeForce;
@@ -209,8 +228,14 @@ function updateMeleeCollision(shooter, ms) {
       triggerHitstop(cfg.hitstopFrames || 3);
       triggerScreenShake(isBackstab ? (cfg.screenShake * 1.4) : cfg.screenShake);
 
-      if (cfg.type === 'THRUST') {
-        spawnBloodSpurt(hitX, hitY, facing, -0.2, isBackstab ? 22 : 12, 1.4);
+      if (ms.weaponId === 'KNIFE') {
+        if (cfg.type === 'BACKHAND') {
+          spawnBloodSpurt(hitX, hitY, facing, -0.5, 18, 1.5);
+        } else if (cfg.type === 'THRUST') {
+          spawnBloodSpurt(hitX, hitY, facing, -0.2, isBackstab ? 25 : 14, 1.5);
+        } else {
+          spawnBloodSpurt(hitX, hitY, facing, -0.3, 20, 1.5);
+        }
       } else if (cfg.type === 'SLASH') {
         spawnBloodSpurt(hitX, hitY, facing, -0.4, 20, 1.6);
       } else {
@@ -249,7 +274,7 @@ function updateMeleeCollision(shooter, ms) {
           legBack: false
         };
 
-        if (cfg.type === 'SLASH') {
+        if (ms.weaponId === 'MACHETE') {
           // MACZETA: Czyste odcięcie głowy, ręki lub nogi
           if (isHeadshot || isBackstab || hitY <= t.y + 22) {
             t.hasHead = false;
@@ -269,7 +294,7 @@ function updateMeleeCollision(shooter, ms) {
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 5);
             triggerScreenShake(15);
           }
-        } else if (cfg.type === 'OVERHEAD_CHOP') {
+        } else if (ms.weaponId === 'AXE') {
           // TOPOREK: Druzgocące rozrąbanie
           if (isHeadshot || isBackstab || hitY <= t.y + 24) {
             t.hasHead = false;
@@ -284,7 +309,7 @@ function updateMeleeCollision(shooter, ms) {
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 6);
             triggerScreenShake(18);
           }
-        } else if (cfg.type === 'THRUST') {
+        } else if (ms.weaponId === 'KNIFE') {
           // NÓŻ: Cicha eliminacja / poderżnięcie gardła lub kłuta tętnicza
           if (isBackstab || isHeadshot || hitY <= t.y + 22) {
             t.neckFountainTimer = 75;
@@ -576,6 +601,14 @@ export function updateWeaponState(p) {
     p.meleeAttackTimer--;
   }
 
+  // Obsługa licznika okna combo noża bojowego
+  if (p.knifeComboTimer > 0) {
+    p.knifeComboTimer--;
+    if (p.knifeComboTimer <= 0) {
+      p.knifeComboStep = 0;
+    }
+  }
+
   // Obsługa natarcia i klatkowej fizyki broni białych (Melee Attack State Machine)
   if (p.meleeState) {
     const ms = p.meleeState;
@@ -594,7 +627,9 @@ export function updateWeaponState(p) {
           tip: { x: hold.bladeTip.x, y: hold.bladeTip.y },
           hilt: { x: hold.bladeHilt.x, y: hold.bladeHilt.y },
           life: 1.0,
-          weaponId: ms.weaponId
+          weaponId: ms.weaponId,
+          moveType: cfg.type,
+          moveName: cfg.name
         });
       }
       updateMeleeCollision(p, ms);
@@ -602,10 +637,10 @@ export function updateWeaponState(p) {
       ms.phase = 'RECOVERY';
     } else {
       p.meleeState = null;
-      p.meleeTorsoTilt = 0;
+      p.meleeTorsoTilt = (p.currentWeapon?.id === 'KNIFE' && !p.isProne) ? (0.04 * (p.facing || 1)) : 0;
     }
   } else {
-    p.meleeTorsoTilt = 0;
+    p.meleeTorsoTilt = (p.currentWeapon?.id === 'KNIFE' && !p.isProne) ? (0.04 * (p.facing || 1)) : 0;
   }
 
   // Wygasanie smugi cięcia broni białej

@@ -316,33 +316,125 @@ export function drawMeleeSlashTrail(ctx, p) {
     ctx.stroke();
 
   } else {
-    // 3. Błyskawiczna, igłowa smuga pchnięcia nożem bojowym (Piston Thrust Jet)
-    for (let i = 0; i < trail.length - 1; i++) {
-      const pA = trail[i];
-      const pB = trail[i + 1];
-      const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
-      if (alpha <= 0.02) continue;
+    // 3. NÓŻ BOJOWY M9 - ZRÓŻNICOWANE SMUGI DLA 3 RUCHÓW COMBO
+    const moveType = trail[trail.length - 1].moveType || 'SLASH';
 
-      ctx.save();
-      ctx.globalAlpha = alpha * 0.65;
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 2.0;
-      ctx.lineCap = 'round';
+    if (moveType === 'SLASH') {
+      // Ruch 1: Szybka, srebrzysto-błękitna wstęga cięcia ukośnego z góry (Forehand Slash)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.40;
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(pB.hilt.x, pB.hilt.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = alpha * 0.70;
+        ctx.fillStyle = '#bae6fd';
+        ctx.beginPath();
+        const midA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
+        const midB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
+        ctx.moveTo(midA.x, midA.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(midB.x, midB.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.beginPath();
-      ctx.moveTo(pA.tip.x, pA.tip.y);
-      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < trail.length; i++) {
+        const pt = trail[i].tip;
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
       ctx.stroke();
 
-      // Stożek pchnięcia
-      ctx.globalAlpha = alpha * 0.35;
-      ctx.fillStyle = '#94a3b8';
+    } else if (moveType === 'BACKHAND') {
+      // Ruch 2: Błyskawiczna srebrzysto-różowa wstęga podcięcia powrotnego z dołu (Backhand Slice)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.45;
+        ctx.fillStyle = '#e11d48';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(pB.hilt.x, pB.hilt.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = alpha * 0.75;
+        ctx.fillStyle = '#fecdd3';
+        ctx.beginPath();
+        const midA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
+        const midB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
+        ctx.moveTo(midA.x, midA.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(midB.x, midB.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.beginPath();
-      ctx.moveTo(pA.hilt.x, pA.hilt.y);
-      ctx.lineTo(pA.tip.x, pA.tip.y);
-      ctx.lineTo(pB.tip.x, pB.tip.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < trail.length; i++) {
+        const pt = trail[i].tip;
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+
+    } else {
+      // Ruch 3: Aerodynamiczny, igłowy strumień pchnięcia sztychem (Lethal Piston Thrust)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.70;
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.stroke();
+
+        ctx.globalAlpha = alpha * 0.40;
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
