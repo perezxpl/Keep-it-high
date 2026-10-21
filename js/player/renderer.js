@@ -1079,6 +1079,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   }
 
+  // Dynamiczne wychylenie torsu w natarciu bronią białą (Melee Torso Tilt)
+  if (p.meleeTorsoTilt) {
+    pose.torsoTilt += p.meleeTorsoTilt;
+  }
+
   let shoulderCounterTilt = 0;
   if (!p.isDead && speed > 0.08) {
     if (p.isProne) {

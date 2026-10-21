@@ -170,7 +170,7 @@ export const WEAPONS = {
     auto: false,
     fireRate: 16,
     damage: 65,
-    range: 55,
+    range: 58,
     bulletSpeed: 0,
     pellets: 0,
     magSize: 0,
@@ -180,7 +180,7 @@ export const WEAPONS = {
     reloadDuration: 0,
     recoil: 0,
     ballPush: 0.65,
-    bodyPush: 0.25,
+    bodyPush: 3.2,
     ragdollPushMult: 1.5
   },
   MACHETE: {
@@ -192,7 +192,7 @@ export const WEAPONS = {
     auto: false,
     fireRate: 24,
     damage: 85,
-    range: 68,
+    range: 72,
     bulletSpeed: 0,
     pellets: 0,
     magSize: 0,
@@ -202,7 +202,7 @@ export const WEAPONS = {
     reloadDuration: 0,
     recoil: 0,
     ballPush: 0.85,
-    bodyPush: 0.35,
+    bodyPush: 5.5,
     ragdollPushMult: 2.0
   },
   AXE: {
@@ -213,8 +213,8 @@ export const WEAPONS = {
     isMelee: true,
     auto: false,
     fireRate: 32,
-    damage: 100,
-    range: 60,
+    damage: 105,
+    range: 64,
     bulletSpeed: 0,
     pellets: 0,
     magSize: 0,
@@ -224,8 +224,8 @@ export const WEAPONS = {
     reloadDuration: 0,
     recoil: 0,
     ballPush: 1.0,
-    bodyPush: 0.45,
-    ragdollPushMult: 2.5
+    bodyPush: 8.0,
+    ragdollPushMult: 2.8
   },
   GRENADE: {
     id: 'GRENADE',
@@ -415,6 +415,74 @@ export const WEAPON_GRIP_CONFIGS = {
     foreGripY: -3.5,
     barrelLen: 16.0,
     stockLen: 3.0
+  }
+};
+
+/**
+ * Konfiguracje fizyki i kinematyki broni białych (Melee Attack Physics)
+ */
+export const MELEE_CONFIGS = {
+  KNIFE: {
+    id: 'KNIFE',
+    name: 'Nóż Bojowy M9',
+    type: 'THRUST',
+    totalFrames: 13,
+    windupFrames: 2,
+    activeFrames: 4,
+    recoveryFrames: 7,
+    reach: 58,
+    width: 22,
+    damage: 65,
+    backstabMultiplier: 2.2, // 143 dmg - cicha, śmiertelna eliminacja
+    lungeForce: 2.2, // zwinny doskok w linii pchnięcia
+    bodyPush: 3.2,
+    hitstopFrames: 2,
+    screenShake: 5,
+    ballPush: { vx: 14.0, vy: -5.5, spin: 0.3 }
+  },
+  MACHETE: {
+    id: 'MACHETE',
+    name: 'Maczeta Kukri',
+    type: 'SLASH',
+    totalFrames: 20,
+    windupFrames: 5,
+    activeFrames: 6,
+    recoveryFrames: 9,
+    arcStart: -1.35, // uniesienie i odciągnięcie w tył (-77 st)
+    arcEnd: 1.05,    // mocne cięcie w przód i w dół (+60 st)
+    reach: 72,
+    width: 38,
+    damage: 85,
+    backstabMultiplier: 1.5,
+    lungeForce: 3.4, // krok w przód z pędem zamachu
+    bodyPush: 5.5,   // silny odrzut w kierunku cięcia
+    hitstopFrames: 4,
+    screenShake: 9,
+    ballPush: { vx: 18.5, vy: -4.0, spin: 0.95 },
+    cleave: true // tnie wielu wrogów w łuku zamachu
+  },
+  AXE: {
+    id: 'AXE',
+    name: 'Toporek Tomahawk',
+    type: 'OVERHEAD_CHOP',
+    totalFrames: 26,
+    windupFrames: 8,
+    activeFrames: 6,
+    recoveryFrames: 12,
+    arcStart: -1.65, // pionowo nad głową (-95 st)
+    arcEnd: 0.85,    // druzgocące rąbnięcie w dół (+49 st)
+    reach: 64,
+    width: 32,
+    damage: 105,
+    backstabMultiplier: 1.4,
+    lungeForce: 3.0,
+    downwardImpact: 1.8,
+    bodyPush: 8.0,
+    staggerDuration: 22, // ogłuszenie przeciwnika przy trafieniu
+    hitstopFrames: 6,
+    screenShake: 14,
+    ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 }, // potężny smash/spike w dół
+    cleave: false
   }
 };
 
@@ -822,15 +890,113 @@ export function getWeaponHoldTransform(p) {
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
   let finalPivotY = rawPivotY - Math.sin(blendedAngle) * kickback + reloadPivotShiftY;
 
-  // Animacja pchnięcia/cięcia bronią białą w ataku wręcz
-  if (isMelee && (p.meleeAttackTimer > 0)) {
-    const meleeProg = p.meleeAttackTimer / 12;
-    const thrustDist = Math.sin(meleeProg * Math.PI) * 14.0;
-    finalPivotX += Math.cos(blendedAngle) * thrustDist * charFacing;
-    finalPivotY += Math.sin(blendedAngle) * thrustDist;
+  // Proceduralna kinematyka i trajektoria poszczególnych broni białych (Melee Physics)
+  let meleeAngleOffset = 0;
+  if (isMelee) {
+    const ms = p.meleeState;
+    const wepId = weapon.id || 'KNIFE';
+    const cfg = MELEE_CONFIGS[wepId] || MELEE_CONFIGS.KNIFE;
+
+    if (ms && ms.active) {
+      const timer = ms.timer;
+      const wFrames = cfg.windupFrames;
+      const aFrames = cfg.activeFrames;
+      const rFrames = cfg.recoveryFrames;
+
+      let shiftForward = 0;
+      let shiftY = 0;
+
+      if (ms.phase === 'WINDUP') {
+        const u = Math.min(1.0, timer / Math.max(1, wFrames));
+        if (cfg.type === 'THRUST') {
+          // Nóż: cofnięcie ostrza w stronę klatki piersiowej, napięcie mięśni
+          shiftForward = -6.0 * u;
+          shiftY = -1.5 * u;
+          leftHandLocalX = -4.0;
+          leftHandLocalY = -6.0;
+          p.meleeTorsoTilt = -0.06 * charFacing * u;
+        } else if (cfg.type === 'SLASH') {
+          // Maczeta: uniesienie i odciągnięcie ostrza w tył (wysoki zamach)
+          const s = ease(u);
+          meleeAngleOffset = cfg.arcStart * s;
+          shiftForward = -10.0 * s;
+          shiftY = -8.0 * s;
+          leftHandLocalX = 14.0 * s;
+          leftHandLocalY = 2.0 * s;
+          p.meleeTorsoTilt = -0.16 * charFacing * s;
+        } else if (cfg.type === 'OVERHEAD_CHOP') {
+          // Toporek: ciężkie uniesienie topora pionowo nad głowę (overhead chambering)
+          const s = ease(u);
+          meleeAngleOffset = cfg.arcStart * s;
+          shiftForward = -8.0 * s;
+          shiftY = -18.0 * s;
+          leftHandLocalX = 0;
+          leftHandLocalY = -10.0 * s;
+          p.meleeTorsoTilt = -0.22 * charFacing * s;
+        }
+      } else if (ms.phase === 'ACTIVE') {
+        const activeTimer = timer - wFrames;
+        const u = Math.min(1.0, Math.max(0.0, activeTimer / Math.max(1, aFrames)));
+        if (cfg.type === 'THRUST') {
+          // Nóż: eksplozja tłokowa w linii celownika (szybkie pchnięcie)
+          const thrustProg = Math.sin(u * Math.PI * 0.5);
+          shiftForward = -6.0 + 32.0 * thrustProg;
+          shiftY = -1.5 + 1.0 * u;
+          leftHandLocalX = -5.0;
+          leftHandLocalY = -7.0;
+          p.meleeTorsoTilt = 0.12 * charFacing * thrustProg;
+        } else if (cfg.type === 'SLASH') {
+          // Maczeta: zamaszyste cięcie po łuku z przyspieszeniem kątowym
+          const s = Math.sin(u * Math.PI * 0.5);
+          meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, s);
+          shiftForward = lerp(-10.0, 22.0, s);
+          shiftY = lerp(-8.0, 8.0, s);
+          leftHandLocalX = lerp(14.0, -8.0, s);
+          p.meleeTorsoTilt = lerp(-0.16, 0.22, s) * charFacing;
+        } else if (cfg.type === 'OVERHEAD_CHOP') {
+          // Toporek: potężne przyspieszenie w dół (grawitacja + masa obucha)
+          const s = u * u;
+          meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, s);
+          shiftForward = lerp(-8.0, 20.0, s);
+          shiftY = lerp(-18.0, 16.0, s);
+          leftHandLocalX = lerp(0, -6.0, s);
+          leftHandLocalY = lerp(-10.0, 0, s);
+          p.meleeTorsoTilt = lerp(-0.22, 0.28, s) * charFacing;
+        }
+      } else { // RECOVERY
+        const recTimer = timer - wFrames - aFrames;
+        const u = Math.min(1.0, Math.max(0.0, recTimer / Math.max(1, rFrames)));
+        const s = ease(u);
+        if (cfg.type === 'THRUST') {
+          shiftForward = 26.0 * (1.0 - s);
+          p.meleeTorsoTilt = 0.12 * charFacing * (1.0 - s);
+        } else if (cfg.type === 'SLASH') {
+          meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s);
+          shiftForward = lerp(22.0, 0.0, s);
+          shiftY = lerp(8.0, 0.0, s);
+          p.meleeTorsoTilt = lerp(0.22, 0.0, s) * charFacing;
+        } else if (cfg.type === 'OVERHEAD_CHOP') {
+          const rebound = Math.sin(u * Math.PI) * 4.0;
+          meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s) - rebound * 0.04;
+          shiftForward = lerp(20.0, 0.0, s);
+          shiftY = lerp(16.0, 0.0, s) - rebound;
+          p.meleeTorsoTilt = lerp(0.28, 0.0, s) * charFacing;
+        }
+      }
+
+      finalPivotX += Math.cos(blendedAngle) * shiftForward * charFacing - Math.sin(blendedAngle) * shiftY * charFacing;
+      finalPivotY += Math.sin(blendedAngle) * shiftForward + Math.cos(blendedAngle) * shiftY;
+    } else if (p.meleeAttackTimer > 0) {
+      const meleeProg = p.meleeAttackTimer / 12;
+      const thrustDist = Math.sin(meleeProg * Math.PI) * 14.0;
+      finalPivotX += Math.cos(blendedAngle) * thrustDist * charFacing;
+      finalPivotY += Math.sin(blendedAngle) * thrustDist;
+    } else {
+      p.meleeTorsoTilt = 0;
+    }
   }
 
-  let proneAimAngle = blendedAngle;
+  let proneAimAngle = blendedAngle + meleeAngleOffset;
 
   if (p.isProne) {
     const floorY = p.currentGroundY || p.groundY || (p.y + (p.h || 70)) || 560;
@@ -875,6 +1041,12 @@ export function getWeaponHoldTransform(p) {
   }
 
   const barrelLength = gripCfg.barrelLen;
+  const bladeReach = (wepKey === 'MACHETE' ? 32.0 : (wepKey === 'AXE' ? 26.0 : 22.0));
+  const hiltReach = 2.5;
+  const tipX = finalPivotX + Math.cos(proneAimAngle) * bladeReach * charFacing;
+  const tipY = finalPivotY + Math.sin(proneAimAngle) * bladeReach;
+  const hiltX = finalPivotX + Math.cos(proneAimAngle) * hiltReach * charFacing;
+  const hiltY = finalPivotY + Math.sin(proneAimAngle) * hiltReach;
 
   return {
     pivotX: finalPivotX,
@@ -893,6 +1065,8 @@ export function getWeaponHoldTransform(p) {
     rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
     leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
     barrelLen: barrelLength,
+    bladeTip: { x: tipX, y: tipY },
+    bladeHilt: { x: hiltX, y: hiltY },
     isMagInGun,
     heldMag,
     boltOffset

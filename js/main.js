@@ -39,7 +39,7 @@ import {
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
-import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight } from './weapons.js';
+import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
   remotePlayer, networkState, initNetwork,
@@ -574,9 +574,15 @@ function update() {
       remotePlayer.stridePhase = (remotePlayer.stridePhase || 0) + rSpeed * 0.04;
     }
     updateRemotePlayer(GROUND_Y);
+    updateWeaponState(remotePlayer);
   }
 
   const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
+  for (const b of activeBots) {
+    if (b && b.active) {
+      updateWeaponState(b);
+    }
+  }
   const mainMeleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
   updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
   updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);

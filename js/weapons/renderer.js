@@ -213,10 +213,151 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * Renderowanie smugi cięcia broni białej (Melee Slash Trail) w przestrzeni świata
+ */
+export function drawMeleeSlashTrail(ctx, p) {
+  if (!p || !p.meleeTrail || p.meleeTrail.length < 2) return;
+
+  const trail = p.meleeTrail;
+  const wepId = trail[trail.length - 1].weaponId || 'KNIFE';
+
+  ctx.save();
+
+  if (wepId === 'MACHETE') {
+    // 1. Zamaszysta, świecąca wstęga cięcia maczety (Glowing Crescent Slash Ribbon)
+    for (let i = 0; i < trail.length - 1; i++) {
+      const pA = trail[i];
+      const pB = trail[i + 1];
+      const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+      if (alpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.moveTo(pA.hilt.x, pA.hilt.y);
+      ctx.lineTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.lineTo(pB.hilt.x, pB.hilt.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Jasny rdzeń wstęgi
+      ctx.globalAlpha = alpha * 0.75;
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      const midTipA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
+      const midTipB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
+      ctx.moveTo(midTipA.x, midTipA.y);
+      ctx.lineTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.lineTo(midTipB.x, midTipB.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Ostra, biało-srebrzysta krawędź tnąca
+    ctx.beginPath();
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < trail.length; i++) {
+      const pt = trail[i].tip;
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+
+  } else if (wepId === 'AXE') {
+    // 2. Druzgocąca, płomienno-pomarańczowa smuga rąbnięcia toporkiem (Heavy Fire Chop)
+    for (let i = 0; i < trail.length - 1; i++) {
+      const pA = trail[i];
+      const pB = trail[i + 1];
+      const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+      if (alpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.moveTo(pA.hilt.x, pA.hilt.y);
+      ctx.lineTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.lineTo(pB.hilt.x, pB.hilt.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rdzeń obucha topora
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      const headA = { x: (pA.tip.x * 3 + pA.hilt.x) / 4, y: (pA.tip.y * 3 + pA.hilt.y) / 4 };
+      const headB = { x: (pB.tip.x * 3 + pB.hilt.x) / 4, y: (pB.tip.y * 3 + pB.hilt.y) / 4 };
+      ctx.moveTo(headA.x, headA.y);
+      ctx.lineTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.lineTo(headB.x, headB.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#ffedd5';
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < trail.length; i++) {
+      const pt = trail[i].tip;
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+
+  } else {
+    // 3. Błyskawiczna, igłowa smuga pchnięcia nożem bojowym (Piston Thrust Jet)
+    for (let i = 0; i < trail.length - 1; i++) {
+      const pA = trail[i];
+      const pB = trail[i + 1];
+      const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+      if (alpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.65;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.stroke();
+
+      // Stożek pchnięcia
+      ctx.globalAlpha = alpha * 0.35;
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(pA.hilt.x, pA.hilt.y);
+      ctx.lineTo(pA.tip.x, pA.tip.y);
+      ctx.lineTo(pB.tip.x, pB.tip.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
  * Renderowanie broni w rękach strzelca
  */
 export function drawHeldWeapon(ctx, p) {
   if (!p || !p.currentWeapon || p.isDead) return;
+
+  // Renderowanie smugi cięcia broni białej w przestrzeni świata
+  drawMeleeSlashTrail(ctx, p);
+
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   if (hWeight >= 0.99) return; // Całkowicie schowana
 

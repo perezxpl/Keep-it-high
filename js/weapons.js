@@ -6,7 +6,7 @@
 import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
   spawnHeadGib, spawnLimbGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
-  spawnKnockedHelmet, spawnVestShreds,
+  spawnKnockedHelmet, spawnVestShreds, spawnGroundPuff, distToSegment, spawnJetpackSparks,
   bodyGibs
 } from './world.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
@@ -34,6 +34,7 @@ export {
 
 import {
   WEAPONS,
+  MELEE_CONFIGS,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -48,12 +49,14 @@ import {
 import {
   drawBullets,
   drawSniperLaserSight,
-  drawHeldWeapon
+  drawHeldWeapon,
+  drawMeleeSlashTrail
 } from './weapons/renderer.js';
 import { getActiveBots } from './bot.js';
 
 export {
   WEAPONS,
+  MELEE_CONFIGS,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -66,7 +69,10 @@ export {
   cancelReload,
   drawBullets,
   drawSniperLaserSight,
-  drawHeldWeapon
+  drawHeldWeapon,
+  drawMeleeSlashTrail,
+  startMeleeAttack,
+  executeMeleeAttack
 };
 
 function getCharVisuals(ch) {
@@ -77,12 +83,61 @@ function getCharVisuals(ch) {
   return DEFAULT_VISUALS;
 }
 
-function executeMeleeAttack(shooter, weapon) {
-  const reach = weapon.range || 55;
-  const facing = shooter.facing || 1;
-  const hipX = shooter.x + (shooter.w || 24) / 2;
-  const hipY = shooter.y + (shooter.h || 70) - 40;
+export function startMeleeAttack(shooter, weapon, overrideAngle) {
+  if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return;
+  const cfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
+  const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;
+  const aimAngle = overrideAngle !== undefined ? overrideAngle : (typeof shooter.aimAngle === 'number' ? shooter.aimAngle : 0);
 
+  shooter.meleeState = {
+    weaponId: weapon.id,
+    cfg,
+    timer: 0,
+    phase: 'WINDUP',
+    aimAngle,
+    hitTargets: new Set(),
+    hitBall: false,
+    hitObstacles: false
+  };
+
+  if (!shooter.isRemote) {
+    shooter.shootCooldown = weapon.fireRate || cfg.totalFrames;
+  }
+  shooter.meleeAttackTimer = cfg.totalFrames;
+  shooter.shootPoseTimer = cfg.totalFrames + 4;
+  shooter.shootPoseWeight = 1.0;
+
+  // Lunge / pchnięcie kinetyczne w kierunku ataku
+  if (cfg.type === 'THRUST') {
+    const lungeVx = Math.cos(aimAngle) * cfg.lungeForce * facing;
+    const lungeVy = Math.sin(aimAngle) * (cfg.lungeForce * 0.4);
+    shooter.vx += lungeVx;
+    shooter.vy += lungeVy;
+  } else if (cfg.type === 'SLASH') {
+    shooter.vx += facing * cfg.lungeForce;
+  } else if (cfg.type === 'OVERHEAD_CHOP') {
+    shooter.vx += facing * cfg.lungeForce;
+    if (!shooter.onGround) {
+      shooter.vy += cfg.downwardImpact || 1.8;
+    }
+  }
+}
+
+export function executeMeleeAttack(shooter, weapon, overrideAngle) {
+  startMeleeAttack(shooter, weapon, overrideAngle);
+}
+
+function updateMeleeCollision(shooter, ms) {
+  if (!shooter || !ms || ms.phase !== 'ACTIVE') return;
+  const cfg = ms.cfg || MELEE_CONFIGS[ms.weaponId] || MELEE_CONFIGS.KNIFE;
+  const hold = getWeaponHoldTransform(shooter);
+  const p1 = hold.bladeHilt;
+  const p2 = hold.bladeTip;
+  if (!p1 || !p2) return;
+
+  const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;
+
+  // 1. Zbieranie kandydatów do trafienia (gracze i boty)
   const candidateTargets = [];
   if (typeof window !== 'undefined') {
     if (typeof window.getActiveBots === 'function') {
@@ -98,121 +153,209 @@ function executeMeleeAttack(shooter, weapon) {
     }
   }
 
-  let hitTarget = null;
-  let minDist = reach;
-
   for (const t of candidateTargets) {
     if (!t || t === shooter || t.isDead) continue;
     if (shooter.team && t.team && shooter.team === t.team) continue;
+    if (ms.hitTargets.has(t)) continue;
 
-    const tx = t.x + (t.w || 24) / 2;
-    const ty = t.y + (t.h || 70) - 40;
-    const dx = tx - hipX;
-    const dy = ty - hipY;
+    const tx = t.x + (t.w || 24) * 0.5;
+    let headX, headY, torsoX, torsoY, legsX, legsY;
 
-    if (dx * facing < -10) continue;
-    const dist = Math.hypot(dx, dy);
-    if (dist <= minDist) {
-      minDist = dist;
-      hitTarget = t;
+    if (t.isProne) {
+      const tFacing = t.facing || 1;
+      headX = tx + tFacing * 20;
+      headY = t.y + 10;
+      torsoX = tx;
+      torsoY = t.y + 12;
+      legsX = tx - tFacing * 20;
+      legsY = t.y + 14;
+    } else {
+      headX = tx;
+      headY = t.y + 12;
+      torsoX = tx;
+      torsoY = t.y + 36;
+      legsX = tx;
+      legsY = t.y + 56;
+    }
+
+    const dHead = distPointToSegment(headX, headY, p1.x, p1.y, p2.x, p2.y);
+    const dTorso = distPointToSegment(torsoX, torsoY, p1.x, p1.y, p2.x, p2.y);
+    const dLegs = distPointToSegment(legsX, legsY, p1.x, p1.y, p2.x, p2.y);
+
+    const hitRadius = (cfg.width || 24) * 0.5;
+    const headHit = dHead <= 13 + hitRadius;
+    const torsoHit = dTorso <= 18 + hitRadius;
+    const legsHit = dLegs <= 16 + hitRadius;
+
+    if (headHit || torsoHit || legsHit) {
+      let isHeadshot = false;
+      let isLegshot = false;
+      let hitX = torsoX;
+      let hitY = torsoY;
+
+      if (headHit && (dHead <= dTorso && dHead <= dLegs)) {
+        isHeadshot = true;
+        hitX = headX;
+        hitY = headY;
+      } else if (legsHit && (dLegs < dTorso)) {
+        isLegshot = true;
+        hitX = legsX;
+        hitY = legsY;
+      }
+
+      const isBackstab = (t.facing === facing);
+      let dmg = cfg.damage;
+      if (isBackstab) dmg = Math.round(dmg * (cfg.backstabMultiplier || 1.5));
+      if (isHeadshot) dmg = Math.round(dmg * 1.35);
+
+      triggerHitstop(cfg.hitstopFrames || 3);
+      triggerScreenShake(isBackstab ? (cfg.screenShake * 1.4) : cfg.screenShake);
+
+      if (cfg.type === 'THRUST') {
+        spawnBloodSpurt(hitX, hitY, facing, -0.2, isBackstab ? 22 : 12, 1.4);
+      } else if (cfg.type === 'SLASH') {
+        spawnBloodSpurt(hitX, hitY, facing, -0.4, 20, 1.6);
+      } else {
+        spawnBloodSpurt(hitX, hitY, facing, 0.25, 25, 1.8);
+      }
+
+      t.hp = Math.max(0, (t.hp !== undefined ? t.hp : 100) - dmg);
+      t.lastAttacker = shooter;
+      t.lastAttackerTimer = 240;
+      t.vx += facing * (cfg.bodyPush || 4.0);
+
+      if (cfg.type === 'OVERHEAD_CHOP') {
+        t.vy += 3.5;
+      }
+      if (cfg.staggerDuration) {
+        t.staggerTimer = Math.max(t.staggerTimer || 0, cfg.staggerDuration);
+      }
+
+      if (t.hp <= 0 && !t.isDead) {
+        t.isDead = true;
+        t.killer = shooter;
+        t.respawnTimer = 180;
+        t.corpseAngle = 0;
+        t.corpseRotVel = 0;
+        t.bleedTimer = 90;
+        const targetVisuals = getCharVisuals(t);
+
+        if (t.currentWeapon) {
+          spawnDroppedWeapon(t.x + (t.w || 24) * 0.5, t.y + 28, facing * 3.5, -4.5, t.currentWeapon, t.facing);
+        }
+
+        t.dismembered = {
+          armFront: false,
+          armBack: false,
+          legFront: false,
+          legBack: false
+        };
+
+        if (cfg.type === 'SLASH') {
+          // MACZETA: Czyste odcięcie głowy, ręki lub nogi
+          if (isHeadshot || isBackstab || hitY <= t.y + 22) {
+            t.hasHead = false;
+            t.decapitated = true;
+            t.neckFountainTimer = 70;
+            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 4, facing * 5.5, -6.5, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 6);
+            triggerScreenShake(18);
+          } else if (isLegshot || hitY >= t.y + 44) {
+            t.dismembered.legFront = true;
+            spawnLimbGib('leg', hitX, hitY, facing * 5.0, -5.0, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 5);
+            triggerScreenShake(15);
+          } else {
+            t.dismembered.armFront = true;
+            spawnLimbGib('arm', hitX, hitY, facing * 5.0, -5.0, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 5);
+            triggerScreenShake(15);
+          }
+        } else if (cfg.type === 'OVERHEAD_CHOP') {
+          // TOPOREK: Druzgocące rozrąbanie
+          if (isHeadshot || isBackstab || hitY <= t.y + 24) {
+            t.hasHead = false;
+            t.decapitated = true;
+            t.neckFountainTimer = 75;
+            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 2, facing * 6.5, -7.5, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
+            triggerScreenShake(22);
+          } else {
+            t.dismembered.armFront = true;
+            spawnLimbGib('arm', hitX, hitY, facing * 5.5, -4.5, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 6);
+            triggerScreenShake(18);
+          }
+        } else if (cfg.type === 'THRUST') {
+          // NÓŻ: Cicha eliminacja / poderżnięcie gardła lub kłuta tętnicza
+          if (isBackstab || isHeadshot || hitY <= t.y + 22) {
+            t.neckFountainTimer = 75;
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
+            spawnBloodSpurt(hitX, hitY, facing, -0.3, 30, 2.0);
+          }
+        }
+
+        if (typeof window !== 'undefined') {
+          if (typeof window.recordKill === 'function' && shooter === window.player) {
+            window.recordKill();
+          }
+          if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
+            window.registerKillstreakKill();
+          }
+        }
+      }
+
+      if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
+        window.sendDamageEvent({
+          target: t.isRemote ? 'player' : 'bot',
+          botId: t.botId || t.id,
+          damage: dmg,
+          isHeadshot,
+          isTorsoShot: !isHeadshot && !isLegshot,
+          hitX,
+          hitY
+        });
+      }
+
+      ms.hitTargets.add(t);
+      if (!cfg.cleave) {
+        break;
+      }
     }
   }
 
-  if (hitTarget) {
-    const isBackstab = (hitTarget.facing === facing);
-    const dmg = isBackstab ? Math.round(weapon.damage * 1.6) : weapon.damage;
-    const hitX = hitTarget.x + (hitTarget.w || 24) / 2;
-    const hitY = hitTarget.y + (hitTarget.h || 70) * 0.45;
-
-    triggerHitstop(3);
-    triggerScreenShake(isBackstab ? 12 : 7);
-    spawnBloodSpurt(hitX, hitY, facing, -0.25, isBackstab ? 18 : 10, 1.4);
-
-    hitTarget.hp = Math.max(0, (hitTarget.hp !== undefined ? hitTarget.hp : 100) - dmg);
-    hitTarget.lastAttacker = shooter;
-    hitTarget.lastAttackerTimer = 240;
-    hitTarget.vx += facing * (weapon.bodyPush || 3.5);
-
-    if (hitTarget.hp <= 0 && !hitTarget.isDead) {
-      hitTarget.isDead = true;
-      hitTarget.killer = shooter;
-      hitTarget.respawnTimer = 180;
-      hitTarget.corpseAngle = 0;
-      hitTarget.corpseRotVel = 0;
-      hitTarget.bleedTimer = 90;
-      const targetVisuals = getCharVisuals(hitTarget);
-
-      // Wyrzucenie trzymanej broni
-      if (hitTarget.currentWeapon) {
-        spawnDroppedWeapon(hitTarget.x + hitTarget.w / 2, hitTarget.y + 28, facing * 3.5, -4.5, hitTarget.currentWeapon, hitTarget.facing);
-      }
-
-      hitTarget.dismembered = {
-        armFront: false,
-        armBack: false,
-        legFront: false,
-        legBack: false
-      };
-
-      if (weapon.id === 'AXE' || weapon.id === 'MACHETE') {
-        // Cięcie toporkiem lub maczetą odcina głowę lub kończynę
-        if (isBackstab || hitY <= hitTarget.y + 22) {
-          hitTarget.hasHead = false;
-          hitTarget.decapitated = true;
-          hitTarget.neckFountainTimer = 65;
-          spawnHeadGib(hitTarget.x + hitTarget.w / 2, hitTarget.y + 4, facing * 4.5, -6.5, hitTarget.facing, targetVisuals);
-          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 14, hitTarget.facing, 6);
-          triggerScreenShake(16);
-        } else if (hitY >= hitTarget.y + 42) {
-          hitTarget.dismembered.legFront = true;
-          spawnLimbGib('leg', hitX, hitY, facing * 4.0, -5.5, hitTarget.facing, targetVisuals);
-          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 45, hitTarget.facing, 5);
-          triggerScreenShake(14);
-        } else {
-          hitTarget.dismembered.armFront = true;
-          spawnLimbGib('arm', hitX, hitY, facing * 4.0, -5.5, hitTarget.facing, targetVisuals);
-          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 16, hitTarget.facing, 5);
-          triggerScreenShake(14);
-        }
-      } else if (weapon.id === 'KNIFE') {
-        if (isBackstab || hitY <= hitTarget.y + 22) {
-          hitTarget.neckFountainTimer = 60;
-          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 14, hitTarget.facing, 6);
-        }
-      }
-
-      if (typeof window !== 'undefined') {
-        if (typeof window.recordKill === 'function' && shooter === window.player) {
-          window.recordKill();
-        }
-        if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
-          window.registerKillstreakKill();
-        }
-      }
-    }
-
-    if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
-      window.sendDamageEvent({
-        target: hitTarget.isRemote ? 'player' : 'bot',
-        botId: hitTarget.botId || hitTarget.id,
-        damage: dmg,
-        isHeadshot: isBackstab,
-        isTorsoShot: true,
-        hitX,
-        hitY
-      });
-    }
-  }
-
-  if (typeof window !== 'undefined' && window.ball && window.ball.active !== false) {
+  // 2. Kolizja z piłką (Ball physics interaction)
+  if (typeof window !== 'undefined' && window.ball && window.ball.active !== false && !ms.hitBall) {
     const b = window.ball;
-    const bdx = b.x - hipX;
-    const bdy = b.y - hipY;
-    if (bdx * facing >= -10 && Math.hypot(bdx, bdy) <= reach + 18) {
-      b.vx = facing * 12.0 * (weapon.ballPush || 0.8);
-      b.vy = -5.0 * (weapon.ballPush || 0.8);
-      triggerHitstop(2);
-      triggerScreenShake(5);
+    const dBall = distPointToSegment(b.x, b.y, p1.x, p1.y, p2.x, p2.y);
+    const ballR = b.r || 14;
+    if (dBall <= ballR + (cfg.width || 24) * 0.5) {
+      ms.hitBall = true;
+      if (cfg.ballPush) {
+        b.vx = facing * cfg.ballPush.vx;
+        b.vy = cfg.ballPush.vy;
+        if (typeof b.spin === 'number') {
+          b.spin = cfg.ballPush.spin * facing;
+        }
+      }
+      triggerHitstop(Math.max(1, (cfg.hitstopFrames || 3) - 1));
+      triggerScreenShake((cfg.screenShake || 6) * 0.7);
+      spawnJetpackSparks(b.x, b.y, -facing * 2.5, -2.5, 6);
+    }
+  }
+
+  // 3. Kolizja z otoczeniem (ziemia / ściany)
+  if (!ms.hitObstacles) {
+    const groundLevel = shooter.currentGroundY || shooter.groundY || GROUND_Y || 560;
+    if (p2.y >= groundLevel - 3) {
+      ms.hitObstacles = true;
+      if (cfg.type === 'OVERHEAD_CHOP') {
+        spawnGroundPuff(p2.x, groundLevel, 14);
+        spawnJetpackSparks(p2.x, groundLevel, -facing * 3.5, -3.5, 8);
+        triggerScreenShake(7);
+      } else {
+        spawnJetpackSparks(p2.x, groundLevel, -facing * 2.0, -2.0, 4);
+      }
     }
   }
 }
@@ -222,11 +365,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   if (shooter.shootCooldown > 0 && !shooter.isRemote) return false;
 
   if (weapon.isMelee) {
-    if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate || 16;
-    shooter.meleeAttackTimer = 12;
-    shooter.shootPoseTimer = 18;
-    shooter.shootPoseWeight = 1.0;
-    executeMeleeAttack(shooter, weapon);
+    startMeleeAttack(shooter, weapon, overrideAngle);
     return true;
   }
 
@@ -437,6 +576,48 @@ export function updateWeaponState(p) {
 
   if (p.meleeAttackTimer > 0) {
     p.meleeAttackTimer--;
+  }
+
+  // Obsługa natarcia i klatkowej fizyki broni białych (Melee Attack State Machine)
+  if (p.meleeState) {
+    const ms = p.meleeState;
+    ms.timer++;
+    const cfg = ms.cfg || MELEE_CONFIGS[ms.weaponId] || MELEE_CONFIGS.KNIFE;
+
+    if (ms.timer <= cfg.windupFrames) {
+      ms.phase = 'WINDUP';
+    } else if (ms.timer <= cfg.windupFrames + cfg.activeFrames) {
+      ms.phase = 'ACTIVE';
+      // Rejestracja punktów smugi cięcia (Blade Slash Trail)
+      const hold = getWeaponHoldTransform(p);
+      if (hold && hold.bladeTip && hold.bladeHilt) {
+        if (!p.meleeTrail) p.meleeTrail = [];
+        p.meleeTrail.push({
+          tip: { x: hold.bladeTip.x, y: hold.bladeTip.y },
+          hilt: { x: hold.bladeHilt.x, y: hold.bladeHilt.y },
+          life: 1.0,
+          weaponId: ms.weaponId
+        });
+      }
+      updateMeleeCollision(p, ms);
+    } else if (ms.timer <= cfg.totalFrames) {
+      ms.phase = 'RECOVERY';
+    } else {
+      p.meleeState = null;
+      p.meleeTorsoTilt = 0;
+    }
+  } else {
+    p.meleeTorsoTilt = 0;
+  }
+
+  // Wygasanie smugi cięcia broni białej
+  if (p.meleeTrail && p.meleeTrail.length > 0) {
+    for (let i = p.meleeTrail.length - 1; i >= 0; i--) {
+      p.meleeTrail[i].life -= 0.16;
+      if (p.meleeTrail[i].life <= 0) {
+        p.meleeTrail.splice(i, 1);
+      }
+    }
   }
 
   // Obsługa amunicji i przeładowania broni gracza
