@@ -221,6 +221,24 @@ export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
   spawnBloodSpurt(x, y, vx, vy - 3, 24, 1.4);
 }
 
+export function spawnLimbGib(type, x, y, vx = 0, vy = 0, facing = 1, visuals = {}) {
+  if (!CONFIG.GORE_ENABLED) return;
+  bodyGibs.push({
+    type,
+    x,
+    y,
+    vx: (vx || 0) * 0.45 + (Math.random() - 0.5) * 2.5 + (facing || 1) * 1.5,
+    vy: (vy || 0) * 0.35 - (Math.random() * 2.5 + 4.0),
+    rot: Math.random() * Math.PI * 2,
+    vRot: (Math.random() - 0.5) * 0.45,
+    facing: facing || 1,
+    visuals: visuals || {},
+    groundBounces: 0,
+    life: 360
+  });
+  spawnBloodSpurt(x, y, (vx || 0) * 0.5, -2.5, 18, 1.3);
+}
+
 export function spawnBodyGibs(cx, cy, facing, visuals) {
   if (!CONFIG.GORE_ENABLED) return;
   const types = ['arm', 'leg', 'torso_chunk', 'boot', 'pelvis'];
@@ -486,14 +504,35 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
     }
     const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(bg.x) : true;
     const floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 4);
+    let landed = false;
     if (hasGround && bg.y >= floorY) {
+      landed = true;
+    } else if (Array.isArray(plats)) {
+      for (const plat of plats) {
+        if (!plat || plat.solid === false || plat.isWall) continue;
+        if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
+        const minX = plat.x !== undefined ? plat.x : 0;
+        const maxX = minX + (plat.w || 0);
+        if (bg.x >= minX && bg.x <= maxX) {
+          const topY = getSurfaceYForPlatform(plat, bg.x, groundY);
+          if (!isNaN(topY) && bg.y >= topY - 4 && bg.y <= topY + 8 && bg.vy > 0) {
+            floorY = topY - 4;
+            landed = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (landed) {
       bg.y = floorY;
-      if (Math.abs(bg.vy) > 1.5 && bg.groundBounces < 3) {
+      if (Math.abs(bg.vy) > 1.4 && bg.groundBounces < 3) {
         bg.vy = -bg.vy * 0.42;
         bg.vx *= 0.75;
         if (Math.abs(slope) > 0.03) {
           bg.vx += slope * 0.32;
         }
+        bg.vRot *= 0.65;
         bg.groundBounces++;
         addBloodDecal(bg.x, floorY + 4);
       } else {
@@ -501,6 +540,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
           bg.vx += slope * 0.28;
           bg.vx *= 0.94;
           bg.vy = bg.vx * slope;
+          bg.vRot = bg.vx * 0.18;
         } else {
           bg.vy = 0;
           bg.vx = 0;
@@ -846,41 +886,95 @@ export function drawGore(ctx) {
     ctx.save();
     ctx.translate(hg.x, hg.y);
     ctx.rotate(hg.rot);
-    ctx.scale(hg.facing, 1);
+    ctx.scale(hg.facing || 1, 1);
 
+    const v = hg.visuals || {};
+    const skinLight = v.skinLight || '#fed7aa';
+    const skinMid = v.skinMid || '#f5b078';
+    const skinDark = v.skinDark || '#c2410c';
+    const skinBack = v.skinBack || '#de935e';
+
+    // 1. Poszarpany kikut szyi z tętnicą i białą kością kręgosłupa
     ctx.fillStyle = '#7f1d1d';
     ctx.beginPath();
-    ctx.ellipse(0, 5, 4.2, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 4.8, 4.5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.ellipse(0, 4.8, 2.6, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Odłamana biała kość kręgu szyjnego (Cervical Spine)
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-1.0, 3.8, 2.0, 2.2);
+
+    // 2. Anatomiczny owal głowy z karnacją postaci
     const faceGrad = ctx.createLinearGradient(-4.8, -6.0, 4.8, 6.0);
-    faceGrad.addColorStop(0.0, '#de935e');
-    faceGrad.addColorStop(0.5, '#f5b078');
-    faceGrad.addColorStop(1.0, '#fed7aa');
+    faceGrad.addColorStop(0.0, skinBack);
+    faceGrad.addColorStop(0.5, skinMid);
+    faceGrad.addColorStop(1.0, skinLight);
 
     ctx.beginPath();
     ctx.ellipse(0, -1.0, 5.0, 5.8, 0, 0, Math.PI * 2);
     ctx.fillStyle = faceGrad;
     ctx.fill();
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
 
-    ctx.fillStyle = '#2e160a';
+    // 3. Włosy lub nakrycie głowy
+    const rawHeadgear = String(v.headgearStyle || 'none').toLowerCase();
+    const rawHair = String(v.hairStyle || 'none').toLowerCase();
+
+    if (rawHeadgear === 'beret') {
+      ctx.fillStyle = v.headgearColor || '#7f1d1d';
+      ctx.beginPath();
+      ctx.moveTo(-5.5, -4.5);
+      ctx.quadraticCurveTo(-3.0, -8.5, 3.5, -6.5);
+      ctx.quadraticCurveTo(6.5, -5.0, 4.5, -2.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (rawHeadgear === 'bandana') {
+      ctx.fillStyle = v.headgearColor || '#18181b';
+      ctx.fillRect(-5.2, -5.5, 10.4, 3.2);
+    } else if (rawHeadgear === 'balaclava') {
+      ctx.fillStyle = v.headgearColor || '#18181b';
+      ctx.beginPath();
+      ctx.ellipse(0, -1.0, 5.2, 6.0, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Otwór na oczy z widoczną skórą
+      ctx.fillStyle = skinMid;
+      ctx.fillRect(0.2, -2.6, 4.2, 2.2);
+    } else if (rawHair !== 'none' && rawHair !== 'brak' && rawHair !== 'shaved') {
+      ctx.fillStyle = v.hairColor || v.hairColor0 || '#2e160a';
+      ctx.beginPath();
+      ctx.arc(0, -2.5, 5.2, Math.PI * 0.85, Math.PI * 0.15, true);
+      ctx.fill();
+    }
+
+    // 4. Zarost / Broda
+    if (v.facialHairStyle && v.facialHairStyle !== 'none' && v.facialHairStyle !== 'brak') {
+      ctx.fillStyle = v.facialHairColor || v.hairColor || '#2e160a';
+      ctx.beginPath();
+      ctx.arc(2.0, 1.8, 2.4, 0, Math.PI * 0.8);
+      ctx.fill();
+    }
+
+    // 5. Zamknięte martwe oko w walce (krzyżyk X)
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.1;
     ctx.beginPath();
-    ctx.arc(0, -2.5, 5.1, Math.PI * 0.85, Math.PI * 0.15, true);
+    ctx.moveTo(1.2, -2.4); ctx.lineTo(3.2, -0.4);
+    ctx.moveTo(3.2, -2.4); ctx.lineTo(1.2, -0.4);
+    ctx.stroke();
+
+    // Skrzepy krwi na twarzy
+    ctx.fillStyle = 'rgba(153, 27, 27, 0.75)';
+    ctx.beginPath();
+    ctx.arc(0.5, 0.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(2.5, 2.5, 1.0, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(-4.8, -2.8);
-    ctx.lineTo(4.8, -2.8);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(1.2, -2.2); ctx.lineTo(3.2, -0.2);
-    ctx.moveTo(3.2, -2.2); ctx.lineTo(1.2, -0.2);
-    ctx.stroke();
 
     ctx.restore();
   }
@@ -892,24 +986,87 @@ export function drawGore(ctx) {
     ctx.save();
     ctx.translate(bg.x, bg.y);
     ctx.rotate(bg.rot);
+    ctx.scale(bg.facing || 1, 1);
 
-    if (bg.type === 'boot') {
-      ctx.fillStyle = bg.visuals?.bootColor || '#18181b';
-      ctx.fillRect(-4, -2, 9, 5);
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(-4, -4, 3, 2);
-    } else if (bg.type === 'leg') {
-      ctx.fillStyle = bg.visuals?.legShinFront || '#ef4444';
-      ctx.fillRect(-3, -7, 6, 14);
+    const v = bg.visuals || {};
+
+    if (bg.type === 'arm') {
+      // 1. Poszarpany kikut z białą kością ramienną (Humerus)
       ctx.fillStyle = '#7f1d1d';
-      ctx.fillRect(-3, -9, 6, 2);
-    } else if (bg.type === 'arm') {
-      ctx.fillStyle = bg.visuals?.armColorFront || '#dc2626';
-      ctx.fillRect(-2.5, -5, 5, 10);
-      ctx.fillStyle = '#f5b078';
-      ctx.fillRect(-2, 5, 4, 3);
+      ctx.beginPath();
+      ctx.ellipse(-5.5, 0, 2.5, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(-7.2, -1.0, 2.5, 2.0);
+
+      // 2. Ramię w rękawie munduru taktycznego
+      const armCol = v.torsoColor || v.armColorFront || '#334155';
+      ctx.fillStyle = armCol;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-4.5, -2.8, 9.5, 5.6, 2);
+      else ctx.rect(-4.5, -2.8, 9.5, 5.6);
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // 3. Dłoń w taktycznej rękawicy
+      const gloveCol = v.gloveColor || v.bootColor || '#18181b';
+      ctx.fillStyle = gloveCol;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(5.0, -2.2, 4.5, 4.4, 1.5);
+      else ctx.rect(5.0, -2.2, 4.5, 4.4);
+      ctx.fill();
+
+      // Plama krwi na rękawie
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(-2.5, -0.6, 4.0, 1.2);
+
+    } else if (bg.type === 'leg') {
+      // 1. Poszarpany kikut uda z białą kością udową (Femur)
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.ellipse(0, -7.5, 3.8, 2.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(-1.0, -9.2, 2.0, 2.5);
+
+      // 2. Spodnie bojowe (Bojówki / Szorty taktyczne)
+      const pantsCol = v.shortsColor0 || v.pantsColor || '#334155';
+      ctx.fillStyle = pantsCol;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-3.2, -6.5, 6.4, 11.5, 2);
+      else ctx.rect(-3.2, -6.5, 6.4, 11.5);
+      ctx.fill();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // 3. Ciężki but wojskowy z bieżnikiem
+      const bootCol = v.bootColor || '#18181b';
+      ctx.fillStyle = bootCol;
+      ctx.beginPath();
+      ctx.moveTo(-3.2, 5.0);
+      ctx.lineTo(4.5, 5.0);
+      ctx.lineTo(5.5, 9.0);
+      ctx.lineTo(-3.2, 9.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(-3.2, 8.5, 8.8, 1.5);
+
+      // Plama krwi na spodniach
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(-1.0, -3.0, 2.0, 5.0);
+
+    } else if (bg.type === 'boot') {
+      const bootCol = v.bootColor || '#18181b';
+      ctx.fillStyle = bootCol;
+      ctx.fillRect(-4, -2, 9, 5);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(-4, -4, 3, 2);
     } else {
-      ctx.fillStyle = bg.visuals?.jerseyFront1 || '#991b1b';
+      ctx.fillStyle = v.torsoColor || '#991b1b';
       ctx.fillRect(-5, -5, 10, 10);
       ctx.fillStyle = '#7f1d1d';
       ctx.fillRect(-5, -6, 10, 2);

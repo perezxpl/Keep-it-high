@@ -5,7 +5,8 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { DEFAULT_VISUALS } from './player/hair.js';
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
@@ -556,7 +557,42 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         }
         ch.respawnTimer = 180;
         ch.corpseFloorY = (isA3Target && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(chCenterX) : groundY;
-        ch.isGibbed = true;
+        const targetVisuals = ch._cachedVisuals || { ...DEFAULT_VISUALS, ...(ch.visuals || {}), ...(ch.customVisuals || {}) };
+
+        if (ch.currentWeapon) {
+          spawnDroppedWeapon(chCenterX, chCenterY, normX * 4.5, -5.0, ch.currentWeapon, ch.facing);
+        }
+
+        ch.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+
+        if (dist <= radius * 0.45) {
+          // Bezpośrednie trafienie w epicentrum: totalne rozczłonkowanie (Gibbing)
+          ch.isGibbed = true;
+          spawnBodyGibs(chCenterX, chCenterY, ch.facing, targetVisuals);
+          spawnHeadGib(chCenterX, chCenterY - 10, normX * 5.0, -7.5, ch.facing, targetVisuals);
+          spawnBloodSpurt(chCenterX, chCenterY, 0, -3.0, 32, 2.0);
+        } else {
+          // Eksplozja w zasięgu rażenia fali uderzeniowej i odłamków:
+          ch.isGibbed = false;
+          if (dist <= radius * 0.72) {
+            if (Math.random() < 0.5) {
+              ch.hasHead = false;
+              ch.decapitated = true;
+              ch.neckFountainTimer = 65;
+              spawnHeadGib(chCenterX, chCenterY - 10, normX * 4.5, -6.5, ch.facing, targetVisuals);
+              spawnBloodFountain(chCenterX, chCenterY + 14, ch.facing, 6);
+            } else {
+              ch.dismembered.legFront = true;
+              spawnLimbGib('leg', chCenterX, chCenterY + 20, normX * 4.0, -5.5, ch.facing, targetVisuals);
+              spawnBloodFountain(chCenterX, chCenterY + 45, ch.facing, 5);
+            }
+          } else {
+            ch.dismembered.armFront = true;
+            spawnLimbGib('arm', chCenterX, chCenterY - 10, normX * 4.0, -5.5, ch.facing, targetVisuals);
+            spawnBloodFountain(chCenterX, chCenterY + 16, ch.facing, 5);
+          }
+        }
+
         const expImpX = Math.max(-18, Math.min(18, normX * impulse * 1.0));
         const expImpY = Math.max(-6.5, Math.min(10, normY * impulse * 0.75 - 1.5));
         ch.deathImpulse = { vx: expImpX, vy: expImpY };

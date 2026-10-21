@@ -5,10 +5,11 @@
 
 import {
   triggerScreenShake, GROUND_Y, triggerHitstop,
-  spawnHeadGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
+  spawnHeadGib, spawnLimbGib, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnDroppedWeapon,
   spawnKnockedHelmet, spawnVestShreds,
   bodyGibs
 } from './world.js';
+import { DEFAULT_VISUALS } from './player/hair.js';
 import { checkRayObstacleCollision, obstacles, registerHitSparkCallback, arena1State, spawnAltarShockwave } from './obstacles.js';
 import { WEAPON_CONFIG } from './config.js';
 import { getActiveArena } from './arenas/index.js';
@@ -67,6 +68,14 @@ export {
   drawSniperLaserSight,
   drawHeldWeapon
 };
+
+function getCharVisuals(ch) {
+  if (!ch) return DEFAULT_VISUALS;
+  if (ch._cachedVisuals) return ch._cachedVisuals;
+  if (ch.customVisuals) return { ...DEFAULT_VISUALS, ...ch.customVisuals };
+  if (ch.visuals) return { ...DEFAULT_VISUALS, ...ch.visuals };
+  return DEFAULT_VISUALS;
+}
 
 function executeMeleeAttack(shooter, weapon) {
   const reach = weapon.range || 55;
@@ -130,6 +139,48 @@ function executeMeleeAttack(shooter, weapon) {
       hitTarget.respawnTimer = 180;
       hitTarget.corpseAngle = 0;
       hitTarget.corpseRotVel = 0;
+      hitTarget.bleedTimer = 90;
+      const targetVisuals = getCharVisuals(hitTarget);
+
+      // Wyrzucenie trzymanej broni
+      if (hitTarget.currentWeapon) {
+        spawnDroppedWeapon(hitTarget.x + hitTarget.w / 2, hitTarget.y + 28, facing * 3.5, -4.5, hitTarget.currentWeapon, hitTarget.facing);
+      }
+
+      hitTarget.dismembered = {
+        armFront: false,
+        armBack: false,
+        legFront: false,
+        legBack: false
+      };
+
+      if (weapon.id === 'AXE' || weapon.id === 'MACHETE') {
+        // Cięcie toporkiem lub maczetą odcina głowę lub kończynę
+        if (isBackstab || hitY <= hitTarget.y + 22) {
+          hitTarget.hasHead = false;
+          hitTarget.decapitated = true;
+          hitTarget.neckFountainTimer = 65;
+          spawnHeadGib(hitTarget.x + hitTarget.w / 2, hitTarget.y + 4, facing * 4.5, -6.5, hitTarget.facing, targetVisuals);
+          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 14, hitTarget.facing, 6);
+          triggerScreenShake(16);
+        } else if (hitY >= hitTarget.y + 42) {
+          hitTarget.dismembered.legFront = true;
+          spawnLimbGib('leg', hitX, hitY, facing * 4.0, -5.5, hitTarget.facing, targetVisuals);
+          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 45, hitTarget.facing, 5);
+          triggerScreenShake(14);
+        } else {
+          hitTarget.dismembered.armFront = true;
+          spawnLimbGib('arm', hitX, hitY, facing * 4.0, -5.5, hitTarget.facing, targetVisuals);
+          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 16, hitTarget.facing, 5);
+          triggerScreenShake(14);
+        }
+      } else if (weapon.id === 'KNIFE') {
+        if (isBackstab || hitY <= hitTarget.y + 22) {
+          hitTarget.neckFountainTimer = 60;
+          spawnBloodFountain(hitTarget.x + hitTarget.w / 2, hitTarget.y + 14, hitTarget.facing, 6);
+        }
+      }
+
       if (typeof window !== 'undefined') {
         if (typeof window.recordKill === 'function' && shooter === window.player) {
           window.recordKill();
@@ -639,13 +690,13 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           isTorsoShot = !isHeadshot && !isLegshot;
         }
       } else if (closestChar.isCrouching) {
-        isHeadshot = (hitPtY <= closestChar.y + 24);
+        isHeadshot = (hitPtY <= closestChar.y + 26);
         isLegshot = (hitPtY >= closestChar.y + 46);
         isTorsoShot = !isHeadshot && !isLegshot;
       } else {
         // Normalna sylwetka stojąca / w biegu:
-        isHeadshot = (hitPtY <= closestChar.y + 8);
-        isLegshot = (hitPtY >= closestChar.y + 38);
+        isHeadshot = (hitPtY <= closestChar.y + 16);
+        isLegshot = (hitPtY >= closestChar.y + 40);
         isTorsoShot = !isHeadshot && !isLegshot;
       }
 
@@ -776,7 +827,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         }
       }
 
-      const isShotgun = (b.weaponId === 'SHOTGUN');
+      const isShotgun = (b.weaponId === 'SHOTGUN' || b.weaponId === 'SAWED_OFF');
 
       // Odrzut kinetyczny celu
       if (!closestChar.isDead && closestChar.hp > 0) {
@@ -862,8 +913,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         closestChar.ragdoll = null;
 
         const shotDist = Math.hypot(hitPtX - (b.originX || hitPtX), hitPtY - (b.originY || hitPtY));
-        const isCloseShotgun = (isShotgun && shotDist < 170);
         const isSniper = (b.weaponId === 'SNIPER' || b.isSniper);
+        const isMagnum = (b.weaponId === 'REVOLVER' || b.weaponId === 'MAGNUM');
+        const isHeavyCaliber = isSniper || isShotgun || isMagnum;
+        const charVisuals = getCharVisuals(closestChar);
 
         // Wyrzucenie trzymanej broni
         if (closestChar.currentWeapon) {
@@ -878,93 +931,63 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           );
         }
 
-        if (isHeadshot && (isCloseShotgun || isSniper)) {
-          // 1. Dekapitacja (bliski strzał w głowę ze strzelby LUB snajperka Barrett .50)
+        if (isHeadshot) {
+          // 1. DEKAPITACJA (Śmiertelny strzał w głowę):
+          // Snajperka Barrett .50, strzelby (SPAS-12 / Obrzyn), Magnum .44 oraz bezpośrednie zabójcze trafienia z karabinów
+          // odrywają i wyrzucają głowę w powietrze z fontanną krwi z szyi.
           closestChar.hasHead = false;
           closestChar.decapitated = true;
           closestChar.severedHead = null;
-          closestChar.neckFountainTimer = 55;
+          closestChar.neckFountainTimer = 65;
 
           triggerHitstop(2);
-          triggerScreenShake(isSniper ? 20 : 18);
+          triggerScreenShake(isSniper ? 22 : (isShotgun ? 18 : 12));
 
           spawnHeadGib(
             closestChar.x + closestChar.w / 2,
-            closestChar.y - 8,
+            closestChar.y + 2,
             b.vx * 0.65,
             -6.5,
             closestChar.facing,
-            closestChar.currentClass?.visuals
+            charVisuals
           );
 
           spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
-        } else if (isCloseShotgun) {
-          // 2. ODERWANIE KOŃCZYNY ZE STRZELBY Z BLISKA!
+        } else if (isLegshot) {
+          // 2. ODERWANIE NOGI (Śmiertelny strzał w dolne kończyny)
           closestChar.hasHead = true;
           closestChar.decapitated = false;
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
+          closestChar.dismembered.legFront = true;
 
           triggerHitstop(2);
-          triggerScreenShake(16);
+          triggerScreenShake(isSniper ? 20 : (isShotgun ? 16 : 9));
 
-          if (isLegshot) {
-            // Oderwanie przedniej nogi
-            closestChar.dismembered.legFront = true;
-            bodyGibs.push({
-              type: 'leg',
-              x: hitPtX,
-              y: hitPtY,
-              vx: b.vx * 0.40 + (Math.random() - 0.5) * 2.0,
-              vy: -4.5 - Math.random() * 2.0,
-              rot: Math.random() * Math.PI * 2,
-              vRot: (Math.random() - 0.5) * 0.4,
-              facing: closestChar.facing,
-              visuals: closestChar.currentClass?.visuals || {},
-              groundBounces: 0,
-              life: 360
-            });
-            spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
-          } else {
-            // Oderwanie przedniej ręki
-            closestChar.dismembered.armFront = true;
-            bodyGibs.push({
-              type: 'arm',
-              x: hitPtX,
-              y: hitPtY,
-              vx: b.vx * 0.45 + (Math.random() - 0.5) * 2.5,
-              vy: -5.0 - Math.random() * 2.0,
-              rot: Math.random() * Math.PI * 2,
-              vRot: (Math.random() - 0.5) * 0.45,
-              facing: closestChar.facing,
-              visuals: closestChar.currentClass?.visuals || {},
-              groundBounces: 0,
-              life: 360
-            });
-            spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);
-          }
-
+          spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.7, -2.0, 24, 1.4);
-        } else if (isHeadshot) {
-          // Headshot z AK-47 – głowa zostaje na ciele
-          closestChar.hasHead = true;
-          closestChar.decapitated = false;
-          closestChar.severedHead = null;
-          closestChar.neckFountainTimer = 0;
-
-          triggerHitstop(1);
-          triggerScreenShake(10);
-          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.65, -2.2, 18, 1.3);
         } else {
-          // Trafienie z dystansu lub z AK-47 w korpus/nogi – ciało w całości
+          // 3. TRAFIENIE W TORS / RAMIONA:
           closestChar.hasHead = true;
           closestChar.decapitated = false;
           closestChar.severedHead = null;
           closestChar.neckFountainTimer = 0;
 
-          triggerScreenShake(isLegshot ? 4 : 6);
-          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, -1.0, 8, 0.8);
+          // Broń o potężnej sile kinetycznej (Snajperka Barrett .50, Strzelba, Magnum .44)
+          // lub trafienie w strefę ramienia odrywa kończynę górną:
+          const shouldSeverArm = isHeavyCaliber || (Math.random() < 0.55);
+          if (shouldSeverArm) {
+            closestChar.dismembered.armFront = true;
+            spawnLimbGib('arm', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
+            spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);
+            triggerHitstop(2);
+            triggerScreenShake(isSniper ? 20 : (isShotgun ? 16 : 8));
+          } else {
+            triggerScreenShake(6);
+          }
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.45, -1.5, 16, 1.1);
         }
       }
 

@@ -963,6 +963,9 @@ function draw() {
     }
   }
 
+  // Renderowanie efektów gore (krew w locie, odcięte głowy, urwane kończyny, upuszczona broń)
+  drawGore(ctx);
+
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
     activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||

@@ -1,7 +1,7 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
 import { WEAPONS, shootWeapon, spawnBulletSparks } from './weapons.js';
 import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, resize } from './world.js';
+import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
@@ -587,6 +587,25 @@ export function applyRemoteBotDamage(data) {
     b.isDead = true;
     b.killer = remotePlayer;
     b.respawnTimer = 180;
+    const bVis = b.customVisuals || b.visuals || {};
+    b.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+
+    if (data.isHeadshot) {
+      b.hasHead = false;
+      b.decapitated = true;
+      b.neckFountainTimer = 65;
+      spawnHeadGib(b.x + b.w / 2, b.y + 4, (remotePlayer.facing || 1) * 3.5, -6.0, b.facing, bVis);
+      spawnBloodFountain(b.x + b.w / 2, b.y + 14, b.facing, 6);
+    } else if (!data.isTorsoShot) {
+      b.dismembered.legFront = true;
+      spawnLimbGib('leg', hitPtX, hitPtY, (remotePlayer.facing || 1) * 2.5, -4.5, b.facing, bVis);
+      spawnBloodFountain(b.x + b.w / 2, b.y + 45, b.facing, 5);
+    } else if (Math.random() < 0.5) {
+      b.dismembered.armFront = true;
+      spawnLimbGib('arm', hitPtX, hitPtY, (remotePlayer.facing || 1) * 2.5, -4.5, b.facing, bVis);
+      spawnBloodFountain(b.x + b.w / 2, b.y + 16, b.facing, 5);
+    }
+
     sendKillBroadcast({
       killerId: 'remotePlayer',
       killerName: remotePlayer.name || 'GRACZ 2',
