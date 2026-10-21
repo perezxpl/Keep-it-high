@@ -70,9 +70,7 @@ export {
   drawBullets,
   drawSniperLaserSight,
   drawHeldWeapon,
-  drawMeleeSlashTrail,
-  startMeleeAttack,
-  executeMeleeAttack
+  drawMeleeSlashTrail
 };
 
 function getCharVisuals(ch) {
