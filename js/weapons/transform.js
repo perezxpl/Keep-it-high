@@ -3,7 +3,6 @@
 // Wydzielony moduł z js/weapons.js
 // =========================================================================
 
-import { registerHitSparkCallback } from '../obstacles.js';
 import { WEAPON_CONFIG } from '../config.js';
 import { spawnDroppedMagazine } from '../particles.js';
 
@@ -281,7 +280,6 @@ export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
     });
   }
 }
-registerHitSparkCallback(spawnHitSparks);
 
 function ease(t) {
   return 0.5 - 0.5 * Math.cos(t * Math.PI);
@@ -697,6 +695,11 @@ export function getWeaponHoldTransform(p) {
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance - Uniesienie broni do oka)
   const braceOffsetY = isCrouch ? 1.0 : 0;
+  const shoulderPocketX = rightShoulderX + (isPistol ? 6.5 : -0.5) * charFacing;
+  const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
+  const stockLen = gripCfg.stockLen || 0;
+  const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
+
   let shoulderPivotX;
   let shoulderPivotY;
   let shoulderAimAngle;
@@ -708,10 +711,6 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
     shoulderPivotY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
   } else {
-    const shoulderPocketX = rightShoulderX + (isPistol ? 6.5 : -0.5) * charFacing;
-    const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
-    const stockLen = gripCfg.stockLen;
-    const muzzleRise = (p.muzzleRise || 0) * (isCrouch ? 0.55 : 1.0);
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) {
       rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);

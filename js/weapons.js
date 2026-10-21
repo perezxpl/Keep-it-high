@@ -53,7 +53,8 @@ import {
   drawHeldWeapon,
   drawMeleeSlashTrail
 } from './weapons/renderer.js';
-import { getActiveBots } from './bot.js';
+
+registerHitSparkCallback(spawnHitSparks);
 
 export {
   WEAPONS,
@@ -1023,7 +1024,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             weaponId: b.weaponId
           });
         } else if (closestChar.isBot && !netState.isHost) {
-          const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
+          const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+            ? window.getActiveBots()
+            : (typeof window !== 'undefined' && Array.isArray(window.bots) ? window.bots : []);
           const bIdx = activeBots.indexOf(closestChar);
           if (bIdx !== -1) {
             sendDmg({

@@ -7,7 +7,8 @@ import { CLASSES } from './classes/index.js';
 import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/striker.js';
 import { triggerEnforcerBlastJump } from './classes/enforcer.js';
 import { START_X, CONFIG } from './config.js';
-import { WEAPONS, shootWeapon } from './weapons.js';
+import { shootWeapon } from './weapons.js';
+import { WEAPONS } from './weapons/transform.js';
 import { spawnJetpackSparks } from './world.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
@@ -33,7 +34,7 @@ export const botKeys = {
 export const BOT_CLASS_PROFILES = {
   RAPTOR: {
     name: 'CPL. RAPTOR',
-    weapon: WEAPONS.SNIPER,
+    get weapon() { return WEAPONS?.SNIPER; },
     visuals: {
       headgearStyle: 'boonie',
       headgearColor: '#283618',
@@ -44,7 +45,7 @@ export const BOT_CLASS_PROFILES = {
   },
   STRIKER: {
     name: 'SGT. STRIKER',
-    weapon: WEAPONS.AK47,
+    get weapon() { return WEAPONS?.AK47; },
     visuals: {
       headgearStyle: 'beret',
       headgearColor: '#1e293b',
@@ -55,7 +56,7 @@ export const BOT_CLASS_PROFILES = {
   },
   ENFORCER: {
     name: 'LT. ENFORCER',
-    weapon: WEAPONS.SHOTGUN,
+    get weapon() { return WEAPONS?.SHOTGUN; },
     visuals: {
       headgearStyle: 'marcus_bandana',
       headgearColor: '#18181b',
@@ -73,13 +74,13 @@ export const BOT_NAMES_BY_CLASS = {
 };
 
 export const BOT_PROFILES = [
-  { name: 'SGT. STRIKER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1, team: 'ORANGE' },
-  { name: 'CPL. RAPTOR', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1, team: 'ORANGE' },
-  { name: 'LT. ENFORCER', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' },
-  { name: 'PVT. VIPER', classKey: 'STRIKER', weapon: WEAPONS.AK47, facing: -1, team: 'ORANGE' },
-  { name: 'MAJ. TITAN', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' },
-  { name: 'SPEC. GHOST', classKey: 'RAPTOR', weapon: WEAPONS.SNIPER, facing: -1, team: 'ORANGE' },
-  { name: 'COL. HAVOC', classKey: 'ENFORCER', weapon: WEAPONS.SHOTGUN, facing: 1, team: 'ORANGE' }
+  { name: 'SGT. STRIKER', classKey: 'STRIKER', get weapon() { return WEAPONS?.AK47; }, facing: -1, team: 'ORANGE' },
+  { name: 'CPL. RAPTOR', classKey: 'RAPTOR', get weapon() { return WEAPONS?.SNIPER; }, facing: -1, team: 'ORANGE' },
+  { name: 'LT. ENFORCER', classKey: 'ENFORCER', get weapon() { return WEAPONS?.SHOTGUN; }, facing: 1, team: 'ORANGE' },
+  { name: 'PVT. VIPER', classKey: 'STRIKER', get weapon() { return WEAPONS?.AK47; }, facing: -1, team: 'ORANGE' },
+  { name: 'MAJ. TITAN', classKey: 'ENFORCER', get weapon() { return WEAPONS?.SHOTGUN; }, facing: 1, team: 'ORANGE' },
+  { name: 'SPEC. GHOST', classKey: 'RAPTOR', get weapon() { return WEAPONS?.SNIPER; }, facing: -1, team: 'ORANGE' },
+  { name: 'COL. HAVOC', classKey: 'ENFORCER', get weapon() { return WEAPONS?.SHOTGUN; }, facing: 1, team: 'ORANGE' }
 ];
 
 /**
