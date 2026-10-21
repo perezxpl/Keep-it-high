@@ -36,6 +36,7 @@ import {
   WEAPONS,
   MELEE_CONFIGS,
   KNIFE_COMBO_MOVES,
+  MACHETE_COMBO_MOVES,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -60,6 +61,7 @@ export {
   WEAPONS,
   MELEE_CONFIGS,
   KNIFE_COMBO_MOVES,
+  MACHETE_COMBO_MOVES,
   bullets,
   bulletParticles,
   spawnBulletSparks,
@@ -103,6 +105,16 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     shooter.knifeComboStep = comboStep;
     cfg = (KNIFE_COMBO_MOVES && KNIFE_COMBO_MOVES[comboStep]) ? KNIFE_COMBO_MOVES[comboStep] : baseCfg;
     shooter.knifeComboTimer = cfg.totalFrames + 20;
+  } else if (weapon.id === 'MACHETE') {
+    // Sekwencja 3 potężnych zamachów maczetą kukri (Machete 3-Hit Combo Chain)
+    if ((shooter.macheteComboTimer || 0) > 0 && typeof shooter.macheteComboStep === 'number') {
+      comboStep = (shooter.macheteComboStep + 1) % 3;
+    } else {
+      comboStep = 0;
+    }
+    shooter.macheteComboStep = comboStep;
+    cfg = (MACHETE_COMBO_MOVES && MACHETE_COMBO_MOVES[comboStep]) ? MACHETE_COMBO_MOVES[comboStep] : baseCfg;
+    shooter.macheteComboTimer = cfg.totalFrames + 24;
   }
 
   shooter.meleeState = {
@@ -131,7 +143,7 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     const lungeVy = Math.sin(aimAngle) * (cfg.lungeForce * 0.4);
     shooter.vx += lungeVx;
     shooter.vy += lungeVy;
-  } else if (cfg.type === 'SLASH' || cfg.type === 'BACKHAND') {
+  } else if (cfg.type === 'SLASH' || cfg.type === 'BACKHAND' || cfg.type === 'RISING_SLASH') {
     shooter.vx += facing * cfg.lungeForce;
   } else if (cfg.type === 'OVERHEAD_CHOP') {
     shooter.vx += facing * cfg.lungeForce;
@@ -237,6 +249,14 @@ function updateMeleeCollision(shooter, ms) {
         } else {
           spawnBloodSpurt(hitX, hitY, facing, -0.3, 20, 1.5);
         }
+      } else if (ms.weaponId === 'MACHETE') {
+        if (cfg.type === 'RISING_SLASH') {
+          spawnBloodSpurt(hitX, hitY, facing, -0.7, 24, 1.7);
+        } else if (cfg.type === 'OVERHEAD_CHOP') {
+          spawnBloodSpurt(hitX, hitY, facing, 0.4, 28, 1.9);
+        } else {
+          spawnBloodSpurt(hitX, hitY, facing, -0.4, 22, 1.6);
+        }
       } else if (cfg.type === 'SLASH') {
         spawnBloodSpurt(hitX, hitY, facing, -0.4, 20, 1.6);
       } else {
@@ -276,24 +296,31 @@ function updateMeleeCollision(shooter, ms) {
         };
 
         if (ms.weaponId === 'MACHETE') {
-          // MACZETA: Czyste odcięcie głowy, ręki lub nogi
-          if (isHeadshot || isBackstab || hitY <= t.y + 22) {
+          // MACZETA: Czyste odcięcie głowy, ręki lub nogi w zależności od rodzaju ciosu
+          if (cfg.name === 'EXECUTION_CHOP' || cfg.type === 'OVERHEAD_CHOP') {
             t.hasHead = false;
             t.decapitated = true;
-            t.neckFountainTimer = 70;
-            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 4, facing * 5.5, -6.5, t.facing, targetVisuals);
+            t.neckFountainTimer = 85;
+            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 2, facing * 6.5, -7.5, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
+            triggerScreenShake(20);
+          } else if (cfg.name === 'RISING_SLASH' || isLegshot || hitY >= t.y + 44) {
+            t.dismembered.legFront = true;
+            spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 6);
+            triggerScreenShake(16);
+          } else if (isHeadshot || isBackstab || hitY <= t.y + 22) {
+            t.hasHead = false;
+            t.decapitated = true;
+            t.neckFountainTimer = 75;
+            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 4, facing * 5.8, -6.8, t.facing, targetVisuals);
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 6);
             triggerScreenShake(18);
-          } else if (isLegshot || hitY >= t.y + 44) {
-            t.dismembered.legFront = true;
-            spawnLimbGib('leg', hitX, hitY, facing * 5.0, -5.0, t.facing, targetVisuals);
-            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 5);
-            triggerScreenShake(15);
           } else {
             t.dismembered.armFront = true;
-            spawnLimbGib('arm', hitX, hitY, facing * 5.0, -5.0, t.facing, targetVisuals);
-            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 5);
-            triggerScreenShake(15);
+            spawnLimbGib('arm', hitX, hitY, facing * 5.2, -5.2, t.facing, targetVisuals);
+            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 6);
+            triggerScreenShake(16);
           }
         } else if (ms.weaponId === 'AXE') {
           // TOPOREK: Druzgocące rozrąbanie
@@ -638,10 +665,12 @@ export function updateWeaponState(p) {
       ms.phase = 'RECOVERY';
     } else {
       p.meleeState = null;
-      p.meleeTorsoTilt = (p.currentWeapon?.id === 'KNIFE' && !p.isProne) ? (0.04 * (p.facing || 1)) : 0;
+      const isMeleeWep = (p.currentWeapon?.id === 'KNIFE' || p.currentWeapon?.id === 'MACHETE') && !p.isProne;
+      p.meleeTorsoTilt = isMeleeWep ? (p.currentWeapon.id === 'MACHETE' ? 0.06 : 0.04) * (p.facing || 1) : 0;
     }
   } else {
-    p.meleeTorsoTilt = (p.currentWeapon?.id === 'KNIFE' && !p.isProne) ? (0.04 * (p.facing || 1)) : 0;
+    const isMeleeWep = (p.currentWeapon?.id === 'KNIFE' || p.currentWeapon?.id === 'MACHETE') && !p.isProne;
+    p.meleeTorsoTilt = isMeleeWep ? (p.currentWeapon.id === 'MACHETE' ? 0.06 : 0.04) * (p.facing || 1) : 0;
   }
 
   // Wygasanie smugi cięcia broni białej

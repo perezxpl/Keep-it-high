@@ -224,51 +224,146 @@ export function drawMeleeSlashTrail(ctx, p) {
   ctx.save();
 
   if (wepId === 'MACHETE') {
-    // 1. Zamaszysta, świecąca wstęga cięcia maczety (Glowing Crescent Slash Ribbon)
-    for (let i = 0; i < trail.length - 1; i++) {
-      const pA = trail[i];
-      const pB = trail[i + 1];
-      const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
-      if (alpha <= 0.02) continue;
+    // 1. Zróżnicowane wstęgi cięć maczety taktycznej Kukri (Machete 3-Hit Cleave Ribbons)
+    const lastPoint = trail[trail.length - 1];
+    const moveName = lastPoint.moveName || 'HEAVY_CLEAVE';
 
-      ctx.save();
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.fillStyle = '#0284c7';
+    if (moveName === 'RISING_SLASH') {
+      // Ruch 2: Błyskawiczna wstęga podcięcia od dołu w odcieniach turkusu i mięty (Rising Turquoise Ribbon)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.45;
+        ctx.fillStyle = '#0d9488';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(pB.hilt.x, pB.hilt.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = alpha * 0.80;
+        ctx.fillStyle = '#2dd4bf';
+        ctx.beginPath();
+        const midTipA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
+        const midTipB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
+        ctx.moveTo(midTipA.x, midTipA.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(midTipB.x, midTipB.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.beginPath();
-      ctx.moveTo(pA.hilt.x, pA.hilt.y);
-      ctx.lineTo(pA.tip.x, pA.tip.y);
-      ctx.lineTo(pB.tip.x, pB.tip.y);
-      ctx.lineTo(pB.hilt.x, pB.hilt.y);
-      ctx.closePath();
-      ctx.fill();
+      ctx.strokeStyle = '#ccfbf1';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < trail.length; i++) {
+        const pt = trail[i].tip;
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
 
-      // Jasny rdzeń wstęgi
-      ctx.globalAlpha = alpha * 0.75;
-      ctx.fillStyle = '#38bdf8';
+    } else if (moveName === 'EXECUTION_CHOP') {
+      // Ruch 3: Szeroka, niszczycielska wstęga rąbnięcia z góry w barwach błękitno-białych (Execution Chop)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(pB.hilt.x, pB.hilt.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.fillStyle = '#93c5fd';
+        ctx.beginPath();
+        const midTipA = { x: (pA.tip.x * 3 + pA.hilt.x) / 4, y: (pA.tip.y * 3 + pA.hilt.y) / 4 };
+        const midTipB = { x: (pB.tip.x * 3 + pB.hilt.x) / 4, y: (pB.tip.y * 3 + pB.hilt.y) / 4 };
+        ctx.moveTo(midTipA.x, midTipA.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(midTipB.x, midTipB.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.beginPath();
-      const midTipA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
-      const midTipB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
-      ctx.moveTo(midTipA.x, midTipA.y);
-      ctx.lineTo(pA.tip.x, pA.tip.y);
-      ctx.lineTo(pB.tip.x, pB.tip.y);
-      ctx.lineTo(midTipB.x, midTipB.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < trail.length; i++) {
+        const pt = trail[i].tip;
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
 
-    // Ostra, biało-srebrzysta krawędź tnąca
-    ctx.beginPath();
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (let i = 0; i < trail.length; i++) {
-      const pt = trail[i].tip;
-      if (i === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
+    } else {
+      // Ruch 1: Głęboka lazurowo-srebrzysta wstęga cięcia ukośnego z góry (Heavy Cleave)
+      for (let i = 0; i < trail.length - 1; i++) {
+        const pA = trail[i];
+        const pB = trail[i + 1];
+        const alpha = Math.min(1.0, Math.max(0, pA.life * pB.life));
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.45;
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.moveTo(pA.hilt.x, pA.hilt.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(pB.hilt.x, pB.hilt.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Jasny rdzeń wstęgi
+        ctx.globalAlpha = alpha * 0.75;
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        const midTipA = { x: (pA.tip.x * 2 + pA.hilt.x) / 3, y: (pA.tip.y * 2 + pA.hilt.y) / 3 };
+        const midTipB = { x: (pB.tip.x * 2 + pB.hilt.x) / 3, y: (pB.tip.y * 2 + pB.hilt.y) / 3 };
+        ctx.moveTo(midTipA.x, midTipA.y);
+        ctx.lineTo(pA.tip.x, pA.tip.y);
+        ctx.lineTo(pB.tip.x, pB.tip.y);
+        ctx.lineTo(midTipB.x, midTipB.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < trail.length; i++) {
+        const pt = trail[i].tip;
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
 
   } else if (wepId === 'AXE') {
     // 2. Druzgocąca, płomienno-pomarańczowa smuga rąbnięcia toporkiem (Heavy Fire Chop)

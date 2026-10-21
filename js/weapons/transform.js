@@ -487,6 +487,83 @@ export const KNIFE_COMBO_MOVES = [
 ];
 
 /**
+ * Sekwencja 3-uderzeniowego combo maczetą taktyczną Kukri (Machete 3-Hit Cleave Chain)
+ */
+export const MACHETE_COMBO_MOVES = [
+  {
+    step: 0,
+    name: 'HEAVY_CLEAVE',
+    label: 'Potężne cięcie ukośne z góry',
+    type: 'SLASH',
+    totalFrames: 21,
+    windupFrames: 6,
+    activeFrames: 6,
+    recoveryFrames: 9,
+    cooldownFrames: 14,
+    arcStart: -1.35,  // uniesienie nad prawy bark i odciągnięcie w tył (-77 st)
+    arcEnd: 1.15,     // zamaszyste cięcie ukośne w przód i w dół (+66 st)
+    reach: 74,
+    width: 36,
+    damage: 75,
+    backstabMultiplier: 1.6,
+    lungeForce: 2.8,
+    bodyPush: 5.2,
+    hitstopFrames: 3,
+    screenShake: 7,
+    cleave: true,     // tnie wielu wrogów w łuku zamachu
+    ballPush: { vx: 18.5, vy: -5.0, spin: 0.8 }
+  },
+  {
+    step: 1,
+    name: 'RISING_SLASH',
+    label: 'Podcięcie powrotne ukośne z dołu',
+    type: 'RISING_SLASH',
+    totalFrames: 21,
+    windupFrames: 5,
+    activeFrames: 6,
+    recoveryFrames: 10,
+    cooldownFrames: 14,
+    arcStart: 1.25,   // głębokie podcięcie z dołu (+72 st)
+    arcEnd: -1.15,    // potężny powrotny wywrot w górę (-66 st)
+    reach: 74,
+    width: 36,
+    damage: 80,
+    backstabMultiplier: 1.7,
+    lungeForce: 3.0,
+    bodyPush: 5.8,
+    hitstopFrames: 3,
+    screenShake: 8,
+    cleave: true,
+    ballPush: { vx: 17.0, vy: -12.5, spin: -0.9 }
+  },
+  {
+    step: 2,
+    name: 'EXECUTION_CHOP',
+    label: 'Druzgocące rąbnięcie z doskoku (Finisher)',
+    type: 'OVERHEAD_CHOP',
+    totalFrames: 27,
+    windupFrames: 8,
+    activeFrames: 7,
+    recoveryFrames: 12,
+    cooldownFrames: 24,
+    arcStart: -1.75,  // pełny zamach pionowo znad głowy (-100 st)
+    arcEnd: 0.90,     // druzgocące rąbnięcie w dół (+51 st)
+    reach: 80,
+    width: 42,
+    damage: 105,      // niszczycielska siła kukri
+    backstabMultiplier: 2.0,
+    lungeForce: 4.2,  // mocny doskok z całym ciężarem ciała
+    downwardImpact: 2.2,
+    bodyPush: 8.5,
+    staggerDuration: 26,
+    hitstopFrames: 5,
+    screenShake: 12,
+    cleave: true,
+    ballPush: { vx: 22.0, vy: 7.0, spin: 0.5 }
+  }
+];
+
+/**
  * Konfiguracje fizyki i kinematyki broni białych (Melee Attack Physics)
  */
 export const MELEE_CONFIGS = {
@@ -512,23 +589,24 @@ export const MELEE_CONFIGS = {
   MACHETE: {
     id: 'MACHETE',
     name: 'Maczeta Kukri',
-    type: 'SLASH',
-    totalFrames: 20,
-    windupFrames: 5,
+    type: 'COMBO',
+    comboMoves: MACHETE_COMBO_MOVES,
+    totalFrames: 21,
+    windupFrames: 6,
     activeFrames: 6,
     recoveryFrames: 9,
-    arcStart: -1.35, // uniesienie i odciągnięcie w tył (-77 st)
-    arcEnd: 1.05,    // mocne cięcie w przód i w dół (+60 st)
-    reach: 72,
-    width: 38,
-    damage: 85,
-    backstabMultiplier: 1.5,
-    lungeForce: 3.4, // krok w przód z pędem zamachu
-    bodyPush: 5.5,   // silny odrzut w kierunku cięcia
-    hitstopFrames: 4,
-    screenShake: 9,
-    ballPush: { vx: 18.5, vy: -4.0, spin: 0.95 },
-    cleave: true // tnie wielu wrogów w łuku zamachu
+    arcStart: -1.35,
+    arcEnd: 1.15,
+    reach: 74,
+    width: 36,
+    damage: 75,
+    backstabMultiplier: 1.6,
+    lungeForce: 2.8,
+    bodyPush: 5.2,
+    hitstopFrames: 3,
+    screenShake: 7,
+    cleave: true,
+    ballPush: { vx: 18.5, vy: -5.0, spin: 0.8 }
   },
   AXE: {
     id: 'AXE',
@@ -642,6 +720,18 @@ export function getWeaponHoldTransform(p) {
       directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
     }
     looseAimAngle = directAngle * 0.40 - 0.22;
+  } else if (isMachete) {
+    // Pozycja bojowa gotowości z maczetą (Machete Heavy Low-Ready):
+    // Ręka przy prawym biodrze/udzie, masywne ostrze skierowane skośnie w dół i przód
+    loosePivotX = hipX + 6.2 * charFacing;
+    loosePivotY = hipY - 11.5 + headBobOffset + crouchDropY;
+    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    if (directAngle < -Math.PI / 2) {
+      directAngle = Math.max(-1.66, directAngle);
+    } else if (directAngle > Math.PI / 2 + 0.35) {
+      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
+    }
+    looseAimAngle = directAngle * 0.35 + 0.28;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
@@ -710,6 +800,12 @@ export function getWeaponHoldTransform(p) {
     shoulderAimAngle = directAngle;
     shoulderPivotX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
     shoulderPivotY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
+  } else if (isMachete) {
+    // Gotowość bojowa z uniesioną maczetą kukri (Machete Raised Combat Ready):
+    const macheteReachDist = 16.5;
+    shoulderAimAngle = directAngle - 0.12;
+    shoulderPivotX = rightShoulderX + Math.cos(directAngle) * macheteReachDist * charFacing;
+    shoulderPivotY = rightShoulderY + Math.sin(directAngle) * macheteReachDist + braceOffsetY;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) {
@@ -1032,6 +1128,30 @@ export function getWeaponHoldTransform(p) {
           leftHandLocalX = -10.0 * s;
           leftHandLocalY = 3.0 * s;
           p.meleeTorsoTilt = -0.16 * charFacing * s;
+        } else if (cfg.name === 'HEAVY_CLEAVE') {
+          // Maczeta Ruch 1: Wysokie uniesienie nad prawy bark i odciągnięcie w tył (-77 st)
+          meleeAngleOffset = cfg.arcStart * s;
+          shiftForward = -10.0 * s;
+          shiftY = -8.0 * s;
+          leftHandLocalX = 8.0 * s;
+          leftHandLocalY = 2.0 * s;
+          p.meleeTorsoTilt = -0.14 * charFacing * s;
+        } else if (cfg.name === 'RISING_SLASH' || cfg.type === 'RISING_SLASH') {
+          // Maczeta Ruch 2: Obniżenie środka ciężkości, ostrze cofnięte w dół (+72 st)
+          meleeAngleOffset = cfg.arcStart * s;
+          shiftForward = -8.0 * s;
+          shiftY = 8.0 * s;
+          leftHandLocalX = -4.0 * s;
+          leftHandLocalY = 5.0 * s;
+          p.meleeTorsoTilt = 0.08 * charFacing * s;
+        } else if (cfg.name === 'EXECUTION_CHOP') {
+          // Maczeta Ruch 3: Ciężkie uniesienie pionowo nad głowę (-100 st), maksymalne otwarcie klatki
+          meleeAngleOffset = cfg.arcStart * s;
+          shiftForward = -12.0 * s;
+          shiftY = -16.0 * s;
+          leftHandLocalX = -8.0 * s;
+          leftHandLocalY = -8.0 * s;
+          p.meleeTorsoTilt = -0.22 * charFacing * s;
         } else if (cfg.type === 'SLASH') {
           // Maczeta: uniesienie i odciągnięcie ostrza w tył (wysoki zamach)
           meleeAngleOffset = cfg.arcStart * s;
@@ -1078,6 +1198,31 @@ export function getWeaponHoldTransform(p) {
           leftHandLocalX = -10.0;
           leftHandLocalY = 3.0;
           p.meleeTorsoTilt = 0.22 * charFacing * thrustProg;
+        } else if (cfg.name === 'HEAVY_CLEAVE') {
+          // Maczeta Ruch 1: Płynne, potężne cięcie ukośne w poprzek sylwetki (-77 st -> +66 st)
+          meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, s);
+          shiftForward = lerp(-10.0, 24.0, s);
+          shiftY = lerp(-8.0, 8.0, s);
+          leftHandLocalX = lerp(8.0, -12.0, s);
+          leftHandLocalY = lerp(2.0, 4.0, s);
+          p.meleeTorsoTilt = lerp(-0.14, 0.18, s) * charFacing;
+        } else if (cfg.name === 'RISING_SLASH' || cfg.type === 'RISING_SLASH') {
+          // Maczeta Ruch 2: Potężne podcięcie ukośne z dołu ku górze (+72 st -> -66 st)
+          meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, s);
+          shiftForward = lerp(-8.0, 22.0, s);
+          shiftY = lerp(8.0, -10.0, s);
+          leftHandLocalX = lerp(-4.0, -10.0, s);
+          leftHandLocalY = lerp(5.0, 8.0, s);
+          p.meleeTorsoTilt = lerp(0.08, -0.14, s) * charFacing;
+        } else if (cfg.name === 'EXECUTION_CHOP') {
+          // Maczeta Ruch 3: Druzgocące rąbnięcie z góry na dół z grawitacją (-100 st -> +51 st)
+          const sChop = u * u;
+          meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, sChop);
+          shiftForward = lerp(-12.0, 28.0, sChop);
+          shiftY = lerp(-16.0, 16.0, sChop);
+          leftHandLocalX = lerp(-8.0, -14.0, sChop);
+          leftHandLocalY = lerp(-8.0, 6.0, sChop);
+          p.meleeTorsoTilt = lerp(-0.22, 0.26, sChop) * charFacing;
         } else if (cfg.type === 'SLASH') {
           // Maczeta: zamaszyste cięcie po łuku z przyspieszeniem kątowym
           meleeAngleOffset = lerp(cfg.arcStart, cfg.arcEnd, s);
@@ -1119,6 +1264,28 @@ export function getWeaponHoldTransform(p) {
           leftHandLocalX = lerp(-10.0, 0.0, s);
           leftHandLocalY = lerp(3.0, 0.0, s);
           p.meleeTorsoTilt = 0.22 * charFacing * (1.0 - s);
+        } else if (cfg.name === 'HEAVY_CLEAVE') {
+          meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s);
+          shiftForward = lerp(24.0, 0.0, s);
+          shiftY = lerp(8.0, 0.0, s);
+          leftHandLocalX = lerp(-12.0, 0.0, s);
+          leftHandLocalY = lerp(4.0, 0.0, s);
+          p.meleeTorsoTilt = lerp(0.18, 0.0, s) * charFacing;
+        } else if (cfg.name === 'RISING_SLASH' || cfg.type === 'RISING_SLASH') {
+          meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s);
+          shiftForward = lerp(22.0, 0.0, s);
+          shiftY = lerp(-10.0, 0.0, s);
+          leftHandLocalX = lerp(-10.0, 0.0, s);
+          leftHandLocalY = lerp(8.0, 0.0, s);
+          p.meleeTorsoTilt = lerp(-0.14, 0.0, s) * charFacing;
+        } else if (cfg.name === 'EXECUTION_CHOP') {
+          const rebound = Math.sin(u * Math.PI) * 3.5;
+          meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s) - rebound * 0.03;
+          shiftForward = lerp(28.0, 0.0, s);
+          shiftY = lerp(16.0, 0.0, s) - rebound;
+          leftHandLocalX = lerp(-14.0, 0.0, s);
+          leftHandLocalY = lerp(6.0, 0.0, s);
+          p.meleeTorsoTilt = lerp(0.26, 0.0, s) * charFacing;
         } else if (cfg.type === 'SLASH') {
           meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s);
           shiftForward = lerp(22.0, 0.0, s);
@@ -1141,7 +1308,8 @@ export function getWeaponHoldTransform(p) {
       finalPivotX += Math.cos(blendedAngle) * thrustDist * charFacing;
       finalPivotY += Math.sin(blendedAngle) * thrustDist;
     } else {
-      p.meleeTorsoTilt = (isKnife && !p.isProne) ? (0.04 * charFacing) : 0;
+      const isMeleeStance = (isKnife || isMachete) && !p.isProne;
+      p.meleeTorsoTilt = isMeleeStance ? (isMachete ? 0.06 : 0.04) * charFacing : 0;
     }
   }
 
@@ -1179,17 +1347,16 @@ export function getWeaponHoldTransform(p) {
   let leftHandWorldX;
   let leftHandWorldY;
 
-  if (isKnife && !p.isProne) {
-    // Lewa ręka w taktycznej gardzie CQC (Tactical Guard & Parry Pose)
-    // Dłoń uniesiona przed klatką piersiową / splotem, asekurując tułów i szyję
-    const guardBaseX = rightShoulderX + 2.0 * charFacing;
-    const guardBaseY = rightShoulderY + 4.0 + headBobOffset;
+  if ((isKnife || isMachete) && !p.isProne) {
+    // Lewa ręka w taktycznej gardzie / równoważącej
+    const guardBaseX = rightShoulderX + (isMachete ? 1.0 : 2.0) * charFacing;
+    const guardBaseY = rightShoulderY + (isMachete ? 5.5 : 4.0) + headBobOffset;
     const aimFwd = Math.cos(directAngle);
     const aimUp = Math.sin(directAngle);
 
     // Subtelne ukierunkowanie gardy w stronę celu
-    const guardX = guardBaseX + (aimFwd * 5.0) * charFacing;
-    const guardY = guardBaseY + (aimUp * 4.0);
+    const guardX = guardBaseX + (aimFwd * (isMachete ? 4.5 : 5.0)) * charFacing;
+    const guardY = guardBaseY + (aimUp * (isMachete ? 3.5 : 4.0));
 
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
