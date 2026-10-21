@@ -363,12 +363,18 @@ export function playAcidSurgeSiren() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
+    const isUserActive = typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive;
     if (!_acidSirenCtx) {
+      if (!isUserActive) return;
       _acidSirenCtx = new AudioCtx();
     }
     if (_acidSirenCtx.state === 'suspended') {
-      _acidSirenCtx.resume();
+      if (isUserActive) {
+        _acidSirenCtx.resume().catch(() => {});
+      }
+      return;
     }
+    if (_acidSirenCtx.state !== 'running') return;
 
     const now = _acidSirenCtx.currentTime;
     const osc = _acidSirenCtx.createOscillator();

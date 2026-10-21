@@ -137,28 +137,76 @@ const DEFAULT_APPEARANCE = DEFAULT_CLASS_APPEARANCES.RAPTOR;
 let audioCtx = null;
 let masterGainNode = null;
 let sfxGainNode = null;
+let hasUserGesture = false;
 
-function getAudioContext() {
+function isUserGestureActive() {
+  if (hasUserGesture) return true;
+  if (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive) {
+    hasUserGesture = true;
+    return true;
+  }
+  return false;
+}
+
+// Globalna obsługa pierwszego gestu użytkownika (odblokowanie Web Audio bez ostrzeżeń Autoplay)
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    hasUserGesture = true;
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+  };
+  ['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, unlockAudio, { capture: true, passive: true });
+  });
+}
+
+function getAudioContext(isDirectUserGesture = false) {
   if (typeof window === 'undefined') return null;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
-  if (!audioCtx) {
-    audioCtx = new AudioContextClass();
-    masterGainNode = audioCtx.createGain();
-    sfxGainNode = audioCtx.createGain();
-    sfxGainNode.connect(masterGainNode);
-    masterGainNode.connect(audioCtx.destination);
+
+  if (isDirectUserGesture) {
+    hasUserGesture = true;
   }
-  if (audioCtx.state === 'suspended') {
+
+  // Zabezpieczenie Chrome Autoplay Policy:
+  // Jeśli użytkownik nie wykonał jeszcze żadnego gestu, nie twórz ani nie wznawiaj AudioContextu
+  if (!hasUserGesture && !isUserGestureActive()) {
+    return null;
+  }
+
+  if (!audioCtx) {
+    try {
+      audioCtx = new AudioContextClass();
+      masterGainNode = audioCtx.createGain();
+      sfxGainNode = audioCtx.createGain();
+      sfxGainNode.connect(masterGainNode);
+      masterGainNode.connect(audioCtx.destination);
+      if (uiManager && uiManager.settings) {
+        const vol = uiManager.settings.muteAll ? 0 : (uiManager.settings.masterVolume / 100);
+        masterGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+        const sfx = (uiManager.settings.sfxVolume / 100);
+        sfxGainNode.gain.setValueAtTime(sfx, audioCtx.currentTime);
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }
 
 export function playUiClick() {
-  const ctx = getAudioContext();
+  const ctx = getAudioContext(true);
   if (!ctx || uiManager.settings.muteAll) return;
   try {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -180,8 +228,8 @@ export function playUiClick() {
 }
 
 export function playUiHover() {
-  const ctx = getAudioContext();
-  if (!ctx || uiManager.settings.muteAll) return;
+  const ctx = getAudioContext(false);
+  if (!ctx || ctx.state !== 'running' || uiManager.settings.muteAll) return;
   try {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -203,9 +251,12 @@ export function playUiHover() {
 }
 
 export function playUiPause() {
-  const ctx = getAudioContext();
+  const ctx = getAudioContext(true);
   if (!ctx || uiManager.settings.muteAll) return;
   try {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -227,9 +278,12 @@ export function playUiPause() {
 }
 
 export function playUiResume() {
-  const ctx = getAudioContext();
+  const ctx = getAudioContext(true);
   if (!ctx || uiManager.settings.muteAll) return;
   try {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -251,9 +305,12 @@ export function playUiResume() {
 }
 
 export function playTestTone() {
-  const ctx = getAudioContext();
+  const ctx = getAudioContext(true);
   if (!ctx) return;
   try {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
