@@ -36,12 +36,18 @@ function scanJsFiles(dir) {
 scanJsFiles(jsDir);
 
 // -----------------------------------------------------------------------------
-// 1. Składnia modułów ES
+// 1. Składnia modułów ES oraz integralność ciągów tekstowych
 // -----------------------------------------------------------------------------
 console.log('--- 1. Weryfikacja skladni modulow ES (SourceTextModule) ---');
 for (const filePath of allJsFilePaths) {
   const rel = path.relative(rootDir, filePath).replace(/\\/g, '/');
   const code = fs.readFileSync(filePath, 'utf8');
+
+  if (/[^a-zA-Z0-9_$]gba\(|^\s*gba\(/.test(code)) {
+    console.error(`[STRING SYNTAX ERROR] ${rel}: Wykryto uszkodzone wywolanie gba(...) zamiast rgba(...)`);
+    hasErrors = true;
+  }
+
   try {
     const mod = new vm.SourceTextModule(code, {
       identifier: filePath
@@ -100,14 +106,19 @@ console.log(`Powiazano i zweryfikowano importy w ${linkedCount} modulach.`);
 // -----------------------------------------------------------------------------
 // 2.5. Weryfikacja wykonania modulow w srodowisku V8 (Runtime Module Evaluation)
 // Wykrywa bledy Temporal Dead Zone (TDZ), cykliczne referencje przed inicjalizacja
+// oraz wykonuje testowe wywołania krytycznych rendererów postaci i broni
 // -----------------------------------------------------------------------------
 console.log('\n--- 2.5. Weryfikacja wykonania startowego gry (Runtime Evaluation) ---');
 try {
+  const mockGradient = { addColorStop: () => {} };
   const mockContext = {
     fillRect: () => {}, clearRect: () => {}, save: () => {}, restore: () => {},
     beginPath: () => {}, closePath: () => {}, stroke: () => {}, fill: () => {},
     arc: () => {}, moveTo: () => {}, lineTo: () => {}, resetTransform: () => {},
-    scale: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {}
+    scale: () => {}, translate: () => {}, rotate: () => {}, drawImage: () => {},
+    createLinearGradient: () => mockGradient, createRadialGradient: () => mockGradient,
+    ellipse: () => {}, rect: () => {}, roundRect: () => {}, quadraticCurveTo: () => {},
+    strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {}
   };
   const mockElement = {
     style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
@@ -127,7 +138,13 @@ try {
   Object.defineProperty(globalThis, 'navigator', { value: { maxTouchPoints: 0 }, configurable: true });
   globalThis.location = { search: '', hash: '' };
   globalThis.performance = { now: () => Date.now() };
-  globalThis.Image = class {};
+  globalThis.Image = class {
+    constructor() {
+      this.complete = true;
+      this.naturalWidth = 100;
+      this.naturalHeight = 100;
+    }
+  };
   globalThis.Audio = class {};
   globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
@@ -152,6 +169,14 @@ try {
 
   await mainMod.link(evalLinker);
   await mainMod.evaluate();
+
+  // Smoke test wywołań rendererów postaci i uzbrojenia
+  const limbsPathNorm = path.resolve(jsDir, 'player/limbs.js').toLowerCase();
+  const limbsMod = evalModules.get(limbsPathNorm);
+  if (limbsMod && limbsMod.namespace && typeof limbsMod.namespace.drawHandheldGrenade === 'function') {
+    limbsMod.namespace.drawHandheldGrenade(mockContext, 10, 10, 1.0, 0.5);
+  }
+
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');
 } catch (evalErr) {
   console.error(`[RUNTIME EVALUATION ERROR] ${evalErr.stack || evalErr.message}`);

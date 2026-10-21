@@ -119,9 +119,9 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
     ctx.restore();
 
     // Pulsująca dioda LED uzbrojonego zapalnika (Pulsing Armed LED)
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
-    ctx.fillStyle = 
-gba(239, 68, 68, );
+    const blinkSpeed = 0.015 + cookRatio * 0.045;
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * blinkSpeed);
+    ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
     ctx.shadowColor = '#ef4444';
     ctx.shadowBlur = 6 * pulse;
     ctx.beginPath();
@@ -161,9 +161,9 @@ gba(239, 68, 68, );
     ctx.quadraticCurveTo(3.2, -4.2, 2.6, -1.0);
     ctx.stroke();
 
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * 0.015);
-    ctx.fillStyle = 
-gba(239, 68, 68, );
+    const blinkSpeed = 0.015 + cookRatio * 0.045;
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() * blinkSpeed);
+    ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
     ctx.shadowColor = '#ef4444';
     ctx.shadowBlur = 6 * pulse;
     ctx.beginPath();
