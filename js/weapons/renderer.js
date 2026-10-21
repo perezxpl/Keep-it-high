@@ -228,8 +228,8 @@ export function drawMeleeSlashTrail(ctx, p) {
     const lastPoint = trail[trail.length - 1];
     const moveName = lastPoint.moveName || 'HEAVY_CLEAVE';
 
-    if (moveName === 'BACKHAND_CLEAVE' || moveName === 'RISING_SLASH') {
-      // Ruch 2: Zamaszysta wstęga cięcia powrotnego w odcieniach turkusu i mięty (Backhand Turquoise Cleave)
+    if (moveName === 'UNDERHAND_CLEAVE' || moveName === 'BACKHAND_CLEAVE' || moveName === 'RISING_SLASH') {
+      // Ruch 1: Zamaszysta wstęga cięcia powrotnego z dołu w górę w odcieniach turkusu i mięty (Underhand Turquoise Cleave)
       for (let i = 0; i < trail.length - 1; i++) {
         const pA = trail[i];
         const pB = trail[i + 1];

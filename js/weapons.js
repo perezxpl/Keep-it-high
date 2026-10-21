@@ -143,7 +143,7 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     const lungeVy = Math.sin(aimAngle) * (cfg.lungeForce * 0.4);
     shooter.vx += lungeVx;
     shooter.vy += lungeVy;
-  } else if (cfg.type === 'SLASH' || cfg.type === 'BACKHAND' || cfg.type === 'RISING_SLASH') {
+  } else if (cfg.type === 'SLASH' || cfg.type === 'BACKHAND' || cfg.type === 'RISING_SLASH' || cfg.type === 'OVERHEAD_CLEAVE' || cfg.type === 'UNDERHAND_CLEAVE') {
     shooter.vx += facing * cfg.lungeForce;
   } else if (cfg.type === 'OVERHEAD_CHOP') {
     shooter.vx += facing * cfg.lungeForce;
@@ -250,9 +250,9 @@ function updateMeleeCollision(shooter, ms) {
           spawnBloodSpurt(hitX, hitY, facing, -0.3, 20, 1.5);
         }
       } else if (ms.weaponId === 'MACHETE') {
-        if (cfg.type === 'RISING_SLASH') {
+        if (cfg.type === 'UNDERHAND_CLEAVE' || cfg.type === 'RISING_SLASH') {
           spawnBloodSpurt(hitX, hitY, facing, -0.7, 24, 1.7);
-        } else if (cfg.type === 'OVERHEAD_CHOP') {
+        } else if (cfg.type === 'OVERHEAD_CLEAVE' || cfg.type === 'OVERHEAD_CHOP') {
           spawnBloodSpurt(hitX, hitY, facing, 0.4, 28, 1.9);
         } else {
           spawnBloodSpurt(hitX, hitY, facing, -0.4, 22, 1.6);
@@ -297,14 +297,14 @@ function updateMeleeCollision(shooter, ms) {
 
         if (ms.weaponId === 'MACHETE') {
           // MACZETA: Czyste odcięcie głowy, ręki lub nogi w zależności od rodzaju ciosu
-          if (cfg.name === 'EXECUTION_CHOP' || cfg.type === 'OVERHEAD_CHOP') {
+          if (cfg.name === 'OVERHEAD_CLEAVE' || cfg.name === 'EXECUTION_CHOP' || cfg.type === 'OVERHEAD_CHOP' || isHeadshot) {
             t.hasHead = false;
             t.decapitated = true;
             t.neckFountainTimer = 85;
             spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 2, facing * 6.5, -7.5, t.facing, targetVisuals);
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
             triggerScreenShake(20);
-          } else if (cfg.name === 'RISING_SLASH' || isLegshot || hitY >= t.y + 44) {
+          } else if (cfg.name === 'UNDERHAND_CLEAVE' || cfg.name === 'RISING_SLASH' || isLegshot || hitY >= t.y + 44) {
             t.dismembered.legFront = true;
             spawnLimbGib('leg', hitX, hitY, facing * 5.5, -6.0, t.facing, targetVisuals);
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 45, t.facing, 6);
