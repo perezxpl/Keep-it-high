@@ -18,6 +18,9 @@ import { pollGamepadInput, gamepadState } from './gamepad.js';
 import { activateNextAvailableStreak } from '../killstreaks/index.js';
 
 export function triggerPlayerShoot(p, wep) {
+  if (wep && wep.isMelee && p.meleeNeedRelease && !p.isRemote) {
+    return;
+  }
   const muzzle = getMuzzlePosition(p, wep);
   const targetAimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : muzzle.aimX;
   const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;
@@ -117,7 +120,12 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   window.activeArenaId = activeArenaId;
   const curWep = player.currentWeapon || WEAPONS.AK47;
   const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
-  const isHoldingFire = (mouseState.lmbDown || isTouchFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
+  const isGamepadFiring = !!(gamepadState && gamepadState.connected && gamepadState.r2);
+  const isHoldingFire = (mouseState.lmbDown || isTouchFiring || isGamepadFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
+
+  if (!mouseState.lmbDown && !isTouchFiring && !isGamepadFiring) {
+    player.meleeNeedRelease = false;
+  }
 
   player.isShooting = isHoldingFire;
 

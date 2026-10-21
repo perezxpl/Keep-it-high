@@ -958,9 +958,10 @@ function endTouch(e) {
         // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
         // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
       } else {
-        // Zakończenie ognia z broni palnej
+        // Zakończenie ognia z broni palnej lub białej
         rightStick.isShooting = false;
         player.isShooting = false;
+        player.meleeNeedRelease = false;
       }
 
       player.isCharging = false;

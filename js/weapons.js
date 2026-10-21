@@ -88,6 +88,7 @@ function getCharVisuals(ch) {
 
 export function startMeleeAttack(shooter, weapon, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return;
+  if (shooter.meleeNeedRelease && !shooter.isRemote) return;
   const baseCfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
   const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;
   const aimAngle = overrideAngle !== undefined ? overrideAngle : (typeof shooter.aimAngle === 'number' ? shooter.aimAngle : 0);
@@ -104,7 +105,13 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     }
     shooter.knifeComboStep = comboStep;
     cfg = (KNIFE_COMBO_MOVES && KNIFE_COMBO_MOVES[comboStep]) ? KNIFE_COMBO_MOVES[comboStep] : baseCfg;
-    shooter.knifeComboTimer = cfg.totalFrames + 20;
+    if (comboStep >= 2) {
+      shooter.knifeComboStep = null;
+      shooter.knifeComboTimer = 0;
+      shooter.meleeNeedRelease = true;
+    } else {
+      shooter.knifeComboTimer = cfg.totalFrames + 20;
+    }
   } else if (weapon.id === 'MACHETE') {
     // Sekwencja 2 potężnych, zamaszystych cięć maczetą kukri (Machete 2-Hit Continuous Cleave Chain)
     if ((shooter.macheteComboTimer || 0) > 0 && typeof shooter.macheteComboStep === 'number') {
@@ -114,7 +121,16 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     }
     shooter.macheteComboStep = comboStep;
     cfg = (MACHETE_COMBO_MOVES && MACHETE_COMBO_MOVES[comboStep]) ? MACHETE_COMBO_MOVES[comboStep] : baseCfg;
-    shooter.macheteComboTimer = cfg.totalFrames + 20;
+    if (comboStep >= 1) {
+      shooter.macheteComboStep = null;
+      shooter.macheteComboTimer = 0;
+      shooter.meleeNeedRelease = true;
+    } else {
+      shooter.macheteComboTimer = cfg.totalFrames + 20;
+    }
+  } else {
+    // Toporek lub ogólna broń biała - pojedynczy cios kończy serię i wymaga zwolnienia przycisku
+    shooter.meleeNeedRelease = true;
   }
 
   shooter.meleeState = {
@@ -414,6 +430,7 @@ function updateMeleeCollision(shooter, ms) {
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return false;
   if (shooter.shootCooldown > 0 && !shooter.isRemote) return false;
+  if (weapon.isMelee && shooter.meleeNeedRelease && !shooter.isRemote) return false;
 
   if (weapon.isMelee) {
     startMeleeAttack(shooter, weapon, overrideAngle);

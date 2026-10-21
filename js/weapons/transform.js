@@ -163,7 +163,7 @@ export const WEAPONS = {
   KNIFE: {
     id: 'KNIFE',
     name: 'Nóż M9',
-    fullName: 'Nóż Bojowy M9',
+    fullName: 'Nóż M9',
     category: 'MELEE',
     isMelee: true,
     auto: false,
@@ -185,7 +185,7 @@ export const WEAPONS = {
   MACHETE: {
     id: 'MACHETE',
     name: 'Maczeta Kukri',
-    fullName: 'Maczeta Taktyczna Kukri',
+    fullName: 'Maczeta Kukri',
     category: 'MELEE',
     isMelee: true,
     auto: false,
@@ -207,7 +207,7 @@ export const WEAPONS = {
   AXE: {
     id: 'AXE',
     name: 'Toporek Tomahawk',
-    fullName: 'Toporek Bojowy Tomahawk',
+    fullName: 'Toporek Tomahawk',
     category: 'MELEE',
     isMelee: true,
     auto: false,
@@ -499,7 +499,7 @@ export const MACHETE_COMBO_MOVES = [
     windupFrames: 12,
     activeFrames: 10,
     recoveryFrames: 14,
-    cooldownFrames: 20,
+    cooldownFrames: 22,
     arcStart: -1.90,  // wysokie uniesienie za plecy / nad głowę (~10:30, -109 st)
     arcEnd: 1.20,     // zamaszyste cięcie w dół przed kolana (~5:00, +69 st)
     reach: 80,
@@ -522,7 +522,7 @@ export const MACHETE_COMBO_MOVES = [
     windupFrames: 10,
     activeFrames: 10,
     recoveryFrames: 14,
-    cooldownFrames: 20,
+    cooldownFrames: 34,
     arcStart: 1.55,   // płynny start zamachu z tyłu-dołu (~7:30, +89 st)
     arcEnd: -1.45,    // potężny powrotny zamach omiatający w górę przed twarz (~1:30, -83 st)
     reach: 80,

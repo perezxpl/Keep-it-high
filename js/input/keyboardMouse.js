@@ -108,6 +108,9 @@ export function resetInputState() {
   mouseState.lmbDown = false;
   mouseState.rmbDown = false;
   mouseState.semiFired = false;
+  if (typeof player !== 'undefined' && player) {
+    player.meleeNeedRelease = false;
+  }
 }
 
 // Obsługa Keyboard Lock API w trybie pełnoekranowym (pełna blokada skrótów systemowych, w tym Ctrl+W)
@@ -920,6 +923,7 @@ export function initKeyboardMouseHandlers({
     if (e.button === 0) {
       mouseState.lmbDown = false;
       mouseState.semiFired = false;
+      player.meleeNeedRelease = false;
     } else if (e.button === 2) {
       mouseState.rmbDown = false;
       const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);

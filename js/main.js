@@ -460,6 +460,10 @@ function drawCrosshair(ctx, x, y, customCol) {
   if (player.throwAnim && player.throwAnim.active) return;
   if (player.isHolstered || !player.currentWeapon || (typeof player.holsterWeight === 'number' && player.holsterWeight >= 0.5)) return;
 
+  // Ukryj celownik w walce w zwarciu (broń biała)
+  const isMeleeWeapon = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE' || player.currentWeapon?.id === 'AXE' || player.meleeState);
+  if (isMeleeWeapon) return;
+
   // Na urządzeniach dotykowych ukryj celownik każdej broni, gdy prawy drążek jest nieużywany lub w trybie granatu
   if (isTouchDevice) {
     const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
@@ -988,7 +992,8 @@ function draw() {
   const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
 
   let shouldDrawCrosshair = !player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && GAME_STATE.current === 'PLAYING';
-  if (isThrowingGrenade || isWeaponHolstered || (rightStick && rightStick.armedMode === 'GRENADE')) shouldDrawCrosshair = false;
+  const isMeleeCombat = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE' || player.currentWeapon?.id === 'AXE' || player.meleeState);
+  if (isThrowingGrenade || isWeaponHolstered || isMeleeCombat || (rightStick && rightStick.armedMode === 'GRENADE')) shouldDrawCrosshair = false;
   if (isTouchDevice && !isAimingWithStick) shouldDrawCrosshair = false;
 
   if (shouldDrawCrosshair) {

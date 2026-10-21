@@ -1463,7 +1463,19 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
   const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
   const curWepId = curWep.id || 'AK47';
-  const wepName = curWep.fullName || curWep.name || (curWepId === 'SHOTGUN' ? 'SHOTGUN' : (curWepId === 'SNIPER' ? 'BARRETT .50' : 'AK-47'));
+  const SHORT_WEAPON_NAMES = {
+    MACHETE: 'Maczeta Kukri',
+    KNIFE: 'Nóż M9',
+    AXE: 'Toporek Tomahawk',
+    AK47: 'AK-47',
+    SHOTGUN: 'Shotgun',
+    SNIPER: 'Barrett .50',
+    GLOCK: 'Glock 17',
+    REVOLVER: 'Magnum .44',
+    SAWED_OFF: 'Obrzyn 12G',
+    GRENADE: 'Granat'
+  };
+  const wepName = SHORT_WEAPON_NAMES[curWepId] || curWep.name || curWep.fullName || (curWepId === 'SHOTGUN' ? 'Shotgun' : (curWepId === 'SNIPER' ? 'Barrett .50' : 'AK-47'));
 
   const wepAccent = curWepId === 'SHOTGUN'
     ? '#fb923c'
@@ -1536,9 +1548,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
 
   if (curWep?.isMelee) {
-    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillText('ZWARCIE', ammoRightX, ammoMidY);
+    // Usunięty napis "ZWARCIE" - minimalistyczna ramka dla broni białej
   } else if (curWepId === 'GRENADE') {
     const cd = (player.grenadeCooldownTimer || 0) / 60;
     const isReady = (cd <= 0);
