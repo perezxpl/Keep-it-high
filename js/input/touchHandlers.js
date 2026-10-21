@@ -20,7 +20,9 @@ import {
   initiatePlayerJump,
   throwTacticalGrenade,
   prepareGrenadeThrow,
-  releaseGrenadeThrow
+  releaseGrenadeThrow,
+  prepareTomahawkThrow,
+  releaseTomahawkThrow
 } from '../player.js';
 import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
@@ -483,6 +485,27 @@ canvas.addEventListener('touchmove', (e) => {
       continue;
     }
 
+    // Przeciąganie palcem z przycisku akcji (celowanie rzutem toporkiem tomahawk)
+    if (pockets.action && pockets.action.active && t.identifier === pockets.action.id) {
+      if (pockets.action.currentMode === 'THROW_AXE') {
+        const dx = t.clientX - pockets.action.x;
+        const dy = t.clientY - pockets.action.y;
+        const dragDist = Math.hypot(dx, dy);
+        if (dragDist > 10) {
+          const angle = Math.atan2(dy, dx);
+          const throwDist = Math.min(480, 180 + dragDist * 3.2);
+          player.aimX = player.x + (player.w || 24) * 0.5 + Math.cos(angle) * throwDist;
+          player.aimY = player.y + (player.h || 70) * 0.42 + Math.sin(angle) * throwDist;
+          if (Math.abs(dx) > 8) {
+            player.facing = dx >= 0 ? 1 : -1;
+          }
+          const throwPower = Math.min(1.8, Math.max(0.6, (dragDist / 50) * 1.2));
+          prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
+        }
+      }
+      continue;
+    }
+
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.curX = t.clientX;
       leftStick.curY = t.clientY;
@@ -865,6 +888,9 @@ function endTouch(e) {
     if (pockets.action && pockets.action.active && t.identifier === pockets.action.id) {
       pockets.action.active = false;
       pockets.action.id = null;
+      if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {
+        releaseTomahawkThrow(player, player.aimX, player.aimY);
+      }
     }
 
     // B. Zwolnienie kieszeni na broń palną (kliknięcie = wybór/zmiana broni, przytrzymanie 500ms = przeładowanie)

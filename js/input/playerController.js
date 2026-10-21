@@ -11,7 +11,7 @@ import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapon
 import { updateStrikerBootsInput } from '../classes/striker.js';
 import { updateEnforcerBeltInput } from '../classes/enforcer.js';
 import { networkState, sendShootEvent } from '../network.js';
-import { leftStick, rightStick, pockets } from '../mobileControls.js';
+import { leftStick, rightStick, pockets, btnCluster, updateMobileControlStates } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
 import { pollGamepadInput, gamepadState } from './gamepad.js';
@@ -65,6 +65,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
   // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ NA EKRANIE DOTYKOWYM
   if (isTouchDevice && !player.isDead) {
+    updateMobileControlStates(player, leftStick, btnCluster);
     const hipX = player.x + player.w / 2;
     const hipY = player.y + player.h / 2;
 
