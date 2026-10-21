@@ -399,12 +399,12 @@ export const WEAPON_GRIP_CONFIGS = {
     stockLen: 0.0
   },
   MACHETE: {
-    rearGripX: -1.5,
-    rearGripY: 0.4,
-    foreGripX: -5.0,
-    foreGripY: -3.5,
-    barrelLen: 22.0,
-    stockLen: 3.0
+    rearGripX: 0.0,
+    rearGripY: 0.0,
+    foreGripX: -4.0,
+    foreGripY: 0.0,
+    barrelLen: 24.0,
+    stockLen: 0.0
   },
   AXE: {
     rearGripX: -0.3,
@@ -638,7 +638,7 @@ export const MELEE_CONFIGS = {
  */
 export function getWeaponHoldTransform(p) {
   const charFacing = p.facing || 1;
-  const { rightShoulderX, rightShoulderY, hipX, hipY } = getShooterShoulderPos(p);
+  const { rightShoulderX, rightShoulderY, leftShoulderX, leftShoulderY, hipX, hipY } = getShooterShoulderPos(p);
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const wepKey = (weapon && weapon.id && WEAPON_GRIP_CONFIGS[weapon.id]) ? weapon.id : 'AK47';
   const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
@@ -721,17 +721,18 @@ export function getWeaponHoldTransform(p) {
     }
     looseAimAngle = directAngle * 0.40 - 0.22;
   } else if (isMachete) {
-    // Pozycja bojowa gotowości z maczetą (Machete Heavy Low-Ready):
-    // Ręka przy prawym biodrze/udzie, masywne ostrze skierowane skośnie w dół i przód
-    loosePivotX = hipX + 6.2 * charFacing;
-    loosePivotY = hipY - 11.5 + headBobOffset + crouchDropY;
+    // Pozycja bojowa gotowości z maczetą (Machete Upright High-Ready):
+    // Ręka z maczetą przy prawym biodrze, ostrze pewnie i dumnie skierowane w górę (~ -55° do -65°)
+    loosePivotX = hipX + 6.5 * charFacing;
+    loosePivotY = hipY - 12.0 + headBobOffset + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     if (directAngle < -Math.PI / 2) {
       directAngle = Math.max(-1.66, directAngle);
     } else if (directAngle > Math.PI / 2 + 0.35) {
       directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
     }
-    looseAimAngle = directAngle * 0.35 + 0.28;
+    // Ostrze zdecydowanie skierowane w górę:
+    looseAimAngle = -1.05 + directAngle * 0.18;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
@@ -801,9 +802,10 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
     shoulderPivotY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
   } else if (isMachete) {
-    // Gotowość bojowa z uniesioną maczetą kukri (Machete Raised Combat Ready):
-    const macheteReachDist = 16.5;
-    shoulderAimAngle = directAngle - 0.12;
+    // Gotowość bojowa z uniesioną maczetą kukri (Machete Combat Upright Guard):
+    // Ręka uniesiona przed klatkę piersiową, ostrze wzniesione ku górze pod kątem bojowym (~ -40° w relacji do celu)
+    const macheteReachDist = 13.5;
+    shoulderAimAngle = directAngle - 0.72;
     shoulderPivotX = rightShoulderX + Math.cos(directAngle) * macheteReachDist * charFacing;
     shoulderPivotY = rightShoulderY + Math.sin(directAngle) * macheteReachDist + braceOffsetY;
   } else {
@@ -1347,16 +1349,29 @@ export function getWeaponHoldTransform(p) {
   let leftHandWorldX;
   let leftHandWorldY;
 
-  if ((isKnife || isMachete) && !p.isProne) {
-    // Lewa ręka w taktycznej gardzie / równoważącej
-    const guardBaseX = rightShoulderX + (isMachete ? 1.0 : 2.0) * charFacing;
-    const guardBaseY = rightShoulderY + (isMachete ? 5.5 : 4.0) + headBobOffset;
+  if (isKnife && !p.isProne) {
+    // Lewa ręka w taktycznej gardzie CQC (Tactical Guard & Parry Pose)
+    const guardBaseX = rightShoulderX + 2.0 * charFacing;
+    const guardBaseY = rightShoulderY + 4.0 + headBobOffset;
     const aimFwd = Math.cos(directAngle);
     const aimUp = Math.sin(directAngle);
 
     // Subtelne ukierunkowanie gardy w stronę celu
-    const guardX = guardBaseX + (aimFwd * (isMachete ? 4.5 : 5.0)) * charFacing;
-    const guardY = guardBaseY + (aimUp * (isMachete ? 3.5 : 4.0));
+    const guardX = guardBaseX + (aimFwd * 5.0) * charFacing;
+    const guardY = guardBaseY + (aimUp * 4.0);
+
+    leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
+    leftHandWorldY = guardY + (leftHandLocalY || 0);
+  } else if (isMachete && !p.isProne) {
+    // Lewa ręka w naturalnej gardzie taktycznej i równoważącej
+    // Dłoń wysunięta przed lewy bark i klatkę piersiową z naturalnym ugięciem łokcia
+    const guardBaseX = leftShoulderX + 11.0 * charFacing;
+    const guardBaseY = leftShoulderY + 7.5 + headBobOffset;
+    const aimFwd = Math.cos(directAngle);
+    const aimUp = Math.sin(directAngle);
+
+    const guardX = guardBaseX + (aimFwd * 4.0) * charFacing;
+    const guardY = guardBaseY + (aimUp * 3.0);
 
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
@@ -1376,8 +1391,8 @@ export function getWeaponHoldTransform(p) {
   }
 
   const barrelLength = gripCfg.barrelLen;
-  const bladeReach = (wepKey === 'MACHETE' ? 32.0 : (wepKey === 'AXE' ? 26.0 : 22.0));
-  const hiltReach = 2.5;
+  const bladeReach = (wepKey === 'MACHETE' ? 24.0 : (wepKey === 'AXE' ? 26.0 : 22.0));
+  const hiltReach = 0.5;
   const tipX = finalPivotX + Math.cos(proneAimAngle) * bladeReach * charFacing;
   const tipY = finalPivotY + Math.sin(proneAimAngle) * bladeReach;
   const hiltX = finalPivotX + Math.cos(proneAimAngle) * hiltReach * charFacing;

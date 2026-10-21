@@ -1286,8 +1286,8 @@ export function drawHeldWeapon(ctx, p) {
     const imgMachete = getWeaponPartSprite('MACHETE');
     if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
       const s = 28.0 / 1242;
-      const pivotSpriteX = 266.0;
-      const pivotSpriteY = 100.0;
+      const pivotSpriteX = 200.0;
+      const pivotSpriteY = 84.0;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1297,22 +1297,22 @@ export function drawHeldWeapon(ctx, p) {
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
       ctx.fillStyle = '#451a03';
-      ctx.fillRect(-5.0, -1.5, 6.0, 3.0);
+      ctx.fillRect(-3.0, -1.5, 6.0, 3.0);
       ctx.fillStyle = '#78350f';
-      ctx.fillRect(-6.0, -2.2, 1.2, 4.4);
+      ctx.fillRect(-4.0, -2.2, 1.2, 4.4);
 
       ctx.fillStyle = '#e2e8f0';
       ctx.beginPath();
-      ctx.moveTo(1.0, -1.8);
-      ctx.lineTo(12.0, -3.5);
-      ctx.lineTo(22.0, 1.0);
-      ctx.lineTo(16.0, 4.5);
-      ctx.lineTo(6.0, 2.2);
-      ctx.lineTo(1.0, 1.5);
+      ctx.moveTo(3.0, -1.8);
+      ctx.lineTo(14.0, -3.5);
+      ctx.lineTo(24.0, 1.0);
+      ctx.lineTo(18.0, 4.5);
+      ctx.lineTo(8.0, 2.2);
+      ctx.lineTo(3.0, 1.5);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = '#64748b';
-      ctx.fillRect(3.0, -0.4, 11.0, 1.0);
+      ctx.fillRect(5.0, -0.4, 11.0, 1.0);
     }
   } else if (weapon.id === 'AXE') {
     // -------------------------------------------------------------
