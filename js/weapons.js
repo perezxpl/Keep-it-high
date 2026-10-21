@@ -665,12 +665,12 @@ export function updateWeaponState(p) {
       ms.phase = 'RECOVERY';
     } else {
       p.meleeState = null;
-      const isMeleeWep = (p.currentWeapon?.id === 'KNIFE' || p.currentWeapon?.id === 'MACHETE') && !p.isProne;
-      p.meleeTorsoTilt = isMeleeWep ? (p.currentWeapon.id === 'MACHETE' ? 0.06 : 0.04) * (p.facing || 1) : 0;
+      const isMeleeWep = (p.currentWeapon?.id === 'KNIFE') && !p.isProne;
+      p.meleeTorsoTilt = isMeleeWep ? 0.04 * (p.facing || 1) : 0;
     }
   } else {
-    const isMeleeWep = (p.currentWeapon?.id === 'KNIFE' || p.currentWeapon?.id === 'MACHETE') && !p.isProne;
-    p.meleeTorsoTilt = isMeleeWep ? (p.currentWeapon.id === 'MACHETE' ? 0.06 : 0.04) * (p.facing || 1) : 0;
+    const isMeleeWep = (p.currentWeapon?.id === 'KNIFE') && !p.isProne;
+    p.meleeTorsoTilt = isMeleeWep ? 0.04 * (p.facing || 1) : 0;
   }
 
   // Wygasanie smugi cięcia broni białej
