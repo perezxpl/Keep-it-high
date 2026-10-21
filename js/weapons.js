@@ -102,7 +102,7 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     }
     shooter.knifeComboStep = comboStep;
     cfg = (KNIFE_COMBO_MOVES && KNIFE_COMBO_MOVES[comboStep]) ? KNIFE_COMBO_MOVES[comboStep] : baseCfg;
-    shooter.knifeComboTimer = cfg.totalFrames + 16;
+    shooter.knifeComboTimer = cfg.totalFrames + 20;
   }
 
   shooter.meleeState = {
@@ -122,7 +122,7 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
     shooter.shootCooldown = cfg.cooldownFrames || weapon.fireRate || cfg.totalFrames;
   }
   shooter.meleeAttackTimer = cfg.totalFrames;
-  shooter.shootPoseTimer = cfg.totalFrames + 6;
+  shooter.shootPoseTimer = cfg.totalFrames + 8;
   shooter.shootPoseWeight = 1.0;
 
   // Lunge / pchnięcie kinetyczne w kierunku ataku
@@ -647,7 +647,7 @@ export function updateWeaponState(p) {
   // Wygasanie smugi cięcia broni białej
   if (p.meleeTrail && p.meleeTrail.length > 0) {
     for (let i = p.meleeTrail.length - 1; i >= 0; i--) {
-      p.meleeTrail[i].life -= 0.16;
+      p.meleeTrail[i].life -= 0.09;
       if (p.meleeTrail[i].life <= 0) {
         p.meleeTrail.splice(i, 1);
       }
