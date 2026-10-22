@@ -63,6 +63,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     const worldMouseY = camera.y + mouseState.screenY / camera.zoom;
     player.aimX = worldMouseX;
     player.aimY = worldMouseY;
+    player.isAiming = !player.isHolstered;
   }
 
   // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ NA EKRANIE DOTYKOWYM

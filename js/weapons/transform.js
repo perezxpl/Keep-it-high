@@ -538,7 +538,7 @@ export function getWeaponHoldTransform(p) {
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
-  const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER');
+  const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || (!weapon.isMelee && Math.abs((gripCfg.foreGripX || 0) - (gripCfg.rearGripX || 0)) < 4.0));
   const isKnife = (weapon.id === 'KNIFE');
   const isMachete = (weapon.id === 'MACHETE');
   const isAxe = (weapon.id === 'AXE');
@@ -758,8 +758,8 @@ export function getWeaponHoldTransform(p) {
   }
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
-  const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
-  const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
+  const rawPivotX = isTwoHandedHandgun ? shoulderPivotX : (loosePivotX + (shoulderPivotX - loosePivotX) * w);
+  const rawPivotY = isTwoHandedHandgun ? shoulderPivotY : (loosePivotY + (shoulderPivotY - loosePivotY) * w);
   // Punkty podparcia dłoni w spoczynku / strzale z precyzyjnej mapy geometrii WEAPON_GRIP_CONFIGS
   const rearGripDistX = gripCfg.rearGripX;
   const rearGripDistY = gripCfg.rearGripY;
@@ -1019,7 +1019,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadAngleOffset;
+  const blendedAngle = (isTwoHandedHandgun ? shoulderAimAngle : lerpAngle(looseAimAngle, shoulderAimAngle, w)) + reloadAngleOffset;
   const kickback = p.weaponKickback || 0;
 
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;

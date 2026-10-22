@@ -821,18 +821,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, p.upperArmLen, p.forearmLen, 1);
 
     if (hold.straightArms && !p.isProne) {
-      const shootW = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
-      if (shootW > 0.01) {
-        // W pełnym wyproście ramion kąt łokcia wynosi 0.0 (w pełni wyprostowane łokcie)
-        const straightSwingRight = Math.atan2(rightArmRelX, rightArmRelY);
-        armRight.swing = lerpAngle(armRight.swing, straightSwingRight, shootW);
-        armRight.elbow = lerp(armRight.elbow, 0.0, shootW);
+      // W pełnym wyproście ramion kąt łokcia wynosi 0.0 (w pełni wyprostowane łokcie skierowane prosto ku dłoniom)
+      const straightSwingRight = Math.atan2(rightArmRelX, rightArmRelY);
+      armRight.swing = straightSwingRight;
+      armRight.elbow = 0.0;
 
-        if (!p.isReloading) {
-          const straightSwingLeft = Math.atan2(leftArmRelX, leftArmRelY);
-          armLeft.swing = lerpAngle(armLeft.swing, straightSwingLeft, shootW);
-          armLeft.elbow = lerp(armLeft.elbow, 0.0, shootW);
-        }
+      if (!p.isReloading) {
+        const straightSwingLeft = Math.atan2(leftArmRelX, leftArmRelY);
+        armLeft.swing = straightSwingLeft;
+        armLeft.elbow = 0.0;
       }
     }
 
