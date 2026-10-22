@@ -662,21 +662,21 @@ export function updateWeaponState(p) {
     }
   }
 
-  // Obsługa ociekającej krwi na broni białej po zabójstwie wroga
+  // Obsługa ociekającej krwi na broni białej po zabójstwie wroga (dyskretne, pojedyncze krople z napięcia powierzchniowego)
   if (p.meleeBloodTimer > 0) {
     p.meleeBloodTimer--;
     const curWep = p.currentWeapon;
     const isMeleeEquipped = curWep && (curWep.isMelee || curWep.id === 'KNIFE' || curWep.id === 'MACHETE' || curWep.id === 'AXE');
     if (isMeleeEquipped && !p.isHolstered && !p.isDead && !(curWep.id === 'AXE' && p.axeThrown)) {
-      const interval = (p.meleeBloodTimer > 250) ? 7 : ((p.meleeBloodTimer > 100) ? 14 : 26);
-      if (p.meleeBloodTimer % interval === 0) {
+      const interval = (p.meleeBloodTimer > 320) ? 90 : 160;
+      if (p.meleeBloodTimer % interval === 0 && Math.random() < 0.4) {
         const hold = getWeaponHoldTransform(p);
         if (hold && hold.bladeTip && hold.bladeHilt) {
           const ratio = Math.random() < 0.65 ? (0.7 + Math.random() * 0.3) : (0.2 + Math.random() * 0.6);
           const dropX = hold.bladeHilt.x + (hold.bladeTip.x - hold.bladeHilt.x) * ratio;
           const dropY = hold.bladeHilt.y + (hold.bladeTip.y - hold.bladeHilt.y) * ratio;
-          const dripVx = (p.vx || 0) * 0.25 + (Math.random() - 0.5) * 0.4;
-          const dripVy = 1.0 + Math.random() * 0.8;
+          const dripVx = (p.vx || 0) * 0.15;
+          const dripVy = 0.8 + Math.random() * 0.4;
           spawnBloodDrip(dropX, dropY, dripVx, dripVy, 1);
         }
       }

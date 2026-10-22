@@ -525,9 +525,9 @@ export class ThrownTomahawk {
   update(groundY, platforms, customObs, combatants, ball) {
     if (this.bloodTimer > 0) {
       this.bloodTimer--;
-      const interval = (this.bloodTimer > 250) ? 9 : ((this.bloodTimer > 100) ? 18 : 30);
-      if (this.bloodTimer % interval === 0) {
-        spawnBloodDrip(this.x, this.y, (this.vx || 0) * 0.35, (this.vy || 0) * 0.25 + 1.2, 1);
+      const interval = (this.bloodTimer > 320) ? 80 : 150;
+      if (this.bloodTimer % interval === 0 && Math.random() < 0.4) {
+        spawnBloodDrip(this.x, this.y, (this.vx || 0) * 0.2, (this.vy || 0) * 0.2 + 0.8, 1);
       }
     }
 

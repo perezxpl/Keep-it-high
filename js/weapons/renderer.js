@@ -1408,21 +1408,11 @@ export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
     ctx.arc(15.2, -1.0, 0.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. Ściekające krople (animowane krople wydłużające się i zwisające z ostrza)
-    const dripPhase1 = (t * 0.8) % 1.0;
-    const dripPhase2 = (t * 0.6 + 0.5) % 1.0;
-
-    // Kropla 1: przy czubku (x = 19.5)
-    const d1Len = 0.5 + dripPhase1 * 1.8;
+    // 4. Dyskretne mikrokrople na krawędzi tnącej
     ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.ellipse(19.2, 0.7 + d1Len * 0.5, 0.9, d1Len * 0.6, 0.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Kropla 2: w 2/3 długości krawędzi tnącej (x = 13.5)
-    const d2Len = 0.4 + dripPhase2 * 1.5;
-    ctx.beginPath();
-    ctx.ellipse(13.5, 2.3 + d2Len * 0.5, 0.85, d2Len * 0.55, 0, 0, Math.PI * 2);
+    ctx.arc(19.2, 0.7, 0.45, 0, Math.PI * 2);
+    ctx.arc(13.5, 2.3, 0.40, 0, Math.PI * 2);
     ctx.fill();
 
     // 5. Mokry połysk (mokra lśniąca krew)
@@ -1465,21 +1455,11 @@ export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
     ctx.arc(20.5, 0.5, 1.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. Ściekające krople z zakrzywionego brzuśca i czubka kukri
-    const dripPhase1 = (t * 0.75) % 1.0;
-    const dripPhase2 = (t * 0.55 + 0.4) % 1.0;
-
-    // Kropla z najniższego punktu brzuśca (x = 18.2, y = 4.6)
-    const d1Len = 0.6 + dripPhase1 * 2.2;
+    // 4. Dyskretne mikrokrople na brzuścu kukri
     ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.ellipse(18.0, 4.6 + d1Len * 0.5, 1.1, d1Len * 0.7, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Kropla z czubka kukri (x = 24.0, y = 1.0)
-    const d2Len = 0.5 + dripPhase2 * 1.8;
-    ctx.beginPath();
-    ctx.ellipse(23.8, 1.2 + d2Len * 0.5, 0.9, d2Len * 0.6, 0.4, 0, Math.PI * 2);
+    ctx.arc(18.0, 4.6, 0.50, 0, Math.PI * 2);
+    ctx.arc(23.8, 1.2, 0.45, 0, Math.PI * 2);
     ctx.fill();
 
     // 5. Mokry refleks świetlny na powierzchni krwi
@@ -1543,28 +1523,12 @@ export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
     ctx.arc(14.15, -0.65, 0.70, 0, Math.PI * 2);
     ctx.fill();
 
-    // 5. Ściekające krople krwi z fizycznych narożników ostrza i kolca
-    const dripPhase1 = (t * 0.7) % 1.0;
-    const dripPhase2 = (t * 0.55 + 0.35) % 1.0;
-    const dripPhase3 = (t * 0.45 + 0.70) % 1.0;
-
-    // Kropla 1: z ostrego haczyka brody tomahawka (x = 11.16, y = 3.34)
-    const d1Len = 0.5 + dripPhase1 * 1.8;
+    // 5. Dyskretne mikrokrople zakrzepłej krwi na krawędzi (napięcie powierzchniowe na stali)
     ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.ellipse(11.16, 3.34 + d1Len * 0.5, 0.75, d1Len * 0.55, -0.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Kropla 2: z najniższego punktu łuku ostrza (x = 13.93, y = 4.25)
-    const d2Len = 0.6 + dripPhase2 * 2.2;
-    ctx.beginPath();
-    ctx.ellipse(13.93, 4.25 + d2Len * 0.5, 0.85, d2Len * 0.65, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Kropla 3: z przedniego rogu ostrza (x = 15.52, y = 3.97)
-    const d3Len = 0.45 + dripPhase3 * 1.6;
-    ctx.beginPath();
-    ctx.ellipse(15.50, 3.97 + d3Len * 0.5, 0.65, d3Len * 0.50, 0.15, 0, Math.PI * 2);
+    ctx.arc(11.16, 3.34, 0.45, 0, Math.PI * 2);
+    ctx.arc(13.93, 4.25, 0.50, 0, Math.PI * 2);
+    ctx.arc(15.50, 3.97, 0.40, 0, Math.PI * 2);
     ctx.fill();
 
     // 6. Mokry połysk wzdłuż łuku krawędzi rąbiącej
