@@ -177,6 +177,36 @@ try {
     limbsMod.namespace.drawHandheldGrenade(mockContext, 10, 10, 1.0, 0.5);
   }
 
+  // Smoke test transformacji chwytu i animacji dla wszystkich typów uzbrojenia (wykrywanie TDZ i błędów runtime)
+  const transformPathNorm = path.resolve(jsDir, 'weapons/transform.js').toLowerCase();
+  const transformMod = evalModules.get(transformPathNorm);
+  if (transformMod && transformMod.namespace && typeof transformMod.namespace.getWeaponHoldTransform === 'function') {
+    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'KNIFE', 'MACHETE', 'AXE'];
+    for (const wepId of allWepIds) {
+      for (const moving of [false, true]) {
+        for (const attacking of [false, true]) {
+          transformMod.namespace.getWeaponHoldTransform({
+            facing: 1,
+            currentWeapon: { id: wepId, isMelee: (wepId === 'KNIFE' || wepId === 'MACHETE' || wepId === 'AXE') },
+            x: 100, y: 100, w: 24, h: 70,
+            vx: moving ? 2.5 : 0,
+            stridePhase: 1.2,
+            onGround: true,
+            pelvisY: -11.8,
+            isProne: false,
+            isCrouching: false,
+            meleeState: attacking ? {
+              weaponId: wepId,
+              phase: 'ACTIVE',
+              timer: 10,
+              cfg: { type: wepId === 'AXE' ? 'OVERHEAD_CHOP' : 'SLASH', windupFrames: 8, activeFrames: 6, recoveryFrames: 12, totalFrames: 26, arcStart: -0.45, arcEnd: 1.85 }
+            } : null
+          });
+        }
+      }
+    }
+  }
+
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');
 } catch (evalErr) {
   console.error(`[RUNTIME EVALUATION ERROR] ${evalErr.stack || evalErr.message}`);

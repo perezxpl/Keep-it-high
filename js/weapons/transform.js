@@ -660,6 +660,10 @@ export function getWeaponHoldTransform(p) {
 
   // Kołysanie broni w ruchu i oddychanie w spoczynku (Weapon Sway, Bob & Breathing)
   // Dla broni białej kołysanie z bezwładnością kroków jest ZAWSZE aktywne, eliminując sztywność
+  let swayX = 0;
+  let swayY = 0;
+  let swayPitch = 0;
+
   const shouldApplySway = isMelee || !isAimActive;
 
   if (shouldApplySway) {
@@ -673,36 +677,28 @@ export function getWeaponHoldTransform(p) {
 
       // Poziome kołysanie przód-tył
       const swayAmp = isSprint ? 3.2 : (isJog ? 2.0 : 1.0);
-      const swayX = Math.cos(strideP) * swayAmp * charFacing;
+      swayX = Math.cos(strideP) * swayAmp * charFacing;
 
       // Kołysanie kątowe lufy / głowicy broni
       const pitchAmp = isSprint ? 0.14 : (isJog ? 0.08 : 0.035);
-      const swayPitch = Math.sin(strideP) * pitchAmp;
+      swayPitch = Math.sin(strideP) * pitchAmp;
 
       // W sprincie taktyczne obniżenie broni (Tactical Sprint)
       const sprintDrop = isSprint ? 2.5 : 0;
       const sprintAngleDroop = isSprint ? 0.18 : 0;
 
-      loosePivotX += swayX;
-      loosePivotY += (bobY + sprintDrop);
-      looseAimAngle += (swayPitch + sprintAngleDroop);
-      if (isAxe) {
-        shoulderPivotX += swayX;
-        shoulderPivotY += (bobY + sprintDrop);
-        shoulderAimAngle += (swayPitch + sprintAngleDroop);
-      }
+      swayY = bobY + sprintDrop;
+      swayPitch += sprintAngleDroop;
     } else {
       // Subtelny oddech na postoju
-      const idleBreathe = Math.sin(performance.now() * 0.003) * 0.8;
-      const breathePitch = Math.sin(performance.now() * 0.003) * 0.02;
-      loosePivotY += idleBreathe;
-      looseAimAngle += breathePitch;
-      if (isAxe) {
-        shoulderPivotY += idleBreathe;
-        shoulderAimAngle += breathePitch;
-      }
+      swayY = Math.sin(performance.now() * 0.003) * 0.8;
+      swayPitch = Math.sin(performance.now() * 0.003) * 0.02;
     }
   }
+
+  loosePivotX += swayX;
+  loosePivotY += swayY;
+  looseAimAngle += swayPitch;
 
   // STAN 2: Prowadzenie ognia (Shoulder-Braced / Combat Stance - Uniesienie broni do oka)
   const braceOffsetY = isCrouch ? 1.0 : 0;
@@ -729,9 +725,9 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotY = rightShoulderY + 4.0 + braceOffsetY;
   } else if (isAxe) {
     // Gotowość bojowa z uniesionym toporkiem w jednej dłoni w profilu 2D (Tomahawk Chambered Stance)
-    shoulderAimAngle = -0.65 + directAngle * 0.35;
-    shoulderPivotX = rightShoulderX + 19.0 * charFacing;
-    shoulderPivotY = rightShoulderY + 2.5 + braceOffsetY;
+    shoulderAimAngle = -0.65 + directAngle * 0.35 + swayPitch;
+    shoulderPivotX = rightShoulderX + 19.0 * charFacing + swayX;
+    shoulderPivotY = rightShoulderY + 2.5 + braceOffsetY + swayY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
