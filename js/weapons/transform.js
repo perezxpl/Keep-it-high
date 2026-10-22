@@ -348,30 +348,9 @@ export const WEAPON_GRIP_CONFIGS = {
     barrelLen: 45.5,
     stockLen: 11.5
   },
-  GLOCK: {
-    rearGripX: 1.8,
-    rearGripY: 3.8,
-    foreGripX: 2.6,
-    foreGripY: 3.4,
-    barrelLen: 13.5,
-    stockLen: 4.0
-  },
-  REVOLVER: {
-    rearGripX: -2.2,
-    rearGripY: 3.0,
-    foreGripX: -1.4,
-    foreGripY: 3.6,
-    barrelLen: 17.0,
-    stockLen: 4.0
-  },
-  SAWED_OFF: {
-    rearGripX: -1.7,
-    rearGripY: 3.1,
-    foreGripX: 9.0,
-    foreGripY: 1.7,
-    barrelLen: 19.5,
-    stockLen: 4.5
-  },
+  GLOCK: { rearGripX: 1.8, rearGripY: 3.8, foreGripX: 2.6, foreGripY: 3.4, barrelLen: 13.5, stockLen: 4.0 },
+  REVOLVER: { rearGripX: -2.2, rearGripY: 3.0, foreGripX: -1.4, foreGripY: 3.6, barrelLen: 17.0, stockLen: 4.0 },
+  SAWED_OFF: { rearGripX: -1.7, rearGripY: 3.1, foreGripX: 9.0, foreGripY: 1.7, barrelLen: 19.5, stockLen: 4.5 },
   KNIFE: {
     rearGripX: -1.0,
     rearGripY: 0.0,
@@ -584,35 +563,35 @@ export function getWeaponHoldTransform(p) {
   const isJog = (p.gaitMode === 'JOG');
   const isAimActive = !!(p.isAiming || p.isShooting || (p.shootPoseTimer > 0));
 
-  // W marszu (WALK) i w spoczynku (IDLE) ręce z toporkiem są opuszczone w dół,
+  // W marszu (WALK) i w spoczynku (IDLE) ręce z toporkiem / pistoletem są opuszczone w dół,
   // a w tempie szybszym niż chód (JOG i SPRINT) dynamicznie ugięte w łokciach i pompujące w rytmie biegu
   const isFasterThanWalk = (isSprint || isJog || (speed > 2.2)) && !p.isCrouching && !p.isProne && !p.isSliding;
-  const targetAxeRunWeight = (isAxe && isFasterThanWalk && !p.meleeState) ? 1.0 : 0.0;
+  const isOneHandRunWeapon = (isAxe || isPistol) && !p.meleeState;
+  const targetRunWeight = (isOneHandRunWeapon && isFasterThanWalk) ? 1.0 : 0.0;
   p.axeRunWeight = (typeof p.axeRunWeight === 'number')
-    ? p.axeRunWeight + (targetAxeRunWeight - p.axeRunWeight) * 0.22
-    : targetAxeRunWeight;
+    ? p.axeRunWeight + (targetRunWeight - p.axeRunWeight) * 0.22
+    : targetRunWeight;
   if (p.axeRunWeight < 0.005) p.axeRunWeight = 0;
   else if (p.axeRunWeight > 0.995) p.axeRunWeight = 1;
   const wRun = p.axeRunWeight;
 
-  let axeEffDx = 1.2;
-  let axeEffDy = 24.8;
-  let axeEffAngle = -0.05;
+  const runP = Math.sin(strideP);
+  const pumpX = (isSprint ? 5.5 : 3.5) * runP;
+  const pumpY = (isSprint ? 2.5 : 1.5) * Math.abs(Math.sin(strideP * 2));
+
+  let axeEffDx = 1.2, axeEffDy = 24.8, axeEffAngle = -0.05;
   if (isAxe) {
-    const armAngle = Math.atan2(24.8, 1.2);
-    const perpAngle = armAngle - Math.PI / 2;
-    if (wRun > 0.005) {
-      const runP = Math.sin(strideP);
-      const pumpX = (isSprint ? 5.5 : 3.5) * runP;
-      const pumpY = (isSprint ? 2.5 : 1.5) * Math.abs(Math.sin(strideP * 2));
-      axeEffDx = lerp(1.2, 13.5 + pumpX, wRun);
-      axeEffDy = lerp(24.8, 12.0 - pumpY, wRun);
-      axeEffAngle = lerpAngle(perpAngle, -0.75 + runP * 0.18, wRun);
-    } else {
-      axeEffDx = 1.2;
-      axeEffDy = 24.8;
-      axeEffAngle = perpAngle;
-    }
+    const perpAngle = Math.atan2(24.8, 1.2) - Math.PI / 2;
+    axeEffDx = lerp(1.2, 13.5 + pumpX, wRun);
+    axeEffDy = lerp(24.8, 12.0 - pumpY, wRun);
+    axeEffAngle = lerpAngle(perpAngle, -0.75 + runP * 0.18, wRun);
+  }
+
+  let pistolEffDx = 1.8, pistolEffDy = 23.5, pistolEffAngle = 0.65;
+  if (isPistol) {
+    pistolEffDx = lerp(1.8, 13.5 + pumpX, wRun);
+    pistolEffDy = lerp(23.5, 12.0 - pumpY, wRun);
+    pistolEffAngle = lerpAngle(0.65, -0.45 + runP * 0.15, wRun);
   }
 
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry / Melee Ready)
@@ -651,16 +630,22 @@ export function getWeaponHoldTransform(p) {
     loosePivotY = rightShoulderY + axeEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     looseAimAngle = axeEffAngle;
+  } else if (isPistol) {
+    // Mała broń palna: w marszu/postoju opuszczona przy biodrze (low-ready), w biegu ugięta w łokciu
+    loosePivotX = rightShoulderX + pistolEffDx * charFacing;
+    loosePivotY = rightShoulderY + pistolEffDy + crouchDropY;
+    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    looseAimAngle = pistolEffAngle;
   } else {
-    loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
-    loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
+    loosePivotX = hipX + (isSniper ? 6.5 : 5.2) * charFacing;
+    loosePivotY = hipY - (isSniper ? 11.5 : 9.5) + headBobOffset + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     if (directAngle < -Math.PI / 2) {
       directAngle = Math.max(-1.66, directAngle);
     } else if (directAngle > Math.PI / 2 + 0.35) {
       directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
     }
-    const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : (isPistol ? 0.16 : 0.26));
+    const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26);
     looseAimAngle = directAngle + idleDroop;
   }
 
@@ -698,7 +683,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  if (!isAxe || wRun < 0.5) {
+  if ((!isAxe && !isPistol) || wRun < 0.5) {
     loosePivotX += swayX;
     loosePivotY += swayY;
     looseAimAngle += swayPitch;
@@ -773,8 +758,8 @@ export function getWeaponHoldTransform(p) {
   }
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
-  const rawPivotX = isTwoHandedHandgun ? shoulderPivotX : (loosePivotX + (shoulderPivotX - loosePivotX) * w);
-  const rawPivotY = isTwoHandedHandgun ? shoulderPivotY : (loosePivotY + (shoulderPivotY - loosePivotY) * w);
+  const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
+  const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
   // Punkty podparcia dłoni w spoczynku / strzale z precyzyjnej mapy geometrii WEAPON_GRIP_CONFIGS
   const rearGripDistX = gripCfg.rearGripX;
   const rearGripDistY = gripCfg.rearGripY;
@@ -1034,7 +1019,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  const blendedAngle = (isTwoHandedHandgun ? shoulderAimAngle : lerpAngle(looseAimAngle, shoulderAimAngle, w)) + reloadAngleOffset;
+  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadAngleOffset;
   const kickback = p.weaponKickback || 0;
 
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
@@ -1314,24 +1299,31 @@ export function getWeaponHoldTransform(p) {
 
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
-  } else if (isAxe && !p.isProne) {
-    // Lewa ręka opuszczona swobodnie w marszu/postoju, ugięta i pompująca w biegu (jog/sprint)
+  } else if ((isAxe || isPistol) && !p.isProne) {
+    // Lewa ręka opuszczona swobodnie w marszu/postoju, ugięta i pompująca w biegu,
+    // a przy celowaniu małą bronią dochodzi płynnie do oburęcznego chwytu pistoletu
     const runSway = isMoving ? Math.sin(strideP) * 2.0 : 0;
     const breatheSway = !isMoving ? Math.sin(performance.now() * 0.003) * 0.6 : 0;
     const idleTrailX = leftShoulderX - (1.2 + runSway * 0.4) * charFacing;
     const idleTrailY = leftShoulderY + 24.2 + headBobOffset + Math.abs(runSway) * 0.25 + breatheSway;
 
     const runP = Math.sin(strideP);
-    const pumpX = (isSprint ? 5.5 : 3.5) * -runP;
-    const pumpY = (isSprint ? 2.5 : 1.5) * Math.abs(Math.sin(strideP * 2));
-    const runTrailX = leftShoulderX + (11.5 + pumpX) * charFacing;
+    const pumpXLeft = (isSprint ? 5.5 : 3.5) * -runP;
+    const runTrailX = leftShoulderX + (11.5 + pumpXLeft) * charFacing;
     const runTrailY = leftShoulderY + 12.5 - pumpY + headBobOffset;
 
     const trailX = lerp(idleTrailX, runTrailX, wRun);
     const trailY = lerp(idleTrailY, runTrailY, wRun);
 
-    leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
-    leftHandWorldY = trailY + (leftHandLocalY || 0);
+    if (isPistol) {
+      const gripTargetX = finalPivotX + (Math.cos(proneAimAngle) * leftHandLocalX - Math.sin(proneAimAngle) * leftHandLocalY) * charFacing;
+      const gripTargetY = finalPivotY + (Math.sin(proneAimAngle) * leftHandLocalX + Math.cos(proneAimAngle) * leftHandLocalY);
+      leftHandWorldX = lerp(trailX, gripTargetX, w);
+      leftHandWorldY = lerp(trailY, gripTargetY, w);
+    } else {
+      leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
+      leftHandWorldY = trailY + (leftHandLocalY || 0);
+    }
   } else if (isMachete && !p.isProne) {
     // Lewa ręka w naturalnej gardzie taktycznej i równoważącej tułów (One-Handed Grip)
     // Dłoń wysunięta przed lewy bark i klatkę piersiową z naturalnym ugięciem łokcia
@@ -1391,7 +1383,7 @@ export function getWeaponHoldTransform(p) {
     heldMag,
     boltOffset,
     isTwoHandedHandgun: !!isTwoHandedHandgun,
-    straightArms: !!(isTwoHandedHandgun && !p.isProne)
+    straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40)
   };
 }
 

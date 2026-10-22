@@ -63,7 +63,9 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     const worldMouseY = camera.y + mouseState.screenY / camera.zoom;
     player.aimX = worldMouseX;
     player.aimY = worldMouseY;
-    player.isAiming = !player.isHolstered;
+    const isGamepadAim = !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.l2 || gamepadState.buttons?.r2 || (gamepadState.rightStick?.magnitude || 0) > 0.25));
+    const isMouseAim = mouseState.rmbDown || mouseState.lmbDown || (player.shootPoseTimer > 0) || player.isShooting;
+    player.isAiming = !player.isHolstered && (isMouseAim || isGamepadAim);
   }
 
   // CELOWNIK ZAWSZE PODĄŻAJĄCY ZA POSTACIĄ NA EKRANIE DOTYKOWYM
