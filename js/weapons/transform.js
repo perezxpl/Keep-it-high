@@ -627,17 +627,18 @@ export function getWeaponHoldTransform(p) {
     }
     looseAimAngle = -1.05 + directAngle * 0.15;
   } else if (isAxe) {
-    // Pozycja gotowości z toporkiem tomahawk w jednej ręce (Tomahawk Low-Ready):
-    // Prawa ręka trzyma stylisko przy biodrze, głowica uniesiona pod kątem
-    loosePivotX = hipX + 8.5 * charFacing;
-    loosePivotY = hipY - 12.0 + headBobOffset + crouchDropY;
+    // Pozycja gotowości z toporkiem tomahawk w jednej ręce w profilu 2D (Tomahawk Low-Ready):
+    // Prawa dłoń z toporkiem wysunięta w przestrzeń przed klatkę piersiową poza obrys tułowia (czytelna sylwetka w 2D),
+    // głowica uniesiona pod agresywnym kątem gotowa do natychmiastowego cięcia
+    loosePivotX = hipX + 17.5 * charFacing;
+    loosePivotY = hipY - 13.5 + headBobOffset + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     if (directAngle < -Math.PI / 2) {
       directAngle = Math.max(-1.66, directAngle);
     } else if (directAngle > Math.PI / 2 + 0.35) {
       directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
     }
-    looseAimAngle = -0.95 + directAngle * 0.18;
+    looseAimAngle = -0.75 + directAngle * 0.22;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
@@ -713,10 +714,10 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = rightShoulderX + 12.0 * charFacing;
     shoulderPivotY = rightShoulderY + 4.0 + braceOffsetY;
   } else if (isAxe) {
-    // Gotowość bojowa z uniesionym toporkiem w jednej dłoni (Tomahawk Chambered Stance)
-    shoulderAimAngle = -0.85 + directAngle * 0.35;
-    shoulderPivotX = rightShoulderX + 11.5 * charFacing;
-    shoulderPivotY = rightShoulderY + 4.5 + braceOffsetY;
+    // Gotowość bojowa z uniesionym toporkiem w jednej dłoni w profilu 2D (Tomahawk Chambered Stance)
+    shoulderAimAngle = -0.65 + directAngle * 0.35;
+    shoulderPivotX = rightShoulderX + 19.0 * charFacing;
+    shoulderPivotY = rightShoulderY + 2.5 + braceOffsetY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
@@ -1222,6 +1223,8 @@ export function getWeaponHoldTransform(p) {
             meleeAngleOffset = lerp(cfg.arcEnd, 0.0, s) - rebound * 0.04;
             shiftForward = lerp(20.0, 0.0, s);
             shiftY = lerp(16.0, 0.0, s) - rebound;
+            leftHandLocalX = lerp(-6.0, 0.0, s);
+            leftHandLocalY = 0;
             p.meleeTorsoTilt = lerp(0.28, 0.0, s) * charFacing;
           }
         }
@@ -1288,11 +1291,22 @@ export function getWeaponHoldTransform(p) {
 
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
-  } else if ((isMachete || isAxe) && !p.isProne) {
+  } else if (isAxe && !p.isProne) {
+    // Opcja 1 (Klasyka 2D): Lewa ręka w tle swobodnie opuszczona wzdłuż biodra lekko ku tyłowi (naturalna przeciwwaga dla topora)
+    // Tworzy czystą sylwetkę w profilu 2D bez nakładania się rąk i bez efektu podkurczonej kończyny
+    const runSway = isMoving ? Math.sin(strideP) * 2.4 : 0;
+    const breatheSway = !isMoving ? Math.sin(performance.now() * 0.003) * 0.5 : 0;
+
+    const trailX = leftShoulderX - (2.5 + runSway * 0.5) * charFacing;
+    const trailY = leftShoulderY + 24.0 + headBobOffset + Math.abs(runSway) * 0.3 + breatheSway;
+
+    leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
+    leftHandWorldY = trailY + (leftHandLocalY || 0);
+  } else if (isMachete && !p.isProne) {
     // Lewa ręka w naturalnej gardzie taktycznej i równoważącej tułów (One-Handed Grip)
     // Dłoń wysunięta przed lewy bark i klatkę piersiową z naturalnym ugięciem łokcia
-    const guardBaseX = leftShoulderX + (isAxe ? 8.5 : 10.0) * charFacing;
-    const guardBaseY = leftShoulderY + (isAxe ? 5.0 : 6.0) + headBobOffset;
+    const guardBaseX = leftShoulderX + 10.0 * charFacing;
+    const guardBaseY = leftShoulderY + 6.0 + headBobOffset;
     const aimFwd = Math.cos(directAngle);
     const aimUp = Math.sin(directAngle);
 
