@@ -6,6 +6,7 @@
 
 import { CONFIG } from './config.js';
 import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget, prepareTomahawkThrow, releaseTomahawkThrow } from './player/actions.js';
+import { startMeleeAttack } from './weapons.js';
 import { ball } from './ball.js';
 import { activeArenaId as obstacleArenaId } from './obstacles.js';
 import { getActiveArena } from './arenas/index.js';
@@ -219,8 +220,8 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
     const canKickBall = activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall);
     pockets.action.currentMode = canKickBall ? 'KICK' : 'SLIDE';
   } else if (player.currentWeapon?.id === 'AXE' && !player.axeThrown) {
-    // Gdy gracz dzierży toporek bojowy – przycisk akcji dynamicznej pozwala na celowanie i rzut toporkiem!
-    pockets.action.currentMode = 'THROW_AXE';
+    // Gdy gracz dzierży toporek bojowy – przycisk akcji wykonuje cięcie wręcz (Overhead Chop)
+    pockets.action.currentMode = 'CHOP';
   } else {
     // W pozostałych stanach oraz ZAWSZE w trybach bojowych (Arena 2 i 3): KOPNIAK (KICK)
     pockets.action.currentMode = 'KICK';
@@ -267,11 +268,13 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     player.crouchToggled = false;
     player.state = 'STAND';
     player.hitboxHeight = player.h || 70;
-    pockets.action.currentMode = (player.currentWeapon?.id === 'AXE' && !player.axeThrown) ? 'THROW_AXE' : 'KICK';
+    pockets.action.currentMode = (player.currentWeapon?.id === 'AXE' && !player.axeThrown) ? 'CHOP' : 'KICK';
     return true;
-  } else if (mode === 'THROW_AXE') {
+  } else if (mode === 'CHOP') {
     if (player.axeThrown) return false;
-    return prepareTomahawkThrow(player, player.aimX, player.aimY, 1.0);
+    if (player.meleeNeedRelease) return false;
+    startMeleeAttack(player, player.currentWeapon);
+    return true;
   } else {
     // Mode KICK: wykop piłki w Arenie 1 LUB przywrócony SPARTAN KICK w walce
     // Przerwanie wślizgu wykopem (Slide-Cancel into Kick)

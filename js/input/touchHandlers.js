@@ -439,11 +439,19 @@ canvas.addEventListener('touchstart', (e) => {
           }
 
           if (rightStick.armedMode === 'FIREARM') {
-            if (factor > 0.15 && player.isHolstered) {
-              player.isHolstered = false;
+            if (player.currentWeapon?.id === 'AXE') {
+              rightStick.isShooting = false;
+              if (!player.axeThrown && factor > 0.03 && !player.isDead) {
+                const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
+                prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
+              }
+            } else {
+              if (factor > 0.15 && player.isHolstered) {
+                player.isHolstered = false;
+              }
+              // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+              rightStick.isShooting = (factor >= 0.90);
             }
-            // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
-            rightStick.isShooting = (factor >= 0.90);
           } else if (rightStick.armedMode === 'GRENADE') {
             rightStick.isShooting = false;
             if (factor > 0.03 && !player.isDead) {
@@ -458,6 +466,10 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.axisY = 0;
           rightStick.power = 0;
           rightStick.isShooting = false;
+          if (player.throwAnim?.throwType === 'TOMAHAWK') {
+            player.throwAnim.active = false;
+            player.throwAnim.aiming = false;
+          }
           player.aimOffsetX = (player.facing || 1) * 180;
           player.aimOffsetY = -20;
         }
@@ -485,26 +497,6 @@ canvas.addEventListener('touchmove', (e) => {
       continue;
     }
 
-    // Przeciąganie palcem z przycisku akcji (celowanie rzutem toporkiem tomahawk)
-    if (pockets.action && pockets.action.active && t.identifier === pockets.action.id) {
-      if (pockets.action.currentMode === 'THROW_AXE') {
-        const dx = t.clientX - pockets.action.x;
-        const dy = t.clientY - pockets.action.y;
-        const dragDist = Math.hypot(dx, dy);
-        if (dragDist > 10) {
-          const angle = Math.atan2(dy, dx);
-          const throwDist = Math.min(480, 180 + dragDist * 3.2);
-          player.aimX = player.x + (player.w || 24) * 0.5 + Math.cos(angle) * throwDist;
-          player.aimY = player.y + (player.h || 70) * 0.42 + Math.sin(angle) * throwDist;
-          if (Math.abs(dx) > 8) {
-            player.facing = dx >= 0 ? 1 : -1;
-          }
-          const throwPower = Math.min(1.8, Math.max(0.6, (dragDist / 50) * 1.2));
-          prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
-        }
-      }
-      continue;
-    }
 
     if (leftStick.active && t.identifier === leftStick.id) {
       leftStick.curX = t.clientX;
@@ -722,11 +714,24 @@ canvas.addEventListener('touchmove', (e) => {
         }
 
         if (rightStick.armedMode === 'FIREARM') {
-          if (power > 0.15 && player.isHolstered) {
-            player.isHolstered = false;
+          if (player.currentWeapon?.id === 'AXE') {
+            rightStick.isShooting = false;
+            if (!player.axeThrown) {
+              if (power > 0.03 && !player.isDead) {
+                const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
+                prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
+              } else if (player.throwAnim?.throwType === 'TOMAHAWK') {
+                player.throwAnim.aiming = false;
+                player.throwAnim.active = false;
+              }
+            }
+          } else {
+            if (power > 0.15 && player.isHolstered) {
+              player.isHolstered = false;
+            }
+            // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+            rightStick.isShooting = (power >= 0.90);
           }
-          // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
-          rightStick.isShooting = (power >= 0.90);
         } else if (rightStick.armedMode === 'GRENADE') {
           rightStick.isShooting = false;
           if (power > 0.03 && !player.isDead) {
@@ -741,7 +746,7 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = 0;
         rightStick.power = 0;
         rightStick.isShooting = false;
-        if (rightStick.armedMode === 'GRENADE' && player.throwAnim && player.throwAnim.aiming) {
+        if ((rightStick.armedMode === 'GRENADE' || player.throwAnim?.throwType === 'TOMAHAWK') && player.throwAnim && player.throwAnim.aiming) {
           player.throwAnim.aiming = false;
           player.throwAnim.active = false;
         }
@@ -888,9 +893,7 @@ function endTouch(e) {
     if (pockets.action && pockets.action.active && t.identifier === pockets.action.id) {
       pockets.action.active = false;
       pockets.action.id = null;
-      if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {
-        releaseTomahawkThrow(player, player.aimX, player.aimY);
-      }
+      player.meleeNeedRelease = false;
     }
 
     // B. Zwolnienie kieszeni na broń palną (kliknięcie = wybór/zmiana broni, przytrzymanie 500ms = przeładowanie)
@@ -983,6 +986,16 @@ function endTouch(e) {
         }
         // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
         // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
+      } else if (player.currentWeapon?.id === 'AXE') {
+        if (!player.axeThrown && rightStick.power > 0.08 && !player.isDead) {
+          const throwPower = Math.min(1.8, Math.max(0.6, rightStick.power * 1.3));
+          releaseTomahawkThrow(player, player.aimX, player.aimY, throwPower);
+        } else if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {
+          player.throwAnim.active = false;
+          player.throwAnim.aiming = false;
+        }
+        rightStick.isShooting = false;
+        player.isShooting = false;
       } else {
         // Zakończenie ognia z broni palnej lub białej
         rightStick.isShooting = false;

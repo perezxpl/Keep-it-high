@@ -127,7 +127,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const isGamepadFiring = !!(gamepadState && gamepadState.connected && gamepadState.r2);
   const isHoldingFire = (mouseState.lmbDown || isTouchFiring || isGamepadFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
 
-  if (!mouseState.lmbDown && !isTouchFiring && !isGamepadFiring) {
+  if (!mouseState.lmbDown && !isTouchFiring && !isGamepadFiring && !(pockets.action && pockets.action.active)) {
     player.meleeNeedRelease = false;
   }
 

@@ -95,43 +95,43 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
     ctx.lineTo(0, -5);
     ctx.lineTo(5, 0);
     ctx.stroke();
-  } else if (mode === 'THROW_AXE') {
-    // 4. Wektorowa sylwetka taktycznego toporka bojowego (Throw Tomahawk)
+  } else if (mode === 'CHOP') {
+    // 4. Wektorowa sylwetka cięcia toporkiem bojowym wręcz (Melee Overhead Chop)
     const pFacing = player ? (player.facing || 1) : 1;
     ctx.save();
     ctx.scale(pFacing, 1);
 
-    // Trzonek z chwytem
+    // Trzonek z chwytem bojowym
     ctx.strokeStyle = mainColor;
     ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(-5, 7);
-    ctx.lineTo(4, -5);
+    ctx.moveTo(-5, -6);
+    ctx.lineTo(4, 5);
     ctx.stroke();
 
-    // Stalowa głowica toporka (Hawk Head)
+    // Stalowa głowica toporka w uderzeniu w dół (Overhead Hawk Head)
     ctx.fillStyle = isPressed ? '#fb923c' : mainColor;
     ctx.beginPath();
-    ctx.moveTo(3, -7);
-    ctx.lineTo(9, -9);
-    ctx.lineTo(8, -1);
-    ctx.lineTo(3, -3);
+    ctx.moveTo(3, 3);
+    ctx.lineTo(9, 1);
+    ctx.lineTo(8, 9);
+    ctx.lineTo(3, 7);
     ctx.closePath();
     ctx.fill();
 
     // Szpic tylny głowicy (Back Spike)
     ctx.beginPath();
-    ctx.moveTo(2, -6);
-    ctx.lineTo(-2, -7.5);
-    ctx.lineTo(1, -4.5);
+    ctx.moveTo(2, 4);
+    ctx.lineTo(-2, 2.5);
+    ctx.lineTo(1, 5.5);
     ctx.closePath();
     ctx.fill();
 
-    // Dynamiczny łuk zamachu / rzutu
+    // Dynamiczna smuga uderzenia z góry w dół (Overhead Slash Trail)
     ctx.strokeStyle = isPressed ? '#ea580c' : faintColor;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(0, 0, 11, -Math.PI * 0.75, -Math.PI * 0.15);
+    ctx.arc(0, 0, 11, -Math.PI * 0.45, Math.PI * 0.25);
     ctx.stroke();
 
     ctx.restore();
