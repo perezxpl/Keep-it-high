@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, spawnKnockedHelmet, spawnVestShreds, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
 import { drawWeaponBloodOverlay } from './weapons/renderer.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
 import { getActiveBots } from './bot.js';
@@ -589,15 +589,132 @@ export class ThrownTomahawk {
           if (this.x + this.radius >= chLeft && this.x - this.radius <= chRight &&
               this.y + this.radius >= chTop && this.y - this.radius <= chBottom) {
             this.hitCombatants.add(ch);
-            const isHeadshot = (this.y <= ch.y + 24);
-            const chVisuals = (typeof ch.visuals === 'object' && ch.visuals) ? ch.visuals : DEFAULT_VISUALS;
 
-            ch.hp = Math.max(0, (ch.hp || 100) - this.damage);
+            // Ochrona odrodzenia (Spawn Protection)
+            if ((ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
+              spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 6);
+              this.vx = Math.sign(this.vx || 1) * 1.5;
+              this.vy = -1.8;
+              this.vRot = (this.vx >= 0 ? 1 : -1) * 0.15;
+              break;
+            }
+
+            // STREFY TRAFIENIA JAK W BRONI PALNEJ: GŁOWA (HEADSHOT) / TORS (TORSO) / NOGI (LEGS)
+            let isHeadshot = false;
+            let isLegshot = false;
+            let isTorsoShot = false;
+
+            if (ch.isProne || (ch.staggerTimer > 0)) {
+              // Sylwetka leżąca wzdłuż osi X
+              if (ch.facing === 1) {
+                isHeadshot = (this.x >= ch.x + (ch.w || 24) * 0.55);
+                isLegshot = (this.x <= ch.x - 2);
+                isTorsoShot = !isHeadshot && !isLegshot;
+              } else {
+                isHeadshot = (this.x <= ch.x + (ch.w || 24) * 0.45);
+                isLegshot = (this.x >= ch.x + (ch.w || 24) + 2);
+                isTorsoShot = !isHeadshot && !isLegshot;
+              }
+            } else if (ch.isCrouching) {
+              isHeadshot = (this.y <= ch.y + 24);
+              isLegshot = (this.y >= ch.y + 44);
+              isTorsoShot = !isHeadshot && !isLegshot;
+            } else {
+              // Sylwetka stojąca / w biegu:
+              isHeadshot = (this.y <= ch.y + 20);
+              isLegshot = (this.y >= ch.y + 42);
+              isTorsoShot = !isHeadshot && !isLegshot;
+            }
+
+            let totalDamage = 0;
+            let helmetAbsorbed = false;
+            let vestAbsorbed = false;
+
+            if (isHeadshot) {
+              const hasHelm = !!(ch.hasHelmet || ch.visuals?.hasHelmet);
+              const hasImmunity = ((ch.headshotImmunityTimer || 0) > 0);
+
+              if (hasImmunity) {
+                totalDamage = 40;
+                helmetAbsorbed = true;
+                spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 6);
+              } else if (hasHelm) {
+                // Hełm chroni przed śmiertelnym ciosem: pochłania zabójczą siłę i odlatuje z głowy
+                helmetAbsorbed = true;
+                totalDamage = 45;
+
+                ch.hasHelmet = false;
+                if (ch.visuals) ch.visuals.hasHelmet = false;
+                ch.helmetHits = 0;
+                ch.headshotImmunityTimer = 25;
+
+                spawnKnockedHelmet(this.x, this.y - 4, this.vx * 0.8, this.vy - 3.5, ch.facing, ch.visuals || ch.currentClass?.visuals);
+                spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 12);
+                triggerScreenShake(14);
+
+                if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+                  window.syncArmorDevButtons();
+                }
+              } else {
+                // Czyste trafienie w głowę bez hełmu: NATYCHMIASTOWA ŚMIERĆ (1-SHOT INSTANT KILL)!
+                totalDamage = Math.max(250, (ch.hp !== undefined ? ch.hp : 100) + 100);
+                triggerScreenShake(26);
+                triggerHitstop(8);
+              }
+            } else if (isTorsoShot) {
+              // Trafienie w tors: wysokie obrażenia (125 dmg), kamizelka kuloodporna pochłania obrażenia
+              totalDamage = Math.round(this.damage * 1.15);
+
+              if (ch.hasVest || ch.visuals?.hasVest) {
+                if (ch.vestHp === undefined) {
+                  ch.vestHp = 60;
+                  ch.vestMaxHp = 60;
+                }
+                if (ch.vestHp > 0) {
+                  vestAbsorbed = true;
+                  spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 8);
+
+                  if (ch.vestHp >= totalDamage) {
+                    ch.vestHp -= totalDamage;
+                    totalDamage = 0;
+                  } else {
+                    totalDamage -= ch.vestHp;
+                    ch.vestHp = 0;
+                  }
+
+                  if (ch.vestHp <= 0) {
+                    ch.vestHp = 0;
+                    ch.hasVest = false;
+                    if (ch.visuals) ch.visuals.hasVest = false;
+                    spawnVestShreds(this.x, this.y, this.vx * 0.6, this.vy - 2.0, ch.visuals?.vestColor || '#18181b');
+                    triggerScreenShake(10);
+                    if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
+                      window.syncArmorDevButtons();
+                    }
+                  }
+                }
+              }
+              triggerScreenShake(16);
+              triggerHitstop(5);
+            } else {
+              // Trafienie w nogi / kończyny: obniżone obrażenia (0.65x = ~72 dmg), ogłuszenie i wytrącenie z równowagi
+              totalDamage = Math.round(this.damage * 0.65);
+              ch.staggerTimer = Math.max(ch.staggerTimer || 0, 22);
+              triggerScreenShake(12);
+              triggerHitstop(4);
+            }
+
+            ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - totalDamage);
             ch.killer = this.shooter;
             ch.lastAttacker = this.shooter;
-            ch.lastAttackerTimer = 180;
+            ch.lastAttackerTimer = 240;
 
-            if (ch.hp <= 0) {
+            if (ch.hp <= 0 && !ch.isDead) {
+              ch.isDead = true;
+              ch.killer = this.shooter;
+              ch.respawnTimer = 180;
+              ch.corpseAngle = 0;
+              ch.corpseRotVel = 0;
               this.bloodTimer = 420;
               if (this.shooter) {
                 this.shooter.meleeBloodTimer = 420;
@@ -614,20 +731,54 @@ export class ThrownTomahawk {
               const throwDir = Math.sign(this.vx || 1);
               ch.deathHitPoint = { x: this.x, y: this.y };
               ch.deathImpulse = {
-                vx: throwDir * 7.5,
-                vy: isHeadshot ? 1.5 : -1.0
+                vx: throwDir * (isHeadshot ? 9.0 : 7.5),
+                vy: isHeadshot ? 1.8 : (isLegshot ? -2.5 : -1.0)
               };
               ch.bleedTimer = 90;
-              spawnBloodSpurt(this.x, this.y, throwDir * 5.0, -2.5, isHeadshot ? 28 : 18, 1.4);
+              spawnBloodSpurt(this.x, this.y, throwDir * 5.0, -2.5, isHeadshot ? 32 : (isTorsoShot ? 22 : 14), 1.4);
               spawnBloodDrip(this.x, this.y, throwDir * 2.2, -1.0, 8);
+
+              if (typeof window !== 'undefined') {
+                if (typeof window.recordKill === 'function' && this.shooter === window.player) {
+                  window.recordKill();
+                }
+                if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
+                  window.registerKillstreakKill();
+                }
+              }
+            } else if (totalDamage > 0) {
+              spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.0, -1.8, isHeadshot ? 16 : 8, 1.1);
             }
 
-            spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.5, -2, 7);
-            spawnRicochetSparks(this.x, this.y, Math.sign(this.vx || 1), -0.5, 8);
-            ch.vx += Math.sign(this.vx || 1) * 6.5;
-            ch.vy -= 2.2;
-            triggerScreenShake(20);
-            triggerHitstop(6);
+            if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
+              if (ch.isRemote) {
+                window.sendDamageEvent({
+                  target: 'player',
+                  damage: totalDamage,
+                  isHeadshot,
+                  isTorsoShot,
+                  hitX: this.x,
+                  hitY: this.y
+                });
+              } else if (ch.isBot) {
+                const bIdx = (typeof window.getBotIndex === 'function')
+                  ? window.getBotIndex(ch)
+                  : (ch.botId || ch.id);
+                window.sendDamageEvent({
+                  target: 'bot',
+                  botId: ch.botId || ch.id,
+                  botIdx: bIdx,
+                  damage: totalDamage,
+                  isHeadshot,
+                  isTorsoShot,
+                  hitX: this.x,
+                  hitY: this.y
+                });
+              }
+            }
+
+            ch.vx += Math.sign(this.vx || 1) * (isHeadshot ? 7.5 : 5.5);
+            ch.vy -= 1.8;
 
             // Po uderzeniu we wroga toporek traci większość energii i opada na ziemię
             this.vx = Math.sign(this.vx || 1) * 1.5;
