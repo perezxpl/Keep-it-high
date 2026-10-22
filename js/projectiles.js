@@ -588,17 +588,24 @@ export class ThrownTomahawk {
             ch.lastAttackerTimer = 180;
 
             if (ch.hp <= 0) {
-              if (isHeadshot) {
-                ch.hasHead = false;
-                ch.decapitated = true;
-                ch.neckFountainTimer = 75;
-                spawnHeadGib(ch.x + (ch.w || 24) * 0.5, ch.y + 2, Math.sign(this.vx || 1) * 6.5, -7.5, ch.facing || 1, chVisuals);
-                spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + 14, ch.facing || 1, 7);
-              } else {
-                if (ch.dismembered) ch.dismembered.armFront = true;
-                spawnLimbGib('arm', this.x, this.y, Math.sign(this.vx || 1) * 5.5, -4.5, ch.facing || 1, chVisuals);
-                spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + 16, ch.facing || 1, 6);
+              ch.hasHead = true;
+              ch.decapitated = false;
+              ch.neckFountainTimer = 0;
+              if (ch.dismembered) {
+                ch.dismembered.armFront = false;
+                ch.dismembered.armBack = false;
+                ch.dismembered.legFront = false;
+                ch.dismembered.legBack = false;
               }
+              const throwDir = Math.sign(this.vx || 1);
+              ch.deathHitPoint = { x: this.x, y: this.y };
+              ch.deathImpulse = {
+                vx: throwDir * 7.5,
+                vy: isHeadshot ? 1.5 : -1.0
+              };
+              ch.bleedTimer = 90;
+              spawnBloodSpurt(this.x, this.y, throwDir * 5.0, -2.5, isHeadshot ? 28 : 18, 1.4);
+              spawnBloodDrip(this.x, this.y, throwDir * 2.2, -1.0, 8);
             }
 
             spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.5, -2, 7);

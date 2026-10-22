@@ -340,20 +340,20 @@ function updateMeleeCollision(shooter, ms) {
             triggerScreenShake(16);
           }
         } else if (ms.weaponId === 'AXE') {
-          // TOPOREK: Druzgocące rozrąbanie
-          if (isHeadshot || isBackstab || hitY <= t.y + 24) {
-            t.hasHead = false;
-            t.decapitated = true;
-            t.neckFountainTimer = 75;
-            spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + 2, facing * 6.5, -7.5, t.facing, targetVisuals);
-            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
-            triggerScreenShake(22);
-          } else {
-            t.dismembered.armFront = true;
-            spawnLimbGib('arm', hitX, hitY, facing * 5.5, -4.5, t.facing, targetVisuals);
-            spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 16, t.facing, 6);
-            triggerScreenShake(18);
-          }
+          // TOPOREK: Druzgocące uderzenie rąbano-obuchowe bez rozczłonkowania (Ciało w całości, tępy uraz)
+          t.hasHead = true;
+          t.decapitated = false;
+          t.neckFountainTimer = 0;
+          t.deathHitPoint = { x: hitX, y: hitY };
+          t.deathImpulse = {
+            vx: facing * 6.5,
+            vy: (isHeadshot || hitY <= t.y + 24) ? 2.5 : 1.2
+          };
+          t.bleedTimer = 90;
+          spawnBloodSpurt(hitX, hitY, facing * 4.5, -2.2, isHeadshot ? 28 : 18, 1.3);
+          spawnBloodDrip(hitX, hitY, facing * 2.0, -1.0, 8);
+          triggerScreenShake(18);
+          triggerHitstop(5);
         } else if (ms.weaponId === 'KNIFE') {
           // NÓŻ: Cicha eliminacja / poderżnięcie gardła lub kłuta tętnicza
           if (isBackstab || isHeadshot || hitY <= t.y + 22) {
