@@ -155,6 +155,11 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
 
 ## 5. Zarządzanie Gałęziami Git i Kopią Zapasową
 - **Automatyczny `git pull origin main` przed startem**: Zgodnie z punktem 0, każde nowe zadanie zaczynaj od pobrania aktualizacji z `origin/main`.
+- **Obowiązkowy `git push origin main` po każdym zadaniu**: Po pomyślnym zrealizowaniu zadania, przetestowaniu kodu i utworzeniu commita, agent ma BEZWZGLĘDNY OBOWIĄZEK wypchnąć zmiany do zdalnego repozytorium:
+  ```bash
+  git push origin main
+  ```
+  Nigdy nie pozostawiaj lokalnych zatwierdzonych zmian (commitów) bez wypchnięcia na `main` przed zakończeniem odpowiedzi.
 - **Bezwzględna ochrona `backup-main`**: NIGDY nie nadpisuj ani nie wypychaj zmian na gałąź `backup-main` bez wyraźnego, bezpośredniego polecenia użytkownika. Gdy użytkownik prosi o wypchnięcie na `main`, wypychaj wyłącznie `main`.
 
 ## 6. Standard Wizualny UI i Minimalizm Wojskowy (Zasada Przeciw Zaśmiecaniu)
