@@ -497,6 +497,8 @@ export function getWeaponHoldTransform(p) {
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const wepKey = (weapon && weapon.id && WEAPON_GRIP_CONFIGS[weapon.id]) ? weapon.id : 'AK47';
   const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
+  const rearGripDistX = gripCfg.rearGripX;
+  const rearGripDistY = gripCfg.rearGripY;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
@@ -627,42 +629,36 @@ export function getWeaponHoldTransform(p) {
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry / Melee Ready)
   const headBobOffset = (p.headBob || 0) * 0.70;
   const crouchDropY = isCrouch ? 4 : 0;
-  let loosePivotX;
-  let loosePivotY;
-  let directAngle;
-  let looseAimAngle;
+  let loosePivotX, loosePivotY, directAngle, looseAimAngle;
+  let handTargetX, handTargetY;
 
   if (isKnife) {
-    loosePivotX = rightShoulderX + knifeEffDx * charFacing;
-    loosePivotY = rightShoulderY + knifeEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    handTargetX = rightShoulderX + knifeEffDx * charFacing;
+    handTargetY = rightShoulderY + knifeEffDy + crouchDropY;
+    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = knifeEffAngle;
   } else if (isMachete) {
-    loosePivotX = rightShoulderX + macheteEffDx * charFacing;
-    loosePivotY = rightShoulderY + macheteEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    handTargetX = rightShoulderX + macheteEffDx * charFacing;
+    handTargetY = rightShoulderY + macheteEffDy + crouchDropY;
+    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = macheteEffAngle;
   } else if (isAxe) {
-    loosePivotX = rightShoulderX + axeEffDx * charFacing;
-    loosePivotY = rightShoulderY + axeEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    handTargetX = rightShoulderX + axeEffDx * charFacing;
+    handTargetY = rightShoulderY + axeEffDy + crouchDropY;
+    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = axeEffAngle;
   } else if (isPistol) {
-    loosePivotX = rightShoulderX + pistolEffDx * charFacing;
-    loosePivotY = rightShoulderY + pistolEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    handTargetX = rightShoulderX + pistolEffDx * charFacing;
+    handTargetY = rightShoulderY + pistolEffDy + crouchDropY;
+    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = pistolEffAngle;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : 5.2) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : 9.5) + headBobOffset + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-    if (directAngle < -Math.PI / 2) {
-      directAngle = Math.max(-1.66, directAngle);
-    } else if (directAngle > Math.PI / 2 + 0.35) {
-      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
-    }
-    const idleDroop = isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26);
-    looseAimAngle = directAngle + idleDroop;
+    if (directAngle < -Math.PI / 2) directAngle = Math.max(-1.66, directAngle);
+    else if (directAngle > Math.PI / 2 + 0.35) directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
+    looseAimAngle = directAngle + (isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26));
   }
 
   // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
@@ -699,7 +695,17 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  if ((!isAxe && !isPistol && !isKnife && !isMachete) || wRun < 0.5) {
+  if (isKnife || isMachete || isAxe || isPistol) {
+    if (wRun < 0.5) {
+      handTargetX += swayX;
+      handTargetY += swayY;
+      looseAimAngle += swayPitch;
+    }
+    const rotGripX = (Math.cos(looseAimAngle) * rearGripDistX - Math.sin(looseAimAngle) * rearGripDistY) * charFacing;
+    const rotGripY = Math.sin(looseAimAngle) * rearGripDistX + Math.cos(looseAimAngle) * rearGripDistY;
+    loosePivotX = handTargetX - rotGripX;
+    loosePivotY = handTargetY - rotGripY;
+  } else {
     loosePivotX += swayX;
     loosePivotY += swayY;
     looseAimAngle += swayPitch;
@@ -720,19 +726,31 @@ export function getWeaponHoldTransform(p) {
     // Dynamiczne wysunięcie noża w stronę kursora (Combat Knife Extension)
     const knifeReachDist = 14.5;
     shoulderAimAngle = directAngle;
-    shoulderPivotX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
-    shoulderPivotY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
+    const knifeHandX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
+    const knifeHandY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
+    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
+    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
+    shoulderPivotX = knifeHandX - rotGripX;
+    shoulderPivotY = knifeHandY - rotGripY;
   } else if (isMachete) {
     // Gotowość bojowa z uniesioną maczetą kukri (Machete Slashing Stance):
     shoulderAimAngle = -0.90 + directAngle * 0.40;
-    shoulderPivotX = rightShoulderX + 12.0 * charFacing;
-    shoulderPivotY = rightShoulderY + 4.0 + braceOffsetY;
+    const macheteHandX = rightShoulderX + 12.0 * charFacing;
+    const macheteHandY = rightShoulderY + 4.0 + braceOffsetY;
+    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
+    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
+    shoulderPivotX = macheteHandX - rotGripX;
+    shoulderPivotY = macheteHandY - rotGripY;
   } else if (isAxe) {
     // Toporek trzymany w dłoni (w spoczynku prostopadle, w biegu ugięty pod kątem do przodu)
     const axeSwayBlend = 1 - wRun;
     shoulderAimAngle = axeEffAngle + swayPitch * axeSwayBlend;
-    shoulderPivotX = rightShoulderX + axeEffDx * charFacing + swayX * axeSwayBlend;
-    shoulderPivotY = rightShoulderY + axeEffDy + braceOffsetY + swayY * axeSwayBlend;
+    const axeHandX = rightShoulderX + axeEffDx * charFacing + swayX * axeSwayBlend;
+    const axeHandY = rightShoulderY + axeEffDy + braceOffsetY + swayY * axeSwayBlend;
+    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
+    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
+    shoulderPivotX = axeHandX - rotGripX;
+    shoulderPivotY = axeHandY - rotGripY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
@@ -776,9 +794,6 @@ export function getWeaponHoldTransform(p) {
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
-  // Punkty podparcia dłoni w spoczynku / strzale z precyzyjnej mapy geometrii WEAPON_GRIP_CONFIGS
-  const rearGripDistX = gripCfg.rearGripX;
-  const rearGripDistY = gripCfg.rearGripY;
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia
   const foreGripDistX = gripCfg.foreGripX + pumpShift;

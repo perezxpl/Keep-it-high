@@ -1690,32 +1690,39 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const legShinFront = v.legShinFront || '#e53935';
   const bootFront = v.bootColor || '#18181b';
 
-  // 1. NOGI NA PIERWSZYM PLANIE (przed tułowiem, ale za trzymaną bronią w 2D)
+  // KOŃCZYNY I TRZYMANA BROŃ NA PIERWSZYM PLANIE
+  // W perspektywie 2D relacja warstw zależy od kierunku patrzenia (facing):
   if (isRightLimbForeground) {
+    // 1. PATRZENIE W PRAWO:
+    // Prawa noga jest na pierwszym planie za bronią
     if (!isLegFrontDismembered) {
       renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'right');
     } else {
       drawLimbStump(ctx, hipRightX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
     }
-  } else {
-    if (!isLegBackDismembered) {
-      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'left');
-    } else {
-      drawLimbStump(ctx, hipLeftX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
-    }
-  }
 
-  // 2. TRZYMANA BROŃ PALNA ORAZ BIAŁA (przed nogami, wewnątrz chwytu dłoni)
-  drawHeldWeapon(ctx, p);
+    // Broń trzymana w prawej ręce PRZED prawą nogą
+    drawHeldWeapon(ctx, p);
 
-  // 3. RAMIĘ NA PIERWSZYM PLANIE (dłoń obejmuje chwyt broni na wierzchu)
-  if (isRightLimbForeground) {
+    // Prawe ramię na wierzchu (dłoń obejmuje chwyt broni)
     if (!isArmFrontDismembered) {
       renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
     }
   } else {
+    // 2. PATRZENIE W LEWO:
+    // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą
+    drawHeldWeapon(ctx, p);
+
+    // Lewa noga na pierwszym planie (zasłania broń trzymaną w tle)
+    if (!isLegBackDismembered) {
+      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'left');
+    } else {
+      drawLimbStump(ctx, hipLeftX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
+    }
+
+    // Lewe ramię na pierwszym planie
     if (!isArmBackDismembered) {
       renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
     } else {
