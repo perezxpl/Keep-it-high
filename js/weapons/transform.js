@@ -563,10 +563,10 @@ export function getWeaponHoldTransform(p) {
   const isJog = (p.gaitMode === 'JOG');
   const isAimActive = !!(p.isAiming || p.isShooting || (p.shootPoseTimer > 0));
 
-  // W marszu (WALK) i w spoczynku (IDLE) ręce z toporkiem / pistoletem są opuszczone w dół,
-  // a w tempie szybszym niż chód (JOG i SPRINT) dynamicznie ugięte w łokciach i pompujące w rytmie biegu
+  // W marszu (WALK) i w spoczynku (IDLE) ręce z bronią jednoręczną są opuszczone lub w gardzie,
+  // a w tempie szybszym niż chód (JOG i SPRINT) dynamicznie ugięte w łokciach z asymetrią pompowania
   const isFasterThanWalk = (isSprint || isJog || (speed > 2.2)) && !p.isCrouching && !p.isProne && !p.isSliding;
-  const isOneHandRunWeapon = (isAxe || isPistol) && !p.meleeState;
+  const isOneHandRunWeapon = (isAxe || isPistol || isKnife || isMachete) && !p.meleeState;
   const targetRunWeight = (isOneHandRunWeapon && isFasterThanWalk) ? 1.0 : 0.0;
   p.axeRunWeight = (typeof p.axeRunWeight === 'number')
     ? p.axeRunWeight + (targetRunWeight - p.axeRunWeight) * 0.22
@@ -576,22 +576,40 @@ export function getWeaponHoldTransform(p) {
   const wRun = p.axeRunWeight;
 
   const runP = Math.sin(strideP);
-  const pumpX = (isSprint ? 5.5 : 3.5) * runP;
-  const pumpY = (isSprint ? 2.5 : 1.5) * Math.abs(Math.sin(strideP * 2));
+  // Asymetria biegu jednorącz: ręka z bronią trzymana zwarcie (Weapon Retention, małe wahadło),
+  // a ręka wolna pracuje dynamicznie jako biomechaniczna przeciwwaga (Counter-balance, pełne wahadło)
+  const pumpXWeapon = (isSprint ? 3.2 : 2.0) * runP;
+  const pumpYWeapon = (isSprint ? 1.8 : 1.0) * Math.abs(Math.sin(strideP * 2));
+  const pumpXLeft = (isSprint ? 8.2 : 5.4) * -runP;
+  const pumpYLeft = (isSprint ? 3.0 : 1.8) * Math.abs(Math.sin(strideP * 2));
 
   let axeEffDx = 1.2, axeEffDy = 24.8, axeEffAngle = -0.05;
   if (isAxe) {
     const perpAngle = Math.atan2(24.8, 1.2) - Math.PI / 2;
-    axeEffDx = lerp(1.2, 13.5 + pumpX, wRun);
-    axeEffDy = lerp(24.8, 12.0 - pumpY, wRun);
-    axeEffAngle = lerpAngle(perpAngle, -0.75 + runP * 0.18, wRun);
+    axeEffDx = lerp(1.2, 13.0 + pumpXWeapon, wRun);
+    axeEffDy = lerp(24.8, 12.0 - pumpYWeapon, wRun);
+    axeEffAngle = lerpAngle(perpAngle, -0.75 + runP * 0.10, wRun);
   }
 
   let pistolEffDx = 1.8, pistolEffDy = 23.5, pistolEffAngle = 0.65;
   if (isPistol) {
-    pistolEffDx = lerp(1.8, 13.5 + pumpX, wRun);
-    pistolEffDy = lerp(23.5, 12.0 - pumpY, wRun);
-    pistolEffAngle = lerpAngle(0.65, -0.45 + runP * 0.15, wRun);
+    pistolEffDx = lerp(1.8, 13.0 + pumpXWeapon, wRun);
+    pistolEffDy = lerp(23.5, 12.0 - pumpYWeapon, wRun);
+    pistolEffAngle = lerpAngle(0.65, -0.48 + runP * 0.08, wRun);
+  }
+
+  let knifeEffDx = 7.5, knifeEffDy = 16.0, knifeEffAngle = -0.22;
+  if (isKnife) {
+    knifeEffDx = lerp(7.5, 13.0 + pumpXWeapon, wRun);
+    knifeEffDy = lerp(16.0, 12.0 - pumpYWeapon, wRun);
+    knifeEffAngle = lerpAngle(-0.22, -0.38 + runP * 0.08, wRun);
+  }
+
+  let macheteEffDx = 9.5, macheteEffDy = 17.0, macheteEffAngle = -0.95;
+  if (isMachete) {
+    macheteEffDx = lerp(9.5, 13.0 + pumpXWeapon, wRun);
+    macheteEffDy = lerp(17.0, 12.0 - pumpYWeapon, wRun);
+    macheteEffAngle = lerpAngle(-0.95, -0.68 + runP * 0.10, wRun);
   }
 
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry / Melee Ready)
@@ -603,35 +621,21 @@ export function getWeaponHoldTransform(p) {
   let looseAimAngle;
 
   if (isKnife) {
-    // Pozycja bojowa gotowości z nożem (Combat Low-Ready):
-    loosePivotX = hipX + 7.5 * charFacing;
-    loosePivotY = hipY - 14.0 + headBobOffset + crouchDropY;
+    loosePivotX = rightShoulderX + knifeEffDx * charFacing;
+    loosePivotY = rightShoulderY + knifeEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-    if (directAngle < -Math.PI / 2) {
-      directAngle = Math.max(-1.66, directAngle);
-    } else if (directAngle > Math.PI / 2 + 0.35) {
-      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
-    }
-    looseAimAngle = directAngle * 0.40 - 0.22;
+    looseAimAngle = knifeEffAngle;
   } else if (isMachete) {
-    // Pozycja gotowości z maczetą (Machete Low-Ready):
-    loosePivotX = hipX + 9.5 * charFacing;
-    loosePivotY = hipY - 11.0 + headBobOffset + crouchDropY;
+    loosePivotX = rightShoulderX + macheteEffDx * charFacing;
+    loosePivotY = rightShoulderY + macheteEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-    if (directAngle < -Math.PI / 2) {
-      directAngle = Math.max(-1.66, directAngle);
-    } else if (directAngle > Math.PI / 2 + 0.35) {
-      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
-    }
-    looseAimAngle = -1.05 + directAngle * 0.15;
+    looseAimAngle = macheteEffAngle;
   } else if (isAxe) {
-    // Toporek w opuszczonej ręce prostopadle w marszu/postoju lub w ugiętym ramieniu w biegu
     loosePivotX = rightShoulderX + axeEffDx * charFacing;
     loosePivotY = rightShoulderY + axeEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     looseAimAngle = axeEffAngle;
   } else if (isPistol) {
-    // Mała broń palna: w marszu/postoju opuszczona przy biodrze (low-ready), w biegu ugięta w łokciu
     loosePivotX = rightShoulderX + pistolEffDx * charFacing;
     loosePivotY = rightShoulderY + pistolEffDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
@@ -683,7 +687,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  if ((!isAxe && !isPistol) || wRun < 0.5) {
+  if ((!isAxe && !isPistol && !isKnife && !isMachete) || wRun < 0.5) {
     loosePivotX += swayX;
     loosePivotY += swayY;
     looseAimAngle += swayPitch;
@@ -1286,31 +1290,22 @@ export function getWeaponHoldTransform(p) {
   let leftHandWorldX;
   let leftHandWorldY;
 
-  if (isKnife && !p.isProne) {
-    // Lewa ręka w taktycznej gardzie CQC (Tactical Guard & Parry Pose)
-    const guardBaseX = rightShoulderX + 2.0 * charFacing;
-    const guardBaseY = rightShoulderY + 4.0 + headBobOffset;
-    const aimFwd = Math.cos(directAngle);
-    const aimUp = Math.sin(directAngle);
-
-    // Subtelne ukierunkowanie gardy w stronę celu
-    const guardX = guardBaseX + (aimFwd * 5.0) * charFacing;
-    const guardY = guardBaseY + (aimUp * 4.0);
-
-    leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
-    leftHandWorldY = guardY + (leftHandLocalY || 0);
-  } else if ((isAxe || isPistol) && !p.isProne) {
-    // Lewa ręka opuszczona swobodnie w marszu/postoju, ugięta i pompująca w biegu,
-    // a przy celowaniu małą bronią dochodzi płynnie do oburęcznego chwytu pistoletu
+  if ((isAxe || isPistol || isKnife || isMachete) && !p.isProne) {
+    // Lewa ręka: dynamiczna przeciwwaga (Counter-balance) w biegu, garda/zwis w spoczynku, chwyt oburęczny przy celowaniu
     const runSway = isMoving ? Math.sin(strideP) * 2.0 : 0;
     const breatheSway = !isMoving ? Math.sin(performance.now() * 0.003) * 0.6 : 0;
-    const idleTrailX = leftShoulderX - (1.2 + runSway * 0.4) * charFacing;
-    const idleTrailY = leftShoulderY + 24.2 + headBobOffset + Math.abs(runSway) * 0.25 + breatheSway;
+    const runTrailX = leftShoulderX + (10.5 + pumpXLeft) * charFacing;
+    const runTrailY = leftShoulderY + 12.8 - pumpYLeft + headBobOffset;
 
-    const runP = Math.sin(strideP);
-    const pumpXLeft = (isSprint ? 5.5 : 3.5) * -runP;
-    const runTrailX = leftShoulderX + (11.5 + pumpXLeft) * charFacing;
-    const runTrailY = leftShoulderY + 12.5 - pumpY + headBobOffset;
+    let idleTrailX = leftShoulderX - (1.2 + runSway * 0.4) * charFacing;
+    let idleTrailY = leftShoulderY + 24.2 + headBobOffset + Math.abs(runSway) * 0.25 + breatheSway;
+    if (isKnife) {
+      idleTrailX = rightShoulderX + (2.0 + Math.cos(directAngle) * 5.0) * charFacing;
+      idleTrailY = rightShoulderY + 4.0 + headBobOffset + Math.sin(directAngle) * 4.0;
+    } else if (isMachete) {
+      idleTrailX = leftShoulderX + (10.0 + Math.cos(directAngle) * 3.5) * charFacing;
+      idleTrailY = leftShoulderY + 6.0 + headBobOffset + Math.sin(directAngle) * 2.5;
+    }
 
     const trailX = lerp(idleTrailX, runTrailX, wRun);
     const trailY = lerp(idleTrailY, runTrailY, wRun);
@@ -1324,19 +1319,6 @@ export function getWeaponHoldTransform(p) {
       leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
       leftHandWorldY = trailY + (leftHandLocalY || 0);
     }
-  } else if (isMachete && !p.isProne) {
-    // Lewa ręka w naturalnej gardzie taktycznej i równoważącej tułów (One-Handed Grip)
-    // Dłoń wysunięta przed lewy bark i klatkę piersiową z naturalnym ugięciem łokcia
-    const guardBaseX = leftShoulderX + 10.0 * charFacing;
-    const guardBaseY = leftShoulderY + 6.0 + headBobOffset;
-    const aimFwd = Math.cos(directAngle);
-    const aimUp = Math.sin(directAngle);
-
-    const guardX = guardBaseX + (aimFwd * 3.5) * charFacing;
-    const guardY = guardBaseY + (aimUp * 2.5);
-
-    leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
-    leftHandWorldY = guardY + (leftHandLocalY || 0);
   } else {
     leftHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * leftHandLocalX - Math.sin(proneAimAngle) * leftHandLocalY) * charFacing;
     leftHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * leftHandLocalX + Math.cos(proneAimAngle) * leftHandLocalY);
