@@ -516,8 +516,8 @@ export const MELEE_CONFIGS = {
     name: 'Toporek Tomahawk',
     type: 'OVERHEAD_CHOP',
     totalFrames: 26, windupFrames: 8, activeFrames: 6, recoveryFrames: 12, cooldownFrames: 28,
-    arcStart: -0.45, // elastyczne uniesienie topora do zamachu (~ -69 st)
-    arcEnd: 1.85,    // potężne rąbnięcie w dół (+63 st)
+    arcStart: -1.15, // elastyczne uniesienie topora do zamachu (~ -66 st)
+    arcEnd: 1.10,    // potężne rąbnięcie w dół (+63 st)
     reach: 64, width: 32, damage: 105, backstabMultiplier: 1.4,
     lungeForce: 3.0, downwardImpact: 1.8, bodyPush: 8.0, staggerDuration: 22,
     hitstopFrames: 6, screenShake: 14,
@@ -627,18 +627,17 @@ export function getWeaponHoldTransform(p) {
     }
     looseAimAngle = -1.05 + directAngle * 0.15;
   } else if (isAxe) {
-    // Pozycja gotowości z toporkiem tomahawk w jednej ręce w profilu 2D (Tomahawk Low-Ready):
-    // Prawa dłoń z toporkiem wysunięta w przestrzeń przed klatkę piersiową poza obrys tułowia (czytelna sylwetka w 2D),
-    // głowica uniesiona pod agresywnym kątem gotowa do natychmiastowego cięcia
-    loosePivotX = hipX + 17.5 * charFacing;
-    loosePivotY = hipY - 13.5 + headBobOffset + crouchDropY;
+    // Pozycja w spoczynku i gotowości z toporkiem: ręce opuszczone wzdłuż ciała,
+    // toporek trzymany w opuszczonej prawej dłoni w pozycji prostopadłej do ręki (poziomo w przód)
+    const armDx = 1.2;
+    const armDy = 24.8;
+    const armAngle = Math.atan2(armDy, armDx);
+    const perpAxeAngle = armAngle - Math.PI / 2;
+
+    loosePivotX = rightShoulderX + armDx * charFacing;
+    loosePivotY = rightShoulderY + armDy + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
-    if (directAngle < -Math.PI / 2) {
-      directAngle = Math.max(-1.66, directAngle);
-    } else if (directAngle > Math.PI / 2 + 0.35) {
-      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
-    }
-    looseAimAngle = -0.75 + directAngle * 0.22;
+    looseAimAngle = perpAxeAngle;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
@@ -724,10 +723,15 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = rightShoulderX + 12.0 * charFacing;
     shoulderPivotY = rightShoulderY + 4.0 + braceOffsetY;
   } else if (isAxe) {
-    // Gotowość bojowa z uniesionym toporkiem w jednej dłoni w profilu 2D (Tomahawk Chambered Stance)
-    shoulderAimAngle = -0.65 + directAngle * 0.35 + swayPitch;
-    shoulderPivotX = rightShoulderX + 19.0 * charFacing + swayX;
-    shoulderPivotY = rightShoulderY + 2.5 + braceOffsetY + swayY;
+    // Toporek trzymany w opuszczonej prawej dłoni w pozycji prostopadłej do ręki (kąt 90 st)
+    const armDx = 1.2;
+    const armDy = 24.8;
+    const armAngle = Math.atan2(armDy, armDx);
+    const perpAxeAngle = armAngle - Math.PI / 2;
+
+    shoulderAimAngle = perpAxeAngle + swayPitch;
+    shoulderPivotX = rightShoulderX + armDx * charFacing + swayX;
+    shoulderPivotY = rightShoulderY + armDy + braceOffsetY + swayY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
@@ -1157,11 +1161,11 @@ export function getWeaponHoldTransform(p) {
             leftHandLocalY = 3.0 * s;
             p.meleeTorsoTilt = -0.16 * charFacing * s;
           } else if (cfg.type === 'OVERHEAD_CHOP') {
-            // Toporek Zamach (Windup): elastyczne uniesienie topora nad bark/głowę, napięcie tułowia
+            // Toporek Zamach (Windup): płynne uniesienie z opuszczonej pozycji nad bark/głowę
             const sWind = ease(u);
-            meleeAngleOffset = -0.45 * sWind; // płynne uniesienie głowicy ku górze/tyłowi (~ -69 st)
-            shiftForward = -6.0 * sWind;      // cofnięcie dłoni ku prawemu barkowi (d = 9.5 px, naturalne ugięcie łokcia)
-            shiftY = -12.0 * sWind;           // uniesienie dłoni na wysokość ucha
+            meleeAngleOffset = -1.15 * sWind; // uniesienie głowicy ku górze/tyłowi (~ -66 st)
+            shiftForward = 7.0 * sWind;       // uniesienie dłoni z biodra (x=1.2) do barku (x=8.2)
+            shiftY = -26.0 * sWind;           // uniesienie z biodra (y=24.8) ku uchu (y=-1.2)
             leftHandLocalX = 8.0 * sWind;     // lewa ręka w tle unosi się lekko w przód dla celowania i balansu
             leftHandLocalY = -8.0 * sWind;
             p.meleeTorsoTilt = -0.18 * charFacing * sWind; // subtelne odchylenie tułowia w tył (ładowanie energii)
@@ -1199,9 +1203,9 @@ export function getWeaponHoldTransform(p) {
             // Toporek Uderzenie (Active): potężny, łukowy zamach tnący z pełnym zaangażowaniem masy ciała
             // Dynamiczne przyspieszenie z mocnym finiszem (cubic ease-out)
             const sChop = 1.0 - Math.pow(1.0 - u, 2.6);
-            meleeAngleOffset = lerp(-0.45, 1.85, sChop); // potężny 132-stopniowy łuk rąbnięcia (do +63 st w dół)
-            shiftForward = lerp(-6.0, 4.0, sChop);       // dłoń wysuwa się do przodu w bezpiecznym zasięgu (brak blokady IK)
-            shiftY = lerp(-12.0, 14.0, sChop);           // dłoń schodzi w dół wraz z masą obucha
+            meleeAngleOffset = lerp(-1.15, 1.10, sChop); // potężny 129-stopniowy łuk rąbnięcia (od -66 st do +63 st w dół)
+            shiftForward = lerp(7.0, 15.0, sChop);       // dłoń wysuwa się do przodu (zasięg bezpieczny bez blokady IK)
+            shiftY = lerp(-26.0, -8.0, sChop);           // dłoń schodzi w dół wraz z masą obucha
             leftHandLocalX = lerp(8.0, -9.0, sChop);     // lewa ręka dynamicznie odskakuje w tył-górę (counter-balance torque)
             leftHandLocalY = lerp(-8.0, -4.0, sChop);
             p.meleeTorsoTilt = lerp(-0.18, 0.32, sChop) * charFacing; // tułów dynamicznie pochyla się w przód z impetem ciosu
@@ -1231,21 +1235,26 @@ export function getWeaponHoldTransform(p) {
             leftHandLocalY = lerp(3.0, 0.0, s);
             p.meleeTorsoTilt = 0.22 * charFacing * (1.0 - s);
           } else if (cfg.type === 'OVERHEAD_CHOP') {
-            // Toporek Wyhamowanie (Recovery): elastyczne wygaszenie pędu, subtelne odbicie bezwładności i płynny powrót
+            // Toporek Wyhamowanie (Recovery): elastyczne wygaszenie pędu, subtelne odbicie i powrót do opuszczonych rąk
             const sRec = ease(u);
             const rebound = Math.sin(u * Math.PI) * 4.5;
-            meleeAngleOffset = lerp(1.85, 0.0, sRec) - rebound * 0.04;
-            shiftForward = lerp(4.0, 0.0, sRec);
-            shiftY = lerp(14.0, 0.0, sRec) - rebound * 0.8;
+            meleeAngleOffset = lerp(1.10, 0.0, sRec) - rebound * 0.04;
+            shiftForward = lerp(15.0, 0.0, sRec);
+            shiftY = lerp(-8.0, 0.0, sRec) - rebound * 0.8;
             leftHandLocalX = lerp(-9.0, 0.0, sRec);
             leftHandLocalY = lerp(-4.0, 0.0, sRec);
             p.meleeTorsoTilt = lerp(0.32, 0.0, sRec) * charFacing;
           }
         }
 
-        const attackVectorAngle = (isMelee && typeof directAngle === 'number') ? directAngle : blendedAngle;
-        finalPivotX += Math.cos(attackVectorAngle) * shiftForward * charFacing - Math.sin(attackVectorAngle) * shiftY * charFacing;
-        finalPivotY += Math.sin(attackVectorAngle) * shiftForward + Math.cos(attackVectorAngle) * shiftY;
+        if (cfg.type === 'OVERHEAD_CHOP') {
+          finalPivotX += shiftForward * charFacing;
+          finalPivotY += shiftY;
+        } else {
+          const attackVectorAngle = (isMelee && typeof directAngle === 'number') ? directAngle : blendedAngle;
+          finalPivotX += Math.cos(attackVectorAngle) * shiftForward * charFacing - Math.sin(attackVectorAngle) * shiftY * charFacing;
+          finalPivotY += Math.sin(attackVectorAngle) * shiftForward + Math.cos(attackVectorAngle) * shiftY;
+        }
       }
     } else if (p.meleeAttackTimer > 0 && !isMachete) {
       const meleeProg = p.meleeAttackTimer / 12;
@@ -1306,13 +1315,12 @@ export function getWeaponHoldTransform(p) {
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
   } else if (isAxe && !p.isProne) {
-    // Opcja 1 (Klasyka 2D): Lewa ręka w tle swobodnie opuszczona wzdłuż biodra lekko ku tyłowi (naturalna przeciwwaga dla topora)
-    // Tworzy czystą sylwetkę w profilu 2D bez nakładania się rąk i bez efektu podkurczonej kończyny
-    const runSway = isMoving ? Math.sin(strideP) * 2.4 : 0;
-    const breatheSway = !isMoving ? Math.sin(performance.now() * 0.003) * 0.5 : 0;
+    // Lewa ręka opuszczona swobodnie wzdłuż biodra (obie ręce opuszczone w spoczynku)
+    const runSway = isMoving ? Math.sin(strideP) * 2.0 : 0;
+    const breatheSway = !isMoving ? Math.sin(performance.now() * 0.003) * 0.6 : 0;
 
-    const trailX = leftShoulderX - (2.5 + runSway * 0.5) * charFacing;
-    const trailY = leftShoulderY + 24.0 + headBobOffset + Math.abs(runSway) * 0.3 + breatheSway;
+    const trailX = leftShoulderX - (1.2 + runSway * 0.4) * charFacing;
+    const trailY = leftShoulderY + 24.2 + headBobOffset + Math.abs(runSway) * 0.25 + breatheSway;
 
     leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = trailY + (leftHandLocalY || 0);

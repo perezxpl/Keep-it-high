@@ -199,7 +199,7 @@ try {
               weaponId: wepId,
               phase: 'ACTIVE',
               timer: 10,
-              cfg: { type: wepId === 'AXE' ? 'OVERHEAD_CHOP' : 'SLASH', windupFrames: 8, activeFrames: 6, recoveryFrames: 12, totalFrames: 26, arcStart: -0.45, arcEnd: 1.85 }
+              cfg: { type: wepId === 'AXE' ? 'OVERHEAD_CHOP' : 'SLASH', windupFrames: 8, activeFrames: 6, recoveryFrames: 12, totalFrames: 26, arcStart: -1.15, arcEnd: 1.10 }
             } : null
           });
         }
