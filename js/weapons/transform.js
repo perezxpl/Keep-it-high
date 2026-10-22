@@ -383,38 +383,22 @@ export const WEAPON_GRIP_CONFIGS = {
  */
 export const KNIFE_COMBO_MOVES = [
   {
-    step: 0,
-    name: 'FOREHAND_SLASH',
-    label: 'Cięcie ukośne z góry',
-    type: 'SLASH',
+    step: 0, name: 'FOREHAND_SLASH', label: 'Cięcie ukośne z góry', type: 'SLASH',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
-    arcStart: -0.90,  // ostrze uniesione w prawo-górę (-51 st)
-    arcEnd: 1.05,     // cięcie ukośne w poprzek klatki (+60 st)
-    reach: 58, width: 28, damage: 55, backstabMultiplier: 1.8,
-    lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4,
-    ballPush: { vx: 12.0, vy: -4.0, spin: 0.4 }
+    arcStart: -0.90, arcEnd: 1.05, reach: 58, width: 28, damage: 55, backstabMultiplier: 1.8,
+    lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4, ballPush: { vx: 12.0, vy: -4.0, spin: 0.4 }
   },
   {
-    step: 1,
-    name: 'BACKHAND_SLICE',
-    label: 'Cięcie powrotne z dołu',
-    type: 'BACKHAND',
+    step: 1, name: 'BACKHAND_SLICE', label: 'Cięcie powrotne z dołu', type: 'BACKHAND',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
-    arcStart: 0.95,   // ostrze z dołu (+54 st)
-    arcEnd: -0.85,    // błyskawiczne podcięcie powrotne w górę (-48 st)
-    reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
-    lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5,
-    ballPush: { vx: 13.5, vy: -5.5, spin: -0.5 }
+    arcStart: 0.95, arcEnd: -0.85, reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
+    lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5, ballPush: { vx: 13.5, vy: -5.5, spin: -0.5 }
   },
   {
-    step: 2,
-    name: 'LETHAL_THRUST',
-    label: 'Śmiertelne pchnięcie sztychem',
-    type: 'THRUST',
+    step: 2, name: 'LETHAL_THRUST', label: 'Śmiertelne pchnięcie sztychem', type: 'THRUST',
     totalFrames: 25, windupFrames: 7, activeFrames: 7, recoveryFrames: 11, cooldownFrames: 22,
-    reach: 66, width: 24, damage: 85, backstabMultiplier: 2.2, // 187 dmg - cichy finisher
-    lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8,
-    ballPush: { vx: 17.0, vy: -2.5, spin: 0.2 }
+    reach: 66, width: 24, damage: 85, backstabMultiplier: 2.2,
+    lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8, ballPush: { vx: 17.0, vy: -2.5, spin: 0.2 }
   }
 ];
 
@@ -423,28 +407,16 @@ export const KNIFE_COMBO_MOVES = [
  */
 export const MACHETE_COMBO_MOVES = [
   {
-    step: 0,
-    name: 'OVERHEAD_CLEAVE',
-    label: 'Zamaszyste cięcie z góry na dół',
-    type: 'OVERHEAD_CLEAVE',
+    step: 0, name: 'OVERHEAD_CLEAVE', label: 'Zamaszyste cięcie z góry na dół', type: 'OVERHEAD_CLEAVE',
     totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 22,
-    arcStart: -1.90,  // wysokie uniesienie za plecy / nad głowę (~10:30, -109 st)
-    arcEnd: 1.20,     // zamaszyste cięcie w dół przed kolana (~5:00, +69 st)
-    reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
-    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true,
-    ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
+    arcStart: -1.90, arcEnd: 1.20, reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
+    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true, ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
   {
-    step: 1,
-    name: 'UNDERHAND_CLEAVE',
-    label: 'Zamaszyste cięcie powrotne z dołu w górę',
-    type: 'UNDERHAND_CLEAVE',
+    step: 1, name: 'UNDERHAND_CLEAVE', label: 'Zamaszyste cięcie powrotne z dołu w górę', type: 'UNDERHAND_CLEAVE',
     totalFrames: 34, windupFrames: 10, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 34,
-    arcStart: 1.55,   // płynny start zamachu z tyłu-dołu (~7:30, +89 st)
-    arcEnd: -1.45,    // potężny powrotny zamach omiatający w górę przed twarz (~1:30, -83 st)
-    reach: 80, width: 44, damage: 90, backstabMultiplier: 1.8,
-    lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true,
-    ballPush: { vx: 21.0, vy: -8.0, spin: -0.8 }
+    arcStart: 1.55, arcEnd: -1.45, reach: 80, width: 44, damage: 90, backstabMultiplier: 1.8,
+    lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true, ballPush: { vx: 21.0, vy: -8.0, spin: -0.8 }
   }
 ];
 
@@ -597,12 +569,24 @@ export function getWeaponHoldTransform(p) {
   const runElbowY = Math.cos(runArmIK.swing) * upperL;
   const runForearmAngle = Math.atan2(runHandDy - runElbowY, runHandDx - runElbowX);
 
-  let axeEffDx = 1.2, axeEffDy = 24.8, axeEffAngle = -0.05;
+  let axeEffDx = 1.0, axeEffDy = 25.0, axeEffAngle = -0.05;
+  let axePalmOffsetX = 0, axePalmOffsetY = 0;
   if (isAxe) {
-    const perpAngle = Math.atan2(24.8, 1.2) - Math.PI / 2;
-    axeEffDx = lerp(1.2, runHandDx, wRun);
-    axeEffDy = lerp(24.8, runHandDy, wRun);
+    const perpAngle = Math.atan2(25.0, 1.0) - Math.PI / 2;
+    axeEffDx = lerp(1.0, runHandDx, wRun);
+    axeEffDy = lerp(25.0, runHandDy, wRun);
     axeEffAngle = lerpAngle(perpAngle, runForearmAngle, wRun);
+
+    // Dynamiczny offset środka dłoni (palm grasp center) względem nadgarstka:
+    const idleArmIK = getArmAnglesForTarget(1.0, 25.0, upperL, foreL, 1);
+    const idleElbowX = Math.sin(idleArmIK.swing) * upperL;
+    const idleElbowY = Math.cos(idleArmIK.swing) * upperL;
+    const idleForearmAngle = Math.atan2(25.0 - idleElbowY, 1.0 - idleElbowX);
+
+    const axeForearmAngle = lerpAngle(idleForearmAngle, runForearmAngle, wRun);
+    const axePalmDist = 2.4;
+    axePalmOffsetX = Math.cos(axeForearmAngle) * axePalmDist;
+    axePalmOffsetY = Math.sin(axeForearmAngle) * axePalmDist;
   }
 
   let pistolEffDx = 1.8, pistolEffDy = 23.5, pistolEffAngle = 0.65;
@@ -703,8 +687,8 @@ export function getWeaponHoldTransform(p) {
     }
     const rotGripX = (Math.cos(looseAimAngle) * rearGripDistX - Math.sin(looseAimAngle) * rearGripDistY) * charFacing;
     const rotGripY = Math.sin(looseAimAngle) * rearGripDistX + Math.cos(looseAimAngle) * rearGripDistY;
-    loosePivotX = handTargetX - rotGripX;
-    loosePivotY = handTargetY - rotGripY;
+    loosePivotX = handTargetX - rotGripX + (isAxe ? axePalmOffsetX * charFacing : 0);
+    loosePivotY = handTargetY - rotGripY + (isAxe ? axePalmOffsetY : 0);
   } else {
     loosePivotX += swayX;
     loosePivotY += swayY;
@@ -749,8 +733,8 @@ export function getWeaponHoldTransform(p) {
     const axeHandY = rightShoulderY + axeEffDy + braceOffsetY + swayY * axeSwayBlend;
     const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
     const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
-    shoulderPivotX = axeHandX - rotGripX;
-    shoulderPivotY = axeHandY - rotGripY;
+    shoulderPivotX = axeHandX - rotGripX + axePalmOffsetX * charFacing;
+    shoulderPivotY = axeHandY - rotGripY + axePalmOffsetY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
@@ -1314,6 +1298,11 @@ export function getWeaponHoldTransform(p) {
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
+
+  if (isAxe && !p.isProne && !p.meleeState) {
+    rightHandWorldX -= axePalmOffsetX * charFacing;
+    rightHandWorldY -= axePalmOffsetY;
+  }
   let leftHandWorldX;
   let leftHandWorldY;
 
