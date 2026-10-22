@@ -11,13 +11,21 @@
 //    Toporek Tomahawk wisi PIONOWO: trzonkiem do dołu, a ostrzem do góry!
 // 3. PLECY      -> Broń Główna (Slot 1: AK-47 / SPAS-12 / Barrett .50)
 //    przypięta DOKŁADNIE PIONOWO do stelaża jetpacka lub na pasie nośnym Sling.
-// 4. Gdy broń jest trzymana w dłoniach, kabura/pochwa/uchwyt pozostaje pusta!
+// 4. Logika widoczności: każda broń znajduje się w danym momencie dokładnie
+//    w jednym miejscu (albo w dłoniach, albo w kaburze/pochwie/na plecach,
+//    albo w locie po rzucie toporkiem)!
 // =========================================================================
 
 import { getWeaponPartSprite } from '../weapons/renderer.js';
 
+export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER'];
+export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF'];
+export const MELEE_WEAPON_IDS = ['KNIFE', 'MACHETE', 'AXE'];
+
 /**
- * Odczyt i normalizacja stanu zestawu uzbrojenia dla dowolnej postaci (gracz / bot)
+ * Odczyt i autorytatywna normalizacja stanu uzbrojenia dla dowolnej postaci (gracz / bot).
+ * Precyzyjnie ustala, która broń znajduje się w dłoniach, a które spoczywają
+ * w swoich mocowaniach (plecy / prawa noga / lewa noga).
  */
 export function getCharacterLoadout(p) {
   if (!p) {
@@ -33,43 +41,88 @@ export function getCharacterLoadout(p) {
     };
   }
 
-  const rawSlots = p.loadout?.pocket1?.slots;
-  const activeSlot = (typeof p.loadout?.pocket1?.activeSlotIndex === 'number')
-    ? p.loadout.pocket1.activeSlotIndex
-    : 0;
-
+  // 1. Domyślny zestaw bojowy wg klasy postaci (dla botów lub gracza bez konfiguracji)
   let primaryId = 'AK47';
   let secondaryId = 'GLOCK';
   let meleeId = 'KNIFE';
 
-  if (Array.isArray(rawSlots) && rawSlots.length >= 3) {
-    primaryId = rawSlots[0] || 'AK47';
-    secondaryId = rawSlots[1] || 'GLOCK';
-    meleeId = rawSlots[2] || 'KNIFE';
-  } else if (p.currentWeapon?.id) {
-    const curId = p.currentWeapon.id;
-    if (curId === 'AK47' || curId === 'SHOTGUN' || curId === 'SNIPER') {
-      primaryId = curId;
-    } else if (curId === 'GLOCK' || curId === 'REVOLVER' || curId === 'SAWED_OFF') {
-      secondaryId = curId;
-    } else if (curId === 'KNIFE' || curId === 'MACHETE' || curId === 'AXE') {
-      meleeId = curId;
+  const classId = p.currentClass?.id;
+  if (classId === 'RAPTOR') {
+    primaryId = 'SNIPER';
+    secondaryId = 'GLOCK';
+    meleeId = 'KNIFE';
+  } else if (classId === 'ENFORCER') {
+    primaryId = 'SHOTGUN';
+    secondaryId = 'REVOLVER';
+    meleeId = 'AXE';
+  } else if (classId === 'STRIKER') {
+    primaryId = 'AK47';
+    secondaryId = 'GLOCK';
+    meleeId = 'MACHETE';
+  }
+
+  // 2. Jeśli postać posiada zapisany loadout w kieszeni 1
+  const rawSlots = p.loadout?.pocket1?.slots;
+  if (Array.isArray(rawSlots)) {
+    if (rawSlots[0] && PRIMARY_WEAPON_IDS.includes(rawSlots[0])) primaryId = rawSlots[0];
+    if (rawSlots[1] && SECONDARY_WEAPON_IDS.includes(rawSlots[1])) secondaryId = rawSlots[1];
+    if (rawSlots[2] && MELEE_WEAPON_IDS.includes(rawSlots[2])) meleeId = rawSlots[2];
+  }
+
+  // 3. Sprawdzenie, czy broń jest aktualnie trzymana w dłoniach operatora
+  const isDead = !!p.isDead;
+  const isStaggered = (p.staggerTimer > 0);
+  const isThrowingGrenade = !!((p.throwAnim && p.throwAnim.active) || p.throwMode);
+  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
+  const isHolstered = hWeight >= 0.90;
+
+  // Czy jakakolwiek broń palna/biała jest aktualnie w rękach?
+  const hasWeaponInHands = !isDead && !isStaggered && !isThrowingGrenade && !isHolstered && !!p.currentWeapon;
+
+  let isPrimaryDrawn = false;
+  let isSecondaryDrawn = false;
+  let isMeleeDrawn = false;
+
+  if (hasWeaponInHands) {
+    const curWepId = p.currentWeapon.id;
+
+    if (PRIMARY_WEAPON_IDS.includes(curWepId)) {
+      // Postać trzyma w rękach broń główną (karabin / strzelba / snajperka)
+      primaryId = curWepId;
+      isPrimaryDrawn = true;
+      isSecondaryDrawn = false;
+      isMeleeDrawn = false;
+    } else if (SECONDARY_WEAPON_IDS.includes(curWepId)) {
+      // Postać trzyma w rękach broń boczną (Glock / Magnum / Obrzyn)
+      secondaryId = curWepId;
+      isPrimaryDrawn = false;
+      isSecondaryDrawn = true;
+      isMeleeDrawn = false;
+    } else if (MELEE_WEAPON_IDS.includes(curWepId)) {
+      // Postać trzyma w rękach broń białą (Nóż / Maczeta / Toporek)
+      meleeId = curWepId;
+      isPrimaryDrawn = false;
+      isSecondaryDrawn = false;
+      isMeleeDrawn = true;
     }
   }
 
-  const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
-  const isFullyHolstered = hWeight >= 0.95;
+  // Wyjątek: jeśli toporek został rzucony (axeThrown), nie ma go ani w rękach,
+  // ani w pochwie na lewej nodze (leci w powietrzu lub leży wbity w cel)
+  if (p.axeThrown) {
+    isMeleeDrawn = true; // Pochwa na lewej nodze pozostaje pusta
+  }
 
-  const isPrimaryDrawn = !isFullyHolstered && (activeSlot === 0);
-  const isSecondaryDrawn = !isFullyHolstered && (activeSlot === 1);
-  const isMeleeDrawn = !isFullyHolstered && (activeSlot === 2);
+  const activeSlot = (typeof p.loadout?.pocket1?.activeSlotIndex === 'number')
+    ? p.loadout.pocket1.activeSlotIndex
+    : (isSecondaryDrawn ? 1 : (isMeleeDrawn ? 2 : 0));
 
   return {
     primaryId,
     secondaryId,
     meleeId,
     activeSlot,
-    isHolstered: isFullyHolstered,
+    isHolstered: !hasWeaponInHands,
     isPrimaryDrawn,
     isSecondaryDrawn,
     isMeleeDrawn
@@ -112,6 +165,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     ctx.fillRect(bracketX - 1.2, bracketY - 7.0, 2.4, 1.4);
     ctx.fillRect(bracketX - 1.2, bracketY + 6.0, 2.4, 1.4);
 
+    // Jeśli broń główna nie jest trzymana w dłoniach, rysujemy ją przypiętą pionowo
     if (!loadout.isPrimaryDrawn) {
       ctx.save();
       ctx.translate(bracketX, bracketY);
@@ -125,7 +179,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
   } else {
     // -------------------------------------------------------------
     // TAKTYCZNY PAS NOŚNY (SLING) PRZEZ PLECY I RAMIĘ (STRIKER / ENFORCER)
-    // Lufa wznosi się w górę i lekko w tył za tylnym ramieniem.
+    // Lufa wznosi się w górę i w tył za tylnym ramieniem.
     // -------------------------------------------------------------
     const buttX = -fDir * (waistHalfW * 0.70);
     const buttY = -6.0;
@@ -516,8 +570,6 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
   ctx.fillStyle = '#3f3f46';
   ctx.fillRect(strapX - 1.2, -1.8, 2.4, 3.6);
 
-  const isAxeThrown = !!(meleeId === 'AXE' && p.axeThrown);
-
   if (meleeId === 'AXE') {
     // -------------------------------------------------------------
     // TOPOREK TOMAHAWK: WISI PIONOWO — TRZONKIEM DO DOŁU, OSTRZEM DO GÓRY!
@@ -532,7 +584,7 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
     ctx.lineWidth = 0.8;
     ctx.strokeRect(sheathStartX - 2.0, sheathCenterY - 3.2, 4.0, 6.4);
 
-    if (!loadout.isMeleeDrawn && !isAxeThrown) {
+    if (!loadout.isMeleeDrawn) {
       // 1. Syntetyczny trzonek tomahawka biegnący PIONOWO W DÓŁ UDA (+X)
       ctx.fillStyle = '#18181b';
       ctx.fillRect(sheathStartX, sheathCenterY - 1.2, sheathLen + 2.0, 2.4);
