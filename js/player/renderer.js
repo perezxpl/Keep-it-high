@@ -1685,25 +1685,17 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   ctx.restore();
 
-  drawHeldWeapon(ctx, p);
-
   const armColFront = v.armColorFront || '#e53935';
   const legThighFront = v.legThighFront || '#dc2626';
   const legShinFront = v.legShinFront || '#e53935';
   const bootFront = v.bootColor || '#18181b';
 
-  // KOŃCZYNY NA PIERWSZYM PLANIE
+  // 1. NOGI NA PIERWSZYM PLANIE (przed tułowiem, ale za trzymaną bronią w 2D)
   if (isRightLimbForeground) {
     if (!isLegFrontDismembered) {
       renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'right');
     } else {
       drawLimbStump(ctx, hipRightX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
-    }
-
-    if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
-    } else {
-      drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
     }
   } else {
     if (!isLegBackDismembered) {
@@ -1711,7 +1703,19 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     } else {
       drawLimbStump(ctx, hipLeftX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
     }
+  }
 
+  // 2. TRZYMANA BROŃ PALNA ORAZ BIAŁA (przed nogami, wewnątrz chwytu dłoni)
+  drawHeldWeapon(ctx, p);
+
+  // 3. RAMIĘ NA PIERWSZYM PLANIE (dłoń obejmuje chwyt broni na wierzchu)
+  if (isRightLimbForeground) {
+    if (!isArmFrontDismembered) {
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
+    } else {
+      drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, true);
+    }
+  } else {
     if (!isArmBackDismembered) {
       renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColFront, null, true, v, p.upperArmLen, p.forearmLen, p);
     } else {

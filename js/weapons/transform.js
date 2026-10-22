@@ -5,6 +5,7 @@
 
 import { WEAPON_CONFIG } from '../config.js';
 import { spawnDroppedMagazine } from '../particles.js';
+import { getArmAnglesForTarget } from '../player/ik.js';
 
 export const WEAPONS = {
   AK47: {
@@ -583,33 +584,44 @@ export function getWeaponHoldTransform(p) {
   const pumpXLeft = (isSprint ? 8.2 : 5.4) * -runP;
   const pumpYLeft = (isSprint ? 3.0 : 1.8) * Math.abs(Math.sin(strideP * 2));
 
+  // Dynamiczny kąt przedramienia prawej ręki w biegu (od łokcia do dłoni z IK):
+  // Zapewnia idealnie równoległą pozycję lufy / broni względem przedramienia w biegu
+  const runHandDx = 13.0 + pumpXWeapon;
+  const runHandDy = 12.0 - pumpYWeapon;
+  const upperL = p.upperArmLen || 14;
+  const foreL = p.forearmLen || 13;
+  const runArmIK = getArmAnglesForTarget(runHandDx, runHandDy, upperL, foreL, 1);
+  const runElbowX = Math.sin(runArmIK.swing) * upperL;
+  const runElbowY = Math.cos(runArmIK.swing) * upperL;
+  const runForearmAngle = Math.atan2(runHandDy - runElbowY, runHandDx - runElbowX);
+
   let axeEffDx = 1.2, axeEffDy = 24.8, axeEffAngle = -0.05;
   if (isAxe) {
     const perpAngle = Math.atan2(24.8, 1.2) - Math.PI / 2;
-    axeEffDx = lerp(1.2, 13.0 + pumpXWeapon, wRun);
-    axeEffDy = lerp(24.8, 12.0 - pumpYWeapon, wRun);
-    axeEffAngle = lerpAngle(perpAngle, -0.75 + runP * 0.10, wRun);
+    axeEffDx = lerp(1.2, runHandDx, wRun);
+    axeEffDy = lerp(24.8, runHandDy, wRun);
+    axeEffAngle = lerpAngle(perpAngle, runForearmAngle, wRun);
   }
 
   let pistolEffDx = 1.8, pistolEffDy = 23.5, pistolEffAngle = 0.65;
   if (isPistol) {
-    pistolEffDx = lerp(1.8, 13.0 + pumpXWeapon, wRun);
-    pistolEffDy = lerp(23.5, 12.0 - pumpYWeapon, wRun);
-    pistolEffAngle = lerpAngle(0.65, -0.48 + runP * 0.08, wRun);
+    pistolEffDx = lerp(1.8, runHandDx, wRun);
+    pistolEffDy = lerp(23.5, runHandDy, wRun);
+    pistolEffAngle = lerpAngle(0.65, runForearmAngle, wRun);
   }
 
   let knifeEffDx = 7.5, knifeEffDy = 16.0, knifeEffAngle = -0.22;
   if (isKnife) {
-    knifeEffDx = lerp(7.5, 13.0 + pumpXWeapon, wRun);
-    knifeEffDy = lerp(16.0, 12.0 - pumpYWeapon, wRun);
-    knifeEffAngle = lerpAngle(-0.22, -0.38 + runP * 0.08, wRun);
+    knifeEffDx = lerp(7.5, runHandDx, wRun);
+    knifeEffDy = lerp(16.0, runHandDy, wRun);
+    knifeEffAngle = lerpAngle(-0.22, runForearmAngle, wRun);
   }
 
   let macheteEffDx = 9.5, macheteEffDy = 17.0, macheteEffAngle = -0.95;
   if (isMachete) {
-    macheteEffDx = lerp(9.5, 13.0 + pumpXWeapon, wRun);
-    macheteEffDy = lerp(17.0, 12.0 - pumpYWeapon, wRun);
-    macheteEffAngle = lerpAngle(-0.95, -0.68 + runP * 0.10, wRun);
+    macheteEffDx = lerp(9.5, runHandDx, wRun);
+    macheteEffDy = lerp(17.0, runHandDy, wRun);
+    macheteEffAngle = lerpAngle(-0.95, runForearmAngle, wRun);
   }
 
   // STAN 1: Luźne trzymanie (Low-Ready / Patrol Carry / Melee Ready)
