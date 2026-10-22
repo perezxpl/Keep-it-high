@@ -4,10 +4,13 @@
 // Moduł zarządza realistycznym wyposażeniem taktycznym postaci gracza i botów:
 // 1. PRAWA NOGA -> Kabura udowa (Strong-Side Drop-Leg Holster) z małą bronią
 //    palną (Slot 2: Glock 17 / Magnum .44 / Obrzyn 12G).
+//    Broń jest głęboko i widocznie UKRYTA wewnątrz kabury (zamek i lufa
+//    zakryte przez przednią ściankę Kydex, wystaje tylko chwyt pistoletowy).
 // 2. LEWA NOGA  -> Pochwa udowa (Drop-Leg Tactical Sheath) z bronią białą
 //    (Slot 3: Nóż M9 / Maczeta Kukri / Toporek Tomahawk).
+//    Toporek Tomahawk wisi PIONOWO: trzonkiem do dołu, a ostrzem do góry!
 // 3. PLECY      -> Broń Główna (Slot 1: AK-47 / SPAS-12 / Barrett .50)
-//    na 2-punktowym pasie nośnym (Sling) lub na szynie jetpacka Raptora.
+//    przypięta DOKŁADNIE PIONOWO do stelaża jetpacka lub na pasie nośnym Sling.
 // 4. Gdy broń jest trzymana w dłoniach, kabura/pochwa/uchwyt pozostaje pusta!
 // =========================================================================
 
@@ -87,46 +90,49 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
 
   if (hasJetpack) {
     // -------------------------------------------------------------
-    // MONTAŻ NA STELAŻU JETPACKA (RAPTOR)
-    // Karabin przymocowany sztywno do bocznej szyny stelaża odrzutowego,
-    // odsunięty od osi dysz wylotowych silnika.
-    // Lufa wznosi się w górę wzdłuż krawędzi plecaka.
+    // MONTAŻ PIONOWY NA STELAŻU JETPACKA (RAPTOR)
+    // Karabin przypięty DOKŁADNIE PIONOWO do bocznej ramy jetpacka:
+    // Lufa wznosi się idealnie pionowo w górę ku niebu (-Math.PI * 0.5),
+    // kolba opada pionowo w dół wzdłuż stelaża.
     // -------------------------------------------------------------
-    const bracketX = -fDir * (shoulderHalfW + 3.0);
+    const bracketX = -fDir * (shoulderHalfW + 2.6);
     const bracketY = -18.0;
-    const bracketAng = -fDir * 0.18; // Prawie pionowo wzdłuż boku jetpacka
 
-    // Uchwyt montażowy z tytanu łączący ramę jetpacka z bronią
+    // Podwójne tytanowe klamry montażowe (górna i dolna) mocujące korpus do ramy
     ctx.fillStyle = '#18181b';
-    ctx.fillRect(bracketX - 1.8, bracketY - 3.5, 3.6, 7.0);
+    ctx.fillRect(bracketX - 2.0, bracketY - 8.0, 4.0, 3.2);
+    ctx.fillRect(bracketX - 2.0, bracketY + 5.0, 4.0, 3.2);
     ctx.strokeStyle = '#3f3f46';
     ctx.lineWidth = 0.8;
-    ctx.strokeRect(bracketX - 1.8, bracketY - 3.5, 3.6, 7.0);
+    ctx.strokeRect(bracketX - 2.0, bracketY - 8.0, 4.0, 3.2);
+    ctx.strokeRect(bracketX - 2.0, bracketY + 5.0, 4.0, 3.2);
 
-    // Zatrzask Quick-Release
+    // Dźwignie zatrzaskowe Quick-Release
     ctx.fillStyle = '#71717a';
-    ctx.fillRect(bracketX - 1.0, bracketY - 1.5, 2.0, 3.0);
+    ctx.fillRect(bracketX - 1.2, bracketY - 7.0, 2.4, 1.4);
+    ctx.fillRect(bracketX - 1.2, bracketY + 6.0, 2.4, 1.4);
 
     if (!loadout.isPrimaryDrawn) {
       ctx.save();
       ctx.translate(bracketX, bracketY);
-      ctx.rotate(bracketAng);
-      ctx.scale(fDir, 1);
+      // Dokładny kąt pionowy: lufa skierowana prosto w górę (-Math.PI * 0.5)
+      ctx.rotate(-Math.PI * 0.5);
+      // fDir zapewnia, że magazynek i chwyt przylegają do stelaża jetpacka
+      ctx.scale(1, fDir);
       drawPrimaryWeaponSprite(ctx, primaryId, 0.86);
       ctx.restore();
     }
   } else {
     // -------------------------------------------------------------
     // TAKTYCZNY PAS NOŚNY (SLING) PRZEZ PLECY I RAMIĘ (STRIKER / ENFORCER)
-    // Karabin ułożony po przekątnej pleców:
-    // Kolba oparta o dół pleców przy biodrze, lufa wznosi się za tylnym ramieniem ku górze i tyłowi.
+    // Lufa wznosi się w górę i lekko w tył za tylnym ramieniem.
     // -------------------------------------------------------------
-    const buttX = -fDir * (waistHalfW * 0.65);
+    const buttX = -fDir * (waistHalfW * 0.70);
     const buttY = -6.0;
-    const muzzleX = -fDir * (shoulderHalfW + 2.8);
-    const muzzleY = -30.0;
+    const muzzleX = -fDir * (shoulderHalfW + 2.0);
+    const muzzleY = -31.0;
 
-    // Pas nośny Sling (nylonowa taśma nośna przebiegająca przez ramię i klatkę)
+    // Pas nośny Sling
     ctx.strokeStyle = '#18181b';
     ctx.lineWidth = 2.4;
     ctx.beginPath();
@@ -148,20 +154,16 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     ctx.fillRect(qdX - 1.2, qdY - 1.2, 2.4, 2.4);
 
     if (!loadout.isPrimaryDrawn) {
-      // Wyznaczenie kąta przekątnej pleców: od kolby ku lufie
       const dx = muzzleX - buttX;
       const dy = muzzleY - buttY;
       const slingAng = Math.atan2(dy, dx);
 
-      // Środek ciężkości broni w okolicach gniazda magazynka
       const mountX = buttX + dx * 0.45;
       const mountY = buttY + dy * 0.45;
 
       ctx.save();
       ctx.translate(mountX, mountY);
       ctx.rotate(slingAng);
-      // W układzie przekątnej: +X to kierunek ku lufie (w górę i w tył za plecy)
-      // Odbicie fDir zapewnia, że detale zamka i magazynka są skierowane do wewnątrz
       ctx.scale(1, fDir);
       drawPrimaryWeaponSprite(ctx, primaryId, 0.88);
       ctx.restore();
@@ -201,7 +203,6 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
       }
       ctx.restore();
     } else {
-      // Fallback proceduralny
       ctx.fillStyle = '#78350f';
       ctx.fillRect(-12.0, -1.8, 10.0, 3.6);
       ctx.fillStyle = '#0f172a';
@@ -277,10 +278,9 @@ function drawPrimaryWeaponSprite(ctx, weaponId, scaleMult = 1.0) {
 /**
  * 1. PRAWA NOGA: KABURA UDOWA NA MAŁĄ BROŃ PALNĄ (STRONG-SIDE DROP-LEG HOLSTER)
  * Wywoływane wewnątrz układu współrzędnych PRAWEGO uda w renderIKLeg.
- * Układ uda:
- * - (0, 0) to biodro
- * - +X biegnie w dół uda prosto do kolana (l1)
- * - +Y to tył uda, -Y to przód uda
+ * Broń jest GŁĘBOKO I REALISTYCZNIE UKRYTA W ŚRODKU KABURY:
+ * Zamek i lufa są zakryte przez zewnętrzną ściankę Kydex,
+ * na zewnątrz wystaje tylko ergonomiczny chwyt pistoletowy z magazynkiem.
  */
 export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = {}, isFrontLeg = true) {
   if (!ctx || !p || p.isDead) return;
@@ -289,19 +289,18 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
   const secondaryId = loadout.secondaryId;
 
   // Pozycja wzdłuż osi uda (od biodra ku kolanu):
-  // Wlot kabury od góry (przy biodrze), dno w stronę kolana
   const holsterStartX = l1 * 0.22;
-  const holsterEndX = l1 * 0.60;
-  const holsterLen = holsterEndX - holsterStartX; // Długość wzdłuż uda (~15px)
-  const holsterW = 5.6 * (v.muscleMult || 1.0);  // Szerokość w poprzek uda
+  const holsterEndX = l1 * 0.62;
+  const holsterLen = holsterEndX - holsterStartX; // Długość kabury (~16px)
+  const holsterW = 5.8 * (v.muscleMult || 1.0);  // Szerokość w poprzek uda
   const holsterCenterY = 0.0;                    // Na osi bocznej uda
 
   ctx.save();
   if (!isFrontLeg) {
-    ctx.globalAlpha = 0.88; // Subtelne przyciemnienie dla nogi w tle
+    ctx.globalAlpha = 0.88;
   }
 
-  // A. Pasek wieszakowy w górę do pasa biodrowego
+  // 1. Pasek wieszakowy w górę do pasa biodrowego
   ctx.strokeStyle = '#18181b';
   ctx.lineWidth = 1.8;
   ctx.beginPath();
@@ -309,7 +308,7 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
   ctx.lineTo(0, -thighHalfH * 0.55);
   ctx.stroke();
 
-  // B. Elastyczny pas udowy (Thigh Strap) obejmujący udo w poprzek
+  // 2. Elastyczny pas udowy (Thigh Strap) obejmujący udo w poprzek
   const strapX = holsterStartX + holsterLen * 0.45;
   ctx.strokeStyle = '#18181b';
   ctx.lineWidth = 2.4;
@@ -322,7 +321,7 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
   ctx.fillStyle = '#3f3f46';
   ctx.fillRect(strapX - 1.2, -1.8, 2.4, 3.6);
 
-  // C. Polimerowa płyta nośna Kydex pod kaburą
+  // 3. PŁYTA TYLNA MONTAŻOWA (Kydex Backplate) pod pistoletem
   ctx.fillStyle = '#18181b';
   ctx.beginPath();
   if (ctx.roundRect) {
@@ -335,31 +334,16 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
   ctx.lineWidth = 0.75;
   ctx.stroke();
 
-  // Śruby montażowe regulacji kąta kabury
+  // Śruby montażowe
   ctx.fillStyle = '#52525b';
   ctx.beginPath();
   ctx.arc(holsterStartX + 3.0, holsterCenterY - 1.5, 0.6, 0, Math.PI * 2);
   ctx.arc(holsterStartX + 3.0, holsterCenterY + 1.5, 0.6, 0, Math.PI * 2);
   ctx.fill();
 
-  // D. Kydexowa skorupa kabury ułożona WZDŁUŻ UDA (wlot przy biodrze, dno przy kolanie)
-  ctx.fillStyle = '#09090b';
-  ctx.beginPath();
-  ctx.moveTo(holsterStartX, holsterCenterY - holsterW * 0.5);
-  ctx.lineTo(holsterEndX, holsterCenterY - holsterW * 0.35);
-  ctx.lineTo(holsterEndX, holsterCenterY + holsterW * 0.35);
-  ctx.lineTo(holsterStartX, holsterCenterY + holsterW * 0.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#27272a';
-  ctx.lineWidth = 0.85;
-  ctx.stroke();
-
-  // Przetłoczenie wzmacniające wzdłuż skorupy kabury
-  ctx.fillStyle = '#18181b';
-  ctx.fillRect(holsterStartX + 2.0, holsterCenterY - holsterW * 0.25, holsterLen - 3.5, holsterW * 0.5);
-
-  // E. Wsunięta broń lub pusta kabura
+  // 4. PISTOLET (WSUNIĘTY GŁĘBOKO W KABURĘ)
+  // Rysowany PRZED przednią ścianką kabury, dzięki czemu lufa i zamek
+  // są schowane WEWNĄTRZ kabury, a na zewnątrz wystaje tylko rękojeść!
   if (!loadout.isSecondaryDrawn) {
     if (secondaryId === 'GLOCK') {
       const imgFrame = getWeaponPartSprite('GLOCK_FRAME');
@@ -369,14 +353,12 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
           imgSlide && imgSlide.complete && imgSlide.naturalWidth > 0) {
         ctx.save();
         const s = (15.7 / 835) * 0.85;
-        // Punkt wlotu kabury: lufa celuje w dół uda (+X ku kolanu)
-        // Lekki ergonomiczny kąt -8° unoszący chwyt w stronę dłoni
-        ctx.translate(holsterStartX + 3.5, holsterCenterY);
-        ctx.rotate(-0.14);
+        // Wlot kabury: lufa celuje w dół uda (+X ku kolanu)
+        // Odsunięcie: zamek i lufa chowają się głęboko pod ściankę kabury
+        ctx.translate(holsterStartX + 3.0, holsterCenterY);
+        ctx.rotate(-0.10);
         ctx.scale(s, s);
-        // Odsunięcie: lufa chowa się wewnątrz kabury w prawo (+X),
-        // a chwyt pistoletowy z kabłąkiem wystaje przy wlocie w lewo (-X)
-        ctx.translate(-260, -95);
+        ctx.translate(-240, -90);
         ctx.drawImage(imgFrame, 2, 140);
         ctx.drawImage(imgSlide, 44, 2);
         ctx.restore();
@@ -391,10 +373,6 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
         ctx.closePath();
         ctx.fill();
       }
-
-      // Blokada kabury SLS (pałąk zabezpieczający chwyt)
-      ctx.fillStyle = '#3f3f46';
-      ctx.fillRect(holsterStartX - 0.8, holsterCenterY - holsterW * 0.45, 1.6, holsterW * 0.9);
     } else if (secondaryId === 'REVOLVER') {
       const imgBody = getWeaponPartSprite('REVOLVER_BODY');
       const imgCyl = getWeaponPartSprite('REVOLVER_CYLINDER');
@@ -402,10 +380,10 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
       if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
         ctx.save();
         const s = (20.2 / 1040) * 0.82;
-        ctx.translate(holsterStartX + 4.0, holsterCenterY);
-        ctx.rotate(-0.14);
+        ctx.translate(holsterStartX + 3.5, holsterCenterY);
+        ctx.rotate(-0.10);
         ctx.scale(s, s);
-        ctx.translate(-420, -110);
+        ctx.translate(-400, -105);
         ctx.drawImage(imgBody, 2, 2);
         if (imgCyl && imgCyl.complete && imgCyl.naturalWidth > 0) {
           ctx.drawImage(imgCyl, 380, 90);
@@ -422,10 +400,6 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
         ctx.closePath();
         ctx.fill();
       }
-
-      // Pasek zabezpieczający kurek
-      ctx.fillStyle = '#27272a';
-      ctx.fillRect(holsterStartX - 0.8, holsterCenterY - holsterW * 0.45, 1.6, holsterW * 0.9);
     } else if (secondaryId === 'SAWED_OFF') {
       const imgBody = getWeaponPartSprite('SAWED_OFF_BODY');
       const imgBarrels = getWeaponPartSprite('SAWED_OFF_BARRELS');
@@ -433,17 +407,17 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
       if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
         ctx.save();
         const s = (23.0 / 1160) * 0.82;
-        ctx.translate(holsterStartX + 4.0, holsterCenterY);
-        ctx.rotate(-0.14);
+        ctx.translate(holsterStartX + 3.5, holsterCenterY);
+        ctx.rotate(-0.10);
         ctx.scale(s, s);
-        ctx.translate(-440, -65);
+        ctx.translate(-420, -60);
         ctx.drawImage(imgBody, 2, 2);
         if (imgBarrels && imgBarrels.complete && imgBarrels.naturalWidth > 0) {
           ctx.drawImage(imgBarrels, 500, 10);
         }
         ctx.restore();
       } else {
-        // Fallback chwytu birdshead
+        // Fallback obrzyna
         ctx.fillStyle = '#78350f';
         ctx.beginPath();
         ctx.moveTo(holsterStartX + 1.0, holsterCenterY);
@@ -454,10 +428,38 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
         ctx.fill();
       }
     }
+  }
+
+  // 5. PRZEDNIA ŚCIANKA KABURY (FRONT SHELL KYDEX) ZAKRYWAJĄCA BROŃ!
+  // Rysowana NA WIERZCHU pistoletu – dzięki wycięciu bojowemu (Combat Cut)
+  // lufa i zamek są całkowicie ukryte w kaburze, a na zewnątrz wystaje
+  // tylko rękojeść/chwyt pistoletowy!
+  ctx.fillStyle = '#09090b';
+  ctx.beginPath();
+  // Wlot z wycięciem pod chwyt pistoletowy
+  ctx.moveTo(holsterStartX + 1.8, holsterCenterY - holsterW * 0.48);
+  ctx.lineTo(holsterEndX, holsterCenterY - holsterW * 0.35);
+  ctx.lineTo(holsterEndX, holsterCenterY + holsterW * 0.35);
+  ctx.lineTo(holsterStartX, holsterCenterY + holsterW * 0.48);
+  ctx.quadraticCurveTo(holsterStartX + 2.8, holsterCenterY, holsterStartX + 1.8, holsterCenterY - holsterW * 0.48);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#27272a';
+  ctx.lineWidth = 0.85;
+  ctx.stroke();
+
+  // Wytłoczenie formowanego Kydexu na przedniej ściance
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(holsterStartX + 3.0, holsterCenterY - holsterW * 0.22, holsterLen - 4.5, holsterW * 0.44);
+
+  // 6. Blokada SLS / pasek zabezpieczający
+  if (!loadout.isSecondaryDrawn) {
+    ctx.fillStyle = '#3f3f46';
+    ctx.fillRect(holsterStartX - 0.6, holsterCenterY - holsterW * 0.45, 1.6, holsterW * 0.9);
   } else {
-    // Pusta komora kabury z otwartym gardłem i odchyloną blokadą
+    // Pusta komora kabury z odchyloną blokadą
     ctx.fillStyle = '#050505';
-    ctx.fillRect(holsterStartX - 0.5, holsterCenterY - holsterW * 0.35, 2.4, holsterW * 0.7);
+    ctx.fillRect(holsterStartX, holsterCenterY - holsterW * 0.30, 2.0, holsterW * 0.6);
     ctx.strokeStyle = '#3f3f46';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
@@ -472,10 +474,8 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
 /**
  * 2. LEWA NOGA: POCHWA UDOWA NA BROŃ BIAŁĄ (DROP-LEG TACTICAL SHEATH)
  * Wywoływane wewnątrz układu współrzędnych LEWEGO uda w renderIKLeg.
- * Układ uda:
- * - (0, 0) to biodro
- * - +X biegnie w dół uda prosto do kolana (l1)
- * - +Y to tył uda, -Y to przód uda
+ * TOPOREK TOMAHAWK: wisi PIONOWO — trzonkiem do dołu, a ostrzem do góry!
+ * NÓŻ M9 / MACZETA: ostrze głęboko ukryte w pochwie, wystaje tylko chwyt.
  */
 export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {}, isFrontLeg = true) {
   if (!ctx || !p || p.isDead) return;
@@ -486,16 +486,16 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
   // Pozycja wzdłuż osi lewego uda:
   const sheathStartX = l1 * 0.20;
   const sheathEndX = l1 * 0.62;
-  const sheathLen = sheathEndX - sheathStartX; // Długość wzdłuż lewego uda (~16px)
+  const sheathLen = sheathEndX - sheathStartX; // Długość pochwy (~16px)
   const sheathW = 5.2 * (v.muscleMult || 1.0);  // Szerokość pochwy
   const sheathCenterY = 0.0;
 
   ctx.save();
   if (!isFrontLeg) {
-    ctx.globalAlpha = 0.88; // Subtelne przyciemnienie dla nogi w tle
+    ctx.globalAlpha = 0.88;
   }
 
-  // A. Pasek wieszakowy w górę do pasa biodrowego
+  // 1. Pasek wieszakowy w górę do pasa biodrowego
   ctx.strokeStyle = '#18181b';
   ctx.lineWidth = 1.8;
   ctx.beginPath();
@@ -503,7 +503,7 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
   ctx.lineTo(0, -thighHalfH * 0.55);
   ctx.stroke();
 
-  // B. Elastyczny pas udowy obejmujący lewe udo
+  // 2. Elastyczny pas udowy obejmujący lewe udo
   const strapX = sheathStartX + sheathLen * 0.45;
   ctx.strokeStyle = '#18181b';
   ctx.lineWidth = 2.4;
@@ -516,104 +516,196 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
   ctx.fillStyle = '#3f3f46';
   ctx.fillRect(strapX - 1.2, -1.8, 2.4, 3.6);
 
-  // C. Taktyczna kydexowa pochwa wzdłuż lewego uda (wlot przy biodrze, dno przy kolanie)
-  ctx.fillStyle = '#18181b';
-  ctx.beginPath();
-  ctx.moveTo(sheathStartX, sheathCenterY - sheathW * 0.45);
-  ctx.lineTo(sheathEndX, sheathCenterY - sheathW * 0.28);
-  ctx.lineTo(sheathEndX + 1.5, sheathCenterY);
-  ctx.lineTo(sheathEndX, sheathCenterY + 0.28 * sheathW);
-  ctx.lineTo(sheathStartX, sheathCenterY + sheathW * 0.45);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#27272a';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-
-  // Nity montażowe wzdłuż krawędzi pochwy
-  ctx.fillStyle = '#52525b';
-  ctx.fillRect(sheathStartX + 3.0, sheathCenterY - sheathW * 0.35, 0.9, 0.9);
-  ctx.fillRect(sheathStartX + 7.5, sheathCenterY - sheathW * 0.30, 0.9, 0.9);
-  ctx.fillRect(sheathStartX + 12.0, sheathCenterY - sheathW * 0.25, 0.9, 0.9);
-
-  // D. Wsunięta broń biała lub pusta pochwa
   const isAxeThrown = !!(meleeId === 'AXE' && p.axeThrown);
-  if (!loadout.isMeleeDrawn && !isAxeThrown) {
-    if (meleeId === 'KNIFE') {
-      const imgKnife = getWeaponPartSprite('KNIFE');
-      if (imgKnife && imgKnife.complete && imgKnife.naturalWidth > 0) {
-        ctx.save();
-        const s = (24.7 / 1275) * 0.85;
-        // Ostrze wsuwa się w pochwę w prawo (+X ku kolanu)
-        // Rękojeść M9 z jelcem wystaje z wlotu w lewo (-X ku biodru)
-        ctx.translate(sheathStartX + 3.0, sheathCenterY);
-        ctx.scale(s, s);
-        ctx.translate(-268.4, -188.5);
-        ctx.drawImage(imgKnife, 2, 2);
-        ctx.restore();
-      } else {
-        // Fallback rękojeści noża M9
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(sheathStartX - 1.2, sheathCenterY - 2.8, 1.4, 5.6);
-        ctx.fillStyle = '#09090b';
-        ctx.fillRect(sheathStartX - 8.0, sheathCenterY - 1.6, 7.0, 3.2);
-      }
 
-      // Pasek zatrzaskowy z napem zabezpieczający rękojeść
+  if (meleeId === 'AXE') {
+    // -------------------------------------------------------------
+    // TOPOREK TOMAHAWK: WISI PIONOWO — TRZONKIEM DO DOŁU, OSTRZEM DO GÓRY!
+    // Trzonek biegnie pionowo w dół uda (+X ku kolanu).
+    // Stalowa głowica z szerokim ostrzem tnącym znajduje się u góry
+    // przy biodrze (sheathStartX) i jest skierowana do góry pionowo!
+    // -------------------------------------------------------------
+    // Taktyczna klamra pierścieniowa (Axe Frog Ring) na udzie
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(sheathStartX - 2.0, sheathCenterY - 3.2, 4.0, 6.4);
+    ctx.strokeStyle = '#3f3f46';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(sheathStartX - 2.0, sheathCenterY - 3.2, 4.0, 6.4);
+
+    if (!loadout.isMeleeDrawn && !isAxeThrown) {
+      // 1. Syntetyczny trzonek tomahawka biegnący PIONOWO W DÓŁ UDA (+X)
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(sheathStartX, sheathCenterY - 1.2, sheathLen + 2.0, 2.4);
+      // Fakturowane rowki chwytu na trzonku
+      ctx.fillStyle = '#27272a';
+      for (let tx = sheathStartX + 4.0; tx < sheathStartX + sheathLen; tx += 2.2) {
+        ctx.fillRect(tx, sheathCenterY - 1.2, 1.0, 2.4);
+      }
+      // Otwór na smycz na dole trzonka
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.arc(sheathStartX + sheathLen, sheathCenterY, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Kuta stalowa głowica tomahawka U GÓRY (sheathStartX)
+      // OSTRZEM SKIEROWANA DO GÓRY PIONOWO!
+      ctx.save();
+      ctx.translate(sheathStartX, sheathCenterY);
+
+      // Korpus głowicy obejmujący trzonek
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-2.5, -2.5, 5.0, 5.0);
+
+      // Śruby mocujące głowicę
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.arc(0, -1.0, 0.6, 0, Math.PI * 2);
+      ctx.arc(0, 1.0, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // SZEROKIE OSTRZE SIECZNE SKIEROWANE PIONOWO DO GÓRY (-X ku biodru/górze)
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.moveTo(-2.5, -2.0);
+      ctx.lineTo(-8.5, -6.5); // Czubek górny ostrza
+      ctx.lineTo(-8.5, 4.5);  // Czubek dolny ostrza
+      ctx.lineTo(-2.5, 2.0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Polerowana faza szlifu krawędzi tnącej
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(-6.5, -5.0);
+      ctx.lineTo(-8.5, -6.5);
+      ctx.lineTo(-8.5, 4.5);
+      ctx.lineTo(-6.5, 3.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tylny szpikulec penetrujący (Breaching spike)
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(2.5, -1.5);
+      ctx.lineTo(6.5, -4.5);
+      ctx.lineTo(2.5, 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(4.5, -3.0);
+      ctx.lineTo(6.5, -4.5);
+      ctx.lineTo(4.5, -1.0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      // Pasek zatrzaskowy zabezpieczający trzonek w pierścieniu
+      ctx.fillStyle = '#27272a';
+      ctx.fillRect(sheathStartX - 1.2, sheathCenterY - 3.4, 2.4, 6.8);
+      ctx.fillStyle = '#a1a1aa';
+      ctx.beginPath();
+      ctx.arc(sheathStartX, sheathCenterY, 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Pusta klamra z luźną pętlą
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(sheathStartX - 1.2, sheathCenterY - 2.0, 2.4, 4.0);
+    }
+  } else {
+    // -------------------------------------------------------------
+    // NÓŻ M9 LUB MACZETA KUKRI W POCHWIE KYDEX
+    // Ostrze jest GŁĘBOKO SCHOWANE W POCHWIE (zakryte przednią ścianką),
+    // a na zewnątrz wystaje tylko ergonomiczny chwyt z jelcem!
+    // -------------------------------------------------------------
+    // 1. Podkład / płyta tylna pochwy
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.moveTo(sheathStartX, sheathCenterY - sheathW * 0.45);
+    ctx.lineTo(sheathEndX, sheathCenterY - sheathW * 0.28);
+    ctx.lineTo(sheathEndX + 1.5, sheathCenterY);
+    ctx.lineTo(sheathEndX, sheathCenterY + 0.28 * sheathW);
+    ctx.lineTo(sheathStartX, sheathCenterY + sheathW * 0.45);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Nóż / Maczeta (ostrze wsuwa się w dół, rękojeść wystaje ku biodru)
+    if (!loadout.isMeleeDrawn) {
+      if (meleeId === 'KNIFE') {
+        const imgKnife = getWeaponPartSprite('KNIFE');
+        if (imgKnife && imgKnife.complete && imgKnife.naturalWidth > 0) {
+          ctx.save();
+          const s = (24.7 / 1275) * 0.85;
+          ctx.translate(sheathStartX + 3.0, sheathCenterY);
+          ctx.scale(s, s);
+          ctx.translate(-268.4, -188.5);
+          ctx.drawImage(imgKnife, 2, 2);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(sheathStartX - 1.2, sheathCenterY - 2.8, 1.4, 5.6);
+          ctx.fillStyle = '#09090b';
+          ctx.fillRect(sheathStartX - 8.0, sheathCenterY - 1.6, 7.0, 3.2);
+        }
+      } else if (meleeId === 'MACHETE') {
+        const imgMachete = getWeaponPartSprite('MACHETE');
+        if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
+          ctx.save();
+          const s = (28.0 / 1242) * 0.82;
+          ctx.translate(sheathStartX + 3.0, sheathCenterY);
+          ctx.scale(s, s);
+          ctx.translate(-200.0, -84.0);
+          ctx.drawImage(imgMachete, 2, 2);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#451a03';
+          ctx.beginPath();
+          ctx.moveTo(sheathStartX, sheathCenterY - 1.2);
+          ctx.lineTo(sheathStartX - 8.5, sheathCenterY - 2.2);
+          ctx.lineTo(sheathStartX - 8.2, sheathCenterY + 1.8);
+          ctx.lineTo(sheathStartX, sheathCenterY + 1.2);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    // 3. PRZEDNIA ŚCIANKA POCHWY (FRONT SHELL) ZAKRYWAJĄCA OSTRZE!
+    // Klinga jest całkowicie schowana pod skorupą pochwy,
+    // wystaje tylko rękojeść z jelcem!
+    ctx.fillStyle = '#09090b';
+    ctx.beginPath();
+    ctx.moveTo(sheathStartX + 1.5, sheathCenterY - sheathW * 0.42);
+    ctx.lineTo(sheathEndX, sheathCenterY - sheathW * 0.28);
+    ctx.lineTo(sheathEndX + 1.5, sheathCenterY);
+    ctx.lineTo(sheathEndX, sheathCenterY + 0.28 * sheathW);
+    ctx.lineTo(sheathStartX + 1.5, sheathCenterY + sheathW * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+
+    // Nity montażowe wzdłuż krawędzi pochwy
+    ctx.fillStyle = '#52525b';
+    ctx.fillRect(sheathStartX + 3.0, sheathCenterY - sheathW * 0.35, 0.9, 0.9);
+    ctx.fillRect(sheathStartX + 7.5, sheathCenterY - sheathW * 0.30, 0.9, 0.9);
+    ctx.fillRect(sheathStartX + 12.0, sheathCenterY - sheathW * 0.25, 0.9, 0.9);
+
+    if (!loadout.isMeleeDrawn) {
+      // Pasek zatrzaskowy zabezpieczający rękojeść
       ctx.fillStyle = '#27272a';
       ctx.fillRect(sheathStartX - 1.0, sheathCenterY - sheathW * 0.45, 1.5, sheathW * 0.9);
       ctx.fillStyle = '#a1a1aa';
       ctx.beginPath();
       ctx.arc(sheathStartX - 0.2, sheathCenterY, 0.65, 0, Math.PI * 2);
       ctx.fill();
-    } else if (meleeId === 'MACHETE') {
-      const imgMachete = getWeaponPartSprite('MACHETE');
-      if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
-        ctx.save();
-        const s = (28.0 / 1242) * 0.82;
-        ctx.translate(sheathStartX + 3.0, sheathCenterY);
-        ctx.scale(s, s);
-        ctx.translate(-200.0, -84.0);
-        ctx.drawImage(imgMachete, 2, 2);
-        ctx.restore();
-      } else {
-        // Fallback rękojeści kukri
-        ctx.fillStyle = '#451a03';
-        ctx.beginPath();
-        ctx.moveTo(sheathStartX, sheathCenterY - 1.2);
-        ctx.lineTo(sheathStartX - 8.5, sheathCenterY - 2.2);
-        ctx.lineTo(sheathStartX - 8.2, sheathCenterY + 1.8);
-        ctx.lineTo(sheathStartX, sheathCenterY + 1.2);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Pasek zabezpieczający
-      ctx.fillStyle = '#27272a';
-      ctx.fillRect(sheathStartX - 1.0, sheathCenterY - sheathW * 0.45, 1.5, sheathW * 0.9);
-    } else if (meleeId === 'AXE') {
-      const imgAxe = getWeaponPartSprite('AXE');
-      if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
-        ctx.save();
-        const s = (19.5 / 1115) * 0.82;
-        // Stylisko biegnie w dół uda (+X ku kolanu), głowica zabezpieczona przy wlocie
-        ctx.translate(sheathStartX + 4.0, sheathCenterY);
-        ctx.scale(s, s);
-        ctx.translate(-228.7, -206.0);
-        ctx.drawImage(imgAxe, 2, 2);
-        ctx.restore();
-      } else {
-        // Fallback tomahawka
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(sheathStartX - 3.0, sheathCenterY - 3.5, 3.6, 7.0);
-        ctx.fillStyle = '#27272a';
-        ctx.fillRect(sheathStartX, sheathCenterY - 1.2, 14.0, 2.4);
-      }
+    } else {
+      // Puste gardło pochwy
+      ctx.fillStyle = '#050505';
+      ctx.fillRect(sheathStartX, sheathCenterY - sheathW * 0.30, 2.0, sheathW * 0.6);
     }
-  } else {
-    // Pusta pochwa z otwartym gardłem
-    ctx.fillStyle = '#09090b';
-    ctx.fillRect(sheathStartX - 0.5, sheathCenterY - sheathW * 0.35, 2.4, sheathW * 0.7);
   }
 
   ctx.restore();
