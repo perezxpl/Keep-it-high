@@ -1491,56 +1491,95 @@ export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
     ctx.stroke();
 
   } else if (weaponId === 'AXE') {
-    // 1. Zbroczone krwią stalowe ostrze siekierki (głowica i broda tomahawka)
+    // 1. Głęboka, zakrzepła krew na całym stalowym ostrzu tomahawka (axe bit & beard)
     ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.94})`;
     ctx.beginPath();
-    ctx.moveTo(10.5, -6.0);
-    ctx.lineTo(15.7, -5.5);
-    ctx.lineTo(14.3, 6.7);
-    ctx.lineTo(9.2, 5.2);
+    ctx.moveTo(11.16, 3.34); // szpic brody siekiery
+    ctx.quadraticCurveTo(12.4, 4.05, 13.93, 4.25); // dół łuku ostrza
+    ctx.quadraticCurveTo(14.8, 4.18, 15.52, 3.97); // czubek przedni (toe)
+    ctx.lineTo(15.15, 2.30); // przednia krawędź głowicy
+    ctx.lineTo(13.50, 2.10); // płaz/policzek głowicy
+    ctx.quadraticCurveTo(12.2, 2.75, 11.16, 3.34); // gardziel pod brodą
     ctx.closePath();
     ctx.fill();
 
-    // 2. Krew na tylnym kolcu (rear spike)
+    // 2. Krew na górnym szpicu/kolcu tomahawka (top armor-piercing spike)
+    ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.92})`;
     ctx.beginPath();
-    ctx.moveTo(9.5, -1.2);
-    ctx.lineTo(5.2, -1.0);
-    ctx.lineTo(9.5, 0.4);
+    ctx.moveTo(13.75, -3.53); // szpic kolca
+    ctx.lineTo(14.90, -1.50); // prawy bok kolca
+    ctx.lineTo(13.95, -1.50); // lewy bok kolca
     ctx.closePath();
     ctx.fill();
 
-    // 3. Świeża krew wzdłuż krawędzi rąbiącej (bit & beard)
-    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.95})`;
+    // 3. Świeża krew wzdłuż samej krawędzi tnącej (bright arterial cutting bevel)
+    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.96})`;
     ctx.beginPath();
-    ctx.moveTo(12.5, -5.6);
-    ctx.lineTo(15.7, -5.5);
-    ctx.lineTo(14.3, 6.7);
-    ctx.lineTo(11.5, 5.8);
+    ctx.moveTo(11.16, 3.34);
+    ctx.quadraticCurveTo(12.4, 4.05, 13.93, 4.25);
+    ctx.quadraticCurveTo(14.8, 4.18, 15.52, 3.97);
+    ctx.lineTo(15.35, 3.50);
+    ctx.quadraticCurveTo(14.7, 3.82, 13.93, 3.90);
+    ctx.quadraticCurveTo(12.5, 3.75, 11.45, 3.10);
     ctx.closePath();
     ctx.fill();
 
-    // 4. Ściekające krople z brody siekierki (dolny róg ostrza tomahawka x = 14.2, y = 6.6)
+    // Świeża krew na czubku górnego kolca
+    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.96})`;
+    ctx.beginPath();
+    ctx.moveTo(13.75, -3.53);
+    ctx.lineTo(14.45, -2.50);
+    ctx.lineTo(13.95, -2.50);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Rozbryzgi i plamy krwi na policzku i oku głowicy (blood splatters on cheek)
+    ctx.fillStyle = `rgba(153, 27, 27, ${alpha * 0.88})`;
+    ctx.beginPath();
+    ctx.arc(13.50, 2.00, 0.85, 0, Math.PI * 2);
+    ctx.arc(14.25, 1.35, 0.65, 0, Math.PI * 2);
+    ctx.arc(14.65, 2.70, 0.75, 0, Math.PI * 2);
+    ctx.arc(12.75, 2.55, 0.60, 0, Math.PI * 2);
+    ctx.arc(14.15, -0.65, 0.70, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Ściekające krople krwi z fizycznych narożników ostrza i kolca
     const dripPhase1 = (t * 0.7) % 1.0;
-    const dripPhase2 = (t * 0.5 + 0.3) % 1.0;
+    const dripPhase2 = (t * 0.55 + 0.35) % 1.0;
+    const dripPhase3 = (t * 0.45 + 0.70) % 1.0;
 
-    const d1Len = 0.6 + dripPhase1 * 2.4;
+    // Kropla 1: z ostrego haczyka brody tomahawka (x = 11.16, y = 3.34)
+    const d1Len = 0.5 + dripPhase1 * 1.8;
     ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.ellipse(14.1, 6.7 + d1Len * 0.5, 1.1, d1Len * 0.7, 0, 0, Math.PI * 2);
+    ctx.ellipse(11.16, 3.34 + d1Len * 0.5, 0.75, d1Len * 0.55, -0.15, 0, Math.PI * 2);
     ctx.fill();
 
-    // Kropla z tylnego kolca (x = 5.3, y = -0.9)
-    const d2Len = 0.4 + dripPhase2 * 1.6;
+    // Kropla 2: z najniższego punktu łuku ostrza (x = 13.93, y = 4.25)
+    const d2Len = 0.6 + dripPhase2 * 2.2;
     ctx.beginPath();
-    ctx.ellipse(5.4, -0.9 + d2Len * 0.5, 0.8, d2Len * 0.55, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(13.93, 4.25 + d2Len * 0.5, 0.85, d2Len * 0.65, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 5. Mokry połysk na ostrzu
+    // Kropla 3: z przedniego rogu ostrza (x = 15.52, y = 3.97)
+    const d3Len = 0.45 + dripPhase3 * 1.6;
+    ctx.beginPath();
+    ctx.ellipse(15.50, 3.97 + d3Len * 0.5, 0.65, d3Len * 0.50, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Mokry połysk wzdłuż łuku krawędzi rąbiącej
     ctx.strokeStyle = `rgba(254, 202, 202, ${alpha * 0.55})`;
     ctx.lineWidth = 0.6;
     ctx.beginPath();
-    ctx.moveTo(14.8, -4.5);
-    ctx.lineTo(13.6, 5.5);
+    ctx.moveTo(11.45, 3.45);
+    ctx.quadraticCurveTo(12.6, 3.95, 13.93, 4.15);
+    ctx.quadraticCurveTo(14.8, 4.08, 15.35, 3.90);
+    ctx.stroke();
+
+    // Połysk na kolcu
+    ctx.beginPath();
+    ctx.moveTo(13.80, -3.40);
+    ctx.lineTo(14.30, -2.20);
     ctx.stroke();
   }
 

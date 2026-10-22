@@ -16,7 +16,7 @@
 //    albo w locie po rzucie toporkiem)!
 // =========================================================================
 
-import { getWeaponPartSprite } from '../weapons/renderer.js';
+import { getWeaponPartSprite, drawWeaponBloodOverlay } from '../weapons/renderer.js';
 
 export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF'];
@@ -600,6 +600,13 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
         // Przesunięcie środka głowicy tomahawka (X = 1020, Y = 206) do punktu montażu (0, 0):
         ctx.translate(-1020.0, -206.0);
         ctx.drawImage(imgAxe, 2, 2);
+        if (p.meleeBloodTimer > 0) {
+          ctx.save();
+          ctx.translate(1020.0 - 228.7, 0);
+          ctx.scale(1 / s, 1 / s);
+          drawWeaponBloodOverlay(ctx, 'AXE', p.meleeBloodTimer);
+          ctx.restore();
+        }
         ctx.restore();
       } else {
         // Proceduralny fallback w trakcie ładowania assetu
