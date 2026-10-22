@@ -10,6 +10,7 @@ import { isSleeveless, isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPal
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette } from './jetpack.js';
+import { drawThighHolster } from './holsters.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1535,6 +1536,11 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
         drawBloodSoak(ctx, bLegBackX, 0.0, 4.2, 2.8, t3 * 0.8);
       }
     }
+  }
+
+  // Kabura pistoletowa na przednim prawym udzie (Strong-Side Drop-Leg Holster)
+  if (isFrontLeg && playerRef) {
+    drawThighHolster(ctx, playerRef, l1, thighHalfH, facing, v);
   }
 
   ctx.restore();

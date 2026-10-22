@@ -14,6 +14,7 @@ import {
 import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
 import { camera } from '../camera.js';
+import { drawBackWeapon, drawHipMeleeSheath } from './holsters.js';
 
 import {
   DEFAULT_VISUALS,
@@ -1339,6 +1340,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   // Wyposażenie pasa klasy (np. Pas Ładunków Wybuchowych Enforcera)
   p.currentClass?.onDrawBelt?.(ctx, p, v, fDir, waistHalfW, beltTopY, beltBotY);
 
+  // Pochwa taktyczna broni białej przy pasie (Cross-Draw na lewym biodrze)
+  drawHipMeleeSheath(ctx, p, fDir, waistHalfW, beltTopY, beltBotY, v);
+
   // NAKŁADANA KAMIZELKA KULOODPORNA (MODULAR BULLETPROOF VEST / PLATE CARRIER)
   // Rysowana TYLKO wtedy, gdy gracz posiada pancerz lub ma ustawione p.hasVest / v.hasVest
   const hasEquippedVest = !!(p.hasVest || v.hasVest);
@@ -1353,6 +1357,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   // MODEL JETPACKA NA PLECACH POSTACI
   drawJetpack(ctx, p, currentFacingDir, isLookingAway, absCos, absSin, waistHalfW, shoulderHalfW, v);
+
+  // Broń główna na plecach lub stelażu jetpacka
+  const hasJetpackOnBack = !((p.currentClass?.id === 'STRIKER' || p.currentClass?.id === 'ENFORCER') && !v.forceJetpackBackpack);
+  drawBackWeapon(ctx, p, currentFacingDir, waistHalfW, shoulderHalfW, v, hasJetpackOnBack);
 
   // GŁOWA LUB KIKUT SZYI
   ctx.save();
