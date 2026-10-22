@@ -238,7 +238,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
-  const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming));
+  const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming) || (player.meleeState));
   const targetWeight = isShootingStance ? 1.0 : 0.0;
   const weightRate = (targetWeight > (player.shootPoseWeight || 0)) ? 0.32 : 0.14;
   player.shootPoseWeight = (typeof player.shootPoseWeight === 'number')
@@ -1282,6 +1282,26 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     targetPelvisY = -7.5 + Math.sin(player.stridePhase * 2 - Math.PI / 2) * 4.2;
   } else if (player.gaitMode === 'SPRINT') {
     targetPelvisY = -5.5 + Math.sin(player.stridePhase * 2 - Math.PI / 2) * 5.0;
+  }
+
+  // Dynamiczne zaangażowanie środka ciężkości i ugięcie kolan w ataku toporkiem
+  if (player.meleeState && player.onGround && !player.isJumping) {
+    const ms = player.meleeState;
+    const cfg = ms.cfg;
+    if (cfg && cfg.type === 'OVERHEAD_CHOP') {
+      const wFrames = cfg.windupFrames || 8;
+      const aFrames = cfg.activeFrames || 6;
+      if (ms.phase === 'WINDUP') {
+        const u = ms.timer / Math.max(1, wFrames);
+        targetPelvisY -= 1.8 * Math.sin(u * Math.PI * 0.5);
+      } else if (ms.phase === 'ACTIVE') {
+        const u = (ms.timer - wFrames) / Math.max(1, aFrames);
+        targetPelvisY += 5.2 * Math.sin(u * Math.PI * 0.5);
+      } else if (ms.phase === 'RECOVERY') {
+        const u = (ms.timer - wFrames - aFrames) / Math.max(1, cfg.recoveryFrames || 12);
+        targetPelvisY += 5.2 * (1.0 - Math.min(1.0, u));
+      }
+    }
   }
 
   if (player.isJumping) targetPelvisY = -4.0;

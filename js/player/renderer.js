@@ -693,7 +693,10 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawBackSwing = 0.12 + cp * 0.30;
     rawBackElbow = 0.60 + cp * 0.40;
   } else if (p.gaitMode === 'IDLE') {
-    const braceW = (p.shootPoseWeight || 0);
+    let braceW = (p.shootPoseWeight || 0);
+    if (p.meleeState) {
+      braceW = Math.max(braceW, 0.85);
+    }
     const frontOffset = lerp(3, 16, braceW) * p.facing;
     const backOffset = lerp(-3, -15, braceW) * p.facing;
 
@@ -963,6 +966,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
   let footBlend = p.isDead ? 0.90 : 0.32;
   let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.8 ? 0.88 : (wepWeight > 0.4 ? 0.78 : 0.45)) : 0.28);
+
+  // Dynamiczny, natychmiastowy czas reakcji kończyn podczas ataku wręcz (brak opóźnienia i dławienia klatek animacji)
+  if (p.meleeState && !p.isDead) {
+    armBlend = 0.96;
+    footBlend = 0.65;
+  }
 
   if (p.jumpTakeoffTimer > 0) {
     footBlend = 0.85;
