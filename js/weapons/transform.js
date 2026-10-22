@@ -718,20 +718,36 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = rightShoulderX + 11.5 * charFacing;
     shoulderPivotY = rightShoulderY + 4.5 + braceOffsetY;
   } else if (isTwoHandedHandgun) {
-    // Postawa oburęczna z wyprostowanymi ramionami (Modern Isosceles / Two-Handed Handgun Extension)
-    const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
-    const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5 + braceOffsetY;
-    let rawPistolAngle = Math.atan2(aimY - chestCenterY, (aimX - chestCenterX) * charFacing);
+    // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
+    const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
+    const headBobY = (p.headBob || 0) * 0.35;
+    const crouchDropY = isCrouch ? 4.0 : 0;
+    const eyeWorldX = hipX + (30.5 * Math.sin(torsoTilt) + 2.7 * charFacing * Math.cos(torsoTilt));
+    const eyeWorldY = hipY - (30.5 * Math.cos(torsoTilt) - 2.7 * charFacing * Math.sin(torsoTilt)) - 2.1 + headBobY + crouchDropY;
+
+    let rawPistolAngle = Math.atan2(aimY - eyeWorldY, (aimX - eyeWorldX) * charFacing);
     if (rawPistolAngle < -Math.PI / 2) rawPistolAngle = Math.max(-1.66, rawPistolAngle);
     else if (rawPistolAngle > Math.PI / 2 + 0.35) rawPistolAngle = Math.min(Math.PI / 2 + 0.35, rawPistolAngle);
     shoulderAimAngle = rawPistolAngle - muzzleRise;
+
+    const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
+    const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5;
     const totalArmReach = (p.upperArmLen || 14) + (p.forearmLen || 13);
     const avgGripX = ((gripCfg.rearGripX || 0) + (gripCfg.foreGripX || 0)) * 0.5;
-    // Wyprostowane łokcie (~90% zasięgu ramion) do celowania i strzelania
-    const targetHandDist = totalArmReach * 0.90;
-    const pistolExtension = targetHandDist - avgGripX;
-    shoulderPivotX = chestCenterX + Math.cos(shoulderAimAngle) * pistolExtension * charFacing;
-    shoulderPivotY = chestCenterY + Math.sin(shoulderAimAngle) * pistolExtension;
+
+    // Przecięcie promienia celowania z poziomu oczu z pełnym wyprostem ramion od klatki/barków
+    const targetReach = totalArmReach * 1.08;
+    const Dx = (eyeWorldX - chestCenterX) * charFacing;
+    const Dy = eyeWorldY - chestCenterY;
+    const c = Dx * Dx + Dy * Dy - targetReach * targetReach;
+    const b = Dx * Math.cos(shoulderAimAngle) + Dy * Math.sin(shoulderAimAngle);
+    const discr = Math.max(0, b * b - c);
+    const extT = -b + Math.sqrt(discr);
+
+    // Przyrządy celownicze i zamek pistoletu znajdują się dokładnie na wysokości oczu
+    const sightToPivotOffset = 2.0;
+    shoulderPivotX = eyeWorldX + Math.cos(shoulderAimAngle) * (extT - avgGripX) * charFacing;
+    shoulderPivotY = eyeWorldY + Math.sin(shoulderAimAngle) * (extT - avgGripX) + sightToPivotOffset;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
@@ -1329,7 +1345,9 @@ export function getWeaponHoldTransform(p) {
     bladeHilt: { x: hiltX, y: hiltY },
     isMagInGun,
     heldMag,
-    boltOffset
+    boltOffset,
+    isTwoHandedHandgun: !!isTwoHandedHandgun,
+    straightArms: !!(isTwoHandedHandgun && !p.isProne)
   };
 }
 

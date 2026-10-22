@@ -820,6 +820,22 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armRight = getArmAnglesForTarget(rightArmRelX, rightArmRelY, p.upperArmLen, p.forearmLen, 1);
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, p.upperArmLen, p.forearmLen, 1);
 
+    if (hold.straightArms && !p.isProne) {
+      const shootW = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
+      if (shootW > 0.01) {
+        // W pełnym wyproście ramion kąt łokcia wynosi 0.0 (w pełni wyprostowane łokcie)
+        const straightSwingRight = Math.atan2(rightArmRelX, rightArmRelY);
+        armRight.swing = lerpAngle(armRight.swing, straightSwingRight, shootW);
+        armRight.elbow = lerp(armRight.elbow, 0.0, shootW);
+
+        if (!p.isReloading) {
+          const straightSwingLeft = Math.atan2(leftArmRelX, leftArmRelY);
+          armLeft.swing = lerpAngle(armLeft.swing, straightSwingLeft, shootW);
+          armLeft.elbow = lerp(armLeft.elbow, 0.0, shootW);
+        }
+      }
+    }
+
     if (hWeight > 0.01) {
       rawFrontSwing = lerpAngle(armRight.swing, rawFrontSwing, hWeight);
       rawFrontElbow = lerpAngle(armRight.elbow, rawFrontElbow, hWeight);
@@ -949,7 +965,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
   let footBlend = p.isDead ? 0.90 : 0.32;
-  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.4 ? 0.78 : 0.45) : 0.28);
+  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.8 ? 0.88 : (wepWeight > 0.4 ? 0.78 : 0.45)) : 0.28);
 
   if (p.jumpTakeoffTimer > 0) {
     footBlend = 0.85;
