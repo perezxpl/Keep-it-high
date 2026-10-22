@@ -425,21 +425,11 @@ export const KNIFE_COMBO_MOVES = [
     name: 'FOREHAND_SLASH',
     label: 'Cięcie ukośne z góry',
     type: 'SLASH',
-    totalFrames: 19,
-    windupFrames: 5,
-    activeFrames: 6,
-    recoveryFrames: 8,
-    cooldownFrames: 12,
+    totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
     arcStart: -0.90,  // ostrze uniesione w prawo-górę (-51 st)
     arcEnd: 1.05,     // cięcie ukośne w poprzek klatki (+60 st)
-    reach: 58,
-    width: 28,
-    damage: 55,
-    backstabMultiplier: 1.8,
-    lungeForce: 2.0,
-    bodyPush: 3.2,
-    hitstopFrames: 2,
-    screenShake: 4,
+    reach: 58, width: 28, damage: 55, backstabMultiplier: 1.8,
+    lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4,
     ballPush: { vx: 12.0, vy: -4.0, spin: 0.4 }
   },
   {
@@ -447,21 +437,11 @@ export const KNIFE_COMBO_MOVES = [
     name: 'BACKHAND_SLICE',
     label: 'Cięcie powrotne z dołu',
     type: 'BACKHAND',
-    totalFrames: 19,
-    windupFrames: 5,
-    activeFrames: 6,
-    recoveryFrames: 8,
-    cooldownFrames: 12,
+    totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
     arcStart: 0.95,   // ostrze z dołu (+54 st)
     arcEnd: -0.85,    // błyskawiczne podcięcie powrotne w górę (-48 st)
-    reach: 58,
-    width: 28,
-    damage: 65,
-    backstabMultiplier: 2.0,
-    lungeForce: 2.2,
-    bodyPush: 3.6,
-    hitstopFrames: 2,
-    screenShake: 5,
+    reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
+    lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5,
     ballPush: { vx: 13.5, vy: -5.5, spin: -0.5 }
   },
   {
@@ -469,19 +449,9 @@ export const KNIFE_COMBO_MOVES = [
     name: 'LETHAL_THRUST',
     label: 'Śmiertelne pchnięcie sztychem',
     type: 'THRUST',
-    totalFrames: 25,
-    windupFrames: 7,
-    activeFrames: 7,
-    recoveryFrames: 11,
-    cooldownFrames: 22,
-    reach: 66,
-    width: 24,
-    damage: 85,
-    backstabMultiplier: 2.2, // 187 dmg - cichy finisher
-    lungeForce: 3.8,         // mocny doskok kończący
-    bodyPush: 6.0,
-    hitstopFrames: 4,
-    screenShake: 8,
+    totalFrames: 25, windupFrames: 7, activeFrames: 7, recoveryFrames: 11, cooldownFrames: 22,
+    reach: 66, width: 24, damage: 85, backstabMultiplier: 2.2, // 187 dmg - cichy finisher
+    lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8,
     ballPush: { vx: 17.0, vy: -2.5, spin: 0.2 }
   }
 ];
@@ -495,22 +465,11 @@ export const MACHETE_COMBO_MOVES = [
     name: 'OVERHEAD_CLEAVE',
     label: 'Zamaszyste cięcie z góry na dół',
     type: 'OVERHEAD_CLEAVE',
-    totalFrames: 36,
-    windupFrames: 12,
-    activeFrames: 10,
-    recoveryFrames: 14,
-    cooldownFrames: 22,
+    totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 22,
     arcStart: -1.90,  // wysokie uniesienie za plecy / nad głowę (~10:30, -109 st)
     arcEnd: 1.20,     // zamaszyste cięcie w dół przed kolana (~5:00, +69 st)
-    reach: 80,
-    width: 44,
-    damage: 85,
-    backstabMultiplier: 1.7,
-    lungeForce: 1.4,
-    bodyPush: 5.5,
-    hitstopFrames: 4,
-    screenShake: 9,
-    cleave: true,     // tnie wielu wrogów w łuku zamachu
+    reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
+    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true,
     ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
   {
@@ -518,22 +477,11 @@ export const MACHETE_COMBO_MOVES = [
     name: 'UNDERHAND_CLEAVE',
     label: 'Zamaszyste cięcie powrotne z dołu w górę',
     type: 'UNDERHAND_CLEAVE',
-    totalFrames: 34,
-    windupFrames: 10,
-    activeFrames: 10,
-    recoveryFrames: 14,
-    cooldownFrames: 34,
+    totalFrames: 34, windupFrames: 10, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 34,
     arcStart: 1.55,   // płynny start zamachu z tyłu-dołu (~7:30, +89 st)
     arcEnd: -1.45,    // potężny powrotny zamach omiatający w górę przed twarz (~1:30, -83 st)
-    reach: 80,
-    width: 44,
-    damage: 90,
-    backstabMultiplier: 1.8,
-    lungeForce: 1.4,
-    bodyPush: 6.0,
-    hitstopFrames: 4,
-    screenShake: 10,
-    cleave: true,
+    reach: 80, width: 44, damage: 90, backstabMultiplier: 1.8,
+    lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true,
     ballPush: { vx: 21.0, vy: -8.0, spin: -0.8 }
   }
 ];
@@ -547,18 +495,9 @@ export const MELEE_CONFIGS = {
     name: 'Nóż Bojowy M9',
     type: 'COMBO',
     comboMoves: KNIFE_COMBO_MOVES,
-    totalFrames: 19,
-    windupFrames: 5,
-    activeFrames: 6,
-    recoveryFrames: 8,
-    reach: 58,
-    width: 28,
-    damage: 65,
-    backstabMultiplier: 2.0,
-    lungeForce: 2.2,
-    bodyPush: 3.5,
-    hitstopFrames: 2,
-    screenShake: 5,
+    totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8,
+    reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
+    lungeForce: 2.2, bodyPush: 3.5, hitstopFrames: 2, screenShake: 5,
     ballPush: { vx: 14.0, vy: -4.5, spin: 0.3 }
   },
   MACHETE: {
@@ -566,45 +505,23 @@ export const MELEE_CONFIGS = {
     name: 'Maczeta Kukri',
     type: 'COMBO',
     comboMoves: MACHETE_COMBO_MOVES,
-    totalFrames: 36,
-    windupFrames: 12,
-    activeFrames: 10,
-    recoveryFrames: 14,
-    arcStart: -1.90,
-    arcEnd: 1.20,
-    reach: 80,
-    width: 44,
-    damage: 85,
-    backstabMultiplier: 1.7,
-    lungeForce: 1.4,
-    bodyPush: 5.5,
-    hitstopFrames: 4,
-    screenShake: 9,
-    cleave: true,
+    totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14,
+    arcStart: -1.90, arcEnd: 1.20,
+    reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
+    lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true,
     ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
   AXE: {
     id: 'AXE',
     name: 'Toporek Tomahawk',
     type: 'OVERHEAD_CHOP',
-    totalFrames: 26,
-    windupFrames: 8,
-    activeFrames: 6,
-    recoveryFrames: 12,
-    cooldownFrames: 28,
+    totalFrames: 26, windupFrames: 8, activeFrames: 6, recoveryFrames: 12, cooldownFrames: 28,
     arcStart: -1.65, // pionowo nad głową (-95 st)
     arcEnd: 0.85,    // druzgocące rąbnięcie w dół (+49 st)
-    reach: 64,
-    width: 32,
-    damage: 105,
-    backstabMultiplier: 1.4,
-    lungeForce: 3.0,
-    downwardImpact: 1.8,
-    bodyPush: 8.0,
-    staggerDuration: 22, // ogłuszenie przeciwnika przy trafieniu
-    hitstopFrames: 6,
-    screenShake: 14,
-    ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 }, // potężny smash/spike w dół
+    reach: 64, width: 32, damage: 105, backstabMultiplier: 1.4,
+    lungeForce: 3.0, downwardImpact: 1.8, bodyPush: 8.0, staggerDuration: 22,
+    hitstopFrames: 6, screenShake: 14,
+    ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 },
     cleave: false
   }
 };
@@ -621,6 +538,7 @@ export function getWeaponHoldTransform(p) {
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
+  const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER');
   const isKnife = (weapon.id === 'KNIFE');
   const isMachete = (weapon.id === 'MACHETE');
   const isAxe = (weapon.id === 'AXE');
@@ -799,13 +717,25 @@ export function getWeaponHoldTransform(p) {
     shoulderAimAngle = -0.85 + directAngle * 0.35;
     shoulderPivotX = rightShoulderX + 11.5 * charFacing;
     shoulderPivotY = rightShoulderY + 4.5 + braceOffsetY;
+  } else if (isTwoHandedHandgun) {
+    // Postawa oburęczna z wyprostowanymi ramionami (Modern Isosceles / Two-Handed Handgun Extension)
+    const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
+    const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5 + braceOffsetY;
+    let rawPistolAngle = Math.atan2(aimY - chestCenterY, (aimX - chestCenterX) * charFacing);
+    if (rawPistolAngle < -Math.PI / 2) rawPistolAngle = Math.max(-1.66, rawPistolAngle);
+    else if (rawPistolAngle > Math.PI / 2 + 0.35) rawPistolAngle = Math.min(Math.PI / 2 + 0.35, rawPistolAngle);
+    shoulderAimAngle = rawPistolAngle - muzzleRise;
+    const totalArmReach = (p.upperArmLen || 14) + (p.forearmLen || 13);
+    const avgGripX = ((gripCfg.rearGripX || 0) + (gripCfg.foreGripX || 0)) * 0.5;
+    // Wyprostowane łokcie (~90% zasięgu ramion) do celowania i strzelania
+    const targetHandDist = totalArmReach * 0.90;
+    const pistolExtension = targetHandDist - avgGripX;
+    shoulderPivotX = chestCenterX + Math.cos(shoulderAimAngle) * pistolExtension * charFacing;
+    shoulderPivotY = chestCenterY + Math.sin(shoulderAimAngle) * pistolExtension;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
-    if (rawShoulderAngle < -Math.PI / 2) {
-      rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
-    } else if (rawShoulderAngle > Math.PI / 2 + 0.35) {
-      rawShoulderAngle = Math.min(Math.PI / 2 + 0.35, rawShoulderAngle);
-    }
+    if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
+    else if (rawShoulderAngle > Math.PI / 2 + 0.35) rawShoulderAngle = Math.min(Math.PI / 2 + 0.35, rawShoulderAngle);
     shoulderAimAngle = rawShoulderAngle - muzzleRise;
     shoulderPivotX = shoulderPocketX + Math.cos(shoulderAimAngle) * stockLen * charFacing;
     shoulderPivotY = shoulderPocketY + Math.sin(shoulderAimAngle) * stockLen;
