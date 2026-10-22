@@ -591,6 +591,7 @@ export const MELEE_CONFIGS = {
     windupFrames: 8,
     activeFrames: 6,
     recoveryFrames: 12,
+    cooldownFrames: 28,
     arcStart: -1.65, // pionowo nad głową (-95 st)
     arcEnd: 0.85,    // druzgocące rąbnięcie w dół (+49 st)
     reach: 64,

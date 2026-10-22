@@ -763,7 +763,7 @@ export function initKeyboardMouseHandlers({
     }
 
     // 0b. Obsługa dedykowanego przycisku broni białej dla myszy / pada dotykowego
-    if (e.button === 0 && isTouchDevice && pockets.melee) {
+    if (e.button === 0 && pockets.melee && pockets.melee.x > 0) {
       const pMel = pockets.melee;
       const distToMel = dist(e.clientX, e.clientY, pMel.x, pMel.y);
       if (distToMel < pMel.r + 18) {

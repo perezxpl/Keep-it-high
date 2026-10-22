@@ -88,7 +88,11 @@ function getCharVisuals(ch) {
 
 export function startMeleeAttack(shooter, weapon, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return;
-  if (shooter.meleeNeedRelease && !shooter.isRemote) return;
+  if (!shooter.isRemote) {
+    if (shooter.meleeNeedRelease) return;
+    if (shooter.shootCooldown > 0) return;
+    if (shooter.meleeState && shooter.meleeState.phase !== 'RECOVERY') return;
+  }
   if (weapon.id === 'AXE' && shooter.axeThrown) return;
   const baseCfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
   const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;

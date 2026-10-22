@@ -461,7 +461,11 @@ export function handleMeleeButtonPress(player) {
     return false;
   }
 
-  if (player.meleeNeedRelease) return false;
+  // Blokada przed działaniem jak automat: wymóg zwolnienia po pełnej serii, ochrona cooldownu i fazy ciosu
+  if (player.meleeNeedRelease && !player.isRemote) return false;
+  if (player.shootCooldown > 0 && !player.isRemote) return false;
+  if (player.meleeState && player.meleeState.phase !== 'RECOVERY' && !player.isRemote) return false;
+
   startMeleeAttack(player, player.currentWeapon);
   return true;
 }

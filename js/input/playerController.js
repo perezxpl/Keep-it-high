@@ -18,8 +18,10 @@ import { pollGamepadInput, gamepadState } from './gamepad.js';
 import { activateNextAvailableStreak } from '../killstreaks/index.js';
 
 export function triggerPlayerShoot(p, wep) {
-  if (wep && wep.isMelee && p.meleeNeedRelease && !p.isRemote) {
-    return;
+  if (wep && wep.isMelee && !p.isRemote) {
+    if (p.meleeNeedRelease) return;
+    if (p.shootCooldown > 0) return;
+    if (p.meleeState && p.meleeState.phase !== 'RECOVERY') return;
   }
   if (wep && wep.id === 'AXE' && p.axeThrown && !p.isRemote) {
     return;
@@ -125,7 +127,8 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   const curWep = player.currentWeapon || WEAPONS.AK47;
   const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   const isGamepadFiring = !!(gamepadState && gamepadState.connected && gamepadState.r2);
-  const isHoldingFire = (mouseState.lmbDown || isTouchFiring || isGamepadFiring) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
+  const isHoldingMeleeBtn = !!(pockets.melee && pockets.melee.active && !player.isDead && !player.isHolstered && curWep?.isMelee);
+  const isHoldingFire = (mouseState.lmbDown || isTouchFiring || isGamepadFiring || isHoldingMeleeBtn) && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
 
   if (!mouseState.lmbDown && !isTouchFiring && !isGamepadFiring && !(pockets.action && pockets.action.active) && !(pockets.melee && pockets.melee.active)) {
     player.meleeNeedRelease = false;
@@ -142,6 +145,10 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     if (isOutOfAmmo && !isReloading && curAmmoObj.reserveAmmo > 0) {
       reloadWeapon(player, curWep);
     } else if (!isReloading && player.shootCooldown <= 0 && (!curAmmoObj || curAmmoObj.currentAmmo > 0)) {
+      triggerPlayerShoot(player, curWep);
+    }
+  } else if (isHoldingMeleeBtn && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
+    if (player.shootCooldown <= 0 && !player.meleeNeedRelease && !(player.meleeState && player.meleeState.phase !== 'RECOVERY')) {
       triggerPlayerShoot(player, curWep);
     }
   } else if (mouseState.lmbDown && !player.isDead && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0)) {
