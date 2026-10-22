@@ -407,12 +407,12 @@ export const WEAPON_GRIP_CONFIGS = {
     stockLen: 0.0
   },
   AXE: {
-    rearGripX: -0.3,
-    rearGripY: 0.6,
-    foreGripX: -5.0,
-    foreGripY: -3.5,
-    barrelLen: 16.0,
-    stockLen: 3.0
+    rearGripX: 0.0,
+    rearGripY: 0.0,
+    foreGripX: -4.0,
+    foreGripY: 0.0,
+    barrelLen: 18.0,
+    stockLen: 0.0
   }
 };
 
@@ -708,6 +708,18 @@ export function getWeaponHoldTransform(p) {
       directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
     }
     looseAimAngle = -1.05 + directAngle * 0.15;
+  } else if (isAxe) {
+    // Pozycja gotowości z toporkiem tomahawk w jednej ręce (Tomahawk Low-Ready):
+    // Prawa ręka trzyma stylisko przy biodrze, głowica uniesiona pod kątem
+    loosePivotX = hipX + 8.5 * charFacing;
+    loosePivotY = hipY - 12.0 + headBobOffset + crouchDropY;
+    directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
+    if (directAngle < -Math.PI / 2) {
+      directAngle = Math.max(-1.66, directAngle);
+    } else if (directAngle > Math.PI / 2 + 0.35) {
+      directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
+    }
+    looseAimAngle = -0.95 + directAngle * 0.18;
   } else {
     loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 5.2 : (isPistol ? 4.5 : 5.8))) * charFacing;
     loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.5 : (isPistol ? 8.5 : 10.5))) + headBobOffset + crouchDropY;
@@ -782,6 +794,11 @@ export function getWeaponHoldTransform(p) {
     shoulderAimAngle = -0.90 + directAngle * 0.40;
     shoulderPivotX = rightShoulderX + 12.0 * charFacing;
     shoulderPivotY = rightShoulderY + 4.0 + braceOffsetY;
+  } else if (isAxe) {
+    // Gotowość bojowa z uniesionym toporkiem w jednej dłoni (Tomahawk Chambered Stance)
+    shoulderAimAngle = -0.85 + directAngle * 0.35;
+    shoulderPivotX = rightShoulderX + 11.5 * charFacing;
+    shoulderPivotY = rightShoulderY + 4.5 + braceOffsetY;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) {
@@ -1325,11 +1342,11 @@ export function getWeaponHoldTransform(p) {
 
     leftHandWorldX = guardX + (leftHandLocalX || 0) * charFacing;
     leftHandWorldY = guardY + (leftHandLocalY || 0);
-  } else if (isMachete && !p.isProne) {
-    // Lewa ręka w naturalnej gardzie taktycznej i równoważącej
+  } else if ((isMachete || isAxe) && !p.isProne) {
+    // Lewa ręka w naturalnej gardzie taktycznej i równoważącej tułów (One-Handed Grip)
     // Dłoń wysunięta przed lewy bark i klatkę piersiową z naturalnym ugięciem łokcia
-    const guardBaseX = leftShoulderX + 10.0 * charFacing;
-    const guardBaseY = leftShoulderY + 6.0 + headBobOffset;
+    const guardBaseX = leftShoulderX + (isAxe ? 8.5 : 10.0) * charFacing;
+    const guardBaseY = leftShoulderY + (isAxe ? 5.0 : 6.0) + headBobOffset;
     const aimFwd = Math.cos(directAngle);
     const aimUp = Math.sin(directAngle);
 

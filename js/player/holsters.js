@@ -585,73 +585,52 @@ export function drawLeftThighMeleeSheath(ctx, p, l1, thighHalfH, facing, v = {},
     ctx.strokeRect(sheathStartX - 2.0, sheathCenterY - 3.2, 4.0, 6.4);
 
     if (!loadout.isMeleeDrawn) {
-      // 1. Syntetyczny trzonek tomahawka biegnący PIONOWO W DÓŁ UDA (+X)
-      ctx.fillStyle = '#18181b';
-      ctx.fillRect(sheathStartX, sheathCenterY - 1.2, sheathLen + 2.0, 2.4);
-      // Fakturowane rowki chwytu na trzonku
-      ctx.fillStyle = '#27272a';
-      for (let tx = sheathStartX + 4.0; tx < sheathStartX + sheathLen; tx += 2.2) {
-        ctx.fillRect(tx, sheathCenterY - 1.2, 1.0, 2.4);
+      const imgAxe = getWeaponPartSprite('AXE');
+
+      if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
+        // WŁAŚCIWY SPRITE TOPORKA Z ASSETÓW GRY (assets/weapons/axe.png)
+        ctx.save();
+        const s = 17.5 / 1115;
+        // Punkt montażu głowicy przy biodrze:
+        ctx.translate(sheathStartX + 1.2, sheathCenterY);
+        // Obrót o 180° sprawia, że trzonek biegnie pionowo w dół ku kolanu (+X),
+        // a głowica z ostrzem znajduje się u góry przy biodrze skierowana pionowo:
+        ctx.rotate(Math.PI);
+        ctx.scale(s, s);
+        // Przesunięcie środka głowicy tomahawka (X = 1020, Y = 206) do punktu montażu (0, 0):
+        ctx.translate(-1020.0, -206.0);
+        ctx.drawImage(imgAxe, 2, 2);
+        ctx.restore();
+      } else {
+        // Proceduralny fallback w trakcie ładowania assetu
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(sheathStartX, sheathCenterY - 1.2, sheathLen + 2.0, 2.4);
+        ctx.fillStyle = '#27272a';
+        for (let tx = sheathStartX + 4.0; tx < sheathStartX + sheathLen; tx += 2.2) {
+          ctx.fillRect(tx, sheathCenterY - 1.2, 1.0, 2.4);
+        }
+        ctx.save();
+        ctx.translate(sheathStartX, sheathCenterY);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-2.5, -2.5, 5.0, 5.0);
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.moveTo(-2.5, -2.0);
+        ctx.lineTo(-8.5, -6.5);
+        ctx.lineTo(-8.5, 4.5);
+        ctx.lineTo(-2.5, 2.0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(-6.5, -5.0);
+        ctx.lineTo(-8.5, -6.5);
+        ctx.lineTo(-8.5, 4.5);
+        ctx.lineTo(-6.5, 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
-      // Otwór na smycz na dole trzonka
-      ctx.fillStyle = '#090d16';
-      ctx.beginPath();
-      ctx.arc(sheathStartX + sheathLen, sheathCenterY, 0.7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 2. Kuta stalowa głowica tomahawka U GÓRY (sheathStartX)
-      // OSTRZEM SKIEROWANA DO GÓRY PIONOWO!
-      ctx.save();
-      ctx.translate(sheathStartX, sheathCenterY);
-
-      // Korpus głowicy obejmujący trzonek
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(-2.5, -2.5, 5.0, 5.0);
-
-      // Śruby mocujące głowicę
-      ctx.fillStyle = '#94a3b8';
-      ctx.beginPath();
-      ctx.arc(0, -1.0, 0.6, 0, Math.PI * 2);
-      ctx.arc(0, 1.0, 0.6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // SZEROKIE OSTRZE SIECZNE SKIEROWANE PIONOWO DO GÓRY (-X ku biodru/górze)
-      ctx.fillStyle = '#475569';
-      ctx.beginPath();
-      ctx.moveTo(-2.5, -2.0);
-      ctx.lineTo(-8.5, -6.5); // Czubek górny ostrza
-      ctx.lineTo(-8.5, 4.5);  // Czubek dolny ostrza
-      ctx.lineTo(-2.5, 2.0);
-      ctx.closePath();
-      ctx.fill();
-
-      // Polerowana faza szlifu krawędzi tnącej
-      ctx.fillStyle = '#cbd5e1';
-      ctx.beginPath();
-      ctx.moveTo(-6.5, -5.0);
-      ctx.lineTo(-8.5, -6.5);
-      ctx.lineTo(-8.5, 4.5);
-      ctx.lineTo(-6.5, 3.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Tylny szpikulec penetrujący (Breaching spike)
-      ctx.fillStyle = '#334155';
-      ctx.beginPath();
-      ctx.moveTo(2.5, -1.5);
-      ctx.lineTo(6.5, -4.5);
-      ctx.lineTo(2.5, 1.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#cbd5e1';
-      ctx.beginPath();
-      ctx.moveTo(4.5, -3.0);
-      ctx.lineTo(6.5, -4.5);
-      ctx.lineTo(4.5, -1.0);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.restore();
 
       // Pasek zatrzaskowy zabezpieczający trzonek w pierścieniu
       ctx.fillStyle = '#27272a';
