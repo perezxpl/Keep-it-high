@@ -6,7 +6,7 @@
 
 import { CONFIG } from './config.js';
 import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget, prepareTomahawkThrow, releaseTomahawkThrow } from './player/actions.js';
-import { startMeleeAttack } from './weapons.js';
+import { startMeleeAttack, WEAPONS, cancelReload } from './weapons.js';
 import { ball } from './ball.js';
 import { activeArenaId as obstacleArenaId } from './obstacles.js';
 import { getActiveArena } from './arenas/index.js';
@@ -113,6 +113,18 @@ export const pockets = {
     active: false,
     id: null,
     currentMode: 'KICK' // 'SLIDE' | 'PRONE' | 'STAND' | 'KICK'
+  },
+
+  // 4. Dedykowany przycisk broni białej (Nóż / Maczeta / Toporek Tomahawk)
+  melee: {
+    x: 0,
+    y: 0,
+    r: 26,
+    active: false,
+    id: null,
+    touchStartTime: 0,
+    startX: 0,
+    startY: 0
   }
 };
 
@@ -120,6 +132,7 @@ export const btnCluster = {
   firearm: pockets.firearm,
   throwable: pockets.throwable,
   action: pockets.action,
+  melee: pockets.melee,
   slide: pockets.action,
   prone: pockets.action,
   crouch: pockets.action,
@@ -179,6 +192,11 @@ export function updateButtonLayout(W, H) {
   pockets.firearm.r = 26;
   pockets.firearm.x = Math.round(rsX - 76);
   pockets.firearm.y = Math.round(pockets.throwable.y - btnSpacing);
+
+  // 4. Dedykowany przycisk broni białej – OBOK KOPANIA (po prawej, niżej, po okręgu drążka)
+  pockets.melee.r = 26;
+  pockets.melee.x = Math.round(rsX - 22);
+  pockets.melee.y = Math.min(curH - Math.max(30, bottomMargin - 8), Math.round(pockets.action.y + 10));
 }
 
 /**
@@ -219,9 +237,6 @@ export function updateMobileControlStates(player, lStick = leftStick, bCluster =
     const activeBall = extraOptions.ball || ball;
     const canKickBall = activeBall && activeBall.active !== false && isBallInKickReach(player, activeBall);
     pockets.action.currentMode = canKickBall ? 'KICK' : 'SLIDE';
-  } else if (player.currentWeapon?.id === 'AXE' && !player.axeThrown) {
-    // Gdy gracz dzierży toporek bojowy – przycisk akcji wykonuje cięcie wręcz (Overhead Chop)
-    pockets.action.currentMode = 'CHOP';
   } else {
     // W pozostałych stanach oraz ZAWSZE w trybach bojowych (Arena 2 i 3): KOPNIAK (KICK)
     pockets.action.currentMode = 'KICK';
@@ -268,12 +283,7 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
     player.crouchToggled = false;
     player.state = 'STAND';
     player.hitboxHeight = player.h || 70;
-    pockets.action.currentMode = (player.currentWeapon?.id === 'AXE' && !player.axeThrown) ? 'CHOP' : 'KICK';
-    return true;
-  } else if (mode === 'CHOP') {
-    if (player.axeThrown) return false;
-    if (player.meleeNeedRelease) return false;
-    startMeleeAttack(player, player.currentWeapon);
+    pockets.action.currentMode = 'KICK';
     return true;
   } else {
     // Mode KICK: wykop piłki w Arenie 1 LUB przywrócony SPARTAN KICK w walce
@@ -409,4 +419,49 @@ export function checkRightStickFlickOrTap(rStick, touchDuration, movedDist) {
   const isFlick = (touchDuration < 320 && (movedDist >= 25 || rStick.power > 0.35));
 
   return isTap || isFlick;
+}
+
+/**
+ * Obsługa wciśnięcia dedykowanego przycisku broni białej na ekranie dotykowym:
+ * - Kliknięcie: daje do ręki broń białą (jeśli trzymano inną broń lub schowano)
+ * - Kolejne użycie, gdy broń jest w ręku: wykonuje atak wręcz (Overhead Chop / Cleave / Slash)
+ *
+ * @param {Object} player - Obiekt gracza
+ * @returns {boolean}
+ */
+export function handleMeleeButtonPress(player) {
+  if (!player || player.isDead || player.isIntro) return false;
+
+  const isHoldingMelee = !player.isHolstered && (player.currentWeapon?.isMelee || player.currentWeapon?.id === 'AXE' || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE');
+
+  if (!isHoldingMelee) {
+    // 1. Pierwsze kliknięcie daje broń białą do ręki
+    const meleeId = player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE';
+    const targetWeapon = WEAPONS[meleeId] || WEAPONS.AXE || WEAPONS.KNIFE;
+
+    cancelReload(player, player.currentWeapon);
+    if (player.throwAnim && player.throwAnim.active) {
+      player.throwAnim.active = false;
+      player.throwAnim.aiming = false;
+    }
+
+    player.currentWeapon = targetWeapon;
+    player.isHolstered = false;
+    if (rightStick) {
+      rightStick.armedMode = 'FIREARM';
+    }
+    // Pierwsze kliknięcie tylko wyciąga broń do ręki – wymaga zwolnienia i kolejnego kliknięcia do ataku
+    player.meleeNeedRelease = true;
+    return true;
+  }
+
+  // 2. Kolejne użycie, gdy broń jest już w ręku: wykonanie ataku wręcz
+  if (player.currentWeapon?.id === 'AXE' && player.axeThrown) {
+    // Toporek został rzucony i leży na ziemi – gracz ma puste ręce
+    return false;
+  }
+
+  if (player.meleeNeedRelease) return false;
+  startMeleeAttack(player, player.currentWeapon);
+  return true;
 }

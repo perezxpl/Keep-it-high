@@ -38,7 +38,8 @@ import {
   pockets,
   updateButtonLayout,
   updateMobileControlStates,
-  handleDynamicActionButtonPress
+  handleDynamicActionButtonPress,
+  handleMeleeButtonPress
 } from '../mobileControls.js';
 import { updateDevTouchButtonUI } from '../dev/devPanel.js';
 import { screenToWorld } from '../camera.js';
@@ -364,10 +365,14 @@ canvas.addEventListener('touchstart', (e) => {
       const pThrow = pockets.throwable;
       const distToThrow = pThrow ? dist(t.clientX, t.clientY, pThrow.x, pThrow.y) : 999;
 
+      // 4. DEDYKOWANY PRZYCISK BRONI BIAŁEJ (NÓŻ / MACZETA / TOPOREK)
+      const pMelee = pockets.melee;
+      const distToMelee = pMelee ? dist(t.clientX, t.clientY, pMelee.x, pMelee.y) : 999;
+
       const distToRightStick = Math.hypot(t.clientX - rightStick.baseX, t.clientY - rightStick.baseY);
       const maxRightTouchDist = (rightStick.maxRadius || 58) + 24;
 
-      const minDist = Math.min(distToAct, distToFarm, distToThrow);
+      const minDist = Math.min(distToAct, distToFarm, distToThrow, distToMelee);
       if (minDist === distToAct && pAct && distToAct < pAct.r + 18) {
         pAct.active = true;
         pAct.id = t.identifier;
@@ -377,6 +382,11 @@ canvas.addEventListener('touchstart', (e) => {
           targets: [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean),
           obstacles: obstacles
         });
+      } else if (minDist === distToMelee && pMelee && distToMelee < pMelee.r + 18) {
+        pMelee.active = true;
+        pMelee.id = t.identifier;
+        pMelee.touchStartTime = performance.now();
+        handleMeleeButtonPress(player);
       } else if (minDist === distToFarm && pFarm && distToFarm < pFarm.r + 20) {
         if (pFarm.holdTimerId) clearTimeout(pFarm.holdTimerId);
         rightStick.draggedSlot = null;
@@ -406,7 +416,7 @@ canvas.addEventListener('touchstart', (e) => {
         pThrow.isDragging = false;
       } else if (!rightStick.active && distToRightStick <= maxRightTouchDist) {
         // Zabezpieczenie przed nakładaniem się stref kieszeni i prawego drążka
-        if (distToAct < pAct.r + 14 || distToFarm < pFarm.r + 16 || distToThrow < pThrow.r + 14) continue;
+        if (distToAct < pAct.r + 14 || distToFarm < pFarm.r + 16 || distToThrow < pThrow.r + 14 || (pMelee && distToMelee < pMelee.r + 14)) continue;
 
         rightStick.active = true;
         rightStick.id = t.identifier;
@@ -439,12 +449,15 @@ canvas.addEventListener('touchstart', (e) => {
           }
 
           if (rightStick.armedMode === 'FIREARM') {
-            if (player.currentWeapon?.id === 'AXE') {
+            if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
               rightStick.isShooting = false;
               if (!player.axeThrown && factor > 0.03 && !player.isDead) {
                 const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
                 prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
               }
+            } else if (player.currentWeapon?.isMelee) {
+              // Broń biała bez funkcji rzutu (np. nóż, maczeta) – drążek celuje kierunek, ale nie strzela
+              rightStick.isShooting = false;
             } else {
               if (factor > 0.15 && player.isHolstered) {
                 player.isHolstered = false;
@@ -714,7 +727,7 @@ canvas.addEventListener('touchmove', (e) => {
         }
 
         if (rightStick.armedMode === 'FIREARM') {
-          if (player.currentWeapon?.id === 'AXE') {
+          if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
             rightStick.isShooting = false;
             if (!player.axeThrown) {
               if (power > 0.03 && !player.isDead) {
@@ -725,6 +738,9 @@ canvas.addEventListener('touchmove', (e) => {
                 player.throwAnim.active = false;
               }
             }
+          } else if (player.currentWeapon?.isMelee) {
+            // Broń biała bez funkcji rzutu (np. nóż, maczeta) – drążek celuje kierunek, ale nie strzela
+            rightStick.isShooting = false;
           } else {
             if (power > 0.15 && player.isHolstered) {
               player.isHolstered = false;
@@ -923,9 +939,13 @@ function endTouch(e) {
           reloadWeapon(player, player.currentWeapon);
         } else {
           // Zwykłe kliknięcie (< 500ms) -> wybór broni palnej / zmiana typu broni
-          if (player.isHolstered || rightStick.armedMode !== 'FIREARM') {
+          if (player.isHolstered || rightStick.armedMode !== 'FIREARM' || player.currentWeapon?.isMelee) {
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
+            if (player.currentWeapon?.isMelee) {
+              const curSlot = (player.loadout?.pocket1?.activeSlotIndex === 1) ? 1 : 0;
+              equipPocket1Slot(player, curSlot);
+            }
           } else {
             if (player.loadout) {
               cyclePocket1(player, 1);
@@ -966,7 +986,14 @@ function endTouch(e) {
       }
     }
 
-    // D. Zwolnienie prawego drążka
+    // D. Zwolnienie dedykowanego przycisku broni białej
+    if (pockets.melee && pockets.melee.active && t.identifier === pockets.melee.id) {
+      pockets.melee.active = false;
+      pockets.melee.id = null;
+      player.meleeNeedRelease = false;
+    }
+
+    // E. Zwolnienie prawego drążka
     if (rightStick.active && t.identifier === rightStick.id) {
       rightStick.active = false;
       rightStick.id = null;
@@ -986,7 +1013,7 @@ function endTouch(e) {
         }
         // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
         // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
-      } else if (player.currentWeapon?.id === 'AXE') {
+      } else if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
         if (!player.axeThrown && rightStick.power > 0.08 && !player.isDead) {
           const throwPower = Math.min(1.8, Math.max(0.6, rightStick.power * 1.3));
           releaseTomahawkThrow(player, player.aimX, player.aimY, throwPower);
@@ -1031,6 +1058,10 @@ function endTouch(e) {
       pockets.throwable.isDragging = false;
       pockets.throwable.active = false;
       pockets.throwable.id = null;
+    }
+    if (pockets.melee) {
+      pockets.melee.active = false;
+      pockets.melee.id = null;
     }
   }
 }

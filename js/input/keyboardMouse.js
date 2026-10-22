@@ -25,7 +25,7 @@ import { WEAPONS, reloadWeapon } from '../weapons.js';
 import {
   remotePlayer, isChatActive, openChat, closeChat, updateCursorVisibility
 } from '../network.js';
-import { rightStick, pockets } from '../mobileControls.js';
+import { rightStick, pockets, handleMeleeButtonPress } from '../mobileControls.js';
 import { uiManager, playUiClick, playUiPause, playUiResume } from '../uiManager.js';
 import { getHoveredClassCard, isClassSelectBackClicked } from '../ui/classSelectModal.js';
 import {
@@ -762,6 +762,19 @@ export function initKeyboardMouseHandlers({
       }
     }
 
+    // 0b. Obsługa dedykowanego przycisku broni białej dla myszy / pada dotykowego
+    if (e.button === 0 && isTouchDevice && pockets.melee) {
+      const pMel = pockets.melee;
+      const distToMel = dist(e.clientX, e.clientY, pMel.x, pMel.y);
+      if (distToMel < pMel.r + 18) {
+        pMel.active = true;
+        pMel.id = 'mouse';
+        pMel.touchStartTime = performance.now();
+        handleMeleeButtonPress(player);
+        return;
+      }
+    }
+
     // 00. Obsługa celowania nalotu moździerzowego (kliknięcie lewym przyciskiem myszy)
     if (killstreakState.mortarTargeting && e.button === 0) {
       const cb = killstreakState.mortarCancelButtonBounds;
@@ -905,9 +918,13 @@ export function initKeyboardMouseHandlers({
           rightStick.armedMode = 'FIREARM';
           reloadWeapon(player, player.currentWeapon);
         } else {
-          if (player.isHolstered || rightStick.armedMode !== 'FIREARM') {
+          if (player.isHolstered || rightStick.armedMode !== 'FIREARM' || player.currentWeapon?.isMelee) {
             player.isHolstered = false;
             rightStick.armedMode = 'FIREARM';
+            if (player.currentWeapon?.isMelee) {
+              const curSlot = (player.loadout?.pocket1?.activeSlotIndex === 1) ? 1 : 0;
+              equipPocket1Slot(player, curSlot);
+            }
           } else {
             if (player.loadout) {
               cyclePocket1(player, 1);
@@ -921,6 +938,13 @@ export function initKeyboardMouseHandlers({
           }
         }
       }
+      return;
+    }
+
+    if (e.button === 0 && pockets.melee && pockets.melee.active && pockets.melee.id === 'mouse') {
+      pockets.melee.active = false;
+      pockets.melee.id = null;
+      player.meleeNeedRelease = false;
       return;
     }
 

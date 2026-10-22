@@ -447,6 +447,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   const pFirearm = effPockets.firearm || window.pockets?.firearm;
   const pThrowable = effPockets.throwable || effPockets.grenade || window.pockets?.throwable;
   const pAction = effPockets.action || effPockets.kick || effPockets.slide || window.pockets?.action;
+  const pMelee = effPockets.melee || window.pockets?.melee;
 
   // 3A. KIESZEŃ NA BROŃ PALNĄ – WYŻEJ
   if (pFirearm && pFirearm.x > 0) {
@@ -532,8 +533,8 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
     ctx.restore();
     if (player.loadout?.pocket1?.slots) {
-      const activeIdx = (player.loadout.pocket1.activeSlotIndex || 0) + 1;
-      const totalSlots = player.loadout.pocket1.slots.length;
+      const activeIdx = (player.loadout.pocket1.activeSlotIndex === 1) ? 2 : 1;
+      const totalSlots = 2;
       ctx.save();
       ctx.font = 'bold 8px Rajdhani, monospace';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
@@ -675,6 +676,81 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.stroke();
 
     drawDynamicActionSymbol(ctx, mode, pAction.x, pAction.y, isPressed, player);
+  }
+
+  // 3D. DEDYKOWANY PRZYCISK BRONI BIAŁEJ (NÓŻ / MACZETA / TOPOREK) – OBOK KOPANIA
+  if (pMelee && pMelee.x > 0) {
+    const isMeleeWeapon = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'AXE' || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE');
+    const isEquipped = isMeleeWeapon && !player.isHolstered;
+    const isPressed = pMelee.active;
+    const meleeId = (isMeleeWeapon && player.currentWeapon?.id)
+      ? player.currentWeapon.id
+      : (player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE');
+    const isAxeThrown = (meleeId === 'AXE' && player.axeThrown);
+
+    // Tło kieszeni
+    const grad = ctx.createRadialGradient(pMelee.x - 2, pMelee.y - 2, 2, pMelee.x, pMelee.y, pMelee.r);
+    if (isEquipped || isPressed) {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.20)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
+    } else {
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
+      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
+      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
+    }
+    ctx.beginPath();
+    ctx.arc(pMelee.x, pMelee.y, pMelee.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    ctx.stroke();
+
+    // Warstwa 2 (Light Core)
+    ctx.strokeStyle = (isEquipped || isPressed)
+      ? 'rgba(255, 255, 255, 0.44)'
+      : 'rgba(255, 255, 255, 0.20)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
+    if (isEquipped || isPressed) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
+      ctx.shadowBlur = 5;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Wewnętrzny pierścień
+    ctx.beginPath();
+    ctx.arc(pMelee.x, pMelee.y, pMelee.r - 4, 0, Math.PI * 2);
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 2.0;
+    ctx.stroke();
+    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Rysowanie sylwetki broni białej
+    ctx.save();
+    ctx.translate(pMelee.x, pMelee.y);
+    ctx.scale(0.85, 0.85);
+    if (isAxeThrown) {
+      ctx.globalAlpha = 0.35;
+    }
+    drawWeaponSilhouette(ctx, meleeId, 0, 0, isEquipped || isPressed);
+    ctx.restore();
+
+    // Etykieta statusu gdy toporek rzucony
+    if (isAxeThrown) {
+      ctx.save();
+      ctx.font = 'bold 7px monospace';
+      ctx.fillStyle = '#f97316';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('RZUCONY', pMelee.x, pMelee.y + pMelee.r - 2);
+      ctx.restore();
+    }
   }
 
   // -------------------------------------------------------------------------

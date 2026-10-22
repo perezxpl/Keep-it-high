@@ -45,17 +45,22 @@ export function equipPocket1Slot(p, slotIndex) {
 }
 
 /**
- * Cykliczne przełączanie slotów w Kieszeni 1 (kliknięcie kafelka dotykowego lub kółko myszy)
+ * Cykliczne przełączanie slotów broni palnej w Kieszeni 1 (slot 0: Główna, slot 1: Dodatkowa)
+ * Broń biała (slot 2) została wydzielona do dedykowanego przycisku broni białej!
  */
 export function cyclePocket1(p, direction = 1) {
   if (!p || p.isDead) return false;
   if (!p.loadout?.pocket1?.slots) return false;
 
-  const count = p.loadout.pocket1.slots.length;
-  if (count <= 1) return false;
+  // Jeśli gracz trzymał broń białą, kliknięcie kieszeni 1 natychmiast wraca do broni palnej
+  if (p.currentWeapon?.isMelee) {
+    const targetIdx = (p.loadout.pocket1.activeSlotIndex === 1) ? 1 : 0;
+    return equipPocket1Slot(p, targetIdx);
+  }
 
+  // Kieszeń 1 przełącza wyłącznie między bronią palną: slot 0 (Główna) <-> slot 1 (Dodatkowa)
   const curIdx = p.loadout.pocket1.activeSlotIndex || 0;
-  const nextIdx = (curIdx + direction + count) % count;
+  const nextIdx = (curIdx === 0) ? 1 : 0;
   return equipPocket1Slot(p, nextIdx);
 }
 
