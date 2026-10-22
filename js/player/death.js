@@ -428,6 +428,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   if (player.respawnTimer <= 0) {
     player.isDead = false;
     player.axeThrown = false;
+    player.meleeBloodTimer = 0;
     clearPlayerThrownTomahawks(player);
     player.isAcidDying = false;
     player.hp = player.maxHp;

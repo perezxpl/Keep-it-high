@@ -1352,6 +1352,198 @@ export function drawHeldWeapon(ctx, p) {
     }
   }
 
+  // Dynamiczne ociekanie krwią broni białej po zabójstwie wroga
+  if (p.meleeBloodTimer > 0 && (weapon.id === 'KNIFE' || weapon.id === 'MACHETE' || weapon.id === 'AXE')) {
+    drawWeaponBloodOverlay(ctx, weapon.id, p.meleeBloodTimer);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Proceduralna powłoka ściekającej krwi na broni białej
+ * Obejmuje nóż bojowy, maczetę kukri oraz toporek tomahawk.
+ * Zapewnia głęboką barwę krwi, jaśniejsze świeże strugi na krawędziach tnących,
+ * animowane krople wydłużające się i zwisające z ostrza oraz mokry połysk.
+ */
+export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
+  if (!ctx || !bloodTimer || bloodTimer <= 0) return;
+
+  const alpha = bloodTimer > 90 ? 1.0 : Math.max(0, bloodTimer / 90.0);
+  if (alpha <= 0.01) return;
+
+  ctx.save();
+
+  // Animacja fazy pulsowania i wydłużania kropel krwi wzdłuż krawędzi
+  const t = (420 - bloodTimer) * 0.12;
+
+  if (weaponId === 'KNIFE') {
+    // 1. Warstwa bazowa zakrzepłej krwi na czubku i krawędzi tnącej
+    ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.92})`;
+    ctx.beginPath();
+    ctx.moveTo(8.0, 0.4);
+    ctx.lineTo(16.5, -1.2);
+    ctx.lineTo(19.8, 0.5);
+    ctx.lineTo(16.0, 2.3);
+    ctx.lineTo(7.5, 2.3);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Jaśniejszy strumień świeżej krwi wzdłuż krawędzi tnącej
+    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.moveTo(5.0, 1.2);
+    ctx.lineTo(19.5, 0.5);
+    ctx.lineTo(16.0, 2.3);
+    ctx.lineTo(5.0, 2.3);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Rozbryzgi i plamy krwi na zbroczu i płazie noża
+    ctx.fillStyle = `rgba(153, 27, 27, ${alpha * 0.85})`;
+    ctx.beginPath();
+    ctx.arc(6.5, -0.4, 1.2, 0, Math.PI * 2);
+    ctx.arc(10.0, 0.2, 1.4, 0, Math.PI * 2);
+    ctx.arc(13.5, -0.2, 1.1, 0, Math.PI * 2);
+    ctx.arc(15.2, -1.0, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Ściekające krople (animowane krople wydłużające się i zwisające z ostrza)
+    const dripPhase1 = (t * 0.8) % 1.0;
+    const dripPhase2 = (t * 0.6 + 0.5) % 1.0;
+
+    // Kropla 1: przy czubku (x = 19.5)
+    const d1Len = 0.5 + dripPhase1 * 1.8;
+    ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.ellipse(19.2, 0.7 + d1Len * 0.5, 0.9, d1Len * 0.6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Kropla 2: w 2/3 długości krawędzi tnącej (x = 13.5)
+    const d2Len = 0.4 + dripPhase2 * 1.5;
+    ctx.beginPath();
+    ctx.ellipse(13.5, 2.3 + d2Len * 0.5, 0.85, d2Len * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Mokry połysk (mokra lśniąca krew)
+    ctx.strokeStyle = `rgba(254, 202, 202, ${alpha * 0.55})`;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(9.0, 1.8);
+    ctx.lineTo(18.0, 0.8);
+    ctx.stroke();
+
+  } else if (weaponId === 'MACHETE') {
+    // 1. Warstwa krwi na zakrzywionym brzuścu i szpicu kukri
+    ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.94})`;
+    ctx.beginPath();
+    ctx.moveTo(7.0, 1.0);
+    ctx.lineTo(14.0, -1.5);
+    ctx.lineTo(24.2, 1.0);
+    ctx.lineTo(18.5, 4.7);
+    ctx.lineTo(11.0, 3.2);
+    ctx.lineTo(7.0, 1.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Świeża krew wzdłuż najbardziej tnącej części brzuśca
+    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.moveTo(10.0, 2.2);
+    ctx.lineTo(24.0, 1.0);
+    ctx.lineTo(18.2, 4.6);
+    ctx.lineTo(13.0, 3.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Zakrzepłe smugi i rozbryzgi wzdłuż głowni
+    ctx.fillStyle = `rgba(153, 27, 27, ${alpha * 0.88})`;
+    ctx.beginPath();
+    ctx.arc(8.5, 0.5, 1.4, 0, Math.PI * 2);
+    ctx.arc(12.5, 0.8, 1.6, 0, Math.PI * 2);
+    ctx.arc(16.0, 1.5, 1.8, 0, Math.PI * 2);
+    ctx.arc(20.5, 0.5, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Ściekające krople z zakrzywionego brzuśca i czubka kukri
+    const dripPhase1 = (t * 0.75) % 1.0;
+    const dripPhase2 = (t * 0.55 + 0.4) % 1.0;
+
+    // Kropla z najniższego punktu brzuśca (x = 18.2, y = 4.6)
+    const d1Len = 0.6 + dripPhase1 * 2.2;
+    ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.ellipse(18.0, 4.6 + d1Len * 0.5, 1.1, d1Len * 0.7, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Kropla z czubka kukri (x = 24.0, y = 1.0)
+    const d2Len = 0.5 + dripPhase2 * 1.8;
+    ctx.beginPath();
+    ctx.ellipse(23.8, 1.2 + d2Len * 0.5, 0.9, d2Len * 0.6, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Mokry refleks świetlny na powierzchni krwi
+    ctx.strokeStyle = `rgba(254, 202, 202, ${alpha * 0.55})`;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(11.0, 2.5);
+    ctx.quadraticCurveTo(16.0, 3.8, 22.5, 1.2);
+    ctx.stroke();
+
+  } else if (weaponId === 'AXE') {
+    // 1. Zbroczone krwią stalowe ostrze siekierki (głowica i broda tomahawka)
+    ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.94})`;
+    ctx.beginPath();
+    ctx.moveTo(10.5, -6.0);
+    ctx.lineTo(15.7, -5.5);
+    ctx.lineTo(14.3, 6.7);
+    ctx.lineTo(9.2, 5.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Krew na tylnym kolcu (rear spike)
+    ctx.beginPath();
+    ctx.moveTo(9.5, -1.2);
+    ctx.lineTo(5.2, -1.0);
+    ctx.lineTo(9.5, 0.4);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Świeża krew wzdłuż krawędzi rąbiącej (bit & beard)
+    ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.moveTo(12.5, -5.6);
+    ctx.lineTo(15.7, -5.5);
+    ctx.lineTo(14.3, 6.7);
+    ctx.lineTo(11.5, 5.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Ściekające krople z brody siekierki (dolny róg ostrza tomahawka x = 14.2, y = 6.6)
+    const dripPhase1 = (t * 0.7) % 1.0;
+    const dripPhase2 = (t * 0.5 + 0.3) % 1.0;
+
+    const d1Len = 0.6 + dripPhase1 * 2.4;
+    ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
+    ctx.beginPath();
+    ctx.ellipse(14.1, 6.7 + d1Len * 0.5, 1.1, d1Len * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Kropla z tylnego kolca (x = 5.3, y = -0.9)
+    const d2Len = 0.4 + dripPhase2 * 1.6;
+    ctx.beginPath();
+    ctx.ellipse(5.4, -0.9 + d2Len * 0.5, 0.8, d2Len * 0.55, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Mokry połysk na ostrzu
+    ctx.strokeStyle = `rgba(254, 202, 202, ${alpha * 0.55})`;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(14.8, -4.5);
+    ctx.lineTo(13.6, 5.5);
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 

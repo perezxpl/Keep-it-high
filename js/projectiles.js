@@ -5,7 +5,8 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { drawWeaponBloodOverlay } from './weapons/renderer.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
@@ -514,6 +515,7 @@ export class ThrownTomahawk {
     this.pickupRadius = 42;
     this.hitCombatants = new Set();
     this.groundTimer = 0;
+    this.bloodTimer = (shooter && shooter.meleeBloodTimer > 0) ? shooter.meleeBloodTimer : 0;
 
     if (shooter) {
       shooter.axeThrown = true;
@@ -521,6 +523,14 @@ export class ThrownTomahawk {
   }
 
   update(groundY, platforms, customObs, combatants, ball) {
+    if (this.bloodTimer > 0) {
+      this.bloodTimer--;
+      const interval = (this.bloodTimer > 250) ? 9 : ((this.bloodTimer > 100) ? 18 : 30);
+      if (this.bloodTimer % interval === 0) {
+        spawnBloodDrip(this.x, this.y, (this.vx || 0) * 0.35, (this.vy || 0) * 0.25 + 1.2, 1);
+      }
+    }
+
     if (this.state === 'FLYING') {
       this.prevX = this.x;
       this.prevY = this.y;
@@ -588,6 +598,10 @@ export class ThrownTomahawk {
             ch.lastAttackerTimer = 180;
 
             if (ch.hp <= 0) {
+              this.bloodTimer = 420;
+              if (this.shooter) {
+                this.shooter.meleeBloodTimer = 420;
+              }
               ch.hasHead = true;
               ch.decapitated = false;
               ch.neckFountainTimer = 0;
@@ -690,6 +704,9 @@ export class ThrownTomahawk {
         if (dist <= this.pickupRadius) {
           // PODNIESIENIE TOPOORKA DO RĄK GRACZA
           this.shooter.axeThrown = false;
+          if (this.bloodTimer > 0) {
+            this.shooter.meleeBloodTimer = Math.max(this.shooter.meleeBloodTimer || 0, this.bloodTimer);
+          }
           spawnRicochetSparks(this.x, this.y - 8, 0, -1, 6);
           triggerScreenShake(1.5);
           return false; // Usuwa toporek z activeProjectiles
@@ -759,6 +776,10 @@ export class ThrownTomahawk {
       ctx.lineTo(10.0, 0.5);
       ctx.closePath();
       ctx.fill();
+    }
+
+    if (this.bloodTimer > 0) {
+      drawWeaponBloodOverlay(ctx, 'AXE', this.bloodTimer);
     }
 
     ctx.restore();
