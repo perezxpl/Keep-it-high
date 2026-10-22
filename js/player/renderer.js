@@ -14,7 +14,7 @@ import {
 import { getRagdollRenderPose } from './death.js';
 import { drawHeldWeapon, getWeaponHoldTransform } from '../weapons.js';
 import { camera } from '../camera.js';
-import { drawBackWeapon, drawHipMeleeSheath } from './holsters.js';
+import { drawBackWeapon } from './holsters.js';
 
 import {
   DEFAULT_VISUALS,
@@ -1149,7 +1149,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     if (!isLegBackDismembered) {
-      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v, p);
+      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v, p, 'left');
     } else {
       drawLimbStump(ctx, hipLeftX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, false);
     }
@@ -1161,7 +1161,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     if (!isLegFrontDismembered) {
-      renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v, p);
+      renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighBack, legShinBack, bootBack, false, v, p, 'right');
     } else {
       drawLimbStump(ctx, hipRightX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, false);
     }
@@ -1339,9 +1339,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   // Wyposażenie pasa klasy (np. Pas Ładunków Wybuchowych Enforcera)
   p.currentClass?.onDrawBelt?.(ctx, p, v, fDir, waistHalfW, beltTopY, beltBotY);
-
-  // Pochwa taktyczna broni białej przy pasie (Cross-Draw na lewym biodrze)
-  drawHipMeleeSheath(ctx, p, fDir, waistHalfW, beltTopY, beltBotY, v);
 
   // NAKŁADANA KAMIZELKA KULOODPORNA (MODULAR BULLETPROOF VEST / PLATE CARRIER)
   // Rysowana TYLKO wtedy, gdy gracz posiada pancerz lub ma ustawione p.hasVest / v.hasVest
@@ -1676,7 +1673,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   // KOŃCZYNY NA PIERWSZYM PLANIE
   if (isRightLimbForeground) {
     if (!isLegFrontDismembered) {
-      renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p);
+      renderIKLeg(ctx, hipRightX, hipY, pose.footFrontX, pose.footFrontY, p.thighLen, p.shinLen, pose.footFrontAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'right');
     } else {
       drawLimbStump(ctx, hipRightX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
     }
@@ -1688,7 +1685,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else {
     if (!isLegBackDismembered) {
-      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p);
+      renderIKLeg(ctx, hipLeftX, hipY, pose.footBackX, pose.footBackY, p.thighLen, p.shinLen, pose.footBackAnkle, currentFacingDir, legThighFront, legShinFront, bootFront, true, v, p, 'left');
     } else {
       drawLimbStump(ctx, hipLeftX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
     }

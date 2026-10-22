@@ -10,7 +10,7 @@ import { isSleeveless, isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPal
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette } from './jetpack.js';
-import { drawThighHolster } from './holsters.js';
+import { drawRightThighPistolHolster, drawLeftThighMeleeSheath } from './holsters.js';
 
 /**
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
@@ -1191,7 +1191,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   ctx.restore();
 }
 
-export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals, playerRef = null) {
+export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals, playerRef = null, legSide = 'right') {
   const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
@@ -1538,9 +1538,15 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     }
   }
 
-  // Kabura pistoletowa na przednim prawym udzie (Strong-Side Drop-Leg Holster)
-  if (isFrontLeg && playerRef) {
-    drawThighHolster(ctx, playerRef, l1, thighHalfH, facing, v);
+  // Wyposażenie taktyczne na udach:
+  // PRAWA NOGA -> Kabura udowa z małą bronią palną (Glock / Magnum / Obrzyn)
+  // LEWA NOGA  -> Pochwa udowa z bronią białą (Nóż M9 / Maczeta Kukri / Toporek Tomahawk)
+  if (playerRef) {
+    if (legSide === 'right') {
+      drawRightThighPistolHolster(ctx, playerRef, l1, thighHalfH, facing, v, isFrontLeg);
+    } else if (legSide === 'left') {
+      drawLeftThighMeleeSheath(ctx, playerRef, l1, thighHalfH, facing, v, isFrontLeg);
+    }
   }
 
   ctx.restore();
@@ -1870,7 +1876,8 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p) {
     v.bootColor,
     true,
     v,
-    p
+    p,
+    'right'
   );
 }
 
