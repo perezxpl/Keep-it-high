@@ -169,7 +169,7 @@ export const WEAPONS = {
     isMelee: true,
     auto: false,
     fireRate: 16,
-    damage: 65,
+    damage: 35,
     range: 58,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
@@ -185,7 +185,7 @@ export const WEAPONS = {
     isMelee: true,
     auto: false,
     fireRate: 24,
-    damage: 85,
+    damage: 44,
     range: 72,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
@@ -201,7 +201,7 @@ export const WEAPONS = {
     isMelee: true,
     auto: false,
     fireRate: 32,
-    damage: 105,
+    damage: 55,
     range: 64,
     bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
     reloadTime: 0, reloadDuration: 0, recoil: 0,
@@ -385,19 +385,19 @@ export const KNIFE_COMBO_MOVES = [
   {
     step: 0, name: 'FOREHAND_SLASH', label: 'Cięcie ukośne z góry', type: 'SLASH',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
-    arcStart: -0.90, arcEnd: 1.05, reach: 58, width: 28, damage: 55, backstabMultiplier: 1.8,
+    arcStart: -0.90, arcEnd: 1.05, reach: 58, width: 28, damage: 30, backstabMultiplier: 1.8,
     lungeForce: 2.0, bodyPush: 3.2, hitstopFrames: 2, screenShake: 4, ballPush: { vx: 12.0, vy: -4.0, spin: 0.4 }
   },
   {
     step: 1, name: 'BACKHAND_SLICE', label: 'Cięcie powrotne z dołu', type: 'BACKHAND',
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8, cooldownFrames: 12,
-    arcStart: 0.95, arcEnd: -0.85, reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
+    arcStart: 0.95, arcEnd: -0.85, reach: 58, width: 28, damage: 34, backstabMultiplier: 2.0,
     lungeForce: 2.2, bodyPush: 3.6, hitstopFrames: 2, screenShake: 5, ballPush: { vx: 13.5, vy: -5.5, spin: -0.5 }
   },
   {
     step: 2, name: 'LETHAL_THRUST', label: 'Śmiertelne pchnięcie sztychem', type: 'THRUST',
     totalFrames: 25, windupFrames: 7, activeFrames: 7, recoveryFrames: 11, cooldownFrames: 22,
-    reach: 66, width: 24, damage: 85, backstabMultiplier: 2.2,
+    reach: 66, width: 24, damage: 42, backstabMultiplier: 2.0,
     lungeForce: 3.8, bodyPush: 6.0, hitstopFrames: 4, screenShake: 8, ballPush: { vx: 17.0, vy: -2.5, spin: 0.2 }
   }
 ];
@@ -409,13 +409,13 @@ export const MACHETE_COMBO_MOVES = [
   {
     step: 0, name: 'OVERHEAD_CLEAVE', label: 'Zamaszyste cięcie z góry na dół', type: 'OVERHEAD_CLEAVE',
     totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 22,
-    arcStart: -1.90, arcEnd: 1.20, reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
+    arcStart: -1.90, arcEnd: 1.20, reach: 80, width: 44, damage: 42, backstabMultiplier: 1.6,
     lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true, ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
   {
     step: 1, name: 'UNDERHAND_CLEAVE', label: 'Zamaszyste cięcie powrotne z dołu w górę', type: 'UNDERHAND_CLEAVE',
     totalFrames: 34, windupFrames: 10, activeFrames: 10, recoveryFrames: 14, cooldownFrames: 34,
-    arcStart: 1.55, arcEnd: -1.45, reach: 80, width: 44, damage: 90, backstabMultiplier: 1.8,
+    arcStart: 1.55, arcEnd: -1.45, reach: 80, width: 44, damage: 46, backstabMultiplier: 1.7,
     lungeForce: 1.4, bodyPush: 6.0, hitstopFrames: 4, screenShake: 10, cleave: true, ballPush: { vx: 21.0, vy: -8.0, spin: -0.8 }
   }
 ];
@@ -430,7 +430,7 @@ export const MELEE_CONFIGS = {
     type: 'COMBO',
     comboMoves: KNIFE_COMBO_MOVES,
     totalFrames: 19, windupFrames: 5, activeFrames: 6, recoveryFrames: 8,
-    reach: 58, width: 28, damage: 65, backstabMultiplier: 2.0,
+    reach: 58, width: 28, damage: 35, backstabMultiplier: 1.8,
     lungeForce: 2.2, bodyPush: 3.5, hitstopFrames: 2, screenShake: 5,
     ballPush: { vx: 14.0, vy: -4.5, spin: 0.3 }
   },
@@ -441,7 +441,7 @@ export const MELEE_CONFIGS = {
     comboMoves: MACHETE_COMBO_MOVES,
     totalFrames: 36, windupFrames: 12, activeFrames: 10, recoveryFrames: 14,
     arcStart: -1.90, arcEnd: 1.20,
-    reach: 80, width: 44, damage: 85, backstabMultiplier: 1.7,
+    reach: 80, width: 44, damage: 44, backstabMultiplier: 1.6,
     lungeForce: 1.4, bodyPush: 5.5, hitstopFrames: 4, screenShake: 9, cleave: true,
     ballPush: { vx: 20.0, vy: -5.0, spin: 0.8 }
   },
@@ -452,7 +452,7 @@ export const MELEE_CONFIGS = {
     totalFrames: 26, windupFrames: 9, activeFrames: 6, recoveryFrames: 11, cooldownFrames: 28,
     arcStart: -2.25, // głębokie odchylenie topora za głowę (~ -129 st)
     arcEnd: 1.15,    // potężne rąbnięcie w dół (+66 st)
-    reach: 64, width: 32, damage: 105, backstabMultiplier: 1.4,
+    reach: 64, width: 32, damage: 55, backstabMultiplier: 1.4,
     lungeForce: 3.0, downwardImpact: 1.8, bodyPush: 8.0, staggerDuration: 22,
     hitstopFrames: 6, screenShake: 14,
     ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 },

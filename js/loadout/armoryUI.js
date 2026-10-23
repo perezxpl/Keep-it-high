@@ -117,11 +117,11 @@ export const ARMORY_CATALOG = {
         caliber: 'STAL 420HC',
         typeLabel: 'BROŃ BIAŁA',
         isMelee: true,
-        dmg: 65,
+        dmg: 35,
         range: '55 PX',
         speed: 'BŁYSKAWICZNA',
-        stats: { dmgBar: 70, reachBar: 55, speedBar: 95 },
-        desc: 'Standardowy nóż piechoty z ząbkowanym grzbietem. Błyskawiczne pchnięcia w zwarciu i cicha eliminacja celów.'
+        stats: { dmgBar: 40, reachBar: 55, speedBar: 95 },
+        desc: 'Standardowy nóż piechoty z ząbkowanym grzbietem. Błyskawiczna 3-uderzeniowa sekwencja pchnięć i cięć w zwarciu.'
       },
       {
         id: 'MACHETE',
@@ -131,11 +131,11 @@ export const ARMORY_CATALOG = {
         caliber: 'STAL SPRĘŻYNOWA 1075',
         typeLabel: 'BROŃ BIAŁA',
         isMelee: true,
-        dmg: 85,
+        dmg: 45,
         range: '68 PX',
         speed: 'ŚREDNIA',
-        stats: { dmgBar: 88, reachBar: 75, speedBar: 65 },
-        desc: 'Ciężka nepalska maczeta o zakrzywionym profilu. Szeroki łuk cięcia i druzgocące obrażenia przy zamachu.'
+        stats: { dmgBar: 55, reachBar: 75, speedBar: 65 },
+        desc: 'Ciężka nepalska maczeta o zakrzywionym profilu. Szeroki łuk cięcia i obrażenia wielocelowe przy zamachu.'
       },
       {
         id: 'AXE',
@@ -145,11 +145,11 @@ export const ARMORY_CATALOG = {
         caliber: 'KUTA STAL SK-5',
         typeLabel: 'BROŃ BIAŁA',
         isMelee: true,
-        dmg: 100,
+        dmg: 55,
         range: '60 PX',
         speed: 'CIĘŻKA',
-        stats: { dmgBar: 100, reachBar: 65, speedBar: 45 },
-        desc: 'Militarny toporek szturmowy. Brutalna siła uderzenia eliminująca przeciwnika jednym celnym trafieniem.'
+        stats: { dmgBar: 70, reachBar: 65, speedBar: 45 },
+        desc: 'Militarny toporek szturmowy. Brutalna siła uderzenia obuchowego, powalający impet ciosu i możliwość rzutu balistycznego.'
       }
     ]
   },

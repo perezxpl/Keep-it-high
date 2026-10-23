@@ -508,7 +508,7 @@ export class ThrownTomahawk {
     this.vRot = throwDir * 0.42;
 
     this.state = 'FLYING'; // 'FLYING' | 'GROUNDED'
-    this.damage = 110;
+    this.damage = 65;
     this.stuckPlatform = null;
     this.stuckOffsetX = 0;
     this.stickAngle = 0;
