@@ -575,7 +575,8 @@ export function getWeaponHoldTransform(p) {
     const perpAngle = Math.atan2(25.0, 1.0) - Math.PI / 2;
     axeEffDx = lerp(1.0, runHandDx, wRun);
     axeEffDy = lerp(25.0, runHandDy, wRun);
-    axeEffAngle = lerpAngle(perpAngle, runForearmAngle, wRun);
+    const runAxeAngle = -0.88 + runP * 0.12;
+    axeEffAngle = lerpAngle(perpAngle, runAxeAngle, wRun);
 
     // Dynamiczny offset środka dłoni (palm grasp center) względem nadgarstka:
     const idleArmIK = getArmAnglesForTarget(1.0, 25.0, upperL, foreL, 1);
