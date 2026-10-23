@@ -26,11 +26,12 @@ export const weaponEditorState = {
   isOpen: false,
   selectedId: 'REVOLVER',
   freezeAim: true,
+  previewPose: 'AIM', // 'AIM' | 'WALK' | 'RUN'
   aimFacing: 1, // 1 = prawo, -1 = lewo
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v1';
+const STORAGE_KEY = 'kih_weapon_tuning_v2';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -153,16 +154,29 @@ export function equipWeaponToPlayer(weaponId) {
 }
 
 /**
- * Aktualizacja zamrożonego celowania w pętli gry
+ * Aktualizacja zamrożonego celowania i podglądu pozy w pętli gry
  */
 export function updateWeaponEditorFreeze() {
   if (!weaponEditorState.isOpen || !weaponEditorState.freezeAim || !player) return;
   player.facing = weaponEditorState.aimFacing;
-  player.aimX = player.x + (weaponEditorState.aimFacing * 300);
-  player.aimY = player.y + 10 + weaponEditorState.aimElevation;
   player.weaponKickback = 0;
   player.muzzleRise = 0;
-  player.shootPoseWeight = 1.0;
+
+  if (weaponEditorState.previewPose === 'AIM') {
+    player.aimX = player.x + (weaponEditorState.aimFacing * 300);
+    player.aimY = player.y + 10 + weaponEditorState.aimElevation;
+    player.shootPoseWeight = 1.0;
+  } else if (weaponEditorState.previewPose === 'WALK') {
+    player.aimX = player.x + (weaponEditorState.aimFacing * 120);
+    player.aimY = player.y + 90;
+    player.shootPoseWeight = 0.0;
+    player.stridePhase = (player.stridePhase || 0) + 0.04;
+  } else if (weaponEditorState.previewPose === 'RUN') {
+    player.aimX = player.x + (weaponEditorState.aimFacing * 120);
+    player.aimY = player.y + 90;
+    player.shootPoseWeight = 0.0;
+    player.stridePhase = (player.stridePhase || 0) + 0.08;
+  }
 }
 
 /**
@@ -232,8 +246,13 @@ function createEditorDOM() {
       <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 6px;">
         <div style="font-weight: 700; color: #94a3b8; text-transform: uppercase; font-size: 10px;">Podgląd Pozy Operatora:</div>
         <div style="display: flex; gap: 4px;">
-          <button id="we-aim-right-btn" type="button" class="we-btn" style="flex: 1;">CELUJ W PRAWO</button>
-          <button id="we-aim-left-btn" type="button" class="we-btn" style="flex: 1;">CELUJ W LEWO</button>
+          <button id="we-pose-aim-btn" type="button" class="we-btn we-btn-active" style="flex: 1;">CELOWANIE</button>
+          <button id="we-pose-walk-btn" type="button" class="we-btn" style="flex: 1;">CHÓD</button>
+          <button id="we-pose-run-btn" type="button" class="we-btn" style="flex: 1;">BIEG</button>
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button id="we-aim-right-btn" type="button" class="we-btn" style="flex: 1;">PATRZ W PRAWO</button>
+          <button id="we-aim-left-btn" type="button" class="we-btn" style="flex: 1;">PATRZ W LEWO</button>
         </div>
         <div style="display: flex; gap: 4px;">
           <button id="we-freeze-btn" type="button" class="we-btn" style="flex: 1; border-color: #10b981; color: #34d399;">ZAMROŻENIE CELOWANIA: ON</button>
@@ -316,6 +335,23 @@ function createEditorDOM() {
   // Zdarzenia przycisków nagłówka i pozy
   document.getElementById('we-close-btn').addEventListener('click', toggleWeaponEditor);
   
+  const poseAimBtn = document.getElementById('we-pose-aim-btn');
+  const poseWalkBtn = document.getElementById('we-pose-walk-btn');
+  const poseRunBtn = document.getElementById('we-pose-run-btn');
+
+  const setPose = (pose) => {
+    weaponEditorState.previewPose = pose;
+    [poseAimBtn, poseWalkBtn, poseRunBtn].forEach((b) => b.classList.remove('we-btn-active'));
+    if (pose === 'AIM') poseAimBtn.classList.add('we-btn-active');
+    else if (pose === 'WALK') poseWalkBtn.classList.add('we-btn-active');
+    else if (pose === 'RUN') poseRunBtn.classList.add('we-btn-active');
+    updateWeaponEditorFreeze();
+  };
+
+  poseAimBtn.addEventListener('click', () => setPose('AIM'));
+  poseWalkBtn.addEventListener('click', () => setPose('WALK'));
+  poseRunBtn.addEventListener('click', () => setPose('RUN'));
+
   document.getElementById('we-aim-right-btn').addEventListener('click', () => {
     weaponEditorState.aimFacing = 1;
     updateWeaponEditorFreeze();
@@ -418,8 +454,8 @@ export function renderEditorValues() {
   const paramDefs = [
     {
       key: 'pivotSpriteX',
-      label: 'Sprite Pivot X (poziom / lewo-prawo)',
-      desc: 'Zmniejszenie przesuwa model broni W PRAWO; zwiększenie W LEWO',
+      label: 'Sprite Pivot X (Oś obrotu lufy)',
+      desc: 'Centrum obrotu sprite\'a. Musi leżeć na osi lufy, inaczej broń odlatuje w biegu!',
       val: pivot.x,
       min: 0, max: 600, step: 0.5,
       steps: [-5, -1, 1, 5],
@@ -427,8 +463,8 @@ export function renderEditorValues() {
     },
     {
       key: 'pivotSpriteY',
-      label: 'Sprite Pivot Y (pion / góra-dół)',
-      desc: 'Zmniejszenie przesuwa model broni W DÓŁ; zwiększenie W GÓRĘ',
+      label: 'Sprite Pivot Y (Wysokość osi lufy)',
+      desc: 'Pionowa oś lufy w pikselach grafiki',
       val: pivot.y,
       min: 0, max: 400, step: 0.5,
       steps: [-5, -1, 1, 5],
