@@ -2,7 +2,7 @@
 // OBSTACLES.JS - WIELOPOZIOMOWE WYSPY ARENY I OBSŁUGA KOLIZJI PLATFORM
 // =========================================================================
 
-import { ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from '../config.js';
+import { CONFIG, ARENA_LEFT, ARENA_RIGHT, START_X, ARENA_WIDTH } from '../config.js';
 import {
   triggerScreenShake, triggerGoalCelebration, spawnJetpackSparks,
   resolveSegmentCollision, distToSegment, triggerHitstop,
@@ -352,14 +352,14 @@ export const ARENA_FOUNDRY_BARRICADES = [];
 export const ARENA_FOUNDRY_GOALS = ARENA_3_CUSTOM_OBJECTS.filter(o => o.team);
 
 const _initArena = getActiveArena();
-export let activeArenaId = (_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1');
+export let activeArenaId = (_initArena && (_initArena.id === 'arena-4' || _initArena.id === 'ARENA_4')) ? 'ARENA_4' : ((_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1'));
 setActiveArenaId(activeArenaId);
 export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
 if (typeof window !== 'undefined') {
   window.ARENA_PLATFORMS = ARENA_PLATFORMS;
 }
 export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
-export const GOALS = [...((_initArena && _initArena.id === 'arena-3') ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
+export const GOALS = [...((_initArena && (_initArena.id === 'arena-3' || _initArena.id === 'arena-4')) ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
 if (_initArena && Array.isArray(_initArena.customObjects)) {
   customObstacles.push(..._initArena.customObjects);
 }
@@ -368,7 +368,9 @@ export let goalCelebrationTimer = 0;
 
 // Subskrypcja zmian areny dla natychmiastowej synchronizacji platform i obiektów
 onArenaChange((newArena) => {
-  if (newArena && (newArena.id === 'arena-3' || newArena.id === 'ARENA_3')) {
+  if (newArena && (newArena.id === 'arena-4' || newArena.id === 'ARENA_4')) {
+    activeArenaId = 'ARENA_4';
+  } else if (newArena && (newArena.id === 'arena-3' || newArena.id === 'ARENA_3')) {
     activeArenaId = 'ARENA_3';
   } else if (newArena && (newArena.id === 'arena-2' || newArena.id === 'ARENA_2')) {
     activeArenaId = 'ARENA_2';
@@ -506,7 +508,9 @@ if (typeof world !== 'undefined' && world) {
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
   setActiveArena(arenaId);
   const currentArena = getActiveArena();
-  if (currentArena.id === 'arena-3') {
+  if (currentArena.id === 'arena-4' || currentArena.id === 'ARENA_4') {
+    activeArenaId = 'ARENA_4';
+  } else if (currentArena.id === 'arena-3') {
     activeArenaId = 'ARENA_3';
   } else if (currentArena.id === 'arena-2') {
     activeArenaId = 'ARENA_2';
@@ -514,6 +518,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     activeArenaId = 'ARENA_1';
   }
   setActiveArenaId(activeArenaId);
+  const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
+  CONFIG.GRAVITY = 0.38 * gravMult;
   if (playerObj) {
     playerObj.isHolstered = (activeArenaId === 'ARENA_1');
     playerObj.holsterWeight = (activeArenaId === 'ARENA_1' ? 1.0 : 0.0);
@@ -568,7 +574,68 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   };
   const activeBots = getBotsList();
 
-  if (activeArenaId === 'ARENA_3') {
+  if (activeArenaId === 'ARENA_4') {
+    resetDeathmatchState();
+    GOALS.length = 0;
+    arena1State.waitingForKickoff = false;
+    arenaScore.cyan = 0;
+    arenaScore.orange = 0;
+
+    if (typeof currentArena?.reset === 'function') {
+      currentArena.reset();
+    }
+
+    if (playerObj) {
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const spawnIdx = isClient ? 1 : 0;
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 2160 : 560);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : 360;
+      playerObj.vx = 0;
+      playerObj.vy = 0;
+      playerObj.facing = isClient ? -1 : 1;
+      playerObj.isIntro = false;
+      playerObj.isJumping = false;
+      playerObj.isSliding = false;
+      playerObj.isDead = false;
+      playerObj.hp = playerObj.maxHp || 100;
+      playerObj.respawnTimer = 0;
+      playerObj.ragdoll = null;
+      playerObj.gaitMode = 'IDLE';
+    }
+    const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
+
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
+    activeBots.forEach((b, idx) => {
+      b.active = true;
+      b.isHolstered = false;
+      b.holsterWeight = 0;
+      const isCyan = (b.team === 'CYAN');
+      const baseSpawnX = isCyan
+        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 560) + ((Math.floor(idx / 2) + 1) * 80)
+        : ((currentArena.spawns && currentArena.spawns[1]) ? currentArena.spawns[1].x : 2160) - ((Math.floor(idx / 2) + 1) * 80);
+      const baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 1]) ? currentArena.spawns[isCyan ? 0 : 1].y : 360;
+      b.x = baseSpawnX;
+      b.y = baseSpawnY;
+      b.vx = 0;
+      b.vy = 0;
+      b.facing = isCyan ? 1 : -1;
+      b.isJumping = false;
+      b.isSliding = false;
+      b.isDead = false;
+      b.hp = b.maxHp || 100;
+      b.respawnTimer = 0;
+      b.ragdoll = null;
+      b.gaitMode = 'IDLE';
+    });
+    balanceBotClasses(playerObj, activeBots, 'TDM');
+    if (ballObj) {
+      ballObj.active = false;
+      ballObj.isLevitating = false;
+      ballObj.x = -9999;
+      ballObj.y = -9999;
+    }
+  } else if (activeArenaId === 'ARENA_3') {
     resetDeathmatchState();
     GROUND_BARRICADES.push(...ARENA_FOUNDRY_BARRICADES);
     GOALS.length = 0; // W militarnej dżungli brak piłki i bramek - czysty tryb taktyczny / Deathmatch

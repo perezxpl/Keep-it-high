@@ -69,6 +69,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/arenas/arena1.js` — Arena 1 (Neonowe Miasto / Stadion).
 - `js/arenas/arena2/` — Arena 2 (Toksyczna Rafineria / Sektor X): `state.js`, `physics.js`, `renderer.js`, `acid.js`, `blackout.js`, `sewerPipes.js`, `submergedSkeletons.js`.
 - `js/arenas/arena3/` — Arena 3 (Tajemnicza Dżungla): `state.js`, `background.js` (proceduralne nocne niebo, gwiazdy, księżyc, góry, świetliki), `renderer.js`, `destruction.js`.
+- `js/arenas/arena4_space.js` — Arena 4 (Stacja Orbitalna Ares): środowisko niskiej grawitacji (0.72), śmiertelna próżnia (`killByHazard`), zniszczalne panele fotowoltaiczne z regeneracją (8s), pionowe repulsory kinetyczne (vy = -16) oraz pre-renderowane tło kosmiczne (Offscreen Canvas, 0 shadowBlur).
 
 ### Tryb Deathmatch (`js/deathmatch/`)
 - `js/deathmatch/state.js` — konfiguracja, stałe czasu (5 minut, 300s), nagrody XP (100, 80, 60, 40 XP), tryby (TDM, FFA), drużyny (CYAN, ORANGE) oraz stan sesji `deathmatchState`.

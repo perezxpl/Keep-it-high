@@ -72,7 +72,8 @@ export function checkMatchWin(arenaId, scoreObj) {
   // Na Arenie 2 i Arenie 3 obowiązuje 5-minutowy Deathmatch – rozliczany wyłącznie na koniec w module deathmatch
   const isDeathmatch = (
     arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X' ||
-    arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY'
+    arenaId === 'ARENA_3' || arenaId === 'arena-3' || arenaId === 'ARENA_FOUNDRY' ||
+    arenaId === 'ARENA_4' || arenaId === 'arena-4'
   );
   if (isDeathmatch) {
     return;

@@ -507,15 +507,22 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
+  const currentArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
+  CONFIG.GRAVITY = 0.38 * gravMult;
+
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
     activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
+    activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' ||
+    activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES' ||
     (ball && !ball.active)
   );
 
+  const isA4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const effectiveGroundY = isA2Active ? 1600 : (isA3Active ? 1200 : GROUND_Y);
+  const effectiveGroundY = isA2Active ? 1600 : (isA3Active ? 1200 : (isA4Active ? 1400 : GROUND_Y));
 
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);
@@ -722,7 +729,7 @@ function update() {
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const hasNoFlatFloor = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' || curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
+  const hasNoFlatFloor = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' || curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' || curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
 
   const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (hasNoFlatFloor ? effectiveGroundY : GROUND_Y);
   const isPlayerGrounded = hasNoFlatFloor
@@ -772,7 +779,7 @@ function update() {
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
   });
-  if (isA2Active || isA3Active) {
+  if (isA2Active || isA3Active || isA4Active) {
     updateDeathmatch(1 / 60, player, activeBots, remotePlayer, arenaScore);
   } else {
     updateCombatFeed(1 / 60);
@@ -807,9 +814,10 @@ function draw() {
   const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
   const worldWidth = worldRight - worldLeft;
 
+  const isArena4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
   const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const isArena3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
-  if (!isArena2Active && !isArena3Active) {
+  if (!isArena2Active && !isArena3Active && !isArena4Active) {
     drawGround(ctx, worldLeft, worldWidth);
   }
   drawParticles(ctx);
@@ -1289,7 +1297,8 @@ if (typeof window !== 'undefined') {
     },
     getMatchInfo: () => {
       const arena = getActiveArena();
-      const arenaName = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
+      const arenaName = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Stacja Orbitalna Ares' :
+                        (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
                         (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
                         (arena?.name || 'Neonowe Miasto');
       return `ARENA: ${arenaName.toUpperCase()} • KLASA: ${player.currentClass?.name || 'PLAYMAKER'}`;

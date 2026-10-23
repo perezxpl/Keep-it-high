@@ -7,11 +7,13 @@
 import arena1 from './arena1.js';
 import arena2 from './arena2.js';
 import arena3 from './arena3.js';
+import arena4 from './arena4_space.js';
 
 export const ARENAS = {
   get 'arena-1'() { return arena1; },
   get 'arena-2'() { return arena2; },
   get 'arena-3'() { return arena3; },
+  get 'arena-4'() { return arena4; },
   // Aliasy kompatybilności
   get 'ARENA_1'() { return arena1; },
   get 'ARENA_2'() { return arena2; },
@@ -22,9 +24,23 @@ export const ARENAS = {
   get 'PANDORA'() { return arena2; },
   get 'HALLELUJAH'() { return arena2; },
   get 'ARENA_3'() { return arena3; },
+  get 'ARENA_4'() { return arena4; },
   get '1'() { return arena1; },
   get '2'() { return arena2; },
   get '3'() { return arena3; },
+  get '4'() { return arena4; },
+  get 'SPACE'() { return arena4; },
+  get 'SPACE_STATION'() { return arena4; },
+  get 'ARES'() { return arena4; },
+  get 'ARES_STATION'() { return arena4; },
+  get 'STACJA_ARES'() { return arena4; },
+  get 'STACJA_ORBITALNA_ARES'() { return arena4; },
+  get 'TRAIN'() { return arena4; },
+  get 'ARMORED_TRAIN'() { return arena4; },
+  get 'POCIAG'() { return arena4; },
+  get 'POCIĄG'() { return arena4; },
+  get 'PEDZACY_POCIAG'() { return arena4; },
+  get 'PĘDZĄCY_POCIĄG'() { return arena4; },
   get 'CYBER_STADIUM'() { return arena2; },
   get 'ARENA_FOUNDRY'() { return arena3; },
   get 'FOUNDRY'() { return arena3; },
@@ -47,6 +63,7 @@ function normalizeArenaId(rawId) {
   if (cleaned === '1' || cleaned === 'arena1') return 'arena-1';
   if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium' || cleaned === 'sectorx' || cleaned === 'sektorx' || cleaned === 'arena2sectorx') return 'arena-2';
   if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
+  if (cleaned === '4' || cleaned === 'arena4' || cleaned === 'space' || cleaned === 'spacestation' || cleaned === 'ares' || cleaned === 'aresstation' || cleaned === 'stacjaares' || cleaned === 'stacjaorbitalnaares' || cleaned === 'train' || cleaned === 'armoredtrain' || cleaned === 'pociag' || cleaned === 'pociąg' || cleaned === 'pedzacypociag' || cleaned === 'pędzącypociąg') return 'arena-4';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;
   return 'arena-1';
@@ -111,5 +128,5 @@ export function setActiveArena(idOrArena) {
   return activeArena;
 }
 
-export { arena1, arena2, arena3 };
+export { arena1, arena2, arena3, arena4 };
 

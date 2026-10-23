@@ -24,7 +24,15 @@
       "./js/arenas/arena3/destruction.js": "./js/arenas/arena3/destruction.js?v=v233_covered_pillars_and_foundations",
       "./js/arenas/arena3/renderer.js": "./js/arenas/arena3/renderer.js?v=v234_splintered_and_damaged_assets_overhaul",
       "./js/arenas/arena3/state.js": "./js/arenas/arena3/state.js?v=v233_covered_pillars_and_foundations",
-      "./js/arenas/index.js": "./js/arenas/index.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/arenas/arena4.js": "./js/arenas/arena4.js?v=v315_ares_orbital_space_station",
+      "./js/arenas/arena4_space.js": "./js/arenas/arena4_space.js?v=v315_ares_orbital_space_station",
+      "./js/arenas/arena_train.js": "./js/arenas/arena_train.js?v=v266_train_roofs_update",
+      "./js/arenas/arena4/index.js": "./js/arenas/arena4/index.js?v=v266_train_roofs_update",
+      "./js/arenas/arena4/state.js": "./js/arenas/arena4/state.js?v=v266_train_roofs_update",
+      "./js/arenas/arena4/platforms.js": "./js/arenas/arena4/platforms.js?v=v266_train_roofs_update",
+      "./js/arenas/arena4/hazards.js": "./js/arenas/arena4/hazards.js?v=v266_train_roofs_update",
+      "./js/arenas/arena4/renderer.js": "./js/arenas/arena4/renderer.js?v=v266_train_roofs_update",
+      "./js/arenas/index.js": "./js/arenas/index.js?v=v315_ares_orbital_space_station",
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
       "./js/bot.js": "./js/bot.js?v=v264_fix_knife_scope_and_circular_import",
@@ -255,6 +263,17 @@
                   </div>
                   <div class="mp-arena-name">Tajemnicza Dżungla</div>
                   <div class="mp-arena-desc">Gęsta roślinność, organiczne platformy i dzikie pole walki.</div>
+                </button>
+                <button type="button" class="mp-arena-card" data-arena="arena-4" title="Wybierz Arenę 4: Stacja Orbitalna Ares">
+                  <div class="mp-arena-card-top">
+                    <span class="mp-arena-badge">ARENA 4</span>
+                    <span class="mp-arena-active-indicator">WYBRANA</span>
+                  </div>
+                  <div class="mp-arena-preview-container">
+                    <img src="./assets/arena4_preview.svg?v=v315_ares_orbital_space_station" alt="Podgląd Areny 4" class="mp-arena-preview-img" loading="lazy">
+                  </div>
+                  <div class="mp-arena-name">STACJA ORBITALNA ARES</div>
+                  <div class="mp-arena-desc">ŚRODOWISKO NISKIEJ GRAWITACJI // PRÓŻNIA // ZNISZCZALNE POSZYCIE</div>
                 </button>
               </div>
             </div>
@@ -728,6 +747,7 @@
                       <button type="button" class="carousel-dot active" data-index="0" title="Neonowe Miasto"></button>
                       <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
                       <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
+                      <button type="button" class="carousel-dot" data-index="3" title="Pędzący Pociąg"></button>
                     </div>
                   </div>
                 </div>
@@ -852,6 +872,41 @@
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRUDNOŚĆ AI:</span>
                       <div class="briefing-toggle-group" id="a3-diff-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
+                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Opcje Areny 4 (Pędzący Pociąg Pancerny) -->
+                  <div class="briefing-map-opts" id="arena-opts-ARENA_4" style="display: none;">
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRYB OPERACJI:</span>
+                      <span class="opt-val-badge text-cyan">DYNAMICZNA ARENA (PĘDZĄCY POCIĄG)</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">PRZECIWNIK AI:</span>
+                      <div class="briefing-toggle-group" id="a4-bot-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row" id="a4-bot-count-row">
+                      <span class="opt-label">LICZBA BOTÓW:</span>
+                      <div class="briefing-toggle-group" id="a4-bot-count-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="5">5 BOTÓW</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRUDNOŚĆ AI:</span>
+                      <div class="briefing-toggle-group" id="a4-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>

@@ -32,6 +32,7 @@ export * from './obstacles/playerPhysics.js';
 export * from './obstacles/ballPhysics.js';
 export * from './obstacles/raycast.js';
 export * from './obstacles/renderer.js';
+export { killByHazard } from './arenas/arena4_space.js';
 
 export function drawObstacles(ctx, groundY) {
   const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : (ctx.canvas ? ctx.canvas.width : 1920);
@@ -40,21 +41,25 @@ export function drawObstacles(ctx, groundY) {
   const viewLeft = (camera && typeof camera.x === 'number') ? camera.x - 100 : -100;
   const viewRight = (camera && typeof camera.x === 'number') ? camera.x + viewW + 100 : 5000;
 
-  for (const bar of GROUND_BARRICADES) {
-    if (!bar) continue;
-    const barW = bar.w || bar.size || 60;
-    if (bar.x + barW < viewLeft || bar.x > viewRight) continue;
-    const bType = normalizeObstacleType(bar.type);
-    if (bType === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
-    else if (bType === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
-    else if (bType === 'hedgehog') drawHedgehog(ctx, bar.x, groundY - bar.size / 2, bar.size);
+  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA4 = (curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
+
+  if (!isA4) {
+    for (const bar of GROUND_BARRICADES) {
+      if (!bar) continue;
+      const barW = bar.w || bar.size || 60;
+      if (bar.x + barW < viewLeft || bar.x > viewRight) continue;
+      const bType = normalizeObstacleType(bar.type);
+      if (bType === 'sandbags') drawSandbags(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
+      else if (bType === 'ammo_depot') drawCrate(ctx, bar.x, groundY - bar.h, bar.w, bar.h);
+      else if (bType === 'hedgehog') drawHedgehog(ctx, bar.x, groundY - bar.size / 2, bar.size);
+    }
   }
 
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.isCrossbar || plat.isWall || plat.isCanyonTerrain || plat.isHanging || plat.id === 'lower_cavern_floor' || plat.type === 'rock_shelf') continue;
     const platW = plat.w || 200;
     if (plat.x + platW < viewLeft || plat.x > viewRight) continue;
-    const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     if (isA3) {
       // W Arenie 3 cała autorska architektura i platformy rysowane są w drawArena3Foreground
@@ -62,6 +67,10 @@ export function drawObstacles(ctx, groundY) {
     }
     if (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X') {
       // W Arenie 2 (Święta Dżungla) cała autorska architektura, świątynia i mosty rysowane są w drawArena2Foreground
+      continue;
+    }
+    if (isA4) {
+      // W Arenie 4 (Pędzący Pociąg) cała autorska architektura i wagony pociągu rysowane są w module arena4
       continue;
     }
     if (plat.type === 'catwalk') {
@@ -96,7 +105,7 @@ export function drawObstacles(ctx, groundY) {
 
   drawBarrelExplosionParticles(ctx, viewLeft, viewRight);
 
-  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2' && activeArenaId !== 'ARENA_2_SECTOR_X') {
+  if (activeArenaId !== 'ARENA_3' && activeArenaId !== 'ARENA_FOUNDRY' && activeArenaId !== 'arena-3' && activeArenaId !== 'ARENA_2' && activeArenaId !== 'ARENA_2_PANDORA' && activeArenaId !== 'arena-2' && activeArenaId !== 'ARENA_2_SECTOR_X' && !isA4) {
     drawNeonGoals(ctx, groundY, GOALS);
   }
 

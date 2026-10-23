@@ -23,6 +23,7 @@ import {
   getPlatformSurfaceY
 } from './state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { killByHazard, isEntityInTrainGap } from '../arenas/arena4/hazards.js';
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
@@ -44,9 +45,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const wasGrounded = !!(p.onGround && !p.isJumping);
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const hasNoFloor = isA3 || isA2;
+  const hasNoFloor = isA4 || isA3 || isA2;
 
   if (wantDrop && p.onGround && p.currentPlatform) {
     const curPlat = p.currentPlatform;
@@ -508,9 +510,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
     p.currentPlatform = null;
     p.slopeAngle = 0;
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-    const hasNoFloor = isA3 || isA2;
+    const hasNoFloor = isA4 || isA3 || isA2;
 
     if (p.inMinecart || p._inCart) {
       // Pasażer w wagoniku kopalnianym stoi stabilnie na podłodze wózka
@@ -574,6 +577,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     (typeof window !== 'undefined' ? (window.curArenaObj || window.currentArena) : null);
 
   const activeArenaRefId = activeArena?.id || (typeof activeArenaId !== 'undefined' ? activeArenaId : null);
+  const isA4Active = (activeArenaRefId === 'arena-4' || activeArenaRefId === 'ARENA_4' || activeArenaRefId === 'ARMORED_TRAIN');
   const isA2Active = (activeArenaRefId === 'arena-2' || activeArenaRefId === 'ARENA_2' || activeArenaRefId === 'ARENA_2_PANDORA' || activeArenaRefId === 'ARENA_2_SECTOR_X');
   const isA3Active = (activeArenaRefId === 'arena-3' || activeArenaRefId === 'ARENA_3' || activeArenaRefId === 'ARENA_FOUNDRY');
 
@@ -596,6 +600,18 @@ export function checkPlayerPlatformLanding(p, groundY) {
         if (typeof window !== 'undefined' && typeof window.triggerPlayerAcidDeath === 'function') {
           window.triggerPlayerAcidDeath(p, exactSurfaceY);
         }
+      }
+    }
+  }
+
+  // Obsługa śmiertelnych szpar między wagonami i podtorza w Arenie 4 (Pociąg Pancerny)
+  if (isA4Active && !p.isDead) {
+    if (typeof isEntityInTrainGap === 'function' && isEntityInTrainGap(p)) {
+      killByHazard(p, "PODTORZE KOLEJOWE");
+    } else {
+      const feetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
+      if (feetY >= 920) {
+        killByHazard(p, "PODTORZE KOLEJOWE");
       }
     }
   }

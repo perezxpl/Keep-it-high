@@ -354,10 +354,15 @@ export function getMpMatchRosterSummary(cfg = mpMatchConfig) {
 export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800) {
   const isA2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_SECTOR_X' || arenaId === 'ARENA_2_PANDORA');
   const isA3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
+  const isA4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
 
   // Domyślne współrzędne bazowe (lewa = Team Alpha / Cyan, prawa = Team Beta / Orange)
   let alphaBaseX, betaBaseX, spawnY;
-  if (isA2) {
+  if (isA4) {
+    alphaBaseX = 560;
+    betaBaseX = 2160;
+    spawnY = 360;
+  } else if (isA2) {
     alphaBaseX = 350;
     betaBaseX = 3470;
     spawnY = 350;

@@ -227,18 +227,19 @@ export function getCanvasLogicalHeight() {
  */
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
-  const minX = isArena3 ? 0 : (isArena2 ? 0 : CFG_ARENA_LEFT);
-  const maxX = isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT);
+  const minX = (isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT;
+  const maxX = isArena4 ? 4000 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT));
   const groundFloor = getCameraGroundY();
 
   return {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: 0,
-    maxY: isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)
+    minY: isArena4 ? -1200 : 0,
+    maxY: isArena4 ? 1300 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor))
   };
 }
 
@@ -289,11 +290,14 @@ export function clampCamera(cam = camera) {
   }
 
   const arenaId = getCameraArenaId();
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const minCamY = -45;
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)));
+  const minCamY = isArena4 ? -1200 : -45;
+  const maxCamY = isArena4
+    ? Math.max(minCamY, 410 + 60 - (viewHeight * 0.65))
+    : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72))));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -314,6 +318,7 @@ export function updateCamera(player, ball, options = {}) {
   const canvasHeight = getCanvasLogicalHeight();
   const minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const isMobile = isMobileDevice();
@@ -323,9 +328,9 @@ export function updateCamera(player, ball, options = {}) {
   // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
   // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
   const groundFloor = getCameraGroundY();
-  const baseFloorY = isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor);
+  const baseFloorY = isArena4 ? 410 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
   const target = player || ball;
-  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : groundFloor - 50)) : (isArena2 ? 910 : groundFloor - 50);
+  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 360 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 360 : groundFloor - 50));
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
 
@@ -490,14 +495,17 @@ export function updateCamera(player, ball, options = {}) {
   // Na wieży / wysokości (elev -> 1): kotwica zachowuje bezpieczny margines 0.40 na telefonie (0.42 na PC),
   // dzięki czemu postać gracza nie jest spychana pod sufit i pozostaje w pełni widoczna!
   const targetY = rawTargetY;
-  const verticalAnchor = isMobile
-    ? (0.65 - (elev * 0.25))
-    : (0.65 - (elev * 0.23));
+  // W Arenie 4 dachy wagonów znajdują się w dolnej 1/3 wysokości ekranu (pozostawiając wolną przestrzeń na walkę powietrzną z jetpackami)
+  const verticalAnchor = isArena4
+    ? (isMobile ? 0.72 : 0.70)
+    : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23)));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  const minCamY = -45;
-  const subterraneanBottom = isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor);
-  const maxCamY = isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)));
+  const minCamY = isArena4 ? -1200 : -45;
+  const subterraneanBottom = isArena4 ? 1300 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor));
+  const maxCamY = isArena4
+    ? Math.max(minCamY, 410 + 60 - (viewHeight * 0.65))
+    : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72))));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   if (killstreakState && killstreakState.mortarTargeting) {
@@ -512,13 +520,17 @@ export function updateCamera(player, ball, options = {}) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
-    // Bezpieczny prześwit od górnej krawędzi ekranu / HUD-u
-    const topMarginRatio = 0.20 - (elev * 0.04);
-    const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);
-    const safeMarginBottom = Math.max(75, viewHeight * 0.18);
+    // Bezpieczny prześwit od krawędzi ekranu
+    if (isArena4) {
+      const safeMarginBottom = Math.max(55, viewHeight * 0.14);
+      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, targetCamY);
+    } else {
+      const topMarginRatio = 0.20 - (elev * 0.04);
+      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);
+      const safeMarginBottom = Math.max(75, viewHeight * 0.18);
 
-    targetCamX = Math.max(pX - viewWidth + safeMarginX, Math.min(targetCamX, pX - safeMarginX));
-    targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+    }
 
     if (viewWidth < arenaWidth) {
       targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));

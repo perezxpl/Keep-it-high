@@ -1800,7 +1800,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
-  const isDeathmatch = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
+  const isDeathmatch = (curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
   const isMatchArena = (curArenaId === 'ARENA_1');
   const isDmArena = (isSectorXArena || isDeathmatch);

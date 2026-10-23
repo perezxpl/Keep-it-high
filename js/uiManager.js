@@ -447,7 +447,7 @@ export const uiManager = {
     {
       id: 'ARENA_1',
       badge: 'SEKTOR 01',
-      counter: 'MAPA 1 / 3',
+      counter: 'MAPA 1 / 4',
       name: 'NEONOWE MIASTO',
       tag: 'COMBAT BALL',
       desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.',
@@ -456,7 +456,7 @@ export const uiManager = {
     {
       id: 'ARENA_2',
       badge: 'SEKTOR 02',
-      counter: 'MAPA 2 / 3',
+      counter: 'MAPA 2 / 4',
       name: 'TOKSYCZNA RAFINERIA',
       tag: 'DEATHMATCH 5 MIN',
       desc: 'Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.',
@@ -465,11 +465,20 @@ export const uiManager = {
     {
       id: 'ARENA_3',
       badge: 'SEKTOR 03',
-      counter: 'MAPA 3 / 3',
+      counter: 'MAPA 3 / 4',
       name: 'TAJEMNICZA DŻUNGLA',
       tag: 'ARENA TAKTYCZNA',
       desc: 'Gęsta roślinność, organiczne platformy i starcia na zróżnicowanych wysokościach.',
       img: './assets/arena3_preview.svg?v=v221_nocturnal_jungle_preview'
+    },
+    {
+      id: 'ARENA_4',
+      badge: 'SEKTOR 04',
+      counter: 'MAPA 4 / 4',
+      name: 'STACJA ORBITALNA ARES',
+      tag: 'NISKA GRAWITACJA // PRÓŻNIA',
+      desc: 'ŚRODOWISKO NISKIEJ GRAWITACJI // PRÓŻNIA // ZNISZCZALNE POSZYCIE',
+      img: './assets/arena4_preview.svg?v=v315_ares_orbital_space_station'
     }
   ],
   currentBriefingIndex: 0,
@@ -913,7 +922,8 @@ export const uiManager = {
   },
 
   updateMpArenaUI(arenaId) {
-    const norm = (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'arena-3' :
+    const norm = (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'arena-4' :
+                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'arena-3' :
                  (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'arena-2' : 'arena-1';
     document.querySelectorAll('.mp-arena-card').forEach(b => {
       const isTarget = b.dataset.arena === norm;
@@ -922,7 +932,8 @@ export const uiManager = {
   },
 
   updateArenaSelectUI(arenaId) {
-    const norm = (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' :
+    const norm = (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'ARENA_4' :
+                 (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' :
                  (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'ARENA_2' : 'ARENA_1';
     const foundIdx = this.briefingArenas.findIndex(a => a.id === norm);
     if (foundIdx !== -1) {
@@ -977,9 +988,11 @@ export const uiManager = {
     const optMap1 = document.getElementById('arena-opts-ARENA_1');
     const optMap2 = document.getElementById('arena-opts-ARENA_2');
     const optMap3 = document.getElementById('arena-opts-ARENA_3');
+    const optMap4 = document.getElementById('arena-opts-ARENA_4');
     if (optMap1) optMap1.style.display = (arena.id === 'ARENA_1') ? 'flex' : 'none';
     if (optMap2) optMap2.style.display = (arena.id === 'ARENA_2') ? 'flex' : 'none';
     if (optMap3) optMap3.style.display = (arena.id === 'ARENA_3') ? 'flex' : 'none';
+    if (optMap4) optMap4.style.display = (arena.id === 'ARENA_4') ? 'flex' : 'none';
 
     // 5. Synchronizacja stanu Deathmatch (Arena 2)
     this.syncDeathmatchUI();
@@ -990,11 +1003,16 @@ export const uiManager = {
     if (ballCountRow) ballCountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
     const a3CountRow = document.getElementById('a3-bot-count-row');
     if (a3CountRow) a3CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
+    const a4CountRow = document.getElementById('a4-bot-count-row');
+    if (a4CountRow) a4CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
 
     document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => {
       b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
     });
     document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => {
+      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
+    });
+    document.querySelectorAll('#a4-bot-toggle-group button').forEach(b => {
       b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
     });
 
@@ -1111,7 +1129,7 @@ export const uiManager = {
 
   syncBotCountUI(count = getBotCount()) {
     const c = parseInt(count, 10) || 1;
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.botCount, 10) === c);
     });
   },
@@ -1639,9 +1657,26 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3)
+    // PARAMETRY BITWY: Opcje Areny 4 (Stacja Orbitalna Ares)
     // -------------------------------------------------------------------------
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#a4-bot-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#a4-bot-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const isActive = (btn.dataset.botState === 'active');
+        bot.active = isActive;
+        syncDevBotButtonUI();
+        const countRow = document.getElementById('a4-bot-count-row');
+        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
