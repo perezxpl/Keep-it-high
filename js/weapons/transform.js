@@ -752,10 +752,9 @@ export function getWeaponHoldTransform(p) {
     const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
     const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5;
     const totalArmReach = (p.upperArmLen || 14) + (p.forearmLen || 13);
-    const avgGripX = ((gripCfg.rearGripX || 0) + (gripCfg.foreGripX || 0)) * 0.5;
 
-    // Przecięcie promienia celowania z poziomu oczu z pełnym wyprostem ramion od klatki/barków
-    const targetReach = totalArmReach * 1.08;
+    // Wyprostowane ramiona celujące w linii wzroku na wysokość oczu
+    const targetReach = totalArmReach * 0.96;
     const Dx = (eyeWorldX - chestCenterX) * charFacing;
     const Dy = eyeWorldY - chestCenterY;
     const c = Dx * Dx + Dy * Dy - targetReach * targetReach;
@@ -763,10 +762,14 @@ export function getWeaponHoldTransform(p) {
     const discr = Math.max(0, b * b - c);
     const extT = -b + Math.sqrt(discr);
 
-    // Przyrządy celownicze i zamek pistoletu znajdują się dokładnie na wysokości oczu
-    const sightToPivotOffset = 2.0;
-    shoulderPivotX = eyeWorldX + Math.cos(shoulderAimAngle) * (extT - avgGripX) * charFacing;
-    shoulderPivotY = eyeWorldY + Math.sin(shoulderAimAngle) * (extT - avgGripX) + sightToPivotOffset;
+    const aimHandX = eyeWorldX + Math.cos(shoulderAimAngle) * extT * charFacing;
+    const aimHandY = eyeWorldY + Math.sin(shoulderAimAngle) * extT;
+
+    const rotGripAimX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
+    const rotGripAimY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
+
+    shoulderPivotX = aimHandX - rotGripAimX;
+    shoulderPivotY = aimHandY - rotGripAimY;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
