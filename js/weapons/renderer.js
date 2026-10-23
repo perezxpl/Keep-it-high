@@ -1136,10 +1136,10 @@ export function drawHeldWeapon(ctx, p) {
       // Proceduralny fallback w trakcie ładowania assetów
       ctx.fillStyle = '#78350f';
       ctx.beginPath();
-      ctx.moveTo(1.2, 0.5);
-      ctx.lineTo(-2.8, 8.5);
-      ctx.lineTo(-0.2, 8.8);
-      ctx.lineTo(3.2, 1.8);
+      ctx.moveTo(-1.3, 0.5);
+      ctx.lineTo(-5.3, 8.5);
+      ctx.lineTo(-2.7, 8.8);
+      ctx.lineTo(0.7, 1.8);
       ctx.closePath();
       ctx.fill();
 
