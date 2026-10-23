@@ -326,12 +326,12 @@ export function getShooterShoulderPos(shooter) {
 
 export const WEAPON_GRIP_CONFIGS = {
   AK47: {
-    rearGripX: 5.2,
-    rearGripY: 4.4,
-    foreGripX: 15.5,
-    foreGripY: 1.3,
+    rearGripX: 2.8,
+    rearGripY: 3.2,
+    foreGripX: 15.8,
+    foreGripY: 1.0,
     barrelLen: 34.0,
-    stockLen: 10.2
+    stockLen: 9.0
   },
   SHOTGUN: {
     rearGripX: 0.0,
