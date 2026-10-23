@@ -350,7 +350,7 @@ export const WEAPON_GRIP_CONFIGS = {
     stockLen: 11.5
   },
   GLOCK: { rearGripX: 1.8, rearGripY: 3.8, foreGripX: 2.6, foreGripY: 3.4, barrelLen: 13.5, stockLen: 4.0 },
-  REVOLVER: { rearGripX: -3.4, rearGripY: 5.1, foreGripX: -2.6, foreGripY: 4.8, barrelLen: 17.0, stockLen: 4.0 },
+  REVOLVER: { rearGripX: -3.4, rearGripY: 5.1, foreGripX: -2.6, foreGripY: 4.8, barrelLen: 18.7, stockLen: 4.0 },
   SAWED_OFF: { rearGripX: -1.7, rearGripY: 3.1, foreGripX: 9.0, foreGripY: 1.7, barrelLen: 19.5, stockLen: 4.5 },
   KNIFE: {
     rearGripX: -1.0,

@@ -1112,7 +1112,7 @@ export function drawHeldWeapon(ctx, p) {
 
     if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
       const s = 20.2 / 1040;
-      const pivotSpriteX = 374.7;
+      const pivotSpriteX = 290.0;
       const pivotSpriteY = 100.0;
 
       ctx.save();
@@ -1130,7 +1130,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+        drawMuzzleFlash(ctx, 18.7, -1.2, 12, false);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
