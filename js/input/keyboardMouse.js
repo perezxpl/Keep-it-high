@@ -35,6 +35,7 @@ import {
   handleEditorRightClick
 } from '../dev/obstacleEditor.js';
 import { toggleTouchControls } from '../dev/devPanel.js';
+import { toggleWeaponEditor } from '../dev/weaponEditor.js';
 import {
   killstreakState,
   activateNextAvailableStreak,
@@ -477,6 +478,10 @@ export function initKeyboardMouseHandlers({
     else if (e.code === 'Digit8' || e.code === 'Numpad8' || e.key === '8') devSetClass('ENFORCER');
 
     if (e.code === 'Backquote' || e.key === '`' || e.key === '~') toggleDevPanel();
+    if (e.code === 'F6') {
+      e.preventDefault();
+      toggleWeaponEditor();
+    }
 
     if (e.code === 'KeyM' || e.code === 'F2' || e.code === 'Digit0' || e.code === 'Numpad0') {
       if (!isChatActive) {

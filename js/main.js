@@ -72,6 +72,11 @@ import {
   handleEditorRightClick
 } from './dev/obstacleEditor.js';
 import {
+  initWeaponEditorUI,
+  updateWeaponEditorFreeze,
+  weaponEditorState
+} from './dev/weaponEditor.js';
+import {
   toggleDevPanel,
   syncDevBotButtonUI,
   syncDevArenaButtonUI,
@@ -437,6 +442,7 @@ initObstacleEditorUI();
 initDevZoomUI();
 initTouchControlsDevUI();
 initModularGearDevUI();
+initWeaponEditorUI();
 initNetwork();
 initKillstreaks();
 initPlayerLoadout(player);
@@ -549,7 +555,7 @@ function update() {
   const mpModalEl = document.getElementById('mp-modal');
   const devMenuEl = document.getElementById('dev-menu');
   const isMpOpen = mpModalEl && !mpModalEl.classList.contains('mp-modal-hidden');
-  const isDevOpen = devMenuEl && !devMenuEl.classList.contains('dev-menu-hidden');
+  const isDevOpen = (devMenuEl && !devMenuEl.classList.contains('dev-menu-hidden')) || weaponEditorState.isOpen;
   const isPauseOrSettingsOverlay = (GAME_STATE.current === 'PAUSED' || isSettingsInLiveMatch);
 
   if (isMpOpen || isDevOpen || isChatActive || isPauseOrSettingsOverlay) {
@@ -568,6 +574,7 @@ function update() {
 
   // Przetwarzanie wejścia gracza (celowanie, strzał, przeładowanie, jetpack, timery drążków, pad)
   updatePlayerInputAndCombat(activeArenaId);
+  updateWeaponEditorFreeze();
 
   if (remotePlayer && remotePlayer.active) {
     remotePlayer.groundY = GROUND_Y;

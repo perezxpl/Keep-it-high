@@ -100,6 +100,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/uiManager.js` — obsługa ekranów HTML/CSS (Menu główne, Wybór areny, Ustawienia, Kreator, Pauza).
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
+- `js/dev/weaponEditor.js` — interaktywny edytor chwytu i pozycji broni na żywo (klawisz F6 lub przycisk `[BRONIE]` w menu DEV, suwaki i przyciski krokowe dla `pivotSpriteX/Y`, `rearGripX/Y`, `foreGripX/Y`, `barrelLen`, natychmiastowy podgląd z zamrożeniem celowania, autozapis w `localStorage` oraz eksport gotowego kodu JS).
 
 ### Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
 - `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) z odblokowaniami nagród (`unlocks`: bronie, perki, serie zabójstw, kamuflaże) oraz statystyk bojowych gracza w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).

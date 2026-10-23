@@ -213,6 +213,22 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * Konfiguracja punktów obrotu (pivotów) sprite'ów broni w pikselach tekstury.
+ * Obiekt jest w pełni modyfikowalny na żywo przez Edytor Broni (DEV).
+ */
+export const WEAPON_SPRITE_PIVOTS = {
+  AK47: { x: 306.6, y: 85.0 },
+  SHOTGUN: { x: 401.3, y: 65.0 },
+  SNIPER: { x: 320.7, y: 138.5 },
+  GLOCK: { x: 161.4, y: 90.0 },
+  REVOLVER: { x: 290.0, y: 100.0 },
+  SAWED_OFF: { x: 226.5, y: 53.0 },
+  KNIFE: { x: 268.4, y: 188.5 },
+  MACHETE: { x: 114.0, y: 114.0 },
+  AXE: { x: 228.7, y: 206.0 }
+};
+
+/**
  * Renderowanie smugi cięcia broni białej (Melee Slash Trail) w przestrzeni świata
  */
 export function drawMeleeSlashTrail(ctx, p) {
@@ -574,8 +590,8 @@ export function drawHeldWeapon(ctx, p) {
         imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
       
       const s = 44.8 / 1272; // Skala z pikseli sprite\'a do jednostek gry
-      const pivotSpriteX = 306.6; // Punkt obrotu w pikselach sprite\'a
-      const pivotSpriteY = 85.0;  // Oś lufy (boreline) w pikselach sprite\'a
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.AK47.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.AK47.y;
 
       // 1. Rysowanie korpusu broni, magazynka i suwadła w osi broni
       ctx.save();
@@ -705,8 +721,8 @@ export function drawHeldWeapon(ctx, p) {
         imgPump && imgPump.complete && imgPump.naturalWidth > 0) {
       
       const s = 39.0 / 1334;
-      const pivotSpriteX = 401.3;
-      const pivotSpriteY = 65.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SHOTGUN.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SHOTGUN.y;
 
       // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
@@ -807,8 +823,8 @@ export function drawHeldWeapon(ctx, p) {
         imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
       
       const s = 58.5 / 1353;
-      const pivotSpriteX = 320.7;
-      const pivotSpriteY = 138.5;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SNIPER.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SNIPER.y;
 
       // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
@@ -973,8 +989,8 @@ export function drawHeldWeapon(ctx, p) {
         imgSlide && imgSlide.complete && imgSlide.naturalWidth > 0) {
       
       const s = 15.7 / 835;
-      const pivotSpriteX = 161.4;
-      const pivotSpriteY = 90.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.GLOCK.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.GLOCK.y;
 
       // 1. Warstwy pistoletu w osi broni
       ctx.save();
@@ -1112,8 +1128,8 @@ export function drawHeldWeapon(ctx, p) {
 
     if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
       const s = 20.2 / 1040;
-      const pivotSpriteX = 290.0;
-      const pivotSpriteY = 100.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.REVOLVER.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.REVOLVER.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1177,8 +1193,8 @@ export function drawHeldWeapon(ctx, p) {
         imgBarrels && imgBarrels.complete && imgBarrels.naturalWidth > 0) {
       
       const s = 23.0 / 1160;
-      const pivotSpriteX = 226.5;
-      const pivotSpriteY = 53.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SAWED_OFF.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SAWED_OFF.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1241,8 +1257,8 @@ export function drawHeldWeapon(ctx, p) {
     const imgKnife = getWeaponPartSprite('KNIFE');
     if (imgKnife && imgKnife.complete && imgKnife.naturalWidth > 0) {
       const s = 24.7 / 1275;
-      const pivotSpriteX = 268.4;
-      const pivotSpriteY = 188.5;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.KNIFE.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.KNIFE.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1287,8 +1303,8 @@ export function drawHeldWeapon(ctx, p) {
     const imgMachete = getWeaponPartSprite('MACHETE');
     if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
       const s = 28.0 / 1242;
-      const pivotSpriteX = 114.0;
-      const pivotSpriteY = 114.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.MACHETE.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.MACHETE.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1322,8 +1338,8 @@ export function drawHeldWeapon(ctx, p) {
     const imgAxe = getWeaponPartSprite('AXE');
     if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
       const s = 19.5 / 1115;
-      const pivotSpriteX = 228.7;
-      const pivotSpriteY = 206.0;
+      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.AXE.x;
+      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.AXE.y;
 
       ctx.save();
       ctx.scale(s, s);
