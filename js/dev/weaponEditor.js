@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v3';
+const STORAGE_KEY = 'kih_weapon_tuning_v4';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -166,16 +166,24 @@ export function updateWeaponEditorFreeze() {
     player.aimX = player.x + (weaponEditorState.aimFacing * 300);
     player.aimY = player.y + 10 + weaponEditorState.aimElevation;
     player.shootPoseWeight = 1.0;
+    player.vx = 0;
+    player.gaitMode = 'IDLE';
   } else if (weaponEditorState.previewPose === 'WALK') {
     player.aimX = player.x + (weaponEditorState.aimFacing * 120);
     player.aimY = player.y + 90;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.04;
+    player.vx = weaponEditorState.aimFacing * 1.6;
+    player.gaitMode = 'WALK';
+    player.onGround = true;
   } else if (weaponEditorState.previewPose === 'RUN') {
     player.aimX = player.x + (weaponEditorState.aimFacing * 120);
     player.aimY = player.y + 90;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.08;
+    player.vx = weaponEditorState.aimFacing * 3.8;
+    player.gaitMode = 'SPRINT';
+    player.onGround = true;
   }
 }
 
@@ -451,11 +459,15 @@ export function renderEditorValues() {
   const grip = WEAPON_GRIP_CONFIGS[wepId] || {};
   const pivot = WEAPON_SPRITE_PIVOTS[wepId] || { x: 0, y: 0 };
 
+  // Zapewnij zerowe ramię dźwigni - chwyt leży dokładnie w osi dłoni
+  grip.rearGripX = 0.0;
+  grip.rearGripY = 0.0;
+
   const paramDefs = [
     {
       key: 'pivotSpriteX',
-      label: 'Sprite Pivot X (Oś obrotu lufy)',
-      desc: 'Centrum obrotu sprite\'a. Musi leżeć na osi lufy, inaczej broń odlatuje w biegu!',
+      label: 'Ułożenie Broni X (Poziom)',
+      desc: 'Przesuwa broń w poziomie w prawej dłoni. Działa spójnie w celowaniu, chodzie i biegu.',
       val: pivot.x,
       min: 0, max: 600, step: 0.5,
       steps: [-5, -1, 1, 5],
@@ -463,35 +475,17 @@ export function renderEditorValues() {
     },
     {
       key: 'pivotSpriteY',
-      label: 'Sprite Pivot Y (Wysokość osi lufy)',
-      desc: 'Pionowa oś lufy w pikselach grafiki',
+      label: 'Ułożenie Broni Y (Pion)',
+      desc: 'Wysokość ułożenia rękojeści broni w dłoni postaci.',
       val: pivot.y,
-      min: 0, max: 400, step: 0.5,
+      min: 0, max: 450, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (v) => { pivot.y = v; saveWeaponTuning(); }
     },
     {
-      key: 'rearGripX',
-      label: 'Prawa Ręka X (chwyt główny / poziom)',
-      desc: 'Pozycja prawej dłoni w osi lufy',
-      val: grip.rearGripX || 0,
-      min: -15, max: 15, step: 0.1,
-      steps: [-1, -0.1, 0.1, 1],
-      set: (v) => { grip.rearGripX = v; saveWeaponTuning(); }
-    },
-    {
-      key: 'rearGripY',
-      label: 'Prawa Ręka Y (chwyt główny / pion)',
-      desc: 'Pozycja prawej dłoni w pionie (+ to w dół)',
-      val: grip.rearGripY || 0,
-      min: -15, max: 15, step: 0.1,
-      steps: [-1, -0.1, 0.1, 1],
-      set: (v) => { grip.rearGripY = v; saveWeaponTuning(); }
-    },
-    {
       key: 'foreGripX',
-      label: 'Lewa Ręka X (łoże / podparcie poziom)',
-      desc: 'Pozycja lewej dłoni na łożu broni',
+      label: 'Lewa Ręka X (Łoże / Chwyt wspierający)',
+      desc: 'Pozycja lewej dłoni podtrzymującej broń w poziomie',
       val: grip.foreGripX || 0,
       min: -15, max: 25, step: 0.1,
       steps: [-1, -0.1, 0.1, 1],
@@ -499,7 +493,7 @@ export function renderEditorValues() {
     },
     {
       key: 'foreGripY',
-      label: 'Lewa Ręka Y (łoże / podparcie pion)',
+      label: 'Lewa Ręka Y (Wysokość podparcia)',
       desc: 'Wysokość lewej dłoni pod/na łożu (+ to w dół)',
       val: grip.foreGripY || 0,
       min: -15, max: 15, step: 0.1,
@@ -508,8 +502,8 @@ export function renderEditorValues() {
     },
     {
       key: 'barrelLen',
-      label: 'Długość Lufy (płomień i wylot pocisków)',
-      desc: 'Odległość wylotu lufy od punktu obrotu',
+      label: 'Długość Lufy (Wylot i płomień)',
+      desc: 'Punkt wylotu pocisków i błysku wystrzału',
       val: grip.barrelLen || 15,
       min: 5, max: 55, step: 0.2,
       steps: [-1, -0.2, 0.2, 1],

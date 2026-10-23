@@ -326,34 +326,34 @@ export function getShooterShoulderPos(shooter) {
 
 export const WEAPON_GRIP_CONFIGS = {
   AK47: {
-    rearGripX: 2.8,
-    rearGripY: 3.2,
-    foreGripX: 15.8,
-    foreGripY: -0.3,
-    barrelLen: 34.0,
-    stockLen: 9.0
+    rearGripX: 0.0,
+    rearGripY: 0.0,
+    foreGripX: 13.0,
+    foreGripY: -3.5,
+    barrelLen: 30.8,
+    stockLen: 13.6
   },
   SHOTGUN: {
     rearGripX: 0.0,
-    rearGripY: 3.2,
+    rearGripY: 0.0,
     foreGripX: 14.0,
-    foreGripY: 1.4,
-    barrelLen: 28.0,
-    stockLen: 9.8
+    foreGripY: -1.8,
+    barrelLen: 29.5,
+    stockLen: 11.0
   },
   SNIPER: {
-    rearGripX: 4.9,
-    rearGripY: 4.6,
-    foreGripX: 15.2,
-    foreGripY: 1.6,
-    barrelLen: 45.5,
-    stockLen: 11.5
+    rearGripX: 0.0,
+    rearGripY: 0.0,
+    foreGripX: 15.1,
+    foreGripY: -3.0,
+    barrelLen: 34.8,
+    stockLen: 15.1
   },
-  GLOCK: { rearGripX: 1.8, rearGripY: 3.8, foreGripX: 2.6, foreGripY: 3.4, barrelLen: 13.5, stockLen: 4.0 },
-  REVOLVER: { rearGripX: -3.1, rearGripY: 5.5, foreGripX: -2.3, foreGripY: 5.2, barrelLen: 18.7, stockLen: 4.0 },
-  SAWED_OFF: { rearGripX: -1.7, rearGripY: 3.1, foreGripX: 9.0, foreGripY: 1.7, barrelLen: 19.5, stockLen: 4.5 },
+  GLOCK: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, barrelLen: 11.5, stockLen: 4.0 },
+  REVOLVER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, barrelLen: 21.5, stockLen: 4.0 },
+  SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, barrelLen: 17.6, stockLen: 4.5 },
   KNIFE: {
-    rearGripX: -1.0,
+    rearGripX: 0.0,
     rearGripY: 0.0,
     foreGripX: -4.5,
     foreGripY: -3.5,

@@ -217,15 +217,15 @@ if (typeof window !== 'undefined') {
  * Obiekt jest w pełni modyfikowalny na żywo przez Edytor Broni (DEV).
  */
 export const WEAPON_SPRITE_PIVOTS = {
-  AK47: { x: 306.6, y: 85.0 },
-  SHOTGUN: { x: 401.3, y: 65.0 },
-  SNIPER: { x: 320.7, y: 138.5 },
-  GLOCK: { x: 161.4, y: 90.0 },
-  REVOLVER: { x: 290.0, y: 108.0 },
-  SAWED_OFF: { x: 226.5, y: 53.0 },
-  KNIFE: { x: 268.4, y: 188.5 },
+  AK47: { x: 386.0, y: 176.0 },
+  SHOTGUN: { x: 401.3, y: 167.0 },
+  SNIPER: { x: 450.0, y: 260.0 },
+  GLOCK: { x: 257.0, y: 292.0 },
+  REVOLVER: { x: 130.5, y: 391.0 },
+  SAWED_OFF: { x: 133.5, y: 223.0 },
+  KNIFE: { x: 210.0, y: 188.5 },
   MACHETE: { x: 114.0, y: 114.0 },
-  AXE: { x: 228.7, y: 206.0 }
+  AXE: { x: 218.0, y: 222.0 }
 };
 
 /**

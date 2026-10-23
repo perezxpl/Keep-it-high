@@ -824,15 +824,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const armLeft = getArmAnglesForTarget(leftArmRelX, leftArmRelY, p.upperArmLen, p.forearmLen, 1);
 
     if (hold.straightArms && !p.isProne) {
-      // W pełnym wyproście ramion kąt łokcia wynosi 0.0 (w pełni wyprostowane łokcie skierowane prosto ku dłoniom)
-      const straightSwingRight = Math.atan2(rightArmRelX, rightArmRelY);
-      armRight.swing = straightSwingRight;
-      armRight.elbow = 0.0;
-
+      // W postawie wyprostowanej ramiona celują bezpośrednio w chwyt broni z zachowaniem naturalnego 2-bone IK
       if (!p.isReloading) {
-        const straightSwingLeft = Math.atan2(leftArmRelX, leftArmRelY);
-        armLeft.swing = straightSwingLeft;
-        armLeft.elbow = 0.0;
+        // Obie ręce podążają za wyliczonym IK chwytu oburęcznego
       }
     }
 
@@ -965,7 +959,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
   let footBlend = p.isDead ? 0.90 : 0.32;
-  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? (wepWeight > 0.8 ? 0.88 : (wepWeight > 0.4 ? 0.78 : 0.45)) : 0.28);
+  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? 0.98 : 0.28);
 
   // Dynamiczny, natychmiastowy czas reakcji kończyn podczas ataku wręcz (brak opóźnienia i dławienia klatek animacji)
   if (p.meleeState && !p.isDead) {
