@@ -334,12 +334,12 @@ export const WEAPON_GRIP_CONFIGS = {
     stockLen: 10.2
   },
   SHOTGUN: {
-    rearGripX: 3.9,
-    rearGripY: 3.8,
-    foreGripX: 13.8,
-    foreGripY: 1.3,
+    rearGripX: 0.0,
+    rearGripY: 3.2,
+    foreGripX: 14.0,
+    foreGripY: 1.4,
     barrelLen: 28.0,
-    stockLen: 10.4
+    stockLen: 9.8
   },
   SNIPER: {
     rearGripX: 4.9,
@@ -638,12 +638,12 @@ export function getWeaponHoldTransform(p) {
     directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
     looseAimAngle = pistolEffAngle;
   } else {
-    loosePivotX = hipX + (isSniper ? 6.5 : 5.2) * charFacing;
-    loosePivotY = hipY - (isSniper ? 11.5 : 9.5) + headBobOffset + crouchDropY;
+    loosePivotX = hipX + (isSniper ? 6.5 : (isShotgun ? 7.6 : 5.2)) * charFacing;
+    loosePivotY = hipY - (isSniper ? 11.5 : (isShotgun ? 9.0 : 9.5)) + headBobOffset + crouchDropY;
     directAngle = Math.atan2(aimY - loosePivotY, (aimX - loosePivotX) * charFacing);
     if (directAngle < -Math.PI / 2) directAngle = Math.max(-1.66, directAngle);
     else if (directAngle > Math.PI / 2 + 0.35) directAngle = Math.min(Math.PI / 2 + 0.35, directAngle);
-    looseAimAngle = directAngle + (isSniper ? 0.22 : (isShotgun ? 0.35 : 0.26));
+    looseAimAngle = directAngle + (isSniper ? 0.22 : (isShotgun ? 0.22 : 0.26));
   }
 
   // DYNAMICZNE KOŁYSANIE BRONI W RUCHU BEZ CELOWANIA (WEAPON SWAY & BOB)
