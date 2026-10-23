@@ -1287,8 +1287,8 @@ export function drawHeldWeapon(ctx, p) {
     const imgMachete = getWeaponPartSprite('MACHETE');
     if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
       const s = 28.0 / 1242;
-      const pivotSpriteX = 200.0;
-      const pivotSpriteY = 84.0;
+      const pivotSpriteX = 114.0;
+      const pivotSpriteY = 114.0;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1427,47 +1427,47 @@ export function drawWeaponBloodOverlay(ctx, weaponId, bloodTimer) {
     // 1. Warstwa krwi na zakrzywionym brzuścu i szpicu kukri
     ctx.fillStyle = `rgba(127, 29, 29, ${alpha * 0.94})`;
     ctx.beginPath();
-    ctx.moveTo(7.0, 1.0);
-    ctx.lineTo(14.0, -1.5);
-    ctx.lineTo(24.2, 1.0);
-    ctx.lineTo(18.5, 4.7);
-    ctx.lineTo(11.0, 3.2);
-    ctx.lineTo(7.0, 1.8);
+    ctx.moveTo(8.9, 0.3);
+    ctx.lineTo(15.9, -2.2);
+    ctx.lineTo(26.1, 0.3);
+    ctx.lineTo(20.4, 4.0);
+    ctx.lineTo(12.9, 2.5);
+    ctx.lineTo(8.9, 1.1);
     ctx.closePath();
     ctx.fill();
 
     // 2. Świeża krew wzdłuż najbardziej tnącej części brzuśca
     ctx.fillStyle = `rgba(185, 28, 28, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.moveTo(10.0, 2.2);
-    ctx.lineTo(24.0, 1.0);
-    ctx.lineTo(18.2, 4.6);
-    ctx.lineTo(13.0, 3.8);
+    ctx.moveTo(11.9, 1.5);
+    ctx.lineTo(25.9, 0.3);
+    ctx.lineTo(20.1, 3.9);
+    ctx.lineTo(14.9, 3.1);
     ctx.closePath();
     ctx.fill();
 
     // 3. Zakrzepłe smugi i rozbryzgi wzdłuż głowni
     ctx.fillStyle = `rgba(153, 27, 27, ${alpha * 0.88})`;
     ctx.beginPath();
-    ctx.arc(8.5, 0.5, 1.4, 0, Math.PI * 2);
-    ctx.arc(12.5, 0.8, 1.6, 0, Math.PI * 2);
-    ctx.arc(16.0, 1.5, 1.8, 0, Math.PI * 2);
-    ctx.arc(20.5, 0.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(10.4, -0.2, 1.4, 0, Math.PI * 2);
+    ctx.arc(14.4, 0.1, 1.6, 0, Math.PI * 2);
+    ctx.arc(17.9, 0.8, 1.8, 0, Math.PI * 2);
+    ctx.arc(22.4, -0.2, 1.2, 0, Math.PI * 2);
     ctx.fill();
 
     // 4. Dyskretne mikrokrople na brzuścu kukri
     ctx.fillStyle = `rgba(136, 19, 55, ${alpha * 0.95})`;
     ctx.beginPath();
-    ctx.arc(18.0, 4.6, 0.50, 0, Math.PI * 2);
-    ctx.arc(23.8, 1.2, 0.45, 0, Math.PI * 2);
+    ctx.arc(19.9, 3.9, 0.50, 0, Math.PI * 2);
+    ctx.arc(25.7, 0.5, 0.45, 0, Math.PI * 2);
     ctx.fill();
 
     // 5. Mokry refleks świetlny na powierzchni krwi
     ctx.strokeStyle = `rgba(254, 202, 202, ${alpha * 0.55})`;
     ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.moveTo(11.0, 2.5);
-    ctx.quadraticCurveTo(16.0, 3.8, 22.5, 1.2);
+    ctx.moveTo(12.9, 1.8);
+    ctx.quadraticCurveTo(17.9, 3.1, 24.4, 0.5);
     ctx.stroke();
 
   } else if (weaponId === 'AXE') {

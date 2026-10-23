@@ -329,7 +329,7 @@ export const WEAPON_GRIP_CONFIGS = {
     rearGripX: 2.8,
     rearGripY: 3.2,
     foreGripX: 15.8,
-    foreGripY: 1.0,
+    foreGripY: -0.3,
     barrelLen: 34.0,
     stockLen: 9.0
   },
@@ -365,7 +365,7 @@ export const WEAPON_GRIP_CONFIGS = {
     rearGripY: 0.0,
     foreGripX: -4.0,
     foreGripY: 0.0,
-    barrelLen: 24.0,
+    barrelLen: 25.5,
     stockLen: 0.0
   },
   AXE: {
@@ -1352,8 +1352,8 @@ export function getWeaponHoldTransform(p) {
   }
 
   const barrelLength = gripCfg.barrelLen;
-  const bladeReach = (wepKey === 'MACHETE' ? 24.0 : (wepKey === 'AXE' ? 26.0 : 22.0));
-  const hiltReach = 0.5;
+  const bladeReach = (wepKey === 'MACHETE' ? 25.5 : (wepKey === 'AXE' ? 26.0 : 22.0));
+  const hiltReach = (wepKey === 'MACHETE' ? 1.6 : 0.5);
   const tipX = finalPivotX + Math.cos(proneAimAngle) * bladeReach * charFacing;
   const tipY = finalPivotY + Math.sin(proneAimAngle) * bladeReach;
   const hiltX = finalPivotX + Math.cos(proneAimAngle) * hiltReach * charFacing;
