@@ -1165,7 +1165,7 @@ export function getWeaponHoldTransform(p) {
             // Toporek Zamach (Windup): dłoń wędruje głęboko za ucho/głowę, toporek odchyla się w tył
             const sWind = ease(u);
             meleeAngleOffset = -2.25 * sWind; // głębokie odchylenie głowicy topora za głowę (~ -129 st)
-            shiftForward = -11.0 * sWind;     // dłoń cofa się za głowę w tył
+            shiftForward = -11.0 * sWind - Math.sin(u * Math.PI) * 2.0; // organiczny łuk zamachu za plecy
             shiftY = -28.0 * sWind;           // uniesienie dłoni na wysokość głowy/ucha
             leftHandLocalX = 10.0 * sWind;    // lewa ręka unosi się w przód dla stabilizacji i celowania
             leftHandLocalY = -6.0 * sWind;
@@ -1201,14 +1201,15 @@ export function getWeaponHoldTransform(p) {
             leftHandLocalY = 3.0;
             p.meleeTorsoTilt = 0.22 * charFacing * thrustProg;
           } else if (cfg.type === 'OVERHEAD_CHOP') {
-            // Toporek Uderzenie (Active): potężny zamach znad głowy w dół z pełnym zaangażowaniem masy ciała
-            const sChop = 1.0 - Math.pow(1.0 - u, 2.6);
-            meleeAngleOffset = lerp(-2.25, 1.15, sChop); // potężny łuk rąbnięcia zza głowy (od -129 st do +66 st w dół)
-            shiftForward = lerp(-11.0, 15.5, sChop);     // dłoń przechodzi znad głowy do wyprostu w przód
-            shiftY = lerp(-28.0, -9.5, sChop);           // dłoń opada z impetem cięcia
-            leftHandLocalX = lerp(10.0, -9.0, sChop);    // lewa ręka dynamicznie cofa się jako przeciwwaga
+            // Toporek Uderzenie (Active): owalna trajektoria zamachu zza głowy, nad hełmem i w dół
+            const inv = 1.0 - u, bezT = u;
+            shiftForward = inv * inv * (-11.0) + 2 * inv * bezT * 6.0 + bezT * bezT * 15.5;
+            shiftY = inv * inv * (-28.0) + 2 * inv * bezT * (-40.0) + bezT * bezT * (-9.5);
+            const sChop = 1.0 - Math.pow(1.0 - u, 1.8);
+            meleeAngleOffset = lerp(-2.25, 1.15, sChop);
+            leftHandLocalX = lerp(10.0, -9.0, sChop);
             leftHandLocalY = lerp(-6.0, -4.0, sChop);
-            p.meleeTorsoTilt = lerp(-0.26, 0.35, sChop) * charFacing; // potężne pochylenie tułowia w przód z impetem ciosu
+            p.meleeTorsoTilt = lerp(-0.26, 0.35, sChop) * charFacing;
           }
         } else { // RECOVERY
           const recTimer = timer - wFrames - aFrames;
