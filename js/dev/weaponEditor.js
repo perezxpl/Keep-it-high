@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v5';
+const STORAGE_KEY = 'kih_weapon_tuning_v6';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -483,13 +483,23 @@ export function renderEditorValues() {
     },
     {
       key: 'angleOffset',
-      label: 'Kąt Obrotu Broni (°)',
-      desc: 'Kąt nachylenia/obrotu broni w dłoniach w stopniach.',
+      label: 'Kąt Celowania (°)',
+      desc: 'Kąt nachylenia/obrotu broni przy celowaniu w dłoniach w stopniach.',
       unit: '°',
       val: Math.round(((grip.angleOffset || 0) * 180 / Math.PI) * 10) / 10,
       min: -45, max: 45, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (deg) => { grip.angleOffset = deg * (Math.PI / 180); saveWeaponTuning(); }
+    },
+    {
+      key: 'walkAngleOffset',
+      label: 'Kąt Chodu / Spoczynku (°)',
+      desc: 'Kąt nachylenia/obrotu broni podczas chodu i biegu w stopniach.',
+      unit: '°',
+      val: Math.round(((typeof grip.walkAngleOffset === 'number' ? grip.walkAngleOffset : (grip.angleOffset || 0)) * 180 / Math.PI) * 10) / 10,
+      min: -45, max: 45, step: 0.5,
+      steps: [-5, -1, 1, 5],
+      set: (deg) => { grip.walkAngleOffset = deg * (Math.PI / 180); saveWeaponTuning(); }
     },
     {
       key: 'rearGripX',
@@ -613,13 +623,17 @@ export function copyConfigToClipboard() {
   const grip = WEAPON_GRIP_CONFIGS[wepId];
   const pivot = WEAPON_SPRITE_PIVOTS[wepId];
 
+  const walkLine = (typeof grip.walkAngleOffset === 'number')
+    ? `\n  walkAngleOffset: ${Number(grip.walkAngleOffset).toFixed(3)},`
+    : '';
+
   const code = `// Konfiguracja chwytu i pivotu dla ${wepId}:
 WEAPON_GRIP_CONFIGS.${wepId} = {
   rearGripX: ${Number(grip.rearGripX || 0).toFixed(2)},
   rearGripY: ${Number(grip.rearGripY || 0).toFixed(2)},
   foreGripX: ${Number(grip.foreGripX || 0).toFixed(2)},
   foreGripY: ${Number(grip.foreGripY || 0).toFixed(2)},
-  angleOffset: ${Number(grip.angleOffset || 0).toFixed(3)},
+  angleOffset: ${Number(grip.angleOffset || 0).toFixed(3)},${walkLine}
   barrelLen: ${Number(grip.barrelLen || 0).toFixed(2)},
   stockLen: ${Number(grip.stockLen || 0).toFixed(2)}
 };

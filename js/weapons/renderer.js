@@ -221,7 +221,7 @@ export const WEAPON_SPRITE_PIVOTS = {
   SHOTGUN: { x: 401.3, y: 167.0 },
   SNIPER: { x: 450.0, y: 260.0 },
   GLOCK: { x: 257.0, y: 292.0 },
-  REVOLVER: { x: 130.5, y: 391.0 },
+  REVOLVER: { x: -180.0, y: 405.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
   KNIFE: { x: 210.0, y: 188.5 },
   MACHETE: { x: 114.0, y: 114.0 },
