@@ -644,11 +644,8 @@ export function getWeaponHoldTransform(p) {
       handTargetY += swayY;
       looseAimAngle += swayPitch;
     }
-    const effLooseAngle = looseAimAngle + (gripCfg.angleOffset || 0);
-    const rotGripX = (Math.cos(effLooseAngle) * rearGripDistX - Math.sin(effLooseAngle) * rearGripDistY) * charFacing;
-    const rotGripY = Math.sin(effLooseAngle) * rearGripDistX + Math.cos(effLooseAngle) * rearGripDistY;
-    loosePivotX = handTargetX - rotGripX + (isAxe ? axePalmOffsetX * charFacing : 0);
-    loosePivotY = handTargetY - rotGripY + (isAxe ? axePalmOffsetY : 0);
+    loosePivotX = handTargetX + (isAxe ? axePalmOffsetX * charFacing : 0);
+    loosePivotY = handTargetY + (isAxe ? axePalmOffsetY : 0);
   } else {
     loosePivotX += swayX;
     loosePivotY += swayY;
@@ -672,29 +669,23 @@ export function getWeaponHoldTransform(p) {
     shoulderAimAngle = directAngle;
     const knifeHandX = rightShoulderX + Math.cos(directAngle) * knifeReachDist * charFacing;
     const knifeHandY = rightShoulderY + Math.sin(directAngle) * knifeReachDist + braceOffsetY;
-    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
-    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
-    shoulderPivotX = knifeHandX - rotGripX;
-    shoulderPivotY = knifeHandY - rotGripY;
+    shoulderPivotX = knifeHandX;
+    shoulderPivotY = knifeHandY;
   } else if (isMachete) {
     // Gotowość bojowa z uniesioną maczetą kukri (Machete Slashing Stance):
     shoulderAimAngle = -0.90 + directAngle * 0.40;
     const macheteHandX = rightShoulderX + 12.0 * charFacing;
     const macheteHandY = rightShoulderY + 4.0 + braceOffsetY;
-    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
-    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
-    shoulderPivotX = macheteHandX - rotGripX;
-    shoulderPivotY = macheteHandY - rotGripY;
+    shoulderPivotX = macheteHandX;
+    shoulderPivotY = macheteHandY;
   } else if (isAxe) {
     // Toporek trzymany w dłoni (w spoczynku prostopadle, w biegu ugięty pod kątem do przodu)
     const axeSwayBlend = 1 - wRun;
     shoulderAimAngle = axeEffAngle + swayPitch * axeSwayBlend;
     const axeHandX = rightShoulderX + axeEffDx * charFacing + swayX * axeSwayBlend;
     const axeHandY = rightShoulderY + axeEffDy + braceOffsetY + swayY * axeSwayBlend;
-    const rotGripX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
-    const rotGripY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
-    shoulderPivotX = axeHandX - rotGripX + axePalmOffsetX * charFacing;
-    shoulderPivotY = axeHandY - rotGripY + axePalmOffsetY;
+    shoulderPivotX = axeHandX + axePalmOffsetX * charFacing;
+    shoulderPivotY = axeHandY + axePalmOffsetY;
   } else if (isTwoHandedHandgun) {
     // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
     const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
@@ -724,12 +715,8 @@ export function getWeaponHoldTransform(p) {
     const aimHandX = eyeWorldX + Math.cos(shoulderAimAngle) * extT * charFacing;
     const aimHandY = eyeWorldY + Math.sin(shoulderAimAngle) * extT;
 
-    const effShoulderAngle = shoulderAimAngle + (gripCfg.angleOffset || 0);
-    const rotGripAimX = (Math.cos(effShoulderAngle) * rearGripDistX - Math.sin(effShoulderAngle) * rearGripDistY) * charFacing;
-    const rotGripAimY = Math.sin(effShoulderAngle) * rearGripDistX + Math.cos(effShoulderAngle) * rearGripDistY;
-
-    shoulderPivotX = aimHandX - rotGripAimX;
-    shoulderPivotY = aimHandY - rotGripAimY;
+    shoulderPivotX = aimHandX;
+    shoulderPivotY = aimHandY;
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
