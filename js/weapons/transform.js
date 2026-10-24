@@ -324,6 +324,37 @@ export function getShooterShoulderPos(shooter) {
   };
 }
 
+/**
+ * Oblicza wysokość Y w przestrzeni świata, przy której broń celuje idealnie poziomo (kąt 0 rad)
+ */
+export function getWeaponLevelAimY(shooter) {
+  if (!shooter) return 0;
+  const { rightShoulderY, hipX, hipY, charFacing } = getShooterShoulderPos(shooter);
+  const weapon = shooter.currentWeapon || WEAPONS.AK47;
+  const wepKey = (weapon && weapon.id && WEAPON_GRIP_CONFIGS[weapon.id]) ? weapon.id : 'AK47';
+  const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
+  const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
+  const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || (!weapon.isMelee && Math.abs((gripCfg.foreGripX || 0) - (gripCfg.rearGripX || 0)) < 4.0));
+  const isCrouch = !!(shooter.isCrouching || shooter.isProne);
+  const crouchDropY = isCrouch ? 4.0 : 0;
+  const braceOffsetY = isCrouch ? 1.0 : 0;
+
+  if (isTwoHandedHandgun) {
+    const torsoTilt = shooter.pose?.torsoTilt || shooter.torsoTilt || 0;
+    const headBobY = (shooter.headBob || 0) * 0.35;
+    const eyeWorldY = hipY - (30.5 * Math.cos(torsoTilt) - 2.7 * charFacing * Math.sin(torsoTilt)) - 2.1 + headBobY + crouchDropY;
+    return eyeWorldY;
+  }
+
+  if (weapon.isMelee || weapon.id === 'KNIFE' || weapon.id === 'MACHETE' || weapon.id === 'AXE') {
+    return rightShoulderY + (weapon.id === 'KNIFE' ? 2.0 : 0.0) + crouchDropY;
+  }
+
+  // Broń długa opierana o dołek strzelecki barku (Shoulder Pocket)
+  const shoulderPocketY = rightShoulderY - (isPistol ? 0.5 : 2.2) + braceOffsetY;
+  return shoulderPocketY;
+}
+
 export const WEAPON_GRIP_CONFIGS = {
   AK47: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 13.0, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 30.8, stockLen: 13.6 },
   SHOTGUN: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 14.0, foreGripY: -1.8, angleOffset: 0.0, barrelLen: 29.5, stockLen: 11.0 },

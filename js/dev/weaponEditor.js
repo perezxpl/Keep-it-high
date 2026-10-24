@@ -3,7 +3,7 @@
 // =========================================================================
 
 import { player } from '../player.js';
-import { WEAPONS, WEAPON_GRIP_CONFIGS } from '../weapons/transform.js';
+import { WEAPONS, WEAPON_GRIP_CONFIGS, getWeaponLevelAimY } from '../weapons/transform.js';
 import { WEAPON_SPRITE_PIVOTS } from '../weapons/renderer.js';
 
 // Kopia wartości fabrycznych do resetowania
@@ -162,23 +162,26 @@ export function updateWeaponEditorFreeze() {
   player.weaponKickback = 0;
   player.muzzleRise = 0;
 
+  const levelAimY = getWeaponLevelAimY(player);
+  const centerX = player.x + (player.w ? player.w * 0.5 : 15);
+
   if (weaponEditorState.previewPose === 'AIM') {
-    player.aimX = player.x + (weaponEditorState.aimFacing * 300);
-    player.aimY = player.y + 10 + weaponEditorState.aimElevation;
+    player.aimX = centerX + (weaponEditorState.aimFacing * 300);
+    player.aimY = levelAimY + (weaponEditorState.aimElevation || 0);
     player.shootPoseWeight = 1.0;
     player.vx = 0;
     player.gaitMode = 'IDLE';
   } else if (weaponEditorState.previewPose === 'WALK') {
-    player.aimX = player.x + (weaponEditorState.aimFacing * 120);
-    player.aimY = player.y + 90;
+    player.aimX = centerX + (weaponEditorState.aimFacing * 120);
+    player.aimY = levelAimY + 80;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.04;
     player.vx = weaponEditorState.aimFacing * 1.6;
     player.gaitMode = 'WALK';
     player.onGround = true;
   } else if (weaponEditorState.previewPose === 'RUN') {
-    player.aimX = player.x + (weaponEditorState.aimFacing * 120);
-    player.aimY = player.y + 90;
+    player.aimX = centerX + (weaponEditorState.aimFacing * 120);
+    player.aimY = levelAimY + 80;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.08;
     player.vx = weaponEditorState.aimFacing * 3.8;

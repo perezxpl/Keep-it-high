@@ -462,18 +462,22 @@ initAllInputHandlers({
 function drawCrosshair(ctx, x, y, customCol) {
   if (typeof x !== 'number' || isNaN(x)) return;
 
-  // Ukryj celownik podczas rzutu granatem lub gdy broń jest schowana
-  if (player.throwAnim && player.throwAnim.active) return;
-  if (player.isHolstered || !player.currentWeapon || (typeof player.holsterWeight === 'number' && player.holsterWeight >= 0.5)) return;
+  const isEditorActive = !!(weaponEditorState?.isOpen);
 
-  // Ukryj celownik w walce w zwarciu (broń biała)
-  const isMeleeWeapon = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE' || player.currentWeapon?.id === 'AXE' || player.meleeState);
-  if (isMeleeWeapon) return;
+  if (!isEditorActive) {
+    // Ukryj celownik podczas rzutu granatem lub gdy broń jest schowana
+    if (player.throwAnim && player.throwAnim.active) return;
+    if (player.isHolstered || !player.currentWeapon || (typeof player.holsterWeight === 'number' && player.holsterWeight >= 0.5)) return;
 
-  // Na urządzeniach dotykowych ukryj celownik każdej broni, gdy prawy drążek jest nieużywany lub w trybie granatu
-  if (isTouchDevice) {
-    const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
-    if (!isAimingWithStick) return;
+    // Ukryj celownik w walce w zwarciu (broń biała)
+    const isMeleeWeapon = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE' || player.currentWeapon?.id === 'AXE' || player.meleeState);
+    if (isMeleeWeapon) return;
+
+    // Na urządzeniach dotykowych ukryj celownik każdej broni, gdy prawy drążek jest nieużywany lub w trybie granatu
+    if (isTouchDevice) {
+      const isAimingWithStick = rightStick && rightStick.active && (typeof rightStick.power === 'number' ? rightStick.power > 0.05 : true) && rightStick.armedMode !== 'GRENADE';
+      if (!isAimingWithStick) return;
+    }
   }
 
   const col = customCol || '#ef4444';
@@ -1005,11 +1009,23 @@ function draw() {
   const modalEl = document.getElementById('mp-modal') || mpModal;
   const isDevOpenForCrosshair = devMenuEl && !devMenuEl.classList.contains('dev-menu-hidden');
   const isMpOpenForCrosshair = modalEl && !modalEl.classList.contains('mp-modal-hidden');
+  const isEditorActive = !!(weaponEditorState?.isOpen);
+  const isEditorFreezeActive = !!(weaponEditorState?.isOpen && weaponEditorState?.freezeAim);
 
   let shouldDrawCrosshair = !player.isDead && !isDevOpenForCrosshair && !isMpOpenForCrosshair && !isChatActive && GAME_STATE.current === 'PLAYING';
   const isMeleeCombat = !!(player.currentWeapon?.isMelee || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE' || player.currentWeapon?.id === 'AXE' || player.meleeState);
   if (isThrowingGrenade || isWeaponHolstered || isMeleeCombat || (rightStick && rightStick.armedMode === 'GRENADE')) shouldDrawCrosshair = false;
   if (isTouchDevice && !isAimingWithStick) shouldDrawCrosshair = false;
+
+  // Wymuś widoczność celownika w trybie edytora broni i zamrożonego celowania
+  if (!player.isDead && isEditorActive) {
+    if (isEditorFreezeActive) {
+      // W zamrożonym celowaniu rysuj celownik w pozie celowania (AIM)
+      shouldDrawCrosshair = (weaponEditorState.previewPose === 'AIM');
+    } else {
+      shouldDrawCrosshair = true;
+    }
+  }
 
   if (shouldDrawCrosshair) {
     drawCrosshair(ctx, player.aimX, player.aimY);
