@@ -1028,7 +1028,14 @@ function draw() {
   }
 
   if (shouldDrawCrosshair) {
-    drawCrosshair(ctx, player.aimX, player.aimY);
+    if (isEditorFreezeActive && weaponEditorState?.previewPose === 'AIM') {
+      const muzzle = getMuzzlePosition(player, player.currentWeapon);
+      const chX = muzzle.muzzleX + Math.cos(muzzle.barrelAngle) * 300;
+      const chY = muzzle.muzzleY + Math.sin(muzzle.barrelAngle) * 300;
+      drawCrosshair(ctx, chX, chY);
+    } else {
+      drawCrosshair(ctx, player.aimX, player.aimY);
+    }
   }
 
   // Renderowanie elementów areny na pierwszym planie (np. łańcuchy, ołtarz, stemple)

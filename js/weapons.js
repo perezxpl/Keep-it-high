@@ -531,7 +531,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       return true;
     }
 
-    theta = Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
+    theta = (typeof muzzle.barrelAngle === 'number') ? muzzle.barrelAngle : Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
 
     if (shooter.isBot && !shooter.isRemote && typeof window !== 'undefined' && window.networkState?.isHost && window.networkState?.isConnected) {
       if (typeof window.sendBotShootEvent === 'function') {

@@ -1146,7 +1146,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 18.7, -1.2, 12, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 27.85, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : -6.41, 12, false);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1179,7 +1179,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillRect(15.5, -3.6, 1.0, 1.4);
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 17.0, -1.2, 12, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 27.85, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : -6.41, 12, false);
       }
     }
   } else if (weapon.id === 'SAWED_OFF') {

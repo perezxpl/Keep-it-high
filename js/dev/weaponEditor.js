@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v6';
+const STORAGE_KEY = 'kih_weapon_tuning_v7';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -166,27 +166,33 @@ export function updateWeaponEditorFreeze() {
   const centerX = player.x + (player.w ? player.w * 0.5 : 15);
 
   if (weaponEditorState.previewPose === 'AIM') {
-    player.aimX = centerX + (weaponEditorState.aimFacing * 300);
-    player.aimY = levelAimY + (weaponEditorState.aimElevation || 0);
+    player.isAiming = true;
+    player.shootPoseTimer = 100;
     player.shootPoseWeight = 1.0;
     player.vx = 0;
     player.gaitMode = 'IDLE';
+    player.aimX = centerX + (weaponEditorState.aimFacing * 300);
+    player.aimY = levelAimY + (weaponEditorState.aimElevation || 0);
   } else if (weaponEditorState.previewPose === 'WALK') {
-    player.aimX = centerX + (weaponEditorState.aimFacing * 120);
-    player.aimY = levelAimY + 80;
+    player.isAiming = false;
+    player.shootPoseTimer = 0;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.04;
     player.vx = weaponEditorState.aimFacing * 1.6;
     player.gaitMode = 'WALK';
     player.onGround = true;
-  } else if (weaponEditorState.previewPose === 'RUN') {
     player.aimX = centerX + (weaponEditorState.aimFacing * 120);
     player.aimY = levelAimY + 80;
+  } else if (weaponEditorState.previewPose === 'RUN') {
+    player.isAiming = false;
+    player.shootPoseTimer = 0;
     player.shootPoseWeight = 0.0;
     player.stridePhase = (player.stridePhase || 0) + 0.08;
     player.vx = weaponEditorState.aimFacing * 3.8;
     player.gaitMode = 'SPRINT';
     player.onGround = true;
+    player.aimX = centerX + (weaponEditorState.aimFacing * 120);
+    player.aimY = levelAimY + 80;
   }
 }
 
@@ -539,12 +545,21 @@ export function renderEditorValues() {
     },
     {
       key: 'barrelLen',
-      label: 'Długość Lufy (Wylot i płomień)',
-      desc: 'Punkt wylotu pocisków i błysku wystrzału.',
+      label: 'Długość Lufy (Muzzle X)',
+      desc: 'Punkt wylotu pocisków i błysku wystrzału w osi lufy.',
       val: grip.barrelLen || 15,
       min: 5, max: 55, step: 0.2,
       steps: [-1, -0.2, 0.2, 1],
       set: (v) => { grip.barrelLen = v; saveWeaponTuning(); }
+    },
+    {
+      key: 'barrelOffsetY',
+      label: 'Wysokość Lufy (Muzzle Y)',
+      desc: 'Pionowa pozycja wylotu lufy (- w górę ku lufie, + w dół).',
+      val: (typeof grip.barrelOffsetY === 'number') ? grip.barrelOffsetY : (weaponEditorState.selectedId === 'REVOLVER' ? -6.41 : 0),
+      min: -15, max: 15, step: 0.1,
+      steps: [-1, -0.1, 0.1, 1],
+      set: (v) => { grip.barrelOffsetY = v; saveWeaponTuning(); }
     }
   ];
 
@@ -626,6 +641,9 @@ export function copyConfigToClipboard() {
   const walkLine = (typeof grip.walkAngleOffset === 'number')
     ? `\n  walkAngleOffset: ${Number(grip.walkAngleOffset).toFixed(3)},`
     : '';
+  const offsetYLine = (typeof grip.barrelOffsetY === 'number')
+    ? `\n  barrelOffsetY: ${Number(grip.barrelOffsetY).toFixed(2)},`
+    : '';
 
   const code = `// Konfiguracja chwytu i pivotu dla ${wepId}:
 WEAPON_GRIP_CONFIGS.${wepId} = {
@@ -634,7 +652,7 @@ WEAPON_GRIP_CONFIGS.${wepId} = {
   foreGripX: ${Number(grip.foreGripX || 0).toFixed(2)},
   foreGripY: ${Number(grip.foreGripY || 0).toFixed(2)},
   angleOffset: ${Number(grip.angleOffset || 0).toFixed(3)},${walkLine}
-  barrelLen: ${Number(grip.barrelLen || 0).toFixed(2)},
+  barrelLen: ${Number(grip.barrelLen || 0).toFixed(2)},${offsetYLine}
   stockLen: ${Number(grip.stockLen || 0).toFixed(2)}
 };
 WEAPON_SPRITE_PIVOTS.${wepId} = {

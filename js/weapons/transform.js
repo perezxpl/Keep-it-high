@@ -360,7 +360,7 @@ export const WEAPON_GRIP_CONFIGS = {
   SHOTGUN: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 14.0, foreGripY: -1.8, angleOffset: 0.0, barrelLen: 29.5, stockLen: 11.0 },
   SNIPER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 15.1, foreGripY: -3.0, angleOffset: 0.0, barrelLen: 34.8, stockLen: 15.1 },
   GLOCK: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 11.5, stockLen: 4.0 },
-  REVOLVER: { rearGripX: 8.10, rearGripY: -2.80, foreGripX: 8.10, foreGripY: -5.50, angleOffset: -0.096, walkAngleOffset: 0.305, barrelLen: 24.60, stockLen: 4.00 },
+  REVOLVER: { rearGripX: 8.10, rearGripY: -2.80, foreGripX: 8.10, foreGripY: -5.50, angleOffset: -0.096, walkAngleOffset: 0.305, barrelLen: 27.85, barrelOffsetY: -6.41, stockLen: 4.00 },
   SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, angleOffset: 0.0, barrelLen: 17.6, stockLen: 4.5 },
   KNIFE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.5, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 19.5, stockLen: 0.0 },
   MACHETE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 25.5, stockLen: 0.0 },
@@ -1360,6 +1360,7 @@ export function getWeaponHoldTransform(p) {
     rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
     leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
     barrelLen: barrelLength,
+    barrelOffsetY: (typeof gripCfg.barrelOffsetY === 'number') ? gripCfg.barrelOffsetY : (wepKey === 'REVOLVER' ? -6.41 : 0),
     bladeTip: { x: tipX, y: tipY },
     bladeHilt: { x: hiltX, y: hiltY },
     isMagInGun,
@@ -1375,8 +1376,15 @@ export function getWeaponHoldTransform(p) {
  */
 export function getMuzzlePosition(shooter, weapon) {
   const hold = getWeaponHoldTransform(shooter);
-  const muzzleX = hold.pivotX + Math.cos(hold.angle) * hold.barrelLen * hold.charFacing;
-  const muzzleY = hold.pivotY + Math.sin(hold.angle) * hold.barrelLen;
+  const localMuzzleX = hold.barrelLen || 20;
+  const localMuzzleY = hold.barrelOffsetY || 0;
+
+  const c = Math.cos(hold.angle);
+  const s = Math.sin(hold.angle);
+  const muzzleX = hold.pivotX + (c * localMuzzleX - s * localMuzzleY) * hold.charFacing;
+  const muzzleY = hold.pivotY + (s * localMuzzleX + c * localMuzzleY);
+
+  const barrelAngle = Math.atan2(s, c * hold.charFacing);
 
   return {
     muzzleX,
@@ -1384,8 +1392,10 @@ export function getMuzzlePosition(shooter, weapon) {
     shoulderX: hold.rightShoulderX,
     shoulderY: hold.rightShoulderY,
     aimAngle: hold.angle,
+    barrelAngle,
     charFacing: hold.charFacing,
-    barrelLen: hold.barrelLen,
+    barrelLen: localMuzzleX,
+    barrelOffsetY: localMuzzleY,
     aimX: hold.aimX,
     aimY: hold.aimY,
     gunPivotX: hold.pivotX,
