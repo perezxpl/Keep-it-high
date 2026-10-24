@@ -325,57 +325,15 @@ export function getShooterShoulderPos(shooter) {
 }
 
 export const WEAPON_GRIP_CONFIGS = {
-  AK47: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: 13.0,
-    foreGripY: -3.5,
-    barrelLen: 30.8,
-    stockLen: 13.6
-  },
-  SHOTGUN: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: 14.0,
-    foreGripY: -1.8,
-    barrelLen: 29.5,
-    stockLen: 11.0
-  },
-  SNIPER: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: 15.1,
-    foreGripY: -3.0,
-    barrelLen: 34.8,
-    stockLen: 15.1
-  },
-  GLOCK: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, barrelLen: 11.5, stockLen: 4.0 },
-  REVOLVER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, barrelLen: 21.5, stockLen: 4.0 },
-  SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, barrelLen: 17.6, stockLen: 4.5 },
-  KNIFE: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: -4.5,
-    foreGripY: -3.5,
-    barrelLen: 19.5,
-    stockLen: 0.0
-  },
-  MACHETE: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: -4.0,
-    foreGripY: 0.0,
-    barrelLen: 25.5,
-    stockLen: 0.0
-  },
-  AXE: {
-    rearGripX: 0.0,
-    rearGripY: 0.0,
-    foreGripX: -4.0,
-    foreGripY: 0.0,
-    barrelLen: 18.0,
-    stockLen: 0.0
-  }
+  AK47: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 13.0, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 30.8, stockLen: 13.6 },
+  SHOTGUN: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 14.0, foreGripY: -1.8, angleOffset: 0.0, barrelLen: 29.5, stockLen: 11.0 },
+  SNIPER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 15.1, foreGripY: -3.0, angleOffset: 0.0, barrelLen: 34.8, stockLen: 15.1 },
+  GLOCK: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 11.5, stockLen: 4.0 },
+  REVOLVER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 21.5, stockLen: 4.0 },
+  SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, angleOffset: 0.0, barrelLen: 17.6, stockLen: 4.5 },
+  KNIFE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.5, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 19.5, stockLen: 0.0 },
+  MACHETE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 25.5, stockLen: 0.0 },
+  AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 }
 };
 
 /**
@@ -686,8 +644,9 @@ export function getWeaponHoldTransform(p) {
       handTargetY += swayY;
       looseAimAngle += swayPitch;
     }
-    const rotGripX = (Math.cos(looseAimAngle) * rearGripDistX - Math.sin(looseAimAngle) * rearGripDistY) * charFacing;
-    const rotGripY = Math.sin(looseAimAngle) * rearGripDistX + Math.cos(looseAimAngle) * rearGripDistY;
+    const effLooseAngle = looseAimAngle + (gripCfg.angleOffset || 0);
+    const rotGripX = (Math.cos(effLooseAngle) * rearGripDistX - Math.sin(effLooseAngle) * rearGripDistY) * charFacing;
+    const rotGripY = Math.sin(effLooseAngle) * rearGripDistX + Math.cos(effLooseAngle) * rearGripDistY;
     loosePivotX = handTargetX - rotGripX + (isAxe ? axePalmOffsetX * charFacing : 0);
     loosePivotY = handTargetY - rotGripY + (isAxe ? axePalmOffsetY : 0);
   } else {
@@ -765,8 +724,9 @@ export function getWeaponHoldTransform(p) {
     const aimHandX = eyeWorldX + Math.cos(shoulderAimAngle) * extT * charFacing;
     const aimHandY = eyeWorldY + Math.sin(shoulderAimAngle) * extT;
 
-    const rotGripAimX = (Math.cos(shoulderAimAngle) * rearGripDistX - Math.sin(shoulderAimAngle) * rearGripDistY) * charFacing;
-    const rotGripAimY = Math.sin(shoulderAimAngle) * rearGripDistX + Math.cos(shoulderAimAngle) * rearGripDistY;
+    const effShoulderAngle = shoulderAimAngle + (gripCfg.angleOffset || 0);
+    const rotGripAimX = (Math.cos(effShoulderAngle) * rearGripDistX - Math.sin(effShoulderAngle) * rearGripDistY) * charFacing;
+    const rotGripAimY = Math.sin(effShoulderAngle) * rearGripDistX + Math.cos(effShoulderAngle) * rearGripDistY;
 
     shoulderPivotX = aimHandX - rotGripAimX;
     shoulderPivotY = aimHandY - rotGripAimY;
@@ -1271,7 +1231,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  let proneAimAngle = blendedAngle + meleeAngleOffset;
+  let proneAimAngle = blendedAngle + meleeAngleOffset + (gripCfg.angleOffset || 0);
 
   if (p.isProne) {
     const floorY = p.currentGroundY || p.groundY || (p.y + (p.h || 70)) || 560;
@@ -1279,7 +1239,7 @@ export function getWeaponHoldTransform(p) {
     const isCrawling = speed > 0.08;
 
     // 1. Pozycja strzelecka w leżeniu (podparcie na łokciach, kolba w barku, magazynek nad ziemią)
-    const fireAngle = Math.max(-0.56, Math.min(0.16, shoulderAimAngle + reloadAngleOffset));
+    const fireAngle = Math.max(-0.56, Math.min(0.16, shoulderAimAngle + reloadAngleOffset + (gripCfg.angleOffset || 0)));
     const firePivotX = rightShoulderX + Math.cos(fireAngle) * (stockLen * 0.92) * charFacing - Math.cos(fireAngle) * kickback * 0.65 * charFacing + reloadPivotShiftX;
     const firePivotY = Math.max(floorY - 16.5, Math.min(floorY - 10.5, (floorY - 12.2) + Math.sin(fireAngle) * (stockLen * 0.75) - Math.sin(fireAngle) * kickback * 0.65 + reloadPivotShiftY));
 

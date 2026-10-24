@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v4';
+const STORAGE_KEY = 'kih_weapon_tuning_v5';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -459,15 +459,11 @@ export function renderEditorValues() {
   const grip = WEAPON_GRIP_CONFIGS[wepId] || {};
   const pivot = WEAPON_SPRITE_PIVOTS[wepId] || { x: 0, y: 0 };
 
-  // Zapewnij zerowe ramię dźwigni - chwyt leży dokładnie w osi dłoni
-  grip.rearGripX = 0.0;
-  grip.rearGripY = 0.0;
-
   const paramDefs = [
     {
       key: 'pivotSpriteX',
-      label: 'Ułożenie Broni X (Poziom)',
-      desc: 'Przesuwa broń w poziomie w prawej dłoni. Działa spójnie w celowaniu, chodzie i biegu.',
+      label: 'Ułożenie Broni X (Sprite Pivot X)',
+      desc: 'Poziome przesunięcie grafiki broni w pikselach sprite\'a.',
       val: pivot.x,
       min: 0, max: 600, step: 0.5,
       steps: [-5, -1, 1, 5],
@@ -475,17 +471,45 @@ export function renderEditorValues() {
     },
     {
       key: 'pivotSpriteY',
-      label: 'Ułożenie Broni Y (Pion)',
-      desc: 'Wysokość ułożenia rękojeści broni w dłoni postaci.',
+      label: 'Ułożenie Broni Y (Sprite Pivot Y)',
+      desc: 'Pionowe przesunięcie grafiki broni w pikselach sprite\'a.',
       val: pivot.y,
       min: 0, max: 450, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (v) => { pivot.y = v; saveWeaponTuning(); }
     },
     {
+      key: 'angleOffset',
+      label: 'Kąt Obrotu Broni (°)',
+      desc: 'Kąt nachylenia/obrotu broni w dłoniach w stopniach.',
+      unit: '°',
+      val: Math.round(((grip.angleOffset || 0) * 180 / Math.PI) * 10) / 10,
+      min: -45, max: 45, step: 0.5,
+      steps: [-5, -1, 1, 5],
+      set: (deg) => { grip.angleOffset = deg * (Math.PI / 180); saveWeaponTuning(); }
+    },
+    {
+      key: 'rearGripX',
+      label: 'Prawa Ręka X (Chwyt główny poziom)',
+      desc: 'Pozycja prawej dłoni w osi lufy (+ w przód, - w tył).',
+      val: grip.rearGripX || 0,
+      min: -15, max: 15, step: 0.1,
+      steps: [-1, -0.1, 0.1, 1],
+      set: (v) => { grip.rearGripX = v; saveWeaponTuning(); }
+    },
+    {
+      key: 'rearGripY',
+      label: 'Prawa Ręka Y (Chwyt główny pion)',
+      desc: 'Wysokość prawej dłoni na rękojeści (+ w dół, - w górę).',
+      val: grip.rearGripY || 0,
+      min: -15, max: 15, step: 0.1,
+      steps: [-1, -0.1, 0.1, 1],
+      set: (v) => { grip.rearGripY = v; saveWeaponTuning(); }
+    },
+    {
       key: 'foreGripX',
       label: 'Lewa Ręka X (Łoże / Chwyt wspierający)',
-      desc: 'Pozycja lewej dłoni podtrzymującej broń w poziomie',
+      desc: 'Pozycja lewej dłoni podtrzymującej broń w poziomie.',
       val: grip.foreGripX || 0,
       min: -15, max: 25, step: 0.1,
       steps: [-1, -0.1, 0.1, 1],
@@ -494,7 +518,7 @@ export function renderEditorValues() {
     {
       key: 'foreGripY',
       label: 'Lewa Ręka Y (Wysokość podparcia)',
-      desc: 'Wysokość lewej dłoni pod/na łożu (+ to w dół)',
+      desc: 'Wysokość lewej dłoni pod/na łożu (+ to w dół).',
       val: grip.foreGripY || 0,
       min: -15, max: 15, step: 0.1,
       steps: [-1, -0.1, 0.1, 1],
@@ -503,7 +527,7 @@ export function renderEditorValues() {
     {
       key: 'barrelLen',
       label: 'Długość Lufy (Wylot i płomień)',
-      desc: 'Punkt wylotu pocisków i błysku wystrzału',
+      desc: 'Punkt wylotu pocisków i błysku wystrzału.',
       val: grip.barrelLen || 15,
       min: 5, max: 55, step: 0.2,
       steps: [-1, -0.2, 0.2, 1],
@@ -525,9 +549,15 @@ export function renderEditorValues() {
     titleEl.textContent = p.label;
     titleEl.title = p.desc;
 
+    const formatVal = (val) => {
+      const num = Number(val);
+      const str = num.toFixed(p.step < 0.5 ? 2 : 1);
+      return p.unit ? `${str}${p.unit}` : str;
+    };
+
     const valEl = document.createElement('span');
     valEl.style.cssText = 'font-family: monospace; font-weight: 700; color: #22d3ee; font-size: 11px;';
-    valEl.textContent = Number(p.val).toFixed(p.step < 0.5 ? 2 : 1);
+    valEl.textContent = formatVal(p.val);
 
     headerRow.appendChild(titleEl);
     headerRow.appendChild(valEl);
@@ -547,7 +577,7 @@ export function renderEditorValues() {
         p.val = newVal;
         p.set(newVal);
         slider.value = newVal;
-        valEl.textContent = Number(newVal).toFixed(p.step < 0.5 ? 2 : 1);
+        valEl.textContent = formatVal(newVal);
       });
       ctrlRow.appendChild(btn);
     });
@@ -563,7 +593,7 @@ export function renderEditorValues() {
       const newVal = parseFloat(e.target.value);
       p.val = newVal;
       p.set(newVal);
-      valEl.textContent = Number(newVal).toFixed(p.step < 0.5 ? 2 : 1);
+      valEl.textContent = formatVal(newVal);
     });
     ctrlRow.appendChild(slider);
 
@@ -586,6 +616,7 @@ WEAPON_GRIP_CONFIGS.${wepId} = {
   rearGripY: ${Number(grip.rearGripY || 0).toFixed(2)},
   foreGripX: ${Number(grip.foreGripX || 0).toFixed(2)},
   foreGripY: ${Number(grip.foreGripY || 0).toFixed(2)},
+  angleOffset: ${Number(grip.angleOffset || 0).toFixed(3)},
   barrelLen: ${Number(grip.barrelLen || 0).toFixed(2)},
   stockLen: ${Number(grip.stockLen || 0).toFixed(2)}
 };
