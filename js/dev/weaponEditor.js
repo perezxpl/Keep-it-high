@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v7';
+const STORAGE_KEY = 'kih_weapon_tuning_v8';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -474,7 +474,7 @@ export function renderEditorValues() {
       label: 'Ułożenie Broni X (Sprite Pivot X)',
       desc: 'Poziome przesunięcie grafiki broni w pikselach sprite\'a.',
       val: pivot.x,
-      min: 0, max: 600, step: 0.5,
+      min: -300, max: 600, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (v) => { pivot.x = v; saveWeaponTuning(); }
     },
@@ -483,7 +483,7 @@ export function renderEditorValues() {
       label: 'Ułożenie Broni Y (Sprite Pivot Y)',
       desc: 'Pionowe przesunięcie grafiki broni w pikselach sprite\'a.',
       val: pivot.y,
-      min: 0, max: 450, step: 0.5,
+      min: -200, max: 500, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (v) => { pivot.y = v; saveWeaponTuning(); }
     },
@@ -509,12 +509,21 @@ export function renderEditorValues() {
     },
     {
       key: 'rearGripX',
-      label: 'Prawa Ręka X (Chwyt główny poziom)',
-      desc: 'Pozycja prawej dłoni w osi lufy (+ w przód, - w tył).',
+      label: 'Prawa Ręka X - Celowanie',
+      desc: 'Pozycja prawej dłoni w osi lufy (+ w przód, - w tył) podczas celowania.',
       val: grip.rearGripX || 0,
       min: -15, max: 15, step: 0.1,
       steps: [-1, -0.1, 0.1, 1],
       set: (v) => { grip.rearGripX = v; saveWeaponTuning(); }
+    },
+    {
+      key: 'walkRearGripX',
+      label: 'Prawa Ręka X - Chód/Bieg',
+      desc: 'Pozycja prawej dłoni w osi lufy (+ w przód, - w tył) podczas chodu i biegu.',
+      val: (typeof grip.walkRearGripX === 'number') ? grip.walkRearGripX : (grip.rearGripX || 0),
+      min: -15, max: 15, step: 0.1,
+      steps: [-1, -0.1, 0.1, 1],
+      set: (v) => { grip.walkRearGripX = v; saveWeaponTuning(); }
     },
     {
       key: 'rearGripY',
@@ -556,7 +565,7 @@ export function renderEditorValues() {
       key: 'barrelOffsetY',
       label: 'Wysokość Lufy (Muzzle Y)',
       desc: 'Pionowa pozycja wylotu lufy (- w górę ku lufie, + w dół).',
-      val: (typeof grip.barrelOffsetY === 'number') ? grip.barrelOffsetY : (weaponEditorState.selectedId === 'REVOLVER' ? -6.41 : 0),
+      val: (typeof grip.barrelOffsetY === 'number') ? grip.barrelOffsetY : 0,
       min: -15, max: 15, step: 0.1,
       steps: [-1, -0.1, 0.1, 1],
       set: (v) => { grip.barrelOffsetY = v; saveWeaponTuning(); }
@@ -638,6 +647,9 @@ export function copyConfigToClipboard() {
   const grip = WEAPON_GRIP_CONFIGS[wepId];
   const pivot = WEAPON_SPRITE_PIVOTS[wepId];
 
+  const walkRearGripLine = (typeof grip.walkRearGripX === 'number')
+    ? `\n  walkRearGripX: ${Number(grip.walkRearGripX).toFixed(2)},`
+    : '';
   const walkLine = (typeof grip.walkAngleOffset === 'number')
     ? `\n  walkAngleOffset: ${Number(grip.walkAngleOffset).toFixed(3)},`
     : '';
@@ -647,7 +659,7 @@ export function copyConfigToClipboard() {
 
   const code = `// Konfiguracja chwytu i pivotu dla ${wepId}:
 WEAPON_GRIP_CONFIGS.${wepId} = {
-  rearGripX: ${Number(grip.rearGripX || 0).toFixed(2)},
+  rearGripX: ${Number(grip.rearGripX || 0).toFixed(2)},${walkRearGripLine}
   rearGripY: ${Number(grip.rearGripY || 0).toFixed(2)},
   foreGripX: ${Number(grip.foreGripX || 0).toFixed(2)},
   foreGripY: ${Number(grip.foreGripY || 0).toFixed(2)},

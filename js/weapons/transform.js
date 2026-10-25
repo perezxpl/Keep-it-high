@@ -360,7 +360,7 @@ export const WEAPON_GRIP_CONFIGS = {
   SHOTGUN: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 14.0, foreGripY: -1.8, angleOffset: 0.0, barrelLen: 29.5, stockLen: 11.0 },
   SNIPER: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 15.1, foreGripY: -3.0, angleOffset: 0.0, barrelLen: 34.8, stockLen: 15.1 },
   GLOCK: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 0.5, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 11.5, stockLen: 4.0 },
-  REVOLVER: { rearGripX: 8.10, rearGripY: -2.80, foreGripX: 8.10, foreGripY: -5.50, angleOffset: -0.096, walkAngleOffset: 0.305, barrelLen: 27.85, barrelOffsetY: -6.41, stockLen: 4.00 },
+  REVOLVER: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.017, walkAngleOffset: 0.733, barrelLen: 20.40, barrelOffsetY: 1.10, stockLen: 4.00 },
   SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, angleOffset: 0.0, barrelLen: 17.6, stockLen: 4.5 },
   KNIFE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.5, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 19.5, stockLen: 0.0 },
   MACHETE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 25.5, stockLen: 0.0 },
@@ -458,8 +458,6 @@ export function getWeaponHoldTransform(p) {
   const weapon = p.currentWeapon || WEAPONS.AK47;
   const wepKey = (weapon && weapon.id && WEAPON_GRIP_CONFIGS[weapon.id]) ? weapon.id : 'AK47';
   const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
-  const rearGripDistX = gripCfg.rearGripX;
-  const rearGripDistY = gripCfg.rearGripY;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
@@ -762,8 +760,12 @@ export function getWeaponHoldTransform(p) {
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia
-  const foreGripDistX = gripCfg.foreGripX + pumpShift;
-  const foreGripDistY = gripCfg.foreGripY;
+  const aimForeGripX = (typeof gripCfg.foreGripX === 'number') ? gripCfg.foreGripX : 0;
+  const walkForeGripX = (typeof gripCfg.walkForeGripX === 'number') ? gripCfg.walkForeGripX : aimForeGripX;
+  const foreGripDistX = lerp(walkForeGripX, aimForeGripX, w) + pumpShift;
+  const aimForeGripY = (typeof gripCfg.foreGripY === 'number') ? gripCfg.foreGripY : 0;
+  const walkForeGripY = (typeof gripCfg.walkForeGripY === 'number') ? gripCfg.walkForeGripY : aimForeGripY;
+  const foreGripDistY = lerp(walkForeGripY, aimForeGripY, w);
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
   const u = p.isReloading
@@ -1281,6 +1283,13 @@ export function getWeaponHoldTransform(p) {
     proneAimAngle = lerpAngle(crawlPitch, fireAngle, proneFireBlend);
   }
 
+  const aimRearGripX = (typeof gripCfg.rearGripX === 'number') ? gripCfg.rearGripX : 0;
+  const walkRearGripX = (typeof gripCfg.walkRearGripX === 'number') ? gripCfg.walkRearGripX : aimRearGripX;
+  const rearGripDistX = lerp(walkRearGripX, aimRearGripX, w);
+  const aimRearGripY = (typeof gripCfg.rearGripY === 'number') ? gripCfg.rearGripY : 0;
+  const walkRearGripY = (typeof gripCfg.walkRearGripY === 'number') ? gripCfg.walkRearGripY : aimRearGripY;
+  const rearGripDistY = lerp(walkRearGripY, aimRearGripY, w);
+
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
 
@@ -1360,7 +1369,7 @@ export function getWeaponHoldTransform(p) {
     rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
     leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
     barrelLen: barrelLength,
-    barrelOffsetY: (typeof gripCfg.barrelOffsetY === 'number') ? gripCfg.barrelOffsetY : (wepKey === 'REVOLVER' ? -6.41 : 0),
+    barrelOffsetY: (typeof gripCfg.barrelOffsetY === 'number') ? gripCfg.barrelOffsetY : 0,
     bladeTip: { x: tipX, y: tipY },
     bladeHilt: { x: hiltX, y: hiltY },
     isMagInGun,

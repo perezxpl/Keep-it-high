@@ -221,7 +221,7 @@ export const WEAPON_SPRITE_PIVOTS = {
   SHOTGUN: { x: 401.3, y: 167.0 },
   SNIPER: { x: 450.0, y: 260.0 },
   GLOCK: { x: 257.0, y: 292.0 },
-  REVOLVER: { x: -180.0, y: 405.0 },
+  REVOLVER: { x: -65.0, y: 41.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
   KNIFE: { x: 210.0, y: 188.5 },
   MACHETE: { x: 114.0, y: 114.0 },
@@ -1146,7 +1146,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, hold.barrelLen || 27.85, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : -6.41, 12, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 20.40, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 1.10, 12, false);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1179,7 +1179,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillRect(15.5, -3.6, 1.0, 1.4);
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, hold.barrelLen || 27.85, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : -6.41, 12, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 20.40, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 1.10, 12, false);
       }
     }
   } else if (weapon.id === 'SAWED_OFF') {
