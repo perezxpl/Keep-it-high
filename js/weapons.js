@@ -591,6 +591,9 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
   if (weapon.id === 'SNIPER') {
     spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#38bdf8', 6);
     spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#facc15', 3);
+  } else if (weapon.id === 'REVOLVER') {
+    spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#fb923c', 5);
+    spawnBulletSparks(muzzleX + Math.cos(theta) * 8, muzzleY + Math.sin(theta) * 8, '#fde047', 4);
   } else {
     spawnBulletSparks(muzzleX + Math.cos(theta) * 6, muzzleY + Math.sin(theta) * 6, weapon.bulletColor, 3);
   }
