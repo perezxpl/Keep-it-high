@@ -447,29 +447,32 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
 
     // Odnowienie zapasu amunicji po odrodzeniu
     if (player.ammo) {
-      if (player.ammo.AK47) {
-        player.ammo.AK47.currentAmmo = 30;
-        player.ammo.AK47.reserveAmmo = 90;
-        player.ammo.AK47.isReloading = false;
-        player.ammo.AK47.reloadTimer = 0;
-      }
-      if (player.ammo.SHOTGUN) {
-        player.ammo.SHOTGUN.currentAmmo = 8;
-        player.ammo.SHOTGUN.reserveAmmo = 64;
-        player.ammo.SHOTGUN.isReloading = false;
-        player.ammo.SHOTGUN.reloadTimer = 0;
-      }
-      if (player.ammo.SNIPER) {
-        player.ammo.SNIPER.currentAmmo = 5;
-        player.ammo.SNIPER.reserveAmmo = 25;
-        player.ammo.SNIPER.isReloading = false;
-        player.ammo.SNIPER.reloadTimer = 0;
-      }
-      if (player.ammo.GLOCK) {
-        player.ammo.GLOCK.currentAmmo = 17;
-        player.ammo.GLOCK.reserveAmmo = 68;
-        player.ammo.GLOCK.isReloading = false;
-        player.ammo.GLOCK.reloadTimer = 0;
+      const wepDefaults = {
+        AK47: { currentAmmo: 30, reserveAmmo: 90, reloadTime: 2.0 },
+        SHOTGUN: { currentAmmo: 8, reserveAmmo: 64, reloadTime: 2.5 },
+        SNIPER: { currentAmmo: 5, reserveAmmo: 25, reloadTime: 2.8 },
+        GLOCK: { currentAmmo: 17, reserveAmmo: 68, reloadTime: 1.4 },
+        REVOLVER: { currentAmmo: 6, reserveAmmo: 36, reloadTime: 2.2 },
+        SAWED_OFF: { currentAmmo: 2, reserveAmmo: 18, reloadTime: 1.8 },
+        RPG7: { currentAmmo: 1, reserveAmmo: 3, reloadTime: 2.6 }
+      };
+      for (const [wepId, def] of Object.entries(wepDefaults)) {
+        if (!player.ammo[wepId]) {
+          player.ammo[wepId] = {
+            magSize: def.currentAmmo,
+            currentAmmo: def.currentAmmo,
+            reserveAmmo: def.reserveAmmo,
+            reloadTime: def.reloadTime,
+            reloadDuration: Math.round(def.reloadTime * 60),
+            isReloading: false,
+            reloadTimer: 0
+          };
+        } else {
+          player.ammo[wepId].currentAmmo = def.currentAmmo;
+          player.ammo[wepId].reserveAmmo = def.reserveAmmo;
+          player.ammo[wepId].isReloading = false;
+          player.ammo[wepId].reloadTimer = 0;
+        }
       }
     }
     player.isReloading = false;

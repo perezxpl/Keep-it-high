@@ -274,6 +274,25 @@ export function startRound() {
     player.isDead = false;
     player.ragdoll = null;
     player.staggerTimer = 0;
+    if (player.ammo) {
+      const wepDefaults = {
+        AK47: { currentAmmo: 30, reserveAmmo: 90 },
+        SHOTGUN: { currentAmmo: 8, reserveAmmo: 64 },
+        SNIPER: { currentAmmo: 5, reserveAmmo: 25 },
+        GLOCK: { currentAmmo: 17, reserveAmmo: 68 },
+        REVOLVER: { currentAmmo: 6, reserveAmmo: 36 },
+        SAWED_OFF: { currentAmmo: 2, reserveAmmo: 18 },
+        RPG7: { currentAmmo: 1, reserveAmmo: 3 }
+      };
+      for (const [wepId, def] of Object.entries(wepDefaults)) {
+        if (player.ammo[wepId]) {
+          player.ammo[wepId].currentAmmo = def.currentAmmo;
+          player.ammo[wepId].reserveAmmo = def.reserveAmmo;
+          player.ammo[wepId].isReloading = false;
+          player.ammo[wepId].reloadTimer = 0;
+        }
+      }
+    }
   }
   const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
   for (const b of activeBots) {

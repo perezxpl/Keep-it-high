@@ -188,7 +188,9 @@ const WEAPON_PARTS_PATHS = {
   REVOLVER_CYLINDER: './assets/weapons/revolver_cylinder.png?v=v256_modular_melee_weapons',
   SAWED_OFF_BODY: './assets/weapons/sawed_off_body.png?v=v256_modular_melee_weapons',
   SAWED_OFF_BARRELS: './assets/weapons/sawed_off_barrels.png?v=v256_modular_melee_weapons',
-  RPG7: './assets/weapons/rpg7.png?v=v330_rpg7_rocket_launcher_secondary',
+  RPG7: './assets/weapons/rpg7.png?v=v336_rpg7_modular_rocket_reload',
+  RPG7_BODY: './assets/weapons/rpg7_body.png?v=v336_rpg7_modular_rocket_reload',
+  RPG7_ROCKET: './assets/weapons/rpg7_rocket.png?v=v336_rpg7_modular_rocket_reload',
   KNIFE: './assets/weapons/knife.png?v=v256_modular_melee_weapons',
   MACHETE: './assets/weapons/machete.png?v=v256_modular_melee_weapons',
   AXE: './assets/weapons/axe.png?v=v256_modular_melee_weapons'
@@ -1277,19 +1279,48 @@ export function drawHeldWeapon(ctx, p) {
     }
   } else if (weapon.id === 'RPG7') {
     // -------------------------------------------------------------
-    // RPG-7 SHOULDER-FIRED ROCKET LAUNCHER RENDERER
+    // RPG-7 SHOULDER-FIRED ROCKET LAUNCHER RENDERER (MODULAR ROCKET & TUBE)
     // -------------------------------------------------------------
-    const imgRpg = getWeaponPartSprite('RPG7');
-    if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
+    const imgLauncher = getWeaponPartSprite('RPG7_BODY') || getWeaponPartSprite('RPG7');
+    const imgRocket = getWeaponPartSprite('RPG7_ROCKET');
+    if (imgLauncher && imgLauncher.complete && imgLauncher.naturalWidth > 0) {
       const s = 57.0 / 1302;
       const pvt = getWeaponSpritePivot('RPG7', hold.weight);
       const pivotSpriteX = pvt.x;
       const pivotSpriteY = pvt.y;
 
+      const wepAmmo = (p.ammo && p.ammo.RPG7) ? p.ammo.RPG7 : null;
+      const hasRocketLoaded = wepAmmo ? (wepAmmo.currentAmmo > 0) : true;
+      const isReloading = !!(p.isReloading && (p.currentWeapon?.id === 'RPG7' || wepAmmo?.isReloading));
+      const reloadProg = p.reloadProgress || 0;
+
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      ctx.drawImage(imgRpg, 0, 0);
+
+      // 1. Rura wyrzutni (korpus)
+      ctx.drawImage(imgLauncher, 0, 0);
+
+      // 2. Głowica rakiety PG-7V: widoczna tylko gdy załadowana lub fizycznie wsuwana w trakcie przeładowania
+      if (imgRocket && imgRocket.complete && imgRocket.naturalWidth > 0) {
+        if (hasRocketLoaded && !isReloading) {
+          ctx.drawImage(imgRocket, 0, 0);
+        } else if (isReloading) {
+          // Animacja wsuwania rakiety w przedni wylot lufy od reloadProgress = 0.30 do 0.85
+          const insertStart = 0.30;
+          const insertEnd = 0.85;
+          if (reloadProg >= insertStart) {
+            const t = Math.min(1.0, (reloadProg - insertStart) / (insertEnd - insertStart));
+            const offsetRocketX = (1.0 - t) * 120;
+            const insertJiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 3) * 1.2 : 0;
+            ctx.save();
+            ctx.translate(offsetRocketX, insertJiggleY);
+            ctx.drawImage(imgRocket, 0, 0);
+            ctx.restore();
+          }
+        }
+      }
+
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {

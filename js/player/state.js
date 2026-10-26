@@ -214,6 +214,33 @@ export function createPlayerInstance(overrides = {}) {
         reloadTime: 1.4,
         isReloading: false,
         reloadTimer: 0
+      },
+      REVOLVER: {
+        magSize: 6,
+        currentAmmo: 6,
+        reserveAmmo: 36,
+        reloadDuration: 132,
+        reloadTime: 2.2,
+        isReloading: false,
+        reloadTimer: 0
+      },
+      SAWED_OFF: {
+        magSize: 2,
+        currentAmmo: 2,
+        reserveAmmo: 18,
+        reloadDuration: 108,
+        reloadTime: 1.8,
+        isReloading: false,
+        reloadTimer: 0
+      },
+      RPG7: {
+        magSize: 1,
+        currentAmmo: 1,
+        reserveAmmo: 3,
+        reloadDuration: 156,
+        reloadTime: 2.6,
+        isReloading: false,
+        reloadTimer: 0
       }
     },
     loadout: overrides.loadout || (overrides.isBot ? {

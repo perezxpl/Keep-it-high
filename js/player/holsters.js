@@ -241,7 +241,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     ctx.translate(rMountX, rMountY);
     ctx.rotate(rAng);
     ctx.scale(1, fDir);
-    drawRpg7BackSprite(ctx, 0.88);
+    drawRpg7BackSprite(ctx, 0.88, p);
     ctx.restore();
   }
 
@@ -251,18 +251,25 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
 /**
  * Procedura renderowania wyrzutni RPG-7 na plecach operatora
  */
-function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
-  const imgRpg = getWeaponPartSprite('RPG7');
-  if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
+function drawRpg7BackSprite(ctx, scaleMult = 1.0, player = null) {
+  const imgLauncher = getWeaponPartSprite('RPG7_BODY') || getWeaponPartSprite('RPG7');
+  const imgRocket = getWeaponPartSprite('RPG7_ROCKET');
+  if (imgLauncher && imgLauncher.complete && imgLauncher.naturalWidth > 0) {
     const s = (57.0 / 1302) * scaleMult;
     const pvt = (typeof getWeaponSpritePivot === 'function') ? getWeaponSpritePivot('RPG7', 1.0) : { x: 720.0, y: 177.5 };
     const pivotSpriteX = pvt?.x ?? 720.0;
     const pivotSpriteY = pvt?.y ?? 177.5;
 
+    const wepAmmo = (player && player.ammo && player.ammo.RPG7) ? player.ammo.RPG7 : null;
+    const hasRocket = wepAmmo ? (wepAmmo.currentAmmo > 0) : true;
+
     ctx.save();
     ctx.scale(s, s);
     ctx.translate(-pivotSpriteX, -pivotSpriteY);
-    ctx.drawImage(imgRpg, 0, 0);
+    ctx.drawImage(imgLauncher, 0, 0);
+    if (hasRocket && imgRocket && imgRocket.complete && imgRocket.naturalWidth > 0) {
+      ctx.drawImage(imgRocket, 0, 0);
+    }
     ctx.restore();
   }
 }
