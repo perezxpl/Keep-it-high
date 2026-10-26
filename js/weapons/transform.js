@@ -361,7 +361,7 @@ export const WEAPON_GRIP_CONFIGS = {
   SNIPER: { rearGripX: 1.20, rearGripY: 1.80, foreGripX: 13.70, foreGripY: -2.10, angleOffset: 0.000, barrelLen: 34.80, stockLen: 15.10 },
   GLOCK: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.009, walkAngleOffset: 0.733, barrelLen: 15.60, barrelOffsetY: 5.50, stockLen: 4.00 },
   REVOLVER: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.017, walkAngleOffset: 0.733, barrelLen: 27.40, barrelOffsetY: 1.10, stockLen: 4.00 },
-  SAWED_OFF: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: 10.7, foreGripY: -1.4, angleOffset: 0.0, barrelLen: 17.6, stockLen: 4.5 },
+  SAWED_OFF: { rearGripX: -0.90, walkRearGripX: -3.80, rearGripY: 6.30, foreGripX: 9.30, foreGripY: 4.20, angleOffset: 0.026, walkAngleOffset: 0.689, barrelLen: 32.40, barrelOffsetY: -1.00, stockLen: 4.50 },
   KNIFE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.5, foreGripY: -3.5, angleOffset: 0.0, barrelLen: 19.5, stockLen: 0.0 },
   MACHETE: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 33.60, stockLen: 0.00 },
   AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 }
