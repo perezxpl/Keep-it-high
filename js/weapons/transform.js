@@ -385,7 +385,16 @@ export function getWeaponLevelAimY(shooter) {
 }
 
 export const WEAPON_GRIP_CONFIGS = {
-  AK47: { rearGripX: 3.00, rearGripY: 2.20, foreGripX: 14.60, foreGripY: -1.50, angleOffset: 0.000, barrelLen: 30.80, stockLen: 13.60 },
+  AK47: {
+    rearGripX: 3.00,
+    rearGripY: 2.20,
+    foreGripX: 14.60,
+    foreGripY: -1.50,
+    angleOffset: 0.000,
+    barrelLen: 30.80,
+    barrelOffsetY: -6.00,
+    stockLen: 13.60
+  },
   SHOTGUN: { rearGripX: 3.90, walkRearGripX: 0.80, rearGripY: 1.80, foreGripX: 13.00, foreGripY: 0.50, angleOffset: 0.000, barrelLen: 29.50, barrelOffsetY: -3.90, stockLen: 11.00 },
   SNIPER: { rearGripX: 1.20, rearGripY: 1.80, foreGripX: 13.70, foreGripY: -2.10, angleOffset: 0.000, barrelLen: 34.80, stockLen: 15.10 },
   GLOCK: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.009, walkAngleOffset: 0.733, barrelLen: 15.60, barrelOffsetY: 5.50, stockLen: 4.00 },
