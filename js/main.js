@@ -808,6 +808,21 @@ function dismissLoadingOverlay() {
 
 function draw() {
   dismissLoadingOverlay();
+
+  // Podczas pobytu w menu przed rozpoczęciem gry nie renderujemy areny, bramek ani fizyki w tle
+  const isSettingsInLiveMatch = ((GAME_STATE.current === 'SETTINGS' || GAME_STATE.current === 'ARMORY') && (GAME_STATE.previous === 'PAUSED' || GAME_STATE.previous === 'PLAYING'));
+  const isGameLive = (GAME_STATE.current === 'PLAYING' || GAME_STATE.current === 'PAUSED' || GAME_STATE.current === 'CLASS_SELECT' || isSettingsInLiveMatch);
+
+  if (!isGameLive) {
+    if (ctx) {
+      ctx.save();
+      ctx.fillStyle = '#050810';
+      ctx.fillRect(0, 0, (canvas && canvas.width) ? canvas.width : W, (canvas && canvas.height) ? canvas.height : H);
+      ctx.restore();
+    }
+    return;
+  }
+
   renderArenaBackground(ctx, camera);
 
   ctx.save();

@@ -788,6 +788,11 @@ button, .dev-btn {
   font-family: 'Rajdhani', 'Segoe UI', monospace, sans-serif;
   user-select: none;
   -webkit-user-select: none;
+  background: transparent;
+}
+
+#ui-overlay-container.menu-backdrop {
+  background: radial-gradient(circle at center, #0f172a 0%, #050810 85%);
 }
 
 .ui-view-overlay {
@@ -800,10 +805,14 @@ button, .dev-btn {
   justify-content: center;
   padding: 16px;
   z-index: 510;
-  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.78) 0%, rgba(5, 8, 16, 0.94) 80%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: radial-gradient(circle at center, #0f172a 0%, #050810 85%);
   animation: uiFadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#pause-overlay {
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.82) 0%, rgba(5, 8, 16, 0.95) 80%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 @keyframes uiFadeIn {

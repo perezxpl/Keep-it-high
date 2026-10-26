@@ -119,7 +119,7 @@ try {
     createLinearGradient: () => mockGradient, createRadialGradient: () => mockGradient,
     ellipse: () => {}, rect: () => {}, roundRect: () => {}, quadraticCurveTo: () => {},
     strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {},
-    fillText: () => {}
+    fillText: () => {}, fillRect: () => {}, clearRect: () => {}
   };
   const mockElement = {
     style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },

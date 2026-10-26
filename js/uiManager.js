@@ -1162,6 +1162,13 @@ export const uiManager = {
     const devPanel = document.getElementById('dev-panel-container');
     const gameContainer = document.getElementById('game-container');
     const canvasEl = document.getElementById('game');
+    const overlayContainer = document.getElementById('ui-overlay-container');
+
+    const isLiveMatchPause = (typeof window !== 'undefined' && window.GAME_STATE && (window.GAME_STATE.previous === 'PAUSED' || window.GAME_STATE.previous === 'PLAYING'));
+    const isMenuMode = (gameState !== 'PLAYING' && gameState !== 'PAUSED' && !(isLiveMatchPause && (gameState === 'SETTINGS' || gameState === 'ARMORY')));
+    if (overlayContainer) {
+      overlayContainer.classList.toggle('menu-backdrop', isMenuMode);
+    }
 
     // Ukryj domyślnie wszystkie ekrany UI
     if (menuEl) menuEl.style.display = 'none';

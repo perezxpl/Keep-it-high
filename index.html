@@ -67,7 +67,7 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/main.js": "./js/main.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
+      "./js/main.js": "./js/main.js?v=v334_fix_menu_window_switch_arena_flash",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v279_melee_button_non_auto_lock",
       "./js/network.js": "./js/network.js?v=v274_tomahawk_throw_and_pickup",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v215_smash_bros_multiplayer_roster",
@@ -106,7 +106,7 @@
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v205_fix_rewardPreview_and_restore_touch_controls",
-      "./js/uiManager.js": "./js/uiManager.js?v=v247_fix_armory_click_through_and_ghost_taps",
+      "./js/uiManager.js": "./js/uiManager.js?v=v334_fix_menu_window_switch_arena_flash",
       "./js/weapons.js": "./js/weapons.js?v=v333_rpg7_grip_and_pivot_tuning",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v333_rpg7_grip_and_pivot_tuning",
       "./js/weapons/rocket.js": "./js/weapons/rocket.js?v=v333_rpg7_grip_and_pivot_tuning",
@@ -119,7 +119,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v252_fix_picker_weapons_narrowing_and_card_height">
+  <link rel="stylesheet" href="./css/main.css?v=v334_fix_menu_window_switch_arena_flash">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -544,7 +544,7 @@
     </div>
 
     <!-- Game State UI Overlay Layers (Menu Główne, Ustawienia, Pauza) -->
-    <div id="ui-overlay-container">
+    <div id="ui-overlay-container" class="menu-backdrop">
       <!-- 1. GŁÓWNE MENU I ODPRAWA TAKTYCZNA -->
       <div id="main-menu-overlay" class="ui-view-overlay" style="display: flex;">
         <div class="menu-container">
