@@ -802,14 +802,14 @@ export function drawFootwear(ctx, style = 'combat_boots', color = '#18181b', isF
     if (isThrusting) {
       const flamePal = getJetpackFlamePalette(thrusterColor);
       const isDash = !!v.bootsDashing;
-      const plumeLen = isDash ? 38.0 : (v.bootsCharging ? 20.0 : 28.0);
+      const plumeLen = isDash ? 15.0 : (v.bootsCharging ? 8.0 : 11.0);
       drawJetpackThrustPlume(
         ctx,
         -7.2,
         0.9,
-        3.4,
+        2.8,
         Math.PI, // Kąt w tył za piętę buta
-        isDash ? 1.4 : 1.0,
+        isDash ? 1.2 : 1.0,
         flamePal,
         { length: plumeLen }
       );

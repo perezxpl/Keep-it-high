@@ -131,137 +131,78 @@ export function drawJetpackThrustPlume(
   ctx,
   originX,
   originY,
-  nozzleWidth = 7.0,
+  nozzleWidth = 5.0,
   angle = Math.PI / 2,
   power = 1.0,
   palette = null,
   options = {}
 ) {
   if (!ctx) return;
-  const pwr = Math.max(0.20, Math.min(1.4, power));
+  const pwr = Math.max(0.3, Math.min(1.2, power));
   const pal = palette || getJetpackFlamePalette('#00e5ff');
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-  // Dynamiczne fluktuacje ciśnienia w komorze wylotowej
+  // Subtelna mikroturbulencja w osi wylotowej (1-2 px jitter, styl Soldat)
   const timeSec = now * 0.001;
-  const jitter = Math.sin(timeSec * 50.0) * 0.55 + Math.cos(timeSec * 82.0) * 0.45;
+  const jitter = (Math.sin(timeSec * 45.0) * 0.5 + Math.cos(timeSec * 70.0) * 0.5);
 
-  const baseLen = options.length || 36.0;
-  const plumeLen = baseLen * (0.85 + pwr * 0.45 + jitter * 0.14);
-  const mouthW = Math.max(nozzleWidth * 1.15, 5.0);
+  // Zwarty, zwięzły płomień w skali postaci (12-16 px)
+  const baseLen = options.length || 14.0;
+  const plumeLen = baseLen * (0.88 + pwr * 0.25 + jitter * 0.10);
+  const mouthW = Math.max(nozzleWidth * 0.90, 3.6);
 
   ctx.save();
   ctx.translate(originX, originY);
   ctx.rotate(angle - Math.PI / 2); // Kąt wektora ciągu (w dół w osi Y)
 
-  // 1. Zewnętrzna poświata wolumetryczna (Radial Bloom Glow)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const bloomR = plumeLen * 0.85;
-  const bloomGrad = ctx.createRadialGradient(0, plumeLen * 0.35, 1, 0, plumeLen * 0.35, bloomR);
-  bloomGrad.addColorStop(0.0, pal.glow);
-  bloomGrad.addColorStop(0.35, pal.base);
-  bloomGrad.addColorStop(1.0, pal.alphaZero);
-
-  ctx.globalAlpha = 0.55 * pwr;
-  ctx.fillStyle = bloomGrad;
-  ctx.beginPath();
-  ctx.arc(0, plumeLen * 0.35, bloomR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // 2. Główny płaszcz plazmowy (Outer Shock Envelope)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const halfW = mouthW * 0.55;
-  const maxW = mouthW * (1.10 + jitter * 0.22);
-  const tipWiggle = Math.sin(timeSec * 38.0) * (plumeLen * 0.05);
-
+  // 1. Zwarty płaszcz płomienia (gładki stożek o nasyconych barwach)
+  const halfW = mouthW * 0.5;
   const flameGrad = ctx.createLinearGradient(0, 0, 0, plumeLen);
   flameGrad.addColorStop(0.0, '#ffffff');
-  flameGrad.addColorStop(0.15, pal.light);
-  flameGrad.addColorStop(0.50, pal.base);
-  flameGrad.addColorStop(0.85, pal.deep);
+  flameGrad.addColorStop(0.25, pal.light);
+  flameGrad.addColorStop(0.65, pal.base);
   flameGrad.addColorStop(1.0, pal.alphaZero);
 
   ctx.fillStyle = flameGrad;
-  ctx.globalAlpha = 0.88;
   ctx.beginPath();
   ctx.moveTo(-halfW, 0);
-  ctx.bezierCurveTo(
-    -maxW * 1.35, plumeLen * 0.22,
-    -maxW * 0.90, plumeLen * 0.65,
-    tipWiggle, plumeLen
-  );
-  ctx.bezierCurveTo(
-    maxW * 0.90, plumeLen * 0.65,
-    maxW * 1.35, plumeLen * 0.22,
-    halfW, 0
-  );
+  ctx.quadraticCurveTo(-halfW * 0.9, plumeLen * 0.45, 0, plumeLen);
+  ctx.quadraticCurveTo(halfW * 0.9, plumeLen * 0.45, halfW, 0);
   ctx.closePath();
   ctx.fill();
 
-  // 3. Wewnętrzny jaskrawy strumień plazmy (Inner Jet Core)
-  const innerLen = plumeLen * 0.74;
-  const innerW = halfW * 0.70;
-  const innerGrad = ctx.createLinearGradient(0, 0, 0, innerLen);
-  innerGrad.addColorStop(0.0, '#ffffff');
-  innerGrad.addColorStop(0.30, pal.light);
-  innerGrad.addColorStop(0.80, pal.base);
-  innerGrad.addColorStop(1.0, pal.alphaZero);
+  // 2. Wewnętrzny jaskrawy rdzeń (biało-gorąca iglica)
+  const coreLen = plumeLen * 0.55;
+  const coreW = halfW * 0.55;
+  const coreGrad = ctx.createLinearGradient(0, 0, 0, coreLen);
+  coreGrad.addColorStop(0.0, '#ffffff');
+  coreGrad.addColorStop(0.5, pal.light);
+  coreGrad.addColorStop(1.0, pal.alphaZero);
 
-  ctx.fillStyle = innerGrad;
-  ctx.globalAlpha = 1.0;
-  ctx.beginPath();
-  ctx.moveTo(-innerW, 0);
-  ctx.quadraticCurveTo(-innerW * 1.25, innerLen * 0.40, 0, innerLen);
-  ctx.quadraticCurveTo(innerW * 1.25, innerLen * 0.40, innerW, 0);
-  ctx.closePath();
-  ctx.fill();
-
-  // 4. Diamenty Macha (Supersonic Shock Diamonds)
-  const diamondCount = (plumeLen > 24.0) ? 3 : (plumeLen > 12.0 ? 2 : 1);
-  const diamondOffsets = [0.22, 0.46, 0.70];
-  const diamondSizes = [
-    { w: mouthW * 0.52, h: plumeLen * 0.15 },
-    { w: mouthW * 0.38, h: plumeLen * 0.12 },
-    { w: mouthW * 0.24, h: plumeLen * 0.09 }
-  ];
-
-  for (let d = 0; d < diamondCount; d++) {
-    const dDist = plumeLen * diamondOffsets[d] + Math.sin(timeSec * 52.0 + d * 2.2) * 1.1;
-    const dw = diamondSizes[d].w * (0.92 + jitter * 0.15);
-    const dh = diamondSizes[d].h * (0.92 - jitter * 0.15);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.globalAlpha = 0.95;
-    ctx.beginPath();
-    ctx.moveTo(0, dDist - dh * 0.5);
-    ctx.lineTo(dw * 0.5, dDist);
-    ctx.lineTo(0, dDist + dh * 0.5);
-    ctx.lineTo(-dw * 0.5, dDist);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = pal.light;
-    ctx.lineWidth = 0.9;
-    ctx.stroke();
-  }
-
-  // 5. Ostra iglica plazmowa w gardzieli wylotu
-  const coreH = plumeLen * 0.38;
-  const coreW = mouthW * 0.35;
-  ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 1.0;
+  ctx.fillStyle = coreGrad;
   ctx.beginPath();
   ctx.moveTo(-coreW, 0);
-  ctx.lineTo(0, coreH);
+  ctx.lineTo(0, coreLen);
   ctx.lineTo(coreW, 0);
   ctx.closePath();
   ctx.fill();
 
-  ctx.restore(); // end lighter
-  ctx.restore(); // end transform
+  // 3. Pojedynczy, ostry diament uderzeniowy Macha (1.5 x 2.5 px)
+  if (plumeLen > 10.0) {
+    const diamondY = plumeLen * 0.38 + jitter * 0.4;
+    const dw = 1.4;
+    const dh = 2.2;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, diamondY - dh);
+    ctx.lineTo(dw, diamondY);
+    ctx.lineTo(0, diamondY + dh);
+    ctx.lineTo(-dw, diamondY);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -520,7 +461,7 @@ export function drawRocketBootsPreview(
     Math.PI * 0.5 + 0.16,
     1.0,
     flamePal,
-    { length: 15.0 }
+    { length: 12.0 }
   );
 
   ctx.restore();

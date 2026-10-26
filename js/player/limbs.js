@@ -2010,11 +2010,11 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
           ctx,
           nzX + nzW * 0.5,
           nzY + nzH,
-          nzW * 1.1,
+          nzW,
           Math.PI / 2,
           p.jetpackPower || 1.0,
           flamePal,
-          { length: 38.0 }
+          { length: 13.0 }
         );
       }
     }
@@ -2203,30 +2203,17 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Naddźwiękowy wielowarstwowy płomień i diamenty uderzeniowe Macha
+      // Zwarty płomień dyszy w stylu Soldat
       drawJetpackThrustPlume(
         ctx,
         nzCenterX,
         nzTopY + nzH,
-        mouthW * 1.30,
+        mouthW,
         Math.PI / 2,
         p.jetpackPower || 1.0,
         flamePal,
-        { length: 50.0 }
+        { length: 15.0 }
       );
-
-      // Subtelna poświata na plecach i talii postaci od pracującego silnika
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const backLight = ctx.createRadialGradient(anchorX, packBottomY, 2, anchorX, packBottomY, 32);
-      backLight.addColorStop(0, flamePal.glow);
-      backLight.addColorStop(1, flamePal.alphaZero);
-      ctx.fillStyle = backLight;
-      ctx.globalAlpha = 0.45 * (p.jetpackPower || 1.0);
-      ctx.beginPath();
-      ctx.arc(anchorX, packBottomY, 32, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
     }
   }
 

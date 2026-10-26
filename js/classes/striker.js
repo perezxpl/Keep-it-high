@@ -764,10 +764,10 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
 
   if (isGrounded) {
     // GDY POSTAĆ STOI NA PODSTAWIE (ZIEMIA / PLATFORMA):
-    // Ogień nie przenika przez podstawę, lecz rozchodzi się spektakularnie na boki wzdłuż powierzchni!
+    // Drobny strumyk ognia rozchodzący się wzdłuż powierzchni
     const floorY = currentFloor;
-    const sparkCount = Math.max(2, Math.round(2 + 4 * ratio));
-    const spreadSpeed = 3.6 + 6.5 * ratio;
+    const sparkCount = Math.max(1, Math.round(1 + 2 * ratio));
+    const spreadSpeed = 3.2 + 4.5 * ratio;
 
     const feet = [
       { x: footBackX, y: floorY - 2 },
@@ -775,28 +775,25 @@ function emitBootsChargeSparks(player, chargeRatio = 0.5) {
     ];
 
     for (const f of feet) {
-      // 1. Strumień ognia rozchodzący się w lewo po powierzchni (nozzleAngle = Math.PI)
       spawnJetpackSparks(
         f.x - 2, f.y, facing, sparkCount, colors,
-        -spreadSpeed, -Math.random() * 0.5, Math.PI, floorY
+        -spreadSpeed, -Math.random() * 0.3, Math.PI, floorY
       );
-      // 2. Strumień ognia rozchodzący się w prawo po powierzchni (nozzleAngle = 0)
       spawnJetpackSparks(
         f.x + 2, f.y, facing, sparkCount, colors,
-        spreadSpeed, -Math.random() * 0.5, 0, floorY
+        spreadSpeed, -Math.random() * 0.3, 0, floorY
       );
     }
   } else {
     // GDY POSTAĆ JEST W POWIETRZU:
-    // Płomienie buhają w dół i tył potężnym strumieniem
     const thrustAngle = Math.PI * 0.5 - facing * 0.20;
-    const sparkCount = Math.max(3, Math.round(3 + 5 * ratio));
-    const thrustVx = -facing * (1.6 + 4.5 * ratio);
-    const thrustVy = 2.4 + 5.5 * ratio;
+    const sparkCount = Math.max(2, Math.round(1 + 3 * ratio));
+    const thrustVx = -facing * (1.4 + 3.5 * ratio);
+    const thrustVy = 2.0 + 4.0 * ratio;
 
     spawnJetpackSparks(footBackX, footBackY, facing, sparkCount, colors, thrustVx, thrustVy, thrustAngle);
-    if (ratio > 0.15 || Math.random() < 0.85) {
-      spawnJetpackSparks(footFrontX, footFrontY, facing, Math.max(2, sparkCount - 1), colors, thrustVx, thrustVy, thrustAngle);
+    if (ratio > 0.20 || Math.random() < 0.65) {
+      spawnJetpackSparks(footFrontX, footFrontY, facing, Math.max(1, sparkCount - 1), colors, thrustVx, thrustVy, thrustAngle);
     }
   }
 }
@@ -912,7 +909,7 @@ export function updateRocketBootsPhysics(player) {
     const thrustAngle = Math.atan2(tY, tX);
     const footX = player.x + (player.w || 24) / 2 + tX * 6;
     const footY = player.y + (player.h || 70) - 3;
-    spawnJetpackSparks(footX, footY, Math.sign(tX) || -1, 6, colors, tX * 6, tY * 6, thrustAngle);
+    spawnJetpackSparks(footX, footY, Math.sign(tX) || -1, 3, colors, tX * 5, tY * 5, thrustAngle);
   }
 
   if (rb.dashType === 'AIR') {
