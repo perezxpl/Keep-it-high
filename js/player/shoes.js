@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { DEFAULT_VISUALS } from './hair.js';
-import { getJetpackFlamePalette } from './jetpack.js';
+import { getJetpackFlamePalette, drawJetpackThrustPlume } from './jetpack.js';
 
 export const SHOES_STYLE_LIST = [
   'combat_boots',
@@ -793,24 +793,26 @@ export function drawFootwear(ctx, style = 'combat_boots', color = '#18181b', isF
     // Świecący rdzeń plazmowy
     ctx.fillStyle = thrusterColor;
     ctx.shadowColor = thrusterColor;
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 6;
     ctx.fillRect(-7.0, 0.2, 1.0, 1.4);
+    ctx.shadowBlur = 0;
 
     // Dynamiczny płomień odrzutowy przy locie / zrywie rakietowym
-    const isThrusting = !!(v.isJetpacking || v.bootsDashing);
+    const isThrusting = !!(v.isJetpacking || v.bootsDashing || v.bootsCharging);
     if (isThrusting) {
-      const flameLen = 4.5 + Math.random() * 3.5;
-      const fGrad = ctx.createLinearGradient(-7.2, 0.9, -7.2 - flameLen, 0.9);
-      fGrad.addColorStop(0.0, '#ffffff');
-      fGrad.addColorStop(0.35, thrusterColor);
-      fGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = fGrad;
-      ctx.beginPath();
-      ctx.moveTo(-7.2, -0.2);
-      ctx.lineTo(-7.2 - flameLen, 0.9);
-      ctx.lineTo(-7.2, 2.0);
-      ctx.closePath();
-      ctx.fill();
+      const flamePal = getJetpackFlamePalette(thrusterColor);
+      const isDash = !!v.bootsDashing;
+      const plumeLen = isDash ? 38.0 : (v.bootsCharging ? 20.0 : 28.0);
+      drawJetpackThrustPlume(
+        ctx,
+        -7.2,
+        0.9,
+        3.4,
+        Math.PI, // Kąt w tył za piętę buta
+        isDash ? 1.4 : 1.0,
+        flamePal,
+        { length: plumeLen }
+      );
     }
     ctx.restore();
   }

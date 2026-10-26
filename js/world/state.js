@@ -484,34 +484,40 @@ export function invalidateSkyCache() {
 // =========================================================================
 export const jetpackParticles = [];
 
-export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2, floorY = null) {
+export function spawnJetpackSparks(x, y, facing, count = 5, customColors = null, inheritVx = 0, inheritVy = 0, nozzleAngle = Math.PI / 2, floorY = null) {
   const colors = customColors || ['#00e5ff', '#38bdf8', '#ffffff'];
 
   for (let i = 0; i < count; i++) {
-    // Stożkowy rozrzut wokół wektora dyszy (+/- 14 stopni)
-    const coneAngle = nozzleAngle + (Math.random() - 0.5) * 0.44;
-    const thrustSpeed = Math.random() * 5.5 + 4.5;
+    // Stożkowy rozrzut wokół wektora dyszy (+/- 18 stopni)
+    const coneAngle = nozzleAngle + (Math.random() - 0.5) * 0.52;
+    const thrustSpeed = Math.random() * 7.0 + 5.0;
 
     // Prędkość wylotowa z uwzględnieniem części wektora prędkości gracza
     const vx = Math.cos(coneAngle) * thrustSpeed + inheritVx * 0.35;
     const vy = Math.sin(coneAngle) * thrustSpeed + inheritVy * 0.35;
 
-    const isSmoke = Math.random() < 0.28;
-    const isStreak = !isSmoke && Math.random() < 0.70;
-    const isEmber = !isSmoke && !isStreak && Math.random() < 0.45;
+    const isSmoke = Math.random() < 0.22;
+    const isStreak = !isSmoke && Math.random() < 0.68;
+    const isEmber = !isSmoke && !isStreak && Math.random() < 0.30;
     const col = isSmoke 
-      ? '#64748b' 
+      ? '#475569' 
       : colors[Math.floor(Math.random() * colors.length)];
 
+    // Znacząco powiększony rozmiar cząsteczek ognia i dymu (7..13px plazma, 8..15px dym)
+    const baseSize = isSmoke 
+      ? (Math.random() * 4.5 + 8.0) 
+      : (isEmber ? (Math.random() * 1.5 + 2.5) : (Math.random() * 4.5 + 7.5));
+
     jetpackParticles.push({
-      x: x + (Math.random() * 2.4 - 1.2),
-      y: y + (Math.random() * 2.4 - 1.2),
+      x: x + (Math.random() * 4.0 - 2.0),
+      y: y + (Math.random() * 4.0 - 2.0),
       vx,
       vy,
-      size: isSmoke ? (Math.random() * 2.0 + 3.0) : (isEmber ? (Math.random() * 0.8 + 1.2) : (Math.random() * 1.5 + 2.4)),
-      maxSize: isSmoke ? 8.5 : 5.5,
+      size: baseSize,
+      initialSize: baseSize,
+      maxSize: isSmoke ? 24.0 : 16.0,
       life: 1.0,
-      decay: isSmoke ? 0.030 : (isEmber ? 0.065 : 0.044),
+      decay: isSmoke ? 0.022 : (isEmber ? 0.055 : 0.034),
       isFlame: !isSmoke,
       isStreak,
       isEmber,
@@ -522,8 +528,8 @@ export function spawnJetpackSparks(x, y, facing, count = 3, customColors = null,
     });
   }
 
-  if (jetpackParticles.length > 220) {
-    jetpackParticles.splice(0, jetpackParticles.length - 220);
+  if (jetpackParticles.length > 380) {
+    jetpackParticles.splice(0, jetpackParticles.length - 380);
   }
 }
 
@@ -533,13 +539,13 @@ export function updateJetpackParticles() {
     p.x += p.vx;
     p.y += p.vy;
 
-    // Zabezpieczenie przed przenikaniem przez podłoże (strumień rozchodzi się poziomo)
-    if (typeof p.floorY === 'number' && p.y >= p.floorY - 1) {
-      p.y = p.floorY - 1;
-      p.vy = -Math.abs(p.vy) * 0.08;
+    // Zderzenie z podłożem: płomienie rozchodzą się gwałtownie poziomo
+    if (typeof p.floorY === 'number' && p.y >= p.floorY - 2) {
+      p.y = p.floorY - 2;
+      p.vy = -Math.abs(p.vy) * 0.05;
       p.isFloorDeflected = true;
-      if (Math.abs(p.vx) < 1.8) {
-        p.vx = (Math.random() < 0.5 ? -1 : 1) * (2.4 + Math.random() * 3.0);
+      if (Math.abs(p.vx) < 2.0) {
+        p.vx = (Math.random() < 0.5 ? -1 : 1) * (3.5 + Math.random() * 4.5);
       }
     }
 
@@ -548,17 +554,18 @@ export function updateJetpackParticles() {
     p.vy *= 0.93;
     p.life -= p.decay;
 
-    // Chłodzenie ognia w rozszerzający się dym
+    // Rozrost kuli ognia / plazmy podczas spalania
     if (p.isFlame) {
-      if (p.life < 0.48) {
+      p.size = Math.min(p.maxSize, p.size + 0.16);
+      if (p.life < 0.42) {
         p.isFlame = false;
         p.isStreak = false;
-        p.color = '#64748b';
+        p.color = '#475569';
       }
     } else {
-      // Dym rozszerza się i lekko unosi
-      p.size = Math.min(p.maxSize, p.size + 0.18);
-      p.vy -= 0.04;
+      // Dym rozszerza się i unosi
+      p.size = Math.min(p.maxSize, p.size + 0.28);
+      p.vy -= 0.05;
     }
 
     if (p.life <= 0) {
@@ -581,22 +588,22 @@ export function drawJetpackParticles(ctx) {
   const minY = camera.y - margin;
   const maxY = camera.y + viewH + margin;
 
-  // 1. Warstwa dymu (standardowe mieszanie source-over)
+  // 1. Warstwa dymu (standardowe krycie source-over)
   ctx.save();
   for (let i = 0; i < jetpackParticles.length; i++) {
     const p = jetpackParticles[i];
     if (p.isFlame) continue;
     if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
 
-    ctx.fillStyle = p.color || '#64748b';
-    ctx.globalAlpha = Math.max(0, p.life * 0.32);
+    ctx.fillStyle = p.color || '#475569';
+    ctx.globalAlpha = Math.max(0, p.life * 0.35);
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  // 2. Warstwa płomieni i plazmy (mieszanie addytywne 'lighter')
+  // 2. Warstwa ognia i plazmy (mieszanie addytywne 'lighter')
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < jetpackParticles.length; i++) {
@@ -607,53 +614,75 @@ export function drawJetpackParticles(ctx) {
     const spd = Math.hypot(p.vx, p.vy);
 
     if (p.isFloorDeflected) {
-      // Płaski rozbryzg wzdłuż podłoża
+      // Potężny poziomy rozbryzg płomienia wzdłuż podłoża (35-60px)
+      const splashW = p.size * 3.8;
+      const splashH = p.size * 0.95;
+
+      // Zewnętrzny neon fali uderzeniowej
       ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(1.0, p.life * 1.6);
+      ctx.globalAlpha = Math.min(1.0, p.life * 1.7);
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.size * 2.2, p.size * 0.65, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, p.y, splashW, splashH, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Biały punkt uderzenia
+      // Oślepiający biały punkt uderzenia fali
       ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = Math.min(1.0, p.life * 2.0);
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.size * 0.9, p.size * 0.30, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, p.y, splashW * 0.45, splashH * 0.45, 0, 0, Math.PI * 2);
       ctx.fill();
-    } else if (p.isStreak && spd > 1.6) {
-      // Naddźwiękowa smuga pędu zorientowana wzdłuż wektora prędkości
+
+    } else if (p.isStreak && spd > 1.4) {
+      // Długa, naddźwiękowa smuga pędu zorientowana wzdłuż wektora prędkości (25-45 px)
       const ang = Math.atan2(p.vy, p.vx);
-      const streakLen = p.size * (1.6 + spd * 0.40);
-      const streakW = p.size * 0.70;
+      const streakLen = p.size * (2.2 + spd * 0.70);
+      const streakW = p.size * 0.95;
 
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(ang);
-      ctx.globalAlpha = Math.min(1.0, p.life * 1.5);
 
-      // Zewnętrzny neon smugi
+      // Zewnętrzna poświata smugi
+      ctx.fillStyle = p.glowColor || p.color;
+      ctx.globalAlpha = Math.min(0.65, p.life * 1.2);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, streakLen * 0.65, streakW * 1.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Główny neon smugi
       ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1.0, p.life * 1.6);
       ctx.beginPath();
       ctx.ellipse(0, 0, streakLen * 0.5, streakW * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Biały gorący rdzeń smugi
-      if (p.life > 0.45) {
+      // Biały naddźwiękowy rdzeń
+      if (p.life > 0.30) {
         ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = Math.min(1.0, p.life * 1.9);
         ctx.beginPath();
-        ctx.ellipse(0, 0, streakLen * 0.28, streakW * 0.26, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, streakLen * 0.28, streakW * 0.32, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
+
     } else {
-      // Gorąca kropla plazmy z białym jądrem
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
+      // Kula ognia / plazmy: miękka poświata + nasycony korpus + biały rdzeń
+      ctx.fillStyle = p.glowColor || p.color;
+      ctx.globalAlpha = Math.min(0.65, p.life * 1.2);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.size * 1.6, 0, Math.PI * 2);
       ctx.fill();
 
-      if (p.life > 0.55) {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1.0, p.life * 1.6);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.90, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (p.life > 0.35) {
         ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = Math.min(1.0, p.life * 1.9);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
         ctx.fill();

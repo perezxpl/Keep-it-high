@@ -2010,11 +2010,11 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
           ctx,
           nzX + nzW * 0.5,
           nzY + nzH,
-          nzW,
+          nzW * 1.1,
           Math.PI / 2,
           p.jetpackPower || 1.0,
           flamePal,
-          { length: 16.5 }
+          { length: 38.0 }
         );
       }
     }
@@ -2208,23 +2208,23 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
         ctx,
         nzCenterX,
         nzTopY + nzH,
-        mouthW,
+        mouthW * 1.30,
         Math.PI / 2,
         p.jetpackPower || 1.0,
         flamePal,
-        { length: 19.5 }
+        { length: 50.0 }
       );
 
       // Subtelna poświata na plecach i talii postaci od pracującego silnika
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const backLight = ctx.createRadialGradient(anchorX, packBottomY, 2, anchorX, packBottomY, 18);
+      const backLight = ctx.createRadialGradient(anchorX, packBottomY, 2, anchorX, packBottomY, 32);
       backLight.addColorStop(0, flamePal.glow);
       backLight.addColorStop(1, flamePal.alphaZero);
       ctx.fillStyle = backLight;
-      ctx.globalAlpha = 0.30 * (p.jetpackPower || 1.0);
+      ctx.globalAlpha = 0.45 * (p.jetpackPower || 1.0);
       ctx.beginPath();
-      ctx.arc(anchorX, packBottomY, 18, 0, Math.PI * 2);
+      ctx.arc(anchorX, packBottomY, 32, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }

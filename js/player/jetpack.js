@@ -131,7 +131,7 @@ export function drawJetpackThrustPlume(
   ctx,
   originX,
   originY,
-  nozzleWidth = 6.0,
+  nozzleWidth = 7.0,
   angle = Math.PI / 2,
   power = 1.0,
   palette = null,
@@ -146,9 +146,9 @@ export function drawJetpackThrustPlume(
   const timeSec = now * 0.001;
   const jitter = Math.sin(timeSec * 50.0) * 0.55 + Math.cos(timeSec * 82.0) * 0.45;
 
-  const baseLen = options.length || 18.0;
-  const plumeLen = baseLen * (0.80 + pwr * 0.55 + jitter * 0.15);
-  const mouthW = nozzleWidth * 0.95;
+  const baseLen = options.length || 36.0;
+  const plumeLen = baseLen * (0.85 + pwr * 0.45 + jitter * 0.14);
+  const mouthW = Math.max(nozzleWidth * 1.15, 5.0);
 
   ctx.save();
   ctx.translate(originX, originY);
@@ -157,13 +157,13 @@ export function drawJetpackThrustPlume(
   // 1. Zewnętrzna poświata wolumetryczna (Radial Bloom Glow)
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  const bloomR = plumeLen * 0.75;
+  const bloomR = plumeLen * 0.85;
   const bloomGrad = ctx.createRadialGradient(0, plumeLen * 0.35, 1, 0, plumeLen * 0.35, bloomR);
   bloomGrad.addColorStop(0.0, pal.glow);
-  bloomGrad.addColorStop(0.40, pal.base);
+  bloomGrad.addColorStop(0.35, pal.base);
   bloomGrad.addColorStop(1.0, pal.alphaZero);
 
-  ctx.globalAlpha = 0.45 * pwr;
+  ctx.globalAlpha = 0.55 * pwr;
   ctx.fillStyle = bloomGrad;
   ctx.beginPath();
   ctx.arc(0, plumeLen * 0.35, bloomR, 0, Math.PI * 2);
@@ -171,65 +171,70 @@ export function drawJetpackThrustPlume(
   ctx.restore();
 
   // 2. Główny płaszcz plazmowy (Outer Shock Envelope)
-  const halfW = mouthW * 0.5;
-  const maxW = mouthW * (0.85 + jitter * 0.18);
-  const tipWiggle = Math.sin(timeSec * 38.0) * (plumeLen * 0.04);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const halfW = mouthW * 0.55;
+  const maxW = mouthW * (1.10 + jitter * 0.22);
+  const tipWiggle = Math.sin(timeSec * 38.0) * (plumeLen * 0.05);
 
   const flameGrad = ctx.createLinearGradient(0, 0, 0, plumeLen);
   flameGrad.addColorStop(0.0, '#ffffff');
-  flameGrad.addColorStop(0.18, pal.light);
-  flameGrad.addColorStop(0.52, pal.base);
+  flameGrad.addColorStop(0.15, pal.light);
+  flameGrad.addColorStop(0.50, pal.base);
   flameGrad.addColorStop(0.85, pal.deep);
   flameGrad.addColorStop(1.0, pal.alphaZero);
 
   ctx.fillStyle = flameGrad;
+  ctx.globalAlpha = 0.88;
   ctx.beginPath();
   ctx.moveTo(-halfW, 0);
   ctx.bezierCurveTo(
-    -maxW * 1.30, plumeLen * 0.25,
-    -maxW * 0.85, plumeLen * 0.65,
+    -maxW * 1.35, plumeLen * 0.22,
+    -maxW * 0.90, plumeLen * 0.65,
     tipWiggle, plumeLen
   );
   ctx.bezierCurveTo(
-    maxW * 0.85, plumeLen * 0.65,
-    maxW * 1.30, plumeLen * 0.25,
+    maxW * 0.90, plumeLen * 0.65,
+    maxW * 1.35, plumeLen * 0.22,
     halfW, 0
   );
   ctx.closePath();
   ctx.fill();
 
   // 3. Wewnętrzny jaskrawy strumień plazmy (Inner Jet Core)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const innerLen = plumeLen * 0.70;
-  const innerW = halfW * 0.65;
+  const innerLen = plumeLen * 0.74;
+  const innerW = halfW * 0.70;
   const innerGrad = ctx.createLinearGradient(0, 0, 0, innerLen);
   innerGrad.addColorStop(0.0, '#ffffff');
-  innerGrad.addColorStop(0.35, pal.light);
+  innerGrad.addColorStop(0.30, pal.light);
+  innerGrad.addColorStop(0.80, pal.base);
   innerGrad.addColorStop(1.0, pal.alphaZero);
 
   ctx.fillStyle = innerGrad;
+  ctx.globalAlpha = 1.0;
   ctx.beginPath();
   ctx.moveTo(-innerW, 0);
-  ctx.quadraticCurveTo(-innerW * 1.15, innerLen * 0.42, 0, innerLen);
-  ctx.quadraticCurveTo(innerW * 1.15, innerLen * 0.42, innerW, 0);
+  ctx.quadraticCurveTo(-innerW * 1.25, innerLen * 0.40, 0, innerLen);
+  ctx.quadraticCurveTo(innerW * 1.25, innerLen * 0.40, innerW, 0);
   ctx.closePath();
   ctx.fill();
 
   // 4. Diamenty Macha (Supersonic Shock Diamonds)
-  const diamondCount = (plumeLen > 13.0) ? 2 : 1;
-  const diamondOffsets = [0.28, 0.55];
+  const diamondCount = (plumeLen > 24.0) ? 3 : (plumeLen > 12.0 ? 2 : 1);
+  const diamondOffsets = [0.22, 0.46, 0.70];
   const diamondSizes = [
-    { w: mouthW * 0.44, h: plumeLen * 0.16 },
-    { w: mouthW * 0.28, h: plumeLen * 0.12 }
+    { w: mouthW * 0.52, h: plumeLen * 0.15 },
+    { w: mouthW * 0.38, h: plumeLen * 0.12 },
+    { w: mouthW * 0.24, h: plumeLen * 0.09 }
   ];
 
   for (let d = 0; d < diamondCount; d++) {
-    const dDist = plumeLen * diamondOffsets[d] + Math.sin(timeSec * 50.0 + d * 2.2) * 0.8;
-    const dw = diamondSizes[d].w * (0.92 + jitter * 0.14);
-    const dh = diamondSizes[d].h * (0.92 - jitter * 0.14);
+    const dDist = plumeLen * diamondOffsets[d] + Math.sin(timeSec * 52.0 + d * 2.2) * 1.1;
+    const dw = diamondSizes[d].w * (0.92 + jitter * 0.15);
+    const dh = diamondSizes[d].h * (0.92 - jitter * 0.15);
 
     ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.95;
     ctx.beginPath();
     ctx.moveTo(0, dDist - dh * 0.5);
     ctx.lineTo(dw * 0.5, dDist);
@@ -239,14 +244,15 @@ export function drawJetpackThrustPlume(
     ctx.fill();
 
     ctx.strokeStyle = pal.light;
-    ctx.lineWidth = 0.7;
+    ctx.lineWidth = 0.9;
     ctx.stroke();
   }
 
   // 5. Ostra iglica plazmowa w gardzieli wylotu
-  const coreH = plumeLen * 0.36;
-  const coreW = mouthW * 0.30;
+  const coreH = plumeLen * 0.38;
+  const coreW = mouthW * 0.35;
   ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 1.0;
   ctx.beginPath();
   ctx.moveTo(-coreW, 0);
   ctx.lineTo(0, coreH);

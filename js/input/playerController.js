@@ -195,7 +195,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   if (isFlightActive) {
     player.isJetpacking = true;
 
-    let sparkCount = 4;
+    let sparkCount = 7;
     if (isTouchFlight && !isKeyFlight) {
       // Wersja mobilna: siła ciągu płynnie dostosowana do wychylenia drążka (umożliwia zawis w powietrzu)
       const stickUp = Math.min(1.0, Math.max(0.0, (-leftStick.axisY - 0.15) / (0.90 - 0.15)));
@@ -232,7 +232,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
       const fuelDrain = 0.38 + stickUp * 0.57;
       player.jetFuel = Math.max(0, player.jetFuel - fuelDrain);
-      sparkCount = Math.max(1, Math.round(1 + stickUp * 3));
+      sparkCount = Math.max(3, Math.round(3 + stickUp * 5));
     } else {
       // Klawiatura PC: zbalansowany, płynny ciąg pionowy (dopasowany do fizyki mobilnej)
       player.jetpackPower = 1.0;
@@ -249,7 +249,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       }
 
       player.jetFuel = Math.max(0, player.jetFuel - 0.70);
-      sparkCount = 3;
+      sparkCount = 7;
     }
 
     let inputAxisX = 0;

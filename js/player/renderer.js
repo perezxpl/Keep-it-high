@@ -292,6 +292,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   v.jetMax = p.jetMax;
   v.isJetpacking = !!p.isJetpacking;
   v.bootsDashing = !!(p.rocketBoots && p.rocketBoots.dashing);
+  v.bootsCharging = !!(p.rocketBoots && (p.rocketBoots.isKeyCharging || p.rocketBoots.isTouchCharging));
   if (p.currentClass?.id === 'STRIKER') {
     v.hasRocketBoots = true;
   }
