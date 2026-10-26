@@ -106,6 +106,21 @@ export const ARMORY_CATALOG = {
         reload: '1.8s',
         stats: { dmgBar: 92, rpmBar: 45, magBar: 15, relBar: 75 },
         desc: 'Skrócona dubeltówka do walki w zwarciu. Dwie natychmiastowe salwy śrutu czyszczą ciasne korytarze.'
+      },
+      {
+        id: 'RPG7',
+        name: 'RPG-7',
+        fullName: 'Wyrzutnia Rakiet RPG-7',
+        category: 'DODATKOWA',
+        caliber: 'PG-7V 85MM HEAT',
+        typeLabel: 'WYRZUTNIA',
+        dmg: 150,
+        rpm: 23,
+        mag: 1,
+        reserve: 3,
+        reload: '2.6s',
+        stats: { dmgBar: 100, rpmBar: 12, magBar: 8, relBar: 45 },
+        desc: 'Legendarny ręczny granatnik przeciwpancerny. Wystrzeliwuje rakietę kumulacyjną o potężnej sile eksplozji obszarowej z efektem Rocket Jump.'
       }
     ],
     slot2: [

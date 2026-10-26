@@ -117,6 +117,7 @@ export const RANKS = [
     icon: '◈◈◈',
     desc: 'Dowódca operacji specjalnych. Prowadzi drużynę do wiktorii.',
     unlocks: [
+      { type: 'WEAPON', label: 'Wyrzutnia Rakiet RPG-7' },
       { type: 'PERK', label: 'Atut: Lekki Krok (+10% prędkości sprintu/wślizgu)' },
       { type: 'GEAR', label: 'Nakrycie: Elitarny Beret Komandosa' }
     ]

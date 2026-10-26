@@ -42,7 +42,7 @@ export function getStoredLoadout() {
     
     // Ścisła walidacja ról bojowych slotów:
     const validSlot0 = ['AK47', 'SHOTGUN', 'SNIPER'];
-    const validSlot1 = ['GLOCK', 'REVOLVER', 'SAWED_OFF'];
+    const validSlot1 = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
     const validSlot2 = ['KNIFE', 'MACHETE', 'AXE'];
 
     const s0 = validSlot0.includes(rawSlots[0]) ? rawSlots[0] : 'AK47';

@@ -161,6 +161,35 @@ export const WEAPONS = {
     reloadTime: WEAPON_CONFIG.SAWED_OFF.reloadTime,
     reloadDuration: Math.round(WEAPON_CONFIG.SAWED_OFF.reloadTime * 60)
   },
+  RPG7: {
+    id: 'RPG7',
+    name: 'RPG-7',
+    fullName: 'Wyrzutnia Rakiet RPG-7',
+    category: 'SECONDARY',
+    auto: false,             // Pojedynczy strzał na kliknięcie
+    fireRate: 45,            // Cooldown między strzałami
+    damage: 150,             // Bezpośrednie trafienie naddźwiękową rakietą kumulacyjną
+    bulletSpeed: 21,         // Szybkość początkowa lotu rakiety
+    spread: 0.010,           // Precyzyjny lot w osi celowania
+    crouchSpreadMult: 0.50,
+    recoil: 4.2,             // Potężny odrzut wizualny
+    crouchRecoilMult: 0.45,
+    recoilImpulse: 3.8,      // Kinetyczny odrzut operatora w tył
+    screenShake: 15,         // Wstrząs ekranu przy wystrzale
+    muzzleRise: 0.22,        // Podrzut wyrzutni na ramieniu
+    kickbackDistance: 6.5,   // Silne cofnięcie broni
+    ballPush: 1.15,          // Ekstremalny impuls kinetyczny w piłkę
+    bodyPush: 0.35,
+    ragdollPushMult: 3.8,    // Katapultowanie zwłok po wybuchu
+    pellets: 1,
+    bulletColor: '#f97316',
+    isRocket: true,
+    magSize: WEAPON_CONFIG.RPG7.magSize,
+    currentAmmo: WEAPON_CONFIG.RPG7.currentAmmo,
+    reserveAmmo: WEAPON_CONFIG.RPG7.reserveAmmo,
+    reloadTime: WEAPON_CONFIG.RPG7.reloadTime,
+    reloadDuration: Math.round(WEAPON_CONFIG.RPG7.reloadTime * 60)
+  },
   KNIFE: {
     id: 'KNIFE',
     name: 'Nóż M9',
@@ -362,6 +391,7 @@ export const WEAPON_GRIP_CONFIGS = {
   GLOCK: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.009, walkAngleOffset: 0.733, barrelLen: 15.60, barrelOffsetY: 5.50, stockLen: 4.00 },
   REVOLVER: { rearGripX: 10.30, walkRearGripX: -0.40, rearGripY: 4.00, foreGripX: 1.80, foreGripY: 6.40, angleOffset: 0.017, walkAngleOffset: 0.733, barrelLen: 27.40, barrelOffsetY: 1.10, stockLen: 4.00 },
   SAWED_OFF: { rearGripX: -0.90, walkRearGripX: -3.80, rearGripY: 6.30, foreGripX: 9.30, foreGripY: 4.20, angleOffset: 0.026, walkAngleOffset: 0.689, barrelLen: 32.40, barrelOffsetY: -1.00, stockLen: 4.50 },
+  RPG7: { rearGripX: 3.00, rearGripY: 3.80, foreGripX: 13.80, foreGripY: 3.20, angleOffset: 0.000, barrelLen: 34.00, barrelOffsetY: -2.00, stockLen: 16.00 },
   KNIFE: { rearGripX: 0.00, rearGripY: 0.00, foreGripX: 6.50, foreGripY: 7.40, angleOffset: 0.785, barrelLen: 19.50, stockLen: 0.00 },
   MACHETE: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 33.60, stockLen: 0.00 },
   AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 }

@@ -1168,6 +1168,223 @@ function drawFlashGrenadeIllustration(ctx) {
   ctx.restore();
 }
 
+/**
+ * 13. WYRZUTNIA RAKIET RPG-7 (PG-7V 85MM HEAT)
+ */
+function drawRpg7Illustration(ctx) {
+  ctx.save();
+
+  // 1. TYLNY STOŻEK DYFUZORA / DYSZA VENTURIEGO (Backblast Venturi Nozzle)
+  const venturiGrad = ctx.createLinearGradient(-82, -12, -82, 12);
+  venturiGrad.addColorStop(0.0, '#0f172a');
+  venturiGrad.addColorStop(0.3, '#334155');
+  venturiGrad.addColorStop(0.7, '#1e293b');
+  venturiGrad.addColorStop(1.0, '#090d16');
+
+  ctx.fillStyle = venturiGrad;
+  ctx.beginPath();
+  ctx.moveTo(-60, -5.5);
+  ctx.lineTo(-80, -11.5);
+  ctx.lineTo(-82, -11.5);
+  ctx.lineTo(-82, 11.5);
+  ctx.lineTo(-80, 11.5);
+  ctx.lineTo(-60, 5.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#090d16';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+
+  // Gumowy pierścień ochronny na wylocie dyszy
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(-83, -12, 3, 24);
+
+  // Przepalenia termiczne stali na dyszy (Heat bluing)
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+  ctx.fillRect(-74, -9, 4, 18);
+  ctx.fillStyle = 'rgba(217, 119, 6, 0.22)';
+  ctx.fillRect(-70, -7.5, 3, 15);
+
+  // 2. GŁÓWNA RURA WYRZUTNI ZE STALI (Main Launcher Tube)
+  const tubeGrad = ctx.createLinearGradient(0, -6, 0, 6);
+  tubeGrad.addColorStop(0.0, '#1e293b');
+  tubeGrad.addColorStop(0.3, '#475569');
+  tubeGrad.addColorStop(0.7, '#334155');
+  tubeGrad.addColorStop(1.0, '#0f172a');
+
+  ctx.fillStyle = tubeGrad;
+  ctx.fillRect(-60, -5.5, 106, 11);
+
+  // Refleks świetlny wzdłuż osi rury
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+  ctx.fillRect(-60, -3.5, 106, 1.4);
+
+  // 3. DREWNIANA / BAKELITOWA OSŁONA TERMICZNA (Wooden / Bakelite Heat Shield)
+  const woodGrad = ctx.createLinearGradient(0, -8.5, 0, 8.5);
+  woodGrad.addColorStop(0.0, '#451a03');
+  woodGrad.addColorStop(0.25, '#92400e');
+  woodGrad.addColorStop(0.65, '#78350f');
+  woodGrad.addColorStop(1.0, '#361404');
+
+  ctx.fillStyle = woodGrad;
+  ctx.fillRect(-22, -8.5, 46, 17);
+
+  // Słojowanie drewna / rowki antypoślizgowe
+  ctx.fillStyle = '#270e02';
+  for (let wx = -18; wx <= 20; wx += 4) {
+    ctx.fillRect(wx, -8.5, 1.2, 17);
+  }
+
+  // Stalowe opaski zaciskowe osłony termicznej
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-23, -9, 2.5, 18);
+  ctx.fillRect(2, -9, 2.0, 18);
+  ctx.fillRect(23, -9, 2.5, 18);
+
+  // 4. CHWYTY PISTOLETOWE OPERATORA POD RURĄ
+  // A. Główny chwyt pistoletowy z mechanizmem spustowym (Trigger Grip)
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.moveTo(3, 5.5);
+  ctx.lineTo(-2, 27);
+  ctx.lineTo(8, 28);
+  ctx.lineTo(11, 5.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rowki chwytu
+  ctx.strokeStyle = '#27272a';
+  ctx.lineWidth = 0.8;
+  for (let gy = 12; gy <= 24; gy += 4) {
+    ctx.beginPath();
+    ctx.moveTo(1, gy);
+    ctx.lineTo(7, gy);
+    ctx.stroke();
+  }
+
+  // Kabłąk i język spustowy
+  ctx.strokeStyle = '#090d16';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(8, 11, 5.0, Math.PI * 0.1, Math.PI * 0.9);
+  ctx.stroke();
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(7, 8, 1.4, 4.0);
+
+  // B. Przedni chwyt pomocniczy (Forward Stabilizing Grip)
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.moveTo(27, 5.5);
+  ctx.lineTo(24, 25);
+  ctx.lineTo(32, 26);
+  ctx.lineTo(34, 5.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // 5. CELOWNIK OPTYCZNY PGO-7 (PGO-7 Telescopic Optical Scope)
+  // Montaż jaskółczy ogon (Dovetail Side Mount)
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-2, -11, 14, 5.5);
+
+  // Korpus lunety
+  const scopeGrad = ctx.createLinearGradient(0, -20, 0, -10);
+  scopeGrad.addColorStop(0.0, '#1e293b');
+  scopeGrad.addColorStop(0.5, '#334155');
+  scopeGrad.addColorStop(1.0, '#0f172a');
+  ctx.fillStyle = scopeGrad;
+  ctx.fillRect(-6, -18, 22, 7.5);
+
+  // Gumowa muszla oczna (Rubber eyecup)
+  ctx.fillStyle = '#090d16';
+  ctx.beginPath();
+  ctx.moveTo(-6, -19);
+  ctx.lineTo(-12, -21);
+  ctx.lineTo(-12, -13);
+  ctx.lineTo(-6, -15);
+  ctx.closePath();
+  ctx.fill();
+
+  // Soczewka okularu z antyrefleksem
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(-12.5, -19.5, 1.2, 5.0);
+
+  // Bębny korekcyjne (Adjustment Turrets)
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(2, -21.5, 5, 3.5);
+  ctx.fillRect(8, -19.5, 3.5, 4.0);
+
+  // Przedni obiektyw z osłoną przeciwsłoneczną
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(16, -19, 4, 9.5);
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(20, -18, 1.2, 7.5);
+
+  // Zapasowa mechaniczna muszka składana (Iron sights)
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(40, -11, 2.5, 6);
+  ctx.fillRect(-20, -10, 2.0, 5);
+
+  // Kołnierz wylotu rury
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(44, -6.5, 3.5, 13);
+
+  // 6. RAKIETA PG-7V ZAŁADOWANA DO WYRZUTNI (Protruding PG-7V HEAT Rocket)
+  // Rura napędowa wchodząca w głąb wyrzutni
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(47, -3.8, 6, 7.6);
+
+  // Stożek przejściowy głowicy (Warhead Base Cone)
+  ctx.fillStyle = '#2d4a0e';
+  ctx.beginPath();
+  ctx.moveTo(53, -3.8);
+  ctx.lineTo(59, -10.5);
+  ctx.lineTo(59, 10.5);
+  ctx.lineTo(53, 3.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Główny cylindryczny korpus ładunku kumulacyjnego (HEAT Shaped Charge Body)
+  const warheadGrad = ctx.createLinearGradient(0, -11, 0, 11);
+  warheadGrad.addColorStop(0.0, '#365314');
+  warheadGrad.addColorStop(0.3, '#65a30d');
+  warheadGrad.addColorStop(0.7, '#4d7c0f');
+  warheadGrad.addColorStop(1.0, '#1a2e05');
+
+  ctx.fillStyle = warheadGrad;
+  ctx.fillRect(59, -11, 18, 22);
+  ctx.strokeStyle = '#142304';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(59, -11, 18, 22);
+
+  // Żółty taktyczny pasek oznaczenia ładunku bojowego (High Explosive Ordnance Band)
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(65, -11, 2.5, 22);
+
+  // Stożek aerodynamiczny głowicy (Aerodynamic Nose Cone)
+  ctx.fillStyle = warheadGrad;
+  ctx.beginPath();
+  ctx.moveTo(77, -11);
+  ctx.lineTo(95, -3.2);
+  ctx.lineTo(95, 3.2);
+  ctx.lineTo(77, 11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Piezoelektryczny zapalnik uderzeniowy VP-7M na czubku rakiety
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(95, -2.6, 6, 5.2);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.moveTo(101, -2.0);
+  ctx.lineTo(104, 0);
+  ctx.lineTo(101, 2.0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
 // =========================================================================
 // GŁÓWNA FUNKCJA RENDERUJĄCA DLA DOWOLNEGO KAFELKA / OKNA
 // =========================================================================
@@ -1309,6 +1526,8 @@ export function drawWeaponPreview(canvas, weaponId) {
     scale = Math.min(w / 180, h / 85) * 0.85;
   } else if (weaponId === 'SAWED_OFF') {
     scale = Math.min(w / 180, h / 85) * 0.88;
+  } else if (weaponId === 'RPG7') {
+    scale = Math.min(w / 225, h / 85) * 0.90;
   } else if (weaponId === 'KNIFE' || weaponId === 'MACHETE' || weaponId === 'AXE') {
     scale = Math.min(w / 180, h / 85) * 0.88;
   } else {
@@ -1336,6 +1555,9 @@ export function drawWeaponPreview(canvas, weaponId) {
       break;
     case 'SAWED_OFF':
       drawSawedOffIllustration(ctx);
+      break;
+    case 'RPG7':
+      drawRpg7Illustration(ctx);
       break;
     case 'KNIFE':
       drawKnifeIllustration(ctx);

@@ -20,8 +20,12 @@ import {
   updateBulletCasings,
   drawBulletCasings,
   clearBulletCasings,
-  bulletCasings
+  bulletCasings,
+  spawnHeavySmokePuff,
+  spawnShrapnelStreak,
+  spawnRicochetSparks
 } from './particles.js';
+import { spawnRpgRocket } from './weapons/rocket.js';
 
 export {
   spawnBulletCasing,
@@ -485,6 +489,10 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, weapon.id === 'REVOLVER' ? 24 : 20);
     shooter.weaponKickback = weapon.kickbackDistance;
     shooter.muzzleRise = Math.min(0.24, (shooter.muzzleRise || 0) + weapon.muzzleRise);
+  } else if (weapon.id === 'RPG7') {
+    shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 36);
+    shooter.weaponKickback = weapon.kickbackDistance;
+    shooter.muzzleRise = Math.min(0.35, (shooter.muzzleRise || 0) + weapon.muzzleRise);
   } else {
     shooter.shootPoseTimer = Math.max(shooter.shootPoseTimer || 0, 26);
     shooter.weaponKickback = weapon.kickbackDistance;
@@ -508,6 +516,13 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     const wallHit = checkRayObstacleCollision(muzzle.shoulderX, muzzle.shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
     if (wallHit) {
+      if (weapon.id === 'RPG7' || weapon.isRocket) {
+        const hitAng = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
+        const rocket = spawnRpgRocket(shooter, wallHit.x, wallHit.y, hitAng, weapon);
+        rocket.detonate(effectiveGroundY, null, obstacles, null, null);
+        if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
+        return true;
+      }
       spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id === 'SNIPER' ? 10 : 5);
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
@@ -539,6 +554,31 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         window.sendBotShootEvent(bIdx, weapon.id, muzzleX, muzzleY, theta);
       }
     }
+  }
+
+  if (weapon.id === 'RPG7' || weapon.isRocket) {
+    spawnRpgRocket(shooter, muzzleX, muzzleY, theta, weapon);
+
+    shooter.muzzleFlashTimer = 3;
+    shooter.vx -= Math.cos(theta) * 3.6;
+    shooter.vy -= Math.sin(theta) * 1.6;
+
+    if (!shooter.isRemote) {
+      shooter.shootCooldown = weapon.fireRate;
+      triggerScreenShake(15);
+    }
+
+    // Efekt gazów wstecznych (Backblast Effect):
+    const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (Math.cos(theta) >= 0 ? 1 : -1);
+    const hold = getWeaponHoldTransform(shooter);
+    const ventDist = 20;
+    const ventX = hold.pivotX - Math.cos(hold.angle) * ventDist * charFacing;
+    const ventY = hold.pivotY - Math.sin(hold.angle) * ventDist;
+    spawnHeavySmokePuff(ventX, ventY, 4);
+    spawnShrapnelStreak(ventX, ventY, 4);
+    spawnRicochetSparks(ventX, ventY, -Math.cos(hold.angle) * charFacing, -Math.sin(hold.angle), 4);
+
+    return true;
   }
 
   const activeSpread = weapon.spread * (isCrouch ? weapon.crouchSpreadMult : 1.0);

@@ -184,6 +184,12 @@ export const WEAPON_CONFIG = {
     reserveAmmo: 24,
     reloadTime: 1.8
   },
+  RPG7: {
+    magSize: 1,
+    currentAmmo: 1,
+    reserveAmmo: 3,
+    reloadTime: 2.6
+  },
   KNIFE: {
     magSize: 0,
     currentAmmo: 0,

@@ -181,7 +181,7 @@ try {
   const transformPathNorm = path.resolve(jsDir, 'weapons/transform.js').toLowerCase();
   const transformMod = evalModules.get(transformPathNorm);
   if (transformMod && transformMod.namespace && typeof transformMod.namespace.getWeaponHoldTransform === 'function') {
-    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'KNIFE', 'MACHETE', 'AXE'];
+    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'KNIFE', 'MACHETE', 'AXE'];
     for (const wepId of allWepIds) {
       for (const moving of [false, true]) {
         for (const attacking of [false, true]) {

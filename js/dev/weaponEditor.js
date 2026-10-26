@@ -17,6 +17,7 @@ export const WEAPON_EDITOR_LIST = [
   { id: 'GLOCK', label: 'Glock 17', category: 'BOCZNA' },
   { id: 'REVOLVER', label: 'Magnum .44', category: 'BOCZNA' },
   { id: 'SAWED_OFF', label: 'Obrzyn 12G', category: 'BOCZNA' },
+  { id: 'RPG7', label: 'RPG-7', category: 'BOCZNA' },
   { id: 'KNIFE', label: 'Nóż M9', category: 'BIAŁA' },
   { id: 'MACHETE', label: 'Maczeta Kukri', category: 'BIAŁA' },
   { id: 'AXE', label: 'Toporek Tomahawk', category: 'BIAŁA' }

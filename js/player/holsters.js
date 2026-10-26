@@ -19,7 +19,7 @@
 import { getWeaponPartSprite, drawWeaponBloodOverlay } from '../weapons/renderer.js';
 
 export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER'];
-export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF'];
+export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
 export const MELEE_WEAPON_IDS = ['KNIFE', 'MACHETE', 'AXE'];
 
 /**
@@ -224,6 +224,94 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     }
   }
 
+  // Wyrzutnia rakiet RPG-7 na pasie nośnym na plecach (gdy jest w slocie dodatkowym i nie w dłoniach)
+  if (loadout.secondaryId === 'RPG7' && !loadout.isSecondaryDrawn) {
+    const rpgButtX = -fDir * (waistHalfW * 0.55);
+    const rpgButtY = -3.0;
+    const rpgMuzzleX = -fDir * (shoulderHalfW + 3.8);
+    const rpgMuzzleY = -35.0;
+
+    const rdx = rpgMuzzleX - rpgButtX;
+    const rdy = rpgMuzzleY - rpgButtY;
+    const rAng = Math.atan2(rdy, rdx);
+    const rMountX = rpgButtX + rdx * 0.48;
+    const rMountY = rpgButtY + rdy * 0.48;
+
+    ctx.save();
+    ctx.translate(rMountX, rMountY);
+    ctx.rotate(rAng);
+    ctx.scale(1, fDir);
+    drawRpg7BackSprite(ctx, 0.86);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Procedura renderowania wyrzutni RPG-7 na plecach operatora
+ */
+function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
+  ctx.save();
+  ctx.scale(scaleMult, scaleMult);
+
+  // 1. Tylna dysza Venturiego
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.moveTo(-16, -1.8);
+  ctx.lineTo(-24, -4.5);
+  ctx.lineTo(-24, 4.5);
+  ctx.lineTo(-16, 1.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Stalowa rura wyrzutni
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-16, -1.8, 32, 3.6);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-16, -1.0, 32, 0.8);
+
+  // 3. Drewniana osłona termiczna w środku
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(-6, -2.8, 14, 5.6);
+  ctx.fillStyle = '#92400e';
+  ctx.fillRect(-6, -2.8, 14, 1.2);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-6.5, -3.0, 1.2, 6.0);
+  ctx.fillRect(7.5, -3.0, 1.2, 6.0);
+
+  // 4. Chwyt pistoletowy
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.moveTo(1, 1.8);
+  ctx.lineTo(-1, 8.5);
+  ctx.lineTo(2, 9.0);
+  ctx.lineTo(4, 1.8);
+  ctx.closePath();
+  ctx.fill();
+
+  // 5. Optyka PGO-7
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-2, -5.2, 8, 2.8);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(-2.5, -4.5, 0.8, 1.6);
+
+  // 6. Głowica rakiety PG-7V wystająca z lufy
+  ctx.fillStyle = '#365314';
+  ctx.fillRect(16, -4.0, 6.5, 8.0);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(18, -4.0, 1.0, 8.0);
+  ctx.fillStyle = '#4d7c0f';
+  ctx.beginPath();
+  ctx.moveTo(22.5, -4.0);
+  ctx.lineTo(28.5, -0.8);
+  ctx.lineTo(28.5, 0.8);
+  ctx.lineTo(22.5, 4.0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(28.5, -0.8, 1.8, 1.6);
+
   ctx.restore();
 }
 
@@ -341,6 +429,8 @@ export function drawRightThighPistolHolster(ctx, p, l1, thighHalfH, facing, v = 
 
   const loadout = getCharacterLoadout(p);
   const secondaryId = loadout.secondaryId;
+  // Wyrzutnia rakiet RPG-7 jest noszona na plecach na pasie nośnym, nie w kaburze udowej
+  if (secondaryId === 'RPG7') return;
 
   // Pozycja wzdłuż osi uda (od biodra ku kolanu):
   const holsterStartX = l1 * 0.22;
