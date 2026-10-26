@@ -35,6 +35,7 @@ import {
   drawShoesPreview,
   JETPACK_STYLE_LIST,
   JETPACK_COLOR_LIST,
+  JETPACK_COLOR_NAMES,
   drawJetpackPreview,
   drawPersonalGearPreview,
   setLocalPlayerCustomVisuals
@@ -3124,6 +3125,7 @@ export const uiManager = {
       swatchBtn.className = 'creator-color-swatch';
       swatchBtn.dataset.jetpackColor = hexCol;
       swatchBtn.style.backgroundColor = hexCol;
+      swatchBtn.title = (JETPACK_COLOR_NAMES && JETPACK_COLOR_NAMES[hexCol]) || hexCol;
       if (String(this.appearance.jetpackColor || '#00e5ff').toLowerCase() === hexCol.toLowerCase()) {
         swatchBtn.classList.add('active');
       }
@@ -3440,6 +3442,15 @@ export const uiManager = {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Żywa animacja płomienia i diamentów Macha w kafelku w zakładce JETPACK
+    if (this.activeCreatorTab === 'jetpack') {
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (!this._lastJetpackTileTick || (now - this._lastJetpackTileTick) > 35) {
+        this._lastJetpackTileTick = now;
+        this.renderCreatorJetpackTiles();
+      }
+    }
 
     const cw = canvas.width;
     const ch = canvas.height;

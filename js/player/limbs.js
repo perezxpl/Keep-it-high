@@ -9,7 +9,7 @@ import { DEFAULT_VISUALS } from './hair.js';
 import { isSleeveless, isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
-import { getJetpackFlamePalette } from './jetpack.js';
+import { getJetpackFlamePalette, drawJetpackThrustPlume } from './jetpack.js';
 import { drawRightThighPistolHolster, drawLeftThighMeleeSheath } from './holsters.js';
 
 /**
@@ -2004,19 +2004,18 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
         ctx.shadowColor = glowColor;
         ctx.shadowBlur = 8;
         ctx.fillRect(nzX, nzY + nzH - 1.5, nzW, 2.0);
-
-        const flameGradBack = ctx.createLinearGradient(0, nzY + nzH, 0, nzY + nzH + 7);
-        flameGradBack.addColorStop(0.0, '#ffffff');
-        flameGradBack.addColorStop(0.45, themeColor);
-        flameGradBack.addColorStop(1.0, flamePal.alphaZero);
-        ctx.fillStyle = flameGradBack;
-        ctx.beginPath();
-        ctx.moveTo(nzX, nzY + nzH);
-        ctx.lineTo(nzX + nzW / 2, nzY + nzH + 5.0 + Math.random() * 3.0);
-        ctx.lineTo(nzX + nzW, nzY + nzH);
-        ctx.closePath();
-        ctx.fill();
         ctx.shadowBlur = 0;
+
+        drawJetpackThrustPlume(
+          ctx,
+          nzX + nzW * 0.5,
+          nzY + nzH,
+          nzW,
+          Math.PI / 2,
+          p.jetpackPower || 1.0,
+          flamePal,
+          { length: 16.5 }
+        );
       }
     }
 
@@ -2198,25 +2197,36 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
     if (isFiring) {
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
       ctx.ellipse(nzCenterX, nzTopY + nzH, mouthW * 0.42, 1.8, 0, 0, Math.PI * 2);
       ctx.fill();
-
-      // Mały język ognia u samego wylotu dyszy
-      const flameGrad = ctx.createLinearGradient(0, nzTopY + nzH, 0, nzTopY + nzH + 8);
-      flameGrad.addColorStop(0.0, '#ffffff');
-      flameGrad.addColorStop(0.4, themeColor);
-      flameGrad.addColorStop(1.0, flamePal.alphaZero);
-
-      ctx.fillStyle = flameGrad;
-      ctx.beginPath();
-      ctx.moveTo(nzCenterX - mouthW * 0.35, nzTopY + nzH);
-      ctx.lineTo(nzCenterX, nzTopY + nzH + (6.0 + Math.random() * 4.0));
-      ctx.lineTo(nzCenterX + mouthW * 0.35, nzTopY + nzH);
-      ctx.closePath();
-      ctx.fill();
       ctx.shadowBlur = 0;
+
+      // Naddźwiękowy wielowarstwowy płomień i diamenty uderzeniowe Macha
+      drawJetpackThrustPlume(
+        ctx,
+        nzCenterX,
+        nzTopY + nzH,
+        mouthW,
+        Math.PI / 2,
+        p.jetpackPower || 1.0,
+        flamePal,
+        { length: 19.5 }
+      );
+
+      // Subtelna poświata na plecach i talii postaci od pracującego silnika
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const backLight = ctx.createRadialGradient(anchorX, packBottomY, 2, anchorX, packBottomY, 18);
+      backLight.addColorStop(0, flamePal.glow);
+      backLight.addColorStop(1, flamePal.alphaZero);
+      ctx.fillStyle = backLight;
+      ctx.globalAlpha = 0.30 * (p.jetpackPower || 1.0);
+      ctx.beginPath();
+      ctx.arc(anchorX, packBottomY, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
   }
 

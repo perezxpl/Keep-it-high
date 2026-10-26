@@ -25,6 +25,17 @@ export const JETPACK_COLOR_LIST = [
   '#f8fafc'  // Biały Kriogeniczny (Cryo Ice - chłodny lód)
 ];
 
+export const JETPACK_COLOR_NAMES = {
+  '#00e5ff': 'Błękitny Neon (Cyjan)',
+  '#f97316': 'Ognisty Pomarańcz (Ogień)',
+  '#10b981': 'Kwasowa Zieleń (Kwas)',
+  '#a855f7': 'Fioletowa Plazma (Plazma)',
+  '#ef4444': 'Rubinowa Czerwień (Rakietowy)',
+  '#eab308': 'Złocisty Słoneczny (Słoneczny)',
+  '#ec4899': 'Cyber Róż (Synthwave)',
+  '#f8fafc': 'Kriogeniczny Lód (Biały)'
+};
+
 /**
  * Zwraca kompletną paletę barwną dla wybranego koloru ognia jetpacka:
  * odcień bazowy, poświatę, rdzeń, głęboki cień oraz zestaw barw dla cząsteczek.
@@ -107,6 +118,144 @@ export function getJetpackFlamePalette(color = '#00e5ff') {
         particles: ['#00e5ff', '#38bdf8', '#0284c7', '#ffffff']
       };
   }
+}
+
+/**
+ * Renderuje wielowarstwowy naddźwiękowy strumień ognia/plazmy z dyszy:
+ * - wielostopniowy płaszcz gazowy o kształcie naddźwiękowej fali rozprężnej
+ * - diamenty uderzeniowe Macha (Shock Diamonds) pulsujące w osi ciągu
+ * - biały jaskrawy rdzeń plazmowy (Hot Core Needle)
+ * - radialna poświata i addytywny blask (Bloom Glow)
+ */
+export function drawJetpackThrustPlume(
+  ctx,
+  originX,
+  originY,
+  nozzleWidth = 6.0,
+  angle = Math.PI / 2,
+  power = 1.0,
+  palette = null,
+  options = {}
+) {
+  if (!ctx) return;
+  const pwr = Math.max(0.20, Math.min(1.4, power));
+  const pal = palette || getJetpackFlamePalette('#00e5ff');
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+  // Dynamiczne fluktuacje ciśnienia w komorze wylotowej
+  const timeSec = now * 0.001;
+  const jitter = Math.sin(timeSec * 50.0) * 0.55 + Math.cos(timeSec * 82.0) * 0.45;
+
+  const baseLen = options.length || 18.0;
+  const plumeLen = baseLen * (0.80 + pwr * 0.55 + jitter * 0.15);
+  const mouthW = nozzleWidth * 0.95;
+
+  ctx.save();
+  ctx.translate(originX, originY);
+  ctx.rotate(angle - Math.PI / 2); // Kąt wektora ciągu (w dół w osi Y)
+
+  // 1. Zewnętrzna poświata wolumetryczna (Radial Bloom Glow)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const bloomR = plumeLen * 0.75;
+  const bloomGrad = ctx.createRadialGradient(0, plumeLen * 0.35, 1, 0, plumeLen * 0.35, bloomR);
+  bloomGrad.addColorStop(0.0, pal.glow);
+  bloomGrad.addColorStop(0.40, pal.base);
+  bloomGrad.addColorStop(1.0, pal.alphaZero);
+
+  ctx.globalAlpha = 0.45 * pwr;
+  ctx.fillStyle = bloomGrad;
+  ctx.beginPath();
+  ctx.arc(0, plumeLen * 0.35, bloomR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Główny płaszcz plazmowy (Outer Shock Envelope)
+  const halfW = mouthW * 0.5;
+  const maxW = mouthW * (0.85 + jitter * 0.18);
+  const tipWiggle = Math.sin(timeSec * 38.0) * (plumeLen * 0.04);
+
+  const flameGrad = ctx.createLinearGradient(0, 0, 0, plumeLen);
+  flameGrad.addColorStop(0.0, '#ffffff');
+  flameGrad.addColorStop(0.18, pal.light);
+  flameGrad.addColorStop(0.52, pal.base);
+  flameGrad.addColorStop(0.85, pal.deep);
+  flameGrad.addColorStop(1.0, pal.alphaZero);
+
+  ctx.fillStyle = flameGrad;
+  ctx.beginPath();
+  ctx.moveTo(-halfW, 0);
+  ctx.bezierCurveTo(
+    -maxW * 1.30, plumeLen * 0.25,
+    -maxW * 0.85, plumeLen * 0.65,
+    tipWiggle, plumeLen
+  );
+  ctx.bezierCurveTo(
+    maxW * 0.85, plumeLen * 0.65,
+    maxW * 1.30, plumeLen * 0.25,
+    halfW, 0
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. Wewnętrzny jaskrawy strumień plazmy (Inner Jet Core)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const innerLen = plumeLen * 0.70;
+  const innerW = halfW * 0.65;
+  const innerGrad = ctx.createLinearGradient(0, 0, 0, innerLen);
+  innerGrad.addColorStop(0.0, '#ffffff');
+  innerGrad.addColorStop(0.35, pal.light);
+  innerGrad.addColorStop(1.0, pal.alphaZero);
+
+  ctx.fillStyle = innerGrad;
+  ctx.beginPath();
+  ctx.moveTo(-innerW, 0);
+  ctx.quadraticCurveTo(-innerW * 1.15, innerLen * 0.42, 0, innerLen);
+  ctx.quadraticCurveTo(innerW * 1.15, innerLen * 0.42, innerW, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 4. Diamenty Macha (Supersonic Shock Diamonds)
+  const diamondCount = (plumeLen > 13.0) ? 2 : 1;
+  const diamondOffsets = [0.28, 0.55];
+  const diamondSizes = [
+    { w: mouthW * 0.44, h: plumeLen * 0.16 },
+    { w: mouthW * 0.28, h: plumeLen * 0.12 }
+  ];
+
+  for (let d = 0; d < diamondCount; d++) {
+    const dDist = plumeLen * diamondOffsets[d] + Math.sin(timeSec * 50.0 + d * 2.2) * 0.8;
+    const dw = diamondSizes[d].w * (0.92 + jitter * 0.14);
+    const dh = diamondSizes[d].h * (0.92 - jitter * 0.14);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, dDist - dh * 0.5);
+    ctx.lineTo(dw * 0.5, dDist);
+    ctx.lineTo(0, dDist + dh * 0.5);
+    ctx.lineTo(-dw * 0.5, dDist);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = pal.light;
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+  }
+
+  // 5. Ostra iglica plazmowa w gardzieli wylotu
+  const coreH = plumeLen * 0.36;
+  const coreW = mouthW * 0.30;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(-coreW, 0);
+  ctx.lineTo(0, coreH);
+  ctx.lineTo(coreW, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore(); // end lighter
+  ctx.restore(); // end transform
 }
 
 /**
@@ -206,35 +355,17 @@ export function drawJetpackPreview(
     ctx.lineTo(nzX + nzW + 0.9, nzY + nzH);
     ctx.stroke();
 
-    // Płomień i poświata z dyszy
-    ctx.save();
-    ctx.shadowColor = flamePal.glow;
-    ctx.shadowBlur = 9;
-
-    // Stożek płomienia
-    const flameH = 9.5;
-    const flameGrad = ctx.createLinearGradient(0, nzY + nzH, 0, nzY + nzH + flameH);
-    flameGrad.addColorStop(0.0, '#ffffff');
-    flameGrad.addColorStop(0.35, flamePal.base);
-    flameGrad.addColorStop(1.0, flamePal.alphaZero);
-
-    ctx.fillStyle = flameGrad;
-    ctx.beginPath();
-    ctx.moveTo(nzX - 0.6, nzY + nzH);
-    ctx.quadraticCurveTo(nzX + nzW / 2, nzY + nzH + flameH * 0.4, nzX + nzW / 2, nzY + nzH + flameH);
-    ctx.quadraticCurveTo(nzX + nzW / 2, nzY + nzH + flameH * 0.4, nzX + nzW + 0.6, nzY + nzH);
-    ctx.closePath();
-    ctx.fill();
-
-    // Biały rdzeń płomienia
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.moveTo(nzX + 0.3, nzY + nzH);
-    ctx.lineTo(nzX + nzW / 2, nzY + nzH + 4.2);
-    ctx.lineTo(nzX + nzW - 0.3, nzY + nzH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    // Płomień i naddźwiękowe diamenty uderzeniowe Macha z dyszy
+    drawJetpackThrustPlume(
+      ctx,
+      nzX + nzW * 0.5,
+      nzY + nzH,
+      nzW,
+      Math.PI / 2,
+      1.0,
+      flamePal,
+      { length: 13.5 }
+    );
   });
 
   // 3. Centralny wskaźnik LED paliwa (4 segmenty w wybranym kolorze napędu)
@@ -374,34 +505,17 @@ export function drawRocketBootsPreview(
   ctx.lineTo(nzX + nzW + 0.6, nzY + nzH);
   ctx.stroke();
 
-  // 4. Strumień ognia rakietowego z dyszy buta
-  ctx.save();
-  ctx.shadowColor = flamePal.glow;
-  ctx.shadowBlur = 10;
-
-  const fH = 11;
-  const fGrad = ctx.createLinearGradient(0, nzY + nzH, 0, nzY + nzH + fH);
-  fGrad.addColorStop(0.0, '#ffffff');
-  fGrad.addColorStop(0.35, flamePal.base);
-  fGrad.addColorStop(1.0, flamePal.alphaZero);
-
-  ctx.fillStyle = fGrad;
-  ctx.beginPath();
-  ctx.moveTo(nzX - 0.4, nzY + nzH);
-  ctx.quadraticCurveTo(nzX + nzW * 0.5 - 1.5, nzY + nzH + fH * 0.4, nzX + nzW * 0.5 - 2, nzY + nzH + fH);
-  ctx.quadraticCurveTo(nzX + nzW * 0.5 + 0.5, nzY + nzH + fH * 0.4, nzX + nzW + 0.4, nzY + nzH);
-  ctx.closePath();
-  ctx.fill();
-
-  // Rdzeń płomienia
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(nzX + 0.4, nzY + nzH);
-  ctx.lineTo(nzX + nzW * 0.5 - 0.8, nzY + nzH + 4.5);
-  ctx.lineTo(nzX + nzW - 0.4, nzY + nzH);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
+  // 4. Strumień ognia rakietowego z dyszy buta (wielowarstwowy naddźwiękowy płomień)
+  drawJetpackThrustPlume(
+    ctx,
+    nzX + nzW * 0.5,
+    nzY + nzH,
+    nzW,
+    Math.PI * 0.5 + 0.16,
+    1.0,
+    flamePal,
+    { length: 15.0 }
+  );
 
   ctx.restore();
 }

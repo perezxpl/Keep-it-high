@@ -99,7 +99,9 @@ import {
   JETPACK_STYLE_LIST,
   JETPACK_STYLE_NAMES,
   JETPACK_COLOR_LIST,
+  JETPACK_COLOR_NAMES,
   getJetpackFlamePalette,
+  drawJetpackThrustPlume,
   drawJetpackPreview,
   drawPersonalGearPreview
 } from './jetpack.js';
@@ -183,7 +185,9 @@ export {
   JETPACK_STYLE_LIST,
   JETPACK_STYLE_NAMES,
   JETPACK_COLOR_LIST,
+  JETPACK_COLOR_NAMES,
   getJetpackFlamePalette,
+  drawJetpackThrustPlume,
   drawJetpackPreview,
   drawPersonalGearPreview,
   drawLimbStump,
