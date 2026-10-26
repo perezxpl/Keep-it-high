@@ -218,7 +218,7 @@ if (typeof window !== 'undefined') {
  */
 export const WEAPON_SPRITE_PIVOTS = {
   AK47: { x: 335.0, y: 79.5 },
-  SHOTGUN: { x: 401.3, y: 167.0 },
+  SHOTGUN: { x: 310.5, walkX: 350.0, y: 33.0 },
   SNIPER: { x: 450.0, y: 260.0 },
   GLOCK: { x: -76.0, walkX: 162.0, y: -100.0 },
   REVOLVER: { x: -94.5, y: 41.0 },
@@ -773,7 +773,7 @@ export function drawHeldWeapon(ctx, p) {
 
       // 3. Płomień wylotowy ze szczelin wylotowych strzelby
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 28.0, -0.9, 15, true);
+        drawMuzzleFlash(ctx, hold.barrelLen || 29.50, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -3.90, 15, true);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -825,7 +825,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillRect(26.5, -2.6, 1.5, 3.4);
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 28, -0.9, 15, true);
+        drawMuzzleFlash(ctx, hold.barrelLen || 29.50, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -3.90, 15, true);
       }
     }
   } else if (weapon.id === 'SNIPER') {
