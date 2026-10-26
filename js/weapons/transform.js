@@ -392,7 +392,7 @@ export const WEAPON_GRIP_CONFIGS = {
     foreGripY: -1.50,
     angleOffset: 0.000,
     barrelLen: 30.80,
-    barrelOffsetY: -6.00,
+    barrelOffsetY: 0.00,
     stockLen: 13.60
   },
   SHOTGUN: { rearGripX: 3.90, walkRearGripX: 0.80, rearGripY: 1.80, foreGripX: 13.00, foreGripY: 0.50, angleOffset: 0.000, barrelLen: 29.50, barrelOffsetY: -3.90, stockLen: 11.00 },
