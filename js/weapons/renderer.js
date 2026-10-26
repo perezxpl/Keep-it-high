@@ -1277,7 +1277,7 @@ export function drawHeldWeapon(ctx, p) {
     // -------------------------------------------------------------
     const imgRpg = getWeaponPartSprite('RPG7');
     if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
-      const s = 46.0 / 1302;
+      const s = 57.0 / 1302;
       const pvt = getWeaponSpritePivot('RPG7', hold.weight);
       const pivotSpriteX = pvt.x;
       const pivotSpriteY = pvt.y;
@@ -1289,7 +1289,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, hold.barrelLen || 34.00, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -2.00, 18, true);
+        drawMuzzleFlash(ctx, hold.barrelLen || 32.00, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00, 22, true);
       }
     }
   } else if (weapon.id === 'KNIFE') {

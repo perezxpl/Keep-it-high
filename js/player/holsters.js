@@ -227,9 +227,9 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
   // Wyrzutnia rakiet RPG-7 na pasie nośnym na plecach (gdy jest w slocie dodatkowym i nie w dłoniach)
   if (loadout.secondaryId === 'RPG7' && !loadout.isSecondaryDrawn) {
     const rpgButtX = -fDir * (waistHalfW * 0.55);
-    const rpgButtY = -3.0;
-    const rpgMuzzleX = -fDir * (shoulderHalfW + 3.8);
-    const rpgMuzzleY = -35.0;
+    const rpgButtY = -1.0;
+    const rpgMuzzleX = -fDir * (shoulderHalfW + 4.5);
+    const rpgMuzzleY = -37.0;
 
     const rdx = rpgMuzzleX - rpgButtX;
     const rdy = rpgMuzzleY - rpgButtY;
@@ -241,7 +241,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
     ctx.translate(rMountX, rMountY);
     ctx.rotate(rAng);
     ctx.scale(1, fDir);
-    drawRpg7BackSprite(ctx, 0.86);
+    drawRpg7BackSprite(ctx, 0.88);
     ctx.restore();
   }
 
@@ -254,7 +254,7 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
 function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
   const imgRpg = getWeaponPartSprite('RPG7');
   if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
-    const s = (46.0 / 1302) * scaleMult;
+    const s = (57.0 / 1302) * scaleMult;
     const pvt = (typeof getWeaponSpritePivot === 'function') ? getWeaponSpritePivot('RPG7', 1.0) : { x: 575.0, y: 115.0 };
     const pivotSpriteX = pvt?.x ?? 575.0;
     const pivotSpriteY = pvt?.y ?? 115.0;

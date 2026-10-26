@@ -571,7 +571,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     // Efekt gazów wstecznych (Backblast Effect):
     const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (Math.cos(theta) >= 0 ? 1 : -1);
     const hold = getWeaponHoldTransform(shooter);
-    const ventDist = 20;
+    const ventDist = 25;
     const ventX = hold.pivotX - Math.cos(hold.angle) * ventDist * charFacing;
     const ventY = hold.pivotY - Math.sin(hold.angle) * ventDist;
     spawnHeavySmokePuff(ventX, ventY, 4);
