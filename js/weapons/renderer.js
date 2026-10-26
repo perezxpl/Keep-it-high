@@ -217,7 +217,7 @@ if (typeof window !== 'undefined') {
  * Obiekt jest w pełni modyfikowalny na żywo przez Edytor Broni (DEV).
  */
 export const WEAPON_SPRITE_PIVOTS = {
-  AK47: { x: 386.0, y: 176.0 },
+  AK47: { x: 335.0, y: 79.5 },
   SHOTGUN: { x: 401.3, y: 167.0 },
   SNIPER: { x: 450.0, y: 260.0 },
   GLOCK: { x: -76.0, walkX: 162.0, y: -100.0 },
@@ -603,8 +603,9 @@ export function drawHeldWeapon(ctx, p) {
         imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
       
       const s = 44.8 / 1272; // Skala z pikseli sprite\'a do jednostek gry
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.AK47.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.AK47.y;
+      const pvt = getWeaponSpritePivot('AK47', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       // 1. Rysowanie korpusu broni, magazynka i suwadła w osi broni
       ctx.save();
@@ -734,8 +735,9 @@ export function drawHeldWeapon(ctx, p) {
         imgPump && imgPump.complete && imgPump.naturalWidth > 0) {
       
       const s = 39.0 / 1334;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SHOTGUN.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SHOTGUN.y;
+      const pvt = getWeaponSpritePivot('SHOTGUN', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
@@ -836,8 +838,9 @@ export function drawHeldWeapon(ctx, p) {
         imgBolt && imgBolt.complete && imgBolt.naturalWidth > 0) {
       
       const s = 58.5 / 1353;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SNIPER.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SNIPER.y;
+      const pvt = getWeaponSpritePivot('SNIPER', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       // 1. Warstwy w osi komory zamkowej i lufy
       ctx.save();
@@ -1208,8 +1211,9 @@ export function drawHeldWeapon(ctx, p) {
         imgBarrels && imgBarrels.complete && imgBarrels.naturalWidth > 0) {
       
       const s = 23.0 / 1160;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.SAWED_OFF.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.SAWED_OFF.y;
+      const pvt = getWeaponSpritePivot('SAWED_OFF', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       ctx.save();
       ctx.scale(s, s);
