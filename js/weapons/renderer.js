@@ -1298,28 +1298,43 @@ export function drawHeldWeapon(ctx, p) {
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
-      // 1. Rura wyrzutni (korpus)
-      ctx.drawImage(imgLauncher, 0, 0);
-
-      // 2. Głowica rakiety PG-7V: widoczna tylko gdy załadowana lub fizycznie wsuwana w trakcie przeładowania
+      // 1. Głowica rakiety PG-7V: renderowana najpierw (pod lufą),
+      // dzięki czemu wsuwany trzpień naturalnie chowa się W ŚRODKU stalowej rury!
       if (imgRocket && imgRocket.complete && imgRocket.naturalWidth > 0) {
         if (hasRocketLoaded && !isReloading) {
           ctx.drawImage(imgRocket, 0, 0);
         } else if (isReloading) {
-          // Animacja wsuwania rakiety w przedni wylot lufy od reloadProgress = 0.30 do 0.85
-          const insertStart = 0.30;
-          const insertEnd = 0.85;
-          if (reloadProg >= insertStart) {
-            const t = Math.min(1.0, (reloadProg - insertStart) / (insertEnd - insertStart));
-            const offsetRocketX = (1.0 - t) * 120;
-            const insertJiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 3) * 1.2 : 0;
+          if (reloadProg >= 0.22 && reloadProg < 0.40) {
+            // Faza uniesienia rakiety ku lufie: rakieta zbliża się pod lekkim kątem ku wlotowi
+            const t = (reloadProg - 0.22) / 0.18;
+            const offsetX = (1.0 - t) * 120 + 160;
+            const offsetY = (1.0 - t) * (-35);
+            const tilt = (1.0 - t) * (-0.22);
             ctx.save();
-            ctx.translate(offsetRocketX, insertJiggleY);
+            ctx.translate(offsetX, offsetY);
+            ctx.rotate(tilt);
             ctx.drawImage(imgRocket, 0, 0);
             ctx.restore();
+          } else if (reloadProg >= 0.40 && reloadProg < 0.82) {
+            // Faza osiowego wsuwania rakiety w głąb rury
+            const t = (reloadProg - 0.40) / 0.42;
+            const offsetX = (1.0 - t) * 160;
+            const jiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 6) * 1.0 : 0;
+            ctx.save();
+            ctx.translate(offsetX, jiggleY);
+            ctx.drawImage(imgRocket, 0, 0);
+            ctx.restore();
+          } else if (reloadProg >= 0.82) {
+            // Rakieta zaryglowana w gnieździe
+            ctx.drawImage(imgRocket, 0, 0);
           }
         }
       }
+
+      // 2. Rura wyrzutni (korpus) renderowana na wierzchu:
+      // Opaque korpus zasłania chowany w lufie trzpień rakiety, a wylot lufy
+      // eksponuje wysuwającą się głowicę PG-7V!
+      ctx.drawImage(imgLauncher, 0, 0);
 
       ctx.restore();
 

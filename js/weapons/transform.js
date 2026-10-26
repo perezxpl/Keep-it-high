@@ -510,6 +510,7 @@ export function getWeaponHoldTransform(p) {
   const gripCfg = WEAPON_GRIP_CONFIGS[wepKey] || WEAPON_GRIP_CONFIGS.AK47;
   const isShotgun = (weapon.id === 'SHOTGUN');
   const isSniper = (weapon.id === 'SNIPER');
+  const isRpg = (weapon.id === 'RPG7');
   const isPistol = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || weapon.id === 'SAWED_OFF');
   const isTwoHandedHandgun = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER' || (!weapon.isMelee && Math.abs((gripCfg.foreGripX || 0) - (gripCfg.rearGripX || 0)) < 4.0));
   const isKnife = (weapon.id === 'KNIFE');
@@ -833,9 +834,9 @@ export function getWeaponHoldTransform(p) {
 
   if (p.isReloading && u > 0 && u < 1.0) {
     const reloadEnv = Math.sin(u * Math.PI);
-    reloadAngleOffset = (isShotgun ? -0.28 : (isPistol ? -0.24 : -0.20)) * reloadEnv;
-    reloadPivotShiftX = (isPistol ? -1.5 : -2.5) * reloadEnv * charFacing;
-    reloadPivotShiftY = (isPistol ? 1.2 : 1.8) * reloadEnv;
+    reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (isPistol ? -0.24 : -0.20))) * reloadEnv;
+    reloadPivotShiftX = (isRpg ? -1.0 : (isPistol ? -1.5 : -2.5)) * reloadEnv * charFacing;
+    reloadPivotShiftY = (isRpg ? 0.8 : (isPistol ? 1.2 : 1.8)) * reloadEnv;
 
     if (isSniper) {
       // -------------------------------------------------------------
@@ -1004,6 +1005,41 @@ export function getWeaponHoldTransform(p) {
         const t = (u - 0.92) / 0.08;
         leftHandLocalX = lerp(1.5, foreGripDistX, ease(t));
         leftHandLocalY = lerp(-3.2, foreGripDistY, ease(t));
+      }
+    } else if (isRpg) {
+      // -------------------------------------------------------------
+      // RPG-7 SHOULDER LAUNCHER RELOAD ANIMATION
+      // -------------------------------------------------------------
+      // Rura wyrzutni opiera się stabilnie na ramieniu strzelca.
+      // Lewa ręka opuszcza chwyt przedni, sięga po nową rakietę PG-7V na plecach,
+      // unosi ją przed wylot lufy, wsuwa głowicę w lufę i blokuje zatrzask!
+      if (u < 0.22) {
+        // Faza 1: Ruch ręki ku zasobnikowi rakiet na plecach
+        const t = u / 0.22;
+        leftHandLocalX = lerp(foreGripDistX, -14.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 15.0, ease(t));
+      } else if (u < 0.40) {
+        // Faza 2: Dobycie nowej rakiety PG-7V i uniesienie jej przed wylot wyrzutni
+        const t = (u - 0.22) / 0.18;
+        leftHandLocalX = lerp(-14.0, 24.0, ease(t));
+        leftHandLocalY = lerp(15.0, -1.0, ease(t));
+      } else if (u < 0.82) {
+        // Faza 3: Fizyczne wsuwanie głowicy rakiety w przedni wylot lufy
+        const t = (u - 0.40) / 0.42;
+        leftHandLocalX = lerp(24.0, 10.5, t);
+        leftHandLocalY = -1.0 + Math.sin(t * Math.PI * 4) * 0.4;
+      } else if (u < 0.88) {
+        // Faza 4: Dociśnięcie i zaryglowanie głowicy w kołnierzu lufy (Lock slap)
+        const snapT = (u - 0.82) / 0.06;
+        leftHandLocalX = 10.5;
+        leftHandLocalY = -1.0;
+        reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.06;
+        reloadPivotShiftX -= Math.sin(snapT * Math.PI) * 1.8 * charFacing;
+      } else {
+        // Faza 5: Powrót ręki na przedni chwyt wspierający wyrzutni
+        const t = (u - 0.88) / 0.12;
+        leftHandLocalX = lerp(10.5, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(-1.0, foreGripDistY, ease(t));
       }
     } else {
       // -------------------------------------------------------------
