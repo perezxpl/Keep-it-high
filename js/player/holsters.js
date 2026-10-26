@@ -255,78 +255,16 @@ function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
   const imgRpg = getWeaponPartSprite('RPG7');
   if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
     const s = (46.0 / 1302) * scaleMult;
-    const pivotSpriteX = 575.0;
-    const pivotSpriteY = 115.0;
+    const pvt = getWeaponSpritePivot('RPG7', 1.0);
+    const pivotSpriteX = pvt.x;
+    const pivotSpriteY = pvt.y;
 
     ctx.save();
     ctx.scale(s, s);
     ctx.translate(-pivotSpriteX, -pivotSpriteY);
     ctx.drawImage(imgRpg, 0, 0);
     ctx.restore();
-    return;
   }
-
-  ctx.save();
-  ctx.scale(scaleMult, scaleMult);
-
-  // 1. Tylna dysza Venturiego
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath();
-  ctx.moveTo(-16, -1.8);
-  ctx.lineTo(-24, -4.5);
-  ctx.lineTo(-24, 4.5);
-  ctx.lineTo(-16, 1.8);
-  ctx.closePath();
-  ctx.fill();
-
-  // 2. Stalowa rura wyrzutni
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(-16, -1.8, 32, 3.6);
-  ctx.fillStyle = '#475569';
-  ctx.fillRect(-16, -1.0, 32, 0.8);
-
-  // 3. Drewniana osłona termiczna w środku
-  ctx.fillStyle = '#78350f';
-  ctx.fillRect(-6, -2.8, 14, 5.6);
-  ctx.fillStyle = '#92400e';
-  ctx.fillRect(-6, -2.8, 14, 1.2);
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-6.5, -3.0, 1.2, 6.0);
-  ctx.fillRect(7.5, -3.0, 1.2, 6.0);
-
-  // 4. Chwyt pistoletowy
-  ctx.fillStyle = '#18181b';
-  ctx.beginPath();
-  ctx.moveTo(1, 1.8);
-  ctx.lineTo(-1, 8.5);
-  ctx.lineTo(2, 9.0);
-  ctx.lineTo(4, 1.8);
-  ctx.closePath();
-  ctx.fill();
-
-  // 5. Optyka PGO-7
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-2, -5.2, 8, 2.8);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(-2.5, -4.5, 0.8, 1.6);
-
-  // 6. Głowica rakiety PG-7V wystająca z lufy
-  ctx.fillStyle = '#365314';
-  ctx.fillRect(16, -4.0, 6.5, 8.0);
-  ctx.fillStyle = '#facc15';
-  ctx.fillRect(18, -4.0, 1.0, 8.0);
-  ctx.fillStyle = '#4d7c0f';
-  ctx.beginPath();
-  ctx.moveTo(22.5, -4.0);
-  ctx.lineTo(28.5, -0.8);
-  ctx.lineTo(28.5, 0.8);
-  ctx.lineTo(22.5, 4.0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillRect(28.5, -0.8, 1.8, 1.6);
-
-  ctx.restore();
 }
 
 /**
