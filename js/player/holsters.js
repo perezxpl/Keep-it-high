@@ -255,9 +255,9 @@ function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
   const imgRpg = getWeaponPartSprite('RPG7');
   if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
     const s = (57.0 / 1302) * scaleMult;
-    const pvt = (typeof getWeaponSpritePivot === 'function') ? getWeaponSpritePivot('RPG7', 1.0) : { x: 575.0, y: 115.0 };
-    const pivotSpriteX = pvt?.x ?? 575.0;
-    const pivotSpriteY = pvt?.y ?? 115.0;
+    const pvt = (typeof getWeaponSpritePivot === 'function') ? getWeaponSpritePivot('RPG7', 1.0) : { x: 720.0, y: 177.5 };
+    const pivotSpriteX = pvt?.x ?? 720.0;
+    const pivotSpriteY = pvt?.y ?? 177.5;
 
     ctx.save();
     ctx.scale(s, s);
