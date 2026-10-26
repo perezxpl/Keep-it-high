@@ -1419,6 +1419,13 @@ function getWeaponSprite(weaponId) {
   return img;
 }
 
+// Natychmiastowe pre-loadowanie wszystkich sprite'ów uzbrojenia przy starcie gry
+if (typeof window !== 'undefined') {
+  for (const k of Object.keys(WEAPON_SPRITE_PATHS)) {
+    getWeaponSprite(k);
+  }
+}
+
 /**
  * Renderuje pełny rysunek broni na wskazanym elemencie canvas
  * Ściśle zachowuje proporcje rusznikarskie (uniform aspect ratio, brak rozciągania)
@@ -1508,15 +1515,21 @@ export function drawWeaponPreview(canvas, weaponId) {
       ctx.drawImage(sprite, dx, dy, drawW, drawH);
       ctx.restore();
       return;
-    } else if (!sprite.complete) {
-      sprite.onload = () => {
+    } else if (!sprite.complete && !sprite._hasError) {
+      sprite.addEventListener('load', () => {
         drawWeaponPreview(canvas, weaponId);
-      };
-      // W międzyczasie rysujemy proceduralny schemat jako fallback
+      }, { once: true });
+      sprite.addEventListener('error', () => {
+        sprite._hasError = true;
+        drawWeaponPreview(canvas, weaponId);
+      }, { once: true });
+      // W trakcie asynchronicznego wczytywania sprite'a nie rysujemy starej wersji wektorowej,
+      // eliminując całkowicie efekt migotania i podmiany w locie.
+      return;
     }
   }
 
-  // 2. Fallback proceduralny (gdy sprite nie jest jeszcze gotowy)
+  // 2. Fallback proceduralny (wyłącznie przy błędzie ładowania sprite'a lub braku pliku)
   ctx.save();
   ctx.translate(w * 0.50, h * 0.50);
 
