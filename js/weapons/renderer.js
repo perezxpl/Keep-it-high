@@ -220,13 +220,26 @@ export const WEAPON_SPRITE_PIVOTS = {
   AK47: { x: 386.0, y: 176.0 },
   SHOTGUN: { x: 401.3, y: 167.0 },
   SNIPER: { x: 450.0, y: 260.0 },
-  GLOCK: { x: -290.8, y: 79.3 },
+  GLOCK: { x: -76.0, walkX: 162.0, y: -100.0 },
   REVOLVER: { x: -94.5, y: 41.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
   KNIFE: { x: 210.0, y: 188.5 },
   MACHETE: { x: 114.0, y: 114.0 },
   AXE: { x: 218.0, y: 222.0 }
 };
+
+export function getWeaponSpritePivot(wepId, w = 1.0) {
+  const pvt = WEAPON_SPRITE_PIVOTS[wepId] || { x: 0, y: 0 };
+  const aimX = (typeof pvt.x === 'number') ? pvt.x : 0;
+  const walkX = (typeof pvt.walkX === 'number') ? pvt.walkX : aimX;
+  const aimY = (typeof pvt.y === 'number') ? pvt.y : 0;
+  const walkY = (typeof pvt.walkY === 'number') ? pvt.walkY : aimY;
+  const weight = Math.max(0, Math.min(1, (typeof w === 'number') ? w : 1.0));
+  return {
+    x: walkX + (aimX - walkX) * weight,
+    y: walkY + (aimY - walkY) * weight
+  };
+}
 
 /**
  * Renderowanie smugi cięcia broni białej (Melee Slash Trail) w przestrzeni świata
@@ -989,8 +1002,9 @@ export function drawHeldWeapon(ctx, p) {
         imgSlide && imgSlide.complete && imgSlide.naturalWidth > 0) {
       
       const s = 15.7 / 835;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.GLOCK.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.GLOCK.y;
+      const pvt = getWeaponSpritePivot('GLOCK', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       // 1. Warstwy pistoletu w osi broni
       ctx.save();
@@ -1028,7 +1042,7 @@ export function drawHeldWeapon(ctx, p) {
 
       // 3. Płomień wylotowy
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, hold.barrelLen || 22.30, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 0.30, 9, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 15.60, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 5.50, 9, false);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1116,7 +1130,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, hold.barrelLen || 22.30, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 0.30, 9, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 15.60, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 5.50, 9, false);
       }
     }
   } else if (weapon.id === 'REVOLVER') {
@@ -1128,8 +1142,9 @@ export function drawHeldWeapon(ctx, p) {
 
     if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
       const s = 20.2 / 1040;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.REVOLVER.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.REVOLVER.y;
+      const pvt = getWeaponSpritePivot('REVOLVER', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       ctx.save();
       ctx.scale(s, s);

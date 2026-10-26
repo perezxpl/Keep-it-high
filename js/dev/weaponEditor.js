@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v10';
+const STORAGE_KEY = 'kih_weapon_tuning_v11';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage
@@ -471,12 +471,21 @@ export function renderEditorValues() {
   const paramDefs = [
     {
       key: 'pivotSpriteX',
-      label: 'Ułożenie Broni X (Sprite Pivot X)',
-      desc: 'Poziome przesunięcie grafiki broni w pikselach sprite\'a.',
+      label: 'Ułożenie Broni X - Celowanie',
+      desc: 'Poziome przesunięcie grafiki broni w pikselach sprite\'a podczas celowania.',
       val: pivot.x,
       min: -300, max: 600, step: 0.5,
       steps: [-5, -1, 1, 5],
       set: (v) => { pivot.x = v; saveWeaponTuning(); }
+    },
+    {
+      key: 'walkPivotSpriteX',
+      label: 'Ułożenie Broni X - Bieg',
+      desc: 'Poziome przesunięcie grafiki broni w pikselach sprite\'a podczas chodu i biegu.',
+      val: (typeof pivot.walkX === 'number') ? pivot.walkX : pivot.x,
+      min: -300, max: 600, step: 0.5,
+      steps: [-5, -1, 1, 5],
+      set: (v) => { pivot.walkX = v; saveWeaponTuning(); }
     },
     {
       key: 'pivotSpriteY',
@@ -657,6 +666,10 @@ export function copyConfigToClipboard() {
     ? `\n  barrelOffsetY: ${Number(grip.barrelOffsetY).toFixed(2)},`
     : '';
 
+  const walkPivotLine = (typeof pivot.walkX === 'number')
+    ? `\n  walkX: ${Number(pivot.walkX).toFixed(1)},`
+    : '';
+
   const code = `// Konfiguracja chwytu i pivotu dla ${wepId}:
 WEAPON_GRIP_CONFIGS.${wepId} = {
   rearGripX: ${Number(grip.rearGripX || 0).toFixed(2)},${walkRearGripLine}
@@ -668,7 +681,7 @@ WEAPON_GRIP_CONFIGS.${wepId} = {
   stockLen: ${Number(grip.stockLen || 0).toFixed(2)}
 };
 WEAPON_SPRITE_PIVOTS.${wepId} = {
-  x: ${Number(pivot.x || 0).toFixed(1)},
+  x: ${Number(pivot.x || 0).toFixed(1)},${walkPivotLine}
   y: ${Number(pivot.y || 0).toFixed(1)}
 };`;
 
