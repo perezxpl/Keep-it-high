@@ -252,6 +252,20 @@ export function drawBackWeapon(ctx, p, fDir, waistHalfW, shoulderHalfW, v = {}, 
  * Procedura renderowania wyrzutni RPG-7 na plecach operatora
  */
 function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
+  const imgRpg = getWeaponPartSprite('RPG7');
+  if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
+    const s = (46.0 / 1302) * scaleMult;
+    const pivotSpriteX = 575.0;
+    const pivotSpriteY = 115.0;
+
+    ctx.save();
+    ctx.scale(s, s);
+    ctx.translate(-pivotSpriteX, -pivotSpriteY);
+    ctx.drawImage(imgRpg, 0, 0);
+    ctx.restore();
+    return;
+  }
+
   ctx.save();
   ctx.scale(scaleMult, scaleMult);
 
