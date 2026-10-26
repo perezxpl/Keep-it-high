@@ -778,7 +778,7 @@ export function renderArmoryUI() {
       }
     });
 
-    // Drugi przebieg w klatce animacji oraz po zakończeniu animacji (zapewnia dokładne wymiary i brak zwężenia)
+    // Drugi przebieg w klatce animacji zapewnia dokładne wymiary po reflow DOM
     requestAnimationFrame(() => {
       const allCanvases = listContainer.querySelectorAll('.armory-weapon-canvas');
       allCanvases.forEach((c) => {
@@ -786,13 +786,6 @@ export function renderArmoryUI() {
         if (wid) drawWeaponPreview(c, wid);
       });
     });
-    setTimeout(() => {
-      const allCanvases = listContainer.querySelectorAll('.armory-weapon-canvas');
-      allCanvases.forEach((c) => {
-        const wid = c.getAttribute('data-weapon-id');
-        if (wid) drawWeaponPreview(c, wid);
-      });
-    }, 200);
   } else {
     if (pickerModal) {
       pickerModal.classList.remove('active');

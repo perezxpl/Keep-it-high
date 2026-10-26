@@ -184,11 +184,11 @@ export const WEAPONS = {
     pellets: 1,
     bulletColor: '#f97316',
     isRocket: true,
-    magSize: WEAPON_CONFIG.RPG7.magSize,
-    currentAmmo: WEAPON_CONFIG.RPG7.currentAmmo,
-    reserveAmmo: WEAPON_CONFIG.RPG7.reserveAmmo,
-    reloadTime: WEAPON_CONFIG.RPG7.reloadTime,
-    reloadDuration: Math.round(WEAPON_CONFIG.RPG7.reloadTime * 60)
+    magSize: WEAPON_CONFIG?.RPG7?.magSize ?? 1,
+    currentAmmo: WEAPON_CONFIG?.RPG7?.currentAmmo ?? 1,
+    reserveAmmo: WEAPON_CONFIG?.RPG7?.reserveAmmo ?? 3,
+    reloadTime: WEAPON_CONFIG?.RPG7?.reloadTime ?? 2.6,
+    reloadDuration: Math.round((WEAPON_CONFIG?.RPG7?.reloadTime ?? 2.6) * 60)
   },
   KNIFE: {
     id: 'KNIFE',

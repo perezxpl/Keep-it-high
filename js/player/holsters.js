@@ -16,7 +16,7 @@
 //    albo w locie po rzucie toporkiem)!
 // =========================================================================
 
-import { getWeaponPartSprite, drawWeaponBloodOverlay } from '../weapons/renderer.js';
+import { getWeaponPartSprite, getWeaponSpritePivot, drawWeaponBloodOverlay } from '../weapons/renderer.js';
 
 export const PRIMARY_WEAPON_IDS = ['AK47', 'SHOTGUN', 'SNIPER'];
 export const SECONDARY_WEAPON_IDS = ['GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7'];
@@ -255,9 +255,9 @@ function drawRpg7BackSprite(ctx, scaleMult = 1.0) {
   const imgRpg = getWeaponPartSprite('RPG7');
   if (imgRpg && imgRpg.complete && imgRpg.naturalWidth > 0) {
     const s = (46.0 / 1302) * scaleMult;
-    const pvt = getWeaponSpritePivot('RPG7', 1.0);
-    const pivotSpriteX = pvt.x;
-    const pivotSpriteY = pvt.y;
+    const pvt = (typeof getWeaponSpritePivot === 'function') ? getWeaponSpritePivot('RPG7', 1.0) : { x: 575.0, y: 115.0 };
+    const pivotSpriteX = pvt?.x ?? 575.0;
+    const pivotSpriteY = pvt?.y ?? 115.0;
 
     ctx.save();
     ctx.scale(s, s);

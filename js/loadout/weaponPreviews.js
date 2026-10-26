@@ -146,16 +146,18 @@ export function drawWeaponPreview(canvas, weaponId) {
     rectW = rect.width;
     rectH = rect.height;
   }
-  const displayW = Math.max(160, Math.round(rectW || canvas.clientWidth || 300));
-  const displayH = Math.max(50, Math.round(rectH || canvas.clientHeight || 84));
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
 
-  const targetW = Math.round(displayW * dpr);
-  const targetH = Math.round(displayH * dpr);
-
-  if (canvas.width !== targetW || canvas.height !== targetH) {
-    canvas.width = targetW;
-    canvas.height = targetH;
+  if (rectW > 0 && rectH > 0) {
+    const targetW = Math.round(rectW * dpr);
+    const targetH = Math.round(rectH * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+  } else if (!canvas.width || !canvas.height) {
+    canvas.width = Math.round(480 * dpr);
+    canvas.height = Math.round(140 * dpr);
   }
 
   const ctx = canvas.getContext('2d');
@@ -211,13 +213,22 @@ export function drawWeaponPreview(canvas, weaponId) {
       ctx.drawImage(sprite, dx, dy, drawW, drawH);
       ctx.restore();
     } else if (!sprite.complete && !sprite._hasError) {
-      sprite.addEventListener('load', () => {
-        drawWeaponPreview(canvas, weaponId);
-      }, { once: true });
-      sprite.addEventListener('error', () => {
-        sprite._hasError = true;
-        drawWeaponPreview(canvas, weaponId);
-      }, { once: true });
+      if (!canvas._loadingSprites) canvas._loadingSprites = new Set();
+      if (!canvas._loadingSprites.has(weaponId)) {
+        canvas._loadingSprites.add(weaponId);
+        const onDone = () => {
+          canvas._loadingSprites.delete(weaponId);
+          if (typeof canvas.isConnected === 'boolean' && !canvas.isConnected) return;
+          drawWeaponPreview(canvas, weaponId);
+        };
+        sprite.addEventListener('load', onDone, { once: true });
+        sprite.addEventListener('error', () => {
+          sprite._hasError = true;
+          canvas._loadingSprites.delete(weaponId);
+          if (typeof canvas.isConnected === 'boolean' && !canvas.isConnected) return;
+          drawWeaponPreview(canvas, weaponId);
+        }, { once: true });
+      }
     }
   }
 }

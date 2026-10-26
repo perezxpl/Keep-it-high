@@ -118,7 +118,8 @@ try {
     scale: () => {}, translate: () => {}, rotate: () => {}, drawImage: () => {},
     createLinearGradient: () => mockGradient, createRadialGradient: () => mockGradient,
     ellipse: () => {}, rect: () => {}, roundRect: () => {}, quadraticCurveTo: () => {},
-    strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {}
+    strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {},
+    fillText: () => {}
   };
   const mockElement = {
     style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
@@ -205,6 +206,41 @@ try {
         }
       }
     }
+  }
+
+  // Smoke test rysowania broni trzymanej w rekach (w tym RPG-7)
+  const weaponRendererPathNorm = path.resolve(jsDir, 'weapons/renderer.js').toLowerCase();
+  const weaponRendererMod = evalModules.get(weaponRendererPathNorm);
+  if (weaponRendererMod && weaponRendererMod.namespace && typeof weaponRendererMod.namespace.drawHeldWeapon === 'function') {
+    const allWepIds = ['AK47', 'SHOTGUN', 'SNIPER', 'GLOCK', 'REVOLVER', 'SAWED_OFF', 'RPG7', 'KNIFE', 'MACHETE', 'AXE'];
+    for (const wepId of allWepIds) {
+      weaponRendererMod.namespace.drawHeldWeapon(mockContext, {
+        currentWeapon: { id: wepId },
+        facing: 1, x: 100, y: 100, w: 24, h: 70, pelvisY: -11.8, isDead: false,
+        muzzleFlashTimer: 0.1,
+        ammo: { [wepId]: { currentAmmo: 5, reserveAmmo: 20 } },
+        reloadProgress: 0.5,
+        isReloading: true
+      });
+    }
+  }
+
+  // Smoke test noszenia broni w kaburach i na plecach (w tym RPG-7 na plecach)
+  const holstersPathNorm = path.resolve(jsDir, 'player/holsters.js').toLowerCase();
+  const holstersMod = evalModules.get(holstersPathNorm);
+  if (holstersMod && holstersMod.namespace && typeof holstersMod.namespace.drawBackWeapon === 'function') {
+    holstersMod.namespace.drawBackWeapon(mockContext, {
+      loadout: { pocket1: { slots: ['AK47', 'RPG7', 'KNIFE'], activeSlotIndex: 0 } },
+      currentWeapon: { id: 'AK47' },
+      facing: 1, x: 100, y: 100, w: 24, h: 70, isDead: false
+    }, 1, 10, 10);
+  }
+
+  // Smoke test podgladu broni w Zbrojowni
+  const previewsPathNorm = path.resolve(jsDir, 'loadout/weaponPreviews.js').toLowerCase();
+  const previewsMod = evalModules.get(previewsPathNorm);
+  if (previewsMod && previewsMod.namespace && typeof previewsMod.namespace.drawWeaponPreview === 'function') {
+    previewsMod.namespace.drawWeaponPreview(mockElement, 'RPG7');
   }
 
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');
