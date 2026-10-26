@@ -224,7 +224,7 @@ export const WEAPON_SPRITE_PIVOTS = {
   REVOLVER: { x: -94.5, y: 41.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
   KNIFE: { x: 210.0, y: 188.5 },
-  MACHETE: { x: 114.0, y: 114.0 },
+  MACHETE: { x: 296.5, walkX: 47.5, y: 38.0 },
   AXE: { x: 218.0, y: 222.0 }
 };
 
@@ -1272,8 +1272,9 @@ export function drawHeldWeapon(ctx, p) {
     const imgKnife = getWeaponPartSprite('KNIFE');
     if (imgKnife && imgKnife.complete && imgKnife.naturalWidth > 0) {
       const s = 24.7 / 1275;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.KNIFE.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.KNIFE.y;
+      const pvt = getWeaponSpritePivot('KNIFE', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1318,8 +1319,9 @@ export function drawHeldWeapon(ctx, p) {
     const imgMachete = getWeaponPartSprite('MACHETE');
     if (imgMachete && imgMachete.complete && imgMachete.naturalWidth > 0) {
       const s = 28.0 / 1242;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.MACHETE.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.MACHETE.y;
+      const pvt = getWeaponSpritePivot('MACHETE', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       ctx.save();
       ctx.scale(s, s);
@@ -1353,8 +1355,9 @@ export function drawHeldWeapon(ctx, p) {
     const imgAxe = getWeaponPartSprite('AXE');
     if (imgAxe && imgAxe.complete && imgAxe.naturalWidth > 0) {
       const s = 19.5 / 1115;
-      const pivotSpriteX = WEAPON_SPRITE_PIVOTS.AXE.x;
-      const pivotSpriteY = WEAPON_SPRITE_PIVOTS.AXE.y;
+      const pvt = getWeaponSpritePivot('AXE', hold.weight);
+      const pivotSpriteX = pvt.x;
+      const pivotSpriteY = pvt.y;
 
       ctx.save();
       ctx.scale(s, s);
