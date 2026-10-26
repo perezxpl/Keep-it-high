@@ -220,7 +220,7 @@ export const WEAPON_SPRITE_PIVOTS = {
   AK47: { x: 386.0, y: 176.0 },
   SHOTGUN: { x: 401.3, y: 167.0 },
   SNIPER: { x: 450.0, y: 260.0 },
-  GLOCK: { x: 257.0, y: 292.0 },
+  GLOCK: { x: -290.8, y: 79.3 },
   REVOLVER: { x: -94.5, y: 41.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
   KNIFE: { x: 210.0, y: 188.5 },
@@ -1028,7 +1028,7 @@ export function drawHeldWeapon(ctx, p) {
 
       // 3. Płomień wylotowy
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 22.30, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 0.30, 9, false);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1116,7 +1116,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.restore();
 
       if (p.muzzleFlashTimer > 0) {
-        drawMuzzleFlash(ctx, 13.5, -0.6, 8, false);
+        drawMuzzleFlash(ctx, hold.barrelLen || 22.30, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 0.30, 9, false);
       }
     }
   } else if (weapon.id === 'REVOLVER') {
