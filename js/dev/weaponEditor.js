@@ -31,7 +31,7 @@ export const weaponEditorState = {
   aimElevation: 0 // lekki kąt pionowy (0 = idealnie poziomo)
 };
 
-const STORAGE_KEY = 'kih_weapon_tuning_v14';
+const STORAGE_KEY = 'kih_weapon_tuning_v15';
 
 /**
  * Załadowanie zapisanych modyfikacji z localStorage

@@ -219,7 +219,7 @@ if (typeof window !== 'undefined') {
 export const WEAPON_SPRITE_PIVOTS = {
   AK47: { x: 335.0, y: 79.5 },
   SHOTGUN: { x: 310.5, walkX: 350.0, y: 33.0 },
-  SNIPER: { x: 450.0, y: 260.0 },
+  SNIPER: { x: 325.5, y: 141.0 },
   GLOCK: { x: -76.0, walkX: 162.0, y: -100.0 },
   REVOLVER: { x: -94.5, y: 41.0 },
   SAWED_OFF: { x: 133.5, y: 223.0 },
@@ -874,7 +874,7 @@ export function drawHeldWeapon(ctx, p) {
 
       // 3. Potężny płomień wylotowy Barretta .50
       if (p.muzzleFlashTimer > 0) {
-        drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+        drawSniperMuzzleFlash(ctx, 44.5, -0.4, 20);
       }
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -987,7 +987,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillRect(43.5, -2.4, 1.0, 4.0);
 
       if (p.muzzleFlashTimer > 0) {
-        drawSniperMuzzleFlash(ctx, 45.5, -0.4, 20);
+        drawSniperMuzzleFlash(ctx, 44.5, -0.4, 20);
       }
     }
   } else if (weapon.id === 'GLOCK') {
