@@ -1067,11 +1067,11 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         const isA3Target = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
         const isSelf = shooter && (shooter === ch || (shooter.id && ch.id && shooter.id === ch.id) || (!shooter.isBot && !ch.isBot && !shooter.isRemote && !ch.isRemote));
         if (isSelf) {
-          ch.killer = { name: (sourceWeapon === 'MORTAR' ? 'WŁASNY NALOT' : 'WŁASNY GRANAT'), isSelf: true, cause: 'OWN_EXPLOSION' };
+          ch.killer = { name: (sourceWeapon === 'MORTAR' ? 'WŁASNY NALOT' : (sourceWeapon === 'RPG7' ? 'WŁASNA RAKIETA RPG-7' : 'WŁASNY GRANAT')), isSelf: true, cause: 'OWN_EXPLOSION' };
         } else if (shooter && shooter !== ch) {
           ch.killer = shooter;
         } else {
-          ch.killer = ch.lastAttacker || { name: (sourceWeapon === 'MORTAR' ? 'NALOT MOŹDZIERZOWY' : 'EKSPLOZJA GRANATU'), isSelf: false };
+          ch.killer = ch.lastAttacker || { name: (sourceWeapon === 'MORTAR' ? 'NALOT MOŹDZIERZOWY' : (sourceWeapon === 'RPG7' ? 'WYBUCH RAKIETY RPG-7' : 'EKSPLOZJA GRANATU')), isSelf: false };
         }
         ch.respawnTimer = 180;
         ch.corpseFloorY = (isA3Target && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(chCenterX) : groundY;

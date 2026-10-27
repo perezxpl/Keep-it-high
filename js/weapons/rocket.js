@@ -10,11 +10,27 @@ import {
   spawnConcreteDebris,
   spawnRicochetSparks
 } from '../particles.js';
-import { triggerScreenShake, carveGroundHole, spawnBloodSpurt } from '../world.js';
+import {
+  triggerScreenShake,
+  carveGroundHole,
+  spawnBloodSpurt,
+  spawnBloodFountain,
+  spawnKnockedHelmet,
+  spawnVestShreds,
+  spawnHeadGib,
+  spawnLimbGib,
+  spawnDroppedWeapon,
+  triggerHitstop
+} from '../world.js';
 import { checkRayObstacleCollision, obstacles } from '../obstacles.js';
-import { isDeathmatchFFA } from '../deathmatch/index.js';
+import { spawnBulletSparks, spawnHitSparks } from './transform.js';
+import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
+import { arena1State } from '../arenas/arena1.js';
+import { spawnAltarShockwave } from '../obstacles/renderer.js';
+import { activeSentryGuns } from '../killstreaks/sentryGun.js';
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
+import { DEFAULT_VISUALS } from '../player/hair.js';
 
 /**
  * Wyznacza odległość punktu (px, py) od odcinka (x1, y1)-(x2, y2)
@@ -133,68 +149,389 @@ export class RpgRocket {
     this.x += this.vx;
     this.y += this.vy;
 
-    // 1. Kolizja kinetyczna z piłką (Spike / Rocket Blast Push)
-    if (ball) {
-      const distToBall = distPointToSegment(ball.x, ball.y, this.prevX, this.prevY, this.x, this.y);
-      if (distToBall <= (ball.colRadius || 5.2) + this.radius + 6) {
-        ball.vx += this.vx * 1.5;
-        ball.vy += this.vy * 1.5 - 4.2;
-        ball.spin += (this.vx > 0 ? 0.9 : -0.9);
-        this.detonate(groundY, platforms, customObs, combatants, ball);
-        return false;
-      }
-    }
+    // 1. Raycasting z przeszkodami i podłożem (identycznie jak w updateBullets)
+    const obs = customObs || obstacles;
+    let mapHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, obs, this);
 
-    // 2. Kolizja z przeszkodami i strukturami mapy (Raycasting)
-    const wallHit = checkRayObstacleCollision(this.prevX, this.prevY, this.x, this.y, groundY, customObs || obstacles, null);
-    if (wallHit) {
-      this.x = wallHit.x;
-      this.y = wallHit.y;
-      this.detonate(groundY, platforms, customObs, combatants, ball);
-      return false;
-    }
-
-    // 3. Kolizja z granicami areny i podłożem
+    // Uwzględnienie granic bocznych areny (ściany lewa / prawa)
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
     const aLeft = (typeof curArena?.bounds?.minX === 'number') ? curArena.bounds.minX : ARENA_LEFT;
     const aRight = (typeof curArena?.width === 'number') ? curArena.width : ((typeof curArena?.bounds?.maxX === 'number') ? curArena.bounds.maxX : ARENA_RIGHT);
 
-    if (this.x <= aLeft + this.radius || this.x >= aRight - this.radius || this.y >= groundY - 2) {
+    let maxT = mapHit ? mapHit.t : 1.0;
+    const dx = this.x - this.prevX;
+    const dy = this.y - this.prevY;
+    if (Math.abs(dx) > 1e-5) {
+      if (dx < 0 && this.prevX > aLeft && this.x <= aLeft) {
+        const tLeft = Math.max(0, Math.min(1, (aLeft - this.prevX) / dx));
+        if (tLeft < maxT) {
+          maxT = tLeft;
+          mapHit = { hit: true, t: tLeft, x: aLeft, y: this.prevY + dy * tLeft, nx: 1, ny: 0 };
+        }
+      } else if (dx > 0 && this.prevX < aRight && this.x >= aRight) {
+        const tRight = Math.max(0, Math.min(1, (aRight - this.prevX) / dx));
+        if (tRight < maxT) {
+          maxT = tRight;
+          mapHit = { hit: true, t: tRight, x: aRight, y: this.prevY + dy * tRight, nx: -1, ny: 0 };
+        }
+      }
+    }
+
+    const endX = mapHit ? mapHit.x : this.x;
+    const endY = mapHit ? mapHit.y : this.y;
+
+    // 2. Kolizja kinetyczna z piłką (Spike / Rocket Blast Push)
+    if (ball) {
+      const cR = ball.colRadius || 5.2;
+      const distToBall = distPointToSegment(ball.x, ball.y, this.prevX, this.prevY, endX, endY);
+      if (distToBall <= cR + this.radius + 4) {
+        ball.isLevitating = false;
+        if (arena1State && arena1State.waitingForKickoff) {
+          arena1State.waitingForKickoff = false;
+          triggerScreenShake(8);
+          if (typeof spawnAltarShockwave === 'function') {
+            spawnAltarShockwave(ball.x, ball.y);
+          }
+        }
+        ball.vx += this.vx * 1.6;
+        ball.vy += this.vy * 1.6 - 4.5;
+        ball.spin += (this.vx > 0 ? 0.9 : -0.9);
+        this.x = ball.x;
+        this.y = ball.y;
+        this.detonate(groundY, platforms, customObs, combatants, ball);
+        return false;
+      }
+    }
+
+    // 3. Przechwycenie trafienia pocisku w unikalne elementy mapy (Arena Lifecycle Hook: np. zniszczalne rampy, mosty, ołtarz)
+    if (curArena && typeof curArena.onBulletHit === 'function') {
+      const bulletProxy = {
+        x: this.x,
+        y: this.y,
+        prevX: this.prevX,
+        prevY: this.prevY,
+        vx: this.vx,
+        vy: this.vy,
+        speed: this.speed,
+        damage: this.damage,
+        weaponId: 'RPG7',
+        shooter: this.shooter,
+        team: this.team,
+        isRpg: true
+      };
+      if (curArena.onBulletHit(bulletProxy)) {
+        this.x = bulletProxy.x;
+        this.y = bulletProxy.y;
+        this.detonate(groundY, platforms, customObs, combatants, ball);
+        return false;
+      }
+    }
+
+    // 4. Kolizja z wieżyczkami strażniczymi (Sentry Guns)
+    let closestSentry = null;
+    let closestSentryT = Infinity;
+    if (Array.isArray(activeSentryGuns)) {
+      for (const sentry of activeSentryGuns) {
+        if (!sentry || sentry.hp <= 0) continue;
+        if (sentry.owner === this.shooter) continue;
+        if (sentry.team && this.team && sentry.team === this.team) continue;
+
+        const sLeft = sentry.x - 14;
+        const sRight = sentry.x + 14;
+        const sTop = sentry.y - 30;
+        const sBottom = sentry.y;
+
+        const sHitT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, sLeft, sTop, sRight, sBottom);
+        if (sHitT !== null && sHitT <= maxT && sHitT < closestSentryT) {
+          closestSentryT = sHitT;
+          closestSentry = sentry;
+        }
+      }
+    }
+
+    // 5. Kolizja z postaciami graczy i botów (precyzyjne hitboxy, postawy stojąca/kucająca/leżąca)
+    const charList = Array.isArray(combatants) ? combatants : [];
+    let closestChar = null;
+    let closestCharT = Infinity;
+
+    const minBx = this.prevX < endX ? this.prevX : endX;
+    const maxBx = this.prevX > endX ? this.prevX : endX;
+    const minBy = this.prevY < endY ? this.prevY : endY;
+    const maxBy = this.prevY > endY ? this.prevY : endY;
+
+    const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+
+    for (const ch of charList) {
+      if (!ch || ch === this.shooter || ch.isDead) continue;
+      if (ch.isBot && !ch.active) continue;
+
+      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+        (deathmatchState && deathmatchState.mode === 'FFA') ||
+        (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+        (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+      if (!isFFA && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
+
+      if (netState && netState.isConnected) {
+        if (this.shooter && this.shooter.isRemote && !ch.isRemote) continue;
+        if (!netState.isHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+      }
+
+      const hitW = ch.w || 24;
+      const hitH = ch.h || 70;
+      let charLeft = ch.x;
+      let charRight = ch.x + hitW;
+      let charTop = ch.y - 25;
+      let charBottom = ch.y + hitH;
+
+      if (ch.isProne || ch.staggerTimer > 0) {
+        charTop = ch.y + hitH - 24;
+        charBottom = ch.y + hitH + 2;
+        charLeft = ch.x - (ch.facing === 1 ? 14 : 38);
+        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
+      } else if (ch.isCrouching) {
+        charTop = ch.y + 12;
+      }
+
+      // Szybkie odrzucenie AABB przed precyzyjnym testem promienia
+      if (maxBx < charLeft || minBx > charRight || maxBy < charTop || minBy > charBottom) continue;
+
+      const charT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, charLeft, charTop, charRight, charBottom);
+      if (charT !== null && charT <= maxT && charT < closestCharT) {
+        closestCharT = charT;
+        closestChar = ch;
+      }
+    }
+
+    // A. Bezpośrednie trafienie w Sentry Gun (jeśli bliżej niż postać)
+    if (closestSentry && closestSentryT < closestCharT) {
+      this.x = this.prevX + (this.x - this.prevX) * closestSentryT;
+      this.y = this.prevY + (this.y - this.prevY) * closestSentryT;
+      closestSentry.hp -= this.damage;
+      spawnBulletSparks(this.x, this.y, '#f59e0b', 12);
       this.detonate(groundY, platforms, customObs, combatants, ball);
       return false;
     }
 
-    // 4. Kolizja z postaciami graczy i botów
-    const targets = Array.isArray(combatants) ? combatants : [];
-    for (const ch of targets) {
-      if (!ch || ch.isDead) continue;
-      // Zabezpieczenie przed samobójczym trafieniem w pierwszych 4 klatkach po wystrzale
-      if (ch === this.shooter && this.life > 176) continue;
+    // B. Bezpośrednie trafienie w postać gracza lub bota (Direct Impact)
+    if (closestChar) {
+      const hitPtX = this.prevX + (this.x - this.prevX) * closestCharT;
+      const hitPtY = this.prevY + (this.y - this.prevY) * closestCharT;
+      this.x = hitPtX;
+      this.y = hitPtY;
 
-      const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false);
-      if (!isFFA && this.shooter && ch !== this.shooter && this.team && ch.team && this.team === ch.team) continue;
-      if (ch.spawnProtectionTimer && ch.spawnProtectionTimer > 0) continue;
+      let isHeadshot = false;
+      let isLegshot = false;
+      let isTorsoShot = false;
 
-      const chLeft = ch.x - 4;
-      const chRight = ch.x + (ch.w || 24) + 4;
-      const chTop = ch.y - 14;
-      const chBottom = ch.y + (ch.h || 70) + 4;
-
-      const hitT = getSegmentAABBHitT(this.prevX, this.prevY, this.x, this.y, chLeft, chTop, chRight, chBottom);
-      if (hitT !== null && hitT >= 0 && hitT <= 1.0) {
-        this.x = this.prevX + (this.x - this.prevX) * hitT;
-        this.y = this.prevY + (this.y - this.prevY) * hitT;
-
-        // Bezpośrednie trafienie naddźwiękową rakietą (Direct Impact):
-        ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - this.damage);
-        if (this.shooter && this.shooter !== ch) {
-          ch.lastAttacker = this.shooter;
-          ch.lastAttackerTimer = 240;
+      if (closestChar.isProne || (closestChar.staggerTimer > 0)) {
+        if (closestChar.facing === 1) {
+          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.60);
+          isLegshot = (hitPtX <= closestChar.x - 4);
+          isTorsoShot = !isHeadshot && !isLegshot;
+        } else {
+          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * 0.40);
+          isLegshot = (hitPtX >= closestChar.x + closestChar.w + 4);
+          isTorsoShot = !isHeadshot && !isLegshot;
         }
-        spawnBloodSpurt(this.x, this.y, this.vx * 0.35, this.vy * 0.35 - 2, 24, 1.6);
+      } else if (closestChar.isCrouching) {
+        isHeadshot = (hitPtY <= closestChar.y + 26);
+        isLegshot = (hitPtY >= closestChar.y + 46);
+        isTorsoShot = !isHeadshot && !isLegshot;
+      } else {
+        isHeadshot = (hitPtY <= closestChar.y + 16);
+        isLegshot = (hitPtY >= closestChar.y + 40);
+        isTorsoShot = !isHeadshot && !isLegshot;
+      }
+
+      // Osłona odrodzenia
+      if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (this.shooter && this.shooter.spawnProtectionTimer && this.shooter.spawnProtectionTimer > 0)) {
+        spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
         this.detonate(groundY, platforms, customObs, combatants, ball);
         return false;
       }
+
+      let damageMultiplier = 1.0;
+      let helmetAbsorbed = false;
+      let vestAbsorbed = false;
+
+      if (isHeadshot) {
+        const hasHelm = !!(closestChar.hasHelmet || closestChar.visuals?.hasHelmet);
+        const hasImmunity = ((closestChar.headshotImmunityTimer || 0) > 0);
+
+        if (hasImmunity) {
+          damageMultiplier = 0.50;
+          helmetAbsorbed = true;
+          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 8);
+        } else if (hasHelm) {
+          helmetAbsorbed = true;
+          damageMultiplier = 0.60;
+          closestChar.hasHelmet = false;
+          if (closestChar.visuals) closestChar.visuals.hasHelmet = false;
+          closestChar.headshotImmunityTimer = 22;
+          spawnKnockedHelmet(hitPtX, hitPtY - 4, this.vx, this.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
+          triggerScreenShake(5.0);
+          spawnBulletSparks(hitPtX, hitPtY, '#facc15', 14);
+        } else {
+          damageMultiplier = 2.0;
+        }
+      } else if (isTorsoShot) {
+        damageMultiplier = 1.25;
+      } else {
+        damageMultiplier = 0.85;
+      }
+
+      let totalDamage = Math.round(this.damage * damageMultiplier);
+
+      if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
+        if (closestChar.vestHp === undefined) {
+          closestChar.vestHp = 60;
+          closestChar.vestMaxHp = 60;
+        }
+
+        if (closestChar.vestHp > 0) {
+          vestAbsorbed = true;
+          spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 10);
+          if (closestChar.vestHp >= totalDamage) {
+            closestChar.vestHp -= totalDamage;
+            totalDamage = 0;
+          } else {
+            totalDamage -= closestChar.vestHp;
+            closestChar.vestHp = 0;
+          }
+
+          if (closestChar.vestHp <= 0) {
+            closestChar.vestHp = 0;
+            closestChar.hasVest = false;
+            if (closestChar.visuals) closestChar.visuals.hasVest = false;
+            spawnVestShreds(hitPtX, hitPtY, this.vx, this.vy, closestChar.visuals?.vestColor || '#18181b');
+            triggerScreenShake(4.0);
+          }
+        }
+      }
+
+      closestChar.hp = Math.max(0, (closestChar.hp !== undefined ? closestChar.hp : 100) - totalDamage);
+      if (this.shooter && this.shooter !== closestChar) {
+        closestChar.lastAttacker = this.shooter;
+        closestChar.lastAttackerTimer = 240;
+      }
+
+      // Synchronizacja zadanych obrażeń w grze sieciowej
+      const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+      if (netState && netState.isConnected && typeof sendDmg === 'function') {
+        if (closestChar.isRemote) {
+          sendDmg({
+            target: 'player',
+            damage: this.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : 0,
+            weaponId: 'RPG7'
+          });
+        } else if (closestChar.isBot && !netState.isHost) {
+          const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
+            ? window.getActiveBots()
+            : (typeof window !== 'undefined' && Array.isArray(window.bots) ? window.bots : []);
+          const bIdx = activeBots.indexOf(closestChar);
+          if (bIdx !== -1) {
+            sendDmg({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: this.damage,
+              isHeadshot,
+              isTorsoShot,
+              hitX: hitPtX,
+              hitY: hitPtY,
+              relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : 0,
+              weaponId: 'RPG7'
+            });
+          }
+        }
+      }
+
+      // Odrzut kinetyczny celu
+      if (!closestChar.isDead && closestChar.hp > 0) {
+        closestChar.vx += this.vx * 0.40;
+        closestChar.vy = Math.min(closestChar.vy, -3.5);
+        triggerScreenShake(6.0);
+      }
+
+      if (isHeadshot) {
+        if (!helmetAbsorbed) {
+          spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 12);
+          spawnBloodSpurt(hitPtX, hitPtY, this.vx * 0.55, this.vy * 0.55, 18, 1.6);
+        }
+      } else {
+        if (!vestAbsorbed) {
+          spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
+          spawnBloodSpurt(hitPtX, hitPtY, this.vx * 0.45, this.vy * 0.45, 12, 1.2);
+        }
+      }
+
+      // Obsługa natychmiastowego zgonu z dekapitacją / rozczłonkowaniem
+      if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
+        closestChar.isDead = true;
+        closestChar.killer = (this.shooter && this.shooter !== closestChar) ? this.shooter : closestChar.lastAttacker;
+        closestChar.respawnTimer = 180;
+        closestChar.corpseFloorY = groundY;
+        closestChar.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
+        closestChar.deathHitPoint = { x: hitPtX, y: hitPtY };
+        closestChar.bleedTimer = 90;
+        spawnBloodSpurt(hitPtX, hitPtY, this.vx * 0.55, -3.0, 28, 1.8);
+
+        const charVisuals = closestChar.visuals || closestChar.currentClass?.visuals || DEFAULT_VISUALS;
+
+        if (closestChar.currentWeapon) {
+          spawnDroppedWeapon(
+            closestChar.x + closestChar.w / 2,
+            closestChar.y + 28,
+            this.vx * 0.45,
+            -5.0,
+            closestChar.currentWeapon,
+            closestChar.facing
+          );
+        }
+
+        if (isHeadshot) {
+          closestChar.hasHead = false;
+          closestChar.decapitated = true;
+          closestChar.neckFountainTimer = 65;
+          triggerHitstop(2);
+          triggerScreenShake(24);
+          spawnHeadGib(closestChar.x + closestChar.w / 2, closestChar.y + 2, this.vx * 0.70, -7.5, closestChar.facing, charVisuals);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+        } else if (isLegshot) {
+          closestChar.dismembered.legFront = true;
+          triggerHitstop(2);
+          triggerScreenShake(20);
+          spawnLimbGib('leg', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
+        } else {
+          closestChar.dismembered.armFront = true;
+          triggerHitstop(2);
+          triggerScreenShake(20);
+          spawnLimbGib('arm', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);
+        }
+
+        closestChar.deathImpulse = { vx: this.vx * 0.50, vy: -3.2 };
+        closestChar.ragdoll = null;
+      }
+
+      this.detonate(groundY, platforms, customObs, combatants, ball);
+      return false;
+    }
+
+    // C. Trafienie w przeszkodę / strukturę / ziemię (Map Hit)
+    if (mapHit) {
+      this.x = mapHit.x;
+      this.y = mapHit.y;
+      if (typeof spawnHitSparks === 'function') {
+        spawnHitSparks(mapHit.x, mapHit.y, mapHit.nx || 0, mapHit.ny || -1, 6);
+      }
+      this.detonate(groundY, platforms, customObs, combatants, ball);
+      return false;
     }
 
     return true;
