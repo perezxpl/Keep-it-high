@@ -37,13 +37,6 @@ import {
   drawWeatheredBalustrade
 } from './weatheredAssets.js';
 
-import {
-  drawOrganicSniperCrags,
-  drawOrganicSuspensionBridge,
-  drawOrganicBridgeApproach,
-  drawOrganicCanopyDeck
-} from './organicStructures.js';
-
 function drawGroundwaterPool(ctx, seg) {
   if (!seg || seg.length < 2) return;
   const xStart = seg[0].x - 2;
@@ -218,7 +211,7 @@ function getOrigSurfaceY(x, isL) {
 // zwęglenia po wybuchach i rozplecione liny
 // =========================================================================
 
-export function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
+function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle || 0);
@@ -340,7 +333,7 @@ export function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {})
   ctx.restore();
 }
 
-export function drawSplinteredRockSlab(ctx, slab) {
+function drawSplinteredRockSlab(ctx, slab) {
   const cx = slab.x + slab.w / 2;
   const cy = slab.y + slab.h / 2;
   ctx.save();
@@ -1373,10 +1366,48 @@ export function drawArena3Foreground(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 5. GŁÓWNE PLATFORMY SNAJPERSKIE (X: 600-1000 ORAZ X: 3400-3800, Y: 800)
-  // Naturalne nawisy skalne wrośnięte w klify kanionu bez klockowatego wyglądu
+  // Zniszczalne modułowe płyty skalne dolomitowe porośnięte dżunglą
   // -----------------------------------------------------------------------
   function drawSniperSlabs() {
-    drawOrganicSniperCrags(ctx, ARENA_3_SNIPER_SLABS, camL, camR, drawSplinteredRockSlab);
+    for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
+      const slab = ARENA_3_SNIPER_SLABS[i];
+      if (slab.x + slab.w + 50 < camL || slab.x - 50 > camR) continue;
+
+      ctx.save();
+      if (slab.intact) {
+        const px = slab.x;
+        const py = slab.y;
+        const pw = slab.w;
+        const ph = slab.h;
+        const dmgRatio = 1 - (slab.hp / slab.maxHp);
+
+        // Naturalna ciosana półka skalna bazaltowo-dolomitowa w estetyce ruin
+        drawWeatheredStoneMasonry(ctx, px, py, pw, ph, {
+          courseHeight: Math.min(22, ph),
+          hasChamfer: true,
+          hasCramps: true,
+          damageRatio: dmgRatio,
+          seed: i * 53,
+          mossTop: true
+        });
+
+        // Reliefy prastarych ruin wojskowych na czole skały
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fillRect(px + 8, py + 14, pw - 16, Math.max(4, ph - 22));
+
+        // Kute żelazne kotwy skalne spinające blok z macierzystym klifem
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + 4, py + 6, 6, 8);
+        ctx.fillRect(px + pw - 10, py + 6, 6, 8);
+        ctx.fillStyle = 'rgba(146, 64, 14, 0.50)';
+        ctx.fillRect(px + 6, py + 14, 2, 7);
+        ctx.fillRect(px + pw - 8, py + 14, 2, 7);
+      } else {
+        // Zniszczona płyta skalna - ostry łupany głaz dolomitowy
+        drawSplinteredRockSlab(ctx, slab);
+      }
+      ctx.restore();
+    }
   }
 
   drawSniperSlabs();
@@ -1741,26 +1772,148 @@ export function drawArena3Foreground(ctx, camera) {
     // Filtruj bloki dla tej strony
     const rampBlocks = ARENA_3_RAMP_BLOCKS.filter(b => isLeft ? b.side === 'left' : b.side === 'right');
 
-    drawOrganicBridgeApproach(ctx, rampBlocks, isLeft, camL, camR);
-
-    // Zniszczone klocki spadające do rzeki
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
-      if (b.intact) continue;
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
 
-      const bcx = b.x + b.w / 2;
-      const bcy = b.y + b.h / 2;
-      drawSplinteredWoodRubble(ctx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+      const y1 = getApproachInclineY(b.origX, isLeft);
+      const y2 = getApproachInclineY(b.origX + b.w, isLeft);
+      const groundY = getRiverbankGroundY(b.stiltX);
 
-      if (b.y + b.h >= 1300) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+      if (b.intact) {
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        // 2. Belka podestu rampy w estetyce postarzanego drewna
+        ctx.beginPath();
+        ctx.moveTo(b.origX, y1);
+        ctx.lineTo(b.origX + b.w, y2);
+        ctx.lineTo(b.origX + b.w, y2 + 20);
+        ctx.lineTo(b.origX, y1 + 20);
+        ctx.closePath();
+
+        const blockGrad = ctx.createLinearGradient(b.origX, y1, b.origX + b.w, y2 + 20);
+        blockGrad.addColorStop(0.0, '#664019');
+        blockGrad.addColorStop(0.35, '#4a2c10');
+        blockGrad.addColorStop(0.75, '#2d1807');
+        blockGrad.addColorStop(1.0, '#1c0d03');
+        ctx.fillStyle = blockGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#180a02';
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+
+        // Wzdłużny słój belki
+        ctx.strokeStyle = 'rgba(14, 6, 2, 0.70)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(b.origX + 2, y1 + 10);
+        ctx.lineTo(b.origX + b.w - 2, y2 + 10);
+        ctx.stroke();
+
+        // 3. Listwy antypoślizgowe z ciosanych bali (stepped transverse battens)
+        for (let ax = b.origX + 14; ax <= b.origX + b.w - 10; ax += 20) {
+          const ay = getApproachInclineY(ax, isLeft);
+          ctx.fillStyle = '#3a200a';
+          ctx.fillRect(ax - 2, ay - 1, 4, 6);
+
+          ctx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(ax - 4, ay);
+          ctx.lineTo(ax + 4, ay + (isLeft ? -1.5 : 1.5));
+          ctx.stroke();
+
+          // Kuty gwóźdź
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(ax - 1, ay + 2, 2.5, 2.5);
+        }
+
+        // Mech na górnej krawędzi
+        ctx.strokeStyle = '#3d6820';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(b.origX, y1 + 1);
+        ctx.lineTo(b.origX + b.w, y2 + 1);
+        ctx.stroke();
+        ctx.strokeStyle = '#629e30';
         ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.ellipse(bcx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
+        ctx.moveTo(b.origX + 3, y1 + 0.6);
+        ctx.lineTo(b.origX + b.w - 3, y2 + 0.6);
         ctx.stroke();
-        ctx.restore();
+
+        // Pęknięcia jeśli rampa jest uszkodzona
+        if (b.hp < b.maxHp) {
+          ctx.strokeStyle = '#0c0401';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(b.origX + b.w * 0.4, y1 + 4);
+          ctx.lineTo(b.origX + b.w * 0.48, y1 + 12);
+          if (dmgRatio > 0.5) {
+            ctx.moveTo(b.origX + b.w * 0.72, y2 + 3);
+            ctx.lineTo(b.origX + b.w * 0.64, y2 + 15);
+          }
+          ctx.stroke();
+        }
+
+        // 4. Słupek poręczy na środku segmentu z ciosanego drewna
+        const postX = b.stiltX;
+        const postY = getApproachInclineY(postX, isLeft);
+        const handrailH = 34;
+
+        ctx.strokeStyle = '#321908';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(postX, postY);
+        ctx.lineTo(postX, postY - handrailH);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(postX - 1, postY);
+        ctx.lineTo(postX - 1, postY - handrailH);
+        ctx.stroke();
+
+        // Okucie słupka
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(postX - 3.5, postY - handrailH, 7, 7);
+
+        // Linka poręczy do kolejnego segmentu
+        if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
+          const nextPostX = rampBlocks[rIdx + 1].stiltX;
+          const nextPostY = getApproachInclineY(nextPostX, isLeft);
+
+          ctx.strokeStyle = '#533718';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(postX, postY - handrailH + 3);
+          ctx.lineTo(nextPostX, nextPostY - handrailH + 3);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#2d1808';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(postX, postY - handrailH * 0.5);
+          ctx.lineTo(nextPostX, nextPostY - handrailH * 0.5);
+          ctx.stroke();
+        }
+      } else {
+        // ZNISZCZONY SEGMENT RAMPY (Poszarpana belka podestu ze zniszczoną listwą antypoślizgową)
+        const bcx = b.x + b.w / 2;
+        const bcy = b.y + b.h / 2;
+        drawSplinteredWoodRubble(ctx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
+
+        // Piana jeśli klocek wpadł do rzeki
+        if (b.y + b.h >= 1300) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.ellipse(bcx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
 
@@ -1919,20 +2072,52 @@ export function drawArena3Foreground(ctx, camera) {
     }
 
     // 2. Kładka i modularne deski pomostu wiszącego
-    drawOrganicCanopyDeck(ctx, plat, camL, camR);
-
-    // Oderwane klocki pomostu wpadające do wody
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
       const b = plat.blocks[bIdx];
-      if (b.intact) continue;
       if (b.x + b.w + 20 < camL || b.x - 20 > camR) continue;
 
+      ctx.save();
       const cx = b.x + b.w / 2;
       const cy = b.y + b.h / 2;
-      drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: Math.floor(Math.abs(cx * 3)) });
+      ctx.translate(cx, cy);
+      if (b.angle) {
+        ctx.rotate(b.angle);
+      }
+      const halfW = b.w / 2;
+      const halfH = b.h / 2;
+
+      if (b.intact) {
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        drawWeatheredTimberDeck(ctx, -halfW, -halfH, b.w, b.h, {
+          seed: Math.floor(Math.abs(cx * 3)),
+          damageRatio: dmgRatio,
+          plankCount: 2,
+          hasGouges: true,
+          hasMetal: true,
+          hasMoss: true,
+          hangingVines: true,
+          animTime
+        });
+
+        // Oplecione liny konopne mocujące deskę do zawiesia
+        ctx.strokeStyle = '#6a431a';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-halfW + 3, -halfH);
+        ctx.lineTo(-halfW + 3, halfH);
+        ctx.moveTo(halfW - 3, -halfH);
+        ctx.lineTo(halfW - 3, halfH);
+        ctx.stroke();
+
+        ctx.restore();
+      } else {
+        // Zniszczona deska kładki ze sterczącymi drzazgami
+        ctx.restore();
+        drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: Math.floor(Math.abs(cx * 3)) });
+      }
 
       // Piana wodna wokół klocka w wodzie
-      if (b.y + b.h >= 1300) {
+      if (!b.intact && b.y + b.h >= 1300) {
         ctx.save();
         ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
         ctx.lineWidth = 1.8;
@@ -2090,28 +2275,58 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.restore();
   }
 
-  // E. CIĄGŁY ORGANICZNY MOST WISZĄCY (Organic Suspension Rope Bridge)
-  drawOrganicSuspensionBridge(ctx, ARENA_3_BRIDGE_BLOCKS, camL, camR, animTime);
-
-  // Zniszczone klocki mostu wpadające do wody (Fizyka i odłamki)
+  // E. DREWNIANE MODUŁOWE BELKI MOSTU (24 klocki, Angry Birds Dynamic Destruction)
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
-    if (b.intact) continue;
     if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
 
-    const cx = b.x + b.w / 2;
-    const cy = b.y + b.h / 2;
-    drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
+    ctx.save();
+    if (b.intact) {
+      // 1. NIENARUSZONA BELKA MOSTU W ESTETYCE POSTARZAŁEJ I ZNISZCZONEJ DŻUNGLI
+      const currentY = b.y + (b.sag || 0);
+      const dmgRatio = 1 - (b.hp / b.maxHp);
+      drawWeatheredTimberDeck(ctx, b.x, currentY, b.w, b.h, {
+        seed: i * 23,
+        damageRatio: dmgRatio,
+        plankCount: 2,
+        hasGouges: true,
+        hasMetal: true,
+        hasMoss: true,
+        isWet: (currentY + b.h >= 1290),
+        animTime
+      });
 
-    // Piana wodna i fale wokół unoszącego się klocka w rzece
-    if (b.y + b.h >= 1300) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.ellipse(cx, 1306, b.w * 0.75, 4.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      // Stalowe jarzmo i obejma wieszaka linowego
+      if (b.cableAttached) {
+        const hx = b.origX + b.w / 2;
+        ctx.fillStyle = '#222d3d';
+        ctx.fillRect(hx - 3, currentY - 2, 6, 6);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.0;
+        ctx.strokeRect(hx - 3, currentY - 2, 6, 6);
+        // Śruba zacisku
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(hx - 1, currentY, 2, 2);
+      }
+
       ctx.restore();
+    } else {
+      // 2. ODERWANY / ZAWALONY KLOCEK FIZYCZNY (Wyszczerbiona poszarpana belka ze zwęgleniem)
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      ctx.restore();
+      drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
+
+      // Piana wodna i fale wokół unoszącego się klocka w rzece
+      if (b.y + b.h >= 1300) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.ellipse(cx, 1306, b.w * 0.75, 4.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 
