@@ -34,7 +34,10 @@ import {
   drawWeatheredTimberDeck,
   drawWeatheredTimberPost,
   drawWeatheredStoneMasonry,
-  drawWeatheredBalustrade
+  drawWeatheredBalustrade,
+  getCanopyBranchAnchorY,
+  drawAncientCanopyBranches,
+  drawSniperRockSpire
 } from './weatheredAssets.js';
 
 function drawGroundwaterPool(ctx, seg) {
@@ -1366,9 +1369,14 @@ export function drawArena3Foreground(ctx, camera) {
 
   // -----------------------------------------------------------------------
   // 5. GŁÓWNE PLATFORMY SNAJPERSKIE (X: 600-1000 ORAZ X: 3400-3800, Y: 800)
-  // Zniszczalne modułowe płyty skalne dolomitowe porośnięte dżunglą
+  // Ostańce skalne i zniszczalne modułowe płyty dolomitowe porośnięte dżunglą
   // -----------------------------------------------------------------------
   function drawSniperSlabs() {
+    // A. Potężne ostańce skalne (basalt rock spires) schodzące od półek snajperskich do gruntu Y: 1200
+    drawSniperRockSpire(ctx, true, camL, camR, ARENA_3_SNIPER_SLABS);
+    drawSniperRockSpire(ctx, false, camL, camR, ARENA_3_SNIPER_SLABS);
+
+    // B. Modułowe płyty skalne na koronie ostańca
     for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
       const slab = ARENA_3_SNIPER_SLABS[i];
       if (slab.x + slab.w + 50 < camL || slab.x - 50 > camR) continue;
@@ -1997,13 +2005,24 @@ export function drawArena3Foreground(ctx, camera) {
       }
     }
 
-    // Lewa lina nośna
+    const branchAnchorLY = getCanopyBranchAnchorY(anchorLX);
+    const branchAnchorRY = getCanopyBranchAnchorY(anchorRX);
+
+    // Lewa lina nośna zakotwiczona w potężnym konarze baldachimu dżungli
     if (plat.ropeLeft.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(anchorLX, 0);
+      ctx.moveTo(anchorLX, branchAnchorLY);
       ctx.lineTo(attachLX, attachLY);
+      ctx.stroke();
+
+      // Refleks splotu liny
+      ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(anchorLX - 0.8, branchAnchorLY);
+      ctx.lineTo(attachLX - 0.8, attachLY);
       ctx.stroke();
 
       // Nacięcia / postrzępienia jeśli lina jest uszkodzona
@@ -2013,35 +2032,43 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.strokeRect(attachLX - 3, attachLY - 25, 6, 12);
       }
     } else {
-      // Zerwana lina powiewająca na wietrze z baldachimu z rozplecionymi włóknami konopnymi
+      // Zerwana lina powiewająca na wietrze z konara z rozplecionymi włóknami konopnymi
       const vSway = Math.sin(animTime * 3.0 + px * 0.05) * 8;
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.moveTo(anchorLX, 0);
-      ctx.quadraticCurveTo(anchorLX + vSway * 0.5, 45, anchorLX + vSway, 85);
+      ctx.moveTo(anchorLX, branchAnchorLY);
+      ctx.quadraticCurveTo(anchorLX + vSway * 0.5, branchAnchorLY + 25, anchorLX + vSway, branchAnchorLY + 55);
       ctx.stroke();
 
       // Rozplecione włókna konopne (frayed rope end)
       ctx.strokeStyle = '#92400e';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(anchorLX + vSway, 85);
-      ctx.lineTo(anchorLX + vSway - 5, 96);
-      ctx.moveTo(anchorLX + vSway, 85);
-      ctx.lineTo(anchorLX + vSway, 98);
-      ctx.moveTo(anchorLX + vSway, 85);
-      ctx.lineTo(anchorLX + vSway + 6, 95);
+      ctx.moveTo(anchorLX + vSway, branchAnchorLY + 55);
+      ctx.lineTo(anchorLX + vSway - 5, branchAnchorLY + 66);
+      ctx.moveTo(anchorLX + vSway, branchAnchorLY + 55);
+      ctx.lineTo(anchorLX + vSway, branchAnchorLY + 68);
+      ctx.moveTo(anchorLX + vSway, branchAnchorLY + 55);
+      ctx.lineTo(anchorLX + vSway + 6, branchAnchorLY + 65);
       ctx.stroke();
     }
 
-    // Prawa lina nośna
+    // Prawa lina nośna zakotwiczona w potężnym konarze baldachimu dżungli
     if (plat.ropeRight.intact) {
       ctx.strokeStyle = '#4e3316';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(anchorRX, 0);
+      ctx.moveTo(anchorRX, branchAnchorRY);
       ctx.lineTo(attachRX, attachRY);
+      ctx.stroke();
+
+      // Refleks splotu liny
+      ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(anchorRX - 0.8, branchAnchorRY);
+      ctx.lineTo(attachRX - 0.8, attachRY);
       ctx.stroke();
 
       if (plat.ropeRight.hp < plat.ropeRight.maxHp) {
@@ -2054,20 +2081,20 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.strokeStyle = '#3a200a';
       ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.moveTo(anchorRX, 0);
-      ctx.quadraticCurveTo(anchorRX + vSway * 0.5, 45, anchorRX + vSway, 85);
+      ctx.moveTo(anchorRX, branchAnchorRY);
+      ctx.quadraticCurveTo(anchorRX + vSway * 0.5, branchAnchorRY + 25, anchorRX + vSway, branchAnchorRY + 55);
       ctx.stroke();
 
       // Rozplecione włókna konopne
       ctx.strokeStyle = '#92400e';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(anchorRX + vSway, 85);
-      ctx.lineTo(anchorRX + vSway - 5, 96);
-      ctx.moveTo(anchorRX + vSway, 85);
-      ctx.lineTo(anchorRX + vSway, 98);
-      ctx.moveTo(anchorRX + vSway, 85);
-      ctx.lineTo(anchorRX + vSway + 6, 95);
+      ctx.moveTo(anchorRX + vSway, branchAnchorRY + 55);
+      ctx.lineTo(anchorRX + vSway - 5, branchAnchorRY + 66);
+      ctx.moveTo(anchorRX + vSway, branchAnchorRY + 55);
+      ctx.lineTo(anchorRX + vSway, branchAnchorRY + 68);
+      ctx.moveTo(anchorRX + vSway, branchAnchorRY + 55);
+      ctx.lineTo(anchorRX + vSway + 6, branchAnchorRY + 65);
       ctx.stroke();
     }
 
@@ -2130,6 +2157,9 @@ export function drawArena3Foreground(ctx, camera) {
 
     ctx.restore();
   }
+
+  // 7. GIGANTYCZNE DRZEWA I KONARY BALDACHIMU DŻUNGLI (CANOPY TREE BOUGHS)
+  drawAncientCanopyBranches(ctx, camL, camR, animTime);
 
   // Renderowanie wszystkich 4 wiszących pomostów taktycznych
   for (let pIdx = 0; pIdx < ARENA_3_CANOPY_PLATFORMS.length; pIdx++) {
