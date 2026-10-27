@@ -605,16 +605,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Obsługa śmiertelnej próżni w Arenie 4 (Stacja Orbitalna Ares)
-  if (isA4Active && !p.isDead) {
-    const feetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
-    const deathY = 1250;
-    if (feetY >= deathY) {
+  if (isA4 && !p.isDead) {
+    const deathY = 1050; // co najmniej 300 px poniżej najniższej platformy
+    if (p.y > deathY) {
       killByHazard(p, "PRÓŻNIA KOSMICZNA");
     }
   }
 
   // Górny limit otwartego nieba w Arenie 3 (Y = 0)
-  if (isA3Active) {
+  if (isA3) {
     if (p.y < 0) {
       p.y = 0;
       if (p.vy < 0) p.vy = 0;
@@ -622,7 +621,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Wpadnięcie do śmiertelnej rzeki w Arenie 3 (utonięcie po wejściu głębiej do wody)
-  if (isA3Active && !p.isDead) {
+  if (isA3 && !p.isDead) {
     const pw = p.w || 24;
     const ph = p.h || 70;
     const pCenterX = p.x + pw * 0.5;
@@ -655,15 +654,17 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu (na Arenie 2 śmierć sterowana jest WYŁĄCZNIE przez kwas)
-  const deathLimitY = isA3Active ? 1420 : (isA2Active ? 2000 : (groundY + 160));
-  if (!isA2Active && !p.inMinecart && !p._inCart && p.y > deathLimitY && !p.isDead) {
-    p.hp = 0;
-    p.isDead = true;
-    p.killer = { name: 'UPADEK W PRZEPAŚĆ', isSelf: true, cause: 'FALL' };
-    p.respawnTimer = 75;
-    if (typeof triggerScreenShake === 'function') {
-      triggerScreenShake(12);
+  // Wpadnięcie do strefy śmierci poniżej spągu (Arena 4 sterowana przez próżnię, Arena 2 sterowana przez kwas)
+  if (!isA4 && !isA2 && !p.inMinecart && !p._inCart && !p.isDead) {
+    const deathLimitY = isA3 ? 1420 : (groundY + 160);
+    if (p.y > deathLimitY) {
+      p.hp = 0;
+      p.isDead = true;
+      p.killer = { name: 'UPADEK W PRZEPAŚĆ', isSelf: true, cause: 'FALL' };
+      p.respawnTimer = 75;
+      if (typeof triggerScreenShake === 'function') {
+        triggerScreenShake(12);
+      }
     }
   }
 }

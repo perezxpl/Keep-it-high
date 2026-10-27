@@ -359,9 +359,9 @@ export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800)
   // Domyślne współrzędne bazowe (lewa = Team Alpha / Cyan, prawa = Team Beta / Orange)
   let alphaBaseX, betaBaseX, spawnY;
   if (isA4) {
-    alphaBaseX = 560;
-    betaBaseX = 2160;
-    spawnY = 360;
+    alphaBaseX = 350;
+    betaBaseX = 1400;
+    spawnY = 500;
   } else if (isA2) {
     alphaBaseX = 350;
     betaBaseX = 3470;

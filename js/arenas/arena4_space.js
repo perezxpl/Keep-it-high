@@ -1,126 +1,125 @@
 // =========================================================================
-// ARENAS/ARENA4_SPACE.JS - STACJA ORBITALNA ARES (3200x1400 PX)
+// ARENAS/ARENA4_SPACE.JS - STACJA ORBITALNA ARES (2400x1400 PX)
 // Moduł Areny 4: Środowisko Niskiej Grawitacji, Śmiertelna Próżnia,
-// Zniszczalne Panele Słoneczne, Pionowe Repulsory Kinetyczne
-// Standard: Zero ctx.shadowBlur, Pre-rendered Offscreen Background, 60 FPS
+// Lita Konstrukcja Bojowa, Most Fotowoltaiczny, Pionowe Repulsory Kinetyczne
+// Standard: Zero ctx.shadowBlur, Zero Emotikonów, Pre-rendered Offscreen Background, 60 FPS
 // =========================================================================
 
 import { triggerScreenShake } from '../camera.js';
-import { spawnBloodSpurt, spawnLimbGib } from '../world/gore.js';
+import { spawnBloodSpurt } from '../world/gore.js';
 
 // =========================================================================
 // 1. STAŁE KONFIGURACYJNE I FIZYKA ARENY
 // =========================================================================
-export const ARENA_4_SPACE_CONFIG = {
+export const ARENA_SPACE = {
   id: 'arena-4',
   name: 'STACJA ORBITALNA ARES',
   codeName: 'ARES_ORBITAL_STATION',
-  mapWidth: 3200,
+  mapWidth: 2400,
   mapHeight: 1400,
-  centerX: 1600,
+  centerX: 1200,
+  mainDeckY: 560,
+  lowerDeckY: 740,
+  deathY: 1050, // Granica próżni: co najmniej 300 px poniżej najniższej platformy (740 + 310)
   gravityMultiplier: 0.72,
   jetpackDrainMultiplier: 0.60,
-  deathY: 1250,
 
-  // Geometria Modułu Centralnego (900 px x 350 px)
-  module: {
-    x: 1150,
-    y: 560,
-    w: 900,
-    h: 350,
-    roofY: 560,
-    catwalkY: 735,
-    hullFloorY: 910
-  },
-
-  // Ściany osłonowe (2 pionowe osłony taktyczne na dachu)
-  coverWalls: [
-    { id: 'ares_blastwall_west', x: 1360, y: 495, w: 24, h: 65 },
-    { id: 'ares_blastwall_east', x: 1816, y: 495, w: 24, h: 65 }
+  // Twarde punkty odrodzenia powiązane bezpośrednio z fizycznymi współrzędnymi powierzchni głównego pokładu
+  SPAWN_POINTS: [
+    { x: 350,  y: 560 - 60, facing: 1,  team: 'CYAN',   label: 'LEWE_SKRZYDLO' }, // Lewe skrzydło stacji
+    { x: 700,  y: 560 - 60, facing: 1,  team: 'CYAN',   label: 'CENTRUM_POKLADU' }, // Centrum głównego pokładu
+    { x: 1050, y: 560 - 60, facing: -1, team: 'ORANGE', label: 'PRAWE_PRZEJSCIE' }, // Prawe przejście techniczne
+    { x: 1400, y: 560 - 60, facing: -1, team: 'ORANGE', label: 'PRAWY_PYLON' }  // Prawy pylon przy panelach
   ],
 
-  // Pionowe Repulsory (Jump Pady - 60 px przy krawędziach modułu, vy = -16)
+  // Kompaktowe pionowe emitery grawitacyjne (vy = -16, zero rozmytych okręgów)
   repulsors: [
-    { id: 'ares_repulsor_west', x: 1080, y: 560, w: 60, h: 20, launchVy: -16 },
-    { id: 'ares_repulsor_east', x: 2060, y: 560, w: 60, h: 20, launchVy: -16 }
+    { id: 'ares_repulsor_west', x: 230, y: 560, w: 56, h: 18, launchVy: -16 },
+    { id: 'ares_repulsor_east', x: 1680, y: 560, w: 56, h: 18, launchVy: -16 }
   ],
 
-  // Skrzydła Paneli Słonecznych (lewe i prawe skrzydło: 3 segmenty po 120 px)
-  solarWings: {
-    y: 620,
-    h: 16,
-    cooldownDuration: 8.0,
-    outlineColor: '#38bdf8',
-    segmentsLeft: [
-      { id: 'solar_L1', x: 940, w: 120, y: 620, h: 16 },
-      { id: 'solar_L2', x: 790, w: 120, y: 620, h: 16 },
-      { id: 'solar_L3', x: 640, w: 120, y: 620, h: 16 }
-    ],
-    segmentsRight: [
-      { id: 'solar_R1', x: 2140, w: 120, y: 620, h: 16 },
-      { id: 'solar_R2', x: 2290, w: 120, y: 620, h: 16 },
-      { id: 'solar_R3', x: 2440, w: 120, y: 620, h: 16 }
-    ]
-  }
+  // Ściany osłonowe (2 pionowe osłony balistyczne na dachu)
+  coverWalls: [
+    { id: 'ares_blastwall_west', x: 500, y: 495, w: 24, h: 65 },
+    { id: 'ares_blastwall_east', x: 980, y: 495, w: 24, h: 65 }
+  ]
 };
+
+export const ARENA_4_SPACE_CONFIG = ARENA_SPACE;
+export const ARENA_4_SPACE_SPAWNS = ARENA_SPACE.SPAWN_POINTS;
 
 // =========================================================================
 // 2. STAN DYNAMICZNY ARENY
 // =========================================================================
 export const arenaSpaceState = {
   animTime: 0,
-  gravityMultiplier: ARENA_4_SPACE_CONFIG.gravityMultiplier,
-  jetpackDrainMultiplier: ARENA_4_SPACE_CONFIG.jetpackDrainMultiplier,
-  deathY: ARENA_4_SPACE_CONFIG.deathY,
-
-  // Dynamiczny stan zniszczenia/regeneracji paneli fotowoltaicznych
-  solarPanels: [
-    { id: 'solar_L1', x: 940, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null },
-    { id: 'solar_L2', x: 790, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null },
-    { id: 'solar_L3', x: 640, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null },
-    { id: 'solar_R1', x: 2140, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null },
-    { id: 'solar_R2', x: 2290, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null },
-    { id: 'solar_R3', x: 2440, y: 620, w: 120, h: 16, disabled: false, disabledTimer: 0, platformRef: null }
-  ],
-
-  // Cząsteczki energii repulsorów i wyładowań paneli fotowoltaicznych
-  repulsorWaves: [],
-  glitchParticles: []
+  gravityMultiplier: ARENA_SPACE.gravityMultiplier,
+  jetpackDrainMultiplier: ARENA_SPACE.jetpackDrainMultiplier,
+  deathY: ARENA_SPACE.deathY
 };
 
 // =========================================================================
-// 3. SPONSOROWANE PUNKTY ODRODZENIA (SPAWN POINTS)
-// =========================================================================
-export const ARENA_4_SPACE_SPAWNS = [
-  // Cyan Team (West Side)
-  { x: 1240, y: 490, facing: 1, team: 'CYAN', label: 'DACH_ZACHOD' },
-  // Orange Team (East Side)
-  { x: 1960, y: 490, facing: -1, team: 'ORANGE', label: 'DACH_WSCHOD' },
-  // Korytarz wewnętrzny (West / East)
-  { x: 1280, y: 665, facing: 1, team: 'CYAN', label: 'KORYTARZ_ZACHOD' },
-  { x: 1920, y: 665, facing: -1, team: 'ORANGE', label: 'KORYTARZ_WSCHOD' },
-  // Skrzydła paneli słonecznych (West / East)
-  { x: 990, y: 550, facing: 1, team: 'CYAN', label: 'PANEL_LEWY' },
-  { x: 2210, y: 550, facing: -1, team: 'ORANGE', label: 'PANEL_PRAWY' },
-  // Centralny pomost obserwacyjny
-  { x: 1600, y: 490, facing: 1, team: 'CYAN', label: 'POMOST_CENTRUM' }
-];
-
-// =========================================================================
-// 4. GENEROWANIE STATYCZNYCH I DYNAMICZNYCH PLATFORM
+// 3. GENEROWANIE STATYCZNYCH I DYNAMICZNYCH PLATFORM
 // =========================================================================
 export function createSpaceStationPlatforms() {
-  const m = ARENA_4_SPACE_CONFIG.module;
   const plats = [];
+  const deckY = ARENA_SPACE.mainDeckY; // 560
+  const lowerY = ARENA_SPACE.lowerDeckY; // 740
 
-  // --- A. CENTRALNY MODUŁ BOJOWY (900 px x 350 px) ---
-  // Główny dach modułu (lewy sektor i prawy sektor twardy, środek kładka z drop-through)
+  // --- A. GŁÓWNY POKŁAD BOJOWY (Y = 560) ---
+  // 1. Lewe skrzydło stacji (solidna lita płyta grafitowa)
   plats.push({
-    id: 'ares_roof_west',
+    id: 'ares_deck_west',
     type: 'hull',
-    x: m.x,
-    w: 310,
-    y: m.roofY,
+    x: 200,
+    w: 440,
+    y: deckY,
+    h: 28,
+    thickness: 28,
+    solid: true,
+    isHull: true,
+    dropThrough: false,
+    isDropThrough: false
+  });
+
+  // 2. Centralny właz techniczny (catwalk z drop-through na dolny pokład)
+  plats.push({
+    id: 'ares_deck_hatch',
+    type: 'catwalk',
+    x: 640,
+    w: 220,
+    y: deckY,
+    h: 16,
+    thickness: 16,
+    solid: true,
+    isCatwalk: true,
+    isOneWay: true,
+    dropThrough: true,
+    isDropThrough: true
+  });
+
+  // 3. Wschodnia sekcja głównego pokładu (solidna lita płyta grafitowa)
+  plats.push({
+    id: 'ares_deck_east',
+    type: 'hull',
+    x: 860,
+    w: 340,
+    y: deckY,
+    h: 28,
+    thickness: 28,
+    solid: true,
+    isHull: true,
+    dropThrough: false,
+    isDropThrough: false
+  });
+
+  // --- B. MOST FOTOWOLTAICZNY (PRAWA STRONA: JEDNOLITY CIĄG KŁADKI SERWISOWEJ) ---
+  plats.push({
+    id: 'ares_photovoltaic_catwalk',
+    type: 'hull',
+    x: 1200,
+    w: 560,
+    y: deckY,
     h: 24,
     thickness: 24,
     solid: true,
@@ -129,68 +128,23 @@ export function createSpaceStationPlatforms() {
     isDropThrough: false
   });
 
+  // --- C. DOLNY POKŁAD KADŁUBA (Y = 740, SOLIDNA PŁYTA TECHNICZNA) ---
   plats.push({
-    id: 'ares_roof_hatch',
-    type: 'catwalk',
-    x: m.x + 310,
-    w: 280,
-    y: m.roofY,
-    h: 14,
-    thickness: 14,
-    solid: true,
-    isCatwalk: true,
-    isOneWay: true,
-    dropThrough: true,
-    isDropThrough: true
-  });
-
-  plats.push({
-    id: 'ares_roof_east',
+    id: 'ares_lower_deck',
     type: 'hull',
-    x: m.x + 590,
-    w: 310,
-    y: m.roofY,
-    h: 24,
-    thickness: 24,
+    x: 280,
+    w: 860,
+    y: lowerY,
+    h: 30,
+    thickness: 30,
     solid: true,
     isHull: true,
     dropThrough: false,
     isDropThrough: false
   });
 
-  // Wewnętrzny korytarz techniczny z kładką roboczą
-  plats.push({
-    id: 'ares_corridor_catwalk',
-    type: 'catwalk',
-    x: m.x + 50,
-    w: m.w - 100,
-    y: m.catwalkY,
-    h: 18,
-    thickness: 18,
-    solid: true,
-    isCatwalk: true,
-    isOneWay: true,
-    dropThrough: true,
-    isDropThrough: true
-  });
-
-  // Dolny pokład kadłuba (poszycie wewnętrzne)
-  plats.push({
-    id: 'ares_hull_floor',
-    type: 'hull',
-    x: m.x,
-    w: m.w,
-    y: m.hullFloorY,
-    h: 26,
-    thickness: 26,
-    solid: true,
-    isHull: true,
-    dropThrough: false,
-    isDropThrough: false
-  });
-
-  // Dwie pionowe ściany osłonowe na dachu
-  for (const w of ARENA_4_SPACE_CONFIG.coverWalls) {
+  // --- D. DWOJE ŚCIAN OSŁONOWYCH NA GÓRNYM POKŁADZIE ---
+  for (const w of ARENA_SPACE.coverWalls) {
     plats.push({
       id: w.id,
       type: 'blast_wall',
@@ -205,8 +159,8 @@ export function createSpaceStationPlatforms() {
     });
   }
 
-  // --- B. PIONOWE REPULSORY KINETYCZNE (JUMP PADY, vy = -16) ---
-  for (const r of ARENA_4_SPACE_CONFIG.repulsors) {
+  // --- E. KOMPAKTOWE PIONOWE EMITERY GRAWITACYJNE (vy = -16) ---
+  for (const r of ARENA_SPACE.repulsors) {
     plats.push({
       id: r.id,
       type: 'jump_pad',
@@ -221,30 +175,13 @@ export function createSpaceStationPlatforms() {
     });
   }
 
-  // --- C. SKRZYDŁA PANELI SŁONECZNYCH (6 segmentów po 120 px) ---
-  for (const p of arenaSpaceState.solarPanels) {
-    const plat = {
-      id: p.id,
-      type: 'solar_panel',
-      x: p.x,
-      w: p.w,
-      y: p.y,
-      h: p.h,
-      thickness: p.h,
-      solid: !p.disabled,
-      isSolarPanel: true
-    };
-    p.platformRef = plat;
-    plats.push(plat);
-  }
-
   return plats;
 }
 
 export const ARENA_4_PLATFORMS = createSpaceStationPlatforms();
 
 // =========================================================================
-// 5. FUNKCJA ŚMIERTELNEJ PRÓŻNI: killByHazard(victim, "PRÓŻNIA KOSMICZNA")
+// 4. FUNKCJA ŚMIERTELNEJ PRÓŻNI: killByHazard(victim, "PRÓŻNIA KOSMICZNA")
 // =========================================================================
 export function killByHazard(victim, hazardName = "PRÓŻNIA KOSMICZNA") {
   if (!victim || victim.isDead) return;
@@ -260,51 +197,18 @@ export function killByHazard(victim, hazardName = "PRÓŻNIA KOSMICZNA") {
   victim.dropThroughPlatform = null;
 
   triggerScreenShake(4.5);
-  // Efekt ekspozycji na próżnię: rozproszenie mikrokropelek krwi
   spawnBloodSpurt(victim.x, victim.y + 30, 0, -1, 16, 2.0);
 }
 
 // =========================================================================
-// 6. OBSŁUGA EKSPLOZJI: NISZCZENIE PANELI SŁONECZNYCH (8 SEKUND COOLDOWN)
+// 5. OBSŁUGA EKSPLOZJI (KOMPATYBILNOŚĆ Z POTOKIEM BRONI)
 // =========================================================================
 export function handleSpaceExplosion(expX, expY, radius) {
-  let hitAny = false;
-  const effectiveRadius = Math.max(radius || 100, 110);
-
-  for (const seg of arenaSpaceState.solarPanels) {
-    const segCenterX = seg.x + seg.w * 0.5;
-    const segCenterY = seg.y + seg.h * 0.5;
-    const d = Math.hypot(segCenterX - expX, segCenterY - expY);
-
-    if (d <= effectiveRadius + seg.w * 0.45) {
-      seg.disabled = true;
-      seg.disabledTimer = ARENA_4_SPACE_CONFIG.solarWings.cooldownDuration; // 8.0s
-      if (seg.platformRef) {
-        seg.platformRef.solid = false;
-      }
-      hitAny = true;
-
-      // Cyfrowe iskry wyłączenia i rozpadu osłony segmentu
-      for (let i = 0; i < 14; i++) {
-        arenaSpaceState.glitchParticles.push({
-          x: seg.x + Math.random() * seg.w,
-          y: seg.y + Math.random() * seg.h,
-          vx: (Math.random() - 0.5) * 160,
-          vy: -Math.random() * 140 - 20,
-          life: 0.8 + Math.random() * 0.6,
-          maxLife: 1.4,
-          color: Math.random() > 0.4 ? '#38bdf8' : '#ffffff',
-          size: 2.0 + Math.random() * 2.5
-        });
-      }
-    }
-  }
-
-  return hitAny;
+  return false;
 }
 
 // =========================================================================
-// 7. PRE-RENDEROWANE TŁO (OFFSCREEN CANVAS BUFFER, ZERO SHADOWBLUR)
+// 6. PRE-RENDEROWANE TŁO (OFFSCREEN CANVAS BUFFER, ZERO SHADOWBLUR)
 // =========================================================================
 let bgBufferCanvas = null;
 
@@ -332,33 +236,33 @@ function renderOffscreenSpaceBackground(w, h) {
   bgCtx.fillRect(0, 0, w, h);
 
   // 2. Kosmiczne mgławice (Translucent Interstellar Nebulae - bez shadowBlur)
-  // 2A. Błękitno-turkusowa mgławica gazowa (Sektor Zachodni)
-  const nebGrad1 = bgCtx.createRadialGradient(920, 260, 40, 920, 260, 780);
-  nebGrad1.addColorStop(0, 'rgba(14, 165, 233, 0.30)');
-  nebGrad1.addColorStop(0.35, 'rgba(56, 189, 248, 0.16)');
-  nebGrad1.addColorStop(0.7, 'rgba(14, 116, 144, 0.07)');
+  // Sektor Zachodni (błękitno-turkusowa)
+  const nebGrad1 = bgCtx.createRadialGradient(800, 260, 40, 800, 260, 780);
+  nebGrad1.addColorStop(0, 'rgba(14, 165, 233, 0.28)');
+  nebGrad1.addColorStop(0.35, 'rgba(56, 189, 248, 0.14)');
+  nebGrad1.addColorStop(0.7, 'rgba(14, 116, 144, 0.05)');
   nebGrad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
   bgCtx.fillStyle = nebGrad1;
   bgCtx.fillRect(0, 0, w, h);
 
-  // 2B. Fioletowo-purpurowa mgławica gwiezdna (Sektor Wschodni)
-  const nebGrad2 = bgCtx.createRadialGradient(2580, 230, 50, 2580, 230, 720);
-  nebGrad2.addColorStop(0, 'rgba(139, 92, 246, 0.26)');
-  nebGrad2.addColorStop(0.4, 'rgba(99, 102, 241, 0.14)');
-  nebGrad2.addColorStop(0.75, 'rgba(79, 70, 229, 0.05)');
+  // Sektor Wschodni (fioletowo-purpurowa)
+  const nebGrad2 = bgCtx.createRadialGradient(2400, 230, 50, 2400, 230, 720);
+  nebGrad2.addColorStop(0, 'rgba(139, 92, 246, 0.22)');
+  nebGrad2.addColorStop(0.4, 'rgba(99, 102, 241, 0.12)');
+  nebGrad2.addColorStop(0.75, 'rgba(79, 70, 229, 0.04)');
   nebGrad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
   bgCtx.fillStyle = nebGrad2;
   bgCtx.fillRect(0, 0, w, h);
 
-  // 2C. Centralna poświata jądra galaktycznego
-  const nebGrad3 = bgCtx.createRadialGradient(1750, 190, 30, 1750, 190, 520);
-  nebGrad3.addColorStop(0, 'rgba(56, 189, 248, 0.18)');
-  nebGrad3.addColorStop(0.5, 'rgba(125, 211, 252, 0.06)');
+  // Centralna poświata
+  const nebGrad3 = bgCtx.createRadialGradient(1600, 190, 30, 1600, 190, 520);
+  nebGrad3.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
+  nebGrad3.addColorStop(0.5, 'rgba(125, 211, 252, 0.05)');
   nebGrad3.addColorStop(1, 'rgba(0, 0, 0, 0)');
   bgCtx.fillStyle = nebGrad3;
   bgCtx.fillRect(0, 0, w, h);
 
-  // 3. Deterministyczne pole gwiezdne (Multi-magnitude Starfield - 580 gwiazd)
+  // 3. Deterministyczne pole gwiezdne (580 gwiazd o różnej magnitudo)
   let seed = 42891;
   function lcgRandom() {
     seed = (seed * 1664525 + 1013904223) % 4294967296;
@@ -389,7 +293,7 @@ function renderOffscreenSpaceBackground(w, h) {
     bgCtx.arc(starX, starY, r, 0, Math.PI * 2);
     bgCtx.fill();
 
-    // 4-ramienne subtelne promienie dyfrakcyjne dla 28 najjaśniejszych gwiazd
+    // 4-ramienne promienie dyfrakcyjne dla najjaśniejszych gwiazd
     if (starType > 0.95) {
       bgCtx.strokeStyle = `rgba(255, 255, 255, ${(alpha * 0.45).toFixed(2)})`;
       bgCtx.lineWidth = 1;
@@ -409,7 +313,6 @@ function renderOffscreenSpaceBackground(w, h) {
   const relayY = 175;
   bgCtx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
   bgCtx.lineWidth = 1.5;
-  // Główny maszt i pierścień
   bgCtx.beginPath();
   bgCtx.moveTo(relayX - 50, relayY);
   bgCtx.lineTo(relayX + 50, relayY);
@@ -437,13 +340,13 @@ function renderOffscreenSpaceBackground(w, h) {
   bgCtx.fill();
   bgCtx.restore();
 
-  // 5. Majestatyczna krzywizna Ziemi (Luminous Earth Horizon - widoczna na każdym ekranie)
+  // 5. Majestatyczna krzywizna Ziemi (Luminous Earth Horizon - bez wielkich zielonych bąbli)
   bgCtx.save();
   const earthCenterX = w * 0.50;
   const earthRadius = 1750;
-  const earthCenterY = 2200; // Apex na Y = 450 (w tle stacji)
+  const earthCenterY = 2200; // Apex horyzontu na Y = 450 (w tle stacji)
 
-  // A. Płynna aureola egzosfery i atmosfery (warstwy gradientowe bez shadowBlur)
+  // A. Płynna aureola egzosfery i atmosfery
   const atmoGrad = bgCtx.createRadialGradient(
     earthCenterX, earthCenterY, earthRadius - 20,
     earthCenterX, earthCenterY, earthRadius + 140
@@ -473,57 +376,29 @@ function renderOffscreenSpaceBackground(w, h) {
   bgCtx.arc(earthCenterX, earthCenterY, earthRadius, 0, Math.PI * 2);
   bgCtx.fill();
 
-  // C. Zarysy lądów i kontynentów (biomy leśno-górskie z płytkim szelfem)
-  // Szelf przybrzeżny (jasny turkus)
-  bgCtx.fillStyle = 'rgba(14, 165, 233, 0.35)';
-  bgCtx.beginPath();
-  bgCtx.arc(earthCenterX - 380, earthCenterY - earthRadius + 110, 190, 0, Math.PI * 2);
-  bgCtx.arc(earthCenterX + 320, earthCenterY - earthRadius + 130, 240, 0, Math.PI * 2);
-  bgCtx.fill();
-
-  // Kontynenty
-  bgCtx.fillStyle = 'rgba(22, 101, 52, 0.50)';
-  bgCtx.beginPath();
-  bgCtx.arc(earthCenterX - 380, earthCenterY - earthRadius + 120, 170, 0, Math.PI * 2);
-  bgCtx.arc(earthCenterX + 320, earthCenterY - earthRadius + 140, 220, 0, Math.PI * 2);
-  bgCtx.fill();
-
-  // Wewnętrzne pasma górskie
-  bgCtx.fillStyle = 'rgba(63, 98, 18, 0.40)';
-  bgCtx.beginPath();
-  bgCtx.arc(earthCenterX - 350, earthCenterY - earthRadius + 140, 110, 0, Math.PI * 2);
-  bgCtx.arc(earthCenterX + 350, earthCenterY - earthRadius + 160, 140, 0, Math.PI * 2);
-  bgCtx.fill();
-
-  // D. Złote skupiska świateł miast po nocnej stronie planety
+  // C. Złote skupiska świateł miast po nocnej stronie planety
   bgCtx.fillStyle = 'rgba(254, 240, 138, 0.85)';
   for (let c = 0; c < 65; c++) {
-    const cx = earthCenterX - 550 + lcgRandom() * 1100;
+    const cx = earthCenterX - 650 + lcgRandom() * 1300;
     const cy = earthCenterY - earthRadius + 45 + lcgRandom() * 160;
     const sz = 1.5 + (c % 3) * 0.7;
     bgCtx.fillRect(cx, cy, sz, sz);
   }
 
-  // E. Pasma chmur i formacji cyklonicznych w atmosferze
+  // D. Pasma chmur i formacji cyklonicznych wzdłuż krzywizny planety
   bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-  bgCtx.lineWidth = 18;
+  bgCtx.lineWidth = 16;
   bgCtx.beginPath();
   bgCtx.arc(earthCenterX, earthCenterY, earthRadius - 28, Math.PI * 1.24, Math.PI * 1.76);
   bgCtx.stroke();
 
-  bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  bgCtx.lineWidth = 12;
+  bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  bgCtx.lineWidth = 10;
   bgCtx.beginPath();
   bgCtx.arc(earthCenterX, earthCenterY, earthRadius - 65, Math.PI * 1.27, Math.PI * 1.73);
   bgCtx.stroke();
 
-  bgCtx.strokeStyle = 'rgba(240, 249, 255, 0.18)';
-  bgCtx.lineWidth = 8;
-  bgCtx.beginPath();
-  bgCtx.arc(earthCenterX, earthCenterY, earthRadius - 105, Math.PI * 1.30, Math.PI * 1.70);
-  bgCtx.stroke();
-
-  // F. Krawędź ozonowa (Luminous Cyan Ozone Rim)
+  // E. Krawędź ozonowa (Luminous Cyan Ozone Rim)
   bgCtx.strokeStyle = 'rgba(125, 211, 252, 0.95)';
   bgCtx.lineWidth = 3.5;
   bgCtx.beginPath();
@@ -540,7 +415,7 @@ export function initSpaceStationBackground(w = 3600, h = 2000) {
 }
 
 // =========================================================================
-// 8. RENDEROWANIE TŁA I ELEMENTÓW DALEKIEJ STACJI (ONE DRAWIMAGE CALL)
+// 7. RENDEROWANIE TŁA KOSMICZNEGO (JEDNO DRAWIMAGE, 60 FPS)
 // =========================================================================
 export function drawArena4SpaceBackground(ctx, camera) {
   if (!bgBufferCanvas) {
@@ -551,277 +426,344 @@ export function drawArena4SpaceBackground(ctx, camera) {
   const camX = camera?.x || 0;
   const camY = camera?.y || 0;
 
-  // Paralaksa głębokiego kosmosu
+  // Subtelna paralaksa głębokiego kosmosu
   const bgOffsetX = -camX * 0.10;
   const bgOffsetY = -camY * 0.08;
 
-  // Jedna operacja drawImage dla całego tła kosmicznego (60 FPS)
   ctx.drawImage(bgBufferCanvas, bgOffsetX, bgOffsetY);
 }
 
 // =========================================================================
-// 9. RENDEROWANIE FOREGROUND (MODUŁ BOJOWY, PANELE, REPULSORY)
+// 8. RENDEROWANIE FOREGROUND (LITA PLATFORMA BOJOWA, MOST FOTOWOLTAICZNY, REPULSORY)
 // =========================================================================
 export function drawArena4SpaceForeground(ctx, camera) {
-  const m = ARENA_4_SPACE_CONFIG.module;
   const t = arenaSpaceState.animTime;
-  const wingY = ARENA_4_SPACE_CONFIG.solarWings.y; // 620
-  const panelBottom = wingY + ARENA_4_SPACE_CONFIG.solarWings.h; // 636
+  const deckY = ARENA_SPACE.mainDeckY; // 560
+  const lowerY = ARENA_SPACE.lowerDeckY; // 740
 
   ctx.save();
 
-  // --- A. GŁÓWNA OŚ NOŚNA I PODWIESZANA KRATOWNICA SKRZYDEŁ PANELI ---
-  // 1. Centralny dźwigar tytanowy w osi paneli (Y = 628, brak wystających elementów w górę!)
+  // =======================================================================
+  // 1. STRUKTURALNA ŚCIANA / BULKHEAD POMIĘDZY POKŁADAMI (X: 200..1200, Y: 560..740)
+  // =======================================================================
+  // Jednolite, wypełnione tło kompozytowe kadłuba stacji
+  ctx.fillStyle = '#0a101d';
+  ctx.fillRect(200, deckY, 1000, lowerY - deckY + 30);
+
+  // Pionowe wręgi i żebra wzmacniające kadłuba
+  ctx.fillStyle = '#162235';
+  for (let rx = 240; rx < 1180; rx += 70) {
+    ctx.fillRect(rx, deckY + 14, 10, lowerY - deckY - 14);
+  }
+
+  // Poziome magistrale kablowe i przewody ciśnieniowe
+  ctx.strokeStyle = '#0284c7';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(220, deckY + 50);
+  ctx.lineTo(1180, deckY + 50);
+  ctx.stroke();
+
   ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  // Lewe ramię osiowe
-  ctx.moveTo(m.x, wingY + 8);
-  ctx.lineTo(600, wingY + 8);
-  // Prawe ramię osiowe
-  ctx.moveTo(m.x + m.w, wingY + 8);
-  ctx.lineTo(2600, wingY + 8);
+  ctx.moveTo(220, deckY + 60);
+  ctx.lineTo(1180, deckY + 60);
   ctx.stroke();
 
-  // Rdzeń dźwigara (metaliczny odblask)
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(m.x, wingY + 8);
-  ctx.lineTo(600, wingY + 8);
-  ctx.moveTo(m.x + m.w, wingY + 8);
-  ctx.lineTo(2600, wingY + 8);
-  ctx.stroke();
-
-  // 2. Węzły obrotowe przy kadłubie (Gimbal Actuators ze złotą folią termiczną)
-  ctx.fillStyle = '#d97706'; // Złota folia kaptonowa
-  ctx.fillRect(m.x - 14, wingY - 4, 14, 24);
-  ctx.fillRect(m.x + m.w, wingY - 4, 14, 24);
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(m.x - 14, wingY - 4, 14, 24);
-  ctx.strokeRect(m.x + m.w, wingY - 4, 14, 24);
-
-  // Pierścienie łożysk obrotu paneli
+  // Oznaczenia wojskowe i techniczne na grodzi
   ctx.fillStyle = '#475569';
-  ctx.fillRect(m.x - 6, wingY - 7, 6, 30);
-  ctx.fillRect(m.x + m.w, wingY - 7, 6, 30);
-
-  // 3. Dolna kratownica podwieszana (POD panelami, Y = 636 do 656)
-  const trussY = panelBottom + 18; // 654
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(630, trussY);
-  ctx.lineTo(m.x - 20, trussY);
-  ctx.moveTo(m.x + m.w + 20, trussY);
-  ctx.lineTo(2570, trussY);
-  ctx.stroke();
-
-  // Zastrzały trójkątne podtrzymujące panele od spodu
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  for (let x = 640; x < m.x - 40; x += 60) {
-    ctx.moveTo(x, panelBottom);
-    ctx.lineTo(x + 30, trussY);
-    ctx.lineTo(x + 60, panelBottom);
-  }
-  for (let x = m.x + m.w + 40; x < 2560; x += 60) {
-    ctx.moveTo(x, panelBottom);
-    ctx.lineTo(x + 30, trussY);
-    ctx.lineTo(x + 60, panelBottom);
-  }
-  ctx.stroke();
-
-  // Końcówki skrzydeł (Wingtip navigation caps z diodami pozycyjnymi)
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(600, wingY - 2, 20, 20);
-  ctx.fillRect(2580, wingY - 2, 20, 20);
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(600, wingY - 2, 20, 20);
-  ctx.strokeRect(2580, wingY - 2, 20, 20);
-
-  // Lewa dioda czerwona (Port), prawa zielona (Starboard)
-  ctx.fillStyle = '#ef4444';
-  ctx.fillRect(602, wingY + 6, 4, 4);
-  ctx.fillStyle = '#22c55e';
-  ctx.fillRect(2594, wingY + 6, 4, 4);
-
-  // --- B. CENTRALNY MODUŁ BOJOWY ARES (KORPUS, WNĘTRZE, POSZYCIE) ---
-  // 1. Wewnętrzne tło korytarza (głęboki kompozyt próżniowy)
-  ctx.fillStyle = '#070c18';
-  ctx.fillRect(m.x, m.roofY, m.w, m.h);
-
-  // Wzmocnione ożebrowanie kadłuba
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 4;
-  for (let gx = m.x + 90; gx < m.x + m.w; gx += 100) {
-    ctx.beginPath();
-    ctx.moveTo(gx, m.roofY);
-    ctx.lineTo(gx, m.roofY + m.h);
-    ctx.stroke();
-
-    // Wewnętrzne nity i łączniki grodzi
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(gx - 4, m.roofY + 40, 8, 4);
-    ctx.fillRect(gx - 4, m.catwalkY - 12, 8, 4);
-    ctx.fillRect(gx - 4, m.hullFloorY - 12, 8, 4);
-  }
-
-  // Wewnętrzne magistrale kablowe i przewody zasilania
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(m.x + 30, m.roofY + 36);
-  ctx.lineTo(m.x + m.w - 30, m.roofY + 36);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(m.x + 30, m.roofY + 44);
-  ctx.lineTo(m.x + m.w - 30, m.roofY + 44);
-  ctx.stroke();
-
-  // Śluzy ciśnieniowe na skrajach modułu (Docking Airlocks)
-  // Lewa śluza
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(m.x, m.catwalkY - 60, 22, 60);
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(m.x, m.catwalkY - 60, 22, 60);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(m.x + 6, m.catwalkY - 45, 10, 8); // Status terminal
-
-  // Prawa śluza
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(m.x + m.w - 22, m.catwalkY - 60, 22, 60);
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(m.x + m.w - 22, m.catwalkY - 60, 22, 60);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(m.x + m.w - 16, m.catwalkY - 45, 10, 8); // Status terminal
-
-  // 2. Kładka techniczna w korytarzu (m.catwalkY = 735, drop-through)
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(m.x + 50, m.catwalkY, m.w - 100, 18);
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(m.x + 50, m.catwalkY, m.w - 100, 18);
-
-  // Ażurowa siatka antypoślizgowa pomostu
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
-  ctx.lineWidth = 1;
-  for (let kx = m.x + 56; kx < m.x + m.w - 56; kx += 14) {
-    ctx.beginPath();
-    ctx.moveTo(kx, m.catwalkY);
-    ctx.lineTo(kx, m.catwalkY + 18);
-    ctx.stroke();
-  }
-
-  // Żółte listwy ostrzegawcze krawędzi kładki
-  ctx.fillStyle = '#eab308';
-  ctx.fillRect(m.x + 50, m.catwalkY + 14, m.w - 100, 3);
-
-  // 3. Dolny pokład kadłuba (poszycie wewnętrzne, solidne - bez drop-through!)
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(m.x, m.hullFloorY, m.w, 26);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(m.x, m.hullFloorY, m.w, 26);
-
-  // Wojskowe oznaczenia na kadłubie
-  ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 11px monospace';
-  ctx.fillText('ARES-04 // PRIMARY HABITAT MODULE // SECTOR ORBITAL', m.x + 30, m.hullFloorY + 18);
+  ctx.fillText('ARES-04 // ORBITAL DEFENSE BATTALION // CORE HABITAT', 260, deckY + 80);
+  ctx.fillText('SECTOR: 04-A // PRESSURE: NOMINAL // O2: 99.4%', 260, lowerY - 30);
 
-  // Wzmocnienia konstrukcyjne dolnej krawędzi kadłuba
-  for (let bx = m.x + 40; bx < m.x + m.w; bx += 80) {
+  // =======================================================================
+  // 2. WSPORNIKI HYDRAULICZNE ŁĄCZĄCE GÓRNY POKŁAD Z DOLNYM PYLONEM
+  // =======================================================================
+  const pistonPositions = [380, 580, 880, 1060];
+  for (const px of pistonPositions) {
+    // Górne mocowanie wspornika (dark steel bracket)
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(bx, m.hullFloorY + 22, 24, 4);
+    ctx.fillRect(px - 14, deckY + 24, 28, 16);
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px - 14, deckY + 24, 28, 16);
+
+    // Błyszczący chromowany tłok hydrauliczny
+    const pistonGrad = ctx.createLinearGradient(px - 5, 0, px + 5, 0);
+    pistonGrad.addColorStop(0, '#64748b');
+    pistonGrad.addColorStop(0.35, '#f8fafc');
+    pistonGrad.addColorStop(0.7, '#cbd5e1');
+    pistonGrad.addColorStop(1, '#475569');
+    ctx.fillStyle = pistonGrad;
+    ctx.fillRect(px - 5, deckY + 40, 10, 60);
+
+    // Ciężki cylinder hydrauliczny (dolna komora siłownika)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(px - 10, deckY + 95, 20, lowerY - (deckY + 95));
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px - 10, deckY + 95, 20, lowerY - (deckY + 95));
+
+    // Pierścień statusu neonowego cyjanu
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(px - 10, deckY + 115, 20, 3);
+
+    // Dolne mocowanie sworznia siłownika
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px - 12, lowerY - 12, 24, 12);
   }
 
-  // 4. Dach modułu centralnego (m.roofY = 560)
-  // Lewa twarda płyta dachu (solid hull)
+  // =======================================================================
+  // 3. DOLNY POKŁAD KADŁUBA (Y = 740, SOLIDNA PLATFORMA BOJOWA)
+  // =======================================================================
+  // Twarda bryła nośna dolnego pokładu
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(280, lowerY, 860, 30);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(280, lowerY, 860, 30);
+
+  // Pancerne segmenty górne dolnego pokładu
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(m.x, m.roofY, 310, 24);
-  ctx.strokeStyle = '#475569';
+  for (let bx = 290; bx < 1130; bx += 110) {
+    ctx.fillRect(bx, lowerY + 4, 98, 20);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, lowerY + 4, 98, 20);
+  }
+
+  // Neonowa krawędź chodu dolnego pokładu (#00f0ff)
+  ctx.strokeStyle = '#00f0ff';
   ctx.lineWidth = 2.5;
-  ctx.strokeRect(m.x, m.roofY, 310, 24);
+  ctx.beginPath();
+  ctx.moveTo(280, lowerY);
+  ctx.lineTo(1140, lowerY);
+  ctx.stroke();
 
-  // Płyty pancerne i nity sekcji zachodniej
-  ctx.fillStyle = '#334155';
-  ctx.fillRect(m.x + 10, m.roofY + 4, 130, 16);
-  ctx.fillRect(m.x + 150, m.roofY + 4, 150, 16);
-  ctx.fillStyle = '#64748b';
-  ctx.font = 'bold 9px monospace';
-  ctx.fillText('SEC-W // HULL-01', m.x + 20, m.roofY + 16);
+  // Dolny zwężający się pylon stacji (tapered belly hull)
+  ctx.fillStyle = '#080d17';
+  ctx.beginPath();
+  ctx.moveTo(340, lowerY + 30);
+  ctx.lineTo(440, lowerY + 90);
+  ctx.lineTo(980, lowerY + 90);
+  ctx.lineTo(1080, lowerY + 30);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  // Prawa twarda płyta dachu (solid hull)
+  // Dysze manewrowe RCS na spodzie pylonu
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(m.x + 590, m.roofY, 310, 24);
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(m.x + 590, m.roofY, 310, 24);
+  ctx.fillRect(520, lowerY + 90, 40, 12);
+  ctx.fillRect(860, lowerY + 90, 40, 12);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(528, lowerY + 100, 24, 3);
+  ctx.fillRect(868, lowerY + 100, 24, 3);
 
-  ctx.fillStyle = '#334155';
-  ctx.fillRect(m.x + 600, m.roofY + 4, 140, 16);
-  ctx.fillRect(m.x + 750, m.roofY + 4, 140, 16);
-  ctx.fillStyle = '#64748b';
-  ctx.font = 'bold 9px monospace';
-  ctx.fillText('SEC-E // HULL-02', m.x + 610, m.roofY + 16);
-
-  // Środkowa kładka włazu dachowego (drop-through hatch)
-  ctx.fillStyle = '#0a1224';
-  ctx.fillRect(m.x + 310, m.roofY, 280, 14);
+  // =======================================================================
+  // 4. MOST FOTOWOLTAICZNY (PRAWA STRONA: X: 1200..1760)
+  // =======================================================================
+  // A. Płytki paneli słonecznych umieszczone TUŻ POD KŁADKĄ jako tło dekoracyjne
+  const solarStartY = deckY + 28;
+  const solarHeight = 58;
+  ctx.fillStyle = '#061328';
+  ctx.fillRect(1220, solarStartY, 520, solarHeight);
   ctx.strokeStyle = '#0284c7';
   ctx.lineWidth = 2;
-  ctx.strokeRect(m.x + 310, m.roofY, 280, 14);
+  ctx.strokeRect(1220, solarStartY, 520, solarHeight);
 
-  // Ostrzegawcze żółto-czarne pasy na włazie centralnym
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 3.5;
-  for (let hx = m.x + 320; hx < m.x + 580; hx += 22) {
+  // Siatka ogniw fotowoltaicznych z mikroskopijnymi szynami busbarów
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.lineWidth = 1;
+  for (let sx = 1240; sx < 1740; sx += 26) {
     ctx.beginPath();
-    ctx.moveTo(hx, m.roofY + 2);
-    ctx.lineTo(hx + 10, m.roofY + 12);
+    ctx.moveTo(sx, solarStartY);
+    ctx.lineTo(sx, solarStartY + solarHeight);
+    ctx.stroke();
+  }
+  // Złote linie magistrali fotowoltaicznej
+  ctx.strokeStyle = 'rgba(217, 119, 6, 0.65)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(1220, solarStartY + solarHeight * 0.33);
+  ctx.lineTo(1740, solarStartY + solarHeight * 0.33);
+  ctx.moveTo(1220, solarStartY + solarHeight * 0.66);
+  ctx.lineTo(1740, solarStartY + solarHeight * 0.66);
+  ctx.stroke();
+
+  // B. Kratownica nośna łącząca most fotowoltaiczny z głównym kadłubem
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(1200, deckY + 24);
+  ctx.lineTo(1760, deckY + 24);
+  ctx.moveTo(1200, solarStartY + solarHeight + 14);
+  ctx.lineTo(1760, solarStartY + solarHeight + 14);
+  ctx.stroke();
+
+  // Zastrzały trójkątne kratownicy
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let tx = 1210; tx < 1750; tx += 45) {
+    ctx.moveTo(tx, deckY + 24);
+    ctx.lineTo(tx + 22, solarStartY + solarHeight + 14);
+    ctx.lineTo(tx + 45, deckY + 24);
+  }
+  ctx.stroke();
+
+  // C. Jednolity ciąg kładki serwisowej na moście (solid platform)
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(1200, deckY, 560, 24);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1200, deckY, 560, 24);
+
+  // Płytki antypoślizgowe na kładce
+  ctx.fillStyle = '#1e293b';
+  for (let kx = 1215; kx < 1745; kx += 65) {
+    ctx.fillRect(kx, deckY + 3, 52, 18);
+  }
+
+  // Neonowa krawędź kładki serwisowej (#00f0ff)
+  ctx.strokeStyle = '#00f0ff';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(1200, deckY);
+  ctx.lineTo(1760, deckY);
+  ctx.stroke();
+
+  // Taśma ostrzegawcza na łączeniu z głównym kadłubem i na prawym krańcu
+  drawHazardStripes(ctx, 1200, deckY, 32, 24);
+  drawHazardStripes(ctx, 1728, deckY, 32, 24);
+
+  // Podpis kładki
+  ctx.fillStyle = '#64748b';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('BRIDGE-01 // SOLAR ARRAY SERVICE CATWALK', 1260, deckY + 16);
+
+  // =======================================================================
+  // 5. GŁÓWNY KADŁUB STACJI (GÓRNY POKŁAD BOJOWY, Y = 560)
+  // =======================================================================
+  // A. LEWE SKRZYDŁO STACJI (X: 200..640, SOLIDNA PŁYTA GRAFITOWA)
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(200, deckY, 440, 28);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(200, deckY, 440, 28);
+
+  // Pancerne moduły sekcji zachodniej
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(210, deckY + 4, 180, 20);
+  ctx.fillRect(410, deckY + 4, 210, 20);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(210, deckY + 4, 180, 20);
+  ctx.strokeRect(410, deckY + 4, 210, 20);
+
+  // Neonowa krawędź górna lewego skrzydła (#00f0ff)
+  ctx.strokeStyle = '#00f0ff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(200, deckY);
+  ctx.lineTo(640, deckY);
+  ctx.stroke();
+
+  // Żółto-czarna taśma ostrzegawcza na skrajach lewego skrzydła
+  drawHazardStripes(ctx, 200, deckY, 35, 28);
+  drawHazardStripes(ctx, 605, deckY, 35, 28);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('SEC-W // HULL-01 // DROP ZONE ALPHA', 250, deckY + 18);
+
+  // B. ŚRODKOWY WŁAZ TECHNICZNY (X: 640..860, DROP-THROUGH NA DOLNY POKŁAD)
+  ctx.fillStyle = '#0a1224';
+  ctx.fillRect(640, deckY, 220, 16);
+  ctx.strokeStyle = '#0284c7';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(640, deckY, 220, 16);
+
+  // Ażurowa siatka antypoślizgowa włazu
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+  ctx.lineWidth = 1;
+  for (let hx = 648; hx < 852; hx += 12) {
+    ctx.beginPath();
+    ctx.moveTo(hx, deckY);
+    ctx.lineTo(hx + 8, deckY + 16);
     ctx.stroke();
   }
 
-  // Pulsujące bursztynowe diody ostrzegawcze na włazie
+  // Żółto-czarne pasy ostrzegawcze na krawędzi włazu
+  drawHazardStripes(ctx, 640, deckY, 24, 16);
+  drawHazardStripes(ctx, 836, deckY, 24, 16);
+
+  // Pulsujące bursztynowe diody sygnalizacyjne na włazie
   const hatchPulse = Math.sin(t * 5.0) * 0.35 + 0.65;
   ctx.fillStyle = `rgba(245, 158, 11, ${hatchPulse.toFixed(2)})`;
-  ctx.fillRect(m.x + 314, m.roofY + 4, 5, 5);
-  ctx.fillRect(m.x + 571, m.roofY + 4, 5, 5);
+  ctx.fillRect(644, deckY + 5, 6, 6);
+  ctx.fillRect(850, deckY + 5, 6, 6);
 
-  // 5. Dwie pionowe osłony balistyczne na dachu (Tactical Cover Shields)
-  for (const w of ARENA_4_SPACE_CONFIG.coverWalls) {
-    // Korpus tarczy balistycznej
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('[HATCH // DROP-THROUGH]', 680, deckY + 12);
+
+  // C. WSCHODNIA SEKCJA GŁÓWNEGO POKŁADU (X: 860..1200, SOLIDNA PŁYTA GRAFITOWA)
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(860, deckY, 340, 28);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(860, deckY, 340, 28);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(875, deckY + 4, 140, 20);
+  ctx.fillRect(1035, deckY + 4, 150, 20);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(875, deckY + 4, 140, 20);
+  ctx.strokeRect(1035, deckY + 4, 150, 20);
+
+  // Neonowa krawędź górna wschodniej sekcji (#00f0ff)
+  ctx.strokeStyle = '#00f0ff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(860, deckY);
+  ctx.lineTo(1200, deckY);
+  ctx.stroke();
+
+  // Żółto-czarna taśma ostrzegawcza
+  drawHazardStripes(ctx, 860, deckY, 35, 28);
+  drawHazardStripes(ctx, 1165, deckY, 35, 28);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('SEC-E // TECHNICAL ACCESS // GRID 02', 885, deckY + 18);
+
+  // =======================================================================
+  // 6. ŚCIANY OSŁONOWE NA GÓRNYM POKŁADZIE (Cover Walls)
+  // =======================================================================
+  for (const w of ARENA_SPACE.coverWalls) {
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(w.x, w.y, w.w, w.h);
     ctx.strokeStyle = '#475569';
     ctx.lineWidth = 2;
     ctx.strokeRect(w.x, w.y, w.w, w.h);
 
-    // Wzmocnienia pancerne
-    ctx.fillStyle = '#0284c7';
-    ctx.fillRect(w.x + 4, w.y + 6, w.w - 8, 8);
-
     // Wizjer ze szkła pancernego
     ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(w.x + 6, w.y + 18, w.w - 12, 14);
+    ctx.fillRect(w.x + 6, w.y + 16, w.w - 12, 14);
     ctx.strokeStyle = '#bae6fd';
     ctx.lineWidth = 1;
-    ctx.strokeRect(w.x + 6, w.y + 18, w.w - 12, 14);
+    ctx.strokeRect(w.x + 6, w.y + 16, w.w - 12, 14);
 
-    // Oznaczenia chevrons
+    // Paski ostrzegawcze
     ctx.fillStyle = '#eab308';
-    ctx.fillRect(w.x + 4, w.y + 38, w.w - 8, 4);
-    ctx.fillRect(w.x + 4, w.y + 48, w.w - 8, 4);
+    ctx.fillRect(w.x + 4, w.y + 36, w.w - 8, 4);
+    ctx.fillRect(w.x + 4, w.y + 46, w.w - 8, 4);
 
-    // Maszt telemetryczny ze stroboskopem kolizyjnym
+    // Maszt stroboskopowy
     ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -829,7 +771,6 @@ export function drawArena4SpaceForeground(ctx, camera) {
     ctx.lineTo(w.x + w.w * 0.5, w.y - 18);
     ctx.stroke();
 
-    // Mrugający stroboskop czerwony na szczycie osłony
     const beaconFlash = (Math.floor(t * 3.0) % 2 === 0);
     ctx.fillStyle = beaconFlash ? '#ef4444' : '#7f1d1d';
     ctx.beginPath();
@@ -837,175 +778,104 @@ export function drawArena4SpaceForeground(ctx, camera) {
     ctx.fill();
   }
 
-  // --- C. PIONOWE REPULSORY KINETYCZNE (JUMP PADY, 60 px, vy = -16) ---
-  for (const rep of ARENA_4_SPACE_CONFIG.repulsors) {
-    // Podstawa emitera
+  // =======================================================================
+  // 7. KOMPAKTOWE PIONOWE EMITERY GRAWITACYJNE (REPULSORY, ZERO ROZMYTYCH KÓŁ)
+  // =======================================================================
+  for (const rep of ARENA_SPACE.repulsors) {
+    // Podstawa emitera osadzona w litym pokładzie
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(rep.x, rep.y, rep.w, rep.h);
-    ctx.strokeStyle = '#38bdf8';
+    ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 2;
     ctx.strokeRect(rep.x, rep.y, rep.w, rep.h);
 
-    // Cewki kinetyczne (kinetyczny generator pola)
+    // Wewnętrzna cewka kinetyczna
     ctx.fillStyle = '#0284c7';
-    ctx.fillRect(rep.x + 4, rep.y + 4, rep.w - 8, 5);
+    ctx.fillRect(rep.x + 4, rep.y + 4, rep.w - 8, 4);
 
-    // Animowane pulsujące strzałki ciągu w górę (▲)
-    const phase = (t * 4.0) % 1.0;
-    const arrowY = rep.y - 6 - phase * 22;
-    ctx.fillStyle = `rgba(56, 189, 248, ${(1.0 - phase).toFixed(2)})`;
-    ctx.font = 'bold 15px monospace';
+    // Subtelny pionowy snop kinetyczny (linear gradient w górę o wys. 45px, zero rozmytych kół!)
+    const beamGrad = ctx.createLinearGradient(0, rep.y, 0, rep.y - 45);
+    beamGrad.addColorStop(0, 'rgba(0, 240, 255, 0.40)');
+    beamGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(rep.x + 8, rep.y - 45, rep.w - 16, 45);
+
+    // Animowany pulsujący pojedynczy grot ciągu kinetycznego (▲)
+    const phase = (t * 3.5) % 1.0;
+    const arrowY = rep.y - 4 - phase * 26;
+    ctx.fillStyle = `rgba(0, 240, 255, ${(1.0 - phase).toFixed(2)})`;
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('▲', rep.x + rep.w * 0.5, arrowY);
     ctx.textAlign = 'start';
-
-    // Płynny snop pola kinetycznego (linear gradient, zero shadowBlur)
-    const beamGrad = ctx.createLinearGradient(0, rep.y, 0, rep.y - 50);
-    beamGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
-    beamGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
-    ctx.fillStyle = beamGrad;
-    ctx.fillRect(rep.x + 8, rep.y - 50, rep.w - 16, 50);
-  }
-
-  // --- D. SKRZYDŁA PANELI SŁONECZNYCH (6 SEGMENTÓW PO 120 PX) ---
-  for (const seg of arenaSpaceState.solarPanels) {
-    if (!seg.disabled) {
-      // 1. Panel sprawny: głęboki błękit krzemu fotowoltaicznego
-      ctx.fillStyle = '#0b1a36';
-      ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
-
-      // Siatka ogniw fotowoltaicznych z mikroskopijnymi liniami busbarów
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
-      ctx.lineWidth = 1;
-      for (let cx = seg.x + 15; cx < seg.x + seg.w; cx += 15) {
-        ctx.beginPath();
-        ctx.moveTo(cx, seg.y);
-        ctx.lineTo(cx, seg.y + seg.h);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = 'rgba(217, 119, 6, 0.50)'; // Złote linie szyn zbiorczych
-      ctx.beginPath();
-      ctx.moveTo(seg.x, seg.y + seg.h * 0.5);
-      ctx.lineTo(seg.x + seg.w, seg.y + seg.h * 0.5);
-      ctx.stroke();
-
-      // Neonowo-niebieski wyrazisty obrys (#38bdf8)
-      ctx.strokeStyle = ARENA_4_SPACE_CONFIG.solarWings.outlineColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(seg.x, seg.y, seg.w, seg.h);
-
-      // Odblask powłoki antyrefleksyjnej
-      const sheenGrad = ctx.createLinearGradient(seg.x, seg.y, seg.x + seg.w, seg.y + seg.h);
-      sheenGrad.addColorStop(0, 'rgba(255, 255, 255, 0.24)');
-      sheenGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.06)');
-      sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = sheenGrad;
-      ctx.fillRect(seg.x, seg.y, seg.w, seg.h);
-
-      // Dioda statusu online
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(seg.x + 4, seg.y + 3, 3, 3);
-    } else {
-      // 2. Panel wyłączony eksplozją: efekt holograficznego zanikania i regeneracji (8s)
-      const progress = 1.0 - (seg.disabledTimer / ARENA_4_SPACE_CONFIG.solarWings.cooldownDuration);
-      const glitchAlpha = (0.2 + progress * 0.5) * (0.6 + 0.4 * Math.sin(t * 18));
-
-      // Przerywany zarys siatki naprawczej
-      ctx.save();
-      ctx.setLineDash([5, 5]);
-      ctx.strokeStyle = `rgba(56, 189, 248, ${glitchAlpha.toFixed(2)})`;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(seg.x, seg.y, seg.w, seg.h);
-
-      // Pasek postępu regeneracji poszycia
-      ctx.fillStyle = `rgba(56, 189, 248, 0.28)`;
-      ctx.fillRect(seg.x, seg.y + seg.h - 4, seg.w * progress, 4);
-
-      // Etykieta naprawy nanobotów / restartu zasilania
-      ctx.fillStyle = `rgba(56, 189, 248, ${(0.4 + 0.5 * progress).toFixed(2)})`;
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText(`REBOOT ${Math.ceil(seg.disabledTimer)}s`, seg.x + 14, seg.y + 11);
-      ctx.restore();
-    }
-  }
-
-  // --- E. CZĄSTECZKI GLITCHA I ROZPADU PANELI ---
-  for (let i = 0; i < arenaSpaceState.glitchParticles.length; i++) {
-    const p = arenaSpaceState.glitchParticles[i];
-    ctx.fillStyle = p.color;
-    ctx.fillRect(p.x, p.y, p.size, p.size);
   }
 
   ctx.restore();
 }
 
+/**
+ * Pomocnicze rysowanie profesjonalnej żółto-czarnej taśmy ostrzegawczej
+ */
+function drawHazardStripes(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = '#eab308';
+  ctx.lineWidth = 4;
+  for (let sx = x - h; sx < x + w + h; sx += 14) {
+    ctx.beginPath();
+    ctx.moveTo(sx, y + h);
+    ctx.lineTo(sx + h, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // =========================================================================
-// 10. GŁÓWNA PĘTLA LOGIKI ARENY (UPDATE: PRÓŻNIA, REPULSORY, JETPACK FUEL)
+// 9. GŁÓWNA PĘTLA LOGIKI ARENY (PRÓŻNIA, REPULSORY, JETPACK)
 // =========================================================================
 export function updateArena4Space(dt, combatants) {
   const safeDt = Math.min(dt || (1 / 60), 0.1);
   arenaSpaceState.animTime += safeDt;
 
-  // 1. Aktualizacja timerów regeneracji zniszczalnych paneli słonecznych (8s)
-  for (const seg of arenaSpaceState.solarPanels) {
-    if (seg.disabled) {
-      seg.disabledTimer -= safeDt;
-      if (seg.disabledTimer <= 0) {
-        seg.disabledTimer = 0;
-        seg.disabled = false;
-        if (seg.platformRef) {
-          seg.platformRef.solid = true;
-        }
-      }
-    }
-  }
-
-  // 2. Aktualizacja cząsteczek glitcha
-  for (let i = arenaSpaceState.glitchParticles.length - 1; i >= 0; i--) {
-    const p = arenaSpaceState.glitchParticles[i];
-    p.life -= safeDt;
-    p.x += p.vx * safeDt;
-    p.y += p.vy * safeDt;
-    if (p.life <= 0) {
-      arenaSpaceState.glitchParticles.splice(i, 1);
-    }
-  }
-
-  // 3. Monitorowanie parametrów combatants (gracze, boty)
   const targets = Array.isArray(combatants) ? combatants : [];
-  const repulsors = ARENA_4_SPACE_CONFIG.repulsors;
-  const deathY = arenaSpaceState.deathY;
+  const repulsors = ARENA_SPACE.repulsors;
+  const deathY = ARENA_SPACE.deathY; // 1050
 
   for (let i = 0; i < targets.length; i++) {
     const c = targets[i];
     if (!c) continue;
 
-    // A. Dolna granica mapy: śmierć w śmiertelnej próżni kosmicznej
-    const feetY = (c.y || 0) + (c.h || 70);
-    if (!c.isDead && feetY > deathY) {
+    // Śmierć w próżni następuje WYŁĄCZNIE, gdy postać spadnie bezpowrotnie w dół poza ekran (entity.y > deathY)
+    if (!c.isDead && c.y > deathY) {
       killByHazard(c, "PRÓŻNIA KOSMICZNA");
       continue;
     }
 
     if (c.isDead) continue;
 
-    // B. Mnożnik zużycia jetpacka (jetpackDrainMultiplier = 0.6)
-    // Refundacja 40% zużytego paliwa w każdej klatce bez modyfikacji player.js
+    // Refundacja 40% zużytego paliwa jetpacka w niskiej grawitacji (drain multiplier 0.60)
     if (typeof c.jetFuel === 'number') {
       if (c._aresPrevFuel !== undefined && c.jetFuel < c._aresPrevFuel) {
         const drained = c._aresPrevFuel - c.jetFuel;
-        const refund = drained * (1.0 - ARENA_4_SPACE_CONFIG.jetpackDrainMultiplier);
+        const refund = drained * (1.0 - ARENA_SPACE.jetpackDrainMultiplier);
         c.jetFuel = Math.min(c.jetMax || 100, c.jetFuel + refund);
       }
       c._aresPrevFuel = c.jetFuel;
     }
 
-    // C. Weryfikacja wejścia w strefę repulsorów kinetycznych (vy = -16)
+    // Weryfikacja wejścia w strefę repulsorów kinetycznych (vy = -16)
     const centerX = (c.x || 0) + (c.w || 24) * 0.5;
+    const feetY = (c.y || 0) + (c.h || 70);
     for (let r = 0; r < repulsors.length; r++) {
       const rep = repulsors[r];
-      if (centerX >= rep.x - 8 && centerX <= rep.x + rep.w + 8) {
-        if (feetY >= rep.y - 14 && feetY <= rep.y + 26) {
+      if (centerX >= rep.x && centerX <= rep.x + rep.w) {
+        if (feetY >= rep.y - 12 && feetY <= rep.y + 24) {
           c.y = rep.y - (c.h || 70) - 4;
           c.vy = rep.launchVy; // -16
           c.isJumping = true;
@@ -1022,34 +892,28 @@ export function updateArena4Space(dt, combatants) {
 }
 
 // =========================================================================
-// 11. RESET ARENY
+// 10. RESET ARENY
 // =========================================================================
 export function resetArena4Space() {
   arenaSpaceState.animTime = 0;
-  arenaSpaceState.glitchParticles.length = 0;
-
-  for (const seg of arenaSpaceState.solarPanels) {
-    seg.disabled = false;
-    seg.disabledTimer = 0;
-    if (seg.platformRef) {
-      seg.platformRef.solid = true;
-    }
-  }
 }
 
 // =========================================================================
-// 12. DEFINICJA I EKSPORT WTYCZKI ARENY (ARENA CONTRACT)
+// 11. DEFINICJA I EKSPORT WTYCZKI ARENY (ARENA CONTRACT)
 // =========================================================================
 export const arena4 = {
-  id: ARENA_4_SPACE_CONFIG.id,
-  alias: ARENA_4_SPACE_CONFIG.codeName,
+  id: ARENA_SPACE.id,
+  alias: ARENA_SPACE.codeName,
   mapId: 'ares_orbital_station_01',
-  name: ARENA_4_SPACE_CONFIG.name,
-  width: ARENA_4_SPACE_CONFIG.mapWidth,
-  height: ARENA_4_SPACE_CONFIG.mapHeight,
-  gravityMultiplier: ARENA_4_SPACE_CONFIG.gravityMultiplier,
-  jetpackDrainMultiplier: ARENA_4_SPACE_CONFIG.jetpackDrainMultiplier,
-  spawns: ARENA_4_SPACE_SPAWNS,
+  name: ARENA_SPACE.name,
+  width: ARENA_SPACE.mapWidth,
+  height: ARENA_SPACE.mapHeight,
+  mainDeckY: ARENA_SPACE.mainDeckY,
+  lowerDeckY: ARENA_SPACE.lowerDeckY,
+  deathY: ARENA_SPACE.deathY,
+  gravityMultiplier: ARENA_SPACE.gravityMultiplier,
+  jetpackDrainMultiplier: ARENA_SPACE.jetpackDrainMultiplier,
+  spawns: ARENA_SPACE.SPAWN_POINTS,
   platforms: ARENA_4_PLATFORMS,
   customObjects: [],
 
