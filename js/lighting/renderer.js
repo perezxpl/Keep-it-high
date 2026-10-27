@@ -25,12 +25,16 @@ export function drawLighting(ctx, camera, activeArenaId) {
 
   for (let i = 0; i < lights.length; i++) {
     const l = lights[i];
-    const r = l.radius;
+    const progress = 1 - (l.life / l.maxDuration);
+
+    // Dynamiczna ekspansja światła dla eksplozji (naturalny rozbłysk bez sztucznych okręgów)
+    const r = l.expand
+      ? (l.radius * (0.35 + 0.65 * Math.min(1.0, progress * 4.0)))
+      : l.radius;
 
     // Culling - pomiń źródła światła poza widokiem kamery
     if (l.x + r < camL || l.x - r > camR || l.y + r < camT || l.y - r > camB) continue;
 
-    const progress = 1 - (l.life / l.maxDuration);
     let alpha = (1 - progress) * l.intensity;
 
     if (l.flicker) {
@@ -56,43 +60,11 @@ export function drawLighting(ctx, camera, activeArenaId) {
 }
 
 /**
- * Renderuje rozchodzące się fale uderzeniowe (Shockwaves) w przestrzeni świata gry.
+ * Renderuje ewentualne efekty fal w przestrzeni świata gry.
+ * Usunięto sztuczne okręgi z cienkiej linii na rzecz naturalnej poświaty i cząsteczek.
  */
 export function drawShockwaves(ctx, camera) {
-  if (!lightingState.enabled) return;
-
-  const shockwaves = lightingState.activeShockwaves;
-  if (!shockwaves || shockwaves.length === 0) return;
-
-  const camL = camera ? (camera.x - 200) : -500;
-  const camR = camera ? (camera.x + (camera.viewWidth || 2000) + 200) : 5000;
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-
-  for (let i = 0; i < shockwaves.length; i++) {
-    const sw = shockwaves[i];
-    if (sw.x + sw.radius < camL || sw.x - sw.radius > camR) continue;
-
-    const progress = 1 - (sw.life / sw.maxDuration);
-    const alpha = (1 - progress) * 0.85;
-
-    // 1. Zewnętrzny ostry pierścień kompresji powietrza
-    ctx.strokeStyle = `rgba(255, 245, 230, ${alpha.toFixed(2)})`;
-    ctx.lineWidth = Math.max(1.2, 4.0 * (1 - progress));
-    ctx.beginPath();
-    ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 2. Wewnętrzny miękki pierścień poświaty fali cieplnej
-    ctx.strokeStyle = `rgba(255, 170, 60, ${(alpha * 0.45).toFixed(2)})`;
-    ctx.lineWidth = Math.max(2.0, 7.5 * (1 - progress));
-    ctx.beginPath();
-    ctx.arc(sw.x, sw.y, Math.max(1, sw.radius - 3), 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  ctx.restore();
+  // Funkcja zachowana dla stabilności API bez renderowania sztucznych linii wektorowych
 }
 
 /**

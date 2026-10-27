@@ -62,26 +62,17 @@ export function addDynamicLight(lightDef) {
     maxDuration: lightDef.duration || 0.1,
     life: lightDef.duration || 0.1,
     flicker: !!lightDef.flicker,
+    expand: !!lightDef.expand,
     followEntity: lightDef.followEntity || null
   });
 }
 
 /**
  * Dodaje rozszerzającą się falę uderzeniową (Shockwave).
+ * Pozostawiono czystą funkcję dla kompatybilności API.
  */
 export function addShockwave(x, y, maxRadius = 140, duration = 0.28, color = '#ffeedd') {
-  if (!lightingState.enabled) return;
-
-  lightingState.activeShockwaves.push({
-    x,
-    y,
-    radius: 8,
-    maxRadius,
-    duration,
-    maxDuration: duration,
-    life: duration,
-    color
-  });
+  // Wyłączono sztuczne okręgi z cienkiej linii na rzecz poświaty i cząsteczek
 }
 
 /**

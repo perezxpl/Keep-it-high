@@ -1209,8 +1209,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
   const isMortar = (sourceWeapon === 'MORTAR');
   const isRpg = (sourceWeapon === 'RPG7');
-  const lightR = isMortar ? 520 : (isRpg ? 460 : 380);
-  const shockR = isMortar ? 260 : (isRpg ? 220 : 170);
+  const lightR = isMortar ? 540 : (isRpg ? 480 : 400);
 
   addDynamicLight({
     x: expX,
@@ -1218,10 +1217,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     radius: lightR,
     color: '#ff9922',
     intensity: 1.0,
-    duration: isMortar ? 0.45 : (isRpg ? 0.40 : 0.35)
+    duration: isMortar ? 0.45 : (isRpg ? 0.40 : 0.35),
+    expand: true
   });
-
-  addShockwave(expX, expY, shockR, 0.32, '#ffeedd');
 
   // 7. Kamera: camera.shake = 16 (płynny shake bez zatrzymywania pętli)
   if (typeof camera !== 'undefined' && camera) {
@@ -1562,18 +1560,6 @@ export function drawExplosionEffects(ctx) {
     ctx.beginPath();
     ctx.arc(ef.x, ef.y, ef.currentRadius, 0, Math.PI * 2);
     ctx.fill();
-
-    // 2. Pierścień uderzeniowy (Shockwave ring - zero shadowBlur)
-    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.9})`;
-    ctx.lineWidth = 3.2 * alpha;
-    ctx.beginPath();
-    ctx.arc(ef.x, ef.y, ef.shockwaveRadius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Zewnętrzna poświata fali
-    ctx.strokeStyle = `rgba(0, 229, 255, ${alpha * 0.28})`;
-    ctx.lineWidth = 7.5 * alpha;
-    ctx.stroke();
 
     // 3. Krótkotrwały intensywny biały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF')
     if (ef.flashFrames > 0) {

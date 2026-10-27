@@ -1345,17 +1345,8 @@ export class ShockwaveRing {
   }
 
   draw(ctx) {
-    if (!ctx || this.alpha <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = this.alpha;
-    ctx.strokeStyle = this.color;
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 0;
-    ctx.lineWidth = this.thickness;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    // Usunięto sztuczne okręgi z cienkiej linii na rzecz naturalnej poświaty i cząsteczek
+    return;
   }
 }
 
