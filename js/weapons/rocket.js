@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { activeProjectiles, detonateGrenadeExplosion, spawnGrenadeSmokePuff } from '../projectiles.js';
+import { addDynamicLight, LIGHT_PRESETS } from '../lighting/index.js';
 import {
   spawnJuiceExplosion,
   spawnShrapnelStreak,
@@ -138,6 +139,14 @@ export class RpgRocket {
       this.trailTimer++;
       if (this.trailTimer % 2 === 0) {
         spawnRicochetSparks(tailX, tailY, -Math.cos(this.angle), -Math.sin(this.angle), 1);
+        addDynamicLight({
+          x: tailX,
+          y: tailY,
+          radius: 140,
+          color: '#ff9922',
+          intensity: 0.8,
+          duration: 0.05
+        });
       }
     } else {
       // Faza 2: Po wypaleniu silnika – lekka balistyka grawitacyjna

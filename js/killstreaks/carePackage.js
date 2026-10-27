@@ -14,6 +14,7 @@ import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { killstreakState } from './state.js';
 import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
 import { spawnSentryGun } from './sentryGun.js';
+import { addDynamicLight } from '../lighting/index.js';
 
 function getKeys() {
   if (typeof window !== 'undefined' && window.keys) return window.keys;
@@ -311,15 +312,27 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
     flare.timer -= safeDt;
 
     // Generowanie cząsteczek pomarańczowego dymu TYLKO gdy flara jeszcze płonie
-    if (!flare.extinguishing && flare.timer > 0 && Math.random() < 0.65) {
-      flare.particles.push({
-        x: flare.x + (Math.random() - 0.5) * 8,
-        y: flare.y - 2,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: -Math.random() * 1.8 - 0.9,
-        r: 4.5 + Math.random() * 3.5,
-        alpha: 0.65
+    if (!flare.extinguishing && flare.timer > 0) {
+      addDynamicLight({
+        x: flare.x,
+        y: flare.y - 4,
+        radius: 160,
+        color: '#ff2222',
+        intensity: 0.8,
+        duration: 0.08,
+        flicker: true
       });
+
+      if (Math.random() < 0.65) {
+        flare.particles.push({
+          x: flare.x + (Math.random() - 0.5) * 8,
+          y: flare.y - 2,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: -Math.random() * 1.8 - 0.9,
+          r: 4.5 + Math.random() * 3.5,
+          alpha: 0.65
+        });
+      }
     }
 
     // Aktualizacja istniejących kłębów dymu (szybsze wygaszanie po wylądowaniu)

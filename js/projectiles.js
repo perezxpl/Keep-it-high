@@ -10,6 +10,7 @@ import { drawWeaponBloodOverlay } from './weapons/renderer.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
 import { getActiveBots } from './bot.js';
 import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatformSurfaceY, registerArenaResetCallback } from './obstacles.js';
+import { addDynamicLight, addShockwave, LIGHT_PRESETS } from './lighting/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import { getRiverbankGroundY } from './arenas/arena3/state.js';
 import {
@@ -1205,7 +1206,22 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
   // 6. Krótkotrwały błysk (flash: 2 klatki, promień 60px, kolor: '#FFFFFF'), kula ognia
   spawnExplosionEffect(expX, expY, radius);
-  // (Usunięto addExplosionCrater - zastąpiono realną wyrwą w geometrii kładki)
+
+  const isMortar = (sourceWeapon === 'MORTAR');
+  const isRpg = (sourceWeapon === 'RPG7');
+  const lightR = isMortar ? 520 : (isRpg ? 460 : 380);
+  const shockR = isMortar ? 260 : (isRpg ? 220 : 170);
+
+  addDynamicLight({
+    x: expX,
+    y: expY,
+    radius: lightR,
+    color: '#ff9922',
+    intensity: 1.0,
+    duration: isMortar ? 0.45 : (isRpg ? 0.40 : 0.35)
+  });
+
+  addShockwave(expX, expY, shockR, 0.32, '#ffeedd');
 
   // 7. Kamera: camera.shake = 16 (płynny shake bez zatrzymywania pętli)
   if (typeof camera !== 'undefined' && camera) {

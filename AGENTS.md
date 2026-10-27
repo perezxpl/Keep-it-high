@@ -84,7 +84,14 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/obstacles/platforms.js` — fizyka lądowania na platformach i powierzchniach (`checkPlayerPlatformLanding`, `getPlatformSurfaceY`).
 - `js/obstacles/collisions.js` — kolizje piłki, gracza i bota z przeszkodami (`checkObstacleCollisions`).
 - `js/obstacles/renderer.js` — rysowanie przeszkód i platform (`drawObstacles`).
+- `js/obstacles/materials.js` — proceduralne, zbuforowane tekstury materiałów (`CanvasPattern`): blacha ryflowana, zbrojony beton wojskowy, szczotkowana stal oraz funkcja `drawTexturedPlatformBox` z fazowaniem 3D i okuciami.
 - `js/obstacles/procedural.js` — proceduralne generowanie przeszkód i ptaków na dystansie.
+
+### Oświetlenie i Efekty Kinowe (`js/lighting/`)
+- `js/lighting/state.js` — rejestr dynamicznych źródeł światła (`LIGHT_PRESETS`: rozbłyski luf, wybuchy granatów/rakiet/moździerzy, ogień jetpacka, flary), aktywne fale uderzeniowe i poziomy oświetlenia otoczenia dla aren (`lightingState`).
+- `js/lighting/logic.js` — pętla aktualizacji (`updateLighting`): wygasanie świateł, podążanie za jednostkami fizycznymi oraz nieliniowa ekspansja pierścieni fal uderzeniowych (krzywa Ease-Out).
+- `js/lighting/renderer.js` — renderowanie dynamicznych rozbłysków światła (`drawLighting`, tryb `lighter`), pierścieni fali uderzeniowej (`drawShockwaves`) oraz ekranowej winiety kinowej (`drawCinematicVignette`).
+- `js/lighting/index.js` — główny punkt wejścia i eksport modułu oświetlenia.
 
 ### Sztuczna Inteligencja i Boty (`js/bot.js`)
 - `js/bot.js` — konfiguracja profili botów bojowych (`BOT_PROFILES`, `BOT_CLASS_PROFILES`, `BOT_NAMES_BY_CLASS`), fabryka instancji botów (`createBotInstance`), pula aktywnych botów (`bots`, `botCount`, `setBotCount`, `getBotCount`, `getActiveBots`), automatyczny dobór zrównoważonych klas (`balanceBotClasses`, `applyBotClassAndConfig`), logika sztucznej inteligencji (`updateBotBrain` z celowaniem wielopodmiotowym, unikalnymi umiejętnościami specjalnymi klas: Blast Jump dla Enforcera, Rocket Boots Air/Ground Dash dla Strikera, kiting/hover dla Raptora) oraz stopnie trudności (`setBotDifficulty`).

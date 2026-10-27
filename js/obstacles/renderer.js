@@ -7,6 +7,12 @@ import { ARENA_WIDTH } from '../config.js';
 import { drawCaveTerrain, activeArenaId } from '../world.js';
 import { arena1State } from '../arenas/arena1.js';
 import { normalizeObstacleType } from './palette.js';
+import {
+  getDiamondPlatePattern,
+  getReinforcedConcretePattern,
+  getBrushedSteelPattern,
+  drawTexturedPlatformBox
+} from './materials.js';
 
 const altarShockwaves = [];
 export function spawnAltarShockwave(x, y) {
@@ -345,28 +351,7 @@ export function drawHedgehog(ctx, x, y, size) {
 
 export function drawBunkerBlock(ctx, x, y, w, h) {
   ctx.save();
-  const grad = ctx.createLinearGradient(x, y, x, y + h);
-  grad.addColorStop(0, '#475569');
-  grad.addColorStop(0.35, '#334155');
-  grad.addColorStop(1, '#1e293b');
-  ctx.fillStyle = grad;
-  ctx.fillRect(x, y, w, h);
-
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, w, h);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillRect(x, y, w, 2.5);
-
-  ctx.fillStyle = '#cbd5e1';
-  const rRad = 2.2;
-  ctx.beginPath();
-  ctx.arc(x + 6, y + 6, rRad, 0, Math.PI * 2);
-  ctx.arc(x + w - 6, y + 6, rRad, 0, Math.PI * 2);
-  ctx.arc(x + 6, y + h - 6, rRad, 0, Math.PI * 2);
-  ctx.arc(x + w - 6, y + h - 6, rRad, 0, Math.PI * 2);
-  ctx.fill();
+  drawTexturedPlatformBox(ctx, x, y, w, h, 'concrete', { hasBrackets: true });
 
   const stripeH = Math.min(10, h * 0.3);
   const stripeY = y + (h - stripeH) / 2;
@@ -386,12 +371,9 @@ export function drawCyberCatwalk(ctx, x, y, w, h) {
   ctx.moveTo(x + w - 25, y); ctx.lineTo(x + w - 25, y - 180);
   ctx.stroke();
 
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(x, y, w, h);
+  drawTexturedPlatformBox(ctx, x, y, w, h, 'steel', { hasBrackets: true });
 
   ctx.fillStyle = '#00e5ff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 0;
   ctx.fillRect(x, y, w, 3);
 
   ctx.fillStyle = 'rgba(6, 182, 212, 0.18)';
@@ -625,10 +607,17 @@ export function drawMetalRamp(ctx, x, y, w, h, isLeft) {
   }
   ctx.closePath();
 
+  // Wzorzec blachy ryflowanej na pochylni
+  const dPattern = getDiamondPlatePattern(ctx);
+  if (dPattern) {
+    ctx.fillStyle = dPattern;
+    ctx.fill();
+  }
+
   const grad = ctx.createLinearGradient(x, y, x, y + h);
-  grad.addColorStop(0, '#334155');
-  grad.addColorStop(0.5, '#1e293b');
-  grad.addColorStop(1, '#0f172a');
+  grad.addColorStop(0, 'rgba(51, 65, 85, 0.45)');
+  grad.addColorStop(0.5, 'rgba(30, 41, 59, 0.65)');
+  grad.addColorStop(1, 'rgba(15, 23, 42, 0.85)');
   ctx.fillStyle = grad;
   ctx.fill();
 
@@ -663,16 +652,7 @@ export function drawMetalRamp(ctx, x, y, w, h, isLeft) {
 
 export function drawTallConcreteWall(ctx, x, y, w, h) {
   ctx.save();
-  const grad = ctx.createLinearGradient(x, y, x + w, y);
-  grad.addColorStop(0, '#475569');
-  grad.addColorStop(0.35, '#334155');
-  grad.addColorStop(1, '#1e293b');
-  ctx.fillStyle = grad;
-  ctx.fillRect(x, y, w, h);
-
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 1.8;
-  ctx.strokeRect(x, y, w, h);
+  drawTexturedPlatformBox(ctx, x, y, w, h, 'concrete', { hasBrackets: true });
 
   ctx.fillStyle = '#94a3b8';
   ctx.fillRect(x - 2, y, w + 4, 4);
@@ -1566,9 +1546,8 @@ export function drawCatwalk(ctx, cat, groundY) {
 
   ctx.save();
 
-  // Ciemny korpus kładki w estetyce cyberpunk / zardzewiała stal huty
-  ctx.fillStyle = isFoundry ? '#1c1917' : '#090d16';
-  ctx.fillRect(cat.x, topY, cat.w, cat.thickness);
+  // Teksturowany korpus kładki z blachy ryflowanej / stali
+  drawTexturedPlatformBox(ctx, cat.x, topY, cat.w, cat.thickness, isFoundry ? 'steel' : 'diamond', { hasBrackets: true });
 
   // Wewnętrzne szczeliny techniczne z podświetleniem huty
   ctx.fillStyle = isFoundry

@@ -26,6 +26,7 @@ import {
   spawnRicochetSparks
 } from './particles.js';
 import { spawnRpgRocket } from './weapons/rocket.js';
+import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 
 export {
   spawnBulletCasing,
@@ -524,6 +525,14 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         return true;
       }
       spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id === 'SNIPER' ? 10 : 5);
+      addDynamicLight({
+        x: wallHit.x,
+        y: wallHit.y,
+        radius: 75,
+        color: '#ffbb44',
+        intensity: 0.8,
+        duration: 0.06
+      });
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
       if (weapon.id === 'SNIPER') {
@@ -562,6 +571,15 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.muzzleFlashTimer = 3;
     shooter.vx -= Math.cos(theta) * 3.6;
     shooter.vy -= Math.sin(theta) * 1.6;
+
+    addDynamicLight({
+      x: muzzleX,
+      y: muzzleY,
+      radius: LIGHT_PRESETS.MUZZLE_ROCKET.radius,
+      color: LIGHT_PRESETS.MUZZLE_ROCKET.color,
+      intensity: LIGHT_PRESETS.MUZZLE_ROCKET.intensity,
+      duration: LIGHT_PRESETS.MUZZLE_ROCKET.duration
+    });
 
     if (!shooter.isRemote) {
       shooter.shootCooldown = weapon.fireRate;
@@ -611,6 +629,21 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
   shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
 
+  let muzzleLight = LIGHT_PRESETS.MUZZLE_MEDIUM;
+  if (weapon.id === 'SNIPER') muzzleLight = LIGHT_PRESETS.MUZZLE_SNIPER;
+  else if (weapon.id === 'SHOTGUN' || weapon.id === 'SAWED_OFF') muzzleLight = LIGHT_PRESETS.MUZZLE_SHOTGUN;
+  else if (weapon.id === 'REVOLVER') muzzleLight = LIGHT_PRESETS.MUZZLE_LARGE;
+  else if (weapon.id === 'GLOCK') muzzleLight = LIGHT_PRESETS.MUZZLE_SMALL;
+
+  addDynamicLight({
+    x: muzzleX,
+    y: muzzleY,
+    radius: muzzleLight.radius,
+    color: muzzleLight.color,
+    intensity: muzzleLight.intensity,
+    duration: muzzleLight.duration
+  });
+
   // Fizyczny odrzut gracza w tył po strzale ze snajperki
   if (weapon.id === 'SNIPER') {
     shooter.vx -= Math.cos(theta) * 4.8;
@@ -621,10 +654,14 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     shooter.shootCooldown = weapon.fireRate;
     if (weapon.id === 'SNIPER') {
       triggerScreenShake(12);
-    } else if (weapon.recoil > 1.5) {
-      triggerScreenShake(isCrouch ? 2.4 : 3.8);
+    } else if (weapon.id === 'SHOTGUN' || weapon.id === 'SAWED_OFF') {
+      triggerScreenShake(isCrouch ? 3.5 : 5.2);
+    } else if (weapon.id === 'REVOLVER') {
+      triggerScreenShake(isCrouch ? 2.5 : 3.8);
+    } else if (weapon.recoil > 1.4) {
+      triggerScreenShake(isCrouch ? 1.4 : 2.0);
     } else {
-      triggerScreenShake(1.2);
+      triggerScreenShake(1.0);
     }
   }
 

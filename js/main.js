@@ -61,6 +61,7 @@ import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from '
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch, resetDeathmatchState } from './deathmatch/index.js';
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
+import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
@@ -464,6 +465,7 @@ initModularGearDevUI();
 initWeaponEditorUI();
 initNetwork();
 initKillstreaks();
+initLighting();
 initPlayerLoadout(player);
 initArmoryUI(player);
 
@@ -798,6 +800,7 @@ function update() {
 
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
+  updateLighting(1 / 60);
 
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
@@ -1079,7 +1082,12 @@ function draw() {
     drawDebugColliders(ctx, GROUND_Y, player);
   }
 
+  drawShockwaves(ctx, camera);
+  drawLighting(ctx, camera, activeArenaId);
+
   ctx.restore();
+
+  drawCinematicVignette(ctx);
 
   if (DEBUG_COLLIDERS) {
     ctx.save();
