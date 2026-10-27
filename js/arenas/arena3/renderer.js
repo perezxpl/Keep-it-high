@@ -30,6 +30,13 @@ import {
 import { drawArena3Background } from './background.js';
 export { drawArena3Background };
 
+import {
+  drawWeatheredTimberDeck,
+  drawWeatheredTimberPost,
+  drawWeatheredStoneMasonry,
+  drawWeatheredBalustrade
+} from './weatheredAssets.js';
+
 function drawGroundwaterPool(ctx, seg) {
   if (!seg || seg.length < 2) return;
   const xStart = seg[0].x - 2;
@@ -885,68 +892,65 @@ export function drawArena3Foreground(ctx, camera) {
   function drawAnchorBlock(ax) {
     if (ax + 50 < camL || ax - 50 > camR) return;
     ctx.save();
-    // 1. Monolityczny żelbetonowy filar kotwiący wkopany w lity grunt (od Y: 1180 aż do spągu Y: 1400)
+    // 1. Monolityczny blok kamienno-żelbetonowy wkopany w lity grunt (od Y: 1180 aż do spągu Y: 1400)
     const blockTopY = 1180;
     const blockBottomY = 1400;
     const blockW = 56;
     const blockLeft = ax - blockW / 2;
     const blockH = blockBottomY - blockTopY;
 
-    // Żelbeton z szalunkiem i chłodnym grafitem
-    const aGrad = ctx.createLinearGradient(blockLeft, blockTopY, blockLeft + blockW, blockBottomY);
-    aGrad.addColorStop(0.0, '#4e5650');
-    aGrad.addColorStop(0.35, '#3a423d');
-    aGrad.addColorStop(0.70, '#262d28');
-    aGrad.addColorStop(1.0, '#151a16');
-    ctx.fillStyle = aGrad;
-    ctx.fillRect(blockLeft, blockTopY, blockW, blockH);
-    ctx.strokeStyle = '#0f1410';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(blockLeft, blockTopY, blockW, blockH);
+    // Prastary ciosany blok megalityczny z fazowaną koroną i klamrami
+    drawWeatheredStoneMasonry(ctx, blockLeft, blockTopY, blockW, blockH, {
+      courseHeight: 28,
+      hasChamfer: true,
+      hasCramps: true,
+      seed: Math.floor(Math.abs(ax * 7)),
+      mossTop: true
+    });
 
-    // Poziome linie szalunku deskowania i nity ściągów
-    ctx.strokeStyle = 'rgba(15, 20, 16, 0.75)';
-    ctx.lineWidth = 1.6;
-    for (let sy = blockTopY + 24; sy < blockBottomY; sy += 26) {
-      ctx.beginPath();
-      ctx.moveTo(blockLeft + 2, sy);
-      ctx.lineTo(blockLeft + blockW - 2, sy);
-      ctx.stroke();
-
-      ctx.fillStyle = '#111612';
-      ctx.fillRect(blockLeft + 8, sy - 13, 4, 4);
-      ctx.fillRect(blockLeft + blockW - 12, sy - 13, 4, 4);
-    }
-
-    // Ścięta fazowana korona bloku (chamfer)
-    ctx.fillStyle = '#657067';
-    ctx.beginPath();
-    ctx.moveTo(blockLeft, blockTopY + 5);
-    ctx.lineTo(blockLeft + 5, blockTopY);
-    ctx.lineTo(blockLeft + blockW - 5, blockTopY);
-    ctx.lineTo(blockLeft + blockW, blockTopY + 5);
-    ctx.closePath();
-    ctx.fill();
-
-    // Kute żelazne obejmy wzmacniające z nitami
+    // Kute żelazne obejmy opasujące blok z nitami
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(blockLeft - 2, blockTopY + 14, blockW + 4, 10);
-    ctx.fillRect(blockLeft - 2, blockTopY + 52, blockW + 4, 10);
-    ctx.fillRect(blockLeft - 2, blockTopY + 104, blockW + 4, 10);
-    ctx.fillRect(blockLeft - 2, blockTopY + 156, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 16, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 60, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 110, blockW + 4, 10);
+    ctx.fillRect(blockLeft - 2, blockTopY + 160, blockW + 4, 10);
 
-    // Śruba rzymska (Turnbuckle) i stalowe ucho kotwiące
-    ctx.fillStyle = '#475569';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(blockLeft - 2, blockTopY + 16, blockW + 4, 10);
+    ctx.strokeRect(blockLeft - 2, blockTopY + 60, blockW + 4, 10);
+
+    // Nity na obejmach
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(blockLeft, blockTopY + 19, 3, 4);
+    ctx.fillRect(blockLeft + blockW - 3, blockTopY + 19, 3, 4);
+
+    // Kuty ściągacz śrubowy (Turnbuckle) z naciętym gwintem i szeklą
+    ctx.fillStyle = '#273444';
     ctx.fillRect(ax - 8, blockTopY - 26, 16, 26);
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 2;
     ctx.strokeRect(ax - 8, blockTopY - 26, 16, 26);
 
-    // Otwór ściągacza kabla
+    // Zwoje gwintu ściągacza
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1.2;
+    for (let ty = blockTopY - 23; ty <= blockTopY - 11; ty += 3.5) {
+      ctx.beginPath();
+      ctx.moveTo(ax - 6, ty);
+      ctx.lineTo(ax + 6, ty);
+      ctx.stroke();
+    }
+
+    // Ucho szekli z otworem na kauszę liny nośnej
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.arc(ax, blockTopY - 14, 4, 0, Math.PI * 2);
+    ctx.arc(ax, blockTopY - 14, 4.2, 0, Math.PI * 2);
     ctx.fill();
+
+    // Zaciek rdzy spływający ze stalowego mocowania na lico kamienia
+    ctx.fillStyle = 'rgba(146, 64, 14, 0.45)';
+    ctx.fillRect(ax - 2.5, blockTopY, 5, 16);
 
     ctx.restore();
   }
@@ -965,80 +969,24 @@ export function drawArena3Foreground(ctx, camera) {
     const stoneTopY = ty + th - 60; // 1140
     const stoneBottomY = 1400;
     const stoneH = stoneBottomY - stoneTopY;
-    const stoneGrad = ctx.createLinearGradient(tx - 15, stoneTopY, tx + tw + 15, stoneBottomY);
-    stoneGrad.addColorStop(0, '#3f4738');
-    stoneGrad.addColorStop(0.35, '#2b3325');
-    stoneGrad.addColorStop(0.70, '#1b2117');
-    stoneGrad.addColorStop(1.0, '#10140e');
-    ctx.fillStyle = stoneGrad;
-    ctx.fillRect(tx - 12, stoneTopY, tw + 24, stoneH);
-    ctx.strokeStyle = '#12170f';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(tx - 12, stoneTopY, tw + 24, stoneH);
 
-    // Poziome ciosy kamienne i spoiny fundamentu
-    ctx.strokeStyle = 'rgba(10, 15, 10, 0.7)';
-    ctx.lineWidth = 1.6;
-    for (let by = stoneTopY + 28; by < stoneBottomY; by += 28) {
-      ctx.beginPath();
-      ctx.moveTo(tx - 12, by);
-      ctx.lineTo(tx + tw + 12, by);
-      ctx.stroke();
-    }
-
-    // Mech na cokole
-    ctx.fillStyle = '#4d8028';
-    ctx.fillRect(tx - 12, stoneTopY, tw + 24, 6);
+    // Prastary ciosany cokół kamienny fundamentu wieży
+    drawWeatheredStoneMasonry(ctx, tx - 12, stoneTopY, tw + 24, stoneH, {
+      courseHeight: 26,
+      hasChamfer: true,
+      hasCramps: true,
+      seed: isLeft ? 17 : 83,
+      mossTop: true
+    });
 
     if (pillar && pillar.intact) {
-      // B. Główny pionowy drewniany słup (filar z bali tekowych)
-      const woodGrad = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
-      woodGrad.addColorStop(0, '#533418');
-      woodGrad.addColorStop(0.5, '#3c230e');
-      woodGrad.addColorStop(1, '#251406');
-      ctx.fillStyle = woodGrad;
-      ctx.fillRect(tx, ty, tw, th);
-
-      // C. Słoje drewna i nacięcia
-      ctx.strokeStyle = 'rgba(16, 8, 3, 0.65)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(tx + 8, ty);
-      ctx.lineTo(tx + 8, ty + th);
-      ctx.moveTo(tx + 21, ty);
-      ctx.lineTo(tx + 21, ty + th);
-      ctx.stroke();
-
-
-      // E. Kute żelazne obejmy i pasy nitowane
-      for (let by = ty + 50; by < ty + th - 40; by += 90) {
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(tx - 4, by, tw + 8, 12);
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(tx - 4, by, tw + 8, 12);
-        // Nity
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(tx - 2, by + 3.5, 3, 5);
-        ctx.fillRect(tx + tw - 1, by + 3.5, 3, 5);
-      }
-
-      // Pęknięcia w drewnie przy uszkodzeniu
-      if (pillar.hp < pillar.maxHp) {
-        const dmgRatio = 1 - (pillar.hp / pillar.maxHp);
-        ctx.strokeStyle = '#0f0502';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(tx + 10, ty + 120);
-        ctx.lineTo(tx + 18, ty + 160);
-        ctx.lineTo(tx + 12, ty + 210);
-        if (dmgRatio > 0.45) {
-          ctx.moveTo(tx + 22, ty + 260);
-          ctx.lineTo(tx + 14, ty + 310);
-          ctx.lineTo(tx + 20, ty + 360);
-        }
-        ctx.stroke();
-      }
+      // B. Główny pionowy drewniany słup (filar z bali tekowych w estetyce postarzałej)
+      const dmgRatio = 1 - (pillar.hp / pillar.maxHp);
+      drawWeatheredTimberPost(ctx, tx, ty, tw, th, {
+        bandInterval: 80,
+        damageRatio: dmgRatio,
+        seed: isLeft ? 29 : 71
+      });
     } else if (pillar) {
       // ZAWALONY FILAR WIEŻY (PO ZNISZCZENIU)
       // A. Wyszczerbiony, postrzępiony kikut przy fundamencie
@@ -1140,35 +1088,28 @@ export function drawArena3Foreground(ctx, camera) {
 
       ctx.save();
       if (b.intact) {
-        const deckGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        deckGrad.addColorStop(0, '#5f3c1a');
-        deckGrad.addColorStop(0.5, '#43280f');
-        deckGrad.addColorStop(1, '#2c1706');
-        ctx.fillStyle = deckGrad;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        drawWeatheredTimberDeck(ctx, b.x, b.y, b.w, b.h, {
+          seed: i * 37 + (isLeft ? 5 : 75),
+          damageRatio: dmgRatio,
+          plankCount: 2,
+          hasGouges: true,
+          hasMetal: true,
+          hasMoss: true,
+          animTime
+        });
 
-        // Krawędź pomostu z mchem
-        ctx.fillStyle = '#4c7a2b';
-        ctx.fillRect(b.x, b.y, b.w, 4);
+        // Drewniany zastrzał wsporczy podestu (corbel bracket) do głównego słupa
+        ctx.strokeStyle = '#38200b';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        const corbelStartX = b.x + b.w * 0.5;
+        ctx.moveTo(corbelStartX, b.y + b.h);
+        ctx.lineTo(tx + tw * 0.5, b.y + b.h + 36);
+        ctx.stroke();
 
-        ctx.strokeStyle = '#1c1005';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-        // Nity
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(b.x + 4, b.y + 4, 3, 3);
-        ctx.fillRect(b.x + b.w - 7, b.y + 4, 3, 3);
-
-        // Pęknięcia jeśli oberwał
-        if (b.hp < b.maxHp) {
-          ctx.strokeStyle = '#120802';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(b.x + b.w * 0.4, b.y);
-          ctx.lineTo(b.x + b.w * 0.5, b.y + b.h);
-          ctx.stroke();
-        }
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(corbelStartX - 2, b.y + b.h - 1, 4, 4);
       } else {
         // Zniszczona belka pomostu w powietrzu lub w wodzie
         const cx = b.x + b.w / 2;
@@ -1253,31 +1194,16 @@ export function drawArena3Foreground(ctx, camera) {
     const teamName = isLeft ? 'FORTRESS ALPHA' : 'OUTPOST BRAVO';
 
     if (pillar && pillar.intact) {
-      // A. Przedłużenie słupów wieży w górę (od Y: 600 do 400)
-      const stemGrad = ctx.createLinearGradient(stemX, 400, stemX + 30, 600);
-      stemGrad.addColorStop(0, '#533418');
-      stemGrad.addColorStop(0.5, '#3c230e');
-      stemGrad.addColorStop(1, '#251406');
-      ctx.fillStyle = stemGrad;
-      ctx.fillRect(stemX, 400, 30, 200);
-
-      // Stalowe okucia i nity słupa
-      for (let py = 430; py < 590; py += 50) {
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(stemX - 3, py, 36, 10);
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(stemX - 3, py, 36, 10);
-      }
-
-      ctx.strokeStyle = '#1b0e04';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(stemX, 400, 30, 200);
+      // A. Przedłużenie słupów wieży w górę (od Y: 600 do 400) w estetyce postarzałego drewna
+      drawWeatheredTimberPost(ctx, stemX, 400, 30, 200, {
+        bandInterval: 50,
+        seed: isLeft ? 43 : 89
+      });
 
       // Drabina drewniana łącząca dolny pomost Y: 600 z górnym pomostem Y: 400
       const ladderX = isLeft ? 150 : 4230;
-      ctx.strokeStyle = '#38200b';
-      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#2c1808';
+      ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(ladderX, 420);
       ctx.lineTo(ladderX, 600);
@@ -1285,16 +1211,33 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineTo(ladderX + 16, 600);
       ctx.stroke();
 
-      ctx.strokeStyle = '#5c3917';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(ladderX + 1, 420);
+      ctx.lineTo(ladderX + 1, 600);
+      ctx.stroke();
+
+      // Szczeble drabiny z wytartym środkiem i kowalskimi gwoździami
       for (let ly = 435; ly < 595; ly += 18) {
+        ctx.strokeStyle = '#4e2f12';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(ladderX, ly);
         ctx.lineTo(ladderX + 16, ly);
         ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(215, 175, 95, 0.65)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(ladderX + 4, ly - 0.5);
+        ctx.lineTo(ladderX + 12, ly - 0.5);
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(ladderX + 1, ly - 1, 1.5, 1.5);
+        ctx.fillRect(ladderX + 13.5, ly - 1, 1.5, 1.5);
       }
-
-
     }
 
     // C. MODUŁOWE PŁYTY PODŁOGOWE GNIAZDA SNAJPERSKIEGO (Y: 400)
@@ -1305,43 +1248,24 @@ export function drawArena3Foreground(ctx, camera) {
 
       ctx.save();
       if (b.intact) {
-        const platGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        platGrad.addColorStop(0.0, '#6d431c');
-        platGrad.addColorStop(0.5, '#492a0f');
-        platGrad.addColorStop(1.0, '#2b1606');
-        ctx.fillStyle = platGrad;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        // Podłoga gniazda snajperskiego
+        drawWeatheredTimberDeck(ctx, b.x, b.y, b.w, b.h, {
+          seed: i * 43 + (isLeft ? 7 : 63),
+          damageRatio: dmgRatio,
+          plankCount: 2,
+          hasGouges: true,
+          hasMetal: true,
+          hasMoss: true,
+          animTime
+        });
 
-        // Mech i zbrojenia na krawędzi
-        ctx.fillStyle = '#4c7a2b';
-        ctx.fillRect(b.x, b.y, b.w, 4);
-
-        ctx.strokeStyle = '#1a0e04';
-        ctx.lineWidth = 2.2;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-        // Nacięcia desek i śruby
-        ctx.strokeStyle = 'rgba(20, 10, 4, 0.6)';
-        ctx.lineWidth = 1.5;
-        for (let dx = b.x + 10; dx < b.x + b.w - 5; dx += 20) {
-          ctx.beginPath();
-          ctx.moveTo(dx, b.y);
-          ctx.lineTo(dx, b.y + b.h);
-          ctx.stroke();
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(dx - 1, b.y + 4, 2.5, 2.5);
-        }
-
-        // D. Drewniana balustrada obronna z otworami strzelniczymi nad tą deską
-        ctx.fillStyle = '#43260d';
-        ctx.fillRect(b.x + 2, b.y - 30, b.w - 4, 30);
-        ctx.strokeStyle = '#1c0f04';
-        ctx.lineWidth = 1.8;
-        ctx.strokeRect(b.x + 2, b.y - 30, b.w - 4, 30);
-
-        // Szczelina strzelnicza
-        ctx.fillStyle = '#110903';
-        ctx.fillRect(b.x + b.w * 0.5 - 9, b.y - 22, 18, 12);
+        // D. Balustrada obronna z otworem strzelniczym i pancerzem
+        drawWeatheredBalustrade(ctx, b.x + 2, b.y - 30, b.w - 4, 30, {
+          seed: i * 19,
+          slitW: 18,
+          slitH: 12
+        });
       } else {
         // Odłamany segment podestu gniazda snajperskiego ze szczątkami balustrady
         const cx = b.x + b.w / 2;
@@ -1353,7 +1277,7 @@ export function drawArena3Foreground(ctx, camera) {
 
     if (pillar && pillar.intact) {
       // E. Słupy zadaszenia i maskująca płachta taktyczna (Camo Netting)
-      ctx.strokeStyle = '#321908';
+      ctx.strokeStyle = '#2d1808';
       ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(deckX + 14, deckY - 32);
@@ -1362,18 +1286,31 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineTo(deckX + deckW - 14, deckY - 75);
       ctx.stroke();
 
-      // Daszek cieniujący
-      ctx.fillStyle = '#2d471c';
+      // Kute żelazne obejmy krokwi
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(deckX + 11, deckY - 50, 6, 7);
+      ctx.fillRect(deckX + deckW - 17, deckY - 50, 6, 7);
+
+      // Daszek cieniujący z poszarpaną krawędzią siatki maskującej
+      ctx.fillStyle = '#223815';
       ctx.beginPath();
-      ctx.moveTo(deckX - 6, deckY - 70);
-      ctx.lineTo(deckX + deckW / 2, deckY - 84);
-      ctx.lineTo(deckX + deckW + 6, deckY - 70);
-      ctx.lineTo(deckX + deckW, deckY - 75);
-      ctx.lineTo(deckX, deckY - 75);
+      ctx.moveTo(deckX - 8, deckY - 70);
+      ctx.lineTo(deckX + deckW * 0.5, deckY - 85);
+      ctx.lineTo(deckX + deckW + 8, deckY - 70);
+      ctx.lineTo(deckX + deckW + 2, deckY - 75);
+      ctx.lineTo(deckX + deckW * 0.5, deckY - 78);
+      ctx.lineTo(deckX - 2, deckY - 75);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#182b0d';
-      ctx.lineWidth = 2;
+
+      // Poszarpane zwisające strzępy tkaniny kamuflażowej
+      ctx.fillStyle = '#304d1e';
+      for (let cxX = deckX; cxX < deckX + deckW; cxX += 16) {
+        const tLen = 4 + (Math.sin(cxX * 0.3 + animTime * 2.0) * 3);
+        ctx.fillRect(cxX, deckY - 70, 8, tLen);
+      }
+      ctx.strokeStyle = '#12200a';
+      ctx.lineWidth = 1.6;
       ctx.stroke();
 
       // F. Maszt radiowy łączności wojskowej z pulsującą czerwoną diodą
@@ -1442,55 +1379,29 @@ export function drawArena3Foreground(ctx, camera) {
         const py = slab.y;
         const pw = slab.w;
         const ph = slab.h;
+        const dmgRatio = 1 - (slab.hp / slab.maxHp);
 
-        // A. Skalna masa (dolomit / bazalt porośnięty dżunglą)
-        const rockGrad = ctx.createLinearGradient(px, py, px, py + ph);
-        rockGrad.addColorStop(0.0, '#536353');
-        rockGrad.addColorStop(0.3, '#3a473a');
-        rockGrad.addColorStop(0.8, '#262f26');
-        rockGrad.addColorStop(1.0, '#151b15');
-        ctx.fillStyle = rockGrad;
-        ctx.fillRect(px, py, pw, ph);
+        // Naturalna ciosana półka skalna bazaltowo-dolomitowa w estetyce ruin
+        drawWeatheredStoneMasonry(ctx, px, py, pw, ph, {
+          courseHeight: Math.min(22, ph),
+          hasChamfer: true,
+          hasCramps: true,
+          damageRatio: dmgRatio,
+          seed: i * 53,
+          mossTop: true
+        });
 
-        // B. Warstwa mchu na szczycie półki skalnej
-        ctx.fillStyle = '#4e8d2e';
-        ctx.fillRect(px, py, pw, 9);
-        ctx.fillStyle = '#6ab83e';
-        ctx.fillRect(px + 6, py, pw - 12, 4);
+        // Reliefy prastarych ruin wojskowych na czole skały
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fillRect(px + 8, py + 14, pw - 16, Math.max(4, ph - 22));
 
-        // C. Ostra krawędź komiksowa / rim lighting
-        ctx.strokeStyle = 'rgba(135, 235, 75, 0.75)';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + pw, py);
-        ctx.stroke();
-
-        // D. Kamienne spękania przy uszkodzeniu
-        if (slab.hp < slab.maxHp) {
-          const dmgRatio = 1 - (slab.hp / slab.maxHp);
-          ctx.strokeStyle = '#0d130d';
-          ctx.lineWidth = 2.0;
-          ctx.beginPath();
-          ctx.moveTo(px + pw * 0.35, py);
-          ctx.lineTo(px + pw * 0.42, py + ph * 0.55);
-          ctx.lineTo(px + pw * 0.38, py + ph);
-          if (dmgRatio > 0.45) {
-            ctx.moveTo(px + pw * 0.75, py + 2);
-            ctx.lineTo(px + pw * 0.65, py + ph * 0.7);
-          }
-          ctx.stroke();
-        }
-
-        // Reliefy ruin
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-        ctx.fillRect(px + 8, py + 14, pw - 16, 12);
-
-
-        // F. Obrys płyty
-        ctx.strokeStyle = '#1b231b';
-        ctx.lineWidth = 2.2;
-        ctx.strokeRect(px, py, pw, ph);
+        // Kute żelazne kotwy skalne spinające blok z macierzystym klifem
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px + 4, py + 6, 6, 8);
+        ctx.fillRect(px + pw - 10, py + 6, 6, 8);
+        ctx.fillStyle = 'rgba(146, 64, 14, 0.50)';
+        ctx.fillRect(px + 6, py + 14, 2, 7);
+        ctx.fillRect(px + pw - 8, py + 14, 2, 7);
       } else {
         // Zniszczona płyta skalna - ostry łupany głaz dolomitowy
         drawSplinteredRockSlab(ctx, slab);
@@ -1524,48 +1435,51 @@ export function drawArena3Foreground(ctx, camera) {
     const caissonW = 62;
     const caissonLeft = px - caissonW / 2;
 
-    const pBaseGrad = ctx.createLinearGradient(caissonLeft, caissonTopY, caissonLeft + caissonW, caissonBottomY);
-    pBaseGrad.addColorStop(0.0, '#4a5445');
-    pBaseGrad.addColorStop(0.35, '#313a2d');
-    pBaseGrad.addColorStop(0.70, '#1f251c'); // Strefa zanurzona w wodzie poniżej 1300
-    pBaseGrad.addColorStop(1.0, '#121710');
-    ctx.fillStyle = pBaseGrad;
-    ctx.fillRect(caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY);
-    ctx.strokeStyle = '#141812';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY);
+    // Prastary ciosany keson z ciemnego kamienia ze strefą zanurzenia i glonami
+    drawWeatheredStoneMasonry(ctx, caissonLeft, caissonTopY, caissonW, caissonBottomY - caissonTopY, {
+      courseHeight: 32,
+      waterLineY: 1300,
+      hasChamfer: true,
+      hasCramps: true,
+      seed: (pylonKey === 'left' ? 31 : 67),
+      mossTop: true
+    });
 
-    // Kute żelazne klamry i obejmy kesonu
+    // Pancerne kute stalowe obejmy ostrogi kesonu
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(caissonLeft - 2, 1130, caissonW + 4, 10);
     ctx.fillRect(caissonLeft - 2, 1210, caissonW + 4, 10);
     ctx.fillRect(caissonLeft - 2, 1290, caissonW + 4, 12);
     ctx.fillRect(caissonLeft - 2, 1345, caissonW + 4, 12);
 
-    // Ciosane bloki kamienne i spoiny
-    ctx.strokeStyle = '#182015';
-    ctx.lineWidth = 2;
-    for (let by = caissonTopY + 30; by < caissonBottomY; by += 35) {
-      ctx.beginPath();
-      ctx.moveTo(caissonLeft, by);
-      ctx.lineTo(caissonLeft + caissonW, by);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(caissonLeft - 2, 1130, caissonW + 4, 10);
+    ctx.strokeRect(caissonLeft - 2, 1210, caissonW + 4, 10);
+
+    // Kute nity na obejmach
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(caissonLeft, 1133, 3, 4);
+    ctx.fillRect(caissonLeft + caissonW - 3, 1133, 3, 4);
+    ctx.fillRect(caissonLeft, 1213, 3, 4);
+    ctx.fillRect(caissonLeft + caissonW - 3, 1213, 3, 4);
 
     if (p.intact) {
+      const dmgRatio = 1 - (p.hp / p.maxHp);
       // 2. Masywne pionowe słupy pylonu (A-frame z belek tekowych od 850 do 1100)
-      const pWoodGrad = ctx.createLinearGradient(px - 25, pylonTopY, px + 25, caissonTopY);
-      pWoodGrad.addColorStop(0, '#533418');
-      pWoodGrad.addColorStop(0.5, '#3c230e');
-      pWoodGrad.addColorStop(1, '#251406');
-      ctx.fillStyle = pWoodGrad;
+      drawWeatheredTimberPost(ctx, px - 24, pylonTopY, 18, caissonTopY - pylonTopY, {
+        bandInterval: 75,
+        damageRatio: dmgRatio,
+        seed: (pylonKey === 'left' ? 13 : 47)
+      });
+      drawWeatheredTimberPost(ctx, px + 6, pylonTopY, 18, caissonTopY - pylonTopY, {
+        bandInterval: 75,
+        damageRatio: dmgRatio,
+        seed: (pylonKey === 'left' ? 27 : 59)
+      });
 
-      // Lewa i prawa noga pylonu
-      ctx.fillRect(px - 24, pylonTopY, 18, caissonTopY - pylonTopY);
-      ctx.fillRect(px + 6, pylonTopY, 18, caissonTopY - pylonTopY);
-
-      // Krzyżowe rygle wzmacniające (X-bracing)
-      ctx.strokeStyle = '#3e240e';
+      // Krzyżowe rygle wzmacniające (X-bracing) z ciosanego drewna
+      ctx.strokeStyle = '#38200c';
       ctx.lineWidth = 6;
       for (let crossY = pylonTopY + 40; crossY < caissonTopY - 20; crossY += 75) {
         ctx.beginPath();
@@ -1575,25 +1489,42 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.lineTo(px - 20, crossY + 60);
         ctx.stroke();
 
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(px - 26, crossY - 4, 52, 8);
+        // Fazowana krawędź rygla
+        ctx.strokeStyle = 'rgba(215, 175, 95, 0.40)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(px - 19, crossY - 1);
+        ctx.lineTo(px + 19, crossY + 59);
+        ctx.stroke();
+
+        // Kute stalowe nakładki węzłowe (gusset plates) z nitami
+        ctx.fillStyle = '#222d3d';
+        ctx.fillRect(px - 26, crossY - 4, 52, 9);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(px - 26, crossY - 4, 52, 9);
+
+        // Nity nakładek
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(px - 24, crossY - 2, 3, 4);
+        ctx.fillRect(px + 21, crossY - 2, 3, 4);
+        ctx.fillRect(px - 2, crossY - 2, 4, 4);
       }
 
       // Dynamiczne pęknięcia drewna przy uszkodzeniu
       if (p.hp < p.maxHp) {
-        const damageRatio = 1 - (p.hp / p.maxHp);
         ctx.strokeStyle = '#0a0502';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(px - 15, 950);
         ctx.lineTo(px - 8, 990);
         ctx.lineTo(px - 14, 1040);
-        if (damageRatio > 0.4) {
+        if (dmgRatio > 0.4) {
           ctx.moveTo(px + 12, 920);
           ctx.lineTo(px + 18, 970);
           ctx.lineTo(px + 10, 1020);
         }
-        if (damageRatio > 0.7) {
+        if (dmgRatio > 0.7) {
           ctx.moveTo(px - 20, 1060);
           ctx.lineTo(px + 15, 1080);
         }
@@ -1601,17 +1532,35 @@ export function drawArena3Foreground(ctx, camera) {
       }
 
       // 3. Szczyt pylonu: siodło linowe (Cable Saddle z żelaza i brązu)
-      ctx.fillStyle = '#1e293b';
+      ctx.fillStyle = '#1c2430';
       ctx.fillRect(px - 30, pylonTopY - 14, 60, 16);
-      ctx.strokeStyle = '#0f172a';
+      ctx.strokeStyle = '#0b1017';
       ctx.lineWidth = 2;
       ctx.strokeRect(px - 30, pylonTopY - 14, 60, 16);
 
-      // Kołowroty / rolki linowe
-      ctx.fillStyle = '#64748b';
+      // Fazowana krawędź siodła
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(px - 29, pylonTopY - 13);
+      ctx.lineTo(px + 29, pylonTopY - 13);
+      ctx.stroke();
+
+      // Kołowroty / rolki linowe z rowkiem i smarem
+      ctx.fillStyle = '#475569';
       ctx.beginPath();
       ctx.arc(px - 10, pylonTopY - 6, 7, 0, Math.PI * 2);
       ctx.arc(px + 10, pylonTopY - 6, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Wytarty rowek pod linę
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(px - 10, pylonTopY - 6, 3, 0, Math.PI * 2);
+      ctx.arc(px + 10, pylonTopY - 6, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
       // PYLON ZNISZCZONY (ANGRY BIRDS RUBBLE / FALLEN TOWER)
@@ -1759,23 +1708,24 @@ export function drawArena3Foreground(ctx, camera) {
       const deckBottomY = Math.max(y1, y2) + 12;
 
       if (b.intact) {
-        // Pal nośny (stilt) schodzący od kładki w głąb podłoża aż do spągu Y: 1400
-        ctx.strokeStyle = '#38200b';
-        ctx.lineWidth = 9;
-        ctx.beginPath();
-        ctx.moveTo(b.stiltX, deckBottomY);
-        ctx.lineTo(b.stiltX, 1400);
-        ctx.stroke();
+        // Pal nośny (hewn timber stilt) schodzący od kładki w głąb podłoża aż do spągu Y: 1400
+        drawWeatheredTimberPost(ctx, b.stiltX - 5, deckBottomY, 10, 1400 - deckBottomY, {
+          bandInterval: 95,
+          isWet: true,
+          seed: b.seed
+        });
 
-        ctx.strokeStyle = '#5a3818';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        ctx.moveTo(b.stiltX - 3, deckBottomY);
-        ctx.lineTo(b.stiltX - 3, 1400);
-        ctx.stroke();
+        // Kute stalowe strzemię / jarzmo mocujące do podłużnicy rampy
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(b.stiltX - 8, deckBottomY + 2, 16, 8);
 
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(b.stiltX - 7, deckBottomY + 6, 14, 7);
+        // Śruby ryglowe
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(b.stiltX - 6, deckBottomY + 4, 3, 3);
+        ctx.fillRect(b.stiltX + 3, deckBottomY + 4, 3, 3);
       } else {
         // Złamany kikut pala (splintered broken stilt) wkopany w podłoże aż do spągu Y: 1400
         const breakTopY = deckBottomY + 22 + ((b.seed % 17) - 8);
@@ -1831,9 +1781,8 @@ export function drawArena3Foreground(ctx, camera) {
       const groundY = getRiverbankGroundY(b.stiltX);
 
       if (b.intact) {
-
-
-        // 2. Belka podestu rampy
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        // 2. Belka podestu rampy w estetyce postarzanego drewna
         ctx.beginPath();
         ctx.moveTo(b.origX, y1);
         ctx.lineTo(b.origX + b.w, y2);
@@ -1841,84 +1790,108 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.lineTo(b.origX, y1 + 20);
         ctx.closePath();
 
-        const blockGrad = ctx.createLinearGradient(b.origX, y1, b.origX + b.w, y2);
-        blockGrad.addColorStop(0.0, '#785226');
-        blockGrad.addColorStop(0.5, '#563814');
-        blockGrad.addColorStop(1.0, '#362108');
+        const blockGrad = ctx.createLinearGradient(b.origX, y1, b.origX + b.w, y2 + 20);
+        blockGrad.addColorStop(0.0, '#664019');
+        blockGrad.addColorStop(0.35, '#4a2c10');
+        blockGrad.addColorStop(0.75, '#2d1807');
+        blockGrad.addColorStop(1.0, '#1c0d03');
         ctx.fillStyle = blockGrad;
         ctx.fill();
 
-        ctx.strokeStyle = '#221306';
-        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#180a02';
+        ctx.lineWidth = 2.0;
         ctx.stroke();
 
-        // 3. Listwy antypoślizgowe
-        for (let ax = b.origX + 15; ax <= b.origX + b.w - 10; ax += 22) {
+        // Wzdłużny słój belki
+        ctx.strokeStyle = 'rgba(14, 6, 2, 0.70)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(b.origX + 2, y1 + 10);
+        ctx.lineTo(b.origX + b.w - 2, y2 + 10);
+        ctx.stroke();
+
+        // 3. Listwy antypoślizgowe z ciosanych bali (stepped transverse battens)
+        for (let ax = b.origX + 14; ax <= b.origX + b.w - 10; ax += 20) {
           const ay = getApproachInclineY(ax, isLeft);
+          ctx.fillStyle = '#3a200a';
+          ctx.fillRect(ax - 2, ay - 1, 4, 6);
+
           ctx.strokeStyle = 'rgba(235, 195, 105, 0.85)';
-          ctx.lineWidth = 2.2;
+          ctx.lineWidth = 1.8;
           ctx.beginPath();
-          ctx.moveTo(ax - 5, ay);
-          ctx.lineTo(ax + 5, ay + 6);
+          ctx.moveTo(ax - 4, ay);
+          ctx.lineTo(ax + 4, ay + (isLeft ? -1.5 : 1.5));
           ctx.stroke();
 
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(ax - 1, ay + 3, 3, 3);
+          // Kuty gwóźdź
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(ax - 1, ay + 2, 2.5, 2.5);
         }
 
         // Mech na górnej krawędzi
-        ctx.strokeStyle = 'rgba(95, 180, 50, 0.7)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#3d6820';
+        ctx.lineWidth = 3.2;
         ctx.beginPath();
         ctx.moveTo(b.origX, y1 + 1);
         ctx.lineTo(b.origX + b.w, y2 + 1);
         ctx.stroke();
+        ctx.strokeStyle = '#629e30';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(b.origX + 3, y1 + 0.6);
+        ctx.lineTo(b.origX + b.w - 3, y2 + 0.6);
+        ctx.stroke();
 
         // Pęknięcia jeśli rampa jest uszkodzona
         if (b.hp < b.maxHp) {
-          const dmgRatio = 1 - (b.hp / b.maxHp);
-          ctx.strokeStyle = '#100702';
+          ctx.strokeStyle = '#0c0401';
           ctx.lineWidth = 2.0;
           ctx.beginPath();
-          ctx.moveTo(b.origX + b.w * 0.4, y1 + 5);
-          ctx.lineTo(b.origX + b.w * 0.5, y1 + 14);
+          ctx.moveTo(b.origX + b.w * 0.4, y1 + 4);
+          ctx.lineTo(b.origX + b.w * 0.48, y1 + 12);
           if (dmgRatio > 0.5) {
-            ctx.moveTo(b.origX + b.w * 0.7, y2 + 4);
-            ctx.lineTo(b.origX + b.w * 0.6, y2 + 16);
+            ctx.moveTo(b.origX + b.w * 0.72, y2 + 3);
+            ctx.lineTo(b.origX + b.w * 0.64, y2 + 15);
           }
           ctx.stroke();
         }
 
-        // 4. Słupek poręczy na środku segmentu
+        // 4. Słupek poręczy na środku segmentu z ciosanego drewna
         const postX = b.stiltX;
         const postY = getApproachInclineY(postX, isLeft);
         const handrailH = 34;
 
-        ctx.strokeStyle = '#3e240e';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#321908';
+        ctx.lineWidth = 4.5;
         ctx.beginPath();
         ctx.moveTo(postX, postY);
         ctx.lineTo(postX, postY - handrailH);
         ctx.stroke();
 
-        ctx.fillStyle = '#64748b';
+        ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+        ctx.lineWidth = 1.0;
         ctx.beginPath();
-        ctx.arc(postX, postY - handrailH, 3.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(postX - 1, postY);
+        ctx.lineTo(postX - 1, postY - handrailH);
+        ctx.stroke();
+
+        // Okucie słupka
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(postX - 3.5, postY - handrailH, 7, 7);
 
         // Linka poręczy do kolejnego segmentu
         if (rIdx < rampBlocks.length - 1 && rampBlocks[rIdx + 1].intact) {
           const nextPostX = rampBlocks[rIdx + 1].stiltX;
           const nextPostY = getApproachInclineY(nextPostX, isLeft);
 
-          ctx.strokeStyle = '#5a3d1c';
+          ctx.strokeStyle = '#533718';
           ctx.lineWidth = 3.5;
           ctx.beginPath();
-          ctx.moveTo(postX, postY - handrailH);
-          ctx.lineTo(nextPostX, nextPostY - handrailH);
+          ctx.moveTo(postX, postY - handrailH + 3);
+          ctx.lineTo(nextPostX, nextPostY - handrailH + 3);
           ctx.stroke();
 
-          ctx.strokeStyle = '#3d2610';
+          ctx.strokeStyle = '#2d1808';
           ctx.lineWidth = 1.8;
           ctx.beginPath();
           ctx.moveTo(postX, postY - handrailH * 0.5);
@@ -2114,50 +2087,28 @@ export function drawArena3Foreground(ctx, camera) {
       const halfH = b.h / 2;
 
       if (b.intact) {
-        const platGrad = ctx.createLinearGradient(-halfW, -halfH, -halfW, halfH);
-        platGrad.addColorStop(0.0, '#7c582c');
-        platGrad.addColorStop(0.5, '#563a18');
-        platGrad.addColorStop(1.0, '#35220c');
-        ctx.fillStyle = platGrad;
-        ctx.fillRect(-halfW, -halfH, b.w, b.h);
+        const dmgRatio = 1 - (b.hp / b.maxHp);
+        drawWeatheredTimberDeck(ctx, -halfW, -halfH, b.w, b.h, {
+          seed: Math.floor(Math.abs(cx * 3)),
+          damageRatio: dmgRatio,
+          plankCount: 2,
+          hasGouges: true,
+          hasMetal: true,
+          hasMoss: true,
+          hangingVines: true,
+          animTime
+        });
 
-        // Szczeble i gwoździe
-        ctx.strokeStyle = '#201306';
-        ctx.lineWidth = 1.8;
+        // Oplecione liny konopne mocujące deskę do zawiesia
+        ctx.strokeStyle = '#6a431a';
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.moveTo(0, -halfH);
-        ctx.lineTo(0, halfH);
+        ctx.moveTo(-halfW + 3, -halfH);
+        ctx.lineTo(-halfW + 3, halfH);
+        ctx.moveTo(halfW - 3, -halfH);
+        ctx.lineTo(halfW - 3, halfH);
         ctx.stroke();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(-halfW + 4, -halfH + 3, 2, 2);
-        ctx.fillRect(halfW - 6, -halfH + 3, 2, 2);
-
-        // Mech na deskach
-        ctx.fillStyle = '#4c802b';
-        ctx.fillRect(-halfW, -halfH, b.w, 3.5);
-
-        // Obrys i rim light
-        ctx.strokeStyle = '#1b1005';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-halfW, -halfH, b.w, b.h);
-
-        ctx.strokeStyle = 'rgba(235, 195, 100, 0.85)';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(-halfW, -halfH);
-        ctx.lineTo(halfW, -halfH);
-        ctx.stroke();
-
-        // Pęknięcia jeśli oberwała
-        if (b.hp < b.maxHp) {
-          ctx.strokeStyle = '#150901';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(-halfW + 6, -halfH);
-          ctx.lineTo(2, 0);
-          ctx.stroke();
-        }
         ctx.restore();
       } else {
         // Zniszczona deska kładki ze sterczącymi drzazgami
@@ -2210,7 +2161,7 @@ export function drawArena3Foreground(ctx, camera) {
     }
     ctx.stroke();
 
-    // Druga lina odciągowa (podwójna lina stalowa)
+    // Druga lina odciągowa (podwójna lina stalowa z połyskiem splotu)
     ctx.strokeStyle = '#2d1c0a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -2221,6 +2172,20 @@ export function drawArena3Foreground(ctx, camera) {
     if (ARENA_3_PYLONS.right.intact) {
       ctx.moveTo(pylonRightX - 4, pylonTopY - 6);
       ctx.lineTo(anchorRightX - 3, anchorCableY);
+    }
+    ctx.stroke();
+
+    // Jasny refleks splotu drutów liny stalowej
+    ctx.strokeStyle = 'rgba(215, 175, 95, 0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (ARENA_3_PYLONS.left.intact) {
+      ctx.moveTo(pylonLeftX - 1, pylonTopY - 7);
+      ctx.lineTo(anchorLeftX - 1, anchorCableY);
+    }
+    if (ARENA_3_PYLONS.right.intact) {
+      ctx.moveTo(pylonRightX + 1, pylonTopY - 7);
+      ctx.lineTo(anchorRightX + 1, anchorCableY);
     }
     ctx.stroke();
     ctx.restore();
@@ -2253,6 +2218,14 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.quadraticCurveTo(2200, midSagY + 3, rightAnchorX, rightAnchorY + 3);
     ctx.stroke();
 
+    // Jasny refleks splotu drutów nośnych
+    ctx.strokeStyle = 'rgba(215, 175, 95, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(leftAnchorX, leftAnchorY - 1);
+    ctx.quadraticCurveTo(2200, midSagY - 1, rightAnchorX, rightAnchorY - 1);
+    ctx.stroke();
+
     // 2. Dolna lina poręczy (Handrail cable)
     if (ARENA_3_PYLONS.left.intact && ARENA_3_PYLONS.right.intact) {
       ctx.strokeStyle = '#432910';
@@ -2260,6 +2233,13 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.beginPath();
       ctx.moveTo(bridgeX1 - 10, bridgeY - 35);
       ctx.lineTo(bridgeX2 + 10, bridgeY - 35);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(215, 175, 95, 0.35)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(bridgeX1 - 10, bridgeY - 36);
+      ctx.lineTo(bridgeX2 + 10, bridgeY - 36);
       ctx.stroke();
     }
 
@@ -2302,51 +2282,32 @@ export function drawArena3Foreground(ctx, camera) {
 
     ctx.save();
     if (b.intact) {
-      // 1. NIENARUSZONA BELKA MOSTU (Stabilna część pomostu ze sprężystym uginaniem)
+      // 1. NIENARUSZONA BELKA MOSTU W ESTETYCE POSTARZAŁEJ I ZNISZCZONEJ DŻUNGLI
       const currentY = b.y + (b.sag || 0);
-      const bGrad = ctx.createLinearGradient(b.x, currentY, b.x, currentY + b.h);
-      bGrad.addColorStop(0.0, '#785226');
-      bGrad.addColorStop(0.5, '#563814');
-      bGrad.addColorStop(1.0, '#362108');
-      ctx.fillStyle = bGrad;
-      ctx.fillRect(b.x, currentY, b.w, b.h);
+      const dmgRatio = 1 - (b.hp / b.maxHp);
+      drawWeatheredTimberDeck(ctx, b.x, currentY, b.w, b.h, {
+        seed: i * 23,
+        damageRatio: dmgRatio,
+        plankCount: 2,
+        hasGouges: true,
+        hasMetal: true,
+        hasMoss: true,
+        isWet: (currentY + b.h >= 1290),
+        animTime
+      });
 
-      // Słoje i nacięcia drewna
-      ctx.strokeStyle = 'rgba(28, 16, 5, 0.65)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(b.x + b.w * 0.5, currentY);
-      ctx.lineTo(b.x + b.w * 0.5, currentY + b.h);
-      ctx.stroke();
-
-      // Śruby mocujące deski
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(b.x + 3, currentY + 3, 2.5, 2.5);
-      ctx.fillRect(b.x + b.w - 5, currentY + 3, 2.5, 2.5);
-      ctx.fillRect(b.x + 3, currentY + 12, 2.5, 2.5);
-      ctx.fillRect(b.x + b.w - 5, currentY + 12, 2.5, 2.5);
-
-      // Warstwa mchu na górnej krawędzi
-      ctx.strokeStyle = '#4d8028';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(b.x, currentY + 1);
-      ctx.lineTo(b.x + b.w, currentY + 1);
-      ctx.stroke();
-
-      // Jasny rim light
-      ctx.strokeStyle = 'rgba(225, 185, 95, 0.85)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(b.x, currentY);
-      ctx.lineTo(b.x + b.w, currentY);
-      ctx.stroke();
-
-      // Obrys belki
-      ctx.strokeStyle = '#241405';
-      ctx.lineWidth = 1.8;
-      ctx.strokeRect(b.x, currentY, b.w, b.h);
-
+      // Stalowe jarzmo i obejma wieszaka linowego
+      if (b.cableAttached) {
+        const hx = b.origX + b.w / 2;
+        ctx.fillStyle = '#222d3d';
+        ctx.fillRect(hx - 3, currentY - 2, 6, 6);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.0;
+        ctx.strokeRect(hx - 3, currentY - 2, 6, 6);
+        // Śruba zacisku
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(hx - 1, currentY, 2, 2);
+      }
 
       ctx.restore();
     } else {
