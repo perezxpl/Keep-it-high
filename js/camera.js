@@ -328,9 +328,9 @@ export function updateCamera(player, ball, options = {}) {
   // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
   // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
   const groundFloor = getCameraGroundY();
-  const baseFloorY = isArena4 ? 560 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
+  const baseFloorY = isArena4 ? 820 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
   const target = player || ball;
-  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 560 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 560 : groundFloor - 50));
+  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 820 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 820 : groundFloor - 50));
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
 

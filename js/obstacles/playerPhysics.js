@@ -606,9 +606,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   // Obsługa śmiertelnej próżni w Arenie 4 (Stacja Orbitalna Ares)
   if (isA4 && !p.isDead) {
-    const deathY = 1050; // co najmniej 300 px poniżej najniższej platformy
+    const deathY = 1250; // Bezpieczny margines pod całą stacją (minimum 350 px poniżej głównego pokładu)
     if (p.y > deathY) {
-      killByHazard(p, "PRÓŻNIA KOSMICZNA");
+      killByHazard(p, "PRÓŻNIA KOSMICZNA // DEKOMPRESJA");
     }
   }
 

@@ -585,12 +585,12 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       currentArena.reset();
     }
 
-    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 560;
+    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 820;
     if (playerObj) {
       const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
       const spawnIdx = isClient ? 2 : 0;
-      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1050 : 350);
-      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 60);
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1250 : 500);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 50);
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;
@@ -615,9 +615,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.holsterWeight = 0;
       const isCyan = (b.team === 'CYAN');
       const baseSpawnX = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 350) + ((Math.floor(idx / 2) + 1) * 70)
-        : ((currentArena.spawns && currentArena.spawns[3]) ? currentArena.spawns[3].x : 1400) - ((Math.floor(idx / 2) + 1) * 70);
-      const baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 3]) ? currentArena.spawns[isCyan ? 0 : 3].y : (deckY - 60);
+        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 500) + ((Math.floor(idx / 2) + 1) * 70)
+        : ((currentArena.spawns && currentArena.spawns[3]) ? currentArena.spawns[3].x : 1650) - ((Math.floor(idx / 2) + 1) * 70);
+      const baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 3]) ? currentArena.spawns[isCyan ? 0 : 3].y : (deckY - 50);
       b.x = baseSpawnX;
       b.y = baseSpawnY;
       b.vx = 0;
@@ -856,22 +856,23 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
 export function getPlatformBounds(plat) {
   if (!plat) return { minX: 0, maxX: 0, minY: 0, maxY: 0, cx: 0, cy: 0 };
-  const thick = plat.h || plat.thickness || 20;
+  const pw = (plat.w !== undefined ? plat.w : (plat.width || 100));
+  const thick = (plat.h !== undefined ? plat.h : (plat.height !== undefined ? plat.height : (plat.thickness || 20)));
   const angle = plat.angle || 0;
 
   // Sprawdź pamięć podręczną granic platformy (unika 20k+ alokacji obiektów i trygonometrii na sekundę)
   const b = plat._cachedBounds;
-  if (b && plat._cbX === plat.x && plat._cbY === plat.y && plat._cbW === plat.w && plat._cbH === thick && plat._cbA === angle) {
+  if (b && plat._cbX === plat.x && plat._cbY === plat.y && plat._cbW === pw && plat._cbH === thick && plat._cbA === angle) {
     return b;
   }
 
   let minX, maxX, minY, maxY, cx, cy;
   if (Math.abs(angle) > 0.01) {
-    cx = plat.x + plat.w / 2;
+    cx = plat.x + pw / 2;
     cy = plat.y + thick / 2;
     const cosA = Math.abs(Math.cos(angle));
     const sinA = Math.abs(Math.sin(angle));
-    const hw = plat.w / 2;
+    const hw = pw / 2;
     const hh = thick / 2;
     const halfBoxW = hw * cosA + hh * sinA;
     const halfBoxH = hw * sinA + hh * cosA;
@@ -882,16 +883,16 @@ export function getPlatformBounds(plat) {
   } else {
     const topY = (plat.y !== undefined) ? plat.y : 0;
     minX = plat.x;
-    maxX = plat.x + plat.w;
+    maxX = plat.x + pw;
     minY = topY;
     maxY = topY + thick;
-    cx = plat.x + plat.w / 2;
+    cx = plat.x + pw / 2;
     cy = topY + thick / 2;
   }
 
   plat._cbX = plat.x;
   plat._cbY = plat.y;
-  plat._cbW = plat.w;
+  plat._cbW = pw;
   plat._cbH = thick;
   plat._cbA = angle;
   plat._cachedBounds = { minX, maxX, minY, maxY, cx, cy };
