@@ -238,8 +238,8 @@ export function getArenaBounds() {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: isArena4 ? -1200 : 0,
-    maxY: isArena4 ? 1300 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor))
+    minY: isArena4 ? -800 : 0,
+    maxY: isArena4 ? 1400 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor))
   };
 }
 
@@ -294,9 +294,9 @@ export function clampCamera(cam = camera) {
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const minCamY = isArena4 ? -1200 : -45;
+  const minCamY = isArena4 ? -800 : -45;
   const maxCamY = isArena4
-    ? Math.max(minCamY, 410 + 60 - (viewHeight * 0.65))
+    ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
     : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72))));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
@@ -328,9 +328,9 @@ export function updateCamera(player, ball, options = {}) {
   // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
   // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
   const groundFloor = getCameraGroundY();
-  const baseFloorY = isArena4 ? 410 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
+  const baseFloorY = isArena4 ? 560 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
   const target = player || ball;
-  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 360 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 360 : groundFloor - 50));
+  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 560 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 560 : groundFloor - 50));
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
 
@@ -501,10 +501,10 @@ export function updateCamera(player, ball, options = {}) {
     : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23)));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  const minCamY = isArena4 ? -1200 : -45;
-  const subterraneanBottom = isArena4 ? 1300 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor));
+  const minCamY = isArena4 ? -800 : -45;
+  const subterraneanBottom = isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor));
   const maxCamY = isArena4
-    ? Math.max(minCamY, 410 + 60 - (viewHeight * 0.65))
+    ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
     : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72))));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
@@ -522,8 +522,9 @@ export function updateCamera(player, ball, options = {}) {
     const safeMarginX = Math.max(80, viewWidth * 0.18);
     // Bezpieczny prześwit od krawędzi ekranu
     if (isArena4) {
-      const safeMarginBottom = Math.max(55, viewHeight * 0.14);
-      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, targetCamY);
+      const safeMarginBottom = Math.max(65, viewHeight * 0.16);
+      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * 0.18);
+      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
     } else {
       const topMarginRatio = 0.20 - (elev * 0.04);
       const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * topMarginRatio);

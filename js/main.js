@@ -700,8 +700,8 @@ function update() {
     checkObstacleCollisions(null, effectiveGroundY, null, null);
   }
 
-  // Zliczanie fragów i eliminacji poza dedykowanym modułem Deathmatch (Areny 2 i 3 są obsługiwane przez updateDeathmatch)
-  if (!isA2Active && !isA3Active) {
+  // Zliczanie fragów i eliminacji poza dedykowanym modułem Deathmatch (Areny 2, 3 i 4 są obsługiwane przez updateDeathmatch)
+  if (!isA2Active && !isA3Active && !isA4Active) {
     if (player.isDead) {
       if (!player._fragRecorded) {
         recordDeath();

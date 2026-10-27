@@ -67,12 +67,12 @@ export function syncDevArenaButtonUI() {
   if (!devArenaBtn) return;
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
   const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
-  if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN') {
-    devArenaBtn.textContent = 'Arena: 4 (Pociąg)';
-    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.25))';
-    devArenaBtn.style.borderColor = '#eab308';
-    devArenaBtn.style.color = '#fef08a';
-    devArenaBtn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.45)';
+  if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN' || curId === 'SPACE_STATION' || curId === 'ARES') {
+    devArenaBtn.textContent = 'Arena: 4 (Ares)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.25))';
+    devArenaBtn.style.borderColor = '#38bdf8';
+    devArenaBtn.style.color = '#bae6fd';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.45)';
   } else if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
     devArenaBtn.textContent = 'Arena: 3 (Dżungla)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25))';

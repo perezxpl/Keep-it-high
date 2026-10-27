@@ -25,7 +25,7 @@ export function triggerCombatFeedBanner(type, name) {
     combatFeedState.text = cleanName.startsWith('[') ? cleanName : `ZABIŁEŚ: ${cleanName}`;
   } else {
     const isSelfMistake = cleanName.includes('WŁASNY') || cleanName.includes('SAMOBÓJ') || cleanName.includes('PRZEPAŚĆ') || cleanName.includes('UTONIĘCIE') || cleanName.includes('RYKOSZET');
-    const isArenaHazard = cleanName.includes('KWAS') || cleanName.includes('ŚRODOWISKO') || cleanName.includes('ZAWALENIE') || cleanName.includes('MINA');
+    const isArenaHazard = cleanName.includes('KWAS') || cleanName.includes('ŚRODOWISKO') || cleanName.includes('ZAWALENIE') || cleanName.includes('MINA') || cleanName.includes('PRÓŻNIA') || cleanName.includes('KOSMICZN');
 
     if (isSelfMistake) {
       combatFeedState.subtext = 'BŁĄD OPERATORA // POLEGŁEŚ';

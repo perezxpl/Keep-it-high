@@ -23,7 +23,7 @@ import {
   getPlatformSurfaceY
 } from './state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
-import { killByHazard, isEntityInTrainGap } from '../arenas/arena4/hazards.js';
+import { killByHazard } from '../arenas/arena4_space.js';
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
@@ -52,7 +52,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   if (wantDrop && p.onGround && p.currentPlatform) {
     const curPlat = p.currentPlatform;
-    const isDropAllowed = !!(curPlat.isDropThrough === true || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex');
+    const isDropAllowed = !curPlat.isHull && (curPlat.isDropThrough === true || curPlat.dropThrough === true || curPlat.type === 'catwalk' || curPlat.type === 'cyber_catwalk' || curPlat.type === 'floating_hex');
     if (isDropAllowed) {
       p.dropThroughPlatform = curPlat;
       p.dropThroughTimer = Math.max(p.dropThroughTimer || 0, 22);
@@ -604,15 +604,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Obsługa śmiertelnych szpar między wagonami i podtorza w Arenie 4 (Pociąg Pancerny)
+  // Obsługa śmiertelnej próżni w Arenie 4 (Stacja Orbitalna Ares)
   if (isA4Active && !p.isDead) {
-    if (typeof isEntityInTrainGap === 'function' && isEntityInTrainGap(p)) {
-      killByHazard(p, "PODTORZE KOLEJOWE");
-    } else {
-      const feetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
-      if (feetY >= 920) {
-        killByHazard(p, "PODTORZE KOLEJOWE");
-      }
+    const feetY = (p.origin === 'bottom') ? p.y : (p.y + (p.h || 70));
+    const deathY = 1250;
+    if (feetY >= deathY) {
+      killByHazard(p, "PRÓŻNIA KOSMICZNA");
     }
   }
 
