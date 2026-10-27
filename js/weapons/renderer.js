@@ -1304,28 +1304,33 @@ export function drawHeldWeapon(ctx, p) {
         if (hasRocketLoaded && !isReloading) {
           ctx.drawImage(imgRocket, 0, 0);
         } else if (isReloading) {
-          if (reloadProg >= 0.22 && reloadProg < 0.40) {
-            // Faza uniesienia rakiety ku lufie: rakieta zbliża się pod lekkim kątem ku wlotowi
-            const t = (reloadProg - 0.22) / 0.18;
-            const offsetX = (1.0 - t) * 120 + 160;
-            const offsetY = (1.0 - t) * (-35);
-            const tilt = (1.0 - t) * (-0.22);
+          const gripRocketX = 1170;
+          const gripRocketY = 166;
+          const handSprX = hold.leftHandLocal ? (pivotSpriteX + hold.leftHandLocal.x / s) : pivotSpriteX;
+          const handSprY = hold.leftHandLocal ? (pivotSpriteY + hold.leftHandLocal.y / s) : pivotSpriteY;
+
+          if (reloadProg >= 0.20 && reloadProg < 0.44) {
+            // Faza 2: Ręka wyciąga rakietę z zasobnika za głową i niesie ją nad barkiem ku wylotowi lufy!
+            const t = (reloadProg - 0.20) / 0.24;
+            const sCurve = 0.5 - 0.5 * Math.cos(t * Math.PI);
+            const tilt = (1.0 - sCurve) * (-0.52);
+
             ctx.save();
-            ctx.translate(offsetX, offsetY);
+            ctx.translate(handSprX, handSprY);
             ctx.rotate(tilt);
-            ctx.drawImage(imgRocket, 0, 0);
+            ctx.drawImage(imgRocket, -gripRocketX, -gripRocketY);
             ctx.restore();
-          } else if (reloadProg >= 0.40 && reloadProg < 0.82) {
-            // Faza osiowego wsuwania rakiety w głąb rury
-            const t = (reloadProg - 0.40) / 0.42;
-            const offsetX = (1.0 - t) * 160;
-            const jiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 6) * 1.0 : 0;
+          } else if (reloadProg >= 0.44 && reloadProg < 0.80) {
+            // Faza 3: Osiowe wsuwanie trzpienia rakiety w głąb rury (trzonek wchodzi w lufę)
+            const t = (reloadProg - 0.44) / 0.36;
+            const offsetX = (1.0 - t) * 178;
+            const jiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 6) * 0.8 : 0;
             ctx.save();
             ctx.translate(offsetX, jiggleY);
             ctx.drawImage(imgRocket, 0, 0);
             ctx.restore();
-          } else if (reloadProg >= 0.82) {
-            // Rakieta zaryglowana w gnieździe
+          } else if (reloadProg >= 0.80) {
+            // Faza 4 i 5: Rakieta w pełni osadzona i zaryglowana w gnieździe lufy
             ctx.drawImage(imgRocket, 0, 0);
           }
         }

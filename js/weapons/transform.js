@@ -1011,35 +1011,46 @@ export function getWeaponHoldTransform(p) {
       // RPG-7 SHOULDER LAUNCHER RELOAD ANIMATION
       // -------------------------------------------------------------
       // Rura wyrzutni opiera się stabilnie na ramieniu strzelca.
-      // Lewa ręka opuszcza chwyt przedni, sięga po nową rakietę PG-7V na plecach,
-      // unosi ją przed wylot lufy, wsuwa głowicę w lufę i blokuje zatrzask!
-      if (u < 0.22) {
-        // Faza 1: Ruch ręki ku zasobnikowi rakiet na plecach
-        const t = u / 0.22;
-        leftHandLocalX = lerp(foreGripDistX, -14.0, ease(t));
-        leftHandLocalY = lerp(foreGripDistY, 15.0, ease(t));
-      } else if (u < 0.40) {
-        // Faza 2: Dobycie nowej rakiety PG-7V i uniesienie jej przed wylot wyrzutni
-        const t = (u - 0.22) / 0.18;
-        leftHandLocalX = lerp(-14.0, 24.0, ease(t));
-        leftHandLocalY = lerp(15.0, -1.0, ease(t));
-      } else if (u < 0.82) {
-        // Faza 3: Fizyczne wsuwanie głowicy rakiety w przedni wylot lufy
-        const t = (u - 0.40) / 0.42;
-        leftHandLocalX = lerp(24.0, 10.5, t);
-        leftHandLocalY = -1.0 + Math.sin(t * Math.PI * 4) * 0.4;
-      } else if (u < 0.88) {
+      // Lewa ręka opuszcza chwyt przedni, wędruje wysoko za głowę / ponad bark
+      // do zasobnika rakiet na plecach, wyciąga rakietę PG-7V, przenosi ją
+      // łukiem nad wyrzutnią, osiuje przed wylotem i wsuwa w głąb lufy!
+      if (u < 0.20) {
+        // Faza 1: Ruch lewej ręki w górę i za głowę ku zasobnikowi rakiet na plecach
+        const t = u / 0.20;
+        const s = ease(t);
+        leftHandLocalX = lerp(foreGripDistX, -22.0, s);
+        // Ręka unosi się wysoko ponad bark i potylicę (ujemne Y to góra)
+        leftHandLocalY = lerp(foreGripDistY, -16.0, s) - Math.sin(s * Math.PI) * 3.5;
+      } else if (u < 0.44) {
+        // Faza 2: Dobycie nowej rakiety PG-7V, uniesienie jej nad barkiem i przeniesienie przed lufę
+        const t = (u - 0.20) / 0.24;
+        const s = ease(t);
+        leftHandLocalX = lerp(-22.0, 27.5, s);
+        // Naturalny łuk nad korpusem wyrzutni i opadnięcie na oś przewodu lufy (-0.6)
+        const baseArcY = lerp(-16.0, -0.6, s);
+        const humpY = -Math.sin(s * Math.PI) * 4.5;
+        leftHandLocalY = baseArcY + humpY;
+        reloadAngleOffset += Math.sin(t * Math.PI) * 0.03;
+      } else if (u < 0.80) {
+        // Faza 3: Fizyczne osiowe wsuwanie trzpienia i głowicy rakiety w głąb lufy
+        const t = (u - 0.44) / 0.36;
+        leftHandLocalX = lerp(27.5, 19.7, t);
+        leftHandLocalY = -0.6 + Math.sin(t * Math.PI * 6) * 0.25;
+        reloadPivotShiftX -= Math.sin(t * Math.PI) * 0.8 * charFacing;
+      } else if (u < 0.86) {
         // Faza 4: Dociśnięcie i zaryglowanie głowicy w kołnierzu lufy (Lock slap)
-        const snapT = (u - 0.82) / 0.06;
-        leftHandLocalX = 10.5;
-        leftHandLocalY = -1.0;
-        reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.06;
-        reloadPivotShiftX -= Math.sin(snapT * Math.PI) * 1.8 * charFacing;
+        const snapT = (u - 0.80) / 0.06;
+        leftHandLocalX = 19.7 - Math.sin(snapT * Math.PI) * 0.8;
+        leftHandLocalY = -0.6;
+        reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.07;
+        reloadPivotShiftX -= Math.sin(snapT * Math.PI) * 2.2 * charFacing;
+        reloadPivotShiftY -= Math.sin(snapT * Math.PI) * 0.6;
       } else {
         // Faza 5: Powrót ręki na przedni chwyt wspierający wyrzutni
-        const t = (u - 0.88) / 0.12;
-        leftHandLocalX = lerp(10.5, foreGripDistX, ease(t));
-        leftHandLocalY = lerp(-1.0, foreGripDistY, ease(t));
+        const t = (u - 0.86) / 0.14;
+        const s = ease(t);
+        leftHandLocalX = lerp(19.7, foreGripDistX, s);
+        leftHandLocalY = lerp(-0.6, foreGripDistY, s);
       }
     } else {
       // -------------------------------------------------------------
@@ -1454,6 +1465,7 @@ export function getWeaponHoldTransform(p) {
     muzzleRise,
     rightHandTarget: { x: rightHandWorldX, y: rightHandWorldY },
     leftHandTarget: { x: leftHandWorldX, y: leftHandWorldY },
+    leftHandLocal: { x: leftHandLocalX, y: leftHandLocalY },
     barrelLen: barrelLength,
     barrelOffsetY: (typeof gripCfg.barrelOffsetY === 'number') ? gripCfg.barrelOffsetY : 0,
     bladeTip: { x: tipX, y: tipY },
