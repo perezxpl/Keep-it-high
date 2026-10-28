@@ -494,58 +494,49 @@ function updateDebris(dt) {
 
 /**
  * Aktualizuje podnoszącą się podłogę bazową (a5_base_floor) wraz ze wspinaczką kamery.
- * Nowe klocki zrzucane przez suwnicę lądują na bieżącej podłodze, a postacie są podciągane w górę.
+ * Podłogą jest dolna krawędź widocznego ekranu.
+ * Nowe klocki zrzucane przez suwnicę lądują na bieżącej podłodze, a klocki poniżej dolnej krawędzi znikają.
  */
 export function updateRisingFloor(camera, combatants = []) {
   if (!camera) return;
 
   const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
-  const baseGroundCamY = BASE_FLOOR_Y - (viewHeight * 0.72);
+  const activeCamY = (typeof camera.y === 'number')
+    ? camera.y
+    : (typeof arena5State.minCameraY === 'number' ? arena5State.minCameraY : (BASE_FLOOR_Y - viewHeight));
 
-  // Sprawdź o ile segmentów (CELL_SIZE = 80px) kamera wspięła się w górę
-  const activeCamY = (typeof arena5State.minCameraY === 'number')
-    ? arena5State.minCameraY
-    : (typeof camera.targetY === 'number' ? camera.targetY : camera.y);
+  // Dolna krawędź ekranu w świecie gry
+  const bottomScreenY = activeCamY + viewHeight;
 
-  if (typeof activeCamY === 'number' && activeCamY < baseGroundCamY) {
-    const segmentsShifted = Math.max(0, Math.round((baseGroundCamY - activeCamY) / CELL_SIZE));
-    arena5State.minFloorRow = segmentsShifted;
-    arena5State.currentFloorY = BASE_FLOOR_Y - (segmentsShifted * CELL_SIZE);
-  } else {
-    arena5State.minFloorRow = 0;
-    arena5State.currentFloorY = BASE_FLOOR_Y;
-  }
+  // Bieżąca podłoga to dolna krawędź ekranu (nie niżej niż BASE_FLOOR_Y)
+  arena5State.currentFloorY = Math.min(BASE_FLOOR_Y, bottomScreenY);
 
-  // Synchronizacja platformy podłogi w fizyce gry (a5_base_floor)
+  // Wylicz ile segmentów (CELL_SIZE = 80px) kamera wspięła się w górę od podłoża początkowego
+  const segmentsShifted = Math.max(0, Math.floor((BASE_FLOOR_Y - arena5State.currentFloorY) / CELL_SIZE));
+  arena5State.minFloorRow = segmentsShifted;
+
+  // Synchronizacja platformy podłogi w fizyce gry (a5_base_floor) na dolnej krawędzi ekranu
   const floorPlat = arena5State.platforms.find(p => p && p.id === 'a5_base_floor');
   if (floorPlat) {
     floorPlat.y = arena5State.currentFloorY;
+    floorPlat.x = -1000;
+    floorPlat.w = ARENA_WIDTH + 2000;
+    floorPlat.width = ARENA_WIDTH + 2000;
   }
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
     const wPlat = window.ARENA_PLATFORMS.find(p => p && p.id === 'a5_base_floor');
-    if (wPlat) wPlat.y = arena5State.currentFloorY;
-  }
-
-  // Podniesienie strefy śmierci utylizatora pod bieżącą podłogę
-  arena5State.recyclerY = arena5State.currentFloorY + 120;
-
-  // Postacie stojące na podłodze są płynnie unoszone wraz z podnoszącą się podłogą
-  if (Array.isArray(combatants)) {
-    for (const victim of combatants) {
-      if (!victim || victim.isDead) continue;
-      const vH = victim.h || 72;
-      const vFootY = victim.y + vH;
-      if (vFootY > arena5State.currentFloorY - 4) {
-        victim.y = arena5State.currentFloorY - vH;
-        victim.vy = Math.min(victim.vy, 0);
-        victim.onGround = true;
-        victim.currentGroundY = arena5State.currentFloorY;
-        if (floorPlat) victim.currentPlatform = floorPlat;
-      }
+    if (wPlat) {
+      wPlat.y = arena5State.currentFloorY;
+      wPlat.x = -1000;
+      wPlat.w = ARENA_WIDTH + 2000;
+      wPlat.width = ARENA_WIDTH + 2000;
     }
   }
 
-  // Usunięcie starych klocków i platform z wierszy poniżej bieżącej podłogi
+  // Linia utylizatora śmierci: tuż pod dolną krawędzią ekranu (+20 px)
+  arena5State.recyclerY = arena5State.currentFloorY + 20;
+
+  // Usunięcie starych klocków i platform z wierszy poniżej dolnej krawędzi ekranu
   if (arena5State.minFloorRow > 0) {
     for (const [r, rowData] of arena5State.gridRows.entries()) {
       if (r < arena5State.minFloorRow) {
@@ -561,12 +552,12 @@ export function updateRisingFloor(camera, combatants = []) {
 }
 
 /**
- * Dolny utylizator: uaktywnia się gdy postać spadnie poniżej podnoszącej się podłogi
+ * Dolny utylizator: uaktywnia się gdy postać spadnie poniżej dolnej krawędzi ekranu
  */
 function updateBottomRecycler(combatants) {
-  const currentDeathLineY = arena5State.recyclerY || (arena5State.currentFloorY + 120);
+  const currentDeathLineY = arena5State.recyclerY || (arena5State.currentFloorY + 20);
 
-  // Jeśli gracz lub bot spadnie poniżej linii utylizatora pod podłogą -> eliminacja i respawn na wieży
+  // Jeśli gracz lub bot spadnie poniżej linii dolnej krawędzi ekranu -> eliminacja i respawn na wieży
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
     if (victim.y > currentDeathLineY) {
@@ -660,14 +651,16 @@ function updateTowerApexAndSpawns() {
     return { x: bestX, y: spawnY };
   }
 
-  const s1 = getSafeSpawnForColRange(2, 5, SHAFT_LEFT + 240);
-  const s2 = getSafeSpawnForColRange(6, 9, SHAFT_LEFT + 640);
-  const s3 = getSafeSpawnForColRange(10, 13, SHAFT_LEFT + 1040);
+  const s1 = getSafeSpawnForColRange(2, 6, 280);
+  const s2 = getSafeSpawnForColRange(7, 11, 680);
+  const s3 = getSafeSpawnForColRange(12, 15, 1080);
+  const s4 = getSafeSpawnForColRange(16, 18, 1400);
 
   arena5State.spawns = [
     { x: s1.x, y: s1.y, facing: 1, isGround: true },
     { x: s2.x, y: s2.y, facing: 1, isGround: true },
-    { x: s3.x, y: s3.y, facing: -1, isGround: true }
+    { x: s3.x, y: s3.y, facing: -1, isGround: true },
+    { x: s4.x, y: s4.y, facing: -1, isGround: true }
   ];
 }
 

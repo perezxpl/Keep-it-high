@@ -5,13 +5,13 @@
 // =========================================================================
 
 export const CELL_SIZE = 80; // 80px: dopasowanie do Enforcera (74px) z zachowaniem pełnej zdolności do wskakiwania
-export const COLS = 16; // 16 kolumn: pełna, zbalansowana szerokość szybu wypełniająca ekran
+export const COLS = 20; // 20 kolumn x 80px = 1600px: dokładnie od lewej do prawej krawędzi ekranu
 export const ARENA_LEFT = 0;
 export const ARENA_WIDTH = 1600;
 export const ARENA_RIGHT = ARENA_LEFT + ARENA_WIDTH; // 1600
-export const WALL_WIDTH = 160;
-export const SHAFT_LEFT = WALL_WIDTH; // 160
-export const SHAFT_RIGHT = SHAFT_LEFT + COLS * CELL_SIZE; // 160 + 16 * 80 = 1440 (szerokość szybu 1280px)
+export const WALL_WIDTH = 0;
+export const SHAFT_LEFT = 0;
+export const SHAFT_RIGHT = ARENA_WIDTH; // 1600 (pełna szerokość ekranu)
 export const BASE_FLOOR_Y = 1200;
 
 export const BLOCK_MATERIALS = {
@@ -134,11 +134,12 @@ export const arena5State = {
   // Płaskie platformy eksportowane do silnika fizyki gry
   platforms: [],
 
-  // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 16 kolumnach szybu)
+  // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 20 kolumnach)
   spawns: [
-    { x: SHAFT_LEFT + 240, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 1040, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: 280, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: 680, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: 1080, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true },
+    { x: 1400, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
   ]
 };
 
@@ -221,9 +222,10 @@ export function rebuildInitialPlatforms() {
   );
 
   arena5State.spawns = [
-    { x: SHAFT_LEFT + 240, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 1040, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: 280, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: 680, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: 1080, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true },
+    { x: 1400, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
   ];
 
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {

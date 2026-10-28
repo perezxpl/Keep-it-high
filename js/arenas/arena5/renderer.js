@@ -111,8 +111,8 @@ function drawShaftBackdrop(ctx, camera) {
     ctx.stroke();
 
     ctx.fillStyle = 'rgba(71, 85, 105, 0.4)';
-    ctx.fillRect(SHAFT_LEFT - 4, gy - 4, 8, 8);
-    ctx.fillRect(SHAFT_RIGHT - 4, gy - 4, 8, 8);
+    ctx.fillRect(SHAFT_LEFT, gy - 4, 8, 8);
+    ctx.fillRect(SHAFT_RIGHT - 8, gy - 4, 8, 8);
   }
 
   // Zębate szyny hydrauliczne po bokach

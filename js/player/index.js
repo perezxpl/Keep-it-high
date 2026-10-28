@@ -1365,8 +1365,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const isArena5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const wallLeft = isArena5 ? 160 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT));
-  const wallRight = isArena5 ? 1440 : (isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT));
+  const wallLeft = isArena5 ? 0 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT));
+  const wallRight = isArena5 ? 1600 : (isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT));
 
   // Pułap / sufit areny:
   // W Arenie 5 gracz nie może wylecieć wyżej niż aktualny widok areny (górna krawędź kamery)

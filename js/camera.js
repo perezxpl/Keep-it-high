@@ -358,7 +358,9 @@ export function updateCamera(player, ball, options = {}) {
   } else if (isArena5) {
     // Arena 5 (Prefabrykator Orbitalny): szerokość areny do końca ekranów!
     // Blokujemy zoom tak, aby szerokość areny (1600px) dokładnie wypełniała widoczną szerokość ekranu
-    camera.targetZoom = canvasWidth / arenaWidth;
+    const a5Zoom = canvasWidth / arenaWidth;
+    camera.targetZoom = a5Zoom;
+    minZoom = a5Zoom;
   } else if (killstreakState && killstreakState.mortarTargeting) {
     // Tryb celowania nalotu artylerii: szeroki, taktyczny satelitarny rzut oka na mapę
     const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
@@ -518,14 +520,16 @@ export function updateCamera(player, ball, options = {}) {
       : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  // W Arenie 5: gdy segmenty wieży podejdą do połowy ekranu, kamera płynnie przesuwa się w górę
+  // W Arenie 5: podłoga startowa (1200) spoczywa dokładnie na dolnej krawędzi ekranu.
+  // Gdy segmenty wieży podejdą do połowy ekranu, kamera przesuwa się w górę
   // o każdy kolejny segment (CELL_SIZE = 80px)
   if (isArena5) {
     const a5 = arena5State || (typeof window !== 'undefined' ? window.arena5State : null);
     const highestBlockY = (a5 && typeof a5.highestBlockY === 'number')
       ? a5.highestBlockY
       : 1200;
-    const baseGroundCamY = 1200 - (viewHeight * 0.72);
+    // Dolna krawędź ekranu ma spoczywać dokładnie na podłożu bazowym (1200)
+    const baseGroundCamY = 1200 - viewHeight;
     const screenMidY = baseGroundCamY + (viewHeight * 0.50);
     const cellSize = A5_CELL_SIZE || 80;
 
@@ -551,8 +555,8 @@ export function updateCamera(player, ball, options = {}) {
   const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
   const maxCamY = isArena5
     ? ((a5MinCam !== null && typeof a5MinCam === 'number')
-      ? Math.max(minCamY, a5MinCam + 80)
-      : (1200 - (viewHeight * 0.72)))
+      ? a5MinCam
+      : (1200 - viewHeight))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
