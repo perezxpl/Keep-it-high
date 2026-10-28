@@ -221,10 +221,20 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
  */
 export function updateLeaderboard() {
   const list = [...deathmatchState.participants];
-  list.sort((a, b) => {
-    if (b.kills !== a.kills) return b.kills - a.kills;
-    return a.deaths - b.deaths; // Mniej śmierci przy remisie
-  });
+  const isA5 = (typeof window !== 'undefined' && (window.activeArenaId === 'ARENA_5' || window.activeArenaId === 'arena-5'));
+
+  if (isA5) {
+    // Arena 5: Survival Deathmatch – wygrywa ten, kto najmniej razy zginie!
+    list.sort((a, b) => {
+      if (a.deaths !== b.deaths) return a.deaths - b.deaths; // Mniej śmierci = wyższa pozycja!
+      return b.kills - a.kills; // Więcej fragów przy remisie w zgonach
+    });
+  } else {
+    list.sort((a, b) => {
+      if (b.kills !== a.kills) return b.kills - a.kills;
+      return a.deaths - b.deaths; // Mniej śmierci przy remisie
+    });
+  }
   deathmatchState.leaderboard = list;
 
   const playerIdx = list.findIndex(p => p.isPlayer);

@@ -448,7 +448,7 @@ export const uiManager = {
     {
       id: 'ARENA_1',
       badge: 'SEKTOR 01',
-      counter: 'MAPA 1 / 4',
+      counter: 'MAPA 1 / 5',
       name: 'NEONOWE MIASTO',
       tag: 'COMBAT BALL',
       desc: 'Futurystyczne wieżowce, dynamiczne linie strzału i ołtarz z piłką w centrum.',
@@ -457,7 +457,7 @@ export const uiManager = {
     {
       id: 'ARENA_2',
       badge: 'SEKTOR 02',
-      counter: 'MAPA 2 / 4',
+      counter: 'MAPA 2 / 5',
       name: 'TOKSYCZNA RAFINERIA',
       tag: 'DEATHMATCH 5 MIN',
       desc: 'Ciężki przemysłowy kompleks, centralny wentylator i okresowe zrzuty żrącego kwasu.',
@@ -466,7 +466,7 @@ export const uiManager = {
     {
       id: 'ARENA_3',
       badge: 'SEKTOR 03',
-      counter: 'MAPA 3 / 4',
+      counter: 'MAPA 3 / 5',
       name: 'TAJEMNICZA DŻUNGLA',
       tag: 'ARENA TAKTYCZNA',
       desc: 'Gęsta roślinność, organiczne platformy i starcia na zróżnicowanych wysokościach.',
@@ -475,11 +475,20 @@ export const uiManager = {
     {
       id: 'ARENA_4',
       badge: 'SEKTOR 04',
-      counter: 'MAPA 4 / 4',
+      counter: 'MAPA 4 / 5',
       name: 'STACJA ORBITALNA ARES',
       tag: 'NISKA GRAWITACJA // PRÓŻNIA',
       desc: 'ŚRODOWISKO NISKIEJ GRAWITACJI // PRÓŻNIA // ZNISZCZALNE POSZYCIE',
       img: './assets/arena4_preview.svg?v=v315_ares_orbital_space_station'
+    },
+    {
+      id: 'ARENA_5',
+      badge: 'SEKTOR 05',
+      counter: 'MAPA 5 / 5',
+      name: 'PREFABRYKATOR ORBITALNY',
+      tag: 'DYNAMICZNA WIEŻA // ZMIAŻDŻENIE',
+      desc: 'SPADAJĄCE KONTENERY // DETONACJA LINII // UCIECZKA W GÓRĘ // SURVIVAL DM',
+      img: './assets/arena5_preview.svg?v=v1_prefab_tower'
     }
   ],
   currentBriefingIndex: 0,
@@ -923,7 +932,8 @@ export const uiManager = {
   },
 
   updateMpArenaUI(arenaId) {
-    const norm = (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'arena-4' :
+    const norm = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER') ? 'arena-5' :
+                 (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'arena-4' :
                  (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'arena-3' :
                  (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'arena-2' : 'arena-1';
     document.querySelectorAll('.mp-arena-card').forEach(b => {
@@ -933,7 +943,8 @@ export const uiManager = {
   },
 
   updateArenaSelectUI(arenaId) {
-    const norm = (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'ARENA_4' :
+    const norm = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER') ? 'ARENA_5' :
+                 (arenaId === 'ARENA_4' || arenaId === 'arena-4') ? 'ARENA_4' :
                  (arenaId === 'ARENA_3' || arenaId === 'arena-3') ? 'ARENA_3' :
                  (arenaId === 'ARENA_2' || arenaId === 'arena-2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'ARENA_2_SECTOR_X') ? 'ARENA_2' : 'ARENA_1';
     const foundIdx = this.briefingArenas.findIndex(a => a.id === norm);
@@ -990,12 +1001,14 @@ export const uiManager = {
     const optMap2 = document.getElementById('arena-opts-ARENA_2');
     const optMap3 = document.getElementById('arena-opts-ARENA_3');
     const optMap4 = document.getElementById('arena-opts-ARENA_4');
+    const optMap5 = document.getElementById('arena-opts-ARENA_5');
     if (optMap1) optMap1.style.display = (arena.id === 'ARENA_1') ? 'flex' : 'none';
     if (optMap2) optMap2.style.display = (arena.id === 'ARENA_2') ? 'flex' : 'none';
     if (optMap3) optMap3.style.display = (arena.id === 'ARENA_3') ? 'flex' : 'none';
     if (optMap4) optMap4.style.display = (arena.id === 'ARENA_4') ? 'flex' : 'none';
+    if (optMap5) optMap5.style.display = (arena.id === 'ARENA_5') ? 'flex' : 'none';
 
-    // 5. Synchronizacja stanu Deathmatch (Arena 2)
+    // 5. Synchronizacja stanu Deathmatch (Arena 2 & Arena 5)
     this.syncDeathmatchUI();
 
     // 6. Synchronizacja liczby botów i stanu AI
@@ -1006,6 +1019,8 @@ export const uiManager = {
     if (a3CountRow) a3CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
     const a4CountRow = document.getElementById('a4-bot-count-row');
     if (a4CountRow) a4CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
+    const a5CountRow = document.getElementById('a5-bot-count-row');
+    if (a5CountRow) a5CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
 
     document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => {
       b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
@@ -1014,6 +1029,9 @@ export const uiManager = {
       b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
     });
     document.querySelectorAll('#a4-bot-toggle-group button').forEach(b => {
+      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
+    });
+    document.querySelectorAll('#a5-bot-toggle-group button').forEach(b => {
       b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
     });
 
@@ -1592,7 +1610,7 @@ export const uiManager = {
     });
 
     const syncDiffButtons = (diff) => {
-      document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button').forEach(b => {
+      document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(b => {
         if (b.dataset.botDiff === diff) b.classList.add('active');
         else b.classList.remove('active');
       });
@@ -1606,7 +1624,7 @@ export const uiManager = {
     setBotDifficulty(initialDiff);
     syncDiffButtons(initialDiff);
 
-    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1682,9 +1700,26 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4)
+    // PARAMETRY BITWY: Opcje Areny 5 (Prefabrykator Orbitalny)
     // -------------------------------------------------------------------------
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#a5-bot-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        document.querySelectorAll('#a5-bot-toggle-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const isActive = (btn.dataset.botState === 'active');
+        bot.active = isActive;
+        syncDevBotButtonUI();
+        const countRow = document.getElementById('a5-bot-count-row');
+        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4, 5)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();

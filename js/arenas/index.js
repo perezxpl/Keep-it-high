@@ -8,12 +8,14 @@ import arena1 from './arena1.js';
 import arena2 from './arena2.js';
 import arena3 from './arena3.js';
 import arena4 from './arena4_space.js';
+import arena5 from './arena5/index.js';
 
 export const ARENAS = {
   get 'arena-1'() { return arena1; },
   get 'arena-2'() { return arena2; },
   get 'arena-3'() { return arena3; },
   get 'arena-4'() { return arena4; },
+  get 'arena-5'() { return arena5; },
   // Aliasy kompatybilności
   get 'ARENA_1'() { return arena1; },
   get 'ARENA_2'() { return arena2; },
@@ -25,10 +27,12 @@ export const ARENAS = {
   get 'HALLELUJAH'() { return arena2; },
   get 'ARENA_3'() { return arena3; },
   get 'ARENA_4'() { return arena4; },
+  get 'ARENA_5'() { return arena5; },
   get '1'() { return arena1; },
   get '2'() { return arena2; },
   get '3'() { return arena3; },
   get '4'() { return arena4; },
+  get '5'() { return arena5; },
   get 'SPACE'() { return arena4; },
   get 'SPACE_STATION'() { return arena4; },
   get 'ARES'() { return arena4; },
@@ -52,7 +56,14 @@ export const ARENAS = {
   get 'JUNGLE'() { return arena3; },
   get 'JUNGLE_ARENA'() { return arena3; },
   get 'DZUNGLA'() { return arena3; },
-  get 'MILITARNA_DZUNGLA'() { return arena3; }
+  get 'MILITARNA_DZUNGLA'() { return arena3; },
+  get 'PREFAB_TOWER'() { return arena5; },
+  get 'PREFABRYKATOR'() { return arena5; },
+  get 'PREFABRYKATOR_ORBITALNY'() { return arena5; },
+  get 'SEKTOR_05'() { return arena5; },
+  get 'SECTOR_05'() { return arena5; },
+  get 'TETRIS'() { return arena5; },
+  get 'TOWER'() { return arena5; }
 };
 
 function normalizeArenaId(rawId) {
@@ -64,13 +75,14 @@ function normalizeArenaId(rawId) {
   if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium' || cleaned === 'sectorx' || cleaned === 'sektorx' || cleaned === 'arena2sectorx') return 'arena-2';
   if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
   if (cleaned === '4' || cleaned === 'arena4' || cleaned === 'space' || cleaned === 'spacestation' || cleaned === 'ares' || cleaned === 'aresstation' || cleaned === 'stacjaares' || cleaned === 'stacjaorbitalnaares' || cleaned === 'train' || cleaned === 'armoredtrain' || cleaned === 'pociag' || cleaned === 'pociąg' || cleaned === 'pedzacypociag' || cleaned === 'pędzącypociąg') return 'arena-4';
+  if (cleaned === '5' || cleaned === 'arena5' || cleaned === 'prefab' || cleaned === 'prefaby' || cleaned === 'prefabrykaty' || cleaned === 'prefabrykat' || cleaned === 'prefabrykator' || cleaned === 'prefabtower' || cleaned === 'tetris' || cleaned === 'tower' || cleaned === 'sektor5' || cleaned === 'sektor05' || cleaned === 'sector5' || cleaned === 'sector05') return 'arena-5';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;
   return 'arena-1';
 }
 
 // Pobieranie ID startowej areny z parametru URL (np. ?arena=arena-2 lub ?arena=3)
-let activeArena = null;
+var activeArena = null;
 
 /**
  * Zwraca aktualnie aktywny moduł areny

@@ -574,6 +574,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const isA1 = (currentArenaId === 'arena-1' || currentArenaId === 'ARENA_1');
   const isA2 = (currentArenaId === 'arena-2' || currentArenaId === 'ARENA_2' || currentArenaId === 'ARENA_2_SECTOR_X' || currentArenaId === 'ARENA_2_PANDORA');
   const isA3 = (currentArenaId === 'arena-3' || currentArenaId === 'ARENA_3' || currentArenaId === 'ARENA_FOUNDRY');
+  const isA5 = (currentArenaId === 'arena-5' || currentArenaId === 'ARENA_5' || currentArenaId === 'PREFAB_TOWER');
 
   // W Arenie 1 (mecz piłkarski) broń palna jest regulaminowo schowana w kaburze
   if (isA1) {
@@ -801,6 +802,29 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (botTarget.y > 900) {
         // Natychmiastowa ucieczka na wyższy poziom (Centralny Hub X: 2000 lub rampy)
         targetX = (botCenterX < 2000) ? 1750 : 2250;
+      }
+    }
+
+    // W Arenie 5 (Prefabrykator Orbitalny): unikanie strefy zrzutu klocków (Squash) oraz ucieczka przed dolnym utylizatorem
+    if (isA5 && typeof window !== 'undefined' && window.arena5State) {
+      const a5 = window.arena5State;
+      const crane = a5.crane;
+      if (crane && (crane.phase === 'WARNING' || crane.phase === 'FALLING') && crane.shape) {
+        const dropLeft = crane.dropX - 15;
+        const dropRight = crane.dropX + crane.shape.w * 100 + 15;
+        if (botCenterX >= dropLeft && botCenterX <= dropRight) {
+          const distToLeft = Math.abs(botCenterX - dropLeft);
+          const distToRight = Math.abs(botCenterX - dropRight);
+          targetX = (distToLeft < distToRight) ? (dropLeft - 60) : (dropRight + 60);
+
+          if (isStriker && botTarget.jetFuel >= 45 && botTarget.strikerDashCooldown <= 0) {
+            triggerStrikerAirDash(botTarget, (distToLeft < distToRight ? -1 : 1), spawnGrass);
+            botTarget.strikerDashCooldown = 70;
+          }
+        }
+      }
+      if (botTarget.y > a5.recyclerY - 180) {
+        bKeys.up = true;
       }
     }
 

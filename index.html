@@ -27,6 +27,10 @@
       "./js/arenas/arena3/weatheredAssets.js": "./js/arenas/arena3/weatheredAssets.js?v=v344_arena3_revert_clean_state",
       "./js/arenas/arena4.js": "./js/arenas/arena4.js?v=v315_ares_orbital_space_station",
       "./js/arenas/arena4_space.js": "./js/arenas/arena4_space.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
+      "./js/arenas/arena5/index.js": "./js/arenas/arena5/index.js?v=v1_prefab_tower",
+      "./js/arenas/arena5/state.js": "./js/arenas/arena5/state.js?v=v1_prefab_tower",
+      "./js/arenas/arena5/physics.js": "./js/arenas/arena5/physics.js?v=v1_prefab_tower",
+      "./js/arenas/arena5/renderer.js": "./js/arenas/arena5/renderer.js?v=v1_prefab_tower",
       "./js/arenas/arena_train.js": "./js/arenas/arena_train.js?v=v266_train_roofs_update",
       "./js/arenas/arena4/index.js": "./js/arenas/arena4/index.js?v=v266_train_roofs_update",
       "./js/arenas/arena4/state.js": "./js/arenas/arena4/state.js?v=v266_train_roofs_update",
@@ -755,6 +759,7 @@
                       <button type="button" class="carousel-dot" data-index="1" title="Toksyczna Rafineria"></button>
                       <button type="button" class="carousel-dot" data-index="2" title="Tajemnicza Dżungla"></button>
                       <button type="button" class="carousel-dot" data-index="3" title="Stacja Orbitalna Ares"></button>
+                      <button type="button" class="carousel-dot" data-index="4" title="Prefabrykator Orbitalny"></button>
                     </div>
                   </div>
                 </div>
@@ -914,6 +919,41 @@
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRUDNOŚĆ AI:</span>
                       <div class="briefing-toggle-group" id="a4-diff-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
+                        <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Opcje Areny 5 (Prefabrykator Orbitalny) -->
+                  <div class="briefing-map-opts" id="arena-opts-ARENA_5" style="display: none;">
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRYB OPERACJI:</span>
+                      <span class="opt-val-badge text-cyan">PREFABRYKATOR ORBITALNY (SURVIVAL DEATHMATCH // ZMIAŻDŻENIE)</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">PRZECIWNIK AI:</span>
+                      <div class="briefing-toggle-group" id="a5-bot-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row" id="a5-bot-count-row">
+                      <span class="opt-label">LICZBA BOTÓW:</span>
+                      <div class="briefing-toggle-group" id="a5-bot-count-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
+                        <button type="button" class="briefing-toggle-btn" data-bot-count="5">5 BOTÓW</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">TRUDNOŚĆ AI:</span>
+                      <div class="briefing-toggle-group" id="a5-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>

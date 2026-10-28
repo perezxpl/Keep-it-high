@@ -368,7 +368,9 @@ export let goalCelebrationTimer = 0;
 
 // Subskrypcja zmian areny dla natychmiastowej synchronizacji platform i obiektów
 onArenaChange((newArena) => {
-  if (newArena && (newArena.id === 'arena-4' || newArena.id === 'ARENA_4')) {
+  if (newArena && (newArena.id === 'arena-5' || newArena.id === 'ARENA_5')) {
+    activeArenaId = 'ARENA_5';
+  } else if (newArena && (newArena.id === 'arena-4' || newArena.id === 'ARENA_4')) {
     activeArenaId = 'ARENA_4';
   } else if (newArena && (newArena.id === 'arena-3' || newArena.id === 'ARENA_3')) {
     activeArenaId = 'ARENA_3';
@@ -508,7 +510,9 @@ if (typeof world !== 'undefined' && world) {
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
   setActiveArena(arenaId);
   const currentArena = getActiveArena();
-  if (currentArena.id === 'arena-4' || currentArena.id === 'ARENA_4') {
+  if (currentArena.id === 'arena-5' || currentArena.id === 'ARENA_5') {
+    activeArenaId = 'ARENA_5';
+  } else if (currentArena.id === 'arena-4' || currentArena.id === 'ARENA_4') {
     activeArenaId = 'ARENA_4';
   } else if (currentArena.id === 'arena-3') {
     activeArenaId = 'ARENA_3';
@@ -574,7 +578,72 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   };
   const activeBots = getBotsList();
 
-  if (activeArenaId === 'ARENA_4') {
+  if (activeArenaId === 'ARENA_5') {
+    resetDeathmatchState();
+    GOALS.length = 0;
+    arena1State.waitingForKickoff = false;
+    arenaScore.cyan = 0;
+    arenaScore.orange = 0;
+
+    if (typeof currentArena?.reset === 'function') {
+      currentArena.reset();
+    }
+
+    const spawns = currentArena?.spawns || [];
+    const floorY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 1200;
+
+    if (playerObj) {
+      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const s0 = spawns[isClient ? 2 : 0] || { x: 900, y: floorY - 90 };
+      playerObj.x = s0.x;
+      playerObj.y = s0.y;
+      playerObj.vx = 0;
+      playerObj.vy = 0;
+      playerObj.facing = isClient ? -1 : 1;
+      playerObj.isIntro = false;
+      playerObj.isJumping = false;
+      playerObj.isSliding = false;
+      playerObj.isDead = false;
+      playerObj.hp = playerObj.maxHp || 100;
+      playerObj.respawnTimer = 0;
+      playerObj.ragdoll = null;
+      playerObj.gaitMode = 'IDLE';
+      playerObj.onGround = true;
+      playerObj.currentGroundY = floorY;
+    }
+    const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
+
+    initDeathmatch(playerObj, activeBots, rPlayer);
+
+    activeBots.forEach((b, idx) => {
+      b.active = true;
+      b.isHolstered = false;
+      b.holsterWeight = 0;
+      const s = spawns[(idx + 1) % spawns.length] || { x: 1200, y: floorY - 90 };
+      b.x = s.x + (idx * 30);
+      b.y = s.y;
+      b.vx = 0;
+      b.vy = 0;
+      b.facing = (idx % 2 === 0) ? -1 : 1;
+      b.isJumping = false;
+      b.isSliding = false;
+      b.isDead = false;
+      b.hp = b.maxHp || 100;
+      b.respawnTimer = 0;
+      b.ragdoll = null;
+      b.gaitMode = 'IDLE';
+      b.onGround = true;
+      b.currentGroundY = floorY;
+    });
+    balanceBotClasses(playerObj, activeBots, 'FFA');
+
+    if (ballObj) {
+      ballObj.active = false;
+      ballObj.isLevitating = false;
+      ballObj.x = -9999;
+      ballObj.y = -9999;
+    }
+  } else if (activeArenaId === 'ARENA_4') {
     resetDeathmatchState();
     GOALS.length = 0;
     arena1State.waitingForKickoff = false;

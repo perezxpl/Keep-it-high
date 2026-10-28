@@ -227,19 +227,20 @@ export function getCanvasLogicalHeight() {
  */
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
+  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
   const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
-  const minX = (isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT;
-  const maxX = isArena4 ? 4000 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT));
+  const minX = isArena5 ? 400 : ((isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT);
+  const maxX = isArena5 ? 2000 : (isArena4 ? 4000 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
   const groundFloor = getCameraGroundY();
 
   return {
     minX,
     maxX,
     arenaWidth: maxX - minX,
-    minY: isArena4 ? -800 : 0,
-    maxY: isArena4 ? 1400 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor))
+    minY: isArena5 ? -100000 : (isArena4 ? -800 : 0),
+    maxY: isArena5 ? 2000 : (isArena4 ? 1400 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)))
   };
 }
 
@@ -290,14 +291,17 @@ export function clampCamera(cam = camera) {
   }
 
   const arenaId = getCameraArenaId();
+  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
   const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
-  const minCamY = isArena4 ? -800 : -45;
-  const maxCamY = isArena4
-    ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
-    : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72))));
+  const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
+  const maxCamY = isArena5
+    ? Math.max(minCamY, cam.y + 100)
+    : (isArena4
+      ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
+      : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
   cam.targetY = Math.max(minCamY, Math.min(cam.targetY, maxCamY));
@@ -318,6 +322,7 @@ export function updateCamera(player, ball, options = {}) {
   const canvasHeight = getCanvasLogicalHeight();
   const minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
+  const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
   const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
@@ -483,6 +488,9 @@ export function updateCamera(player, ball, options = {}) {
     } else {
       targetCamX = ARENA_LEFT;
     }
+  } else if (isArena5) {
+    targetCamX = 1200 + (lookAhead * 0.25) - (viewWidth / 2);
+    targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
   } else if (viewWidth < arenaWidth) {
     targetCamX = (targetX + lookAhead + aimLeadX) - (viewWidth / 2);
     targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
@@ -496,16 +504,29 @@ export function updateCamera(player, ball, options = {}) {
   // dzięki czemu postać gracza nie jest spychana pod sufit i pozostaje w pełni widoczna!
   const targetY = rawTargetY;
   // W Arenie 4 dachy wagonów znajdują się w dolnej 1/3 wysokości ekranu (pozostawiając wolną przestrzeń na walkę powietrzną z jetpackami)
-  const verticalAnchor = isArena4
-    ? (isMobile ? 0.72 : 0.70)
-    : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23)));
+  const verticalAnchor = isArena5
+    ? (isMobile ? 0.60 : 0.58)
+    : (isArena4
+      ? (isMobile ? 0.72 : 0.70)
+      : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  const minCamY = isArena4 ? -800 : -45;
-  const subterraneanBottom = isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor));
-  const maxCamY = isArena4
-    ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
-    : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72))));
+  // W Arenie 5: gdy segmenty wieży podejdą do połowy ekranu, kamera płynnie podąża w górę
+  if (isArena5) {
+    const highestBlockY = (typeof window !== 'undefined' && window.arena5State && typeof window.arena5State.highestBlockY === 'number')
+      ? window.arena5State.highestBlockY
+      : (targetY - 100);
+    const towerThresholdY = highestBlockY - (viewHeight * 0.50);
+    targetCamY = Math.min(targetCamY, towerThresholdY);
+  }
+
+  const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
+  const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
+  const maxCamY = isArena5
+    ? Math.max(minCamY, targetCamY + 200)
+    : (isArena4
+      ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
+      : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 
   if (killstreakState && killstreakState.mortarTargeting) {
