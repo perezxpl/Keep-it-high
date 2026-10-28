@@ -5,6 +5,7 @@
 
 import { CONFIG, ARENA_LEFT as CFG_ARENA_LEFT, ARENA_RIGHT as CFG_ARENA_RIGHT, isTouchDevice } from './config.js';
 import { killstreakState } from './killstreaks/state.js';
+import { arena5State, CELL_SIZE as A5_CELL_SIZE } from './arenas/arena5/state.js';
 
 let _cameraCanvas = null;
 let _cameraGroundY = null;
@@ -296,10 +297,11 @@ export function clampCamera(cam = camera) {
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
+  const a5MinCam = (arena5State && typeof arena5State.minCameraY === 'number') ? arena5State.minCameraY : (typeof window !== 'undefined' ? window.arena5State?.minCameraY : null);
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const maxCamY = isArena5
-    ? ((typeof window !== 'undefined' && window.arena5State?.minCameraY !== null && typeof window.arena5State?.minCameraY === 'number')
-      ? Math.max(minCamY, window.arena5State.minCameraY + 80)
+    ? ((a5MinCam !== null && typeof a5MinCam === 'number')
+      ? Math.max(minCamY, a5MinCam + 80)
       : (1200 - (viewHeight * 0.72)))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
@@ -516,34 +518,40 @@ export function updateCamera(player, ball, options = {}) {
       : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  // W Arenie 5: gdy segmenty wieży podejdą do połowy ekranu, kamera płynnie podąża w górę
+  // W Arenie 5: gdy segmenty wieży podejdą do połowy ekranu, kamera płynnie przesuwa się w górę
+  // o każdy kolejny segment (CELL_SIZE = 80px)
   if (isArena5) {
-    const highestBlockY = (typeof window !== 'undefined' && window.arena5State && typeof window.arena5State.highestBlockY === 'number')
-      ? window.arena5State.highestBlockY
+    const a5 = arena5State || (typeof window !== 'undefined' ? window.arena5State : null);
+    const highestBlockY = (a5 && typeof a5.highestBlockY === 'number')
+      ? a5.highestBlockY
       : 1200;
     const baseGroundCamY = 1200 - (viewHeight * 0.72);
     const screenMidY = baseGroundCamY + (viewHeight * 0.50);
+    const cellSize = A5_CELL_SIZE || 80;
 
+    let targetTowerCamY = baseGroundCamY;
     if (highestBlockY < screenMidY) {
-      const towerThresholdY = highestBlockY - (viewHeight * 0.50);
-      targetCamY = towerThresholdY;
-    } else {
-      targetCamY = baseGroundCamY;
+      // Wylicz ile segmentów wieża urosła ponad połowę ekranu
+      const segmentsAboveMid = Math.ceil((screenMidY - highestBlockY) / cellSize);
+      targetTowerCamY = baseGroundCamY - (segmentsAboveMid * cellSize);
     }
 
-    if (typeof window !== 'undefined' && window.arena5State) {
-      if (window.arena5State.minCameraY === null || targetCamY < window.arena5State.minCameraY) {
-        window.arena5State.minCameraY = targetCamY;
+    if (a5) {
+      if (a5.minCameraY === null || targetTowerCamY < a5.minCameraY) {
+        a5.minCameraY = targetTowerCamY;
       }
-      targetCamY = window.arena5State.minCameraY;
+      targetCamY = a5.minCameraY;
+    } else {
+      targetCamY = targetTowerCamY;
     }
   }
 
+  const a5MinCam = (arena5State && typeof arena5State.minCameraY === 'number') ? arena5State.minCameraY : (typeof window !== 'undefined' ? window.arena5State?.minCameraY : null);
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
   const maxCamY = isArena5
-    ? ((typeof window !== 'undefined' && window.arena5State?.minCameraY !== null && typeof window.arena5State?.minCameraY === 'number')
-      ? Math.max(minCamY, window.arena5State.minCameraY + 80)
+    ? ((a5MinCam !== null && typeof a5MinCam === 'number')
+      ? Math.max(minCamY, a5MinCam + 80)
       : (1200 - (viewHeight * 0.72)))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))

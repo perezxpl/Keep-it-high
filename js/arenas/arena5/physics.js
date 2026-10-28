@@ -550,12 +550,14 @@ function executeRecyclerKill(victim) {
  */
 function updateTowerApexAndSpawns() {
   let highestRow = -1;
-  for (const r of arena5State.gridRows.keys()) {
-    if (r > highestRow) highestRow = r;
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (rowData && rowData.some(cell => cell && cell.hp > 0)) {
+      if (r > highestRow) highestRow = r;
+    }
   }
   arena5State.highestRowIndex = Math.max(0, highestRow);
 
-  const topY = (highestRow >= 0) ? getGridY(highestRow) : (BASE_FLOOR_Y - CELL_SIZE);
+  const topY = (highestRow >= 0) ? getGridY(highestRow) : BASE_FLOOR_Y;
   arena5State.highestBlockY = topY;
 
   function getSafeSpawnForColRange(startCol, endCol, fallbackX) {

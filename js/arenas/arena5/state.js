@@ -138,6 +138,10 @@ export const arena5State = {
   ]
 };
 
+if (typeof window !== 'undefined') {
+  window.arena5State = arena5State;
+}
+
 export function resetArena5State() {
   arena5State.gridRows.clear();
   arena5State.activeLineClears.length = 0;
