@@ -1084,10 +1084,31 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.y += player.vy;
 
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const isA5 = (curArena?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
     const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-    if (!isA4 && !isA3 && !isA2) {
+    if (isA5) {
+      const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number')
+        ? window.arena5State.currentFloorY
+        : 1200;
+      const groundFloorLimit = a5Floor - colH;
+      if (player.y >= groundFloorLimit && player.y <= groundFloorLimit + Math.max(30, player.vy + 16)) {
+        player.y = groundFloorLimit;
+        player.vy = 0;
+        player.isJumping = false;
+        player.isSprintJump = false;
+        player.sprintJumpTimer = 0;
+        player.coyoteTimer = 8;
+        player.lastGroundVx = player.vx;
+        player.onGround = true;
+        player.jetpackKeyNeutralized = true;
+        player.airVx = 0;
+        player.currentGroundY = a5Floor;
+        player.dropThroughTimer = 0;
+        player.dropThroughPlatform = null;
+      }
+    } else if (!isA4 && !isA3 && !isA2) {
       const groundFloorLimit = GROUND_Y - colH;
       const isSupported = (typeof isGroundAt === 'function')
         ? (isGroundAt(player.x + 6) || isGroundAt(player.x + (player.w || 24) - 6))

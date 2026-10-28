@@ -45,6 +45,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const wasGrounded = !!(p.onGround && !p.isJumping);
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA5 = (curArena?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
   const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
@@ -70,110 +71,114 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Obsługa wyrzutni / gejzerów na platformach areny (np. industrial steam vents w tunelu Areny 3)
-  for (const plat of ARENA_PLATFORMS) {
-    if (plat && (plat.isJumpPad || plat.type === 'jump_pad')) {
-      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
-      if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
-        if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
-          p.y = topY - p.h - 4;
-          p.vy = plat.launchVy || -12.5;
-          p.isJumping = true;
-          p.onGround = false;
-          p.currentPlatform = null;
-          p.isCrouching = false;
-          p.airVx = p.vx;
-          triggerScreenShake(5.0);
-          spawnJetpackSparks(centerX, topY, 0, 8);
-          return;
+  if (!isA5) {
+    for (const plat of ARENA_PLATFORMS) {
+      if (plat && (plat.isJumpPad || plat.type === 'jump_pad')) {
+        const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+        if (centerX >= plat.x - 6 && centerX <= plat.x + plat.w + 6) {
+          if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
+            p.y = topY - p.h - 4;
+            p.vy = plat.launchVy || -12.5;
+            p.isJumping = true;
+            p.onGround = false;
+            p.currentPlatform = null;
+            p.isCrouching = false;
+            p.airVx = p.vx;
+            triggerScreenShake(5.0);
+            spawnJetpackSparks(centerX, topY, 0, 8);
+            return;
+          }
         }
       }
     }
   }
 
-  for (const obs of customObstacles) {
-    const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-    const bottomY = topY + obs.h;
+  if (!isA5) {
+    for (const obs of customObstacles) {
+      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const bottomY = topY + obs.h;
 
-    if (obs.type === 'jump_pad') {
-      if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
-        if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
-          p.y = topY - p.h - 4;
-          p.vy = -12.5;
+      if (obs.type === 'jump_pad') {
+        if (centerX >= obs.x - 6 && centerX <= obs.x + obs.w + 6) {
+          if (feetY >= topY - 14 && feetY <= topY + Math.max(22, p.vy + 12)) {
+            p.y = topY - p.h - 4;
+            p.vy = -12.5;
+            p.isJumping = true;
+            p.isCrouching = false;
+            p.airVx = p.vx;
+            triggerScreenShake(5.0);
+            spawnJetpackSparks(centerX, topY, 0, 6);
+            return;
+          }
+        }
+      } else if (obs.type === 'speed_booster_pad') {
+        if (centerX >= obs.x && centerX <= obs.x + obs.w && feetY >= topY - 8 && feetY <= topY + 12) {
+          if (!p.boostCooldown || p.boostCooldown <= 0) {
+            const facing = p.facing || (p.vx >= 0 ? 1 : -1);
+            p.vx += facing * 8.5;
+            p.boostCooldown = 18;
+            spawnJetpackSparks(centerX, topY, facing, 5);
+            triggerScreenShake(3.0);
+          }
+        }
+      } else if (obs.type === 'gravity_lift') {
+        if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
+          p.vy = Math.max(-6.5, p.vy - 0.7);
           p.isJumping = true;
-          p.isCrouching = false;
           p.airVx = p.vx;
+          spawnJetpackSparks(centerX, p.y + p.h, 0, 1);
+        }
+      } else if (obs.type === 'cyber_bumper') {
+        const cx = obs.x + obs.w / 2;
+        const cy = topY + obs.h / 2;
+        const px = p.x + p.w / 2;
+        const py = p.y + p.h / 2;
+        const bdist = Math.hypot(px - cx, py - cy);
+        if (bdist < 20 + 16) {
+          const nx = bdist > 0.001 ? (px - cx) / bdist : 0;
+          const ny = bdist > 0.001 ? (py - cy) / bdist : -1;
+          p.x = cx + nx * 38 - p.w / 2;
+          p.y = cy + ny * 38 - p.h / 2;
+          p.vx = nx * 15.0;
+          p.vy = ny * 15.0;
+          p.isJumping = true;
+          obs.hitTimer = 14;
           triggerScreenShake(5.0);
-          spawnJetpackSparks(centerX, topY, 0, 6);
-          return;
+          spawnJetpackSparks(cx + nx * 20, cy + ny * 20, 0, 8);
         }
-      }
-    } else if (obs.type === 'speed_booster_pad') {
-      if (centerX >= obs.x && centerX <= obs.x + obs.w && feetY >= topY - 8 && feetY <= topY + 12) {
-        if (!p.boostCooldown || p.boostCooldown <= 0) {
-          const facing = p.facing || (p.vx >= 0 ? 1 : -1);
-          p.vx += facing * 8.5;
-          p.boostCooldown = 18;
-          spawnJetpackSparks(centerX, topY, facing, 5);
-          triggerScreenShake(3.0);
-        }
-      }
-    } else if (obs.type === 'gravity_lift') {
-      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
-        p.vy = Math.max(-6.5, p.vy - 0.7);
-        p.isJumping = true;
-        p.airVx = p.vx;
-        spawnJetpackSparks(centerX, p.y + p.h, 0, 1);
-      }
-    } else if (obs.type === 'cyber_bumper') {
-      const cx = obs.x + obs.w / 2;
-      const cy = topY + obs.h / 2;
-      const px = p.x + p.w / 2;
-      const py = p.y + p.h / 2;
-      const bdist = Math.hypot(px - cx, py - cy);
-      if (bdist < 20 + 16) {
-        const nx = bdist > 0.001 ? (px - cx) / bdist : 0;
-        const ny = bdist > 0.001 ? (py - cy) / bdist : -1;
-        p.x = cx + nx * 38 - p.w / 2;
-        p.y = cy + ny * 38 - p.h / 2;
-        p.vx = nx * 15.0;
-        p.vy = ny * 15.0;
-        p.isJumping = true;
-        obs.hitTimer = 14;
-        triggerScreenShake(5.0);
-        spawnJetpackSparks(cx + nx * 20, cy + ny * 20, 0, 8);
-      }
-    } else if (obs.type === 'barbed_wire') {
-      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY >= topY && p.y <= bottomY) {
-        p.vx *= 0.45;
-        obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
-        if (obs.wireDmgTick % 18 === 0 && (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0)) {
-          p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 1);
-          if (p.hp <= 0 && !p.isDead) {
-            p.isDead = true;
-            p.respawnTimer = 180;
-            p.hasHead = true;
-            p.isGibbed = false;
-            p.corpseAngle = 0;
-            if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+      } else if (obs.type === 'barbed_wire') {
+        if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY >= topY && p.y <= bottomY) {
+          p.vx *= 0.45;
+          obs.wireDmgTick = (obs.wireDmgTick || 0) + 1;
+          if (obs.wireDmgTick % 18 === 0 && (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0)) {
+            p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 1);
+            if (p.hp <= 0 && !p.isDead) {
+              p.isDead = true;
+              p.respawnTimer = 180;
+              p.hasHead = true;
+              p.isGibbed = false;
+              p.corpseAngle = 0;
+              if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+            }
           }
         }
-      }
-    } else if (obs.type === 'laser_gate') {
-      if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
-        if (!p.laserCooldown || p.laserCooldown <= 0) {
-          if (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0) {
-            p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
-          }
-          p.laserCooldown = 30;
-          triggerScreenShake(4.0);
-          spawnObstacleSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
-          if (p.hp <= 0 && !p.isDead) {
-            p.isDead = true;
-            p.respawnTimer = 180;
-            p.hasHead = true;
-            p.isGibbed = false;
-            p.corpseAngle = 0;
-            if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+      } else if (obs.type === 'laser_gate') {
+        if (p.x + p.w > obs.x && p.x < obs.x + obs.w && feetY > topY && p.y < bottomY) {
+          if (!p.laserCooldown || p.laserCooldown <= 0) {
+            if (!p.spawnProtectionTimer || p.spawnProtectionTimer <= 0) {
+              p.hp = Math.max(0, (p.hp !== undefined ? p.hp : 100) - 15);
+            }
+            p.laserCooldown = 30;
+            triggerScreenShake(4.0);
+            spawnObstacleSparks(obs.x + obs.w / 2, p.y + p.h / 2, 0, -1, 6);
+            if (p.hp <= 0 && !p.isDead) {
+              p.isDead = true;
+              p.respawnTimer = 180;
+              p.hasHead = true;
+              p.isGibbed = false;
+              p.corpseAngle = 0;
+              if (p.currentWeapon) spawnDroppedWeapon(p.x + p.w / 2, p.y + 20, p.vx, -3, p.currentWeapon, p.facing);
+            }
           }
         }
       }
@@ -186,6 +191,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
+    if (isA5 && !plat.isA5Block && plat.id !== 'a5_base_floor' && !plat.isWall) continue;
     const bnds = getPlatformBounds(plat);
     // Histereza na krawędziach: uwzględnia szerokość modelu postaci (Raptor 24, Striker 26, Enforcer 30)
     const halfW = (p.w || 24) * 0.5;
@@ -264,96 +270,100 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  for (const obs of customObstacles) {
-    if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
-      continue;
-    }
-    if (obs.type === 'hedgehog' || obs.type === 'gravity_lift' || obs.type === 'barbed_wire' || obs.type === 'laser_gate' || obs.type === 'cyber_bumper' || obs.type === 'speed_booster_pad') {
-      continue;
-    }
+  if (!isA5) {
+    for (const obs of customObstacles) {
+      if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+        continue;
+      }
+      if (obs.type === 'hedgehog' || obs.type === 'gravity_lift' || obs.type === 'barbed_wire' || obs.type === 'laser_gate' || obs.type === 'cyber_bumper' || obs.type === 'speed_booster_pad') {
+        continue;
+      }
 
-    const baseTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-    const halfW = (p.w || 24) * 0.5;
-    const isCurrentObs = (p.onGround && p.currentPlatform === obs);
-    const obsMargin = isCurrentObs ? Math.max(16, halfW + 4) : Math.max(12, halfW);
+      const baseTopY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+      const halfW = (p.w || 24) * 0.5;
+      const isCurrentObs = (p.onGround && p.currentPlatform === obs);
+      const obsMargin = isCurrentObs ? Math.max(16, halfW + 4) : Math.max(12, halfW);
 
-    if (obs.type === 'metal_ramp_left') {
-      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
-        const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-        const rampSurfaceY = baseTopY + t * obs.h;
-        const prevFeetY = feetY - p.vy;
-        const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + Math.max(16, obs.h * 0.8) && feetY >= rampSurfaceY - 12 && feetY <= rampSurfaceY + Math.max(24, p.vy + 16);
-        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 30;
-        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 26;
+      if (obs.type === 'metal_ramp_left') {
+        if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
+          const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+          const rampSurfaceY = baseTopY + t * obs.h;
+          const prevFeetY = feetY - p.vy;
+          const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + Math.max(16, obs.h * 0.8) && feetY >= rampSurfaceY - 12 && feetY <= rampSurfaceY + Math.max(24, p.vy + 16);
+          const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 30;
+          const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 26;
 
-        if (isAirLanding || isGroundedRetention || isStepOver) {
-          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
-            continue;
-          }
-          if (landedSurface === null || rampSurfaceY < landedSurface) {
-            landedSurface = rampSurfaceY;
-            landedPlatform = obs;
-            landedSlope = obs.h / (obs.w || 1);
+          if (isAirLanding || isGroundedRetention || isStepOver) {
+            if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
+              continue;
+            }
+            if (landedSurface === null || rampSurfaceY < landedSurface) {
+              landedSurface = rampSurfaceY;
+              landedPlatform = obs;
+              landedSlope = obs.h / (obs.w || 1);
+            }
           }
         }
-      }
-    } else if (obs.type === 'metal_ramp_right') {
-      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
-        const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
-        const rampSurfaceY = baseTopY + (1 - t) * obs.h;
-        const prevFeetY = feetY - p.vy;
-        const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + Math.max(16, obs.h * 0.8) && feetY >= rampSurfaceY - 12 && feetY <= rampSurfaceY + Math.max(24, p.vy + 16);
-        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 30;
-        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 26;
+      } else if (obs.type === 'metal_ramp_right') {
+        if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
+          const t = Math.max(0, Math.min(1, (centerX - obs.x) / obs.w));
+          const rampSurfaceY = baseTopY + (1 - t) * obs.h;
+          const prevFeetY = feetY - p.vy;
+          const isAirLanding = p.vy >= 0 && prevFeetY <= rampSurfaceY + Math.max(16, obs.h * 0.8) && feetY >= rampSurfaceY - 12 && feetY <= rampSurfaceY + Math.max(24, p.vy + 16);
+          const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - rampSurfaceY) <= 30;
+          const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - rampSurfaceY) <= 26;
 
-        if (isAirLanding || isGroundedRetention || isStepOver) {
-          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
-            continue;
-          }
-          if (landedSurface === null || rampSurfaceY < landedSurface) {
-            landedSurface = rampSurfaceY;
-            landedPlatform = obs;
-            landedSlope = -obs.h / (obs.w || 1);
+          if (isAirLanding || isGroundedRetention || isStepOver) {
+            if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
+              continue;
+            }
+            if (landedSurface === null || rampSurfaceY < landedSurface) {
+              landedSurface = rampSurfaceY;
+              landedPlatform = obs;
+              landedSlope = -obs.h / (obs.w || 1);
+            }
           }
         }
-      }
-    } else {
-      if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
-        const prevFeetY = feetY - p.vy;
-        const isAirLanding = p.vy >= 0 && prevFeetY <= baseTopY + Math.max(16, (obs.h || 20) * 0.8) && feetY >= baseTopY - 12 && feetY <= baseTopY + Math.max(24, p.vy + 16);
-        const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - baseTopY) <= 30;
-        const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - baseTopY) <= 26;
+      } else {
+        if (centerX >= obs.x - obsMargin && centerX <= obs.x + obs.w + obsMargin) {
+          const prevFeetY = feetY - p.vy;
+          const isAirLanding = p.vy >= 0 && prevFeetY <= baseTopY + Math.max(16, (obs.h || 20) * 0.8) && feetY >= baseTopY - 12 && feetY <= baseTopY + Math.max(24, p.vy + 16);
+          const isGroundedRetention = isCurrentObs && !(p.isJumping && p.vy < -2.0) && Math.abs(feetY - baseTopY) <= 30;
+          const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - baseTopY) <= 26;
 
-        if (isAirLanding || isGroundedRetention || isStepOver) {
-          if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
-            continue;
-          }
-          if (landedSurface === null || baseTopY < landedSurface) {
-            landedSurface = baseTopY;
-            landedPlatform = obs;
-            landedSlope = 0;
+          if (isAirLanding || isGroundedRetention || isStepOver) {
+            if (p.dropThroughTimer > 0 && (obs === p.dropThroughPlatform || (p.dropThroughPlatform && obs.id && obs.id === p.dropThroughPlatform.id))) {
+              continue;
+            }
+            if (landedSurface === null || baseTopY < landedSurface) {
+              landedSurface = baseTopY;
+              landedPlatform = obs;
+              landedSlope = 0;
+            }
           }
         }
       }
     }
   }
 
-  for (const obs of customObstacles) {
-    if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
-      continue;
-    }
-    if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall' || obs.type === 'explosive_barrel') {
-      const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-      const bottomY = topY + obs.h;
-      if (feetY > topY + 8 && p.y < bottomY - 4) {
-        if (p.x + p.w > obs.x && p.x < obs.x + obs.w) {
-          const midX = obs.x + obs.w / 2;
-          if (p.x + p.w / 2 < midX) {
-            p.x = obs.x - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else {
-            p.x = obs.x + obs.w;
-            if (p.vx < 0) p.vx = 0;
+  if (!isA5) {
+    for (const obs of customObstacles) {
+      if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
+        continue;
+      }
+      if (obs.type === 'bunker_block' || obs.type === 'cyber_pillar' || obs.type === 'tall_concrete_wall' || obs.type === 'explosive_barrel') {
+        const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
+        const bottomY = topY + obs.h;
+        if (feetY > topY + 8 && p.y < bottomY - 4) {
+          if (p.x + p.w > obs.x && p.x < obs.x + obs.w) {
+            const midX = obs.x + obs.w / 2;
+            if (p.x + p.w / 2 < midX) {
+              p.x = obs.x - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = obs.x + obs.w;
+              if (p.vx < 0) p.vx = 0;
+            }
           }
         }
       }
@@ -361,19 +371,21 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // Twarda blokada przechodzenia przez pionowe monolity i formacje skalne
-  for (const plat of ARENA_PLATFORMS) {
-    if (plat && plat.solid && plat.isMonolith) {
-      const topY = groundY - plat.relY;
-      const bottomY = topY + (plat.thickness || 470);
-      if (feetY > topY + 8 && p.y < bottomY - 4) {
-        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
-          const midX = plat.x + plat.w / 2;
-          if (p.x + p.w / 2 < midX) {
-            p.x = plat.x - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else {
-            p.x = plat.x + plat.w;
-            if (p.vx < 0) p.vx = 0;
+  if (!isA5) {
+    for (const plat of ARENA_PLATFORMS) {
+      if (plat && plat.solid && plat.isMonolith) {
+        const topY = groundY - plat.relY;
+        const bottomY = topY + (plat.thickness || 470);
+        if (feetY > topY + 8 && p.y < bottomY - 4) {
+          if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+            const midX = plat.x + plat.w / 2;
+            if (p.x + p.w / 2 < midX) {
+              p.x = plat.x - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = plat.x + plat.w;
+              if (p.vx < 0) p.vx = 0;
+            }
           }
         }
       }
@@ -434,7 +446,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
   p.isClimbing = false;
 
-  if (landedSurface === null) {
+  if (landedSurface === null && !isA5) {
     for (const plat of ARENA_PLATFORMS) {
       if (plat.props) {
         const tier = plat.props.find(pr => pr.type === 'altar_pedestal' || pr.type === 'sandbag_trench');
@@ -552,14 +564,19 @@ export function checkPlayerPlatformLanding(p, groundY) {
         p.currentGroundY = null;
       }
     } else {
+      const isA5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
       // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
-      const isSupported = (typeof isGroundAt === 'function')
+      const isSupported = isA5 ? true : ((typeof isGroundAt === 'function')
         ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
-        : true;
+        : true);
 
       if (isSupported) {
         p.currentGroundY = groundY;
         p.onGround = (p.y >= groundY - colH - 1);
+        if (p.onGround && p.y > groundY - colH) {
+          p.y = groundY - colH;
+          p.vy = 0;
+        }
         if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
           p.staggerLanded = true;
           p.vy = 0;

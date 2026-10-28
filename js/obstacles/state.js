@@ -452,7 +452,8 @@ export function resetArena() {
     ARENA_PLATFORMS.length = 0;
     if (typeof curArena?.reset === 'function') {
       curArena.reset();
-    } else if (curArena && Array.isArray(curArena.platforms)) {
+    }
+    if (curArena && Array.isArray(curArena.platforms)) {
       ARENA_PLATFORMS.push(...curArena.platforms);
     }
     customObstacles.length = 0;
@@ -632,6 +633,22 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     ARENA_PLATFORMS.length = 0;
     if (currentArena && Array.isArray(currentArena.platforms)) {
       ARENA_PLATFORMS.push(...currentArena.platforms);
+    }
+
+    if (typeof window !== 'undefined' && window.camera) {
+      window.camera.x = 0;
+      window.camera.targetX = 0;
+      const cW = (typeof window.innerWidth === 'number') ? window.innerWidth : 1920;
+      const cH = (typeof window.innerHeight === 'number') ? window.innerHeight : 1080;
+      const a5Z = cW / 1600;
+      window.camera.zoom = a5Z;
+      window.camera.targetZoom = a5Z;
+      window.camera.minZoom = a5Z;
+      const vH = cH / a5Z;
+      window.camera.viewWidth = 1600;
+      window.camera.viewHeight = vH;
+      window.camera.y = 1200 - vH;
+      window.camera.targetY = 1200 - vH;
     }
 
     const spawns = currentArena?.spawns || [];

@@ -67,7 +67,13 @@ export function syncDevArenaButtonUI() {
   if (!devArenaBtn) return;
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
   const curId = (curArena && curArena.id) ? curArena.id : (activeArenaId || window.activeArenaId);
-  if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN' || curId === 'SPACE_STATION' || curId === 'ARES') {
+  if (curId === 'arena-5' || curId === 'ARENA_5' || curId === 'PREFAB_TOWER') {
+    devArenaBtn.textContent = 'Arena: 5 (Prefab)';
+    devArenaBtn.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(249, 115, 22, 0.25))';
+    devArenaBtn.style.borderColor = '#eab308';
+    devArenaBtn.style.color = '#fef08a';
+    devArenaBtn.style.boxShadow = '0 0 12px rgba(234, 179, 8, 0.45)';
+  } else if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN' || curId === 'SPACE_STATION' || curId === 'ARES') {
     devArenaBtn.textContent = 'Arena: 4 (Ares)';
     devArenaBtn.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.25))';
     devArenaBtn.style.borderColor = '#38bdf8';
@@ -113,6 +119,8 @@ export const toggleArena = (e) => {
     nextArena = 'ARENA_3';
   } else if (curId === 'arena-3' || curId === 'ARENA_3' || curId === 'ARENA_FOUNDRY') {
     nextArena = 'ARENA_4';
+  } else if (curId === 'arena-4' || curId === 'ARENA_4' || curId === 'ARMORED_TRAIN' || curId === 'SPACE_STATION' || curId === 'ARES') {
+    nextArena = 'ARENA_5';
   } else {
     nextArena = 'ARENA_1';
   }
@@ -124,11 +132,13 @@ export const toggleArena = (e) => {
   if (typeof uiManager !== 'undefined' && uiManager && typeof uiManager.updateMpArenaUI === 'function') {
     uiManager.updateMpArenaUI(nextArena);
   }
-  camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
-  camera.x = camera.targetX;
-  camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
-  camera.y = camera.targetY;
-  clampCamera();
+  if (nextArena !== 'ARENA_5') {
+    camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+    camera.x = camera.targetX;
+    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+    camera.y = camera.targetY;
+    clampCamera();
+  }
   if (editorState.active) {
     renderEditorPalette();
   }
@@ -296,17 +306,22 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     syncDevArenaButtonUI();
     if (typeof uiManager !== 'undefined' && uiManager && !uiManager._isSwitchingArena) {
       if (typeof uiManager.updateMpArenaUI === 'function') uiManager.updateMpArenaUI(id);
-      const norm = (id === 'ARENA_4' || id === 'arena-4') ? 'ARENA_4' : ((id === 'ARENA_3' || id === 'arena-3') ? 'ARENA_3' : ((id === 'ARENA_2' || id === 'arena-2') ? 'ARENA_2' : 'ARENA_1'));
+      const norm = (id === 'ARENA_5' || id === 'arena-5' || id === 'PREFAB_TOWER') ? 'ARENA_5' :
+                   ((id === 'ARENA_4' || id === 'arena-4') ? 'ARENA_4' :
+                   ((id === 'ARENA_3' || id === 'arena-3') ? 'ARENA_3' :
+                   ((id === 'ARENA_2' || id === 'arena-2') ? 'ARENA_2' : 'ARENA_1')));
       const curSelected = uiManager.briefingArenas?.[uiManager.currentBriefingIndex]?.id;
       if (curSelected !== norm && typeof uiManager.updateArenaSelectUI === 'function') {
         uiManager.updateArenaSelectUI(id);
       }
     }
-    camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
-    camera.x = camera.targetX;
-    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
-    camera.y = camera.targetY;
-    clampCamera();
+    if (id !== 'ARENA_5' && id !== 'arena-5' && id !== 'PREFAB_TOWER') {
+      camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
+      camera.x = camera.targetX;
+      camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+      camera.y = camera.targetY;
+      clampCamera();
+    }
   };
 
   const devArenaBtn = document.getElementById('dev-arena-btn');

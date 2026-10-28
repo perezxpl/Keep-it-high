@@ -197,11 +197,11 @@ function drawBaseFloor(ctx, camera) {
     : BASE_FLOOR_Y;
 
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 400);
+  ctx.fillRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 5000);
 
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
-  ctx.strokeRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 400);
+  ctx.strokeRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 5000);
 
   // Górna krawędź fundamentu z fazowaniem
   ctx.fillStyle = '#475569';

@@ -27,9 +27,44 @@ export const ball = {
 };
 
 export function resetBallToPlayer(p, GROUND_Y) {
+  const isA5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+  const isA4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-  if (isA3) {
+  if (isA5) {
+    p.x = 280;
+    const floorY = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200;
+    p.y = floorY - (p.h || 70);
+    p.facing = 1;
+    if (typeof window !== 'undefined' && window.location) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
+      if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
+    }
+    ball.active = false;
+    ball.x = -9999;
+    ball.y = -9999;
+    p.isIntro = false;
+    p.gaitMode = 'IDLE';
+    p.onGround = true;
+    p.currentGroundY = floorY;
+  } else if (isA4) {
+    p.x = 400;
+    p.y = 800;
+    p.facing = 1;
+    if (typeof window !== 'undefined' && window.location) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
+      if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
+    }
+    ball.active = false;
+    ball.x = -9999;
+    ball.y = -9999;
+    p.isIntro = false;
+    p.gaitMode = 'IDLE';
+    p.onGround = true;
+    p.currentGroundY = 820;
+  } else if (isA3) {
     p.x = 600;
     p.y = 1130;
     p.facing = 1;

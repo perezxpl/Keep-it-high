@@ -301,8 +301,8 @@ export function clampCamera(cam = camera) {
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const maxCamY = isArena5
     ? ((a5MinCam !== null && typeof a5MinCam === 'number')
-      ? Math.max(minCamY, a5MinCam + 80)
-      : (1200 - (viewHeight * 0.72)))
+      ? a5MinCam
+      : (1200 - viewHeight))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
