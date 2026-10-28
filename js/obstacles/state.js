@@ -449,10 +449,10 @@ export function resetArena() {
   ARENA_PLATFORMS.length = 0;
   if (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER') {
     const curArena = getActiveArena();
+    ARENA_PLATFORMS.length = 0;
     if (typeof curArena?.reset === 'function') {
       curArena.reset();
-    }
-    if (curArena && Array.isArray(curArena.platforms)) {
+    } else if (curArena && Array.isArray(curArena.platforms)) {
       ARENA_PLATFORMS.push(...curArena.platforms);
     }
     customObstacles.length = 0;
@@ -573,11 +573,15 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   customObstacles.length = 0;
 
   if (currentArena && Array.isArray(currentArena.platforms)) {
-    const rawPlats = (activeArenaId === 'ARENA_2' && arenaSnapshot?.arena2Platforms)
-      ? arenaSnapshot.arena2Platforms
-      : currentArena.platforms;
-    const clonedPlats = JSON.parse(JSON.stringify(rawPlats));
-    ARENA_PLATFORMS.push(...clonedPlats);
+    if (activeArenaId === 'ARENA_5') {
+      ARENA_PLATFORMS.push(...currentArena.platforms);
+    } else {
+      const rawPlats = (activeArenaId === 'ARENA_2' && arenaSnapshot?.arena2Platforms)
+        ? arenaSnapshot.arena2Platforms
+        : currentArena.platforms;
+      const clonedPlats = JSON.parse(JSON.stringify(rawPlats));
+      ARENA_PLATFORMS.push(...clonedPlats);
+    }
     if (activeArenaId === 'ARENA_3') {
       arenaSnapshot.arena3Platforms = JSON.parse(JSON.stringify(currentArena.platforms));
       const gL = ARENA_PLATFORMS.find(p => p && p.id === 'ground_left');

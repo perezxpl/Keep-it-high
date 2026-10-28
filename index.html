@@ -27,10 +27,10 @@
       "./js/arenas/arena3/weatheredAssets.js": "./js/arenas/arena3/weatheredAssets.js?v=v344_arena3_revert_clean_state",
       "./js/arenas/arena4.js": "./js/arenas/arena4.js?v=v315_ares_orbital_space_station",
       "./js/arenas/arena4_space.js": "./js/arenas/arena4_space.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
-      "./js/arenas/arena5/index.js": "./js/arenas/arena5/index.js?v=v1_prefab_tower",
-      "./js/arenas/arena5/state.js": "./js/arenas/arena5/state.js?v=v1_prefab_tower",
-      "./js/arenas/arena5/physics.js": "./js/arenas/arena5/physics.js?v=v1_prefab_tower",
-      "./js/arenas/arena5/renderer.js": "./js/arenas/arena5/renderer.js?v=v1_prefab_tower",
+      "./js/arenas/arena5/index.js": "./js/arenas/arena5/index.js?v=v349_arena5_bottom_floor_climb_and_20cols",
+      "./js/arenas/arena5/state.js": "./js/arenas/arena5/state.js?v=v349_arena5_bottom_floor_climb_and_20cols",
+      "./js/arenas/arena5/physics.js": "./js/arenas/arena5/physics.js?v=v349_arena5_bottom_floor_climb_and_20cols",
+      "./js/arenas/arena5/renderer.js": "./js/arenas/arena5/renderer.js?v=v349_arena5_bottom_floor_climb_and_20cols",
       "./js/arenas/arena_train.js": "./js/arenas/arena_train.js?v=v266_train_roofs_update",
       "./js/arenas/arena4/index.js": "./js/arenas/arena4/index.js?v=v266_train_roofs_update",
       "./js/arenas/arena4/state.js": "./js/arenas/arena4/state.js?v=v266_train_roofs_update",
@@ -41,7 +41,7 @@
       "./js/background.js": "./js/background.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/ball.js": "./js/ball.js?v=v145_arena2_remove_invisible_platform",
       "./js/bot.js": "./js/bot.js?v=v347_dynamic_lighting_and_materials",
-      "./js/camera.js": "./js/camera.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
+      "./js/camera.js": "./js/camera.js?v=v349_arena5_bottom_floor_climb_and_20cols",
       "./js/classes/aero.js": "./js/classes/aero.js?v=v161_class_stats_body_damage_helmet_vest_hp",
       "./js/classes/enforcer.js": "./js/classes/enforcer.js?v=v198_eliminate_slide_outside_ball_and_enforcer_slide_fix",
       "./js/classes/index.js": "./js/classes/index.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -76,7 +76,7 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/main.js": "./js/main.js?v=v347_dynamic_lighting_and_materials",
+      "./js/main.js": "./js/main.js?v=v349_arena5_bottom_floor_climb_and_20cols",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v279_melee_button_non_auto_lock",
       "./js/network.js": "./js/network.js?v=v274_tomahawk_throw_and_pickup",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
@@ -88,7 +88,7 @@
       "./js/obstacles/playerPhysics.js": "./js/obstacles/playerPhysics.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
       "./js/obstacles/raycast.js": "./js/obstacles/raycast.js?v=v181_fix_arena2_ramp_phantom_walls",
       "./js/obstacles/renderer.js": "./js/obstacles/renderer.js?v=v347_dynamic_lighting_and_materials",
-      "./js/obstacles/state.js": "./js/obstacles/state.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
+      "./js/obstacles/state.js": "./js/obstacles/state.js?v=v349_arena5_bottom_floor_climb_and_20cols",
       "./js/particles.js": "./js/particles.js?v=v348_natural_bloom_remove_wireframe_shockwaves",
       "./js/player.js": "./js/player.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/player/actions.js": "./js/player/actions.js?v=v274_tomahawk_throw_and_pickup",
@@ -98,7 +98,7 @@
       "./js/player/headgear.js": "./js/player/headgear.js?v=v150_enforcer_sleeves_marcus_bandana_no_jetpack",
       "./js/player/holsters.js": "./js/player/holsters.js?v=v336_rpg7_modular_rocket_reload",
       "./js/player/ik.js": "./js/player/ik.js?v=v134_striker_mobile_air_dash_flames_spread",
-      "./js/player/index.js": "./js/player/index.js?v=v293_fluid_axe_attack_dynamics_and_locomotion",
+      "./js/player/index.js": "./js/player/index.js?v=v349_arena5_bottom_floor_climb_and_20cols",
       "./js/player/jetpack.js": "./js/player/jetpack.js?v=v341_compact_soldat_jetpack_flame",
       "./js/player/limbs.js": "./js/player/limbs.js?v=v341_compact_soldat_jetpack_flame",
       "./js/player/locomotion.js": "./js/player/locomotion.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -285,6 +285,17 @@
                   </div>
                   <div class="mp-arena-name">STACJA ORBITALNA ARES</div>
                   <div class="mp-arena-desc">ŚRODOWISKO NISKIEJ GRAWITACJI // PRÓŻNIA // ZNISZCZALNE POSZYCIE</div>
+                </button>
+                <button type="button" class="mp-arena-card" data-arena="arena-5" title="Wybierz Arenę 5: Prefabrykator Orbitalny">
+                  <div class="mp-arena-card-top">
+                    <span class="mp-arena-badge">ARENA 5</span>
+                    <span class="mp-arena-active-indicator">WYBRANA</span>
+                  </div>
+                  <div class="mp-arena-preview-container">
+                    <img src="./assets/arena5_preview.svg?v=v2_prefab_tower" alt="Podgląd Areny 5" class="mp-arena-preview-img" loading="lazy">
+                  </div>
+                  <div class="mp-arena-name">PREFABRYKATOR ORBITALNY</div>
+                  <div class="mp-arena-desc">SPADAJĄCE KONTENERY // DETONACJA LINII // UCIECZKA W GÓRĘ</div>
                 </button>
               </div>
             </div>
@@ -1544,7 +1555,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps"></script>
+  <script type="module" src="./js/main.js?v=v349_arena5_bottom_floor_climb_and_20cols"></script>
 </body>
 
 </html>
