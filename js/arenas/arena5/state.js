@@ -163,7 +163,8 @@ export function resetArena5State() {
  * nie było widocznej czarnej pustki.
  */
 export function rebuildInitialPlatforms() {
-  arena5State.platforms = [
+  arena5State.platforms.length = 0;
+  arena5State.platforms.push(
     {
       id: 'a5_wall_left',
       name: 'LEWA ŚCIANA SZYBU',
@@ -207,7 +208,7 @@ export function rebuildInitialPlatforms() {
       isGround: true,
       type: 'solid_deck'
     }
-  ];
+  );
 
   arena5State.spawns = [
     { x: SHAFT_LEFT + 240, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },

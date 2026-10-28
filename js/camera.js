@@ -619,8 +619,9 @@ export function updateCamera(player, ball, options = {}) {
   // 5. ŻELAZNA GWARANCJA: Gracz FIZYCZNIE ZAWSZE w kadrze (Hard Player Boundary)
   // Nawet przy gwałtownym przyspieszeniu, odrzucie czy zrywach jetpacka,
   // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
+  // W Arenie 5 wykluczamy kamerę gracza, by wysokość zależała wyłącznie od wieży!
   // =========================================================================
-  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+  if (!isArena5 && player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);

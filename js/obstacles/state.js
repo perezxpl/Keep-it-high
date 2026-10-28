@@ -352,14 +352,20 @@ export const ARENA_FOUNDRY_BARRICADES = [];
 export const ARENA_FOUNDRY_GOALS = ARENA_3_CUSTOM_OBJECTS.filter(o => o.team);
 
 const _initArena = getActiveArena();
-export let activeArenaId = (_initArena && (_initArena.id === 'arena-4' || _initArena.id === 'ARENA_4')) ? 'ARENA_4' : ((_initArena && _initArena.id === 'arena-3') ? 'ARENA_3' : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1'));
+export let activeArenaId = (_initArena && (_initArena.id === 'arena-5' || _initArena.id === 'ARENA_5'))
+  ? 'ARENA_5'
+  : ((_initArena && (_initArena.id === 'arena-4' || _initArena.id === 'ARENA_4'))
+    ? 'ARENA_4'
+    : ((_initArena && _initArena.id === 'arena-3')
+      ? 'ARENA_3'
+      : ((_initArena && _initArena.id === 'arena-2') ? 'ARENA_2' : 'ARENA_1')));
 setActiveArenaId(activeArenaId);
 export const ARENA_PLATFORMS = [...(_initArena?.platforms || ARENA_1_PLATFORMS)];
 if (typeof window !== 'undefined') {
   window.ARENA_PLATFORMS = ARENA_PLATFORMS;
 }
-export const GROUND_BARRICADES = [...ARENA_1_BARRICADES];
-export const GOALS = [...((_initArena && (_initArena.id === 'arena-3' || _initArena.id === 'arena-4')) ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS))];
+export const GROUND_BARRICADES = (activeArenaId === 'ARENA_5' || activeArenaId === 'ARENA_4' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_2') ? [] : [...ARENA_1_BARRICADES];
+export const GOALS = [...((_initArena && (_initArena.id === 'arena-5' || _initArena.id === 'arena-4')) ? [] : ((_initArena && (_initArena.id === 'arena-3')) ? ARENA_FOUNDRY_GOALS : ((_initArena && _initArena.id === 'arena-2') ? ARENA_CYBER_STADIUM_GOALS : ARENA_1_GOALS)))];
 if (_initArena && Array.isArray(_initArena.customObjects)) {
   customObstacles.push(..._initArena.customObjects);
 }
@@ -391,13 +397,17 @@ onArenaChange((newArena) => {
   }
 
   GOALS.length = 0;
+  GROUND_BARRICADES.length = 0;
   if (activeArenaId === 'ARENA_3') {
     const a3Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_FOUNDRY_GOALS;
     GOALS.push(...(a3Goals.length > 0 ? a3Goals : ARENA_FOUNDRY_GOALS));
   } else if (activeArenaId === 'ARENA_2') {
     const a2Goals = (newArena && newArena.customObjects) ? newArena.customObjects.filter(o => o.team) : ARENA_CYBER_STADIUM_GOALS;
     GOALS.push(...(a2Goals.length > 0 ? a2Goals : ARENA_CYBER_STADIUM_GOALS));
+  } else if (activeArenaId === 'ARENA_4' || activeArenaId === 'ARENA_5') {
+    // W Arenie 4 i Arenie 5 brak bramek i barykad piłkarskich - czysty tryb taktyczny
   } else {
+    GROUND_BARRICADES.push(...ARENA_1_BARRICADES);
     GOALS.push(...ARENA_1_GOALS);
   }
 });
@@ -437,7 +447,31 @@ export function resetArena() {
   }
 
   ARENA_PLATFORMS.length = 0;
-  if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
+  if (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER') {
+    const curArena = getActiveArena();
+    if (typeof curArena?.reset === 'function') {
+      curArena.reset();
+    }
+    if (curArena && Array.isArray(curArena.platforms)) {
+      ARENA_PLATFORMS.push(...curArena.platforms);
+    }
+    customObstacles.length = 0;
+    obstacles.length = 0;
+    GROUND_BARRICADES.length = 0;
+    GOALS.length = 0;
+  } else if (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN') {
+    const curArena = getActiveArena();
+    if (typeof curArena?.reset === 'function') {
+      curArena.reset();
+    }
+    if (curArena && Array.isArray(curArena.platforms)) {
+      ARENA_PLATFORMS.push(...curArena.platforms);
+    }
+    customObstacles.length = 0;
+    obstacles.length = 0;
+    GROUND_BARRICADES.length = 0;
+    GOALS.length = 0;
+  } else if (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY') {
     if (typeof arena3 !== 'undefined' && typeof arena3.reset === 'function') {
       arena3.reset();
     }

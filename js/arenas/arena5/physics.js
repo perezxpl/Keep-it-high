@@ -509,26 +509,11 @@ function updateBottomRecycler(combatants, camera) {
   const currentDeathLineY = bottomVisibleY + 40;
   arena5State.recyclerY = currentDeathLineY;
 
-  // 1. Zwykłe usuwanie starych klocków pozostających pod ekranem
-  const rowsToDelete = [];
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
-    const rowY = getGridY(r);
-    if (rowY > currentDeathLineY + 80) {
-      rowsToDelete.push(r);
-    }
-  }
+  // Klocki w wieży NIE są usuwane przy przewijaniu ekranu - stanowią trwałe podparcie
+  // fizyczne całej konstrukcji wieży. Niszczenie klocków zachodzi wyłącznie w wyniku
+  // detonacji pełnych linii lub celnego ostrzału graczy.
 
-  for (const r of rowsToDelete) {
-    const rowData = arena5State.gridRows.get(r);
-    if (rowData) {
-      for (let c = 0; c < COLS; c++) {
-        if (rowData[c]) removePlatformForCell(rowData[c]);
-      }
-    }
-    arena5State.gridRows.delete(r);
-  }
-
-  // 2. Jeśli gracz lub bot spadnie poniżej linii utylizatora pod ekranem -> śmierć i respawn na szczycie
+  // 1. Jeśli gracz lub bot spadnie poniżej linii utylizatora pod ekranem -> śmierć i respawn na szczycie
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
     if (victim.y > currentDeathLineY) {

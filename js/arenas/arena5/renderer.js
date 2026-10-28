@@ -56,11 +56,11 @@ export function drawArena5Foreground(ctx, camera) {
   // 2. Pancerne ściany szybu po lewej i prawej stronie rozciągające się do końca ekranu
   drawShaftWalls(ctx, camera);
 
-  // 3. Podłoże bazowe (jeśli jeszcze nie zniknęło pod ekranem)
-  drawBaseFloor(ctx);
+  // 3. Podłoże bazowe (jeśli widoczne w kadrze kamery)
+  drawBaseFloor(ctx, camera);
 
   // 4. Ułożone klocki w wieży
-  drawSettledBlocks(ctx);
+  drawSettledBlocks(ctx, camera);
 
   // 5. Laser ostrzegawczy suwnicy i rzutowanie lądowania
   drawCraneWarning(ctx, camera);
@@ -191,8 +191,10 @@ function drawHazardStripes(ctx, x, y, w, h) {
 /**
  * Rysuje płytę fundamentową (startową)
  */
-function drawBaseFloor(ctx) {
-  if (BASE_FLOOR_Y > arena5State.recyclerY + 250) return;
+function drawBaseFloor(ctx, camera) {
+  const camY = camera ? camera.y : 0;
+  const viewHeight = camera ? (camera.viewHeight || (1080 / (camera.zoom || 0.75))) : 1080;
+  if (BASE_FLOOR_Y > camY + viewHeight + 300) return;
 
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 140);
@@ -207,14 +209,20 @@ function drawBaseFloor(ctx) {
 }
 
 /**
- * Rysuje wszystkie ułożone klocki w wieży
+ * Rysuje wszystkie ułożone klocki w wieży z wydajnym frustum cullingiem kamery
  */
-function drawSettledBlocks(ctx) {
+function drawSettledBlocks(ctx, camera) {
+  const camY = camera ? camera.y : 0;
+  const viewHeight = camera ? (camera.viewHeight || (1080 / (camera.zoom || 0.75))) : 1080;
+  const camTop = camY - 120;
+  const camBottom = camY + viewHeight + 120;
+
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
       if (!cell || cell.hp <= 0) continue;
+      if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
 
       drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp);
     }
