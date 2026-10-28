@@ -20,118 +20,130 @@ import {
 } from './state.js';
 
 /**
- * Renderuje tło szybu fabrycznego przed postaciami
+ * Renderuje tło szybu fabrycznego w przestrzeni ekranu (przed postaciami i transformatą kamery)
  */
 export function drawArena5Background(ctx, camera) {
-  if (!ctx || !camera) return;
+  if (!ctx) return;
 
-  const viewWidth = camera.viewWidth || (1920 / (camera.zoom || 0.75));
-  const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
-  const camX = camera.x;
-  const camY = camera.y;
+  const canvasWidth = (ctx.canvas && ctx.canvas.width) ? (ctx.canvas.clientWidth || ctx.canvas.width) : 1920;
+  const canvasHeight = (ctx.canvas && ctx.canvas.height) ? (ctx.canvas.clientHeight || ctx.canvas.height) : 1080;
 
   ctx.save();
 
-  // 1. Głębokie, surowe tło przemysłowego silosu orbitalnego
-  const bgGrad = ctx.createLinearGradient(camX, camY, camX, camY + viewHeight);
+  // Głębokie, surowe tło przemysłowego silosu orbitalnego wypełniające cały ekran
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
   bgGrad.addColorStop(0, '#060a12');
   bgGrad.addColorStop(0.5, '#0a101d');
   bgGrad.addColorStop(1, '#05070d');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(camX - 100, camY - 100, viewWidth + 200, viewHeight + 200);
-
-  // 2. Wewnętrzny szyb: subtelna siatka konstrukcyjna i pionowe szyny suwnicy
-  ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
-  ctx.lineWidth = 1.5;
-
-  // Pionowe linie kolumn wewnątrz szybu
-  for (let c = 0; c <= COLS; c++) {
-    const gx = SHAFT_LEFT + c * CELL_SIZE;
-    ctx.beginPath();
-    ctx.moveTo(gx, camY - 100);
-    ctx.lineTo(gx, camY + viewHeight + 100);
-    ctx.stroke();
-  }
-
-  // Poziome dźwigary konstrukcyjne co 200 px
-  const startGridY = Math.floor((camY - 100) / 200) * 200;
-  for (let gy = startGridY; gy <= camY + viewHeight + 100; gy += 200) {
-    ctx.beginPath();
-    ctx.moveTo(SHAFT_LEFT, gy);
-    ctx.lineTo(SHAFT_RIGHT, gy);
-    ctx.stroke();
-
-    // Nitowane węzły konstrukcyjne
-    ctx.fillStyle = 'rgba(71, 85, 105, 0.4)';
-    ctx.fillRect(SHAFT_LEFT - 4, gy - 4, 8, 8);
-    ctx.fillRect(SHAFT_RIGHT - 4, gy - 4, 8, 8);
-  }
-
-  // 3. Prowadnice suwnicy wysokociśnieniowej po bokach
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(SHAFT_LEFT - 20, camY - 100, 20, viewHeight + 200);
-  ctx.fillRect(SHAFT_RIGHT, camY - 100, 20, viewHeight + 200);
-
-  // Zębate szyny hydrauliczne
-  ctx.fillStyle = '#1e293b';
-  const startToothY = Math.floor((camY - 100) / 40) * 40;
-  for (let ty = startToothY; ty <= camY + viewHeight + 100; ty += 40) {
-    ctx.fillRect(SHAFT_LEFT - 16, ty, 12, 18);
-    ctx.fillRect(SHAFT_RIGHT + 4, ty, 12, 18);
-  }
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   ctx.restore();
 }
 
 /**
  * Renderuje elementy areny na pierwszym planie (ściany, klocki, lasery ostrzegawcze, utylizator)
+ * w przestrzeni świata gry
  */
 export function drawArena5Foreground(ctx, camera) {
   if (!ctx || !camera) return;
 
   ctx.save();
 
-  // 1. Ściany szybu po lewej i prawej stronie
+  // 1. Tło wewnętrzne szybu (szyny i siatka)
+  drawShaftBackdrop(ctx, camera);
+
+  // 2. Pancerne ściany szybu po lewej i prawej stronie rozciągające się do końca ekranu
   drawShaftWalls(ctx, camera);
 
-  // 2. Podłoże bazowe (jeśli jeszcze nie zniknęło pod ekranem)
+  // 3. Podłoże bazowe (jeśli jeszcze nie zniknęło pod ekranem)
   drawBaseFloor(ctx);
 
-  // 3. Ułożone klocki w wieży
+  // 4. Ułożone klocki w wieży
   drawSettledBlocks(ctx);
 
-  // 4. Laser ostrzegawczy suwnicy i rzutowanie lądowania
+  // 5. Laser ostrzegawczy suwnicy i rzutowanie lądowania
   drawCraneWarning(ctx, camera);
 
-  // 5. Spadający kontener
+  // 6. Spadający kontener
   drawFallingCraneBlock(ctx);
 
-  // 6. Animacje detonacji pełnych linii
+  // 7. Animacje detonacji pełnych linii
   drawLineClearEffects(ctx);
 
-  // 7. Cząsteczki odłamków
+  // 8. Cząsteczki odłamków
   drawDebris(ctx);
 
-  // 8. Dolny utylizator (strefa śmierci)
+  // 9. Dolny utylizator (strefa śmierci)
   drawBottomRecycler(ctx, camera);
 
   ctx.restore();
 }
 
 /**
- * Rysuje pancerne ściany szybu
+ * Rysuje tło wewnętrzne szybu (pionowe i poziome elementy konstrukcyjne oraz zębate szyny)
+ */
+function drawShaftBackdrop(ctx, camera) {
+  const camY = camera.y;
+  const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
+  const topY = camY - 200;
+  const h = viewHeight + 400;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(30, 41, 59, 0.35)';
+  ctx.lineWidth = 1.5;
+
+  // Pionowe linie kolumn wewnątrz szybu
+  for (let c = 0; c <= COLS; c++) {
+    const gx = SHAFT_LEFT + c * CELL_SIZE;
+    ctx.beginPath();
+    ctx.moveTo(gx, topY);
+    ctx.lineTo(gx, topY + h);
+    ctx.stroke();
+  }
+
+  // Poziome dźwigary konstrukcyjne co 200 px
+  const startGridY = Math.floor(topY / 200) * 200;
+  for (let gy = startGridY; gy <= topY + h; gy += 200) {
+    ctx.beginPath();
+    ctx.moveTo(SHAFT_LEFT, gy);
+    ctx.lineTo(SHAFT_RIGHT, gy);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(71, 85, 105, 0.4)';
+    ctx.fillRect(SHAFT_LEFT - 4, gy - 4, 8, 8);
+    ctx.fillRect(SHAFT_RIGHT - 4, gy - 4, 8, 8);
+  }
+
+  // Zębate szyny hydrauliczne po bokach
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(SHAFT_LEFT - 24, topY, 24, h);
+  ctx.fillRect(SHAFT_RIGHT, topY, 24, h);
+
+  ctx.fillStyle = '#1e293b';
+  const startToothY = Math.floor(topY / 40) * 40;
+  for (let ty = startToothY; ty <= topY + h; ty += 40) {
+    ctx.fillRect(SHAFT_LEFT - 20, ty, 14, 18);
+    ctx.fillRect(SHAFT_RIGHT + 6, ty, 14, 18);
+  }
+  ctx.restore();
+}
+
+/**
+ * Rysuje pancerne ściany szybu rozciągające się do końca ekranów
  */
 function drawShaftWalls(ctx, camera) {
   const camY = camera.y;
   const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
-  const topY = camY - 100;
-  const h = viewHeight + 200;
+  const topY = camY - 200;
+  const h = viewHeight + 400;
 
-  // Lewa ściana
+  // Lewa ściana: wypełnia wszystko od dalekiego brzegu po lewej aż do SHAFT_LEFT
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(ARENA_LEFT, topY, WALL_WIDTH, h);
-  // Prawa ściana
-  ctx.fillRect(SHAFT_RIGHT, topY, WALL_WIDTH, h);
+  ctx.fillRect(camera.x - 3000, topY, 3000 + SHAFT_LEFT, h);
+
+  // Prawa ściana: wypełnia wszystko od SHAFT_RIGHT aż do dalekiego brzegu po prawej
+  ctx.fillRect(SHAFT_RIGHT, topY, 3000 + (camera.viewWidth || 1600), h);
 
   // Żółto-czarne pasy ostrzegawcze na krawędziach wewnętrznych
   drawHazardStripes(ctx, SHAFT_LEFT - 24, topY, 24, h);
@@ -145,8 +157,8 @@ function drawShaftWalls(ctx, camera) {
 
   const startTextY = Math.floor(topY / 300) * 300;
   for (let ty = startTextY; ty < topY + h; ty += 300) {
-    ctx.fillText('SEKTOR 05 // SZYB PREFABRYKATÓW', ARENA_LEFT + WALL_WIDTH * 0.45, ty);
-    ctx.fillText('UWAGA: ZRZUT PIONOWY', SHAFT_RIGHT + WALL_WIDTH * 0.55, ty);
+    ctx.fillText('SEKTOR 05 // SZYB PREFABRYKATÓW', SHAFT_LEFT - 80, ty);
+    ctx.fillText('UWAGA: ZRZUT PIONOWY', SHAFT_RIGHT + 80, ty);
   }
   ctx.restore();
 }
@@ -183,15 +195,15 @@ function drawBaseFloor(ctx) {
   if (BASE_FLOOR_Y > arena5State.recyclerY + 250) return;
 
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(SHAFT_LEFT, BASE_FLOOR_Y, COLS * CELL_SIZE, 120);
+  ctx.fillRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 140);
 
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
-  ctx.strokeRect(SHAFT_LEFT, BASE_FLOOR_Y, COLS * CELL_SIZE, 120);
+  ctx.strokeRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 140);
 
   // Górna krawędź fundamentu z fazowaniem
   ctx.fillStyle = '#475569';
-  ctx.fillRect(SHAFT_LEFT, BASE_FLOOR_Y, COLS * CELL_SIZE, 6);
+  ctx.fillRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 6);
 }
 
 /**
@@ -240,7 +252,7 @@ function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp) {
     // Oznaczenie taktyczne
     ctx.font = '900 8.5px monospace';
     ctx.fillStyle = 'rgba(234, 179, 8, 0.75)';
-    ctx.fillText('PMC-100', x + 16, y + 22);
+    ctx.fillText('PMC-100', x + 14, y + 22);
 
   } else if (material === 'CONCRETE_CRACKED') {
     // Pęknięty żelbet
@@ -285,16 +297,16 @@ function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp) {
     // Trójkąt ostrzegawczy z wykrzyknikiem w centrum
     ctx.fillStyle = '#facc15';
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y + 28);
-    ctx.lineTo(x + w * 0.5 + 20, y + 68);
-    ctx.lineTo(x + w * 0.5 - 20, y + 68);
+    ctx.moveTo(x + w * 0.5, y + 24);
+    ctx.lineTo(x + w * 0.5 + 18, y + 58);
+    ctx.lineTo(x + w * 0.5 - 18, y + 58);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#000000';
-    ctx.font = '900 16px monospace';
+    ctx.font = '900 15px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('!', x + w * 0.5, y + 62);
+    ctx.fillText('!', x + w * 0.5, y + 52);
 
   } else if (material === 'SCAFFOLDING') {
     // Pomost ażurowy / krata podłogowa

@@ -815,10 +815,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         if (botCenterX >= dropLeft && botCenterX <= dropRight) {
           const distToLeft = Math.abs(botCenterX - dropLeft);
           const distToRight = Math.abs(botCenterX - dropRight);
-          targetX = (distToLeft < distToRight) ? (dropLeft - 50) : (dropRight + 50);
+          let escapeX = (distToLeft < distToRight) ? (dropLeft - 50) : (dropRight + 50);
+          if (escapeX < 180) escapeX = dropRight + 50;
+          if (escapeX > 1420) escapeX = dropLeft - 50;
+          targetX = Math.max(180, Math.min(1420, escapeX));
 
           if (isStriker && botTarget.jetFuel >= 45 && botTarget.strikerDashCooldown <= 0) {
-            triggerStrikerAirDash(botTarget, (distToLeft < distToRight ? -1 : 1), spawnGrass);
+            triggerStrikerAirDash(botTarget, (escapeX < botCenterX ? -1 : 1), spawnGrass);
             botTarget.strikerDashCooldown = 70;
           }
         }

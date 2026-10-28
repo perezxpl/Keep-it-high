@@ -14,7 +14,7 @@ export class Arena5PrefabTower {
     this.alias = 'PREFAB_TOWER';
     this.mapId = 'orbital_prefab_tower_05';
     this.name = 'PREFABRYKATOR ORBITALNY';
-    this.width = 2400;
+    this.width = 1600;
     this.height = 50000;
     this.mainDeckY = BASE_FLOOR_Y;
     this.animTime = 0;

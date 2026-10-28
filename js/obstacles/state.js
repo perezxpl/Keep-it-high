@@ -598,7 +598,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     if (playerObj) {
       const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
-      const s0 = spawns[isClient ? 2 : 0] || { x: 900, y: floorY - 90 };
+      const s0 = spawns[isClient ? 2 : 0] || { x: 400, y: floorY - 90 };
       playerObj.x = s0.x;
       playerObj.y = s0.y;
       playerObj.vx = 0;
@@ -623,7 +623,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.active = true;
       b.isHolstered = false;
       b.holsterWeight = 0;
-      const s = spawns[(idx + 1) % spawns.length] || { x: 1200, y: floorY - 90 };
+      const s = spawns[(idx + 1) % spawns.length] || { x: 800, y: floorY - 90 };
       b.x = s.x + (idx * 30);
       b.y = s.y;
       b.vx = 0;

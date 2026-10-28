@@ -4,14 +4,14 @@
 // Standard: Zero emojis, modularyzacja ES, optymalizacja pamięci
 // =========================================================================
 
-export const CELL_SIZE = 80; // 80px: idealne dopasowanie do Enforcera (74px) z zachowaniem pełnej zdolności do wskakiwania
-export const COLS = 10;
-export const SHAFT_LEFT = 800;
-export const SHAFT_RIGHT = SHAFT_LEFT + COLS * CELL_SIZE; // 1600 (szerokość szybu: 800px)
-export const WALL_WIDTH = 150;
-export const ARENA_LEFT = SHAFT_LEFT - WALL_WIDTH; // 650
-export const ARENA_RIGHT = SHAFT_RIGHT + WALL_WIDTH; // 1750
-export const ARENA_WIDTH = ARENA_RIGHT - ARENA_LEFT; // 1100
+export const CELL_SIZE = 80; // 80px: dopasowanie do Enforcera (74px) z zachowaniem pełnej zdolności do wskakiwania
+export const COLS = 16; // 16 kolumn: pełna, zbalansowana szerokość szybu wypełniająca ekran
+export const ARENA_LEFT = 0;
+export const ARENA_WIDTH = 1600;
+export const ARENA_RIGHT = ARENA_LEFT + ARENA_WIDTH; // 1600
+export const WALL_WIDTH = 160;
+export const SHAFT_LEFT = WALL_WIDTH; // 160
+export const SHAFT_RIGHT = SHAFT_LEFT + COLS * CELL_SIZE; // 160 + 16 * 80 = 1440 (szerokość szybu 1280px)
 export const BASE_FLOOR_Y = 1200;
 
 export const BLOCK_MATERIALS = {
@@ -58,23 +58,25 @@ export const BLOCK_MATERIALS = {
  * r: wiersz względny OD DOŁU (0 = dolny wiersz klocka, 1 = jeden wiersz wyżej)
  */
 export const SHAPE_DEFS = [
-  // 1. I-Beam poziomy (3x1)
+  // 1. I-Beam poziomy (4x1)
+  { id: 'I_HORIZ_4', w: 4, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 3, r: 0 }] },
+  // 2. I-Beam poziomy (3x1)
   { id: 'I_HORIZ_3', w: 3, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }] },
-  // 2. I-Beam pionowy (1x2) - filar
+  // 3. I-Beam pionowy (1x2) - filar
   { id: 'PILLAR_2',  w: 1, h: 2, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }] },
-  // 3. Moduł kwadratowy 2x2
+  // 4. Moduł kwadratowy 2x2
   { id: 'O_BLOCK',   w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }] },
-  // 4. Trójnik T (3x2, płaska podstawa z wypustem pośrodku)
+  // 5. Trójnik T (3x2, płaska podstawa z wypustem pośrodku)
   { id: 'T_BLOCK',   w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 1, r: 1 }] },
-  // 5. Schodki / Kątownik L (2x2)
+  // 6. Schodki / Kątownik L (2x2)
   { id: 'L_BLOCK_2', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }] },
-  // 6. Odwrócony kątownik J (2x2)
+  // 7. Odwrócony kątownik J (2x2)
   { id: 'J_BLOCK_2', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 1, r: 1 }] },
-  // 7. Zygzak S (3x2)
+  // 8. Zygzak S (3x2)
   { id: 'S_BLOCK',   w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
-  // 8. Bunkier U (3x2 z niszą pośrodku do ukrycia się)
+  // 9. Bunkier U (3x2 z niszą pośrodku do ukrycia się)
   { id: 'U_BUNKER',  w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
-  // 9. Schodki 3-stopniowe (3x2)
+  // 10. Schodki 3-stopniowe (3x2)
   { id: 'STAIRS_3',  w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] }
 ];
 
@@ -128,11 +130,11 @@ export const arena5State = {
   // Płaskie platformy eksportowane do silnika fizyki gry
   platforms: [],
 
-  // Dynamiczne punkty odrodzenia na szczycie wieży
+  // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 16 kolumnach szybu)
   spawns: [
-    { x: SHAFT_LEFT + 160, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 400, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: SHAFT_LEFT + 240, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 1040, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
   ]
 };
 
@@ -156,18 +158,20 @@ export function resetArena5State() {
 }
 
 /**
- * Buduje platformy startowe (ściany boczne i podłogę), aby postacie nie spadały w próżnię
+ * Buduje platformy startowe (ściany boczne i podłogę), aby postacie nie spadały w próżnię.
+ * Ściany rozciągają się daleko poza krawędzie ekranu, aby na monitorach o dowolnej szerokości
+ * nie było widocznej czarnej pustki.
  */
 export function rebuildInitialPlatforms() {
   arena5State.platforms = [
     {
       id: 'a5_wall_left',
       name: 'LEWA ŚCIANA SZYBU',
-      x: ARENA_LEFT,
+      x: -10000,
       y: -100000,
-      w: WALL_WIDTH,
+      w: 10000 + SHAFT_LEFT,
       h: 200000,
-      width: WALL_WIDTH,
+      width: 10000 + SHAFT_LEFT,
       height: 200000,
       solid: true,
       isWall: true,
@@ -180,9 +184,9 @@ export function rebuildInitialPlatforms() {
       name: 'PRAWA ŚCIANA SZYBU',
       x: SHAFT_RIGHT,
       y: -100000,
-      w: WALL_WIDTH,
+      w: 10000,
       h: 200000,
-      width: WALL_WIDTH,
+      width: 10000,
       height: 200000,
       solid: true,
       isWall: true,
@@ -193,12 +197,12 @@ export function rebuildInitialPlatforms() {
     {
       id: 'a5_base_floor',
       name: 'PŁYTA FUNDAMENTOWA',
-      x: SHAFT_LEFT - 100,
+      x: -2000,
       y: BASE_FLOOR_Y,
-      w: COLS * CELL_SIZE + 200,
-      h: 300,
-      width: COLS * CELL_SIZE + 200,
-      height: 300,
+      w: 5600,
+      h: 400,
+      width: 5600,
+      height: 400,
       solid: true,
       isGround: true,
       type: 'solid_deck'
@@ -206,10 +210,15 @@ export function rebuildInitialPlatforms() {
   ];
 
   arena5State.spawns = [
-    { x: SHAFT_LEFT + 160, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 400, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: SHAFT_LEFT + 240, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 640, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 1040, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
   ];
+
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    window.ARENA_PLATFORMS.length = 0;
+    window.ARENA_PLATFORMS.push(...arena5State.platforms);
+  }
 }
 
 /**
@@ -253,9 +262,11 @@ export function prepareNextCraneDrop() {
 }
 
 /**
- * Oblicza dokładny wiersz i współrzędną Y lądowania klocka w siatce
+ * Oblicza dokładny wiersz i współrzędną Y lądowania klocka w siatce.
+ * Gdy preserveCurrentY jest prawdziwe (np. po tąpnięciu wieży), aktualizujemy wyłącznie cel lądowania,
+ * bez cofania spadającego już klocka w górę.
  */
-export function calculateTargetLandY() {
+export function calculateTargetLandY(preserveCurrentY = false) {
   const crane = arena5State.crane;
   if (!crane.shape) return;
 
@@ -264,11 +275,12 @@ export function calculateTargetLandY() {
 
   for (const cell of crane.shapeCells) {
     const worldCol = crane.col + cell.colRel;
+    if (worldCol < 0 || worldCol >= COLS) continue;
     let highestOccupiedInCol = -1;
 
     for (let r = arena5State.highestRowIndex + 8; r >= 0; r--) {
       const rowData = arena5State.gridRows.get(r);
-      if (rowData && rowData[worldCol]) {
+      if (rowData && rowData[worldCol] && rowData[worldCol].hp > 0) {
         highestOccupiedInCol = r;
         break;
       }
@@ -284,10 +296,12 @@ export function calculateTargetLandY() {
     }
   }
 
-  crane.targetLandingRow = targetLandingRow;
+  crane.targetLandingRow = Math.max(0, targetLandingRow);
   // targetLandY to współrzędna Y szczytu kształtu po wylądowaniu
-  crane.targetLandY = BASE_FLOOR_Y - (targetLandingRow + crane.shape.h) * CELL_SIZE;
+  crane.targetLandY = BASE_FLOOR_Y - (crane.targetLandingRow + crane.shape.h) * CELL_SIZE;
 
   // Startowa wysokość spadania: płynny zrzut z góry (450px nad celem)
-  crane.currentY = crane.targetLandY - 450;
+  if (!preserveCurrentY) {
+    crane.currentY = crane.targetLandY - 450;
+  }
 }

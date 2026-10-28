@@ -231,8 +231,8 @@ export function getArenaBounds() {
   const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
-  const minX = isArena5 ? 400 : ((isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT);
-  const maxX = isArena5 ? 2000 : (isArena4 ? 4000 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
+  const minX = isArena5 ? 0 : ((isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT);
+  const maxX = isArena5 ? 1600 : (isArena4 ? 4000 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
   const groundFloor = getCameraGroundY();
 
   return {
@@ -353,6 +353,10 @@ export function updateCamera(player, ball, options = {}) {
 
   if (devZoomLevel !== null) {
     camera.targetZoom = Math.max(minZoom, devZoomLevel);
+  } else if (isArena5) {
+    // Arena 5 (Prefabrykator Orbitalny): szerokość areny do końca ekranów!
+    // Blokujemy zoom tak, aby szerokość areny (1600px) dokładnie wypełniała widoczną szerokość ekranu
+    camera.targetZoom = canvasWidth / arenaWidth;
   } else if (killstreakState && killstreakState.mortarTargeting) {
     // Tryb celowania nalotu artylerii: szeroki, taktyczny satelitarny rzut oka na mapę
     const optimalBaseZoom = calculateOptimalBaseZoom(canvasWidth, canvasHeight, isMobile);
@@ -491,8 +495,7 @@ export function updateCamera(player, ball, options = {}) {
       targetCamX = ARENA_LEFT;
     }
   } else if (isArena5) {
-    targetCamX = 1200 + (lookAhead * 0.25) - (viewWidth / 2);
-    targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
+    targetCamX = ARENA_LEFT;
   } else if (viewWidth < arenaWidth) {
     targetCamX = (targetX + lookAhead + aimLeadX) - (viewWidth / 2);
     targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
@@ -518,11 +521,16 @@ export function updateCamera(player, ball, options = {}) {
     const highestBlockY = (typeof window !== 'undefined' && window.arena5State && typeof window.arena5State.highestBlockY === 'number')
       ? window.arena5State.highestBlockY
       : 1200;
-    const screenMidY = targetCamY + viewHeight * 0.50;
+    const baseGroundCamY = 1200 - (viewHeight * 0.72);
+    const screenMidY = baseGroundCamY + (viewHeight * 0.50);
+
     if (highestBlockY < screenMidY) {
       const towerThresholdY = highestBlockY - (viewHeight * 0.50);
-      targetCamY = Math.min(targetCamY, towerThresholdY);
+      targetCamY = towerThresholdY;
+    } else {
+      targetCamY = baseGroundCamY;
     }
+
     if (typeof window !== 'undefined' && window.arena5State) {
       if (window.arena5State.minCameraY === null || targetCamY < window.arena5State.minCameraY) {
         window.arena5State.minCameraY = targetCamY;
