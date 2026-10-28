@@ -558,7 +558,7 @@ export function updateCamera(player, ball, options = {}) {
 
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
   // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
-  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+  if (!isArena5 && player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);

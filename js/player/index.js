@@ -1362,13 +1362,20 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   const pitchLerp = 0.30;
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
+  const isArena5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const wallLeft = isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT);
-  const wallRight = isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT);
-  const ceilingY = 30;
+  const wallLeft = isArena5 ? 160 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT));
+  const wallRight = isArena5 ? 1440 : (isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT));
 
-  // 1. Twarda blokada gornej krawedzi mapy (Ceiling Clamping - postac nie wylatuje poza swiat)
+  // Pułap / sufit areny:
+  // W Arenie 5 gracz nie może wylecieć wyżej niż aktualny widok areny (górna krawędź kamery)
+  const camTopY = (typeof window !== 'undefined' && window.camera && typeof window.camera.y === 'number')
+    ? window.camera.y
+    : (1200 - 900);
+  const ceilingY = isArena5 ? (camTopY + 12) : 30;
+
+  // 1. Twarda blokada gornej krawedzi mapy (Ceiling Clamping - postac nie wylatuje poza swiat ani ponad aktualny stan areny)
   if (player.y < ceilingY) {
     player.y = ceilingY;
     if (player.vy < 0) player.vy = 0;
