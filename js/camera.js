@@ -324,7 +324,7 @@ export function updateCamera(player, ball, options = {}) {
   // 2. Blokada zoomu (kamera nie może widzieć więcej niż szerokość areny):
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
-  const minZoom = canvasWidth / arenaWidth;
+  let minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
   const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
