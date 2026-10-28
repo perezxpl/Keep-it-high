@@ -811,11 +811,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const crane = a5.crane;
       if (crane && (crane.phase === 'WARNING' || crane.phase === 'FALLING') && crane.shape) {
         const dropLeft = crane.dropX - 15;
-        const dropRight = crane.dropX + crane.shape.w * 100 + 15;
+        const dropRight = crane.dropX + crane.shape.w * 80 + 15;
         if (botCenterX >= dropLeft && botCenterX <= dropRight) {
           const distToLeft = Math.abs(botCenterX - dropLeft);
           const distToRight = Math.abs(botCenterX - dropRight);
-          targetX = (distToLeft < distToRight) ? (dropLeft - 60) : (dropRight + 60);
+          targetX = (distToLeft < distToRight) ? (dropLeft - 50) : (dropRight + 50);
 
           if (isStriker && botTarget.jetFuel >= 45 && botTarget.strikerDashCooldown <= 0) {
             triggerStrikerAirDash(botTarget, (distToLeft < distToRight ? -1 : 1), spawnGrass);
@@ -823,7 +823,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           }
         }
       }
-      if (botTarget.y > a5.recyclerY - 180) {
+      if (a5.recyclerY < 1200 && botTarget.y > a5.recyclerY - 120) {
+        bKeys.up = true;
+      }
+      if (botTarget.onGround && !botTarget.isJumping && Math.abs(botTarget.vx || 0) < 0.25 && (bKeys.left || bKeys.right)) {
         bKeys.up = true;
       }
     }

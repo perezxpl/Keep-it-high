@@ -372,7 +372,7 @@ function drawCraneWarning(ctx, camera) {
   // 2. Pulsujący rzut lądowania klocka (Footprint)
   for (const cell of crane.shapeCells) {
     const fx = getGridX(crane.col + cell.colRel);
-    const fy = landY + cell.rowRel * CELL_SIZE;
+    const fy = landY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
 
     ctx.fillStyle = `rgba(239, 68, 68, ${0.22 * pulse})`;
     ctx.fillRect(fx + 2, fy + 2, CELL_SIZE - 4, CELL_SIZE - 4);
@@ -404,7 +404,7 @@ function drawFallingCraneBlock(ctx) {
   ctx.save();
   for (const cell of crane.shapeCells) {
     const bx = getGridX(crane.col + cell.colRel);
-    const by = crane.currentY + cell.rowRel * CELL_SIZE;
+    const by = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
 
     // Cień i efekt pędu w dół
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
@@ -420,7 +420,7 @@ function drawFallingCraneBlock(ctx) {
  */
 function drawLineClearEffects(ctx) {
   for (const clear of arena5State.activeLineClears) {
-    const tRatio = clear.timer / clear.maxTimer; // 1.0 -> 0.0
+    const tRatio = clear.timer / clear.maxTimer;
     const ly = clear.y;
 
     ctx.save();
@@ -457,8 +457,11 @@ function drawDebris(ctx) {
  * Rysuje dolny utylizator (laserową strefę mielenia odpadów)
  */
 function drawBottomRecycler(ctx, camera) {
-  const viewWidth = camera.viewWidth || (1920 / (camera.zoom || 0.75));
   const bottomY = arena5State.recyclerY;
+  // Na starcie rozgrywki (gdy utylizator spoczywa pod ziemią) nie rysujemy strefy śmierci
+  if (bottomY >= BASE_FLOOR_Y) return;
+
+  const viewWidth = camera.viewWidth || (1920 / (camera.zoom || 0.75));
 
   ctx.save();
 

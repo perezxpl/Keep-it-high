@@ -409,14 +409,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Twarda blokada przechodzenia przez zawalone klocki leżące (Solid Debris Obstacles)
+  // Twarda blokada przechodzenia przez zawalone klocki leżące i segmenty Areny 5 (Solid Obstacles)
   for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.intact !== false || plat.solid === false || plat.isWall || plat.oneWay || plat.isTowerBlock) continue;
+    if (!plat || plat.solid === false || plat.isWall || plat.oneWay) continue;
+    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
+    if (!isObstacleToBlock) continue;
     if (p.currentPlatform === plat) continue;
 
     const bnds = getPlatformBounds(plat);
     const stepDiff = feetY - bnds.minY;
-    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego gruzu
+    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego kontenera
     if (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4) {
       if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
         const midX = bnds.cx;

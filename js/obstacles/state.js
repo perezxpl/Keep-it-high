@@ -588,6 +588,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (typeof currentArena?.reset === 'function') {
       currentArena.reset();
     }
+    ARENA_PLATFORMS.length = 0;
+    if (currentArena && Array.isArray(currentArena.platforms)) {
+      ARENA_PLATFORMS.push(...currentArena.platforms);
+    }
 
     const spawns = currentArena?.spawns || [];
     const floorY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 1200;
@@ -652,6 +656,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     if (typeof currentArena?.reset === 'function') {
       currentArena.reset();
+    }
+    ARENA_PLATFORMS.length = 0;
+    if (currentArena && Array.isArray(currentArena.platforms)) {
+      ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
     const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 820;
@@ -719,6 +727,10 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
 
     if (typeof currentArena?.reset === 'function') {
       currentArena.reset();
+    }
+    ARENA_PLATFORMS.length = 0;
+    if (currentArena && Array.isArray(currentArena.platforms)) {
+      ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
     if (playerObj) {

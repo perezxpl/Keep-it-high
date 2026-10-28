@@ -51,7 +51,7 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
 }
 
 /**
- * Obsługa cyklu życia suwnicy: Ostrzeżenie -> Zrzut -> Uderzenie -> Cooldown
+ * Obsługa cyklu życia suwnicy: Ostrzeżenie (2.2s) -> Płynny zrzut -> Uderzenie -> Cooldown (2.0s)
  */
 function updateCrane(dt, combatants) {
   const crane = arena5State.crane;
@@ -61,14 +61,14 @@ function updateCrane(dt, combatants) {
     crane.timer -= dt;
     if (crane.timer <= 0) {
       crane.phase = 'FALLING';
-      crane.vy = 8.0; // Początkowa prędkość zrzutu
+      crane.vy = 4.0; // Płynny start opadania
     }
   } else if (crane.phase === 'FALLING') {
-    // Przyspieszenie grawitacyjne zrzutu kontenera
-    crane.vy = Math.min(32.0, crane.vy + 1.2);
+    // Płynne, czytelne przyspieszenie zrzutu
+    crane.vy = Math.min(20.0, crane.vy + 0.65);
     crane.currentY += crane.vy;
 
-    // Detekcja zmiażdżenia postaci (Squash) podczas lotu
+    // Detekcja uderzenia / zmiażdżenia
     checkFallingSquash(combatants);
 
     // Warunek uderzenia w wieżę / podłoże
@@ -85,15 +85,19 @@ function updateCrane(dt, combatants) {
 }
 
 /**
- * Sprawdza, czy spadający klocek zmiażdżył gracza lub bota pod sobą
+ * Sprawdza, czy spadający klocek uderza w postać pod sobą
  */
 function checkFallingSquash(combatants) {
   const crane = arena5State.crane;
   if (crane.phase !== 'FALLING') return;
 
+  // Zmiażdżenie (Squash) może nastąpić WYŁĄCZNIE gdy klocek dotarł tuż nad powierzchnię lądowania (ostatnie 25 px)
+  const isNearImpact = (crane.currentY >= crane.targetLandY - 25);
+
   for (const cell of crane.shapeCells) {
     const cellX = getGridX(crane.col + cell.colRel);
-    const cellY = crane.currentY + cell.rowRel * CELL_SIZE;
+    // cell.rowRel: 0 to dolny wiersz klocka, więc jego pozycja Y od dołu to (shape.h - 1 - rowRel)
+    const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
     const cellW = CELL_SIZE;
     const cellH = CELL_SIZE;
 
@@ -105,26 +109,25 @@ function checkFallingSquash(combatants) {
       const pX = victim.x;
       const pY = victim.y;
 
-      // Nakładanie prostokątów AABB
-      const overlapX = (pX < cellX + cellW) && (pX + pW > cellX);
-      const overlapY = (pY < cellY + cellH) && (pY + pH > cellY);
+      const overlapX = (pX < cellX + cellW - 4) && (pX + pW > cellX + 4);
+      const overlapY = (pY < cellY + cellH) && (pY + pH > cellY + 10);
 
       if (overlapX && overlapY) {
-        // Jeśli postać stoi na twardym podłożu lub klocku pod spodem: NATYCHMIASTOWE ZMIAŻDŻENIE (Insta-kill)
-        const isSupportedBelow = (victim.onGround || victim.currentPlatform || victim.y >= (BASE_FLOOR_Y - pH - 4));
+        const isSupportedBelow = (victim.onGround || victim.currentPlatform || victim.y >= (BASE_FLOOR_Y - pH - 6));
 
-        if (isSupportedBelow) {
+        if (isNearImpact && isSupportedBelow) {
+          // Natychmiastowe zmiażdżenie w momencie dociśnięcia do gruntu/klocka pod spodem
           executeSquashKill(victim);
-        } else {
-          // Jeśli jest w powietrzu: mocny impuls w dół i ciężkie obrażenia
-          victim.vy = Math.max(victim.vy, crane.vy + 6);
+        } else if (!isNearImpact) {
+          // W powietrzu lub w trakcie opadania: zepchnięcie postaci w dół z lekkimi obrażeniami
+          victim.vy = Math.max(victim.vy, crane.vy + 4);
           victim.y = cellY + cellH;
           if (typeof victim.takeDamage === 'function') {
-            victim.takeDamage(45, { name: 'KONTENER', cause: 'IMPACT' });
+            victim.takeDamage(20, { name: 'KONTENER', cause: 'IMPACT' });
           } else {
-            victim.hp = Math.max(1, (victim.hp || 100) - 45);
+            victim.hp = Math.max(1, (victim.hp || 100) - 20);
           }
-          triggerScreenShake(7);
+          triggerScreenShake(5);
         }
       }
     }
@@ -140,16 +143,14 @@ export function executeSquashKill(victim) {
   victim.hp = 0;
   victim.isDead = true;
   victim.killer = { name: 'KONTENER PRZEMYSŁOWY', cause: 'CRUSH_KILL' };
-  victim.respawnTimer = 150;
+  victim.respawnTimer = 140;
   victim.vx = 0;
   victim.vy = 0;
   victim.onGround = true;
 
-  // Soczyste efekty krwi i potężny wstrząs ekranu
-  triggerScreenShake(24);
-  spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + (victim.h || 72) * 0.5, 0, -1, 35, 3.5);
+  triggerScreenShake(20);
+  spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + (victim.h || 72) * 0.5, 0, -1, 30, 3.0);
 
-  const victimName = victim.name || (victim.isBot ? 'BOT' : 'OPERATOR');
   triggerCombatFeedBanner('DEATH', `ZMIAŻDŻONY PRZEZ KONTENER`);
 }
 
@@ -159,16 +160,16 @@ export function executeSquashKill(victim) {
 function onCraneBlockImpact(combatants) {
   const crane = arena5State.crane;
   crane.phase = 'COOLDOWN';
-  crane.cooldownTimer = 0.45; // Krótki interwał przed przygotowaniem kolejnego modułu
+  crane.cooldownTimer = 2.0; // Spokojna 2-sekundowa przerwa przed ostrzeżeniem kolejnego modułu
   arena5State.totalBlocksDropped++;
 
-  triggerScreenShake(11);
+  triggerScreenShake(9);
 
   // Osadzenie komórek w siatce gridRows
   for (const cell of crane.shapeCells) {
     const worldCol = crane.col + cell.colRel;
-    // Inwersja wiersza: komórka na dole kształtu ma r = crane.shape.h - 1
-    const worldRow = crane.targetLandingRow + (crane.shape.h - 1 - cell.rowRel);
+    // Prawidłowy wiersz w siatce: dolny wiersz kształtu (rowRel=0) ląduje na targetLandingRow
+    const worldRow = crane.targetLandingRow + cell.rowRel;
 
     let rowData = arena5State.gridRows.get(worldRow);
     if (!rowData) {
@@ -191,8 +192,7 @@ function onCraneBlockImpact(combatants) {
       isSolid: true
     };
 
-    // Pył uderzeniowy pod każdym segmentem
-    spawnConcreteDebris(getGridX(worldCol) + CELL_SIZE * 0.5, getGridY(worldRow) + CELL_SIZE, 6);
+    spawnConcreteDebris(getGridX(worldCol) + CELL_SIZE * 0.5, getGridY(worldRow) + CELL_SIZE, 5);
   }
 
   // Sprawdzenie czy powstała pełna linia
@@ -200,10 +200,10 @@ function onCraneBlockImpact(combatants) {
 }
 
 /**
- * Sprawdza wszystkie wiersze siatki i inicjuje detonację pełnych rzędów
+ * Sprawdza wszystkie wiersze siatki i inicjuje ostrzeżenie przed detonacją pełnych rzędów
  */
 function checkAndTriggerLineClears(combatants) {
-  const clearedRows = [];
+  const fullRows = [];
 
   for (const [rowIndex, rowData] of arena5State.gridRows.entries()) {
     if (!rowData) continue;
@@ -215,53 +215,69 @@ function checkAndTriggerLineClears(combatants) {
       }
     }
     if (isFull) {
-      clearedRows.push(rowIndex);
+      fullRows.push(rowIndex);
     }
   }
 
-  if (clearedRows.length === 0) return;
+  if (fullRows.length === 0) return;
 
-  // Sortuj od najwyższego do najniższego, by poprawne było opadanie
-  clearedRows.sort((a, b) => b - a);
+  fullRows.sort((a, b) => b - a);
 
-  for (const r of clearedRows) {
-    detonateLine(r, combatants);
+  for (const r of fullRows) {
+    const alreadyClearing = arena5State.activeLineClears.some(c => c.row === r);
+    if (!alreadyClearing) {
+      arena5State.activeLineClears.push({
+        row: r,
+        y: getGridY(r) + CELL_SIZE * 0.5,
+        timer: 0.45,
+        maxTimer: 0.45,
+        detonated: false
+      });
+    }
+  }
+}
+
+/**
+ * Aktualizacja timerów czyszczenia linii i odpalenie wybuchu po upływie czasu ostrzeżenia
+ */
+function updateLineClears(dt, combatants) {
+  for (let i = arena5State.activeLineClears.length - 1; i >= 0; i--) {
+    const clear = arena5State.activeLineClears[i];
+    clear.timer -= dt;
+
+    if (clear.timer <= 0 && !clear.detonated) {
+      clear.detonated = true;
+      executeLineDetonation(clear.row, combatants);
+      arena5State.activeLineClears.splice(i, 1);
+    }
   }
 }
 
 /**
  * Detonuje pełny rząd: seria wybuchów, odłamki, obrażenia i opadnięcie rzędów powyżej
  */
-function detonateLine(rowIndex, combatants) {
+function executeLineDetonation(rowIndex, combatants) {
   const lineY = getGridY(rowIndex) + CELL_SIZE * 0.5;
   arena5State.linesClearedCount++;
 
-  // Rejestracja animacji detonacji
-  arena5State.activeLineClears.push({
-    row: rowIndex,
-    y: lineY,
-    timer: 0.35,
-    maxTimer: 0.35
-  });
-
-  triggerScreenShake(18);
+  triggerScreenShake(16);
   triggerCombatFeedBanner('KILL', `CZYSZCZENIE LINII // TĄPNIĘCIE!`);
 
-  // Wybuchy i fala uderzeniowa na całej szerokości 10 kolumn
+  // Wybuchy i fala uderzeniowa na całej szerokości
   for (let c = 0; c < COLS; c++) {
     const cx = getGridX(c) + CELL_SIZE * 0.5;
-    spawnShockwaveRing(cx, lineY, 90, '#f59e0b');
-    spawnConcreteDebris(cx, lineY, 14);
-    spawnRicochetSparks(cx, lineY, (Math.random() - 0.5) * 12, -Math.random() * 10, 8);
+    spawnShockwaveRing(cx, lineY, 80, '#f59e0b');
+    spawnConcreteDebris(cx, lineY, 10);
+    spawnRicochetSparks(cx, lineY, (Math.random() - 0.5) * 10, -Math.random() * 8, 6);
   }
 
-  // Rani przeciwników stojących bezpośrednio na lub w pobliżu detonowanego rzędu
+  // Rani przeciwników stojących na detonowanym rzędzie
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
     const vY = victim.y + (victim.h || 72);
-    if (Math.abs(vY - (getGridY(rowIndex))) < 60) {
-      victim.vy = -9.0; // Podrzucenie postaci w powietrze
-      victim.vx += (Math.random() - 0.5) * 8.0;
+    if (Math.abs(vY - getGridY(rowIndex)) < 55) {
+      victim.vy = -8.0;
+      victim.vx += (Math.random() - 0.5) * 6.0;
       if (typeof victim.takeDamage === 'function') {
         victim.takeDamage(35, { name: 'EKSPLOZJA LINII' });
       } else {
@@ -270,10 +286,10 @@ function detonateLine(rowIndex, combatants) {
     }
   }
 
-  // Usuń ten wiersz
+  // Usuń wiersz z siatki
   arena5State.gridRows.delete(rowIndex);
 
-  // Wszystkie wiersze powyżej opadają o 1 poziom (100 px) w dół!
+  // Wszystkie wiersze powyżej opadają o 1 poziom (80 px) w dół!
   const rowsAbove = [];
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (r > rowIndex) {
@@ -281,13 +297,11 @@ function detonateLine(rowIndex, combatants) {
     }
   }
 
-  // Sortujemy od najniższego, by przesuwać w dół
   rowsAbove.sort((a, b) => a.oldR - b.oldR);
 
   for (const item of rowsAbove) {
     arena5State.gridRows.delete(item.oldR);
     const newR = item.oldR - 1;
-    // Zaktualizuj współrzędne Y komórek
     for (let c = 0; c < COLS; c++) {
       if (item.data[c]) {
         item.data[c].row = newR;
@@ -299,19 +313,6 @@ function detonateLine(rowIndex, combatants) {
 }
 
 /**
- * Aktualizacja timerów czyszczenia linii
- */
-function updateLineClears(dt) {
-  for (let i = arena5State.activeLineClears.length - 1; i >= 0; i--) {
-    const clear = arena5State.activeLineClears[i];
-    clear.timer -= dt;
-    if (clear.timer <= 0) {
-      arena5State.activeLineClears.splice(i, 1);
-    }
-  }
-}
-
-/**
  * Aktualizacja cząsteczek odłamków
  */
 function updateDebris(dt) {
@@ -319,7 +320,7 @@ function updateDebris(dt) {
     const p = arena5State.debrisParticles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.45; // grawitacja odłamków
+    p.vy += 0.40;
     p.life -= dt * 1.5;
     p.rot += p.vRot;
     if (p.life <= 0) {
@@ -329,20 +330,31 @@ function updateDebris(dt) {
 }
 
 /**
- * Dolny utylizator: klocki i gracze poniżej dolnej krawędzi ekranu znikają/giną
+ * Dolny utylizator: uaktywnia się WYŁĄCZNIE gdy kamera wspięła się w górę,
+ * eliminując graczy, którzy wypadli całkowicie pod dolną krawędź ekranu
  */
 function updateBottomRecycler(combatants, camera) {
   if (!camera) return;
 
   const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
   const bottomVisibleY = camera.y + viewHeight;
-  arena5State.recyclerY = bottomVisibleY;
 
-  // 1. Zwykłe usuwanie starych klocków poniżej dolnej krawędzi ekranu (zwolnienie pamięci i fizyki)
+  // Jeśli podłoże startowe jest wciąż w zasięgu widoku ekranu (+50px),
+  // utylizator spoczywa bezpiecznie pod ziemią (brak jakichkolwiek zgonów na starcie!)
+  if (bottomVisibleY + 50 >= BASE_FLOOR_Y) {
+    arena5State.recyclerY = BASE_FLOOR_Y + 300;
+    return;
+  }
+
+  // Gdy kamera wspięła się już w górę, strefa śmierci znajduje się 40px pod dolną krawędzią ekranu
+  const currentDeathLineY = bottomVisibleY + 40;
+  arena5State.recyclerY = currentDeathLineY;
+
+  // 1. Zwykłe usuwanie starych klocków pozostających pod ekranem
   const rowsToDelete = [];
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     const rowY = getGridY(r);
-    if (rowY > bottomVisibleY + 140) {
+    if (rowY > currentDeathLineY + 80) {
       rowsToDelete.push(r);
     }
   }
@@ -351,18 +363,17 @@ function updateBottomRecycler(combatants, camera) {
     arena5State.gridRows.delete(r);
   }
 
-  // 2. Jeśli gracz lub bot spadnie pod linię ekranu -> natychmiastowa śmierć w utylizatorze
+  // 2. Jeśli gracz lub bot spadnie poniżej linii utylizatora pod ekranem -> śmierć i respawn na szczycie
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
-    const vFootY = victim.y + (victim.h || 72);
-    if (vFootY > bottomVisibleY - 15) {
+    if (victim.y > currentDeathLineY) {
       executeRecyclerKill(victim);
     }
   }
 }
 
 /**
- * Eliminacja przez utylizator z odrodzeniem na szczycie
+ * Eliminacja przez utylizator z natychmiastowym bezpiecznym odrodzeniem na szczycie wieży
  */
 function executeRecyclerKill(victim) {
   if (!victim || victim.isDead) return;
@@ -370,16 +381,15 @@ function executeRecyclerKill(victim) {
   victim.hp = 0;
   victim.isDead = true;
   victim.killer = { name: 'STREFA UTYLIZACJI', cause: 'RECYCLER_DEATH' };
-  victim.respawnTimer = 140;
+  victim.respawnTimer = 120; // 2 sekundy do odrodzenia
   victim.vx = 0;
   victim.vy = 0;
   victim.onGround = false;
   victim.currentPlatform = null;
 
-  triggerScreenShake(8);
-  spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + 20, 0, -1, 20, 2.2);
+  triggerScreenShake(7);
+  spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + 20, 0, -1, 18, 2.0);
 
-  const victimName = victim.name || (victim.isBot ? 'BOT' : 'OPERATOR');
   triggerCombatFeedBanner('DEATH', `POCHŁONIĘTY PRZEZ UTYLIZATOR`);
 }
 
@@ -387,73 +397,74 @@ function executeRecyclerKill(victim) {
  * Aktualizuje szczyt wieży oraz dynamiczne punkty odrodzenia
  */
 function updateTowerApexAndSpawns() {
-  let highestRow = 0;
+  let highestRow = -1;
   for (const r of arena5State.gridRows.keys()) {
     if (r > highestRow) highestRow = r;
   }
-  arena5State.highestRowIndex = highestRow;
+  arena5State.highestRowIndex = Math.max(0, highestRow);
 
-  // Najwyższy Y
-  const topY = getGridY(highestRow);
+  const topY = (highestRow >= 0) ? getGridY(highestRow) : (BASE_FLOOR_Y - CELL_SIZE);
   arena5State.highestBlockY = topY;
 
-  // Punkty odrodzenia: 3 bezpieczne miejsca na szczycie ułożonej wieży
+  // Bezpieczne punkty odrodzenia na szczycie wieży
   arena5State.spawns = [
-    { x: SHAFT_LEFT + 200, y: topY - 85, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 500, y: topY - 85, facing: 1, isGround: true },
-    { x: SHAFT_LEFT + 800, y: topY - 85, facing: -1, isGround: true }
+    { x: SHAFT_LEFT + 160, y: topY - 85, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 400, y: topY - 85, facing: 1, isGround: true },
+    { x: SHAFT_LEFT + 640, y: topY - 85, facing: -1, isGround: true }
   ];
 }
 
 /**
- * Buduje i synchronizuje listę platform dla silnika fizyki gry (ARENA_PLATFORMS)
+ * Buduje i synchronizuje listę platform dla silnika fizyki gry
  */
-function syncPhysicsPlatforms() {
+export function syncPhysicsPlatforms() {
   const plats = [];
 
-  // 1. Lewa ściana szybu fabrycznego (zamknięta, solidna)
+  // 1. Lewa ściana szybu fabrycznego z twardym odpychaniem w prawo
   plats.push({
     id: 'a5_wall_left',
     name: 'LEWA ŚCIANA SZYBU',
     x: ARENA_LEFT,
-    y: arena5State.highestBlockY - 2000,
+    y: -100000,
     w: WALL_WIDTH,
-    h: 50000,
+    h: 200000,
     width: WALL_WIDTH,
-    height: 50000,
+    height: 200000,
     solid: true,
     isWall: true,
+    pushSide: 'right',
     isGround: false,
     type: 'factory_wall'
   });
 
-  // 2. Prawa ściana szybu fabrycznego (zamknięta, solidna)
+  // 2. Prawa ściana szybu fabrycznego z twardym odpychaniem w lewo
   plats.push({
     id: 'a5_wall_right',
     name: 'PRAWA ŚCIANA SZYBU',
     x: SHAFT_RIGHT,
-    y: arena5State.highestBlockY - 2000,
+    y: -100000,
     w: WALL_WIDTH,
-    h: 50000,
+    h: 200000,
     width: WALL_WIDTH,
-    height: 50000,
+    height: 200000,
     solid: true,
     isWall: true,
+    pushSide: 'left',
     isGround: false,
     type: 'factory_wall'
   });
 
-  // 3. Podstawa startowa szybu (BASE FLOOR) dopóki nie zniknie
-  if (BASE_FLOOR_Y < arena5State.recyclerY + 200) {
+  // 3. Podstawa startowa szybu (BASE FLOOR) dopóki nie zostanie zniszczona przez utylizator
+  if (BASE_FLOOR_Y < arena5State.recyclerY + 80) {
     plats.push({
       id: 'a5_base_floor',
       name: 'PŁYTA FUNDAMENTOWA',
-      x: SHAFT_LEFT,
+      x: SHAFT_LEFT - 100,
       y: BASE_FLOOR_Y,
-      w: COLS * CELL_SIZE,
-      h: 200,
-      width: COLS * CELL_SIZE,
-      height: 200,
+      w: COLS * CELL_SIZE + 200,
+      h: 300,
+      width: COLS * CELL_SIZE + 200,
+      height: 300,
       solid: true,
       isGround: true,
       type: 'solid_deck'
@@ -478,7 +489,7 @@ function syncPhysicsPlatforms() {
           solid: true,
           isGround: true,
           type: cell.material === 'SCAFFOLDING' ? 'catwalk' : 'container_block',
-          isA5Block: true,
+          isA5Block: true, // Flaga dla blokady przechodzenia przez boki klocków
           gridRow: cell.row,
           gridCol: cell.col,
           cellRef: cell
@@ -490,7 +501,6 @@ function syncPhysicsPlatforms() {
   arena5State.platforms.length = 0;
   arena5State.platforms.push(...plats);
 
-  // Utrzymuj zsynchronizowaną tablicę globalną ARENA_PLATFORMS w oknie
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
     window.ARENA_PLATFORMS.length = 0;
     window.ARENA_PLATFORMS.push(...plats);
@@ -498,7 +508,7 @@ function syncPhysicsPlatforms() {
 }
 
 /**
- * Obsługa trafienia pociskiem w klocki na Arenie 5 (wywoływana przez activeArena.onBulletHit)
+ * Obsługa trafienia pociskiem w klocki
  */
 export function handleArena5BulletHit(bullet) {
   if (!bullet) return false;
@@ -506,7 +516,6 @@ export function handleArena5BulletHit(bullet) {
   const bx = bullet.x;
   const by = bullet.y;
 
-  // Sprawdź czy pocisk uderzył w któryś z bloków siatki
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
@@ -514,7 +523,6 @@ export function handleArena5BulletHit(bullet) {
       if (!cell || cell.hp <= 0) continue;
 
       if (bx >= cell.x && bx <= cell.x + cell.w && by >= cell.y && by <= cell.y + cell.h) {
-        // Jeśli to pomost ażurowy, pociski mogą przelatywać
         if (cell.material === 'SCAFFOLDING') {
           return false;
         }
@@ -535,7 +543,7 @@ export function handleArena5BulletHit(bullet) {
 }
 
 /**
- * Obsługa fali uderzeniowej eksplozji (granaty, RPG, moździerze)
+ * Obsługa fali uderzeniowej eksplozji
  */
 export function handleArena5Explosion(expX, expY, radius) {
   const radSq = radius * radius;
@@ -552,7 +560,7 @@ export function handleArena5Explosion(expX, expY, radius) {
 
       if (distSq < radSq) {
         const factor = 1.0 - Math.sqrt(distSq) / radius;
-        const dmg = Math.round(110 * factor);
+        const dmg = Math.round(95 * factor);
         cell.hp -= dmg;
 
         if (cell.hp <= 0) {
@@ -564,7 +572,7 @@ export function handleArena5Explosion(expX, expY, radius) {
 }
 
 /**
- * Niszczy komórkę w siatce, odpala cząstki oraz ewentualną detonację kontenera paliwowego
+ * Niszczy komórkę w siatce
  */
 function destroyGridCell(row, col) {
   const rowData = arena5State.gridRows.get(row);
@@ -576,29 +584,27 @@ function destroyGridCell(row, col) {
   const midX = cell.x + cell.w * 0.5;
   const midY = cell.y + cell.h * 0.5;
 
-  spawnConcreteDebris(midX, midY, 12);
-  triggerScreenShake(6);
+  spawnConcreteDebris(midX, midY, 10);
+  triggerScreenShake(5);
 
-  // Dodaj fragmenty do lokalnych cząstek
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 5; i++) {
     arena5State.debrisParticles.push({
-      x: midX + (Math.random() - 0.5) * 30,
-      y: midY + (Math.random() - 0.5) * 30,
-      vx: (Math.random() - 0.5) * 12,
-      vy: -Math.random() * 8 - 2,
-      vRot: (Math.random() - 0.5) * 0.3,
+      x: midX + (Math.random() - 0.5) * 20,
+      y: midY + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 10,
+      vy: -Math.random() * 6 - 2,
+      vRot: (Math.random() - 0.5) * 0.25,
       rot: Math.random() * Math.PI * 2,
-      w: 12 + Math.random() * 14,
-      h: 8 + Math.random() * 10,
+      w: 10 + Math.random() * 12,
+      h: 8 + Math.random() * 8,
       color: cell.color,
       life: 1.0
     });
   }
 
-  // Jeśli to był kontener wybuchowy -> eksplozja wtórna!
   if (cell.material === 'EXPLOSIVE') {
-    spawnShockwaveRing(midX, midY, 150, '#ef4444');
-    triggerScreenShake(14);
-    handleArena5Explosion(midX, midY, 180);
+    spawnShockwaveRing(midX, midY, 140, '#ef4444');
+    triggerScreenShake(12);
+    handleArena5Explosion(midX, midY, 160);
   }
 }

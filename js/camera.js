@@ -298,7 +298,9 @@ export function clampCamera(cam = camera) {
   const groundFloor = getCameraGroundY();
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const maxCamY = isArena5
-    ? Math.max(minCamY, cam.y + 100)
+    ? ((typeof window !== 'undefined' && window.arena5State?.minCameraY !== null && typeof window.arena5State?.minCameraY === 'number')
+      ? Math.max(minCamY, window.arena5State.minCameraY + 80)
+      : (1200 - (viewHeight * 0.72)))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
@@ -505,7 +507,7 @@ export function updateCamera(player, ball, options = {}) {
   const targetY = rawTargetY;
   // W Arenie 4 dachy wagonów znajdują się w dolnej 1/3 wysokości ekranu (pozostawiając wolną przestrzeń na walkę powietrzną z jetpackami)
   const verticalAnchor = isArena5
-    ? (isMobile ? 0.60 : 0.58)
+    ? (isMobile ? 0.72 : 0.70)
     : (isArena4
       ? (isMobile ? 0.72 : 0.70)
       : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
@@ -515,15 +517,26 @@ export function updateCamera(player, ball, options = {}) {
   if (isArena5) {
     const highestBlockY = (typeof window !== 'undefined' && window.arena5State && typeof window.arena5State.highestBlockY === 'number')
       ? window.arena5State.highestBlockY
-      : (targetY - 100);
-    const towerThresholdY = highestBlockY - (viewHeight * 0.50);
-    targetCamY = Math.min(targetCamY, towerThresholdY);
+      : 1200;
+    const screenMidY = targetCamY + viewHeight * 0.50;
+    if (highestBlockY < screenMidY) {
+      const towerThresholdY = highestBlockY - (viewHeight * 0.50);
+      targetCamY = Math.min(targetCamY, towerThresholdY);
+    }
+    if (typeof window !== 'undefined' && window.arena5State) {
+      if (window.arena5State.minCameraY === null || targetCamY < window.arena5State.minCameraY) {
+        window.arena5State.minCameraY = targetCamY;
+      }
+      targetCamY = window.arena5State.minCameraY;
+    }
   }
 
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
   const maxCamY = isArena5
-    ? Math.max(minCamY, targetCamY + 200)
+    ? ((typeof window !== 'undefined' && window.arena5State?.minCameraY !== null && typeof window.arena5State?.minCameraY === 'number')
+      ? Math.max(minCamY, window.arena5State.minCameraY + 80)
+      : (1200 - (viewHeight * 0.72)))
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
