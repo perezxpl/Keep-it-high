@@ -140,6 +140,10 @@ export const camera = {
   aimLeadY: 0
 };
 
+if (typeof window !== 'undefined') {
+  window.camera = camera;
+}
+
 export const mouseScreenPos = {
   x: typeof window !== 'undefined' ? window.innerWidth * 0.5 : 960,
   y: typeof window !== 'undefined' ? window.innerHeight * 0.5 : 540,

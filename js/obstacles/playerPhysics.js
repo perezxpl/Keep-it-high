@@ -673,8 +673,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Wpadnięcie do strefy śmierci poniżej spągu (Arena 4 sterowana przez próżnię, Arena 2 sterowana przez kwas)
-  if (!isA4 && !isA2 && !p.inMinecart && !p._inCart && !p.isDead) {
+  // Wpadnięcie do strefy śmierci poniżej spągu (Arena 4 sterowana przez próżnię, Arena 2 sterowana przez kwas, Arena 5 sterowana przez dolny utylizator)
+  if (!isA4 && !isA2 && !isA5 && !p.inMinecart && !p._inCart && !p.isDead) {
     const deathLimitY = isA3 ? 1420 : (groundY + 160);
     if (p.y > deathLimitY) {
       p.hp = 0;

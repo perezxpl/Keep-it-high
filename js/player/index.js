@@ -6,6 +6,7 @@
 import { CONFIG, START_X, ARENA_LEFT, ARENA_RIGHT, isTouchDevice } from '../config.js';
 import { activeArenaId, customObstacles, getPlatformSurfaceY } from '../obstacles.js';
 import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js';
+import { camera } from '../camera.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
@@ -1239,12 +1240,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         }
       }
     } else {
-      // Wpadnięcie do strefy śmierci w dolnym kanale technicznym (zabezpieczenie pasażera wagonika)
+      // Wpadnięcie do strefy śmierci w dolnym kanale technicznym (Arena 5 obsługiwana przez utylizator, Arena 4 przez próżnię)
       const isA3Death = isA3;
       const deathLimitY = isA3Death ? 1390 : (GROUND_Y + 160);
       const pCenterX = player.x + (player.w || 24) * 0.5;
       const isA3Void = isA3Death ? (pCenterX > 1750 && pCenterX < 2650) : true;
-      if (!player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead && isA3Void) {
+      if (!isA5 && !isA4 && !player.inMinecart && !player._inCart && player.y > deathLimitY && !player.isDead && isA3Void) {
         player.hp = 0;
         player.isDead = true;
         player.killer = { name: 'UPADEK W PRZEPAŚĆ', isSelf: true, cause: 'FALL' };
@@ -1384,6 +1385,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
   const isArena5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+  const isArena4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const wallLeft = isArena5 ? 0 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT));
@@ -1391,10 +1393,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
 
   // Pułap / sufit areny:
   // W Arenie 5 gracz nie może wylecieć wyżej niż aktualny widok areny (górna krawędź kamery)
-  const camTopY = (typeof window !== 'undefined' && window.camera && typeof window.camera.y === 'number')
-    ? window.camera.y
-    : (1200 - 900);
-  const ceilingY = isArena5 ? (camTopY + 12) : 30;
+  const camTopY = (camera && typeof camera.y === 'number')
+    ? camera.y
+    : ((typeof window !== 'undefined' && window.camera && typeof window.camera.y === 'number') ? window.camera.y : (1200 - 900));
+  const ceilingY = (isArena5 || isArena4) ? (camTopY + 12) : 30;
 
   // 1. Twarda blokada gornej krawedzi mapy (Ceiling Clamping - postac nie wylatuje poza swiat ani ponad aktualny stan areny)
   if (player.y < ceilingY) {

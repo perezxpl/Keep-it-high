@@ -7,6 +7,7 @@
 import { arena5State, resetArena5State, BASE_FLOOR_Y } from './state.js';
 import { updateArena5Physics, handleArena5BulletHit, handleArena5Explosion } from './physics.js';
 import { drawArena5Background, drawArena5Foreground } from './renderer.js';
+import { camera } from '../../camera.js';
 
 export class Arena5PrefabTower {
   constructor() {
@@ -42,9 +43,8 @@ export class Arena5PrefabTower {
   update(dt, combatants = [], ball = null) {
     this.animTime += dt || (1 / 60);
 
-    // Pobierz aktywną kamerę z modułu kamery
-    const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
-    updateArena5Physics(dt, combatants, cam);
+    const activeCam = camera || ((typeof window !== 'undefined' && window.camera) ? window.camera : null);
+    updateArena5Physics(dt, combatants, activeCam);
   }
 
   drawBackground(ctx, camera) {
@@ -56,8 +56,8 @@ export class Arena5PrefabTower {
   }
 
   render(ctx) {
-    const cam = (typeof window !== 'undefined' && window.camera) ? window.camera : null;
-    drawArena5Foreground(ctx, cam);
+    const activeCam = camera || ((typeof window !== 'undefined' && window.camera) ? window.camera : null);
+    drawArena5Foreground(ctx, activeCam);
   }
 
   reset() {

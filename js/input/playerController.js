@@ -196,6 +196,13 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   if (isFlightActive) {
     player.isJetpacking = true;
 
+    const curArenaId = activeArenaId || (typeof window !== 'undefined' ? window.activeArenaId : 'ARENA_1');
+    const isA5Flight = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER');
+    const isA4Flight = (curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARMORED_TRAIN' || curArenaId === 'SPACE_STATION' || curArenaId === 'ARES');
+    const camTopY = (camera && typeof camera.y === 'number') ? camera.y : 0;
+    const dynamicCeilingY = (isA5Flight || isA4Flight) ? (camTopY + 12) : 30;
+    const minClampedY = (isA5Flight || isA4Flight) ? (camTopY + 12) : 20;
+
     let sparkCount = 3;
     if (isTouchFlight && !isKeyFlight) {
       // Wersja mobilna: siła ciągu płynnie dostosowana do wychylenia drążka (umożliwia zawis w powietrzu)
@@ -226,7 +233,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
         if (player.vy < maxClimbVy) {
           player.vy += (maxClimbVy - player.vy) * 0.28;
         }
-        if (player.y <= 30 && player.vy < 0) {
+        if (player.y <= dynamicCeilingY && player.vy < 0) {
           player.vy = 0;
         }
       }
@@ -245,7 +252,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       if (player.vy < maxClimbVy) {
         player.vy += (maxClimbVy - player.vy) * 0.25;
       }
-      if (player.y <= 30 && player.vy < 0) {
+      if (player.y <= dynamicCeilingY && player.vy < 0) {
         player.vy = 0;
       }
 
@@ -293,8 +300,8 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     player.isProne = false;
 
     // Zabezpieczenie przed wylotem ponad najwyższą granicę nieba
-    if (player.y < 20) {
-      player.y = 20;
+    if (player.y < minClampedY) {
+      player.y = minClampedY;
       if (player.vy < 0) player.vy = 0;
     }
 
