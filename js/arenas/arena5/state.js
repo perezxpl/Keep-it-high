@@ -124,6 +124,10 @@ export const arena5State = {
   // Dolna strefa mielenia / utylizator (bezpiecznie pod gruntem na starcie)
   recyclerY: BASE_FLOOR_Y + 400,
 
+  // Podnoszący się poziom podłogi wraz ze wspinaczką kamery
+  currentFloorY: BASE_FLOOR_Y,
+  minFloorRow: 0,
+
   // Najwyższy punkt kamery (aby kamera wspinała się wyłącznie w górę)
   minCameraY: null,
 
@@ -151,6 +155,8 @@ export function resetArena5State() {
   arena5State.highestBlockY = BASE_FLOOR_Y;
   arena5State.highestRowIndex = 0;
   arena5State.recyclerY = BASE_FLOOR_Y + 400;
+  arena5State.currentFloorY = BASE_FLOOR_Y;
+  arena5State.minFloorRow = 0;
   arena5State.minCameraY = null;
   arena5State.flashEffectTimer = 0;
 
@@ -275,15 +281,16 @@ export function calculateTargetLandY(preserveCurrentY = false) {
   const crane = arena5State.crane;
   if (!crane.shape) return;
 
-  // Znajdź najwyższy zajęty wiersz dla każdej kolumny
-  let targetLandingRow = 0;
+  const minRow = arena5State.minFloorRow || 0;
+  // Znajdź najwyższy zajęty wiersz dla każdej kolumny (nie niżej niż bieżący poziom podłogi)
+  let targetLandingRow = minRow;
 
   for (const cell of crane.shapeCells) {
     const worldCol = crane.col + cell.colRel;
     if (worldCol < 0 || worldCol >= COLS) continue;
-    let highestOccupiedInCol = -1;
+    let highestOccupiedInCol = minRow - 1;
 
-    for (let r = arena5State.highestRowIndex + 8; r >= 0; r--) {
+    for (let r = arena5State.highestRowIndex + 8; r >= minRow; r--) {
       const rowData = arena5State.gridRows.get(r);
       if (rowData && rowData[worldCol] && rowData[worldCol].hp > 0) {
         highestOccupiedInCol = r;
@@ -301,7 +308,7 @@ export function calculateTargetLandY(preserveCurrentY = false) {
     }
   }
 
-  crane.targetLandingRow = Math.max(0, targetLandingRow);
+  crane.targetLandingRow = Math.max(minRow, targetLandingRow);
   // targetLandY to współrzędna Y szczytu kształtu po wylądowaniu
   crane.targetLandY = BASE_FLOOR_Y - (crane.targetLandingRow + crane.shape.h) * CELL_SIZE;
 

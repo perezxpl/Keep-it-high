@@ -35,23 +35,26 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 0.2) ? dt : (1 / 60);
   _activeCombatants = Array.isArray(combatants) ? combatants : [];
 
-  // 1. Aktualizacja suwnicy i spadającego bloku
+  // 1. Podnoszenie podłogi wraz ze wspinaczką kamery
+  updateRisingFloor(camera, _activeCombatants);
+
+  // 2. Aktualizacja suwnicy i spadającego bloku
   updateCrane(stepTime, _activeCombatants);
 
-  // 2. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
+  // 3. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
   applyColumnGravity(_activeCombatants);
 
-  // 3. Detekcja i aktualizacja czyszczenia pełnych linii
+  // 4. Detekcja i aktualizacja czyszczenia pełnych linii
   checkAndTriggerLineClears(_activeCombatants);
   updateLineClears(stepTime, _activeCombatants);
 
-  // 4. Aktualizacja cząsteczek odłamków zniszczonych klocków
+  // 5. Aktualizacja cząsteczek odłamków zniszczonych klocków
   updateDebris(stepTime);
 
-  // 5. Dolny utylizator i eliminacja graczy, którzy utknęli pod dolną krawędzią ekranu
+  // 6. Dolny utylizator i eliminacja graczy, którzy znaleźli się poniżej podłogi
   updateBottomRecycler(_activeCombatants, camera);
 
-  // 6. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
+  // 7. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
   updateTowerApexAndSpawns();
 }
 
@@ -263,12 +266,13 @@ function removePlatformForCell(cell) {
  */
 export function applyColumnGravity(combatants = []) {
   let anyBlockFell = false;
+  const minRow = arena5State.minFloorRow || 0;
 
   for (let c = 0; c < COLS; c++) {
-    let targetRow = 0;
+    let targetRow = minRow;
     const maxR = arena5State.highestRowIndex + 6;
 
-    for (let r = 0; r <= maxR; r++) {
+    for (let r = minRow; r <= maxR; r++) {
       const rowData = arena5State.gridRows.get(r);
       const cell = rowData ? rowData[c] : null;
 
@@ -489,31 +493,80 @@ function updateDebris(dt) {
 }
 
 /**
- * Dolny utylizator: uaktywnia się WYŁĄCZNIE gdy kamera wspięła się w górę,
- * eliminując graczy, którzy wypadli całkowicie pod dolną krawędź ekranu
+ * Aktualizuje podnoszącą się podłogę bazową (a5_base_floor) wraz ze wspinaczką kamery.
+ * Nowe klocki zrzucane przez suwnicę lądują na bieżącej podłodze, a postacie są podciągane w górę.
  */
-function updateBottomRecycler(combatants, camera) {
+export function updateRisingFloor(camera, combatants = []) {
   if (!camera) return;
 
   const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
-  const bottomVisibleY = camera.y + viewHeight;
+  const baseGroundCamY = BASE_FLOOR_Y - (viewHeight * 0.72);
 
-  // Jeśli podłoże startowe jest wciąż w zasięgu widoku ekranu (+60px),
-  // utylizator spoczywa bezpiecznie pod ziemią (brak jakichkolwiek zgonów na starcie!)
-  if (bottomVisibleY + 60 >= BASE_FLOOR_Y) {
-    arena5State.recyclerY = BASE_FLOOR_Y + 400;
-    return;
+  // Sprawdź o ile segmentów (CELL_SIZE = 80px) kamera wspięła się w górę
+  const activeCamY = (typeof arena5State.minCameraY === 'number')
+    ? arena5State.minCameraY
+    : (typeof camera.targetY === 'number' ? camera.targetY : camera.y);
+
+  if (typeof activeCamY === 'number' && activeCamY < baseGroundCamY) {
+    const segmentsShifted = Math.max(0, Math.round((baseGroundCamY - activeCamY) / CELL_SIZE));
+    arena5State.minFloorRow = segmentsShifted;
+    arena5State.currentFloorY = BASE_FLOOR_Y - (segmentsShifted * CELL_SIZE);
+  } else {
+    arena5State.minFloorRow = 0;
+    arena5State.currentFloorY = BASE_FLOOR_Y;
   }
 
-  // Gdy kamera wspięła się już w górę, strefa śmierci znajduje się 40px pod dolną krawędzią ekranu
-  const currentDeathLineY = bottomVisibleY + 40;
-  arena5State.recyclerY = currentDeathLineY;
+  // Synchronizacja platformy podłogi w fizyce gry (a5_base_floor)
+  const floorPlat = arena5State.platforms.find(p => p && p.id === 'a5_base_floor');
+  if (floorPlat) {
+    floorPlat.y = arena5State.currentFloorY;
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    const wPlat = window.ARENA_PLATFORMS.find(p => p && p.id === 'a5_base_floor');
+    if (wPlat) wPlat.y = arena5State.currentFloorY;
+  }
 
-  // Klocki w wieży NIE są usuwane przy przewijaniu ekranu - stanowią trwałe podparcie
-  // fizyczne całej konstrukcji wieży. Niszczenie klocków zachodzi wyłącznie w wyniku
-  // detonacji pełnych linii lub celnego ostrzału graczy.
+  // Podniesienie strefy śmierci utylizatora pod bieżącą podłogę
+  arena5State.recyclerY = arena5State.currentFloorY + 120;
 
-  // 1. Jeśli gracz lub bot spadnie poniżej linii utylizatora pod ekranem -> śmierć i respawn na szczycie
+  // Postacie stojące na podłodze są płynnie unoszone wraz z podnoszącą się podłogą
+  if (Array.isArray(combatants)) {
+    for (const victim of combatants) {
+      if (!victim || victim.isDead) continue;
+      const vH = victim.h || 72;
+      const vFootY = victim.y + vH;
+      if (vFootY > arena5State.currentFloorY - 4) {
+        victim.y = arena5State.currentFloorY - vH;
+        victim.vy = Math.min(victim.vy, 0);
+        victim.onGround = true;
+        victim.currentGroundY = arena5State.currentFloorY;
+        if (floorPlat) victim.currentPlatform = floorPlat;
+      }
+    }
+  }
+
+  // Usunięcie starych klocków i platform z wierszy poniżej bieżącej podłogi
+  if (arena5State.minFloorRow > 0) {
+    for (const [r, rowData] of arena5State.gridRows.entries()) {
+      if (r < arena5State.minFloorRow) {
+        if (rowData) {
+          for (let c = 0; c < COLS; c++) {
+            if (rowData[c]) removePlatformForCell(rowData[c]);
+          }
+        }
+        arena5State.gridRows.delete(r);
+      }
+    }
+  }
+}
+
+/**
+ * Dolny utylizator: uaktywnia się gdy postać spadnie poniżej podnoszącej się podłogi
+ */
+function updateBottomRecycler(combatants) {
+  const currentDeathLineY = arena5State.recyclerY || (arena5State.currentFloorY + 120);
+
+  // Jeśli gracz lub bot spadnie poniżej linii utylizatora pod podłogą -> eliminacja i respawn na wieży
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
     if (victim.y > currentDeathLineY) {
@@ -546,32 +599,33 @@ function executeRecyclerKill(victim) {
 /**
  * Aktualizuje szczyt wieży oraz dynamiczne, bezpieczne punkty odrodzenia.
  * Każdy punkt odrodzenia spoczywa wyłącznie nad solidnym klockiem lub gruntem
- * i zawsze bezpiecznie powyżej dolnego utylizatora.
+ * i zawsze bezpiecznie powyżej bieżącej podłogi.
  */
 function updateTowerApexAndSpawns() {
   let highestRow = -1;
+  const minRow = arena5State.minFloorRow || 0;
   for (const [r, rowData] of arena5State.gridRows.entries()) {
-    if (rowData && rowData.some(cell => cell && cell.hp > 0)) {
+    if (r >= minRow && rowData && rowData.some(cell => cell && cell.hp > 0)) {
       if (r > highestRow) highestRow = r;
     }
   }
-  arena5State.highestRowIndex = Math.max(0, highestRow);
+  arena5State.highestRowIndex = Math.max(minRow, highestRow);
 
-  const topY = (highestRow >= 0) ? getGridY(highestRow) : BASE_FLOOR_Y;
+  const topY = (highestRow >= minRow) ? getGridY(highestRow) : (arena5State.currentFloorY || BASE_FLOOR_Y);
   arena5State.highestBlockY = topY;
 
   function getSafeSpawnForColRange(startCol, endCol, fallbackX) {
-    let bestY = BASE_FLOOR_Y;
+    let bestY = arena5State.currentFloorY || BASE_FLOOR_Y;
     let bestX = fallbackX;
     let foundSolid = false;
 
     // Przeszukaj kolumny w danym sektorze
     for (let c = startCol; c <= endCol; c++) {
-      for (let r = arena5State.highestRowIndex + 2; r >= 0; r--) {
+      for (let r = arena5State.highestRowIndex + 2; r >= minRow; r--) {
         const rowData = arena5State.gridRows.get(r);
         if (rowData && rowData[c] && rowData[c].hp > 0) {
           const blockTopY = rowData[c].y;
-          if (blockTopY < arena5State.recyclerY - 100) {
+          if (blockTopY < arena5State.recyclerY - 40) {
             if (!foundSolid || blockTopY < bestY) {
               bestY = blockTopY;
               bestX = getGridX(c) + CELL_SIZE * 0.5;
@@ -586,11 +640,11 @@ function updateTowerApexAndSpawns() {
     if (!foundSolid) {
       // Jeśli w danym sektorze nie ma klocków powyżej utylizatora, znajdź najwyższy solidny punkt w całej wieży
       for (let c = 0; c < COLS; c++) {
-        for (let r = arena5State.highestRowIndex + 2; r >= 0; r--) {
+        for (let r = arena5State.highestRowIndex + 2; r >= minRow; r--) {
           const rowData = arena5State.gridRows.get(r);
           if (rowData && rowData[c] && rowData[c].hp > 0) {
             const bY = rowData[c].y;
-            if (bY < arena5State.recyclerY - 100) {
+            if (bY < arena5State.recyclerY - 40) {
               if (bY < bestY) {
                 bestY = bY;
                 bestX = getGridX(c) + CELL_SIZE * 0.5;
@@ -602,7 +656,7 @@ function updateTowerApexAndSpawns() {
       }
     }
 
-    const spawnY = Math.min(bestY - 85, arena5State.recyclerY - 140);
+    const spawnY = Math.min(bestY - 85, (arena5State.currentFloorY || BASE_FLOOR_Y) - 85);
     return { x: bestX, y: spawnY };
   }
 

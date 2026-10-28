@@ -549,7 +549,9 @@ function update() {
   const isA4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const effectiveGroundY = isA5Active ? 1200 : (isA2Active ? 1600 : (isA3Active ? 1200 : (isA4Active ? 1400 : GROUND_Y)));
+  const effectiveGroundY = isA5Active
+    ? ((typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200)
+    : (isA2Active ? 1600 : (isA3Active ? 1200 : (isA4Active ? 1400 : GROUND_Y)));
 
   if (consumeHitstop()) {
     updateCamera(player, isDeathmatch ? null : ball);

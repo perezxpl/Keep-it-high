@@ -189,23 +189,42 @@ function drawHazardStripes(ctx, x, y, w, h) {
 }
 
 /**
- * Rysuje płytę fundamentową (startową)
+ * Rysuje płytę fundamentową (wznoszącą się wraz z klockami i kamerą)
  */
 function drawBaseFloor(ctx, camera) {
-  const camY = camera ? camera.y : 0;
-  const viewHeight = camera ? (camera.viewHeight || (1080 / (camera.zoom || 0.75))) : 1080;
-  if (BASE_FLOOR_Y > camY + viewHeight + 300) return;
+  const floorY = (arena5State && typeof arena5State.currentFloorY === 'number')
+    ? arena5State.currentFloorY
+    : BASE_FLOOR_Y;
 
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 140);
+  ctx.fillRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 400);
 
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
-  ctx.strokeRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 140);
+  ctx.strokeRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 400);
 
   // Górna krawędź fundamentu z fazowaniem
   ctx.fillStyle = '#475569';
-  ctx.fillRect(SHAFT_LEFT - 100, BASE_FLOOR_Y, (COLS * CELL_SIZE) + 200, 6);
+  ctx.fillRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 6);
+
+  // Przemysłowe skośne pasy ostrzegawcze na krawędzi platformy
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
+  ctx.clip();
+  ctx.fillStyle = '#ca8a04';
+  ctx.fillRect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
+  ctx.fillStyle = '#0f172a';
+  for (let x = SHAFT_LEFT - 120; x < SHAFT_LEFT + (COLS * CELL_SIZE) + 120; x += 28) {
+    ctx.beginPath();
+    ctx.moveTo(x, floorY + 20);
+    ctx.lineTo(x + 14, floorY + 20);
+    ctx.lineTo(x + 24, floorY + 6);
+    ctx.lineTo(x + 10, floorY + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /**

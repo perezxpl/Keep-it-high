@@ -16,8 +16,11 @@ export class Arena5PrefabTower {
     this.name = 'PREFABRYKATOR ORBITALNY';
     this.width = 1600;
     this.height = 50000;
-    this.mainDeckY = BASE_FLOOR_Y;
     this.animTime = 0;
+  }
+
+  get mainDeckY() {
+    return arena5State.currentFloorY || BASE_FLOOR_Y;
   }
 
   get spawns() {
