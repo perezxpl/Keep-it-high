@@ -35,13 +35,19 @@ export * from './obstacles/renderer.js';
 export { killByHazard } from './arenas/arena4_space.js';
 
 export function drawObstacles(ctx, groundY) {
+  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
+  const isA5 = (curArenaObj?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+  if (isA5) {
+    // W Arenie 5 (Prefabrykator Orbitalny) nie ma żadnych zewnętrznych platform ani barykad – wyłącznie szyb, fundament i klocki
+    return;
+  }
+
   const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : (ctx.canvas ? ctx.canvas.width : 1920);
   const zoom = (camera && camera.zoom) ? camera.zoom : 1;
   const viewW = camera.viewWidth || (camW / zoom);
   const viewLeft = (camera && typeof camera.x === 'number') ? camera.x - 100 : -100;
   const viewRight = (camera && typeof camera.x === 'number') ? camera.x + viewW + 100 : 5000;
 
-  const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const isA4 = (curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
 
   if (!isA4) {

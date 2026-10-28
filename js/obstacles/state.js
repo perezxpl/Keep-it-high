@@ -581,6 +581,9 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   if (activeArenaId === 'ARENA_5') {
     resetDeathmatchState();
     GOALS.length = 0;
+    GROUND_BARRICADES.length = 0;
+    customObstacles.length = 0;
+    obstacles.length = 0;
     arena1State.waitingForKickoff = false;
     arenaScore.cyan = 0;
     arenaScore.orange = 0;

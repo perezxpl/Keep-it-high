@@ -1,7 +1,7 @@
 // =========================================================================
-// ARENAS/ARENA5/PHYSICS.JS - FIZYKA ZWIEŃCZENIA, ZMIAŻDŻENIA I DETONACJI LINII
-// Warstwa fizyczna: grawitacja kontenerów, kolizje squash, tąpnięcia wieży,
-// utylizator dolny i niszczenie bloków pociskami
+// ARENAS/ARENA5/PHYSICS.JS - FIZYKA ZWIEŃCZENIA, ZMIAŻDŻENIA I GRAWITACJI KLOCKÓW
+// Warstwa fizyczna: normalna grawitacja kontenerów (Cascade Gravity Physics),
+// kolizje squash, tąpnięcia wieży, utylizator dolny i niszczenie bloków pociskami
 // Standard: Zero emojis, strict module safety, 60 FPS, persistent platforms
 // =========================================================================
 
@@ -26,26 +26,32 @@ import { spawnBloodSpurt } from '../../world/gore.js';
 import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
 import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
 
+let _activeCombatants = [];
+
 /**
  * Główna pętla fizyki Areny 5 wywoływana w każdej klatce update()
  */
 export function updateArena5Physics(dt, combatants = [], camera = null) {
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 0.2) ? dt : (1 / 60);
+  _activeCombatants = Array.isArray(combatants) ? combatants : [];
 
   // 1. Aktualizacja suwnicy i spadającego bloku
-  updateCrane(stepTime, combatants);
+  updateCrane(stepTime, _activeCombatants);
 
-  // 2. Detekcja i aktualizacja czyszczenia pełnych linii
-  checkAndTriggerLineClears(combatants);
-  updateLineClears(stepTime, combatants);
+  // 2. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
+  applyColumnGravity(_activeCombatants);
 
-  // 3. Aktualizacja cząsteczek odłamków zniszczonych klocków
+  // 3. Detekcja i aktualizacja czyszczenia pełnych linii
+  checkAndTriggerLineClears(_activeCombatants);
+  updateLineClears(stepTime, _activeCombatants);
+
+  // 4. Aktualizacja cząsteczek odłamków zniszczonych klocków
   updateDebris(stepTime);
 
-  // 4. Dolny utylizator i eliminacja graczy, którzy utknęli pod dolną krawędzią ekranu
-  updateBottomRecycler(combatants, camera);
+  // 5. Dolny utylizator i eliminacja graczy, którzy utknęli pod dolną krawędzią ekranu
+  updateBottomRecycler(_activeCombatants, camera);
 
-  // 5. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
+  // 6. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
   updateTowerApexAndSpawns();
 }
 
@@ -117,7 +123,7 @@ function checkFallingSquash(combatants) {
       const overlapY = (pY < cellY + cellH) && (pY + pH > cellY + 8);
 
       if (overlapX && overlapY) {
-        // Czy pod ofiarą jest twarde podłoże lub inny klocek?
+        // Czy pod ofiarą jest twarde podłoże bazowe lub inny klocek?
         const isSupportedBelow = (victim.onGround || !!victim.currentPlatform || victim.y >= (BASE_FLOOR_Y - pH - 6));
 
         if (isNearImpact && isSupportedBelow) {
@@ -229,7 +235,8 @@ function onCraneBlockImpact(combatants) {
     spawnConcreteDebris(getGridX(worldCol) + CELL_SIZE * 0.5, getGridY(worldRow) + CELL_SIZE, 5);
   }
 
-  // Sprawdzenie czy powstała pełna linia
+  // Zastosuj grawitację (na wypadek gdyby klocek oparł się niżej) i sprawdź linie
+  applyColumnGravity(combatants);
   checkAndTriggerLineClears(combatants);
 }
 
@@ -246,6 +253,99 @@ function removePlatformForCell(cell) {
     if (idx2 !== -1) window.ARENA_PLATFORMS.splice(idx2, 1);
   }
   cell.platformObj = null;
+}
+
+/**
+ * Stosuje normalną grawitację dla wszystkich klocków w siatce (Cascade / Gravity Physics).
+ * Jeśli jakikolwiek klocek w kolumnie straci podparcie pod sobą (np. zniszczenie pociskiem,
+ * wybuch, detonacja linii), wszystkie klocki powyżej opadają w dół, dopóki nie oprą się
+ * na innym klocku lub płycie fundamentowej.
+ */
+export function applyColumnGravity(combatants = []) {
+  let anyBlockFell = false;
+
+  for (let c = 0; c < COLS; c++) {
+    let targetRow = 0;
+    const maxR = arena5State.highestRowIndex + 6;
+
+    for (let r = 0; r <= maxR; r++) {
+      const rowData = arena5State.gridRows.get(r);
+      const cell = rowData ? rowData[c] : null;
+
+      if (cell && cell.hp > 0) {
+        if (r > targetRow) {
+          // Klocek w kolumnie c wisi w powietrzu! Przesuń go w dół do targetRow
+          anyBlockFell = true;
+          rowData[c] = null;
+
+          let targetRowData = arena5State.gridRows.get(targetRow);
+          if (!targetRowData) {
+            targetRowData = new Array(COLS).fill(null);
+            arena5State.gridRows.set(targetRow, targetRowData);
+          }
+          targetRowData[c] = cell;
+
+          const oldY = cell.y;
+          cell.row = targetRow;
+          cell.y = getGridY(targetRow);
+
+          if (cell.platformObj) {
+            cell.platformObj.y = cell.y;
+            cell.platformObj.gridRow = targetRow;
+          }
+
+          // Postacie stojące na opadającym klocku płynnie zjeżdżają razem z nim
+          if (Array.isArray(combatants)) {
+            for (const victim of combatants) {
+              if (!victim || victim.isDead) continue;
+              const isVictimStandingOnThis = (victim.currentPlatform === cell.platformObj) ||
+                (victim.onGround && Math.abs(victim.y + (victim.h || 72) - oldY) <= 12 &&
+                 victim.x + (victim.w || 26) > cell.x && victim.x < cell.x + cell.w);
+
+              if (isVictimStandingOnThis) {
+                victim.y = cell.y - (victim.h || 72);
+                victim.vy = 0;
+                victim.onGround = true;
+                victim.currentPlatform = cell.platformObj;
+              }
+            }
+          }
+
+          spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
+        }
+        targetRow++;
+      }
+    }
+  }
+
+  // Wyczyść całkowicie puste wiersze z mapy
+  const emptyRows = [];
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (!rowData || rowData.every(c => !c || c.hp <= 0)) {
+      emptyRows.push(r);
+    }
+  }
+  for (const r of emptyRows) {
+    arena5State.gridRows.delete(r);
+  }
+
+  if (anyBlockFell) {
+    triggerScreenShake(4);
+    updateTowerApexAndSpawns();
+
+    // Sprawdź czy opadające klocki nie ułożyły nowej pełnej linii
+    checkAndTriggerLineClears(combatants);
+
+    // Koryguj cel lądowania suwnicy
+    if (arena5State.crane && arena5State.crane.shape) {
+      calculateTargetLandY(true);
+      if (arena5State.crane.currentY > arena5State.crane.targetLandY) {
+        arena5State.crane.currentY = arena5State.crane.targetLandY - 40;
+      }
+    }
+  }
+
+  return anyBlockFell;
 }
 
 /**
@@ -359,36 +459,10 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
     arena5State.gridRows.delete(r);
   }
 
-  // Atomowe przesunięcie wszystkich wierszy powyżej
-  const allRemaining = [];
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
-    allRemaining.push({ oldR: r, data: rowData });
-  }
-  allRemaining.sort((a, b) => a.oldR - b.oldR);
+  // Zastosuj normalną grawitację kolumnową dla wszystkich klocków powyżej
+  applyColumnGravity(combatants);
 
-  arena5State.gridRows.clear();
-
-  for (const item of allRemaining) {
-    let dropCount = 0;
-    for (const detR of uniqueRows) {
-      if (detR < item.oldR) dropCount++;
-    }
-    const newR = Math.max(0, item.oldR - dropCount);
-    for (let c = 0; c < COLS; c++) {
-      const cell = item.data[c];
-      if (cell) {
-        cell.row = newR;
-        cell.y = getGridY(newR);
-        if (cell.platformObj) {
-          cell.platformObj.y = cell.y;
-          cell.platformObj.gridRow = newR;
-        }
-      }
-    }
-    arena5State.gridRows.set(newR, item.data);
-  }
-
-  // BARDZO WAŻNE: Natychmiast przelicz cel lądowania spadającego lub ostrzegającego klocka!
+  // Koryguj cel lądowania suwnicy
   if (arena5State.crane && arena5State.crane.shape) {
     calculateTargetLandY(true);
     if (arena5State.crane.currentY > arena5State.crane.targetLandY) {
@@ -596,6 +670,7 @@ export function handleArena5BulletHit(bullet) {
  */
 export function handleArena5Explosion(expX, expY, radius) {
   const radSq = radius * radius;
+  let anyDestroyed = false;
 
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (!rowData) continue;
@@ -614,14 +689,19 @@ export function handleArena5Explosion(expX, expY, radius) {
 
         if (cell.hp <= 0) {
           destroyGridCell(r, c);
+          anyDestroyed = true;
         }
       }
     }
   }
+
+  if (anyDestroyed) {
+    applyColumnGravity(_activeCombatants);
+  }
 }
 
 /**
- * Niszczy komórkę w siatce
+ * Niszczy komórkę w siatce i natychmiast aplikuje grawitację na klocki powyżej
  */
 function destroyGridCell(row, col) {
   const rowData = arena5State.gridRows.get(row);
@@ -657,6 +737,9 @@ function destroyGridCell(row, col) {
     triggerScreenShake(12);
     handleArena5Explosion(midX, midY, 160);
   }
+
+  // KLUCZOWE: Zniszczenie klocka powoduje natychmiastowe opadnięcie klocków podpieranych powyżej!
+  applyColumnGravity(_activeCombatants);
 
   // Przelicz cel suwnicy
   if (arena5State.crane && arena5State.crane.shape) {
