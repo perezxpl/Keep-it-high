@@ -62,7 +62,10 @@ export function drawArena5Foreground(ctx, camera) {
   // 4. Ułożone klocki w wieży
   drawSettledBlocks(ctx, camera);
 
-  // 5. Spadający kontener (bez wskaźnika opadania)
+  // 5. Cień wyłącznie na górną krawędź bloczków pod spadającymi klockami
+  drawLandingSurfaceShadow(ctx);
+
+  // 6. Spadający kontener (bez wskaźnika opadania)
   drawFallingCraneBlock(ctx);
 
   // 6. Animacje detonacji pełnych linii
@@ -434,6 +437,78 @@ export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges
 
     ctx.fillStyle = dmgRatio > 0.4 ? '#22c55e' : '#ef4444';
     ctx.fillRect(x + 10, y + h - 9, (w - 20) * dmgRatio, 5);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje cień wyłącznie na górną krawędź bloczków (lub podłogi), na które spadną dane klocki
+ */
+function drawLandingSurfaceShadow(ctx) {
+  const crane = arena5State.crane;
+  if (!crane || crane.phase !== 'FALLING' || !crane.shape) return;
+
+  const minRow = arena5State.minFloorRow || 0;
+  const currentFloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
+    ? arena5State.currentFloorY
+    : BASE_FLOOR_Y;
+
+  ctx.save();
+
+  // Sprawdź każdą unikalną kolumnę zajmowaną przez spadający kształt i znajdź jej dolną komórkę
+  const colBottomMap = new Map();
+  for (const cell of crane.shapeCells) {
+    const wCol = crane.col + cell.colRel;
+    if (!colBottomMap.has(wCol) || cell.rowRel < colBottomMap.get(wCol).rowRel) {
+      colBottomMap.set(wCol, cell);
+    }
+  }
+
+  for (const [wCol, bottomCell] of colBottomMap.entries()) {
+    if (wCol < 0 || wCol >= COLS) continue;
+
+    // Szukamy najwyższego bloku poniżej tej kolumny figury
+    let surfaceY = currentFloorY;
+
+    for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+      const rData = arena5State.gridRows.get(r);
+      if (rData && rData[wCol] && rData[wCol].hp > 0) {
+        surfaceY = rData[wCol].y;
+        break;
+      }
+    }
+
+    // Bieżąca dolna krawędź tej kolumny spadającej figury
+    const cellBottomY = crane.currentY + (crane.shape.h - bottomCell.rowRel) * CELL_SIZE;
+    const distToSurface = surfaceY - cellBottomY;
+
+    // Cień pojawia się na górnej krawędzi gdy klocek zbliża się z góry (w zasięgu do 600 px)
+    if (distToSurface >= -5 && distToSurface <= 600) {
+      const proximity = Math.max(0, Math.min(1, 1 - (distToSurface / 450)));
+      const shadowAlpha = 0.35 + 0.55 * proximity; // od 0.35 do 0.90
+      const shadowH = Math.max(7, Math.min(14, 14 - 6 * proximity)); // wyrazisty pasek cienia 8-14px
+
+      const bx = getGridX(wCol);
+      const bw = CELL_SIZE;
+
+      // Gradient cienia wyłącznie na górną krawędź bloczka
+      const grad = ctx.createLinearGradient(bx, surfaceY, bx, surfaceY + shadowH);
+      grad.addColorStop(0, `rgba(0, 0, 0, ${shadowAlpha})`);
+      grad.addColorStop(0.45, `rgba(0, 0, 0, ${shadowAlpha * 0.5})`);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, surfaceY, bw, shadowH);
+
+      // Ciemna, ostra krawędź stykowa na samej górnej krawędzi bloczka
+      ctx.strokeStyle = `rgba(0, 0, 0, ${shadowAlpha * 0.95})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(bx + 1, surfaceY + 1.25);
+      ctx.lineTo(bx + bw - 1, surfaceY + 1.25);
+      ctx.stroke();
+    }
   }
 
   ctx.restore();

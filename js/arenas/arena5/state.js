@@ -439,7 +439,7 @@ export function prepareNextCraneDrop() {
   arena5State.crane.accentColor = shapeDef.accentColor;
   arena5State.crane.col = col;
   arena5State.crane.dropX = getGridX(col);
-  arena5State.crane.vy = 2.5;
+  arena5State.crane.vy = 1.0; // Spokojny start płynnego opadania
   arena5State.crane.shapeCells = shapeCells;
 
   // Obliczenie docelowego poziomu lądowania

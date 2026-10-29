@@ -70,11 +70,11 @@ function updateCrane(dt, combatants) {
   if (crane.phase === 'WARNING') {
     // Usunięty wskaźnik/ostrzeżenie: natychmiastowe przejście do płynnego opadania
     crane.phase = 'FALLING';
-    crane.vy = 2.5;
+    crane.vy = 1.0; // Spokojny, łagodny start opadania
   } else if (crane.phase === 'FALLING') {
-    // Płynne opadanie z przyspieszeniem fizycznym niezależnym od FPS (dt)
-    const fallAccel = 32.0;
-    crane.vy = Math.min(19.0, crane.vy + fallAccel * dt);
+    // Płynne, czytelne i spokojniejsze opadanie z przyspieszeniem fizycznym
+    const fallAccel = 8.0;
+    crane.vy = Math.min(6.0, crane.vy + fallAccel * dt);
     crane.currentY += crane.vy * (dt * 60);
 
     // Detekcja uderzenia / zmiażdżenia
@@ -537,8 +537,8 @@ function checkAndTriggerLineClears(combatants) {
       arena5State.activeLineClears.push({
         row: r,
         y: getGridY(r) + CELL_SIZE * 0.5,
-        timer: 0.45,
-        maxTimer: 0.45,
+        timer: 0.25,
+        maxTimer: 0.25,
         detonated: false
       });
     }
