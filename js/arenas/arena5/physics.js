@@ -170,110 +170,140 @@ export function checkArena5CeilingCollisions(combatants) {
 }
 
 /**
- * Obsługa spadającego klocka i zmiażdżenia (Squash):
- * W powietrzu spadający klocek nie pozwala postaci przeniknąć od dołu –
- * fizycznie ściąga ją w dół i miażdży przy kontakcie ze spodnim bloczkiem lub podłogą.
+ * Obsługa spadającego klocka, kolizji fizycznej i zmiażdżenia (Squash):
+ * Zapewnia pełną, precyzyjną bryłę kolizyjną dla spadającej figury:
+ * 1. Góra: stabilne lądowanie i jazda na opadającym klocku (gracz może na nim stać i zeskakiwać).
+ * 2. Boki: twarde ściany boczne blokujące przenikanie postaci przy podlatywaniu z lewej/prawej.
+ * 3. Spód: spycha postać w dół w powietrzu, a przy braku miejsca (<58% pH) miażdży o podłoże.
  */
 function checkFallingSquash(combatants) {
   const crane = arena5State.crane;
-  if (!crane || crane.phase !== 'FALLING' || !crane.shape) return;
+  if (!crane || crane.phase !== 'FALLING' || !crane.shape || !Array.isArray(crane.shapeCells)) return;
+  if (!Array.isArray(combatants) || combatants.length === 0) return;
 
   const minRow = arena5State.minFloorRow || 0;
   const currentFloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
     ? arena5State.currentFloorY
     : BASE_FLOOR_Y;
 
-  for (const cell of crane.shapeCells) {
-    const cellX = getGridX(crane.col + cell.colRel);
-    const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
-    const cellW = CELL_SIZE;
-    const cellH = CELL_SIZE;
-    const cellBottomY = cellY + cellH;
-    const worldCol = crane.col + cell.colRel;
+  for (const victim of combatants) {
+    if (!victim || victim.isDead) continue;
 
-    // Obliczenie docelowego poziomu zatrzymania tego segmentu figury
-    const cellTargetRow = crane.targetLandingRow + cell.rowRel;
-    const cellTargetY = getGridY(cellTargetRow);
-    const cellTargetBottomY = cellTargetY + CELL_SIZE;
+    const pW = victim.w || 26;
+    const pH = victim.h || 72;
 
-    for (const victim of combatants) {
-      if (!victim || victim.isDead) continue;
+    for (const cell of crane.shapeCells) {
+      const cellX = getGridX(crane.col + cell.colRel);
+      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+      const cellW = CELL_SIZE;
+      const cellH = CELL_SIZE;
+      const cellRight = cellX + cellW;
+      const cellBottomY = cellY + cellH;
+      const worldCol = crane.col + cell.colRel;
 
-      const pW = victim.w || 26;
-      const pH = victim.h || 72;
-      const pX = victim.x;
-      const pY = victim.y;
-      const headY = pY;
-      const feetY = pY + pH;
+      // Zewnętrzne krawędzie kształtu spadającej figury Tetrisa
+      const isTopEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1);
+      const isBottomEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1);
+      const isLeftEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel);
+      const isRightEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel);
 
-      // Sprawdź czy postać znajduje się w rzucie poziomym tego spadającego segmentu
-      const overlapX = (pX + 4 < cellX + cellW) && (pX + pW - 4 > cellX);
-      if (!overlapX) continue;
+      // Czy postać przecina tę komórkę spadającej figury?
+      const overlapX = (victim.x + pW > cellX + 2) && (victim.x < cellRight - 2);
+      const overlapY = (victim.y + pH > cellY + 2) && (victim.y < cellBottomY - 2);
+      if (!overlapX || !overlapY) continue;
 
-      // Znajdź twardą powierzchnię pod stopami ofiary (spodni bloczek wieży lub podłoga)
-      let surfaceBelowY = currentFloorY;
-      for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
-        const rData = arena5State.gridRows.get(r);
-        if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
-          if (rData[worldCol].y >= pY + 20) {
-            surfaceBelowY = rData[worldCol].y;
-            break;
-          }
+      const penTop = (victim.y + pH) - cellY;          // Głębokość wniknięcia od góry
+      const penBottom = cellBottomY - victim.y;        // Głębokość wniknięcia od spodu
+      const penLeft = (victim.x + pW) - cellX;         // Głębokość wniknięcia od lewej
+      const penRight = cellRight - victim.x;           // Głębokość wniknięcia od prawej
+
+      // 1. GÓRA: Lądowanie i stanie na szczycie opadającej figury
+      if (isTopEdge && (penTop <= 24 || (victim.vy >= -1.0 && penTop < penBottom && penTop < penLeft && penTop < penRight))) {
+        if (victim.vy >= -1.0 || penTop <= 8) {
+          victim.y = cellY - pH;
+          victim.vy = crane.vy;
+          victim.onGround = true;
+          victim.isJumping = false;
+          victim.currentGroundY = cellY;
+          continue;
         }
       }
 
-      // 1. Sprawdź, czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
-      // (np. figura "L", "T" lub most):
-      const finalGap = surfaceBelowY - cellTargetBottomY;
-      const hasSafePocketUnderneath = (finalGap >= pH - 8);
-
-      if (hasSafePocketUnderneath) {
-        // Figura zatrzyma się nad głową postaci!
-        // Podczas opadania suwnica nigdy nie osiągnie poziomu niższego niż cellTargetBottomY.
-        // Jeśli postać skoczy w górę pod nawisem, działa standardowa kolizja sufitowa:
-        if (headY <= cellBottomY + 4 && feetY > cellY + 8) {
-          if (victim.vy < 0 || headY < cellBottomY) {
-            victim.y = cellBottomY;
-            if (victim.vy < 0) victim.vy = 0.5;
-            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-              victim.rocketBoots.dashDirY = 0;
-              victim.rocketBoots.dashing = false;
+      // 2. SPÓD: Postać znajduje się pod opadającym klockiem
+      if (isBottomEdge && (penBottom <= 36 || (victim.y + pH > cellBottomY + 12))) {
+        // Znajdź twardą powierzchnię pod stopami ofiary (spodni bloczek wieży lub podłoga)
+        let surfaceBelowY = currentFloorY;
+        for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+          const rData = arena5State.gridRows.get(r);
+          if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
+            if (rData[worldCol].y >= victim.y + 20) {
+              surfaceBelowY = rData[worldCol].y;
+              break;
             }
           }
         }
-        continue; // Pełne bezpieczeństwo pod nawisem dla wszystkich klas
+
+        // Sprawdź czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
+        const cellTargetRow = crane.targetLandingRow + cell.rowRel;
+        const cellTargetY = getGridY(cellTargetRow);
+        const cellTargetBottomY = cellTargetY + CELL_SIZE;
+        const finalGap = surfaceBelowY - cellTargetBottomY;
+        const hasSafePocketUnderneath = (finalGap >= pH - 8);
+
+        if (hasSafePocketUnderneath) {
+          // Bezpieczny nawis: standardowa kolizja sufitowa
+          victim.y = cellBottomY;
+          if (victim.vy < 0) victim.vy = 0.5;
+          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+            victim.rocketBoots.dashDirY = 0;
+            victim.rocketBoots.dashing = false;
+          }
+          continue;
+        }
+
+        // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
+        const remainingSpace = surfaceBelowY - cellBottomY;
+        const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
+
+        if (isPhysicallyCrushed) {
+          executeSquashKill(victim);
+          break;
+        } else {
+          // W powietrzu: spadający klocek spycha postać w dół
+          victim.y = cellBottomY;
+          victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
+          victim.onGround = false;
+          victim.currentPlatform = null;
+
+          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+            victim.rocketBoots.dashDirY = 0;
+            victim.rocketBoots.dashing = false;
+          }
+
+          if (Math.random() < 0.25) {
+            spawnRicochetSparks(victim.x + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
+            triggerScreenShake(3);
+          }
+          continue;
+        }
       }
 
-      // 2. Jeśli pod segmentem NIE MA bezpiecznego prześwitu (klocek zmiażdży ten sektor do podłoża):
-      const isUnderBlock = (headY <= cellBottomY + 4) && (feetY > cellY + 8);
-      if (!isUnderBlock) continue;
-
-      // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
-      // poniżej możliwości przeżycia (< 58% wysokości postaci) i postać spoczywa na podłożu:
-      const remainingSpace = surfaceBelowY - cellBottomY;
-      const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (feetY >= surfaceBelowY - 10);
-
-      if (isPhysicallyCrushed) {
-        executeSquashKill(victim);
-      } else {
-        // W powietrzu: spadający klocek spycha postać w dół (nigdy nie podciąga w górę)
-        if (victim.y < cellBottomY) {
-          victim.y = cellBottomY;
-        }
-        victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
-        victim.onGround = false;
-        victim.currentPlatform = null;
-
-        // Anuluj wszelkie zrywy jetpacka / dasha w górę
-        if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-          victim.rocketBoots.dashDirY = 0;
-          victim.rocketBoots.dashing = false;
-        }
-
-        if (Math.random() < 0.25) {
-          spawnRicochetSparks(pX + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
-          triggerScreenShake(3);
-        }
+      // 3. BOKI: Twarde ściany boczne opadającej figury (blokada bocznego przenikania)
+      if (isLeftEdge && (!isRightEdge || penLeft <= penRight)) {
+        victim.x = cellX - pW;
+        if (victim.vx > 0) victim.vx = 0;
+      } else if (isRightEdge) {
+        victim.x = cellRight;
+        if (victim.vx < 0) victim.vx = 0;
+      } else if (isTopEdge) {
+        victim.y = cellY - pH;
+        victim.vy = crane.vy;
+        victim.onGround = true;
+        victim.isJumping = false;
+        victim.currentGroundY = cellY;
+      } else if (isBottomEdge) {
+        victim.y = cellBottomY;
+        if (victim.vy < 0) victim.vy = 0.5;
       }
     }
   }

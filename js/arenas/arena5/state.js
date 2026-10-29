@@ -486,8 +486,10 @@ export function calculateTargetLandY(preserveCurrentY = false) {
   // targetLandY to współrzędna Y szczytu kształtu po wylądowaniu
   crane.targetLandY = BASE_FLOOR_Y - (crane.targetLandingRow + crane.shape.h) * CELL_SIZE;
 
-  // Startowa wysokość spadania: płynny zrzut z góry (450px nad celem)
+  // Startowa wysokość spadania: zrzut z góry (dużo wyżej, z głębokiego nieba nad wieżą)
   if (!preserveCurrentY) {
-    crane.currentY = crane.targetLandY - 450;
+    const apexY = (typeof arena5State.highestBlockY === 'number') ? arena5State.highestBlockY : crane.targetLandY;
+    const spawnDistance = 1500; // 1500px (15 bloków) ponad celem i szczytem wieży
+    crane.currentY = Math.min(crane.targetLandY - spawnDistance, apexY - spawnDistance);
   }
 }

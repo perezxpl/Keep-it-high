@@ -493,9 +493,9 @@ function drawLandingWarningLine(ctx) {
     const cellBottomY = crane.currentY + (crane.shape.h - bottomCell.rowRel) * CELL_SIZE;
     const distToSurface = surfaceY - cellBottomY;
 
-    // Czerwona migająca linia pojawia się na górnej krawędzi gdy klocek opada
-    if (distToSurface >= -10 && distToSurface <= 1200) {
-      const proximity = Math.max(0, Math.min(1, 1 - (distToSurface / 900)));
+    // Czerwona migająca linia pojawia się na górnej krawędzi gdy klocek opada z góry
+    if (distToSurface >= -10 && distToSurface <= 1500) {
+      const proximity = Math.max(0, Math.min(1, 1 - (distToSurface / 1200)));
       // Im bliżej uderzenia, tym szybsze i intensywniejsze miganie (od 6 Hz do 14 Hz)
       const pulseRate = 0.014 + 0.018 * proximity;
       const blink = 0.35 + 0.65 * Math.pow(Math.abs(Math.sin(now * pulseRate)), 1.4);
