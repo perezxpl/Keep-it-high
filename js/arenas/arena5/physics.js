@@ -143,18 +143,22 @@ export function checkArena5CeilingCollisions(combatants) {
 
         // Warunek kolizji sufitowej:
         // Głowa wbiła się w dolną krawędź bloczka (headY <= blockBottom),
-        // ale postać znajduje się pod klockiem (headY >= blockTop + 8 oraz feetY > blockBottom)
+        // postać znajduje się pod klockiem i porusza się w górę lub wbiła się w sufit
         if (headY <= blockBottom && headY >= blockTop + 8 && feetY > blockBottom) {
-          hitCeiling = true;
-          if (blockBottom > pushDownToY) {
-            pushDownToY = blockBottom;
+          if (p.vy < 0 || headY < blockBottom - 4) {
+            hitCeiling = true;
+            if (blockBottom > pushDownToY) {
+              pushDownToY = blockBottom;
+            }
           }
         }
       }
     }
 
-    if (hitCeiling) {
-      p.y = pushDownToY;
+    if (hitCeiling && pushDownToY > -Infinity) {
+      if (p.y < pushDownToY) {
+        p.y = pushDownToY;
+      }
       if (p.vy < 0) {
         p.vy = 0.5; // Zatrzymanie ruchu w górę i lekkie odbicie w dół
       }
@@ -228,11 +232,13 @@ function checkFallingSquash(combatants) {
         // Podczas opadania suwnica nigdy nie osiągnie poziomu niższego niż cellTargetBottomY.
         // Jeśli postać skoczy w górę pod nawisem, działa standardowa kolizja sufitowa:
         if (headY <= cellBottomY + 4 && feetY > cellY + 8) {
-          victim.y = Math.max(cellBottomY, surfaceBelowY - pH);
-          victim.vy = Math.max(0.5, victim.vy);
-          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-            victim.rocketBoots.dashDirY = 0;
-            victim.rocketBoots.dashing = false;
+          if (victim.vy < 0 || headY < cellBottomY) {
+            victim.y = cellBottomY;
+            if (victim.vy < 0) victim.vy = 0.5;
+            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+              victim.rocketBoots.dashDirY = 0;
+              victim.rocketBoots.dashing = false;
+            }
           }
         }
         continue; // Pełne bezpieczeństwo pod nawisem dla wszystkich klas
@@ -250,8 +256,10 @@ function checkFallingSquash(combatants) {
       if (isPhysicallyCrushed) {
         executeSquashKill(victim);
       } else {
-        // W powietrzu: spadający klocek spycha postać w dół
-        victim.y = cellBottomY;
+        // W powietrzu: spadający klocek spycha postać w dół (nigdy nie podciąga w górę)
+        if (victim.y < cellBottomY) {
+          victim.y = cellBottomY;
+        }
         victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
         victim.onGround = false;
         victim.currentPlatform = null;
@@ -687,9 +695,11 @@ function updateFallingBlocks(dt, combatants) {
             if (!victim || victim.isDead) continue;
             const pH = victim.h || 72;
             const pW = victim.w || 26;
-            const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
-              (victim.onGround && Math.abs((victim.y + pH) - oldY) <= 18 &&
-               victim.x + pW > cell.x + 4 && victim.x < cell.x + cell.w - 4);
+            const isHorizontallyOverCell = (victim.x + pW > cell.x + 4 && victim.x < cell.x + cell.w - 4);
+            const isStandingOnCell = isHorizontallyOverCell && (
+              (victim.currentPlatform === cell.platformObj) ||
+              (victim.onGround && Math.abs((victim.y + pH) - oldY) <= 18)
+            );
 
             if (isStandingOnCell) {
               victim.y = cell.y - pH;
@@ -1086,62 +1096,80 @@ export function resolveArena5BlockPenetration(combatants) {
 
         if (overlapX && overlapY) {
           // Postać wniknęła w solidny blok!
-          const penTop = feetY - cellTop;          // Jak głęboko stopy wniknęły od góry
-          const penBottom = cellBottom - headY;    // Jak głęboko głowa wniknęła od dołu
-          const penLeft = (p.x + pW) - cellLeft;   // Wniknięcie z lewej
-          const penRight = cellRight - p.x;        // Wniknięcie z prawej
+          const currentFeetY = p.y + pH;
+          const currentHeadY = p.y;
+          const penTop = currentFeetY - cellTop;          // Głębokość wniknięcia stóp od góry
+          const penBottom = cellBottom - currentHeadY;    // Głębokość wniknięcia głowy od dołu
+          const penLeft = (p.x + pW) - cellLeft;          // Głębokość wniknięcia od lewej
+          const penRight = cellRight - p.x;               // Głębokość wniknięcia od prawej
 
-          // Sprawdź czy komórka powyżej (r + 1) jest pusta
+          // Sprawdź stan komórek bezpośrednio sąsiadujących
           const rowAbove = arena5State.gridRows.get(r + 1);
           const cellAbove = rowAbove ? rowAbove[c] : null;
           const isAboveClear = !cellAbove || cellAbove.hp <= 0;
 
-          // 1. Lądowanie na klocku od góry: TYLKO jeśli stopy wniknęły minimalnie od góry (penTop <= 10)
-          // i postać opada w dół z powietrza (p.vy >= 0). W przeciwnym razie jest to uderzenie w bok klocka (ściana)!
-          if (penTop <= 10 && isAboveClear && (p.vy >= 0 || penTop <= 4)) {
-            p.y = cellTop - pH;
-            p.vy = 0;
-            p.onGround = true;
-            p.isJumping = false;
-            p.currentPlatform = cell.platformObj;
-            p.currentGroundY = cellTop;
-          }
-          // 2. Jeśli głowa wniknęła od dołu i postać leci w górę:
-          else if (penBottom <= 35 && p.vy < 0) {
+          const rowBelow = arena5State.gridRows.get(r - 1);
+          const cellBelow = rowBelow ? rowBelow[c] : null;
+          const isBelowClear = (r > minRow) ? (!cellBelow || cellBelow.hp <= 0) : true;
+
+          const isLeftClear = (c > 0) && (!rowData[c - 1] || rowData[c - 1].hp <= 0);
+          const isRightClear = (c < COLS - 1) && (!rowData[c + 1] || rowData[c + 1].hp <= 0);
+
+          // 1. Kolizja sufitowa: głowa uderza od spodu klocka podczas ruchu w górę
+          if (p.vy < 0 && penBottom <= 35 && isBelowClear) {
             p.y = cellBottom;
             p.vy = 0.5;
             if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
               p.rocketBoots.dashing = false;
             }
           }
-          // 3. Wypchnięcie boczne w bok (uderzenie w ścianę pionową):
+          // 2. Lądowanie / stabilne stanie na szczycie klocka:
+          // Płynna depenetracja na szczyt jeśli powyżej jest pusto, stopy lekko wniknęły w blok
+          // lub postać porusza się w poziomie / opada na blok
+          else if (isAboveClear && (penTop <= 18 || (!isLeftClear && !isRightClear && isBelowClear === false) || (p.vy >= -1.0 && penTop < penBottom))) {
+            p.y = cellTop - pH;
+            if (p.vy > 0) p.vy = 0;
+            p.onGround = true;
+            p.isJumping = false;
+            p.currentPlatform = cell.platformObj;
+            p.currentGroundY = cellTop;
+          }
+          // 3. Kolizja boczna (uderzenie w ścianę pionową):
           else {
-            // Sprawdź czy kolumna z lewej / prawej jest wolna na tej wysokości
-            const isLeftClear = (c > 0) && (!rowData[c - 1] || rowData[c - 1].hp <= 0);
-            const isRightClear = (c < COLS - 1) && (!rowData[c + 1] || rowData[c + 1].hp <= 0);
-
-            if (isLeftClear && (!isRightClear || penLeft < penRight)) {
+            if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
               p.x = cellLeft - pW;
               if (p.vx > 0) p.vx = 0;
             } else if (isRightClear) {
               p.x = cellRight;
               if (p.vx < 0) p.vx = 0;
-            } else {
-              // Z obu stron są klocki (uwięziony w szybie): wypchnij na szczyt tej kolumny!
-              let topSolidY = arena5State.currentFloorY || BASE_FLOOR_Y;
-              for (let tr = arena5State.highestRowIndex + 4; tr >= minRow; tr--) {
-                const trData = arena5State.gridRows.get(tr);
-                if (trData && trData[c] && trData[c].hp > 0) {
-                  topSolidY = trData[c].y;
-                  break;
-                }
-              }
-              p.y = topSolidY - pH;
-              p.vy = 0;
+            } else if (isAboveClear) {
+              // Boki zablokowane, ale góra wolna: wypchnij bezpiecznie na górną krawędź tego klocka
+              p.y = cellTop - pH;
+              if (p.vy > 0) p.vy = 0;
               p.onGround = true;
               p.isJumping = false;
               p.currentPlatform = cell.platformObj;
-              p.currentGroundY = topSolidY;
+              p.currentGroundY = cellTop;
+            } else if (isBelowClear) {
+              // Boki i góra zablokowane: wypchnij w dół
+              p.y = cellBottom;
+              if (p.vy < 0) p.vy = 0.5;
+            } else {
+              // Obie strony, góra i dół zablokowane: minimalna lokalna korekta (NIGDY teleport do szczytu wieży!)
+              const minPen = Math.min(penTop, penBottom, penLeft, penRight);
+              if (minPen === penTop) {
+                p.y = cellTop - pH;
+                if (p.vy > 0) p.vy = 0;
+              } else if (minPen === penBottom) {
+                p.y = cellBottom;
+                if (p.vy < 0) p.vy = 0.5;
+              } else if (minPen === penLeft) {
+                p.x = cellLeft - pW;
+                if (p.vx > 0) p.vx = 0;
+              } else {
+                p.x = cellRight;
+                if (p.vx < 0) p.vx = 0;
+              }
             }
           }
         }

@@ -440,23 +440,22 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Twarda blokada przechodzenia przez zawalone klocki leżące i segmenty Areny 5 (Solid Obstacles)
+  // Twarda blokada przechodzenia przez zawalone klocki leżące (Solid Obstacles)
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.solid === false || plat.isWall || plat.oneWay) continue;
-    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
+    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock);
     if (!isObstacleToBlock) continue;
     if (p.currentPlatform === plat) continue;
 
     const bnds = getPlatformBounds(plat);
     const stepDiff = feetY - bnds.minY;
-    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego kontenera Areny 5
-    const isSideHit = (isA5 && plat.isA5Block)
-      ? (feetY > bnds.minY + 6 && p.y < bnds.maxY - 4)
-      : (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4);
+    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34)
+    const isSideHit = (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4);
     if (isSideHit) {
       if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
-        const midX = bnds.cx;
-        if (p.x + p.w / 2 < midX) {
+        const overlapLeft = (p.x + p.w) - bnds.minX;
+        const overlapRight = bnds.maxX - p.x;
+        if (overlapLeft < overlapRight) {
           p.x = bnds.minX - p.w;
           if (p.vx > 0) p.vx = 0;
         } else {
