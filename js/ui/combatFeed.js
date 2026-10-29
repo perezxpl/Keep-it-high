@@ -52,7 +52,10 @@ export function updateCombatFeed(dt) {
 }
 
 export function drawCombatFeedBanner(ctx, W, H, isMobile) {
-  if (!combatFeedState.active || combatFeedState.timer <= 0) return;
+  if (!ctx || !combatFeedState.active || combatFeedState.timer <= 0) return;
+
+  const scrW = (typeof W === 'number' && Number.isFinite(W) && W > 0) ? W : (ctx.canvas ? ctx.canvas.width : 800);
+  const scrH = (typeof H === 'number' && Number.isFinite(H) && H > 0) ? H : (ctx.canvas ? ctx.canvas.height : 600);
 
   const isKill = (combatFeedState.type === 'KILL');
   const timer = combatFeedState.timer;
@@ -73,10 +76,6 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
 
   // Proximity Ghosting: jeśli gracz podskoczy pod sufit w pobliże pigułki, staje się ona mocno przezroczysta
   if (camera && typeof camera.x === 'number') {
-    const camZoom = camera.zoom || 1;
-    // Sprawdzamy czy coś jest bezpośrednio w strefie górnego paska
-    const centerScreenX = W / 2;
-    // Bezpieczny margines
     alpha *= 0.88;
   }
 
@@ -96,60 +95,64 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
   }
 
   ctx.save();
-  ctx.globalAlpha = alpha;
+  try {
+    ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-  ctx.font = `900 ${isMobile ? '10px' : '11.5px'} 'Rajdhani', monospace`;
-  const prefixW = prefix ? ctx.measureText(prefix).width : 0;
-  const nameW = ctx.measureText(name).width;
-  const contentW = prefixW + nameW;
+    ctx.font = `900 ${isMobile ? '10px' : '11.5px'} 'Rajdhani', monospace`;
+    const prefixW = prefix ? ctx.measureText(prefix).width : 0;
+    const nameW = ctx.measureText(name).width;
+    const contentW = prefixW + nameW;
 
-  // Dynamiczna, kompaktowa szerokość dopasowana do treści (zamiast wielkiego kloca)
-  const padX = isMobile ? 12 : 16;
-  const bannerW = Math.min(W - 28, Math.max(120, contentW + padX * 2 + 10));
-  const bannerX = (W - bannerW) / 2;
+    // Dynamiczna, kompaktowa szerokość dopasowana do treści (zamiast wielkiego kloca)
+    const padX = isMobile ? 12 : 16;
+    const bannerW = Math.min(scrW - 28, Math.max(120, contentW + padX * 2 + 10));
+    const bannerX = (scrW - bannerW) / 2;
 
-  // Tło minimalistycznej pigułki
-  ctx.fillStyle = bgColor;
-  ctx.strokeStyle = mainColor;
-  ctx.lineWidth = 1.0;
+    // Tło minimalistycznej pigułki
+    ctx.fillStyle = bgColor;
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.0;
 
-  if (ctx.roundRect) {
-    ctx.beginPath();
-    ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
-    ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
-  }
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
+    }
 
-  // Lewy mikro-akcent taktyczny
-  ctx.fillStyle = mainColor;
-  ctx.fillRect(bannerX + 2, bannerY + 3, 3, bannerH - 6);
-
-  // Wypisanie tekstu w jednej, czytelnej linii
-  ctx.textBaseline = 'middle';
-  const midY = bannerY + bannerH / 2 + 0.5;
-
-  if (isDirectMsg) {
-    ctx.textAlign = 'center';
+    // Lewy mikro-akcent taktyczny
     ctx.fillStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 4;
-    ctx.fillText(name, W / 2, midY);
-  } else {
-    const startX = bannerX + (bannerW - contentW) / 2 + 2;
+    ctx.fillRect(bannerX + 2, bannerY + 3, 3, bannerH - 6);
 
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-    ctx.shadowBlur = 0;
-    ctx.fillText(prefix, startX, midY);
+    // Wypisanie tekstu w jednej, czytelnej linii
+    ctx.textBaseline = 'middle';
+    const midY = bannerY + bannerH / 2 + 0.5;
 
-    ctx.fillStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 4;
-    ctx.fillText(name, startX + prefixW, midY);
+    if (isDirectMsg) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = mainColor;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 4;
+      ctx.fillText(name, scrW / 2, midY);
+    } else {
+      const startX = bannerX + (bannerW - contentW) / 2 + 2;
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      ctx.shadowBlur = 0;
+      ctx.fillText(prefix, startX, midY);
+
+      ctx.fillStyle = mainColor;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 4;
+      ctx.fillText(name, startX + prefixW, midY);
+    }
+  } catch (_) {
+    // Ciche zabezpieczenie
+  } finally {
+    ctx.restore();
   }
-
-  ctx.restore();
 }

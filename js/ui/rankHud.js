@@ -160,17 +160,13 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
     // Cienki pasek postępu XP
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.85)';
-    if (ctx.roundRect) ctx.roundRect(x, barY, width, barH, 1.0);
-    else ctx.rect(x, barY, width, barH);
-    ctx.fill();
+    ctx.fillRect(x, barY, width, barH);
 
     if (progress > 0) {
       const fillW = Math.max(2, width * Math.min(1, progress));
       ctx.beginPath();
       ctx.fillStyle = '#00e5ff';
-      if (ctx.roundRect) ctx.roundRect(x, barY, fillW, barH, 1.0);
-      else ctx.rect(x, barY, fillW, barH);
-      ctx.fill();
+      ctx.fillRect(x, barY, fillW, barH);
     }
   } else {
     // Pełny wariant desktopowy

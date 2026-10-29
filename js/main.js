@@ -863,6 +863,7 @@ function draw() {
   ctx.save();
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
+  try {
 
   const worldLeft = camera.x;
   const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
@@ -987,7 +988,9 @@ function draw() {
   }
 
   drawPlayer(ctx, GROUND_Y, player);
-  drawPlayerMarker(ctx, player);
+  try {
+    drawPlayerMarker(ctx, player);
+  } catch (_) {}
 
   const playerTeam = player.team || 'CYAN';
 
@@ -1102,8 +1105,9 @@ function draw() {
 
   drawShockwaves(ctx, camera);
   drawLighting(ctx, camera, activeArenaId);
-
-  ctx.restore();
+  } finally {
+    ctx.restore();
+  }
 
   drawCinematicVignette(ctx);
 

@@ -287,8 +287,8 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   );
 
   ctx.save();
-
-  // Wymiary i ergonomiczna pozycja widgetu:
+  try {
+    // Wymiary i ergonomiczna pozycja widgetu:
   // Na telefonie: minimalistyczny mikro-chip w samej górnej krawędzi (obok pauzy), uwalniający ekran
   // Na PC: w prawym dolnym rogu (standard Call of Duty HUD)
   const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
@@ -654,6 +654,9 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     killstreakState.mortarLeftNavBounds = null;
     killstreakState.mortarRightNavBounds = null;
   }
-
-  ctx.restore();
+  } catch (_) {
+    // Fail-safe
+  } finally {
+    ctx.restore();
+  }
 }

@@ -1362,14 +1362,14 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   updateFps();
 
   ctx.save();
+  try {
+    // Wykrywanie urządzeń mobilnych / małych ekranów
+    const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
 
-  // Wykrywanie urządzeń mobilnych / małych ekranów
-  const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
-
-  // =========================================================================
-  // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
-  // =========================================================================
-  ctx.save();
+    // =========================================================================
+    // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
+    // =========================================================================
+    ctx.save();
 
   const hudX = isMobile ? 10 : 20;
   const hudY = isMobile ? 8 : 18;
@@ -1470,25 +1470,37 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (hasVest) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
+    if (isMobile) {
+      ctx.fillRect(hudX, vestY, barW, vestH);
+    } else {
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+    }
     ctx.fill();
 
     if (vestRatio > 0) {
       const vFillW = Math.max(2, (barW - (isMobile ? 1.5 : 3)) * vestRatio);
       ctx.beginPath();
       ctx.fillStyle = '#0284c7';
-      if (ctx.roundRect) ctx.roundRect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6), 1);
-      else ctx.rect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6));
+      if (isMobile) {
+        ctx.fillRect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6));
+      } else {
+        if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
+        else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
+      }
       ctx.fill();
     }
 
     ctx.beginPath();
     ctx.strokeStyle = '#0284c7';
     ctx.lineWidth = isMobile ? 0.8 : 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.stroke();
+    if (isMobile) {
+      ctx.strokeRect(hudX, vestY, barW, vestH);
+    } else {
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.stroke();
+    }
 
     if (!isMobile) {
       ctx.save();
@@ -1507,16 +1519,24 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   } else if (hasHelmet) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
+    if (isMobile) {
+      ctx.fillRect(hudX, vestY, barW, vestH);
+    } else {
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+    }
     ctx.fill();
 
     ctx.beginPath();
     ctx.strokeStyle = '#06b6d4';
     ctx.lineWidth = isMobile ? 0.8 : 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.stroke();
+    if (isMobile) {
+      ctx.strokeRect(hudX, vestY, barW, vestH);
+    } else {
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.stroke();
+    }
 
     if (!isMobile) {
       ctx.save();
@@ -1674,9 +1694,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.beginPath();
   ctx.fillStyle = cardBorderCol;
   const accentW = isMobile ? 2.5 : 4;
-  if (ctx.roundRect) ctx.roundRect(hudX + 1, wepBoxY + 1, accentW, wepBoxH - 2, isMobile ? [1.5, 0, 0, 1.5] : [3, 0, 0, 3]);
-  else ctx.rect(hudX + 1, wepBoxY + 1, accentW, wepBoxH - 2);
-  ctx.fill();
+  ctx.fillRect(hudX + 1, wepBoxY + 1, accentW, wepBoxH - 2);
 
   // Wyraźny kolorowy obrys kafelka broni
   ctx.beginPath();
@@ -1926,17 +1944,26 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENY 2 I 3 - ROZLICZANE NA KONIEC BITWY 5:00)
     drawDeathmatchPodium(ctx, W, H, isMobile);
   }
-
-  ctx.restore();
+  } catch (_) {
+    // Fail-safe dla potoku HUD
+  } finally {
+    ctx.restore();
+  }
 
   if (ball && ball.active && !isDmArena) {
-    drawOffscreenBallIndicator(ctx, ball, camera, player);
+    try {
+      drawOffscreenBallIndicator(ctx, ball, camera, player);
+    } catch (_) {}
   }
 
   if (isTouchDevice) {
-    drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
+    try {
+      drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
+    } catch (_) {}
   }
 
-  drawCombatFeedBanner(ctx, W, H, isMobile);
+  try {
+    drawCombatFeedBanner(ctx, W, H, isMobile);
+  } catch (_) {}
 }
 
