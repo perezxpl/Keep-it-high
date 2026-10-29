@@ -10,7 +10,8 @@ import {
   handleArena5BulletHit,
   handleArena5Explosion,
   handleArena5MeleeHit,
-  handleArena5KickHit
+  handleArena5KickHit,
+  handleArena5GrenadeCollision
 } from './physics.js';
 import { drawArena5Background, drawArena5Foreground } from './renderer.js';
 import { camera } from '../../camera.js';
@@ -85,6 +86,10 @@ export class Arena5PrefabTower {
 
   onKickHit(player, options) {
     return handleArena5KickHit(player, options);
+  }
+
+  onGrenadeCollision(grenade) {
+    return handleArena5GrenadeCollision(grenade);
   }
 }
 

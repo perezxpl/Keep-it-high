@@ -61,6 +61,9 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
 
   // 7. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
   updateTowerApexAndSpawns();
+
+  // 8. Aktywna depenetracja postaci z klocków (Anti-Stuck Solver: zapobiega wpadaniu i uwięzieniu w bloczku)
+  resolveArena5BlockPenetration(_activeCombatants);
 }
 
 /**
@@ -336,6 +339,7 @@ function onCraneBlockImpact(combatants) {
   // Jej nawisy nie opadają – opierają się na podparciu reszty figury!
   updateTowerApexAndSpawns();
   checkAndTriggerLineClears(combatants);
+  resolveArena5BlockPenetration(combatants);
 }
 
 /**
@@ -577,6 +581,9 @@ export function applyPieceGravity(combatants = []) {
   if (anyBlockFell) {
     triggerScreenShake(4);
     updateTowerApexAndSpawns();
+
+    // Wypchnij postacie, które mogły znaleźć się w strefie opadania klocka
+    resolveArena5BlockPenetration(combatants);
 
     // Sprawdź czy opadające klocki nie ułożyły nowej pełnej linii
     checkAndTriggerLineClears(combatants);
@@ -1159,4 +1166,234 @@ export function handleArena5KickHit(player, options = {}) {
   }
 
   return false;
+}
+
+/**
+ * Aktywny system antypentracyjny (Depenetration & Anti-Stuck Solver):
+ * Sprawdza, czy którakolwiek postać (gracz lub bot) wbiła się / znalazła się wewnątrz
+ * litego klocka wieży i natychmiast wypycha ją na zewnątrz (na szczyt klocka lub w bok).
+ * Gwarantuje, że gracz nigdy nie utknie wewnątrz bloku i sylwetka nie stanie się niewidoczna.
+ */
+export function resolveArena5BlockPenetration(combatants) {
+  if (!Array.isArray(combatants)) return;
+
+  const minRow = arena5State.minFloorRow || 0;
+
+  for (const p of combatants) {
+    if (!p || p.isDead) continue;
+
+    const pW = p.w || 26;
+    const pH = p.h || 72;
+    const pX = p.x;
+    const pY = p.y;
+    const feetY = pY + pH;
+    const headY = pY;
+
+    // Zakres kolumn, które może przecinać model postaci
+    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX + 2) / CELL_SIZE)));
+    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW - 2) / CELL_SIZE)));
+
+    for (let c = colLeft; c <= colRight; c++) {
+      for (const [r, rowData] of arena5State.gridRows.entries()) {
+        if (r < minRow || !rowData) continue;
+        const cell = rowData[c];
+        if (!cell || cell.hp <= 0) continue;
+
+        const cellLeft = cell.x;
+        const cellRight = cell.x + cell.w;
+        const cellTop = cell.y;
+        const cellBottom = cell.y + cell.h;
+
+        // Czy bounding box postaci przecina tę komórkę?
+        const overlapX = (p.x + 2 < cellRight) && (p.x + pW - 2 > cellLeft);
+        const overlapY = (p.y < cellBottom - 2) && (feetY > cellTop + 4);
+
+        if (overlapX && overlapY) {
+          // Postać wniknęła w solidny blok!
+          const penTop = feetY - cellTop;          // Jak głęboko stopy wniknęły od góry
+          const penBottom = cellBottom - headY;    // Jak głęboko głowa wniknęła od dołu
+          const penLeft = (p.x + pW) - cellLeft;   // Wniknięcie z lewej
+          const penRight = cellRight - p.x;        // Wniknięcie z prawej
+
+          // Sprawdź czy komórka powyżej (r + 1) jest pusta
+          const rowAbove = arena5State.gridRows.get(r + 1);
+          const cellAbove = rowAbove ? rowAbove[c] : null;
+          const isAboveClear = !cellAbove || cellAbove.hp <= 0;
+
+          // 1. Jeśli stopy są w górnej połowie klocka (penTop <= 68) lub góra jest wolna i postać nie leci gwałtownie w górę:
+          if ((penTop <= 68 || isAboveClear) && isAboveClear && (p.vy >= -1.0 || penTop <= 45)) {
+            p.y = cellTop - pH;
+            p.vy = 0;
+            p.onGround = true;
+            p.isJumping = false;
+            p.currentPlatform = cell.platformObj;
+            p.currentGroundY = cellTop;
+          }
+          // 2. Jeśli głowa wniknęła od dołu i postać leci w górę:
+          else if (penBottom <= 35 && p.vy < 0) {
+            p.y = cellBottom;
+            p.vy = 0.5;
+            if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
+              p.rocketBoots.dashing = false;
+            }
+          }
+          // 3. Wypchnięcie boczne w stronę mniejszego zagłębienia
+          else {
+            // Sprawdź czy kolumna z lewej / prawej jest wolna na tej wysokości
+            const isLeftClear = (c > 0) && (!rowData[c - 1] || rowData[c - 1].hp <= 0);
+            const isRightClear = (c < COLS - 1) && (!rowData[c + 1] || rowData[c + 1].hp <= 0);
+
+            if (isLeftClear && (!isRightClear || penLeft < penRight)) {
+              p.x = cellLeft - pW;
+              if (p.vx > 0) p.vx = 0;
+            } else if (isRightClear) {
+              p.x = cellRight;
+              if (p.vx < 0) p.vx = 0;
+            } else {
+              // Z obu stron są klocki (uwięziony w szybie): wypchnij na szczyt tej kolumny!
+              let topSolidY = arena5State.currentFloorY || BASE_FLOOR_Y;
+              for (let tr = arena5State.highestRowIndex + 4; tr >= minRow; tr--) {
+                const trData = arena5State.gridRows.get(tr);
+                if (trData && trData[c] && trData[c].hp > 0) {
+                  topSolidY = trData[c].y;
+                  break;
+                }
+              }
+              p.y = topSolidY - pH;
+              p.vy = 0;
+              p.onGround = true;
+              p.isJumping = false;
+              p.currentPlatform = cell.platformObj;
+              p.currentGroundY = topSolidY;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Obsługa kolizji i odbić granatu od klocków wieży Areny 5 (w siatce oraz na suwnicy).
+ * Gwarantuje, że granat odbija się od każdej ściany bloku i nie przenika przez klocki.
+ */
+export function handleArena5GrenadeCollision(grenade) {
+  if (!grenade || grenade.detonated) return false;
+
+  const r = grenade.radius || 9;
+  const gx = grenade.x;
+  const gy = grenade.y;
+  const prevX = (typeof grenade.prevX === 'number') ? grenade.prevX : (gx - (grenade.vx || 0));
+  const prevY = (typeof grenade.prevY === 'number') ? grenade.prevY : (gy - (grenade.vy || 0));
+
+  // 1. Sprawdź spadający blok na suwnicy
+  const crane = arena5State.crane;
+  if (crane && crane.phase === 'FALLING' && crane.shape) {
+    for (const cell of crane.shapeCells) {
+      const cellX = getGridX(crane.col + cell.colRel);
+      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+      const cellW = CELL_SIZE;
+      const cellH = CELL_SIZE;
+
+      if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cellX, cellY, cellW, cellH)) {
+        return true;
+      }
+    }
+  }
+
+  // 2. Sprawdź ułożone bloczki w siatce w pobliżu granatu
+  const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((gx - r - 6) / CELL_SIZE)));
+  const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((gx + r + 6) / CELL_SIZE)));
+  const minRow = arena5State.minFloorRow || 0;
+
+  for (let c = colLeft; c <= colRight; c++) {
+    for (const [rowIdx, rowData] of arena5State.gridRows.entries()) {
+      if (rowIdx < minRow || !rowData) continue;
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+
+      if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cell.x, cell.y, cell.w, cell.h)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, bx, by, bw, bh) {
+  // AABB test z marginesem promienia granatu
+  if (gx + r < bx || gx - r > bx + bw || gy + r < by || gy - r > by + bh) {
+    return false;
+  }
+
+  const rest = grenade.restitution || 0.58;
+
+  // Sprawdź przez którą krawędź granat wniknął na podstawie poprzedniej pozycji
+  const cameFromTop = (prevY + r <= by + 8) && (grenade.vy > 0);
+  const cameFromBottom = (prevY - r >= by + bh - 8) && (grenade.vy < 0);
+  const cameFromLeft = (prevX + r <= bx + 8) && (grenade.vx > 0);
+  const cameFromRight = (prevX - r >= bx + bw - 8) && (grenade.vx < 0);
+
+  if (cameFromTop) {
+    grenade.y = by - r;
+    grenade.vy = -grenade.vy * rest;
+    grenade.vx *= 0.85;
+    grenade.vRot *= 0.75;
+    grenade.bounces = (grenade.bounces || 0) + 1;
+    spawnRicochetSparks(gx, by, 0, -2, 5);
+    return true;
+  }
+
+  if (cameFromBottom) {
+    grenade.y = by + bh + r;
+    grenade.vy = -grenade.vy * rest;
+    grenade.bounces = (grenade.bounces || 0) + 1;
+    spawnRicochetSparks(gx, by + bh, 0, 2, 5);
+    return true;
+  }
+
+  if (cameFromLeft) {
+    grenade.x = bx - r;
+    grenade.vx = -Math.abs(grenade.vx) * rest;
+    grenade.vRot = -grenade.vRot * 0.8;
+    grenade.bounces = (grenade.bounces || 0) + 1;
+    spawnRicochetSparks(bx, gy, -2, 0, 5);
+    return true;
+  }
+
+  if (cameFromRight) {
+    grenade.x = bx + bw + r;
+    grenade.vx = Math.abs(grenade.vx) * rest;
+    grenade.vRot = -grenade.vRot * 0.8;
+    grenade.bounces = (grenade.bounces || 0) + 1;
+    spawnRicochetSparks(bx + bw, gy, 2, 0, 5);
+    return true;
+  }
+
+  // Zagłębienie (penetracja z powodu dużej prędkości): wypchnij wzdłuż najmniejszego zagłębienia
+  const dTop = (gy + r) - by;
+  const dBottom = (by + bh) - (gy - r);
+  const dLeft = (gx + r) - bx;
+  const dRight = (bx + bw) - (gx - r);
+  const minD = Math.min(dTop, dBottom, dLeft, dRight);
+
+  if (minD === dTop) {
+    grenade.y = by - r;
+    grenade.vy = -Math.abs(grenade.vy || 2) * rest;
+    grenade.vx *= 0.85;
+  } else if (minD === dBottom) {
+    grenade.y = by + bh + r;
+    grenade.vy = Math.abs(grenade.vy || 2) * rest;
+  } else if (minD === dLeft) {
+    grenade.x = bx - r;
+    grenade.vx = -Math.abs(grenade.vx || 2) * rest;
+  } else {
+    grenade.x = bx + bw + r;
+    grenade.vx = Math.abs(grenade.vx || 2) * rest;
+  }
+
+  grenade.bounces = (grenade.bounces || 0) + 1;
+  spawnRicochetSparks(grenade.x, grenade.y, (Math.random() - 0.5) * 4, -2, 5);
+  return true;
 }

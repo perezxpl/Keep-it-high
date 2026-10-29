@@ -235,8 +235,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
       // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
       // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie
       const airMarginTop = Math.max(30, platThickness * 0.9);
+      const maxLandingDepth = (isA5 && plat.isA5Block) ? 75 : Math.max(36, p.vy + 24);
       const isAirLanding = p.vy >= -1.0 && (
-        (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + Math.max(36, p.vy + 24))
+        (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + maxLandingDepth)
       );
 
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
@@ -443,8 +444,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
     const bnds = getPlatformBounds(plat);
     const stepDiff = feetY - bnds.minY;
-    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego kontenera
-    if (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4) {
+    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34) lub gracz uderza w bok wysokiego kontenera Areny 5
+    const isSideHit = (isA5 && plat.isA5Block)
+      ? (feetY > bnds.minY + 6 && p.y < bnds.maxY - 4)
+      : (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4);
+    if (isSideHit) {
       if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
         const midX = bnds.cx;
         if (p.x + p.w / 2 < midX) {

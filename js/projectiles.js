@@ -258,6 +258,11 @@ export class AeroSuperGrenade {
       }
     }
 
+    // 2B. Autorytatywne kolizje z dynamicznymi elementami aktywnej areny (np. niszczalne klocki wieży i suwnica w Arenie 5)
+    if (curArena && typeof curArena.onGrenadeCollision === 'function') {
+      curArena.onGrenadeCollision(this);
+    }
+
     // 3. Kolizje z platformami, ścianami i pylonami
     if (Array.isArray(activePlats)) {
       for (const plat of activePlats) {
@@ -295,7 +300,50 @@ export class AeroSuperGrenade {
           continue;
         }
 
-        // B. Kolizje z platformami poziomymi i skośnymi
+        // B. Kolizje ze zwartymi bryłami / klockami kontenerowymi (np. klocki wieży Areny 5)
+        if (plat.isA5Block || (thick >= 40 && !plat.oneWay && !plat.isSlope)) {
+          if (this.x + this.radius >= platX && this.x - this.radius <= platX + platW &&
+              this.y + this.radius >= topY && this.y - this.radius <= bottomY) {
+            const dTop = (this.y + this.radius) - topY;
+            const dBottom = bottomY - (this.y - this.radius);
+            const dLeft = (this.x + this.radius) - platX;
+            const dRight = (platX + platW) - (this.x - this.radius);
+            const minPen = Math.min(dTop, dBottom, dLeft, dRight);
+
+            if (minPen === dTop && this.vy >= 0) {
+              this.y = topY - this.radius;
+              this.vy = -this.vy * this.restitution;
+              this.vx *= 0.85;
+              this.vRot *= 0.75;
+              this.bounces++;
+              spawnRicochetSparks(this.x, topY, 0, -2, 5);
+              break;
+            } else if (minPen === dBottom && this.vy <= 0) {
+              this.y = bottomY + this.radius;
+              this.vy = -this.vy * this.restitution;
+              this.bounces++;
+              spawnRicochetSparks(this.x, bottomY, 0, 2, 5);
+              break;
+            } else if (minPen === dLeft && this.vx >= 0) {
+              this.x = platX - this.radius;
+              this.vx = -Math.abs(this.vx) * this.restitution;
+              this.vRot = -this.vRot * 0.8;
+              this.bounces++;
+              spawnRicochetSparks(platX, this.y, -2, 0, 5);
+              break;
+            } else if (minPen === dRight && this.vx <= 0) {
+              this.x = platX + platW + this.radius;
+              this.vx = Math.abs(this.vx) * this.restitution;
+              this.vRot = -this.vRot * 0.8;
+              this.bounces++;
+              spawnRicochetSparks(platX + platW, this.y, 2, 0, 5);
+              break;
+            }
+          }
+          continue;
+        }
+
+        // C. Kolizje z platformami poziomymi i skośnymi
         if (this.x >= platX - this.radius && this.x <= platX + platW + this.radius) {
           // Lądowanie / odbicie od górnej powierzchni platformy
           if (this.vy > 0 && this.prevY + this.radius <= topY + 10 && this.y + this.radius >= topY - 6) {
