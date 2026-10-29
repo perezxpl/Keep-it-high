@@ -5,7 +5,13 @@
 // =========================================================================
 
 import { arena5State, resetArena5State, BASE_FLOOR_Y } from './state.js';
-import { updateArena5Physics, handleArena5BulletHit, handleArena5Explosion } from './physics.js';
+import {
+  updateArena5Physics,
+  handleArena5BulletHit,
+  handleArena5Explosion,
+  handleArena5MeleeHit,
+  handleArena5KickHit
+} from './physics.js';
 import { drawArena5Background, drawArena5Foreground } from './renderer.js';
 import { camera } from '../../camera.js';
 
@@ -73,8 +79,12 @@ export class Arena5PrefabTower {
     return true;
   }
 
-  onKickHit(player, kickBox) {
-    return false;
+  onMeleeHit(shooter, p1, p2, width, weaponId, hitTargets) {
+    return handleArena5MeleeHit(shooter, p1, p2, width, weaponId, hitTargets);
+  }
+
+  onKickHit(player, options) {
+    return handleArena5KickHit(player, options);
   }
 }
 

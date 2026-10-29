@@ -438,6 +438,18 @@ function updateMeleeCollision(shooter, ms) {
       }
     }
   }
+
+  // 4. Kolizja z niszczalnymi klockami areny (np. klocki wieży w Arenie 5)
+  if (!ms.hitArenaBlock && typeof getActiveArena === 'function') {
+    const curArena = getActiveArena();
+    if (curArena && typeof curArena.onMeleeHit === 'function') {
+      const hitBlock = curArena.onMeleeHit(shooter, p1, p2, cfg.width || 24, ms.weaponId, ms.hitTargets);
+      if (hitBlock) {
+        ms.hitArenaBlock = true;
+        triggerHitstop(Math.max(1, (cfg.hitstopFrames || 3) - 1));
+      }
+    }
+  }
 }
 
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {

@@ -219,6 +219,19 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const platThickness = plat.thickness || plat.h || 20;
       const isA3Ground = isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval');
 
+      // Kolizja sufitowa dla klocków Areny 5 (blokada przenikania od dołu)
+      if (isA5 && plat.isA5Block && p.vy < 0) {
+        const bottomY = topY + platThickness;
+        const headY = p.y;
+        if (headY <= bottomY && headY >= topY + 12 && feetY > bottomY) {
+          p.y = bottomY;
+          p.vy = 0.5;
+          if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
+            p.rocketBoots.dashing = false;
+          }
+        }
+      }
+
       // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
       // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie
       const airMarginTop = Math.max(30, platThickness * 0.9);

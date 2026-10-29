@@ -40,7 +40,10 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
   // 1. Podnoszenie podłogi wraz ze wspinaczką kamery
   updateRisingFloor(camera, _activeCombatants);
 
-  // 2. Aktualizacja suwnicy i spadającego bloku
+  // 2. Blokada przenikania przez bloczki od dołu (Ceiling collision)
+  checkArena5CeilingCollisions(_activeCombatants);
+
+  // 3. Aktualizacja suwnicy i spadającego bloku
   updateCrane(stepTime, _activeCombatants);
 
   // 3. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
@@ -94,26 +97,85 @@ function updateCrane(dt, combatants) {
 }
 
 /**
- * Sprawdza, czy spadający klocek uderza w postać pod sobą.
- * W powietrzu klocek odpycha w bok (deflection), a zmiażdżenie (Squash)
- * zachodzi wyłącznie w momencie dociśnięcia do twardej powierzchni poniżej.
+ * Blokada przenikania przez ułożone bloczki od dołu (Ceiling Collision):
+ * Postać uderzając głową w spód bloczka zatrzymuje się i nie może przez niego przelecieć.
+ */
+export function checkArena5CeilingCollisions(combatants) {
+  if (!Array.isArray(combatants)) return;
+
+  const minRow = arena5State.minFloorRow || 0;
+
+  for (const p of combatants) {
+    if (!p || p.isDead) continue;
+
+    const pW = p.w || 26;
+    const pH = p.h || 72;
+    const pX = p.x;
+    const pY = p.y;
+    const headY = pY;
+    const feetY = pY + pH;
+
+    // Zakres kolumn, z którymi styka się model postaci
+    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX + 4) / CELL_SIZE)));
+    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW - 4) / CELL_SIZE)));
+
+    let hitCeiling = false;
+    let pushDownToY = -Infinity;
+
+    for (let c = colLeft; c <= colRight; c++) {
+      for (const [r, rowData] of arena5State.gridRows.entries()) {
+        if (r < minRow || !rowData) continue;
+        const cell = rowData[c];
+        if (!cell || cell.hp <= 0) continue;
+
+        const blockBottom = cell.y + cell.h;
+        const blockTop = cell.y;
+
+        // Warunek kolizji sufitowej:
+        // Głowa wbiła się w dolną krawędź bloczka (headY <= blockBottom),
+        // ale postać znajduje się pod klockiem (headY >= blockTop + 8 oraz feetY > blockBottom)
+        if (headY <= blockBottom && headY >= blockTop + 8 && feetY > blockBottom) {
+          hitCeiling = true;
+          if (blockBottom > pushDownToY) {
+            pushDownToY = blockBottom;
+          }
+        }
+      }
+    }
+
+    if (hitCeiling) {
+      p.y = pushDownToY;
+      if (p.vy < 0) {
+        p.vy = 0.5; // Zatrzymanie ruchu w górę i lekkie odbicie w dół
+      }
+      if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
+        p.rocketBoots.dashing = false;
+      }
+    }
+  }
+}
+
+/**
+ * Obsługa spadającego klocka i zmiażdżenia (Squash):
+ * W powietrzu spadający klocek nie pozwala postaci przeniknąć od dołu –
+ * fizycznie ściąga ją w dół i miażdży przy kontakcie ze spodnim bloczkiem lub podłogą.
  */
 function checkFallingSquash(combatants) {
   const crane = arena5State.crane;
-  if (crane.phase !== 'FALLING') return;
+  if (!crane || crane.phase !== 'FALLING' || !crane.shape) return;
 
-  const craneLeft = getGridX(crane.col);
-  const craneRight = craneLeft + crane.shape.w * CELL_SIZE;
-  const craneCenterX = (craneLeft + craneRight) * 0.5;
-
-  // Zmiażdżenie (Squash) może nastąpić WYŁĄCZNIE gdy klocek dotarł tuż nad powierzchnię lądowania (ostatnie 30 px)
-  const isNearImpact = (crane.currentY >= crane.targetLandY - 30);
+  const minRow = arena5State.minFloorRow || 0;
+  const currentFloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
+    ? arena5State.currentFloorY
+    : BASE_FLOOR_Y;
 
   for (const cell of crane.shapeCells) {
     const cellX = getGridX(crane.col + cell.colRel);
     const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
     const cellW = CELL_SIZE;
     const cellH = CELL_SIZE;
+    const cellBottomY = cellY + cellH;
+    const worldCol = crane.col + cell.colRel;
 
     for (const victim of combatants) {
       if (!victim || victim.isDead) continue;
@@ -122,28 +184,51 @@ function checkFallingSquash(combatants) {
       const pH = victim.h || 72;
       const pX = victim.x;
       const pY = victim.y;
+      const headY = pY;
+      const feetY = pY + pH;
 
-      const overlapX = (pX < cellX + cellW - 4) && (pX + pW > cellX + 4);
-      const overlapY = (pY < cellY + cellH) && (pY + pH > cellY + 8);
+      // Sprawdź czy postać znajduje się w rzucie poziomym tego spadającego segmentu
+      const overlapX = (pX + 4 < cellX + cellW) && (pX + pW - 4 > cellX);
+      if (!overlapX) continue;
 
-      if (overlapX && overlapY) {
-        // Czy pod ofiarą jest twarde podłoże bazowe lub inny klocek?
-        const isSupportedBelow = (victim.onGround || !!victim.currentPlatform || victim.y >= (BASE_FLOOR_Y - pH - 6));
+      // Czy spadający klocek dosięgnął głowy postaci z góry lub postać wbiła się w niego od dołu?
+      const isUnderBlock = (headY <= cellBottomY + 4) && (feetY > cellY + 8);
+      if (!isUnderBlock) continue;
 
-        if (isNearImpact && isSupportedBelow) {
-          executeSquashKill(victim);
-        } else if (!isNearImpact) {
-          // W powietrzu lub w trakcie opadania: zepchnięcie w BOK (odrzut z toru zrzutu)
-          // NIGDY nie spychamy postaci w dół w głąb podłogi/klocków!
-          const pushDir = (pX + pW * 0.5 < craneCenterX) ? -1 : 1;
-          victim.vx = pushDir * 8.0;
-          victim.vy = Math.min(victim.vy, -2.5);
-          if (typeof victim.takeDamage === 'function') {
-            victim.takeDamage(15, { name: 'KONTENER', cause: 'IMPACT' });
-          } else {
-            victim.hp = Math.max(1, (victim.hp || 100) - 15);
+      // Znajdź twardą powierzchnię pod stopami ofiary (spodni bloczek wieży lub podłoga)
+      let surfaceBelowY = currentFloorY;
+      for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+        const rData = arena5State.gridRows.get(r);
+        if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
+          if (rData[worldCol].y >= pY + 20) {
+            surfaceBelowY = rData[worldCol].y;
+            break;
           }
-          triggerScreenShake(5);
+        }
+      }
+
+      // Sprawdź czy ofiara została dociśnięta / uwięziona między spadającym klocem a twardym podłożem/bloczkiem
+      const isCompressed = (cellBottomY + pH >= surfaceBelowY - 6) ||
+                           (feetY >= surfaceBelowY - 8 && (victim.onGround || !!victim.currentPlatform));
+
+      if (isCompressed) {
+        // ZMIAŻDŻENIE (Squash Kill) przy kontakcie z twardą powierzchnią poniżej!
+        executeSquashKill(victim);
+      } else {
+        // W powietrzu: spadający klocek ściąga postać w dół i uniemożliwia przeniknięcie w górę!
+        victim.y = cellBottomY;
+        victim.vy = Math.max(victim.vy, (crane.vy || 6.0) + 1.5);
+        victim.onGround = false;
+        victim.currentPlatform = null;
+
+        // Anuluj wszelkie zrywy jetpacka / dasha w górę
+        if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+          victim.rocketBoots.dashing = false;
+        }
+
+        if (Math.random() < 0.25) {
+          spawnRicochetSparks(pX + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
+          triggerScreenShake(3);
         }
       }
     }
@@ -940,4 +1025,138 @@ function destroyGridCell(row, col) {
   if (arena5State.crane && arena5State.crane.shape) {
     calculateTargetLandY(true);
   }
+}
+
+/**
+ * Wyznacza najkrótszy dystans od odcinka (p1->p2) do prostopadłościanu 2D (AABB)
+ */
+function distSegmentToBox(p1x, p1y, p2x, p2y, rx, ry, rw, rh) {
+  if (p1x >= rx && p1x <= rx + rw && p1y >= ry && p1y <= ry + rh) return 0;
+  if (p2x >= rx && p2x <= rx + rw && p2y >= ry && p2y <= ry + rh) return 0;
+
+  let minDist = Infinity;
+  for (let i = 0; i <= 5; i++) {
+    const t = i / 5;
+    const px = p1x + (p2x - p1x) * t;
+    const py = p1y + (p2y - p1y) * t;
+    const clampX = Math.max(rx, Math.min(rx + rw, px));
+    const clampY = Math.max(ry, Math.min(ry + rh, py));
+    const d = Math.hypot(px - clampX, py - clampY);
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
+}
+
+/**
+ * Obsługa uderzenia bronią białą w klocki wieży (Nóż, Maczeta, Toporek)
+ * Zadaje zredukowane obrażenia, umożliwiając graczowi wydostanie się z pułapki.
+ */
+export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KNIFE', hitTargets = null) {
+  if (!p1 || !p2) return false;
+
+  let baseDmg = 25;
+  if (weaponId === 'KNIFE') baseDmg = 22;
+  else if (weaponId === 'MACHETE') baseDmg = 32;
+  else if (weaponId === 'TOMAHAWK') baseDmg = 38;
+
+  const hitRadius = (width * 0.5) + 14;
+  let closestCell = null;
+  let closestDist = Infinity;
+  let closestRow = -1;
+  let closestCol = -1;
+
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+
+      const d = distSegmentToBox(p1.x, p1.y, p2.x, p2.y, cell.x, cell.y, cell.w, cell.h);
+      if (d <= hitRadius && d < closestDist) {
+        closestDist = d;
+        closestCell = cell;
+        closestRow = r;
+        closestCol = c;
+      }
+    }
+  }
+
+  if (closestCell) {
+    closestCell.hp -= baseDmg;
+    const hitX = Math.max(closestCell.x, Math.min(closestCell.x + closestCell.w, p2.x));
+    const hitY = Math.max(closestCell.y, Math.min(closestCell.y + closestCell.h, p2.y));
+
+    spawnRicochetSparks(hitX, hitY, (Math.random() - 0.5) * 6, -3, 5);
+    spawnConcreteDebris(hitX, hitY, 3);
+    triggerScreenShake(3);
+
+    if (closestCell.hp <= 0) {
+      destroyGridCell(closestRow, closestCol);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Obsługa kopnięcia w klocki wieży (kop zwykły, w powietrzu lub Spartan Kick)
+ * Zadaje zredukowane obrażenia (18-28 HP) i pozwala rozbić klocki uniemożliwiające ucieczkę.
+ */
+export function handleArena5KickHit(player, options = {}) {
+  if (!player) return false;
+
+  const isSpartan = !!options.isSpartan;
+  const kickDmg = isSpartan ? 28 : 18;
+  const facing = player.facing || 1;
+
+  const footX = options.footX !== undefined
+    ? options.footX
+    : (player.x + (player.w || 26) * 0.5 + facing * 32);
+  const footY = options.footY !== undefined
+    ? options.footY
+    : (player.y + (isSpartan ? (player.h || 72) * 0.5 : (player.h || 72) - 20));
+
+  const kickRadius = options.kickRadius || (isSpartan ? 42 : 32);
+
+  let closestCell = null;
+  let closestDist = Infinity;
+  let closestRow = -1;
+  let closestCol = -1;
+
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+
+      const clampX = Math.max(cell.x, Math.min(cell.x + cell.w, footX));
+      const clampY = Math.max(cell.y, Math.min(cell.y + cell.h, footY));
+      const d = Math.hypot(footX - clampX, footY - clampY);
+
+      if (d <= kickRadius && d < closestDist) {
+        closestDist = d;
+        closestCell = cell;
+        closestRow = r;
+        closestCol = c;
+      }
+    }
+  }
+
+  if (closestCell) {
+    closestCell.hp -= kickDmg;
+    const hitX = Math.max(closestCell.x, Math.min(closestCell.x + closestCell.w, footX));
+    const hitY = Math.max(closestCell.y, Math.min(closestCell.y + closestCell.h, footY));
+
+    spawnConcreteDebris(hitX, hitY, isSpartan ? 6 : 3);
+    spawnRicochetSparks(hitX, hitY, facing * 4, -2, 4);
+    triggerScreenShake(isSpartan ? 6 : 3);
+
+    if (closestCell.hp <= 0) {
+      destroyGridCell(closestRow, closestCol);
+    }
+    return true;
+  }
+
+  return false;
 }

@@ -676,6 +676,23 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
     }
   }
 
+  // 4. Interakcja z niszczalnymi klockami areny (np. klocki wieży w Arenie 5)
+  if (!didHitAnything && typeof getActiveArena === 'function') {
+    const curArena = getActiveArena();
+    if (curArena && typeof curArena.onKickHit === 'function') {
+      const hitBlock = curArena.onKickHit(player, {
+        isSpartan: false,
+        footX,
+        footY,
+        kickReach
+      });
+      if (hitBlock) {
+        player.hitThisSwing = true;
+        didHitAnything = true;
+      }
+    }
+  }
+
   return didHitAnything;
 }
 
@@ -1093,6 +1110,26 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
         triggerHitstop(4);
         triggerScreenShake(14);
         spawnJetpackSparks(ocx, ocy, player.facing, 8);
+        player.hitThisSwing = true;
+        return true;
+      }
+    }
+  }
+
+  // 3. Interakcja Spartan Kick z niszczalnymi klockami areny (Arena 5)
+  if (typeof getActiveArena === 'function') {
+    const curArena = getActiveArena();
+    if (curArena && typeof curArena.onKickHit === 'function') {
+      const hipX = player.x + (player.w || 26) * 0.5;
+      const footX = hipX + (player.facing || 1) * 36;
+      const footY = player.y + (player.h || 72) * 0.5;
+      const hitBlock = curArena.onKickHit(player, {
+        isSpartan: true,
+        footX,
+        footY,
+        kickReach: 60
+      });
+      if (hitBlock) {
         player.hitThisSwing = true;
         return true;
       }
