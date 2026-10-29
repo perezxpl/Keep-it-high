@@ -44,6 +44,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/shoes.js` — fasony i kolory obuwia (buty desantowe, niskie sneakersy, korki piłkarskie, wysokie trampki hi-top, wysokie glany z klamrami), renderowanie stopy i cholewki zakrywającej nogawkę spodni oraz kafelki podglądu w kreatorze.
 - `js/player/holsters.js` — system kabur, pochew i mocowań broni PMC (karabin na plecach / szynie jetpacka na pasie sling, broń boczna w kaburze udowej drop-leg holster na klamry Fastex, broń biała w pochwie przy pasie cross-draw; puste kabury/pochwy po wyjęciu broni do rąk).
 - `js/player/jetpack.js` — fasony (`JETPACK_STYLE_LIST`) i palety kolorów ognia jetpacka (`JETPACK_COLOR_LIST`, 8 kolorów), `getJetpackFlamePalette(color)` zwracające pełną paletę (base, glow, light, deep, particles) oraz `drawJetpackPreview` do kafelka w kreatorze (zakładka JETPACK).
+- `js/player/marker.js` — wyrazisty wskaźnik nad głową lokalnego gracza (`drawPlayerMarker`): świecący szewron taktyczny z plakietką [TY] i subtelną organiczną lewitacją, gwarantujący natychmiastową identyfikację postaci w ferworze walki.
 
 ### Klasy Postaci (`js/classes/`)
 - `js/classes/index.js` — rejestr klas (`CLASSES`, `CLASS_LIST`, `DEFAULT_CLASS`).

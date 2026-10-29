@@ -1371,16 +1371,18 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   ctx.save();
 
-  const hudX = isMobile ? 12 : 20;
-  const hudY = isMobile ? 14 : 18;
-  const barW = isMobile ? 172 : 220;
-  const barH = isMobile ? 16 : 18;
-  const wepBoxH = isMobile ? 32 : 36;
+  const hudX = isMobile ? 10 : 20;
+  const hudY = isMobile ? 8 : 18;
+  const barW = isMobile ? 116 : 220;
+  const barH = isMobile ? 11 : 18;
+  const wepBoxH = isMobile ? 16 : 36;
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
   const hudRight = hudX + barW + 10;
-  const hudBottom = hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + (isMobile ? 32 : 38);
-  const fadeMargin = isMobile ? 55 : 70;
+  const hudBottom = isMobile
+    ? (hudY + barH + 28)
+    : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
+  const fadeMargin = isMobile ? 40 : 70;
 
   let minHudDist = Infinity;
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
@@ -1458,8 +1460,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
 
   const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
-  const vestH = hasVest ? (isMobile ? 12 : 14) : (hasHelmet ? (isMobile ? 11 : 13) : 0);
-  const vestGap = (hasVest || hasHelmet) ? 3 : 0;
+  const vestH = hasVest ? (isMobile ? 3.5 : 14) : (hasHelmet ? (isMobile ? 3.0 : 13) : 0);
+  const vestGap = (hasVest || hasHelmet) ? (isMobile ? 1.5 : 3) : 0;
 
   const vestY = hudY;
   const hpY = hudY + vestH + vestGap;
@@ -1468,84 +1470,88 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (hasVest) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
     else ctx.rect(hudX, vestY, barW, vestH);
     ctx.fill();
 
     if (vestRatio > 0) {
-      const vFillW = Math.max(2, (barW - 3) * vestRatio);
+      const vFillW = Math.max(2, (barW - (isMobile ? 1.5 : 3)) * vestRatio);
       ctx.beginPath();
       ctx.fillStyle = '#0284c7';
-      if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
-      else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
+      if (ctx.roundRect) ctx.roundRect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6), 1);
+      else ctx.rect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6));
       ctx.fill();
     }
 
     ctx.beginPath();
     ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    ctx.lineWidth = isMobile ? 0.8 : 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
     else ctx.rect(hudX, vestY, barW, vestH);
     ctx.stroke();
 
-    ctx.save();
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = '#e0f2fe';
-    ctx.textBaseline = 'middle';
+    if (!isMobile) {
+      ctx.save();
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = '#e0f2fe';
+      ctx.textBaseline = 'middle';
 
-    ctx.textAlign = 'left';
-    ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+      ctx.textAlign = 'left';
+      ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
 
-    ctx.textAlign = 'right';
-    const helmBadge = hasHelmet ? '[HEŁM] ' : '';
-    ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
-    ctx.restore();
+      ctx.textAlign = 'right';
+      const helmBadge = hasHelmet ? '[HEŁM] ' : '';
+      ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
+      ctx.restore();
+    }
   } else if (hasHelmet) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
     else ctx.rect(hudX, vestY, barW, vestH);
     ctx.fill();
 
     ctx.beginPath();
     ctx.strokeStyle = '#06b6d4';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    ctx.lineWidth = isMobile ? 0.8 : 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, isMobile ? 1.5 : 3.5);
     else ctx.rect(hudX, vestY, barW, vestH);
     ctx.stroke();
 
-    ctx.save();
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = '#22d3ee';
-    ctx.textBaseline = 'middle';
+    if (!isMobile) {
+      ctx.save();
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = '#22d3ee';
+      ctx.textBaseline = 'middle';
 
-    ctx.textAlign = 'left';
-    ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
+      ctx.textAlign = 'left';
+      ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
 
-    ctx.textAlign = 'right';
-    ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
-    ctx.restore();
+      ctx.textAlign = 'right';
+      ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
+      ctx.restore();
+    }
   }
 
   // --- A. PASEK ZDROWIA (HP) ---
   // Ciemne, głębokie tło pustej części paska (wyraźny kontrast po utracie HP)
   ctx.beginPath();
   ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, isMobile ? 2.5 : 4);
   else ctx.rect(hudX, hpY, barW, barH);
   ctx.fill();
 
-  const innerX = hudX + 1.5;
-  const innerY = hpY + 1.5;
-  const innerW = barW - 3;
-  const innerH = barH - 3;
+  const innerX = hudX + (isMobile ? 1.0 : 1.5);
+  const innerY = hpY + (isMobile ? 1.0 : 1.5);
+  const innerW = barW - (isMobile ? 2.0 : 3.0);
+  const innerH = barH - (isMobile ? 2.0 : 3.0);
 
   // Ślad świeżo utraconego zdrowia (czerwono-koralowy pasek spływający w dół)
   if (trailRatio > hpRatio + 0.005) {
     const trailW = Math.max(2, innerW * trailRatio);
     ctx.beginPath();
     ctx.fillStyle = '#fb7185';
-    if (ctx.roundRect) ctx.roundRect(innerX, innerY, trailW, innerH, 2.5);
+    if (ctx.roundRect) ctx.roundRect(innerX, innerY, trailW, innerH, isMobile ? 1.5 : 2.5);
     else ctx.rect(innerX, innerY, trailW, innerH);
     ctx.fill();
   }
@@ -1562,7 +1568,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
     ctx.beginPath();
     ctx.fillStyle = hpColor;
-    if (ctx.roundRect) ctx.roundRect(innerX, innerY, fillW, innerH, 2.5);
+    if (ctx.roundRect) ctx.roundRect(innerX, innerY, fillW, innerH, isMobile ? 1.5 : 2.5);
     else ctx.rect(innerX, innerY, fillW, innerH);
     ctx.fill();
 
@@ -1573,38 +1579,41 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     ctx.fill();
   }
 
-  // Podziałki segmentowe co 25% szerokości paska HP
-  ctx.save();
-  ctx.strokeStyle = 'rgba(6, 9, 17, 0.45)';
-  ctx.lineWidth = 1;
-  for (let seg = 1; seg <= 3; seg++) {
-    const sx = hudX + (barW * seg) / 4;
-    ctx.beginPath();
-    ctx.moveTo(sx, hpY + 1);
-    ctx.lineTo(sx, hpY + barH - 1);
-    ctx.stroke();
+  // Podziałki segmentowe co 25% szerokości paska HP (tylko desktop)
+  if (!isMobile) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(6, 9, 17, 0.45)';
+    ctx.lineWidth = 1;
+    for (let seg = 1; seg <= 3; seg++) {
+      const sx = hudX + (barW * seg) / 4;
+      ctx.beginPath();
+      ctx.moveTo(sx, hpY + 1);
+      ctx.lineTo(sx, hpY + barH - 1);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // Wyraźna kolorowa ramka paska HP
   ctx.beginPath();
   ctx.strokeStyle = hpBorderCol;
-  ctx.lineWidth = 1.4;
-  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+  ctx.lineWidth = isMobile ? 1.0 : 1.4;
+  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, isMobile ? 2.5 : 4);
   else ctx.rect(hudX, hpY, barW, barH);
   ctx.stroke();
 
   // Etykieta tekstu wewnątrz paska HP
   ctx.save();
-  ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
+  ctx.font = isMobile ? '900 8px monospace' : 'bold 11px monospace';
   ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'left';
-  ctx.fillText('HP', hudX + 6, hpY + barH / 2 + 0.5);
+  ctx.fillText('HP', hudX + (isMobile ? 4 : 6), hpY + barH / 2 + 0.5);
 
   ctx.textAlign = 'right';
-  ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hpY + barH / 2 + 0.5);
+  const hpLabel = isMobile ? `${Math.round(curHp)}` : `${Math.round(curHp)} / ${maxHp}`;
+  ctx.fillText(hpLabel, hudX + barW - (isMobile ? 4 : 6), hpY + barH / 2 + 0.5);
   ctx.restore();
 
   // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
@@ -1637,7 +1646,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
   const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
 
-  const wepBoxY = hpY + barH + 5;
+  const wepBoxY = hpY + barH + (isMobile ? 2.5 : 5);
   const wepBoxW = barW;
 
   let cardBorderCol = wepAccent;
@@ -1657,60 +1666,62 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   ctx.beginPath();
   ctx.fillStyle = cardBgCol;
-  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
+  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, isMobile ? 2.5 : 4);
   else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
   ctx.fill();
 
   // Boczny kolorowy pasek akcentu broni po lewej stronie kafelka
   ctx.beginPath();
   ctx.fillStyle = cardBorderCol;
-  if (ctx.roundRect) ctx.roundRect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2, [3, 0, 0, 3]);
-  else ctx.rect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2);
+  const accentW = isMobile ? 2.5 : 4;
+  if (ctx.roundRect) ctx.roundRect(hudX + 1, wepBoxY + 1, accentW, wepBoxH - 2, isMobile ? [1.5, 0, 0, 1.5] : [3, 0, 0, 3]);
+  else ctx.rect(hudX + 1, wepBoxY + 1, accentW, wepBoxH - 2);
   ctx.fill();
 
   // Wyraźny kolorowy obrys kafelka broni
   ctx.beginPath();
   ctx.strokeStyle = cardBorderCol;
-  ctx.lineWidth = 1.4;
-  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
+  ctx.lineWidth = isMobile ? 1.0 : 1.4;
+  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, isMobile ? 2.5 : 4);
   else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
   ctx.stroke();
 
-  // Rysowanie wyraźnej sylwetki broni po lewej stronie karty
-  const silX = hudX + (isMobile ? 23 : 27);
-  const silY = wepBoxY + wepBoxH / 2;
-  drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
+  if (!isMobile) {
+    // Rysowanie wyraźnej sylwetki broni po lewej stronie karty (tylko desktop)
+    const silX = hudX + 27;
+    const silY = wepBoxY + wepBoxH / 2;
+    drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
+  }
 
   // Nazwa broni w wyrazistym kolorze
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
+  ctx.font = isMobile ? '900 8.5px monospace' : 'bold 11.5px monospace';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(wepName, hudX + (isMobile ? 44 : 52), wepBoxY + wepBoxH / 2);
+  ctx.fillText(wepName, hudX + (isMobile ? 6 : 52), wepBoxY + wepBoxH / 2 + 0.5);
 
   // Amunicja po prawej stronie karty
   ctx.textAlign = 'right';
-  const ammoRightX = hudX + wepBoxW - 8;
+  const ammoRightX = hudX + wepBoxW - (isMobile ? 5 : 8);
   const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
 
   if (curWep?.isMelee) {
-    // Usunięty napis "ZWARCIE" - minimalistyczna ramka dla broni białej
     if (curWepId === 'AXE' && player.axeThrown) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-      ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
+      ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 9px monospace';
       ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
       ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
     }
   } else if (curWepId === 'GRENADE') {
     const cd = (player.grenadeCooldownTimer || 0) / 60;
     const isReady = (cd <= 0);
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 11.5px monospace';
     ctx.fillStyle = isReady ? '#4ade80' : '#facc15';
     ctx.fillText(isReady ? 'READY' : `${cd.toFixed(1)}s`, ammoRightX, ammoMidY);
   } else if (isRel) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 12px monospace';
+    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 12px monospace';
     ctx.fillStyle = `rgba(250, 204, 21, ${0.65 + pulse * 0.35})`;
     ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
 
@@ -1718,34 +1729,40 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     const tmr = curAmmoObj?.reloadTimer ?? player.reloadTimer ?? 0;
     const prog = Math.max(0, Math.min(1, 1 - (tmr / dur)));
     ctx.fillStyle = '#facc15';
-    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - 3.5, (wepBoxW - 4) * prog, 2.5);
+    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - (isMobile ? 2.0 : 3.5), (wepBoxW - 4) * prog, isMobile ? 1.5 : 2.5);
   } else if (isNoAmmo) {
-    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 12.5px monospace';
     ctx.fillStyle = '#ef4444';
     ctx.fillText('NO AMMO', ammoRightX, ammoMidY);
   } else {
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 11.5px monospace';
     const resAmmoText = ` / ${rAmmo}`;
     const resW = ctx.measureText(resAmmoText).width;
     ctx.fillStyle = '#cbd5e1';
     ctx.fillText(resAmmoText, ammoRightX, ammoMidY);
 
-    ctx.font = isMobile ? 'bold 14px monospace' : 'bold 16px monospace';
+    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 16px monospace';
     ctx.fillStyle = isLow ? '#f97316' : wepAccent;
     ctx.fillText(`${cAmmo}`, ammoRightX - resW, ammoMidY);
   }
   ctx.restore();
 
-  // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
-  const metaY = wepBoxY + wepBoxH + (isMobile ? 11 : 13);
-  ctx.textAlign = 'left';
-  ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
+  if (!isMobile) {
+    // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI - TYLKO DESKTOP) ---
+    const metaY = wepBoxY + wepBoxH + 13;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
 
-  // --- D. RANGA WOJSKOWA & PROGRES XP ---
-  const rankY = metaY + (isMobile ? 13 : 15);
-  drawRankHUD(ctx, hudX + 2, rankY, barW - 4, isMobile);
+    // --- D. RANGA WOJSKOWA & PROGRES XP ---
+    const rankY = metaY + 15;
+    drawRankHUD(ctx, hudX + 2, rankY, barW - 4, false);
+  } else {
+    // Mobilny minimalizm: mikro-linia XP bezpośrednio pod kartą broni, uwalniająca 90px pionowego ekranu!
+    const rankY = wepBoxY + wepBoxH + 2.5;
+    drawRankHUD(ctx, hudX, rankY, barW, true);
+  }
 
   ctx.restore();
 

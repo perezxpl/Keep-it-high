@@ -23,6 +23,7 @@ import {
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js';
+import { drawPlayerMarker } from './player/marker.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena, DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
 import {
@@ -986,6 +987,7 @@ function draw() {
   }
 
   drawPlayer(ctx, GROUND_Y, player);
+  drawPlayerMarker(ctx, player);
 
   const playerTeam = player.team || 'CYAN';
 

@@ -289,12 +289,28 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   ctx.save();
 
   // Wymiary i ergonomiczna pozycja widgetu:
-  // Na telefonie: w prawym górnym rogu pod przyciskiem pauzy (z dala od drążków i kieszeni!)
+  // Na telefonie: minimalistyczny mikro-chip w samej górnej krawędzi (obok pauzy), uwalniający ekran
   // Na PC: w prawym dolnym rogu (standard Call of Duty HUD)
-  const widgetW = isMobile ? 134 : 156;
-  const widgetH = isMobile ? 42 : 48;
-  const posX = W - widgetW - (isMobile ? 14 : 20);
-  const posY = isMobile ? 56 : (H - widgetH - 24);
+  const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
+  const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
+  const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
+
+  const widgetW = isMobile ? (hasReadyStreak ? 88 : 74) : 156;
+  const widgetH = isMobile ? (hasReadyStreak ? 22 : 18) : 48;
+  const posX = isMobile ? (W - widgetW - 38) : (W - widgetW - 20);
+  const posY = isMobile ? 8 : (H - widgetH - 24);
+
+  // Proximity Ghosting dla prawego górnego rogu na telefonach
+  if (isMobile && player && typeof player.x === 'number') {
+    const camX = (globalCamera && typeof globalCamera.x === 'number') ? globalCamera.x : 0;
+    const camY = (globalCamera && typeof globalCamera.y === 'number') ? globalCamera.y : 0;
+    const camZoom = (globalCamera && typeof globalCamera.zoom === 'number') ? globalCamera.zoom : 1;
+    const pScreenX = (player.x + (player.w || 24) * 0.5 - camX) * camZoom;
+    const pScreenY = (player.y - camY) * camZoom;
+    if (pScreenX > W - 140 && pScreenY < 100) {
+      ctx.globalAlpha = 0.28;
+    }
+  }
 
   // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku (współrzędne CSS)
   killstreakState.hudButtonBounds = {
@@ -304,13 +320,9 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     h: widgetH
   };
 
-  const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
-  const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
-  const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
-
   // 1. TŁO WIDGETU (Modern Military Dark Glass)
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, 6);
+  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 3.5 : 6);
   else ctx.rect(posX, posY, widgetW, widgetH);
 
   const isTargetingMortar = (readyStreakId === 'MORTAR_STRIKE' && killstreakState.mortarTargeting);
@@ -322,7 +334,7 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
     ctx.fillStyle = `rgba(8, 36, 56, ${0.88 + pulse * 0.10})`;
   } else {
-    ctx.fillStyle = 'rgba(10, 18, 32, 0.90)';
+    ctx.fillStyle = 'rgba(10, 18, 32, 0.85)';
   }
   ctx.fill();
 
@@ -330,12 +342,12 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   let strokeColor = 'rgba(100, 116, 139, 0.45)';
   if (isTargetingMortar) {
     strokeColor = '#ef4444';
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = isMobile ? 1.5 : 2.4;
   } else if (hasReadyStreak) {
     strokeColor = '#00e5ff';
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = isMobile ? 1.2 : 2.0;
   } else {
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = isMobile ? 0.8 : 1.2;
   }
   ctx.strokeStyle = strokeColor;
   ctx.stroke();
@@ -343,26 +355,36 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   // 3. TREŚĆ WIDGETU
   if (hasReadyStreak && readyDef) {
     // STAN: NAGRODA GOTOWA DO UŻYCIA
-    const keyHint = isTargetingMortar
-      ? (isMobile ? '[CELOWANIE...]' : '[CELUJ MYSZĄ]')
-      : (isMobile ? '[DOTKNIJ]' : '[KLAWISZ 4]');
+    if (isMobile) {
+      // Wariant minimalistyczny mobilny: pojedyncza linijka z akcją
+      ctx.font = 'bold 8.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const chipLabel = isTargetingMortar ? '[CELUJ]' : `[${readyDef.short || readyDef.tag}] TAP`;
+      ctx.fillText(chipLabel, posX + widgetW / 2, posY + widgetH / 2);
+    } else {
+      const keyHint = isTargetingMortar
+        ? '[CELUJ MYSZĄ]'
+        : '[KLAWISZ 4]';
 
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
-    ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
+      ctx.font = 'bold 11.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
 
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
-    ctx.fillText(keyHint, posX + 10, posY + (isMobile ? 24 : 27));
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
+      ctx.fillText(keyHint, posX + 10, posY + 27);
 
-    // Ikona taktyczna po prawej
-    ctx.font = 'bold 15px monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
-    ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
+      // Ikona taktyczna po prawej
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
+    }
   } else {
     // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA
     const streak = killstreakState.currentStreak || 0;
@@ -371,35 +393,56 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     const goalTag = nextGoal ? nextGoal.tag : '[MAX]';
     const goalShort = nextGoal ? nextGoal.short : '';
 
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
-    ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 10, posY + 7);
+    if (isMobile) {
+      // Wariant minimalistyczny mobilny: mikro-napis i cienki pasek
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`SERIA ${streak}/${goalReq}`, posX + widgetW / 2, posY + 2.5);
 
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 8.5px monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`CEL: ${goalTag} ${goalShort}`, posX + 10, posY + (isMobile ? 22 : 24));
+      const barX = posX + 4;
+      const barY = posY + widgetH - 3.5;
+      const barW = widgetW - 8;
+      const barH = 1.8;
+      const progress = Math.max(0, Math.min(1, streak / goalReq));
 
-    // Ikona po prawej
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(nextGoal ? nextGoal.icon : '◆', posX + widgetW - 10, posY + (isMobile ? 18 : 20));
+      ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
+      ctx.fillRect(barX, barY, barW, barH);
 
-    // Pasek postępu
-    const barX = posX + 10;
-    const barY = posY + widgetH - (isMobile ? 7 : 8);
-    const barW = widgetW - 20;
-    const barH = 3.0;
-    const progress = Math.max(0, Math.min(1, streak / goalReq));
+      ctx.fillStyle = streak > 0 ? '#00e5ff' : 'rgba(148, 163, 184, 0.40)';
+      ctx.fillRect(barX, barY, barW * progress, barH);
+    } else {
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`SERIA: ${streak} / ${goalReq}`, posX + 10, posY + 7);
 
-    ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
-    ctx.fillRect(barX, barY, barW, barH);
+      ctx.font = 'bold 8.5px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`CEL: ${goalTag} ${goalShort}`, posX + 10, posY + 24);
 
-    ctx.fillStyle = streak > 0 ? '#00e5ff' : 'rgba(148, 163, 184, 0.40)';
-    ctx.fillRect(barX, barY, barW * progress, barH);
+      // Ikona po prawej
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(nextGoal ? nextGoal.icon : '◆', posX + widgetW - 10, posY + 20);
+
+      // Pasek postępu
+      const barX = posX + 10;
+      const barY = posY + widgetH - 8;
+      const barW = widgetW - 20;
+      const barH = 3.0;
+      const progress = Math.max(0, Math.min(1, streak / goalReq));
+
+      ctx.fillStyle = 'rgba(51, 65, 85, 0.70)';
+      ctx.fillRect(barX, barY, barW, barH);
+
+      ctx.fillStyle = streak > 0 ? '#00e5ff' : 'rgba(148, 163, 184, 0.40)';
+      ctx.fillRect(barX, barY, barW * progress, barH);
+    }
   }
 
   // 4. WSKAŹNIK CZASU AKTYWNEGO UAV (jeśli aktualnie trwa)
@@ -407,26 +450,26 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
     if (uavStreak) {
       const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
-      const badgeW = 120;
-      const badgeH = 18;
-      const badgeX = posX + (widgetW - badgeW) / 2;
-      const badgeY = isMobile ? (posY + widgetH + 6) : (posY - badgeH - 6);
+      const badgeW = isMobile ? 74 : 120;
+      const badgeH = isMobile ? 12 : 18;
+      const badgeX = isMobile ? posX : (posX + (widgetW - badgeW) / 2);
+      const badgeY = isMobile ? (posY + widgetH + 2) : (posY - badgeH - 6);
 
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, isMobile ? 2.5 : 4);
       else ctx.rect(badgeX, badgeY, badgeW, badgeH);
       ctx.fillStyle = 'rgba(6, 24, 38, 0.94)';
       ctx.fill();
 
       ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 1.0;
+      ctx.lineWidth = isMobile ? 0.8 : 1.0;
       ctx.stroke();
 
-      ctx.font = 'bold 8.5px monospace';
+      ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
       ctx.fillStyle = '#00e5ff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`[UAV AKTYWNY: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+      ctx.fillText(`[UAV: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
     }
   }
 
