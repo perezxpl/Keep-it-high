@@ -58,26 +58,30 @@ export const BLOCK_MATERIALS = {
  * r: wiersz względny OD DOŁU (0 = dolny wiersz klocka, 1 = jeden wiersz wyżej)
  */
 export const SHAPE_DEFS = [
-  // 1. I-Beam poziomy (4x1)
-  { id: 'I_HORIZ_4', w: 4, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 3, r: 0 }] },
+  // 1. I-Beam poziomy (4x1) - klasyczna długa belka Tetris
+  { id: 'I_HORIZ_4', name: 'DŹWIGAR I-4', accentColor: '#00e5ff', w: 4, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 3, r: 0 }] },
   // 2. I-Beam poziomy (3x1)
-  { id: 'I_HORIZ_3', w: 3, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }] },
+  { id: 'I_HORIZ_3', name: 'DŹWIGAR I-3', accentColor: '#38bdf8', w: 3, h: 1, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }] },
   // 3. I-Beam pionowy (1x2) - filar
-  { id: 'PILLAR_2',  w: 1, h: 2, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }] },
-  // 4. Moduł kwadratowy 2x2
-  { id: 'O_BLOCK',   w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }] },
+  { id: 'PILLAR_2',  name: 'FILAR P-2',   accentColor: '#0ea5e9', w: 1, h: 2, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }] },
+  // 4. Moduł kwadratowy 2x2 - klasyczny klocek O
+  { id: 'O_BLOCK',   name: 'KONTENER O',  accentColor: '#eab308', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }] },
   // 5. Trójnik T (3x2, płaska podstawa z wypustem pośrodku)
-  { id: 'T_BLOCK',   w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 1, r: 1 }] },
-  // 6. Schodki / Kątownik L (2x2)
-  { id: 'L_BLOCK_2', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }] },
-  // 7. Odwrócony kątownik J (2x2)
-  { id: 'J_BLOCK_2', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 1, r: 1 }] },
-  // 8. Zygzak S (3x2)
-  { id: 'S_BLOCK',   w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
-  // 9. Bunkier U (3x2 z niszą pośrodku do ukrycia się)
-  { id: 'U_BUNKER',  w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
-  // 10. Schodki 3-stopniowe (3x2)
-  { id: 'STAIRS_3',  w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] }
+  { id: 'T_BLOCK',   name: 'TRÓJNIK T',   accentColor: '#a855f7', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 1, r: 1 }] },
+  // 6. Kątownik L (3x2, klasyczny Tetris L z nawisem)
+  { id: 'L_BLOCK_3', name: 'KĄTOWNIK L',  accentColor: '#f97316', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }] },
+  // 7. Kątownik J (3x2, odwrócony Tetris J z nawisem)
+  { id: 'J_BLOCK_3', name: 'KĄTOWNIK J',  accentColor: '#3b82f6', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] },
+  // 8. Kątownik L mały (2x2)
+  { id: 'L_BLOCK_2', name: 'MODUŁ L-2',   accentColor: '#fb923c', w: 2, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }] },
+  // 9. Zygzak S (3x2)
+  { id: 'S_BLOCK',   name: 'ZYGZAK S',    accentColor: '#22c55e', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
+  // 10. Zygzak Z (3x2)
+  { id: 'Z_BLOCK',   name: 'ZYGZAK Z',    accentColor: '#ef4444', w: 3, h: 2, cells: [{ c: 1, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }] },
+  // 11. Bunkier U (3x2 z niszą pośrodku do ukrycia się)
+  { id: 'U_BUNKER',  name: 'BUNKIER U',   accentColor: '#ec4899', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
+  // 12. Schodki 3-stopniowe (3x2)
+  { id: 'STAIRS_3',  name: 'SCHODKI',     accentColor: '#14b8a6', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] }
 ];
 
 export function getGridX(col) {
@@ -134,6 +138,9 @@ export const arena5State = {
   // Płaskie platformy eksportowane do silnika fizyki gry
   platforms: [],
 
+  // Licznik unikalnych identyfikatorów figur (spójne klocki Tetris)
+  nextPieceId: 1,
+
   // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 20 kolumnach)
   spawns: [
     { x: 280, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
@@ -160,6 +167,7 @@ export function resetArena5State() {
   arena5State.minFloorRow = 0;
   arena5State.minCameraY = null;
   arena5State.flashEffectTimer = 0;
+  arena5State.nextPieceId = 1;
 
   // Inicjalizacja bazowych platform (ściany + podstawa) od 1. klatki
   rebuildInitialPlatforms();
@@ -235,12 +243,101 @@ export function rebuildInitialPlatforms() {
 }
 
 /**
- * Losuje kolejny kształt, materiał i kolumnę zrzutu
+ * Inteligentny dobór kolumny zrzutu w stylu Tetrisa:
+ * AI ocenia potencjał domknięcia linii, wypełniania nisz i unikania sztucznych iglic
+ */
+export function findSmartCranePlacement(shapeDef) {
+  const minRow = arena5State.minFloorRow || 0;
+  const maxCol = Math.max(0, COLS - shapeDef.w);
+  if (maxCol <= 0) return 0;
+
+  // Wysokość każdej kolumny w wieży
+  const colHeights = new Array(COLS).fill(minRow - 1);
+  for (let c = 0; c < COLS; c++) {
+    for (let r = arena5State.highestRowIndex + 8; r >= minRow; r--) {
+      const rowData = arena5State.gridRows.get(r);
+      if (rowData && rowData[c] && rowData[c].hp > 0) {
+        colHeights[c] = r;
+        break;
+      }
+    }
+  }
+
+  const avgHeight = colHeights.reduce((sum, h) => sum + h, 0) / COLS;
+  const scoredCols = [];
+
+  for (let c = 0; c <= maxCol; c++) {
+    let landingRow = minRow;
+    for (const cell of shapeDef.cells) {
+      const wCol = c + cell.c;
+      const hOcc = colHeights[wCol];
+      const reqRow = hOcc + 1 - cell.r;
+      if (reqRow > landingRow) {
+        landingRow = reqRow;
+      }
+    }
+
+    let score = 50;
+
+    // 1. Zapełnianie linii i potencjał detonacji wierszy (Tetris line clear)
+    for (let rRel = 0; rRel < shapeDef.h; rRel++) {
+      const wRow = landingRow + rRel;
+      let existingInRow = 0;
+      const rData = arena5State.gridRows.get(wRow);
+      if (rData) {
+        for (let colIdx = 0; colIdx < COLS; colIdx++) {
+          if (rData[colIdx] && rData[colIdx].hp > 0) existingInRow++;
+        }
+      }
+      const addedInThisRow = shapeDef.cells.filter(cell => cell.r === rRel).length;
+      const totalAfter = existingInRow + addedInThisRow;
+      if (totalAfter === COLS) {
+        score += 160; // Pełna linia w Tetrisie!
+      } else if (totalAfter >= COLS - 2) {
+        score += 60;
+      } else if (totalAfter >= COLS - 5) {
+        score += 25;
+      }
+    }
+
+    // 2. Wypełnianie dolin i płaski rozkład terenu
+    const shapeTopRow = landingRow + shapeDef.h - 1;
+    if (shapeTopRow <= avgHeight) {
+      score += 35;
+    } else if (shapeTopRow > avgHeight + 5) {
+      score -= (shapeTopRow - avgHeight) * 8;
+    }
+
+    // 3. Spasowanie z sąsiednimi kolumnami
+    const leftNeighborH = c > 0 ? colHeights[c - 1] : landingRow;
+    const rightNeighborH = (c + shapeDef.w < COLS) ? colHeights[c + shapeDef.w] : landingRow;
+    const diffLeft = Math.abs(leftNeighborH - landingRow);
+    const diffRight = Math.abs(rightNeighborH - landingRow);
+    score -= (diffLeft + diffRight) * 1.5;
+
+    // Organiczny szum losowy (0 - 15)
+    score += Math.random() * 15;
+
+    scoredCols.push({ col: c, score });
+  }
+
+  scoredCols.sort((a, b) => b.score - a.score);
+
+  // 80% szans na wybór jednej z 3 najlepszych kolumn
+  if (Math.random() < 0.80 && scoredCols.length >= 3) {
+    const topIdx = Math.floor(Math.random() * Math.min(3, scoredCols.length));
+    return scoredCols[topIdx].col;
+  }
+
+  return scoredCols[0].col;
+}
+
+/**
+ * Losuje kolejny kształt, materiał i inteligentną pozycję zrzutu
  */
 export function prepareNextCraneDrop() {
   const shapeDef = SHAPE_DEFS[Math.floor(Math.random() * SHAPE_DEFS.length)];
-  const maxCol = Math.max(0, COLS - shapeDef.w);
-  const col = Math.floor(Math.random() * (maxCol + 1));
+  const col = findSmartCranePlacement(shapeDef);
 
   // 60% stal, 20% beton, 10% wybuchowy, 10% ażurowy
   const randMat = Math.random();
@@ -250,7 +347,12 @@ export function prepareNextCraneDrop() {
   else if (randMat < 0.90) material = 'EXPLOSIVE';
   else material = 'SCAFFOLDING';
 
+  const pieceId = 'p_' + (arena5State.nextPieceId++);
+
   const shapeCells = shapeDef.cells.map(c => ({
+    pieceId,
+    shapeId: shapeDef.id,
+    accentColor: shapeDef.accentColor,
     colRel: c.c,
     rowRel: c.r, // 0 = dolny wiersz klocka, 1 = wiersz wyżej
     hp: BLOCK_MATERIALS[material].maxHp,
@@ -263,8 +365,10 @@ export function prepareNextCraneDrop() {
   arena5State.crane.warningMax = 2.2;
   arena5State.crane.cooldownTimer = 0;
   arena5State.crane.cooldownMax = 2.0;
+  arena5State.crane.pieceId = pieceId;
   arena5State.crane.shape = shapeDef;
   arena5State.crane.material = material;
+  arena5State.crane.accentColor = shapeDef.accentColor;
   arena5State.crane.col = col;
   arena5State.crane.dropX = getGridX(col);
   arena5State.crane.vy = 0;

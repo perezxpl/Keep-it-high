@@ -182,6 +182,10 @@ function onCraneBlockImpact(combatants) {
   triggerScreenShake(9);
 
   // Osadzenie komórek w siatce gridRows oraz dodanie trwałych obiektów platform
+  const pieceId = crane.pieceId || ('p_' + (arena5State.nextPieceId++));
+  const shapeId = crane.shape ? crane.shape.id : 'CUSTOM';
+  const accentColor = crane.shape ? (crane.shape.accentColor || '#eab308') : '#eab308';
+
   for (const cell of crane.shapeCells) {
     const worldCol = crane.col + cell.colRel;
     if (worldCol < 0 || worldCol >= COLS) continue;
@@ -195,6 +199,9 @@ function onCraneBlockImpact(combatants) {
     }
 
     const cellObj = {
+      pieceId,
+      shapeId,
+      accentColor,
       material: cell.material,
       hp: cell.hp,
       maxHp: cell.maxHp,
@@ -226,6 +233,7 @@ function onCraneBlockImpact(combatants) {
       isA5Block: true,
       gridRow: worldRow,
       gridCol: worldCol,
+      pieceId,
       cellRef: cellObj
     };
     cellObj.platformObj = platObj;
@@ -239,8 +247,9 @@ function onCraneBlockImpact(combatants) {
     spawnConcreteDebris(getGridX(worldCol) + CELL_SIZE * 0.5, getGridY(worldRow) + CELL_SIZE, 5);
   }
 
-  // Zastosuj grawitację (na wypadek gdyby klocek oparł się niżej) i sprawdź linie
-  applyColumnGravity(combatants);
+  // Ważne: Nowo zrzucona figura wylądowała jako sztywna całość (Tetris block) na najwyższym podparciu.
+  // Jej nawisy nie opadają – opierają się na podparciu reszty figury!
+  updateTowerApexAndSpawns();
   checkAndTriggerLineClears(combatants);
 }
 
@@ -260,54 +269,197 @@ function removePlatformForCell(cell) {
 }
 
 /**
- * Stosuje normalną grawitację dla wszystkich klocków w siatce (Cascade / Gravity Physics).
- * Jeśli jakikolwiek klocek w kolumnie straci podparcie pod sobą (np. zniszczenie pociskiem,
- * wybuch, detonacja linii), wszystkie klocki powyżej opadają w dół, dopóki nie oprą się
- * na innym klocku lub płycie fundamentowej.
+ * Dzieli wszystkie aktywne komórki w siatce na spójne klastry figur Tetris.
+ * Komórki należą do jednego klastra, jeśli mają ten sam pieceId i stykają się ze sobą.
  */
-export function applyColumnGravity(combatants = []) {
+export function getGridClusters() {
+  const minRow = arena5State.minFloorRow || 0;
+  const clusters = [];
+  const visited = new Set();
+
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (r < minRow || !rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+      const key = `${r}_${c}`;
+      if (visited.has(key)) continue;
+
+      const clusterId = clusters.length + 1;
+      const cluster = {
+        id: clusterId,
+        pieceId: cell.pieceId || `legacy_${r}_${c}`,
+        cells: [],
+        minRow: r
+      };
+
+      const q = [cell];
+      visited.add(key);
+
+      while (q.length > 0) {
+        const cur = q.shift();
+        cur._clusterId = clusterId;
+        cluster.cells.push(cur);
+        if (cur.row < cluster.minRow) cluster.minRow = cur.row;
+
+        const neighbors = [
+          { r: cur.row + 1, c: cur.col },
+          { r: cur.row - 1, c: cur.col },
+          { r: cur.row, c: cur.col - 1 },
+          { r: cur.row, c: cur.col + 1 }
+        ];
+
+        for (const n of neighbors) {
+          if (n.r < minRow || n.c < 0 || n.c >= COLS) continue;
+          const nKey = `${n.r}_${n.c}`;
+          if (visited.has(nKey)) continue;
+
+          const nRowData = arena5State.gridRows.get(n.r);
+          const nCell = nRowData ? nRowData[n.c] : null;
+          if (nCell && nCell.hp > 0 && nCell.pieceId === cluster.pieceId) {
+            visited.add(nKey);
+            q.push(nCell);
+          }
+        }
+      }
+
+      clusters.push(cluster);
+    }
+  }
+
+  return clusters;
+}
+
+/**
+ * Fizyka figur Tetris (Piece-Based Rigid Gravity):
+ * Figury (np. "L", "T", "O") stanowią spójną całość. Jeśli figura opiera się na innym bloku
+ * choćby jedną końcówką, cała figura z nawisami pozostaje w powietrzu.
+ * Dopiero gdy jej podparcie zostanie zniszczone (pociskami, wybuchem, detonacją linii),
+ * figura opada w dół jako spójny blok, dopóki nie oprze się na nowym podłożu.
+ */
+export function applyPieceGravity(combatants = []) {
   let anyBlockFell = false;
   const minRow = arena5State.minFloorRow || 0;
 
-  for (let c = 0; c < COLS; c++) {
-    let targetRow = minRow;
-    const maxR = arena5State.highestRowIndex + 6;
+  let iterations = 0;
+  const maxIterations = 20;
 
-    for (let r = minRow; r <= maxR; r++) {
-      const rowData = arena5State.gridRows.get(r);
-      const cell = rowData ? rowData[c] : null;
+  while (iterations < maxIterations) {
+    iterations++;
 
-      if (cell && cell.hp > 0) {
-        if (r > targetRow) {
-          // Klocek w kolumnie c wisi w powietrzu! Przesuń go w dół do targetRow
-          anyBlockFell = true;
-          rowData[c] = null;
+    // 1. Wyznacz spójne klastry figur w siatce
+    const clusters = getGridClusters();
+    if (clusters.length === 0) break;
 
-          let targetRowData = arena5State.gridRows.get(targetRow);
-          if (!targetRowData) {
-            targetRowData = new Array(COLS).fill(null);
-            arena5State.gridRows.set(targetRow, targetRowData);
+    // 2. BFS podparcia od dołu (od płyty podłogi minRow)
+    const supportedClusterIds = new Set();
+    const queue = [];
+
+    // Faza A: Klastry dotykające podłogi bazowej
+    for (const cluster of clusters) {
+      if (cluster.cells.some(c => c.row <= minRow)) {
+        supportedClusterIds.add(cluster.id);
+        queue.push(cluster);
+      }
+    }
+
+    // Faza B: Propagacja podparcia na klastry spoczywające na podpartych
+    while (queue.length > 0) {
+      const parent = queue.shift();
+      for (const pCell of parent.cells) {
+        const aboveRowData = arena5State.gridRows.get(pCell.row + 1);
+        const aboveCell = aboveRowData ? aboveRowData[pCell.col] : null;
+        if (aboveCell && aboveCell.hp > 0 && aboveCell._clusterId !== undefined) {
+          if (!supportedClusterIds.has(aboveCell._clusterId)) {
+            supportedClusterIds.add(aboveCell._clusterId);
+            const childCluster = clusters.find(cl => cl.id === aboveCell._clusterId);
+            if (childCluster) {
+              queue.push(childCluster);
+            }
           }
-          targetRowData[c] = cell;
+        }
+      }
+    }
 
+    // 3. Znajdź niepodparte klastry i posortuj od najniższego rzędu
+    const unsupportedClusters = clusters
+      .filter(cl => !supportedClusterIds.has(cl.id))
+      .sort((a, b) => a.minRow - b.minRow);
+
+    if (unsupportedClusters.length === 0) {
+      break;
+    }
+
+    let stepFell = false;
+
+    // 4. Każdy niepodparty klaster opada jako sztywna figura
+    for (const cluster of unsupportedClusters) {
+      let maxDrop = 999;
+
+      for (const cell of cluster.cells) {
+        let allowedDropForCell = 0;
+        let testRow = cell.row - 1;
+
+        while (testRow >= minRow) {
+          const rData = arena5State.gridRows.get(testRow);
+          const belowCell = rData ? rData[cell.col] : null;
+          if (belowCell && belowCell.hp > 0) {
+            if (belowCell._clusterId === cluster.id) {
+              allowedDropForCell++;
+              testRow--;
+              continue;
+            } else {
+              break;
+            }
+          }
+          allowedDropForCell++;
+          testRow--;
+        }
+
+        if (allowedDropForCell < maxDrop) {
+          maxDrop = allowedDropForCell;
+        }
+      }
+
+      if (maxDrop > 0 && maxDrop !== 999) {
+        stepFell = true;
+        anyBlockFell = true;
+
+        // Usuń ze starych pozycji
+        for (const cell of cluster.cells) {
+          const oldRowData = arena5State.gridRows.get(cell.row);
+          if (oldRowData && oldRowData[cell.col] === cell) {
+            oldRowData[cell.col] = null;
+          }
+        }
+
+        // Wstaw na nowe pozycje
+        for (const cell of cluster.cells) {
           const oldY = cell.y;
-          cell.row = targetRow;
-          cell.y = getGridY(targetRow);
+          const newRow = cell.row - maxDrop;
+          cell.row = newRow;
+          cell.y = getGridY(newRow);
+
+          let newRowData = arena5State.gridRows.get(newRow);
+          if (!newRowData) {
+            newRowData = new Array(COLS).fill(null);
+            arena5State.gridRows.set(newRow, newRowData);
+          }
+          newRowData[cell.col] = cell;
 
           if (cell.platformObj) {
             cell.platformObj.y = cell.y;
-            cell.platformObj.gridRow = targetRow;
+            cell.platformObj.gridRow = newRow;
           }
 
-          // Postacie stojące na opadającym klocku płynnie zjeżdżają razem z nim
           if (Array.isArray(combatants)) {
             for (const victim of combatants) {
               if (!victim || victim.isDead) continue;
-              const isVictimStandingOnThis = (victim.currentPlatform === cell.platformObj) ||
-                (victim.onGround && Math.abs(victim.y + (victim.h || 72) - oldY) <= 12 &&
+              const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
+                (victim.onGround && Math.abs(victim.y + (victim.h || 72) - oldY) <= 14 &&
                  victim.x + (victim.w || 26) > cell.x && victim.x < cell.x + cell.w);
 
-              if (isVictimStandingOnThis) {
+              if (isStandingOnCell) {
                 victim.y = cell.y - (victim.h || 72);
                 victim.vy = 0;
                 victim.onGround = true;
@@ -318,9 +470,12 @@ export function applyColumnGravity(combatants = []) {
 
           spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
         }
-        targetRow++;
+
+        supportedClusterIds.add(cluster.id);
       }
     }
+
+    if (!stepFell) break;
   }
 
   // Wyczyść całkowicie puste wiersze z mapy
@@ -352,6 +507,8 @@ export function applyColumnGravity(combatants = []) {
 
   return anyBlockFell;
 }
+
+export const applyColumnGravity = applyPieceGravity;
 
 /**
  * Sprawdza wszystkie wiersze siatki i inicjuje ostrzeżenie przed detonacją pełnych rzędów

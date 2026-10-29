@@ -228,7 +228,38 @@ function drawBaseFloor(ctx, camera) {
 }
 
 /**
- * Rysuje wszystkie ułożone klocki w wieży z wydajnym frustum cullingiem kamery
+ * Wyznacza, które krawędzie komórki stanowią zewnętrzny obrys jej figury Tetris
+ */
+export function getCellOuterEdges(cell) {
+  const pId = cell.pieceId;
+  const col = cell.col;
+  const row = cell.row;
+
+  const rowAbove = arena5State.gridRows.get(row + 1);
+  const cellAbove = rowAbove ? rowAbove[col] : null;
+  const hasTop = !!(cellAbove && cellAbove.hp > 0 && cellAbove.pieceId === pId);
+
+  const rowBelow = arena5State.gridRows.get(row - 1);
+  const cellBelow = rowBelow ? rowBelow[col] : null;
+  const hasBottom = !!(cellBelow && cellBelow.hp > 0 && cellBelow.pieceId === pId);
+
+  const rowData = arena5State.gridRows.get(row);
+  const cellLeft = (col > 0 && rowData) ? rowData[col - 1] : null;
+  const hasLeft = !!(cellLeft && cellLeft.hp > 0 && cellLeft.pieceId === pId);
+
+  const cellRight = (col < COLS - 1 && rowData) ? rowData[col + 1] : null;
+  const hasRight = !!(cellRight && cellRight.hp > 0 && cellRight.pieceId === pId);
+
+  return {
+    top: !hasTop,
+    bottom: !hasBottom,
+    left: !hasLeft,
+    right: !hasRight
+  };
+}
+
+/**
+ * Rysuje wszystkie ułożone klocki w wieży z wyrazistym obrysem figur i frustum cullingiem
  */
 function drawSettledBlocks(ctx, camera) {
   const camY = camera ? camera.y : 0;
@@ -243,52 +274,50 @@ function drawSettledBlocks(ctx, camera) {
       if (!cell || cell.hp <= 0) continue;
       if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
 
-      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp);
+      const outerEdges = getCellOuterEdges(cell);
+      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, cell.accentColor);
     }
   }
 }
 
 /**
- * Rysuje pojedynczy kafelek kontenera wg jego materiału i stanu uszkodzeń
+ * Rysuje pojedynczy kafelek kontenera wg jego materiału, stanu uszkodzeń oraz obwódek figury
  */
-function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp) {
+export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges = null, accentColor = null) {
   ctx.save();
 
+  const edges = outerEdges || { top: true, bottom: true, left: true, right: true };
+  const borderCol = accentColor || '#eab308';
+
+  // 1. WYPEŁNIENIE I TEKSTURA PRZEMYSŁOWA MATERIAŁU
   if (material === 'STEEL') {
     // Ciężki stalowy kontener ISO
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(x, y, w, h);
 
-    // Wewnętrzne wytłoczenia blachy ryflowanej / profilowanej
+    // Wewnętrzne wytłoczenia blachy ryflowanej
     ctx.fillStyle = '#0f172a';
     for (let rx = x + 12; rx < x + w - 12; rx += 16) {
       ctx.fillRect(rx, y + 10, 8, h - 20);
     }
 
-    // Wzmocniona rama zewnętrzna i narożniki ISO
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(x + 2, y + 2, 10, 10);
-    ctx.fillRect(x + w - 12, y + 2, 10, 10);
-    ctx.fillRect(x + 2, y + h - 12, 10, 10);
-    ctx.fillRect(x + w - 12, y + h - 12, 10, 10);
+    // Delikatne szwy wewnętrzne na łączeniach komórek tej samej figury
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.45)';
+    ctx.lineWidth = 1;
+    if (!edges.top) { ctx.beginPath(); ctx.moveTo(x + 4, y); ctx.lineTo(x + w - 4, y); ctx.stroke(); }
+    if (!edges.bottom) { ctx.beginPath(); ctx.moveTo(x + 4, y + h); ctx.lineTo(x + w - 4, y + h); ctx.stroke(); }
+    if (!edges.left) { ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + h - 4); ctx.stroke(); }
+    if (!edges.right) { ctx.beginPath(); ctx.moveTo(x + w, y + 4); ctx.lineTo(x + w, y + h - 4); ctx.stroke(); }
 
     // Oznaczenie taktyczne
     ctx.font = '900 8.5px monospace';
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.75)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.fillText('PMC-100', x + 14, y + 22);
 
   } else if (material === 'CONCRETE_CRACKED') {
     // Pęknięty żelbet
     ctx.fillStyle = '#334155';
     ctx.fillRect(x, y, w, h);
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
 
     // Widoczne pęknięcia
     ctx.strokeStyle = '#0f172a';
@@ -312,10 +341,6 @@ function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp) {
     // Czerwona skrzynia paliwowa / amunicyjna
     ctx.fillStyle = '#7f1d1d';
     ctx.fillRect(x, y, w, h);
-
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
 
     // Żółto-czarne skośne pasy na krawędziach
     drawHazardStripes(ctx, x + 4, y + 4, w - 8, 12);
@@ -355,20 +380,63 @@ function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp) {
       ctx.lineTo(x + w, gy);
       ctx.stroke();
     }
-
-    ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   }
 
-  // Wskaźnik uszkodzeń (jeśli zdrowie < maxHp)
+  // 2. WYRAZISTA OBWÓDKA FIGURY (TETRIS SHAPE CONTOUR)
+  // Rysowana wyłącznie na zewnętrznych krawędziach figury!
+  ctx.strokeStyle = borderCol;
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'square';
+
+  if (edges.top) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + 1.75);
+    ctx.lineTo(x + w, y + 1.75);
+    ctx.stroke();
+  }
+  if (edges.bottom) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + h - 1.75);
+    ctx.lineTo(x + w, y + h - 1.75);
+    ctx.stroke();
+  }
+  if (edges.left) {
+    ctx.beginPath();
+    ctx.moveTo(x + 1.75, y);
+    ctx.lineTo(x + 1.75, y + h);
+    ctx.stroke();
+  }
+  if (edges.right) {
+    ctx.beginPath();
+    ctx.moveTo(x + w - 1.75, y);
+    ctx.lineTo(x + w - 1.75, y + h);
+    ctx.stroke();
+  }
+
+  // 3. NAROŻNIKI KONTENERA ISO NA ZEWNĘTRZNYCH ROGACH FIGURY
+  ctx.fillStyle = borderCol;
+  const cSize = 7;
+  if (edges.top && edges.left) {
+    ctx.fillRect(x + 2, y + 2, cSize, cSize);
+  }
+  if (edges.top && edges.right) {
+    ctx.fillRect(x + w - cSize - 2, y + 2, cSize, cSize);
+  }
+  if (edges.bottom && edges.left) {
+    ctx.fillRect(x + 2, y + h - cSize - 2, cSize, cSize);
+  }
+  if (edges.bottom && edges.right) {
+    ctx.fillRect(x + w - cSize - 2, y + h - cSize - 2, cSize, cSize);
+  }
+
+  // 4. Wskaźnik uszkodzeń (jeśli zdrowie < maxHp)
   if (hp < maxHp) {
     const dmgRatio = Math.max(0, hp / maxHp);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-    ctx.fillRect(x + 10, y + h - 10, w - 20, 5);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(x + 10, y + h - 9, w - 20, 5);
 
     ctx.fillStyle = dmgRatio > 0.4 ? '#22c55e' : '#ef4444';
-    ctx.fillRect(x + 10, y + h - 10, (w - 20) * dmgRatio, 5);
+    ctx.fillRect(x + 10, y + h - 9, (w - 20) * dmgRatio, 5);
   }
 
   ctx.restore();
@@ -385,6 +453,7 @@ function drawCraneWarning(ctx, camera) {
   const startX = getGridX(crane.col);
   const totalW = crane.shape.w * CELL_SIZE;
   const landY = crane.targetLandY;
+  const accent = crane.accentColor || crane.shape.accentColor || '#ef4444';
 
   ctx.save();
 
@@ -408,7 +477,7 @@ function drawCraneWarning(ctx, camera) {
   ctx.lineTo(startX + totalW, landY);
   ctx.stroke();
 
-  // 2. Pulsujący rzut lądowania klocka (Footprint)
+  // 2. Pulsujący rzut lądowania klocka z obrysem figury (Footprint)
   for (const cell of crane.shapeCells) {
     const fx = getGridX(crane.col + cell.colRel);
     const fy = landY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
@@ -416,25 +485,46 @@ function drawCraneWarning(ctx, camera) {
     ctx.fillStyle = `rgba(239, 68, 68, ${0.22 * pulse})`;
     ctx.fillRect(fx + 2, fy + 2, CELL_SIZE - 4, CELL_SIZE - 4);
 
-    ctx.strokeStyle = `rgba(248, 113, 113, ${pulse})`;
-    ctx.lineWidth = 2;
+    const outerEdges = {
+      top: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1),
+      bottom: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1),
+      left: !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel),
+      right: !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel)
+    };
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
     ctx.setLineDash([6, 6]);
-    ctx.strokeRect(fx + 2, fy + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+
+    if (outerEdges.top) {
+      ctx.beginPath(); ctx.moveTo(fx, fy + 1); ctx.lineTo(fx + CELL_SIZE, fy + 1); ctx.stroke();
+    }
+    if (outerEdges.bottom) {
+      ctx.beginPath(); ctx.moveTo(fx, fy + CELL_SIZE - 1); ctx.lineTo(fx + CELL_SIZE, fy + CELL_SIZE - 1); ctx.stroke();
+    }
+    if (outerEdges.left) {
+      ctx.beginPath(); ctx.moveTo(fx + 1, fy); ctx.lineTo(fx + 1, fy + CELL_SIZE); ctx.stroke();
+    }
+    if (outerEdges.right) {
+      ctx.beginPath(); ctx.moveTo(fx + CELL_SIZE - 1, fy); ctx.lineTo(fx + CELL_SIZE - 1, fy + CELL_SIZE); ctx.stroke();
+    }
+
     ctx.setLineDash([]);
   }
 
-  // 3. Etykieta ostrzegawcza
+  // 3. Etykieta ostrzegawcza ze wskazaniem nazwy figury
   ctx.font = '900 13px monospace';
   ctx.fillStyle = '#ef4444';
   ctx.textAlign = 'center';
   const labelY = Math.min(landY - 16, camY + 120);
-  ctx.fillText(`[ZRZUT: ${(crane.timer).toFixed(1)}s // UWAGA: ZMIAŻDŻENIE]`, startX + totalW * 0.5, labelY);
+  const shapeLabel = crane.shape.name ? `[ZRZUT: ${crane.shape.name} // ${(crane.timer).toFixed(1)}s]` : `[ZRZUT: ${(crane.timer).toFixed(1)}s // ZMIAŻDŻENIE]`;
+  ctx.fillText(shapeLabel, startX + totalW * 0.5, labelY);
 
   ctx.restore();
 }
 
 /**
- * Rysuje spadający klocek z suwnicy
+ * Rysuje spadający klocek z suwnicy z kompletnym obrysem figury
  */
 function drawFallingCraneBlock(ctx) {
   const crane = arena5State.crane;
@@ -449,7 +539,14 @@ function drawFallingCraneBlock(ctx) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fillRect(bx, by - 12, CELL_SIZE, 12);
 
-    drawSingleBlock(ctx, bx, by, CELL_SIZE, CELL_SIZE, cell.material, cell.hp, cell.maxHp);
+    const outerEdges = {
+      top: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1),
+      bottom: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1),
+      left: !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel),
+      right: !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel)
+    };
+
+    drawSingleBlock(ctx, bx, by, CELL_SIZE, CELL_SIZE, cell.material, cell.hp, cell.maxHp, outerEdges, crane.accentColor || crane.shape?.accentColor);
   }
   ctx.restore();
 }
