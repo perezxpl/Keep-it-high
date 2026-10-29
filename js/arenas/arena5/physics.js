@@ -1106,8 +1106,8 @@ export function resolveArena5BlockPenetration(combatants) {
     const headY = pY;
 
     // Zakres kolumn, które może przecinać model postaci
-    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX + 2) / CELL_SIZE)));
-    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW - 2) / CELL_SIZE)));
+    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor(pX / CELL_SIZE)));
+    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW) / CELL_SIZE)));
 
     for (let c = colLeft; c <= colRight; c++) {
       for (const [r, rowData] of arena5State.gridRows.entries()) {
@@ -1120,9 +1120,9 @@ export function resolveArena5BlockPenetration(combatants) {
         const cellTop = cell.y;
         const cellBottom = cell.y + cell.h;
 
-        // Czy bounding box postaci przecina tę komórkę?
-        const overlapX = (p.x + 2 < cellRight) && (p.x + pW - 2 > cellLeft);
-        const overlapY = (p.y < cellBottom - 2) && (feetY > cellTop + 4);
+        // Czy bounding box postaci przecina tę komórkę siatki?
+        const overlapX = (p.x < cellRight) && (p.x + pW > cellLeft);
+        const overlapY = (p.y < cellBottom) && (feetY > cellTop);
 
         if (overlapX && overlapY) {
           // Postać wniknęła w solidny blok!
@@ -1142,9 +1142,6 @@ export function resolveArena5BlockPenetration(combatants) {
           const cellBelow = rowBelow ? rowBelow[c] : null;
           const isBelowClear = (r > minRow) ? (!cellBelow || cellBelow.hp <= 0) : true;
 
-          const isLeftClear = (c > 0) && (!rowData[c - 1] || rowData[c - 1].hp <= 0);
-          const isRightClear = (c < COLS - 1) && (!rowData[c + 1] || rowData[c + 1].hp <= 0);
-
           // 1. Kolizja sufitowa: głowa uderza od spodu klocka podczas ruchu w górę
           if (p.vy < 0 && penBottom <= 35 && isBelowClear) {
             p.y = cellBottom;
@@ -1154,9 +1151,8 @@ export function resolveArena5BlockPenetration(combatants) {
             }
           }
           // 2. Lądowanie / stabilne stanie na szczycie klocka:
-          // Płynna depenetracja na szczyt jeśli powyżej jest pusto, stopy lekko wniknęły w blok
-          // lub postać porusza się w poziomie / opada na blok
-          else if (isAboveClear && (penTop <= 18 || (!isLeftClear && !isRightClear && isBelowClear === false) || (p.vy >= -1.0 && penTop < penBottom))) {
+          // Wyłącznie gdy powyżej jest pusto, a stopy wniknęły minimalnie od góry (penTop <= 18)
+          else if (isAboveClear && (penTop <= 18 && (p.vy >= -1.0 || penTop <= 8))) {
             p.y = cellTop - pH;
             if (p.vy > 0) p.vy = 0;
             p.onGround = true;
@@ -1164,42 +1160,15 @@ export function resolveArena5BlockPenetration(combatants) {
             p.currentPlatform = cell.platformObj;
             p.currentGroundY = cellTop;
           }
-          // 3. Kolizja boczna (uderzenie w ścianę pionową):
+          // 3. Kolizja boczna (uderzenie w ścianę pionową przy wbieganiu):
+          // Blokuje przenikanie przez klocki od lewej/prawej strony
           else {
-            if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
+            if (penLeft <= penRight) {
               p.x = cellLeft - pW;
               if (p.vx > 0) p.vx = 0;
-            } else if (isRightClear) {
+            } else {
               p.x = cellRight;
               if (p.vx < 0) p.vx = 0;
-            } else if (isAboveClear) {
-              // Boki zablokowane, ale góra wolna: wypchnij bezpiecznie na górną krawędź tego klocka
-              p.y = cellTop - pH;
-              if (p.vy > 0) p.vy = 0;
-              p.onGround = true;
-              p.isJumping = false;
-              p.currentPlatform = cell.platformObj;
-              p.currentGroundY = cellTop;
-            } else if (isBelowClear) {
-              // Boki i góra zablokowane: wypchnij w dół
-              p.y = cellBottom;
-              if (p.vy < 0) p.vy = 0.5;
-            } else {
-              // Obie strony, góra i dół zablokowane: minimalna lokalna korekta (NIGDY teleport do szczytu wieży!)
-              const minPen = Math.min(penTop, penBottom, penLeft, penRight);
-              if (minPen === penTop) {
-                p.y = cellTop - pH;
-                if (p.vy > 0) p.vy = 0;
-              } else if (minPen === penBottom) {
-                p.y = cellBottom;
-                if (p.vy < 0) p.vy = 0.5;
-              } else if (minPen === penLeft) {
-                p.x = cellLeft - pW;
-                if (p.vx > 0) p.vx = 0;
-              } else {
-                p.x = cellRight;
-                if (p.vx < 0) p.vx = 0;
-              }
             }
           }
         }

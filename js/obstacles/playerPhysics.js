@@ -440,10 +440,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Twarda blokada przechodzenia przez zawalone klocki leżące (Solid Obstacles)
+  // Twarda blokada przechodzenia przez zawalone klocki leżące oraz segmenty wieży (Solid Obstacles & Tower Blocks)
   for (const plat of ARENA_PLATFORMS) {
     if (!plat || plat.solid === false || plat.isWall || plat.oneWay) continue;
-    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock);
+    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
     if (!isObstacleToBlock) continue;
     if (p.currentPlatform === plat) continue;
 
