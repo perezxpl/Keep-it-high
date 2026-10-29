@@ -6,6 +6,7 @@ import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide, th
 import { CLASSES } from './classes/index.js';
 import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/striker.js';
 import { triggerEnforcerBlastJump } from './classes/enforcer.js';
+import { evaluateBotUnstuck } from './botNavigation.js';
 import { START_X, CONFIG } from './config.js';
 import { shootWeapon } from './weapons.js';
 import { WEAPONS } from './weapons/transform.js';
@@ -420,6 +421,11 @@ export function createBotInstance(index = 0, isActive = undefined) {
     strikerDashCooldown: 0,
     enforcerBlastCooldown: 0,
     raptorHoverTimer: 0,
+    _lastNavX: 0,
+    _lastNavY: 0,
+    _stuckTimer: 0,
+    _overheadEscapeDir: 0,
+    _overheadEscapeLockTimer: 0,
     botKeys: instanceKeys
   });
   return instance;
@@ -847,6 +853,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const hipY = botTarget.y + botTarget.h - 40 + (botTarget.pelvisY || 0);
   const ballDistFromHip = hasBall ? Math.hypot(ball.x - hipX, ball.y - hipY) : Infinity;
 
+  // Inteligentna ewaluacja nawigacji pod przeszkodami i figurami (w każdej klatce)
+  const currentTargetX = (typeof botTarget.lastTargetX === 'number') ? botTarget.lastTargetX : (targetEnemy ? (targetEnemy.x + targetEnemy.w / 2) : botCenterX);
+  const isUnderFigure = evaluateBotUnstuck(botTarget, bKeys, currentTargetX, targetY, currentArenaId, groundY, spawnGrass);
+
   if (botTarget.decisionTimer <= 0) {
     const dRange = Math.max(1, diffCfg.decisionMax - diffCfg.decisionMin);
     botTarget.decisionTimer = Math.floor(Math.random() * dRange + diffCfg.decisionMin);
@@ -874,6 +884,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     } else {
       targetX = isA2 ? 2000 : (isA3 ? 2200 : botCenterX);
     }
+    botTarget.lastTargetX = targetX;
+    botTarget.lastTargetY = targetY;
 
     // Ewakuacja przed falą kwasu w Arenie 2
     if (isA2 && ACID_SURGE_SYSTEM && (ACID_SURGE_SYSTEM.state === 'WARNING' || ACID_SURGE_SYSTEM.state === 'RISING' || ACID_SURGE_SYSTEM.state === 'FLOODED')) {
@@ -907,22 +919,24 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (a5.recyclerY < 1200 && botTarget.y > a5.recyclerY - 120) {
         bKeys.up = true;
       }
-      if (botTarget.onGround && !botTarget.isJumping && Math.abs(botTarget.vx || 0) < 0.25 && (bKeys.left || bKeys.right)) {
+      if (!isUnderFigure && botTarget.onGround && !botTarget.isJumping && Math.abs(botTarget.vx || 0) < 0.25 && (bKeys.left || bKeys.right)) {
         bKeys.up = true;
       }
     }
 
-    // Martwa strefa (deadzone)
+    // Martwa strefa (deadzone) - pomijana jeśli bot ucieka spod figury
     const diffX = targetX - botCenterX;
-    if (Math.abs(diffX) < 35) {
-      bKeys.left = false;
-      bKeys.right = false;
-    } else if (diffX > 0) {
-      bKeys.right = true;
-      bKeys.left = false;
-    } else {
-      bKeys.left = true;
-      bKeys.right = false;
+    if (!isUnderFigure) {
+      if (Math.abs(diffX) < 35) {
+        bKeys.left = false;
+        bKeys.right = false;
+      } else if (diffX > 0) {
+        bKeys.right = true;
+        bKeys.left = false;
+      } else {
+        bKeys.left = true;
+        bKeys.right = false;
+      }
     }
 
     // Bezpieczeństwo krawędzi platform: zapobieganie spadaniu w kwas lub głęboką rzekę
@@ -946,8 +960,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       }
     }
 
-    // Nawigacja wertykalna: wspinaczka
-    if (targetY < botTarget.y - 48) {
+    // Nawigacja wertykalna: wspinaczka (zablokowana pod figurami)
+    if (targetY < botTarget.y - 48 && !isUnderFigure) {
       if (!botTarget.isJumping && !botTarget.isSliding) {
         if (isEnforcer && botTarget.enforcerBlastCooldown <= 0 && botTarget.onGround) {
           // Kolos wykonuje potężny wyskok pneumatyczny z kruszeniem ziemi na wyższą platformę
@@ -1121,8 +1135,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       }
     }
 
-    // C. Wspinaczka ku platformie znajdującej się powyżej
-    if (targetY < botTarget.y - 45) {
+    // C. Wspinaczka ku platformie znajdującej się powyżej (zablokowana pod figurami)
+    if (targetY < botTarget.y - 45 && !isUnderFigure) {
       wantsJetpack = true;
     }
 
@@ -1136,7 +1150,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     if (isRaptor && diffCfg.kitingEnabled !== false) {
       if (targetEnemy && !targetEnemy.isDead) {
         // Kiting w zwarciu: ucieczka w górę i w tył przed wrogiem
-        if (distToEnemy < 125) {
+        if (distToEnemy < 125 && !isUnderFigure) {
           bKeys.up = true;
           wantsJetpack = true;
           if (targetEnemy.x > botCenterX) {
@@ -1148,14 +1162,14 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           }
         }
         // Utrzymywanie przewagi wysokości i zawis
-        else if (botTarget.y > targetEnemy.y - 110) {
+        else if (botTarget.y > targetEnemy.y - 110 && !isUnderFigure) {
           wantsJetpack = true;
         }
-        if (botTarget.y < targetEnemy.y - 60 && (botTarget.vy || 0) > 0.1) {
+        if (botTarget.y < targetEnemy.y - 60 && (botTarget.vy || 0) > 0.1 && !isUnderFigure) {
           botTarget.vy = Math.min(botTarget.vy * 0.45, 0.35);
           wantsJetpack = true;
         }
-      } else if (hasBall && ball.y < groundY - 60 && ballDistFromHip < 280) {
+      } else if (hasBall && ball.y < groundY - 60 && ballDistFromHip < 280 && !isUnderFigure) {
         bKeys.up = true;
         wantsJetpack = true;
       }

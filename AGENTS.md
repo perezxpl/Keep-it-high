@@ -94,8 +94,9 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/lighting/renderer.js` — renderowanie dynamicznych rozbłysków światła (`drawLighting`, tryb `lighter`), pierścieni fali uderzeniowej (`drawShockwaves`) oraz ekranowej winiety kinowej (`drawCinematicVignette`).
 - `js/lighting/index.js` — główny punkt wejścia i eksport modułu oświetlenia.
 
-### Sztuczna Inteligencja i Boty (`js/bot.js`)
+### Sztuczna Inteligencja i Boty (`js/bot.js`, `js/botNavigation.js`)
 - `js/bot.js` — konfiguracja profili botów bojowych (`BOT_PROFILES`, `BOT_CLASS_PROFILES`, `BOT_NAMES_BY_CLASS`), fabryka instancji botów (`createBotInstance`), pula aktywnych botów (`bots`, `botCount`, `setBotCount`, `getBotCount`, `getActiveBots`), automatyczny dobór zrównoważonych klas (`balanceBotClasses`, `applyBotClassAndConfig`), logika sztucznej inteligencji (`updateBotBrain` z celowaniem wielopodmiotowym, unikalnymi umiejętnościami specjalnymi klas: Blast Jump dla Enforcera, Rocket Boots Air/Ground Dash dla Strikera, kiting/hover dla Raptora) oraz stopnie trudności (`setBotDifficulty`).
+- `js/botNavigation.js` — system nawigacji i uwalniania botów spod figur i konstrukcji (`getOverheadStructureInfo`, `evaluateBotUnstuck`): detekcja klocków wieży Tetrisa w Arenie 5 (`arena5State.gridRows`), opadającej suwnicy, platform (`ARENA_PLATFORMS`) i stropów tuneli, tłumienie uderzania głową w sufit (`bKeys.up = false`), automatyczny wybór otwartej kolumny ewakuacji, kucanie przy niskim prześwicie oraz dynamiczne przełamywanie zacięcia (Rocket Boots Ground Dash dla Strikera, impuls pneumatyczny dla Enforcera, odwracanie wektora ucieczki).
 
 ### Rozgrywka Sieciowa i P2P (`js/network.js`, `js/networkMatch.js`, `js/networkUI.js`)
 - `js/network.js` — architektura P2P WebRTC (PeerJS), synchronizacja pozycji graczy i botów, autorytatywna synchronizacja obrażeń (`deal_dmg`), rzutów granatów, stanu deathmatch, kwasu na Arenie 2 oraz eliminacji (`kill_event`).
