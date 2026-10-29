@@ -62,8 +62,8 @@ export function drawArena5Foreground(ctx, camera) {
   // 4. Ułożone klocki w wieży
   drawSettledBlocks(ctx, camera);
 
-  // 5. Cień wyłącznie na górną krawędź bloczków pod spadającymi klockami
-  drawLandingSurfaceShadow(ctx);
+  // 5. Czerwona migająca z poświatą linia na górnej krawędzi bloczków pod spadającymi klockami
+  drawLandingWarningLine(ctx);
 
   // 6. Spadający kontener (bez wskaźnika opadania)
   drawFallingCraneBlock(ctx);
@@ -443,9 +443,10 @@ export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges
 }
 
 /**
- * Rysuje cień wyłącznie na górną krawędź bloczków (lub podłogi), na które spadną dane klocki
+ * Rysuje czerwoną migającą z poświatą linię na górnej krawędzi bloczków (lub podłogi),
+ * na które spadną dane segmenty opadającej figury.
  */
-function drawLandingSurfaceShadow(ctx) {
+function drawLandingWarningLine(ctx) {
   const crane = arena5State.crane;
   if (!crane || crane.phase !== 'FALLING' || !crane.shape) return;
 
@@ -453,8 +454,6 @@ function drawLandingSurfaceShadow(ctx) {
   const currentFloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
     ? arena5State.currentFloorY
     : BASE_FLOOR_Y;
-
-  ctx.save();
 
   // Sprawdź każdą unikalną kolumnę zajmowaną przez spadający kształt i znajdź jej dolną komórkę
   const colBottomMap = new Map();
@@ -464,6 +463,10 @@ function drawLandingSurfaceShadow(ctx) {
       colBottomMap.set(wCol, cell);
     }
   }
+
+  const now = performance.now();
+
+  ctx.save();
 
   for (const [wCol, bottomCell] of colBottomMap.entries()) {
     if (wCol < 0 || wCol >= COLS) continue;
@@ -483,36 +486,72 @@ function drawLandingSurfaceShadow(ctx) {
     const cellBottomY = crane.currentY + (crane.shape.h - bottomCell.rowRel) * CELL_SIZE;
     const distToSurface = surfaceY - cellBottomY;
 
-    // Cień pojawia się na górnej krawędzi gdy klocek zbliża się z góry (w zasięgu do 600 px)
-    if (distToSurface >= -5 && distToSurface <= 600) {
-      const proximity = Math.max(0, Math.min(1, 1 - (distToSurface / 450)));
-      const shadowAlpha = 0.35 + 0.55 * proximity; // od 0.35 do 0.90
-      const shadowH = Math.max(7, Math.min(14, 14 - 6 * proximity)); // wyrazisty pasek cienia 8-14px
+    // Czerwona migająca linia pojawia się na górnej krawędzi gdy klocek opada
+    if (distToSurface >= -10 && distToSurface <= 1200) {
+      const proximity = Math.max(0, Math.min(1, 1 - (distToSurface / 900)));
+      // Im bliżej uderzenia, tym szybsze i intensywniejsze miganie (od 6 Hz do 14 Hz)
+      const pulseRate = 0.014 + 0.018 * proximity;
+      const blink = 0.35 + 0.65 * Math.pow(Math.abs(Math.sin(now * pulseRate)), 1.4);
+      const intensity = (0.50 + 0.50 * proximity) * blink;
 
       const bx = getGridX(wCol);
       const bw = CELL_SIZE;
 
-      // Gradient cienia wyłącznie na górną krawędź bloczka
-      const grad = ctx.createLinearGradient(bx, surfaceY, bx, surfaceY + shadowH);
-      grad.addColorStop(0, `rgba(0, 0, 0, ${shadowAlpha})`);
-      grad.addColorStop(0.45, `rgba(0, 0, 0, ${shadowAlpha * 0.5})`);
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      // 1. Pionowa poświata (Red Glow Aura) nad i pod krawędzią
+      const glowH = 14 + 6 * proximity;
+      const glowGrad = ctx.createLinearGradient(bx, surfaceY - glowH, bx, surfaceY + glowH);
+      glowGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
+      glowGrad.addColorStop(0.3, `rgba(239, 68, 68, ${0.18 * intensity})`);
+      glowGrad.addColorStop(0.5, `rgba(255, 30, 30, ${0.45 * intensity})`);
+      glowGrad.addColorStop(0.7, `rgba(239, 68, 68, ${0.18 * intensity})`);
+      glowGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
 
-      ctx.fillStyle = grad;
-      ctx.fillRect(bx, surfaceY, bw, shadowH);
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(bx, surfaceY - glowH, bw, glowH * 2);
 
-      // Ciemna, ostra krawędź stykowa na samej górnej krawędzi bloczka
-      ctx.strokeStyle = `rgba(0, 0, 0, ${shadowAlpha * 0.95})`;
-      ctx.lineWidth = 2.5;
+      // 2. Warstwa poświaty zewnętrznej
+      ctx.strokeStyle = `rgba(239, 68, 68, ${0.40 * intensity})`;
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(bx + 1, surfaceY + 1.25);
-      ctx.lineTo(bx + bw - 1, surfaceY + 1.25);
+      ctx.moveTo(bx, surfaceY);
+      ctx.lineTo(bx + bw, surfaceY);
+      ctx.stroke();
+
+      // 3. Warstwa intensywnego czerwonego lasera z cieniem neonowym
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 8 * intensity;
+      ctx.strokeStyle = `rgba(255, 50, 50, ${0.85 * intensity})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(bx, surfaceY);
+      ctx.lineTo(bx + bw, surfaceY);
+      ctx.stroke();
+
+      // 4. Rdzeń linii - gorący jasny środek
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255, 230, 230, ${0.95 * intensity})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, surfaceY);
+      ctx.lineTo(bx + bw, surfaceY);
+      ctx.stroke();
+
+      // 5. Taktyczne znaczniki krawędziowe (małe ograniczniki na końcach kolumny)
+      ctx.strokeStyle = `rgba(255, 100, 100, ${0.80 * intensity})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx, surfaceY - 5);
+      ctx.lineTo(bx, surfaceY + 5);
+      ctx.moveTo(bx + bw, surfaceY - 5);
+      ctx.lineTo(bx + bw, surfaceY + 5);
       ctx.stroke();
     }
   }
 
   ctx.restore();
 }
+
+const drawLandingSurfaceShadow = drawLandingWarningLine;
 
 // Wskaźnik opadania klocków został usunięty na życzenie użytkownika (brak laserów i obrysu)
 function drawCraneWarning(ctx, camera) {
