@@ -15,6 +15,7 @@ import {
   ARENA_RIGHT,
   ARENA_WIDTH,
   BASE_FLOOR_Y,
+  MAX_TOWER_ROWS,
   BLOCK_MATERIALS,
   getGridX,
   getGridY,
@@ -60,22 +61,21 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
 }
 
 /**
- * Obsługa cyklu życia suwnicy: Ostrzeżenie (2.2s) -> Płynny zrzut -> Uderzenie -> Cooldown (2.0s)
+ * Obsługa cyklu życia suwnicy: Płynne opadanie oparte na dt -> Uderzenie -> Krótki Cooldown (0.85s)
  */
 function updateCrane(dt, combatants) {
   const crane = arena5State.crane;
   if (!crane || !crane.shape) return;
 
   if (crane.phase === 'WARNING') {
-    crane.timer -= dt;
-    if (crane.timer <= 0) {
-      crane.phase = 'FALLING';
-      crane.vy = 4.0; // Płynny start opadania
-    }
+    // Usunięty wskaźnik/ostrzeżenie: natychmiastowe przejście do płynnego opadania
+    crane.phase = 'FALLING';
+    crane.vy = 2.5;
   } else if (crane.phase === 'FALLING') {
-    // Płynne, czytelne przyspieszenie zrzutu
-    crane.vy = Math.min(22.0, crane.vy + 0.70);
-    crane.currentY += crane.vy;
+    // Płynne opadanie z przyspieszeniem fizycznym niezależnym od FPS (dt)
+    const fallAccel = 32.0;
+    crane.vy = Math.min(19.0, crane.vy + fallAccel * dt);
+    crane.currentY += crane.vy * (dt * 60);
 
     // Detekcja uderzenia / zmiażdżenia
     checkFallingSquash(combatants);
@@ -176,7 +176,7 @@ export function executeSquashKill(victim) {
 function onCraneBlockImpact(combatants) {
   const crane = arena5State.crane;
   crane.phase = 'COOLDOWN';
-  crane.cooldownTimer = 2.0; // Spokojna 2-sekundowa przerwa przed ostrzeżeniem kolejnego modułu
+  crane.cooldownTimer = 0.85; // Częstsze zrzuty: dynamiczna przerwa 0.85s
   arena5State.totalBlocksDropped++;
 
   triggerScreenShake(9);
@@ -651,31 +651,48 @@ function updateDebris(dt) {
 }
 
 /**
- * Aktualizuje podnoszącą się podłogę bazową (a5_base_floor) wraz ze wspinaczką kamery.
- * Podłoga podnosi się wyłącznie w ślad za wzrostem wieży.
- * Klocki znikają z bezpiecznym buforem dopiero gdy znajdą się całkowicie poza ekranem.
+ * Aktualizuje rosnącą wieżę z oknem maksymalnie 20 segmentów:
+ * Gdy wieża urośnie powyżej 20 segmentów, każdy najniższy segment znika,
+ * a podstawa i linia utylizatora podnoszą się w ślad za nim.
  */
 export function updateRisingFloor(camera, combatants = []) {
-  if (!camera) return;
+  // 1. Znajdź najwyższy aktywny wiersz w siatce
+  let highestRow = -1;
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (rowData && rowData.some(cell => cell && cell.hp > 0)) {
+      if (r > highestRow) highestRow = r;
+    }
+  }
 
-  const viewHeight = camera.viewHeight || (1080 / (camera.zoom || 0.75));
-  const baseGroundCamY = BASE_FLOOR_Y - viewHeight;
-
-  // Podłoga podnosi się wyłącznie gdy wieża urosła i wywołała wspinaczkę kamery
-  const minCamY = (typeof arena5State.minCameraY === 'number')
-    ? arena5State.minCameraY
-    : baseGroundCamY;
-
-  if (minCamY < baseGroundCamY) {
-    const segmentsShifted = Math.max(0, Math.floor((baseGroundCamY - minCamY) / CELL_SIZE));
-    arena5State.minFloorRow = segmentsShifted;
-    arena5State.currentFloorY = BASE_FLOOR_Y - (segmentsShifted * CELL_SIZE);
+  // 2. Okno maksymalnie 20 segmentów wieży
+  if (highestRow >= MAX_TOWER_ROWS) {
+    const minKeepRow = highestRow - (MAX_TOWER_ROWS - 1);
+    if (minKeepRow > arena5State.minFloorRow) {
+      // Usunięcie wszystkich najniższych wierszy poniżej dozwolonego okna 20 segmentów
+      for (const [r, rowData] of arena5State.gridRows.entries()) {
+        if (r < minKeepRow) {
+          if (rowData) {
+            for (let c = 0; c < COLS; c++) {
+              if (rowData[c]) {
+                removePlatformForCell(rowData[c]);
+                spawnConcreteDebris(rowData[c].x + CELL_SIZE * 0.5, rowData[c].y + CELL_SIZE * 0.5, 2);
+              }
+            }
+          }
+          arena5State.gridRows.delete(r);
+        }
+      }
+      arena5State.minFloorRow = minKeepRow;
+    }
+    arena5State.currentFloorY = BASE_FLOOR_Y - (arena5State.minFloorRow * CELL_SIZE);
+    arena5State.recyclerY = arena5State.currentFloorY + 80;
   } else {
     arena5State.minFloorRow = 0;
     arena5State.currentFloorY = BASE_FLOOR_Y;
+    arena5State.recyclerY = BASE_FLOOR_Y + 400; // Bezpiecznie pod podłogą na starcie
   }
 
-  // Synchronizacja platformy podłogi w fizyce gry (a5_base_floor) na dolnej krawędzi ekranu
+  // 3. Synchronizacja platformy podłogi w fizyce gry (a5_base_floor)
   const floorPlat = arena5State.platforms.find(p => p && p.id === 'a5_base_floor');
   if (floorPlat) {
     floorPlat.y = arena5State.currentFloorY;
@@ -690,25 +707,6 @@ export function updateRisingFloor(camera, combatants = []) {
       wPlat.x = -2000;
       wPlat.w = 5600;
       wPlat.width = 5600;
-    }
-  }
-
-  // Linia utylizatora śmierci: bezpieczny bufor poniżej bieżącej podłogi (+80 px)
-  arena5State.recyclerY = arena5State.currentFloorY + 80;
-
-  // Usunięcie starych klocków i platform z wierszy poniżej dolnej krawędzi ekranu
-  // Bezpieczny bufor 1 wiersza chroni przed znikaniem klocków, na których postacie mogą jeszcze stać
-  const safeDeleteRow = Math.max(0, arena5State.minFloorRow - 1);
-  if (safeDeleteRow > 0) {
-    for (const [r, rowData] of arena5State.gridRows.entries()) {
-      if (r < safeDeleteRow) {
-        if (rowData) {
-          for (let c = 0; c < COLS; c++) {
-            if (rowData[c]) removePlatformForCell(rowData[c]);
-          }
-        }
-        arena5State.gridRows.delete(r);
-      }
     }
   }
 }

@@ -6,6 +6,7 @@
 
 export const CELL_SIZE = 80; // 80px: dopasowanie do Enforcera (74px) z zachowaniem pełnej zdolności do wskakiwania
 export const COLS = 20; // 20 kolumn x 80px = 1600px: dokładnie od lewej do prawej krawędzi ekranu
+export const MAX_TOWER_ROWS = 20; // Maksymalna wysokość aktywnej wieży: 20 segmentów w pionie
 export const ARENA_LEFT = 0;
 export const ARENA_WIDTH = 1600;
 export const ARENA_RIGHT = ARENA_LEFT + ARENA_WIDTH; // 1600
@@ -264,6 +265,22 @@ export function findSmartCranePlacement(shapeDef) {
   }
 
   const avgHeight = colHeights.reduce((sum, h) => sum + h, 0) / COLS;
+
+  // 1. Analiza zapełnienia poszczególnych wierszy (szukanie wierszy bliskich domknięcia)
+  const rowOccupancy = new Map();
+  for (let r = minRow; r <= arena5State.highestRowIndex + 3; r++) {
+    const rowData = arena5State.gridRows.get(r);
+    let count = 0;
+    if (rowData) {
+      for (let c = 0; c < COLS; c++) {
+        if (rowData[c] && rowData[c].hp > 0) count++;
+      }
+    }
+    if (count > 0) {
+      rowOccupancy.set(r, count);
+    }
+  }
+
   const scoredCols = [];
 
   for (let c = 0; c <= maxCol; c++) {
@@ -279,54 +296,58 @@ export function findSmartCranePlacement(shapeDef) {
 
     let score = 50;
 
-    // 1. Zapełnianie linii i potencjał detonacji wierszy (Tetris line clear)
+    // 2. Potężna premia za zapełnianie linii i detonację pełnych wierszy (Tetris Line Clear)
     for (let rRel = 0; rRel < shapeDef.h; rRel++) {
       const wRow = landingRow + rRel;
-      let existingInRow = 0;
-      const rData = arena5State.gridRows.get(wRow);
-      if (rData) {
-        for (let colIdx = 0; colIdx < COLS; colIdx++) {
-          if (rData[colIdx] && rData[colIdx].hp > 0) existingInRow++;
-        }
-      }
+      const existingInRow = rowOccupancy.get(wRow) || 0;
       const addedInThisRow = shapeDef.cells.filter(cell => cell.r === rRel).length;
       const totalAfter = existingInRow + addedInThisRow;
-      if (totalAfter === COLS) {
-        score += 160; // Pełna linia w Tetrisie!
+
+      if (totalAfter >= COLS) {
+        score += 2000; // Bezwzględny priorytet: czyszczenie linii!
       } else if (totalAfter >= COLS - 2) {
-        score += 60;
+        score += 650; // Krok od domknięcia
       } else if (totalAfter >= COLS - 5) {
-        score += 25;
+        score += 300;
+      } else if (totalAfter >= 10) {
+        score += 120;
+      }
+
+      // Bonus za wpasowanie w luki wiersza o wysokim zapełnieniu
+      if (existingInRow >= 12) {
+        score += addedInThisRow * 150;
+      } else if (existingInRow >= 7) {
+        score += addedInThisRow * 60;
       }
     }
 
-    // 2. Wypełnianie dolin i płaski rozkład terenu
+    // 3. Wyrównywanie terenu: premia za wypełnianie dolin, kara za tworzenie iglic
     const shapeTopRow = landingRow + shapeDef.h - 1;
     if (shapeTopRow <= avgHeight) {
-      score += 35;
-    } else if (shapeTopRow > avgHeight + 5) {
-      score -= (shapeTopRow - avgHeight) * 8;
+      score += (avgHeight - shapeTopRow + 1) * 22; // Wypełniaj najniższe luki
+    } else if (shapeTopRow > avgHeight + 2) {
+      score -= (shapeTopRow - avgHeight) * 25; // Kara za wąskie kominy
     }
 
-    // 3. Spasowanie z sąsiednimi kolumnami
+    // 4. Spasowanie z sąsiednimi kolumnami
     const leftNeighborH = c > 0 ? colHeights[c - 1] : landingRow;
     const rightNeighborH = (c + shapeDef.w < COLS) ? colHeights[c + shapeDef.w] : landingRow;
     const diffLeft = Math.abs(leftNeighborH - landingRow);
     const diffRight = Math.abs(rightNeighborH - landingRow);
-    score -= (diffLeft + diffRight) * 1.5;
+    score -= (diffLeft + diffRight) * 2.5;
 
-    // Organiczny szum losowy (0 - 15)
-    score += Math.random() * 15;
+    // Drobny szum losowy dla naturalności
+    score += Math.random() * 10;
 
     scoredCols.push({ col: c, score });
   }
 
   scoredCols.sort((a, b) => b.score - a.score);
 
-  // 80% szans na wybór jednej z 3 najlepszych kolumn
-  if (Math.random() < 0.80 && scoredCols.length >= 3) {
-    const topIdx = Math.floor(Math.random() * Math.min(3, scoredCols.length));
-    return scoredCols[topIdx].col;
+  // 90% szans na wybór bezwzględnie najlepszej lub drugiej najlepszej kolumny
+  if (Math.random() < 0.90 && scoredCols.length >= 2) {
+    const pickIdx = Math.random() < 0.75 ? 0 : 1;
+    return scoredCols[pickIdx].col;
   }
 
   return scoredCols[0].col;
@@ -336,7 +357,53 @@ export function findSmartCranePlacement(shapeDef) {
  * Losuje kolejny kształt, materiał i inteligentną pozycję zrzutu
  */
 export function prepareNextCraneDrop() {
-  const shapeDef = SHAPE_DEFS[Math.floor(Math.random() * SHAPE_DEFS.length)];
+  const minRow = arena5State.minFloorRow || 0;
+
+  // Analiza czy któryś z wierszy jest bliski pełnego domknięcia
+  let candidateShape = null;
+  let maxRowFilled = 0;
+  let targetRowIndex = -1;
+
+  for (let r = minRow; r <= arena5State.highestRowIndex + 2; r++) {
+    const rowData = arena5State.gridRows.get(r);
+    if (!rowData) continue;
+    let count = 0;
+    for (let c = 0; c < COLS; c++) {
+      if (rowData[c] && rowData[c].hp > 0) count++;
+    }
+    if (count > maxRowFilled && count < COLS) {
+      maxRowFilled = count;
+      targetRowIndex = r;
+    }
+  }
+
+  // Jeśli wiersz ma 13..19 klocków, celowo dobierz kształt ułatwiający zamknięcie linii
+  if (maxRowFilled >= 13 && targetRowIndex !== -1 && Math.random() < 0.65) {
+    const rowData = arena5State.gridRows.get(targetRowIndex);
+    // Znajdź pierwszą lukę
+    let gapStart = -1;
+    let gapLen = 0;
+    for (let c = 0; c < COLS; c++) {
+      if (!rowData || !rowData[c] || rowData[c].hp <= 0) {
+        if (gapStart === -1) gapStart = c;
+        gapLen++;
+      } else if (gapStart !== -1) {
+        break;
+      }
+    }
+
+    if (gapLen >= 4) {
+      candidateShape = SHAPE_DEFS.find(s => s.id === 'I_HORIZ_4') || SHAPE_DEFS[0];
+    } else if (gapLen === 3) {
+      candidateShape = SHAPE_DEFS.find(s => s.id === 'I_HORIZ_3') || SHAPE_DEFS[1];
+    } else if (gapLen === 2) {
+      candidateShape = SHAPE_DEFS.find(s => s.id === 'O_BLOCK' || s.id === 'L_BLOCK_2') || SHAPE_DEFS[3];
+    } else if (gapLen === 1) {
+      candidateShape = SHAPE_DEFS.find(s => s.id === 'PILLAR_2') || SHAPE_DEFS[2];
+    }
+  }
+
+  const shapeDef = candidateShape || SHAPE_DEFS[Math.floor(Math.random() * SHAPE_DEFS.length)];
   const col = findSmartCranePlacement(shapeDef);
 
   // 60% stal, 20% beton, 10% wybuchowy, 10% ażurowy
@@ -360,18 +427,19 @@ export function prepareNextCraneDrop() {
     material
   }));
 
-  arena5State.crane.phase = 'WARNING';
-  arena5State.crane.timer = 2.2;
-  arena5State.crane.warningMax = 2.2;
+  // Płynny, częsty zrzut: brak zbędnego wskaźnika opadania, natychmiastowe płynne opadanie
+  arena5State.crane.phase = 'FALLING';
+  arena5State.crane.timer = 0;
+  arena5State.crane.warningMax = 0;
   arena5State.crane.cooldownTimer = 0;
-  arena5State.crane.cooldownMax = 2.0;
+  arena5State.crane.cooldownMax = 0.85; // Częstsze zrzuty: szybka przerwa 0.85s
   arena5State.crane.pieceId = pieceId;
   arena5State.crane.shape = shapeDef;
   arena5State.crane.material = material;
   arena5State.crane.accentColor = shapeDef.accentColor;
   arena5State.crane.col = col;
   arena5State.crane.dropX = getGridX(col);
-  arena5State.crane.vy = 0;
+  arena5State.crane.vy = 2.5;
   arena5State.crane.shapeCells = shapeCells;
 
   // Obliczenie docelowego poziomu lądowania

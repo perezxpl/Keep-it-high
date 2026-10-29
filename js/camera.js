@@ -524,43 +524,30 @@ export function updateCamera(player, ball, options = {}) {
       : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
-  // W Arenie 5: podłoga startowa (1200) spoczywa dokładnie na dolnej krawędzi ekranu.
-  // Gdy segmenty wieży podejdą do połowy ekranu, kamera przesuwa się w górę
-  // o każdy kolejny segment (CELL_SIZE = 80px)
+  // W Arenie 5: rosnąca wieża o oknie do 20 segmentów.
+  // Gracz może swobodnie podlecieć wyżej na szczyt wieży i zlecieć w dół do bieżącej podłogi.
   if (isArena5) {
     const a5 = arena5State || (typeof window !== 'undefined' ? window.arena5State : null);
-    const highestBlockY = (a5 && typeof a5.highestBlockY === 'number')
-      ? a5.highestBlockY
-      : 1200;
-    // Dolna krawędź ekranu ma spoczywać dokładnie na podłożu bazowym (1200)
-    const baseGroundCamY = 1200 - viewHeight;
-    const screenMidY = baseGroundCamY + (viewHeight * 0.50);
-    const cellSize = A5_CELL_SIZE || 80;
+    const currentFloorY = (a5 && typeof a5.currentFloorY === 'number') ? a5.currentFloorY : 1200;
+    // Dolna granica kamery: dolna krawędź ekranu opiera się na bieżącej podłodze wieży (currentFloorY)
+    const floorCamY = currentFloorY - viewHeight;
 
-    let targetTowerCamY = baseGroundCamY;
-    if (highestBlockY < screenMidY) {
-      // Wylicz ile segmentów wieża urosła ponad połowę ekranu
-      const segmentsAboveMid = Math.ceil((screenMidY - highestBlockY) / cellSize);
-      targetTowerCamY = baseGroundCamY - (segmentsAboveMid * cellSize);
-    }
+    // Kamera płynnie podąża za graczem w pionie (w górę na szczyt i w dół do podłogi)
+    const pCenterY = (player && !player.isDead) ? (player.y + (player.h ? player.h / 2 : 35)) : targetY;
+    const playerTargetCamY = (pCenterY + aimLeadY) - (viewHeight * 0.55);
 
-    if (a5) {
-      if (a5.minCameraY === null || targetTowerCamY < a5.minCameraY) {
-        a5.minCameraY = targetTowerCamY;
-      }
-      targetCamY = a5.minCameraY;
-    } else {
-      targetCamY = targetTowerCamY;
-    }
+    // Gracz może lecieć w górę tak wysoko jak chce, a w dół kamera zatrzymuje się na podłodze
+    targetCamY = Math.min(floorCamY, playerTargetCamY);
+    targetCamY = Math.max(-100000, targetCamY);
   }
 
-  const a5MinCam = (arena5State && typeof arena5State.minCameraY === 'number') ? arena5State.minCameraY : (typeof window !== 'undefined' ? window.arena5State?.minCameraY : null);
+  const a5FloorY = (arena5State && typeof arena5State.currentFloorY === 'number')
+    ? arena5State.currentFloorY
+    : (typeof window !== 'undefined' ? (window.arena5State?.currentFloorY || 1200) : 1200);
   const minCamY = isArena5 ? -100000 : (isArena4 ? -800 : -45);
   const subterraneanBottom = isArena5 ? 2000 : (isArena4 ? 1350 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)));
   const maxCamY = isArena5
-    ? ((a5MinCam !== null && typeof a5MinCam === 'number')
-      ? a5MinCam
-      : (1200 - viewHeight))
+    ? (a5FloorY - viewHeight)
     : (isArena4
       ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
@@ -574,12 +561,17 @@ export function updateCamera(player, ball, options = {}) {
 
   // ZABEZPIECZENIE CELU KAMERY (Target Player Box):
   // Punkt docelowy kamery (targetCamX, targetCamY) NIGDY nie może zbliżyć postaci bardziej niż bezpieczny margines
-  if (!isArena5 && player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const safeMarginX = Math.max(80, viewWidth * 0.18);
     // Bezpieczny prześwit od krawędzi ekranu
-    if (isArena4) {
+    if (isArena5) {
+      const safeMarginBottom = Math.max(70, viewHeight * 0.16);
+      const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * 0.20);
+      targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
+      targetCamX = ARENA_LEFT;
+    } else if (isArena4) {
       const safeMarginBottom = Math.max(65, viewHeight * 0.16);
       const safeMarginTop = Math.max(isMobile ? 55 : 68, viewHeight * 0.18);
       targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
@@ -591,7 +583,7 @@ export function updateCamera(player, ball, options = {}) {
       targetCamY = Math.max(pY - viewHeight + safeMarginBottom, Math.min(targetCamY, pY - safeMarginTop));
     }
 
-    if (viewWidth < arenaWidth) {
+    if (viewWidth < arenaWidth && !isArena5) {
       targetCamX = Math.max(ARENA_LEFT, Math.min(targetCamX, ARENA_RIGHT - viewWidth));
     } else {
       targetCamX = ARENA_LEFT;
@@ -635,25 +627,35 @@ export function updateCamera(player, ball, options = {}) {
   // 5. ŻELAZNA GWARANCJA: Gracz FIZYCZNIE ZAWSZE w kadrze (Hard Player Boundary)
   // Nawet przy gwałtownym przyspieszeniu, odrzucie czy zrywach jetpacka,
   // postać nigdy nie przekroczy bezwzględnej granicy bezpieczeństwa ekranu.
-  // W Arenie 5 wykluczamy kamerę gracza, by wysokość zależała wyłącznie od wieży!
+  // W Arenie 5 gracz może swobodnie latać po 20 segmentach wieży – kamera podąża za nim
   // =========================================================================
-  if (!isArena5 && player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
+  if (player && !player.isDead && (!killstreakState || !killstreakState.mortarTargeting)) {
     const pX = player.x + (player.w ? player.w / 2 : 12);
     const pY = player.y + (player.h ? player.h / 2 : 35);
     const hardPadX = Math.max(60, viewWidth * 0.10);
     const hardPadTop = Math.max(isMobile ? 50 : 60, viewHeight * 0.16);
     const hardPadBottom = Math.max(60, viewHeight * 0.12);
 
-    if (pX < camera.x + hardPadX) {
-      camera.x = pX - hardPadX;
-    } else if (pX > camera.x + viewWidth - hardPadX) {
-      camera.x = pX - viewWidth + hardPadX;
-    }
+    if (isArena5) {
+      camera.x = ARENA_LEFT;
+      if (pY < camera.y + hardPadTop) {
+        camera.y = pY - hardPadTop;
+      } else if (pY > camera.y + viewHeight - hardPadBottom) {
+        const floorCamY = ((arena5State?.currentFloorY) || 1200) - viewHeight;
+        camera.y = Math.min(floorCamY, pY - viewHeight + hardPadBottom);
+      }
+    } else {
+      if (pX < camera.x + hardPadX) {
+        camera.x = pX - hardPadX;
+      } else if (pX > camera.x + viewWidth - hardPadX) {
+        camera.x = pX - viewWidth + hardPadX;
+      }
 
-    if (pY < camera.y + hardPadTop) {
-      camera.y = pY - hardPadTop;
-    } else if (pY > camera.y + viewHeight - hardPadBottom) {
-      camera.y = pY - viewHeight + hardPadBottom;
+      if (pY < camera.y + hardPadTop) {
+        camera.y = pY - hardPadTop;
+      } else if (pY > camera.y + viewHeight - hardPadBottom) {
+        camera.y = pY - viewHeight + hardPadBottom;
+      }
     }
   }
 

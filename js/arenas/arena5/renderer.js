@@ -62,13 +62,10 @@ export function drawArena5Foreground(ctx, camera) {
   // 4. Ułożone klocki w wieży
   drawSettledBlocks(ctx, camera);
 
-  // 5. Laser ostrzegawczy suwnicy i rzutowanie lądowania
-  drawCraneWarning(ctx, camera);
-
-  // 6. Spadający kontener
+  // 5. Spadający kontener (bez wskaźnika opadania)
   drawFallingCraneBlock(ctx);
 
-  // 7. Animacje detonacji pełnych linii
+  // 6. Animacje detonacji pełnych linii
   drawLineClearEffects(ctx);
 
   // 8. Cząsteczki odłamków
@@ -442,85 +439,9 @@ export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges
   ctx.restore();
 }
 
-/**
- * Rysuje laser ostrzegawczy i pulsujący obrys lądowania suwnicy
- */
+// Wskaźnik opadania klocków został usunięty na życzenie użytkownika (brak laserów i obrysu)
 function drawCraneWarning(ctx, camera) {
-  const crane = arena5State.crane;
-  if (!crane || crane.phase !== 'WARNING' || !crane.shape) return;
-
-  const camY = camera.y;
-  const startX = getGridX(crane.col);
-  const totalW = crane.shape.w * CELL_SIZE;
-  const landY = crane.targetLandY;
-  const accent = crane.accentColor || crane.shape.accentColor || '#ef4444';
-
-  ctx.save();
-
-  // 1. Półprzezroczysty słup światła ostrzegawczego z sufitu
-  const pulse = 0.55 + 0.35 * Math.sin(performance.now() * 0.015);
-  const beamGrad = ctx.createLinearGradient(startX, camY - 50, startX + totalW, camY - 50);
-  beamGrad.addColorStop(0, `rgba(239, 68, 68, ${0.12 * pulse})`);
-  beamGrad.addColorStop(0.5, `rgba(239, 68, 68, ${0.28 * pulse})`);
-  beamGrad.addColorStop(1, `rgba(239, 68, 68, ${0.12 * pulse})`);
-
-  ctx.fillStyle = beamGrad;
-  ctx.fillRect(startX, camY - 100, totalW, landY - (camY - 100));
-
-  // Pionowe linie laserowe po bokach strefy zrzutu
-  ctx.strokeStyle = `rgba(239, 68, 68, ${0.85 * pulse})`;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(startX, camY - 100);
-  ctx.lineTo(startX, landY);
-  ctx.moveTo(startX + totalW, camY - 100);
-  ctx.lineTo(startX + totalW, landY);
-  ctx.stroke();
-
-  // 2. Pulsujący rzut lądowania klocka z obrysem figury (Footprint)
-  for (const cell of crane.shapeCells) {
-    const fx = getGridX(crane.col + cell.colRel);
-    const fy = landY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
-
-    ctx.fillStyle = `rgba(239, 68, 68, ${0.22 * pulse})`;
-    ctx.fillRect(fx + 2, fy + 2, CELL_SIZE - 4, CELL_SIZE - 4);
-
-    const outerEdges = {
-      top: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1),
-      bottom: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1),
-      left: !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel),
-      right: !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel)
-    };
-
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([6, 6]);
-
-    if (outerEdges.top) {
-      ctx.beginPath(); ctx.moveTo(fx, fy + 1); ctx.lineTo(fx + CELL_SIZE, fy + 1); ctx.stroke();
-    }
-    if (outerEdges.bottom) {
-      ctx.beginPath(); ctx.moveTo(fx, fy + CELL_SIZE - 1); ctx.lineTo(fx + CELL_SIZE, fy + CELL_SIZE - 1); ctx.stroke();
-    }
-    if (outerEdges.left) {
-      ctx.beginPath(); ctx.moveTo(fx + 1, fy); ctx.lineTo(fx + 1, fy + CELL_SIZE); ctx.stroke();
-    }
-    if (outerEdges.right) {
-      ctx.beginPath(); ctx.moveTo(fx + CELL_SIZE - 1, fy); ctx.lineTo(fx + CELL_SIZE - 1, fy + CELL_SIZE); ctx.stroke();
-    }
-
-    ctx.setLineDash([]);
-  }
-
-  // 3. Etykieta ostrzegawcza ze wskazaniem nazwy figury
-  ctx.font = '900 13px monospace';
-  ctx.fillStyle = '#ef4444';
-  ctx.textAlign = 'center';
-  const labelY = Math.min(landY - 16, camY + 120);
-  const shapeLabel = crane.shape.name ? `[ZRZUT: ${crane.shape.name} // ${(crane.timer).toFixed(1)}s]` : `[ZRZUT: ${(crane.timer).toFixed(1)}s // ZMIAŻDŻENIE]`;
-  ctx.fillText(shapeLabel, startX + totalW * 0.5, labelY);
-
-  ctx.restore();
+  // Pusta funkcja zachowana dla wstecznej kompatybilności
 }
 
 /**
