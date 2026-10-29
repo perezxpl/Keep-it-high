@@ -286,14 +286,96 @@ export function getStoredSinglePlayerBotCount() {
   return 1;
 }
 
-export function createBotInstance(index = 0, isActive = true) {
+export function getStoredBotEnabled() {
+  try {
+    const val = localStorage.getItem('kih_bot_enabled_v1');
+    if (val !== null && val !== undefined) {
+      return val === 'true';
+    }
+  } catch (_) {}
+  return true;
+}
+
+export let botEnabled = getStoredBotEnabled();
+
+export function isBotEnabled() {
+  return botEnabled;
+}
+
+export function getStoredBotDifficulty() {
+  try {
+    const val = localStorage.getItem('kih_bot_diff_v1');
+    if (val === 'easy' || val === 'medium' || val === 'hard') return val;
+  } catch (_) {}
+  return 'medium';
+}
+
+export let currentBotDifficulty = getStoredBotDifficulty();
+
+export function getBotDifficulty() {
+  return currentBotDifficulty || getStoredBotDifficulty();
+}
+
+export function setBotDifficulty(diff) {
+  let d = 'medium';
+  if (diff === 'easy' || diff === 'latwy') {
+    d = 'easy';
+  } else if (diff === 'hard' || diff === 'trudny' || diff === 'veteran') {
+    d = 'hard';
+  } else {
+    d = 'medium';
+  }
+  currentBotDifficulty = d;
+  for (let i = 0; i < bots.length; i++) {
+    if (bots[i]) {
+      bots[i].difficulty = d;
+    }
+  }
+  try {
+    localStorage.setItem('kih_bot_diff_v1', d);
+  } catch (_) {}
+  return d;
+}
+
+export function setBotEnabled(enabled, options = {}) {
+  botEnabled = !!enabled;
+  bot.active = botEnabled;
+  for (let i = 0; i < bots.length; i++) {
+    if (bots[i]) {
+      bots[i].active = botEnabled && (i < botCount);
+      if (!bots[i].active) {
+        bots[i].isDead = false;
+        bots[i].hp = 0;
+      } else if (bots[i].hp <= 0) {
+        bots[i].hp = bots[i].maxHp || bots[i].currentClass?.stats?.hp || 100;
+      }
+    }
+  }
+  if (!options.isRemote && !options.skipStorage) {
+    try {
+      localStorage.setItem('kih_bot_enabled_v1', String(botEnabled));
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined' && typeof window.syncDevBotButtonUI === 'function') {
+    window.syncDevBotButtonUI();
+  }
+  if (typeof window !== 'undefined' && window.deathmatchState && window.deathmatchState.active) {
+    if (typeof window.refreshDeathmatchParticipants === 'function') {
+      window.refreshDeathmatchParticipants(player, getActiveBots(), window.remotePlayer);
+    }
+  }
+  return botEnabled;
+}
+
+export function createBotInstance(index = 0, isActive = undefined) {
+  const effectiveActive = (isActive !== undefined) ? !!isActive : isBotEnabled();
   const profile = BOT_PROFILES[index % BOT_PROFILES.length];
   const botClass = (CLASSES && CLASSES[profile.classKey]) ? CLASSES[profile.classKey] : (CLASSES?.STRIKER || CLASSES?.RAPTOR);
   const instanceKeys = (index === 0) ? botKeys : { left: false, right: false, up: false, down: false, space: false, slide: false };
 
   const instance = createPlayerInstance({
     isBot: true,
-    active: isActive,
+    active: effectiveActive,
     frozen: false,
     team: profile.team || 'ORANGE',
     facing: profile.facing || -1,
@@ -326,7 +408,7 @@ export function createBotInstance(index = 0, isActive = true) {
     jetFuel: botClass?.stats?.jetMax || 100,
     jetMax: botClass?.stats?.jetMax || 100,
 
-    difficulty: getStoredBotDifficulty(),
+    difficulty: getBotDifficulty(),
     decisionTimer: 0,
     aimErrorAngle: 0,
     strafeTimer: 0,
@@ -346,7 +428,7 @@ export function createBotInstance(index = 0, isActive = true) {
 /**
  * Główna instancja bota (Bot 1) dla 100% kompatybilności wstecznej
  */
-export const bot = createBotInstance(0, true);
+export const bot = createBotInstance(0, getStoredBotEnabled());
 
 /**
  * Tablica wszystkich instancji botów
@@ -356,23 +438,33 @@ export const bots = [bot];
 export let botCount = getStoredSinglePlayerBotCount();
 
 // Natychmiastowa inicjalizacja instancji botów pod kątem zapisanego stanu
+const initActiveState = getStoredBotEnabled();
 while (bots.length < botCount) {
-  bots.push(createBotInstance(bots.length, true));
+  bots.push(createBotInstance(bots.length, initActiveState));
 }
 for (let i = 0; i < bots.length; i++) {
-  bots[i].active = (i < botCount);
+  bots[i].active = initActiveState && (i < botCount);
 }
 
 export function setBotCount(count, options = {}) {
   const parsed = parseInt(count, 10);
   const num = Math.max(0, Math.min(7, isNaN(parsed) ? 1 : parsed));
   botCount = num;
-  while (bots.length < num) {
-    bots.push(createBotInstance(bots.length, true));
+  if (num > 0 && !options.isRemote && !botEnabled) {
+    botEnabled = true;
+    bot.active = true;
+    try {
+      localStorage.setItem('kih_bot_enabled_v1', 'true');
+    } catch (_) {}
   }
+  while (bots.length < num) {
+    bots.push(createBotInstance(bots.length, botEnabled));
+  }
+  const curDiff = getBotDifficulty();
   for (let i = 0; i < bots.length; i++) {
-    bots[i].active = (i < num);
-    if (i >= num) {
+    bots[i].difficulty = curDiff;
+    bots[i].active = botEnabled && (i < num);
+    if (!bots[i].active) {
       bots[i].isDead = false;
       bots[i].hp = 0;
     } else {
@@ -387,7 +479,7 @@ export function setBotCount(count, options = {}) {
       localStorage.setItem('kih_bot_count_v1', String(num));
     } catch (_) {}
   }
-  if (num > 0) {
+  if (num > 0 && botEnabled) {
     balanceBotClasses(player, bots.slice(0, num));
   }
   if (typeof window !== 'undefined' && window.deathmatchState && window.deathmatchState.active) {
@@ -415,13 +507,20 @@ export function getBotCount() {
 }
 
 export function getActiveBots() {
-  if (botCount === 0) return [];
+  if (!botEnabled || bot.active === false || botCount === 0) {
+    for (let i = 0; i < bots.length; i++) {
+      if (bots[i]) bots[i].active = false;
+    }
+    return [];
+  }
   while (bots.length < botCount) {
     bots.push(createBotInstance(bots.length, true));
   }
-  for (let i = 0; i < botCount; i++) {
+  const curDiff = getBotDifficulty();
+  for (let i = 0; i < bots.length; i++) {
     if (bots[i]) {
-      bots[i].active = true;
+      bots[i].active = (i < botCount);
+      bots[i].difficulty = curDiff;
     }
   }
   return bots.slice(0, botCount).filter(b => b && b.active);
@@ -516,28 +615,7 @@ export function getBotDifficultyConfig(botTarget) {
   return BOT_DIFFICULTY_CONFIG[d] || BOT_DIFFICULTY_CONFIG.medium;
 }
 
-function getStoredBotDifficulty() {
-  try {
-    const val = localStorage.getItem('kih_bot_diff_v1');
-    if (val === 'easy' || val === 'medium' || val === 'hard') return val;
-  } catch (_) {}
-  return 'medium';
-}
 
-export function setBotDifficulty(diff) {
-  let d = 'medium';
-  if (diff === 'easy' || diff === 'latwy') {
-    d = 'easy';
-  } else if (diff === 'hard' || diff === 'trudny' || diff === 'veteran') {
-    d = 'hard';
-  } else {
-    d = 'medium';
-  }
-  bots.forEach(b => { b.difficulty = d; });
-  try {
-    localStorage.setItem('kih_bot_diff_v1', d);
-  } catch (_) {}
-}
 
 /**
  * Sprawdza, czy bot znajduje sie w kadrze kamery gracza (na ekranie z bezpiecznym marginesem)

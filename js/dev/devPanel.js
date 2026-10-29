@@ -17,7 +17,7 @@ import {
   spawnVestShreds
 } from '../world.js';
 import { player } from '../player.js';
-import { bot } from '../bot.js';
+import { bot, isBotEnabled, setBotEnabled } from '../bot.js';
 import { ball } from '../ball.js';
 import { switchArena, activeArenaId } from '../obstacles.js';
 import { getActiveArena } from '../renderer.js';
@@ -47,7 +47,8 @@ if (typeof window !== 'undefined') {
 export function syncDevBotButtonUI() {
   const btn = document.getElementById('dev-bot-toggle-btn');
   if (!btn) return;
-  if (bot.active) {
+  const active = (typeof isBotEnabled === 'function') ? isBotEnabled() : bot.active;
+  if (active) {
     btn.textContent = 'BOT: ON';
     btn.style.background = 'rgba(168, 85, 247, 0.35)';
     btn.style.borderColor = '#c084fc';
@@ -60,6 +61,9 @@ export function syncDevBotButtonUI() {
     btn.style.color = '#c084fc';
     btn.style.boxShadow = '';
   }
+}
+if (typeof window !== 'undefined') {
+  window.syncDevBotButtonUI = syncDevBotButtonUI;
 }
 
 export function syncDevArenaButtonUI() {
@@ -228,14 +232,17 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     const toggleBot = (e) => {
       e.stopPropagation();
       e.preventDefault();
-      bot.active = !bot.active;
-      if (bot.active) {
-        devBotToggleBtn.textContent = 'BOT: ON';
-        devBotToggleBtn.style.background = 'rgba(168, 85, 247, 0.35)';
-        devBotToggleBtn.style.borderColor = '#c084fc';
-        devBotToggleBtn.style.color = '#ffffff';
-        devBotToggleBtn.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)';
-
+      const nextActive = (typeof isBotEnabled === 'function') ? !isBotEnabled() : !bot.active;
+      if (typeof setBotEnabled === 'function') {
+        setBotEnabled(nextActive);
+      } else {
+        bot.active = nextActive;
+      }
+      syncDevBotButtonUI();
+      if (typeof uiManager !== 'undefined' && uiManager && typeof uiManager.syncBotActiveUI === 'function') {
+        uiManager.syncBotActiveUI(nextActive);
+      }
+      if (nextActive) {
         bot.x = player.x + (player.facing || 1) * 350;
         bot.y = GROUND_Y - bot.h;
         bot.vx = 0;
@@ -248,12 +255,6 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
         bot.gaitMode = 'IDLE';
         bot.dropThroughTimer = 0;
         bot.airVx = 0;
-      } else {
-        devBotToggleBtn.textContent = 'BOT: OFF';
-        devBotToggleBtn.style.background = '';
-        devBotToggleBtn.style.borderColor = '#a855f7';
-        devBotToggleBtn.style.color = '#c084fc';
-        devBotToggleBtn.style.boxShadow = '';
       }
     };
     devBotToggleBtn.addEventListener('click', toggleBot);

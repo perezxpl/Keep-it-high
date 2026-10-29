@@ -54,7 +54,7 @@ import {
   DEATHMATCH_MODES,
   TEAMS
 } from './deathmatch/index.js';
-import { bot, setBotDifficulty, setBotCount, getBotCount } from './bot.js';
+import { bot, setBotDifficulty, getBotDifficulty, setBotCount, getBotCount, isBotEnabled, setBotEnabled } from './bot.js';
 import { syncDevBotButtonUI } from './dev/devPanel.js';
 
 // Domyślna konfiguracja
@@ -1011,29 +1011,10 @@ export const uiManager = {
     // 5. Synchronizacja stanu Deathmatch (Arena 2 & Arena 5)
     this.syncDeathmatchUI();
 
-    // 6. Synchronizacja liczby botów i stanu AI
+    // 6. Synchronizacja liczby botów, poziomu trudności i stanu AI
     this.syncBotCountUI();
-    const ballCountRow = document.getElementById('ball-bot-count-row');
-    if (ballCountRow) ballCountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
-    const a3CountRow = document.getElementById('a3-bot-count-row');
-    if (a3CountRow) a3CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
-    const a4CountRow = document.getElementById('a4-bot-count-row');
-    if (a4CountRow) a4CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
-    const a5CountRow = document.getElementById('a5-bot-count-row');
-    if (a5CountRow) a5CountRow.style.display = (bot.active !== false) ? 'flex' : 'none';
-
-    document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => {
-      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
-    });
-    document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => {
-      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
-    });
-    document.querySelectorAll('#a4-bot-toggle-group button').forEach(b => {
-      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
-    });
-    document.querySelectorAll('#a5-bot-toggle-group button').forEach(b => {
-      b.classList.toggle('active', (b.dataset.botState === 'active') === (bot.active !== false));
-    });
+    this.syncBotDiffUI();
+    this.syncBotActiveUI();
 
     // 7. Przełącz arenę w tle silnika gry (tylko jeśli uległa zmianie)
     if (typeof window !== 'undefined' && typeof window.switchArena === 'function') {
@@ -1148,9 +1129,35 @@ export const uiManager = {
 
   syncBotCountUI(count = getBotCount()) {
     const c = parseInt(count, 10) || 1;
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.botCount, 10) === c);
     });
+  },
+
+  syncBotDiffUI(diff = getBotDifficulty()) {
+    const d = (diff === 'easy' || diff === 'hard') ? diff : 'medium';
+    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.botDiff === d);
+    });
+  },
+
+  syncBotActiveUI(isActive = isBotEnabled()) {
+    const active = !!isActive;
+    document.querySelectorAll('#ball-bot-toggle-group button, #a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', (btn.dataset.botState === 'active') === active);
+    });
+    const ballCountRow = document.getElementById('ball-bot-count-row');
+    if (ballCountRow) ballCountRow.style.display = active ? 'flex' : 'none';
+    const a3CountRow = document.getElementById('a3-bot-count-row');
+    if (a3CountRow) a3CountRow.style.display = active ? 'flex' : 'none';
+    const a4CountRow = document.getElementById('a4-bot-count-row');
+    if (a4CountRow) a4CountRow.style.display = active ? 'flex' : 'none';
+    const a5CountRow = document.getElementById('a5-bot-count-row');
+    if (a5CountRow) a5CountRow.style.display = active ? 'flex' : 'none';
+
+    if (typeof syncDevBotButtonUI === 'function') {
+      syncDevBotButtonUI();
+    }
   },
 
   syncDeathmatchUI() {
@@ -1595,34 +1602,15 @@ export const uiManager = {
       });
     });
 
-    document.querySelectorAll('#ball-bot-toggle-group button').forEach(btn => {
+    document.querySelectorAll('#ball-bot-toggle-group button, #a3-bot-toggle-group button, #a4-bot-toggle-group button, #a5-bot-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
-        document.querySelectorAll('#ball-bot-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const isActive = (btn.dataset.botState === 'active');
-        bot.active = isActive;
-        syncDevBotButtonUI();
-        const countRow = document.getElementById('ball-bot-count-row');
-        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
+        setBotEnabled(isActive);
+        this.syncBotActiveUI(isActive);
       });
     });
-
-    const syncDiffButtons = (diff) => {
-      document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(b => {
-        if (b.dataset.botDiff === diff) b.classList.add('active');
-        else b.classList.remove('active');
-      });
-    };
-
-    let initialDiff = 'medium';
-    try {
-      const s = localStorage.getItem('kih_bot_diff_v1');
-      if (s === 'easy' || s === 'medium' || s === 'hard') initialDiff = s;
-    } catch (_) {}
-    setBotDifficulty(initialDiff);
-    syncDiffButtons(initialDiff);
 
     document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
@@ -1630,7 +1618,7 @@ export const uiManager = {
         playUiClick();
         const diff = btn.dataset.botDiff || 'medium';
         setBotDifficulty(diff);
-        syncDiffButtons(diff);
+        this.syncBotDiffUI(diff);
       });
     });
 
@@ -1666,57 +1654,6 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Opcje Areny 3 (Tajemnicza Dżungla)
-    // -------------------------------------------------------------------------
-    document.querySelectorAll('#a3-bot-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#a3-bot-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const isActive = (btn.dataset.botState === 'active');
-        bot.active = isActive;
-        syncDevBotButtonUI();
-        const countRow = document.getElementById('a3-bot-count-row');
-        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
-      });
-    });
-
-    // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Opcje Areny 4 (Stacja Orbitalna Ares)
-    // -------------------------------------------------------------------------
-    document.querySelectorAll('#a4-bot-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#a4-bot-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const isActive = (btn.dataset.botState === 'active');
-        bot.active = isActive;
-        syncDevBotButtonUI();
-        const countRow = document.getElementById('a4-bot-count-row');
-        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
-      });
-    });
-
-    // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Opcje Areny 5 (Prefabrykator Orbitalny)
-    // -------------------------------------------------------------------------
-    document.querySelectorAll('#a5-bot-toggle-group button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => playUiHover());
-      btn.addEventListener('click', () => {
-        playUiClick();
-        document.querySelectorAll('#a5-bot-toggle-group button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const isActive = (btn.dataset.botState === 'active');
-        bot.active = isActive;
-        syncDevBotButtonUI();
-        const countRow = document.getElementById('a5-bot-count-row');
-        if (countRow) countRow.style.display = isActive ? 'flex' : 'none';
-      });
-    });
-
-    // -------------------------------------------------------------------------
     // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4, 5)
     // -------------------------------------------------------------------------
     document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
@@ -1724,10 +1661,16 @@ export const uiManager = {
       btn.addEventListener('click', () => {
         playUiClick();
         const count = parseInt(btn.dataset.botCount, 10) || 1;
+        setBotEnabled(true);
         setBotCount(count);
         this.syncBotCountUI(count);
+        this.syncBotActiveUI(true);
       });
     });
+
+    this.syncBotCountUI();
+    this.syncBotDiffUI();
+    this.syncBotActiveUI();
 
     // -------------------------------------------------------------------------
     // ZINTEGROWANY MULTIPLAYER WEBRTC W ODPRAWIE TAKTYCZNEJ
@@ -1880,6 +1823,12 @@ export const uiManager = {
 
         // SOLO MODE:
         const targetClassId = this.selectedClassId || (typeof window !== 'undefined' && window.player?.currentClass?.id) || 'STRIKER';
+
+        // Jeśli to Arena 2 (Deathmatch w pojedynkę), a boty były wyłączone, automatycznie aktywujemy przeciwników
+        if (arenaId === 'ARENA_2' && !isBotEnabled()) {
+          setBotEnabled(true);
+          this.syncBotActiveUI(true);
+        }
 
         if (this.callbacks && typeof this.callbacks.onSelectArena === 'function') {
           this.callbacks.onSelectArena(arenaId, targetClassId);

@@ -4,7 +4,7 @@ import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, u
 import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
-import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses } from './bot.js';
+import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses, getBotDifficulty, setBotDifficulty, getStoredBotEnabled, setBotEnabled } from './bot.js';
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
@@ -746,6 +746,9 @@ function handleNetworkData(data) {
         setBotCount(data.botCount, { isRemote: true });
         syncMpBotUI(data.botCount);
       }
+      if (data.botDifficulty) {
+        setBotDifficulty(data.botDifficulty);
+      }
       applyTeamVisuals(false);
       balanceBotClasses(player, getActiveBots());
       refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
@@ -949,6 +952,9 @@ function handleNetworkData(data) {
       if (data.botCount !== undefined) {
         setBotCount(data.botCount, { isRemote: true });
         syncMpBotUI(data.botCount);
+      }
+      if (data.botDifficulty) {
+        setBotDifficulty(data.botDifficulty);
       }
       applyTeamVisuals(false);
       balanceBotClasses(player, getActiveBots());
@@ -1287,6 +1293,7 @@ function setupConnection(conn, isHost) {
         arenaId: activeArenaId,
         mpMatchConfig: mpMatchConfig,
         botCount: getTotalMpBotCount(),
+        botDifficulty: getBotDifficulty(),
         customObstacles: customObstacles,
         ball: {
           x: ball.x,
@@ -1496,6 +1503,7 @@ export function disconnectNetwork() {
   remotePlayer.active = false;
 
   const spCount = getStoredSinglePlayerBotCount();
+  setBotEnabled(getStoredBotEnabled(), { skipStorage: true });
   setBotCount(spCount);
   balanceBotClasses(player, getActiveBots());
   refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
@@ -1514,6 +1522,7 @@ function handleDisconnect(reason) {
   remotePlayer.active = false;
 
   const spCount = getStoredSinglePlayerBotCount();
+  setBotEnabled(getStoredBotEnabled(), { skipStorage: true });
   setBotCount(spCount);
   balanceBotClasses(player, getActiveBots());
   refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);

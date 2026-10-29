@@ -610,10 +610,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     if (Array.isArray(botObj)) return botObj;
     if (typeof window !== 'undefined' && typeof window.getActiveBots === 'function') {
       const wBots = window.getActiveBots();
-      if (Array.isArray(wBots) && wBots.length > 0) return wBots;
+      if (Array.isArray(wBots)) return wBots;
     }
-    if (botObj) return [botObj];
-    return targetBot ? [targetBot] : [];
+    if (botObj) {
+      if (botObj.active === false) return [];
+      return [botObj];
+    }
+    return (targetBot && targetBot.active !== false) ? [targetBot] : [];
   };
   const activeBots = getBotsList();
 

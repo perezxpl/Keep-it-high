@@ -37,7 +37,7 @@ import {
   updateMovableObstacles, resetArena, spawnAltarShockwave
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
-import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses } from './bot.js';
+import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
 import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
@@ -59,7 +59,7 @@ import {
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
 import { recordKill, recordDeath } from './progression.js';
-import { updateDeathmatch, resetDeathmatchState } from './deathmatch/index.js';
+import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, deathmatchState } from './deathmatch/index.js';
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
@@ -159,6 +159,14 @@ updateButtonLayout(W, H);
 setActiveBot(bot);
 if (typeof window !== 'undefined') {
   window.getActiveBots = getActiveBots;
+  window.isBotEnabled = isBotEnabled;
+  window.setBotEnabled = setBotEnabled;
+  window.getBotDifficulty = getBotDifficulty;
+  window.setBotDifficulty = setBotDifficulty;
+  window.getBotCount = getBotCount;
+  window.setBotCount = setBotCount;
+  window.refreshDeathmatchParticipants = refreshDeathmatchParticipants;
+  window.deathmatchState = deathmatchState;
 }
 // Pełna inicjalizacja aktywnej areny ze startowego adresu URL (?arena=3 / ?arena=2 / arena-1)
 const initialArena = getActiveArena();
