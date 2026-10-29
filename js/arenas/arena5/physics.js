@@ -30,6 +30,10 @@ import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
 
 let _activeCombatants = [];
 
+export function getActiveCombatants() {
+  return _activeCombatants;
+}
+
 /**
  * Główna pętla fizyki Areny 5 wywoływana w każdej klatce update()
  */
@@ -46,7 +50,10 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
   // 3. Aktualizacja suwnicy i spadającego bloku
   updateCrane(stepTime, _activeCombatants);
 
-  // 3. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
+  // 4. Płynne opadanie i przesuwanie klocków w dół (Smooth Physics Falling & Sliding)
+  updateFallingBlocks(stepTime, _activeCombatants);
+
+  // 5. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
   applyColumnGravity(_activeCombatants);
 
   // 4. Detekcja i aktualizacja czyszczenia pełnych linii
@@ -345,7 +352,7 @@ function onCraneBlockImpact(combatants) {
 /**
  * Usuwa obiekt platformy dla danej komórki
  */
-function removePlatformForCell(cell) {
+export function removePlatformForCell(cell) {
   if (!cell || !cell.platformObj) return;
   const plat = cell.platformObj;
   const idx1 = arena5State.platforms.indexOf(plat);
@@ -426,7 +433,8 @@ export function getGridClusters() {
  * Dopiero gdy jej podparcie zostanie zniszczone (pociskami, wybuchem, detonacją linii),
  * figura opada w dół jako spójny blok, dopóki nie oprze się na nowym podłożu.
  */
-export function applyPieceGravity(combatants = []) {
+export function applyPieceGravity(combatants = null) {
+  const activeTargets = (Array.isArray(combatants) && combatants.length) ? combatants : _activeCombatants;
   let anyBlockFell = false;
   const minRow = arena5State.minFloorRow || 0;
 
@@ -470,9 +478,9 @@ export function applyPieceGravity(combatants = []) {
       }
     }
 
-    // 3. Znajdź niepodparte klastry i posortuj od najniższego rzędu
+    // 3. Znajdź niepodparte klastry i posortuj od najniższego rzędu (pomijamy klastry będące już w trakcie płynnego opadania)
     const unsupportedClusters = clusters
-      .filter(cl => !supportedClusterIds.has(cl.id))
+      .filter(cl => !supportedClusterIds.has(cl.id) && !cl.cells.some(c => c.isFalling))
       .sort((a, b) => a.minRow - b.minRow);
 
     if (unsupportedClusters.length === 0) {
@@ -514,7 +522,7 @@ export function applyPieceGravity(combatants = []) {
         stepFell = true;
         anyBlockFell = true;
 
-        // Usuń ze starych pozycji
+        // Usuń ze starych pozycji w siatce
         for (const cell of cluster.cells) {
           const oldRowData = arena5State.gridRows.get(cell.row);
           if (oldRowData && oldRowData[cell.col] === cell) {
@@ -522,12 +530,13 @@ export function applyPieceGravity(combatants = []) {
           }
         }
 
-        // Wstaw na nowe pozycje
+        // Zarezerwuj nowe pozycje w siatce i zainicjuj płynne opadanie fizyczne (brak teleportacji)
         for (const cell of cluster.cells) {
-          const oldY = cell.y;
           const newRow = cell.row - maxDrop;
           cell.row = newRow;
-          cell.y = getGridY(newRow);
+          cell.targetY = getGridY(newRow);
+          cell.isFalling = true;
+          cell.vy = Math.max(1.0, cell.vy || 1.0);
 
           let newRowData = arena5State.gridRows.get(newRow);
           if (!newRowData) {
@@ -537,27 +546,8 @@ export function applyPieceGravity(combatants = []) {
           newRowData[cell.col] = cell;
 
           if (cell.platformObj) {
-            cell.platformObj.y = cell.y;
             cell.platformObj.gridRow = newRow;
           }
-
-          if (Array.isArray(combatants)) {
-            for (const victim of combatants) {
-              if (!victim || victim.isDead) continue;
-              const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
-                (victim.onGround && Math.abs(victim.y + (victim.h || 72) - oldY) <= 14 &&
-                 victim.x + (victim.w || 26) > cell.x && victim.x < cell.x + cell.w);
-
-              if (isStandingOnCell) {
-                victim.y = cell.y - (victim.h || 72);
-                victim.vy = 0;
-                victim.onGround = true;
-                victim.currentPlatform = cell.platformObj;
-              }
-            }
-          }
-
-          spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
         }
 
         supportedClusterIds.add(cluster.id);
@@ -583,10 +573,10 @@ export function applyPieceGravity(combatants = []) {
     updateTowerApexAndSpawns();
 
     // Wypchnij postacie, które mogły znaleźć się w strefie opadania klocka
-    resolveArena5BlockPenetration(combatants);
+    resolveArena5BlockPenetration(activeTargets);
 
     // Sprawdź czy opadające klocki nie ułożyły nowej pełnej linii
-    checkAndTriggerLineClears(combatants);
+    checkAndTriggerLineClears(activeTargets);
 
     // Koryguj cel lądowania suwnicy
     if (arena5State.crane && arena5State.crane.shape) {
@@ -601,6 +591,117 @@ export function applyPieceGravity(combatants = []) {
 }
 
 export const applyColumnGravity = applyPieceGravity;
+
+/**
+ * Obsługa płynnego opadania (grawitacji) oraz przesuwania (kopnięć) klocków w wieży.
+ * Zapobiega teleportowaniu się klocków po zniszczeniu podparcia.
+ */
+function updateFallingBlocks(dt, combatants) {
+  let anyFallingOrSliding = false;
+  let anyLanded = false;
+
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+
+      // 1. Płynne przesuwanie w bok po kopnięciu (Sliding)
+      if (cell.isSliding) {
+        anyFallingOrSliding = true;
+        const targetX = (typeof cell.slideTargetX === 'number') ? cell.slideTargetX : cell.x;
+        const diffX = targetX - cell.x;
+        const dirX = Math.sign(diffX);
+        const speed = (cell.slideSpeed || 22.0) * (dt * 60);
+
+        const oldX = cell.x;
+        if (Math.abs(diffX) <= speed) {
+          cell.x = targetX;
+          cell.isSliding = false;
+          if (cell.platformObj) cell.platformObj.x = targetX;
+          spawnRicochetSparks(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 0, -2, 4);
+          applyPieceGravity(combatants);
+        } else {
+          cell.x += dirX * speed;
+          if (cell.platformObj) cell.platformObj.x = cell.x;
+        }
+
+        // Przenoszenie postaci stojącej na przesuwanym klocku
+        const stepX = cell.x - oldX;
+        if (stepX !== 0 && Array.isArray(combatants)) {
+          for (const victim of combatants) {
+            if (!victim || victim.isDead) continue;
+            const pH = victim.h || 72;
+            const pW = victim.w || 26;
+            const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
+              (victim.onGround && Math.abs((victim.y + pH) - cell.y) <= 18 &&
+               victim.x + pW > cell.x && victim.x < cell.x + cell.w);
+
+            if (isStandingOnCell) {
+              victim.x += stepX;
+            }
+          }
+        }
+      }
+
+      // 2. Płynne opadanie w dół po utracie podparcia (Falling)
+      if (cell.isFalling) {
+        anyFallingOrSliding = true;
+        const targetY = (typeof cell.targetY === 'number') ? cell.targetY : getGridY(cell.row);
+
+        const fallAccel = 20.0;
+        cell.vy = Math.min(11.0, (cell.vy || 1.0) + fallAccel * dt);
+        const step = cell.vy * (dt * 60);
+        const oldY = cell.y;
+        cell.y += step;
+
+        // Przenoszenie postaci stojącej na opadającym klocku
+        if (Array.isArray(combatants)) {
+          for (const victim of combatants) {
+            if (!victim || victim.isDead) continue;
+            const pH = victim.h || 72;
+            const pW = victim.w || 26;
+            const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
+              (victim.onGround && Math.abs((victim.y + pH) - oldY) <= 18 &&
+               victim.x + pW > cell.x + 4 && victim.x < cell.x + cell.w - 4);
+
+            if (isStandingOnCell) {
+              victim.y = cell.y - pH;
+              victim.vy = cell.vy;
+              victim.onGround = true;
+              victim.currentPlatform = cell.platformObj;
+            }
+          }
+        }
+
+        if (cell.platformObj) {
+          cell.platformObj.y = cell.y;
+        }
+
+        // Dotarcie do docelowego rzędu
+        if (cell.y >= targetY) {
+          cell.y = targetY;
+          cell.isFalling = false;
+          cell.vy = 0;
+          if (cell.platformObj) {
+            cell.platformObj.y = targetY;
+          }
+          anyLanded = true;
+          spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
+        }
+      }
+    }
+  }
+
+  if (anyLanded) {
+    triggerScreenShake(3);
+    updateTowerApexAndSpawns();
+    checkAndTriggerLineClears(combatants);
+    resolveArena5BlockPenetration(combatants);
+  }
+
+  return anyFallingOrSliding;
+}
 
 /**
  * Sprawdza wszystkie wiersze siatki i inicjuje ostrzeżenie przed detonacją pełnych rzędów
@@ -918,257 +1019,6 @@ function updateTowerApexAndSpawns() {
 }
 
 /**
- * Obsługa trafienia pociskiem w klocki
- */
-export function handleArena5BulletHit(bullet) {
-  if (!bullet) return false;
-
-  const bx = bullet.x;
-  const by = bullet.y;
-
-  for (const rowData of arena5State.gridRows.values()) {
-    if (!rowData) continue;
-    for (let c = 0; c < COLS; c++) {
-      const cell = rowData[c];
-      if (!cell || cell.hp <= 0) continue;
-
-      if (bx >= cell.x && bx <= cell.x + cell.w && by >= cell.y && by <= cell.y + cell.h) {
-        if (cell.material === 'SCAFFOLDING') {
-          return false;
-        }
-
-        const dmg = bullet.damage || 25;
-        cell.hp -= dmg;
-        spawnRicochetSparks(bx, by, -bullet.vx * 0.4, -bullet.vy * 0.4, 4);
-
-        if (cell.hp <= 0) {
-          destroyGridCell(cell.row, cell.col);
-        }
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * Obsługa fali uderzeniowej eksplozji
- */
-export function handleArena5Explosion(expX, expY, radius) {
-  const radSq = radius * radius;
-  let anyDestroyed = false;
-
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
-    if (!rowData) continue;
-    for (let c = 0; c < COLS; c++) {
-      const cell = rowData[c];
-      if (!cell || cell.hp <= 0) continue;
-
-      const cellMidX = cell.x + cell.w * 0.5;
-      const cellMidY = cell.y + cell.h * 0.5;
-      const distSq = (cellMidX - expX) * (cellMidX - expX) + (cellMidY - expY) * (cellMidY - expY);
-
-      if (distSq < radSq) {
-        const factor = 1.0 - Math.sqrt(distSq) / radius;
-        const dmg = Math.round(95 * factor);
-        cell.hp -= dmg;
-
-        if (cell.hp <= 0) {
-          destroyGridCell(r, c);
-          anyDestroyed = true;
-        }
-      }
-    }
-  }
-
-  if (anyDestroyed) {
-    applyColumnGravity(_activeCombatants);
-  }
-}
-
-/**
- * Niszczy komórkę w siatce i natychmiast aplikuje grawitację na klocki powyżej
- */
-function destroyGridCell(row, col) {
-  const rowData = arena5State.gridRows.get(row);
-  if (!rowData || !rowData[col]) return;
-
-  const cell = rowData[col];
-  removePlatformForCell(cell);
-  rowData[col] = null;
-
-  const midX = cell.x + cell.w * 0.5;
-  const midY = cell.y + cell.h * 0.5;
-
-  spawnConcreteDebris(midX, midY, 10);
-  triggerScreenShake(5);
-
-  for (let i = 0; i < 5; i++) {
-    arena5State.debrisParticles.push({
-      x: midX + (Math.random() - 0.5) * 20,
-      y: midY + (Math.random() - 0.5) * 20,
-      vx: (Math.random() - 0.5) * 10,
-      vy: -Math.random() * 6 - 2,
-      vRot: (Math.random() - 0.5) * 0.25,
-      rot: Math.random() * Math.PI * 2,
-      w: 10 + Math.random() * 12,
-      h: 8 + Math.random() * 8,
-      color: cell.color,
-      life: 1.0
-    });
-  }
-
-  if (cell.material === 'EXPLOSIVE') {
-    spawnShockwaveRing(midX, midY, 140, '#ef4444');
-    triggerScreenShake(12);
-    handleArena5Explosion(midX, midY, 160);
-  }
-
-  // KLUCZOWE: Zniszczenie klocka powoduje natychmiastowe opadnięcie klocków podpieranych powyżej!
-  applyColumnGravity(_activeCombatants);
-
-  // Przelicz cel suwnicy
-  if (arena5State.crane && arena5State.crane.shape) {
-    calculateTargetLandY(true);
-  }
-}
-
-/**
- * Wyznacza najkrótszy dystans od odcinka (p1->p2) do prostopadłościanu 2D (AABB)
- */
-function distSegmentToBox(p1x, p1y, p2x, p2y, rx, ry, rw, rh) {
-  if (p1x >= rx && p1x <= rx + rw && p1y >= ry && p1y <= ry + rh) return 0;
-  if (p2x >= rx && p2x <= rx + rw && p2y >= ry && p2y <= ry + rh) return 0;
-
-  let minDist = Infinity;
-  for (let i = 0; i <= 5; i++) {
-    const t = i / 5;
-    const px = p1x + (p2x - p1x) * t;
-    const py = p1y + (p2y - p1y) * t;
-    const clampX = Math.max(rx, Math.min(rx + rw, px));
-    const clampY = Math.max(ry, Math.min(ry + rh, py));
-    const d = Math.hypot(px - clampX, py - clampY);
-    if (d < minDist) minDist = d;
-  }
-  return minDist;
-}
-
-/**
- * Obsługa uderzenia bronią białą w klocki wieży (Nóż, Maczeta, Toporek)
- * Zadaje zredukowane obrażenia, umożliwiając graczowi wydostanie się z pułapki.
- */
-export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KNIFE', hitTargets = null) {
-  if (!p1 || !p2) return false;
-
-  let baseDmg = 25;
-  if (weaponId === 'KNIFE') baseDmg = 22;
-  else if (weaponId === 'MACHETE') baseDmg = 32;
-  else if (weaponId === 'TOMAHAWK') baseDmg = 38;
-
-  const hitRadius = (width * 0.5) + 14;
-  let closestCell = null;
-  let closestDist = Infinity;
-  let closestRow = -1;
-  let closestCol = -1;
-
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
-    if (!rowData) continue;
-    for (let c = 0; c < COLS; c++) {
-      const cell = rowData[c];
-      if (!cell || cell.hp <= 0) continue;
-
-      const d = distSegmentToBox(p1.x, p1.y, p2.x, p2.y, cell.x, cell.y, cell.w, cell.h);
-      if (d <= hitRadius && d < closestDist) {
-        closestDist = d;
-        closestCell = cell;
-        closestRow = r;
-        closestCol = c;
-      }
-    }
-  }
-
-  if (closestCell) {
-    closestCell.hp -= baseDmg;
-    const hitX = Math.max(closestCell.x, Math.min(closestCell.x + closestCell.w, p2.x));
-    const hitY = Math.max(closestCell.y, Math.min(closestCell.y + closestCell.h, p2.y));
-
-    spawnRicochetSparks(hitX, hitY, (Math.random() - 0.5) * 6, -3, 5);
-    spawnConcreteDebris(hitX, hitY, 3);
-    triggerScreenShake(3);
-
-    if (closestCell.hp <= 0) {
-      destroyGridCell(closestRow, closestCol);
-    }
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Obsługa kopnięcia w klocki wieży (kop zwykły, w powietrzu lub Spartan Kick)
- * Zadaje zredukowane obrażenia (18-28 HP) i pozwala rozbić klocki uniemożliwiające ucieczkę.
- */
-export function handleArena5KickHit(player, options = {}) {
-  if (!player) return false;
-
-  const isSpartan = !!options.isSpartan;
-  const kickDmg = isSpartan ? 28 : 18;
-  const facing = player.facing || 1;
-
-  const footX = options.footX !== undefined
-    ? options.footX
-    : (player.x + (player.w || 26) * 0.5 + facing * 32);
-  const footY = options.footY !== undefined
-    ? options.footY
-    : (player.y + (isSpartan ? (player.h || 72) * 0.5 : (player.h || 72) - 20));
-
-  const kickRadius = options.kickRadius || (isSpartan ? 42 : 32);
-
-  let closestCell = null;
-  let closestDist = Infinity;
-  let closestRow = -1;
-  let closestCol = -1;
-
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
-    if (!rowData) continue;
-    for (let c = 0; c < COLS; c++) {
-      const cell = rowData[c];
-      if (!cell || cell.hp <= 0) continue;
-
-      const clampX = Math.max(cell.x, Math.min(cell.x + cell.w, footX));
-      const clampY = Math.max(cell.y, Math.min(cell.y + cell.h, footY));
-      const d = Math.hypot(footX - clampX, footY - clampY);
-
-      if (d <= kickRadius && d < closestDist) {
-        closestDist = d;
-        closestCell = cell;
-        closestRow = r;
-        closestCol = c;
-      }
-    }
-  }
-
-  if (closestCell) {
-    closestCell.hp -= kickDmg;
-    const hitX = Math.max(closestCell.x, Math.min(closestCell.x + closestCell.w, footX));
-    const hitY = Math.max(closestCell.y, Math.min(closestCell.y + closestCell.h, footY));
-
-    spawnConcreteDebris(hitX, hitY, isSpartan ? 6 : 3);
-    spawnRicochetSparks(hitX, hitY, facing * 4, -2, 4);
-    triggerScreenShake(isSpartan ? 6 : 3);
-
-    if (closestCell.hp <= 0) {
-      destroyGridCell(closestRow, closestCol);
-    }
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Aktywny system antypentracyjny (Depenetration & Anti-Stuck Solver):
  * Sprawdza, czy którakolwiek postać (gracz lub bot) wbiła się / znalazła się wewnątrz
  * litego klocka wieży i natychmiast wypycha ją na zewnątrz (na szczyt klocka lub w bok).
@@ -1273,127 +1123,3 @@ export function resolveArena5BlockPenetration(combatants) {
   }
 }
 
-/**
- * Obsługa kolizji i odbić granatu od klocków wieży Areny 5 (w siatce oraz na suwnicy).
- * Gwarantuje, że granat odbija się od każdej ściany bloku i nie przenika przez klocki.
- */
-export function handleArena5GrenadeCollision(grenade) {
-  if (!grenade || grenade.detonated) return false;
-
-  const r = grenade.radius || 9;
-  const gx = grenade.x;
-  const gy = grenade.y;
-  const prevX = (typeof grenade.prevX === 'number') ? grenade.prevX : (gx - (grenade.vx || 0));
-  const prevY = (typeof grenade.prevY === 'number') ? grenade.prevY : (gy - (grenade.vy || 0));
-
-  // 1. Sprawdź spadający blok na suwnicy
-  const crane = arena5State.crane;
-  if (crane && crane.phase === 'FALLING' && crane.shape) {
-    for (const cell of crane.shapeCells) {
-      const cellX = getGridX(crane.col + cell.colRel);
-      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
-      const cellW = CELL_SIZE;
-      const cellH = CELL_SIZE;
-
-      if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cellX, cellY, cellW, cellH)) {
-        return true;
-      }
-    }
-  }
-
-  // 2. Sprawdź ułożone bloczki w siatce w pobliżu granatu
-  const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((gx - r - 6) / CELL_SIZE)));
-  const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((gx + r + 6) / CELL_SIZE)));
-  const minRow = arena5State.minFloorRow || 0;
-
-  for (let c = colLeft; c <= colRight; c++) {
-    for (const [rowIdx, rowData] of arena5State.gridRows.entries()) {
-      if (rowIdx < minRow || !rowData) continue;
-      const cell = rowData[c];
-      if (!cell || cell.hp <= 0) continue;
-
-      if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cell.x, cell.y, cell.w, cell.h)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-function resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, bx, by, bw, bh) {
-  // AABB test z marginesem promienia granatu
-  if (gx + r < bx || gx - r > bx + bw || gy + r < by || gy - r > by + bh) {
-    return false;
-  }
-
-  const rest = grenade.restitution || 0.58;
-
-  // Sprawdź przez którą krawędź granat wniknął na podstawie poprzedniej pozycji
-  const cameFromTop = (prevY + r <= by + 8) && (grenade.vy > 0);
-  const cameFromBottom = (prevY - r >= by + bh - 8) && (grenade.vy < 0);
-  const cameFromLeft = (prevX + r <= bx + 8) && (grenade.vx > 0);
-  const cameFromRight = (prevX - r >= bx + bw - 8) && (grenade.vx < 0);
-
-  if (cameFromTop) {
-    grenade.y = by - r;
-    grenade.vy = -grenade.vy * rest;
-    grenade.vx *= 0.85;
-    grenade.vRot *= 0.75;
-    grenade.bounces = (grenade.bounces || 0) + 1;
-    spawnRicochetSparks(gx, by, 0, -2, 5);
-    return true;
-  }
-
-  if (cameFromBottom) {
-    grenade.y = by + bh + r;
-    grenade.vy = -grenade.vy * rest;
-    grenade.bounces = (grenade.bounces || 0) + 1;
-    spawnRicochetSparks(gx, by + bh, 0, 2, 5);
-    return true;
-  }
-
-  if (cameFromLeft) {
-    grenade.x = bx - r;
-    grenade.vx = -Math.abs(grenade.vx) * rest;
-    grenade.vRot = -grenade.vRot * 0.8;
-    grenade.bounces = (grenade.bounces || 0) + 1;
-    spawnRicochetSparks(bx, gy, -2, 0, 5);
-    return true;
-  }
-
-  if (cameFromRight) {
-    grenade.x = bx + bw + r;
-    grenade.vx = Math.abs(grenade.vx) * rest;
-    grenade.vRot = -grenade.vRot * 0.8;
-    grenade.bounces = (grenade.bounces || 0) + 1;
-    spawnRicochetSparks(bx + bw, gy, 2, 0, 5);
-    return true;
-  }
-
-  // Zagłębienie (penetracja z powodu dużej prędkości): wypchnij wzdłuż najmniejszego zagłębienia
-  const dTop = (gy + r) - by;
-  const dBottom = (by + bh) - (gy - r);
-  const dLeft = (gx + r) - bx;
-  const dRight = (bx + bw) - (gx - r);
-  const minD = Math.min(dTop, dBottom, dLeft, dRight);
-
-  if (minD === dTop) {
-    grenade.y = by - r;
-    grenade.vy = -Math.abs(grenade.vy || 2) * rest;
-    grenade.vx *= 0.85;
-  } else if (minD === dBottom) {
-    grenade.y = by + bh + r;
-    grenade.vy = Math.abs(grenade.vy || 2) * rest;
-  } else if (minD === dLeft) {
-    grenade.x = bx - r;
-    grenade.vx = -Math.abs(grenade.vx || 2) * rest;
-  } else {
-    grenade.x = bx + bw + r;
-    grenade.vx = Math.abs(grenade.vx || 2) * rest;
-  }
-
-  grenade.bounces = (grenade.bounces || 0) + 1;
-  spawnRicochetSparks(grenade.x, grenade.y, (Math.random() - 0.5) * 4, -2, 5);
-  return true;
-}

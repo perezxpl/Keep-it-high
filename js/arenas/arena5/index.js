@@ -6,13 +6,15 @@
 
 import { arena5State, resetArena5State, BASE_FLOOR_Y } from './state.js';
 import {
-  updateArena5Physics,
+  updateArena5Physics
+} from './physics.js';
+import {
   handleArena5BulletHit,
   handleArena5Explosion,
   handleArena5MeleeHit,
   handleArena5KickHit,
   handleArena5GrenadeCollision
-} from './physics.js';
+} from './combat.js';
 import { drawArena5Background, drawArena5Foreground } from './renderer.js';
 import { camera } from '../../camera.js';
 
