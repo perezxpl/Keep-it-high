@@ -187,6 +187,11 @@ function checkFallingSquash(combatants) {
     const cellBottomY = cellY + cellH;
     const worldCol = crane.col + cell.colRel;
 
+    // Obliczenie docelowego poziomu zatrzymania tego segmentu figury
+    const cellTargetRow = crane.targetLandingRow + cell.rowRel;
+    const cellTargetY = getGridY(cellTargetRow);
+    const cellTargetBottomY = cellTargetY + CELL_SIZE;
+
     for (const victim of combatants) {
       if (!victim || victim.isDead) continue;
 
@@ -201,10 +206,6 @@ function checkFallingSquash(combatants) {
       const overlapX = (pX + 4 < cellX + cellW) && (pX + pW - 4 > cellX);
       if (!overlapX) continue;
 
-      // Czy spadający klocek dosięgnął głowy postaci z góry lub postać wbiła się w niego od dołu?
-      const isUnderBlock = (headY <= cellBottomY + 4) && (feetY > cellY + 8);
-      if (!isUnderBlock) continue;
-
       // Znajdź twardą powierzchnię pod stopami ofiary (spodni bloczek wieży lub podłoga)
       let surfaceBelowY = currentFloorY;
       for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
@@ -217,22 +218,47 @@ function checkFallingSquash(combatants) {
         }
       }
 
-      // Sprawdź czy ofiara została dociśnięta / uwięziona między spadającym klocem a twardym podłożem/bloczkiem
-      const isCompressed = (cellBottomY + pH >= surfaceBelowY - 6) ||
-                           (feetY >= surfaceBelowY - 8 && (victim.onGround || !!victim.currentPlatform));
+      // 1. Sprawdź, czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
+      // (np. figura "L", "T" lub most):
+      const finalGap = surfaceBelowY - cellTargetBottomY;
+      const hasSafePocketUnderneath = (finalGap >= pH - 8);
 
-      if (isCompressed) {
-        // ZMIAŻDŻENIE (Squash Kill) przy kontakcie z twardą powierzchnią poniżej!
+      if (hasSafePocketUnderneath) {
+        // Figura zatrzyma się nad głową postaci!
+        // Podczas opadania suwnica nigdy nie osiągnie poziomu niższego niż cellTargetBottomY.
+        // Jeśli postać skoczy w górę pod nawisem, działa standardowa kolizja sufitowa:
+        if (headY <= cellBottomY + 4 && feetY > cellY + 8) {
+          victim.y = Math.max(cellBottomY, surfaceBelowY - pH);
+          victim.vy = Math.max(0.5, victim.vy);
+          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+            victim.rocketBoots.dashDirY = 0;
+            victim.rocketBoots.dashing = false;
+          }
+        }
+        continue; // Pełne bezpieczeństwo pod nawisem dla wszystkich klas
+      }
+
+      // 2. Jeśli pod segmentem NIE MA bezpiecznego prześwitu (klocek zmiażdży ten sektor do podłoża):
+      const isUnderBlock = (headY <= cellBottomY + 4) && (feetY > cellY + 8);
+      if (!isUnderBlock) continue;
+
+      // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
+      // poniżej możliwości przeżycia (< 58% wysokości postaci) i postać spoczywa na podłożu:
+      const remainingSpace = surfaceBelowY - cellBottomY;
+      const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (feetY >= surfaceBelowY - 10);
+
+      if (isPhysicallyCrushed) {
         executeSquashKill(victim);
       } else {
-        // W powietrzu: spadający klocek ściąga postać w dół i uniemożliwia przeniknięcie w górę!
+        // W powietrzu: spadający klocek spycha postać w dół
         victim.y = cellBottomY;
-        victim.vy = Math.max(victim.vy, (crane.vy || 6.0) + 1.5);
+        victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
         victim.onGround = false;
         victim.currentPlatform = null;
 
         // Anuluj wszelkie zrywy jetpacka / dasha w górę
         if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+          victim.rocketBoots.dashDirY = 0;
           victim.rocketBoots.dashing = false;
         }
 
@@ -1001,14 +1027,14 @@ function updateTowerApexAndSpawns() {
       }
     }
 
-    const spawnY = Math.min(bestY - 85, (arena5State.currentFloorY || BASE_FLOOR_Y) - 85);
+    const spawnY = Math.min(bestY - 95, (arena5State.currentFloorY || BASE_FLOOR_Y) - 95);
     return { x: bestX, y: spawnY };
   }
 
-  const s1 = getSafeSpawnForColRange(2, 6, 280);
-  const s2 = getSafeSpawnForColRange(7, 11, 680);
-  const s3 = getSafeSpawnForColRange(12, 15, 1080);
-  const s4 = getSafeSpawnForColRange(16, 18, 1400);
+  const s1 = getSafeSpawnForColRange(1, 4, 200);
+  const s2 = getSafeSpawnForColRange(5, 8, 600);
+  const s3 = getSafeSpawnForColRange(9, 11, 1000);
+  const s4 = getSafeSpawnForColRange(12, 14, 1400);
 
   arena5State.spawns = [
     { x: s1.x, y: s1.y, facing: 1, isGround: true },
@@ -1070,8 +1096,9 @@ export function resolveArena5BlockPenetration(combatants) {
           const cellAbove = rowAbove ? rowAbove[c] : null;
           const isAboveClear = !cellAbove || cellAbove.hp <= 0;
 
-          // 1. Jeśli stopy są w górnej połowie klocka (penTop <= 68) lub góra jest wolna i postać nie leci gwałtownie w górę:
-          if ((penTop <= 68 || isAboveClear) && isAboveClear && (p.vy >= -1.0 || penTop <= 45)) {
+          // 1. Lądowanie na klocku od góry: TYLKO jeśli stopy wniknęły minimalnie od góry (penTop <= 10)
+          // i postać opada w dół z powietrza (p.vy >= 0). W przeciwnym razie jest to uderzenie w bok klocka (ściana)!
+          if (penTop <= 10 && isAboveClear && (p.vy >= 0 || penTop <= 4)) {
             p.y = cellTop - pH;
             p.vy = 0;
             p.onGround = true;
@@ -1087,7 +1114,7 @@ export function resolveArena5BlockPenetration(combatants) {
               p.rocketBoots.dashing = false;
             }
           }
-          // 3. Wypchnięcie boczne w stronę mniejszego zagłębienia
+          // 3. Wypchnięcie boczne w bok (uderzenie w ścianę pionową):
           else {
             // Sprawdź czy kolumna z lewej / prawej jest wolna na tej wysokości
             const isLeftClear = (c > 0) && (!rowData[c - 1] || rowData[c - 1].hp <= 0);

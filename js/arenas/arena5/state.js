@@ -4,8 +4,8 @@
 // Standard: Zero emojis, modularyzacja ES, optymalizacja pamięci
 // =========================================================================
 
-export const CELL_SIZE = 80; // 80px: dopasowanie do Enforcera (74px) z zachowaniem pełnej zdolności do wskakiwania
-export const COLS = 20; // 20 kolumn x 80px = 1600px: dokładnie od lewej do prawej krawędzi ekranu
+export const CELL_SIZE = 100; // 100px: nieco większe od Enforcera (74px), z bezpiecznym schronieniem w lukach pod figurami
+export const COLS = 16; // 16 kolumn x 100px = 1600px: dokładnie od lewej do prawej krawędzi ekranu
 export const MAX_TOWER_ROWS = 20; // Maksymalna wysokość aktywnej wieży: 20 segmentów w pionie
 export const ARENA_LEFT = 0;
 export const ARENA_WIDTH = 1600;
@@ -142,12 +142,12 @@ export const arena5State = {
   // Licznik unikalnych identyfikatorów figur (spójne klocki Tetris)
   nextPieceId: 1,
 
-  // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 20 kolumnach)
+  // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 16 kolumnach)
   spawns: [
-    { x: 280, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: 680, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: 1080, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true },
-    { x: 1400, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: 200, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 600, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 1000, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true },
+    { x: 1400, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true }
   ]
 };
 
@@ -231,10 +231,10 @@ export function rebuildInitialPlatforms() {
   );
 
   arena5State.spawns = [
-    { x: 280, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: 680, y: BASE_FLOOR_Y - 90, facing: 1, isGround: true },
-    { x: 1080, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true },
-    { x: 1400, y: BASE_FLOOR_Y - 90, facing: -1, isGround: true }
+    { x: 200, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 600, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 1000, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true },
+    { x: 1400, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true }
   ];
 
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {

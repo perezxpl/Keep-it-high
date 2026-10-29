@@ -233,10 +233,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
-      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie
-      const airMarginTop = Math.max(30, platThickness * 0.9);
-      const maxLandingDepth = (isA5 && plat.isA5Block) ? 75 : Math.max(36, p.vy + 24);
-      const isAirLanding = p.vy >= -1.0 && (
+      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie.
+      // Dla klocków Areny 5 lądowanie z powietrza wymaga opadania na krawędź z góry (prevFeetY <= topY + 8),
+      // a nie znajdowania się poniżej szczytu (co pozwalało na automatyczne "wbieganie" na wysoki klocek).
+      const airMarginTop = (isA5 && plat.isA5Block) ? 8 : Math.max(30, platThickness * 0.9);
+      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 12) : Math.max(36, p.vy + 24);
+      const minAirVy = (isA5 && plat.isA5Block) ? -0.5 : -1.0;
+      const isAirLanding = p.vy >= minAirVy && (
         (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + maxLandingDepth)
       );
 
@@ -246,7 +249,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const isGroundedRetention = isCurrent && !p.isJumping && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
 
       // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach i rampach):
-      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= 32;
+      // Dla klocków Areny 5 (100px) krok poziomy bez skoku dozwolony wyłącznie na ten sam poziom (różnica <= 8px):
+      const maxStepOver = (isA5 && plat.isA5Block) ? 8 : 32;
+      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= maxStepOver;
 
       let isLanding = isAirLanding || isGroundedRetention || isStepOver;
 

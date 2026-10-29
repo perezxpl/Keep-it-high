@@ -473,14 +473,21 @@ function drawLandingWarningLine(ctx) {
 
     // Szukamy najwyższego bloku poniżej tej kolumny figury
     let surfaceY = currentFloorY;
+    let highestRowInCol = minRow - 1;
 
     for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
       const rData = arena5State.gridRows.get(r);
       if (rData && rData[wCol] && rData[wCol].hp > 0) {
         surfaceY = rData[wCol].y;
+        highestRowInCol = r;
         break;
       }
     }
+
+    // Cień/ostrzeżenie pojawia się WYŁĄCZNIE na tych powierzchniach, na które klocek faktycznie uderzy
+    // (pomijamy nawisy/mosty, pod którymi pozostanie wolna przestrzeń dla graczy):
+    const willLandOnSurface = (crane.targetLandingRow + bottomCell.rowRel === highestRowInCol + 1);
+    if (!willLandOnSurface) continue;
 
     // Bieżąca dolna krawędź tej kolumny spadającej figury
     const cellBottomY = crane.currentY + (crane.shape.h - bottomCell.rowRel) * CELL_SIZE;
