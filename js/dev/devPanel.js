@@ -381,9 +381,13 @@ export function initDevCollisionUI() {
   }
 
   if (devCollisionBtn) {
+    let lastToggleTime = 0;
     const handleToggle = (e) => {
       e.stopPropagation();
       e.preventDefault();
+      const now = Date.now();
+      if (now - lastToggleTime < 250) return;
+      lastToggleTime = now;
       if (typeof toggleDebugColliders === 'function') {
         toggleDebugColliders();
       } else if (typeof window !== 'undefined' && typeof window.toggleDebugColliders === 'function') {

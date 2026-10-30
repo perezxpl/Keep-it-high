@@ -871,6 +871,10 @@ function draw() {
   const isArena4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
   const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const isArena3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
+  const effectiveDrawGroundY = isArena5Active
+    ? ((typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200)
+    : (isArena2Active ? 1600 : (isArena3Active ? 1200 : (isArena4Active ? 1400 : GROUND_Y)));
+
   if (!isArena2Active && !isArena3Active && !isArena4Active && !isArena5Active) {
     drawGround(ctx, worldLeft, worldWidth);
   }
@@ -1096,7 +1100,7 @@ function draw() {
 
   const isDebugCol = (typeof isDebugCollidersEnabled === 'function') ? isDebugCollidersEnabled() : DEBUG_COLLIDERS;
   if (isDebugCol && typeof drawDebugColliders === 'function') {
-    drawDebugColliders(ctx, effectiveGroundY, player, { activeBots, remotePlayer, ball });
+    drawDebugColliders(ctx, effectiveDrawGroundY, player, { activeBots, remotePlayer, ball });
   }
 
   drawShockwaves(ctx, camera);
