@@ -495,7 +495,7 @@ export function syncArena5ExposedSurfaces() {
       if (!cell || cell.hp <= 0) continue;
 
       const cellAbove = rowAbove ? rowAbove[c] : null;
-      const isCovered = !!(cellAbove && cellAbove.hp > 0 && !cellAbove.isFalling);
+      const isCovered = !!(cellAbove && cellAbove.hp > 0 && (!cellAbove.isFalling || cell.isFalling));
       const isTopExposed = !isCovered;
 
       cell.topExposed = isTopExposed;
@@ -759,13 +759,13 @@ function updateFallingBlocks(dt, combatants) {
   let anyFallingOrSliding = false;
   let anyLanded = false;
 
+  // 1. Płynne przesuwanie w bok po kopnięciu (Sliding)
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
       if (!cell || cell.hp <= 0) continue;
 
-      // 1. Płynne przesuwanie w bok po kopnięciu (Sliding)
       if (cell.isSliding) {
         anyFallingOrSliding = true;
         const targetX = (typeof cell.slideTargetX === 'number') ? cell.slideTargetX : cell.x;
@@ -802,90 +802,154 @@ function updateFallingBlocks(dt, combatants) {
           }
         }
       }
+    }
+  }
 
-      // 2. Płynne opadanie w dół po utracie podparcia (Falling)
-      if (cell.isFalling) {
-        anyFallingOrSliding = true;
-        const targetY = (typeof cell.targetY === 'number') ? cell.targetY : getGridY(cell.row);
+  // 2. Płynne opadanie w dół po utracie podparcia (Falling)
+  const fallingCells = [];
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (cell && cell.hp > 0 && cell.isFalling) {
+        fallingCells.push(cell);
+      }
+    }
+  }
 
-        const fallAccel = 20.0;
-        cell.vy = Math.min(11.0, (cell.vy || 1.0) + fallAccel * dt);
-        const step = cell.vy * (dt * 60);
-        const oldY = cell.y;
-        cell.y += step;
+  if (fallingCells.length > 0) {
+    anyFallingOrSliding = true;
 
-        // Przenoszenie postaci stojącej na opadającym klocku oraz sztywna kolizja z opadającym blokiem
-        if (Array.isArray(combatants)) {
-          for (const victim of combatants) {
-            if (!victim || victim.isDead) continue;
-            const pH = victim.h || 72;
-            const pW = victim.w || 26;
-            const isHorizontallyOverCell = (victim.x + pW > cell.x + 4 && victim.x < cell.x + cell.w - 4);
-            const isStandingOnCell = isHorizontallyOverCell && (
-              (victim.currentPlatform === cell.platformObj) ||
-              (victim.onGround && Math.abs((victim.y + pH) - oldY) <= 18)
-            );
+    // Faza A: Najpierw przesuń wszystkie spadające komórki o krok fizyki w danej klatce
+    const fallAccel = 20.0;
+    for (const cell of fallingCells) {
+      cell.vy = Math.min(11.0, (cell.vy || 1.0) + fallAccel * dt);
+      const step = cell.vy * (dt * 60);
+      cell.oldY = cell.y;
+      cell.y += step;
+      if (cell.platformObj) {
+        cell.platformObj.y = cell.y;
+        cell.platformObj.oldY = cell.oldY;
+      }
+    }
 
-            if (isStandingOnCell) {
-              victim.y = cell.y - pH;
-              victim.vy = cell.vy;
-              victim.onGround = true;
-              victim.currentPlatform = cell.platformObj;
+    // Faza B: Następnie dla każdego żywego gracza sprawdź interakcję ze spadającymi klockami
+    const minRow = arena5State.minFloorRow || 0;
+    const baseFloor = arena5State.currentFloorY || BASE_FLOOR_Y;
+
+    if (Array.isArray(combatants) && combatants.length > 0) {
+      for (const victim of combatants) {
+        if (!victim || victim.isDead) continue;
+        const pH = victim.h || 72;
+        const pW = victim.w || 26;
+        const prevBottom = (victim.y - (victim.vy || 0)) + pH;
+
+        // B1. Lądowanie / stabilna jazda na dachu opadającego klocka:
+        // Może nastąpić WYŁĄCZNIE, gdy góra jest odsłonięta, a gracz znajdował się na lub ponad dachem
+        let ridingCell = null;
+        for (const cell of fallingCells) {
+          const rowAbove = arena5State.gridRows.get(cell.row + 1);
+          const cellAbove = rowAbove ? rowAbove[cell.col] : null;
+          const isTopExposed = !cellAbove || cellAbove.hp <= 0;
+          if (!isTopExposed) continue;
+
+          const isHoriz = (victim.x + pW > cell.x + 3 && victim.x < cell.x + cell.w - 3);
+          if (!isHoriz) continue;
+
+          const wasAboveRoof = (victim.currentPlatform === cell.platformObj) ||
+            (prevBottom <= cell.oldY + 16 && victim.y < cell.oldY);
+
+          // Nigdy nie wciągaj gracza na dach, jeśli gracz znajduje się pod klockiem lub wewnątrz jego obrysu!
+          if (wasAboveRoof && victim.y < cell.oldY - 10) {
+            ridingCell = cell;
+            break;
+          }
+        }
+
+        if (ridingCell) {
+          victim.y = ridingCell.y - pH;
+          victim.vy = ridingCell.vy;
+          victim.onGround = true;
+          victim.currentPlatform = ridingCell.platformObj;
+          continue; // Gracz jedzie bezpiecznie na dachu
+        }
+
+        // B2. Uderzenie od góry i zmiażdżenie (executeSquashKill) przez opadający klocek
+        for (const cell of fallingCells) {
+          if (victim.isDead) break;
+
+          const isHoriz = (victim.x + pW > cell.x + 3 && victim.x < cell.x + cell.w - 3);
+          const isVertHit = (victim.y < cell.y + cell.h && victim.y + pH > cell.oldY + 6);
+
+          if (isHoriz && isVertHit) {
+            // Wyznacz surfaceBelowY: najwyższy nieopadający klocek w tej kolumnie poniżej głowy gracza
+            let surfaceBelowY = baseFloor;
+            for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+              const rData = arena5State.gridRows.get(r);
+              const other = rData ? rData[cell.col] : null;
+              if (other && other.hp > 0 && !other.isFalling && other.y >= victim.y + 16) {
+                surfaceBelowY = other.y;
+                break;
+              }
+            }
+
+            const cellTargetY = (typeof cell.targetY === 'number') ? cell.targetY : getGridY(cell.row);
+            const cellTargetBottomY = cellTargetY + CELL_SIZE;
+            const finalGap = surfaceBelowY - cellTargetBottomY;
+
+            if (finalGap >= pH - 8) {
+              // Pod opadającym kafelkiem po wylądowaniu zostanie bezpieczna wnęka: zepchnij gracza do wnęki
+              victim.y = Math.min(surfaceBelowY - pH, cell.y + cell.h);
+              if (victim.vy < 0) victim.vy = 0.5;
             } else {
-              // Sprawdź kolizję postaci z dachem, bokiem lub spodem opadającego klocka
-              const overlapX = (victim.x + pW > cell.x) && (victim.x < cell.x + cell.w);
-              const overlapY = (victim.y + pH > cell.y) && (victim.y < cell.y + cell.h);
-              if (overlapX && overlapY) {
-                const penTop = (victim.y + pH) - cell.y;
-                const penBottom = (cell.y + cell.h) - victim.y;
-                const penLeft = (victim.x + pW) - cell.x;
-                const penRight = (cell.x + cell.w) - victim.x;
-
-                const rowAbove = arena5State.gridRows.get(cell.row + 1);
-                const cellAbove = rowAbove ? rowAbove[cell.col] : null;
-                const isTopExposed = !cellAbove || cellAbove.hp <= 0;
-
-                // Jeśli góra opadającego kafelka jest odsłonięta i gracz opada na dach klocka:
-                if (isTopExposed && penTop <= 36 && penTop <= penLeft && penTop <= penRight) {
-                  victim.y = cell.y - pH;
-                  victim.vy = cell.vy;
-                  victim.onGround = true;
-                  victim.currentPlatform = cell.platformObj;
-                } else if (penBottom <= penLeft && penBottom <= penRight && penBottom < 32) {
-                  // Jeśli spód klocka opada na głowę postaci:
-                  victim.y = cell.y + cell.h;
-                  victim.vy = Math.max(victim.vy, cell.vy + 1.0);
-                  if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-                    victim.rocketBoots.dashDirY = 0;
-                    victim.rocketBoots.dashing = false;
-                  }
-                } else if (penLeft <= penRight) {
-                  victim.x = cell.x - pW;
-                  if (victim.vx > 0) victim.vx = 0;
-                } else {
-                  victim.x = cell.x + cell.w;
-                  if (victim.vx < 0) victim.vx = 0;
+              // Kafelek zamyka przestrzeń nad podłożem:
+              const remainingSpace = surfaceBelowY - (cell.y + cell.h);
+              if ((remainingSpace <= pH * 0.65 || cell.y >= cellTargetY) && (victim.y + pH >= surfaceBelowY - 16)) {
+                executeSquashKill(victim);
+                break;
+              } else {
+                victim.y = cell.y + cell.h;
+                victim.vy = Math.max(victim.vy || 0, (cell.vy || 4.0) + 1.2);
+                victim.onGround = false;
+                victim.currentPlatform = null;
+                if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+                  victim.rocketBoots.dashDirY = 0;
+                  victim.rocketBoots.dashing = false;
                 }
+              }
+            }
+          } else {
+            // Kolizja boczna ze ścianami opadającego klocka
+            const overlapX = (victim.x + pW > cell.x) && (victim.x < cell.x + cell.w);
+            const overlapY = (victim.y + pH > cell.y + 6) && (victim.y < cell.y + cell.h - 6);
+            if (overlapX && overlapY) {
+              const penLeft = (victim.x + pW) - cell.x;
+              const penRight = (cell.x + cell.w) - victim.x;
+              if (penLeft <= penRight) {
+                victim.x = cell.x - pW;
+                if (victim.vx > 0) victim.vx = 0;
+              } else {
+                victim.x = cell.x + cell.w;
+                if (victim.vx < 0) victim.vx = 0;
               }
             }
           }
         }
+      }
+    }
 
+    // Faza C: Zamknij lądowanie komórek, które osiągnęły cell.y >= targetY
+    for (const cell of fallingCells) {
+      const targetY = (typeof cell.targetY === 'number') ? cell.targetY : getGridY(cell.row);
+      if (cell.y >= targetY) {
+        cell.y = targetY;
+        cell.isFalling = false;
+        cell.vy = 0;
         if (cell.platformObj) {
-          cell.platformObj.y = cell.y;
+          cell.platformObj.y = targetY;
         }
-
-        // Dotarcie do docelowego rzędu
-        if (cell.y >= targetY) {
-          cell.y = targetY;
-          cell.isFalling = false;
-          cell.vy = 0;
-          if (cell.platformObj) {
-            cell.platformObj.y = targetY;
-          }
-          anyLanded = true;
-          spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
-        }
+        anyLanded = true;
+        spawnConcreteDebris(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 3);
       }
     }
   }
@@ -1250,7 +1314,7 @@ export function resolveArena5BlockPenetration(combatants) {
         for (const [r, rowData] of arena5State.gridRows.entries()) {
           if (r < minRow || !rowData) continue;
           const cell = rowData[c];
-          if (!cell || cell.hp <= 0) continue;
+          if (!cell || cell.hp <= 0 || cell.isFalling) continue;
 
           const cellLeft = cell.x;
           const cellRight = cell.x + cell.w;
@@ -1365,7 +1429,7 @@ export function resolveArena5BlockPenetration(combatants) {
 
           // Fallback, gdy żaden kierunek nie został wybrany
           if (!bestDir) {
-            if (isAboveClear && penTop <= 48) {
+            if (isAboveClear && penTop <= 42 && p.y < cellTop) {
               bestDir = 'TOP';
             } else if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
               bestDir = 'LEFT';
@@ -1375,8 +1439,46 @@ export function resolveArena5BlockPenetration(combatants) {
               bestDir = 'LEFT';
             } else if (isBelowClear && canFitUnderneath && headY >= cellBottom - 28) {
               bestDir = 'BOTTOM';
-            } else if (isAboveClear) {
-              bestDir = 'TOP';
+            }
+          }
+
+          // Głębokie zaklinowanie (penTop > 42 lub brak wolnych bezpośrednich ścian)
+          if (!bestDir) {
+            if (penTop > 42 && !canFitUnderneath && feetY >= cellBottom - 16) {
+              executeSquashKill(p);
+              resolvedAny = true;
+              break;
+            } else {
+              // Wypchnij gracza poziomo w stronę najbliższej wolnej kolumny w tym rzędzie
+              let nearestLeftDist = Infinity;
+              let nearestLeftCol = -1;
+              for (let testC = c - 1; testC >= 0; testC--) {
+                const testCell = rowData ? rowData[testC] : null;
+                if (!testCell || testCell.hp <= 0) {
+                  nearestLeftCol = testC;
+                  nearestLeftDist = c - testC;
+                  break;
+                }
+              }
+
+              let nearestRightDist = Infinity;
+              let nearestRightCol = -1;
+              for (let testC = c + 1; testC < COLS; testC++) {
+                const testCell = rowData ? rowData[testC] : null;
+                if (!testCell || testCell.hp <= 0) {
+                  nearestRightCol = testC;
+                  nearestRightDist = testC - c;
+                  break;
+                }
+              }
+
+              if (nearestLeftCol !== -1 && nearestLeftDist <= nearestRightDist) {
+                bestDir = 'LEFT';
+              } else if (nearestRightCol !== -1) {
+                bestDir = 'RIGHT';
+              } else if (isAboveClear && penTop <= 42 && p.y < cellTop) {
+                bestDir = 'TOP';
+              }
             }
           }
 
@@ -1406,9 +1508,10 @@ export function resolveArena5BlockPenetration(combatants) {
             resolvedAny = true;
           }
         }
+        if (p.isDead) break;
       }
 
-      if (!resolvedAny) break;
+      if (p.isDead || !resolvedAny) break;
     }
   }
 }

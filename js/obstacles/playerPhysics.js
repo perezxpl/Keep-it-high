@@ -211,6 +211,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
           continue;
         }
       }
+      // Jeśli klocek jest w trakcie opadania, pozwól na lądowanie wyłącznie wtedy, gdy gracz był na lub ponad dachem
+      if (plat.cellRef && plat.cellRef.isFalling) {
+        const prevRoofY = (typeof plat.cellRef.oldY === 'number') ? plat.cellRef.oldY : plat.y;
+        if (prevBottom > prevRoofY + 14 || p.y >= plat.y) {
+          continue;
+        }
+      }
     }
 
     const bnds = getPlatformBounds(plat);
