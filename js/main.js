@@ -182,9 +182,16 @@ camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
 camera.y = camera.targetY;
 clampCamera();
 
-window.addEventListener('resize', () => {
+function handleWindowLayoutSync() {
   resize(player);
-  updateButtonLayout(W, H);
+  updateButtonLayout(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', handleWindowLayoutSync);
+window.addEventListener('orientationchange', () => {
+  handleWindowLayoutSync();
+  setTimeout(handleWindowLayoutSync, 60);
+  setTimeout(handleWindowLayoutSync, 200);
 });
 
 export const BIOME_TELEPORT_TARGETS = {

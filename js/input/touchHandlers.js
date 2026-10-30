@@ -895,6 +895,11 @@ function endTouch(e) {
       leftStick.jumpTriggered = false;
 
       // Przywrócenie domyślnej ergonomicznej pozycji po zwolnieniu dotyku
+      const curScrW = typeof window !== 'undefined' ? window.innerWidth : W;
+      const curScrH = typeof window !== 'undefined' ? window.innerHeight : H;
+      if (!leftStick.defaultBaseX || !leftStick.defaultBaseY || leftStick.defaultBaseY > curScrH) {
+        updateButtonLayout(curScrW, curScrH);
+      }
       if (leftStick.defaultBaseX) {
         leftStick.baseX = leftStick.defaultBaseX;
         leftStick.baseY = leftStick.defaultBaseY;

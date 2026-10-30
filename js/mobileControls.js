@@ -146,14 +146,18 @@ export const btnCluster = {
  * @param {number} H - Wysokość ekranu
  */
 export function updateButtonLayout(W, H) {
-  const curW = (typeof W === 'number' && W > 0) ? W : (typeof window !== 'undefined' ? window.innerWidth : 800);
-  const curH = (typeof H === 'number' && H > 0) ? H : (typeof window !== 'undefined' ? window.innerHeight : 600);
+  const curW = (typeof window !== 'undefined' && typeof window.innerWidth === 'number' && window.innerWidth > 0)
+    ? window.innerWidth
+    : ((typeof W === 'number' && W > 0) ? W : 800);
+  const curH = (typeof window !== 'undefined' && typeof window.innerHeight === 'number' && window.innerHeight > 0)
+    ? window.innerHeight
+    : ((typeof H === 'number' && H > 0) ? H : 600);
 
   // Domyślne ergonomiczne pozycje drążków dotykowych
   leftStick.defaultBaseX = Math.round(Math.min(135, Math.max(95, curW * 0.14)));
   leftStick.defaultBaseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
   leftStick.maxRadius = 55;
-  if (!leftStick.active) {
+  if (!leftStick.active || leftStick.baseY > curH || leftStick.baseX > curW || leftStick.baseX <= 0) {
     leftStick.baseX = leftStick.defaultBaseX;
     leftStick.baseY = leftStick.defaultBaseY;
     leftStick.curX = leftStick.baseX;
@@ -163,10 +167,13 @@ export function updateButtonLayout(W, H) {
   rightStick.baseX = Math.round(curW - Math.min(135, Math.max(95, curW * 0.14)));
   rightStick.baseY = Math.round(curH - Math.min(135, Math.max(95, curH * 0.28)));
   rightStick.maxRadius = 58;
-  if (!rightStick.active) {
+  if (!rightStick.active || rightStick.baseY > curH || rightStick.baseX > curW || rightStick.baseX <= 0) {
     rightStick.curX = rightStick.baseX;
     rightStick.curY = rightStick.baseY;
   }
+
+  leftStick._lastLayoutW = curW;
+  leftStick._lastLayoutH = curH;
 
   const rsX = rightStick.baseX;
   const rsY = rightStick.baseY;

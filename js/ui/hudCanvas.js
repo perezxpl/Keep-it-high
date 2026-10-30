@@ -172,13 +172,21 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   const activeTouch = (typeof window !== 'undefined') && (
     window.isTouchDevice ||
     isTouchDevice ||
-    window.innerWidth <= 850 ||
-    (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+    window.innerWidth <= 1024 ||
+    window.innerHeight <= 600 ||
+    ('ontouchstart' in window) ||
+    (navigator && navigator.maxTouchPoints > 0)
   );
   if (!activeTouch || !ctx || !player) return;
 
-  if (!leftStick || leftStick.baseX <= 0) {
-    updateButtonLayout(W, H);
+  const curW = (typeof window !== 'undefined' ? window.innerWidth : W) || W || 800;
+  const curH = (typeof window !== 'undefined' ? window.innerHeight : H) || H || 600;
+  if (!leftStick || leftStick.baseX <= 0 || leftStick.baseY > curH || !rightStick || rightStick.baseX <= 0 || rightStick.baseY > curH || (btnCluster?.action && btnCluster.action.y > curH) || leftStick._layoutW !== curW || leftStick._layoutH !== curH) {
+    updateButtonLayout(curW, curH);
+    if (leftStick) {
+      leftStick._layoutW = curW;
+      leftStick._layoutH = curH;
+    }
   }
 
   ctx.save();
@@ -1268,7 +1276,14 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   updateFps();
 
   // Wykrywanie urządzeń mobilnych / małych ekranów
-  const isMobile = (typeof window !== 'undefined' && window.innerWidth < 850);
+  const isMobile = (typeof window !== 'undefined') && (
+    window.innerWidth <= 1024 ||
+    window.innerHeight <= 600 ||
+    isTouchDevice ||
+    window.isTouchDevice ||
+    ('ontouchstart' in window) ||
+    (navigator && navigator.maxTouchPoints > 0)
+  );
 
   // Informacje o aktywnej arenie i trybie gry zdefiniowane w zasięgu całej funkcji drawHUD
   const aState = arenaInfo || _worldArenaState;
@@ -1923,12 +1938,14 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     }
   }
 
-  const shouldDrawTouchControls = (typeof window !== 'undefined' && (
+  const shouldDrawTouchControls = (typeof window !== 'undefined') && (
     window.isTouchDevice ||
     isTouchDevice ||
-    window.innerWidth <= 850 ||
-    (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
-  ));
+    window.innerWidth <= 1024 ||
+    window.innerHeight <= 600 ||
+    ('ontouchstart' in window) ||
+    (navigator && navigator.maxTouchPoints > 0)
+  );
 
   if (shouldDrawTouchControls) {
     try {

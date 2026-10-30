@@ -1269,8 +1269,10 @@ export const uiManager = {
           const isMobileOrTouch = (typeof window !== 'undefined') && (
             window.isTouchDevice ||
             isTouchDevice ||
-            window.innerWidth <= 850 ||
-            (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+            window.innerWidth <= 1024 ||
+            window.innerHeight <= 600 ||
+            ('ontouchstart' in window) ||
+            (navigator && navigator.maxTouchPoints > 0)
           );
           hudPauseBtn.style.display = isMobileOrTouch ? 'flex' : 'none';
         }
