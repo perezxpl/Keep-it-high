@@ -185,80 +185,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // 1. Twarda blokada przechodzenia przez ściany oraz boki klocków Areny 5 i zwalonych przeszkód
-  // Wykonywana PRZED sprawdzeniem lądowania, aby zapobiec przenikaniu w szczeliny między klockami
-  // i utracie ground retention przy dobieganiu do pionowych ścian figur lub stopni.
-  for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.solid === false || plat.oneWay) continue;
-
-    // A. Ściany pionowe (plat.isWall)
-    if (plat.isWall) {
-      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
-      const bottomY = topY + (plat.h || plat.thickness || 200);
-      if (feetY > topY + 6 && p.y < bottomY - 4) {
-        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
-          if (plat.pushSide === 'left') {
-            p.x = plat.x - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else if (plat.pushSide === 'right') {
-            p.x = plat.x + plat.w;
-            if (p.vx < 0) p.vx = 0;
-          } else {
-            const overlapLeft = (p.x + p.w) - plat.x;
-            const overlapRight = (plat.x + plat.w) - p.x;
-            let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
-            if (pushLeft) {
-              p.x = plat.x - p.w;
-              if (p.vx > 0) p.vx = 0;
-            } else {
-              p.x = plat.x + plat.w;
-              if (p.vx < 0) p.vx = 0;
-            }
-          }
-        }
-      }
-      continue;
-    }
-
-    // B. Boki klocków Areny 5 oraz zwalonych segmentów
-    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
-    if (!isObstacleToBlock) continue;
-
-    const bnds = getPlatformBounds(plat);
-    const minStepForSideHit = (isA5 || plat.isA5Block) ? 8 : 34;
-
-    // Jeśli postać stoi bezpiecznie na szczycie tej platformy, nie traktuj jej jako ściany bocznej
-    if (p.currentPlatform === plat && feetY <= bnds.minY + minStepForSideHit) continue;
-
-    const stepDiff = feetY - bnds.minY;
-    const isSideHit = (stepDiff > minStepForSideHit && feetY > bnds.minY + minStepForSideHit && p.y < bnds.maxY - 2);
-    if (isSideHit) {
-      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
-        const overlapLeft = (p.x + p.w) - bnds.minX;
-        const overlapRight = bnds.maxX - p.x;
-
-        let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
-
-        if (pushLeft) {
-          p.x = bnds.minX - p.w;
-          if (p.vx > 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
-        } else {
-          p.x = bnds.maxX;
-          if (p.vx < 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
-        }
-      }
-    }
-  }
-
-  // Zaktualizuj pozycję środka i stóp po depenetracji poziomej
-  centerX = p.x + (p.w || 24) * 0.5;
-  feetY = p.y + colH;
-
+  // =========================================================================
+  // SEPARACJA OSI: FAZA 1 - RUCH I KOLIZJA W OSI Y (Sub-tile AABB Swept Landing)
+  // =========================================================================
   let landedSurface = null;
   let landedSlope = 0;
   let landedPlatform = null;
+
+  const prevBottom = feetY - p.vy;
+  const newBottom = feetY;
 
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
@@ -313,24 +248,23 @@ export function checkPlayerPlatformLanding(p, groundY) {
         }
       }
 
-      // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
-      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie.
-      const airMarginTop = (isA5 && plat.isA5Block) ? Math.max(16, Math.abs(p.vy) + 8) : Math.max(30, platThickness * 0.9);
-      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(28, p.vy + 20) : Math.max(36, p.vy + 24);
+      // 1. Lądowanie z powietrza (Swept-test wzdłuż osi Y chroniący przed tunelowaniem):
+      // Sprawdzamy czy odcinek od prevBottom do newBottom przecina subTile.top
+      const tolerance = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 8) : Math.max(30, platThickness * 0.9);
       const minAirVy = (isA5 && plat.isA5Block) ? -0.8 : -1.0;
       const isAirLanding = p.vy >= minAirVy && (
-        (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + maxLandingDepth)
+        prevBottom <= topY + tolerance && newBottom >= topY - 14 && p.y < topY + platThickness
       );
 
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
       // Gracz nie odpada od platformy przy mikro-wahaniach pionowych ani przy wstawaniu ze staggara
       const maxRetentionDiff = isA3Ground ? 85 : ((p.staggerTimer > 0 || (p.staggerRecoveryTimer || 0) > 0) ? 60 : 36);
-      const isGroundedRetention = isCurrent && !p.isJumping && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(feetY - topY) <= maxRetentionDiff;
+      const isGroundedRetention = isCurrent && !p.isJumping && !(p.rocketBoots?.dashing && p.rocketBoots.dashType === 'AIR' && p.rocketBoots.dashDirY < -0.1) && Math.abs(newBottom - topY) <= maxRetentionDiff;
 
       // 3. Płynne przejście między sąsiadującymi klockami/platformami (Step-over transition na modularnych kładkach i rampach):
       // Dla klocków Areny 5 (100px) krok poziomy bez skoku dozwolony wyłącznie na ten sam poziom (różnica <= 8px):
       const maxStepOver = (isA5 && plat.isA5Block) ? 8 : 32;
-      const isStepOver = p.onGround && !p.isJumping && Math.abs(feetY - topY) <= maxStepOver;
+      const isStepOver = p.onGround && !p.isJumping && Math.abs(newBottom - topY) <= maxStepOver;
 
       let isLanding = isAirLanding || isGroundedRetention || isStepOver;
 
@@ -350,10 +284,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       // Twarde zabezpieczenie przed wpadaniem do wnętrza odsłoniętych klocków w Arenie 5 (Solid Top Blocks):
-      // Wymaga faktycznego znajdowania się nad obrysem klocka (minX+4 do maxX-4) oraz bliskości dachu (max 16px)
+      // Wymaga faktycznego znajdowania się nad obrysem klocka (minX+4 do maxX-4) oraz przecięcia dachu w osi Y
       if (!isLanding && isA5 && plat.isA5Block && (!p.isJumping || p.vy >= -1.0)) {
         const isOverHoriz = (p.x + (p.w || 24) > bnds.minX + 4 && p.x < bnds.maxX - 4);
-        if (isOverHoriz && feetY >= topY - 14 && feetY <= topY + Math.max(16, p.vy + 8)) {
+        if (isOverHoriz && prevBottom <= topY + Math.max(16, p.vy + 8) && newBottom >= topY - 14 && p.y < topY + platThickness) {
           isLanding = true;
         }
       }
@@ -642,6 +576,74 @@ export function checkPlayerPlatformLanding(p, groundY) {
         // Postać nad wyrwą w geometrii – natychmiast traci podparcie
         p.onGround = false;
         p.currentGroundY = null;
+      }
+    }
+  }
+
+  // =========================================================================
+  // SEPARACJA OSI: FAZA 2 - KOLIZJA W OSI X (Sub-tile AABB z ochroną Ghost Vertices)
+  // =========================================================================
+  const playerBottom = p.y + colH;
+
+  for (const plat of ARENA_PLATFORMS) {
+    if (!plat || plat.solid === false || plat.oneWay) continue;
+
+    // A. Ściany dedykowane (plat.isWall)
+    if (plat.isWall) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || plat.thickness || 200);
+      if (playerBottom > topY + 4 && p.y < bottomY - 4) {
+        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+          if (plat.pushSide === 'left') {
+            p.x = plat.x - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else if (plat.pushSide === 'right') {
+            p.x = plat.x + plat.w;
+            if (p.vx < 0) p.vx = 0;
+          } else {
+            const overlapLeft = (p.x + p.w) - plat.x;
+            const overlapRight = (plat.x + plat.w) - p.x;
+            if (overlapLeft <= overlapRight) {
+              p.x = plat.x - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = plat.x + plat.w;
+              if (p.vx < 0) p.vx = 0;
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    // B. Klocki Areny 5 oraz zwalone segmenty (Sub-tile AABB)
+    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
+    if (!isObstacleToBlock) continue;
+
+    const bnds = getPlatformBounds(plat);
+
+    // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
+    // Podczas chodzenia poziomo po dwóch sąsiadujących kafelkach tego samego lub innego klocka,
+    // jeśli player.bottom <= subTile.top + 2px (skin width / step margin), kafelek ten NIE blokuje ani nie spycha gracza w osi X.
+    if (playerBottom <= bnds.minY + 2) continue;
+
+    // Kafelek wystaje pionowo ponad stopy gracza – pełna kolizja w osi X
+    if (playerBottom > bnds.minY + 2 && p.y < bnds.maxY - 2) {
+      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
+        const overlapLeft = (p.x + p.w) - bnds.minX;
+        const overlapRight = bnds.maxX - p.x;
+
+        let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
+
+        if (pushLeft) {
+          p.x = bnds.minX - p.w;
+          if (p.vx > 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
+        } else {
+          p.x = bnds.maxX;
+          if (p.vx < 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+        }
       }
     }
   }

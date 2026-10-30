@@ -192,161 +192,144 @@ function checkFallingSquash(combatants) {
     ? arena5State.currentFloorY
     : BASE_FLOOR_Y;
 
+  // 1. Rozbicie klocka polyomino na listę prostych prostokątów składowych (Sub-tile AABB w koordynatach świata)
+  const subTiles = crane.shapeCells.map(cell => {
+    const cellX = getGridX(crane.col + cell.colRel);
+    const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+    return {
+      cell,
+      left: cellX,
+      right: cellX + CELL_SIZE,
+      top: cellY,
+      bottom: cellY + CELL_SIZE,
+      worldCol: crane.col + cell.colRel,
+      colRel: cell.colRel,
+      rowRel: cell.rowRel,
+      isTopEdge: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1),
+      isBottomEdge: !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1),
+      isLeftEdge: !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel),
+      isRightEdge: !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel)
+    };
+  });
+
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
 
     const pW = victim.w || 26;
     const pH = victim.h || 72;
+    const prevBottom = (victim.y - (victim.vy || 0)) + pH;
+    const newBottom = victim.y + pH;
+    const relVy = (victim.vy || 0) - (crane.vy || 0);
 
-    // Do 2 iteracji depenetracji dla narożników opadającej figury
-    for (let iter = 0; iter < 2; iter++) {
-      let collided = false;
+    // =========================================================================
+    // SEPARACJA OSI: FAZA 1 - RUCH I KOLIZJA W OSI Y (Swept landing & Ceiling/Squash)
+    // =========================================================================
+    let landedOnCrane = false;
 
-      for (const cell of crane.shapeCells) {
-        const cellX = getGridX(crane.col + cell.colRel);
-        const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
-        const cellW = CELL_SIZE;
-        const cellH = CELL_SIZE;
-        const cellRight = cellX + cellW;
-        const cellBottomY = cellY + cellH;
-        const worldCol = crane.col + cell.colRel;
-
-        // Zewnętrzne krawędzie kształtu spadającej figury Tetrisa
-        const isTopEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1);
-        const isBottomEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1);
-        const isLeftEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel);
-        const isRightEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel);
-
-        // Czy bounding box postaci przecina tę komórkę spadającej figury?
-        const overlapX = (victim.x + pW > cellX) && (victim.x < cellRight);
-        const overlapY = (victim.y + pH > cellY) && (victim.y < cellBottomY);
-        if (!overlapX || !overlapY) continue;
-
-        collided = true;
-
-        const penTop = (victim.y + pH) - cellY;          // Głębokość wniknięcia stóp od góry
-        const penBottom = cellBottomY - victim.y;        // Głębokość wniknięcia głowy od dołu
-        const penLeft = (victim.x + pW) - cellX;         // Głębokość wniknięcia od lewej
-        const penRight = cellRight - victim.x;           // Głębokość wniknięcia od prawej
-
-        // Oblicz najmniejszą translację (MTV) spośród zewnętrznych, odsłoniętych krawędzi
-        let bestAxis = null;
-        let minPen = Infinity;
-
-        // Lądowanie z góry na opadającym klocku (tylko na odsłoniętym dachu figury przy małym wniknięciu)
-        if (isTopEdge && penTop <= 20 && victim.vy >= crane.vy - 4.0) {
-          if (penTop < minPen) {
-            minPen = penTop;
-            bestAxis = 'TOP';
-          }
-        }
-        // Ściana boczna lewa
-        if (isLeftEdge && (!isRightEdge || penLeft <= penRight) && penLeft < minPen) {
-          minPen = penLeft;
-          bestAxis = 'LEFT';
-        }
-        // Ściana boczna prawa
-        if (isRightEdge && (!isLeftEdge || penRight < penLeft) && penRight < minPen) {
-          minPen = penRight;
-          bestAxis = 'RIGHT';
-        }
-        // Spód opadającego bloku (wyłącznie gdy postać znajduje się bezpośrednio pod spodem klocka)
-        if (isBottomEdge && penBottom < minPen && victim.y >= cellBottomY - 36) {
-          minPen = penBottom;
-          bestAxis = 'BOTTOM';
-        }
-
-        // Przy ruchu bocznym postaci w stronę ściany, preferuj zablokowanie na ścianie
-        if (isLeftEdge && victim.vx > 0 && penLeft < 36) {
-          bestAxis = 'LEFT';
-        } else if (isRightEdge && victim.vx < 0 && penRight < 36) {
-          bestAxis = 'RIGHT';
-        }
-
-        if (!bestAxis) {
-          if (isLeftEdge && (!isRightEdge || penLeft <= penRight)) bestAxis = 'LEFT';
-          else if (isRightEdge) bestAxis = 'RIGHT';
-          else if (isTopEdge && penTop <= 24) bestAxis = 'TOP';
-          else if (isBottomEdge && victim.y >= cellBottomY - 36) bestAxis = 'BOTTOM';
-          else if (isTopEdge) bestAxis = 'TOP';
-          else bestAxis = 'LEFT';
-        }
-
-        if (bestAxis === 'TOP') {
-          victim.y = cellY - pH;
+    // A. Lądowanie na odsłoniętych szczytach kafelków (Continuous / Swept check w osi Y)
+    // Sortowanie od najwyższego kafelka, by gracz lądował na najwyższej półce/dachu
+    const topTiles = subTiles.filter(st => st.isTopEdge).sort((a, b) => a.top - b.top);
+    for (const st of topTiles) {
+      if (victim.x + pW > st.left + 2 && victim.x < st.right - 2) {
+        const tolerance = Math.max(16, relVy + 12);
+        const isSweptCross = (prevBottom <= st.top + tolerance && newBottom >= st.top - 4);
+        if (isSweptCross && victim.y < st.bottom && relVy >= -4.0) {
+          victim.y = st.top - pH;
           victim.vy = crane.vy;
           victim.onGround = true;
           victim.isJumping = false;
-          victim.currentGroundY = cellY;
+          victim.currentGroundY = st.top;
+          landedOnCrane = true;
           break;
-        } else if (bestAxis === 'LEFT') {
-          victim.x = cellX - pW;
-          if (victim.vx > 0) victim.vx = 0;
-          break;
-        } else if (bestAxis === 'RIGHT') {
-          victim.x = cellRight;
-          if (victim.vx < 0) victim.vx = 0;
-          break;
-        } else if (bestAxis === 'BOTTOM') {
-          // Postać znajduje się bezpośrednio pod spodem opadającego klocka
-          let surfaceBelowY = currentFloorY;
-          for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
-            const rData = arena5State.gridRows.get(r);
-            if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
-              if (rData[worldCol].y >= victim.y + 20) {
-                surfaceBelowY = rData[worldCol].y;
-                break;
+        }
+      }
+    }
+
+    // B. Sprawdzenie spodu opadających kafelków (Ceiling hit / Squash kill / Push down)
+    if (!landedOnCrane) {
+      for (const st of subTiles) {
+        if (!st.isBottomEdge) continue;
+
+        if (victim.x + pW > st.left + 2 && victim.x < st.right - 2) {
+          if (victim.y < st.bottom && victim.y + pH > st.bottom) {
+            let surfaceBelowY = currentFloorY;
+            for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+              const rData = arena5State.gridRows.get(r);
+              if (rData && rData[st.worldCol] && rData[st.worldCol].hp > 0) {
+                if (rData[st.worldCol].y >= victim.y + 20) {
+                  surfaceBelowY = rData[st.worldCol].y;
+                  break;
+                }
               }
             }
-          }
 
-          // Sprawdź czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
-          const cellTargetRow = crane.targetLandingRow + cell.rowRel;
-          const cellTargetY = getGridY(cellTargetRow);
-          const cellTargetBottomY = cellTargetY + CELL_SIZE;
-          const finalGap = surfaceBelowY - cellTargetBottomY;
-          const hasSafePocketUnderneath = (finalGap >= pH - 8);
+            const cellTargetRow = crane.targetLandingRow + st.rowRel;
+            const cellTargetY = getGridY(cellTargetRow);
+            const cellTargetBottomY = cellTargetY + CELL_SIZE;
+            const finalGap = surfaceBelowY - cellTargetBottomY;
+            const hasSafePocketUnderneath = (finalGap >= pH - 8);
 
-          if (hasSafePocketUnderneath && (victim.y >= cellTargetBottomY - 4)) {
-            // Bezpieczny nawis: standardowa kolizja sufitowa
-            victim.y = cellBottomY;
-            if (victim.vy < 0) victim.vy = 0.5;
-            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-              victim.rocketBoots.dashDirY = 0;
-              victim.rocketBoots.dashing = false;
-            }
-            break;
-          }
-
-          // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
-          const remainingSpace = surfaceBelowY - cellBottomY;
-          const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
-
-          if (isPhysicallyCrushed) {
-            executeSquashKill(victim);
-            return;
-          } else {
-            // W powietrzu: spadający klocek spycha postać w dół
-            victim.y = cellBottomY;
-            victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
-            victim.onGround = false;
-            victim.currentPlatform = null;
-
-            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-              victim.rocketBoots.dashDirY = 0;
-              victim.rocketBoots.dashing = false;
+            if (hasSafePocketUnderneath && (victim.y >= cellTargetBottomY - 4)) {
+              victim.y = st.bottom;
+              if (victim.vy < 0) victim.vy = 0.5;
+              if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+                victim.rocketBoots.dashDirY = 0;
+                victim.rocketBoots.dashing = false;
+              }
+              break;
             }
 
-            if (Math.random() < 0.25) {
-              spawnRicochetSparks(victim.x + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
-              triggerScreenShake(3);
+            const remainingSpace = surfaceBelowY - st.bottom;
+            const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
+
+            if (isPhysicallyCrushed) {
+              executeSquashKill(victim);
+              break;
+            } else {
+              victim.y = st.bottom;
+              victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
+              victim.onGround = false;
+              victim.currentPlatform = null;
+
+              if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+                victim.rocketBoots.dashDirY = 0;
+                victim.rocketBoots.dashing = false;
+              }
+
+              if (Math.random() < 0.25) {
+                spawnRicochetSparks(victim.x + pW * 0.5, st.bottom, (Math.random() - 0.5) * 4, 3, 2);
+                triggerScreenShake(3);
+              }
+              break;
             }
-            break;
           }
         }
       }
+    }
 
-      if (!collided) break;
+    // =========================================================================
+    // SEPARACJA OSI: FAZA 2 - KOLIZJA W OSI X (Z ignorowaniem krawędzi wewnętrznych)
+    // =========================================================================
+    const victimBottom = victim.y + pH;
+    for (const st of subTiles) {
+      // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
+      // Jeśli stopy gracza są na lub powyżej dachu kafelka (victimBottom <= st.top + 2), kafelek nie blokuje w osi X
+      if (victimBottom <= st.top + 2) continue;
+
+      if (victimBottom > st.top + 2 && victim.y < st.bottom - 2) {
+        if (victim.x + pW > st.left && victim.x < st.right) {
+          const overlapLeft = (victim.x + pW) - st.left;
+          const overlapRight = st.right - victim.x;
+
+          if (st.isLeftEdge && (!st.isRightEdge || victim.vx > 0.1 || overlapLeft <= overlapRight)) {
+            victim.x = st.left - pW;
+            if (victim.vx > 0) victim.vx = 0;
+          } else if (st.isRightEdge) {
+            victim.x = st.right;
+            if (victim.vx < 0) victim.vx = 0;
+          }
+        }
+      }
     }
   }
 }
@@ -1192,9 +1175,13 @@ export function resolveArena5BlockPenetration(combatants) {
           const cellTop = cell.y;
           const cellBottom = cell.y + cell.h;
 
+          // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
+          // Jeśli stopy gracza znajdują się na dachu kafelka (feetY <= cellTop + 2), to nie jest wniknięcie w ten kafelek
+          if (feetY <= cellTop + 2) continue;
+
           // Czy bounding box postaci przecina tę komórkę siatki?
-          const overlapX = (p.x + pW > cellLeft) && (p.x < cellRight);
-          const overlapY = (feetY > cellTop) && (p.y < cellBottom);
+          const overlapX = (p.x + pW > cellLeft + 1) && (p.x < cellRight - 1);
+          const overlapY = (feetY > cellTop + 2) && (headY < cellBottom - 2);
           if (!overlapX || !overlapY) continue;
 
           const penTop = feetY - cellTop;          // Głębokość wniknięcia stóp od góry
