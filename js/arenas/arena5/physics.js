@@ -244,8 +244,8 @@ function checkFallingSquash(combatants) {
           minPen = penRight;
           bestAxis = 'RIGHT';
         }
-        // Spód opadającego bloku
-        if (isBottomEdge && penBottom < minPen) {
+        // Spód opadającego bloku (wyłącznie gdy postać znajduje się bezpośrednio pod spodem klocka)
+        if (isBottomEdge && penBottom < minPen && victim.y >= cellBottomY - 36) {
           minPen = penBottom;
           bestAxis = 'BOTTOM';
         }
@@ -255,6 +255,14 @@ function checkFallingSquash(combatants) {
           bestAxis = 'LEFT';
         } else if (isRightEdge && victim.vx < 0 && penRight < 32 && bestAxis !== 'TOP') {
           bestAxis = 'RIGHT';
+        }
+
+        if (!bestAxis) {
+          if (isTopEdge) bestAxis = 'TOP';
+          else if (isLeftEdge && (!isRightEdge || penLeft < penRight)) bestAxis = 'LEFT';
+          else if (isRightEdge) bestAxis = 'RIGHT';
+          else if (isBottomEdge && victim.y >= cellBottomY - 36) bestAxis = 'BOTTOM';
+          else bestAxis = 'TOP';
         }
 
         if (bestAxis === 'TOP') {
@@ -1214,8 +1222,8 @@ export function resolveArena5BlockPenetration(combatants) {
             }
           }
 
-          // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli dół jest wolny)
-          if (isBelowClear && (p.vy < 0 || penBottom <= 16)) {
+          // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli dół jest wolny i głowa uderza od dołu)
+          if (isBelowClear && p.vy < 0 && penBottom <= 32 && headY >= cellBottom - 32) {
             if (penBottom < minPen) {
               minPen = penBottom;
               bestDir = 'BOTTOM';
@@ -1234,12 +1242,13 @@ export function resolveArena5BlockPenetration(combatants) {
             bestDir = 'RIGHT';
           }
 
-          // Jeśli żadna ściana nie spełniła warunków (np. gracz wewnątrz grupy bloków), wybierz najbliższą wolną
+          // Jeśli żadna ściana nie spełniła warunków, preferuj wypychanie w górę (TOP) lub na boki (LEFT/RIGHT),
+          // a NIGDY w dół (BOTTOM), by nie teleportować gracza do wnętrza niższych klocków!
           if (!bestDir) {
             if (isAboveClear) bestDir = 'TOP';
-            else if (isLeftClear) bestDir = 'LEFT';
+            else if (isLeftClear && (!isRightClear || penLeft < penRight)) bestDir = 'LEFT';
             else if (isRightClear) bestDir = 'RIGHT';
-            else if (isBelowClear) bestDir = 'BOTTOM';
+            else if (isBelowClear && headY >= cellBottom - 32) bestDir = 'BOTTOM';
             else bestDir = 'TOP';
           }
 

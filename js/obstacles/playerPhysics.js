@@ -192,6 +192,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
     if (isA5 && !plat.isA5Block && plat.id !== 'a5_base_floor' && !plat.isWall) continue;
+
+    // Arena 5: Jeśli klocek jest przykryty od góry innym litym klockiem, jego szczyt NIE jest dostępny do lądowania
+    if (isA5 && plat.isA5Block && typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number') {
+      const a5St = (typeof arena5State !== 'undefined' && arena5State) ? arena5State : ((typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null);
+      const rowAbove = a5St?.gridRows?.get(plat.gridRow + 1);
+      if (rowAbove && rowAbove[plat.gridCol] && rowAbove[plat.gridCol].hp > 0) {
+        continue;
+      }
+    }
+
     const bnds = getPlatformBounds(plat);
     // Histereza na krawędziach: uwzględnia szerokość modelu postaci (Raptor 24, Striker 26, Enforcer 30)
     const halfW = (p.w || 24) * 0.5;
@@ -234,11 +244,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
       // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
       // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie.
-      // Dla klocków Areny 5 lądowanie z powietrza wymaga opadania na krawędź z góry (prevFeetY <= topY + 8),
-      // a nie znajdowania się poniżej szczytu (co pozwalało na automatyczne "wbieganie" na wysoki klocek).
-      const airMarginTop = (isA5 && plat.isA5Block) ? 8 : Math.max(30, platThickness * 0.9);
-      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 12) : Math.max(36, p.vy + 24);
-      const minAirVy = (isA5 && plat.isA5Block) ? -0.5 : -1.0;
+      const airMarginTop = (isA5 && plat.isA5Block) ? Math.max(16, Math.abs(p.vy) + 8) : Math.max(30, platThickness * 0.9);
+      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(28, p.vy + 20) : Math.max(36, p.vy + 24);
+      const minAirVy = (isA5 && plat.isA5Block) ? -0.8 : -1.0;
       const isAirLanding = p.vy >= minAirVy && (
         (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + maxLandingDepth)
       );
@@ -266,6 +274,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
       // Twarde zabezpieczenie przed zapadaniem się w lity grunt / kratery na Arenie 3
       if (!isLanding && isA3Ground && (!p.isJumping || p.vy >= 0)) {
         if (feetY >= topY - 14 && feetY <= topY + platThickness) {
+          isLanding = true;
+        }
+      }
+
+      // Twarde zabezpieczenie przed wpadaniem do wnętrza odsłoniętych klocków w Arenie 5 (Solid Top Blocks):
+      if (!isLanding && isA5 && plat.isA5Block && (!p.isJumping || p.vy >= -1.0)) {
+        if (feetY >= topY - 14 && feetY <= topY + Math.max(48, p.vy + 28)) {
           isLanding = true;
         }
       }
@@ -457,35 +472,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
         const overlapLeft = (p.x + p.w) - bnds.minX;
         const overlapRight = bnds.maxX - p.x;
 
-        const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
-        if (plat.isA5Block && typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number' && a5State?.gridRows) {
-          const rowData = a5State.gridRows.get(plat.gridRow);
-          const hasLeft = (plat.gridCol > 0 && rowData?.[plat.gridCol - 1]?.hp > 0);
-          const hasRight = (plat.gridCol < 9 && rowData?.[plat.gridCol + 1]?.hp > 0);
-
-          if (!hasLeft && !hasRight) {
-            if (overlapLeft < overlapRight) {
-              p.x = bnds.minX - p.w;
-              if (p.vx > 0) p.vx = 0;
-            } else {
-              p.x = bnds.maxX;
-              if (p.vx < 0) p.vx = 0;
-            }
-          } else if (!hasLeft) {
-            p.x = bnds.minX - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else if (!hasRight) {
-            p.x = bnds.maxX;
-            if (p.vx < 0) p.vx = 0;
-          }
+        if (overlapLeft < overlapRight) {
+          p.x = bnds.minX - p.w;
+          if (p.vx > 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
         } else {
-          if (overlapLeft < overlapRight) {
-            p.x = bnds.minX - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else {
-            p.x = bnds.maxX;
-            if (p.vx < 0) p.vx = 0;
-          }
+          p.x = bnds.maxX;
+          if (p.vx < 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
         }
       }
     }
