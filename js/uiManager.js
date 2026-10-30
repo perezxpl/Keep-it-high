@@ -1266,10 +1266,13 @@ export const uiManager = {
 
       case 'PLAYING':
         if (hudPauseBtn) {
-          const isTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean')
-            ? window.isTouchDevice
-            : !!isTouchDevice;
-          hudPauseBtn.style.display = isTouch ? 'flex' : 'none';
+          const isMobileOrTouch = (typeof window !== 'undefined') && (
+            window.isTouchDevice ||
+            isTouchDevice ||
+            window.innerWidth <= 850 ||
+            (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+          );
+          hudPauseBtn.style.display = isMobileOrTouch ? 'flex' : 'none';
         }
         if (devPanel) devPanel.style.display = 'flex';
         break;

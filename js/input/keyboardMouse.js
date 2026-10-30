@@ -740,7 +740,8 @@ export function initKeyboardMouseHandlers({
     if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) return;
 
     // 0a. Obsługa kieszeni broni palnej (oraz karty broni w lewym górnym rogu) dla myszy / pada dotykowego
-    if (e.button === 0 && isTouchDevice && pockets.firearm) {
+    const isTouchOrMobile = (isTouchDevice || (typeof window !== 'undefined' && window.innerWidth <= 850));
+    if (e.button === 0 && isTouchOrMobile && pockets.firearm) {
       const pFarm = pockets.firearm;
       const distToFarm = dist(e.clientX, e.clientY, pFarm.x, pFarm.y);
       const inTopCard = (e.clientX >= 10 && e.clientX <= 235 && e.clientY >= 28 && e.clientY <= 78);

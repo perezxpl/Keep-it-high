@@ -169,9 +169,12 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
 }
 
 export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null) {
-  const activeTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean')
-    ? window.isTouchDevice
-    : (isTouchDevice || (typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0))));
+  const activeTouch = (typeof window !== 'undefined') && (
+    window.isTouchDevice ||
+    isTouchDevice ||
+    window.innerWidth <= 850 ||
+    (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+  );
   if (!activeTouch || !ctx || !player) return;
 
   if (!leftStick || leftStick.baseX <= 0) {
@@ -179,12 +182,12 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
   }
 
   ctx.save();
-  // Zwiększona przezroczystość całego pada dotykowego
-  ctx.globalAlpha = 0.62;
+  // Wysoka czytelność i wyrazisty kontrast wirtualnego kontrolera na małych ekranach
+  ctx.globalAlpha = 0.92;
   const time = performance.now();
 
   // -------------------------------------------------------------------------
-  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Dual-Stroke: ciemna mikro-otoczka + jasny rdzeń)
+  // 1. LEWY DRĄŻEK: RUCH, SKOK, JETPACK (Wyrazisty militarny styl taktyczny)
   // -------------------------------------------------------------------------
   if (leftStick && leftStick.baseX > 0) {
     const isStickActive = leftStick.active;
@@ -193,20 +196,20 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const bx = leftStick.baseX;
     const by = leftStick.baseY;
 
-    // Baza drążka: subtelne przydymienie (niewidoczne na czerni, czytelne na śniegu/bieli)
+    // Baza drążka: czytelne ciemne tło z kontrastem na każdym tle areny
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(15, 23, 42, 0.11)' : 'rgba(15, 23, 42, 0.06)';
+    ctx.fillStyle = isStickActive ? 'rgba(11, 19, 36, 0.72)' : 'rgba(15, 23, 42, 0.52)';
     ctx.fill();
 
-    // Warstwa 1 (Dark Halo): ciemny kontur pod spodem dla kontrastu na jasnym tle
-    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.36)' : 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    // Warstwa 1 (Dark Halo): ciemny kontur dla głębi
+    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.80)' : 'rgba(0, 0, 0, 0.50)';
+    ctx.lineWidth = isStickActive ? 3.5 : 2.5;
     ctx.stroke();
 
-    // Warstwa 2 (Light Core): jasny kontur widoczny na ciemnym tle
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.11)';
-    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
+    // Warstwa 2 (Light Core): wyrazisty neonowy błękitny kontur ruchu
+    ctx.strokeStyle = isStickActive ? '#00e5ff' : 'rgba(56, 189, 248, 0.65)';
+    ctx.lineWidth = isStickActive ? 2.2 : 1.5;
     ctx.stroke();
 
     // WIZUALIZACJA ŁADOWANIA ENERGII DASHA (Striker Rocket Boots Charge)
@@ -274,17 +277,17 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.setLineDash([]);
     }
 
-    // Gałka lewego drążka (subtelne intuicyjne podświetlenie + przydymiona krawędź)
-    const knobR = 22;
+    // Gałka lewego drążka
+    const knobR = 23;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive || isJetActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.30)');
-      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.12)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.14)');
+      knobGrad.addColorStop(0.0, '#38bdf8');
+      knobGrad.addColorStop(0.65, '#0284c7');
+      knobGrad.addColorStop(1.0, '#0f172a');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.11)');
-      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.10)');
+      knobGrad.addColorStop(0.0, 'rgba(148, 163, 184, 0.90)');
+      knobGrad.addColorStop(0.65, 'rgba(51, 65, 85, 0.85)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
     }
 
     ctx.beginPath();
@@ -292,30 +295,15 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    // Warstwa 1 obrysu gałki (Dark Halo)
-    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    // Wyrazisty obrys gałki
+    ctx.strokeStyle = isStickActive ? '#00e5ff' : '#94a3b8';
+    ctx.lineWidth = isStickActive ? 2.2 : 1.5;
     ctx.stroke();
 
-    // Warstwa 2 obrysu gałki (Light Core)
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.40)' : 'rgba(255, 255, 255, 0.18)';
-    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
-    if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 6;
-    }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Subtelny centralny punkt gałki z ciemną otoczką
+    // Centralny punkt gałki
     ctx.beginPath();
-    ctx.arc(knobX, knobY, 4.2, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(0, 0, 0, 0.36)' : 'rgba(0, 0, 0, 0.22)';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(knobX, knobY, 3.2, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(255, 255, 255, 0.58)' : 'rgba(255, 255, 255, 0.28)';
+    ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.70)';
     ctx.fill();
 
     // Dodatkowa aura na gałce podczas ładowania dasha
@@ -355,24 +343,24 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const by = rightStick.baseY;
     const isGrenadeMode = (rightStick.armedMode === 'GRENADE');
 
-    // Baza drążka: subtelne przydymienie dla kontrastu na jasnym tle
+    // Baza drążka celowania: czytelne ciemne tło z pomarańczowym akcentem ognia
     ctx.beginPath();
     ctx.arc(bx, by, maxR, 0, Math.PI * 2);
-    ctx.fillStyle = isStickActive ? 'rgba(15, 23, 42, 0.11)' : 'rgba(15, 23, 42, 0.06)';
+    ctx.fillStyle = isStickActive ? 'rgba(28, 14, 10, 0.72)' : 'rgba(15, 23, 42, 0.52)';
     ctx.fill();
 
     const isDragHover = rightStick.draggedSlot && (Math.hypot((rightStick.draggedSlot.curX || 0) - bx, (rightStick.draggedSlot.curY || 0) - by) < maxR + 45 || (rightStick.draggedSlot.curX || 0) >= bx - 35);
 
     // Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = (isDragHover || isStickActive) ? 'rgba(0, 0, 0, 0.38)' : 'rgba(0, 0, 0, 0.22)';
-    ctx.lineWidth = (isDragHover || isStickActive) ? 3.4 : 2.5;
+    ctx.strokeStyle = (isDragHover || isStickActive) ? 'rgba(0, 0, 0, 0.80)' : 'rgba(0, 0, 0, 0.50)';
+    ctx.lineWidth = (isDragHover || isStickActive) ? 3.5 : 2.5;
     ctx.stroke();
 
     // Warstwa 2 (Light Core)
     ctx.strokeStyle = isDragHover
-      ? `rgba(255, 255, 255, ${0.40 + 0.30 * Math.sin(time * 0.01)})`
-      : (isStickActive ? 'rgba(255, 255, 255, 0.26)' : 'rgba(255, 255, 255, 0.11)');
-    ctx.lineWidth = (isDragHover || isStickActive) ? 1.6 : 1.1;
+      ? '#facc15'
+      : (isStickActive ? (isGrenadeMode ? '#4ade80' : '#f97316') : 'rgba(249, 115, 22, 0.65)');
+    ctx.lineWidth = (isDragHover || isStickActive) ? 2.2 : 1.5;
     ctx.stroke();
 
     // Pozycja gałki
@@ -388,31 +376,31 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       knobX = bx + normX * clampedDist;
       knobY = by + normY * clampedDist;
 
-      // Przerywana linia wychylenia (Dual-Stroke)
+      // Przerywana linia celowania
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(bx, by);
       ctx.lineTo(knobX, knobY);
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.40)';
       ctx.lineWidth = 2.4;
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = isGrenadeMode ? '#4ade80' : '#f97316';
+      ctx.lineWidth = 1.3;
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // Gałka prawego drążka (subtelne podświetlenie + przydymiona krawędź)
-    const knobR = 22;
+    // Gałka prawego drążka
+    const knobR = 23;
     const knobGrad = ctx.createRadialGradient(knobX - 3, knobY - 3, 2, knobX, knobY, knobR);
     if (isStickActive) {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.32)');
-      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.13)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.14)');
+      knobGrad.addColorStop(0.0, isGrenadeMode ? '#4ade80' : '#fb923c');
+      knobGrad.addColorStop(0.65, isGrenadeMode ? '#16a34a' : '#ea580c');
+      knobGrad.addColorStop(1.0, '#0f172a');
     } else {
-      knobGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.11)');
-      knobGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.04)');
-      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.10)');
+      knobGrad.addColorStop(0.0, 'rgba(148, 163, 184, 0.90)');
+      knobGrad.addColorStop(0.65, 'rgba(51, 65, 85, 0.85)');
+      knobGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.80)');
     }
 
     ctx.beginPath();
@@ -420,20 +408,14 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.fillStyle = knobGrad;
     ctx.fill();
 
-    // Warstwa 1 obrysu gałki (Dark Halo)
-    ctx.strokeStyle = isStickActive ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = isStickActive ? 3.2 : 2.5;
+    ctx.strokeStyle = isStickActive ? (isGrenadeMode ? '#4ade80' : '#f97316') : '#94a3b8';
+    ctx.lineWidth = isStickActive ? 2.2 : 1.5;
     ctx.stroke();
 
-    // Warstwa 2 obrysu gałki (Light Core)
-    ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.18)';
-    ctx.lineWidth = isStickActive ? 1.5 : 1.1;
-    if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.25)';
-      ctx.shadowBlur = 6;
-    }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = isStickActive ? '#ffffff' : 'rgba(255, 255, 255, 0.70)';
+    ctx.fill();
 
     // Dyskretna miniaturowa sylwetka broni na gałce wskazująca co założono na ręce
     ctx.save();
@@ -466,38 +448,21 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const ammoObj = player.ammo?.[curId];
     const isRel = !!(ammoObj?.isReloading || player.isReloading);
 
-    // Baza kieszeni: szkło z gradientem i subtelnym przydymieniem na krawędzi
-    const grad = ctx.createRadialGradient(pFirearm.x - 2, pFirearm.y - 2, 2, pFirearm.x, pFirearm.y, pFirearm.r);
-    if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
-    } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
-    }
+    // Baza kieszeni broni palnej: solidne ciemne tło z pomarańczowym neonowym obrysem
     ctx.beginPath();
     ctx.arc(pFirearm.x, pFirearm.y, pFirearm.r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = isPressed ? 'rgba(30, 41, 59, 0.90)' : (isEquipped ? 'rgba(35, 18, 12, 0.85)' : 'rgba(15, 23, 42, 0.75)');
     ctx.fill();
 
     // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.5 : 2.5;
     ctx.stroke();
 
     // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
-    ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.44)'
-      : 'rgba(255, 255, 255, 0.20)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
+    ctx.strokeStyle = isPressed ? '#ffffff' : (isEquipped ? '#f97316' : 'rgba(249, 115, 22, 0.75)');
+    ctx.lineWidth = (isEquipped || isPressed) ? 2.2 : 1.5;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
@@ -561,37 +526,21 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const maxCd = player.grenadeMaxCooldown || 3.5;
     const isReady = (cd <= 0);
 
-    const grad = ctx.createRadialGradient(pThrowable.x - 2, pThrowable.y - 2, 2, pThrowable.x, pThrowable.y, pThrowable.r);
-    if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.07)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
-    } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
-    }
+    // Baza kieszeni granatu: solidne ciemne tło z zielonym neonowym obrysem
     ctx.beginPath();
     ctx.arc(pThrowable.x, pThrowable.y, pThrowable.r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = isPressed ? 'rgba(30, 41, 59, 0.90)' : (isEquipped ? 'rgba(12, 35, 18, 0.85)' : 'rgba(15, 23, 42, 0.75)');
     ctx.fill();
 
-    // Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.5 : 2.5;
     ctx.stroke();
 
-    // Warstwa 2 (Light Core)
-    ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.44)'
-      : 'rgba(255, 255, 255, 0.20)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
+    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
+    ctx.strokeStyle = isPressed ? '#ffffff' : (isEquipped ? '#22c55e' : 'rgba(34, 197, 94, 0.75)');
+    ctx.lineWidth = (isEquipped || isPressed) ? 2.2 : 1.5;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
@@ -643,44 +592,20 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const isPressed = pAction.active;
     const mode = pAction.currentMode || 'KICK';
 
-    const grad = ctx.createRadialGradient(pAction.x - 2, pAction.y - 2, 2, pAction.x, pAction.y, pAction.r);
-    if (isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.20)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
-    } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
-    }
+    // Baza kieszeni akcji: solidne ciemne tło z błękitnym obrysem
     ctx.beginPath();
     ctx.arc(pAction.x, pAction.y, pAction.r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = isPressed ? 'rgba(30, 41, 59, 0.90)' : 'rgba(15, 23, 42, 0.75)';
     ctx.fill();
 
-    // Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = isPressed ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = isPressed ? 3.3 : 2.5;
+    // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = isPressed ? 3.5 : 2.5;
     ctx.stroke();
 
-    // Warstwa 2 (Light Core)
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.44)' : 'rgba(255, 255, 255, 0.20)';
-    ctx.lineWidth = isPressed ? 1.6 : 1.1;
-    if (isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Wewnętrzny pierścień (Dual-Stroke)
-    ctx.beginPath();
-    ctx.arc(pAction.x, pAction.y, pAction.r - 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isPressed ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
-    ctx.lineWidth = 2.0;
-    ctx.stroke();
-    ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1.0;
+    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
+    ctx.strokeStyle = isPressed ? '#ffffff' : '#38bdf8';
+    ctx.lineWidth = isPressed ? 2.2 : 1.5;
     ctx.stroke();
 
     drawDynamicActionSymbol(ctx, mode, pAction.x, pAction.y, isPressed, player);
@@ -696,47 +621,20 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       : (player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE');
     const isAxeThrown = (meleeId === 'AXE' && player.axeThrown);
 
-    // Tło kieszeni
-    const grad = ctx.createRadialGradient(pMelee.x - 2, pMelee.y - 2, 2, pMelee.x, pMelee.y, pMelee.r);
-    if (isEquipped || isPressed) {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.20)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.12)');
-    } else {
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 0.09)');
-      grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.03)');
-      grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.09)');
-    }
+    // Baza kieszeni broni białej: solidne ciemne tło z karmazynowym obrysem
     ctx.beginPath();
     ctx.arc(pMelee.x, pMelee.y, pMelee.r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = isPressed ? 'rgba(30, 41, 59, 0.90)' : (isEquipped ? 'rgba(35, 12, 16, 0.85)' : 'rgba(15, 23, 42, 0.75)');
     ctx.fill();
 
-    // Warstwa 1 (Dark Halo)
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.26)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 3.3 : 2.5;
+    // Główny pierścień zewnętrzny – Warstwa 1 (Dark Halo)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = (isEquipped || isPressed) ? 3.5 : 2.5;
     ctx.stroke();
 
-    // Warstwa 2 (Light Core)
-    ctx.strokeStyle = (isEquipped || isPressed)
-      ? 'rgba(255, 255, 255, 0.44)'
-      : 'rgba(255, 255, 255, 0.20)';
-    ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Wewnętrzny pierścień
-    ctx.beginPath();
-    ctx.arc(pMelee.x, pMelee.y, pMelee.r - 4, 0, Math.PI * 2);
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.15)';
-    ctx.lineWidth = 2.0;
-    ctx.stroke();
-    ctx.strokeStyle = (isEquipped || isPressed) ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1.0;
+    // Główny pierścień zewnętrzny – Warstwa 2 (Light Core)
+    ctx.strokeStyle = isPressed ? '#ffffff' : (isEquipped ? '#f43f5e' : 'rgba(244, 63, 94, 0.75)');
+    ctx.lineWidth = (isEquipped || isPressed) ? 2.2 : 1.5;
     ctx.stroke();
 
     // Rysowanie sylwetki broni białej
@@ -1442,14 +1340,16 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     checkEntityHudDist(ball, 10, 10, 10);
   }
 
-  const minHudAlpha = 0.22;
+  const minHudAlpha = isMobile ? 1.0 : 0.40;
   let targetHudAlpha = 1.0;
-  if (minHudDist <= 0) {
-    targetHudAlpha = minHudAlpha;
-  } else if (minHudDist < fadeMargin) {
-    const t = minHudDist / fadeMargin;
-    const smoothT = t * t * (3 - 2 * t);
-    targetHudAlpha = minHudAlpha + (1.0 - minHudAlpha) * smoothT;
+  if (!isMobile) {
+    if (minHudDist <= 0) {
+      targetHudAlpha = minHudAlpha;
+    } else if (minHudDist < fadeMargin) {
+      const t = minHudDist / fadeMargin;
+      const smoothT = t * t * (3 - 2 * t);
+      targetHudAlpha = minHudAlpha + (1.0 - minHudAlpha) * smoothT;
+    }
   }
 
   if (!Number.isFinite(targetHudAlpha)) {
@@ -1461,9 +1361,9 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     player._topLeftHudAlpha += (targetHudAlpha - player._topLeftHudAlpha) * 0.20;
   }
 
-  const safeAlpha = Number.isFinite(player._topLeftHudAlpha)
+  const safeAlpha = isMobile ? 1.0 : (Number.isFinite(player._topLeftHudAlpha)
     ? Math.max(minHudAlpha, Math.min(1.0, player._topLeftHudAlpha))
-    : 1.0;
+    : 1.0);
   ctx.globalAlpha = safeAlpha;
 
   const maxHp = player.maxHp || 100;
@@ -1889,7 +1789,49 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
       ctx.restore();
     }
   } else if (isDmArena) {
-    drawDeathmatchHUD(ctx, W, H, isMobile, player);
+    if (typeof deathmatchState !== 'undefined' && deathmatchState.active) {
+      drawDeathmatchHUD(ctx, W, H, isMobile, player);
+    } else {
+      const scoreBoxW = isMobile ? 220 : 280;
+      const scoreBoxH = isMobile ? 26 : 33;
+      const scoreBoxX = (W - scoreBoxW) / 2;
+      const scoreBoxY = isMobile ? 8 : 12;
+
+      ctx.save();
+      ctx.globalAlpha = isMobile ? 0.82 : 0.90;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      const isA2 = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
+      const isA3 = (curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
+      const isA4 = (curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARMORED_TRAIN' || curArenaId === 'SPACE_STATION' || curArenaId === 'ARES');
+
+      let arenaBorder = '#38bdf8';
+      let arenaLabel = 'SEKTOR OPERACYJNY';
+      if (isA2) {
+        arenaBorder = '#10b981';
+        arenaLabel = 'SEKTOR X • TOKSYCZNA RAFINERIA';
+      } else if (isA3) {
+        arenaBorder = '#f59e0b';
+        arenaLabel = 'SEKTOR 03 • TAJEMNICZA DŻUNGLA';
+      } else if (isA4) {
+        arenaBorder = '#a855f7';
+        arenaLabel = 'STACJA ARES • SEKTOR ORBITALNY';
+      }
+
+      ctx.strokeStyle = arenaBorder;
+      ctx.lineWidth = 1.2;
+      if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
+      else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = isMobile ? '900 8.5px monospace' : '900 10.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = arenaBorder;
+      ctx.shadowBlur = 0;
+      ctx.fillText(arenaLabel, scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 16 : 20.5));
+      ctx.restore();
+    }
   } else if (isMatchArena) {
     const scoreBoxW = isMobile ? 180 : 230;
     const scoreBoxH = isMobile ? 26 : 34;
@@ -1984,6 +1926,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const shouldDrawTouchControls = (typeof window !== 'undefined' && (
     window.isTouchDevice ||
     isTouchDevice ||
+    window.innerWidth <= 850 ||
     (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
   ));
 
