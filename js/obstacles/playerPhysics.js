@@ -449,18 +449,43 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
     const bnds = getPlatformBounds(plat);
     const stepDiff = feetY - bnds.minY;
-    // Jeśli blok jest wyższy niż próg wejścia (stepDiff > 34)
-    const isSideHit = (stepDiff > 34 && feetY > bnds.minY + 14 && p.y < bnds.maxY - 4);
+    // Dla klocków Areny 5 (100px) próg kolizji bocznej wynosi 8px (odpowiada maxStepOver), dla innych 34px
+    const minStepForSideHit = (isA5 || plat.isA5Block) ? 8 : 34;
+    const isSideHit = (stepDiff > minStepForSideHit && feetY > bnds.minY + minStepForSideHit && p.y < bnds.maxY - 4);
     if (isSideHit) {
       if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
         const overlapLeft = (p.x + p.w) - bnds.minX;
         const overlapRight = bnds.maxX - p.x;
-        if (overlapLeft < overlapRight) {
-          p.x = bnds.minX - p.w;
-          if (p.vx > 0) p.vx = 0;
+
+        const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+        if (plat.isA5Block && typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number' && a5State?.gridRows) {
+          const rowData = a5State.gridRows.get(plat.gridRow);
+          const hasLeft = (plat.gridCol > 0 && rowData?.[plat.gridCol - 1]?.hp > 0);
+          const hasRight = (plat.gridCol < 9 && rowData?.[plat.gridCol + 1]?.hp > 0);
+
+          if (!hasLeft && !hasRight) {
+            if (overlapLeft < overlapRight) {
+              p.x = bnds.minX - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = bnds.maxX;
+              if (p.vx < 0) p.vx = 0;
+            }
+          } else if (!hasLeft) {
+            p.x = bnds.minX - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else if (!hasRight) {
+            p.x = bnds.maxX;
+            if (p.vx < 0) p.vx = 0;
+          }
         } else {
-          p.x = bnds.maxX;
-          if (p.vx < 0) p.vx = 0;
+          if (overlapLeft < overlapRight) {
+            p.x = bnds.minX - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else {
+            p.x = bnds.maxX;
+            if (p.vx < 0) p.vx = 0;
+          }
         }
       }
     }

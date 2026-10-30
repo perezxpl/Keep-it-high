@@ -192,119 +192,146 @@ function checkFallingSquash(combatants) {
     const pW = victim.w || 26;
     const pH = victim.h || 72;
 
-    for (const cell of crane.shapeCells) {
-      const cellX = getGridX(crane.col + cell.colRel);
-      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
-      const cellW = CELL_SIZE;
-      const cellH = CELL_SIZE;
-      const cellRight = cellX + cellW;
-      const cellBottomY = cellY + cellH;
-      const worldCol = crane.col + cell.colRel;
+    // Do 2 iteracji depenetracji dla narożników opadającej figury
+    for (let iter = 0; iter < 2; iter++) {
+      let collided = false;
 
-      // Zewnętrzne krawędzie kształtu spadającej figury Tetrisa
-      const isTopEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1);
-      const isBottomEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1);
-      const isLeftEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel);
-      const isRightEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel);
+      for (const cell of crane.shapeCells) {
+        const cellX = getGridX(crane.col + cell.colRel);
+        const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+        const cellW = CELL_SIZE;
+        const cellH = CELL_SIZE;
+        const cellRight = cellX + cellW;
+        const cellBottomY = cellY + cellH;
+        const worldCol = crane.col + cell.colRel;
 
-      // Czy postać przecina tę komórkę spadającej figury?
-      const overlapX = (victim.x + pW > cellX + 2) && (victim.x < cellRight - 2);
-      const overlapY = (victim.y + pH > cellY + 2) && (victim.y < cellBottomY - 2);
-      if (!overlapX || !overlapY) continue;
+        // Zewnętrzne krawędzie kształtu spadającej figury Tetrisa
+        const isTopEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel + 1);
+        const isBottomEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel && o.rowRel === cell.rowRel - 1);
+        const isLeftEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel - 1 && o.rowRel === cell.rowRel);
+        const isRightEdge = !crane.shapeCells.some(o => o.colRel === cell.colRel + 1 && o.rowRel === cell.rowRel);
 
-      const penTop = (victim.y + pH) - cellY;          // Głębokość wniknięcia od góry
-      const penBottom = cellBottomY - victim.y;        // Głębokość wniknięcia od spodu
-      const penLeft = (victim.x + pW) - cellX;         // Głębokość wniknięcia od lewej
-      const penRight = cellRight - victim.x;           // Głębokość wniknięcia od prawej
+        // Czy bounding box postaci przecina tę komórkę spadającej figury?
+        const overlapX = (victim.x + pW > cellX) && (victim.x < cellRight);
+        const overlapY = (victim.y + pH > cellY) && (victim.y < cellBottomY);
+        if (!overlapX || !overlapY) continue;
 
-      // 1. GÓRA: Lądowanie i stanie na szczycie opadającej figury
-      if (isTopEdge && (penTop <= 24 || (victim.vy >= -1.0 && penTop < penBottom && penTop < penLeft && penTop < penRight))) {
-        if (victim.vy >= -1.0 || penTop <= 8) {
+        collided = true;
+
+        const penTop = (victim.y + pH) - cellY;          // Głębokość wniknięcia stóp od góry
+        const penBottom = cellBottomY - victim.y;        // Głębokość wniknięcia głowy od dołu
+        const penLeft = (victim.x + pW) - cellX;         // Głębokość wniknięcia od lewej
+        const penRight = cellRight - victim.x;           // Głębokość wniknięcia od prawej
+
+        // Oblicz najmniejszą translację (MTV) spośród zewnętrznych, odsłoniętych krawędzi
+        let bestAxis = null;
+        let minPen = Infinity;
+
+        // Lądowanie z góry na opadającym klocku (tylko na odsłoniętym dachu figury)
+        if (isTopEdge && (victim.vy >= crane.vy - 4.0 || penTop <= 24)) {
+          if (penTop < minPen) {
+            minPen = penTop;
+            bestAxis = 'TOP';
+          }
+        }
+        // Ściana boczna lewa
+        if (isLeftEdge && penLeft < minPen) {
+          minPen = penLeft;
+          bestAxis = 'LEFT';
+        }
+        // Ściana boczna prawa
+        if (isRightEdge && penRight < minPen) {
+          minPen = penRight;
+          bestAxis = 'RIGHT';
+        }
+        // Spód opadającego bloku
+        if (isBottomEdge && penBottom < minPen) {
+          minPen = penBottom;
+          bestAxis = 'BOTTOM';
+        }
+
+        // Przy ruchu bocznym postaci w stronę ściany, preferuj zablokowanie na ścianie
+        if (isLeftEdge && victim.vx > 0 && penLeft < 32 && bestAxis !== 'TOP') {
+          bestAxis = 'LEFT';
+        } else if (isRightEdge && victim.vx < 0 && penRight < 32 && bestAxis !== 'TOP') {
+          bestAxis = 'RIGHT';
+        }
+
+        if (bestAxis === 'TOP') {
           victim.y = cellY - pH;
           victim.vy = crane.vy;
           victim.onGround = true;
           victim.isJumping = false;
           victim.currentGroundY = cellY;
-          continue;
-        }
-      }
-
-      // 2. SPÓD: Postać znajduje się pod opadającym klockiem
-      if (isBottomEdge && (penBottom <= 36 || (victim.y + pH > cellBottomY + 12))) {
-        // Znajdź twardą powierzchnię pod stopami ofiary (spodni bloczek wieży lub podłoga)
-        let surfaceBelowY = currentFloorY;
-        for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
-          const rData = arena5State.gridRows.get(r);
-          if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
-            if (rData[worldCol].y >= victim.y + 20) {
-              surfaceBelowY = rData[worldCol].y;
-              break;
+          break;
+        } else if (bestAxis === 'LEFT') {
+          victim.x = cellX - pW;
+          if (victim.vx > 0) victim.vx = 0;
+          break;
+        } else if (bestAxis === 'RIGHT') {
+          victim.x = cellRight;
+          if (victim.vx < 0) victim.vx = 0;
+          break;
+        } else if (bestAxis === 'BOTTOM') {
+          // Postać znajduje się bezpośrednio pod spodem opadającego klocka
+          let surfaceBelowY = currentFloorY;
+          for (let r = arena5State.highestRowIndex + 4; r >= minRow; r--) {
+            const rData = arena5State.gridRows.get(r);
+            if (rData && rData[worldCol] && rData[worldCol].hp > 0) {
+              if (rData[worldCol].y >= victim.y + 20) {
+                surfaceBelowY = rData[worldCol].y;
+                break;
+              }
             }
           }
-        }
 
-        // Sprawdź czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
-        const cellTargetRow = crane.targetLandingRow + cell.rowRel;
-        const cellTargetY = getGridY(cellTargetRow);
-        const cellTargetBottomY = cellTargetY + CELL_SIZE;
-        const finalGap = surfaceBelowY - cellTargetBottomY;
-        const hasSafePocketUnderneath = (finalGap >= pH - 8);
+          // Sprawdź czy figura zatrzyma się bezpiecznie nad postacią dzięki podparciu innego klocka
+          const cellTargetRow = crane.targetLandingRow + cell.rowRel;
+          const cellTargetY = getGridY(cellTargetRow);
+          const cellTargetBottomY = cellTargetY + CELL_SIZE;
+          const finalGap = surfaceBelowY - cellTargetBottomY;
+          const hasSafePocketUnderneath = (finalGap >= pH - 8);
 
-        if (hasSafePocketUnderneath) {
-          // Bezpieczny nawis: standardowa kolizja sufitowa
-          victim.y = cellBottomY;
-          if (victim.vy < 0) victim.vy = 0.5;
-          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-            victim.rocketBoots.dashDirY = 0;
-            victim.rocketBoots.dashing = false;
-          }
-          continue;
-        }
-
-        // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
-        const remainingSpace = surfaceBelowY - cellBottomY;
-        const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
-
-        if (isPhysicallyCrushed) {
-          executeSquashKill(victim);
-          break;
-        } else {
-          // W powietrzu: spadający klocek spycha postać w dół
-          victim.y = cellBottomY;
-          victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
-          victim.onGround = false;
-          victim.currentPlatform = null;
-
-          if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
-            victim.rocketBoots.dashDirY = 0;
-            victim.rocketBoots.dashing = false;
+          if (hasSafePocketUnderneath && (victim.y >= cellTargetBottomY - 4)) {
+            // Bezpieczny nawis: standardowa kolizja sufitowa
+            victim.y = cellBottomY;
+            if (victim.vy < 0) victim.vy = 0.5;
+            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+              victim.rocketBoots.dashDirY = 0;
+              victim.rocketBoots.dashing = false;
+            }
+            break;
           }
 
-          if (Math.random() < 0.25) {
-            spawnRicochetSparks(victim.x + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
-            triggerScreenShake(3);
+          // Zmiażdżenie (Squash Kill) następuje TYLKO wtedy, gdy przestrzeń została fizycznie ściśnięta
+          const remainingSpace = surfaceBelowY - cellBottomY;
+          const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
+
+          if (isPhysicallyCrushed) {
+            executeSquashKill(victim);
+            return;
+          } else {
+            // W powietrzu: spadający klocek spycha postać w dół
+            victim.y = cellBottomY;
+            victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
+            victim.onGround = false;
+            victim.currentPlatform = null;
+
+            if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+              victim.rocketBoots.dashDirY = 0;
+              victim.rocketBoots.dashing = false;
+            }
+
+            if (Math.random() < 0.25) {
+              spawnRicochetSparks(victim.x + pW * 0.5, cellBottomY, (Math.random() - 0.5) * 4, 3, 2);
+              triggerScreenShake(3);
+            }
+            break;
           }
-          continue;
         }
       }
 
-      // 3. BOKI: Twarde ściany boczne opadającej figury (blokada bocznego przenikania)
-      if (isLeftEdge && (!isRightEdge || penLeft <= penRight)) {
-        victim.x = cellX - pW;
-        if (victim.vx > 0) victim.vx = 0;
-      } else if (isRightEdge) {
-        victim.x = cellRight;
-        if (victim.vx < 0) victim.vx = 0;
-      } else if (isTopEdge) {
-        victim.y = cellY - pH;
-        victim.vy = crane.vy;
-        victim.onGround = true;
-        victim.isJumping = false;
-        victim.currentGroundY = cellY;
-      } else if (isBottomEdge) {
-        victim.y = cellBottomY;
-        if (victim.vy < 0) victim.vy = 0.5;
-      }
+      if (!collided) break;
     }
   }
 }
@@ -719,7 +746,7 @@ function updateFallingBlocks(dt, combatants) {
         const oldY = cell.y;
         cell.y += step;
 
-        // Przenoszenie postaci stojącej na opadającym klocku
+        // Przenoszenie postaci stojącej na opadającym klocku oraz sztywna kolizja z opadającym blokiem
         if (Array.isArray(combatants)) {
           for (const victim of combatants) {
             if (!victim || victim.isDead) continue;
@@ -736,6 +763,31 @@ function updateFallingBlocks(dt, combatants) {
               victim.vy = cell.vy;
               victim.onGround = true;
               victim.currentPlatform = cell.platformObj;
+            } else {
+              // Sprawdź kolizję postaci z bokiem lub spodem opadającego klocka
+              const overlapX = (victim.x + pW > cell.x) && (victim.x < cell.x + cell.w);
+              const overlapY = (victim.y + pH > cell.y) && (victim.y < cell.y + cell.h);
+              if (overlapX && overlapY) {
+                const penBottom = (cell.y + cell.h) - victim.y;
+                const penLeft = (victim.x + pW) - cell.x;
+                const penRight = (cell.x + cell.w) - victim.x;
+
+                // Jeśli spód klocka opada na głowę postaci:
+                if (penBottom <= penLeft && penBottom <= penRight && penBottom < 32) {
+                  victim.y = cell.y + cell.h;
+                  victim.vy = Math.max(victim.vy, cell.vy + 1.0);
+                  if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
+                    victim.rocketBoots.dashDirY = 0;
+                    victim.rocketBoots.dashing = false;
+                  }
+                } else if (penLeft <= penRight) {
+                  victim.x = cell.x - pW;
+                  if (victim.vx > 0) victim.vx = 0;
+                } else {
+                  victim.x = cell.x + cell.w;
+                  if (victim.vx < 0) victim.vx = 0;
+                }
+              }
             }
           }
         }
@@ -1091,7 +1143,7 @@ function updateTowerApexAndSpawns() {
  * Gwarantuje, że gracz nigdy nie utknie wewnątrz bloku i sylwetka nie stanie się niewidoczna.
  */
 export function resolveArena5BlockPenetration(combatants) {
-  if (!Array.isArray(combatants)) return;
+  if (!Array.isArray(combatants) || combatants.length === 0) return;
 
   const minRow = arena5State.minFloorRow || 0;
 
@@ -1100,40 +1152,42 @@ export function resolveArena5BlockPenetration(combatants) {
 
     const pW = p.w || 26;
     const pH = p.h || 72;
-    const pX = p.x;
-    const pY = p.y;
-    const feetY = pY + pH;
-    const headY = pY;
 
-    // Zakres kolumn, które może przecinać model postaci
-    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor(pX / CELL_SIZE)));
-    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW) / CELL_SIZE)));
+    // Do 2 iteracji depenetracji dla narożników i styków sąsiadujących klocków
+    for (let iter = 0; iter < 2; iter++) {
+      let resolvedAny = false;
 
-    for (let c = colLeft; c <= colRight; c++) {
-      for (const [r, rowData] of arena5State.gridRows.entries()) {
-        if (r < minRow || !rowData) continue;
-        const cell = rowData[c];
-        if (!cell || cell.hp <= 0) continue;
+      const pX = p.x;
+      const pY = p.y;
+      const feetY = pY + pH;
+      const headY = pY;
 
-        const cellLeft = cell.x;
-        const cellRight = cell.x + cell.w;
-        const cellTop = cell.y;
-        const cellBottom = cell.y + cell.h;
+      // Zakres kolumn, które może przecinać model postaci
+      const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX - 2) / CELL_SIZE)));
+      const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW + 2) / CELL_SIZE)));
 
-        // Czy bounding box postaci przecina tę komórkę siatki?
-        const overlapX = (p.x < cellRight) && (p.x + pW > cellLeft);
-        const overlapY = (p.y < cellBottom) && (feetY > cellTop);
+      for (let c = colLeft; c <= colRight; c++) {
+        for (const [r, rowData] of arena5State.gridRows.entries()) {
+          if (r < minRow || !rowData) continue;
+          const cell = rowData[c];
+          if (!cell || cell.hp <= 0) continue;
 
-        if (overlapX && overlapY) {
-          // Postać wniknęła w solidny blok!
-          const currentFeetY = p.y + pH;
-          const currentHeadY = p.y;
-          const penTop = currentFeetY - cellTop;          // Głębokość wniknięcia stóp od góry
-          const penBottom = cellBottom - currentHeadY;    // Głębokość wniknięcia głowy od dołu
-          const penLeft = (p.x + pW) - cellLeft;          // Głębokość wniknięcia od lewej
-          const penRight = cellRight - p.x;               // Głębokość wniknięcia od prawej
+          const cellLeft = cell.x;
+          const cellRight = cell.x + cell.w;
+          const cellTop = cell.y;
+          const cellBottom = cell.y + cell.h;
 
-          // Sprawdź stan komórek bezpośrednio sąsiadujących
+          // Czy bounding box postaci przecina tę komórkę siatki?
+          const overlapX = (p.x + pW > cellLeft) && (p.x < cellRight);
+          const overlapY = (feetY > cellTop) && (p.y < cellBottom);
+          if (!overlapX || !overlapY) continue;
+
+          const penTop = feetY - cellTop;          // Głębokość wniknięcia stóp od góry
+          const penBottom = cellBottom - headY;    // Głębokość wniknięcia głowy od dołu
+          const penLeft = (p.x + pW) - cellLeft;   // Głębokość wniknięcia od lewej
+          const penRight = cellRight - p.x;        // Głębokość wniknięcia od prawej
+
+          // Sprawdź stan komórek bezpośrednio sąsiadujących (otwarta przestrzeń)
           const rowAbove = arena5State.gridRows.get(r + 1);
           const cellAbove = rowAbove ? rowAbove[c] : null;
           const isAboveClear = !cellAbove || cellAbove.hp <= 0;
@@ -1142,37 +1196,82 @@ export function resolveArena5BlockPenetration(combatants) {
           const cellBelow = rowBelow ? rowBelow[c] : null;
           const isBelowClear = (r > minRow) ? (!cellBelow || cellBelow.hp <= 0) : true;
 
-          // 1. Kolizja sufitowa: głowa uderza od spodu klocka podczas ruchu w górę
-          if (p.vy < 0 && penBottom <= 35 && isBelowClear) {
-            p.y = cellBottom;
-            p.vy = 0.5;
-            if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
-              p.rocketBoots.dashing = false;
+          const cellLeftNeighbour = (c > 0 && rowData) ? rowData[c - 1] : null;
+          const isLeftClear = (c === 0) || !cellLeftNeighbour || cellLeftNeighbour.hp <= 0;
+
+          const cellRightNeighbour = (c < COLS - 1 && rowData) ? rowData[c + 1] : null;
+          const isRightClear = (c === COLS - 1) || !cellRightNeighbour || cellRightNeighbour.hp <= 0;
+
+          // Minimum Translation Vector (MTV) po dostępnych, otwartych ścianach
+          let bestDir = null;
+          let minPen = Infinity;
+
+          // 1. Lądowanie na górnej krawędzi (tylko jeśli góra jest wolna)
+          if (isAboveClear && (p.vy >= -1.0 || penTop <= 16)) {
+            if (penTop < minPen) {
+              minPen = penTop;
+              bestDir = 'TOP';
             }
           }
-          // 2. Lądowanie / stabilne stanie na szczycie klocka:
-          // Wyłącznie gdy powyżej jest pusto, a stopy wniknęły minimalnie od góry (penTop <= 18)
-          else if (isAboveClear && (penTop <= 18 && (p.vy >= -1.0 || penTop <= 8))) {
+
+          // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli dół jest wolny)
+          if (isBelowClear && (p.vy < 0 || penBottom <= 16)) {
+            if (penBottom < minPen) {
+              minPen = penBottom;
+              bestDir = 'BOTTOM';
+            }
+          }
+
+          // 3. Ściana lewa (blokada wbiegania w lewy bok klocka)
+          if (isLeftClear && penLeft < minPen) {
+            minPen = penLeft;
+            bestDir = 'LEFT';
+          }
+
+          // 4. Ściana prawa (blokada wbiegania w prawy bok klocka)
+          if (isRightClear && penRight < minPen) {
+            minPen = penRight;
+            bestDir = 'RIGHT';
+          }
+
+          // Jeśli żadna ściana nie spełniła warunków (np. gracz wewnątrz grupy bloków), wybierz najbliższą wolną
+          if (!bestDir) {
+            if (isAboveClear) bestDir = 'TOP';
+            else if (isLeftClear) bestDir = 'LEFT';
+            else if (isRightClear) bestDir = 'RIGHT';
+            else if (isBelowClear) bestDir = 'BOTTOM';
+            else bestDir = 'TOP';
+          }
+
+          if (bestDir === 'TOP') {
             p.y = cellTop - pH;
             if (p.vy > 0) p.vy = 0;
             p.onGround = true;
             p.isJumping = false;
             p.currentPlatform = cell.platformObj;
             p.currentGroundY = cellTop;
-          }
-          // 3. Kolizja boczna (uderzenie w ścianę pionową przy wbieganiu):
-          // Blokuje przenikanie przez klocki od lewej/prawej strony
-          else {
-            if (penLeft <= penRight) {
-              p.x = cellLeft - pW;
-              if (p.vx > 0) p.vx = 0;
-            } else {
-              p.x = cellRight;
-              if (p.vx < 0) p.vx = 0;
+            resolvedAny = true;
+          } else if (bestDir === 'BOTTOM') {
+            p.y = cellBottom;
+            p.vy = 0.5;
+            if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
+              p.rocketBoots.dashDirY = 0;
+              p.rocketBoots.dashing = false;
             }
+            resolvedAny = true;
+          } else if (bestDir === 'LEFT') {
+            p.x = cellLeft - pW;
+            if (p.vx > 0) p.vx = 0;
+            resolvedAny = true;
+          } else if (bestDir === 'RIGHT') {
+            p.x = cellRight;
+            if (p.vx < 0) p.vx = 0;
+            resolvedAny = true;
           }
         }
       }
+
+      if (!resolvedAny) break;
     }
   }
 }

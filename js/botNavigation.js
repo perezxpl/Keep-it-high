@@ -88,7 +88,7 @@ export function getOverheadStructureInfo(botTarget, currentArenaId = '', maxDist
       const craneY = crane.currentY;
       for (const cellDef of crane.shape.cells) {
         const blkX = craneX + cellDef.c * CELL_SIZE;
-        const blkY = craneY - cellDef.r * CELL_SIZE;
+        const blkY = craneY + (crane.shape.h - 1 - cellDef.r) * CELL_SIZE;
         const blkBottom = blkY + CELL_SIZE;
         if (blkX + CELL_SIZE > botLeft && blkX < botRight) {
           if (blkBottom <= headY + 14 && blkBottom >= checkTopLimit && feetY > blkBottom) {
