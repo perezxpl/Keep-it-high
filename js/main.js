@@ -23,7 +23,6 @@ import {
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js';
-import { drawPlayerMarker } from './player/marker.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
 import { renderArenaBackground, renderArenaForeground, getActiveArena, DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
 import {
@@ -182,16 +181,9 @@ camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
 camera.y = camera.targetY;
 clampCamera();
 
-function handleWindowLayoutSync() {
+window.addEventListener('resize', () => {
   resize(player);
-  updateButtonLayout(window.innerWidth, window.innerHeight);
-}
-
-window.addEventListener('resize', handleWindowLayoutSync);
-window.addEventListener('orientationchange', () => {
-  handleWindowLayoutSync();
-  setTimeout(handleWindowLayoutSync, 60);
-  setTimeout(handleWindowLayoutSync, 200);
+  updateButtonLayout(W, H);
 });
 
 export const BIOME_TELEPORT_TARGETS = {
@@ -870,7 +862,6 @@ function draw() {
   ctx.save();
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
-  try {
 
   const worldLeft = camera.x;
   const worldRight = camera.x + (camera.viewWidth || (W / camera.zoom));
@@ -995,9 +986,6 @@ function draw() {
   }
 
   drawPlayer(ctx, GROUND_Y, player);
-  try {
-    drawPlayerMarker(ctx, player);
-  } catch (_) {}
 
   const playerTeam = player.team || 'CYAN';
 
@@ -1112,9 +1100,8 @@ function draw() {
 
   drawShockwaves(ctx, camera);
   drawLighting(ctx, camera, activeArenaId);
-  } finally {
-    ctx.restore();
-  }
+
+  ctx.restore();
 
   drawCinematicVignette(ctx);
 

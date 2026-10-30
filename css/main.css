@@ -4366,23 +4366,23 @@ button, .dev-btn {
    ------------------------------------------------------------------------- */
 .hud-pause-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
   z-index: 120;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid rgba(0, 229, 255, 0.30);
+  background: rgba(15, 23, 42, 0.70);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   color: #38bdf8;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0;
   display: none; /* Domyślnie ukryty na PC, widoczny WYŁĄCZNIE na ekranach dotykowych */
   align-items: center;
   justify-content: center;
   cursor: pointer !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.40);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   transition: all 0.16s ease;
   touch-action: manipulation;
   user-select: none;

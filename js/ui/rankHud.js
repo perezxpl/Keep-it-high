@@ -152,100 +152,67 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
 
   ctx.save();
 
-  if (isMobile) {
-    // Czytelny, kompaktowy wariant mobilny: ikona, stopień, XP i pasek postępu
-    const rankTextY = y;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.font = 'bold 8.5px monospace';
-    ctx.fillStyle = '#38bdf8';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-    ctx.shadowBlur = 2;
-    ctx.fillText(`${rank.icon} ${rank.short.toUpperCase()}`, x, rankTextY);
+  const rankTextY = y;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
 
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillStyle = '#facc15';
-    const xpStr = nextRank ? `${currentXp}/${nextRank.minXp} XP` : `${currentXp} XP`;
-    ctx.fillText(xpStr, x + width, rankTextY);
+  // Ikona i stopień wojskowy
+  ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10.5px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`${rank.icon} ${rank.short.toUpperCase()}`, x, rankTextY);
 
-    const barY = rankTextY + 7;
-    const barH = 2.5;
+  // Wartość XP po prawej stronie
+  ctx.textAlign = 'right';
+  ctx.font = isMobile ? 'bold 9px monospace' : 'bold 10px monospace';
+  ctx.fillStyle = '#facc15';
+  const xpStr = nextRank ? `${currentXp} / ${nextRank.minXp} XP` : `${currentXp} XP (MAX)`;
+  ctx.fillText(xpStr, x + width, rankTextY);
 
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(6, 9, 17, 0.85)';
-    ctx.fillRect(x, barY, width, barH);
+  // Cienki, taktyczny pasek postępu XP
+  const barY = rankTextY + (isMobile ? 7 : 8);
+  const barH = isMobile ? 3 : 3.5;
 
-    if (progress > 0) {
-      const fillW = Math.max(2, width * Math.min(1, progress));
-      ctx.beginPath();
-      ctx.fillStyle = '#00e5ff';
-      ctx.fillRect(x, barY, fillW, barH);
-    }
-  } else {
-    // Pełny wariant desktopowy
-    const rankTextY = y;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(6, 9, 17, 0.90)';
+  if (ctx.roundRect) ctx.roundRect(x, barY, width, barH, 1.5);
+  else ctx.rect(x, barY, width, barH);
+  ctx.fill();
 
-    // Ikona i stopień wojskowy
-    ctx.font = 'bold 10.5px monospace';
-    ctx.fillStyle = '#38bdf8';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(`${rank.icon} ${rank.short.toUpperCase()}`, x, rankTextY);
-
-    // Wartość XP po prawej stronie
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = '#facc15';
-    const xpStr = nextRank ? `${currentXp} / ${nextRank.minXp} XP` : `${currentXp} XP (MAX)`;
-    ctx.fillText(xpStr, x + width, rankTextY);
-
-    // Cienki, taktyczny pasek postępu XP
-    const barY = rankTextY + 8;
-    const barH = 3.5;
+  if (progress > 0) {
+    const fillW = Math.max(2, width * Math.min(1, progress));
+    const grad = ctx.createLinearGradient(x, barY, x + fillW, barY);
+    grad.addColorStop(0.0, '#00e5ff');
+    grad.addColorStop(0.65, '#38bdf8');
+    grad.addColorStop(1.0, '#facc15');
 
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(6, 9, 17, 0.90)';
-    if (ctx.roundRect) ctx.roundRect(x, barY, width, barH, 1.5);
-    else ctx.rect(x, barY, width, barH);
+    ctx.fillStyle = grad;
+    if (ctx.roundRect) ctx.roundRect(x, barY, fillW, barH, 1.5);
+    else ctx.rect(x, barY, fillW, barH);
     ctx.fill();
+  }
 
-    if (progress > 0) {
-      const fillW = Math.max(2, width * Math.min(1, progress));
-      const grad = ctx.createLinearGradient(x, barY, x + fillW, barY);
-      grad.addColorStop(0.0, '#00e5ff');
-      grad.addColorStop(0.65, '#38bdf8');
-      grad.addColorStop(1.0, '#facc15');
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 0.8;
+  if (ctx.roundRect) ctx.roundRect(x, barY, width, barH, 1.5);
+  else ctx.rect(x, barY, width, barH);
+  ctx.stroke();
 
-      ctx.beginPath();
-      ctx.fillStyle = grad;
-      if (ctx.roundRect) ctx.roundRect(x, barY, fillW, barH, 1.5);
-      else ctx.rect(x, barY, fillW, barH);
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.lineWidth = 0.8;
-    if (ctx.roundRect) ctx.roundRect(x, barY, width, barH, 1.5);
-    else ctx.rect(x, barY, width, barH);
-    ctx.stroke();
-
-    // Podgląd nagrody za następny awans (Call of Duty Style)
-    if (nextRank && Array.isArray(nextRank.unlocks) && nextRank.unlocks.length > 0) {
-      const rawPreview = nextRank.unlocks[0];
-      const previewLabel = typeof rawPreview === 'string' ? rawPreview : (rawPreview?.label || rawPreview?.name || '');
-      if (previewLabel) {
-        const rewardY = barY + barH + 8;
-        ctx.font = 'bold 8.5px monospace';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#94a3b8';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 2;
-        ctx.fillText(`NAGRODA: ${previewLabel.toUpperCase()}`, x, rewardY);
-      }
+  // Podgląd nagrody za następny awans (Call of Duty Style)
+  if (nextRank && Array.isArray(nextRank.unlocks) && nextRank.unlocks.length > 0) {
+    const rawPreview = nextRank.unlocks[0];
+    const previewLabel = typeof rawPreview === 'string' ? rawPreview : (rawPreview?.label || rawPreview?.name || '');
+    if (previewLabel) {
+      const rewardY = barY + barH + (isMobile ? 7 : 8);
+      ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#94a3b8';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 2;
+      ctx.fillText(`NAGRODA: ${previewLabel.toUpperCase()}`, x, rewardY);
     }
   }
 

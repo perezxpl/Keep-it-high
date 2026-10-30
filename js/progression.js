@@ -283,13 +283,8 @@ export function notifyXpGained(text, amount, color) {
 }
 
 export function getPlayerXP() {
-  try {
-    if (typeof localStorage === 'undefined' || !localStorage) return 0;
-    const parsed = parseInt(localStorage.getItem('fragball_xp') || '0', 10);
-    return Number.isFinite(parsed) && !Number.isNaN(parsed) ? parsed : 0;
-  } catch (_) {
-    return 0;
-  }
+  const parsed = parseInt(localStorage.getItem('fragball_xp') || '0', 10);
+  return Number.isFinite(parsed) && !Number.isNaN(parsed) ? parsed : 0;
 }
 
 export function addPlayerXP(amount) {
@@ -298,11 +293,7 @@ export function addPlayerXP(amount) {
   const current = getPlayerXP();
   const prevRank = getCurrentRank(current);
   const updated = Math.max(0, current + delta);
-  try {
-    if (typeof localStorage !== 'undefined' && localStorage) {
-      localStorage.setItem('fragball_xp', updated.toString());
-    }
-  } catch (_) {}
+  localStorage.setItem('fragball_xp', updated.toString());
   const newRank = getCurrentRank(updated);
   if (newRank.id !== prevRank.id) {
     if (typeof _rankUpCallback === 'function') {
