@@ -108,15 +108,16 @@ function updateCrane(dt, combatants) {
 
 /**
  * Blokada przenikania przez ułożone bloczki od dołu (Ceiling Collision):
- * Postać uderzając głową w spód bloczka zatrzymuje się i nie może przez niego przelecieć.
+ * Działa ściśle na zasadzie Swept Y od dołu: wyłącznie gdy postać porusza się w górę (vy < 0)
+ * i jej poprzednia pozycja głowy znajdowała się na lub poniżej spodu odsłoniętego klocka.
  */
 export function checkArena5CeilingCollisions(combatants) {
-  if (!Array.isArray(combatants)) return;
+  if (!Array.isArray(combatants) || combatants.length === 0) return;
 
   const minRow = arena5State.minFloorRow || 0;
 
   for (const p of combatants) {
-    if (!p || p.isDead) continue;
+    if (!p || p.isDead || p.vy >= 0) continue;
 
     const pW = p.w || 26;
     const pH = p.h || 72;
@@ -124,10 +125,11 @@ export function checkArena5CeilingCollisions(combatants) {
     const pY = p.y;
     const headY = pY;
     const feetY = pY + pH;
+    const prevHeadY = pY - p.vy;
 
-    // Zakres kolumn, z którymi styka się model postaci
-    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX + 4) / CELL_SIZE)));
-    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW - 4) / CELL_SIZE)));
+    // Zakres kolumn z bezpiecznym marginesem 6px, aby ślizganie po ścianie nie aktywowało sufitu
+    const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX + 6) / CELL_SIZE)));
+    const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW - 6) / CELL_SIZE)));
 
     let hitCeiling = false;
     let pushDownToY = -Infinity;
@@ -138,6 +140,9 @@ export function checkArena5CeilingCollisions(combatants) {
         const cell = rowData[c];
         if (!cell || cell.hp <= 0) continue;
 
+        // Sprawdź czy krawędzie poziome nie stykają się jedynie marginesem
+        if (pX + pW <= cell.x + 6 || pX >= cell.x + cell.w - 6) continue;
+
         // Sprawdź czy spód tego bloczka jest odsłonięty (czy pod nim nie ma innego litego klocka)
         const rowBelow = arena5State.gridRows.get(r - 1);
         const cellBelow = rowBelow ? rowBelow[c] : null;
@@ -147,15 +152,13 @@ export function checkArena5CeilingCollisions(combatants) {
         const blockBottom = cell.y + cell.h;
         const blockTop = cell.y;
 
-        // Warunek kolizji sufitowej:
-        // Głowa wbiła się w dolną krawędź bloczka (headY <= blockBottom),
-        // postać znajduje się pod klockiem i porusza się w górę lub wbiła się w sufit
-        if (headY <= blockBottom && headY >= blockTop + 8 && feetY > blockBottom) {
-          if (p.vy < 0 || headY < blockBottom - 4) {
-            hitCeiling = true;
-            if (blockBottom > pushDownToY) {
-              pushDownToY = blockBottom;
-            }
+        // Warunek kolizji sufitowej Swept Y od dołu:
+        // Poprzednia pozycja głowy była na lub poniżej krawędzi sufitu, a obecna przebiła sufit
+        const maxTol = Math.max(14, Math.abs(p.vy) + 6);
+        if (headY < blockBottom && prevHeadY >= blockBottom - maxTol && feetY > blockBottom && headY >= blockTop) {
+          hitCeiling = true;
+          if (blockBottom > pushDownToY) {
+            pushDownToY = blockBottom;
           }
         }
       }
@@ -165,10 +168,9 @@ export function checkArena5CeilingCollisions(combatants) {
       if (p.y < pushDownToY) {
         p.y = pushDownToY;
       }
-      if (p.vy < 0) {
-        p.vy = 0.5; // Zatrzymanie ruchu w górę i lekkie odbicie w dół
-      }
+      p.vy = 0.5; // Zatrzymanie ruchu w górę i lekkie odbicie w dół
       if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
+        p.rocketBoots.dashDirY = 0;
         p.rocketBoots.dashing = false;
       }
     }
@@ -229,11 +231,12 @@ function checkFallingSquash(combatants) {
     // A. Lądowanie na odsłoniętych szczytach kafelków (Continuous / Swept check w osi Y)
     // Sortowanie od najwyższego kafelka, by gracz lądował na najwyższej półce/dachu
     const topTiles = subTiles.filter(st => st.isTopEdge).sort((a, b) => a.top - b.top);
+    const craneStep = (crane.vy || 0) * 1;
     for (const st of topTiles) {
       if (victim.x + pW > st.left + 2 && victim.x < st.right - 2) {
-        const tolerance = Math.max(16, relVy + 12);
+        const tolerance = Math.max(22, Math.abs(relVy) + craneStep + 14);
         const isSweptCross = (prevBottom <= st.top + tolerance && newBottom >= st.top - 4);
-        if (isSweptCross && victim.y < st.bottom && relVy >= -4.0) {
+        if (isSweptCross && victim.y < st.bottom && (victim.vy >= -3.0 || relVy >= -6.0)) {
           victim.y = st.top - pH;
           victim.vy = crane.vy;
           victim.onGround = true;
@@ -326,6 +329,41 @@ function checkFallingSquash(combatants) {
             if (victim.vx > 0) victim.vx = 0;
           } else if (st.isRightEdge) {
             victim.x = st.right;
+            if (victim.vx < 0) victim.vx = 0;
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // SEPARACJA OSI: FAZA 3 - BEZWZGLĘDNA DEPENETRACJA SPADAJĄCEJ FIGURY
+    // =========================================================================
+    // Jeśli gracz nadal penetruje którykolwiek kafelek spadającej figury, wypchnij go
+    // na najbliższą zewnętrzną krawędź bryły
+    for (const st of subTiles) {
+      if (victim.x + pW > st.left + 1 && victim.x < st.right - 1 &&
+          victim.y + pH > st.top + 1 && victim.y < st.bottom - 1) {
+        const victimCenterY = victim.y + pH * 0.5;
+        const cellCenterY = st.top + CELL_SIZE * 0.5;
+
+        if (st.isTopEdge && victimCenterY <= cellCenterY) {
+          victim.y = st.top - pH;
+          victim.vy = crane.vy || 0;
+          victim.onGround = true;
+          victim.isJumping = false;
+          victim.currentGroundY = st.top;
+        } else {
+          const rowTiles = subTiles.filter(t => t.rowRel === st.rowRel);
+          const minLeft = Math.min(...rowTiles.map(t => t.left));
+          const maxRight = Math.max(...rowTiles.map(t => t.right));
+          const distToLeft = (victim.x + pW) - minLeft;
+          const distToRight = maxRight - victim.x;
+
+          if (distToLeft <= distToRight) {
+            victim.x = minLeft - pW;
+            if (victim.vx > 0) victim.vx = 0;
+          } else {
+            victim.x = maxRight;
             if (victim.vx < 0) victim.vx = 0;
           }
         }
@@ -434,8 +472,38 @@ function onCraneBlockImpact(combatants) {
   // Ważne: Nowo zrzucona figura wylądowała jako sztywna całość (Tetris block) na najwyższym podparciu.
   // Jej nawisy nie opadają – opierają się na podparciu reszty figury!
   updateTowerApexAndSpawns();
+  syncArena5ExposedSurfaces();
   checkAndTriggerLineClears(combatants);
   resolveArena5BlockPenetration(combatants);
+}
+
+/**
+ * Synchronizuje flagi odsłonięcia powierzchni górnych (topExposed) dla wszystkich klocków w wieży:
+ * Jeśli nad danym kafelkiem (r, c) w (r + 1, c) znajduje się inny aktywny, lity klocek,
+ * to górna krawędź kafelka (r, c) jest wewnętrznym szwem i nie może być celem lądowania.
+ */
+export function syncArena5ExposedSurfaces() {
+  if (!arena5State.gridRows) return;
+  const minRow = arena5State.minFloorRow || 0;
+
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (r < minRow || !rowData) continue;
+    const rowAbove = arena5State.gridRows.get(r + 1);
+
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0) continue;
+
+      const cellAbove = rowAbove ? rowAbove[c] : null;
+      const isCovered = !!(cellAbove && cellAbove.hp > 0 && !cellAbove.isFalling);
+      const isTopExposed = !isCovered;
+
+      cell.topExposed = isTopExposed;
+      if (cell.platformObj) {
+        cell.platformObj.topExposed = isTopExposed;
+      }
+    }
+  }
 }
 
 /**
@@ -451,6 +519,7 @@ export function removePlatformForCell(cell) {
     if (idx2 !== -1) window.ARENA_PLATFORMS.splice(idx2, 1);
   }
   cell.platformObj = null;
+  syncArena5ExposedSurfaces();
 }
 
 /**
@@ -676,6 +745,7 @@ export function applyPieceGravity(combatants = null) {
     }
   }
 
+  syncArena5ExposedSurfaces();
   return anyBlockFell;
 }
 
@@ -762,16 +832,27 @@ function updateFallingBlocks(dt, combatants) {
               victim.onGround = true;
               victim.currentPlatform = cell.platformObj;
             } else {
-              // Sprawdź kolizję postaci z bokiem lub spodem opadającego klocka
+              // Sprawdź kolizję postaci z dachem, bokiem lub spodem opadającego klocka
               const overlapX = (victim.x + pW > cell.x) && (victim.x < cell.x + cell.w);
               const overlapY = (victim.y + pH > cell.y) && (victim.y < cell.y + cell.h);
               if (overlapX && overlapY) {
+                const penTop = (victim.y + pH) - cell.y;
                 const penBottom = (cell.y + cell.h) - victim.y;
                 const penLeft = (victim.x + pW) - cell.x;
                 const penRight = (cell.x + cell.w) - victim.x;
 
-                // Jeśli spód klocka opada na głowę postaci:
-                if (penBottom <= penLeft && penBottom <= penRight && penBottom < 32) {
+                const rowAbove = arena5State.gridRows.get(cell.row + 1);
+                const cellAbove = rowAbove ? rowAbove[cell.col] : null;
+                const isTopExposed = !cellAbove || cellAbove.hp <= 0;
+
+                // Jeśli góra opadającego kafelka jest odsłonięta i gracz opada na dach klocka:
+                if (isTopExposed && penTop <= 36 && penTop <= penLeft && penTop <= penRight) {
+                  victim.y = cell.y - pH;
+                  victim.vy = cell.vy;
+                  victim.onGround = true;
+                  victim.currentPlatform = cell.platformObj;
+                } else if (penBottom <= penLeft && penBottom <= penRight && penBottom < 32) {
+                  // Jeśli spód klocka opada na głowę postaci:
                   victim.y = cell.y + cell.h;
                   victim.vy = Math.max(victim.vy, cell.vy + 1.0);
                   if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
@@ -812,6 +893,7 @@ function updateFallingBlocks(dt, combatants) {
   if (anyLanded) {
     triggerScreenShake(3);
     updateTowerApexAndSpawns();
+    syncArena5ExposedSurfaces();
     checkAndTriggerLineClears(combatants);
     resolveArena5BlockPenetration(combatants);
   }
@@ -1198,54 +1280,104 @@ export function resolveArena5BlockPenetration(combatants) {
           const cellBelow = rowBelow ? rowBelow[c] : null;
           const isBelowClear = (r > minRow) ? (!cellBelow || cellBelow.hp <= 0) : true;
 
-          const cellLeftNeighbour = (c > 0 && rowData) ? rowData[c - 1] : null;
-          const isLeftClear = (c === 0) || !cellLeftNeighbour || cellLeftNeighbour.hp <= 0;
+          // Ściany boczne szybu Areny 5 (c === 0 oraz c === COLS - 1) są litymi ścianami szybu
+          let isLeftClear = false;
+          if (c > 0) {
+            const leftCellCur = rowData ? rowData[c - 1] : null;
+            const leftCurFree = !leftCellCur || leftCellCur.hp <= 0;
+            let leftAboveFree = true;
+            if (headY < cellTop) {
+              const leftCellAbove = rowAbove ? rowAbove[c - 1] : null;
+              leftAboveFree = !leftCellAbove || leftCellAbove.hp <= 0;
+            }
+            isLeftClear = leftCurFree && leftAboveFree;
+          }
 
-          const cellRightNeighbour = (c < COLS - 1 && rowData) ? rowData[c + 1] : null;
-          const isRightClear = (c === COLS - 1) || !cellRightNeighbour || cellRightNeighbour.hp <= 0;
+          let isRightClear = false;
+          if (c < COLS - 1) {
+            const rightCellCur = rowData ? rowData[c + 1] : null;
+            const rightCurFree = !rightCellCur || rightCellCur.hp <= 0;
+            let rightAboveFree = true;
+            if (headY < cellTop) {
+              const rightCellAbove = rowAbove ? rowAbove[c + 1] : null;
+              rightAboveFree = !rightCellAbove || rightCellAbove.hp <= 0;
+            }
+            isRightClear = rightCurFree && rightAboveFree;
+          }
+
+          // Sprawdzenie czy pod kafelkiem jest wystarczająco dużo miejsca na całą wysokość gracza pH
+          let canFitUnderneath = false;
+          if (isBelowClear) {
+            let clearanceBelow = 999;
+            for (let testR = r - 1; testR >= minRow; testR--) {
+              const testRowData = arena5State.gridRows.get(testR);
+              const testCell = testRowData ? testRowData[c] : null;
+              if (testCell && testCell.hp > 0) {
+                clearanceBelow = testCell.y - cellBottom;
+                break;
+              }
+            }
+            if (clearanceBelow === 999) {
+              const floorY = arena5State.currentFloorY || BASE_FLOOR_Y;
+              clearanceBelow = floorY - cellBottom;
+            }
+            canFitUnderneath = clearanceBelow >= pH;
+          }
 
           // Minimum Translation Vector (MTV) po dostępnych, otwartych ścianach
           let bestDir = null;
           let minPen = Infinity;
 
-          // 1. Lądowanie na górnej krawędzi (tylko jeśli góra jest wolna i wniknięcie nie przekracza 16px)
-          if (isAboveClear && penTop <= 16 && p.vy >= -1.0) {
-            if (penTop < minPen) {
-              minPen = penTop;
-              bestDir = 'TOP';
-            }
+          // 1. Priorytet lądowania na dachu kafelka (TOP)
+          const allowTop = isAboveClear && penTop <= 42 && p.vy >= -2.0;
+          const topPriority = allowTop && (
+            (penTop <= penLeft + 6 && penTop <= penRight + 6) ||
+            (!isLeftClear && !isRightClear)
+          );
+
+          if (topPriority) {
+            bestDir = 'TOP';
+            minPen = penTop;
           }
 
-          // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli dół jest wolny i głowa uderza od dołu)
-          if (isBelowClear && p.vy < 0 && penBottom <= 24 && headY >= cellBottom - 28) {
+          // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli pod spodem zmieści się gracz pH)
+          if (!bestDir && isBelowClear && canFitUnderneath && p.vy < 0 && penBottom <= 24 && headY >= cellBottom - 28) {
             if (penBottom < minPen) {
               minPen = penBottom;
               bestDir = 'BOTTOM';
             }
           }
 
-          // 3. Ściana lewa (blokada wbiegania w lewy bok klocka)
-          if (isLeftClear && (!isRightClear || penLeft <= penRight) && penLeft < minPen) {
-            minPen = penLeft;
-            bestDir = 'LEFT';
+          // 3. Ściana lewa oraz prawa
+          // W regułach LEFT i RIGHT nie wypychaj gracza w bok, jeśli isAboveClear && penTop < penLeft && penTop < penRight && penTop <= 48
+          const topFavoredOverSides = isAboveClear && penTop < penLeft && penTop < penRight && penTop <= 48;
+
+          if (!bestDir && !topFavoredOverSides) {
+            if (isLeftClear && (!isRightClear || penLeft <= penRight) && penLeft < minPen) {
+              minPen = penLeft;
+              bestDir = 'LEFT';
+            }
+            if (isRightClear && (!isLeftClear || penRight < penLeft) && penRight < minPen) {
+              minPen = penRight;
+              bestDir = 'RIGHT';
+            }
           }
 
-          // 4. Ściana prawa (blokada wbiegania w prawy bok klocka)
-          if (isRightClear && (!isLeftClear || penRight < penLeft) && penRight < minPen) {
-            minPen = penRight;
-            bestDir = 'RIGHT';
-          }
-
-          // Jeśli żadna ściana nie spełniła warunków, preferuj wypychanie w stronę wolnej ściany bocznej
-          // zamiast teleportowania gracza w górę na dach lub w dół do niższych klocków
+          // Fallback, gdy żaden kierunek nie został wybrany
           if (!bestDir) {
-            if (isLeftClear && (!isRightClear || penLeft <= penRight)) bestDir = 'LEFT';
-            else if (isRightClear) bestDir = 'RIGHT';
-            else if (isAboveClear && penTop <= 24) bestDir = 'TOP';
-            else if (isBelowClear && headY >= cellBottom - 28) bestDir = 'BOTTOM';
-            else if (isLeftClear) bestDir = 'LEFT';
-            else if (isRightClear) bestDir = 'RIGHT';
-            else if (isAboveClear) bestDir = 'TOP';
+            if (isAboveClear && penTop <= 48) {
+              bestDir = 'TOP';
+            } else if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
+              bestDir = 'LEFT';
+            } else if (isRightClear) {
+              bestDir = 'RIGHT';
+            } else if (isLeftClear) {
+              bestDir = 'LEFT';
+            } else if (isBelowClear && canFitUnderneath && headY >= cellBottom - 28) {
+              bestDir = 'BOTTOM';
+            } else if (isAboveClear) {
+              bestDir = 'TOP';
+            }
           }
 
           if (bestDir === 'TOP') {

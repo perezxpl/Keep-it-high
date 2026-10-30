@@ -199,12 +199,17 @@ export function checkPlayerPlatformLanding(p, groundY) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
     if (isA5 && !plat.isA5Block && plat.id !== 'a5_base_floor' && !plat.isWall) continue;
 
-    // Arena 5: Jeśli klocek jest przykryty od góry innym litym klockiem, jego szczyt NIE jest dostępny do lądowania
-    if (isA5 && plat.isA5Block && typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number') {
-      const a5St = (typeof arena5State !== 'undefined' && arena5State) ? arena5State : ((typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null);
-      const rowAbove = a5St?.gridRows?.get(plat.gridRow + 1);
-      if (rowAbove && rowAbove[plat.gridCol] && rowAbove[plat.gridCol].hp > 0) {
+    // Arena 5: Jeśli klocek jest przykryty od góry innym litym klockiem, jego dach NIE jest dostępny do lądowania
+    if (isA5 && plat.isA5Block) {
+      if (plat.topExposed === false) {
         continue;
+      }
+      if (typeof plat.gridRow === 'number' && typeof plat.gridCol === 'number') {
+        const a5St = (typeof arena5State !== 'undefined' && arena5State) ? arena5State : ((typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null);
+        const rowAbove = a5St?.gridRows?.get(plat.gridRow + 1);
+        if (rowAbove && rowAbove[plat.gridCol] && rowAbove[plat.gridCol].hp > 0 && !rowAbove[plat.gridCol].isFalling) {
+          continue;
+        }
       }
     }
 
@@ -252,8 +257,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
       // Sprawdzamy czy odcinek od prevBottom do newBottom przecina subTile.top
       const tolerance = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 8) : Math.max(30, platThickness * 0.9);
       const minAirVy = (isA5 && plat.isA5Block) ? -0.8 : -1.0;
+      const sweptBottomMargin = (isA5 && plat.isA5Block) ? 2 : 14;
       const isAirLanding = p.vy >= minAirVy && (
-        prevBottom <= topY + tolerance && newBottom >= topY - 14 && p.y < topY + platThickness
+        prevBottom <= topY + tolerance && newBottom >= topY - sweptBottomMargin && p.y < topY + platThickness
       );
 
       // 2. Stabilne utrzymanie na bieżącej platformie (Ground Retention):
@@ -284,11 +290,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       // Twarde zabezpieczenie przed wpadaniem do wnętrza odsłoniętych klocków w Arenie 5 (Solid Top Blocks):
-      // Wymaga faktycznego znajdowania się nad obrysem klocka (minX+4 do maxX-4) oraz przecięcia dachu w osi Y
+      // Wymaga odsłoniętego dachu (topExposed !== false), znajdowania się nad obrysem klocka oraz przecięcia dachu w osi Y
       if (!isLanding && isA5 && plat.isA5Block && (!p.isJumping || p.vy >= -1.0)) {
-        const isOverHoriz = (p.x + (p.w || 24) > bnds.minX + 4 && p.x < bnds.maxX - 4);
-        if (isOverHoriz && prevBottom <= topY + Math.max(16, p.vy + 8) && newBottom >= topY - 14 && p.y < topY + platThickness) {
-          isLanding = true;
+        if (plat.topExposed !== false) {
+          const isOverHoriz = (p.x + (p.w || 24) > bnds.minX + 4 && p.x < bnds.maxX - 4);
+          if (isOverHoriz && prevBottom <= topY + Math.max(16, p.vy + 8) && newBottom >= topY - 2 && p.y < topY + platThickness) {
+            isLanding = true;
+          }
         }
       }
 
