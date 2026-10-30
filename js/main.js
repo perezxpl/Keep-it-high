@@ -1384,7 +1384,7 @@ if (typeof window !== 'undefined') {
     getMatchInfo: () => {
       const arena = getActiveArena();
       const arenaName = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER') ? 'Prefabrykator Orbitalny' :
-                        (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Stacja Orbitalna Ares' :
+                        (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'TYFON' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Platforma Wiertnicza // Tyfon' :
                         (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
                         (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
                         (arena?.name || 'Neonowe Miasto');

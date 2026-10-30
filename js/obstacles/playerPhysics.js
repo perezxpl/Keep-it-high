@@ -680,11 +680,11 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Obsługa śmiertelnej próżni w Arenie 4 (Stacja Orbitalna Ares)
+  // Obsługa śmiertelnej strefy oceanu w Arenie 4 (Platforma Wiertnicza // Tyfon)
   if (isA4 && !p.isDead) {
-    const deathY = 1250; // Bezpieczny margines pod całą stacją (minimum 350 px poniżej głównego pokładu)
+    const deathY = 1250; // Granica wzburzonego oceanu
     if (p.y > deathY) {
-      killByHazard(p, "PRÓŻNIA KOSMICZNA // DEKOMPRESJA");
+      killByHazard(p, "WZBURZONY OCEAN // SZTORM TYFON");
     }
   }
 

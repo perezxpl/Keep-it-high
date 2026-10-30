@@ -40,8 +40,10 @@ export const lightingState = {
     'ARENA_3': 0.60,            // Nocna Dżungla (głęboki nocny półmrok)
     'arena-3': 0.60,
     'ARENA_FOUNDRY': 0.60,
-    'ARENA_4': 0.55,            // Stacja Kosmiczna Ares (mroczna próżnia kosmosu)
+    'ARENA_4': 0.55,            // Platforma Wiertnicza Tyfon (mroczny sztorm morski)
     'arena-4': 0.55,
+    'OIL_RIG_TYPHOON': 0.55,
+    'TYPHOON': 0.55,
     'ARMORED_TRAIN': 0.70
   }
 };

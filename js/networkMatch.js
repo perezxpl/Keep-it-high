@@ -354,14 +354,14 @@ export function getMpMatchRosterSummary(cfg = mpMatchConfig) {
 export function getMpSpawnPositions(arenaId, cfg = mpMatchConfig, groundY = 800) {
   const isA2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_SECTOR_X' || arenaId === 'ARENA_2_PANDORA');
   const isA3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY');
-  const isA4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
+  const isA4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'ARMORED_TRAIN');
 
   // Domyślne współrzędne bazowe (lewa = Team Alpha / Cyan, prawa = Team Beta / Orange)
   let alphaBaseX, betaBaseX, spawnY;
   if (isA4) {
-    alphaBaseX = 500;
-    betaBaseX = 1250;
-    spawnY = 770;
+    alphaBaseX = 800;
+    betaBaseX = 1400;
+    spawnY = 860;
   } else if (isA2) {
     alphaBaseX = 350;
     betaBaseX = 3470;
