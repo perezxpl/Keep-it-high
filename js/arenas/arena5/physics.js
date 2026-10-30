@@ -138,6 +138,12 @@ export function checkArena5CeilingCollisions(combatants) {
         const cell = rowData[c];
         if (!cell || cell.hp <= 0) continue;
 
+        // Sprawdź czy spód tego bloczka jest odsłonięty (czy pod nim nie ma innego litego klocka)
+        const rowBelow = arena5State.gridRows.get(r - 1);
+        const cellBelow = rowBelow ? rowBelow[c] : null;
+        const isBottomExposed = (r === minRow) ? false : (!cellBelow || cellBelow.hp <= 0);
+        if (!isBottomExposed) continue;
+
         const blockBottom = cell.y + cell.h;
         const blockTop = cell.y;
 
@@ -227,20 +233,20 @@ function checkFallingSquash(combatants) {
         let bestAxis = null;
         let minPen = Infinity;
 
-        // Lądowanie z góry na opadającym klocku (tylko na odsłoniętym dachu figury)
-        if (isTopEdge && (victim.vy >= crane.vy - 4.0 || penTop <= 24)) {
+        // Lądowanie z góry na opadającym klocku (tylko na odsłoniętym dachu figury przy małym wniknięciu)
+        if (isTopEdge && penTop <= 20 && victim.vy >= crane.vy - 4.0) {
           if (penTop < minPen) {
             minPen = penTop;
             bestAxis = 'TOP';
           }
         }
         // Ściana boczna lewa
-        if (isLeftEdge && penLeft < minPen) {
+        if (isLeftEdge && (!isRightEdge || penLeft <= penRight) && penLeft < minPen) {
           minPen = penLeft;
           bestAxis = 'LEFT';
         }
         // Ściana boczna prawa
-        if (isRightEdge && penRight < minPen) {
+        if (isRightEdge && (!isLeftEdge || penRight < penLeft) && penRight < minPen) {
           minPen = penRight;
           bestAxis = 'RIGHT';
         }
@@ -251,18 +257,19 @@ function checkFallingSquash(combatants) {
         }
 
         // Przy ruchu bocznym postaci w stronę ściany, preferuj zablokowanie na ścianie
-        if (isLeftEdge && victim.vx > 0 && penLeft < 32 && bestAxis !== 'TOP') {
+        if (isLeftEdge && victim.vx > 0 && penLeft < 36) {
           bestAxis = 'LEFT';
-        } else if (isRightEdge && victim.vx < 0 && penRight < 32 && bestAxis !== 'TOP') {
+        } else if (isRightEdge && victim.vx < 0 && penRight < 36) {
           bestAxis = 'RIGHT';
         }
 
         if (!bestAxis) {
-          if (isTopEdge) bestAxis = 'TOP';
-          else if (isLeftEdge && (!isRightEdge || penLeft < penRight)) bestAxis = 'LEFT';
+          if (isLeftEdge && (!isRightEdge || penLeft <= penRight)) bestAxis = 'LEFT';
           else if (isRightEdge) bestAxis = 'RIGHT';
+          else if (isTopEdge && penTop <= 24) bestAxis = 'TOP';
           else if (isBottomEdge && victim.y >= cellBottomY - 36) bestAxis = 'BOTTOM';
-          else bestAxis = 'TOP';
+          else if (isTopEdge) bestAxis = 'TOP';
+          else bestAxis = 'LEFT';
         }
 
         if (bestAxis === 'TOP') {
@@ -1214,8 +1221,8 @@ export function resolveArena5BlockPenetration(combatants) {
           let bestDir = null;
           let minPen = Infinity;
 
-          // 1. Lądowanie na górnej krawędzi (tylko jeśli góra jest wolna)
-          if (isAboveClear && (p.vy >= -1.0 || penTop <= 16)) {
+          // 1. Lądowanie na górnej krawędzi (tylko jeśli góra jest wolna i wniknięcie nie przekracza 16px)
+          if (isAboveClear && penTop <= 16 && p.vy >= -1.0) {
             if (penTop < minPen) {
               minPen = penTop;
               bestDir = 'TOP';
@@ -1223,7 +1230,7 @@ export function resolveArena5BlockPenetration(combatants) {
           }
 
           // 2. Kolizja sufitowa (uderzenie od spodu, tylko jeśli dół jest wolny i głowa uderza od dołu)
-          if (isBelowClear && p.vy < 0 && penBottom <= 32 && headY >= cellBottom - 32) {
+          if (isBelowClear && p.vy < 0 && penBottom <= 24 && headY >= cellBottom - 28) {
             if (penBottom < minPen) {
               minPen = penBottom;
               bestDir = 'BOTTOM';
@@ -1231,25 +1238,27 @@ export function resolveArena5BlockPenetration(combatants) {
           }
 
           // 3. Ściana lewa (blokada wbiegania w lewy bok klocka)
-          if (isLeftClear && penLeft < minPen) {
+          if (isLeftClear && (!isRightClear || penLeft <= penRight) && penLeft < minPen) {
             minPen = penLeft;
             bestDir = 'LEFT';
           }
 
           // 4. Ściana prawa (blokada wbiegania w prawy bok klocka)
-          if (isRightClear && penRight < minPen) {
+          if (isRightClear && (!isLeftClear || penRight < penLeft) && penRight < minPen) {
             minPen = penRight;
             bestDir = 'RIGHT';
           }
 
-          // Jeśli żadna ściana nie spełniła warunków, preferuj wypychanie w górę (TOP) lub na boki (LEFT/RIGHT),
-          // a NIGDY w dół (BOTTOM), by nie teleportować gracza do wnętrza niższych klocków!
+          // Jeśli żadna ściana nie spełniła warunków, preferuj wypychanie w stronę wolnej ściany bocznej
+          // zamiast teleportowania gracza w górę na dach lub w dół do niższych klocków
           if (!bestDir) {
-            if (isAboveClear) bestDir = 'TOP';
-            else if (isLeftClear && (!isRightClear || penLeft < penRight)) bestDir = 'LEFT';
+            if (isLeftClear && (!isRightClear || penLeft <= penRight)) bestDir = 'LEFT';
             else if (isRightClear) bestDir = 'RIGHT';
-            else if (isBelowClear && headY >= cellBottom - 32) bestDir = 'BOTTOM';
-            else bestDir = 'TOP';
+            else if (isAboveClear && penTop <= 24) bestDir = 'TOP';
+            else if (isBelowClear && headY >= cellBottom - 28) bestDir = 'BOTTOM';
+            else if (isLeftClear) bestDir = 'LEFT';
+            else if (isRightClear) bestDir = 'RIGHT';
+            else if (isAboveClear) bestDir = 'TOP';
           }
 
           if (bestDir === 'TOP') {

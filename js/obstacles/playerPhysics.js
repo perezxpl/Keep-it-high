@@ -35,8 +35,8 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (p.laserCooldown > 0) p.laserCooldown--;
 
   const colH = (p.staggerTimer > 0) ? 15 : (p.h || 70);
-  const feetY = p.y + colH;
-  const centerX = p.x + p.w / 2;
+  let feetY = p.y + colH;
+  let centerX = p.x + p.w / 2;
   if (!p.dropThroughTimer || p.dropThroughTimer <= 0) {
     p.dropThroughPlatform = null;
     p.dropThroughTimer = 0;
@@ -185,6 +185,77 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
+  // 1. Twarda blokada przechodzenia przez ściany oraz boki klocków Areny 5 i zwalonych przeszkód
+  // Wykonywana PRZED sprawdzeniem lądowania, aby zapobiec przenikaniu w szczeliny między klockami
+  // i utracie ground retention przy dobieganiu do pionowych ścian figur lub stopni.
+  for (const plat of ARENA_PLATFORMS) {
+    if (!plat || plat.solid === false || plat.oneWay) continue;
+
+    // A. Ściany pionowe (plat.isWall)
+    if (plat.isWall) {
+      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+      const bottomY = topY + (plat.h || plat.thickness || 200);
+      if (feetY > topY + 6 && p.y < bottomY - 4) {
+        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+          if (plat.pushSide === 'left') {
+            p.x = plat.x - p.w;
+            if (p.vx > 0) p.vx = 0;
+          } else if (plat.pushSide === 'right') {
+            p.x = plat.x + plat.w;
+            if (p.vx < 0) p.vx = 0;
+          } else {
+            const overlapLeft = (p.x + p.w) - plat.x;
+            const overlapRight = (plat.x + plat.w) - p.x;
+            let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
+            if (pushLeft) {
+              p.x = plat.x - p.w;
+              if (p.vx > 0) p.vx = 0;
+            } else {
+              p.x = plat.x + plat.w;
+              if (p.vx < 0) p.vx = 0;
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    // B. Boki klocków Areny 5 oraz zwalonych segmentów
+    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
+    if (!isObstacleToBlock) continue;
+
+    const bnds = getPlatformBounds(plat);
+    const minStepForSideHit = (isA5 || plat.isA5Block) ? 8 : 34;
+
+    // Jeśli postać stoi bezpiecznie na szczycie tej platformy, nie traktuj jej jako ściany bocznej
+    if (p.currentPlatform === plat && feetY <= bnds.minY + minStepForSideHit) continue;
+
+    const stepDiff = feetY - bnds.minY;
+    const isSideHit = (stepDiff > minStepForSideHit && feetY > bnds.minY + minStepForSideHit && p.y < bnds.maxY - 2);
+    if (isSideHit) {
+      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
+        const overlapLeft = (p.x + p.w) - bnds.minX;
+        const overlapRight = bnds.maxX - p.x;
+
+        let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
+
+        if (pushLeft) {
+          p.x = bnds.minX - p.w;
+          if (p.vx > 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
+        } else {
+          p.x = bnds.maxX;
+          if (p.vx < 0) p.vx = 0;
+          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+        }
+      }
+    }
+  }
+
+  // Zaktualizuj pozycję środka i stóp po depenetracji poziomej
+  centerX = p.x + (p.w || 24) * 0.5;
+  feetY = p.y + colH;
+
   let landedSurface = null;
   let landedSlope = 0;
   let landedPlatform = null;
@@ -206,7 +277,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
     // Histereza na krawędziach: uwzględnia szerokość modelu postaci (Raptor 24, Striker 26, Enforcer 30)
     const halfW = (p.w || 24) * 0.5;
     const isCurrent = (p.onGround && p.currentPlatform === plat);
-    const horizMargin = isCurrent ? Math.max(16, halfW + 4) : Math.max(12, halfW);
+    const horizMargin = isCurrent ? Math.max(16, halfW + 4) : (isA5 ? Math.max(4, halfW - 4) : Math.max(12, halfW));
 
     if (centerX >= bnds.minX - horizMargin && centerX <= bnds.maxX + horizMargin) {
       const surf = getPlatformSurfaceInfo(plat, centerX, groundY);
@@ -279,8 +350,10 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
 
       // Twarde zabezpieczenie przed wpadaniem do wnętrza odsłoniętych klocków w Arenie 5 (Solid Top Blocks):
+      // Wymaga faktycznego znajdowania się nad obrysem klocka (minX+4 do maxX-4) oraz bliskości dachu (max 16px)
       if (!isLanding && isA5 && plat.isA5Block && (!p.isJumping || p.vy >= -1.0)) {
-        if (feetY >= topY - 14 && feetY <= topY + Math.max(48, p.vy + 28)) {
+        const isOverHoriz = (p.x + (p.w || 24) > bnds.minX + 4 && p.x < bnds.maxX - 4);
+        if (isOverHoriz && feetY >= topY - 14 && feetY <= topY + Math.max(16, p.vy + 8)) {
           isLanding = true;
         }
       }
@@ -426,64 +499,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Twarda blokada przechodzenia przez pionowe ściany szybów i krawędzie skał (isWall)
-  for (const plat of ARENA_PLATFORMS) {
-    if (plat && plat.isWall && plat.solid !== false) {
-      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
-      const bottomY = topY + (plat.h || plat.thickness || 200);
-      if (feetY > topY + 6 && p.y < bottomY - 4) {
-        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
-          if (plat.pushSide === 'left') {
-            p.x = plat.x - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else if (plat.pushSide === 'right') {
-            p.x = plat.x + plat.w;
-            if (p.vx < 0) p.vx = 0;
-          } else {
-            const overlapLeft = (p.x + p.w) - plat.x;
-            const overlapRight = (plat.x + plat.w) - p.x;
-            if (overlapLeft < overlapRight) {
-              p.x = plat.x - p.w;
-              if (p.vx > 0) p.vx = 0;
-            } else {
-              p.x = plat.x + plat.w;
-              if (p.vx < 0) p.vx = 0;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Twarda blokada przechodzenia przez zawalone klocki leżące oraz segmenty wieży (Solid Obstacles & Tower Blocks)
-  for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.solid === false || plat.isWall || plat.oneWay) continue;
-    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
-    if (!isObstacleToBlock) continue;
-    if (p.currentPlatform === plat) continue;
-
-    const bnds = getPlatformBounds(plat);
-    const stepDiff = feetY - bnds.minY;
-    // Dla klocków Areny 5 (100px) próg kolizji bocznej wynosi 8px (odpowiada maxStepOver), dla innych 34px
-    const minStepForSideHit = (isA5 || plat.isA5Block) ? 8 : 34;
-    const isSideHit = (stepDiff > minStepForSideHit && feetY > bnds.minY + minStepForSideHit && p.y < bnds.maxY - 4);
-    if (isSideHit) {
-      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
-        const overlapLeft = (p.x + p.w) - bnds.minX;
-        const overlapRight = bnds.maxX - p.x;
-
-        if (overlapLeft < overlapRight) {
-          p.x = bnds.minX - p.w;
-          if (p.vx > 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
-        } else {
-          p.x = bnds.maxX;
-          if (p.vx < 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
-        }
-      }
-    }
-  }
   p.isClimbing = false;
 
   if (landedSurface === null && !isA5) {
