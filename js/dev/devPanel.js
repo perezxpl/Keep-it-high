@@ -20,7 +20,7 @@ import { player } from '../player.js';
 import { bot, isBotEnabled, setBotEnabled } from '../bot.js';
 import { ball } from '../ball.js';
 import { switchArena, activeArenaId } from '../obstacles.js';
-import { getActiveArena } from '../renderer.js';
+import { getActiveArena, isDebugCollidersEnabled, toggleDebugColliders } from '../renderer.js';
 import { sendArenaSwitch, updateCursorVisibility } from '../network.js';
 import { uiManager } from '../uiManager.js';
 import { updateButtonLayout } from '../mobileControls.js';
@@ -330,6 +330,70 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     devArenaBtn.addEventListener('click', toggleArena);
     devArenaBtn.addEventListener('touchend', toggleArena);
     syncDevArenaButtonUI();
+  }
+
+  initDevCollisionUI();
+}
+
+// =========================================================================
+// DEV COLLISION LINES VISUALIZER (PODGLĄD LINII KOLIZJI - BIAŁA PRZERYWANA)
+// =========================================================================
+export function syncDevCollisionButtonUI() {
+  const btn = document.getElementById('dev-collision-btn');
+  if (!btn) return;
+  const isColActive = (typeof isDebugCollidersEnabled === 'function')
+    ? isDebugCollidersEnabled()
+    : (typeof window !== 'undefined' && !!window.DEBUG_COLLIDERS);
+
+  if (isColActive) {
+    btn.textContent = 'KOLIZJE: WŁ';
+    btn.style.borderColor = '#ffffff';
+    btn.style.color = '#ffffff';
+    btn.style.background = 'rgba(255, 255, 255, 0.22)';
+    btn.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.55)';
+  } else {
+    btn.textContent = 'KOLIZJE: WYŁ';
+    btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+    btn.style.color = '#94a3b8';
+    btn.style.background = 'transparent';
+    btn.style.boxShadow = 'none';
+  }
+}
+if (typeof window !== 'undefined') {
+  window.syncDevCollisionButtonUI = syncDevCollisionButtonUI;
+}
+
+export function initDevCollisionUI() {
+  let devCollisionBtn = document.getElementById('dev-collision-btn');
+  const devMenu = document.getElementById('dev-menu');
+
+  if (!devCollisionBtn && devMenu) {
+    const sep = document.createElement('span');
+    sep.style.cssText = 'color: rgba(255,255,255,0.25); margin: 0 3px;';
+    sep.textContent = '|';
+    devMenu.appendChild(sep);
+
+    devCollisionBtn = document.createElement('button');
+    devCollisionBtn.className = 'dev-btn';
+    devCollisionBtn.id = 'dev-collision-btn';
+    devCollisionBtn.title = 'Włącz / Wyłącz podgląd linii kolizji (przerywana biała linia) [Skrót: F1 / ~]';
+    devMenu.appendChild(devCollisionBtn);
+  }
+
+  if (devCollisionBtn) {
+    const handleToggle = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (typeof toggleDebugColliders === 'function') {
+        toggleDebugColliders();
+      } else if (typeof window !== 'undefined' && typeof window.toggleDebugColliders === 'function') {
+        window.toggleDebugColliders();
+      }
+      syncDevCollisionButtonUI();
+    };
+    devCollisionBtn.addEventListener('click', handleToggle);
+    devCollisionBtn.addEventListener('touchend', handleToggle);
+    syncDevCollisionButtonUI();
   }
 }
 

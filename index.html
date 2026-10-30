@@ -53,7 +53,7 @@
       "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v232_crater_gravity_and_self_death_feed",
       "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v192_perf_and_multiplayer_sync",
       "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v192_perf_and_multiplayer_sync",
-      "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v352_arena5_full_fix_and_dev_toggle",
+      "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v368_dashed_white_collision_lines_dev_toggle",
       "./js/dev/obstacleEditor.js": "./js/dev/obstacleEditor.js?v=v162_remove_emojis_streamline_ui",
       "./js/dev/weaponEditor.js": "./js/dev/weaponEditor.js?v=v329_knife_grip_and_pivot_tuning",
       "./js/input.js": "./js/input.js?v=v134_striker_mobile_air_dash_flames_spread",
@@ -78,7 +78,7 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/main.js": "./js/main.js?v=v352_arena5_full_fix_and_dev_toggle",
+      "./js/main.js": "./js/main.js?v=v368_dashed_white_collision_lines_dev_toggle",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v279_melee_button_non_auto_lock",
       "./js/network.js": "./js/network.js?v=v274_tomahawk_throw_and_pickup",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v346_ares_solid_deck_jump_pads_and_vacuum_fix",
@@ -113,7 +113,7 @@
       "./js/player/state.js": "./js/player/state.js?v=v336_rpg7_modular_rocket_reload",
       "./js/progression.js": "./js/progression.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/projectiles.js": "./js/projectiles.js?v=v359_arena5_anti_stuck_depenetration_and_grenade_bounce",
-      "./js/renderer.js": "./js/renderer.js?v=v210_chrome_fillrate_ultrawide_and_locked_60fps",
+      "./js/renderer.js": "./js/renderer.js?v=v368_dashed_white_collision_lines_dev_toggle",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v344_ares_space_station_overhaul_and_vacuum_fix",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
@@ -192,6 +192,11 @@
 
         <!-- Przełącznik Areny -->
         <button class="dev-btn" id="dev-arena-btn" style="border-color: #06b6d4; color: #22d3ee;" title="Przełącz arenę (klawisz M / F2 / 0)">Arena: 1</button>
+
+        <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
+
+        <!-- Podgląd linii kolizji (przerywana biała linia) -->
+        <button class="dev-btn" id="dev-collision-btn" title="Włącz / Wyłącz podgląd linii kolizji (przerywane białe linie) [Skrót: F1 / ~]">KOLIZJE: WYŁ</button>
 
         <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
 
@@ -1557,7 +1562,7 @@
     </button>
   </div>
 
-  <script type="module" src="./js/main.js?v=v352_arena5_full_fix_and_dev_toggle"></script>
+  <script type="module" src="./js/main.js?v=v368_dashed_white_collision_lines_dev_toggle"></script>
 </body>
 
 </html>

@@ -24,7 +24,7 @@ import {
   drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js';
 import { updateProjectiles, drawProjectiles } from './projectiles.js';
-import { renderArenaBackground, renderArenaForeground, getActiveArena, DEBUG_COLLIDERS, drawDebugColliders } from './renderer.js';
+import { renderArenaBackground, renderArenaForeground, getActiveArena, DEBUG_COLLIDERS, drawDebugColliders, isDebugCollidersEnabled } from './renderer.js';
 import {
   ball, resetBallToPlayer, updateBall, checkBallPlayerCollisions, drawBall
 } from './ball.js';
@@ -1094,8 +1094,9 @@ function draw() {
   // Renderowanie elementów areny na pierwszym planie (np. łańcuchy, ołtarz, stemple)
   renderArenaForeground(ctx, camera);
 
-  if (DEBUG_COLLIDERS && typeof drawDebugColliders === 'function') {
-    drawDebugColliders(ctx, GROUND_Y, player);
+  const isDebugCol = (typeof isDebugCollidersEnabled === 'function') ? isDebugCollidersEnabled() : DEBUG_COLLIDERS;
+  if (isDebugCol && typeof drawDebugColliders === 'function') {
+    drawDebugColliders(ctx, effectiveGroundY, player, { activeBots, remotePlayer, ball });
   }
 
   drawShockwaves(ctx, camera);
@@ -1105,13 +1106,13 @@ function draw() {
 
   drawCinematicVignette(ctx);
 
-  if (DEBUG_COLLIDERS) {
+  if (isDebugCol) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.shadowBlur = 4;
-    ctx.fillText('DEBUG COLLIDERS ON [F1 / ~ to toggle]', 16, 24);
+    ctx.fillText('LINIE KOLIZJI: WŁ (PRZERYWANA BIAŁA LINIA) [F1 / ~ / DEV]', 16, 24);
     ctx.restore();
   }
 
