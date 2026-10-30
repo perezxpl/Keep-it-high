@@ -32,7 +32,7 @@ export * from './obstacles/playerPhysics.js';
 export * from './obstacles/ballPhysics.js';
 export * from './obstacles/raycast.js';
 export * from './obstacles/renderer.js';
-export { killByHazard } from './arenas/arena4_space.js';
+export { killByHazard } from './arenas/arena4.js';
 
 export function drawObstacles(ctx, groundY) {
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;

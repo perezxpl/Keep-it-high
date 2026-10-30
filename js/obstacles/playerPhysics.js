@@ -23,7 +23,7 @@ import {
   getPlatformSurfaceY
 } from './state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
-import { killByHazard } from '../arenas/arena4_space.js';
+import { killByHazard } from '../arenas/arena4.js';
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)

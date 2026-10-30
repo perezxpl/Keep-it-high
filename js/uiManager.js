@@ -476,10 +476,10 @@ export const uiManager = {
       id: 'ARENA_4',
       badge: 'SEKTOR 04',
       counter: 'MAPA 4 / 5',
-      name: 'STACJA ORBITALNA ARES',
-      tag: 'NISKA GRAWITACJA // PRÓŻNIA',
-      desc: 'ŚRODOWISKO NISKIEJ GRAWITACJI // PRÓŻNIA // ZNISZCZALNE POSZYCIE',
-      img: './assets/arena4_preview.svg?v=v315_ares_orbital_space_station'
+      name: 'PLATFORMA WIERTNICZA // TYFON',
+      tag: 'MORSKI KOMPLEKS // SZTORM',
+      desc: 'WIELOPOZIOMOWA WIERTNIA // WZBURZONY OCEAN // RUCHOMA SUWNICA // PLAMY ROPY',
+      img: './assets/arena4_preview.svg?v=v380_oil_rig_typhoon'
     },
     {
       id: 'ARENA_5',

@@ -723,13 +723,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
-    const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'ARES_ORBITAL_STATION');
-    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 820;
+    const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'OIL_RIG_TYPHOON' || currentArena?.alias === 'TYPHOON' || currentArena?.alias === 'ARES_ORBITAL_STATION');
+    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 920;
     if (playerObj) {
       const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
       const spawnIdx = isA4 ? (isClient ? 2 : 1) : (isClient ? 2 : 0);
-      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1250 : 750);
-      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 50);
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1400 : 800);
+      playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 60);
       playerObj.vx = 0;
       playerObj.vy = 0;
       playerObj.facing = isClient ? -1 : 1;

@@ -97,11 +97,11 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (targets) player._targets = targets;
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
+  const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'ARMORED_TRAIN');
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const noFlatGround = isA4 || isA3 || isA2;
-  player.groundY = isA4 ? 820 : (isA3 ? 900 : (isA2 ? 1350 : GROUND_Y));
+  player.groundY = isA4 ? 920 : (isA3 ? 900 : (isA2 ? 1350 : GROUND_Y));
   if (!noFlatGround && !player.currentGroundY) player.currentGroundY = GROUND_Y;
 
   // Jeśli gracz stał na poziomie gruntu, a podłoże zniknęło (wyrwa) -> natychmiast traci kontakt z ziemią

@@ -260,8 +260,8 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
     return closestTopY < Infinity ? closestTopY : 1200;
   }
 
-  // Arena 4: Stacja Orbitalna Ares (śmiertelna próżnia kosmiczna poza obrysem platform)
-  const isA4 = (effectiveId === 'ARENA_4' || effectiveId === 'arena-4' || effectiveId === 'SPACE_STATION' || effectiveId === 'ARES' || effectiveId === 'ARES_ORBITAL_STATION');
+  // Arena 4: Platforma Wiertnicza // Tyfon (śmiertelny wzburzony ocean poza obrysem platform)
+  const isA4 = (effectiveId === 'ARENA_4' || effectiveId === 'arena-4' || effectiveId === 'OIL_RIG_TYPHOON' || effectiveId === 'TYPHOON' || effectiveId === 'TYFON' || effectiveId === 'OIL_RIG' || effectiveId === 'SPACE_STATION' || effectiveId === 'ARES' || effectiveId === 'ARES_ORBITAL_STATION');
   if (isA4) {
     let closestTopY = Infinity;
     const plats = (Array.isArray(ARENA_PLATFORMS) && ARENA_PLATFORMS.length > 0)
@@ -272,9 +272,9 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
       if (!plat || plat.solid === false || plat.isWall) continue;
       const pLeft = plat.x || 0;
       const pWidth = plat.width || plat.w || 0;
-      const pTopY = (typeof plat.y === 'number') ? plat.y : 820;
+      const pTopY = (typeof plat.y === 'number') ? plat.y : 920;
       if (x >= pLeft - 8 && x <= pLeft + pWidth + 8) {
-        if (pTopY >= feetY - 32 && pTopY < closestTopY && pTopY < 1200) {
+        if (pTopY >= feetY - 32 && pTopY < closestTopY && pTopY < 1250) {
           closestTopY = pTopY;
         }
       }
@@ -1097,8 +1097,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       else {
         const safeUnder = isAirborneNow ? getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId) : null;
         if (safeUnder === null && (botTarget.vy || 0) > -1.0) {
-          const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
-          const centerNavX = isA4 ? 1050 : 2000;
+          const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
+          const centerNavX = isA4 ? 1100 : 2000;
           nx = (botCenterX < centerNavX ? 1 : -1) * 0.85;
           ny = -0.52;
           triggerAir = true;
@@ -1168,13 +1168,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const safeDirectlyUnder = getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId);
     if (safeDirectlyUnder === null && (botTarget.vy || 0) > -1.2) {
       wantsJetpack = true;
-      const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
+      const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
       if (isA4) {
-        // Natychmiast steruj w stronę stacji (centrum X: 1050), aby nie wisieć/dryfować w próżni
-        if (botCenterX > 1070) {
+        // Natychmiast steruj w stronę platformy (centrum X: 1100), aby nie wpaść do oceanu
+        if (botCenterX > 1120) {
           bKeys.left = true;
           bKeys.right = false;
-        } else if (botCenterX < 1030) {
+        } else if (botCenterX < 1080) {
           bKeys.right = true;
           bKeys.left = false;
         }
