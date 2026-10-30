@@ -232,13 +232,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
         }
       }
 
-      // 1. Lądowanie z powietrza (opadanie p.vy >= -1.0):
-      // Pełny swept-test wzdłuż osi Y chroniący przed przenikaniem przy wysokiej prędkości pionowej i odrzucie.
-      // Dla klocków Areny 5 lądowanie z powietrza wymaga opadania na krawędź z góry (prevFeetY <= topY + 28),
+      // 1. Lądowanie z powietrza:
+      // Dla klocków Areny 5 (100px) lądowanie wymaga opadania na krawędź z góry (prevFeetY <= topY + 8),
       // a nie znajdowania się na dole klocka (co zapobiega wbieganiu z poziomu podłogi).
-      const airMarginTop = (isA5 && plat.isA5Block) ? 28 : Math.max(30, platThickness * 0.9);
-      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(45, p.vy + 30) : Math.max(36, p.vy + 24);
-      const minAirVy = -1.0;
+      const airMarginTop = (isA5 && plat.isA5Block) ? 8 : Math.max(30, platThickness * 0.9);
+      const maxLandingDepth = (isA5 && plat.isA5Block) ? Math.max(12, p.vy + 4) : Math.max(36, p.vy + 24);
+      const minAirVy = (isA5 && plat.isA5Block) ? 0.0 : -1.0;
       const isAirLanding = p.vy >= minAirVy && (
         (prevFeetY <= topY + airMarginTop && feetY >= topY - 14 && feetY <= topY + maxLandingDepth)
       );

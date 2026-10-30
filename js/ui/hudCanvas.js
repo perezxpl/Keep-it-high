@@ -1369,11 +1369,27 @@ export function drawSingleMobileWeaponIcon(ctx, x, y, size, player) {
 export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null, arenaInfo = null) {
   updateFps();
 
+  // Wykrywanie urządzeń mobilnych / małych ekranów
+  const isMobile = (typeof window !== 'undefined' && window.innerWidth < 850);
+
+  // Informacje o aktywnej arenie i trybie gry zdefiniowane w zasięgu całej funkcji drawHUD
+  const aState = arenaInfo || _worldArenaState;
+  const curArenaId = aState?.activeArenaId || 'ARENA_1';
+  const curScore = aState?.arenaScore || { cyan: 0, orange: 0 };
+  const curA1State = aState?.arena1State;
+  const isArena5 = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER');
+  const isDeathmatch = (
+    isArena5 ||
+    curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARMORED_TRAIN' ||
+    curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY' ||
+    curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X'
+  );
+  const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
+  const isMatchArena = (curArenaId === 'ARENA_1');
+  const isDmArena = (isSectorXArena || isDeathmatch);
+
   ctx.save();
   try {
-    // Wykrywanie urządzeń mobilnych / małych ekranów
-    const isMobile = (typeof window !== 'undefined' && window.innerWidth < 850);
-
     // =========================================================================
     // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
     // =========================================================================
@@ -1436,13 +1452,19 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     targetHudAlpha = minHudAlpha + (1.0 - minHudAlpha) * smoothT;
   }
 
-  if (typeof player._topLeftHudAlpha !== 'number' || isNaN(player._topLeftHudAlpha)) {
+  if (!Number.isFinite(targetHudAlpha)) {
+    targetHudAlpha = 1.0;
+  }
+  if (!Number.isFinite(player._topLeftHudAlpha)) {
     player._topLeftHudAlpha = targetHudAlpha;
   } else {
     player._topLeftHudAlpha += (targetHudAlpha - player._topLeftHudAlpha) * 0.20;
   }
 
-  ctx.globalAlpha = Math.max(minHudAlpha, Math.min(1.0, player._topLeftHudAlpha));
+  const safeAlpha = Number.isFinite(player._topLeftHudAlpha)
+    ? Math.max(minHudAlpha, Math.min(1.0, player._topLeftHudAlpha))
+    : 1.0;
+  ctx.globalAlpha = safeAlpha;
 
   const maxHp = player.maxHp || 100;
   const curHp = Math.max(0, player.hp ?? 100);
@@ -1838,16 +1860,35 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   // 3. TABLICA WYNIKÓW (GÓRA EKRANU)
   // =========================================================================
-  const aState = arenaInfo || _worldArenaState;
-  const curArenaId = aState.activeArenaId;
-  const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
-  const curA1State = aState.arena1State;
-  const isDeathmatch = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER' || curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
-  const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
-  const isMatchArena = (curArenaId === 'ARENA_1');
-  const isDmArena = (isSectorXArena || isDeathmatch);
+  if (isArena5) {
+    if (typeof deathmatchState !== 'undefined' && deathmatchState.active) {
+      drawDeathmatchHUD(ctx, W, H, isMobile, player);
+    } else {
+      const scoreBoxW = isMobile ? 210 : 260;
+      const scoreBoxH = isMobile ? 26 : 33;
+      const scoreBoxX = (W - scoreBoxW) / 2;
+      const scoreBoxY = isMobile ? 8 : 12;
 
-  if (isDmArena) {
+      ctx.save();
+      ctx.globalAlpha = isMobile ? 0.82 : 0.90;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+      ctx.lineWidth = 1.2;
+      if (ctx.roundRect) ctx.roundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 6);
+      else ctx.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = isMobile ? '900 9px monospace' : '900 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowBlur = 0;
+      const a5Row = (typeof window !== 'undefined' && window.arena5State) ? (window.arena5State.highestRowIndex || 0) : 0;
+      ctx.fillText(`SEKTOR 05 • WIEŻA RZĄD ${Math.max(1, a5Row + 1)}`, scoreBoxX + scoreBoxW / 2, scoreBoxY + (isMobile ? 16 : 20.5));
+      ctx.restore();
+    }
+  } else if (isDmArena) {
     drawDeathmatchHUD(ctx, W, H, isMobile, player);
   } else if (isMatchArena) {
     const scoreBoxW = isMobile ? 180 : 230;
@@ -1926,8 +1967,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     // 6. OBSŁUGA PODIUM I NAGRÓD DEATHMATCH (ARENY 2 I 3 - ROZLICZANE NA KONIEC BITWY 5:00)
     drawDeathmatchPodium(ctx, W, H, isMobile);
   }
-  } catch (_) {
-    // Fail-safe dla potoku HUD
+  } catch (err) {
+    console.error('[drawHUD ERROR]', err);
   } finally {
     ctx.restore();
   }
@@ -1935,7 +1976,9 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (ball && ball.active && !isDmArena) {
     try {
       drawOffscreenBallIndicator(ctx, ball, camera, player);
-    } catch (_) {}
+    } catch (err) {
+      console.error('[drawOffscreenBallIndicator ERROR]', err);
+    }
   }
 
   const shouldDrawTouchControls = (typeof window !== 'undefined' && (
@@ -1947,11 +1990,15 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (shouldDrawTouchControls) {
     try {
       drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
-    } catch (_) {}
+    } catch (err) {
+      console.error('[drawTouchControls ERROR]', err);
+    }
   }
 
   try {
     drawCombatFeedBanner(ctx, W, H, isMobile);
-  } catch (_) {}
+  } catch (err) {
+    console.error('[drawCombatFeedBanner ERROR]', err);
+  }
 }
 
