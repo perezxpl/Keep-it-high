@@ -4,6 +4,7 @@
 // =========================================================================
 
 import { isTouchDevice } from '../config.js';
+import { updateButtonLayout } from '../mobileControls.js';
 import { camera, worldToScreen } from '../camera.js';
 import {
   W,
@@ -168,7 +169,14 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
 }
 
 export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, ball, inKickRange = null) {
-  if (!isTouchDevice || !ctx || !player) return;
+  const activeTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean')
+    ? window.isTouchDevice
+    : (isTouchDevice || (typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0))));
+  if (!activeTouch || !ctx || !player) return;
+
+  if (!leftStick || leftStick.baseX <= 0) {
+    updateButtonLayout(W, H);
+  }
 
   ctx.save();
   // Zwiększona przezroczystość całego pada dotykowego
@@ -1364,25 +1372,23 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   ctx.save();
   try {
     // Wykrywanie urządzeń mobilnych / małych ekranów
-    const isMobile = (typeof window !== 'undefined' && (window.innerWidth < 768 || isTouchDevice || ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
+    const isMobile = (typeof window !== 'undefined' && window.innerWidth < 850);
 
     // =========================================================================
     // 1. STATYSTYKI GRY W LEWYM GÓRNYM ROGU (PASEK HP, WYBRANA BROŃ + AMUNICJA, KLASA / FPS)
     // =========================================================================
     ctx.save();
 
-  const hudX = isMobile ? 10 : 20;
-  const hudY = isMobile ? 8 : 18;
-  const barW = isMobile ? 116 : 220;
-  const barH = isMobile ? 11 : 18;
-  const wepBoxH = isMobile ? 16 : 36;
+  const hudX = isMobile ? 12 : 20;
+  const hudY = isMobile ? 10 : 18;
+  const barW = isMobile ? 168 : 220;
+  const barH = isMobile ? 15 : 18;
+  const wepBoxH = isMobile ? 32 : 36;
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
   const hudRight = hudX + barW + 10;
-  const hudBottom = isMobile
-    ? (hudY + barH + 28)
-    : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
-  const fadeMargin = isMobile ? 40 : 70;
+  const hudBottom = hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + (isMobile ? 32 : 38);
+  const fadeMargin = isMobile ? 50 : 70;
 
   let minHudDist = Infinity;
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
@@ -1460,8 +1466,8 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
 
   const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
-  const vestH = hasVest ? (isMobile ? 3.5 : 14) : (hasHelmet ? (isMobile ? 3.0 : 13) : 0);
-  const vestGap = (hasVest || hasHelmet) ? (isMobile ? 1.5 : 3) : 0;
+  const vestH = hasVest ? (isMobile ? 12 : 14) : (hasHelmet ? (isMobile ? 11 : 13) : 0);
+  const vestGap = (hasVest || hasHelmet) ? (isMobile ? 2 : 3) : 0;
 
   const vestY = hudY;
   const hpY = hudY + vestH + vestGap;
@@ -1470,87 +1476,63 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   if (hasVest) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (isMobile) {
-      ctx.fillRect(hudX, vestY, barW, vestH);
-    } else {
-      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-      else ctx.rect(hudX, vestY, barW, vestH);
-    }
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
     ctx.fill();
 
     if (vestRatio > 0) {
-      const vFillW = Math.max(2, (barW - (isMobile ? 1.5 : 3)) * vestRatio);
+      const vFillW = Math.max(2, (barW - 3) * vestRatio);
       ctx.beginPath();
       ctx.fillStyle = '#0284c7';
-      if (isMobile) {
-        ctx.fillRect(hudX + 1, vestY + 0.8, vFillW, Math.max(1, vestH - 1.6));
-      } else {
-        if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
-        else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
-      }
+      if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
+      else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
       ctx.fill();
     }
 
     ctx.beginPath();
     ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = isMobile ? 0.8 : 1.2;
-    if (isMobile) {
-      ctx.strokeRect(hudX, vestY, barW, vestH);
-    } else {
-      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-      else ctx.rect(hudX, vestY, barW, vestH);
-      ctx.stroke();
-    }
+    ctx.lineWidth = isMobile ? 1.0 : 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.stroke();
 
-    if (!isMobile) {
-      ctx.save();
-      ctx.font = 'bold 9.5px monospace';
-      ctx.fillStyle = '#e0f2fe';
-      ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+    ctx.fillStyle = '#e0f2fe';
+    ctx.textBaseline = 'middle';
 
-      ctx.textAlign = 'left';
-      ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+    ctx.textAlign = 'left';
+    ctx.fillText(isMobile ? 'PANCERZ' : 'PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
 
-      ctx.textAlign = 'right';
-      const helmBadge = hasHelmet ? '[HEŁM] ' : '';
-      ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
-      ctx.restore();
-    }
+    ctx.textAlign = 'right';
+    const helmBadge = hasHelmet ? '[HEŁM] ' : '';
+    ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
+    ctx.restore();
   } else if (hasHelmet) {
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (isMobile) {
-      ctx.fillRect(hudX, vestY, barW, vestH);
-    } else {
-      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-      else ctx.rect(hudX, vestY, barW, vestH);
-    }
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
     ctx.fill();
 
     ctx.beginPath();
     ctx.strokeStyle = '#06b6d4';
-    ctx.lineWidth = isMobile ? 0.8 : 1.2;
-    if (isMobile) {
-      ctx.strokeRect(hudX, vestY, barW, vestH);
-    } else {
-      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-      else ctx.rect(hudX, vestY, barW, vestH);
-      ctx.stroke();
-    }
+    ctx.lineWidth = isMobile ? 1.0 : 1.2;
+    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+    else ctx.rect(hudX, vestY, barW, vestH);
+    ctx.stroke();
 
-    if (!isMobile) {
-      ctx.save();
-      ctx.font = 'bold 9.5px monospace';
-      ctx.fillStyle = '#22d3ee';
-      ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+    ctx.fillStyle = '#22d3ee';
+    ctx.textBaseline = 'middle';
 
-      ctx.textAlign = 'left';
-      ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
+    ctx.textAlign = 'left';
+    ctx.fillText('HEŁM', hudX + 5, vestY + vestH / 2 + 0.5);
 
-      ctx.textAlign = 'right';
-      ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
-      ctx.restore();
-    }
+    ctx.textAlign = 'right';
+    ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
+    ctx.restore();
   }
 
   // --- A. PASEK ZDROWIA (HP) ---
@@ -1704,42 +1686,48 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
   ctx.stroke();
 
-  if (!isMobile) {
-    // Rysowanie wyraźnej sylwetki broni po lewej stronie karty (tylko desktop)
-    const silX = hudX + 27;
-    const silY = wepBoxY + wepBoxH / 2;
+  // Rysowanie wyraźnej sylwetki broni po lewej stronie karty
+  const silX = hudX + (isMobile ? 22 : 27);
+  const silY = wepBoxY + wepBoxH / 2;
+  ctx.save();
+  if (isMobile) {
+    ctx.translate(silX, silY);
+    ctx.scale(0.85, 0.85);
+    drawWeaponSilhouette(ctx, curWepId, 0, 0, true, wepAccent);
+  } else {
     drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
   }
+  ctx.restore();
 
   // Nazwa broni w wyrazistym kolorze
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.font = isMobile ? '900 8.5px monospace' : 'bold 11.5px monospace';
+  ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11.5px monospace';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(wepName, hudX + (isMobile ? 6 : 52), wepBoxY + wepBoxH / 2 + 0.5);
+  ctx.fillText(wepName, hudX + (isMobile ? 44 : 52), wepBoxY + wepBoxH / 2 + 0.5);
 
   // Amunicja po prawej stronie karty
   ctx.textAlign = 'right';
-  const ammoRightX = hudX + wepBoxW - (isMobile ? 5 : 8);
+  const ammoRightX = hudX + wepBoxW - (isMobile ? 6 : 8);
   const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
 
   if (curWep?.isMelee) {
     if (curWepId === 'AXE' && player.axeThrown) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-      ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 9px monospace';
+      ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
       ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
       ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
     }
   } else if (curWepId === 'GRENADE') {
     const cd = (player.grenadeCooldownTimer || 0) / 60;
     const isReady = (cd <= 0);
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 11.5px monospace';
+    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 11.5px monospace';
     ctx.fillStyle = isReady ? '#4ade80' : '#facc15';
     ctx.fillText(isReady ? 'READY' : `${cd.toFixed(1)}s`, ammoRightX, ammoMidY);
   } else if (isRel) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
-    ctx.font = isMobile ? 'bold 8px monospace' : 'bold 12px monospace';
+    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 12px monospace';
     ctx.fillStyle = `rgba(250, 204, 21, ${0.65 + pulse * 0.35})`;
     ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
 
@@ -1747,40 +1735,34 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     const tmr = curAmmoObj?.reloadTimer ?? player.reloadTimer ?? 0;
     const prog = Math.max(0, Math.min(1, 1 - (tmr / dur)));
     ctx.fillStyle = '#facc15';
-    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - (isMobile ? 2.0 : 3.5), (wepBoxW - 4) * prog, isMobile ? 1.5 : 2.5);
+    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - (isMobile ? 2.5 : 3.5), (wepBoxW - 4) * prog, isMobile ? 2.0 : 2.5);
   } else if (isNoAmmo) {
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 12.5px monospace';
+    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 12.5px monospace';
     ctx.fillStyle = '#ef4444';
     ctx.fillText('NO AMMO', ammoRightX, ammoMidY);
   } else {
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 11.5px monospace';
+    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 11.5px monospace';
     const resAmmoText = ` / ${rAmmo}`;
     const resW = ctx.measureText(resAmmoText).width;
     ctx.fillStyle = '#cbd5e1';
     ctx.fillText(resAmmoText, ammoRightX, ammoMidY);
 
-    ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 16px monospace';
+    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 16px monospace';
     ctx.fillStyle = isLow ? '#f97316' : wepAccent;
     ctx.fillText(`${cAmmo}`, ammoRightX - resW, ammoMidY);
   }
   ctx.restore();
 
-  if (!isMobile) {
-    // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI - TYLKO DESKTOP) ---
-    const metaY = wepBoxY + wepBoxH + 13;
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
+  // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
+  const metaY = wepBoxY + wepBoxH + (isMobile ? 11 : 13);
+  ctx.textAlign = 'left';
+  ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
 
-    // --- D. RANGA WOJSKOWA & PROGRES XP ---
-    const rankY = metaY + 15;
-    drawRankHUD(ctx, hudX + 2, rankY, barW - 4, false);
-  } else {
-    // Mobilny minimalizm: mikro-linia XP bezpośrednio pod kartą broni, uwalniająca 90px pionowego ekranu!
-    const rankY = wepBoxY + wepBoxH + 2.5;
-    drawRankHUD(ctx, hudX, rankY, barW, true);
-  }
+  // --- D. RANGA WOJSKOWA & PROGRES XP ---
+  const rankY = metaY + (isMobile ? 12 : 15);
+  drawRankHUD(ctx, hudX + 2, rankY, barW - 4, isMobile);
 
   ctx.restore();
 
@@ -1860,7 +1842,7 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const curArenaId = aState.activeArenaId;
   const curScore = aState.arenaScore || { cyan: 0, orange: 0 };
   const curA1State = aState.arena1State;
-  const isDeathmatch = (curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
+  const isDeathmatch = (curArenaId === 'ARENA_5' || curArenaId === 'arena-5' || curArenaId === 'PREFAB_TOWER' || curArenaId === 'ARENA_4' || curArenaId === 'arena-4' || curArenaId === 'ARENA_3' || curArenaId === 'arena-3' || curArenaId === 'ARENA_FOUNDRY');
   const isSectorXArena = (curArenaId === 'ARENA_2' || curArenaId === 'ARENA_2_PANDORA' || curArenaId === 'arena-2' || curArenaId === 'ARENA_2_SECTOR_X');
   const isMatchArena = (curArenaId === 'ARENA_1');
   const isDmArena = (isSectorXArena || isDeathmatch);
@@ -1956,7 +1938,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     } catch (_) {}
   }
 
-  if (isTouchDevice) {
+  const shouldDrawTouchControls = (typeof window !== 'undefined' && (
+    window.isTouchDevice ||
+    isTouchDevice ||
+    (window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)))
+  ));
+
+  if (shouldDrawTouchControls) {
     try {
       drawTouchControls(ctx, player, leftStick, btnCluster, rightStick, isDmArena ? null : ball, inKickRange);
     } catch (_) {}

@@ -153,11 +153,25 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
   ctx.save();
 
   if (isMobile) {
-    // Ultra-minimalistyczny wariant mobilny: pojedyncza, dyskretna mikro-linia XP
-    const barY = y + 1;
-    const barH = 2.0;
+    // Czytelny, kompaktowy wariant mobilny: ikona, stopień, XP i pasek postępu
+    const rankTextY = y;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(`${rank.icon} ${rank.short.toUpperCase()}`, x, rankTextY);
 
-    // Cienki pasek postępu XP
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#facc15';
+    const xpStr = nextRank ? `${currentXp}/${nextRank.minXp} XP` : `${currentXp} XP`;
+    ctx.fillText(xpStr, x + width, rankTextY);
+
+    const barY = rankTextY + 7;
+    const barH = 2.5;
+
     ctx.beginPath();
     ctx.fillStyle = 'rgba(6, 9, 17, 0.85)';
     ctx.fillRect(x, barY, width, barH);

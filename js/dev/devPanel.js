@@ -434,7 +434,8 @@ export function initDevZoomUI() {
 let devTouchBtn = null;
 export function updateDevTouchButtonUI() {
   if (!devTouchBtn) return;
-  if (isTouchDevice) {
+  const isTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean') ? window.isTouchDevice : isTouchDevice;
+  if (isTouch) {
     devTouchBtn.textContent = 'PAD: WŁ';
     devTouchBtn.style.borderColor = '#0284c7';
     devTouchBtn.style.color = '#38bdf8';
@@ -450,7 +451,8 @@ export function updateDevTouchButtonUI() {
 }
 
 export function toggleTouchControls(forceVal) {
-  const nextVal = (typeof forceVal === 'boolean') ? forceVal : !isTouchDevice;
+  const currentTouch = (typeof window !== 'undefined' && typeof window.isTouchDevice === 'boolean') ? window.isTouchDevice : isTouchDevice;
+  const nextVal = (typeof forceVal === 'boolean') ? forceVal : !currentTouch;
   setTouchDevice(nextVal);
   if (nextVal) {
     updateButtonLayout(W, H);

@@ -218,8 +218,8 @@ function checkFallingSquash(combatants) {
       const penRight = cellRight - victim.x;           // Głębokość wniknięcia od prawej
 
       // 1. GÓRA: Lądowanie i stanie na szczycie opadającej figury
-      if (isTopEdge && (penTop <= 24 || (victim.vy >= -1.0 && penTop < penBottom && penTop < penLeft && penTop < penRight))) {
-        if (victim.vy >= -1.0 || penTop <= 8) {
+      if (isTopEdge && (penTop <= 45 || (victim.vy >= -1.0 && penTop < penBottom && penTop < penLeft && penTop < penRight))) {
+        if (victim.vy >= -1.0 || penTop <= 16) {
           victim.y = cellY - pH;
           victim.vy = crane.vy;
           victim.onGround = true;
@@ -1143,7 +1143,7 @@ export function resolveArena5BlockPenetration(combatants) {
           const isBelowClear = (r > minRow) ? (!cellBelow || cellBelow.hp <= 0) : true;
 
           // 1. Kolizja sufitowa: głowa uderza od spodu klocka podczas ruchu w górę
-          if (p.vy < 0 && penBottom <= 35 && isBelowClear) {
+          if (p.vy < 0 && penBottom <= 40 && currentFeetY > cellBottom && isBelowClear) {
             p.y = cellBottom;
             p.vy = 0.5;
             if (p.rocketBoots?.dashing && p.rocketBoots.dashDirY < -0.1) {
@@ -1151,8 +1151,9 @@ export function resolveArena5BlockPenetration(combatants) {
             }
           }
           // 2. Lądowanie / stabilne stanie na szczycie klocka:
-          // Wyłącznie gdy powyżej jest pusto, a stopy wniknęły minimalnie od góry (penTop <= 18)
-          else if (isAboveClear && (penTop <= 18 && (p.vy >= -1.0 || penTop <= 8))) {
+          // Jeśli powyżej jest pusto (isAboveClear), a postać opada z góry lub spoczywa na klocku
+          // (penTop <= 55 lub głowa znajduje się ponad klockiem p.y < cellTop):
+          else if (isAboveClear && (p.vy >= -2.0 || penTop <= 25) && (penTop <= 55 || p.y < cellTop)) {
             p.y = cellTop - pH;
             if (p.vy > 0) p.vy = 0;
             p.onGround = true;
