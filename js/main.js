@@ -1110,7 +1110,7 @@ function draw() {
 
   drawCinematicVignette(ctx);
 
-  if (isDebugCol) {
+  if (isDebugCol && (typeof window !== 'undefined' && !!window.DEBUG_MODE)) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
     ctx.fillStyle = '#ffffff';

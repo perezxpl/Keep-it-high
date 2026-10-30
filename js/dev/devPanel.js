@@ -139,7 +139,8 @@ export const toggleArena = (e) => {
   if (nextArena !== 'ARENA_5') {
     camera.targetX = player.x - (camera.viewWidth || (W / camera.zoom)) / 2;
     camera.x = camera.targetX;
-    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * 0.72;
+    const curVAnchor = (nextArena === 'ARENA_4' || nextArena === 'arena-4' || nextArena === 'SPACE_STATION' || nextArena === 'ARES') ? 0.60 : 0.72;
+    camera.targetY = player.y - (camera.viewHeight || (H / camera.zoom)) * curVAnchor;
     camera.y = camera.targetY;
     clampCamera();
   }

@@ -297,7 +297,7 @@ export function clampCamera(cam = camera) {
 
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
@@ -308,7 +308,7 @@ export function clampCamera(cam = camera) {
       ? a5MinCam
       : (1200 - viewHeight))
     : (isArena4
-      ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
+      ? Math.max(minCamY, 1350 - (viewHeight * 0.60))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
@@ -331,7 +331,7 @@ export function updateCamera(player, ball, options = {}) {
   let minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN');
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const isMobile = isMobileDevice();
@@ -516,11 +516,12 @@ export function updateCamera(player, ball, options = {}) {
   // Na wieży / wysokości (elev -> 1): kotwica zachowuje bezpieczny margines 0.40 na telefonie (0.42 na PC),
   // dzięki czemu postać gracza nie jest spychana pod sufit i pozostaje w pełni widoczna!
   const targetY = rawTargetY;
-  // W Arenie 4 dachy wagonów znajdują się w dolnej 1/3 wysokości ekranu (pozostawiając wolną przestrzeń na walkę powietrzną z jetpackami)
+  // W Arenie 4 (Stacja Orbitalna Ares): główny pokład stacji znajduje się na wysokości 60% ekranu,
+  // a górna platforma i akcja w powietrzu na 25–40%, eliminując martwą pustkę u góry ekranu
   const verticalAnchor = isArena5
     ? (isMobile ? 0.72 : 0.70)
     : (isArena4
-      ? (isMobile ? 0.72 : 0.70)
+      ? 0.60
       : (isMobile ? (0.65 - (elev * 0.25)) : (0.65 - (elev * 0.23))));
   let targetCamY = (targetY + aimLeadY) - (viewHeight * verticalAnchor);
 
@@ -549,7 +550,7 @@ export function updateCamera(player, ball, options = {}) {
   const maxCamY = isArena5
     ? (a5FloorY - viewHeight)
     : (isArena4
-      ? Math.max(minCamY, 1350 - (viewHeight * 0.75))
+      ? Math.max(minCamY, 1350 - (viewHeight * 0.60))
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (subterraneanBottom - (viewHeight * 0.72)))));
   targetCamY = Math.max(minCamY, Math.min(targetCamY, maxCamY));
 

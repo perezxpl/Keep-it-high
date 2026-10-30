@@ -723,11 +723,12 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
+    const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'ARES_ORBITAL_STATION');
     const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 820;
     if (playerObj) {
       const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
-      const spawnIdx = isClient ? 2 : 0;
-      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1250 : 500);
+      const spawnIdx = isA4 ? (isClient ? 2 : 1) : (isClient ? 2 : 0);
+      playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 1250 : 750);
       playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 50);
       playerObj.vx = 0;
       playerObj.vy = 0;
@@ -752,10 +753,19 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       b.isHolstered = false;
       b.holsterWeight = 0;
       const isCyan = (b.team === 'CYAN');
-      const baseSpawnX = isCyan
-        ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 500) + ((Math.floor(idx / 2) + 1) * 70)
-        : ((currentArena.spawns && currentArena.spawns[3]) ? currentArena.spawns[3].x : 1650) - ((Math.floor(idx / 2) + 1) * 70);
-      const baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 3]) ? currentArena.spawns[isCyan ? 0 : 3].y : (deckY - 50);
+      let baseSpawnX, baseSpawnY;
+      if (isA4 && Array.isArray(currentArena.spawns) && currentArena.spawns.length >= 4) {
+        const spawnObj = isCyan
+          ? (idx % 2 === 0 ? currentArena.spawns[0] : currentArena.spawns[1])
+          : (idx % 2 === 0 ? currentArena.spawns[3] : currentArena.spawns[2]);
+        baseSpawnX = spawnObj.x;
+        baseSpawnY = spawnObj.y;
+      } else {
+        baseSpawnX = isCyan
+          ? ((currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 500) + ((Math.floor(idx / 2) + 1) * 70)
+          : ((currentArena.spawns && currentArena.spawns[3]) ? currentArena.spawns[3].x : 1650) - ((Math.floor(idx / 2) + 1) * 70);
+        baseSpawnY = (currentArena.spawns && currentArena.spawns[isCyan ? 0 : 3]) ? currentArena.spawns[isCyan ? 0 : 3].y : (deckY - 50);
+      }
       b.x = baseSpawnX;
       b.y = baseSpawnY;
       b.vx = 0;

@@ -227,8 +227,13 @@ export const collisionDebugState = {
 };
 export let DEBUG_COLLIDERS = false;
 
+if (typeof window !== 'undefined' && window.DEBUG_MODE === undefined) {
+  window.DEBUG_MODE = false;
+}
+
 export function isDebugCollidersEnabled() {
-  return collisionDebugState.enabled || DEBUG_COLLIDERS || (typeof window !== 'undefined' && !!window.DEBUG_COLLIDERS);
+  const isDebugMode = typeof window !== 'undefined' ? !!window.DEBUG_MODE : false;
+  return collisionDebugState.enabled || DEBUG_COLLIDERS || (typeof window !== 'undefined' && !!window.DEBUG_COLLIDERS) || isDebugMode;
 }
 
 export function setDebugColliders(enabled) {
@@ -262,20 +267,27 @@ if (typeof window !== 'undefined') {
 
 /**
  * Rysuje obrysy wszystkich fizycznych koliderów na płótnie w przestrzeni świata (debug mode).
- * Zgodnie z wymaganiami wszystkie linie kolizji renderowane są w formie przerywanej białej linii.
+ * Zgodnie z wymaganiami technicznymi napisy [PLAT:], [BOT:], [COVER:] oraz przerywane linie (ctx.setLineDash)
+ * renderowane są wyłącznie wtedy, gdy aktywny jest tryb debugowania (window.DEBUG_MODE).
  * Optymalizacja: Viewport culling i przycinanie koliderów (strokeClippedBox) zapobiega zawieszaniu
  * przeglądarki przy obiektach o wysokości np. 200000px oraz ogranicza obciążenie Canvas 2D.
  */
 export function drawDebugColliders(ctx, groundY, player, extra = {}) {
   if (!ctx || !isDebugCollidersEnabled()) return;
 
+  const isDebugMode = typeof window !== 'undefined' ? !!window.DEBUG_MODE : false;
+
   ctx.save();
   try {
     ctx.shadowBlur = 0;
-    // Przerywana biała linia dla odróżnienia od całej reszty grafiki gry
+    // Przerywana biała linia dla odróżnienia od całej reszty grafiki gry (wyłącznie pod warunkiem window.DEBUG_MODE)
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 5]);
+    if (isDebugMode) {
+      ctx.setLineDash([5, 5]);
+    } else {
+      ctx.setLineDash([]);
+    }
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9px monospace';
 
@@ -310,7 +322,7 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
 
       if (drawW > 0 && drawH > 0) {
         ctx.strokeRect(drawL, drawT, drawW, drawH);
-        if (label) {
+        if (label && isDebugMode) {
           const textX = Math.max(drawL + 2, camL + 4);
           const textY = Math.max(drawT - 3, camT + 12);
           ctx.fillText(label, textX, textY);
@@ -374,9 +386,11 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
 
       const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
       const h = plat.h || plat.thickness || 20;
-      const label = plat.isWall
-        ? `[ŚCIANA: ${plat.id || 'wall'}]`
-        : `[PLAT: ${plat.name || plat.id || 'plat'} ${Math.round(plat.w)}x${Math.round(h)}] [${Math.round(plat.x)},${Math.round(topY)}]`;
+      const label = (plat.isCover || plat.isCoverWall)
+        ? `[COVER: ${plat.id || 'cover'}]`
+        : (plat.isWall
+          ? `[ŚCIANA: ${plat.id || 'wall'}]`
+          : `[PLAT: ${plat.name || plat.id || 'plat'} ${Math.round(plat.w)}x${Math.round(h)}] [${Math.round(plat.x)},${Math.round(topY)}]`);
 
       strokeClippedBox(plat.x, topY, plat.w, h, label);
 
@@ -410,7 +424,7 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
         else ctx.lineTo(pt.x, pt.y);
       }
       ctx.stroke();
-      if (1550 >= camL && 1550 <= camR && 770 >= camT && 770 <= camB) {
+      if (isDebugMode && 1550 >= camL && 1550 <= camR && 770 >= camT && 770 <= camB) {
         ctx.fillText('[STROP DOLNY: CEILING CLAMP]', 1550, 770);
       }
     }
@@ -455,7 +469,9 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
           ctx.moveTo(lineX1, a5.recyclerY);
           ctx.lineTo(lineX2, a5.recyclerY);
           ctx.stroke();
-          ctx.fillText('[DOLNY UTYLIZATOR / HAZARD]', Math.max(lineX1 + 10, camL + 10), a5.recyclerY - 6);
+          if (isDebugMode) {
+            ctx.fillText('[DOLNY UTYLIZATOR / HAZARD]', Math.max(lineX1 + 10, camL + 10), a5.recyclerY - 6);
+          }
         }
       }
     }
@@ -469,7 +485,9 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
         ctx.moveTo(lineX1, groundY);
         ctx.lineTo(lineX2, groundY);
         ctx.stroke();
-        ctx.fillText(`[POZIOM PODŁOGI Y:${Math.round(groundY)}]`, Math.max(lineX1 + 10, camL + 10), groundY - 6);
+        if (isDebugMode) {
+          ctx.fillText(`[POZIOM PODŁOGI Y:${Math.round(groundY)}]`, Math.max(lineX1 + 10, camL + 10), groundY - 6);
+        }
       }
     }
 
@@ -493,7 +511,7 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
       }
 
       const platName = player.currentPlatform ? (player.currentPlatform.name || player.currentPlatform.id || 'plat') : 'powietrze';
-      if (player.x + 100 >= camL && player.x - 50 <= camR) {
+      if (isDebugMode && player.x + 100 >= camL && player.x - 50 <= camR) {
         ctx.fillText(`[GRACZ onGround:${player.onGround} podłoże:${Math.round(targetGroundY)} plat:${platName}]`, player.x - 30, colY - 6);
       }
     }
@@ -523,7 +541,9 @@ export function drawDebugColliders(ctx, groundY, player, extra = {}) {
         ctx.beginPath();
         ctx.arc(activeBall.x, activeBall.y, bRad, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillText(`[PIŁKA r:${bRad}]`, activeBall.x - 18, activeBall.y - bRad - 4);
+        if (isDebugMode) {
+          ctx.fillText(`[PIŁKA r:${bRad}]`, activeBall.x - 18, activeBall.y - bRad - 4);
+        }
       }
     }
 
