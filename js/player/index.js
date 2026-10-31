@@ -45,6 +45,7 @@ export * from './locomotion.js';
 export * from './actions.js';
 export * from './death.js';
 export * from './renderer.js';
+export * from './marker.js';
 
 let comboLeftTurnTime = 0;
 let comboFlipWindowUntil = 0;

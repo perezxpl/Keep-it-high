@@ -32,6 +32,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/player/ik.js` — kinematyka odwrotna (2-bone IK) dla rąk i nóg.
 - `js/player/death.js` — fizyka ragdolla, śmierć i rozczłonkowanie.
 - `js/player/renderer.js` — główny potok rysowania sylwetki gracza (`drawPlayer`).
+- `js/player/marker.js` — taktyczny wskaźnik nad głową lokalnego gracza (błękitny trójkąt wskazujący na postać z lewitacją i kontrastowym obrysem, brak napisów).
 - `js/player/limbs.js` — rysowanie detali kończyn, butów, dłoni i stawów.
 - `js/player/armor.js` — rysowanie kamizelek taktycznych, hełmów i pancerza.
 - `js/player/hair.js` — fizyka i rysowanie włosów / fryzur.

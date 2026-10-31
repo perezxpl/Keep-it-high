@@ -19,7 +19,7 @@ import {
   player, playerJump, initiatePlayerJump, playerSlide, startJumpCharge, executeReleaseJump,
   startKickCharge, executeReleaseKick, isBallInKickReach, findMeleeTarget,
   performKick, kick,
-  updatePlayer, drawPlayer, setPlayerClass, getJetpackNozzlePos,
+  updatePlayer, drawPlayer, drawPlayerMarker, setPlayerClass, getJetpackNozzlePos,
   throwTacticalGrenade, prepareGrenadeThrow, releaseGrenadeThrow,
   drawGrenadeTrajectory, isCeilingBlockingStand
 } from './player.js';
@@ -990,6 +990,7 @@ function draw() {
   }
 
   drawPlayer(ctx, GROUND_Y, player);
+  drawPlayerMarker(ctx, player);
 
   const playerTeam = player.team || 'CYAN';
 
