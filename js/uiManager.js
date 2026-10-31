@@ -521,12 +521,21 @@ export const uiManager = {
     const barFillEl = document.getElementById('menu-rank-bar-fill');
     const nextBadgeEl = document.getElementById('menu-rank-next-badge');
     const missingXpEl = document.getElementById('menu-rank-missing-xp');
+    const rewardEl = document.getElementById('menu-rank-reward-badge');
 
     if (iconEl) iconEl.textContent = rank.icon;
     if (nameEl) nameEl.textContent = rank.name.toUpperCase();
     if (tierEl) tierEl.textContent = `TIER ${(rank.tier !== undefined ? rank.tier : 1).toString().padStart(2, '0')}`;
     if (xpEl) xpEl.textContent = `${currentXp.toLocaleString('pl-PL')} XP`;
     if (barFillEl) barFillEl.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
+
+    let rewardText = '';
+    if (nextRank && Array.isArray(nextRank.unlocks) && nextRank.unlocks.length > 0) {
+      const raw = nextRank.unlocks[0];
+      const label = typeof raw === 'string' ? raw : (raw?.label || raw?.name || '');
+      if (label) rewardText = `NAGRODA: ${label.toUpperCase()}`;
+    }
+
     if (nextRank) {
       const left = Math.max(0, nextRank.minXp - currentXp);
       if (nextBadgeEl) nextBadgeEl.textContent = `NASTĘPNY: ${nextRank.name.toUpperCase()}`;
@@ -535,9 +544,30 @@ export const uiManager = {
       } else if (nextBadgeEl) {
         nextBadgeEl.textContent = `NASTĘPNY: ${nextRank.name} (${nextRank.minXp} XP / brakuje ${left} XP)`;
       }
+      if (rewardEl) {
+        rewardEl.textContent = rewardText;
+        rewardEl.style.display = rewardText ? 'inline-block' : 'none';
+      }
     } else {
       if (nextBadgeEl) nextBadgeEl.textContent = `ELITA ARENY (MAX)`;
       if (missingXpEl) missingXpEl.textContent = `STOPIEŃ MAKSYMALNY`;
+      if (rewardEl) rewardEl.style.display = 'none';
+    }
+
+    // Synchronizacja karty rangi w menu pauzy
+    const pRankName = document.getElementById('pause-rank-name');
+    const pRankXp = document.getElementById('pause-rank-xp');
+    const pRankFill = document.getElementById('pause-rank-bar-fill');
+    const pRankNext = document.getElementById('pause-rank-next');
+    const pRankReward = document.getElementById('pause-rank-reward');
+
+    if (pRankName) pRankName.textContent = `${rank.icon} ${rank.name.toUpperCase()}`;
+    if (pRankXp) pRankXp.textContent = nextRank ? `${currentXp} / ${nextRank.minXp} XP` : `${currentXp} XP (MAX)`;
+    if (pRankFill) pRankFill.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
+    if (pRankNext) pRankNext.textContent = nextRank ? `NASTĘPNY: ${nextRank.name.toUpperCase()}` : 'STOPIEŃ MAKSYMALNY';
+    if (pRankReward) {
+      pRankReward.textContent = rewardText;
+      pRankReward.style.display = rewardText ? 'inline-block' : 'none';
     }
 
     // Synchronizacja nicku operatora
@@ -1301,6 +1331,7 @@ export const uiManager = {
         break;
 
       case 'PAUSED':
+        this.updateMenuRankDisplay();
         if (pauseEl) pauseEl.style.display = 'flex';
         if (hudPauseBtn) hudPauseBtn.style.display = 'none';
         if (devPanel) devPanel.style.display = 'flex';

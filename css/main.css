@@ -1351,6 +1351,29 @@ button, .dev-btn {
   text-align: right;
 }
 
+.rank-reward-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 2.5px;
+}
+
+.rank-reward-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  padding: 1.5px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .rank-progress-bar-bg {
   width: 100%;
   height: 5px;
@@ -3090,7 +3113,23 @@ button, .dev-btn {
     margin-top: 2px;
   }
   .rank-progress-meta-row {
-    display: none;
+    display: flex;
+    margin-top: 1.5px;
+    gap: 4px;
+  }
+  .rank-next-badge {
+    font-size: 7.5px;
+  }
+  .rank-missing-xp {
+    font-size: 7.5px;
+  }
+  .rank-reward-row {
+    display: flex;
+    margin-top: 1px;
+  }
+  .rank-reward-badge {
+    font-size: 7px;
+    padding: 0.5px 3px;
   }
   .player-stats-compact-grid {
     gap: 2px;
@@ -4334,6 +4373,80 @@ button, .dev-btn {
   border: 1px solid rgba(0, 229, 255, 0.2);
 }
 
+.pause-rank-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pause-rank-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+}
+
+.pause-rank-name {
+  color: #38bdf8;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.pause-rank-xp {
+  color: #facc15;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.pause-rank-bar-bg {
+  width: 100%;
+  height: 5px;
+  background: rgba(6, 9, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pause-rank-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e5ff, #38bdf8, #facc15);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.pause-rank-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 8.5px;
+  gap: 6px;
+}
+
+.pause-rank-next {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.pause-rank-reward {
+  color: #38bdf8;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
 .pause-menu-actions {
   display: flex;
   flex-direction: column;
@@ -4469,10 +4582,27 @@ button, .dev-btn {
     font-size: 12.5px;
     min-height: 38px;
   }
+  .pause-rank-card {
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    gap: 3px;
+  }
+  .pause-rank-top {
+    font-size: 10px;
+  }
+  .pause-rank-xp {
+    font-size: 9px;
+  }
+  .pause-rank-meta {
+    font-size: 7.5px;
+  }
 }
 
 /* Ekstremalnie małe ekrany (wysokość poniżej 340px) */
 @media (max-height: 340px) {
+  .pause-rank-card {
+    display: none;
+  }
   .pause-header {
     margin-bottom: 4px;
   }

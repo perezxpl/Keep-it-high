@@ -61,7 +61,7 @@
       "./js/input/index.js": "./js/input/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/input/keyboardMouse.js": "./js/input/keyboardMouse.js?v=v311_live_interactive_weapon_editor",
       "./js/input/playerController.js": "./js/input/playerController.js?v=v353_arena5_flight_death_fix",
-      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v279_melee_button_non_auto_lock",
+      "./js/input/touchHandlers.js": "./js/input/touchHandlers.js?v=v383_mobile_pocket_ammo",
       "./js/killstreaks/carePackage.js": "./js/killstreaks/carePackage.js?v=v347_dynamic_lighting_and_materials",
       "./js/killstreaks/index.js": "./js/killstreaks/index.js?v=v214_mortar_free_camera_panning",
       "./js/killstreaks/logic.js": "./js/killstreaks/logic.js?v=v214_mortar_free_camera_panning",
@@ -116,10 +116,10 @@
       "./js/renderer.js": "./js/renderer.js?v=v369_fix_collision_debug_freeze_and_viewport_culling",
       "./js/ui/classSelectModal.js": "./js/ui/classSelectModal.js?v=v184_ui_selection_screen_fit_and_flow",
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v381_oil_rig_typhoon",
-      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v382_mobile_minimal_hud",
-      "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v382_mobile_minimal_hud",
-      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v382_mobile_minimal_hud",
-      "./js/uiManager.js": "./js/uiManager.js?v=v381_oil_rig_typhoon",
+      "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v383_mobile_pocket_ammo",
+      "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v383_mobile_pocket_ammo",
+      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v383_mobile_pocket_ammo",
+      "./js/uiManager.js": "./js/uiManager.js?v=v383_mobile_pocket_ammo",
       "./js/weapons.js": "./js/weapons.js?v=v357_arena5_ceiling_collision_squash_and_melee_kicks",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v342_rpg7_reload_arm_and_rocket_reach",
       "./js/weapons/rocket.js": "./js/weapons/rocket.js?v=v347_dynamic_lighting_and_materials",
@@ -132,7 +132,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v334_fix_menu_window_switch_arena_flash">
+  <link rel="stylesheet" href="./css/main.css?v=v383_mobile_pocket_ammo">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -648,6 +648,9 @@
                       <div class="rank-progress-meta-row">
                         <span class="rank-next-badge" id="menu-rank-next-badge">NASTĘPNY: STARSZY SZEREGOWY</span>
                         <span class="rank-missing-xp" id="menu-rank-missing-xp">BRAKUJE 400 XP</span>
+                      </div>
+                      <div class="rank-reward-row" id="menu-rank-reward-row">
+                        <span class="rank-reward-badge" id="menu-rank-reward-badge">NAGRODA: KAMUFLAŻ BRONI</span>
                       </div>
                     </div>
                   </div>
@@ -1524,6 +1527,21 @@
             <div class="pause-badge">GRA W TOKU // ONLINE</div>
             <h2 class="pause-title">MENU TAKTYCZNE</h2>
             <div class="pause-arena-info" id="pause-match-info">ARENA 1: NEONOWE MIASTO</div>
+          </div>
+
+          <!-- Kompaktowa karta rangi i progresu XP w menu pauzy -->
+          <div class="pause-rank-card" id="pause-rank-card">
+            <div class="pause-rank-top">
+              <span class="pause-rank-name" id="pause-rank-name">SZEREGOWY</span>
+              <span class="pause-rank-xp" id="pause-rank-xp">0 / 400 XP</span>
+            </div>
+            <div class="pause-rank-bar-bg">
+              <div class="pause-rank-bar-fill" id="pause-rank-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="pause-rank-meta">
+              <span class="pause-rank-next" id="pause-rank-next">NASTĘPNY: STARSZY SZEREGOWY</span>
+              <span class="pause-rank-reward" id="pause-rank-reward">NAGRODA: KAMUFLAŻ BRONI</span>
+            </div>
           </div>
 
           <div class="pause-menu-actions">

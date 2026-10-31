@@ -455,7 +455,11 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     const isEquipped = (rightStick.armedMode === 'FIREARM') && !player.isHolstered;
     const isPressed = pFirearm.active;
     const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
-    const curId = curWep.id || 'AK47';
+    let curId = curWep.id || 'AK47';
+    if (curWep.isMelee && player.loadout?.pocket1?.slots) {
+      const activeIdx = player.loadout.pocket1.activeSlotIndex ?? 0;
+      curId = player.loadout.pocket1.slots[activeIdx] || 'AK47';
+    }
     const ammoObj = player.ammo?.[curId];
     const isRel = !!(ammoObj?.isReloading || player.isReloading);
 
@@ -529,10 +533,11 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     }
 
     ctx.save();
-    ctx.translate(pFirearm.x, pFirearm.y);
-    ctx.scale(0.92, 0.92);
+    ctx.translate(pFirearm.x, pFirearm.y - 2);
+    ctx.scale(0.88, 0.88);
     drawWeaponSilhouette(ctx, curId, 0, 0, isEquipped || isPressed);
     ctx.restore();
+
     if (player.loadout?.pocket1?.slots) {
       const activeIdx = (player.loadout.pocket1.activeSlotIndex === 1) ? 2 : 1;
       const totalSlots = 2;
@@ -544,6 +549,58 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.fillText(`${activeIdx}/${totalSlots}`, pFirearm.x + pFirearm.r - 3, pFirearm.y - pFirearm.r + 9);
       ctx.restore();
     }
+
+    // Wskaźnik liczby nabojów w kieszeni broni dla urządzeń mobilnych
+    const defM = curId === 'SHOTGUN' ? 8 : (curId === 'SNIPER' ? 5 : (curId === 'GRENADE' ? 1 : 30));
+    const defR = curId === 'SHOTGUN' ? 64 : (curId === 'SNIPER' ? 25 : (curId === 'GRENADE' ? 0 : 90));
+    const cAmmo = ammoObj ? ammoObj.currentAmmo : defM;
+    const rAmmo = ammoObj ? ammoObj.reserveAmmo : defR;
+    const isRelAmmo = ammoObj ? ammoObj.isReloading : !!player.isReloading;
+    const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
+    const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
+
+    let ammoBadgeText = `${cAmmo}`;
+    let ammoBadgeCol = '#ffffff';
+    let badgeBgCol = 'rgba(6, 12, 22, 0.82)';
+    let badgeBorderCol = 'rgba(255, 255, 255, 0.22)';
+
+    if (isRelAmmo) {
+      ammoBadgeText = 'REL...';
+      ammoBadgeCol = '#facc15';
+      badgeBorderCol = 'rgba(250, 204, 21, 0.65)';
+    } else if (isNoAmmo) {
+      ammoBadgeText = 'PUSTY';
+      ammoBadgeCol = '#ef4444';
+      badgeBorderCol = 'rgba(239, 68, 68, 0.65)';
+    } else if (isLow) {
+      ammoBadgeCol = '#f97316';
+      badgeBorderCol = 'rgba(249, 115, 22, 0.55)';
+    }
+
+    ctx.save();
+    ctx.font = '900 8.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const textW = ctx.measureText(ammoBadgeText).width;
+    const pillW = Math.max(18, textW + 6);
+    const pillH = 11;
+    const pillX = pFirearm.x - pillW / 2;
+    const pillY = pFirearm.y + pFirearm.r - 9;
+
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(pillX, pillY, pillW, pillH, 3);
+    else ctx.rect(pillX, pillY, pillW, pillH);
+    ctx.fillStyle = badgeBgCol;
+    ctx.fill();
+    ctx.strokeStyle = badgeBorderCol;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = ammoBadgeCol;
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 3;
+    ctx.fillText(ammoBadgeText, pFirearm.x, pillY + pillH / 2 + 0.5);
+    ctx.restore();
   }
 
   // 3B. KIESZEŃ NA BROŃ MIOTANĄ (GRANAT) – PO ŚRODKU
@@ -1374,14 +1431,14 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
 
   const hudX = isMobile ? 8 : 20;
   const hudY = isMobile ? 6 : 18;
-  const barW = isMobile ? 142 : 220;
-  const barH = isMobile ? 14 : 18;
-  const wepBoxH = isMobile ? 14 : 36;
+  const barW = isMobile ? 72 : 220;
+  const barH = isMobile ? 15 : 18;
+  const wepBoxH = isMobile ? 0 : 36;
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
-  const hudRight = isMobile ? (hudX + 146) : (hudX + barW + 10);
-  const hudBottom = isMobile ? (hudY + 22) : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
-  const fadeMargin = isMobile ? 50 : 70;
+  const hudRight = isMobile ? (hudX + 76) : (hudX + barW + 10);
+  const hudBottom = isMobile ? (hudY + 18) : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
+  const fadeMargin = isMobile ? 35 : 70;
 
   let minHudDist = Infinity;
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;

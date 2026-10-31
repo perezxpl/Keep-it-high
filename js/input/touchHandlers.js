@@ -281,30 +281,6 @@ canvas.addEventListener('touchstart', (e) => {
 
     updateButtonLayout(W, H);
 
-    // 1. Sprawdzenie dotknięcia karty broni w lewym górnym rogu (1s przytrzymanie = przeładowanie, <1s puszczenie = zmiana broni)
-    const pFarmTop = pockets.firearm;
-    if (pFarmTop && t.clientX >= 10 && t.clientX <= 235 && t.clientY >= 28 && t.clientY <= 78) {
-      if (pFarmTop.holdTimerId) clearTimeout(pFarmTop.holdTimerId);
-      rightStick.draggedSlot = null;
-      pFarmTop.active = true;
-      pFarmTop.id = t.identifier;
-      pFarmTop.startX = t.clientX;
-      pFarmTop.startY = t.clientY;
-      pFarmTop.touchStartTime = performance.now();
-      pFarmTop.isDragging = false;
-      pFarmTop.reloadTriggered = false;
-      pFarmTop.holdTimerId = setTimeout(() => {
-        pFarmTop.holdTimerId = null;
-        if (pFarmTop.active && !pFarmTop.isDragging && !pFarmTop.reloadTriggered) {
-          pFarmTop.reloadTriggered = true;
-          player.isHolstered = false;
-          rightStick.armedMode = 'FIREARM';
-          reloadWeapon(player, player.currentWeapon);
-        }
-      }, 500);
-      continue;
-    }
-
     // =======================================================================
     // LEWA STRONA EKRANU: PŁYWAJĄCY DRĄŻEK RUCHU (FLOATING / DYNAMIC JOYSTICK)
     // Drążek nie jest przyklejony do jednego miejsca – natychmiast centruje się dokładnie tam, gdzie gracz dotknie!
