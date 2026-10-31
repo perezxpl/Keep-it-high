@@ -246,6 +246,12 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         continue;
       }
 
+      // W Arenie 5 zniszczalne klocki wieży są w całości obsługiwane przez activeArena.onBulletHit()
+      const isA5 = (curArenaObj?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+      if (isA5 && plat.isA5Block) {
+        continue;
+      }
+
       // 1. Rampa lub profil skośny
       if (plat.isSlope || plat.type === 'ramp') {
         const topY1 = plat.startY !== undefined ? plat.startY : (plat.startRelY !== undefined ? groundY - plat.startRelY : plat.y);

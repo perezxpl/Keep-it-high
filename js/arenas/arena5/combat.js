@@ -11,7 +11,8 @@ import {
   getGridX,
   getGridY,
   arena5State,
-  calculateTargetLandY
+  calculateTargetLandY,
+  BLOCK_MATERIALS
 } from './state.js';
 import {
   applyPieceGravity,
@@ -22,26 +23,154 @@ import { triggerScreenShake } from '../../camera.js';
 import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
 
 /**
- * Obsluga trafienia pociskiem w klocki
+ * Sprawdza przecięcie odcinka (x1, y1 -> x2, y2) z prostokątem AABB
+ */
+function rayIntersectsAABB(x1, y1, x2, y2, rx, ry, rw, rh) {
+  if (x2 >= rx && x2 <= rx + rw && y2 >= ry && y2 <= ry + rh) return true;
+  if (x1 >= rx && x1 <= rx + rw && y1 >= ry && y1 <= ry + rh) return true;
+
+  const minX = Math.min(x1, x2);
+  const maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+
+  if (maxX < rx || minX > rx + rw || maxY < ry || minY > ry + rh) return false;
+
+  let tMin = 0;
+  let tMax = 1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+
+  if (Math.abs(dx) > 1e-6) {
+    let tx1 = (rx - x1) / dx;
+    let tx2 = (rx + rw - x1) / dx;
+    if (tx1 > tx2) { const tmp = tx1; tx1 = tx2; tx2 = tmp; }
+    tMin = Math.max(tMin, tx1);
+    tMax = Math.min(tMax, tx2);
+    if (tMin > tMax) return false;
+  } else if (x1 < rx || x1 > rx + rw) {
+    return false;
+  }
+
+  if (Math.abs(dy) > 1e-6) {
+    let ty1 = (ry - y1) / dy;
+    let ty2 = (ry + rh - y1) / dy;
+    if (ty1 > ty2) { const tmp = ty1; ty1 = ty2; ty2 = tmp; }
+    tMin = Math.max(tMin, ty1);
+    tMax = Math.min(tMax, ty2);
+    if (tMin > tMax) return false;
+  } else if (y1 < ry || y1 > ry + rh) {
+    return false;
+  }
+
+  return tMin <= 1 && tMax >= 0;
+}
+
+/**
+ * Niszczy pojedynczą komórkę spadającej z suwnicy figury
+ */
+export function destroyCraneCell(cell) {
+  const crane = arena5State.crane;
+  if (!crane || !Array.isArray(crane.shapeCells)) return;
+
+  const idx = crane.shapeCells.indexOf(cell);
+  if (idx === -1) return;
+
+  const cellX = getGridX(crane.col + cell.colRel);
+  const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+  const midX = cellX + CELL_SIZE * 0.5;
+  const midY = cellY + CELL_SIZE * 0.5;
+
+  spawnConcreteDebris(midX, midY, 10);
+  triggerScreenShake(5);
+
+  const matColor = BLOCK_MATERIALS[cell.material]?.color || '#64748b';
+  for (let i = 0; i < 5; i++) {
+    arena5State.debrisParticles.push({
+      x: midX + (Math.random() - 0.5) * 20,
+      y: midY + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 10,
+      vy: -Math.random() * 6 - 2,
+      vRot: (Math.random() - 0.5) * 0.25,
+      rot: Math.random() * Math.PI * 2,
+      w: 10 + Math.random() * 12,
+      h: 8 + Math.random() * 8,
+      color: matColor,
+      life: 1.0
+    });
+  }
+
+  // Usunięcie komórki z figury
+  crane.shapeCells.splice(idx, 1);
+
+  if (cell.material === 'EXPLOSIVE') {
+    spawnShockwaveRing(midX, midY, 140, '#ef4444');
+    triggerScreenShake(12);
+    handleArena5Explosion(midX, midY, 160);
+  }
+
+  // Jeśli zniszczono wszystkie klocki figury
+  if (crane.shapeCells.length === 0) {
+    crane.phase = 'COOLDOWN';
+    crane.cooldownTimer = 0.85;
+    triggerScreenShake(8);
+  } else {
+    // Jeśli zostały jeszcze komórki w figurze, przelicz cel lądowania
+    calculateTargetLandY(true);
+  }
+}
+
+/**
+ * Obsluga trafienia pociskiem w klocki wiezy oraz w spadajace figury
  */
 export function handleArena5BulletHit(bullet) {
   if (!bullet) return false;
 
   const bx = bullet.x;
   const by = bullet.y;
+  const prevX = (typeof bullet.prevX === 'number') ? bullet.prevX : bx;
+  const prevY = (typeof bullet.prevY === 'number') ? bullet.prevY : by;
+  const dmg = bullet.damage || 25;
 
+  // 1. Sprawdz spadajacy blok na suwnicy (crane.phase === 'FALLING')
+  const crane = arena5State.crane;
+  if (crane && crane.phase === 'FALLING' && crane.shape && Array.isArray(crane.shapeCells)) {
+    for (let i = crane.shapeCells.length - 1; i >= 0; i--) {
+      const cell = crane.shapeCells[i];
+      if (!cell || cell.hp <= 0) continue;
+
+      const cellX = getGridX(crane.col + cell.colRel);
+      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+
+      if (rayIntersectsAABB(prevX, prevY, bx, by, cellX, cellY, CELL_SIZE, CELL_SIZE)) {
+        if (cell.material === 'SCAFFOLDING') {
+          // Rusztowanie azurowe przepuszcza pociski
+          continue;
+        }
+
+        cell.hp -= dmg;
+        spawnRicochetSparks(bx, by, -bullet.vx * 0.4, -bullet.vy * 0.4, 4);
+
+        if (cell.hp <= 0) {
+          destroyCraneCell(cell);
+        }
+        return true;
+      }
+    }
+  }
+
+  // 2. Sprawdz klocki w siatce wiezy (w tym opadajace kaskadowo i przesuwane)
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
       if (!cell || cell.hp <= 0) continue;
 
-      if (bx >= cell.x && bx <= cell.x + cell.w && by >= cell.y && by <= cell.y + cell.h) {
+      if (rayIntersectsAABB(prevX, prevY, bx, by, cell.x, cell.y, cell.w, cell.h)) {
         if (cell.material === 'SCAFFOLDING') {
           return false;
         }
 
-        const dmg = bullet.damage || 25;
         cell.hp -= dmg;
         spawnRicochetSparks(bx, by, -bullet.vx * 0.4, -bullet.vy * 0.4, 4);
 
@@ -63,6 +192,32 @@ export function handleArena5Explosion(expX, expY, radius) {
   const radSq = radius * radius;
   let anyDestroyed = false;
 
+  // 1. Sprawdz komorki spadajacej suwnicy
+  const crane = arena5State.crane;
+  if (crane && crane.phase === 'FALLING' && crane.shape && Array.isArray(crane.shapeCells)) {
+    for (let i = crane.shapeCells.length - 1; i >= 0; i--) {
+      const cell = crane.shapeCells[i];
+      if (!cell || cell.hp <= 0) continue;
+
+      const cellX = getGridX(crane.col + cell.colRel);
+      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+      const cellMidX = cellX + CELL_SIZE * 0.5;
+      const cellMidY = cellY + CELL_SIZE * 0.5;
+      const distSq = (cellMidX - expX) * (cellMidX - expX) + (cellMidY - expY) * (cellMidY - expY);
+
+      if (distSq < radSq) {
+        const factor = 1.0 - Math.sqrt(distSq) / radius;
+        const dmg = Math.round(95 * factor);
+        cell.hp -= dmg;
+
+        if (cell.hp <= 0) {
+          destroyCraneCell(cell);
+        }
+      }
+    }
+  }
+
+  // 2. Sprawdz komorki w siatce wiezy
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
@@ -175,7 +330,26 @@ export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KN
   let closestDist = Infinity;
   let closestRow = -1;
   let closestCol = -1;
+  let isCraneHit = false;
 
+  // 1. Sprawdz spadajacy blok na suwnicy
+  const crane = arena5State.crane;
+  if (crane && crane.phase === 'FALLING' && crane.shape && Array.isArray(crane.shapeCells)) {
+    for (const cell of crane.shapeCells) {
+      if (!cell || cell.hp <= 0) continue;
+      const cellX = getGridX(crane.col + cell.colRel);
+      const cellY = crane.currentY + (crane.shape.h - 1 - cell.rowRel) * CELL_SIZE;
+
+      const d = distSegmentToBox(p1.x, p1.y, p2.x, p2.y, cellX, cellY, CELL_SIZE, CELL_SIZE);
+      if (d <= hitRadius && d < closestDist) {
+        closestDist = d;
+        closestCell = cell;
+        isCraneHit = true;
+      }
+    }
+  }
+
+  // 2. Sprawdz klocki w siatce wiezy
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
@@ -188,21 +362,31 @@ export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KN
         closestCell = cell;
         closestRow = r;
         closestCol = c;
+        isCraneHit = false;
       }
     }
   }
 
   if (closestCell) {
     closestCell.hp -= baseDmg;
-    const hitX = Math.max(closestCell.x, Math.min(closestCell.x + closestCell.w, p2.x));
-    const hitY = Math.max(closestCell.y, Math.min(closestCell.y + closestCell.h, p2.y));
+    const cX = isCraneHit ? getGridX(crane.col + closestCell.colRel) : closestCell.x;
+    const cY = isCraneHit ? (crane.currentY + (crane.shape.h - 1 - closestCell.rowRel) * CELL_SIZE) : closestCell.y;
+    const cW = isCraneHit ? CELL_SIZE : closestCell.w;
+    const cH = isCraneHit ? CELL_SIZE : closestCell.h;
+
+    const hitX = Math.max(cX, Math.min(cX + cW, p2.x));
+    const hitY = Math.max(cY, Math.min(cY + cH, p2.y));
 
     spawnRicochetSparks(hitX, hitY, (Math.random() - 0.5) * 6, -3, 5);
     spawnConcreteDebris(hitX, hitY, 3);
     triggerScreenShake(3);
 
     if (closestCell.hp <= 0) {
-      destroyGridCell(closestRow, closestCol);
+      if (isCraneHit) {
+        destroyCraneCell(closestCell);
+      } else {
+        destroyGridCell(closestRow, closestCol);
+      }
     }
     return true;
   }
