@@ -248,34 +248,61 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
       const alpha = Math.min(1.0, rankUpAlertState.timer / 25);
       ctx.save();
       ctx.globalAlpha = alpha;
-      const bw = Math.min(360, sw - 32);
-      const bh = 54;
-      const bx = Math.round((sw - bw) / 2);
-      const by = isMobile ? 80 : 96;
+      if (isMobile) {
+        // Wariant mobilny: jednolinijkowa mikro-pigułka awansu na górze ekranu
+        const bw = Math.min(240, sw - 40);
+        const bh = 18;
+        const bx = Math.round((sw - bw) / 2);
+        const by = 28;
 
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6);
-      else ctx.rect(bx, by, bw, bh);
-      ctx.fillStyle = 'rgba(8, 20, 36, 0.95)';
-      ctx.fill();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3);
+        else ctx.rect(bx, by, bw, bh);
+        ctx.fillStyle = 'rgba(8, 20, 36, 0.65)';
+        ctx.fill();
 
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 0.9;
+        ctx.stroke();
 
-      ctx.font = isMobile ? '900 12px monospace' : '900 13px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = '#facc15';
-      ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
-      ctx.shadowBlur = 6;
-      ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + 9);
+        ctx.font = '900 8.5px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`AWANS: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + bh / 2 + 0.5);
+      } else {
+        // Wariant desktop: pełny baner z nagrodami
+        const bw = Math.min(360, sw - 32);
+        const bh = 54;
+        const bx = Math.round((sw - bw) / 2);
+        const by = 96;
 
-      ctx.font = isMobile ? 'bold 9px monospace' : 'bold 10px monospace';
-      ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 2;
-      ctx.fillText(rankUpAlertState.rewardText, bx + bw / 2, by + 29);
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6);
+        else ctx.rect(bx, by, bw, bh);
+        ctx.fillStyle = 'rgba(8, 20, 36, 0.95)';
+        ctx.fill();
+
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        ctx.font = '900 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + 9);
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 2;
+        ctx.fillText(rankUpAlertState.rewardText, bx + bw / 2, by + 29);
+      }
 
       ctx.restore();
     }

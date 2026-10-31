@@ -62,78 +62,123 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
 
   if (alpha <= 0.01) return;
 
-  // Płynne podjechanie w górę (slide-up)
-  const slideY = (1 - enterProgress) * 20;
-  const bannerY = (isMobile ? (H - 62) : (H - 78)) + slideY;
-  const bannerW = isMobile ? Math.min(W - 32, 320) : 420;
-  const bannerH = isMobile ? 42 : 48;
-  const bannerX = (W - bannerW) / 2;
-
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Kolory motywu
   const mainColor = isKill ? '#00e5ff' : '#ef4444';
-  const bgColor = isKill ? 'rgba(6, 26, 44, 0.95)' : 'rgba(44, 10, 10, 0.95)';
-
-  // Tło płytki
-  ctx.fillStyle = bgColor;
-  ctx.strokeStyle = mainColor;
-  ctx.lineWidth = 1.5;
-
-  if (ctx.roundRect) {
-    ctx.beginPath();
-    ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
-    ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
-  }
-
-  // Boczne akcenty taktyczne
-  ctx.fillStyle = mainColor;
-  ctx.fillRect(bannerX, bannerY + 6, 4, bannerH - 12);
-  ctx.fillRect(bannerX + bannerW - 4, bannerY + 6, 4, bannerH - 12);
-
-  // 1. Górny mikro-nagłówek (Subtext)
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.font = `900 ${isMobile ? '8.5px' : '9.5px'} 'Rajdhani', monospace`;
-  ctx.fillStyle = isKill ? 'rgba(0, 229, 255, 0.85)' : 'rgba(239, 68, 68, 0.85)';
-  ctx.fillText(combatFeedState.subtext, W / 2, bannerY + (isMobile ? 5 : 6));
-
-  // 2. Główny napis ZABIŁEŚ: / ZABITY PRZEZ: (lub pełny komunikat w nawiasach kwadratowych [KOMUNIKAT])
   const name = combatFeedState.name;
   const isDirectMsg = name.startsWith('[');
-  const prefix = isDirectMsg ? '' : (isKill ? 'ZABIŁEŚ: ' : 'ZABITY PRZEZ: ');
 
-  ctx.font = `900 ${isMobile ? '14px' : '17px'} 'Orbitron', 'Rajdhani', monospace`;
-  ctx.textBaseline = 'middle';
-  const midY = bannerY + (isMobile ? 27 : 31);
+  if (isMobile) {
+    // -------------------------------------------------------------------------
+    // WARIANT MOBILNY: Modern Tactical Ghost Ticker (Zero zasłaniania pola gry)
+    // Umieszczony w bezpiecznej dolno-środkowej strefie (y ~ 72% ekranu),
+    // ponad dolnymi kieszeniami broni, w 1 minimalistycznej, półprzezroczystej linii.
+    // -------------------------------------------------------------------------
+    const floatY = (1 - enterProgress) * 6;
+    const tickerY = Math.round(H * 0.72) - floatY;
 
-  if (isDirectMsg) {
+    let fullLabel = '';
+    if (isDirectMsg) {
+      fullLabel = name;
+    } else if (isKill) {
+      fullLabel = `+100 ELIMINACJA // ${name}`;
+    } else {
+      fullLabel = `POLEGŁEŚ // ${name}`;
+    }
+
+    ctx.font = '900 11px Rajdhani, monospace';
+    const textW = ctx.measureText(fullLabel).width;
+    const padX = 10;
+    const tickerW = textW + padX * 2;
+    const tickerH = 18;
+    const tickerX = Math.round((W - tickerW) / 2);
+
+    // Dyskretne, silnie przezroczyste przydymienie tła z subtelną ramką
+    ctx.fillStyle = isKill ? 'rgba(6, 20, 36, 0.42)' : 'rgba(36, 8, 8, 0.42)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(tickerX, tickerY - tickerH / 2, tickerW, tickerH, 3.5);
+    else ctx.rect(tickerX, tickerY - tickerH / 2, tickerW, tickerH);
+    ctx.fill();
+
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // Wyrazisty neonowy tekst z głębokim czarnym cieniem
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 6;
-    ctx.fillText(name, W / 2, midY);
-    ctx.shadowBlur = 0;
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(fullLabel, W / 2, tickerY + 0.5);
   } else {
-    const prefixW = ctx.measureText(prefix).width;
-    const nameW = ctx.measureText(name).width;
-    const totalW = prefixW + nameW;
-    const startX = (W - totalW) / 2;
+    // -------------------------------------------------------------------------
+    // WARIANT DESKTOP (PC): Pełny, szeroki baner militarny na dole ekranu
+    // -------------------------------------------------------------------------
+    const slideY = (1 - enterProgress) * 20;
+    const bannerY = (H - 78) + slideY;
+    const bannerW = 420;
+    const bannerH = 48;
+    const bannerX = (W - bannerW) / 2;
+    const bgColor = isKill ? 'rgba(6, 26, 44, 0.95)' : 'rgba(44, 10, 10, 0.95)';
 
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(prefix, startX, midY);
+    // Tło płytki
+    ctx.fillStyle = bgColor;
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.5;
 
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
+    }
+
+    // Boczne akcenty taktyczne
     ctx.fillStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 6;
-    ctx.fillText(name, startX + prefixW, midY);
-    ctx.shadowBlur = 0;
+    ctx.fillRect(bannerX, bannerY + 6, 4, bannerH - 12);
+    ctx.fillRect(bannerX + bannerW - 4, bannerY + 6, 4, bannerH - 12);
+
+    // 1. Górny mikro-nagłówek (Subtext)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = "900 9.5px 'Rajdhani', monospace";
+    ctx.fillStyle = isKill ? 'rgba(0, 229, 255, 0.85)' : 'rgba(239, 68, 68, 0.85)';
+    ctx.fillText(combatFeedState.subtext, W / 2, bannerY + 6);
+
+    // 2. Główny napis ZABIŁEŚ: / ZABITY PRZEZ:
+    const prefix = isDirectMsg ? '' : (isKill ? 'ZABIŁEŚ: ' : 'ZABITY PRZEZ: ');
+    ctx.font = "900 17px 'Orbitron', 'Rajdhani', monospace";
+    ctx.textBaseline = 'middle';
+    const midY = bannerY + 31;
+
+    if (isDirectMsg) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = mainColor;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 6;
+      ctx.fillText(name, W / 2, midY);
+      ctx.shadowBlur = 0;
+    } else {
+      const prefixW = ctx.measureText(prefix).width;
+      const nameW = ctx.measureText(name).width;
+      const totalW = prefixW + nameW;
+      const startX = (W - totalW) / 2;
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(prefix, startX, midY);
+
+      ctx.fillStyle = mainColor;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 6;
+      ctx.fillText(name, startX + prefixW, midY);
+      ctx.shadowBlur = 0;
+    }
   }
 
   ctx.restore();

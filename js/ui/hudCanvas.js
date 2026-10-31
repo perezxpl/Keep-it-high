@@ -15,6 +15,7 @@ import {
   goalCelebration
 } from '../world/state.js';
 import { drawRankHUD, drawMatchVictoryHUD } from './rankHud.js';
+import { drawMobileTopLeftHUD } from './mobileTopHud.js';
 import { drawDeathmatchHUD, drawDeathmatchPodium } from '../deathmatch/index.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getStrikerFlameColor } from '../classes/striker.js';
@@ -1371,16 +1372,16 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   // =========================================================================
   ctx.save();
 
-  const hudX = isMobile ? 12 : 20;
-  const hudY = isMobile ? 14 : 18;
-  const barW = isMobile ? 172 : 220;
-  const barH = isMobile ? 16 : 18;
-  const wepBoxH = isMobile ? 32 : 36;
+  const hudX = isMobile ? 8 : 20;
+  const hudY = isMobile ? 6 : 18;
+  const barW = isMobile ? 142 : 220;
+  const barH = isMobile ? 14 : 18;
+  const wepBoxH = isMobile ? 14 : 36;
 
   // Proximity Auto-Fade: automatyczne przenikanie HUD-u, gdy postać, wróg lub piłka zbliża się do lewego górnego rogu
-  const hudRight = hudX + barW + 10;
-  const hudBottom = hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + (isMobile ? 32 : 38);
-  const fadeMargin = isMobile ? 55 : 70;
+  const hudRight = isMobile ? (hudX + 146) : (hudX + barW + 10);
+  const hudBottom = isMobile ? (hudY + 22) : (hudY + barH + (player.hasVest ? 18 : 0) + 5 + wepBoxH + 38);
+  const fadeMargin = isMobile ? 50 : 70;
 
   let minHudDist = Infinity;
   const camZoom = (camera && camera.zoom) ? camera.zoom : 1;
@@ -1418,14 +1419,14 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
     checkEntityHudDist(ball, 10, 10, 10);
   }
 
-  const minHudAlpha = 0.22;
-  let targetHudAlpha = 1.0;
+  const minHudAlpha = 0.15;
+  let targetHudAlpha = isMobile ? 0.65 : 1.0;
   if (minHudDist <= 0) {
     targetHudAlpha = minHudAlpha;
   } else if (minHudDist < fadeMargin) {
     const t = minHudDist / fadeMargin;
     const smoothT = t * t * (3 - 2 * t);
-    targetHudAlpha = minHudAlpha + (1.0 - minHudAlpha) * smoothT;
+    targetHudAlpha = minHudAlpha + (targetHudAlpha - minHudAlpha) * smoothT;
   }
 
   if (typeof player._topLeftHudAlpha !== 'number' || isNaN(player._topLeftHudAlpha)) {
@@ -1458,156 +1459,13 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const vestRatio = Math.max(0, Math.min(1.0, vestHp / vestMaxHp));
 
   const hasHelmet = !!(player.hasHelmet || player.visuals?.hasHelmet);
-  const vestH = hasVest ? (isMobile ? 12 : 14) : (hasHelmet ? (isMobile ? 11 : 13) : 0);
+  const vestH = hasVest ? 14 : (hasHelmet ? 13 : 0);
   const vestGap = (hasVest || hasHelmet) ? 3 : 0;
 
   const vestY = hudY;
   const hpY = hudY + vestH + vestGap;
 
-  // --- A0. PASEK PANCERZA KAMIZELKI I OCHRONY GŁOWY (HEŁM) ---
-  if (hasVest) {
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.fill();
-
-    if (vestRatio > 0) {
-      const vFillW = Math.max(2, (barW - 3) * vestRatio);
-      ctx.beginPath();
-      ctx.fillStyle = '#0284c7';
-      if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
-      else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = '#e0f2fe';
-    ctx.textBaseline = 'middle';
-
-    ctx.textAlign = 'left';
-    ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
-
-    ctx.textAlign = 'right';
-    const helmBadge = hasHelmet ? '[HEŁM] ' : '';
-    ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
-    ctx.restore();
-  } else if (hasHelmet) {
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#06b6d4';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
-    else ctx.rect(hudX, vestY, barW, vestH);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = '#22d3ee';
-    ctx.textBaseline = 'middle';
-
-    ctx.textAlign = 'left';
-    ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
-
-    ctx.textAlign = 'right';
-    ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
-    ctx.restore();
-  }
-
-  // --- A. PASEK ZDROWIA (HP) ---
-  // Ciemne, głębokie tło pustej części paska (wyraźny kontrast po utracie HP)
-  ctx.beginPath();
-  ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
-  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
-  else ctx.rect(hudX, hpY, barW, barH);
-  ctx.fill();
-
-  const innerX = hudX + 1.5;
-  const innerY = hpY + 1.5;
-  const innerW = barW - 3;
-  const innerH = barH - 3;
-
-  // Ślad świeżo utraconego zdrowia (czerwono-koralowy pasek spływający w dół)
-  if (trailRatio > hpRatio + 0.005) {
-    const trailW = Math.max(2, innerW * trailRatio);
-    ctx.beginPath();
-    ctx.fillStyle = '#fb7185';
-    if (ctx.roundRect) ctx.roundRect(innerX, innerY, trailW, innerH, 2.5);
-    else ctx.rect(innerX, innerY, trailW, innerH);
-    ctx.fill();
-  }
-
-  // Właściwe wypełnienie aktualnego HP w żywych kolorach
-  if (hpRatio > 0) {
-    const fillW = Math.max(2, innerW * hpRatio);
-    let hpColor = '#22c55e';
-    if (hpRatio <= 0.25) {
-      hpColor = '#ef4444';
-    } else if (hpRatio <= 0.55) {
-      hpColor = '#f59e0b';
-    }
-
-    ctx.beginPath();
-    ctx.fillStyle = hpColor;
-    if (ctx.roundRect) ctx.roundRect(innerX, innerY, fillW, innerH, 2.5);
-    else ctx.rect(innerX, innerY, fillW, innerH);
-    ctx.fill();
-
-    // Połysk na górnej krawędzi paska HP dla żywego efektu
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.26)';
-    ctx.rect(innerX, innerY, fillW, innerH * 0.42);
-    ctx.fill();
-  }
-
-  // Podziałki segmentowe co 25% szerokości paska HP
-  ctx.save();
-  ctx.strokeStyle = 'rgba(6, 9, 17, 0.45)';
-  ctx.lineWidth = 1;
-  for (let seg = 1; seg <= 3; seg++) {
-    const sx = hudX + (barW * seg) / 4;
-    ctx.beginPath();
-    ctx.moveTo(sx, hpY + 1);
-    ctx.lineTo(sx, hpY + barH - 1);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Wyraźna kolorowa ramka paska HP
-  ctx.beginPath();
-  ctx.strokeStyle = hpBorderCol;
-  ctx.lineWidth = 1.4;
-  if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
-  else ctx.rect(hudX, hpY, barW, barH);
-  ctx.stroke();
-
-  // Etykieta tekstu wewnątrz paska HP
-  ctx.save();
-  ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.textBaseline = 'middle';
-
-  ctx.textAlign = 'left';
-  ctx.fillText('HP', hudX + 6, hpY + barH / 2 + 0.5);
-
-  ctx.textAlign = 'right';
-  ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hpY + barH / 2 + 0.5);
-  ctx.restore();
-
-  // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
+  // --- PARAMETRY BRONI I AMUNICJI ---
   const curWep = player.currentWeapon || { id: 'AK47', name: 'AK-47' };
   const curWepId = curWep.id || 'AK47';
   const SHORT_WEAPON_NAMES = {
@@ -1637,115 +1495,266 @@ export function drawHUD(ctx, player, leftStick, btnCluster, rightStick, ball, in
   const isNoAmmo = (cAmmo === 0 && rAmmo === 0);
   const isLow = (!isNoAmmo && cAmmo <= Math.ceil(defM * 0.25));
 
-  const wepBoxY = hpY + barH + 5;
-  const wepBoxW = barW;
-
   let cardBorderCol = wepAccent;
   if (isNoAmmo) cardBorderCol = '#ef4444';
   else if (isLow) cardBorderCol = '#f97316';
   else if (isRel) cardBorderCol = '#facc15';
 
-  // Tło kafelka broni z wyraźnym kontrastem
-  let cardBgCol = 'rgba(15, 23, 42, 0.95)';
-  if (curWepId === 'SHOTGUN') {
-    cardBgCol = 'rgba(28, 14, 10, 0.95)';
-  } else if (curWepId === 'SNIPER') {
-    cardBgCol = 'rgba(10, 24, 40, 0.95)';
-  } else if (curWep?.isMelee) {
-    cardBgCol = 'rgba(30, 10, 15, 0.95)';
-  }
-
-  ctx.beginPath();
-  ctx.fillStyle = cardBgCol;
-  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
-  else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
-  ctx.fill();
-
-  // Boczny kolorowy pasek akcentu broni po lewej stronie kafelka
-  ctx.beginPath();
-  ctx.fillStyle = cardBorderCol;
-  if (ctx.roundRect) ctx.roundRect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2, [3, 0, 0, 3]);
-  else ctx.rect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2);
-  ctx.fill();
-
-  // Wyraźny kolorowy obrys kafelka broni
-  ctx.beginPath();
-  ctx.strokeStyle = cardBorderCol;
-  ctx.lineWidth = 1.4;
-  if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
-  else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
-  ctx.stroke();
-
-  // Rysowanie wyraźnej sylwetki broni po lewej stronie karty
-  const silX = hudX + (isMobile ? 23 : 27);
-  const silY = wepBoxY + wepBoxH / 2;
-  drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
-
-  // Nazwa broni w wyrazistym kolorze
-  ctx.save();
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(wepName, hudX + (isMobile ? 44 : 52), wepBoxY + wepBoxH / 2);
-
-  // Amunicja po prawej stronie karty
-  ctx.textAlign = 'right';
-  const ammoRightX = hudX + wepBoxW - 8;
-  const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
-
-  if (curWep?.isMelee) {
-    // Usunięty napis "ZWARCIE" - minimalistyczna ramka dla broni białej
-    if (curWepId === 'AXE' && player.axeThrown) {
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-      ctx.font = isMobile ? 'bold 8px monospace' : 'bold 9px monospace';
-      ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
-      ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
-    }
-  } else if (curWepId === 'GRENADE') {
-    const cd = (player.grenadeCooldownTimer || 0) / 60;
-    const isReady = (cd <= 0);
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
-    ctx.fillStyle = isReady ? '#4ade80' : '#facc15';
-    ctx.fillText(isReady ? 'READY' : `${cd.toFixed(1)}s`, ammoRightX, ammoMidY);
-  } else if (isRel) {
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 12px monospace';
-    ctx.fillStyle = `rgba(250, 204, 21, ${0.65 + pulse * 0.35})`;
-    ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
-
-    const dur = curAmmoObj?.reloadDuration || player.reloadDuration || 120;
-    const tmr = curAmmoObj?.reloadTimer ?? player.reloadTimer ?? 0;
-    const prog = Math.max(0, Math.min(1, 1 - (tmr / dur)));
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - 3.5, (wepBoxW - 4) * prog, 2.5);
-  } else if (isNoAmmo) {
-    ctx.font = isMobile ? 'bold 11px monospace' : 'bold 12.5px monospace';
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText('NO AMMO', ammoRightX, ammoMidY);
+  if (isMobile) {
+    // -------------------------------------------------------------------------
+    // WARIANT MOBILNY: 1-LINIOWY ULTRA-KOMPAKTOWY STATUS BAR (SIDE-BY-SIDE)
+    // Zwalnia ponad 100px pionowego pola widzenia w lewym górnym rogu ekranu!
+    // Wysokość całego modułu: zaledwie 14px na y = 6px. Zero zasłaniania gry.
+    // -------------------------------------------------------------------------
+    drawMobileTopLeftHUD(ctx, player, hudX, hudY, { trailRatio, hpBorderCol });
   } else {
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
-    const resAmmoText = ` / ${rAmmo}`;
-    const resW = ctx.measureText(resAmmoText).width;
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(resAmmoText, ammoRightX, ammoMidY);
+    // -------------------------------------------------------------------------
+    // WARIANT DESKTOP (PC): Pełny 4-piętrowy taktyczny HUD z sylwetką broni
+    // -------------------------------------------------------------------------
+    // --- A0. PASEK PANCERZA KAMIZELKI I OCHRONY GŁOWY (HEŁM) ---
+    if (hasVest) {
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.fill();
 
-    ctx.font = isMobile ? 'bold 14px monospace' : 'bold 16px monospace';
-    ctx.fillStyle = isLow ? '#f97316' : wepAccent;
-    ctx.fillText(`${cAmmo}`, ammoRightX - resW, ammoMidY);
+      if (vestRatio > 0) {
+        const vFillW = Math.max(2, (barW - 3) * vestRatio);
+        ctx.beginPath();
+        ctx.fillStyle = '#0284c7';
+        if (ctx.roundRect) ctx.roundRect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3, 2);
+        else ctx.rect(hudX + 1.5, vestY + 1.5, vFillW, vestH - 3);
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 1.2;
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = '#e0f2fe';
+      ctx.textBaseline = 'middle';
+
+      ctx.textAlign = 'left';
+      ctx.fillText('PANCERZ (TORS)', hudX + 5, vestY + vestH / 2 + 0.5);
+
+      ctx.textAlign = 'right';
+      const helmBadge = hasHelmet ? '[HEŁM] ' : '';
+      ctx.fillText(`${helmBadge}${Math.round(vestHp)} / ${vestMaxHp}`, hudX + barW - 5, vestY + vestH / 2 + 0.5);
+      ctx.restore();
+    } else if (hasHelmet) {
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 1.2;
+      if (ctx.roundRect) ctx.roundRect(hudX, vestY, barW, vestH, 3.5);
+      else ctx.rect(hudX, vestY, barW, vestH);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = '#22d3ee';
+      ctx.textBaseline = 'middle';
+
+      ctx.textAlign = 'left';
+      ctx.fillText('HEŁM BALISTYCZNY', hudX + 5, vestY + vestH / 2 + 0.5);
+
+      ctx.textAlign = 'right';
+      ctx.fillText('OCHRONA GŁOWY', hudX + barW - 5, vestY + vestH / 2 + 0.5);
+      ctx.restore();
+    }
+
+    // --- A. PASEK ZDROWIA (HP) ---
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
+    if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+    else ctx.rect(hudX, hpY, barW, barH);
+    ctx.fill();
+
+    const innerX = hudX + 1.5;
+    const innerY = hpY + 1.5;
+    const innerW = barW - 3;
+    const innerH = barH - 3;
+
+    // Ślad świeżo utraconego zdrowia
+    if (trailRatio > hpRatio + 0.005) {
+      const trailW = Math.max(2, innerW * trailRatio);
+      ctx.beginPath();
+      ctx.fillStyle = '#fb7185';
+      if (ctx.roundRect) ctx.roundRect(innerX, innerY, trailW, innerH, 2.5);
+      else ctx.rect(innerX, innerY, trailW, innerH);
+      ctx.fill();
+    }
+
+    // Właściwe wypełnienie aktualnego HP
+    if (hpRatio > 0) {
+      const fillW = Math.max(2, innerW * hpRatio);
+      let hpColor = '#22c55e';
+      if (hpRatio <= 0.25) hpColor = '#ef4444';
+      else if (hpRatio <= 0.55) hpColor = '#f59e0b';
+
+      ctx.beginPath();
+      ctx.fillStyle = hpColor;
+      if (ctx.roundRect) ctx.roundRect(innerX, innerY, fillW, innerH, 2.5);
+      else ctx.rect(innerX, innerY, fillW, innerH);
+      ctx.fill();
+
+      // Połysk na górnej krawędzi paska HP
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.26)';
+      ctx.rect(innerX, innerY, fillW, innerH * 0.42);
+      ctx.fill();
+    }
+
+    // Podziałki segmentowe co 25% szerokości paska HP
+    ctx.save();
+    ctx.strokeStyle = 'rgba(6, 9, 17, 0.45)';
+    ctx.lineWidth = 1;
+    for (let seg = 1; seg <= 3; seg++) {
+      const sx = hudX + (barW * seg) / 4;
+      ctx.beginPath();
+      ctx.moveTo(sx, hpY + 1);
+      ctx.lineTo(sx, hpY + barH - 1);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Wyraźna kolorowa ramka paska HP
+    ctx.beginPath();
+    ctx.strokeStyle = hpBorderCol;
+    ctx.lineWidth = 1.4;
+    if (ctx.roundRect) ctx.roundRect(hudX, hpY, barW, barH, 4);
+    else ctx.rect(hudX, hpY, barW, barH);
+    ctx.stroke();
+
+    // Etykieta tekstu wewnątrz paska HP
+    ctx.save();
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'middle';
+
+    ctx.textAlign = 'left';
+    ctx.fillText('HP', hudX + 6, hpY + barH / 2 + 0.5);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`${Math.round(curHp)} / ${maxHp}`, hudX + barW - 6, hpY + barH / 2 + 0.5);
+    ctx.restore();
+
+    // --- B. WYBRANA BROŃ Z LICZBĄ AMUNICJI (POD PASEK HP) ---
+    const wepBoxY = hpY + barH + 5;
+    const wepBoxW = barW;
+
+    // Tło kafelka broni z wyraźnym kontrastem
+    let cardBgCol = 'rgba(15, 23, 42, 0.95)';
+    if (curWepId === 'SHOTGUN') {
+      cardBgCol = 'rgba(28, 14, 10, 0.95)';
+    } else if (curWepId === 'SNIPER') {
+      cardBgCol = 'rgba(10, 24, 40, 0.95)';
+    } else if (curWep?.isMelee) {
+      cardBgCol = 'rgba(30, 10, 15, 0.95)';
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = cardBgCol;
+    if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
+    else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
+    ctx.fill();
+
+    // Boczny kolorowy pasek akcentu broni po lewej stronie kafelka
+    ctx.beginPath();
+    ctx.fillStyle = cardBorderCol;
+    if (ctx.roundRect) ctx.roundRect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2, [3, 0, 0, 3]);
+    else ctx.rect(hudX + 1, wepBoxY + 1, 4, wepBoxH - 2);
+    ctx.fill();
+
+    // Wyraźny kolorowy obrys kafelka broni
+    ctx.beginPath();
+    ctx.strokeStyle = cardBorderCol;
+    ctx.lineWidth = 1.4;
+    if (ctx.roundRect) ctx.roundRect(hudX, wepBoxY, wepBoxW, wepBoxH, 4);
+    else ctx.rect(hudX, wepBoxY, wepBoxW, wepBoxH);
+    ctx.stroke();
+
+    // Rysowanie wyraźnej sylwetki broni po lewej stronie karty
+    const silX = hudX + 27;
+    const silY = wepBoxY + wepBoxH / 2;
+    drawWeaponSilhouette(ctx, curWepId, silX, silY, true, wepAccent);
+
+    // Nazwa broni w wyrazistym kolorze
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 11.5px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(wepName, hudX + 52, wepBoxY + wepBoxH / 2);
+
+    // Amunicja po prawej stronie karty
+    ctx.textAlign = 'right';
+    const ammoRightX = hudX + wepBoxW - 8;
+    const ammoMidY = wepBoxY + wepBoxH / 2 + 0.5;
+
+    if (curWep?.isMelee) {
+      if (curWepId === 'AXE' && player.axeThrown) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = `rgba(249, 115, 22, ${0.7 + pulse * 0.3})`;
+        ctx.fillText('[RZUCONY]', ammoRightX, ammoMidY);
+      }
+    } else if (curWepId === 'GRENADE') {
+      const cd = (player.grenadeCooldownTimer || 0) / 60;
+      const isReady = (cd <= 0);
+      ctx.font = 'bold 11.5px monospace';
+      ctx.fillStyle = isReady ? '#4ade80' : '#facc15';
+      ctx.fillText(isReady ? 'READY' : `${cd.toFixed(1)}s`, ammoRightX, ammoMidY);
+    } else if (isRel) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = `rgba(250, 204, 21, ${0.65 + pulse * 0.35})`;
+      ctx.fillText('RELOAD...', ammoRightX, ammoMidY);
+
+      const dur = curAmmoObj?.reloadDuration || player.reloadDuration || 120;
+      const tmr = curAmmoObj?.reloadTimer ?? player.reloadTimer ?? 0;
+      const prog = Math.max(0, Math.min(1, 1 - (tmr / dur)));
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(hudX + 2, wepBoxY + wepBoxH - 3.5, (wepBoxW - 4) * prog, 2.5);
+    } else if (isNoAmmo) {
+      ctx.font = 'bold 12.5px monospace';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('NO AMMO', ammoRightX, ammoMidY);
+    } else {
+      ctx.font = 'bold 11.5px monospace';
+      const resAmmoText = ` / ${rAmmo}`;
+      const resW = ctx.measureText(resAmmoText).width;
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(resAmmoText, ammoRightX, ammoMidY);
+
+      ctx.font = 'bold 16px monospace';
+      ctx.fillStyle = isLow ? '#f97316' : wepAccent;
+      ctx.fillText(`${cAmmo}`, ammoRightX - resW, ammoMidY);
+    }
+    ctx.restore();
+
+    // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
+    const metaY = wepBoxY + wepBoxH + 13;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
+
+    // --- D. RANGA WOJSKOWA & PROGRES XP ---
+    const rankY = metaY + 15;
+    drawRankHUD(ctx, hudX + 2, rankY, barW - 4, false);
   }
-  ctx.restore();
-
-  // --- C. KLASA I FPS (DYSKRETNY PASEK POD KARTĄ BRONI) ---
-  const metaY = wepBoxY + wepBoxH + (isMobile ? 11 : 13);
-  ctx.textAlign = 'left';
-  ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText(`KLASA: ${player.currentClass?.name || 'DOMYŚLNA'}   FPS: ${currentFps}`, hudX + 2, metaY);
-
-  // --- D. RANGA WOJSKOWA & PROGRES XP ---
-  const rankY = metaY + (isMobile ? 13 : 15);
-  drawRankHUD(ctx, hudX + 2, rankY, barW - 4, isMobile);
 
   ctx.restore();
 

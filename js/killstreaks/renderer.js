@@ -288,13 +288,87 @@ export function drawKillstreakHUD(ctx, canvas, player) {
 
   ctx.save();
 
+  const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
+  const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
+  const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
+
+  // -------------------------------------------------------------------------
+  // SMART-HIDE NA EKRANACH MOBILNYCH:
+  // Jeśli gracz nie posiada odblokowanego wsparcia (0/3, 1/3, 2/3 fragów),
+  // widget w prawym górnym rogu jest CAŁKOWICIE UKRYTY (uwalnia 100% pola gry).
+  // Pojawia się WYŁĄCZNIE wtedy, gdy nagroda jest gotowa do kliknięcia (READY TAP).
+  // -------------------------------------------------------------------------
+  if (isMobile && !hasReadyStreak) {
+    killstreakState.hudButtonBounds = null;
+
+    // Dyskretny mikro-wskaźnik UAV obok pauzy, jeśli UAV jest aktywny
+    if (isKillstreakActive('UAV')) {
+      const uavStreak = killstreakState.activeStreaks.find(s => s.id === 'UAV');
+      if (uavStreak) {
+        const timeLeft = Math.ceil(Math.max(0, uavStreak.timeRemaining));
+        const badgeW = 68;
+        const badgeH = 16;
+        const badgeX = W - badgeW - 36;
+        const badgeY = 6;
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+        ctx.fillStyle = 'rgba(6, 24, 38, 0.60)';
+        ctx.fill();
+
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        ctx.font = 'bold 8px monospace';
+        ctx.fillStyle = '#00e5ff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`[UAV: ${timeLeft}S]`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+      }
+    }
+
+    // Powiadomienie o killstreaku dla mobile
+    if (killstreakState.recentNotification && killstreakState.notificationTimer > 0) {
+      const notif = killstreakState.recentNotification;
+      const alpha = Math.min(1.0, killstreakState.notificationTimer * 1.5);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const bannerH = 16;
+      const bannerW = Math.min(220, W - 40);
+      const bannerX = Math.round((W - bannerW) / 2);
+      const bannerY = 28;
+
+      ctx.fillStyle = 'rgba(10, 15, 26, 0.60)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 3);
+      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      ctx.fill();
+
+      ctx.strokeStyle = notif.color || '#00e5ff';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = notif.color || '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`[${notif.title || 'WSPARCIE'}] ${notif.text || ''}`, bannerX + bannerW / 2, bannerY + bannerH / 2);
+      ctx.restore();
+    }
+
+    ctx.restore();
+    return;
+  }
+
   // Wymiary i ergonomiczna pozycja widgetu:
-  // Na telefonie: w prawym górnym rogu pod przyciskiem pauzy (z dala od drążków i kieszeni!)
+  // Na telefonie: kompaktowy, pulsujący mikro-przycisk obok pauzy (y = 6px, h = 20px)
   // Na PC: w prawym dolnym rogu (standard Call of Duty HUD)
-  const widgetW = isMobile ? 134 : 156;
-  const widgetH = isMobile ? 42 : 48;
-  const posX = W - widgetW - (isMobile ? 14 : 20);
-  const posY = isMobile ? 56 : (H - widgetH - 24);
+  const widgetW = isMobile ? 74 : 156;
+  const widgetH = isMobile ? 20 : 48;
+  const posX = isMobile ? (W - widgetW - 36) : (W - widgetW - 20);
+  const posY = isMobile ? 6 : (H - widgetH - 24);
 
   // Zapis granic klikalnego obszaru dla obsługi kliknięcia myszą lub dotyku (współrzędne CSS)
   killstreakState.hudButtonBounds = {
@@ -304,13 +378,9 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     h: widgetH
   };
 
-  const hasReadyStreak = (killstreakState.availableStreaks && killstreakState.availableStreaks.length > 0);
-  const readyStreakId = hasReadyStreak ? killstreakState.availableStreaks[0] : null;
-  const readyDef = readyStreakId ? getKillstreakDef(readyStreakId) : null;
-
   // 1. TŁO WIDGETU (Modern Military Dark Glass)
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, 6);
+  if (ctx.roundRect) ctx.roundRect(posX, posY, widgetW, widgetH, isMobile ? 3.5 : 6);
   else ctx.rect(posX, posY, widgetW, widgetH);
 
   const isTargetingMortar = (readyStreakId === 'MORTAR_STRIKE' && killstreakState.mortarTargeting);
@@ -320,7 +390,7 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     ctx.fillStyle = `rgba(60, 12, 18, ${0.90 + pulse * 0.08})`;
   } else if (hasReadyStreak) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-    ctx.fillStyle = `rgba(8, 36, 56, ${0.88 + pulse * 0.10})`;
+    ctx.fillStyle = isMobile ? `rgba(6, 26, 42, ${0.65 + pulse * 0.15})` : `rgba(8, 36, 56, ${0.88 + pulse * 0.10})`;
   } else {
     ctx.fillStyle = 'rgba(10, 18, 32, 0.90)';
   }
@@ -330,10 +400,10 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   let strokeColor = 'rgba(100, 116, 139, 0.45)';
   if (isTargetingMortar) {
     strokeColor = '#ef4444';
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = isMobile ? 1.4 : 2.4;
   } else if (hasReadyStreak) {
     strokeColor = '#00e5ff';
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = isMobile ? 1.2 : 2.0;
   } else {
     ctx.lineWidth = 1.2;
   }
@@ -343,26 +413,37 @@ export function drawKillstreakHUD(ctx, canvas, player) {
   // 3. TREŚĆ WIDGETU
   if (hasReadyStreak && readyDef) {
     // STAN: NAGRODA GOTOWA DO UŻYCIA
-    const keyHint = isTargetingMortar
-      ? (isMobile ? '[CELOWANIE...]' : '[CELUJ MYSZĄ]')
-      : (isMobile ? '[DOTKNIJ]' : '[KLAWISZ 4]');
+    if (isMobile) {
+      // Jednolinijkowy, minimalistyczny chip aktywacyjny na telefonie
+      const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.01);
+      ctx.font = '900 8.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : `rgba(0, 229, 255, ${pulse})`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const chipText = isTargetingMortar ? '[CELUJ]' : `[${readyDef.tag || readyDef.short}] TAP`;
+      ctx.fillText(chipText, posX + widgetW / 2, posY + widgetH / 2);
+    } else {
+      const keyHint = isTargetingMortar
+        ? '[CELUJ MYSZĄ]'
+        : '[KLAWISZ 4]';
 
-    ctx.font = isMobile ? 'bold 10.5px monospace' : 'bold 11.5px monospace';
-    ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
+      ctx.font = 'bold 11.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${readyDef.tag} ${readyDef.short}`, posX + 10, posY + 8);
 
-    ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
-    ctx.fillText(keyHint, posX + 10, posY + (isMobile ? 24 : 27));
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = isTargetingMortar ? '#fca5a5' : '#f8fafc';
+      ctx.fillText(keyHint, posX + 10, posY + 27);
 
-    // Ikona taktyczna po prawej
-    ctx.font = 'bold 15px monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
-    ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
+      // Ikona taktyczna po prawej
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isTargetingMortar ? '#ef4444' : '#00e5ff';
+      ctx.fillText(readyDef.icon || '◆', posX + widgetW - 12, posY + widgetH / 2);
+    }
   } else {
     // STAN: POSTĘP W STRONĘ KOLEJNEGO KILLSTREAKA
     const streak = killstreakState.currentStreak || 0;
@@ -438,30 +519,54 @@ export function drawKillstreakHUD(ctx, canvas, player) {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    const bannerW = Math.min(320, W - 32);
-    const bannerH = 38;
-    const bannerX = Math.round((W - bannerW) / 2);
-    const bannerY = isMobile ? 42 : 54;
+    if (isMobile) {
+      // Wariant mobilny: mikro-linijka zamiast wielkiego kloca 320x38px!
+      const bannerH = 16;
+      const bannerW = Math.min(220, W - 40);
+      const bannerX = Math.round((W - bannerW) / 2);
+      const bannerY = 28;
 
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
-    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
-    ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
-    ctx.fill();
+      ctx.fillStyle = 'rgba(10, 15, 26, 0.60)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 3);
+      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      ctx.fill();
 
-    ctx.strokeStyle = notif.color || '#00e5ff';
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
+      ctx.strokeStyle = notif.color || '#00e5ff';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
 
-    ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
-    ctx.fillStyle = notif.color || '#00e5ff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 6);
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = notif.color || '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`[${notif.title || 'WSPARCIE'}] ${notif.text || ''}`, bannerX + bannerW / 2, bannerY + bannerH / 2);
+    } else {
+      const bannerW = Math.min(320, W - 32);
+      const bannerH = 38;
+      const bannerX = Math.round((W - bannerW) / 2);
+      const bannerY = 54;
 
-    ctx.font = isMobile ? 'bold 9px monospace' : 'bold 9.5px monospace';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 20);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
+      else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
+      ctx.fill();
+
+      ctx.strokeStyle = notif.color || '#00e5ff';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = notif.color || '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(notif.title || 'WSPARCIE BOJOWE', bannerX + bannerW / 2, bannerY + 6);
+
+      ctx.font = 'bold 9.5px monospace';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(notif.text || '', bannerX + bannerW / 2, bannerY + 20);
+    }
 
     ctx.restore();
   }
