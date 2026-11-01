@@ -272,7 +272,7 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
       if (!plat || plat.solid === false || plat.isWall) continue;
       const pLeft = plat.x || 0;
       const pWidth = plat.width || plat.w || 0;
-      const pTopY = (typeof plat.y === 'number') ? plat.y : 920;
+      const pTopY = (typeof plat.y === 'number') ? plat.y : 820;
       if (x >= pLeft - 8 && x <= pLeft + pWidth + 8) {
         if (pTopY >= feetY - 32 && pTopY < closestTopY && pTopY < 1250) {
           closestTopY = pTopY;
