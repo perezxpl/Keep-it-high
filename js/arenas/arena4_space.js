@@ -1,6 +1,6 @@
 // =========================================================================
 // ARENAS/ARENA4_SPACE.JS - FASADA KOMPATYBILNOŚCI
-// Przekierowuje do nowej autorskiej mapy: ./arena4.js („PLATFORMA WIERTNICZA // TYFON”)
+// Przekierowuje do autorskiej mapy: ./arena4.js („LOTNISKOWIEC // USS TITAN”)
 // =========================================================================
 
 export * from './arena4.js';

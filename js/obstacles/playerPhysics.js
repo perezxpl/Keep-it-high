@@ -695,11 +695,13 @@ export function checkPlayerPlatformLanding(p, groundY) {
     }
   }
 
-  // Obsługa śmiertelnej strefy oceanu w Arenie 4 (Platforma Wiertnicza // Tyfon)
+  // Obsługa śmiertelnej strefy oceanu w Arenie 4 (Lotniskowiec // USS Titan)
   if (isA4 && !p.isDead) {
-    const deathY = 1250; // Granica wzburzonego oceanu
-    if (p.y > deathY) {
-      killByHazard(p, "WZBURZONY OCEAN // SZTORM TYFON");
+    const curA = typeof getActiveArena === 'function' ? getActiveArena() : null;
+    const deathY = (curA && typeof curA.deathY === 'number') ? curA.deathY : 1080;
+    const isOverboard = ((p.x < 200 || p.x > 3000) && p.y > deathY) || (p.y > 1150);
+    if (isOverboard) {
+      killByHazard(p, "WZBURZONY OCEAN // ZA BURTĄ");
     }
   }
 

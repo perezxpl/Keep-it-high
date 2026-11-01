@@ -1097,8 +1097,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       else {
         const safeUnder = isAirborneNow ? getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId) : null;
         if (safeUnder === null && (botTarget.vy || 0) > -1.0) {
-          const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
-          const centerNavX = isA4 ? 1100 : 2000;
+          const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'USS_TITAN' || currentArenaId === 'TITAN' || currentArenaId === 'LOTNISKOWIEC' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
+          const centerNavX = isA4 ? 1600 : 2000;
           nx = (botCenterX < centerNavX ? 1 : -1) * 0.85;
           ny = -0.52;
           triggerAir = true;
@@ -1168,13 +1168,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const safeDirectlyUnder = getSafeSurfaceBelow(botCenterX, botTarget.y + botTarget.h + 8, currentArenaId);
     if (safeDirectlyUnder === null && (botTarget.vy || 0) > -1.2) {
       wantsJetpack = true;
-      const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
+      const isA4 = (currentArenaId === 'ARENA_4' || currentArenaId === 'arena-4' || currentArenaId === 'USS_TITAN' || currentArenaId === 'TITAN' || currentArenaId === 'LOTNISKOWIEC' || currentArenaId === 'OIL_RIG_TYPHOON' || currentArenaId === 'TYPHOON' || currentArenaId === 'TYFON' || currentArenaId === 'OIL_RIG' || currentArenaId === 'SPACE_STATION' || currentArenaId === 'ARES');
       if (isA4) {
-        // Natychmiast steruj w stronę platformy (centrum X: 1100), aby nie wpaść do oceanu
-        if (botCenterX > 1120) {
+        // Natychmiast steruj w stronę platformy pokładu (centrum X: 1600), aby nie wpaść do oceanu
+        if (botCenterX > 1650) {
           bKeys.left = true;
           bKeys.right = false;
-        } else if (botCenterX < 1080) {
+        } else if (botCenterX < 1550) {
           bKeys.right = true;
           bKeys.left = false;
         }

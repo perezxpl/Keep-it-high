@@ -98,7 +98,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (targets) player._targets = targets;
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
-  const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'ARMORED_TRAIN');
+  const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'ARMORED_TRAIN');
   const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const noFlatGround = isA4 || isA3 || isA2;
@@ -1386,18 +1386,19 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   player.headPitch += (desiredPitch - player.headPitch) * pitchLerp;
 
   const isArena5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-  const isArena4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
+  const isArena4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
-  const wallLeft = isArena5 ? 0 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT));
-  const wallRight = isArena5 ? 1600 : (isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT));
+  const wallLeft = isArena5 ? 0 : (isArena4 ? 0 : (isArena3 ? 0 : (isArena2 ? 180 : ARENA_LEFT)));
+  const wallRight = isArena5 ? 1600 : (isArena4 ? 3200 : (isArena3 ? 4400 : (isArena2 ? 3820 : ARENA_RIGHT)));
 
   // Pułap / sufit areny:
-  // W Arenie 5 gracz nie może wylecieć wyżej niż aktualny widok areny (górna krawędź kamery)
+  // W Arenie 5 gracz nie może wylecieć wyżej niż aktualny widok areny (górna krawędź kamery).
+  // W Arenie 4 (USS TITAN) mapa stawia na otwartą przestrzeń i swobodny lot jetpackiem.
   const camTopY = (camera && typeof camera.y === 'number')
     ? camera.y
     : ((typeof window !== 'undefined' && window.camera && typeof window.camera.y === 'number') ? window.camera.y : (1200 - 900));
-  const ceilingY = (isArena5 || isArena4) ? (camTopY + 12) : 30;
+  const ceilingY = isArena5 ? (camTopY + 12) : 30;
 
   // 1. Twarda blokada gornej krawedzi mapy (Ceiling Clamping - postac nie wylatuje poza swiat ani ponad aktualny stan areny)
   if (player.y < ceilingY) {

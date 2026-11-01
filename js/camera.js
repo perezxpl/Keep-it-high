@@ -233,11 +233,11 @@ export function getCanvasLogicalHeight() {
 export function getArenaBounds() {
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const minX = isArena5 ? 0 : ((isArena4 || isArena3 || isArena2) ? 0 : CFG_ARENA_LEFT);
-  const maxX = isArena5 ? 1600 : (isArena4 ? 2200 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
+  const maxX = isArena5 ? 1600 : (isArena4 ? 3200 : (isArena3 ? 4400 : (isArena2 ? 4000 : CFG_ARENA_RIGHT)));
   const groundFloor = getCameraGroundY();
 
   return {
@@ -245,7 +245,7 @@ export function getArenaBounds() {
     maxX,
     arenaWidth: maxX - minX,
     minY: isArena5 ? -100000 : 0,
-    maxY: isArena5 ? 2000 : (isArena4 ? 1400 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)))
+    maxY: isArena5 ? 2000 : (isArena4 ? 1200 : (isArena3 ? 1400 : (isArena2 ? 1600 : groundFloor)))
   };
 }
 
@@ -297,7 +297,7 @@ export function clampCamera(cam = camera) {
 
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'OIL_RIG_TYPHOON' || arenaId === 'TYPHOON' || arenaId === 'TYFON' || arenaId === 'OIL_RIG' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2' || arenaId === 'ARENA_2_SECTOR_X');
   const groundFloor = getCameraGroundY();
@@ -308,7 +308,7 @@ export function clampCamera(cam = camera) {
       ? a5MinCam
       : (1200 - viewHeight))
     : (isArena4
-      ? Math.max(0, 1400 - viewHeight)
+      ? Math.max(0, 1200 - viewHeight)
       : (isArena3 ? Math.max(0, 1400 - viewHeight) : (isArena2 ? Math.max(0, 1600 - viewHeight) : (groundFloor - (viewHeight * 0.72)))));
 
   cam.y = Math.max(minCamY, Math.min(cam.y, maxCamY));
@@ -331,7 +331,7 @@ export function updateCamera(player, ball, options = {}) {
   let minZoom = canvasWidth / arenaWidth;
   const arenaId = getCameraArenaId();
   const isArena5 = (arenaId === 'ARENA_5' || arenaId === 'arena-5' || arenaId === 'PREFAB_TOWER');
-  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
+  const isArena4 = (arenaId === 'ARENA_4' || arenaId === 'arena-4' || arenaId === 'USS_TITAN' || arenaId === 'TITAN' || arenaId === 'LOTNISKOWIEC' || arenaId === 'ARMORED_TRAIN' || arenaId === 'SPACE_STATION' || arenaId === 'ARES' || arenaId === 'ARES_ORBITAL_STATION');
   const isArena3 = (arenaId === 'ARENA_3' || arenaId === 'ARENA_FOUNDRY' || arenaId === 'arena-3');
   const isArena2 = (arenaId === 'ARENA_2' || arenaId === 'ARENA_2_PANDORA' || arenaId === 'arena-2');
   const isMobile = isMobileDevice();
@@ -341,9 +341,9 @@ export function updateCamera(player, ball, options = {}) {
   // Wyliczenie wysokości gracza nad głównym poziomem gruntu (Altitude & Smoothed Elevation Factor):
   // Pozwala kamerze rozpoznać, kiedy gracz stoi wysoko (np. na wieży w Arenie 3 lub górnych pomostach)
   const groundFloor = getCameraGroundY();
-  const baseFloorY = isArena4 ? 820 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
+  const baseFloorY = isArena4 ? 920 : (isArena3 ? 1200 : (isArena2 ? 1150 : groundFloor));
   const target = player || ball;
-  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 820 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 820 : groundFloor - 50));
+  const rawTargetY = target ? (target.y !== undefined ? target.y : (isArena2 ? 910 : (isArena4 ? 920 : groundFloor - 50))) : (isArena2 ? 910 : (isArena4 ? 920 : groundFloor - 50));
   const playerFootY = rawTargetY + (target && target.h ? target.h : 70);
   const altitude = Math.max(0, baseFloorY - playerFootY);
 

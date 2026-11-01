@@ -476,10 +476,10 @@ export const uiManager = {
       id: 'ARENA_4',
       badge: 'SEKTOR 04',
       counter: 'MAPA 4 / 5',
-      name: 'PLATFORMA WIERTNICZA // TYFON',
-      tag: 'MORSKI KOMPLEKS // SZTORM',
-      desc: 'WIELOPOZIOMOWA WIERTNIA // WZBURZONY OCEAN // RUCHOMA SUWNICA // PLAMY ROPY',
-      img: './assets/arena4_preview.svg?v=v380_oil_rig_typhoon'
+      name: 'LOTNISKOWIEC // USS TITAN',
+      tag: 'OTWARTA PRZESTRZEŃ // FLOTA',
+      desc: 'PANORAMICZNY POKŁAD // KATAPULTA PAROWA // MYŚLIWCE JAKO OSŁONY // MOSTEK',
+      img: './assets/arena4_preview.svg?v=v390_uss_titan'
     },
     {
       id: 'ARENA_5',

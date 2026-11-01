@@ -1,6 +1,6 @@
 // =========================================================================
-// ARENAS/ARENA_TRAIN.JS - ALIAS DLA ARENY POCIĄGU (ARENA 4)
-// Re-eksportuje wszystkie zasoby areny pociągu (state, platforms, hazards, renderer)
+// ARENAS/ARENA_TRAIN.JS - FASADA KOMPATYBILNOŚCI ARENY 4
+// Przekierowuje do autorskiej mapy: ./arena4.js („LOTNISKOWIEC // USS TITAN”)
 // =========================================================================
 
 export * from './arena4.js';

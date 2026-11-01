@@ -1,19 +1,22 @@
 // =========================================================================
-// ARENAS/ARENA4.JS - PLATFORMA WIERTNICZA // TYFON (CANVAS 2D ENGINE)
-// Moduł Areny 4: Morski Kompleks Przemysłowy w Epicentrum Sztormu
-// Wielopoziomowa Wiertnia, Wysunięty Helipad, Ruchoma Suwnica Rur,
-// Plamy Ropy o Obniżonym Tarciu (z Reakcją Łańcuchową Podpalenia),
-// Wzburzony Ocean jako Strefa Śmierci.
-// Standard: Stabilne 60 FPS Google Chrome, ZERO ctx.shadowBlur,
-// OffscreenCanvas buforowanie tła sztormu, fal i wieży wiertniczej,
-// ZERO EMOJIS, Stylistyka Modern Military.
+// ARENAS/ARENA4.JS - LOTNISKOWIEC // USS TITAN (CANVAS 2D ENGINE)
+// Moduł Areny 4: Panoramiczny Okręt Wojenny na Otwartym Oceanie
+// Gigantyczny Płaski Pas Startowy (2800 px wolnego pokładu),
+// Prawa Wieża Dowodzenia / Mostek (3 poziomy kładek obserwacyjnych),
+// Zaparkowane Myśliwce F/A-24 jako Osłony Taktyczne,
+// Aktywna Katapulta Parowa (Steam Catapult) wyrzucająca w poziomie,
+// Wzburzony Ocean jako Strefa Śmierci poza obrysem pokładu.
+//
+// STANDARD: Stabilne 60 FPS Google Chrome, ZERO ctx.shadowBlur,
+// OffscreenCanvas buforowanie tła oceanu, kadłuba lotniskowca i mostka,
+// ZERO EMOJIS, Stylistyka Modern Naval Military.
 // =========================================================================
 
 import { triggerScreenShake } from '../camera.js';
 import { spawnBloodSpurt } from '../world/gore.js';
 
 /**
- * Pomocnicze bezpieczne tworzenie OffscreenCanvas kompatybilne z przeglądarkami i środowiskiem Node.
+ * Bezpieczne tworzenie OffscreenCanvas kompatybilne z przeglądarkami oraz Node.js.
  */
 function createOffscreenCanvas(width, height) {
   if (typeof OffscreenCanvas !== 'undefined') {
@@ -29,1374 +32,1034 @@ function createOffscreenCanvas(width, height) {
 }
 
 // =========================================================================
-// 1. GŁÓWNA KLASA ARENY: Arena4OilRig („PLATFORMA WIERTNICZA // TYFON”)
+// 1. GŁÓWNA KLASA ARENY: Arena4Titan („LOTNISKOWIEC // USS TITAN”)
 // =========================================================================
-export class Arena4OilRig {
+export class Arena4Titan {
   constructor() {
     this.id = 'arena-4';
-    this.alias = 'OIL_RIG_TYPHOON';
-    this.mapId = 'oil_rig_typhoon_01';
-    this.name = 'PLATFORMA WIERTNICZA // TYFON';
-    this.width = 2200;
-    this.height = 1400;
-    this.mainDeckY = 920; // Główna wysokość pokładu technicznego
-    this.deathY = 1250;   // Granica wzburzonego oceanu (strefa śmierci)
+    this.alias = 'USS_TITAN';
+    this.mapId = 'uss_titan_01';
+    this.name = 'LOTNISKOWIEC // USS TITAN';
+    this.width = 3200;
+    this.height = 1200;
+    this.mainDeckY = 920; // Główna wysokość płaskiego pasa startowego
+    this.deathY = 1080;   // Granica wzburzonego oceanu za burtą (strefa śmierci)
     this.gravityMultiplier = 1.0;
     this.animTime = 0;
-    this.lightningTimer = 0;
-    this.lightningAlpha = 0;
 
-    // Twarde punkty odrodzenia (SPAWN_POINTS) wykluczające wodę i próżnię
+    // Twarde punkty odrodzenia (SPAWN_POINTS)
     this.spawnPoints = [
-      { x: 280,  y: 680, facing: 1,  team: 'CYAN',   label: 'HELIPAD',           isGround: true },
-      { x: 800,  y: 860, facing: 1,  team: 'CYAN',   label: 'GŁÓWNY_POKŁAD_L',   isGround: true },
-      { x: 1400, y: 860, facing: -1, team: 'ORANGE', label: 'GŁÓWNY_POKŁAD_P',   isGround: true },
-      { x: 1850, y: 680, facing: -1, team: 'ORANGE', label: 'MASZYNOWNIA_PRAWA', isGround: true }
+      { x: 450,  y: 860, facing: 1,  team: 'CYAN',   label: 'KATAPULTA_LEWA', isGround: true },
+      { x: 1350, y: 860, facing: 1,  team: 'CYAN',   label: 'ŚRODEK_PASA',    isGround: true },
+      { x: 2150, y: 860, facing: -1, team: 'ORANGE', label: 'PRAWA_POKŁAD',  isGround: true },
+      { x: 2550, y: 540, facing: -1, team: 'ORANGE', label: 'MOSTEK_POZIOM_2',isGround: true }
     ];
     this.spawns = this.spawnPoints;
 
-    // Ruchoma suwnica rur (parametry wahadłowe)
-    this.crane = {
-      x: 850,
-      y: 500,
-      width: 320,
-      height: 25,
-      minX: 750,
-      maxX: 1150,
-      speed: 1.2, // px na klatkę (72 px/s przy 60 FPS)
-      dir: 1,
-      currentSpeed: 1.2
-    };
-
-    // Obiekt platformy suwnicy w rejestrze platform
-    this.cranePlatform = {
-      id: 'typhoon_crane_gantry',
-      name: 'RUCHOMA SUWNICA RUR',
-      x: this.crane.x,
-      y: this.crane.y,
-      width: this.crane.width,
-      height: this.crane.height,
-      w: this.crane.width,
-      h: this.crane.height,
-      thickness: this.crane.height,
-      isGround: true,
-      solid: true,
-      isDropThrough: true,
-      type: 'pipe_gantry'
+    // Platforma katapulty parowej (strefa aktywacji: x od 350 do 750)
+    this.catapult = {
+      x1: 350,
+      x2: 750,
+      y: 920,
+      boostVx: 22,
+      cooldown: 0
     };
 
     // Kompletna lista fizycznych platform areny
     this.platforms = [
-      // 1. Główny Pokład Techniczny (Centrum)
+      // 1. Główny pas startowy (Płaski pokład)
       {
-        id: 'typhoon_main_deck',
-        name: 'GŁÓWNY POKŁAD TECHNICZNY',
-        x: 600,
+        id: 'titan_flight_deck',
+        name: 'GŁÓWNY POKŁAD STARTOWY',
+        x: 200,
         y: 920,
-        width: 1000,
-        height: 60,
-        w: 1000,
-        h: 60,
-        thickness: 60,
+        width: 2800,
+        height: 80,
+        w: 2800,
+        h: 80,
+        thickness: 80,
         isGround: true,
         solid: true,
-        type: 'solid_deck'
+        type: 'flight_deck'
       },
-      // 2. Wysunięty Helipad (Lewa flanka)
+
+      // 2. Wyspa dowodzenia / Mostek (3 poziomy kładek obserwacyjnych)
+      // Poziom 1
       {
-        id: 'typhoon_helipad',
-        name: 'WYSUNIĘTY HELIPAD',
-        x: 120,
-        y: 740,
-        width: 420,
-        height: 35,
-        w: 420,
-        h: 35,
-        thickness: 35,
+        id: 'titan_bridge_lvl1',
+        name: 'MOSTEK - POZIOM 1',
+        x: 2450,
+        y: 760,
+        width: 350,
+        height: 25,
+        w: 350,
+        h: 25,
+        thickness: 25,
         isGround: true,
         solid: true,
-        type: 'helipad'
+        isDropThrough: true,
+        type: 'catwalk'
       },
-      // 3. Kładka Rafinerii i Maszynowni (Prawa flanka)
+      // Poziom 2
       {
-        id: 'typhoon_refinery_walkway',
-        name: 'KŁADKA RAFINERII I MASZYNOWNI',
-        x: 1680,
-        y: 740,
-        width: 420,
-        height: 35,
-        w: 420,
-        h: 35,
-        thickness: 35,
+        id: 'titan_bridge_lvl2',
+        name: 'MOSTEK - POZIOM 2',
+        x: 2520,
+        y: 600,
+        width: 280,
+        height: 25,
+        w: 280,
+        h: 25,
+        thickness: 25,
         isGround: true,
         solid: true,
-        type: 'walkway'
+        isDropThrough: true,
+        type: 'catwalk'
       },
-      // 4. Ruchoma Suwnica Rur (Górny poziom)
-      this.cranePlatform,
-      // 5. Osłony taktyczne: dwa kontenery techniczne na głównym pokładzie
+      // Poziom 3 (Dach radaru)
       {
-        id: 'typhoon_container_1',
-        name: 'KONTENER TECHNICZNY ALFA',
-        x: 680,
-        y: 880,
-        width: 65,
-        height: 40,
-        w: 65,
-        h: 40,
-        thickness: 40,
+        id: 'titan_bridge_lvl3',
+        name: 'MOSTEK - DACH RADARU',
+        x: 2600,
+        y: 440,
+        width: 200,
+        height: 25,
+        w: 200,
+        h: 25,
+        thickness: 25,
         isGround: true,
         solid: true,
+        isDropThrough: true,
+        type: 'catwalk'
+      },
+
+      // 3. Myśliwce wielozadaniowe (Osłony taktyczne na pasie)
+      // Myśliwiec A
+      {
+        id: 'titan_fighter_a',
+        name: 'MYŚLIWIEC F/A-24 ALFA',
+        x: 1050,
+        y: 875,
+        width: 90,
+        height: 45,
+        w: 90,
+        h: 45,
+        thickness: 45,
         isCover: true,
-        type: 'container'
-      },
-      {
-        id: 'typhoon_container_2',
-        name: 'KONTENER TECHNICZNY BRAWO',
-        x: 1220,
-        y: 880,
-        width: 65,
-        height: 40,
-        w: 65,
-        h: 40,
-        thickness: 40,
-        isGround: true,
         solid: true,
-        isCover: true,
-        type: 'container'
-      },
-      // Twarde osłony pionowe: dwa kominy rafinerii chroniące przed snajperami
-      {
-        id: 'typhoon_chimney_1',
-        name: 'KOMIN RAFINERII SEKTOR E1',
-        x: 1780,
-        y: 560,
-        width: 40,
-        height: 180,
-        w: 40,
-        h: 180,
-        thickness: 180,
         isGround: true,
-        solid: true,
-        isCover: true,
-        isWall: true,
-        type: 'chimney'
+        type: 'fighter_cover'
       },
+      // Myśliwiec B
       {
-        id: 'typhoon_chimney_2',
-        name: 'KOMIN RAFINERII SEKTOR E2',
-        x: 1980,
-        y: 560,
-        width: 40,
-        height: 180,
-        w: 40,
-        h: 180,
-        thickness: 180,
-        isGround: true,
-        solid: true,
+        id: 'titan_fighter_b',
+        name: 'MYŚLIWIEC F/A-24 BRAWO',
+        x: 1850,
+        y: 875,
+        width: 90,
+        height: 45,
+        w: 90,
+        h: 45,
+        thickness: 45,
         isCover: true,
-        isWall: true,
-        type: 'chimney'
+        solid: true,
+        isGround: true,
+        type: 'fighter_cover'
       }
     ];
 
-    // Mechanika środowiskowa: Plamy ropy na głównym pokładzie
-    this.oilPuddles = [
-      {
-        id: 'oil_puddle_west',
-        name: 'PLAMA ROPY ZACHÓD',
-        x1: 750,
-        x2: 900,
-        y: 920,
-        width: 150,
-        height: 10,
-        burning: false,
-        burnTimer: 0
-      },
-      {
-        id: 'oil_puddle_east',
-        name: 'PLAMA ROPY WSCHÓD',
-        x1: 1300,
-        x2: 1450,
-        y: 920,
-        width: 150,
-        height: 10,
-        burning: false,
-        burnTimer: 0
-      }
-    ];
+    this.customObjects = [];
 
-    // Pule cząsteczek dymu, ognia i bryzgów wody oceanicznej (Zero shadowBlur, wysoka wydajność)
-    this.smokeParticles = [];
-    this.fireParticles = [];
-    this.sprayParticles = [];
+    // Pula cząsteczek pary z katapulty
+    this.steamParticles = [];
 
-    // Pre-buforowane tło (OffscreenCanvas)
-    this.cachedBgCanvas = null;
-    this.initPrebufferedBackground();
+    // Bufory OffscreenCanvas
+    this.bgCanvas = null;
+    this.carrierCanvas = null;
+    this.buffersReady = false;
+
+    this.initBuffers();
   }
 
   /**
-   * Pre-buforowanie tła sztormu, fal horyzontu oraz wieży wiertniczej (OffscreenCanvas).
-   * Gwarantuje stabilne 60 FPS w Chrome bez każdorazowego przeliczania setek belek kratownicy.
+   * Inicjalizacja buforów OffscreenCanvas – generowane TYLKO RAZ dla 60 FPS.
    */
-  initPrebufferedBackground() {
-    const bgCanvas = createOffscreenCanvas(this.width, this.height);
-    if (!bgCanvas) return;
-    const ctx = bgCanvas.getContext('2d');
+  initBuffers() {
+    this.bgCanvas = createOffscreenCanvas(this.width, this.height);
+    this.carrierCanvas = createOffscreenCanvas(this.width, this.height);
+
+    if (this.bgCanvas && this.carrierCanvas) {
+      this.renderBackgroundBuffer();
+      this.renderCarrierBuffer();
+      this.buffersReady = true;
+    }
+  }
+
+  /**
+   * Pre-renderowanie panoramicznego tła morskiego w buforze OffscreenCanvas.
+   * ZERO ctx.shadowBlur.
+   */
+  renderBackgroundBuffer() {
+    const ctx = this.bgCanvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.save();
-    ctx.shadowBlur = 0; // Twardy zakaz shadowBlur
+    const w = this.width;
+    const h = this.height;
 
-    // 1. Ciemne, sztormowe niebo tyfonu
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, this.height);
-    skyGrad.addColorStop(0, '#040711');
-    skyGrad.addColorStop(0.35, '#080e1a');
-    skyGrad.addColorStop(0.70, '#0f172a');
-    skyGrad.addColorStop(1.0, '#090d16');
+    // 1. Panoramiczne niebo morskie – czysty gradient wojskowy
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 850);
+    skyGrad.addColorStop(0.00, '#0a1728'); // Granat stratosfery
+    skyGrad.addColorStop(0.35, '#122640'); // Chłodny granat
+    skyGrad.addColorStop(0.70, '#1d3958'); // Stalowy błękit
+    skyGrad.addColorStop(0.92, '#335574'); // Zamglenie horyzontu
+    skyGrad.addColorStop(1.00, '#4b6c8c'); // Linia horyzontu
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.fillRect(0, 0, w, 850);
 
-    // 2. Chmury burzowe i odległe rozświetlenia
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
-    for (let c = 0; c < 8; c++) {
-      const cx = (c * 300) - 100;
-      const cy = 60 + (c % 3) * 50;
+    // 2. Chmury na dalszym planie (lekkie pasma altostratus)
+    ctx.fillStyle = 'rgba(210, 225, 240, 0.08)';
+    ctx.beginPath();
+    ctx.ellipse(600, 260, 480, 45, -0.05, 0, Math.PI * 2);
+    ctx.ellipse(1500, 180, 620, 50, 0.03, 0, Math.PI * 2);
+    ctx.ellipse(2400, 240, 550, 42, -0.02, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(230, 240, 255, 0.05)';
+    ctx.beginPath();
+    ctx.ellipse(900, 320, 360, 35, 0.02, 0, Math.PI * 2);
+    ctx.ellipse(2000, 290, 420, 38, -0.04, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Smugi kondensacyjne myśliwców (contrails) na dużym pułapie
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(100, 120);
+    ctx.lineTo(1400, 40);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(1800, 70);
+    ctx.lineTo(3100, 140);
+    ctx.stroke();
+
+    // 4. Odległy ocean na horyzoncie (od y = 780 do dołu)
+    const seaGrad = ctx.createLinearGradient(0, 780, 0, h);
+    seaGrad.addColorStop(0.00, '#102235'); // Ciemna tafla horyzontu
+    seaGrad.addColorStop(0.30, '#0a1827');
+    seaGrad.addColorStop(1.00, '#050c14'); // Głębia oceanu
+    ctx.fillStyle = seaGrad;
+    ctx.fillRect(0, 780, w, h - 780);
+
+    // Linia mgły horyzontu
+    ctx.strokeStyle = 'rgba(96, 138, 175, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 780);
+    ctx.lineTo(w, 780);
+    ctx.stroke();
+
+    // 5. Sylwetki odległych okrętów eskorty (Grupa Uderzeniowa / Strike Group)
+    // Okręt 1: Niszczyciel rakietowy Arleigh Burke (lewa flanka)
+    this.drawDistantWarship(ctx, 420, 778, 1.0);
+    // Okręt 2: Krążownik Ticonderoga (prawa flanka)
+    this.drawDistantWarship(ctx, 2150, 778, 1.25);
+  }
+
+  /**
+   * Rysuje minimalistyczną sylwetkę okrętu eskorty na horyzoncie.
+   */
+  drawDistantWarship(ctx, x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#142538';
+
+    // Kadłub
+    ctx.beginPath();
+    ctx.moveTo(-110, 0);
+    ctx.lineTo(-90, -9);
+    ctx.lineTo(85, -9);
+    ctx.lineTo(105, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Nadbudówka i mostek
+    ctx.fillRect(-45, -24, 65, 15);
+    ctx.fillRect(-25, -34, 30, 10);
+
+    // Maszt i radar
+    ctx.strokeStyle = '#142538';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-10, -34);
+    ctx.lineTo(-10, -48);
+    ctx.moveTo(-18, -42);
+    ctx.lineTo(-2, -42);
+    ctx.moveTo(35, -9);
+    ctx.lineTo(35, -26);
+    ctx.stroke();
+
+    // Wyrzutnie VLS i działo dziobowe
+    ctx.fillRect(-70, -12, 10, 3);
+    ctx.beginPath();
+    ctx.moveTo(-75, -11);
+    ctx.lineTo(-88, -13);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /**
+   * Pre-renderowanie konstrukcji lotniskowca:
+   * Kadłub, Pokład startowy, Oznaczenia pasa, Szyna katapulty, Mostek, Myśliwce.
+   * ZERO ctx.shadowBlur.
+   */
+  renderCarrierBuffer() {
+    const ctx = this.carrierCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // =========================================================================
+    // A. POTĘŻNY KADŁUB LOTNISKOWCA (BATTLESHIP STEEL HULL)
+    // =========================================================================
+    ctx.save();
+
+    // Główny obrys kadłuba (od x: 140 do x: 3060)
+    ctx.fillStyle = '#1e2632'; // Pancerz burtowy Navy Haze
+    ctx.beginPath();
+    ctx.moveTo(140, 920);  // Dziób
+    ctx.lineTo(200, 1140); // Skos dziobowy ku kilowi
+    ctx.lineTo(3000, 1140); // Linia stępki / wody
+    ctx.lineTo(3060, 920); // Rufa
+    ctx.closePath();
+    ctx.fill();
+
+    // Dolny podwodny pas antyporostowy (czerwony tlenkowy)
+    ctx.fillStyle = '#662222';
+    ctx.beginPath();
+    ctx.moveTo(185, 1090);
+    ctx.lineTo(200, 1140);
+    ctx.lineTo(3000, 1140);
+    ctx.lineTo(3045, 1090);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ciemna linia wodna (boot-topping black)
+    ctx.fillStyle = '#0f141c';
+    ctx.fillRect(175, 1076, 2880, 14);
+
+    // Stalowe płyty pancerne i żebra kadłuba
+    ctx.strokeStyle = '#2d3748';
+    ctx.lineWidth = 2;
+    for (let px = 300; px <= 2900; px += 180) {
       ctx.beginPath();
-      ctx.ellipse(cx, cy, 260, 90, -0.05, 0, Math.PI * 2);
+      ctx.moveTo(px, 930);
+      ctx.lineTo(px + 10, 1076);
+      ctx.stroke();
+    }
+
+    // Podłużne wręgi kadłuba
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(160, 970);
+    ctx.lineTo(3040, 970);
+    ctx.moveTo(170, 1020);
+    ctx.lineTo(3030, 1020);
+    ctx.stroke();
+
+    // Wsporniki wysięgników pokładu (sponsons & deck trusses)
+    ctx.fillStyle = '#161d27';
+    for (let sx = 260; sx <= 2950; sx += 220) {
+      ctx.beginPath();
+      ctx.moveTo(sx - 20, 920);
+      ctx.lineTo(sx + 20, 920);
+      ctx.lineTo(sx, 955);
+      ctx.closePath();
       ctx.fill();
     }
 
-    // 3. Potężna Wieża Wiertnicza (The Derrick) w centrum kompleksu (x: 960..1240, y: 160..920)
-    this.drawDerrickTower(ctx, 960, 160, 280, 760);
+    // Kładki techniczne wzdłuż burty (catwalks z barierkami)
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(220, 940, 750, 8);
+    ctx.fillRect(1050, 940, 750, 8);
+    ctx.fillRect(1880, 940, 750, 8);
 
-    // 4. Odległe instalacje morskie i rurociągi w tle
-    this.drawBackgroundRefineryPipes(ctx);
-
-    // 5. Statyczne warstwy fal sztormowych na horyzoncie (y: 1120..1250)
-    this.drawBackgroundOceanHorizons(ctx);
-
-    ctx.restore();
-    this.cachedBgCanvas = bgCanvas;
-  }
-
-  /**
-   * Rysuje monumentalną stalową wieżę wiertniczą (Derrick) ze stężeniami X i pochodnią gazową.
-   */
-  drawDerrickTower(ctx, x, y, w, h) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    const topW = w * 0.42;
-    const topX = x + (w - topW) * 0.5;
-    const botX = x;
-    const botW = w;
-    const botY = y + h;
-
-    // Sylwetka rdzenia wieży
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-    ctx.beginPath();
-    ctx.moveTo(topX, y);
-    ctx.lineTo(topX + topW, y);
-    ctx.lineTo(botX + botW, botY);
-    ctx.lineTo(botX, botY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Główne pylony nośne wieży
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(topX, y);
-    ctx.lineTo(botX, botY);
-    ctx.moveTo(topX + topW, y);
-    ctx.lineTo(botX + botW, botY);
-    ctx.stroke();
-
-    // Półki technologiczne i stężenia krzyżowe (X-truss)
-    const tiers = 7;
-    const tierH = h / tiers;
-    ctx.lineWidth = 2.5;
-
-    for (let t = 0; t <= tiers; t++) {
-      const curY = y + t * tierH;
-      const frac = t / tiers;
-      const curLeft = topX + (botX - topX) * frac;
-      const curRight = (topX + topW) + ((botX + botW) - (topX + topW)) * frac;
-
-      // Belka pozioma
-      ctx.strokeStyle = '#334155';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+    ctx.lineWidth = 1;
+    for (let bx = 220; bx <= 2630; bx += 30) {
+      if ((bx >= 970 && bx <= 1050) || (bx >= 1800 && bx <= 1880)) continue;
       ctx.beginPath();
-      ctx.moveTo(curLeft, curY);
-      ctx.lineTo(curRight, curY);
+      ctx.moveTo(bx, 940);
+      ctx.lineTo(bx, 933);
       ctx.stroke();
-
-      // Zastrzały skośne (X)
-      if (t < tiers) {
-        const nextY = y + (t + 1) * tierH;
-        const nextFrac = (t + 1) / tiers;
-        const nextLeft = topX + (botX - topX) * nextFrac;
-        const nextRight = (topX + topW) + ((botX + botW) - (topX + topW)) * nextFrac;
-
-        ctx.strokeStyle = '#1e293b';
-        ctx.beginPath();
-        ctx.moveTo(curLeft, curY);
-        ctx.lineTo(nextRight, nextY);
-        ctx.moveTo(curRight, curY);
-        ctx.lineTo(nextLeft, nextY);
-        ctx.stroke();
-      }
     }
 
-    // Głowica wiertnicza i blok koronowy (Crown Block) na szczycie
+    // =========================================================================
+    // B. GŁÓWNY POKŁAD STARTOWY (FLIGHT DECK: x: 200 do 3000, y: 920)
+    // =========================================================================
+    // Blok masywu pokładu
+    const deckGrad = ctx.createLinearGradient(0, 920, 0, 1000);
+    deckGrad.addColorStop(0.00, '#1c212a'); // Ciemna nawierzchnia antypoślizgowa
+    deckGrad.addColorStop(0.15, '#161a22');
+    deckGrad.addColorStop(1.00, '#0f131a');
+    ctx.fillStyle = deckGrad;
+    ctx.fillRect(200, 920, 2800, 80);
+
+    // Krawędź górna pokładu (stalowy rant)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(190, 920, 2820, 4);
+
+    // Stalowe dylatacje i płyty pokładu
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+    ctx.lineWidth = 1;
+    for (let dx = 250; dx < 3000; dx += 100) {
+      ctx.beginPath();
+      ctx.moveTo(dx, 924);
+      ctx.lineTo(dx, 1000);
+      ctx.stroke();
+    }
+
+    // Oznaczenia pasa startowego (Runway Centerline - biało-żółte przerywane pasy)
+    ctx.fillStyle = '#f8fafc';
+    for (let rx = 350; rx <= 2850; rx += 140) {
+      ctx.fillRect(rx, 942, 80, 5);
+    }
+
+    // Żółte pasy strefy manewrowej
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(240, 928, 2720, 3);
+    ctx.fillRect(240, 960, 2720, 3);
+
+    // Oznaczenie taktyczne i nazwa lotniskowca na pokładzie
+    ctx.fillStyle = 'rgba(241, 245, 249, 0.28)';
+    ctx.font = '900 48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CVN-99', 1500, 985);
+    ctx.font = '900 36px sans-serif';
+    ctx.fillText('USS TITAN', 2250, 985);
+
+    // Dźwignik samolotowy (Aircraft Elevator 1 & 2)
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(topX - 10, y - 22, topW + 20, 22);
+    ctx.fillRect(920, 924, 110, 76);
+    ctx.fillRect(1720, 924, 110, 76);
+
     ctx.strokeStyle = '#eab308';
     ctx.lineWidth = 2;
-    ctx.strokeRect(topX - 10, y - 22, topW + 20, 22);
+    ctx.strokeRect(920, 924, 110, 76);
+    ctx.strokeRect(1720, 924, 110, 76);
 
-    // Pionowa szyna przewodu wiertniczego (Drill String Guide) pośrodku wieży
-    const midX = x + w * 0.5;
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(midX, y);
-    ctx.lineTo(midX, botY);
-    ctx.stroke();
+    // =========================================================================
+    // C. MECHANIZM KATAPULTY PAROWEJ (STEAM CATAPULT: x: 350..750, y: 920)
+    // =========================================================================
+    // Stalowa szyna katapulty wpuszczona w pokład
+    ctx.fillStyle = '#090d14';
+    ctx.fillRect(350, 920, 400, 10);
 
-    // Pochodnia gazowa (Flare Stack) na prawej flance wieży
-    const flareX = botX + botW + 35;
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(flareX, botY);
-    ctx.lineTo(flareX, y + 40);
-    ctx.stroke();
+    // Dwie równoległe szyny stalowe
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(350, 922, 400, 2);
+    ctx.fillRect(350, 926, 400, 2);
 
-    // Ramię wysięgnika pochodni
+    // Wózek startowy katapulty (shuttle)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(720, 917, 26, 7);
+
+    // Pasy ostrzegawcze (hazard stripes) wokół strefy katapulty
+    ctx.save();
+    for (let hx = 340; hx <= 750; hx += 16) {
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(hx, 932, 8, 8);
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(hx + 8, 932, 8, 8);
+    }
+    ctx.restore();
+
+    // Napis strefy katapulty
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('CATAPULT 01 // HIGH PRESSURE STEAM', 350, 955);
+
+    // Liny aresztujące na rufie (Arresting gear wires: x: 2650..2900)
+    ctx.strokeStyle = '#64748b';
     ctx.lineWidth = 3;
+    for (let wx = 2680; wx <= 2920; wx += 80) {
+      ctx.beginPath();
+      ctx.moveTo(wx, 919);
+      ctx.lineTo(wx, 925);
+      ctx.stroke();
+    }
+
+    // =========================================================================
+    // D. WYSPA DOWODZENIA / MOSTEK (SUPERSTRUCTURE / BRIDGE: x: 2400..3000)
+    // =========================================================================
+    // Masywna wieża dowodzenia (Island)
+    ctx.fillStyle = '#263140'; // Stalowy Haze Gray
     ctx.beginPath();
-    ctx.moveTo(flareX - 35, y + 120);
-    ctx.lineTo(flareX, y + 40);
-    ctx.stroke();
+    ctx.moveTo(2420, 920);
+    ctx.lineTo(2460, 440); // Skos aerodynamiczny
+    ctx.lineTo(2850, 440);
+    ctx.lineTo(2920, 920);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.restore();
-  }
+    // Cienie i podziały kondygnacji wieży
+    ctx.fillStyle = '#1a232f';
+    ctx.fillRect(2470, 760, 390, 16);
+    ctx.fillRect(2530, 600, 310, 14);
+    ctx.fillRect(2610, 440, 220, 12);
 
-  /**
-   * Rurociągi technologiczne rafinerii w tle za pokładem.
-   */
-  drawBackgroundRefineryPipes(ctx) {
-    ctx.save();
-    ctx.shadowBlur = 0;
+    // Oszklenie mostka kapitańskiego i kontroli lotów PRI-FLY (Primary Flight Control)
+    // Szyby pod kątem ujemnym chroniące przed słońcem
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.45)'; // Szmaragdowo-złote szkło taktyczne
+    ctx.fillRect(2480, 520, 130, 28);
+    ctx.fillRect(2640, 520, 140, 28);
+
+    // Szprosy okienne mostka
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 14;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2480, 520, 130, 28);
+    ctx.strokeRect(2640, 520, 140, 28);
+    for (let gx = 2505; gx < 2610; gx += 25) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 520);
+      ctx.lineTo(gx, 548);
+      ctx.stroke();
+    }
+    for (let gx = 2665; gx < 2780; gx += 25) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 520);
+      ctx.lineTo(gx, 548);
+      ctx.stroke();
+    }
 
+    // Dolny mostek nawigacyjny
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+    ctx.fillRect(2490, 680, 240, 24);
+    ctx.strokeStyle = '#0f172a';
+    ctx.strokeRect(2490, 680, 240, 24);
+
+    // 1. Kładka Mostka - Poziom 1 (x: 2450, y: 760, w: 350, h: 25)
+    this.drawCatwalkStructure(ctx, 2450, 760, 350, 25);
+    // 2. Kładka Mostka - Poziom 2 (x: 2520, y: 600, w: 280, h: 25)
+    this.drawCatwalkStructure(ctx, 2520, 600, 280, 25);
+    // 3. Kładka Mostka - Poziom 3 Dach Radaru (x: 2600, y: 440, w: 200, h: 25)
+    this.drawCatwalkStructure(ctx, 2600, 440, 200, 25);
+
+    // Maszt taktyczny i kopuły radarów (Phased Array Radome & Mast)
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 3;
+    // Główny pylon masztu
     ctx.beginPath();
-    ctx.moveTo(500, 910);
-    ctx.lineTo(500, 800);
-    ctx.lineTo(1720, 800);
-    ctx.lineTo(1720, 910);
+    ctx.moveTo(2700, 440);
+    ctx.lineTo(2700, 330);
     ctx.stroke();
 
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 8;
+    // Kratownice masztu
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(2680, 440);
+    ctx.lineTo(2700, 360);
+    ctx.lineTo(2720, 440);
+    ctx.moveTo(2670, 390);
+    ctx.lineTo(2730, 390);
     ctx.stroke();
+
+    // Kopuła radaru satelitarnego (Satcom Radome dome)
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(2640, 425, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(2760, 425, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wielka tarcza radaru SPY Phased Array na ścianie wieży
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(2580, 475);
+    ctx.lineTo(2620, 475);
+    ctx.lineTo(2630, 510);
+    ctx.lineTo(2570, 510);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // =========================================================================
+    // E. ZAPARKOWANE MYŚLIWCE F/A-24 (OSŁONY TAKTYCZNE NA PASIE)
+    // =========================================================================
+    // Myśliwiec A: x: 1050, y: 875, w: 90, h: 45
+    this.drawParkedFighter(ctx, 1050, 875, 90, 45, 'F/A-24 ALFA', 1);
+    // Myśliwiec B: x: 1850, y: 875, w: 90, h: 45
+    this.drawParkedFighter(ctx, 1850, 875, 90, 45, 'F/A-24 BRAWO', -1);
 
     ctx.restore();
   }
 
   /**
-   * Odległe sylwetki wzburzonych fal oceanicznych na horyzoncie.
+   * Rysuje platformę kładki obserwacyjnej z ażurowym pomostem i balustradą.
    */
-  drawBackgroundOceanHorizons(ctx) {
+  drawCatwalkStructure(ctx, x, y, width, height) {
+    // Podstawa kładki
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(x, y, width, height);
+
+    // Krawędź górna
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(x, y, width, 4);
+
+    // Ażurowa siatka nośna
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    for (let kx = x; kx < x + width; kx += 12) {
+      ctx.beginPath();
+      ctx.moveTo(kx, y + 4);
+      ctx.lineTo(kx + 6, y + height);
+      ctx.stroke();
+    }
+
+    // Balustrada bezpieczeństwa nad kładką (poręcz)
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 14);
+    ctx.lineTo(x + width, y - 14);
+    ctx.stroke();
+
+    // Słupki balustrady
+    ctx.lineWidth = 1;
+    for (let sx = x + 10; sx < x + width; sx += 35) {
+      ctx.beginPath();
+      ctx.moveTo(sx, y);
+      ctx.lineTo(sx, y - 14);
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Rysuje profil wielozadaniowego myśliwca stealth 5. generacji F/A-24.
+   * Spełnia rolę niskiej osłony taktycznej na pokładzie (isCover: true).
+   */
+  drawParkedFighter(ctx, x, y, width, height, label, facing) {
     ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Warstwa 1: Odległy ocean
-    ctx.fillStyle = '#060d18';
-    ctx.beginPath();
-    ctx.moveTo(0, 1140);
-    for (let bx = 0; bx <= this.width; bx += 80) {
-      const by = 1140 + Math.sin(bx * 0.015) * 12;
-      ctx.lineTo(bx, by);
+    ctx.translate(x + width * 0.5, y + height);
+    if (facing === -1) {
+      ctx.scale(-1, 1);
     }
-    ctx.lineTo(this.width, this.height);
-    ctx.lineTo(0, this.height);
+
+    const halfW = width * 0.5;
+
+    // Koła podwozia na pokładzie (chocks / blokady kół)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-halfW + 16, -10, 10, 10);
+    ctx.fillRect(halfW - 22, -10, 10, 10);
+
+    // Żółte klocki blokujące koła (wheel chocks)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-halfW + 12, -4, 4, 4);
+    ctx.fillRect(-halfW + 26, -4, 4, 4);
+    ctx.fillRect(halfW - 26, -4, 4, 4);
+    ctx.fillRect(halfW - 12, -4, 4, 4);
+
+    // Goleń podwozia
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-halfW + 21, -10);
+    ctx.lineTo(-halfW + 25, -20);
+    ctx.moveTo(halfW - 17, -10);
+    ctx.lineTo(halfW - 20, -20);
+    ctx.stroke();
+
+    // Kadłub myśliwca (Stealth Low-Observable Gray)
+    const hullGrad = ctx.createLinearGradient(0, -45, 0, -10);
+    hullGrad.addColorStop(0.00, '#475569');
+    hullGrad.addColorStop(0.40, '#334155');
+    hullGrad.addColorStop(1.00, '#1e293b');
+    ctx.fillStyle = hullGrad;
+
+    ctx.beginPath();
+    ctx.moveTo(-halfW, -22);       // Dziób / stożek radaru
+    ctx.lineTo(-halfW + 18, -32);  // Krawędź kokpitu
+    ctx.lineTo(-halfW + 36, -34);  // Szczyt owiewki
+    ctx.lineTo(halfW - 20, -32);   // Grzbiet kadłuba
+    ctx.lineTo(halfW - 6, -44);    // Skośny statecznik pionowy (V-tail)
+    ctx.lineTo(halfW, -38);        // Krawędź spływu statecznika
+    ctx.lineTo(halfW - 2, -18);    // Dysza wektorowania ciągu silnika
+    ctx.lineTo(halfW - 14, -16);   // Dolna linia kadłuba
+    ctx.lineTo(-halfW + 24, -18);  // Wlot powietrza
     ctx.closePath();
     ctx.fill();
 
-    // Warstwa 2: Średnio oddalona fala
-    ctx.fillStyle = '#0a1424';
+    // Obrys kadłuba
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Owiewka kabiny pilota (bursztynowe złocone szkło radar-reflective)
+    const canopyGrad = ctx.createLinearGradient(-halfW + 18, -34, -halfW + 36, -24);
+    canopyGrad.addColorStop(0.00, 'rgba(245, 158, 11, 0.85)');
+    canopyGrad.addColorStop(0.50, 'rgba(217, 119, 6, 0.75)');
+    canopyGrad.addColorStop(1.00, 'rgba(69, 26, 3, 0.90)');
+    ctx.fillStyle = canopyGrad;
+
     ctx.beginPath();
-    ctx.moveTo(0, 1190);
-    for (let bx = 0; bx <= this.width; bx += 60) {
-      const by = 1190 + Math.cos(bx * 0.02) * 16;
-      ctx.lineTo(bx, by);
-    }
-    ctx.lineTo(this.width, this.height);
-    ctx.lineTo(0, this.height);
+    ctx.moveTo(-halfW + 18, -27);
+    ctx.lineTo(-halfW + 26, -33);
+    ctx.lineTo(-halfW + 36, -31);
+    ctx.lineTo(-halfW + 32, -25);
     ctx.closePath();
     ctx.fill();
+
+    // Płaty skrzydeł (złożone na pokładzie lotniskowca - folded wings)
+    ctx.fillStyle = '#374151';
+    ctx.beginPath();
+    ctx.moveTo(halfW - 42, -28);
+    ctx.lineTo(halfW - 32, -42);
+    ctx.lineTo(halfW - 24, -40);
+    ctx.lineTo(halfW - 28, -26);
+    ctx.closePath();
+    ctx.fill();
+
+    // Rombowe oznaczenie przynależności (Naval Insignia)
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(halfW - 35, -22, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Napis taktyczny
+    ctx.fillStyle = 'rgba(203, 213, 225, 0.4)';
+    ctx.font = '600 7px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('NAVY 04', 0, -22);
 
     ctx.restore();
   }
 
-  // =======================================================================
-  // GŁÓWNA PĘTLA LOGIKI (UPDATE): SUWNICA, ROPA, ŚLISK, POŻAR, OCEAN
-  // =======================================================================
+  /**
+   * Pętla aktualizacji areny:
+   * Katapulta parowa, strefa śmierci oceanu, cykl cząsteczek pary.
+   */
   update(dt, combatants) {
-    const safeDt = Math.min(dt || (1 / 60), 0.1);
+    const safeDt = Math.min(dt || 0.016, 0.05);
     this.animTime += safeDt;
 
-    // 1. Logika Błyskawic Sztormowych (losowe rozbłyski nieba)
-    this.lightningTimer -= safeDt;
-    if (this.lightningTimer <= 0) {
-      if (Math.random() < 0.28) {
-        this.lightningAlpha = 0.45;
-        this.lightningTimer = 3.5 + Math.random() * 4.5;
-      } else {
-        this.lightningTimer = 1.0 + Math.random() * 2.0;
-      }
-    }
-    if (this.lightningAlpha > 0) {
-      this.lightningAlpha = Math.max(0, this.lightningAlpha - safeDt * 2.2);
-    }
-
-    // 2. Ruchoma Suwnica Rur (Wahadłowe przemieszczenie w osi X)
-    const prevCraneX = this.crane.x;
-    const stepMove = this.crane.speed * (safeDt * 60);
-    this.crane.x += stepMove * this.crane.dir;
-
-    if (this.crane.x >= this.crane.maxX) {
-      this.crane.x = this.crane.maxX;
-      this.crane.dir = -1;
-    } else if (this.crane.x <= this.crane.minX) {
-      this.crane.x = this.crane.minX;
-      this.crane.dir = 1;
-    }
-    const craneDeltaX = this.crane.x - prevCraneX;
-    this.crane.currentSpeed = craneDeltaX;
-    this.cranePlatform.x = this.crane.x;
-
-    // 3. Aktualizacja płonących plam ropy i timerów zapłonu
-    for (let pIdx = 0; pIdx < this.oilPuddles.length; pIdx++) {
-      const puddle = this.oilPuddles[pIdx];
-      if (puddle.burning) {
-        puddle.burnTimer -= safeDt;
-        if (puddle.burnTimer <= 0) {
-          puddle.burning = false;
-          puddle.burnTimer = 0;
-        } else {
-          // Generowanie cząsteczek ognia i gęstego dymu
-          if (Math.random() < 0.75) {
-            const px = puddle.x1 + Math.random() * puddle.width;
-            this.spawnFireParticle(px, puddle.y - 2);
-            this.spawnSmokeParticle(px, puddle.y - 12);
-          }
-        }
-      }
-    }
-
-    // 4. Interakcja z postaciami: Suwnica, Ślizg na ropie, Obrażenia od ognia, Ocean śmierci
+    // 1. Sprawdzanie interakcji combatantów z katapultą i oceanem
     const targets = Array.isArray(combatants) ? combatants : [];
     for (let i = 0; i < targets.length; i++) {
       const entity = targets[i];
       if (!entity) continue;
 
-      // A. Strefa Śmierci: Wzburzony Ocean (deathY = 1250)
-      if (entity.y > this.deathY && !entity.isDead) {
-        killByHazard(entity, "WZBURZONY OCEAN // SZTORM TYFON");
+      const centerX = (entity.x || 0) + (entity.w || 24) * 0.5;
+      const feetY = (entity.y || 0) + (entity.h || 70);
+
+      // A. STREFA ŚMIERCI: Wypadnięcie za burtę (deathY = 1080 poza obrysem pasa x: 200..3000)
+      const isOverboard = (entity.x < 200 || entity.x > 3000) && (entity.y > this.deathY);
+      if (isOverboard && !entity.isDead) {
+        killByHazard(entity, "WZBURZONY OCEAN // ZA BURTĄ");
         continue;
       }
 
       if (entity.isDead) continue;
 
-      const centerX = (entity.x || 0) + (entity.w || 24) * 0.5;
-      const feetY = (entity.y || 0) + (entity.h || 70);
+      // B. MECHANIKA KATAPULTY PAROWEJ (Steam Catapult)
+      // Strefa: x od 350 do 750, na wysokości pokładu y: 920
+      const inCatapultX = (centerX >= this.catapult.x1 && centerX <= this.catapult.x2);
+      const onCatapultLevel = (feetY >= 910 && feetY <= 936);
 
-      // B. Przenoszenie gracza/bota przez ruchomą suwnicę
-      const isStandingOnCrane = (
-        entity.currentPlatform === this.cranePlatform || (
-          entity.onGround &&
-          feetY >= this.crane.y - 6 &&
-          feetY <= this.crane.y + 16 &&
-          centerX >= this.crane.x - 4 &&
-          centerX <= this.crane.x + this.crane.width + 4
-        )
-      );
-      if (isStandingOnCrane) {
-        entity.x += craneDeltaX;
-      }
+      if (inCatapultX && onCatapultLevel) {
+        // Sprawdzenie czy gracz/bot biegnie w prawo
+        const movingRight = (entity.vx > 0.1) || (entity.facing === 1 && Math.abs(entity.vx) > 0.02);
 
-      // C. Interakcja z plamami ropy na głównym pokładzie (y: 920)
-      const isOnDeckLevel = (feetY >= 910 && feetY <= 936);
-      if (isOnDeckLevel) {
-        for (let pIdx = 0; pIdx < this.oilPuddles.length; pIdx++) {
-          const puddle = this.oilPuddles[pIdx];
-          if (centerX >= puddle.x1 && centerX <= puddle.x2) {
-            // Poślizg: tarcie spada o 70%, postać wykonuje niekontrolowany ślizg
-            const curVx = entity.vx || 0;
-            if (Math.abs(curVx) > 0.25) {
-              entity.isOilSlipping = true;
-              entity.oilSlipTimer = 8;
-              // Zmniejszenie oporu: zachowanie pędu biegu i podtrzymanie ślizgu
-              entity.x += curVx * 0.70;
-              entity.vx = curVx * 0.985 + (Math.sign(curVx) || entity.facing || 1) * 0.12;
-            }
+        if (movingRight) {
+          // Gwałtowne przyspieszenie poziome (zgodnie ze specyfikacją: entity.vx = Math.max(entity.vx, 22))
+          const oldVx = entity.vx || 0;
+          entity.vx = Math.max(oldVx, this.catapult.boostVx);
 
-            // Płonąca plama: zadaje 15 HP/s i emituje dym wokół postaci
-            if (puddle.burning) {
-              entity.hp = Math.max(0, (entity.hp || 100) - (15 * safeDt));
-              if (Math.random() < 0.35) {
-                this.spawnSmokeParticle(centerX, feetY - 20);
-              }
-              if (entity.hp <= 0 && !entity.isDead) {
-                killByHazard(entity, "PŁONĄCY ROZLEW ROPY // KATASTROFA EKOLOGICZNA");
-                break;
-              }
-            }
+          // Wyrzut poziomego obłoku pary
+          this.spawnSteamBurst(centerX, 920, 4);
+
+          // Lekki wstrząs kamery przy starcie katapulty
+          if (oldVx < 20) {
+            triggerScreenShake(2.0);
           }
         }
       }
     }
 
-    // 5. Aktualizacja cząsteczek dymu, ognia i morskich bryzgów
-    this.updateParticles(safeDt);
+    // 2. Samoczynny, okresowy wypust pary ze szczeliny szyny katapulty (efekt klimatyczny)
+    if (Math.random() < 0.20) {
+      const rx = this.catapult.x1 + Math.random() * (this.catapult.x2 - this.catapult.x1);
+      this.spawnIdleSteam(rx, 921);
+    }
+
+    // 3. Aktualizacja cząsteczek pary
+    this.updateSteamParticles(safeDt);
   }
 
   /**
-   * Obsługa wybuchów (granaty [G], rakiety RPG, miny) powodujących reakcję łańcuchową zapłonu ropy.
+   * Tworzy silny, poziomy wyrzut pary towarzyszący przyspieszeniu katapulty.
    */
-  onExplosion(expX, expY, radius) {
-    let triggered = false;
-    const effRadius = radius || 80;
+  spawnSteamBurst(x, y, count = 3) {
+    for (let i = 0; i < count; i++) {
+      if (this.steamParticles.length >= 75) {
+        this.steamParticles.shift(); // Ograniczenie puli dla 60 FPS
+      }
+      this.steamParticles.push({
+        x: x - Math.random() * 15,
+        y: y - 2 + (Math.random() * 4 - 2),
+        vx: Math.random() * 9 + 8, // Dynamiczny wylot poziomy w prawo
+        vy: -(Math.random() * 2.2 + 0.4), // Lekkie unoszenie ku górze
+        size: Math.random() * 8 + 8,
+        maxSize: Math.random() * 26 + 24,
+        alpha: Math.random() * 0.12 + 0.28, // Niski globalAlpha
+        maxAlpha: 0.35,
+        life: 0,
+        maxLife: Math.random() * 25 + 30
+      });
+    }
+  }
 
-    for (let i = 0; i < this.oilPuddles.length; i++) {
-      const p = this.oilPuddles[i];
-      const pCenterX = (p.x1 + p.x2) * 0.5;
-      const dist = Math.hypot(expX - pCenterX, expY - p.y);
+  /**
+   * Tworzy drobny obłoczek pary unoszący się ze szczeliny szyny.
+   */
+  spawnIdleSteam(x, y) {
+    if (this.steamParticles.length >= 75) {
+      this.steamParticles.shift();
+    }
+    this.steamParticles.push({
+      x: x,
+      y: y,
+      vx: Math.random() * 2.5 + 1.2,
+      vy: -(Math.random() * 1.5 + 0.5),
+      size: Math.random() * 5 + 4,
+      maxSize: Math.random() * 16 + 12,
+      alpha: Math.random() * 0.08 + 0.15,
+      maxAlpha: 0.22,
+      life: 0,
+      maxLife: Math.random() * 35 + 40
+    });
+  }
 
-      if (dist <= effRadius + 95) {
-        p.burning = true;
-        p.burnTimer = 5.0; // Płonie przez dokładnie 5 sekund
-        triggered = true;
-        triggerScreenShake(3.5);
+  /**
+   * Aktualizuje pozycje i rozproszenie pary.
+   */
+  updateSteamParticles(dt) {
+    for (let i = this.steamParticles.length - 1; i >= 0; i--) {
+      const p = this.steamParticles[i];
+      p.life++;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.95; // Wyhamowanie aerodynamiczne
+      p.vy *= 0.97;
 
-        // Eksplozja zapłonu ropy: wyrzut języków ognia
-        for (let k = 0; k < 12; k++) {
-          const rx = p.x1 + Math.random() * p.width;
-          this.spawnFireParticle(rx, p.y - 4);
-          this.spawnSmokeParticle(rx, p.y - 15);
-        }
+      // Rozszerzanie się obłoku pary
+      const progress = p.life / p.maxLife;
+      p.size += (p.maxSize - p.size) * 0.06;
+
+      // Płynny zanik alpha
+      p.alpha = p.maxAlpha * (1.0 - progress);
+
+      if (p.life >= p.maxLife || p.alpha <= 0.01) {
+        this.steamParticles.splice(i, 1);
       }
     }
-    return triggered;
   }
 
-  onBulletHit(bullet) {
-    if (!bullet) return false;
-    // Zapalenie ropy przez pociski wybuchowe, rakiety RPG lub plazmę
-    if (bullet.isExplosive || bullet.isRocket || bullet.type === 'RPG' || bullet.type === 'PLASMA' || bullet.type === 'TESLA') {
-      return this.onExplosion(bullet.x, bullet.y, 45);
-    }
-    return false;
-  }
-
-  onKickHit(player, kickBox) {
-    return false;
-  }
-
-  // =======================================================================
-  // SYSTEM CZĄSTECZEK (OGIEŃ, DYM, BRYZGI FAL) - ZERO ctx.shadowBlur
-  // =======================================================================
-  spawnFireParticle(x, y) {
-    if (this.fireParticles.length >= 70) return;
-    this.fireParticles.push({
-      x,
-      y,
-      vx: (Math.random() - 0.5) * 1.8 + 0.8, // Zniesienie wiatrem sztormowym w prawo
-      vy: -1.8 - Math.random() * 2.4,
-      size: 4 + Math.random() * 7,
-      life: 0.35 + Math.random() * 0.35,
-      maxLife: 0.70,
-      color: Math.random() < 0.6 ? '#f97316' : '#facc15'
-    });
-  }
-
-  spawnSmokeParticle(x, y) {
-    if (this.smokeParticles.length >= 80) return;
-    this.smokeParticles.push({
-      x,
-      y,
-      vx: 1.2 + Math.random() * 2.2, // Porywisty wiatr tyfonu znosi dym w prawo
-      vy: -1.2 - Math.random() * 1.8,
-      radius: 6 + Math.random() * 10,
-      maxRadius: 28 + Math.random() * 18,
-      life: 0.6 + Math.random() * 0.6,
-      maxLife: 1.2,
-      alpha: 0.55
-    });
-  }
-
-  spawnSeaSpray(x, y) {
-    if (this.sprayParticles.length >= 60) return;
-    this.sprayParticles.push({
-      x,
-      y,
-      vx: (Math.random() - 0.3) * 3.5,
-      vy: -3.0 - Math.random() * 4.5,
-      size: 2 + Math.random() * 3,
-      life: 0.4 + Math.random() * 0.4,
-      maxLife: 0.8
-    });
-  }
-
-  updateParticles(dt) {
-    // Ogień
-    for (let i = this.fireParticles.length - 1; i >= 0; i--) {
-      const p = this.fireParticles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= dt;
-      p.size = Math.max(1, p.size - dt * 6);
-      if (p.life <= 0) this.fireParticles.splice(i, 1);
-    }
-    // Dym
-    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
-      const p = this.smokeParticles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= dt;
-      const progress = 1 - (p.life / p.maxLife);
-      p.radius = 6 + progress * (p.maxRadius - 6);
-      p.alpha = Math.max(0, 0.55 * (1 - progress));
-      if (p.life <= 0) this.smokeParticles.splice(i, 1);
-    }
-    // Bryzgi fal morskich
-    for (let i = this.sprayParticles.length - 1; i >= 0; i--) {
-      const p = this.sprayParticles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 9.8 * dt; // Grawitacja opadania kropel morskich
-      p.life -= dt;
-      if (p.life <= 0) this.sprayParticles.splice(i, 1);
-    }
-
-    // Losowe uderzenia fal o pylony stacji
-    if (Math.random() < 0.22) {
-      const splashX = [330, 720, 1100, 1500, 1850][Math.floor(Math.random() * 5)];
-      this.spawnSeaSpray(splashX + (Math.random() - 0.5) * 40, this.deathY);
-    }
-  }
-
-  // =======================================================================
-  // POTOK RENDEROWANIA (BACKGROUND): BUFOR OFFSCREEN + BŁYSKAWICE
-  // =======================================================================
+  /**
+   * Rysuje panoramiczne tło (wywołanie w pętli drawBackground).
+   */
   drawBackground(ctx, camera) {
-    if (!ctx) return;
-    ctx.save();
-    ctx.shadowBlur = 0; // Twardy zakaz ctx.shadowBlur
-
-    // 1. Rysowanie zbuforowanego tła OffscreenCanvas
-    if (this.cachedBgCanvas) {
-      ctx.drawImage(this.cachedBgCanvas, 0, 0);
+    if (!this.buffersReady) {
+      this.initBuffers();
     }
-
-    // 2. Animowany płomień na szczycie pochodni gazowej (Flare Stack)
-    const flarePulse = 0.8 + 0.3 * Math.sin(this.animTime * 14);
-    const flareX = 1275;
-    const flareY = 200;
-    ctx.fillStyle = `rgba(249, 115, 22, ${flarePulse.toFixed(2)})`;
-    ctx.beginPath();
-    ctx.ellipse(flareX + 18, flareY, 22, 10, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.ellipse(flareX + 14, flareY, 12, 5, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Rozbłysk błyskawicy sztormowej w atmosferze
-    if (this.lightningAlpha > 0) {
-      ctx.fillStyle = `rgba(186, 230, 253, ${this.lightningAlpha.toFixed(2)})`;
-      ctx.fillRect(0, 0, this.width, this.height);
+    if (this.bgCanvas) {
+      ctx.drawImage(this.bgCanvas, 0, 0);
     }
-
-    // 4. Pochyły deszcz tyfonu (smugi wiatru pod kątem 15 stopni)
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    const rainSeed = (this.animTime * 1400) % 600;
-    for (let rx = 0; rx < this.width + 300; rx += 75) {
-      const ry = ((rx * 1.7 + rainSeed) % 1300) - 100;
-      ctx.moveTo(rx, ry);
-      ctx.lineTo(rx + 28, ry + 75);
-    }
-    ctx.stroke();
-
-    ctx.restore();
   }
 
-  // =======================================================================
-  // POTOK RENDEROWANIA (FOREGROUND): PŁYTY PANCERNE, HELIPAD, SUWNICA, OCEAN
-  // =======================================================================
+  /**
+   * Główny potok renderowania areny na pierwszym planie (wywołanie w pętli render / draw).
+   * ZERO ctx.shadowBlur.
+   */
   render(ctx) {
-    if (!ctx) return;
-    ctx.save();
-    ctx.shadowBlur = 0; // Twardy zakaz ctx.shadowBlur
+    if (!this.buffersReady) {
+      this.initBuffers();
+    }
 
-    const isDebug = (typeof window !== 'undefined' && !!window.DEBUG_MODE);
+    const t = this.animTime;
 
-    // 1. Podwodne pylony stalowe wiertni schodzące w odmęty oceanu (y: 740..1250)
-    this.drawRigPylons(ctx);
+    // 1. Dynamiczne fale oceanu za burtą (lewa i prawa strona poza kadłubem)
+    this.drawOceanWaves(ctx, t);
 
-    // 2. Wysunięty Helipad (Lewa flanka: x: 120, y: 740, w: 420, h: 35)
-    this.drawHelipad(ctx, isDebug);
+    // 2. Pre-renderowany kadłub lotniskowca, mostek i myśliwce
+    if (this.carrierCanvas) {
+      ctx.drawImage(this.carrierCanvas, 0, 0);
+    }
 
-    // 3. Główny Pokład Techniczny (Centrum: x: 600, y: 920, w: 1000, h: 60)
-    this.drawMainDeck(ctx, isDebug);
+    // 3. Dynamiczne światła nawigacyjne pasa startowego (LED / OLS Approach)
+    this.drawDeckLights(ctx, t);
 
-    // 4. Kładka Rafinerii i Maszynowni (Prawa flanka: x: 1680, y: 740, w: 420, h: 35)
-    this.drawRefineryWalkway(ctx, isDebug);
+    // 4. Obracający się radar na dachu mostka (x: 2700, y: 330)
+    this.drawRotatingRadar(ctx, 2700, 330, t);
 
-    // 5. Ruchoma Suwnica Rur (Górny poziom: y: 500, w: 320, h: 25)
-    this.drawCraneGantry(ctx, isDebug);
-
-    // 6. Renderowanie plam ropy i efektów płomieni/dymu
-    this.drawOilPuddles(ctx);
-
-    // 7. Wzburzony Ocean jako Strefa Śmierci (y: 1250..1400)
-    this.drawTurbulentOcean(ctx);
-
-    ctx.restore();
-  }
-
-  draw(ctx, camera) {
-    this.render(ctx);
+    // 5. Cząsteczki pary z katapulty
+    this.drawSteamParticles(ctx);
   }
 
   /**
-   * Pylony wsporcze wiertni schodzące w ocean oraz skośny wspornik helipada.
+   * Rysuje dynamiczne fale wzburzonego oceanu wokół burt.
+   * ZERO ctx.shadowBlur.
    */
-  drawRigPylons(ctx) {
+  drawOceanWaves(ctx, t) {
     ctx.save();
-    ctx.shadowBlur = 0;
 
-    // Skośny pylon podtrzymujący wysunięty helipad (z x: 330, y: 775 do x: 600, y: 1220)
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 20;
+    // Woda po lewej stronie kadłuba (x: 0..200)
+    ctx.fillStyle = '#081420';
     ctx.beginPath();
-    ctx.moveTo(330, 775);
-    ctx.lineTo(600, 1220);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 12;
-    ctx.stroke();
-
-    // Masywne pionowe nogi wiertni pod głównym pokładem i maszynownią
-    const pylonXList = [700, 1050, 1400, 1750, 2020];
-    for (let px of pylonXList) {
-      const topY = px > 1650 ? 775 : 980;
-      // Trzon pylonu
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(px - 22, topY, 44, this.height - topY);
-
-      // Rdzawe ślady i wżery solne
-      ctx.fillStyle = '#7c2d12';
-      ctx.fillRect(px - 18, topY + 40, 8, 90);
-      ctx.fillRect(px + 8, topY + 140, 10, 80);
-
-      // Stalowe obejmy i nity
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(px - 25, topY + 60, 50, 12);
-      ctx.fillRect(px - 25, topY + 160, 50, 12);
-    }
-
-    // Stężenia krzyżowe między pylonami głównymi
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(700, 1020);
-    ctx.lineTo(1050, 1200);
-    ctx.moveTo(1050, 1020);
-    ctx.lineTo(700, 1200);
-    ctx.moveTo(1050, 1020);
-    ctx.lineTo(1400, 1200);
-    ctx.moveTo(1400, 1020);
-    ctx.lineTo(1050, 1200);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  /**
-   * Rysuje wysunięty helipad (x: 120, y: 740, w: 420, h: 35).
-   */
-  drawHelipad(ctx, isDebug) {
-    const x = 120;
-    const y = 740;
-    const w = 420;
-    const h = 35;
-
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Stalowa konstrukcja pomostu lądowiska
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, y, w, h);
-
-    // Fazowanie i płyty antypoślizgowe
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
-
-    // Krawędź kolizyjna lądowiska
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, w, h);
-
-    // Zewnętrzna siatka bezpieczeństwa / okapnik przeciwpożarowy
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - 14, y + 10);
-    ctx.lineTo(x, y + 25);
-    ctx.lineTo(x + w, y + 25);
-    ctx.lineTo(x + w + 14, y + 10);
-    ctx.stroke();
-
-    // Żółte oznaczenie lądowiska: Okrąg i litera "H"
-    const centerX = x + w * 0.5;
-    const centerY = y + 17;
-
-    ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 14, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.fillStyle = '#eab308';
-    ctx.font = '900 13px Orbitron, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('H', centerX, centerY + 1);
-
-    // Lampy obrysowe lądowiska (zielone / bursztynowe)
-    const lampAlpha = 0.6 + 0.4 * Math.sin(this.animTime * 5);
-    ctx.fillStyle = `rgba(34, 197, 94, ${lampAlpha.toFixed(2)})`;
-    ctx.fillRect(x + 12, y + 2, 6, 4);
-    ctx.fillRect(x + w - 18, y + 2, 6, 4);
-
-    // Oznaczenia taktyczne
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'start';
-    ctx.fillText('HELIDECK // 12.5T MAX', x + 24, y + 22);
-
-    if (isDebug) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('[PLAT: typhoon_helipad]', x, y - 6);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Rysuje główny pokład techniczny (x: 600, y: 920, w: 1000, h: 60) z kratownicami,
-   * barierkami, dwoma wlotami wentylacyjnymi i kontenerami technicznymi.
-   */
-  drawMainDeck(ctx, isDebug) {
-    const x = 600;
-    const y = 920;
-    const w = 1000;
-    const h = 60;
-
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Główna bryła pokładu (grube stalowe poszycie)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, y, w, h);
-
-    // Płyty kratownicy stalowej z rdzawym nalotem
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
-
-    // Wzór kratownicy przemysłowej (stal ryflowana)
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1;
-    for (let gx = x + 15; gx < x + w - 15; gx += 25) {
-      ctx.beginPath();
-      ctx.moveTo(gx, y + 5);
-      ctx.lineTo(gx, y + h - 5);
-      ctx.stroke();
-    }
-
-    // Pasy ostrzegawcze na skrajnych krawędziach spadku w ocean
-    this.drawHazardStripes(ctx, x, y, 40, h);
-    this.drawHazardStripes(ctx, x + w - 40, y, 40, h);
-
-    // Dwa wloty wentylacyjne z obrotowymi turbinami
-    this.drawVentIntake(ctx, 710, y + 10, 50, 40);
-    this.drawVentIntake(ctx, 1490, y + 10, 50, 40);
-
-    // Żółte barierki przemysłowe wzdłuż górnej krawędzi pokładu
-    this.drawDeckHandrails(ctx, x + 40, y - 18, 630);
-    this.drawDeckHandrails(ctx, x + 760, y - 18, 200);
-
-    // Dwa kontenery techniczne na pokładzie (width: 65, height: 40)
-    this.drawTacticalContainer(ctx, 680, 880, 65, 40, 'CARGO // C-01', '#3f6212');
-    this.drawTacticalContainer(ctx, 1220, 880, 65, 40, 'PUMP // H-02', '#334155');
-
-    // Górna krawędź kolizyjna
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x, y, w, h);
-
-    if (isDebug) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('[PLAT: typhoon_main_deck]', x, y - 24);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Pasy ostrzegawcze w żółto-czarne skośne linie.
-   */
-  drawHazardStripes(ctx, x, y, w, h) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#0f172a';
-    for (let sx = x - h; sx < x + w + h; sx += 14) {
-      ctx.beginPath();
-      ctx.moveTo(sx, y);
-      ctx.lineTo(sx + 7, y);
-      ctx.lineTo(sx - 3, y + h);
-      ctx.lineTo(sx - 10, y + h);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Wlot wentylacyjny z kratownicą ochronną i obracającym się wirnikiem.
-   */
-  drawVentIntake(ctx, x, y, w, h) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, w, h);
-
-    // Obracające się łopatki turbiny wentylatora
-    const angle = this.animTime * 12;
-    const cx = x + w * 0.5;
-    const cy = y + h * 0.5;
-    const r = Math.min(w, h) * 0.38;
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2.5;
-    for (let b = 0; b < 4; b++) {
-      const a = angle + b * (Math.PI / 2);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      ctx.stroke();
-    }
-
-    // Krata ochronna
-    ctx.strokeStyle = 'rgba(234, 179, 8, 0.45)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
-    ctx.restore();
-  }
-
-  /**
-   * Żółte barierki ochronne na krawędziach pokładu.
-   */
-  drawDeckHandrails(ctx, startX, y, len) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 2;
-
-    // Dwie poziome poręcze
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + len, y);
-    ctx.moveTo(startX, y + 9);
-    ctx.lineTo(startX + len, y + 9);
-    ctx.stroke();
-
-    // Słupki pionowe
-    ctx.lineWidth = 2.5;
-    for (let sx = startX; sx <= startX + len; sx += 35) {
-      ctx.beginPath();
-      ctx.moveTo(sx, y);
-      ctx.lineTo(sx, y + 18);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Kontener techniczny (twarda osłona taktyczna o wymiarach 65 x 40).
-   */
-  drawTacticalContainer(ctx, x, y, w, h, label, mainColor) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Korpus kontenera
-    ctx.fillStyle = mainColor;
-    ctx.fillRect(x, y, w, h);
-
-    // Żłobienia blachy falistej
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-    for (let rx = x + 6; rx < x + w - 6; rx += 8) {
-      ctx.fillRect(rx, y + 2, 3, h - 4);
-    }
-
-    // Wzmocnienia narożne ISO
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x, y, 6, 6);
-    ctx.fillRect(x + w - 6, y, 6, 6);
-    ctx.fillRect(x, y + h - 6, 6, 6);
-    ctx.fillRect(x + w - 6, y + h - 6, 6, 6);
-
-    // Obrys kontenera
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, w, h);
-
-    // Etykieta stencila
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 7px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x + w * 0.5, y + h * 0.5 + 2);
-
-    ctx.restore();
-  }
-
-  /**
-   * Rysuje kładkę rafinerii i maszynowni (x: 1680, y: 740, w: 420, h: 35)
-   * z dwoma pionowymi kominami i rurociągami.
-   */
-  drawRefineryWalkway(ctx, isDebug) {
-    const x = 1680;
-    const y = 740;
-    const w = 420;
-    const h = 35;
-
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Podest technologiczny
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x, y, w, h);
-
-    // Rurociągi ciśnieniowe biegnące wzdłuż kładki
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 16);
-    ctx.lineTo(x + w, y + 16);
-    ctx.stroke();
-
-    // Dwa pionowe kominy rafinerii (twarde osłony przed snajperami)
-    this.drawChimneyStack(ctx, 1780, 560, 40, 180, 'STACK-A');
-    this.drawChimneyStack(ctx, 1980, 560, 40, 180, 'STACK-B');
-
-    if (isDebug) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('[PLAT: typhoon_refinery_walkway]', x, y - 6);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Pionowy komin rafinerii (twarda osłona o wymiarach 40 x 180).
-   */
-  drawChimneyStack(ctx, x, y, w, h, name) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Stalowy korpus komina
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, y, w, h);
-
-    // Obejmy pierścieniowe
-    ctx.fillStyle = '#334155';
-    for (let cy = y + 25; cy < y + h - 10; cy += 35) {
-      ctx.fillRect(x - 2, cy, w + 4, 8);
-    }
-
-    // Pasy ostrzegawcze na szczycie komina
-    this.drawHazardStripes(ctx, x, y, w, 22);
-
-    // Obrys
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, w, h);
-
-    // Delikatne smugi dymu z komina
-    const smokeY = y - 8;
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
-    ctx.beginPath();
-    ctx.ellipse(x + w * 0.5 + 8, smokeY, 14, 6, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  /**
-   * Ruchoma suwnica rur (Górny poziom: y: 500, w: 320, h: 25).
-   */
-  drawCraneGantry(ctx, isDebug) {
-    const cx = this.crane.x;
-    const cy = this.crane.y;
-    const cw = this.crane.width;
-    const ch = this.crane.height;
-
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    // Górna belka szyny suwnicy (rozciągnięta od 720 do 1180 przy y: 440)
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(720, 440, 470, 14);
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(720, 440, 470, 14);
-
-    // Liny i wózek wciągarki podtrzymujący przemieszczającą się kładkę
-    const trolleyX = cx + cw * 0.5;
-    ctx.fillStyle = '#eab308';
-    ctx.fillRect(trolleyX - 25, 436, 50, 18);
-
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(trolleyX - 20, 454);
-    ctx.lineTo(cx + 30, cy);
-    ctx.moveTo(trolleyX + 20, 454);
-    ctx.lineTo(cx + cw - 30, cy);
-    ctx.stroke();
-
-    // Podest suwnicy (ruchoma platforma kładkowa)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(cx, cy, cw, ch);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(cx + 3, cy + 3, cw - 6, ch - 6);
-
-    // Wiązka rur wiertniczych przewożona na suwnicy
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(cx + 60, cy - 8, cw - 120, 8);
-    ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(cx + 60, cy - 8, cw - 120, 8);
-
-    // Pasy ostrzegawcze na bokach kładki suwnicy
-    this.drawHazardStripes(ctx, cx, cy, 30, ch);
-    this.drawHazardStripes(ctx, cx + cw - 30, cy, 30, ch);
-
-    // Oznaczenia taktyczne suwnicy
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('CARGO GANTRY CRANE // ACTIVE LOAD', cx + cw * 0.5, cy + 16);
-
-    // Obrys kolizyjny platformy
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cx, cy, cw, ch);
-
-    if (isDebug) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('[PLAT: typhoon_crane_gantry]', cx, cy - 14);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Rysuje plamy ropy na głównym pokładzie z opalizującym filmem oraz płomienie/dym po zapaleniu.
-   */
-  drawOilPuddles(ctx) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    for (let pIdx = 0; pIdx < this.oilPuddles.length; pIdx++) {
-      const p = this.oilPuddles[pIdx];
-
-      // Podstawa plamy: ciemna, gęsta ciecz naftowa
-      ctx.fillStyle = '#09090b';
-      ctx.fillRect(p.x1, p.y - 3, p.width, 6);
-
-      // Tęczowy/błękitny połysk filmu naftowego
-      const sheenGrad = ctx.createLinearGradient(p.x1, p.y, p.x2, p.y);
-      sheenGrad.addColorStop(0, 'rgba(15, 23, 42, 0.7)');
-      sheenGrad.addColorStop(0.35, 'rgba(30, 58, 138, 0.45)');
-      sheenGrad.addColorStop(0.70, 'rgba(16, 185, 129, 0.35)');
-      sheenGrad.addColorStop(1, 'rgba(15, 23, 42, 0.7)');
-      ctx.fillStyle = sheenGrad;
-      ctx.fillRect(p.x1 + 4, p.y - 2, p.width - 8, 4);
-
-      // Jeśli ropa płonie: dynamiczne języki ognia na całej szerokości
-      if (p.burning) {
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
-        ctx.fillRect(p.x1, p.y - 6, p.width, 10);
-
-        // Płomienie procedularne
-        for (let fx = p.x1 + 10; fx < p.x2 - 10; fx += 16) {
-          const flameH = 14 + Math.sin(this.animTime * 18 + fx) * 8;
-          ctx.fillStyle = '#f97316';
-          ctx.beginPath();
-          ctx.moveTo(fx - 6, p.y);
-          ctx.lineTo(fx + 6, p.y);
-          ctx.lineTo(fx + 2, p.y - flameH);
-          ctx.closePath();
-          ctx.fill();
-
-          ctx.fillStyle = '#fef08a';
-          ctx.beginPath();
-          ctx.moveTo(fx - 3, p.y);
-          ctx.lineTo(fx + 3, p.y);
-          ctx.lineTo(fx + 1, p.y - flameH * 0.55);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    }
-
-    // Cząsteczki płomieni
-    for (let i = 0; i < this.fireParticles.length; i++) {
-      const fp = this.fireParticles[i];
-      ctx.fillStyle = fp.color;
-      ctx.beginPath();
-      ctx.arc(fp.x, fp.y, fp.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Kłęby ciemnego dymu
-    for (let i = 0; i < this.smokeParticles.length; i++) {
-      const sp = this.smokeParticles[i];
-      ctx.fillStyle = `rgba(24, 24, 27, ${sp.alpha.toFixed(2)})`;
-      ctx.beginPath();
-      ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Rysuje wzburzony ocean jako strefę śmierci (y: 1250..1400) z dynamicznymi falami i pianą.
-   */
-  drawTurbulentOcean(ctx) {
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    const baseSeaY = this.deathY; // 1250 px
-
-    // Ciemna głębia oceanu
-    const oceanGrad = ctx.createLinearGradient(0, baseSeaY, 0, this.height);
-    oceanGrad.addColorStop(0, '#0a1728');
-    oceanGrad.addColorStop(0.5, '#060d17');
-    oceanGrad.addColorStop(1, '#020509');
-    ctx.fillStyle = oceanGrad;
-    ctx.fillRect(0, baseSeaY, this.width, this.height - baseSeaY);
-
-    // Animowane grzbiety fal (Sinusoida falująca w czasie)
-    const t = this.animTime * 3.5;
-
-    // Grzbiet fali 1
-    ctx.fillStyle = '#0d223a';
-    ctx.beginPath();
-    ctx.moveTo(0, baseSeaY);
-    for (let x = 0; x <= this.width; x += 40) {
-      const wy = baseSeaY + Math.sin(x * 0.015 + t) * 16 + Math.cos(x * 0.03 - t * 0.8) * 8;
+    ctx.moveTo(0, 960);
+    for (let x = 0; x <= 200; x += 20) {
+      const wy = 960 + Math.sin(x * 0.04 + t * 2.2) * 8 + Math.cos(x * 0.08 - t) * 4;
       ctx.lineTo(x, wy);
     }
-    ctx.lineTo(this.width, this.height);
+    ctx.lineTo(200, this.height);
     ctx.lineTo(0, this.height);
     ctx.closePath();
     ctx.fill();
 
-    // Grzbiet fali 2 z białą pianą morską
-    ctx.fillStyle = '#133355';
+    // Piana na lewej fali
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.45)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, baseSeaY + 12);
-    for (let x = 0; x <= this.width; x += 30) {
-      const wy = baseSeaY + 12 + Math.cos(x * 0.02 - t * 1.2) * 14 + Math.sin(x * 0.04 + t) * 6;
-      ctx.lineTo(x, wy);
-    }
-    ctx.lineTo(this.width, this.height);
-    ctx.lineTo(0, this.height);
-    ctx.closePath();
-    ctx.fill();
-
-    // Biała piana na szczytach fal
-    ctx.strokeStyle = 'rgba(224, 242, 254, 0.75)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    for (let x = 0; x <= this.width; x += 25) {
-      const py = baseSeaY + 12 + Math.cos(x * 0.02 - t * 1.2) * 14 + Math.sin(x * 0.04 + t) * 6;
-      if (x === 0) ctx.moveTo(x, py);
-      else ctx.lineTo(x, py);
+    for (let x = 0; x <= 200; x += 20) {
+      const wy = 960 + Math.sin(x * 0.04 + t * 2.2) * 8 + Math.cos(x * 0.08 - t) * 4;
+      if (x === 0) ctx.moveTo(x, wy);
+      else ctx.lineTo(x, wy);
     }
     ctx.stroke();
 
-    // Bryzgi fal morskich (krople)
-    ctx.fillStyle = '#e0f2fe';
-    for (let i = 0; i < this.sprayParticles.length; i++) {
-      const sp = this.sprayParticles[i];
-      ctx.beginPath();
-      ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
-      ctx.fill();
+    // Woda po prawej stronie kadłuba (x: 3000..3200)
+    ctx.fillStyle = '#081420';
+    ctx.beginPath();
+    ctx.moveTo(3000, 960);
+    for (let x = 3000; x <= 3200; x += 20) {
+      const wy = 960 + Math.sin(x * 0.04 + t * 2.4) * 8 + Math.cos(x * 0.08 - t * 1.2) * 4;
+      ctx.lineTo(x, wy);
     }
+    ctx.lineTo(3200, this.height);
+    ctx.lineTo(3000, this.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Piana na prawej fali
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 3000; x <= 3200; x += 20) {
+      const wy = 960 + Math.sin(x * 0.04 + t * 2.4) * 8 + Math.cos(x * 0.08 - t * 1.2) * 4;
+      if (x === 3000) ctx.moveTo(x, wy);
+      else ctx.lineTo(x, wy);
+    }
+    ctx.stroke();
 
     ctx.restore();
   }
 
+  /**
+   * Rysuje pulsujące diody nawigacyjne krawędzi pasa startowego i mostka.
+   * ZERO ctx.shadowBlur.
+   */
+  drawDeckLights(ctx, t) {
+    ctx.save();
+
+    // Zielone światła progu katapulty (x: 350)
+    const greenPulse = 0.5 + Math.sin(t * 4.0) * 0.4;
+    ctx.fillStyle = `rgba(34, 197, 94, ${greenPulse})`;
+    ctx.beginPath();
+    ctx.arc(350, 918, 4, 0, Math.PI * 2);
+    ctx.arc(750, 918, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bursztynowe światła krawędziowe pasa
+    ctx.fillStyle = '#f59e0b';
+    for (let lx = 300; lx <= 2900; lx += 200) {
+      ctx.beginPath();
+      ctx.arc(lx, 922, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Czerwone światło ostrzegawcze na szczycie masztu wieży (x: 2700, y: 310)
+    const redFlash = Math.sin(t * 3.5) > 0.2 ? 1.0 : 0.2;
+    ctx.fillStyle = `rgba(239, 68, 68, ${redFlash})`;
+    ctx.beginPath();
+    ctx.arc(2700, 312, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Rysuje obracające się ramię radaru poszukiwania celów powietrznych na maszcie.
+   */
+  drawRotatingRadar(ctx, x, y, t) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    const angle = t * 2.8;
+    const barWidth = Math.cos(angle) * 32;
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-barWidth * 0.5, 0);
+    ctx.lineTo(barWidth * 0.5, 0);
+    ctx.stroke();
+
+    // Oś obrotu radaru
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Renderuje obłoki pary katapulty parowej z niskim globalAlpha.
+   * ZERO ctx.shadowBlur.
+   */
+  drawSteamParticles(ctx) {
+    if (this.steamParticles.length === 0) return;
+
+    ctx.save();
+    for (let i = 0; i < this.steamParticles.length; i++) {
+      const p = this.steamParticles[i];
+      ctx.fillStyle = `rgba(241, 245, 249, ${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Reset stanu areny (czyszczenie cząsteczek).
+   */
   reset() {
     this.animTime = 0;
-    this.lightningTimer = 0;
-    this.lightningAlpha = 0;
-    this.crane.x = 850;
-    this.crane.dir = 1;
-    this.cranePlatform.x = 850;
-    for (let p of this.oilPuddles) {
-      p.burning = false;
-      p.burnTimer = 0;
-    }
-    this.fireParticles.length = 0;
-    this.smokeParticles.length = 0;
-    this.sprayParticles.length = 0;
+    this.steamParticles.length = 0;
   }
 }
 
 // =========================================================================
 // 2. FUNKCJA REJESTRACJI ŚMIERCI ŚRODOWISKOWEJ (killByHazard)
 // =========================================================================
-export function killByHazard(victim, hazardName = "WZBURZONY OCEAN // SZTORM TYFON") {
+export function killByHazard(victim, hazardName = "WZBURZONY OCEAN // ZA BURTĄ") {
   if (!victim || victim.isDead) return;
 
   victim.hp = 0;
@@ -1416,11 +1079,13 @@ export function killByHazard(victim, hazardName = "WZBURZONY OCEAN // SZTORM TYF
 // =========================================================================
 // 3. INSTANCJA ARENY I EKSPORTY KOMPATYBILNOŚCI
 // =========================================================================
-export const arena4 = new Arena4OilRig();
+export const arena4 = new Arena4Titan();
 
-export const ARENA_TYPHOON = arena4;
+export const ARENA_TITAN = arena4;
+export const ARENA_USS_TITAN = arena4;
 export const ARENA_4_CONFIG = arena4;
-export const ARENA_SPACE = arena4; // Kompatybilność wsteczna
+export const ARENA_TYPHOON = arena4; // Kompatybilność wsteczna
+export const ARENA_SPACE = arena4;   // Kompatybilność wsteczna
 export const ARENA_4_SPACE_CONFIG = arena4; // Kompatybilność wsteczna
 export const SPAWN_POINTS = arena4.spawnPoints;
 export const ARENA_4_PLATFORMS = arena4.platforms;
@@ -1447,7 +1112,7 @@ export function resetArena4() {
 }
 
 export function handleTyphoonExplosion(expX, expY, radius) {
-  return arena4.onExplosion(expX, expY, radius);
+  return false;
 }
 
 // Aliasy wstecznej kompatybilności
