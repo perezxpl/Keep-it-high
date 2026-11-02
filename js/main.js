@@ -38,7 +38,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
-import { triggerCombatFeedBanner, updateCombatFeed } from './ui/combatFeed.js';
+import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
@@ -722,7 +722,14 @@ function update() {
         resetKillstreak();
         player._fragRecorded = true;
         const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
-        triggerCombatFeedBanner('DEATH', kName);
+        const isHazard = player.killer?.isSelf || (player.killer?.cause);
+        triggerCombatFeedEvent({
+          type: 'PLAYER_DEATH',
+          victim: player,
+          killer: player.killer,
+          killerName: kName,
+          cause: isHazard ? kName : ''
+        });
       }
     } else {
       player._fragRecorded = false;
@@ -732,10 +739,36 @@ function update() {
       if (b.isDead) {
         if (!b._fragRecorded) {
           b._fragRecorded = true;
-          if (b.killer === player || b.lastAttacker === player) {
+          const kRef = b.killer || b.lastAttacker;
+          if (kRef === player) {
             recordKill();
             registerKillstreakKill();
-            triggerCombatFeedBanner('KILL', b.name || 'BOT');
+            triggerCombatFeedEvent({
+              type: 'PLAYER_KILL',
+              killer: player,
+              victim: b,
+              victimName: b.name || 'BOT',
+              victimTeam: b.team
+            });
+          } else if (kRef && kRef !== b && !kRef.isSelf) {
+            triggerCombatFeedEvent({
+              type: 'COMBAT_KILL',
+              killer: kRef,
+              killerName: kRef.name || 'OPERATOR',
+              killerTeam: kRef.team,
+              victim: b,
+              victimName: b.name || 'BOT',
+              victimTeam: b.team
+            });
+          } else {
+            const hName = (typeof b.killer === 'string') ? b.killer : (b.killer?.name || (b.killer?.cause || 'ŚRODOWISKO'));
+            triggerCombatFeedEvent({
+              type: 'COMBAT_HAZARD',
+              victim: b,
+              victimName: b.name || 'BOT',
+              victimTeam: b.team,
+              cause: hName
+            });
           }
         }
       } else {
@@ -747,10 +780,36 @@ function update() {
       if (remotePlayer.isDead) {
         if (!remotePlayer._fragRecorded) {
           remotePlayer._fragRecorded = true;
-          if (remotePlayer.killer === player || remotePlayer.lastAttacker === player) {
+          const kRef = remotePlayer.killer || remotePlayer.lastAttacker;
+          if (kRef === player) {
             recordKill();
             registerKillstreakKill();
-            triggerCombatFeedBanner('KILL', remotePlayer.name || 'GRACZ 2');
+            triggerCombatFeedEvent({
+              type: 'PLAYER_KILL',
+              killer: player,
+              victim: remotePlayer,
+              victimName: remotePlayer.name || 'GRACZ 2',
+              victimTeam: remotePlayer.team
+            });
+          } else if (kRef && kRef !== remotePlayer && !kRef.isSelf) {
+            triggerCombatFeedEvent({
+              type: 'COMBAT_KILL',
+              killer: kRef,
+              killerName: kRef.name || 'OPERATOR',
+              killerTeam: kRef.team,
+              victim: remotePlayer,
+              victimName: remotePlayer.name || 'GRACZ 2',
+              victimTeam: remotePlayer.team
+            });
+          } else {
+            const hName = (typeof remotePlayer.killer === 'string') ? remotePlayer.killer : (remotePlayer.killer?.name || (remotePlayer.killer?.cause || 'ŚRODOWISKO'));
+            triggerCombatFeedEvent({
+              type: 'COMBAT_HAZARD',
+              victim: remotePlayer,
+              victimName: remotePlayer.name || 'GRACZ 2',
+              victimTeam: remotePlayer.team,
+              cause: hName
+            });
           }
         }
       } else {

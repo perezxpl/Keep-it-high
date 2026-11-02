@@ -6,7 +6,7 @@ import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses, getBotDifficulty, setBotDifficulty, getStoredBotEnabled, setBotEnabled } from './bot.js';
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
-import { triggerCombatFeedBanner } from './ui/combatFeed.js';
+import { triggerCombatFeedBanner, triggerCombatFeedEvent } from './ui/combatFeed.js';
 import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
@@ -436,8 +436,10 @@ export function applyLocalPlayerDamage(data) {
       sendKillBroadcast({
         killerId: 'remotePlayer',
         killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+        killerTeam: remotePlayer.team || null,
         victimId: 'player',
-        victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2')
+        victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
+        victimTeam: player.team || null
       });
     }
     return;
@@ -532,8 +534,10 @@ export function applyLocalPlayerDamage(data) {
     sendKillBroadcast({
       killerId: 'remotePlayer',
       killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+      killerTeam: remotePlayer.team || null,
       victimId: 'player',
-      victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2')
+      victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
+      victimTeam: player.team || null
     });
   }
 }
@@ -581,8 +585,10 @@ export function applyRemoteBotDamage(data) {
       sendKillBroadcast({
         killerId: 'remotePlayer',
         killerName: remotePlayer.name || 'GRACZ 2',
+        killerTeam: remotePlayer.team || null,
         victimId: b.id || `bot_${data.botIdx + 1}`,
-        victimName: b.name || 'BOT AI'
+        victimName: b.name || 'BOT AI',
+        victimTeam: b.team || null
       });
     }
     return;
@@ -626,8 +632,10 @@ export function applyRemoteBotDamage(data) {
     sendKillBroadcast({
       killerId: 'remotePlayer',
       killerName: remotePlayer.name || 'GRACZ 2',
+      killerTeam: remotePlayer.team || null,
       victimId: b.id || `bot_${data.botIdx + 1}`,
-      victimName: b.name || 'BOT AI'
+      victimName: b.name || 'BOT AI',
+      victimTeam: b.team || null
     });
   }
 }
@@ -1083,10 +1091,28 @@ function handleNetworkData(data) {
     case 'kill_event': {
       if (data.victimId === 'player') {
         resetKillstreak();
-        triggerCombatFeedBanner('DEATH', data.killerName || 'PRZECIWNIK');
+        triggerCombatFeedEvent({
+          type: 'PLAYER_DEATH',
+          victim: player,
+          killerName: data.killerName || 'PRZECIWNIK',
+          killerTeam: data.killerTeam || null
+        });
       } else if (data.killerId === 'player' || (data.killerId === 'remotePlayer' && !networkState.isHost)) {
         registerKillstreakKill();
-        triggerCombatFeedBanner('KILL', data.victimName || 'PRZECIWNIK');
+        triggerCombatFeedEvent({
+          type: 'PLAYER_KILL',
+          killer: player,
+          victimName: data.victimName || 'PRZECIWNIK',
+          victimTeam: data.victimTeam || null
+        });
+      } else {
+        triggerCombatFeedEvent({
+          type: 'COMBAT_KILL',
+          killerName: data.killerName || 'OPERATOR',
+          killerTeam: data.killerTeam || null,
+          victimName: data.victimName || 'PRZECIWNIK',
+          victimTeam: data.victimTeam || null
+        });
       }
       break;
     }

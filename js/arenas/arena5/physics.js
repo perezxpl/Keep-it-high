@@ -380,7 +380,7 @@ export function executeSquashKill(victim) {
 
   victim.hp = 0;
   victim.isDead = true;
-  victim.killer = { name: 'KONTENER PRZEMYSŁOWY', cause: 'CRUSH_KILL' };
+  victim.killer = { name: 'KONTENER PRZEMYSŁOWY', cause: 'ZMIAŻDŻONY PRZEZ KONTENER', isSelf: true };
   victim.respawnTimer = 140;
   victim.vx = 0;
   victim.vy = 0;
@@ -388,8 +388,6 @@ export function executeSquashKill(victim) {
 
   triggerScreenShake(20);
   spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + (victim.h || 72) * 0.5, 0, -1, 30, 3.0);
-
-  triggerCombatFeedBanner('DEATH', `ZMIAŻDŻONY PRZEZ KONTENER`);
 }
 
 /**
@@ -1190,7 +1188,7 @@ function executeRecyclerKill(victim) {
 
   victim.hp = 0;
   victim.isDead = true;
-  victim.killer = { name: 'STREFA UTYLIZACJI', cause: 'RECYCLER_DEATH' };
+  victim.killer = { name: 'STREFA UTYLIZACJI', cause: 'POCHŁONIĘTY PRZEZ UTYLIZATOR', isSelf: true };
   victim.respawnTimer = 120; // 2 sekundy do odrodzenia
   victim.vx = 0;
   victim.vy = 0;
@@ -1199,8 +1197,6 @@ function executeRecyclerKill(victim) {
 
   triggerScreenShake(7);
   spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + 20, 0, -1, 18, 2.0);
-
-  triggerCombatFeedBanner('DEATH', `POCHŁONIĘTY PRZEZ UTYLIZATOR`);
 }
 
 /**

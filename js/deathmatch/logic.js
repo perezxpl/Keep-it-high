@@ -15,7 +15,7 @@ import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../prog
 import { registerKillstreakKill, resetKillstreak } from '../killstreaks/index.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
-import { triggerCombatFeedBanner, updateCombatFeed } from '../ui/combatFeed.js';
+import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed } from '../ui/combatFeed.js';
 import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
 
 let _dmSyncTimer = 0;
@@ -309,12 +309,9 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
         if (victimData) {
           victimData.deaths++;
         }
-        if (c === player) {
-          recordDeath();
-          resetKillstreak();
-          const killerName = c.killer?.name || (c.acidDeath?.active ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
-          triggerCombatFeedBanner('DEATH', killerName);
-        }
+
+        const victimName = c.name || victimData?.name || 'PRZECIWNIK';
+        const victimTeam = c.team || victimData?.team || null;
 
         // Sprawdzenie, czy ofiara została FAKTYCZNIE zabita przez przeciwnika
         const killerRef = c.killer || c.lastAttacker;
@@ -331,14 +328,65 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
             }
           }
 
+          const killerName = killerRef.name || killerData?.name || 'OPERATOR';
+          const killerTeam = killerRef.team || killerData?.team || null;
+
           if (killerRef === player) {
             recordKill();
             registerKillstreakKill();
-            triggerCombatFeedBanner('KILL', c.name || 'PRZECIWNIK');
+            triggerCombatFeedEvent({
+              type: 'PLAYER_KILL',
+              killer: player,
+              victim: c,
+              victimName: victimName,
+              victimTeam: victimTeam
+            });
+          } else if (c === player) {
+            recordDeath();
+            resetKillstreak();
+            triggerCombatFeedEvent({
+              type: 'PLAYER_DEATH',
+              killer: killerRef,
+              killerName: killerName,
+              killerTeam: killerTeam,
+              victim: player
+            });
+          } else {
+            // Zabiła jednostka trzecia (Bot vs Bot, RemotePlayer vs Bot itp.)
+            triggerCombatFeedEvent({
+              type: 'COMBAT_KILL',
+              killer: killerRef,
+              killerName: killerName,
+              killerTeam: killerTeam,
+              victim: c,
+              victimName: victimName,
+              victimTeam: victimTeam
+            });
+          }
+        } else {
+          // Zgon środowiskowy, kwas, przepaść lub samobójstwo
+          const hazardName = (typeof c.killer === 'string')
+            ? c.killer
+            : (c.killer?.name || (c.acidDeath?.active || c.isAcidDying ? 'TOKSYCZNY KWAS' : (c.killer?.cause || 'ŚRODOWISKO')));
+
+          if (c === player) {
+            recordDeath();
+            resetKillstreak();
+            triggerCombatFeedEvent({
+              type: 'PLAYER_DEATH',
+              victim: player,
+              cause: hazardName
+            });
+          } else {
+            triggerCombatFeedEvent({
+              type: 'COMBAT_HAZARD',
+              victim: c,
+              victimName: victimName,
+              victimTeam: victimTeam,
+              cause: hazardName
+            });
           }
         }
-        // Jeśli przeciwnik zginął sam (kwas, upadek, samobójstwo) –
-        // przeciwna drużyna NIE dostaje za to punktu! Punkty są wyłącznie za faktyczne zabójstwo.
 
         updateLeaderboard();
       }
