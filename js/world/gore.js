@@ -25,6 +25,7 @@ export const droppedWeapons = [];
 
 export function clearGore() {
   bloodParticles.length = 0;
+  bloodDecals.length = 0;
   headGibs.length = 0;
   bodyGibs.length = 0;
   droppedWeapons.length = 0;
@@ -102,52 +103,75 @@ export function getSurfaceYForPlatform(plat, px, groundY = GROUND_Y) {
   return plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
 }
 
-export function getDecalSupportingSurfaceY(x, y, maxDistance = 16) {
+export function getDecalSupportingSurfaceInfo(x, y, maxDistance = 18, platforms = null, obstacles = null) {
   // 1. Grunt zerowy (GROUND_Y)
   if (Math.abs(y - GROUND_Y) <= maxDistance && isGroundAt(x)) {
-    return GROUND_Y;
+    return { y: GROUND_Y, type: 'ground', platform: null, obstacle: null };
   }
 
-  // 2. Platformy
-  const plats = _worldPlatforms;
+  // 2. Platformy (w tym dynamiczne klocki Areny 5)
+  const plats = platforms || (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS) ? window.ARENA_PLATFORMS : _worldPlatforms);
   if (Array.isArray(plats)) {
+    let bestDist = Infinity;
+    let bestInfo = null;
     for (const plat of plats) {
       if (!plat || plat.solid === false || plat.isWall) continue;
       const minX = plat.x !== undefined ? plat.x : 0;
       const maxX = minX + (plat.w || 0);
       if (x >= minX - 6 && x <= maxX + 6) {
         const topY = getSurfaceYForPlatform(plat, x, GROUND_Y);
-        if (!isNaN(topY) && Math.abs(y - topY) <= maxDistance) {
-          return topY;
+        if (!isNaN(topY)) {
+          const dist = Math.abs(y - topY);
+          if (dist <= maxDistance && dist < bestDist) {
+            bestDist = dist;
+            bestInfo = { y: topY, type: 'platform', platform: plat, obstacle: null };
+          }
         }
       }
     }
+    if (bestInfo) return bestInfo;
   }
 
   // 3. Przeszkody
-  const obsList = _worldCustomObstacles;
+  const obsList = obstacles || _worldCustomObstacles;
   if (Array.isArray(obsList)) {
+    let bestDist = Infinity;
+    let bestInfo = null;
     for (const obs of obsList) {
       if (!obs || obs.holeCx !== undefined || obs.type === 'goal') continue;
       const minX = obs.x !== undefined ? obs.x : 0;
       const maxX = minX + (obs.w || 0);
       if (x >= minX - 6 && x <= maxX + 6) {
         const topY = obs.y !== undefined ? obs.y : (GROUND_Y - (obs.relY || 0));
-        if (!isNaN(topY) && Math.abs(y - topY) <= maxDistance) {
-          return topY;
+        if (!isNaN(topY)) {
+          const dist = Math.abs(y - topY);
+          if (dist <= maxDistance && dist < bestDist) {
+            bestDist = dist;
+            bestInfo = { y: topY, type: 'obstacle', platform: null, obstacle: obs };
+          }
         }
       }
     }
+    if (bestInfo) return bestInfo;
   }
 
   return null;
 }
 
-export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0) {
+export function getDecalSupportingSurfaceY(x, y, maxDistance = 16) {
+  const info = getDecalSupportingSurfaceInfo(x, y, maxDistance);
+  return info ? info.y : null;
+}
+
+export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0, targetPlatform = null) {
   if (!CONFIG.GORE_ENABLED) return;
   // Walidacja: plama krwi MUSI leżeć na stałym podłożu/platformie, nigdy nie lewituje w powietrzu
-  const surfaceY = getDecalSupportingSurfaceY(x, y, 18);
-  if (surfaceY === null) return;
+  const surfaceInfo = getDecalSupportingSurfaceInfo(x, y, 18);
+  if (!surfaceInfo && !targetPlatform) return;
+
+  const surfaceY = surfaceInfo ? surfaceInfo.y : (targetPlatform.y !== undefined ? targetPlatform.y : y);
+  const plat = targetPlatform || (surfaceInfo ? surfaceInfo.platform : null);
+  const obs = surfaceInfo ? surfaceInfo.obstacle : null;
 
   // Zlewanie się kropel w rozrastającą się kałużę (gdy krew kapie w to samo miejsce)
   for (let j = bloodDecals.length - 1; j >= Math.max(0, bloodDecals.length - 20); j--) {
@@ -157,6 +181,12 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0) {
       d.h = Math.min(7.0, d.h + (Math.random() * 0.45 + 0.15) * radiusMult);
       d.lifeTime = Math.min(360, (d.lifeTime || 300) + 40);
       d.alpha = Math.min(0.95, (d.alpha || 0.7) + 0.05);
+      if (plat && !d.platformRef) {
+        d.platformRef = plat;
+        d.cellRef = plat.cellRef || (plat.isA5Block ? plat : null);
+        d.offsetX = d.x - (plat.x !== undefined ? plat.x : 0);
+        d.offsetY = d.y - (plat.y !== undefined ? plat.y : 0);
+      }
       if (d.splats && d.splats.length < 6 && Math.random() < 0.65) {
         d.splats.push({
           dx: (x - d.x) + (Math.random() - 0.5) * 8,
@@ -186,10 +216,12 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0) {
 
   const baseW = (Math.random() * 8 + 6) * radiusMult;
   const baseH = (Math.random() * 2.6 + 1.8) * radiusMult;
+  const decalX = x + (Math.random() * 4 - 2);
+  const decalY = surfaceY;
 
   bloodDecals.push({
-    x: x + (Math.random() * 4 - 2),
-    y: surfaceY,
+    x: decalX,
+    y: decalY,
     w: baseW,
     h: baseH,
     splats,
@@ -197,7 +229,12 @@ export function addBloodDecal(x, y, radiusMult = 1.0, impactVx = 0) {
     alpha: Math.random() * 0.30 + 0.65,
     lifeTime: 300,      // 5 sekund przy 60 FPS – pełne krycie
     fadeDuration: 60,   // 1 sekunda płynnego wygaszania
-    fadeTimer: 60
+    fadeTimer: 60,
+    platformRef: plat || null,
+    cellRef: (plat && (plat.cellRef || (plat.isA5Block ? plat : null))) || null,
+    obstacleRef: obs || null,
+    offsetX: plat ? (decalX - (plat.x !== undefined ? plat.x : 0)) : (obs && obs.x !== undefined ? (decalX - obs.x) : 0),
+    offsetY: plat ? (decalY - (plat.y !== undefined ? plat.y : 0)) : (obs && obs.y !== undefined ? (decalY - obs.y) : 0)
   });
 }
 export const spawnBloodDecal = addBloodDecal;
@@ -337,6 +374,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
 
     let hitFloor = false;
     let floorY = groundY;
+    let hitPlatform = null;
 
     if (Array.isArray(plats)) {
       for (const plat of plats) {
@@ -348,6 +386,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
           if (!isNaN(topY) && p.y >= topY && p.y <= topY + 14 && p.vy > 0) {
             hitFloor = true;
             floorY = topY;
+            hitPlatform = plat;
             break;
           }
         }
@@ -376,7 +415,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       const impactSpeed = Math.hypot(p.vx, p.vy);
 
       // 1. Ochlapanie powierzchni – rozbryzg i rozrost plamy krwi
-      addBloodDecal(p.x, surfaceY, Math.min(1.5, (p.size || 2.0) / 2.0), p.vx);
+      addBloodDecal(p.x, surfaceY, Math.min(1.5, (p.size || 2.0) / 2.0), p.vx, hitPlatform);
 
       // 2. Dynamiczny rozbryzg kropel (micro-splash) odbijających się od powierzchni
       if (!p.isSplash && impactSpeed > 1.8 && Math.random() < 0.65) {
@@ -753,17 +792,52 @@ export function drawSeveredHeads(ctx, chars) {
 }
 
 export function updateBloodDecals() {
+  const activePlats = (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) ? window.ARENA_PLATFORMS : _worldPlatforms;
+
   for (let i = bloodDecals.length - 1; i >= 0; i--) {
     const d = bloodDecals[i];
-    // Sprawdzaj stabilność podłoża pod plamą krwi rzadziej (co ~45 klatek per plama, rozłożone w czasie):
-    d._checkTimer = (d._checkTimer || 0) - 1;
-    if (d._checkTimer <= 0) {
-      d._checkTimer = 45 + (i % 15);
-      if (getDecalSupportingSurfaceY(d.x, d.y, 20) === null) {
+
+    // 1. Sprawdzanie powiazania z platforma (np. klocki w Arenie 5)
+    if (d.platformRef) {
+      const p = d.platformRef;
+      // Jesli platforma lub powiazany klocek zostal zniszczony, usuniety lub przestal byc solidny:
+      if (p.isDestroyed || p.destroyed || p.solid === false || (p.cellRef && (p.cellRef.hp <= 0 || !p.cellRef.isSolid))) {
         bloodDecals.splice(i, 1);
         continue;
       }
+
+      // Sprawdz czy platforma nadal istnieje w liscie aktywnych platform areny:
+      if (Array.isArray(activePlats) && !activePlats.includes(p)) {
+        bloodDecals.splice(i, 1);
+        continue;
+      }
+
+      // Synchronizacja pozycji plamy z ruchem klocka (opadanie grawitacyjne i przesuwanie w Arenie 5)
+      const curPlatX = p.x !== undefined ? p.x : 0;
+      const curPlatY = p.y !== undefined ? p.y : 0;
+      d.x = curPlatX + (d.offsetX || 0);
+      d.y = curPlatY + (d.offsetY || 0);
+    } else if (d.cellRef && (d.cellRef.hp <= 0 || !d.cellRef.isSolid)) {
+      bloodDecals.splice(i, 1);
+      continue;
+    } else if (d.obstacleRef) {
+      const obs = d.obstacleRef;
+      if (obs.isDestroyed || obs.destroyed) {
+        bloodDecals.splice(i, 1);
+        continue;
+      }
+    } else {
+      // Sprawdzaj stabilnosc podloza pod plama krwi na gruncie (co ~45 klatek per plama):
+      d._checkTimer = (d._checkTimer || 0) - 1;
+      if (d._checkTimer <= 0) {
+        d._checkTimer = 45 + (i % 15);
+        if (getDecalSupportingSurfaceY(d.x, d.y, 20) === null) {
+          bloodDecals.splice(i, 1);
+          continue;
+        }
+      }
     }
+
     if (d.lifeTime === undefined) {
       // Stare dekale bez lifetime – dodaj pola
       d.lifeTime = 300;
@@ -773,15 +847,46 @@ export function updateBloodDecals() {
     }
     if (d.lifeTime > 0) {
       d.lifeTime--;
-      d.alpha = d.baseAlpha; // pełne krycie przez 5 sekund
+      d.alpha = d.baseAlpha; // pelne krycie przez 5 sekund
     } else {
-      // Płynne wygaszanie przez 1 sekundę
+      // Plynne wygaszanie przez 1 sekunde
       d.fadeTimer = Math.max(0, d.fadeTimer - 1);
       d.alpha = d.baseAlpha * (d.fadeTimer / d.fadeDuration);
       if (d.alpha <= 0.005) {
         bloodDecals.splice(i, 1);
         continue;
       }
+    }
+  }
+}
+
+/**
+ * Natychmiast usuwa wszystkie plamy krwi powiazane z dana platforma lub komorka (np. klockiem Areny 5)
+ */
+export function removeBloodDecalsOnPlatform(platformOrCell) {
+  if (!platformOrCell || bloodDecals.length === 0) return;
+  for (let i = bloodDecals.length - 1; i >= 0; i--) {
+    const d = bloodDecals[i];
+    if (d.platformRef === platformOrCell ||
+        d.cellRef === platformOrCell ||
+        (d.platformRef && d.platformRef.cellRef === platformOrCell) ||
+        (platformOrCell.platformObj && d.platformRef === platformOrCell.platformObj)) {
+      bloodDecals.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Natychmiast usuwa plamy krwi w podanym prostokatnym obszarze (np. zniszczony klocek, detonacja linii)
+ */
+export function removeBloodDecalsInArea(minX, minY, w, h) {
+  if (bloodDecals.length === 0) return;
+  const maxX = minX + w;
+  const maxY = minY + h;
+  for (let i = bloodDecals.length - 1; i >= 0; i--) {
+    const d = bloodDecals[i];
+    if (d.x >= minX && d.x <= maxX && d.y >= minY && d.y <= maxY) {
+      bloodDecals.splice(i, 1);
     }
   }
 }

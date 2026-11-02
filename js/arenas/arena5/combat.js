@@ -21,6 +21,7 @@ import {
 } from './physics.js';
 import { triggerScreenShake } from '../../camera.js';
 import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
+import { removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
 
 /**
  * Sprawdza przecięcie odcinka (x1, y1 -> x2, y2) z prostokątem AABB
@@ -100,8 +101,10 @@ export function destroyCraneCell(cell) {
     });
   }
 
-  // Usunięcie komórki z figury
+  // Usunięcie komórki z figury i wyczyszczenie ewentualnej krwi
   crane.shapeCells.splice(idx, 1);
+  removeBloodDecalsInArea(cellX - 6, cellY - 12, CELL_SIZE + 12, CELL_SIZE + 24);
+  removeBloodDecalsOnPlatform(cell);
 
   if (cell.material === 'EXPLOSIVE') {
     spawnShockwaveRing(midX, midY, 140, '#ef4444');
@@ -254,6 +257,8 @@ export function destroyGridCell(row, col) {
   if (!rowData || !rowData[col]) return;
 
   const cell = rowData[col];
+  cell.hp = 0;
+  cell.isSolid = false;
   removePlatformForCell(cell);
   rowData[col] = null;
 

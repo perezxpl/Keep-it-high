@@ -24,7 +24,7 @@ import {
   calculateTargetLandY
 } from './state.js';
 import { triggerScreenShake } from '../../camera.js';
-import { spawnBloodSpurt } from '../../world/gore.js';
+import { spawnBloodSpurt, removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
 import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
 import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
 
@@ -508,15 +508,24 @@ export function syncArena5ExposedSurfaces() {
  * Usuwa obiekt platformy dla danej komórki
  */
 export function removePlatformForCell(cell) {
-  if (!cell || !cell.platformObj) return;
-  const plat = cell.platformObj;
-  const idx1 = arena5State.platforms.indexOf(plat);
-  if (idx1 !== -1) arena5State.platforms.splice(idx1, 1);
-  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-    const idx2 = window.ARENA_PLATFORMS.indexOf(plat);
-    if (idx2 !== -1) window.ARENA_PLATFORMS.splice(idx2, 1);
+  if (!cell) return;
+  if (cell.platformObj) {
+    const plat = cell.platformObj;
+    plat.isDestroyed = true;
+    plat.solid = false;
+    const idx1 = arena5State.platforms.indexOf(plat);
+    if (idx1 !== -1) arena5State.platforms.splice(idx1, 1);
+    if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+      const idx2 = window.ARENA_PLATFORMS.indexOf(plat);
+      if (idx2 !== -1) window.ARENA_PLATFORMS.splice(idx2, 1);
+    }
+    removeBloodDecalsOnPlatform(plat);
+    cell.platformObj = null;
   }
-  cell.platformObj = null;
+  removeBloodDecalsOnPlatform(cell);
+  if (cell.x !== undefined && cell.y !== undefined) {
+    removeBloodDecalsInArea(cell.x - 6, cell.y - 12, (cell.w || CELL_SIZE) + 12, (cell.h || CELL_SIZE) + 24);
+  }
   syncArena5ExposedSurfaces();
 }
 
@@ -1072,6 +1081,7 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
       }
     }
     arena5State.gridRows.delete(r);
+    removeBloodDecalsInArea(ARENA_LEFT, getGridY(r) - 14, ARENA_WIDTH, CELL_SIZE + 28);
   }
 
   // Zastosuj normalną grawitację kolumnową dla wszystkich klocków powyżej

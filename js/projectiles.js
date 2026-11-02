@@ -5,7 +5,7 @@
 
 import { CONFIG, ARENA_LEFT, ARENA_RIGHT } from './config.js';
 import { getActiveArena } from './arenas/index.js';
-import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, spawnKnockedHelmet, spawnVestShreds, camera, shakeImpulse, carveGroundHole, isGroundAt } from './world.js';
+import { triggerScreenShake, triggerHitstop, spawnBloodSpurt, spawnBloodFountain, spawnBloodDrip, spawnHeadGib, spawnLimbGib, spawnBodyGibs, spawnDroppedWeapon, spawnKnockedHelmet, spawnVestShreds, camera, shakeImpulse, carveGroundHole, isGroundAt, removeBloodDecalsInArea, removeBloodDecalsOnPlatform } from './world.js';
 import { drawWeaponBloodOverlay } from './weapons/renderer.js';
 import { DEFAULT_VISUALS } from './player/hair.js';
 import { getActiveBots } from './bot.js';
@@ -1317,6 +1317,7 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
     const destroyedWidth = cutEnd - cutStart;
 
     if (destroyedWidth > 5) {
+      removeBloodDecalsInArea(cutStart - 4, platTopY - 10, destroyedWidth + 8, platThick + 20);
       // Wykryj do 5 kratek / segmentów w zasięgu wybuchu (kratki o szerokości ~25-35px)
       const numCells = Math.min(5, Math.max(1, Math.round(destroyedWidth / 28)));
       for (let k = 0; k < numCells; k++) {
@@ -1339,6 +1340,8 @@ export function destroyPlatformSegments(platforms, expX, expY, radius = 90, grou
 
     // Przypadek 1: Wybuch obejmuje całą platformę -> całkowite zniszczenie
     if (holeLeft <= platLeft && holeRight >= platRight) {
+      plat.isDestroyed = true;
+      removeBloodDecalsOnPlatform(plat);
       platforms.splice(i, 1);
       continue;
     }
