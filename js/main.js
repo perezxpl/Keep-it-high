@@ -38,7 +38,7 @@ import {
 } from './obstacles.js';
 import { CLASSES } from './classes/index.js';
 import { bot, botKeys, updateBotBrain, getActiveBots, balanceBotClasses, isBotEnabled, setBotEnabled, getBotDifficulty, setBotDifficulty, getBotCount, setBotCount } from './bot.js';
-import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed } from './ui/combatFeed.js';
+import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from './ui/combatFeed.js';
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
@@ -721,8 +721,10 @@ function update() {
         recordDeath();
         resetKillstreak();
         player._fragRecorded = true;
-        const kName = player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO');
-        const isHazard = player.killer?.isSelf || (player.killer?.cause);
+        const kName = (typeof player.killer === 'string')
+          ? player.killer
+          : (player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO'));
+        const isHazard = isHazardName(kName) || player.killer?.isSelf || (player.killer?.cause);
         triggerCombatFeedEvent({
           type: 'PLAYER_DEATH',
           victim: player,
@@ -740,6 +742,7 @@ function update() {
         if (!b._fragRecorded) {
           b._fragRecorded = true;
           const kRef = b.killer || b.lastAttacker;
+          const isHaz = typeof kRef === 'string' || (kRef && (kRef.isSelf || kRef.isHazard || isHazardName(kRef.name || kRef)));
           if (kRef === player) {
             recordKill();
             registerKillstreakKill();
@@ -750,12 +753,12 @@ function update() {
               victimName: b.name || 'BOT',
               victimTeam: b.team
             });
-          } else if (kRef && kRef !== b && !kRef.isSelf) {
+          } else if (kRef && kRef !== b && !isHaz) {
             triggerCombatFeedEvent({
               type: 'COMBAT_KILL',
               killer: kRef,
-              killerName: kRef.name || 'OPERATOR',
-              killerTeam: kRef.team,
+              killerName: (typeof kRef === 'string') ? kRef : (kRef.name || 'OPERATOR'),
+              killerTeam: kRef.team || null,
               victim: b,
               victimName: b.name || 'BOT',
               victimTeam: b.team
@@ -781,6 +784,7 @@ function update() {
         if (!remotePlayer._fragRecorded) {
           remotePlayer._fragRecorded = true;
           const kRef = remotePlayer.killer || remotePlayer.lastAttacker;
+          const isHaz = typeof kRef === 'string' || (kRef && (kRef.isSelf || kRef.isHazard || isHazardName(kRef.name || kRef)));
           if (kRef === player) {
             recordKill();
             registerKillstreakKill();
@@ -791,12 +795,12 @@ function update() {
               victimName: remotePlayer.name || 'GRACZ 2',
               victimTeam: remotePlayer.team
             });
-          } else if (kRef && kRef !== remotePlayer && !kRef.isSelf) {
+          } else if (kRef && kRef !== remotePlayer && !isHaz) {
             triggerCombatFeedEvent({
               type: 'COMBAT_KILL',
               killer: kRef,
-              killerName: kRef.name || 'OPERATOR',
-              killerTeam: kRef.team,
+              killerName: (typeof kRef === 'string') ? kRef : (kRef.name || 'OPERATOR'),
+              killerTeam: kRef.team || null,
               victim: remotePlayer,
               victimName: remotePlayer.name || 'GRACZ 2',
               victimTeam: remotePlayer.team
@@ -1288,7 +1292,11 @@ function loop(now) {
   // 2. Krok fizyki o stałej częstotliwości 60 Hz
   let steps = 0;
   while (accumulator >= TICK_MS - 1.0 && steps < 3) {
-    update();
+    try {
+      update();
+    } catch (err) {
+      console.error('[GAME LOOP UPDATE ERROR]', err);
+    }
     accumulator -= TICK_MS;
     steps++;
   }
@@ -1302,7 +1310,11 @@ function loop(now) {
   // Na monitorach 60Hz: steps === 1 w każdej klatce -> idealne 60 FPS bez gubienia klatek.
   // Na monitorach 120Hz/144Hz/240Hz: renderujemy dokładnie wtedy, gdy fizyka wykonała krok (stabilne 60 FPS bez przeciążania GPU).
   if (steps > 0) {
-    draw();
+    try {
+      draw();
+    } catch (err) {
+      console.error('[GAME LOOP DRAW ERROR]', err);
+    }
   }
 }
 
@@ -1338,7 +1350,11 @@ function handleBackgroundSimulation() {
         // Stały krok fizyki TICK_MS (60 Hz). Nadrabiamy upływający czas do max 60 kroków na cykl.
         const steps = Math.min(60, Math.max(1, Math.floor(elapsed / TICK_MS)));
         for (let i = 0; i < steps; i++) {
-          update();
+          try {
+            update();
+          } catch (err) {
+            console.error('[BG UPDATE ERROR]', err);
+          }
         }
       }, 1000 / 60);
     }
@@ -1355,7 +1371,11 @@ function handleBackgroundSimulation() {
       const elapsed = now - lastBgTickTime;
       const steps = Math.min(30, Math.floor(elapsed / TICK_MS));
       for (let i = 0; i < steps; i++) {
-        update();
+        try {
+          update();
+        } catch (err) {
+          console.error('[RESUME UPDATE ERROR]', err);
+        }
       }
     }
 

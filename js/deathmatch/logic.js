@@ -15,7 +15,7 @@ import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../prog
 import { registerKillstreakKill, resetKillstreak } from '../killstreaks/index.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
-import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed } from '../ui/combatFeed.js';
+import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from '../ui/combatFeed.js';
 import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
 
 let _dmSyncTimer = 0;
@@ -315,7 +315,8 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
 
         // Sprawdzenie, czy ofiara została FAKTYCZNIE zabita przez przeciwnika
         const killerRef = c.killer || c.lastAttacker;
-        const isSelfKill = !killerRef || (killerRef === c) || (killerRef && killerRef.isSelf === true);
+        const isHazardKiller = typeof killerRef === 'string' || (killerRef && (killerRef.isHazard || isHazardName(killerRef.name || killerRef)));
+        const isSelfKill = !killerRef || (killerRef === c) || (killerRef && killerRef.isSelf === true) || isHazardKiller;
         const isFriendlyFire = (deathmatchState.mode === DEATHMATCH_MODES.TDM) && killerRef && (killerRef.team === c.team);
 
         if (!isSelfKill && !isFriendlyFire) {
@@ -328,8 +329,8 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
             }
           }
 
-          const killerName = killerRef.name || killerData?.name || 'OPERATOR';
-          const killerTeam = killerRef.team || killerData?.team || null;
+          const killerName = (typeof killerRef === 'string') ? killerRef : (killerRef?.name || killerData?.name || 'OPERATOR');
+          const killerTeam = killerRef?.team || killerData?.team || null;
 
           if (killerRef === player) {
             recordKill();

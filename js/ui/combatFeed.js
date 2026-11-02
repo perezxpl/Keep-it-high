@@ -38,9 +38,21 @@ export function isHazardName(str) {
 }
 
 function resolveEntity(entity, fallbackName = '', fallbackTeam = null) {
-  if (!entity && !fallbackName) {
-    return { name: '', team: null, isPlayer: false, isHazard: false, cause: '' };
+  if (!entity) {
+    if (!fallbackName) {
+      return { name: '', team: null, isPlayer: false, isHazard: false, cause: '' };
+    }
+    const clean = String(fallbackName).trim().toUpperCase();
+    const isHaz = isHazardName(clean);
+    return {
+      name: clean,
+      team: fallbackTeam,
+      isPlayer: (clean === 'GRACZ' || clean === 'TY'),
+      isHazard: isHaz,
+      cause: isHaz ? clean : ''
+    };
   }
+
   if (typeof entity === 'string') {
     const clean = entity.trim().toUpperCase();
     const isHaz = isHazardName(clean);
@@ -53,7 +65,7 @@ function resolveEntity(entity, fallbackName = '', fallbackTeam = null) {
     };
   }
 
-  const isLocalPl = (entity.isPlayer === true) || (entity.id === 'player') || (entity.isLocalPlayer === true);
+  const isLocalPl = !!(entity.isPlayer === true || entity.id === 'player' || entity.isLocalPlayer === true || (entity.name === 'GRACZ' && !entity.isBot));
   const rawName = entity.name || fallbackName || (isLocalPl ? 'GRACZ' : 'OPERATOR');
   const cleanName = String(rawName).trim().toUpperCase();
   const team = entity.team || fallbackTeam || null;
@@ -97,10 +109,13 @@ export function triggerCombatFeedEvent({
     } else {
       resolvedType = 'COMBAT_HAZARD';
     }
+  } else if (resolvedType === 'COMBAT_KILL' && (kInfo.isHazard || !kInfo.name)) {
+    resolvedType = 'COMBAT_HAZARD';
+    cause = cause || kInfo.cause || kInfo.name;
   }
 
   // Priorytetyzacja: nie nadpisuj aktywnego powiadomienia gracza przez powiadomienie bota
-  const isHighPri = (resolvedType === 'PLAYER_KILL' || resolvedType === 'PLAYER_DEATH');
+  const isHighPri = (resolvedType === 'PLAYER_KILL' || resolvedType === 'PLAYER_DEATH' || resolvedType === 'SYSTEM');
   const currentIsHighPri = (combatFeedState.type === 'PLAYER_KILL' || combatFeedState.type === 'PLAYER_DEATH');
   if (combatFeedState.active && currentIsHighPri && !isHighPri && combatFeedState.timer > 35) {
     return;
@@ -175,7 +190,8 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
   if (alpha <= 0.01) return;
 
   ctx.save();
-  ctx.globalAlpha = alpha;
+  try {
+    ctx.globalAlpha = alpha;
 
   const type = combatFeedState.type;
   const kTeam = combatFeedState.killerTeam;
@@ -580,6 +596,9 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.fillText(rawText || kName || 'KOMUNIKAT TAKTYCZNY', W / 2, midY);
     }
   }
-
-  ctx.restore();
+  } catch (err) {
+    console.error('[COMBAT FEED RENDER ERROR]', err);
+  } finally {
+    ctx.restore();
+  }
 }
