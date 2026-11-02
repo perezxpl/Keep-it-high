@@ -723,8 +723,8 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       ARENA_PLATFORMS.push(...currentArena.platforms);
     }
 
-    const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'USS_TITAN' || currentArena?.alias === 'TITAN' || currentArena?.alias === 'OIL_RIG_TYPHOON' || currentArena?.alias === 'TYPHOON' || currentArena?.alias === 'ARES_ORBITAL_STATION');
-    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 820;
+    const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'OBSIDIAN_CALDERA' || currentArena?.alias === 'CALDERA' || currentArena?.alias === 'OBSIDIAN' || currentArena?.alias === 'OFFSHORE_RIG' || currentArena?.alias === 'USS_TITAN' || currentArena?.alias === 'TITAN' || currentArena?.alias === 'OIL_RIG_TYPHOON' || currentArena?.alias === 'TYPHOON' || currentArena?.alias === 'ARES_ORBITAL_STATION');
+    const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : (isA4 ? 1040 : 820);
     if (playerObj) {
       const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
       const spawnIdx = isA4 ? (isClient ? 2 : 1) : (isClient ? 2 : 0);

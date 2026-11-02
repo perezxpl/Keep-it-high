@@ -32,6 +32,12 @@ export const ARENAS = {
   get '2'() { return arena2; },
   get '3'() { return arena3; },
   get '4'() { return arena4; },
+  get 'OBSIDIAN_CALDERA'() { return arena4; },
+  get 'CALDERA'() { return arena4; },
+  get 'OBSIDIAN'() { return arena4; },
+  get 'KRATER'() { return arena4; },
+  get 'WULKAN'() { return arena4; },
+  get 'MAGMA'() { return arena4; },
   get 'USS_TITAN'() { return arena4; },
   get 'TITAN'() { return arena4; },
   get 'LOTNISKOWIEC'() { return arena4; },
@@ -41,8 +47,11 @@ export const ARENAS = {
   get 'TYFON'() { return arena4; },
   get 'OIL_RIG'() { return arena4; },
   get 'PLATFORMA_WIERTNICZA'() { return arena4; },
+  get 'PLATFORMA_MORSKA'() { return arena4; },
   get 'PLATFORMA'() { return arena4; },
   get 'RIG'() { return arena4; },
+  get 'RIG_08'() { return arena4; },
+  get 'OFFSHORE_RIG'() { return arena4; },
   get 'SPACE'() { return arena4; },
   get 'SPACE_STATION'() { return arena4; },
   get 'ARES'() { return arena4; },
@@ -84,7 +93,7 @@ function normalizeArenaId(rawId) {
   if (cleaned === '1' || cleaned === 'arena1') return 'arena-1';
   if (cleaned === '2' || cleaned === 'arena2' || cleaned === 'pandora' || cleaned === 'arena2pandora' || cleaned === 'hallelujah' || cleaned === 'cyber' || cleaned === 'cyberstadium' || cleaned === 'sectorx' || cleaned === 'sektorx' || cleaned === 'arena2sectorx') return 'arena-2';
   if (cleaned === '3' || cleaned === 'arena3' || cleaned === 'foundry' || cleaned === 'jungle' || cleaned === 'junglearena' || cleaned === 'dzungla' || cleaned === 'militarnadzungla' || cleaned === 'mine' || cleaned === 'aero' || cleaned === 'refinery' || cleaned === 'aerorafineria' || cleaned === 'sky' || cleaned === 'aerorefinery' || cleaned === 'skydistrict' || cleaned === 'podniebnydystrykt') return 'arena-3';
-  if (cleaned === '4' || cleaned === 'arena4' || cleaned === 'titan' || cleaned === 'usstitan' || cleaned === 'lotniskowiec' || cleaned === 'carrier' || cleaned === 'aircraftcarrier' || cleaned === 'typhoon' || cleaned === 'tyfon' || cleaned === 'oilrig' || cleaned === 'platforma' || cleaned === 'platformawiertnicza' || cleaned === 'rig' || cleaned === 'space' || cleaned === 'spacestation' || cleaned === 'ares' || cleaned === 'aresstation' || cleaned === 'stacjaares' || cleaned === 'stacjaorbitalnaares' || cleaned === 'train' || cleaned === 'armoredtrain' || cleaned === 'pociag' || cleaned === 'pociąg' || cleaned === 'pedzacypociag' || cleaned === 'pędzącypociąg') return 'arena-4';
+  if (cleaned === '4' || cleaned === 'arena4' || cleaned === 'obsidian' || cleaned === 'caldera' || cleaned === 'obsidiancaldera' || cleaned === 'krater' || cleaned === 'wulkan' || cleaned === 'magma' || cleaned === 'titan' || cleaned === 'usstitan' || cleaned === 'lotniskowiec' || cleaned === 'carrier' || cleaned === 'aircraftcarrier' || cleaned === 'typhoon' || cleaned === 'tyfon' || cleaned === 'oilrig' || cleaned === 'platforma' || cleaned === 'platformawiertnicza' || cleaned === 'platformamorska' || cleaned === 'rig08' || cleaned === 'offshorerig' || cleaned === 'rig' || cleaned === 'space' || cleaned === 'spacestation' || cleaned === 'ares' || cleaned === 'aresstation' || cleaned === 'stacjaares' || cleaned === 'stacjaorbitalnaares' || cleaned === 'train' || cleaned === 'armoredtrain' || cleaned === 'pociag' || cleaned === 'pociąg' || cleaned === 'pedzacypociag' || cleaned === 'pędzącypociąg') return 'arena-4';
   if (cleaned === '5' || cleaned === 'arena5' || cleaned === 'prefab' || cleaned === 'prefaby' || cleaned === 'prefabrykaty' || cleaned === 'prefabrykat' || cleaned === 'prefabrykator' || cleaned === 'prefabtower' || cleaned === 'tetris' || cleaned === 'tower' || cleaned === 'sektor5' || cleaned === 'sektor05' || cleaned === 'sector5' || cleaned === 'sector05') return 'arena-5';
   if (ARENAS[str]) return ARENAS[str].id;
   if (ARENAS[lower]) return ARENAS[lower].id;

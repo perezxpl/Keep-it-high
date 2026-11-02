@@ -163,10 +163,11 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
   }
 
   const curArenaObj = getActiveArena?.();
+  const isA4 = (curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'PLATFORMA_MORSKA' || activeArenaId === 'PLATFORMA_WIERTNICZA');
   const isA3 = (curArenaObj?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2 = (curArenaObj?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
 
-  if (!isA3 && !isA2 && y2 >= groundY) {
+  if (!isA4 && !isA3 && !isA2 && y2 >= groundY) {
     if (y1 < groundY) {
       const dy = y2 - y1;
       const t = dy !== 0 ? Math.max(0, Math.min(1, (groundY - y1) / dy)) : 0;
@@ -212,6 +213,19 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
         recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1395, nx: 0, ny: -1 }, 'void_bottom');
       } else {
         recordHit({ hit: true, t: 0, x: x1, y: 1395, nx: 0, ny: -1 }, 'void_bottom');
+      }
+    }
+  }
+
+  // W Arenie 4 (Obsidian Caldera) wrzace jezioro magmy (y >= 1390) pochlania pociski
+  if (isA4) {
+    if (y2 >= 1390) {
+      if (y1 < 1390) {
+        const dy = y2 - y1;
+        const t = dy !== 0 ? Math.max(0, Math.min(1, (1390 - y1) / dy)) : 0;
+        recordHit({ hit: true, t, x: x1 + (x2 - x1) * t, y: 1390, nx: 0, ny: -1 }, 'magma_lake');
+      } else {
+        recordHit({ hit: true, t: 0, x: x1, y: 1390, nx: 0, ny: -1 }, 'magma_lake');
       }
     }
   }

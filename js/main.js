@@ -554,7 +554,7 @@ function update() {
   );
 
   const isA5Active = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-  const isA4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
+  const isA4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
   const effectiveGroundY = isA5Active
@@ -931,7 +931,7 @@ function draw() {
   const worldWidth = worldRight - worldLeft;
 
   const isArena5Active = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-  const isArena4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN');
+  const isArena4Active = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'ARMORED_TRAIN');
   const isArena2Active = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   const isArena3Active = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const effectiveDrawGroundY = isArena5Active
@@ -1464,7 +1464,7 @@ if (typeof window !== 'undefined') {
     getMatchInfo: () => {
       const arena = getActiveArena();
       const arenaName = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER') ? 'Prefabrykator Orbitalny' :
-                        (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'TYFON' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Lotniskowiec // USS Titan' :
+                        (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'USS_TITAN' || activeArenaId === 'TITAN' || activeArenaId === 'LOTNISKOWIEC' || activeArenaId === 'OIL_RIG_TYPHOON' || activeArenaId === 'TYPHOON' || activeArenaId === 'TYFON' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES') ? 'Obsidian Caldera' :
                         (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
                         (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
                         (arena?.name || 'Neonowe Miasto');

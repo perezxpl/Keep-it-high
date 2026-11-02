@@ -260,8 +260,8 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
     return closestTopY < Infinity ? closestTopY : 1200;
   }
 
-  // Arena 4: Platforma Wiertnicza // Tyfon (śmiertelny wzburzony ocean poza obrysem platform)
-  const isA4 = (effectiveId === 'ARENA_4' || effectiveId === 'arena-4' || effectiveId === 'OIL_RIG_TYPHOON' || effectiveId === 'TYPHOON' || effectiveId === 'TYFON' || effectiveId === 'OIL_RIG' || effectiveId === 'SPACE_STATION' || effectiveId === 'ARES' || effectiveId === 'ARES_ORBITAL_STATION');
+  // Arena 4: Obsidian Caldera (smertelne jezioro magmy poza obrysem platform)
+  const isA4 = (effectiveId === 'ARENA_4' || effectiveId === 'arena-4' || effectiveId === 'OBSIDIAN_CALDERA' || effectiveId === 'CALDERA' || effectiveId === 'OBSIDIAN' || effectiveId === 'KRATER' || effectiveId === 'PLATFORMA_MORSKA' || effectiveId === 'RIG_08' || effectiveId === 'OFFSHORE_RIG' || effectiveId === 'OIL_RIG_TYPHOON' || effectiveId === 'TYPHOON' || effectiveId === 'TYFON' || effectiveId === 'OIL_RIG' || effectiveId === 'SPACE_STATION' || effectiveId === 'ARES' || effectiveId === 'ARES_ORBITAL_STATION');
   if (isA4) {
     let closestTopY = Infinity;
     const plats = (Array.isArray(ARENA_PLATFORMS) && ARENA_PLATFORMS.length > 0)
@@ -272,9 +272,12 @@ export function getSafeSurfaceBelow(x, feetY, arenaId = '') {
       if (!plat || plat.solid === false || plat.isWall) continue;
       const pLeft = plat.x || 0;
       const pWidth = plat.width || plat.w || 0;
-      const pTopY = (typeof plat.y === 'number') ? plat.y : 820;
+      let pTopY = (typeof plat.y === 'number') ? plat.y : 780;
+      if (plat.isSlope && typeof getPlatformSurfaceY === 'function') {
+        pTopY = getPlatformSurfaceY(plat, x, 1400);
+      }
       if (x >= pLeft - 8 && x <= pLeft + pWidth + 8) {
-        if (pTopY >= feetY - 32 && pTopY < closestTopY && pTopY < 1250) {
+        if (pTopY >= feetY - 32 && pTopY < closestTopY && pTopY < 1380) {
           closestTopY = pTopY;
         }
       }

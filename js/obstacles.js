@@ -48,7 +48,7 @@ export function drawObstacles(ctx, groundY) {
   const viewLeft = (camera && typeof camera.x === 'number') ? camera.x - 100 : -100;
   const viewRight = (camera && typeof camera.x === 'number') ? camera.x + viewW + 100 : 5000;
 
-  const isA4 = (curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN');
+  const isA4 = (curArenaObj?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'ARMORED_TRAIN');
 
   if (!isA4) {
     for (const bar of GROUND_BARRICADES) {

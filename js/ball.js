@@ -28,7 +28,7 @@ export const ball = {
 
 export function resetBallToPlayer(p, GROUND_Y) {
   const isA5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-  const isA4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
+  const isA4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');
   const isA3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
   const isA2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
   if (isA5) {
@@ -49,21 +49,23 @@ export function resetBallToPlayer(p, GROUND_Y) {
     p.onGround = true;
     p.currentGroundY = floorY;
   } else if (isA4) {
-    p.x = 400;
-    p.y = 800;
+    p.x = 980;
+    p.y = 970;
     p.facing = 1;
     if (typeof window !== 'undefined' && window.location) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('spawnX')) p.x = Number(urlParams.get('spawnX'));
       if (urlParams.has('spawnY')) p.y = Number(urlParams.get('spawnY'));
     }
+    // Gracz na dolnej stacji zachodniej (x: 980, y: 970, stopy na podlozu y: 1040), pilka na gornym moscie wiszacym (x: 1600, y: 470)
     ball.active = false;
-    ball.x = -9999;
-    ball.y = -9999;
+    ball.x = 1600;
+    ball.y = 470;
+    ball.hoverBaseY = 470;
     p.isIntro = false;
     p.gaitMode = 'IDLE';
     p.onGround = true;
-    p.currentGroundY = 820;
+    p.currentGroundY = 1040;
   } else if (isA3) {
     p.x = 600;
     p.y = 1130;
@@ -437,11 +439,12 @@ export function updateBall(GROUND_Y) {
     }
 
     // Sprężyste odbijanie piłki (rykoszety) od pionowych neonowych ścian areny (300m bariera)
+    const isArena4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'PLATFORMA_WIERTNICZA' || activeArenaId === 'PLATFORMA_MORSKA' || activeArenaId === 'RIG_08' || activeArenaId === 'OFFSHORE_RIG');
     const isArena3 = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY');
     const isArena2 = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA');
-    const wallLeft = (isArena3 || isArena2) ? 0 : ARENA_LEFT;
-    const wallRight = isArena3 ? 4400 : (isArena2 ? 4000 : ARENA_RIGHT);
-    const wallTop = isArena2 ? 0 : (GROUND_Y - (isArena3 ? 1300 : 3000));
+    const wallLeft = (isArena4 || isArena3 || isArena2) ? 0 : ARENA_LEFT;
+    const wallRight = isArena4 ? 3800 : (isArena3 ? 4400 : (isArena2 ? 4000 : ARENA_RIGHT));
+    const wallTop = isArena2 ? 0 : (GROUND_Y - (isArena4 ? 1500 : (isArena3 ? 1300 : 3000)));
 
     if (ball.y >= wallTop) {
       if (ball.x - ball.colRadius <= wallLeft) {
@@ -457,7 +460,7 @@ export function updateBall(GROUND_Y) {
 
 
     // Lądowanie na podłożu / wpadanie w wyrwę w geometrii
-    const hasNoFloor = (activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
+    const hasNoFloor = (isArena4 || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
     const isGroundUnderBall = (!hasNoFloor && typeof isGroundAt === 'function')
       ? isGroundAt(ball.x, ball.colRadius * 0.6)
       : (!hasNoFloor);
@@ -478,11 +481,23 @@ export function updateBall(GROUND_Y) {
       ball.spin *= Math.pow(0.96, subDt);
     }
 
-    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w czeluść kanału technicznego, otchłani lub śmiertelnej wody w Arenie 3
+    // Bezpieczny reset piłki na płytę boiska w razie wpadnięcia w ocean, kanał techniczny lub otchłań
+    const ballInA4Magma = isArena4 && (ball.y >= 1380);
     const ballInA3Water = isArena3 && (ball.y + (ball.colRadius || 14) >= 1300) && (ball.x >= 1560 && ball.x <= 2840);
-    const ballVoidLimit = isArena3 ? 1300 : (isArena2 ? 1380 : (GROUND_Y + 280));
-    if (ball.y > ballVoidLimit || ballInA3Water) {
-      if (isArena3) {
+    const ballVoidLimit = isArena4 ? 1380 : (isArena3 ? 1300 : (isArena2 ? 1380 : (GROUND_Y + 280)));
+    if (ball.y > ballVoidLimit || ballInA3Water || ballInA4Magma) {
+      if (isArena4) {
+        if (typeof window !== 'undefined' && (typeof window.spawnMagmaSplash === 'function' || typeof window.spawnOceanSplash === 'function')) {
+          const splashFn = window.spawnMagmaSplash || window.spawnOceanSplash; splashFn(ball.x, 1380, 20, true);
+        }
+        // Natychmiastowy reset z rozbryzgiem na srodek platformy wiszacej (gorny most)
+        ball.x = 1600;
+        ball.y = 470;
+        ball.hoverBaseY = 470;
+        ball.isLevitating = false;
+        ball.vx = 0;
+        ball.vy = -4.0;
+      } else if (isArena3) {
         ball.x = 2200;
         ball.y = 700;
         ball.hoverBaseY = 700;

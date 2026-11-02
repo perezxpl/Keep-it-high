@@ -143,6 +143,7 @@ export class AeroSuperGrenade {
 
     // Określenie granic aktualnej areny
     const curArena = getActiveArena?.();
+    const isA4 = (curArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'PLATFORMA_MORSKA' || activeArenaId === 'PLATFORMA_WIERTNICZA');
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
     const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
     const activePlats = platforms || ARENA_PLATFORMS;
@@ -177,6 +178,22 @@ export class AeroSuperGrenade {
         this.vx *= 0.82;
         this.vy = Math.min(1.2, (this.vy + 0.06) * 0.74);
         this.vRot *= 0.72;
+      }
+    } else if (isA4) {
+      const oceanSurfaceY = 1380;
+      if (this.y + this.radius >= oceanSurfaceY) {
+        if (this.prevY + this.radius < oceanSurfaceY) {
+          if (typeof window.spawnMagmaSplash === 'function' || typeof window.spawnOceanSplash === 'function') {
+            const splashFn = window.spawnMagmaSplash || window.spawnOceanSplash; splashFn(this.x, oceanSurfaceY, 16);
+          }
+        }
+        // Wypornosc, gestosc magmy i natychmiastowa detonacja w kontakcie z magma
+        this.vx *= 0.82;
+        this.vy = Math.min(1.4, (this.vy + 0.08) * 0.74);
+        this.vRot *= 0.72;
+        if (this.fuse > 0.05) {
+          this.fuse = 0.02; // Natychmiastowa detonacja w magmie
+        }
       }
     } else if (isA3) {
       const gx = this.x;
@@ -1188,9 +1205,17 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   }
 
   // 3. FIZYCZNE NISZCZENIE PLATFORM I WYCINKA PODŁOŻA (Real Geometry Carving)
+  const isA4Explosion = (activeArena?.id === 'arena-4' || activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'PLATFORMA_MORSKA');
   const isA3Explosion = (activeArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
   const isA2Explosion = (activeArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'ARENA_2_SECTOR_X');
-  if (isA3Explosion) {
+  if (isA4Explosion) {
+    // Wybuch w magmie Areny 4: potezny gejzer lawy i czastki ognia
+    if (expY >= 1360) {
+      if (typeof window.spawnMagmaSplash === 'function' || typeof window.spawnOceanSplash === 'function') {
+        const splashFn = window.spawnMagmaSplash || window.spawnOceanSplash; splashFn(expX, 1380, 36, true);
+      }
+    }
+  } else if (isA3Explosion) {
     // Wybuch w wodzie rzeki: potężny gejzer wodny
     if (expY >= 1290 && expX >= 1620 && expX <= 2780) {
       if (typeof window.spawnArena3WaterSplash === 'function') {
@@ -1232,7 +1257,14 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
       const obsDist = Math.hypot(obsCenterX - expX, obsCenterY - expY);
 
       if (obsDist <= radius * 0.95) {
-        spawnConcreteDebris(obsCenterX, obsCenterY, 8);
+        if (obs.type === 'tech_container' || obs.type === 'rotary_unit' || obs.type === 'supplies_crate' || obs.type === 'vulcan_container' || obs.type === 'obsidian_boulder' || obs.type === 'seismic_crate') {
+          spawnConcreteDebris(obsCenterX, obsCenterY, 10);
+          if (typeof spawnObstacleSparks === 'function') {
+            spawnObstacleSparks(obsCenterX, obsCenterY, 8);
+          }
+        } else {
+          spawnConcreteDebris(obsCenterX, obsCenterY, 8);
+        }
         targetObs.splice(i, 1);
         const idx = obstacles.indexOf(obs);
         if (idx !== -1) obstacles.splice(idx, 1);

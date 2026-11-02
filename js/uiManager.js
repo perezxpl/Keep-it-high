@@ -476,10 +476,10 @@ export const uiManager = {
       id: 'ARENA_4',
       badge: 'SEKTOR 04',
       counter: 'MAPA 4 / 5',
-      name: 'LOTNISKOWIEC // USS TITAN',
-      tag: 'OTWARTA PRZESTRZEŃ // FLOTA',
-      desc: 'PANORAMICZNY POKŁAD // KATAPULTA PAROWA // MYŚLIWCE JAKO OSŁONY // MOSTEK',
-      img: './assets/arena4_preview.svg?v=v390_uss_titan'
+      name: 'OBSIDIAN CALDERA',
+      tag: 'MAGMA // GEJZERY TERMICZNE',
+      desc: 'KRATER WULKANICZNY // ERUPCJE GAZU I LAWY // BAZALTOWE RAMPY // JEZIORO MAGMY NA DNIE',
+      img: './assets/arena4_preview.svg?v=v410_obsidian_caldera'
     },
     {
       id: 'ARENA_5',
