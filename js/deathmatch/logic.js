@@ -139,6 +139,14 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
 
   deathmatchState.participants = pList;
   updateLeaderboard();
+
+  // Wizualny komunikat taktyczny przy starcie rundy
+  const condText = (deathmatchState.winCondition === 'FRAGS')
+    ? `LIMIT: ${deathmatchState.fragLimit} FRAGOW`
+    : (deathmatchState.winCondition === 'TIME')
+      ? `LIMIT: ${Math.round(deathmatchState.matchDuration / 60)} MINUT`
+      : `CEL: ${deathmatchState.fragLimit} FRAGOW / ${Math.round(deathmatchState.matchDuration / 60)} MIN`;
+  triggerCombatFeedBanner('SYSTEM', `MISJA ROZPOCZETA // ${condText}`);
 }
 
 /**

@@ -1472,7 +1472,20 @@ if (typeof window !== 'undefined') {
                         (activeArenaId === 'ARENA_2' || activeArenaId === 'arena-2') ? 'Toksyczna Rafineria' :
                         (activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3') ? 'Tajemnicza Dżungla' :
                         (arena?.name || 'Neonowe Miasto');
-      return `ARENA: ${arenaName.toUpperCase()} • KLASA: ${player.currentClass?.name || 'PLAYMAKER'}`;
+      const isDm = (activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
+                    activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY' ||
+                    activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' ||
+                    activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
+      let goalText = '';
+      if (isDm && deathmatchState && deathmatchState.active) {
+        const cond = deathmatchState.winCondition || 'BOTH';
+        const frags = deathmatchState.fragLimit || 25;
+        const mins = Math.round((deathmatchState.matchDuration || 300) / 60);
+        if (cond === 'FRAGS') goalText = `   CEL: ${frags} FRAGOW`;
+        else if (cond === 'TIME') goalText = `   CZAS: ${mins} MIN`;
+        else goalText = `   CEL: ${frags} FRAGOW / ${mins} MIN`;
+      }
+      return `ARENA: ${arenaName.toUpperCase()}   KLASA: ${player.currentClass?.name || 'PLAYMAKER'}${goalText}`;
     }
   });
 

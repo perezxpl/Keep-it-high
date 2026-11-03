@@ -963,6 +963,7 @@ export const uiManager = {
     }
 
     this.syncFormControls();
+    this.syncDeathmatchUI();
   },
 
   syncFormControls() {
@@ -1241,14 +1242,14 @@ export const uiManager = {
 
   syncBotCountUI(count = getBotCount()) {
     const c = parseInt(count, 10) || 1;
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-bot-count-toggle-group button, #ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.botCount, 10) === c);
     });
   },
 
   syncBotDiffUI(diff = getBotDifficulty()) {
     const d = (diff === 'easy' || diff === 'hard') ? diff : 'medium';
-    document.querySelectorAll('#ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-diff-toggle-group button, #ball-diff-toggle-group button, #dm-diff-toggle-group button, #a3-diff-toggle-group button, #a4-diff-toggle-group button, #a5-diff-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.botDiff === d);
     });
   },
@@ -1275,19 +1276,65 @@ export const uiManager = {
   syncDeathmatchUI() {
     const curMode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
     const curTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
+    const curWinCond = deathmatchConfig.winCondition || WIN_CONDITIONS.BOTH;
+    const curFragLimit = deathmatchConfig.fragLimit || 25;
+    const curDuration = deathmatchConfig.duration || 300;
 
-    document.querySelectorAll('#dm-mode-toggle-group button').forEach(btn => {
+    // 1. Tryb bitwy (TDM / FFA)
+    document.querySelectorAll('.dm-mode-toggle-group button, #dm-mode-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.dmMode === curMode);
     });
 
-    const teamRow = document.getElementById('dm-team-select-row');
-    if (teamRow) {
-      teamRow.style.display = (curMode === DEATHMATCH_MODES.FFA) ? 'none' : 'flex';
-    }
-
-    document.querySelectorAll('#dm-team-toggle-group button').forEach(btn => {
+    // 2. Drużyna (ukrywana w trybie FFA)
+    document.querySelectorAll('.dm-team-select-row, #dm-team-select-row').forEach(row => {
+      row.style.display = (curMode === DEATHMATCH_MODES.FFA) ? 'none' : 'flex';
+    });
+    document.querySelectorAll('.dm-team-note-row, #dm-team-note-row').forEach(row => {
+      row.style.display = (curMode === DEATHMATCH_MODES.FFA) ? 'none' : 'block';
+    });
+    document.querySelectorAll('.dm-team-toggle-group button, #dm-team-toggle-group button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.dmTeam === curTeam);
     });
+
+    // 3. Warunek zwycięstwa (BOTH / FRAGS / TIME)
+    document.querySelectorAll('.dm-wincond-toggle-group button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.dmWinCond === curWinCond);
+    });
+
+    // 4. Limit fragów (10, 15, 25, 40, 50)
+    document.querySelectorAll('.dm-frag-limit-toggle-group button').forEach(btn => {
+      const val = parseInt(btn.dataset.dmFragLimit, 10);
+      btn.classList.toggle('active', val === curFragLimit);
+    });
+
+    // 5. Czas trwania bitwy (180, 300, 420, 600, 900)
+    document.querySelectorAll('.dm-duration-toggle-group button').forEach(btn => {
+      const val = parseInt(btn.dataset.dmDuration, 10);
+      btn.classList.toggle('active', val === curDuration);
+    });
+
+    // 6. Wygaszanie / deaktywacja powiązanych wierszy w zależności od warunku zwycięstwa
+    const isTimeOnly = (curWinCond === WIN_CONDITIONS.TIME);
+    const isFragsOnly = (curWinCond === WIN_CONDITIONS.FRAGS);
+
+    document.querySelectorAll('.dm-frag-limit-row').forEach(row => {
+      row.style.opacity = isTimeOnly ? '0.35' : '1.0';
+      row.style.pointerEvents = isTimeOnly ? 'none' : 'auto';
+    });
+    document.querySelectorAll('.dm-duration-row').forEach(row => {
+      row.style.opacity = isFragsOnly ? '0.35' : '1.0';
+      row.style.pointerEvents = isFragsOnly ? 'none' : 'auto';
+    });
+
+    // 7. Dwukierunkowa synchronizacja z kontrolkami <select> w oknie Ustawień (jeśli istnieją)
+    const winCondSelect = document.getElementById('setting-win-condition');
+    if (winCondSelect && winCondSelect.value !== curWinCond) winCondSelect.value = curWinCond;
+    const fragLimitSelect = document.getElementById('setting-frag-limit');
+    if (fragLimitSelect && parseInt(fragLimitSelect.value, 10) !== curFragLimit) fragLimitSelect.value = String(curFragLimit);
+    const durationSelect = document.getElementById('setting-match-duration');
+    if (durationSelect && parseInt(durationSelect.value, 10) !== curDuration) durationSelect.value = String(curDuration);
+    const modeSelect = document.getElementById('setting-game-mode');
+    if (modeSelect && modeSelect.value !== curMode) modeSelect.value = curMode;
   },
 
   syncUI(gameState) {
@@ -1736,11 +1783,11 @@ export const uiManager = {
     });
 
     // -------------------------------------------------------------------------
-    // PARAMETRY BITWY: Opcje Areny 2 (Deathmatch)
+    // PARAMETRY BITWY: Opcje Deathmatch (Areny 2, 3, 4, 5)
     // -------------------------------------------------------------------------
     this.syncDeathmatchUI();
 
-    document.querySelectorAll('#dm-mode-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-mode-toggle-group button, #dm-mode-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1748,12 +1795,14 @@ export const uiManager = {
         const mode = btn.dataset.dmMode;
         if (mode) {
           setDeathmatchMode(mode);
+          this.settings.deathmatchMode = mode;
+          this.saveSettings();
           this.syncDeathmatchUI();
         }
       });
     });
 
-    document.querySelectorAll('#dm-team-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-team-toggle-group button, #dm-team-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1761,6 +1810,53 @@ export const uiManager = {
         const team = btn.dataset.dmTeam;
         if (team) {
           setDeathmatchPlayerTeam(team);
+          this.settings.playerTeam = team;
+          this.saveSettings();
+          this.syncDeathmatchUI();
+        }
+      });
+    });
+
+    document.querySelectorAll('.dm-wincond-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const cond = btn.dataset.dmWinCond;
+        if (cond) {
+          setDeathmatchWinCondition(cond);
+          this.settings.winCondition = cond;
+          this.saveSettings();
+          this.syncDeathmatchUI();
+        }
+      });
+    });
+
+    document.querySelectorAll('.dm-frag-limit-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const limit = parseInt(btn.dataset.dmFragLimit, 10);
+        if (limit) {
+          setDeathmatchFragLimit(limit);
+          this.settings.fragLimit = limit;
+          this.saveSettings();
+          this.syncDeathmatchUI();
+        }
+      });
+    });
+
+    document.querySelectorAll('.dm-duration-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const dur = parseInt(btn.dataset.dmDuration, 10);
+        if (dur) {
+          setDeathmatchDuration(dur);
+          this.settings.matchDuration = dur;
+          this.saveSettings();
           this.syncDeathmatchUI();
         }
       });
@@ -1769,7 +1865,7 @@ export const uiManager = {
     // -------------------------------------------------------------------------
     // PARAMETRY BITWY: Wybór liczby botów (Wspólna synchronizacja dla Aren 1, 2, 3, 4, 5)
     // -------------------------------------------------------------------------
-    document.querySelectorAll('#ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
+    document.querySelectorAll('.dm-bot-count-toggle-group button, #ball-bot-count-toggle-group button, #dm-bot-count-toggle-group button, #a3-bot-count-toggle-group button, #a4-bot-count-toggle-group button, #a5-bot-count-toggle-group button').forEach(btn => {
       btn.addEventListener('mouseenter', () => playUiHover());
       btn.addEventListener('click', () => {
         playUiClick();
@@ -1778,6 +1874,16 @@ export const uiManager = {
         setBotCount(count);
         this.syncBotCountUI(count);
         this.syncBotActiveUI(true);
+      });
+    });
+
+    document.querySelectorAll('.dm-diff-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', () => {
+        playUiClick();
+        const diff = btn.dataset.botDiff || 'medium';
+        setBotDifficulty(diff);
+        this.syncBotDiffUI(diff);
       });
     });
 

@@ -49,9 +49,9 @@
       "./js/classes/striker.js": "./js/classes/striker.js?v=v341_compact_soldat_jetpack_flame",
       "./js/config.js": "./js/config.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v386_win_conditions_and_gameplay_settings",
-      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v386_win_conditions_and_gameplay_settings",
-      "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v386_win_conditions_and_gameplay_settings",
-      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v386_win_conditions_and_gameplay_settings",
+      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v387_briefing_win_conditions_and_battle_rules",
+      "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v387_briefing_win_conditions_and_battle_rules",
+      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v387_briefing_win_conditions_and_battle_rules",
       "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v369_fix_collision_debug_freeze_and_viewport_culling",
       "./js/dev/obstacleEditor.js": "./js/dev/obstacleEditor.js?v=v162_remove_emojis_streamline_ui",
       "./js/dev/weaponEditor.js": "./js/dev/weaponEditor.js?v=v329_knife_grip_and_pivot_tuning",
@@ -77,7 +77,7 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/main.js": "./js/main.js?v=v385_height_sync_anti_freeze_and_safe_gravity",
+      "./js/main.js": "./js/main.js?v=v387_briefing_win_conditions_and_battle_rules",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v279_melee_button_non_auto_lock",
       "./js/network.js": "./js/network.js?v=v386_win_conditions_and_gameplay_settings",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v381_oil_rig_typhoon",
@@ -119,7 +119,7 @@
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v383_mobile_pocket_ammo",
       "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v383_mobile_pocket_ammo",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v383_mobile_pocket_ammo",
-      "./js/uiManager.js": "./js/uiManager.js?v=v386_win_conditions_and_gameplay_settings",
+      "./js/uiManager.js": "./js/uiManager.js?v=v387_briefing_win_conditions_and_battle_rules",
       "./js/weapons.js": "./js/weapons.js?v=v357_arena5_ceiling_collision_squash_and_melee_kicks",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v342_rpg7_reload_arm_and_rocket_reach",
       "./js/weapons/rocket.js": "./js/weapons/rocket.js?v=v347_dynamic_lighting_and_materials",
@@ -132,7 +132,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v386_win_conditions_and_gameplay_settings">
+  <link rel="stylesheet" href="./css/main.css?v=v387_briefing_win_conditions_and_battle_rules">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -837,30 +837,61 @@
                     </div>
                   </div>
 
-                  <!-- Opcje Areny 2 (Toksyczna Rafineria - Deathmatch 5 Min) -->
+                  <!-- Opcje Areny 2 (Toksyczna Rafineria - Deathmatch) -->
                   <div class="briefing-map-opts" id="arena-opts-ARENA_2" style="display: none;">
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRYB BITWY:</span>
-                      <div class="briefing-toggle-group" id="dm-mode-toggle-group">
+                      <div class="briefing-toggle-group dm-mode-toggle-group" id="dm-mode-toggle-group">
                         <button type="button" class="briefing-toggle-btn active" data-dm-mode="TDM">DRUŻYNOWY (TDM)</button>
                         <button type="button" class="briefing-toggle-btn" data-dm-mode="FFA">KAŻDY NA KAŻDEGO</button>
                       </div>
                     </div>
 
-                    <div class="briefing-opt-row" id="dm-team-select-row">
+                    <div class="briefing-opt-row dm-team-select-row" id="dm-team-select-row">
                       <span class="opt-label">TWOJA DRUŻYNA:</span>
-                      <div class="briefing-toggle-group" id="dm-team-toggle-group">
+                      <div class="briefing-toggle-group dm-team-toggle-group" id="dm-team-toggle-group">
                         <button type="button" class="briefing-toggle-btn team-cyan active" data-dm-team="CYAN">CYAN (NIEBIESCY)</button>
                         <button type="button" class="briefing-toggle-btn team-orange" data-dm-team="ORANGE">ORANGE (POMARAŃCZOWI)</button>
                       </div>
                     </div>
-                    <div class="briefing-note-row" id="dm-team-note-row">
+                    <div class="briefing-note-row dm-team-note-row" id="dm-team-note-row">
                       <span class="briefing-hint-note">Sojusznicy mają niebieski nick, rywale nie mają nic.</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">WARUNEK ZWYCIĘSTWA:</span>
+                      <div class="briefing-toggle-group dm-wincond-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-win-cond="BOTH">CZAS LUB FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="FRAGS">TYLKO FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="TIME">TYLKO CZAS</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-frag-limit-row">
+                      <span class="opt-label">LIMIT FRAGÓW:</span>
+                      <div class="briefing-toggle-group dm-frag-limit-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="10">10</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="15">15</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-frag-limit="25">25</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="40">40</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="50">50</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-duration-row">
+                      <span class="opt-label">CZAS BITWY:</span>
+                      <div class="briefing-toggle-group dm-duration-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="180">3 MIN</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-duration="300">5 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="420">7 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="600">10 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="900">15 MIN</button>
+                      </div>
                     </div>
 
                     <div class="briefing-opt-row" id="dm-bot-count-row">
                       <span class="opt-label">LICZBA BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="dm-bot-count-toggle-group">
+                      <div class="briefing-toggle-group dm-bot-count-toggle-group" id="dm-bot-count-toggle-group">
                         <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
@@ -870,7 +901,7 @@
 
                     <div class="briefing-opt-row">
                       <span class="opt-label">TRUDNOŚĆ BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="dm-diff-toggle-group">
+                      <div class="briefing-toggle-group dm-diff-toggle-group" id="dm-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
@@ -881,21 +912,63 @@
                   <!-- Opcje Areny 3 (Tajemnicza Dżungla) -->
                   <div class="briefing-map-opts" id="arena-opts-ARENA_3" style="display: none;">
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRYB OPERACJI:</span>
-                      <span class="opt-val-badge text-cyan">STARCIE NA PLATFORMACH I W TUNELACH</span>
+                      <span class="opt-label">ARENA // MISJA:</span>
+                      <span class="opt-val-badge text-cyan">TAJEMNICZA DŻUNGLA (PLATFORMY &amp; TUNELE)</span>
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">PRZECIWNIK AI:</span>
-                      <div class="briefing-toggle-group" id="a3-bot-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      <span class="opt-label">TRYB BITWY:</span>
+                      <div class="briefing-toggle-group dm-mode-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-mode="TDM">DRUŻYNOWY (TDM)</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-mode="FFA">KAŻDY NA KAŻDEGO</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-team-select-row">
+                      <span class="opt-label">TWOJA DRUŻYNA:</span>
+                      <div class="briefing-toggle-group dm-team-toggle-group">
+                        <button type="button" class="briefing-toggle-btn team-cyan active" data-dm-team="CYAN">CYAN (NIEBIESCY)</button>
+                        <button type="button" class="briefing-toggle-btn team-orange" data-dm-team="ORANGE">ORANGE (POMARAŃCZOWI)</button>
+                      </div>
+                    </div>
+                    <div class="briefing-note-row dm-team-note-row">
+                      <span class="briefing-hint-note">Sojusznicy mają niebieski nick, rywale nie mają nic.</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">WARUNEK ZWYCIĘSTWA:</span>
+                      <div class="briefing-toggle-group dm-wincond-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-win-cond="BOTH">CZAS LUB FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="FRAGS">TYLKO FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="TIME">TYLKO CZAS</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-frag-limit-row">
+                      <span class="opt-label">LIMIT FRAGÓW:</span>
+                      <div class="briefing-toggle-group dm-frag-limit-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="10">10</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="15">15</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-frag-limit="25">25</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="40">40</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="50">50</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-duration-row">
+                      <span class="opt-label">CZAS BITWY:</span>
+                      <div class="briefing-toggle-group dm-duration-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="180">3 MIN</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-duration="300">5 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="420">7 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="600">10 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="900">15 MIN</button>
                       </div>
                     </div>
 
                     <div class="briefing-opt-row" id="a3-bot-count-row">
                       <span class="opt-label">LICZBA BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="a3-bot-count-toggle-group">
+                      <div class="briefing-toggle-group dm-bot-count-toggle-group" id="a3-bot-count-toggle-group">
                         <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
@@ -904,8 +977,8 @@
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRUDNOŚĆ AI:</span>
-                      <div class="briefing-toggle-group" id="a3-diff-toggle-group">
+                      <span class="opt-label">TRUDNOŚĆ BOTÓW:</span>
+                      <div class="briefing-toggle-group dm-diff-toggle-group" id="a3-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
@@ -916,21 +989,63 @@
                   <!-- Opcje Areny 4 (Obsidian Caldera) -->
                   <div class="briefing-map-opts" id="arena-opts-ARENA_4" style="display: none;">
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRYB OPERACJI:</span>
+                      <span class="opt-label">ARENA // MISJA:</span>
                       <span class="opt-val-badge text-cyan">OBSIDIAN CALDERA (WULKANICZNY KRATER // JEZIORO MAGMY)</span>
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">PRZECIWNIK AI:</span>
-                      <div class="briefing-toggle-group" id="a4-bot-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      <span class="opt-label">TRYB BITWY:</span>
+                      <div class="briefing-toggle-group dm-mode-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-mode="TDM">DRUŻYNOWY (TDM)</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-mode="FFA">KAŻDY NA KAŻDEGO</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-team-select-row">
+                      <span class="opt-label">TWOJA DRUŻYNA:</span>
+                      <div class="briefing-toggle-group dm-team-toggle-group">
+                        <button type="button" class="briefing-toggle-btn team-cyan active" data-dm-team="CYAN">CYAN (NIEBIESCY)</button>
+                        <button type="button" class="briefing-toggle-btn team-orange" data-dm-team="ORANGE">ORANGE (POMARAŃCZOWI)</button>
+                      </div>
+                    </div>
+                    <div class="briefing-note-row dm-team-note-row">
+                      <span class="briefing-hint-note">Sojusznicy mają niebieski nick, rywale nie mają nic.</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">WARUNEK ZWYCIĘSTWA:</span>
+                      <div class="briefing-toggle-group dm-wincond-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-win-cond="BOTH">CZAS LUB FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="FRAGS">TYLKO FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="TIME">TYLKO CZAS</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-frag-limit-row">
+                      <span class="opt-label">LIMIT FRAGÓW:</span>
+                      <div class="briefing-toggle-group dm-frag-limit-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="10">10</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="15">15</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-frag-limit="25">25</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="40">40</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="50">50</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-duration-row">
+                      <span class="opt-label">CZAS BITWY:</span>
+                      <div class="briefing-toggle-group dm-duration-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="180">3 MIN</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-duration="300">5 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="420">7 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="600">10 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="900">15 MIN</button>
                       </div>
                     </div>
 
                     <div class="briefing-opt-row" id="a4-bot-count-row">
                       <span class="opt-label">LICZBA BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="a4-bot-count-toggle-group">
+                      <div class="briefing-toggle-group dm-bot-count-toggle-group" id="a4-bot-count-toggle-group">
                         <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
@@ -939,8 +1054,8 @@
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRUDNOŚĆ AI:</span>
-                      <div class="briefing-toggle-group" id="a4-diff-toggle-group">
+                      <span class="opt-label">TRUDNOŚĆ BOTÓW:</span>
+                      <div class="briefing-toggle-group dm-diff-toggle-group" id="a4-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
@@ -951,21 +1066,63 @@
                   <!-- Opcje Areny 5 (Prefabrykator Orbitalny) -->
                   <div class="briefing-map-opts" id="arena-opts-ARENA_5" style="display: none;">
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRYB OPERACJI:</span>
-                      <span class="opt-val-badge text-cyan">PREFABRYKATOR ORBITALNY (SURVIVAL DEATHMATCH // ZMIAŻDŻENIE)</span>
+                      <span class="opt-label">ARENA // MISJA:</span>
+                      <span class="opt-val-badge text-cyan">PREFABRYKATOR ORBITALNY (TETRIS DEATHMATCH // ZMIAŻDŻENIE)</span>
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">PRZECIWNIK AI:</span>
-                      <div class="briefing-toggle-group" id="a5-bot-toggle-group">
-                        <button type="button" class="briefing-toggle-btn active" data-bot-state="active">BOT: WŁĄCZONY</button>
-                        <button type="button" class="briefing-toggle-btn" data-bot-state="inactive">BOT: BRAK (SOLO)</button>
+                      <span class="opt-label">TRYB BITWY:</span>
+                      <div class="briefing-toggle-group dm-mode-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-mode="TDM">DRUŻYNOWY (TDM)</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-mode="FFA">KAŻDY NA KAŻDEGO</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-team-select-row">
+                      <span class="opt-label">TWOJA DRUŻYNA:</span>
+                      <div class="briefing-toggle-group dm-team-toggle-group">
+                        <button type="button" class="briefing-toggle-btn team-cyan active" data-dm-team="CYAN">CYAN (NIEBIESCY)</button>
+                        <button type="button" class="briefing-toggle-btn team-orange" data-dm-team="ORANGE">ORANGE (POMARAŃCZOWI)</button>
+                      </div>
+                    </div>
+                    <div class="briefing-note-row dm-team-note-row">
+                      <span class="briefing-hint-note">Sojusznicy mają niebieski nick, rywale nie mają nic.</span>
+                    </div>
+
+                    <div class="briefing-opt-row">
+                      <span class="opt-label">WARUNEK ZWYCIĘSTWA:</span>
+                      <div class="briefing-toggle-group dm-wincond-toggle-group">
+                        <button type="button" class="briefing-toggle-btn active" data-dm-win-cond="BOTH">CZAS LUB FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="FRAGS">TYLKO FRAGI</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-win-cond="TIME">TYLKO CZAS</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-frag-limit-row">
+                      <span class="opt-label">LIMIT FRAGÓW:</span>
+                      <div class="briefing-toggle-group dm-frag-limit-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="10">10</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="15">15</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-frag-limit="25">25</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="40">40</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-frag-limit="50">50</button>
+                      </div>
+                    </div>
+
+                    <div class="briefing-opt-row dm-duration-row">
+                      <span class="opt-label">CZAS BITWY:</span>
+                      <div class="briefing-toggle-group dm-duration-toggle-group">
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="180">3 MIN</button>
+                        <button type="button" class="briefing-toggle-btn active" data-dm-duration="300">5 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="420">7 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="600">10 MIN</button>
+                        <button type="button" class="briefing-toggle-btn" data-dm-duration="900">15 MIN</button>
                       </div>
                     </div>
 
                     <div class="briefing-opt-row" id="a5-bot-count-row">
                       <span class="opt-label">LICZBA BOTÓW:</span>
-                      <div class="briefing-toggle-group" id="a5-bot-count-toggle-group">
+                      <div class="briefing-toggle-group dm-bot-count-toggle-group" id="a5-bot-count-toggle-group">
                         <button type="button" class="briefing-toggle-btn active" data-bot-count="1">1 BOT</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="2">2 BOTY</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-count="3">3 BOTY</button>
@@ -974,8 +1131,8 @@
                     </div>
 
                     <div class="briefing-opt-row">
-                      <span class="opt-label">TRUDNOŚĆ AI:</span>
-                      <div class="briefing-toggle-group" id="a5-diff-toggle-group">
+                      <span class="opt-label">TRUDNOŚĆ BOTÓW:</span>
+                      <div class="briefing-toggle-group dm-diff-toggle-group" id="a5-diff-toggle-group">
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="easy">ŁATWY</button>
                         <button type="button" class="briefing-toggle-btn active" data-bot-diff="medium">ŚREDNI</button>
                         <button type="button" class="briefing-toggle-btn" data-bot-diff="hard">TRUDNY</button>
