@@ -35,11 +35,28 @@ export function getActiveCombatants() {
 }
 
 /**
+ * Zapewnia spójną wysokość kolizyjną postaci i koryguje pozycję Y przy wstawaniu ze staggara / prone.
+ * Gdy hitbox rośnie w dół o deltaH, przesunięcie p.y -= deltaH zachowuje pozycję stóp i zapobiega wpadaniu w bloczki.
+ */
+export function syncCombatantHeight(p) {
+  if (!p) return 72;
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
+  if (typeof p.lastColH === 'number' && colH > p.lastColH) {
+    p.y -= (colH - p.lastColH);
+  }
+  p.lastColH = colH;
+  return colH;
+}
+
+/**
  * Główna pętla fizyki Areny 5 wywoływana w każdej klatce update()
  */
 export function updateArena5Physics(dt, combatants = [], camera = null) {
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 0.2) ? dt : (1 / 60);
   _activeCombatants = Array.isArray(combatants) ? combatants : [];
+  for (const c of _activeCombatants) {
+    if (c) syncCombatantHeight(c);
+  }
 
   // 1. Podnoszenie podłogi wraz ze wspinaczką kamery
   updateRisingFloor(camera, _activeCombatants);
@@ -120,7 +137,7 @@ export function checkArena5CeilingCollisions(combatants) {
     if (!p || p.isDead || p.vy >= 0) continue;
 
     const pW = p.w || 26;
-    const pH = p.h || 72;
+    const pH = syncCombatantHeight(p);
     const pX = p.x;
     const pY = p.y;
     const headY = pY;
@@ -218,7 +235,7 @@ function checkFallingSquash(combatants) {
     if (!victim || victim.isDead) continue;
 
     const pW = victim.w || 26;
-    const pH = victim.h || 72;
+    const pH = syncCombatantHeight(victim);
     const prevBottom = (victim.y - (victim.vy || 0)) + pH;
     const newBottom = victim.y + pH;
     const relVy = (victim.vy || 0) - (crane.vy || 0);
@@ -457,6 +474,11 @@ function onCraneBlockImpact(combatants) {
       cellRef: cellObj
     };
     cellObj.platformObj = platObj;
+
+    const existing = rowData[worldCol];
+    if (existing && existing !== cellObj) {
+      removePlatformForCell(existing);
+    }
     rowData[worldCol] = cellObj;
 
     arena5State.platforms.push(platObj);
@@ -557,7 +579,8 @@ export function getGridClusters() {
       const q = [cell];
       visited.add(key);
 
-      while (q.length > 0) {
+      let guardQ = 0;
+      while (q.length > 0 && ++guardQ < 2000) {
         const cur = q.shift();
         cur._clusterId = clusterId;
         cluster.cells.push(cur);
@@ -626,7 +649,8 @@ export function applyPieceGravity(combatants = null) {
     }
 
     // Faza B: Propagacja podparcia na klastry spoczywające na podpartych
-    while (queue.length > 0) {
+    let guardBfs = 0;
+    while (queue.length > 0 && ++guardBfs < 1000) {
       const parent = queue.shift();
       for (const pCell of parent.cells) {
         const aboveRowData = arena5State.gridRows.get(pCell.row + 1);
@@ -662,7 +686,8 @@ export function applyPieceGravity(combatants = null) {
         let allowedDropForCell = 0;
         let testRow = cell.row - 1;
 
-        while (testRow >= minRow) {
+        let guardDrop = 0;
+        while (testRow >= minRow && ++guardDrop < 200) {
           const rData = arena5State.gridRows.get(testRow);
           const belowCell = rData ? rData[cell.col] : null;
           if (belowCell && belowCell.hp > 0) {
@@ -707,6 +732,10 @@ export function applyPieceGravity(combatants = null) {
           if (!newRowData) {
             newRowData = new Array(COLS).fill(null);
             arena5State.gridRows.set(newRow, newRowData);
+          }
+          const existing = newRowData[cell.col];
+          if (existing && existing !== cell) {
+            removePlatformForCell(existing);
           }
           newRowData[cell.col] = cell;
 
@@ -765,6 +794,7 @@ export const applyColumnGravity = applyPieceGravity;
 function updateFallingBlocks(dt, combatants) {
   let anyFallingOrSliding = false;
   let anyLanded = false;
+  let needGravityAfterSlide = false;
 
   // 1. Płynne przesuwanie w bok po kopnięciu (Sliding)
   for (const rowData of arena5State.gridRows.values()) {
@@ -786,7 +816,7 @@ function updateFallingBlocks(dt, combatants) {
           cell.isSliding = false;
           if (cell.platformObj) cell.platformObj.x = targetX;
           spawnRicochetSparks(cell.x + CELL_SIZE * 0.5, cell.y + CELL_SIZE, 0, -2, 4);
-          applyPieceGravity(combatants);
+          needGravityAfterSlide = true;
         } else {
           cell.x += dirX * speed;
           if (cell.platformObj) cell.platformObj.x = cell.x;
@@ -797,7 +827,7 @@ function updateFallingBlocks(dt, combatants) {
         if (stepX !== 0 && Array.isArray(combatants)) {
           for (const victim of combatants) {
             if (!victim || victim.isDead) continue;
-            const pH = (victim.staggerTimer > 0) ? 15 : ((victim.isProne) ? (victim.hitboxHeight || 26) : (victim.h || 72));
+            const pH = syncCombatantHeight(victim);
             const pW = victim.w || 26;
             const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
               (victim.onGround && Math.abs((victim.y + pH) - cell.y) <= 18 &&
@@ -840,6 +870,10 @@ function updateFallingBlocks(dt, combatants) {
     }
   }
 
+  if (needGravityAfterSlide) {
+    applyPieceGravity(combatants);
+  }
+
   // 2. Płynne opadanie w dół po utracie podparcia (Falling)
   const fallingCells = [];
   for (const rowData of arena5State.gridRows.values()) {
@@ -875,7 +909,7 @@ function updateFallingBlocks(dt, combatants) {
     if (Array.isArray(combatants) && combatants.length > 0) {
       for (const victim of combatants) {
         if (!victim || victim.isDead) continue;
-        const pH = victim.h || 72;
+        const pH = syncCombatantHeight(victim);
         const pW = victim.w || 26;
         const prevBottom = (victim.y - (victim.vy || 0)) + pH;
 
@@ -1160,18 +1194,22 @@ export function updateRisingFloor(camera, combatants = []) {
     const minKeepRow = highestRow - (MAX_TOWER_ROWS - 1);
     if (minKeepRow > arena5State.minFloorRow) {
       // Usunięcie wszystkich najniższych wierszy poniżej dozwolonego okna 20 segmentów
+      const rowsToDelete = [];
       for (const [r, rowData] of arena5State.gridRows.entries()) {
         if (r < minKeepRow) {
-          if (rowData) {
-            for (let c = 0; c < COLS; c++) {
-              if (rowData[c]) {
-                removePlatformForCell(rowData[c]);
-                spawnConcreteDebris(rowData[c].x + CELL_SIZE * 0.5, rowData[c].y + CELL_SIZE * 0.5, 2);
-              }
+          rowsToDelete.push({ r, rowData });
+        }
+      }
+      for (const { r, rowData } of rowsToDelete) {
+        if (rowData) {
+          for (let c = 0; c < COLS; c++) {
+            if (rowData[c]) {
+              removePlatformForCell(rowData[c]);
+              spawnConcreteDebris(rowData[c].x + CELL_SIZE * 0.5, rowData[c].y + CELL_SIZE * 0.5, 2);
             }
           }
-          arena5State.gridRows.delete(r);
         }
+        arena5State.gridRows.delete(r);
       }
       arena5State.minFloorRow = minKeepRow;
     }
@@ -1325,11 +1363,15 @@ export function resolveArena5BlockPenetration(combatants) {
 
   const minRow = arena5State.minFloorRow || 0;
 
+  for (const c of combatants) {
+    if (c) syncCombatantHeight(c);
+  }
+
   for (const p of combatants) {
     if (!p || p.isDead) continue;
 
     const pW = p.w || 26;
-    const pH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
+    const pH = syncCombatantHeight(p);
 
     // Do 2 iteracji depenetracji dla narożników i styków sąsiadujących klocków
     for (let iter = 0; iter < 2; iter++) {

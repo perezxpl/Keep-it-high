@@ -6,7 +6,8 @@
 
 import { arena5State, resetArena5State, BASE_FLOOR_Y } from './state.js';
 import {
-  updateArena5Physics
+  updateArena5Physics,
+  resolveArena5BlockPenetration
 } from './physics.js';
 import {
   handleArena5BulletHit,
@@ -54,6 +55,10 @@ export class Arena5PrefabTower {
 
     const activeCam = camera || ((typeof window !== 'undefined' && window.camera) ? window.camera : null);
     updateArena5Physics(dt, combatants, activeCam);
+  }
+
+  resolvePenetration(combatants) {
+    resolveArena5BlockPenetration(combatants);
   }
 
   drawBackground(ctx, camera) {

@@ -470,7 +470,8 @@ export let botCount = getStoredSinglePlayerBotCount();
 
 // Natychmiastowa inicjalizacja instancji botów pod kątem zapisanego stanu
 const initActiveState = getStoredBotEnabled();
-while (bots.length < botCount) {
+let guardInit = 0;
+while (bots.length < botCount && ++guardInit < 50) {
   bots.push(createBotInstance(bots.length, initActiveState));
 }
 for (let i = 0; i < bots.length; i++) {
@@ -488,7 +489,8 @@ export function setBotCount(count, options = {}) {
       localStorage.setItem('kih_bot_enabled_v1', 'true');
     } catch (_) {}
   }
-  while (bots.length < num) {
+  let guardCount = 0;
+  while (bots.length < num && ++guardCount < 50) {
     bots.push(createBotInstance(bots.length, botEnabled));
   }
   const curDiff = getBotDifficulty();
@@ -544,7 +546,8 @@ export function getActiveBots() {
     }
     return [];
   }
-  while (bots.length < botCount) {
+  let guardActive = 0;
+  while (bots.length < botCount && ++guardActive < 50) {
     bots.push(createBotInstance(bots.length, true));
   }
   const curDiff = getBotDifficulty();
@@ -1355,10 +1358,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       const currentAimAngle = Math.atan2(botTarget.aimY - shooterOriginY, botTarget.aimX - botCenterX);
 
       let angleDiff = Math.abs(currentAimAngle - finalAimAngle);
-      while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
+      let guardAngle = 0;
+      while (angleDiff > Math.PI && ++guardAngle < 20) angleDiff = Math.abs(angleDiff - Math.PI * 2);
 
       let directDiff = Math.abs(currentAimAngle - angleToEnemy);
-      while (directDiff > Math.PI) directDiff = Math.abs(directDiff - Math.PI * 2);
+      let guardDirect = 0;
+      while (directDiff > Math.PI && ++guardDirect < 20) directDiff = Math.abs(directDiff - Math.PI * 2);
 
       const toleranceRad = (botTarget.currentWeapon === WEAPONS.SNIPER ? 10 : 16) * (Math.PI / 180);
       const isAimedAtEnemy = (angleDiff <= toleranceRad) || (directDiff <= toleranceRad);

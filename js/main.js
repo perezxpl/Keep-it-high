@@ -873,6 +873,10 @@ function update() {
     }
   }
 
+  if (isA5Active) {
+    activeArena?.resolvePenetration?.(combatants);
+  }
+
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
   updateLighting(1 / 60);

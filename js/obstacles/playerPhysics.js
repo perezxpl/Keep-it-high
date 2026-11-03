@@ -34,16 +34,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (p.boostCooldown > 0) p.boostCooldown--;
   if (p.laserCooldown > 0) p.laserCooldown--;
 
-  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70));
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
   let centerX = p.x + p.w / 2;
 
   // Korekta wysokości przy zmianie stanu (stagger / wstawanie ze staggara / prone):
-  // Stopy nigdy nie mogą wbić się poniżej powierzchni, na której gracz stoi/leży
-  if (p.lastColH && p.lastColH !== colH) {
-    const floorY = p.currentGroundY || p.lastGroundedFloorY || (p.currentPlatform ? (p.currentPlatform.y ?? getPlatformSurfaceY(p.currentPlatform, centerX, groundY)) : null);
-    if (floorY !== null && p.onGround) {
-      p.y = floorY - colH;
-    }
+  // Gdy postać wstaje ze staggara lub z prone i jej hitbox rośnie w dół o deltaH = colH - p.lastColH:
+  // Zawsze (niezależnie od onGround) przesuń p.y -= deltaH, aby stopy nie wbiły się w podłoże/klocek pod spodem
+  if (typeof p.lastColH === 'number' && colH > p.lastColH) {
+    p.y -= (colH - p.lastColH);
   }
   p.lastColH = colH;
   if (p.onGround && typeof p.currentGroundY === 'number' && p.y + colH > p.currentGroundY) {
@@ -689,11 +687,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
     return collided;
   };
 
+  if (!Number.isFinite(p.vx)) p.vx = 0;
+  if (!Number.isFinite(p.vy)) p.vy = 0;
+  if (!Number.isFinite(p.x)) p.x = 200;
+  if (!Number.isFinite(p.y)) p.y = 200;
+
   const totalVx = p.vx || 0;
   if (Math.abs(totalVx) > 12) {
     const startX = p.x - totalVx;
     const maxSubStep = 10;
-    const numSteps = Math.ceil(Math.abs(totalVx) / maxSubStep);
+    const numSteps = Math.min(16, Math.max(1, Math.ceil(Math.abs(totalVx) / maxSubStep)));
     const stepDx = totalVx / numSteps;
 
     let currX = startX;

@@ -220,7 +220,8 @@ export function handleArena5Explosion(expX, expY, radius) {
     }
   }
 
-  // 2. Sprawdz komorki w siatce wiezy
+  // 2. Sprawdz komorki w siatce wiezy (kolekcjonowanie bez mutacji mapy podczas iteracji)
+  const cellsToDestroy = [];
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
@@ -237,22 +238,29 @@ export function handleArena5Explosion(expX, expY, radius) {
         cell.hp -= dmg;
 
         if (cell.hp <= 0) {
-          destroyGridCell(r, c);
-          anyDestroyed = true;
+          cellsToDestroy.push({ r, c });
         }
       }
     }
   }
 
+  for (const { r, c } of cellsToDestroy) {
+    destroyGridCell(r, c, { skipGravity: true });
+    anyDestroyed = true;
+  }
+
   if (anyDestroyed) {
     applyPieceGravity(getActiveCombatants());
+    if (arena5State.crane && arena5State.crane.shape) {
+      calculateTargetLandY(true);
+    }
   }
 }
 
 /**
- * Niszczy komorke w siatce i natychmiast aplikuje grawitacje na klocki powyzej
+ * Niszczy komorke w siatce i opcjonalnie aplikuje grawitacje na klocki powyzej
  */
-export function destroyGridCell(row, col) {
+export function destroyGridCell(row, col, options = {}) {
   const rowData = arena5State.gridRows.get(row);
   if (!rowData || !rowData[col]) return;
 
@@ -289,12 +297,14 @@ export function destroyGridCell(row, col) {
     handleArena5Explosion(midX, midY, 160);
   }
 
-  // Zniszczenie klocka powoduje plynne opadniecie klockow podpieranych powyzej
-  applyPieceGravity(getActiveCombatants());
+  if (!options.skipGravity) {
+    // Zniszczenie klocka powoduje plynne opadniecie klockow podpieranych powyzej
+    applyPieceGravity(getActiveCombatants());
 
-  // Przelicz cel suwnicy
-  if (arena5State.crane && arena5State.crane.shape) {
-    calculateTargetLandY(true);
+    // Przelicz cel suwnicy
+    if (arena5State.crane && arena5State.crane.shape) {
+      calculateTargetLandY(true);
+    }
   }
 }
 
@@ -524,6 +534,10 @@ export function handleArena5KickHit(player, options = {}) {
 
       if (closestCell.platformObj) {
         closestCell.platformObj.gridCol = targetCol;
+      }
+
+      if (arena5State.crane && arena5State.crane.shape) {
+        calculateTargetLandY(true);
       }
 
       spawnRicochetSparks(hitX, hitY, kickDir * 6, -2, 7);
