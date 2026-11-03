@@ -34,9 +34,24 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (p.boostCooldown > 0) p.boostCooldown--;
   if (p.laserCooldown > 0) p.laserCooldown--;
 
-  const colH = (p.staggerTimer > 0) ? 15 : (p.h || 70);
-  let feetY = p.y + colH;
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70));
   let centerX = p.x + p.w / 2;
+
+  // Korekta wysokości przy zmianie stanu (stagger / wstawanie ze staggara / prone):
+  // Stopy nigdy nie mogą wbić się poniżej powierzchni, na której gracz stoi/leży
+  if (p.lastColH && p.lastColH !== colH) {
+    const floorY = p.currentGroundY || p.lastGroundedFloorY || (p.currentPlatform ? (p.currentPlatform.y ?? getPlatformSurfaceY(p.currentPlatform, centerX, groundY)) : null);
+    if (floorY !== null && p.onGround) {
+      p.y = floorY - colH;
+    }
+  }
+  p.lastColH = colH;
+  if (p.onGround && typeof p.currentGroundY === 'number' && p.y + colH > p.currentGroundY) {
+    p.y = p.currentGroundY - colH;
+    if (p.vy > 0) p.vy = 0;
+  }
+
+  let feetY = p.y + colH;
   if (!p.dropThroughTimer || p.dropThroughTimer <= 0) {
     p.dropThroughPlatform = null;
     p.dropThroughTimer = 0;
@@ -596,71 +611,99 @@ export function checkPlayerPlatformLanding(p, groundY) {
   }
 
   // =========================================================================
-  // SEPARACJA OSI: FAZA 2 - KOLIZJA W OSI X (Sub-tile AABB z ochroną Ghost Vertices)
+  // SEPARACJA OSI: FAZA 2 - KOLIZJA W OSI X (Sub-tile AABB z ochroną Ghost Vertices i Sub-steppingiem)
   // =========================================================================
-  const playerBottom = p.y + colH;
+  const resolveWallCollisionAtX = (testX) => {
+    p.x = testX;
+    const playerBottom = p.y + colH;
+    let collided = false;
 
-  for (const plat of ARENA_PLATFORMS) {
-    if (!plat || plat.solid === false || plat.oneWay) continue;
+    for (const plat of ARENA_PLATFORMS) {
+      if (!plat || plat.solid === false || plat.oneWay) continue;
 
-    // A. Ściany dedykowane (plat.isWall)
-    if (plat.isWall) {
-      const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
-      const bottomY = topY + (plat.h || plat.thickness || 200);
-      if (playerBottom > topY + 4 && p.y < bottomY - 4) {
-        if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
-          if (plat.pushSide === 'left') {
-            p.x = plat.x - p.w;
-            if (p.vx > 0) p.vx = 0;
-          } else if (plat.pushSide === 'right') {
-            p.x = plat.x + plat.w;
-            if (p.vx < 0) p.vx = 0;
-          } else {
-            const overlapLeft = (p.x + p.w) - plat.x;
-            const overlapRight = (plat.x + plat.w) - p.x;
-            if (overlapLeft <= overlapRight) {
+      // A. Ściany dedykowane (plat.isWall)
+      if (plat.isWall) {
+        const topY = (plat.y !== undefined) ? plat.y : (groundY - (plat.relY || 0));
+        const bottomY = topY + (plat.h || plat.thickness || 200);
+        if (playerBottom > topY + 4 && p.y < bottomY - 4) {
+          if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
+            collided = true;
+            if (plat.pushSide === 'left') {
               p.x = plat.x - p.w;
               if (p.vx > 0) p.vx = 0;
-            } else {
+              if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
+            } else if (plat.pushSide === 'right') {
               p.x = plat.x + plat.w;
               if (p.vx < 0) p.vx = 0;
+              if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+            } else {
+              const overlapLeft = (p.x + p.w) - plat.x;
+              const overlapRight = (plat.x + plat.w) - p.x;
+              if (overlapLeft <= overlapRight) {
+                p.x = plat.x - p.w;
+                if (p.vx > 0) p.vx = 0;
+                if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
+              } else {
+                p.x = plat.x + plat.w;
+                if (p.vx < 0) p.vx = 0;
+                if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+              }
             }
           }
         }
+        continue;
       }
-      continue;
-    }
 
-    // B. Klocki Areny 5 oraz zwalone segmenty (Sub-tile AABB)
-    const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
-    if (!isObstacleToBlock) continue;
+      // B. Klocki Areny 5 oraz zwalone segmenty (Sub-tile AABB)
+      const isObstacleToBlock = (plat.intact === false && !plat.isTowerBlock) || plat.isA5Block;
+      if (!isObstacleToBlock) continue;
 
-    const bnds = getPlatformBounds(plat);
+      const bnds = getPlatformBounds(plat);
 
-    // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
-    // Podczas chodzenia poziomo po dwóch sąsiadujących kafelkach tego samego lub innego klocka,
-    // jeśli player.bottom <= subTile.top + 2px (skin width / step margin), kafelek ten NIE blokuje ani nie spycha gracza w osi X.
-    if (playerBottom <= bnds.minY + 2) continue;
+      // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
+      // Podczas chodzenia poziomo po dwóch sąsiadujących kafelkach tego samego lub innego klocka,
+      // jeśli player.bottom <= subTile.top + 2px (skin width / step margin), kafelek ten NIE blokuje ani nie spycha gracza w osi X.
+      if (playerBottom <= bnds.minY + 2) continue;
 
-    // Kafelek wystaje pionowo ponad stopy gracza – pełna kolizja w osi X
-    if (playerBottom > bnds.minY + 2 && p.y < bnds.maxY - 2) {
-      if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
-        const overlapLeft = (p.x + p.w) - bnds.minX;
-        const overlapRight = bnds.maxX - p.x;
+      // Kafelek wystaje pionowo ponad stopy gracza – pełna kolizja w osi X
+      if (playerBottom > bnds.minY + 2 && p.y < bnds.maxY - 2) {
+        if (p.x + p.w > bnds.minX && p.x < bnds.maxX) {
+          collided = true;
+          const overlapLeft = (p.x + p.w) - bnds.minX;
+          const overlapRight = bnds.maxX - p.x;
 
-        let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
+          let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
 
-        if (pushLeft) {
-          p.x = bnds.minX - p.w;
-          if (p.vx > 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
-        } else {
-          p.x = bnds.maxX;
-          if (p.vx < 0) p.vx = 0;
-          if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+          if (pushLeft) {
+            p.x = bnds.minX - p.w;
+            if (p.vx > 0) p.vx = 0;
+            if (typeof p.airVx === 'number' && p.airVx > 0) p.airVx = 0;
+          } else {
+            p.x = bnds.maxX;
+            if (p.vx < 0) p.vx = 0;
+            if (typeof p.airVx === 'number' && p.airVx < 0) p.airVx = 0;
+          }
         }
       }
     }
+    return collided;
+  };
+
+  const totalVx = p.vx || 0;
+  if (Math.abs(totalVx) > 12) {
+    const startX = p.x - totalVx;
+    const maxSubStep = 10;
+    const numSteps = Math.ceil(Math.abs(totalVx) / maxSubStep);
+    const stepDx = totalVx / numSteps;
+
+    let currX = startX;
+    for (let s = 1; s <= numSteps; s++) {
+      currX += stepDx;
+      const hit = resolveWallCollisionAtX(currX);
+      if (hit) break;
+    }
+  } else {
+    resolveWallCollisionAtX(p.x);
   }
 
   // Bezpieczne pobranie referencji do aktywnej areny

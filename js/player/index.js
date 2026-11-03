@@ -205,7 +205,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       // Przywróć pełny collider stojący tylko jeśli gracz faktycznie leży na ziemi lub platformie.
       // Jeśli ogłuszenie wygasło w powietrzu (w locie), NIE teleportuj gracza – kontynuuje lot/opadanie.
       if (player.onGround && player.staggerLanded) {
-        const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
+        const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? (player.currentPlatform.y !== undefined ? player.currentPlatform.y : getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000)) : (player.groundY || 1000));
         if (currentFloor) {
           player.y = currentFloor - (player.h || 70);
         }
@@ -215,6 +215,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       } else {
         player.isJumping = true;
         player.onGround = false;
+      }
+      const standFloor = player.currentGroundY || player.lastGroundedFloorY;
+      if (standFloor && player.y + (player.h || 70) > standFloor) {
+        player.y = standFloor - (player.h || 70);
       }
       player.staggerRecoveryTimer = 14; // płynny powrót broni i ciała do stanu gotowości bojowej
       player.staggerImmunityTimer = 65; // ~1.1s nietykalności przed pętlą ponownego powalenia / stagger-lock
@@ -1064,9 +1068,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     // Przez resztę czasu ogłuszenia (do końca 2 sekund) postać leży nieruchomo płasko na powierzchni gruntu
     player.vy = 0;
     player.isJumping = false;
-    const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000) : (player.groundY || 1000));
+    const currentFloor = player.currentGroundY || player.lastGroundedFloorY || (player.currentPlatform ? (player.currentPlatform.y !== undefined ? player.currentPlatform.y : getPlatformSurfaceY(player.currentPlatform, player.x + (player.w || 24) / 2, player.groundY || 1000)) : (player.groundY || 1000));
     if (currentFloor) {
       player.y = currentFloor - colH;
+    }
+    if (player.currentGroundY && player.y + colH > player.currentGroundY) {
+      player.y = player.currentGroundY - colH;
     }
   } else if (player.isAcidDying || (player.acidDeath && player.acidDeath.active)) {
     // Spowolnienie opadania - ociężałe zanurzanie w gęstym kwasie

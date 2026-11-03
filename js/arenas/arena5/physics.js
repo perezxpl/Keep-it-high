@@ -792,12 +792,12 @@ function updateFallingBlocks(dt, combatants) {
           if (cell.platformObj) cell.platformObj.x = cell.x;
         }
 
-        // Przenoszenie postaci stojącej na przesuwanym klocku
+        // Przenoszenie i kolizja postaci z przesuwanym klockiem
         const stepX = cell.x - oldX;
         if (stepX !== 0 && Array.isArray(combatants)) {
           for (const victim of combatants) {
             if (!victim || victim.isDead) continue;
-            const pH = victim.h || 72;
+            const pH = (victim.staggerTimer > 0) ? 15 : ((victim.isProne) ? (victim.hitboxHeight || 26) : (victim.h || 72));
             const pW = victim.w || 26;
             const isStandingOnCell = (victim.currentPlatform === cell.platformObj) ||
               (victim.onGround && Math.abs((victim.y + pH) - cell.y) <= 18 &&
@@ -805,6 +805,34 @@ function updateFallingBlocks(dt, combatants) {
 
             if (isStandingOnCell) {
               victim.x += stepX;
+              // Jeśli gracz jadący na klocku (isStandingOnCell) uderzy podczas jazdy w bok sąsiedniego klocka na swojej wysokości, zatrzymaj przesuwanie gracza (victim.x) na ścianie tego klocka
+              for (const otherRow of arena5State.gridRows.values()) {
+                if (!otherRow) continue;
+                for (let oc = 0; oc < COLS; oc++) {
+                  const oCell = otherRow[oc];
+                  if (!oCell || oCell === cell || oCell.hp <= 0) continue;
+                  if (victim.y + pH > oCell.y + 4 && victim.y < oCell.y + oCell.h - 4) {
+                    if (stepX > 0 && victim.x + pW > oCell.x && victim.x < oCell.x) {
+                      victim.x = oCell.x - pW;
+                    } else if (stepX < 0 && victim.x < oCell.x + oCell.w && victim.x + pW > oCell.x + oCell.w) {
+                      victim.x = oCell.x + oCell.w;
+                    }
+                  }
+                }
+              }
+              victim.x = Math.max(SHAFT_LEFT, Math.min(SHAFT_RIGHT - pW, victim.x));
+            } else {
+              // Gracz NIE stoi na tym klocku, ale jego hitbox przecina przesuwający się klocek
+              const isIntersecting = (victim.x + pW > cell.x && victim.x < cell.x + cell.w &&
+                                      victim.y + pH > cell.y + 4 && victim.y < cell.y + cell.h - 4);
+              if (isIntersecting) {
+                if (dirX > 0) {
+                  victim.x = cell.x + cell.w;
+                } else {
+                  victim.x = cell.x - pW;
+                }
+                victim.x = Math.max(SHAFT_LEFT, Math.min(SHAFT_RIGHT - pW, victim.x));
+              }
             }
           }
         }
@@ -1301,7 +1329,7 @@ export function resolveArena5BlockPenetration(combatants) {
     if (!p || p.isDead) continue;
 
     const pW = p.w || 26;
-    const pH = p.h || 72;
+    const pH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
 
     // Do 2 iteracji depenetracji dla narożników i styków sąsiadujących klocków
     for (let iter = 0; iter < 2; iter++) {
@@ -1312,9 +1340,9 @@ export function resolveArena5BlockPenetration(combatants) {
       const feetY = pY + pH;
       const headY = pY;
 
-      // Zakres kolumn, które może przecinać model postaci
-      const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((pX - 2) / CELL_SIZE)));
-      const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((pX + pW + 2) / CELL_SIZE)));
+      // Zakres kolumn, które może przecinać model postaci (poszerzony o ±1 dla klocków w trakcie isSliding)
+      const colLeft = Math.max(0, Math.floor((pX - CELL_SIZE) / CELL_SIZE));
+      const colRight = Math.min(COLS - 1, Math.floor((pX + pW + CELL_SIZE) / CELL_SIZE));
 
       for (let c = colLeft; c <= colRight; c++) {
         for (const [r, rowData] of arena5State.gridRows.entries()) {
@@ -1354,7 +1382,14 @@ export function resolveArena5BlockPenetration(combatants) {
           let isLeftClear = false;
           if (c > 0) {
             const leftCellCur = rowData ? rowData[c - 1] : null;
-            const leftCurFree = !leftCellCur || leftCellCur.hp <= 0;
+            let leftCurFree = !leftCellCur || leftCellCur.hp <= 0;
+            // Poprawka błędu "zamurowanej podłogi":
+            // Jeśli penTop <= 18 i nad sprawdzanym kafelkiem (r, c) stoi kolejny lity kafelek (!isAboveClear),
+            // a w sąsiedniej kolumnie (r, c - 1) stopy gracza znajdują się blisko dachu tamtego kafelka (feetY <= leftCellCur.y + 18),
+            // to kafelek (r, c - 1) jest podłogą pod stopami gracza, a NIE ścianą boczną!
+            if (!leftCurFree && penTop <= 18 && !isAboveClear && leftCellCur && leftCellCur.hp > 0 && feetY <= leftCellCur.y + 18) {
+              leftCurFree = true;
+            }
             let leftAboveFree = true;
             if (headY < cellTop) {
               const leftCellAbove = rowAbove ? rowAbove[c - 1] : null;
@@ -1366,7 +1401,11 @@ export function resolveArena5BlockPenetration(combatants) {
           let isRightClear = false;
           if (c < COLS - 1) {
             const rightCellCur = rowData ? rowData[c + 1] : null;
-            const rightCurFree = !rightCellCur || rightCellCur.hp <= 0;
+            let rightCurFree = !rightCellCur || rightCellCur.hp <= 0;
+            // Poprawka błędu "zamurowanej podłogi":
+            if (!rightCurFree && penTop <= 18 && !isAboveClear && rightCellCur && rightCellCur.hp > 0 && feetY <= rightCellCur.y + 18) {
+              rightCurFree = true;
+            }
             let rightAboveFree = true;
             if (headY < cellTop) {
               const rightCellAbove = rowAbove ? rowAbove[c + 1] : null;
@@ -1398,14 +1437,28 @@ export function resolveArena5BlockPenetration(combatants) {
           let bestDir = null;
           let minPen = Infinity;
 
+          const prevX = p.x - (p.vx || 0);
+          const prevY = p.y - (p.vy || 0);
+
+          // Szybki lot poziomy (np. po Spartan Kicku) - priorytet zatrzymania na ścianie uderzenia
+          const fastHitLeft = (prevX + pW <= cellLeft + 4) && (p.vx > 6) && isLeftClear;
+          const fastHitRight = (prevX >= cellRight - 4) && (p.vx < -6) && isRightClear;
+
           // 1. Priorytet lądowania na dachu kafelka (TOP)
-          const allowTop = isAboveClear && penTop <= 42 && p.vy >= -2.0;
+          // Zlikwidowana martwa strefa: allowTop wymaga p.y < cellTop
+          const allowTop = isAboveClear && penTop <= 42 && p.vy >= -2.0 && p.y < cellTop;
           const topPriority = allowTop && (
             (penTop <= penLeft + 6 && penTop <= penRight + 6) ||
             (!isLeftClear && !isRightClear)
           );
 
-          if (topPriority) {
+          if (fastHitLeft) {
+            bestDir = 'LEFT';
+            minPen = penLeft;
+          } else if (fastHitRight) {
+            bestDir = 'RIGHT';
+            minPen = penRight;
+          } else if (topPriority) {
             bestDir = 'TOP';
             minPen = penTop;
           }
@@ -1419,8 +1472,8 @@ export function resolveArena5BlockPenetration(combatants) {
           }
 
           // 3. Ściana lewa oraz prawa
-          // W regułach LEFT i RIGHT nie wypychaj gracza w bok, jeśli isAboveClear && penTop < penLeft && penTop < penRight && penTop <= 48
-          const topFavoredOverSides = isAboveClear && penTop < penLeft && penTop < penRight && penTop <= 48;
+          // topFavoredOverSides może być true wyłącznie wtedy, gdy allowTop jest true!
+          const topFavoredOverSides = allowTop && penTop < penLeft && penTop < penRight;
 
           if (!bestDir && !topFavoredOverSides) {
             if (isLeftClear && (!isRightClear || penLeft <= penRight) && penLeft < minPen) {
@@ -1435,7 +1488,7 @@ export function resolveArena5BlockPenetration(combatants) {
 
           // Fallback, gdy żaden kierunek nie został wybrany
           if (!bestDir) {
-            if (isAboveClear && penTop <= 42 && p.y < cellTop) {
+            if (allowTop) {
               bestDir = 'TOP';
             } else if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
               bestDir = 'LEFT';
@@ -1482,7 +1535,7 @@ export function resolveArena5BlockPenetration(combatants) {
                 bestDir = 'LEFT';
               } else if (nearestRightCol !== -1) {
                 bestDir = 'RIGHT';
-              } else if (isAboveClear && penTop <= 42 && p.y < cellTop) {
+              } else if (allowTop) {
                 bestDir = 'TOP';
               }
             }
@@ -1507,10 +1560,20 @@ export function resolveArena5BlockPenetration(combatants) {
           } else if (bestDir === 'LEFT') {
             p.x = cellLeft - pW;
             if (p.vx > 0) p.vx = 0;
+            if (penTop <= 18) {
+              p.y = Math.min(p.y, cellTop - pH);
+              if (p.vy > 0) p.vy = 0;
+              p.onGround = true;
+            }
             resolvedAny = true;
           } else if (bestDir === 'RIGHT') {
             p.x = cellRight;
             if (p.vx < 0) p.vx = 0;
+            if (penTop <= 18) {
+              p.y = Math.min(p.y, cellTop - pH);
+              if (p.vy > 0) p.vy = 0;
+              p.onGround = true;
+            }
             resolvedAny = true;
           }
         }
