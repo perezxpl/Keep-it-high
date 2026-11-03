@@ -51,18 +51,34 @@ import {
   deathmatchConfig,
   setDeathmatchMode,
   setDeathmatchPlayerTeam,
+  setDeathmatchWinCondition,
+  setDeathmatchFragLimit,
+  setDeathmatchDuration,
   DEATHMATCH_MODES,
-  TEAMS
+  TEAMS,
+  WIN_CONDITIONS
 } from './deathmatch/index.js';
 import { bot, setBotDifficulty, getBotDifficulty, setBotCount, getBotCount, isBotEnabled, setBotEnabled } from './bot.js';
 import { syncDevBotButtonUI } from './dev/devPanel.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
+  // Rozgrywka i Zasady Bitwy
+  winCondition: 'BOTH',     // 'BOTH' (Czas lub Fragi), 'FRAGS' (Tylko Fragi), 'TIME' (Tylko Czas)
+  fragLimit: 25,            // Pułap fragów do zwycięstwa (10, 15, 20, 25, 30, 40, 50)
+  matchDuration: 300,       // Długość meczu w sekundach (180, 300, 420, 600, 900)
+  deathmatchMode: 'TDM',    // 'TDM' (Drużynowy) lub 'FFA' (Każdy na Każdego)
+  playerTeam: 'CYAN',       // 'CYAN' (Niebiescy) lub 'ORANGE' (Czerwoni)
+  botDifficulty: 'normal',  // 'easy', 'normal', 'hard'
+  botCount: 3,              // Liczba aktywnych botów AI (1 - 7)
+
+  // Audio i Dźwięk
   masterVolume: 80,
   sfxVolume: 85,
   acidSiren: true,
   muteAll: false,
+
+  // Grafika i Silnik
   goreEnabled: true,
   screenShake: true,
   cameraLead: true,
@@ -876,6 +892,23 @@ export const uiManager = {
       console.warn('[UI] Błąd odczytu konfiguracji z localStorage:', e);
       this.settings = { ...DEFAULT_SETTINGS };
     }
+
+    // Synchronizacja z dedykowanymi kluczami deathmatch i botów (jeśli były zapisane wcześniej)
+    if (deathmatchConfig) {
+      if (deathmatchConfig.winCondition) this.settings.winCondition = deathmatchConfig.winCondition;
+      if (deathmatchConfig.fragLimit) this.settings.fragLimit = deathmatchConfig.fragLimit;
+      if (deathmatchConfig.duration) this.settings.matchDuration = deathmatchConfig.duration;
+      if (deathmatchConfig.mode) this.settings.deathmatchMode = deathmatchConfig.mode;
+      if (deathmatchConfig.playerTeam) this.settings.playerTeam = deathmatchConfig.playerTeam;
+    }
+    if (typeof getBotDifficulty === 'function') {
+      const diff = getBotDifficulty();
+      if (diff) this.settings.botDifficulty = diff;
+    }
+    if (typeof getBotCount === 'function') {
+      const count = getBotCount();
+      if (typeof count === 'number') this.settings.botCount = count;
+    }
   },
 
   saveSettings() {
@@ -887,6 +920,15 @@ export const uiManager = {
   },
 
   applySettings() {
+    // 0. Ustawienia rozgrywki i warunku zwycięstwa
+    if (this.settings.winCondition) setDeathmatchWinCondition(this.settings.winCondition);
+    if (this.settings.fragLimit) setDeathmatchFragLimit(this.settings.fragLimit);
+    if (this.settings.matchDuration) setDeathmatchDuration(this.settings.matchDuration);
+    if (this.settings.deathmatchMode) setDeathmatchMode(this.settings.deathmatchMode);
+    if (this.settings.playerTeam) setDeathmatchPlayerTeam(this.settings.playerTeam);
+    if (this.settings.botDifficulty) setBotDifficulty(this.settings.botDifficulty);
+    if (this.settings.botCount !== undefined) setBotCount(this.settings.botCount);
+
     // 1. Audio głośności
     if (masterGainNode) {
       const vol = this.settings.muteAll ? 0 : (this.settings.masterVolume / 100);
@@ -924,6 +966,46 @@ export const uiManager = {
   },
 
   syncFormControls() {
+    // Kontrolki zakładki Rozgrywka
+    const winCondSelect = document.getElementById('setting-win-condition');
+    if (winCondSelect && this.settings.winCondition) winCondSelect.value = this.settings.winCondition;
+
+    const fragLimitSelect = document.getElementById('setting-frag-limit');
+    if (fragLimitSelect && this.settings.fragLimit) fragLimitSelect.value = String(this.settings.fragLimit);
+
+    const matchDurationSelect = document.getElementById('setting-match-duration');
+    if (matchDurationSelect && this.settings.matchDuration) matchDurationSelect.value = String(this.settings.matchDuration);
+
+    const gameModeSelect = document.getElementById('setting-game-mode');
+    if (gameModeSelect && this.settings.deathmatchMode) gameModeSelect.value = this.settings.deathmatchMode;
+
+    const playerTeamSelect = document.getElementById('setting-player-team');
+    if (playerTeamSelect && this.settings.playerTeam) playerTeamSelect.value = this.settings.playerTeam;
+
+    const botDiffSelect = document.getElementById('setting-bot-difficulty');
+    if (botDiffSelect && this.settings.botDifficulty) botDiffSelect.value = this.settings.botDifficulty;
+
+    const botCountSlider = document.getElementById('setting-bot-count');
+    const botCountVal = document.getElementById('val-bot-count');
+    if (botCountSlider && this.settings.botCount !== undefined) {
+      botCountSlider.value = this.settings.botCount;
+      if (botCountVal) botCountVal.textContent = String(this.settings.botCount);
+    }
+
+    // Warunkowe wygaszanie / ukrywanie powiązanych wierszy
+    const rowFragLimit = document.getElementById('row-frag-limit');
+    if (rowFragLimit) {
+      rowFragLimit.style.opacity = (this.settings.winCondition === 'TIME') ? '0.4' : '1.0';
+    }
+    const rowMatchDuration = document.getElementById('row-match-duration');
+    if (rowMatchDuration) {
+      rowMatchDuration.style.opacity = (this.settings.winCondition === 'FRAGS') ? '0.4' : '1.0';
+    }
+    const rowPlayerTeam = document.getElementById('row-player-team');
+    if (rowPlayerTeam) {
+      rowPlayerTeam.style.display = (this.settings.deathmatchMode === 'FFA') ? 'none' : 'flex';
+    }
+
     const masterSlider = document.getElementById('setting-master-vol');
     const masterVal = document.getElementById('val-master-vol');
     if (masterSlider) masterSlider.value = this.settings.masterVolume;
@@ -2316,6 +2398,81 @@ export const uiManager = {
         this.saveSettings();
         this.applySettings();
       });
+    }
+
+    // -------------------------------------------------------------------------
+    // KONTROLKI ZAKŁADKI ROZGRYWKA (GAMEPLAY SETTINGS)
+    // -------------------------------------------------------------------------
+    const winCondSelect = document.getElementById('setting-win-condition');
+    if (winCondSelect) {
+      winCondSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.winCondition = e.target.value;
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const fragLimitSelect = document.getElementById('setting-frag-limit');
+    if (fragLimitSelect) {
+      fragLimitSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.fragLimit = parseInt(e.target.value, 10);
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const matchDurationSelect = document.getElementById('setting-match-duration');
+    if (matchDurationSelect) {
+      matchDurationSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.matchDuration = parseInt(e.target.value, 10);
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const gameModeSelect = document.getElementById('setting-game-mode');
+    if (gameModeSelect) {
+      gameModeSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.deathmatchMode = e.target.value;
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const playerTeamSelect = document.getElementById('setting-player-team');
+    if (playerTeamSelect) {
+      playerTeamSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.playerTeam = e.target.value;
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const botDiffSelect = document.getElementById('setting-bot-difficulty');
+    if (botDiffSelect) {
+      botDiffSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.botDifficulty = e.target.value;
+        this.saveSettings();
+        this.applySettings();
+      });
+    }
+
+    const botCountSlider = document.getElementById('setting-bot-count');
+    if (botCountSlider) {
+      botCountSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        this.settings.botCount = val;
+        const valSpan = document.getElementById('val-bot-count');
+        if (valSpan) valSpan.textContent = String(val);
+        this.applySettings();
+      });
+      botCountSlider.addEventListener('change', () => this.saveSettings());
     }
 
     this.initCreatorHairUI();

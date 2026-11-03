@@ -33,12 +33,19 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
     deathmatchState.mode = deathmatchConfig.mode || DEATHMATCH_MODES.TDM;
     deathmatchState.playerTeam = deathmatchConfig.playerTeam || TEAMS.CYAN;
   }
-  deathmatchState.timeRemaining = DEATHMATCH_DURATION;
+  deathmatchState.winCondition = deathmatchConfig.winCondition || 'BOTH';
+  deathmatchState.fragLimit = deathmatchConfig.fragLimit || 25;
+  deathmatchState.matchDuration = deathmatchConfig.duration || DEATHMATCH_DURATION;
+  deathmatchState.timeRemaining = deathmatchState.matchDuration;
+  deathmatchState.elapsedTime = 0;
   deathmatchState.matchEnded = false;
+  deathmatchState.endReason = null;
   deathmatchState.endCelebrationTimer = 0;
   deathmatchState.xpAwarded = false;
   deathmatchState.awardedXpAmount = 0;
   deathmatchState.playerPlace = 1;
+  deathmatchState.winningTeam = null;
+  deathmatchState.winningPlayer = null;
   deathmatchState.teamScores[TEAMS.CYAN] = 0;
   deathmatchState.teamScores[TEAMS.ORANGE] = 0;
 
@@ -263,9 +270,16 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
     return;
   }
 
-  // 1. Odliczanie czasu bitwy (5 minut = 300s)
+  // 1. Odliczanie czasu bitwy (lub zliczanie upływu czasu)
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : (1 / 60);
-  deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
+  deathmatchState.elapsedTime = (deathmatchState.elapsedTime || 0) + stepTime;
+
+  const winCond = deathmatchState.winCondition || 'BOTH';
+  const hasTimeLimit = (winCond === 'BOTH' || winCond === 'TIME');
+
+  if (hasTimeLimit) {
+    deathmatchState.timeRemaining = Math.max(0, deathmatchState.timeRemaining - stepTime);
+  }
   updateCombatFeed(stepTime);
 
   // Synchronizacja stanu deathmatch przez Hosta (zegar, wynik drużyn)
@@ -390,6 +404,29 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
         }
 
         updateLeaderboard();
+
+        // 2.5. Sprawdzenie warunku zwycięstwa przez limit fragów (Frag Limit)
+        const fragLimit = deathmatchState.fragLimit || 25;
+        const checksFrags = (winCond === 'BOTH' || winCond === 'FRAGS');
+        if (checksFrags && fragLimit > 0) {
+          if (deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+            const cyanKills = deathmatchState.teamScores[TEAMS.CYAN] || 0;
+            const orangeKills = deathmatchState.teamScores[TEAMS.ORANGE] || 0;
+            if (cyanKills >= fragLimit || orangeKills >= fragLimit) {
+              deathmatchState.winningTeam = (cyanKills >= fragLimit) ? TEAMS.CYAN : TEAMS.ORANGE;
+              finishDeathmatch('FRAG_LIMIT');
+              return;
+            }
+          } else {
+            // FFA: wygrywa uczestnik, który jako pierwszy osiągnie pułap fragów
+            const leader = deathmatchState.leaderboard[0];
+            if (leader && leader.kills >= fragLimit) {
+              deathmatchState.winningPlayer = leader;
+              finishDeathmatch('FRAG_LIMIT');
+              return;
+            }
+          }
+        }
       }
     } else {
       c._dmDeathRecorded = false;
@@ -403,21 +440,34 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
     arenaScore.orange = deathmatchState.teamScores[TEAMS.ORANGE];
   }
 
-  // 4. Sprawdzenie warunku zakończenia bitwy (Koniec 5 minut)
-  if (deathmatchState.timeRemaining <= 0) {
-    finishDeathmatch();
+  // 4. Sprawdzenie warunku zakończenia bitwy (Limit czasu)
+  if (hasTimeLimit && deathmatchState.timeRemaining <= 0) {
+    finishDeathmatch('TIME_LIMIT');
   }
 }
 
 /**
  * Finał meczu: wyłonienie zwycięzców, przyznanie nagród XP i uruchomienie ekranu podium
  */
-export function finishDeathmatch() {
+export function finishDeathmatch(reason = 'TIME_LIMIT') {
   if (deathmatchState.matchEnded) return;
 
   deathmatchState.matchEnded = true;
+  deathmatchState.endReason = reason;
   deathmatchState.endCelebrationTimer = deathmatchState.maxEndCelebrationTimer;
   updateLeaderboard();
+
+  // Ustalenie zwycięzcy
+  if (!deathmatchState.winningTeam && deathmatchState.mode === DEATHMATCH_MODES.TDM) {
+    const cScore = deathmatchState.teamScores[TEAMS.CYAN] || 0;
+    const oScore = deathmatchState.teamScores[TEAMS.ORANGE] || 0;
+    if (cScore > oScore) deathmatchState.winningTeam = TEAMS.CYAN;
+    else if (oScore > cScore) deathmatchState.winningTeam = TEAMS.ORANGE;
+    else deathmatchState.winningTeam = 'DRAW';
+  }
+  if (!deathmatchState.winningPlayer && deathmatchState.leaderboard.length > 0) {
+    deathmatchState.winningPlayer = deathmatchState.leaderboard[0];
+  }
 
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;

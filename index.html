@@ -48,10 +48,10 @@
       "./js/classes/index.js": "./js/classes/index.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/classes/striker.js": "./js/classes/striker.js?v=v341_compact_soldat_jetpack_flame",
       "./js/config.js": "./js/config.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v192_perf_and_multiplayer_sync",
-      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v232_crater_gravity_and_self_death_feed",
-      "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v192_perf_and_multiplayer_sync",
-      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v192_perf_and_multiplayer_sync",
+      "./js/deathmatch/state.js": "./js/deathmatch/state.js?v=v386_win_conditions_and_gameplay_settings",
+      "./js/deathmatch/logic.js": "./js/deathmatch/logic.js?v=v386_win_conditions_and_gameplay_settings",
+      "./js/deathmatch/renderer.js": "./js/deathmatch/renderer.js?v=v386_win_conditions_and_gameplay_settings",
+      "./js/deathmatch/index.js": "./js/deathmatch/index.js?v=v386_win_conditions_and_gameplay_settings",
       "./js/dev/devPanel.js": "./js/dev/devPanel.js?v=v369_fix_collision_debug_freeze_and_viewport_culling",
       "./js/dev/obstacleEditor.js": "./js/dev/obstacleEditor.js?v=v162_remove_emojis_streamline_ui",
       "./js/dev/weaponEditor.js": "./js/dev/weaponEditor.js?v=v329_knife_grip_and_pivot_tuning",
@@ -79,7 +79,7 @@
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/main.js": "./js/main.js?v=v385_height_sync_anti_freeze_and_safe_gravity",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v279_melee_button_non_auto_lock",
-      "./js/network.js": "./js/network.js?v=v274_tomahawk_throw_and_pickup",
+      "./js/network.js": "./js/network.js?v=v386_win_conditions_and_gameplay_settings",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v381_oil_rig_typhoon",
       "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
@@ -119,7 +119,7 @@
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v383_mobile_pocket_ammo",
       "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v383_mobile_pocket_ammo",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v383_mobile_pocket_ammo",
-      "./js/uiManager.js": "./js/uiManager.js?v=v383_mobile_pocket_ammo",
+      "./js/uiManager.js": "./js/uiManager.js?v=v386_win_conditions_and_gameplay_settings",
       "./js/weapons.js": "./js/weapons.js?v=v357_arena5_ceiling_collision_squash_and_melee_kicks",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v342_rpg7_reload_arm_and_rocket_reach",
       "./js/weapons/rocket.js": "./js/weapons/rocket.js?v=v347_dynamic_lighting_and_materials",
@@ -132,7 +132,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v383_mobile_pocket_ammo">
+  <link rel="stylesheet" href="./css/main.css?v=v386_win_conditions_and_gameplay_settings">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -1102,21 +1102,124 @@
             <div class="settings-title-group">
               <div>
                 <h2>KONFIGURACJA GRY // SETTINGS</h2>
-                <p>Dźwięk, Grafika, Wstrząsy i Sterowanie</p>
+                <p>Zasady Rozgrywki, Warunki Zwycięstwa, Dźwięk i Grafika</p>
               </div>
             </div>
             <button id="settings-close-btn" class="ui-close-btn" type="button" title="Zamknij (ESC)">✕</button>
           </div>
 
           <div class="settings-tabs">
-            <button class="settings-tab-btn active" data-tab="audio" type="button">DŹWIĘK</button>
+            <button class="settings-tab-btn active" data-tab="gameplay" type="button">ROZGRYWKA</button>
+            <button class="settings-tab-btn" data-tab="audio" type="button">DŹWIĘK</button>
             <button class="settings-tab-btn" data-tab="video" type="button">GRAFIKA &amp; SILNIK</button>
             <button class="settings-tab-btn" data-tab="controls" type="button">KLAWISZOLOGIA</button>
           </div>
 
           <div class="settings-tab-content">
+            <!-- Zakładka: ROZGRYWKA (GAMEPLAY) -->
+            <div class="tab-pane active" id="tab-gameplay">
+              <div class="setting-row">
+                <div class="setting-label-col">
+                  <div class="setting-name">Warunek Zwycięstwa (Win Condition)</div>
+                  <div class="setting-desc">Wybierz co rozstrzyga o zakończeniu meczu na arenie</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-win-condition" class="ui-select">
+                    <option value="BOTH">Czas lub Fragi (co pierwsze)</option>
+                    <option value="FRAGS">Tylko Limit Fragów</option>
+                    <option value="TIME">Tylko Limit Czasu</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row" id="row-frag-limit">
+                <div class="setting-label-col">
+                  <div class="setting-name">Limit Fragów do Zwycięstwa</div>
+                  <div class="setting-desc">Liczba eliminacji wymagana do wygranej (drużynowo lub solo)</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-frag-limit" class="ui-select">
+                    <option value="10">10 Fragów (Szybki)</option>
+                    <option value="15">15 Fragów</option>
+                    <option value="20">20 Fragów</option>
+                    <option value="25" selected>25 Fragów (Standard)</option>
+                    <option value="30">30 Fragów</option>
+                    <option value="40">40 Fragów</option>
+                    <option value="50">50 Fragów (Maraton)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row" id="row-match-duration">
+                <div class="setting-label-col">
+                  <div class="setting-name">Czas Trwania Bitwy</div>
+                  <div class="setting-desc">Długość rundy w minutach przed wyłonieniem zwycięzcy</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-match-duration" class="ui-select">
+                    <option value="180">3 Minuty (Krótki)</option>
+                    <option value="300" selected>5 Minut (Standard)</option>
+                    <option value="420">7 Minut</option>
+                    <option value="600">10 Minut (Długi)</option>
+                    <option value="900">15 Minut (Epicki)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label-col">
+                  <div class="setting-name">Format Rozgrywki (Deathmatch)</div>
+                  <div class="setting-desc">Walka drużynowa 2v2/3v3/4v4 lub Każdy na Każdego</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-game-mode" class="ui-select">
+                    <option value="TDM" selected>Drużynowy (TDM: Niebiescy vs Czerwoni)</option>
+                    <option value="FFA">Każdy na Każdego (FFA)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row" id="row-player-team">
+                <div class="setting-label-col">
+                  <div class="setting-name">Twoja Drużyna w TDM</div>
+                  <div class="setting-desc">Wybór barw bojowych dla Twojego operatora</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-player-team" class="ui-select">
+                    <option value="CYAN" selected>Niebiescy (Team Alpha)</option>
+                    <option value="ORANGE">Czerwoni (Team Beta)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label-col">
+                  <div class="setting-name">Poziom Trudności Botów AI</div>
+                  <div class="setting-desc">Refleks, celność i zaawansowanie taktyczne botów</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-bot-difficulty" class="ui-select">
+                    <option value="easy">Rekrut (Początkujący)</option>
+                    <option value="normal" selected>Weteran (Zbalansowany)</option>
+                    <option value="hard">Elita (Zaawansowany)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label-col">
+                  <div class="setting-name">Liczba Botów AI na Arenie</div>
+                  <div class="setting-desc">Liczba aktywnych jednostek komputerowych (1 - 7 botów)</div>
+                </div>
+                <div class="setting-control-col">
+                  <input type="range" id="setting-bot-count" min="1" max="7" value="3" class="ui-slider">
+                  <span class="slider-val" id="val-bot-count">3</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Zakładka: DŹWIĘK -->
-            <div class="tab-pane active" id="tab-audio">
+            <div class="tab-pane" id="tab-audio" style="display: none;">
               <div class="setting-row">
                 <div class="setting-label-col">
                   <div class="setting-name">Głośność Główna (Master)</div>

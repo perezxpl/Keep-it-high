@@ -363,9 +363,13 @@ export function sendDeathmatchSync(dmState) {
     networkState.conn.send({
       type: 'dm_sync',
       timeRemaining: Math.round(dmState.timeRemaining * 10) / 10,
+      elapsedTime: Math.round((dmState.elapsedTime || 0) * 10) / 10,
       scoreCyan: dmState.teamScores ? (dmState.teamScores[TEAMS.CYAN] || 0) : 0,
       scoreOrange: dmState.teamScores ? (dmState.teamScores[TEAMS.ORANGE] || 0) : 0,
       matchEnded: !!dmState.matchEnded,
+      endReason: dmState.endReason || null,
+      winCondition: dmState.winCondition || 'BOTH',
+      fragLimit: dmState.fragLimit || 25,
       endCelebrationTimer: dmState.endCelebrationTimer || 0
     });
   } catch (_) {}
@@ -1140,12 +1144,16 @@ function handleNetworkData(data) {
     case 'dm_sync': {
       if (networkState.isHost) break;
       deathmatchState.timeRemaining = data.timeRemaining;
+      if (typeof data.elapsedTime === 'number') deathmatchState.elapsedTime = data.elapsedTime;
+      if (data.winCondition) deathmatchState.winCondition = data.winCondition;
+      if (data.fragLimit) deathmatchState.fragLimit = data.fragLimit;
+      if (data.endReason) deathmatchState.endReason = data.endReason;
       if (deathmatchState.teamScores) {
         deathmatchState.teamScores[TEAMS.CYAN] = data.scoreCyan;
         deathmatchState.teamScores[TEAMS.ORANGE] = data.scoreOrange;
       }
       if (data.matchEnded && !deathmatchState.matchEnded) {
-        finishDeathmatch();
+        finishDeathmatch(data.endReason || 'TIME_LIMIT');
       }
       break;
     }

@@ -23,8 +23,17 @@ export const TEAMS = {
   ORANGE: 'ORANGE'  // Drużyna Czerwona / Pomarańczowa
 };
 
+export const WIN_CONDITIONS = {
+  BOTH: 'BOTH',   // Czas lub limit fragów (co pierwsze)
+  FRAGS: 'FRAGS', // Tylko limit fragów
+  TIME: 'TIME'    // Tylko limit czasu
+};
+
 const STORAGE_KEY_MODE = 'kih_deathmatch_mode_v1';
 const STORAGE_KEY_TEAM = 'kih_deathmatch_player_team_v1';
+const STORAGE_KEY_WIN_CONDITION = 'kih_deathmatch_win_condition_v1';
+const STORAGE_KEY_FRAG_LIMIT = 'kih_deathmatch_frag_limit_v1';
+const STORAGE_KEY_DURATION = 'kih_deathmatch_duration_v1';
 
 function getStoredMode() {
   try {
@@ -42,11 +51,37 @@ function getStoredTeam() {
   return TEAMS.CYAN;
 }
 
+function getStoredWinCondition() {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_WIN_CONDITION);
+    if (val === 'FRAGS' || val === 'TIME' || val === 'BOTH') return val;
+  } catch (_) {}
+  return WIN_CONDITIONS.BOTH;
+}
+
+function getStoredFragLimit() {
+  try {
+    const val = parseInt(localStorage.getItem(STORAGE_KEY_FRAG_LIMIT), 10);
+    if (!isNaN(val) && val >= 5 && val <= 100) return val;
+  } catch (_) {}
+  return 25;
+}
+
+function getStoredDuration() {
+  try {
+    const val = parseInt(localStorage.getItem(STORAGE_KEY_DURATION), 10);
+    if (!isNaN(val) && val >= 60 && val <= 1800) return val;
+  } catch (_) {}
+  return DEATHMATCH_DURATION;
+}
+
 export const deathmatchConfig = {
-  duration: DEATHMATCH_DURATION,
+  duration: getStoredDuration(),
   mode: getStoredMode(),
   playerTeam: getStoredTeam(),
-  killLimit: 20 // Opcjonalny pułap fragów
+  winCondition: getStoredWinCondition(),
+  fragLimit: getStoredFragLimit(),
+  killLimit: getStoredFragLimit()
 };
 
 export function isDeathmatchFFA() {
@@ -69,17 +104,52 @@ export function setDeathmatchPlayerTeam(team) {
   }
 }
 
+export function setDeathmatchWinCondition(condition) {
+  if (condition === WIN_CONDITIONS.BOTH || condition === WIN_CONDITIONS.FRAGS || condition === WIN_CONDITIONS.TIME) {
+    deathmatchConfig.winCondition = condition;
+    deathmatchState.winCondition = condition;
+    try { localStorage.setItem(STORAGE_KEY_WIN_CONDITION, condition); } catch (_) {}
+  }
+}
+
+export function setDeathmatchFragLimit(limit) {
+  const parsed = parseInt(limit, 10);
+  if (!isNaN(parsed) && parsed >= 5 && parsed <= 100) {
+    deathmatchConfig.fragLimit = parsed;
+    deathmatchConfig.killLimit = parsed;
+    deathmatchState.fragLimit = parsed;
+    try { localStorage.setItem(STORAGE_KEY_FRAG_LIMIT, String(parsed)); } catch (_) {}
+  }
+}
+
+export function setDeathmatchDuration(seconds) {
+  const parsed = parseInt(seconds, 10);
+  if (!isNaN(parsed) && parsed >= 60 && parsed <= 1800) {
+    deathmatchConfig.duration = parsed;
+    deathmatchState.timeRemaining = parsed;
+    deathmatchState.matchDuration = parsed;
+    try { localStorage.setItem(STORAGE_KEY_DURATION, String(parsed)); } catch (_) {}
+  }
+}
+
 export const deathmatchState = {
   active: false,
   mode: deathmatchConfig.mode,
   playerTeam: deathmatchConfig.playerTeam,
-  timeRemaining: DEATHMATCH_DURATION, // Sekundy (odliczanie 300 -> 0)
+  winCondition: deathmatchConfig.winCondition,
+  fragLimit: deathmatchConfig.fragLimit,
+  matchDuration: deathmatchConfig.duration,
+  timeRemaining: deathmatchConfig.duration, // Sekundy (odliczanie duration -> 0)
+  elapsedTime: 0,
   matchEnded: false,
+  endReason: null, // 'FRAG_LIMIT', 'TIME_LIMIT', 'FORFEIT'
   endCelebrationTimer: 0,
   maxEndCelebrationTimer: 480, // ~8 sekund prezentacji podium
   xpAwarded: false,
   awardedXpAmount: 0,
   playerPlace: 1,
+  winningTeam: null,
+  winningPlayer: null,
 
   // Statystyki drużynowe w trybie TDM
   teamScores: {
@@ -101,12 +171,19 @@ export function resetDeathmatchState() {
   deathmatchState.active = false;
   deathmatchState.mode = deathmatchConfig.mode;
   deathmatchState.playerTeam = deathmatchConfig.playerTeam;
+  deathmatchState.winCondition = deathmatchConfig.winCondition;
+  deathmatchState.fragLimit = deathmatchConfig.fragLimit;
+  deathmatchState.matchDuration = deathmatchConfig.duration;
   deathmatchState.timeRemaining = deathmatchConfig.duration;
+  deathmatchState.elapsedTime = 0;
   deathmatchState.matchEnded = false;
+  deathmatchState.endReason = null;
   deathmatchState.endCelebrationTimer = 0;
   deathmatchState.xpAwarded = false;
   deathmatchState.awardedXpAmount = 0;
   deathmatchState.playerPlace = 1;
+  deathmatchState.winningTeam = null;
+  deathmatchState.winningPlayer = null;
   deathmatchState.teamScores[TEAMS.CYAN] = 0;
   deathmatchState.teamScores[TEAMS.ORANGE] = 0;
   deathmatchState.participants.length = 0;
@@ -118,4 +195,8 @@ if (typeof window !== 'undefined') {
   window.deathmatchState = deathmatchState;
   window.deathmatchConfig = deathmatchConfig;
   window.isDeathmatchFFA = isDeathmatchFFA;
+  window.WIN_CONDITIONS = WIN_CONDITIONS;
+  window.setDeathmatchWinCondition = setDeathmatchWinCondition;
+  window.setDeathmatchFragLimit = setDeathmatchFragLimit;
+  window.setDeathmatchDuration = setDeathmatchDuration;
 }

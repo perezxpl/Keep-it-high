@@ -27,14 +27,18 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
   if (!deathmatchState.active) return;
 
   const isTdm = (deathmatchState.mode === DEATHMATCH_MODES.TDM);
+  const winCond = deathmatchState.winCondition || 'BOTH';
+  const fragLimit = deathmatchState.fragLimit || 25;
+  const checksFrags = (winCond === 'BOTH' || winCond === 'FRAGS');
+
   // Kompaktowy kontener ze zintegrowanymi statystykami
-  const boxW = isMobile ? 220 : 310;
+  const boxW = isMobile ? (checksFrags ? 240 : 220) : (checksFrags ? 330 : 310);
   const boxH = isMobile ? 26 : 33;
   const boxX = (W - boxW) / 2;
   const boxY = isMobile ? 6 : 8;
 
   const timeLeft = deathmatchState.timeRemaining;
-  const isUrgent = (timeLeft <= 30 && timeLeft > 0);
+  const isUrgent = (winCond !== 'FRAGS' && timeLeft <= 30 && timeLeft > 0);
   const pulse = isUrgent ? (0.6 + 0.4 * Math.sin(performance.now() * 0.012)) : 1.0;
 
   // Proximity Ghosting: jeśli postać gracza znajduje się blisko góry/sufitu pod HUD-em,
@@ -88,7 +92,10 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
   // Timer (MM:SS) po lewej stronie
   ctx.textAlign = 'left';
   ctx.fillStyle = isUrgent ? '#ef4444' : '#facc15';
-  ctx.fillText(formatTime(timeLeft), boxX + (isMobile ? 8 : 12), topTextY);
+  const timerStr = (winCond === 'FRAGS')
+    ? (isMobile ? formatTime(deathmatchState.elapsedTime || 0) : `CZAS ${formatTime(deathmatchState.elapsedTime || 0)}`)
+    : formatTime(timeLeft);
+  ctx.fillText(timerStr, boxX + (isMobile ? 8 : 12), topTextY);
 
   // Pozycja gracza po prawej stronie (zintegrowana wewnątrz pigułki HUD)
   ctx.textAlign = 'right';
@@ -109,7 +116,8 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
     // Niebiescy
     ctx.textAlign = 'right';
     ctx.fillStyle = '#00e5ff';
-    const cyanLabel = `${cyanKills} NIEBIESCY${isPlayerCyan ? ' ★' : ''}`;
+    const cyanScoreDisplay = checksFrags ? `${cyanKills}/${fragLimit}` : `${cyanKills}`;
+    const cyanLabel = `${cyanScoreDisplay} NIEBIESCY${isPlayerCyan ? ' [*]' : ''}`;
     ctx.fillText(cyanLabel, boxX + boxW / 2 - (isMobile ? 7 : 10), scoreY);
 
     // Dwukropek
@@ -120,7 +128,8 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
     // Czerwoni
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f97316';
-    const orangeLabel = `${isPlayerOrange ? '★ ' : ''}CZERWONI ${orangeKills}`;
+    const orangeScoreDisplay = checksFrags ? `${orangeKills}/${fragLimit}` : `${orangeKills}`;
+    const orangeLabel = `${isPlayerOrange ? '[*] ' : ''}CZERWONI ${orangeScoreDisplay}`;
     ctx.fillText(orangeLabel, boxX + boxW / 2 + (isMobile ? 7 : 10), scoreY);
   } else {
     // Tryb Każdy na Każdego
@@ -130,7 +139,8 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
     ctx.fillStyle = '#facc15';
     const leaderName = leader ? leader.name : 'BRAK';
     const leaderKills = leader ? leader.kills : 0;
-    ctx.fillText(`LIDER: ${leaderName} (${leaderKills} FRAGÓW)`, boxX + boxW / 2, scoreY);
+    const ffaScoreDisplay = checksFrags ? `${leaderKills}/${fragLimit}` : `${leaderKills}`;
+    ctx.fillText(`LIDER: ${leaderName} (${ffaScoreDisplay} FRAGÓW)`, boxX + boxW / 2, scoreY);
   }
 
   ctx.restore();
@@ -221,11 +231,14 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
   ctx.fill();
   ctx.stroke();
 
-  // 1. Podtytuł: Koniec Bitwy 5:00
+  // 1. Podtytuł z powodem zakończenia bitwy
   ctx.textAlign = 'center';
   ctx.font = isMobile ? 'bold 10px monospace' : 'bold 11px monospace';
   ctx.fillStyle = '#94a3b8';
-  ctx.fillText('BITWA ZAKOŃCZONA (5:00) // WYNIKI MECZU', W / 2, cardY + (isMobile ? 22 : 26));
+  const reasonText = (deathmatchState.endReason === 'FRAG_LIMIT')
+    ? `LIMIT FRAGÓW (${deathmatchState.fragLimit || 25})`
+    : `LIMIT CZASU (${formatTime(deathmatchState.matchDuration || 300)})`;
+  ctx.fillText(`BITWA ZAKOŃCZONA [ ${reasonText} ] // WYNIKI MECZU`, W / 2, cardY + (isMobile ? 22 : 26));
 
   // 2. Główny baner zwycięzcy (KTÓRA DRUŻYNA WYGRAŁA)
   ctx.font = isMobile ? '900 16px monospace' : '900 22px monospace';

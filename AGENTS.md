@@ -75,9 +75,9 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/arenas/arena5/` — Arena 5 (Prefabrykator Orbitalny / Sektor 05): rosnąca wieża klocków kontenerowych w stylu Tetrisa (10 kolumn, kafelki 100x100 dopasowane do Enforcera), automatyczny zrzut suwnicy z czerwonym laserem ostrzegawczym i systemem zmiażdżenia (Squash / Insta-kill), detonacja pełnych linii z tąpnięciem wieży, zniszczalne segmenty (stalowe, pęknięty żelbet, wybuchowe kontenery paliwowe, pomosty ażurowe), ucieczka w górę z kamerą śledzącą od połowy ekranu oraz dolny utylizator mielący stare klocki i eliminujący spadających graczy z bezpiecznym odrodzeniem na szczycie wieży (`state.js`, `physics.js`, `combat.js`, `renderer.js`, `index.js`).
 
 ### Tryb Deathmatch (`js/deathmatch/`)
-- `js/deathmatch/state.js` — konfiguracja, stałe czasu (5 minut, 300s), nagrody XP (100, 80, 60, 40 XP), tryby (TDM, FFA), drużyny (CYAN, ORANGE) oraz stan sesji `deathmatchState`.
-- `js/deathmatch/logic.js` — pętla bitwy (`updateDeathmatch`), śledzenie zabójstw i zgonów, dynamiczny leaderboard i finalizacja meczu (`finishDeathmatch`).
-- `js/deathmatch/renderer.js` — rysowanie HUD-u bitwy (`drawDeathmatchHUD`) z zegarem 5:00 i fragami oraz uroczystego podium z nagrodami XP (`drawDeathmatchPodium`).
+- `js/deathmatch/state.js` — konfiguracja, warunki zwycięstwa (`WIN_CONDITIONS`: czas lub fragi, tylko fragi, tylko czas), konfigurowalny czas (3–15 min), limit fragów (10–50), nagrody XP (100, 80, 60, 40 XP), tryby (TDM, FFA), drużyny (CYAN, ORANGE) oraz stan sesji `deathmatchState`.
+- `js/deathmatch/logic.js` — pętla bitwy (`updateDeathmatch`), weryfikacja osiągnięcia limitu fragów lub limitu czasu, śledzenie zabójstw i zgonów, dynamiczny leaderboard i finalizacja meczu (`finishDeathmatch`).
+- `js/deathmatch/renderer.js` — rysowanie HUD-u bitwy (`drawDeathmatchHUD`) z dynamicznym celem fragów i zegarem oraz uroczystego podium z powodem wygranej i nagrodami XP (`drawDeathmatchPodium`).
 - `js/deathmatch/index.js` — główny punkt wejścia i eksport modułu deathmatch.
 
 ### Przeszkody i Kolizje (`js/obstacles/`)

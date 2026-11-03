@@ -7,10 +7,14 @@ export {
   DEATHMATCH_XP_REWARDS,
   DEATHMATCH_MODES,
   TEAMS,
+  WIN_CONDITIONS,
   deathmatchConfig,
   deathmatchState,
   setDeathmatchMode,
   setDeathmatchPlayerTeam,
+  setDeathmatchWinCondition,
+  setDeathmatchFragLimit,
+  setDeathmatchDuration,
   resetDeathmatchState,
   isDeathmatchFFA
 } from './state.js';
