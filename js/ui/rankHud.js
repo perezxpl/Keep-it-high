@@ -4,6 +4,7 @@
  */
 
 import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, addPlayerXP, recordMatchResult, XP_REWARDS, setXpNotificationCallback, setRankUpCallback } from '../progression.js';
+import { drawRankBadge } from './rankBadges.js';
 
 // Stan powiadomień XP i zwycięstwa w meczu
 export const matchWinState = {
@@ -38,6 +39,7 @@ setXpNotificationCallback(spawnXpPopup);
 // Stan powiadomienia o awansie na nowy stopień wojskowy
 export const rankUpAlertState = {
   active: false,
+  rankId: 'SZEREGOWY',
   rankName: '',
   rankIcon: '',
   rewardText: '',
@@ -48,6 +50,7 @@ export const rankUpAlertState = {
 export function triggerRankUpAlert(rank) {
   if (!rank) return;
   rankUpAlertState.active = true;
+  rankUpAlertState.rankId = rank.id || 'SZEREGOWY';
   rankUpAlertState.rankName = rank.name;
   rankUpAlertState.rankIcon = rank.icon;
   const labels = Array.isArray(rank.unlocks)
@@ -156,12 +159,16 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
-  // Ikona i stopień wojskowy
+  // Ikona i stopień wojskowy ze sprite sheetu
+  const badgeSize = isMobile ? 13 : 15;
+  const badgeY = Math.round(rankTextY - badgeSize / 2);
+  drawRankBadge(ctx, rank.id, x, badgeY, badgeSize, badgeSize);
+
   ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10.5px monospace';
   ctx.fillStyle = '#38bdf8';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
   ctx.shadowBlur = 3;
-  ctx.fillText(`${rank.icon} ${rank.short.toUpperCase()}`, x, rankTextY);
+  ctx.fillText(rank.short.toUpperCase(), x + badgeSize + 4, rankTextY);
 
   // Wartość XP po prawej stronie
   ctx.textAlign = 'right';
@@ -250,32 +257,37 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
       ctx.globalAlpha = alpha;
       if (isMobile) {
         // Wariant mobilny: jednolinijkowa mikro-pigułka awansu na górze ekranu
-        const bw = Math.min(240, sw - 40);
-        const bh = 18;
+        const bw = Math.min(250, sw - 40);
+        const bh = 20;
         const bx = Math.round((sw - bw) / 2);
         const by = 28;
 
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3);
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 4);
         else ctx.rect(bx, by, bw, bh);
-        ctx.fillStyle = 'rgba(8, 20, 36, 0.65)';
+        ctx.fillStyle = 'rgba(8, 20, 36, 0.85)';
         ctx.fill();
 
         ctx.strokeStyle = '#00e5ff';
         ctx.lineWidth = 0.9;
         ctx.stroke();
 
+        const alertBadgeSize = 14;
+        const alertBadgeX = bx + 6;
+        const alertBadgeY = Math.round(by + (bh - alertBadgeSize) / 2);
+        drawRankBadge(ctx, rankUpAlertState.rankId, alertBadgeX, alertBadgeY, alertBadgeSize, alertBadgeSize);
+
         ctx.font = '900 8.5px monospace';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#facc15';
         ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
         ctx.shadowBlur = 4;
-        ctx.fillText(`AWANS: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + bh / 2 + 0.5);
+        ctx.fillText(`AWANS: ${rankUpAlertState.rankName.toUpperCase()}`, alertBadgeX + alertBadgeSize + 5, by + bh / 2 + 0.5);
       } else {
-        // Wariant desktop: pełny baner z nagrodami
-        const bw = Math.min(360, sw - 32);
-        const bh = 54;
+        // Wariant desktop: pełny baner z nagrodami i odznaką
+        const bw = Math.min(380, sw - 32);
+        const bh = 56;
         const bx = Math.round((sw - bw) / 2);
         const by = 96;
 
@@ -289,19 +301,24 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
         ctx.lineWidth = 1.8;
         ctx.stroke();
 
+        const deskBadgeSize = 38;
+        const deskBadgeX = bx + 12;
+        const deskBadgeY = Math.round(by + (bh - deskBadgeSize) / 2);
+        drawRankBadge(ctx, rankUpAlertState.rankId, deskBadgeX, deskBadgeY, deskBadgeSize, deskBadgeSize);
+
         ctx.font = '900 13px monospace';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillStyle = '#facc15';
         ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
         ctx.shadowBlur = 6;
-        ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankIcon} ${rankUpAlertState.rankName.toUpperCase()}`, bx + bw / 2, by + 9);
+        ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankName.toUpperCase()}`, deskBadgeX + deskBadgeSize + 12, by + 10);
 
         ctx.font = 'bold 10px monospace';
         ctx.fillStyle = '#38bdf8';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 2;
-        ctx.fillText(rankUpAlertState.rewardText, bx + bw / 2, by + 29);
+        ctx.fillText(rankUpAlertState.rewardText, deskBadgeX + deskBadgeSize + 12, by + 31);
       }
 
       ctx.restore();
@@ -361,28 +378,44 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     ctx.shadowBlur = 8;
     ctx.fillText(`+${matchWinState.rewardXp} XP PRESTIŻU ARENY`, W / 2, bannerY + (isMobile ? 64 : 76));
 
-    // Stopień wojskowy
+    // Stopień wojskowy ze sprite sheetem
     const currentXp = getPlayerXP();
     const currentRank = getCurrentRank(currentXp);
     const leveledUp = matchWinState.previousRankName && matchWinState.previousRankName !== matchWinState.newRankName;
 
+    const rankBadgeSize = isMobile ? 22 : 28;
+    const rankLineY = bannerY + (isMobile ? (leveledUp ? 93 : 95) : (leveledUp ? 108 : 112));
+
     ctx.font = isMobile ? 'bold 11px monospace' : 'bold 13px monospace';
+    const rankLabel = leveledUp
+      ? `AWANS: ${currentRank.name.toUpperCase()}`
+      : `STOPIEŃ: ${currentRank.name.toUpperCase()} (${currentXp} XP)`;
+
+    const textWidth = ctx.measureText(rankLabel).width;
+    const totalW = rankBadgeSize + 8 + textWidth;
+    const startX = (W - totalW) / 2;
+
+    drawRankBadge(ctx, currentRank.id, startX, Math.round(rankLineY - rankBadgeSize / 2), rankBadgeSize, rankBadgeSize);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
     if (leveledUp) {
       ctx.fillStyle = '#38bdf8';
       ctx.shadowColor = '#00e5ff';
-      ctx.fillText(`AWANS: ${currentRank.icon} ${currentRank.name.toUpperCase()}`, W / 2, bannerY + (isMobile ? 93 : 108));
+      ctx.fillText(rankLabel, startX + rankBadgeSize + 8, rankLineY);
       if (Array.isArray(currentRank.unlocks) && currentRank.unlocks.length > 0) {
         const uLabels = currentRank.unlocks.map(u => (typeof u === 'string' ? u : (u?.label || u?.name || ''))).filter(Boolean);
         if (uLabels.length > 0) {
           ctx.font = isMobile ? 'bold 8.5px monospace' : 'bold 10px monospace';
           ctx.fillStyle = '#00e5ff';
-          ctx.fillText(`ODBLOKOWANO: ${uLabels.join(' • ').toUpperCase()}`, W / 2, bannerY + (isMobile ? 110 : 128));
+          ctx.textAlign = 'center';
+          ctx.fillText(`ODBLOKOWANO: ${uLabels.join(' • ').toUpperCase()}`, W / 2, bannerY + (isMobile ? 112 : 130));
         }
       }
     } else {
       ctx.fillStyle = '#cbd5e1';
       ctx.shadowBlur = 0;
-      ctx.fillText(`STOPIEŃ: ${currentRank.icon} ${currentRank.name.toUpperCase()} (${currentXp} XP)`, W / 2, bannerY + (isMobile ? 95 : 112));
+      ctx.fillText(rankLabel, startX + rankBadgeSize + 8, rankLineY);
     }
   } else {
     // Porażka

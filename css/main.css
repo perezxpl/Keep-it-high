@@ -1244,13 +1244,14 @@ button, .dev-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
-  min-width: 46px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(15, 23, 42, 0.9));
-  border: 1.5px solid #00e5ff;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(15, 23, 42, 0.95));
+  border: 1.5px solid rgba(0, 229, 255, 0.6);
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+  overflow: hidden;
 }
 
 .rank-badge-shield .rank-icon {
@@ -1260,6 +1261,56 @@ button, .dev-btn {
   text-shadow: 0 0 10px #00e5ff;
   letter-spacing: -1px;
 }
+
+/* =========================================================================
+   ARKUSZ SPRITE ODZNAK WOJSKOWYCH (MILITARY RANK SPRITE SHEET)
+   ========================================================================= */
+.rank-badge-sprite {
+  display: inline-block;
+  background-image: url('../assets/ranks_spritesheet.svg?v=v388_military_rank_spritesheet');
+  background-repeat: no-repeat;
+  background-size: 400% 300%;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+}
+
+.rank-badge-sprite.hero-badge {
+  width: 50px;
+  height: 50px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 12px rgba(250, 204, 21, 0.45));
+}
+
+.rank-badge-sprite.ladder-badge {
+  width: 38px;
+  height: 38px;
+}
+
+.rank-badge-sprite.pause-badge {
+  width: 30px;
+  height: 30px;
+}
+
+/* Pozycje w siatce 4x3 (Wiersz 0: Szeregowi i Kaprale) */
+.rank-sprite-SZEREGOWY       { background-position: 0% 0%; }
+.rank-sprite-ST_SZEREGOWY    { background-position: 33.333% 0%; }
+.rank-sprite-KAPRAL          { background-position: 66.666% 0%; }
+.rank-sprite-ST_KAPRAL       { background-position: 100% 0%; }
+
+/* Wiersz 1: Podoficerowie starsi i Młodsi Oficerowie */
+.rank-sprite-PLUTONOWY       { background-position: 0% 50%; }
+.rank-sprite-SIERZANT        { background-position: 33.333% 50%; }
+.rank-sprite-CHORAZY         { background-position: 66.666% 50%; }
+.rank-sprite-PODPORUCZNIK    { background-position: 100% 50%; }
+
+/* Wiersz 2: Oficerowie Starsi i Generał */
+.rank-sprite-KAPITAN         { background-position: 0% 100%; }
+.rank-sprite-MAJOR           { background-position: 33.333% 100%; }
+.rank-sprite-PULKOWNIK       { background-position: 66.666% 100%; }
+.rank-sprite-GENERAL         { background-position: 100% 100%; }
 
 .rank-details {
   flex: 1;
@@ -4415,8 +4466,30 @@ button, .dev-btn {
   padding: 8px 12px;
   margin-bottom: 12px;
   display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pause-rank-badge-shield {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 6px;
+  background: rgba(10, 15, 29, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pause-rank-info-wrap {
+  flex: 1;
+  display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .pause-rank-top {
@@ -5406,6 +5479,7 @@ button, .dev-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .ranks-hero-icon {
@@ -5567,9 +5641,9 @@ button, .dev-btn {
 }
 
 .rank-card-insignia {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
   border-radius: 8px;
   background: rgba(2, 6, 23, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -5577,6 +5651,7 @@ button, .dev-btn {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .rank-ladder-card.current-rank .rank-card-insignia {

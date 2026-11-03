@@ -118,8 +118,9 @@
       "./js/ui/combatFeed.js": "./js/ui/combatFeed.js?v=v381_oil_rig_typhoon",
       "./js/ui/hudCanvas.js": "./js/ui/hudCanvas.js?v=v383_mobile_pocket_ammo",
       "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v383_mobile_pocket_ammo",
-      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v383_mobile_pocket_ammo",
-      "./js/uiManager.js": "./js/uiManager.js?v=v387_briefing_win_conditions_and_battle_rules",
+      "./js/ui/rankBadges.js": "./js/ui/rankBadges.js?v=v388_military_rank_spritesheet",
+      "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v388_military_rank_spritesheet",
+      "./js/uiManager.js": "./js/uiManager.js?v=v388_military_rank_spritesheet",
       "./js/weapons.js": "./js/weapons.js?v=v357_arena5_ceiling_collision_squash_and_melee_kicks",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v342_rpg7_reload_arm_and_rocket_reach",
       "./js/weapons/rocket.js": "./js/weapons/rocket.js?v=v347_dynamic_lighting_and_materials",
@@ -132,7 +133,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./css/main.css?v=v387_briefing_win_conditions_and_battle_rules">
+  <link rel="stylesheet" href="./css/main.css?v=v388_military_rank_spritesheet">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     window.addEventListener('error', function(e) {
@@ -512,7 +513,7 @@
           <!-- Karta aktualnego stopnia gracza -->
           <div class="ranks-hero-card" id="ranks-hero-card">
             <div class="ranks-hero-badge-shield">
-              <span class="ranks-hero-icon" id="ranks-hero-icon">━</span>
+              <div class="rank-badge-sprite hero-badge rank-sprite-SZEREGOWY" id="ranks-hero-icon"></div>
             </div>
             <div class="ranks-hero-info">
               <div class="ranks-hero-top-row">
@@ -631,7 +632,7 @@
                   <!-- 2. Sekcja Rangi Wojskowej (Klikalna) z czytelnym paskiem XP -->
                   <div class="player-card-rank-section clickable" id="menu-player-rank-clickable" title="Kliknij, aby otworzyć rejestr stopni wojskowych i premii XP">
                     <div class="rank-badge-shield">
-                      <span class="rank-icon" id="menu-rank-icon">━</span>
+                      <div class="rank-badge-sprite rank-sprite-SZEREGOWY" id="menu-rank-icon"></div>
                     </div>
                     <div class="rank-details">
                       <div class="rank-title-row">
@@ -1791,16 +1792,21 @@
 
           <!-- Kompaktowa karta rangi i progresu XP w menu pauzy -->
           <div class="pause-rank-card" id="pause-rank-card">
-            <div class="pause-rank-top">
-              <span class="pause-rank-name" id="pause-rank-name">SZEREGOWY</span>
-              <span class="pause-rank-xp" id="pause-rank-xp">0 / 400 XP</span>
+            <div class="pause-rank-badge-shield">
+              <div class="rank-badge-sprite pause-badge rank-sprite-SZEREGOWY" id="pause-rank-icon"></div>
             </div>
-            <div class="pause-rank-bar-bg">
-              <div class="pause-rank-bar-fill" id="pause-rank-bar-fill" style="width: 0%;"></div>
-            </div>
-            <div class="pause-rank-meta">
-              <span class="pause-rank-next" id="pause-rank-next">NASTĘPNY: STARSZY SZEREGOWY</span>
-              <span class="pause-rank-reward" id="pause-rank-reward">NAGRODA: KAMUFLAŻ BRONI</span>
+            <div class="pause-rank-info-wrap">
+              <div class="pause-rank-top">
+                <span class="pause-rank-name" id="pause-rank-name">SZEREGOWY</span>
+                <span class="pause-rank-xp" id="pause-rank-xp">0 / 400 XP</span>
+              </div>
+              <div class="pause-rank-bar-bg">
+                <div class="pause-rank-bar-fill" id="pause-rank-bar-fill" style="width: 0%;"></div>
+              </div>
+              <div class="pause-rank-meta">
+                <span class="pause-rank-next" id="pause-rank-next">NASTĘPNY: STARSZY SZEREGOWY</span>
+                <span class="pause-rank-reward" id="pause-rank-reward">NAGRODA: KAMUFLAŻ BRONI</span>
+              </div>
             </div>
           </div>
 

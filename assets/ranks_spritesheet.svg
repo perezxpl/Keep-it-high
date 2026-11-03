@@ -1,0 +1,914 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 384" width="512" height="384">
+  
+  <defs>
+    <!-- Filtry kinowe -->
+    <filter id="insignia-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.85" />
+    </filter>
+    <filter id="insignia-glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3.5" flood-color="#00e5ff" flood-opacity="0.6" />
+    </filter>
+    <filter id="insignia-glow-gold" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4.0" flood-color="#facc15" flood-opacity="0.65" />
+    </filter>
+
+    <!-- Tła naramienników (Shield backings) -->
+    <linearGradient id="shield-grad-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="40%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#060913" />
+    </linearGradient>
+
+    <!-- Gradienty metaliczne: Tytan / Stal Szeregowych -->
+    <linearGradient id="metal-titanium-hi" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe" />
+      <stop offset="50%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="metal-titanium-lo" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#082f49" />
+    </linearGradient>
+
+    <!-- Gradienty metaliczne: Wojskowe Złoto (Gold) -->
+    <linearGradient id="metal-gold-hi" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="45%" stop-color="#facc15" />
+      <stop offset="100%" stop-color="#ca8a04" />
+    </linearGradient>
+    <linearGradient id="metal-gold-lo" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#eab308" />
+      <stop offset="55%" stop-color="#a16207" />
+      <stop offset="100%" stop-color="#713f12" />
+    </linearGradient>
+
+    <!-- Gradienty metaliczne: Polerowane Srebro / Platyna Oficerska (Silver) -->
+    <linearGradient id="metal-silver-hi" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="45%" stop-color="#e2e8f0" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+    <linearGradient id="metal-silver-lo" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#cbd5e1" />
+      <stop offset="55%" stop-color="#64748b" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+
+    <!-- Obramowania tarcz wg tierów -->
+    <linearGradient id="border-tier-enlisted" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#00e5ff" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="border-tier-nco" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="border-tier-officer" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="50%" stop-color="#67e8f9" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="border-tier-general" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#fbbf24" />
+      <stop offset="80%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#ef4444" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="512" height="384" fill="none" />
+  
+      <!-- TIER 01: SZEREGOWY -->
+      <g id="rank-szeregowy">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 28 10
+      L 100 10
+      Q 110 10 110 20
+      L 110 90
+      L 64 118
+      L 18 90
+      L 18 20
+      Q 18 10 28 10
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-enlisted)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 31 13
+      L 97 13
+      Q 107 13 107 23
+      L 107 89
+      L 64 114
+      L 21 89
+      L 21 23
+      Q 21 13 31 13
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 1 tytanowa belka pozioma -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Górna faseta -->
+        <polygon points="36,58 92,58 88,64 40,64" fill="url(#metal-titanium-hi)" />
+        <!-- Dolna faseta -->
+        <polygon points="40,64 88,64 92,70 36,70" fill="url(#metal-titanium-lo)" />
+        <!-- Obwódka i nit centralny -->
+        <polygon points="36,58 92,58 92,70 36,70" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <circle cx="64" cy="64" r="1.5" fill="#ffffff" opacity="0.85" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 02: STARSZY SZEREGOWY -->
+      <g id="rank-st-szeregowy">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 156 10
+      L 228 10
+      Q 238 10 238 20
+      L 238 90
+      L 192 118
+      L 146 90
+      L 146 20
+      Q 146 10 156 10
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-enlisted)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 159 13
+      L 225 13
+      Q 235 13 235 23
+      L 235 89
+      L 192 114
+      L 149 89
+      L 149 23
+      Q 149 13 159 13
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 2 tytanowe belki poziome -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Górna faseta -->
+        <polygon points="164,50 220,50 216,55 168,55" fill="url(#metal-titanium-hi)" />
+        <!-- Dolna faseta -->
+        <polygon points="168,55 216,55 220,60 164,60" fill="url(#metal-titanium-lo)" />
+        <!-- Obwódka i nit centralny -->
+        <polygon points="164,50 220,50 220,60 164,60" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <circle cx="192" cy="55" r="1.5" fill="#ffffff" opacity="0.85" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Górna faseta -->
+        <polygon points="164,67 220,67 216,72 168,72" fill="url(#metal-titanium-hi)" />
+        <!-- Dolna faseta -->
+        <polygon points="168,72 216,72 220,77 164,77" fill="url(#metal-titanium-lo)" />
+        <!-- Obwódka i nit centralny -->
+        <polygon points="164,67 220,67 220,77 164,77" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <circle cx="192" cy="72" r="1.5" fill="#ffffff" opacity="0.85" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 03: KAPRAL -->
+      <g id="rank-kapral">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 284 10
+      L 356 10
+      Q 366 10 366 20
+      L 366 90
+      L 320 118
+      L 274 90
+      L 274 20
+      Q 274 10 284 10
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-nco)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 287 13
+      L 353 13
+      Q 363 13 363 23
+      L 363 89
+      L 320 114
+      L 277 89
+      L 277 23
+      Q 277 13 287 13
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 2 szewrony złote V -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 289 60
+      L 320 46
+      L 320 56.5
+      L 289 70.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 320 46
+      L 351 60
+      L 351 70.5
+      L 320 56.5
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="320" y1="46" x2="320" y2="56.5" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 289 75
+      L 320 61
+      L 320 71.5
+      L 289 85.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 320 61
+      L 351 75
+      L 351 85.5
+      L 320 71.5
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="320" y1="61" x2="320" y2="71.5" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 04: STARSZY KAPRAL -->
+      <g id="rank-st-kapral">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 412 10
+      L 484 10
+      Q 494 10 494 20
+      L 494 90
+      L 448 118
+      L 402 90
+      L 402 20
+      Q 402 10 412 10
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-nco)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 415 13
+      L 481 13
+      Q 491 13 491 23
+      L 491 89
+      L 448 114
+      L 405 89
+      L 405 23
+      Q 405 13 415 13
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 2 szewrony złote V + łuk bazowy -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 417 55
+      L 448 42
+      L 448 52
+      L 417 65
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 448 42
+      L 479 55
+      L 479 65
+      L 448 52
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="448" y1="42" x2="448" y2="52" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 417 69
+      L 448 56
+      L 448 66
+      L 417 79
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 448 56
+      L 479 69
+      L 479 79
+      L 448 66
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="448" y1="56" x2="448" y2="66" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <path d="
+      M 419 82
+      Q 448 90 477 82
+      L 477 90
+      Q 448 98 419 90
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" />
+        <circle cx="427" cy="86.5" r="1.5" fill="#ffffff" opacity="0.8" />
+        <circle cx="469" cy="86.5" r="1.5" fill="#ffffff" opacity="0.8" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 05: PLUTONOWY -->
+      <g id="rank-plutonowy">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 28 138
+      L 100 138
+      Q 110 138 110 148
+      L 110 218
+      L 64 246
+      L 18 218
+      L 18 148
+      Q 18 138 28 138
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-nco)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 31 141
+      L 97 141
+      Q 107 141 107 151
+      L 107 217
+      L 64 242
+      L 21 217
+      L 21 151
+      Q 21 141 31 141
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 3 szewrony złote V -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 33 178
+      L 64 166
+      L 64 175.5
+      L 33 187.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 64 166
+      L 95 178
+      L 95 187.5
+      L 64 175.5
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="64" y1="166" x2="64" y2="175.5" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 33 192
+      L 64 180
+      L 64 189.5
+      L 33 201.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 64 180
+      L 95 192
+      L 95 201.5
+      L 64 189.5
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="64" y1="180" x2="64" y2="189.5" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 33 206
+      L 64 194
+      L 64 203.5
+      L 33 215.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 64 194
+      L 95 206
+      L 95 215.5
+      L 64 203.5
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="64" y1="194" x2="64" y2="203.5" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 06: SIERŻANT -->
+      <g id="rank-sierzant">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 156 138
+      L 228 138
+      Q 238 138 238 148
+      L 238 218
+      L 192 246
+      L 146 218
+      L 146 148
+      Q 146 138 156 138
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-nco)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 159 141
+      L 225 141
+      Q 235 141 235 151
+      L 235 217
+      L 192 242
+      L 149 217
+      L 149 151
+      Q 149 141 159 141
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 3 szewrony złote V + łuk bazowy rocker -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 161 176
+      L 192 164
+      L 192 173
+      L 161 185
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 192 164
+      L 223 176
+      L 223 185
+      L 192 173
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="192" y1="164" x2="192" y2="173" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 161 189
+      L 192 177
+      L 192 186
+      L 161 198
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 192 177
+      L 223 189
+      L 223 198
+      L 192 186
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="192" y1="177" x2="192" y2="186" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewe ramię (rozświetlone) -->
+        <path d="
+      M 161 202
+      L 192 190
+      L 192 199
+      L 161 211
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <!-- Prawe ramię (cieniowane) -->
+        <path d="
+      M 192 190
+      L 223 202
+      L 223 211
+      L 192 199
+      Z
+    " fill="url(#metal-gold-lo)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+        <!-- Centralny szew / grzbiet 3D -->
+        <line x1="192" y1="190" x2="192" y2="199" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <path d="
+      M 162 212
+      Q 192 220 222 212
+      L 222 220.5
+      Q 192 228.5 162 220.5
+      Z
+    " fill="url(#metal-gold-hi)" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" />
+        <circle cx="170" cy="216.5" r="1.5" fill="#ffffff" opacity="0.8" />
+        <circle cx="214" cy="216.5" r="1.5" fill="#ffffff" opacity="0.8" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 07: CHORĄŻY -->
+      <g id="rank-chorazy">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 284 138
+      L 356 138
+      Q 366 138 366 148
+      L 366 218
+      L 320 246
+      L 274 218
+      L 274 148
+      Q 274 138 284 138
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-officer)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 287 141
+      L 353 141
+      Q 363 141 363 151
+      L 363 217
+      L 320 242
+      L 277 217
+      L 277 151
+      Q 277 141 287 141
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- Wojskowy diament oficerski (Faceted Lozenge) -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Obwódka zewnętrzna -->
+        <polygon points="320,160 345,190 320,220 295,190" fill="none" stroke="url(#metal-silver-hi)" stroke-width="1.8" />
+        <!-- 4 fasetowane ćwiartki rombu -->
+        <!-- Lewa górna (najjaśniejsza) -->
+        <polygon points="320,190 320,163 298,190" fill="url(#metal-silver-hi)" />
+        <!-- Prawa górna -->
+        <polygon points="320,190 342,190 320,163" fill="url(#metal-silver-lo)" opacity="0.9" />
+        <!-- Lewa dolna -->
+        <polygon points="320,190 298,190 320,217" fill="url(#metal-silver-lo)" />
+        <!-- Prawa dolna (najciemniejsza) -->
+        <polygon points="320,190 320,217 342,190" fill="url(#metal-silver-lo)" opacity="0.75" />
+        <!-- Błysk wierzchołka -->
+        <circle cx="320" cy="190" r="2.5" fill="#00e5ff" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 08: PODPORUCZNIK -->
+      <g id="rank-podporucznik">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 412 138
+      L 484 138
+      Q 494 138 494 148
+      L 494 218
+      L 448 246
+      L 402 218
+      L 402 148
+      Q 402 138 412 138
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-officer)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 415 141
+      L 481 141
+      Q 491 141 491 151
+      L 491 217
+      L 448 242
+      L 405 217
+      L 405 151
+      Q 405 141 415 141
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 2 platynowe gwiazdy 3D -->
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="448,174 448,159 451.64426856421335,168.98409463487533" fill="url(#metal-silver-hi)" /><polygon points="448,174 444.35573143578665,168.98409463487533 448,159" fill="url(#metal-silver-lo)" /><polygon points="448,174 462.2658477444273,169.36474508437578 453.89655040102997,175.91590536512467" fill="url(#metal-silver-hi)" /><polygon points="448,174 451.64426856421335,168.98409463487533 462.2658477444273,169.36474508437578" fill="url(#metal-silver-lo)" /><polygon points="448,174 456.8167787843871,186.13525491562422 448,180.2" fill="url(#metal-silver-hi)" /><polygon points="448,174 453.89655040102997,175.91590536512467 456.8167787843871,186.13525491562422" fill="url(#metal-silver-lo)" /><polygon points="448,174 439.1832212156129,186.13525491562422 442.10344959897003,175.91590536512467" fill="url(#metal-silver-hi)" /><polygon points="448,174 448,180.2 439.1832212156129,186.13525491562422" fill="url(#metal-silver-lo)" /><polygon points="448,174 433.73415225557267,169.36474508437578 444.35573143578665,168.98409463487533" fill="url(#metal-silver-hi)" /><polygon points="448,174 442.10344959897003,175.91590536512467 433.73415225557267,169.36474508437578" fill="url(#metal-silver-lo)" />
+        <circle cx="448" cy="174" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="448,208 448,193 451.64426856421335,202.98409463487533" fill="url(#metal-silver-hi)" /><polygon points="448,208 444.35573143578665,202.98409463487533 448,193" fill="url(#metal-silver-lo)" /><polygon points="448,208 462.2658477444273,203.36474508437578 453.89655040102997,209.91590536512467" fill="url(#metal-silver-hi)" /><polygon points="448,208 451.64426856421335,202.98409463487533 462.2658477444273,203.36474508437578" fill="url(#metal-silver-lo)" /><polygon points="448,208 456.8167787843871,220.13525491562422 448,214.2" fill="url(#metal-silver-hi)" /><polygon points="448,208 453.89655040102997,209.91590536512467 456.8167787843871,220.13525491562422" fill="url(#metal-silver-lo)" /><polygon points="448,208 439.1832212156129,220.13525491562422 442.10344959897003,209.91590536512467" fill="url(#metal-silver-hi)" /><polygon points="448,208 448,214.2 439.1832212156129,220.13525491562422" fill="url(#metal-silver-lo)" /><polygon points="448,208 433.73415225557267,203.36474508437578 444.35573143578665,202.98409463487533" fill="url(#metal-silver-hi)" /><polygon points="448,208 442.10344959897003,209.91590536512467 433.73415225557267,203.36474508437578" fill="url(#metal-silver-lo)" />
+        <circle cx="448" cy="208" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 09: KAPITAN -->
+      <g id="rank-kapitan">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 28 266
+      L 100 266
+      Q 110 266 110 276
+      L 110 346
+      L 64 374
+      L 18 346
+      L 18 276
+      Q 18 266 28 266
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-officer)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 31 269
+      L 97 269
+      Q 107 269 107 279
+      L 107 345
+      L 64 370
+      L 21 345
+      L 21 279
+      Q 21 269 31 269
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 3 platynowe gwiazdy 3D ułożone w prestiżowy trójkąt oficerski -->
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="64,300 64,286 67.40915446329635,295.3077014326253" fill="url(#metal-silver-hi)" /><polygon points="64,300 60.590845536703654,295.3077014326253 64,286" fill="url(#metal-silver-lo)" /><polygon points="64,300 77.31479122813215,295.6737620787507 69.51612779451189,301.7922985673747" fill="url(#metal-silver-hi)" /><polygon points="64,300 67.40915446329635,295.3077014326253 77.31479122813215,295.6737620787507" fill="url(#metal-silver-lo)" /><polygon points="64,300 72.22899353209462,311.3262379212493 64,305.8" fill="url(#metal-silver-hi)" /><polygon points="64,300 69.51612779451189,301.7922985673747 72.22899353209462,311.3262379212493" fill="url(#metal-silver-lo)" /><polygon points="64,300 55.77100646790538,311.3262379212493 58.48387220548811,301.7922985673747" fill="url(#metal-silver-hi)" /><polygon points="64,300 64,305.8 55.77100646790538,311.3262379212493" fill="url(#metal-silver-lo)" /><polygon points="64,300 50.68520877186785,295.6737620787507 60.590845536703654,295.3077014326253" fill="url(#metal-silver-hi)" /><polygon points="64,300 58.48387220548811,301.7922985673747 50.68520877186785,295.6737620787507" fill="url(#metal-silver-lo)" />
+        <circle cx="64" cy="300" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="47,332 47,319 50.2328188876086,327.5504065309378" fill="url(#metal-silver-hi)" /><polygon points="47,332 43.7671811123914,327.5504065309378 47,319" fill="url(#metal-silver-lo)" /><polygon points="47,332 59.363734711837,327.9827790731257 52.230810839623345,333.6995934690622" fill="url(#metal-silver-hi)" /><polygon points="47,332 50.2328188876086,327.5504065309378 59.363734711837,327.9827790731257" fill="url(#metal-silver-lo)" /><polygon points="47,332 54.64120827980215,342.5172209268743 47,337.5" fill="url(#metal-silver-hi)" /><polygon points="47,332 52.230810839623345,333.6995934690622 54.64120827980215,342.5172209268743" fill="url(#metal-silver-lo)" /><polygon points="47,332 39.35879172019785,342.5172209268743 41.769189160376655,333.6995934690622" fill="url(#metal-silver-hi)" /><polygon points="47,332 47,337.5 39.35879172019785,342.5172209268743" fill="url(#metal-silver-lo)" /><polygon points="47,332 34.636265288163,327.9827790731257 43.7671811123914,327.5504065309378" fill="url(#metal-silver-hi)" /><polygon points="47,332 41.769189160376655,333.6995934690622 34.636265288163,327.9827790731257" fill="url(#metal-silver-lo)" />
+        <circle cx="47" cy="332" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="81,332 81,319 84.2328188876086,327.5504065309378" fill="url(#metal-silver-hi)" /><polygon points="81,332 77.7671811123914,327.5504065309378 81,319" fill="url(#metal-silver-lo)" /><polygon points="81,332 93.363734711837,327.9827790731257 86.23081083962335,333.6995934690622" fill="url(#metal-silver-hi)" /><polygon points="81,332 84.2328188876086,327.5504065309378 93.363734711837,327.9827790731257" fill="url(#metal-silver-lo)" /><polygon points="81,332 88.64120827980216,342.5172209268743 81,337.5" fill="url(#metal-silver-hi)" /><polygon points="81,332 86.23081083962335,333.6995934690622 88.64120827980216,342.5172209268743" fill="url(#metal-silver-lo)" /><polygon points="81,332 73.35879172019786,342.5172209268743 75.76918916037665,333.6995934690622" fill="url(#metal-silver-hi)" /><polygon points="81,332 81,337.5 73.35879172019786,342.5172209268743" fill="url(#metal-silver-lo)" /><polygon points="81,332 68.636265288163,327.9827790731257 77.7671811123914,327.5504065309378" fill="url(#metal-silver-hi)" /><polygon points="81,332 75.76918916037665,333.6995934690622 68.636265288163,327.9827790731257" fill="url(#metal-silver-lo)" />
+        <circle cx="81" cy="332" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 10: MAJOR -->
+      <g id="rank-major">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 156 266
+      L 228 266
+      Q 238 266 238 276
+      L 238 346
+      L 192 374
+      L 146 346
+      L 146 276
+      Q 146 266 156 266
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-general)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 159 269
+      L 225 269
+      Q 235 269 235 279
+      L 235 345
+      L 192 370
+      L 149 345
+      L 149 279
+      Q 149 269 159 269
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- Złoty wieniec laurowy otaczający dużą złotą gwiazdę 3D -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewa gałąź -->
+        <path d="M 187 348 C 156 334, 156 306, 186 292" fill="none" stroke="url(#metal-gold-hi)" stroke-width="2.5" stroke-linecap="round" />
+        <!-- Prawa gałąź -->
+        <path d="M 197 348 C 228 334, 228 306, 198 292" fill="none" stroke="url(#metal-gold-hi)" stroke-width="2.5" stroke-linecap="round" />
+        <!-- Liście laurowe lewe -->
+        <ellipse cx="167" cy="308" rx="5.5" ry="2.8" transform="rotate(-35 167 308)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="163" cy="320" rx="5.8" ry="2.8" transform="rotate(5 163 320)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="168" cy="332" rx="5.5" ry="2.8" transform="rotate(40 168 332)" fill="url(#metal-gold-hi)" />
+        <!-- Liście laurowe prawe -->
+        <ellipse cx="217" cy="308" rx="5.5" ry="2.8" transform="rotate(35 217 308)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="221" cy="320" rx="5.8" ry="2.8" transform="rotate(-5 221 320)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="216" cy="332" rx="5.5" ry="2.8" transform="rotate(-40 216 332)" fill="url(#metal-gold-hi)" />
+        <!-- Złota wstęga na dole -->
+        <rect x="185" y="346" width="14" height="4.5" rx="1.5" fill="url(#metal-gold-hi)" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="192,319 192,303 195.82060413990106,313.74138953656285" fill="url(#metal-gold-hi)" /><polygon points="192,319 188.17939586009894,313.74138953656285 192,303" fill="url(#metal-gold-lo)" /><polygon points="192,319 207.21690426072246,314.05572809000085 198.18186735591848,321.00861046343715" fill="url(#metal-gold-hi)" /><polygon points="192,319 195.82060413990106,313.74138953656285 207.21690426072246,314.05572809000085" fill="url(#metal-gold-lo)" /><polygon points="192,319 201.40456403667957,331.94427190999915 192,325.5" fill="url(#metal-gold-hi)" /><polygon points="192,319 198.18186735591848,321.00861046343715 201.40456403667957,331.94427190999915" fill="url(#metal-gold-lo)" /><polygon points="192,319 182.59543596332043,331.94427190999915 185.81813264408152,321.00861046343715" fill="url(#metal-gold-hi)" /><polygon points="192,319 192,325.5 182.59543596332043,331.94427190999915" fill="url(#metal-gold-lo)" /><polygon points="192,319 176.78309573927754,314.05572809000085 188.17939586009894,313.74138953656285" fill="url(#metal-gold-hi)" /><polygon points="192,319 185.81813264408152,321.00861046343715 176.78309573927754,314.05572809000085" fill="url(#metal-gold-lo)" />
+        <circle cx="192" cy="319" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 11: PUŁKOWNIK -->
+      <g id="rank-pulkownik">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 284 266
+      L 356 266
+      Q 366 266 366 276
+      L 366 346
+      L 320 374
+      L 274 346
+      L 274 276
+      Q 274 266 284 266
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-general)" stroke-width="2" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 287 269
+      L 353 269
+      Q 363 269 363 279
+      L 363 345
+      L 320 370
+      L 277 345
+      L 277 279
+      Q 277 269 287 269
+      Z
+    " fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2" stroke-dasharray="4,2" />
+    
+        <!-- 2 belki oficerskie na dole naramiennika -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Górna faseta -->
+        <polygon points="292,338 348,338 344,341 296,341" fill="url(#metal-gold-hi)" />
+        <!-- Dolna faseta -->
+        <polygon points="296,341 344,341 348,344 292,344" fill="url(#metal-gold-lo)" />
+        <!-- Obwódka i nit centralny -->
+        <polygon points="292,338 348,338 348,344 292,344" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <circle cx="320" cy="341" r="1.5" fill="#ffffff" opacity="0.85" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Górna faseta -->
+        <polygon points="292,347 348,347 344,350 296,350" fill="url(#metal-gold-hi)" />
+        <!-- Dolna faseta -->
+        <polygon points="296,350 344,350 348,353 292,353" fill="url(#metal-gold-lo)" />
+        <!-- Obwódka i nit centralny -->
+        <polygon points="292,347 348,347 348,353 292,353" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" />
+        <circle cx="320" cy="350" r="1.5" fill="#ffffff" opacity="0.85" />
+      </g>
+    
+        <!-- Złoty orzeł wojskowy z koroną i gwiazdą -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Skrzydła lewe -->
+        <path d="M 320 308 C 304 296, 292 302, 288 314 C 296 313, 306 318, 320 322 Z" fill="url(#metal-gold-hi)" />
+        <!-- Skrzydła prawe -->
+        <path d="M 320 308 C 336 296, 348 302, 352 314 C 344 313, 334 318, 320 322 Z" fill="url(#metal-gold-hi)" />
+        <!-- Pióra zewnętrzne -->
+        <path d="M 288 314 L 294 318 L 300 317 L 306 320 L 320 323 L 334 320 L 340 317 L 346 318 L 352 314" stroke="#ffffff" stroke-width="0.8" fill="none" opacity="0.7" />
+        <!-- Korpus i głowa orła -->
+        <path d="M 320 300 L 323 304 L 324 316 L 320 324 L 316 316 L 317 304 Z" fill="url(#metal-gold-hi)" />
+        <!-- Korona orła -->
+        <polygon points="316,300 315,296 318,298 320,295 322,298 325,296 324,300" fill="#fef08a" />
+      </g>
+    
+        
+      <g filter="url(#insignia-shadow)">
+        <polygon points="320,326 320,316 322.46869805962837,322.6021286236252" fill="url(#metal-silver-hi)" /><polygon points="320,326 317.53130194037163,322.6021286236252 320,316" fill="url(#metal-silver-lo)" /><polygon points="320,326 329.51056516295154,322.90983005625054 323.99443736843966,327.29787137637476" fill="url(#metal-silver-hi)" /><polygon points="320,326 322.46869805962837,322.6021286236252 329.51056516295154,322.90983005625054" fill="url(#metal-silver-lo)" /><polygon points="320,326 325.87785252292474,334.09016994374946 320,330.2" fill="url(#metal-silver-hi)" /><polygon points="320,326 323.99443736843966,327.29787137637476 325.87785252292474,334.09016994374946" fill="url(#metal-silver-lo)" /><polygon points="320,326 314.12214747707526,334.09016994374946 316.00556263156034,327.29787137637476" fill="url(#metal-silver-hi)" /><polygon points="320,326 320,330.2 314.12214747707526,334.09016994374946" fill="url(#metal-silver-lo)" /><polygon points="320,326 310.48943483704846,322.90983005625054 317.53130194037163,322.6021286236252" fill="url(#metal-silver-hi)" /><polygon points="320,326 316.00556263156034,327.29787137637476 310.48943483704846,322.90983005625054" fill="url(#metal-silver-lo)" />
+        <circle cx="320" cy="326" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+      </g>
+    
+      <!-- TIER 12: GENERAŁ ARENY -->
+      <g id="rank-general">
+        
+      <!-- Tarcza bazowa -->
+      <path d="
+      M 412 266
+      L 484 266
+      Q 494 266 494 276
+      L 494 346
+      L 448 374
+      L 402 346
+      L 402 276
+      Q 402 266 412 266
+      Z
+    " fill="url(#shield-grad-dark)" stroke="url(#border-tier-general)" stroke-width="2.5" filter="url(#insignia-shadow)" />
+      <!-- Wewnętrzna osnowa naramiennika -->
+      <path d="
+      M 415 269
+      L 481 269
+      Q 491 269 491 279
+      L 491 345
+      L 448 370
+      L 405 345
+      L 405 279
+      Q 405 269 415 269
+      Z
+    " fill="none" stroke="rgba(250, 204, 21, 0.45)" stroke-width="1.2" stroke-dasharray="none" />
+    
+        <!-- Skrzyżowane złote szable marszałkowskie -->
+        
+      <g filter="url(#insignia-shadow)" stroke="#fef08a" stroke-linecap="round">
+        <!-- Ostrze 1: z lewego dołu w prawy górny róg -->
+        <line x1="425" y1="341" x2="471" y2="303" stroke-width="2.2" stroke="url(#metal-silver-hi)" />
+        <circle cx="425" cy="341" r="3" fill="#facc15" stroke="none" />
+        <!-- Ostrze 2: z prawego dołu w lewy górny róg -->
+        <line x1="471" y1="341" x2="425" y2="303" stroke-width="2.2" stroke="url(#metal-silver-hi)" />
+        <circle cx="471" cy="341" r="3" fill="#facc15" stroke="none" />
+      </g>
+    
+        <!-- Wieniec laurowy chwały -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Lewa gałąź -->
+        <path d="M 443 352 C 410 337, 410 307, 442 292" fill="none" stroke="url(#metal-gold-hi)" stroke-width="2.5" stroke-linecap="round" />
+        <!-- Prawa gałąź -->
+        <path d="M 453 352 C 486 337, 486 307, 454 292" fill="none" stroke="url(#metal-gold-hi)" stroke-width="2.5" stroke-linecap="round" />
+        <!-- Liście laurowe lewe -->
+        <ellipse cx="421" cy="310" rx="5.5" ry="2.8" transform="rotate(-35 421 310)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="417" cy="322" rx="5.8" ry="2.8" transform="rotate(5 417 322)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="422" cy="334" rx="5.5" ry="2.8" transform="rotate(40 422 334)" fill="url(#metal-gold-hi)" />
+        <!-- Liście laurowe prawe -->
+        <ellipse cx="475" cy="310" rx="5.5" ry="2.8" transform="rotate(35 475 310)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="479" cy="322" rx="5.8" ry="2.8" transform="rotate(-5 479 322)" fill="url(#metal-gold-hi)" />
+        <ellipse cx="474" cy="334" rx="5.5" ry="2.8" transform="rotate(-40 474 334)" fill="url(#metal-gold-hi)" />
+        <!-- Złota wstęga na dole -->
+        <rect x="441" y="350" width="14" height="4.5" rx="1.5" fill="url(#metal-gold-hi)" />
+      </g>
+    
+        <!-- Centralny orzeł w koronie i 4 złote gwiazdy generalskie -->
+        
+      <g filter="url(#insignia-shadow)">
+        <!-- Skrzydła lewe -->
+        <path d="M 448 308 C 432 296, 420 302, 416 314 C 424 313, 434 318, 448 322 Z" fill="url(#metal-gold-hi)" />
+        <!-- Skrzydła prawe -->
+        <path d="M 448 308 C 464 296, 476 302, 480 314 C 472 313, 462 318, 448 322 Z" fill="url(#metal-gold-hi)" />
+        <!-- Pióra zewnętrzne -->
+        <path d="M 416 314 L 422 318 L 428 317 L 434 320 L 448 323 L 462 320 L 468 317 L 474 318 L 480 314" stroke="#ffffff" stroke-width="0.8" fill="none" opacity="0.7" />
+        <!-- Korpus i głowa orła -->
+        <path d="M 448 300 L 451 304 L 452 316 L 448 324 L 444 316 L 445 304 Z" fill="url(#metal-gold-hi)" />
+        <!-- Korona orła -->
+        <polygon points="444,300 443,296 446,298 448,295 450,298 453,296 452,300" fill="#fef08a" />
+      </g>
+    
+        <g filter="url(#insignia-glow-gold)">
+          
+      <g filter="url(#insignia-shadow)">
+        <polygon points="448,336 448,328 449.8809128073359,333.41114561800015" fill="url(#metal-gold-hi)" /><polygon points="448,336 446.1190871926641,333.41114561800015 448,328" fill="url(#metal-gold-lo)" /><polygon points="448,336 455.60845213036123,333.5278640450004 451.0433808521445,336.98885438199983" fill="url(#metal-gold-hi)" /><polygon points="448,336 449.8809128073359,333.41114561800015 455.60845213036123,333.5278640450004" fill="url(#metal-gold-lo)" /><polygon points="448,336 452.70228201833976,342.4721359549996 448,339.2" fill="url(#metal-gold-hi)" /><polygon points="448,336 451.0433808521445,336.98885438199983 452.70228201833976,342.4721359549996" fill="url(#metal-gold-lo)" /><polygon points="448,336 443.29771798166024,342.4721359549996 444.9566191478555,336.98885438199983" fill="url(#metal-gold-hi)" /><polygon points="448,336 448,339.2 443.29771798166024,342.4721359549996" fill="url(#metal-gold-lo)" /><polygon points="448,336 440.39154786963877,333.5278640450004 446.1190871926641,333.41114561800015" fill="url(#metal-gold-hi)" /><polygon points="448,336 444.9566191478555,336.98885438199983 440.39154786963877,333.5278640450004" fill="url(#metal-gold-lo)" />
+        <circle cx="448" cy="336" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+          
+      <g filter="url(#insignia-shadow)">
+        <polygon points="433,342 433,335.5 434.5282416559604,339.8965558146251" fill="url(#metal-gold-hi)" /><polygon points="433,342 431.4717583440396,339.8965558146251 433,335.5" fill="url(#metal-gold-lo)" /><polygon points="433,342 439.1818673559185,339.99138953656285 435.4727469423674,342.8034441853749" fill="url(#metal-gold-hi)" /><polygon points="433,342 434.5282416559604,339.8965558146251 439.1818673559185,339.99138953656285" fill="url(#metal-gold-lo)" /><polygon points="433,342 436.8206041399011,347.25861046343715 433,344.6" fill="url(#metal-gold-hi)" /><polygon points="433,342 435.4727469423674,342.8034441853749 436.8206041399011,347.25861046343715" fill="url(#metal-gold-lo)" /><polygon points="433,342 429.1793958600989,347.25861046343715 430.5272530576326,342.8034441853749" fill="url(#metal-gold-hi)" /><polygon points="433,342 433,344.6 429.1793958600989,347.25861046343715" fill="url(#metal-gold-lo)" /><polygon points="433,342 426.8181326440815,339.99138953656285 431.4717583440396,339.8965558146251" fill="url(#metal-gold-hi)" /><polygon points="433,342 430.5272530576326,342.8034441853749 426.8181326440815,339.99138953656285" fill="url(#metal-gold-lo)" />
+        <circle cx="433" cy="342" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+          
+      <g filter="url(#insignia-shadow)">
+        <polygon points="463,342 463,335.5 464.5282416559604,339.8965558146251" fill="url(#metal-gold-hi)" /><polygon points="463,342 461.4717583440396,339.8965558146251 463,335.5" fill="url(#metal-gold-lo)" /><polygon points="463,342 469.1818673559185,339.99138953656285 465.4727469423674,342.8034441853749" fill="url(#metal-gold-hi)" /><polygon points="463,342 464.5282416559604,339.8965558146251 469.1818673559185,339.99138953656285" fill="url(#metal-gold-lo)" /><polygon points="463,342 466.8206041399011,347.25861046343715 463,344.6" fill="url(#metal-gold-hi)" /><polygon points="463,342 465.4727469423674,342.8034441853749 466.8206041399011,347.25861046343715" fill="url(#metal-gold-lo)" /><polygon points="463,342 459.1793958600989,347.25861046343715 460.5272530576326,342.8034441853749" fill="url(#metal-gold-hi)" /><polygon points="463,342 463,344.6 459.1793958600989,347.25861046343715" fill="url(#metal-gold-lo)" /><polygon points="463,342 456.8181326440815,339.99138953656285 461.4717583440396,339.8965558146251" fill="url(#metal-gold-hi)" /><polygon points="463,342 460.5272530576326,342.8034441853749 456.8181326440815,339.99138953656285" fill="url(#metal-gold-lo)" />
+        <circle cx="463" cy="342" r="1.8" fill="#ffffff" opacity="0.9" />
+      </g>
+    
+        </g>
+      </g>
+    
+</svg>

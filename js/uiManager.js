@@ -47,6 +47,7 @@ const CLASS_APPEARANCES_STORAGE_KEY = 'keep_it_high_class_appearances_v1';
 const APPEARANCE_STORAGE_KEY = 'keep_it_high_appearance_v1';
 
 import { getCurrentRank, getNextRank, getPlayerXP, getRankProgress, getPlayerStatsSummary, resetPlayerStats, RANKS, XP_RULES, XP_REWARDS } from './progression.js';
+import { applyRankBadgeToElement } from './ui/rankBadges.js';
 import {
   deathmatchConfig,
   setDeathmatchMode,
@@ -539,7 +540,7 @@ export const uiManager = {
     const missingXpEl = document.getElementById('menu-rank-missing-xp');
     const rewardEl = document.getElementById('menu-rank-reward-badge');
 
-    if (iconEl) iconEl.textContent = rank.icon;
+    if (iconEl) applyRankBadgeToElement(iconEl, rank.id);
     if (nameEl) nameEl.textContent = rank.name.toUpperCase();
     if (tierEl) tierEl.textContent = `TIER ${(rank.tier !== undefined ? rank.tier : 1).toString().padStart(2, '0')}`;
     if (xpEl) xpEl.textContent = `${currentXp.toLocaleString('pl-PL')} XP`;
@@ -572,12 +573,14 @@ export const uiManager = {
 
     // Synchronizacja karty rangi w menu pauzy
     const pRankName = document.getElementById('pause-rank-name');
+    const pRankIcon = document.getElementById('pause-rank-icon');
     const pRankXp = document.getElementById('pause-rank-xp');
     const pRankFill = document.getElementById('pause-rank-bar-fill');
     const pRankNext = document.getElementById('pause-rank-next');
     const pRankReward = document.getElementById('pause-rank-reward');
 
-    if (pRankName) pRankName.textContent = `${rank.icon} ${rank.name.toUpperCase()}`;
+    if (pRankIcon) applyRankBadgeToElement(pRankIcon, rank.id);
+    if (pRankName) pRankName.textContent = rank.name.toUpperCase();
     if (pRankXp) pRankXp.textContent = nextRank ? `${currentXp} / ${nextRank.minXp} XP` : `${currentXp} XP (MAX)`;
     if (pRankFill) pRankFill.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
     if (pRankNext) pRankNext.textContent = nextRank ? `NASTĘPNY: ${nextRank.name.toUpperCase()}` : 'STOPIEŃ MAKSYMALNY';
@@ -664,7 +667,7 @@ export const uiManager = {
     const heroNext = document.getElementById('ranks-hero-next');
     const heroFill = document.getElementById('ranks-hero-progress-fill');
 
-    if (heroIcon) heroIcon.textContent = rank.icon;
+    if (heroIcon) applyRankBadgeToElement(heroIcon, rank.id);
     if (heroName) heroName.textContent = rank.name.toUpperCase();
     if (heroXp) heroXp.textContent = `${currentXp.toLocaleString('pl-PL')} XP`;
     if (heroFill) heroFill.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
@@ -713,7 +716,7 @@ export const uiManager = {
 
         card.innerHTML = `
           <div class="rank-card-insignia">
-            <span class="rank-insignia-text">${r.icon}</span>
+            <div class="rank-badge-sprite ladder-badge rank-sprite-${r.id}"></div>
           </div>
           <div class="rank-card-details">
             <div class="rank-card-meta-row">
