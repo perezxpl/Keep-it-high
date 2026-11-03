@@ -27,6 +27,7 @@ import {
 } from './particles.js';
 import { spawnRpgRocket } from './weapons/rocket.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
+import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
 
 export {
   spawnBulletCasing,
@@ -536,15 +537,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
         return true;
       }
-      spawnHitSparks(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id === 'SNIPER' ? 10 : 5);
-      addDynamicLight({
-        x: wallHit.x,
-        y: wallHit.y,
-        radius: 75,
-        color: '#ffbb44',
-        intensity: 0.8,
-        duration: 0.06
-      });
+      spawnImpactVisuals(wallHit.x, wallHit.y, wallHit.nx, wallHit.ny, weapon.id);
       if (!shooter.isRemote) shooter.shootCooldown = weapon.fireRate;
       shooter.muzzleFlashTimer = weapon.id === 'SNIPER' ? 3 : 2;
       if (weapon.id === 'SNIPER') {
@@ -933,14 +926,19 @@ function getSegmentAABBHitT(x1, y1, x2, y2, left, top, right, bottom) {
 export function updateBullets(groundY, obstaclesList, ball, characters) {
   for (let i = bulletParticles.length - 1; i >= 0; i--) {
     const p = bulletParticles[i];
+    p.prevX = p.x;
+    p.prevY = p.y;
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.22;
-    p.life -= 0.055;
+    p.vx *= (p.friction !== undefined ? p.friction : 0.94);
+    p.vy = (p.vy + (p.gravity !== undefined ? p.gravity : 0.22)) * (p.friction !== undefined ? p.friction : 0.94);
+    p.life -= (p.decay !== undefined ? p.decay : 0.055);
     if (p.life <= 0) {
       bulletParticles.splice(i, 1);
     }
   }
+
+  updateBulletVisuals(bullets, 1 / 60);
 
   const charList = characters || [];
   const obs = obstaclesList || obstacles;
@@ -1382,7 +1380,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     if (hitChar) continue;
 
     if (mapHit) {
-      spawnHitSparks(mapHit.x, mapHit.y, mapHit.nx, mapHit.ny, 4);
+      spawnImpactVisuals(mapHit.x, mapHit.y, mapHit.nx, mapHit.ny, b.weaponId);
       bullets.splice(i, 1);
       continue;
     }

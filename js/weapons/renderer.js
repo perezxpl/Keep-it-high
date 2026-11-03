@@ -1,109 +1,16 @@
 // =========================================================================
-// WEAPONS/RENDERER.JS - RENDEROWANIE POCISKÓW, LASERA I TRZYMANEJ BRONI
+// WEAPONS/RENDERER.JS - RENDEROWANIE BRONI, LASERA I CELOWNIKA
 // Wydzielony moduł z js/weapons.js
 // =========================================================================
 
-import { drawBulletCasings } from '../particles.js';
 import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight } from '../camera.js';
 import {
-  bullets,
-  bulletParticles,
   getWeaponHoldTransform,
   getMuzzlePosition
 } from './transform.js';
+import { drawBullets } from './bulletRenderer.js';
 
-export function drawBullets(ctx) {
-  drawBulletCasings(ctx);
-
-  const camW = typeof getCanvasLogicalWidth === 'function' ? getCanvasLogicalWidth() : 1920;
-  const camH = typeof getCanvasLogicalHeight === 'function' ? getCanvasLogicalHeight() : 1080;
-  const zoom = camera && camera.zoom ? camera.zoom : 1;
-  const viewW = camera.viewWidth || (camW / zoom);
-  const viewH = camera.viewHeight || (camH / zoom);
-  const margin = 80;
-  const minX = camera.x - margin;
-  const maxX = camera.x + viewW + margin;
-  const minY = camera.y - margin;
-  const maxY = camera.y + viewH + margin;
-
-  for (let i = 0; i < bulletParticles.length; i++) {
-    const p = bulletParticles[i];
-    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(p.x, p.y, p.size, p.size);
-  }
-
-  ctx.save();
-  // KROK 1: Rysowanie smug zwykłych pocisków (AK-47, Shotgun) w jednym przebiegu ścieżki
-  ctx.strokeStyle = '#facc15';
-  ctx.lineWidth = 2.0;
-  ctx.beginPath();
-  let hasStandardBullets = false;
-  for (let i = 0; i < bullets.length; i++) {
-    const b = bullets[i];
-    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
-    if (b.isSniper || b.weaponId === 'SNIPER') continue;
-
-    ctx.moveTo(b.x - b.vx * 0.7, b.y - b.vy * 0.7);
-    ctx.lineTo(b.x, b.y);
-    hasStandardBullets = true;
-  }
-  if (hasStandardBullets) {
-    ctx.stroke();
-  }
-
-  // KROK 2: Rysowanie białych wierzchołków pocisków (zbiorczy fill)
-  ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < bullets.length; i++) {
-    const b = bullets[i];
-    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
-    if (b.isSniper || b.weaponId === 'SNIPER') continue;
-    ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
-  }
-
-  // KROK 3: Rysowanie pocisków snajperskich (wysokowydajny tracer)
-  for (let i = 0; i < bullets.length; i++) {
-    const b = bullets[i];
-    if (b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
-    if (!b.isSniper && b.weaponId !== 'SNIPER') continue;
-
-    // Długa, świecąca smuga energii balistycznej (Soldat Barrett .50 ballistic tracer line)
-    const tailLen = 1.4;
-    const tailX = b.x - b.vx * tailLen;
-    const tailY = b.y - b.vy * tailLen;
-
-    // 1. Szeroka zewnętrzna poświata energii
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
-    ctx.lineWidth = 4.8;
-    ctx.beginPath();
-    ctx.moveTo(tailX, tailY);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-
-    // 2. Środkowa smuga błękitna
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(tailX + b.vx * 0.25, tailY + b.vy * 0.25);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-
-    // 3. Jaskrawy biały rdzeń pocisku
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(tailX + b.vx * 0.55, tailY + b.vy * 0.55);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-
-    // 4. Świecący wierzchołek pocisku
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
+export { drawBullets };
 
 /**
  * Rysuje przerywany czerwony promień lasera z lufy do punktu celowania (aimX, aimY)

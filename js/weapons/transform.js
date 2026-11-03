@@ -254,41 +254,55 @@ export const bullets = [];
 export const bulletParticles = [];
 
 export function spawnBulletSparks(x, y, color = '#facc15', count = 4) {
-  if (bulletParticles.length > 50) {
-    bulletParticles.splice(0, bulletParticles.length - 50);
+  if (bulletParticles.length > 120) {
+    bulletParticles.splice(0, bulletParticles.length - 110);
   }
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const spd = Math.random() * 3.5 + 1.0;
+    const spd = Math.random() * 4.2 + 1.6;
+    const initialLife = 0.85 + Math.random() * 0.45;
     bulletParticles.push({
+      prevX: x,
+      prevY: y,
       x,
       y,
       vx: Math.cos(angle) * spd,
-      vy: Math.sin(angle) * spd - 1.0,
-      size: Math.random() * 2 + 1.2,
+      vy: Math.sin(angle) * spd - 1.2,
+      size: Math.random() * 2.2 + 1.2,
       color,
-      life: 1.0
+      life: initialLife,
+      maxLife: initialLife,
+      gravity: 0.20,
+      friction: 0.94,
+      decay: 0.045
     });
   }
 }
 
 export function spawnHitSparks(x, y, nx = 0, ny = -1, count = 4) {
-  if (bulletParticles.length > 50) {
-    bulletParticles.splice(0, bulletParticles.length - 50);
+  if (bulletParticles.length > 120) {
+    bulletParticles.splice(0, bulletParticles.length - 110);
   }
   const baseAngle = Math.atan2(ny, nx);
   for (let i = 0; i < count; i++) {
-    const spread = (Math.random() - 0.5) * (Math.PI * 0.7);
+    const spread = (Math.random() - 0.5) * (Math.PI * 0.75);
     const angle = baseAngle + spread;
-    const speed = Math.random() * 4.0 + 1.5;
+    const speed = Math.random() * 5.4 + 2.0;
+    const initialLife = 0.75 + Math.random() * 0.45;
     bulletParticles.push({
+      prevX: x,
+      prevY: y,
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      size: Math.random() * 2.2 + 1.2,
-      color: Math.random() < 0.6 ? '#facc15' : '#fb923c',
-      life: 0.8 + Math.random() * 0.4
+      size: Math.random() * 2.4 + 1.2,
+      color: Math.random() < 0.65 ? '#facc15' : (Math.random() < 0.85 ? '#fb923c' : '#ffffff'),
+      life: initialLife,
+      maxLife: initialLife,
+      gravity: 0.24,
+      friction: 0.93,
+      decay: 0.045
     });
   }
 }
