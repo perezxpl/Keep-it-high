@@ -1187,19 +1187,71 @@ export function drawHeldWeapon(ctx, p) {
 
       // B. Skrócone podwójne lufy 12 Gauge z czółenkiem
       const isReloadBreak = p.isReloading && (p.reloadProgress > 0.2 && p.reloadProgress < 0.85);
-      const breakAngle = isReloadBreak ? 0.38 : 0.0;
+      const breakAngle = (typeof hold.breakAngle === 'number') ? hold.breakAngle : (isReloadBreak ? 0.45 : 0.0);
 
       if (breakAngle > 0.01) {
         ctx.save();
         ctx.translate(510, 140);
         ctx.rotate(breakAngle);
         ctx.drawImage(imgBarrels, -10, -130);
+
+        // Odsłonięte komory nabojowe 12G z płytą wyrzutnika (ejector plate)
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(-2, -105, 12, 0, Math.PI * 2);
+        ctx.arc(-2, -82, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stalowa krawędź wyrzutnika
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-10, -118, 5, 48);
+
+        // Jeśli naboje zostały załadowane do komór (u >= 0.75), rysuj złote kryzy i spłonki w komorach
+        const relProg = p.reloadProgress || (typeof hold.breakAngle === 'number' && hold.breakAngle > 0 ? (hold.heldMag ? 0.70 : 0.85) : 0);
+        if (p.isReloading && relProg >= 0.75) {
+          ctx.fillStyle = '#eab308'; // mosiężna kryza
+          ctx.beginPath();
+          ctx.arc(-2, -105, 10, 0, Math.PI * 2);
+          ctx.arc(-2, -82, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#78350f'; // miedziana spłonka
+          ctx.beginPath();
+          ctx.arc(-2, -105, 3.5, 0, Math.PI * 2);
+          ctx.arc(-2, -82, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         ctx.restore();
       } else {
         ctx.drawImage(imgBarrels, 500, 10);
       }
 
       ctx.restore();
+
+      // Dwa czerwone naboje śrutowe 12G trzymane w lewej dłoni podczas wprowadzania do komór
+      if (hold.heldMag && hold.heldMag.type === 'SAWED_OFF_SHELLS') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+
+        // Nabój 1 (górny): czerwony kartusz z mosiężną bazą i kryzą
+        ctx.fillStyle = '#dc2626'; // czerwony plastikowy korpus
+        ctx.fillRect(1.5, -3.8, 5.0, 2.0);
+        ctx.fillStyle = '#eab308'; // mosiężna podstawa
+        ctx.fillRect(-1.0, -3.8, 2.5, 2.0);
+        ctx.fillStyle = '#ca8a04'; // kryza łuski
+        ctx.fillRect(-1.5, -4.2, 0.6, 2.8);
+
+        // Nabój 2 (dolny): równoległy nabój 12G
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(1.5, -0.8, 5.0, 2.0);
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-1.0, -0.8, 2.5, 2.0);
+        ctx.fillStyle = '#ca8a04';
+        ctx.fillRect(-1.5, -1.2, 0.6, 2.8);
+
+        ctx.restore();
+      }
 
       if (p.muzzleFlashTimer > 0) {
         drawMuzzleFlash(ctx, hold.barrelLen || 32.40, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00, 15, true);
@@ -1218,15 +1270,32 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillStyle = '#475569';
       ctx.fillRect(-1.5, -2.5, 7.5, 4.2);
 
+      const breakAngle = hold.breakAngle || 0;
+      ctx.save();
+      ctx.translate(6.0, -1.0);
+      ctx.rotate(breakAngle);
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(6.0, -2.8, 13.0, 3.8);
+      ctx.fillRect(0, -1.8, 13.0, 3.8);
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(6.0, -1.2, 13.0, 0.8);
+      ctx.fillRect(0, -0.2, 13.0, 0.8);
       ctx.fillStyle = '#000000';
-      ctx.fillRect(19.0, -2.6, 0.8, 3.4);
-
+      ctx.fillRect(13.0, -1.6, 0.8, 3.4);
       ctx.fillStyle = '#92400e';
-      ctx.fillRect(6.0, 1.0, 7.0, 1.8);
+      ctx.fillRect(0, 2.0, 7.0, 1.8);
+      ctx.restore();
+
+      if (hold.heldMag && hold.heldMag.type === 'SAWED_OFF_SHELLS') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(1.5, -3.8, 5.0, 2.0);
+        ctx.fillRect(1.5, -0.8, 5.0, 2.0);
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(-1.0, -3.8, 2.5, 2.0);
+        ctx.fillRect(-1.0, -0.8, 2.5, 2.0);
+        ctx.restore();
+      }
 
       if (p.muzzleFlashTimer > 0) {
         drawMuzzleFlash(ctx, hold.barrelLen || 32.40, (typeof hold.barrelOffsetY === 'number') ? hold.barrelOffsetY : -1.00, 15, true);

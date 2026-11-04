@@ -17,6 +17,7 @@ import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch
 import {
   spawnBulletCasing,
   spawnRevolverEjectCasings,
+  spawnSawedOffEjectCasings,
   spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
@@ -33,6 +34,7 @@ import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRendere
 export {
   spawnBulletCasing,
   spawnRevolverEjectCasings,
+  spawnSawedOffEjectCasings,
   spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
@@ -709,8 +711,8 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
   }
 
-  // Wyrzut łuski z zamka przy strzale (nie dotyczy rewolweru, gdzie łuski pozostają w bębenku!)
-  if (weapon.id !== 'REVOLVER') {
+  // Wyrzut łuski z zamka przy strzale (nie dotyczy rewolweru ani obrzyna łamanego, gdzie łuski pozostają w komorach!)
+  if (weapon.id !== 'REVOLVER' && weapon.id !== 'SAWED_OFF') {
     const inheritVx = shooter ? (shooter.vx || 0) : 0;
     const inheritVy = shooter ? (shooter.vy || 0) : 0;
     spawnBulletCasing(breechX, breechY, theta, weapon.id, charFacing, inheritVx, inheritVy);
@@ -840,6 +842,10 @@ export function updateWeaponState(p) {
     if (p.ammo && p.ammo[p._prevWeaponId]) {
       p.ammo[p._prevWeaponId].isReloading = false;
       p.ammo[p._prevWeaponId].reloadTimer = 0;
+      p.ammo[p._prevWeaponId]._magEjected = false;
+      p.ammo[p._prevWeaponId]._pumpEjected = false;
+      p.ammo[p._prevWeaponId]._cylCasingsEjected = false;
+      p.ammo[p._prevWeaponId]._sawedCasingsEjected = false;
     }
   }
   p._prevWeaponId = curWepId;
@@ -892,6 +898,20 @@ export function updateWeaponState(p) {
         triggerScreenShake(1.2);
       }
 
+      // Obrzyn 12G (Sawed-Off): złamanie luf i sprężynowy wyrzut 2 zużytych łusek śrutowych
+      if (curWepId === 'SAWED_OFF' && u >= 0.22 && !ammo._sawedCasingsEjected) {
+        ammo._sawedCasingsEjected = true;
+        const hold = getWeaponHoldTransform(p);
+        const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
+        const breechDist = 5.0;
+        const breechYOffset = 0.5;
+        const cX = hold.pivotX + (Math.cos(hold.angle) * breechDist - Math.sin(hold.angle) * breechYOffset) * charFacing;
+        const cY = hold.pivotY + (Math.sin(hold.angle) * breechDist + Math.cos(hold.angle) * breechYOffset);
+        const spentCasings = Math.max(1, Math.min(2, (ammo.magSize || 2) - (ammo.currentAmmo || 0)));
+        spawnSawedOffEjectCasings(cX, cY, spentCasings, charFacing, p.vx || 0, p.vy || 0);
+        triggerScreenShake(1.4);
+      }
+
       if (ammo.reloadTimer <= 0) {
         // Zakończenie przeładowania: doładuj magazynek do pełna, odejmując zużytą liczbę z reserveAmmo
         const needed = ammo.magSize - ammo.currentAmmo;
@@ -903,6 +923,7 @@ export function updateWeaponState(p) {
         ammo._magEjected = false;
         ammo._pumpEjected = false;
         ammo._cylCasingsEjected = false;
+        ammo._sawedCasingsEjected = false;
         p.isReloading = false;
         p.reloadTimer = 0;
         p.reloadProgress = 0;

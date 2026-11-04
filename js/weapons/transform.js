@@ -849,12 +849,20 @@ export function getWeaponHoldTransform(p) {
       shoulderPivotY = aimHandY;
     }
   } else {
-    let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
-    if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
-    else if (rawShoulderAngle > Math.PI / 2 + 0.35) rawShoulderAngle = Math.min(Math.PI / 2 + 0.35, rawShoulderAngle);
-    shoulderAimAngle = rawShoulderAngle - muzzleRise;
-    shoulderPivotX = shoulderPocketX + Math.cos(shoulderAimAngle) * stockLen * charFacing;
-    shoulderPivotY = shoulderPocketY + Math.sin(shoulderAimAngle) * stockLen;
+    if (weapon.id === 'SAWED_OFF' && isReloading) {
+      // W trakcie przeładowania obrzyn trzymany jest w strefie roboczej klatki piersiowej (Workspace Retention)
+      const crouchDropY = isCrouch ? 3.0 : 0;
+      shoulderPivotX = rightShoulderX + 9.5 * charFacing;
+      shoulderPivotY = rightShoulderY + 7.0 + crouchDropY;
+      shoulderAimAngle = -0.18;
+    } else {
+      let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
+      if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
+      else if (rawShoulderAngle > Math.PI / 2 + 0.35) rawShoulderAngle = Math.min(Math.PI / 2 + 0.35, rawShoulderAngle);
+      shoulderAimAngle = rawShoulderAngle - muzzleRise;
+      shoulderPivotX = shoulderPocketX + Math.cos(shoulderAimAngle) * stockLen * charFacing;
+      shoulderPivotY = shoulderPocketY + Math.sin(shoulderAimAngle) * stockLen;
+    }
   }
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
@@ -886,10 +894,11 @@ export function getWeaponHoldTransform(p) {
   let heldMag = null;
   let boltOffset = 0;
   let cylinderSwing = 0;
+  let breakAngle = 0;
 
   if (isReloading && u >= 0 && u <= 1.0) {
     const reloadEnv = Math.sin(u * Math.PI);
-    reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (weapon.id === 'REVOLVER' ? -0.32 : (isPistol ? -0.24 : -0.20)))) * reloadEnv;
+    reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (weapon.id === 'REVOLVER' ? -0.32 : (weapon.id === 'SAWED_OFF' ? -0.24 : (isPistol ? -0.24 : -0.20))))) * reloadEnv;
     reloadPivotShiftX = (isRpg ? -1.0 : (isPistol ? -1.5 : -2.5)) * reloadEnv * charFacing;
     reloadPivotShiftY = (isRpg ? 0.8 : (isPistol ? 1.2 : 1.8)) * reloadEnv;
 
@@ -1068,6 +1077,65 @@ export function getWeaponHoldTransform(p) {
       } else {
         // Faza 6: Powrót dłoni do stabilnego chwytu bojowego
         cylinderSwing = 0;
+        leftHandLocalX = foreGripDistX;
+        leftHandLocalY = foreGripDistY;
+      }
+    } else if (weapon.id === 'SAWED_OFF') {
+      // -------------------------------------------------------------
+      // SAWED-OFF 12G DOUBLE-BARREL RELOAD ANIMATION (BREAK-ACTION & 2 SHELLS)
+      // -------------------------------------------------------------
+      if (u < 0.22) {
+        // Faza 1: Odchylenie / złamanie luf w dół (Break-Action Hinge Open)
+        const t = u / 0.22;
+        leftHandLocalX = lerp(foreGripDistX, 4.0, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, -0.5, ease(t));
+        breakAngle = ease(t) * 0.58;
+        reloadAngleOffset = -0.22 * ease(t);
+        reloadPivotShiftY = 1.0 * ease(t);
+      } else if (u < 0.38) {
+        // Faza 2: Automatyczny wyrzut 2 pustych łusek ze sprężynowego wyrzutnika
+        const t = (u - 0.22) / 0.16;
+        breakAngle = 0.58;
+        const snap = Math.sin(t * Math.PI);
+        leftHandLocalX = lerp(4.0, -4.0, ease(t));
+        leftHandLocalY = lerp(-0.5, 16.0, ease(t));
+        reloadAngleOffset = -0.24 - snap * 0.06;
+      } else if (u < 0.58) {
+        // Faza 3: Sięgnięcie lewą ręką do ładownicy przy pasie po 2 naboje 12G
+        const t = (u - 0.38) / 0.20;
+        breakAngle = 0.58;
+        leftHandLocalX = lerp(-4.0, -4.5, ease(t));
+        leftHandLocalY = lerp(16.0, 16.5, ease(t));
+        reloadAngleOffset = -0.20;
+        if (t > 0.60) {
+          heldMag = { type: 'SAWED_OFF_SHELLS', x: leftHandLocalX, y: leftHandLocalY, angle: -0.22 };
+        }
+      } else if (u < 0.78) {
+        // Faza 4: Uniesienie 2 czerwonych nabojów i wsunięcie do obu komór
+        const t = (u - 0.58) / 0.20;
+        breakAngle = 0.58;
+        leftHandLocalX = lerp(-4.5, 3.8, ease(t));
+        leftHandLocalY = lerp(16.5, 1.2, ease(t));
+        reloadAngleOffset = -0.16;
+        heldMag = { type: 'SAWED_OFF_SHELLS', x: leftHandLocalX, y: leftHandLocalY, angle: -0.22 + ease(t) * 0.18 };
+        if (t > 0.85) {
+          const snapT = (t - 0.85) / 0.15;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
+        }
+      } else if (u < 0.90) {
+        // Faza 5: Zatrzaśnięcie luf obrzyna (Barrels Snap Shut) ruchem lewej dłoni
+        const t = (u - 0.78) / 0.12;
+        breakAngle = Math.max(0, 0.58 * (1.0 - ease(Math.min(1.0, t * 1.4))));
+        leftHandLocalX = lerp(3.8, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(1.2, foreGripDistY, ease(t));
+        if (t > 0.40) {
+          const snap = Math.sin((t - 0.40) / 0.60 * Math.PI);
+          reloadAngleOffset += snap * 0.12;
+          reloadPivotShiftY -= snap * 1.2;
+        }
+      } else {
+        // Faza 6: Powrót do stabilnego chwytu bojowego na łożu
+        breakAngle = 0;
         leftHandLocalX = foreGripDistX;
         leftHandLocalY = foreGripDistY;
       }
@@ -1592,6 +1660,7 @@ export function getWeaponHoldTransform(p) {
     heldMag,
     boltOffset,
     cylinderSwing: cylinderSwing || 0,
+    breakAngle: breakAngle || 0,
     isTwoHandedHandgun: !!isTwoHandedHandgun,
     straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40 && !isReloading)
   };
@@ -1673,6 +1742,7 @@ export function reloadWeapon(shooter, weapon = shooter?.currentWeapon) {
   ammo._magEjected = false;
   ammo._pumpEjected = false;
   ammo._cylCasingsEjected = false;
+  ammo._sawedCasingsEjected = false;
   shooter.isReloading = true;
   shooter.reloadTimer = ammo.reloadTimer;
   shooter.reloadDuration = ammo.reloadDuration;
@@ -1692,6 +1762,7 @@ export function cancelReload(shooter, weapon = shooter?.currentWeapon) {
     ammo._magEjected = false;
     ammo._pumpEjected = false;
     ammo._cylCasingsEjected = false;
+    ammo._sawedCasingsEjected = false;
   }
   shooter.isReloading = false;
   shooter.reloadTimer = 0;

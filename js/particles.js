@@ -360,6 +360,50 @@ export function spawnRevolverEjectCasings(x, y, count = 6, facing = 1, inheritVx
 }
 
 /**
+ * Wyrzut 2 zużytych łusek 12G ze złamanego obrzyna podczas przeładowania (Break-Action Spring Eject)
+ */
+export function spawnSawedOffEjectCasings(x, y, count = 2, facing = 1, inheritVx = 0, inheritVy = 0) {
+  const cfg = CASING_CONFIGS.SHOTGUN;
+  const numCasings = Math.max(1, Math.min(2, count));
+
+  for (let k = 0; k < numCasings; k++) {
+    const speed = cfg.speedMin * 1.1 + Math.random() * (cfg.speedMax - cfg.speedMin) * 1.1;
+    // Łuski wylatują z komór do tyłu i do góry nad ramieniem strzelca
+    const spreadAngle = (Math.random() - 0.5) * 0.35 + (k === 0 ? -0.15 : 0.15);
+    const ejectAngle = Math.PI - (facing >= 0 ? 0.65 : -0.65) + spreadAngle;
+
+    const vx = Math.cos(ejectAngle) * speed * facing + inheritVx * 12;
+    const vy = Math.sin(ejectAngle) * speed + inheritVy * 12 - 35 - Math.random() * 25;
+
+    const casing = new BulletCasing({
+      x: x + (k === 0 ? -1.5 : 1.5) * facing,
+      y: y + (k === 0 ? -2.0 : 2.0),
+      vx,
+      vy,
+      angle: (Math.random() - 0.5) * Math.PI,
+      vRot: (Math.random() - 0.5) * 24,
+      width: cfg.width,
+      height: cfg.height,
+      color: cfg.color,
+      bounces: 0,
+      maxBounces: cfg.bounces,
+      isGrounded: false,
+      life: 2.8 + Math.random() * 0.5,
+      alpha: 1.0,
+      type: 'SHOTGUN',
+      hasRim: true,
+      rimColor: cfg.rimColor,
+      groundTimer: 1.5 + Math.random() * 0.6
+    });
+
+    if (bulletCasings.length > 50) {
+      bulletCasings.shift();
+    }
+    bulletCasings.push(casing);
+  }
+}
+
+/**
  * Wyrzut pustego upuszczonego magazynka podczas przeładowania broni
  * @param {number} x Pozycja X wyrzutu
  * @param {number} y Pozycja Y wyrzutu
