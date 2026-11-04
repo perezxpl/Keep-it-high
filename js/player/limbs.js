@@ -802,7 +802,10 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   // W pozycji leżącej (PRONE) łokieć opiera się stabilnie na podłożu i nie zapada się pod grunt
   if (playerRef && playerRef.isProne && !playerRef.isDead) {
-    const proneFloorY = (playerRef.currentGroundY || playerRef.groundY || (playerRef.y + (playerRef.h || 70))) - 2.0;
+    const proneColH = playerRef.hitboxHeight || 26;
+    const proneFloorY = (typeof playerRef.currentGroundY === 'number')
+      ? (playerRef.currentGroundY - 2.0)
+      : ((playerRef.groundY || (playerRef.y + proneColH)) - 2.0);
     if (elbowY > proneFloorY) {
       elbowY = proneFloorY;
     }

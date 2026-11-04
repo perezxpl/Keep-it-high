@@ -353,12 +353,13 @@ function lerpAngle(a, b, t) {
 export function getShooterShoulderPos(shooter) {
   const charFacing = shooter.facing || 1;
   const hipX = shooter.x + shooter.w / 2;
-  let hipY = shooter.y + shooter.h - 40 + (shooter.pelvisY || 0);
+  const colH = shooter.isProne ? (shooter.hitboxHeight || 26) : (shooter.h || 70);
+  let hipY = shooter.y + colH - 40 + (shooter.pelvisY || 0);
   if (shooter.isProne) {
-    const floorY = shooter.currentGroundY || shooter.groundY || (shooter.y + (shooter.h || 70));
+    const floorY = (typeof shooter.currentGroundY === 'number') ? shooter.currentGroundY : (shooter.groundY || (shooter.y + colH));
     hipY = floorY - 6.0;
   } else if (shooter.staggerTimer > 0) {
-    const floorY = shooter.currentGroundY || shooter.groundY || (shooter.y + 15);
+    const floorY = (typeof shooter.currentGroundY === 'number') ? shooter.currentGroundY : (shooter.groundY || (shooter.y + 15));
     hipY = floorY - 6;
   }
   const torsoTilt = shooter.pose?.torsoTilt || shooter.torsoTilt || 0;
@@ -1541,7 +1542,8 @@ export function getWeaponHoldTransform(p) {
   let proneAimAngle = blendedAngle + meleeAngleOffset + effectiveAngleOffset;
 
   if (p.isProne) {
-    const floorY = p.currentGroundY || p.groundY || (p.y + (p.h || 70)) || 560;
+    const proneColH = p.hitboxHeight || 26;
+    const floorY = (typeof p.currentGroundY === 'number') ? p.currentGroundY : (p.groundY || (p.y + proneColH) || 560);
     const crawlP = p.crawlPhase || 0;
     const isCrawling = speed > 0.08;
 

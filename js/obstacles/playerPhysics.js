@@ -37,11 +37,16 @@ export function checkPlayerPlatformLanding(p, groundY) {
   const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
   let centerX = p.x + p.w / 2;
 
-  // Korekta wysokości przy zmianie stanu (stagger / wstawanie ze staggara / prone):
+  // Korekta wysokości przy zmianie stanu (stagger / wstawanie ze staggara / prone oraz kładzenie się):
   // Gdy postać wstaje ze staggara lub z prone i jej hitbox rośnie w dół o deltaH = colH - p.lastColH:
-  // Zawsze (niezależnie od onGround) przesuń p.y -= deltaH, aby stopy nie wbiły się w podłoże/klocek pod spodem
-  if (typeof p.lastColH === 'number' && colH > p.lastColH) {
-    p.y -= (colH - p.lastColH);
+  // Zawsze (niezależnie od onGround) przesuń p.y -= deltaH, aby stopy nie wbiły się w podłoże/klocek pod spodem.
+  // Gdy hitbox maleje (kładzenie się), natychmiast wyrównaj p.y do podłoża, zachowując kontakt z klockiem/ziemią.
+  if (typeof p.lastColH === 'number') {
+    if (colH > p.lastColH) {
+      p.y -= (colH - p.lastColH);
+    } else if (colH < p.lastColH && p.onGround) {
+      p.y = (typeof p.currentGroundY === 'number') ? (p.currentGroundY - colH) : (p.y + (p.lastColH - colH));
+    }
   }
   p.lastColH = colH;
   if (p.onGround && typeof p.currentGroundY === 'number' && p.y + colH > p.currentGroundY) {

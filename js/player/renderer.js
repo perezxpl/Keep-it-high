@@ -302,17 +302,18 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
 
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 70));
   const centerX = p.x + p.w / 2;
   const isGrounded = (p.onGround !== undefined)
     ? (p.onGround && !p.isJumping)
-    : (!p.isJumping && (p.y >= (GROUND_Y - p.h - 2) || (p.currentGroundY !== undefined && Math.abs(p.y + p.h - p.currentGroundY) < 4)));
-  const standingY = (isGrounded && p.currentGroundY !== undefined && p.currentGroundY >= p.y + p.h - 6)
+    : (!p.isJumping && (p.y >= (GROUND_Y - colH - 2) || (typeof p.currentGroundY === 'number' && Math.abs(p.y + colH - p.currentGroundY) < 6)));
+  const standingY = (isGrounded && typeof p.currentGroundY === 'number')
     ? p.currentGroundY
-    : (p.y + p.h);
+    : (p.y + colH);
   const floorY = standingY;
   const plantFloorY = floorY - 3.5;
   let hipX = centerX;
-  let hipY = p.y + p.h - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8);
+  let hipY = p.y + colH - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8);
   if (p.isProne) {
     hipY = plantFloorY - 2.5; // Tors i miednica przylegają równolegle do podłoża (y = floorY - 6 px)
   } else if (p.staggerTimer > 0) {

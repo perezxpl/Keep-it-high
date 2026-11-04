@@ -1063,7 +1063,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.torsoTilt += player.torsoTiltVel;
   }
 
-  const colH = (player.staggerTimer > 0) ? 15 : (player.h || 70);
+  const colH = (player.staggerTimer > 0) ? 15 : ((player.isProne) ? (player.hitboxHeight || 26) : (player.h || 70));
 
   if (player.inMinecart || player._inCart) {
     // Postać w wagoniku stoi stabilnie na podłodze wózka i porusza się razem z nim
@@ -1085,6 +1085,12 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
     if (player.currentGroundY && player.y + colH > player.currentGroundY) {
       player.y = player.currentGroundY - colH;
+    }
+  } else if (player.isProne && player.onGround && typeof player.currentGroundY === 'number') {
+    // W leżeniu na platformie/bloku stopy i brzuch przylegają dokładnie do dachu podłoża
+    if (player.y + colH > player.currentGroundY || Math.abs(player.y + colH - player.currentGroundY) < 3.0) {
+      player.y = player.currentGroundY - colH;
+      if (player.vy > 0) player.vy = 0;
     }
   } else if (player.isAcidDying || (player.acidDeath && player.acidDeath.active)) {
     // Spowolnienie opadania - ociężałe zanurzanie w gęstym kwasie

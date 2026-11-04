@@ -35,14 +35,19 @@ export function getActiveCombatants() {
 }
 
 /**
- * Zapewnia spójną wysokość kolizyjną postaci i koryguje pozycję Y przy wstawaniu ze staggara / prone.
+ * Zapewnia spójną wysokość kolizyjną postaci i koryguje pozycję Y przy wstawaniu ze staggara / prone oraz kładzeniu się.
  * Gdy hitbox rośnie w dół o deltaH, przesunięcie p.y -= deltaH zachowuje pozycję stóp i zapobiega wpadaniu w bloczki.
+ * Gdy hitbox maleje (kładzenie się), wyrównuje p.y do podłoża, aby postać nie wisiała w powietrzu.
  */
 export function syncCombatantHeight(p) {
   if (!p) return 72;
   const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
-  if (typeof p.lastColH === 'number' && colH > p.lastColH) {
-    p.y -= (colH - p.lastColH);
+  if (typeof p.lastColH === 'number') {
+    if (colH > p.lastColH) {
+      p.y -= (colH - p.lastColH);
+    } else if (colH < p.lastColH && p.onGround) {
+      p.y = (typeof p.currentGroundY === 'number') ? (p.currentGroundY - colH) : (p.y + (p.lastColH - colH));
+    }
   }
   p.lastColH = colH;
   return colH;
@@ -1121,7 +1126,7 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
     // Obrażenia dla postaci stojących na detonowanym rzędzie
     for (const victim of combatants) {
       if (!victim || victim.isDead) continue;
-      const vFootY = victim.y + (victim.h || 72);
+      const vFootY = victim.y + syncCombatantHeight(victim);
       if (Math.abs(vFootY - getGridY(r)) < 55) {
         victim.vy = -9.0;
         victim.vx += (Math.random() - 0.5) * 6.0;
@@ -1249,7 +1254,7 @@ function updateBottomRecycler(combatants) {
   // Jeśli stopy gracza lub bota spadną poniżej linii śmierci -> eliminacja i respawn na wieży
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
-    const footY = victim.y + (victim.h || 72);
+    const footY = victim.y + syncCombatantHeight(victim);
     if (footY > currentDeathLineY) {
       executeRecyclerKill(victim);
     }
