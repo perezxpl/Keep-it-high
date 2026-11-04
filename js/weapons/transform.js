@@ -26,6 +26,9 @@ export const WEAPONS = {
     ragdollPushMult: 0.85,  // Standardowy, realistyczny impuls śmierci
     pellets: 1,
     bulletColor: '#facc15',
+    gravity: 0.045,         // Subtelny opad balistyczny na dalekim dystansie
+    drag: 0.994,            // Aerodynamiczne tarcie powietrza 7.62x39mm
+    maxPierces: 0,          // Amunicja karabinowa zatrzymuje się w celu
     magSize: WEAPON_CONFIG.AK47.magSize,
     currentAmmo: WEAPON_CONFIG.AK47.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.AK47.reserveAmmo,
@@ -50,6 +53,9 @@ export const WEAPONS = {
     ragdollPushMult: 2.20,  // Potężne katapultowanie bezwładnego ciała w tył
     pellets: 6,
     bulletColor: '#fb923c',
+    gravity: 0.110,         // Wyraźny opad ciężkich ołowianych śrucin
+    drag: 0.978,            // Wysoki opór powietrza dla śrutu (drastyczny spadek zasięgu)
+    maxPierces: 0,
     magSize: WEAPON_CONFIG.SHOTGUN.magSize,
     currentAmmo: WEAPON_CONFIG.SHOTGUN.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.SHOTGUN.reserveAmmo,
@@ -77,6 +83,11 @@ export const WEAPONS = {
     ragdollPushMult: 3.5,   // Katapultowanie zwłok
     pellets: 1,
     bulletColor: '#38bdf8', // Lśniący błękitno-biały pocisk smugowy
+    gravity: 0.015,         // Ponaddźwiękowa, płaska trajektoria Barrett .50 BMG
+    drag: 0.998,            // Znikomy opór aerodynamiczny dla ciężkiego pocisku .50
+    maxPierces: 2,          // Przebija do 2 ciał (trafia łącznie do 3 postaci - collateral do 3 fragów!)
+    fleshDrag: 0.78,        // Zachowuje 78% prędkości po przebiciu tkanki/kości
+    fleshDamageMult: 0.75,  // 75% siły kinetycznej na kolejny cel w linii
     magSize: WEAPON_CONFIG.SNIPER.magSize,
     currentAmmo: WEAPON_CONFIG.SNIPER.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.SNIPER.reserveAmmo,
@@ -103,6 +114,9 @@ export const WEAPONS = {
     ragdollPushMult: 0.90,
     pellets: 1,
     bulletColor: '#fde047',
+    gravity: 0.065,         // Lekki opad pistoletowy 9mm
+    drag: 0.990,            // Standardowe tarcie powietrza dla naboju 9x19mm
+    maxPierces: 0,
     magSize: WEAPON_CONFIG.GLOCK.magSize,
     currentAmmo: WEAPON_CONFIG.GLOCK.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.GLOCK.reserveAmmo,
@@ -129,6 +143,11 @@ export const WEAPONS = {
     ragdollPushMult: 1.8,
     pellets: 1,
     bulletColor: '#fbbf24',
+    gravity: 0.048,         // Potężny pocisk Magnum .44 z umiarkowanym opadem
+    drag: 0.993,
+    maxPierces: 1,          // Przebija 1 ciało (trafia łącznie do 2 postaci - collateral do 2 fragów!)
+    fleshDrag: 0.65,        // Zachowuje 65% prędkości po pierwszym ciele
+    fleshDamageMult: 0.65,  // 65% siły na drugi cel
     magSize: WEAPON_CONFIG.REVOLVER.magSize,
     currentAmmo: WEAPON_CONFIG.REVOLVER.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.REVOLVER.reserveAmmo,
@@ -155,6 +174,9 @@ export const WEAPONS = {
     ragdollPushMult: 2.4,
     pellets: 8,
     bulletColor: '#fb923c',
+    gravity: 0.120,         // Krótka lufa obrzyna: szybki opad śrutu
+    drag: 0.975,            // Bardzo wysoki opór powietrza (krótki zabójczy dystans)
+    maxPierces: 0,
     magSize: WEAPON_CONFIG.SAWED_OFF.magSize,
     currentAmmo: WEAPON_CONFIG.SAWED_OFF.currentAmmo,
     reserveAmmo: WEAPON_CONFIG.SAWED_OFF.reserveAmmo,
@@ -184,6 +206,9 @@ export const WEAPONS = {
     pellets: 1,
     bulletColor: '#f97316',
     isRocket: true,
+    gravity: 0.025,         // Rakieta z napędem rakietowym: minimalny opad
+    drag: 0.998,
+    maxPierces: 0,          // Eksploduje przy pierwszym trafieniu
     magSize: WEAPON_CONFIG?.RPG7?.magSize ?? 1,
     currentAmmo: WEAPON_CONFIG?.RPG7?.currentAmmo ?? 1,
     reserveAmmo: WEAPON_CONFIG?.RPG7?.reserveAmmo ?? 3,

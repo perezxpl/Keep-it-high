@@ -631,7 +631,14 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       color: weapon.bulletColor,
       shooter: shooter,
       life: weapon.id === 'SNIPER' ? 95 : 75,
-      isSniper: (weapon.id === 'SNIPER')
+      isSniper: (weapon.id === 'SNIPER'),
+      gravity: weapon.gravity !== undefined ? weapon.gravity : 0.045,
+      drag: weapon.drag !== undefined ? weapon.drag : 0.994,
+      maxPierces: weapon.maxPierces !== undefined ? weapon.maxPierces : 0,
+      pierces: 0,
+      fleshDrag: weapon.fleshDrag !== undefined ? weapon.fleshDrag : 0.72,
+      fleshDamageMult: weapon.fleshDamageMult !== undefined ? weapon.fleshDamageMult : 0.70,
+      hitEntities: new Set()
     });
   }
 
@@ -952,9 +959,16 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     const b = bullets[i];
     b.prevX = b.x;
     b.prevY = b.y;
+
+    // Balistyka pocisku (grawitacja i opór powietrza):
+    const grav = (b.gravity !== undefined) ? b.gravity : 0.045;
+    const drag = (b.drag !== undefined) ? b.drag : 0.994;
+    b.vy += grav;
+    b.vx *= drag;
+    b.vy *= drag;
+
     b.x += b.vx;
     b.y += b.vy;
-    b.vy += 0.04;
     b.life--;
 
     if (b.life <= 0) {
@@ -1002,9 +1016,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
     }
 
-    let hitChar = false;
-    let closestChar = null;
-    let closestCharT = Infinity;
+    const candidateHits = [];
+    const origEndX = b.x;
+    const origEndY = b.y;
 
     const minBx = b.prevX < endX ? b.prevX : endX;
     const maxBx = b.prevX > endX ? b.prevX : endX;
@@ -1025,6 +1039,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
         if (!netState.isHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
+      // Wyklucz postacie już trafione przez ten pocisk w poprzednich klatkach / penetracjach
+      if (b.hitEntities && (b.hitEntities.has(ch) || (ch.id && b.hitEntities.has(ch.id)))) continue;
 
       const hitW = ch.w || 24;
       const hitH = ch.h || 70;
@@ -1047,15 +1063,26 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (maxBx < charLeft || minBx > charRight || maxBy < charTop || minBy > charBottom) continue;
 
       const charT = getSegmentAABBHitT(b.prevX, b.prevY, b.x, b.y, charLeft, charTop, charRight, charBottom);
-      if (charT !== null && charT <= maxT && charT < closestCharT) {
-        closestCharT = charT;
-        closestChar = ch;
+      if (charT !== null && charT <= maxT) {
+        candidateHits.push({ ch, charT });
       }
     }
 
-    if (closestChar) {
-      const hitPtX = b.prevX + (b.x - b.prevX) * closestCharT;
-      const hitPtY = b.prevY + (b.y - b.prevY) * closestCharT;
+    if (candidateHits.length > 0) {
+      candidateHits.sort((c1, c2) => c1.charT - c2.charT);
+    }
+
+    let bulletDestroyed = false;
+
+    for (const hitCandidate of candidateHits) {
+      const closestChar = hitCandidate.ch;
+      const closestCharT = hitCandidate.charT;
+      const hitPtX = b.prevX + (origEndX - b.prevX) * closestCharT;
+      const hitPtY = b.prevY + (origEndY - b.prevY) * closestCharT;
+
+      if (!b.hitEntities) b.hitEntities = new Set();
+      b.hitEntities.add(closestChar);
+      if (closestChar.id) b.hitEntities.add(closestChar.id);
 
       let isHeadshot = false;
       let isLegshot = false;
@@ -1088,7 +1115,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
         b.life = 0;
         bullets.splice(i, 1);
-        continue;
+        bulletDestroyed = true;
+        break;
       }
 
       let damageMultiplier = 1.0;
@@ -1376,11 +1404,50 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         }
       }
 
-      bullets.splice(i, 1);
-      hitChar = true;
-      continue;
+      // =====================================================================
+      // FIZYKA PENETRACJI / PRZEBIJANIE POSTACI (FLESH DRAG & EXIT WOUND)
+      // =====================================================================
+      const maxPierces = b.maxPierces || 0;
+      const curPierces = b.pierces || 0;
+
+      if (curPierces < maxPierces) {
+        // Pocisk posiada jeszcze energię kinetyczną do przebicia ciała (Barrett .50 / Magnum .44)
+        b.pierces = curPierces + 1;
+
+        const fleshDrag = (b.fleshDrag !== undefined) ? b.fleshDrag : 0.75;
+        const dmgMult = (b.fleshDamageMult !== undefined) ? b.fleshDamageMult : 0.70;
+
+        // Wyhamowanie prędkości pocisku w tkankach (Flesh Drag):
+        b.vx *= fleshDrag;
+        b.vy *= fleshDrag;
+        b.damage = Math.max(1, Math.round(b.damage * dmgMult));
+
+        // Subtelne odchylenie toru lotu po trafieniu w kości/tkanki (+/- 1 stopień):
+        const curSpd = Math.hypot(b.vx, b.vy);
+        const curAng = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 0.035;
+        b.vx = Math.cos(curAng) * curSpd;
+        b.vy = Math.sin(curAng) * curSpd;
+
+        // Dynamiczna rana wylotowa (Exit Wound) - strumień krwi i odłamków z tyłu postaci:
+        const exitDir = b.vx >= 0 ? 1 : -1;
+        const exitX = hitPtX + exitDir * 14;
+        const exitY = hitPtY + (Math.random() - 0.5) * 6;
+        spawnBloodSpurt(exitX, exitY, b.vx * 0.75, b.vy * 0.5 - 1.8, 20, 1.35);
+        spawnBloodDrip(exitX, exitY, b.vx * 0.35, -1.0, 5);
+        spawnBulletSparks(exitX, exitY, '#ef4444', 6);
+
+        // Skorygowanie pozycji pocisku na pozostałą część klatki:
+        b.x = hitPtX + b.vx * (1 - closestCharT);
+        b.y = hitPtY + b.vy * (1 - closestCharT);
+      } else {
+        // Pocisk wyczerpał zdolność penetracji (lub jej nie posiadał) - pochłonięty przez ciało
+        bullets.splice(i, 1);
+        bulletDestroyed = true;
+        break;
+      }
     }
-    if (hitChar) continue;
+
+    if (bulletDestroyed) continue;
 
     if (mapHit) {
       spawnImpactVisuals(mapHit.x, mapHit.y, mapHit.nx, mapHit.ny, b.weaponId);
