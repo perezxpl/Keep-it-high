@@ -16,6 +16,7 @@ import { getActiveArena } from './arenas/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import {
   spawnBulletCasing,
+  spawnRevolverEjectCasings,
   spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
@@ -31,6 +32,7 @@ import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRendere
 
 export {
   spawnBulletCasing,
+  spawnRevolverEjectCasings,
   spawnDroppedMagazine,
   updateBulletCasings,
   drawBulletCasings,
@@ -552,13 +554,15 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
         triggerScreenShake(2.5);
       }
 
-      // Wyrzut łuski z zamka broni przy strzale
-      const hold = getWeaponHoldTransform(shooter);
-      const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
-      const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (hold.charFacing || 1);
-      const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
-      const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
-      spawnBulletCasing(bX, bY, hold.angle, weapon.id, charFacing, shooter.vx || 0, shooter.vy || 0);
+      // Wyrzut łuski z zamka broni przy strzale (nie dotyczy rewolweru, gdzie łuski pozostają w bębenku!)
+      if (weapon.id !== 'REVOLVER') {
+        const hold = getWeaponHoldTransform(shooter);
+        const breechDist = (weapon.id === 'SHOTGUN' ? 8 : (weapon.id === 'SNIPER' ? 6 : (weapon.id === 'GLOCK' ? 5 : 10)));
+        const charFacing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : (hold.charFacing || 1);
+        const bX = hold.pivotX + Math.cos(hold.angle) * breechDist * charFacing;
+        const bY = hold.pivotY + Math.sin(hold.angle) * breechDist - 1.5;
+        spawnBulletCasing(bX, bY, hold.angle, weapon.id, charFacing, shooter.vx || 0, shooter.vy || 0);
+      }
 
       return true;
     }
@@ -705,9 +709,12 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     breechY = muzzleY - Math.sin(theta) * backDist - 1.5;
   }
 
-  const inheritVx = shooter ? (shooter.vx || 0) : 0;
-  const inheritVy = shooter ? (shooter.vy || 0) : 0;
-  spawnBulletCasing(breechX, breechY, theta, weapon.id, charFacing, inheritVx, inheritVy);
+  // Wyrzut łuski z zamka przy strzale (nie dotyczy rewolweru, gdzie łuski pozostają w bębenku!)
+  if (weapon.id !== 'REVOLVER') {
+    const inheritVx = shooter ? (shooter.vx || 0) : 0;
+    const inheritVy = shooter ? (shooter.vy || 0) : 0;
+    spawnBulletCasing(breechX, breechY, theta, weapon.id, charFacing, inheritVx, inheritVy);
+  }
 
   return true;
 }
@@ -871,6 +878,20 @@ export function updateWeaponState(p) {
         spawnBulletCasing(bX, bY, hold.angle, 'SHOTGUN', charFacing, p.vx || 0, p.vy || 0);
       }
 
+      // Rewolwer Magnum .44: odchylenie bębenka i wyrzut wszystkich zużytych łusek przy uderzeniu w pręt wyrzutnika
+      if (curWepId === 'REVOLVER' && u >= 0.25 && !ammo._cylCasingsEjected) {
+        ammo._cylCasingsEjected = true;
+        const hold = getWeaponHoldTransform(p);
+        const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
+        const cylDist = 7.5;
+        const cylYOffset = 2.0;
+        const cX = hold.pivotX + (Math.cos(hold.angle) * cylDist - Math.sin(hold.angle) * cylYOffset) * charFacing;
+        const cY = hold.pivotY + (Math.sin(hold.angle) * cylDist + Math.cos(hold.angle) * cylYOffset);
+        const spentCasings = Math.max(1, Math.min(6, (ammo.magSize || 6) - (ammo.currentAmmo || 0)));
+        spawnRevolverEjectCasings(cX, cY, spentCasings, charFacing, p.vx || 0, p.vy || 0);
+        triggerScreenShake(1.2);
+      }
+
       if (ammo.reloadTimer <= 0) {
         // Zakończenie przeładowania: doładuj magazynek do pełna, odejmując zużytą liczbę z reserveAmmo
         const needed = ammo.magSize - ammo.currentAmmo;
@@ -881,6 +902,7 @@ export function updateWeaponState(p) {
         ammo.reloadTimer = 0;
         ammo._magEjected = false;
         ammo._pumpEjected = false;
+        ammo._cylCasingsEjected = false;
         p.isReloading = false;
         p.reloadTimer = 0;
         p.reloadProgress = 0;

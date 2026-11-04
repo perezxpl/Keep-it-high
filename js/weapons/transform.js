@@ -872,10 +872,11 @@ export function getWeaponHoldTransform(p) {
   let isMagInGun = true;
   let heldMag = null;
   let boltOffset = 0;
+  let cylinderSwing = 0;
 
   if (p.isReloading && u > 0 && u < 1.0) {
     const reloadEnv = Math.sin(u * Math.PI);
-    reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (isPistol ? -0.24 : -0.20))) * reloadEnv;
+    reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (weapon.id === 'REVOLVER' ? -0.32 : (isPistol ? -0.24 : -0.20)))) * reloadEnv;
     reloadPivotShiftX = (isRpg ? -1.0 : (isPistol ? -1.5 : -2.5)) * reloadEnv * charFacing;
     reloadPivotShiftY = (isRpg ? 0.8 : (isPistol ? 1.2 : 1.8)) * reloadEnv;
 
@@ -994,6 +995,66 @@ export function getWeaponHoldTransform(p) {
         const t = (u - 0.89) / 0.11;
         leftHandLocalX = foreGripDistX;
         leftHandLocalY = foreGripDistY;
+      }
+    } else if (weapon.id === 'REVOLVER') {
+      // -------------------------------------------------------------
+      // MAGNUM .44 REVOLVER RELOAD ANIMATION (CYLINDER SWING & SPEEDLOADER)
+      // -------------------------------------------------------------
+      if (u < 0.20) {
+        // Faza 1: Odchylenie bębenka w lewo (Swing-out) i uniesienie lufy ku górze
+        const t = u / 0.20;
+        leftHandLocalX = lerp(foreGripDistX, 5.5, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 3.5, ease(t));
+        cylinderSwing = ease(t);
+        reloadAngleOffset = -0.32 * ease(t);
+        reloadPivotShiftY = 1.4 * ease(t);
+      } else if (u < 0.38) {
+        // Faza 2: Wciśnięcie pręta wyrzutnika (Ejector Rod Strike) - wyrzut 6 łusek z komór bębenka
+        const t = (u - 0.20) / 0.18;
+        cylinderSwing = 1.0;
+        const strike = Math.sin(t * Math.PI);
+        // Lewa dłoń energicznie uderza w pręt wyrzutnika z przodu bębenka
+        leftHandLocalX = 5.5 - strike * 4.2;
+        leftHandLocalY = 3.5 + strike * 1.2;
+        reloadAngleOffset = -0.36 - strike * 0.08;
+      } else if (u < 0.58) {
+        // Faza 3: Sięgnięcie lewą ręką do ładownicy po szybkoładowacz (Speedloader .44)
+        const t = (u - 0.38) / 0.20;
+        cylinderSwing = 1.0;
+        leftHandLocalX = lerp(5.5, -2.5, ease(t));
+        leftHandLocalY = lerp(3.5, 14.5, ease(t));
+        reloadAngleOffset = -0.28;
+      } else if (u < 0.78) {
+        // Faza 4: Naprowadzenie speedloadera na komory bębenka i wprowadzenie 6 nabojów
+        const t = (u - 0.58) / 0.20;
+        cylinderSwing = 1.0;
+        leftHandLocalX = lerp(-2.5, 5.0, ease(t));
+        leftHandLocalY = lerp(14.5, 3.8, ease(t));
+        reloadAngleOffset = -0.22;
+        heldMag = { type: 'REVOLVER_SPEEDLOADER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.18 };
+        if (t > 0.82) {
+          // Zwolnienie nabojów ze speedloadera do komór bębenka (kliknięcie rygla)
+          const snapT = (t - 0.82) / 0.18;
+          reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
+        }
+      } else if (u < 0.90) {
+        // Faza 5: Energiczne zatrzaśnięcie bębenka (Cylinder Snap-in) ruchem nadgarstka
+        const t = (u - 0.78) / 0.12;
+        cylinderSwing = Math.max(0, 1.0 - ease(Math.min(1.0, t * 1.3)));
+        leftHandLocalX = lerp(5.0, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(3.8, foreGripDistY + 1.5, ease(t));
+        if (t > 0.40) {
+          // Dynamiczne drgnięcie rewolweru przy zatrzaśnięciu zatrzasku
+          const snap = Math.sin((t - 0.40) / 0.60 * Math.PI);
+          reloadAngleOffset += snap * 0.11;
+          reloadPivotShiftY -= snap * 1.2;
+        }
+      } else {
+        // Faza 6: Powrót dłoni do stabilnego chwytu bojowego
+        cylinderSwing = 0;
+        const t = (u - 0.90) / 0.10;
+        leftHandLocalX = lerp(foreGripDistX, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(foreGripDistY + 1.5, foreGripDistY, ease(t));
       }
     } else if (isPistol) {
       // -------------------------------------------------------------
@@ -1514,6 +1575,7 @@ export function getWeaponHoldTransform(p) {
     isMagInGun,
     heldMag,
     boltOffset,
+    cylinderSwing: cylinderSwing || 0,
     isTwoHandedHandgun: !!isTwoHandedHandgun,
     straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40)
   };
@@ -1594,6 +1656,7 @@ export function reloadWeapon(shooter, weapon = shooter?.currentWeapon) {
   ammo.reloadTimer = ammo.reloadDuration;
   ammo._magEjected = false;
   ammo._pumpEjected = false;
+  ammo._cylCasingsEjected = false;
   shooter.isReloading = true;
   shooter.reloadTimer = ammo.reloadTimer;
   shooter.reloadDuration = ammo.reloadDuration;
@@ -1612,6 +1675,7 @@ export function cancelReload(shooter, weapon = shooter?.currentWeapon) {
     ammo.reloadTimer = 0;
     ammo._magEjected = false;
     ammo._pumpEjected = false;
+    ammo._cylCasingsEjected = false;
   }
   shooter.isReloading = false;
   shooter.reloadTimer = 0;

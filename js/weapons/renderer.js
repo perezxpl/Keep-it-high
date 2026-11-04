@@ -1057,6 +1057,7 @@ export function drawHeldWeapon(ctx, p) {
     // -------------------------------------------------------------
     const imgBody = getWeaponPartSprite('REVOLVER_BODY');
     const imgCyl = getWeaponPartSprite('REVOLVER_CYLINDER');
+    const cylSwing = hold.cylinderSwing || 0;
 
     if (imgBody && imgBody.complete && imgBody.naturalWidth > 0) {
       const s = 20.2 / 1040;
@@ -1071,12 +1072,58 @@ export function drawHeldWeapon(ctx, p) {
       // Korpus ze stali nierdzewnej i lufą 6 cali z wentylowaną szyną
       ctx.drawImage(imgBody, 2, 2);
 
-      // Bębenek 6-komorowy .44 Magnum
+      // Bębenek 6-komorowy .44 Magnum z animacją odchylenia (Swing-Out) podczas przeładowania
       if (imgCyl && imgCyl.complete && imgCyl.naturalWidth > 0) {
-        ctx.drawImage(imgCyl, 380, 90);
+        if (cylSwing > 0.01) {
+          ctx.save();
+          // Stalowe ramię zawiasu bębenka (crane / yoke)
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(382, 130, 26, 52 * cylSwing);
+
+          // Odchylenie bębenka w dół i lekko w lewo z kątem otwarcia
+          ctx.translate(380 + cylSwing * 28, 90 + cylSwing * 125);
+          ctx.rotate(cylSwing * 0.28);
+          ctx.drawImage(imgCyl, 0, 0);
+
+          // Stalowy pręt wyrzutnika (ejector rod) wystający z osi bębenka
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(imgCyl.naturalWidth * 0.32, -18 * cylSwing, 12, 22 * cylSwing);
+
+          ctx.restore();
+        } else {
+          ctx.drawImage(imgCyl, 380, 90);
+        }
       }
 
       ctx.restore();
+
+      // Szybkoładowacz (Speedloader) w lewej ręce gracza
+      if (hold.heldMag && hold.heldMag.type === 'REVOLVER_SPEEDLOADER') {
+        ctx.save();
+        ctx.translate(hold.heldMag.x, hold.heldMag.y);
+        ctx.rotate(hold.heldMag.angle || 0);
+
+        // Uchwyt korpusu szybkoładowacza
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-1.5, -5.2, 3.0, 2.6); // metalowe pokrętło zwalniające
+
+        // 6 mosiężnych nabojów .44 Magnum (widok z boku wiązki)
+        ctx.fillStyle = '#f59e0b'; // mosiężna łuska
+        ctx.fillRect(1.5, -3.2, 4.6, 2.0);
+        ctx.fillRect(1.5, 1.2, 4.6, 2.0);
+
+        // Miedziane stożki pocisków
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(6.1, -3.0, 1.8, 1.6);
+        ctx.fillRect(6.1, 1.4, 1.8, 1.6);
+
+        ctx.restore();
+      }
 
       if (p.muzzleFlashTimer > 0) {
         drawMuzzleFlash(ctx, hold.barrelLen || 27.40, hold.barrelOffsetY !== undefined ? hold.barrelOffsetY : 1.10, 14, false);
@@ -1095,11 +1142,12 @@ export function drawHeldWeapon(ctx, p) {
       ctx.fillStyle = '#94a3b8';
       ctx.fillRect(-2.5, -2.5, 15.5, 3.2);
 
+      // Bębenek z odchyleniem
       ctx.fillStyle = '#64748b';
-      ctx.fillRect(1.5, -3.2, 5.5, 4.8);
+      ctx.fillRect(1.5 + cylSwing * 1.5, -3.2 + cylSwing * 3.5, 5.5, 4.8);
       ctx.fillStyle = '#334155';
-      ctx.fillRect(2.5, -2.2, 3.5, 1.2);
-      ctx.fillRect(2.5, -0.2, 3.5, 1.2);
+      ctx.fillRect(2.5 + cylSwing * 1.5, -2.2 + cylSwing * 3.5, 3.5, 1.2);
+      ctx.fillRect(2.5 + cylSwing * 1.5, -0.2 + cylSwing * 3.5, 3.5, 1.2);
 
       ctx.fillStyle = '#cbd5e1';
       ctx.fillRect(7.0, -2.4, 9.5, 2.6);

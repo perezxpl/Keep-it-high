@@ -54,6 +54,17 @@ export const CASING_CONFIGS = {
     bounces: 3,
     type: 'GLOCK'
   },
+  REVOLVER: {
+    width: 4.8,
+    height: 2.2,
+    color: '#F59E0B',    // lśniący mosiądz .44 Magnum
+    rimColor: '#D97706',  // wystająca kryza (rim)
+    hasRim: true,        // amunicja rewolwerowa z kryzą
+    speedMin: 50,
+    speedMax: 130,       // łuski wypadają z bębenka pod wpływem wyrzutnika
+    bounces: 3,
+    type: 'REVOLVER'
+  },
   DEFAULT: {
     width: 4,
     height: 2,
@@ -253,9 +264,10 @@ export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstacle
 export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 1, inheritVx = 0, inheritVy = 0) {
   const normType = String(weaponType || 'AK47').toUpperCase();
   const cfg = CASING_CONFIGS[normType] ||
+    (normType.includes('REVOLVER') ? CASING_CONFIGS.REVOLVER :
     (normType.includes('GLOCK') ? CASING_CONFIGS.GLOCK :
     (normType.includes('SHOTGUN') ? CASING_CONFIGS.SHOTGUN :
-    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47)));
+    (normType.includes('SNIPER') ? CASING_CONFIGS.SNIPER : CASING_CONFIGS.AK47))));
 
   // Kąt wyrzutu: w tył i do góry względem kierunku celowania (aimAngle + Math.PI + losowy rozrzut +/- 0.3 rad)
   const upwardTilt = (facing >= 0 ? 0.42 : -0.42);
@@ -301,6 +313,50 @@ export function spawnBulletCasing(x, y, aimAngle, weaponType = 'AK47', facing = 
   }
   bulletCasings.push(casing);
   return casing;
+}
+
+/**
+ * Wyrzut łusek z bębenka rewolweru podczas przeładowania (uderzenie w pręt wyrzutnika)
+ */
+export function spawnRevolverEjectCasings(x, y, count = 6, facing = 1, inheritVx = 0, inheritVy = 0) {
+  const cfg = CASING_CONFIGS.REVOLVER;
+  const numCasings = Math.max(1, Math.min(6, count));
+
+  for (let k = 0; k < numCasings; k++) {
+    const speed = cfg.speedMin + Math.random() * (cfg.speedMax - cfg.speedMin);
+    const spreadAngle = (Math.random() - 0.5) * 0.45;
+    // Łuski wypadają z bębenka w dół i lekko w tył względem kierunku patrzenia
+    const ejectAngle = Math.PI * 0.5 - (facing >= 0 ? 0.42 : -0.42) + spreadAngle;
+
+    const vx = Math.cos(ejectAngle) * speed + inheritVx * 12;
+    const vy = Math.sin(ejectAngle) * speed + inheritVy * 12;
+
+    const casing = new BulletCasing({
+      x: x + (Math.random() - 0.5) * 5,
+      y: y + (Math.random() - 0.5) * 4,
+      vx,
+      vy,
+      angle: (Math.random() - 0.5) * Math.PI,
+      vRot: (Math.random() - 0.5) * 22,
+      width: cfg.width,
+      height: cfg.height,
+      color: cfg.color,
+      bounces: 0,
+      maxBounces: cfg.bounces,
+      isGrounded: false,
+      life: 2.8 + Math.random() * 0.5,
+      alpha: 1.0,
+      type: 'REVOLVER',
+      hasRim: true,
+      rimColor: cfg.rimColor,
+      groundTimer: 1.5 + Math.random() * 0.6
+    });
+
+    if (bulletCasings.length > 50) {
+      bulletCasings.shift();
+    }
+    bulletCasings.push(casing);
+  }
 }
 
 /**
@@ -404,9 +460,13 @@ export function drawBulletCasing(ctx, casing) {
     ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width, casing.height);
 
     // Shotgun: większy czerwony kartusz ze złotą dupką
-    if (casing.type === 'SHOTGUN' || casing.hasRim) {
+    if (casing.type === 'SHOTGUN') {
       ctx.fillStyle = casing.rimColor || '#EAB308';
       ctx.fillRect(-casing.width / 2, -casing.height / 2, casing.width * 0.35, casing.height);
+    } else if (casing.hasRim) {
+      // Amunicja rewolwerowa .44 Magnum z wystającą mosiężną kryzą
+      ctx.fillStyle = casing.rimColor || '#D97706';
+      ctx.fillRect(-casing.width / 2, -casing.height * 0.58, casing.width * 0.22, casing.height * 1.16);
     }
   }
 
