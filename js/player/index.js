@@ -245,7 +245,7 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   }
 
-  const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming) || (player.meleeState));
+  const isShootingStance = (!player.isHolstered) && ((player.isShooting) || (player.shootPoseTimer > 0) || (player.shootCooldown > 0) || (player.muzzleFlashTimer > 0) || (player.isAiming) || (player.meleeState) || (player.isReloading));
   const targetWeight = isShootingStance ? 1.0 : 0.0;
   const weightRate = (targetWeight > (player.shootPoseWeight || 0)) ? 0.32 : 0.14;
   player.shootPoseWeight = (typeof player.shootPoseWeight === 'number')

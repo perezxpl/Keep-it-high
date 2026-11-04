@@ -808,36 +808,44 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = axeHandX + axePalmOffsetX * charFacing;
     shoulderPivotY = axeHandY + axePalmOffsetY;
   } else if (isTwoHandedHandgun) {
-    // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
-    const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
-    const headBobY = (p.headBob || 0) * 0.35;
-    const crouchDropY = isCrouch ? 4.0 : 0;
-    const eyeWorldX = hipX + (30.5 * Math.sin(torsoTilt) + 2.7 * charFacing * Math.cos(torsoTilt));
-    const eyeWorldY = hipY - (30.5 * Math.cos(torsoTilt) - 2.7 * charFacing * Math.sin(torsoTilt)) - 2.1 + headBobY + crouchDropY;
+    if (p.isReloading) {
+      // W trakcie przeładowania pistoletu / rewolweru broń trzymana jest w strefie roboczej klatki piersiowej (Workspace Retention)
+      const crouchDropY = isCrouch ? 3.0 : 0;
+      shoulderPivotX = rightShoulderX + 11.5 * charFacing;
+      shoulderPivotY = rightShoulderY + 6.5 + crouchDropY;
+      shoulderAimAngle = (weapon.id === 'REVOLVER' ? -0.22 : -0.15);
+    } else {
+      // Postawa oburęczna z w pełni wyprostowanymi ramionami na wysokości oczu (Modern Isosceles Eye-Level Extension)
+      const torsoTilt = p.pose?.torsoTilt || p.torsoTilt || 0;
+      const headBobY = (p.headBob || 0) * 0.35;
+      const crouchDropY = isCrouch ? 4.0 : 0;
+      const eyeWorldX = hipX + (30.5 * Math.sin(torsoTilt) + 2.7 * charFacing * Math.cos(torsoTilt));
+      const eyeWorldY = hipY - (30.5 * Math.cos(torsoTilt) - 2.7 * charFacing * Math.sin(torsoTilt)) - 2.1 + headBobY + crouchDropY;
 
-    let rawPistolAngle = Math.atan2(aimY - eyeWorldY, (aimX - eyeWorldX) * charFacing);
-    if (rawPistolAngle < -Math.PI / 2) rawPistolAngle = Math.max(-1.66, rawPistolAngle);
-    else if (rawPistolAngle > Math.PI / 2 + 0.35) rawPistolAngle = Math.min(Math.PI / 2 + 0.35, rawPistolAngle);
-    shoulderAimAngle = rawPistolAngle - muzzleRise;
+      let rawPistolAngle = Math.atan2(aimY - eyeWorldY, (aimX - eyeWorldX) * charFacing);
+      if (rawPistolAngle < -Math.PI / 2) rawPistolAngle = Math.max(-1.66, rawPistolAngle);
+      else if (rawPistolAngle > Math.PI / 2 + 0.35) rawPistolAngle = Math.min(Math.PI / 2 + 0.35, rawPistolAngle);
+      shoulderAimAngle = rawPistolAngle - muzzleRise;
 
-    const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
-    const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5;
-    const totalArmReach = (p.upperArmLen || 14) + (p.forearmLen || 13);
+      const chestCenterX = (rightShoulderX + leftShoulderX) * 0.5;
+      const chestCenterY = (rightShoulderY + leftShoulderY) * 0.5;
+      const totalArmReach = (p.upperArmLen || 14) + (p.forearmLen || 13);
 
-    // Wyprostowane ramiona celujące w linii wzroku na wysokość oczu
-    const targetReach = totalArmReach * 0.96;
-    const Dx = (eyeWorldX - chestCenterX) * charFacing;
-    const Dy = eyeWorldY - chestCenterY;
-    const c = Dx * Dx + Dy * Dy - targetReach * targetReach;
-    const b = Dx * Math.cos(shoulderAimAngle) + Dy * Math.sin(shoulderAimAngle);
-    const discr = Math.max(0, b * b - c);
-    const extT = -b + Math.sqrt(discr);
+      // Wyprostowane ramiona celujące w linii wzroku na wysokość oczu
+      const targetReach = totalArmReach * 0.96;
+      const Dx = (eyeWorldX - chestCenterX) * charFacing;
+      const Dy = eyeWorldY - chestCenterY;
+      const c = Dx * Dx + Dy * Dy - targetReach * targetReach;
+      const b = Dx * Math.cos(shoulderAimAngle) + Dy * Math.sin(shoulderAimAngle);
+      const discr = Math.max(0, b * b - c);
+      const extT = -b + Math.sqrt(discr);
 
-    const aimHandX = eyeWorldX + Math.cos(shoulderAimAngle) * extT * charFacing;
-    const aimHandY = eyeWorldY + Math.sin(shoulderAimAngle) * extT;
+      const aimHandX = eyeWorldX + Math.cos(shoulderAimAngle) * extT * charFacing;
+      const aimHandY = eyeWorldY + Math.sin(shoulderAimAngle) * extT;
 
-    shoulderPivotX = aimHandX;
-    shoulderPivotY = aimHandY;
+      shoulderPivotX = aimHandX;
+      shoulderPivotY = aimHandY;
+    }
   } else {
     let rawShoulderAngle = Math.atan2(aimY - shoulderPocketY, (aimX - shoulderPocketX) * charFacing);
     if (rawShoulderAngle < -Math.PI / 2) rawShoulderAngle = Math.max(-1.66, rawShoulderAngle);
@@ -848,16 +856,18 @@ export function getWeaponHoldTransform(p) {
   }
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
-  const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * w;
-  const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * w;
+  const isReloading = !!(p.isReloading || p.currentWeaponAmmo?.isReloading);
+  const effectiveW = isReloading ? 1.0 : w;
+  const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * effectiveW;
+  const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * effectiveW;
   const pumpShift = isShotgun ? (p.pumpOffset || 0) : 0;
   // Wyprostowana ręka taktyczna z naturalnym, sprężystym ugięciem łokcia
   const aimForeGripX = (typeof gripCfg.foreGripX === 'number') ? gripCfg.foreGripX : 0;
   const walkForeGripX = (typeof gripCfg.walkForeGripX === 'number') ? gripCfg.walkForeGripX : aimForeGripX;
-  const foreGripDistX = lerp(walkForeGripX, aimForeGripX, w) + pumpShift;
+  const foreGripDistX = lerp(walkForeGripX, aimForeGripX, effectiveW) + pumpShift;
   const aimForeGripY = (typeof gripCfg.foreGripY === 'number') ? gripCfg.foreGripY : 0;
   const walkForeGripY = (typeof gripCfg.walkForeGripY === 'number') ? gripCfg.walkForeGripY : aimForeGripY;
-  const foreGripDistY = lerp(walkForeGripY, aimForeGripY, w);
+  const foreGripDistY = lerp(walkForeGripY, aimForeGripY, effectiveW);
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
   const u = p.isReloading
@@ -1001,35 +1011,35 @@ export function getWeaponHoldTransform(p) {
       // MAGNUM .44 REVOLVER RELOAD ANIMATION (CYLINDER SWING & SPEEDLOADER)
       // -------------------------------------------------------------
       if (u < 0.20) {
-        // Faza 1: Odchylenie bębenka w lewo (Swing-out) i uniesienie lufy ku górze
+        // Faza 1: Odchylenie bębenka w lewo (Swing-out) - lewa ręka sięga do przodu bębenka
         const t = u / 0.20;
-        leftHandLocalX = lerp(foreGripDistX, 5.5, ease(t));
-        leftHandLocalY = lerp(foreGripDistY, 3.5, ease(t));
+        leftHandLocalX = lerp(foreGripDistX, 10.5, ease(t));
+        leftHandLocalY = lerp(foreGripDistY, 2.5, ease(t));
         cylinderSwing = ease(t);
         reloadAngleOffset = -0.32 * ease(t);
         reloadPivotShiftY = 1.4 * ease(t);
       } else if (u < 0.38) {
-        // Faza 2: Wciśnięcie pręta wyrzutnika (Ejector Rod Strike) - wyrzut 6 łusek z komór bębenka
+        // Faza 2: Wciśnięcie pręta wyrzutnika (Ejector Rod Strike) - pchnięcie w tył, wylatują łuski
         const t = (u - 0.20) / 0.18;
         cylinderSwing = 1.0;
         const strike = Math.sin(t * Math.PI);
-        // Lewa dłoń energicznie uderza w pręt wyrzutnika z przodu bębenka
-        leftHandLocalX = 5.5 - strike * 4.2;
-        leftHandLocalY = 3.5 + strike * 1.2;
+        // Lewa dłoń energicznie uderza w pręt wyrzutnika (od przodu w stronę bębenka)
+        leftHandLocalX = 10.5 - strike * 4.8;
+        leftHandLocalY = 2.5 + strike * 0.8;
         reloadAngleOffset = -0.36 - strike * 0.08;
       } else if (u < 0.58) {
-        // Faza 3: Sięgnięcie lewą ręką do ładownicy po szybkoładowacz (Speedloader .44)
+        // Faza 3: Sięgnięcie lewą ręką do ładownicy przy pasie po speedloader .44
         const t = (u - 0.38) / 0.20;
         cylinderSwing = 1.0;
-        leftHandLocalX = lerp(5.5, -2.5, ease(t));
-        leftHandLocalY = lerp(3.5, 14.5, ease(t));
-        reloadAngleOffset = -0.28;
+        leftHandLocalX = lerp(6.0, -3.5, ease(t));
+        leftHandLocalY = lerp(3.0, 15.5, ease(t));
+        reloadAngleOffset = -0.26;
       } else if (u < 0.78) {
-        // Faza 4: Naprowadzenie speedloadera na komory bębenka i wprowadzenie 6 nabojów
+        // Faza 4: Wyciągnięcie szybkoładowacza z ładownicy i wprowadzenie 6 nabojów do komór
         const t = (u - 0.58) / 0.20;
         cylinderSwing = 1.0;
-        leftHandLocalX = lerp(-2.5, 5.0, ease(t));
-        leftHandLocalY = lerp(14.5, 3.8, ease(t));
+        leftHandLocalX = lerp(-3.5, 5.0, ease(t));
+        leftHandLocalY = lerp(15.5, 3.2, ease(t));
         reloadAngleOffset = -0.22;
         heldMag = { type: 'REVOLVER_SPEEDLOADER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.18 };
         if (t > 0.82) {
@@ -1038,11 +1048,11 @@ export function getWeaponHoldTransform(p) {
           reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
         }
       } else if (u < 0.90) {
-        // Faza 5: Energiczne zatrzaśnięcie bębenka (Cylinder Snap-in) ruchem nadgarstka
+        // Faza 5: Energiczne zatrzaśnięcie bębenka (Cylinder Snap-in) ruchem lewej dłoni / nadgarstka
         const t = (u - 0.78) / 0.12;
         cylinderSwing = Math.max(0, 1.0 - ease(Math.min(1.0, t * 1.3)));
         leftHandLocalX = lerp(5.0, foreGripDistX, ease(t));
-        leftHandLocalY = lerp(3.8, foreGripDistY + 1.5, ease(t));
+        leftHandLocalY = lerp(3.2, foreGripDistY, ease(t));
         if (t > 0.40) {
           // Dynamiczne drgnięcie rewolweru przy zatrzaśnięciu zatrzasku
           const snap = Math.sin((t - 0.40) / 0.60 * Math.PI);
@@ -1052,9 +1062,8 @@ export function getWeaponHoldTransform(p) {
       } else {
         // Faza 6: Powrót dłoni do stabilnego chwytu bojowego
         cylinderSwing = 0;
-        const t = (u - 0.90) / 0.10;
-        leftHandLocalX = lerp(foreGripDistX, foreGripDistX, ease(t));
-        leftHandLocalY = lerp(foreGripDistY + 1.5, foreGripDistY, ease(t));
+        leftHandLocalX = foreGripDistX;
+        leftHandLocalY = foreGripDistY;
       }
     } else if (isPistol) {
       // -------------------------------------------------------------
@@ -1217,7 +1226,7 @@ export function getWeaponHoldTransform(p) {
     }
   }
 
-  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, w) + reloadAngleOffset;
+  const blendedAngle = lerpAngle(looseAimAngle, shoulderAimAngle, effectiveW) + reloadAngleOffset;
   const kickback = p.weaponKickback || 0;
 
   let finalPivotX = rawPivotX - Math.cos(blendedAngle) * kickback * charFacing + reloadPivotShiftX;
@@ -1452,7 +1461,7 @@ export function getWeaponHoldTransform(p) {
 
   const aimAngleOffset = (typeof gripCfg.angleOffset === 'number') ? gripCfg.angleOffset : 0;
   const walkAngleOffset = (typeof gripCfg.walkAngleOffset === 'number') ? gripCfg.walkAngleOffset : aimAngleOffset;
-  const effectiveAngleOffset = lerp(walkAngleOffset, aimAngleOffset, w);
+  const effectiveAngleOffset = lerp(walkAngleOffset, aimAngleOffset, effectiveW);
   let proneAimAngle = blendedAngle + meleeAngleOffset + effectiveAngleOffset;
 
   if (p.isProne) {
@@ -1484,10 +1493,10 @@ export function getWeaponHoldTransform(p) {
 
   const aimRearGripX = (typeof gripCfg.rearGripX === 'number') ? gripCfg.rearGripX : 0;
   const walkRearGripX = (typeof gripCfg.walkRearGripX === 'number') ? gripCfg.walkRearGripX : aimRearGripX;
-  const rearGripDistX = lerp(walkRearGripX, aimRearGripX, w);
+  const rearGripDistX = lerp(walkRearGripX, aimRearGripX, effectiveW);
   const aimRearGripY = (typeof gripCfg.rearGripY === 'number') ? gripCfg.rearGripY : 0;
   const walkRearGripY = (typeof gripCfg.walkRearGripY === 'number') ? gripCfg.walkRearGripY : aimRearGripY;
-  const rearGripDistY = lerp(walkRearGripY, aimRearGripY, w);
+  const rearGripDistY = lerp(walkRearGripY, aimRearGripY, effectiveW);
 
   let rightHandWorldX = finalPivotX + (Math.cos(proneAimAngle) * rearGripDistX - Math.sin(proneAimAngle) * rearGripDistY) * charFacing;
   let rightHandWorldY = finalPivotY + (Math.sin(proneAimAngle) * rearGripDistX + Math.cos(proneAimAngle) * rearGripDistY);
@@ -1522,8 +1531,9 @@ export function getWeaponHoldTransform(p) {
     if (isPistol) {
       const gripTargetX = finalPivotX + (Math.cos(proneAimAngle) * leftHandLocalX - Math.sin(proneAimAngle) * leftHandLocalY) * charFacing;
       const gripTargetY = finalPivotY + (Math.sin(proneAimAngle) * leftHandLocalX + Math.cos(proneAimAngle) * leftHandLocalY);
-      leftHandWorldX = lerp(trailX, gripTargetX, w);
-      leftHandWorldY = lerp(trailY, gripTargetY, w);
+      const pistolGripBlend = isReloading ? 1.0 : w;
+      leftHandWorldX = lerp(trailX, gripTargetX, pistolGripBlend);
+      leftHandWorldY = lerp(trailY, gripTargetY, pistolGripBlend);
     } else {
       leftHandWorldX = trailX + (leftHandLocalX || 0) * charFacing;
       leftHandWorldY = trailY + (leftHandLocalY || 0);
@@ -1577,7 +1587,7 @@ export function getWeaponHoldTransform(p) {
     boltOffset,
     cylinderSwing: cylinderSwing || 0,
     isTwoHandedHandgun: !!isTwoHandedHandgun,
-    straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40)
+    straightArms: !!(isTwoHandedHandgun && !p.isProne && w > 0.40 && !isReloading)
   };
 }
 
