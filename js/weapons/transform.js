@@ -1084,26 +1084,27 @@ export function getWeaponHoldTransform(p) {
       // -------------------------------------------------------------
       // SAWED-OFF 12G DOUBLE-BARREL RELOAD ANIMATION (BREAK-ACTION & 2 SHELLS)
       // -------------------------------------------------------------
+      const maxBreakAngle = 1.25; // Pełne, szerokie i dynamiczne złamanie baskili (~72 stopnie)
       if (u < 0.22) {
-        // Faza 1: Odchylenie / złamanie luf w dół (Break-Action Hinge Open)
+        // Faza 1: Odchylenie / głębokie złamanie luf w dół (Break-Action Hinge Open)
         const t = u / 0.22;
         leftHandLocalX = lerp(foreGripDistX, 4.0, ease(t));
         leftHandLocalY = lerp(foreGripDistY, -0.5, ease(t));
-        breakAngle = ease(t) * 0.58;
+        breakAngle = ease(t) * maxBreakAngle;
         reloadAngleOffset = -0.22 * ease(t);
-        reloadPivotShiftY = 1.0 * ease(t);
+        reloadPivotShiftY = 1.2 * ease(t);
       } else if (u < 0.38) {
         // Faza 2: Automatyczny wyrzut 2 pustych łusek ze sprężynowego wyrzutnika
         const t = (u - 0.22) / 0.16;
-        breakAngle = 0.58;
+        breakAngle = maxBreakAngle;
         const snap = Math.sin(t * Math.PI);
         leftHandLocalX = lerp(4.0, -4.0, ease(t));
         leftHandLocalY = lerp(-0.5, 16.0, ease(t));
-        reloadAngleOffset = -0.24 - snap * 0.06;
+        reloadAngleOffset = -0.24 - snap * 0.08;
       } else if (u < 0.58) {
         // Faza 3: Sięgnięcie lewą ręką do ładownicy przy pasie po 2 naboje 12G
         const t = (u - 0.38) / 0.20;
-        breakAngle = 0.58;
+        breakAngle = maxBreakAngle;
         leftHandLocalX = lerp(-4.0, -4.5, ease(t));
         leftHandLocalY = lerp(16.0, 16.5, ease(t));
         reloadAngleOffset = -0.20;
@@ -1113,11 +1114,11 @@ export function getWeaponHoldTransform(p) {
       } else if (u < 0.78) {
         // Faza 4: Uniesienie 2 czerwonych nabojów i wsunięcie do obu komór
         const t = (u - 0.58) / 0.20;
-        breakAngle = 0.58;
-        leftHandLocalX = lerp(-4.5, 3.8, ease(t));
-        leftHandLocalY = lerp(16.5, 1.2, ease(t));
+        breakAngle = maxBreakAngle;
+        leftHandLocalX = lerp(-4.5, 7.5, ease(t));
+        leftHandLocalY = lerp(16.5, 5.0, ease(t));
         reloadAngleOffset = -0.16;
-        heldMag = { type: 'SAWED_OFF_SHELLS', x: leftHandLocalX, y: leftHandLocalY, angle: -0.22 + ease(t) * 0.18 };
+        heldMag = { type: 'SAWED_OFF_SHELLS', x: leftHandLocalX, y: leftHandLocalY, angle: -0.22 + ease(t) * 0.45 };
         if (t > 0.85) {
           const snapT = (t - 0.85) / 0.15;
           reloadAngleOffset -= Math.sin(snapT * Math.PI) * 0.08;
@@ -1125,13 +1126,13 @@ export function getWeaponHoldTransform(p) {
       } else if (u < 0.90) {
         // Faza 5: Zatrzaśnięcie luf obrzyna (Barrels Snap Shut) ruchem lewej dłoni
         const t = (u - 0.78) / 0.12;
-        breakAngle = Math.max(0, 0.58 * (1.0 - ease(Math.min(1.0, t * 1.4))));
-        leftHandLocalX = lerp(3.8, foreGripDistX, ease(t));
-        leftHandLocalY = lerp(1.2, foreGripDistY, ease(t));
+        breakAngle = Math.max(0, maxBreakAngle * (1.0 - ease(Math.min(1.0, t * 1.3))));
+        leftHandLocalX = lerp(7.5, foreGripDistX, ease(t));
+        leftHandLocalY = lerp(5.0, foreGripDistY, ease(t));
         if (t > 0.40) {
           const snap = Math.sin((t - 0.40) / 0.60 * Math.PI);
-          reloadAngleOffset += snap * 0.12;
-          reloadPivotShiftY -= snap * 1.2;
+          reloadAngleOffset += snap * 0.14;
+          reloadPivotShiftY -= snap * 1.4;
         }
       } else {
         // Faza 6: Powrót do stabilnego chwytu bojowego na łożu

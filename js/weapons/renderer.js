@@ -1187,7 +1187,7 @@ export function drawHeldWeapon(ctx, p) {
 
       // B. Skrócone podwójne lufy 12 Gauge z czółenkiem
       const isReloadBreak = p.isReloading && (p.reloadProgress > 0.2 && p.reloadProgress < 0.85);
-      const breakAngle = (typeof hold.breakAngle === 'number') ? hold.breakAngle : (isReloadBreak ? 0.45 : 0.0);
+      const breakAngle = (typeof hold.breakAngle === 'number') ? hold.breakAngle : (isReloadBreak ? 1.25 : 0.0);
 
       if (breakAngle > 0.01) {
         ctx.save();
