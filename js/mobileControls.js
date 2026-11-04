@@ -422,9 +422,33 @@ export function checkRightStickFlickOrTap(rStick, touchDuration, movedDist) {
 }
 
 /**
+ * Przywraca poprzednio wybraną broń palną (np. po ataku bronią białą niemiotaną)
+ *
+ * @param {Object} player - Obiekt gracza
+ * @returns {Object|null}
+ */
+export function restorePreviousFirearm(player) {
+  if (!player || player.isDead) return null;
+  const prev = player._previousFirearm;
+  let targetWeapon = prev;
+  if (!targetWeapon || targetWeapon.isMelee || targetWeapon.id === 'GRENADE') {
+    const curSlot = (player.loadout?.pocket1?.activeSlotIndex === 1) ? 1 : 0;
+    const wepId = player.loadout?.pocket1?.slots?.[curSlot] || 'AK47';
+    targetWeapon = WEAPONS[wepId] || WEAPONS.AK47;
+  }
+  player.currentWeapon = targetWeapon;
+  player.isHolstered = false;
+  player.meleeState = null;
+  if (rightStick) {
+    rightStick.armedMode = 'FIREARM';
+  }
+  return targetWeapon;
+}
+
+/**
  * Obsługa wciśnięcia dedykowanego przycisku broni białej na ekranie dotykowym:
- * - Kliknięcie: daje do ręki broń białą (jeśli trzymano inną broń lub schowano)
- * - Kolejne użycie, gdy broń jest w ręku: wykonuje atak wręcz (Overhead Chop / Cleave / Slash)
+ * - Kliknięcie: daje do ręki broń białą i natychmiast wykonuje nią atak
+ * - Kolejne użycie, gdy broń jest w ręku: wykonuje kolejny cios combo / atak wręcz
  *
  * @param {Object} player - Obiekt gracza
  * @returns {boolean}
@@ -435,7 +459,15 @@ export function handleMeleeButtonPress(player) {
   const isHoldingMelee = !player.isHolstered && (player.currentWeapon?.isMelee || player.currentWeapon?.id === 'AXE' || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE');
 
   if (!isHoldingMelee) {
-    // 1. Pierwsze kliknięcie daje broń białą do ręki
+    // 1. Zapisujemy poprzednio wybraną broń palną, by móc do niej natychmiast powrócić po wychyleniu drążka
+    if (player.currentWeapon && !player.currentWeapon.isMelee && player.currentWeapon.id !== 'GRENADE') {
+      player._previousFirearm = player.currentWeapon;
+    } else if (!player._previousFirearm) {
+      const curSlot = (player.loadout?.pocket1?.activeSlotIndex === 1) ? 1 : 0;
+      const wepId = player.loadout?.pocket1?.slots?.[curSlot] || 'AK47';
+      player._previousFirearm = WEAPONS[wepId] || WEAPONS.AK47;
+    }
+
     const meleeId = player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE';
     const targetWeapon = WEAPONS[meleeId] || WEAPONS.AXE || WEAPONS.KNIFE;
 
@@ -450,8 +482,10 @@ export function handleMeleeButtonPress(player) {
     if (rightStick) {
       rightStick.armedMode = 'FIREARM';
     }
-    // Pierwsze kliknięcie tylko wyciąga broń do ręki – wymaga zwolnienia i kolejnego kliknięcia do ataku
-    player.meleeNeedRelease = true;
+
+    // Natychmiastowy atak wręcz przy wciśnięciu przycisku!
+    player.meleeNeedRelease = false;
+    startMeleeAttack(player, targetWeapon);
     return true;
   }
 

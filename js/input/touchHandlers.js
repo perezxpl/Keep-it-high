@@ -39,7 +39,8 @@ import {
   updateButtonLayout,
   updateMobileControlStates,
   handleDynamicActionButtonPress,
-  handleMeleeButtonPress
+  handleMeleeButtonPress,
+  restorePreviousFirearm
 } from '../mobileControls.js';
 import { updateDevTouchButtonUI } from '../dev/devPanel.js';
 import { screenToWorld } from '../camera.js';
@@ -413,6 +414,13 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.axisX = (dx / sDist) * factor;
           rightStick.axisY = (dy / sDist) * factor;
           rightStick.power = factor;
+
+          // Jeśli gracz trzyma niemiotaną broń białą (nóż, maczeta), wychylenie drążka
+          // natychmiast przywraca poprzednią broń palną, by od razu nią celować i strzelać
+          if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
+            restorePreviousFirearm(player);
+          }
+
           const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
           const aimDist = isSniper ? (250 + factor * 750) : (180 + factor * 130);
           player.aimOffsetX = rightStick.axisX * aimDist;
@@ -431,9 +439,12 @@ canvas.addEventListener('touchstart', (e) => {
                 const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
                 prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
               }
-            } else if (player.currentWeapon?.isMelee) {
-              // Broń biała bez funkcji rzutu (np. nóż, maczeta) – drążek celuje kierunek, ale nie strzela
-              rightStick.isShooting = false;
+            } else if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
+              restorePreviousFirearm(player);
+              if (factor > 0.15 && player.isHolstered) {
+                player.isHolstered = false;
+              }
+              rightStick.isShooting = (factor >= 0.90);
             } else {
               if (factor > 0.15 && player.isHolstered) {
                 player.isHolstered = false;
@@ -510,6 +521,13 @@ canvas.addEventListener('touchmove', (e) => {
         const factor = Math.min(1.0, (sDist - deadzone) / (maxR - deadzone));
         leftStick.axisX = (dx / sDist) * factor;
         leftStick.axisY = (dy / sDist) * factor;
+
+        // Jeśli gracz trzyma niemiotaną broń białą po ataku, ruch lewym drążkiem również automatycznie przywraca broń palną
+        if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
+          if (!pockets.melee?.active && (!player.meleeState || player.meleeState.phase === 'RECOVERY')) {
+            restorePreviousFirearm(player);
+          }
+        }
       } else {
         leftStick.axisX = 0;
         leftStick.axisY = 0;
@@ -690,6 +708,12 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = ny * power;
         rightStick.power = power;
 
+        // Jeśli gracz trzyma niemiotaną broń białą (nóż, maczeta), ruch drążka celowania/strzału
+        // natychmiast przywraca broń palną, by od razu nią celować i strzelać
+        if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
+          restorePreviousFirearm(player);
+        }
+
         const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
         const aimDist = isSniper ? (250 + power * 750) : (160 + power * 130);
         player.aimOffsetX = nx * aimDist;
@@ -714,9 +738,12 @@ canvas.addEventListener('touchmove', (e) => {
                 player.throwAnim.active = false;
               }
             }
-          } else if (player.currentWeapon?.isMelee) {
-            // Broń biała bez funkcji rzutu (np. nóż, maczeta) – drążek celuje kierunek, ale nie strzela
-            rightStick.isShooting = false;
+          } else if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
+            restorePreviousFirearm(player);
+            if (power > 0.15 && player.isHolstered) {
+              player.isHolstered = false;
+            }
+            rightStick.isShooting = (power >= 0.90);
           } else {
             if (power > 0.15 && player.isHolstered) {
               player.isHolstered = false;

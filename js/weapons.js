@@ -102,7 +102,10 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
   if (weapon.id === 'AXE' && shooter.axeThrown) return;
   const baseCfg = MELEE_CONFIGS[weapon.id] || MELEE_CONFIGS.KNIFE;
   const facing = (shooter && typeof shooter.facing === 'number') ? shooter.facing : 1;
-  const aimAngle = overrideAngle !== undefined ? overrideAngle : (typeof shooter.aimAngle === 'number' ? shooter.aimAngle : 0);
+  const isNonThrowableMelee = (weapon.id === 'KNIFE' || weapon.id === 'MACHETE');
+  const aimAngle = isNonThrowableMelee
+    ? 0 // Broń biała niemiotana ma stałe celowanie przed siebie w osi poziomej
+    : (overrideAngle !== undefined ? overrideAngle : (typeof shooter.aimAngle === 'number' ? shooter.aimAngle : 0));
 
   let comboStep = 0;
   let cfg = baseCfg;

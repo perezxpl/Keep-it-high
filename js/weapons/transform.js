@@ -672,12 +672,14 @@ export function getWeaponHoldTransform(p) {
   if (isKnife) {
     handTargetX = rightShoulderX + knifeEffDx * charFacing;
     handTargetY = rightShoulderY + knifeEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
+    // Broń biała niemiotana (nóż) ma stałe celowanie przed siebie w osi poziomej
+    directAngle = 0;
     looseAimAngle = knifeEffAngle;
   } else if (isMachete) {
     handTargetX = rightShoulderX + macheteEffDx * charFacing;
     handTargetY = rightShoulderY + macheteEffDy + crouchDropY;
-    directAngle = Math.atan2(aimY - handTargetY, (aimX - handTargetX) * charFacing);
+    // Broń biała niemiotana (maczeta) ma stałe celowanie przed siebie w osi poziomej
+    directAngle = 0;
     looseAimAngle = macheteEffAngle;
   } else if (isAxe) {
     handTargetX = rightShoulderX + axeEffDx * charFacing;

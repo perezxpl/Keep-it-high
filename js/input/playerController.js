@@ -12,7 +12,7 @@ import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapon
 import { updateStrikerBootsInput } from '../classes/striker.js';
 import { updateEnforcerBeltInput } from '../classes/enforcer.js';
 import { networkState, sendShootEvent } from '../network.js';
-import { leftStick, rightStick, pockets, btnCluster, updateMobileControlStates } from '../mobileControls.js';
+import { leftStick, rightStick, pockets, btnCluster, updateMobileControlStates, restorePreviousFirearm } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
 import { pollGamepadInput, gamepadState } from './gamepad.js';
@@ -128,7 +128,24 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
   window.activeArenaId = activeArenaId;
-  const curWep = player.currentWeapon || WEAPONS.AK47;
+
+  // Jeśli gracz próbuje strzelać (drążkiem dotykowym, myszką na PC lub padem), a w dłoniach ma niemiotaną broń białą (nóż/maczeta):
+  // natychmiast przywróć poprzednią broń palną i nią strzelaj
+  let activeWep = player.currentWeapon || WEAPONS.AK47;
+  const isTriggeringShootIntent = (mouseState.lmbDown || (rightStick.active && rightStick.power >= 0.85) || (gamepadState && gamepadState.connected && gamepadState.r2));
+  if (isTriggeringShootIntent && activeWep?.isMelee && activeWep.id !== 'AXE' && !(pockets.melee && pockets.melee.active)) {
+    activeWep = restorePreviousFirearm(player) || activeWep;
+  }
+  const curWep = activeWep;
+
+  // Broń biała niemiotana (nóż, maczeta) ma stałe celowanie przed siebie w osi poziomej
+  if (curWep?.isMelee && curWep.id !== 'AXE') {
+    player.aimAngle = (player.facing === 1 ? 0 : Math.PI);
+    player.aimOffsetX = (player.facing === 1 ? 160 : -160);
+    player.aimOffsetY = 0;
+    player.isAiming = false;
+  }
+
   const isTouchFiring = rightStick.active && rightStick.isShooting && (rightStick.power >= 0.90) && (rightStick.armedMode === 'FIREARM') && !player.isDead && !player.isHolstered && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   const isGamepadFiring = !!(gamepadState && gamepadState.connected && gamepadState.r2);
   const isHoldingMeleeBtn = !!(pockets.melee && pockets.melee.active && !player.isDead && !player.isHolstered && curWep?.isMelee);
