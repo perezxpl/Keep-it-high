@@ -30,7 +30,10 @@ export function triggerPlayerShoot(p, wep) {
   const muzzle = getMuzzlePosition(p, wep);
   const targetAimX = (typeof p.aimX === 'number' && !isNaN(p.aimX)) ? p.aimX : muzzle.aimX;
   const targetAimY = (typeof p.aimY === 'number' && !isNaN(p.aimY)) ? p.aimY : muzzle.aimY;
-  const shootAngle = Math.atan2(targetAimY - muzzle.muzzleY, targetAimX - muzzle.muzzleX);
+  let shootAngle = Math.atan2(targetAimY - muzzle.muzzleY, targetAimX - muzzle.muzzleX);
+  if (p.isProne && typeof muzzle.barrelAngle === 'number') {
+    shootAngle = muzzle.barrelAngle;
+  }
   p.aimAngle = shootAngle;
   const fired = shootWeapon(p, wep, muzzle.muzzleX, muzzle.muzzleY, shootAngle);
   if (fired) {

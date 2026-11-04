@@ -363,8 +363,9 @@ export function getShooterShoulderPos(shooter) {
   }
   const torsoTilt = shooter.pose?.torsoTilt || shooter.torsoTilt || 0;
 
-  const shoulderBaseX = hipX + (21 * Math.sin(torsoTilt));
-  const shoulderBaseY = hipY - (21 * Math.cos(torsoTilt));
+  const lySh = shooter.isProne ? 19.5 : 21.0;
+  const shoulderBaseX = hipX + (lySh * Math.sin(torsoTilt));
+  const shoulderBaseY = hipY - (lySh * Math.cos(torsoTilt));
 
   const yaw = shooter.yaw || 0;
   const cosYaw = Math.cos(yaw);
@@ -1544,26 +1545,55 @@ export function getWeaponHoldTransform(p) {
     const crawlP = p.crawlPhase || 0;
     const isCrawling = speed > 0.08;
 
-    // 1. Pozycja strzelecka w leżeniu (podparcie na łokciach, kolba w barku, magazynek nad ziemią)
-    const fireAngle = Math.max(-0.56, Math.min(0.16, shoulderAimAngle + reloadAngleOffset + (gripCfg.angleOffset || 0)));
-    const firePivotX = rightShoulderX + Math.cos(fireAngle) * (stockLen * 0.92) * charFacing - Math.cos(fireAngle) * kickback * 0.65 * charFacing + reloadPivotShiftX;
-    const firePivotY = Math.max(floorY - 16.5, Math.min(floorY - 10.5, (floorY - 12.2) + Math.sin(fireAngle) * (stockLen * 0.75) - Math.sin(fireAngle) * kickback * 0.65 + reloadPivotShiftY));
+    // Szeroki i naturalny zakres celowania z podparcia na łokciach w leżeniu
+    // Umożliwia celowanie w górę (do -67.6 st) przy uniesieniu klatki oraz w dół (+24 st)
+    const minProneAngle = -1.18;
+    const maxProneAngle = 0.42;
+    const rawProneAim = shoulderAimAngle + reloadAngleOffset + (gripCfg.angleOffset || 0);
+    const fireAngle = Math.max(minProneAngle, Math.min(maxProneAngle, rawProneAim));
 
-    // 2. Pozycja czołgania z bronią w dłoniach (Tactical Cradle Crawl: broń blisko ziemi, lufa lekko uniesiona, kołysanie w rytm łokci)
+    // 1. Stabilna pozycja strzelecka z podparcia na łokciach (Prone Bipod/Elbow Rest Stance)
+    let firePivotX, firePivotY;
+    if (isTwoHandedHandgun || isPistol || isMelee) {
+      // Pistolety, rewolwery i broń biała: stabilne wysunięcie rąk w przód przed klatkę piersiową
+      const proneForwardReach = (weapon.id === 'GLOCK' || weapon.id === 'REVOLVER') ? 13.5 : (isKnife ? 13.0 : 15.0);
+      firePivotX = rightShoulderX + Math.cos(fireAngle) * proneForwardReach * charFacing - Math.cos(fireAngle) * kickback * 0.5 * charFacing + reloadPivotShiftX;
+      firePivotY = rightShoulderY + Math.sin(fireAngle) * proneForwardReach - Math.sin(fireAngle) * kickback * 0.5 + reloadPivotShiftY;
+    } else {
+      // Broń długa (karabinki, strzelby, snajperka, RPG): kolba oparta stabilnie o dołek strzelecki barku
+      const stockButtX = rightShoulderX + 1.2 * charFacing;
+      const stockButtY = rightShoulderY + 0.5;
+      const effectiveStockLen = Math.max(8.0, stockLen);
+      firePivotX = stockButtX + Math.cos(fireAngle) * effectiveStockLen * charFacing - Math.cos(fireAngle) * kickback * 0.65 * charFacing + reloadPivotShiftX;
+      firePivotY = stockButtY + Math.sin(fireAngle) * effectiveStockLen - Math.sin(fireAngle) * kickback * 0.65 + reloadPivotShiftY;
+    }
+
+    // Bezpieczny prześwit nad podłożem (zamek i dłonie nie wnikają w grunt)
+    firePivotY = Math.min(floorY - 8.5, firePivotY);
+
+    // 2. Pozycja czołgania z bronią (Tactical Cradle Crawl)
     const crawlSwayX = isCrawling ? Math.cos(crawlP) * 2.8 * charFacing : 0;
     const crawlBobY = isCrawling ? Math.abs(Math.sin(crawlP)) * 1.4 : 0;
-    const crawlPitch = isCrawling
-      ? (-0.14 + Math.sin(crawlP) * 0.06 + reloadAngleOffset)
-      : Math.max(-0.52, Math.min(0.14, directAngle * 0.85 + reloadAngleOffset));
+    const crawlPitch = -0.12 + Math.sin(crawlP) * 0.06 + reloadAngleOffset;
+    const cradlePivotX = rightShoulderX + 7.5 * charFacing + crawlSwayX + reloadPivotShiftX;
+    const cradlePivotY = (floorY - 9.5) - crawlBobY + reloadPivotShiftY;
 
-    const cradlePivotX = rightShoulderX + 7.2 * charFacing + crawlSwayX + reloadPivotShiftX;
-    const cradlePivotY = (floorY - 11.2) - crawlBobY + reloadPivotShiftY;
+    if (isCrawling) {
+      // Podczas czołgania broń kołysze się przy ziemi, chyba że gracz aktywnie strzela / celuje
+      const proneFireBlend = Math.min(1.0, w * 1.25);
+      finalPivotX = lerp(cradlePivotX, firePivotX, proneFireBlend);
+      finalPivotY = lerp(cradlePivotY, firePivotY, proneFireBlend);
+      proneAimAngle = lerpAngle(crawlPitch, fireAngle, proneFireBlend);
+    } else {
+      // W spoczynku w leżeniu strzelec zawsze przyjmuje stabilną postawę strzelecką z podparcia na łokciach
+      finalPivotX = firePivotX;
+      finalPivotY = firePivotY;
+      proneAimAngle = fireAngle;
+    }
 
-    // Płynny blend między czołganiem z bronią a stabilnym celowaniem/strzelaniem z podparcia na łokciach
-    const proneFireBlend = isCrawling ? Math.min(1.0, w * 1.15) : Math.max(0.65, w);
-    finalPivotX = lerp(cradlePivotX, firePivotX, proneFireBlend);
-    finalPivotY = lerp(cradlePivotY, firePivotY, proneFireBlend);
-    proneAimAngle = lerpAngle(crawlPitch, fireAngle, proneFireBlend);
+    if (!isReloading && !isTwoHandedHandgun && !isPistol && !isMelee) {
+      leftHandLocalX = Math.min(12.0, leftHandLocalX);
+    }
   }
 
   const aimRearGripX = (typeof gripCfg.rearGripX === 'number') ? gripCfg.rearGripX : 0;

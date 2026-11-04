@@ -807,9 +807,12 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const sinTWep = Math.sin(tiltWep);
     const shTiltWep = p.pose?.shoulderTilt || 0;
 
-    const shOffsetHorizWep = (cosYaw * 1.6) - (sinYaw * 4.6);
-    const lyRightWep = -24.0 - (shTiltWep * 7.5 * cosYaw);
-    const lyLeftWep = -24.0 + (shTiltWep * 7.5 * cosYaw);
+    const shOffsetHorizWep = p.isProne
+      ? ((-cosYaw * 0.35) - (sinYaw * 4.5))
+      : ((cosYaw * 1.6) - (sinYaw * 4.6));
+    const lyBaseWep = p.isProne ? -19.5 : -24.0;
+    const lyRightWep = lyBaseWep - (shTiltWep * 7.5 * cosYaw);
+    const lyLeftWep = lyBaseWep + (shTiltWep * 7.5 * cosYaw);
 
     const shRightX = hipX + (shOffsetHorizWep * cosTWep - lyRightWep * sinTWep);
     const shRightY = hipY + (shOffsetHorizWep * sinTWep + lyRightWep * cosTWep);
@@ -1070,17 +1073,30 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else if (p.isProne) {
     const isCrawlingNow = speed > 0.08;
-    let targetProneTilt = isCrawlingNow
-      ? (1.28 + Math.sin((p.crawlPhase || 0) * 2) * 0.025)
-      : 1.24;
+    const crawlP = p.crawlPhase || 0;
 
-    let proneWorldAimPitch = isCrawlingNow ? (0.06 + Math.sin((p.crawlPhase || 0) * 2) * 0.03) : 0.02;
+    let proneWorldAimPitch = isCrawlingNow ? (0.06 + Math.sin(crawlP * 2) * 0.03) : 0.0;
     if (typeof p.aimX === 'number' && typeof p.aimY === 'number' && !isNaN(p.aimX) && !isNaN(p.aimY)) {
       const shEstX = hipX + 20 * currentFacingDir;
       const shEstY = hipY - 7;
-      const rawAimP = Math.atan2(p.aimY - shEstY, Math.max(8, (p.aimX - shEstX) * currentFacingDir));
-      proneWorldAimPitch = Math.max(-0.55, Math.min(0.20, rawAimP));
-      targetProneTilt = Math.max(1.14, Math.min(1.34, targetProneTilt + proneWorldAimPitch * 0.18));
+      const dxAim = (p.aimX - shEstX) * currentFacingDir;
+      const dyAim = p.aimY - shEstY;
+      const rawAimP = Math.atan2(dyAim, Math.max(12, dxAim));
+      // Pełny, dynamiczny kąt celowania w leżeniu (od -67.6 st w górę do +24 st w dół)
+      proneWorldAimPitch = Math.max(-1.18, Math.min(0.42, rawAimP));
+    }
+
+    // Dynamiczne unoszenie klatki piersiowej na łokciach:
+    // W poziomie (~1.25 rad / 71 st), przy celowaniu w górę korpus unosi się płynnie ku górze (~0.84 rad / 48 st),
+    // a przy celowaniu w dół lub czołganiu klatka przylega nisko do ziemi (~1.34 rad / 77 st)
+    let targetProneTilt = isCrawlingNow
+      ? (1.28 + Math.sin(crawlP * 2) * 0.025)
+      : 1.25;
+
+    if (proneWorldAimPitch < 0) {
+      targetProneTilt = Math.max(0.84, targetProneTilt + proneWorldAimPitch * 0.38);
+    } else {
+      targetProneTilt = Math.min(1.36, targetProneTilt + proneWorldAimPitch * 0.25);
     }
 
     const finalProneTilt = targetProneTilt * currentFacingDir;

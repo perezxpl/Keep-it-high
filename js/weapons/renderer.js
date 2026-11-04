@@ -38,8 +38,14 @@ export function drawSniperLaserSight(ctx, playerObj) {
   const startX = muzzle.muzzleX;
   const startY = muzzle.muzzleY;
 
-  const targetX = (typeof playerObj.aimX === 'number' && !isNaN(playerObj.aimX)) ? playerObj.aimX : (startX + (playerObj.facing || 1) * 350);
-  const targetY = (typeof playerObj.aimY === 'number' && !isNaN(playerObj.aimY)) ? playerObj.aimY : startY;
+  let targetX = (typeof playerObj.aimX === 'number' && !isNaN(playerObj.aimX)) ? playerObj.aimX : (startX + (playerObj.facing || 1) * 350);
+  let targetY = (typeof playerObj.aimY === 'number' && !isNaN(playerObj.aimY)) ? playerObj.aimY : startY;
+
+  if (playerObj.isProne && typeof muzzle.barrelAngle === 'number') {
+    const laserDist = Math.max(350, Math.hypot(targetX - startX, targetY - startY));
+    targetX = startX + Math.cos(muzzle.barrelAngle) * laserDist;
+    targetY = startY + Math.sin(muzzle.barrelAngle) * laserDist;
+  }
 
   ctx.save();
   // Przerywana czerwona wiązka celownika laserowego w stylu Soldat (zero kosztu shadowBlur)

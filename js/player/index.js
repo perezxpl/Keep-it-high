@@ -973,18 +973,29 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   } else if (player.isSliding) {
     targetTilt = -0.75 * player.facing;
   } else if (player.isProne) {
-    // Klatka piersiowa i barki lekko uniesione na łokciach (~1.24 rad), podczas czołgania tors delikatnie niżej (~1.28 rad)
+    // Dynamiczne unoszenie klatki piersiowej na łokciach:
+    // W poziomie (~1.25 rad / 71 st), przy celowaniu w górę korpus unosi się płynnie ku górze (~0.84 rad / 48 st),
+    // a przy celowaniu w dół lub czołganiu klatka przylega nisko do ziemi (~1.34 rad / 77 st)
     const isCrawlingNow = speed > 0.08;
-    let proneTilt = isCrawlingNow
-      ? (1.28 + Math.sin((player.crawlPhase || 0) * 2) * 0.025)
-      : 1.24;
-    // Podczas celowania w górę/dół w leżeniu klatka piersiowa lekko unosi się lub opuszcza za lufą
+    const crawlP = player.crawlPhase || 0;
+    let rawAimP = 0;
     if (typeof player.aimX === 'number' && typeof player.aimY === 'number' && !isNaN(player.aimX) && !isNaN(player.aimY)) {
       const shEstX = hipX + 20 * player.facing;
-      const shEstY = (player.currentGroundY || GROUND_Y) - 13;
-      const rawAimP = Math.atan2(player.aimY - shEstY, Math.max(8, (player.aimX - shEstX) * player.facing));
-      const clampedAimP = Math.max(-0.55, Math.min(0.18, rawAimP));
-      proneTilt = Math.max(1.14, Math.min(1.34, proneTilt + clampedAimP * 0.18));
+      const shEstY = (player.currentGroundY || GROUND_Y) - 14;
+      const dxAim = (player.aimX - shEstX) * player.facing;
+      const dyAim = player.aimY - shEstY;
+      rawAimP = Math.atan2(dyAim, Math.max(12, dxAim));
+    }
+    const clampedAimP = Math.max(-1.18, Math.min(0.42, rawAimP));
+
+    let proneTilt = isCrawlingNow
+      ? (1.28 + Math.sin(crawlP * 2) * 0.025)
+      : 1.25;
+
+    if (clampedAimP < 0) {
+      proneTilt = Math.max(0.84, proneTilt + clampedAimP * 0.38);
+    } else {
+      proneTilt = Math.min(1.36, proneTilt + clampedAimP * 0.25);
     }
     targetTilt = proneTilt * player.facing;
   } else if (player.isCrouching) {
@@ -1380,8 +1391,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   if (player.kickMode === 'BACKFLIP') {
     desiredPitch = 0.35;
   } else if (player.isProne) {
-    const worldPitch = Math.max(-0.55, Math.min(0.22, Math.atan2(dyLook, Math.max(8, dxLook))));
-    const absTorso = Math.abs(player.torsoTilt) || 1.24;
+    const worldPitch = Math.max(-1.18, Math.min(0.42, Math.atan2(dyLook, Math.max(12, dxLook))));
+    const absTorso = Math.abs(player.torsoTilt) || 1.25;
     desiredPitch = -absTorso + worldPitch;
   } else {
     const worldPitch = Math.atan2(dyLook, Math.max(8, dxLook));

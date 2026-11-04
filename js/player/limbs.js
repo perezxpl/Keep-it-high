@@ -800,13 +800,11 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
   let wristX = elbowX + Math.sin(forearmAngle) * foreLen * facing;
   let wristY = elbowY + Math.cos(forearmAngle) * foreLen;
 
-  // W pozycji leżącej (PRONE) łokieć i przedramię opierają się na podłożu i nie wnikają pod ziemię
+  // W pozycji leżącej (PRONE) łokieć opiera się stabilnie na podłożu i nie zapada się pod grunt
   if (playerRef && playerRef.isProne && !playerRef.isDead) {
     const proneFloorY = (playerRef.currentGroundY || playerRef.groundY || (playerRef.y + (playerRef.h || 70))) - 2.0;
     if (elbowY > proneFloorY) {
-      const dyOver = elbowY - proneFloorY;
       elbowY = proneFloorY;
-      wristY -= dyOver * 0.45;
     }
     if (wristY > proneFloorY) {
       wristY = proneFloorY;
