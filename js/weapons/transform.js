@@ -557,6 +557,8 @@ export function getWeaponHoldTransform(p) {
   const isAxe = (weapon.id === 'AXE');
   const isMelee = !!(weapon.isMelee || isKnife || isMachete || isAxe);
   const isCrouch = !!(p.isCrouching || p.isProne);
+  const wepAmmo = (p.ammo && weapon?.id) ? p.ammo[weapon.id] : null;
+  const isReloading = !!(p.isReloading || p.currentWeaponAmmo?.isReloading || wepAmmo?.isReloading);
 
   const isStaggered = (p.staggerTimer > 0);
   const recTimer = (p.staggerRecoveryTimer > 0) ? p.staggerRecoveryTimer : 0;
@@ -808,7 +810,7 @@ export function getWeaponHoldTransform(p) {
     shoulderPivotX = axeHandX + axePalmOffsetX * charFacing;
     shoulderPivotY = axeHandY + axePalmOffsetY;
   } else if (isTwoHandedHandgun) {
-    if (p.isReloading) {
+    if (isReloading) {
       // W trakcie przeładowania pistoletu / rewolweru broń trzymana jest w strefie roboczej klatki piersiowej (Workspace Retention)
       const crouchDropY = isCrouch ? 3.0 : 0;
       shoulderPivotX = rightShoulderX + 11.5 * charFacing;
@@ -856,7 +858,6 @@ export function getWeaponHoldTransform(p) {
   }
 
   const w = (typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0.0;
-  const isReloading = !!(p.isReloading || p.currentWeaponAmmo?.isReloading);
   const effectiveW = isReloading ? 1.0 : w;
   const rawPivotX = loosePivotX + (shoulderPivotX - loosePivotX) * effectiveW;
   const rawPivotY = loosePivotY + (shoulderPivotY - loosePivotY) * effectiveW;
@@ -870,8 +871,10 @@ export function getWeaponHoldTransform(p) {
   const foreGripDistY = lerp(walkForeGripY, aimForeGripY, effectiveW);
 
   // KINEMATYKA PROCEDURALNA PRZEŁADOWANIA BRONI
-  const u = p.isReloading
-    ? ((typeof p.reloadProgress === 'number') ? p.reloadProgress : (1.0 - (p.reloadTimer / (p.reloadDuration || 120))))
+  const relTimer = (typeof p.reloadTimer === 'number') ? p.reloadTimer : (wepAmmo?.reloadTimer ?? 0);
+  const relDur = (typeof p.reloadDuration === 'number' && p.reloadDuration > 0) ? p.reloadDuration : (wepAmmo?.reloadDuration || 120);
+  const u = isReloading
+    ? ((typeof p.reloadProgress === 'number' && p.reloadProgress >= 0) ? p.reloadProgress : Math.max(0, Math.min(1.0, 1.0 - (relTimer / relDur))))
     : 0;
 
   let reloadAngleOffset = 0;
@@ -884,7 +887,7 @@ export function getWeaponHoldTransform(p) {
   let boltOffset = 0;
   let cylinderSwing = 0;
 
-  if (p.isReloading && u > 0 && u < 1.0) {
+  if (isReloading && u >= 0 && u <= 1.0) {
     const reloadEnv = Math.sin(u * Math.PI);
     reloadAngleOffset = (isRpg ? -0.10 : (isShotgun ? -0.28 : (weapon.id === 'REVOLVER' ? -0.32 : (isPistol ? -0.24 : -0.20)))) * reloadEnv;
     reloadPivotShiftX = (isRpg ? -1.0 : (isPistol ? -1.5 : -2.5)) * reloadEnv * charFacing;
@@ -1034,6 +1037,9 @@ export function getWeaponHoldTransform(p) {
         leftHandLocalX = lerp(6.0, -3.5, ease(t));
         leftHandLocalY = lerp(3.0, 15.5, ease(t));
         reloadAngleOffset = -0.26;
+        if (t > 0.65) {
+          heldMag = { type: 'REVOLVER_SPEEDLOADER', x: leftHandLocalX, y: leftHandLocalY, angle: -0.18 };
+        }
       } else if (u < 0.78) {
         // Faza 4: Wyciągnięcie szybkoładowacza z ładownicy i wprowadzenie 6 nabojów do komór
         const t = (u - 0.58) / 0.20;

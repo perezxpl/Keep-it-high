@@ -1009,7 +1009,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   if (p.throwAnim && p.throwAnim.active) {
     armBlend = 0.85;
   } else if (p.isReloading && !p.isDead) {
-    armBlend = 0.82;
+    armBlend = 0.96;
   }
 
   // Kompensacja inercyjna układu odniesienia ciała w locie:
@@ -1164,7 +1164,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   // KOŃCZYNY W TLE
   if (isRightLimbForeground) {
     if (!isArmBackDismembered) {
-      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      if (!p.isReloading) {
+        renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      }
     } else {
       drawLimbStump(ctx, shLeftX, shLeftY, pose.armBackSwing, 'arm', currentFacingDir, v, false);
     }
@@ -1176,7 +1178,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else {
     if (!isArmFrontDismembered) {
-      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      if (!p.isReloading) {
+        renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+      }
     } else {
       drawLimbStump(ctx, shRightX, shRightY, pose.armFrontSwing, 'arm', currentFacingDir, v, false);
     }
@@ -1700,6 +1704,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       drawLimbStump(ctx, hipRightX, hipY, pose.torsoTilt, 'leg', currentFacingDir, v, true);
     }
 
+    // Jeśli gracz przeładowuje broń, lewe ramię manipulujące magazynkiem / bębenkiem pracuje z przodu torsu:
+    if (p.isReloading && !isArmBackDismembered) {
+      renderArm(ctx, shLeftX, shLeftY, pose.armBackSwing, pose.armBackElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+    }
+
     // Broń trzymana w prawej ręce PRZED prawą nogą
     drawHeldWeapon(ctx, p);
 
@@ -1711,6 +1720,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
   } else {
     // 2. PATRZENIE W LEWO:
+    // Prawe ramię trzymające broń z przodu torsu podczas przeładowania:
+    if (p.isReloading && !isArmFrontDismembered) {
+      renderArm(ctx, shRightX, shRightY, pose.armFrontSwing, pose.armFrontElbow, currentFacingDir, armColBack, null, false, v, p.upperArmLen, p.forearmLen, p);
+    }
+
     // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą
     drawHeldWeapon(ctx, p);
 
