@@ -271,11 +271,51 @@ export function initBlastBeltState(p) {
 }
 
 /**
+ * Sprawdza, czy gracz Enforcera znajduje się w oknie do max 300ms po kucnięciu,
+ * umożliwiającym natychmiastowe odpalenie tłoków pneumatycznych bez ładowania.
+ */
+export function canTriggerEnforcerCrouchPiston(player) {
+  if (!player || player.currentClass?.id !== 'ENFORCER') return false;
+  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+  const enterDelta = player._crouchEnterTime ? (now - player._crouchEnterTime) : Infinity;
+  const exitDelta = player._crouchExitTime ? (now - player._crouchExitTime) : Infinity;
+  return (enterDelta <= 300 || exitDelta <= 300);
+}
+
+/**
+ * Natychmiastowe odpalenie tłoków pneumatycznych Enforcera z kucnięcia (okno <= 300ms).
+ */
+export function triggerEnforcerCrouchPistonJump(player, dirX = 0, spawnGrass = null) {
+  if (!player || player.isDead) return false;
+  player._crouchEnterTime = 0;
+  player._crouchExitTime = 0;
+  player.isCrouching = false;
+  player.isProne = false;
+  player.crouchToggled = false;
+  player.state = 'STAND';
+  player.hitboxHeight = player.h || 74;
+
+  if (player.blastBelt) {
+    player.blastBelt.isCharging = false;
+    player.blastBelt.chargeMs = 0;
+    player.blastBelt.chargeRatio = 0;
+    player.blastBelt.isArmed = false;
+    player.blastBelt.lastDirX = 0;
+  }
+  player.isJumpCharging = false;
+  player.jumpChargePower = 0;
+
+  triggerEnforcerBlastJump(player, dirX, spawnGrass);
+  return true;
+}
+
+/**
  * Obsługa wejścia gracza (klawisz W / Strzałka w górę / Lewy drążek / Pad) dla Enforcera.
  * Skok odpala się po PUSZCZENIU kierunku w górę:
  * - Przytrzymanie < 380ms -> zwykły skok po puszczeniu.
  * - Przytrzymanie >= 380ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
  *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
+ * - Skok tuż po kucnięciu (do max 300ms) -> natychmiastowy skok tłokowy bez żadnego ładowania!
  * W locie: naciśnięcie DÓŁ + KICK/JUMP/AKCJA odpala potężne tąpnięcie z powietrza (Ground Slam).
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
@@ -359,6 +399,17 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   }
 
   if (isHoldingUp) {
+    // 1. ZDOLNOŚĆ SPECJALNA: TŁOKI PNEUMATYCZNE PO KUCNIĘCIU DO MAX 300MS (NATYCHMIAST BEZ ŁADOWANIA)
+    if (canTriggerEnforcerCrouchPiston(player)) {
+      triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
+      if (keys) {
+        keys.up = false;
+        keys.KeyW = false;
+        keys.ArrowUp = false;
+      }
+      return;
+    }
+
     if (!belt.isCharging) {
       if (belt.blastJumpTimer <= 0) {
         belt.isCharging = true;

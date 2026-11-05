@@ -332,7 +332,7 @@ canvas.addEventListener('touchstart', (e) => {
         player.isJumpCharging = false;
         player.jumpChargePower = 0;
       }
-      if (performance.now() - enforcerFlickDownTime > 450) {
+      if (performance.now() - enforcerFlickDownTime > 300) {
         enforcerFlickDownDetected = false;
         enforcerFlickDownTime = 0;
       }
@@ -605,13 +605,14 @@ canvas.addEventListener('touchmove', (e) => {
       // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra)
       if (isEnforcer) {
         if (leftStick.axisY > 0.42 && isFirmlyGrounded) {
+          player._crouchEnterTime = now;
           if (!enforcerFlickDownDetected) {
             enforcerFlickDownTime = now;
             enforcerFlickDownDetected = true;
-          } else if (now - enforcerFlickDownTime > 450) {
+          } else if (now - enforcerFlickDownTime > 300) {
             enforcerFlickDownDetected = false;
           }
-        } else if (enforcerFlickDownDetected && (now - enforcerFlickDownTime > 450)) {
+        } else if (enforcerFlickDownDetected && (now - enforcerFlickDownTime > 300)) {
           enforcerFlickDownDetected = false;
         }
       }
@@ -656,7 +657,7 @@ canvas.addEventListener('touchmove', (e) => {
         } else {
           // NA ZIEMI:
           if (isEnforcer) {
-            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 450);
+            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300);
             if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
               // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (NATYCHMIAST BEZ ŻADNEGO ŁADOWANIA)
               enforcerFlickDownDetected = false;
@@ -871,7 +872,7 @@ function endTouch(e) {
         player.isJumpCharging = false;
         player.jumpChargePower = 0;
       }
-      if (performance.now() - enforcerFlickDownTime > 450) {
+      if (performance.now() - enforcerFlickDownTime > 300) {
         enforcerFlickDownDetected = false;
         enforcerFlickDownTime = 0;
       }

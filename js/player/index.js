@@ -310,6 +310,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         if (!player._crouchStartTime) {
           player._crouchStartTime = performance.now();
         }
+        if (!player.isCrouching && !player.isProne) {
+          player._crouchEnterTime = performance.now();
+        }
         player.crouchHoldTimer = (player.crouchHoldTimer || 0) + 1;
         const holdDurationMs = performance.now() - player._crouchStartTime;
         const isStickCrouch = (leftStick && leftStick.active && leftStick.axisY > 0.40);
@@ -337,6 +340,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   } else {
     // Puszczenie klawisza Ctrl / zwolnienie przycisku lub powrót drążka do neutralnej pozycji
+    if (player.isCrouching || player.isProne) {
+      player._crouchExitTime = performance.now();
+    }
     player._crouchStartTime = 0;
     player.crouchHoldTimer = 0;
 
@@ -367,11 +373,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     if (isHoldingDown) {
       inputAxisY += 1;
       if (!player.isProne && !player.isSliding && !player.isJumping) {
+        if (!player.isCrouching) {
+          player._crouchEnterTime = performance.now();
+        }
         player.isCrouching = true;
         player.state = 'CROUCH';
       }
     } else if (!player.crouchToggled && !crouchHeld && !player.isProne) {
       if (!isCeilingBlockingStand(player, GROUND_Y)) {
+        if (player.isCrouching) {
+          player._crouchExitTime = performance.now();
+        }
         player.isCrouching = false;
         if (player.state === 'CROUCH') {
           player.state = 'STAND';
