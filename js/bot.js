@@ -13,7 +13,6 @@ import { shootWeapon } from './weapons.js';
 import { WEAPONS } from './weapons/transform.js';
 import { spawnJetpackSparks } from './world.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
-import { addDynamicLight } from './lighting/index.js';
 import { ARENA_PLATFORMS, getActiveArena, activeArenaId, getPlatformSurfaceY } from './obstacles.js';
 import { ARENA_2_CONFIG, ACID_SURGE_SYSTEM } from './arenas/arena2.js';
 import { ARENA_3_BRIDGE_BLOCKS } from './arenas/arena3.js';
@@ -1212,6 +1211,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           // Awaryjny dopalacz (Afterburner Surge), gdy wróg podchodzi zbyt blisko w zwarciu
           if (distToEnemy < 85 && (botTarget.jetFuel || 0) >= 30 && (!botTarget.raptorFlight || botTarget.raptorFlight.afterburnerCooldown <= 0)) {
             triggerRaptorAfterburner(botTarget, Math.sign(botCenterX - targetEnemy.x));
+            if (botTarget.raptorFlight) {
+              botTarget.raptorFlight.afterburnerCooldown = 180; // 3 sekundy taktycznego cooldownu dla bota
+            }
           }
         }
         // Utrzymywanie przewagi wysokości i zawis
@@ -1239,15 +1241,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     const flameCol = (botTarget.team === 'CYAN') ? '#00e5ff' : '#f97316';
     const flameColors = getJetpackFlamePalette(flameCol).particles;
     spawnJetpackSparks(nozzle.x, nozzle.y, botTarget.facing, 2, flameColors, botTarget.vx || 0, botTarget.vy || 0, nozzle.angle);
-    addDynamicLight({
-      x: nozzle.x,
-      y: nozzle.y,
-      radius: 100,
-      color: flameCol,
-      intensity: 0.60,
-      duration: 0.05,
-      flicker: true
-    });
   } else {
     botTarget.isJetpacking = false;
     botTarget.jetpackPower = 0;

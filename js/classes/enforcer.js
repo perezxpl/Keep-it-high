@@ -296,10 +296,10 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     }
 
     // TĄPNIĘCIE Z POWIETRZA (Ground Slam / Meteor Drop):
-    // W locie naciśnięcie DÓŁ + KICK / JUMP / AKCJA powoduje gwałtowny pionowy spadek i falę uderzeniową po lądowaniu!
+    // W locie naciśnięcie DÓŁ + KICK / SPACJA / AKCJA powoduje gwałtowny pionowy spadek i falę uderzeniową po lądowaniu!
     if (!player.isGroundSlamming) {
       const isDownKey = !!(keys && (keys.down || keys.KeyS || keys.ArrowDown));
-      const isActionKey = !!(keys && (keys.space || keys.KeyW || keys.up || keys.ArrowUp || keys.KeyE || keys.KeyF || keys.Space));
+      const isActionKey = !!(keys && (keys.space || keys.Space || keys.kick || keys.KeyE || keys.KeyF || keys.KeyX));
 
       let stickY = 0;
       if (leftStick && leftStick.active) stickY = leftStick.axisY;
@@ -583,20 +583,17 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
   const floorY = (typeof impactY === 'number') ? impactY : (player.currentGroundY || player.groundY || (player.y + (player.h || 74)));
   const centerX = player.x + (player.w || 30) / 2;
 
-  // 1. Potężny wstrząs kamery
-  triggerScreenShake(12.0);
+  // 1. Wstrząs kamery (pełny impuls dla lokalnego gracza, wytłumiony dla botów)
+  const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
+  triggerScreenShake(isLocalHuman ? 9.0 : 2.5);
 
-  // 2. Efekty wizualne tąpnięcia: fala uderzeniowa, pył, wyrzut gruzu, dym
+  // 2. Efekty wizualne tąpnięcia: fala uderzeniowa, pył, wyrzut gruzu, zwarty dym
   if (typeof spawnShockwaveRing === 'function') {
     spawnShockwaveRing(centerX, floorY - 3);
     spawnShockwaveRing(centerX, floorY - 3, '#94a3b8');
   }
   if (typeof spawnHeavySmokePuff === 'function') {
-    spawnHeavySmokePuff(centerX, floorY - 6, 16);
-    spawnHeavySmokePuff(centerX - 24, floorY - 4, 8);
-    spawnHeavySmokePuff(centerX + 24, floorY - 4, 8);
-    spawnHeavySmokePuff(centerX - 42, floorY - 3, 5);
-    spawnHeavySmokePuff(centerX + 42, floorY - 3, 5);
+    spawnHeavySmokePuff(centerX, floorY - 6, 8);
   }
   if (typeof spawnGroundPuff === 'function') {
     spawnGroundPuff(centerX - 35, floorY);

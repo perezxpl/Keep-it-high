@@ -6,13 +6,9 @@
 //              Zawis taktyczny (Tactical Air Hover) na klawiaturze przy jednoczesnym W+S.
 // =========================================================================
 import { triggerScreenShake, spawnJetpackSparks } from '../world.js';
-import {
-  spawnShockwaveRing,
-  spawnHeavySmokePuff
-} from '../particles.js';
+import { spawnShockwaveRing } from '../particles.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
 import { getJetpackNozzlePos } from '../player/limbs.js';
-import { addDynamicLight } from '../lighting/index.js';
 
 export const RaptorClass = {
   id: 'RAPTOR',
@@ -164,19 +160,24 @@ export function triggerRaptorAfterburner(player, steerX = 0) {
   if (player.raptorFlight.afterburnerCooldown > 0) return;
 
   player.jetFuel = Math.max(0, player.jetFuel - 25);
-  player.raptorFlight.afterburnerCooldown = 22; // ~0.36s cooldown przy 60 FPS
-  player.vy = -16.8;
+  player.raptorFlight.afterburnerCooldown = 40; // ~0.66s cooldown przy 60 FPS
+  player.vy = -14.2;
   player.isJumping = true;
   player.onGround = false;
 
   if (Math.abs(steerX) > 0.12) {
-    const boostVx = Math.sign(steerX) * 7.5;
+    const boostVx = Math.sign(steerX) * 6.5;
     player.vx = boostVx;
     player.airVx = boostVx;
     player.facing = Math.sign(steerX);
   }
 
-  triggerScreenShake(4.5);
+  // Wstrząs kamery: TYLKO subtelny impuls (1.5) i TYLKO dla lokalnego gracza!
+  // Boty ani zdalni gracze NIGDY nie trzęsą kamerą gracza!
+  const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
+  if (isLocalHuman) {
+    triggerScreenShake(1.5);
+  }
 
   const nozzle = getJetpackNozzlePos(player);
   const flameCol = player.customVisuals?.jetpackColor || '#38bdf8';
@@ -185,50 +186,39 @@ export function triggerRaptorAfterburner(player, steerX = 0) {
   if (typeof spawnShockwaveRing === 'function') {
     spawnShockwaveRing(nozzle.x, nozzle.y, flameCol);
   }
-  if (typeof spawnHeavySmokePuff === 'function') {
-    spawnHeavySmokePuff(nozzle.x, nozzle.y, 8);
-  }
+  // ZERO ciężkich chmur dymu ani dynamicznego oświetlenia rozmywającego ekran!
   if (typeof spawnJetpackSparks === 'function') {
     spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, 12, palette.particles, player.vx, player.vy, nozzle.angle);
-  }
-  if (typeof addDynamicLight === 'function') {
-    addDynamicLight({
-      x: nozzle.x,
-      y: nozzle.y,
-      radius: 150,
-      color: flameCol,
-      intensity: 0.9,
-      duration: 0.12,
-      flicker: false
-    });
   }
 }
 
 /**
  * Przetwarzanie wejścia gracza dla Dopalacza Awaryjnego Raptora w każdej klatce:
- * - Podwójne tapnięcie W / Strzałka w górę na klawiaturze (w oknie 300ms w powietrzu)
- * - Podwójny szybki flick analogowym lewym drążkiem / gałką w górę (w oknie 320ms w powietrzu)
+ * - Podwójne tapnięcie W / Strzałka w górę na klawiaturze (w oknie 280ms w powietrzu)
+ * - Podwójny szybki flick analogowym lewym drążkiem / gałką w górę (w oknie 300ms w powietrzu)
  */
 export function updateRaptorFlightInput(player, keys, leftStick, gamepadState) {
   if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
   if (!player.raptorFlight) initRaptorFlightState(player);
   const rf = player.raptorFlight;
 
-  if (rf.afterburnerCooldown > 0) {
-    rf.afterburnerCooldown--;
-  }
+  const keyUp = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
 
-  const isAirborne = (!player.onGround || player.isJumping || Math.abs(player.vy) > 0.5);
-  if (!isAirborne) {
-    rf.prevKeyUp = false;
+  // Jeśli gracz jest na ziemi lub właśnie wykonuje wybicie skoku (takeoff):
+  // Bezwzględnie zerujemy timery podwójnego tapnięcia, aby zwykły skok z ziemi
+  // NIGDY nie był traktowany jako pierwsze tapnięcie dopalacza!
+  const isFirmlyInAir = (!player.onGround && player.isJumping && !player.jumpTakeoffTimer && !player.jumpSquatTimer);
+  if (!isFirmlyInAir) {
+    rf.prevKeyUp = keyUp;
+    rf.lastTapUpTime = 0;
     rf.stickWasCentered = true;
+    rf.lastFlickUpTime = 0;
     return;
   }
 
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
 
-  // 1. KLAWIATURA: Podwójne szybkie naciśnięcie W lub Strzałki w górę
-  const keyUp = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
+  // 1. KLAWIATURA: Celowe podwójne szybkie tapnięcie W / Strzałki w górę W POWIETRZU
   const justPressedUp = keyUp && !rf.prevKeyUp;
   rf.prevKeyUp = keyUp;
 
@@ -239,7 +229,7 @@ export function updateRaptorFlightInput(player, keys, leftStick, gamepadState) {
   }
 
   if (justPressedUp && player.jetFuel >= 25 && rf.afterburnerCooldown <= 0) {
-    if (now - rf.lastTapUpTime <= 300) {
+    if (rf.lastTapUpTime > 0 && (now - rf.lastTapUpTime <= 280)) {
       triggerRaptorAfterburner(player, steerX);
       rf.lastTapUpTime = 0;
       return;
@@ -247,7 +237,7 @@ export function updateRaptorFlightInput(player, keys, leftStick, gamepadState) {
     rf.lastTapUpTime = now;
   }
 
-  // 2. ANALOGOWY LEWY DRĄŻEK (Dotyk lub Gamepad): Podwójny szybki flick w górę
+  // 2. ANALOGOWY LEWY DRĄŻEK (Dotyk lub Gamepad): Podwójny szybki flick w górę w powietrzu
   let stickY = 0;
   let stickX = 0;
   let isStickActive = false;
@@ -264,10 +254,10 @@ export function updateRaptorFlightInput(player, keys, leftStick, gamepadState) {
   if (isStickActive) {
     if (stickY > -0.25) {
       rf.stickWasCentered = true;
-    } else if (stickY < -0.65 && rf.stickWasCentered) {
+    } else if (stickY < -0.70 && rf.stickWasCentered) {
       rf.stickWasCentered = false;
       if (player.jetFuel >= 25 && rf.afterburnerCooldown <= 0) {
-        if (now - rf.lastFlickUpTime <= 320) {
+        if (rf.lastFlickUpTime > 0 && (now - rf.lastFlickUpTime <= 300)) {
           triggerRaptorAfterburner(player, stickX);
           rf.lastFlickUpTime = 0;
           return;
