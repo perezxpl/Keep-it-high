@@ -270,10 +270,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   // Wciśnięcie skoku / wykopu natychmiast podrywa postać na nogi z leżenia i kucania
   const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered) || (leftStick && leftStick.axisY < -0.40));
   if (standUpRequested && (player.isProne || player.isCrouching || player.crouchToggled)) {
-    if (player.isCrouching || player.crouchToggled) {
-      player._crouchExitTime = performance.now();
-      player._lastCrouchActiveTime = performance.now();
-    }
     player.isProne = false;
     player.isCrouching = false;
     player.crouchToggled = false;
@@ -314,9 +310,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         if (!player._crouchStartTime) {
           player._crouchStartTime = performance.now();
         }
-        if (!player.isCrouching && !player.isProne) {
-          player._crouchEnterTime = performance.now();
-        }
         player.crouchHoldTimer = (player.crouchHoldTimer || 0) + 1;
         const holdDurationMs = performance.now() - player._crouchStartTime;
         const isStickCrouch = (leftStick && leftStick.active && leftStick.axisY > 0.40);
@@ -344,9 +337,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     }
   } else {
     // Puszczenie klawisza Ctrl / zwolnienie przycisku lub powrót drążka do neutralnej pozycji
-    if (player.isCrouching || player.isProne) {
-      player._crouchExitTime = performance.now();
-    }
     player._crouchStartTime = 0;
     player.crouchHoldTimer = 0;
 
@@ -377,27 +367,17 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     if (isHoldingDown) {
       inputAxisY += 1;
       if (!player.isProne && !player.isSliding && !player.isJumping) {
-        if (!player.isCrouching) {
-          player._crouchEnterTime = performance.now();
-        }
         player.isCrouching = true;
         player.state = 'CROUCH';
       }
     } else if (!player.crouchToggled && !crouchHeld && !player.isProne) {
       if (!isCeilingBlockingStand(player, GROUND_Y)) {
-        if (player.isCrouching) {
-          player._crouchExitTime = performance.now();
-        }
         player.isCrouching = false;
         if (player.state === 'CROUCH') {
           player.state = 'STAND';
           player.hitboxHeight = player.h || 70;
         }
       }
-    }
-
-    if (player.isCrouching || player.crouchToggled || crouchHeld || (keys && (keys.down || keys.ctrl || keys.crouch))) {
-      player._lastCrouchActiveTime = performance.now();
     }
 
     if (keys.up && player.currentClass?.id !== 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {

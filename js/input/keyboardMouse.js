@@ -46,11 +46,6 @@ import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
 import { equipPocket1Slot, cyclePocket1, quickSwitchPocket1 } from '../loadout/index.js';
 import { pickupPromptState } from '../pickup/index.js';
-import {
-  canTriggerEnforcerCrouchPiston,
-  triggerEnforcerCrouchPistonJump,
-  isEnforcerFirmlyGrounded
-} from '../classes/enforcer.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -363,23 +358,19 @@ export function initKeyboardMouseHandlers({
 
     if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
       e.preventDefault();
-      player._lastCrouchActiveTime = performance.now();
       if (!e.repeat) {
         inputSession.ctrlPressStartTime = performance.now();
         inputSession.ctrlWasToggledOnKeyDown = !!player.crouchToggled;
-        player._crouchEnterTime = performance.now();
       }
       keys.ctrl = true;
       keys.crouch = true;
     }
 
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-      player._lastCrouchActiveTime = performance.now();
       if (e.repeat) {
         keys.down = true;
         return;
       }
-      player._crouchEnterTime = performance.now();
       const now = performance.now();
       const isDoublePress = (now - inputSession.lastSPressTime < 280);
       const isCurrentPlatDropThrough = !!(
@@ -409,18 +400,6 @@ export function initKeyboardMouseHandlers({
       inputSession.jumpKeyPressed = true;
       keys.up = true;
 
-      // ENFORCER: Natychmiastowe użycie tłoków po kucnięciu (od 0 do 300ms)
-      if (player.currentClass?.id === 'ENFORCER' && !player.isSliding && !player.isIntro) {
-        if (canTriggerEnforcerCrouchPiston(player)) {
-          let curDirX = 0;
-          if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
-          if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
-          triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
-          keys.up = false;
-          return;
-        }
-      }
-
       // Klawisz W natychmiast podrywa postać do pionu
       player.isProne = false;
       player.isCrouching = false;
@@ -441,23 +420,13 @@ export function initKeyboardMouseHandlers({
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
       } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
-        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze po kucnięciu lub przy puszczeniu W)
+        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze przy puszczeniu W)
         initiatePlayerJump(player, spawnGrass);
         player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       }
     }
     if (e.code === 'Space' && !e.repeat && !keys.space) {
       keys.space = true;
-      // ENFORCER: Natychmiastowe użycie tłoków spacją po kucnięciu (od 0 do 300ms)
-      if (player.currentClass?.id === 'ENFORCER' && !player.isSliding && !player.isIntro) {
-        if (canTriggerEnforcerCrouchPiston(player)) {
-          let curDirX = 0;
-          if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
-          if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
-          triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
-          return;
-        }
-      }
       // Spacja podrywa postać z leżenia/kucania do pionu i rozpoczyna wykop
       player.isProne = false;
       player.isCrouching = false;
@@ -596,8 +565,6 @@ export function initKeyboardMouseHandlers({
     if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
 
     if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
-      player._lastCrouchActiveTime = performance.now();
-      player._crouchExitTime = performance.now();
       const pressDuration = performance.now() - inputSession.ctrlPressStartTime;
       keys.ctrl = false;
       keys.crouch = false;
@@ -633,8 +600,6 @@ export function initKeyboardMouseHandlers({
       }
     }
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-      player._lastCrouchActiveTime = performance.now();
-      player._crouchExitTime = performance.now();
       keys.down = false;
     }
 

@@ -205,11 +205,6 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   // OBSŁUGA KLASY ENFORCER: Pas Ładunków Wybuchowych (Blast Belt) – skok po puszczeniu i tąpnięcie z powietrza
   const isEnforcer = (player.currentClass?.id === 'ENFORCER');
   if (isEnforcer) {
-    const isCrouchHeldNow = !!(player.isCrouching || player.crouchToggled || (keys && (keys.down || keys.ctrl || keys.crouch)) || (leftStick && leftStick.active && leftStick.axisY > 0.40) || (gamepadState && gamepadState.connected && gamepadState.buttons?.dpadDown));
-    player._crouchHeld = isCrouchHeldNow;
-    if (isCrouchHeldNow) {
-      player._lastCrouchActiveTime = performance.now();
-    }
     updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, initiatePlayerJump);
   }
 

@@ -15,7 +15,7 @@ import {
 import { getActiveArena } from '../arenas/index.js';
 import { isDeathmatchFFA, deathmatchState } from '../deathmatch/index.js';
 
-export const ENFORCER_BOMB_CHARGE_MS = 380; // Błyskawiczne sprężenie tłoków pneumatycznych (380ms) do pełnego wybicia
+export const ENFORCER_BOMB_CHARGE_MS = 300; // Skrócony czas przysiadu z 1000ms do 300ms do pełnego sprężenia tłoków
 
 /**
  * Sprawdza, czy aktywna jest twarda postawa Juggernaut Poise (-18% obrażeń):
@@ -38,34 +38,16 @@ export function getEnforcerFlameColor(player) {
 }
 
 export function isEnforcerFirmlyGrounded(player) {
-  if (!player || player.isDead || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
+  if (!player || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
   const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
   const crane = a5?.crane;
   const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
   const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
   const relVy = (player.vy || 0) - craneVy;
-
-  // 1. Bezposredni stan onGround
-  if (player.onGround) return true;
-
-  // 2. Coyote Time
-  if ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 6.0) return true;
-
-  // 3. Sprawdzenie odleglosci do podloza (uwzglednia zmiane wysokosci hitboxa przy kucaniu z 74px na 45px)
-  const colH = player.hitboxHeight || (player.isCrouching ? 45 : (player.h || 74));
-  const currentFloor = player.currentGroundY || player.groundY || player.lastGroundedFloorY || (player.y + colH);
-  const distToFloor = Math.abs((player.y + colH) - currentFloor);
-
-  if (distToFloor <= 40 && Math.abs(relVy) < 6.0) {
-    return true;
-  }
-
-  // 4. Znikoma predkosc pionowa blisko podloza
-  if (Math.abs(relVy) <= 1.5 && distToFloor <= 55) {
-    return true;
-  }
-
-  return false;
+  return !!(
+    (player.onGround && Math.abs(relVy) < 2.5) ||
+    ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 2.5)
+  );
 }
 
 export const EnforcerClass = {
@@ -289,83 +271,11 @@ export function initBlastBeltState(p) {
 }
 
 /**
- * Sprawdza, czy gracz Enforcera znajduje się w stanie kucania lub w oknie od 0 do 300ms po kucnięciu,
- * umożliwiającym natychmiastowe odpalenie tłoków pneumatycznych bez ładowania.
- */
-export function canTriggerEnforcerCrouchPiston(player) {
-  const isEnforcer = !!(player && (
-    player.currentClass?.id === 'ENFORCER' ||
-    String(player.currentClass?.id).toUpperCase() === 'ENFORCER' ||
-    player.classId === 'ENFORCER' ||
-    player.classType === 'ENFORCER' ||
-    player.class === 'ENFORCER'
-  ));
-  if (!isEnforcer) return false;
-
-  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
-  // 1. Jeśli postać kuca W TYM MOMENCIE -> natychmiastowy super-skok tłokowy z kucnięcia (od 0 ms)!
-  if (player.isCrouching || player.crouchToggled || player.state === 'CROUCH') {
-    return true;
-  }
-  // 2. Jeśli klawisze kucnięcia są wciśnięte w bieżącej klatce:
-  if (player._crouchHeld) {
-    return true;
-  }
-  // 3. W oknie od 0 do 300 ms od ostatniej aktywności kucania:
-  const lastActive = player._lastCrouchActiveTime || 0;
-  if (lastActive > 0 && (now - lastActive <= 300)) {
-    return true;
-  }
-  const enterDelta = player._crouchEnterTime ? (now - player._crouchEnterTime) : Infinity;
-  if (enterDelta >= 0 && enterDelta <= 300) {
-    return true;
-  }
-  const exitDelta = player._crouchExitTime ? (now - player._crouchExitTime) : Infinity;
-  if (exitDelta >= 0 && exitDelta <= 300) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Natychmiastowe odpalenie tłoków pneumatycznych Enforcera z kucnięcia (okno 0-300ms).
- */
-export function triggerEnforcerCrouchPistonJump(player, dirX = 0, spawnGrass = null) {
-  if (!player || player.isDead) return false;
-
-  player.isCrouching = false;
-  player.isProne = false;
-  player.crouchToggled = false;
-  player.state = 'STAND';
-  player.hitboxHeight = player.h || 74;
-
-  if (player.blastBelt) {
-    player.blastBelt.isCharging = false;
-    player.blastBelt.chargeMs = 0;
-    player.blastBelt.chargeRatio = 0;
-    player.blastBelt.isArmed = false;
-    player.blastBelt.wasCrouchPistonReady = false;
-    player.blastBelt.lastDirX = 0;
-  }
-  player.isJumpCharging = false;
-  player.jumpChargePower = 0;
-
-  const res = triggerEnforcerBlastJump(player, dirX, spawnGrass, true);
-  if (res !== false) {
-    player._lastCrouchActiveTime = 0;
-    player._crouchEnterTime = 0;
-    player._crouchExitTime = 0;
-  }
-  return true;
-}
-
-/**
  * Obsługa wejścia gracza (klawisz W / Strzałka w górę / Lewy drążek / Pad) dla Enforcera.
  * Skok odpala się po PUSZCZENIU kierunku w górę:
- * - Przytrzymanie < 380ms -> zwykły skok po puszczeniu.
- * - Przytrzymanie >= 380ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
+ * - Przytrzymanie < 300ms -> zwykły skok po puszczeniu.
+ * - Przytrzymanie >= 300ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
  *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
- * - Skok tuż po kucnięciu (do max 300ms) -> natychmiastowy skok tłokowy bez żadnego ładowania!
  * W locie: naciśnięcie DÓŁ + KICK/JUMP/AKCJA odpala potężne tąpnięcie z powietrza (Ground Slam).
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
@@ -448,21 +358,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     curDirX = gamepadState.leftStick.x;
   }
 
-  const spacePressed = !!(keys && keys.space);
-  const crouchPistonReady = canTriggerEnforcerCrouchPiston(player);
-  if (isHoldingUp || (spacePressed && crouchPistonReady)) {
-    // 1. ZDOLNOŚĆ SPECJALNA: TŁOKI PNEUMATYCZNE PO KUCNIĘCIU OD 0 DO 300MS (NATYCHMIAST BEZ ŁADOWANIA)
-    if (crouchPistonReady) {
-      triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
-      if (keys) {
-        keys.up = false;
-        keys.KeyW = false;
-        keys.ArrowUp = false;
-        keys.space = false;
-      }
-      return;
-    }
-
+  if (isHoldingUp) {
     if (!belt.isCharging) {
       if (belt.blastJumpTimer <= 0) {
         belt.isCharging = true;
@@ -470,7 +366,6 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
         belt.chargeMs = 0;
         belt.chargeRatio = 0;
         belt.isArmed = false;
-        belt.wasCrouchPistonReady = crouchPistonReady;
         belt.lastDirX = curDirX;
 
         // Aktywacja fizycznego przysiadu skokowego (Power Squat)
@@ -498,7 +393,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
 
       const centerX = player.x + (player.w || 30) / 2;
       if (belt.isArmed && !wasArmed) {
-        // Przekroczono 1000ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
+        // Przekroczono 300ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
         triggerScreenShake(2.2);
         if (typeof spawnGroundPuff === 'function') {
           spawnGroundPuff(centerX - 10, currentFloor);
@@ -514,23 +409,22 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   } else if (belt.isCharging) {
     // MOMENT PUSZCZENIA DRĄŻKA LUB KLAWISZA W NA ZIEMI!
     const heldMs = Math.max(belt.chargeMs, now - belt.chargeStartTime);
-    const wasArmed = (heldMs >= ENFORCER_BOMB_CHARGE_MS) || belt.isArmed || belt.wasCrouchPistonReady || canTriggerEnforcerCrouchPiston(player);
+    const wasArmed = (heldMs >= ENFORCER_BOMB_CHARGE_MS) || belt.isArmed;
     const releaseDirX = Math.abs(curDirX) > 0.10 ? curDirX : (Math.abs(belt.lastDirX) > 0.12 ? belt.lastDirX : 0);
 
     belt.isCharging = false;
     belt.chargeMs = 0;
     belt.chargeRatio = 0;
     belt.isArmed = false;
-    belt.wasCrouchPistonReady = false;
     belt.lastDirX = 0;
     player.isJumpCharging = false;
     player.jumpChargePower = 0;
 
     if (wasArmed) {
-      // Przytrzymano >= 380ms na ziemi lub puszczono po kucnięciu -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
+      // Przytrzymano >= 300ms na ziemi -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
       triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
     } else {
-      // Przytrzymano < 380ms na ziemi -> zwykły skok z nóg po puszczeniu!
+      // Przytrzymano < 300ms na ziemi -> zwykły skok z nóg po puszczeniu!
       const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
       if (typeof jumpCallback === 'function') {
         jumpCallback(player, spawnGrass);
@@ -544,10 +438,10 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
  * Kolos prostuje potężne nogi wspomagane tłokami pneumatycznymi, krusząc podłoże pod butami
  * i wzbijając chmurę pyłu oraz gruzu bez żadnego ognia!
  */
-export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null, isCrouchPiston = false) {
-  if (!player || player.isDead) return false;
-  const isFirmlyGrounded = isCrouchPiston || isEnforcerFirmlyGrounded(player);
-  if (!isFirmlyGrounded) return false;
+export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
+  if (!player || player.isDead) return;
+  const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
+  if (!isFirmlyGrounded) return;
   if (!player.blastBelt) initBlastBeltState(player);
   const belt = player.blastBelt;
 

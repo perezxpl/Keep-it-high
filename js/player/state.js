@@ -10,7 +10,6 @@ import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './hair.js';
 import { getStoredLoadout } from '../loadout/index.js';
-import { canTriggerEnforcerCrouchPiston, triggerEnforcerCrouchPistonJump } from '../classes/enforcer.js';
 
 export var DEFAULT_BODY = {
   w: 24,
@@ -508,19 +507,6 @@ export function setPlayerClass(newClass, p = player) {
 export function initiatePlayerJump(p = player, spawnGrass = null) {
   if (!p || p.isDead || p.isIntro || p.isSliding || (p.staggerTimer > 0) || p.isAcidDying) return false;
   if (p.isJumping) return false;
-
-  const isEnforcer = !!(p && (
-    p.currentClass?.id === 'ENFORCER' ||
-    String(p.currentClass?.id).toUpperCase() === 'ENFORCER' ||
-    p.classId === 'ENFORCER' ||
-    p.classType === 'ENFORCER'
-  ));
-
-  if (isEnforcer && canTriggerEnforcerCrouchPiston(p)) {
-    const dirX = Math.abs(p.vx) > 0.3 ? Math.sign(p.vx) : 0;
-    triggerEnforcerCrouchPistonJump(p, dirX, spawnGrass);
-    return true;
-  }
 
   const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
   const crane = a5State?.crane;

@@ -24,7 +24,7 @@ import {
   prepareTomahawkThrow,
   releaseTomahawkThrow
 } from '../player.js';
-import { triggerEnforcerBlastJump, canTriggerEnforcerCrouchPiston } from '../classes/enforcer.js';
+import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import { cyclePocket1, equipPocket1Slot } from '../loadout/index.js';
 import { ball } from '../ball.js';
@@ -605,7 +605,6 @@ canvas.addEventListener('touchmove', (e) => {
       // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra)
       if (isEnforcer) {
         if (leftStick.axisY > 0.42 && isFirmlyGrounded) {
-          player._crouchEnterTime = now;
           if (!enforcerFlickDownDetected) {
             enforcerFlickDownTime = now;
             enforcerFlickDownDetected = true;
@@ -657,7 +656,7 @@ canvas.addEventListener('touchmove', (e) => {
         } else {
           // NA ZIEMI:
           if (isEnforcer) {
-            const isDownUpCombo = (enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300)) || canTriggerEnforcerCrouchPiston(player);
+            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300);
             if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
               // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (NATYCHMIAST BEZ ŻADNEGO ŁADOWANIA)
               enforcerFlickDownDetected = false;
