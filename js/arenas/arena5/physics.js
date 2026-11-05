@@ -25,8 +25,9 @@ import {
 } from './state.js';
 import { triggerScreenShake } from '../../camera.js';
 import { spawnBloodSpurt, removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
-import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
+import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks, spawnPowderSmoke } from '../../particles.js';
 import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
+import { CONFIG } from '../../config.js';
 
 let _activeCombatants = [];
 
@@ -200,6 +201,43 @@ export function checkArena5CeilingCollisions(combatants) {
 }
 
 /**
+ * Sprawdza czy dany uczestnik walki celowo kuca (chce stabilnie jechać na klocku w dół)
+ */
+function isCombatantCrouching(c) {
+  if (!c) return false;
+  if (c.isCrouching || c.isProne) return true;
+  if (c.keys && (c.keys.down || c.keys.ctrl || c.keys.crouch)) return true;
+  const isLocalPl = !!(c.isPlayer || (typeof window !== 'undefined' && c === window.player));
+  if (isLocalPl && typeof window !== 'undefined') {
+    const k = window.keys;
+    if (k && (k.down || k.ctrl || k.crouch)) return true;
+    const ls = window.leftStick;
+    if (ls && ls.active && ls.axisY > 0.40) return true;
+  }
+  return false;
+}
+
+/**
+ * Sprawdza czy uczestnik walki trzyma lub wcisnął klawisz skoku (do wybicia super-odbicia)
+ */
+function isCombatantJumpInput(c) {
+  if (!c) return false;
+  if (c.keys && (c.keys.up || c.keys.space)) return true;
+  const isLocalPl = !!(c.isPlayer || (typeof window !== 'undefined' && c === window.player));
+  if (isLocalPl && typeof window !== 'undefined') {
+    const k = window.keys;
+    if (k && (k.up || k.space)) return true;
+    const sess = window.inputSession;
+    if (sess && sess.jumpKeyPressed) return true;
+    const ls = window.leftStick;
+    if (ls && ls.active && ls.axisY < -0.35) return true;
+    const gp = window.gamepadState;
+    if (gp && (gp.a || gp.up)) return true;
+  }
+  return false;
+}
+
+/**
  * Obsługa spadającego klocka, kolizji fizycznej i zmiażdżenia (Squash):
  * Zapewnia pełną, precyzyjną bryłę kolizyjną dla spadającej figury:
  * 1. Góra: stabilne lądowanie i jazda na opadającym klocku (gracz może na nim stać i zeskakiwać).
@@ -239,6 +277,10 @@ function checkFallingSquash(combatants) {
   for (const victim of combatants) {
     if (!victim || victim.isDead) continue;
 
+    if (victim._craneBounceCooldown > 0) {
+      victim._craneBounceCooldown--;
+    }
+
     const pW = victim.w || 26;
     const pH = syncCombatantHeight(victim);
     const prevBottom = (victim.y - (victim.vy || 0)) + pH;
@@ -256,15 +298,49 @@ function checkFallingSquash(combatants) {
     const craneStep = (crane.vy || 0) * 1;
     for (const st of topTiles) {
       if (victim.x + pW > st.left + 2 && victim.x < st.right - 2) {
+        // Jeśli postać właśnie odbiła się od suwnicy i leci w górę, nie przechwytuj jej natychmiast z powrotem
+        if (victim._craneBounceCooldown > 0 && victim.vy < 1.0) {
+          continue;
+        }
+
         const tolerance = Math.max(22, Math.abs(relVy) + craneStep + 14);
         const isSweptCross = (prevBottom <= st.top + tolerance && newBottom >= st.top - 4);
         if (isSweptCross && victim.y < st.bottom && (victim.vy >= -3.0 || relVy >= -6.0)) {
-          victim.y = st.top - pH;
-          victim.vy = crane.vy;
-          victim.onGround = true;
-          victim.isJumping = false;
-          victim.currentGroundY = st.top;
+          if (isCombatantCrouching(victim)) {
+            // Postać kuca i stabilnie zjeżdża na opadającym klocku
+            victim.y = st.top - pH;
+            victim.vy = crane.vy;
+            victim.onGround = true;
+            victim.isJumping = false;
+            victim.currentGroundY = st.top;
+            landedOnCrane = true;
+            break;
+          }
+
+          // WSKOK NA SPADAJĄCY KLOCEK: natychmiastowe dynamiczne odbicie w górę (Springboard / Trampolina)
+          const isSuper = isCombatantJumpInput(victim);
+          const jumpForce = victim.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE || 9.8;
+          const bounceVy = isSuper
+            ? -Math.max(15.2, jumpForce * 1.55)
+            : -Math.max(12.2, jumpForce * 1.25);
+
+          victim.y = st.top - pH - 6;
+          victim.vy = bounceVy;
+          victim.isJumping = true;
+          victim.onGround = false;
+          victim.coyoteTimer = 0;
+          victim.landingSquatTimer = 0;
+          victim.jumpTakeoffTimer = victim.jumpTakeoffMax || 8;
+          victim.jumpLaunchFloorY = st.top;
+          victim.jetpackKeyNeutralized = false;
+          victim._craneBounceCooldown = 14;
           landedOnCrane = true;
+
+          // Soczyste efekty uderzenia i wybicia w górę (drganie kamery, iskry i pył)
+          triggerScreenShake(isSuper ? 4.5 : 3.0);
+          spawnRicochetSparks(victim.x + pW * 0.5, st.top, 0, -1, isSuper ? 12 : 7);
+          spawnConcreteDebris(victim.x + pW * 0.5, st.top, isSuper ? 8 : 4, 0, -3);
+          spawnPowderSmoke(victim.x + pW * 0.5, st.top, 6);
           break;
         }
       }
@@ -369,11 +445,16 @@ function checkFallingSquash(combatants) {
         const cellCenterY = st.top + CELL_SIZE * 0.5;
 
         if (st.isTopEdge && victimCenterY <= cellCenterY) {
-          victim.y = st.top - pH;
-          victim.vy = crane.vy || 0;
-          victim.onGround = true;
-          victim.isJumping = false;
-          victim.currentGroundY = st.top;
+          if (victim.vy < 0 || (victim._craneBounceCooldown && victim._craneBounceCooldown > 0)) {
+            // Postać wyskakuje/odbija się w górę od klocka suwnicy - nie kasuj prędkości wznoszenia vy
+            victim.y = Math.min(victim.y, st.top - pH - 4);
+          } else {
+            victim.y = st.top - pH;
+            victim.vy = crane.vy || 0;
+            victim.onGround = true;
+            victim.isJumping = false;
+            victim.currentGroundY = st.top;
+          }
         } else {
           const rowTiles = subTiles.filter(t => t.rowRel === st.rowRel);
           const minLeft = Math.min(...rowTiles.map(t => t.left));

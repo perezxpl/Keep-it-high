@@ -32,6 +32,10 @@ export const gamepadState = {
   prevButtons: {}
 };
 
+if (typeof window !== 'undefined') {
+  window.gamepadState = gamepadState;
+}
+
 export function applyDeadzone(value, deadzone = gamepadState.deadzone) {
   if (Math.abs(value) < deadzone) return 0;
   const sign = Math.sign(value);

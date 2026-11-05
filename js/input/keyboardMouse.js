@@ -86,6 +86,10 @@ export const inputSession = {
   ctrlWasToggledOnKeyDown: false
 };
 
+if (typeof window !== 'undefined') {
+  window.inputSession = inputSession;
+}
+
 export function resetInputState() {
   for (const k in keys) {
     keys[k] = false;

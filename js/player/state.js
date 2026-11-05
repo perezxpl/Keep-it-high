@@ -532,6 +532,13 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
 
   let jumpForce = p.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
 
+  const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+  const isCraneGround = !!(a5State?.crane?.phase === 'FALLING' && p.currentGroundY && Math.abs(p.currentGroundY - (p.y + (p.h || 70))) < 14);
+  if (isCraneGround) {
+    jumpForce *= 1.30;
+    p._craneBounceCooldown = 14;
+  }
+
   if (isSuperRunning) {
     p.isSprintJump = true;
     p.sprintJumpTimer = 65;
