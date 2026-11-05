@@ -24,7 +24,7 @@ import {
   prepareTomahawkThrow,
   releaseTomahawkThrow
 } from '../player.js';
-import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
+import { triggerEnforcerBlastJump, canTriggerEnforcerCrouchPiston } from '../classes/enforcer.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import { cyclePocket1, equipPocket1Slot } from '../loadout/index.js';
 import { ball } from '../ball.js';
@@ -657,7 +657,7 @@ canvas.addEventListener('touchmove', (e) => {
         } else {
           // NA ZIEMI:
           if (isEnforcer) {
-            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300);
+            const isDownUpCombo = (enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300)) || canTriggerEnforcerCrouchPiston(player);
             if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
               // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (NATYCHMIAST BEZ ŻADNEGO ŁADOWANIA)
               enforcerFlickDownDetected = false;

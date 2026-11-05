@@ -363,6 +363,7 @@ export function initKeyboardMouseHandlers({
 
     if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
       e.preventDefault();
+      player._lastCrouchActiveTime = performance.now();
       if (!e.repeat) {
         inputSession.ctrlPressStartTime = performance.now();
         inputSession.ctrlWasToggledOnKeyDown = !!player.crouchToggled;
@@ -373,6 +374,7 @@ export function initKeyboardMouseHandlers({
     }
 
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+      player._lastCrouchActiveTime = performance.now();
       if (e.repeat) {
         keys.down = true;
         return;
@@ -407,6 +409,18 @@ export function initKeyboardMouseHandlers({
       inputSession.jumpKeyPressed = true;
       keys.up = true;
 
+      // ENFORCER: Natychmiastowe użycie tłoków po kucnięciu (od 0 do 300ms)
+      if (player.currentClass?.id === 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro) {
+        if (canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
+          let curDirX = 0;
+          if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
+          if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
+          triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
+          keys.up = false;
+          return;
+        }
+      }
+
       // Klawisz W natychmiast podrywa postać do pionu
       player.isProne = false;
       player.isCrouching = false;
@@ -426,33 +440,23 @@ export function initKeyboardMouseHandlers({
         inputSession.isJetpackActive = true;
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
-      } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
-        if (player.currentClass?.id === 'ENFORCER') {
-          // ENFORCER: Natychmiastowe użycie tłoków po kucnięciu (do max 300ms)
-          if (canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
-            let curDirX = 0;
-            if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
-            if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
-            triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
-            keys.up = false;
-            return;
-          }
-        } else {
-          // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze przy puszczeniu W lub po kucnięciu)
-          initiatePlayerJump(player, spawnGrass);
-          player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
-        }
+      } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
+        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze po kucnięciu lub przy puszczeniu W)
+        initiatePlayerJump(player, spawnGrass);
+        player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       }
     }
     if (e.code === 'Space' && !e.repeat && !keys.space) {
       keys.space = true;
-      // ENFORCER: Natychmiastowe użycie tłoków spacją po kucnięciu (do max 300ms)
-      if (player.currentClass?.id === 'ENFORCER' && canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
-        let curDirX = 0;
-        if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
-        if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
-        triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
-        return;
+      // ENFORCER: Natychmiastowe użycie tłoków spacją po kucnięciu (od 0 do 300ms)
+      if (player.currentClass?.id === 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro) {
+        if (canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
+          let curDirX = 0;
+          if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
+          if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
+          triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
+          return;
+        }
       }
       // Spacja podrywa postać z leżenia/kucania do pionu i rozpoczyna wykop
       player.isProne = false;
@@ -592,6 +596,7 @@ export function initKeyboardMouseHandlers({
     if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
 
     if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+      player._lastCrouchActiveTime = performance.now();
       player._crouchExitTime = performance.now();
       const pressDuration = performance.now() - inputSession.ctrlPressStartTime;
       keys.ctrl = false;
@@ -628,6 +633,7 @@ export function initKeyboardMouseHandlers({
       }
     }
     if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+      player._lastCrouchActiveTime = performance.now();
       player._crouchExitTime = performance.now();
       keys.down = false;
     }

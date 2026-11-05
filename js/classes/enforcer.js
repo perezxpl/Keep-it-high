@@ -38,16 +38,14 @@ export function getEnforcerFlameColor(player) {
 }
 
 export function isEnforcerFirmlyGrounded(player) {
-  if (!player || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
+  if (!player || player.isDead || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
   const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
   const crane = a5?.crane;
   const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
   const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
   const relVy = (player.vy || 0) - craneVy;
-  return (
-    (player.onGround && Math.abs(relVy) < 1.8) ||
-    ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 1.8)
-  );
+  const hasCoyote = ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 4.5);
+  return !!(player.onGround || hasCoyote);
 }
 
 export const EnforcerClass = {
@@ -271,22 +269,32 @@ export function initBlastBeltState(p) {
 }
 
 /**
- * Sprawdza, czy gracz Enforcera znajduje się w oknie do max 300ms po kucnięciu,
+ * Sprawdza, czy gracz Enforcera znajduje się w stanie kucania lub w oknie od 0 do 300ms po kucnięciu,
  * umożliwiającym natychmiastowe odpalenie tłoków pneumatycznych bez ładowania.
  */
 export function canTriggerEnforcerCrouchPiston(player) {
   if (!player || player.currentClass?.id !== 'ENFORCER') return false;
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+  // 1. Jeśli postać kuca W TYM MOMENCIE -> natychmiastowy super-skok tłokowy z kucnięcia (od 0 ms)!
+  if (player.isCrouching || player.crouchToggled || player.state === 'CROUCH') {
+    return true;
+  }
+  // 2. Jeśli postać kucała lub klawisz kucnięcia był aktywny w oknie od 0 do 300 ms wstecz:
+  const lastActive = player._lastCrouchActiveTime || 0;
+  if (lastActive > 0 && (now - lastActive <= 300)) {
+    return true;
+  }
   const enterDelta = player._crouchEnterTime ? (now - player._crouchEnterTime) : Infinity;
   const exitDelta = player._crouchExitTime ? (now - player._crouchExitTime) : Infinity;
   return (enterDelta <= 300 || exitDelta <= 300);
 }
 
 /**
- * Natychmiastowe odpalenie tłoków pneumatycznych Enforcera z kucnięcia (okno <= 300ms).
+ * Natychmiastowe odpalenie tłoków pneumatycznych Enforcera z kucnięcia (okno 0-300ms).
  */
 export function triggerEnforcerCrouchPistonJump(player, dirX = 0, spawnGrass = null) {
   if (!player || player.isDead) return false;
+  player._lastCrouchActiveTime = 0;
   player._crouchEnterTime = 0;
   player._crouchExitTime = 0;
   player.isCrouching = false;
@@ -398,14 +406,16 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     curDirX = gamepadState.leftStick.x;
   }
 
-  if (isHoldingUp) {
-    // 1. ZDOLNOŚĆ SPECJALNA: TŁOKI PNEUMATYCZNE PO KUCNIĘCIU DO MAX 300MS (NATYCHMIAST BEZ ŁADOWANIA)
+  const spacePressed = !!(keys && keys.space);
+  if (isHoldingUp || (spacePressed && canTriggerEnforcerCrouchPiston(player))) {
+    // 1. ZDOLNOŚĆ SPECJALNA: TŁOKI PNEUMATYCZNE PO KUCNIĘCIU OD 0 DO 300MS (NATYCHMIAST BEZ ŁADOWANIA)
     if (canTriggerEnforcerCrouchPiston(player)) {
       triggerEnforcerCrouchPistonJump(player, curDirX, spawnGrass);
       if (keys) {
         keys.up = false;
         keys.KeyW = false;
         keys.ArrowUp = false;
+        keys.space = false;
       }
       return;
     }

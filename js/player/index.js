@@ -392,6 +392,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
+    if (player.isCrouching || player.crouchToggled || crouchHeld || (keys && (keys.down || keys.ctrl || keys.crouch))) {
+      player._lastCrouchActiveTime = performance.now();
+    }
+
     if (keys.up && player.currentClass?.id !== 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
       initiatePlayerJump(player, spawnGrass);
       keys.up = false;
