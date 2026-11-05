@@ -11,6 +11,7 @@ import { addDynamicLight } from '../lighting/index.js';
 import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapons.js';
 import { updateStrikerBootsInput } from '../classes/striker.js';
 import { updateEnforcerBeltInput } from '../classes/enforcer.js';
+import { updateRaptorFlightInput } from '../classes/aero.js';
 import { networkState, sendShootEvent } from '../network.js';
 import { leftStick, rightStick, pockets, btnCluster, updateMobileControlStates, restorePreviousFirearm } from '../mobileControls.js';
 import { keys, mouseState, inputSession } from './keyboardMouse.js';
@@ -202,16 +203,21 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     updateStrikerBootsInput(player, keys, leftStick, gamepadState);
   }
 
-  // OBSŁUGA KLASY ENFORCER: Pas Ładunków Wybuchowych (Blast Belt) – skok po puszczeniu i bomby >= 1000ms
+  // OBSŁUGA KLASY ENFORCER: Pas Ładunków Wybuchowych (Blast Belt) – skok po puszczeniu i tąpnięcie z powietrza
   const isEnforcer = (player.currentClass?.id === 'ENFORCER');
   if (isEnforcer) {
     updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, initiatePlayerJump);
   }
 
+  // OBSŁUGA KLASY RAPTOR: Dopalacz awaryjny (Afterburner Surge) z podwójnego W / podwójnego flicku drążka
+  const isRaptor = (!player.currentClass || player.currentClass.id === 'RAPTOR');
+  if (isRaptor) {
+    updateRaptorFlightInput(player, keys, leftStick, gamepadState);
+  }
+
   const isStickRaised = !!(leftStick && leftStick.active && leftStick.axisY < -0.16 && leftStick.jetpackNeutralized);
   const isTouchFlight = !!(isStickRaised && isAirborne);
-  const isKeyFlight = !!(keys && (keys.up || keys.KeyW) && isAirborne && player.jetpackKeyNeutralized);
-  const isRaptor = (!player.currentClass || player.currentClass.id === 'RAPTOR');
+  const isKeyFlight = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp) && isAirborne && player.jetpackKeyNeutralized);
   const isFlightActive = isRaptor && (isKeyFlight || isTouchFlight) && !player.isDead && (player.jetFuel > 0) && !player.isSliding && (player.staggerTimer <= 0) && !(player.staggerRecoveryTimer > 0);
   if (isFlightActive) {
     player.isJetpacking = true;
@@ -228,6 +234,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       // Wersja mobilna: siła ciągu płynnie dostosowana do wychylenia drążka (umożliwia zawis w powietrzu)
       const stickUp = Math.min(1.0, Math.max(0.0, (-leftStick.axisY - 0.15) / (0.90 - 0.15)));
       player.jetpackPower = stickUp;
+      player.isHovering = (stickUp >= 0.28 && stickUp <= 0.52);
 
       const grav = CONFIG.GRAVITY || 0.38;
       if (stickUp < 0.28) {
@@ -262,22 +269,39 @@ export function updatePlayerInputAndCombat(activeArenaId) {
       player.jetFuel = Math.max(0, player.jetFuel - fuelDrain);
       sparkCount = Math.max(2, Math.round(1 + stickUp * 2));
     } else {
-      // Klawiatura PC: zbalansowany, płynny ciąg pionowy (dopasowany do fizyki mobilnej)
-      player.jetpackPower = 1.0;
-      const grav = CONFIG.GRAVITY || 0.38;
-      const netUpThrust = 0.32; // Zrównoważony ciąg wznoszący (zamiast natychmiastowego -0.95)
-      const maxClimbVy = -5.8;  // Komfortowy sufit prędkości wznoszenia (zamiast rakietowego -8.5)
+      // Klawiatura PC:
+      const isKeyHover = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp) && (keys.down || keys.KeyS || keys.ArrowDown));
+      if (isKeyHover) {
+        // ZAWIS TAKTYCZNY NA KLAWIATURZE (Tactical Air Hover przy jednoczesnym W+S):
+        player.jetpackPower = 0.5;
+        player.isHovering = true;
+        const grav = CONFIG.GRAVITY || 0.38;
+        player.vy -= grav;
+        player.vy *= 0.68;
+        if (Math.abs(player.vy) < 0.05) {
+          player.vy = 0;
+        }
+        player.jetFuel = Math.max(0, player.jetFuel - 0.28);
+        sparkCount = 2;
+      } else {
+        // Zrównoważony, płynny ciąg pionowy (wznoszenie)
+        player.jetpackPower = 1.0;
+        player.isHovering = false;
+        const grav = CONFIG.GRAVITY || 0.38;
+        const netUpThrust = 0.32;
+        const maxClimbVy = -5.8;
 
-      player.vy -= (grav + netUpThrust);
-      if (player.vy < maxClimbVy) {
-        player.vy += (maxClimbVy - player.vy) * 0.25;
-      }
-      if (player.y <= dynamicCeilingY && player.vy < 0) {
-        player.vy = 0;
-      }
+        player.vy -= (grav + netUpThrust);
+        if (player.vy < maxClimbVy) {
+          player.vy += (maxClimbVy - player.vy) * 0.25;
+        }
+        if (player.y <= dynamicCeilingY && player.vy < 0) {
+          player.vy = 0;
+        }
 
-      player.jetFuel = Math.max(0, player.jetFuel - 0.70);
-      sparkCount = 3;
+        player.jetFuel = Math.max(0, player.jetFuel - 0.70);
+        sparkCount = 3;
+      }
     }
 
     let inputAxisX = 0;
@@ -342,6 +366,7 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     inputSession.isJetpackActive = false;
     if (leftStick) leftStick.isJetpacking = false;
     player.isJetpacking = false;
+    player.isHovering = false;
     player.jetpackPower = 0;
   }
 

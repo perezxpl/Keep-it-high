@@ -5,7 +5,8 @@
 import { createPlayerInstance, updatePlayer, executeReleaseKick, playerSlide, throwTacticalGrenade, getJetpackNozzlePos, player, setPlayerClass } from './player.js';
 import { CLASSES } from './classes/index.js';
 import { triggerStrikerAirDash, triggerStrikerGroundDash } from './classes/striker.js';
-import { triggerEnforcerBlastJump } from './classes/enforcer.js';
+import { triggerEnforcerBlastJump, triggerEnforcerGroundSlam } from './classes/enforcer.js';
+import { triggerRaptorAfterburner } from './classes/aero.js';
 import { evaluateBotUnstuck } from './botNavigation.js';
 import { START_X, CONFIG } from './config.js';
 import { shootWeapon } from './weapons.js';
@@ -1041,32 +1042,39 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // UMIEJĘTNOŚCI SPECJALNE KLAS:
   // =========================================================================
 
-  // A. KLASA CIĘŻKA: ENFORCER – KINETIC PISTON LEAP (BLAST JUMP)
-  if (isEnforcer && botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding && botTarget.enforcerBlastCooldown <= 0) {
-    let shouldBlast = false;
-    let bDirX = 0;
+  // A. KLASA CIĘŻKA: ENFORCER – KINETIC PISTON LEAP (BLAST JUMP) & GROUND SLAM
+  if (isEnforcer) {
+    if (botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding && botTarget.enforcerBlastCooldown <= 0) {
+      let shouldBlast = false;
+      let bDirX = 0;
 
-    // 1. Tąpnięcie kinetyczne i fala uderzeniowa w walce wręcz
-    if (targetEnemy && !targetEnemy.isDead && distToEnemy < 100) {
-      shouldBlast = true;
-      bDirX = Math.sign(targetEnemy.x - botCenterX) * 0.6;
-    }
-    // 2. Kinetyczny wystrzał piłki na bramkę w Arenie 1
-    else if (hasBall && ballDistFromHip < 110) {
-      shouldBlast = true;
-      const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
-      bDirX = Math.sign(enemyGoalX - botCenterX);
-    }
-    // 3. Awaryjna ucieczka przed kwasem / rwącą rzeką
-    else if ((isA2 && botTarget.y > 900) || (isA3 && botCenterX >= 1540 && botCenterX <= 2860 && botTarget.y > 1150)) {
-      shouldBlast = true;
-      bDirX = (botCenterX < 2000 ? 1.0 : -1.0);
-    }
+      // 1. Tąpnięcie kinetyczne i fala uderzeniowa w walce wręcz
+      if (targetEnemy && !targetEnemy.isDead && distToEnemy < 100) {
+        shouldBlast = true;
+        bDirX = Math.sign(targetEnemy.x - botCenterX) * 0.6;
+      }
+      // 2. Kinetyczny wystrzał piłki na bramkę w Arenie 1
+      else if (hasBall && ballDistFromHip < 110) {
+        shouldBlast = true;
+        const enemyGoalX = (botTarget.team === 'CYAN') ? 3460 : 140;
+        bDirX = Math.sign(enemyGoalX - botCenterX);
+      }
+      // 3. Awaryjna ucieczka przed kwasem / rwącą rzeką
+      else if ((isA2 && botTarget.y > 900) || (isA3 && botCenterX >= 1540 && botCenterX <= 2860 && botTarget.y > 1150)) {
+        shouldBlast = true;
+        bDirX = (botCenterX < 2000 ? 1.0 : -1.0);
+      }
 
-    if (shouldBlast) {
-      triggerEnforcerBlastJump(botTarget, bDirX, spawnGrass);
-      bKeys.up = false;
-      botTarget.enforcerBlastCooldown = diffCfg.enforcerStompCooldown;
+      if (shouldBlast) {
+        triggerEnforcerBlastJump(botTarget, bDirX, spawnGrass);
+        bKeys.up = false;
+        botTarget.enforcerBlastCooldown = diffCfg.enforcerStompCooldown;
+      }
+    } else if (isAirborne && !botTarget.isGroundSlamming && (botTarget.vy || 0) > -1.5) {
+      // Tąpnięcie z powietrza (Ground Slam / Meteor Drop) prosto na głowę wroga znajdującego się poniżej
+      if (targetEnemy && !targetEnemy.isDead && Math.abs((targetEnemy.x + targetEnemy.w / 2) - botCenterX) < 85 && (targetEnemy.y - botTarget.y) > 60 && (targetEnemy.y - botTarget.y) < 340) {
+        triggerEnforcerGroundSlam(botTarget);
+      }
     }
   }
 
@@ -1200,6 +1208,10 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
           } else {
             bKeys.right = true;
             bKeys.left = false;
+          }
+          // Awaryjny dopalacz (Afterburner Surge), gdy wróg podchodzi zbyt blisko w zwarciu
+          if (distToEnemy < 85 && (botTarget.jetFuel || 0) >= 30 && (!botTarget.raptorFlight || botTarget.raptorFlight.afterburnerCooldown <= 0)) {
+            triggerRaptorAfterburner(botTarget, Math.sign(botCenterX - targetEnemy.x));
           }
         }
         // Utrzymywanie przewagi wysokości i zawis

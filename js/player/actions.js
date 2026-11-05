@@ -11,6 +11,7 @@ import { getActiveBots } from '../bot.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
+import { isEnforcerPoiseActive } from '../classes/enforcer.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -584,7 +585,10 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         }
 
         const baseDmg = classStats.spartanDamage || 12;
-        const dmg = Math.round(baseDmg * (knockbackMultiplier >= 1.5 ? 1.25 : 1.0) + pwr * 6);
+        let dmg = Math.round(baseDmg * (knockbackMultiplier >= 1.5 ? 1.25 : 1.0) + pwr * 6);
+        if (enemy.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(enemy)) {
+          dmg = Math.round(dmg * 0.82);
+        }
         enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
         enemy.lastAttacker = player;
         enemy.lastAttackerTimer = 240;
@@ -1026,7 +1030,10 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     spawnBloodSpurt(ex + (player.facing * 8), ey, player.facing, -0.2, 10, 1.2);
 
     const baseSpartanDmg = player.currentClass?.stats?.spartanDamage || 14;
-    const dmg = Math.round(baseSpartanDmg * (player.knockbackMultiplier >= 1.5 ? 1.25 : 1.0));
+    let dmg = Math.round(baseSpartanDmg * (player.knockbackMultiplier >= 1.5 ? 1.25 : 1.0));
+    if (enemy.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(enemy)) {
+      dmg = Math.round(dmg * 0.82);
+    }
     enemy.hp = Math.max(0, (enemy.hp !== undefined ? enemy.hp : 100) - dmg);
     enemy.lastAttacker = player;
     enemy.lastAttackerTimer = 240;

@@ -1,18 +1,36 @@
 // =========================================================================
 // KLASA CIĘŻKA: ENFORCER – Kolos / Siła / Tłoki Pneumatyczne (Kinetic Pistons)
 // Specjalność: Skok odpalany przy puszczeniu kierunku w górę (W / drążek).
-//              Przytrzymanie w górę przez min. 1000ms sprawia, że Enforcer schodzi
-//              w głęboki siłowy przysiad (Power Squat), kompresując tłoki parowe
-//              na łydkach, a w momencie puszczenia kruszy ziemię pod butami i
-//              potężnym susem wybija się wysoko na platformy (bez ognia!).
+//              Błyskawiczne sprężenie tłoków pneumatycznych (380ms) sprawia, że Enforcer
+//              schodzi w głęboki siłowy przysiad (Power Squat), a w momencie puszczenia
+//              kruszy ziemię pod butami i potężnym susem wybija się wysoko (bez ognia!).
+//              W powietrzu: Tąpnięcie z powietrza (Ground Slam / Meteor Drop).
+//              Pasywnie: Juggernaut Poise (-18% obrażeń podczas szarży, wślizgu i tąpnięcia).
 // =========================================================================
-import { triggerScreenShake, spawnGroundPuff } from '../world.js';
+import { triggerScreenShake, spawnGroundPuff, spawnBloodSpurt } from '../world.js';
 import {
   spawnHeavySmokePuff,
   spawnShockwaveRing
 } from '../particles.js';
+import { getActiveArena } from '../arenas/index.js';
+import { isDeathmatchFFA, deathmatchState } from '../deathmatch/index.js';
 
-export const ENFORCER_BOMB_CHARGE_MS = 1000; // Min. 1000ms przysiadu spręża tłoki pneumatyczne do pełnego wybicia
+export const ENFORCER_BOMB_CHARGE_MS = 380; // Błyskawiczne sprężenie tłoków pneumatycznych (380ms) do pełnego wybicia
+
+/**
+ * Sprawdza, czy aktywna jest twarda postawa Juggernaut Poise (-18% obrażeń):
+ * Redukuje obrażenia podczas sprintu w natarciu, wślizgu lub tąpnięcia z powietrza (Ground Slam).
+ */
+export function isEnforcerPoiseActive(p) {
+  if (!p || p.currentClass?.id !== 'ENFORCER') return false;
+  return !!(
+    p.isGroundSlamming ||
+    p.isSliding ||
+    p.isSprinting ||
+    p.sprintDuration > 10 ||
+    Math.abs(p.vx || 0) > 3.2
+  );
+}
 
 export function getEnforcerFlameColor(player) {
   if (player?.customVisuals?.jetpackColor) return player.customVisuals.jetpackColor;
@@ -145,6 +163,15 @@ export const EnforcerClass = {
   },
 
   onUpdate(player, ball, keys) {
+    if (player.isGroundSlamming) {
+      player.vy = Math.max(player.vy, 24.0);
+      player.vx *= 0.88;
+      const cx = player.x + (player.w || 30) / 2;
+      const cy = player.y + (player.h || 74);
+      if (Math.random() < 0.45) {
+        spawnHeavySmokePuff(cx, cy - 8, 4);
+      }
+    }
     const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
     if (!isFirmlyGrounded && player.blastBelt) {
       if (player.blastBelt.isCharging || player.isJumpCharging) {
@@ -163,7 +190,9 @@ export const EnforcerClass = {
 
   // Ciężkie tąpnięcie przy lądowaniu
   onPostPhysics(player) {
-    if (player.vy === 0 && player.isJumping) {
+    if (player.isGroundSlamming) {
+      executeEnforcerGroundSlamImpact(player);
+    } else if (player.vy === 0 && player.isJumping) {
       triggerScreenShake(3.5);
     }
   },
@@ -240,9 +269,10 @@ export function initBlastBeltState(p) {
 /**
  * Obsługa wejścia gracza (klawisz W / Strzałka w górę / Lewy drążek / Pad) dla Enforcera.
  * Skok odpala się po PUSZCZENIU kierunku w górę:
- * - Przytrzymanie < 1000ms -> zwykły skok po puszczeniu.
- * - Przytrzymanie >= 1000ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
+ * - Przytrzymanie < 380ms -> zwykły skok po puszczeniu.
+ * - Przytrzymanie >= 380ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
  *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
+ * W locie: naciśnięcie DÓŁ + KICK/JUMP/AKCJA odpala potężne tąpnięcie z powietrza (Ground Slam).
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
   if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
@@ -251,7 +281,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
 
   // 1. ŚCISŁA WERYFIKACJA KONTAKTU Z PODŁOŻEM:
   // Enforcer może używać tłoków i wykonywać siłowy przysiad WYŁĄCZNIE stojąc stabilnie na ziemi lub platformie!
-  // W powietrzu tłoki pneumatyczne są całkowicie zablokowane (brak oparcia o grunt).
+  // W powietrzu tłoki pneumatyczne są zablokowane, ale odblokowane jest Tąpnięcie z Powietrza (Ground Slam).
   const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
 
   if (!isFirmlyGrounded) {
@@ -263,6 +293,29 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
       belt.isArmed = false;
       player.isJumpCharging = false;
       player.jumpChargePower = 0;
+    }
+
+    // TĄPNIĘCIE Z POWIETRZA (Ground Slam / Meteor Drop):
+    // W locie naciśnięcie DÓŁ + KICK / JUMP / AKCJA powoduje gwałtowny pionowy spadek i falę uderzeniową po lądowaniu!
+    if (!player.isGroundSlamming) {
+      const isDownKey = !!(keys && (keys.down || keys.KeyS || keys.ArrowDown));
+      const isActionKey = !!(keys && (keys.space || keys.KeyW || keys.up || keys.ArrowUp || keys.KeyE || keys.KeyF || keys.Space));
+
+      let stickY = 0;
+      if (leftStick && leftStick.active) stickY = leftStick.axisY;
+      else if (gamepadState && gamepadState.connected && gamepadState.leftStick) stickY = gamepadState.leftStick.y;
+
+      const isStickDown = stickY > 0.45;
+      const isPadDown = !!(gamepadState && gamepadState.connected && gamepadState.buttons?.dpadDown);
+      const isDownHeld = isDownKey || isStickDown || isPadDown;
+
+      const isStickAction = !!(leftStick?.jumpTriggered);
+      const isPadAction = !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || gamepadState.buttons?.west || gamepadState.buttons?.east || gamepadState.buttons?.north || gamepadState.r1 || gamepadState.r2));
+      const isMobileAction = !!(typeof window !== 'undefined' && (window.pockets?.action?.active || window.btnCluster?.action?.active));
+
+      if (isDownHeld && (isActionKey || isStickAction || isPadAction || isMobileAction)) {
+        triggerEnforcerGroundSlam(player);
+      }
     }
     return;
   }
@@ -364,10 +417,10 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     player.jumpChargePower = 0;
 
     if (wasArmed) {
-      // Przytrzymano >= 1000ms na ziemi -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
+      // Przytrzymano >= 380ms na ziemi -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
       triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
     } else {
-      // Przytrzymano < 1000ms na ziemi -> zwykły skok z nóg po puszczeniu!
+      // Przytrzymano < 380ms na ziemi -> zwykły skok z nóg po puszczeniu!
       const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
       if (typeof jumpCallback === 'function') {
         jumpCallback(player, spawnGrass);
@@ -482,6 +535,228 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
     for (let i = 0; i < 12; i++) {
       grassFn(centerX + (i - 5.5) * 7, currentFloor, (i % 2 === 0) ? 1 : -1);
     }
+  }
+}
+
+/**
+ * Odpala Tąpnięcie z Powietrza (Meteor Drop / Ground Slam) Enforcera:
+ * Kolos pikuje z potężną prędkością pionową prosto w dół, rozcinając powietrze,
+ * a po kontakcie z ziemią lub platformą wyzwala niszczycielską falę uderzeniową.
+ */
+export function triggerEnforcerGroundSlam(player) {
+  if (!player || player.isDead || player.isGroundSlamming) return;
+  player.isGroundSlamming = true;
+  player.vy = 26.0;
+  player.vx *= 0.15;
+  player.airVx = player.vx;
+  player.isProne = false;
+  player.isCrouching = false;
+  player.crouchToggled = false;
+  player.isSliding = false;
+  player.isJumping = true;
+
+  triggerScreenShake(4.0);
+  const cx = player.x + (player.w || 30) / 2;
+  const cy = player.y + (player.h || 74) / 2;
+  if (typeof spawnHeavySmokePuff === 'function') {
+    spawnHeavySmokePuff(cx, cy, 8);
+  }
+  if (typeof spawnShockwaveRing === 'function') {
+    spawnShockwaveRing(cx, cy, '#cbd5e1');
+  }
+}
+
+/**
+ * Wykonuje niszczycielskie uderzenie o grunt / platformę po Ground Slamie Enforcera.
+ * Generuje falę uderzeniową AoE (125px), stagger, obrażenia (48 direct / 18-28 AoE), niszczy klocki areny i odrzuca piłkę/wrogów.
+ */
+export function executeEnforcerGroundSlamImpact(player, impactY = null) {
+  if (!player || !player.isGroundSlamming) return;
+  player.isGroundSlamming = false;
+  player.vy = 0;
+  player.vx = 0;
+  player.airVx = 0;
+  player.isJumping = false;
+  player.isSprintJump = false;
+  player.sprintJumpTimer = 0;
+
+  const floorY = (typeof impactY === 'number') ? impactY : (player.currentGroundY || player.groundY || (player.y + (player.h || 74)));
+  const centerX = player.x + (player.w || 30) / 2;
+
+  // 1. Potężny wstrząs kamery
+  triggerScreenShake(12.0);
+
+  // 2. Efekty wizualne tąpnięcia: fala uderzeniowa, pył, wyrzut gruzu, dym
+  if (typeof spawnShockwaveRing === 'function') {
+    spawnShockwaveRing(centerX, floorY - 3);
+    spawnShockwaveRing(centerX, floorY - 3, '#94a3b8');
+  }
+  if (typeof spawnHeavySmokePuff === 'function') {
+    spawnHeavySmokePuff(centerX, floorY - 6, 16);
+    spawnHeavySmokePuff(centerX - 24, floorY - 4, 8);
+    spawnHeavySmokePuff(centerX + 24, floorY - 4, 8);
+    spawnHeavySmokePuff(centerX - 42, floorY - 3, 5);
+    spawnHeavySmokePuff(centerX + 42, floorY - 3, 5);
+  }
+  if (typeof spawnGroundPuff === 'function') {
+    spawnGroundPuff(centerX - 35, floorY);
+    spawnGroundPuff(centerX - 18, floorY);
+    spawnGroundPuff(centerX, floorY);
+    spawnGroundPuff(centerX + 18, floorY);
+    spawnGroundPuff(centerX + 35, floorY);
+  }
+
+  // 3. Bryły gruzu / kamieni
+  const belt = player.blastBelt;
+  if (belt) {
+    const pebbles = [];
+    for (let i = 0; i < 16; i++) {
+      const side = (i % 2 === 0 ? -1 : 1);
+      pebbles.push({
+        dx: side * (6 + Math.random() * 26),
+        vx: side * (2.2 + Math.random() * 6.5),
+        vy: -(3.5 + Math.random() * 7.0),
+        r: 1.8 + Math.random() * 2.8,
+        col: (i % 3 === 0) ? '#71717a' : ((i % 3 === 1) ? '#52525b' : '#3f3f46')
+      });
+    }
+    belt.activeBlasts.push({
+      x: centerX,
+      y: floorY,
+      frame: 0,
+      maxFrames: 38,
+      pebbles
+    });
+  }
+
+  // 4. Obrażenia i oszołomienie AoE wokół miejsca uderzenia (promień 125px)
+  const combatants = (typeof window !== 'undefined' && Array.isArray(window.combatants))
+    ? window.combatants
+    : (typeof window !== 'undefined' && window.allCombatants ? window.allCombatants : []);
+  const activeBots = (typeof getActiveBots === 'function')
+    ? getActiveBots()
+    : ((typeof window !== 'undefined' && typeof window.getActiveBots === 'function') ? window.getActiveBots() : []);
+  const remoteP = (typeof window !== 'undefined' && window.remotePlayer?.active) ? window.remotePlayer : null;
+  const humanP = (typeof window !== 'undefined' && window.player) ? window.player : null;
+
+  const targets = new Set([...combatants, ...activeBots, remoteP, humanP].filter(Boolean));
+
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+    (deathmatchState && deathmatchState.mode === 'FFA') ||
+    (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+  const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
+  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+
+  for (const t of targets) {
+    if (!t || t === player || t.isDead) continue;
+    if (!isFFA && player.team && t.team && player.team === t.team) continue;
+    if (t.spawnProtectionTimer && t.spawnProtectionTimer > 0) continue;
+
+    const tCenterX = t.x + (t.w || 24) / 2;
+    const tCenterY = t.y + (t.h || 70) / 2;
+    const dist = Math.hypot(tCenterX - centerX, (t.y + (t.h || 70)) - floorY);
+
+    if (dist <= 125) {
+      const isDirect = (dist <= 38);
+      const factor = isDirect ? 1.0 : Math.max(0, 1.0 - ((dist - 38) / (125 - 38)));
+      const dmg = isDirect ? 48 : Math.round(18 + 10 * factor);
+      const stagger = isDirect ? 34 : Math.round(16 + 8 * factor);
+      const knockDir = Math.sign(tCenterX - centerX) || player.facing || 1;
+      const knockVx = knockDir * (isDirect ? 14.0 : (8.0 + 5.0 * factor));
+      const knockVy = isDirect ? -8.5 : -5.2;
+
+      t.hp = Math.max(0, (t.hp !== undefined ? t.hp : 100) - dmg);
+      t.lastAttacker = player;
+      t.lastAttackerTimer = 240;
+      t.vx = knockVx;
+      t.vy = knockVy;
+      t.isJumping = true;
+      t.onGround = false;
+
+      const isImmune = !!(t.staggerImmunityTimer && t.staggerImmunityTimer > 0);
+      if (!isImmune) {
+        t.staggerTimer = stagger;
+        t.staggerLanded = false;
+        t.staggerRecoveryTimer = 0;
+      }
+
+      if (typeof spawnBloodSpurt === 'function') {
+        spawnBloodSpurt(tCenterX, tCenterY, knockDir * 3.5, -2.5, isDirect ? 16 : 8, 1.2);
+      }
+
+      if (sendDmg && netState && netState.isConnected && !player.isRemote) {
+        if (t.isRemote) {
+          sendDmg({
+            target: 'player',
+            damage: dmg,
+            isTorsoShot: true,
+            hitX: tCenterX,
+            hitY: tCenterY,
+            relHitY: 0,
+            weaponId: 'GROUND_SLAM',
+            vx: knockVx,
+            vy: knockVy,
+            stagger
+          });
+        } else if (t.isBot && !netState.isHost) {
+          const bIdx = activeBots.indexOf(t);
+          if (bIdx !== -1) {
+            sendDmg({
+              target: 'bot',
+              botIdx: bIdx,
+              damage: dmg,
+              isTorsoShot: true,
+              hitX: tCenterX,
+              hitY: tCenterY,
+              relHitY: 0,
+              weaponId: 'GROUND_SLAM',
+              vx: knockVx,
+              vy: knockVy,
+              stagger
+            });
+          }
+        }
+      }
+
+      if (t.hp <= 0 && !t.isDead) {
+        t.isDead = true;
+        t.killer = player;
+        t.respawnTimer = 180;
+        t.bleedTimer = 90;
+        t.corpseFloorY = floorY;
+        if (typeof window !== 'undefined') {
+          if (typeof window.recordKill === 'function' && player === window.player) {
+            window.recordKill();
+          }
+          if (typeof window.registerKillstreakKill === 'function' && player === window.player) {
+            window.registerKillstreakKill();
+          }
+        }
+      }
+    }
+  }
+
+  // 5. Interakcja z piłką
+  const curBall = (typeof window !== 'undefined' && window.ball) ? window.ball : null;
+  if (curBall && !curBall.isPocketed) {
+    const dBall = Math.hypot(curBall.x - centerX, curBall.y - floorY);
+    if (dBall <= 140) {
+      const bSign = Math.sign(curBall.x - centerX) || 1;
+      curBall.vx += bSign * 16.0;
+      curBall.vy = -18.0;
+      curBall.lowGravityFrames = 25;
+    }
+  }
+
+  // 6. Interakcja z niszczalnymi klockami i przeszkodami areny
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  if (curArena && typeof curArena.onKickHit === 'function') {
+    curArena.onKickHit(player, {
+      isSpartan: true,
+      footX: centerX,
+      footY: floorY,
+      kickReach: 75
+    });
   }
 }
 

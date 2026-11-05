@@ -32,6 +32,7 @@ import { spawnAltarShockwave } from '../obstacles/renderer.js';
 import { activeSentryGuns } from '../killstreaks/sentryGun.js';
 import { ARENA_LEFT, ARENA_RIGHT } from '../config.js';
 import { DEFAULT_VISUALS } from '../player/hair.js';
+import { isEnforcerPoiseActive } from '../classes/enforcer.js';
 
 /**
  * Wyznacza odległość punktu (px, py) od odcinka (x1, y1)-(x2, y2)
@@ -390,6 +391,9 @@ export class RpgRocket {
       }
 
       let totalDamage = Math.round(this.damage * damageMultiplier);
+      if (closestChar.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(closestChar)) {
+        totalDamage = Math.round(totalDamage * 0.82);
+      }
 
       if (isTorsoShot && (closestChar.hasVest || closestChar.visuals?.hasVest)) {
         if (closestChar.vestHp === undefined) {
