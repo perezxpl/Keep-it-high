@@ -164,6 +164,10 @@ export const EnforcerClass = {
 
   onUpdate(player, ball, keys) {
     if (player.isGroundSlamming) {
+      if (player.onGround) {
+        executeEnforcerGroundSlamImpact(player);
+        return;
+      }
       player.vy = Math.max(player.vy, 24.0);
       player.vx *= 0.88;
       const cx = player.x + (player.w || 30) / 2;
@@ -544,7 +548,7 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
  * a po kontakcie z ziemią lub platformą wyzwala niszczycielską falę uderzeniową.
  */
 export function triggerEnforcerGroundSlam(player) {
-  if (!player || player.isDead || player.isGroundSlamming) return;
+  if (!player || player.isDead || player.isGroundSlamming || player.onGround) return;
   player.isGroundSlamming = true;
   player.vy = 26.0;
   player.vx *= 0.15;

@@ -243,6 +243,36 @@ try {
     previewsMod.namespace.drawWeaponPreview(mockElement, 'RPG7');
   }
 
+  // Smoke test logiki bota dla wszystkich klas i stanow w powietrzu/na ziemi (wykrywanie TDZ i bledow runtime)
+  const botPathNorm = path.resolve(jsDir, 'bot.js').toLowerCase();
+  const botMod = evalModules.get(botPathNorm);
+  if (botMod && botMod.namespace && typeof botMod.namespace.updateBotBrain === 'function') {
+    const dummyHuman = { x: 500, y: 500, w: 24, h: 70, vx: 0, vy: 0, isDead: false, team: 'CYAN' };
+    const dummyBall = { x: 520, y: 500, vx: 0, vy: 0 };
+    for (const classKey of ['ENFORCER', 'STRIKER', 'RAPTOR']) {
+      for (const inAir of [false, true]) {
+        const dummyBot = {
+          x: 400, y: inAir ? 400 : 500, w: 30, h: 74, vx: 0, vy: inAir ? 1.0 : 0,
+          facing: 1, isDead: false, team: 'ORANGE', hp: 100, maxHp: 100,
+          currentClass: { id: classKey },
+          onGround: !inAir,
+          isJumping: inAir,
+          isSliding: false,
+          isGroundSlamming: false,
+          jetFuel: 100,
+          jetMax: 100,
+          strikerDashCooldown: 0,
+          enforcerBlastCooldown: 0,
+          enforcerGroundSlamCooldown: 0,
+          grenadeCooldown: 0,
+          shootCooldown: 0,
+          botKeys: { left: false, right: false, up: false, down: false, space: false, slide: false }
+        };
+        botMod.namespace.updateBotBrain(dummyBall, dummyHuman, 570, null, dummyBot, [dummyHuman, dummyBot]);
+      }
+    }
+  }
+
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');
 } catch (evalErr) {
   console.error(`[RUNTIME EVALUATION ERROR] ${evalErr.stack || evalErr.message}`);

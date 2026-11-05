@@ -120,6 +120,7 @@ export function applyBotClassAndConfig(botTarget, classKey, team = 'ORANGE') {
 
   botTarget.strikerDashCooldown = Math.floor(Math.random() * 25 + 15);
   botTarget.enforcerBlastCooldown = Math.floor(Math.random() * 35 + 20);
+  botTarget.enforcerGroundSlamCooldown = 0;
   botTarget.raptorHoverTimer = 0;
 }
 
@@ -445,6 +446,7 @@ export function createBotInstance(index = 0, isActive = undefined) {
     shootHesitationTimer: 0,
     strikerDashCooldown: 0,
     enforcerBlastCooldown: 0,
+    enforcerGroundSlamCooldown: 0,
     raptorHoverTimer: 0,
     _lastNavX: 0,
     _lastNavY: 0,
@@ -815,6 +817,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   }
   if (botTarget.strikerDashCooldown > 0) botTarget.strikerDashCooldown--;
   if (botTarget.enforcerBlastCooldown > 0) botTarget.enforcerBlastCooldown--;
+  if (botTarget.enforcerGroundSlamCooldown > 0) botTarget.enforcerGroundSlamCooldown--;
   if (botTarget.raptorHoverTimer > 0) botTarget.raptorHoverTimer--;
 
   const botClassId = (botTarget.currentClass?.id || 'STRIKER').toUpperCase();
@@ -1040,6 +1043,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // UMIEJĘTNOŚCI SPECJALNE KLAS:
   // =========================================================================
+  const isAirborne = botTarget.isJumping || !botTarget.onGround;
 
   // A. KLASA CIĘŻKA: ENFORCER – KINETIC PISTON LEAP (BLAST JUMP) & GROUND SLAM
   if (isEnforcer) {
@@ -1069,17 +1073,18 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         bKeys.up = false;
         botTarget.enforcerBlastCooldown = diffCfg.enforcerStompCooldown;
       }
-    } else if (isAirborne && !botTarget.isGroundSlamming && (botTarget.vy || 0) > -1.5) {
+    } else if (isAirborne && !botTarget.isGroundSlamming && (!botTarget.enforcerGroundSlamCooldown || botTarget.enforcerGroundSlamCooldown <= 0) && (botTarget.vy || 0) > -1.5) {
       // Tąpnięcie z powietrza (Ground Slam / Meteor Drop) prosto na głowę wroga znajdującego się poniżej
       if (targetEnemy && !targetEnemy.isDead && Math.abs((targetEnemy.x + targetEnemy.w / 2) - botCenterX) < 85 && (targetEnemy.y - botTarget.y) > 60 && (targetEnemy.y - botTarget.y) < 340) {
         triggerEnforcerGroundSlam(botTarget);
+        botTarget.enforcerGroundSlamCooldown = 180;
       }
     }
   }
 
   // B. KLASA ŚREDNIA: STRIKER – ROCKET BOOTS (AIR DASH & GROUND DASH)
   if (isStriker && botTarget.strikerDashCooldown <= 0) {
-    const isAirborneNow = botTarget.isJumping || !botTarget.onGround;
+    const isAirborneNow = isAirborne;
     const isGroundedNow = botTarget.onGround && !botTarget.isJumping && !botTarget.isSliding;
 
     // 1. Air Dash w powietrzu (wymaga >= 50 paliwa)
@@ -1151,7 +1156,6 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // 3. LOT JETPACKIEM I NAPĘD ODRZUTOWY BOTA
   // =========================================================================
-  const isAirborne = botTarget.isJumping || !botTarget.onGround;
   let wantsJetpack = false;
 
   // Enforcer nie posiada jetpacka
