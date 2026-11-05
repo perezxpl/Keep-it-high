@@ -270,6 +270,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
   // Wciśnięcie skoku / wykopu natychmiast podrywa postać na nogi z leżenia i kucania
   const standUpRequested = !!((keys && (keys.up || keys.space)) || (leftStick && leftStick.jumpTriggered) || (leftStick && leftStick.axisY < -0.40));
   if (standUpRequested && (player.isProne || player.isCrouching || player.crouchToggled)) {
+    if (player.isCrouching || player.crouchToggled) {
+      player._crouchExitTime = performance.now();
+      player._lastCrouchActiveTime = performance.now();
+    }
     player.isProne = false;
     player.isCrouching = false;
     player.crouchToggled = false;
@@ -1132,27 +1136,31 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     const isA3 = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'ARENA_FOUNDRY' || activeArenaId === 'arena-3');
     const isA2 = (curArena?.id === 'arena-2' || activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X');
     if (isA5) {
-      const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number')
-        ? window.arena5State.currentFloorY
-        : 1200;
-      const groundFloorLimit = a5Floor - colH;
-      if (player.y >= groundFloorLimit && player.y <= groundFloorLimit + Math.max(30, player.vy + 16)) {
-        player.y = groundFloorLimit;
-        player.vy = 0;
-        player.isJumping = false;
-        player.isSprintJump = false;
-        player.sprintJumpTimer = 0;
-        player.coyoteTimer = 8;
-        player.lastGroundVx = player.vx;
-        player.onGround = true;
-        player.jetpackKeyNeutralized = true;
-        player.airVx = 0;
-        player.currentGroundY = a5Floor;
-        player.dropThroughTimer = 0;
-        player.dropThroughPlatform = null;
+      const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+      const minFloorRow = a5State?.minFloorRow || 0;
+      const a5Floor = (typeof a5State?.currentFloorY === 'number') ? a5State.currentFloorY : 1200;
+      // W Arenie 5 twarde podparcie istnieje na a5Floor TYLKO na starcie (minFloorRow === 0).
+      // Gdy minFloorRow > 0 fundament zostaje zutylizowany i gracz musi ladowac wylacznie na klockach (ARENA_PLATFORMS)
+      if (minFloorRow === 0) {
+        const groundFloorLimit = a5Floor - colH;
+        if (player.y >= groundFloorLimit && player.y <= groundFloorLimit + Math.max(30, player.vy + 16)) {
+          player.y = groundFloorLimit;
+          player.vy = 0;
+          player.isJumping = false;
+          player.isSprintJump = false;
+          player.sprintJumpTimer = 0;
+          player.coyoteTimer = 8;
+          player.lastGroundVx = player.vx;
+          player.onGround = true;
+          player.jetpackKeyNeutralized = true;
+          player.airVx = 0;
+          player.currentGroundY = a5Floor;
+          player.dropThroughTimer = 0;
+          player.dropThroughPlatform = null;
 
-        if (player.isGroundSlamming) {
-          executeEnforcerGroundSlamImpact(player, a5Floor);
+          if (player.isGroundSlamming) {
+            executeEnforcerGroundSlamImpact(player, a5Floor);
+          }
         }
       }
     } else if (!isA4 && !isA3 && !isA2) {

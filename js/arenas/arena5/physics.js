@@ -41,7 +41,7 @@ export function getActiveCombatants() {
  */
 export function syncCombatantHeight(p) {
   if (!p) return 72;
-  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.isCrouching ? (p.hitboxHeight || 45) : (p.h || 72)));
   if (typeof p.lastColH === 'number') {
     if (colH > p.lastColH) {
       p.y -= (colH - p.lastColH);

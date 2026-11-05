@@ -410,8 +410,8 @@ export function initKeyboardMouseHandlers({
       keys.up = true;
 
       // ENFORCER: Natychmiastowe użycie tłoków po kucnięciu (od 0 do 300ms)
-      if (player.currentClass?.id === 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro) {
-        if (canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
+      if (player.currentClass?.id === 'ENFORCER' && !player.isSliding && !player.isIntro) {
+        if (canTriggerEnforcerCrouchPiston(player)) {
           let curDirX = 0;
           if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
           if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
@@ -449,8 +449,8 @@ export function initKeyboardMouseHandlers({
     if (e.code === 'Space' && !e.repeat && !keys.space) {
       keys.space = true;
       // ENFORCER: Natychmiastowe użycie tłoków spacją po kucnięciu (od 0 do 300ms)
-      if (player.currentClass?.id === 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro) {
-        if (canTriggerEnforcerCrouchPiston(player) && isEnforcerFirmlyGrounded(player)) {
+      if (player.currentClass?.id === 'ENFORCER' && !player.isSliding && !player.isIntro) {
+        if (canTriggerEnforcerCrouchPiston(player)) {
           let curDirX = 0;
           if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
           if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
