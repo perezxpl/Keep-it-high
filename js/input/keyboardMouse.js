@@ -405,7 +405,13 @@ export function initKeyboardMouseHandlers({
       player.isCrouching = false;
       player.crouchToggled = false;
 
-      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(player.vy || 0) < 4.0);
+      const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+      const crane = a5?.crane;
+      const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
+      const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
+      const relVy = (player.vy || 0) - craneVy;
+
+      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(relVy) < 4.0);
       const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
       if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {

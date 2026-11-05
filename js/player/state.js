@@ -506,13 +506,23 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
   if (!p || p.isDead || p.isIntro || p.isSliding || (p.staggerTimer > 0) || p.isAcidDying) return false;
   if (p.isJumping) return false;
 
+  const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+  const crane = a5State?.crane;
+  const isCraneGround = !!(
+    crane?.phase === 'FALLING' &&
+    p.currentGroundY &&
+    Math.abs(p.currentGroundY - (p.y + (p.h || 70))) < 14
+  );
+  const craneVy = isCraneGround ? (crane.vy || 0) : 0;
+  const relVy = (p.vy || 0) - craneVy;
+
   const currentFloor = p.currentGroundY || p.groundY || p.lastGroundedFloorY || (p.y + (p.h || 70));
-  const hasCoyote = ((p.coyoteTimer || 0) > 0 && !p.isJumping && Math.abs(p.vy || 0) < 4.5);
+  const hasCoyote = ((p.coyoteTimer || 0) > 0 && !p.isJumping && Math.abs(relVy) < 4.5);
   const isGrounded = (p.onGround !== undefined)
     ? (p.onGround || hasCoyote)
     : (p.y >= currentFloor - (p.h || 70) - 4 || hasCoyote);
 
-  if (!isGrounded && Math.abs(p.vy) > 0.8) return false;
+  if (!isGrounded && Math.abs(relVy) > 0.8) return false;
 
   // Przerwanie pozycji kucania i leżenia
   p.isProne = false;
@@ -532,11 +542,9 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
 
   let jumpForce = p.currentClass?.stats?.jumpForce || CONFIG.JUMP_FORCE;
 
-  const a5State = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
-  const isCraneGround = !!(a5State?.crane?.phase === 'FALLING' && p.currentGroundY && Math.abs(p.currentGroundY - (p.y + (p.h || 70))) < 14);
   if (isCraneGround) {
-    jumpForce *= 1.30;
-    p._craneBounceCooldown = 14;
+    jumpForce = Math.max(jumpForce + craneVy * 0.85, 12.5);
+    p._craneBounceCooldown = 16;
   }
 
   if (isSuperRunning) {

@@ -19,6 +19,19 @@ export function getEnforcerFlameColor(player) {
   return '#38bdf8';
 }
 
+export function isEnforcerFirmlyGrounded(player) {
+  if (!player || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
+  const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+  const crane = a5?.crane;
+  const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
+  const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
+  const relVy = (player.vy || 0) - craneVy;
+  return (
+    (player.onGround && Math.abs(relVy) < 1.8) ||
+    ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 1.8)
+  );
+}
+
 export const EnforcerClass = {
   id: 'ENFORCER',
   name: 'Enforcer',
@@ -132,10 +145,7 @@ export const EnforcerClass = {
   },
 
   onUpdate(player, ball, keys) {
-    const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
-      (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
-      ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
-    );
+    const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
     if (!isFirmlyGrounded && player.blastBelt) {
       if (player.blastBelt.isCharging || player.isJumpCharging) {
         player.blastBelt.isCharging = false;
@@ -242,10 +252,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   // 1. ŚCISŁA WERYFIKACJA KONTAKTU Z PODŁOŻEM:
   // Enforcer może używać tłoków i wykonywać siłowy przysiad WYŁĄCZNIE stojąc stabilnie na ziemi lub platformie!
   // W powietrzu tłoki pneumatyczne są całkowicie zablokowane (brak oparcia o grunt).
-  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && !((player.staggerRecoveryTimer || 0) > 0) && (
-    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
-    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
-  );
+  const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
 
   if (!isFirmlyGrounded) {
     // W POWIETRZU: natychmiastowe zerowanie ładowania tłoków i siłowego przysiadu!
@@ -376,10 +383,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
  */
 export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   if (!player || player.isDead) return;
-  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (player.staggerTimer <= 0) && (
-    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
-    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
-  );
+  const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
   if (!isFirmlyGrounded) return;
   if (!player.blastBelt) initBlastBeltState(player);
   const belt = player.blastBelt;
@@ -405,6 +409,7 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   player.jumpSquatTimer = 0;
   player.jumpLaunchFloorY = currentFloor;
   player.jumpTakeoffTimer = 14;
+  player._craneBounceCooldown = 18;
 
   // Silny pęd poziomy w kierunku wychylenia (umożliwia dalekie wskakiwanie na platformy)
   const sprintMax = player.currentClass?.stats?.sprintMax || 5.6;
@@ -631,10 +636,7 @@ function drawEnforcerBeltChargeHUD(ctx, player) {
   if (!player || player._isCreatorDummy || player.isDead) return;
   const belt = player.blastBelt;
   if (!belt || !belt.isCharging) return;
-  const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isAcidDying && (
-    (player.onGround && Math.abs(player.vy || 0) < 1.8) ||
-    ((player.coyoteTimer || 0) > 0 && Math.abs(player.vy || 0) < 1.8)
-  );
+  const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
   if (!isFirmlyGrounded) return;
 
   const ratio = Math.max(0, Math.min(1.0, belt.chargeRatio || 0));

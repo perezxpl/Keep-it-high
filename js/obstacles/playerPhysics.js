@@ -587,28 +587,45 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
     } else {
       const isA5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
-      // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
-      const isSupported = isA5 ? true : ((typeof isGroundAt === 'function')
-        ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
-        : true);
+      const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
+      const crane = a5?.crane;
+      const isOnFallingCrane = !!(
+        isA5 &&
+        crane?.phase === 'FALLING' &&
+        p.currentGroundY &&
+        Math.abs(p.currentGroundY - (p.y + colH)) <= 8 &&
+        (!p.isJumping || p.vy >= -0.5)
+      );
 
-      if (isSupported) {
-        p.currentGroundY = groundY;
-        p.onGround = (p.y >= groundY - colH - 1);
-        if (p.onGround && p.y > groundY - colH) {
-          p.y = groundY - colH;
-          p.vy = 0;
-        }
-        if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
-          p.staggerLanded = true;
-          p.vy = 0;
-          p.vx *= 0.70;
-          spawnGroundPuff(centerX, groundY);
-        }
+      if (isOnFallingCrane) {
+        // Postać stoi stabilnie na opadającym klocku suwnicy w Arenie 5
+        p.onGround = true;
+        p.coyoteTimer = 8;
+        p.lastGroundedFloorY = p.currentGroundY;
       } else {
-        // Postać nad wyrwą w geometrii – natychmiast traci podparcie
-        p.onGround = false;
-        p.currentGroundY = null;
+        // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
+        const isSupported = isA5 ? true : ((typeof isGroundAt === 'function')
+          ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
+          : true);
+
+        if (isSupported) {
+          p.currentGroundY = groundY;
+          p.onGround = (p.y >= groundY - colH - 1);
+          if (p.onGround && p.y > groundY - colH) {
+            p.y = groundY - colH;
+            p.vy = 0;
+          }
+          if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
+            p.staggerLanded = true;
+            p.vy = 0;
+            p.vx *= 0.70;
+            spawnGroundPuff(centerX, groundY);
+          }
+        } else {
+          // Postać nad wyrwą w geometrii – natychmiast traci podparcie
+          p.onGround = false;
+          p.currentGroundY = null;
+        }
       }
     }
   }
