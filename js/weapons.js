@@ -322,7 +322,7 @@ function updateMeleeCollision(shooter, ms) {
         const targetVisuals = getCharVisuals(t);
 
         if (t.currentWeapon) {
-          spawnDroppedWeapon(t.x + (t.w || 24) * 0.5, t.y + 28, facing * 3.5, -4.5, t.currentWeapon, t.facing);
+          spawnDroppedWeapon(t.x + (t.w || 24) * 0.5, t.y + 28, facing * 3.5, -4.5, t.currentWeapon, t.facing, null, t);
         }
 
         t.dismembered = {
@@ -1383,7 +1383,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             b.vx * dropMult,
             -3.8 + (isShotgun ? -1.5 : (isSniper ? -2.0 : 0)),
             closestChar.currentWeapon,
-            closestChar.facing
+            closestChar.facing,
+            null,
+            closestChar
           );
         }
 

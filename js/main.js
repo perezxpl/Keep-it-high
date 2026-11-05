@@ -61,6 +61,7 @@ import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from '
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, deathmatchState } from './deathmatch/index.js';
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
+import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
@@ -333,6 +334,7 @@ export function concludeMatchAndReturnToLobby(options = {}) {
   if (typeof resetKillstreak === 'function') {
     resetKillstreak();
   }
+  resetPickups();
   startRound();
 
   // 2. Obsługa trybu sieciowego P2P
@@ -473,6 +475,7 @@ initModularGearDevUI();
 initWeaponEditorUI();
 initNetwork();
 initKillstreaks();
+initPickups();
 initLighting();
 initPlayerLoadout(player);
 initArmoryUI(player);
@@ -822,10 +825,11 @@ function update() {
     }
   }
 
-  // Aktualizacja logiki serii zabójstw (Killstreaks)
+  // Aktualizacja logiki serii zabójstw (Killstreaks) oraz podnoszenia broni (Pickups)
   const curActiveBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot?.active ? [bot] : []);
   const curCombatants = [player, ...curActiveBots, ...(remotePlayer?.active ? [remotePlayer] : [])];
   updateKillstreaks((FRAME_DURATION / 1000) || (1 / 60), player, curCombatants);
+  updatePickups((FRAME_DURATION / 1000) || (1 / 60), player, curCombatants, camera);
 
   // RESET SESJI POWIETRZNEJ JETPACKA DOPIERO PO WYLĄDOWANIU
   const curArenaObj = typeof getActiveArena === 'function' ? getActiveArena() : null;
@@ -1116,6 +1120,7 @@ function draw() {
 
   // Renderowanie efektów gore (krew w locie, odcięte głowy, urwane kończyny, upuszczona broń)
   drawGore(ctx);
+  drawPickupsWorld(ctx, camera);
 
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
@@ -1196,6 +1201,7 @@ function draw() {
     const combatants = [player, ...currentActiveBots, ...(remotePlayer.active ? [remotePlayer] : [])];
     drawKillstreakWorld(ctx, camera, combatants, player);
     drawKillstreakHUD(ctx, canvas, player);
+    drawPickupPrompt(ctx, camera, isTouchDevice);
   } else if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx, mouseState.screenX, mouseState.screenY);
   }

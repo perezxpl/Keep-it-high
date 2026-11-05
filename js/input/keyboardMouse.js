@@ -45,6 +45,7 @@ import {
 import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
 import { equipPocket1Slot, cyclePocket1, quickSwitchPocket1 } from '../loadout/index.js';
+import { pickupPromptState } from '../pickup/index.js';
 
 export const mouseState = {
   lmbDown: false,
@@ -739,6 +740,15 @@ export function initKeyboardMouseHandlers({
     const mpModal = document.getElementById('mp-modal');
     if (mpModal && !mpModal.classList.contains('mp-modal-hidden')) return;
 
+    // 00. Obsługa kliknięcia w pływający przycisk podnoszenia broni / interakcji
+    if (e.button === 0 && pickupPromptState.touchButtonBounds.active) {
+      const b = pickupPromptState.touchButtonBounds;
+      if (Math.hypot(e.clientX - b.x, e.clientY - b.y) <= b.hitR) {
+        pickupPromptState.isHoldingMouse = true;
+        return;
+      }
+    }
+
     // 0a. Obsługa kieszeni broni palnej (oraz karty broni w lewym górnym rogu) dla myszy / pada dotykowego
     if (e.button === 0 && isTouchDevice && pockets.firearm) {
       const pFarm = pockets.firearm;
@@ -904,6 +914,7 @@ export function initKeyboardMouseHandlers({
   });
 
   window.addEventListener('mouseup', (e) => {
+    pickupPromptState.isHoldingMouse = false;
     if (e.button === 0 && pockets.firearm && pockets.firearm.active && pockets.firearm.id === 'mouse') {
       if (pockets.firearm.holdTimerId) {
         clearTimeout(pockets.firearm.holdTimerId);

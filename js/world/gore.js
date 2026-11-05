@@ -13,6 +13,7 @@ import {
 } from './state.js';
 import { getActiveArena } from '../arenas/index.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { spawnDroppedWeapon as spawnInteractiveDroppedWeapon } from '../pickup/index.js';
 
 // =========================================================================
 // SYSTEM GORE: KREW, PLAMY, ODCIĘTA GŁOWA, GIBS I UPUSZCZONA BROŃ
@@ -299,20 +300,9 @@ export function spawnBodyGibs(cx, cy, facing, visuals) {
   spawnBloodSpurt(cx, cy, 0, -1, 35, 1.8);
 }
 
-export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing) {
-  if (!weapon) return;
-  droppedWeapons.push({
-    weapon,
-    x,
-    y,
-    vx: (vx || 0) * 0.4 + (facing * (Math.random() * 2.5 + 1.5)),
-    vy: (vy || 0) * 0.3 - (Math.random() * 3.5 + 3.0),
-    rot: 0,
-    vRot: (Math.random() * 0.22 + 0.12) * (Math.random() < 0.5 ? 1 : -1),
-    facing: facing || 1,
-    bounces: 0,
-    life: 360
-  });
+export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing, ammoState = null, owner = null) {
+  if (!weapon) return null;
+  return spawnInteractiveDroppedWeapon(x, y, vx, vy, weapon, facing, ammoState, owner);
 }
 
 export function spawnKnockedHelmet(x, y, vx, vy, facing = 1, visuals = null) {

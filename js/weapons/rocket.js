@@ -498,7 +498,9 @@ export class RpgRocket {
             this.vx * 0.45,
             -5.0,
             closestChar.currentWeapon,
-            closestChar.facing
+            closestChar.facing,
+            null,
+            closestChar
           );
         }
 

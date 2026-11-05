@@ -52,6 +52,11 @@ import {
 } from '../killstreaks/index.js';
 import { deathmatchState } from '../deathmatch/index.js';
 import { matchWinState } from '../ui/rankHud.js';
+import {
+  handlePickupTouchStart,
+  handlePickupTouchMove,
+  handlePickupTouchEnd
+} from '../pickup/index.js';
 
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
@@ -235,6 +240,13 @@ canvas.addEventListener('touchstart', (e) => {
       killstreakState.touchStartY = t.clientY;
       const worldPos = screenToWorld(t.clientX, t.clientY);
       killstreakState.mortarTargetX = worldPos.x;
+      continue;
+    }
+
+    // =======================================================================
+    // 00a. PRZYTRZYMANIE PRZYCISKU PODNOSZENIA BRONI / INTERAKCJI
+    // =======================================================================
+    if (handlePickupTouchStart(t.clientX, t.clientY, t.identifier)) {
       continue;
     }
 
@@ -496,6 +508,8 @@ canvas.addEventListener('touchmove', (e) => {
       killstreakState.mortarTargetX = worldPos.x;
       continue;
     }
+
+    handlePickupTouchMove(t.clientX, t.clientY, t.identifier);
 
 
     if (leftStick.active && t.identifier === leftStick.id) {
@@ -782,6 +796,7 @@ function endTouch(e) {
   }
   for (let i = 0; i < e.changedTouches.length; i++) {
     const t = e.changedTouches[i];
+    handlePickupTouchEnd(t.identifier);
 
     if (killstreakState.mortarTargeting && t.identifier === killstreakState.mortarTargetTouchId) {
       killstreakState.mortarTargetTouchId = null;
@@ -1046,6 +1061,7 @@ function endTouch(e) {
 
   // Zabezpieczenie globalne: gdy wszystkie palce zeszły z ekranu, ZAWSZE czyść sloty przeciągania
   if (!e.touches || e.touches.length === 0) {
+    handlePickupTouchEnd(null);
     rightStick.draggedSlot = null;
     if (pockets.firearm) {
       if (pockets.firearm.holdTimerId) {

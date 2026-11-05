@@ -136,7 +136,7 @@ function rollCarePackageLoot() {
 /**
  * Przyznanie nagrody podmiotowi, który przechwycił zrzut
  */
-function awardCarePackageLoot(crate, recipient, player) {
+export function awardCarePackageLoot(crate, recipient, player) {
   crate.isOpen = true;
   crate.isGrounded = false;
   crate.openedTimer = 2.4;
@@ -407,8 +407,8 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
 
         if (distToPlayer <= 68) {
           const k = getKeys();
-          const isHoldingInteract = isMobile || !!(k.KeyE || k.interact);
-          if (isHoldingInteract) {
+          const isHoldingInteract = !!(k.KeyE || k.interact);
+          if (isHoldingInteract || crate.capturingEntity === player) {
             capturingEntity = player;
           }
         }

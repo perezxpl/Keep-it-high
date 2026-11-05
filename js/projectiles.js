@@ -912,21 +912,15 @@ export class ThrownTomahawk {
         this.y = platY - 3;
       }
 
-      // Detekcja podniesienia przez gracza-właściciela
-      if (this.shooter && !this.shooter.isDead) {
+      // Detekcja podniesienia przez bota (gracze podnoszą przytrzymaniem przycisku)
+      if (this.shooter && this.shooter.isBot && !this.shooter.isDead) {
         const pX = this.shooter.x + (this.shooter.w || 24) * 0.5;
         const pY = this.shooter.y + (this.shooter.h || 70) * 0.5;
         const dist = Math.hypot(pX - this.x, pY - this.y);
 
         if (dist <= this.pickupRadius) {
-          // PODNIESIENIE TOPOORKA DO RĄK GRACZA
-          this.shooter.axeThrown = false;
-          if (this.bloodTimer > 0) {
-            this.shooter.meleeBloodTimer = Math.max(this.shooter.meleeBloodTimer || 0, this.bloodTimer);
-          }
-          spawnRicochetSparks(this.x, this.y - 8, 0, -1, 6);
-          triggerScreenShake(1.5);
-          return false; // Usuwa toporek z activeProjectiles
+          retrieveThrownTomahawk(this, this.shooter);
+          return false;
         }
       }
     }
@@ -1013,6 +1007,28 @@ export function spawnThrownTomahawk(shooter, targetX, targetY, customPower = 1.0
     window.activeProjectiles.push(tomahawk);
   }
   return tomahawk;
+}
+
+/**
+ * Podniesienie i zwrot toporka tomahawk do rak wlasciciela
+ */
+export function retrieveThrownTomahawk(tomahawk, player) {
+  if (!tomahawk || !player) return false;
+  player.axeThrown = false;
+  if (tomahawk.bloodTimer > 0) {
+    player.meleeBloodTimer = Math.max(player.meleeBloodTimer || 0, tomahawk.bloodTimer);
+  }
+  spawnRicochetSparks(tomahawk.x, tomahawk.y - 8, 0, -1, 6);
+  triggerScreenShake(1.5);
+  const idx = activeProjectiles.indexOf(tomahawk);
+  if (idx !== -1) {
+    activeProjectiles.splice(idx, 1);
+  }
+  if (typeof window !== 'undefined' && Array.isArray(window.activeProjectiles)) {
+    const wIdx = window.activeProjectiles.indexOf(tomahawk);
+    if (wIdx !== -1) window.activeProjectiles.splice(wIdx, 1);
+  }
+  return true;
 }
 
 /**
@@ -1144,7 +1160,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         const targetVisuals = ch._cachedVisuals || { ...DEFAULT_VISUALS, ...(ch.visuals || {}), ...(ch.customVisuals || {}) };
 
         if (ch.currentWeapon) {
-          spawnDroppedWeapon(chCenterX, chCenterY, normX * 4.5, -5.0, ch.currentWeapon, ch.facing);
+          spawnDroppedWeapon(chCenterX, chCenterY, normX * 4.5, -5.0, ch.currentWeapon, ch.facing, null, ch);
         }
 
         ch.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
