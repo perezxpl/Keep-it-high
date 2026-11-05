@@ -41,7 +41,7 @@ export function getActiveCombatants() {
  */
 export function syncCombatantHeight(p) {
   if (!p) return 72;
-  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.isCrouching ? (p.hitboxHeight || 45) : (p.h || 72)));
+  const colH = (p.staggerTimer > 0) ? 15 : ((p.isProne) ? (p.hitboxHeight || 26) : (p.h || 72));
   if (typeof p.lastColH === 'number') {
     if (colH > p.lastColH) {
       p.y -= (colH - p.lastColH);
@@ -1244,14 +1244,10 @@ export function updateRisingFloor(camera, combatants = []) {
     arena5State.recyclerY = BASE_FLOOR_Y + 400; // Bezpiecznie pod podłogą na starcie
   }
 
-  // 3. Synchronizacja platformy podłogi w fizyce gry (a5_base_floor).
-  // Gdy minFloorRow > 0 (wieża rośnie, utylizator zjada dolne rzędy), fundament a5_base_floor
-  // zostaje zutylizowany – usuwamy go daleko w dół (999999), aby nie tworzył niewidzialnej
-  // podłogi w pustym powietrzu wewnątrz szybu i pozwalał graczom spadać do utylizatora.
-  const baseFloorTargetY = (arena5State.minFloorRow > 0) ? 999999 : BASE_FLOOR_Y;
+  // 3. Synchronizacja platformy podłogi w fizyce gry (a5_base_floor)
   const floorPlat = arena5State.platforms.find(p => p && p.id === 'a5_base_floor');
   if (floorPlat) {
-    floorPlat.y = baseFloorTargetY;
+    floorPlat.y = arena5State.currentFloorY;
     floorPlat.x = -2000;
     floorPlat.w = 5600;
     floorPlat.width = 5600;
@@ -1259,7 +1255,7 @@ export function updateRisingFloor(camera, combatants = []) {
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
     const wPlat = window.ARENA_PLATFORMS.find(p => p && p.id === 'a5_base_floor');
     if (wPlat) {
-      wPlat.y = baseFloorTargetY;
+      wPlat.y = arena5State.currentFloorY;
       wPlat.x = -2000;
       wPlat.w = 5600;
       wPlat.width = 5600;
@@ -1362,7 +1358,7 @@ function updateTowerApexAndSpawns() {
       }
     }
 
-    const spawnY = Math.min(bestY - 70, (arena5State.currentFloorY || BASE_FLOOR_Y) - 70);
+    const spawnY = Math.min(bestY - 95, (arena5State.currentFloorY || BASE_FLOOR_Y) - 95);
     return { x: bestX, y: spawnY };
   }
 
@@ -1629,10 +1625,20 @@ export function resolveArena5BlockPenetration(combatants) {
           } else if (bestDir === 'LEFT') {
             p.x = cellLeft - pW;
             if (p.vx > 0) p.vx = 0;
+            if (penTop <= 18) {
+              p.y = Math.min(p.y, cellTop - pH);
+              if (p.vy > 0) p.vy = 0;
+              p.onGround = true;
+            }
             resolvedAny = true;
           } else if (bestDir === 'RIGHT') {
             p.x = cellRight;
             if (p.vx < 0) p.vx = 0;
+            if (penTop <= 18) {
+              p.y = Math.min(p.y, cellTop - pH);
+              if (p.vy > 0) p.vy = 0;
+              p.onGround = true;
+            }
             resolvedAny = true;
           }
         }

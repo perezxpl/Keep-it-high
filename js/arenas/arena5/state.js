@@ -144,10 +144,10 @@ export const arena5State = {
 
   // Dynamiczne punkty odrodzenia na szczycie wieży (rozmieszczone w 16 kolumnach)
   spawns: [
-    { x: 200, y: BASE_FLOOR_Y - 70, facing: 1, isGround: true },
-    { x: 600, y: BASE_FLOOR_Y - 70, facing: 1, isGround: true },
-    { x: 1000, y: BASE_FLOOR_Y - 70, facing: -1, isGround: true },
-    { x: 1400, y: BASE_FLOOR_Y - 70, facing: -1, isGround: true }
+    { x: 200, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 600, y: BASE_FLOOR_Y - 95, facing: 1, isGround: true },
+    { x: 1000, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true },
+    { x: 1400, y: BASE_FLOOR_Y - 95, facing: -1, isGround: true }
   ]
 };
 

@@ -602,15 +602,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
         p.onGround = true;
         p.coyoteTimer = 8;
         p.lastGroundedFloorY = p.currentGroundY;
-      } else if (isA5) {
-        // W Arenie 5 (Prefabrykator Orbitalny) podparcie zapewniają wyłącznie klocki (ARENA_PLATFORMS)
-        // lub opadająca suwnica. Skoro landedSurface === null, postać znajduje się w pustej przestrzeni i spada!
-        p.onGround = false;
-        p.currentPlatform = null;
-        p.currentGroundY = null;
       } else {
         // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
-        const isSupported = ((typeof isGroundAt === 'function')
+        const isSupported = isA5 ? true : ((typeof isGroundAt === 'function')
           ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
           : true);
 
