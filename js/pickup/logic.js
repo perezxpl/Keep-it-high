@@ -44,6 +44,22 @@ export function spawnDroppedWeapon(x, y, vx = 0, vy = 0, weapon = null, facing =
     }
   }
 
+  const dropFacing = (facing === -1) ? -1 : 1;
+  const baseVx = (typeof vx === 'number' && !isNaN(vx)) ? vx : 0;
+  const initialVx = baseVx * 0.25 + dropFacing * (1.2 + Math.random() * 0.8);
+
+  const baseVy = (typeof vy === 'number' && !isNaN(vy)) ? vy : 0;
+  let initialVy = 1.0 + Math.random() * 0.8;
+  if (baseVy < -1.0) {
+    // Przy silnym wybuchu lub odrzucie minimalny, bezpieczny impuls (max 2 px/frame)
+    initialVy = Math.max(-2.0, baseVy * 0.20) + 0.5;
+  } else if (baseVy > 0) {
+    initialVy = Math.min(8.0, baseVy * 0.40 + 1.0);
+  }
+
+  const posX = (typeof x === 'number' && !isNaN(x)) ? x : 500;
+  const posY = (typeof y === 'number' && !isNaN(y)) ? y : 500;
+
   const dropObj = {
     id: `dropped_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
     weaponId: wepId,
@@ -51,13 +67,14 @@ export function spawnDroppedWeapon(x, y, vx = 0, vy = 0, weapon = null, facing =
     name: baseWep.name || wepId,
     fullName: baseWep.fullName || baseWep.name || wepId,
     isMelee: !!baseWep.isMelee,
-    x: (typeof x === 'number' && !isNaN(x)) ? x : 500,
-    y: (typeof y === 'number' && !isNaN(y)) ? y : 500,
-    vx: (vx || 0) * 0.45 + (facing * (Math.random() * 2.2 + 1.2)),
-    vy: (vy || 0) * 0.30 - (Math.random() * 2.8 + 2.2),
+    x: posX,
+    y: posY,
+    startY: posY,
+    vx: initialVx,
+    vy: initialVy,
     rot: 0,
-    vRot: (Math.random() * 0.18 + 0.10) * (facing || 1),
-    facing: facing || 1,
+    vRot: (Math.random() * 0.16 + 0.08) * dropFacing,
+    facing: dropFacing,
     bounces: 0,
     isGrounded: false,
     stuckPlatform: null,
@@ -97,12 +114,12 @@ export function performWeaponSwap(player, droppedWeapon) {
   const oldMagAmmo = oldAmmo ? oldAmmo.currentAmmo : (currentWep.magSize || 30);
   const oldResAmmo = oldAmmo ? oldAmmo.reserveAmmo : (currentWep.reserveAmmo ?? 90);
 
-  // 2. Upuszczenie posiadanej broni pod nogi gracza
+  // 2. Upuszczenie posiadanej broni pod nogi gracza (z naturalnej wysokosci pasa w dol)
   spawnDroppedWeapon(
     player.x + (player.w || 24) * 0.5,
-    player.y + 18,
-    (player.facing || 1) * 2.4,
-    -3.2,
+    player.y + (player.h ? player.h * 0.5 : 35),
+    (player.facing || 1) * 1.5,
+    1.2,
     currentWep,
     player.facing || 1,
     { currentAmmo: oldMagAmmo, reserveAmmo: oldResAmmo },
@@ -171,6 +188,70 @@ export function performCarePackageCapture(player, crate) {
 }
 
 /**
+ * Oblicza wlasciwa wysokosc podloza dla aktywnej areny pod dana wspolrzedna X
+ */
+export function getArenaGroundYAt(x) {
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const aId = curArena?.id || (typeof window !== 'undefined' && window.activeArenaId) || '';
+
+  if (aId === 'arena-3' || aId === 'ARENA_3' || aId === 'ARENA_FOUNDRY') {
+    return (typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : 900;
+  }
+  if (aId === 'arena-4' || aId === 'ARENA_4' || aId === 'OBSIDIAN_CALDERA' || aId === 'CALDERA') {
+    return (curArena && typeof curArena.mainDeckY === 'number') ? curArena.mainDeckY : 1040;
+  }
+  if (aId === 'arena-5' || aId === 'ARENA_5' || aId === 'PREFAB_TOWER') {
+    if (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') {
+      return window.arena5State.currentFloorY;
+    }
+    return (curArena && typeof curArena.mainDeckY === 'number') ? curArena.mainDeckY : 1200;
+  }
+  if (aId === 'arena-2' || aId === 'ARENA_2' || aId === 'ARENA_2_SECTOR_X' || aId === 'ARENA_2_PANDORA') {
+    return (typeof curArena?.acidSurge?.currentY === 'number')
+      ? (curArena.acidSurge.currentY - 10)
+      : (curArena?.hazardZoneY ?? 1350);
+  }
+  return GROUND_Y || 1000;
+}
+
+/**
+ * Zwraca poziom najblizszej powierzchni pod obiektem (platforma lub podloze areny)
+ */
+export function getGroundSurfaceBelow(x, currentY, startY = null) {
+  const activePlats = (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) ? window.ARENA_PLATFORMS : _worldPlatforms;
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const aId = curArena?.id || (typeof window !== 'undefined' && window.activeArenaId) || '';
+  const isA3 = (aId === 'arena-3' || aId === 'ARENA_3' || aId === 'ARENA_FOUNDRY');
+
+  const baseGroundY = getArenaGroundYAt(x);
+  const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(x) : true;
+  let surfaceY = hasGround ? (baseGroundY - 4) : (baseGroundY + 1200);
+
+  if (Array.isArray(activePlats)) {
+    for (const plat of activePlats) {
+      if (!plat || plat.solid === false || plat.isWall) continue;
+      if (plat.isCrossbar || plat.id?.startsWith('crossbar')) continue;
+      if (plat.isCeiling || plat.isHanging || plat.id?.startsWith('ceil_') || plat.id?.startsWith('ceiling')) continue;
+      if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) continue;
+
+      const minX = (plat.x !== undefined) ? plat.x : 0;
+      const maxX = minX + (plat.w || 0);
+      if (x >= minX - 4 && x <= maxX + 4) {
+        const topY = getPlatformSurfaceY(plat, x, baseGroundY);
+        if (typeof topY === 'number' && !isNaN(topY)) {
+          if (typeof startY === 'number' && topY < startY - 10) continue;
+          if (topY >= currentY - 8 && topY < surfaceY) {
+            surfaceY = topY - 4;
+          }
+        }
+      }
+    }
+  }
+
+  return surfaceY;
+}
+
+/**
  * Glowna petla aktualizacji fizyki lezacej broni i interakcji z graczem
  */
 export function updatePickups(dt = (1 / 60), player = null, combatants = [], camera = null) {
@@ -179,7 +260,8 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
   // 1. Aktualizacja fizyki upuszczonych broni w swiecie
   const activePlats = (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) ? window.ARENA_PLATFORMS : _worldPlatforms;
   const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
-  const isA3 = (curArena?.id === 'arena-3');
+  const aId = curArena?.id || (typeof window !== 'undefined' && window.activeArenaId) || '';
+  const isA3 = (aId === 'arena-3' || aId === 'ARENA_3' || aId === 'ARENA_FOUNDRY');
 
   for (let i = pickupState.droppedWeapons.length - 1; i >= 0; i--) {
     const dw = pickupState.droppedWeapons[i];
@@ -194,42 +276,55 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
         } else {
           // Synchronizacja z poruszajaca sie platforma (np. klocki w Arenie 5)
           dw.x = dw.stuckPlatform.x + dw.stuckOffsetX;
-          const platY = (dw.stuckPlatform.y !== undefined) ? dw.stuckPlatform.y : (GROUND_Y - (dw.stuckPlatform.relY || 0));
+          const baseGround = getArenaGroundYAt(dw.x);
+          const platY = (dw.stuckPlatform.y !== undefined) ? dw.stuckPlatform.y : (baseGround - (dw.stuckPlatform.relY || 0));
           dw.y = platY - 4;
+        }
+      } else {
+        const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(dw.x) : true;
+        if (!hasGround) {
+          dw.isGrounded = false;
+          dw.vy = 1.5;
         }
       }
     } else {
       const prevY = dw.y;
-      dw.vy += (CONFIG.GRAVITY || 0.38) * 0.92;
-      dw.vx *= 0.98;
+      // Zwiekszona, dynamiczna grawitacja - szybki, naturalny upadek broni na podloze
+      dw.vy += (CONFIG.GRAVITY || 0.38) * 1.5;
+      if (dw.vy > 16.0) dw.vy = 16.0;
+      dw.vx *= 0.96;
       dw.x += dw.vx;
       dw.y += dw.vy;
       dw.rot += dw.vRot;
 
-      let baseGroundY = GROUND_Y;
+      const baseGroundY = getArenaGroundYAt(dw.x);
       let slope = 0;
       if (isA3 && typeof getRiverbankGroundY === 'function') {
-        baseGroundY = getRiverbankGroundY(dw.x);
         slope = (getRiverbankGroundY(dw.x + 4) - getRiverbankGroundY(dw.x - 4)) / 8;
       }
 
       const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(dw.x) : true;
       let landed = false;
-      let floorY = (hasGround && !isA3) ? (baseGroundY - 4) : (GROUND_Y + 1200);
+      let floorY = hasGround ? (baseGroundY - 4) : (baseGroundY + 1200);
       let hitPlat = null;
 
-      // Ciagla detekcja kolizji z platformami (swept collision - brak przelatywania przez podloze)
+      // 1. Detekcja kolizji z platformami (swept collision)
       if (dw.vy > 0 && Array.isArray(activePlats)) {
         let highestSurfY = null;
         for (const plat of activePlats) {
           if (!plat || plat.solid === false || plat.isWall) continue;
+          if (plat.isCrossbar || plat.id?.startsWith('crossbar')) continue;
+          if (plat.isCeiling || plat.isHanging || plat.id?.startsWith('ceil_') || plat.id?.startsWith('ceiling')) continue;
           if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) continue;
-          const minX = plat.x !== undefined ? plat.x : 0;
+
+          const minX = (plat.x !== undefined) ? plat.x : 0;
           const maxX = minX + (plat.w || 0);
           if (dw.x >= minX - 4 && dw.x <= maxX + 4) {
-            const topY = getPlatformSurfaceY(plat, dw.x, GROUND_Y);
-            if (!isNaN(topY)) {
-              if (prevY <= topY + 6 && dw.y >= topY - 4) {
+            const topY = getPlatformSurfaceY(plat, dw.x, baseGroundY);
+            if (typeof topY === 'number' && !isNaN(topY)) {
+              if (typeof dw.startY === 'number' && topY < dw.startY - 10) continue;
+
+              if (prevY <= topY + 8 && dw.y >= topY - 4) {
                 if (highestSurfY === null || topY < highestSurfY) {
                   highestSurfY = topY;
                   hitPlat = plat;
@@ -245,23 +340,23 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
         }
       }
 
-      // Ladowanie na ziemi jesli nie trafiono wyzszej platformy
+      // 2. Ladowanie na ziemi jesli nie trafiono platformy
       if (!landed && hasGround) {
-        const groundCheckY = isA3 ? baseGroundY : GROUND_Y;
-        if (prevY <= groundCheckY + 6 && dw.y >= groundCheckY - 4 && dw.vy > 0) {
-          floorY = groundCheckY - 4;
+        if (prevY <= baseGroundY + 8 && dw.y >= baseGroundY - 4 && dw.vy > 0) {
+          floorY = baseGroundY - 4;
           landed = true;
           hitPlat = null;
         }
       }
 
+      // 3. Obsluga ladowania i ewentualnego pojedynczego odbicia
       if (landed) {
         dw.y = floorY;
-        if (Math.abs(dw.vy) > 1.4 && dw.bounces < 3) {
-          dw.vy = -dw.vy * 0.40;
-          dw.vx *= 0.70;
-          if (Math.abs(slope) > 0.03) dw.vx += slope * 0.35;
-          dw.vRot *= 0.50;
+        if (Math.abs(dw.vy) > 3.0 && dw.bounces < 1) {
+          dw.vy = -Math.min(2.0, dw.vy * 0.25);
+          dw.vx *= 0.50;
+          if (Math.abs(slope) > 0.03) dw.vx += slope * 0.30;
+          dw.vRot *= 0.35;
           dw.bounces++;
           spawnRicochetSparks(dw.x, floorY, 0, -1, 3);
         } else {
@@ -278,7 +373,7 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
       }
     }
 
-    if (dw.life <= 0 || dw.y > GROUND_Y + 1200) {
+    if (dw.life <= 0 || dw.y > getArenaGroundYAt(dw.x) + 800) {
       pickupState.droppedWeapons.splice(i, 1);
     }
   }
@@ -301,9 +396,9 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
   let bestDist = Infinity;
   let bestType = null;
 
-  // A. Sprawdz lezace bronie (zasieg ~62px)
+  // A. Sprawdz lezace bronie (zasieg ~66px, wylacznie uziemione na podlozu/platformie)
   for (const dw of pickupState.droppedWeapons) {
-    if (!dw || dw.life <= 0) continue;
+    if (!dw || dw.life <= 0 || !dw.isGrounded) continue;
     const d = Math.hypot(pMidX - dw.x, pMidY - (dw.y - 6));
     if (d <= dw.pickupRadius && d < bestDist) {
       bestDist = d;

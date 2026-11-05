@@ -6,6 +6,7 @@
 import { getWeaponSprite } from '../loadout/weaponPreviews.js';
 import { getCanvasLogicalWidth, getCanvasLogicalHeight } from '../camera.js';
 import { pickupState, pickupPromptState } from './state.js';
+import { getGroundSurfaceBelow } from './logic.js';
 
 /**
  * Renderuje upuszczone bronie lezace w swiecie gry
@@ -36,35 +37,56 @@ export function drawPickupsWorld(ctx, camera) {
       if (blink < -0.2) continue;
     }
 
-    ctx.save();
-    ctx.translate(dw.x, dw.y);
-    ctx.rotate(dw.rot);
-    ctx.scale(dw.facing || 1, 1);
+    // 1. Cien rzucany na podloze:
+    // Jesli bron lezy (isGrounded) - cien jest tuz pod nia na plasko (bez rotacji broni).
+    // Jesli bron opada w powietrzu - rzutujemy cien na powierzchnie ponizej ze stopniowym zanikaniem.
+    if (dw.isGrounded) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(dw.x, dw.y + 4, 18, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const surfaceBelowY = getGroundSurfaceBelow(dw.x, dw.y, dw.startY);
+      if (surfaceBelowY >= dw.y) {
+        const heightAbove = surfaceBelowY - dw.y;
+        const shadowFactor = Math.max(0.15, Math.min(1.0, 1.0 - heightAbove / 250));
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.40 * shadowFactor})`;
+        ctx.beginPath();
+        ctx.ellipse(dw.x, surfaceBelowY, 18 * shadowFactor, 5 * shadowFactor, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
-    // 1. Cien rzucany na podloze
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 18, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Taktyczny kolor poswiaty w zaleznosci od klasy uzbrojenia
-    let glowColor = 'rgba(6, 182, 212, 0.22)';
+    // 2. Taktyczny kolor poswiaty w zaleznosci od klasy uzbrojenia (tylko gdy bron lezy stabilnie)
     let badgeBorderColor = '#06b6d4';
     if (dw.isMelee) {
-      glowColor = 'rgba(239, 68, 68, 0.22)';
       badgeBorderColor = '#ef4444';
     } else if (dw.weaponId === 'GLOCK' || dw.weaponId === 'REVOLVER' || dw.weaponId === 'SAWED_OFF' || dw.weaponId === 'RPG7') {
-      glowColor = 'rgba(245, 158, 11, 0.22)';
       badgeBorderColor = '#f59e0b';
     }
 
-    const pulse = 0.5 + 0.5 * Math.sin(now * 0.005 + i);
-    ctx.fillStyle = glowColor;
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 22 + pulse * 6, 8 + pulse * 2, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (dw.isGrounded) {
+      let glowColor = 'rgba(6, 182, 212, 0.22)';
+      if (dw.isMelee) {
+        glowColor = 'rgba(239, 68, 68, 0.22)';
+      } else if (dw.weaponId === 'GLOCK' || dw.weaponId === 'REVOLVER' || dw.weaponId === 'SAWED_OFF' || dw.weaponId === 'RPG7') {
+        glowColor = 'rgba(245, 158, 11, 0.22)';
+      }
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.005 + i);
+      ctx.fillStyle = glowColor;
+      ctx.beginPath();
+      ctx.ellipse(dw.x, dw.y + 2, 22 + pulse * 6, 8 + pulse * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // 3. Rysowanie sprite'a broni lub realistycznej sylwetki
+    ctx.save();
+    ctx.translate(dw.x, dw.y);
+    if (!dw.isGrounded) {
+      ctx.rotate(dw.rot);
+    }
+    ctx.scale(dw.facing || 1, 1);
+
     const sprite = getWeaponSprite(dw.weaponId);
     let drewSprite = false;
 
@@ -78,7 +100,7 @@ export function drawPickupsWorld(ctx, camera) {
     }
 
     if (!drewSprite) {
-      // Rezerwowa, estetyczna sylwetka wektorowa
+      // Rezerwowa sylwetka wektorowa
       if (dw.weaponId === 'AK47') {
         ctx.fillStyle = '#78350f';
         ctx.fillRect(-10, -1.5, 7, 3);
@@ -104,31 +126,31 @@ export function drawPickupsWorld(ctx, camera) {
         ctx.fillRect(12, -2, 14, 3);
       }
     }
-
-    // 4. Miniaturowy taktyczny identyfikator amunicji nad lezaca bronia
     ctx.restore();
 
-    // Rysuj etykiete bez rotacji broni
-    ctx.save();
-    ctx.translate(dw.x, dw.y - 16);
-    ctx.font = 'bold 9px monospace';
-    const textLabel = dw.isMelee ? (dw.name || 'BIAŁA') : `${dw.name || dw.weaponId} ${dw.currentAmmo}/${dw.reserveAmmo}`;
-    const textMetrics = ctx.measureText(labelText);
-    const badgeW = Math.max(46, textMetrics.width + 12);
+    // 4. Miniaturowy taktyczny identyfikator amunicji nad lezaca bronia (tylko gdy uziemiona)
+    if (dw.isGrounded) {
+      ctx.save();
+      ctx.translate(dw.x, dw.y - 16);
+      ctx.font = 'bold 9px monospace';
+      const labelText = dw.isMelee ? (dw.name || 'BIAŁA') : `${dw.name || dw.weaponId} ${dw.currentAmmo}/${dw.reserveAmmo}`;
+      const textMetrics = ctx.measureText(labelText);
+      const badgeW = Math.max(46, textMetrics.width + 12);
 
-    ctx.fillStyle = 'rgba(9, 9, 11, 0.88)';
-    ctx.strokeStyle = badgeBorderColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(-badgeW * 0.5, -9, badgeW, 16, 3);
-    ctx.fill();
-    ctx.stroke();
+      ctx.fillStyle = 'rgba(9, 9, 11, 0.88)';
+      ctx.strokeStyle = badgeBorderColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(-badgeW * 0.5, -9, badgeW, 16, 3);
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.fillStyle = dw.isMelee ? '#f87171' : '#38bdf8';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(labelText, 0, -1);
-    ctx.restore();
+      ctx.fillStyle = dw.isMelee ? '#f87171' : '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, 0, -1);
+      ctx.restore();
+    }
   }
 }
 
