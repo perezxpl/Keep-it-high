@@ -13,6 +13,7 @@ import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
 import { clearPlayerThrownTomahawks } from '../projectiles.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
+import { restorePlayerArmoryLoadout } from '../loadout/index.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -498,8 +499,14 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.isReloading = false;
     player.reloadTimer = 0;
     player.emptyAmmoAlert = 0;
-    if (!player.currentWeapon) {
-      player.currentWeapon = WEAPONS.AK47;
+
+    // Przywrócenie początkowego uzbrojenia wybranego w zbrojowni po śmierci
+    if (player.isBot) {
+      if (player.classType === 'AERO') player.currentWeapon = WEAPONS.SNIPER;
+      else if (player.classType === 'STRIKER') player.currentWeapon = WEAPONS.SHOTGUN;
+      else player.currentWeapon = WEAPONS.AK47;
+    } else {
+      restorePlayerArmoryLoadout(player);
     }
 
     player.hasHead = true;

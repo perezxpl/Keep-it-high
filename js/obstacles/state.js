@@ -39,6 +39,7 @@ import arena3, {
 import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
 import { resetPickups } from '../pickup/index.js';
+import { restorePlayerArmoryLoadout } from '../loadout/index.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -673,6 +674,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
+      restorePlayerArmoryLoadout(playerObj);
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
       playerObj.onGround = true;
@@ -741,6 +743,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
+      restorePlayerArmoryLoadout(playerObj);
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
       playerObj.onGround = true;
@@ -820,6 +823,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
+      restorePlayerArmoryLoadout(playerObj);
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
@@ -875,6 +879,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
+      restorePlayerArmoryLoadout(playerObj);
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }
@@ -959,6 +964,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
       playerObj.isDead = false;
       playerObj.hp = playerObj.maxHp || 100;
       playerObj.respawnTimer = 0;
+      restorePlayerArmoryLoadout(playerObj);
       playerObj.ragdoll = null;
       playerObj.gaitMode = 'IDLE';
     }

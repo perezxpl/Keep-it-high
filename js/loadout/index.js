@@ -8,7 +8,8 @@ export {
   getDefaultLoadout,
   getStoredLoadout,
   saveStoredLoadout,
-  initPlayerLoadout
+  initPlayerLoadout,
+  restorePlayerArmoryLoadout
 } from './state.js';
 
 export {

@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { WEAPONS } from '../weapons/transform.js';
-import { saveStoredLoadout } from './state.js';
+import { saveStoredLoadout, getStoredLoadout } from './state.js';
 import { equipPocket1Slot } from './logic.js';
 import { playUiClick, playUiHover } from '../uiManager.js';
 import { drawWeaponPreview } from './weaponPreviews.js';
@@ -431,7 +431,11 @@ export function closeArmory() {
   _currentArmoryView = 'SLOTS';
 
   if (_playerRef && _playerRef.loadout) {
-    saveStoredLoadout(_playerRef.loadout);
+    if (_playerRef.armoryLoadout) {
+      saveStoredLoadout(_playerRef.armoryLoadout);
+    } else {
+      saveStoredLoadout(_playerRef.loadout);
+    }
     // Zsynchronizuj bieżącą broń z aktywnym slotem
     const curSlotId = _playerRef.loadout.pocket1?.slots?.[_playerRef.loadout.pocket1?.activeSlotIndex || 0] || 'AK47';
     if (WEAPONS[curSlotId]) {
@@ -503,8 +507,9 @@ export function renderArmoryUI() {
   const p = _playerRef || window.player;
   if (!p || !p.loadout) return;
 
-  const slots = p.loadout.pocket1?.slots || ['AK47', 'GLOCK', 'SNIPER'];
-  const throwables = p.loadout.pocket2?.throwables || ['GRENADE'];
+  const armory = p.armoryLoadout || getStoredLoadout();
+  const slots = armory.pocket1?.slots || p.loadout.pocket1?.slots || ['AK47', 'GLOCK', 'KNIFE'];
+  const throwables = armory.pocket2?.throwables || p.loadout.pocket2?.throwables || ['GRENADE'];
 
   const pickerModal = document.getElementById('armory-picker-modal');
 
@@ -803,9 +808,14 @@ export function equipArmoryWeapon(slotIndex, weaponId) {
 
   playUiClick();
 
+  if (!p.armoryLoadout) {
+    p.armoryLoadout = getStoredLoadout();
+  }
+
   if (slotIndex >= 0 && slotIndex <= 2) {
     p.loadout.pocket1.slots[slotIndex] = weaponId;
-    saveStoredLoadout(p.loadout);
+    p.armoryLoadout.pocket1.slots[slotIndex] = weaponId;
+    saveStoredLoadout(p.armoryLoadout);
 
     // Jeśli ten slot jest aktualnie trzymany w dłoniach, załóż broń natychmiast
     if (p.loadout.pocket1.activeSlotIndex === slotIndex) {
@@ -815,8 +825,12 @@ export function equipArmoryWeapon(slotIndex, weaponId) {
     if (!Array.isArray(p.loadout.pocket2.throwables)) {
       p.loadout.pocket2.throwables = ['GRENADE'];
     }
+    if (!Array.isArray(p.armoryLoadout.pocket2.throwables)) {
+      p.armoryLoadout.pocket2.throwables = ['GRENADE'];
+    }
     p.loadout.pocket2.throwables[0] = weaponId;
-    saveStoredLoadout(p.loadout);
+    p.armoryLoadout.pocket2.throwables[0] = weaponId;
+    saveStoredLoadout(p.armoryLoadout);
   }
 
   // Płynne zamknięcie okna wyboru i powrót do widoku slotów

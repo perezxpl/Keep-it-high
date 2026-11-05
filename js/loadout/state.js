@@ -2,7 +2,7 @@
 // LOADOUT/STATE.JS - KONFIGURACJA EKWIPUNKU I KIESZENI BOJOWYCH
 // =========================================================================
 
-import { WEAPONS } from '../weapons/transform.js';
+import { WEAPONS, cancelReload } from '../weapons/transform.js';
 
 export const STORAGE_KEY_LOADOUT = 'keep_it_high_loadout';
 
@@ -92,11 +92,55 @@ export function saveStoredLoadout(loadout) {
  */
 export function initPlayerLoadout(p) {
   if (!p) return;
-  if (!p.loadout) {
-    p.loadout = getStoredLoadout();
-  }
+  const stored = getStoredLoadout();
+  p.armoryLoadout = JSON.parse(JSON.stringify(stored));
+  p.loadout = JSON.parse(JSON.stringify(stored));
   const curSlotId = p.loadout.pocket1.slots[p.loadout.pocket1.activeSlotIndex] || 'AK47';
   if (WEAPONS && WEAPONS[curSlotId]) {
     p.currentWeapon = WEAPONS[curSlotId];
+  }
+}
+
+/**
+ * Przywraca poczatkowe uzbrojenie wybrane w zbrojowni (wywolywane po smierci / respawnie)
+ */
+export function restorePlayerArmoryLoadout(p) {
+  if (!p) return;
+  const armory = p.armoryLoadout || getStoredLoadout();
+  if (!armory) return;
+
+  if (!p.loadout) {
+    p.loadout = getDefaultLoadout();
+  }
+
+  // 1. Przywrocenie poczatkowych slotow broni ze zbrojowni
+  if (Array.isArray(armory.pocket1?.slots)) {
+    p.loadout.pocket1.slots = [...armory.pocket1.slots];
+  }
+
+  // 2. Przywrocenie wyposazenia kieszeni 2 (miotana)
+  if (Array.isArray(armory.pocket2?.throwables)) {
+    p.loadout.pocket2.throwables = [...armory.pocket2.throwables];
+  }
+
+  // 3. Po smierci gracz odradza sie z bronia glowna ze zbrojowni (slot 0)
+  p.loadout.pocket1.activeSlotIndex = 0;
+  p.loadout.previousSlotIndex = 1;
+
+  // 4. Natychmiastowe wyposazenie w dlonie broni glownej ze zbrojowni
+  const initialWepId = p.loadout.pocket1.slots[0] || 'AK47';
+  const initialWeapon = WEAPONS[initialWepId] || WEAPONS.AK47;
+
+  cancelReload(p, p.currentWeapon);
+  p.currentWeapon = initialWeapon;
+  p.isHolstered = false;
+  p.isReloading = false;
+  p.reloadTimer = 0;
+  p.shootTimer = 0;
+
+  // 5. Anulowanie trwajacej animacji rzutu
+  if (p.throwAnim) {
+    p.throwAnim.active = false;
+    p.throwAnim.aiming = false;
   }
 }

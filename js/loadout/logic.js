@@ -40,7 +40,13 @@ export function equipPocket1Slot(p, slotIndex) {
     rightStick.armedMode = 'FIREARM';
   }
 
-  saveStoredLoadout(p.loadout);
+  // Zapisujemy w zbrojowni tylko preferencje aktywnego indeksu, nie nadpisujac bazy slotow
+  if (p.armoryLoadout) {
+    p.armoryLoadout.pocket1.activeSlotIndex = slotIndex;
+    saveStoredLoadout(p.armoryLoadout);
+  } else {
+    saveStoredLoadout(p.loadout);
+  }
   return true;
 }
 

@@ -157,8 +157,7 @@ export function performWeaponSwap(player, droppedWeapon) {
     pickupState.droppedWeapons.splice(dropIdx, 1);
   }
 
-  // 8. Zapis nowego stanu ekwipunku do localStorage
-  saveStoredLoadout(player.loadout);
+  // 8. Podniesiona bron jest tymczasowa w danym zyciu - nie nadpisujemy trwalej zbrojowni w localStorage
 
   // 9. Efekty wizualne i dzwiekowe oraz powiadomienie na banerze
   triggerScreenShake(2.0);
