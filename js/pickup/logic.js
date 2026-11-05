@@ -82,8 +82,8 @@ export function spawnDroppedWeapon(x, y, vx = 0, vy = 0, weapon = null, facing =
     currentAmmo: Math.max(0, currentAmmo),
     reserveAmmo: Math.max(0, reserveAmmo),
     magSize: baseWep.magSize || 30,
-    life: 300.0, // 300 sekund (5 minut) trwania w swiecie gry - bron nie znika szybko jak polegla postac
-    maxLife: 300.0,
+    life: 15.0, // 15 sekund trwania w swiecie gry przed zniknieciem
+    maxLife: 15.0,
     pickupRadius: 66
   };
 

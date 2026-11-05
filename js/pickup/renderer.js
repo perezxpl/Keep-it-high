@@ -31,9 +31,9 @@ export function drawPickupsWorld(ctx, camera) {
     const dw = pickupState.droppedWeapons[i];
     if (dw.x < minX || dw.x > maxX || dw.y < minY || dw.y > maxY) continue;
 
-    // Miganie ostrzegawcze w ostatnich 10 sekundach trwania (z pelnych 300 sekund)
-    if (dw.life < 10.0) {
-      const blink = Math.sin(now * 0.015);
+    // Miganie ostrzegawcze w ostatnich 4 sekundach trwania (z pelnych 15 sekund)
+    if (dw.life < 4.0) {
+      const blink = Math.sin(now * 0.02);
       if (blink < -0.2) continue;
     }
 
