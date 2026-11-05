@@ -804,6 +804,19 @@ export class ThrownTomahawk {
               spawnBloodSpurt(this.x, this.y, throwDir * 5.0, -2.5, isHeadshot ? 32 : (isTorsoShot ? 22 : 14), 1.4);
               spawnBloodDrip(this.x, this.y, throwDir * 2.2, -1.0, 8);
 
+              if (ch.currentWeapon) {
+                spawnDroppedWeapon(
+                  ch.x + (ch.w || 24) * 0.5,
+                  ch.y + 24,
+                  throwDir * 3.6,
+                  -4.2,
+                  ch.currentWeapon,
+                  ch.facing,
+                  null,
+                  ch
+                );
+              }
+
               if (typeof window !== 'undefined') {
                 if (typeof window.recordKill === 'function' && this.shooter === window.player) {
                   window.recordKill();

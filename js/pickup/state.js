@@ -5,7 +5,7 @@
 
 export const pickupState = {
   droppedWeapons: [],
-  maxDroppedWeapons: 24
+  maxDroppedWeapons: 48
 };
 
 export const pickupPromptState = {

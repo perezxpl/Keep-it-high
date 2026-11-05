@@ -282,6 +282,7 @@ export function startRound() {
   if (player) {
     player.hp = player.maxHp || player.currentClass?.stats?.hp || 100;
     player.isDead = false;
+    player._droppedWeaponThisDeath = false;
     player.ragdoll = null;
     player.staggerTimer = 0;
     if (player.ammo) {
@@ -309,6 +310,7 @@ export function startRound() {
     if (b.active) {
       b.hp = b.maxHp || b.currentClass?.stats?.hp || 100;
       b.isDead = false;
+      b._droppedWeaponThisDeath = false;
       b.isAcidDying = false;
       if (b.acidDeath) b.acidDeath.active = false;
       b.ragdoll = null;

@@ -10,6 +10,7 @@ import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk } 
 import { getActiveBots } from '../bot.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
+import { spawnDroppedWeapon } from '../pickup/index.js';
 import {
   spawnShockwaveRing,
   spawnExplosionFirePuff,
@@ -642,6 +643,19 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
           enemy.vy = -4.8;
           spawnBloodSpurt(ex, ey, kickDirX * 2, -2.5, 14, 1.2);
           spawnBloodDrip(ex, ey, kickDirX * 1.5, -1.0, 5);
+
+          if (enemy.currentWeapon) {
+            spawnDroppedWeapon(
+              enemy.x + (enemy.w || 24) * 0.5,
+              enemy.y + 24,
+              kickDirX * 4.2,
+              -4.5,
+              enemy.currentWeapon,
+              enemy.facing,
+              null,
+              enemy
+            );
+          }
         }
         didHitAnything = true;
       }
@@ -1088,6 +1102,19 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
       enemy.corpseFloorY = groundY;
       spawnBloodSpurt(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, player.facing * 2.5, -2.0, 12, 1.1);
       spawnBloodDrip(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, player.facing * 1.5, -0.8, 5);
+
+      if (enemy.currentWeapon) {
+        spawnDroppedWeapon(
+          enemy.x + (enemy.w || 24) * 0.5,
+          enemy.y + 24,
+          (player.facing || 1) * 3.5,
+          -4.0,
+          enemy.currentWeapon,
+          enemy.facing,
+          null,
+          enemy
+        );
+      }
     }
 
     player.hitThisSwing = true;

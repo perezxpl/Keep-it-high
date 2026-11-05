@@ -12,6 +12,7 @@ import { ACID_SURGE_SYSTEM } from '../arenas/arena2/state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { deathmatchState } from '../deathmatch/state.js';
 import { clearPlayerThrownTomahawks } from '../projectiles.js';
+import { spawnDroppedWeapon } from '../pickup/index.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -376,6 +377,24 @@ export function getFarthestSpawnPoint(activeArena, respawningChar, combatantsLis
  * Pętla aktualizacji stanu śmierci i respawnu (wywoływana w pętli gracza)
  */
 export function handlePlayerDeath(player, groundY, combatants = null) {
+  // Gwarantowane jednorazowe upuszczenie broni przy zgonie postaci
+  if (!player._droppedWeaponThisDeath && player.currentWeapon) {
+    player._droppedWeaponThisDeath = true;
+    const dropFacing = player.facing || 1;
+    const dropVx = (player.deathImpulse?.vx || player.vx || 0) * 0.35 + dropFacing * 2.0;
+    const dropVy = (player.deathImpulse?.vy || -3.6);
+    spawnDroppedWeapon(
+      player.x + (player.w || 24) * 0.5,
+      player.y + 24,
+      dropVx,
+      dropVy,
+      player.currentWeapon,
+      dropFacing,
+      null,
+      player
+    );
+  }
+
   player.respawnTimer--;
 
   player.kickMode = 'GROUND';
@@ -427,6 +446,7 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
     player.isDead = false;
+    player._droppedWeaponThisDeath = false;
     player.axeThrown = false;
     player.meleeBloodTimer = 0;
     clearPlayerThrownTomahawks(player);

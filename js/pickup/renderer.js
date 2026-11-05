@@ -30,8 +30,8 @@ export function drawPickupsWorld(ctx, camera) {
     const dw = pickupState.droppedWeapons[i];
     if (dw.x < minX || dw.x > maxX || dw.y < minY || dw.y > maxY) continue;
 
-    // Miganie w ostatnich 6 sekundach trwania
-    if (dw.life < 6.0) {
+    // Miganie ostrzegawcze w ostatnich 10 sekundach trwania (z pelnych 300 sekund)
+    if (dw.life < 10.0) {
       const blink = Math.sin(now * 0.015);
       if (blink < -0.2) continue;
     }
@@ -111,20 +111,23 @@ export function drawPickupsWorld(ctx, camera) {
     // Rysuj etykiete bez rotacji broni
     ctx.save();
     ctx.translate(dw.x, dw.y - 16);
+    ctx.font = 'bold 9px monospace';
+    const textLabel = dw.isMelee ? (dw.name || 'BIAŁA') : `${dw.name || dw.weaponId} ${dw.currentAmmo}/${dw.reserveAmmo}`;
+    const textMetrics = ctx.measureText(labelText);
+    const badgeW = Math.max(46, textMetrics.width + 12);
+
     ctx.fillStyle = 'rgba(9, 9, 11, 0.88)';
     ctx.strokeStyle = badgeBorderColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(-24, -9, 48, 15, 3);
+    ctx.roundRect(-badgeW * 0.5, -9, badgeW, 16, 3);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = dw.isMelee ? '#f87171' : '#38bdf8';
-    ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const textLabel = dw.isMelee ? 'BIAŁA' : `${dw.currentAmmo}/${dw.reserveAmmo}`;
-    ctx.fillText(textLabel, 0, -1);
+    ctx.fillText(labelText, 0, -1);
     ctx.restore();
   }
 }

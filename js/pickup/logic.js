@@ -65,10 +65,14 @@ export function spawnDroppedWeapon(x, y, vx = 0, vy = 0, weapon = null, facing =
     currentAmmo: Math.max(0, currentAmmo),
     reserveAmmo: Math.max(0, reserveAmmo),
     magSize: baseWep.magSize || 30,
-    life: 90.0, // 90 sekund trwania w swiecie gry
-    maxLife: 90.0,
-    pickupRadius: 62
+    life: 300.0, // 300 sekund (5 minut) trwania w swiecie gry - bron nie znika szybko jak polegla postac
+    maxLife: 300.0,
+    pickupRadius: 66
   };
+
+  if (owner && owner.isDead) {
+    owner._droppedWeaponThisDeath = true;
+  }
 
   pickupState.droppedWeapons.push(dropObj);
   if (pickupState.droppedWeapons.length > pickupState.maxDroppedWeapons) {
@@ -195,6 +199,7 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
         }
       }
     } else {
+      const prevY = dw.y;
       dw.vy += (CONFIG.GRAVITY || 0.38) * 0.92;
       dw.vx *= 0.98;
       dw.x += dw.vx;
@@ -209,27 +214,44 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
       }
 
       const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(dw.x) : true;
-      let floorY = (!hasGround && !isA3) ? (GROUND_Y + 600) : (baseGroundY - 4);
       let landed = false;
+      let floorY = (hasGround && !isA3) ? (baseGroundY - 4) : (GROUND_Y + 1200);
       let hitPlat = null;
 
-      if (hasGround && dw.y >= floorY) {
-        landed = true;
-      } else if (Array.isArray(activePlats)) {
+      // Ciagla detekcja kolizji z platformami (swept collision - brak przelatywania przez podloze)
+      if (dw.vy > 0 && Array.isArray(activePlats)) {
+        let highestSurfY = null;
         for (const plat of activePlats) {
           if (!plat || plat.solid === false || plat.isWall) continue;
           if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval')) continue;
           const minX = plat.x !== undefined ? plat.x : 0;
           const maxX = minX + (plat.w || 0);
-          if (dw.x >= minX && dw.x <= maxX) {
+          if (dw.x >= minX - 4 && dw.x <= maxX + 4) {
             const topY = getPlatformSurfaceY(plat, dw.x, GROUND_Y);
-            if (!isNaN(topY) && dw.y >= topY - 4 && dw.y <= topY + 8 && dw.vy > 0) {
-              floorY = topY - 4;
-              landed = true;
-              hitPlat = plat;
-              break;
+            if (!isNaN(topY)) {
+              if (prevY <= topY + 6 && dw.y >= topY - 4) {
+                if (highestSurfY === null || topY < highestSurfY) {
+                  highestSurfY = topY;
+                  hitPlat = plat;
+                }
+              }
             }
           }
+        }
+
+        if (highestSurfY !== null) {
+          floorY = highestSurfY - 4;
+          landed = true;
+        }
+      }
+
+      // Ladowanie na ziemi jesli nie trafiono wyzszej platformy
+      if (!landed && hasGround) {
+        const groundCheckY = isA3 ? baseGroundY : GROUND_Y;
+        if (prevY <= groundCheckY + 6 && dw.y >= groundCheckY - 4 && dw.vy > 0) {
+          floorY = groundCheckY - 4;
+          landed = true;
+          hitPlat = null;
         }
       }
 
@@ -256,7 +278,7 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
       }
     }
 
-    if (dw.life <= 0 || (!isGroundAt(dw.x) && dw.y > GROUND_Y + 500)) {
+    if (dw.life <= 0 || dw.y > GROUND_Y + 1200) {
       pickupState.droppedWeapons.splice(i, 1);
     }
   }

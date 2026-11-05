@@ -38,6 +38,7 @@ import arena3, {
 } from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
+import { resetPickups } from '../pickup/index.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
@@ -568,6 +569,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
   if (typeof resetColliders === 'function') {
     resetColliders();
   }
+  resetPickups();
   ARENA_PLATFORMS.length = 0;
   GROUND_BARRICADES.length = 0;
   GOALS.length = 0;
