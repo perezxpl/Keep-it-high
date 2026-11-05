@@ -30,7 +30,6 @@ import {
 import { spawnRpgRocket } from './weapons/rocket.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
-import { isEnforcerPoiseActive } from './classes/enforcer.js';
 
 export {
   spawnBulletCasing,
@@ -1207,9 +1206,6 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       }
 
       let totalDamage = Math.round(b.damage * damageMultiplier);
-      if (closestChar.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(closestChar)) {
-        totalDamage = Math.round(totalDamage * 0.82);
-      }
 
       // 4. PANCERZ KORPUSU (KAMIZELKA KULOODPORNA):
       // Kamizelka posiada swoje własne HP nałożone na HP posiadacza i chroni TYLKO od obrażeń na tors!

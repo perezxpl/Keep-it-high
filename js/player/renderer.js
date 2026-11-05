@@ -451,20 +451,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     rawFrontElbow = 0.85;
     rawBackSwing = 0.45;
     rawBackElbow = 0.75;
-  } else if (p.isGroundSlamming) {
-    // Postura tąpnięcia z powietrza (Ground Slam / Meteor Drop): kolana ugięte, stopy skierowane w dół ku ziemi, ramiona dynamicznie rozstawione
-    rawFootFrontTargetX = hipX + 6 * p.facing;
-    rawFootFrontTargetY = hipY + 54;
-    rawFootFrontAnkle = 0.35 * p.facing;
-
-    rawFootBackTargetX = hipX - 6 * p.facing;
-    rawFootBackTargetY = hipY + 52;
-    rawFootBackAnkle = 0.30 * p.facing;
-
-    rawFrontSwing = -0.75;
-    rawFrontElbow = 0.95;
-    rawBackSwing = 0.65;
-    rawBackElbow = 0.85;
   } else if (p.kickMode === 'SPARTAN') {
     const targets = getSpartanKickTargets(p.spartanTimer || 0, p.spartanDuration || 22, hipX, hipY, p.facing, plantFloorY);
     const isFrontKicking = (p.kickLeg === 'front');

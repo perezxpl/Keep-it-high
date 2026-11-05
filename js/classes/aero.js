@@ -2,14 +2,7 @@
 // KLASA LEKKA: RAPTOR – Zwiadowca / Lotnik
 // Specjalność: Plecak odrzutowy (Jetpack), powietrzna manewrowość (airVx),
 //              wysoka prędkość i zwinność, najwyższy jetMax.
-//              Dopalacz awaryjny (Afterburner Surge) z podwójnego W / podwójnego flicku drążka.
-//              Zawis taktyczny (Tactical Air Hover) na klawiaturze przy jednoczesnym W+S.
 // =========================================================================
-import { triggerScreenShake, spawnJetpackSparks } from '../world.js';
-import { spawnShockwaveRing } from '../particles.js';
-import { getJetpackFlamePalette } from '../player/jetpack.js';
-import { getJetpackNozzlePos } from '../player/limbs.js';
-
 export const RaptorClass = {
   id: 'RAPTOR',
   name: 'Raptor',
@@ -91,15 +84,11 @@ export const RaptorClass = {
   onInit(player) {
     player.jetFuel = this.stats.jetMax;
     player.jetMax = this.stats.jetMax;
-    initRaptorFlightState(player);
   },
   onDestroy(player) {},
 
-  // Akrobata: zwiększona manewrowość w powietrzu (airVx śledzi intendedVx) oraz cooldown dopalacza
+  // Akrobata: zwiększona manewrowość w powietrzu (airVx śledzi intendedVx)
   onUpdate(player, ball, keys) {
-    if (player.raptorFlight?.afterburnerCooldown > 0) {
-      player.raptorFlight.afterburnerCooldown--;
-    }
     if (player.isJumping && typeof player.airVx === 'number') {
       if (player.intendedVx !== undefined && Math.abs(player.intendedVx) > 0.05) {
         if (Math.sign(player.airVx) === Math.sign(player.intendedVx) && Math.abs(player.airVx) >= Math.abs(player.intendedVx)) {
@@ -131,139 +120,3 @@ export const RaptorClass = {
 };
 
 export const AeroClass = RaptorClass;
-
-// =========================================================================
-// ZARZĄDZANIE STANEM LOTU I DOPALACZA DLA KLASY RAPTOR
-// =========================================================================
-
-export function initRaptorFlightState(player) {
-  if (!player) return;
-  if (!player.raptorFlight) {
-    player.raptorFlight = {
-      afterburnerCooldown: 0,
-      lastTapUpTime: 0,
-      prevKeyUp: false,
-      lastFlickUpTime: 0,
-      stickWasCentered: true
-    };
-  }
-}
-
-/**
- * Odpala Dopalacz Awaryjny (Afterburner Surge) dla Raptora:
- * Błyskawiczny, naddźwiękowy pionowy wyrzut ciągu odrzutowego z dysz jetpacka.
- * Zapewnia natychmiastowe wyrwanie z zasięgu ognia lub błyskawiczną zmianę pułapu.
- */
-export function triggerRaptorAfterburner(player, steerX = 0) {
-  if (!player || player.isDead || (player.jetFuel < 25)) return;
-  if (!player.raptorFlight) initRaptorFlightState(player);
-  if (player.raptorFlight.afterburnerCooldown > 0) return;
-
-  player.jetFuel = Math.max(0, player.jetFuel - 25);
-  player.raptorFlight.afterburnerCooldown = 40; // ~0.66s cooldown przy 60 FPS
-  player.vy = -14.2;
-  player.isJumping = true;
-  player.onGround = false;
-
-  if (Math.abs(steerX) > 0.12) {
-    const boostVx = Math.sign(steerX) * 6.5;
-    player.vx = boostVx;
-    player.airVx = boostVx;
-    player.facing = Math.sign(steerX);
-  }
-
-  // Wstrząs kamery: TYLKO subtelny impuls (1.5) i TYLKO dla lokalnego gracza!
-  // Boty ani zdalni gracze NIGDY nie trzęsą kamerą gracza!
-  const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
-  if (isLocalHuman) {
-    triggerScreenShake(1.5);
-  }
-
-  const nozzle = getJetpackNozzlePos(player);
-  const flameCol = player.customVisuals?.jetpackColor || '#38bdf8';
-  const palette = getJetpackFlamePalette(flameCol);
-
-  if (typeof spawnShockwaveRing === 'function') {
-    spawnShockwaveRing(nozzle.x, nozzle.y, flameCol);
-  }
-  // ZERO ciężkich chmur dymu ani dynamicznego oświetlenia rozmywającego ekran!
-  if (typeof spawnJetpackSparks === 'function') {
-    spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, 12, palette.particles, player.vx, player.vy, nozzle.angle);
-  }
-}
-
-/**
- * Przetwarzanie wejścia gracza dla Dopalacza Awaryjnego Raptora w każdej klatce:
- * - Podwójne tapnięcie W / Strzałka w górę na klawiaturze (w oknie 280ms w powietrzu)
- * - Podwójny szybki flick analogowym lewym drążkiem / gałką w górę (w oknie 300ms w powietrzu)
- */
-export function updateRaptorFlightInput(player, keys, leftStick, gamepadState) {
-  if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
-  if (!player.raptorFlight) initRaptorFlightState(player);
-  const rf = player.raptorFlight;
-
-  const keyUp = !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
-
-  // Jeśli gracz jest na ziemi lub właśnie wykonuje wybicie skoku (takeoff):
-  // Bezwzględnie zerujemy timery podwójnego tapnięcia, aby zwykły skok z ziemi
-  // NIGDY nie był traktowany jako pierwsze tapnięcie dopalacza!
-  const isFirmlyInAir = (!player.onGround && player.isJumping && !player.jumpTakeoffTimer && !player.jumpSquatTimer);
-  if (!isFirmlyInAir) {
-    rf.prevKeyUp = keyUp;
-    rf.lastTapUpTime = 0;
-    rf.stickWasCentered = true;
-    rf.lastFlickUpTime = 0;
-    return;
-  }
-
-  const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
-
-  // 1. KLAWIATURA: Celowe podwójne szybkie tapnięcie W / Strzałki w górę W POWIETRZU
-  const justPressedUp = keyUp && !rf.prevKeyUp;
-  rf.prevKeyUp = keyUp;
-
-  let steerX = 0;
-  if (keys) {
-    if (keys.left || keys.KeyA || keys.ArrowLeft) steerX -= 1;
-    if (keys.right || keys.KeyD || keys.ArrowRight) steerX += 1;
-  }
-
-  if (justPressedUp && player.jetFuel >= 25 && rf.afterburnerCooldown <= 0) {
-    if (rf.lastTapUpTime > 0 && (now - rf.lastTapUpTime <= 280)) {
-      triggerRaptorAfterburner(player, steerX);
-      rf.lastTapUpTime = 0;
-      return;
-    }
-    rf.lastTapUpTime = now;
-  }
-
-  // 2. ANALOGOWY LEWY DRĄŻEK (Dotyk lub Gamepad): Podwójny szybki flick w górę w powietrzu
-  let stickY = 0;
-  let stickX = 0;
-  let isStickActive = false;
-  if (leftStick && leftStick.active) {
-    stickY = leftStick.axisY;
-    stickX = leftStick.axisX;
-    isStickActive = true;
-  } else if (gamepadState && gamepadState.connected && gamepadState.leftStick) {
-    stickY = gamepadState.leftStick.y;
-    stickX = gamepadState.leftStick.x;
-    isStickActive = true;
-  }
-
-  if (isStickActive) {
-    if (stickY > -0.25) {
-      rf.stickWasCentered = true;
-    } else if (stickY < -0.70 && rf.stickWasCentered) {
-      rf.stickWasCentered = false;
-      if (player.jetFuel >= 25 && rf.afterburnerCooldown <= 0) {
-        if (rf.lastFlickUpTime > 0 && (now - rf.lastFlickUpTime <= 300)) {
-          triggerRaptorAfterburner(player, stickX);
-          rf.lastFlickUpTime = 0;
-          return;
-        }
-        rf.lastFlickUpTime = now;
-      }
-    }
-  }
-}

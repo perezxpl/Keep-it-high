@@ -258,12 +258,10 @@ try {
           onGround: !inAir,
           isJumping: inAir,
           isSliding: false,
-          isGroundSlamming: false,
           jetFuel: 100,
           jetMax: 100,
           strikerDashCooldown: 0,
           enforcerBlastCooldown: 0,
-          enforcerGroundSlamCooldown: 0,
           grenadeCooldown: 0,
           shootCooldown: 0,
           botKeys: { left: false, right: false, up: false, down: false, space: false, slide: false }

@@ -24,7 +24,6 @@ import {
 } from './state.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { killByHazard } from '../arenas/arena4.js';
-import { executeEnforcerGroundSlamImpact } from '../classes/enforcer.js';
 
 // =========================================================================
 // OBSŁUGA LĄDOWANIA I ZESKOKU (DROP-THROUGH)
@@ -519,11 +518,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.rocketBoots.dashTimer = 0;
     }
 
-    // Enforcer Ground Slam (Tąpnięcie z powietrza / Meteor Drop) lądowanie na platformie
-    if (p.isGroundSlamming) {
-      executeEnforcerGroundSlamImpact(p, landedSurface);
-    }
-
     if (!wasGrounded && impactVy > 1.8 && !(p.staggerTimer > 0) && !p.isSliding) {
       p.landingSquatIntensity = Math.min(1.0, impactVy / 8.5);
       p.landingSquatTimer = Math.min(5, Math.max(2, Math.round(p.landingSquatIntensity * 5)));
@@ -626,9 +620,6 @@ export function checkPlayerPlatformLanding(p, groundY) {
           if (p.onGround && p.y > groundY - colH) {
             p.y = groundY - colH;
             p.vy = 0;
-          }
-          if (p.onGround && p.isGroundSlamming) {
-            executeEnforcerGroundSlamImpact(p, groundY);
           }
           if (p.onGround && p.staggerTimer > 0 && !p.staggerLanded) {
             p.staggerLanded = true;
