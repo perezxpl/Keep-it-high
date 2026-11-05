@@ -16,8 +16,8 @@ export const pickupPromptState = {
   touchButtonBounds: {
     x: 0,
     y: 0,
-    r: 30,
-    hitR: 44,
+    r: 21,
+    hitR: 35,
     active: false
   },
   promptAlpha: 0.0

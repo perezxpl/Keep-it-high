@@ -440,18 +440,18 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
   if (bestTarget && bestType) {
     let candidate = pickupPromptState.currentInteractable;
     if (!candidate || candidate.target !== bestTarget || candidate.type !== bestType) {
-      let label = 'PODNIEŚ';
+      let label = 'ZAMIEŃ';
       let sublabel = '';
-      let holdDuration = 0.45;
+      let holdDuration = 0.40;
 
       if (bestType === 'WEAPON') {
-        label = bestTarget.fullName || bestTarget.name;
+        label = bestTarget.name || bestTarget.fullName || 'BROŃ';
         sublabel = bestTarget.isMelee ? 'BROŃ BIAŁA' : `NABOJE: ${bestTarget.currentAmmo} / ${bestTarget.reserveAmmo}`;
-        holdDuration = 0.45;
+        holdDuration = 0.40;
       } else if (bestType === 'TOMAHAWK') {
-        label = 'TOPOREK TOMAHAWK';
+        label = 'TOMAHAWK';
         sublabel = 'PRZYTRZYMAJ ABY ODZYSKAĆ';
-        holdDuration = 0.35;
+        holdDuration = 0.30;
       } else if (bestType === 'CARE_PACKAGE') {
         label = 'ZRZUT ZAOPATRZENIA';
         sublabel = 'PRZECHWYĆ SKRZYNIĘ';
@@ -479,14 +479,16 @@ export function updatePickups(dt = (1 / 60), player = null, combatants = [], cam
     pickupPromptState.promptAlpha = Math.min(1.0, pickupPromptState.promptAlpha + safeDt * 6.5);
 
     // Przeliczenie pozycji na ekranie dla dotyku
-    const scrPos = worldToScreen(candidate.x, candidate.y - 48, camera);
+    const scrPos = worldToScreen(candidate.x, candidate.y - 40, camera);
     const w = (typeof window !== 'undefined') ? (window.innerWidth || 1920) : 1920;
     const h = (typeof window !== 'undefined') ? (window.innerHeight || 1080) : 1080;
-    const btnX = Math.max(52, Math.min(w - 52, scrPos.x));
-    const btnY = Math.max(52, Math.min(h - 96, scrPos.y));
+    const btnX = Math.max(36, Math.min(w - 36, scrPos.x));
+    const btnY = Math.max(36, Math.min(h - 60, scrPos.y));
 
     pickupPromptState.touchButtonBounds.x = btnX;
     pickupPromptState.touchButtonBounds.y = btnY;
+    pickupPromptState.touchButtonBounds.r = 21;
+    pickupPromptState.touchButtonBounds.hitR = 35;
     pickupPromptState.touchButtonBounds.active = true;
 
     // Sprawdzenie intencji przytrzymania przycisku interakcji

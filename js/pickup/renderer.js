@@ -171,19 +171,37 @@ export function drawPickupPrompt(ctx, camera, isTouchDevice = false) {
 
   const cx = btn.x;
   const cy = btn.y;
-  const r = btn.r || 30;
+  const r = btn.r || 21;
 
-  // 1. Pulsujacy zewnetrzny pierscien zapraszajacy do interakcji
+  // Kolorystyka i slowo akcji w zaleznosci od typu
+  let mainColor = '#0891b2';
+  let accentColor = '#22d3ee';
+  let actionWord = 'ZAMIEŃ';
+
+  if (candidate.type === 'CARE_PACKAGE') {
+    mainColor = '#d97706';
+    accentColor = '#fbbf24';
+    actionWord = 'ZRZUT';
+  } else if (candidate.type === 'TOMAHAWK') {
+    mainColor = '#dc2626';
+    accentColor = '#f87171';
+    actionWord = 'ZŁAP';
+  }
+
+  // 1. Dyskretny pulsujacy pierscien zewnetrzny
   const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.008);
-  ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE') ? `rgba(245, 158, 11, ${0.25 + pulse * 0.25})` : `rgba(6, 182, 212, ${0.25 + pulse * 0.25})`;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE')
+    ? `rgba(245, 158, 11, ${0.18 + pulse * 0.18})`
+    : `rgba(6, 182, 212, ${0.18 + pulse * 0.18})`;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.arc(cx, cy, r + 4 + pulse * 4, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r + 2 + pulse * 2, 0, Math.PI * 2);
   ctx.stroke();
 
-  // 2. Tlo okraglego przycisku dotykowego (Slate Glassmorphism)
+  // 2. Tlo okraglego przycisku (Slate Glassmorphism)
+  const isHolding = pState.isHoldingTouch || pState.isHoldingMouse;
   const bgGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
-  bgGrad.addColorStop(0, pState.isHoldingTouch ? 'rgba(30, 41, 59, 0.98)' : 'rgba(15, 23, 42, 0.92)');
+  bgGrad.addColorStop(0, isHolding ? 'rgba(30, 41, 59, 0.98)' : 'rgba(15, 23, 42, 0.92)');
   bgGrad.addColorStop(1, 'rgba(2, 6, 23, 0.96)');
   ctx.fillStyle = bgGrad;
   ctx.beginPath();
@@ -191,74 +209,56 @@ export function drawPickupPrompt(ctx, camera, isTouchDevice = false) {
   ctx.fill();
 
   // Baza obrysu przycisku
-  ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE') ? '#d97706' : '#0891b2';
-  ctx.lineWidth = 2.0;
+  ctx.strokeStyle = mainColor;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   // 3. Okragly pasek postepu przytrzymania (Hold Progress Ring)
   if (prog > 0.01) {
-    ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE') ? '#fbbf24' : '#22d3ee';
-    ctx.lineWidth = 4.2;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 2.8;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 1.5, -Math.PI * 0.5, -Math.PI * 0.5 + prog * Math.PI * 2);
+    ctx.arc(cx, cy, r + 0.5, -Math.PI * 0.5, -Math.PI * 0.5 + prog * Math.PI * 2);
     ctx.stroke();
   }
 
-  // 4. Wnetrze przycisku: Ikona / klawisz
+  // 4. Wnetrze przycisku:
   if (!isTouchDevice) {
-    // Widok PC: Klawisz [E]
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.roundRect(cx - 13, cy - 13, 26, 26, 4);
-    ctx.fill();
-    ctx.stroke();
-
+    // Widok PC: Klawisz [E] w srodku oraz mikro-etykieta pod spodem
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 14px system-ui, sans-serif';
+    ctx.font = '900 12px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('E', cx, cy);
-  } else {
-    // Widok Mobilny / Dotykowy: Ikona chwytu / dłoni lub wektor
-    ctx.fillStyle = (candidate.type === 'CARE_PACKAGE') ? '#fbbf24' : '#22d3ee';
-    ctx.font = '900 13px system-ui, sans-serif';
+
+    // Mikro-badge akcji pod przyciskiem PC
+    ctx.font = 'bold 9px monospace';
+    const tagW = Math.max(50, ctx.measureText(actionWord).width + 12);
+    const tagH = 15;
+    const tagX = cx - tagW * 0.5;
+    const tagY = cy + r + 3;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(tagX, tagY, tagW, tagH, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = accentColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const mainActionWord = (candidate.type === 'CARE_PACKAGE') ? 'ZRZUT' : (candidate.type === 'TOMAHAWK' ? 'ZŁAP' : 'WEŹ');
-    ctx.fillText(mainActionWord, cx, cy - 1);
+    ctx.fillText(actionWord, cx, tagY + tagH * 0.5);
+  } else {
+    // Widok Mobilny / Dotykowy: Napis akcji "ZAMIEŃ", "ZRZUT" lub "ZŁAP" bezposrednio w przycisku
+    ctx.fillStyle = accentColor;
+    ctx.font = '900 9.5px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(actionWord, cx, cy);
   }
-
-  // 5. Taktyczna etykieta pod przyciskiem z pelna nazwa i stanem amunicji
-  const tagW = Math.max(140, ctx.measureText(candidate.label).width + 36);
-  const tagH = 34;
-  const tagX = cx - tagW * 0.5;
-  const tagY = cy + r + 8;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-  ctx.strokeStyle = (candidate.type === 'CARE_PACKAGE') ? '#f59e0b' : '#06b6d4';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.roundRect(tagX, tagY, tagW, tagH, 5);
-  ctx.fill();
-  ctx.stroke();
-
-  // Nazwa przedmiotu
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(candidate.label, cx, tagY + 4);
-
-  // Podpis / stan amunicji / instrukcja
-  ctx.fillStyle = (candidate.type === 'CARE_PACKAGE') ? '#fbbf24' : (candidate.type === 'TOMAHAWK' ? '#f87171' : '#38bdf8');
-  ctx.font = '10px monospace';
-  ctx.textBaseline = 'bottom';
-  const holdHint = isTouchDevice ? 'PRZYTRZYMAJ PRZYCISK' : 'PRZYTRZYMAJ [E]';
-  const subText = candidate.sublabel ? `${candidate.sublabel}` : holdHint;
-  ctx.fillText(subText, cx, tagY + tagH - 4);
 
   ctx.restore();
 }
