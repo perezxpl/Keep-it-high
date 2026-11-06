@@ -307,22 +307,33 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     // TĄPNIĘCIE Z POWIETRZA (Ground Slam / Meteor Drop):
     // W locie naciśnięcie DÓŁ + KICK / SPACJA / SKOK / AKCJA powoduje gwałtowny pionowy spadek i falę uderzeniową po lądowaniu!
     if (!player.isGroundSlamming) {
-      const isDownKey = !!(keys && (keys.down || keys.KeyS || keys.ArrowDown));
-      const isActionKey = !!(keys && (keys.space || keys.Space || keys.kick || keys.KeyE || keys.KeyF || keys.KeyX || keys.KeyW || keys.up || keys.ArrowUp));
+      const isTouchActive = !!(leftStick && leftStick.active);
 
-      let stickY = 0;
-      if (leftStick && leftStick.active) stickY = leftStick.axisY;
-      else if (gamepadState && gamepadState.connected && gamepadState.leftStick) stickY = gamepadState.leftStick.y;
+      // 1. Klawiatura PC: Dół (S / Strzałka w dół) + Klawisz akcji / skoku / wykopu (Spacja, E, W itp.)
+      const isDownKey = !isTouchActive && !!(keys && (keys.down || keys.KeyS || keys.ArrowDown));
+      const isActionKey = !isTouchActive && !!(keys && (keys.space || keys.Space || keys.kick || keys.KeyE || keys.KeyF || keys.KeyX || keys.KeyW || keys.up || keys.ArrowUp));
+      const isKeyTrigger = isDownKey && isActionKey;
 
-      const isStickDown = stickY > 0.45;
-      const isPadDown = !!(gamepadState && gamepadState.connected && gamepadState.buttons?.dpadDown);
-      const isDownHeld = isDownKey || isStickDown || isPadDown;
+      // 2. Fizyczny Gamepad: Lewy drążek w dół lub D-Pad dół + dowolny przycisk akcji / skoku / wykopu
+      const padStickY = (gamepadState && gamepadState.connected && gamepadState.leftStick) ? gamepadState.leftStick.y : 0;
+      const isPadDown = !isTouchActive && !!(gamepadState && gamepadState.connected && (padStickY > 0.45 || gamepadState.buttons?.dpadDown));
+      const isPadAction = !isTouchActive && !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || gamepadState.buttons?.west || gamepadState.buttons?.east || gamepadState.buttons?.north || gamepadState.r1 || gamepadState.r2));
+      const isPadTrigger = isPadDown && isPadAction;
 
-      const isStickAction = !!(leftStick?.jumpTriggered || (leftStick && leftStick.axisY > 0.70));
-      const isPadAction = !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || gamepadState.buttons?.west || gamepadState.buttons?.east || gamepadState.buttons?.north || gamepadState.r1 || gamepadState.r2));
-      const isMobileAction = !!(typeof window !== 'undefined' && (window.pockets?.action?.active || window.btnCluster?.action?.active));
+      // 3. Pad dotykowy (Touch / Mobile):
+      // WYMÓG: Wychylenie lewego drążka w dół (axisY > 0.42) ORAZ wciśnięcie przycisku kopania (pockets.action / btnCluster.action)!
+      // Samo wychylenie drążka w dół NIGDY nie odpala pikowania.
+      const isTouchStickDown = isTouchActive && (leftStick.axisY > 0.42);
+      const isTouchKickPressed = isTouchActive && !!(
+        (typeof window !== 'undefined' && (
+          window.pockets?.action?.active ||
+          window.btnCluster?.action?.active ||
+          window.btnCluster?.kick?.active
+        ))
+      );
+      const isTouchTrigger = isTouchStickDown && isTouchKickPressed;
 
-      if (isDownHeld && (isActionKey || isStickAction || isPadAction || isMobileAction)) {
+      if (isKeyTrigger || isPadTrigger || isTouchTrigger) {
         triggerEnforcerGroundSlam(player);
       }
     }

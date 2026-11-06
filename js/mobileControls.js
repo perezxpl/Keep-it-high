@@ -6,6 +6,7 @@
 
 import { CONFIG } from './config.js';
 import { performKick, kick, playerSlide, isBallInKickReach, triggerSpartanKick, findMeleeTarget, prepareTomahawkThrow, releaseTomahawkThrow } from './player/actions.js';
+import { triggerEnforcerGroundSlam } from './classes/enforcer.js';
 import { startMeleeAttack, WEAPONS, cancelReload } from './weapons.js';
 import { ball } from './ball.js';
 import { activeArenaId as obstacleArenaId } from './obstacles.js';
@@ -292,6 +293,16 @@ export function handleDynamicActionButtonPress(player, spawnGrass, GROUND_Y, ext
       player.isSliding = false;
       player.slideTimer = 0;
       player.slideCooldown = Math.max(player.slideCooldown || 0, 16);
+    }
+
+    // Sprawdzenie czy Enforcer w locie wykonuje Tąpnięcie z powietrza (Ground Slam):
+    // Wymóg: lewy drążek wychylony w dół (axisY > 0.42) ORAZ wciśnięcie przycisku kopania
+    if (player.currentClass?.id === 'ENFORCER' && !player.onGround && !player.isGroundSlamming) {
+      const isStickDown = !!(leftStick && leftStick.active && leftStick.axisY > 0.42);
+      if (isStickDown) {
+        triggerEnforcerGroundSlam(player);
+        return true;
+      }
     }
 
     if (player.kickState !== 'IDLE' || (player.kickCooldown && player.kickCooldown > 0)) return false;
