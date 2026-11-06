@@ -20,7 +20,7 @@ import {
   getObstacleDef, calculateObstaclePlacement, undoCustomObstacle
 } from '../obstacles.js';
 import { CLASSES } from '../classes/index.js';
-import { triggerEnforcerBlastJump, initBlastBeltState, isEnforcerFirmlyGrounded } from '../classes/enforcer.js';
+import { triggerEnforcerBlastJump, triggerEnforcerGroundSlam, initBlastBeltState, isEnforcerFirmlyGrounded } from '../classes/enforcer.js';
 import { bot, getActiveBots } from '../bot.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import {
@@ -403,6 +403,8 @@ export function initKeyboardMouseHandlers({
           player.blastBelt.downTapTime = now;
           player.isJumpCharging = true;
           player.jumpChargePower = 1.0;
+        } else if (!player.isGroundSlamming && (keys.space || keys.up || keys.kick || keys.KeyW || keys.KeyE || keys.KeyF)) {
+          triggerEnforcerGroundSlam(player);
         }
       }
       keys.down = true;
@@ -434,7 +436,9 @@ export function initKeyboardMouseHandlers({
       const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && (Math.abs(relVy) < 5.0 || player.onGround));
       const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
-      if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {
+      if (player.currentClass?.id === 'ENFORCER' && isAirborne && (keys.down || keys.KeyS || keys.ArrowDown) && !player.isGroundSlamming) {
+        triggerEnforcerGroundSlam(player);
+      } else if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {
         // W POWIETRZU: uruchomienie jetpacka (tylko jeśli klawisz W został puszczony po wyskoku z ziemi)
         inputSession.isJetpackActive = true;
         player.isJetpacking = true;

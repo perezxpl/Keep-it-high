@@ -13,6 +13,7 @@ import { ARENA_PLATFORMS, customObstacles, obstacles, activeArenaId, getPlatform
 import { addDynamicLight, addShockwave, LIGHT_PRESETS } from './lighting/index.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from './deathmatch/index.js';
 import { getRiverbankGroundY } from './arenas/arena3/state.js';
+import { isEnforcerPoiseActive } from './classes/enforcer.js';
 import {
   spawnShrapnelStreak,
   spawnRicochetSparks,
@@ -770,6 +771,10 @@ export class ThrownTomahawk {
               triggerHitstop(4);
             }
 
+            if (ch.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(ch)) {
+              totalDamage = Math.round(totalDamage * 0.82);
+            }
+
             ch.hp = Math.max(0, (ch.hp !== undefined ? ch.hp : 100) - totalDamage);
             ch.killer = this.shooter;
             ch.lastAttacker = this.shooter;
@@ -1107,7 +1112,10 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       const factor = Math.max(0, 1 - (dist / radius));
       // 120-150 dmg w centrum ze spadkiem liniowym
-      const damage = Math.round(145 * factor);
+      let damage = Math.round(145 * factor);
+      if (ch.currentClass?.id === 'ENFORCER' && isEnforcerPoiseActive(ch)) {
+        damage = Math.round(damage * 0.82);
+      }
       const impulse = factor * 22.0;
 
       const normX = dist > 0.001 ? (chCenterX - expX) / dist : (ch.facing || 1);

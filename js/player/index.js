@@ -8,7 +8,7 @@ import { activeArenaId, customObstacles, getPlatformSurfaceY } from '../obstacle
 import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js';
 import { camera } from '../camera.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
-import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
+import { triggerEnforcerBlastJump, executeEnforcerGroundSlamImpact } from '../classes/enforcer.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
@@ -1152,6 +1152,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.currentGroundY = a5Floor;
         player.dropThroughTimer = 0;
         player.dropThroughPlatform = null;
+
+        if (player.isGroundSlamming) {
+          executeEnforcerGroundSlamImpact(player, a5Floor);
+        }
       }
     } else if (!isA4 && !isA3 && !isA2) {
       const groundFloorLimit = GROUND_Y - colH;
@@ -1174,6 +1178,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.currentGroundY = GROUND_Y;
         player.dropThroughTimer = 0;
         player.dropThroughPlatform = null;
+
+        if (player.isGroundSlamming) {
+          executeEnforcerGroundSlamImpact(player, GROUND_Y);
+        }
 
         if (player.rocketBoots?.dashing && player.rocketBoots.dashType === 'AIR') {
           player.rocketBoots.dashing = false;
@@ -1235,6 +1243,10 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           player.dropThroughTimer = 0;
           player.dropThroughPlatform = null;
 
+          if (player.isGroundSlamming) {
+            executeEnforcerGroundSlamImpact(player, floorY);
+          }
+
           if (player.rocketBoots?.dashing && player.rocketBoots.dashType === 'AIR') {
             player.rocketBoots.dashing = false;
             player.rocketBoots.dashType = 'NONE';
@@ -1261,6 +1273,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
           player.isJumping = false;
           player.onGround = true;
           player.currentGroundY = floorY;
+          if (player.isGroundSlamming) {
+            executeEnforcerGroundSlamImpact(player, floorY);
+          }
         }
       }
     }

@@ -361,6 +361,7 @@ export function createPlayerInstance(overrides = {}) {
     staggerImmunityTimer: 0,
     spawnProtectionTimer: 0,
     isJumping: false,
+    isGroundSlamming: false,
     jumpSquatTimer: 0,
     jumpSquatMax: 3,
     jumpTakeoffTimer: 0,
