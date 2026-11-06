@@ -394,6 +394,7 @@ export function initKeyboardMouseHandlers({
         }
       }
       inputSession.lastSPressTime = now;
+      player._lastDownPressTime = now;
       if (player.currentClass?.id === 'ENFORCER') {
         const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
         if (isFirmlyGrounded) {
@@ -418,11 +419,19 @@ export function initKeyboardMouseHandlers({
 
       const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
       const crane = a5?.crane;
-      const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
+      const isOnFallingCrane = !!(
+        crane?.phase === 'FALLING' &&
+        player.onGround &&
+        typeof player.currentGroundY === 'number' &&
+        crane.shape &&
+        player.x + (player.w || 26) >= crane.dropX &&
+        player.x <= crane.dropX + (crane.shape.w || 1) * 100 &&
+        Math.abs(player.currentGroundY - crane.currentY) <= ((crane.shape.h || 4) * 100 + 16)
+      );
       const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
       const relVy = (player.vy || 0) - craneVy;
 
-      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(relVy) < 4.0);
+      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && (Math.abs(relVy) < 5.0 || player.onGround));
       const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
       if (isAirborne && player.jetpackKeyNeutralized && (player.jetFuel || 0) > 0) {
@@ -434,7 +443,8 @@ export function initKeyboardMouseHandlers({
         if (player.currentClass?.id === 'ENFORCER') {
           const belt = player.blastBelt;
           const isDownCombo = (belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300)) ||
-            (inputSession.lastSPressTime && ((now - inputSession.lastSPressTime) <= 300));
+            (inputSession.lastSPressTime && ((now - inputSession.lastSPressTime) <= 300)) ||
+            (player._lastDownPressTime && ((now - player._lastDownPressTime) <= 300));
           if (belt) {
             belt.downTapDetected = false;
             belt.downTapTime = 0;

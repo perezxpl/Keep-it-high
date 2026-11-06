@@ -592,8 +592,12 @@ export function checkPlayerPlatformLanding(p, groundY) {
       const isOnFallingCrane = !!(
         isA5 &&
         crane?.phase === 'FALLING' &&
+        crane.shape &&
+        p.x + (p.w || 26) >= crane.dropX &&
+        p.x <= crane.dropX + (crane.shape.w || 1) * 100 &&
         p.currentGroundY &&
         Math.abs(p.currentGroundY - (p.y + colH)) <= 8 &&
+        Math.abs(p.currentGroundY - crane.currentY) <= ((crane.shape.h || 4) * 100 + 16) &&
         (!p.isJumping || p.vy >= -0.5)
       );
 

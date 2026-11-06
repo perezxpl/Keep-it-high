@@ -384,7 +384,8 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (player.currentClass?.id === 'ENFORCER') {
         const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
         const belt = player.blastBelt;
-        const isDownCombo = belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300);
+        const isDownCombo = (belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300)) ||
+          (player._lastDownPressTime && ((now - player._lastDownPressTime) <= 300));
         if (belt) {
           belt.downTapDetected = false;
           belt.downTapTime = 0;

@@ -600,15 +600,24 @@ canvas.addEventListener('touchmove', (e) => {
       const now = performance.now();
       const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
       const crane = a5?.crane;
-      const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
+      const isOnFallingCrane = !!(
+        crane?.phase === 'FALLING' &&
+        player.onGround &&
+        typeof player.currentGroundY === 'number' &&
+        crane.shape &&
+        player.x + (player.w || 26) >= crane.dropX &&
+        player.x <= crane.dropX + (crane.shape.w || 1) * 100 &&
+        Math.abs(player.currentGroundY - crane.currentY) <= ((crane.shape.h || 4) * 100 + 16)
+      );
       const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
       const relVy = (player.vy || 0) - craneVy;
 
-      const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isIntro && (player.onGround || ((player.coyoteTimer || 0) > 0)) && Math.abs(relVy) < 2.5;
+      const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isIntro && (player.onGround || (((player.coyoteTimer || 0) > 0) && Math.abs(relVy) < 5.0));
 
       // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra do 300ms)
       if (isEnforcer) {
         if (leftStick.axisY > 0.42 && isFirmlyGrounded) {
+          player._lastDownPressTime = now;
           if (!enforcerFlickDownDetected) {
             enforcerFlickDownTime = now;
             enforcerFlickDownDetected = true;
@@ -649,7 +658,7 @@ canvas.addEventListener('touchmove', (e) => {
       updateMobileControlStates(player, leftStick, btnCluster);
 
       // Uniesienie drążka w górę (skok na ziemi/krawędzi platformy lub płynny analogowy jetpack w powietrzu)
-      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && Math.abs(relVy) < 4.0);
+      const canCoyoteJump = ((player.coyoteTimer || 0) > 0 && !player.isJumping && (Math.abs(relVy) < 5.0 || player.onGround));
       const isAirborne = (!player.onGround && !canCoyoteJump) || player.isJumping;
 
       // Jeśli drążek został odchylony z powrotem w stronę centrum (axisY > -0.12), uznaj go za zneutralizowany
@@ -678,7 +687,8 @@ canvas.addEventListener('touchmove', (e) => {
         } else {
           // NA ZIEMI:
           if (isEnforcer) {
-            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300);
+            const isDownUpCombo = (enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300)) ||
+              (player._lastDownPressTime && ((now - player._lastDownPressTime) <= 300));
             if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
               // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (W OKNIE DO 300MS)
               enforcerFlickDownDetected = false;

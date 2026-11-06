@@ -21,16 +21,18 @@ export function getEnforcerFlameColor(player) {
 }
 
 export function isEnforcerFirmlyGrounded(player) {
-  if (!player || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return false;
-  const a5 = (typeof window !== 'undefined' && window.arena5State) ? window.arena5State : null;
-  const crane = a5?.crane;
-  const isOnFallingCrane = !!(crane?.phase === 'FALLING' && player.onGround && player.currentGroundY);
-  const craneVy = isOnFallingCrane ? (crane.vy || 0) : 0;
-  const relVy = (player.vy || 0) - craneVy;
-  return (
-    (player.onGround && Math.abs(relVy) < 1.8) ||
-    ((player.coyoteTimer || 0) > 0 && Math.abs(relVy) < 1.8)
-  );
+  if (!player || player.isDead || player.isJumping || player.isSliding || player.isAcidDying || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) {
+    return false;
+  }
+  // Gracz stojący na powierzchni (ziemia, platforma, klocki Areny 5, opadająca suwnica) ma pełne oparcie pod stopami
+  if (player.onGround) {
+    return true;
+  }
+  // Okno coyote time po zsunięciu się z krawędzi bloku / platformy
+  if ((player.coyoteTimer || 0) > 0 && (player.vy || 0) < 5.0) {
+    return true;
+  }
+  return false;
 }
 
 export const EnforcerClass = {
@@ -301,6 +303,7 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   const touchDown = isTouchActive && leftStick.axisY > 0.42;
 
   if (keyDown || padDown || touchDown) {
+    player._lastDownPressTime = now;
     if (!belt.downTapDetected) {
       belt.downTapDetected = true;
       belt.downTapTime = now;
