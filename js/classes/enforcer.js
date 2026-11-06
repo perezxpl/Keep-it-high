@@ -12,7 +12,8 @@ import {
   spawnShockwaveRing
 } from '../particles.js';
 
-export const ENFORCER_BOMB_CHARGE_MS = 1000; // Min. 1000ms przysiadu spręża tłoki pneumatyczne do pełnego wybicia
+export const ENFORCER_COMBO_WINDOW_MS = 300; // Okno bufora kombinacji dół -> góra (maksymalnie 300ms)
+export const ENFORCER_BOMB_CHARGE_MS = 300; // Zachowane dla kompatybilności wstecznej
 
 export function getEnforcerFlameColor(player) {
   if (player?.customVisuals?.jetpackColor) return player.customVisuals.jetpackColor;
@@ -233,16 +234,20 @@ export function initBlastBeltState(p) {
     pendingBallImpulse: false,
     lastBlastX: 0,
     lastBlastY: 0,
-    activeBlasts: []
+    activeBlasts: [],
+    // Bufor kombinacji dół -> góra w oknie do 300ms:
+    downTapTime: 0,
+    downTapDetected: false,
+    prevPadStickY: 0
   };
 }
 
 /**
- * Obsługa wejścia gracza (klawisz W / Strzałka w górę / Lewy drążek / Pad) dla Enforcera.
- * Skok odpala się po PUSZCZENIU kierunku w górę:
- * - Przytrzymanie < 1000ms -> zwykły skok po puszczeniu.
- * - Przytrzymanie >= 1000ms -> Enforcer schodzi w głęboki siłowy przysiad, spręża tłoki
- *   pneumatyczne na łydkach, a w momencie puszczenia kruszy ziemię pod butami i wybija się wysoko!
+ * Obsługa wejścia gracza (Klawiatura / Gamepad / Drążek) dla Enforcera.
+ * Zdolność Tłoków Pneumatycznych (Kinetic Piston Leap) odpala się zręcznościową kombinacją:
+ * 1. Ruch w DÓŁ (S / Strzałka w dół / Drążek w dół / D-Pad dół)
+ * 2. Ruch w GÓRĘ lub SKOK (W / Strzałka w górę / Drążek w górę / Przycisk A na padzie) w oknie czasowym do 300ms!
+ * Bez wcześniejszego ruchu w dół, wciśnięcie góry/skoku wykonuje ZWYKŁY, natychmiastowy skok bez żadnych opóźnień.
  */
 export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, spawnGrass, jumpFn) {
   if (!player || player.isDead || player.isIntro || (player.staggerTimer > 0) || ((player.staggerRecoveryTimer || 0) > 0)) return;
@@ -250,13 +255,13 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   const belt = player.blastBelt;
 
   // 1. ŚCISŁA WERYFIKACJA KONTAKTU Z PODŁOŻEM:
-  // Enforcer może używać tłoków i wykonywać siłowy przysiad WYŁĄCZNIE stojąc stabilnie na ziemi lub platformie!
-  // W powietrzu tłoki pneumatyczne są całkowicie zablokowane (brak oparcia o grunt).
+  // Tłoki pneumatyczne wymagają stabilnego oparcia o podłoże (brak działania w powietrzu).
   const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
 
   if (!isFirmlyGrounded) {
-    // W POWIETRZU: natychmiastowe zerowanie ładowania tłoków i siłowego przysiadu!
-    if (belt.isCharging || player.isJumpCharging) {
+    if (belt.downTapDetected || player.isJumpCharging) {
+      belt.downTapDetected = false;
+      belt.downTapTime = 0;
       belt.isCharging = false;
       belt.chargeMs = 0;
       belt.chargeRatio = 0;
@@ -268,28 +273,16 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
   }
 
   const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
-  const currentFloor = player.currentGroundY || player.groundY || player.lastGroundedFloorY || (player.y + (player.h || 74));
 
-  // W wersji mobilnej (lewy drążek dotykowy) Enforcer nie ładuje umiejętności przytrzymaniem góry –
-  // zdolność odpala natychmiast szybką kombinacją dół-góra bez żadnego ładowania!
-  const isTouchActive = !!(leftStick && leftStick.active);
-  if (isTouchActive) {
-    if (belt.isCharging || player.isJumpCharging) {
-      belt.isCharging = false;
-      belt.chargeMs = 0;
-      belt.chargeRatio = 0;
-      belt.isArmed = false;
-      player.isJumpCharging = false;
-      player.jumpChargePower = 0;
-    }
+  // Wygaszenie bufora kombinacji po upływie 300 ms
+  if (belt.downTapDetected && (now - belt.downTapTime > ENFORCER_COMBO_WINDOW_MS)) {
+    belt.downTapDetected = false;
+    belt.downTapTime = 0;
+    player.isJumpCharging = false;
+    player.jumpChargePower = 0;
   }
 
-  // Sprawdzenie czy gracz trzyma kierunek w górę (W / Up / Pad PC)
-  const keyUpHeld = !isTouchActive && !!(keys && (keys.up || keys.KeyW || keys.ArrowUp));
-  const padUpHeld = !isTouchActive && !!(gamepadState && gamepadState.connected && (gamepadState.buttons?.south || (gamepadState.leftStick && gamepadState.leftStick.y < -0.50) || gamepadState.buttons?.dpadUp));
-  const isHoldingUp = keyUpHeld || padUpHeld;
-
-  // Bieżący kierunek poziomy (do skoku kierunkowego na platformę)
+  // Bieżący kierunek poziomy (do skoku kierunkowego)
   let curDirX = 0;
   if (keys) {
     if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
@@ -301,76 +294,54 @@ export function updateEnforcerBeltInput(player, keys, leftStick, gamepadState, s
     curDirX = gamepadState.leftStick.x;
   }
 
-  if (isHoldingUp) {
-    if (!belt.isCharging) {
-      if (belt.blastJumpTimer <= 0) {
-        belt.isCharging = true;
-        belt.chargeStartTime = now;
-        belt.chargeMs = 0;
-        belt.chargeRatio = 0;
-        belt.isArmed = false;
-        belt.lastDirX = curDirX;
+  // REJESTRACJA RUCHU W DÓŁ (KROK 1 KOMBINACJI)
+  const isTouchActive = !!(leftStick && leftStick.active);
+  const keyDown = !isTouchActive && !!(keys && (keys.down || keys.KeyS || keys.ArrowDown));
+  const padDown = !isTouchActive && !!(gamepadState && gamepadState.connected && ((gamepadState.leftStick && gamepadState.leftStick.y > 0.45) || gamepadState.buttons?.dpadDown));
+  const touchDown = isTouchActive && leftStick.axisY > 0.42;
 
-        // Aktywacja fizycznego przysiadu skokowego (Power Squat)
-        player.isProne = false;
-        player.isCrouching = false;
-        player.crouchToggled = false;
-        player.isJumpCharging = true;
-        player.jumpChargePower = 0;
-      }
-    } else {
-      belt.chargeMs = Math.max(0, now - belt.chargeStartTime);
-      belt.chargeRatio = Math.min(1.0, belt.chargeMs / ENFORCER_BOMB_CHARGE_MS);
-      const wasArmed = belt.isArmed;
-      belt.isArmed = (belt.chargeMs >= ENFORCER_BOMB_CHARGE_MS);
-
-      // Przekazanie głębokości przysiadu do szkieletu IK i tłoków na łydkach
-      player.isJumpCharging = true;
-      player.jumpChargePower = belt.chargeRatio;
-
-      if (Math.abs(curDirX) > 0.10) {
-        belt.lastDirX = curDirX;
-      } else {
-        belt.lastDirX *= 0.92;
-      }
-
-      const centerX = player.x + (player.w || 30) / 2;
-      if (belt.isArmed && !wasArmed) {
-        // Przekroczono 1000ms: pełne sprężenie tłoków pneumatycznych i tąpnięcie butów w ziemię!
-        triggerScreenShake(2.2);
-        if (typeof spawnGroundPuff === 'function') {
-          spawnGroundPuff(centerX - 10, currentFloor);
-          spawnGroundPuff(centerX + 10, currentFloor);
-        }
-      } else if (belt.chargeRatio > 0.35 && Math.random() < 0.22) {
-        // Kurz spod ciężkich butów podczas wciskania nóg w podłoże
-        if (typeof spawnGroundPuff === 'function') {
-          spawnGroundPuff(centerX + (Math.random() - 0.5) * 18, currentFloor);
-        }
-      }
+  if (keyDown || padDown || touchDown) {
+    if (!belt.downTapDetected) {
+      belt.downTapDetected = true;
+      belt.downTapTime = now;
+      belt.lastDirX = curDirX;
     }
-  } else if (belt.isCharging) {
-    // MOMENT PUSZCZENIA DRĄŻKA LUB KLAWISZA W NA ZIEMI!
-    const heldMs = Math.max(belt.chargeMs, now - belt.chargeStartTime);
-    const wasArmed = (heldMs >= ENFORCER_BOMB_CHARGE_MS) || belt.isArmed;
-    const releaseDirX = Math.abs(curDirX) > 0.10 ? curDirX : (Math.abs(belt.lastDirX) > 0.12 ? belt.lastDirX : 0);
+  }
 
-    belt.isCharging = false;
-    belt.chargeMs = 0;
-    belt.chargeRatio = 0;
-    belt.isArmed = false;
-    belt.lastDirX = 0;
+  // Wizualne sprężenie siłowników tłoków w szkieletu IK w trakcie aktywnego okna kombinacji
+  if (belt.downTapDetected && (now - belt.downTapTime <= ENFORCER_COMBO_WINDOW_MS)) {
+    player.isJumpCharging = true;
+    player.jumpChargePower = 1.0;
+  } else {
     player.isJumpCharging = false;
     player.jumpChargePower = 0;
+  }
 
-    if (wasArmed) {
-      // Przytrzymano >= 1000ms na ziemi -> potężne tłokowe wybicie z nóg (kruszy ziemię i wzbija pył)!
-      triggerEnforcerBlastJump(player, releaseDirX, spawnGrass);
-    } else {
-      // Przytrzymano < 1000ms na ziemi -> zwykły skok z nóg po puszczeniu!
-      const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
-      if (typeof jumpCallback === 'function') {
-        jumpCallback(player, spawnGrass);
+  // OBSŁUGA WEJŚCIA Z GAMEPADA (dla klawiatury i dotyku odpowiadają zdarzenia w dedykowanych modułach)
+  if (gamepadState && gamepadState.connected && !isTouchActive) {
+    const southJustPressed = !!(gamepadState.buttons?.south && !gamepadState.prevButtons?.south);
+    const dpadUpJustPressed = !!(gamepadState.buttons?.dpadUp && !gamepadState.prevButtons?.dpadUp);
+    const prevPadY = belt.prevPadStickY || 0;
+    const stickUpJustFlicked = (gamepadState.leftStick?.y < -0.45 && prevPadY >= -0.45);
+    belt.prevPadStickY = gamepadState.leftStick?.y || 0;
+
+    if (southJustPressed || dpadUpJustPressed || stickUpJustFlicked) {
+      const isDownUpCombo = belt.downTapDetected && ((now - belt.downTapTime) <= ENFORCER_COMBO_WINDOW_MS);
+      belt.downTapDetected = false;
+      belt.downTapTime = 0;
+      player.isJumpCharging = false;
+      player.jumpChargePower = 0;
+
+      if (isDownUpCombo) {
+        // Kombinacja dół -> góra w oknie do 300 ms: Siłowy Skok Tłokowy!
+        const launchDirX = Math.abs(curDirX) > 0.10 ? curDirX : (Math.abs(belt.lastDirX) > 0.12 ? belt.lastDirX : 0);
+        triggerEnforcerBlastJump(player, launchDirX, spawnGrass);
+      } else {
+        // Zwykły natychmiastowy skok z pada bez wcześniejszego ruchu w dół
+        const jumpCallback = jumpFn || (typeof window !== 'undefined' ? window.initiatePlayerJump : null);
+        if (typeof jumpCallback === 'function') {
+          jumpCallback(player, spawnGrass);
+        }
       }
     }
   }

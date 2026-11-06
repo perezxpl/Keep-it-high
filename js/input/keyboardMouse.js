@@ -20,6 +20,7 @@ import {
   getObstacleDef, calculateObstaclePlacement, undoCustomObstacle
 } from '../obstacles.js';
 import { CLASSES } from '../classes/index.js';
+import { triggerEnforcerBlastJump, initBlastBeltState, isEnforcerFirmlyGrounded } from '../classes/enforcer.js';
 import { bot, getActiveBots } from '../bot.js';
 import { WEAPONS, reloadWeapon } from '../weapons.js';
 import {
@@ -393,6 +394,16 @@ export function initKeyboardMouseHandlers({
         }
       }
       inputSession.lastSPressTime = now;
+      if (player.currentClass?.id === 'ENFORCER') {
+        const isFirmlyGrounded = isEnforcerFirmlyGrounded(player);
+        if (isFirmlyGrounded) {
+          if (!player.blastBelt) initBlastBeltState(player);
+          player.blastBelt.downTapDetected = true;
+          player.blastBelt.downTapTime = now;
+          player.isJumpCharging = true;
+          player.jumpChargePower = 1.0;
+        }
+      }
       keys.down = true;
     }
 
@@ -419,9 +430,30 @@ export function initKeyboardMouseHandlers({
         inputSession.isJetpackActive = true;
         player.isJetpacking = true;
         inputSession.jetpackAirborneSession = true;
-      } else if (!player.isJumping && !player.isSliding && !player.isIntro && player.currentClass?.id !== 'ENFORCER') {
-        // NA ZIEMI / KRAWĘDZI PLATFORMY (COYOTE TIME): normalny skok z podłoża (dla Raptora i Strikera; Enforcer skacze przy puszczeniu W)
-        initiatePlayerJump(player, spawnGrass);
+      } else if (!player.isJumping && !player.isSliding && !player.isIntro) {
+        if (player.currentClass?.id === 'ENFORCER') {
+          const belt = player.blastBelt;
+          const isDownCombo = (belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300)) ||
+            (inputSession.lastSPressTime && ((now - inputSession.lastSPressTime) <= 300));
+          if (belt) {
+            belt.downTapDetected = false;
+            belt.downTapTime = 0;
+          }
+          player.isJumpCharging = false;
+          player.jumpChargePower = 0;
+
+          if (isDownCombo) {
+            let curDirX = 0;
+            if (keys.left || keys.KeyA || keys.ArrowLeft) curDirX -= 1;
+            if (keys.right || keys.KeyD || keys.ArrowRight) curDirX += 1;
+            triggerEnforcerBlastJump(player, curDirX, spawnGrass);
+          } else {
+            initiatePlayerJump(player, spawnGrass);
+          }
+        } else {
+          // Dla pozostałych klas: normalny skok z podłoża
+          initiatePlayerJump(player, spawnGrass);
+        }
         player.jetpackKeyNeutralized = false; // Po wyskoku z ziemi wymagamy puszczenia klawisza W
       }
     }

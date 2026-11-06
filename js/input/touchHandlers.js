@@ -329,12 +329,16 @@ canvas.addEventListener('touchstart', (e) => {
       if (player.blastBelt) {
         player.blastBelt.isCharging = false;
         player.blastBelt.isArmed = false;
-        player.isJumpCharging = false;
-        player.jumpChargePower = 0;
       }
-      if (performance.now() - enforcerFlickDownTime > 450) {
+      if (performance.now() - enforcerFlickDownTime > 300) {
         enforcerFlickDownDetected = false;
         enforcerFlickDownTime = 0;
+        if (player.blastBelt) {
+          player.blastBelt.downTapDetected = false;
+          player.blastBelt.downTapTime = 0;
+        }
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
       }
     }
 
@@ -602,17 +606,35 @@ canvas.addEventListener('touchmove', (e) => {
 
       const isFirmlyGrounded = !player.isJumping && !player.isSliding && !player.isIntro && (player.onGround || ((player.coyoteTimer || 0) > 0)) && Math.abs(relVy) < 2.5;
 
-      // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra)
+      // Enforcer: rejestracja szybkiego wychylenia w dół (krok 1 kombinacji dół-góra do 300ms)
       if (isEnforcer) {
         if (leftStick.axisY > 0.42 && isFirmlyGrounded) {
           if (!enforcerFlickDownDetected) {
             enforcerFlickDownTime = now;
             enforcerFlickDownDetected = true;
-          } else if (now - enforcerFlickDownTime > 450) {
+            if (player.blastBelt) {
+              player.blastBelt.downTapDetected = true;
+              player.blastBelt.downTapTime = now;
+            }
+            player.isJumpCharging = true;
+            player.jumpChargePower = 1.0;
+          } else if (now - enforcerFlickDownTime > 300) {
             enforcerFlickDownDetected = false;
+            if (player.blastBelt) {
+              player.blastBelt.downTapDetected = false;
+              player.blastBelt.downTapTime = 0;
+            }
+            player.isJumpCharging = false;
+            player.jumpChargePower = 0;
           }
-        } else if (enforcerFlickDownDetected && (now - enforcerFlickDownTime > 450)) {
+        } else if (enforcerFlickDownDetected && (now - enforcerFlickDownTime > 300)) {
           enforcerFlickDownDetected = false;
+          if (player.blastBelt) {
+            player.blastBelt.downTapDetected = false;
+            player.blastBelt.downTapTime = 0;
+          }
+          player.isJumpCharging = false;
+          player.jumpChargePower = 0;
         }
       }
 
@@ -656,13 +678,19 @@ canvas.addEventListener('touchmove', (e) => {
         } else {
           // NA ZIEMI:
           if (isEnforcer) {
-            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 450);
+            const isDownUpCombo = enforcerFlickDownDetected && ((now - enforcerFlickDownTime) <= 300);
             if (isDownUpCombo && leftStick.axisY < -0.45 && !leftStick.jumpTriggered && !player.isSliding && !player.isIntro && isFirmlyGrounded) {
-              // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (NATYCHMIAST BEZ ŻADNEGO ŁADOWANIA)
+              // ZDOLNOŚĆ SPECJALNA ENFORCERA: KINETIC PISTON LEAP (W OKNIE DO 300MS)
               enforcerFlickDownDetected = false;
               enforcerFlickDownTime = 0;
               flickFirstDownTime = 0;
               flickReturnedToCenter = false;
+              if (player.blastBelt) {
+                player.blastBelt.downTapDetected = false;
+                player.blastBelt.downTapTime = 0;
+              }
+              player.isJumpCharging = false;
+              player.jumpChargePower = 0;
 
               player.crouchToggled = false;
               player.isCrouching = false;
@@ -678,6 +706,12 @@ canvas.addEventListener('touchmove', (e) => {
               // Zwykły skok Enforcera z nóg (gdy nie wykonano szybkiej sekwencji dół-góra)
               enforcerFlickDownDetected = false;
               enforcerFlickDownTime = 0;
+              if (player.blastBelt) {
+                player.blastBelt.downTapDetected = false;
+                player.blastBelt.downTapTime = 0;
+              }
+              player.isJumpCharging = false;
+              player.jumpChargePower = 0;
 
               initiatePlayerJump(player, spawnGrass);
               leftStick.jumpTriggered = true;
@@ -868,12 +902,16 @@ function endTouch(e) {
       if (player.blastBelt) {
         player.blastBelt.isCharging = false;
         player.blastBelt.isArmed = false;
-        player.isJumpCharging = false;
-        player.jumpChargePower = 0;
       }
-      if (performance.now() - enforcerFlickDownTime > 450) {
+      if (performance.now() - enforcerFlickDownTime > 300) {
         enforcerFlickDownDetected = false;
         enforcerFlickDownTime = 0;
+        if (player.blastBelt) {
+          player.blastBelt.downTapDetected = false;
+          player.blastBelt.downTapTime = 0;
+        }
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
       }
 
       if (leftStick.downIntent) {

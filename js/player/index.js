@@ -8,6 +8,7 @@ import { activeArenaId, customObstacles, getPlatformSurfaceY } from '../obstacle
 import { triggerScreenShake, spawnGroundPuff, spawnBloodDrip, isGroundAt, getCaveCeilingY } from '../world.js';
 import { camera } from '../camera.js';
 import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
+import { triggerEnforcerBlastJump } from '../classes/enforcer.js';
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
@@ -379,8 +380,25 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       }
     }
 
-    if (keys.up && player.currentClass?.id !== 'ENFORCER' && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
-      initiatePlayerJump(player, spawnGrass);
+    if (keys.up && !player.isJumping && !player.isSliding && !player.isIntro && player.jumpSquatTimer <= 0) {
+      if (player.currentClass?.id === 'ENFORCER') {
+        const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+        const belt = player.blastBelt;
+        const isDownCombo = belt && belt.downTapDetected && ((now - belt.downTapTime) <= 300);
+        if (belt) {
+          belt.downTapDetected = false;
+          belt.downTapTime = 0;
+        }
+        player.isJumpCharging = false;
+        player.jumpChargePower = 0;
+        if (isDownCombo) {
+          triggerEnforcerBlastJump(player, player.facing || 0, spawnGrass);
+        } else {
+          initiatePlayerJump(player, spawnGrass);
+        }
+      } else {
+        initiatePlayerJump(player, spawnGrass);
+      }
       keys.up = false;
     }
 
