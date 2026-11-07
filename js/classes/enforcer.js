@@ -441,8 +441,8 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   const currentFloor = player.currentGroundY || player.groundY || belt.lastGroundedFloorY || (player.y + (player.h || 74));
   const centerX = player.x + (player.w || 30) / 2;
 
-  // Potężny impuls pionowy z wybicia tłokowego (vy = -20.2)
-  player.vy = -20.2;
+  // Potężny impuls pionowy z wybicia tłokowego (+20% wysokości skoku: vy = -22.2 zamiast -20.2)
+  player.vy = -22.2;
   player.onGround = false;
   player.isJumping = true;
   player.coyoteTimer = 0;
