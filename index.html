@@ -134,7 +134,11 @@
       "./js/world/gore.js": "./js/world/gore.js?v=v377_pickup_and_weapon_swap",
       "./js/world/sky.js": "./js/world/sky.js?v=v134_striker_mobile_air_dash_flames_spread",
       "./js/world/state.js": "./js/world/state.js?v=v352_arena5_full_fix_and_dev_toggle",
-      "./js/world/terrain.js": "./js/world/terrain.js?v=v134_striker_mobile_air_dash_flames_spread"
+      "./js/world/terrain.js": "./js/world/terrain.js?v=v134_striker_mobile_air_dash_flames_spread",
+      "./js/zombie/index.js": "./js/zombie/index.js?v=v405_zombie_mode",
+      "./js/zombie/logic.js": "./js/zombie/logic.js?v=v405_zombie_mode",
+      "./js/zombie/renderer.js": "./js/zombie/renderer.js?v=v405_zombie_mode",
+      "./js/zombie/state.js": "./js/zombie/state.js?v=v405_zombie_mode"
     }
   }
   </script>
@@ -194,6 +198,11 @@
 
         <!-- Przełącznik bota AI -->
         <button class="dev-btn" id="dev-bot-toggle-btn" style="border-color: #a855f7; color: #c084fc;">BOT: OFF</button>
+
+        <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
+
+        <!-- Przełącznik Plagi Zombie -->
+        <button class="dev-btn" id="dev-zombie-btn" style="border-color: #22c55e; color: #4ade80;" title="Włącz / Wyłącz Tryb Zombie (Plaga)">ZOMBIE: OFF</button>
 
         <span style="color: rgba(255,255,255,0.25); margin: 0 3px;">|</span>
 
@@ -1377,6 +1386,19 @@
                 <div class="setting-control-col">
                   <input type="range" id="setting-bot-count" min="1" max="7" value="3" class="ui-slider">
                   <span class="slider-val" id="val-bot-count">3</span>
+                </div>
+              </div>
+
+              <div class="setting-row" id="row-zombie-mode">
+                <div class="setting-label-col">
+                  <div class="setting-name">Tryb Zombie (Plaga)</div>
+                  <div class="setting-desc">Polegli bez dekapitacji wstają jako zombie; infekcja i zakażenia</div>
+                </div>
+                <div class="setting-control-col">
+                  <select id="setting-zombie-mode" class="ui-select">
+                    <option value="off" selected>Wyłączony (Standard)</option>
+                    <option value="on">Włączony (Plaga Zombie)</option>
+                  </select>
                 </div>
               </div>
             </div>

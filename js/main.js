@@ -63,6 +63,7 @@ import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, 
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
+import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive } from './zombie/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import {
@@ -856,6 +857,9 @@ function update() {
 
   const combatants = [player, ...activeBots];
   if (remotePlayer.active) combatants.push(remotePlayer);
+  if (typeof getActiveZombies === 'function') {
+    combatants.push(...getActiveZombies());
+  }
 
   if (networkState.isHost || !networkState.isConnected) {
     for (const b of activeBots) {
@@ -886,6 +890,7 @@ function update() {
   updateBullets(effectiveGroundY, obstacles, isDeathmatch ? null : ball, combatants);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
   updateLighting(1 / 60);
+  updateZombieSystem(1 / 60, player, activeBots, effectiveGroundY);
 
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
@@ -1123,6 +1128,7 @@ function draw() {
   // Renderowanie efektów gore (krew w locie, odcięte głowy, urwane kończyny, upuszczona broń)
   drawGore(ctx);
   drawPickupsWorld(ctx, camera);
+  drawZombieSystem(ctx, camera);
 
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||
@@ -1184,6 +1190,7 @@ function draw() {
   ctx.restore();
 
   drawCinematicVignette(ctx);
+  drawZombieHUD(ctx);
 
   if (isDebugCol && (typeof window !== 'undefined' && !!window.DEBUG_MODE)) {
     ctx.save();

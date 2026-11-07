@@ -60,7 +60,8 @@ import {
   WIN_CONDITIONS
 } from './deathmatch/index.js';
 import { bot, setBotDifficulty, getBotDifficulty, setBotCount, getBotCount, isBotEnabled, setBotEnabled } from './bot.js';
-import { syncDevBotButtonUI } from './dev/devPanel.js';
+import { syncDevBotButtonUI, syncDevZombieButtonUI } from './dev/devPanel.js';
+import { isZombieModeActive, setZombieModeActive } from './zombie/index.js';
 
 // Domyślna konfiguracja
 const DEFAULT_SETTINGS = {
@@ -72,6 +73,7 @@ const DEFAULT_SETTINGS = {
   playerTeam: 'CYAN',       // 'CYAN' (Niebiescy) lub 'ORANGE' (Czerwoni)
   botDifficulty: 'normal',  // 'easy', 'normal', 'hard'
   botCount: 3,              // Liczba aktywnych botów AI (1 - 7)
+  zombieMode: 'off',        // 'off' (Wyłączony) lub 'on' (Plaga Zombie)
 
   // Audio i Dźwięk
   masterVolume: 80,
@@ -912,6 +914,9 @@ export const uiManager = {
       const count = getBotCount();
       if (typeof count === 'number') this.settings.botCount = count;
     }
+    if (typeof isZombieModeActive === 'function') {
+      this.settings.zombieMode = isZombieModeActive() ? 'on' : 'off';
+    }
   },
 
   saveSettings() {
@@ -931,6 +936,10 @@ export const uiManager = {
     if (this.settings.playerTeam) setDeathmatchPlayerTeam(this.settings.playerTeam);
     if (this.settings.botDifficulty) setBotDifficulty(this.settings.botDifficulty);
     if (this.settings.botCount !== undefined) setBotCount(this.settings.botCount);
+    if (this.settings.zombieMode !== undefined) {
+      setZombieModeActive(this.settings.zombieMode === 'on' || this.settings.zombieMode === true);
+      if (typeof syncDevZombieButtonUI === 'function') syncDevZombieButtonUI();
+    }
 
     // 1. Audio głośności
     if (masterGainNode) {
@@ -994,6 +1003,11 @@ export const uiManager = {
     if (botCountSlider && this.settings.botCount !== undefined) {
       botCountSlider.value = this.settings.botCount;
       if (botCountVal) botCountVal.textContent = String(this.settings.botCount);
+    }
+
+    const zombieModeSelect = document.getElementById('setting-zombie-mode');
+    if (zombieModeSelect) {
+      zombieModeSelect.value = (this.settings.zombieMode === 'on' || this.settings.zombieMode === true) ? 'on' : 'off';
     }
 
     // Warunkowe wygaszanie / ukrywanie powiązanych wierszy
@@ -2582,6 +2596,16 @@ export const uiManager = {
         this.applySettings();
       });
       botCountSlider.addEventListener('change', () => this.saveSettings());
+    }
+
+    const zombieModeSelect = document.getElementById('setting-zombie-mode');
+    if (zombieModeSelect) {
+      zombieModeSelect.addEventListener('change', (e) => {
+        playUiClick();
+        this.settings.zombieMode = e.target.value;
+        this.saveSettings();
+        this.applySettings();
+      });
     }
 
     this.initCreatorHairUI();

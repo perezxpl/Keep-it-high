@@ -14,6 +14,7 @@ import { deathmatchState } from '../deathmatch/state.js';
 import { clearPlayerThrownTomahawks } from '../projectiles.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
 import { restorePlayerArmoryLoadout } from '../loadout/index.js';
+import { onCharacterRespawnCorpse } from '../zombie/index.js';
 
 /**
  * Zwraca wysokość najbliższej platformy lub ziemi pod danym punktem (x, y)
@@ -446,7 +447,10 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
 
   // Respawn: odnowienie stanu i przywrócenie kompletnych kończyn
   if (player.respawnTimer <= 0) {
+    onCharacterRespawnCorpse(player, groundY);
     player.isDead = false;
+    player.infected = false;
+    player.infectionTimer = 0;
     player._droppedWeaponThisDeath = false;
     player.axeThrown = false;
     player.meleeBloodTimer = 0;

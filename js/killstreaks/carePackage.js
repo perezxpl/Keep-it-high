@@ -15,6 +15,7 @@ import { killstreakState } from './state.js';
 import { spawnMortarStrike, spawnAttackDrone } from './supportStrikes.js';
 import { spawnSentryGun } from './sentryGun.js';
 import { addDynamicLight } from '../lighting/index.js';
+import { cureInfection, isZombieModeActive } from '../zombie/index.js';
 
 function getKeys() {
   if (typeof window !== 'undefined' && window.keys) return window.keys;
@@ -144,8 +145,30 @@ export function awardCarePackageLoot(crate, recipient, player) {
   triggerScreenShake(2.5);
   spawnJetpackSparks(crate.x + crate.w / 2, crate.y + crate.h / 2, 1, 14, ['#facc15', '#00e5ff', '#ffffff', '#22c55e'], 0, -2.5);
 
-  const loot = rollCarePackageLoot();
   const isPlayer = (recipient === player);
+
+  // W trybie Zombie: pierwszeństwo ma ampułka antywirusowa leczaca infekcje
+  if (typeof isZombieModeActive === 'function' && isZombieModeActive()) {
+    if (recipient.infected || Math.random() < 0.40) {
+      cureInfection(recipient);
+      const label = 'AMPUŁKA ANTYDOTUM (WYLECZONO!)';
+      crate.floatingNotice = { text: `[+] ${label}`, color: '#22c55e', y: crate.y - 12, alpha: 1.0 };
+      if (isPlayer) {
+        triggerCombatFeedBanner('KILL', `[ZRZUT] OTRZYMANO: ${label}`);
+        killstreakState.recentNotification = {
+          title: '[ZRZUT] ANTYWIRUS',
+          text: label,
+          color: '#22c55e'
+        };
+        killstreakState.notificationTimer = 3.5;
+      } else {
+        triggerCombatFeedBanner('DEATH', `[UWAGA] BOT UŻYŁ: ${label}`);
+      }
+      return;
+    }
+  }
+
+  const loot = rollCarePackageLoot();
 
   switch (loot) {
     case 'HEAVY_ARMOR': {

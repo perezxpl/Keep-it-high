@@ -216,6 +216,9 @@ function updateMeleeCollision(shooter, ms) {
     if (window.player && window.player !== shooter && !window.player.isDead) {
       candidateTargets.push(window.player);
     }
+    if (typeof window.getActiveZombies === 'function') {
+      candidateTargets.push(...window.getActiveZombies());
+    }
   }
 
   for (const t of candidateTargets) {

@@ -25,6 +25,7 @@ import { sendArenaSwitch, updateCursorVisibility } from '../network.js';
 import { uiManager } from '../uiManager.js';
 import { updateButtonLayout } from '../mobileControls.js';
 import { editorState, renderEditorPalette } from './obstacleEditor.js';
+import { isZombieModeActive, setZombieModeActive } from '../zombie/index.js';
 
 // =========================================================================
 // PANEL DEWELOPERSKI (PRZECIĄGANIE, PRZEŁĄCZANIE, BOT, ARENA)
@@ -62,8 +63,28 @@ export function syncDevBotButtonUI() {
     btn.style.boxShadow = '';
   }
 }
+
+export function syncDevZombieButtonUI() {
+  const btn = document.getElementById('dev-zombie-btn');
+  if (!btn) return;
+  const active = (typeof isZombieModeActive === 'function') ? isZombieModeActive() : false;
+  if (active) {
+    btn.textContent = 'ZOMBIE: ON';
+    btn.style.background = 'rgba(34, 197, 94, 0.35)';
+    btn.style.borderColor = '#4ade80';
+    btn.style.color = '#ffffff';
+    btn.style.boxShadow = '0 0 12px rgba(34, 197, 94, 0.6)';
+  } else {
+    btn.textContent = 'ZOMBIE: OFF';
+    btn.style.background = '';
+    btn.style.borderColor = '#22c55e';
+    btn.style.color = '#4ade80';
+    btn.style.boxShadow = '';
+  }
+}
 if (typeof window !== 'undefined') {
   window.syncDevBotButtonUI = syncDevBotButtonUI;
+  window.syncDevZombieButtonUI = syncDevZombieButtonUI;
 }
 
 export function syncDevArenaButtonUI() {
@@ -260,6 +281,25 @@ export function initDevMainControls({ teleportToDistance, devSetClass }) {
     };
     devBotToggleBtn.addEventListener('click', toggleBot);
     devBotToggleBtn.addEventListener('touchend', toggleBot);
+  }
+
+  const devZombieBtn = document.getElementById('dev-zombie-btn');
+  if (devZombieBtn) {
+    const toggleZombie = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const nextActive = !isZombieModeActive();
+      setZombieModeActive(nextActive);
+      syncDevZombieButtonUI();
+      if (typeof uiManager !== 'undefined' && uiManager?.settings) {
+        uiManager.settings.zombieMode = nextActive ? 'on' : 'off';
+        uiManager.saveSettings();
+        uiManager.syncFormControls();
+      }
+    };
+    devZombieBtn.addEventListener('click', toggleZombie);
+    devZombieBtn.addEventListener('touchend', toggleZombie);
+    syncDevZombieButtonUI();
   }
 
   if (!devBotFreezeBtn && devMenu) {
