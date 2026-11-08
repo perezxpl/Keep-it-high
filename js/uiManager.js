@@ -1343,6 +1343,13 @@ export const uiManager = {
       row.style.pointerEvents = isFragsOnly ? 'none' : 'auto';
     });
 
+    // 6.5. Tryb Zombie w Odprawie Taktycznej
+    const isZActive = (typeof isZombieModeActive === 'function') ? isZombieModeActive() : (this.settings.zombieMode === 'on' || this.settings.zombieMode === true);
+    document.querySelectorAll('.dm-zombie-toggle-group button').forEach(btn => {
+      const val = btn.dataset.zombieVal;
+      btn.classList.toggle('active', (val === 'on' && isZActive) || (val === 'off' && !isZActive));
+    });
+
     // 7. Dwukierunkowa synchronizacja z kontrolkami <select> w oknie Ustawień (jeśli istnieją)
     const winCondSelect = document.getElementById('setting-win-condition');
     if (winCondSelect && winCondSelect.value !== curWinCond) winCondSelect.value = curWinCond;
@@ -1901,6 +1908,21 @@ export const uiManager = {
         const diff = btn.dataset.botDiff || 'medium';
         setBotDifficulty(diff);
         this.syncBotDiffUI(diff);
+      });
+    });
+
+    document.querySelectorAll('.dm-zombie-toggle-group button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => playUiHover());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playUiClick();
+        const val = btn.dataset.zombieVal === 'on';
+        setZombieModeActive(val);
+        this.settings.zombieMode = val ? 'on' : 'off';
+        this.saveSettings();
+        this.syncDeathmatchUI();
+        this.syncFormControls();
+        if (typeof syncDevZombieButtonUI === 'function') syncDevZombieButtonUI();
       });
     });
 
