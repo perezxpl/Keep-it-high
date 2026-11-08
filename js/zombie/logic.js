@@ -21,8 +21,11 @@ function getZombieSurfaceY(x, y, baseGroundY) {
   const isA3 = (curArena?.id === 'arena-3');
   let floor = (isA3 && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : baseGroundY;
 
-  if (Array.isArray(ARENA_PLATFORMS)) {
-    for (const plat of ARENA_PLATFORMS) {
+  const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
+  const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
+
+  if (Array.isArray(platformList)) {
+    for (const plat of platformList) {
       if (plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
       if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
       const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
@@ -132,7 +135,16 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
         c.hasHead = true;      // Głowa zachowana!
         c.decapitated = false;
         c.severedHead = null;
-        c.bleedTimer = 80;
+        c.bleedTimer = 90;
+        c.corpseAngle = 0;
+        c.corpseRotVel = 0;
+        c.torsoTiltVel = 0;
+        c.corpseFloorY = groundY;
+        c.ragdoll = null;
+        c.deathImpulse = {
+          vx: (Math.random() - 0.5) * 1.8,
+          vy: -1.2
+        };
 
         triggerCombatFeedBanner('DEATH', `[ZAKAŻENIE] ${c.name || 'OPERATOR'} ULEGŁ WIRUSOWI!`);
         if (c === player) {
@@ -166,7 +178,11 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.x += z.vx;
 
       if (z.decapitated || !z.hasHead) {
-        // Permanentna śmierć przez dekapitację: zombie leży martwy na zawsze
+        // Permanentna śmierć przez dekapitację: naturalny rozkład i zwolnienie slotu w tablicy
+        z.decayTimer = (z.decayTimer || 0) + dt;
+        if (z.decayTimer >= 14.0) {
+          zombieState.zombies.splice(i, 1);
+        }
         continue;
       }
 
@@ -263,6 +279,16 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
             nearestTarget.respawnTimer = 180;
             nearestTarget.hasHead = true;
             nearestTarget.decapitated = false;
+            nearestTarget.bleedTimer = 90;
+            nearestTarget.corpseAngle = 0;
+            nearestTarget.corpseRotVel = 0;
+            nearestTarget.torsoTiltVel = 0;
+            nearestTarget.corpseFloorY = groundY;
+            nearestTarget.ragdoll = null;
+            nearestTarget.deathImpulse = {
+              vx: z.facing * 3.2,
+              vy: -1.4
+            };
             triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'OPERATOR'} POLEGŁ W SZPONACH ZOMBIE!`);
           }
         }
@@ -286,25 +312,64 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       z.y = surfaceY - z.h;
       z.vy = 0;
 
-      // Niewielki przeskok przy natknięciu się na krawędź schodka
-      if (nearestTarget && (nearestTarget.y + nearestTarget.h < z.y + z.h - 20) && Math.random() < 0.04) {
-        z.vy = -5.2;
+      // Dynamiczna wspinaczka / skok na platformy i klocki Tetrisa gdy cel jest wyżej
+      if (nearestTarget) {
+        const targetFeetY = nearestTarget.y + (nearestTarget.h || 70);
+        const isTargetHigher = (targetFeetY < z.y + z.h - 24);
+        const targetDx = (nearestTarget.x + (nearestTarget.w || 24) * 0.5) - (z.x + z.w * 0.5);
+
+        if (isTargetHigher && Math.abs(targetDx) < 220) {
+          z.vy = -10.2; // Wyskakuje na wysokość ponad 110 px (pokonuje klocki Tetrisa 100x100)
+          z.vx = (targetDx >= 0 ? 1 : -1) * 3.0;
+        } else if (Math.random() < 0.03) {
+          z.vy = -5.0; // Sporadyczny mały przeskok przeszkody
+        }
       }
     } else {
       z.y += z.vy;
     }
 
     z.x += z.vx;
+
+    // --- ZAGROŻENIA ŚRODOWISKOWE AREN (KWAS, LAWA, UTYLIZATOR) ---
+    const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+    const arenaId = curArena?.id || '';
+    let shouldDissolve = false;
+
+    if (arenaId === 'arena-2') {
+      const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
+      if (z.y + z.h >= acidY - 4) shouldDissolve = true;
+    } else if (arenaId === 'arena-4') {
+      if (z.y + z.h >= 1390) shouldDissolve = true;
+    } else if (arenaId === 'arena-5') {
+      const a5Floor = (typeof window !== 'undefined' && typeof window.arena5State?.currentFloorY === 'number') ? window.arena5State.currentFloorY : 1200;
+      if (z.y + z.h >= a5Floor + 90) shouldDissolve = true;
+    } else if (z.y > 2400) {
+      shouldDissolve = true;
+    }
+
+    if (shouldDissolve) {
+      spawnBloodSpurt(z.x + z.w / 2, z.y + z.h - 10, 0, -2.5, 12, 1.0);
+      zombieState.zombies.splice(i, 1);
+      continue;
+    }
+
+    // Granice poziome areny: zapobieganie wypadaniu poza mapę
+    const minBoundsX = curArena?.bounds?.minX ?? 0;
+    const maxBoundsX = curArena?.bounds?.maxX ?? 3800;
+    z.x = Math.max(minBoundsX + 12, Math.min(maxBoundsX - z.w - 12, z.x));
   }
 }
 
 /**
- * Zwraca tablicę wszystkich żywych i aktywnych zombie (do kolizji z kulami i bronią białą)
+ * Zwraca tablicę wszystkich aktywnych celów zombie (do kolizji z kulami, nożem i kopnięciami)
  */
 export function getActiveZombies() {
   if (!zombieState.enabled) return [];
-  // Zwraca żywe zombie oraz powalone ciała z głową (umożliwiając ich definitywne dobicie strzałem w głowę)
-  return zombieState.zombies.filter(z => z && (!z.isDead || (z.hasHead && !z.decapitated)));
+  // Zwraca żywe zombie, powalone ciała z głową oraz drgające ciała przed reanimacją
+  const activeZ = zombieState.zombies.filter(z => z && (!z.isDead || (z.hasHead && !z.decapitated)));
+  const twitchingCorpses = zombieState.corpses.filter(c => c && c.hasHead && !c.decapitated);
+  return [...activeZ, ...twitchingCorpses];
 }
 
 /**

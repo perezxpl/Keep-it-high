@@ -76,6 +76,11 @@ function drawZombieSilhouette(ctx, z) {
 
   // --- FAZA POWALENIA / ŚMIERCI ZOMBIE ---
   if (z.isDead) {
+    if ((z.decapitated || !z.hasHead) && (z.decayTimer || 0) > 9.0) {
+      const fadeProgress = Math.max(0, 1 - ((z.decayTimer - 9.0) / 5.0));
+      ctx.globalAlpha = fadeProgress;
+    }
+
     ctx.translate(centerX, feetY);
 
     // Kałuża krwi pod powalonym ciałem
@@ -98,6 +103,14 @@ function drawZombieSilhouette(ctx, z) {
       ctx.beginPath();
       ctx.arc(facing > 0 ? 18 : -18, -6, 7, 0, Math.PI * 2);
       ctx.fill();
+
+      // Wskaźnik zbliżającego się ponownego powstania
+      if (z.reviveTimer > 0) {
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.ceil(z.reviveTimer)}s`, 0, -18);
+      }
     } else {
       ctx.fillStyle = '#7f1d1d';
       ctx.fillRect(facing > 0 ? 14 : -18, -8, 6, 4);

@@ -109,6 +109,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     // Cykl życia i animacja
     riseTimer: options.skipRise ? 0 : 1.4, // Czas wstawania z ziemi
     reviveTimer: 0,                        // Czas do powstania po powaleniu
+    decayTimer: 0,                         // Czas rozkładu po permanentnej dekapitacji
     attackCooldown: 0.6,
     attackAnim: 0,
     walkAnim: Math.random() * 10,
@@ -163,17 +164,30 @@ export function registerCorpseForReanimation(char, groundY) {
 
   const corpseX = char.ragdoll?.pelvis?.x ?? (char.x + (char.w || 24) * 0.5);
   const corpseY = char.ragdoll?.pelvis?.y ?? (char.y + (char.h || 70) - 10);
+  const floorY = groundY || (char.y + (char.h || 70));
 
   zombieState.corpses.push({
     id: `corpse_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    x: corpseX,
-    y: corpseY,
+    isCorpse: true,
+    isZombie: true,
+    isBot: true,
+    active: true,
+    team: 'INFECTED',
+    isDead: true,
+    hasHead: true,
+    decapitated: false,
+    x: corpseX - 12,
+    y: floorY - 70,
+    w: 24,
+    h: 70,
+    hp: 0,
+    maxHp: ZOMBIE_CONFIG.MAX_HP,
+    corpseX: corpseX,
+    corpseY: corpseY,
     facing: char.facing || 1,
-    groundY: groundY || (char.y + 70),
+    groundY: floorY,
     timer: ZOMBIE_CONFIG.REANIMATE_DELAY,
     twitch: 0,
-    decapitated: false,
-    hasHead: true,
     originalName: char.name || (char.isBot ? 'BOT' : 'GRACZ'),
     visuals: {
       shirtColor: char.visuals?.shirtColor || '#3f3f46',

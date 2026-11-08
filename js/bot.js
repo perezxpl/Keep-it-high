@@ -707,8 +707,9 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   botTarget._targetScanTimer = (botTarget._targetScanTimer || 0) - 1;
   let targetEnemy = botTarget._lockedTarget;
 
-  // Walidacja obecnego celu
-  if (!targetEnemy || targetEnemy.isDead || (targetEnemy.isBot && !targetEnemy.active) || (!isFFA && botTarget.team && targetEnemy.team && botTarget.team === targetEnemy.team)) {
+  // Walidacja obecnego celu (leżący powalony zombie nadal jest ważnym celem do dobicia w głowę!)
+  const isLockedLyingZombie = !!(targetEnemy && targetEnemy.isZombie && targetEnemy.isDead && targetEnemy.hasHead && !targetEnemy.decapitated);
+  if (!targetEnemy || (targetEnemy.isDead && !isLockedLyingZombie) || (targetEnemy.isBot && !targetEnemy.active && !isLockedLyingZombie) || (!isFFA && botTarget.team && targetEnemy.team && botTarget.team === targetEnemy.team)) {
     targetEnemy = null;
     botTarget._lockedTarget = null;
     botTarget._targetScanTimer = 0;
@@ -728,7 +729,8 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     if (Array.isArray(allCombatants) && allCombatants.length > 0) {
       for (let i = 0; i < allCombatants.length; i++) {
         const c = allCombatants[i];
-        if (!c || c === botTarget || c.isDead || (c.isBot && !c.active)) continue;
+        const cIsLyingZombie = !!(c && c.isZombie && c.isDead && c.hasHead && !c.decapitated);
+        if (!c || c === botTarget || (c.isDead && !cIsLyingZombie) || (c.isBot && !c.active && !cIsLyingZombie)) continue;
         if (!isFFA && botTarget.team && c.team && botTarget.team === c.team) continue;
         const d = Math.hypot((c.x + c.w / 2) - botMidX, (c.y + c.h / 2) - botMidY);
         if (d < closestDist) {
@@ -903,12 +905,13 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     if (hasBall) {
       const predOffset = Math.sin(performance.now() * 0.002) * 20;
       targetX = ball.x + (ball.vx * 12) + predOffset;
-    } else if (targetEnemy && !targetEnemy.isDead) {
-      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
+    } else if (targetEnemy && (!targetEnemy.isDead || (targetEnemy.isZombie && targetEnemy.hasHead && !targetEnemy.decapitated))) {
+      const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
       if (isEnemyDown && !isA1) {
         const enemyX = targetEnemy.x + (targetEnemy.w || 24) / 2;
         const dirFromEnemy = Math.sign(botCenterX - enemyX) || (botTarget.facing ? -botTarget.facing : 1);
-        targetX = enemyX + dirFromEnemy * 140;
+        targetX = enemyX + dirFromEnemy * (isLyingZombie ? 110 : 140);
       } else {
         targetX = targetEnemy.x + targetEnemy.w / 2;
       }
@@ -1325,9 +1328,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetY = ball.y + (ball.vy * 3);
     }
     if (canEngageTarget) {
-      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
-      aimTargetX = targetEnemy.x + targetEnemy.w / 2;
-      aimTargetY = isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2);
+      const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
+      const targetFacing = targetEnemy.facing || 1;
+      aimTargetX = isLyingZombie ? (targetEnemy.x + targetEnemy.w / 2 + targetFacing * 18) : (targetEnemy.x + targetEnemy.w / 2);
+      aimTargetY = isLyingZombie ? (targetEnemy.y + (targetEnemy.h || 70) - 8) : (isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2));
     } else {
       // Bot poza zasiegiem widzenia gracza: patrzy przed siebie w strone marszu
       const lookDir = Math.sign((targetEnemy.x + targetEnemy.w / 2) - botCenterX) || botTarget.facing || 1;
@@ -1358,11 +1363,14 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   // =========================================================================
   // 6. OSTRZAŁ BOTA (TYLKO POZA ARENĄ 1)
   // =========================================================================
-  if (!isA1 && targetEnemy && !targetEnemy.isDead) {
+  const isLyingZombieTarget = !!(targetEnemy && targetEnemy.isZombie && targetEnemy.isDead && targetEnemy.hasHead && !targetEnemy.decapitated);
+  if (!isA1 && targetEnemy && (!targetEnemy.isDead || isLyingZombieTarget)) {
     if (canEngageTarget) {
-      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne);
-      const enemyCenterX = targetEnemy.x + targetEnemy.w / 2;
-      const enemyCenterY = isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2);
+      const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
+      const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
+      const targetFacing = targetEnemy.facing || 1;
+      const enemyCenterX = isLyingZombie ? (targetEnemy.x + targetEnemy.w / 2 + targetFacing * 18) : (targetEnemy.x + targetEnemy.w / 2);
+      const enemyCenterY = isLyingZombie ? (targetEnemy.y + (targetEnemy.h || 70) - 8) : (isEnemyDown ? (targetEnemy.y + 8) : (targetEnemy.y + targetEnemy.h / 2));
       const shooterOriginY = botTarget.y + 20;
 
       const angleToEnemy = Math.atan2(enemyCenterY - shooterOriginY, enemyCenterX - botCenterX);

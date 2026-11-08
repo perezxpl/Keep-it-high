@@ -644,7 +644,8 @@ function update() {
       updateWeaponState(b);
     }
   }
-  const mainMeleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null].filter(Boolean);
+  const activeZombies = (typeof getActiveZombies === 'function') ? getActiveZombies() : [];
+  const mainMeleeTargets = [...activeBots, remotePlayer.active ? remotePlayer : null, ...activeZombies].filter(Boolean);
   updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
   updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
   sendPlayerState(player);
@@ -654,7 +655,7 @@ function update() {
   updateMovableObstacles(effectiveGroundY);
   updateGore(effectiveGroundY, ARENA_PLATFORMS, customObstacles);
 
-  const headEntities = [player, ...activeBots];
+  const headEntities = [player, ...activeBots, ...activeZombies];
   if (remotePlayer.active) headEntities.push(remotePlayer);
   updateSeveredHeads(headEntities, effectiveGroundY, ARENA_PLATFORMS);
 
@@ -859,6 +860,9 @@ function update() {
   if (remotePlayer.active) combatants.push(remotePlayer);
   if (typeof getActiveZombies === 'function') {
     combatants.push(...getActiveZombies());
+  }
+  if (typeof window !== 'undefined') {
+    window.combatants = combatants;
   }
 
   if (networkState.isHost || !networkState.isConnected) {
