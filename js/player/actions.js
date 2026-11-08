@@ -1008,6 +1008,15 @@ export function getSpartanKickTargets(timer, duration, hipX, hipY, facing, floor
 export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGrass) {
   if (player.hitThisSwing) return false;
 
+  // Interakcja ze środowiskiem: wykopanie beczki Spartan Kickiem [E]
+  if (typeof window !== 'undefined' && typeof window.checkBarrelKickInteraction === 'function') {
+    const kickedBarrel = window.checkBarrelKickInteraction(player, false);
+    if (kickedBarrel) {
+      player.hitThisSwing = true;
+      return true;
+    }
+  }
+
   const activeTargets = targets || player._targets;
   const enemy = player.spartanTarget || findMeleeTarget(player, activeTargets);
 

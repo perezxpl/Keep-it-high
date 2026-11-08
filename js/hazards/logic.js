@@ -1,0 +1,427 @@
+// =========================================================================
+// HAZARDS/LOGIC.JS - FIZYKA, KOLIZJE, DETONACJA I CYKL ŻYCIA BECZEK
+// Odpowiada za:
+// - Ruch kinetyczny beczek, odbicia od platform i grawitację
+// - Kopanie Spartan Kickiem [E] i wślizgiem
+// - Obrażenia od pocisków i eksplozje obszarowe
+// - Tworzenie kałuż żrącego kwasu i odradzanie po 35s
+// =========================================================================
+
+import { hazardsState, BARREL_CONFIG, BARREL_TYPES, ARENA_BARREL_SPAWNS, createBarrelInstance } from './state.js';
+import { triggerScreenShake, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib } from '../world.js';
+import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
+import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../particles.js';
+import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
+import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+
+/**
+ * Oblicza wysokość podłoża lub platformy pod beczką
+ */
+function getBarrelSurfaceY(x, y, baseGroundY) {
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const isA3 = (curArena?.id === 'arena-3');
+  let floor = (isA3 && typeof getRiverbankGroundY === 'function') ? getRiverbankGroundY(x) : baseGroundY;
+
+  const a5Plats = (typeof window !== 'undefined' && window.arena5State?.platforms) ? window.arena5State.platforms : null;
+  const platformList = a5Plats ? [...ARENA_PLATFORMS, ...a5Plats] : ARENA_PLATFORMS;
+
+  if (Array.isArray(platformList)) {
+    for (const plat of platformList) {
+      if (plat.isWall || plat.solid === false || plat.isPlatform === false) continue;
+      if (isA3 && (plat.id === 'ground_left' || plat.id === 'ground_right' || plat.id === 'riverbank_left_oval' || plat.id === 'riverbank_right_oval' || plat.id === 'world_boundary_left' || plat.id === 'world_boundary_right')) continue;
+      const bnds = (typeof getPlatformBounds === 'function') ? getPlatformBounds(plat) : { minX: plat.x, maxX: plat.x + plat.w };
+      if (x >= bnds.minX - 6 && x <= bnds.maxX + 6) {
+        const topY = (plat.surfacePoints && typeof getPlatformSurfaceY === 'function')
+          ? getPlatformSurfaceY(plat, x, baseGroundY)
+          : ((plat.y !== undefined) ? (typeof getPlatformSurfaceY === 'function' ? getPlatformSurfaceY(plat, x, baseGroundY) : plat.y) : (baseGroundY - (plat.relY || 0)));
+        if (y <= topY + 18 && topY < floor) {
+          floor = topY;
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(customObstacles)) {
+    for (const obs of customObstacles) {
+      const topY = obs.y !== undefined ? obs.y : (baseGroundY - obs.relY);
+      if (x >= obs.x - 6 && x <= obs.x + obs.w + 6) {
+        if (y <= topY + 18 && topY < floor) {
+          floor = topY;
+        }
+      }
+    }
+  }
+
+  return floor;
+}
+
+/**
+ * Inicjalizuje beczki dla aktywnej areny
+ */
+export function initHazardsForArena(arenaId) {
+  if (!arenaId) return;
+  const normalizedId = String(arenaId).toLowerCase().replace(/_/g, '-');
+  if (hazardsState.currentArenaId === normalizedId && hazardsState.barrels.length > 0) return;
+
+  hazardsState.currentArenaId = normalizedId;
+  hazardsState.barrels.length = 0;
+  hazardsState.acidPools.length = 0;
+  hazardsState.respawnQueue.length = 0;
+
+  const spawns = ARENA_BARREL_SPAWNS[normalizedId] || ARENA_BARREL_SPAWNS[arenaId];
+  if (Array.isArray(spawns)) {
+    for (const sp of spawns) {
+      hazardsState.barrels.push(createBarrelInstance(sp));
+    }
+  }
+}
+
+/**
+ * Kopię beczkę Spartan Kickiem [E] lub wślizgiem
+ */
+export function kickBarrel(barrel, kicker, isSlide = false) {
+  if (!barrel || barrel.isDead) return false;
+
+  const facing = kicker?.facing || 1;
+  const kickVx = facing * (isSlide ? BARREL_CONFIG.SLIDE_IMPULSE_X : BARREL_CONFIG.KICK_IMPULSE_X);
+  const kickVy = isSlide ? BARREL_CONFIG.SLIDE_IMPULSE_Y : BARREL_CONFIG.KICK_IMPULSE_Y;
+
+  barrel.vx = kickVx;
+  barrel.vy = kickVy;
+  barrel.rotVel = facing * 0.24;
+  barrel.onGround = false;
+  barrel.lastAttacker = kicker;
+
+  triggerScreenShake(isSlide ? 6.0 : 10.0);
+  spawnRicochetSparks(barrel.x + barrel.w / 2, barrel.y + barrel.h / 2, kickVx * 0.4, kickVy * 0.4, 8);
+  return true;
+}
+
+/**
+ * Zadaje obrażenia beczce od pocisku lub eksplozji
+ */
+export function damageBarrel(barrel, dmg, attacker = null, bulletVx = 0, bulletVy = 0) {
+  if (!barrel || barrel.isDead) return;
+
+  barrel.hp -= dmg;
+  if (attacker) barrel.lastAttacker = attacker;
+
+  // Przekazanie pędu kinetycznego od kuli
+  barrel.vx += (bulletVx || 0) * 0.04;
+  barrel.vy += (bulletVy || 0) * 0.04;
+
+  spawnRicochetSparks(barrel.x + barrel.w / 2, barrel.y + barrel.h / 2, (Math.random() - 0.5) * 4, -2, 4);
+
+  // Gdy życie spadnie do 0 -> krótkie syczenie i wybuch
+  if (barrel.hp <= 0 && barrel.fuseTimer <= 0) {
+    barrel.fuseTimer = 0.07; // 70ms kinowego syczenia dymu przed wielkim wybuchem
+  }
+}
+
+/**
+ * Wykonuje potężną detonację beczki i zadaje obrażenia obszarowe
+ */
+export function detonateBarrel(barrel, combatants = [], groundY = 800, options = {}) {
+  if (!barrel || barrel.isDead) return;
+  barrel.isDead = true;
+
+  const bx = barrel.x + barrel.w * 0.5;
+  const by = barrel.y + barrel.h * 0.5;
+  const typeDef = barrel.typeDef || BARREL_TYPES.EXPLOSIVE;
+  const isToxic = (barrel.type === 'TOXIC');
+
+  // 1. Efekty audiowizualne wybuchu
+  triggerScreenShake(typeDef.screenShake || 18);
+  spawnShockwaveRing(bx, by, typeDef.radius, typeDef.glowColor);
+  spawnConcreteDebris(bx, by, 16);
+
+  // 2. Zadanie obrażeń i odrzut wszystkim jednostkom w promieniu eksplozji
+  const targets = Array.isArray(combatants) ? combatants : [];
+  for (const c of targets) {
+    if (!c) continue;
+
+    const cx = c.x + (c.w || 24) * 0.5;
+    const cy = c.y + (c.h || 70) * 0.5;
+    const dx = cx - bx;
+    const dy = cy - by;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist <= typeDef.radius) {
+      const factor = Math.max(0.2, 1.0 - (dist / typeDef.radius));
+      const dmg = Math.round(typeDef.maxDamage * factor);
+
+      c.hp = Math.max(0, (c.hp !== undefined ? c.hp : 100) - dmg);
+      c.lastAttacker = barrel.lastAttacker || c.lastAttacker;
+
+      // Impuls odrzutu fali uderzeniowej
+      const normX = dist > 0.01 ? (dx / dist) : (Math.random() - 0.5);
+      const normY = dist > 0.01 ? (dy / dist) : -1;
+      const push = typeDef.knockbackForce * factor;
+
+      c.vx = (c.vx || 0) + normX * push;
+      c.vy = Math.min((c.vy || 0), -4.5 * factor);
+      c.onGround = false;
+
+      // Trafienie zombie
+      if (c.isZombie) {
+        if (factor > 0.45 || c.hp <= 0) {
+          // Bezpośrednie trafienie falą uderzeniową dekapituje zombie!
+          c.isDead = true;
+          c.hasHead = false;
+          c.decapitated = true;
+          c.severedHead = null;
+          c.reviveTimer = 0;
+          c.decayTimer = 15; // Natychmiastowe zniknięcie
+          spawnHeadGib(cx, cy - 10, normX * 8, -6, c.facing || 1, c.visuals);
+          spawnBloodFountain(cx, cy, c.facing || 1, 6);
+        } else {
+          c.hp = 0;
+          c.isDead = true;
+          c.reviveTimer = 4.0; // Powalenie
+        }
+      } else if (c.hp <= 0 && !c.isDead) {
+        // Zgon gracza lub bota od wybuchu
+        c.isDead = true;
+        c.killer = barrel.lastAttacker || { name: typeDef.name, cause: 'WYBUCH BECZKI', isHazard: true };
+        c.respawnTimer = 180;
+        c.bleedTimer = 90;
+        c.ragdoll = null;
+        c.deathImpulse = {
+          vx: normX * 12.0 * factor,
+          vy: -6.5 * factor
+        };
+        spawnBloodSpurt(cx, cy, normX * 3, -2, 22, 1.5);
+      }
+    }
+  }
+
+  // 3. Reakcja łańcuchowa: detonacja sąsiednich beczek w pobliżu
+  for (const other of hazardsState.barrels) {
+    if (!other || other === barrel || other.isDead) continue;
+    const obx = other.x + other.w * 0.5;
+    const oby = other.y + other.h * 0.5;
+    const d = Math.hypot(obx - bx, oby - by);
+    if (d <= typeDef.radius + 15) {
+      damageBarrel(other, 999, barrel.lastAttacker);
+    }
+  }
+
+  // 4. Obsługa zniszczenia klocków w Arenie 5 (Tetris)
+  if (typeof window !== 'undefined' && window.arena5State) {
+    const handleA5Exp = (typeof window.handleArena5Explosion === 'function') ? window.handleArena5Explosion : null;
+    if (typeof handleA5Exp === 'function') {
+      handleA5Exp(bx, by, typeDef.radius * 1.1);
+    }
+  }
+
+  // 5. Dla beczek kwasowych: utworzenie kałuży kwasu na podłożu
+  if (isToxic) {
+    const surfaceY = getBarrelSurfaceY(bx, by, groundY);
+    hazardsState.acidPools.push({
+      x: bx,
+      y: surfaceY,
+      radius: typeDef.poolRadius || 65,
+      timer: typeDef.poolDuration || 8.0,
+      maxTimer: typeDef.poolDuration || 8.0,
+      dps: typeDef.poolDps || 14.0,
+      bubbleAnim: 0
+    });
+  }
+
+  // 6. Kolejka odradzania (respawn po 35s dla stałych punktów na arenach 1-4)
+  if (barrel.spawnId && barrel.originalSpawn) {
+    hazardsState.respawnQueue.push({
+      spawn: barrel.originalSpawn,
+      timer: BARREL_CONFIG.RESPAWN_DELAY
+    });
+  }
+
+  // Usunięcie beczki z listy aktywnych
+  const idx = hazardsState.barrels.indexOf(barrel);
+  if (idx !== -1) {
+    hazardsState.barrels.splice(idx, 1);
+  }
+
+  triggerCombatFeedBanner('KILL', `[DETONACJA] ${typeDef.name.toUpperCase()} EKSPLODOWAŁA!`);
+}
+
+/**
+ * Główna pętla aktualizacji fizyki beczek, kałuż kwasu i odradzania
+ */
+export function updateHazards(dt, combatants = [], groundY = 800) {
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  const rawArenaId = curArena?.id || (typeof window !== 'undefined' ? window.activeArenaId : 'arena-1');
+  const arenaId = String(rawArenaId || 'arena-1').toLowerCase().replace(/_/g, '-');
+
+  // Automatyczna inicjalizacja przy zmianie areny
+  if (hazardsState.currentArenaId !== arenaId) {
+    initHazardsForArena(arenaId);
+  }
+
+  // -------------------------------------------------------------------------
+  // 1. PĘTLA BECZEK
+  // -------------------------------------------------------------------------
+  for (let i = hazardsState.barrels.length - 1; i >= 0; i--) {
+    const b = hazardsState.barrels[i];
+
+    // Detonacja po upływie fuseTimer
+    if (b.fuseTimer > 0) {
+      b.fuseTimer -= dt;
+      if (b.fuseTimer <= 0) {
+        detonateBarrel(b, combatants, groundY);
+        continue;
+      }
+    }
+
+    // Grawitacja
+    b.vy += 0.55;
+    if (b.vy > 14) b.vy = 14;
+
+    // Prędkość i tłumienie
+    b.x += b.vx;
+    b.y += b.vy;
+    b.angle += b.rotVel;
+
+    b.vx *= BARREL_CONFIG.FRICTION;
+    b.rotVel *= 0.94;
+    if (Math.abs(b.vx) < 0.05) b.vx = 0;
+    if (Math.abs(b.rotVel) < 0.005) b.rotVel = 0;
+
+    // Kolizja z podłożem i platformami
+    const midX = b.x + b.w * 0.5;
+    const feetY = b.y + b.h;
+    const surfaceY = getBarrelSurfaceY(midX, feetY, groundY);
+
+    if (feetY + b.vy >= surfaceY) {
+      if (b.vy > 3.0) {
+        // Sprężyste odbicie z utratą energii
+        b.vy = -b.vy * BARREL_CONFIG.BOUNCE_RESTITUTION;
+        b.vx *= 0.85;
+        b.rotVel *= 0.6;
+      } else {
+        b.y = surfaceY - b.h;
+        b.vy = 0;
+        b.onGround = true;
+      }
+    } else {
+      b.onGround = false;
+    }
+
+    // Odbicia od granic mapy
+    const minX = curArena?.bounds?.minX ?? 0;
+    const maxX = curArena?.bounds?.maxX ?? 3800;
+    if (b.x < minX + 8) {
+      b.x = minX + 8;
+      b.vx = Math.abs(b.vx) * 0.5;
+    } else if (b.x + b.w > maxX - 8) {
+      b.x = maxX - b.w - 8;
+      b.vx = -Math.abs(b.vx) * 0.5;
+    }
+
+    // Twarde uderzenie toczącej się beczki o przeszkodę / postać przy dużej prędkości
+    if (Math.abs(b.vx) > 10.0) {
+      for (const c of combatants) {
+        if (!c || c === b.lastAttacker) continue;
+        const cx = c.x + (c.w || 24) * 0.5;
+        const cy = c.y + (c.h || 70) * 0.5;
+        if (Math.abs(cx - midX) < 22 && Math.abs(cy - (b.y + b.h * 0.5)) < 35) {
+          // Twardy impakt detonuje beczkę!
+          detonateBarrel(b, combatants, groundY);
+          break;
+        }
+      }
+    }
+
+    // Zagrożenia środowiskowe niszczące beczkę (kwas na A2, lawa na A4, utylizator na A5)
+    let envDestroy = false;
+    if (arenaId === 'arena-2') {
+      const acidY = (typeof window !== 'undefined' && window.ACID_SURGE_SYSTEM) ? window.ACID_SURGE_SYSTEM.currentY : 1440;
+      if (feetY >= acidY - 4) envDestroy = true;
+    } else if (arenaId === 'arena-4') {
+      if (feetY >= 1390) envDestroy = true;
+    } else if (b.y > 2400) {
+      envDestroy = true;
+    }
+
+    if (envDestroy) {
+      detonateBarrel(b, combatants, groundY);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. PĘTLA KAŁUŻ KWASU (TOXIC ACID POOLS)
+  // -------------------------------------------------------------------------
+  for (let i = hazardsState.acidPools.length - 1; i >= 0; i--) {
+    const pool = hazardsState.acidPools[i];
+    pool.timer -= dt;
+    pool.bubbleAnim = (pool.bubbleAnim || 0) + dt * 4;
+
+    // Zadawanie ciągłych obrażeń postaciom i rozpuszczanie powalonych zombie
+    for (const c of combatants) {
+      if (!c) continue;
+      const cx = c.x + (c.w || 24) * 0.5;
+      const cy = c.y + (c.h || 70);
+
+      if (Math.abs(cx - pool.x) <= pool.radius && Math.abs(cy - pool.y) <= 18) {
+        c.hp = Math.max(0, (c.hp !== undefined ? c.hp : 100) - pool.dps * dt);
+
+        if (c.isZombie && c.isDead) {
+          // Powalony zombie w kwasie natychmiast ulega rozpuszczeniu
+          c.hasHead = false;
+          c.decapitated = true;
+          c.reviveTimer = 0;
+          c.decayTimer = 15;
+          spawnBloodSpurt(cx, cy - 10, (Math.random() - 0.5) * 2, -2, 8, 1.0);
+        }
+      }
+    }
+
+    if (pool.timer <= 0) {
+      hazardsState.acidPools.splice(i, 1);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. KOLEJKA ODRADZANIA BECZEK (RESPAWN PO 35S)
+  // -------------------------------------------------------------------------
+  for (let i = hazardsState.respawnQueue.length - 1; i >= 0; i--) {
+    const item = hazardsState.respawnQueue[i];
+    item.timer -= dt;
+
+    if (item.timer <= 0) {
+      // Bezpieczne odrodzenie w punkcie startowym
+      hazardsState.barrels.push(createBarrelInstance(item.spawn));
+      spawnConcreteDebris(item.spawn.x + 13, item.spawn.y + 18, 6);
+      hazardsState.respawnQueue.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Sprawdza czy gracz lub bot znajduje się w zasięgu kopnięcia beczki
+ */
+export function checkBarrelKickInteraction(char, isSlide = false) {
+  if (!char || char.isDead) return null;
+
+  const charMidX = char.x + (char.w || 24) * 0.5;
+  const charFeetY = char.y + (char.h || 70);
+  const facing = char.facing || 1;
+  const reachX = isSlide ? 48 : 55;
+
+  for (const b of hazardsState.barrels) {
+    if (!b || b.isDead) continue;
+    const bMidX = b.x + b.w * 0.5;
+    const bFeetY = b.y + b.h;
+
+    const dx = bMidX - charMidX;
+    const dy = bFeetY - charFeetY;
+
+    // Beczka musi znajdować się przed postacią w kierunku facing
+    const isAhead = (dx * facing) >= -8 && (dx * facing) <= reachX;
+    if (isAhead && Math.abs(dy) <= 32) {
+      kickBarrel(b, char, isSlide);
+      return b;
+    }
+  }
+  return null;
+}

@@ -637,6 +637,9 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
       if (Math.abs(player.vx) > 1.8 && Math.random() < 0.85 && typeof grassFn === 'function') {
         grassFn(player.x + (player.w / 2) + (player.facing * 20), currentFloor, player.facing);
       }
+      if (typeof window !== 'undefined' && typeof window.checkBarrelKickInteraction === 'function') {
+        window.checkBarrelKickInteraction(player, true);
+      }
       if (player.slideTimer <= 0 || Math.abs(player.vx) < 0.4) {
         player.isSliding = false;
         player.sprintDuration = 0;

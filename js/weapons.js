@@ -1118,6 +1118,34 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     const minBy = b.prevY < endY ? b.prevY : endY;
     const maxBy = b.prevY > endY ? b.prevY : endY;
 
+    // Kolizja pocisku z fizycznymi beczkami (wybuchowymi / toksycznymi)
+    if (typeof window !== 'undefined' && Array.isArray(window.hazardsBarrels) && window.hazardsBarrels.length > 0) {
+      let hitBarrel = false;
+      for (const bar of window.hazardsBarrels) {
+        if (!bar || bar.isDead) continue;
+        const bLeft = bar.x;
+        const bRight = bar.x + bar.w;
+        const bTop = bar.y;
+        const bBottom = bar.y + bar.h;
+        if (maxBx < bLeft || minBx > bRight || maxBy < bTop || minBy > bBottom) continue;
+        const barT = getSegmentAABBHitT(b.prevX, b.prevY, b.x, b.y, bLeft, bTop, bRight, bBottom);
+        if (barT !== null && barT <= maxT) {
+          const hitX = b.prevX + (b.x - b.prevX) * barT;
+          const hitY = b.prevY + (b.y - b.prevY) * barT;
+          spawnBulletSparks(hitX, hitY, '#f97316', 6);
+          if (typeof window.damageBarrel === 'function') {
+            window.damageBarrel(bar, b.damage || 25, b.shooter, b.vx, b.vy);
+          }
+          hitBarrel = true;
+          break;
+        }
+      }
+      if (hitBarrel) {
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
+
     for (const ch of charList) {
       const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
       if (!ch || ch === b.shooter || (ch.isDead && !isLyingZombie)) continue;

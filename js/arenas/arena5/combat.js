@@ -683,3 +683,7 @@ function resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, bx, by, bw, b
   spawnRicochetSparks(grenade.x, grenade.y, (Math.random() - 0.5) * 4, -2, 5);
   return true;
 }
+
+if (typeof window !== 'undefined') {
+  window.handleArena5Explosion = handleArena5Explosion;
+}

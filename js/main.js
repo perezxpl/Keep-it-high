@@ -64,6 +64,7 @@ import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreak
 import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
 import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive } from './zombie/index.js';
+import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInteraction } from './hazards/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import { initMenuFight, updateMenuFight, drawMenuFight, stopMenuFight } from './menuFight/index.js';
@@ -909,6 +910,7 @@ function update() {
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
   updateLighting(1 / 60);
   updateZombieSystem(1 / 60, player, activeBots, effectiveGroundY);
+  updateHazards((FRAME_DURATION / 1000) || (1 / 60), combatants, effectiveGroundY);
 
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
@@ -1152,6 +1154,7 @@ function draw() {
   drawGore(ctx);
   drawPickupsWorld(ctx, camera);
   drawZombieSystem(ctx, camera);
+  drawHazards(ctx, camera);
 
   const isDeathmatch = (
     activeArenaId === 'ARENA_2' || activeArenaId === 'ARENA_2_PANDORA' || activeArenaId === 'arena-2' || activeArenaId === 'ARENA_2_SECTOR_X' ||

@@ -411,6 +411,30 @@ function checkFallingSquash(combatants) {
       }
     }
   }
+
+  // =========================================================================
+  // DETEKCJA ZMIAŻDŻENIA WYBUCHOWYCH BECZEK POD OPADAJĄCYM KLOCKIEM SUWNICY
+  // =========================================================================
+  if (Array.isArray(window.hazardsBarrels) && window.hazardsBarrels.length > 0 && typeof window.detonateBarrel === 'function') {
+    for (let i = window.hazardsBarrels.length - 1; i >= 0; i--) {
+      const b = window.hazardsBarrels[i];
+      if (!b || b.isDead || b.isExploding) continue;
+
+      for (const st of subTiles) {
+        if (!st.isBottomEdge) continue;
+
+        // Sprawdź czy rzut poziomy klocka nachodzi na beczkę
+        if (b.x + b.w > st.left + 2 && b.x < st.right - 2) {
+          // Jeśli spód klocka dotyka lub mija wierzch beczki
+          if (b.y < st.bottom && (b.y + b.h) >= st.bottom - 16) {
+            // Natychmiastowa detonacja zgniecionej beczki
+            window.detonateBarrel(b, combatants, currentFloorY, { isSquash: true });
+            break;
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -543,6 +567,29 @@ function onCraneBlockImpact(combatants) {
   syncArena5ExposedSurfaces();
   checkAndTriggerLineClears(combatants);
   resolveArena5BlockPenetration(combatants);
+
+  // Szansa (~22%) na pojawienie się beczki na dachu nowo wylądowanego klocka suwnicy (maks. 2 aktywne w Arenie 5)
+  if (Array.isArray(window.hazardsBarrels) && window.hazardsBarrels.length < 2 && Math.random() < 0.22) {
+    if (typeof window.createBarrelInstance === 'function' && Array.isArray(crane.shapeCells) && crane.shapeCells.length > 0) {
+      // Znajdź najwyższy kafelek figury (najwyższe rowRel)
+      const topCell = [...crane.shapeCells].sort((a, b) => b.rowRel - a.rowRel)[0];
+      if (topCell) {
+        const topWorldCol = crane.col + topCell.colRel;
+        const topWorldRow = crane.targetLandingRow + topCell.rowRel;
+        const barrelX = getGridX(topWorldCol) + CELL_SIZE * 0.5 - 13;
+        const barrelY = getGridY(topWorldRow) - 38;
+        if (barrelX >= 0 && barrelX <= ARENA_WIDTH - 26) {
+          const barrelType = Math.random() < 0.7 ? 'EXPLOSIVE' : 'TOXIC';
+          window.hazardsBarrels.push(window.createBarrelInstance({
+            type: barrelType,
+            x: barrelX,
+            y: barrelY,
+            id: `a5_barrel_${Date.now()}`
+          }));
+        }
+      }
+    }
+  }
 }
 
 /**
