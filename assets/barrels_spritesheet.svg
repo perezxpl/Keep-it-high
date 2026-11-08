@@ -1,0 +1,1687 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 704" width="512" height="704">
+  
+  <defs>
+    <!-- Filtry optyczne i cienie -->
+    <filter id="drum-drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3.0" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+    <filter id="glow-fire" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4.0" flood-color="#f97316" flood-opacity="0.85" />
+    </filter>
+    <filter id="glow-toxic" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4.0" flood-color="#22c55e" flood-opacity="0.85" />
+    </filter>
+    <filter id="glow-cryo" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4.0" flood-color="#38bdf8" flood-opacity="0.85" />
+    </filter>
+
+    <!-- Skosne paski ostrzegawcze (Hazard Chevrons) -->
+    <pattern id="hazard-stripes-yellow" width="16" height="16" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#eab308" stroke-width="8" />
+      <line x1="8" y1="0" x2="8" y2="16" stroke="#18181b" stroke-width="8" />
+    </pattern>
+    <pattern id="hazard-stripes-orange" width="16" height="16" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#f97316" stroke-width="8" />
+      <line x1="8" y1="0" x2="8" y2="16" stroke="#18181b" stroke-width="8" />
+    </pattern>
+
+    <!-- 1. CYLINDRYCZNY GRADIENT BECZKI CZERWONEJ (EXPLOSIVE) -->
+    <linearGradient id="drum-grad-red" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7f1d1d" />
+      <stop offset="6%" stop-color="#450a0a" />
+      <stop offset="18%" stop-color="#ef4444" />
+      <stop offset="28%" stop-color="#fca5a5" />
+      <stop offset="38%" stop-color="#ef4444" />
+      <stop offset="65%" stop-color="#dc2626" />
+      <stop offset="85%" stop-color="#991b1b" />
+      <stop offset="100%" stop-color="#450a0a" />
+    </linearGradient>
+
+    <!-- 2. CYLINDRYCZNY GRADIENT BECZKI CZERWONEJ ROZPALONEJ (CRITICAL) -->
+    <linearGradient id="drum-grad-red-critical" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#991b1b" />
+      <stop offset="12%" stop-color="#ea580c" />
+      <stop offset="30%" stop-color="#fed7aa" />
+      <stop offset="50%" stop-color="#f97316" />
+      <stop offset="75%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#7f1d1d" />
+    </linearGradient>
+
+    <!-- 3. CYLINDRYCZNY GRADIENT BECZKI ZIELONEJ (TOXIC) -->
+    <linearGradient id="drum-grad-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#14532d" />
+      <stop offset="6%" stop-color="#052e16" />
+      <stop offset="18%" stop-color="#22c55e" />
+      <stop offset="28%" stop-color="#bbf7d0" />
+      <stop offset="38%" stop-color="#22c55e" />
+      <stop offset="65%" stop-color="#16a34a" />
+      <stop offset="85%" stop-color="#15803d" />
+      <stop offset="100%" stop-color="#052e16" />
+    </linearGradient>
+
+    <!-- 4. CYLINDRYCZNY GRADIENT BECZKI ZIELONEJ ROZPALONEJ (CRITICAL) -->
+    <linearGradient id="drum-grad-green-critical" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#14532d" />
+      <stop offset="14%" stop-color="#16a34a" />
+      <stop offset="30%" stop-color="#dcfce7" />
+      <stop offset="50%" stop-color="#4ade80" />
+      <stop offset="75%" stop-color="#15803d" />
+      <stop offset="100%" stop-color="#052e16" />
+    </linearGradient>
+
+    <!-- 5. CYLINDRYCZNY GRADIENT BECZKI KRIOGENICZNEJ (CRYO) -->
+    <linearGradient id="drum-grad-cryo" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0c4a6e" />
+      <stop offset="6%" stop-color="#082f49" />
+      <stop offset="18%" stop-color="#38bdf8" />
+      <stop offset="28%" stop-color="#e0f2fe" />
+      <stop offset="38%" stop-color="#38bdf8" />
+      <stop offset="65%" stop-color="#0284c7" />
+      <stop offset="85%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#082f49" />
+    </linearGradient>
+
+    <!-- 6. CYLINDRYCZNY GRADIENT BECZKI WOJSKOWEJ / ZLOTO-GRAFITOWEJ (ORDNANCE) -->
+    <linearGradient id="drum-grad-ordnance" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#27272a" />
+      <stop offset="6%" stop-color="#18181b" />
+      <stop offset="18%" stop-color="#71717a" />
+      <stop offset="28%" stop-color="#f4f4f5" />
+      <stop offset="38%" stop-color="#71717a" />
+      <stop offset="65%" stop-color="#3f3f46" />
+      <stop offset="85%" stop-color="#27272a" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+
+    <!-- GRADIENTY ZEBER I OBRĘCZY STALOWYCH (STEEL RIMS) -->
+    <linearGradient id="rim-grad-dark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="15%" stop-color="#52525b" />
+      <stop offset="28%" stop-color="#d4d4d8" />
+      <stop offset="42%" stop-color="#52525b" />
+      <stop offset="80%" stop-color="#27272a" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+    <linearGradient id="rim-bevel-top" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.45)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.0)" />
+    </linearGradient>
+    <linearGradient id="rim-bevel-bottom" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(0, 0, 0, 0.0)" />
+      <stop offset="100%" stop-color="rgba(0, 0, 0, 0.65)" />
+    </linearGradient>
+
+    <!-- POKRYWA GORNA I WLEW PALIWA -->
+    <linearGradient id="lid-top-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#27272a" />
+      <stop offset="50%" stop-color="#18181b" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+    <linearGradient id="bung-hex-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4d4d8" />
+      <stop offset="50%" stop-color="#71717a" />
+      <stop offset="100%" stop-color="#27272a" />
+    </linearGradient>
+  </defs>
+  
+  <!-- ARKUSZ SPRITE'OW BECZEK WOJSKOWYCH (512x704px, 4x4) -->
+  
+      <!-- SPRITE: EXPLOSIVE [INTACT] (x: 0, y: 0) -->
+      <g id="barrel_explosive_intact">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="64" cy="162" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 24 24
+        L 104 24
+        Q 110 24 110 32
+        L 110 144
+        Q 110 158 104 158
+        L 24 158
+        Q 18 158 18 144
+        L 18 32
+        Q 18 24 24 24
+        Z
+      " fill="url(#drum-grad-red)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="16" y="150" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="150" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="16" y="22" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="22" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="17" y="28" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="64" cy="24" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="44" cy="23.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="44" cy="23.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="86" cy="24" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="17" y="64" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="64" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="68.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="17" y="116" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="116" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="120.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="20" y="82" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="20" y="82" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(64, 94) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#facc15" stroke="#b45309" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Plomienia -->
+      <path d="
+        M 64 78.6
+        C 70.65 85.25, 72.55 93.8, 68.75 99.5
+        C 66.85 102.35, 61.15 102.35, 59.25 99.5
+        C 55.45 93.8, 57.35 85.25, 64 78.6
+        Z
+      " fill="#facc15" />
+      <path d="
+        M 64 85.25
+        C 67.325 89.05, 68.275 94.75, 66.375 97.6
+        C 64.95 99.5, 63.05 99.5, 61.625 97.6
+        C 59.725 94.75, 60.675 89.05, 64 85.25
+        Z
+      " fill="#ef4444" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="64" y="104" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">3</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="64" y="56" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">FLAMMABLE</text>
+        <text x="64" y="142" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1203 • 55 GAL / 208L</text>
+    
+      </g>
+    
+      <!-- SPRITE: EXPLOSIVE [DAMAGED] (x: 128, y: 0) -->
+      <g id="barrel_explosive_damaged">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="192" cy="162" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 152 24
+        L 232 24
+        Q 238 24 238 32
+        L 238 144
+        Q 238 158 232 158
+        L 152 158
+        Q 146 158 146 144
+        L 146 98
+        C 154 83, 152 63, 146 53
+        L 146 32
+        Q 146 24 152 24
+        Z
+      " fill="url(#drum-grad-red)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="144" y="150" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="150" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="144" y="22" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="22" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="145" y="28" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="192" cy="24" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="172" cy="23.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="172" cy="23.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="214" cy="24" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="145" y="64" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="64" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="68.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="145" y="116" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="116" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="120.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="148" y="82" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="148" y="82" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(192, 94) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#facc15" stroke="#b45309" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Plomienia -->
+      <path d="
+        M 192 78.6
+        C 198.65 85.25, 200.55 93.8, 196.75 99.5
+        C 194.85 102.35, 189.15 102.35, 187.25 99.5
+        C 183.45 93.8, 185.35 85.25, 192 78.6
+        Z
+      " fill="#facc15" />
+      <path d="
+        M 192 85.25
+        C 195.325 89.05, 196.275 94.75, 194.375 97.6
+        C 192.95 99.5, 191.05 99.5, 189.625 97.6
+        C 187.725 94.75, 188.675 89.05, 192 85.25
+        Z
+      " fill="#ef4444" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="192" y="104" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">3</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="192" y="56" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">FLAMMABLE</text>
+        <text x="192" y="142" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1203 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="178" cy="76" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="178" cy="76" r="2.2" fill="#09090b" />
+        <path d="M 178 76 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 208 50 Q 200 62 214 74" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="218" cy="132" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+      </g>
+    
+      <!-- SPRITE: EXPLOSIVE [LEAKING] (x: 256, y: 0) -->
+      <g id="barrel_explosive_leaking">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="320" cy="162" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 280 24
+        L 360 24
+        Q 366 24 366 32
+        L 366 144
+        Q 366 158 360 158
+        L 280 158
+        Q 274 158 274 144
+        L 274 98
+        C 282 83, 280 63, 274 53
+        L 274 32
+        Q 274 24 280 24
+        Z
+      " fill="url(#drum-grad-red)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="272" y="150" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="150" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="272" y="22" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="22" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="273" y="28" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="320" cy="24" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="300" cy="23.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="300" cy="23.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="342" cy="24" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="273" y="64" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="64" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="68.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="273" y="116" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="116" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="120.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="276" y="82" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="276" y="82" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(320, 94) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#facc15" stroke="#b45309" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Plomienia -->
+      <path d="
+        M 320 78.6
+        C 326.65 85.25, 328.55 93.8, 324.75 99.5
+        C 322.85 102.35, 317.15 102.35, 315.25 99.5
+        C 311.45 93.8, 313.35 85.25, 320 78.6
+        Z
+      " fill="#facc15" />
+      <path d="
+        M 320 85.25
+        C 323.325 89.05, 324.275 94.75, 322.375 97.6
+        C 320.95 99.5, 319.05 99.5, 317.625 97.6
+        C 315.725 94.75, 316.675 89.05, 320 85.25
+        Z
+      " fill="#ef4444" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="320" y="104" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">3</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="320" y="56" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">FLAMMABLE</text>
+        <text x="320" y="142" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1203 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="306" cy="76" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="306" cy="76" r="2.2" fill="#09090b" />
+        <path d="M 306 76 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 336 50 Q 328 62 342 74" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="346" cy="132" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+          <!-- Buchajacy plomien z dziury -->
+          <g filter="url(#glow-fire)">
+            <path d="M 306 76 C 294 63, 289 53, 298 42 C 304 52, 310 66, 306 76 Z" fill="#facc15" />
+            <path d="M 306 76 C 298 68, 296 58, 300 50 C 304 58, 308 68, 306 76 Z" fill="#ef4444" />
+          </g>
+          <!-- Zaciek ciemnego paliwa w dol -->
+          <path d="M 306 78 Q 308 98 305 128 Q 306 148 307 156" fill="none" stroke="#18181b" stroke-width="2.5" opacity="0.85" stroke-linecap="round" />
+        
+      </g>
+    
+      <!-- SPRITE: EXPLOSIVE [CRITICAL] (x: 384, y: 0) -->
+      <g id="barrel_explosive_critical">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="448" cy="162" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 408 24
+        L 488 24
+        Q 494 24 494 32
+        L 494 144
+        Q 494 158 488 158
+        L 408 158
+        Q 402 158 402 144
+        L 402 98
+        C 410 83, 408 63, 402 53
+        L 402 32
+        Q 402 24 408 24
+        Z
+      " fill="url(#drum-grad-red-critical)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="400" y="150" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="150" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="400" y="22" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="22" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="401" y="28" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="448" cy="24" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="428" cy="23.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="428" cy="23.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="470" cy="24" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="401" y="64" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="64" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="68.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="401" y="116" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="116" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="120.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="404" y="82" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="404" y="82" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(448, 94) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#facc15" stroke="#b45309" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Plomienia -->
+      <path d="
+        M 448 78.6
+        C 454.65 85.25, 456.55 93.8, 452.75 99.5
+        C 450.85 102.35, 445.15 102.35, 443.25 99.5
+        C 439.45 93.8, 441.35 85.25, 448 78.6
+        Z
+      " fill="#facc15" />
+      <path d="
+        M 448 85.25
+        C 451.325 89.05, 452.275 94.75, 450.375 97.6
+        C 448.95 99.5, 447.05 99.5, 445.625 97.6
+        C 443.725 94.75, 444.675 89.05, 448 85.25
+        Z
+      " fill="#ef4444" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="448" y="104" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">3</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="448" y="56" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">FLAMMABLE</text>
+        <text x="448" y="142" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1203 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="434" cy="76" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="434" cy="76" r="2.2" fill="#09090b" />
+        <path d="M 434 76 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 464 50 Q 456 62 470 74" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="474" cy="132" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+        <!-- Pekniecia termiczne powłoki pod cisnieniem -->
+        <g filter="url(#glow-fire)">
+          <path d="M 420 58 L 436 70 L 430 90 L 444 112 L 440 136" fill="none" stroke="#facc15" stroke-width="2.0" stroke-linecap="round" />
+          <path d="M 470 54 L 460 74 L 474 96 L 466 122" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" />
+        </g>
+
+        <!-- Snop iskier i syczacy plomien z korka wlewu -->
+        <g filter="url(#glow-fire)">
+          <circle cx="428" cy="22" r="6.0" fill="#facc15" />
+          <circle cx="428" cy="22" r="3.2" fill="#ffffff" />
+          <!-- Wystrzelone iskry -->
+          <circle cx="424" cy="12" r="2.0" fill="#facc15" />
+          <circle cx="433" cy="8" r="2.4" fill="#ffffff" />
+          <circle cx="418" cy="6" r="1.6" fill="#ef4444" />
+          <circle cx="438" cy="13" r="1.8" fill="#facc15" />
+          <circle cx="429" cy="2" r="1.4" fill="#ffffff" />
+        </g>
+      
+      </g>
+    
+      <!-- SPRITE: TOXIC [INTACT] (x: 0, y: 176) -->
+      <g id="barrel_toxic_intact">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="64" cy="338" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 24 200
+        L 104 200
+        Q 110 200 110 208
+        L 110 320
+        Q 110 334 104 334
+        L 24 334
+        Q 18 334 18 320
+        L 18 208
+        Q 18 200 24 200
+        Z
+      " fill="url(#drum-grad-green)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="16" y="326" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="326" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="16" y="198" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="198" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="17" y="204" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="64" cy="200" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="44" cy="199.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="44" cy="199.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="86" cy="200" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="17" y="240" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="240" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="244.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="17" y="292" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="292" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="296.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="20" y="258" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="20" y="258" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(64, 270) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#eab308" stroke="#14532d" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Czaszki -->
+      <!-- Piszczele skrzyzowane -->
+      <line x1="55.45" y1="259.35" x2="72.55" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <line x1="72.55" y1="259.35" x2="55.45" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <!-- Czaszka -->
+      <circle cx="64" cy="264.1" r="5.225" fill="#ffffff" />
+      <rect x="61.15" y="267.425" width="5.699999999999999" height="4.2749999999999995" rx="0.95" fill="#ffffff" />
+      <!-- Oczodoly i nos -->
+      <circle cx="62.1" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <circle cx="65.9" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <polygon points="64,265.525 63.24,266.76 64.76,266.76" fill="#052e16" />
+      <!-- Zeby -->
+      <line x1="62.575" y1="268.375" x2="62.575" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="64" y1="268.375" x2="64" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="65.425" y1="268.375" x2="65.425" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="64" y="280" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">6</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="64" y="232" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">TOXIC WASTE</text>
+        <text x="64" y="318" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 2922 • 55 GAL / 208L</text>
+    
+      </g>
+    
+      <!-- SPRITE: TOXIC [DAMAGED] (x: 128, y: 176) -->
+      <g id="barrel_toxic_damaged">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="192" cy="338" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 152 200
+        L 232 200
+        Q 238 200 238 208
+        L 238 320
+        Q 238 334 232 334
+        L 152 334
+        Q 146 334 146 320
+        L 146 274
+        C 154 259, 152 239, 146 229
+        L 146 208
+        Q 146 200 152 200
+        Z
+      " fill="url(#drum-grad-green)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="144" y="326" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="326" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="144" y="198" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="198" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="145" y="204" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="192" cy="200" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="172" cy="199.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="172" cy="199.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="214" cy="200" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="145" y="240" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="240" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="244.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="145" y="292" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="292" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="296.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="148" y="258" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="148" y="258" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(192, 270) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#eab308" stroke="#14532d" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Czaszki -->
+      <!-- Piszczele skrzyzowane -->
+      <line x1="183.45" y1="259.35" x2="200.55" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <line x1="200.55" y1="259.35" x2="183.45" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <!-- Czaszka -->
+      <circle cx="192" cy="264.1" r="5.225" fill="#ffffff" />
+      <rect x="189.15" y="267.425" width="5.699999999999999" height="4.2749999999999995" rx="0.95" fill="#ffffff" />
+      <!-- Oczodoly i nos -->
+      <circle cx="190.1" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <circle cx="193.9" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <polygon points="192,265.525 191.24,266.76 192.76,266.76" fill="#052e16" />
+      <!-- Zeby -->
+      <line x1="190.575" y1="268.375" x2="190.575" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="192" y1="268.375" x2="192" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="193.425" y1="268.375" x2="193.425" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="192" y="280" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">6</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="192" y="232" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">TOXIC WASTE</text>
+        <text x="192" y="318" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 2922 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="178" cy="252" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="178" cy="252" r="2.2" fill="#09090b" />
+        <path d="M 178 252 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 208 226 Q 200 238 214 250" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="218" cy="308" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+      </g>
+    
+      <!-- SPRITE: TOXIC [LEAKING] (x: 256, y: 176) -->
+      <g id="barrel_toxic_leaking">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="320" cy="338" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 280 200
+        L 360 200
+        Q 366 200 366 208
+        L 366 320
+        Q 366 334 360 334
+        L 280 334
+        Q 274 334 274 320
+        L 274 274
+        C 282 259, 280 239, 274 229
+        L 274 208
+        Q 274 200 280 200
+        Z
+      " fill="url(#drum-grad-green)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="272" y="326" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="326" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="272" y="198" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="198" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="273" y="204" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="320" cy="200" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="300" cy="199.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="300" cy="199.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="342" cy="200" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="273" y="240" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="240" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="244.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="273" y="292" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="292" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="296.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="276" y="258" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="276" y="258" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(320, 270) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#eab308" stroke="#14532d" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Czaszki -->
+      <!-- Piszczele skrzyzowane -->
+      <line x1="311.45" y1="259.35" x2="328.55" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <line x1="328.55" y1="259.35" x2="311.45" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <!-- Czaszka -->
+      <circle cx="320" cy="264.1" r="5.225" fill="#ffffff" />
+      <rect x="317.15" y="267.425" width="5.699999999999999" height="4.2749999999999995" rx="0.95" fill="#ffffff" />
+      <!-- Oczodoly i nos -->
+      <circle cx="318.1" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <circle cx="321.9" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <polygon points="320,265.525 319.24,266.76 320.76,266.76" fill="#052e16" />
+      <!-- Zeby -->
+      <line x1="318.575" y1="268.375" x2="318.575" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="320" y1="268.375" x2="320" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="321.425" y1="268.375" x2="321.425" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="320" y="280" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">6</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="320" y="232" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">TOXIC WASTE</text>
+        <text x="320" y="318" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 2922 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="306" cy="252" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="306" cy="252" r="2.2" fill="#09090b" />
+        <path d="M 306 252 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 336 226 Q 328 238 342 250" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="346" cy="308" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+          <!-- Cieknacy jaskrawy kwas -->
+          <g filter="url(#glow-toxic)">
+            <path d="M 306 254 Q 304 279 308 309 Q 307 329 305 336" fill="none" stroke="#4ade80" stroke-width="3.2" stroke-linecap="round" />
+            <circle cx="305" cy="338" r="3.2" fill="#86efac" />
+            <circle cx="302" cy="279" r="2.2" fill="#bbf7d0" />
+            <circle cx="310" cy="299" r="1.8" fill="#dcfce7" />
+          </g>
+        
+      </g>
+    
+      <!-- SPRITE: TOXIC [CRITICAL] (x: 384, y: 176) -->
+      <g id="barrel_toxic_critical">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="448" cy="338" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 408 200
+        L 488 200
+        Q 494 200 494 208
+        L 494 320
+        Q 494 334 488 334
+        L 408 334
+        Q 402 334 402 320
+        L 402 274
+        C 410 259, 408 239, 402 229
+        L 402 208
+        Q 402 200 408 200
+        Z
+      " fill="url(#drum-grad-green-critical)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="400" y="326" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="326" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="400" y="198" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="198" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="401" y="204" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="448" cy="200" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="428" cy="199.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="428" cy="199.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="470" cy="200" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="401" y="240" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="240" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="244.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="401" y="292" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="292" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="296.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="404" y="258" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="404" y="258" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(448, 270) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#eab308" stroke="#14532d" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Czaszki -->
+      <!-- Piszczele skrzyzowane -->
+      <line x1="439.45" y1="259.35" x2="456.55" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <line x1="456.55" y1="259.35" x2="439.45" y2="272.65" stroke="#ffffff" stroke-width="2.09" stroke-linecap="round" />
+      <!-- Czaszka -->
+      <circle cx="448" cy="264.1" r="5.225" fill="#ffffff" />
+      <rect x="445.15" y="267.425" width="5.699999999999999" height="4.2749999999999995" rx="0.95" fill="#ffffff" />
+      <!-- Oczodoly i nos -->
+      <circle cx="446.1" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <circle cx="449.9" cy="263.625" r="1.3299999999999998" fill="#052e16" />
+      <polygon points="448,265.525 447.24,266.76 448.76,266.76" fill="#052e16" />
+      <!-- Zeby -->
+      <line x1="446.575" y1="268.375" x2="446.575" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="448" y1="268.375" x2="448" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+      <line x1="449.425" y1="268.375" x2="449.425" y2="271.225" stroke="#052e16" stroke-width="0.6649999999999999" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="448" y="280" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">6</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="448" y="232" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">TOXIC WASTE</text>
+        <text x="448" y="318" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 2922 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="434" cy="252" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="434" cy="252" r="2.2" fill="#09090b" />
+        <path d="M 434 252 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 464 226 Q 456 238 470 250" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="474" cy="308" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+        <!-- Pekniecia termiczne powłoki pod cisnieniem -->
+        <g filter="url(#glow-toxic)">
+          <path d="M 420 234 L 436 246 L 430 266 L 444 288 L 440 312" fill="none" stroke="#4ade80" stroke-width="2.0" stroke-linecap="round" />
+          <path d="M 470 230 L 460 250 L 474 272 L 466 298" fill="none" stroke="#86efac" stroke-width="1.8" stroke-linecap="round" />
+        </g>
+
+        <!-- Snop iskier i syczacy plomien z korka wlewu -->
+        <g filter="url(#glow-toxic)">
+          <circle cx="428" cy="198" r="6.0" fill="#4ade80" />
+          <circle cx="428" cy="198" r="3.2" fill="#ffffff" />
+          <!-- Wystrzelone iskry -->
+          <circle cx="424" cy="188" r="2.0" fill="#4ade80" />
+          <circle cx="433" cy="184" r="2.4" fill="#ffffff" />
+          <circle cx="418" cy="182" r="1.6" fill="#86efac" />
+          <circle cx="438" cy="189" r="1.8" fill="#4ade80" />
+          <circle cx="429" cy="178" r="1.4" fill="#ffffff" />
+        </g>
+      
+      </g>
+    
+      <!-- SPRITE: CRYO [INTACT] (x: 0, y: 352) -->
+      <g id="barrel_cryo_intact">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="64" cy="514" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 24 376
+        L 104 376
+        Q 110 376 110 384
+        L 110 496
+        Q 110 510 104 510
+        L 24 510
+        Q 18 510 18 496
+        L 18 384
+        Q 18 376 24 376
+        Z
+      " fill="url(#drum-grad-cryo)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="16" y="502" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="502" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="16" y="374" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="374" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="17" y="380" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="64" cy="376" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="44" cy="375.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="44" cy="375.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="86" cy="376" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="17" y="416" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="416" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="420.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="17" y="468" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="468" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="472.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="20" y="434" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="20" y="434" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(64, 446) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#0284c7" stroke="#ffffff" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Mrozu -->
+      <g stroke="#ffffff" stroke-width="1.71" stroke-linecap="round">
+        <line x1="64" y1="433.45" x2="64" y2="450.55" />
+        <line x1="56.4" y1="437.725" x2="71.6" y2="446.275" />
+        <line x1="56.4" y1="446.275" x2="71.6" y2="437.725" />
+      </g>
+      <circle cx="64" cy="442" r="1.9" fill="#38bdf8" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="64" y="456" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">2</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="64" y="408" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">LIQUID NITRO</text>
+        <text x="64" y="494" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1977 • 55 GAL / 208L</text>
+    
+      </g>
+    
+      <!-- SPRITE: CRYO [DAMAGED] (x: 128, y: 352) -->
+      <g id="barrel_cryo_damaged">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="192" cy="514" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 152 376
+        L 232 376
+        Q 238 376 238 384
+        L 238 496
+        Q 238 510 232 510
+        L 152 510
+        Q 146 510 146 496
+        L 146 450
+        C 154 435, 152 415, 146 405
+        L 146 384
+        Q 146 376 152 376
+        Z
+      " fill="url(#drum-grad-cryo)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="144" y="502" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="502" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="144" y="374" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="374" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="145" y="380" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="192" cy="376" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="172" cy="375.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="172" cy="375.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="214" cy="376" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="145" y="416" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="416" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="420.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="145" y="468" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="468" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="472.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="148" y="434" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="148" y="434" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(192, 446) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#0284c7" stroke="#ffffff" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Mrozu -->
+      <g stroke="#ffffff" stroke-width="1.71" stroke-linecap="round">
+        <line x1="192" y1="433.45" x2="192" y2="450.55" />
+        <line x1="184.4" y1="437.725" x2="199.6" y2="446.275" />
+        <line x1="184.4" y1="446.275" x2="199.6" y2="437.725" />
+      </g>
+      <circle cx="192" cy="442" r="1.9" fill="#38bdf8" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="192" y="456" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">2</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="192" y="408" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">LIQUID NITRO</text>
+        <text x="192" y="494" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1977 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="178" cy="428" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="178" cy="428" r="2.2" fill="#09090b" />
+        <path d="M 178 428 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 208 402 Q 200 414 214 426" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="218" cy="484" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+      </g>
+    
+      <!-- SPRITE: CRYO [LEAKING] (x: 256, y: 352) -->
+      <g id="barrel_cryo_leaking">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="320" cy="514" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 280 376
+        L 360 376
+        Q 366 376 366 384
+        L 366 496
+        Q 366 510 360 510
+        L 280 510
+        Q 274 510 274 496
+        L 274 450
+        C 282 435, 280 415, 274 405
+        L 274 384
+        Q 274 376 280 376
+        Z
+      " fill="url(#drum-grad-cryo)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="272" y="502" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="502" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="272" y="374" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="374" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="273" y="380" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="320" cy="376" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="300" cy="375.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="300" cy="375.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="342" cy="376" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="273" y="416" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="416" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="420.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="273" y="468" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="468" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="472.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="276" y="434" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="276" y="434" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(320, 446) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#0284c7" stroke="#ffffff" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Mrozu -->
+      <g stroke="#ffffff" stroke-width="1.71" stroke-linecap="round">
+        <line x1="320" y1="433.45" x2="320" y2="450.55" />
+        <line x1="312.4" y1="437.725" x2="327.6" y2="446.275" />
+        <line x1="312.4" y1="446.275" x2="327.6" y2="437.725" />
+      </g>
+      <circle cx="320" cy="442" r="1.9" fill="#38bdf8" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="320" y="456" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">2</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="320" y="408" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">LIQUID NITRO</text>
+        <text x="320" y="494" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1977 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="306" cy="428" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="306" cy="428" r="2.2" fill="#09090b" />
+        <path d="M 306 428 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 336 402 Q 328 414 342 426" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="346" cy="484" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+          <g filter="url(#glow-cryo)">
+            <path d="M 306 430 L 304 465 L 306 462 L 308 458" fill="none" stroke="#e0f2fe" stroke-width="2.5" />
+            <circle cx="304" cy="466" r="2.0" fill="#ffffff" />
+          </g>
+        
+      </g>
+    
+      <!-- SPRITE: CRYO [CRITICAL] (x: 384, y: 352) -->
+      <g id="barrel_cryo_critical">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="448" cy="514" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 408 376
+        L 488 376
+        Q 494 376 494 384
+        L 494 496
+        Q 494 510 488 510
+        L 408 510
+        Q 402 510 402 496
+        L 402 450
+        C 410 435, 408 415, 402 405
+        L 402 384
+        Q 402 376 408 376
+        Z
+      " fill="url(#drum-grad-cryo)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="400" y="502" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="502" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="400" y="374" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="374" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="401" y="380" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="448" cy="376" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="428" cy="375.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="428" cy="375.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="470" cy="376" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="401" y="416" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="416" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="420.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="401" y="468" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="468" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="472.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="404" y="434" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="404" y="434" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(448, 446) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#0284c7" stroke="#ffffff" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Mrozu -->
+      <g stroke="#ffffff" stroke-width="1.71" stroke-linecap="round">
+        <line x1="448" y1="433.45" x2="448" y2="450.55" />
+        <line x1="440.4" y1="437.725" x2="455.6" y2="446.275" />
+        <line x1="440.4" y1="446.275" x2="455.6" y2="437.725" />
+      </g>
+      <circle cx="448" cy="442" r="1.9" fill="#38bdf8" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="448" y="456" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">2</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="448" y="408" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">LIQUID NITRO</text>
+        <text x="448" y="494" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">UN 1977 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="434" cy="428" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="434" cy="428" r="2.2" fill="#09090b" />
+        <path d="M 434 428 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 464 402 Q 456 414 470 426" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="474" cy="484" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+        <!-- Pekniecia termiczne powłoki pod cisnieniem -->
+        <g filter="url(#glow-fire)">
+          <path d="M 420 410 L 436 422 L 430 442 L 444 464 L 440 488" fill="none" stroke="#facc15" stroke-width="2.0" stroke-linecap="round" />
+          <path d="M 470 406 L 460 426 L 474 448 L 466 474" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" />
+        </g>
+
+        <!-- Snop iskier i syczacy plomien z korka wlewu -->
+        <g filter="url(#glow-fire)">
+          <circle cx="428" cy="374" r="6.0" fill="#facc15" />
+          <circle cx="428" cy="374" r="3.2" fill="#ffffff" />
+          <!-- Wystrzelone iskry -->
+          <circle cx="424" cy="364" r="2.0" fill="#facc15" />
+          <circle cx="433" cy="360" r="2.4" fill="#ffffff" />
+          <circle cx="418" cy="358" r="1.6" fill="#ef4444" />
+          <circle cx="438" cy="365" r="1.8" fill="#facc15" />
+          <circle cx="429" cy="354" r="1.4" fill="#ffffff" />
+        </g>
+      
+      </g>
+    
+      <!-- SPRITE: ORDNANCE [INTACT] (x: 0, y: 528) -->
+      <g id="barrel_ordnance_intact">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="64" cy="690" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 24 552
+        L 104 552
+        Q 110 552 110 560
+        L 110 672
+        Q 110 686 104 686
+        L 24 686
+        Q 18 686 18 672
+        L 18 560
+        Q 18 552 24 552
+        Z
+      " fill="url(#drum-grad-ordnance)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="16" y="678" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="678" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="16" y="550" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="17" y="550" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="17" y="556" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="64" cy="552" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="44" cy="551.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="44" cy="551.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="86" cy="552" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="17" y="592" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="592" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="596.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="17" y="644" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="18" y="644" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="18" y="648.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="20" y="610" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="20" y="610" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(64, 622) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#f59e0b" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Bomby -->
+      <circle cx="64" cy="618.95" r="5.225" fill="#facc15" />
+      <rect x="62.1" y="612.3" width="3.8" height="2.8499999999999996" fill="#71717a" />
+      <path d="M 64 612.3 Q 67.8 608.5 69.7 610.4" fill="none" stroke="#f97316" stroke-width="1.3299999999999998" stroke-linecap="round" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="64" y="632" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">1</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="64" y="584" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">EXPLOSIVE</text>
+        <text x="64" y="670" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">HE-105 • 55 GAL / 208L</text>
+    
+      </g>
+    
+      <!-- SPRITE: ORDNANCE [DAMAGED] (x: 128, y: 528) -->
+      <g id="barrel_ordnance_damaged">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="192" cy="690" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 152 552
+        L 232 552
+        Q 238 552 238 560
+        L 238 672
+        Q 238 686 232 686
+        L 152 686
+        Q 146 686 146 672
+        L 146 626
+        C 154 611, 152 591, 146 581
+        L 146 560
+        Q 146 552 152 552
+        Z
+      " fill="url(#drum-grad-ordnance)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="144" y="678" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="678" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="144" y="550" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="145" y="550" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="145" y="556" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="192" cy="552" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="172" cy="551.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="172" cy="551.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="214" cy="552" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="145" y="592" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="592" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="596.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="145" y="644" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="146" y="644" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="146" y="648.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="148" y="610" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="148" y="610" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(192, 622) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#f59e0b" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Bomby -->
+      <circle cx="192" cy="618.95" r="5.225" fill="#facc15" />
+      <rect x="190.1" y="612.3" width="3.8" height="2.8499999999999996" fill="#71717a" />
+      <path d="M 192 612.3 Q 195.8 608.5 197.7 610.4" fill="none" stroke="#f97316" stroke-width="1.3299999999999998" stroke-linecap="round" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="192" y="632" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">1</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="192" y="584" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">EXPLOSIVE</text>
+        <text x="192" y="670" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">HE-105 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="178" cy="604" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="178" cy="604" r="2.2" fill="#09090b" />
+        <path d="M 178 604 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 208 578 Q 200 590 214 602" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="218" cy="660" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+      </g>
+    
+      <!-- SPRITE: ORDNANCE [LEAKING] (x: 256, y: 528) -->
+      <g id="barrel_ordnance_leaking">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="320" cy="690" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 280 552
+        L 360 552
+        Q 366 552 366 560
+        L 366 672
+        Q 366 686 360 686
+        L 280 686
+        Q 274 686 274 672
+        L 274 626
+        C 282 611, 280 591, 274 581
+        L 274 560
+        Q 274 552 280 552
+        Z
+      " fill="url(#drum-grad-ordnance)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="272" y="678" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="678" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="272" y="550" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="273" y="550" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="273" y="556" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="320" cy="552" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="300" cy="551.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="300" cy="551.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="342" cy="552" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="273" y="592" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="592" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="596.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="273" y="644" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="274" y="644" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="274" y="648.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="276" y="610" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="276" y="610" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(320, 622) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#f59e0b" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Bomby -->
+      <circle cx="320" cy="618.95" r="5.225" fill="#facc15" />
+      <rect x="318.1" y="612.3" width="3.8" height="2.8499999999999996" fill="#71717a" />
+      <path d="M 320 612.3 Q 323.8 608.5 325.7 610.4" fill="none" stroke="#f97316" stroke-width="1.3299999999999998" stroke-linecap="round" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="320" y="632" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">1</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="320" y="584" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">EXPLOSIVE</text>
+        <text x="320" y="670" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">HE-105 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="306" cy="604" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="306" cy="604" r="2.2" fill="#09090b" />
+        <path d="M 306 604 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 336 578 Q 328 590 342 602" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="346" cy="660" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+      </g>
+    
+      <!-- SPRITE: ORDNANCE [CRITICAL] (x: 384, y: 528) -->
+      <g id="barrel_ordnance_critical">
+        <!-- Cien podstrefowy na podlozu -->
+        <ellipse cx="448" cy="690" rx="42.32" ry="6" fill="rgba(0, 0, 0, 0.45)" />
+
+        <!-- 1. GLOWNY KORPUS BECZKI (WALEC Z GRADIENTEM) -->
+        <path d="
+        M 408 552
+        L 488 552
+        Q 494 552 494 560
+        L 494 672
+        Q 494 686 488 686
+        L 408 686
+        Q 402 686 402 672
+        L 402 626
+        C 410 611, 408 591, 402 581
+        L 402 560
+        Q 402 552 408 552
+        Z
+      " fill="url(#drum-grad-ordnance)" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+
+        <!-- 2. POKRYWA GORNA I DOLNA KRAWĘDŹ (CHIMES) -->
+        <!-- Dolna krawedz flanszowa -->
+        <rect x="400" y="678" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="678" width="94" height="3" fill="url(#rim-bevel-top)" />
+
+        <!-- Gorny kołnierz (Chime Lip) -->
+        <rect x="400" y="550" width="96" height="9" rx="3" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.2" />
+        <rect x="401" y="550" width="94" height="3" fill="url(#rim-bevel-top)" />
+        <rect x="401" y="556" width="94" height="3" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Zaglebiona pokrywa gora (Top Lid) -->
+        <ellipse cx="448" cy="552" rx="41.4" ry="5" fill="url(#lid-top-grad)" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Korek wlewu paliwa (2-calowy Bung Hex Cap) -->
+        <ellipse cx="428" cy="551.5" rx="5.5" ry="3.2" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="1.0" />
+        <ellipse cx="428" cy="551.5" rx="2.5" ry="1.5" fill="#18181b" />
+        <!-- Maly korek odpowietrznika (3/4-calowy vent bung) -->
+        <ellipse cx="470" cy="552" rx="3.5" ry="2.0" fill="url(#bung-hex-grad)" stroke="#09090b" stroke-width="0.8" />
+
+        <!-- 3. CENTRALNE STALOWE ZEBERKA WZMACNIAJACE (ROLLING HOOPS) -->
+        <!-- Gorne zebro toczne -->
+        <rect x="401" y="592" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="592" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="596.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- Dolne zebro toczne -->
+        <rect x="401" y="644" width="94" height="7" rx="2" fill="url(#rim-grad-dark)" stroke="#09090b" stroke-width="1.0" />
+        <rect x="402" y="644" width="92" height="2.5" fill="url(#rim-bevel-top)" />
+        <rect x="402" y="648.5" width="92" height="2.5" fill="url(#rim-bevel-bottom)" />
+
+        <!-- 4. CENTRALNY PAS OSTRZEGAWCZY I TABLICA HAZMAT -->
+        <!-- Tlo pasa ostrzegawczego -->
+        <rect x="404" y="610" width="88" height="24" fill="url(#hazard-stripes-yellow)" opacity="0.85" />
+        <rect x="404" y="610" width="88" height="24" fill="none" stroke="#18181b" stroke-width="1.2" />
+
+        <!-- Romb ostrzegawczy HAZMAT (Placard Diamond) -->
+        <g transform="translate(448, 622) rotate(45)">
+          <rect x="-15" y="-15" width="30" height="30" rx="2" fill="#f59e0b" stroke="#18181b" stroke-width="2.0" filter="url(#drum-drop-shadow)" />
+          <rect x="-12.5" y="-12.5" width="25" height="25" fill="none" stroke="#18181b" stroke-width="1.0" />
+        </g>
+
+        <!-- Piktogram w srodku rombu -->
+        
+      <!-- Piktogram Bomby -->
+      <circle cx="448" cy="618.95" r="5.225" fill="#facc15" />
+      <rect x="446.1" y="612.3" width="3.8" height="2.8499999999999996" fill="#71717a" />
+      <path d="M 448 612.3 Q 451.8 608.5 453.7 610.4" fill="none" stroke="#f97316" stroke-width="1.3299999999999998" stroke-linecap="round" />
+    
+
+        <!-- Klasa zagrozenia DOT (Numer na dole rombu) -->
+        <text x="448" y="632" font-family="monospace, sans-serif" font-weight="900" font-size="7.5" fill="#18181b" text-anchor="middle">1</text>
+
+        <!-- Napisy szablonowe (Stencils) -->
+        <text x="448" y="584" font-family="Arial, sans-serif" font-weight="900" font-size="6.5" fill="rgba(255, 255, 255, 0.85)" letter-spacing="1.2" text-anchor="middle">EXPLOSIVE</text>
+        <text x="448" y="670" font-family="monospace, sans-serif" font-weight="700" font-size="5.8" fill="rgba(255, 255, 255, 0.7)" letter-spacing="0.8" text-anchor="middle">HE-105 • 55 GAL / 208L</text>
+    
+        <!-- Przestrzaly i odpryski farby -->
+        <circle cx="434" cy="604" r="4.5" fill="#18181b" stroke="#71717a" stroke-width="1.2" />
+        <circle cx="434" cy="604" r="2.2" fill="#09090b" />
+        <path d="M 434 604 l -5 6 l 2 3 l -3 4" fill="none" stroke="#27272a" stroke-width="1.0" />
+
+        <!-- Rysa i odrapanie powloki z odslonieciem stali -->
+        <path d="M 464 578 Q 456 590 470 602" fill="none" stroke="#d4d4d8" stroke-width="1.4" />
+        <circle cx="474" cy="660" r="3.5" fill="#18181b" stroke="#52525b" stroke-width="1.0" />
+      
+        <!-- Pekniecia termiczne powłoki pod cisnieniem -->
+        <g filter="url(#glow-fire)">
+          <path d="M 420 586 L 436 598 L 430 618 L 444 640 L 440 664" fill="none" stroke="#facc15" stroke-width="2.0" stroke-linecap="round" />
+          <path d="M 470 582 L 460 602 L 474 624 L 466 650" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" />
+        </g>
+
+        <!-- Snop iskier i syczacy plomien z korka wlewu -->
+        <g filter="url(#glow-fire)">
+          <circle cx="428" cy="550" r="6.0" fill="#facc15" />
+          <circle cx="428" cy="550" r="3.2" fill="#ffffff" />
+          <!-- Wystrzelone iskry -->
+          <circle cx="424" cy="540" r="2.0" fill="#facc15" />
+          <circle cx="433" cy="536" r="2.4" fill="#ffffff" />
+          <circle cx="418" cy="534" r="1.6" fill="#ef4444" />
+          <circle cx="438" cy="541" r="1.8" fill="#facc15" />
+          <circle cx="429" cy="530" r="1.4" fill="#ffffff" />
+        </g>
+      
+      </g>
+    
+</svg>

@@ -35,12 +35,40 @@ export const BARREL_TYPES = {
     poolDuration: 8.0,      // Czas trwania kałuży kwasu (sekundy)
     poolRadius: 65,         // Szerokość rozlanej plamy (px)
     poolDps: 14.0           // Obrażenia na sekundę w kałuży
+  },
+  CRYO: {
+    id: 'CRYO',
+    name: 'Beczka Kriogeniczna',
+    color: '#0284c7',
+    rimColor: '#082f49',
+    hazardSign: 'FROST',
+    maxHp: 25,
+    radius: 140,
+    maxDamage: 55,
+    knockbackForce: 13.0,
+    screenShake: 14,
+    soundType: 'CRYO_BURST',
+    glowColor: '#38bdf8'
+  },
+  ORDNANCE: {
+    id: 'ORDNANCE',
+    name: 'Beczka Wojskowa HE',
+    color: '#3f3f46',
+    rimColor: '#18181b',
+    hazardSign: 'BOMB',
+    maxHp: 30,
+    radius: 175,
+    maxDamage: 110,
+    knockbackForce: 18.0,
+    screenShake: 22,
+    soundType: 'EXPLOSION',
+    glowColor: '#f59e0b'
   }
 };
 
 export const BARREL_CONFIG = {
   WIDTH: 26,
-  HEIGHT: 36,
+  HEIGHT: 38,
   RESPAWN_DELAY: 35.0,     // Czas do ponownego odrodzenia po wybuchu (sekundy)
   KICK_IMPULSE_X: 14.5,    // Prędkość pozioma po Spartan Kicku [E]
   KICK_IMPULSE_Y: -4.8,    // Lekkie uniesienie w powietrze przy wykopie
