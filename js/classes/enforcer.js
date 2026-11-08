@@ -499,7 +499,8 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   });
 
   // Mocne tąpnięcie ziemi oraz wyrzut pyłu i sprężonego powietrza (ZERO OGNIA!)
-  triggerScreenShake(8.5);
+  const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
+  triggerScreenShake(isLocalHuman ? 8.0 : 1.2);
 
   if (typeof spawnShockwaveRing === 'function') {
     spawnShockwaveRing(centerX, currentFloor - 3);
@@ -542,7 +543,8 @@ export function triggerEnforcerGroundSlam(player) {
   player.isSliding = false;
   player.isJumping = true;
 
-  triggerScreenShake(4.0);
+  const isLocalHumanSlam = (typeof window !== 'undefined' && window.player === player);
+  triggerScreenShake(isLocalHumanSlam ? 4.0 : 0.8);
   const cx = player.x + (player.w || 30) / 2;
   const cy = player.y + (player.h || 74) / 2;
   if (typeof spawnHeavySmokePuff === 'function') {

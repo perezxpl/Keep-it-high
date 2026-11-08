@@ -828,7 +828,8 @@ export function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   player.airVx = player.vx;
   player.x += player.vx * 0.3;
   player.y += player.vy * 0.3;
-  triggerScreenShake(1.2 + 1.8 * power);
+  const isLocalHumanAir = (typeof window !== 'undefined' && window.player === player);
+  triggerScreenShake(isLocalHumanAir ? (1.2 + 1.8 * power) : 0.5);
 
   // Wybuch płomieni w kierunku przeciwnym do wektora lotu
   emitBootsBurstParticles(player, -dirX, -dirY, Math.round(6 + 6 * power));
@@ -857,7 +858,8 @@ export function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 
   player.vx = dir * rb.dashSpeed;
   player.airVx = player.vx;
   player.x += player.vx * 0.3;
-  triggerScreenShake(1.0 + 1.4 * power);
+  const isLocalHumanGround = (typeof window !== 'undefined' && window.player === player);
+  triggerScreenShake(isLocalHumanGround ? (1.0 + 1.4 * power) : 0.5);
 
   // Wybuch płomieni z pięt na poziomie murawy
   emitBootsBurstParticles(player, -dir, 0, Math.round(5 + 6 * power));

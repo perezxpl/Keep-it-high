@@ -130,7 +130,7 @@ export const camera = {
   viewWidth: 1920,
   viewHeight: 1080,
   shakeIntensity: 0,
-  shakeDecay: 0.88,
+  shakeDecay: 0.82,
   shakeX: 0,
   shakeY: 0,
   activeArenaId: 'ARENA_1',
@@ -620,8 +620,8 @@ export function updateCamera(player, ball, options = {}) {
     camera.y = targetCamY;
     camera.zoom = camera.targetZoom;
   } else {
-    camera.x += (targetCamX - camera.x) * lerpSpeed + camera.shakeX;
-    camera.y += (targetCamY - camera.y) * lerpSpeed + camera.shakeY;
+    camera.x += (targetCamX - camera.x) * lerpSpeed;
+    camera.y += (targetCamY - camera.y) * lerpSpeed;
   }
 
   // =========================================================================
@@ -682,7 +682,9 @@ export function updateCamera(player, ball, options = {}) {
 export function applyCameraTransform(ctx, cam = camera) {
   ctx.save();
   ctx.scale(cam.zoom, cam.zoom);
-  ctx.translate(-cam.x, -cam.y);
+  const sx = cam.shakeX || 0;
+  const sy = cam.shakeY || 0;
+  ctx.translate(-cam.x - sx, -cam.y - sy);
 }
 
 export function restoreCameraTransform(ctx) {
@@ -693,9 +695,11 @@ export function restoreCameraTransform(ctx) {
  * Konwersja współrzędnych świata na piksele ekranu
  */
 export function worldToScreen(worldX, worldY, cam = camera) {
+  const sx = cam.shakeX || 0;
+  const sy = cam.shakeY || 0;
   return {
-    x: (worldX - cam.x) * cam.zoom,
-    y: (worldY - cam.y) * cam.zoom
+    x: (worldX - cam.x - sx) * cam.zoom,
+    y: (worldY - cam.y - sy) * cam.zoom
   };
 }
 
@@ -703,8 +707,11 @@ export function worldToScreen(worldX, worldY, cam = camera) {
  * Konwersja pikseli ekranu na współrzędne świata
  */
 export function screenToWorld(screenX, screenY, cam = camera) {
+  const sx = cam.shakeX || 0;
+  const sy = cam.shakeY || 0;
   return {
-    x: cam.x + screenX / cam.zoom,
-    y: cam.y + screenY / cam.zoom
+    x: cam.x + sx + screenX / cam.zoom,
+    y: cam.y + sy + screenY / cam.zoom
   };
 }
+

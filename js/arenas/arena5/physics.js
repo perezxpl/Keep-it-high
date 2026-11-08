@@ -334,7 +334,6 @@ function checkFallingSquash(combatants) {
 
               if (Math.random() < 0.25) {
                 spawnRicochetSparks(victim.x + pW * 0.5, st.bottom, (Math.random() - 0.5) * 4, 3, 2);
-                triggerScreenShake(3);
               }
               break;
             }
@@ -439,7 +438,7 @@ function onCraneBlockImpact(combatants) {
   crane.cooldownTimer = 0.85; // Częstsze zrzuty: dynamiczna przerwa 0.85s
   arena5State.totalBlocksDropped++;
 
-  triggerScreenShake(9);
+  triggerScreenShake(3.0);
 
   // Osadzenie komórek w siatce gridRows oraz dodanie trwałych obiektów platform
   const pieceId = crane.pieceId || ('p_' + (arena5State.nextPieceId++));
@@ -786,7 +785,7 @@ export function applyPieceGravity(combatants = null) {
   }
 
   if (anyBlockFell) {
-    triggerScreenShake(4);
+    triggerScreenShake(1.5);
     updateTowerApexAndSpawns();
 
     // Wypchnij postacie, które mogły znaleźć się w strefie opadania klocka
@@ -1047,7 +1046,7 @@ function updateFallingBlocks(dt, combatants) {
   }
 
   if (anyLanded) {
-    triggerScreenShake(3);
+    triggerScreenShake(1.2);
     updateTowerApexAndSpawns();
     syncArena5ExposedSurfaces();
     checkAndTriggerLineClears(combatants);
@@ -1294,7 +1293,8 @@ function executeRecyclerKill(victim) {
   victim.onGround = false;
   victim.currentPlatform = null;
 
-  triggerScreenShake(7);
+  const isLocalHuman = (typeof window !== 'undefined' && window.player === victim);
+  triggerScreenShake(isLocalHuman ? 6.0 : 1.2);
   spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + 20, 0, -1, 18, 2.0);
 }
 
