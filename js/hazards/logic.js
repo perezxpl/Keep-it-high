@@ -8,11 +8,60 @@
 // =========================================================================
 
 import { hazardsState, BARREL_CONFIG, BARREL_TYPES, ARENA_BARREL_SPAWNS, createBarrelInstance } from './state.js';
-import { triggerScreenShake, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib } from '../world.js';
+import { triggerScreenShake, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, carveGroundHole } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
-import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../particles.js';
+import {
+  spawnShockwaveRing,
+  spawnConcreteDebris,
+  spawnRicochetSparks,
+  spawnJuiceExplosion,
+  spawnShrapnelStreak,
+  spawnPowderSmoke,
+  spawnDustCloud,
+  ConcreteDebris,
+  concreteDebrisList
+} from '../particles.js';
+import { spawnExplosionEffect } from '../projectiles.js';
+import { addDynamicLight } from '../lighting/index.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+
+/**
+ * Rozrzuca rozerwane metalowe odłamki blachy zniszczonej beczki
+ */
+export function spawnBarrelShrapnel(x, y, barrelType = 'EXPLOSIVE') {
+  if (concreteDebrisList.length > 30) {
+    concreteDebrisList.splice(0, concreteDebrisList.length - 30);
+  }
+  const isToxic = (barrelType === 'TOXIC');
+  const colors = isToxic
+    ? ['#22c55e', '#16a34a', '#14532d', '#18181b', '#4ade80', '#27272a']
+    : ['#ef4444', '#dc2626', '#991b1b', '#18181b', '#facc15', '#27272a'];
+
+  for (let i = 0; i < 16; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 160 + Math.random() * 340;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed - (60 + Math.random() * 140);
+    const size = 5 + Math.random() * 6; // 5–11px metal shards
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const vRot = (Math.random() - 0.5) * 22;
+
+    concreteDebrisList.push(new ConcreteDebris({
+      x: x + (Math.random() - 0.5) * 16,
+      y: y + (Math.random() - 0.5) * 16,
+      vx,
+      vy,
+      angle: Math.random() * Math.PI * 2,
+      vRot,
+      size,
+      color,
+      bounces: 0,
+      maxBounces: 2,
+      life: 3.5
+    }));
+  }
+}
 
 /**
  * Oblicza wysokość podłoża lub platformy pod beczką
@@ -130,10 +179,49 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
   const typeDef = barrel.typeDef || BARREL_TYPES.EXPLOSIVE;
   const isToxic = (barrel.type === 'TOXIC');
 
-  // 1. Efekty audiowizualne wybuchu
-  triggerScreenShake(typeDef.screenShake || 18);
-  spawnShockwaveRing(bx, by, typeDef.radius, typeDef.glowColor);
-  spawnConcreteDebris(bx, by, 16);
+  // 1. Spektakularne efekty audiowizualne wybuchu (Kinowa eksplozja, Game Juice, kula ognia, błysk, szrapnel)
+  triggerScreenShake(typeDef.screenShake || 20);
+
+  // A. Kula ognia i intensywny biały błysk (ExplosionEffect z radialnym gradientem, błyskiem 2 klatek i ekspansją)
+  spawnExplosionEffect(bx, by, typeDef.radius, { isToxic });
+
+  // B. Kinowy zestaw cząsteczek Game Juice:
+  // - 1x ShockwaveRing (fala uderzeniowa)
+  // - 12x ExplosionFirePuff (nakładające się kule ognia zlewające się w rozżarzone biało-żółte jądro)
+  // - 24x StretchedSparks (rozciągane linie żaru)
+  // - 10x HeavySmokePuff (ciemne kłęby dymu wybuchu w tle)
+  spawnJuiceExplosion(bx, by);
+
+  // C. Naddźwiękowe smugi szrapnela (1400–1800 px/s)
+  spawnShrapnelStreak(bx, by, 18);
+
+  // D. Kłęby dymu prochowego i obłok pyłu podmuchowego
+  spawnPowderSmoke(bx, by, 10);
+  spawnDustCloud(bx, by, 12);
+
+  // E. Rozerwane, wirujące metalowe odłamki blachy beczki
+  spawnBarrelShrapnel(bx, by, barrel.type);
+  spawnConcreteDebris(bx, by, 10);
+
+  // F. Dynamiczne rozświetlenie sceny oświetleniem 2D
+  addDynamicLight({
+    x: bx,
+    y: by,
+    radius: isToxic ? 440 : 540,
+    color: isToxic ? '#22c55e' : '#ff7700',
+    intensity: 1.0,
+    duration: 0.40,
+    expand: true
+  });
+
+  // G. Wyrwa w podłożu i reakcja unikalnych elementów aktywnej areny
+  if (typeof carveGroundHole === 'function') {
+    carveGroundHole(bx, by, 32);
+  }
+  const curArena = (typeof getActiveArena === 'function') ? getActiveArena() : null;
+  if (curArena && typeof curArena.onExplosion === 'function') {
+    curArena.onExplosion(bx, by, typeDef.radius);
+  }
 
   // 2. Zadanie obrażeń i odrzut wszystkim jednostkom w promieniu eksplozji
   const targets = Array.isArray(combatants) ? combatants : [];

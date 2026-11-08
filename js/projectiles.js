@@ -1721,7 +1721,7 @@ export function clearRubbleParticles() {
 /**
  * Błysk i rozrastająca się fala uderzeniowa eksplozji
  */
-export function spawnExplosionEffect(x, y, maxRadius = 145) {
+export function spawnExplosionEffect(x, y, maxRadius = 145, options = {}) {
   explosionEffects.push({
     x,
     y,
@@ -1733,7 +1733,9 @@ export function spawnExplosionEffect(x, y, maxRadius = 145) {
     maxLife: 28,
     flashAlpha: 1.0,
     flashFrames: 2, // 2 klatki, promień 60px, kolor: '#FFFFFF'
-    flashRadius: 60
+    flashRadius: 60,
+    isToxic: !!options.isToxic,
+    glowColor: options.glowColor || null
   });
 }
 
@@ -1771,11 +1773,19 @@ export function drawExplosionEffects(ctx) {
 
     // 1. Kula ognia
     const grad = ctx.createRadialGradient(ef.x, ef.y, 0, ef.x, ef.y, ef.currentRadius);
-    grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
-    grad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.9})`);
-    grad.addColorStop(0.55, `rgba(249, 115, 22, ${alpha * 0.75})`);
-    grad.addColorStop(0.85, `rgba(239, 68, 68, ${alpha * 0.45})`);
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    if (ef.isToxic) {
+      grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
+      grad.addColorStop(0.25, `rgba(220, 252, 231, ${alpha * 0.95})`);
+      grad.addColorStop(0.55, `rgba(74, 222, 128, ${alpha * 0.85})`);
+      grad.addColorStop(0.85, `rgba(22, 163, 74, ${alpha * 0.55})`);
+      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    } else {
+      grad.addColorStop(0.0, `rgba(255, 255, 255, ${ef.flashAlpha})`);
+      grad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.9})`);
+      grad.addColorStop(0.55, `rgba(249, 115, 22, ${alpha * 0.75})`);
+      grad.addColorStop(0.85, `rgba(239, 68, 68, ${alpha * 0.45})`);
+      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    }
 
     ctx.fillStyle = grad;
     ctx.beginPath();
