@@ -645,13 +645,22 @@ export class ThrownTomahawk {
       // 3. Trafienie w przeciwników (Combatants Hit / Decapitation / Cleave)
       if (Array.isArray(combatants)) {
         for (const ch of combatants) {
-          if (!ch || ch === this.shooter || ch.isDead || this.hitCombatants.has(ch)) continue;
+          const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+          if (!ch || ch === this.shooter || (ch.isDead && !isLyingZombie) || this.hitCombatants.has(ch)) continue;
+          if (ch.isBot && !ch.active && !isLyingZombie) continue;
           if (!isDeathmatchFFA() && this.team && ch.team && this.team === ch.team) continue;
 
-          const chLeft = ch.x;
-          const chRight = ch.x + (ch.w || 24);
-          const chTop = ch.y;
-          const chBottom = ch.y + (ch.h || 70);
+          let chLeft = ch.x;
+          let chRight = ch.x + (ch.w || 24);
+          let chTop = ch.y;
+          let chBottom = ch.y + (ch.h || 70);
+
+          if (ch.isProne || (ch.staggerTimer > 0) || isLyingZombie) {
+            chTop = ch.y + (ch.h || 70) - 24;
+            chBottom = ch.y + (ch.h || 70) + 4;
+            chLeft = ch.x - (ch.facing === 1 ? 22 : 38);
+            chRight = ch.x + (ch.w || 24) + (ch.facing === 1 ? 38 : 22);
+          }
 
           if (this.x + this.radius >= chLeft && this.x - this.radius <= chRight &&
               this.y + this.radius >= chTop && this.y - this.radius <= chBottom) {
@@ -671,7 +680,7 @@ export class ThrownTomahawk {
             let isLegshot = false;
             let isTorsoShot = false;
 
-            if (ch.isProne || (ch.staggerTimer > 0)) {
+            if (ch.isProne || (ch.staggerTimer > 0) || (ch.isZombie && ch.isDead)) {
               // Sylwetka leżąca wzdłuż osi X
               if (ch.facing === 1) {
                 isHeadshot = (this.x >= ch.x + (ch.w || 24) * 0.55);
@@ -780,6 +789,34 @@ export class ThrownTomahawk {
             ch.lastAttacker = this.shooter;
             ch.lastAttackerTimer = 240;
 
+            // Dobicie lub postrzał leżącego zombie toporkiem
+            if (ch.isZombie && ch.isDead && isLyingZombie) {
+              if (isHeadshot) {
+                ch.hasHead = false;
+                ch.decapitated = true;
+                ch.severedHead = null;
+                ch.reviveTimer = 0;
+                ch.neckFountainTimer = 65;
+                triggerHitstop(4);
+                triggerScreenShake(20);
+                const targetVisuals = ch.visuals || DEFAULT_VISUALS;
+                spawnHeadGib(ch.x + (ch.w || 24) * 0.5, ch.y + (ch.h || 70) - 10, Math.sign(this.vx || 1) * 6.0, -7.0, ch.facing, targetVisuals);
+                spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + (ch.h || 70) - 6, ch.facing, 6);
+                triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY TOPOREM!');
+                if (typeof window !== 'undefined') {
+                  if (typeof window.recordKill === 'function' && this.shooter === window.player) {
+                    window.recordKill();
+                  }
+                  if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
+                    window.registerKillstreakKill();
+                  }
+                }
+              } else {
+                ch.reviveTimer = Math.max(ch.reviveTimer, 3.5);
+                spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.0, -1.8, 14, 1.1);
+              }
+            }
+
             if (ch.hp <= 0 && !ch.isDead) {
               ch.isDead = true;
               ch.killer = this.shooter;
@@ -808,6 +845,26 @@ export class ThrownTomahawk {
               ch.bleedTimer = 90;
               spawnBloodSpurt(this.x, this.y, throwDir * 5.0, -2.5, isHeadshot ? 32 : (isTorsoShot ? 22 : 14), 1.4);
               spawnBloodDrip(this.x, this.y, throwDir * 2.2, -1.0, 8);
+
+              if (ch.isZombie) {
+                if (isHeadshot) {
+                  ch.hasHead = false;
+                  ch.decapitated = true;
+                  ch.severedHead = null;
+                  ch.reviveTimer = 0;
+                  ch.neckFountainTimer = 65;
+                  const targetVisuals = ch.visuals || DEFAULT_VISUALS;
+                  spawnHeadGib(ch.x + (ch.w || 24) * 0.5, ch.y + 2, throwDir * 6.0, -7.0, ch.facing, targetVisuals);
+                  spawnBloodFountain(ch.x + (ch.w || 24) * 0.5, ch.y + 14, ch.facing, 6);
+                  triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY TOPOREM!');
+                } else {
+                  ch.hasHead = true;
+                  ch.decapitated = false;
+                  ch.severedHead = null;
+                  ch.reviveTimer = 4.0;
+                  triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
+                }
+              }
 
               if (ch.currentWeapon) {
                 spawnDroppedWeapon(
@@ -1084,7 +1141,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   const targets = Array.isArray(combatants) ? combatants : [];
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   for (const ch of targets) {
-    if (!ch || ch.isDead) continue;
+    const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+    if (!ch || (ch.isDead && !isLyingZombie)) continue;
+    if (ch.isBot && !ch.active && !isLyingZombie) continue;
     const chCenterX = ch.x + ch.w / 2;
     const chCenterY = ch.y + ch.h / 2;
     const dist = Math.hypot(chCenterX - expX, chCenterY - expY);
@@ -1130,6 +1189,32 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         ch.lastAttackerTimer = 240;
       }
       spawnBloodSpurt(chCenterX, chCenterY, normX * 4, normY * 4, 12, 1.3);
+
+      // Dobicie lub fala uderzeniowa na leżącego zombie
+      if (isLyingZombie) {
+        if (dist <= radius * 0.65) {
+          ch.hasHead = false;
+          ch.decapitated = true;
+          ch.severedHead = null;
+          ch.reviveTimer = 0;
+          ch.neckFountainTimer = 65;
+          const targetVisuals = ch._cachedVisuals || { ...DEFAULT_VISUALS, ...(ch.visuals || {}) };
+          spawnHeadGib(chCenterX, chCenterY - 10, normX * 4.5, -6.5, ch.facing, targetVisuals);
+          spawnBloodFountain(chCenterX, chCenterY + 14, ch.facing, 6);
+          triggerCombatFeedBanner('KILL', '[DEKAPITACJA] LEŻĄCY ZOMBIE ROZSZARPANY WYBUCHEM!');
+          if (typeof window !== 'undefined') {
+            if (typeof window.recordKill === 'function' && shooter === window.player) {
+              window.recordKill();
+            }
+            if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
+              window.registerKillstreakKill();
+            }
+          }
+        } else {
+          ch.reviveTimer = Math.max(ch.reviveTimer, 3.5);
+        }
+        continue;
+      }
 
       // Synchronizacja obrażeń od wybuchu w grze sieciowej
       const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
@@ -1211,6 +1296,22 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             ch.dismembered.armFront = true;
             spawnLimbGib('arm', chCenterX, chCenterY - 10, normX * 4.0, -5.5, ch.facing, targetVisuals);
             spawnBloodFountain(chCenterX, chCenterY + 16, ch.facing, 5);
+          }
+        }
+
+        if (ch.isZombie) {
+          if (ch.isGibbed || ch.decapitated) {
+            ch.hasHead = false;
+            ch.decapitated = true;
+            ch.severedHead = null;
+            ch.reviveTimer = 0;
+            triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ROZSZARPANY WYBUCHEM!');
+          } else {
+            ch.hasHead = true;
+            ch.decapitated = false;
+            ch.severedHead = null;
+            ch.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY FALA WYBUCHU! WSTANIE ZA 4s!');
           }
         }
 

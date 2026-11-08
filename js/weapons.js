@@ -222,21 +222,24 @@ function updateMeleeCollision(shooter, ms) {
   }
 
   for (const t of candidateTargets) {
-    if (!t || t === shooter || t.isDead) continue;
+    const isLyingZombie = !!(t.isZombie && t.isDead && t.hasHead && !t.decapitated);
+    if (!t || t === shooter || (t.isDead && !isLyingZombie)) continue;
+    if (t.isBot && !t.active && !isLyingZombie) continue;
     if (shooter.team && t.team && shooter.team === t.team) continue;
     if (ms.hitTargets.has(t)) continue;
 
     const tx = t.x + (t.w || 24) * 0.5;
     let headX, headY, torsoX, torsoY, legsX, legsY;
 
-    if (t.isProne) {
+    if (t.isProne || (t.isZombie && t.isDead)) {
       const tFacing = t.facing || 1;
-      headX = tx + tFacing * 20;
-      headY = t.y + 10;
+      const feetY = t.y + (t.h || 70);
+      headX = tx + tFacing * 18;
+      headY = feetY - 6;
       torsoX = tx;
-      torsoY = t.y + 12;
-      legsX = tx - tFacing * 20;
-      legsY = t.y + 14;
+      torsoY = feetY - 8;
+      legsX = tx - tFacing * 18;
+      legsY = feetY - 6;
     } else {
       headX = tx;
       headY = t.y + 12;
@@ -313,6 +316,33 @@ function updateMeleeCollision(shooter, ms) {
         t.staggerTimer = Math.max(t.staggerTimer || 0, cfg.staggerDuration);
       }
 
+      // Dobicie lub cios w leżącego zombie bronią białą
+      if (t.isZombie && t.isDead && isLyingZombie) {
+        if (isHeadshot || ms.weaponId === 'MACHETE') {
+          t.hasHead = false;
+          t.decapitated = true;
+          t.severedHead = null;
+          t.reviveTimer = 0;
+          t.neckFountainTimer = 85;
+          const targetVisuals = getCharVisuals(t);
+          spawnHeadGib(t.x + (t.w || 24) * 0.5, t.y + (t.h || 70) - 10, facing * 6.0, -7.0, t.facing, targetVisuals);
+          spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + (t.h || 70) - 6, t.facing, 6);
+          triggerScreenShake(20);
+          triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY BRONIĄ BIAŁĄ!');
+          if (typeof window !== 'undefined') {
+            if (typeof window.recordKill === 'function' && shooter === window.player) {
+              window.recordKill();
+            }
+            if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
+              window.registerKillstreakKill();
+            }
+          }
+        } else {
+          t.reviveTimer = Math.max(t.reviveTimer, 3.5);
+          spawnBloodSpurt(hitX, hitY, facing, -0.4, 16, 1.2);
+        }
+      }
+
       if (t.hp <= 0 && !t.isDead) {
         t.isDead = true;
         t.killer = shooter;
@@ -384,6 +414,22 @@ function updateMeleeCollision(shooter, ms) {
             t.neckFountainTimer = 75;
             spawnBloodFountain(t.x + (t.w || 24) * 0.5, t.y + 14, t.facing, 7);
             spawnBloodSpurt(hitX, hitY, facing, -0.3, 30, 2.0);
+          }
+        }
+
+        if (t.isZombie) {
+          if (t.decapitated || isHeadshot) {
+            t.hasHead = false;
+            t.decapitated = true;
+            t.severedHead = null;
+            t.reviveTimer = 0;
+            triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ŚCIĘTY BRONIĄ BIAŁĄ!');
+          } else {
+            t.hasHead = true;
+            t.decapitated = false;
+            t.severedHead = null;
+            t.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         }
 
@@ -1073,8 +1119,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
     const maxBy = b.prevY > endY ? b.prevY : endY;
 
     for (const ch of charList) {
-      if (!ch || ch === b.shooter || ch.isDead) continue;
-      if (ch.isBot && !ch.active) continue;
+      const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+      if (!ch || ch === b.shooter || (ch.isDead && !isLyingZombie)) continue;
+      if (ch.isBot && !ch.active && !isLyingZombie) continue;
       const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
         (deathmatchState && deathmatchState.mode === 'FFA') ||
         (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
@@ -1096,12 +1143,12 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let charTop = ch.y - 25;
       let charBottom = ch.y + hitH;
 
-      if (ch.isProne || ch.staggerTimer > 0) {
+      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
         // Obniżony profil kolizji dla pozycji leżącej na brzuchu lub na plecach po powaleniu
         charTop = ch.y + hitH - 24;
-        charBottom = ch.y + hitH + 2;
-        charLeft = ch.x - (ch.facing === 1 ? 14 : 38);
-        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
+        charBottom = ch.y + hitH + 4;
+        charLeft = ch.x - (ch.facing === 1 ? 22 : 38);
+        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 22);
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
@@ -1135,7 +1182,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let isLegshot = false;
       let isTorsoShot = false;
 
-      if (closestChar.isProne || (closestChar.staggerTimer > 0)) {
+      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && closestChar.isDead)) {
         // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X
         if (closestChar.facing === 1) {
           isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.60);
@@ -1316,6 +1363,51 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         if (isShotgun) triggerScreenShake(2.0);
       }
 
+      // Dobicie lub postrzał leżącego zombie oczekującego na powstanie
+      if (closestChar.isZombie && closestChar.isDead && closestChar.hasHead && !closestChar.decapitated) {
+        const isSniper = (b.weaponId === 'SNIPER' || b.isSniper);
+        const charVisuals = getCharVisuals(closestChar);
+
+        if (isHeadshot) {
+          // Definitywne uśmiercenie leżącego zombie strzałem w głowę!
+          closestChar.hasHead = false;
+          closestChar.decapitated = true;
+          closestChar.severedHead = null;
+          closestChar.reviveTimer = 0;
+          closestChar.neckFountainTimer = 65;
+
+          triggerHitstop(2);
+          triggerScreenShake(isSniper ? 22 : (isShotgun ? 18 : 12));
+
+          spawnHeadGib(
+            closestChar.x + closestChar.w / 2,
+            closestChar.y + closestChar.h - 12,
+            b.vx * 0.65,
+            -6.5,
+            closestChar.facing,
+            charVisuals
+          );
+
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
+          spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + closestChar.h - 8, closestChar.facing, 6);
+          triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE UŚMIERCONY STRZAŁEM W GŁOWĘ!');
+
+          if (typeof window !== 'undefined') {
+            if (typeof window.recordKill === 'function' && b.shooter === window.player) {
+              window.recordKill();
+            }
+            if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
+              window.registerKillstreakKill();
+            }
+          }
+        } else {
+          // Trafienie w korpus lub nogi leżącego zombie: opóźnienie powstania
+          closestChar.reviveTimer = Math.max(closestChar.reviveTimer, 3.5);
+          spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.45, -1.5, 14, 1.1);
+          spawnBloodDrip(hitPtX, hitPtY, (Math.random() - 0.5) * 2, -1.0, 4);
+        }
+      }
+
       // =====================================================================
       // OBSŁUGA ZGONU: REALISTYCZNY IMPULS RAGDOLLA I ROZRYWANIE KOŃCZYN
       // =====================================================================
@@ -1419,6 +1511,19 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
           spawnBloodSpurt(hitPtX, hitPtY, b.vx, -2.5, 25, 1.4);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 0;
+            triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE UŚMIERCONY STRZAŁEM W GŁOWĘ!');
+          }
+          if (typeof window !== 'undefined') {
+            if (typeof window.recordKill === 'function' && b.shooter === window.player) {
+              window.recordKill();
+            }
+            if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
+              window.registerKillstreakKill();
+            }
+          }
         } else if (isLegshot) {
           // 2. ODERWANIE NOGI (Śmiertelny strzał w dolne kończyny)
           closestChar.hasHead = true;
@@ -1433,6 +1538,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           spawnLimbGib('leg', hitPtX, hitPtY, b.vx, b.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.7, -2.0, 24, 1.4);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
+          }
         } else {
           // 3. TRAFIENIE W TORS / RAMIONA:
           closestChar.hasHead = true;
@@ -1453,6 +1563,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             triggerScreenShake(6);
           }
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.45, -1.5, 16, 1.1);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
+          }
         }
       }
 

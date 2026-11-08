@@ -77,6 +77,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     name: 'ZOMBIE',
     isZombie: true,
     isBot: true,
+    active: true,          // Flaga aktywności dla silnika kolizji i balistyki
     team: 'INFECTED',      // Neutralna wroga frakcja atakująca wszystkich
 
     x: x - 12,

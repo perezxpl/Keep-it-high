@@ -272,8 +272,9 @@ export class RpgRocket {
     const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
 
     for (const ch of charList) {
-      if (!ch || ch === this.shooter || ch.isDead) continue;
-      if (ch.isBot && !ch.active) continue;
+      const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
+      if (!ch || ch === this.shooter || (ch.isDead && !isLyingZombie)) continue;
+      if (ch.isBot && !ch.active && !isLyingZombie) continue;
 
       const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
         (deathmatchState && deathmatchState.mode === 'FFA') ||
@@ -293,11 +294,11 @@ export class RpgRocket {
       let charTop = ch.y - 25;
       let charBottom = ch.y + hitH;
 
-      if (ch.isProne || ch.staggerTimer > 0) {
+      if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
         charTop = ch.y + hitH - 24;
-        charBottom = ch.y + hitH + 2;
-        charLeft = ch.x - (ch.facing === 1 ? 14 : 38);
-        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 14);
+        charBottom = ch.y + hitH + 4;
+        charLeft = ch.x - (ch.facing === 1 ? 22 : 38);
+        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 22);
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
@@ -333,7 +334,7 @@ export class RpgRocket {
       let isLegshot = false;
       let isTorsoShot = false;
 
-      if (closestChar.isProne || (closestChar.staggerTimer > 0)) {
+      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && closestChar.isDead)) {
         if (closestChar.facing === 1) {
           isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.60);
           isLegshot = (hitPtX <= closestChar.x - 4);
@@ -482,6 +483,30 @@ export class RpgRocket {
         }
       }
 
+      // Dobicie lub bezpośrednie trafienie w leżącego zombie
+      if (closestChar.isZombie && closestChar.isDead && closestChar.hasHead && !closestChar.decapitated) {
+        const charVisuals = closestChar.visuals || closestChar.currentClass?.visuals || DEFAULT_VISUALS;
+        closestChar.hasHead = false;
+        closestChar.decapitated = true;
+        closestChar.severedHead = null;
+        closestChar.reviveTimer = 0;
+        closestChar.neckFountainTimer = 65;
+        triggerHitstop(2);
+        triggerScreenShake(24);
+        spawnHeadGib(closestChar.x + closestChar.w / 2, closestChar.y + closestChar.h - 12, this.vx * 0.70, -7.5, closestChar.facing, charVisuals);
+        spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + closestChar.h - 8, closestChar.facing, 6);
+        triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ROZTRZASKANY RAKIETĄ!');
+
+        if (typeof window !== 'undefined') {
+          if (typeof window.recordKill === 'function' && this.shooter === window.player) {
+            window.recordKill();
+          }
+          if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
+            window.registerKillstreakKill();
+          }
+        }
+      }
+
       // Obsługa natychmiastowego zgonu z dekapitacją / rozczłonkowaniem
       if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
         closestChar.isDead = true;
@@ -516,18 +541,41 @@ export class RpgRocket {
           triggerScreenShake(24);
           spawnHeadGib(closestChar.x + closestChar.w / 2, closestChar.y + 2, this.vx * 0.70, -7.5, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 14, closestChar.facing, 6);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 0;
+            triggerCombatFeedBanner('KILL', '[DEKAPITACJA] ZOMBIE ROZTRZASKANY RAKIETĄ!');
+          }
+          if (typeof window !== 'undefined') {
+            if (typeof window.recordKill === 'function' && this.shooter === window.player) {
+              window.recordKill();
+            }
+            if (typeof window.registerKillstreakKill === 'function' && this.shooter === window.player) {
+              window.registerKillstreakKill();
+            }
+          }
         } else if (isLegshot) {
           closestChar.dismembered.legFront = true;
           triggerHitstop(2);
           triggerScreenShake(20);
           spawnLimbGib('leg', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 45, closestChar.facing, 5);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
+          }
         } else {
           closestChar.dismembered.armFront = true;
           triggerHitstop(2);
           triggerScreenShake(20);
           spawnLimbGib('arm', hitPtX, hitPtY, this.vx, this.vy, closestChar.facing, charVisuals);
           spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + 16, closestChar.facing, 5);
+
+          if (closestChar.isZombie) {
+            closestChar.reviveTimer = 4.0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
+          }
         }
 
         closestChar.deathImpulse = { vx: this.vx * 0.50, vy: -3.2 };

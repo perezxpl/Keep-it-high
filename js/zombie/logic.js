@@ -150,10 +150,23 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
     // --- STAN ZGONU / POWALENIA ZOMBIE ---
     if (z.isDead) {
+      // Grawitacja i kolizja z podłożem dla powalonego/martwego ciała
+      z.vy += 0.45;
+      if (z.vy > 12) z.vy = 12;
+      const feetX = z.x + z.w * 0.5;
+      const feetY = z.y + z.h;
+      const surfaceY = getZombieSurfaceY(feetX, feetY, groundY);
+      if (feetY + z.vy >= surfaceY) {
+        z.y = surfaceY - z.h;
+        z.vy = 0;
+      } else {
+        z.y += z.vy;
+      }
+      z.vx *= 0.85;
+      z.x += z.vx;
+
       if (z.decapitated || !z.hasHead) {
         // Permanentna śmierć przez dekapitację: zombie leży martwy na zawsze
-        z.vx = 0;
-        z.vy = 0;
         continue;
       }
 
@@ -290,7 +303,8 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
  */
 export function getActiveZombies() {
   if (!zombieState.enabled) return [];
-  return zombieState.zombies.filter(z => z && !z.isDead);
+  // Zwraca żywe zombie oraz powalone ciała z głową (umożliwiając ich definitywne dobicie strzałem w głowę)
+  return zombieState.zombies.filter(z => z && (!z.isDead || (z.hasHead && !z.decapitated)));
 }
 
 /**
