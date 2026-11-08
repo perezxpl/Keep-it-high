@@ -263,6 +263,22 @@ export const WEAPONS = {
     bodyPush: 8.0,
     ragdollPushMult: 2.8
   },
+  NANO_SABER: {
+    id: 'NANO_SABER',
+    name: 'Nano-Saber',
+    fullName: 'Nano-Saber // Ostrze Plazmowe',
+    category: 'MELEE',
+    isMelee: true,
+    auto: false,
+    fireRate: 16,
+    damage: 50,
+    range: 85,
+    bulletSpeed: 0, pellets: 0, magSize: 0, currentAmmo: 0, reserveAmmo: 0,
+    reloadTime: 0, reloadDuration: 0, recoil: 0,
+    ballPush: 1.0,
+    bodyPush: 6.0,
+    ragdollPushMult: 2.2
+  },
   GRENADE: {
     id: 'GRENADE',
     name: 'GRENADE',
@@ -455,7 +471,8 @@ export const WEAPON_GRIP_CONFIGS = {
   },
   KNIFE: { rearGripX: 0.00, rearGripY: 0.00, foreGripX: 6.50, foreGripY: 7.40, angleOffset: 0.785, barrelLen: 19.50, stockLen: 0.00 },
   MACHETE: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 33.60, stockLen: 0.00 },
-  AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 }
+  AXE: { rearGripX: 0.0, rearGripY: 0.0, foreGripX: -4.0, foreGripY: 0.0, angleOffset: 0.0, barrelLen: 18.0, stockLen: 0.0 },
+  NANO_SABER: { rearGripX: 0.00, walkRearGripX: 2.90, rearGripY: 0.00, foreGripX: 10.40, foreGripY: -0.90, angleOffset: -0.454, walkAngleOffset: -0.689, barrelLen: 34.00, stockLen: 0.00 }
 };
 
 /**
@@ -537,6 +554,18 @@ export const MELEE_CONFIGS = {
     hitstopFrames: 6, screenShake: 14,
     ballPush: { vx: 21.0, vy: 5.0, spin: 0.4 },
     cleave: false
+  },
+  NANO_SABER: {
+    id: 'NANO_SABER',
+    name: 'Nano-Saber // Ostrze Plazmowe',
+    type: 'COMBO',
+    comboMoves: MACHETE_COMBO_MOVES,
+    totalFrames: 24, windupFrames: 6, activeFrames: 9, recoveryFrames: 9,
+    arcStart: -2.10, arcEnd: 1.40,
+    reach: 85, width: 50, damage: 50, backstabMultiplier: 1.8,
+    lungeForce: 3.2, bodyPush: 6.0, hitstopFrames: 3, screenShake: 6, cleave: true,
+    ballPush: { vx: 22.0, vy: -5.0, spin: 0.8 },
+    plasmaBlade: true
   }
 };
 

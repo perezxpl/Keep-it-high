@@ -128,6 +128,12 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/killstreaks/renderer.js` — potok renderowania efektów świata (skaner radarowy UAV, taktyczne ramki namierzania wrogów `[BRACKETS]`, odległości w metrach oraz wskaźniki krawędziowe celów poza ekranem) oraz minimalistyczny widget HUD serii zabójstw (`drawKillstreakHUD`).
 - `js/killstreaks/index.js` — główny punkt wejścia i eksport modułu serii zabójstw.
 
+### Demonstracyjna Walka w Tle Menu (`js/menuFight/`)
+- `js/menuFight/state.js` — stan sesji menu (`menuFightState`), 3 dedykowane boty bojowe (`menuBots`: SGT. STRIKER, COL. ENFORCER, CYBER REAPER) z unikalnym uzbrojeniem (AK-47, RPG-7, Nano-Saber), punkty respawnu (`MENU_SPAWN_POINTS`) i fabryka instancji.
+- `js/menuFight/logic.js` — pętla fizyki i podkręconej sztucznej inteligencji (`updateMenuFight`): ciągły ogień zaporowy, naloty rakietowe, zrywy jetpacka, odbijanie kul Nano-Saberem, brak przestojów na amunicję i błyskawiczny respawn po 1.5s.
+- `js/menuFight/renderer.js` — kinowy potok renderowania tła menu (`drawMenuFight`): czysty kadr bez HUD-a, bez pasków zdrowia, bez nicków i bez colliderów, z pełnymi animacjami postaci, smugami pocisków, dymem, łuskami, krwią i rozbłyskami przy stałych 60 FPS (zero `ctx.shadowBlur`).
+- `js/menuFight/index.js` — główny punkt wejścia i eksport modułu walki demonstracyjnej.
+
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:
    - **Miękki limit (~800–1000 linii)**: Gdy plik przekracza 1000 linii, wydziel nowe funkcje do osobnego podmodułu w odpowiednim katalogu.

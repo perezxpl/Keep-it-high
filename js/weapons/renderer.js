@@ -1496,6 +1496,57 @@ export function drawHeldWeapon(ctx, p) {
       ctx.closePath();
       ctx.fill();
     }
+  } else if (weapon.id === 'NANO_SABER') {
+    // -------------------------------------------------------------
+    // CYBERNETIC NANO-SABER (PLAZMOWE OSTRZE HIGH-TECH)
+    // -------------------------------------------------------------
+    ctx.save();
+    // 1. Rekojeść kompozytowa
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-4.0, -2.0, 9.0, 4.0);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-2.5, -2.4, 6.0, 4.8);
+    // Emiter plazmowy
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillRect(4.5, -2.6, 2.0, 5.2);
+
+    // 2. Energetyczne ostrze plazmowe
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Zewnętrzna poświata plazmowa (szeroka, bez rozmycia)
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(6.0, -3.2);
+    ctx.lineTo(32.0, -1.8);
+    ctx.lineTo(38.0, 0.0);
+    ctx.lineTo(32.0, 1.8);
+    ctx.lineTo(6.0, 3.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wewnętrzny laser plazmowy
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.moveTo(6.5, -1.8);
+    ctx.lineTo(31.0, -0.9);
+    ctx.lineTo(36.5, 0.0);
+    ctx.lineTo(31.0, 0.9);
+    ctx.lineTo(6.5, 1.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Przegrzany biały rdzeń
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(7.0, -0.8);
+    ctx.lineTo(33.0, 0.0);
+    ctx.lineTo(7.0, 0.8);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+    ctx.restore();
   }
 
   // Dynamiczne ociekanie krwią broni białej po zabójstwie wroga

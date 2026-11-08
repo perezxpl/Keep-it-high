@@ -715,3 +715,34 @@ export function screenToWorld(screenX, screenY, cam = camera) {
   };
 }
 
+/**
+ * Płynna kamera śledząca starcie botów w tle menu głównego (lerp avgX, avgY, zoom 0.9)
+ */
+export function updateMenuCamera(menuBots) {
+  if (!menuBots || menuBots.length === 0) return;
+  const canvasWidth = getCanvasLogicalWidth();
+  const canvasHeight = getCanvasLogicalHeight();
+
+  const livingBots = menuBots.filter(b => b && !b.isDead);
+  if (livingBots.length > 0) {
+    const avgX = livingBots.reduce((sum, b) => sum + b.x, 0) / livingBots.length;
+    const avgY = livingBots.reduce((sum, b) => sum + b.y, 0) / livingBots.length;
+
+    camera.zoom = 0.9;
+    camera.targetZoom = 0.9;
+
+    const viewWidth = canvasWidth / camera.zoom;
+    const viewHeight = canvasHeight / camera.zoom;
+    camera.viewWidth = viewWidth;
+    camera.viewHeight = viewHeight;
+
+    const targetX = avgX - viewWidth / 2;
+    const targetY = avgY - viewHeight * 0.55;
+
+    camera.x += (targetX - camera.x) * 0.03;
+    camera.y += (targetY - camera.y) * 0.03;
+  }
+  clampCamera(camera);
+}
+
+
