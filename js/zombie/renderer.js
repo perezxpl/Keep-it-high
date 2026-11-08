@@ -182,19 +182,35 @@ function drawZombieSilhouette(ctx, z) {
   ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';
   ctx.fillRect(-4, -20, 8, 10);
 
-  // 4. TYLNE RAMIĘ (Wyciągnięte do przodu)
-  ctx.save();
-  ctx.translate(-6 * facing, -23);
-  const armBackSwing = 1.35 * facing + (z.attackAnim > 0 ? 0.35 * facing : 0);
-  ctx.rotate(armBackSwing);
-  ctx.fillStyle = z.visuals.shirtColor;
-  ctx.fillRect(-3, 0, 6, 13);
-  ctx.fillStyle = z.visuals.skinColor;
-  ctx.fillRect(-2.5, 12, 5, 12);
-  // Dłoń z pazurami
-  ctx.fillStyle = '#344634';
-  ctx.fillRect(-3, 23, 6, 4);
-  ctx.restore();
+  // 4. TYLNE RAMIĘ (Wyciągnięte do przodu we właściwą stronę marszu)
+  const isAttacking = (z.attackAnim > 0);
+  const attackBonus = isAttacking ? 0.32 * facing : 0;
+  const armSway = isMoving ? Math.sin(walkCycle) * 0.08 * facing : 0;
+
+  if (!z.dismembered?.armBack) {
+    ctx.save();
+    ctx.translate(-4 * facing, -23);
+    const armBackSwing = (-1.35 * facing) - attackBonus + armSway;
+    ctx.rotate(armBackSwing);
+    ctx.fillStyle = z.visuals.shirtColor;
+    ctx.fillRect(-3, 0, 6, 13);
+    ctx.fillStyle = z.visuals.skinColor;
+    ctx.fillRect(-2.5, 12, 5, 12);
+    // Dłoń z pazurami
+    ctx.fillStyle = '#344634';
+    ctx.fillRect(-3, 23, 6, 4);
+    ctx.fillStyle = '#1c261c';
+    ctx.fillRect(-2.5, 26, 2, 2.5);
+    ctx.fillRect(0.5, 26, 2, 2.5);
+    ctx.restore();
+  } else {
+    // Odstrzelone tylne ramię (zakrwawiony kikut)
+    ctx.save();
+    ctx.translate(-4 * facing, -23);
+    ctx.fillStyle = '#7f1d1d';
+    ctx.fillRect(-3, 0, 6, 4);
+    ctx.restore();
+  }
 
   // 5. GŁOWA ZOMBIE
   if (z.hasHead && !z.decapitated) {
@@ -234,19 +250,32 @@ function drawZombieSilhouette(ctx, z) {
     ctx.fillRect(-4, -28, 8, 4);
   }
 
-  // 6. PRZEDNIE RAMIĘ (Wyciągnięte agresywnie w przód)
-  ctx.save();
-  ctx.translate(6 * facing, -23);
-  const armFrontSwing = 1.50 * facing + (z.attackAnim > 0 ? 0.40 * facing : 0);
-  ctx.rotate(armFrontSwing);
-  ctx.fillStyle = z.visuals.shirtColor;
-  ctx.fillRect(-3.5, 0, 7, 14);
-  ctx.fillStyle = z.visuals.skinColor;
-  ctx.fillRect(-3, 13, 6, 13);
-  // Dłoń / szpony
-  ctx.fillStyle = '#344634';
-  ctx.fillRect(-3.5, 25, 7, 5);
-  ctx.restore();
+  // 6. PRZEDNIE RAMIĘ (Wyciągnięte agresywnie w przód we właściwą stronę marszu)
+  if (!z.dismembered?.armFront) {
+    ctx.save();
+    ctx.translate(5 * facing, -23);
+    const armFrontSwing = (-1.48 * facing) - attackBonus - armSway;
+    ctx.rotate(armFrontSwing);
+    ctx.fillStyle = z.visuals.shirtColor;
+    ctx.fillRect(-3.5, 0, 7, 14);
+    ctx.fillStyle = z.visuals.skinColor;
+    ctx.fillRect(-3, 13, 6, 13);
+    // Dłoń / szpony
+    ctx.fillStyle = '#344634';
+    ctx.fillRect(-3.5, 25, 7, 5);
+    ctx.fillStyle = '#1c261c';
+    ctx.fillRect(-3, 29, 2, 3);
+    ctx.fillRect(0, 29, 2, 3.5);
+    ctx.fillRect(2.5, 29, 2, 2.5);
+    ctx.restore();
+  } else {
+    // Odstrzelone przednie ramię (zakrwawiony kikut)
+    ctx.save();
+    ctx.translate(5 * facing, -23);
+    ctx.fillStyle = '#7f1d1d';
+    ctx.fillRect(-3.5, 0, 7, 4);
+    ctx.restore();
+  }
 
   ctx.restore(); // Tułów
   ctx.restore(); // Całość
