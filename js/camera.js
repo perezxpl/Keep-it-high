@@ -177,11 +177,13 @@ export function setDevZoom(val) {
 
 export function triggerScreenShake(intensity) {
   if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) return;
   camera.shakeIntensity = Math.min(26, Math.max(camera.shakeIntensity, intensity));
 }
 
 export function shakeImpulse(intensity = 14, duration = 0.15) {
   if (typeof window !== 'undefined' && window.uiManager && window.uiManager.settings && window.uiManager.settings.screenShake === false) return;
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) return;
   camera.shakeIntensity = Math.min(32, Math.max(camera.shakeIntensity || 0, intensity));
   camera.shakeDecay = (typeof duration === 'number' && duration <= 0.25) ? 0.72 : 0.85;
 }
@@ -190,6 +192,12 @@ camera.shakeImpulse = shakeImpulse;
 Object.defineProperty(camera, 'shake', {
   get() { return this.shakeIntensity || 0; },
   set(val) {
+    if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) {
+      this.shakeIntensity = 0;
+      this.shakeX = 0;
+      this.shakeY = 0;
+      return;
+    }
     this.shakeIntensity = Math.min(32, Math.max(0, val));
   },
   configurable: true
@@ -319,6 +327,11 @@ export function clampCamera(cam = camera) {
  * Główna funkcja aktualizacji kamery z zachowaniem rygorystycznego clampingu
  */
 export function updateCamera(player, ball, options = {}) {
+  if (typeof window !== 'undefined' && (window.GAME_STATE?.current === 'MENU' || window.gameState === 'MENU')) {
+    updateMenuCamera();
+    return;
+  }
+
   // 1. Dokładne współrzędne pionowych granic areny:
   const bounds = (typeof world !== 'undefined' && world && world.bounds) ? world.bounds : getArenaBounds();
   const ARENA_LEFT = (bounds && typeof bounds.minX === 'number') ? bounds.minX : CFG_ARENA_LEFT;
@@ -716,33 +729,29 @@ export function screenToWorld(screenX, screenY, cam = camera) {
 }
 
 /**
- * Płynna kamera śledząca starcie botów w tle menu głównego (lerp avgX, avgY, zoom 0.9)
+ * Sztywna, statyczna kamera zablokowana na centrum Areny 2 (Toksyczna Rafineria) w menu głównym.
+ * Wykadrowana sztywno na platformy i taflę kwasu bez śledzenia botów i z zerowymi drganiami.
  */
-export function updateMenuCamera(menuBots) {
-  if (!menuBots || menuBots.length === 0) return;
+export function updateMenuCamera() {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
+  const zoom = 0.85;
 
-  const livingBots = menuBots.filter(b => b && !b.isDead);
-  if (livingBots.length > 0) {
-    const avgX = livingBots.reduce((sum, b) => sum + b.x, 0) / livingBots.length;
-    const avgY = livingBots.reduce((sum, b) => sum + b.y, 0) / livingBots.length;
+  camera.zoom = zoom;
+  camera.targetZoom = zoom;
+  camera.minZoom = zoom;
+  camera.viewWidth = canvasWidth / zoom;
+  camera.viewHeight = canvasHeight / zoom;
 
-    camera.zoom = 0.9;
-    camera.targetZoom = 0.9;
+  camera.x = 2000 - (canvasWidth / (2 * zoom));
+  camera.y = 850 - (canvasHeight / (2 * zoom));
+  camera.targetX = camera.x;
+  camera.targetY = camera.y;
 
-    const viewWidth = canvasWidth / camera.zoom;
-    const viewHeight = canvasHeight / camera.zoom;
-    camera.viewWidth = viewWidth;
-    camera.viewHeight = viewHeight;
-
-    const targetX = avgX - viewWidth / 2;
-    const targetY = avgY - viewHeight * 0.55;
-
-    camera.x += (targetX - camera.x) * 0.03;
-    camera.y += (targetY - camera.y) * 0.03;
-  }
-  clampCamera(camera);
+  camera.shakeIntensity = 0;
+  camera.shakeDecay = 0;
+  camera.shakeX = 0;
+  camera.shakeY = 0;
 }
 
 

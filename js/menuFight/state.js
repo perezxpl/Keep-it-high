@@ -10,17 +10,15 @@ import { WEAPONS } from '../weapons/transform.js';
 export const menuFightState = {
   active: false,
   initialized: false,
-  arenaId: 'ARENA_1',
+  arenaId: 'ARENA_2',
   time: 0,
   respawnTimers: [0, 0, 0]
 };
 
 export const MENU_SPAWN_POINTS = [
-  { x: 950,  y: 760, facing: 1 },   // Lewa platforma
-  { x: 2350, y: 760, facing: -1 },  // Prawa platforma
-  { x: 1650, y: 640, facing: 1 },   // Centralna wysoka kładka
-  { x: 1280, y: 920, facing: 1 },   // Parter lewa flanka
-  { x: 2020, y: 920, facing: -1 }   // Parter prawa flanka
+  { x: 1800, y: 820, facing: 1 },   // Bot 1: Środkowa platforma techniczna
+  { x: 1550, y: 780, facing: 1 },   // Bot 2: Lewa rampa nad kwasem
+  { x: 2150, y: 760, facing: -1 }   // Bot 3: Prawa kładka przy wentylatorze
 ];
 
 const MENU_BOT_PROFILES = [
@@ -52,7 +50,7 @@ const MENU_BOT_PROFILES = [
     team: 'ORANGE',
     classKey: 'ENFORCER',
     weapon: WEAPONS.RPG7,
-    facing: -1,
+    facing: 1,
     spawnIdx: 1,
     visuals: {
       hasHelmet: true,
@@ -77,7 +75,7 @@ const MENU_BOT_PROFILES = [
     team: 'ROGUE',
     classKey: 'AERO',
     weapon: WEAPONS.NANO_SABER || WEAPONS.MACHETE,
-    facing: 1,
+    facing: -1,
     spawnIdx: 2,
     visuals: {
       hasHelmet: false,
@@ -189,6 +187,12 @@ export function resetMenuBot(bot, spawnIdx = null) {
   bot.deathRotVel = 0;
   bot.isSettled = false;
   bot.pelvisY = 0;
+  bot.isAcidDying = false;
+  if (bot.acidDeath) {
+    bot.acidDeath.active = false;
+    bot.acidDeath.timer = 0;
+    bot.acidDeath.dissolved = false;
+  }
 
   bot.isHolstered = false;
   bot.holsterWeight = 0.0;

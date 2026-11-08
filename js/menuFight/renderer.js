@@ -1,6 +1,7 @@
 // =========================================================================
 // MENUFIGHT/RENDERER.JS - KINOWY POTOK RENDEROWANIA TŁA MENU GŁÓWNEGO
 // Czysty kadr bez HUD-a, bez pasków zdrowia, bez celowników i bez colliderów
+// Arena 2 (Toksyczna Rafineria): monumentalna turbina, rurociągi, platformy, tafla kwasu
 // Pełne animacje postaci, smugi pocisków, łuski, dym, wybuchy i rozbłyski
 // ZERO ctx.shadowBlur - Gwarancja 60 FPS
 // =========================================================================
@@ -26,13 +27,17 @@ export function drawMenuFight(ctx, camera) {
   const canvas = ctx.canvas;
   const cWidth = canvas ? (canvas.width || 1920) : 1920;
   const cHeight = canvas ? (canvas.height || 1080) : 1080;
-  const effectiveGroundY = 1000;
+  const effectiveGroundY = 1600;
 
-  // 1. Tło areny (panorama, nocne niebo, światła neonowe / wulkaniczne)
+  // Żelazna gwarancja 60 FPS w Chrome - całkowita eliminacja kosztownego shadowBlur
+  ctx.shadowBlur = 0;
+
+  // 1. Tło areny (panorama, betonowo-stalowy bunkier, rurociągi, monumentalny wentylator)
   renderArenaBackground(ctx, camera);
 
-  // 2. Transformacja kamery w przestrzeni świata
+  // 2. Transformacja kamery w przestrzeni świata (statyczny kadr)
   ctx.save();
+  ctx.shadowBlur = 0;
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -65,7 +70,7 @@ export function drawMenuFight(ctx, camera) {
   drawGore(ctx);
   drawJetpackParticles(ctx);
 
-  // 8. Elementy areny na pierwszym planie (balustrady, kratownice)
+  // 8. Elementy areny na pierwszym planie (kratownice, kładki, tafla kwasu i bąble)
   renderArenaForeground(ctx, camera);
 
   // 9. Fale uderzeniowe eksplozji i dynamiczne rozbłyski wystrzałów (tryb lighter)
@@ -75,5 +80,6 @@ export function drawMenuFight(ctx, camera) {
   ctx.restore();
 
   // 10. Kinowa winieta krawędzi ekranu
+  ctx.shadowBlur = 0;
   drawCinematicVignette(ctx);
 }

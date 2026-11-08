@@ -1,6 +1,8 @@
 // =========================================================================
 // MENUFIGHT/LOGIC.JS - LOGIKA BITWY DEMONSTRACYJNEJ W MENU GŁÓWNYM
-// Podkręcone AI, strzelanie, odrzut, skoki na jetpackach, odbijanie kul i respawn 1.5s
+// Dynamiczne tło Areny 2 (Toksyczna Rafineria) ze statyczną kamerą
+// 3 boty na centralnych platformach: AK-47, RPG-7, Nano-Saber (odbijanie kul)
+// Kwas, gejzery kropel, rozpuszczanie i błyskawiczny respawn 1.5s
 // ZERO ctx.shadowBlur, stałe 60 FPS w Chrome
 // =========================================================================
 
@@ -15,8 +17,8 @@ import { updateLighting, addDynamicLight } from '../lighting/index.js';
 import { updateMenuCamera } from '../camera.js';
 import { checkPlayerPlatformLanding } from '../obstacles/playerPhysics.js';
 import { obstacles, customObstacles, ARENA_PLATFORMS, switchArena, activeArenaId } from '../obstacles.js';
-import { triggerScreenShake } from '../world.js';
 import { WEAPONS } from '../weapons/transform.js';
+import { updateArena2, createAcidSplash, isPlayerSubmergedInAcid } from '../arenas/arena2/state.js';
 
 export function isMenuFightActive() {
   return menuFightState.active;
@@ -25,14 +27,16 @@ export function isMenuFightActive() {
 export function initMenuFight() {
   if (menuFightState.active && menuFightState.initialized) return;
 
-  // Upewnij się, że arena miejska jest załadowana dla optymalnej geometrii i widoczności
-  if (typeof switchArena === 'function' && activeArenaId !== 'ARENA_1') {
+  // Upewnij się, że Arena 2 (Toksyczna Rafineria) jest załadowana dla optymalnej geometrii i kwasu
+  if (typeof switchArena === 'function' && activeArenaId !== 'ARENA_2') {
     try {
-      switchArena('ARENA_1');
+      const p = (typeof window !== 'undefined' && window.player) ? window.player : null;
+      const b = (typeof window !== 'undefined' && window.ball) ? window.ball : null;
+      switchArena('ARENA_2', p, menuBots, b);
     } catch (_) {}
   }
 
-  // Zainicjalizuj 3 boty bojowe na odpowiednich platformach
+  // Zainicjalizuj 3 boty bojowe na dedykowanych centralnych platformach
   for (let i = 0; i < menuBots.length; i++) {
     resetMenuBot(menuBots[i], i);
   }
@@ -40,10 +44,15 @@ export function initMenuFight() {
   menuFightState.active = true;
   menuFightState.initialized = true;
   menuFightState.time = 0;
+  menuFightState.arenaId = 'ARENA_2';
+
+  // Natychmiastowe zablokowanie sztywnego, statycznego kadru
+  updateMenuCamera();
 }
 
 export function stopMenuFight() {
   menuFightState.active = false;
+  menuFightState.initialized = false;
   // Wyzeruj klawisze botów
   for (const b of menuBots) {
     if (b && b.botKeys) {
@@ -66,8 +75,16 @@ export function updateMenuFight(dt = 1 / 60) {
   }
 
   menuFightState.time += dt;
-  const effectiveGroundY = 1000;
+  const effectiveGroundY = 1600;
   const livingBots = menuBots.filter(b => b && !b.isDead);
+
+  // Utrzymuj całkowicie statyczną kamerę (sztywne wykadrowanie, 0 shake)
+  updateMenuCamera();
+
+  // Aktualizacja symulacji kwasu, bąbli, pary i fizyki Areny 2
+  try {
+    updateArena2(dt, menuBots);
+  } catch (_) {}
 
   // 1. Aktualizacja każdego bota bojowego
   for (let i = 0; i < menuBots.length; i++) {
@@ -75,17 +92,22 @@ export function updateMenuFight(dt = 1 / 60) {
     if (!b) continue;
 
     // Obsługa śmierci i błyskawicznego respawnu po 1.5 sekundy (90 klatek)
-    if (b.isDead) {
+    if (b.isDead || (b.acidDeath && b.acidDeath.dissolved)) {
       b.respawnTimer = (b.respawnTimer || 90) - 1;
       if (b.respawnTimer <= 0) {
-        // Dobierz losowy punkt odrodzenia z dala od innych botów
+        // Respawnuj na jednej z 3 centralnych platform Areny 2
         resetMenuBot(b);
         b.isDead = false;
       }
       continue;
     }
 
-    // Sprawdzenie czy bot zginął w tej klatce
+    // Bot jest w trakcie procesu rozpuszczania w kwasie (animacja zgonu w kwasie)
+    if (b.acidDeath && b.acidDeath.active) {
+      continue;
+    }
+
+    // Sprawdzenie czy bot zginął od obrażeń w tej klatce
     if (b.hp <= 0 && !b.isDead) {
       b.isDead = true;
       b.respawnTimer = 90; // 1.5 sekundy przy 60 FPS
@@ -93,7 +115,15 @@ export function updateMenuFight(dt = 1 / 60) {
       continue;
     }
 
-    // Bezpieczeństwo: broń w dłoni, nieograniczona amunicja i natychmiastowe odnawianie
+    // Bezpieczeństwo czeluści: zgon w kwasie przy spadku poniżej Y = 1500
+    if (b.y > 1500 && !b.isDead) {
+      b.isDead = true;
+      b.respawnTimer = 90;
+      createAcidSplash(b.x + 12, 1440);
+      continue;
+    }
+
+    // Bezpieczeństwo: broń w dłoni, nieograniczona amunicja i brak przerw na przeładowanie
     b.isHolstered = false;
     b.holsterWeight = 0.0;
     b.isReloading = false;
@@ -112,7 +142,7 @@ export function updateMenuFight(dt = 1 / 60) {
     let enemy = null;
     let minDist = Infinity;
     for (const other of livingBots) {
-      if (other === b) continue;
+      if (other === b || (other.acidDeath && other.acidDeath.active)) continue;
       const d = Math.hypot(other.x - b.x, other.y - b.y);
       if (d < minDist) {
         minDist = d;
@@ -141,7 +171,7 @@ export function updateMenuFight(dt = 1 / 60) {
 
       // PODKRĘCONE ZACHOWANIE TAKTYCZNE WEDŁUG KLASY I BRONI
       if (b.currentWeapon?.id === 'AK47') {
-        // BOT 1: SGT. STRIKER - Karabin maszynowy (ciągły ogień zaporowy i smugi)
+        // BOT 1: SGT. STRIKER - Karabin maszynowy (ciągły ogień zaporowy i żółte smugi)
         if (dist > 380) {
           if (dx > 0) b.botKeys.right = true;
           else b.botKeys.left = true;
@@ -151,7 +181,7 @@ export function updateMenuFight(dt = 1 / 60) {
         }
 
         // Skoki i ciąg jetpacka przy różnicy wysokości
-        if (dy < -60 || (Math.random() < 0.12 && b.y > 750)) {
+        if (dy < -60 || (Math.random() < 0.14 && b.y > 800)) {
           b.botKeys.up = true;
           b.isJetpacking = true;
         }
@@ -176,7 +206,7 @@ export function updateMenuFight(dt = 1 / 60) {
           else b.botKeys.right = true;
         }
 
-        // Ciężki Kolos lubi dominować z wysoka
+        // Ciężki Kolos dominuje z wysoka na jetpacku
         if (dy < -30 || Math.random() < 0.18) {
           b.botKeys.up = true;
           b.isJetpacking = true;
@@ -203,7 +233,7 @@ export function updateMenuFight(dt = 1 / 60) {
         }
 
         // Atak wręcz w zwarciu
-        if (dist < 110) {
+        if (dist < 120) {
           shootWeapon(b, b.currentWeapon);
         }
 
@@ -234,11 +264,27 @@ export function updateMenuFight(dt = 1 / 60) {
                   intensity: 0.9,
                   life: 0.12
                 });
-                triggerScreenShake(2.0);
               }
             }
           }
         }
+      }
+    }
+
+    // Utrzymanie botów na centralnych traktach areny (unikanie przypadkowego błądzenia na krańce)
+    if (b.x < 1350) {
+      b.botKeys.left = false;
+      b.botKeys.right = true;
+      if (b.y > 800) {
+        b.botKeys.up = true;
+        b.isJetpacking = true;
+      }
+    } else if (b.x > 2650) {
+      b.botKeys.right = false;
+      b.botKeys.left = true;
+      if (b.y > 800) {
+        b.botKeys.up = true;
+        b.isJetpacking = true;
       }
     }
 
@@ -248,7 +294,7 @@ export function updateMenuFight(dt = 1 / 60) {
   }
 
   // 2. Aktualizacja pocisków balistycznych i rakiet RPG
-  updateBullets(effectiveGroundY, obstacles, null, menuBots);
+  updateBullets(effectiveGroundY, ARENA_PLATFORMS, null, menuBots);
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, menuBots, null);
 
   // 3. Aktualizacja cząsteczek, dymu, łusek, ognia jetpacka i krwi
@@ -257,6 +303,6 @@ export function updateMenuFight(dt = 1 / 60) {
   updateGore(effectiveGroundY, ARENA_PLATFORMS, customObstacles);
   updateLighting(dt);
 
-  // 4. Płynna kamera śledząca środek walki botów (lerp avgX, avgY, zoom 0.9)
-  updateMenuCamera(menuBots);
+  // 4. Sztywna, statyczna kamera zablokowana na centrum Areny 2
+  updateMenuCamera();
 }
