@@ -378,8 +378,8 @@ export function getActiveZombies() {
 export function onCharacterRespawnCorpse(char, groundY) {
   if (!zombieState.enabled || !char) return;
 
-  // Ciała pozbawione głów (decapitated) NIE wstają
-  if (char.decapitated || !char.hasHead || char.isGibbed || (char.acidDeath && char.acidDeath.dissolved)) {
+  // Ciała pozbawione głów (decapitated) oraz zmiażdżone (squashed/crushed/gibbed) NIE wstają
+  if (char.isSquashed || char.isCrushed || char.isGibbed || char.decapitated || !char.hasHead || (char.acidDeath && char.acidDeath.dissolved)) {
     return;
   }
 

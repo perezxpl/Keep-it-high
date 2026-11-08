@@ -152,8 +152,8 @@ export function registerCorpseForReanimation(char, groundY) {
   if (!zombieState.enabled) return;
   if (!char) return;
 
-  // Ciała pozbawione głowy (decapitated) NIGDY nie wstają jako zombie
-  if (char.decapitated || !char.hasHead || char.isGibbed || (char.acidDeath && char.acidDeath.dissolved)) {
+  // Ciała pozbawione głowy (decapitated) oraz zmiażdżone (squashed/crushed/gibbed) NIGDY nie wstają jako zombie
+  if (char.isSquashed || char.isCrushed || char.isGibbed || char.decapitated || !char.hasHead || (char.acidDeath && char.acidDeath.dissolved)) {
     return;
   }
 

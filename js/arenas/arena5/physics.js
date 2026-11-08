@@ -24,7 +24,7 @@ import {
   calculateTargetLandY
 } from './state.js';
 import { triggerScreenShake } from '../../camera.js';
-import { spawnBloodSpurt, removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
+import { spawnBloodSpurt, spawnBloodFountain, removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
 import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
 import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
 
@@ -237,7 +237,8 @@ function checkFallingSquash(combatants) {
   });
 
   for (const victim of combatants) {
-    if (!victim || victim.isDead) continue;
+    const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead && victim.hasHead && !victim.decapitated);
+    if (!victim || (victim.isDead && !isLyingZombieTarget)) continue;
 
     if (victim._craneBounceCooldown > 0) {
       victim._craneBounceCooldown--;
@@ -316,7 +317,8 @@ function checkFallingSquash(combatants) {
             }
 
             const remainingSpace = surfaceBelowY - st.bottom;
-            const isPhysicallyCrushed = (remainingSpace <= pH * 0.58) && (victim.y + pH >= surfaceBelowY - 10);
+            const isCrushedHeight = isLyingZombieTarget ? 24 : (pH * 0.58);
+            const isPhysicallyCrushed = (remainingSpace <= isCrushedHeight) && (victim.y + pH >= surfaceBelowY - 14);
 
             if (isPhysicallyCrushed) {
               executeSquashKill(victim);
@@ -412,21 +414,45 @@ function checkFallingSquash(combatants) {
 }
 
 /**
- * Wykonuje widowiskowe zmiażdżenie postaci (Squash)
+ * Wykonuje widowiskowe zmiażdżenie postaci lub zombie (Squash)
  */
 export function executeSquashKill(victim) {
-  if (!victim || victim.isDead) return;
+  if (!victim) return;
+
+  const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead);
+  if (victim.isDead && !isLyingZombieTarget) return;
 
   victim.hp = 0;
   victim.isDead = true;
+  victim.isSquashed = true;
+  victim.isCrushed = true;
+  victim.isGibbed = true;
+  victim.hasHead = false;
+  victim.decapitated = true;
+  victim.severedHead = null;
   victim.killer = { name: 'KONTENER PRZEMYSŁOWY', cause: 'ZMIAŻDŻONY PRZEZ KONTENER', isSelf: true };
   victim.respawnTimer = 140;
   victim.vx = 0;
   victim.vy = 0;
   victim.onGround = true;
 
-  triggerScreenShake(20);
-  spawnBloodSpurt(victim.x + (victim.w || 26) * 0.5, victim.y + (victim.h || 72) * 0.5, 0, -1, 30, 3.0);
+  if (victim.isZombie) {
+    victim.reviveTimer = 0;
+    victim.decayTimer = 15.0; // Natychmiastowe zniknięcie / usunięcie z tablicy zombie
+  }
+  if (victim.isCorpse) {
+    victim.timer = 0; // Natychmiastowe usunięcie ciała oczekującego na reanimację
+  }
+
+  triggerScreenShake(22);
+  const midX = victim.x + (victim.w || 26) * 0.5;
+  const midY = victim.y + (victim.h || 72) * 0.5;
+  spawnBloodSpurt(midX, midY, 0, -1.8, 35, 3.2);
+  spawnBloodFountain(midX, victim.y + (victim.h || 72) - 4, victim.facing || 1, 8);
+
+  if (victim.isZombie) {
+    triggerCombatFeedBanner('KILL', '[ZMIAŻDŻENIE] ZOMBIE ZGNIECIONY PRZEZ KONTENER!');
+  }
 }
 
 /**
@@ -967,7 +993,7 @@ function updateFallingBlocks(dt, combatants) {
 
         // B2. Uderzenie od góry i zmiażdżenie (executeSquashKill) przez opadający klocek
         for (const cell of fallingCells) {
-          if (victim.isDead) break;
+          if (victim.isDead && !isLyingZombieTarget) break;
 
           const isHoriz = (victim.x + pW > cell.x + 3 && victim.x < cell.x + cell.w - 3);
           const isVertHit = (victim.y < cell.y + cell.h && victim.y + pH > cell.oldY + 6);
@@ -995,7 +1021,8 @@ function updateFallingBlocks(dt, combatants) {
             } else {
               // Kafelek zamyka przestrzeń nad podłożem:
               const remainingSpace = surfaceBelowY - (cell.y + cell.h);
-              if ((remainingSpace <= pH * 0.65 || cell.y >= cellTargetY) && (victim.y + pH >= surfaceBelowY - 16)) {
+              const isCrushedHeight = isLyingZombieTarget ? 24 : (pH * 0.65);
+              if ((remainingSpace <= isCrushedHeight || cell.y >= cellTargetY) && (victim.y + pH >= surfaceBelowY - 16)) {
                 executeSquashKill(victim);
                 break;
               } else {
@@ -1270,7 +1297,8 @@ function updateBottomRecycler(combatants) {
 
   // Jeśli stopy gracza lub bota spadną poniżej linii śmierci -> eliminacja i respawn na wieży
   for (const victim of combatants) {
-    if (!victim || victim.isDead) continue;
+    const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead && victim.hasHead && !victim.decapitated);
+    if (!victim || (victim.isDead && !isLyingZombieTarget)) continue;
     const footY = victim.y + syncCombatantHeight(victim);
     if (footY > currentDeathLineY) {
       executeRecyclerKill(victim);
@@ -1282,16 +1310,32 @@ function updateBottomRecycler(combatants) {
  * Eliminacja przez utylizator z natychmiastowym bezpiecznym odrodzeniem na szczycie wieży
  */
 function executeRecyclerKill(victim) {
-  if (!victim || victim.isDead) return;
+  if (!victim) return;
+  const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead);
+  if (victim.isDead && !isLyingZombieTarget) return;
 
   victim.hp = 0;
   victim.isDead = true;
+  victim.isSquashed = true;
+  victim.isCrushed = true;
+  victim.isGibbed = true;
+  victim.hasHead = false;
+  victim.decapitated = true;
+  victim.severedHead = null;
   victim.killer = { name: 'STREFA UTYLIZACJI', cause: 'POCHŁONIĘTY PRZEZ UTYLIZATOR', isSelf: true };
   victim.respawnTimer = 120; // 2 sekundy do odrodzenia
   victim.vx = 0;
   victim.vy = 0;
   victim.onGround = false;
   victim.currentPlatform = null;
+
+  if (victim.isZombie) {
+    victim.reviveTimer = 0;
+    victim.decayTimer = 15.0;
+  }
+  if (victim.isCorpse) {
+    victim.timer = 0;
+  }
 
   const isLocalHuman = (typeof window !== 'undefined' && window.player === victim);
   triggerScreenShake(isLocalHuman ? 6.0 : 1.2);

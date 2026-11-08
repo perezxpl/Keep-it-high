@@ -449,6 +449,9 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
   if (player.respawnTimer <= 0) {
     onCharacterRespawnCorpse(player, groundY);
     player.isDead = false;
+    player.isSquashed = false;
+    player.isCrushed = false;
+    player.isGibbed = false;
     player.infected = false;
     player.infectionTimer = 0;
     player._droppedWeaponThisDeath = false;
