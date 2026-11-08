@@ -22,13 +22,21 @@ function drawReanimatingCorpse(ctx, corpse) {
   // Leżący tułów
   ctx.fillStyle = corpse.visuals.shirtColor || '#3f3f46';
   ctx.beginPath();
-  ctx.roundRect(-16, -10, 32, 10, 3);
+  if (ctx.roundRect) {
+    ctx.roundRect(-16, -10, 32, 10, 3);
+  } else {
+    ctx.rect(-16, -10, 32, 10);
+  }
   ctx.fill();
 
   // Leżące nogi
   ctx.fillStyle = corpse.visuals.pantsColor || '#27272a';
   ctx.beginPath();
-  ctx.roundRect(corpse.facing > 0 ? -30 : 2, -7, 24, 7, 2);
+  if (ctx.roundRect) {
+    ctx.roundRect(corpse.facing > 0 ? -30 : 2, -7, 24, 7, 2);
+  } else {
+    ctx.rect(corpse.facing > 0 ? -30 : 2, -7, 24, 7);
+  }
   ctx.fill();
 
   // Głowa
@@ -65,6 +73,39 @@ function drawZombieSilhouette(ctx, z) {
   const centerX = z.x + z.w * 0.5;
   const feetY = z.y + z.h;
   const facing = z.facing || 1;
+
+  // --- FAZA POWALENIA / ŚMIERCI ZOMBIE ---
+  if (z.isDead) {
+    ctx.translate(centerX, feetY);
+
+    // Kałuża krwi pod powalonym ciałem
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.7)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 24, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Leżący tułów
+    ctx.fillStyle = z.visuals.shirtColor || '#3f3f46';
+    ctx.fillRect(-16, -10, 32, 10);
+
+    // Leżące nogi
+    ctx.fillStyle = z.visuals.pantsColor || '#27272a';
+    ctx.fillRect(facing > 0 ? -30 : 2, -7, 24, 7);
+
+    // Głowa (jeśli nie została odcięta)
+    if (z.hasHead && !z.decapitated) {
+      ctx.fillStyle = z.visuals.skinColor;
+      ctx.beginPath();
+      ctx.arc(facing > 0 ? 18 : -18, -6, 7, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(facing > 0 ? 14 : -18, -8, 6, 4);
+    }
+
+    ctx.restore();
+    return;
+  }
 
   // --- FAZA WSTAWANIA Z ZIEMI ---
   if (z.riseTimer > 0) {

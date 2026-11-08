@@ -7,7 +7,7 @@
 // - Wstawanie po zwykłym powaleniu i permanentną śmierć wyłącznie przez dekapitację
 // =========================================================================
 
-import { zombieState, ZOMBIE_CONFIG, createZombieInstance } from './state.js';
+import { zombieState, ZOMBIE_CONFIG, createZombieInstance, registerCorpseForReanimation } from './state.js';
 import { triggerScreenShake, spawnBloodSpurt, spawnBloodDrip, spawnBloodFountain, spawnHeadGib } from '../world.js';
 import { ARENA_PLATFORMS, customObstacles, getPlatformSurfaceY, getPlatformBounds, getActiveArena } from '../obstacles.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
@@ -128,6 +128,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       if (c.hp <= 0 && !c.isDead) {
         c.hp = 0;
         c.isDead = true;
+        c.respawnTimer = 180;
         c.hasHead = true;      // Głowa zachowana!
         c.decapitated = false;
         c.severedHead = null;
@@ -246,6 +247,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
           if (nearestTarget.hp <= 0 && !nearestTarget.isDead) {
             nearestTarget.hp = 0;
             nearestTarget.isDead = true;
+            nearestTarget.respawnTimer = 180;
             nearestTarget.hasHead = true;
             nearestTarget.decapitated = false;
             triggerCombatFeedBanner('DEATH', `[PLAGA] ${nearestTarget.name || 'OPERATOR'} POLEGŁ W SZPONACH ZOMBIE!`);
