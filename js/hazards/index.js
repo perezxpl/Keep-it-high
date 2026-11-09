@@ -24,16 +24,24 @@ export {
   drawHazards
 } from './renderer.js';
 
-// Globalna ekspozycja dla modułów balistyki i fizyki Areny 5
+import {
+  hazardsState,
+  createBarrelInstance
+} from './state.js';
+
+import {
+  kickBarrel,
+  damageBarrel,
+  detonateBarrel,
+  checkBarrelKickInteraction
+} from './logic.js';
+
+// Globalna ekspozycja dla modulow balistyki i fizyki Areny 5
 if (typeof window !== 'undefined') {
-  import('./state.js').then(st => {
-    window.createBarrelInstance = st.createBarrelInstance;
-    window.hazardsBarrels = st.hazardsState.barrels;
-  }).catch(() => {});
-  import('./logic.js').then(m => {
-    window.damageBarrel = m.damageBarrel;
-    window.kickBarrel = m.kickBarrel;
-    window.checkBarrelKickInteraction = m.checkBarrelKickInteraction;
-    window.detonateBarrel = m.detonateBarrel;
-  }).catch(() => {});
+  window.createBarrelInstance = createBarrelInstance;
+  window.hazardsBarrels = hazardsState.barrels;
+  window.damageBarrel = damageBarrel;
+  window.kickBarrel = kickBarrel;
+  window.checkBarrelKickInteraction = checkBarrelKickInteraction;
+  window.detonateBarrel = detonateBarrel;
 }

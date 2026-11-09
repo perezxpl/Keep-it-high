@@ -13,6 +13,7 @@ import {
 } from '../particles.js';
 import { getActiveArena } from '../arenas/index.js';
 import { isDeathmatchFFA, deathmatchState } from '../deathmatch/index.js';
+import { ARENA_PLATFORMS } from '../obstacles/state.js';
 
 export const ENFORCER_COMBO_WINDOW_MS = 300; // Okno bufora kombinacji dół -> góra (maksymalnie 300ms)
 export const ENFORCER_BOMB_CHARGE_MS = 300; // Zachowane dla kompatybilności wstecznej
@@ -669,11 +670,14 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
     if (!isDirect && !isShockwave) continue;
 
     // 3. Weryfikacja przeszkód ściennych (ściana blokuje poziomą falę uderzeniową)
-    if (!isDirect && Array.isArray(ARENA_PLATFORMS)) {
+    const platsToCheck = (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS))
+      ? window.ARENA_PLATFORMS
+      : (typeof ARENA_PLATFORMS !== 'undefined' && Array.isArray(ARENA_PLATFORMS) ? ARENA_PLATFORMS : []);
+    if (!isDirect && platsToCheck.length > 0) {
       let isWallBlocked = false;
       const minBoundX = Math.min(centerX, tCenterX);
       const maxBoundX = Math.max(centerX, tCenterX);
-      for (const plat of ARENA_PLATFORMS) {
+      for (const plat of platsToCheck) {
         if (!plat || plat.solid === false || (!plat.isWall && plat.type !== 'wall')) continue;
         const pLeft = plat.x;
         const pRight = plat.x + (plat.w || 20);

@@ -442,6 +442,9 @@ export function updateHazards(dt, combatants = [], groundY = 800) {
       if (feetY >= acidY - 4) envDestroy = true;
     } else if (arenaId === 'arena-4') {
       if (feetY >= 1390) envDestroy = true;
+    } else if (arenaId === 'arena-5' || arenaId === 'prefab-tower') {
+      const recY = (typeof window !== 'undefined' && window.arena5State?.recyclerY) ? window.arena5State.recyclerY : (groundY + 80);
+      if (feetY >= recY - 4) envDestroy = true;
     } else if (b.y > 2400) {
       envDestroy = true;
     }

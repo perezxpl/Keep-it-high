@@ -119,7 +119,7 @@ try {
     createLinearGradient: () => mockGradient, createRadialGradient: () => mockGradient,
     ellipse: () => {}, rect: () => {}, roundRect: () => {}, quadraticCurveTo: () => {},
     strokeRect: () => {}, measureText: () => ({ width: 10 }), setLineDash: () => {},
-    fillText: () => {}, fillRect: () => {}, clearRect: () => {}
+    fillText: () => {}, strokeText: () => {}, clip: () => {}, bezierCurveTo: () => {}
   };
   const mockElement = {
     style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
@@ -271,6 +271,29 @@ try {
         botMod.namespace.updateBotBrain(dummyBall, dummyHuman, 570, null, dummyBot, [dummyHuman, dummyBot]);
       }
     }
+  }
+
+  // Smoke test Enforcer Ground Slam i kolizji sciennych (wykrywanie ReferenceError w ARENA_PLATFORMS)
+  const enforcerPathNorm = path.resolve(jsDir, 'classes/enforcer.js').toLowerCase();
+  const enforcerMod = evalModules.get(enforcerPathNorm);
+  if (enforcerMod && enforcerMod.namespace && typeof enforcerMod.namespace.executeEnforcerGroundSlamImpact === 'function') {
+    const dummySlammer = { x: 800, y: 1100, w: 30, h: 74, team: 'ORANGE', isDead: false, facing: 1 };
+    const dummyVictim = { x: 845, y: 1130, w: 24, h: 70, team: 'CYAN', isDead: false, hp: 100 };
+    enforcerMod.namespace.executeEnforcerGroundSlamImpact(dummySlammer, 1200, [dummySlammer, dummyVictim]);
+  }
+
+  // Smoke test areny 5 (fizyka, opadanie klockow, detonacje linii, rysowanie)
+  const arena5PathNorm = path.resolve(jsDir, 'arenas/arena5/index.js').toLowerCase();
+  const arena5Mod = evalModules.get(arena5PathNorm);
+  if (arena5Mod && arena5Mod.namespace && arena5Mod.namespace.Arena5PrefabTower) {
+    const a5Instance = new arena5Mod.namespace.Arena5PrefabTower();
+    a5Instance.init();
+    const dummyC1 = { x: 400, y: 1130, w: 24, h: 70, hp: 100, isDead: false, vy: 0 };
+    const dummyC2 = { x: 800, y: 1130, w: 24, h: 70, hp: 100, isDead: false, vy: 0 };
+    a5Instance.update(1 / 60, [dummyC1, dummyC2]);
+    a5Instance.onBulletHit({ x: 500, y: 800, damage: 50, vx: 10, vy: 0 });
+    a5Instance.onExplosion(500, 800, 150);
+    a5Instance.draw(mockContext, { x: 400, y: 600, zoom: 0.75, viewWidth: 1600, viewHeight: 900 });
   }
 
   console.log('Graf modulow wykonany poprawnie w V8 bez bledow TDZ/inicjalizacji (OK).');

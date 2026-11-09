@@ -116,7 +116,7 @@ function updateCrane(dt, combatants) {
     checkFallingSquash(combatants);
 
     // Warunek uderzenia w wieżę / podłoże
-    if (crane.currentY >= crane.targetLandY) {
+    if (crane.phase === 'FALLING' && crane.currentY >= crane.targetLandY) {
       crane.currentY = crane.targetLandY;
       onCraneBlockImpact(combatants);
     }
@@ -484,6 +484,13 @@ export function executeSquashKill(victim) {
  */
 function onCraneBlockImpact(combatants) {
   const crane = arena5State.crane;
+  if (!crane || !Array.isArray(crane.shapeCells) || crane.shapeCells.length === 0) {
+    if (crane) {
+      crane.phase = 'COOLDOWN';
+      crane.cooldownTimer = 0.85;
+    }
+    return;
+  }
   crane.phase = 'COOLDOWN';
   crane.cooldownTimer = 0.85; // Częstsze zrzuty: dynamiczna przerwa 0.85s
   arena5State.totalBlocksDropped++;
