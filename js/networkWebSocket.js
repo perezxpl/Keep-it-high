@@ -39,19 +39,19 @@ if (typeof window !== 'undefined') {
   window.wsState = wsState;
 }
 
+export const DEFAULT_PRODUCTION_SERVER_URL = 'wss://modern-military.onrender.com';
+
 /**
- * Zwraca domyslny adres serwera dedykowanego z fallbackiem na zmienna globalna lub localhost
+ * Zwraca domyslny adres serwera dedykowanego z fallbackiem na zmienna globalna lub serwer produkcyjny
  */
 export function getDefaultServerUrl() {
   if (typeof window !== 'undefined' && window.KIH_SERVER_URL) {
     return window.KIH_SERVER_URL;
   }
-  if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Domyslny serwer w chmurze lub biezacy host
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.hostname}:3000`;
+  if (typeof window !== 'undefined' && window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.USE_LOCAL_WS) {
+    return 'ws://localhost:3000';
   }
-  return 'ws://localhost:3000';
+  return DEFAULT_PRODUCTION_SERVER_URL;
 }
 
 /**
