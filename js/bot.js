@@ -1077,10 +1077,16 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         botTarget.enforcerBlastCooldown = diffCfg.enforcerStompCooldown;
       }
     } else if (isAirborne && !botTarget.isGroundSlamming && (!botTarget.enforcerGroundSlamCooldown || botTarget.enforcerGroundSlamCooldown <= 0) && (botTarget.vy || 0) > -1.5) {
-      // Tąpnięcie z powietrza (Ground Slam / Meteor Drop) prosto na głowę wroga znajdującego się poniżej
-      if (targetEnemy && !targetEnemy.isDead && Math.abs((targetEnemy.x + targetEnemy.w / 2) - botCenterX) < 85 && (targetEnemy.y - botTarget.y) > 60 && (targetEnemy.y - botTarget.y) < 340) {
-        triggerEnforcerGroundSlam(botTarget);
-        botTarget.enforcerGroundSlamCooldown = 180;
+      // Tąpnięcie z powietrza (Ground Slam / Meteor Drop) celowane prosto w dół na pozycję wroga
+      if (targetEnemy && !targetEnemy.isDead) {
+        const enemyMidX = targetEnemy.x + (targetEnemy.w || 24) * 0.5;
+        const xDiff = enemyMidX - botCenterX;
+        const yDiff = targetEnemy.y - botTarget.y;
+        if (Math.abs(xDiff) < 42 && yDiff > 50 && yDiff < 320) {
+          botTarget.vx = Math.sign(xDiff) * Math.min(2.0, Math.abs(xDiff) * 0.08);
+          triggerEnforcerGroundSlam(botTarget);
+          botTarget.enforcerGroundSlamCooldown = 180;
+        }
       }
     }
   }

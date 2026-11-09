@@ -585,11 +585,13 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
     spawnHeavySmokePuff(centerX, floorY - 6, 8);
   }
   if (typeof spawnGroundPuff === 'function') {
+    spawnGroundPuff(centerX - 50, floorY);
     spawnGroundPuff(centerX - 35, floorY);
     spawnGroundPuff(centerX - 18, floorY);
     spawnGroundPuff(centerX, floorY);
     spawnGroundPuff(centerX + 18, floorY);
     spawnGroundPuff(centerX + 35, floorY);
+    spawnGroundPuff(centerX + 50, floorY);
   }
 
   // 3. Bryły gruzu / kamieni
@@ -633,23 +635,67 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
   const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
 
+  const pW = player.w || 30;
+  const pH = player.h || 74;
+
   for (const t of targets) {
     if (!t || t === player || t.isDead) continue;
     if (!isFFA && player.team && t.team && player.team === t.team) continue;
     if (t.spawnProtectionTimer && t.spawnProtectionTimer > 0) continue;
 
-    const tCenterX = t.x + (t.w || 24) / 2;
-    const tCenterY = t.y + (t.h || 70) / 2;
-    const dist = Math.hypot(tCenterX - centerX, (t.y + (t.h || 70)) - floorY);
+    const tW = t.w || 24;
+    const tH = t.h || 70;
+    const tCenterX = t.x + tW * 0.5;
+    const tCenterY = t.y + tH * 0.5;
+    const tFeetY = t.y + tH;
 
-    if (dist <= 125) {
-      const isDirect = (dist <= 38);
-      const factor = isDirect ? 1.0 : Math.max(0, 1.0 - ((dist - 38) / (125 - 38)));
-      const dmg = isDirect ? 48 : Math.round(18 + 10 * factor);
-      const stagger = isDirect ? 34 : Math.round(16 + 8 * factor);
-      const knockDir = Math.sign(tCenterX - centerX) || player.facing || 1;
-      const knockVx = knockDir * (isDirect ? 14.0 : (8.0 + 5.0 * factor));
-      const knockVy = isDirect ? -8.5 : -5.2;
+    const dx = Math.abs(tCenterX - centerX);
+
+    // 1. Bezpośrednie zmiażdżenie ciałem (Direct Meteor Crush / Stomp)
+    // Enforcer fizycznie trafia ciałem w cel przy lądowaniu
+    const isDirectHoriz = dx <= (pW + tW) * 0.5 + 6;
+    const isDirectVert = tFeetY >= floorY - 32 && t.y <= floorY + 12;
+    const isDirect = isDirectHoriz && isDirectVert;
+
+    // 2. Fala uderzeniowa po powierzchni gruntu (Ground Shockwave)
+    // Rozchodzi się wyłącznie po podłożu w realistycznym promieniu 68px (koniec z przesadzonym 125px).
+    // Kluczowy warunek fizyki: stopy celu muszą spoczywać na tej samej powierzchni (tFeetY w pobliżu floorY).
+    // Jeśli cel wyskoczył w górę lub lewituje na jetpacku (tFeetY < floorY - 18), unika fali uderzeniowej!
+    const isGroundedOnFloor = (tFeetY >= floorY - 18 && tFeetY <= floorY + 24);
+    const inShockwaveRange = dx <= 68;
+    const isShockwave = !isDirect && isGroundedOnFloor && inShockwaveRange;
+
+    // Cel nie został uderzony bezpośrednio ani nie stoi na gruncie w zasięgu fali -> unik / pudło
+    if (!isDirect && !isShockwave) continue;
+
+    // 3. Weryfikacja przeszkód ściennych (ściana blokuje poziomą falę uderzeniową)
+    if (!isDirect && Array.isArray(ARENA_PLATFORMS)) {
+      let isWallBlocked = false;
+      const minBoundX = Math.min(centerX, tCenterX);
+      const maxBoundX = Math.max(centerX, tCenterX);
+      for (const plat of ARENA_PLATFORMS) {
+        if (!plat || plat.solid === false || (!plat.isWall && plat.type !== 'wall')) continue;
+        const pLeft = plat.x;
+        const pRight = plat.x + (plat.w || 20);
+        if (pLeft > minBoundX && pRight < maxBoundX) {
+          const wTop = (plat.y !== undefined) ? plat.y : (floorY - (plat.h || 120));
+          const wBottom = wTop + (plat.h || 120);
+          if (wTop <= floorY && wBottom >= floorY - 20) {
+            isWallBlocked = true;
+            break;
+          }
+        }
+      }
+      if (isWallBlocked) continue;
+    }
+
+    // 4. Precyzyjne skalowanie obrażeń, oszołomienia i odrzutu
+    const factor = isDirect ? 1.0 : Math.max(0, 1.0 - (dx - 28) / (68 - 28));
+    const dmg = isDirect ? 48 : Math.round(14 + 18 * factor);
+    const stagger = isDirect ? 34 : Math.round(12 + 12 * factor);
+    const knockDir = Math.sign(tCenterX - centerX) || player.facing || 1;
+    const knockVx = knockDir * (isDirect ? 14.0 : (6.5 + 4.5 * factor));
+    const knockVy = isDirect ? -8.5 : -4.8;
 
       t.hp = Math.max(0, (t.hp !== undefined ? t.hp : 100) - dmg);
       t.lastAttacker = player;
@@ -719,7 +765,6 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
           }
         }
       }
-    }
   }
 
   // 5. Interakcja z piłką
