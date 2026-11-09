@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { networkState } from './network.js';
+import { wsState, startDedicatedMatchmaking, cancelDedicatedMatchmaking } from './networkWebSocket.js';
 import { getMpBotCount, getMpBotLayoutDescription } from './bot.js';
 import {
   mpMatchConfig,
@@ -555,6 +556,32 @@ export function initNetworkUI(handlers = {}) {
   if (devMpBtn) devMpBtn.onclick = () => openMultiplayerModal();
   if (closeBtn) closeBtn.onclick = () => closeMultiplayerModal();
   if (backdrop) backdrop.onclick = () => closeMultiplayerModal();
+
+  // Automatyczny matchmaking na serwerze dedykowanym (max 6 graczy na mecz)
+  const mmBtn = document.getElementById('mp-matchmake-btn');
+  const mmServerInput = document.getElementById('mp-server-url-input');
+  const mmStatus = document.getElementById('mp-matchmake-status');
+  if (mmBtn) {
+    mmBtn.onclick = () => {
+      if (wsState && (wsState.status === 'searching' || wsState.status === 'matched')) {
+        cancelDedicatedMatchmaking();
+        mmBtn.textContent = 'SZUKAJ MECZU (MATCHMAKING)';
+        mmBtn.classList.remove('mp-btn-searching');
+        if (mmStatus) { mmStatus.style.display = 'none'; }
+        updateUIStatus('disconnected', 'Matchmaking anulowany');
+      } else {
+        const customUrl = mmServerInput ? mmServerInput.value.trim() : null;
+        startDedicatedMatchmaking(window.player?.name || 'Operator', { serverUrl: customUrl || undefined });
+        mmBtn.textContent = 'ANULUJ SZUKANIE MECZU...';
+        mmBtn.classList.add('mp-btn-searching');
+        if (mmStatus) {
+          mmStatus.style.display = 'block';
+          mmStatus.textContent = 'Szukanie otwartego meczu (max 6 graczy)...';
+        }
+        updateUIStatus('connecting', 'Szukanie pokoju (max 6 graczy)...');
+      }
+    };
+  }
 
   // Tworzenie pokoju
   const hostBtn = document.getElementById('mp-host-btn');

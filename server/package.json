@@ -1,0 +1,14 @@
+{
+  "name": "keep-it-high-server",
+  "version": "1.0.0",
+  "description": "Dedykowany serwer matchmakingu i synchronizacji WebSocket (Max 6 graczy na mecz)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test-matchmaking.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

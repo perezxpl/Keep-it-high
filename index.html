@@ -81,15 +81,17 @@
       "./js/loadout/logic.js": "./js/loadout/logic.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/state.js": "./js/loadout/state.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
       "./js/loadout/weaponPreviews.js": "./js/loadout/weaponPreviews.js?v=v331_fix_weapon_pivot_reference_and_preview_jumps",
-      "./js/main.js": "./js/main.js?v=v430_menu_dynamic_battleground",
+      "./js/main.js": "./js/main.js?v=v447_multiplayer_6_players",
       "./js/menuFight/index.js": "./js/menuFight/index.js?v=v430_menu_dynamic_battleground",
       "./js/menuFight/logic.js": "./js/menuFight/logic.js?v=v430_menu_dynamic_battleground",
       "./js/menuFight/renderer.js": "./js/menuFight/renderer.js?v=v430_menu_dynamic_battleground",
       "./js/menuFight/state.js": "./js/menuFight/state.js?v=v430_menu_dynamic_battleground",
       "./js/mobileControls.js": "./js/mobileControls.js?v=v403_enforcer_ground_slam_touch_kick_combo",
-      "./js/network.js": "./js/network.js?v=v386_win_conditions_and_gameplay_settings",
-      "./js/networkMatch.js": "./js/networkMatch.js?v=v381_oil_rig_typhoon",
-      "./js/networkUI.js": "./js/networkUI.js?v=v215_smash_bros_multiplayer_roster",
+      "./js/network.js": "./js/network.js?v=v447_multiplayer_6_players",
+      "./js/networkMatch.js": "./js/networkMatch.js?v=v447_multiplayer_6_players",
+      "./js/networkPlayers.js": "./js/networkPlayers.js?v=v447_multiplayer_6_players",
+      "./js/networkUI.js": "./js/networkUI.js?v=v447_multiplayer_6_players",
+      "./js/networkWebSocket.js": "./js/networkWebSocket.js?v=v447_multiplayer_6_players",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/obstacles/materials.js": "./js/obstacles/materials.js?v=v347_dynamic_lighting_and_materials",
@@ -250,6 +252,26 @@
 
           <!-- Disconnected / Setup Mode -->
           <div id="mp-setup-view">
+            <!-- DEDYKOWANY MATCHMAKING (DO 6 GRACZY) -->
+            <div class="mp-card mp-card-accent" id="mp-matchmaking-card" style="border: 1px solid #38bdf8; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(14, 165, 233, 0.05)); margin-bottom: 12px;">
+              <div class="mp-card-title-row" style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="mp-card-title" style="color: #38bdf8;">MATCHMAKING ONLINE (DO 6 GRACZY)</span>
+                <span class="mp-arena-badge" style="background: rgba(56, 189, 248, 0.25); color: #7dd3fc; border: 1px solid #0284c7; padding: 2px 6px; font-size: 10px; border-radius: 4px;">LIMIT: 6 OSÓB / MECZ</span>
+              </div>
+              <p class="mp-card-desc" style="margin: 6px 0 10px 0; font-size: 11px; color: #94a3b8;">
+                Automatyczny dobór graczy do meczu online (3v3 lub FFA). Do 6 graczy na arenę, bez żadnych opłat serwerowych.
+              </p>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <button id="mp-matchmake-btn" class="mp-action-btn mp-btn-cyan" type="button" style="flex: 2; padding: 10px 14px; font-weight: 800; font-size: 13px;">
+                  SZUKAJ MECZU (MATCHMAKING)
+                </button>
+                <div style="flex: 1; min-width: 160px;">
+                  <input type="text" id="mp-server-url-input" class="mp-text-input" placeholder="ws://localhost:3000" style="font-size: 11px; padding: 8px 10px; width: 100%; box-sizing: border-box;" title="Adres serwera dedykowanego WebSocket" />
+                </div>
+              </div>
+              <div id="mp-matchmake-status" style="font-size: 11px; color: #38bdf8; margin-top: 6px; display: none;"></div>
+            </div>
+
             <!-- HOST SECTION -->
             <div class="mp-card mp-card-cyan">
               <div class="mp-card-title">STWÓRZ POKÓJ (HOST)</div>

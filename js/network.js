@@ -20,6 +20,24 @@ import {
   setMpTeamBots,
   saveMpMatchConfig
 } from './networkMatch.js';
+import {
+  remotePlayer,
+  remotePlayers,
+  getActiveRemotePlayers,
+  getOrCreateRemotePlayer,
+  removeRemotePlayer,
+  clearAllRemotePlayers,
+  updateAllRemotePlayers,
+  applyTeamVisualsToRemotePlayer,
+  MAX_MATCH_PLAYERS,
+  MAX_REMOTE_PLAYERS
+} from './networkPlayers.js';
+import {
+  wsState,
+  startDedicatedMatchmaking,
+  cancelDedicatedMatchmaking,
+  sendWsPacket
+} from './networkWebSocket.js';
 
 export {
   updateUIStatus,
@@ -33,99 +51,91 @@ export {
   closeChat,
   addChatMessageToUI,
   syncMpBotUI,
-  mpMatchConfig
+  mpMatchConfig,
+  remotePlayer,
+  remotePlayers,
+  getActiveRemotePlayers,
+  getOrCreateRemotePlayer,
+  removeRemotePlayer,
+  clearAllRemotePlayers,
+  updateAllRemotePlayers,
+  applyTeamVisualsToRemotePlayer,
+  MAX_MATCH_PLAYERS,
+  MAX_REMOTE_PLAYERS,
+  wsState,
+  startDedicatedMatchmaking,
+  cancelDedicatedMatchmaking
 };
 
 // =============================================================================
-// ZDALNY GRACZ (REMOTE PLAYER INSTANCE)
+// STAN SIECI I POLACZENIA
 // =============================================================================
-const initialGroundY = (typeof GROUND_Y === 'number' && GROUND_Y > 0) ? GROUND_Y : 500;
-export const remotePlayer = createPlayerInstance({
-  isIntro: false,
-  x: 2600,
-  y: initialGroundY - 70,
-  facing: -1
-});
-Object.assign(remotePlayer, {
-  active: false, isRemote: true, name: 'Gracz 2', targetX: 2600, targetY: initialGroundY - 70,
-  groundY: initialGroundY, currentGroundY: initialGroundY, stridePhase: 0, isJetpacking: false
-});
+export const clientConnections = new Map();
 
-// =============================================================================
-// STAN SIECI I POŁĄCZENIA
-// =============================================================================
 export const networkState = {
   isHost: false, isConnected: false, roomId: null, peer: null, conn: null, ping: 0,
+  clientConnections,
   status: 'disconnected', statusMsg: 'Offline', lastPingSent: 0, lastStateSent: 0, lastBotsStateSent: 0
 };
 
 if (typeof window !== 'undefined') {
   window.networkState = networkState;
   window.remotePlayer = remotePlayer;
+  window.remotePlayers = remotePlayers;
 }
 
 // =============================================================================
-// PRZYPISANIE DRUŻYNY SIECIOWEJ (SMASH BROS ROSTER SYSTEM)
+// PRZYPISANIE DRUZYNY SIECIOWEJ (SMASH BROS ROSTER SYSTEM)
 // =============================================================================
 export function applyTeamVisuals(isHost) {
   applyMpTeamVisuals(isHost, player, remotePlayer);
+  for (const rp of getActiveRemotePlayers()) {
+    if (rp.team) applyTeamVisualsToRemotePlayer(rp, rp.team);
+  }
 }
 
 // =============================================================================
-// AKTUALIZACJA I INTERPOLACJA ZDALNEGO GRACZA
+// AKTUALIZACJA I INTERPOLACJA ZDALNYCH GRACZY
 // =============================================================================
 export function updateRemotePlayer(groundY) {
-  if (!remotePlayer.active) return;
+  updateAllRemotePlayers(groundY);
+}
 
-  remotePlayer.groundY = groundY;
-  remotePlayer.currentGroundY = groundY;
-
-  // Spadek timerów animacji i wystrzału
-  if (remotePlayer.shootCooldown > 0) remotePlayer.shootCooldown--;
-  if (remotePlayer.shootPoseTimer > 0) remotePlayer.shootPoseTimer--;
-  if (remotePlayer.muzzleFlashTimer > 0) remotePlayer.muzzleFlashTimer--;
-  if (remotePlayer.weaponKickback > 0.05) remotePlayer.weaponKickback *= 0.65; else remotePlayer.weaponKickback = 0;
-  if (remotePlayer.muzzleRise > 0.005) remotePlayer.muzzleRise *= 0.72; else remotePlayer.muzzleRise = 0;
-  if (remotePlayer.pumpTimer > 0) remotePlayer.pumpTimer--;
-
-  // Płynna interpolacja pozycji (lerp)
-  const dx = remotePlayer.targetX - remotePlayer.x;
-  const dy = remotePlayer.targetY - remotePlayer.y;
-  const dist = Math.hypot(dx, dy);
-
-  if (dist > 180) {
-    // Duży przeskok (respawn / teleport)
-    remotePlayer.x = remotePlayer.targetX;
-    remotePlayer.y = remotePlayer.targetY;
-  } else {
-    remotePlayer.x += dx * 0.45;
-    remotePlayer.y += dy * 0.45;
+// =============================================================================
+// ROZSYŁANIE PAKIETÓW (P2P STAR RELAY ORAZ DEDYKOWANY WEBSOCKET)
+// =============================================================================
+export function broadcastNetworkPacket(packet, excludePeerId = null) {
+  // 1. Dedykowany serwer WebSocket
+  if (wsState && wsState.connected) {
+    sendWsPacket(packet);
+    return;
   }
 
-  // Animacja biegu / cyklu chodu
-  const rSpeed = Math.abs(remotePlayer.vx || 0);
-  if (remotePlayer.isRunning || rSpeed > 0.1) {
-    remotePlayer.animTimer = (remotePlayer.animTimer || 0) + 0.22;
-    if (!remotePlayer.isJumping) {
-      remotePlayer.stridePhase = (remotePlayer.stridePhase || 0) + rSpeed * 0.04;
+  // 2. Architektura P2P WebRTC Star (Host jest serwerem dla max 5 klientów)
+  if (networkState.isHost) {
+    for (const [peerId, conn] of clientConnections.entries()) {
+      if (peerId !== excludePeerId && conn && conn.open) {
+        try {
+          conn.send(packet);
+        } catch (_) {}
+      }
     }
+  } else if (networkState.conn && networkState.conn.open) {
+    try {
+      networkState.conn.send(packet);
+    } catch (_) {}
   }
+}
 
-  // Cząsteczki płomienia jetpacka u zdalnego gracza w barwach drużyny lub jego custom koloru
-  if (remotePlayer.isJetpacking) {
-    const nozzle = getJetpackNozzlePos(remotePlayer);
-    const defaultCol = networkState.isHost ? '#f97316' : '#00e5ff';
-    const remoteFlameCol = remotePlayer.customVisuals?.jetpackColor || defaultCol;
-    const remoteJetColors = getJetpackFlamePalette(remoteFlameCol).particles;
-    spawnJetpackSparks(nozzle.x, nozzle.y, remotePlayer.facing, 4, remoteJetColors, remotePlayer.vx || 0, remotePlayer.vy || 0, nozzle.angle);
-  }
+export function isNetworkActive() {
+  return (networkState.isConnected && (networkState.conn || clientConnections.size > 0)) || (wsState && wsState.connected);
 }
 
 // =============================================================================
 // WYSYŁANIE PAKIETÓW SIECIOWYCH
 // =============================================================================
 export function sendPlayerState(localPlayer) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
 
   const now = performance.now();
   // Wysyłamy co klatkę lub max 60 Hz
@@ -133,7 +143,7 @@ export function sendPlayerState(localPlayer) {
   networkState.lastStateSent = now;
 
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'p_state',
       x: Math.round(localPlayer.x * 10) / 10,
       y: Math.round(localPlayer.y * 10) / 10,
@@ -159,6 +169,7 @@ export function sendPlayerState(localPlayer) {
       selectedClass: localPlayer.selectedClass,
       customVisuals: localPlayer.customVisuals,
       team: localPlayer.team,
+      name: localPlayer.name,
       currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'AK47',
       isHolstered: !!localPlayer.isHolstered,
       isJetpacking: !!localPlayer.isJetpacking,
@@ -172,10 +183,10 @@ export function sendPlayerState(localPlayer) {
 
 export function sendBallState(localBall) {
   // Tylko host zarządza autorytatywnie piłką i wysyła jej pozycję
-  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  if (!networkState.isHost || !isNetworkActive()) return;
 
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'b_state',
       x: Math.round(localBall.x * 10) / 10,
       y: Math.round(localBall.y * 10) / 10,
@@ -189,9 +200,9 @@ export function sendBallState(localBall) {
 }
 
 export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'shoot',
       weaponId: weaponId,
       x: Math.round(muzzleX * 10) / 10,
@@ -203,9 +214,9 @@ export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
 }
 
 export function sendKickEvent(vx, vy, spin = 0) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'kick_ball',
       vx: Math.round(vx * 100) / 100,
       vy: Math.round(vy * 100) / 100,
@@ -215,49 +226,49 @@ export function sendKickEvent(vx, vy, spin = 0) {
 }
 
 export function sendObstacleAdd(obstacle) {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'obs_add', obs: obstacle }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'obs_add', obs: obstacle }); } catch (_) {}
   }
 }
 
 export function sendObstacleRemove(obs) {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'obs_rem', x: obs.x, y: obs.y, type: obs.type }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'obs_rem', x: obs.x, y: obs.y, type: obs.type }); } catch (_) {}
   }
 }
 
 export function sendObstacleClear() {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'obs_clr' }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'obs_clr' }); } catch (_) {}
   }
 }
 
 export function sendObstacleUndo() {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'obs_undo' }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'obs_undo' }); } catch (_) {}
   }
 }
 
 export function sendArenaSwitch(arenaId) {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'arena_sw', arenaId }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'arena_sw', arenaId }); } catch (_) {}
   }
 }
 
 export function sendReturnToLobby() {
-  if (networkState.conn && networkState.isConnected) {
-    try { networkState.conn.send({ type: 'return_to_lobby' }); } catch (_) {}
+  if (isNetworkActive()) {
+    try { broadcastNetworkPacket({ type: 'return_to_lobby' }); } catch (_) {}
   }
 }
 
 export function sendBotsState(activeBotsList) {
-  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  if (!networkState.isHost || !isNetworkActive()) return;
   const now = performance.now();
   if (now - (networkState.lastBotsStateSent || 0) < 22) return;
   networkState.lastBotsStateSent = now;
 
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'bots_state',
       bots: activeBotsList.map((b, idx) => ({
         idx,
@@ -290,9 +301,9 @@ export function sendBotsState(activeBotsList) {
 }
 
 export function sendBotShootEvent(botIdx, weaponId, muzzleX, muzzleY, aimAngle) {
-  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  if (!networkState.isHost || !isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'bot_shoot',
       botIdx: botIdx,
       weaponId: weaponId,
@@ -305,9 +316,9 @@ export function sendBotShootEvent(botIdx, weaponId, muzzleX, muzzleY, aimAngle) 
 }
 
 export function sendDamageEvent(damageData) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'deal_dmg',
       ...damageData
     });
@@ -315,9 +326,9 @@ export function sendDamageEvent(damageData) {
 }
 
 export function sendKillBroadcast(killData) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'kill_event',
       ...killData
     });
@@ -325,9 +336,9 @@ export function sendKillBroadcast(killData) {
 }
 
 export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse = null) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'grenade_throw',
       x: Math.round(targetX * 10) / 10,
       y: Math.round(targetY * 10) / 10,
@@ -342,9 +353,9 @@ export function sendGrenadeThrow(targetX, targetY, power, originX, originY, fuse
 }
 
 export function sendTomahawkThrow(targetX, targetY, power, originX, originY) {
-  if (!networkState.conn || !networkState.isConnected) return;
+  if (!isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'tomahawk_throw',
       x: Math.round(targetX * 10) / 10,
       y: Math.round(targetY * 10) / 10,
@@ -358,9 +369,9 @@ export function sendTomahawkThrow(targetX, targetY, power, originX, originY) {
 }
 
 export function sendDeathmatchSync(dmState) {
-  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  if (!networkState.isHost || !isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'dm_sync',
       timeRemaining: Math.round(dmState.timeRemaining * 10) / 10,
       elapsedTime: Math.round((dmState.elapsedTime || 0) * 10) / 10,
@@ -376,9 +387,9 @@ export function sendDeathmatchSync(dmState) {
 }
 
 export function sendAcidSurgeSync(acidState) {
-  if (!networkState.isHost || !networkState.conn || !networkState.isConnected) return;
+  if (!networkState.isHost || !isNetworkActive()) return;
   try {
-    networkState.conn.send({
+    broadcastNetworkPacket({
       type: 'acid_sync',
       state: acidState.state,
       timer: Math.round(acidState.timer * 10) / 10,
@@ -735,7 +746,7 @@ function updateDevArenaButtonUI(arenaId) {
 // =============================================================================
 // ODBIÓR PAKIETÓW SIECIOWYCH
 // =============================================================================
-function handleNetworkData(data) {
+function handleNetworkData(data, senderPeerId = null) {
   if (!data || !data.type) return;
 
   switch (data.type) {
@@ -760,6 +771,9 @@ function handleNetworkData(data) {
       }
       if (data.botDifficulty) {
         setBotDifficulty(data.botDifficulty);
+      }
+      if (data.team) {
+        player.team = data.team;
       }
       applyTeamVisuals(false);
       balanceBotClasses(player, getActiveBots());
@@ -800,52 +814,77 @@ function handleNetworkData(data) {
       break;
     }
 
+    case 'peer_joined': {
+      getOrCreateRemotePlayer(data.peerId, data.slotIndex, data.name, data.team);
+      refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      triggerCombatFeedBanner('SYSTEM', `${data.name || 'NOWY GRACZ'} DOŁĄCZYŁ DO BITWY`);
+      break;
+    }
+
+    case 'peer_left': {
+      removeRemotePlayer(data.peerId);
+      refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      triggerCombatFeedBanner('SYSTEM', 'GRACZ OPUSCIŁ GRE');
+      break;
+    }
+
+    case 'room_full': {
+      alert(data.message || 'Pokój jest pełny (maksymalnie 6 graczy na mecz).');
+      disconnectNetwork();
+      break;
+    }
+
     case 'p_state': {
-      remotePlayer.active = true;
-      remotePlayer.targetX = data.x;
-      remotePlayer.targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
-      remotePlayer.groundY = GROUND_Y;
-      remotePlayer.currentGroundY = GROUND_Y;
-      remotePlayer.vx = data.vx;
-      remotePlayer.vy = data.vy;
-      remotePlayer.facing = data.facing;
-      remotePlayer.aimX = data.aimX;
-      remotePlayer.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
-      remotePlayer.aimAngle = data.aimAngle;
-      remotePlayer.isJumping = data.isJumping;
-      remotePlayer.isSliding = data.isSliding;
-      if (data.isProne !== undefined) remotePlayer.isProne = !!data.isProne;
-      if (data.staggerTimer !== undefined) remotePlayer.staggerTimer = data.staggerTimer;
-      if (data.staggerLanded !== undefined) remotePlayer.staggerLanded = !!data.staggerLanded;
-      remotePlayer.isRunning = data.isRunning;
-      remotePlayer.isKickCharging = data.isKickCharging;
-      remotePlayer.kickCharge = data.kickCharge;
-      remotePlayer.hp = data.hp;
-      remotePlayer.maxHp = data.maxHp;
-      remotePlayer.isDead = data.isDead;
-      remotePlayer.isJetpacking = data.isJetpacking;
-      remotePlayer.jetFuel = data.jetFuel;
+      const pid = data.senderId || senderPeerId || 'remote_1';
+      const slot = data.slotIndex || 1;
+      const targetRp = getOrCreateRemotePlayer(pid, slot, data.name, data.team);
+      if (!targetRp) break;
+
+      targetRp.active = true;
+      targetRp.targetX = data.x;
+      targetRp.targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      targetRp.groundY = GROUND_Y;
+      targetRp.currentGroundY = GROUND_Y;
+      targetRp.vx = data.vx;
+      targetRp.vy = data.vy;
+      targetRp.facing = data.facing;
+      targetRp.aimX = data.aimX;
+      targetRp.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
+      targetRp.aimAngle = data.aimAngle;
+      targetRp.isJumping = data.isJumping;
+      targetRp.isSliding = data.isSliding;
+      if (data.isProne !== undefined) targetRp.isProne = !!data.isProne;
+      if (data.staggerTimer !== undefined) targetRp.staggerTimer = data.staggerTimer;
+      if (data.staggerLanded !== undefined) targetRp.staggerLanded = !!data.staggerLanded;
+      targetRp.isRunning = data.isRunning;
+      targetRp.isKickCharging = data.isKickCharging;
+      targetRp.kickCharge = data.kickCharge;
+      targetRp.hp = data.hp;
+      targetRp.maxHp = data.maxHp;
+      targetRp.isDead = data.isDead;
+      targetRp.isJetpacking = data.isJetpacking;
+      targetRp.jetFuel = data.jetFuel;
       if (data.customVisuals) {
-        remotePlayer.customVisuals = { ...(remotePlayer.customVisuals || {}), ...data.customVisuals };
+        targetRp.customVisuals = { ...(targetRp.customVisuals || {}), ...data.customVisuals };
       }
       if (data.team) {
-        remotePlayer.team = data.team;
+        targetRp.team = data.team;
       }
       if (data.name) {
-        remotePlayer.name = data.name;
+        targetRp.name = data.name;
       }
 
-      if (data.selectedClass && remotePlayer.selectedClass !== data.selectedClass) {
-        setPlayerClass(data.selectedClass, remotePlayer);
+      if (data.selectedClass && targetRp.selectedClass !== data.selectedClass) {
+        setPlayerClass(data.selectedClass, targetRp);
         applyTeamVisuals(networkState.isHost);
       }
 
       const wepId = data.currentWeaponId || data.weaponId;
       if (wepId && WEAPONS[wepId]) {
-        remotePlayer.currentWeapon = WEAPONS[wepId];
+        targetRp.currentWeapon = WEAPONS[wepId];
       }
       if (data.isHolstered !== undefined) {
-        remotePlayer.isHolstered = !!data.isHolstered;
+        targetRp.isHolstered = !!data.isHolstered;
       }
       break;
     }
@@ -872,18 +911,20 @@ function handleNetworkData(data) {
     }
 
     case 'shoot': {
-      const wep = WEAPONS[data.weaponId] || remotePlayer.currentWeapon || WEAPONS.AK47;
-      remotePlayer.currentWeapon = wep;
-      remotePlayer.aimAngle = data.aimAngle;
-      remotePlayer.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
+      const pid = data.senderId || senderPeerId;
+      const targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : remotePlayer;
+      const wep = WEAPONS[data.weaponId] || targetRp.currentWeapon || WEAPONS.AK47;
+      targetRp.currentWeapon = wep;
+      targetRp.aimAngle = data.aimAngle;
+      targetRp.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
 
       // Oblicz pozycję wylotu lufy zsynchronizowaną z lokalnym GROUND_Y odbiorcy
-      const shootOriginX = (typeof data.x === 'number') ? data.x : (remotePlayer.x + remotePlayer.w / 2);
+      const shootOriginX = (typeof data.x === 'number') ? data.x : (targetRp.x + targetRp.w / 2);
       const shootOriginY = (data.relY !== undefined)
         ? (GROUND_Y - data.relY)
-        : ((typeof data.y === 'number') ? data.y : (remotePlayer.y + 20));
+        : ((typeof data.y === 'number') ? data.y : (targetRp.y + 20));
 
-      shootWeapon(remotePlayer, wep, shootOriginX, shootOriginY, data.aimAngle);
+      shootWeapon(targetRp, wep, shootOriginX, shootOriginY, data.aimAngle);
       break;
     }
 
@@ -1122,22 +1163,26 @@ function handleNetworkData(data) {
     }
 
     case 'grenade_throw': {
-      const originX = (typeof data.originX === 'number') ? data.originX : (remotePlayer.x + remotePlayer.w / 2);
+      const pid = data.senderId || senderPeerId;
+      const targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : remotePlayer;
+      const originX = (typeof data.originX === 'number') ? data.originX : (targetRp.x + targetRp.w / 2);
       const originY = (data.relOriginY !== undefined)
         ? (GROUND_Y - data.relOriginY)
-        : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
+        : ((typeof data.originY === 'number') ? data.originY : (targetRp.y + 20));
       const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
-      spawnAeroSuperGrenade(remotePlayer, data.x, targetY, data.power, originX, originY, data.fuse);
+      spawnAeroSuperGrenade(targetRp, data.x, targetY, data.power, originX, originY, data.fuse);
       break;
     }
 
     case 'tomahawk_throw': {
-      const originX = (typeof data.originX === 'number') ? data.originX : (remotePlayer.x + remotePlayer.w / 2);
+      const pid = data.senderId || senderPeerId;
+      const targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : remotePlayer;
+      const originX = (typeof data.originX === 'number') ? data.originX : (targetRp.x + targetRp.w / 2);
       const originY = (data.relOriginY !== undefined)
         ? (GROUND_Y - data.relOriginY)
-        : ((typeof data.originY === 'number') ? data.originY : (remotePlayer.y + 20));
+        : ((typeof data.originY === 'number') ? data.originY : (targetRp.y + 20));
       const targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
-      spawnThrownTomahawk(remotePlayer, data.x, targetY, data.power, originX, originY);
+      spawnThrownTomahawk(targetRp, data.x, targetY, data.power, originX, originY);
       break;
     }
 
@@ -1296,6 +1341,17 @@ export function handleVisibilityChange() {
 }
 
 function setupConnection(conn, isHost) {
+  if (isHost) {
+    if (clientConnections.size >= MAX_REMOTE_PLAYERS) {
+      console.warn(`[P2P HOST] Odrzucono połączenie ${conn.peer} - pokój pełny (${MAX_MATCH_PLAYERS} graczy max).`);
+      try {
+        conn.send({ type: 'room_full', message: 'Pokój osiągnął limit 6 graczy na mecz.' });
+        setTimeout(() => { try { conn.close(); } catch (_) {} }, 250);
+      } catch (_) {}
+      return;
+    }
+    clientConnections.set(conn.peer, conn);
+  }
   networkState.conn = conn;
   networkState.isHost = isHost;
   lastReceivedDataTime = performance.now();
@@ -1305,15 +1361,15 @@ function setupConnection(conn, isHost) {
     networkState.status = 'connected';
     savedSession.reconnecting = false;
     savedSession.reconnectAttempts = 0;
-    updateUIStatus('connected', isHost ? 'Połączono z Graczem 2 (Klient)' : 'Połączono z Hostem gry');
 
-    remotePlayer.active = true;
-    remotePlayer.isDead = false;
-    remotePlayer.hp = 100;
-    applyTeamVisuals(isHost);
-
-    // Host wysyła inicjalny stan mapy, areny, botów, hazardów i punktu spawnu klienta
     if (isHost) {
+      const clientSlot = clientConnections.size;
+      const assignedTeam = (clientSlot <= 2) ? 'CYAN' : 'ORANGE';
+      const assignedName = `Gracz ${clientSlot + 1}`;
+      const rp = getOrCreateRemotePlayer(conn.peer, clientSlot, assignedName, assignedTeam);
+
+      updateUIStatus('connected', `Mecz [${clientConnections.size + 1}/${MAX_MATCH_PLAYERS} graczy]`);
+
       const spawns = getMpSpawnPositions(activeArenaId, mpMatchConfig, GROUND_Y);
       if (player && spawns.host) {
         player.x = spawns.host.x;
@@ -1326,6 +1382,8 @@ function setupConnection(conn, isHost) {
         type: 'init_sync',
         arenaId: activeArenaId,
         mpMatchConfig: mpMatchConfig,
+        slotIndex: clientSlot,
+        team: assignedTeam,
         botCount: getTotalMpBotCount(),
         botDifficulty: getBotDifficulty(),
         customObstacles: customObstacles,
@@ -1349,9 +1407,43 @@ function setupConnection(conn, isHost) {
         } : null,
         clientSpawn: spawns.client
       });
+
+      // Powiadom pozostałych graczy w sieci P2P Star
+      broadcastNetworkPacket({
+        type: 'peer_joined',
+        peerId: conn.peer,
+        slotIndex: clientSlot,
+        name: assignedName,
+        team: assignedTeam
+      }, conn.peer);
+
+      // Prześlij nowemu klientowi informacje o pozostałych obecnych
+      for (const [otherPeerId, otherConn] of clientConnections.entries()) {
+        if (otherPeerId !== conn.peer) {
+          const otherRp = remotePlayers.get(otherPeerId);
+          if (otherRp) {
+            try {
+              conn.send({
+                type: 'peer_joined',
+                peerId: otherPeerId,
+                slotIndex: otherRp.slotIndex,
+                name: otherRp.name,
+                team: otherRp.team
+              });
+            } catch (_) {}
+          }
+        }
+      }
+    } else {
+      updateUIStatus('connected', 'Połączono z Hostem gry');
+      remotePlayer.active = true;
+      remotePlayer.isDead = false;
+      remotePlayer.hp = 100;
     }
 
+    applyTeamVisuals(isHost);
     syncMpBotUI(getMpBotCount());
+    refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
 
     startPingLoop();
     initHeartbeatWorker();
@@ -1362,22 +1454,44 @@ function setupConnection(conn, isHost) {
 
   conn.on('data', (data) => {
     lastReceivedDataTime = performance.now();
-    handleNetworkData(data);
+    if (!data) return;
+    if (isHost) {
+      data.senderId = conn.peer;
+      if (data.type === 'p_state' || data.type === 'shoot' || data.type === 'deal_dmg' ||
+          data.type === 'kill_event' || data.type === 'grenade_throw' || data.type === 'tomahawk_throw' ||
+          data.type === 'chat_msg') {
+        broadcastNetworkPacket(data, conn.peer);
+      }
+    }
+    handleNetworkData(data, conn.peer);
   });
 
   conn.on('close', () => {
-    console.warn('[P2P] WebRTC conn zamknięty. document.hidden:', document.hidden);
+    console.warn('[P2P] WebRTC conn zamknięty dla:', conn.peer);
+    if (isHost) {
+      clientConnections.delete(conn.peer);
+      removeRemotePlayer(conn.peer);
+      broadcastNetworkPacket({ type: 'peer_left', peerId: conn.peer });
+      refreshDeathmatchParticipants(player, getActiveBots(), remotePlayer);
+      if (clientConnections.size > 0) {
+        updateUIStatus('connected', `Mecz [${clientConnections.size + 1}/${MAX_MATCH_PLAYERS} graczy]`);
+        return;
+      }
+    }
     if (document.hidden) {
-      // Jeśli telefon został zminimalizowany, nie pokazuj od razu błędu – poczekaj na wznowienie
       networkState.isConnected = false;
       return;
     }
-    handleDisconnect('Połączenie zostało zamknięte przez drugiego gracza.');
+    handleDisconnect(isHost ? 'Wszyscy gracze opuścili pokój.' : 'Połączenie zostało zamknięte przez hosta.');
   });
 
   conn.on('error', (err) => {
     console.warn('[P2P] Connection error:', err);
-    if (!document.hidden) {
+    if (isHost) {
+      clientConnections.delete(conn.peer);
+      removeRemotePlayer(conn.peer);
+    }
+    if (!document.hidden && (!isHost || clientConnections.size === 0)) {
       handleDisconnect('Błąd transmisji danych WebRTC.');
     }
   });
@@ -1516,6 +1630,13 @@ export function disconnectNetwork() {
     try { heartbeatWorker.postMessage('stop'); } catch (e) { }
   }
 
+  cancelDedicatedMatchmaking();
+
+  for (const conn of clientConnections.values()) {
+    try { conn.close(); } catch (_) {}
+  }
+  clientConnections.clear();
+
   savedSession.roomId = null;
   savedSession.targetJoinId = null;
   savedSession.reconnecting = false;
@@ -1534,7 +1655,8 @@ export function disconnectNetwork() {
   networkState.isHost = false;
   networkState.roomId = null;
   networkState.ping = 0;
-  remotePlayer.active = false;
+
+  clearAllRemotePlayers();
 
   const spCount = getStoredSinglePlayerBotCount();
   setBotEnabled(getStoredBotEnabled(), { skipStorage: true });
@@ -1551,9 +1673,15 @@ function handleDisconnect(reason) {
   if (heartbeatWorker) {
     try { heartbeatWorker.postMessage('stop'); } catch (e) { }
   }
+
+  for (const conn of clientConnections.values()) {
+    try { conn.close(); } catch (_) {}
+  }
+  clientConnections.clear();
+
   networkState.isConnected = false;
   networkState.isHost = false;
-  remotePlayer.active = false;
+  clearAllRemotePlayers();
 
   const spCount = getStoredSinglePlayerBotCount();
   setBotEnabled(getStoredBotEnabled(), { skipStorage: true });

@@ -17,6 +17,7 @@ import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from '../ui/combatFeed.js';
 import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
+import { getActiveRemotePlayers } from '../networkPlayers.js';
 
 let _dmSyncTimer = 0;
 
@@ -121,21 +122,26 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
     });
   });
 
-  if (remotePlayer && remotePlayer.active) {
-    const remoteTeam = isFFA
-      ? 'FFA_REMOTE'
-      : (remotePlayer.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
-    remotePlayer.team = remoteTeam;
+  const rPlayers = Array.isArray(remotePlayer)
+    ? remotePlayer
+    : (remotePlayer && remotePlayer.active ? [remotePlayer] : ((typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : []));
+
+  rPlayers.forEach((rp, idx) => {
+    if (!rp || !rp.active) return;
+    const rpTeam = isFFA
+      ? `FFA_REMOTE_${idx + 1}`
+      : (rp.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
+    rp.team = rpTeam;
     pList.push({
-      id: 'remotePlayer',
-      name: 'OPERATOR [P2P]',
+      id: rp.peerId || `remotePlayer_${rp.slotIndex || (idx + 1)}`,
+      name: rp.name || `OPERATOR [P${(rp.slotIndex || idx) + 1}]`,
       isPlayer: false,
-      team: remoteTeam,
+      team: rpTeam,
       kills: 0,
       deaths: 0,
-      ref: remotePlayer
+      ref: rp
     });
-  }
+  });
 
   deathmatchState.participants = pList;
   updateLeaderboard();
@@ -212,20 +218,26 @@ export function refreshDeathmatchParticipants(player, botOrBots, remotePlayer) {
     });
   });
 
-  if (remotePlayer && remotePlayer.active) {
-    const remoteTeam = isFFA ? 'FFA_REMOTE' : (remotePlayer.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
-    remotePlayer.team = remoteTeam;
-    const prev = getPrev(remotePlayer, 'remotePlayer');
+  const rPlayers = Array.isArray(remotePlayer)
+    ? remotePlayer
+    : (remotePlayer && remotePlayer.active ? [remotePlayer] : ((typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : []));
+
+  rPlayers.forEach((rp, idx) => {
+    if (!rp || !rp.active) return;
+    const rpTeam = isFFA ? `FFA_REMOTE_${idx + 1}` : (rp.team || ((deathmatchState.mode === DEATHMATCH_MODES.TDM) ? enemyTeam : TEAMS.ORANGE));
+    rp.team = rpTeam;
+    const pId = rp.peerId || `remotePlayer_${rp.slotIndex || (idx + 1)}`;
+    const prev = getPrev(rp, pId);
     pList.push({
-      id: 'remotePlayer',
-      name: 'OPERATOR [P2P]',
+      id: pId,
+      name: rp.name || `OPERATOR [P${(rp.slotIndex || idx) + 1}]`,
       isPlayer: false,
-      team: remoteTeam,
+      team: rpTeam,
       kills: prev ? prev.kills : 0,
       deaths: prev ? prev.deaths : 0,
-      ref: remotePlayer
+      ref: rp
     });
-  }
+  });
 
   deathmatchState.participants = pList;
   updateLeaderboard();
@@ -308,7 +320,12 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   for (const b of botList) {
     if (b && b.active) combatants.push(b);
   }
-  if (remotePlayer && remotePlayer.active) combatants.push(remotePlayer);
+  const rPlayers = Array.isArray(remotePlayer)
+    ? remotePlayer
+    : (remotePlayer && remotePlayer.active ? [remotePlayer] : ((typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : []));
+  for (const rp of rPlayers) {
+    if (rp && rp.active) combatants.push(rp);
+  }
 
   for (let i = 0; i < combatants.length; i++) {
     const c = combatants[i];
