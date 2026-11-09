@@ -190,6 +190,10 @@ export function getRiverbankGroundY(x) {
   return 1380; // Dno kanału rzeki
 }
 
+if (typeof window !== 'undefined') {
+  window.getRiverbankGroundY = getRiverbankGroundY;
+}
+
 // 24 modularne klocki drewniane mostu (rozpiętość X: 1750 do 2650, 900 px)
 export const ARENA_3_BRIDGE_BLOCKS = [];
 export const BRIDGE_BLOCK_COUNT = 24;

@@ -148,7 +148,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
 /**
  * Rejestruje leżące ciało do późniejszej reanimacji
  */
-export function registerCorpseForReanimation(char, groundY) {
+export function registerCorpseForReanimation(char, surfaceY) {
   if (!zombieState.enabled) return;
   if (!char) return;
 
@@ -163,8 +163,9 @@ export function registerCorpseForReanimation(char, groundY) {
   }
 
   const corpseX = char.ragdoll?.pelvis?.x ?? (char.x + (char.w || 24) * 0.5);
-  const corpseY = char.ragdoll?.pelvis?.y ?? (char.y + (char.h || 70) - 10);
-  const floorY = groundY || (char.y + (char.h || 70));
+  const floorY = (typeof surfaceY === 'number' && surfaceY < 1500 && surfaceY !== Infinity)
+    ? surfaceY
+    : (char.y + (char.h || 70));
 
   zombieState.corpses.push({
     id: `corpse_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -176,6 +177,8 @@ export function registerCorpseForReanimation(char, groundY) {
     isDead: true,
     hasHead: true,
     decapitated: false,
+    centerX: corpseX,
+    feetY: floorY,
     x: corpseX - 12,
     y: floorY - 70,
     w: 24,
@@ -183,7 +186,7 @@ export function registerCorpseForReanimation(char, groundY) {
     hp: 0,
     maxHp: ZOMBIE_CONFIG.MAX_HP,
     corpseX: corpseX,
-    corpseY: corpseY,
+    corpseY: floorY,
     facing: char.facing || 1,
     groundY: floorY,
     timer: ZOMBIE_CONFIG.REANIMATE_DELAY,

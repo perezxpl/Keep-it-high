@@ -11,7 +11,9 @@ import { zombieState, ZOMBIE_CONFIG } from './state.js';
  */
 function drawReanimatingCorpse(ctx, corpse) {
   ctx.save();
-  ctx.translate(corpse.x, corpse.y + (corpse.twitch || 0));
+  const floorY = corpse.feetY || corpse.groundY || (corpse.y + 70);
+  const posX = corpse.centerX || (corpse.x + 12);
+  ctx.translate(posX, floorY + (corpse.twitch || 0));
 
   // Kałuża krwi pod ciałem
   ctx.fillStyle = 'rgba(127, 29, 29, 0.7)';

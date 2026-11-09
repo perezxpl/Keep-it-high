@@ -180,7 +180,7 @@ export class BulletCasing {
           this.angle = Math.round(this.angle / Math.PI) * Math.PI;
         }
       }
-    } else if (this.y >= 1440) {
+    } else if (this.y >= 1440 || this.y >= groundY + 400) {
       return false;
     }
 
@@ -197,18 +197,25 @@ export const bulletCasings = [];
  * Wyszukanie powierzchni do lądowania (platformy lub ziemia)
  */
 export function findPlatformLandingY(x, prevY, currentY, groundY = 500, obstaclesList = null) {
-  const hasGround = (groundY < 1500) && (
-    typeof window !== 'undefined' && typeof window.isGroundAt === 'function'
-      ? window.isGroundAt(x, 4)
-      : true
-  );
+  const isA3 = (typeof window !== 'undefined' && (window.activeArenaId === 'arena-3' || window.activeArenaId === 'ARENA_3'));
+  let bestFloorY = Infinity;
 
-  let bestFloorY = hasGround ? groundY : Infinity;
+  if (isA3 && typeof window !== 'undefined' && typeof window.getRiverbankGroundY === 'function') {
+    bestFloorY = window.getRiverbankGroundY(x);
+  } else if (groundY < 1500) {
+    const hasGround = (typeof window !== 'undefined' && typeof window.isGroundAt === 'function')
+      ? window.isGroundAt(x, 0)
+      : true;
+    if (hasGround) {
+      bestFloorY = groundY;
+    }
+  }
 
   if (obstaclesList && Array.isArray(obstaclesList)) {
     for (let i = 0; i < obstaclesList.length; i++) {
       const obs = obstaclesList[i];
-      if (!obs || typeof obs.x !== 'number' || typeof obs.w !== 'number') continue;
+      if (!obs || obs.destroyed || obs.isDestroyed || obs.solid === false || obs.isPlatform === false || obs.isWall || typeof obs.x !== 'number' || typeof obs.w !== 'number') continue;
+      if (isA3 && (obs.id === 'ground_left' || obs.id === 'ground_right' || obs.id === 'riverbank_left_oval' || obs.id === 'riverbank_right_oval' || obs.id === 'world_boundary_left' || obs.id === 'world_boundary_right')) continue;
 
       if (x >= obs.x - 4 && x <= obs.x + obs.w + 4) {
         let topY = obs.y;
@@ -668,7 +675,14 @@ export class ConcreteDebris {
     }
 
     if (this.grounded) {
-      return true;
+      // Ponowna weryfikacja czy podłoże lub platforma pod odłamkiem nadal istnieje (nie zostało wycięte przez krater)
+      const curFloor = findPlatformLandingY(this.x, this.y - 6, this.y + 12, groundY, platforms);
+      if (curFloor === Infinity || Math.abs((this.y + this.size * 0.4) - curFloor) > 14) {
+        this.grounded = false;
+        this.vy = 40;
+      } else {
+        return true;
+      }
     }
 
     // Standardowa grawitacja i opór powietrza
@@ -701,7 +715,7 @@ export class ConcreteDebris {
           this.y = surfaceY;
         }
       }
-    } else if (this.y >= 1440) {
+    } else if (this.y >= 1440 || this.y >= groundY + 400) {
       return false;
     }
 

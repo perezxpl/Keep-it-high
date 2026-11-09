@@ -121,7 +121,8 @@ export const hazardsState = {
   barrels: [],
   acidPools: [],
   respawnQueue: [],
-  currentArenaId: null
+  currentArenaId: null,
+  randomSpawnTimer: 20.0
 };
 
 if (typeof window !== 'undefined') {
@@ -176,4 +177,5 @@ export function resetHazardsState() {
   hazardsState.barrels.length = 0;
   hazardsState.acidPools.length = 0;
   hazardsState.respawnQueue.length = 0;
+  hazardsState.randomSpawnTimer = 20.0;
 }
