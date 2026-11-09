@@ -563,7 +563,15 @@ export function initNetworkUI(handlers = {}) {
   const mmStatus = document.getElementById('mp-matchmake-status');
   if (mmBtn) {
     mmBtn.onclick = () => {
-      if (wsState && (wsState.status === 'searching' || wsState.status === 'matched')) {
+      if (wsState && wsState.status === 'matched') {
+        const modal = document.getElementById('mp-modal');
+        if (modal) modal.classList.add('mp-modal-hidden');
+        if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+          window.setGameState('PLAYING');
+        }
+        return;
+      }
+      if (wsState && wsState.status === 'searching') {
         cancelDedicatedMatchmaking();
         mmBtn.textContent = 'SZUKAJ MECZU (MATCHMAKING)';
         mmBtn.classList.remove('mp-btn-searching');

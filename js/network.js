@@ -82,6 +82,9 @@ if (typeof window !== 'undefined') {
   window.networkState = networkState;
   window.remotePlayer = remotePlayer;
   window.remotePlayers = remotePlayers;
+  window.wsState = wsState;
+  window.startDedicatedMatchmaking = startDedicatedMatchmaking;
+  window.cancelDedicatedMatchmaking = cancelDedicatedMatchmaking;
 }
 
 // =============================================================================

@@ -90,8 +90,8 @@
       "./js/network.js": "./js/network.js?v=v447_multiplayer_6_players",
       "./js/networkMatch.js": "./js/networkMatch.js?v=v447_multiplayer_6_players",
       "./js/networkPlayers.js": "./js/networkPlayers.js?v=v447_multiplayer_6_players",
-      "./js/networkUI.js": "./js/networkUI.js?v=v447_multiplayer_6_players",
-      "./js/networkWebSocket.js": "./js/networkWebSocket.js?v=v448_live_server_modern_military",
+      "./js/networkUI.js": "./js/networkUI.js?v=v449_direct_matchmaking_no_codes",
+      "./js/networkWebSocket.js": "./js/networkWebSocket.js?v=v449_direct_matchmaking_no_codes",
       "./js/obstacles.js": "./js/obstacles.js?v=v145_arena2_remove_invisible_platform",
       "./js/obstacles/ballPhysics.js": "./js/obstacles/ballPhysics.js?v=v212_arena1_elevated_goals_3tiers_and_levitating_ball",
       "./js/obstacles/materials.js": "./js/obstacles/materials.js?v=v347_dynamic_lighting_and_materials",
@@ -134,7 +134,7 @@
       "./js/ui/mobileTopHud.js": "./js/ui/mobileTopHud.js?v=v383_mobile_pocket_ammo",
       "./js/ui/rankBadges.js": "./js/ui/rankBadges.js?v=v388_military_rank_spritesheet",
       "./js/ui/rankHud.js": "./js/ui/rankHud.js?v=v388_military_rank_spritesheet",
-      "./js/uiManager.js": "./js/uiManager.js?v=v406_zombie_mode_briefing",
+      "./js/uiManager.js": "./js/uiManager.js?v=v449_direct_matchmaking_no_codes",
       "./js/weapons.js": "./js/weapons.js?v=v409_zombie_bullet_hit_and_decapitation",
       "./js/weapons/bulletRenderer.js": "./js/weapons/bulletRenderer.js?v=v390_sharp_bullet_holes_and_needle_tracers_zero_blur",
       "./js/weapons/renderer.js": "./js/weapons/renderer.js?v=v398_prone_aiming_and_biomechanics_fix",
@@ -237,7 +237,7 @@
       <div class="mp-modal-box" id="multi-panel">
         <div class="mp-header">
           <div class="mp-title">
-            <span>MULTIPLAYER P2P (WEBRTC)</span>
+            <span>MULTIPLAYER ONLINE (SERWER DEDYKOWANY)</span>
           </div>
           <button id="mp-close-btn" class="mp-close-btn" type="button" title="Zamknij">✕</button>
         </div>
@@ -245,55 +245,28 @@
         <div class="mp-body">
           <!-- Status Banner -->
           <div class="mp-status-banner" id="mp-status-banner">
-            <span class="mp-status-dot" id="mp-status-dot"></span>
-            <span class="mp-status-text" id="mp-status-text">ROZŁĄCZONO / OFFLINE</span>
+            <span class="mp-status-dot dot-green" id="mp-status-dot"></span>
+            <span class="mp-status-text" id="mp-status-text">SERWER DEDYKOWANY: ONLINE (FRANKFURT)</span>
             <span class="mp-ping-tag" id="mp-ping-tag" style="display: none;">0 ms</span>
           </div>
 
           <!-- Disconnected / Setup Mode -->
           <div id="mp-setup-view">
             <!-- DEDYKOWANY MATCHMAKING (DO 6 GRACZY) -->
-            <div class="mp-card mp-card-accent" id="mp-matchmaking-card" style="border: 1px solid #38bdf8; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(14, 165, 233, 0.05)); margin-bottom: 12px;">
+            <div class="mp-card mp-card-accent" id="mp-matchmaking-card" style="border: 1px solid #38bdf8; background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(14, 165, 233, 0.08)); margin-bottom: 12px; padding: 14px;">
               <div class="mp-card-title-row" style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="mp-card-title" style="color: #38bdf8;">MATCHMAKING ONLINE (DO 6 GRACZY)</span>
-                <span class="mp-arena-badge" style="background: rgba(56, 189, 248, 0.25); color: #7dd3fc; border: 1px solid #0284c7; padding: 2px 6px; font-size: 10px; border-radius: 4px;">LIMIT: 6 OSÓB / MECZ</span>
+                <span class="mp-card-title" style="color: #38bdf8; font-size: 14px; font-weight: 800;">GRAJ ONLINE // SZYBKI MECZ</span>
+                <span class="mp-arena-badge" style="background: rgba(56, 189, 248, 0.25); color: #7dd3fc; border: 1px solid #0284c7; padding: 2px 8px; font-size: 10px; border-radius: 4px; font-weight: 800;">LIMIT: 6 GRACZY</span>
               </div>
-              <p class="mp-card-desc" style="margin: 6px 0 10px 0; font-size: 11px; color: #94a3b8;">
-                Automatyczny dobór graczy do meczu online (3v3 lub FFA). Do 6 graczy na arenę, bez żadnych opłat serwerowych.
+              <p class="mp-card-desc" style="margin: 8px 0 12px 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                Dedykowany serwer online w chmurze (Frankfurt, EU). Automatyczny dobór do otwartego meczu (3v3 lub FFA). Brak kodów i czekania – automatyczny start po dołączeniu!
               </p>
               <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <button id="mp-matchmake-btn" class="mp-action-btn mp-btn-cyan" type="button" style="flex: 2; padding: 10px 14px; font-weight: 800; font-size: 13px;">
-                  SZUKAJ MECZU (MATCHMAKING)
+                <button id="mp-matchmake-btn" class="mp-action-btn mp-btn-cyan" type="button" style="flex: 2; padding: 12px 18px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px;">
+                  ▶ SZUKAJ MECZU (GRAJ ONLINE)
                 </button>
-                <div style="flex: 1; min-width: 160px;">
-                  <input type="text" id="mp-server-url-input" class="mp-text-input" placeholder="wss://modern-military.onrender.com" style="font-size: 11px; padding: 8px 10px; width: 100%; box-sizing: border-box;" title="Adres serwera dedykowanego WebSocket" />
-                </div>
               </div>
-              <div id="mp-matchmake-status" style="font-size: 11px; color: #38bdf8; margin-top: 6px; display: none;"></div>
-            </div>
-
-            <!-- HOST SECTION -->
-            <div class="mp-card mp-card-cyan">
-              <div class="mp-card-title">STWÓRZ POKÓJ (HOST)</div>
-              <p class="mp-card-desc">Jesteś gospodarzem – drugi gracz połączy się bezpośrednio z Twoim komputerem przez Internet (WebRTC).</p>
-              
-              <div id="mp-host-start-row">
-                <button id="mp-host-btn" class="mp-action-btn mp-btn-cyan" type="button">Utwórz Pokój Gry</button>
-              </div>
-
-              <div id="mp-host-info-row" style="display: none;">
-                <div class="mp-code-container">
-                  <span class="mp-code-label">KOD POKOJU:</span>
-                  <span class="mp-code-val" id="mp-host-code-val">------</span>
-                  <button id="mp-copy-code-btn" class="mp-sub-btn" type="button">Kopiuj Kod</button>
-                </div>
-                <div style="margin-top: 8px;">
-                  <button id="mp-copy-link-btn" class="mp-action-btn mp-btn-accent" type="button">Kopiuj Link z Zaproszeniem</button>
-                </div>
-                <div class="mp-waiting-text" id="mp-waiting-text">
-                  Oczekiwanie na dołączenie drugiego gracza...
-                </div>
-              </div>
+              <div id="mp-matchmake-status" style="font-size: 11px; color: #38bdf8; margin-top: 8px; text-align: center; display: none;"></div>
             </div>
 
             <!-- WYBÓR ARENY MULTIPLAYER (3 ARENY) -->
@@ -490,15 +463,39 @@
               </div>
             </div>
 
-            <!-- JOIN SECTION -->
-            <div class="mp-card mp-card-orange">
-              <div class="mp-card-title">DOŁĄCZ DO POKOJU (KLIENT)</div>
-              <p class="mp-card-desc">Wpisz lub wklej kod pokoju otrzymany od drugiego gracza:</p>
-              <div class="mp-join-row">
-                <input type="text" id="mp-join-input" class="mp-text-input" placeholder="np. kih-ab12..." autocomplete="off" spellcheck="false" />
-                <button id="mp-join-btn" class="mp-action-btn mp-btn-orange" type="button">Połącz</button>
+            <!-- ZWIJANY PANEL P2P ZE ZNAJOMYM (OPCJONALNY) -->
+            <details class="mp-card" style="margin-top: 14px; background: rgba(15, 23, 42, 0.4); border: 1px dashed rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 8px 12px;">
+              <summary style="font-size: 11px; font-weight: 700; color: #94a3b8; cursor: pointer; user-select: none;">
+                Zaawansowane: Prywatny pokój P2P ze znajomym na kod (Opcjonalnie)
+              </summary>
+              <div style="margin-top: 10px;">
+                <!-- HOST SECTION -->
+                <div class="mp-card mp-card-cyan" style="margin-bottom: 8px;">
+                  <div class="mp-card-title">STWÓRZ POKÓJ (HOST P2P)</div>
+                  <div id="mp-host-start-row">
+                    <button id="mp-host-btn" class="mp-action-btn mp-btn-cyan" type="button">Utwórz Pokój P2P</button>
+                  </div>
+                  <div id="mp-host-info-row" style="display: none;">
+                    <div class="mp-code-container">
+                      <span class="mp-code-label">KOD:</span>
+                      <span class="mp-code-val" id="mp-host-code-val">------</span>
+                      <button id="mp-copy-code-btn" class="mp-sub-btn" type="button">Kopiuj Kod</button>
+                    </div>
+                    <div style="margin-top: 8px;">
+                      <button id="mp-copy-link-btn" class="mp-action-btn mp-btn-accent" type="button">Kopiuj Link z Zaproszeniem</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- JOIN SECTION -->
+                <div class="mp-card mp-card-orange">
+                  <div class="mp-card-title">DOŁĄCZ DO POKOJU (KLIENT P2P)</div>
+                  <div class="mp-join-row">
+                    <input type="text" id="mp-join-input" class="mp-text-input" placeholder="Wpisz kod pokoju..." autocomplete="off" spellcheck="false" />
+                    <button id="mp-join-btn" class="mp-action-btn mp-btn-orange" type="button">Połącz</button>
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
           </div>
 
           <!-- Connected View -->
@@ -786,7 +783,7 @@
 
               <div class="briefing-mode-tabs" id="briefing-mode-tabs">
                 <button type="button" class="briefing-tab-btn active" id="briefing-tab-solo" data-briefing-mode="solo">MISJA Z BOTAMI (SOLO)</button>
-                <button type="button" class="briefing-tab-btn" id="briefing-tab-multi" data-briefing-mode="multi">BITWA SIECIOWA (P2P)</button>
+                <button type="button" class="briefing-tab-btn" id="briefing-tab-multi" data-briefing-mode="multi">GRAJ ONLINE (SERWER DEDYKOWANY)</button>
               </div>
             </div>
 
@@ -1226,61 +1223,76 @@
                   </div>
                 </div>
 
-                <!-- Panel B: Opcje dla trybu Sieciowego (Multiplayer P2P WebRTC) -->
+                <!-- Panel B: Opcje dla trybu Sieciowego (Dedykowany Matchmaking) -->
                 <div class="briefing-options-panel" id="briefing-panel-multi" style="display: none;">
                   <div class="briefing-multi-box">
                     <div class="briefing-multi-status-row">
-                      <span class="mp-status-dot" id="briefing-mp-status-dot"></span>
-                      <span id="briefing-mp-status-text" class="briefing-mp-status-text">ROZŁĄCZONO / OFFLINE</span>
+                      <span class="mp-status-dot dot-green" id="briefing-mp-status-dot"></span>
+                      <span id="briefing-mp-status-text" class="briefing-mp-status-text">SERWER DEDYKOWANY: ONLINE (FRANKFURT)</span>
                       <span id="briefing-mp-ping-tag" class="mp-ping-tag" style="display: none;">0 ms</span>
                     </div>
 
-                    <div class="briefing-multi-tabs">
-                      <button type="button" class="briefing-subtab-btn active" id="briefing-subtab-host">STWÓRZ POKÓJ (HOST)</button>
-                      <button type="button" class="briefing-subtab-btn" id="briefing-subtab-join">DOŁĄCZ DO POKOJU (KLIENT)</button>
-                    </div>
-
-                    <!-- Host View -->
-                    <div id="briefing-mp-host-view" class="briefing-subtab-pane active">
-                      <div id="briefing-mp-host-create-row">
-                        <button id="briefing-mp-host-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%;">Utwórz Pokój Gry</button>
+                    <!-- Główny Matchmaking Bez Kodów -->
+                    <div class="briefing-mm-main-card" style="margin-top: 10px; padding: 12px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(3, 105, 161, 0.08)); border: 1px solid #0284c7; border-radius: 8px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">SZYBKI MECZ ONLINE</span>
+                        <span style="font-size: 10px; font-weight: 700; background: rgba(56, 189, 248, 0.2); color: #7dd3fc; padding: 2px 6px; border-radius: 4px; border: 1px solid #0284c7;">DO 6 GRACZY</span>
                       </div>
-                      <div class="briefing-mp-bots-box" style="margin-top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">SZABLONY SKŁADU BITWY (ROSTER):</div>
-                        <div class="mp-roster-presets-row" id="briefing-mp-roster-presets">
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_4V4">4v4</button>
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>
-                          <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="FFA">FFA</button>
-                        </div>
-                        <div class="mp-roster-summary-bar" id="briefing-mp-roster-summary-bar" style="margin-top: 6px; font-size: 9px;">BITWA 2v2: ALPHA [HOST + 1 BOT] VS BETA [KLIENT + 1 BOT]</div>
-                      </div>
-                      <div id="briefing-mp-host-info" style="display: none; margin-top: 8px;">
-                        <div class="mp-code-container">
-                          <span class="mp-code-label">KOD POKOJU:</span>
-                          <span class="mp-code-val" id="briefing-mp-code-val">------</span>
-                          <button id="briefing-mp-copy-code" class="mp-sub-btn" type="button">Kopiuj</button>
-                        </div>
-                        <div style="margin-top: 6px;">
-                          <button id="briefing-mp-copy-link" class="ui-btn ui-btn-small ui-btn-primary" type="button" style="width: 100%;">Kopiuj Link z Zaproszeniem</button>
-                        </div>
-                        <div class="mp-waiting-text" id="briefing-mp-waiting-text" style="font-size: 11px; margin-top: 6px;">
-                          Oczekiwanie na dołączenie drugiego gracza...
-                        </div>
+                      <p style="font-size: 11px; color: #94a3b8; margin: 0 0 10px 0; line-height: 1.4;">
+                        Automatyczny dobór do otwartego meczu online (3v3 lub FFA). Brak kodów i czekania – serwer natychmiast przydziela drużynę i spawn.
+                      </p>
+                      <button id="briefing-matchmake-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%; font-size: 13px; font-weight: 800; padding: 12px;">
+                        ▶ SZUKAJ MECZU (GRAJ ONLINE)
+                      </button>
+                      <div id="briefing-matchmake-status" style="font-size: 11px; color: #38bdf8; margin-top: 8px; text-align: center;">
+                        Gotowy do połączenia z serwerem modern-military.onrender.com
                       </div>
                     </div>
 
-                    <!-- Join View -->
-                    <div id="briefing-mp-join-view" class="briefing-subtab-pane" style="display: none;">
-                      <div class="mp-join-row">
-                        <input type="text" id="briefing-mp-join-input" class="mp-text-input" placeholder="Wklej kod pokoju..." autocomplete="off" spellcheck="false" />
-                        <button id="briefing-mp-join-btn" class="ui-btn ui-btn-orange" type="button">Połącz</button>
+                    <!-- Roster Presets -->
+                    <div class="briefing-mp-bots-box" style="margin-top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
+                      <div style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; margin-bottom: 4px;">SZABLONY SKŁADU BITWY (ROSTER):</div>
+                      <div class="mp-roster-presets-row" id="briefing-mp-roster-presets">
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="COOP">KOOP</button>
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_4V4">4v4</button>
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm active" data-mp-preset="VERSUS_2V2">2v2</button>
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="VERSUS_3V3">3v3</button>
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="DUEL_1V1">1v1</button>
+                        <button type="button" class="mp-preset-btn mp-preset-btn-sm" data-mp-preset="FFA">FFA</button>
                       </div>
+                      <div class="mp-roster-summary-bar" id="briefing-mp-roster-summary-bar" style="margin-top: 6px; font-size: 9px;">BITWA 2v2: ALPHA [CYAN] VS BETA [ORANGE]</div>
                     </div>
-              </div>
-            </div>
+
+                    <!-- Opcjonalny zwijany panel P2P (ze znajomym na kod) -->
+                    <details style="margin-top: 10px; font-size: 10px; color: #64748b; border-top: 1px dashed rgba(148, 163, 184, 0.2); padding-top: 6px;">
+                      <summary style="cursor: pointer; color: #94a3b8; user-select: none;">Zaawansowane: Gra prywatna P2P na kod (ze znajomym)</summary>
+                      <div style="margin-top: 6px;">
+                        <div class="briefing-multi-tabs">
+                          <button type="button" class="briefing-subtab-btn active" id="briefing-subtab-host">STWÓRZ POKÓJ</button>
+                          <button type="button" class="briefing-subtab-btn" id="briefing-subtab-join">DOŁĄCZ DO POKOJU</button>
+                        </div>
+                        <div id="briefing-mp-host-view" class="briefing-subtab-pane active" style="margin-top: 6px;">
+                          <div id="briefing-mp-host-create-row">
+                            <button id="briefing-mp-host-btn" class="ui-btn ui-btn-cyan" type="button" style="width: 100%; font-size: 11px;">Utwórz Pokój P2P</button>
+                          </div>
+                          <div id="briefing-mp-host-info" style="display: none; margin-top: 6px;">
+                            <div class="mp-code-container">
+                              <span class="mp-code-label">KOD:</span>
+                              <span class="mp-code-val" id="briefing-mp-code-val">------</span>
+                              <button id="briefing-mp-copy-code" class="mp-sub-btn" type="button">Kopiuj</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div id="briefing-mp-join-view" class="briefing-subtab-pane" style="display: none; margin-top: 6px;">
+                          <div class="mp-join-row">
+                            <input type="text" id="briefing-mp-join-input" class="mp-text-input" placeholder="Wklej kod..." autocomplete="off" spellcheck="false" />
+                            <button id="briefing-mp-join-btn" class="ui-btn ui-btn-orange" type="button">Połącz</button>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </div>
 
             <!-- KROK 3: WYBIERZ OPERATORA (KLASA) -->
             <div class="briefing-operator-section">

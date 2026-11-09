@@ -125,6 +125,29 @@ export function cancelDedicatedMatchmaking() {
   wsState.roomId = null;
   wsState.playersCount = 1;
   clearAllRemotePlayers();
+
+  const mmBtn = document.getElementById('mp-matchmake-btn');
+  if (mmBtn) {
+    mmBtn.textContent = 'SZUKAJ MECZU (MATCHMAKING)';
+    mmBtn.classList.remove('mp-btn-searching');
+  }
+  const mmStatus = document.getElementById('mp-matchmake-status');
+  if (mmStatus) {
+    mmStatus.style.display = 'none';
+  }
+  const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
+  if (briefingMmBtn) {
+    briefingMmBtn.textContent = '▶ SZUKAJ MECZU ONLINE (MATCHMAKING)';
+  }
+  const briefingStatus = document.getElementById('briefing-matchmake-status');
+  if (briefingStatus) {
+    briefingStatus.textContent = 'Gotowy do gry na serwerze dedykowanym';
+  }
+  const launchBtn = document.getElementById('btn-arena-launch');
+  const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
+  if (btnText && typeof window !== 'undefined' && window.uiManager && window.uiManager.currentBriefingMode === 'multi') {
+    btnText.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
+  }
 }
 
 /**
@@ -183,7 +206,45 @@ function handleServerMessage(rawData) {
       }
 
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
-      triggerCombatFeedBanner('SYSTEM', `DOLACZONO DO MECZU // POKOJ: ${msg.roomId} [${wsState.playersCount}/${wsState.maxPlayers}]`);
+      triggerCombatFeedBanner('SYSTEM', `DOŁĄCZONO DO BITWY // POKÓJ: ${msg.roomId} [${wsState.playersCount}/${wsState.maxPlayers}]`);
+
+      // Aktualizacja przycisków i statusów
+      const mmBtn = document.getElementById('mp-matchmake-btn');
+      if (mmBtn) {
+        mmBtn.textContent = `▶ WEJDŹ DO GRY [${wsState.playersCount}/${wsState.maxPlayers}]`;
+        mmBtn.classList.remove('mp-btn-searching');
+      }
+      const mmStatus = document.getElementById('mp-matchmake-status');
+      if (mmStatus) {
+        mmStatus.style.display = 'block';
+        mmStatus.textContent = `Dołączono do pokoju ${msg.roomId} [${wsState.playersCount}/${wsState.maxPlayers}]. Wchodzenie do bitwy...`;
+      }
+      const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
+      if (briefingMmBtn) {
+        briefingMmBtn.textContent = `▶ WEJDŹ DO BITWY [${wsState.playersCount}/${wsState.maxPlayers}]`;
+      }
+      const briefingStatus = document.getElementById('briefing-matchmake-status');
+      if (briefingStatus) {
+        briefingStatus.textContent = `Mecz znaleziony! Pokój: ${msg.roomId} [${wsState.playersCount}/${wsState.maxPlayers} graczy]. Start...`;
+      }
+      const launchBtn = document.getElementById('btn-arena-launch');
+      const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
+      if (btnText) {
+        btnText.textContent = `▶ WEJDŹ DO GRY [${wsState.playersCount}/${wsState.maxPlayers}]`;
+      }
+
+      // Automatyczne wejście na mapę do gry
+      setTimeout(() => {
+        if (wsState.status === 'matched') {
+          const modal = document.getElementById('mp-modal');
+          if (modal && !modal.classList.contains('mp-modal-hidden')) {
+            modal.classList.add('mp-modal-hidden');
+          }
+          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
+          }
+        }
+      }, 900);
       break;
     }
 

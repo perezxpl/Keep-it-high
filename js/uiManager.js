@@ -1171,8 +1171,17 @@ export const uiManager = {
       const btnText = launchBtn.querySelector('.btn-text');
       if (btnText) {
         if (this.currentBriefingMode === 'multi') {
-          const isConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
-          btnText.textContent = isConnected ? '▶ WEJDŹ DO GRY (START MULTI)' : 'POŁĄCZ W TRYBIE MULTI';
+          const ws = (typeof window !== 'undefined' && window.wsState);
+          const isMatched = (ws && (ws.status === 'matched' || ws.status === 'in_game'));
+          const isSearching = (ws && ws.status === 'searching');
+          const isP2P = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+          if (isSearching) {
+            btnText.textContent = 'SZUKANIE MECZU...';
+          } else if (isMatched || isP2P) {
+            btnText.textContent = '▶ WEJDŹ DO BITWY (START)';
+          } else {
+            btnText.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
+          }
         } else {
           btnText.textContent = '▶ ROZPOCZNIJ ROZGRYWKĘ';
         }
@@ -1933,6 +1942,40 @@ export const uiManager = {
     // -------------------------------------------------------------------------
     // ZINTEGROWANY MULTIPLAYER WEBRTC W ODPRAWIE TAKTYCZNEJ
     // -------------------------------------------------------------------------
+    const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
+    if (briefingMmBtn) {
+      briefingMmBtn.addEventListener('click', () => {
+        playUiClick();
+        const ws = (typeof window !== 'undefined' && window.wsState);
+        if (ws && ws.status === 'matched') {
+          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
+          }
+          return;
+        }
+        if (ws && ws.status === 'searching') {
+          if (typeof window.cancelDedicatedMatchmaking === 'function') {
+            window.cancelDedicatedMatchmaking();
+          }
+          briefingMmBtn.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
+          const briefingStatus = document.getElementById('briefing-matchmake-status');
+          if (briefingStatus) briefingStatus.textContent = 'Gotowy do połączenia z serwerem modern-military.onrender.com';
+        } else {
+          const currentArena = this.briefingArenas[this.currentBriefingIndex];
+          const arenaId = currentArena ? currentArena.id : 'ARENA_1';
+          if (typeof window.startDedicatedMatchmaking === 'function') {
+            window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
+            briefingMmBtn.textContent = 'ANULUJ SZUKANIE MECZU...';
+            const briefingStatus = document.getElementById('briefing-matchmake-status');
+            if (briefingStatus) briefingStatus.textContent = 'Łączenie z serwerem i szukanie graczy [1/6]...';
+            const launchBtn = document.getElementById('btn-arena-launch');
+            const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
+            if (btnText) btnText.textContent = 'SZUKANIE MECZU...';
+          }
+        }
+      });
+    }
+
     const subtabHostBtn = document.getElementById('briefing-subtab-host');
     const subtabJoinBtn = document.getElementById('briefing-subtab-join');
     const hostPane = document.getElementById('briefing-mp-host-view');
@@ -2062,19 +2105,38 @@ export const uiManager = {
         const arenaId = currentArena ? currentArena.id : 'ARENA_1';
 
         if (this.currentBriefingMode === 'multi') {
-          const mpModal = document.getElementById('mp-modal');
-          const isConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
-          if (!isConnected) {
-            if (mpModal && mpModal.classList.contains('mp-modal-hidden')) {
-              mpModal.classList.remove('mp-modal-hidden');
+          const ws = (typeof window !== 'undefined' && window.wsState);
+          // Jeśli już dopasowano do pokoju lub jesteśmy w trakcie gry
+          if (ws && (ws.status === 'matched' || ws.status === 'in_game')) {
+            if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+              window.setGameState('PLAYING');
             }
             return;
           }
-          if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
-            try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
+
+          // Jeśli połączono przez P2P WebRTC
+          const isP2PConnected = (typeof window !== 'undefined' && window.networkState && window.networkState.status === 'connected');
+          if (isP2PConnected) {
+            if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
+              try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
+            }
+            if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+              window.setGameState('PLAYING');
+            }
+            return;
           }
-          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
-            window.setGameState('PLAYING');
+
+          // Rozpocznij natychmiastowy matchmaking na serwerze dedykowanym (bez kodów!)
+          if (typeof window.startDedicatedMatchmaking === 'function') {
+            window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
+            const launchBtn = document.getElementById('btn-arena-launch');
+            const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
+            if (btnText) btnText.textContent = 'SZUKANIE MECZU ONLINE...';
+            const briefingStatus = document.getElementById('briefing-matchmake-status');
+            if (briefingStatus) briefingStatus.textContent = 'Łączenie z serwerem i szukanie graczy [1/6]...';
+            const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
+            if (briefingMmBtn) briefingMmBtn.textContent = 'ANULUJ SZUKANIE MECZU...';
+            return;
           }
           return;
         }
