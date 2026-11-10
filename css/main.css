@@ -3064,243 +3064,251 @@ button, .dev-btn {
 
 @media (max-height: 520px) {
   #main-menu-overlay {
-    padding: 4px 8px;
+    padding: 6px 10px;
     align-items: center;
     justify-content: center;
   }
   #main-menu-overlay .menu-container {
-    max-height: calc(100vh - 6px);
-    padding: 0;
-    gap: 3px;
+    max-height: calc(100vh - 8px);
+    padding: 2px 4px;
+    gap: 6px;
     width: 98%;
-    max-width: 920px;
+    max-width: 940px;
   }
   .menu-header-bar {
-    margin-bottom: 3px;
+    margin-bottom: 4px;
     width: 100%;
   }
   .menu-title {
-    font-size: 15px;
+    font-size: 16px;
     letter-spacing: 2px;
     margin: 0;
-    line-height: 1;
+    line-height: 1.1;
   }
   .menu-sound-toggle-btn {
-    padding: 3px 8px;
-    font-size: 8.5px;
-    min-height: 24px;
-    gap: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    min-height: 28px;
+    gap: 5px;
   }
   .menu-sound-toggle-btn .sound-svg-icon {
-    width: 11px;
-    height: 11px;
+    width: 13px;
+    height: 13px;
   }
   .menu-columns-layout {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
     align-items: stretch;
   }
   .menu-col-profile,
   .menu-col-actions {
-    gap: 5px;
+    gap: 8px;
   }
   .menu-player-card,
   .menu-status-card {
-    padding: 5px 8px;
-    gap: 3px;
-    border-radius: 8px;
+    padding: 8px 12px;
+    gap: 6px;
+    border-radius: 10px;
   }
   .player-card-header,
   .status-card-header {
-    padding-bottom: 2px;
-    margin-bottom: 1px;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
   }
   .player-card-id-badge,
   .status-card-badge {
-    font-size: 8.5px;
-    letter-spacing: 0.8px;
-  }
-  .player-card-tool-btn {
-    padding: 2px 6px;
-    min-height: 22px;
-    font-size: 8px;
-  }
-  .operator-callsign-box {
-    min-height: 26px;
-    padding: 2px 6px;
-    margin-bottom: 1px;
-  }
-  .callsign-label {
-    font-size: 8px;
-    letter-spacing: 0.8px;
-  }
-  .callsign-input {
     font-size: 11px;
     letter-spacing: 1px;
   }
-  .callsign-edit-svg {
-    width: 11px;
-    height: 11px;
-  }
-  .player-card-rank-section {
-    padding: 3px 6px;
-    gap: 4px;
-  }
-  .rank-badge-shield {
-    width: 20px;
-    height: 20px;
+  .player-card-tool-btn {
+    padding: 4px 8px;
+    min-height: 26px;
     font-size: 10px;
   }
+  .operator-callsign-box {
+    min-height: 32px;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+  }
+  .callsign-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .callsign-input {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+  .callsign-edit-svg {
+    width: 13px;
+    height: 13px;
+  }
+  .player-card-rank-section {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .rank-badge-shield {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
   .rank-label, .rank-xp-current {
-    font-size: 7.5px;
+    font-size: 10px;
   }
   .rank-name-row {
-    margin-top: 1px;
+    margin-top: 2px;
   }
   .rank-name {
-    font-size: 10.5px;
+    font-size: 13px;
+    font-weight: 800;
   }
   .rank-tier-badge {
-    font-size: 7px;
-    padding: 1px 3px;
+    font-size: 9.5px;
+    padding: 1px 5px;
   }
   .rank-progress-bar-bg {
-    height: 3.5px;
-    margin-top: 2px;
+    height: 5px;
+    margin-top: 3px;
   }
   .rank-progress-meta-row {
     display: flex;
-    margin-top: 1.5px;
-    gap: 4px;
+    margin-top: 2px;
+    gap: 6px;
   }
   .rank-next-badge {
-    font-size: 7.5px;
+    font-size: 10px;
   }
   .rank-missing-xp {
-    font-size: 7.5px;
+    font-size: 10px;
   }
   .rank-reward-row {
     display: flex;
-    margin-top: 1px;
+    margin-top: 2px;
   }
   .rank-reward-badge {
-    font-size: 7px;
-    padding: 0.5px 3px;
+    font-size: 9.5px;
+    padding: 1px 5px;
   }
   .player-stats-compact-grid {
-    gap: 2px;
-    margin-top: 1px;
+    gap: 4px;
+    margin-top: 2px;
   }
   .stat-pill-mini {
-    padding: 1.5px 3px;
-    border-radius: 4px;
-    gap: 1px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    gap: 2px;
   }
   .stat-mini-lbl {
-    font-size: 7px;
-    letter-spacing: 0.2px;
+    font-size: 9px;
+    letter-spacing: 0.5px;
   }
   .stat-mini-val {
-    font-size: 9.5px;
+    font-size: 12px;
+    font-weight: 800;
   }
   .menu-ranks-tile-btn {
-    padding: 2.5px 6px;
-    border-radius: 5px;
-    margin-top: 1px;
-    min-height: 22px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin-top: 2px;
+    min-height: 30px;
   }
   .ranks-tile-icon-box {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
   .ranks-tile-svg {
-    width: 11px;
-    height: 11px;
+    width: 13px;
+    height: 13px;
   }
   .ranks-tile-title {
-    font-size: 9px;
+    font-size: 11px;
+    font-weight: 800;
   }
   .ranks-tile-sub {
     display: none;
   }
   .ranks-tile-arrow {
-    font-size: 9px;
+    font-size: 11px;
   }
   .status-sys-tag {
-    font-size: 7.5px;
-    padding: 1px 4px;
+    font-size: 10px;
+    padding: 2px 6px;
   }
   .menu-op-info-box {
-    padding: 3px 6px;
-    gap: 2px;
-    border-radius: 5px;
+    padding: 5px 8px;
+    gap: 3px;
+    border-radius: 6px;
   }
   .menu-op-role-label {
-    font-size: 7.5px;
+    font-size: 10px;
   }
   .menu-op-name {
-    font-size: 11.5px;
+    font-size: 13px;
+    font-weight: 800;
   }
   .menu-op-class-badge {
-    font-size: 7px;
-    padding: 1px 4px;
+    font-size: 9.5px;
+    padding: 1px 5px;
   }
   .menu-op-hp-badge {
-    font-size: 7.5px;
-    padding: 1px 4px;
+    font-size: 10px;
+    padding: 1px 5px;
   }
   .menu-op-trait-row {
-    font-size: 8.5px;
+    font-size: 10.5px;
   }
   .menu-op-trait-text {
-    font-size: 9px;
+    font-size: 11px;
   }
   .menu-op-trait-desc {
     display: none;
   }
   .menu-op-quick-selector {
-    gap: 3px;
+    gap: 4px;
   }
   .menu-op-pill-btn {
-    padding: 2px 3px;
-    min-height: 24px;
-    border-radius: 4px;
-    gap: 1px;
+    padding: 4px 6px;
+    min-height: 28px;
+    border-radius: 6px;
+    gap: 2px;
   }
   .menu-op-pill-btn .pill-name {
-    font-size: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
   }
   .menu-op-pill-btn .pill-hp {
-    font-size: 6.5px;
+    font-size: 9px;
   }
   .menu-loadout-meta-row {
     display: none;
   }
   .menu-action-buttons-group {
-    gap: 4px;
+    gap: 6px;
   }
   .ui-btn-hero {
-    padding: 5px 8px;
-    border-radius: 6px;
-    gap: 1px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    gap: 4px;
+    min-height: 44px;
   }
   .btn-hero-title {
-    font-size: 11px;
-    letter-spacing: 0.8px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    font-weight: 900;
   }
   .btn-hero-sub {
-    font-size: 8px;
-    letter-spacing: 0.4px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
   }
   .menu-sub-actions-grid {
-    gap: 4px;
+    gap: 6px;
   }
   .menu-sub-actions-grid .ui-btn {
-    padding: 4px 6px;
-    font-size: 9.5px;
-    min-height: 24px;
-    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    min-height: 32px;
+    border-radius: 6px;
+    font-weight: 700;
   }
   #main-menu-overlay.in-arena-select {
     padding: 4px 8px;
@@ -3317,146 +3325,153 @@ button, .dev-btn {
     padding-bottom: 4px;
   }
   .briefing-title {
-    font-size: 13.5px;
+    font-size: 15px;
     letter-spacing: 1px;
+    font-weight: 900;
   }
   .briefing-subtitle {
-    font-size: 9px;
+    font-size: 10.5px;
     letter-spacing: 1px;
   }
   .briefing-mode-tabs {
-    padding: 2px;
-    gap: 3px;
+    padding: 3px;
+    gap: 4px;
   }
   .briefing-tab-btn {
-    padding: 3px 7px;
-    font-size: 9.5px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    min-height: 28px;
   }
   .briefing-scroll-body {
-    gap: 4px;
-    padding-right: 2px;
+    gap: 6px;
+    padding-right: 4px;
     overflow-y: auto;
   }
   .briefing-step-label {
-    font-size: 8.5px;
-    margin-bottom: 2px;
-    gap: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    margin-bottom: 3px;
+    gap: 6px;
   }
   .briefing-step-label .step-num {
-    width: 14px;
-    height: 14px;
-    font-size: 8.5px;
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    font-weight: 900;
   }
   .briefing-columns-layout {
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 8px;
   }
   .briefing-carousel-card {
-    padding: 5px 7px 4px 7px;
+    padding: 6px 8px;
     border-radius: 8px;
   }
   .carousel-badge-bar {
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
   .briefing-badge, .briefing-counter {
-    font-size: 8px;
-    padding: 1px 5px;
+    font-size: 10px;
+    padding: 2px 6px;
   }
   .carousel-arrow-btn {
-    height: 50px;
-    width: 26px;
-    min-width: 26px;
-    font-size: 18px;
+    height: 60px;
+    width: 32px;
+    min-width: 32px;
+    font-size: 22px;
     border-radius: 6px;
   }
   .briefing-preview-frame {
-    height: 52px;
-    margin-bottom: 2px;
+    height: 64px;
+    margin-bottom: 3px;
     border-radius: 6px;
   }
   .briefing-tag {
-    font-size: 7.5px;
-    padding: 1px 4px;
+    font-size: 9.5px;
+    padding: 2px 6px;
   }
   .briefing-arena-name {
-    font-size: 11.5px;
-    margin-bottom: 1px;
+    font-size: 13px;
+    font-weight: 800;
+    margin-bottom: 2px;
   }
   .briefing-arena-desc {
-    font-size: 9.5px;
-    height: 15px;
-    line-height: 1.15;
-    margin-bottom: 1px;
-    -webkit-line-clamp: 1;
+    font-size: 10.5px;
+    line-height: 1.2;
+    margin-bottom: 2px;
   }
   .carousel-dots-row {
-    margin-top: 1px;
+    margin-top: 2px;
     gap: 4px;
   }
   .carousel-dot {
     width: 14px;
-    height: 3px;
+    height: 4px;
   }
   .carousel-dot.active {
-    width: 22px;
+    width: 24px;
   }
   .briefing-options-panel {
     min-height: unset;
-    padding: 5px 7px;
+    padding: 6px 8px;
     border-radius: 8px;
-    gap: 3px;
+    gap: 4px;
   }
   .briefing-map-opts {
-    gap: 3px;
+    gap: 4px;
   }
   .briefing-opt-row {
-    gap: 1px;
+    gap: 2px;
   }
   .opt-label {
-    font-size: 7.5px;
-    letter-spacing: 0.4px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    font-weight: 800;
   }
   .opt-val-badge {
-    font-size: 8.5px;
-    padding: 2px 5px;
+    font-size: 10.5px;
+    padding: 2px 6px;
   }
   .briefing-toggle-group {
-    gap: 3px;
+    gap: 4px;
   }
   .briefing-toggle-btn {
-    padding: 3px 4px;
-    font-size: 10px;
-    letter-spacing: 0.2px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    min-height: 28px;
+    border-radius: 5px;
   }
   .briefing-note-row {
     display: none;
   }
   .briefing-operator-section {
-    gap: 2px;
+    gap: 3px;
   }
   .briefing-operator-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
   .briefing-op-card {
-    padding: 4px 6px;
+    padding: 6px 8px;
     border-radius: 6px;
-    gap: 1px;
+    gap: 2px;
   }
   .op-badge {
-    font-size: 7px;
-    padding: 1px 3px;
-  }
-  .op-hp {
-    font-size: 8px;
+    font-size: 9px;
     padding: 1px 4px;
   }
+  .op-hp {
+    font-size: 10px;
+    padding: 1px 5px;
+  }
   .op-name {
-    font-size: 11px;
+    font-size: 12.5px;
+    font-weight: 800;
   }
   .op-attr {
-    font-size: 9px;
+    font-size: 10px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3465,19 +3480,21 @@ button, .dev-btn {
     display: none;
   }
   .op-status-tag {
-    font-size: 7px;
-    padding: 1px 3px;
+    font-size: 9px;
+    padding: 2px 5px;
     bottom: 3px;
     right: 5px;
   }
   .briefing-footer {
-    margin-top: 4px;
-    padding-top: 4px;
-    gap: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
+    gap: 10px;
   }
   .briefing-footer .ui-btn {
-    padding: 5px 12px;
-    font-size: 11px;
+    padding: 7px 14px;
+    font-size: 12px;
+    min-height: 38px;
+    font-weight: 800;
   }
 }
 
@@ -3845,6 +3862,72 @@ button, .dev-btn {
 .ui-select option {
   background: #0f172a;
   color: #f1f5f9;
+}
+
+/* Taktyczne kafelki opcji (chipy zamiast list rozwijanych) */
+.setting-chips-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 480px;
+}
+
+.setting-chip-btn {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-family: 'Rajdhani', 'Orbitron', monospace, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 6px 12px;
+  cursor: pointer !important;
+  transition: all 0.15s ease-out;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.setting-chip-btn:hover {
+  border-color: #38bdf8;
+  color: #ffffff;
+  background: rgba(14, 165, 233, 0.2);
+}
+
+.setting-chip-btn.active {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.5);
+}
+
+@media (max-width: 768px), (max-height: 520px) {
+  .setting-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .setting-control-col {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .setting-chips-group {
+    justify-content: flex-start;
+    max-width: 100%;
+    gap: 4px;
+  }
+  .setting-chip-btn {
+    font-size: 11px;
+    padding: 5px 9px;
+    min-height: 30px;
+  }
 }
 
 /* Przełącznik iOS / Cyber Toggle */

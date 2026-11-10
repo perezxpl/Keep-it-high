@@ -1054,6 +1054,8 @@ export const uiManager = {
 
     const collidersToggle = document.getElementById('setting-debug-colliders');
     if (collidersToggle) collidersToggle.checked = !!this.settings.debugColliders;
+
+    this.syncSettingsChips();
   },
 
   selectClass(classId) {
@@ -2701,6 +2703,66 @@ export const uiManager = {
     this.initCreatorPantsUI();
     this.initCreatorShoesUI();
     this.initCreatorJetpackUI();
+    this.initSettingsChips();
+  },
+
+  initSettingsChips() {
+    const selectsToChip = [
+      'setting-win-condition',
+      'setting-frag-limit',
+      'setting-match-duration',
+      'setting-game-mode',
+      'setting-player-team',
+      'setting-bot-difficulty',
+      'setting-zombie-mode'
+    ];
+
+    selectsToChip.forEach(id => {
+      const select = document.getElementById(id);
+      if (!select || select.dataset.chipsInit) return;
+      select.dataset.chipsInit = 'true';
+
+      const parentCol = select.parentElement;
+      if (!parentCol) return;
+
+      select.style.display = 'none';
+
+      const group = document.createElement('div');
+      group.className = 'setting-chips-group';
+      group.dataset.chipFor = id;
+
+      Array.from(select.options).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'setting-chip-btn' + (opt.value === select.value ? ' active' : '');
+        btn.textContent = opt.textContent.trim();
+        btn.dataset.val = opt.value;
+
+        btn.addEventListener('click', () => {
+          playUiClick();
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          group.querySelectorAll('.setting-chip-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+
+        group.appendChild(btn);
+      });
+
+      parentCol.appendChild(group);
+    });
+  },
+
+  syncSettingsChips() {
+    document.querySelectorAll('.setting-chips-group').forEach(group => {
+      const forId = group.dataset.chipFor;
+      const sel = document.getElementById(forId);
+      if (sel) {
+        group.querySelectorAll('.setting-chip-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.val === sel.value);
+        });
+      }
+    });
   },
 
   initCreatorHairUI() {
