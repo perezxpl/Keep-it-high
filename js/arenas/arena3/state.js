@@ -1,21 +1,9 @@
-// =========================================================================
-// ARENAS/ARENA3.JS - JUNGLE ARENA / MILITARNA DŻUNGLA (4400x1400 PX)
-// Autonomiczny moduł areny (Plugin / Lifecycle Hooks Pattern)
-// Ściśle przestrzega reguł AGENT.md (Strict DAG: Warstwa 1)
-//
-// Architektura:
-// - Statyczne tło: wygenerowane w grafice PNG (assets/jungle_arena_bg.png)
-// - Geometria, platformy, bramki i kolidery: generowane w kodzie (Canvas 2D)
-// - Ruchome elementy: falująca rzeka, cząsteczki liści, promienie słońca, pulsujące kielichy
-// =========================================================================
-
-// 1. ZASOBY GRAFICZNE (Proceduralne tło nocne)
+// ARENAS/ARENA3/STATE.JS - JUNGLE ARENA / MILITARNA DŻUNGLA (4400x1400 PX)
+// Geometria, platformy, punkty terenu i fizyka zniszczeń (Strict DAG)
 import { triggerScreenShake } from '../../camera.js';
 export const bgImg = null;
 
-// =========================================================================
 // 2. STAN ANIMACJI I EFEKTY RUCHOME
-// =========================================================================
 export let animTime = 0;
 export function addArena3AnimTime(dt) { animTime += dt; }
 
@@ -34,16 +22,7 @@ for (let i = 0; i < 14; i++) {
   });
 }
 
-// =========================================================================
-// 2B. FIZYKA TERENU I MODUŁOWYCH BLOKÓW MOSTU (ANGRY BIRDS STYLE COLLAPSE)
-// =========================================================================
-// =========================================================================
 // 1B. DESTRUKCYJNE PODŁOŻE W STYLU WORMS / LIERO
-// Granulowane punkty powierzchni gruntu (X: 0-1150 oraz X: 3250-4400)
-// Podatne na wycinanie lejków/kraterów przez eksplozje
-// Dno kraterów ograniczone niezniszczalną płytą bazaltową (Y: 1370)
-// oraz podsiąkającą wodą gruntową (Y: 1345)
-// =========================================================================
 export const GROUND_WATER_TABLE_Y = 1345;
 export const GROUND_BEDROCK_Y = 1370;
 
@@ -149,21 +128,15 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
 }
 
 export const LEFT_OVAL_POINTS = [
-  { x: 1150, y: 1200, origY: 1200 },
-  { x: 1300, y: 1225, origY: 1225 },
-  { x: 1450, y: 1260, origY: 1260 },
-  { x: 1580, y: 1295, origY: 1295 },
-  { x: 1680, y: 1320, origY: 1320 },
-  { x: 1750, y: 1335, origY: 1335 }
+  { x: 1150, y: 1200, origY: 1200 }, { x: 1300, y: 1225, origY: 1225 },
+  { x: 1450, y: 1260, origY: 1260 }, { x: 1580, y: 1295, origY: 1295 },
+  { x: 1680, y: 1320, origY: 1320 }, { x: 1750, y: 1335, origY: 1335 }
 ];
 
 export const RIGHT_OVAL_POINTS = [
-  { x: 2650, y: 1335, origY: 1335 },
-  { x: 2720, y: 1320, origY: 1320 },
-  { x: 2820, y: 1295, origY: 1295 },
-  { x: 2950, y: 1260, origY: 1260 },
-  { x: 3100, y: 1225, origY: 1225 },
-  { x: 3250, y: 1200, origY: 1200 }
+  { x: 2650, y: 1335, origY: 1335 }, { x: 2720, y: 1320, origY: 1320 },
+  { x: 2820, y: 1295, origY: 1295 }, { x: 2950, y: 1260, origY: 1260 },
+  { x: 3100, y: 1225, origY: 1225 }, { x: 3250, y: 1200, origY: 1200 }
 ];
 
 export function getRiverbankGroundY(x) {
@@ -261,94 +234,34 @@ export const ARENA_3_RAMP_BLOCKS = [];
 const RAMP_BLOCK_COUNT = 10;
 const RAMP_BLOCK_W = 60;
 
-// Lewa rampa (X: 1150 do 1750)
-for (let i = 0; i < RAMP_BLOCK_COUNT; i++) {
-  const bx = 1150 + i * RAMP_BLOCK_W;
-  const yStart = getApproachInclineY(bx, true);
-  const yEnd = getApproachInclineY(bx + RAMP_BLOCK_W, true);
-  const curY = Math.min(yStart, yEnd);
-  ARENA_3_RAMP_BLOCKS.push({
-    id: `ramp_left_block_${i}`,
-    name: `Rampa Lewa - Segment ${i + 1}`,
-    type: 'platform',
-    isRampBlock: true,
-    side: 'left',
-    rampIndex: i,
-    origX: bx,
-    origY: curY,
-    x: bx,
-    y: curY,
-    w: RAMP_BLOCK_W,
-    h: 22,
-    thickness: 22,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    isSlope: true,
-    startY: yStart,
-    endY: yEnd,
-    surfacePoints: [
-      { x: bx, y: yStart },
-      { x: bx + RAMP_BLOCK_W, y: yEnd }
-    ],
-    vx: 0,
-    vy: 0,
-    angle: 0,
-    vRot: 0,
-    intact: true,
-    hp: 350,
-    maxHp: 350,
-    isAsleep: false,
-    sleepTimer: 0,
-    collapseDelay: 0,
-    stiltX: bx + RAMP_BLOCK_W * 0.5,
-    seed: (i * 29 + 17) % 100
-  });
-}
-
-// Prawa rampa (X: 2650 do 3250)
-for (let i = 0; i < RAMP_BLOCK_COUNT; i++) {
-  const bx = 2650 + i * RAMP_BLOCK_W;
-  const yStart = getApproachInclineY(bx, false);
-  const yEnd = getApproachInclineY(bx + RAMP_BLOCK_W, false);
-  const curY = Math.min(yStart, yEnd);
-  ARENA_3_RAMP_BLOCKS.push({
-    id: `ramp_right_block_${i}`,
-    name: `Rampa Prawa - Segment ${i + 1}`,
-    type: 'platform',
-    isRampBlock: true,
-    side: 'right',
-    rampIndex: i,
-    origX: bx,
-    origY: curY,
-    x: bx,
-    y: curY,
-    w: RAMP_BLOCK_W,
-    h: 22,
-    thickness: 22,
-    solid: true,
-    isPlatform: true,
-    oneWay: true,
-    isSlope: true,
-    startY: yStart,
-    endY: yEnd,
-    surfacePoints: [
-      { x: bx, y: yStart },
-      { x: bx + RAMP_BLOCK_W, y: yEnd }
-    ],
-    vx: 0,
-    vy: 0,
-    angle: 0,
-    vRot: 0,
-    intact: true,
-    hp: 350,
-    maxHp: 350,
-    isAsleep: false,
-    sleepTimer: 0,
-    collapseDelay: 0,
-    stiltX: bx + RAMP_BLOCK_W * 0.5,
-    seed: (i * 31 + 43) % 100
-  });
+// Rampy: Lewa (X: 1150..1750) i Prawa (X: 2650..3250)
+for (const isLeft of [true, false]) {
+  const startX = isLeft ? 1150 : 2650;
+  const side = isLeft ? 'left' : 'right';
+  for (let i = 0; i < RAMP_BLOCK_COUNT; i++) {
+    const bx = startX + i * RAMP_BLOCK_W;
+    const yStart = getApproachInclineY(bx, isLeft);
+    const yEnd = getApproachInclineY(bx + RAMP_BLOCK_W, isLeft);
+    const curY = Math.min(yStart, yEnd);
+    ARENA_3_RAMP_BLOCKS.push({
+      id: `ramp_${side}_block_${i}`,
+      name: `Rampa ${isLeft ? 'Lewa' : 'Prawa'} - Segment ${i + 1}`,
+      type: 'platform',
+      isRampBlock: true,
+      side,
+      rampIndex: i,
+      origX: bx, origY: curY, x: bx, y: curY,
+      w: RAMP_BLOCK_W, h: 22, thickness: 22,
+      solid: true, isPlatform: true, oneWay: true, isSlope: true,
+      startY: yStart, endY: yEnd,
+      surfacePoints: [{ x: bx, y: yStart }, { x: bx + RAMP_BLOCK_W, y: yEnd }],
+      vx: 0, vy: 0, angle: 0, vRot: 0,
+      intact: true, hp: 350, maxHp: 350,
+      isAsleep: false, sleepTimer: 0, collapseDelay: 0,
+      stiltX: bx + RAMP_BLOCK_W * 0.5,
+      seed: (i * (isLeft ? 29 : 31) + (isLeft ? 17 : 43)) % 100
+    });
+  }
 }
 
 export function breakRampBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
@@ -433,6 +346,18 @@ export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpul
   block.sleepTimer = 0;
 
   spawnBridgeSplinters(block.x + block.w / 2, block.y + block.h / 2, impulseX, impulseY, 10);
+
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() &&
+      typeof window.broadcastNetworkPacket === 'function') {
+    window.broadcastNetworkPacket({
+      type: 'a3_block_break',
+      idx: block.blockIndex,
+      impX: Math.round(impulseX * 10) / 10,
+      impY: Math.round(impulseY * 10) / 10,
+      angImp: Math.round(angularImpulse * 100) / 100
+    });
+  }
 }
 
 // =========================================================================
@@ -496,6 +421,15 @@ export function destroyPylon(k) {
     }
   }
   evaluateBridgeIntegrity();
+
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() &&
+      typeof window.broadcastNetworkPacket === 'function') {
+    window.broadcastNetworkPacket({
+      type: 'a3_pylon_destroy',
+      side: k
+    });
+  }
 }
 
 // =========================================================================
@@ -1528,3 +1462,35 @@ export const ARENA_3_MINECARTS = [];
 
 export function resetArena3Minecarts() {}
 export function resetArena3Breaches() {}
+
+export function serializeArena3State() {
+  return {
+    bridge: ARENA_3_BRIDGE_BLOCKS.map(b => b.intact ? 1 : 0),
+    pylons: {
+      left: ARENA_3_PYLONS.left ? !!ARENA_3_PYLONS.left.intact : true,
+      right: ARENA_3_PYLONS.right ? !!ARENA_3_PYLONS.right.intact : true
+    }
+  };
+}
+
+export function applyArena3StateSnapshot(snapshot) {
+  if (!snapshot) return;
+  if (Array.isArray(snapshot.bridge)) {
+    for (let i = 0; i < snapshot.bridge.length && i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
+      if (!snapshot.bridge[i] && ARENA_3_BRIDGE_BLOCKS[i].intact) {
+        breakBridgeBlock(ARENA_3_BRIDGE_BLOCKS[i], 0, 0, 0);
+      }
+    }
+  }
+  if (snapshot.pylons) {
+    if (!snapshot.pylons.left && ARENA_3_PYLONS.left?.intact) destroyPylon('left');
+    if (!snapshot.pylons.right && ARENA_3_PYLONS.right?.intact) destroyPylon('right');
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.breakBridgeBlock = breakBridgeBlock;
+  window.destroyPylon = destroyPylon;
+  window.serializeArena3State = serializeArena3State;
+  window.applyArena3StateSnapshot = applyArena3StateSnapshot;
+}

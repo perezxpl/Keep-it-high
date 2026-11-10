@@ -329,8 +329,16 @@ export function killByHazard(entity, reason = "JEZIORO MAGMY // OBSIDIAN CALDERA
     });
   }
 
-  if (typeof window !== 'undefined' && window.networkState?.isConnected && typeof window.broadcastKillEvent === 'function') {
-    window.broadcastKillEvent(entity.id || 'local', 'HAZARD', reason);
+  if (typeof window !== 'undefined' && typeof window.sendKillBroadcast === 'function' &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive()) {
+    window.sendKillBroadcast({
+      killerId: 'HAZARD',
+      killerName: reason,
+      killerTeam: null,
+      victimId: entity.isRemote ? (entity.peerId || 'remotePlayer') : 'player',
+      victimName: entity.name || 'OPERATOR',
+      victimTeam: entity.team || null
+    });
   }
 
   recordDeath();

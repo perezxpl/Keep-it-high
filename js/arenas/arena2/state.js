@@ -437,7 +437,7 @@ export const ACID_SURGE_SYSTEM = {
   },
 
   update(dt) {
-    if (typeof networkState !== 'undefined' && networkState.isConnected && !networkState.isHost) {
+    if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
       // Klient w grze sieciowej: stan i pozycję kwasu synchronizuje autorytatywnie Host
       return;
     }
@@ -498,9 +498,9 @@ export const ACID_SURGE_SYSTEM = {
       }
     }
 
-    const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
     const sendAcid = (typeof window !== 'undefined' && window.sendAcidSurgeSync) ? window.sendAcidSurgeSync : null;
-    if (netState && netState.isHost && netState.isConnected && typeof sendAcid === 'function') {
+    if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+        typeof window.isMatchActive === 'function' && window.isMatchActive() && typeof sendAcid === 'function') {
       this._syncTimer = (this._syncTimer || 0) + dt;
       if (prevState !== this.state || this._syncTimer >= 1.0) {
         this._syncTimer = 0;

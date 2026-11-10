@@ -1,7 +1,7 @@
 import { player, createPlayerInstance, setPlayerClass, getJetpackNozzlePos } from './player.js';
 import { WEAPONS, shootWeapon, spawnBulletSparks } from './weapons.js';
-import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType } from './obstacles.js';
-import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
+import { customObstacles, obstacles, setCustomObstacles, clearCustomObstacles, undoCustomObstacle, activeArenaId, switchArena, normalizeObstacleType, arenaScore } from './obstacles.js';
+import { spawnJetpackSparks, GROUND_Y, triggerScreenShake, triggerGoalCelebration, spawnKnockedHelmet, spawnVestShreds, spawnBloodSpurt, spawnBloodFountain, spawnHeadGib, spawnLimbGib, resize } from './world.js';
 import { ball } from './ball.js';
 import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses, getBotDifficulty, setBotDifficulty, getStoredBotEnabled, setBotEnabled } from './bot.js';
@@ -227,9 +227,23 @@ export function sendBallState(localBall) {
       vx: Math.round(localBall.vx * 100) / 100,
       vy: Math.round(localBall.vy * 100) / 100,
       rot: Math.round((localBall.rot || 0) * 100) / 100,
-      isGrounded: !!localBall.isGrounded
+      isGrounded: !!localBall.isGrounded,
+      cyan: (typeof arenaScore !== 'undefined') ? (arenaScore.cyan || 0) : 0,
+      orange: (typeof arenaScore !== 'undefined') ? (arenaScore.orange || 0) : 0
     });
   } catch (e) { }
+}
+
+export function sendGoalScored(scoringTeam, cyan, orange) {
+  if (!isMatchHost() || !isMatchActive()) return;
+  try {
+    broadcastNetworkPacket({
+      type: 'goal_scored',
+      scoringTeam,
+      cyan,
+      orange
+    });
+  } catch (_) {}
 }
 
 export function sendShootEvent(weaponId, muzzleX, muzzleY, aimAngle) {
@@ -402,7 +416,7 @@ export function sendTomahawkThrow(targetX, targetY, power, originX, originY) {
 }
 
 export function sendDeathmatchSync(dmState) {
-  if (!networkState.isHost || !isNetworkActive()) return;
+  if (!isMatchHost() || !isMatchActive()) return;
   try {
     broadcastNetworkPacket({
       type: 'dm_sync',
@@ -420,7 +434,7 @@ export function sendDeathmatchSync(dmState) {
 }
 
 export function sendAcidSurgeSync(acidState) {
-  if (!networkState.isHost || !isNetworkActive()) return;
+  if (!isMatchHost() || !isMatchActive()) return;
   try {
     broadcastNetworkPacket({
       type: 'acid_sync',
@@ -438,6 +452,7 @@ if (typeof window !== 'undefined') {
   window.sendTomahawkThrow = sendTomahawkThrow;
   window.sendDeathmatchSync = sendDeathmatchSync;
   window.sendAcidSurgeSync = sendAcidSurgeSync;
+  window.sendGoalScored = sendGoalScored;
 }
 
 export function applyLocalPlayerDamage(data) {
@@ -924,8 +939,8 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'b_state': {
       // Tylko klient przyjmuje pozycję piłki od hosta
-      if (!networkState.isHost) {
-        const targetBallY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      if (isMatchClient()) {
+        const targetBallY = (typeof data.y === 'number') ? data.y : ((data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y);
         const dx = data.x - ball.x;
         const dy = targetBallY - ball.y;
         if (Math.hypot(dx, dy) > 90) {
@@ -939,6 +954,16 @@ export function handleNetworkData(data, senderPeerId = null) {
         ball.vy = data.vy;
         ball.rot = data.rot;
         ball.isGrounded = data.isGrounded;
+
+        if (typeof data.cyan === 'number' && typeof data.orange === 'number') {
+          arenaScore.cyan = data.cyan;
+          arenaScore.orange = data.orange;
+        }
+        if (Math.hypot(data.vx, data.vy) > 0.5) {
+          if (typeof window !== 'undefined' && window.arena1State) {
+            window.arena1State.waitingForKickoff = false;
+          }
+        }
       }
       break;
     }
@@ -967,10 +992,13 @@ export function handleNetworkData(data, senderPeerId = null) {
     }
 
     case 'kick_ball': {
-      if (networkState.isHost) {
+      if (isMatchHost()) {
         ball.vx = data.vx;
         ball.vy = data.vy;
         if (data.spin !== undefined) ball.spin = data.spin;
+        if (typeof window !== 'undefined' && window.arena1State && window.arena1State.waitingForKickoff) {
+          window.arena1State.waitingForKickoff = false;
+        }
       }
       break;
     }
@@ -1259,6 +1287,57 @@ export function handleNetworkData(data, senderPeerId = null) {
     case 'a5_grid_sync': {
       if (typeof window !== 'undefined' && typeof window.applyArena5GridSnapshot === 'function') {
         window.applyArena5GridSnapshot(data.snapshot);
+      }
+      break;
+    }
+
+    case 'goal_scored': {
+      if (typeof data.cyan === 'number' && typeof data.orange === 'number') {
+        arenaScore.cyan = data.cyan;
+        arenaScore.orange = data.orange;
+      }
+      triggerScreenShake(16);
+      triggerGoalCelebration(data.scoringTeam, data.scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
+      break;
+    }
+
+    case 'a4_geyser_sync': {
+      if (typeof window !== 'undefined' && window.arena4 && Array.isArray(window.arena4.geysers)) {
+        const g = window.arena4.geysers[data.geyserIdx];
+        if (g) {
+          g.state = data.state;
+          if (typeof data.timer === 'number') g.timer = data.timer;
+          if (data.state === 'ERUPTING') {
+            triggerScreenShake(2.5);
+            if (typeof window.arena4.spawnMagmaSplash === 'function') {
+              window.arena4.spawnMagmaSplash(g.x, g.y, 22, true);
+            }
+          }
+        }
+      }
+      break;
+    }
+
+    case 'a3_block_break': {
+      if (typeof window !== 'undefined' && Array.isArray(window.ARENA_3_BRIDGE_BLOCKS)) {
+        const blk = window.ARENA_3_BRIDGE_BLOCKS[data.idx];
+        if (blk && blk.intact && typeof window.breakBridgeBlock === 'function') {
+          window.breakBridgeBlock(blk, data.impX || 0, data.impY || 0, data.angImp || 0);
+        }
+      }
+      break;
+    }
+
+    case 'a3_pylon_destroy': {
+      if (typeof window !== 'undefined' && typeof window.destroyPylon === 'function') {
+        window.destroyPylon(data.side || 'left');
+      }
+      break;
+    }
+
+    case 'a3_sync': {
+      if (typeof window !== 'undefined' && typeof window.applyArena3StateSnapshot === 'function') {
+        window.applyArena3StateSnapshot(data.snapshot);
       }
       break;
     }

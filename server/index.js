@@ -278,6 +278,11 @@ wss.on('connection', (ws) => {
       // 7. SYNCHRONIZACJA AREN, KLOCKOW TETRISA, BOTOW I PILKI
       case 'a5_crane_drop':
       case 'a5_grid_sync':
+      case 'a3_block_break':
+      case 'a3_pylon_destroy':
+      case 'a3_sync':
+      case 'a4_geyser_sync':
+      case 'goal_scored':
       case 'arena_sync':
       case 'deathmatch_sync':
       case 'dm_sync':

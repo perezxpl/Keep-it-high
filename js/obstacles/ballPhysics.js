@@ -559,15 +559,38 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
           }
         }
 
-        const isNear = distP < 55 || distB < 55;
+        let nearestRemote = null;
+        let distR = Infinity;
+        const activeRemoteList = (typeof window !== 'undefined' && typeof window.getActiveRemotePlayers === 'function')
+          ? window.getActiveRemotePlayers()
+          : [];
+        for (const rp of activeRemoteList) {
+          if (!rp || !rp.active) continue;
+          const rcx = rp.x + (rp.w || 24) / 2;
+          const rcy = rp.y + (rp.h || 70) / 2;
+          const d = Math.hypot(ball.x - rcx, ball.y - rcy);
+          if (d < distR) {
+            distR = d;
+            nearestRemote = rp;
+          }
+        }
+
+        const isNear = distP < 55 || distB < 55 || distR < 55;
         const isKicking = (p && (p.kickState === 'SWING' || p.kickBufferTimer > 0) && distP < 85) ||
-                          (nearestBot && nearestBot.kickState === 'SWING' && distB < 85);
+                          (nearestBot && nearestBot.kickState === 'SWING' && distB < 85) ||
+                          (nearestRemote && nearestRemote.isKickCharging && distR < 85);
 
         if (isNear || isKicking) {
           arena1State.waitingForKickoff = false;
           triggerScreenShake(7);
           ball.vy = -6.5;
-          ball.vx = (distP <= distB) ? ((p?.facing || 1) * 7.5) : ((nearestBot?.facing || -1) * 7.5);
+          let kickFacing = 1;
+          const minDist = Math.min(distP, distB, distR);
+          if (minDist === distP) kickFacing = p?.facing || 1;
+          else if (minDist === distB) kickFacing = nearestBot?.facing || -1;
+          else kickFacing = nearestRemote?.facing || -1;
+
+          ball.vx = kickFacing * 7.5;
           ball.spin = (ball.vx > 0 ? 1 : -1) * 0.6;
           spawnAltarShockwave(ball.x, ball.y);
         }
@@ -597,6 +620,10 @@ export function checkObstacleCollisions(ball, groundY, p = null, botObj = null) 
 
           triggerScreenShake(16);
           triggerGoalCelebration(scoringTeam, scoringTeam === 'CYAN' ? '#00F0FF' : '#FF8800');
+
+          if (typeof window !== 'undefined' && typeof window.sendGoalScored === 'function') {
+            window.sendGoalScored(scoringTeam, arenaScore.cyan, arenaScore.orange);
+          }
 
           ball.goalAnimation = {
             active: true,

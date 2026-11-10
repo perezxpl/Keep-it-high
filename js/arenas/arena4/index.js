@@ -125,9 +125,11 @@ export class Arena4Caldera {
       g.timer -= safeDt;
 
       if (g.state === 'DORMANT') {
-        if (g.timer <= 0) {
+        const isClient = (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient());
+        if (!isClient && g.timer <= 0) {
           g.state = 'TELEGRAPH';
           g.timer = g.telegraphTime; // 1.5s
+          this.broadcastGeyserState(gi, g.state, g.timer);
         }
       } else if (g.state === 'TELEGRAPH') {
         if (Math.random() < 0.40) {
@@ -150,6 +152,7 @@ export class Arena4Caldera {
           g.timer = g.eruptTime; // 1.2s
           triggerScreenShake(2.5);
           this.spawnMagmaSplash(g.x, g.y, 22, true);
+          this.broadcastGeyserState(gi, g.state, g.timer);
         }
       } else if (g.state === 'ERUPTING') {
         addDynamicLight({
@@ -228,6 +231,7 @@ export class Arena4Caldera {
         if (g.timer <= 0) {
           g.state = 'DORMANT';
           g.timer = g.dormantTime + (Math.random() * 4.0 - 2.0); // 8-12s
+          this.broadcastGeyserState(gi, g.state, g.timer);
         }
       }
     }
@@ -377,6 +381,19 @@ export class Arena4Caldera {
 
   render(ctx, camera) {
     drawCalderaForeground(ctx, camera, this.animTime, this.geysers, this.crusts, this.embers, this.magmaSplashes);
+  }
+
+  broadcastGeyserState(geyserIdx, state, timer) {
+    if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+        typeof window.isMatchActive === 'function' && window.isMatchActive() &&
+        typeof window.broadcastNetworkPacket === 'function') {
+      window.broadcastNetworkPacket({
+        type: 'a4_geyser_sync',
+        geyserIdx,
+        state,
+        timer: Math.round(timer * 10) / 10
+      });
+    }
   }
 
   reset() {

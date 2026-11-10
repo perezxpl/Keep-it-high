@@ -303,9 +303,9 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
   updateCombatFeed(stepTime);
 
   // Synchronizacja stanu deathmatch przez Hosta (zegar, wynik drużyn)
-  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
-  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() && typeof sendDm === 'function') {
     _dmSyncTimer = (_dmSyncTimer || 0) + stepTime;
     if (_dmSyncTimer >= 1.0) {
       _dmSyncTimer = 0;
@@ -494,9 +494,9 @@ export function finishDeathmatch(reason = 'TIME_LIMIT') {
     deathmatchState.winningPlayer = deathmatchState.leaderboard[0];
   }
 
-  const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   const sendDm = (typeof window !== 'undefined' && window.sendDeathmatchSync) ? window.sendDeathmatchSync : null;
-  if (netState && netState.isHost && netState.isConnected && typeof sendDm === 'function') {
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() && typeof sendDm === 'function') {
     sendDm(deathmatchState);
   }
 

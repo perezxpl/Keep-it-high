@@ -268,14 +268,21 @@ function handleServerMessage(rawData) {
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
       triggerCombatFeedBanner('SYSTEM', `${msg.player.name} DOLACZYL DO BITWY [${wsState.playersCount}/${wsState.maxPlayers}]`);
 
-      // Jesli jestesmy hostem i gramy na Arenie 5, wyslij natychmiast snapshot biezacej wiezy do nowego gracza
-      if (wsState.isHost && typeof window !== 'undefined' && typeof window.serializeArena5Grid === 'function') {
-        const snapshot = window.serializeArena5Grid();
-        if (snapshot && typeof window.broadcastNetworkPacket === 'function') {
-          window.broadcastNetworkPacket({
-            type: 'a5_grid_sync',
-            snapshot
-          });
+      // Jesli jestesmy hostem, wyslij natychmiast synchronizacje specyficzna dla areny do nowego gracza
+      if (wsState.isHost && typeof window !== 'undefined') {
+        if (typeof window.serializeArena5Grid === 'function' && typeof window.broadcastNetworkPacket === 'function') {
+          const snapshot = window.serializeArena5Grid();
+          if (snapshot) window.broadcastNetworkPacket({ type: 'a5_grid_sync', snapshot });
+        }
+        if (typeof window.serializeArena3State === 'function' && typeof window.broadcastNetworkPacket === 'function') {
+          const snapshot = window.serializeArena3State();
+          if (snapshot) window.broadcastNetworkPacket({ type: 'a3_sync', snapshot });
+        }
+        if (typeof window.sendAcidSurgeSync === 'function' && typeof window.ACID_SURGE_SYSTEM !== 'undefined') {
+          window.sendAcidSurgeSync(window.ACID_SURGE_SYSTEM);
+        }
+        if (typeof window.sendDeathmatchSync === 'function' && typeof window.deathmatchState !== 'undefined') {
+          window.sendDeathmatchSync(window.deathmatchState);
         }
       }
       break;

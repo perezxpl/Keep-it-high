@@ -25,16 +25,14 @@ export function registerArenaResetCallback(cb) {
 import { getActiveArena, setActiveArena, ARENAS, onArenaChange } from '../arenas/index.js';
 import arena1, { ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX } from '../arenas/arena1.js';
 import arena2, {
-  ARENA_2_PLATFORMS, ARENA_2_CONFIG,
-  ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
-  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
-  ARENA_2_BRIDGES, resetArena2Bridges,
-  ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY,
-  ACID_SURGE_SYSTEM
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS,
+  applyPandoraUpdraft, checkPandoraUpdraft, ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES,
+  ARENA_CYBER_STADIUM_GOALS, ARENA_2_BRIDGES, resetArena2Bridges, ARENA_2_COVERS, ARENA_2_BARRELS,
+  ARENA_2_SUPPLY, ACID_SURGE_SYSTEM
 } from '../arenas/arena2.js';
 import arena3, {
-  ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
-  GROUND_LEFT_POINTS, GROUND_RIGHT_POINTS, LEFT_OVAL_POINTS, RIGHT_OVAL_POINTS
+  ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS, GROUND_LEFT_POINTS,
+  GROUND_RIGHT_POINTS, LEFT_OVAL_POINTS, RIGHT_OVAL_POINTS
 } from '../arenas/arena3.js';
 import { initDeathmatch, resetDeathmatchState, deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { balanceBotClasses } from '../bot.js';
@@ -43,13 +41,9 @@ import { restorePlayerArmoryLoadout } from '../loadout/index.js';
 
 export {
   ARENA_1_PLATFORMS, ARENA_1_BARRICADES, ARENA_1_GOALS, arena1State, goalTriggerLeft, goalTriggerRight, centerX,
-  ARENA_2_PLATFORMS, ARENA_2_CONFIG,
-  ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
-  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS,
-  ARENA_2_BRIDGES, resetArena2Bridges,
-  ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY,
-  ACID_SURGE_SYSTEM,
-  ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
+  ARENA_2_PLATFORMS, ARENA_2_CONFIG, ARENA_2_PANDORA_PLATFORMS, ARENA_2_PANDORA_GOALS, applyPandoraUpdraft, checkPandoraUpdraft,
+  ARENA_CYBER_STADIUM_PLATFORMS, ARENA_CYBER_STADIUM_BARRICADES, ARENA_CYBER_STADIUM_GOALS, ARENA_2_BRIDGES, resetArena2Bridges,
+  ARENA_2_COVERS, ARENA_2_BARRELS, ARENA_2_SUPPLY, ACID_SURGE_SYSTEM, ARENA_3_PLATFORMS, ARENA_3_CUSTOM_OBJECTS,
   getActiveArena, setActiveArena, ARENAS, onArenaChange
 };
 
@@ -500,11 +494,12 @@ export function resetArena() {
 
   if (activeArenaId === 'ARENA_1') {
     if (_activePlayer) {
-      _activePlayer.x = 240;
+      const isClient = isLocalClientPlayer(_activePlayer);
+      _activePlayer.x = isClient ? 3360 : 240;
       _activePlayer.y = 580;
       _activePlayer.vx = 0;
       _activePlayer.vy = 0;
-      _activePlayer.facing = 1;
+      _activePlayer.facing = isClient ? -1 : 1;
       _activePlayer.isIntro = false;
       _activePlayer.gaitMode = 'IDLE';
     }
@@ -543,6 +538,15 @@ if (typeof world !== 'undefined' && world) {
   });
 }
 
+function isLocalClientPlayer(playerObj) {
+  if (!playerObj) return false;
+  if (playerObj.team === 'ORANGE') return true;
+  if (typeof window !== 'undefined') {
+    if (typeof window.isMatchClient === 'function' && window.isMatchClient()) return true;
+    if (window.networkState && window.networkState.isConnected && !window.networkState.isHost) return true;
+  }
+  return false;
+}
 
 export function switchArena(arenaId, playerObj, botObj, ballObj) {
   setActiveArena(arenaId);
@@ -661,7 +665,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const floorY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : 1200;
 
     if (playerObj) {
-      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const isClient = isLocalClientPlayer(playerObj);
       const s0 = spawns[isClient ? 2 : 0] || { x: 400, y: floorY - 90 };
       playerObj.x = s0.x;
       playerObj.y = s0.y;
@@ -730,7 +734,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const isA4 = (currentArena?.id === 'arena-4' || currentArena?.alias === 'OBSIDIAN_CALDERA' || currentArena?.alias === 'CALDERA' || currentArena?.alias === 'OBSIDIAN' || currentArena?.alias === 'OFFSHORE_RIG' || currentArena?.alias === 'USS_TITAN' || currentArena?.alias === 'TITAN' || currentArena?.alias === 'OIL_RIG_TYPHOON' || currentArena?.alias === 'TYPHOON' || currentArena?.alias === 'ARES_ORBITAL_STATION');
     const deckY = (currentArena && typeof currentArena.mainDeckY === 'number') ? currentArena.mainDeckY : (isA4 ? 1040 : 820);
     if (playerObj) {
-      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const isClient = isLocalClientPlayer(playerObj);
       const spawnIdx = isA4 ? (isClient ? 2 : 1) : (isClient ? 2 : 0);
       playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 2150 : 1350);
       playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (deckY - 60);
@@ -810,7 +814,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     }
 
     if (playerObj) {
-      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const isClient = isLocalClientPlayer(playerObj);
       const spawnIdx = isClient ? 1 : 0;
       playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3800 : 600);
       playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : (isClient ? 880 : 1130);
@@ -866,7 +870,7 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
     if (playerObj) {
-      const isClient = (playerObj.team === 'ORANGE' || (typeof window !== 'undefined' && window.networkState && window.networkState.isConnected && !window.networkState.isHost));
+      const isClient = isLocalClientPlayer(playerObj);
       const spawnIdx = isClient ? 1 : 0;
       playerObj.x = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].x : (isClient ? 3470 : 520);
       playerObj.y = (currentArena.spawns && currentArena.spawns[spawnIdx]) ? currentArena.spawns[spawnIdx].y : 390;
@@ -952,11 +956,13 @@ export function switchArena(arenaId, playerObj, botObj, ballObj) {
     const rPlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
 
     if (playerObj) {
-      playerObj.x = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].x : 220;
-      playerObj.y = (currentArena.spawns && currentArena.spawns[0]) ? currentArena.spawns[0].y : 420;
+      const isClient = isLocalClientPlayer(playerObj);
+      const s0 = (currentArena.spawns && currentArena.spawns[isClient ? 1 : 0]) || { x: isClient ? 3380 : 220, y: 420, facing: isClient ? -1 : 1 };
+      playerObj.x = s0.x;
+      playerObj.y = s0.y;
       playerObj.vx = 0;
       playerObj.vy = 0;
-      playerObj.facing = 1;
+      playerObj.facing = isClient ? -1 : 1;
       playerObj.isIntro = false;
       playerObj.juggleTimer = 0;
       playerObj.isJumping = false;
@@ -1221,14 +1227,9 @@ export function spawnBarrelExplosion(cx, cy) {
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 7.5 + 2.5;
     barrelExplosionParticles.push({
-      type: 'fire',
-      x: cx,
-      y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.8,
-      size: Math.random() * 8 + 6,
-      life: 1.0,
-      decay: Math.random() * 0.035 + 0.025,
+      type: 'fire', x: cx, y: cy,
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1.8,
+      size: Math.random() * 8 + 6, life: 1.0, decay: Math.random() * 0.035 + 0.025,
       color: Math.random() < 0.4 ? '#f97316' : (Math.random() < 0.7 ? '#ef4444' : '#facc15')
     });
   }
@@ -1236,14 +1237,9 @@ export function spawnBarrelExplosion(cx, cy) {
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 3.5 + 1.0;
     barrelExplosionParticles.push({
-      type: 'smoke',
-      x: cx,
-      y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 2.8,
-      size: Math.random() * 14 + 8,
-      life: 1.0,
-      decay: Math.random() * 0.02 + 0.015,
+      type: 'smoke', x: cx, y: cy,
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2.8,
+      size: Math.random() * 14 + 8, life: 1.0, decay: Math.random() * 0.02 + 0.015,
       color: '#334155'
     });
   }
@@ -1318,14 +1314,7 @@ function applyExplosionToEntity(ent, cx, cy, radius, maxDmg, groundY) {
 
       // Upuszczenie broni
       if (ent.currentWeapon) {
-        spawnDroppedWeapon(
-          ent.x + ent.w / 2,
-          ent.y + 24,
-          nx * 5.0,
-          -6.0,
-          ent.currentWeapon,
-          ent.facing
-        );
+        spawnDroppedWeapon(ent.x + ent.w / 2, ent.y + 24, nx * 5.0, -6.0, ent.currentWeapon, ent.facing);
       }
 
       // WARUNEK: Strefa bezpośrednia (<= 65 px) = CAŁKOWITE ROZCZŁONKOWANIE (Gibbing)
@@ -1337,12 +1326,7 @@ function applyExplosionToEntity(ent, cx, cy, radius, maxDmg, groundY) {
         triggerHitstop(2);
         triggerScreenShake(20);
 
-        spawnBodyGibs(
-          ent.x + ent.w / 2,
-          ent.y + ent.h / 2,
-          ent.facing,
-          ent.currentClass?.visuals
-        );
+        spawnBodyGibs(ent.x + ent.w / 2, ent.y + ent.h / 2, ent.facing, ent.currentClass?.visuals);
       } else {
         // WARUNEK: Strefa fali (65 - 120 px) = BRAK ROZCZŁONKOWANIA (całe ciało leci wysoko w powietrze)
         ent.isGibbed = false;
@@ -1500,8 +1484,6 @@ export function updateMovableObstacles(groundY = 500) {
     }
   }
 }
-
-
 
 export function resetObstacles() {
   obstacles.length = 0;
