@@ -77,6 +77,9 @@ export function drawArena5Foreground(ctx, camera) {
   // 9. Dolny utylizator (strefa śmierci)
   drawBottomRecycler(ctx, camera);
 
+  // 10. Kinowy baner taktyczny aktywnej dyrektywy architektonicznej wieży
+  drawArena5DirectiveBanner(ctx, camera);
+
   ctx.restore();
 }
 
@@ -159,6 +162,8 @@ function drawShaftWalls(ctx, camera) {
   for (let ty = startTextY; ty < topY + h; ty += 300) {
     ctx.fillText('SEKTOR 05 // SZYB PREFABRYKATÓW', SHAFT_LEFT - 80, ty);
     ctx.fillText('UWAGA: ZRZUT PIONOWY', SHAFT_RIGHT + 80, ty);
+    ctx.fillText('DYREKTYWA: ' + (arena5State.directiveName || 'AKTYWNA'), SHAFT_LEFT - 80, ty + 24);
+    ctx.fillText('DYREKTYWA: ' + (arena5State.directiveName || 'AKTYWNA'), SHAFT_RIGHT + 80, ty + 24);
   }
   ctx.restore();
 }
@@ -669,6 +674,72 @@ function drawBottomRecycler(ctx, camera) {
   ctx.fillStyle = '#fee2e2';
   ctx.textAlign = 'center';
   ctx.fillText('STREFA UTYLIZACJI // ŚMIERĆ PRZY UPADKU', SHAFT_LEFT + (COLS * CELL_SIZE) * 0.5, bottomY + 22);
+
+  ctx.restore();
+}
+
+/**
+ * Rysuje kinowy, taktyczny baner informujący o aktywnej dyrektywie budowy wieży (np. BLIŹNIACZE BASTIONY, UKŁAD KLASYCZNY).
+ * Wyświetla się przez 4 sekundy po zmianie dyrektywy pod górną krawędzią ekranu w przestrzeni kamery.
+ */
+function drawArena5DirectiveBanner(ctx, camera) {
+  const changedAt = arena5State.directiveChangedAt || 0;
+  if (!changedAt) return;
+
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const elapsed = (now - changedAt) / 1000;
+  if (elapsed >= 4.0 || elapsed < 0) return;
+
+  const fadeIn = Math.min(1.0, elapsed / 0.4);
+  const fadeOut = Math.min(1.0, (4.0 - elapsed) / 0.8);
+  const alpha = Math.min(fadeIn, fadeOut);
+
+  if (alpha <= 0.01) return;
+
+  ctx.save();
+
+  const viewWidth = camera.viewWidth || 1600;
+  const centerX = camera.x + viewWidth * 0.5;
+  const bannerY = camera.y + 40;
+  const bannerW = 480;
+  const bannerH = 48;
+
+  // Półprzezroczyste grafitowe tło
+  ctx.fillStyle = `rgba(10, 15, 26, ${0.88 * alpha})`;
+  ctx.fillRect(centerX - bannerW * 0.5, bannerY, bannerW, bannerH);
+
+  const accent = arena5State.directiveColor || '#38bdf8';
+  ctx.strokeStyle = accent;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(centerX - bannerW * 0.5, bannerY, bannerW, bannerH);
+
+  // Narożniki taktyczne [ ]
+  const cLen = 9;
+  const bx = centerX - bannerW * 0.5;
+  const by = bannerY;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  // Lewy górny
+  ctx.moveTo(bx + cLen, by); ctx.lineTo(bx, by); ctx.lineTo(bx, by + cLen);
+  // Prawy górny
+  ctx.moveTo(bx + bannerW - cLen, by); ctx.lineTo(bx + bannerW, by); ctx.lineTo(bx + bannerW, by + cLen);
+  // Lewy dolny
+  ctx.moveTo(bx + cLen, by + bannerH); ctx.lineTo(bx, by + bannerH); ctx.lineTo(bx, by + bannerH - cLen);
+  // Prawy dolny
+  ctx.moveTo(bx + bannerW - cLen, by + bannerH); ctx.lineTo(bx + bannerW, by + bannerH); ctx.lineTo(bx + bannerW, by + bannerH - cLen);
+  ctx.stroke();
+
+  // Nagłówek: SEKTOR 05 // DYREKTYWA PREFABRYKATORA
+  ctx.font = '900 10px monospace';
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+  ctx.textAlign = 'center';
+  ctx.fillText('SEKTOR 05 // DYREKTYWA PREFABRYKATORA', centerX, bannerY + 16);
+
+  // Główna nazwa dyrektywy: np. BLIŹNIACZE BASTIONY
+  ctx.font = '900 16px monospace';
+  ctx.fillStyle = accent;
+  ctx.fillText(arena5State.directiveName || 'DYREKTYWA AKTYWNA', centerX, bannerY + 36);
 
   ctx.restore();
 }

@@ -82,7 +82,15 @@ export const SHAPE_DEFS = [
   // 11. Bunkier U (3x2 z niszą pośrodku do ukrycia się)
   { id: 'U_BUNKER',  name: 'BUNKIER U',   accentColor: '#ec4899', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 2, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }, { c: 2, r: 1 }] },
   // 12. Schodki 3-stopniowe (3x2)
-  { id: 'STAIRS_3',  name: 'SCHODKI',     accentColor: '#14b8a6', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] }
+  { id: 'STAIRS_3',  name: 'SCHODKI',     accentColor: '#14b8a6', w: 3, h: 2, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 2, r: 1 }] },
+  // 13. Filar pionowy 1x3 - szybka budowa pionowych wież i osłon
+  { id: 'PILLAR_3',  name: 'FILAR P-3',   accentColor: '#0284c7', w: 1, h: 3, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }, { c: 0, r: 2 }] },
+  // 14. Wysoka iglica pionowa 1x4 (klasyczny pionowy I-Beam)
+  { id: 'I_VERT_4',  name: 'IGLICA I-4',  accentColor: '#06b6d4', w: 1, h: 4, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }, { c: 0, r: 2 }, { c: 0, r: 3 }] },
+  // 15. Moduł wieżowy 2x3 (masywny dwupiętrowy bastion)
+  { id: 'TOWER_2X3', name: 'BASTION 2x3', accentColor: '#8b5cf6', w: 2, h: 3, cells: [{ c: 0, r: 0 }, { c: 1, r: 0 }, { c: 0, r: 1 }, { c: 1, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }] },
+  // 16. Wieża z półką snajperską (2x3)
+  { id: 'TOWER_LEDGE', name: 'WIEŻA Z PÓŁKĄ', accentColor: '#c084fc', w: 2, h: 3, cells: [{ c: 0, r: 0 }, { c: 0, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }] }
 ];
 
 export function getGridX(col) {
@@ -93,9 +101,62 @@ export function getGridY(row) {
   return BASE_FLOOR_Y - (row + 1) * CELL_SIZE;
 }
 
+export const ARENA5_DIRECTIVES = {
+  TWIN_BASTIONS: {
+    id: 'TWIN_BASTIONS',
+    name: 'BLIŹNIACZE BASTIONY',
+    desc: 'Wznoszenie wież obronnych na skrzydłach areny',
+    accentColor: '#38bdf8'
+  },
+  TETRIS_FLAT: {
+    id: 'TETRIS_FLAT',
+    name: 'UKŁAD KLASYCZNY',
+    desc: 'Wyrównywanie terenu i detonacja pełnych linii',
+    accentColor: '#eab308'
+  },
+  CITADEL_SPIRE: {
+    id: 'CITADEL_SPIRE',
+    name: 'CYTADELA CENTRALNA',
+    desc: 'Budowa centralnego monolitu wysokościowego',
+    accentColor: '#a855f7'
+  },
+  STEPPED_TERRACES: {
+    id: 'STEPPED_TERRACES',
+    name: 'KASKADOWE TARASY',
+    desc: 'Wielopoziomowe schody i platformy taktyczne',
+    accentColor: '#14b8a6'
+  },
+  PILLARS_CANYON: {
+    id: 'PILLARS_CANYON',
+    name: 'KOLUMNADA I ROZPADLINY',
+    desc: 'Iglice filarowe i głębokie szczeliny bojowe',
+    accentColor: '#ef4444'
+  }
+};
+
+export const DIRECTIVE_CYCLE = [
+  'TWIN_BASTIONS',
+  'TETRIS_FLAT',
+  'CITADEL_SPIRE',
+  'TETRIS_FLAT',
+  'STEPPED_TERRACES',
+  'TETRIS_FLAT',
+  'PILLARS_CANYON',
+  'TETRIS_FLAT'
+];
+
 export const arena5State = {
   // Siatka ułożonych bloków: klucz to indeks wiersza (0, 1, 2, ...), wartość to tablica 10 komórek
   gridRows: new Map(),
+
+  // Dynamiczne dyrektywy architektoniczne budowy wieży
+  directive: 'TWIN_BASTIONS',
+  directiveIndex: 0,
+  directiveDropsLeft: 6,
+  directiveName: 'BLIŹNIACZE BASTIONY',
+  directiveDesc: 'Wznoszenie wież obronnych na skrzydłach areny',
+  directiveColor: '#38bdf8',
+  directiveChangedAt: 0,
 
   // Aktywna suwnica i spadający blok
   crane: {
@@ -155,6 +216,26 @@ if (typeof window !== 'undefined') {
   window.arena5State = arena5State;
 }
 
+export function advanceArena5Directive() {
+  arena5State.directiveIndex = ((arena5State.directiveIndex || 0) + 1) % DIRECTIVE_CYCLE.length;
+  setArena5Directive(DIRECTIVE_CYCLE[arena5State.directiveIndex]);
+}
+
+export function setArena5Directive(directiveId) {
+  const def = ARENA5_DIRECTIVES[directiveId] || ARENA5_DIRECTIVES.TETRIS_FLAT;
+  const changed = (arena5State.directive !== def.id);
+  arena5State.directive = def.id;
+  arena5State.directiveName = def.name;
+  arena5State.directiveDesc = def.desc;
+  arena5State.directiveColor = def.accentColor;
+  arena5State.directiveDropsLeft = (def.id === 'TETRIS_FLAT')
+    ? (4 + Math.floor(Math.random() * 3))
+    : (5 + Math.floor(Math.random() * 3));
+  if (changed) {
+    arena5State.directiveChangedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+}
+
 export function resetArena5State() {
   arena5State.gridRows.clear();
   arena5State.activeLineClears.length = 0;
@@ -169,6 +250,8 @@ export function resetArena5State() {
   arena5State.minCameraY = null;
   arena5State.flashEffectTimer = 0;
   arena5State.nextPieceId = 1;
+  arena5State.directiveIndex = 0;
+  setArena5Directive('TWIN_BASTIONS');
 
   // Inicjalizacja bazowych platform (ściany + podstawa) od 1. klatki
   rebuildInitialPlatforms();
@@ -244,8 +327,12 @@ export function rebuildInitialPlatforms() {
 }
 
 /**
- * Inteligentny dobór kolumny zrzutu w stylu Tetrisa:
- * AI ocenia potencjał domknięcia linii, wypełniania nisz i unikania sztucznych iglic
+ * Inteligentny dobór kolumny zrzutu z uwzględnieniem aktywnej dyrektywy architektonicznej:
+ * - TWIN_BASTIONS: wznosi wysokie wieże na lewym i prawym skrzydle, zostawiając dolinę pośrodku
+ * - CITADEL_SPIRE: buduje potężny monolit wieżowy w centrum areny
+ * - STEPPED_TERRACES: tworzy wielopoziomowe schody i tarasy taktyczne
+ * - PILLARS_CANYON: buduje wysokie, wąskie iglice oddzielone rozpadlinami
+ * - TETRIS_FLAT: wyrównuje teren, wypełnia doliny i detonuje pełne linie
  */
 export function findSmartCranePlacement(shapeDef) {
   const minRow = arena5State.minFloorRow || 0;
@@ -265,10 +352,11 @@ export function findSmartCranePlacement(shapeDef) {
   }
 
   const avgHeight = colHeights.reduce((sum, h) => sum + h, 0) / COLS;
+  const directive = arena5State.directive || 'TETRIS_FLAT';
 
   // 1. Analiza zapełnienia poszczególnych wierszy (szukanie wierszy bliskich domknięcia)
   const rowOccupancy = new Map();
-  for (let r = minRow; r <= arena5State.highestRowIndex + 3; r++) {
+  for (let r = minRow; r <= arena5State.highestRowIndex + 4; r++) {
     const rowData = arena5State.gridRows.get(r);
     let count = 0;
     if (rowData) {
@@ -295,8 +383,10 @@ export function findSmartCranePlacement(shapeDef) {
     }
 
     let score = 50;
+    const centerCol = c + (shapeDef.w - 1) / 2;
+    const shapeTopRow = landingRow + shapeDef.h - 1;
 
-    // 2. Potężna premia za zapełnianie linii i detonację pełnych wierszy (Tetris Line Clear)
+    // 2. Bonus za zapełnianie linii i detonację pełnych wierszy
     for (let rRel = 0; rRel < shapeDef.h; rRel++) {
       const wRow = landingRow + rRel;
       const existingInRow = rowOccupancy.get(wRow) || 0;
@@ -304,50 +394,86 @@ export function findSmartCranePlacement(shapeDef) {
       const totalAfter = existingInRow + addedInThisRow;
 
       if (totalAfter >= COLS) {
-        score += 2000; // Bezwzględny priorytet: czyszczenie linii!
+        score += (directive === 'TETRIS_FLAT') ? 2500 : 1200; // Bezwzględny priorytet w trybie klasycznym
       } else if (totalAfter >= COLS - 2) {
-        score += 650; // Krok od domknięcia
-      } else if (totalAfter >= COLS - 5) {
-        score += 300;
-      } else if (totalAfter >= 10) {
-        score += 120;
-      }
-
-      // Bonus za wpasowanie w luki wiersza o wysokim zapełnieniu
-      if (existingInRow >= 12) {
-        score += addedInThisRow * 150;
-      } else if (existingInRow >= 7) {
-        score += addedInThisRow * 60;
+        score += (directive === 'TETRIS_FLAT') ? 750 : 350;
+      } else if (directive === 'TETRIS_FLAT') {
+        if (totalAfter >= COLS - 5) score += 200;
+        if (existingInRow >= 11) score += addedInThisRow * 100;
       }
     }
 
-    // 3. Wyrównywanie terenu: premia za wypełnianie dolin, kara za tworzenie iglic
-    const shapeTopRow = landingRow + shapeDef.h - 1;
-    if (shapeTopRow <= avgHeight) {
-      score += (avgHeight - shapeTopRow + 1) * 22; // Wypełniaj najniższe luki
-    } else if (shapeTopRow > avgHeight + 2) {
-      score -= (shapeTopRow - avgHeight) * 25; // Kara za wąskie kominy
-    }
+    // 3. Punktacja w zależności od wybranej dyrektywy architektonicznej
+    if (directive === 'TWIN_BASTIONS') {
+      // Skrzydło lewe (kolumny 0.5..4.5) oraz skrzydło prawe (kolumny 10.5..14.5)
+      const isLeftBastion = (centerCol >= 0.5 && centerCol <= 4.5);
+      const isRightBastion = (centerCol >= 10.5 && centerCol <= 14.5);
+      const isValley = (centerCol >= 5.5 && centerCol <= 9.5);
 
-    // 4. Spasowanie z sąsiednimi kolumnami
-    const leftNeighborH = c > 0 ? colHeights[c - 1] : landingRow;
-    const rightNeighborH = (c + shapeDef.w < COLS) ? colHeights[c + shapeDef.w] : landingRow;
-    const diffLeft = Math.abs(leftNeighborH - landingRow);
-    const diffRight = Math.abs(rightNeighborH - landingRow);
-    score -= (diffLeft + diffRight) * 2.5;
+      if (isLeftBastion || isRightBastion) {
+        score += 850; // Skupiaj klocki na skrzydłach
+        score += Math.max(0, (landingRow - minRow)) * 32; // Piętrz wieże w górę
+      } else if (isValley) {
+        score -= 420; // Zostaw dolinę na środku pustą
+        if (landingRow <= avgHeight - 2) score += 180; // Dopuszczalny tylko niski fundament
+      }
+    } else if (directive === 'CITADEL_SPIRE') {
+      // Centralna cytadela / iglica w środku (kolumny 5..10)
+      const isCenter = (centerCol >= 5.0 && centerCol <= 10.0);
+      const isFlank = (centerCol < 4.0 || centerCol > 11.0);
+
+      if (isCenter) {
+        score += 950; // Centralny monolit
+        score += Math.max(0, (landingRow - minRow)) * 36; // Imponująca wysokość
+      } else if (isFlank) {
+        score -= 360; // Skrzydła pozostają niżej
+      }
+    } else if (directive === 'STEPPED_TERRACES') {
+      // Kaskadowy profil terenu: lewa strona wysoka (+4 wiersze), prawa niska
+      const targetTier = minRow + Math.round((1 - centerCol / (COLS - 1)) * 4.5);
+      const diff = Math.abs(landingRow - targetTier);
+      score += Math.max(0, (5 - diff) * 130);
+    } else if (directive === 'PILLARS_CANYON') {
+      // Filarowa kolumnada: 3 iglice wokół kolumn ~2, ~7.5, ~13
+      const distToPillar1 = Math.abs(centerCol - 2.0);
+      const distToPillar2 = Math.abs(centerCol - 7.5);
+      const distToPillar3 = Math.abs(centerCol - 13.0);
+      const minDist = Math.min(distToPillar1, distToPillar2, distToPillar3);
+
+      if (minDist <= 1.2) {
+        score += 900;
+        score += Math.max(0, (landingRow - minRow)) * 30;
+      } else {
+        score -= 400; // Zachowaj kaniony między iglicami
+      }
+    } else {
+      // TETRIS_FLAT: Układ klasyczny - wyrównywanie i wypełnianie dołków
+      if (shapeTopRow <= avgHeight) {
+        score += (avgHeight - shapeTopRow + 1) * 35; // Wypełniaj najniższe luki
+      } else if (shapeTopRow > avgHeight + 1) {
+        score -= (shapeTopRow - avgHeight) * 30; // Kara za wąskie kominy
+      }
+
+      const leftNeighborH = c > 0 ? colHeights[c - 1] : landingRow;
+      const rightNeighborH = (c + shapeDef.w < COLS) ? colHeights[c + shapeDef.w] : landingRow;
+      const diffLeft = Math.abs(leftNeighborH - landingRow);
+      const diffRight = Math.abs(rightNeighborH - landingRow);
+      score -= (diffLeft + diffRight) * 3.0;
+    }
 
     // Drobny szum losowy dla naturalności
-    score += Math.random() * 10;
+    score += Math.random() * 12;
 
     scoredCols.push({ col: c, score });
   }
 
   scoredCols.sort((a, b) => b.score - a.score);
 
-  // 90% szans na wybór bezwzględnie najlepszej lub drugiej najlepszej kolumny
-  if (Math.random() < 0.90 && scoredCols.length >= 2) {
-    const pickIdx = Math.random() < 0.75 ? 0 : 1;
-    return scoredCols[pickIdx].col;
+  // 85% szans na wybór bezwzględnie najlepszej kolumny, 15% na drugą najlepszą
+  if (Math.random() < 0.85 && scoredCols.length >= 2) {
+    return scoredCols[0].col;
+  } else if (scoredCols.length >= 2) {
+    return scoredCols[1].col;
   }
 
   return scoredCols[0].col;
@@ -362,6 +488,35 @@ export function prepareNextCraneDrop() {
   }
 
   const minRow = arena5State.minFloorRow || 0;
+
+  // Analiza rozpiętości wysokości kolumn
+  let minColH = 9999;
+  let maxColH = -1;
+  for (let c = 0; c < COLS; c++) {
+    for (let r = arena5State.highestRowIndex + 8; r >= minRow; r--) {
+      const rowData = arena5State.gridRows.get(r);
+      if (rowData && rowData[c] && rowData[c].hp > 0) {
+        if (r < minColH) minColH = r;
+        if (r > maxColH) maxColH = r;
+        break;
+      }
+    }
+  }
+  const heightSpread = (maxColH >= minRow) ? (maxColH - Math.max(minRow - 1, minColH)) : 0;
+
+  // Zarządzanie cyklem dyrektyw budowy wieży
+  arena5State.directiveDropsLeft = (arena5State.directiveDropsLeft || 6) - 1;
+  if (arena5State.directiveDropsLeft <= 0) {
+    advanceArena5Directive();
+  } else if (arena5State.directive !== 'TETRIS_FLAT' && heightSpread >= 6) {
+    // Jeśli wieże są już bardzo wysokie (różnica 6 klocków), automatycznie przejdź w tryb TETRIS_FLAT
+    setArena5Directive('TETRIS_FLAT');
+  } else if (arena5State.directive === 'TETRIS_FLAT' && heightSpread <= 1 && arena5State.totalBlocksDropped > 4) {
+    // Jeśli teren stał się zupełnie płaski, od razu zacznij nową formację wieżową!
+    advanceArena5Directive();
+  }
+
+  const directive = arena5State.directive || 'TETRIS_FLAT';
 
   // Analiza czy któryś z wierszy jest bliski pełnego domknięcia
   let candidateShape = null;
@@ -381,10 +536,9 @@ export function prepareNextCraneDrop() {
     }
   }
 
-  // Jeśli wiersz ma 13..19 klocków, celowo dobierz kształt ułatwiający zamknięcie linii
-  if (maxRowFilled >= 13 && targetRowIndex !== -1 && Math.random() < 0.65) {
+  // W trybie TETRIS_FLAT lub gdy wiersz ma >= 13 klocków: dobierz klocek domykający lukę
+  if ((directive === 'TETRIS_FLAT' || maxRowFilled >= 13) && maxRowFilled >= 12 && targetRowIndex !== -1 && Math.random() < 0.70) {
     const rowData = arena5State.gridRows.get(targetRowIndex);
-    // Znajdź pierwszą lukę
     let gapStart = -1;
     let gapLen = 0;
     for (let c = 0; c < COLS; c++) {
@@ -403,11 +557,46 @@ export function prepareNextCraneDrop() {
     } else if (gapLen === 2) {
       candidateShape = SHAPE_DEFS.find(s => s.id === 'O_BLOCK' || s.id === 'L_BLOCK_2') || SHAPE_DEFS[3];
     } else if (gapLen === 1) {
-      candidateShape = SHAPE_DEFS.find(s => s.id === 'PILLAR_2') || SHAPE_DEFS[2];
+      candidateShape = SHAPE_DEFS.find(s => s.id === 'PILLAR_2' || s.id === 'PILLAR_3') || SHAPE_DEFS[2];
     }
   }
 
-  const shapeDef = candidateShape || SHAPE_DEFS[Math.floor(Math.random() * SHAPE_DEFS.length)];
+  // Dobór kształtu pod kątem aktywnej dyrektywy
+  let shapeDef = candidateShape;
+  if (!shapeDef) {
+    if (directive === 'TWIN_BASTIONS' || directive === 'CITADEL_SPIRE') {
+      // 70% szans na wysokie kształty wieżowe i moduły bastionowe
+      const towerShapes = ['PILLAR_3', 'I_VERT_4', 'TOWER_2X3', 'TOWER_LEDGE', 'PILLAR_2', 'O_BLOCK', 'L_BLOCK_3', 'J_BLOCK_3', 'U_BUNKER'];
+      if (Math.random() < 0.70) {
+        const id = towerShapes[Math.floor(Math.random() * towerShapes.length)];
+        shapeDef = SHAPE_DEFS.find(s => s.id === id);
+      }
+    } else if (directive === 'PILLARS_CANYON') {
+      const spireShapes = ['PILLAR_3', 'I_VERT_4', 'PILLAR_2', 'TOWER_2X3'];
+      if (Math.random() < 0.75) {
+        const id = spireShapes[Math.floor(Math.random() * spireShapes.length)];
+        shapeDef = SHAPE_DEFS.find(s => s.id === id);
+      }
+    } else if (directive === 'STEPPED_TERRACES') {
+      const stepShapes = ['STAIRS_3', 'L_BLOCK_2', 'L_BLOCK_3', 'J_BLOCK_3', 'I_HORIZ_3', 'O_BLOCK'];
+      if (Math.random() < 0.65) {
+        const id = stepShapes[Math.floor(Math.random() * stepShapes.length)];
+        shapeDef = SHAPE_DEFS.find(s => s.id === id);
+      }
+    } else {
+      // TETRIS_FLAT: preferuj poziome belki i klocki łączące
+      const flatShapes = ['I_HORIZ_4', 'I_HORIZ_3', 'O_BLOCK', 'T_BLOCK', 'S_BLOCK', 'Z_BLOCK'];
+      if (Math.random() < 0.60) {
+        const id = flatShapes[Math.floor(Math.random() * flatShapes.length)];
+        shapeDef = SHAPE_DEFS.find(s => s.id === id);
+      }
+    }
+  }
+
+  if (!shapeDef) {
+    shapeDef = SHAPE_DEFS[Math.floor(Math.random() * SHAPE_DEFS.length)];
+  }
+
   const col = findSmartCranePlacement(shapeDef);
 
   // 60% stal, 20% beton, 10% wybuchowy, 10% ażurowy
@@ -458,7 +647,10 @@ export function prepareNextCraneDrop() {
       shapeId: shapeDef.id,
       col,
       material,
-      pieceId
+      pieceId,
+      directive: arena5State.directive,
+      directiveName: arena5State.directiveName,
+      directiveColor: arena5State.directiveColor
     });
   }
 }
@@ -472,6 +664,10 @@ export function applyRemoteCraneDrop(data) {
   const material = data.material || 'STEEL';
   const col = (typeof data.col === 'number') ? data.col : 0;
   const pieceId = data.pieceId || ('p_' + (arena5State.nextPieceId++));
+
+  if (data.directive && data.directive !== arena5State.directive) {
+    setArena5Directive(data.directive);
+  }
 
   const matDef = BLOCK_MATERIALS[material] || BLOCK_MATERIALS.STEEL;
   const shapeCells = shapeDef.cells.map(c => ({
@@ -529,7 +725,11 @@ export function serializeArena5Grid() {
     blocks,
     minFloorRow: arena5State.minFloorRow || 0,
     highestRowIndex: arena5State.highestRowIndex || 0,
-    totalBlocksDropped: arena5State.totalBlocksDropped || 0
+    totalBlocksDropped: arena5State.totalBlocksDropped || 0,
+    directive: arena5State.directive,
+    directiveName: arena5State.directiveName,
+    directiveDesc: arena5State.directiveDesc,
+    directiveColor: arena5State.directiveColor
   };
 }
 
@@ -538,6 +738,10 @@ export function serializeArena5Grid() {
  */
 export function applyArena5GridSnapshot(snapshot) {
   if (!snapshot || !Array.isArray(snapshot.blocks)) return;
+
+  if (snapshot.directive && snapshot.directive !== arena5State.directive) {
+    setArena5Directive(snapshot.directive);
+  }
 
   // 1. Usunięcie starych platform klocków z ARENA_PLATFORMS
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
