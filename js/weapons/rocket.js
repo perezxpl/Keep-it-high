@@ -659,9 +659,16 @@ export class RpgRocket {
       const flameLen = 14 * flicker;
 
       ctx.save();
+      // Zewnętrzny płaszcz płomienia (styl Soldat, bez kosztownego shadowBlur)
+      ctx.fillStyle = 'rgba(251, 146, 60, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(-8, -4.0);
+      ctx.lineTo(-8 - flameLen * 1.15, 0);
+      ctx.lineTo(-8, 4.0);
+      ctx.closePath();
+      ctx.fill();
+
       ctx.fillStyle = '#f97316';
-      ctx.shadowColor = '#fb923c';
-      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.moveTo(-8, -2.5);
       ctx.lineTo(-8 - flameLen, 0);

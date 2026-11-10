@@ -4,24 +4,24 @@
 
 export const LIGHT_PRESETS = {
   // Rozbłyski luf przy wystrzale (Muzzle Flashes)
-  MUZZLE_SMALL: { radius: 85, color: '#ffb347', intensity: 0.90, duration: 0.05 },
-  MUZZLE_MEDIUM: { radius: 130, color: '#ff9922', intensity: 1.0, duration: 0.07 },
-  MUZZLE_LARGE: { radius: 190, color: '#ffaa33', intensity: 1.0, duration: 0.09 },
-  MUZZLE_SNIPER: { radius: 240, color: '#ffe082', intensity: 1.0, duration: 0.10 },
-  MUZZLE_SHOTGUN: { radius: 210, color: '#ff8811', intensity: 1.0, duration: 0.09 },
-  MUZZLE_ROCKET: { radius: 280, color: '#ff7700', intensity: 1.0, duration: 0.12 },
+  MUZZLE_SMALL: { radius: 65, color: '#ffb347', intensity: 0.85, duration: 0.05 },
+  MUZZLE_MEDIUM: { radius: 95, color: '#ff9922', intensity: 0.90, duration: 0.07 },
+  MUZZLE_LARGE: { radius: 130, color: '#ffaa33', intensity: 0.90, duration: 0.09 },
+  MUZZLE_SNIPER: { radius: 150, color: '#ffe082', intensity: 0.95, duration: 0.10 },
+  MUZZLE_SHOTGUN: { radius: 140, color: '#ff8811', intensity: 0.90, duration: 0.09 },
+  MUZZLE_ROCKET: { radius: 160, color: '#ff7700', intensity: 0.95, duration: 0.12 },
 
-  // Eksplozje (Explosion Flashes)
-  EXPLOSION_GRENADE: { radius: 360, color: '#ffaa33', intensity: 1.0, duration: 0.35 },
-  EXPLOSION_RPG: { radius: 440, color: '#ff9922', intensity: 1.0, duration: 0.40 },
-  EXPLOSION_MORTAR: { radius: 500, color: '#ff8800', intensity: 1.0, duration: 0.45 },
-  EXPLOSION_CRATE: { radius: 320, color: '#ffbb44', intensity: 0.95, duration: 0.30 },
+  // Eksplozje (Explosion Flashes - zoptymalizowane pod 60 FPS bez oślepiającego blura)
+  EXPLOSION_GRENADE: { radius: 180, color: '#ffaa33', intensity: 0.85, duration: 0.28 },
+  EXPLOSION_RPG: { radius: 210, color: '#ff9922', intensity: 0.88, duration: 0.30 },
+  EXPLOSION_MORTAR: { radius: 240, color: '#ff8800', intensity: 0.90, duration: 0.32 },
+  EXPLOSION_CRATE: { radius: 160, color: '#ffbb44', intensity: 0.85, duration: 0.25 },
 
   // Ciągłe / mobilne źródła światła
-  JETPACK_ORANGE: { radius: 110, color: '#ff8800', intensity: 0.75, duration: 0.05 },
-  JETPACK_BLUE: { radius: 110, color: '#00ccff', intensity: 0.75, duration: 0.05 },
-  ROCKET_IN_FLIGHT: { radius: 160, color: '#ff9933', intensity: 0.85, duration: 0.06 },
-  FLARE_CARE_PACKAGE: { radius: 180, color: '#ff2222', intensity: 0.85, duration: 0.20 }
+  JETPACK_ORANGE: { radius: 65, color: '#ff8800', intensity: 0.60, duration: 0.05 },
+  JETPACK_BLUE: { radius: 65, color: '#00ccff', intensity: 0.60, duration: 0.05 },
+  ROCKET_IN_FLIGHT: { radius: 85, color: '#ff9933', intensity: 0.70, duration: 0.06 },
+  FLARE_CARE_PACKAGE: { radius: 120, color: '#ff2222', intensity: 0.75, duration: 0.20 }
 };
 
 export const lightingState = {

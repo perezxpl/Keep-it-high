@@ -28,9 +28,9 @@ export function drawDynamicActionSymbol(ctx, mode, cx, cy, isPressed, player) {
   const mainColor = isPressed ? 'rgba(255, 255, 255, 0.78)' : 'rgba(255, 255, 255, 0.48)';
   const faintColor = isPressed ? 'rgba(255, 255, 255, 0.48)' : 'rgba(255, 255, 255, 0.25)';
 
-  // Ciemna mikro-otoczka (Dual-Stroke / Dark Halo): niewidoczna na ciemnym tle, daje ostry kontrast na bieli
-  ctx.shadowColor = isPressed ? 'rgba(0, 0, 0, 0.62)' : 'rgba(0, 0, 0, 0.48)';
-  ctx.shadowBlur = 2.5;
+  // Ciemna mikro-otoczka (Dual-Stroke / Dark Halo): zero kosztu shadowBlur
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 
   ctx.strokeStyle = mainColor;
   ctx.fillStyle = mainColor;
@@ -231,8 +231,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.arc(bx, by, maxR + 1.5, startAngle, endAngle);
       ctx.strokeStyle = flamePal.base || '#00f0ff';
       ctx.lineWidth = 3.5 + 2.5 * chargeRatio;
-      ctx.shadowColor = flamePal.glow || '#00d0ff';
-      ctx.shadowBlur = 8 + 14 * chargeRatio;
       ctx.stroke();
 
       // 3. Efekt pełnego naładowania (Błysk MAX CHARGE)
@@ -241,8 +239,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
         ctx.arc(bx, by, maxR + 1.5, 0, Math.PI * 2);
         ctx.strokeStyle = flamePal.light || '#ffffff';
         ctx.lineWidth = 2.0 + Math.sin(time * 0.02) * 1.0;
-        ctx.shadowColor = flamePal.light || '#ffffff';
-        ctx.shadowBlur = 18;
         ctx.stroke();
       }
       ctx.restore();
@@ -293,12 +289,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Warstwa 2 obrysu gałki (Light Core)
     ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.40)' : 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
-    if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 6;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Subtelny centralny punkt gałki z ciemną otoczką
     ctx.beginPath();
@@ -321,8 +312,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.arc(knobX, knobY, knobR + 1.5, 0, Math.PI * 2);
       ctx.strokeStyle = flamePal.base || '#00f0ff';
       ctx.lineWidth = 2.2 + 1.5 * chargeRatio;
-      ctx.shadowColor = flamePal.glow || '#00d0ff';
-      ctx.shadowBlur = 8 + 10 * chargeRatio;
       ctx.stroke();
 
       if (chargeRatio >= 0.96) {
@@ -330,8 +319,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
         ctx.arc(knobX, knobY, knobR + 3.0 + Math.sin(time * 0.025) * 1.8, 0, Math.PI * 2);
         ctx.strokeStyle = flamePal.light || '#ffffff';
         ctx.lineWidth = 1.6;
-        ctx.shadowColor = flamePal.light || '#ffffff';
-        ctx.shadowBlur = 14;
         ctx.stroke();
       }
       ctx.restore();
@@ -421,12 +408,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Warstwa 2 obrysu gałki (Light Core)
     ctx.strokeStyle = isStickActive ? 'rgba(255, 255, 255, 0.42)' : 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = isStickActive ? 1.5 : 1.1;
-    if (isStickActive) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.25)';
-      ctx.shadowBlur = 6;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Dyskretna miniaturowa sylwetka broni na gałce wskazująca co założono na ręce
     ctx.save();
@@ -489,12 +471,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ? 'rgba(255, 255, 255, 0.44)'
       : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
@@ -636,12 +613,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ? 'rgba(255, 255, 255, 0.44)'
       : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień w stylu drążka (Dual-Stroke)
     ctx.beginPath();
@@ -678,8 +650,6 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     if (!isReady) {
       ctx.save();
       ctx.font = 'bold 8px monospace';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-      ctx.shadowBlur = 2.5;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
@@ -716,12 +686,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     // Warstwa 2 (Light Core)
     ctx.strokeStyle = isPressed ? 'rgba(255, 255, 255, 0.44)' : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = isPressed ? 1.6 : 1.1;
-    if (isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień (Dual-Stroke)
     ctx.beginPath();
@@ -772,12 +737,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ? 'rgba(255, 255, 255, 0.44)'
       : 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = (isEquipped || isPressed) ? 1.6 : 1.1;
-    if (isEquipped || isPressed) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.22)';
-      ctx.shadowBlur = 5;
-    }
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Wewnętrzny pierścień
     ctx.beginPath();
@@ -846,10 +806,7 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
       ctx.lineWidth = 1.8;
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-      ctx.shadowBlur = 10;
       ctx.stroke();
-      ctx.shadowBlur = 0;
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -965,18 +922,15 @@ export function drawWeaponSilhouette(ctx, type, cx, cy, isSelected, customColor 
   ctx.save();
   ctx.translate(cx, cy);
 
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
   if (customColor) {
     ctx.fillStyle = customColor;
-    ctx.shadowColor = customColor;
-    ctx.shadowBlur = 4;
   } else if (isSelected) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.62)';
-    ctx.shadowBlur = 2.8;
   } else {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
-    ctx.shadowBlur = 2.5;
   }
 
   if (type === 'AK47') {

@@ -1173,20 +1173,35 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
       if (ch.isProne || ch.staggerTimer > 0 || isLyingZombie) {
         // Obniżony profil kolizji dla pozycji leżącej na brzuchu lub na plecach po powaleniu
-        charTop = ch.y + hitH - 24;
-        charBottom = ch.y + hitH + 4;
-        charLeft = ch.x - (ch.facing === 1 ? 22 : 38);
-        charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 22);
+        charTop = ch.y + hitH - 32;
+        charBottom = ch.y + hitH + 8;
+        charLeft = ch.x - (ch.facing === 1 ? 28 : 42);
+        charRight = ch.x + hitW + (ch.facing === 1 ? 42 : 28);
       } else if (ch.isZombie && ch.riseTimer > 0) {
         // Płynne podnoszenie się z ziemi: profil kolizji dopasowany do wstającej sylwetki
         const progress = Math.max(0, Math.min(1, 1 - (ch.riseTimer / 1.4)));
-        const riseH = 24 + 46 * progress;
+        const riseH = 32 + 42 * progress;
         charTop = ch.y + hitH - riseH;
-        charBottom = ch.y + hitH + 4;
-        const lyingExtraL = (ch.facing === 1 ? 22 : 38) * (1 - progress);
-        const lyingExtraR = (ch.facing === 1 ? 38 : 22) * (1 - progress);
-        charLeft = ch.x - lyingExtraL;
-        charRight = ch.x + hitW + lyingExtraR;
+        charBottom = ch.y + hitH + 8;
+        const lyingExtraL = (ch.facing === 1 ? 28 : 42) * (1 - progress);
+        const lyingExtraR = (ch.facing === 1 ? 42 : 28) * (1 - progress);
+        const standReachL = (ch.facing === -1 ? 22 : 10) * progress;
+        const standReachR = (ch.facing === 1 ? 22 : 10) * progress;
+        charLeft = ch.x - lyingExtraL - standReachL;
+        charRight = ch.x + hitW + lyingExtraR + standReachR;
+      } else if (ch.isZombie) {
+        // Stojący / człapiący zombie: zgarbiony tułów, ramiona i pazury wyciągnięte do przodu
+        const forwardReach = 22; // Zasięg wyciągniętych ramion i zgarbionego korpusu w stronę marszu
+        const backwardReach = 10;
+        if (ch.facing === 1) {
+          charLeft = ch.x - backwardReach;
+          charRight = ch.x + hitW + forwardReach;
+        } else {
+          charLeft = ch.x - forwardReach;
+          charRight = ch.x + hitW + backwardReach;
+        }
+        charTop = ch.y - 24;
+        charBottom = ch.y + hitH + 6;
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
@@ -1195,7 +1210,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (maxBx < charLeft || minBx > charRight || maxBy < charTop || minBy > charBottom) continue;
 
       const charT = getSegmentAABBHitT(b.prevX, b.prevY, b.x, b.y, charLeft, charTop, charRight, charBottom);
-      if (charT !== null && charT <= maxT) {
+      // Bufor tolerancji (maxT + 0.04) chroni przed ucięciem trafień przy krawędzi podłoża
+      if (charT !== null && charT <= (maxT + 0.04)) {
         candidateHits.push({ ch, charT });
       }
     }

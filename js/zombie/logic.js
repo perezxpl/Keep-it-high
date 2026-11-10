@@ -82,11 +82,11 @@ export function getZombieSurfaceY(x, y, baseGroundY) {
 }
 
 /**
- * Zwraca zbuforowaną tablicę wszystkich aktywnych celów zombie (zero alokacji w pętli gry)
+ * Zwraca zbuforowaną tablicę wszystkich aktywnych celów zombie (zawsze aktualna w klatce)
  */
 export function getActiveZombies() {
   if (!zombieState.enabled) return [];
-  return _activeZombiesCache;
+  return refreshActiveZombiesCache();
 }
 
 /**

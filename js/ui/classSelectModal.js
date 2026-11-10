@@ -153,8 +153,8 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
 
   // Główny korpus okna modalu z neonową ramką
   ctx.save();
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.45)';
-  ctx.shadowBlur = 24;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 
   const panelGrad = ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalH);
   panelGrad.addColorStop(0, 'rgba(15, 23, 42, 0.96)');
@@ -183,18 +183,12 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
   // Badge kategorii
   ctx.font = 'bold 10px monospace';
   ctx.fillStyle = '#00e5ff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 6;
   ctx.fillText('PROTOKÓŁ ROZGRYWKI • WYBIERZ SPECJALIZACJĘ', W / 2, modalY + 34);
-  ctx.shadowBlur = 0;
 
   // Główny nagłówek
   ctx.font = '900 24px "Segoe UI", system-ui, sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
-  ctx.shadowBlur = 10;
   ctx.fillText('WYBIERZ SWOJĄ KLASĘ / SELECT YOUR CLASS', W / 2, modalY + 62);
-  ctx.shadowBlur = 0;
 
   // Podtytuł z instrukcją
   ctx.font = '600 12px "Segoe UI", monospace';
@@ -248,15 +242,11 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
     if (isHovered) {
       cardBg.addColorStop(0, 'rgba(30, 41, 59, 0.95)');
       cardBg.addColorStop(1, 'rgba(15, 23, 42, 0.98)');
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 18;
       ctx.strokeStyle = card.color;
       ctx.lineWidth = 2.4;
     } else {
       cardBg.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
       cardBg.addColorStop(1, 'rgba(10, 15, 26, 0.88)');
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1.2;
     }
@@ -320,12 +310,7 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
     ctx.textAlign = 'left';
     ctx.font = '900 20px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = isHovered ? '#ffffff' : '#f8fafc';
-    if (isHovered) {
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 8;
-    }
     ctx.fillText(card.name, x + 16, y + 32);
-    ctx.shadowBlur = 0;
 
     // Atrybut główny
     ctx.font = 'bold 11px "Segoe UI", monospace';
@@ -369,14 +354,10 @@ export function drawClassSelectModal(ctx, mouseScreenX = (mouseScreenPos ? mouse
     if (isHovered) {
       btnGrad.addColorStop(0, card.color);
       btnGrad.addColorStop(1, card.color);
-      ctx.shadowColor = card.color;
-      ctx.shadowBlur = 12;
       ctx.strokeStyle = '#ffffff';
     } else {
       btnGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
       btnGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03)');
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
     }
 

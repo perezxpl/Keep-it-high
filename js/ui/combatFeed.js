@@ -234,9 +234,9 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.stroke();
 
       ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(label, W / 2 + 1, tickerY + 1.5);
       ctx.fillStyle = '#00e5ff';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
       ctx.fillText(label, W / 2, tickerY + 0.5);
     } else if (type === 'PLAYER_DEATH') {
       const killerLabel = cause || kName || 'ŚRODOWISKO';
@@ -256,9 +256,9 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.stroke();
 
       ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(label, W / 2 + 1, tickerY + 1.5);
       ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
       ctx.fillText(label, W / 2, tickerY + 0.5);
     } else if (type === 'COMBAT_KILL') {
       const name1 = kName || 'OPERATOR';
@@ -284,8 +284,6 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
 
       let curX = tickerX + 9;
       ctx.textAlign = 'left';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
 
       ctx.fillStyle = kColor;
       ctx.fillText(name1, curX, tickerY + 0.5);
@@ -321,8 +319,6 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
 
       let curX = tickerX + 9;
       ctx.textAlign = 'left';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
 
       ctx.fillStyle = vColor;
       ctx.fillText(name1, curX, tickerY + 0.5);
@@ -352,9 +348,9 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.stroke();
 
       ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(label, W / 2 + 1, tickerY + 1.5);
       ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
       ctx.fillText(label, W / 2, tickerY + 0.5);
     }
   } else {
@@ -407,10 +403,7 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.fillText(prefix, startX, midY);
 
       ctx.fillStyle = '#00e5ff';
-      ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 6;
       ctx.fillText(name, startX + prefixW, midY);
-      ctx.shadowBlur = 0;
     } else if (type === 'PLAYER_DEATH') {
       const bannerW = 380;
       const bannerX = (W - bannerW) / 2;
@@ -454,10 +447,7 @@ export function drawCombatFeedBanner(ctx, W, H, isMobile) {
       ctx.fillText(prefix, startX, midY);
 
       ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 6;
       ctx.fillText(name, startX + prefixW, midY);
-      ctx.shadowBlur = 0;
     } else if (type === 'COMBAT_KILL') {
       const name1 = kName || 'OPERATOR';
       const arrow = ' >> ';

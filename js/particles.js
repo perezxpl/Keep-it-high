@@ -1358,7 +1358,7 @@ export class ExplosionFirePuff {
     const sprite = getFirePuffSprite(this.colorStage);
     if (!sprite) return;
     const p = this.colorStage;
-    const alpha = (p <= 0.2) ? 1.0 : ((p <= 0.6) ? (0.95 - (p - 0.2) * 0.6) : Math.max(0, (1 - (p - 0.6) / 0.4) * 0.7));
+    const alpha = (p <= 0.2) ? 0.82 : ((p <= 0.6) ? (0.78 - (p - 0.2) * 0.5) : Math.max(0, (1 - (p - 0.6) / 0.4) * 0.55));
     if (alpha <= 0) return;
 
     ctx.save();
@@ -1544,8 +1544,8 @@ export function spawnExplosionFirePuff(x, y, count = 12) {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.random() * 20; // w promieniu 20px
     const speed = 50 + Math.random() * 70; // 50–120 px/s
-    const life = 0.35 + Math.random() * 0.20; // 0.35–0.55s
-    const maxRadius = 25 + Math.random() * 30; // 25 do 55px
+    const life = 0.30 + Math.random() * 0.18; // 0.30–0.48s
+    const maxRadius = 18 + Math.random() * 16; // 18 do 34px - zwięzłe kule ognia bez oślepiającego rozmycia
     explosionFirePuffs.push(new ExplosionFirePuff({
       x: x + Math.cos(angle) * dist,
       y: y + Math.sin(angle) * dist,
