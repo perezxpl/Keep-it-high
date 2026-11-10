@@ -38,17 +38,13 @@ export function drawPlayerMarker(ctx, player) {
 
   ctx.save();
   try {
-    // 1. Neonowa błękitna poświata
-    ctx.shadowColor = '#00f0ff';
-    ctx.shadowBlur = 6 * pulse;
-
-    // 2. Błękitny gradient wertykalny (od jasnego cyjanu u góry do głębszego błękitu przy ostrzu)
+    // 1. Błękitny gradient wertykalny (od jasnego cyjanu u góry do głębszego błękitu przy ostrzu)
     const grad = ctx.createLinearGradient(tipX, tipY - triH, tipX, tipY);
     grad.addColorStop(0.0, '#38bdf8');
     grad.addColorStop(0.5, '#00f0ff');
     grad.addColorStop(1.0, '#0284c7');
 
-    // 3. Ścieżka trójkąta wskazującego w dół na gracza
+    // 2. Ścieżka trójkąta wskazującego w dół na gracza
     ctx.beginPath();
     ctx.moveTo(tipX, tipY); // Dolny szpic wskazujący na gracza
     ctx.lineTo(tipX - halfW, tipY - triH); // Lewy górny róg
@@ -58,8 +54,7 @@ export function drawPlayerMarker(ctx, player) {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // 4. Kontrastowy ciemny obrys zapewniający doskonałą czytelność na każdym tle areny
-    ctx.shadowBlur = 0;
+    // 3. Kontrastowy ciemny obrys zapewniający doskonałą czytelność na każdym tle areny
     ctx.strokeStyle = '#050810';
     ctx.lineWidth = 1.4;
     ctx.lineJoin = 'round';

@@ -409,17 +409,12 @@ export function drawRocketBootsCalfGreave(ctx, isFrontLeg, muscle = 1.0, l2 = 24
       if (ratio < 0.50 && i === 0 && isBlinkLow) {
         // Ostrzeżenie: brak energii na kolejny Super Dash (miga na czerwono)
         ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 4;
       } else {
         // Pełna moc w kolorze płomienia jetpacka
         ctx.fillStyle = flamePal.base || flameCol;
-        ctx.shadowColor = flamePal.glow || flameCol;
-        ctx.shadowBlur = 4;
       }
     } else {
       ctx.fillStyle = '#1e293b'; // Wygaszona dioda
-      ctx.shadowBlur = 0;
     }
 
     ctx.fillRect(segX, gaugeY + 0.35, segW - 0.3, gaugeH - 0.7);
@@ -792,10 +787,9 @@ export function drawFootwear(ctx, style = 'combat_boots', color = '#18181b', isF
 
     // Świecący rdzeń plazmowy
     ctx.fillStyle = thrusterColor;
-    ctx.shadowColor = thrusterColor;
-    ctx.shadowBlur = 6;
     ctx.fillRect(-7.0, 0.2, 1.0, 1.4);
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-6.8, 0.4, 0.6, 1.0);
 
     // Dynamiczny płomień odrzutowy przy locie / zrywie rakietowym
     const isThrusting = !!(v.isJetpacking || v.bootsDashing || v.bootsCharging);

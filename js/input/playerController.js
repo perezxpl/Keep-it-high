@@ -7,7 +7,6 @@ import { CONFIG, FRAME_DURATION } from '../config.js';
 import { camera, isTouchDevice, spawnJetpackSparks, spawnGrass } from '../world.js';
 import { player, getJetpackNozzlePos, initiatePlayerJump } from '../player.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
-import { addDynamicLight } from '../lighting/index.js';
 import { WEAPONS, shootWeapon, getMuzzlePosition, reloadWeapon } from '../weapons.js';
 import { updateStrikerBootsInput } from '../classes/striker.js';
 import { updateEnforcerBeltInput } from '../classes/enforcer.js';
@@ -329,15 +328,6 @@ export function updatePlayerInputAndCombat(activeArenaId) {
     const customFlame = player.customVisuals?.jetpackColor || (networkState.isHost ? '#00e5ff' : '#f97316');
     const myJetColors = getJetpackFlamePalette(customFlame).particles;
     spawnJetpackSparks(nozzle.x, nozzle.y, player.facing, sparkCount, myJetColors, player.vx, player.vy, nozzle.angle);
-    addDynamicLight({
-      x: nozzle.x,
-      y: nozzle.y,
-      radius: 110,
-      color: customFlame,
-      intensity: 0.65,
-      duration: 0.05,
-      flicker: true
-    });
   } else {
     inputSession.isJetpackActive = false;
     if (leftStick) leftStick.isJetpacking = false;

@@ -573,9 +573,10 @@ export function drawTouchControls(ctx, player, leftStick, btnCluster, rightStick
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.0;
+    ctx.strokeText(ammoBadgeText, pFirearm.x, pillY + pillH / 2 + 0.5);
     ctx.fillStyle = ammoBadgeCol;
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 3;
     ctx.fillText(ammoBadgeText, pFirearm.x, pillY + pillH / 2 + 0.5);
     ctx.restore();
   }

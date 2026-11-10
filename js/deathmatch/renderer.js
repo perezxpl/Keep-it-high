@@ -242,11 +242,11 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
 
   // 2. Główny baner zwycięzcy (KTÓRA DRUŻYNA WYGRAŁA)
   ctx.font = isMobile ? '900 16px monospace' : '900 22px monospace';
+  ctx.strokeStyle = '#050810';
+  ctx.lineWidth = 3.0;
+  ctx.strokeText(teamWinnerText, W / 2, cardY + (isMobile ? 46 : 56));
   ctx.fillStyle = teamWinnerColor;
-  ctx.shadowColor = teamWinnerColor;
-  ctx.shadowBlur = 12;
   ctx.fillText(teamWinnerText, W / 2, cardY + (isMobile ? 46 : 56));
-  ctx.shadowBlur = 0;
 
   // 3. Status składu gracza
   ctx.font = isMobile ? 'bold 11px monospace' : 'bold 13px monospace';
@@ -258,11 +258,12 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
   const xpAwarded = deathmatchState.awardedXpAmount || 40;
 
   ctx.font = isMobile ? '900 12.5px monospace' : '900 15px monospace';
+  const xpTxt = `TWOJA POZYCJA: #${place} MIEJSCE  ->  +${xpAwarded} XP PREMII BOJOWEJ`;
+  ctx.strokeStyle = '#050810';
+  ctx.lineWidth = 2.5;
+  ctx.strokeText(xpTxt, W / 2, cardY + (isMobile ? 92 : 108));
   ctx.fillStyle = '#4ade80';
-  ctx.shadowColor = 'rgba(74, 222, 128, 0.6)';
-  ctx.shadowBlur = 8;
-  ctx.fillText(`TWOJA POZYCJA: #${place} MIEJSCE  ➤  +${xpAwarded} XP PREMII BOJOWEJ`, W / 2, cardY + (isMobile ? 92 : 108));
-  ctx.shadowBlur = 0;
+  ctx.fillText(xpTxt, W / 2, cardY + (isMobile ? 92 : 108));
 
   // 5. Nagłówek tabeli wyników (KTO ZAJĄŁ JAKIE MIEJSCE)
   const tableY = cardY + (isMobile ? 122 : 144);
@@ -344,10 +345,12 @@ export function drawDeathmatchPodium(ctx, W, H, isMobile) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = isMobile ? '900 11px monospace' : '900 12.5px monospace';
+  const lobbyTxt = `POWRÓT DO LOBBY (${secLeft}s)`;
+  ctx.strokeStyle = '#050810';
+  ctx.lineWidth = 2.5;
+  ctx.strokeText(lobbyTxt, W / 2, btnY + btnH / 2);
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 6;
-  ctx.fillText(`POWRÓT DO LOBBY (${secLeft}s)`, W / 2, btnY + btnH / 2);
+  ctx.fillText(lobbyTxt, W / 2, btnY + btnH / 2);
   ctx.restore();
 
   ctx.restore();

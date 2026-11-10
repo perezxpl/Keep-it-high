@@ -336,8 +336,6 @@ export function drawJetpackPreview(
     const sY = panelY + segOffsets[i];
     ctx.save();
     ctx.fillStyle = flamePal.base;
-    ctx.shadowColor = flamePal.glow;
-    ctx.shadowBlur = 6;
     ctx.fillRect(segX, sY, segW, segH);
 
     // Jasny rdzeń diody LED
@@ -419,8 +417,6 @@ export function drawRocketBootsPreview(
   // Wskaźnik LED mocy na szynie buta
   ctx.save();
   ctx.fillStyle = flamePal.base;
-  ctx.shadowColor = flamePal.glow;
-  ctx.shadowBlur = 6;
   ctx.fillRect(-5.2, -8.2, 1.4, 2.0);
   ctx.fillRect(-5.2, -5.5, 1.4, 2.0);
   ctx.fillRect(-5.2, -2.8, 1.4, 2.0);
@@ -562,8 +558,6 @@ export function drawStompModulePreview(
 
   // Akcent statusu ciśnienia (neonowy pierścień w wybranym kolorze klasy)
   ctx.save();
-  ctx.shadowColor = flamePal.glow;
-  ctx.shadowBlur = 6;
   ctx.fillStyle = flamePal.light;
   ctx.fillRect(-9.8, -5.5, 3.8, 1.8);
   ctx.restore();

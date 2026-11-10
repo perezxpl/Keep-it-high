@@ -167,12 +167,13 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
     const blinkSpeed = 0.015 + cookRatio * 0.045;
     const pulse = 0.6 + 0.4 * Math.sin(performance.now() * blinkSpeed);
     ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 6 * pulse;
     ctx.beginPath();
     ctx.arc(0, -7.5, 1.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, -7.5, 0.5, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     // Korpus granatu – fasetowany, ciemno-stalowy aero-kanister (fallback)
     const gGrad = ctx.createLinearGradient(-3.5, -4, 3.5, 4);
@@ -209,12 +210,13 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
     const blinkSpeed = 0.015 + cookRatio * 0.045;
     const pulse = 0.6 + 0.4 * Math.sin(performance.now() * blinkSpeed);
     ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 6 * pulse;
     ctx.beginPath();
     ctx.arc(0, -1.0, 1.1, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, -1.0, 0.45, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.restore();
@@ -2002,10 +2004,7 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       // Płonące wnętrze dyszy, gdy jetpack jest aktywny
       if (isFiring) {
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = glowColor;
-        ctx.shadowBlur = 8;
         ctx.fillRect(nzX, nzY + nzH - 1.5, nzW, 2.0);
-        ctx.shadowBlur = 0;
 
         drawJetpackThrustPlume(
           ctx,
@@ -2046,15 +2045,12 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       if (lit) {
         const segCol = getSegmentColor(i);
         ctx.fillStyle = segCol;
-        ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
-        ctx.shadowBlur = isFiring ? 12 : 6;
         ctx.fillRect(segX, sY, segW, segH);
 
         // Wyraźny jasny rdzeń wyładowania
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(segX + 0.5, sY + 0.5, segW - 1.0, segH - 1.0);
       } else {
-        ctx.shadowBlur = 0;
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(segX, sY, segW, segH);
         ctx.strokeStyle = '#0f172a';
@@ -2062,7 +2058,6 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
         ctx.strokeRect(segX, sY, segW, segH);
       }
     }
-    ctx.shadowBlur = 0;
 
   } else {
     // Widok z boku / profilu (plecak przylegający do pleców)
@@ -2149,15 +2144,12 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
       if (lit) {
         const segCol = getSegmentColor(i);
         ctx.fillStyle = segCol;
-        ctx.shadowColor = (isLowFuel && i === 0) ? '#ef4444' : glowColor;
-        ctx.shadowBlur = isFiring ? 12 : 6;
         ctx.fillRect(segX, sY, segW, segH);
 
         // Wyraźny jasny rdzeń wyładowania
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(segX + 0.4, sY + 0.4, segW - 0.8, segH - 0.8);
       } else {
-        ctx.shadowBlur = 0;
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(segX, sY, segW, segH);
         ctx.strokeStyle = '#0f172a';
@@ -2165,7 +2157,6 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
         ctx.strokeRect(segX, sY, segW, segH);
       }
     }
-    ctx.shadowBlur = 0;
 
     // 3. Stożkowa dysza wylotowa (nozzle) u dołu plecaka
     const nzCenterX = (leftX + rightX) / 2;
@@ -2197,12 +2188,9 @@ export function drawJetpack(ctx, p, facingDir, isLookingAway, absCos, absSin, wa
     // Efekt aktywnego płomienia wewnątrz dyszy podczas lotu
     if (isFiring) {
       ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 8;
       ctx.beginPath();
       ctx.ellipse(nzCenterX, nzTopY + nzH, mouthW * 0.42, 1.8, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
 
       // Zwarty płomień dyszy w stylu Soldat
       drawJetpackThrustPlume(

@@ -1333,12 +1333,15 @@ export function drawArena3Foreground(ctx, camera) {
 
       const bBlink = (Math.sin(animTime * 6.0) > 0);
       ctx.fillStyle = bBlink ? '#ef4444' : '#500707';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = bBlink ? 12 : 0;
       ctx.beginPath();
       ctx.arc(antX, deckY - 121, 3.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
+      if (bBlink) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(antX, deckY - 121, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // G. Tablica informacyjna bazy
       const signW = 120;

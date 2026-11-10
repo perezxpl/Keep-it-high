@@ -544,9 +544,7 @@ function drawLandingWarningLine(ctx) {
       ctx.lineTo(bx + bw, surfaceY);
       ctx.stroke();
 
-      // 3. Warstwa intensywnego czerwonego lasera z cieniem neonowym
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 8 * intensity;
+      // 3. Warstwa intensywnego czerwonego lasera (ostry neon wektorowy bez blur)
       ctx.strokeStyle = `rgba(255, 50, 50, ${0.85 * intensity})`;
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -555,7 +553,6 @@ function drawLandingWarningLine(ctx) {
       ctx.stroke();
 
       // 4. Rdzeń linii - gorący jasny środek
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = `rgba(255, 230, 230, ${0.95 * intensity})`;
       ctx.lineWidth = 1.5;
       ctx.beginPath();

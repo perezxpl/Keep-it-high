@@ -72,12 +72,14 @@ export function drawMobileTopLeftHUD(ctx, player, hudX, hudY, options = {}) {
   // Tekst HP wewnątrz
   ctx.save();
   ctx.font = '900 8.5px monospace';
-  ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 3;
   const vestIcon = hasVest ? '+' : (hasHelmet ? '^' : '');
-  ctx.fillText(`HP ${Math.round(curHp)}${vestIcon}`, hpBoxX + 4, hudY + hpBoxH / 2 + 0.5);
+  const hpTxt = `HP ${Math.round(curHp)}${vestIcon}`;
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2.0;
+  ctx.strokeText(hpTxt, hpBoxX + 4, hudY + hpBoxH / 2 + 0.5);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(hpTxt, hpBoxX + 4, hudY + hpBoxH / 2 + 0.5);
   ctx.restore();
 }

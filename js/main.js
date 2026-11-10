@@ -530,8 +530,6 @@ function drawCrosshair(ctx, x, y, customCol) {
   ctx.save();
   ctx.strokeStyle = col;
   ctx.lineWidth = 1.5;
-  ctx.shadowColor = 'rgba(239, 68, 68, 0.5)';
-  ctx.shadowBlur = 4;
 
   ctx.beginPath();
   ctx.arc(x, y, 7 + spreadGap * 0.35, 0, Math.PI * 2);
@@ -1037,8 +1035,6 @@ function draw() {
         drawSingleObstacleByType(ctx, def.type, px, py, w, h, GROUND_Y);
 
         ctx.strokeStyle = isSnapped ? '#10b981' : '#00e5ff';
-        ctx.shadowColor = isSnapped ? '#10b981' : '#00e5ff';
-        ctx.shadowBlur = isSnapped ? 12 : 8;
         ctx.lineWidth = isSnapped ? 2.2 : 1.8;
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(px - 2, py - 2, w + 4, h + 4);
@@ -1112,11 +1108,12 @@ function draw() {
       ctx.textAlign = 'center';
       const allyColor = '#00e5ff';
       const allyName = rp.name || 'SOJUSZNIK';
+      ctx.strokeStyle = '#050810';
+      ctx.lineWidth = 2.5;
       ctx.fillStyle = allyColor;
-      ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
-      ctx.shadowBlur = 4;
       const tagX = rp.head ? rp.head.x : (rp.x + rp.w / 2);
       const tagY = rp.head ? (rp.head.y - 26) : (rp.y - 28);
+      ctx.strokeText(allyName, tagX, tagY);
       ctx.fillText(allyName, tagX, tagY);
       ctx.restore();
     }
@@ -1223,10 +1220,12 @@ function draw() {
   if (isDebugCol && (typeof window !== 'undefined' && !!window.DEBUG_MODE)) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 4;
-    ctx.fillText('LINIE KOLIZJI: WŁ (PRZERYWANA BIAŁA LINIA) [F1 / ~ / DEV]', 16, 24);
+    const dbgTxt = 'LINIE KOLIZJI: WŁ (PRZERYWANA BIAŁA LINIA) [F1 / ~ / DEV]';
+    ctx.strokeText(dbgTxt, 16, 24);
+    ctx.fillText(dbgTxt, 16, 24);
     ctx.restore();
   }
 
@@ -1261,11 +1260,13 @@ function draw() {
 
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050810';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#00e5ff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 6;
     const currentToolLabel = editorState.selectedType ? `[NARZĘDZIE: ${getObstacleDef(editorState.selectedType)?.name || editorState.selectedType}]` : '[WYBIERZ PRZESZKODĘ Z MENU DEV]';
-    ctx.fillText(`EDYTOR: ${currentToolLabel} | LPM: Postaw | PPM: Usuń/Anuluj | Ctrl+Z: Cofnij`, W / 2, bannerY + 17);
+    const edTxt = `EDYTOR: ${currentToolLabel} | LPM: Postaw | PPM: Usuń/Anuluj | Ctrl+Z: Cofnij`;
+    ctx.strokeText(edTxt, W / 2, bannerY + 17);
+    ctx.fillText(edTxt, W / 2, bannerY + 17);
     ctx.restore();
   }
 }

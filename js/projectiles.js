@@ -478,11 +478,15 @@ export class AeroSuperGrenade {
       const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
 
       ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
       ctx.beginPath();
       ctx.arc(0, -9.5, 2.0, 0, Math.PI * 2);
       ctx.fill();
+      if (isLit) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -9.5, 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // Korpuc granatu – taktyczny wojskowy aero-kanister (fallback proceduralny)
       ctx.fillStyle = '#2d3748';
@@ -512,11 +516,15 @@ export class AeroSuperGrenade {
       const isLit = (Math.sin(this.fuse * blinkSpeed) > 0);
 
       ctx.fillStyle = isLit ? '#ef4444' : '#450a0a';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = isLit ? (progress > 0.7 ? 14 : 7) : 0;
       ctx.beginPath();
       ctx.arc(0, -5, 2.2, 0, Math.PI * 2);
       ctx.fill();
+      if (isLit) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -5, 1.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.restore();

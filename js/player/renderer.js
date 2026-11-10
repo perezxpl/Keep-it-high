@@ -229,11 +229,15 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#4ade80';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 6;
     const secLeft = Math.max(1, Math.ceil(p.respawnTimer / 60));
-    ctx.fillText(`ROZPUSZCZONO // RESPAWN: ${secLeft}s`, p.x + p.w / 2, (p.acidDeath.hazardY || (p.y + (p.h || 70))) - 24);
+    const txt = `ROZPUSZCZONO // RESPAWN: ${secLeft}s`;
+    const tx = p.x + p.w / 2;
+    const ty = (p.acidDeath.hazardY || (p.y + (p.h || 70))) - 24;
+    ctx.strokeText(txt, tx, ty);
+    ctx.fillText(txt, tx, ty);
     ctx.restore();
     return;
   }
@@ -242,10 +246,14 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 6;
-    ctx.fillText(`RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
+    const txt = `RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`;
+    const tx = p.x + p.w / 2;
+    const ty = p.y - 14;
+    ctx.strokeText(txt, tx, ty);
+    ctx.fillText(txt, tx, ty);
     ctx.restore();
     return;
   }
@@ -1780,19 +1788,27 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 6;
-    ctx.fillText(`RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`, p.x + p.w / 2, p.y - 14);
+    const txt = `RESPAWN: ${Math.ceil(p.respawnTimer / 60)}s`;
+    const tx = p.x + p.w / 2;
+    const ty = p.y - 14;
+    ctx.strokeText(txt, tx, ty);
+    ctx.fillText(txt, tx, ty);
     ctx.restore();
   } else if (p.emptyAmmoAlert > 0) {
     ctx.save();
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050810';
+    ctx.lineWidth = 2.5;
     ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 8;
-    ctx.fillText('BRAK AMUNICJI', p.x + p.w / 2, p.y - 16);
+    const txt = 'BRAK AMUNICJI';
+    const tx = p.x + p.w / 2;
+    const ty = p.y - 16;
+    ctx.strokeText(txt, tx, ty);
+    ctx.fillText(txt, tx, ty);
     ctx.restore();
   }
 
@@ -1869,21 +1885,23 @@ export function drawGrenadeTrajectory(ctx, p, targetX, targetY, power = 1.0, gro
     ctx.save();
     ctx.font = '900 11px monospace';
     ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050810';
+    ctx.lineWidth = 2.5;
 
     if (isAxeThrow) {
+      const txt = '[RZUT TOPOREK]';
       ctx.fillStyle = '#fb923c';
-      ctx.shadowColor = '#ea580c';
-      ctx.shadowBlur = 6;
-      ctx.fillText('[RZUT TOPOREK]', startX, startY - 26);
+      ctx.strokeText(txt, startX, startY - 26);
+      ctx.fillText(txt, startX, startY - 26);
     } else {
       const cookTimer = p.throwAnim.cookTimer || 0;
       const remainingSec = Math.max(0, (300 - cookTimer) / 60);
       const timeStr = remainingSec.toFixed(1) + 's';
       const timeCol = (remainingSec <= 1.5) ? '#ef4444' : (remainingSec <= 3.0 ? '#eab308' : '#00e5ff');
+      const txt = '[ZAPALNIK: ' + timeStr + ']';
       ctx.fillStyle = timeCol;
-      ctx.shadowColor = timeCol;
-      ctx.shadowBlur = (remainingSec <= 1.5) ? 8 : 4;
-      ctx.fillText('[ZAPALNIK: ' + timeStr + ']', startX, startY - 26);
+      ctx.strokeText(txt, startX, startY - 26);
+      ctx.fillText(txt, startX, startY - 26);
     }
     ctx.restore();
   }
