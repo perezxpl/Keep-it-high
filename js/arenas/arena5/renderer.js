@@ -271,6 +271,7 @@ function drawSettledBlocks(ctx, camera) {
   const viewHeight = camera ? (camera.viewHeight || (1080 / (camera.zoom || 0.75))) : 1080;
   const camTop = camY - 120;
   const camBottom = camY + viewHeight + 120;
+  const now = performance.now();
 
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
@@ -280,7 +281,21 @@ function drawSettledBlocks(ctx, camera) {
       if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
 
       const outerEdges = getCellOuterEdges(cell);
-      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, cell.accentColor);
+      const isClearing = Array.isArray(arena5State.activeLineClears) && arena5State.activeLineClears.some(cl => cl.row === cell.row);
+      const blockColor = isClearing
+        ? ((Math.floor(now * 0.02) % 2 === 0) ? '#ffffff' : '#00f0ff')
+        : cell.accentColor;
+
+      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, blockColor);
+
+      if (isClearing) {
+        // Wewnętrzny blask plazmowego reaktora podczas ładowania detonacji
+        const pulse = 0.5 + 0.5 * Math.sin(now * 0.04 + c * 0.4);
+        ctx.fillStyle = `rgba(56, 189, 248, ${0.45 + 0.35 * pulse})`;
+        ctx.fillRect(cell.x + 3, cell.y + 3, cell.w - 6, cell.h - 6);
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + 0.35 * pulse})`;
+        ctx.fillRect(cell.x + 12, cell.y + 12, cell.w - 24, cell.h - 24);
+      }
     }
   }
 }
@@ -599,26 +614,174 @@ function drawFallingCraneBlock(ctx) {
 }
 
 /**
- * Rysuje efekty detonacji pełnych linii
+ * Rysuje spektakularne, kinowe efekty kasowania linii:
+ * 1. Faza ładowania (Charge-up / Overload): neonowe wiązki plazmy, łuki elektryczne, celowniki holograficzne
+ * 2. Faza detonacji i powidoku (Disintegration Beam / Afterglow): potężny poziomy promień lasera,
+ *    snopy iskier spawania na ścianach, rozpadające się woksele i baner combo.
  */
 function drawLineClearEffects(ctx) {
-  for (const clear of arena5State.activeLineClears) {
-    const tRatio = clear.timer / clear.maxTimer;
-    const ly = clear.y;
+  const now = performance.now();
 
-    ctx.save();
-    // Błysk wybuchu w rzędzie
-    ctx.fillStyle = `rgba(251, 191, 36, ${0.6 * tRatio})`;
-    ctx.fillRect(SHAFT_LEFT, ly - CELL_SIZE * 0.5, COLS * CELL_SIZE, CELL_SIZE);
+  // FAZA 1: Ładowanie plazmowe i łuki elektryczne w rzędach przygotowywanych do detonacji
+  if (Array.isArray(arena5State.activeLineClears)) {
+    for (const clear of arena5State.activeLineClears) {
+      const progress = Math.max(0, Math.min(1, 1 - (clear.timer / clear.maxTimer)));
+      const ly = clear.y;
+      const topY = ly - CELL_SIZE * 0.5;
+      const bottomY = ly + CELL_SIZE * 0.5;
 
-    ctx.strokeStyle = `rgba(239, 68, 68, ${tRatio})`;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(SHAFT_LEFT, ly);
-    ctx.lineTo(SHAFT_RIGHT, ly);
-    ctx.stroke();
+      ctx.save();
 
-    ctx.restore();
+      // 1. Pulsująca poświata całego rzędu
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.035);
+      const rowAlpha = (0.35 + 0.45 * progress) * pulse;
+      const rowGrad = ctx.createLinearGradient(0, topY, 0, bottomY);
+      rowGrad.addColorStop(0, `rgba(56, 189, 248, ${rowAlpha * 0.6})`);
+      rowGrad.addColorStop(0.5, `rgba(255, 255, 255, ${rowAlpha})`);
+      rowGrad.addColorStop(1, `rgba(56, 189, 248, ${rowAlpha * 0.6})`);
+      ctx.fillStyle = rowGrad;
+      ctx.fillRect(SHAFT_LEFT, topY, COLS * CELL_SIZE, CELL_SIZE);
+
+      // 2. Poziome laserowe krawędzie tnące na górze i na dole
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2.5 + progress * 2.0;
+      ctx.beginPath();
+      ctx.moveTo(SHAFT_LEFT, topY); ctx.lineTo(SHAFT_RIGHT, topY);
+      ctx.moveTo(SHAFT_LEFT, bottomY); ctx.lineTo(SHAFT_RIGHT, bottomY);
+      ctx.stroke();
+
+      // 3. Rozbiegające się błyskawice / łuki elektryczne w poprzek rzędu
+      ctx.lineWidth = 2.0;
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(SHAFT_LEFT, ly);
+      const segments = 16;
+      const segWidth = (SHAFT_RIGHT - SHAFT_LEFT) / segments;
+      for (let i = 1; i < segments; i++) {
+        const sx = SHAFT_LEFT + i * segWidth;
+        const jitter = Math.sin(i * 3.7 + now * 0.05) * (14 * progress);
+        ctx.lineTo(sx, ly + jitter);
+      }
+      ctx.lineTo(SHAFT_RIGHT, ly);
+      ctx.stroke();
+
+      // Druga cyanowa poświata łuku
+      ctx.lineWidth = 4.5;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${0.7 * pulse})`;
+      ctx.stroke();
+
+      // 4. Biegające po rzędzie fotony / punkty plazmy
+      const runner1 = (now * 1.8) % (SHAFT_RIGHT - SHAFT_LEFT);
+      const runner2 = (SHAFT_RIGHT - SHAFT_LEFT) - ((now * 1.5) % (SHAFT_RIGHT - SHAFT_LEFT));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(SHAFT_LEFT + runner1 - 15, ly - 4, 30, 8);
+      ctx.fillRect(SHAFT_LEFT + runner2 - 15, ly - 4, 30, 8);
+
+      // 5. Centralny taktyczny celownik i napis holograficzny
+      const centerX = (SHAFT_LEFT + SHAFT_RIGHT) * 0.5;
+      const tagW = 260;
+      const tagH = 26;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+      ctx.fillRect(centerX - tagW * 0.5, ly - tagH * 0.5, tagW, tagH);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(centerX - tagW * 0.5, ly - tagH * 0.5, tagW, tagH);
+
+      // Narożniki celownika [ ]
+      const cL = 6;
+      const bx = centerX - tagW * 0.5;
+      const by = ly - tagH * 0.5;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(bx + cL, by); ctx.lineTo(bx, by); ctx.lineTo(bx, by + cL);
+      ctx.moveTo(bx + tagW - cL, by); ctx.lineTo(bx + tagW, by); ctx.lineTo(bx + tagW, by + cL);
+      ctx.moveTo(bx + cL, by + tagH); ctx.lineTo(bx, by + tagH); ctx.lineTo(bx, by + tagH - cL);
+      ctx.moveTo(bx + tagW - cL, by + tagH); ctx.lineTo(bx + tagW, by + tagH); ctx.lineTo(bx + tagW, by + tagH - cL);
+      ctx.stroke();
+
+      ctx.font = '900 11px monospace';
+      ctx.fillStyle = '#facc15';
+      ctx.textAlign = 'center';
+      const pct = Math.min(100, Math.floor(progress * 100));
+      ctx.fillText(`KRYTYCZNE PRZEŁADOWANIE // ${pct}%`, centerX, ly + 4);
+
+      ctx.restore();
+    }
+  }
+
+  // FAZA 2 & 3: Kinowy promień dezintegracji lasera i powidok po detonacji
+  if (Array.isArray(arena5State.activeLineAfterglows)) {
+    for (const ag of arena5State.activeLineAfterglows) {
+      const progress = Math.max(0, Math.min(1, 1 - (ag.timer / ag.maxTimer)));
+      const fade = Math.max(0, ag.timer / ag.maxTimer);
+      const ly = ag.y;
+      const topY = ly - CELL_SIZE * 0.5;
+
+      ctx.save();
+
+      // 1. Centralny oślepiający promień rozpadu (Disintegration Beam)
+      if (progress < 0.40) {
+        const beamFade = Math.sin((progress / 0.40) * Math.PI);
+        // Zewnętrzna poświata lasera
+        ctx.fillStyle = `rgba(56, 189, 248, ${0.55 * beamFade})`;
+        ctx.fillRect(SHAFT_LEFT, ly - 35 * beamFade, COLS * CELL_SIZE, 70 * beamFade);
+
+        // Rdzeń plazmowy
+        ctx.fillStyle = `rgba(254, 240, 138, ${0.85 * beamFade})`;
+        ctx.fillRect(SHAFT_LEFT, ly - 16 * beamFade, COLS * CELL_SIZE, 32 * beamFade);
+
+        // Biały rdzeń laserowy
+        ctx.fillStyle = `rgba(255, 255, 255, ${1.0 * beamFade})`;
+        ctx.fillRect(SHAFT_LEFT, ly - 6 * beamFade, COLS * CELL_SIZE, 12 * beamFade);
+      } else {
+        // Zanikająca cienka linia energii
+        ctx.strokeStyle = `rgba(56, 189, 248, ${fade * 0.8})`;
+        ctx.lineWidth = 3.0 * fade;
+        ctx.beginPath();
+        ctx.moveTo(SHAFT_LEFT, ly);
+        ctx.lineTo(SHAFT_RIGHT, ly);
+        ctx.stroke();
+      }
+
+      // 2. Rozbłysk iskier na ścianach szybu
+      const wallSparkRadius = 36 * fade;
+      if (wallSparkRadius > 2) {
+        ctx.fillStyle = `rgba(251, 191, 36, ${fade})`;
+        ctx.beginPath();
+        ctx.arc(SHAFT_LEFT, ly, wallSparkRadius, 0, Math.PI * 2);
+        ctx.arc(SHAFT_RIGHT, ly, wallSparkRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${fade * 0.9})`;
+        ctx.beginPath();
+        ctx.arc(SHAFT_LEFT, ly, wallSparkRadius * 0.5, 0, Math.PI * 2);
+        ctx.arc(SHAFT_RIGHT, ly, wallSparkRadius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 3. Rozpadające się woksele (hologramowe klatki komórek rozszerzające się i unoszące)
+      const expand = (1 - fade) * 22;
+      const liftY = (1 - fade) * -16;
+      ctx.strokeStyle = `rgba(0, 240, 255, ${fade * 0.75})`;
+      ctx.lineWidth = 1.5;
+      for (let c = 0; c < COLS; c++) {
+        const bx = getGridX(c) - expand * 0.5;
+        const by = topY + liftY - expand * 0.5;
+        const bw = CELL_SIZE + expand;
+        const bh = CELL_SIZE + expand;
+        ctx.strokeRect(bx, by, bw, bh);
+      }
+
+      // 4. Pływający taktyczny napis Combo (jeśli zdetonowano więcej niż 1 linię naraz)
+      if (ag.combo > 1) {
+        ctx.font = '900 18px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(250, 204, 21, ${fade})`;
+        ctx.fillText(`COMBO x${ag.combo} TĄPNIĘCIE!`, (SHAFT_LEFT + SHAFT_RIGHT) * 0.5, ly - 30 - (1 - fade) * 20);
+      }
+
+      ctx.restore();
+    }
   }
 }
 

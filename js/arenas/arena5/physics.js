@@ -25,7 +25,13 @@ import {
 } from './state.js';
 import { triggerScreenShake } from '../../camera.js';
 import { spawnBloodSpurt, spawnBloodFountain, removeBloodDecalsOnPlatform, removeBloodDecalsInArea } from '../../world/gore.js';
-import { spawnShockwaveRing, spawnConcreteDebris, spawnRicochetSparks } from '../../particles.js';
+import {
+  spawnShockwaveRing,
+  spawnConcreteDebris,
+  spawnRicochetSparks,
+  spawnExplosionFirePuff
+} from '../../particles.js';
+import { triggerHitstop } from '../../world/state.js';
 import { triggerCombatFeedBanner } from '../../ui/combatFeed.js';
 
 let _activeCombatants = [];
@@ -1180,8 +1186,8 @@ function checkAndTriggerLineClears(combatants) {
       arena5State.activeLineClears.push({
         row: r,
         y: getGridY(r) + CELL_SIZE * 0.5,
-        timer: 0.25,
-        maxTimer: 0.25,
+        timer: 0.45,
+        maxTimer: 0.45,
         detonated: false
       });
     }
@@ -1192,12 +1198,27 @@ function checkAndTriggerLineClears(combatants) {
  * Aktualizacja timerów czyszczenia linii i odpalenie wybuchu
  */
 function updateLineClears(dt, combatants) {
+  // Aktualizacja powidoków kinowej detonacji
+  if (Array.isArray(arena5State.activeLineAfterglows) && arena5State.activeLineAfterglows.length > 0) {
+    for (let i = arena5State.activeLineAfterglows.length - 1; i >= 0; i--) {
+      const ag = arena5State.activeLineAfterglows[i];
+      ag.timer -= dt;
+      if (ag.timer <= 0) {
+        arena5State.activeLineAfterglows.splice(i, 1);
+      }
+    }
+  }
+
   if (arena5State.activeLineClears.length === 0) return;
 
   let anyTimerExpired = false;
   for (let i = 0; i < arena5State.activeLineClears.length; i++) {
     const clear = arena5State.activeLineClears[i];
     clear.timer -= dt;
+    if (clear.timer <= 0.12 && !clear.rumbleDone) {
+      clear.rumbleDone = true;
+      triggerScreenShake(3.0);
+    }
     if (clear.timer <= 0) {
       anyTimerExpired = true;
     }
@@ -1224,12 +1245,32 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
   if (uniqueRows.length === 0) return;
 
   arena5State.linesClearedCount += uniqueRows.length;
-  triggerScreenShake(Math.min(26, 14 + uniqueRows.length * 4));
-  triggerCombatFeedBanner('KILL', uniqueRows.length > 1 ? `CZYSZCZENIE ${uniqueRows.length} LINII // COMBO TĄPNIĘCIE!` : `CZYSZCZENIE LINII // TĄPNIĘCIE!`);
+  triggerScreenShake(Math.min(32, 18 + uniqueRows.length * 6));
+  triggerHitstop(2);
+  triggerCombatFeedBanner('KILL', uniqueRows.length > 1 ? `CZYSZCZENIE ${uniqueRows.length} LINII // COMBO TĄPNIĘCIE!` : `CZYSZCZENIE LINII // ATOMIZACJA RZĘDU!`);
 
   // Wybuchy i fala uderzeniowa na całej szerokości detonowanych wierszy
   for (const r of uniqueRows) {
     const lineY = getGridY(r) + CELL_SIZE * 0.5;
+    if (!Array.isArray(arena5State.activeLineAfterglows)) arena5State.activeLineAfterglows = [];
+    arena5State.activeLineAfterglows.push({
+      row: r,
+      y: lineY,
+      timer: 0.40,
+      maxTimer: 0.40,
+      combo: uniqueRows.length
+    });
+
+    // Snopy iskier rozcinające ściany szybu
+    spawnRicochetSparks(SHAFT_LEFT + 4, lineY, 1, (Math.random() - 0.5) * 2, 10);
+    spawnRicochetSparks(SHAFT_RIGHT - 4, lineY, -1, (Math.random() - 0.5) * 2, 10);
+    spawnExplosionFirePuff(400, lineY, 6);
+    spawnExplosionFirePuff(800, lineY, 8);
+    spawnExplosionFirePuff(1200, lineY, 6);
+    spawnShockwaveRing(400, lineY);
+    spawnShockwaveRing(800, lineY);
+    spawnShockwaveRing(1200, lineY);
+
     for (let c = 0; c < COLS; c++) {
       const cx = getGridX(c) + CELL_SIZE * 0.5;
       spawnShockwaveRing(cx, lineY, 80, '#f59e0b');

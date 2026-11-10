@@ -184,6 +184,7 @@ export const arena5State = {
 
   // Lista aktywnych wybuchów i czyszczenia linii
   activeLineClears: [],
+  activeLineAfterglows: [],
   debrisParticles: [],
   flashEffectTimer: 0,
 
@@ -239,6 +240,7 @@ export function setArena5Directive(directiveId) {
 export function resetArena5State() {
   arena5State.gridRows.clear();
   arena5State.activeLineClears.length = 0;
+  arena5State.activeLineAfterglows.length = 0;
   arena5State.debrisParticles.length = 0;
   arena5State.linesClearedCount = 0;
   arena5State.totalBlocksDropped = 0;
