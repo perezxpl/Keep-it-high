@@ -205,6 +205,17 @@ function handleServerMessage(rawData) {
         }
       }
 
+      // Synchronizacja liczby botow wyznaczonej przez serwer (domyslnie 0 w 1v1 ze znajomym)
+      const matchBotCount = (typeof msg.botCount === 'number') ? msg.botCount : 0;
+      if (typeof window !== 'undefined') {
+        if (typeof window.setBotCount === 'function') {
+          window.setBotCount(matchBotCount, { isRemote: true });
+        }
+        if (typeof window.setBotEnabled === 'function') {
+          window.setBotEnabled(matchBotCount > 0);
+        }
+      }
+
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
       triggerCombatFeedBanner('SYSTEM', `DOŁĄCZONO DO BITWY // POKÓJ: ${msg.roomId} [${wsState.playersCount}/${wsState.maxPlayers}]`);
 
@@ -256,6 +267,17 @@ function handleServerMessage(rawData) {
 
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
       triggerCombatFeedBanner('SYSTEM', `${msg.player.name} DOLACZYL DO BITWY [${wsState.playersCount}/${wsState.maxPlayers}]`);
+
+      // Jesli jestesmy hostem i gramy na Arenie 5, wyslij natychmiast snapshot biezacej wiezy do nowego gracza
+      if (wsState.isHost && typeof window !== 'undefined' && typeof window.serializeArena5Grid === 'function') {
+        const snapshot = window.serializeArena5Grid();
+        if (snapshot && typeof window.broadcastNetworkPacket === 'function') {
+          window.broadcastNetworkPacket({
+            type: 'a5_grid_sync',
+            snapshot
+          });
+        }
+      }
       break;
     }
 
@@ -277,7 +299,7 @@ function handleServerMessage(rawData) {
 
       rp.active = true;
       rp.targetX = msg.x;
-      rp.targetY = (msg.relY !== undefined) ? (GROUND_Y - msg.relY) : msg.y;
+      rp.targetY = (typeof msg.y === 'number') ? msg.y : ((msg.relY !== undefined) ? (GROUND_Y - msg.relY) : msg.y);
       rp.groundY = GROUND_Y;
       rp.currentGroundY = GROUND_Y;
       rp.vx = msg.vx;
@@ -336,6 +358,14 @@ function handleServerMessage(rawData) {
     // 9. WIADOMOSC CZATU
     case 'chat_message': {
       addChatMessageToUI(msg.sender, msg.text, msg.senderSlot === wsState.slotIndex);
+      break;
+    }
+
+    // 10. POZOSTALE PAKIETY ROZGRYWKI (BOTY, PILKA, KLOCKI ARENY 5, OBRAZENIA, ZGONY)
+    default: {
+      if (typeof window !== 'undefined' && typeof window.handleNetworkData === 'function') {
+        window.handleNetworkData(msg, msg.senderId || null);
+      }
       break;
     }
   }

@@ -1489,8 +1489,11 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     }
   }
 
-  // =========================================================================
   // 8. WYWOŁANIE FIZYKI POSTACI
-  // =========================================================================
   updatePlayer(bKeys, null, groundY, ball, spawnGrass, botTarget, meleeTargets);
+}
+
+if (typeof window !== 'undefined') {
+  window.setBotCount = setBotCount;
+  window.setBotEnabled = setBotEnabled;
 }

@@ -26,6 +26,7 @@ class GameRoom {
     this.players = new Map(); // key = socketId, value = PlayerEntry
     this.created = Date.now();
     this.status = 'LOBBY'; // 'LOBBY', 'PLAYING', 'CLOSED'
+    this.botCount = 0;
   }
 
   get isFull() {
@@ -199,7 +200,8 @@ wss.on('connection', (ws) => {
           mode: room.mode,
           maxPlayers: MAX_PLAYERS_PER_MATCH,
           playersCount: room.count,
-          players: room.getPlayersSummary()
+          players: room.getPlayersSummary(),
+          botCount: room.botCount
         }));
 
         // Powiadomienie pozostalych graczy w pokoju
@@ -273,15 +275,34 @@ wss.on('connection', (ws) => {
         break;
       }
 
-      // 7. SYNCHRONIZACJA ARENY / KLOCKOW TETRISA
+      // 7. SYNCHRONIZACJA AREN, KLOCKOW TETRISA, BOTOW I PILKI
+      case 'a5_crane_drop':
+      case 'a5_grid_sync':
       case 'arena_sync':
-      case 'deathmatch_sync': {
+      case 'deathmatch_sync':
+      case 'dm_sync':
+      case 'acid_sync':
+      case 'bots_state':
+      case 'bot_shoot':
+      case 'b_state':
+      case 'ball':
+      case 'kick_ball': {
         if (!currentRoom) return;
         currentRoom.broadcast(msg, socketId);
         break;
       }
 
-      // 8. CZAT TEKSTOWY W GRZE
+      // 8. SYNCHRONIZACJA LICZNIKA BOTOW W MECZU
+      case 'mp_bot_count': {
+        if (!currentRoom) return;
+        if (typeof msg.count === 'number') {
+          currentRoom.botCount = msg.count;
+        }
+        currentRoom.broadcast(msg, socketId);
+        break;
+      }
+
+      // 9. CZAT TEKSTOWY W GRZE
       case 'chat_message': {
         if (!currentRoom) return;
         currentRoom.broadcast({
@@ -293,15 +314,23 @@ wss.on('connection', (ws) => {
         break;
       }
 
-      // 9. PING / PONG
+      // 10. PING / PONG
       case 'ping': {
         ws.send(JSON.stringify({ type: 'pong', time: msg.time }));
         break;
       }
 
-      // 10. OPUSZCZENIE MECZU
+      // 11. OPUSZCZENIE MECZU
       case 'LEAVE_MATCH': {
         cleanupPlayer();
+        break;
+      }
+
+      // 12. DOMYSLNY RELAY DLA POZOSTALYCH PAKIETOW GRY
+      default: {
+        if (currentRoom) {
+          currentRoom.broadcast(msg, socketId);
+        }
         break;
       }
     }

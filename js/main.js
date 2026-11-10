@@ -42,14 +42,11 @@ import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHa
 import { WEAPONS, updateBullets, drawBullets, shootWeapon, getMuzzlePosition, reloadWeapon, getWeaponAmmo, clearBulletCasings, drawSniperLaserSight, updateWeaponState } from './weapons.js';
 import { initPlayerLoadout, initArmoryUI, openArmory, closeArmory } from './loadout/index.js';
 import {
-  remotePlayer, networkState, initNetwork,
-  sendPlayerState, sendBallState, sendShootEvent,
+  remotePlayer, networkState, initNetwork, sendPlayerState, sendBallState, sendShootEvent,
   sendObstacleAdd, sendObstacleRemove, sendObstacleClear, sendObstacleUndo,
-  sendArenaSwitch, updateRemotePlayer,
-  sendBotsState, updateRemoteBots,
-  sendReturnToLobby,
-  isChatActive, openChat, closeChat, updateCursorVisibility,
-  getActiveRemotePlayers
+  sendArenaSwitch, updateRemotePlayer, sendBotsState, updateRemoteBots, sendReturnToLobby,
+  isChatActive, openChat, closeChat, updateCursorVisibility, getActiveRemotePlayers,
+  isMatchHost, isMatchClient, isMatchActive
 } from './network.js';
 import { syncMpRosterUI } from './networkUI.js';
 import {
@@ -682,7 +679,7 @@ function update() {
   activeArena?.update?.((FRAME_DURATION / 1000) || (1 / 60), headEntities, isDeathmatch ? null : ball);
 
   if (!isDeathmatch) {
-    if (networkState.isHost || !networkState.isConnected) {
+    if (!isMatchClient()) {
       if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff) {
         // Piłka lewituje w powietrzu na środku areny w snopie światła i czeka na pierwszy kontakt
         const time = performance.now() * 0.003;
@@ -710,7 +707,9 @@ function update() {
         spawnAltarShockwave(ball.x, ball.y);
       }
       checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
-      sendBallState(ball);
+      if (isMatchActive()) {
+        sendBallState(ball);
+      }
     } else {
       // Klient – autorytatywna pozycja piłki z sieci P2P
       checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
@@ -882,7 +881,7 @@ function update() {
     window.combatants = combatants;
   }
 
-  if (networkState.isHost || !networkState.isConnected) {
+  if (!isMatchClient()) {
     for (const b of activeBots) {
       updateBotBrain(isDeathmatch ? null : ball, player, effectiveGroundY, spawnGrass, b, combatants);
       if (!isDeathmatch) {
@@ -890,7 +889,7 @@ function update() {
       }
       checkPlayerPlatformLanding(b, effectiveGroundY);
     }
-    if (networkState.isHost && networkState.isConnected && activeBots.length > 0) {
+    if (isMatchHost() && isMatchActive() && activeBots.length > 0) {
       sendBotsState(activeBots);
     }
   } else {

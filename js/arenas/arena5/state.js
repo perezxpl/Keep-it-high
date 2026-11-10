@@ -357,6 +357,10 @@ export function findSmartCranePlacement(shapeDef) {
  * Losuje kolejny kształt, materiał i inteligentną pozycję zrzutu
  */
 export function prepareNextCraneDrop() {
+  if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
+    return;
+  }
+
   const minRow = arena5State.minFloorRow || 0;
 
   // Analiza czy któryś z wierszy jest bliski pełnego domknięcia
@@ -444,6 +448,189 @@ export function prepareNextCraneDrop() {
 
   // Obliczenie docelowego poziomu lądowania
   calculateTargetLandY();
+
+  // W trybie wieloosobowym host rozgłasza dane zrzutu do pozostałych graczy
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() &&
+      typeof window.broadcastNetworkPacket === 'function') {
+    window.broadcastNetworkPacket({
+      type: 'a5_crane_drop',
+      shapeId: shapeDef.id,
+      col,
+      material,
+      pieceId
+    });
+  }
+}
+
+/**
+ * Zastosowanie zrzutu suwnicy otrzymanego przez sieć od hosta
+ */
+export function applyRemoteCraneDrop(data) {
+  if (!data || !data.shapeId) return;
+  const shapeDef = SHAPE_DEFS.find(s => s.id === data.shapeId) || SHAPE_DEFS[0];
+  const material = data.material || 'STEEL';
+  const col = (typeof data.col === 'number') ? data.col : 0;
+  const pieceId = data.pieceId || ('p_' + (arena5State.nextPieceId++));
+
+  const matDef = BLOCK_MATERIALS[material] || BLOCK_MATERIALS.STEEL;
+  const shapeCells = shapeDef.cells.map(c => ({
+    pieceId,
+    shapeId: shapeDef.id,
+    accentColor: shapeDef.accentColor,
+    colRel: c.c,
+    rowRel: c.r,
+    hp: matDef.maxHp,
+    maxHp: matDef.maxHp,
+    material
+  }));
+
+  arena5State.crane.phase = 'FALLING';
+  arena5State.crane.timer = 0;
+  arena5State.crane.warningMax = 0;
+  arena5State.crane.cooldownTimer = 0;
+  arena5State.crane.cooldownMax = 0.85;
+  arena5State.crane.pieceId = pieceId;
+  arena5State.crane.shape = shapeDef;
+  arena5State.crane.material = material;
+  arena5State.crane.accentColor = shapeDef.accentColor;
+  arena5State.crane.col = col;
+  arena5State.crane.dropX = getGridX(col);
+  arena5State.crane.vy = 1.0;
+  arena5State.crane.shapeCells = shapeCells;
+
+  calculateTargetLandY();
+}
+
+/**
+ * Serializuje stan klocków wieży do kompaktowego formatu sieciowego
+ */
+export function serializeArena5Grid() {
+  const blocks = [];
+  for (const [r, rowData] of arena5State.gridRows.entries()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (cell && cell.hp > 0) {
+        blocks.push({
+          r,
+          c,
+          pId: cell.pieceId,
+          sId: cell.shapeId,
+          mat: cell.material,
+          hp: cell.hp,
+          mHp: cell.maxHp,
+          clr: cell.accentColor
+        });
+      }
+    }
+  }
+  return {
+    blocks,
+    minFloorRow: arena5State.minFloorRow || 0,
+    highestRowIndex: arena5State.highestRowIndex || 0,
+    totalBlocksDropped: arena5State.totalBlocksDropped || 0
+  };
+}
+
+/**
+ * Odtwarza stan wieży klocków na podstawie autorytatywnego snapshotu od hosta
+ */
+export function applyArena5GridSnapshot(snapshot) {
+  if (!snapshot || !Array.isArray(snapshot.blocks)) return;
+
+  // 1. Usunięcie starych platform klocków z ARENA_PLATFORMS
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    for (let i = window.ARENA_PLATFORMS.length - 1; i >= 0; i--) {
+      if (window.ARENA_PLATFORMS[i].isA5Block) {
+        window.ARENA_PLATFORMS.splice(i, 1);
+      }
+    }
+  }
+
+  // 2. Usunięcie platform klocków z arena5State.platforms
+  arena5State.platforms = arena5State.platforms.filter(p => !p.isA5Block);
+
+  // 3. Wyczyszczenie wierszy siatki
+  arena5State.gridRows.clear();
+  arena5State.minFloorRow = (typeof snapshot.minFloorRow === 'number') ? snapshot.minFloorRow : 0;
+  arena5State.highestRowIndex = (typeof snapshot.highestRowIndex === 'number') ? snapshot.highestRowIndex : 0;
+  if (typeof snapshot.totalBlocksDropped === 'number') {
+    arena5State.totalBlocksDropped = snapshot.totalBlocksDropped;
+  }
+
+  // 4. Rekonstrukcja klocków
+  for (const b of snapshot.blocks) {
+    const worldRow = b.r;
+    const worldCol = b.c;
+    let rowData = arena5State.gridRows.get(worldRow);
+    if (!rowData) {
+      rowData = new Array(COLS).fill(null);
+      arena5State.gridRows.set(worldRow, rowData);
+    }
+
+    const matDef = BLOCK_MATERIALS[b.mat] || BLOCK_MATERIALS.STEEL;
+    const cellObj = {
+      pieceId: b.pId,
+      shapeId: b.sId,
+      accentColor: b.clr || '#eab308',
+      material: b.mat,
+      hp: b.hp,
+      maxHp: b.mHp || matDef.maxHp,
+      x: getGridX(worldCol),
+      y: getGridY(worldRow),
+      w: CELL_SIZE,
+      h: CELL_SIZE,
+      col: worldCol,
+      row: worldRow,
+      color: matDef.color,
+      trimColor: matDef.trimColor,
+      isSolid: true,
+      platformObj: null
+    };
+
+    const platObj = {
+      id: `a5_block_${worldRow}_${worldCol}`,
+      name: matDef.name,
+      x: cellObj.x,
+      y: cellObj.y,
+      w: cellObj.w,
+      h: cellObj.h,
+      width: cellObj.w,
+      height: cellObj.h,
+      solid: true,
+      isGround: true,
+      type: b.mat === 'SCAFFOLDING' ? 'catwalk' : 'container_block',
+      isA5Block: true,
+      gridRow: worldRow,
+      gridCol: worldCol,
+      pieceId: b.pId,
+      cellRef: cellObj
+    };
+    cellObj.platformObj = platObj;
+    rowData[worldCol] = cellObj;
+
+    arena5State.platforms.push(platObj);
+    if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+      window.ARENA_PLATFORMS.push(platObj);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    if (typeof window.updateTowerApexAndSpawns === 'function') {
+      window.updateTowerApexAndSpawns();
+    }
+    if (typeof window.syncArena5ExposedSurfaces === 'function') {
+      window.syncArena5ExposedSurfaces();
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.arena5State = arena5State;
+  window.applyRemoteCraneDrop = applyRemoteCraneDrop;
+  window.serializeArena5Grid = serializeArena5Grid;
+  window.applyArena5GridSnapshot = applyArena5GridSnapshot;
 }
 
 /**

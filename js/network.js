@@ -134,6 +134,36 @@ export function isNetworkActive() {
   return (networkState.isConnected && (networkState.conn || clientConnections.size > 0)) || (wsState && wsState.connected);
 }
 
+export function isMatchHost() {
+  if (wsState && wsState.connected) {
+    return !!wsState.isHost;
+  }
+  if (networkState && networkState.isConnected) {
+    return !!networkState.isHost;
+  }
+  return true;
+}
+
+export function isMatchClient() {
+  if (wsState && wsState.connected) {
+    return !wsState.isHost;
+  }
+  if (networkState && networkState.isConnected) {
+    return !networkState.isHost;
+  }
+  return false;
+}
+
+export function isMatchActive() {
+  if (wsState && wsState.connected && (wsState.status === 'matched' || wsState.status === 'in_game')) {
+    return true;
+  }
+  if (networkState && networkState.isConnected && (networkState.conn || clientConnections.size > 0)) {
+    return true;
+  }
+  return false;
+}
+
 // =============================================================================
 // WYSYŁANIE PAKIETÓW SIECIOWYCH
 // =============================================================================
@@ -186,7 +216,7 @@ export function sendPlayerState(localPlayer) {
 
 export function sendBallState(localBall) {
   // Tylko host zarządza autorytatywnie piłką i wysyła jej pozycję
-  if (!networkState.isHost || !isNetworkActive()) return;
+  if (!isMatchHost() || !isMatchActive()) return;
 
   try {
     broadcastNetworkPacket({
@@ -265,7 +295,7 @@ export function sendReturnToLobby() {
 }
 
 export function sendBotsState(activeBotsList) {
-  if (!networkState.isHost || !isNetworkActive()) return;
+  if (!isMatchHost() || !isMatchActive()) return;
   const now = performance.now();
   if (now - (networkState.lastBotsStateSent || 0) < 22) return;
   networkState.lastBotsStateSent = now;
@@ -749,7 +779,7 @@ function updateDevArenaButtonUI(arenaId) {
 // =============================================================================
 // ODBIÓR PAKIETÓW SIECIOWYCH
 // =============================================================================
-function handleNetworkData(data, senderPeerId = null) {
+export function handleNetworkData(data, senderPeerId = null) {
   if (!data || !data.type) return;
 
   switch (data.type) {
@@ -845,7 +875,7 @@ function handleNetworkData(data, senderPeerId = null) {
 
       targetRp.active = true;
       targetRp.targetX = data.x;
-      targetRp.targetY = (data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y;
+      targetRp.targetY = (typeof data.y === 'number') ? data.y : ((data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y);
       targetRp.groundY = GROUND_Y;
       targetRp.currentGroundY = GROUND_Y;
       targetRp.vx = data.vx;
@@ -1040,7 +1070,7 @@ function handleNetworkData(data, senderPeerId = null) {
     }
 
     case 'bots_state': {
-      if (networkState.isHost) break;
+      if (isMatchHost()) break;
       const remoteBots = data.bots;
       if (!Array.isArray(remoteBots)) break;
 
@@ -1057,7 +1087,7 @@ function handleNetworkData(data, senderPeerId = null) {
         if (!localBot) return;
         localBot.active = true;
         localBot.targetX = rBot.x;
-        localBot.targetY = (rBot.relY !== undefined) ? (GROUND_Y - rBot.relY) : rBot.y;
+        localBot.targetY = (typeof rBot.y === 'number') ? rBot.y : ((rBot.relY !== undefined) ? (GROUND_Y - rBot.relY) : rBot.y);
         localBot.vx = rBot.vx;
         localBot.vy = rBot.vy;
         localBot.facing = rBot.facing;
@@ -1190,7 +1220,7 @@ function handleNetworkData(data, senderPeerId = null) {
     }
 
     case 'dm_sync': {
-      if (networkState.isHost) break;
+      if (isMatchHost()) break;
       deathmatchState.timeRemaining = data.timeRemaining;
       if (typeof data.elapsedTime === 'number') deathmatchState.elapsedTime = data.elapsedTime;
       if (data.winCondition) deathmatchState.winCondition = data.winCondition;
@@ -1207,7 +1237,7 @@ function handleNetworkData(data, senderPeerId = null) {
     }
 
     case 'acid_sync': {
-      if (networkState.isHost) break;
+      if (isMatchHost()) break;
       if (typeof ACID_SURGE_SYSTEM !== 'undefined') {
         if (data.state === 'WARNING' && ACID_SURGE_SYSTEM.state === 'CALM') {
           playAcidSurgeSiren();
@@ -1215,6 +1245,20 @@ function handleNetworkData(data, senderPeerId = null) {
         ACID_SURGE_SYSTEM.state = data.state;
         ACID_SURGE_SYSTEM.timer = data.timer;
         ACID_SURGE_SYSTEM.currentY = data.currentY;
+      }
+      break;
+    }
+
+    case 'a5_crane_drop': {
+      if (typeof window !== 'undefined' && typeof window.applyRemoteCraneDrop === 'function') {
+        window.applyRemoteCraneDrop(data);
+      }
+      break;
+    }
+
+    case 'a5_grid_sync': {
+      if (typeof window !== 'undefined' && typeof window.applyArena5GridSnapshot === 'function') {
+        window.applyArena5GridSnapshot(data.snapshot);
       }
       break;
     }
@@ -1713,6 +1757,11 @@ export function initNetwork() {
     window.broadcastMpBotCount = broadcastMpBotCount;
     window.broadcastMpRoster = broadcastMpRoster;
     window.syncMpBotUI = syncMpBotUI;
+    window.isMatchHost = isMatchHost;
+    window.isMatchClient = isMatchClient;
+    window.isMatchActive = isMatchActive;
+    window.broadcastNetworkPacket = broadcastNetworkPacket;
+    window.handleNetworkData = handleNetworkData;
   }
 }
 

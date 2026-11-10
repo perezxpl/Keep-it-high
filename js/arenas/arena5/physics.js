@@ -123,6 +123,9 @@ function updateCrane(dt, combatants) {
   } else if (crane.phase === 'COOLDOWN') {
     crane.cooldownTimer -= dt;
     if (crane.cooldownTimer <= 0) {
+      if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
+        return;
+      }
       prepareNextCraneDrop();
     }
   }
@@ -574,6 +577,19 @@ function onCraneBlockImpact(combatants) {
   syncArena5ExposedSurfaces();
   checkAndTriggerLineClears(combatants);
   resolveArena5BlockPenetration(combatants);
+
+  // W trybie wieloosobowym host wysyla zaktualizowany snapshot siatki do pozostalych graczy
+  if (typeof window !== 'undefined' && typeof window.isMatchHost === 'function' && window.isMatchHost() &&
+      typeof window.isMatchActive === 'function' && window.isMatchActive() &&
+      typeof window.broadcastNetworkPacket === 'function') {
+    const snapshot = window.serializeArena5Grid?.();
+    if (snapshot) {
+      window.broadcastNetworkPacket({
+        type: 'a5_grid_sync',
+        snapshot
+      });
+    }
+  }
 
   // Szansa (~22%) na pojawienie się beczki na dachu nowo wylądowanego klocka suwnicy (maks. 2 aktywne w Arenie 5)
   if (Array.isArray(window.hazardsBarrels) && window.hazardsBarrels.length < 2 && Math.random() < 0.22) {
@@ -1746,5 +1762,10 @@ export function resolveArena5BlockPenetration(combatants) {
       if (p.isDead || !resolvedAny) break;
     }
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.updateTowerApexAndSpawns = updateTowerApexAndSpawns;
+  window.syncArena5ExposedSurfaces = syncArena5ExposedSurfaces;
 }
 
