@@ -109,6 +109,9 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     // Cykl życia i animacja
     riseTimer: options.skipRise ? 0 : 1.4, // Czas wstawania z ziemi
     reviveTimer: 0,                        // Czas do powstania po powaleniu
+    downedHp: 60,                          // Wytrzymałość powalonego ciała przed rozszarpaniem
+    maxDownedHp: 60,
+    jumpCooldown: 0,                       // Ochrona przed spamem skoków
     decayTimer: 0,                         // Czas rozkładu po permanentnej dekapitacji
     attackCooldown: 0.6,
     attackAnim: 0,
@@ -185,6 +188,9 @@ export function registerCorpseForReanimation(char, surfaceY) {
     h: 70,
     hp: 0,
     maxHp: ZOMBIE_CONFIG.MAX_HP,
+    downedHp: 60,
+    maxDownedHp: 60,
+    jumpCooldown: 0,
     corpseX: corpseX,
     corpseY: floorY,
     facing: char.facing || 1,

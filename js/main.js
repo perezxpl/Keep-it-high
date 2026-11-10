@@ -1293,7 +1293,14 @@ function loop(now) {
   let delta = currentTime - lastTime;
   lastTime = currentTime;
 
-  if (delta > MAX_DELTA) delta = MAX_DELTA;
+  // Ochrona przed skokami czasu (np. pauza GC w silniku przeglądarki lub wygaszenie ekranu)
+  // Zapobiega "przeskakiwaniu" postaci i obiektów po chwilowym zacięciu
+  if (delta > 120) {
+    delta = TICK_MS;
+    accumulator = 0;
+  } else if (delta > MAX_DELTA) {
+    delta = MAX_DELTA;
+  }
   if (delta < 0) delta = 0;
 
   // Kalibracja częstotliwości odświeżania monitora w pierwszych 30 klatkach gry (60/75/100/120/144/165/240Hz)

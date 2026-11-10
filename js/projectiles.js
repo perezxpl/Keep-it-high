@@ -1138,7 +1138,13 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
   }
 
   // 1. Obrażenia i odrzut graczy / botów
-  const targets = Array.isArray(combatants) ? combatants : [];
+  const targets = Array.isArray(combatants) ? [...combatants] : [];
+  if (typeof window !== 'undefined' && typeof window.getActiveZombies === 'function') {
+    const az = window.getActiveZombies();
+    for (const z of az) {
+      if (z && !targets.includes(z)) targets.push(z);
+    }
+  }
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
   for (const ch of targets) {
     const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
@@ -1211,7 +1217,25 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             }
           }
         } else {
+          ch.downedHp = (ch.downedHp !== undefined ? ch.downedHp : 60) - dmg;
           ch.reviveTimer = Math.max(ch.reviveTimer, 3.5);
+          if (ch.downedHp <= 0) {
+            ch.hasHead = false;
+            ch.decapitated = true;
+            ch.isGibbed = true;
+            ch.reviveTimer = 0;
+            ch.decayTimer = 15;
+            spawnBloodFountain(chCenterX, chCenterY + 14, ch.facing, 6);
+            triggerCombatFeedBanner('KILL', '[ROZSZARPANY] LEŻĄCY ZOMBIE ROZSZARPANY WYBUCHEM!');
+            if (typeof window !== 'undefined') {
+              if (typeof window.recordKill === 'function' && shooter === window.player) {
+                window.recordKill();
+              }
+              if (typeof window.registerKillstreakKill === 'function' && shooter === window.player) {
+                window.registerKillstreakKill();
+              }
+            }
+          }
         }
         continue;
       }
@@ -1311,7 +1335,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             ch.decapitated = false;
             ch.severedHead = null;
             ch.reviveTimer = 4.0;
-            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY FALA WYBUCHU! WSTANIE ZA 4s!');
+            ch.downedHp = 60;
+            ch.riseTimer = 0;
+            triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY FALĄ WYBUCHU! WSTANIE ZA 4s!');
           }
         }
 

@@ -3,7 +3,7 @@
 // Eksportuje API dla pętli gry, obsługi śmierci, zrzutów i interfejsu UI.
 // =========================================================================
 
-export {
+import {
   zombieState,
   ZOMBIE_CONFIG,
   isZombieModeActive,
@@ -13,27 +13,45 @@ export {
   registerCorpseForReanimation
 } from './state.js';
 
-export {
+import {
   updateZombieSystem,
   getActiveZombies,
   onCharacterRespawnCorpse,
   cureInfection
 } from './logic.js';
 
-export {
+import {
   drawZombieSystem,
   drawZombieHUD
 } from './renderer.js';
 
-// Ekspozycja globalna dla wygody systemów walki wręcz i konsoli deweloperskiej
+export {
+  zombieState,
+  ZOMBIE_CONFIG,
+  isZombieModeActive,
+  setZombieModeActive,
+  resetZombieState,
+  createZombieInstance,
+  registerCorpseForReanimation
+};
+
+export {
+  updateZombieSystem,
+  getActiveZombies,
+  onCharacterRespawnCorpse,
+  cureInfection
+};
+
+export {
+  drawZombieSystem,
+  drawZombieHUD
+};
+
+// Synchroniczna ekspozycja globalna dla systemów walki wręcz i konsoli deweloperskiej
 if (typeof window !== 'undefined') {
-  import('./logic.js').then(m => {
-    window.getActiveZombies = m.getActiveZombies;
-    window.cureInfection = m.cureInfection;
-  }).catch(() => {});
-  import('./state.js').then(m => {
-    window.isZombieModeActive = m.isZombieModeActive;
-    window.setZombieModeActive = m.setZombieModeActive;
-    window.zombieState = m.zombieState;
-  }).catch(() => {});
+  window.getActiveZombies = getActiveZombies;
+  window.cureInfection = cureInfection;
+  window.isZombieModeActive = isZombieModeActive;
+  window.setZombieModeActive = setZombieModeActive;
+  window.zombieState = zombieState;
 }

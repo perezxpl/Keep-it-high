@@ -299,6 +299,15 @@ export class RpgRocket {
         charBottom = ch.y + hitH + 4;
         charLeft = ch.x - (ch.facing === 1 ? 22 : 38);
         charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 22);
+      } else if (ch.isZombie && ch.riseTimer > 0) {
+        const progress = Math.max(0, Math.min(1, 1 - (ch.riseTimer / 1.4)));
+        const riseH = 24 + 46 * progress;
+        charTop = ch.y + hitH - riseH;
+        charBottom = ch.y + hitH + 4;
+        const lyingExtraL = (ch.facing === 1 ? 22 : 38) * (1 - progress);
+        const lyingExtraR = (ch.facing === 1 ? 38 : 22) * (1 - progress);
+        charLeft = ch.x - lyingExtraL;
+        charRight = ch.x + hitW + lyingExtraR;
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
@@ -563,6 +572,8 @@ export class RpgRocket {
 
           if (closestChar.isZombie) {
             closestChar.reviveTimer = 4.0;
+            closestChar.downedHp = 60;
+            closestChar.riseTimer = 0;
             triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         } else {
@@ -574,6 +585,8 @@ export class RpgRocket {
 
           if (closestChar.isZombie) {
             closestChar.reviveTimer = 4.0;
+            closestChar.downedHp = 60;
+            closestChar.riseTimer = 0;
             triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         }

@@ -1177,6 +1177,16 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         charBottom = ch.y + hitH + 4;
         charLeft = ch.x - (ch.facing === 1 ? 22 : 38);
         charRight = ch.x + hitW + (ch.facing === 1 ? 38 : 22);
+      } else if (ch.isZombie && ch.riseTimer > 0) {
+        // Płynne podnoszenie się z ziemi: profil kolizji dopasowany do wstającej sylwetki
+        const progress = Math.max(0, Math.min(1, 1 - (ch.riseTimer / 1.4)));
+        const riseH = 24 + 46 * progress;
+        charTop = ch.y + hitH - riseH;
+        charBottom = ch.y + hitH + 4;
+        const lyingExtraL = (ch.facing === 1 ? 22 : 38) * (1 - progress);
+        const lyingExtraR = (ch.facing === 1 ? 38 : 22) * (1 - progress);
+        charLeft = ch.x - lyingExtraL;
+        charRight = ch.x + hitW + lyingExtraR;
       } else if (ch.isCrouching) {
         charTop = ch.y + 12;
       }
@@ -1210,14 +1220,14 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       let isLegshot = false;
       let isTorsoShot = false;
 
-      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && closestChar.isDead)) {
+      if (closestChar.isProne || (closestChar.staggerTimer > 0) || (closestChar.isZombie && (closestChar.isDead || closestChar.riseTimer > 0.4))) {
         // Pozycja leżąca: sylwetka rozciągnięta wzdłuż osi X
         if (closestChar.facing === 1) {
-          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.60);
+          isHeadshot = (hitPtX >= closestChar.x + closestChar.w * 0.50);
           isLegshot = (hitPtX <= closestChar.x - 4);
           isTorsoShot = !isHeadshot && !isLegshot;
         } else {
-          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * 0.40);
+          isHeadshot = (hitPtX <= closestChar.x + closestChar.w * 0.50);
           isLegshot = (hitPtX >= closestChar.x + closestChar.w + 4);
           isTorsoShot = !isHeadshot && !isLegshot;
         }
@@ -1429,10 +1439,35 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             }
           }
         } else {
-          // Trafienie w korpus lub nogi leżącego zombie: opóźnienie powstania
+          // Trafienie w korpus lub nogi leżącego zombie: zadaje obrażenia powalonemu ciału!
+          if (closestChar.downedHp === undefined) closestChar.downedHp = 60;
+          closestChar.downedHp -= totalDamage;
           closestChar.reviveTimer = Math.max(closestChar.reviveTimer, 3.5);
+
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.45, -1.5, 14, 1.1);
           spawnBloodDrip(hitPtX, hitPtY, (Math.random() - 0.5) * 2, -1.0, 4);
+
+          // Gdy ciało powalonego zombie przyjmie wystarczająco dużo obrażeń w korpus, zostaje permanentnie rozszarpane!
+          if (closestChar.downedHp <= 0) {
+            closestChar.hasHead = false;
+            closestChar.decapitated = true;
+            closestChar.isGibbed = true;
+            closestChar.reviveTimer = 0;
+            closestChar.decayTimer = 15;
+            spawnBloodFountain(closestChar.x + closestChar.w / 2, closestChar.y + closestChar.h - 6, closestChar.facing, 6);
+            spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.7, -2.5, 20, 1.3);
+            triggerScreenShake(isShotgun ? 14 : 8);
+            triggerCombatFeedBanner('KILL', '[ROZSZARPANY] POWALONY ZOMBIE ZLIKWIDOWANY OGNIEM ZAPOROWYM!');
+
+            if (typeof window !== 'undefined') {
+              if (typeof window.recordKill === 'function' && b.shooter === window.player) {
+                window.recordKill();
+              }
+              if (typeof window.registerKillstreakKill === 'function' && b.shooter === window.player) {
+                window.registerKillstreakKill();
+              }
+            }
+          }
         }
       }
 
@@ -1569,6 +1604,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
           if (closestChar.isZombie) {
             closestChar.reviveTimer = 4.0;
+            closestChar.downedHp = 60;
+            closestChar.riseTimer = 0;
             triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         } else {
@@ -1594,6 +1631,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
           if (closestChar.isZombie) {
             closestChar.reviveTimer = 4.0;
+            closestChar.downedHp = 60;
+            closestChar.riseTimer = 0;
             triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY! WSTANIE ZA 4s!');
           }
         }

@@ -106,12 +106,23 @@ function drawZombieSilhouette(ctx, z) {
       ctx.arc(facing > 0 ? 18 : -18, -6, 7, 0, Math.PI * 2);
       ctx.fill();
 
-      // Wskaźnik zbliżającego się ponownego powstania
+      // Wskaźnik zbliżającego się ponownego powstania oraz stan rozszarpania ciała
       if (z.reviveTimer > 0) {
         ctx.fillStyle = '#ef4444';
         ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.ceil(z.reviveTimer)}s`, 0, -18);
+
+        const curDownedHp = (typeof z.downedHp === 'number') ? z.downedHp : 60;
+        const maxDownedHp = z.maxDownedHp || 60;
+        if (curDownedHp < maxDownedHp) {
+          const barW = 24;
+          const barH = 3;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(-barW * 0.5, -14, barW, barH);
+          ctx.fillStyle = '#f97316';
+          ctx.fillRect(-barW * 0.5, -14, Math.max(0, barW * (curDownedHp / maxDownedHp)), barH);
+        }
       }
     } else {
       ctx.fillStyle = '#7f1d1d';
@@ -249,20 +260,33 @@ function drawZombieSilhouette(ctx, z) {
     ctx.fillStyle = '#7f1d1d';
     ctx.fillRect(facing > 0 ? 1 : -5, -4, 4, 3);
 
-    // Świecące, żółte martwe oko
-    ctx.fillStyle = z.visuals.eyeColor;
-    ctx.shadowColor = '#facc15';
-    ctx.shadowBlur = 6;
+    // Świecące, żółte martwe oko (płynny glow bez spadków wydajności i bez shadowBlur)
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
+    ctx.beginPath();
+    ctx.arc(facing * 4, -7, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = z.visuals.eyeColor || '#facc15';
     ctx.beginPath();
     ctx.arc(facing * 4, -7, 1.8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
 
     ctx.restore();
   } else {
     // Odcięta głowa (kikut szyi z krwią)
     ctx.fillStyle = '#7f1d1d';
     ctx.fillRect(-4, -28, 8, 4);
+  }
+
+  // Pasek zdrowia rannego zombie (natychmiastowy feedback trafienia kulą)
+  if (!z.isDead && z.hp < z.maxHp && z.hp > 0) {
+    const hpRatio = Math.max(0, z.hp / z.maxHp);
+    const barW = 20;
+    const barH = 3;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(-barW * 0.5, -44, barW, barH);
+    ctx.fillStyle = hpRatio > 0.4 ? '#22c55e' : '#ef4444';
+    ctx.fillRect(-barW * 0.5, -44, barW * hpRatio, barH);
   }
 
   // 6. PRZEDNIE RAMIĘ (Wyciągnięte agresywnie w przód we właściwą stronę marszu)
@@ -354,9 +378,10 @@ export function drawZombieHUD(ctx) {
 
   ctx.font = 'bold 13px Rajdhani, monospace';
   ctx.textAlign = 'center';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#052e16';
+  ctx.strokeText(text, w / 2, 88);
   ctx.fillStyle = '#22c55e';
-  ctx.shadowColor = '#15803d';
-  ctx.shadowBlur = 8;
   ctx.fillText(text, w / 2, 88);
 
   ctx.restore();

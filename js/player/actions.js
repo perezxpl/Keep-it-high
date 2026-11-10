@@ -8,6 +8,8 @@ import { ease, lerp } from './ik.js';
 import { triggerScreenShake, spawnJetpackSparks, spawnBloodSpurt, spawnBloodDrip, triggerHitstop, camera, carveGroundHole } from '../world.js';
 import { spawnAeroSuperGrenade, detonateGrenadeExplosion, spawnThrownTomahawk } from '../projectiles.js';
 import { getActiveBots } from '../bot.js';
+import { getActiveZombies } from '../zombie/index.js';
+import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { deathmatchState, deathmatchConfig, isDeathmatchFFA } from '../deathmatch/index.js';
 import { getActiveArena } from '../arenas/index.js';
 import { spawnDroppedWeapon } from '../pickup/index.js';
@@ -648,6 +650,15 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
           spawnBloodSpurt(ex, ey, kickDirX * 2, -2.5, 14, 1.2);
           spawnBloodDrip(ex, ey, kickDirX * 1.5, -1.0, 5);
 
+          if (enemy.isZombie) {
+            enemy.reviveTimer = 4.0;
+            enemy.downedHp = 60;
+            enemy.riseTimer = 0;
+            if (typeof triggerCombatFeedBanner === 'function') {
+              triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY KOPNIĘCIEM! WSTANIE ZA 4s!');
+            }
+          }
+
           if (enemy.currentWeapon) {
             spawnDroppedWeapon(
               enemy.x + (enemy.w || 24) * 0.5,
@@ -1131,6 +1142,15 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
           enemy
         );
       }
+
+      if (enemy.isZombie) {
+        enemy.reviveTimer = 4.0;
+        enemy.downedHp = 60;
+        enemy.riseTimer = 0;
+        if (typeof triggerCombatFeedBanner === 'function') {
+          triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY WŚLIZGIEM! WSTANIE ZA 4s!');
+        }
+      }
     }
 
     player.hitThisSwing = true;
@@ -1550,6 +1570,9 @@ export function updatePlayerThrow(p) {
       const allCombatants = [p, ...getActiveBots()];
       if (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) {
         allCombatants.push(window.remotePlayer);
+      }
+      if (typeof getActiveZombies === 'function') {
+        allCombatants.push(...getActiveZombies());
       }
 
       detonateGrenadeExplosion(

@@ -1334,7 +1334,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       aimTargetY = ball.y + (ball.vy * 3);
     }
     if (canEngageTarget) {
-      const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
+      const isLyingZombie = !!(targetEnemy.isZombie && (targetEnemy.isDead || (targetEnemy.riseTimer && targetEnemy.riseTimer > 0.4)));
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
       const targetFacing = targetEnemy.facing || 1;
       aimTargetX = isLyingZombie ? (targetEnemy.x + targetEnemy.w / 2 + targetFacing * 18) : (targetEnemy.x + targetEnemy.w / 2);
@@ -1372,7 +1372,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
   const isLyingZombieTarget = !!(targetEnemy && targetEnemy.isZombie && targetEnemy.isDead && targetEnemy.hasHead && !targetEnemy.decapitated);
   if (!isA1 && targetEnemy && (!targetEnemy.isDead || isLyingZombieTarget)) {
     if (canEngageTarget) {
-      const isLyingZombie = !!(targetEnemy.isZombie && targetEnemy.isDead);
+      const isLyingZombie = !!(targetEnemy.isZombie && (targetEnemy.isDead || (targetEnemy.riseTimer && targetEnemy.riseTimer > 0.4)));
       const isEnemyDown = ((targetEnemy.staggerTimer > 0) || targetEnemy.isProne || isLyingZombie);
       const targetFacing = targetEnemy.facing || 1;
       const enemyCenterX = isLyingZombie ? (targetEnemy.x + targetEnemy.w / 2 + targetFacing * 18) : (targetEnemy.x + targetEnemy.w / 2);
