@@ -3,47 +3,47 @@
   "files": {
     "weapon_ak47": {
       "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
-      "volume": 1.10,
+      "volume": 0.96,
       "pitchJitter": 0.03
     },
     "weapon_shotgun": {
       "src": "weapon_shotgun_spas.wav",
-      "volume": 1.12,
+      "volume": 0.96,
       "pitchJitter": 0.03
     },
     "weapon_pump": {
       "src": "weapon_pump.wav",
-      "volume": 0.88,
+      "volume": 0.78,
       "pitchJitter": 0.03
     },
     "weapon_sniper": {
       "src": "weapon_sniper.wav",
-      "volume": 1.14,
+      "volume": 0.98,
       "pitchJitter": 0.02
     },
     "weapon_glock": {
       "src": ["weapon_glock_1.wav", "weapon_glock_2.wav"],
-      "volume": 1.06,
+      "volume": 0.94,
       "pitchJitter": 0.04
     },
     "weapon_revolver": {
       "src": "weapon_magnum.wav",
-      "volume": 1.12,
+      "volume": 0.96,
       "pitchJitter": 0.03
     },
     "weapon_sawed_off": {
       "src": "weapon_sawed_off.wav",
-      "volume": 1.12,
+      "volume": 0.96,
       "pitchJitter": 0.03
     },
     "weapon_rpg7": {
       "src": "weapon_rpg7.wav",
-      "volume": 0.85,
+      "volume": 0.80,
       "pitchJitter": 0.03
     },
     "weapon_melee_swing": {
-      "src": ["melee_swing_1.wav", "melee_swing_2.wav"],
-      "volume": 0.90,
+      "src": ["melee_swing_1.wav", "melee_swing_2.wav", "melee_swing_3.wav"],
+      "volume": 0.70,
       "pitchJitter": 0.04
     },
     "weapon_melee_hit": {
@@ -64,31 +64,32 @@
       "reload_end_2.wav"
     ],
     "grenade_throw": {
-      "src": "grenade_throw.wav",
-      "volume": 0.85
+      "src": ["grenade_throw_1.wav", "grenade_throw_2.wav"],
+      "volume": 0.72,
+      "pitchJitter": 0.04
     },
     "grenade_bounce": [
       "grenade_bounce_1.wav",
       "grenade_bounce_2.wav"
     ],
     "explosion_grenade": {
-      "src": ["explosion_grenade_1.wav", "explosion_grenade_2.ogg"],
-      "volume": 0.96,
+      "src": ["explosion_grenade_1.wav", "explosion_grenade_2.wav"],
+      "volume": 0.90,
       "pitchJitter": 0.04
     },
     "explosion_rpg": {
       "src": ["explosion_rpg_1.wav", "explosion_rpg_2.wav"],
-      "volume": 0.98,
+      "volume": 0.92,
       "pitchJitter": 0.04
     },
     "explosion_heavy": {
       "src": ["explosion_heavy_1.wav", "explosion_heavy_2.wav"],
-      "volume": 0.94,
+      "volume": 0.90,
       "pitchJitter": 0.04
     },
     "explosion_toxic": {
-      "src": "explosion_toxic.ogg",
-      "volume": 0.95,
+      "src": "explosion_toxic.wav",
+      "volume": 0.88,
       "pitchJitter": 0.04
     },
     "hit_flesh": {

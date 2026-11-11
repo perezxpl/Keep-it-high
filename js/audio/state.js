@@ -9,7 +9,8 @@ export const AUDIO_CONFIG = {
   ENABLE_UI_SYNTH_FALLBACK: true,
   MAX_ACTIVE_VOICES: 28,
   DEFAULT_HEARING_RADIUS: 1850,
-  PAN_MAX: 0.88
+  PAN_MAX: 0.88,
+  MASTER_HEADROOM: 0.72
 };
 
 export const WEAPON_FIRE_SOUND_MAP = {
@@ -36,19 +37,19 @@ export const SOUND_CATALOG = {
   weapon_revolver: { bus: 'sfx', volume: 0.64, pitchJitter: 0.03, cooldownMs: 70, spatial: true, maxDistance: 1850 },
   weapon_sawed_off: { bus: 'sfx', volume: 0.68, pitchJitter: 0.03, cooldownMs: 85, spatial: true, maxDistance: 1800 },
   weapon_rpg7: { bus: 'sfx', volume: 0.72, pitchJitter: 0.03, cooldownMs: 140, spatial: true, maxDistance: 2050 },
-  weapon_melee_swing: { bus: 'sfx', volume: 0.36, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
+  weapon_melee_swing: { bus: 'sfx', volume: 0.22, pitchJitter: 0.05, cooldownMs: 65, spatial: true, maxDistance: 850 },
   weapon_melee_hit: { bus: 'sfx', volume: 0.56, pitchJitter: 0.04, cooldownMs: 60, spatial: true, maxDistance: 1100 },
   weapon_dry_fire: { bus: 'sfx', volume: 0.44, pitchJitter: 0.03, cooldownMs: 100, spatial: true, maxDistance: 750 },
   weapon_reload_start: { bus: 'sfx', volume: 0.42, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 800 },
   weapon_reload_end: { bus: 'sfx', volume: 0.46, pitchJitter: 0.03, cooldownMs: 120, spatial: true, maxDistance: 850 },
 
   // --- Granaty i Eksplozje ---
-  grenade_throw: { bus: 'sfx', volume: 0.40, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 950 },
+  grenade_throw: { bus: 'sfx', volume: 0.24, pitchJitter: 0.04, cooldownMs: 90, spatial: true, maxDistance: 950 },
   grenade_bounce: { bus: 'sfx', volume: 0.30, pitchJitter: 0.05, cooldownMs: 110, spatial: true, maxDistance: 1050 },
-  explosion_grenade: { bus: 'sfx', volume: 0.80, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
-  explosion_rpg: { bus: 'sfx', volume: 0.86, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2500 },
-  explosion_heavy: { bus: 'sfx', volume: 0.88, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 2500 },
-  explosion_toxic: { bus: 'sfx', volume: 0.78, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
+  explosion_grenade: { bus: 'sfx', volume: 0.74, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
+  explosion_rpg: { bus: 'sfx', volume: 0.78, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2500 },
+  explosion_heavy: { bus: 'sfx', volume: 0.80, pitchJitter: 0.04, cooldownMs: 70, spatial: true, maxDistance: 2500 },
+  explosion_toxic: { bus: 'sfx', volume: 0.72, pitchJitter: 0.04, cooldownMs: 75, spatial: true, maxDistance: 2300 },
 
   // --- Trafienia, Pancerz i Rykoszety ---
   hit_flesh: { bus: 'sfx', volume: 0.48, pitchJitter: 0.05, cooldownMs: 55, spatial: true, maxDistance: 1150 },

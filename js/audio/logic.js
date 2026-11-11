@@ -15,7 +15,8 @@ function applyGainLevels() {
   const ctx = audioState.ctx;
   if (!ctx) return;
   const now = ctx.currentTime;
-  const masterVal = audioState.muted ? 0 : Math.max(0, Math.min(1.5, audioState.masterVolume));
+  const headroom = AUDIO_CONFIG.MASTER_HEADROOM ?? 1.0;
+  const masterVal = audioState.muted ? 0 : Math.max(0, Math.min(1.5, audioState.masterVolume * headroom));
   const sfxVal = Math.max(0, Math.min(1.5, audioState.sfxVolume));
 
   if (audioState.masterGain) {
@@ -147,6 +148,8 @@ const BACKGROUND_SFX_IDS = new Set([
   'weapon_reload_end',
   'weapon_pump',
   'weapon_dry_fire',
+  'weapon_melee_swing',
+  'grenade_throw',
   'hit_ricochet'
 ]);
 
