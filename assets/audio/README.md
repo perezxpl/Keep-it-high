@@ -1,40 +1,26 @@
-# Zewnętrzne pliki dźwiękowe (`assets/audio/`)
+# Zewnetrzne pliki dzwiekowe (`assets/audio/`)
 
-Domyślnie gra korzysta z wbudowanej syntezy Web Audio API (`js/audio/synth.js`) dla każdego efektu.
-Jeśli chcesz zastąpić dowolny dźwięk własnym nagraniem lub paczką sampli z internetu (np. `.wav`, `.ogg`, `.mp3`, `.webm`), **nie musisz modyfikować kodu JavaScript**:
+Gra korzysta wylacznie z prawdziwych nagran audio w domenie publicznej (**CC0 1.0**) zapisanych w tym katalogu (sztuczna synteza rozgrywki w `js/audio/state.js` jest wylaczona flaga `ENABLE_GAMEPLAY_SYNTH: false`).
 
-1. Wrzuć wybrany plik dźwiękowy do katalogu `assets/audio/` (możesz tworzyć podkatalogi, np. `assets/audio/weapons/ak47.wav`).
-2. Otwórz plik `assets/audio/manifest.json` i zamień `null` przy wybranym identyfikatorze na nazwę pliku (względem `assets/audio/`):
+## Zrodla uzytych paczek CC0 1.0 (Public Domain)
+- **Free Firearm Sound Library (`buddingmonkey/FreeFirearmsSFXLibrary`, CC0 1.0)** — prawdziwe nagrania strzalow (AK-47, Benelli Nova, Winchester Model 12, Tikka, Walther PPQ 9mm, 1911).
+- **Kenney Interface Sounds (`CC0 1.0`)** — klikniecia, suwaki i przejscia interfejsu UI (`ui_click`, `ui_pause`, `ui_resume`, `weapon_dry_fire`).
+- **OpenGameArt (`CC0 1.0`)** — eksplozje, odglosy przeladowania i zamkow, uderzenia metal/ciasto, chlasty mieczy, silniki odrzutowe, para/tloki, alarm, dzwonek testowy, skoki i okrzyki bolu.
 
-```json
-"weapon_ak47": "weapons/ak47.wav"
-```
+## Podmiana dowolnego dzwieku na wlasny
 
-## Losowe warianty i dostrajanie głośności
+Jesli chcesz zastapic wybrany efekt wlasnym nagraniem (`.wav`, `.ogg`, `.mp3`, `.webm`), **nie musisz modyfikowac kodu JavaScript**:
 
-Możesz podać tablicę wariantów (silnik losowo wybierze jeden z nich przy każdym odtworzeniu):
-
-```json
-"hit_ricochet": [
-  "hits/ricochet_1.ogg",
-  "hits/ricochet_2.ogg",
-  "hits/ricochet_3.ogg"
-]
-```
-
-Możesz też przekazać obiekt z osobnym wzmocnieniem głośności (`volume`) oraz zakresem losowej zmiany wysokości dźwięku (`pitchJitter`, np. `0.08` = +/- 8%):
+1. Wrzuć plik do katalogu `assets/audio/`.
+2. Zaktualizuj odpowiedni wpis w `assets/audio/manifest.json`:
 
 ```json
-"weapon_shotgun": {
-  "src": "weapons/spas12.wav",
+"weapon_ak47": {
+  "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
   "volume": 0.9,
-  "pitchJitter": 0.06
+  "pitchJitter": 0.05
 }
 ```
 
-## Automatyczny powrót do syntezy (Fallback)
-
-- Wpisy pozostawione jako `null` automatycznie odtwarzają wbudowaną syntezę Web Audio API.
-- Jeśli wskazany plik jeszcze się ładuje, nie istnieje albo ma uszkodzony format, silnik płynnie użyje syntezy zapasowej bez przerywania gry.
-- W konsoli przeglądarki możesz na żywo przetestować dowolny dźwięk wpisując:
-  `KeepItHighAudio.test('weapon_ak47')` albo wyświetlić listę identyfikatorów: `KeepItHighAudio.list()`.
+Silnik automatycznie wybierze losowy wariant z tablicy, zastosuje opcjonalny `volume`, `pitchJitter` i `loop`.
+W konsoli przegladarki mozesz przetestowac kazdy efekt komenda `KeepItHighAudio.test('weapon_ak47')` albo wyswietlic wszystkie ID przez `KeepItHighAudio.list()`.

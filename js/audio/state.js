@@ -5,6 +5,8 @@
 export const AUDIO_CONFIG = {
   MANIFEST_URL: './assets/audio/manifest.json',
   DEFAULT_BASE_PATH: './assets/audio/',
+  ENABLE_GAMEPLAY_SYNTH: false,
+  ENABLE_UI_SYNTH_FALLBACK: true,
   MAX_ACTIVE_VOICES: 28,
   DEFAULT_HEARING_RADIUS: 1850,
   PAN_MAX: 0.88

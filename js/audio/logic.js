@@ -263,7 +263,14 @@ export function playSound(soundId, opts = {}) {
     }
   }
 
-  // 2. Jesli brak zewnetrznego pliku (lub jeszcze sie laduje) -> natychmiastowa synteza Web Audio
+  // 2. Jesli brak zewnetrznego pliku (lub jeszcze sie laduje) -> brak syntezy w rozgrywce (tylko opcjonalny fallback UI)
+  const allowSynth = (def.bus === 'ui')
+    ? AUDIO_CONFIG.ENABLE_UI_SYNTH_FALLBACK
+    : AUDIO_CONFIG.ENABLE_GAMEPLAY_SYNTH;
+  if (!allowSynth) {
+    return false;
+  }
+
   const synthOk = playSynthSound(soundId, ctx, destNode, {
     gain: finalGain,
     pitch,
@@ -357,6 +364,9 @@ function createJetpackVoice(ctx, destNode, pan, initialGain) {
         }
       };
     }
+  }
+  if (!AUDIO_CONFIG.ENABLE_GAMEPLAY_SYNTH) {
+    return null;
   }
   return createSynthJetpackVoice(ctx, destNode);
 }
