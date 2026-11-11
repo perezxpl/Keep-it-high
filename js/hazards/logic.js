@@ -25,6 +25,7 @@ import { spawnExplosionEffect } from '../projectiles.js';
 import { addDynamicLight } from '../lighting/index.js';
 import { triggerCombatFeedBanner } from '../ui/combatFeed.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { playSound } from '../audio/index.js';
 
 /**
  * Rozrzuca rozerwane metalowe odłamki blachy zniszczonej beczki
@@ -193,6 +194,8 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
   const by = barrel.y + barrel.h * 0.5;
   const typeDef = barrel.typeDef || BARREL_TYPES.EXPLOSIVE;
   const isToxic = (barrel.type === 'TOXIC');
+
+  playSound(isToxic ? 'explosion_toxic' : 'explosion_heavy', { x: bx, y: by });
 
   // 1. Spektakularne efekty audiowizualne wybuchu (Kinowa eksplozja, Game Juice, kula ognia, błysk, szrapnel)
   triggerScreenShake(typeDef.screenShake || 20);

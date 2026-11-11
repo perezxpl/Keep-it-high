@@ -22,6 +22,7 @@ import {
   spawnJuiceExplosion,
   spawnRicochetSparks
 } from '../particles.js';
+import { playSound } from '../audio/index.js';
 
 export function startJumpCharge(p) {
   if (p.isIntro || p.isJumping || p.isSliding || p.staggerTimer > 0) return;
@@ -57,6 +58,11 @@ export function executeReleaseJump(spawnGrass, p) {
     }
   }
 
+  playSound('player_jump', {
+    x: p.x + (p.w || 24) * 0.5,
+    y: currentFloor || (p.y + (p.h || 70)),
+    gainScale: 0.9 + (p.jumpPower || 0) * 0.25
+  });
   p.currentClass?.onJump?.(p, grassFn);
 }
 
@@ -1048,6 +1054,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     triggerScreenShake(14);
     spawnJetpackSparks(ex, ey, player.facing, 9);
     spawnBloodSpurt(ex + (player.facing * 8), ey, player.facing, -0.2, 10, 1.2);
+    playSound('weapon_melee_hit', { x: ex, y: ey, gainScale: 1.15 });
 
     const baseSpartanDmg = player.currentClass?.stats?.spartanDamage || 14;
     let dmg = Math.round(baseSpartanDmg * (player.knockbackMultiplier >= 1.5 ? 1.25 : 1.0));
@@ -1628,6 +1635,7 @@ export function updatePlayerThrow(p) {
 
       if (tAnim.throwType === 'TOMAHAWK') {
         spawnThrownTomahawk(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
+        playSound('grenade_throw', { x: handPos.x, y: handPos.y });
         if (!p.isRemote && !p.isBot) {
           const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
           const sendTomahawk = (typeof window !== 'undefined' && window.sendTomahawkThrow) ? window.sendTomahawkThrow : null;
@@ -1639,6 +1647,7 @@ export function updatePlayerThrow(p) {
       } else {
         const remainingFuse = Math.max(1, (tAnim.maxFuse || 300) - (tAnim.cookTimer || 0));
         spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
+        playSound('grenade_throw', { x: handPos.x, y: handPos.y });
         if (!p.isRemote && !p.isBot) {
           const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
           const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;

@@ -14,6 +14,7 @@ import {
 import { getActiveArena } from '../arenas/index.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
 import { spawnDroppedWeapon as spawnInteractiveDroppedWeapon } from '../pickup/index.js';
+import { playSound } from '../audio/index.js';
 
 // =========================================================================
 // SYSTEM GORE: KREW, PLAMY, ODCIĘTA GŁOWA, GIBS I UPUSZCZONA BROŃ
@@ -257,6 +258,7 @@ export function spawnHeadGib(x, y, vx, vy, facing, visuals) {
     sprayTimer: 45
   });
   spawnBloodSpurt(x, y, vx, vy - 3, 24, 1.4);
+  playSound('gore_gib', { x, y });
 }
 
 export function spawnLimbGib(type, x, y, vx = 0, vy = 0, facing = 1, visuals = {}) {
@@ -275,6 +277,7 @@ export function spawnLimbGib(type, x, y, vx = 0, vy = 0, facing = 1, visuals = {
     life: 360
   });
   spawnBloodSpurt(x, y, (vx || 0) * 0.5, -2.5, 18, 1.3);
+  playSound('gore_gib', { x, y, gainScale: 0.9 });
 }
 
 export function spawnBodyGibs(cx, cy, facing, visuals) {
@@ -298,6 +301,7 @@ export function spawnBodyGibs(cx, cy, facing, visuals) {
     });
   }
   spawnBloodSpurt(cx, cy, 0, -1, 35, 1.8);
+  playSound('gore_gib', { x: cx, y: cy, gainScale: 1.15 });
 }
 
 export function spawnDroppedWeapon(x, y, vx, vy, weapon, facing, ammoState = null, owner = null) {

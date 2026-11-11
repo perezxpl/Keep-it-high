@@ -134,6 +134,14 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/menuFight/renderer.js` — kinowy potok renderowania tła menu (`drawMenuFight`): czysty kadr bez HUD-a, bez pasków zdrowia, bez nicków i bez colliderów, z pełnymi animacjami postaci, smugami pocisków, dymem, łuskami, krwią i rozbłyskami przy stałych 60 FPS (zero `ctx.shadowBlur`).
 - `js/menuFight/index.js` — główny punkt wejścia i eksport modułu walki demonstracyjnej.
 
+### System Audio i Hybrydowe Efekty Dźwiękowe (`js/audio/`, `assets/audio/`)
+- `js/audio/state.js` — konfiguracja (`AUDIO_CONFIG`), mapa dźwięków broni (`WEAPON_FIRE_SOUND_MAP`), katalog wszystkich ID (`SOUND_CATALOG`) oraz współdzielony stan miksera (`audioState`).
+- `js/audio/samples.js` — asynchroniczne ładowanie i dekodowanie zewnętrznych plików `.wav`/`.ogg`/`.mp3`/`.webm` przez `assets/audio/manifest.json` (z automatycznym powrotem do syntezy, gdy wpis ma wartość `null` lub plik nie istnieje).
+- `js/audio/synth.js` — proceduralny syntezator Web Audio API (`playSynthSound`, `createSynthJetpackVoice`): bronie palne i biała, przeładowania, pusty klik, granaty/eksplozje, trafienia w ciało/hełm/pancerz/tarczę/rykoszety, ciągły jetpack, Rocket Boots dash, tłoki i tąpnięcie Enforcera, skok/lądowanie/śmierć/gore, piłka/poprzeczka/gol, syrena Areny 2 i dźwięki UI.
+- `js/audio/logic.js` — pojedynczy graf Web Audio (`[sfxGain | uiGain] -> DynamicsCompressorNode -> masterGain`), odblokowanie gestem użytkownika (Autoplay Policy), tłumienie i panoramowanie stereo 2D względem kamery, limity głosów/cooldowny, wyciszanie walki demonstracyjnej w menu oraz klatkowe pętle stanu postaci (`updateAudio`).
+- `js/audio/index.js` — publiczny interfejs (`initAudio`, `updateAudio`, `playSound`, `syncAudioSettings`, `setAudioGameState`, `playUiClick/Hover/Pause/Resume`, `playTestTone`, `playAcidSurgeSiren`) i obiekt testowy `window.KeepItHighAudio`.
+- `assets/audio/manifest.json` i `assets/audio/README.md` — rejestr zewnętrznych plików dźwiękowych do łatwej podmiany dowolnego efektu bez edycji kodu JS.
+
 ## 3. Limity Wielkości Plików i Zasady Jakości Kodu
 1. **Limity linii kodu**:
    - **Miękki limit (~800–1000 linii)**: Gdy plik przekracza 1000 linii, wydziel nowe funkcje do osobnego podmodułu w odpowiednim katalogu.

@@ -29,6 +29,7 @@ import {
   setCameraMouseScreenPos,
   mouseScreenPos
 } from '../camera.js';
+import { playSound } from '../audio/index.js';
 export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
 
 export const centerX = MAP_WIDTH / 2; // 1800
@@ -90,6 +91,7 @@ export function triggerGoalCelebration(team, color) {
   goalCelebration.timer = 110;
   goalCelebration.team = team;
   goalCelebration.color = color || (team === 'CYAN' ? '#00F0FF' : '#FF8800');
+  playSound('goal_horn');
 }
 
 export function getOptimizedDPR() {

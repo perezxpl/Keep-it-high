@@ -6,6 +6,7 @@
 // =========================================================================
 import { triggerScreenShake, spawnJetpackSparks } from '../world.js';
 import { getJetpackFlamePalette } from '../player/jetpack.js';
+import { playSound } from '../audio/index.js';
 
 export function getStrikerFlameColor(player) {
   if (player?.customVisuals?.jetpackColor) return player.customVisuals.jetpackColor;
@@ -830,6 +831,11 @@ export function triggerStrikerAirDash(player, dirX, dirY, power = 1.0) {
   player.y += player.vy * 0.3;
   const isLocalHumanAir = (typeof window !== 'undefined' && window.player === player);
   triggerScreenShake(isLocalHumanAir ? (1.2 + 1.8 * power) : 0.5);
+  playSound('rocket_boots_dash', {
+    x: player.x + (player.w || 26) * 0.5,
+    y: player.y + (player.h || 72) * 0.85,
+    power
+  });
 
   // Wybuch płomieni w kierunku przeciwnym do wektora lotu
   emitBootsBurstParticles(player, -dirX, -dirY, Math.round(6 + 6 * power));
@@ -860,6 +866,11 @@ export function triggerStrikerGroundDash(player, dir, source = 'STICK', power = 
   player.x += player.vx * 0.3;
   const isLocalHumanGround = (typeof window !== 'undefined' && window.player === player);
   triggerScreenShake(isLocalHumanGround ? (1.0 + 1.4 * power) : 0.5);
+  playSound('rocket_boots_dash', {
+    x: player.x + (player.w || 26) * 0.5,
+    y: player.y + (player.h || 72) * 0.9,
+    power: power * 0.85
+  });
 
   // Wybuch płomieni z pięt na poziomie murawy
   emitBootsBurstParticles(player, -dir, 0, Math.round(5 + 6 * power));

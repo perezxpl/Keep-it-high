@@ -36,6 +36,7 @@ import {
   drawGrenadeJuiceExplosion,
   clearExplosionParticles
 } from './particles.js';
+import { playSound } from './audio/index.js';
 
 const GRENADE_SPRITE_PATH = './assets/weapons/grenade.png?v=v257_m67_grenade_gameplay_sprite';
 let _grenadeSprite = null;
@@ -125,6 +126,7 @@ export class AeroSuperGrenade {
   update(groundY, platforms, customObs, combatants, ball) {
     if (this.detonated) return false;
 
+    const prevBounces = this.bounces;
     this.prevX = this.x;
     this.prevY = this.y;
 
@@ -437,6 +439,10 @@ export class AeroSuperGrenade {
     // Iskry zapalnika ostrzegające przed eksplozją w ostatnich 1.5 sekundy
     if (this.fuse < 90 && this.fuse % 4 === 0) {
       spawnRicochetSparks(this.x, this.y - 6, (Math.random() - 0.5) * 2, -1, 1);
+    }
+
+    if (this.bounces > prevBounces) {
+      playSound('grenade_bounce', { x: this.x, y: this.y });
     }
 
     // 5. Odliczanie zapalnika czasowego (5.0 sekund = 300 klatek)
@@ -1139,6 +1145,8 @@ export function clearPlayerThrownTomahawks(shooter) {
  * Główna procedura wybuchu, obrażeń i niszczenia terenu (AoE Destruction)
  */
 export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, platforms, customObs, combatants, ball, sourceWeapon = 'GRENADE') {
+  playSound(sourceWeapon === 'RPG7' ? 'explosion_rpg' : 'explosion_grenade', { x: expX, y: expY });
+
   // Przechwycenie wybuchu przez elementy aktywnej areny (np. odrzut wagoników kopalnianych)
   const activeArena = getActiveArena();
   if (activeArena && typeof activeArena.onExplosion === 'function') {

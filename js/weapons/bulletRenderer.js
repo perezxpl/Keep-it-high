@@ -8,6 +8,7 @@
 import { drawBulletCasings } from '../particles.js';
 import { camera, getCanvasLogicalWidth, getCanvasLogicalHeight, triggerScreenShake } from '../camera.js';
 import { bullets, bulletParticles } from './transform.js';
+import { playSound } from '../audio/index.js';
 
 /**
  * Profile balistyczne i wizualne dla poszczególnych rodzajów broni
@@ -313,6 +314,7 @@ export function spawnImpactVisuals(hitX, hitY, nx = 0, ny = -1, weaponId = 'AK47
 
   // 1. Fizyczna, ostra dziura po kuli (Bullet Hole Decal)
   addBulletHole(hitX, hitY, nx, ny, weaponId);
+  playSound('hit_ricochet', { x: hitX, y: hitY });
 
   // 2. Szybkie, ostre iskry rykoszetowe (Motion-stretched Sparks) odbijające się od powierzchni
   const sparkCount = prof.impactSparks || 5;

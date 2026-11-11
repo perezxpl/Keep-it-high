@@ -5,6 +5,7 @@
 // =========================================================================
 
 import { triggerScreenShake } from '../../camera.js';
+import { playAcidSurgeSiren as playUnifiedAcidSiren } from '../../audio/index.js';
 
 // =========================================================================
 // 1. KONFIGURACJA ARENY (ARENA_2_CONFIG)
@@ -351,66 +352,12 @@ export const ARENA_2_SUPPLY = {
 // SYSTEM ZRZUTU I ZALANIA KWASEM (TOXIC ACID SURGE SYSTEM)
 // =========================================================================
 
-let _acidSirenCtx = null;
-
 /**
- * Odtwarza syntetyczną dwutonową przemysłową syrenę alarmową (Web Audio API)
+ * Odtwarza syntetyczną dwutonową przemysłową syrenę alarmową (delegacja do js/audio/)
  */
 export function playAcidSurgeSiren() {
-  if (typeof window === 'undefined') return;
-  if (window.ACID_SIREN_ENABLED === false) return;
-  if (window.uiManager && window.uiManager.settings && window.uiManager.settings.muteAll) return;
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const isUserActive = typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive;
-    if (!_acidSirenCtx) {
-      if (!isUserActive) return;
-      _acidSirenCtx = new AudioCtx();
-    }
-    if (_acidSirenCtx.state === 'suspended') {
-      if (isUserActive) {
-        _acidSirenCtx.resume().catch(() => {});
-      }
-      return;
-    }
-    if (_acidSirenCtx.state !== 'running') return;
-
-    const now = _acidSirenCtx.currentTime;
-    const osc = _acidSirenCtx.createOscillator();
-    const gain = _acidSirenCtx.createGain();
-
-    osc.type = 'sawtooth';
-    // Modulacja częstotliwości: dwutonowa syrena przemysłowa (wznosząca i opadająca)
-    osc.frequency.setValueAtTime(420, now);
-    osc.frequency.linearRampToValueAtTime(780, now + 0.6);
-    osc.frequency.linearRampToValueAtTime(420, now + 1.2);
-    osc.frequency.linearRampToValueAtTime(780, now + 1.8);
-    osc.frequency.linearRampToValueAtTime(420, now + 2.4);
-    osc.frequency.linearRampToValueAtTime(780, now + 3.0);
-    osc.frequency.linearRampToValueAtTime(360, now + 3.5);
-
-    // Filtr dolnoprzepustowy nadający surowy, industrialny rezonans
-    const filter = _acidSirenCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1200, now);
-
-    const masterVol = (window.uiManager?.settings?.masterVolume ?? 80) / 100;
-    const targetGain = 0.18 * masterVol;
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(targetGain, now + 0.1);
-    gain.gain.setValueAtTime(targetGain, now + 3.0);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(_acidSirenCtx.destination);
-
-    osc.start(now);
-    osc.stop(now + 3.5);
-  } catch (err) {
-    // Bezpieczne wyciszenie w przypadku blokady autoplay
-  }
+  if (typeof window !== 'undefined' && window.ACID_SIREN_ENABLED === false) return;
+  playUnifiedAcidSiren();
 }
 
 export const ACID_SURGE_SYSTEM = {

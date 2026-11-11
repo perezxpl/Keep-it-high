@@ -56,6 +56,7 @@ import {
   checkRightStickFlickOrTap
 } from './mobileControls.js';
 import { uiManager, playUiClick, playUiHover, playUiPause, playUiResume } from './uiManager.js';
+import { initAudio, setAudioGameState, updateAudio } from './audio/index.js';
 import { recordKill, recordDeath } from './progression.js';
 import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, deathmatchState } from './deathmatch/index.js';
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
@@ -386,6 +387,7 @@ export function setGameState(newState) {
   GAME_STATE.previous = prevState;
   GAME_STATE.current = newState;
   gameState = newState;
+  setAudioGameState(newState);
   resetInputState();
   if (prevState === 'MENU' && newState !== 'MENU') {
     stopMenuFight();
@@ -910,6 +912,7 @@ function update() {
   updateLighting(1 / 60);
   updateZombieSystem(1 / 60, player, activeBots, effectiveGroundY);
   updateHazards((FRAME_DURATION / 1000) || (1 / 60), combatants, effectiveGroundY);
+  updateAudio(1 / 60, { gameState: GAME_STATE.current, player, bots: activeBots, remotePlayers: activeRemotePlayers });
 
   updateCamera(player, isDeathmatch ? null : ball, {
     disableAimLead: !!(editorState?.active || isChatActive || isPauseOrSettingsOverlay)
@@ -1451,6 +1454,9 @@ if (typeof window !== 'undefined') {
   window.pockets = pockets;
   window.rightStick = rightStick;
   window.leftStick = leftStick;
+
+  // Inicjalizacja podsystemu audio (Web Audio API + opcjonalne pliki z assets/audio/)
+  initAudio();
 
   // Inicjalizacja interfejsu Menu Głównego, Ustawień oraz Pauzy
   uiManager.init({

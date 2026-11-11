@@ -6,6 +6,7 @@
 import { WEAPON_CONFIG } from '../config.js';
 import { spawnDroppedMagazine } from '../particles.js';
 import { getArmAnglesForTarget } from '../player/ik.js';
+import { playSound } from '../audio/index.js';
 
 export const WEAPONS = {
   AK47: {
@@ -1809,6 +1810,10 @@ export function reloadWeapon(shooter, weapon = shooter?.currentWeapon) {
   shooter.reloadTimer = ammo.reloadTimer;
   shooter.reloadDuration = ammo.reloadDuration;
   shooter.reloadProgress = 0;
+  playSound('weapon_reload_start', {
+    x: shooter.x + (shooter.w || 24) * 0.5,
+    y: shooter.y + (shooter.h || 70) * 0.45
+  });
   return true;
 }
 

@@ -28,6 +28,7 @@ import {
   spawnRicochetSparks
 } from './particles.js';
 import { spawnRpgRocket } from './weapons/rocket.js';
+import { playSound, playWeaponFireSound } from './audio/index.js';
 import { addDynamicLight, LIGHT_PRESETS } from './lighting/index.js';
 import { updateBulletVisuals, spawnImpactVisuals } from './weapons/bulletRenderer.js';
 import { isEnforcerPoiseActive } from './classes/enforcer.js';
@@ -172,6 +173,11 @@ export function startMeleeAttack(shooter, weapon, overrideAngle) {
   shooter.shootPoseTimer = cfg.totalFrames + 8;
   shooter.shootPoseWeight = 1.0;
 
+  playSound('weapon_melee_swing', {
+    x: shooter.x + (shooter.w || 24) * 0.5,
+    y: shooter.y + (shooter.h || 70) * 0.45
+  });
+
   // Lunge / pchnięcie kinetyczne w kierunku ataku
   if (cfg.type === 'THRUST') {
     const lungeVx = Math.cos(aimAngle) * cfg.lungeForce * facing;
@@ -308,6 +314,7 @@ function updateMeleeCollision(shooter, ms) {
       t.lastAttacker = shooter;
       t.lastAttackerTimer = 240;
       t.vx += facing * (cfg.bodyPush || 4.0);
+      playSound(isHeadshot ? 'hit_headshot' : 'weapon_melee_hit', { x: hitX, y: hitY });
 
       if (cfg.type === 'OVERHEAD_CHOP') {
         t.vy += 3.5;
@@ -479,6 +486,7 @@ function updateMeleeCollision(shooter, ms) {
       triggerHitstop(Math.max(1, (cfg.hitstopFrames || 3) - 1));
       triggerScreenShake((cfg.screenShake || 6) * 0.7);
       spawnJetpackSparks(b.x, b.y, -facing * 2.5, -2.5, 6);
+      playSound('ball_kick', { x: b.x, y: b.y });
     }
   }
 
@@ -487,6 +495,7 @@ function updateMeleeCollision(shooter, ms) {
     const groundLevel = shooter.currentGroundY || shooter.groundY || GROUND_Y || 560;
     if (p2.y >= groundLevel - 3) {
       ms.hitObstacles = true;
+      playSound('hit_ricochet', { x: p2.x, y: groundLevel });
       if (cfg.type === 'OVERHEAD_CHOP') {
         spawnGroundPuff(p2.x, groundLevel, 14);
         spawnJetpackSparks(p2.x, groundLevel, -facing * 3.5, -3.5, 8);
@@ -537,6 +546,10 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
           // Brak amunicji w ogóle - "pusty klik"
           shooter.shootCooldown = 12;
           shooter.emptyAmmoAlert = 35;
+          playSound('weapon_dry_fire', {
+            x: shooter.x + (shooter.w || 24) * 0.5,
+            y: shooter.y + (shooter.h || 70) * 0.45
+          });
         }
         return false;
       }
@@ -587,6 +600,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     const wallHit = checkRayObstacleCollision(muzzle.shoulderX, muzzle.shoulderY, muzzleX, muzzleY, effectiveGroundY, obstacles);
     if (wallHit) {
+      playWeaponFireSound(weapon.id, muzzleX, muzzleY);
       if (weapon.id === 'RPG7' || weapon.isRocket) {
         const hitAng = theta || Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
         const rocket = spawnRpgRocket(shooter, wallHit.x, wallHit.y, hitAng, weapon);
@@ -628,6 +642,8 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
       }
     }
   }
+
+  playWeaponFireSound(weapon.id, muzzleX, muzzleY);
 
   if (weapon.id === 'RPG7' || weapon.isRocket) {
     spawnRpgRocket(shooter, muzzleX, muzzleY, theta, weapon);
@@ -791,6 +807,12 @@ export function updateWeaponState(p) {
 
   if (p.pumpTimer > 0) {
     p.pumpTimer--;
+    if (p.pumpTimer === 17) {
+      playSound('weapon_pump', {
+        x: p.x + (p.w || 24) * 0.5,
+        y: p.y + (p.h || 70) * 0.45
+      });
+    }
     if (p.pumpTimer > 9) {
       p.pumpOffset = -4.2 * ((18 - p.pumpTimer) / 9);
     } else {
@@ -926,6 +948,10 @@ export function updateWeaponState(p) {
       // Shotgun: wyrzut łuski przy przeładowaniu czółenkiem pompy w tył
       if (curWepId === 'SHOTGUN' && u >= 0.82 && !ammo._pumpEjected) {
         ammo._pumpEjected = true;
+        playSound('weapon_pump', {
+          x: p.x + (p.w || 24) * 0.5,
+          y: p.y + (p.h || 70) * 0.45
+        });
         const hold = getWeaponHoldTransform(p);
         const charFacing = (p && typeof p.facing === 'number') ? p.facing : (hold.charFacing || 1);
         const breechDist = 8;
@@ -970,6 +996,10 @@ export function updateWeaponState(p) {
         ammo.reserveAmmo -= toLoad;
         ammo.isReloading = false;
         ammo.reloadTimer = 0;
+        playSound('weapon_reload_end', {
+          x: p.x + (p.w || 24) * 0.5,
+          y: p.y + (p.h || 70) * 0.45
+        });
         ammo._magEjected = false;
         ammo._pumpEjected = false;
         ammo._cylCasingsEjected = false;
@@ -1261,6 +1291,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       // Ochrona odrodzenia: nietykalność celu oraz brak możliwości ranienia innych przez gracza pod osłoną
       if ((closestChar.spawnProtectionTimer && closestChar.spawnProtectionTimer > 0) || (b.shooter && b.shooter.spawnProtectionTimer && b.shooter.spawnProtectionTimer > 0)) {
         spawnBulletSparks(hitPtX, hitPtY, '#00e5ff', 8);
+        playSound('hit_shield', { x: hitPtX, y: hitPtY });
         b.life = 0;
         bullets.splice(i, 1);
         bulletDestroyed = true;
@@ -1281,6 +1312,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           damageMultiplier = 0.35;
           helmetAbsorbed = true;
           spawnBulletSparks(hitPtX, hitPtY, '#facc15', 5);
+          playSound('hit_armor', { x: hitPtX, y: hitPtY });
         } else if (hasHelm) {
           // Hełm chroni przed headshotem na krótko: pochłania zabójczą siłę i odlatuje z głowy
           helmetAbsorbed = true;
@@ -1294,6 +1326,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
           spawnKnockedHelmet(hitPtX, hitPtY - 4, b.vx, b.vy, closestChar.facing, closestChar.visuals || closestChar.currentClass?.visuals);
           triggerScreenShake(3.2);
           spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
+          playSound('hit_helmet_break', { x: hitPtX, y: hitPtY });
 
           if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
             window.syncArmorDevButtons();
@@ -1326,6 +1359,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         if (closestChar.vestHp > 0) {
           vestAbsorbed = true;
           spawnBulletSparks(hitPtX, hitPtY, '#94a3b8', 7);
+          playSound('hit_armor', { x: hitPtX, y: hitPtY });
 
           if (closestChar.vestHp >= totalDamage) {
             // Kamizelka przyjmuje CAŁOŚĆ obrażeń na tors – HP posiadacza nienaruszone!
@@ -1407,12 +1441,14 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
         if (!helmetAbsorbed) {
           spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.55, b.vy * 0.55, 12, 1.4);
+          playSound('hit_headshot', { x: hitPtX, y: hitPtY });
         }
         triggerScreenShake(isShotgun ? 4.5 : 2.2);
       } else {
         if (!vestAbsorbed) {
           spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
           spawnBloodSpurt(hitPtX, hitPtY, b.vx * 0.35, b.vy * 0.35, 5, 0.8);
+          playSound('hit_flesh', { x: hitPtX, y: hitPtY });
         }
         if (isShotgun) triggerScreenShake(2.0);
       }

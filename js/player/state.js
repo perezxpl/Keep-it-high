@@ -10,6 +10,7 @@ import { DEFAULT_CLASS, CLASSES } from '../classes/index.js';
 import { WEAPONS } from '../weapons.js';
 import { DEFAULT_VISUALS } from './hair.js';
 import { getStoredLoadout } from '../loadout/index.js';
+import { playSound } from '../audio/index.js';
 
 export var DEFAULT_BODY = {
   w: 24,
@@ -587,6 +588,12 @@ export function initiatePlayerJump(p = player, spawnGrass = null) {
     }
   }
   spawnGroundPuff(p.x + (p.w || 24) / 2, currentFloor);
+  playSound('player_jump', {
+    x: p.x + (p.w || 24) * 0.5,
+    y: currentFloor || (p.y + (p.h || 70)),
+    isSprintJump: isSuperRunning,
+    gainScale: isSuperRunning ? 1.15 : 0.9
+  });
   if (isSuperRunning) {
     triggerScreenShake(1.3);
   }

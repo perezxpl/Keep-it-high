@@ -16,6 +16,7 @@ import { normalizeObstacleType } from './palette.js';
 import { spawnAltarShockwave } from './renderer.js';
 import { checkPlayerPlatformLanding } from './playerPhysics.js';
 import { getActiveBots } from '../bot.js';
+import { playSound } from '../audio/index.js';
 import {
   customObstacles,
   _activePlayer,
@@ -109,12 +110,18 @@ export function resolveBallObstacleCollisions(ball, groundY) {
       // Odbicie od górnej lub dolnej krawędzi poprzeczki
       if (ball.x >= platLeft - cR && ball.x <= platRight + cR) {
         if (ball.vy > 0 && ball.y + cR >= topY && (ball.y - ball.vy) + cR <= topY + 12) {
+          if (Math.abs(ball.vy) > 2.0 || speed > 5.0) {
+            playSound('ball_post_clang', { x: ball.x, y: topY, gainScale: Math.min(1.2, Math.max(0.5, speed / 12)) });
+          }
           ball.y = topY - cR;
           ball.vy = -Math.abs(ball.vy) * 0.72;
           ball.vx *= 0.96;
           ball.spin *= 0.90;
           if (speed > 6.0) triggerScreenShake(2.5);
         } else if (ball.vy < 0 && ball.y - cR <= bottomY && (ball.y - ball.vy) - cR >= bottomY - 12) {
+          if (Math.abs(ball.vy) > 2.0 || speed > 5.0) {
+            playSound('ball_post_clang', { x: ball.x, y: bottomY, gainScale: Math.min(1.2, Math.max(0.5, speed / 12)) });
+          }
           ball.y = bottomY + cR;
           ball.vy = Math.abs(ball.vy) * 0.72;
           ball.vx *= 0.96;
@@ -136,6 +143,9 @@ export function resolveBallObstacleCollisions(ball, groundY) {
         ball.y = postCornerY + cny * (cR + 1);
         const vDotN = ball.vx * cnx + ball.vy * cny;
         if (vDotN < 0) {
+          if (-vDotN > 1.8) {
+            playSound('ball_post_clang', { x: postCornerX, y: postCornerY, gainScale: Math.min(1.25, Math.max(0.55, -vDotN / 11)) });
+          }
           const restitution = 0.78;
           ball.vx -= (1 + restitution) * vDotN * cnx;
           ball.vy -= (1 + restitution) * vDotN * cny;

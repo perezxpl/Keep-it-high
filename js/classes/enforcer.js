@@ -14,6 +14,7 @@ import {
 import { getActiveArena } from '../arenas/index.js';
 import { isDeathmatchFFA, deathmatchState } from '../deathmatch/index.js';
 import { ARENA_PLATFORMS } from '../obstacles/state.js';
+import { playSound } from '../audio/index.js';
 
 export const ENFORCER_COMBO_WINDOW_MS = 300; // Okno bufora kombinacji dół -> góra (maksymalnie 300ms)
 export const ENFORCER_BOMB_CHARGE_MS = 300; // Zachowane dla kompatybilności wstecznej
@@ -502,6 +503,7 @@ export function triggerEnforcerBlastJump(player, dirX = 0, spawnGrass = null) {
   // Mocne tąpnięcie ziemi oraz wyrzut pyłu i sprężonego powietrza (ZERO OGNIA!)
   const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
   triggerScreenShake(isLocalHuman ? 8.0 : 1.2);
+  playSound('enforcer_piston_jump', { x: centerX, y: currentFloor });
 
   if (typeof spawnShockwaveRing === 'function') {
     spawnShockwaveRing(centerX, currentFloor - 3);
@@ -576,6 +578,7 @@ export function executeEnforcerGroundSlamImpact(player, impactY = null) {
   // 1. Wstrząs kamery (pełny impuls dla lokalnego gracza, wytłumiony dla botów)
   const isLocalHuman = (typeof window !== 'undefined' && window.player === player);
   triggerScreenShake(isLocalHuman ? 9.0 : 2.5);
+  playSound('enforcer_ground_slam', { x: centerX, y: floorY });
 
   // 2. Efekty wizualne tąpnięcia: fala uderzeniowa, pył, wyrzut gruzu, zwarty dym
   if (typeof spawnShockwaveRing === 'function') {

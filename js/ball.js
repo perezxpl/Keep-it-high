@@ -3,6 +3,7 @@ import { distToSegment, triggerScreenShake, triggerGoalCelebration, isGroundAt }
 import { player, getFreestyleChoreography, drawFrontLegOnly } from './player.js';
 import { resolveBallObstacleCollisions, activeArenaId, GOALS, ARENA_FOUNDRY_GOALS, arenaScore, resetArena, arena1State, goalTriggerLeft, goalTriggerRight } from './obstacles.js';
 import { recordGoal } from './progression.js';
+import { playSound } from './audio/index.js';
 
 const _mapW = (typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : ARENA_WIDTH) || 3600;
 const _centerX = _mapW / 2; // 1800
@@ -185,6 +186,11 @@ function launchBallKinetic(playerObj, spawnGrass, baseSpeedOverride, isSpinVolle
   ball.trail = [];
 
   playerObj.chargePower = 0;
+  playSound('ball_kick', {
+    x: ball.x,
+    y: ball.y,
+    gainScale: Math.max(0.7, Math.min(1.25, (baseSpeed || 12) / 14))
+  });
   if (spawnGrass) {
     spawnGrass(ball.x, ball.y, playerObj.facing);
   }
@@ -448,10 +454,16 @@ export function updateBall(GROUND_Y) {
 
     if (ball.y >= wallTop) {
       if (ball.x - ball.colRadius <= wallLeft) {
+        if (Math.abs(ball.vx) > 2.0) {
+          playSound('ball_bounce', { x: ball.x, y: ball.y, gainScale: Math.min(1.1, Math.max(0.35, Math.abs(ball.vx) / 14)) });
+        }
         ball.x = wallLeft + ball.colRadius;
         ball.vx = Math.abs(ball.vx) * 0.88;
         ball.spin = -ball.spin * 0.75;
       } else if (ball.x + ball.colRadius >= wallRight) {
+        if (Math.abs(ball.vx) > 2.0) {
+          playSound('ball_bounce', { x: ball.x, y: ball.y, gainScale: Math.min(1.1, Math.max(0.35, Math.abs(ball.vx) / 14)) });
+        }
         ball.x = wallRight - ball.colRadius;
         ball.vx = -Math.abs(ball.vx) * 0.88;
         ball.spin = -ball.spin * 0.75;
@@ -467,6 +479,9 @@ export function updateBall(GROUND_Y) {
 
     if (ball.y + ball.colRadius >= GROUND_Y && isGroundUnderBall && ball.y - ball.colRadius <= GROUND_Y + 12) {
       ball.y = GROUND_Y - ball.colRadius;
+      if (Math.abs(ball.vy) > 2.2) {
+        playSound('ball_bounce', { x: ball.x, y: ball.y, gainScale: Math.min(1.1, Math.max(0.3, Math.abs(ball.vy) / 13)) });
+      }
       if (Math.abs(ball.vy) > 0.8) {
         ball.vy = -ball.vy * 0.58;
       } else {

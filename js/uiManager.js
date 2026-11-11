@@ -6,6 +6,14 @@
 import { CONFIG, isTouchDevice } from './config.js';
 import { CLASSES } from './classes/index.js';
 import {
+  playUiClick,
+  playUiHover,
+  playUiPause,
+  playUiResume,
+  playTestTone,
+  syncAudioSettings
+} from './audio/index.js';
+import {
   drawPlayer,
   drawHeadHairPreview,
   drawHeadBeardPreview,
@@ -152,207 +160,15 @@ export const DEFAULT_CLASS_APPEARANCES = {
 const DEFAULT_APPEARANCE = DEFAULT_CLASS_APPEARANCES.RAPTOR;
 
 // =============================================================================
-// 1. PROCEDURALNY SYNTEZATOR DŹWIĘKÓW UI (WEB AUDIO API)
+// 1. DELEGACJA DZWIEKOW UI DO MODULU AUDIO (JS/AUDIO/)
 // =============================================================================
-let audioCtx = null;
-let masterGainNode = null;
-let sfxGainNode = null;
-let hasUserGesture = false;
-
-function isUserGestureActive() {
-  if (hasUserGesture) return true;
-  if (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.hasBeenActive) {
-    hasUserGesture = true;
-    return true;
-  }
-  return false;
-}
-
-// Globalna obsługa pierwszego gestu użytkownika (odblokowanie Web Audio bez ostrzeżeń Autoplay)
-if (typeof window !== 'undefined') {
-  const unlockAudio = () => {
-    hasUserGesture = true;
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
-  };
-  ['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(evt => {
-    window.addEventListener(evt, unlockAudio, { capture: true, passive: true });
-  });
-}
-
-function getAudioContext(isDirectUserGesture = false) {
-  if (typeof window === 'undefined') return null;
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return null;
-
-  if (isDirectUserGesture) {
-    hasUserGesture = true;
-  }
-
-  // Zabezpieczenie Chrome Autoplay Policy:
-  // Jeśli użytkownik nie wykonał jeszcze żadnego gestu, nie twórz ani nie wznawiaj AudioContextu
-  if (!hasUserGesture && !isUserGestureActive()) {
-    return null;
-  }
-
-  if (!audioCtx) {
-    try {
-      audioCtx = new AudioContextClass();
-      masterGainNode = audioCtx.createGain();
-      sfxGainNode = audioCtx.createGain();
-      sfxGainNode.connect(masterGainNode);
-      masterGainNode.connect(audioCtx.destination);
-      if (uiManager && uiManager.settings) {
-        const vol = uiManager.settings.muteAll ? 0 : (uiManager.settings.masterVolume / 100);
-        masterGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
-        const sfx = (uiManager.settings.sfxVolume / 100);
-        sfxGainNode.gain.setValueAtTime(sfx, audioCtx.currentTime);
-      }
-    } catch (_) {
-      return null;
-    }
-  }
-
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-  return audioCtx;
-}
-
-export function playUiClick() {
-  const ctx = getAudioContext(true);
-  if (!ctx || uiManager.settings.muteAll) return;
-  try {
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, now);
-    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.04);
-
-    const sfxVol = (uiManager.settings.sfxVolume / 100) * 0.18;
-    gain.gain.setValueAtTime(sfxVol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-
-    osc.connect(gain);
-    gain.connect(sfxGainNode);
-
-    osc.start(now);
-    osc.stop(now + 0.05);
-  } catch (_) {}
-}
-
-export function playUiHover() {
-  const ctx = getAudioContext(false);
-  if (!ctx || ctx.state !== 'running' || uiManager.settings.muteAll) return;
-  try {
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(540, now);
-
-    const sfxVol = (uiManager.settings.sfxVolume / 100) * 0.06;
-    gain.gain.setValueAtTime(sfxVol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-
-    osc.connect(gain);
-    gain.connect(sfxGainNode);
-
-    osc.start(now);
-    osc.stop(now + 0.03);
-  } catch (_) {}
-}
-
-export function playUiPause() {
-  const ctx = getAudioContext(true);
-  if (!ctx || uiManager.settings.muteAll) return;
-  try {
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(620, now);
-    osc.frequency.exponentialRampToValueAtTime(310, now + 0.12);
-
-    const sfxVol = (uiManager.settings.sfxVolume / 100) * 0.22;
-    gain.gain.setValueAtTime(sfxVol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-    osc.connect(gain);
-    gain.connect(sfxGainNode);
-
-    osc.start(now);
-    osc.stop(now + 0.14);
-  } catch (_) {}
-}
-
-export function playUiResume() {
-  const ctx = getAudioContext(true);
-  if (!ctx || uiManager.settings.muteAll) return;
-  try {
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(380, now);
-    osc.frequency.exponentialRampToValueAtTime(760, now + 0.11);
-
-    const sfxVol = (uiManager.settings.sfxVolume / 100) * 0.22;
-    gain.gain.setValueAtTime(sfxVol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-    osc.connect(gain);
-    gain.connect(sfxGainNode);
-
-    osc.start(now);
-    osc.stop(now + 0.12);
-  } catch (_) {}
-}
-
-export function playTestTone() {
-  const ctx = getAudioContext(true);
-  if (!ctx) return;
-  try {
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, now); // C5
-    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
-    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
-    osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
-
-    const sfxVol = (uiManager.settings.sfxVolume / 100) * 0.25;
-    gain.gain.setValueAtTime(sfxVol, now);
-    gain.gain.setValueAtTime(sfxVol, now + 0.32);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-    osc.connect(gain);
-    gain.connect(sfxGainNode);
-
-    osc.start(now);
-    osc.stop(now + 0.45);
-  } catch (_) {}
-}
+export {
+  playUiClick,
+  playUiHover,
+  playUiPause,
+  playUiResume,
+  playTestTone
+};
 
 /**
  * Zabezpieczona obsługa szybkiego kliknięcia (Quick Tap / Click)
@@ -942,14 +758,7 @@ export const uiManager = {
     }
 
     // 1. Audio głośności
-    if (masterGainNode) {
-      const vol = this.settings.muteAll ? 0 : (this.settings.masterVolume / 100);
-      masterGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
-    }
-    if (sfxGainNode) {
-      const sfx = (this.settings.sfxVolume / 100);
-      sfxGainNode.gain.setValueAtTime(sfx, audioCtx.currentTime);
-    }
+    syncAudioSettings(this.settings);
 
     // 2. Opcje rozgrywki i silnika
     CONFIG.GORE_ENABLED = !!this.settings.goreEnabled;
