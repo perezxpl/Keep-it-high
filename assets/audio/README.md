@@ -1,24 +1,24 @@
 # Zewnetrzne pliki dzwiekowe (`assets/audio/`)
 
-Gra korzysta wylacznie z prawdziwych nagran audio w domenie publicznej (**CC0 1.0**) zapisanych w tym katalogu (sztuczna synteza rozgrywki w `js/audio/state.js` jest wylaczona flaga `ENABLE_GAMEPLAY_SYNTH: false`).
+Gra korzysta wylacznie z prawdziwych nagran audio w domenie publicznej (**CC0 1.0 Universal**) zapisanych w tym katalogu (sztuczna synteza rozgrywki w `js/audio/state.js` jest wylaczona flaga `ENABLE_GAMEPLAY_SYNTH: false`).
 
 ## Zrodla uzytych paczek CC0 1.0 (Public Domain)
-- **Free Firearm Sound Library (`buddingmonkey/FreeFirearmsSFXLibrary`, CC0 1.0)** — prawdziwe nagrania strzalow (AK-47, Benelli Nova, Winchester Model 12, Tikka, Walther PPQ 9mm, 1911).
-- **Kenney Interface Sounds (`CC0 1.0`)** — klikniecia, suwaki i przejscia interfejsu UI (`ui_click`, `ui_pause`, `ui_resume`, `weapon_dry_fire`).
-- **OpenGameArt (`CC0 1.0`)** — eksplozje, odglosy przeladowania i zamkow, uderzenia metal/ciasto, chlasty mieczy, silniki odrzutowe, para/tloki, alarm, dzwonek testowy, skoki i okrzyki bolu.
+- **Free Firearm Sound Library (`buddingmonkey/FreeFirearmsSFXLibrary`, CC0 1.0)** — 192 kHz sciezki Master Tracks zza strzelca (bez przesuniec fazowych mikrofonow frontowych): AK-47, Benelli Nova, Winchester Model 12, Tikka, Walther PPQ 9mm, Smith & Wesson, a takze prawdziwe mechaniki broni (przeladowanie, suchy strzal, magazynek, suwadlo, przeladowanie strzelby).
+- **Kenney Impact & Interface Sounds (`CC0 1.0`)** — trafienia w cialo (`impact_punch_*`), trafienia w kamizelke i tarcze (`impact_plate_*`, `impact_metal_*`), rykoszety (`impact_tin_*`, `impact_generic_*`), tupniecie Enforcera (`impact_mining_*`), kopniecia i odbicia pilki (`impact_soft_*`), slupek (`impact_bell_heavy_*`), skok i ladowanie (`footstep_concrete_*`), oraz interfejs UI (`ui_click`, `ui_pause`, `ui_resume`).
+- **OpenGameArt CC0 (`CC0 1.0`)** — rakieta RPG-7 (`missile.wav`), dopalacz Rocket Boots (`sci-fi-sfx/rocket_01.ogg`), plynna petla silnika odrzutowego (`engine_loop.ogg`), eksplozje (`sci-fi-sfx/explosion_01.ogg`, `yd-Sounds/explode.ogg`, `explosion.wav`, `explosions-4`), headshot i rozczlonkowanie (`Wet Break 1..3`), krotkie okrzyki smierci (`death_pain_grunts`), fanfara bramki (`theircoming3.ogg`), syrena i dzwonek testowy (`alarm2.ogg`, `Ding.ogg`).
 
 ## Podmiana dowolnego dzwieku na wlasny
 
 Jesli chcesz zastapic wybrany efekt wlasnym nagraniem (`.wav`, `.ogg`, `.mp3`, `.webm`), **nie musisz modyfikowac kodu JavaScript**:
 
-1. Wrzuć plik do katalogu `assets/audio/`.
+1. Wrzuc plik do katalogu `assets/audio/`.
 2. Zaktualizuj odpowiedni wpis w `assets/audio/manifest.json`:
 
 ```json
 "weapon_ak47": {
   "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
-  "volume": 0.9,
-  "pitchJitter": 0.05
+  "volume": 1.10,
+  "pitchJitter": 0.03
 }
 ```
 

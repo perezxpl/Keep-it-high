@@ -42,11 +42,11 @@ export function ensureAudioContext() {
       const sfxGain = ctx.createGain();
       const uiGain = ctx.createGain();
 
-      compressor.threshold.setValueAtTime(-14, ctx.currentTime);
-      compressor.knee.setValueAtTime(18, ctx.currentTime);
-      compressor.ratio.setValueAtTime(6, ctx.currentTime);
-      compressor.attack.setValueAtTime(0.003, ctx.currentTime);
-      compressor.release.setValueAtTime(0.18, ctx.currentTime);
+      compressor.threshold.setValueAtTime(-6, ctx.currentTime);
+      compressor.knee.setValueAtTime(8, ctx.currentTime);
+      compressor.ratio.setValueAtTime(3.5, ctx.currentTime);
+      compressor.attack.setValueAtTime(0.002, ctx.currentTime);
+      compressor.release.setValueAtTime(0.10, ctx.currentTime);
 
       sfxGain.connect(compressor);
       uiGain.connect(compressor);
@@ -140,7 +140,17 @@ export function setAudioGameState(newState) {
   }
 }
 
-function computeSpatialAttenuation(x, y, maxDistance) {
+const BACKGROUND_SFX_IDS = new Set([
+  'player_jump',
+  'player_land',
+  'weapon_reload_start',
+  'weapon_reload_end',
+  'weapon_pump',
+  'weapon_dry_fire',
+  'hit_ricochet'
+]);
+
+function computeSpatialAttenuation(x, y, maxDistance, soundId = '') {
   if (typeof x !== 'number' || typeof y !== 'number' || Number.isNaN(x) || Number.isNaN(y)) {
     return { gainScale: 1.0, pan: 0, audible: true };
   }
@@ -148,10 +158,18 @@ function computeSpatialAttenuation(x, y, maxDistance) {
   let listenerX = x;
   let listenerY = y;
   let halfViewW = 720;
+  let isNearLocalPlayer = false;
 
   if (typeof window !== 'undefined') {
     const cam = window.camera;
     const localPlayer = window.player;
+    if (localPlayer && typeof localPlayer.x === 'number') {
+      const px = localPlayer.x + (localPlayer.w || 24) * 0.5;
+      const py = localPlayer.y + (localPlayer.h || 70) * 0.5;
+      if (Math.hypot(x - px, y - py) <= 95) {
+        isNearLocalPlayer = true;
+      }
+    }
     if (cam && typeof cam.viewWidth === 'number' && typeof cam.x === 'number') {
       const zoom = cam.zoom || 1;
       const worldViewW = cam.viewWidth / zoom;
@@ -165,6 +183,10 @@ function computeSpatialAttenuation(x, y, maxDistance) {
     }
   }
 
+  if (isNearLocalPlayer) {
+    return { gainScale: 1.0, pan: 0, audible: true };
+  }
+
   const dx = x - listenerX;
   const dy = y - listenerY;
   const dist = Math.hypot(dx, dy);
@@ -175,7 +197,10 @@ function computeSpatialAttenuation(x, y, maxDistance) {
   }
 
   const t = Math.max(0, 1 - dist / radius);
-  const gainScale = t * (0.35 + 0.65 * t);
+  let gainScale = Math.pow(t, 1.65);
+  if (BACKGROUND_SFX_IDS.has(soundId)) {
+    gainScale *= 0.55;
+  }
   const pan = Math.max(-AUDIO_CONFIG.PAN_MAX, Math.min(AUDIO_CONFIG.PAN_MAX, dx / halfViewW));
   return { gainScale, pan, audible: true };
 }
@@ -224,7 +249,7 @@ export function playSound(soundId, opts = {}) {
   let spatialGain = 1.0;
   let pan = typeof opts.pan === 'number' ? opts.pan : 0;
   if (def.spatial && opts.spatial !== false) {
-    const spatial = computeSpatialAttenuation(opts.x, opts.y, opts.maxDistance || def.maxDistance);
+    const spatial = computeSpatialAttenuation(opts.x, opts.y, opts.maxDistance || def.maxDistance, soundId);
     if (!spatial.audible) return false;
     spatialGain = spatial.gainScale;
     if (typeof opts.pan !== 'number') {
@@ -415,7 +440,9 @@ function updateEntityJetpack(entity, isPlaying, dt) {
   }
 
   const power = Math.max(0.25, Math.min(1.4, entity.jetpackPower ?? 1.0));
-  const targetGain = def.volume * spatial.gainScale * (0.55 + 0.55 * power);
+  const isLocalEntity = (typeof window !== 'undefined' && window.player && entity === window.player);
+  const entityWeight = isLocalEntity ? 1.0 : 0.45;
+  const targetGain = def.volume * spatial.gainScale * entityWeight * (0.55 + 0.55 * power);
 
   if (!record) {
     const voice = createJetpackVoice(ctx, audioState.sfxGain, spatial.pan, 0.0001);

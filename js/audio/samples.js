@@ -74,7 +74,7 @@ export function loadAndDecodeSampleUrl(url) {
     return Promise.resolve(null);
   }
 
-  const p = fetch(url)
+  const p = fetch(url, { cache: 'no-cache' })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.arrayBuffer();

@@ -3,56 +3,57 @@
   "files": {
     "weapon_ak47": {
       "src": ["weapon_ak47_1.wav", "weapon_ak47_2.wav"],
-      "volume": 0.9,
-      "pitchJitter": 0.05
+      "volume": 1.10,
+      "pitchJitter": 0.03
     },
     "weapon_shotgun": {
       "src": "weapon_shotgun_spas.wav",
-      "volume": 0.95,
-      "pitchJitter": 0.04
+      "volume": 1.12,
+      "pitchJitter": 0.03
     },
     "weapon_pump": {
       "src": "weapon_pump.wav",
-      "volume": 0.85,
-      "pitchJitter": 0.05
+      "volume": 0.88,
+      "pitchJitter": 0.03
     },
     "weapon_sniper": {
       "src": "weapon_sniper.wav",
-      "volume": 1.0,
-      "pitchJitter": 0.03
+      "volume": 1.14,
+      "pitchJitter": 0.02
     },
     "weapon_glock": {
       "src": ["weapon_glock_1.wav", "weapon_glock_2.wav"],
-      "volume": 0.88,
-      "pitchJitter": 0.05
+      "volume": 1.06,
+      "pitchJitter": 0.04
     },
     "weapon_revolver": {
       "src": "weapon_magnum.wav",
-      "volume": 0.98,
-      "pitchJitter": 0.04
+      "volume": 1.12,
+      "pitchJitter": 0.03
     },
     "weapon_sawed_off": {
       "src": "weapon_sawed_off.wav",
-      "volume": 0.98,
-      "pitchJitter": 0.04
+      "volume": 1.12,
+      "pitchJitter": 0.03
     },
     "weapon_rpg7": {
       "src": "weapon_rpg7.wav",
-      "volume": 0.96,
+      "volume": 0.85,
+      "pitchJitter": 0.03
+    },
+    "weapon_melee_swing": {
+      "src": ["melee_swing_1.wav", "melee_swing_2.wav"],
+      "volume": 0.90,
       "pitchJitter": 0.04
     },
-    "weapon_melee_swing": [
-      "melee_swing_1.ogg",
-      "melee_swing_2.ogg",
-      "melee_swing_3.ogg"
-    ],
-    "weapon_melee_hit": [
-      "melee_hit_1.ogg",
-      "melee_hit_2.ogg"
-    ],
+    "weapon_melee_hit": {
+      "src": ["melee_hit_1.wav", "melee_hit_2.ogg"],
+      "volume": 0.95,
+      "pitchJitter": 0.04
+    },
     "weapon_dry_fire": {
-      "src": "weapon_dry_fire.wav",
-      "volume": 0.85
+      "src": ["weapon_dry_fire_1.wav", "weapon_dry_fire_2.wav"],
+      "volume": 0.90
     },
     "weapon_reload_start": [
       "reload_start_1.wav",
@@ -62,108 +63,114 @@
       "reload_end_1.wav",
       "reload_end_2.wav"
     ],
-    "grenade_throw": "grenade_throw.ogg",
+    "grenade_throw": {
+      "src": "grenade_throw.wav",
+      "volume": 0.85
+    },
     "grenade_bounce": [
       "grenade_bounce_1.wav",
       "grenade_bounce_2.wav"
     ],
     "explosion_grenade": {
-      "src": ["explosion_grenade_1.ogg", "explosion_grenade_2.ogg"],
-      "volume": 1.0,
-      "pitchJitter": 0.06
+      "src": ["explosion_grenade_1.wav", "explosion_grenade_2.ogg"],
+      "volume": 0.96,
+      "pitchJitter": 0.04
     },
     "explosion_rpg": {
-      "src": ["explosion_rpg_1.wav", "explosion_rpg_2.ogg"],
-      "volume": 1.05,
-      "pitchJitter": 0.05
+      "src": ["explosion_rpg_1.wav", "explosion_rpg_2.wav"],
+      "volume": 0.98,
+      "pitchJitter": 0.04
     },
     "explosion_heavy": {
-      "src": ["explosion_heavy.ogg", "explosion_rpg_1.wav"],
-      "volume": 1.08,
-      "pitchJitter": 0.05
+      "src": ["explosion_heavy_1.wav", "explosion_heavy_2.wav"],
+      "volume": 0.94,
+      "pitchJitter": 0.04
     },
     "explosion_toxic": {
       "src": "explosion_toxic.ogg",
-      "volume": 0.98,
-      "pitchJitter": 0.06
+      "volume": 0.95,
+      "pitchJitter": 0.04
     },
-    "hit_flesh": [
-      "hit_flesh_1.ogg",
-      "hit_flesh_2.ogg",
-      "hit_flesh_3.ogg"
-    ],
+    "hit_flesh": {
+      "src": ["hit_flesh_1.ogg", "hit_flesh_2.ogg", "hit_flesh_3.ogg"],
+      "volume": 0.90,
+      "pitchJitter": 0.05
+    },
     "hit_headshot": {
-      "src": "hit_headshot.ogg",
-      "volume": 1.05
+      "src": "hit_headshot.wav",
+      "volume": 1.00
     },
-    "hit_armor": [
-      "hit_armor_1.ogg",
-      "hit_armor_2.ogg"
-    ],
-    "hit_helmet_break": [
-      "hit_helmet_break_1.wav",
-      "hit_helmet_break_2.ogg"
-    ],
-    "hit_shield": [
-      "hit_shield_1.ogg",
-      "hit_shield_2.ogg"
-    ],
-    "hit_ricochet": [
-      "hit_ricochet_1.ogg",
-      "grenade_bounce_1.wav",
-      "grenade_bounce_2.wav"
-    ],
+    "hit_armor": {
+      "src": ["hit_armor_1.ogg", "hit_armor_2.ogg", "hit_armor_3.ogg"],
+      "volume": 0.92,
+      "pitchJitter": 0.04
+    },
+    "hit_helmet_break": {
+      "src": ["hit_helmet_break_1.wav", "hit_helmet_break_2.ogg"],
+      "volume": 0.92
+    },
+    "hit_shield": {
+      "src": ["hit_shield_1.ogg", "hit_shield_2.ogg"],
+      "volume": 0.90
+    },
+    "hit_ricochet": {
+      "src": ["hit_ricochet_1.ogg", "hit_ricochet_2.ogg", "hit_ricochet_3.ogg"],
+      "volume": 0.82
+    },
     "jetpack_loop": {
-      "src": "jetpack_loop.ogg",
-      "volume": 0.85,
+      "src": "jetpack_loop.wav",
+      "volume": 0.78,
       "loop": true
     },
     "rocket_boots_dash": {
       "src": "rocket_boots_dash.wav",
-      "volume": 0.95
+      "volume": 0.90
     },
     "enforcer_piston_jump": {
       "src": "enforcer_piston_jump.wav",
-      "volume": 0.95
+      "volume": 0.90
     },
     "enforcer_ground_slam": {
-      "src": ["enforcer_ground_slam_1.wav", "enforcer_ground_slam_2.ogg"],
-      "volume": 1.05
+      "src": ["enforcer_ground_slam_1.ogg", "enforcer_ground_slam_2.ogg"],
+      "volume": 0.95
     },
     "player_jump": {
-      "src": "player_jump.wav",
-      "volume": 0.72
+      "src": "player_jump.ogg",
+      "volume": 0.75
     },
     "player_land": {
-      "src": ["player_land_1.wav", "player_land_2.wav"],
+      "src": ["player_land_1.ogg", "player_land_2.ogg", "player_land_3.ogg"],
+      "volume": 0.82
+    },
+    "player_death": {
+      "src": ["death_1.wav", "death_2.wav", "death_3.wav"],
+      "volume": 0.82,
+      "pitchJitter": 0.03
+    },
+    "gore_gib": {
+      "src": ["gore_gib_1.wav", "gore_gib_2.wav", "gore_gib_3.wav"],
+      "volume": 0.88,
+      "pitchJitter": 0.05
+    },
+    "ball_kick": {
+      "src": ["ball_kick_1.ogg", "ball_kick_2.ogg"],
+      "volume": 0.92
+    },
+    "ball_bounce": {
+      "src": ["ball_bounce_1.ogg", "ball_bounce_2.ogg"],
       "volume": 0.85
     },
-    "player_death": [
-      "death_1.ogg",
-      "death_2.ogg",
-      "death_3.wav"
-    ],
-    "gore_gib": [
-      "gore_gib_1.ogg",
-      "gore_gib_2.ogg",
-      "gore_gib_3.ogg"
-    ],
-    "ball_kick": {
-      "src": "ball_kick.wav",
-      "volume": 0.95
-    },
-    "ball_bounce": "ball_bounce.ogg",
     "ball_post_clang": {
-      "src": "ball_post_clang.wav",
-      "volume": 0.95
+      "src": ["ball_post_clang_1.ogg", "ball_post_clang_2.ogg"],
+      "volume": 0.90
     },
     "goal_horn": {
-      "src": "goal_horn.ogg",
-      "volume": 0.92
+      "src": "goal_horn.wav",
+      "volume": 0.85
     },
     "acid_siren": {
       "src": "acid_siren.ogg",
-      "volume": 0.92
+      "volume": 0.88
     },
     "ui_click": [
       "ui_click_1.wav",
