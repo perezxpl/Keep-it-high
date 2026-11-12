@@ -197,9 +197,19 @@ export function sendPlayerState(localPlayer) {
   if (!isNetworkActive()) return;
 
   const now = performance.now();
-  const minInterval = (wsState && wsState.connected) ? 30 : 16;
+  const isIdle = (
+    Math.abs(localPlayer.vx || 0) < 0.05 &&
+    Math.abs(localPlayer.vy || 0) < 0.05 &&
+    !localPlayer.isAiming &&
+    !localPlayer.isJetpacking &&
+    !localPlayer.isSliding &&
+    !localPlayer.isJumping &&
+    !localPlayer.isKickCharging
+  );
+  const minInterval = (wsState && wsState.connected) ? (isIdle ? 100 : 25) : 16;
   if (now - networkState.lastStateSent < minInterval) return;
   networkState.lastStateSent = now;
+  networkState._pStateSeq = (networkState._pStateSeq || 0) + 1;
 
   let visualsToSend = undefined;
   if (localPlayer.customVisuals) {
@@ -214,6 +224,7 @@ export function sendPlayerState(localPlayer) {
   try {
     broadcastNetworkPacket({
       type: 'p_state',
+      seq: networkState._pStateSeq,
       x: Math.round(localPlayer.x * 10) / 10,
       y: Math.round(localPlayer.y * 10) / 10,
       relY: Math.round((GROUND_Y - localPlayer.y) * 10) / 10,
@@ -374,7 +385,8 @@ export function sendReturnToLobby() {
 export function sendBotsState(activeBotsList) {
   if (!isMatchHost() || !isMatchActive()) return;
   const now = performance.now();
-  if (now - (networkState.lastBotsStateSent || 0) < 22) return;
+  const minInterval = (wsState && wsState.connected) ? 40 : 22;
+  if (now - (networkState.lastBotsStateSent || 0) < minInterval) return;
   networkState.lastBotsStateSent = now;
 
   try {
@@ -998,6 +1010,23 @@ export function handleNetworkData(data, senderPeerId = null) {
       const targetRp = getOrCreateRemotePlayer(pid, slot, data.name, data.team);
       if (!targetRp) break;
 
+      if (typeof data.seq === 'number') {
+        if (typeof targetRp._lastSeq === 'number' && data.seq <= targetRp._lastSeq && (targetRp._lastSeq - data.seq) < 300) {
+          break;
+        }
+        targetRp._lastSeq = data.seq;
+      }
+
+      let forceSnap = false;
+      if (typeof data.serverTs === 'number') {
+        const sampleOffset = Date.now() - data.serverTs;
+        if (typeof networkState._minServerOffset !== 'number' || sampleOffset < networkState._minServerOffset) {
+          networkState._minServerOffset = sampleOffset;
+        }
+        const ageMs = sampleOffset - networkState._minServerOffset;
+        if (ageMs > 120) forceSnap = true;
+      }
+
       const wasDead = !!targetRp.isDead;
       targetRp.active = true;
       targetRp.targetX = data.x;
@@ -1052,7 +1081,7 @@ export function handleNetworkData(data, senderPeerId = null) {
         targetRp.name = data.name;
       }
 
-      if (!targetRp.hasReceivedState || (wasDead && !targetRp.isDead)) {
+      if (!targetRp.hasReceivedState || (wasDead && !targetRp.isDead) || forceSnap) {
         targetRp.x = targetRp.targetX;
         targetRp.y = targetRp.targetY;
         targetRp.hasReceivedState = true;

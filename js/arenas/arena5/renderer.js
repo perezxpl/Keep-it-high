@@ -19,6 +19,34 @@ import {
   arena5State
 } from './state.js';
 
+let _cachedBgGrad = null;
+let _cachedBgGradHeight = 0;
+let _cachedHazardPattern = null;
+
+function getHazardPattern(ctx) {
+  if (_cachedHazardPattern) return _cachedHazardPattern;
+  if (typeof document === 'undefined' || !ctx || typeof ctx.createPattern !== 'function') return null;
+
+  const patCanvas = document.createElement('canvas');
+  patCanvas.width = 24;
+  patCanvas.height = 24;
+  const pctx = patCanvas.getContext('2d');
+  if (!pctx) return null;
+
+  pctx.fillStyle = '#0f172a';
+  pctx.fillRect(0, 0, 24, 24);
+  pctx.strokeStyle = '#eab308';
+  pctx.lineWidth = 8;
+  pctx.beginPath();
+  pctx.moveTo(-12, 12); pctx.lineTo(12, 36);
+  pctx.moveTo(0, -12); pctx.lineTo(36, 24);
+  pctx.moveTo(12, -24); pctx.lineTo(48, 12);
+  pctx.stroke();
+
+  _cachedHazardPattern = ctx.createPattern(patCanvas, 'repeat');
+  return _cachedHazardPattern;
+}
+
 /**
  * Renderuje tło szybu fabrycznego w przestrzeni ekranu (przed postaciami i transformatą kamery)
  */
@@ -28,17 +56,17 @@ export function drawArena5Background(ctx, camera) {
   const canvasWidth = (ctx.canvas && ctx.canvas.width) ? (ctx.canvas.clientWidth || ctx.canvas.width) : 1920;
   const canvasHeight = (ctx.canvas && ctx.canvas.height) ? (ctx.canvas.clientHeight || ctx.canvas.height) : 1080;
 
-  ctx.save();
+  if (!_cachedBgGrad || _cachedBgGradHeight !== canvasHeight) {
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+    bgGrad.addColorStop(0, '#060a12');
+    bgGrad.addColorStop(0.5, '#0a101d');
+    bgGrad.addColorStop(1, '#05070d');
+    _cachedBgGrad = bgGrad;
+    _cachedBgGradHeight = canvasHeight;
+  }
 
-  // Głębokie, surowe tło przemysłowego silosu orbitalnego wypełniające cały ekran
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-  bgGrad.addColorStop(0, '#060a12');
-  bgGrad.addColorStop(0.5, '#0a101d');
-  bgGrad.addColorStop(1, '#05070d');
-  ctx.fillStyle = bgGrad;
+  ctx.fillStyle = _cachedBgGrad;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  ctx.restore();
 }
 
 /**
@@ -148,9 +176,16 @@ function drawShaftWalls(ctx, camera) {
   // Prawa ściana: wypełnia wszystko od SHAFT_RIGHT aż do dalekiego brzegu po prawej
   ctx.fillRect(SHAFT_RIGHT, topY, 3000 + (camera.viewWidth || 1600), h);
 
-  // Żółto-czarne pasy ostrzegawcze na krawędziach wewnętrznych
-  drawHazardStripes(ctx, SHAFT_LEFT - 24, topY, 24, h);
-  drawHazardStripes(ctx, SHAFT_RIGHT, topY, 24, h);
+  // Żółto-czarne pasy ostrzegawcze na krawędziach wewnętrznych (cached pattern - zero ctx.clip)
+  const hazardPat = getHazardPattern(ctx);
+  if (hazardPat) {
+    ctx.fillStyle = hazardPat;
+    ctx.fillRect(SHAFT_LEFT - 24, topY, 24, h);
+    ctx.fillRect(SHAFT_RIGHT, topY, 24, h);
+  } else {
+    drawHazardStripes(ctx, SHAFT_LEFT - 24, topY, 24, h);
+    drawHazardStripes(ctx, SHAFT_RIGHT, topY, 24, h);
+  }
 
   // Napisy taktyczne na ścianach
   ctx.save();
@@ -212,24 +247,30 @@ function drawBaseFloor(ctx, camera) {
   ctx.fillStyle = '#475569';
   ctx.fillRect(SHAFT_LEFT - 100, floorY, (COLS * CELL_SIZE) + 200, 6);
 
-  // Przemysłowe skośne pasy ostrzegawcze na krawędzi platformy
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
-  ctx.clip();
-  ctx.fillStyle = '#ca8a04';
-  ctx.fillRect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
-  ctx.fillStyle = '#0f172a';
-  for (let x = SHAFT_LEFT - 120; x < SHAFT_LEFT + (COLS * CELL_SIZE) + 120; x += 28) {
+  // Przemysłowe skośne pasy ostrzegawcze na krawędzi platformy (cached pattern)
+  const hazardPat = getHazardPattern(ctx);
+  if (hazardPat) {
+    ctx.fillStyle = hazardPat;
+    ctx.fillRect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
+  } else {
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(x, floorY + 20);
-    ctx.lineTo(x + 14, floorY + 20);
-    ctx.lineTo(x + 24, floorY + 6);
-    ctx.lineTo(x + 10, floorY + 6);
-    ctx.closePath();
-    ctx.fill();
+    ctx.rect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
+    ctx.clip();
+    ctx.fillStyle = '#ca8a04';
+    ctx.fillRect(SHAFT_LEFT - 100, floorY + 6, (COLS * CELL_SIZE) + 200, 14);
+    ctx.fillStyle = '#0f172a';
+    for (let x = SHAFT_LEFT - 120; x < SHAFT_LEFT + (COLS * CELL_SIZE) + 120; x += 28) {
+      ctx.beginPath();
+      ctx.moveTo(x, floorY + 20);
+      ctx.lineTo(x + 14, floorY + 20);
+      ctx.lineTo(x + 24, floorY + 6);
+      ctx.lineTo(x + 10, floorY + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 /**
@@ -625,15 +666,13 @@ function drawLineClearEffects(ctx) {
 
       ctx.save();
 
-      // 1. Pulsująca poświata całego rzędu
+      // 1. Pulsująca poświata całego rzędu (bez createLinearGradient)
       const pulse = 0.5 + 0.5 * Math.sin(now * 0.035);
       const rowAlpha = (0.35 + 0.45 * progress) * pulse;
-      const rowGrad = ctx.createLinearGradient(0, topY, 0, bottomY);
-      rowGrad.addColorStop(0, `rgba(56, 189, 248, ${rowAlpha * 0.6})`);
-      rowGrad.addColorStop(0.5, `rgba(255, 255, 255, ${rowAlpha})`);
-      rowGrad.addColorStop(1, `rgba(56, 189, 248, ${rowAlpha * 0.6})`);
-      ctx.fillStyle = rowGrad;
+      ctx.fillStyle = `rgba(56, 189, 248, ${rowAlpha * 0.6})`;
       ctx.fillRect(SHAFT_LEFT, topY, COLS * CELL_SIZE, CELL_SIZE);
+      ctx.fillStyle = `rgba(255, 255, 255, ${rowAlpha * 0.65})`;
+      ctx.fillRect(SHAFT_LEFT, ly - CELL_SIZE * 0.22, COLS * CELL_SIZE, CELL_SIZE * 0.44);
 
       // 2. Poziome laserowe krawędzie tnące na górze i na dole
       ctx.strokeStyle = '#00f0ff';
@@ -804,15 +843,12 @@ function drawBottomRecycler(ctx, camera) {
 
   ctx.save();
 
-  // Czerwona poświata dolnej strefy śmierci
+  // Czerwona poświata dolnej strefy śmierci (bez createLinearGradient)
   const pulse = 0.75 + 0.25 * Math.sin(performance.now() * 0.02);
-  const deathGrad = ctx.createLinearGradient(camera.x, bottomY - 60, camera.x, bottomY + 120);
-  deathGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
-  deathGrad.addColorStop(0.5, `rgba(220, 38, 38, ${0.55 * pulse})`);
-  deathGrad.addColorStop(1, 'rgba(153, 27, 27, 0.95)');
-
-  ctx.fillStyle = deathGrad;
-  ctx.fillRect(camera.x - 50, bottomY - 60, viewWidth + 100, 180);
+  ctx.fillStyle = `rgba(220, 38, 38, ${0.32 * pulse})`;
+  ctx.fillRect(camera.x - 50, bottomY - 40, viewWidth + 100, 70);
+  ctx.fillStyle = 'rgba(153, 27, 27, 0.92)';
+  ctx.fillRect(camera.x - 50, bottomY + 10, viewWidth + 100, 110);
 
   // Zębate laserowe linie mielenia
   ctx.strokeStyle = `rgba(254, 202, 202, ${pulse})`;

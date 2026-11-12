@@ -9,6 +9,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS_PER_MATCH = 6;
+const DROPPABLE_RELAY_TYPES = new Set(['p_state', 'bots_state', 'b_state']);
+const SERVER_DROPPABLE_BUFFER_THRESHOLD = 2048;
 
 // Rejestr aktywnych pokojow meczowych: key = roomId, value = Room
 const rooms = new Map();
@@ -67,8 +69,12 @@ class GameRoom {
 
   broadcast(messageObj, excludeSocketId = null) {
     const raw = JSON.stringify(messageObj);
+    const isDroppable = DROPPABLE_RELAY_TYPES.has(messageObj?.type);
     for (const [sId, p] of this.players.entries()) {
       if (sId !== excludeSocketId && p.ws.readyState === WebSocket.OPEN) {
+        if (isDroppable && p.ws.bufferedAmount > SERVER_DROPPABLE_BUFFER_THRESHOLD) {
+          continue;
+        }
         try {
           p.ws.send(raw);
         } catch (_) {}
@@ -255,7 +261,8 @@ wss.on('connection', (ws) => {
         currentRoom.broadcast({
           ...msg,
           senderId: socketId,
-          slotIndex: currentSlot
+          slotIndex: currentSlot,
+          serverTs: Date.now()
         }, socketId);
         break;
       }
