@@ -1,323 +1,93 @@
 // =========================================================================
 // ZOMBIE/RENDERER.JS - PROCEDURY RYSOWANIA ZOMBIE, CIAŁ I HUD-U INFEKCJI
-// Stylistyka: zgniło-zielonkawa skóra, świecące żółte oczy, zgarbiona poza,
-// wyciągnięte ramiona w stylu klasycznego horroru oraz kinowa winieta zakażenia.
+// Pełna integracja z potokiem rysowania sylwetki postaci (drawPlayer).
+// Zombie zachowują tożsamość poległego żołnierza (klasę, mundur, hełm,
+// kamizelkę, buty, fryzurę), z martwiczym odcieniem skóry, ranami postrzałowymi,
+// krwawiącą szczęką i żółtymi ślepiami.
 // =========================================================================
 
 import { zombieState, ZOMBIE_CONFIG } from './state.js';
+import { drawPlayer } from '../player/renderer.js';
 
 /**
- * Rysuje pojedyncze leżące ciało przygotowujące się do reanimacji
+ * Rysuje taktyczne wskaźniki statusu nad reanimującym się ciałem
  */
-function drawReanimatingCorpse(ctx, corpse) {
-  ctx.save();
-  const floorY = corpse.feetY || corpse.groundY || (corpse.y + 70);
-  const posX = corpse.centerX || (corpse.x + 12);
-  ctx.translate(posX, floorY + (corpse.twitch || 0));
+function drawCorpseOverlay(ctx, corpse, floorY) {
+  const cx = corpse.x + (corpse.w || 24) * 0.5;
 
-  // Kałuża krwi pod ciałem
-  ctx.fillStyle = 'rgba(127, 29, 29, 0.7)';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 24, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Leżący tułów
-  ctx.fillStyle = corpse.visuals.shirtColor || '#3f3f46';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(-16, -10, 32, 10, 3);
-  } else {
-    ctx.rect(-16, -10, 32, 10);
-  }
-  ctx.fill();
-
-  // Leżące nogi
-  ctx.fillStyle = corpse.visuals.pantsColor || '#27272a';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(corpse.facing > 0 ? -30 : 2, -7, 24, 7, 2);
-  } else {
-    ctx.rect(corpse.facing > 0 ? -30 : 2, -7, 24, 7);
-  }
-  ctx.fill();
-
-  // Głowa
-  if (corpse.hasHead && !corpse.decapitated) {
-    ctx.fillStyle = '#4d6850';
-    ctx.beginPath();
-    ctx.arc(corpse.facing > 0 ? 18 : -18, -6, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Włosy
-    ctx.fillStyle = corpse.visuals.hairColor || '#18181b';
-    ctx.beginPath();
-    ctx.arc(corpse.facing > 0 ? 18 : -18, -8, 7, Math.PI, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Wskaźnik zbliżającej się reanimacji (drobny dym/iskry w ostatnich chwilach)
+  // Drobne zarodniki/iskry nekrotyczne tuż przed powstaniem
   if (corpse.timer <= 1.2) {
-    ctx.fillStyle = 'rgba(74, 222, 128, 0.6)';
+    ctx.save();
+    ctx.fillStyle = 'rgba(74, 222, 128, 0.65)';
     ctx.beginPath();
-    ctx.arc(Math.sin(Date.now() * 0.02) * 8, -14, 2.5, 0, Math.PI * 2);
+    ctx.arc(cx + Math.sin(Date.now() * 0.02) * 8, floorY - 18, 2.0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
 
-  ctx.restore();
+  // Wskaźnik zbliżającej się reanimacji
+  if (corpse.timer > 0) {
+    ctx.save();
+    ctx.font = 'bold 9.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#052e16';
+    ctx.lineWidth = 2.0;
+    ctx.fillStyle = '#22c55e';
+    const txt = `[INFEKCJA: ${Math.ceil(corpse.timer)}s]`;
+    ctx.strokeText(txt, cx, floorY - 22);
+    ctx.fillText(txt, cx, floorY - 22);
+    ctx.restore();
+  }
 }
 
 /**
- * Rysuje sylwetkę aktywnego zombie (chód, ramiona wyciągnięte w przód, świecące oczy)
+ * Rysuje taktyczne wskaźniki statusu nad powalonym lub aktywnym zombie
  */
-function drawZombieSilhouette(ctx, z) {
-  ctx.save();
+function drawZombieOverlay(ctx, z, floorY) {
+  const cx = z.x + (z.w || 34) * 0.5;
 
-  const centerX = z.x + z.w * 0.5;
-  const feetY = z.y + z.h;
-  const facing = z.facing || 1;
-
-  // --- FAZA POWALENIA / ŚMIERCI ZOMBIE ---
+  // Stan powalenia / oczekiwania na ponowne powstanie
   if (z.isDead) {
-    if ((z.decapitated || !z.hasHead) && (z.decayTimer || 0) > 9.0) {
-      const fadeProgress = Math.max(0, 1 - ((z.decayTimer - 9.0) / 5.0));
-      ctx.globalAlpha = fadeProgress;
-    }
+    if (z.hasHead && !z.decapitated && z.reviveTimer > 0) {
+      ctx.save();
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = '#050810';
+      ctx.lineWidth = 2.5;
+      ctx.fillStyle = '#ef4444';
+      const txt = `WSTANIE ZA: ${Math.ceil(z.reviveTimer)}s`;
+      ctx.strokeText(txt, cx, floorY - 24);
+      ctx.fillText(txt, cx, floorY - 24);
 
-    ctx.translate(centerX, feetY);
-
-    // Kałuża krwi pod powalonym ciałem
-    ctx.fillStyle = 'rgba(127, 29, 29, 0.7)';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 24, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Leżący tułów
-    ctx.fillStyle = z.visuals.shirtColor || '#3f3f46';
-    ctx.fillRect(-16, -10, 32, 10);
-
-    // Leżące nogi
-    ctx.fillStyle = z.visuals.pantsColor || '#27272a';
-    ctx.fillRect(facing > 0 ? -30 : 2, -7, 24, 7);
-
-    // Głowa (jeśli nie została odcięta)
-    if (z.hasHead && !z.decapitated) {
-      ctx.fillStyle = z.visuals.skinColor;
-      ctx.beginPath();
-      ctx.arc(facing > 0 ? 18 : -18, -6, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Wskaźnik zbliżającego się ponownego powstania oraz stan rozszarpania ciała
-      if (z.reviveTimer > 0) {
-        ctx.fillStyle = '#ef4444';
-        ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${Math.ceil(z.reviveTimer)}s`, 0, -18);
-
-        const curDownedHp = (typeof z.downedHp === 'number') ? z.downedHp : 60;
-        const maxDownedHp = z.maxDownedHp || 60;
-        if (curDownedHp < maxDownedHp) {
-          const barW = 24;
-          const barH = 3;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          ctx.fillRect(-barW * 0.5, -14, barW, barH);
-          ctx.fillStyle = '#f97316';
-          ctx.fillRect(-barW * 0.5, -14, Math.max(0, barW * (curDownedHp / maxDownedHp)), barH);
-        }
+      // Pasek zdrowia powalonego ciała (downedHp) – widoczny feedback przy dobitce
+      const curDownedHp = (typeof z.downedHp === 'number') ? z.downedHp : 60;
+      const maxDownedHp = z.maxDownedHp || 60;
+      if (curDownedHp < maxDownedHp) {
+        const barW = 24;
+        const barH = 3;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(cx - barW * 0.5, floorY - 18, barW, barH);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(cx - barW * 0.5, floorY - 18, Math.max(0, barW * (curDownedHp / maxDownedHp)), barH);
       }
-    } else {
-      ctx.fillStyle = '#7f1d1d';
-      ctx.fillRect(facing > 0 ? 14 : -18, -8, 6, 4);
+      ctx.restore();
     }
-
-    ctx.restore();
     return;
-  }
-
-  // --- FAZA WSTAWANIA Z ZIEMI ---
-  if (z.riseTimer > 0) {
-    const progress = 1 - (z.riseTimer / 1.4); // 0 -> leży, 1 -> stoi
-    const curH = 20 + 50 * progress;
-    ctx.translate(centerX, feetY);
-
-    // Krew pod wstającym zombie
-    ctx.fillStyle = 'rgba(120, 25, 25, 0.7)';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 18, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Zgarbione ciało unoszące się w górę
-    ctx.fillStyle = z.visuals.pantsColor;
-    ctx.fillRect(-8, -curH * 0.5, 16, curH * 0.5);
-
-    ctx.fillStyle = z.visuals.shirtColor;
-    ctx.fillRect(-9, -curH, 18, curH * 0.55);
-
-    // Głowa
-    if (z.hasHead && !z.decapitated) {
-      ctx.fillStyle = z.visuals.skinColor;
-      ctx.beginPath();
-      ctx.arc(facing * 3, -curH - 4, 7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-    return;
-  }
-
-  // --- NORMALNY CZŁAPIĄCY ZOMBIE ---
-  ctx.translate(centerX, feetY);
-
-  const walkCycle = z.walkAnim || 0;
-  const isMoving = Math.abs(z.vx || 0) > 0.1;
-
-  // Asymetryczny, powłóczący krok zombie
-  const legFrontAngle = isMoving ? Math.sin(walkCycle) * 0.45 : 0.1;
-  const legBackAngle = isMoving ? -Math.sin(walkCycle) * 0.35 : -0.1;
-
-  // 1. TYLNA NOGA
-  ctx.save();
-  ctx.translate(-4 * facing, -28);
-  ctx.rotate(legBackAngle);
-  ctx.fillStyle = z.visuals.pantsColor;
-  ctx.fillRect(-3, 0, 6, 28);
-  // But
-  ctx.fillStyle = '#09090b';
-  ctx.fillRect(-4, 25, 9 * facing, 5);
-  ctx.restore();
-
-  // 2. PRZEDNIA NOGA
-  ctx.save();
-  ctx.translate(4 * facing, -28);
-  ctx.rotate(legFrontAngle);
-  ctx.fillStyle = z.visuals.pantsColor;
-  ctx.fillRect(-3.5, 0, 7, 28);
-  // But
-  ctx.fillStyle = '#09090b';
-  ctx.fillRect(-4, 25, 10 * facing, 5);
-  ctx.restore();
-
-  // 3. TUŁÓW (Zgarbiony do przodu)
-  const torsoTilt = 0.20 * facing;
-  ctx.save();
-  ctx.translate(0, -30);
-  ctx.rotate(torsoTilt);
-
-  ctx.fillStyle = z.visuals.shirtColor;
-  ctx.fillRect(-8, -26, 16, 26);
-
-  // Plamy krwi i rozdarcia na ubraniu
-  ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';
-  ctx.fillRect(-4, -20, 8, 10);
-
-  // 4. TYLNE RAMIĘ (Wyciągnięte do przodu we właściwą stronę marszu)
-  const isAttacking = (z.attackAnim > 0);
-  const attackBonus = isAttacking ? 0.32 * facing : 0;
-  const armSway = isMoving ? Math.sin(walkCycle) * 0.08 * facing : 0;
-
-  if (!z.dismembered?.armBack) {
-    ctx.save();
-    ctx.translate(-4 * facing, -23);
-    const armBackSwing = (-1.35 * facing) - attackBonus + armSway;
-    ctx.rotate(armBackSwing);
-    ctx.fillStyle = z.visuals.shirtColor;
-    ctx.fillRect(-3, 0, 6, 13);
-    ctx.fillStyle = z.visuals.skinColor;
-    ctx.fillRect(-2.5, 12, 5, 12);
-    // Dłoń z pazurami
-    ctx.fillStyle = '#344634';
-    ctx.fillRect(-3, 23, 6, 4);
-    ctx.fillStyle = '#1c261c';
-    ctx.fillRect(-2.5, 26, 2, 2.5);
-    ctx.fillRect(0.5, 26, 2, 2.5);
-    ctx.restore();
-  } else {
-    // Odstrzelone tylne ramię (zakrwawiony kikut)
-    ctx.save();
-    ctx.translate(-4 * facing, -23);
-    ctx.fillStyle = '#7f1d1d';
-    ctx.fillRect(-3, 0, 6, 4);
-    ctx.restore();
-  }
-
-  // 5. GŁOWA ZOMBIE
-  if (z.hasHead && !z.decapitated) {
-    ctx.save();
-    ctx.translate(facing * 3, -28);
-    ctx.rotate(0.15 * facing);
-
-    // Twarz (zielonkawa martwa skóra)
-    ctx.fillStyle = z.visuals.skinColor;
-    ctx.beginPath();
-    ctx.arc(0, -7, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Włosy
-    ctx.fillStyle = z.visuals.hairColor;
-    ctx.beginPath();
-    ctx.arc(0, -8, 7.5, Math.PI * 0.9, Math.PI * 2.1);
-    ctx.fill();
-
-    // Szczęka / zakrwawione usta
-    ctx.fillStyle = '#7f1d1d';
-    ctx.fillRect(facing > 0 ? 1 : -5, -4, 4, 3);
-
-    // Świecące, żółte martwe oko (płynny glow bez spadków wydajności i bez shadowBlur)
-    ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
-    ctx.beginPath();
-    ctx.arc(facing * 4, -7, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = z.visuals.eyeColor || '#facc15';
-    ctx.beginPath();
-    ctx.arc(facing * 4, -7, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  } else {
-    // Odcięta głowa (kikut szyi z krwią)
-    ctx.fillStyle = '#7f1d1d';
-    ctx.fillRect(-4, -28, 8, 4);
   }
 
   // Pasek zdrowia rannego zombie (natychmiastowy feedback trafienia kulą)
-  if (!z.isDead && z.hp < z.maxHp && z.hp > 0) {
+  if (z.hp < z.maxHp && z.hp > 0) {
+    ctx.save();
     const hpRatio = Math.max(0, z.hp / z.maxHp);
-    const barW = 20;
-    const barH = 3;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(-barW * 0.5, -44, barW, barH);
+    const barW = 22;
+    const barH = 3.5;
+    const topY = z.y - 8;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(cx - barW * 0.5, topY, barW, barH);
     ctx.fillStyle = hpRatio > 0.4 ? '#22c55e' : '#ef4444';
-    ctx.fillRect(-barW * 0.5, -44, barW * hpRatio, barH);
-  }
-
-  // 6. PRZEDNIE RAMIĘ (Wyciągnięte agresywnie w przód we właściwą stronę marszu)
-  if (!z.dismembered?.armFront) {
-    ctx.save();
-    ctx.translate(5 * facing, -23);
-    const armFrontSwing = (-1.48 * facing) - attackBonus - armSway;
-    ctx.rotate(armFrontSwing);
-    ctx.fillStyle = z.visuals.shirtColor;
-    ctx.fillRect(-3.5, 0, 7, 14);
-    ctx.fillStyle = z.visuals.skinColor;
-    ctx.fillRect(-3, 13, 6, 13);
-    // Dłoń / szpony
-    ctx.fillStyle = '#344634';
-    ctx.fillRect(-3.5, 25, 7, 5);
-    ctx.fillStyle = '#1c261c';
-    ctx.fillRect(-3, 29, 2, 3);
-    ctx.fillRect(0, 29, 2, 3.5);
-    ctx.fillRect(2.5, 29, 2, 2.5);
-    ctx.restore();
-  } else {
-    // Odstrzelone przednie ramię (zakrwawiony kikut)
-    ctx.save();
-    ctx.translate(5 * facing, -23);
-    ctx.fillStyle = '#7f1d1d';
-    ctx.fillRect(-3.5, 0, 7, 4);
+    ctx.fillRect(cx - barW * 0.5, topY, barW * hpRatio, barH);
     ctx.restore();
   }
-
-  ctx.restore(); // Tułów
-  ctx.restore(); // Całość
 }
 
 /**
@@ -326,19 +96,23 @@ function drawZombieSilhouette(ctx, z) {
 export function drawZombieSystem(ctx, camera) {
   if (!zombieState.enabled) return;
 
-  const viewLeft = camera.x - 100;
-  const viewRight = camera.x + (camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6))) + 100;
+  const viewLeft = camera.x - 120;
+  const viewRight = camera.x + (camera.viewWidth || (window.innerWidth / (camera.zoom || 0.6))) + 120;
 
-  // 1. Rysowanie reanimujących się ciał
+  // 1. Rysowanie reanimujących się ciał poległych postaci
   for (const corpse of zombieState.corpses) {
     if (corpse.x < viewLeft || corpse.x > viewRight) continue;
-    drawReanimatingCorpse(ctx, corpse);
+    const floorY = corpse.feetY || corpse.groundY || (corpse.y + (corpse.h || 70));
+    drawPlayer(ctx, floorY, corpse);
+    drawCorpseOverlay(ctx, corpse, floorY);
   }
 
-  // 2. Rysowanie aktywnych i powalonych zombie
+  // 2. Rysowanie aktywnych oraz powalonych zombie
   for (const z of zombieState.zombies) {
     if (z.x < viewLeft || z.x > viewRight) continue;
-    drawZombieSilhouette(ctx, z);
+    const floorY = (typeof z.groundY === 'number') ? z.groundY : (z.y + (z.h || 68));
+    drawPlayer(ctx, floorY, z);
+    drawZombieOverlay(ctx, z, floorY);
   }
 }
 

@@ -3,6 +3,9 @@
 // Odpowiada za rejestr aktywnych zombie, leżących ciał do reanimacji oraz infekcję.
 // =========================================================================
 
+import { DEFAULT_VISUALS } from '../player/hair.js';
+import { CLASSES } from '../classes/index.js';
+
 export const STORAGE_KEY_ZOMBIE_MODE = 'kih_zombie_mode_v1';
 
 export const ZOMBIE_CONFIG = {
@@ -66,27 +69,177 @@ export function resetZombieState() {
   zombieState.corpses.length = 0;
 }
 
+const FALLBACK_OPERATOR_PRESETS = [
+  {
+    name: 'POLEGŁY SZTURMOWIEC',
+    classKey: 'STRIKER',
+    visuals: {
+      torsoStyle: 'short_sleeve',
+      torsoColor: '#18181b',
+      pantsStyle: 'cargo_long',
+      pantsColor: '#27272a',
+      shoesStyle: 'combat_boots',
+      hairStyle: 'buzzcut',
+      headgearStyle: 'cap_forward',
+      headgearColor: '#18181b',
+      hasVest: true,
+      vestColor: '#18181b'
+    }
+  },
+  {
+    name: 'POLEGŁY ZWIADOWCA',
+    classKey: 'RAPTOR',
+    visuals: {
+      torsoStyle: 'long_sleeve',
+      torsoColor: '#283618',
+      pantsStyle: 'cargo_long',
+      pantsColor: '#1b2a1a',
+      shoesStyle: 'combat_boots',
+      hairStyle: 'military_fade',
+      headgearStyle: 'beret',
+      headgearColor: '#283618',
+      hasHelmet: true,
+      helmetColor: '#283618'
+    }
+  },
+  {
+    name: 'POLEGŁY ENFORCER',
+    classKey: 'ENFORCER',
+    visuals: {
+      torsoStyle: 'sleeveless',
+      torsoColor: '#18181b',
+      pantsStyle: 'cargo_long',
+      pantsColor: '#18181b',
+      shoesStyle: 'combat_boots',
+      hairStyle: 'buzzcut',
+      headgearStyle: 'marcus_bandana',
+      headgearColor: '#18181b',
+      hasVest: true,
+      vestColor: '#27272a'
+    }
+  }
+];
+
 /**
- * Tworzy nową instancję wrogiego zombie NPC
+ * Przekształca bazowy zestaw wizualny poległego operatora w lekko podgniłą, zakrwawioną wersję nieumarłego:
+ * - zachowuje w 100% oryginalny mundur, kamuflaż, fason spodni, buty, kamizelkę, hełm, fryzurę i zarost
+ * - nadaje skórze ziemisto-oliwkowy, blady odcień martwicy ("lekko podgnita")
+ * - dodaje żółte martwe oczy, zbroczone krwią usta i dłonie oraz plamy krwi na mundurze ("zakrwawiona")
+ */
+export function createUndeadVisuals(baseVisuals = {}) {
+  const v = {
+    ...DEFAULT_VISUALS,
+    ...baseVisuals
+  };
+
+  return {
+    ...v,
+    // Martwicza, ziemisto-oliwkowa podgniła skóra (necrotic cadaverous skin)
+    skinLight: '#a3b89f',
+    skinMid: '#788f75',
+    skinDark: '#3f533c',
+    skinBack: '#546751',
+
+    // Cechy fizjonomiczne nieumarłego
+    isZombieVisuals: true,
+    eyeColor: '#facc15',
+    eyeGlow: '#fef08a',
+    bloodSplatter: true,
+
+    // Zachowane oryginalne barwy munduru i kamuflażu poległego operatora
+    jerseyFront0: v.jerseyFront0,
+    jerseyFront1: v.jerseyFront1,
+    jerseyFront2: v.jerseyFront2,
+    jerseyFront3: v.jerseyFront3,
+    jerseyBack0: v.jerseyBack0,
+    jerseyBack1: v.jerseyBack1,
+    jerseyBack2: v.jerseyBack2,
+    jerseyStripe: v.jerseyStripe,
+
+    shortsColor0: v.shortsColor0,
+    shortsColor1: v.shortsColor1,
+    shortsColor2: v.shortsColor2,
+
+    armColorFront: v.armColorFront,
+    armColorBack: v.armColorBack,
+    legThighFront: v.legThighFront,
+    legShinFront: v.legShinFront,
+    legThighBack: v.legThighBack,
+    legShinBack: v.legShinBack,
+
+    bootColor: v.bootColor,
+    bootBack: v.bootBack,
+    bootAccent: v.bootAccent,
+
+    hairStyle: v.hairStyle,
+    hairColor: v.hairColor,
+    beardStyle: v.beardStyle,
+    beardColor: v.beardColor,
+    headgearStyle: v.headgearStyle,
+    headgearColor: v.headgearColor,
+    maskStyle: v.maskStyle,
+    maskColor: v.maskColor,
+    torsoStyle: v.torsoStyle,
+    torsoColor: v.torsoColor,
+    pantsStyle: v.pantsStyle,
+    pantsColor: v.pantsColor,
+    shoesStyle: v.shoesStyle,
+    shoesColor: v.shoesColor,
+
+    hasVest: v.hasVest,
+    vestColor: v.vestColor,
+    vestStyle: v.vestStyle,
+    hasHelmet: v.hasHelmet,
+    helmetColor: v.helmetColor,
+    helmetStyle: v.helmetStyle
+  };
+}
+
+/**
+ * Tworzy nową instancję wrogiego zombie NPC zachowującego model i tożsamość poległego operatora
  */
 export function createZombieInstance(x, y, facing = 1, options = {}) {
   const instanceId = `zombie_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
+  let baseVisuals = options.charVisuals;
+  let zClass = options.charClass;
+  let origName = options.originalName;
+
+  if (!baseVisuals) {
+    const preset = FALLBACK_OPERATOR_PRESETS[Math.floor(Math.random() * FALLBACK_OPERATOR_PRESETS.length)];
+    baseVisuals = {
+      ...DEFAULT_VISUALS,
+      ...(CLASSES[preset.classKey]?.visuals || {}),
+      ...preset.visuals
+    };
+    zClass = CLASSES[preset.classKey] || CLASSES.STRIKER;
+    origName = preset.name;
+  }
+
+  const undeadVisuals = options.customVisuals || createUndeadVisuals(baseVisuals);
+  const zBody = options.charBody || (zClass?.body ? { ...zClass.body } : {
+    w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
+  });
+
+  const f = facing || 1;
+
   return {
     id: instanceId,
-    name: 'ZOMBIE',
+    name: origName ? `ZOMBIE [${origName}]` : 'ZOMBIE',
+    originalName: origName || 'POLEGŁY OPERATOR',
     isZombie: true,
     isBot: true,
     active: true,          // Flaga aktywności dla silnika kolizji i balistyki
     team: 'INFECTED',      // Neutralna wroga frakcja atakująca wszystkich
 
-    x: x - 12,
-    y: y - 70,
-    w: 24,
-    h: 70,
+    x: x - (zBody.w || 24) * 0.5,
+    y: y - (zBody.h || 70),
+    w: zBody.w || 24,
+    h: zBody.h || 70,
     vx: 0,
     vy: 0,
-    facing: facing || 1,
+    facing: f,
+    yaw: (f < 0 ? Math.PI : 0),
 
     hp: ZOMBIE_CONFIG.MAX_HP,
     maxHp: ZOMBIE_CONFIG.MAX_HP,
@@ -101,10 +254,22 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     isAcidDying: false,
     acidDeath: { active: false, timer: 0, dissolved: false },
 
-    // Pancerz (zombie nie nosi kamizelek, ale właściwości wymagane dla zgodności z balistyką)
-    hasVest: false,
+    // Pancerz i wyposażenie
+    hasVest: !!baseVisuals.hasVest,
     vestHp: 0,
-    hasHelmet: false,
+    hasHelmet: !!baseVisuals.hasHelmet,
+    currentWeapon: null,
+    isWeaponHolstered: true,
+
+    // Klasa i anatomia
+    currentClass: zClass || CLASSES.STRIKER,
+    charClass: zClass || CLASSES.STRIKER,
+    body: zBody,
+    charBody: zBody,
+    thighLen: zBody.thighLen || 25,
+    shinLen: zBody.shinLen || 24,
+    upperArmLen: zBody.upperArmLen || 14,
+    forearmLen: zBody.forearmLen || 13,
 
     // Cykl życia i animacja
     riseTimer: options.skipRise ? 0 : 1.4, // Czas wstawania z ziemi
@@ -118,19 +283,12 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     walkAnim: Math.random() * 10,
     twitchTimer: 0,
 
-    // Cechy wizualne nieumarłego
-    visuals: {
-      skinColor: options.skinColor || (Math.random() < 0.5 ? '#577259' : '#4d6850'),
-      decayColor: '#344634',
-      eyeColor: '#facc15',                 // Świecące, żółto-martwe oczy
-      bloodSplatter: true,
-      tatteredClothes: true,
-      originalName: options.originalName || 'POLEGŁY OPERATOR',
-      shirtColor: options.shirtColor || '#27272a',
-      pantsColor: options.pantsColor || '#18181b',
-      hairStyle: options.hairStyle || 'buzzcut',
-      hairColor: options.hairColor || '#09090b'
-    },
+    // Cechy wizualne
+    charVisuals: baseVisuals,
+    customVisuals: undeadVisuals,
+    visuals: undeadVisuals,
+    _cachedVisuals: undeadVisuals,
+    _visualsDirty: false,
 
     // Kończyny (zgodność z silnikiem uszkodzeń)
     dismembered: {
@@ -138,13 +296,7 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
       armBack: false,
       legFront: false,
       legBack: false
-    },
-
-    // Wymiary kończyn
-    upperArmLen: 12,
-    forearmLen: 12,
-    thighLen: 16,
-    shinLen: 16
+    }
   };
 }
 
@@ -170,6 +322,22 @@ export function registerCorpseForReanimation(char, surfaceY) {
     ? surfaceY
     : (char.y + (char.h || 70));
 
+  const rawVisuals = {
+    ...DEFAULT_VISUALS,
+    ...(char.currentClass?.visuals || {}),
+    ...(char._cachedVisuals || {}),
+    ...(char.customVisuals || {}),
+    ...(char.visuals || {})
+  };
+
+  const undeadVisuals = createUndeadVisuals(rawVisuals);
+  const charClass = char.currentClass || CLASSES.STRIKER || null;
+  const charBody = char.body ? { ...char.body } : (charClass?.body ? { ...charClass.body } : {
+    w: 24, h: 70, thighLen: 25, shinLen: 24, upperArmLen: 14, forearmLen: 13
+  });
+
+  const facing = char.facing || 1;
+
   zombieState.corpses.push({
     id: `corpse_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     isCorpse: true,
@@ -182,10 +350,16 @@ export function registerCorpseForReanimation(char, surfaceY) {
     decapitated: false,
     centerX: corpseX,
     feetY: floorY,
-    x: corpseX - 12,
-    y: floorY - 70,
-    w: 24,
-    h: 70,
+    x: corpseX - (charBody.w || 24) * 0.5,
+    y: floorY - (charBody.h || 70),
+    w: charBody.w || 24,
+    h: charBody.h || 70,
+    thighLen: charBody.thighLen || 25,
+    shinLen: charBody.shinLen || 24,
+    upperArmLen: charBody.upperArmLen || 14,
+    forearmLen: charBody.forearmLen || 13,
+    vx: 0,
+    vy: 0,
     hp: 0,
     maxHp: ZOMBIE_CONFIG.MAX_HP,
     downedHp: 60,
@@ -193,16 +367,29 @@ export function registerCorpseForReanimation(char, surfaceY) {
     jumpCooldown: 0,
     corpseX: corpseX,
     corpseY: floorY,
-    facing: char.facing || 1,
+    facing: facing,
+    yaw: (facing < 0 ? Math.PI : 0),
     groundY: floorY,
     timer: ZOMBIE_CONFIG.REANIMATE_DELAY,
     twitch: 0,
-    originalName: char.name || (char.isBot ? 'BOT' : 'GRACZ'),
-    visuals: {
-      shirtColor: char.visuals?.shirtColor || '#3f3f46',
-      pantsColor: char.visuals?.pantsColor || '#27272a',
-      hairStyle: char.hairStyle || 'buzzcut',
-      hairColor: char.hairColor || '#18181b'
-    }
+    originalName: char.name || (char.isBot ? 'BOT' : 'OPERATOR'),
+
+    // Pełna tożsamość i model poległego
+    charVisuals: rawVisuals,
+    customVisuals: undeadVisuals,
+    visuals: undeadVisuals,
+    _cachedVisuals: undeadVisuals,
+    _visualsDirty: false,
+    charClass: charClass,
+    currentClass: charClass,
+    body: charBody,
+    dismembered: {
+      armFront: false,
+      armBack: false,
+      legFront: false,
+      legBack: false
+    },
+    currentWeapon: null,
+    isWeaponHolstered: true
   });
 }

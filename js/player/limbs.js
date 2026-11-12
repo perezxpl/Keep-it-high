@@ -782,6 +782,18 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
 
   ctx.fillStyle = useGloves ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.4)';
   ctx.fillRect(hX + palmLen * 0.8, -0.8, 1.4, 0.6);
+
+  // Krew na szponach i dłoniach zombie
+  if (v.isZombieVisuals) {
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(hX + palmLen + 0.6, 0.4, 2.0 * handScale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(hX + palmLen + 1.0, 0.2, 1.0 * handScale, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13, playerRef = null) {
@@ -793,7 +805,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const armMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
   const armCurHp = playerRef ? Math.max(0, playerRef.hp ?? 100) : armMaxHp;
-  const armDmgRatio = (playerRef && playerRef.isDead) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (armCurHp / armMaxHp)));
+  const armDmgRatio = (playerRef && (playerRef.isDead || playerRef.isZombie)) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (armCurHp / armMaxHp)));
 
   let elbowX = shX + Math.sin(swingAngle) * upperLen * facing;
   let elbowY = shY + Math.cos(swingAngle) * upperLen;
@@ -1202,7 +1214,7 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
 
   const legMaxHp = playerRef ? (playerRef.maxHp || 100) : 100;
   const legCurHp = playerRef ? Math.max(0, playerRef.hp ?? 100) : legMaxHp;
-  const legDmgRatio = (playerRef && playerRef.isDead) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (legCurHp / legMaxHp)));
+  const legDmgRatio = (playerRef && (playerRef.isDead || playerRef.isZombie)) ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (legCurHp / legMaxHp)));
 
   const isSpecialKickOrProne = !!(playerRef && (
     playerRef.isProne ||

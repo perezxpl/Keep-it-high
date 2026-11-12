@@ -283,9 +283,13 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   } else if (p.spawnProtectionTimer > 0 && !p.isDead) {
     const pulse = 0.55 + 0.35 * Math.sin(performance.now() * 0.016);
     ctx.globalAlpha = pulse;
+  } else if (p.isZombie && p.isDead && (p.decapitated || !p.hasHead) && (p.decayTimer || 0) > 9.0) {
+    // Płynne zanikanie ciała martwego zdekapitowanego zombie przed zwolnieniem slotu
+    const fade = Math.max(0, 1.0 - ((p.decayTimer - 9.0) / 5.0));
+    ctx.globalAlpha = fade;
   }
 
-  const isLocalOrCreator = !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
+  const isLocalOrCreator = !p.isZombie && !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
   if (!p._cachedVisuals || p._visualsDirty || isLocalOrCreator) {
     p._cachedVisuals = {
       ...DEFAULT_VISUALS,
@@ -336,7 +340,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
   const speed = Math.abs(p.vx);
 
-  const yaw = p.yaw || 0;
+  const yaw = (p.yaw !== undefined) ? p.yaw : (p.facing < 0 ? Math.PI : 0);
   const cosYaw = Math.cos(yaw);
   const sinYaw = Math.sin(yaw);
 
@@ -357,24 +361,94 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     (isVisualCharging || p.kickState === 'SWING' || p.kickState === 'RECOVER');
 
   if (p.isDead) {
-    const ragPose = getRagdollRenderPose(p, standingY);
-    hipX = ragPose.hipX;
-    hipY = ragPose.hipY;
-    p.torsoTilt = ragPose.torsoTilt;
-    p.headPitch = ragPose.headPitch;
+    if (p.isZombie) {
+      // Leżące zwłoki / reanimujące się ciało zombie na ziemi z drgawkami (twitch)
+      const fDir = (p.facing >= 0 ? 1 : -1);
+      const twitchOffset = (p.twitch || 0);
+      hipX = centerX;
+      hipY = plantFloorY - 5 + twitchOffset;
+      p.torsoTilt = 1.52 * fDir;
+      p.headPitch = 0.2;
 
-    rawFootFrontTargetX = ragPose.footFrontX;
-    rawFootFrontTargetY = ragPose.footFrontY;
-    rawFootFrontAnkle = ragPose.footFrontAnkle;
+      rawFootFrontTargetX = hipX - 22 * fDir;
+      rawFootFrontTargetY = plantFloorY - 2;
+      rawFootFrontAnkle = 0.3 * fDir;
 
-    rawFootBackTargetX = ragPose.footBackX;
-    rawFootBackTargetY = ragPose.footBackY;
-    rawFootBackAnkle = ragPose.footBackAnkle;
+      rawFootBackTargetX = hipX - 28 * fDir;
+      rawFootBackTargetY = plantFloorY - 2;
+      rawFootBackAnkle = 0.2 * fDir;
 
-    rawFrontSwing = ragPose.armFrontSwing;
-    rawFrontElbow = ragPose.armFrontElbow;
-    rawBackSwing = ragPose.armBackSwing;
-    rawBackElbow = ragPose.armBackElbow;
+      rawFrontSwing = 0.4;
+      rawFrontElbow = 0.15;
+      rawBackSwing = 0.2;
+      rawBackElbow = 0.15;
+    } else {
+      const ragPose = getRagdollRenderPose(p, standingY);
+      hipX = ragPose.hipX;
+      hipY = ragPose.hipY;
+      p.torsoTilt = ragPose.torsoTilt;
+      p.headPitch = ragPose.headPitch;
+
+      rawFootFrontTargetX = ragPose.footFrontX;
+      rawFootFrontTargetY = ragPose.footFrontY;
+      rawFootFrontAnkle = ragPose.footFrontAnkle;
+
+      rawFootBackTargetX = ragPose.footBackX;
+      rawFootBackTargetY = ragPose.footBackY;
+      rawFootBackAnkle = ragPose.footBackAnkle;
+
+      rawFrontSwing = ragPose.armFrontSwing;
+      rawFrontElbow = ragPose.armFrontElbow;
+      rawBackSwing = ragPose.armBackSwing;
+      rawBackElbow = ragPose.armBackElbow;
+    }
+  } else if (p.isZombie && p.riseTimer > 0) {
+    // Sekwencja powstawania z ziemi (płynna transformacja z leżenia do stójki)
+    const progress = Math.max(0, Math.min(1, 1 - (p.riseTimer / 1.3)));
+    const fDir = (p.facing >= 0 ? 1 : -1);
+    const riseTilt = (1 - progress) * 1.52 * fDir + progress * (0.22 * fDir);
+    hipX = centerX;
+    hipY = (plantFloorY - 5) * (1 - progress) + (plantFloorY - 30) * progress;
+    p.torsoTilt = riseTilt;
+    p.headPitch = 0.3 * (1 - progress) + 0.15 * progress;
+
+    rawFootFrontTargetX = hipX + (progress * 4 - (1 - progress) * 20) * fDir;
+    rawFootFrontTargetY = plantFloorY;
+    rawFootFrontAnkle = 0;
+
+    rawFootBackTargetX = hipX + (progress * (-6) - (1 - progress) * 26) * fDir;
+    rawFootBackTargetY = plantFloorY;
+    rawFootBackAnkle = 0;
+
+    rawFrontSwing = (1 - progress) * 0.4 + progress * 1.45;
+    rawFrontElbow = (1 - progress) * 0.15 + progress * 0.22;
+    rawBackSwing = (1 - progress) * 0.2 + progress * 1.40;
+    rawBackElbow = (1 - progress) * 0.15 + progress * 0.26;
+  } else if (p.isZombie) {
+    // Aktywny, polujący zombie: zgarbiony tułów, powłóczący krok, wyciągnięte ramiona
+    const fDir = (p.facing >= 0 ? 1 : -1);
+    p.torsoTilt = 0.22 * fDir;
+    p.headPitch = 0.15;
+    const walkAnim = p.walkAnim || 0;
+    const isMoving = speed > 0.4;
+    const stride = Math.sin(walkAnim) * 13;
+    const lift = Math.max(0, Math.cos(walkAnim)) * 7;
+
+    rawFootFrontTargetX = hipX + (isMoving ? stride : 4) * fDir;
+    rawFootFrontTargetY = plantFloorY - (isMoving && stride > 0 ? lift : 0);
+    rawFootFrontAnkle = (isMoving && stride > 0 ? 0.25 * fDir : 0);
+
+    rawFootBackTargetX = hipX - (isMoving ? stride : 6) * fDir;
+    rawFootBackTargetY = plantFloorY - (isMoving && stride < 0 ? lift : 0);
+    rawFootBackAnkle = (isMoving && stride < 0 ? 0.25 * fDir : 0);
+
+    const attackLunge = (p.attackCooldown && p.attackCooldown > 0.8) ? 0.35 : 0;
+    const armSway = Math.sin((p.idleAnim || walkAnim) * 2) * 0.12;
+
+    rawFrontSwing = 1.45 + attackLunge + armSway;
+    rawFrontElbow = 0.22 + Math.abs(armSway) * 0.1;
+    rawBackSwing = 1.40 + attackLunge - armSway;
+    rawBackElbow = 0.26 + Math.abs(armSway) * 0.1;
   } else if (p.isIntro) {
     const choreo = getFreestyleChoreography(p.juggleTimer, hipX, hipY, floorY, p.facing, 8);
     hipX += choreo.hipShiftX;
@@ -820,7 +894,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
-  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active);
+  const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active) && !p.isZombie;
 
   if (hasActiveWeapon) {
     const hold = getWeaponHoldTransform(p);
@@ -989,8 +1063,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const wepWeight = (p.currentWeapon && !p.isHolstered && typeof p.shootPoseWeight === 'number') ? p.shootPoseWeight : 0;
-  let footBlend = p.isDead ? 0.90 : 0.32;
-  let armBlend = p.isDead ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? 0.98 : 0.28);
+  let footBlend = (p.isDead || p.isZombie) ? 0.90 : 0.32;
+  let armBlend = (p.isDead || p.isZombie) ? 0.90 : ((p.currentWeapon && !p.isHolstered && !p.isDead) ? 0.98 : 0.28);
 
   // Dynamiczny, natychmiastowy czas reakcji kończyn podczas ataku wręcz (brak opóźnienia i dławienia klatek animacji)
   if (p.meleeState && !p.isDead) {
@@ -1068,7 +1142,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   pose.armBackSwing = lerpAngle(pose.armBackSwing, rawBackSwing, armBlend);
   pose.armBackElbow = lerpAngle(pose.armBackElbow, rawBackElbow, armBlend);
 
-  if (p.isDead) {
+  if (p.isDead || p.isZombie) {
     pose.torsoTilt = p.torsoTilt;
     pose.headPitch = p.headPitch;
   } else if (p.kickMode === 'BACKFLIP') {
@@ -1198,7 +1272,21 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const maxHp = p.maxHp || 100;
   const curHp = Math.max(0, p.hp ?? 100);
-  const dmgRatio = p.isDead ? 1.0 : Math.max(0, Math.min(1.0, 1.0 - (curHp / maxHp)));
+  const dmgRatio = p.isDead ? 1.0 : (p.isZombie ? Math.max(0.75, 1.0 - (curHp / maxHp)) : Math.max(0, Math.min(1.0, 1.0 - (curHp / maxHp))));
+
+  // Kałuża ciemnej krwi pod powalonym ciałem lub reanimującym się trupem na podłożu
+  if (p.isZombie && (p.isDead || p.riseTimer > 0)) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(70, 10, 10, 0.72)';
+    ctx.beginPath();
+    ctx.ellipse(hipX, plantFloorY, 26, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(40, 5, 5, 0.88)';
+    ctx.beginPath();
+    ctx.ellipse(hipX + 3 * currentFacingDir, plantFloorY, 18, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // KOŃCZYNY W TLE
   if (isRightLimbForeground) {
@@ -1552,11 +1640,6 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     const eyeCenterX = 2.7;
     const eyeCenterY = -2.1;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(eyeCenterX, eyeCenterY, 1.5, 1.0, 0, 0, Math.PI * 2);
-    ctx.fill();
-
     let lookX = 0.55;
     let lookY = 0.0;
 
@@ -1572,15 +1655,49 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       lookY = Math.sin(relAngle) * 0.45;
     }
 
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(eyeCenterX + lookX, eyeCenterY + lookY, 0.72, 0, Math.PI * 2);
-    ctx.fill();
+    if (v.isZombieVisuals || p.isZombie) {
+      // Martwe podkrążone oczodoły i żółte świecące ślepia
+      ctx.fillStyle = 'rgba(20, 32, 20, 0.88)';
+      ctx.beginPath();
+      ctx.ellipse(eyeCenterX, eyeCenterY, 2.0, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(eyeCenterX + lookX * 0.5 + 0.25, eyeCenterY + lookY * 0.5 - 0.25, 0.35, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(eyeCenterX + lookX * 0.3, eyeCenterY + lookY * 0.3, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(eyeCenterX + lookX * 0.3, eyeCenterY + lookY * 0.3, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ciemna krew spływająca ze szczęki/kącika ust
+      ctx.fillStyle = '#580808';
+      ctx.beginPath();
+      ctx.moveTo(1.8, 1.8);
+      ctx.lineTo(4.2, 2.2);
+      ctx.lineTo(3.2, 5.0);
+      ctx.lineTo(2.4, 4.2);
+      ctx.lineTo(2.0, 5.4);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(eyeCenterX, eyeCenterY, 1.5, 1.0, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(eyeCenterX + lookX, eyeCenterY + lookY, 0.72, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(eyeCenterX + lookX * 0.5 + 0.25, eyeCenterY + lookY * 0.5 - 0.25, 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.strokeStyle = hairPal.dark;
     ctx.lineWidth = 1.1;
@@ -1684,17 +1801,50 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ctx.fillRect(-1.4, -6.0, 2.8, 2.4);
     }
 
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(-2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
-    ctx.ellipse(2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (v.isZombieVisuals || p.isZombie) {
+      // Martwe, podsiniałe oczodoły
+      ctx.fillStyle = 'rgba(20, 32, 20, 0.88)';
+      ctx.beginPath();
+      ctx.ellipse(-2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(2.0, -1.5, 1.8, 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
-    ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
-    ctx.fill();
+      // Puste, żółte ślepia zmartwychwstałego
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(-2.0, -1.5, 0.9, 0, Math.PI * 2);
+      ctx.arc(2.0, -1.5, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(-2.0, -1.5, 0.45, 0, Math.PI * 2);
+      ctx.arc(2.0, -1.5, 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Strużki zakrzepłej i świeżej krwi kapiące z kącików ust
+      ctx.fillStyle = '#580808';
+      ctx.beginPath();
+      ctx.moveTo(-1.5, 2.2);
+      ctx.lineTo(1.5, 2.2);
+      ctx.lineTo(1.2, 4.6);
+      ctx.lineTo(0.2, 3.2);
+      ctx.lineTo(-0.8, 4.8);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(-2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(2.0, -1.5, 1.2, 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-1.8, -1.5, 0.55, 0, Math.PI * 2);
+      ctx.arc(2.2, -1.5, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.strokeStyle = hairPal.dark;
     ctx.lineWidth = 0.9;
@@ -1784,7 +1934,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   p.currentClass?.onDrawOverlay?.(ctx, p);
 
-  if (p.isDead) {
+  if (p.isDead && !p.isZombie) {
     ctx.save();
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';

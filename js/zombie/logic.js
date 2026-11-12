@@ -163,10 +163,10 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       // Narodziny nowego Zombie dokładnie na powierzchni spoczynku ciała (zero wstawania w powietrzu)
       const newZombie = createZombieInstance(cX, curSurface, corpse.facing, {
         originalName: corpse.originalName,
-        shirtColor: corpse.visuals.shirtColor,
-        pantsColor: corpse.visuals.pantsColor,
-        hairStyle: corpse.visuals.hairStyle,
-        hairColor: corpse.visuals.hairColor
+        charVisuals: corpse.charVisuals,
+        customVisuals: corpse.customVisuals,
+        charClass: corpse.charClass,
+        charBody: corpse.charBody
       });
 
       zombieState.zombies.push(newZombie);
@@ -327,6 +327,7 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
       const dy = ty - zy;
 
       z.facing = dx >= 0 ? 1 : -1;
+      z.yaw = (z.facing < 0 ? Math.PI : 0);
 
       // Człapiący ruch w stronę celu
       if (Math.abs(dx) > 16) {
