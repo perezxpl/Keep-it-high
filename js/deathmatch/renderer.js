@@ -4,7 +4,7 @@
 // nagrody 100/80/60/40 XP oraz pełne okno podium po wygranym meczu
 // =========================================================================
 
-import { deathmatchState, DEATHMATCH_MODES, TEAMS, DEATHMATCH_XP_REWARDS } from './state.js';
+import { deathmatchState, DEATHMATCH_MODES, TEAMS, DEATHMATCH_XP_REWARDS, DEATHMATCH_PHASES } from './state.js';
 import { camera } from '../camera.js';
 
 /**
@@ -141,6 +141,145 @@ export function drawDeathmatchHUD(ctx, W, H, isMobile, player = null) {
     const leaderKills = leader ? leader.kills : 0;
     const ffaScoreDisplay = checksFrags ? `${leaderKills}/${fragLimit}` : `${leaderKills}`;
     ctx.fillText(`LIDER: ${leaderName} (${ffaScoreDisplay} FRAGÓW)`, boxX + boxW / 2, scoreY);
+  }
+
+  ctx.restore();
+
+  // 3. Odliczanie przedmeczowe (3.. 2.. 1.. WALKA!)
+  drawDeathmatchCountdown(ctx, W, H, isMobile);
+}
+
+/**
+ * Renderuje taktyczną nakładkę odliczania (Lockdown 3.. 2.. 1..) oraz baner WALKA!
+ */
+export function drawDeathmatchCountdown(ctx, W, H, isMobile) {
+  if (!deathmatchState.active) return;
+  const isCountdown = (deathmatchState.matchPhase === DEATHMATCH_PHASES.COUNTDOWN);
+  const isBanner = (deathmatchState.fightBannerTimer > 0);
+  if (!isCountdown && !isBanner) return;
+
+  ctx.save();
+
+  if (isCountdown) {
+    const timer = Math.max(0, deathmatchState.countdownTimer);
+    const secNum = Math.min(3, Math.max(1, Math.ceil(timer)));
+    // Postęp w obrębie bieżącej sekundy: 0.0 (początek) -> 1.0 (koniec sekundy)
+    const subSec = timer - Math.floor(timer);
+    const frac = (subSec === 0 && timer > 0) ? 0 : (1.0 - subSec);
+    const pop = Math.max(0, 1.0 - frac * 3.5);
+    const scale = 1.0 + pop * 0.32;
+
+    const cX = W / 2;
+    const cY = isMobile ? (H * 0.38) : (H * 0.40);
+
+    const cardW = isMobile ? 220 : 260;
+    const cardH = isMobile ? 120 : 136;
+    const cardX = cX - cardW / 2;
+    const cardY = cY - cardH / 2;
+
+    // Tło taktycznego okna odliczania
+    ctx.fillStyle = 'rgba(10, 15, 29, 0.78)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 1.5;
+    if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 10);
+    else ctx.rect(cardX, cardY, cardW, cardH);
+    ctx.fill();
+    ctx.stroke();
+
+    // Paleta akcentowa dla poszczególnych sekund:
+    // 3: Błękit taktyczny (#38bdf8), 2: Bursztyn (#f59e0b), 1: Czerwień bojowa (#ef4444)
+    const themeColor = (secNum === 3) ? '#38bdf8' : (secNum === 2 ? '#f59e0b' : '#ef4444');
+
+    // Narożne znaczniki celownika taktycznego (Corner brackets)
+    const bLen = 14;
+    ctx.strokeStyle = themeColor;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    // Lewy górny
+    ctx.moveTo(cardX + 6, cardY + 6 + bLen);
+    ctx.lineTo(cardX + 6, cardY + 6);
+    ctx.lineTo(cardX + 6 + bLen, cardY + 6);
+    // Prawy górny
+    ctx.moveTo(cardX + cardW - 6 - bLen, cardY + 6);
+    ctx.lineTo(cardX + cardW - 6, cardY + 6);
+    ctx.lineTo(cardX + cardW - 6, cardY + 6 + bLen);
+    // Lewy dolny
+    ctx.moveTo(cardX + 6, cardY + cardH - 6 - bLen);
+    ctx.lineTo(cardX + 6, cardY + cardH - 6);
+    ctx.lineTo(cardX + 6 + bLen, cardY + cardH - 6);
+    // Prawy dolny
+    ctx.moveTo(cardX + cardW - 6 - bLen, cardY + cardH - 6);
+    ctx.lineTo(cardX + cardW - 6, cardY + cardH - 6);
+    ctx.lineTo(cardX + cardW - 6, cardY + cardH - 6 - bLen);
+    ctx.stroke();
+
+    // Górny nagłówek taktyczny
+    ctx.font = isMobile ? '900 9px monospace' : '900 10.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+    ctx.fillText('ODLICZANIE DO WALKI // LOCKDOWN', cX, cardY + 14);
+
+    // Główna cyfra odliczania ze sprężystym skalowaniem
+    const fontSize = Math.round((isMobile ? 54 : 64) * scale);
+    ctx.font = `900 ${fontSize}px monospace`;
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = themeColor;
+    ctx.fillText(String(secNum), cX, cY + (isMobile ? 4 : 6));
+
+    // Dolny wskaźnik 3-segmentowy
+    const segW = isMobile ? 24 : 32;
+    const segH = 4;
+    const segGap = 6;
+    const totalSegW = 3 * segW + 2 * segGap;
+    const segStartX = cX - totalSegW / 2;
+    const segY = cardY + cardH - 16;
+
+    for (let s = 1; s <= 3; s++) {
+      const sx = segStartX + (s - 1) * (segW + segGap);
+      const isLit = (s <= (4 - secNum));
+      ctx.fillStyle = isLit ? themeColor : 'rgba(255, 255, 255, 0.12)';
+      ctx.fillRect(sx, segY, segW, segH);
+    }
+  } else if (isBanner) {
+    // Baner startu: "WALKA! // MISJA ROZPOCZĘTA"
+    const timer = deathmatchState.fightBannerTimer; // 1.2 -> 0.0
+    const alpha = Math.min(1.0, timer / 0.35); // Płynne wygaszanie pod koniec
+    const pop = Math.max(0, timer - 0.9) / 0.3; // Punch wejścia
+    const scale = 1.0 + pop * 0.22;
+
+    const cX = W / 2;
+    const cY = isMobile ? (H * 0.38) : (H * 0.40);
+
+    const bannerW = isMobile ? 280 : 360;
+    const bannerH = isMobile ? 85 : 98;
+    const bannerX = cX - bannerW / 2;
+    const bannerY = cY - bannerH / 2;
+
+    ctx.globalAlpha = alpha;
+
+    // Tło banera
+    ctx.fillStyle = 'rgba(6, 26, 18, 0.88)';
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2.0;
+    if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 8);
+    else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+    ctx.fill();
+    ctx.stroke();
+
+    // Podtytuł
+    ctx.font = isMobile ? '900 10px monospace' : '900 11.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#86efac';
+    ctx.fillText('MISJA ROZPOCZĘTA // CEL ZATWIERDZONY', cX, bannerY + 14);
+
+    // Wielki napis WALKA!
+    const fontSize = Math.round((isMobile ? 38 : 46) * scale);
+    ctx.font = `900 ${fontSize}px monospace`;
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#22c55e';
+    ctx.fillText('WALKA!', cX, cY + 12);
   }
 
   ctx.restore();

@@ -16,8 +16,12 @@ import { keys, mouseState, inputSession } from './keyboardMouse.js';
 import { updateDoubleFlickDetection } from './touchHandlers.js';
 import { pollGamepadInput, gamepadState } from './gamepad.js';
 import { activateNextAvailableStreak } from '../killstreaks/index.js';
+import { isDeathmatchCountdown } from '../deathmatch/index.js';
 
 export function triggerPlayerShoot(p, wep) {
+  if (typeof isDeathmatchCountdown === 'function' && isDeathmatchCountdown()) {
+    return;
+  }
   if (wep && wep.isMelee && !p.isRemote) {
     if (p.meleeNeedRelease) return;
     if (p.shootCooldown > 0) return;
@@ -92,6 +96,14 @@ export function updatePlayerInputAndCombat(activeArenaId) {
 
     player.aimX = hipX + player.aimOffsetX;
     player.aimY = hipY + player.aimOffsetY;
+  }
+
+  // Podczas odliczania przedmeczowego (Lockdown 3s) gracz może swobodnie celować celownikiem / bronią,
+  // lecz nie może oddawać strzałów, rzucać granatów ani uruchamiać dopalaczy
+  if (typeof isDeathmatchCountdown === 'function' && isDeathmatchCountdown()) {
+    player.isShooting = false;
+    mouseState.lmbDown = false;
+    return;
   }
 
   // OBSŁUGA OKIEN CZASOWYCH DRĄŻKÓW (300 MS)

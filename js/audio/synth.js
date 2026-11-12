@@ -534,6 +534,22 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'ui_countdown_tick': {
+      const { now, out } = createVoiceStage(ctx, destNode, 0, 0.14);
+      const baseFreq = 587.33 * p;
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: baseFreq, freqEnd: baseFreq * 1.04, duration: 0.09, gain: gain * 0.52, attack: 0.002 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: baseFreq * 2, freqEnd: baseFreq * 2, duration: 0.07, gain: gain * 0.28, attack: 0.002 });
+      return true;
+    }
+
+    case 'ui_countdown_go': {
+      const { now, out } = createVoiceStage(ctx, destNode, 0, 0.55);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 880, freqEnd: 1760, duration: 0.18, gain: gain * 0.60, attack: 0.003 });
+      scheduleTone(ctx, out, { startTime: now + 0.04, type: 'sine', freqStart: 1320, freqEnd: 1320, duration: 0.22, gain: gain * 0.42, attack: 0.002 });
+      scheduleTone(ctx, out, { startTime: now, type: 'sine', freqStart: 220, freqEnd: 55, duration: 0.48, gain: gain * 0.75, attack: 0.004 });
+      return true;
+    }
+
     default:
       return false;
   }

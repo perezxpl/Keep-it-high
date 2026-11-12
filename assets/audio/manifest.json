@@ -183,6 +183,8 @@
     },
     "ui_pause": "ui_pause.wav",
     "ui_resume": "ui_resume.wav",
-    "ui_test_tone": "ui_test_tone.ogg"
+    "ui_test_tone": "ui_test_tone.ogg",
+    "ui_countdown_tick": null,
+    "ui_countdown_go": null
   }
 }

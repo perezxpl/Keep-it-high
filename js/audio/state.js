@@ -84,7 +84,9 @@ export const SOUND_CATALOG = {
   ui_callout_multikill: { bus: 'ui', volume: 0.36, pitchJitter: 0.02, cooldownMs: 80, spatial: false, allowInAnyState: false },
   ui_callout_oneshot: { bus: 'ui', volume: 0.42, pitchJitter: 0.01, cooldownMs: 80, spatial: false, allowInAnyState: false },
   ui_callout_revenge: { bus: 'ui', volume: 0.40, pitchJitter: 0.02, cooldownMs: 120, spatial: false, allowInAnyState: false },
-  ui_test_tone: { bus: 'sfx', volume: 0.48, pitchJitter: 0.0, cooldownMs: 80, spatial: false, allowInAnyState: true }
+  ui_test_tone: { bus: 'sfx', volume: 0.48, pitchJitter: 0.0, cooldownMs: 80, spatial: false, allowInAnyState: true },
+  ui_countdown_tick: { bus: 'ui', volume: 0.55, pitchJitter: 0.0, cooldownMs: 80, spatial: false, allowInAnyState: true },
+  ui_countdown_go: { bus: 'ui', volume: 0.70, pitchJitter: 0.0, cooldownMs: 120, spatial: false, allowInAnyState: true }
 };
 
 /**

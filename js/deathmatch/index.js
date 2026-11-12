@@ -16,7 +16,10 @@ export {
   setDeathmatchFragLimit,
   setDeathmatchDuration,
   resetDeathmatchState,
-  isDeathmatchFFA
+  isDeathmatchFFA,
+  DEATHMATCH_PHASES,
+  isDeathmatchCountdown,
+  isDeathmatchActive
 } from './state.js';
 
 export {
@@ -29,5 +32,6 @@ export {
 
 export {
   drawDeathmatchHUD,
-  drawDeathmatchPodium
+  drawDeathmatchPodium,
+  drawDeathmatchCountdown
 } from './renderer.js';

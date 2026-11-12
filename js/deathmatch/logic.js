@@ -8,6 +8,7 @@ import {
   DEATHMATCH_XP_REWARDS,
   DEATHMATCH_MODES,
   TEAMS,
+  DEATHMATCH_PHASES,
   deathmatchConfig,
   deathmatchState
 } from './state.js';
@@ -19,6 +20,7 @@ import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from '../ui/combatFeed.js';
 import { mpMatchConfig, getMpBotTeamsList } from '../networkMatch.js';
 import { getActiveRemotePlayers } from '../networkPlayers.js';
+import { playSound } from '../audio/index.js';
 
 let _dmSyncTimer = 0;
 
@@ -40,6 +42,11 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.matchDuration = deathmatchConfig.duration || DEATHMATCH_DURATION;
   deathmatchState.timeRemaining = deathmatchState.matchDuration;
   deathmatchState.elapsedTime = 0;
+  deathmatchState.matchPhase = DEATHMATCH_PHASES.COUNTDOWN;
+  deathmatchState.countdownTimer = 3.0;
+  deathmatchState.countdownDuration = 3.0;
+  deathmatchState.countdownBeeps = { 3: false, 2: false, 1: false, 0: false };
+  deathmatchState.fightBannerTimer = 0;
   deathmatchState.matchEnded = false;
   deathmatchState.endReason = null;
   deathmatchState.endCelebrationTimer = 0;
@@ -147,13 +154,8 @@ export function initDeathmatch(player, botOrBots, remotePlayer) {
   deathmatchState.participants = pList;
   updateLeaderboard();
 
-  // Wizualny komunikat taktyczny przy starcie rundy
-  const condText = (deathmatchState.winCondition === 'FRAGS')
-    ? `LIMIT: ${deathmatchState.fragLimit} FRAGOW`
-    : (deathmatchState.winCondition === 'TIME')
-      ? `LIMIT: ${Math.round(deathmatchState.matchDuration / 60)} MINUT`
-      : `CEL: ${deathmatchState.fragLimit} FRAGOW / ${Math.round(deathmatchState.matchDuration / 60)} MIN`;
-  triggerCombatFeedBanner('SYSTEM', `MISJA ROZPOCZETA // ${condText}`);
+  // Wizualny komunikat taktyczny przy starcie fazy odliczania
+  triggerCombatFeedBanner('SYSTEM', 'PRZYGOTOWAC SIE // ODLICZANIE 3S');
 }
 
 /**
@@ -291,8 +293,65 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
     return;
   }
 
-  // 1. Odliczanie czasu bitwy (lub zliczanie upływu czasu)
+  // 0. Obsługa odliczania przedmeczowego (Lockdown 3.. 2.. 1.. WALKA!)
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : (1 / 60);
+
+  if (deathmatchState.matchPhase === DEATHMATCH_PHASES.COUNTDOWN) {
+    deathmatchState.countdownTimer = Math.max(0, deathmatchState.countdownTimer - stepTime);
+
+    // Dźwięki piknięć dla sekund 3, 2, 1
+    const secFloor = Math.min(3, Math.max(1, Math.ceil(deathmatchState.countdownTimer)));
+    if (secFloor >= 1 && secFloor <= 3 && !deathmatchState.countdownBeeps[secFloor]) {
+      deathmatchState.countdownBeeps[secFloor] = true;
+      try {
+        playSound('ui_countdown_tick', { pitch: 0.95 + (3 - secFloor) * 0.15 });
+      } catch (_) {}
+    }
+
+    // Zamrożenie postaci w pozycji gotowości
+    if (player) {
+      player.vx = 0;
+      player.airVx = 0;
+      player.isShooting = false;
+    }
+    const bList = Array.isArray(botOrBots) ? botOrBots : (botOrBots ? [botOrBots] : []);
+    for (let i = 0; i < bList.length; i++) {
+      const b = bList[i];
+      if (b && b.active) {
+        b.vx = 0;
+        b.airVx = 0;
+        b.isShooting = false;
+      }
+    }
+
+    if (deathmatchState.countdownTimer <= 0) {
+      deathmatchState.countdownTimer = 0;
+      deathmatchState.matchPhase = DEATHMATCH_PHASES.ACTIVE;
+      deathmatchState.fightBannerTimer = 1.2;
+      if (!deathmatchState.countdownBeeps[0]) {
+        deathmatchState.countdownBeeps[0] = true;
+        try {
+          playSound('ui_countdown_go');
+        } catch (_) {}
+      }
+      const condText = (deathmatchState.winCondition === 'FRAGS')
+        ? `LIMIT: ${deathmatchState.fragLimit} FRAGOW`
+        : (deathmatchState.winCondition === 'TIME')
+          ? `LIMIT: ${Math.round(deathmatchState.matchDuration / 60)} MINUT`
+          : `CEL: ${deathmatchState.fragLimit} FRAGOW / ${Math.round(deathmatchState.matchDuration / 60)} MIN`;
+      triggerCombatFeedBanner('SYSTEM', `MISJA ROZPOCZETA // ${condText}`);
+    }
+
+    updateCombatFeed(stepTime);
+    return;
+  }
+
+  // Wygaszanie banera "WALKA!" po rozpoczęciu meczu
+  if (deathmatchState.fightBannerTimer > 0) {
+    deathmatchState.fightBannerTimer = Math.max(0, deathmatchState.fightBannerTimer - stepTime);
+  }
+
+  // 1. Odliczanie czasu bitwy (lub zliczanie upływu czasu)
   deathmatchState.elapsedTime = (deathmatchState.elapsedTime || 0) + stepTime;
 
   const winCond = deathmatchState.winCondition || 'BOTH';

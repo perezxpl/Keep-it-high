@@ -698,6 +698,29 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
     botTarget.holsterWeight = 0.0;
   }
 
+  // Podczas odliczania przedmeczowego (Lockdown 3s) bot stoi w pozycji gotowości i nie atakuje
+  if (deathmatchState && deathmatchState.active && deathmatchState.matchPhase === 'COUNTDOWN') {
+    bKeys.left = false;
+    bKeys.right = false;
+    bKeys.up = false;
+    bKeys.down = false;
+    bKeys.shoot = false;
+    bKeys.jump = false;
+    bKeys.slide = false;
+    bKeys.jetpack = false;
+    botTarget.vx = 0;
+    botTarget.airVx = 0;
+    botTarget.isShooting = false;
+    botTarget.isJumping = false;
+    botTarget.isSliding = false;
+    if (humanPlayer) {
+      botTarget.aimX = humanPlayer.x + (humanPlayer.w || 24) / 2;
+      botTarget.aimY = humanPlayer.y + 20;
+      botTarget.facing = (botTarget.aimX < botTarget.x) ? -1 : 1;
+    }
+    return;
+  }
+
   // Wyszukanie wrogiego celu do ataku (z pamięcią celu na ~14-20 klatek, unikając skanowania O(N^2) co klatkę)
   const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
     (typeof deathmatchState !== 'undefined' && deathmatchState.mode === 'FFA') ||

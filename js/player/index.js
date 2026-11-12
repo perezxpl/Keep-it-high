@@ -12,6 +12,7 @@ import { triggerEnforcerBlastJump, executeEnforcerGroundSlamImpact } from '../cl
 import { WEAPONS, updateWeaponState } from '../weapons.js';
 import { getActiveArena } from '../arenas/index.js';
 import { getRiverbankGroundY } from '../arenas/arena3/state.js';
+import { isDeathmatchCountdown } from '../deathmatch/index.js';
 
 import { ease, parabola, lerp, lerpAngle, solve2BoneIK, getArmAnglesForTarget, getAimArmAngles } from './ik.js';
 import { getFreestyleChoreography, getSprintFootTrajectory, getBiomechanicFootTrajectory, evaluateCrouchState } from './locomotion.js';
@@ -89,6 +90,28 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
     player.isProne = false;
     player.isCrouching = false;
     player.dropThroughTimer = 0;
+    if (player.keys) {
+      player.keys.left = false; player.keys.right = false;
+      player.keys.up = false; player.keys.down = false;
+      player.keys.space = false; player.keys.slide = false;
+    }
+  }
+
+  // Blokada poruszania się podczas 3-sekundowego odliczania przedmeczowego w Deathmatch
+  const isCountdown = (typeof isDeathmatchCountdown === 'function' && isDeathmatchCountdown());
+  if (isCountdown) {
+    keys = null;
+    leftStick = null;
+    player.vx = 0;
+    player.airVx = 0;
+    player.isShooting = false;
+    player.isCharging = false;
+    player.isJumpCharging = false;
+    player.isSliding = false;
+    player.isJumping = false;
+    player.jumpSquatTimer = 0;
+    player.jumpTakeoffTimer = 0;
+    player.isJetpacking = false;
     if (player.keys) {
       player.keys.left = false; player.keys.right = false;
       player.keys.up = false; player.keys.down = false;

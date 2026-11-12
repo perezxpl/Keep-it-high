@@ -29,6 +29,12 @@ export const WIN_CONDITIONS = {
   TIME: 'TIME'    // Tylko limit czasu
 };
 
+export const DEATHMATCH_PHASES = {
+  COUNTDOWN: 'COUNTDOWN', // 3-sekundowe zamrożenie i odliczanie (3.. 2.. 1..)
+  ACTIVE: 'ACTIVE',       // Runda w toku (ruch, walka, naliczanie czasu)
+  ENDED: 'ENDED'          // Mecz zakończony (podium i statystyki)
+};
+
 const STORAGE_KEY_MODE = 'kih_deathmatch_mode_v1';
 const STORAGE_KEY_TEAM = 'kih_deathmatch_player_team_v1';
 const STORAGE_KEY_WIN_CONDITION = 'kih_deathmatch_win_condition_v1';
@@ -88,6 +94,14 @@ export function isDeathmatchFFA() {
   return deathmatchState.mode === DEATHMATCH_MODES.FFA || deathmatchConfig.mode === DEATHMATCH_MODES.FFA;
 }
 
+export function isDeathmatchCountdown() {
+  return deathmatchState.active && deathmatchState.matchPhase === DEATHMATCH_PHASES.COUNTDOWN;
+}
+
+export function isDeathmatchActive() {
+  return deathmatchState.active && deathmatchState.matchPhase === DEATHMATCH_PHASES.ACTIVE;
+}
+
 export function setDeathmatchMode(mode) {
   if (mode === DEATHMATCH_MODES.TDM || mode === DEATHMATCH_MODES.FFA) {
     deathmatchConfig.mode = mode;
@@ -134,6 +148,11 @@ export function setDeathmatchDuration(seconds) {
 
 export const deathmatchState = {
   active: false,
+  matchPhase: DEATHMATCH_PHASES.COUNTDOWN, // 'COUNTDOWN' | 'ACTIVE' | 'ENDED'
+  countdownTimer: 3.0,                     // 3-sekundowe odliczanie przed startem
+  countdownDuration: 3.0,
+  countdownBeeps: { 3: false, 2: false, 1: false, 0: false },
+  fightBannerTimer: 0,                     // Czas wyświetlania banera WALKA! po zakończeniu odliczania
   mode: deathmatchConfig.mode,
   playerTeam: deathmatchConfig.playerTeam,
   winCondition: deathmatchConfig.winCondition,
@@ -169,6 +188,11 @@ export const deathmatchState = {
 
 export function resetDeathmatchState() {
   deathmatchState.active = false;
+  deathmatchState.matchPhase = DEATHMATCH_PHASES.COUNTDOWN;
+  deathmatchState.countdownTimer = 3.0;
+  deathmatchState.countdownDuration = 3.0;
+  deathmatchState.countdownBeeps = { 3: false, 2: false, 1: false, 0: false };
+  deathmatchState.fightBannerTimer = 0;
   deathmatchState.mode = deathmatchConfig.mode;
   deathmatchState.playerTeam = deathmatchConfig.playerTeam;
   deathmatchState.winCondition = deathmatchConfig.winCondition;
@@ -195,6 +219,9 @@ if (typeof window !== 'undefined') {
   window.deathmatchState = deathmatchState;
   window.deathmatchConfig = deathmatchConfig;
   window.isDeathmatchFFA = isDeathmatchFFA;
+  window.isDeathmatchCountdown = isDeathmatchCountdown;
+  window.isDeathmatchActive = isDeathmatchActive;
+  window.DEATHMATCH_PHASES = DEATHMATCH_PHASES;
   window.WIN_CONDITIONS = WIN_CONDITIONS;
   window.setDeathmatchWinCondition = setDeathmatchWinCondition;
   window.setDeathmatchFragLimit = setDeathmatchFragLimit;
