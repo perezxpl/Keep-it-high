@@ -30,6 +30,7 @@ export {
 export {
   activeCarePackages,
   spawnCarePackage,
+  applyRemoteCarePackageOpened,
   getCarePackageSurfaceY
 } from './carePackage.js';
 
@@ -43,6 +44,7 @@ export {
 export {
   activeSentryGuns,
   spawnSentryGun,
+  applyRemoteSentryDestroyed,
   updateSentryGuns,
   drawSentryGuns,
   initSentryGuns

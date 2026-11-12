@@ -144,6 +144,9 @@ export function activateKillstreak(streakId) {
       color: '#00e5ff'
     };
     killstreakState.notificationTimer = 3.0;
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({ subType: 'UAV' }, player);
+    }
     return true;
   }
 
@@ -245,6 +248,9 @@ export function activateKillstreak(streakId) {
     };
     killstreakState.notificationTimer = 4.5;
     triggerCombatFeedBanner('KILL', '[KOLOS] WYPOSAŻONO PANCERZ JUGGERNAUT (250 HP)!');
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({ subType: 'JUGGERNAUT' }, player);
+    }
     return true;
   }
 

@@ -179,6 +179,9 @@ export function handleArena5BulletHit(bullet) {
 
         if (cell.hp <= 0) {
           destroyGridCell(cell.row, cell.col);
+          if (typeof window !== 'undefined' && typeof window.broadcastArena5GridSync === 'function') {
+            window.broadcastArena5GridSync({ minIntervalMs: 60 });
+          }
         }
         return true;
       }
@@ -253,6 +256,9 @@ export function handleArena5Explosion(expX, expY, radius) {
     applyPieceGravity(getActiveCombatants());
     if (arena5State.crane && arena5State.crane.shape) {
       calculateTargetLandY(true);
+    }
+    if (typeof window !== 'undefined' && typeof window.broadcastArena5GridSync === 'function') {
+      window.broadcastArena5GridSync({ minIntervalMs: 60 });
     }
   }
 }

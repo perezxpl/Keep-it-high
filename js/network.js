@@ -7,7 +7,16 @@ import { getJetpackFlamePalette } from './player/jetpack.js';
 import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots, setBotCount, botCount, getStoredSinglePlayerBotCount, balanceBotClasses, getBotDifficulty, setBotDifficulty, getStoredBotEnabled, setBotEnabled } from './bot.js';
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent } from './ui/combatFeed.js';
-import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
+import {
+  registerKillstreakKill,
+  resetKillstreak,
+  spawnCarePackage,
+  applyRemoteCarePackageOpened,
+  spawnMortarStrike,
+  spawnSentryGun,
+  applyRemoteSentryDestroyed,
+  spawnAttackDrone
+} from './killstreaks/index.js';
 import { registerCalloutKill, onPlayerDeathCallout } from './callouts/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
@@ -111,7 +120,8 @@ export function updateRemotePlayer(groundY) {
 export function broadcastNetworkPacket(packet, excludePeerId = null) {
   // 1. Dedykowany serwer WebSocket
   if (wsState && wsState.connected) {
-    sendWsPacket(packet);
+    const droppable = (packet.type === 'p_state' || packet.type === 'bots_state' || packet.type === 'b_state');
+    sendWsPacket(packet, { droppable });
     return;
   }
 
@@ -187,9 +197,19 @@ export function sendPlayerState(localPlayer) {
   if (!isNetworkActive()) return;
 
   const now = performance.now();
-  // Wysyłamy co klatkę lub max 60 Hz
-  if (now - networkState.lastStateSent < 16) return;
+  const minInterval = (wsState && wsState.connected) ? 30 : 16;
+  if (now - networkState.lastStateSent < minInterval) return;
   networkState.lastStateSent = now;
+
+  let visualsToSend = undefined;
+  if (localPlayer.customVisuals) {
+    const visualsKey = JSON.stringify(localPlayer.customVisuals);
+    if (visualsKey !== networkState._lastSentVisualsKey || (now - (networkState._lastVisualsSent || 0)) > 2500) {
+      visualsToSend = localPlayer.customVisuals;
+      networkState._lastSentVisualsKey = visualsKey;
+      networkState._lastVisualsSent = now;
+    }
+  }
 
   try {
     broadcastNetworkPacket({
@@ -218,9 +238,12 @@ export function sendPlayerState(localPlayer) {
       kickCharge: Math.round((localPlayer.kickCharge || 0) * 100) / 100,
       hp: localPlayer.hp,
       maxHp: localPlayer.maxHp || 100,
+      hasVest: !!localPlayer.hasVest,
+      hasHelmet: !!localPlayer.hasHelmet,
+      vestHp: Math.round(localPlayer.vestHp || 0),
       isDead: !!localPlayer.isDead,
       selectedClass: localPlayer.selectedClass,
-      customVisuals: localPlayer.customVisuals,
+      ...(visualsToSend ? { customVisuals: visualsToSend } : {}),
       team: localPlayer.team,
       name: localPlayer.name,
       currentWeaponId: localPlayer.currentWeapon ? localPlayer.currentWeapon.id : 'AK47',
@@ -231,6 +254,26 @@ export function sendPlayerState(localPlayer) {
     });
   } catch (e) {
     console.warn('[P2P] Send player state error:', e);
+  }
+}
+
+export function sendKillstreakEvent(payload, owner = null) {
+  if (!isNetworkActive() || !payload || !payload.subType) return;
+  let ownerBotIdx = -1;
+  if (owner && owner.isBot) {
+    const activeBots = getActiveBots();
+    ownerBotIdx = activeBots.indexOf(owner);
+  }
+  try {
+    broadcastNetworkPacket({
+      type: 'killstreak_event',
+      ...payload,
+      ...(ownerBotIdx >= 0 ? { ownerBotIdx } : {}),
+      senderName: (owner && owner.name) ? owner.name : (player?.name || 'OPERATOR'),
+      senderTeam: (owner && owner.team) ? owner.team : (player?.team || null)
+    });
+  } catch (e) {
+    console.warn('[NET] Send killstreak event error:', e);
   }
 }
 
@@ -984,6 +1027,17 @@ export function handleNetworkData(data, senderPeerId = null) {
       targetRp.kickCharge = data.kickCharge;
       targetRp.hp = data.hp;
       targetRp.maxHp = data.maxHp;
+      if (data.hasVest !== undefined) {
+        targetRp.hasVest = !!data.hasVest;
+        if (targetRp.visuals) targetRp.visuals.hasVest = !!data.hasVest;
+      }
+      if (data.hasHelmet !== undefined) {
+        targetRp.hasHelmet = !!data.hasHelmet;
+        if (targetRp.visuals) targetRp.visuals.hasHelmet = !!data.hasHelmet;
+      }
+      if (data.vestHp !== undefined) {
+        targetRp.vestHp = data.vestHp;
+      }
       targetRp.isDead = !!data.isDead;
       targetRp.isJetpacking = !!data.isJetpacking;
       targetRp.jetFuel = data.jetFuel;
@@ -1338,6 +1392,80 @@ export function handleNetworkData(data, senderPeerId = null) {
           victimName: data.victimName || 'PRZECIWNIK',
           victimTeam: data.victimTeam || null
         });
+      }
+      break;
+    }
+
+    case 'killstreak_event': {
+      if (!wsState?.connected && networkState.isHost && senderPeerId) {
+        broadcastNetworkPacket({ ...data, senderId: senderPeerId }, senderPeerId);
+      }
+      const pid = data.senderId || senderPeerId;
+      let owner = null;
+      if (typeof data.ownerBotIdx === 'number' && data.ownerBotIdx >= 0) {
+        const bots = getActiveBots();
+        owner = bots[data.ownerBotIdx] || null;
+      }
+      if (!owner) {
+        owner = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : null;
+        if (!owner && pid) {
+          owner = getOrCreateRemotePlayer(pid, data.slotIndex, data.senderName, data.senderTeam);
+        }
+        if (!owner) owner = resolveRemoteSender(null);
+      }
+
+      const ownerName = (owner && owner.name) ? owner.name : (data.senderName || 'OPERATOR');
+      const ownerTeam = (owner && owner.team) ? owner.team : (data.senderTeam || null);
+      const isFFA = (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+      const isAlly = !isFFA && ownerTeam && player?.team && ownerTeam === player.team;
+      const prefix = isAlly ? '[SOJUSZNIK]' : '[UWAGA]';
+      const bannerType = isAlly ? 'KILL' : 'DEATH';
+
+      switch (data.subType) {
+        case 'UAV':
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} URUCHOMIŁ RADAR UAV`);
+          break;
+        case 'CARE_PACKAGE':
+          spawnCarePackage(owner, data.targetX, { fromNetwork: true, crateId: data.crateId });
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} WEZWAŁ ZRZUT ZAOPATRZENIA`);
+          break;
+        case 'CARE_PACKAGE_OPENED':
+          applyRemoteCarePackageOpened(data, owner);
+          if (data.loot === 'JUGGERNAUT') {
+            triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} ZDOBYŁ PANCERZ JUGGERNAUT (250 HP)!`);
+          }
+          break;
+        case 'MORTAR_STRIKE':
+          spawnMortarStrike(data.targetX, owner, { fromNetwork: true, offsets: data.offsets });
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} WEZWAŁ NALOT MOŹDZIERZOWY!`);
+          break;
+        case 'SENTRY_GUN':
+          spawnSentryGun(owner, data.targetX, { fromNetwork: true, sentryId: data.sentryId, facing: data.facing });
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} ROZSTAWIŁ WIEŻYCZKĘ SENTRY`);
+          break;
+        case 'SENTRY_DESTROYED': {
+          const allCombatants = [player, ...getActiveRemotePlayers(), ...getActiveBots()].filter(Boolean);
+          applyRemoteSentryDestroyed(data.sentryId, allCombatants);
+          break;
+        }
+        case 'ATTACK_DRONE':
+          spawnAttackDrone(owner, { fromNetwork: true });
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} URUCHOMIŁ DRONA BOJOWEGO!`);
+          break;
+        case 'JUGGERNAUT':
+          if (owner) {
+            owner.maxHp = 250;
+            owner.hp = 250;
+            owner.hasVest = true;
+            owner.vestHp = 200;
+            owner.hasHelmet = true;
+            if (owner.visuals) {
+              owner.visuals.hasVest = true;
+              owner.visuals.hasHelmet = true;
+            }
+          }
+          triggerCombatFeedBanner(bannerType, `${prefix} ${ownerName} AKTYWOWAŁ PANCERZ JUGGERNAUT (250 HP)!`);
+          break;
       }
       break;
     }
@@ -1952,6 +2080,7 @@ export function initNetwork() {
 
   if (typeof window !== 'undefined') {
     window.sendBotShootEvent = sendBotShootEvent;
+    window.sendKillstreakEvent = sendKillstreakEvent;
     window.broadcastMpBotCount = broadcastMpBotCount;
     window.broadcastMpRoster = broadcastMpRoster;
     window.syncMpBotUI = syncMpBotUI;

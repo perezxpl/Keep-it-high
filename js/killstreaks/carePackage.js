@@ -72,11 +72,11 @@ export function initCarePackages() {
  * @param {object} owner - podmiot wzywający (np. gracz)
  * @param {number} targetX - docelowa pozycja X na mapie
  */
-export function spawnCarePackage(owner, targetX) {
+export function spawnCarePackage(owner, targetX, options = {}) {
   const safeX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : 500;
   const landingY = getCarePackageSurfaceY(safeX);
 
-  const crateId = `cp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const crateId = options.crateId || `cp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
   // 1. Dodanie flary dymnej na podłożu
   activeFlares.push({
@@ -112,6 +112,17 @@ export function spawnCarePackage(owner, targetX) {
 
   if (owner && !owner.isBot && !owner.isRemote) {
     triggerCombatFeedBanner('KILL', '[ZRZUT] FLARA TAKTYCZNA AKTYWNA - SKRZYNIA W DRODZE');
+  }
+
+  const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
+  if (!options.fromNetwork && owner && !owner.isRemote && (!owner.isBot || isHost)) {
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({
+        subType: 'CARE_PACKAGE',
+        crateId,
+        targetX: Math.round(safeX)
+      }, owner);
+    }
   }
 }
 
@@ -169,6 +180,16 @@ export function awardCarePackageLoot(crate, recipient, player) {
   }
 
   const loot = rollCarePackageLoot();
+  const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
+  if (recipient && !recipient.isRemote && (!recipient.isBot || isHost)) {
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({
+        subType: 'CARE_PACKAGE_OPENED',
+        crateId: crate.id,
+        loot
+      }, recipient);
+    }
+  }
 
   switch (loot) {
     case 'HEAVY_ARMOR': {
@@ -319,6 +340,53 @@ export function awardCarePackageLoot(crate, recipient, player) {
   }
 }
 
+export function applyRemoteCarePackageOpened(data, owner) {
+  if (!data || !data.crateId) return;
+  const crate = activeCarePackages.find(c => c.id === data.crateId);
+  if (crate && !crate.isOpen) {
+    crate.isOpen = true;
+    crate.isGrounded = false;
+    crate.openedTimer = 2.4;
+    triggerScreenShake(2.5);
+    spawnJetpackSparks(crate.x + crate.w / 2, crate.y + crate.h / 2, 1, 14, ['#facc15', '#00e5ff', '#ffffff', '#22c55e'], 0, -2.5);
+  }
+
+  const lootLabels = {
+    HEAVY_ARMOR: ['[+] CIĘŻKI PANCERZ + HEŁM', '#22c55e'],
+    FULL_AMMO: ['[+] PEŁNA AMUNICJA', '#38bdf8'],
+    MORTAR_STRIKE: ['[+] NALOT MOŹDZIERZOWY', '#f59e0b'],
+    SENTRY_GUN: ['[+] WIEŻYCZKA SENTRY', '#00e5ff'],
+    ATTACK_DRONE: ['[+] DRON BOJOWY', '#00e5ff'],
+    JUGGERNAUT: ['[KOLOS] JUGGERNAUT 250 HP', '#eab308']
+  };
+  const info = lootLabels[data.loot] || ['[+] ZAOPATRZENIE', '#facc15'];
+  if (crate) {
+    crate.floatingNotice = { text: info[0], color: info[1], y: crate.y - 12, alpha: 1.0 };
+  }
+
+  if (owner) {
+    if (data.loot === 'HEAVY_ARMOR') {
+      owner.hasVest = true;
+      owner.vestHp = 100;
+      owner.hasHelmet = true;
+      if (owner.visuals) {
+        owner.visuals.hasVest = true;
+        owner.visuals.hasHelmet = true;
+      }
+    } else if (data.loot === 'JUGGERNAUT') {
+      owner.maxHp = 250;
+      owner.hp = 250;
+      owner.hasVest = true;
+      owner.vestHp = 200;
+      owner.hasHelmet = true;
+      if (owner.visuals) {
+        owner.visuals.hasVest = true;
+        owner.visuals.hasHelmet = true;
+      }
+    }
+  }
+}
+
 /**
  * Główna pętla aktualizacji fizyki, kolizji i przechwytywania zrzutów
  */
@@ -438,10 +506,11 @@ export function updateCarePackages(dt = (1 / 60), player = null, combatants = []
       }
 
       // B. Sprawdzenie botów (jeśli gracz nie przechwytuje)
+      const isClient = (typeof window !== 'undefined' && typeof window.isMatchClient === 'function') ? window.isMatchClient() : false;
       if (!capturingEntity) {
         const list = Array.isArray(combatants) ? combatants : [];
         for (const c of list) {
-          if (!c || c === player || c.isDead || c.active === false) continue;
+          if (!c || c === player || c.isRemote || (isClient && c.isBot) || c.isDead || c.active === false) continue;
           const bx = c.x + (c.w || 32) / 2;
           const by = c.y + (c.h || 58) / 2;
           const cx = crate.x + crate.w / 2;

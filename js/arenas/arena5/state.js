@@ -650,6 +650,10 @@ export function prepareNextCraneDrop() {
       col,
       material,
       pieceId,
+      currentY: Math.round(arena5State.crane.currentY),
+      targetLandY: Math.round(arena5State.crane.targetLandY),
+      targetLandingRow: arena5State.crane.targetLandingRow,
+      vy: Math.round((arena5State.crane.vy || 1) * 10) / 10,
       directive: arena5State.directive,
       directiveName: arena5State.directiveName,
       directiveColor: arena5State.directiveColor
@@ -694,14 +698,49 @@ export function applyRemoteCraneDrop(data) {
   arena5State.crane.accentColor = shapeDef.accentColor;
   arena5State.crane.col = col;
   arena5State.crane.dropX = getGridX(col);
-  arena5State.crane.vy = 1.0;
+  arena5State.crane.vy = (typeof data.vy === 'number') ? data.vy : 1.0;
   arena5State.crane.shapeCells = shapeCells;
 
   calculateTargetLandY();
+  if (typeof data.currentY === 'number') {
+    arena5State.crane.currentY = data.currentY;
+  }
+  if (typeof data.targetLandY === 'number') {
+    arena5State.crane.targetLandY = data.targetLandY;
+  }
+  if (typeof data.targetLandingRow === 'number') {
+    arena5State.crane.targetLandingRow = data.targetLandingRow;
+  }
+}
+
+let _lastA5GridSyncSentAt = 0;
+
+/**
+ * Rozgłasza autorytatywny stan wieży Arena 5 z hosta z opcjonalnym limitem częstotliwości
+ */
+export function broadcastArena5GridSync(options = {}) {
+  if (typeof window === 'undefined') return false;
+  if (typeof window.isMatchHost !== 'function' || !window.isMatchHost()) return false;
+  if (typeof window.isMatchActive !== 'function' || !window.isMatchActive()) return false;
+  if (typeof window.broadcastNetworkPacket !== 'function') return false;
+
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const minInterval = (typeof options.minIntervalMs === 'number') ? options.minIntervalMs : 0;
+  if (minInterval > 0 && (now - _lastA5GridSyncSentAt) < minInterval) {
+    return false;
+  }
+  _lastA5GridSyncSentAt = now;
+
+  window.broadcastNetworkPacket({
+    type: 'a5_grid_sync',
+    snapshot: serializeArena5Grid()
+  });
+  return true;
 }
 
 /**
  * Serializuje stan klocków wieży do kompaktowego formatu sieciowego
+ * Format krotek: [r, c, pieceId, shapeId, material, hp, maxHp, accentColor]
  */
 export function serializeArena5Grid() {
   const blocks = [];
@@ -710,20 +749,21 @@ export function serializeArena5Grid() {
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
       if (cell && cell.hp > 0) {
-        blocks.push({
+        blocks.push([
           r,
           c,
-          pId: cell.pieceId,
-          sId: cell.shapeId,
-          mat: cell.material,
-          hp: cell.hp,
-          mHp: cell.maxHp,
-          clr: cell.accentColor
-        });
+          cell.pieceId,
+          cell.shapeId,
+          cell.material,
+          Math.round(cell.hp),
+          Math.round(cell.maxHp),
+          cell.accentColor || '#eab308'
+        ]);
       }
     }
   }
   return {
+    compact: 1,
     blocks,
     minFloorRow: arena5State.minFloorRow || 0,
     highestRowIndex: arena5State.highestRowIndex || 0,
@@ -745,17 +785,18 @@ export function applyArena5GridSnapshot(snapshot) {
     setArena5Directive(snapshot.directive);
   }
 
-  // 1. Usunięcie starych platform klocków z ARENA_PLATFORMS
+  // 1. O(N) usuniecie starych platform klockow z ARENA_PLATFORMS bez splice w petli
+  const newBlockPlats = [];
   if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-    for (let i = window.ARENA_PLATFORMS.length - 1; i >= 0; i--) {
-      if (window.ARENA_PLATFORMS[i].isA5Block) {
-        window.ARENA_PLATFORMS.splice(i, 1);
-      }
+    const kept = window.ARENA_PLATFORMS.filter(p => !p || !p.isA5Block);
+    window.ARENA_PLATFORMS.length = 0;
+    for (let i = 0; i < kept.length; i++) {
+      window.ARENA_PLATFORMS.push(kept[i]);
     }
   }
 
-  // 2. Usunięcie platform klocków z arena5State.platforms
-  arena5State.platforms = arena5State.platforms.filter(p => !p.isA5Block);
+  // 2. Usuniecie platform klockow z arena5State.platforms
+  arena5State.platforms = arena5State.platforms.filter(p => !p || !p.isA5Block);
 
   // 3. Wyczyszczenie wierszy siatki
   arena5State.gridRows.clear();
@@ -765,24 +806,32 @@ export function applyArena5GridSnapshot(snapshot) {
     arena5State.totalBlocksDropped = snapshot.totalBlocksDropped;
   }
 
-  // 4. Rekonstrukcja klocków
+  // 4. Rekonstrukcja klocków (obsługa kompaktowych krotek oraz starszego formatu obiektowego)
   for (const b of snapshot.blocks) {
-    const worldRow = b.r;
-    const worldCol = b.c;
+    const isTuple = Array.isArray(b);
+    const worldRow = isTuple ? b[0] : b.r;
+    const worldCol = isTuple ? b[1] : b.c;
+    const pieceId = isTuple ? b[2] : b.pId;
+    const shapeId = isTuple ? b[3] : b.sId;
+    const material = isTuple ? b[4] : b.mat;
+    const hp = isTuple ? b[5] : b.hp;
+    const maxHp = isTuple ? b[6] : b.mHp;
+    const accentColor = (isTuple ? b[7] : b.clr) || '#eab308';
+
     let rowData = arena5State.gridRows.get(worldRow);
     if (!rowData) {
       rowData = new Array(COLS).fill(null);
       arena5State.gridRows.set(worldRow, rowData);
     }
 
-    const matDef = BLOCK_MATERIALS[b.mat] || BLOCK_MATERIALS.STEEL;
+    const matDef = BLOCK_MATERIALS[material] || BLOCK_MATERIALS.STEEL;
     const cellObj = {
-      pieceId: b.pId,
-      shapeId: b.sId,
-      accentColor: b.clr || '#eab308',
-      material: b.mat,
-      hp: b.hp,
-      maxHp: b.mHp || matDef.maxHp,
+      pieceId,
+      shapeId,
+      accentColor,
+      material,
+      hp,
+      maxHp: maxHp || matDef.maxHp,
       x: getGridX(worldCol),
       y: getGridY(worldRow),
       w: CELL_SIZE,
@@ -806,20 +855,22 @@ export function applyArena5GridSnapshot(snapshot) {
       height: cellObj.h,
       solid: true,
       isGround: true,
-      type: b.mat === 'SCAFFOLDING' ? 'catwalk' : 'container_block',
+      type: material === 'SCAFFOLDING' ? 'catwalk' : 'container_block',
       isA5Block: true,
       gridRow: worldRow,
       gridCol: worldCol,
-      pieceId: b.pId,
+      pieceId,
       cellRef: cellObj
     };
     cellObj.platformObj = platObj;
     rowData[worldCol] = cellObj;
 
     arena5State.platforms.push(platObj);
-    if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
-      window.ARENA_PLATFORMS.push(platObj);
-    }
+    newBlockPlats.push(platObj);
+  }
+
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS) && newBlockPlats.length > 0) {
+    window.ARENA_PLATFORMS.push(...newBlockPlats);
   }
 
   if (typeof window !== 'undefined') {
@@ -835,6 +886,7 @@ export function applyArena5GridSnapshot(snapshot) {
 if (typeof window !== 'undefined') {
   window.arena5State = arena5State;
   window.applyRemoteCraneDrop = applyRemoteCraneDrop;
+  window.broadcastArena5GridSync = broadcastArena5GridSync;
   window.serializeArena5Grid = serializeArena5Grid;
   window.applyArena5GridSnapshot = applyArena5GridSnapshot;
 }

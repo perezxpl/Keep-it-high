@@ -69,6 +69,8 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
     if (c) syncCombatantHeight(c);
   }
 
+  const isClient = (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient());
+
   // 1. Podnoszenie podłogi wraz ze wspinaczką kamery
   updateRisingFloor(camera, _activeCombatants);
 
@@ -81,11 +83,11 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
   // 4. Płynne opadanie i przesuwanie klocków w dół (Smooth Physics Falling & Sliding)
   updateFallingBlocks(stepTime, _activeCombatants);
 
-  // 5. Normalna grawitacja dla klocków: jeśli klocek podpierający został zniszczony, reszta opada w dół
-  applyColumnGravity(_activeCombatants);
-
-  // 4. Detekcja i aktualizacja czyszczenia pełnych linii
-  checkAndTriggerLineClears(_activeCombatants);
+  if (!isClient) {
+    // 5. Normalna grawitacja dla klocków i czyszczenie pełnych linii autorytatywnie na hoście
+    applyColumnGravity(_activeCombatants);
+    checkAndTriggerLineClears(_activeCombatants);
+  }
   updateLineClears(stepTime, _activeCombatants);
 
   // 5. Aktualizacja cząsteczek odłamków zniszczonych klocków
@@ -107,6 +109,7 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
 function updateCrane(dt, combatants) {
   const crane = arena5State.crane;
   if (!crane || !crane.shape) return;
+  const isClient = (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient());
 
   if (crane.phase === 'WARNING') {
     // Usunięty wskaźnik/ostrzeżenie: natychmiastowe przejście do płynnego opadania
@@ -124,12 +127,17 @@ function updateCrane(dt, combatants) {
     // Warunek uderzenia w wieżę / podłoże
     if (crane.phase === 'FALLING' && crane.currentY >= crane.targetLandY) {
       crane.currentY = crane.targetLandY;
-      onCraneBlockImpact(combatants);
+      if (isClient) {
+        // Klient czeka na autorytatywny a5_grid_sync od hosta zamiast dublować impakt
+        crane.phase = 'LANDED_WAIT';
+      } else {
+        onCraneBlockImpact(combatants);
+      }
     }
   } else if (crane.phase === 'COOLDOWN') {
     crane.cooldownTimer -= dt;
     if (crane.cooldownTimer <= 0) {
-      if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
+      if (isClient) {
         return;
       }
       prepareNextCraneDrop();
@@ -565,7 +573,7 @@ function onCraneBlockImpact(combatants) {
 
     const existing = rowData[worldCol];
     if (existing && existing !== cellObj) {
-      removePlatformForCell(existing);
+      removePlatformForCell(existing, true);
     }
     rowData[worldCol] = cellObj;
 
@@ -633,6 +641,7 @@ export function syncArena5ExposedSurfaces() {
   for (const [r, rowData] of arena5State.gridRows.entries()) {
     if (r < minRow || !rowData) continue;
     const rowAbove = arena5State.gridRows.get(r + 1);
+    const rowBelow = arena5State.gridRows.get(r - 1);
 
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
@@ -646,6 +655,17 @@ export function syncArena5ExposedSurfaces() {
       if (cell.platformObj) {
         cell.platformObj.topExposed = isTopExposed;
       }
+
+      const pId = cell.pieceId;
+      const cellBelow = rowBelow ? rowBelow[c] : null;
+      const cellLeft = c > 0 ? rowData[c - 1] : null;
+      const cellRight = c < COLS - 1 ? rowData[c + 1] : null;
+      cell._outerEdges = {
+        top: !(cellAbove && cellAbove.hp > 0 && cellAbove.pieceId === pId),
+        bottom: !(cellBelow && cellBelow.hp > 0 && cellBelow.pieceId === pId),
+        left: !(cellLeft && cellLeft.hp > 0 && cellLeft.pieceId === pId),
+        right: !(cellRight && cellRight.hp > 0 && cellRight.pieceId === pId)
+      };
     }
   }
 }
@@ -653,7 +673,7 @@ export function syncArena5ExposedSurfaces() {
 /**
  * Usuwa obiekt platformy dla danej komórki
  */
-export function removePlatformForCell(cell) {
+export function removePlatformForCell(cell, skipExposedSync = false) {
   if (!cell) return;
   if (cell.platformObj) {
     const plat = cell.platformObj;
@@ -672,7 +692,9 @@ export function removePlatformForCell(cell) {
   if (cell.x !== undefined && cell.y !== undefined) {
     removeBloodDecalsInArea(cell.x - 6, cell.y - 12, (cell.w || CELL_SIZE) + 12, (cell.h || CELL_SIZE) + 24);
   }
-  syncArena5ExposedSurfaces();
+  if (!skipExposedSync) {
+    syncArena5ExposedSurfaces();
+  }
 }
 
 /**
@@ -1298,13 +1320,15 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
     if (rowData) {
       for (let c = 0; c < COLS; c++) {
         if (rowData[c]) {
-          removePlatformForCell(rowData[c]);
+          removePlatformForCell(rowData[c], true);
         }
       }
     }
     arena5State.gridRows.delete(r);
     removeBloodDecalsInArea(ARENA_LEFT, getGridY(r) - 14, ARENA_WIDTH, CELL_SIZE + 28);
   }
+
+  syncArena5ExposedSurfaces();
 
   // Zastosuj normalną grawitację kolumnową dla wszystkich klocków powyżej
   applyColumnGravity(combatants);
@@ -1315,6 +1339,10 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
     if (arena5State.crane.currentY > arena5State.crane.targetLandY) {
       arena5State.crane.currentY = arena5State.crane.targetLandY - 40;
     }
+  }
+
+  if (typeof window !== 'undefined' && typeof window.broadcastArena5GridSync === 'function') {
+    window.broadcastArena5GridSync();
   }
 }
 
@@ -1341,6 +1369,8 @@ function updateDebris(dt) {
  * a podstawa i linia utylizatora podnoszą się w ślad za nim.
  */
 export function updateRisingFloor(camera, combatants = []) {
+  const isClient = (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient());
+
   // 1. Znajdź najwyższy aktywny wiersz w siatce
   let highestRow = -1;
   for (const [r, rowData] of arena5State.gridRows.entries()) {
@@ -1352,7 +1382,7 @@ export function updateRisingFloor(camera, combatants = []) {
   // 2. Okno maksymalnie 20 segmentów wieży
   if (highestRow >= MAX_TOWER_ROWS) {
     const minKeepRow = highestRow - (MAX_TOWER_ROWS - 1);
-    if (minKeepRow > arena5State.minFloorRow) {
+    if (!isClient && minKeepRow > arena5State.minFloorRow) {
       // Usunięcie wszystkich najniższych wierszy poniżej dozwolonego okna 20 segmentów
       const rowsToDelete = [];
       for (const [r, rowData] of arena5State.gridRows.entries()) {
@@ -1364,7 +1394,7 @@ export function updateRisingFloor(camera, combatants = []) {
         if (rowData) {
           for (let c = 0; c < COLS; c++) {
             if (rowData[c]) {
-              removePlatformForCell(rowData[c]);
+              removePlatformForCell(rowData[c], true);
               spawnConcreteDebris(rowData[c].x + CELL_SIZE * 0.5, rowData[c].y + CELL_SIZE * 0.5, 2);
             }
           }
@@ -1372,13 +1402,19 @@ export function updateRisingFloor(camera, combatants = []) {
         arena5State.gridRows.delete(r);
       }
       arena5State.minFloorRow = minKeepRow;
+      syncArena5ExposedSurfaces();
+      if (typeof window !== 'undefined' && typeof window.broadcastArena5GridSync === 'function') {
+        window.broadcastArena5GridSync();
+      }
     }
     arena5State.currentFloorY = BASE_FLOOR_Y - (arena5State.minFloorRow * CELL_SIZE);
     arena5State.recyclerY = arena5State.currentFloorY + 80;
   } else {
-    arena5State.minFloorRow = 0;
-    arena5State.currentFloorY = BASE_FLOOR_Y;
-    arena5State.recyclerY = BASE_FLOOR_Y + 400; // Bezpiecznie pod podłogą na starcie
+    if (!isClient) {
+      arena5State.minFloorRow = 0;
+    }
+    arena5State.currentFloorY = BASE_FLOOR_Y - ((arena5State.minFloorRow || 0) * CELL_SIZE);
+    arena5State.recyclerY = arena5State.currentFloorY + 400; // Bezpiecznie pod podłogą na starcie
   }
 
   // 3. Synchronizacja platformy podłogi w fizyce gry (a5_base_floor)

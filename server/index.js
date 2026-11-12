@@ -284,7 +284,8 @@ wss.on('connection', (ws) => {
       }
 
       // 5. ELIMINACJA / ZGON (KILL EVENT)
-      case 'kill_event': {
+      case 'kill_event':
+      case 'killstreak_event': {
         if (!currentRoom) return;
         currentRoom.broadcast({
           ...msg,

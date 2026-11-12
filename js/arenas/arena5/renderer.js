@@ -266,12 +266,101 @@ export function getCellOuterEdges(cell) {
 /**
  * Rysuje wszystkie ułożone klocki w wieży z wyrazistym obrysem figur i frustum cullingiem
  */
+const _materialTileCache = new Map();
+
+function getMaterialTileCanvas(material) {
+  const key = material || 'STEEL';
+  if (_materialTileCache.has(key)) return _materialTileCache.get(key);
+  if (typeof document === 'undefined') return null;
+
+  const tile = document.createElement('canvas');
+  tile.width = CELL_SIZE;
+  tile.height = CELL_SIZE;
+  const tctx = tile.getContext('2d');
+  if (!tctx) return null;
+
+  const w = CELL_SIZE;
+  const h = CELL_SIZE;
+
+  if (key === 'STEEL') {
+    tctx.fillStyle = '#1e293b';
+    tctx.fillRect(0, 0, w, h);
+    tctx.fillStyle = '#0f172a';
+    for (let rx = 12; rx < w - 12; rx += 16) {
+      tctx.fillRect(rx, 10, 8, h - 20);
+    }
+    tctx.font = '900 8.5px monospace';
+    tctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    tctx.fillText('PMC-100', 14, 22);
+  } else if (key === 'CONCRETE_CRACKED') {
+    tctx.fillStyle = '#334155';
+    tctx.fillRect(0, 0, w, h);
+    tctx.strokeStyle = '#0f172a';
+    tctx.lineWidth = 1.8;
+    tctx.beginPath();
+    tctx.moveTo(15, 5);
+    tctx.lineTo(40, 45);
+    tctx.lineTo(30, 80);
+    tctx.lineTo(65, 95);
+    tctx.stroke();
+    tctx.strokeStyle = '#eab308';
+    tctx.lineWidth = 2;
+    tctx.beginPath();
+    tctx.moveTo(w - 14, 20);
+    tctx.lineTo(w - 2, 14);
+    tctx.stroke();
+  } else if (key === 'EXPLOSIVE') {
+    tctx.fillStyle = '#7f1d1d';
+    tctx.fillRect(0, 0, w, h);
+    drawHazardStripes(tctx, 4, 4, w - 8, 12);
+    drawHazardStripes(tctx, 4, h - 16, w - 8, 12);
+    tctx.fillStyle = '#facc15';
+    tctx.beginPath();
+    tctx.moveTo(w * 0.5, 24);
+    tctx.lineTo(w * 0.5 + 18, 58);
+    tctx.lineTo(w * 0.5 - 18, 58);
+    tctx.closePath();
+    tctx.fill();
+    tctx.fillStyle = '#000000';
+    tctx.font = '900 15px monospace';
+    tctx.textAlign = 'center';
+    tctx.fillText('!', w * 0.5, 52);
+  } else if (key === 'SCAFFOLDING') {
+    tctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    tctx.fillRect(0, 0, w, h);
+    tctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+    tctx.lineWidth = 1.2;
+    tctx.beginPath();
+    for (let gx = 10; gx < w; gx += 14) {
+      tctx.moveTo(gx, 0);
+      tctx.lineTo(gx, h);
+    }
+    for (let gy = 10; gy < h; gy += 14) {
+      tctx.moveTo(0, gy);
+      tctx.lineTo(w, gy);
+    }
+    tctx.stroke();
+  }
+
+  _materialTileCache.set(key, tile);
+  return tile;
+}
+
 function drawSettledBlocks(ctx, camera) {
   const camY = camera ? camera.y : 0;
   const viewHeight = camera ? (camera.viewHeight || (1080 / (camera.zoom || 0.75))) : 1080;
   const camTop = camY - 120;
   const camBottom = camY + viewHeight + 120;
   const now = performance.now();
+
+  let clearingRows = null;
+  if (Array.isArray(arena5State.activeLineClears) && arena5State.activeLineClears.length > 0) {
+    clearingRows = new Set();
+    for (let i = 0; i < arena5State.activeLineClears.length; i++) {
+      clearingRows.add(arena5State.activeLineClears[i].row);
+    }
+  }
+  const flashWhite = clearingRows && (Math.floor(now * 0.02) % 2 === 0);
 
   for (const rowData of arena5State.gridRows.values()) {
     if (!rowData) continue;
@@ -280,16 +369,13 @@ function drawSettledBlocks(ctx, camera) {
       if (!cell || cell.hp <= 0) continue;
       if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
 
-      const outerEdges = getCellOuterEdges(cell);
-      const isClearing = Array.isArray(arena5State.activeLineClears) && arena5State.activeLineClears.some(cl => cl.row === cell.row);
-      const blockColor = isClearing
-        ? ((Math.floor(now * 0.02) % 2 === 0) ? '#ffffff' : '#00f0ff')
-        : cell.accentColor;
+      const outerEdges = cell._outerEdges || getCellOuterEdges(cell);
+      const isClearing = clearingRows !== null && clearingRows.has(cell.row);
+      const blockColor = isClearing ? (flashWhite ? '#ffffff' : '#00f0ff') : cell.accentColor;
 
       drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, blockColor);
 
       if (isClearing) {
-        // Wewnętrzny blask plazmowego reaktora podczas ładowania detonacji
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.04 + c * 0.4);
         ctx.fillStyle = `rgba(56, 189, 248, ${0.45 + 0.35 * pulse})`;
         ctx.fillRect(cell.x + 3, cell.y + 3, cell.w - 6, cell.h - 6);
@@ -304,134 +390,51 @@ function drawSettledBlocks(ctx, camera) {
  * Rysuje pojedynczy kafelek kontenera wg jego materiału, stanu uszkodzeń oraz obwódek figury
  */
 export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges = null, accentColor = null) {
-  ctx.save();
-
   const edges = outerEdges || { top: true, bottom: true, left: true, right: true };
   const borderCol = accentColor || '#eab308';
 
-  // 1. WYPEŁNIENIE I TEKSTURA PRZEMYSŁOWA MATERIAŁU
-  if (material === 'STEEL') {
-    // Ciężki stalowy kontener ISO
+  const tile = getMaterialTileCanvas(material);
+  if (tile) {
+    ctx.drawImage(tile, x, y, w, h);
+  } else {
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(x, y, w, h);
-
-    // Wewnętrzne wytłoczenia blachy ryflowanej
-    ctx.fillStyle = '#0f172a';
-    for (let rx = x + 12; rx < x + w - 12; rx += 16) {
-      ctx.fillRect(rx, y + 10, 8, h - 20);
-    }
-
-    // Delikatne szwy wewnętrzne na łączeniach komórek tej samej figury
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.45)';
-    ctx.lineWidth = 1;
-    if (!edges.top) { ctx.beginPath(); ctx.moveTo(x + 4, y); ctx.lineTo(x + w - 4, y); ctx.stroke(); }
-    if (!edges.bottom) { ctx.beginPath(); ctx.moveTo(x + 4, y + h); ctx.lineTo(x + w - 4, y + h); ctx.stroke(); }
-    if (!edges.left) { ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + h - 4); ctx.stroke(); }
-    if (!edges.right) { ctx.beginPath(); ctx.moveTo(x + w, y + 4); ctx.lineTo(x + w, y + h - 4); ctx.stroke(); }
-
-    // Oznaczenie taktyczne
-    ctx.font = '900 8.5px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.fillText('PMC-100', x + 14, y + 22);
-
-  } else if (material === 'CONCRETE_CRACKED') {
-    // Pęknięty żelbet
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(x, y, w, h);
-
-    // Widoczne pęknięcia
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(x + 15, y + 5);
-    ctx.lineTo(x + 40, y + 45);
-    ctx.lineTo(x + 30, y + 80);
-    ctx.lineTo(x + 65, y + 95);
-    ctx.stroke();
-
-    // Sterczące zbrojenie
-    ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x + w - 8, y + 20);
-    ctx.lineTo(x + w + 6, y + 14);
-    ctx.stroke();
-
-  } else if (material === 'EXPLOSIVE') {
-    // Czerwona skrzynia paliwowa / amunicyjna
-    ctx.fillStyle = '#7f1d1d';
-    ctx.fillRect(x, y, w, h);
-
-    // Żółto-czarne skośne pasy na krawędziach
-    drawHazardStripes(ctx, x + 4, y + 4, w - 8, 12);
-    drawHazardStripes(ctx, x + 4, y + h - 16, w - 8, 12);
-
-    // Trójkąt ostrzegawczy z wykrzyknikiem w centrum
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.moveTo(x + w * 0.5, y + 24);
-    ctx.lineTo(x + w * 0.5 + 18, y + 58);
-    ctx.lineTo(x + w * 0.5 - 18, y + 58);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#000000';
-    ctx.font = '900 15px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('!', x + w * 0.5, y + 52);
-
-  } else if (material === 'SCAFFOLDING') {
-    // Pomost ażurowy / krata podłogowa
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(x, y, w, h);
-
-    // Ażurowa siatka
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    ctx.lineWidth = 1.2;
-    for (let gx = x + 10; gx < x + w; gx += 14) {
-      ctx.beginPath();
-      ctx.moveTo(gx, y);
-      ctx.lineTo(gx, y + h);
-      ctx.stroke();
-    }
-    for (let gy = y + 10; gy < y + h; gy += 14) {
-      ctx.beginPath();
-      ctx.moveTo(x, gy);
-      ctx.lineTo(x + w, gy);
-      ctx.stroke();
-    }
   }
 
-  // 2. WYRAZISTA OBWÓDKA FIGURY (TETRIS SHAPE CONTOUR)
-  // Rysowana wyłącznie na zewnętrznych krawędziach figury!
+  // Delikatne szwy wewnętrzne na łączeniach komórek tej samej figury stalowej
+  if (material === 'STEEL' && (!edges.top || !edges.bottom || !edges.left || !edges.right)) {
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (!edges.top) { ctx.moveTo(x + 4, y); ctx.lineTo(x + w - 4, y); }
+    if (!edges.bottom) { ctx.moveTo(x + 4, y + h); ctx.lineTo(x + w - 4, y + h); }
+    if (!edges.left) { ctx.moveTo(x, y + 4); ctx.lineTo(x, y + h - 4); }
+    if (!edges.right) { ctx.moveTo(x + w, y + 4); ctx.lineTo(x + w, y + h - 4); }
+    ctx.stroke();
+  }
+
+  // 2. WYRAZISTA OBWÓDKA FIGURY (TETRIS SHAPE CONTOUR) — jeden batch path
   ctx.strokeStyle = borderCol;
   ctx.lineWidth = 3.5;
   ctx.lineCap = 'square';
-
+  ctx.beginPath();
   if (edges.top) {
-    ctx.beginPath();
     ctx.moveTo(x, y + 1.75);
     ctx.lineTo(x + w, y + 1.75);
-    ctx.stroke();
   }
   if (edges.bottom) {
-    ctx.beginPath();
     ctx.moveTo(x, y + h - 1.75);
     ctx.lineTo(x + w, y + h - 1.75);
-    ctx.stroke();
   }
   if (edges.left) {
-    ctx.beginPath();
     ctx.moveTo(x + 1.75, y);
     ctx.lineTo(x + 1.75, y + h);
-    ctx.stroke();
   }
   if (edges.right) {
-    ctx.beginPath();
     ctx.moveTo(x + w - 1.75, y);
     ctx.lineTo(x + w - 1.75, y + h);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // 3. NAROŻNIKI KONTENERA ISO NA ZEWNĘTRZNYCH ROGACH FIGURY
   ctx.fillStyle = borderCol;
@@ -458,8 +461,6 @@ export function drawSingleBlock(ctx, x, y, w, h, material, hp, maxHp, outerEdges
     ctx.fillStyle = dmgRatio > 0.4 ? '#22c55e' : '#ef4444';
     ctx.fillRect(x + 10, y + h - 9, (w - 20) * dmgRatio, 5);
   }
-
-  ctx.restore();
 }
 
 /**
@@ -524,17 +525,12 @@ function drawLandingWarningLine(ctx) {
       const bx = getGridX(wCol);
       const bw = CELL_SIZE;
 
-      // 1. Pionowa poświata (Red Glow Aura) nad i pod krawędzią
+      // 1. Pionowa poświata warstwowa bez createLinearGradient (zero alokacji w pętli)
       const glowH = 14 + 6 * proximity;
-      const glowGrad = ctx.createLinearGradient(bx, surfaceY - glowH, bx, surfaceY + glowH);
-      glowGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
-      glowGrad.addColorStop(0.3, `rgba(239, 68, 68, ${0.18 * intensity})`);
-      glowGrad.addColorStop(0.5, `rgba(255, 30, 30, ${0.45 * intensity})`);
-      glowGrad.addColorStop(0.7, `rgba(239, 68, 68, ${0.18 * intensity})`);
-      glowGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-
-      ctx.fillStyle = glowGrad;
+      ctx.fillStyle = `rgba(239, 68, 68, ${0.14 * intensity})`;
       ctx.fillRect(bx, surfaceY - glowH, bw, glowH * 2);
+      ctx.fillStyle = `rgba(255, 30, 30, ${0.28 * intensity})`;
+      ctx.fillRect(bx, surfaceY - glowH * 0.45, bw, glowH * 0.9);
 
       // 2. Warstwa poświaty zewnętrznej
       ctx.strokeStyle = `rgba(239, 68, 68, ${0.40 * intensity})`;
@@ -587,7 +583,7 @@ function drawCraneWarning(ctx, camera) {
  */
 function drawFallingCraneBlock(ctx) {
   const crane = arena5State.crane;
-  if (!crane || crane.phase !== 'FALLING' || !crane.shape) return;
+  if (!crane || (crane.phase !== 'FALLING' && crane.phase !== 'LANDED_WAIT') || !crane.shape) return;
 
   ctx.save();
   for (const cell of crane.shapeCells) {

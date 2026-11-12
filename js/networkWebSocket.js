@@ -153,12 +153,19 @@ export function cancelDedicatedMatchmaking() {
  * Wysyla pakiet do serwera dedykowanego
  * @param {Object} packet
  */
-export function sendWsPacket(packet) {
+const WS_DROPPABLE_BUFFER_THRESHOLD = 8192;
+
+export function sendWsPacket(packet, options = {}) {
   if (wsState.socket && wsState.socket.readyState === WebSocket.OPEN) {
+    if (options.droppable && wsState.socket.bufferedAmount > WS_DROPPABLE_BUFFER_THRESHOLD) {
+      return false;
+    }
     try {
       wsState.socket.send(JSON.stringify(packet));
+      return true;
     } catch (_) {}
   }
+  return false;
 }
 
 /**

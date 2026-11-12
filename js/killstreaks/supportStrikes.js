@@ -57,13 +57,16 @@ function getSurfaceY(x) {
  * @param {number} targetX - środek strefy uderzenia
  * @param {object} owner - podmiot wzywający nalot (gracz / bot)
  */
-export function spawnMortarStrike(targetX, owner) {
+export function spawnMortarStrike(targetX, owner, options = {}) {
   const safeTargetX = (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : 600;
   const shells = [];
+  const offsets = Array.isArray(options.offsets) && options.offsets.length === 5
+    ? options.offsets
+    : Array.from({ length: 5 }, (_, i) => Math.round((i - 2) * 58 + (Math.random() - 0.5) * 45));
 
   // Salwa 5 pocisków moździerzowych o kaskadowych opóźnieniach
   for (let i = 0; i < 5; i++) {
-    const offsetX = (i - 2) * 58 + (Math.random() - 0.5) * 45;
+    const offsetX = offsets[i];
     const destX = safeTargetX + offsetX;
     const destY = getSurfaceY(destX);
     const startY = (globalCamera?.y || 0) - 340 - (i * 30);
@@ -90,6 +93,17 @@ export function spawnMortarStrike(targetX, owner) {
 
   if (owner && !owner.isBot && !owner.isRemote) {
     triggerCombatFeedBanner('KILL', '[NALOT] SALWA MOŹDZIERZOWA W DRODZE...');
+  }
+
+  const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
+  if (!options.fromNetwork && owner && !owner.isRemote && (!owner.isBot || isHost)) {
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({
+        subType: 'MORTAR_STRIKE',
+        targetX: Math.round(safeTargetX),
+        offsets
+      }, owner);
+    }
   }
 }
 
@@ -232,7 +246,7 @@ function lerpAngle(current, target, factor) {
  * Wypuszcza drona asystującego, który podąża za właścicielem i prowadzi ogień
  * @param {object} owner
  */
-export function spawnAttackDrone(owner) {
+export function spawnAttackDrone(owner, options = {}) {
   if (!owner) return;
 
   // Usuwamy poprzedniego drona tego samego właściciela, jeśli istniał
@@ -266,6 +280,13 @@ export function spawnAttackDrone(owner) {
 
   if (!owner.isBot && !owner.isRemote) {
     triggerCombatFeedBanner('KILL', '[DRON] DRON BOJOWY W POZYCJI - WSPARCIE 25S');
+  }
+
+  const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
+  if (!options.fromNetwork && !owner.isRemote && (!owner.isBot || isHost)) {
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({ subType: 'ATTACK_DRONE' }, owner);
+    }
   }
 }
 
@@ -347,11 +368,12 @@ export function updateAttackDrones(dt = (1 / 60), combatants = []) {
     let nearestEnemy = null;
     let nearestDist = 540;
     const targets = Array.isArray(combatants) ? combatants : [];
+    const isFFA = (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
 
     for (const c of targets) {
       if (!c || c === owner || c.isDead || c.active === false) continue;
       // Nie strzelaj do sojuszników z tej samej drużyny
-      if (owner.team && c.team && owner.team === c.team) continue;
+      if (!isFFA && owner.team && c.team && owner.team === c.team) continue;
 
       const d = Math.hypot((c.x + c.w / 2) - drone.x, (c.y + c.h / 2) - drone.y);
       if (d < nearestDist) {

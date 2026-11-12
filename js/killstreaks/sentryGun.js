@@ -37,7 +37,7 @@ export function initSentryGuns() {
  * @param {object} owner - podmiot rozstawiający (gracz lub bot)
  * @param {number} targetX - preferowana współrzędna X
  */
-export function spawnSentryGun(owner, targetX) {
+export function spawnSentryGun(owner, targetX, options = {}) {
   if (!owner) return null;
 
   const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
@@ -46,11 +46,12 @@ export function spawnSentryGun(owner, targetX) {
   const safeX = Math.max(minX, Math.min(maxX, (typeof targetX === 'number' && !isNaN(targetX)) ? targetX : owner.x));
   const surfaceY = getCarePackageSurfaceY(safeX);
 
-  const facing = owner.facing || 1;
+  const facing = (typeof options.facing === 'number') ? options.facing : (owner.facing || 1);
   const initialYaw = facing > 0 ? 0 : Math.PI;
+  const sentryId = options.sentryId || `sentry_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
   const sentry = {
-    id: `sentry_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: sentryId,
     owner,
     team: owner.team || null,
     x: safeX,
@@ -88,7 +89,46 @@ export function spawnSentryGun(owner, targetX) {
     triggerCombatFeedBanner('KILL', '[SENTRY] WIEŻYCZKA STRAŻNICZA ROZSTAWIONA - SEKTOR ZABEZPIECZONY');
   }
 
+  const isHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function') ? window.isMatchHost() : true;
+  if (!options.fromNetwork && !owner.isRemote && (!owner.isBot || isHost)) {
+    if (typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+      window.sendKillstreakEvent({
+        subType: 'SENTRY_GUN',
+        sentryId,
+        targetX: Math.round(safeX),
+        facing
+      }, owner);
+    }
+  }
+
   return sentry;
+}
+
+export function applyRemoteSentryDestroyed(sentryId, combatants = []) {
+  if (!sentryId) return;
+  const sentry = activeSentryGuns.find(s => s.id === sentryId);
+  if (!sentry || sentry.state === 'DESTROYED') return;
+  sentry._remoteDestroyed = true;
+  sentry.hp = 0;
+  sentry.state = 'DESTROYED';
+  sentry.deathTimer = 2.4;
+  triggerScreenShake(3.8);
+  spawnGroundPuff(sentry.x, sentry.y);
+  spawnJetpackSparks(sentry.x, sentry.y - 15, 1, 24, ['#ef4444', '#f97316', '#fbbf24', '#ffffff'], 0, -3.5);
+  detonateGrenadeExplosion(
+    sentry.x,
+    sentry.y - 14,
+    55,
+    sentry.owner,
+    sentry.y,
+    ARENA_PLATFORMS,
+    null,
+    combatants,
+    null
+  );
+  if (sentry.owner && !sentry.owner.isBot && !sentry.owner.isRemote) {
+    triggerCombatFeedBanner('DEATH', '[SENTRY] WIEŻYCZKA STRAŻNICZA ZNISZCZONA PRZEZ WROGA');
+  }
 }
 
 /**
@@ -206,6 +246,9 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
       if (sentry.owner && !sentry.owner.isBot && !sentry.owner.isRemote) {
         triggerCombatFeedBanner('DEATH', '[SENTRY] WIEŻYCZKA STRAŻNICZA ZNISZCZONA PRZEZ WROGA');
       }
+      if (!sentry._remoteDestroyed && typeof window !== 'undefined' && typeof window.sendKillstreakEvent === 'function') {
+        window.sendKillstreakEvent({ subType: 'SENTRY_DESTROYED', sentryId: sentry.id }, sentry.owner);
+      }
       continue;
     }
 
@@ -213,10 +256,11 @@ export function updateSentryGuns(dt = (1 / 60), combatants = []) {
     let nearestEnemy = null;
     let nearestDist = 560;
     const targets = Array.isArray(combatants) ? combatants : [];
+    const isFFA = (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
 
     for (const c of targets) {
       if (!c || c === sentry.owner || c.isDead || c.active === false) continue;
-      if (sentry.team && c.team && sentry.team === c.team) continue;
+      if (!isFFA && sentry.team && c.team && sentry.team === c.team) continue;
 
       const tx = c.x + c.w / 2;
       const ty = c.y + c.h * 0.45;
