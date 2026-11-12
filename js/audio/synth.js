@@ -513,6 +513,27 @@ export function playSynthSound(soundId, ctx, destNode, { gain = 0.5, pitch = 1.0
       return true;
     }
 
+    case 'ui_callout_multikill': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.28);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 587 * p, freqEnd: 880 * p, duration: 0.085, gain: gain * 0.42 });
+      scheduleTone(ctx, out, { startTime: now + 0.055, type: 'sine', freqStart: 880 * p, freqEnd: 1175 * p, duration: 0.14, gain: gain * 0.48 });
+      return true;
+    }
+
+    case 'ui_callout_oneshot': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.34);
+      scheduleTone(ctx, out, { startTime: now, type: 'triangle', freqStart: 740 * p, freqEnd: 1480 * p, duration: 0.09, gain: gain * 0.45 });
+      scheduleTone(ctx, out, { startTime: now + 0.05, type: 'sine', freqStart: 1109 * p, freqEnd: 1760 * p, duration: 0.18, gain: gain * 0.50 });
+      return true;
+    }
+
+    case 'ui_callout_revenge': {
+      const { now, out } = createVoiceStage(ctx, destNode, pan, 0.32);
+      scheduleTone(ctx, out, { startTime: now, type: 'sawtooth', freqStart: 440 * p, freqEnd: 659 * p, duration: 0.075, gain: gain * 0.24, filterType: 'lowpass', filterFreq: 1900 });
+      scheduleTone(ctx, out, { startTime: now + 0.06, type: 'triangle', freqStart: 659 * p, freqEnd: 988 * p, duration: 0.16, gain: gain * 0.45 });
+      return true;
+    }
+
     default:
       return false;
   }

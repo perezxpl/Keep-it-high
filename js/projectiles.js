@@ -834,6 +834,7 @@ export class ThrownTomahawk {
             if (ch.hp <= 0 && !ch.isDead) {
               ch.isDead = true;
               ch.killer = this.shooter;
+              ch.killerBulletId = null;
               ch.respawnTimer = 180;
               ch.corpseAngle = 0;
               ch.corpseRotVel = 0;
@@ -1291,6 +1292,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       if (ch.hp <= 0 && !ch.isDead && !ch.isAcidDying && (!ch.acidDeath || !ch.acidDeath.active)) {
         ch.isDead = true;
+        ch.killerBulletId = null;
         const curArena = getActiveArena?.();
         const isA3Target = (curArena?.id === 'arena-3' || activeArenaId === 'ARENA_3' || activeArenaId === 'arena-3' || activeArenaId === 'ARENA_FOUNDRY');
         const isSelf = shooter && (shooter === ch || (shooter.id && ch.id && shooter.id === ch.id) || (!shooter.isBot && !ch.isBot && !shooter.isRemote && !ch.isRemote));

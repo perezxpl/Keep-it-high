@@ -461,10 +461,12 @@ export function handlePlayerDeath(player, groundY, combatants = null) {
     player.isAcidDying = false;
     player.hp = player.maxHp;
     player.killer = null;
+    player.killerBulletId = null;
     player.lastAttacker = null;
     player.lastAttackerTimer = 0;
     player._fragRecorded = false;
     player._dmDeathRecorded = false;
+    player._calloutDeathRecorded = false;
     player.acidDeath = {
       active: false,
       timer: 0,

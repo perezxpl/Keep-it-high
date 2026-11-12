@@ -520,6 +520,7 @@ export class RpgRocket {
       if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
         closestChar.isDead = true;
         closestChar.killer = (this.shooter && this.shooter !== closestChar) ? this.shooter : closestChar.lastAttacker;
+        closestChar.killerBulletId = null;
         closestChar.respawnTimer = 180;
         closestChar.corpseFloorY = groundY;
         closestChar.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };

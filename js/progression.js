@@ -167,6 +167,11 @@ export const XP_REWARDS = {
   MATCH_WIN: 40,
   GOAL_SCORED: 15,
   ENEMY_KILL: 10,
+  ONE_SHOT_DOUBLE: 30,
+  ONE_SHOT_TRIPLE: 45,
+  DOUBLE_KILL: 15,
+  TRIPLE_KILL: 25,
+  REVENGE_KILL: 15,
   DEATHMATCH_1ST: 100,
   DEATHMATCH_2ND: 80,
   DEATHMATCH_3RD: 60,
@@ -243,6 +248,36 @@ export const XP_RULES = [
     badgeClass: 'xp-badge-kill',
     desc: 'Zlikwidowanie wrogiego bota lub przeciwnika bronią lub granatem.',
     tip: 'Prowadź ogień ciągły lub eliminuj cele jednym strzałem snajperki.'
+  },
+  {
+    id: 'one_shot_collateral',
+    title: '1 strzał = 2/3 trupy',
+    category: 'Medale Bojowe',
+    xp: 30,
+    icon: '1=2',
+    badgeClass: 'xp-badge-kill',
+    desc: 'Przebicie i zabicie 2 lub 3 przeciwników jednym pociskiem (+30 / +45 XP; bez zombie).',
+    tip: 'Ustaw wrogów w jednej linii z Barrettem .50 lub Magnum .44.'
+  },
+  {
+    id: 'multi_kill_combo',
+    title: 'Seria Wielobójstw',
+    category: 'Medale Bojowe',
+    xp: 15,
+    icon: '2X',
+    badgeClass: 'xp-badge-kill',
+    desc: 'Podwójne (+15 XP), potrójne (+25 XP) i wyższe serie zabójstw w odstępie do 2s (bez zombie).',
+    tip: 'Łącz krótkie serie z karabinka, granaty i RPG-7 w szybkim tempie.'
+  },
+  {
+    id: 'revenge_kill',
+    title: 'Zemsta',
+    category: 'Medale Bojowe',
+    xp: 15,
+    icon: 'ZEM',
+    badgeClass: 'xp-badge-kill',
+    desc: 'Zabicie oprawcy, który ostatnio Cię wyeliminował — zanim zginiesz ponownie.',
+    tip: 'Zapoluj na przeciwnika zaraz po odrodzeniu, unikając wcześniejszej śmierci.'
   },
   {
     id: 'SPARTAN',

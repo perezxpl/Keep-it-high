@@ -13,6 +13,7 @@ import {
 } from './state.js';
 import { addPlayerXP, recordMatchResult, recordKill, recordDeath } from '../progression.js';
 import { registerKillstreakKill, resetKillstreak } from '../killstreaks/index.js';
+import { registerCalloutKill, onPlayerDeathCallout } from '../callouts/index.js';
 import { ARENA_2_CONFIG } from '../arenas/arena2/state.js';
 import { balanceBotClasses } from '../bot.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent, updateCombatFeed, isHazardName } from '../ui/combatFeed.js';
@@ -374,6 +375,14 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
           if (killerRef === player) {
             recordKill();
             registerKillstreakKill();
+            registerCalloutKill(player, c, {
+              bulletId: c.killerBulletId || null,
+              victimId: c.peerId || c.id || null,
+              victimName: victimName,
+              isZombie: Boolean(c.isZombie),
+              x: c.x,
+              y: c.y - 52
+            });
             triggerCombatFeedEvent({
               type: 'PLAYER_KILL',
               killer: player,
@@ -384,6 +393,15 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
           } else if (c === player) {
             recordDeath();
             resetKillstreak();
+            if (!player._calloutDeathRecorded) {
+              player._calloutDeathRecorded = true;
+              onPlayerDeathCallout(killerRef, {
+                killerName: killerName,
+                killerPeerId: killerRef?.peerId || null,
+                killerId: killerRef?.id || null,
+                isZombie: Boolean(killerRef?.isZombie)
+              });
+            }
             triggerCombatFeedEvent({
               type: 'PLAYER_DEATH',
               killer: killerRef,
@@ -412,6 +430,10 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
           if (c === player) {
             recordDeath();
             resetKillstreak();
+            if (!player._calloutDeathRecorded) {
+              player._calloutDeathRecorded = true;
+              onPlayerDeathCallout(null, { isHazard: true, killerName: hazardName });
+            }
             triggerCombatFeedEvent({
               type: 'PLAYER_DEATH',
               victim: player,
@@ -456,6 +478,8 @@ export function updateDeathmatch(dt, player, botOrBots, remotePlayer, arenaScore
     } else {
       c._dmDeathRecorded = false;
       c.killer = null;
+      c.killerBulletId = null;
+      if (c === player) c._calloutDeathRecorded = false;
     }
   }
 

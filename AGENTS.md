@@ -128,6 +128,12 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/killstreaks/renderer.js` — potok renderowania efektów świata (skaner radarowy UAV, taktyczne ramki namierzania wrogów `[BRACKETS]`, odległości w metrach oraz wskaźniki krawędziowe celów poza ekranem) oraz minimalistyczny widget HUD serii zabójstw (`drawKillstreakHUD`).
 - `js/killstreaks/index.js` — główny punkt wejścia i eksport modułu serii zabójstw.
 
+### Medale Bojowe i Dymki (`js/callouts/`)
+- `js/callouts/state.js` — konfiguracja okien czasowych (`MULTI_KILL_WINDOW_MS: 2000`, `SAME_BURST_MERGE_MS: 110`), bonusów XP i współdzielony stan `calloutState` (aktywne dymki, seria zabójstw, `revengeTarget`, mapa pocisków `bulletKills`).
+- `js/callouts/logic.js` — zliczanie wielobójstw (`PODWÓJNE ZABÓJSTWO`, `POTRÓJNE ZABÓJSTWO` itd.), trafień pojedynczym pociskiem (`1 STRZAŁ = 2 TRUPY` / `3 TRUPY`), śledzenie `ZEMSTA` ważne do kolejnego zgonu gracza, wykluczenie zombie oraz przyznawanie XP.
+- `js/callouts/renderer.js` — renderowanie kompaktowych asymetrycznych dymków blisko miejsca eliminacji w przestrzeni świata (`worldToScreen`) z ogonkiem kierunkowym i dynamicznie pochylonymi wyrazami (zero `shadowBlur`, zero emoji).
+- `js/callouts/index.js` — główny punkt wejścia i eksport modułu medali bojowych.
+
 ### Demonstracyjna Walka w Tle Menu (`js/menuFight/`)
 - `js/menuFight/state.js` — stan sesji menu (`menuFightState`), 3 dedykowane boty bojowe (`menuBots`: SGT. STRIKER, COL. ENFORCER, CYBER REAPER) z unikalnym uzbrojeniem (AK-47, RPG-7, Nano-Saber), punkty respawnu (`MENU_SPAWN_POINTS`) i fabryka instancji.
 - `js/menuFight/logic.js` — pętla fizyki i podkręconej sztucznej inteligencji (`updateMenuFight`): ciągły ogień zaporowy, naloty rakietowe, zrywy jetpacka, odbijanie kul Nano-Saberem, brak przestojów na amunicję i błyskawiczny respawn po 1.5s.

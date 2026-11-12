@@ -353,6 +353,7 @@ function updateMeleeCollision(shooter, ms) {
       if (t.hp <= 0 && !t.isDead) {
         t.isDead = true;
         t.killer = shooter;
+        t.killerBulletId = null;
         t.respawnTimer = 180;
         t.corpseAngle = 0;
         t.corpseRotVel = 0;
@@ -518,6 +519,8 @@ function updateMeleeCollision(shooter, ms) {
     }
   }
 }
+
+let _nextBulletId = 1;
 
 export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle) {
   if (!shooter || !weapon || shooter.isDead || shooter.staggerTimer > 0) return false;
@@ -687,6 +690,7 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
     const speed = weapon.bulletSpeed * (0.96 + Math.random() * 0.08);
 
     bullets.push({
+      bulletId: _nextBulletId++,
       x: muzzleX,
       y: muzzleY,
       prevX: muzzleX,
@@ -1402,7 +1406,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             hitX: hitPtX,
             hitY: hitPtY,
             relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
-            weaponId: b.weaponId
+            weaponId: b.weaponId,
+            bulletId: b.bulletId || null
           });
         } else if (closestChar.isBot && !netState.isHost) {
           const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
@@ -1419,7 +1424,8 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
               hitX: hitPtX,
               hitY: hitPtY,
               relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
-              weaponId: b.weaponId
+              weaponId: b.weaponId,
+              bulletId: b.bulletId || null
             });
           }
         }
@@ -1529,6 +1535,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (closestChar.hp <= 0 && !closestChar.isDead && !closestChar.isAcidDying && (!closestChar.acidDeath || !closestChar.acidDeath.active)) {
         closestChar.isDead = true;
         closestChar.killer = (b.shooter && b.shooter !== closestChar) ? b.shooter : closestChar.lastAttacker;
+        closestChar.killerBulletId = (b.shooter && b.shooter !== closestChar) ? (b.bulletId || null) : null;
         closestChar.respawnTimer = 180;
         closestChar.corpseAngle = 0;
         closestChar.corpseRotVel = 0;

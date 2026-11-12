@@ -647,6 +647,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
           enemy.killer = player;
+          enemy.killerBulletId = null;
           enemy.respawnTimer = 180;
           enemy.bleedTimer = 90;
           enemy.corpseAngle = 0;
@@ -1130,6 +1131,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
       enemy.killer = player;
+      enemy.killerBulletId = null;
       enemy.respawnTimer = 180;
       enemy.bleedTimer = 90;
       enemy.corpseAngle = 0;

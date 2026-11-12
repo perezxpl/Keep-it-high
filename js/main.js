@@ -67,6 +67,7 @@ import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInterac
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
 import { initMenuFight, updateMenuFight, drawMenuFight, stopMenuFight } from './menuFight/index.js';
+import { initCallouts, resetCalloutMatchState, onPlayerDeathCallout, registerCalloutKill, updateCallouts, drawCallouts } from './callouts/index.js';
 import {
   editorState,
   initObstacleEditorUI,
@@ -285,6 +286,8 @@ export function startRound() {
     player.hp = player.maxHp || player.currentClass?.stats?.hp || 100;
     player.isDead = false;
     player._droppedWeaponThisDeath = false;
+    player._calloutDeathRecorded = false;
+    player.killerBulletId = null;
     player.ragdoll = null;
     player.staggerTimer = 0;
     if (player.ammo) {
@@ -338,6 +341,7 @@ export function concludeMatchAndReturnToLobby(options = {}) {
   if (typeof resetKillstreak === 'function') {
     resetKillstreak();
   }
+  resetCalloutMatchState();
   resetPickups();
   startRound();
 
@@ -745,6 +749,17 @@ function update() {
         recordDeath();
         resetKillstreak();
         player._fragRecorded = true;
+        if (!player._calloutDeathRecorded) {
+          player._calloutDeathRecorded = true;
+          const pKiller = player.killer || player.lastAttacker || null;
+          onPlayerDeathCallout(pKiller, {
+            killerName: (pKiller && pKiller.name) || null,
+            killerPeerId: (pKiller && pKiller.peerId) || null,
+            killerId: (pKiller && pKiller.id) || null,
+            isHazard: !pKiller || typeof pKiller === 'string' || Boolean(pKiller.isHazard || pKiller.isSelf),
+            isZombie: Boolean(pKiller && pKiller.isZombie)
+          });
+        }
         const kName = (typeof player.killer === 'string')
           ? player.killer
           : (player.killer?.name || (player.isAcidDying ? 'TOKSYCZNY KWAS' : 'ŚRODOWISKO'));
@@ -759,6 +774,8 @@ function update() {
       }
     } else {
       player._fragRecorded = false;
+      player._calloutDeathRecorded = false;
+      player.killerBulletId = null;
     }
 
     for (const b of activeBots) {
@@ -770,6 +787,14 @@ function update() {
           if (kRef === player) {
             recordKill();
             registerKillstreakKill();
+            registerCalloutKill(player, b, {
+              bulletId: b.killerBulletId || null,
+              victimId: b.id || null,
+              victimName: b.name || null,
+              isZombie: Boolean(b.isZombie),
+              x: b.x,
+              y: b.y - 52
+            });
             triggerCombatFeedEvent({
               type: 'PLAYER_KILL',
               killer: player,
@@ -800,6 +825,7 @@ function update() {
         }
       } else {
         b._fragRecorded = false;
+        b.killerBulletId = null;
       }
     }
 
@@ -812,6 +838,14 @@ function update() {
           if (kRef === player) {
             recordKill();
             registerKillstreakKill();
+            registerCalloutKill(player, rp, {
+              bulletId: rp.killerBulletId || null,
+              victimId: rp.peerId || rp.id || null,
+              victimName: rp.name || null,
+              isZombie: Boolean(rp.isZombie),
+              x: rp.x,
+              y: rp.y - 52
+            });
             triggerCombatFeedEvent({
               type: 'PLAYER_KILL',
               killer: player,
@@ -922,6 +956,7 @@ function update() {
   } else {
     updateCombatFeed(1 / 60);
   }
+  updateCallouts(1 / 60);
   if (!isDeathmatch) {
     updateDistance(ball.x);
   }
@@ -1241,6 +1276,7 @@ function draw() {
     const combatants = [player, ...currentActiveBots, ...activeRemotes];
     drawKillstreakWorld(ctx, camera, combatants, player);
     drawKillstreakHUD(ctx, canvas, player);
+    drawCallouts(ctx, camera, canvas);
     drawPickupPrompt(ctx, camera, isTouchDevice);
   } else if (gameState === GAME_STATES.CLASS_SELECT) {
     drawClassSelectModal(ctx, mouseState.screenX, mouseState.screenY);

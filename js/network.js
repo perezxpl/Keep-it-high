@@ -8,6 +8,7 @@ import { getMpBotCount, setMpBotCount, getMpBotLayoutDescription, getActiveBots,
 import { refreshDeathmatchParticipants, deathmatchState, TEAMS, finishDeathmatch } from './deathmatch/index.js';
 import { triggerCombatFeedBanner, triggerCombatFeedEvent } from './ui/combatFeed.js';
 import { registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
+import { registerCalloutKill, onPlayerDeathCallout } from './callouts/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
 import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
@@ -494,7 +495,15 @@ export function applyLocalPlayerDamage(data) {
     if (player.hp <= 0 && !player.isDead) {
       player.isDead = true;
       player.killer = remotePlayer;
+      player.killerBulletId = null;
       player.respawnTimer = 180;
+      if (!player._calloutDeathRecorded) {
+        player._calloutDeathRecorded = true;
+        onPlayerDeathCallout(remotePlayer, {
+          killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+          killerPeerId: remotePlayer.peerId || null
+        });
+      }
       triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
       sendKillBroadcast({
         killerId: 'remotePlayer',
@@ -502,7 +511,10 @@ export function applyLocalPlayerDamage(data) {
         killerTeam: remotePlayer.team || null,
         victimId: 'player',
         victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
-        victimTeam: player.team || null
+        victimTeam: player.team || null,
+        bulletId: null,
+        x: player.x,
+        y: player.y - 52
       });
     }
     return;
@@ -592,7 +604,15 @@ export function applyLocalPlayerDamage(data) {
   if (player.hp <= 0 && !player.isDead) {
     player.isDead = true;
     player.killer = remotePlayer;
+    player.killerBulletId = data.bulletId || null;
     player.respawnTimer = 180;
+    if (!player._calloutDeathRecorded) {
+      player._calloutDeathRecorded = true;
+      onPlayerDeathCallout(remotePlayer, {
+        killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
+        killerPeerId: remotePlayer.peerId || null
+      });
+    }
     triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
     sendKillBroadcast({
       killerId: 'remotePlayer',
@@ -600,7 +620,10 @@ export function applyLocalPlayerDamage(data) {
       killerTeam: remotePlayer.team || null,
       victimId: 'player',
       victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
-      victimTeam: player.team || null
+      victimTeam: player.team || null,
+      bulletId: data.bulletId || null,
+      x: player.x,
+      y: player.y - 52
     });
   }
 }
@@ -644,6 +667,7 @@ export function applyRemoteBotDamage(data) {
     if (b.hp <= 0 && !b.isDead) {
       b.isDead = true;
       b.killer = remotePlayer;
+      b.killerBulletId = null;
       b.respawnTimer = 180;
       sendKillBroadcast({
         killerId: 'remotePlayer',
@@ -651,7 +675,10 @@ export function applyRemoteBotDamage(data) {
         killerTeam: remotePlayer.team || null,
         victimId: b.id || `bot_${data.botIdx + 1}`,
         victimName: b.name || 'BOT AI',
-        victimTeam: b.team || null
+        victimTeam: b.team || null,
+        bulletId: null,
+        x: b.x,
+        y: b.y - 52
       });
     }
     return;
@@ -672,6 +699,7 @@ export function applyRemoteBotDamage(data) {
   if (b.hp <= 0 && !b.isDead) {
     b.isDead = true;
     b.killer = remotePlayer;
+    b.killerBulletId = data.bulletId || null;
     b.respawnTimer = 180;
     const bVis = b.customVisuals || b.visuals || {};
     b.dismembered = { armFront: false, armBack: false, legFront: false, legBack: false };
@@ -698,7 +726,10 @@ export function applyRemoteBotDamage(data) {
       killerTeam: remotePlayer.team || null,
       victimId: b.id || `bot_${data.botIdx + 1}`,
       victimName: b.name || 'BOT AI',
-      victimTeam: b.team || null
+      victimTeam: b.team || null,
+      bulletId: data.bulletId || null,
+      x: b.x,
+      y: b.y - 52
     });
   }
 }
@@ -1197,6 +1228,16 @@ export function handleNetworkData(data, senderPeerId = null) {
     case 'kill_event': {
       if (data.victimId === 'player') {
         resetKillstreak();
+        player._calloutDeathRecorded = true;
+        const kRef = (!data.killerId || data.killerId === 'remotePlayer' || data.killerId === remotePlayer?.peerId)
+          ? remotePlayer
+          : null;
+        onPlayerDeathCallout(kRef, {
+          killerName: data.killerName || 'PRZECIWNIK',
+          killerId: data.killerId || null,
+          killerPeerId: data.killerId || null,
+          isZombie: Boolean(data.isZombie)
+        });
         triggerCombatFeedEvent({
           type: 'PLAYER_DEATH',
           victim: player,
@@ -1205,6 +1246,15 @@ export function handleNetworkData(data, senderPeerId = null) {
         });
       } else if (data.killerId === 'player' || (data.killerId === 'remotePlayer' && !networkState.isHost)) {
         registerKillstreakKill();
+        registerCalloutKill(player, null, {
+          killerIsLocal: true,
+          bulletId: data.bulletId || null,
+          victimId: data.victimId || null,
+          victimName: data.victimName || null,
+          isZombie: Boolean(data.isZombie),
+          x: typeof data.x === 'number' ? data.x : undefined,
+          y: typeof data.y === 'number' ? data.y : undefined
+        });
         triggerCombatFeedEvent({
           type: 'PLAYER_KILL',
           killer: player,

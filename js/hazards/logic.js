@@ -289,6 +289,7 @@ export function detonateBarrel(barrel, combatants = [], groundY = 800, options =
         // Zgon gracza lub bota od wybuchu
         c.isDead = true;
         c.killer = barrel.lastAttacker || { name: typeDef.name, cause: 'WYBUCH BECZKI', isHazard: true };
+        c.killerBulletId = null;
         c.respawnTimer = 180;
         c.bleedTimer = 90;
         c.ragdoll = null;
