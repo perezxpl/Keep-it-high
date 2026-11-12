@@ -433,7 +433,7 @@ export function checkRightStickFlickOrTap(rStick, touchDuration, movedDist) {
 }
 
 /**
- * Przywraca poprzednio wybraną broń palną (np. po ataku bronią białą niemiotaną)
+ * Przywraca poprzednio wybraną broń palną (np. po ataku bronią białą lub rzuceniu tomahawka)
  *
  * @param {Object} player - Obiekt gracza
  * @returns {Object|null}
@@ -443,13 +443,33 @@ export function restorePreviousFirearm(player) {
   const prev = player._previousFirearm;
   let targetWeapon = prev;
   if (!targetWeapon || targetWeapon.isMelee || targetWeapon.id === 'GRENADE') {
-    const curSlot = (player.loadout?.pocket1?.activeSlotIndex === 1) ? 1 : 0;
-    const wepId = player.loadout?.pocket1?.slots?.[curSlot] || 'AK47';
+    const prevIdx = player.loadout?.previousSlotIndex;
+    const curIdx = player.loadout?.pocket1?.activeSlotIndex;
+    const curSlot = (typeof prevIdx === 'number' && prevIdx >= 0 && prevIdx < 2)
+      ? prevIdx
+      : (curIdx === 1 ? 1 : 0);
+    const wepId = player.loadout?.pocket1?.slots?.[curSlot] || player.loadout?.pocket1?.slots?.[0] || 'AK47';
     targetWeapon = WEAPONS[wepId] || WEAPONS.AK47;
+  }
+  if (player.currentWeapon?.isMelee) {
+    player.shootCooldown = 0;
   }
   player.currentWeapon = targetWeapon;
   player.isHolstered = false;
   player.meleeState = null;
+  player.meleeNeedRelease = false;
+  if (player.throwAnim && player.throwAnim.active) {
+    player.throwAnim.active = false;
+    player.throwAnim.aiming = false;
+    player.throwAnim.phase = 'IDLE';
+    player.throwAnim.timer = 0;
+  }
+  if (player.loadout?.pocket1?.slots) {
+    const restoredIdx = player.loadout.pocket1.slots.indexOf(targetWeapon.id);
+    if (restoredIdx === 0 || restoredIdx === 1) {
+      player.loadout.pocket1.activeSlotIndex = restoredIdx;
+    }
+  }
   if (rightStick) {
     rightStick.armedMode = 'FIREARM';
   }
@@ -470,6 +490,12 @@ export function handleMeleeButtonPress(player) {
   const isHoldingMelee = !player.isHolstered && (player.currentWeapon?.isMelee || player.currentWeapon?.id === 'AXE' || player.currentWeapon?.id === 'MACHETE' || player.currentWeapon?.id === 'KNIFE');
 
   if (!isHoldingMelee) {
+    const meleeId = player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE';
+    const targetWeapon = WEAPONS[meleeId] || WEAPONS.AXE || WEAPONS.KNIFE;
+    if (targetWeapon.id === 'AXE' && player.axeThrown) {
+      return false;
+    }
+
     // 1. Zapisujemy poprzednio wybraną broń palną, by móc do niej natychmiast powrócić po wychyleniu drążka
     if (player.currentWeapon && !player.currentWeapon.isMelee && player.currentWeapon.id !== 'GRENADE') {
       player._previousFirearm = player.currentWeapon;
@@ -478,9 +504,6 @@ export function handleMeleeButtonPress(player) {
       const wepId = player.loadout?.pocket1?.slots?.[curSlot] || 'AK47';
       player._previousFirearm = WEAPONS[wepId] || WEAPONS.AK47;
     }
-
-    const meleeId = player.loadout?.pocket1?.slots?.[2] || player.meleeWeaponId || 'AXE';
-    const targetWeapon = WEAPONS[meleeId] || WEAPONS.AXE || WEAPONS.KNIFE;
 
     cancelReload(player, player.currentWeapon);
     if (player.throwAnim && player.throwAnim.active) {

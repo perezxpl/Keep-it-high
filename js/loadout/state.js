@@ -133,6 +133,7 @@ export function restorePlayerArmoryLoadout(p) {
 
   cancelReload(p, p.currentWeapon);
   p.currentWeapon = initialWeapon;
+  p._previousFirearm = initialWeapon;
   p.isHolstered = false;
   p.isReloading = false;
   p.reloadTimer = 0;

@@ -134,6 +134,9 @@ export function performWeaponSwap(player, droppedWeapon) {
   const targetWep = droppedWeapon.weapon || WEAPONS[droppedWeapon.weaponId] || WEAPONS.AK47;
   cancelReload(player, player.currentWeapon);
   player.currentWeapon = targetWep;
+  if (!targetWep.isMelee && targetWep.id !== 'GRENADE') {
+    player._previousFirearm = targetWep;
+  }
   player.isHolstered = false;
 
   // 5. Przywrocenie zapamietanej liczby naboi z podniesionego egzemplarza

@@ -58,6 +58,57 @@ import {
   handlePickupTouchEnd
 } from '../pickup/index.js';
 
+function applyRightStickAimAndFire(power, aimDirX, aimDirY, baseAimDist) {
+  // Jeśli gracz ma wybraną broń białą bez rzutu albo rzucił już tomahawk,
+  // wychylenie prawego drążka w trybie FIREARM natychmiast przywraca poprzednią broń palną
+  if (
+    rightStick.armedMode === 'FIREARM' &&
+    player.currentWeapon?.isMelee &&
+    (player.currentWeapon?.id !== 'AXE' || player.axeThrown)
+  ) {
+    restorePreviousFirearm(player);
+  }
+
+  const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
+  const aimDist = isSniper ? (250 + power * 750) : (baseAimDist + power * 130);
+  player.aimOffsetX = aimDirX * aimDist;
+  player.aimOffsetY = aimDirY * aimDist;
+  player.aimX = player.x + player.w / 2 + player.aimOffsetX;
+  player.aimY = player.y + player.h / 2 + player.aimOffsetY;
+  player.isAiming = true;
+
+  if (Math.abs(aimDirX) > 0.08) {
+    player.facing = aimDirX >= 0 ? 1 : -1;
+  }
+
+  if (rightStick.armedMode === 'FIREARM') {
+    if ((player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) && !player.axeThrown) {
+      rightStick.isShooting = false;
+      if (power > 0.03 && !player.isDead) {
+        const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
+        prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
+      } else if (player.throwAnim?.throwType === 'TOMAHAWK') {
+        player.throwAnim.aiming = false;
+        player.throwAnim.active = false;
+      }
+    } else {
+      if (power > 0.15 && player.isHolstered) {
+        player.isHolstered = false;
+      }
+      // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
+      rightStick.isShooting = (power >= 0.90);
+    }
+  } else if (rightStick.armedMode === 'GRENADE') {
+    rightStick.isShooting = false;
+    if (power > 0.03 && !player.isDead) {
+      const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
+      prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
+    }
+  } else {
+    rightStick.isShooting = false;
+  }
+}
+
 let flickFirstDownTime = 0;
 let flickReturnedToCenter = false;
 let enforcerFlickDownTime = 0;
@@ -431,52 +482,7 @@ canvas.addEventListener('touchstart', (e) => {
           rightStick.axisY = (dy / sDist) * factor;
           rightStick.power = factor;
 
-          // Jeśli gracz trzyma niemiotaną broń białą (nóż, maczeta), wychylenie drążka
-          // natychmiast przywraca poprzednią broń palną, by od razu nią celować i strzelać
-          if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
-            restorePreviousFirearm(player);
-          }
-
-          const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
-          const aimDist = isSniper ? (250 + factor * 750) : (180 + factor * 130);
-          player.aimOffsetX = rightStick.axisX * aimDist;
-          player.aimOffsetY = rightStick.axisY * aimDist;
-          player.aimX = player.x + player.w / 2 + player.aimOffsetX;
-          player.aimY = player.y + player.h / 2 + player.aimOffsetY;
-          player.isAiming = true;
-          if (Math.abs(rightStick.axisX) > 0.08) {
-            player.facing = rightStick.axisX >= 0 ? 1 : -1;
-          }
-
-          if (rightStick.armedMode === 'FIREARM') {
-            if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
-              rightStick.isShooting = false;
-              if (!player.axeThrown && factor > 0.03 && !player.isDead) {
-                const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
-                prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
-              }
-            } else if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
-              restorePreviousFirearm(player);
-              if (factor > 0.15 && player.isHolstered) {
-                player.isHolstered = false;
-              }
-              rightStick.isShooting = (factor >= 0.90);
-            } else {
-              if (factor > 0.15 && player.isHolstered) {
-                player.isHolstered = false;
-              }
-              // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
-              rightStick.isShooting = (factor >= 0.90);
-            }
-          } else if (rightStick.armedMode === 'GRENADE') {
-            rightStick.isShooting = false;
-            if (factor > 0.03 && !player.isDead) {
-              const throwPower = Math.min(1.8, Math.max(0.6, factor * 1.3));
-              prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
-            }
-          } else {
-            rightStick.isShooting = false;
-          }
+          applyRightStickAimAndFire(factor, rightStick.axisX, rightStick.axisY, 180);
         } else {
           rightStick.axisX = 0;
           rightStick.axisY = 0;
@@ -772,58 +778,7 @@ canvas.addEventListener('touchmove', (e) => {
         rightStick.axisY = ny * power;
         rightStick.power = power;
 
-        // Jeśli gracz trzyma niemiotaną broń białą (nóż, maczeta), ruch drążka celowania/strzału
-        // natychmiast przywraca broń palną, by od razu nią celować i strzelać
-        if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
-          restorePreviousFirearm(player);
-        }
-
-        const isSniper = !player.isHolstered && (player.currentWeapon?.id === 'SNIPER');
-        const aimDist = isSniper ? (250 + power * 750) : (160 + power * 130);
-        player.aimOffsetX = nx * aimDist;
-        player.aimOffsetY = ny * aimDist;
-        player.aimX = player.x + player.w / 2 + nx * aimDist;
-        player.aimY = player.y + player.h / 2 + ny * aimDist;
-        player.isAiming = true;
-
-        if (Math.abs(nx) > 0.08) {
-          player.facing = nx >= 0 ? 1 : -1;
-        }
-
-        if (rightStick.armedMode === 'FIREARM') {
-          if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
-            rightStick.isShooting = false;
-            if (!player.axeThrown) {
-              if (power > 0.03 && !player.isDead) {
-                const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
-                prepareTomahawkThrow(player, player.aimX, player.aimY, throwPower);
-              } else if (player.throwAnim?.throwType === 'TOMAHAWK') {
-                player.throwAnim.aiming = false;
-                player.throwAnim.active = false;
-              }
-            }
-          } else if (player.currentWeapon?.isMelee && player.currentWeapon?.id !== 'AXE') {
-            restorePreviousFirearm(player);
-            if (power > 0.15 && player.isHolstered) {
-              player.isHolstered = false;
-            }
-            rightStick.isShooting = (power >= 0.90);
-          } else {
-            if (power > 0.15 && player.isHolstered) {
-              player.isHolstered = false;
-            }
-            // Strzał następuje wyłącznie przy maksymalnym wychyleniu drążka (>= 0.90)
-            rightStick.isShooting = (power >= 0.90);
-          }
-        } else if (rightStick.armedMode === 'GRENADE') {
-          rightStick.isShooting = false;
-          if (power > 0.03 && !player.isDead) {
-            const throwPower = Math.min(1.8, Math.max(0.6, power * 1.3));
-            prepareGrenadeThrow(player, player.aimX, player.aimY, throwPower);
-          }
-        } else {
-          rightStick.isShooting = false;
-        }
+        applyRightStickAimAndFire(power, nx, ny, 160);
       } else {
         rightStick.axisX = 0;
         rightStick.axisY = 0;
@@ -1085,8 +1040,8 @@ function endTouch(e) {
         }
         // Drążek POZOSTAJE w trybie GRENADE! Wybór między bronią miotaną a palną
         // odbywa się WYŁĄCZNIE poprzez przeciągnięcie kieszeni na prawy drążek!
-      } else if (player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) {
-        if (!player.axeThrown && rightStick.power > 0.08 && !player.isDead) {
+      } else if ((player.currentWeapon?.id === 'AXE' || player.currentWeapon?.canThrow) && !player.axeThrown) {
+        if (rightStick.power > 0.08 && !player.isDead) {
           const throwPower = Math.min(1.8, Math.max(0.6, rightStick.power * 1.3));
           releaseTomahawkThrow(player, player.aimX, player.aimY, throwPower);
         } else if (player.throwAnim && player.throwAnim.active && player.throwAnim.throwType === 'TOMAHAWK') {

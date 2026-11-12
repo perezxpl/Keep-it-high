@@ -25,6 +25,11 @@ export function equipPocket1Slot(p, slotIndex) {
   const wepId = slots[slotIndex];
   const targetWeapon = WEAPONS[wepId] || WEAPONS.AK47;
 
+  // Zapamiętaj ostatnio używaną broń palną przy przełączeniu na broń białą
+  if (p.currentWeapon && !p.currentWeapon.isMelee && p.currentWeapon.id !== 'GRENADE' && targetWeapon?.isMelee) {
+    p._previousFirearm = p.currentWeapon;
+  }
+
   // Jeśli broń się zmieniła, anuluj trwające przeładowanie oraz celowanie rzutem
   if (p.currentWeapon !== targetWeapon) {
     cancelReload(p, p.currentWeapon);

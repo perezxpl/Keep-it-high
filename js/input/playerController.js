@@ -131,12 +131,15 @@ export function updatePlayerInputAndCombat(activeArenaId) {
   // OBSŁUGA STRZELANIA GRACZA I AUTOMATYCZNEGO PRZEŁADOWANIA W BOJU
   window.activeArenaId = activeArenaId;
 
-  // Jeśli gracz próbuje strzelać (drążkiem dotykowym, myszką na PC lub padem), a w dłoniach ma niemiotaną broń białą (nóż/maczeta):
-  // natychmiast przywróć poprzednią broń palną i nią strzelaj
+  // Jeśli gracz próbuje strzelać (drążkiem dotykowym, myszką na PC lub padem), a w dłoniach ma niemiotaną broń białą
+  // lub rzucił już tomahawk: natychmiast przywróć poprzednią broń palną i nią strzelaj
   let activeWep = player.currentWeapon || WEAPONS.AK47;
   const isTriggeringShootIntent = (mouseState.lmbDown || (rightStick.active && rightStick.power >= 0.85) || (gamepadState && gamepadState.connected && gamepadState.r2));
-  if (isTriggeringShootIntent && activeWep?.isMelee && activeWep.id !== 'AXE' && !(pockets.melee && pockets.melee.active)) {
+  if (isTriggeringShootIntent && activeWep?.isMelee && (activeWep.id !== 'AXE' || player.axeThrown) && !(pockets.melee && pockets.melee.active)) {
     activeWep = restorePreviousFirearm(player) || activeWep;
+    if (rightStick.active && rightStick.armedMode === 'FIREARM' && rightStick.power >= 0.90 && activeWep && !activeWep.isMelee) {
+      rightStick.isShooting = true;
+    }
   }
   const curWep = activeWep;
 
