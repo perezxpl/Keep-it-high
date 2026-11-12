@@ -1099,7 +1099,7 @@ export function updateArena2(dt, players) {
 
   for (let i = 0; i < players.length; i++) {
     const p = players[i];
-    if (!p) continue;
+    if (!p || p.isRemote) continue;
 
     const feetY = p.y + (p.h || 70);
 

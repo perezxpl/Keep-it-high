@@ -658,11 +658,19 @@ export class ThrownTomahawk {
 
       // 3. Trafienie w przeciwników (Combatants Hit / Decapitation / Cleave)
       if (Array.isArray(combatants)) {
+        const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
+        const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+          ? window.isMatchHost()
+          : Boolean(typeof window !== 'undefined' && window.networkState?.isHost);
         for (const ch of combatants) {
           const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
           if (!ch || ch === this.shooter || (ch.isDead && !isLyingZombie) || this.hitCombatants.has(ch)) continue;
           if (ch.isBot && !ch.active && !isLyingZombie) continue;
           if (!isDeathmatchFFA() && this.team && ch.team && this.team === ch.team) continue;
+          if (isNetConnected) {
+            if (this.shooter && this.shooter.isRemote && !ch.isRemote) continue;
+            if (!isNetHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+          }
 
           let chLeft = ch.x;
           let chRight = ch.x + (ch.w || 24);
@@ -906,17 +914,19 @@ export class ThrownTomahawk {
               spawnBloodSpurt(this.x, this.y, Math.sign(this.vx || 1) * 4.0, -1.8, isHeadshot ? 16 : 8, 1.1);
             }
 
-            if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
+            if (isNetConnected && this.shooter && !this.shooter.isRemote && typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
               if (ch.isRemote) {
                 window.sendDamageEvent({
                   target: 'player',
+                  targetId: ch.peerId || null,
                   damage: totalDamage,
                   isHeadshot,
                   isTorsoShot,
                   hitX: this.x,
-                  hitY: this.y
+                  hitY: this.y,
+                  weaponId: 'TOMAHAWK'
                 });
-              } else if (ch.isBot) {
+              } else if (ch.isBot && !isNetHost) {
                 const bIdx = (typeof window.getBotIndex === 'function')
                   ? window.getBotIndex(ch)
                   : (ch.botId || ch.id);
@@ -928,7 +938,8 @@ export class ThrownTomahawk {
                   isHeadshot,
                   isTorsoShot,
                   hitX: this.x,
-                  hitY: this.y
+                  hitY: this.y,
+                  weaponId: 'TOMAHAWK'
                 });
               }
             }
@@ -1163,6 +1174,10 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
     }
   }
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+  const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+    ? window.isMatchHost()
+    : Boolean(netState && netState.isHost);
   for (const ch of targets) {
     const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
     if (!ch || (ch.isDead && !isLyingZombie)) continue;
@@ -1187,9 +1202,9 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       // W trybie sieciowym wybuchy granatów zdalnego gracza oraz granatów botów na maszynie klienta
       // nie zadają bezpośrednich obrażeń lokalnemu graczowi (ponieważ autorytatywny rzucający / Host wysyła deal_dmg)
-      if (netState && netState.isConnected) {
+      if (isNetConnected) {
         if (shooter && shooter.isRemote && !ch.isRemote) continue;
-        if (!netState.isHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+        if (!isNetHost && shooter && shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
 
       const factor = Math.max(0, 1 - (dist / radius));
@@ -1259,10 +1274,11 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
 
       // Synchronizacja obrażeń od wybuchu w grze sieciowej
       const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
-      if (typeof sendDmg === 'function' && netState && netState.isConnected && shooter && !shooter.isRemote) {
+      if (typeof sendDmg === 'function' && isNetConnected && shooter && !shooter.isRemote) {
         if (ch.isRemote) {
           sendDmg({
             target: 'player',
+            targetId: ch.peerId || null,
             damage: damage,
             isHeadshot: false,
             isTorsoShot: true,
@@ -1271,7 +1287,7 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
             relHitY: (typeof groundY === 'number') ? (groundY - chCenterY) : 0,
             weaponId: 'GRENADE'
           });
-        } else if (ch.isBot && !netState.isHost) {
+        } else if (ch.isBot && !isNetHost) {
           const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
           const bIdx = activeBots.indexOf(ch);
           if (bIdx !== -1) {

@@ -8,20 +8,17 @@ import {
   getOrCreateRemotePlayer,
   removeRemotePlayer,
   clearAllRemotePlayers,
-  applyTeamVisualsToRemotePlayer,
   MAX_MATCH_PLAYERS
 } from './networkPlayers.js';
-import { player, setPlayerClass } from './player.js';
-import { WEAPONS, shootWeapon } from './weapons.js';
+import { player } from './player.js';
 import { switchArena, activeArenaId } from './obstacles.js';
-import { GROUND_Y } from './world.js';
-import { deathmatchState, refreshDeathmatchParticipants, TEAMS } from './deathmatch/index.js';
-import { triggerCombatFeedBanner, triggerCombatFeedEvent } from './ui/combatFeed.js';
+import { refreshDeathmatchParticipants } from './deathmatch/index.js';
+import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 import { addChatMessageToUI, updatePingUI } from './networkUI.js';
-import { spawnThrownTomahawk, spawnAeroSuperGrenade } from './projectiles.js';
 
 export const wsState = {
   socket: null,
+  socketId: null,
   connected: false,
   status: 'disconnected', // 'disconnected', 'connecting', 'searching', 'matched', 'in_game'
   roomId: null,
@@ -96,6 +93,7 @@ export function startDedicatedMatchmaking(playerName, options = {}) {
 
     ws.onclose = () => {
       wsState.connected = false;
+      wsState.socketId = null;
       wsState.status = 'disconnected';
       wsState.roomId = null;
     };
@@ -121,6 +119,7 @@ export function cancelDedicatedMatchmaking() {
     } catch (_) {}
   }
   wsState.connected = false;
+  wsState.socketId = null;
   wsState.status = 'disconnected';
   wsState.roomId = null;
   wsState.playersCount = 1;
@@ -179,6 +178,7 @@ function handleServerMessage(rawData) {
     // 1. DOLACZONO DO MECZU (MATCH JOINED)
     case 'MATCH_JOINED': {
       wsState.status = 'matched';
+      wsState.socketId = msg.yourId || null;
       wsState.roomId = msg.roomId;
       wsState.slotIndex = msg.slotIndex;
       wsState.team = msg.team;
@@ -186,9 +186,10 @@ function handleServerMessage(rawData) {
       wsState.playersCount = msg.playersCount || 1;
       wsState.maxPlayers = msg.maxPlayers || MAX_MATCH_PLAYERS;
 
-      // Przypisanie wlasnej druzyny
+      // Przypisanie wlasnej druzyny i wyzerowanie ewentualnego stanu intro
       if (player) {
         player.team = msg.team;
+        player.isIntro = false;
       }
 
       // Przypisanie areny wyznaczonej przez serwer
@@ -262,7 +263,8 @@ function handleServerMessage(rawData) {
     // 2. NOWY GRACZ DOLACZYL DO POKOJU (PLAYER JOINED)
     case 'PLAYER_JOINED': {
       if (!msg.player) return;
-      const rp = getOrCreateRemotePlayer(msg.player.id, msg.player.slotIndex, msg.player.name, msg.player.team);
+      if (wsState.socketId && msg.player.id === wsState.socketId) return;
+      getOrCreateRemotePlayer(msg.player.id, msg.player.slotIndex, msg.player.name, msg.player.team);
       wsState.playersCount = msg.playersCount || (wsState.playersCount + 1);
 
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
@@ -297,63 +299,15 @@ function handleServerMessage(rawData) {
       break;
     }
 
-    // 4. SYNCHRONIZACJA POZYCJI I STANU GRACZA
-    case 'p_state': {
-      const pId = msg.senderId;
-      if (!pId) return;
-      const rp = getOrCreateRemotePlayer(pId, msg.slotIndex, msg.name, msg.team);
-      if (!rp) return;
-
-      rp.active = true;
-      rp.targetX = msg.x;
-      rp.targetY = (typeof msg.y === 'number') ? msg.y : ((msg.relY !== undefined) ? (GROUND_Y - msg.relY) : msg.y);
-      rp.groundY = GROUND_Y;
-      rp.currentGroundY = GROUND_Y;
-      rp.vx = msg.vx;
-      rp.vy = msg.vy;
-      rp.facing = msg.facing;
-      rp.aimX = msg.aimX;
-      rp.aimY = (msg.relAimY !== undefined) ? (GROUND_Y - msg.relAimY) : msg.aimY;
-      rp.aimAngle = msg.aimAngle;
-      rp.isJumping = !!msg.isJumping;
-      rp.isSliding = !!msg.isSliding;
-      rp.isRunning = !!msg.isRunning;
-      rp.hp = msg.hp;
-      rp.maxHp = msg.maxHp || 100;
-      rp.isDead = !!msg.isDead;
-      rp.isJetpacking = !!msg.isJetpacking;
-      rp.jetFuel = msg.jetFuel;
-
-      const wepId = msg.currentWeaponId || msg.weaponId;
-      if (wepId && WEAPONS[wepId]) {
-        rp.currentWeapon = WEAPONS[wepId];
-      }
-      break;
-    }
-
-    // 5. STRZAL Z BRONI PRZEZ INNEGO GRACZA
+    // 4. STRZAL Z BRONI (alias shoot_event -> shoot przekierowany do wspolnego routera)
     case 'shoot_event': {
-      const rp = window.remotePlayers?.get(msg.senderId);
-      if (rp && rp.active) {
-        shootWeapon(rp, msg.aimAngle, msg.weaponId, [player]);
+      if (typeof window !== 'undefined' && typeof window.handleNetworkData === 'function') {
+        window.handleNetworkData({ ...msg, type: 'shoot' }, msg.senderId || null);
       }
       break;
     }
 
-    // 6. RZUT GRANATEM
-    case 'grenade_throw': {
-      spawnAeroSuperGrenade(msg.targetX, msg.targetY, msg.power, msg.originX, msg.originY, msg.fuse);
-      break;
-    }
-
-    // 7. RZUT TOPOREM TOMAHAWK
-    case 'tomahawk_throw': {
-      const rp = window.remotePlayers?.get(msg.senderId);
-      spawnThrownTomahawk(msg.targetX, msg.targetY, msg.power, msg.originX, msg.originY, rp);
-      break;
-    }
-
-    // 8. PONG (PING CHECK)
+    // 5. PONG (PING CHECK)
     case 'pong': {
       if (msg.time) {
         wsState.ping = Math.max(1, Math.round(performance.now() - msg.time));

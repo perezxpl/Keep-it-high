@@ -111,6 +111,7 @@ export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = n
     targetY: initialGroundY - 70,
     groundY: initialGroundY,
     currentGroundY: initialGroundY,
+    hasReceivedState: false,
     stridePhase: 0,
     isJetpacking: false,
     hp: 100,
@@ -203,8 +204,8 @@ export function updateAllRemotePlayers(groundY) {
   for (const rp of activeList) {
     if (!rp || !rp.active) continue;
 
-    rp.groundY = groundY;
-    rp.currentGroundY = groundY;
+    if (typeof rp.groundY !== 'number') rp.groundY = groundY;
+    if (typeof rp.currentGroundY !== 'number') rp.currentGroundY = rp.groundY;
 
     // Spadek timerow animacji i wystrzalu
     if (rp.shootCooldown > 0) rp.shootCooldown--;
@@ -221,8 +222,8 @@ export function updateAllRemotePlayers(groundY) {
     const dy = targetY - rp.y;
     const dist = Math.hypot(dx, dy);
 
-    if (dist > 220) {
-      // Duzy przeskok (respawn / teleport)
+    if (!rp.hasReceivedState || dist > 220) {
+      // Pierwsza klatka lub duzy przeskok (respawn / teleport)
       rp.x = targetX;
       rp.y = targetY;
     } else {
@@ -254,6 +255,8 @@ export function updateAllRemotePlayers(groundY) {
     const firstActive = activeList[0];
     if (firstActive && remotePlayer !== firstActive) {
       remotePlayer.active = true;
+      remotePlayer.peerId = firstActive.peerId;
+      remotePlayer.slotIndex = firstActive.slotIndex;
       remotePlayer.x = firstActive.x;
       remotePlayer.y = firstActive.y;
       remotePlayer.vx = firstActive.vx;
@@ -262,6 +265,24 @@ export function updateAllRemotePlayers(groundY) {
       remotePlayer.hp = firstActive.hp;
       remotePlayer.team = firstActive.team;
       remotePlayer.name = firstActive.name;
+      remotePlayer.currentWeapon = firstActive.currentWeapon;
+      remotePlayer.isAiming = firstActive.isAiming;
+      remotePlayer.aimX = firstActive.aimX;
+      remotePlayer.aimY = firstActive.aimY;
+      remotePlayer.aimAngle = firstActive.aimAngle;
+      remotePlayer.isDead = firstActive.isDead;
+      remotePlayer.isHolstered = firstActive.isHolstered;
+      remotePlayer.isCrouching = firstActive.isCrouching;
+      remotePlayer.isProne = firstActive.isProne;
+      remotePlayer.isSliding = firstActive.isSliding;
+      remotePlayer.isJumping = firstActive.isJumping;
+      remotePlayer.isJetpacking = firstActive.isJetpacking;
+      remotePlayer.onGround = firstActive.onGround;
+      remotePlayer.currentGroundY = firstActive.currentGroundY;
+      remotePlayer.shootPoseTimer = firstActive.shootPoseTimer;
+      remotePlayer.muzzleFlashTimer = firstActive.muzzleFlashTimer;
+      remotePlayer.weaponKickback = firstActive.weaponKickback;
+      remotePlayer.muzzleRise = firstActive.muzzleRise;
     }
   }
 }

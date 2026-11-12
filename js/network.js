@@ -165,6 +165,21 @@ export function isMatchActive() {
   return false;
 }
 
+export function getLocalNetworkId() {
+  if (wsState && wsState.connected && wsState.socketId) {
+    return wsState.socketId;
+  }
+  return networkState.peer?.id || (isMatchHost() ? 'host_player' : 'client_player');
+}
+
+function resolveRemoteSender(senderId) {
+  if (senderId && remotePlayers.has(senderId)) {
+    return remotePlayers.get(senderId);
+  }
+  const active = getActiveRemotePlayers();
+  return active[0] || remotePlayer;
+}
+
 // =============================================================================
 // WYSYŁANIE PAKIETÓW SIECIOWYCH
 // =============================================================================
@@ -191,10 +206,14 @@ export function sendPlayerState(localPlayer) {
       aimAngle: Math.round((localPlayer.aimAngle || 0) * 100) / 100,
       isJumping: !!localPlayer.isJumping,
       isSliding: !!localPlayer.isSliding,
+      isCrouching: !!localPlayer.isCrouching,
       isProne: !!localPlayer.isProne,
       staggerTimer: localPlayer.staggerTimer || 0,
       staggerLanded: !!localPlayer.staggerLanded,
       isRunning: !!localPlayer.isRunning,
+      isAiming: !!localPlayer.isAiming,
+      onGround: !!localPlayer.onGround,
+      currentGroundY: (typeof localPlayer.currentGroundY === 'number') ? Math.round(localPlayer.currentGroundY * 10) / 10 : undefined,
       isKickCharging: !!localPlayer.isKickCharging,
       kickCharge: Math.round((localPlayer.kickCharge || 0) * 100) / 100,
       hp: localPlayer.hp,
@@ -456,9 +475,21 @@ if (typeof window !== 'undefined') {
   window.sendGoalScored = sendGoalScored;
 }
 
-export function applyLocalPlayerDamage(data) {
+export function applyLocalPlayerDamage(data, senderPeerId = null) {
   if (!player || player.isDead) return;
   if (player.spawnProtectionTimer && player.spawnProtectionTimer > 0) return;
+
+  const myNetId = getLocalNetworkId();
+  if (data.targetId) {
+    if (remotePlayers.has(data.targetId)) return;
+    if (wsState?.connected && wsState.socketId && data.targetId !== wsState.socketId) return;
+  }
+
+  const attacker = resolveRemoteSender(data.senderId || senderPeerId);
+  const attackerId = attacker?.peerId || data.senderId || senderPeerId || 'remotePlayer';
+  const attackerName = attacker?.name || (isMatchHost() ? 'GRACZ 2' : 'HOST');
+  const attackerFacing = attacker?.facing || 1;
+  const localName = player.name || (isMatchHost() ? 'HOST' : 'GRACZ 2');
 
   const hitPtX = (typeof data.hitX === 'number') ? data.hitX : (player.x + player.w / 2);
   const hitPtY = (data.relHitY !== undefined)
@@ -469,7 +500,7 @@ export function applyLocalPlayerDamage(data) {
   if (isKick) {
     const isSpartan = (data.weaponId === 'SPARTAN_KICK');
     player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - (data.damage || 14));
-    player.lastAttacker = remotePlayer;
+    player.lastAttacker = attacker;
     const isPlayerImmune = !!(player.staggerImmunityTimer && player.staggerImmunityTimer > 0);
     player.staggerTimer = isPlayerImmune ? 0 : (isSpartan ? (data.stagger || 50) : (data.stagger || 22));
     if (!isPlayerImmune) { player.staggerLanded = false; player.staggerRecoveryTimer = 0; }
@@ -489,28 +520,28 @@ export function applyLocalPlayerDamage(data) {
     player.isProne = false;
 
     spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
-    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+    spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, isSpartan ? 10 : 6, 1.0);
     triggerScreenShake(isSpartan ? 12 : 5);
 
     if (player.hp <= 0 && !player.isDead) {
       player.isDead = true;
-      player.killer = remotePlayer;
+      player.killer = attacker;
       player.killerBulletId = null;
       player.respawnTimer = 180;
       if (!player._calloutDeathRecorded) {
         player._calloutDeathRecorded = true;
-        onPlayerDeathCallout(remotePlayer, {
-          killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
-          killerPeerId: remotePlayer.peerId || null
+        onPlayerDeathCallout(attacker, {
+          killerName: attackerName,
+          killerPeerId: attackerId
         });
       }
-      triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
+      triggerCombatFeedBanner('DEATH', attackerName);
       sendKillBroadcast({
-        killerId: 'remotePlayer',
-        killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
-        killerTeam: remotePlayer.team || null,
-        victimId: 'player',
-        victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
+        killerId: attackerId,
+        killerName: attackerName,
+        killerTeam: attacker?.team || null,
+        victimId: myNetId || 'player',
+        victimName: localName,
         victimTeam: player.team || null,
         bulletId: null,
         x: player.x,
@@ -538,7 +569,7 @@ export function applyLocalPlayerDamage(data) {
       if (player.visuals) player.visuals.hasHelmet = false;
       player.helmetHits = 0;
       player.headshotImmunityTimer = 22;
-      spawnKnockedHelmet(hitPtX, hitPtY - 4, (remotePlayer.facing || 1) * 8, -4, player.facing, player.visuals || player.currentClass?.visuals);
+      spawnKnockedHelmet(hitPtX, hitPtY - 4, attackerFacing * 8, -4, player.facing, player.visuals || player.currentClass?.visuals);
       triggerScreenShake(3.2);
       spawnBulletSparks(hitPtX, hitPtY, '#facc15', 12);
       if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
@@ -574,7 +605,7 @@ export function applyLocalPlayerDamage(data) {
         player.vestHp = 0;
         player.hasVest = false;
         if (player.visuals) player.visuals.hasVest = false;
-        spawnVestShreds(hitPtX, hitPtY, (remotePlayer.facing || 1) * 6, -3, player.visuals?.vestColor || '#18181b');
+        spawnVestShreds(hitPtX, hitPtY, attackerFacing * 6, -3, player.visuals?.vestColor || '#18181b');
         triggerScreenShake(2.5);
         if (typeof window !== 'undefined' && typeof window.syncArmorDevButtons === 'function') {
           window.syncArmorDevButtons();
@@ -584,42 +615,42 @@ export function applyLocalPlayerDamage(data) {
   }
 
   player.hp = Math.max(0, (player.hp !== undefined ? player.hp : 100) - totalDamage);
-  player.lastAttacker = remotePlayer;
+  player.lastAttacker = attacker;
   player.lastAttackerTimer = 240;
 
   if (data.isHeadshot) {
     if (!helmetAbsorbed) {
       spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 8);
-      spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 3, -2, 12, 1.4);
+      spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 3, -2, 12, 1.4);
     }
     triggerScreenShake(data.weaponId === 'SHOTGUN' ? 4.5 : 2.5);
   } else {
     if (!vestAbsorbed) {
       spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 4);
-      spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, 5, 0.8);
+      spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 5, 0.8);
     }
     triggerScreenShake(data.weaponId === 'SHOTGUN' ? 2.5 : 1.2);
   }
 
   if (player.hp <= 0 && !player.isDead) {
     player.isDead = true;
-    player.killer = remotePlayer;
+    player.killer = attacker;
     player.killerBulletId = data.bulletId || null;
     player.respawnTimer = 180;
     if (!player._calloutDeathRecorded) {
       player._calloutDeathRecorded = true;
-      onPlayerDeathCallout(remotePlayer, {
-        killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
-        killerPeerId: remotePlayer.peerId || null
+      onPlayerDeathCallout(attacker, {
+        killerName: attackerName,
+        killerPeerId: attackerId
       });
     }
-    triggerCombatFeedBanner('DEATH', remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'));
+    triggerCombatFeedBanner('DEATH', attackerName);
     sendKillBroadcast({
-      killerId: 'remotePlayer',
-      killerName: remotePlayer.name || (networkState.isHost ? 'GRACZ 2' : 'HOST'),
-      killerTeam: remotePlayer.team || null,
-      victimId: 'player',
-      victimName: player.name || (networkState.isHost ? 'HOST' : 'GRACZ 2'),
+      killerId: attackerId,
+      killerName: attackerName,
+      killerTeam: attacker?.team || null,
+      victimId: myNetId || 'player',
+      victimName: localName,
       victimTeam: player.team || null,
       bulletId: data.bulletId || null,
       x: player.x,
@@ -628,11 +659,16 @@ export function applyLocalPlayerDamage(data) {
   }
 }
 
-export function applyRemoteBotDamage(data) {
-  if (!networkState.isHost) return;
+export function applyRemoteBotDamage(data, senderPeerId = null) {
+  if (!isMatchHost()) return;
   const activeBots = getActiveBots();
   const b = activeBots[data.botIdx];
   if (!b || !b.active || b.isDead) return;
+
+  const attacker = resolveRemoteSender(data.senderId || senderPeerId);
+  const attackerId = attacker?.peerId || data.senderId || senderPeerId || 'remotePlayer';
+  const attackerName = attacker?.name || 'GRACZ 2';
+  const attackerFacing = attacker?.facing || 1;
 
   const hitPtX = (typeof data.hitX === 'number') ? data.hitX : (b.x + b.w / 2);
   const hitPtY = (data.relHitY !== undefined)
@@ -643,7 +679,7 @@ export function applyRemoteBotDamage(data) {
   if (isKick) {
     const isSpartan = (data.weaponId === 'SPARTAN_KICK');
     b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - (data.damage || 14));
-    b.lastAttacker = remotePlayer;
+    b.lastAttacker = attacker;
     const isBotImmune = !!(b.staggerImmunityTimer && b.staggerImmunityTimer > 0);
     b.staggerTimer = isBotImmune ? 0 : (isSpartan ? (data.stagger || 50) : (data.stagger || 22));
     if (!isBotImmune) { b.staggerLanded = false; b.staggerRecoveryTimer = 0; }
@@ -662,17 +698,17 @@ export function applyRemoteBotDamage(data) {
     b.isProne = false;
 
     spawnBulletSparks(hitPtX, hitPtY, '#ef4444', isSpartan ? 9 : 5);
-    spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, isSpartan ? 10 : 6, 1.0);
+    spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, isSpartan ? 10 : 6, 1.0);
 
     if (b.hp <= 0 && !b.isDead) {
       b.isDead = true;
-      b.killer = remotePlayer;
+      b.killer = attacker;
       b.killerBulletId = null;
       b.respawnTimer = 180;
       sendKillBroadcast({
-        killerId: 'remotePlayer',
-        killerName: remotePlayer.name || 'GRACZ 2',
-        killerTeam: remotePlayer.team || null,
+        killerId: attackerId,
+        killerName: attackerName,
+        killerTeam: attacker?.team || null,
         victimId: b.id || `bot_${data.botIdx + 1}`,
         victimName: b.name || 'BOT AI',
         victimTeam: b.team || null,
@@ -690,15 +726,15 @@ export function applyRemoteBotDamage(data) {
   else dmg = Math.round(dmg * 0.75);
 
   b.hp = Math.max(0, (b.hp !== undefined ? b.hp : 100) - dmg);
-  b.lastAttacker = remotePlayer;
+  b.lastAttacker = attacker;
   b.lastAttackerTimer = 240;
 
   spawnBulletSparks(hitPtX, hitPtY, '#ef4444', 6);
-  spawnBloodSpurt(hitPtX, hitPtY, (remotePlayer.facing || 1) * 2, -1, 6, 0.9);
+  spawnBloodSpurt(hitPtX, hitPtY, attackerFacing * 2, -1, 6, 0.9);
 
   if (b.hp <= 0 && !b.isDead) {
     b.isDead = true;
-    b.killer = remotePlayer;
+    b.killer = attacker;
     b.killerBulletId = data.bulletId || null;
     b.respawnTimer = 180;
     const bVis = b.customVisuals || b.visuals || {};
@@ -708,22 +744,22 @@ export function applyRemoteBotDamage(data) {
       b.hasHead = false;
       b.decapitated = true;
       b.neckFountainTimer = 65;
-      spawnHeadGib(b.x + b.w / 2, b.y + 4, (remotePlayer.facing || 1) * 3.5, -6.0, b.facing, bVis);
+      spawnHeadGib(b.x + b.w / 2, b.y + 4, attackerFacing * 3.5, -6.0, b.facing, bVis);
       spawnBloodFountain(b.x + b.w / 2, b.y + 14, b.facing, 6);
     } else if (!data.isTorsoShot) {
       b.dismembered.legFront = true;
-      spawnLimbGib('leg', hitPtX, hitPtY, (remotePlayer.facing || 1) * 2.5, -4.5, b.facing, bVis);
+      spawnLimbGib('leg', hitPtX, hitPtY, attackerFacing * 2.5, -4.5, b.facing, bVis);
       spawnBloodFountain(b.x + b.w / 2, b.y + 45, b.facing, 5);
     } else if (Math.random() < 0.5) {
       b.dismembered.armFront = true;
-      spawnLimbGib('arm', hitPtX, hitPtY, (remotePlayer.facing || 1) * 2.5, -4.5, b.facing, bVis);
+      spawnLimbGib('arm', hitPtX, hitPtY, attackerFacing * 2.5, -4.5, b.facing, bVis);
       spawnBloodFountain(b.x + b.w / 2, b.y + 16, b.facing, 5);
     }
 
     sendKillBroadcast({
-      killerId: 'remotePlayer',
-      killerName: remotePlayer.name || 'GRACZ 2',
-      killerTeam: remotePlayer.team || null,
+      killerId: attackerId,
+      killerName: attackerName,
+      killerTeam: attacker?.team || null,
       victimId: b.id || `bot_${data.botIdx + 1}`,
       victimName: b.name || 'BOT AI',
       victimTeam: b.team || null,
@@ -915,34 +951,43 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'p_state': {
       const pid = data.senderId || senderPeerId || 'remote_1';
-      const slot = data.slotIndex || 1;
+      const slot = (typeof data.slotIndex === 'number') ? data.slotIndex : 1;
       const targetRp = getOrCreateRemotePlayer(pid, slot, data.name, data.team);
       if (!targetRp) break;
 
+      const wasDead = !!targetRp.isDead;
       targetRp.active = true;
       targetRp.targetX = data.x;
       targetRp.targetY = (typeof data.y === 'number') ? data.y : ((data.relY !== undefined) ? (GROUND_Y - data.relY) : data.y);
-      targetRp.groundY = GROUND_Y;
-      targetRp.currentGroundY = GROUND_Y;
+      if (typeof targetRp.groundY !== 'number') targetRp.groundY = GROUND_Y;
+      if (typeof data.currentGroundY === 'number') {
+        targetRp.currentGroundY = data.currentGroundY;
+      } else if (typeof targetRp.currentGroundY !== 'number') {
+        targetRp.currentGroundY = GROUND_Y;
+      }
+      if (data.onGround !== undefined) targetRp.onGround = !!data.onGround;
       targetRp.vx = data.vx;
       targetRp.vy = data.vy;
       targetRp.facing = data.facing;
       targetRp.aimX = data.aimX;
       targetRp.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
       targetRp.aimAngle = data.aimAngle;
-      targetRp.isJumping = data.isJumping;
-      targetRp.isSliding = data.isSliding;
+      targetRp.isJumping = !!data.isJumping;
+      targetRp.isSliding = !!data.isSliding;
+      if (data.isCrouching !== undefined) targetRp.isCrouching = !!data.isCrouching;
       if (data.isProne !== undefined) targetRp.isProne = !!data.isProne;
       if (data.staggerTimer !== undefined) targetRp.staggerTimer = data.staggerTimer;
       if (data.staggerLanded !== undefined) targetRp.staggerLanded = !!data.staggerLanded;
-      targetRp.isRunning = data.isRunning;
-      targetRp.isKickCharging = data.isKickCharging;
+      targetRp.isRunning = !!data.isRunning;
+      if (data.isAiming !== undefined) targetRp.isAiming = !!data.isAiming;
+      targetRp.isKickCharging = !!data.isKickCharging;
       targetRp.kickCharge = data.kickCharge;
       targetRp.hp = data.hp;
       targetRp.maxHp = data.maxHp;
-      targetRp.isDead = data.isDead;
-      targetRp.isJetpacking = data.isJetpacking;
+      targetRp.isDead = !!data.isDead;
+      targetRp.isJetpacking = !!data.isJetpacking;
       targetRp.jetFuel = data.jetFuel;
+      if (data.gaitMode !== undefined) targetRp.gaitMode = data.gaitMode;
       if (data.customVisuals) {
         targetRp.customVisuals = { ...(targetRp.customVisuals || {}), ...data.customVisuals };
       }
@@ -953,9 +998,15 @@ export function handleNetworkData(data, senderPeerId = null) {
         targetRp.name = data.name;
       }
 
+      if (!targetRp.hasReceivedState || (wasDead && !targetRp.isDead)) {
+        targetRp.x = targetRp.targetX;
+        targetRp.y = targetRp.targetY;
+        targetRp.hasReceivedState = true;
+      }
+
       if (data.selectedClass && targetRp.selectedClass !== data.selectedClass) {
         setPlayerClass(data.selectedClass, targetRp);
-        applyTeamVisuals(networkState.isHost);
+        applyTeamVisualsToRemotePlayer(targetRp, targetRp.team || data.team);
       }
 
       const wepId = data.currentWeaponId || data.weaponId;
@@ -1001,9 +1052,19 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'shoot': {
       const pid = data.senderId || senderPeerId;
-      const targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : remotePlayer;
+      let targetRp = (pid && remotePlayers.get(pid)) ? remotePlayers.get(pid) : null;
+      if (!targetRp && pid) {
+        targetRp = getOrCreateRemotePlayer(pid, data.slotIndex, data.name, data.team);
+      }
+      if (!targetRp) {
+        targetRp = resolveRemoteSender(null);
+      }
+      if (!targetRp || !targetRp.active) break;
+
       const wep = WEAPONS[data.weaponId] || targetRp.currentWeapon || WEAPONS.AK47;
       targetRp.currentWeapon = wep;
+      targetRp.isHolstered = false;
+      targetRp.isAiming = true;
       targetRp.aimAngle = data.aimAngle;
       targetRp.facing = Math.cos(data.aimAngle) >= 0 ? 1 : -1;
 
@@ -1012,6 +1073,8 @@ export function handleNetworkData(data, senderPeerId = null) {
       const shootOriginY = (data.relY !== undefined)
         ? (GROUND_Y - data.relY)
         : ((typeof data.y === 'number') ? data.y : (targetRp.y + 20));
+      targetRp.aimX = shootOriginX + Math.cos(data.aimAngle) * 120;
+      targetRp.aimY = shootOriginY + Math.sin(data.aimAngle) * 120;
 
       shootWeapon(targetRp, wep, shootOriginX, shootOriginY, data.aimAngle);
       break;
@@ -1218,20 +1281,26 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'deal_dmg': {
       if (data.target === 'player') {
-        applyLocalPlayerDamage(data);
-      } else if (data.target === 'bot' && networkState.isHost) {
-        applyRemoteBotDamage(data);
+        applyLocalPlayerDamage(data, senderPeerId);
+      } else if (data.target === 'bot' && isMatchHost()) {
+        applyRemoteBotDamage(data, senderPeerId);
       }
       break;
     }
 
     case 'kill_event': {
-      if (data.victimId === 'player') {
+      const myNetId = getLocalNetworkId();
+      const isVictimMe = (myNetId && data.victimId === myNetId) || (!wsState?.connected && data.victimId === 'player' && data.killerId !== myNetId);
+      const isKillerMe = !isVictimMe && (
+        (myNetId && data.killerId === myNetId) ||
+        data.killerId === 'player' ||
+        (!wsState?.connected && data.killerId === 'remotePlayer' && !remotePlayers.has(data.killerId) && (!isMatchHost() || data.victimId !== 'player'))
+      );
+
+      if (isVictimMe) {
         resetKillstreak();
         player._calloutDeathRecorded = true;
-        const kRef = (!data.killerId || data.killerId === 'remotePlayer' || data.killerId === remotePlayer?.peerId)
-          ? remotePlayer
-          : null;
+        const kRef = resolveRemoteSender(data.killerId || data.senderId || senderPeerId);
         onPlayerDeathCallout(kRef, {
           killerName: data.killerName || 'PRZECIWNIK',
           killerId: data.killerId || null,
@@ -1244,7 +1313,7 @@ export function handleNetworkData(data, senderPeerId = null) {
           killerName: data.killerName || 'PRZECIWNIK',
           killerTeam: data.killerTeam || null
         });
-      } else if (data.killerId === 'player' || (data.killerId === 'remotePlayer' && !networkState.isHost)) {
+      } else if (isKillerMe) {
         registerKillstreakKill();
         registerCalloutKill(player, null, {
           killerIsLocal: true,
@@ -1889,6 +1958,8 @@ export function initNetwork() {
     window.isMatchHost = isMatchHost;
     window.isMatchClient = isMatchClient;
     window.isMatchActive = isMatchActive;
+    window.isNetworkActive = isNetworkActive;
+    window.getLocalNetworkId = getLocalNetworkId;
     window.broadcastNetworkPacket = broadcastNetworkPacket;
     window.handleNetworkData = handleNetworkData;
   }

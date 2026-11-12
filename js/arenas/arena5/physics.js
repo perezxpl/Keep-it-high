@@ -64,7 +64,7 @@ export function syncCombatantHeight(p) {
  */
 export function updateArena5Physics(dt, combatants = [], camera = null) {
   const stepTime = (typeof dt === 'number' && dt > 0 && dt < 0.2) ? dt : (1 / 60);
-  _activeCombatants = Array.isArray(combatants) ? combatants : [];
+  _activeCombatants = Array.isArray(combatants) ? combatants.filter(c => c && !c.isRemote) : [];
   for (const c of _activeCombatants) {
     if (c) syncCombatantHeight(c);
   }
@@ -148,7 +148,7 @@ export function checkArena5CeilingCollisions(combatants) {
   const minRow = arena5State.minFloorRow || 0;
 
   for (const p of combatants) {
-    if (!p || p.isDead || p.vy >= 0) continue;
+    if (!p || p.isDead || p.isRemote || p.vy >= 0) continue;
 
     const pW = p.w || 26;
     const pH = syncCombatantHeight(p);
@@ -247,7 +247,7 @@ function checkFallingSquash(combatants) {
 
   for (const victim of combatants) {
     const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead && victim.hasHead && !victim.decapitated);
-    if (!victim || (victim.isDead && !isLyingZombieTarget)) continue;
+    if (!victim || victim.isRemote || (victim.isDead && !isLyingZombieTarget)) continue;
 
     if (victim._craneBounceCooldown > 0) {
       victim._craneBounceCooldown--;
@@ -1409,7 +1409,7 @@ function updateBottomRecycler(combatants) {
   // Jeśli stopy gracza lub bota spadną poniżej linii śmierci -> eliminacja i respawn na wieży
   for (const victim of combatants) {
     const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead && victim.hasHead && !victim.decapitated);
-    if (!victim || (victim.isDead && !isLyingZombieTarget)) continue;
+    if (!victim || victim.isRemote || (victim.isDead && !isLyingZombieTarget)) continue;
     const footY = victim.y + syncCombatantHeight(victim);
     if (footY > currentDeathLineY) {
       executeRecyclerKill(victim);
@@ -1546,7 +1546,7 @@ export function resolveArena5BlockPenetration(combatants) {
   }
 
   for (const p of combatants) {
-    if (!p || p.isDead) continue;
+    if (!p || p.isDead || p.isRemote) continue;
 
     const pW = p.w || 26;
     const pH = syncCombatantHeight(p);

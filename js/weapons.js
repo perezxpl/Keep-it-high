@@ -200,6 +200,12 @@ export function executeMeleeAttack(shooter, weapon, overrideAngle) {
 
 function updateMeleeCollision(shooter, ms) {
   if (!shooter || !ms || ms.phase !== 'ACTIVE') return;
+  const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
+  const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+    ? window.isMatchHost()
+    : Boolean(typeof window !== 'undefined' && window.networkState?.isHost);
+  if (shooter.isRemote && isNetConnected) return;
+
   const cfg = ms.cfg || MELEE_CONFIGS[ms.weaponId] || MELEE_CONFIGS.KNIFE;
   const hold = getWeaponHoldTransform(shooter);
   const p1 = hold.bladeHilt;
@@ -216,7 +222,13 @@ function updateMeleeCollision(shooter, ms) {
     } else if (Array.isArray(window.bots)) {
       candidateTargets.push(...window.bots);
     }
-    if (window.remotePlayer && window.remotePlayer.active && !window.remotePlayer.isDead) {
+    if (typeof window.getActiveRemotePlayers === 'function') {
+      for (const rp of window.getActiveRemotePlayers()) {
+        if (rp && rp.active && !rp.isDead && !candidateTargets.includes(rp)) {
+          candidateTargets.push(rp);
+        }
+      }
+    } else if (window.remotePlayer && window.remotePlayer.active && !window.remotePlayer.isDead) {
       candidateTargets.push(window.remotePlayer);
     }
     if (window.player && window.player !== shooter && !window.player.isDead) {
@@ -227,11 +239,16 @@ function updateMeleeCollision(shooter, ms) {
     }
   }
 
+  const isFFA = (typeof isDeathmatchFFA === 'function' ? isDeathmatchFFA() : false) ||
+    (deathmatchState && deathmatchState.mode === 'FFA') ||
+    (deathmatchConfig && deathmatchConfig.mode === 'FFA') ||
+    (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
+
   for (const t of candidateTargets) {
     const isLyingZombie = !!(t.isZombie && t.isDead && t.hasHead && !t.decapitated);
     if (!t || t === shooter || (t.isDead && !isLyingZombie)) continue;
     if (t.isBot && !t.active && !isLyingZombie) continue;
-    if (shooter.team && t.team && shooter.team === t.team) continue;
+    if (!isFFA && shooter.team && t.team && shooter.team === t.team) continue;
     if (ms.hitTargets.has(t)) continue;
 
     const tx = t.x + (t.w || 24) * 0.5;
@@ -451,16 +468,35 @@ function updateMeleeCollision(shooter, ms) {
         }
       }
 
-      if (typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
-        window.sendDamageEvent({
-          target: t.isRemote ? 'player' : 'bot',
-          botId: t.botId || t.id,
-          damage: dmg,
-          isHeadshot,
-          isTorsoShot: !isHeadshot && !isLegshot,
-          hitX,
-          hitY
-        });
+      if (isNetConnected && typeof window !== 'undefined' && typeof window.sendDamageEvent === 'function') {
+        if (t.isRemote) {
+          window.sendDamageEvent({
+            target: 'player',
+            targetId: t.peerId || null,
+            damage: dmg,
+            isHeadshot,
+            isTorsoShot: !isHeadshot && !isLegshot,
+            hitX,
+            hitY,
+            weaponId: ms.weaponId
+          });
+        } else if (t.isBot && !isNetHost) {
+          const activeBots = (typeof window.getActiveBots === 'function') ? window.getActiveBots() : [];
+          const bIdx = activeBots.indexOf(t);
+          if (bIdx !== -1) {
+            window.sendDamageEvent({
+              target: 'bot',
+              botIdx: bIdx,
+              botId: t.botId || t.id,
+              damage: dmg,
+              isHeadshot,
+              isTorsoShot: !isHeadshot && !isLegshot,
+              hitX,
+              hitY,
+              weaponId: ms.weaponId
+            });
+          }
+        }
       }
 
       ms.hitTargets.add(t);
@@ -638,7 +674,11 @@ export function shootWeapon(shooter, weapon, overrideX, overrideY, overrideAngle
 
     theta = (typeof muzzle.barrelAngle === 'number') ? muzzle.barrelAngle : Math.atan2(muzzle.aimY - muzzleY, muzzle.aimX - muzzleX);
 
-    if (shooter.isBot && !shooter.isRemote && typeof window !== 'undefined' && window.networkState?.isHost && window.networkState?.isConnected) {
+    const isNetConnectedForBot = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
+    const isNetHostForBot = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+      ? window.isMatchHost()
+      : Boolean(typeof window !== 'undefined' && window.networkState?.isHost);
+    if (shooter.isBot && !shooter.isRemote && isNetConnectedForBot && isNetHostForBot) {
       if (typeof window.sendBotShootEvent === 'function') {
         const bIdx = (typeof shooter.botIndex === 'number') ? shooter.botIndex : (parseInt(String(shooter.id).replace('bot_', ''), 10) - 1 || 0);
         window.sendBotShootEvent(bIdx, weapon.id, muzzleX, muzzleY, theta);
@@ -1080,6 +1120,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
   const charList = characters || [];
   const obs = obstaclesList || obstacles;
   const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+  const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+  const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+    ? window.isMatchHost()
+    : Boolean(netState && netState.isHost);
   updateBulletCasings(1 / 60, groundY, obs);
 
   for (let i = bullets.length - 1; i >= 0; i--) {
@@ -1191,9 +1235,9 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (!isFFA && b.shooter && b.shooter.team && ch.team && b.shooter.team === ch.team) continue;
       // W trybie sieciowym kule zdalnego gracza oraz kule botów na maszynie klienta nie zadają bezpośrednich obrażeń lokalnemu graczowi
       // (ponieważ strzelający zdalny gracz lub autorytatywny Host wysyła pakiet deal_dmg)
-      if (netState && netState.isConnected) {
+      if (isNetConnected) {
         if (b.shooter && b.shooter.isRemote && !ch.isRemote) continue;
-        if (!netState.isHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+        if (!isNetHost && b.shooter && b.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
       // Wyklucz postacie już trafione przez ten pocisk w poprzednich klatkach / penetracjach
       if (b.hitEntities && (b.hitEntities.has(ch) || (ch.id && b.hitEntities.has(ch.id)))) continue;
@@ -1396,10 +1440,11 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
 
       // Synchronizacja zadanych obrażeń w grze sieciowej
       const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
-      if (netState && netState.isConnected && typeof sendDmg === 'function') {
+      if (isNetConnected && typeof sendDmg === 'function') {
         if (closestChar.isRemote) {
           sendDmg({
             target: 'player',
+            targetId: closestChar.peerId || null,
             damage: b.damage,
             isHeadshot,
             isTorsoShot,
@@ -1409,7 +1454,7 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             weaponId: b.weaponId,
             bulletId: b.bulletId || null
           });
-        } else if (closestChar.isBot && !netState.isHost) {
+        } else if (closestChar.isBot && !isNetHost) {
           const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
             ? window.getActiveBots()
             : (typeof window !== 'undefined' && Array.isArray(window.bots) ? window.bots : []);

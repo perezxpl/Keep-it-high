@@ -270,6 +270,10 @@ export class RpgRocket {
     const maxBy = this.prevY > endY ? this.prevY : endY;
 
     const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+    const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+    const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+      ? window.isMatchHost()
+      : Boolean(netState && netState.isHost);
 
     for (const ch of charList) {
       const isLyingZombie = !!(ch.isZombie && ch.isDead && ch.hasHead && !ch.decapitated);
@@ -282,9 +286,9 @@ export class RpgRocket {
         (typeof window !== 'undefined' && window.deathmatchState?.mode === 'FFA');
       if (!isFFA && this.shooter && this.shooter.team && ch.team && this.shooter.team === ch.team) continue;
 
-      if (netState && netState.isConnected) {
+      if (isNetConnected) {
         if (this.shooter && this.shooter.isRemote && !ch.isRemote) continue;
-        if (!netState.isHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
+        if (!isNetHost && this.shooter && this.shooter.isBot && !ch.isRemote && !ch.isBot) continue;
       }
 
       const hitW = ch.w || 24;
@@ -440,10 +444,11 @@ export class RpgRocket {
 
       // Synchronizacja zadanych obrażeń w grze sieciowej
       const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
-      if (netState && netState.isConnected && typeof sendDmg === 'function') {
+      if (isNetConnected && typeof sendDmg === 'function') {
         if (closestChar.isRemote) {
           sendDmg({
             target: 'player',
+            targetId: closestChar.peerId || null,
             damage: this.damage,
             isHeadshot,
             isTorsoShot,
@@ -452,7 +457,7 @@ export class RpgRocket {
             relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : 0,
             weaponId: 'RPG7'
           });
-        } else if (closestChar.isBot && !netState.isHost) {
+        } else if (closestChar.isBot && !isNetHost) {
           const activeBots = (typeof window !== 'undefined' && typeof window.getActiveBots === 'function')
             ? window.getActiveBots()
             : (typeof window !== 'undefined' && Array.isArray(window.bots) ? window.bots : []);

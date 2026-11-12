@@ -604,10 +604,15 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         // Synchronizacja zadanych obrażeń i odrzutu w grze sieciowej
         const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
         const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
-        if (netState && netState.isConnected && typeof sendDmg === 'function') {
+        const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+        const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+          ? window.isMatchHost()
+          : Boolean(netState && netState.isHost);
+        if (isNetConnected && typeof sendDmg === 'function') {
           if (enemy.isRemote) {
             sendDmg({
               target: 'player',
+              targetId: enemy.peerId || null,
               damage: dmg,
               isTorsoShot: true,
               hitX: ex,
@@ -618,7 +623,7 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
               vy: Math.min(-2.8, kickDirY * finalKnockback * 0.85),
               stagger: classStats.spartanStagger || 22
             });
-          } else if (enemy.isBot && !netState.isHost) {
+          } else if (enemy.isBot && !isNetHost) {
             const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
             const bIdx = activeBots.indexOf(enemy);
             if (bIdx !== -1) {
@@ -1091,10 +1096,15 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
     // Synchronizacja Spartan Kick w grze sieciowej
     const sendDmg = (typeof window !== 'undefined' && window.sendDamageEvent) ? window.sendDamageEvent : null;
     const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
-    if (netState && netState.isConnected && typeof sendDmg === 'function') {
+    const isNetConnected = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || (netState && netState.isConnected));
+    const isNetHost = (typeof window !== 'undefined' && typeof window.isMatchHost === 'function')
+      ? window.isMatchHost()
+      : Boolean(netState && netState.isHost);
+    if (isNetConnected && typeof sendDmg === 'function') {
       if (enemy.isRemote) {
         sendDmg({
           target: 'player',
+          targetId: enemy.peerId || null,
           damage: dmg,
           isTorsoShot: true,
           hitX: ex,
@@ -1106,7 +1116,7 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
           stagger: spartanStagger,
           facing: -player.facing
         });
-      } else if (enemy.isBot && !netState.isHost) {
+      } else if (enemy.isBot && !isNetHost) {
         const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : [];
         const bIdx = activeBots.indexOf(enemy);
         if (bIdx !== -1) {
@@ -1639,9 +1649,9 @@ export function updatePlayerThrow(p) {
         spawnThrownTomahawk(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
         playSound('grenade_throw', { x: handPos.x, y: handPos.y });
         if (!p.isRemote && !p.isBot) {
-          const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+          const isNet = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
           const sendTomahawk = (typeof window !== 'undefined' && window.sendTomahawkThrow) ? window.sendTomahawkThrow : null;
-          if (netState && netState.isConnected && typeof sendTomahawk === 'function') {
+          if (isNet && typeof sendTomahawk === 'function') {
             sendTomahawk(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y);
           }
         }
@@ -1651,9 +1661,9 @@ export function updatePlayerThrow(p) {
         spawnAeroSuperGrenade(p, tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
         playSound('grenade_throw', { x: handPos.x, y: handPos.y });
         if (!p.isRemote && !p.isBot) {
-          const netState = (typeof window !== 'undefined' && window.networkState) ? window.networkState : null;
+          const isNet = (typeof window !== 'undefined') && Boolean(window.isNetworkActive?.() || window.wsState?.connected || window.networkState?.isConnected);
           const sendGrenade = (typeof window !== 'undefined' && window.sendGrenadeThrow) ? window.sendGrenadeThrow : null;
-          if (netState && netState.isConnected && typeof sendGrenade === 'function') {
+          if (isNet && typeof sendGrenade === 'function') {
             sendGrenade(tAnim.targetX, tAnim.targetY, tAnim.power, handPos.x, handPos.y, remainingFuse);
           }
         }

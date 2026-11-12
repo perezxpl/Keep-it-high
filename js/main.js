@@ -645,17 +645,10 @@ function update() {
 
   const activeRemotePlayers = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer?.active ? [remotePlayer] : []);
   if (activeRemotePlayers.length > 0) {
+    updateRemotePlayer(GROUND_Y);
     for (const rp of activeRemotePlayers) {
-      rp.groundY = GROUND_Y;
-      rp.currentGroundY = GROUND_Y;
-
-      const rSpeed = Math.abs(rp.vx || 0);
-      if (rSpeed > 0.1 && !rp.isJumping) {
-        rp.stridePhase = (rp.stridePhase || 0) + rSpeed * 0.04;
-      }
       updateWeaponState(rp);
     }
-    updateRemotePlayer(GROUND_Y);
   }
 
   const activeBots = (typeof getActiveBots === 'function') ? getActiveBots() : (bot.active ? [bot] : []);
@@ -703,7 +696,6 @@ function update() {
       checkPlayerPlatformLanding(player, effectiveGroundY);
       for (const rp of activeRemotePlayers) {
         checkBallPlayerCollisions(rp, effectiveGroundY, spawnGrass);
-        checkPlayerPlatformLanding(rp, effectiveGroundY);
       }
       if (activeArenaId === 'ARENA_1' && arena1State.waitingForKickoff && Math.hypot(ball.vx, ball.vy) > 0.5) {
         arena1State.waitingForKickoff = false;
@@ -715,13 +707,9 @@ function update() {
         sendBallState(ball);
       }
     } else {
-      // Klient – autorytatywna pozycja piłki z sieci P2P
+      // Klient – autorytatywna pozycja piłki z sieci P2P (zdalni gracze nie sa przepychami przez lokalna fizyke)
       checkBallPlayerCollisions(player, effectiveGroundY, spawnGrass);
       checkPlayerPlatformLanding(player, effectiveGroundY);
-      for (const rp of activeRemotePlayers) {
-        checkBallPlayerCollisions(rp, effectiveGroundY, spawnGrass);
-        checkPlayerPlatformLanding(rp, effectiveGroundY);
-      }
       checkObstacleCollisions(ball, effectiveGroundY, player, getActiveBots());
     }
     checkMatchWin(activeArenaId, arenaScore);
@@ -736,9 +724,6 @@ function update() {
       ball.vy = 0;
     }
     checkPlayerPlatformLanding(player, effectiveGroundY);
-    for (const rp of activeRemotePlayers) {
-      checkPlayerPlatformLanding(rp, effectiveGroundY);
-    }
     checkObstacleCollisions(null, effectiveGroundY, null, null);
   }
 
@@ -1137,7 +1122,7 @@ function draw() {
     drawPlayer(ctx, GROUND_Y, rp);
 
     // Identyfikacja drużynowa: sojusznicy mają zawsze niebieski nick, rywale nie mają nic
-    const remoteTeam = rp.team || (networkState.isHost ? 'ORANGE' : 'CYAN');
+    const remoteTeam = rp.team || (isMatchHost() ? 'ORANGE' : 'CYAN');
     const isAlly = (remoteTeam === playerTeam);
 
     if (isAlly) {

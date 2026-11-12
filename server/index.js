@@ -48,6 +48,23 @@ class GameRoom {
     return -1;
   }
 
+  findBalancedSlot(mode = 'TEAMS') {
+    if (mode === 'FFA') return this.findAvailableSlot();
+    const occupied = new Set();
+    let cyanCount = 0;
+    let orangeCount = 0;
+    for (const p of this.players.values()) {
+      occupied.add(p.slotIndex);
+      if (p.team === 'ORANGE' || p.slotIndex >= 3) orangeCount++;
+      else cyanCount++;
+    }
+    const preferredOrder = (cyanCount <= orangeCount) ? [0, 1, 2, 3, 4, 5] : [3, 4, 5, 0, 1, 2];
+    for (const slot of preferredOrder) {
+      if (!occupied.has(slot)) return slot;
+    }
+    return -1;
+  }
+
   broadcast(messageObj, excludeSocketId = null) {
     const raw = JSON.stringify(messageObj);
     for (const [sId, p] of this.players.entries()) {
@@ -159,7 +176,7 @@ wss.on('connection', (ws) => {
           rooms.set(roomId, room);
         }
 
-        const slotIndex = room.findAvailableSlot();
+        const slotIndex = room.findBalancedSlot(mode);
         if (slotIndex === -1) {
           ws.send(JSON.stringify({
             type: 'ROOM_FULL',
@@ -192,6 +209,7 @@ wss.on('connection', (ws) => {
         // Potwierdzenie dolaczenia do pokoju
         ws.send(JSON.stringify({
           type: 'MATCH_JOINED',
+          yourId: socketId,
           roomId: room.id,
           slotIndex,
           team,
@@ -242,7 +260,8 @@ wss.on('connection', (ws) => {
         break;
       }
 
-      // 3. WYSTRZAL Z BRONI (SHOOT EVENT)
+      // 3. WYSTRZAL Z BRONI (SHOOT / SHOOT EVENT)
+      case 'shoot':
       case 'shoot_event': {
         if (!currentRoom) return;
         currentRoom.broadcast({
@@ -256,14 +275,22 @@ wss.on('connection', (ws) => {
       // 4. OBRAZENIA / TRAFIENIE (DAMAGE EVENT)
       case 'deal_dmg': {
         if (!currentRoom) return;
-        currentRoom.broadcast(msg, socketId);
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
         break;
       }
 
       // 5. ELIMINACJA / ZGON (KILL EVENT)
       case 'kill_event': {
         if (!currentRoom) return;
-        currentRoom.broadcast(msg);
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
         break;
       }
 
@@ -271,7 +298,11 @@ wss.on('connection', (ws) => {
       case 'grenade_throw':
       case 'tomahawk_throw': {
         if (!currentRoom) return;
-        currentRoom.broadcast(msg, socketId);
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
         break;
       }
 
@@ -293,7 +324,11 @@ wss.on('connection', (ws) => {
       case 'ball':
       case 'kick_ball': {
         if (!currentRoom) return;
-        currentRoom.broadcast(msg, socketId);
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
         break;
       }
 
@@ -334,7 +369,10 @@ wss.on('connection', (ws) => {
       // 12. DOMYSLNY RELAY DLA POZOSTALYCH PAKIETOW GRY
       default: {
         if (currentRoom) {
-          currentRoom.broadcast(msg, socketId);
+          const payload = (msg && typeof msg === 'object')
+            ? { ...msg, senderId: socketId, slotIndex: currentSlot }
+            : msg;
+          currentRoom.broadcast(payload, socketId);
         }
         break;
       }
