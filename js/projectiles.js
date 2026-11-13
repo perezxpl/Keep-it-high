@@ -941,6 +941,17 @@ export class ThrownTomahawk {
                   hitY: this.y,
                   weaponId: 'TOMAHAWK'
                 });
+              } else if (ch.isZombie && !isNetHost) {
+                window.sendDamageEvent({
+                  target: 'zombie',
+                  zombieId: ch.id,
+                  damage: totalDamage,
+                  isHeadshot,
+                  isTorsoShot,
+                  hitX: this.x,
+                  hitY: this.y,
+                  weaponId: 'TOMAHAWK'
+                });
               }
             }
 
@@ -1303,6 +1314,17 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
               weaponId: 'GRENADE'
             });
           }
+        } else if (ch.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: ch.id,
+            damage: damage,
+            isHeadshot: false,
+            isTorsoShot: true,
+            hitX: chCenterX,
+            hitY: chCenterY,
+            weaponId: 'GRENADE'
+          });
         }
       }
 

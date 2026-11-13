@@ -491,7 +491,7 @@ export function setPlayerClass(newClass, p = player) {
   p.maxHp = newMax;
   p.hp = Math.round(newMax * hpRatio);
 
-  if (!p.isBot && typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.applyAppearanceForClass === 'function') {
+  if (!p.isBot && !p.isRemote && p === player && typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.applyAppearanceForClass === 'function') {
     window.uiManager.applyAppearanceForClass(resolvedClass.id, p);
   }
 

@@ -66,13 +66,22 @@ export function getActiveRemotePlayers() {
  * @param {number} slotIndex - Numer slotu na arenie (1..5)
  * @param {string} [name] - Nazwa gracza
  * @param {string} [team] - Druzyna (CYAN lub ORANGE)
+ * @param {Object} [customVisuals] - Niestandardowy wyglad gracza z kreatora
+ * @param {string} [classId] - Id klasy postaci gracza
  * @returns {Object} Instancja gracza
  */
-export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = null) {
+export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = null, customVisuals = null, classId = null) {
   if (remotePlayers.has(id)) {
     const existing = remotePlayers.get(id);
     if (name) existing.name = name;
     if (team) existing.team = team;
+    if (customVisuals && typeof customVisuals === 'object') {
+      existing.customVisuals = { ...(existing.customVisuals || {}), ...customVisuals };
+      existing._visualsDirty = true;
+    }
+    if (classId && existing.classId !== classId) {
+      setPlayerClass(classId, existing);
+    }
     existing.active = true;
     return existing;
   }
@@ -92,6 +101,7 @@ export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = n
   // Wspolrzedne poczatkowe na podstawie slotu
   const startX = (effectiveTeam === 'CYAN') ? (400 + assignedSlot * 70) : (2500 + (assignedSlot - 3) * 70);
   const startFacing = (effectiveTeam === 'CYAN') ? 1 : -1;
+  const initialYaw = (startFacing < 0) ? Math.PI : 0;
 
   const newPlayer = createPlayerInstance({
     isIntro: false,
@@ -107,6 +117,11 @@ export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = n
     slotIndex: assignedSlot,
     name: effectiveName,
     team: effectiveTeam,
+    facing: startFacing,
+    yaw: initialYaw,
+    targetYaw: initialYaw,
+    shootPoseWeight: 0,
+    gaitMode: 'run',
     targetX: startX,
     targetY: initialGroundY - 70,
     groundY: initialGroundY,
@@ -120,7 +135,15 @@ export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = n
     respawnTimer: 0
   });
 
-  applyTeamVisualsToRemotePlayer(newPlayer, effectiveTeam);
+  if (classId) {
+    setPlayerClass(classId, newPlayer);
+  }
+
+  if (customVisuals && typeof customVisuals === 'object' && Object.keys(customVisuals).length > 0) {
+    newPlayer.customVisuals = { ...customVisuals };
+  } else {
+    applyTeamVisualsToRemotePlayer(newPlayer, effectiveTeam);
+  }
 
   remotePlayers.set(id, newPlayer);
 
@@ -135,7 +158,11 @@ export function getOrCreateRemotePlayer(id, slotIndex = 1, name = null, team = n
       x: newPlayer.x,
       y: newPlayer.y,
       targetX: newPlayer.targetX,
-      targetY: newPlayer.targetY
+      targetY: newPlayer.targetY,
+      facing: newPlayer.facing,
+      yaw: newPlayer.yaw,
+      targetYaw: newPlayer.targetYaw,
+      customVisuals: newPlayer.customVisuals
     });
   }
 
@@ -188,10 +215,10 @@ export function applyTeamVisualsToRemotePlayer(p, team) {
   p.team = team;
   const isCyan = (team === 'CYAN');
   if (!p.customVisuals) p.customVisuals = {};
-  p.customVisuals.pantsColor = isCyan ? '#0284c7' : '#ea580c';
-  p.customVisuals.torsoColor = isCyan ? '#0369a1' : '#c2410c';
-  p.customVisuals.jetpackColor = isCyan ? '#38bdf8' : '#fb923c';
-  p.customVisuals.headgearColor = isCyan ? '#0c4a6e' : '#7c2d12';
+  if (!p.customVisuals.pantsColor) p.customVisuals.pantsColor = isCyan ? '#0284c7' : '#ea580c';
+  if (!p.customVisuals.torsoColor) p.customVisuals.torsoColor = isCyan ? '#0369a1' : '#c2410c';
+  if (!p.customVisuals.jetpackColor) p.customVisuals.jetpackColor = isCyan ? '#38bdf8' : '#fb923c';
+  if (!p.customVisuals.headgearColor) p.customVisuals.headgearColor = isCyan ? '#0c4a6e' : '#7c2d12';
 }
 
 /**
@@ -230,6 +257,30 @@ export function updateAllRemotePlayers(groundY) {
       rp.x += dx * 0.65;
       rp.y += dy * 0.65;
     }
+
+    // Obrot i orientacja sylwetki (yaw) - plynna interpolacja katowa
+    let targetYaw = (typeof rp.targetYaw === 'number') ? rp.targetYaw : (rp.facing < 0 ? Math.PI : 0);
+    if (rp.facing < 0 && Math.cos(targetYaw) > 0.1) {
+      targetYaw = Math.PI;
+    } else if (rp.facing > 0 && Math.cos(targetYaw) < -0.1) {
+      targetYaw = 0;
+    }
+    if (typeof rp.yaw !== 'number') {
+      rp.yaw = targetYaw;
+    } else {
+      let dyaw = targetYaw - rp.yaw;
+      while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+      while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+      rp.yaw += dyaw * 0.35;
+    }
+
+    // Plynna waga pozycji celowania / trzymania broni przy ramieniu
+    const isAimingOrShooting = (rp.shootPoseTimer > 0 || Math.abs((rp.aimX || 0) - rp.x) > 10);
+    const targetPoseWeight = isAimingOrShooting ? 1 : 0;
+    if (typeof rp.shootPoseWeight !== 'number') rp.shootPoseWeight = targetPoseWeight;
+    else rp.shootPoseWeight += (targetPoseWeight - rp.shootPoseWeight) * 0.25;
+
+    if (!rp.gaitMode) rp.gaitMode = 'run';
 
     // Animacja biegu / cyklu chodu
     const rSpeed = Math.abs(rp.vx || 0);

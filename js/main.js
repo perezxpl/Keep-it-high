@@ -62,7 +62,7 @@ import { updateDeathmatch, resetDeathmatchState, refreshDeathmatchParticipants, 
 import { initKillstreaks, updateKillstreaks, drawKillstreakWorld, drawKillstreakHUD, registerKillstreakKill, resetKillstreak } from './killstreaks/index.js';
 import { initPickups, resetPickups, updatePickups, drawPickupsWorld, drawPickupPrompt } from './pickup/index.js';
 import { initLighting, updateLighting, drawLighting, drawShockwaves, drawCinematicVignette } from './lighting/index.js';
-import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive } from './zombie/index.js';
+import { updateZombieSystem, drawZombieSystem, drawZombieHUD, getActiveZombies, isZombieModeActive, sendZombiesState } from './zombie/index.js';
 import { updateHazards, drawHazards, initHazardsForArena, checkBarrelKickInteraction } from './hazards/index.js';
 import { checkMatchWin, updateMatchWinState, resetMatchWinState } from './ui/rankHud.js';
 import { CLASS_CARDS, getClassCardRects, getHoveredClassCard, drawClassSelectModal } from './ui/classSelectModal.js';
@@ -930,6 +930,9 @@ function update() {
   updateProjectiles(effectiveGroundY, ARENA_PLATFORMS, customObstacles, combatants, isDeathmatch ? null : ball);
   updateLighting(1 / 60);
   updateZombieSystem(1 / 60, player, activeBots, effectiveGroundY);
+  if (isMatchHost()) {
+    sendZombiesState();
+  }
   updateHazards((FRAME_DURATION / 1000) || (1 / 60), combatants, effectiveGroundY);
   updateAudio(1 / 60, { gameState: GAME_STATE.current, player, bots: activeBots, remotePlayers: activeRemotePlayers });
 

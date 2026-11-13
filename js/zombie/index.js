@@ -25,6 +25,13 @@ import {
   drawZombieHUD
 } from './renderer.js';
 
+import {
+  serializeZombiesState,
+  sendZombiesState,
+  applyRemoteZombiesState,
+  applyRemoteZombieDamage
+} from './network.js';
+
 export {
   zombieState,
   ZOMBIE_CONFIG,
@@ -44,7 +51,11 @@ export {
 
 export {
   drawZombieSystem,
-  drawZombieHUD
+  drawZombieHUD,
+  serializeZombiesState,
+  sendZombiesState,
+  applyRemoteZombiesState,
+  applyRemoteZombieDamage
 };
 
 // Synchroniczna ekspozycja globalna dla systemów walki wręcz i konsoli deweloperskiej

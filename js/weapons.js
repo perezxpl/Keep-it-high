@@ -504,6 +504,17 @@ function updateMeleeCollision(shooter, ms) {
               weaponId: ms.weaponId
             });
           }
+        } else if (t.isZombie && !isNetHost) {
+          window.sendDamageEvent({
+            target: 'zombie',
+            zombieId: t.id,
+            damage: dmg,
+            isHeadshot,
+            isTorsoShot: !isHeadshot && !isLegshot,
+            hitX,
+            hitY,
+            weaponId: ms.weaponId
+          });
         }
       }
 
@@ -1481,6 +1492,19 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
               bulletId: b.bulletId || null
             });
           }
+        } else if (closestChar.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: closestChar.id,
+            damage: b.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            relHitY: (typeof groundY === 'number') ? (groundY - hitPtY) : ((typeof GROUND_Y === 'number') ? (GROUND_Y - hitPtY) : 0),
+            weaponId: b.weaponId,
+            bulletId: b.bulletId || null
+          });
         }
       }
 

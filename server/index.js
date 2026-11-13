@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS_PER_MATCH = 6;
-const DROPPABLE_RELAY_TYPES = new Set(['p_state', 'bots_state', 'b_state']);
+const DROPPABLE_RELAY_TYPES = new Set(['p_state', 'bots_state', 'b_state', 'zombies_state']);
 const SERVER_DROPPABLE_BUFFER_THRESHOLD = 2048;
 
 // Rejestr aktywnych pokojow meczowych: key = roomId, value = Room
@@ -29,6 +29,7 @@ class GameRoom {
     this.created = Date.now();
     this.status = 'LOBBY'; // 'LOBBY', 'PLAYING', 'CLOSED'
     this.botCount = 0;
+    this.zombieMode = false;
   }
 
   get isFull() {
@@ -91,7 +92,8 @@ class GameRoom {
         name: p.name,
         team: p.team,
         classId: p.classId,
-        isHost: p.isHost
+        isHost: p.isHost,
+        customVisuals: p.customVisuals || null
       });
     }
     return list;
@@ -179,7 +181,12 @@ wss.on('connection', (ws) => {
         if (!room) {
           const roomId = `match_${nextRoomSeq++}`;
           room = new GameRoom(roomId, preferredArena, mode);
+          if (msg.zombieMode !== undefined) {
+            room.zombieMode = !!msg.zombieMode;
+          }
           rooms.set(roomId, room);
+        } else if (msg.zombieMode !== undefined && room.count === 0) {
+          room.zombieMode = !!msg.zombieMode;
         }
 
         const slotIndex = room.findBalancedSlot(mode);
@@ -225,7 +232,8 @@ wss.on('connection', (ws) => {
           maxPlayers: MAX_PLAYERS_PER_MATCH,
           playersCount: room.count,
           players: room.getPlayersSummary(),
-          botCount: room.botCount
+          botCount: room.botCount,
+          zombieMode: !!room.zombieMode
         }));
 
         // Powiadomienie pozostalych graczy w pokoju
@@ -241,7 +249,8 @@ wss.on('connection', (ws) => {
             customVisuals: msg.customVisuals || null
           },
           playersCount: room.count,
-          maxPlayers: MAX_PLAYERS_PER_MATCH
+          maxPlayers: MAX_PLAYERS_PER_MATCH,
+          zombieMode: !!room.zombieMode
         }, socketId);
 
         // Jesli pokoj osiagnal 6/6 graczy -> oznacz jako pelny i uruchom natychmiastowy start
@@ -330,7 +339,10 @@ wss.on('connection', (ws) => {
       case 'bot_shoot':
       case 'b_state':
       case 'ball':
-      case 'kick_ball': {
+      case 'kick_ball':
+      case 'zombies_state':
+      case 'zombie_sync':
+      case 'start_game': {
         if (!currentRoom) return;
         currentRoom.broadcast({
           ...msg,

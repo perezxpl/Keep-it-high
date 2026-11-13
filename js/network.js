@@ -20,6 +20,8 @@ import {
 import { registerCalloutKill, onPlayerDeathCallout } from './callouts/index.js';
 import { ACID_SURGE_SYSTEM, playAcidSurgeSiren } from './arenas/arena2/state.js';
 import { spawnAeroSuperGrenade, spawnThrownTomahawk } from './projectiles.js';
+import { getLocalPlayerCustomVisuals } from './player/hair.js';
+import { sendZombiesState, applyRemoteZombiesState, applyRemoteZombieDamage, isZombieModeActive, setZombieModeActive } from './zombie/index.js';
 import { updateUIStatus, updatePingUI, displayHostRoomCode, openMultiplayerModal, closeMultiplayerModal, updateCursorVisibility, isChatActive, openChat, closeChat, addChatMessageToUI, syncMpBotUI, initNetworkUI } from './networkUI.js';
 import {
   mpMatchConfig,
@@ -214,11 +216,12 @@ export function sendPlayerState(localPlayer) {
   networkState.lastStateSent = now;
   networkState._pStateSeq = (networkState._pStateSeq || 0) + 1;
 
+  const activeVisuals = { ...(typeof getLocalPlayerCustomVisuals === 'function' ? getLocalPlayerCustomVisuals() : {}), ...(localPlayer.customVisuals || {}) };
   let visualsToSend = undefined;
-  if (localPlayer.customVisuals) {
-    const visualsKey = JSON.stringify(localPlayer.customVisuals);
+  if (Object.keys(activeVisuals).length > 0) {
+    const visualsKey = JSON.stringify(activeVisuals);
     if (visualsKey !== networkState._lastSentVisualsKey || (now - (networkState._lastVisualsSent || 0)) > 2500) {
-      visualsToSend = localPlayer.customVisuals;
+      visualsToSend = activeVisuals;
       networkState._lastSentVisualsKey = visualsKey;
       networkState._lastVisualsSent = now;
     }
@@ -234,6 +237,13 @@ export function sendPlayerState(localPlayer) {
       vx: Math.round(localPlayer.vx * 10) / 10,
       vy: Math.round(localPlayer.vy * 10) / 10,
       facing: localPlayer.facing,
+      yaw: (typeof localPlayer.yaw === 'number') ? Math.round(localPlayer.yaw * 100) / 100 : (localPlayer.facing < 0 ? 3.14 : 0),
+      targetYaw: (typeof localPlayer.targetYaw === 'number') ? Math.round(localPlayer.targetYaw * 100) / 100 : (localPlayer.facing < 0 ? 3.14 : 0),
+      headPitch: (typeof localPlayer.headPitch === 'number') ? Math.round(localPlayer.headPitch * 100) / 100 : 0,
+      torsoTilt: (typeof localPlayer.torsoTilt === 'number') ? Math.round(localPlayer.torsoTilt * 100) / 100 : 0,
+      shootPoseWeight: (typeof localPlayer.shootPoseWeight === 'number') ? Math.round(localPlayer.shootPoseWeight * 100) / 100 : (localPlayer.isAiming ? 1 : 0),
+      holsterWeight: (typeof localPlayer.holsterWeight === 'number') ? Math.round(localPlayer.holsterWeight * 100) / 100 : 0,
+      stridePhase: (typeof localPlayer.stridePhase === 'number') ? Math.round(localPlayer.stridePhase * 100) / 100 : 0,
       aimX: Math.round(localPlayer.aimX),
       aimY: Math.round(localPlayer.aimY),
       relAimY: Math.round((GROUND_Y - localPlayer.aimY) * 10) / 10,
@@ -256,7 +266,8 @@ export function sendPlayerState(localPlayer) {
       hasHelmet: !!localPlayer.hasHelmet,
       vestHp: Math.round(localPlayer.vestHp || 0),
       isDead: !!localPlayer.isDead,
-      selectedClass: localPlayer.selectedClass,
+      selectedClass: localPlayer.selectedClass || localPlayer.currentClass?.id || 'STRIKER',
+      classId: localPlayer.currentClass?.id || localPlayer.selectedClass || 'STRIKER',
       ...(visualsToSend ? { customVisuals: visualsToSend } : {}),
       team: localPlayer.team,
       name: localPlayer.name,
@@ -264,7 +275,7 @@ export function sendPlayerState(localPlayer) {
       isHolstered: !!localPlayer.isHolstered,
       isJetpacking: !!localPlayer.isJetpacking,
       jetFuel: Math.round(localPlayer.jetFuel || 0),
-      gaitMode: localPlayer.gaitMode
+      gaitMode: localPlayer.gaitMode || 'run'
     });
   } catch (e) {
     console.warn('[P2P] Send player state error:', e);
@@ -506,7 +517,8 @@ export function sendDeathmatchSync(dmState) {
       endReason: dmState.endReason || null,
       winCondition: dmState.winCondition || 'BOTH',
       fragLimit: dmState.fragLimit || 25,
-      endCelebrationTimer: dmState.endCelebrationTimer || 0
+      endCelebrationTimer: dmState.endCelebrationTimer || 0,
+      zombieMode: isZombieModeActive()
     });
   } catch (_) {}
 }
@@ -1044,6 +1056,20 @@ export function handleNetworkData(data, senderPeerId = null) {
       targetRp.vx = data.vx;
       targetRp.vy = data.vy;
       targetRp.facing = data.facing;
+      if (typeof data.yaw === 'number') {
+        targetRp.targetYaw = data.yaw;
+        if (typeof targetRp.yaw !== 'number') targetRp.yaw = data.yaw;
+      } else if (typeof data.targetYaw === 'number') {
+        targetRp.targetYaw = data.targetYaw;
+        if (typeof targetRp.yaw !== 'number') targetRp.yaw = data.targetYaw;
+      } else {
+        targetRp.targetYaw = (data.facing < 0 ? Math.PI : 0);
+      }
+      if (typeof data.headPitch === 'number') targetRp.headPitch = data.headPitch;
+      if (typeof data.torsoTilt === 'number') targetRp.torsoTilt = data.torsoTilt;
+      if (typeof data.shootPoseWeight === 'number') targetRp.shootPoseWeight = data.shootPoseWeight;
+      if (typeof data.holsterWeight === 'number') targetRp.holsterWeight = data.holsterWeight;
+      if (typeof data.stridePhase === 'number') targetRp.stridePhase = data.stridePhase;
       targetRp.aimX = data.aimX;
       targetRp.aimY = (data.relAimY !== undefined) ? (GROUND_Y - data.relAimY) : data.aimY;
       targetRp.aimAngle = data.aimAngle;
@@ -1076,6 +1102,7 @@ export function handleNetworkData(data, senderPeerId = null) {
       if (data.gaitMode !== undefined) targetRp.gaitMode = data.gaitMode;
       if (data.customVisuals) {
         targetRp.customVisuals = { ...(targetRp.customVisuals || {}), ...data.customVisuals };
+        targetRp._visualsDirty = true;
       }
       if (data.team) {
         targetRp.team = data.team;
@@ -1090,8 +1117,9 @@ export function handleNetworkData(data, senderPeerId = null) {
         targetRp.hasReceivedState = true;
       }
 
-      if (data.selectedClass && targetRp.selectedClass !== data.selectedClass) {
-        setPlayerClass(data.selectedClass, targetRp);
+      const incomingClass = data.classId || data.selectedClass;
+      if (incomingClass && targetRp.selectedClass !== incomingClass && targetRp.classId !== incomingClass) {
+        setPlayerClass(incomingClass, targetRp);
         applyTeamVisualsToRemotePlayer(targetRp, targetRp.team || data.team);
       }
 
@@ -1370,6 +1398,8 @@ export function handleNetworkData(data, senderPeerId = null) {
         applyLocalPlayerDamage(data, senderPeerId);
       } else if (data.target === 'bot' && isMatchHost()) {
         applyRemoteBotDamage(data, senderPeerId);
+      } else if (data.target === 'zombie' && isMatchHost()) {
+        applyRemoteZombieDamage(data, senderPeerId);
       }
       break;
     }
@@ -1528,6 +1558,9 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'dm_sync': {
       if (isMatchHost()) break;
+      if (typeof data.zombieMode === 'boolean') {
+        setZombieModeActive(data.zombieMode);
+      }
       deathmatchState.timeRemaining = data.timeRemaining;
       if (typeof data.elapsedTime === 'number') deathmatchState.elapsedTime = data.elapsedTime;
       if (data.winCondition) deathmatchState.winCondition = data.winCondition;
@@ -1540,6 +1573,13 @@ export function handleNetworkData(data, senderPeerId = null) {
       if (data.matchEnded && !deathmatchState.matchEnded) {
         finishDeathmatch(data.endReason || 'TIME_LIMIT');
       }
+      break;
+    }
+
+    case 'zombies_state':
+    case 'zombie_sync': {
+      if (isMatchHost()) break;
+      applyRemoteZombiesState(data);
       break;
     }
 

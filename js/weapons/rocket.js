@@ -475,6 +475,17 @@ export class RpgRocket {
               weaponId: 'RPG7'
             });
           }
+        } else if (closestChar.isZombie && !isNetHost) {
+          sendDmg({
+            target: 'zombie',
+            zombieId: closestChar.id,
+            damage: this.damage,
+            isHeadshot,
+            isTorsoShot,
+            hitX: hitPtX,
+            hitY: hitPtY,
+            weaponId: 'RPG7'
+          });
         }
       }
 

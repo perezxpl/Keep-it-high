@@ -425,9 +425,20 @@ export function updateZombieSystem(dt, player, bots = [], groundY = 800) {
 
   refreshActiveZombiesCache();
 
+  // Klient w trybie multiplayer polega na autorytatywnych pakietach zombies_state od hosta
+  if (typeof window !== 'undefined' && typeof window.isMatchClient === 'function' && window.isMatchClient()) {
+    for (const z of zombieState.zombies) {
+      if (z.attackAnim > 0) z.attackAnim -= dt;
+      if (z.hitStunTimer > 0) z.hitStunTimer -= dt;
+    }
+    return;
+  }
+
   const validBots = Array.isArray(bots) ? bots.filter(b => b && b.active) : [];
-  const remotePlayer = (typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? window.remotePlayer : null;
-  const livingHumans = [player, ...validBots, ...(remotePlayer ? [remotePlayer] : [])].filter(c => c && !c.isDead && !c.isZombie);
+  const activeRemotes = (typeof window !== 'undefined' && typeof window.getActiveRemotePlayers === 'function')
+    ? window.getActiveRemotePlayers()
+    : ((typeof window !== 'undefined' && window.remotePlayer && window.remotePlayer.active) ? [window.remotePlayer] : []);
+  const livingHumans = [player, ...validBots, ...activeRemotes].filter(c => c && !c.isDead && !c.isZombie);
 
   // -------------------------------------------------------------------------
   // 1. REANIMACJA LEŻĄCYCH CIAŁ (POWSTAWANIE ZOMBIE Z POLEGŁYCH)

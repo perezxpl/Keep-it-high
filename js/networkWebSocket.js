@@ -11,11 +11,13 @@ import {
   MAX_MATCH_PLAYERS
 } from './networkPlayers.js';
 import { player } from './player.js';
+import { getLocalPlayerCustomVisuals } from './player/hair.js';
 import { switchArena, activeArenaId } from './obstacles.js';
 import { refreshDeathmatchParticipants } from './deathmatch/index.js';
 import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 import { addChatMessageToUI, updatePingUI } from './networkUI.js';
 import { playUiClick } from './audio/index.js';
+import { isZombieModeActive, setZombieModeActive } from './zombie/index.js';
 
 export const wsState = {
   socket: null,
@@ -259,13 +261,15 @@ export function startDedicatedMatchmaking(playerName, options = {}) {
       }
 
       // Wysłanie zapytania o wolny mecz (max 6 osób)
+      const currentVisuals = { ...(getLocalPlayerCustomVisuals() || {}), ...(player.customVisuals || {}) };
       ws.send(JSON.stringify({
         type: 'MATCHMAKE',
         name: playerName || player.name || 'Operator',
         preferredArena: options.arenaId || activeArenaId || 'arena-1',
         mode: options.mode || 'TEAMS',
-        classId: player.currentClass?.id || 'STRIKER',
-        customVisuals: player.customVisuals || null
+        classId: player.currentClass?.id || player.classId || 'STRIKER',
+        customVisuals: currentVisuals,
+        zombieMode: isZombieModeActive()
       }));
 
       startWsPingLoop();
@@ -445,11 +449,16 @@ function handleServerMessage(rawData) {
         switchArena(msg.arenaId, player);
       }
 
+      // Synchronizacja trybu zombie z serwerem/hostem
+      if (typeof msg.zombieMode === 'boolean' && !wsState.isHost) {
+        setZombieModeActive(msg.zombieMode);
+      }
+
       // Rejestracja istniejacych graczy w pokoju
       if (Array.isArray(msg.players)) {
         for (const p of msg.players) {
           if (p.id !== wsState.socketId && p.slotIndex !== wsState.slotIndex) {
-            getOrCreateRemotePlayer(p.id, p.slotIndex, p.name, p.team);
+            getOrCreateRemotePlayer(p.id, p.slotIndex, p.name, p.team, p.customVisuals, p.classId);
           }
         }
       }
@@ -534,7 +543,7 @@ function handleServerMessage(rawData) {
     case 'PLAYER_JOINED': {
       if (!msg.player) return;
       if (wsState.socketId && msg.player.id === wsState.socketId) return;
-      getOrCreateRemotePlayer(msg.player.id, msg.player.slotIndex, msg.player.name, msg.player.team);
+      getOrCreateRemotePlayer(msg.player.id, msg.player.slotIndex, msg.player.name, msg.player.team, msg.player.customVisuals, msg.player.classId);
       wsState.playersCount = msg.playersCount || (wsState.playersCount + 1);
 
       refreshDeathmatchParticipants(player, [], Array.from(window.remotePlayers?.values() || []));
@@ -561,7 +570,11 @@ function handleServerMessage(rawData) {
 
         // Host synchronizuje komendę wejścia
         if (wsState.isHost) {
-          sendWsPacket({ type: 'start_game', arenaId: activeArenaId });
+          sendWsPacket({
+            type: 'start_game',
+            arenaId: activeArenaId,
+            zombieMode: isZombieModeActive()
+          });
         }
 
         wsLaunchTimeout = setTimeout(() => {
@@ -570,7 +583,11 @@ function handleServerMessage(rawData) {
       } else {
         // Jeśli host już gra, wyślij komendę wejścia nowemu graczowi
         if (wsState.isHost) {
-          sendWsPacket({ type: 'start_game', arenaId: activeArenaId });
+          sendWsPacket({
+            type: 'start_game',
+            arenaId: activeArenaId,
+            zombieMode: isZombieModeActive()
+          });
         }
       }
 
@@ -596,6 +613,9 @@ function handleServerMessage(rawData) {
 
     // 2b. SYNCHRONIZOWANY START MECZU
     case 'start_game': {
+      if (typeof msg.zombieMode === 'boolean' && !wsState.isHost) {
+        setZombieModeActive(msg.zombieMode);
+      }
       if (msg.arenaId && msg.arenaId !== activeArenaId) {
         switchArena(msg.arenaId, player);
       }
