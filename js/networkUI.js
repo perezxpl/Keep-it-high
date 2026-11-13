@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { networkState } from './network.js';
-import { wsState, startDedicatedMatchmaking, cancelDedicatedMatchmaking } from './networkWebSocket.js';
+import { wsState, startDedicatedMatchmaking, cancelDedicatedMatchmaking, enterMultiplayerMatch } from './networkWebSocket.js';
 import { getMpBotCount, getMpBotLayoutDescription } from './bot.js';
 import {
   mpMatchConfig,
@@ -82,9 +82,14 @@ export function updateUIStatus(status, message) {
 export function updatePingUI(ping) {
   const pingTag = document.getElementById('mp-ping-tag');
   const livePing = document.getElementById('mp-live-ping');
+  const briefingPing = document.getElementById('briefing-mp-ping-tag');
   const str = `${ping} ms`;
   if (pingTag) pingTag.textContent = str;
   if (livePing) livePing.textContent = str;
+  if (briefingPing) {
+    briefingPing.textContent = str;
+    briefingPing.style.display = 'inline-block';
+  }
 }
 
 export function displayHostRoomCode(id) {
@@ -563,15 +568,19 @@ export function initNetworkUI(handlers = {}) {
   const mmStatus = document.getElementById('mp-matchmake-status');
   if (mmBtn) {
     mmBtn.onclick = () => {
-      if (wsState && wsState.status === 'matched') {
-        const modal = document.getElementById('mp-modal');
-        if (modal) modal.classList.add('mp-modal-hidden');
-        if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
-          window.setGameState('PLAYING');
+      if (wsState && (wsState.status === 'matched' || wsState.status === 'in_game')) {
+        if (typeof enterMultiplayerMatch === 'function') {
+          enterMultiplayerMatch();
+        } else {
+          const modal = document.getElementById('mp-modal');
+          if (modal) modal.classList.add('mp-modal-hidden');
+          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            window.setGameState('PLAYING');
+          }
         }
         return;
       }
-      if (wsState && wsState.status === 'searching') {
+      if (wsState && (wsState.status === 'searching' || wsState.status === 'connecting')) {
         cancelDedicatedMatchmaking();
         mmBtn.textContent = 'SZUKAJ MECZU (MATCHMAKING)';
         mmBtn.classList.remove('mp-btn-searching');

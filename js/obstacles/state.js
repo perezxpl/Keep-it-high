@@ -543,6 +543,7 @@ function isLocalClientPlayer(playerObj) {
   if (playerObj.team === 'ORANGE') return true;
   if (typeof window !== 'undefined') {
     if (typeof window.isMatchClient === 'function' && window.isMatchClient()) return true;
+    if (window.wsState && window.wsState.connected && !window.wsState.isHost) return true;
     if (window.networkState && window.networkState.isConnected && !window.networkState.isHost) return true;
   }
   return false;

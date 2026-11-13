@@ -1758,30 +1758,23 @@ export const uiManager = {
       briefingMmBtn.addEventListener('click', () => {
         playUiClick();
         const ws = (typeof window !== 'undefined' && window.wsState);
-        if (ws && ws.status === 'matched') {
-          if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+        if (ws && (ws.status === 'matched' || ws.status === 'in_game')) {
+          if (typeof window.enterMultiplayerMatch === 'function') {
+            window.enterMultiplayerMatch();
+          } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
             window.setGameState('PLAYING');
           }
           return;
         }
-        if (ws && ws.status === 'searching') {
+        if (ws && (ws.status === 'searching' || ws.status === 'connecting')) {
           if (typeof window.cancelDedicatedMatchmaking === 'function') {
             window.cancelDedicatedMatchmaking();
           }
-          briefingMmBtn.textContent = '▶ SZUKAJ MECZU (GRAJ ONLINE)';
-          const briefingStatus = document.getElementById('briefing-matchmake-status');
-          if (briefingStatus) briefingStatus.textContent = 'Gotowy do połączenia z serwerem modern-military.onrender.com';
         } else {
           const currentArena = this.briefingArenas[this.currentBriefingIndex];
           const arenaId = currentArena ? currentArena.id : 'ARENA_1';
           if (typeof window.startDedicatedMatchmaking === 'function') {
             window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
-            briefingMmBtn.textContent = 'ANULUJ SZUKANIE MECZU...';
-            const briefingStatus = document.getElementById('briefing-matchmake-status');
-            if (briefingStatus) briefingStatus.textContent = 'Łączenie z serwerem i szukanie graczy [1/6]...';
-            const launchBtn = document.getElementById('btn-arena-launch');
-            const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
-            if (btnText) btnText.textContent = 'SZUKANIE MECZU...';
           }
         }
       });
@@ -1919,7 +1912,9 @@ export const uiManager = {
           const ws = (typeof window !== 'undefined' && window.wsState);
           // Jeśli już dopasowano do pokoju lub jesteśmy w trakcie gry
           if (ws && (ws.status === 'matched' || ws.status === 'in_game')) {
-            if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
+            if (typeof window.enterMultiplayerMatch === 'function') {
+              window.enterMultiplayerMatch();
+            } else if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
               window.setGameState('PLAYING');
             }
             return;
@@ -1931,8 +1926,19 @@ export const uiManager = {
             if (typeof window !== 'undefined' && window.networkState && window.networkState.conn) {
               try { window.networkState.conn.send({ type: 'start_game' }); } catch (_) {}
             }
+            if (typeof window !== 'undefined' && typeof window.startRound === 'function') {
+              window.startRound();
+            }
             if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
               window.setGameState('PLAYING');
+            }
+            return;
+          }
+
+          // Jeśli szukamy meczu, kliknięcie launchBtn anuluje szukanie
+          if (ws && (ws.status === 'searching' || ws.status === 'connecting')) {
+            if (typeof window.cancelDedicatedMatchmaking === 'function') {
+              window.cancelDedicatedMatchmaking();
             }
             return;
           }
@@ -1940,13 +1946,6 @@ export const uiManager = {
           // Rozpocznij natychmiastowy matchmaking na serwerze dedykowanym (bez kodów!)
           if (typeof window.startDedicatedMatchmaking === 'function') {
             window.startDedicatedMatchmaking(window.player?.name || 'Operator', { arenaId });
-            const launchBtn = document.getElementById('btn-arena-launch');
-            const btnText = launchBtn ? launchBtn.querySelector('.btn-text') : null;
-            if (btnText) btnText.textContent = 'SZUKANIE MECZU ONLINE...';
-            const briefingStatus = document.getElementById('briefing-matchmake-status');
-            if (briefingStatus) briefingStatus.textContent = 'Łączenie z serwerem i szukanie graczy [1/6]...';
-            const briefingMmBtn = document.getElementById('briefing-matchmake-btn');
-            if (briefingMmBtn) briefingMmBtn.textContent = 'ANULUJ SZUKANIE MECZU...';
             return;
           }
           return;

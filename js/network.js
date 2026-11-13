@@ -46,6 +46,7 @@ import {
   wsState,
   startDedicatedMatchmaking,
   cancelDedicatedMatchmaking,
+  enterMultiplayerMatch,
   sendWsPacket
 } from './networkWebSocket.js';
 
@@ -74,7 +75,8 @@ export {
   MAX_REMOTE_PLAYERS,
   wsState,
   startDedicatedMatchmaking,
-  cancelDedicatedMatchmaking
+  cancelDedicatedMatchmaking,
+  enterMultiplayerMatch
 };
 
 // =============================================================================
@@ -95,6 +97,7 @@ if (typeof window !== 'undefined') {
   window.wsState = wsState;
   window.startDedicatedMatchmaking = startDedicatedMatchmaking;
   window.cancelDedicatedMatchmaking = cancelDedicatedMatchmaking;
+  window.enterMultiplayerMatch = enterMultiplayerMatch;
 }
 
 // =============================================================================
@@ -1620,6 +1623,9 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'start_game': {
       closeMultiplayerModal();
+      if (typeof window !== 'undefined' && typeof window.startRound === 'function') {
+        window.startRound();
+      }
       if (typeof window !== 'undefined' && typeof window.setGameState === 'function') {
         window.setGameState('PLAYING');
       }
