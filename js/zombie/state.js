@@ -51,13 +51,23 @@ export function isZombieModeActive() {
 /**
  * Przełącza stan aktywności trybu zombie i zapisuje w localStorage
  */
-export function setZombieModeActive(active) {
+export function setZombieModeActive(active, options = {}) {
+  const isRemote = !!(options && options.isRemote);
+  const changed = (zombieState.enabled !== !!active);
   zombieState.enabled = !!active;
   try {
     localStorage.setItem(STORAGE_KEY_ZOMBIE_MODE, zombieState.enabled ? 'true' : 'false');
   } catch (_) {}
   if (!zombieState.enabled) {
     resetZombieState();
+  }
+  if (changed && !isRemote && typeof window !== 'undefined' && typeof window.broadcastNetworkPacket === 'function') {
+    try {
+      window.broadcastNetworkPacket({
+        type: 'zombie_toggle',
+        zombieMode: zombieState.enabled
+      });
+    } catch (_) {}
   }
 }
 

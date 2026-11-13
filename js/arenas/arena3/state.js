@@ -1489,6 +1489,8 @@ export function applyArena3StateSnapshot(snapshot) {
 }
 
 if (typeof window !== 'undefined') {
+  window.ARENA_3_BRIDGE_BLOCKS = ARENA_3_BRIDGE_BLOCKS;
+  window.ARENA_3_PYLONS = ARENA_3_PYLONS;
   window.breakBridgeBlock = breakBridgeBlock;
   window.destroyPylon = destroyPylon;
   window.serializeArena3State = serializeArena3State;

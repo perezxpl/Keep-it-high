@@ -601,11 +601,22 @@ function handleServerMessage(rawData) {
           const snapshot = window.serializeArena3State();
           if (snapshot) window.broadcastNetworkPacket({ type: 'a3_sync', snapshot });
         }
+        if (typeof window.syncArena4Geysers === 'function') {
+          window.syncArena4Geysers();
+        } else if (window.arena4 && typeof window.arena4.syncAllGeysers === 'function') {
+          window.arena4.syncAllGeysers();
+        }
         if (typeof window.sendAcidSurgeSync === 'function' && typeof window.ACID_SURGE_SYSTEM !== 'undefined') {
           window.sendAcidSurgeSync(window.ACID_SURGE_SYSTEM);
         }
         if (typeof window.sendDeathmatchSync === 'function' && typeof window.deathmatchState !== 'undefined') {
           window.sendDeathmatchSync(window.deathmatchState);
+        }
+        if (typeof window.sendBallState === 'function' && window.ball) {
+          window.sendBallState(window.ball);
+        }
+        if (typeof window.sendZombiesState === 'function' && typeof window.isZombieModeActive === 'function' && window.isZombieModeActive()) {
+          window.sendZombiesState();
         }
       }
       break;

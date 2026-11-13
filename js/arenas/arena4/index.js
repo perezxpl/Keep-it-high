@@ -407,6 +407,14 @@ export class Arena4Caldera {
     }
   }
 
+  syncAllGeysers() {
+    if (Array.isArray(this.geysers)) {
+      this.geysers.forEach((g, idx) => {
+        this.broadcastGeyserState(idx, g.state, g.timer);
+      });
+    }
+  }
+
   reset() {
     this.animTime = 0;
     this.embers.length = 0;
@@ -421,6 +429,31 @@ export const Arena4Titan = Arena4Caldera;
 export const ARENA_TITAN = arena4;
 export const ARENA_CALDERA = arena4;
 export const ARENA_OBSIDIAN_CALDERA = arena4;
+
+export function serializeArena4State() {
+  if (arena4 && Array.isArray(arena4.geysers)) {
+    return arena4.geysers.map(g => ({ state: g.state, timer: Math.round(g.timer * 10) / 10 }));
+  }
+  return null;
+}
+
+export function applyArena4StateSnapshot(snapshot) {
+  if (!snapshot || !arena4 || !Array.isArray(arena4.geysers) || !Array.isArray(snapshot)) return;
+  snapshot.forEach((gData, idx) => {
+    const g = arena4.geysers[idx];
+    if (g && gData) {
+      g.state = gData.state;
+      if (typeof gData.timer === 'number') g.timer = gData.timer;
+    }
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.arena4 = arena4;
+  window.syncArena4Geysers = () => arena4.syncAllGeysers();
+  window.serializeArena4State = serializeArena4State;
+  window.applyArena4StateSnapshot = applyArena4StateSnapshot;
+}
 
 export function spawnMagmaSplash(x, y, count = 16, isGeyser = false) {
   if (arena4) arena4.spawnMagmaSplash(x, y, count, isGeyser);

@@ -27,6 +27,10 @@ export const ball = {
   goalAnimation: null
 };
 
+if (typeof window !== 'undefined') {
+  window.ball = ball;
+}
+
 export function resetBallToPlayer(p, GROUND_Y) {
   const isA5 = (activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
   const isA4 = (activeArenaId === 'ARENA_4' || activeArenaId === 'arena-4' || activeArenaId === 'OBSIDIAN_CALDERA' || activeArenaId === 'CALDERA' || activeArenaId === 'OBSIDIAN' || activeArenaId === 'KRATER' || activeArenaId === 'OIL_RIG' || activeArenaId === 'ARMORED_TRAIN' || activeArenaId === 'SPACE' || activeArenaId === 'SPACE_STATION' || activeArenaId === 'ARES');

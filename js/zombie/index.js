@@ -65,4 +65,6 @@ if (typeof window !== 'undefined') {
   window.isZombieModeActive = isZombieModeActive;
   window.setZombieModeActive = setZombieModeActive;
   window.zombieState = zombieState;
+  window.sendZombiesState = sendZombiesState;
+  window.serializeZombiesState = serializeZombiesState;
 }

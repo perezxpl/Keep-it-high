@@ -330,6 +330,7 @@ wss.on('connection', (ws) => {
       case 'a3_pylon_destroy':
       case 'a3_sync':
       case 'a4_geyser_sync':
+      case 'a4_sync':
       case 'goal_scored':
       case 'arena_sync':
       case 'deathmatch_sync':
@@ -344,6 +345,41 @@ wss.on('connection', (ws) => {
       case 'zombie_sync':
       case 'start_game': {
         if (!currentRoom) return;
+        if (msg.type === 'start_game') {
+          if (msg.arenaId) currentRoom.arenaId = msg.arenaId;
+          if (typeof msg.zombieMode === 'boolean') currentRoom.zombieMode = msg.zombieMode;
+        }
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
+        break;
+      }
+
+      // 7b. SYNCHRONIZACJA ZMIANY ARENY W POKOJU
+      case 'arena_sw': {
+        if (!currentRoom) return;
+        if (msg.arenaId) {
+          currentRoom.arenaId = msg.arenaId;
+        }
+        if (typeof msg.zombieMode === 'boolean') {
+          currentRoom.zombieMode = msg.zombieMode;
+        }
+        currentRoom.broadcast({
+          ...msg,
+          senderId: socketId,
+          slotIndex: currentSlot
+        }, socketId);
+        break;
+      }
+
+      // 7c. PRZELACZNIK TRYBU ZOMBIE
+      case 'zombie_toggle': {
+        if (!currentRoom) return;
+        if (typeof msg.zombieMode === 'boolean') {
+          currentRoom.zombieMode = msg.zombieMode;
+        }
         currentRoom.broadcast({
           ...msg,
           senderId: socketId,

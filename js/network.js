@@ -386,7 +386,7 @@ export function sendObstacleUndo() {
 
 export function sendArenaSwitch(arenaId) {
   if (isNetworkActive()) {
-    try { broadcastNetworkPacket({ type: 'arena_sw', arenaId }); } catch (_) {}
+    try { broadcastNetworkPacket({ type: 'arena_sw', arenaId, zombieMode: isZombieModeActive() }); } catch (_) {}
   }
 }
 
@@ -986,6 +986,18 @@ export function handleNetworkData(data, senderPeerId = null) {
         ACID_SURGE_SYSTEM.timer = data.acidState.timer;
         ACID_SURGE_SYSTEM.currentY = data.acidState.currentY;
       }
+      if (typeof data.zombieMode === 'boolean') {
+        setZombieModeActive(data.zombieMode, { isRemote: true });
+      }
+      if (data.a3State && typeof window !== 'undefined' && typeof window.applyArena3StateSnapshot === 'function') {
+        window.applyArena3StateSnapshot(data.a3State);
+      }
+      if (data.a4State && typeof window !== 'undefined' && typeof window.applyArena4StateSnapshot === 'function') {
+        window.applyArena4StateSnapshot(data.a4State);
+      }
+      if (data.a5Grid && typeof window !== 'undefined' && typeof window.applyArena5GridSnapshot === 'function') {
+        window.applyArena5GridSnapshot(data.a5Grid);
+      }
       if (data.clientSpawn && player) {
         player.x = data.clientSpawn.x;
         player.y = data.clientSpawn.y;
@@ -1257,10 +1269,28 @@ export function handleNetworkData(data, senderPeerId = null) {
 
     case 'arena_sw': {
       if (data.arenaId) {
+        if (typeof data.zombieMode === 'boolean') {
+          setZombieModeActive(data.zombieMode, { isRemote: true });
+        }
         switchArena(data.arenaId, player, remotePlayer, ball);
         updateDevArenaButtonUI(data.arenaId);
         if (typeof window !== 'undefined' && window.uiManager && typeof window.uiManager.updateMpArenaUI === 'function') {
           window.uiManager.updateMpArenaUI(data.arenaId);
+        }
+      }
+      break;
+    }
+
+    case 'zombie_toggle': {
+      if (typeof data.zombieMode === 'boolean') {
+        setZombieModeActive(data.zombieMode, { isRemote: true });
+        if (typeof window !== 'undefined' && window.uiManager) {
+          window.uiManager.settings.zombieMode = data.zombieMode ? 'on' : 'off';
+          if (typeof window.uiManager.syncFormControls === 'function') window.uiManager.syncFormControls();
+          if (typeof window.uiManager.syncDeathmatchUI === 'function') window.uiManager.syncDeathmatchUI();
+        }
+        if (typeof window !== 'undefined' && typeof window.syncDevZombieButtonUI === 'function') {
+          window.syncDevZombieButtonUI();
         }
       }
       break;
@@ -1637,6 +1667,13 @@ export function handleNetworkData(data, senderPeerId = null) {
       break;
     }
 
+    case 'a4_sync': {
+      if (typeof window !== 'undefined' && typeof window.applyArena4StateSnapshot === 'function') {
+        window.applyArena4StateSnapshot(data.snapshot);
+      }
+      break;
+    }
+
     case 'a3_block_break': {
       if (typeof window !== 'undefined' && Array.isArray(window.ARENA_3_BRIDGE_BLOCKS)) {
         const blk = window.ARENA_3_BRIDGE_BLOCKS[data.idx];
@@ -1853,6 +1890,10 @@ function setupConnection(conn, isHost) {
           timer: Math.round(ACID_SURGE_SYSTEM.timer * 10) / 10,
           currentY: Math.round(ACID_SURGE_SYSTEM.currentY)
         } : null,
+        zombieMode: isZombieModeActive(),
+        a3State: (typeof window !== 'undefined' && typeof window.serializeArena3State === 'function') ? window.serializeArena3State() : null,
+        a4State: (typeof window !== 'undefined' && typeof window.serializeArena4State === 'function') ? window.serializeArena4State() : null,
+        a5Grid: (typeof window !== 'undefined' && typeof window.serializeArena5Grid === 'function') ? window.serializeArena5Grid() : null,
         clientSpawn: spawns.client
       });
 
@@ -2164,6 +2205,9 @@ export function initNetwork() {
     window.isMatchActive = isMatchActive;
     window.isNetworkActive = isNetworkActive;
     window.getLocalNetworkId = getLocalNetworkId;
+    window.sendBallState = sendBallState;
+    window.sendArenaSwitch = sendArenaSwitch;
+    window.sendBotsState = sendBotsState;
     window.broadcastNetworkPacket = broadcastNetworkPacket;
     window.handleNetworkData = handleNetworkData;
   }
