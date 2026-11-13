@@ -331,6 +331,11 @@ function updateMeleeCollision(shooter, ms) {
       t.lastAttacker = shooter;
       t.lastAttackerTimer = 240;
       t.vx += facing * (cfg.bodyPush || 4.0);
+      if (t.isZombie && !t.isDead) {
+        t.knockbackVx = (t.knockbackVx || 0) + facing * ((cfg.bodyPush || 4.0) * 1.5);
+        t.hitStunTimer = 0.35;
+        t.onGround = false;
+      }
       playSound(isHeadshot ? 'hit_headshot' : 'weapon_melee_hit', { x: hitX, y: hitY });
 
       if (cfg.type === 'OVERHEAD_CHOP') {
@@ -443,6 +448,9 @@ function updateMeleeCollision(shooter, ms) {
         }
 
         if (t.isZombie) {
+          t.vx = (t.deathImpulse?.vx || facing * 5.5);
+          t.vy = -2.2;
+          t.onGround = false;
           if (t.decapitated || isHeadshot) {
             t.hasHead = false;
             t.decapitated = true;
@@ -1482,6 +1490,10 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
       if (!closestChar.isDead && closestChar.hp > 0) {
         const pushFactor = b.bodyPush || (isShotgun ? 0.095 : 0.032);
         closestChar.vx += b.vx * pushFactor;
+        if (closestChar.isZombie) {
+          closestChar.knockbackVx = (closestChar.knockbackVx || 0) + b.vx * (isShotgun ? 0.32 : 0.12);
+          closestChar.hitStunTimer = isShotgun ? 0.22 : 0.08;
+        }
         if (isShotgun) {
           closestChar.vy = Math.min(closestChar.vy, closestChar.vy * 0.8 - 0.85);
           triggerScreenShake(1.6);
@@ -1629,6 +1641,12 @@ export function updateBullets(groundY, obstaclesList, ball, characters) {
             vx: clampedVx + (Math.random() - 0.5) * 1.0,
             vy: -0.8 + liftBonus
           };
+        }
+
+        if (closestChar.isZombie) {
+          closestChar.vx = closestChar.deathImpulse ? closestChar.deathImpulse.vx : clampedVx;
+          closestChar.vy = closestChar.deathImpulse ? closestChar.deathImpulse.vy : -1.5;
+          closestChar.onGround = false;
         }
 
         // Reset ragdolla wymusza świeżą inicjalizację z aktualnej pozycji

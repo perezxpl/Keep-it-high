@@ -238,6 +238,10 @@ export function createZombieInstance(x, y, facing = 1, options = {}) {
     h: zBody.h || 70,
     vx: 0,
     vy: 0,
+    knockbackVx: 0,
+    knockbackVy: 0,
+    hitStunTimer: 0,
+    onGround: true,
     facing: f,
     yaw: (f < 0 ? Math.PI : 0),
 

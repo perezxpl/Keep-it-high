@@ -598,6 +598,11 @@ export class RpgRocket {
         }
 
         closestChar.deathImpulse = { vx: this.vx * 0.50, vy: -3.2 };
+        if (closestChar.isZombie) {
+          closestChar.vx = this.vx * 0.50;
+          closestChar.vy = -3.2;
+          closestChar.onGround = false;
+        }
         closestChar.ragdoll = null;
       }
 

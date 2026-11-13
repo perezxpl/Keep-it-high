@@ -649,6 +649,13 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
         spawnJetpackSparks(ex, ey, player.facing, 5);
         spawnBloodSpurt(ex, ey, kickDirX, kickDirY, 7, 0.9);
 
+        if (!enemy.isDead && enemy.isZombie) {
+          enemy.knockbackVx = kickDirX * (finalKnockback * 1.35);
+          enemy.vy = Math.min(-3.2, kickDirY * finalKnockback * 0.85);
+          enemy.hitStunTimer = 0.35;
+          enemy.onGround = false;
+        }
+
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
           enemy.killer = player;
@@ -666,6 +673,9 @@ export function applyKickInteractions(player, ball, targets, obstacles, groundY 
             enemy.reviveTimer = 4.0;
             enemy.downedHp = 60;
             enemy.riseTimer = 0;
+            enemy.vx = kickDirX * (finalKnockback * 1.35);
+            enemy.vy = -4.5;
+            enemy.onGround = false;
             if (typeof triggerCombatFeedBanner === 'function') {
               triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY KOPNIĘCIEM! WSTANIE ZA 4s!');
             }
@@ -1138,6 +1148,13 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
       }
     }
 
+    if (!enemy.isDead && enemy.isZombie) {
+      enemy.knockbackVx = (player.facing || 1) * 9.5;
+      enemy.vy = -3.2;
+      enemy.hitStunTimer = 0.4;
+      enemy.onGround = false;
+    }
+
     if (enemy.hp <= 0 && !enemy.isDead) {
       enemy.isDead = true;
       enemy.killer = player;
@@ -1166,6 +1183,9 @@ export function applySpartanKickHit(player, targets, obstacles, groundY, spawnGr
         enemy.reviveTimer = 4.0;
         enemy.downedHp = 60;
         enemy.riseTimer = 0;
+        enemy.vx = (player.facing || 1) * 8.5;
+        enemy.vy = -3.8;
+        enemy.onGround = false;
         if (typeof triggerCombatFeedBanner === 'function') {
           triggerCombatFeedBanner('KILL', '[POWALENIE] ZOMBIE POWALONY WŚLIZGIEM! WSTANIE ZA 4s!');
         }

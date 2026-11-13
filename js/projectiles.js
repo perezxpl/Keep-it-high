@@ -1378,6 +1378,12 @@ export function detonateGrenadeExplosion(expX, expY, radius, shooter, groundY, p
         const expImpX = Math.max(-18, Math.min(18, normX * impulse * 1.0));
         const expImpY = Math.max(-6.5, Math.min(10, normY * impulse * 0.75 - 1.5));
         ch.deathImpulse = { vx: expImpX, vy: expImpY };
+        if (ch.isZombie) {
+          ch.vx = expImpX;
+          ch.vy = expImpY;
+          ch.knockbackVx = expImpX * 0.85;
+          ch.onGround = false;
+        }
         triggerHitstop(2);
       }
     }
