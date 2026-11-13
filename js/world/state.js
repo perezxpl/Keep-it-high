@@ -98,7 +98,9 @@ export function getOptimizedDPR() {
   if (typeof window === 'undefined') return 1;
   const isTouchMobile = (window.innerWidth <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
   if (isTouchMobile) {
-    return Math.min(window.devicePixelRatio || 1, 2.0);
+    // Na urządzeniach mobilnych (iOS Safari, Android Mali GPU) DPR 1.5 zapewnia pełną ostrość Retina
+    // jednocześnie redukując obciążenie pamięci bufora graficznego i przegrzewanie o ponad 40%
+    return Math.min(window.devicePixelRatio || 1, 1.5);
   }
   // Na PC (w tym Opera GX / Chrome) zachowujemy stabilne 1.0 (natywne 1080p/1440p)
   // eliminując 4-krotne przeciążenie karty graficznej i gwarantując stałe 60 FPS
@@ -383,16 +385,17 @@ export function resize(player) {
   H = window.innerHeight;
   DPR = getOptimizedDPR();
   if (canvas && ctx) {
-    // Fill-Rate Limiter dla Chrome, monitorów Ultrawide (21:9 / 32:9) oraz ekranów 1440p / 4K / DPR > 1.0
-    // Maksymalny bufor pikseli bezpieczny dla Canvas 2D bez dławienia pamięci GPU: standard Full HD (1920 x 1080)
-    const MAX_PIXELS = 1920 * 1080;
+    const isTouch = (W <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
+    // Fill-Rate Limiter dla przeglądarek: 1920x1080 dla PC, 1440x810 dla urządzeń mobilnych
+    // Zapobiega dławieniu GPU Metal na iOS oraz throttlowi układów Mali/Adreno w telefonach Poco
+    const MAX_PIXELS = isTouch ? (1440 * 810) : (1920 * 1080);
     const currentPixels = (W * DPR) * (H * DPR);
     let scaleDown = 1.0;
     if (currentPixels > MAX_PIXELS) {
       scaleDown = Math.sqrt(MAX_PIXELS / currentPixels);
     }
-    const bufferW = Math.max(960, Math.floor(W * DPR * scaleDown));
-    const bufferH = Math.max(540, Math.floor(H * DPR * scaleDown));
+    const bufferW = Math.max(320, Math.floor(W * DPR * scaleDown));
+    const bufferH = Math.max(240, Math.floor(H * DPR * scaleDown));
 
     canvas.width = bufferW;
     canvas.height = bufferH;

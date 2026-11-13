@@ -139,7 +139,7 @@ export function drawCalderaBackground(ctx, camera, bgCanvas, calderaCanvas, anim
     ctx.save();
     const bgDrawX = -camX * 0.22;
     const bgDrawY = -camY * 0.12;
-    ctx.drawImage(bgCanvas, bgDrawX, bgDrawY);
+    ctx.drawImage(bgCanvas, bgDrawX, bgDrawY, 3800, 1500);
     ctx.restore();
   }
 
@@ -177,7 +177,7 @@ export function drawCalderaBackground(ctx, camera, bgCanvas, calderaCanvas, anim
     ctx.translate(-camera.x, -camera.y);
 
     // Zbuforowane fasetowane kolumny, rampy, pomosty i osłony
-    ctx.drawImage(calderaCanvas, 0, 0);
+    ctx.drawImage(calderaCanvas, 0, 0, 3800, 1500);
 
     // 5. Dynamiczna pulsacja termiczna żył magmy wewnątrz kolumn bazaltowych
     drawDynamicCracksGlow(ctx, animTime);

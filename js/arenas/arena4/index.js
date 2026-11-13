@@ -79,21 +79,32 @@ export class Arena4Caldera {
   initBuffers() {
     if (typeof document === 'undefined') return;
 
-    // 1. Bufor tła (niebo, dalekie ściany, chmury, rurociągi)
+    const isTouchMobile = (typeof window !== 'undefined') &&
+      ((window.innerWidth <= 1024) && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0)));
+
+    // Na urzadzeniach mobilnych (iOS Safari, Android Mali GPU) skalujemy bufor o 50% (1900x750)
+    // co redukuje zuzycie pamieci VRAM z 46 MB do 11 MB, eliminujac zawieszanie WebKit i dlawienie GPU
+    const scale = isTouchMobile ? 0.5 : 1.0;
+    const bufW = Math.round(this.width * scale);
+    const bufH = Math.round(this.height * scale);
+
+    // 1. Bufor tla (niebo, dalekie sciany, chmury, rurociagi)
     this.bgCanvas = document.createElement('canvas');
-    this.bgCanvas.width = this.width;
-    this.bgCanvas.height = this.height;
+    this.bgCanvas.width = bufW;
+    this.bgCanvas.height = bufH;
     const bgCtx = this.bgCanvas.getContext('2d');
     if (bgCtx) {
+      if (scale !== 1.0) bgCtx.scale(scale, scale);
       renderCalderaBackgroundBuffer(bgCtx);
     }
 
-    // 2. Bufor architektury (filar, rampy, pomosty, osłony)
+    // 2. Bufor architektury (filar, rampy, pomosty, oslony)
     this.calderaCanvas = document.createElement('canvas');
-    this.calderaCanvas.width = this.width;
-    this.calderaCanvas.height = this.height;
+    this.calderaCanvas.width = bufW;
+    this.calderaCanvas.height = bufH;
     const calderaCtx = this.calderaCanvas.getContext('2d');
     if (calderaCtx) {
+      if (scale !== 1.0) calderaCtx.scale(scale, scale);
       renderCalderaStructures(calderaCtx);
     }
 

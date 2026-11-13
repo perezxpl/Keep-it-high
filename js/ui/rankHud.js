@@ -165,16 +165,20 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
   drawRankBadge(ctx, rank.id, x, badgeY, badgeSize, badgeSize);
 
   ctx.font = isMobile ? 'bold 9.5px monospace' : 'bold 10.5px monospace';
+  ctx.shadowBlur = 0;
+  // Ciemny twardy cień tekstu (Zero kosztu shadowBlur, stałe 60 FPS na Safari i Mali GPU)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+  ctx.fillText(rank.short.toUpperCase(), x + badgeSize + 5, rankTextY + 1);
   ctx.fillStyle = '#38bdf8';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-  ctx.shadowBlur = 3;
   ctx.fillText(rank.short.toUpperCase(), x + badgeSize + 4, rankTextY);
 
   // Wartość XP po prawej stronie
   ctx.textAlign = 'right';
   ctx.font = isMobile ? 'bold 9px monospace' : 'bold 10px monospace';
-  ctx.fillStyle = '#facc15';
   const xpStr = nextRank ? `${currentXp} / ${nextRank.minXp} XP` : `${currentXp} XP (MAX)`;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+  ctx.fillText(xpStr, x + width + 1, rankTextY + 1);
+  ctx.fillStyle = '#facc15';
   ctx.fillText(xpStr, x + width, rankTextY);
 
   // Cienki, taktyczny pasek postępu XP
@@ -216,9 +220,10 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
       const rewardY = barY + barH + (isMobile ? 7 : 8);
       ctx.font = isMobile ? 'bold 7.5px monospace' : 'bold 8.5px monospace';
       ctx.textAlign = 'left';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+      ctx.fillText(`NAGRODA: ${previewLabel.toUpperCase()}`, x + 1, rewardY + 1);
       ctx.fillStyle = '#94a3b8';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 2;
       ctx.fillText(`NAGRODA: ${previewLabel.toUpperCase()}`, x, rewardY);
     }
   }
@@ -234,9 +239,10 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
     ctx.globalAlpha = p.alpha;
     ctx.font = isMobile ? '900 11px monospace' : '900 13px monospace';
     ctx.textAlign = 'right';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#000000';
+    ctx.fillText(p.text, x + width + 1, barY + p.yOffset - 5);
     ctx.fillStyle = p.color;
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 4;
     ctx.fillText(p.text, x + width, barY + p.yOffset - 6);
     ctx.restore();
 
@@ -280,9 +286,10 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
         ctx.font = '900 8.5px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillText(`AWANS: ${rankUpAlertState.rankName.toUpperCase()}`, alertBadgeX + alertBadgeSize + 6, by + bh / 2 + 1.5);
         ctx.fillStyle = '#facc15';
-        ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
-        ctx.shadowBlur = 4;
         ctx.fillText(`AWANS: ${rankUpAlertState.rankName.toUpperCase()}`, alertBadgeX + alertBadgeSize + 5, by + bh / 2 + 0.5);
       } else {
         // Wariant desktop: pełny baner z nagrodami i odznaką
@@ -309,15 +316,14 @@ export function drawRankHUD(ctx, x, y, width, isMobile) {
         ctx.font = '900 13px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankName.toUpperCase()}`, deskBadgeX + deskBadgeSize + 13, by + 11);
         ctx.fillStyle = '#facc15';
-        ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
-        ctx.shadowBlur = 6;
         ctx.fillText(`AWANS NA STOPIEŃ: ${rankUpAlertState.rankName.toUpperCase()}`, deskBadgeX + deskBadgeSize + 12, by + 10);
 
         ctx.font = 'bold 10px monospace';
         ctx.fillStyle = '#38bdf8';
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 2;
         ctx.fillText(rankUpAlertState.rewardText, deskBadgeX + deskBadgeSize + 12, by + 31);
       }
 
@@ -366,16 +372,17 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
   if (isCyanWinner) {
     // Tytuł zwycięstwa
     ctx.font = isMobile ? '900 22px monospace' : '900 30px monospace';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    ctx.fillText('ZWYCIĘSTWO W MECZU!', W / 2 + 2, bannerY + (isMobile ? 34 : 40));
     ctx.fillStyle = '#facc15';
-    ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
-    ctx.shadowBlur = 12;
     ctx.fillText('ZWYCIĘSTWO W MECZU!', W / 2, bannerY + (isMobile ? 32 : 38));
 
     // Nagroda XP
     ctx.font = isMobile ? 'bold 15px monospace' : 'bold 18px monospace';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    ctx.fillText(`+${matchWinState.rewardXp} XP PRESTIŻU ARENY`, W / 2 + 1, bannerY + (isMobile ? 65 : 77));
     ctx.fillStyle = '#4ade80';
-    ctx.shadowColor = 'rgba(74, 222, 128, 0.6)';
-    ctx.shadowBlur = 8;
     ctx.fillText(`+${matchWinState.rewardXp} XP PRESTIŻU ARENY`, W / 2, bannerY + (isMobile ? 64 : 76));
 
     // Stopień wojskowy ze sprite sheetem
@@ -400,8 +407,9 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     if (leveledUp) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+      ctx.fillText(rankLabel, startX + rankBadgeSize + 9, rankLineY + 1);
       ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#00e5ff';
       ctx.fillText(rankLabel, startX + rankBadgeSize + 8, rankLineY);
       if (Array.isArray(currentRank.unlocks) && currentRank.unlocks.length > 0) {
         const uLabels = currentRank.unlocks.map(u => (typeof u === 'string' ? u : (u?.label || u?.name || ''))).filter(Boolean);
@@ -420,9 +428,10 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
   } else {
     // Porażka
     ctx.font = isMobile ? '900 22px monospace' : '900 28px monospace';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    ctx.fillText('PRZEGRANA W MECZU', W / 2 + 2, bannerY + (isMobile ? 42 : 52));
     ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = 'rgba(239, 68, 68, 0.6)';
-    ctx.shadowBlur = 10;
     ctx.fillText('PRZEGRANA W MECZU', W / 2, bannerY + (isMobile ? 40 : 50));
 
     ctx.font = isMobile ? 'bold 12px monospace' : 'bold 14px monospace';
@@ -454,9 +463,10 @@ export function drawMatchVictoryHUD(ctx, W, H, isMobile) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = isMobile ? '900 10.5px monospace' : '900 12px monospace';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  ctx.fillText(`POWRÓT DO LOBBY (${secondsLeft}s)`, W / 2 + 1, btnY + btnH / 2 + 1);
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 6;
   ctx.fillText(`POWRÓT DO LOBBY (${secondsLeft}s)`, W / 2, btnY + btnH / 2);
   ctx.restore();
 

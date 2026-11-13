@@ -1357,15 +1357,14 @@ function loop(now) {
     }
   }
 
-  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć zegara przeglądarki w Opera GX, Chrome, Firefox, Edge)
-  if (detectedRefreshRate > 0) {
+  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć zegara przeglądarki w Opera GX, Chrome, Safari, HyperOS/MIUI)
+  // Obsługa ekranów adaptacyjnych (Adaptive Refresh Rate 120Hz <-> 60Hz w Poco / iPhone ProMotion / Samsung)
+  if (delta >= 13.0 && delta <= 20.0) {
+    // Każda klatka w oknie częstotliwości 60 Hz zostaje idealnie zsynchronizowana do stałego TICK_MS (16.666667 ms)
+    delta = TICK_MS;
+  } else if (detectedRefreshRate > 0) {
     const idealFrameMs = 1000 / detectedRefreshRate;
-    if (detectedRefreshRate === 60) {
-      // Na monitorach 60 Hz fluktuacje zegara (12.0ms - 22.0ms) wyrównujemy dokładnie do 16.666667 ms
-      if (delta >= 12.0 && delta <= 22.0) {
-        delta = TICK_MS;
-      }
-    } else if (Math.abs(delta - idealFrameMs) < 0.65) {
+    if (Math.abs(delta - idealFrameMs) < 0.85) {
       delta = idealFrameMs;
     }
   }
