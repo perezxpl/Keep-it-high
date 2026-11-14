@@ -51,6 +51,12 @@ import {
   enterMultiplayerMatch,
   sendWsPacket
 } from './networkWebSocket.js';
+import {
+  registerNetworkDataHandler,
+  enqueueNetworkPacket,
+  flushNetworkQueue,
+  clearNetworkQueue
+} from './networkQueue.js';
 
 export {
   updateUIStatus,
@@ -78,7 +84,10 @@ export {
   wsState,
   startDedicatedMatchmaking,
   cancelDedicatedMatchmaking,
-  enterMultiplayerMatch
+  enterMultiplayerMatch,
+  flushNetworkQueue,
+  clearNetworkQueue,
+  enqueueNetworkPacket
 };
 
 // =============================================================================
@@ -211,7 +220,7 @@ export function sendPlayerState(localPlayer) {
     !localPlayer.isJumping &&
     !localPlayer.isKickCharging
   );
-  const minInterval = (wsState && wsState.connected) ? (isIdle ? 100 : 25) : 16;
+  const minInterval = (wsState && wsState.connected) ? (isIdle ? 100 : 33) : 20;
   if (now - networkState.lastStateSent < minInterval) return;
   networkState.lastStateSent = now;
   networkState._pStateSeq = (networkState._pStateSeq || 0) + 1;
@@ -305,6 +314,12 @@ export function sendKillstreakEvent(payload, owner = null) {
 export function sendBallState(localBall) {
   // Tylko host zarządza autorytatywnie piłką i wysyła jej pozycję
   if (!isMatchHost() || !isMatchActive()) return;
+
+  const now = performance.now();
+  const isSleeping = !localBall || (Math.hypot(localBall.vx || 0, localBall.vy || 0) < 0.05 && localBall.isGrounded);
+  const minInterval = (wsState && wsState.connected) ? (isSleeping ? 120 : 33) : 25;
+  if (now - (networkState.lastBallStateSent || 0) < minInterval) return;
+  networkState.lastBallStateSent = now;
 
   try {
     broadcastNetworkPacket({
@@ -1952,7 +1967,7 @@ function setupConnection(conn, isHost) {
         broadcastNetworkPacket(data, conn.peer);
       }
     }
-    handleNetworkData(data, conn.peer);
+    enqueueNetworkPacket(data, conn.peer);
   });
 
   conn.on('close', () => {
@@ -2146,6 +2161,7 @@ export function disconnectNetwork() {
   networkState.ping = 0;
 
   clearAllRemotePlayers();
+  clearNetworkQueue();
 
   const spCount = getStoredSinglePlayerBotCount();
   setBotEnabled(getStoredBotEnabled(), { skipStorage: true });
@@ -2171,6 +2187,7 @@ function handleDisconnect(reason) {
   networkState.isConnected = false;
   networkState.isHost = false;
   clearAllRemotePlayers();
+  clearNetworkQueue();
 
   const spCount = getStoredSinglePlayerBotCount();
   setBotEnabled(getStoredBotEnabled(), { skipStorage: true });
@@ -2211,5 +2228,9 @@ export function initNetwork() {
     window.broadcastNetworkPacket = broadcastNetworkPacket;
     window.handleNetworkData = handleNetworkData;
   }
+  registerNetworkDataHandler(handleNetworkData);
 }
+
+registerNetworkDataHandler(handleNetworkData);
+
 

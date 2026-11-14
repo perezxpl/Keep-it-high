@@ -48,6 +48,7 @@ import {
   isChatActive, openChat, closeChat, updateCursorVisibility, getActiveRemotePlayers,
   isMatchHost, isMatchClient, isMatchActive
 } from './network.js';
+import { flushNetworkQueue } from './networkQueue.js';
 import { syncMpRosterUI } from './networkUI.js';
 import {
   leftStick, rightStick, btnCluster, pockets,
@@ -556,6 +557,7 @@ function drawCrosshair(ctx, x, y, customCol) {
 }
 
 function update() {
+  flushNetworkQueue();
   const currentArena = typeof getActiveArena === 'function' ? getActiveArena() : null;
   const gravMult = (typeof currentArena?.gravityMultiplier === 'number') ? currentArena.gravityMultiplier : 1.0;
   CONFIG.GRAVITY = 0.38 * gravMult;
@@ -1299,11 +1301,11 @@ function draw() {
 }
 
 const TICK_MS = 1000 / 60; // 16.666667 ms (stały krok fizyki: dokładnie 60 Hz)
-const MAX_DELTA = 100;      // Zabezpieczenie przed spiralą opóźnień przy lagach lub uśpieniu karty
+const MAX_DELTA = 75;      // Zabezpieczenie przed spiralą opóźnień przy lagach lub uśpieniu karty
 let accumulator = 0;
 let lastTime = 0;
 
-// Automatyczna adaptacja do częstotliwości odświeżania monitora gracza (60Hz / 75Hz / 120Hz / 144Hz / 240Hz)
+// Automatyczna ciągła adaptacja do częstotliwości odświeżania monitora gracza (60Hz / 75Hz / 90Hz / 120Hz / 144Hz / 240Hz)
 let detectedRefreshRate = 60;
 let refreshSampleCount = 0;
 let refreshSampleSum = 0;
@@ -1323,7 +1325,7 @@ function loop(now) {
 
   // Ochrona przed skokami czasu (np. pauza GC w silniku przeglądarki lub wygaszenie ekranu)
   // Zapobiega "przeskakiwaniu" postaci i obiektów po chwilowym zacięciu
-  if (delta > 120) {
+  if (delta > 100) {
     delta = TICK_MS;
     accumulator = 0;
   } else if (delta > MAX_DELTA) {
@@ -1331,49 +1333,52 @@ function loop(now) {
   }
   if (delta < 0) delta = 0;
 
-  // Kalibracja częstotliwości odświeżania monitora w pierwszych 30 klatkach gry (60/75/100/120/144/165/240Hz)
-  if (refreshSampleCount < 30 && delta >= 2.0 && delta <= 30.0) {
+  // Ciągła adaptacja do ekranów adaptacyjnych (iPhone ProMotion / Poco AdaptiveSync / Dynamic 120Hz <-> 60Hz)
+  if (delta >= 3.0 && delta <= 30.0) {
     refreshSampleSum += delta;
     refreshSampleCount++;
-    if (refreshSampleCount === 30) {
-      const avg = refreshSampleSum / 30;
-      if (avg >= 14.8 && avg <= 19.0) {
+    if (refreshSampleCount >= 60) {
+      const avg = refreshSampleSum / refreshSampleCount;
+      refreshSampleSum = 0;
+      refreshSampleCount = 0;
+      if (avg >= 15.0 && avg <= 18.2) {
         detectedRefreshRate = 60;
       } else if (avg >= 12.2 && avg <= 14.5) {
         detectedRefreshRate = 75;
-      } else if (avg >= 9.2 && avg <= 11.2) {
-        detectedRefreshRate = 100;
-      } else if (avg >= 7.6 && avg <= 9.1) {
+      } else if (avg >= 10.0 && avg <= 12.0) {
+        detectedRefreshRate = 90;
+      } else if (avg >= 7.5 && avg <= 9.3) {
         detectedRefreshRate = 120;
-      } else if (avg >= 6.5 && avg <= 7.5) {
+      } else if (avg >= 6.4 && avg <= 7.4) {
         detectedRefreshRate = 144;
-      } else if (avg >= 5.6 && avg <= 6.4) {
-        detectedRefreshRate = 165;
       } else if (avg >= 3.6 && avg <= 4.8) {
         detectedRefreshRate = 240;
-      } else {
-        detectedRefreshRate = Math.round(1000 / avg);
       }
     }
   }
 
-  // 1. Precyzyjne wygładzanie VSync (eliminacja mikrozacięć zegara przeglądarki w Opera GX, Chrome, Safari, HyperOS/MIUI)
-  // Obsługa ekranów adaptacyjnych (Adaptive Refresh Rate 120Hz <-> 60Hz w Poco / iPhone ProMotion / Samsung)
-  if (delta >= 13.0 && delta <= 20.0) {
-    // Każda klatka w oknie częstotliwości 60 Hz zostaje idealnie zsynchronizowana do stałego TICK_MS (16.666667 ms)
-    delta = TICK_MS;
-  } else if (detectedRefreshRate > 0) {
+  // 1. Precyzyjne wygładzanie VSync dopasowane do częstotliwości (bez sztucznego zawyżania czasu klatki)
+  if (detectedRefreshRate > 0) {
     const idealFrameMs = 1000 / detectedRefreshRate;
-    if (Math.abs(delta - idealFrameMs) < 0.85) {
+    const tolerance = detectedRefreshRate >= 120 ? 0.95 : (detectedRefreshRate >= 90 ? 1.1 : 1.4);
+    if (Math.abs(delta - idealFrameMs) <= tolerance) {
       delta = idealFrameMs;
     }
+  } else if (delta >= 15.2 && delta <= 18.0) {
+    // Standardowe okno 60 Hz (16.67ms ± 1.4ms)
+    delta = TICK_MS;
   }
 
   accumulator += delta;
 
-  // 2. Krok fizyki o stałej częstotliwości 60 Hz
+  // Ochrona przed spiralą opóźnień: akumulator nie może przekroczyć 1.5 kroku fizyki
+  if (accumulator > TICK_MS * 1.5) {
+    accumulator = TICK_MS;
+  }
+
+  // 2. Krok fizyki o stałej częstotliwości 60 Hz (maksymalnie 2 kroki na klatkę renderowania)
   let steps = 0;
-  while (accumulator >= TICK_MS - 1.0 && steps < 3) {
+  while (accumulator >= TICK_MS - 0.9 && steps < 2) {
     try {
       update();
     } catch (err) {
@@ -1383,8 +1388,8 @@ function loop(now) {
     steps++;
   }
 
-  // Ochrona przed spiralą opóźnień oraz ujemnym dryfem akumulatora
-  if (steps >= 3 || accumulator < -TICK_MS) {
+  // Ochrona przed ujemnym dryfem akumulatora
+  if (steps >= 2 || accumulator < -TICK_MS) {
     accumulator = 0;
   }
 

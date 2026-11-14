@@ -18,6 +18,7 @@ import { triggerCombatFeedBanner } from './ui/combatFeed.js';
 import { addChatMessageToUI, updatePingUI } from './networkUI.js';
 import { playUiClick } from './audio/index.js';
 import { isZombieModeActive, setZombieModeActive } from './zombie/index.js';
+import { enqueueNetworkPacket, clearNetworkQueue } from './networkQueue.js';
 
 export const wsState = {
   socket: null,
@@ -321,6 +322,7 @@ export function cancelDedicatedMatchmaking() {
   wsState.roomId = null;
   wsState.playersCount = 1;
   clearAllRemotePlayers();
+  clearNetworkQueue();
 
   updateBriefingServerIndicator('idle');
 
@@ -643,11 +645,9 @@ function handleServerMessage(rawData) {
       break;
     }
 
-    // 4. STRZAL Z BRONI (alias shoot_event -> shoot przekierowany do wspolnego routera)
+    // 4. STRZAL Z BRONI (alias shoot_event -> shoot przekierowany do kolejki sieciowej)
     case 'shoot_event': {
-      if (typeof window !== 'undefined' && typeof window.handleNetworkData === 'function') {
-        window.handleNetworkData({ ...msg, type: 'shoot' }, msg.senderId || null);
-      }
+      enqueueNetworkPacket({ ...msg, type: 'shoot' }, msg.senderId || null);
       break;
     }
 
@@ -668,9 +668,7 @@ function handleServerMessage(rawData) {
 
     // 10. POZOSTALE PAKIETY ROZGRYWKI (BOTY, PILKA, KLOCKI ARENY 5, OBRAZENIA, ZGONY)
     default: {
-      if (typeof window !== 'undefined' && typeof window.handleNetworkData === 'function') {
-        window.handleNetworkData(msg, msg.senderId || null);
-      }
+      enqueueNetworkPacket(msg, msg.senderId || null);
       break;
     }
   }
