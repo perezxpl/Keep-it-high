@@ -87,7 +87,7 @@ export function setCameraCanvas(c) {
 export function getCameraCanvas() {
   if (_cameraCanvas) return _cameraCanvas;
   if (typeof document !== 'undefined') {
-    return document.getElementById('gameCanvas') || document.querySelector('canvas');
+    return document.getElementById('game') || document.getElementById('gameCanvas') || document.querySelector('canvas');
   }
   return null;
 }
@@ -730,21 +730,61 @@ export function screenToWorld(screenX, screenY, cam = camera) {
 
 /**
  * Sztywna, statyczna kamera zablokowana na centrum Areny 2 (Toksyczna Rafineria) w menu głównym.
- * Wykadrowana sztywno na platformy i taflę kwasu bez śledzenia botów i z zerowymi drganiami.
+ * Dynamicznie dopasowuje rozdzielczość i zoom do urządzeń mobilnych (smartfony w poziomie)
+ * oraz monitorów PC, tak aby pełna architektura (turbina, platformy i tafla kwasu)
+ * była idealnie skadrowana bez obcinania i z zachowaniem ostrości 60 FPS.
  */
 export function updateMenuCamera() {
   const canvasWidth = getCanvasLogicalWidth();
   const canvasHeight = getCanvasLogicalHeight();
-  const zoom = 0.85;
+  const isMobile = isMobileDevice();
+
+  // Wzorzec kadrowania:
+  // Kompozycja Areny 2 obejmuje:
+  // - Szczyt turbiny i magistrale sufitowe: Y ≈ 230 - 260
+  // - Centralny hub i walkę botów: Y ≈ 650 - 820
+  // - Lustro kwasu i wrzące jezioro: Y = 1440 - 1520
+  // 
+  // Na PC Full HD (1920x1080) wysokość widoku w świecie to 1080 / 0.85 = 1270.58 px.
+  // Na telefonach komórkowych wysokość logiczna ekranu w poziomie to zazwyczaj 360 - 430 px.
+  // Skalujemy zoom proporcjonalnie do rozdzielczości ekranu, aby pełna wysokość sceny
+  // z taflą kwasu i turbiną była idealnie widoczna bez powiększenia (makro-zoomu):
+  const targetWorldHeight = isMobile ? 1220 : 1270.588;
+  const targetWorldWidth = isMobile ? 2200 : 2260;
+
+  const zoomByHeight = canvasHeight / targetWorldHeight;
+  const zoomByWidth = canvasWidth / targetWorldWidth;
+
+  let zoom = Math.min(zoomByHeight, zoomByWidth);
+
+  // Zabezpieczenie przed przekroczeniem granic areny (4000x1600)
+  const minZoomForArenaBounds = Math.max(canvasWidth / 4000, canvasHeight / 1600);
+  zoom = Math.max(minZoomForArenaBounds, Math.min(1.8, zoom));
+  zoom = Math.round(zoom * 1000) / 1000;
 
   camera.zoom = zoom;
   camera.targetZoom = zoom;
   camera.minZoom = zoom;
-  camera.viewWidth = canvasWidth / zoom;
-  camera.viewHeight = canvasHeight / zoom;
 
-  camera.x = 2000 - (canvasWidth / (2 * zoom));
-  camera.y = 850 - (canvasHeight / (2 * zoom));
+  const viewWidth = canvasWidth / zoom;
+  const viewHeight = canvasHeight / zoom;
+  camera.viewWidth = viewWidth;
+  camera.viewHeight = viewHeight;
+
+  // Wyśrodkowanie w poziomie na osi wentylatora i hubu centralnego (X = 2000)
+  camera.x = 2000 - viewWidth * 0.5;
+
+  // Wyśrodkowanie w pionie:
+  // Poziom lustra kwasu to Y = 1440.
+  // Ustawiamy dolną krawędź kadru na Y ≈ 1515 na telefonach (lub 1485 na PC),
+  // gwarantując wyraźną widoczność wrzącego kwasu na dole ekranu telefonu.
+  const targetBottomY = isMobile ? 1515 : 1485;
+  camera.y = targetBottomY - viewHeight;
+
+  if (camera.y < 0) {
+    camera.y = 0;
+  }
+
   camera.targetX = camera.x;
   camera.targetY = camera.y;
 

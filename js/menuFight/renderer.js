@@ -17,6 +17,7 @@ import { drawProjectiles } from '../projectiles.js';
 import { drawPlayer } from '../player/renderer.js';
 import { drawShockwaves, drawLighting, drawCinematicVignette } from '../lighting/index.js';
 import { activeArenaId } from '../obstacles.js';
+import { getCanvasLogicalWidth } from '../camera.js';
 
 /**
  * Renderuje spektakularne, kinowe tło walki botów w czasie rzeczywistym
@@ -24,9 +25,7 @@ import { activeArenaId } from '../obstacles.js';
 export function drawMenuFight(ctx, camera) {
   if (!ctx || !camera) return;
 
-  const canvas = ctx.canvas;
-  const cWidth = canvas ? (canvas.width || 1920) : 1920;
-  const cHeight = canvas ? (canvas.height || 1080) : 1080;
+  const logicalWidth = (typeof getCanvasLogicalWidth === 'function') ? getCanvasLogicalWidth() : (window.innerWidth || 1920);
   const effectiveGroundY = 1600;
 
   // Żelazna gwarancja 60 FPS w Chrome - całkowita eliminacja kosztownego shadowBlur
@@ -42,7 +41,7 @@ export function drawMenuFight(ctx, camera) {
   ctx.translate(-camera.x, -camera.y);
 
   const worldLeft = camera.x;
-  const worldRight = camera.x + (camera.viewWidth || (cWidth / camera.zoom));
+  const worldRight = camera.x + (camera.viewWidth || (logicalWidth / camera.zoom));
   const worldWidth = worldRight - worldLeft;
 
   // 3. Podłoże i platformy
