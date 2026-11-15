@@ -121,6 +121,14 @@ export {
 // =========================================================================
 // 5. GŁÓWNA PĘTLA AKTUALIZACJI ARENY 3 (UPDATE TICK)
 // =========================================================================
+const ALL_DESTRUCTIBLE_BLOCKS = [
+  ...ARENA_3_BRIDGE_BLOCKS,
+  ...ARENA_3_RAMP_BLOCKS,
+  ...ALL_CANOPY_BLOCKS,
+  ...ARENA_3_TOWER_BLOCKS,
+  ...ARENA_3_SNIPER_SLABS
+];
+
 export function updateArena3(dt, players, ball) {
   addArena3AnimTime(dt);
 
@@ -578,16 +586,9 @@ export function updateArena3(dt, players, ball) {
     }
   }
 
-  // 3C. Fizyka wszystkich zniszczalnych belek, ramp i płyt (namacalne platformy + crush damage)
-  const allDestructibleBlocks = [
-    ...ARENA_3_BRIDGE_BLOCKS,
-    ...ARENA_3_RAMP_BLOCKS,
-    ...ALL_CANOPY_BLOCKS,
-    ...ARENA_3_TOWER_BLOCKS,
-    ...ARENA_3_SNIPER_SLABS
-  ];
-  for (let i = 0; i < allDestructibleBlocks.length; i++) {
-    const b = allDestructibleBlocks[i];
+  // 3C. Przetwarzanie kaskadowego zapadania i fizyki zniszczalnych klocków
+  for (let i = 0; i < ALL_DESTRUCTIBLE_BLOCKS.length; i++) {
+    const b = ALL_DESTRUCTIBLE_BLOCKS[i];
 
     // Obsługa kaskadowego zapadania się klocków
     if (b.collapseDelay > 0) {
@@ -618,13 +619,19 @@ export function updateArena3(dt, players, ball) {
       continue;
     }
 
-    // ZAWALONE ELEMENTY SĄ NAMACALNE (NIE JAK DUCH)
-    b.solid = true;
-    b.isPlatform = true;
-    b.oneWay = true;
+    // Jeśli klocek wypadł poza świat gry -> trwale uśpij i wyłącz
+    if (b.y > 1410 || b.x < 300 || b.x > 4100) {
+      b.isAsleep = true;
+      b.solid = false;
+      b.isPlatform = false;
+      b.vx = 0;
+      b.vy = 0;
+      b.vRot = 0;
+      continue;
+    }
 
-    // OBRAŻENIA OD SPADAJĄCYCH ELEMENTÓW NA GRACZY (CRUSH DAMAGE)
-    if (b.vy > 1.2 && Array.isArray(players)) {
+    // OBRAŻENIA OD SPADAJĄCYCH ELEMENTÓW NA GRACZY (CRUSH DAMAGE) - tylko spadające z góry
+    if (b.vy > 2.0 && b.y < 1280 && Array.isArray(players)) {
       for (let pIdx = 0; pIdx < players.length; pIdx++) {
         const p = players[pIdx];
         if (!p || p.isDead) continue;
@@ -646,13 +653,13 @@ export function updateArena3(dt, players, ball) {
             let crushDmg = 0;
             if (b.isSniperSlab) {
               crushDmg = Math.round(40 + b.vy * 8);
-              spawnStoneDebris(p.x + pw * 0.5, bBottom, b.vx, -2, 12);
+              spawnStoneDebris(p.x + pw * 0.5, bBottom, b.vx, -2, 10);
             } else if (b.isTowerBlock || b.isRampBlock) {
               crushDmg = Math.round(26 + b.vy * 6);
-              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 10);
+              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 8);
             } else {
               crushDmg = Math.round(18 + b.vy * 5);
-              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 8);
+              spawnBridgeSplinters(p.x + pw * 0.5, bBottom, b.vx, -2, 6);
             }
 
             p.hp = Math.max(0, (p.hp || 100) - crushDmg);
@@ -681,12 +688,22 @@ export function updateArena3(dt, players, ball) {
 
     const inWater = (b.y + b.h >= 1305);
 
+    // Gdy klocek znajdzie się głęboko w rzece, nie może służyć jako platforma (zapobiega tysiącom testów lądowania)
+    if (b.y >= 1315) {
+      b.solid = false;
+      b.isPlatform = false;
+    } else {
+      b.solid = true;
+      b.isPlatform = true;
+      b.oneWay = true;
+    }
+
     if (b.isSniperSlab) {
       // FIZYKA PŁYTY SKALNEJ: Ciężka masa, tonie w rzece na dno
       if (inWater) {
-        b.vy = Math.min(2.4, (b.vy + 0.14) * 0.94);
-        b.vx *= 0.88;
-        b.vRot *= 0.85;
+        b.vy = Math.min(2.2, (b.vy + 0.12) * 0.92);
+        b.vx *= 0.85;
+        b.vRot *= 0.80;
       } else {
         b.vy += 0.46;
         b.vx *= 0.992;
@@ -701,21 +718,22 @@ export function updateArena3(dt, players, ball) {
         const buoyancy = Math.min(immersion * 0.055, 0.95);
         b.vy -= buoyancy;
 
-        // Opór wody i tłumienie rotacji
-        b.vx *= 0.90;
-        b.vy *= 0.86;
-        b.vRot *= 0.82;
+        // Opór wody i silne tłumienie rotacji
+        b.vx *= 0.88;
+        b.vy *= 0.84;
+        b.vRot *= 0.78;
 
         // Wyrównywanie deski poziomo na powierzchni wody
         b.vRot -= b.angle * 0.05;
 
-        // Kołysanie na falach rzeki
-        b.y += Math.sin(animTime * 3.0 + (b.blockIndex || b.rampIndex || 0) * 0.6) * 0.28;
-
-        if (Math.abs(b.vx) < 0.08 && Math.abs(b.vy) < 0.12 && Math.abs(b.vRot) < 0.015) {
+        // Sprawdzanie spoczynku w wodzie
+        if (Math.abs(b.vx) < 0.12 && Math.abs(b.vy) < 0.16 && Math.abs(b.vRot) < 0.02) {
           b.sleepTimer++;
-          if (b.sleepTimer > 35) {
+          if (b.sleepTimer > 20) {
             b.isAsleep = true;
+            b.vx = 0;
+            b.vy = 0;
+            b.vRot = 0;
           }
         } else {
           b.sleepTimer = 0;
@@ -733,14 +751,17 @@ export function updateArena3(dt, players, ball) {
     const groundFloorY = getRiverbankGroundY(b.x + b.w / 2);
     if (b.y + b.h >= groundFloorY) {
       b.y = groundFloorY - b.h;
-      b.vy = -b.vy * (b.isSniperSlab ? 0.18 : 0.26);
-      b.vx *= (b.isSniperSlab ? 0.48 : 0.62);
-      b.vRot *= 0.48;
+      b.vy = -b.vy * (b.isSniperSlab ? 0.15 : 0.22);
+      b.vx *= (b.isSniperSlab ? 0.40 : 0.55);
+      b.vRot *= 0.40;
 
-      if (Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.15 && Math.abs(b.vRot) < 0.02) {
-        b.sleepTimer++;
-        if (b.sleepTimer > 35) {
+      if (Math.abs(b.vx) < 0.12 && Math.abs(b.vy) < 0.18 && Math.abs(b.vRot) < 0.025) {
+        b.sleepTimer += 2;
+        if (b.sleepTimer > 20) {
           b.isAsleep = true;
+          b.vx = 0;
+          b.vy = 0;
+          b.vRot = 0;
         }
       } else {
         b.sleepTimer = 0;
@@ -765,11 +786,11 @@ export function updateArena3(dt, players, ball) {
           p.onGround = false;
           p.isJumping = true;
         } else if (!cp.intact) {
-          // Gracz stoi na zawalonym / pływającym klocku - reakcja ugięcia pod ciężarem
-          cp.isAsleep = false;
-          cp.sleepTimer = 0;
-          if (cp.y + cp.h >= 1300) {
-            cp.vy = Math.min(1.8, (cp.vy || 0) + 0.12);
+          // Gracz stoi na zawalonym klocku na lądzie - lekka reakcja ugięcia (omija klocki pod wodą)
+          if (cp.y < 1290) {
+            cp.isAsleep = false;
+            cp.sleepTimer = 0;
+            cp.vy = Math.min(1.5, (cp.vy || 0) + 0.10);
           }
         }
       }
@@ -783,7 +804,7 @@ export function updateArena3(dt, players, ball) {
     sp.y += sp.vy;
     sp.vy += 0.34;
     sp.rot += sp.vRot;
-    sp.life--;
+    sp.life -= (sp.y >= 1300 ? 3 : 1);
     if (sp.life <= 0 || sp.y > 1390) {
       BRIDGE_SPLINTERS.splice(i, 1);
     }
@@ -796,7 +817,7 @@ export function updateArena3(dt, players, ball) {
     sd.y += sd.vy;
     sd.vy += 0.38;
     sd.rot += sd.vRot;
-    sd.life--;
+    sd.life -= (sd.y >= 1300 ? 3 : 1);
     if (sd.life <= 0 || sd.y > 1390) {
       STONE_DEBRIS.splice(i, 1);
     }

@@ -111,7 +111,7 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
       y: expY,
       r: carveR
     });
-    if (ARENA_3_CRATERS.length > 50) {
+    if (ARENA_3_CRATERS.length > 25) {
       ARENA_3_CRATERS.shift();
     }
     // Wyrzucenie odłamków ziemi i skalnego pyłu
@@ -303,8 +303,8 @@ export function spawnBridgeSplinters(x, y, vxBase = 0, vyBase = 0, count = 8) {
       color: ['#785226', '#563814', '#362108', '#8b5a2b', '#2e1909'][Math.floor(Math.random() * 5)]
     });
   }
-  if (BRIDGE_SPLINTERS.length > 70) {
-    BRIDGE_SPLINTERS.splice(0, BRIDGE_SPLINTERS.length - 70);
+  if (BRIDGE_SPLINTERS.length > 40) {
+    BRIDGE_SPLINTERS.splice(0, BRIDGE_SPLINTERS.length - 40);
   }
 }
 
@@ -326,8 +326,8 @@ export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
       color: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#ffffff'][Math.floor(Math.random() * 5)]
     });
   }
-  if (ARENA_3_WATER_SPLASHES.length > 100) {
-    ARENA_3_WATER_SPLASHES.splice(0, ARENA_3_WATER_SPLASHES.length - 100);
+  if (ARENA_3_WATER_SPLASHES.length > 50) {
+    ARENA_3_WATER_SPLASHES.splice(0, ARENA_3_WATER_SPLASHES.length - 50);
   }
 }
 
@@ -1020,8 +1020,8 @@ export function spawnStoneDebris(x, y, vxBase = 0, vyBase = 0, count = 10) {
       color: ['#475569', '#334155', '#1e293b', '#64748b', '#3f4738', '#52525b'][Math.floor(Math.random() * 6)]
     });
   }
-  if (STONE_DEBRIS.length > 80) {
-    STONE_DEBRIS.splice(0, STONE_DEBRIS.length - 80);
+  if (STONE_DEBRIS.length > 35) {
+    STONE_DEBRIS.splice(0, STONE_DEBRIS.length - 35);
   }
 }
 

@@ -286,28 +286,30 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
   ctx.lineWidth = 2.0;
   ctx.stroke();
 
-  // 5. Wzdłużne rozwarstwienia słojów drewna
-  ctx.strokeStyle = '#0a0401';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(-halfW + 8, -halfH * 0.3);
-  ctx.lineTo(halfW * 0.2, -halfH * 0.1);
-  ctx.lineTo(halfW - 10, -halfH * 0.4);
-  ctx.moveTo(-halfW + 12, halfH * 0.3);
-  ctx.lineTo(-halfW * 0.1, halfH * 0.15);
-  ctx.lineTo(halfW - 6, halfH * 0.4);
-  ctx.stroke();
+  // 5. Wzdłużne rozwarstwienia słojów drewna i detale (tylko na lądzie)
+  if (!isWet) {
+    ctx.strokeStyle = '#0a0401';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-halfW + 8, -halfH * 0.3);
+    ctx.lineTo(halfW * 0.2, -halfH * 0.1);
+    ctx.lineTo(halfW - 10, -halfH * 0.4);
+    ctx.moveTo(-halfW + 12, halfH * 0.3);
+    ctx.lineTo(-halfW * 0.1, halfH * 0.15);
+    ctx.lineTo(halfW - 6, halfH * 0.4);
+    ctx.stroke();
 
-  // Rim light na krawędziach
-  ctx.strokeStyle = 'rgba(215, 170, 85, 0.60)';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-halfW + 6, -halfH + 1);
-  ctx.lineTo(halfW - 6, -halfH + 1);
-  ctx.stroke();
+    // Rim light na krawędziach
+    ctx.strokeStyle = 'rgba(215, 170, 85, 0.60)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-halfW + 6, -halfH + 1);
+    ctx.lineTo(halfW - 6, -halfH + 1);
+    ctx.stroke();
+  }
 
   // 6. Stalowe okucie lub wystający zgięty gwóźdź
-  if (options.hasMetal !== false) {
+  if (!isWet && options.hasMetal !== false) {
     const metalX = (seed % 2 === 0) ? -halfW + 7 : halfW - 11;
     ctx.fillStyle = '#334155';
     ctx.fillRect(metalX, -halfH - 2, 5, 7);
@@ -325,15 +327,6 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
 
     ctx.fillStyle = 'rgba(146, 64, 14, 0.65)';
     ctx.fillRect(metalX + 1, -halfH + 4, 3, 2.5);
-  }
-
-  // 7. Piana wodna i falowanie, gdy leży w rzece
-  if (isWet) {
-    ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.ellipse(0, halfH + 2, halfW * 0.85, 3.5, 0, 0, Math.PI * 2);
-    ctx.stroke();
   }
 
   ctx.restore();
@@ -472,14 +465,12 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   ctx.stroke();
 
   // B. Generowanie proceduralnych źdźbeł trawy (Grass Blades) i tropikalnych paproci
-  const pathDark = new Path2D();
-  const pathLush = new Path2D();
-  const pathHighlight = new Path2D();
-  const pathStubble = new Path2D();
-
+  // Wykorzystujemy lekkie płaskie tablice współrzędnych zamiast alokacji 4x new Path2D() co klatkę
+  const stubbles = [];
+  const blades = [];
   const ferns = [];
 
-  for (let x = startX; x <= endX; x += 3.4) {
+  for (let x = startX; x <= endX; x += 4.8) {
     const y = getSurfaceYFromPoints(ovalPoints, x);
 
     // Jeśli punkt jest wewnątrz krateru lub głęboko w rzece: BRAK TRAWY!
@@ -498,8 +489,7 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
     if (isNearCraterLip) {
       // Przypalone, krótkie kikuty trawy (stubble)
       const stubH = 2.5 + Math.abs(Math.sin(x * 7.7)) * 3.5;
-      pathStubble.moveTo(x, y);
-      pathStubble.lineTo(x + (Math.sin(x * 3.1) * 2), y - stubH);
+      stubbles.push(x, y, x + (Math.sin(x * 3.1) * 2), y - stubH);
       continue;
     }
 
@@ -524,17 +514,7 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
     const cpX = x + swayX * 0.45;
     const cpY = y - bladeH * 0.55;
 
-    // 1. Ciemne tło / podszyt
-    pathDark.moveTo(x - 0.9, y);
-    pathDark.quadraticCurveTo(cpX - 0.5, cpY, tipX - 0.8, tipY + 2);
-
-    // 2. Soczyste, nasycone źdźbło dżungli
-    pathLush.moveTo(x, y);
-    pathLush.quadraticCurveTo(cpX, cpY, tipX, tipY);
-
-    // 3. Końcówka oświetlona księżycem
-    pathHighlight.moveTo(x + 0.9, y - 2);
-    pathHighlight.quadraticCurveTo(cpX + 0.6, cpY, tipX + 0.9, tipY - 1);
+    blades.push(x, y, cpX, cpY, tipX, tipY);
 
     // Kępki dzikich paproci dżungli co 38-55 px
     if (f3 > 0.74 && x > minX + 30 && x < maxX - 30) {
@@ -543,28 +523,52 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
   }
 
   // Wyrenderowanie spalonych kikutów przy wargach kraterów
-  ctx.strokeStyle = '#1e140d';
-  ctx.lineWidth = 1.4;
-  ctx.lineCap = 'round';
-  ctx.stroke(pathStubble);
+  if (stubbles.length > 0) {
+    ctx.strokeStyle = '#1e140d';
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let si = 0; si < stubbles.length; si += 4) {
+      ctx.moveTo(stubbles[si], stubbles[si + 1]);
+      ctx.lineTo(stubbles[si + 2], stubbles[si + 3]);
+    }
+    ctx.stroke();
+  }
 
-  // Warstwa 1: Ciemne podszycie leśne
-  ctx.strokeStyle = '#0d2213';
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = 'round';
-  ctx.stroke(pathDark);
+  if (blades.length > 0) {
+    // Warstwa 1: Ciemne podszycie leśne
+    ctx.strokeStyle = '#0d2213';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let bi = 0; bi < blades.length; bi += 6) {
+      ctx.moveTo(blades[bi] - 0.9, blades[bi + 1]);
+      ctx.quadraticCurveTo(blades[bi + 2] - 0.5, blades[bi + 3], blades[bi + 4] - 0.8, blades[bi + 5] + 2);
+    }
+    ctx.stroke();
 
-  // Warstwa 2: Bogata, żywa dżunglowa zieleń
-  ctx.strokeStyle = '#1b4423';
-  ctx.lineWidth = 1.6;
-  ctx.lineCap = 'round';
-  ctx.stroke(pathLush);
+    // Warstwa 2: Bogata, żywa dżunglowa zieleń
+    ctx.strokeStyle = '#1b4423';
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let bi = 0; bi < blades.length; bi += 6) {
+      ctx.moveTo(blades[bi], blades[bi + 1]);
+      ctx.quadraticCurveTo(blades[bi + 2], blades[bi + 3], blades[bi + 4], blades[bi + 5]);
+    }
+    ctx.stroke();
 
-  // Warstwa 3: Księżycowe rozświetlenia końcówek traw (delikatny srebrzysty seledyn)
-  ctx.strokeStyle = 'rgba(126, 212, 146, 0.75)';
-  ctx.lineWidth = 1.1;
-  ctx.lineCap = 'round';
-  ctx.stroke(pathHighlight);
+    // Warstwa 3: Księżycowe rozświetlenia końcówek traw (delikatny srebrzysty seledyn)
+    ctx.strokeStyle = 'rgba(126, 212, 146, 0.75)';
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let bi = 0; bi < blades.length; bi += 6) {
+      ctx.moveTo(blades[bi] + 0.9, blades[bi + 1] - 2);
+      ctx.quadraticCurveTo(blades[bi + 2] + 0.6, blades[bi + 3], blades[bi + 4] + 0.9, blades[bi + 5] - 1);
+    }
+    ctx.stroke();
+  }
 
   // C. Dzikie paprocie dżungli (Jungle Fern Fronds)
   for (const fn of ferns) {
@@ -605,6 +609,12 @@ function drawJungleGrass(ctx, ovalPoints, isL, camL, camR) {
 // 7. RENDEROWANIE PIERWSZEGO PLANU (PLATFORMY, TEREN, WIEŻE, BRAMKI Y, RZEKA)
 // Pixel-perfect dopasowanie do geometrii kolizyjnej ARENA_3_PLATFORMS
 // =========================================================================
+let _cachedLeftOvalPoints = null;
+let _cachedRightOvalPoints = null;
+let _cachedUpperTowerBlocksLeft = null;
+let _cachedUpperTowerBlocksRight = null;
+const _waterFoamEllipses = [];
+
 export function drawArena3Foreground(ctx, camera) {
   if (!ctx) return;
 
@@ -612,20 +622,28 @@ export function drawArena3Foreground(ctx, camera) {
 
   const camL = camera ? camera.x - 200 : 0;
   const camR = camera ? camera.x + (camera.viewWidth || 2000) + 200 : 4400;
+  const camT = camera ? (camera.y - 140) : -200;
+  const camB = camera ? (camera.y + (camera.viewHeight || 1200) + 140) : 1600;
 
   // -----------------------------------------------------------------------
   // 1. PODŁOŻE: OWALNE PŁASZCZYZNY SCHODZĄCE DO WODY (LEWY I PRAWY BRZEG)
   // Przekształcone w naturalne, owalne wzgórza łagodnie zanurzające się w rzece
   // -----------------------------------------------------------------------
-  const leftOvalPoints = [
-    ...GROUND_LEFT_POINTS,
-    ...LEFT_OVAL_POINTS.slice(1)
-  ];
+  if (!_cachedLeftOvalPoints) {
+    _cachedLeftOvalPoints = [
+      ...GROUND_LEFT_POINTS,
+      ...LEFT_OVAL_POINTS.slice(1)
+    ];
+  }
+  const leftOvalPoints = _cachedLeftOvalPoints;
 
-  const rightOvalPoints = [
-    ...RIGHT_OVAL_POINTS.slice(0, -1),
-    ...GROUND_RIGHT_POINTS
-  ];
+  if (!_cachedRightOvalPoints) {
+    _cachedRightOvalPoints = [
+      ...RIGHT_OVAL_POINTS.slice(0, -1),
+      ...GROUND_RIGHT_POINTS
+    ];
+  }
+  const rightOvalPoints = _cachedRightOvalPoints;
 
   const anchorLeftX = 1140;
   const anchorRightX = 3260;
@@ -1247,10 +1265,14 @@ export function drawArena3Foreground(ctx, camera) {
     }
 
     // C. MODUŁOWE PŁYTY PODŁOGOWE GNIAZDA SNAJPERSKIEGO (Y: 400)
-    const upperBlocks = ARENA_3_TOWER_BLOCKS.filter(b => b.side === sideKey && b.tier === 'upper');
+    const upperBlocks = isLeft
+      ? (_cachedUpperTowerBlocksLeft || (_cachedUpperTowerBlocksLeft = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'left' && b.tier === 'upper')))
+      : (_cachedUpperTowerBlocksRight || (_cachedUpperTowerBlocksRight = ARENA_3_TOWER_BLOCKS.filter(b => b.side === 'right' && b.tier === 'upper')));
+
     for (let i = 0; i < upperBlocks.length; i++) {
       const b = upperBlocks[i];
       if (b.x + b.w + 30 < camL || b.x - 30 > camR) continue;
+      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
       if (b.intact) {
@@ -1381,6 +1403,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
       const slab = ARENA_3_SNIPER_SLABS[i];
       if (slab.x + slab.w + 50 < camL || slab.x - 50 > camR) continue;
+      if (!slab.intact && (slab.y + slab.h + 20 < camT || slab.y - 20 > camB)) continue;
 
       ctx.save();
       if (slab.intact) {
@@ -1711,6 +1734,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
+      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       const y1 = getApproachInclineY(b.origX, isLeft);
       const y2 = getApproachInclineY(b.origX + b.w, isLeft);
@@ -1784,6 +1808,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
+      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       const y1 = getApproachInclineY(b.origX, isLeft);
       const y2 = getApproachInclineY(b.origX + b.w, isLeft);
@@ -1908,15 +1933,9 @@ export function drawArena3Foreground(ctx, camera) {
         const bcy = b.y + b.h / 2;
         drawSplinteredWoodRubble(ctx, bcx, bcy, b.w, b.h, b.angle, { seed: b.seed });
 
-        // Piana jeśli klocek wpadł do rzeki
-        if (b.y + b.h >= 1300) {
-          ctx.save();
-          ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.ellipse(bcx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
+        // Piana jeśli klocek wpadł do rzeki (buforowana do wspólnego batcha)
+        if (b.y + b.h >= 1300 && b.y <= 1360) {
+          _waterFoamEllipses.push(bcx, b.w * 0.7);
         }
       }
     }
@@ -2079,6 +2098,7 @@ export function drawArena3Foreground(ctx, camera) {
     for (let bIdx = 0; bIdx < plat.blocks.length; bIdx++) {
       const b = plat.blocks[bIdx];
       if (b.x + b.w + 20 < camL || b.x - 20 > camR) continue;
+      if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
       ctx.save();
       const cx = b.x + b.w / 2;
@@ -2120,15 +2140,9 @@ export function drawArena3Foreground(ctx, camera) {
         drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: Math.floor(Math.abs(cx * 3)) });
       }
 
-      // Piana wodna wokół klocka w wodzie
-      if (!b.intact && b.y + b.h >= 1300) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.ellipse(cx, 1306, b.w * 0.7, 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+      // Piana wodna wokół klocka w wodzie (buforowana do wspólnego batcha)
+      if (!b.intact && b.y + b.h >= 1300 && b.y <= 1360) {
+        _waterFoamEllipses.push(cx, b.w * 0.7);
       }
     }
 
@@ -2283,6 +2297,7 @@ export function drawArena3Foreground(ctx, camera) {
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
     if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
+    if (!b.intact && (b.y + b.h + 20 < camT || b.y - 20 > camB)) continue;
 
     ctx.save();
     if (b.intact) {
@@ -2321,17 +2336,23 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.restore();
       drawSplinteredWoodRubble(ctx, cx, cy, b.w, b.h, b.angle, { seed: i * 23 });
 
-      // Piana wodna i fale wokół unoszącego się klocka w rzece
-      if (b.y + b.h >= 1300) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.ellipse(cx, 1306, b.w * 0.75, 4.5, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+      // Piana wodna i fale wokół unoszącego się klocka w rzece (buforowana do wspólnego batcha)
+      if (b.y + b.h >= 1300 && b.y <= 1360) {
+        _waterFoamEllipses.push(cx, b.w * 0.75);
       }
     }
+  }
+
+  // Wspólny batch piany wodnej dla wszystkich klocków w rzece
+  if (_waterFoamEllipses.length > 0) {
+    ctx.strokeStyle = 'rgba(195, 240, 255, 0.75)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let fi = 0; fi < _waterFoamEllipses.length; fi += 2) {
+      ctx.ellipse(_waterFoamEllipses[fi], 1306, _waterFoamEllipses[fi + 1], 4.2, 0, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+    _waterFoamEllipses.length = 0;
   }
 
   // F. CZĄSTECZKI OSTRYCH DRZAZG DREWNIANYCH (Bridge Splinters)

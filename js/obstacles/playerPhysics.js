@@ -217,6 +217,14 @@ export function checkPlayerPlatformLanding(p, groundY) {
   for (const plat of ARENA_PLATFORMS) {
     if (plat.isWall || plat.isJumpPad || plat.type === 'jump_pad' || plat.solid === false || plat.isPlatform === false || plat.type === 'water') continue;
     if (isA5 && !plat.isA5Block && plat.id !== 'a5_base_floor' && !plat.isWall) continue;
+    // Arena 3: Klocki w toni śmiertelnej rzeki (y >= 1310) nie mogą być platformami do lądowania
+    if (isA3 && plat.intact === false && plat.y >= 1310) continue;
+
+    // Szybkie odrzucenie poziome O(1) dla nieobróconych platform prostokątnych
+    if (!plat.surfacePoints && (!plat.angle || Math.abs(plat.angle) < 0.01)) {
+      const pw = plat.w !== undefined ? plat.w : (plat.width || 100);
+      if (centerX < plat.x - 32 || centerX > plat.x + pw + 32) continue;
+    }
 
     // Arena 5: Jeśli klocek jest przykryty od góry innym litym klockiem, jego dach NIE jest dostępny do lądowania
     if (isA5 && plat.isA5Block) {
