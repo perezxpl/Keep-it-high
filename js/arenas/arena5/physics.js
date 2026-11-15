@@ -292,6 +292,7 @@ function checkFallingSquash(combatants) {
           victim.y = st.top - pH;
           victim.vy = crane.vy;
           victim._ridingFallingVy = crane.vy;
+          victim._ridingCrane = true;
           victim.onGround = true;
           victim.isJumping = false;
           victim.currentGroundY = st.top;
@@ -328,7 +329,13 @@ function checkFallingSquash(combatants) {
             const hasSafePocketUnderneath = (finalGap >= pH - 8);
 
             if (hasSafePocketUnderneath && (victim.y >= cellTargetBottomY - 4)) {
-              victim.y = Math.min(surfaceBelowY - pH, st.bottom);
+              const targetPushY = st.bottom;
+              const maxAllowedPush = Math.max(14, (crane.vy || 4.0) + 8);
+              if (targetPushY - victim.y > maxAllowedPush) {
+                victim.y += maxAllowedPush;
+              } else {
+                victim.y = Math.min(surfaceBelowY - pH, targetPushY);
+              }
               if (victim.vy < 0) victim.vy = 0.5;
               if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
                 victim.rocketBoots.dashDirY = 0;
@@ -345,7 +352,13 @@ function checkFallingSquash(combatants) {
               executeSquashKill(victim);
               break;
             } else {
-              victim.y = Math.min(surfaceBelowY - pH, st.bottom);
+              const targetPushY = st.bottom;
+              const maxAllowedPush = Math.max(14, (crane.vy || 4.0) + 8);
+              if (targetPushY - victim.y > maxAllowedPush) {
+                victim.y += maxAllowedPush;
+              } else {
+                victim.y = Math.min(surfaceBelowY - pH, targetPushY);
+              }
               victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
               victim.onGround = false;
               victim.currentPlatform = null;
@@ -369,6 +382,7 @@ function checkFallingSquash(combatants) {
     // SEPARACJA OSI: FAZA 2 - KOLIZJA W OSI X (Z ignorowaniem krawędzi wewnętrznych)
     // =========================================================================
     const victimBottom = victim.y + pH;
+    const prevVictimX = victim.x - (victim.vx || 0);
     for (const st of subTiles) {
       // Ignorowanie wewnętrznych krawędzi (Internal Edges / Ghost Vertices):
       // Jeśli stopy gracza są na lub powyżej dachu kafelka (victimBottom <= st.top + 2), kafelek nie blokuje w osi X
@@ -376,15 +390,16 @@ function checkFallingSquash(combatants) {
 
       if (victimBottom > st.top + 2 && victim.y < st.bottom - 2) {
         if (victim.x + pW > st.left && victim.x < st.right) {
-          const overlapLeft = (victim.x + pW) - st.left;
-          const overlapRight = st.right - victim.x;
+          const wasOutsideLeft = (prevVictimX + pW <= st.left + 4);
+          const wasOutsideRight = (prevVictimX >= st.right - 4);
 
-          if (st.isLeftEdge && (!st.isRightEdge || victim.vx > 0.1 || overlapLeft <= overlapRight)) {
+          // Kolizja boczna X zachodzi WYŁĄCZNIE wtedy, gdy postać nadbiegła z zewnątrz klocka
+          if (wasOutsideLeft && st.isLeftEdge && victim.vx > 0) {
             victim.x = st.left - pW;
-            if (victim.vx > 0) victim.vx = 0;
-          } else if (st.isRightEdge) {
+            victim.vx = 0;
+          } else if (wasOutsideRight && st.isRightEdge && victim.vx < 0) {
             victim.x = st.right;
-            if (victim.vx < 0) victim.vx = 0;
+            victim.vx = 0;
           }
         }
       }
@@ -393,8 +408,8 @@ function checkFallingSquash(combatants) {
     // =========================================================================
     // SEPARACJA OSI: FAZA 3 - BEZWZGLĘDNA DEPENETRACJA SPADAJĄCEJ FIGURY
     // =========================================================================
-    // Jeśli gracz nadal penetruje którykolwiek kafelek spadającej figury, wypchnij go
-    // na najbliższą zewnętrzną krawędź bryły
+    // Jeśli gracz nadal penetruje którykolwiek kafelek spadającej figury,
+    // rozwiązujemy to w osi Y (dach lub spychanie w dół / squash), nigdy gwałtownym skokiem w bok
     for (const st of subTiles) {
       if (victim.x + pW > st.left + 1 && victim.x < st.right - 1 &&
           victim.y + pH > st.top + 1 && victim.y < st.bottom - 1) {
@@ -408,6 +423,8 @@ function checkFallingSquash(combatants) {
           } else {
             victim.y = st.top - pH;
             victim.vy = crane.vy || 0;
+            victim._ridingFallingVy = crane.vy || 0;
+            victim._ridingCrane = true;
             victim.onGround = true;
             victim.isJumping = false;
             victim.currentGroundY = st.top;
@@ -415,19 +432,14 @@ function checkFallingSquash(combatants) {
             victim.coyoteTimer = 8;
           }
         } else {
-          const rowTiles = subTiles.filter(t => t.rowRel === st.rowRel);
-          const minLeft = Math.min(...rowTiles.map(t => t.left));
-          const maxRight = Math.max(...rowTiles.map(t => t.right));
-          const distToLeft = (victim.x + pW) - minLeft;
-          const distToRight = maxRight - victim.x;
-
-          if (distToLeft <= distToRight) {
-            victim.x = minLeft - pW;
-            if (victim.vx > 0) victim.vx = 0;
+          // Klocek opada z góry na postać – łagodne zepchnięcie w dół z prędkością suwnicy
+          const maxPush = Math.max(14, (crane.vy || 4.0) + 8);
+          if (st.bottom - victim.y > maxPush) {
+            victim.y += maxPush;
           } else {
-            victim.x = maxRight;
-            if (victim.vx < 0) victim.vx = 0;
+            victim.y = st.bottom;
           }
+          if (victim.vy < 0) victim.vy = 0.5;
         }
       }
     }
@@ -1008,10 +1020,12 @@ function updateFallingBlocks(dt, combatants) {
               const isIntersecting = (victim.x + pW > cell.x && victim.x < cell.x + cell.w &&
                                       victim.y + pH > cell.y + 4 && victim.y < cell.y + cell.h - 4);
               if (isIntersecting) {
+                victim.x += stepX;
+                victim.vx = dirX * Math.max(Math.abs(victim.vx || 0), Math.abs(speed));
                 if (dirX > 0) {
-                  victim.x = cell.x + cell.w;
+                  victim.x = Math.max(victim.x, cell.x + cell.w);
                 } else {
-                  victim.x = cell.x - pW;
+                  victim.x = Math.min(victim.x, cell.x - pW);
                 }
                 victim.x = Math.max(SHAFT_LEFT, Math.min(SHAFT_RIGHT - pW, victim.x));
               }
@@ -1060,7 +1074,8 @@ function updateFallingBlocks(dt, combatants) {
 
     if (Array.isArray(combatants) && combatants.length > 0) {
       for (const victim of combatants) {
-        if (!victim || victim.isDead) continue;
+        const isLyingZombieTarget = !!(victim && (victim.isZombie || victim.isCorpse) && victim.isDead && victim.hasHead && !victim.decapitated);
+        if (!victim || (victim.isDead && !isLyingZombieTarget)) continue;
         const pH = syncCombatantHeight(victim);
         const pW = victim.w || 26;
         const prevBottom = (victim.y - (victim.vy || 0)) + pH;
@@ -1074,14 +1089,15 @@ function updateFallingBlocks(dt, combatants) {
           const isTopExposed = !cellAbove || cellAbove.hp <= 0;
           if (!isTopExposed) continue;
 
-          const isHoriz = (victim.x + pW > cell.x + 3 && victim.x < cell.x + cell.w - 3);
+          const victimMidX = victim.x + pW * 0.5;
+          const isHoriz = (victimMidX >= cell.x + 2 && victimMidX <= cell.x + cell.w - 2);
           if (!isHoriz) continue;
 
-          const wasAboveRoof = (victim.currentPlatform === cell.platformObj) ||
-            (prevBottom <= cell.oldY + 16 && victim.y < cell.oldY);
+          const isDirectlyOnRoof = (victim.currentPlatform === cell.platformObj);
+          const isLandedOnRoof = (prevBottom >= cell.oldY - 14 && prevBottom <= cell.oldY + 16 && victim.y <= cell.oldY);
+          const wasAboveRoof = isDirectlyOnRoof || isLandedOnRoof;
 
-          // Nigdy nie wciągaj gracza na dach, jeśli gracz znajduje się pod klockiem lub wewnątrz jego obrysu!
-          if (wasAboveRoof && victim.y < cell.oldY - 10) {
+          if (wasAboveRoof && victim.y <= cell.oldY + 2) {
             ridingCell = cell;
             break;
           }
@@ -1100,7 +1116,8 @@ function updateFallingBlocks(dt, combatants) {
         for (const cell of fallingCells) {
           if (victim.isDead && !isLyingZombieTarget) break;
 
-          const isHoriz = (victim.x + pW > cell.x + 3 && victim.x < cell.x + cell.w - 3);
+          const victimMidX = victim.x + pW * 0.5;
+          const isHoriz = (victimMidX >= cell.x + 2 && victimMidX <= cell.x + cell.w - 2);
           const isVertHit = (victim.y < cell.y + cell.h && victim.y + pH > cell.oldY + 6);
 
           if (isHoriz && isVertHit) {
@@ -1121,7 +1138,13 @@ function updateFallingBlocks(dt, combatants) {
 
             if (finalGap >= pH - 8) {
               // Pod opadającym kafelkiem po wylądowaniu zostanie bezpieczna wnęka: zepchnij gracza do wnęki
-              victim.y = Math.min(surfaceBelowY - pH, cell.y + cell.h);
+              const targetPushY = cell.y + cell.h;
+              const maxAllowedPush = Math.max(14, (cell.vy || 4.0) + 8);
+              if (targetPushY - victim.y > maxAllowedPush) {
+                victim.y += maxAllowedPush;
+              } else {
+                victim.y = Math.min(surfaceBelowY - pH, targetPushY);
+              }
               if (victim.vy < 0) victim.vy = 0.5;
             } else {
               // Kafelek zamyka przestrzeń nad podłożem:
@@ -1131,7 +1154,13 @@ function updateFallingBlocks(dt, combatants) {
                 executeSquashKill(victim);
                 break;
               } else {
-                victim.y = Math.min(surfaceBelowY - pH, cell.y + cell.h);
+                const targetPushY = cell.y + cell.h;
+                const maxAllowedPush = Math.max(14, (cell.vy || 4.0) + 8);
+                if (targetPushY - victim.y > maxAllowedPush) {
+                  victim.y += maxAllowedPush;
+                } else {
+                  victim.y = Math.min(surfaceBelowY - pH, targetPushY);
+                }
                 victim.vy = Math.max(victim.vy || 0, (cell.vy || 4.0) + 1.2);
                 victim.onGround = false;
                 victim.currentPlatform = null;
@@ -1142,18 +1171,20 @@ function updateFallingBlocks(dt, combatants) {
               }
             }
           } else {
-            // Kolizja boczna ze ścianami opadającego klocka
+            // Kolizja boczna ze ścianami opadającego klocka (wyłącznie gdy postać wbiegła w bok z zewnątrz klocka)
             const overlapX = (victim.x + pW > cell.x) && (victim.x < cell.x + cell.w);
             const overlapY = (victim.y + pH > cell.y + 6) && (victim.y < cell.y + cell.h - 6);
             if (overlapX && overlapY) {
-              const penLeft = (victim.x + pW) - cell.x;
-              const penRight = (cell.x + cell.w) - victim.x;
-              if (penLeft <= penRight) {
+              const prevVictimX = victim.x - (victim.vx || 0);
+              const wasOutsideLeft = (prevVictimX + pW <= cell.x + 4);
+              const wasOutsideRight = (prevVictimX >= cell.x + cell.w - 4);
+
+              if (wasOutsideLeft && victim.vx > 0) {
                 victim.x = cell.x - pW;
-                if (victim.vx > 0) victim.vx = 0;
-              } else {
+                victim.vx = 0;
+              } else if (wasOutsideRight && victim.vx < 0) {
                 victim.x = cell.x + cell.w;
-                if (victim.vx < 0) victim.vx = 0;
+                victim.vx = 0;
               }
             }
           }
@@ -1774,40 +1805,28 @@ export function resolveArena5BlockPenetration(combatants) {
 
           // Głębokie zaklinowanie (penTop > 42 lub brak wolnych bezpośrednich ścian)
           if (!bestDir) {
-            if (penTop > 42 && !canFitUnderneath && feetY >= cellBottom - 16) {
-              executeSquashKill(p);
-              resolvedAny = true;
-              break;
-            } else {
-              // Wypchnij gracza poziomo w stronę najbliższej wolnej kolumny w tym rzędzie
-              let nearestLeftDist = Infinity;
-              let nearestLeftCol = -1;
-              for (let testC = c - 1; testC >= 0; testC--) {
-                const testCell = rowData ? rowData[testC] : null;
-                if (!testCell || testCell.hp <= 0) {
-                  nearestLeftCol = testC;
-                  nearestLeftDist = c - testC;
-                  break;
-                }
-              }
-
-              let nearestRightDist = Infinity;
-              let nearestRightCol = -1;
-              for (let testC = c + 1; testC < COLS; testC++) {
-                const testCell = rowData ? rowData[testC] : null;
-                if (!testCell || testCell.hp <= 0) {
-                  nearestRightCol = testC;
-                  nearestRightDist = testC - c;
-                  break;
-                }
-              }
-
-              if (nearestLeftCol !== -1 && nearestLeftDist <= nearestRightDist) {
-                bestDir = 'LEFT';
-              } else if (nearestRightCol !== -1) {
-                bestDir = 'RIGHT';
-              } else if (allowTop) {
+            if (!canFitUnderneath) {
+              if (isAboveClear) {
                 bestDir = 'TOP';
+              } else {
+                executeSquashKill(p);
+                resolvedAny = true;
+                break;
+              }
+            } else if (isAboveClear && penTop < 60) {
+              bestDir = 'TOP';
+            } else {
+              // Łagodna depenetracja boczna bez gwałtownego przeskoku o całą kolumnę
+              if (isLeftClear && (!isRightClear || penLeft <= penRight)) {
+                bestDir = 'LEFT';
+              } else if (isRightClear) {
+                bestDir = 'RIGHT';
+              } else if (isAboveClear) {
+                bestDir = 'TOP';
+              } else {
+                executeSquashKill(p);
+                resolvedAny = true;
+                break;
               }
             }
           }
@@ -1829,7 +1848,8 @@ export function resolveArena5BlockPenetration(combatants) {
             }
             resolvedAny = true;
           } else if (bestDir === 'LEFT') {
-            p.x = cellLeft - pW;
+            const shift = Math.min(penLeft, 14);
+            p.x -= shift;
             if (p.vx > 0) p.vx = 0;
             if (penTop <= 18) {
               p.y = Math.min(p.y, cellTop - pH);
@@ -1838,7 +1858,8 @@ export function resolveArena5BlockPenetration(combatants) {
             }
             resolvedAny = true;
           } else if (bestDir === 'RIGHT') {
-            p.x = cellRight;
+            const shift = Math.min(penRight, 14);
+            p.x += shift;
             if (p.vx < 0) p.vx = 0;
             if (penTop <= 18) {
               p.y = Math.min(p.y, cellTop - pH);
@@ -1856,8 +1877,122 @@ export function resolveArena5BlockPenetration(combatants) {
   }
 }
 
+/**
+ * Generuje z góry ułożone 6-8 warstw klocków o zróżnicowanych kształtach z nawisami i niszami
+ * na potrzeby rygorystycznych testów przeciążeniowych (Stress / Torture-Test).
+ */
+export function populateArena5StressTower(numLayers = 8) {
+  if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+    window.ARENA_PLATFORMS = window.ARENA_PLATFORMS.filter(p => !p || !p.isA5Block);
+  }
+  arena5State.platforms = arena5State.platforms.filter(p => !p || !p.isA5Block);
+  arena5State.gridRows.clear();
+  arena5State.minFloorRow = 0;
+  arena5State.highestRowIndex = 0;
+
+  const layout = [
+    // Rząd 0 (podstawa):
+    [ { col: 0, mat: 'STEEL', piece: 'base_0' }, { col: 1, mat: 'STEEL', piece: 'base_0' }, { col: 2, mat: 'STEEL', piece: 'base_0' },
+      { col: 4, mat: 'CONCRETE', piece: 'base_1' }, { col: 5, mat: 'CONCRETE', piece: 'base_1' },
+      { col: 7, mat: 'STEEL', piece: 'base_2' }, { col: 8, mat: 'STEEL', piece: 'base_2' }, { col: 9, mat: 'STEEL', piece: 'base_2' } ],
+    // Rząd 1: I-4 nawis nad col 3, O-block col 4-5, T-block col 7-9
+    [ { col: 0, mat: 'STEEL', piece: 'i_beam_1' }, { col: 1, mat: 'STEEL', piece: 'i_beam_1' }, { col: 2, mat: 'STEEL', piece: 'i_beam_1' }, { col: 3, mat: 'STEEL', piece: 'i_beam_1' },
+      { col: 4, mat: 'CONCRETE', piece: 'o_box_1' }, { col: 5, mat: 'CONCRETE', piece: 'o_box_1' },
+      { col: 7, mat: 'STEEL', piece: 't_block_1' }, { col: 8, mat: 'STEEL', piece: 't_block_1' }, { col: 9, mat: 'STEEL', piece: 't_block_1' } ],
+    // Rząd 2: U-bunker col 0-2 (nisza col 1), Filar PILLAR_3 na col 4, Kątownik L col 6-8
+    [ { col: 0, mat: 'STEEL', piece: 'u_bunk_1' }, { col: 2, mat: 'STEEL', piece: 'u_bunk_1' },
+      { col: 4, mat: 'STEEL', piece: 'pillar_3_a' }, { col: 5, mat: 'CONCRETE', piece: 'o_box_1' },
+      { col: 6, mat: 'EXPLOSIVE', piece: 'l_block_1' }, { col: 7, mat: 'CONCRETE', piece: 'l_block_1' }, { col: 8, mat: 'CONCRETE', piece: 'l_block_1' } ],
+    // Rząd 3: Daszek U-bunkra col 0-2, Filar col 4, Kątownik L pion col 6, I-3 col 7-9
+    [ { col: 0, mat: 'STEEL', piece: 'u_bunk_1' }, { col: 1, mat: 'STEEL', piece: 'u_bunk_1' }, { col: 2, mat: 'STEEL', piece: 'u_bunk_1' },
+      { col: 4, mat: 'STEEL', piece: 'pillar_3_a' },
+      { col: 6, mat: 'CONCRETE', piece: 'l_block_1' },
+      { col: 7, mat: 'STEEL', piece: 'i_beam_3' }, { col: 8, mat: 'STEEL', piece: 'i_beam_3' }, { col: 9, mat: 'STEEL', piece: 'i_beam_3' } ],
+    // Rząd 4: T-block oparty na filarze 4 (nawisy col 3 i 5), O-block col 7-8
+    [ { col: 3, mat: 'STEEL', piece: 't_mid_1' }, { col: 4, mat: 'STEEL', piece: 't_mid_1' }, { col: 5, mat: 'STEEL', piece: 't_mid_1' },
+      { col: 7, mat: 'EXPLOSIVE', piece: 'o_mid_1' }, { col: 8, mat: 'CONCRETE', piece: 'o_mid_1' } ],
+    // Rząd 5: Wypust T-blocka col 4, Schodki STAIRS_3 col 0-2, S-block col 6-8
+    [ { col: 0, mat: 'CONCRETE', piece: 'stairs_1' }, { col: 1, mat: 'CONCRETE', piece: 'stairs_1' }, { col: 2, mat: 'CONCRETE', piece: 'stairs_1' },
+      { col: 4, mat: 'STEEL', piece: 't_mid_1' },
+      { col: 6, mat: 'STEEL', piece: 's_block_1' }, { col: 7, mat: 'STEEL', piece: 's_block_1' } ],
+    // Rząd 6: Szczyt schodków col 2, J-block col 3-5, Belka S-block col 7-8
+    [ { col: 2, mat: 'CONCRETE', piece: 'stairs_1' },
+      { col: 3, mat: 'CONCRETE', piece: 'j_block_1' }, { col: 4, mat: 'CONCRETE', piece: 'j_block_1' }, { col: 5, mat: 'CONCRETE', piece: 'j_block_1' },
+      { col: 7, mat: 'STEEL', piece: 's_block_1' }, { col: 8, mat: 'STEEL', piece: 's_block_1' } ],
+    // Rząd 7: Szczyt J-block col 5, Szczyt wieży O-block col 7-8
+    [ { col: 5, mat: 'CONCRETE', piece: 'j_block_1' },
+      { col: 7, mat: 'STEEL', piece: 'o_top_1' }, { col: 8, mat: 'STEEL', piece: 'o_top_1' } ]
+  ];
+
+  for (let r = 0; r < Math.min(numLayers, layout.length); r++) {
+    const layer = layout[r];
+    let rowData = arena5State.gridRows.get(r);
+    if (!rowData) {
+      rowData = new Array(COLS).fill(null);
+      arena5State.gridRows.set(r, rowData);
+    }
+
+    for (const item of layer) {
+      const c = item.col;
+      const mat = item.mat || 'STEEL';
+      const pieceId = item.piece || `p_${r}_${c}`;
+      const matDef = BLOCK_MATERIALS[mat] || BLOCK_MATERIALS.STEEL;
+
+      const cellObj = {
+        pieceId,
+        shapeId: 'STRESS_BLOCK',
+        accentColor: '#38bdf8',
+        material: mat,
+        hp: matDef.hp || 100,
+        maxHp: matDef.hp || 100,
+        x: getGridX(c),
+        y: getGridY(r),
+        w: CELL_SIZE,
+        h: CELL_SIZE,
+        col: c,
+        row: r,
+        color: matDef.color,
+        trimColor: matDef.trimColor,
+        isSolid: true,
+        platformObj: null
+      };
+
+      const platObj = {
+        id: `a5_block_${r}_${c}`,
+        name: matDef.name,
+        x: cellObj.x,
+        y: cellObj.y,
+        w: cellObj.w,
+        h: cellObj.h,
+        width: cellObj.w,
+        height: cellObj.h,
+        solid: true,
+        isGround: true,
+        type: mat === 'SCAFFOLDING' ? 'catwalk' : 'container_block',
+        isA5Block: true,
+        gridRow: r,
+        gridCol: c,
+        pieceId,
+        cellRef: cellObj
+      };
+
+      cellObj.platformObj = platObj;
+      rowData[c] = cellObj;
+      arena5State.platforms.push(platObj);
+      if (typeof window !== 'undefined' && Array.isArray(window.ARENA_PLATFORMS)) {
+        window.ARENA_PLATFORMS.push(platObj);
+      }
+    }
+  }
+
+  updateTowerApexAndSpawns();
+  syncArena5ExposedSurfaces();
+  calculateTargetLandY(true);
+}
+
 if (typeof window !== 'undefined') {
   window.updateTowerApexAndSpawns = updateTowerApexAndSpawns;
   window.syncArena5ExposedSurfaces = syncArena5ExposedSurfaces;
+  window.populateArena5StressTower = populateArena5StressTower;
 }
 

@@ -80,14 +80,16 @@ export function carveTerrainCrater(expX, expY, radius = 140) {
   if (expX + carveR >= 2600 && expX - carveR <= 3250) targetPointSets.push(RIGHT_OVAL_POINTS);
   if (expX + carveR >= 3200) targetPointSets.push(GROUND_RIGHT_POINTS);
 
+  const maxDepth = Math.min(42, Math.max(18, carveR * 0.65));
+
   for (const pts of targetPointSets) {
     for (let i = 0; i < pts.length; i++) {
       const pt = pts[i];
       const distH = Math.abs(pt.x - expX);
       if (distH < carveR) {
-        // Czasza sferyczna krateru
-        const dy = Math.sqrt(carveR * carveR - distH * distH);
-        const targetY = expY + dy;
+        // Płynna, ciągła czasza krateru (profil cosinusowy o zerowej pochodnej na krawędziach leja)
+        const depthFactor = 0.5 * (1 + Math.cos(Math.PI * (distH / carveR)));
+        const targetY = (pt.origY || pt.y) + maxDepth * depthFactor;
         if (targetY > pt.y) {
           pt.y = Math.min(GROUND_BEDROCK_Y, Math.max(pt.y, targetY));
           carvedAny = true;

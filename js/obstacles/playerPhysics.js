@@ -80,8 +80,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.onGround = false;
       p.isJumping = true;
       p.isCrouching = false;
-      const platThickness = curPlat.thickness || curPlat.h || 20;
-      p.y += platThickness + 12;
+      p.y += 4;
       p.vy = Math.max(p.vy || 0, 4.5);
       p.airVx = p.vx;
       p.currentGroundY = hasNoFloor ? null : groundY;
@@ -240,9 +239,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
       }
       // Jeśli klocek jest w trakcie opadania, pozwól na lądowanie wyłącznie wtedy, gdy gracz był na lub ponad dachem
       if (plat.cellRef && plat.cellRef.isFalling) {
-        const prevRoofY = (typeof plat.cellRef.oldY === 'number') ? plat.cellRef.oldY : plat.y;
-        if (prevBottom > prevRoofY + 14 || p.y >= plat.y) {
+        if (p.y >= plat.y - 8) {
           continue;
+        }
+        const isAlreadyRiding = (p.currentPlatform === plat);
+        if (!isAlreadyRiding) {
+          const prevRoofY = (typeof plat.cellRef.oldY === 'number') ? plat.cellRef.oldY : plat.y;
+          if (prevBottom > prevRoofY + 14 || prevBottom < prevRoofY - 24) {
+            continue;
+          }
         }
       }
     }
@@ -289,7 +294,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
       // 1. Lądowanie z powietrza (Swept-test wzdłuż osi Y chroniący przed tunelowaniem):
       // Sprawdzamy czy odcinek od prevBottom do newBottom przecina subTile.top
-      const tolerance = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 8) : Math.max(30, platThickness * 0.9);
+      const tolerance = (isA5 && plat.isA5Block) ? Math.max(16, p.vy + 8) : Math.min(30, Math.max(18, platThickness * 0.9));
       const minAirVy = (isA5 && plat.isA5Block) ? -0.8 : -1.0;
       const sweptBottomMargin = (isA5 && plat.isA5Block) ? 2 : 14;
       const isAirLanding = p.vy >= minAirVy && (
@@ -318,7 +323,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
 
       // Twarde zabezpieczenie przed zapadaniem się w lity grunt / kratery na Arenie 3
       if (!isLanding && isA3Ground && (!p.isJumping || p.vy >= 0)) {
-        if (feetY >= topY - 14 && feetY <= topY + platThickness) {
+        if (feetY >= topY - 14 && feetY <= topY + Math.min(24, platThickness)) {
           isLanding = true;
         }
       }
@@ -610,12 +615,17 @@ export function checkPlayerPlatformLanding(p, groundY) {
         isA5 &&
         crane?.phase === 'FALLING' &&
         crane.shape &&
-        p.x + (p.w || 26) >= crane.dropX &&
-        p.x <= crane.dropX + (crane.shape.w || 1) * 100 &&
-        p.currentGroundY &&
-        Math.abs(p.currentGroundY - (p.y + colH)) <= 8 &&
-        Math.abs(p.currentGroundY - crane.currentY) <= ((crane.shape.h || 4) * 100 + 16) &&
-        (!p.isJumping || p.vy >= -0.5)
+        (
+          p._ridingCrane ||
+          (
+            p.x + (p.w || 26) >= crane.dropX - 16 &&
+            p.x <= crane.dropX + (crane.shape.w || 1) * 100 + 16 &&
+            p.currentGroundY &&
+            Math.abs(p.currentGroundY - (p.y + colH)) <= 8 &&
+            Math.abs(p.currentGroundY - crane.currentY) <= ((crane.shape.h || 4) * 100 + 16) &&
+            (!p.isJumping || p.vy >= -0.5)
+          )
+        )
       );
 
       if (isOnFallingCrane) {
@@ -624,6 +634,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
         p.coyoteTimer = 8;
         p.lastGroundedFloorY = p.currentGroundY;
       } else {
+        p._ridingCrane = false;
         // Sprawdzenie czy pod postacią znajduje się niezniszczony segment podłoża
         const isSupported = isA5 ? true : ((typeof isGroundAt === 'function')
           ? (isGroundAt(p.x + 6) || isGroundAt(p.x + (p.w || 24) - 6))
@@ -716,7 +727,15 @@ export function checkPlayerPlatformLanding(p, groundY) {
           const overlapLeft = (p.x + p.w) - bnds.minX;
           const overlapRight = bnds.maxX - p.x;
 
-          let pushLeft = (p.vx > 0.1) ? true : ((p.vx < -0.1) ? false : (overlapLeft <= overlapRight));
+          const prevX = p.x - (p.vx || 0);
+          let pushLeft;
+          if (prevX + p.w <= bnds.minX + 8) {
+            pushLeft = true;
+          } else if (prevX >= bnds.maxX - 8) {
+            pushLeft = false;
+          } else {
+            pushLeft = (overlapLeft <= overlapRight);
+          }
 
           if (pushLeft) {
             p.x = bnds.minX - p.w;

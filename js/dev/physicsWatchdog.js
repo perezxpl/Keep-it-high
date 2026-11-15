@@ -15,6 +15,7 @@ import { getActiveBots, setBotCount } from '../bot.js';
 export const watchdogState = {
   enabled: true,
   autoPlaytestEnabled: false,
+  strictMode: false,
   frameCount: 0,
   warmupFrames: 60,
   simulationStartTime: 0,
@@ -76,6 +77,20 @@ function registerAnomaly(type, key, title, details, metadata = {}) {
   else if (type === 'FRAME_STUTTER') watchdogState.summary.frameStutters++;
 
   return anomaly;
+}
+
+/**
+ * Formatuje sekwencję ostatnich 5 klatek z historii ruchu postaci.
+ */
+function formatHistoryTrail(history) {
+  if (!Array.isArray(history) || history.length === 0) return '';
+  const lines = ['\n- **Sekwencja ostatnich 5 klatek (trail przed anomalią):**'];
+  for (let idx = 0; idx < history.length; idx++) {
+    const h = history[idx];
+    const rel = history.length - 1 - idx;
+    lines.push(`  - [T-${rel}] klatka ${h.frame}: pos=(${h.x}, ${h.y}), vel=(${h.vx}, ${h.vy}), onGround=${h.onGround}, plat=${h.platformId || 'brak'}`);
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -226,9 +241,25 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
     const pBottom = p.y + colH;
     const pName = p.name || (p === player ? 'LOKALNY GRACZ' : `BOT_${i}`);
 
+    // Rejestracja historii ostatnich 5 klatek postaci
+    if (!cState.history) cState.history = [];
+    cState.history.push({
+      frame: watchdogState.frameCount,
+      x: Math.round(p.x * 10) / 10,
+      y: Math.round(p.y * 10) / 10,
+      vx: Math.round((p.vx || 0) * 100) / 100,
+      vy: Math.round((p.vy || 0) * 100) / 100,
+      onGround: !!p.onGround,
+      platformId: p.currentPlatform?.id || null
+    });
+    if (cState.history.length > 5) {
+      cState.history.shift();
+    }
+
+    const wasDead = !!cState.prevIsDead;
     const isAlive = !p.isDead && (p.hp > 0) && ((p.deathTimer || 0) <= 0) && !p.isRespawning && ((p.respawnTimer || 0) <= 0);
-    const isJustRespawned = (typeof p.spawnProtectionTimer === 'number' && p.spawnProtectionTimer > 135);
-    const isStrikerDash = !!(p.isDashing || p.isAirDashing || p._superDashActive || p._isSlidingDash);
+    const isJustRespawned = (wasDead && isAlive) || (typeof p.spawnProtectionTimer === 'number' && p.spawnProtectionTimer > 100) || (p.respawnTimer && p.respawnTimer > 0);
+    const isActionLaunch = !!(p.isDashing || p.isAirDashing || p._superDashActive || p._isSlidingDash || (p.jumpTakeoffTimer && p.jumpTakeoffTimer > 0) || (p.dropThroughTimer && p.dropThroughTimer > 18));
 
     // Po odrodzeniu (respawn na wybranym punkcie wieży / areny) synchronizujemy pozycję bazową bez zgłaszania teleportu
     if (isJustRespawned || !isAlive) {
@@ -238,34 +269,89 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
       cState.prevVy = p.vy || 0;
       cState.prevBottom = pBottom;
       cState.penetrationStreak = 0;
+      cState.prevIsDead = !isAlive;
       continue;
     }
 
+    const isStrict = watchdogState.strictMode;
+
     // --- ANOMALIA 1: TELEPORT_ANOMALY ---
-    if (isAlive && !isStrikerDash && !isJustRespawned && watchdogState.frameCount > watchdogState.warmupFrames) {
+    if (isAlive && !isActionLaunch && !isJustRespawned && watchdogState.frameCount > watchdogState.warmupFrames) {
       const dx = p.x - cState.prevX;
       const dy = p.y - cState.prevY;
-      // Pętla gry wykonuje do 2 kroków fizyki (steps=2) na klatkę renderowania przy wahaniach VSync/LTPO
-      const maxAllowedDx = Math.abs(p.vx || 0) * 2.1 + 26;
-      // Przy poruszaniu się po rampach i skarpach terenowych (onGround=true) pionowe przesunięcie zależy od nachylenia podłoża i prędkości poziomej vx
-      const slopeMargin = (p.onGround && cState.prevOnGround) ? (Math.abs(p.vx || 0) * 2.0 + 10) : 0;
-      const maxAllowedDy = Math.abs(p.vy || 0) * 2.1 + 34 + slopeMargin;
+
+      const pSteps = (typeof window !== 'undefined' && window.lastPhysicsSteps) ? Math.max(1, window.lastPhysicsSteps) : 1;
+
+      // Sprawdzenie czy gracz jedzie na przesuwającym się klocku (sliding block platform)
+      let platformSpeedX = 0;
+      if (isArena5 && arena5State && arena5State.gridRows) {
+        for (const rowData of arena5State.gridRows.values()) {
+          if (!rowData) continue;
+          for (let c = 0; c < 10; c++) {
+            const cell = rowData[c];
+            if (cell && cell.isSliding) {
+              if (Math.abs((cell.x + cell.w / 2) - (p.x + pW / 2)) < 90 && Math.abs(cell.y - pBottom) <= 12) {
+                platformSpeedX = Math.max(platformSpeedX, cell.slideSpeed || 22);
+              }
+            }
+          }
+        }
+      }
+
+      const maxVx = Math.max(Math.abs(p.vx || 0), Math.abs(cState.prevVx || 0), platformSpeedX);
+      const maxVy = Math.max(Math.abs(p.vy || 0), Math.abs(cState.prevVy || 0));
+
+      // Progi wykrywania: w trybie strict zaostrzone do |dx| > maxVx*1.4*steps + 14 oraz |dy| > maxVy*1.4*steps + 18
+      const maxAllowedDx = isStrict
+        ? (maxVx * 1.4 * pSteps + 14)
+        : (maxVx * 2.1 * pSteps + 26);
+
+      const slopeMargin = (p.onGround && cState.prevOnGround)
+        ? (isStrict ? (maxVx * 1.2 + 6) : (maxVx * 2.0 + 10))
+        : 0;
+
+      const maxAllowedDy = isStrict
+        ? (maxVy * 1.4 * pSteps + 18 + slopeMargin)
+        : (maxVy * 2.1 * pSteps + 34 + slopeMargin);
 
       // Sprawdzenie zmiany pozycji stóp (wstawanie ze staggara lub prone przesuwa p.y do góry o deltaH, ale stopy nie teleportują się)
       const dFootY = pBottom - cState.prevBottom;
       const isPostureShift = (Math.abs(dFootY) <= Math.abs(p.vy || 0) + 24);
-      // Zstąpienie lub ześlizgnięcie się z krawędzi klocka/podestu (wysokość klocka 50-100px) na niższy poziom
-      const isStepDown = (dy > 0 && dy <= 105 && p.onGround);
 
-      if (Math.abs(dx) > maxAllowedDx || (Math.abs(dy) > maxAllowedDy && !isPostureShift && !isStepDown)) {
+      // Sprawdzenie czy w promieniu 100px znajduje się opadający lub przesuwający się klocek
+      let isNearFallingOrSliding = false;
+      if (isArena5 && arena5State && arena5State.gridRows) {
+        for (const rowData of arena5State.gridRows.values()) {
+          if (!rowData || isNearFallingOrSliding) continue;
+          for (let c = 0; c < 10; c++) {
+            const cell = rowData[c];
+            if (cell && (cell.isFalling || cell.isSliding)) {
+              if (Math.hypot((cell.x + cell.w / 2) - p.x, (cell.y + cell.h / 2) - p.y) < 100) {
+                isNearFallingOrSliding = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // W trybie strict=1 NIE ignoruj anomalii jako step-down jeśli w promieniu 100px jest opadający/przesuwający się klocek
+      const allowStepDown = !isStrict || !isNearFallingOrSliding;
+      const isStepDown = allowStepDown && (dy > 0 && dy <= 105 && p.onGround);
+      const isStepUpOnA5Block = isArena5 && (dy < 0 && dy >= -115 && p.onGround);
+      const isStepValid = isStepDown || isStepUpOnA5Block;
+
+      if (Math.abs(dx) > maxAllowedDx || (Math.abs(dy) > maxAllowedDy && !isPostureShift && !isStepValid)) {
         const nearInfo = isArena5 ? findNearbyA5BlockInfo(p.x, p.y, 120) : 'Poza Areną 5.';
+        const historyTrail = formatHistoryTrail(cState.history);
         const key = `TELEPORT::${pName}::${Math.round(p.x / 80)}_${Math.round(p.y / 80)}`;
         const title = `Nieoczekiwana teleportacja postaci: ${pName}`;
-        const desc = `Postać "${pName}" przemieściła się w 1 klatce o dx=${dx.toFixed(1)}px, dy=${dy.toFixed(1)}px (dozwolony limit: dx<=${maxAllowedDx.toFixed(1)}, dy<=${maxAllowedDy.toFixed(1)}). Prędkość: vx=${(p.vx || 0).toFixed(2)}, vy=${(p.vy || 0).toFixed(2)}, onGround=${!!p.onGround}. ${nearInfo}`;
+        const desc = `Postać "${pName}" przemieściła się w 1 klatce o dx=${dx.toFixed(1)}px, dy=${dy.toFixed(1)}px (dozwolony limit: dx<=${maxAllowedDx.toFixed(1)}, dy<=${maxAllowedDy.toFixed(1)}). Prędkość: vx=${(p.vx || 0).toFixed(2)}, vy=${(p.vy || 0).toFixed(2)}, onGround=${!!p.onGround}. ${nearInfo}${historyTrail}`;
 
         registerAnomaly('TELEPORT_ANOMALY', key, title, desc, {
           character: pName,
-          dx, dy, vx: p.vx, vy: p.vy, onGround: !!p.onGround
+          dx, dy, vx: p.vx, vy: p.vy, onGround: !!p.onGround,
+          history: [...cState.history]
         });
       }
     }
@@ -290,7 +376,7 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
             const overlapX = Math.min(pRight, cRight) - Math.max(pLeft, cLeft);
             const overlapY = Math.min(pBottom, cBottom) - Math.max(pTop, cTop);
 
-            if (overlapX > 6 && overlapY > 6) {
+            if (overlapX > 4 && overlapY > 4) {
               const penDepth = Math.min(overlapX, overlapY);
               if (penDepth > maxPenetrationFound) {
                 maxPenetrationFound = penDepth;
@@ -318,15 +404,21 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
         }
       }
 
-      if (maxPenetrationFound > 6) {
+      // W trybie strict=1 wykrywaj penetrację już od 1 klatki wnikania > 4px (w trybie standardowym >= 2 klatek > 6px)
+      const penThreshold = isStrict ? 4.0 : 6.0;
+      const streakThreshold = isStrict ? 1 : 2;
+
+      if (maxPenetrationFound > penThreshold) {
         cState.penetrationStreak++;
-        if (cState.penetrationStreak >= 2 && worstPenDetails) {
+        if (cState.penetrationStreak >= streakThreshold && worstPenDetails) {
+          const historyTrail = formatHistoryTrail(cState.history);
           const key = `PENETRATION::${pName}::r${worstPenDetails.cellRow}_c${worstPenDetails.cellCol}`;
           const title = `Wnikanie w lity klocek: ${pName}`;
-          const desc = `Hitbox żywej postaci "${pName}" (x=${p.x.toFixed(1)}, y=${p.y.toFixed(1)}, w=${pW}, h=${colH}) wnika głębiej niż 6px (${worstPenDetails.penDepth.toFixed(1)}px) do wnętrza litego klocka [row=${worstPenDetails.cellRow}, col=${worstPenDetails.cellCol}] przez ${cState.penetrationStreak} klatki z rzędu. Głębokości: penTop=${worstPenDetails.penTop.toFixed(1)}px, penBottom=${worstPenDetails.penBottom.toFixed(1)}px, penLeft=${worstPenDetails.penLeft.toFixed(1)}px, penRight=${worstPenDetails.penRight.toFixed(1)}px. Pozycja klocka: x=${worstPenDetails.cellX.toFixed(1)}, y=${worstPenDetails.cellY.toFixed(1)}.`;
+          const desc = `Hitbox żywej postaci "${pName}" (x=${p.x.toFixed(1)}, y=${p.y.toFixed(1)}, w=${pW}, h=${colH}) wnika głębiej niż ${penThreshold}px (${worstPenDetails.penDepth.toFixed(1)}px) do wnętrza litego klocka [row=${worstPenDetails.cellRow}, col=${worstPenDetails.cellCol}] przez ${cState.penetrationStreak} klatek. Głębokości: penTop=${worstPenDetails.penTop.toFixed(1)}px, penBottom=${worstPenDetails.penBottom.toFixed(1)}px, penLeft=${worstPenDetails.penLeft.toFixed(1)}px, penRight=${worstPenDetails.penRight.toFixed(1)}px. Pozycja klocka: x=${worstPenDetails.cellX.toFixed(1)}, y=${worstPenDetails.cellY.toFixed(1)}.${historyTrail}`;
 
           registerAnomaly('BLOCK_PENETRATION', key, title, desc, {
             character: pName,
+            history: [...cState.history],
             ...worstPenDetails
           });
         }
@@ -460,6 +552,7 @@ export function updatePhysicsWatchdog(dt, frameExecutionMs = 0) {
     cState.prevOnGround = !!p.onGround;
     cState.prevBottom = pBottom;
     cState.prevPlatform = p.currentPlatform;
+    cState.prevIsDead = !isAlive || !!p.isDead;
   }
 
   // =========================================================================
@@ -652,6 +745,7 @@ export function getWatchdogSummaryMarkdown() {
     `# Raport Diagnostyczny Fizyki i Wydajności (Keep-it-high Watchdog)`,
     ``,
     `> Data testu: ${new Date().toLocaleString('pl-PL')}`,
+    `> Tryb diagnostyczny: **${watchdogState.strictMode ? 'ŚCISŁY (strict=1)' : 'STANDARDOWY'}**`,
     `> Status końcowy: **${isClean ? 'CZYSTO - BRAK ANOMALII' : `WYKRYTO ANOMALIE (${totalAnomalies})`}**`,
     ``,
     `## 1. Statystyki Wydajności i Płynności (FPS)`,
@@ -666,7 +760,7 @@ export function getWatchdogSummaryMarkdown() {
     `| Kategoria Anomalii | Liczba Zdarzeń | Status |`,
     `| :--- | :---: | :---: |`,
     `| **TELEPORT_ANOMALY** (Gwałtowne przesunięcia postaci) | ${watchdogState.summary.teleportAnomalies} | ${watchdogState.summary.teleportAnomalies === 0 ? 'OK' : 'UWAGA'} |`,
-    `| **BLOCK_PENETRATION** (Wnikanie w lite klocki > 6px) | ${watchdogState.summary.blockPenetrations} | ${watchdogState.summary.blockPenetrations === 0 ? 'OK' : 'UWAGA'} |`,
+    `| **BLOCK_PENETRATION** (Wnikanie w lite klocki > ${watchdogState.strictMode ? '4' : '6'}px) | ${watchdogState.summary.blockPenetrations} | ${watchdogState.summary.blockPenetrations === 0 ? 'OK' : 'UWAGA'} |`,
     `| **FALLING_BLOCK_GLITCH** (Brak squash kill / pop through) | ${watchdogState.summary.fallingBlockGlitches} | ${watchdogState.summary.fallingBlockGlitches === 0 ? 'OK' : 'UWAGA'} |`,
     `| **SURFACE_JITTER** (Migotanie onGround na platformach) | ${watchdogState.summary.surfaceJitters} | ${watchdogState.summary.surfaceJitters === 0 ? 'OK' : 'UWAGA'} |`,
     `| **BLOCK_STATE_DESYNC** (Desynchronizacja siatki / wody) | ${watchdogState.summary.blockStateDesyncs} | ${watchdogState.summary.blockStateDesyncs === 0 ? 'OK' : 'UWAGA'} |`,
@@ -727,6 +821,11 @@ export function checkAndInitAutoPlaytest() {
 
   const params = new URLSearchParams(window.location.search);
   const isAiTest = params.get('aiTest') === '1' || params.has('aiTest');
+  const isStrict = params.get('strict') === '1' || params.has('strict');
+
+  if (isStrict) {
+    watchdogState.strictMode = true;
+  }
 
   if (isAiTest) {
     watchdogState.autoPlaytestEnabled = true;

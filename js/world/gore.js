@@ -536,7 +536,7 @@ export function updateGore(groundY, platforms = null, obstacles = null) {
       slope = (getRiverbankGroundY(bg.x + 4) - getRiverbankGroundY(bg.x - 4)) / 8;
     }
     const hasGround = (typeof isGroundAt === 'function') ? isGroundAt(bg.x) : true;
-    const floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 4);
+    let floorY = (!hasGround && !isA3) ? (groundY + 600) : (baseGroundY - 4);
     let landed = false;
     if (hasGround && bg.y >= floorY) {
       landed = true;

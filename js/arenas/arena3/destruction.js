@@ -834,3 +834,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   return hitAny;
 }
 
+if (typeof window !== 'undefined') {
+  window.onArena3Explosion = onArena3Explosion;
+}
+

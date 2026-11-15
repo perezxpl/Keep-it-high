@@ -782,6 +782,12 @@ export function updateArena3(dt, players, ball) {
     b.x += b.vx;
     b.y += b.vy;
     b.angle += b.vRot;
+
+    // Natychmiastowa synchronizacja kolizji po przemieszczeniu do wody lub uśpieniu
+    if (!b.intact && (b.y >= 1290 || (b.y + b.h >= 1295) || b.isAsleep)) {
+      b.solid = false;
+      b.isPlatform = false;
+    }
   }
 
   // 4. Detekcja graczy na belkach / płytach (jeśli solidne, gracz stoi; jeśli nie, spada)

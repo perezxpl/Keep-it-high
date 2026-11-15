@@ -1008,8 +1008,12 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
       if (a5.recyclerY < 1200 && botTarget.y > a5.recyclerY - 120) {
         bKeys.up = true;
       }
-      if (!isUnderFigure && botTarget.onGround && !botTarget.isJumping && Math.abs(botTarget.vx || 0) < 0.25 && (bKeys.left || bKeys.right)) {
+      if (botTarget._jumpAttemptCooldown > 0) {
+        botTarget._jumpAttemptCooldown--;
+      }
+      if (!isUnderFigure && botTarget.onGround && !botTarget.isJumping && Math.abs(botTarget.vx || 0) < 0.25 && (bKeys.left || bKeys.right) && (!botTarget._jumpAttemptCooldown || botTarget._jumpAttemptCooldown <= 0)) {
         bKeys.up = true;
+        botTarget._jumpAttemptCooldown = 22;
       }
     }
 
@@ -1074,7 +1078,7 @@ export function updateBotBrain(ball, humanPlayer, groundY, spawnGrass, botTarget
         if (safeBelow !== null && safeBelow <= targetY + 140) {
           botTarget.dropThroughTimer = 20;
           botTarget.dropThroughPlatform = botTarget.currentPlatform;
-          botTarget.y += platThick + 12;
+          botTarget.y += 4;
           botTarget.currentPlatform = null;
           botTarget.onGround = false;
           botTarget.isJumping = true;

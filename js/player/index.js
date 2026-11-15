@@ -240,10 +240,6 @@ function _updateCharacter(keys, leftStick, GROUND_Y, ball, spawnGrass, player, t
         player.isJumping = true;
         player.onGround = false;
       }
-      const standFloor = player.currentGroundY || player.lastGroundedFloorY;
-      if (standFloor && player.y + (player.h || 70) > standFloor) {
-        player.y = standFloor - (player.h || 70);
-      }
       player.staggerRecoveryTimer = 14; // płynny powrót broni i ciała do stanu gotowości bojowej
       player.staggerImmunityTimer = 65; // ~1.1s nietykalności przed pętlą ponownego powalenia / stagger-lock
       player.staggerLanded = false;

@@ -1422,6 +1422,9 @@ function loop(now) {
   }
 
   // Monitoring anomalii fizyki i czasu wykonania klatki (Physics & Performance Watchdog)
+  if (typeof window !== 'undefined') {
+    window.lastPhysicsSteps = steps;
+  }
   const frameExecMs = (typeof performance !== 'undefined') ? (performance.now() - frameLoopStartTime) : 0;
   if (typeof updatePhysicsWatchdog === 'function') {
     updatePhysicsWatchdog(delta / 1000, frameExecMs);

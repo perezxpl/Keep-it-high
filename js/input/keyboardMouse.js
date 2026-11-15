@@ -384,8 +384,7 @@ export function initKeyboardMouseHandlers({
         player.dropThroughTimer = 22;
         player.dropThroughPlatform = player.currentPlatform || null;
         if (player.currentPlatform) {
-          const platThick = player.currentPlatform.thickness || player.currentPlatform.h || 20;
-          player.y += platThick + 12;
+          player.y += 4;
           player.currentPlatform = null;
           player.onGround = false;
           player.isJumping = true;

@@ -225,6 +225,7 @@ export function handleArena5BulletHit(bullet) {
 export function handleArena5Explosion(expX, expY, radius) {
   const radSq = radius * radius;
   let anyDestroyed = false;
+  const cellsToDestroy = [];
 
   // 1. Sprawdz komorki spadajacej suwnicy
   const crane = arena5State.crane;
@@ -274,7 +275,6 @@ export function handleArena5Explosion(expX, expY, radius) {
   }
 
   // 2. Sprawdz komorki w siatce wiezy (zakres wierszy w promieniu eksplozji)
-  const cellsToDestroy = [];
   const minRow = Math.max(0, Math.floor((1200 - (expY + radius)) / CELL_SIZE) - 1);
   const maxRow = Math.max(0, Math.ceil((1200 - (expY - radius)) / CELL_SIZE) + 1);
 
@@ -786,4 +786,7 @@ function resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, bx, by, bw, b
 
 if (typeof window !== 'undefined') {
   window.handleArena5Explosion = handleArena5Explosion;
+  window.handleArena5KickHit = handleArena5KickHit;
+  window.destroyGridCell = destroyGridCell;
+  window.handleArena5BulletHit = handleArena5BulletHit;
 }

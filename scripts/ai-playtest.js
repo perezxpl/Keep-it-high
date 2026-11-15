@@ -33,6 +33,8 @@ const DURATION = parseInt(getArg('duration', '25'), 10);
 const BOTS = parseInt(getArg('bots', '5'), 10);
 const PORT = parseInt(getArg('port', '8000'), 10);
 const HEADLESS = getArg('headless', 'true') !== 'false';
+const STRESS = getArg('stress', 'none');
+const STRICT = getArg('strict', '0') === '1' || args.includes('--strict=1') || args.includes('--strict');
 
 // Typy MIME dla wbudowanego lekkiego serwera HTTP
 const MIME_TYPES = {
@@ -151,7 +153,7 @@ async function launchBrowser(isHeadless) {
  * Główna funkcja wykonująca automatyczny test symulacji.
  */
 async function runPlaytest() {
-  console.log(`[AI-PLAYTEST] Rozpoczynanie testu: arena=${ARENA}, czas=${DURATION}s, boty=${BOTS}, port=${PORT}`);
+  console.log(`[AI-PLAYTEST] Rozpoczynanie testu: arena=${ARENA}, czas=${DURATION}s, boty=${BOTS}, stress=${STRESS}, strict=${STRICT ? '1' : '0'}, port=${PORT}`);
 
   let internalServer = null;
   const isAlreadyRunning = await checkServerRunning(PORT);
@@ -190,7 +192,7 @@ async function runPlaytest() {
       }
     });
 
-    const targetUrl = `http://localhost:${PORT}/?arena=${ARENA}&autostart=STRIKER&aiTest=1&bots=${BOTS}`;
+    const targetUrl = `http://localhost:${PORT}/?arena=${ARENA}&autostart=STRIKER&aiTest=1&bots=${BOTS}&stress=${STRESS}&strict=${STRICT ? '1' : '0'}`;
     console.log(`[AI-PLAYTEST] Ladowanie gry pod adresem: ${targetUrl}`);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
@@ -203,48 +205,154 @@ async function runPlaytest() {
 
     console.log(`[AI-PLAYTEST] Gra pomyslnie wystartowala w trybie PLAYING. Rozpoczynanie ${DURATION}s symulacji walki...`);
 
-    // Pętla symulacji z okresowym wyzwalaniem zdarzeń stresowych co 5 sekund
-    const intervalSec = 5;
-    const steps = Math.floor(DURATION / intervalSec);
-    const remainderSec = DURATION % intervalSec;
+    const isArena5 = (ARENA === 'arena-5' || ARENA === '5');
+    const isArena3 = (ARENA === 'arena-3' || ARENA === '3');
+    const isHighStress = (STRESS === 'high');
 
-    for (let s = 1; s <= steps; s++) {
-      await page.waitForTimeout(intervalSec * 1000);
-      const elapsedSec = s * intervalSec;
-
-      // Zdarzenia stresowe: zrzut suwnicy lub wybuchy struktur
-      await page.evaluate((arena) => {
-        try {
-          if (arena === 'arena-5' || arena === '5') {
-            // Wymuszenie opadnięcia suwnicy, jeśli jest gotowa
-            if (window.arena5State && window.arena5State.crane && window.arena5State.crane.phase === 'COOLDOWN') {
-              window.arena5State.crane.cooldownTimer = 0;
-            }
-          } else if (arena === 'arena-3' || arena === '3') {
-            // Naruszenie losowej belki mostu lub klocka
-            if (Array.isArray(window.ARENA_3_BRIDGE_BLOCKS)) {
-              const intactBlocks = window.ARENA_3_BRIDGE_BLOCKS.filter(b => b && b.intact);
-              if (intactBlocks.length > 0 && typeof window.breakBridgeBlock === 'function') {
-                const target = intactBlocks[Math.floor(Math.random() * intactBlocks.length)];
-                window.breakBridgeBlock(target, 0, 0, 15);
-              }
-            }
-          }
-        } catch (_) {}
-      }, ARENA);
-
-      // Pobranie bieżących statystyk dla logu postępu
-      const quickStats = await page.evaluate(() => {
-        return window.physicsWatchdog ? window.physicsWatchdog.getStats() : null;
+    // Inicjalizacja stresowa na Arenie 5 (budowa 8-piętrowej wieży i przyspieszenie suwnicy)
+    if (isArena5 && isHighStress) {
+      console.log(`[AI-PLAYTEST] STRESS=HIGH: Generowanie 8 warstw ulozonych klockow Tetrisa z nawisami...`);
+      await page.evaluate(() => {
+        if (typeof window.populateArena5StressTower === 'function') {
+          window.populateArena5StressTower(8);
+        }
+        if (window.arena5State && window.arena5State.crane) {
+          window.arena5State.crane.cooldownMax = 0.25;
+          window.arena5State.crane.cooldownTimer = 0;
+        }
       });
-
-      if (quickStats) {
-        console.log(`[AI-PLAYTEST] Postep: ${elapsedSec}/${DURATION}s | Sredni FPS: ${quickStats.avgFps} | 1% Low: ${quickStats.onePercentLowFps} | Wykrytych anomalii: ${quickStats.frameCount}`);
-      }
     }
 
-    if (remainderSec > 0) {
-      await page.waitForTimeout(remainderSec * 1000);
+    // Pętla symulacji oparta o interwały co 500 ms
+    const tickMs = 500;
+    const totalTicks = Math.floor((DURATION * 1000) / tickMs);
+    let nextArena5StressMs = 2500;
+    let nextArena3StressMs = 3000;
+    let nextLogMs = 5000;
+
+    for (let t = 1; t <= totalTicks; t++) {
+      await page.waitForTimeout(tickMs);
+      const currentElapsedMs = t * tickMs;
+
+      // Zdarzenia stresowe Areny 5 (co 2.5s)
+      if (isArena5 && isHighStress && currentElapsedMs >= nextArena5StressMs) {
+        nextArena5StressMs += 2500;
+        await page.evaluate(() => {
+          try {
+            if (window.arena5State && window.arena5State.crane) {
+              window.arena5State.crane.cooldownMax = 0.25;
+              if (window.arena5State.crane.phase === 'COOLDOWN') {
+                window.arena5State.crane.cooldownTimer = 0;
+              }
+            }
+
+            // 1. Zniszczenie klocka bezpośrednio pod stopami żywej postaci lub w najwyższym rzędzie
+            const combatants = (window.combatants || [window.player, ...(window.bots || [])]).filter(p => p && p.hp > 0 && !p.isDead);
+            let destroyed = false;
+
+            if (combatants.length > 0 && typeof window.destroyGridCell === 'function') {
+              const p = combatants[Math.floor(Math.random() * combatants.length)];
+              const footX = p.x + (p.w || 26) * 0.5;
+              const footY = p.y + (p.h || 72) + 4;
+              const col = Math.floor((footX - 250) / 100);
+              const row = Math.floor((1200 - footY) / 100);
+
+              if (col >= 0 && col < 10 && row >= 0) {
+                const rData = window.arena5State?.gridRows?.get(row);
+                if (rData && rData[col] && rData[col].hp > 0) {
+                  window.destroyGridCell(row, col);
+                  destroyed = true;
+                }
+              }
+            }
+
+            // Jeśli pod stopami nie było klocka, zniszcz dowolny najwyższy aktywny klocek
+            if (!destroyed && window.arena5State?.gridRows && typeof window.destroyGridCell === 'function') {
+              const activeRows = Array.from(window.arena5State.gridRows.keys()).sort((a, b) => b - a);
+              for (const r of activeRows) {
+                const rData = window.arena5State.gridRows.get(r);
+                if (!rData) continue;
+                const colsWithBlocks = [];
+                for (let c = 0; c < 10; c++) {
+                  if (rData[c] && rData[c].hp > 0 && !rData[c].isFalling) colsWithBlocks.push(c);
+                }
+                if (colsWithBlocks.length > 0) {
+                  const chosenCol = colsWithBlocks[Math.floor(Math.random() * colsWithBlocks.length)];
+                  window.destroyGridCell(r, chosenCol);
+                  destroyed = true;
+                  break;
+                }
+              }
+            }
+
+            // 2. Wymuszenie Spartan Kicka w klocek obok postaci
+            if (combatants.length > 0 && typeof window.handleArena5KickHit === 'function') {
+              const kicker = combatants[Math.floor(Math.random() * combatants.length)];
+              window.handleArena5KickHit(kicker, { isSpartan: true, kickRadius: 90 });
+            }
+
+            // 3. Spawnowanie eksplozji w środku wieży
+            if (typeof window.handleArena5Explosion === 'function') {
+              const expX = 350 + Math.random() * 500;
+              const expY = 600 + Math.random() * 400;
+              window.handleArena5Explosion(expX, expY, 180);
+            }
+          } catch (_) {}
+        });
+      }
+
+      // Zdarzenia stresowe Areny 3 (co 3.0s)
+      if (isArena3 && isHighStress && currentElapsedMs >= nextArena3StressMs) {
+        nextArena3StressMs += 3000;
+        await page.evaluate(() => {
+          try {
+            if (typeof window.onArena3Explosion === 'function') {
+              const targets = [
+                { x: 1400 + Math.random() * 800, y: 1250 + Math.random() * 120 }, // most i woda
+                { x: 950 + Math.random() * 400, y: 1100 + Math.random() * 200 },  // lewa rampa i wieża
+                { x: 2200 + Math.random() * 400, y: 1100 + Math.random() * 200 }, // prawa rampa i wieża
+                { x: 1600 + Math.random() * 400, y: 800 + Math.random() * 250 }   // pomosty wiszące canopy
+              ];
+              const t = targets[Math.floor(Math.random() * targets.length)];
+              window.onArena3Explosion(t.x, t.y, 160);
+            }
+          } catch (_) {}
+        });
+      }
+
+      // Standardowe wyzwalanie zdarzeń co 5 sekund, gdy brak flagi high stress
+      if (!isHighStress && currentElapsedMs >= nextLogMs) {
+        await page.evaluate((arena) => {
+          try {
+            if (arena === 'arena-5' || arena === '5') {
+              if (window.arena5State && window.arena5State.crane && window.arena5State.crane.phase === 'COOLDOWN') {
+                window.arena5State.crane.cooldownTimer = 0;
+              }
+            } else if (arena === 'arena-3' || arena === '3') {
+              if (Array.isArray(window.ARENA_3_BRIDGE_BLOCKS)) {
+                const intactBlocks = window.ARENA_3_BRIDGE_BLOCKS.filter(b => b && b.intact);
+                if (intactBlocks.length > 0 && typeof window.breakBridgeBlock === 'function') {
+                  const target = intactBlocks[Math.floor(Math.random() * intactBlocks.length)];
+                  window.breakBridgeBlock(target, 0, 0, 15);
+                }
+              }
+            }
+          } catch (_) {}
+        }, ARENA);
+      }
+
+      // Pobranie bieżących statystyk dla logu postępu co 5 sekund
+      if (currentElapsedMs >= nextLogMs) {
+        nextLogMs += 5000;
+        const quickStats = await page.evaluate(() => {
+          return window.physicsWatchdog ? window.physicsWatchdog.getStats() : null;
+        });
+
+        if (quickStats) {
+          const sec = (currentElapsedMs / 1000).toFixed(0);
+          console.log(`[AI-PLAYTEST] Postep: ${sec}/${DURATION}s | Sredni FPS: ${quickStats.avgFps} | 1% Low: ${quickStats.onePercentLowFps} | Przetworzonych klatek: ${quickStats.frameCount}`);
+        }
+      }
     }
 
     console.log(`[AI-PLAYTEST] Zakonczono czas symulacji. Pobieranie pelnego raportu diagnostycznego...`);
