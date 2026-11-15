@@ -795,13 +795,7 @@ export function updateBloodDecals() {
     if (d.platformRef) {
       const p = d.platformRef;
       // Jesli platforma lub powiazany klocek zostal zniszczony, usuniety lub przestal byc solidny:
-      if (p.isDestroyed || p.destroyed || p.solid === false || (p.cellRef && (p.cellRef.hp <= 0 || !p.cellRef.isSolid))) {
-        bloodDecals.splice(i, 1);
-        continue;
-      }
-
-      // Sprawdz czy platforma nadal istnieje w liscie aktywnych platform areny:
-      if (Array.isArray(activePlats) && !activePlats.includes(p)) {
+      if (p.isDestroyed || p.destroyed || p.solid === false || p._isActive === false || (p.cellRef && (p.cellRef.hp <= 0 || !p.cellRef.isSolid))) {
         bloodDecals.splice(i, 1);
         continue;
       }
@@ -901,15 +895,44 @@ export function drawBloodDecals(ctx) {
 
   ctx.save();
   ctx.fillStyle = '#881313';
+
+  // 1. Plamy w pełni widoczne (lifeTime > 0) - batching w jedną ścieżkę (jeden draw-call)
+  ctx.globalAlpha = 0.80;
+  ctx.beginPath();
+  let hasFull = false;
+
   for (let i = 0; i < bloodDecals.length; i++) {
     const d = bloodDecals[i];
     if (d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
+    if (d.lifeTime <= 0) continue;
 
-    ctx.globalAlpha = d.alpha !== undefined ? d.alpha : 0.7;
+    hasFull = true;
+    ctx.moveTo(d.x + d.w, d.y);
+    ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
+
+    if (d.splats && d.splats.length > 0) {
+      for (let s = 0; s < d.splats.length; s++) {
+        const sp = d.splats[s];
+        ctx.moveTo(d.x + sp.dx + sp.r, d.y + sp.dy);
+        ctx.arc(d.x + sp.dx, d.y + sp.dy, sp.r, 0, Math.PI * 2);
+      }
+    }
+  }
+  if (hasFull) {
+    ctx.fill();
+  }
+
+  // 2. Plamy wygasające w ostatniej sekundzie (fadeTimer)
+  for (let i = 0; i < bloodDecals.length; i++) {
+    const d = bloodDecals[i];
+    if (d.x < minX || d.x > maxX || d.y < minY || d.y > maxY) continue;
+    if (d.lifeTime > 0) continue;
+    if ((d.alpha || 0) <= 0.01) continue;
+
+    ctx.globalAlpha = d.alpha;
     ctx.beginPath();
     ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
 
-    // Zgrupowanie mikro-odprysków w tę samą ścieżkę (1 draw-call zamiast N)
     if (d.splats && d.splats.length > 0) {
       for (let s = 0; s < d.splats.length; s++) {
         const sp = d.splats[s];
@@ -919,6 +942,7 @@ export function drawBloodDecals(ctx) {
     }
     ctx.fill();
   }
+
   ctx.restore();
 }
 

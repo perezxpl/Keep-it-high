@@ -403,7 +403,11 @@ function drawSettledBlocks(ctx, camera) {
   }
   const flashWhite = clearingRows && (Math.floor(now * 0.02) % 2 === 0);
 
-  for (const rowData of arena5State.gridRows.values()) {
+  const minRow = Math.max(0, Math.floor((1200 - camBottom) / CELL_SIZE) - 1);
+  const maxRow = Math.max(0, Math.ceil((1200 - camTop) / CELL_SIZE) + 1);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    const rowData = arena5State.gridRows.get(r);
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];

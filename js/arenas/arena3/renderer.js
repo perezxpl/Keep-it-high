@@ -37,6 +37,23 @@ import {
   drawWeatheredBalustrade
 } from './weatheredAssets.js';
 
+// Cache statycznych gradientów i tablic bloków rampy do eliminacji alokacji per klatka
+let _cachedCliffGrad = null;
+let _cachedShoreGrad = null;
+let _cachedDeepAbyssGrad = null;
+let _cachedSurfGrad = null;
+let _cachedPoolGrad = null;
+
+let _rampLeftBlocks = null;
+let _rampRightBlocks = null;
+function getRampBlocks(isLeft) {
+  if (!_rampLeftBlocks) {
+    _rampLeftBlocks = ARENA_3_RAMP_BLOCKS.filter(b => b.side === 'left');
+    _rampRightBlocks = ARENA_3_RAMP_BLOCKS.filter(b => b.side === 'right');
+  }
+  return isLeft ? _rampLeftBlocks : _rampRightBlocks;
+}
+
 function drawGroundwaterPool(ctx, seg) {
   if (!seg || seg.length < 2) return;
   const xStart = seg[0].x - 2;
@@ -44,10 +61,12 @@ function drawGroundwaterPool(ctx, seg) {
 
   ctx.save();
   // Woda podziemna / gruntowa
-  const poolGrad = ctx.createLinearGradient(0, GROUND_WATER_TABLE_Y, 0, GROUND_BEDROCK_Y);
-  poolGrad.addColorStop(0, 'rgba(10, 42, 48, 0.88)');
-  poolGrad.addColorStop(1, 'rgba(4, 18, 22, 0.98)');
-  ctx.fillStyle = poolGrad;
+  if (!_cachedPoolGrad) {
+    _cachedPoolGrad = ctx.createLinearGradient(0, GROUND_WATER_TABLE_Y, 0, GROUND_BEDROCK_Y);
+    _cachedPoolGrad.addColorStop(0, 'rgba(10, 42, 48, 0.88)');
+    _cachedPoolGrad.addColorStop(1, 'rgba(4, 18, 22, 0.98)');
+  }
+  ctx.fillStyle = _cachedPoolGrad;
 
   ctx.beginPath();
   ctx.moveTo(xStart, GROUND_WATER_TABLE_Y);
@@ -251,28 +270,15 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
   ctx.lineTo(-halfW + 1, -halfH * 0.6);
   ctx.closePath();
 
-  // 2. Wielowarstwowy gradient drewna z pociemnieniem
-  const bGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
-  if (isWet) {
-    bGrad.addColorStop(0.0, '#3f2510');
-    bGrad.addColorStop(0.5, '#2b1708');
-    bGrad.addColorStop(1.0, '#160a03');
-  } else {
-    bGrad.addColorStop(0.0, '#664019');
-    bGrad.addColorStop(0.4, '#492c10');
-    bGrad.addColorStop(0.8, '#2d1807');
-    bGrad.addColorStop(1.0, '#1c0d03');
-  }
-  ctx.fillStyle = bGrad;
+  // 2. Wielowarstwowe wypełnienie drewna
+  ctx.fillStyle = isWet ? '#2b1708' : '#492c10';
   ctx.fill();
 
   // 3. Zwęglenie i osmolenie po wybuchu (scorch mark)
   const sx = scorchSide === 'left' ? -halfW + 4 : halfW - 4;
-  const sGrad = ctx.createRadialGradient(sx, -halfH * 0.2, 2, sx, -halfH * 0.2, w * 0.65);
-  sGrad.addColorStop(0.0, 'rgba(10, 5, 2, 0.95)');
-  sGrad.addColorStop(0.4, 'rgba(25, 12, 4, 0.75)');
-  sGrad.addColorStop(1.0, 'rgba(40, 20, 8, 0.0)');
-  ctx.fillStyle = sGrad;
+  ctx.fillStyle = 'rgba(15, 8, 3, 0.70)';
+  ctx.beginPath();
+  ctx.arc(sx, -halfH * 0.2, w * 0.45, 0, Math.PI * 2);
   ctx.fill();
 
   // 4. Ciemny kontur pęknięć
@@ -357,13 +363,8 @@ function drawSplinteredRockSlab(ctx, slab) {
   ctx.lineTo(-halfW - 2, -halfH * 0.2);
   ctx.closePath();
 
-  // 2. Główny gradient skały
-  const rGrad = ctx.createLinearGradient(-halfW, -halfH, halfW, halfH);
-  rGrad.addColorStop(0.0, '#4b574b');
-  rGrad.addColorStop(0.35, '#343f34');
-  rGrad.addColorStop(0.70, '#202820');
-  rGrad.addColorStop(1.0, '#101610');
-  ctx.fillStyle = rGrad;
+  // 2. Główny kolor skały
+  ctx.fillStyle = '#343f34';
   ctx.fill();
 
   // 3. Facet lighting (fasetowane cieniowanie ścian odłamu)
@@ -386,11 +387,9 @@ function drawSplinteredRockSlab(ctx, slab) {
   ctx.fill();
 
   // 4. Zwęglenie po wybuchu
-  const scorchGrad = ctx.createRadialGradient(-halfW * 0.3, -halfH * 0.3, 3, -halfW * 0.3, -halfH * 0.3, halfW * 0.8);
-  scorchGrad.addColorStop(0.0, 'rgba(8, 12, 8, 0.95)');
-  scorchGrad.addColorStop(0.5, 'rgba(15, 20, 15, 0.7)');
-  scorchGrad.addColorStop(1.0, 'rgba(25, 35, 25, 0.0)');
-  ctx.fillStyle = scorchGrad;
+  ctx.fillStyle = 'rgba(10, 15, 10, 0.65)';
+  ctx.beginPath();
+  ctx.arc(-halfW * 0.3, -halfH * 0.3, halfW * 0.55, 0, Math.PI * 2);
   ctx.fill();
 
   // 5. Ciemny kontur bryły skalnej
@@ -661,13 +660,15 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.lineTo(edgeX, 1400);
     ctx.closePath();
 
-    // A. BAZOWY GRADIENT BAZALTOWO-ŁUPKOWY (Głęboka nocna czerń i chłodny grafit)
-    const cliffGrad = ctx.createLinearGradient(0, 1200, 0, 1400);
-    cliffGrad.addColorStop(0.00, '#131c26');
-    cliffGrad.addColorStop(0.20, '#0e161f');
-    cliffGrad.addColorStop(0.55, '#090e13');
-    cliffGrad.addColorStop(1.00, '#04070a');
-    ctx.fillStyle = cliffGrad;
+    // A. BAZOWY GRADIENT BAZALTOWO-ŁUPKOWY (ze zbuforowanego bufora)
+    if (!_cachedCliffGrad) {
+      _cachedCliffGrad = ctx.createLinearGradient(0, 1200, 0, 1400);
+      _cachedCliffGrad.addColorStop(0.00, '#131c26');
+      _cachedCliffGrad.addColorStop(0.20, '#0e161f');
+      _cachedCliffGrad.addColorStop(0.55, '#090e13');
+      _cachedCliffGrad.addColorStop(1.00, '#04070a');
+    }
+    ctx.fillStyle = _cachedCliffGrad;
     ctx.fill();
 
     // B. POZIOME WARSTWY GEOLOGICZNE (STRATA) I SPĘKANIA SKALNE
@@ -813,20 +814,29 @@ export function drawArena3Foreground(ctx, camera) {
   function drawRiverWaterZone() {
     if (camL >= 2850 || camR <= 1550) return;
 
+    if (!_cachedShoreGrad) {
+      _cachedShoreGrad = ctx.createLinearGradient(1600, 1300, 1600, 1400);
+      _cachedShoreGrad.addColorStop(0.0, 'rgba(28, 120, 180, 0.70)');
+      _cachedShoreGrad.addColorStop(0.5, 'rgba(16, 85, 145, 0.82)');
+      _cachedShoreGrad.addColorStop(1.0, 'rgba(8, 48, 92, 0.90)');
+
+      _cachedDeepAbyssGrad = ctx.createLinearGradient(2200, 1315, 2200, 1400);
+      _cachedDeepAbyssGrad.addColorStop(0.0, 'rgba(12, 55, 95, 0.75)');
+      _cachedDeepAbyssGrad.addColorStop(0.3, 'rgba(6, 32, 65, 0.92)');
+      _cachedDeepAbyssGrad.addColorStop(1.0, 'rgba(3, 14, 34, 0.98)');
+
+      _cachedSurfGrad = ctx.createLinearGradient(1600, 1292, 1600, 1340);
+      _cachedSurfGrad.addColorStop(0.0, 'rgba(96, 210, 255, 0.92)');
+      _cachedSurfGrad.addColorStop(0.4, 'rgba(32, 150, 220, 0.75)');
+      _cachedSurfGrad.addColorStop(1.0, 'rgba(16, 90, 160, 0.50)');
+    }
+
     // A. Wypełnienie toni wodnej (płycizny przy brzegach i mroczna, śmiertelna głębia w środku)
-    const shoreGrad = ctx.createLinearGradient(1600, 1300, 1600, 1400);
-    shoreGrad.addColorStop(0.0, 'rgba(28, 120, 180, 0.70)');
-    shoreGrad.addColorStop(0.5, 'rgba(16, 85, 145, 0.82)');
-    shoreGrad.addColorStop(1.0, 'rgba(8, 48, 92, 0.90)');
-    ctx.fillStyle = shoreGrad;
+    ctx.fillStyle = _cachedShoreGrad;
     ctx.fillRect(1600, 1300, 1200, 100);
 
     // Głęboki nurt centralny (X: 1750 do 2650) - głęboka toń śmiertelna
-    const deepAbyssGrad = ctx.createLinearGradient(2200, 1315, 2200, 1400);
-    deepAbyssGrad.addColorStop(0.0, 'rgba(12, 55, 95, 0.75)');
-    deepAbyssGrad.addColorStop(0.3, 'rgba(6, 32, 65, 0.92)');
-    deepAbyssGrad.addColorStop(1.0, 'rgba(3, 14, 34, 0.98)');
-    ctx.fillStyle = deepAbyssGrad;
+    ctx.fillStyle = _cachedDeepAbyssGrad;
     ctx.fillRect(1750, 1315, 900, 85);
 
     // B. Falująca powierzchnia rzeki
@@ -843,11 +853,7 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.lineTo(1600, 1400);
     ctx.closePath();
 
-    const surfGrad = ctx.createLinearGradient(1600, 1292, 1600, 1340);
-    surfGrad.addColorStop(0.0, 'rgba(96, 210, 255, 0.92)');
-    surfGrad.addColorStop(0.4, 'rgba(32, 150, 220, 0.75)');
-    surfGrad.addColorStop(1.0, 'rgba(16, 90, 160, 0.50)');
-    ctx.fillStyle = surfGrad;
+    ctx.fillStyle = _cachedSurfGrad;
     ctx.fill();
 
     // C. Błyszczące refleksy piany na powierzchni rzeki
@@ -1701,7 +1707,7 @@ export function drawArena3Foreground(ctx, camera) {
     if (rx2 < camL || rx1 > camR) return;
 
     ctx.save();
-    const rampBlocks = ARENA_3_RAMP_BLOCKS.filter(b => isLeft ? b.side === 'left' : b.side === 'right');
+    const rampBlocks = getRampBlocks(isLeft);
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
       if (b.x + b.w + 40 < camL || b.x - 40 > camR) continue;
@@ -1772,8 +1778,8 @@ export function drawArena3Foreground(ctx, camera) {
 
     ctx.save();
 
-    // Filtruj bloki dla tej strony
-    const rampBlocks = ARENA_3_RAMP_BLOCKS.filter(b => isLeft ? b.side === 'left' : b.side === 'right');
+    // Użycie pre-filtrowanych tablic zamiast filter co klatkę
+    const rampBlocks = getRampBlocks(isLeft);
 
     for (let rIdx = 0; rIdx < rampBlocks.length; rIdx++) {
       const b = rampBlocks[rIdx];
@@ -1793,12 +1799,7 @@ export function drawArena3Foreground(ctx, camera) {
         ctx.lineTo(b.origX, y1 + 20);
         ctx.closePath();
 
-        const blockGrad = ctx.createLinearGradient(b.origX, y1, b.origX + b.w, y2 + 20);
-        blockGrad.addColorStop(0.0, '#664019');
-        blockGrad.addColorStop(0.35, '#4a2c10');
-        blockGrad.addColorStop(0.75, '#2d1807');
-        blockGrad.addColorStop(1.0, '#1c0d03');
-        ctx.fillStyle = blockGrad;
+        ctx.fillStyle = '#4a2c10';
         ctx.fill();
 
         ctx.strokeStyle = '#180a02';

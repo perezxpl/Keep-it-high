@@ -154,6 +154,12 @@ export function getSegmentSegmentIntersection(x1, y1, x2, y2, sx1, sy1, sx2, sy2
 export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacles = null, bulletObj = null) {
   let closestHit = null;
 
+  // Granice AABB promienia do błyskawicznego odrzucania obiektów poza zasięgiem (Broadphase)
+  const rayMinX = Math.min(x1, x2) - 6;
+  const rayMaxX = Math.max(x1, x2) + 6;
+  const rayMinY = Math.min(y1, y2) - 6;
+  const rayMaxY = Math.max(y1, y2) + 6;
+
   function recordHit(candidate, sourceName = 'unknown') {
     if (!candidate || !candidate.hit) return;
     if (!closestHit || candidate.t < closestHit.t) {
@@ -263,6 +269,36 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
       // W Arenie 5 zniszczalne klocki wieży są w całości obsługiwane przez activeArena.onBulletHit()
       const isA5 = (curArenaObj?.id === 'arena-5' || activeArenaId === 'ARENA_5' || activeArenaId === 'arena-5' || activeArenaId === 'PREFAB_TOWER');
       if (isA5 && plat.isA5Block) {
+        continue;
+      }
+
+      // Jednorazowe zbuforowanie AABB platformy do odrzucania O(1)
+      if (plat._minX === undefined) {
+        if (Array.isArray(plat.surfacePoints) && plat.surfacePoints.length > 0) {
+          let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+          for (let pi = 0; pi < plat.surfacePoints.length; pi++) {
+            const p = plat.surfacePoints[pi];
+            if (p.x < mnx) mnx = p.x;
+            if (p.x > mxx) mxx = p.x;
+            const py = p.y !== undefined ? p.y : (groundY - (p.relY || 0));
+            if (py < mny) mny = py;
+            if (py > mxy) mxy = py;
+          }
+          plat._minX = mnx;
+          plat._maxX = mxx;
+          plat._minY = mny;
+          plat._maxY = mxy;
+        } else {
+          plat._minX = plat.x !== undefined ? plat.x : 0;
+          plat._maxX = plat._minX + (plat.w || 0);
+          const py = plat.y !== undefined ? plat.y : (groundY - (plat.relY || 0));
+          plat._minY = Math.min(py, plat.startY !== undefined ? plat.startY : py);
+          plat._maxY = Math.max(py + (plat.h || plat.thickness || 30), plat.endY !== undefined ? plat.endY + 30 : py + 30);
+        }
+      }
+
+      // Szybki test odrzucenia AABB promienia względem platformy
+      if (rayMaxX < plat._minX || rayMinX > plat._maxX || rayMaxY < plat._minY || rayMinY > plat._maxY) {
         continue;
       }
 
@@ -387,8 +423,16 @@ export function checkRayObstacleCollision(x1, y1, x2, y2, groundY, extraObstacle
       if (!obs || obs.team || obs.holeCx !== undefined || obs.id?.startsWith('goal') || obs.type === 'goal') {
         continue;
       }
+      const obsX = obs.x !== undefined ? obs.x : 0;
+      const obsW = obs.w || obs.size || 40;
       const topY = obs.y !== undefined ? obs.y : (groundY - obs.relY);
-      const bottomY = topY + obs.h;
+      const obsH = obs.h || obs.size || 40;
+      const bottomY = topY + obsH;
+
+      // Szybkie odrzucenie AABB
+      if (rayMaxX < obsX || rayMinX > obsX + obsW || rayMaxY < topY || rayMinY > bottomY) {
+        continue;
+      }
 
       if (obs.type === 'hedgehog') {
         const cx = obs.x + obs.w / 2;

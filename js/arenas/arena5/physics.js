@@ -981,8 +981,10 @@ function updateFallingBlocks(dt, combatants) {
 
             if (isStandingOnCell) {
               victim.x += stepX;
-              // Jeśli gracz jadący na klocku (isStandingOnCell) uderzy podczas jazdy w bok sąsiedniego klocka na swojej wysokości, zatrzymaj przesuwanie gracza (victim.x) na ścianie tego klocka
-              for (const otherRow of arena5State.gridRows.values()) {
+              // Zoptymalizowane sprawdzenie sąsiednich klocków wyłącznie na wysokości gracza (O(1) zamiast skanowania całej siatki)
+              const vRow = Math.max(0, Math.floor((1200 - (victim.y + pH * 0.5)) / CELL_SIZE));
+              for (let tr = vRow - 1; tr <= vRow + 1; tr++) {
+                const otherRow = arena5State.gridRows.get(tr);
                 if (!otherRow) continue;
                 for (let oc = 0; oc < COLS; oc++) {
                   const oCell = otherRow[oc];

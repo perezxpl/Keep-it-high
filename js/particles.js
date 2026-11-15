@@ -675,14 +675,17 @@ export class ConcreteDebris {
     }
 
     if (this.grounded) {
-      // Ponowna weryfikacja czy podłoże lub platforma pod odłamkiem nadal istnieje (nie zostało wycięte przez krater)
-      const curFloor = findPlatformLandingY(this.x, this.y - 6, this.y + 12, groundY, platforms);
-      if (curFloor === Infinity || Math.abs((this.y + this.size * 0.4) - curFloor) > 14) {
-        this.grounded = false;
-        this.vy = 40;
-      } else {
-        return true;
+      // Weryfikuj istnienie podloza tylko raz na 20 klatek, eliminujac dziesiatki wyszukiwan platform per klatka
+      this._groundCheckTimer = (this._groundCheckTimer || 0) - 1;
+      if (this._groundCheckTimer <= 0) {
+        this._groundCheckTimer = 20;
+        const curFloor = findPlatformLandingY(this.x, this.y - 6, this.y + 12, groundY, platforms);
+        if (curFloor === Infinity || Math.abs((this.y + this.size * 0.4) - curFloor) > 14) {
+          this.grounded = false;
+          this.vy = 40;
+        }
       }
+      return true;
     }
 
     // Standardowa grawitacja i opór powietrza
@@ -792,16 +795,18 @@ export class PowderSmoke {
 
   draw(ctx) {
     if (!ctx || this.alpha <= 0) return;
+    const sprite = getSmokePuffCanvas();
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-    grad.addColorStop(0.0, this.color);
-    grad.addColorStop(0.7, this.color);
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
+    if (sprite) {
+      const d = this.radius * 2;
+      ctx.drawImage(sprite, this.x - this.radius, this.y - this.radius, d, d);
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }

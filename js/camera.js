@@ -11,10 +11,14 @@ let _cameraCanvas = null;
 let _cameraGroundY = null;
 let _cameraArenaId = 'ARENA_1';
 
-export function isMobileDevice() {
+let _cachedIsMobile = null;
+
+export function isMobileDevice(forceRefresh = false) {
   if (typeof window === 'undefined') return false;
+  if (_cachedIsMobile !== null && !forceRefresh) return _cachedIsMobile;
   
   if (window.location && (new URLSearchParams(window.location.search).has('mobile') || new URLSearchParams(window.location.search).has('touch'))) {
+    _cachedIsMobile = true;
     return true;
   }
 
@@ -24,7 +28,25 @@ export function isMobileDevice() {
     window.matchMedia('(pointer: coarse)').matches &&
     !window.matchMedia('(pointer: fine)').matches;
 
-  return isMobileUA || (isTouchDevice && isSmallScreen) || isPureTouch;
+  _cachedIsMobile = isMobileUA || (isTouchDevice && isSmallScreen) || isPureTouch;
+  return _cachedIsMobile;
+}
+
+let _cachedCamX = null;
+let _cachedCamY = null;
+let _hasCustomCamUrl = false;
+if (typeof window !== 'undefined' && window.location) {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('camX')) {
+      _cachedCamX = Number(urlParams.get('camX'));
+      _hasCustomCamUrl = true;
+    }
+    if (urlParams.has('camY')) {
+      _cachedCamY = Number(urlParams.get('camY'));
+      _hasCustomCamUrl = true;
+    }
+  } catch (_) {}
 }
 
 /**
@@ -82,6 +104,7 @@ const initialDefaultZoom = calculateOptimalBaseZoom(initialCanvasW, initialCanva
 
 export function setCameraCanvas(c) {
   _cameraCanvas = c;
+  updateCanvasDimensionsCache();
 }
 
 export function getCameraCanvas() {
@@ -203,36 +226,49 @@ Object.defineProperty(camera, 'shake', {
   configurable: true
 });
 
+let _cachedLogicalWidth = 0;
+let _cachedLogicalHeight = 0;
+
+export function updateCanvasDimensionsCache() {
+  const c = getCameraCanvas();
+  if (c && c.clientWidth > 0 && c.clientHeight > 0) {
+    _cachedLogicalWidth = c.clientWidth;
+    _cachedLogicalHeight = c.clientHeight;
+    return;
+  }
+  const isTouchMobile = typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio && isTouchMobile) ? Math.min(window.devicePixelRatio, 2.0) : 1.0;
+  if (c && c.width && c.height && dpr > 0) {
+    _cachedLogicalWidth = c.width / dpr;
+    _cachedLogicalHeight = c.height / dpr;
+    return;
+  }
+  _cachedLogicalWidth = (typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1920);
+  _cachedLogicalHeight = (typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : 1080);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    _cachedIsMobile = null;
+    isMobileDevice();
+    updateCanvasDimensionsCache();
+  }, { passive: true });
+}
+
 /**
  * Logiczna szerokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
  */
 export function getCanvasLogicalWidth() {
-  const c = getCameraCanvas();
-  if (c && c.clientWidth > 0) {
-    return c.clientWidth;
-  }
-  const isTouchMobile = typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio && isTouchMobile) ? Math.min(window.devicePixelRatio, 2.0) : 1.0;
-  if (c && c.width && dpr > 0) {
-    return c.width / dpr;
-  }
-  return (typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1920);
+  if (_cachedLogicalWidth <= 0) updateCanvasDimensionsCache();
+  return _cachedLogicalWidth;
 }
 
 /**
  * Logiczna wysokość canvasa w przestrzeni CSS (z uwzględnieniem DPR)
  */
 export function getCanvasLogicalHeight() {
-  const c = getCameraCanvas();
-  if (c && c.clientHeight > 0) {
-    return c.clientHeight;
-  }
-  const isTouchMobile = typeof window !== 'undefined' && window.innerWidth <= 1024 && (('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0));
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio && isTouchMobile) ? Math.min(window.devicePixelRatio, 2.0) : 1.0;
-  if (c && c.height && dpr > 0) {
-    return c.height / dpr;
-  }
-  return (typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : 1080);
+  if (_cachedLogicalHeight <= 0) updateCanvasDimensionsCache();
+  return _cachedLogicalHeight;
 }
 
 /**
@@ -674,10 +710,9 @@ export function updateCamera(player, ball, options = {}) {
   }
 
   // Opcjonalne ręczne wymuszenie pozycji kamery w parametrach URL (?camX=...&camY=...)
-  if (typeof window !== 'undefined' && window.location) {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('camX')) camera.x = Number(urlParams.get('camX'));
-    if (urlParams.has('camY')) camera.y = Number(urlParams.get('camY'));
+  if (_hasCustomCamUrl) {
+    if (_cachedCamX !== null) camera.x = _cachedCamX;
+    if (_cachedCamY !== null) camera.y = _cachedCamY;
   }
 
   // Ograniczenie wykonaj ZAWSZE na samym końcu, po wyliczeniu wygładzenia:

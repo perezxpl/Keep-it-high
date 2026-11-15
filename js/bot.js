@@ -483,6 +483,7 @@ export function setBotCount(count, options = {}) {
   const parsed = parseInt(count, 10);
   const num = Math.max(0, Math.min(7, isNaN(parsed) ? 1 : parsed));
   botCount = num;
+  _cachedActiveBots = null;
   if (num > 0 && !options.isRemote && !botEnabled) {
     botEnabled = true;
     bot.active = true;
@@ -540,25 +541,57 @@ export function getBotCount() {
   return botCount;
 }
 
+// Cache aktywnych botów do eliminacji alokacji tablic w każdej klatce
+let _cachedActiveBots = null;
+let _cachedBotCount = -1;
+let _cachedBotEnabled = null;
+let _cachedDifficulty = null;
+
+export function invalidateActiveBotsCache() {
+  _cachedActiveBots = null;
+}
+
 export function getActiveBots() {
-  if (!botEnabled || bot.active === false || botCount === 0) {
+  const curDiff = getBotDifficulty();
+  const isEnabled = !!(botEnabled && bot.active !== false && botCount > 0);
+
+  if (
+    _cachedActiveBots &&
+    _cachedBotCount === botCount &&
+    _cachedBotEnabled === isEnabled &&
+    _cachedDifficulty === curDiff &&
+    bots.length >= botCount
+  ) {
+    return _cachedActiveBots;
+  }
+
+  if (!isEnabled) {
     for (let i = 0; i < bots.length; i++) {
       if (bots[i]) bots[i].active = false;
     }
-    return [];
+    _cachedActiveBots = [];
+    _cachedBotCount = botCount;
+    _cachedBotEnabled = false;
+    _cachedDifficulty = curDiff;
+    return _cachedActiveBots;
   }
+
   let guardActive = 0;
   while (bots.length < botCount && ++guardActive < 50) {
     bots.push(createBotInstance(bots.length, true));
   }
-  const curDiff = getBotDifficulty();
   for (let i = 0; i < bots.length; i++) {
     if (bots[i]) {
       bots[i].active = (i < botCount);
       bots[i].difficulty = curDiff;
     }
   }
-  return bots.slice(0, botCount).filter(b => b && b.active);
+
+  _cachedActiveBots = bots.slice(0, botCount).filter(b => b && b.active);
+  _cachedBotCount = botCount;
+  _cachedBotEnabled = true;
+  _cachedDifficulty = curDiff;
+  return _cachedActiveBots;
 }
 
 export function getMpBotCount() {

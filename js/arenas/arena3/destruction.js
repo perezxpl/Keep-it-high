@@ -77,6 +77,16 @@ export function onArena3BulletHit(bullet) {
   const by0 = bullet.prevY !== undefined ? bullet.prevY : (by - (bullet.vy || 0));
   const bDamage = bullet.damage || 14;
 
+  const minObjX = Math.min(bx, bx0) - 6;
+  const maxObjX = Math.max(bx, bx0) + 6;
+  const minObjY = Math.min(by, by0) - 6;
+  const maxObjY = Math.max(by, by0) + 6;
+
+  // Szybkie odrzucenie pocisków całkowicie poza zakresem struktur mostu i dżungli (Y: 0 do 1420, X: 500 do 3900)
+  if (maxObjX < 500 || minObjX > 3900 || maxObjY < 0 || minObjY > 1420) {
+    return false;
+  }
+
   // 1. Lustro wody w rzece (X: 1600 do 2800, linia wody Y: 1305) - absorpcja i rozbryzg wodny
   if ((by >= 1305 || (by0 < 1305 && by >= 1305)) && bx >= 1600 && bx <= 2800) {
     spawnArena3WaterSplash(bx, 1305, 8);
@@ -149,6 +159,7 @@ export function onArena3BulletHit(bullet) {
   // 4. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS) - całe i zawalone
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
+    if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 12 || minObjY > b.y + b.h + 18) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 10, b.x + b.w + 2, b.y + b.h + 16)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
@@ -174,6 +185,7 @@ export function onArena3BulletHit(bullet) {
   // 5. Klocki mostu głównego (ARENA_3_BRIDGE_BLOCKS) - całe i zawalone pływające deski
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
+    if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
@@ -199,6 +211,7 @@ export function onArena3BulletHit(bullet) {
   // 6. Klocki wiszących pomostów taktycznych (ALL_CANOPY_BLOCKS)
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
+    if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;
@@ -239,6 +252,7 @@ export function onArena3BulletHit(bullet) {
   // 7. Modularne płyty skalne snajperów (ARENA_3_SNIPER_SLABS)
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
+    if (maxObjX < slab.x - 4 || minObjX > slab.x + slab.w + 4 || maxObjY < slab.y - 10 || minObjY > slab.y + slab.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, slab.x - 2, slab.y - 4, slab.x + slab.w + 2, slab.y + slab.h + 6)) {
       if (slab.intact) {
         slab.hp -= bDamage * 0.35;
@@ -261,6 +275,7 @@ export function onArena3BulletHit(bullet) {
   // 8. Modularne drewniane podesty wież strażniczych (ARENA_3_TOWER_BLOCKS)
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
+    if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
         b.hp -= bDamage * 0.45;

@@ -5,7 +5,7 @@
 // =========================================================================
 
 import { DEFAULT_VISUALS } from './hair.js';
-import { drawCamoSplotches } from './torso.js';
+import { drawCamoSplotches, getCamoPattern } from './torso.js';
 
 export const PANTS_STYLE_LIST = [
   'cargo_long',         // 1. Długie bojówki bojowe PMC (jednolite z paletą barw)
@@ -184,11 +184,17 @@ export function drawPantsPreview(
     traceShorts();
 
     if (camo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, camo, -8.0, -21.0, 6.0, 4.0);
-      ctx.restore();
-      traceShorts();
+      const pat = getCamoPattern(camo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, camo, -8.0, -21.0, 6.0, 4.0);
+        ctx.restore();
+        traceShorts();
+      }
     } else {
       const pantsGrad = ctx.createLinearGradient(-6.0, 0, 5.0, 0);
       pantsGrad.addColorStop(0.0, pal.dark);
@@ -268,11 +274,17 @@ export function drawPantsPreview(
     traceLongTrousers();
 
     if (camo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, camo, -8.0, -21.0, 6.0, 18.0);
-      ctx.restore();
-      traceLongTrousers();
+      const pat = getCamoPattern(camo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, camo, -8.0, -21.0, 6.0, 18.0);
+        ctx.restore();
+        traceLongTrousers();
+      }
     } else {
       const pantsGrad = ctx.createLinearGradient(-6.0, 0, 5.0, 0);
       pantsGrad.addColorStop(0.0, pal.dark);

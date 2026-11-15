@@ -67,6 +67,7 @@ import {
   TORSO_COLOR_LIST,
   isLongSleeve,
   getCamoType,
+  getCamoPattern,
   doesTorsoSupportColor,
   getTorsoPalette,
   drawCamoSplotches,
@@ -290,7 +291,8 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   }
 
   const isLocalOrCreator = !p.isZombie && !!(p._isCreatorPreview || (typeof window !== 'undefined' && p === window.player));
-  if (!p._cachedVisuals || p._visualsDirty || isLocalOrCreator) {
+  const localVisualsChanged = isLocalOrCreator && (p._lastLocalVisuals !== localPlayerCustomVisuals);
+  if (!p._cachedVisuals || p._visualsDirty || localVisualsChanged) {
     p._cachedVisuals = {
       ...DEFAULT_VISUALS,
       ...(p.currentClass?.visuals || {}),
@@ -298,6 +300,9 @@ export function drawPlayer(ctx, GROUND_Y, p) {
       ...(p.customVisuals || {})
     };
     p._visualsDirty = false;
+    if (isLocalOrCreator) {
+      p._lastLocalVisuals = localPlayerCustomVisuals;
+    }
   }
   const v = p._cachedVisuals;
   v.jetFuel = p.jetFuel;
@@ -895,9 +900,11 @@ export function drawPlayer(ctx, GROUND_Y, p) {
 
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   const hasActiveWeapon = p.currentWeapon && hWeight < 0.99 && !p.isDead && !(p.staggerTimer > 0) && !(p.throwAnim && p.throwAnim.active) && !p.isZombie;
+  let weaponHold = null;
 
   if (hasActiveWeapon) {
-    const hold = getWeaponHoldTransform(p);
+    weaponHold = getWeaponHoldTransform(p);
+    const hold = weaponHold;
 
     const tiltWep = p.pose?.torsoTilt || p.torsoTilt || 0;
     const cosTWep = Math.cos(tiltWep);
@@ -1415,11 +1422,17 @@ export function drawPlayer(ctx, GROUND_Y, p) {
   tracePelvis();
 
   if (pantsCamo) {
-    ctx.save();
-    ctx.clip();
-    drawCamoSplotches(ctx, pantsCamo, -waistHalfW * 1.25, pelvisTopY - 1, waistHalfW * 1.25, pelvisBottomY + 1);
-    ctx.restore();
-    tracePelvis();
+    const pat = getCamoPattern(pantsCamo, ctx);
+    if (pat) {
+      ctx.fillStyle = pat;
+      ctx.fill();
+    } else {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, pantsCamo, -waistHalfW * 1.25, pelvisTopY - 1, waistHalfW * 1.25, pelvisBottomY + 1);
+      ctx.restore();
+      tracePelvis();
+    }
   } else {
     const pelvisGrad = ctx.createLinearGradient(0, pelvisTopY, -fDir * waistHalfW, pelvisBottomY);
     pelvisGrad.addColorStop(0.0, pantsPal.light);
@@ -1899,7 +1912,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     // Broń trzymana w prawej ręce PRZED prawą nogą
-    drawHeldWeapon(ctx, p);
+    drawHeldWeapon(ctx, p, weaponHold);
 
     // Prawe ramię na wierzchu (dłoń obejmuje chwyt broni)
     if (!isArmFrontDismembered) {
@@ -1915,7 +1928,7 @@ export function drawPlayer(ctx, GROUND_Y, p) {
     }
 
     // Broń w prawej dłoni w tle znajduje się ZA pierwszoplanową lewą nogą
-    drawHeldWeapon(ctx, p);
+    drawHeldWeapon(ctx, p, weaponHold);
 
     // Lewa noga na pierwszym planie (zasłania broń trzymaną w tle)
     if (!isLegBackDismembered) {

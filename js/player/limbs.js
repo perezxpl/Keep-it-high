@@ -6,7 +6,7 @@
 import { CONFIG } from '../config.js';
 import { solve2BoneIK, getArmAnglesForTarget, lerp, lerpAngle } from './ik.js';
 import { DEFAULT_VISUALS } from './hair.js';
-import { isSleeveless, isLongSleeve, getCamoType, drawCamoSplotches, getTorsoPalette } from './torso.js';
+import { isSleeveless, isLongSleeve, getCamoType, getCamoPattern, drawCamoSplotches, getTorsoPalette } from './torso.js';
 import { isPantsShorts, getPantsCamoType, getPantsPalette } from './pants.js';
 import { drawBootCollarOverPants, drawFootwear } from './shoes.js';
 import { getJetpackFlamePalette, drawJetpackThrustPlume } from './jetpack.js';
@@ -16,7 +16,7 @@ import { drawRightThighPistolHolster, drawLeftThighMeleeSheath } from './holster
  * Rysuje poszarpany kikut mięśniowy i odłamaną kość w miejscu urwanej kończyny
  */
 export function drawLimbStump(ctx, x, y, angle, type, facing, visuals, isFront) {
-  const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
+  const v = visuals || DEFAULT_VISUALS;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
@@ -234,17 +234,22 @@ export function drawHandheldGrenade(ctx, x, y, scale = 1.0, cookRatio = 0) {
 export function drawBulletPuncture(ctx, x, y, radius, alpha) {
   if (alpha <= 0.02) return;
   ctx.save();
-  ctx.globalAlpha = Math.min(1.0, alpha);
+  const effAlpha = Math.min(1.0, alpha);
 
-  // 1. Ciemna plama krwi wsiąkająca w tkaninę/kamizelkę wokół wlotu pocisku
-  const haloGrad = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius * 3.2);
-  haloGrad.addColorStop(0.0, 'rgba(127, 29, 29, 0.90)');
-  haloGrad.addColorStop(0.5, 'rgba(69, 10, 10, 0.65)');
-  haloGrad.addColorStop(1.0, 'rgba(69, 10, 10, 0.0)');
-  ctx.fillStyle = haloGrad;
+  // 1. Ciemna plama krwi wsiąkająca w tkaninę/kamizelkę wokół wlotu pocisku (dwuwarstwowe wypełnienie z globalAlpha)
+  ctx.fillStyle = '#450a0a';
+  ctx.globalAlpha = effAlpha * 0.35;
   ctx.beginPath();
   ctx.arc(x, y, radius * 3.2, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.fillStyle = '#7f1d1d';
+  ctx.globalAlpha = effAlpha * 0.75;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = effAlpha;
 
   // 2. Okopcona, postrzępiona krawędź wlotu (ballistic powder burn / frayed Kevlar rim)
   ctx.fillStyle = '#09090b';
@@ -349,14 +354,17 @@ export function drawBloodTrickle(ctx, startX, startY, len, curveX, width, alpha)
 export function drawBloodSoak(ctx, cx, cy, rx, ry, alpha) {
   if (alpha <= 0.02) return;
   ctx.save();
-  ctx.globalAlpha = Math.min(1.0, alpha);
-  const grad = ctx.createRadialGradient(cx, cy, 0.8, cx, cy, Math.max(rx, ry));
-  grad.addColorStop(0.0, 'rgba(127, 29, 29, 0.85)');
-  grad.addColorStop(0.45, 'rgba(80, 10, 10, 0.60)');
-  grad.addColorStop(1.0, 'rgba(69, 10, 10, 0.0)');
-  ctx.fillStyle = grad;
+  const effAlpha = Math.min(1.0, alpha);
+  ctx.fillStyle = '#450a0a';
+  ctx.globalAlpha = effAlpha * 0.35;
   ctx.beginPath();
   ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#7f1d1d';
+  ctx.globalAlpha = effAlpha * 0.75;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx * 0.6, ry * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -651,12 +659,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   if (useGloves) {
     const cuffW = 2.2 * handScale;
     const cuffH = wristR * 1.12;
-    const cuffGrad = ctx.createLinearGradient(hX - 0.8, -cuffH, hX + cuffW, cuffH);
-    cuffGrad.addColorStop(0.0, '#09090b');
-    cuffGrad.addColorStop(0.5, gloveCol0);
-    cuffGrad.addColorStop(1.0, '#09090b');
-
-    ctx.fillStyle = cuffGrad;
+    ctx.fillStyle = gloveCol0;
     ctx.beginPath();
     ctx.rect(hX - 0.8, -cuffH, cuffW, cuffH * 2);
     ctx.fill();
@@ -711,12 +714,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
     const kW = palmLen * 0.42;
     const kH = Math.abs(palmTop) * 1.2;
 
-    const kGrad = ctx.createLinearGradient(kX, -kH, kX + kW, kH);
-    kGrad.addColorStop(0.0, '#52525b');
-    kGrad.addColorStop(0.5, '#27272a');
-    kGrad.addColorStop(1.0, '#09090b');
-
-    ctx.fillStyle = kGrad;
+    ctx.fillStyle = '#27272a';
     ctx.beginPath();
     ctx.moveTo(kX, -kH * 0.75);
     ctx.quadraticCurveTo(kX + kW * 0.5, -kH * 1.05, kX + kW, -kH * 0.6);
@@ -739,15 +737,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   // 4. KCIUK TAKTYCZNY (Tactical Thumb)
   const thumbBaseX = hX + palmLen * 0.20;
   const thumbTipX = hX + palmLen * 0.72;
-  const thumbGrad = ctx.createLinearGradient(thumbBaseX, -1.8, thumbTipX, 1.2);
-  if (useGloves) {
-    thumbGrad.addColorStop(0.0, gloveCol1);
-    thumbGrad.addColorStop(0.6, gloveCol2);
-    thumbGrad.addColorStop(1.0, '#09090b');
-  } else {
-    thumbGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-    thumbGrad.addColorStop(1.0, isFront ? v.skinMid : v.skinDark);
-  }
+  const thumbColor = useGloves ? gloveCol1 : (isFront ? v.skinMid : v.skinBack);
 
   ctx.beginPath();
   ctx.moveTo(thumbBaseX, -0.6 * handScale);
@@ -755,7 +745,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
   ctx.lineTo(hX + palmLen * 0.60, 0.8 * handScale);
   ctx.lineTo(thumbBaseX + 0.4, 0.3 * handScale);
   ctx.closePath();
-  ctx.fillStyle = thumbGrad;
+  ctx.fillStyle = thumbColor;
   ctx.fill();
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 0.85;
@@ -797,7 +787,7 @@ export function drawTacticalHand(ctx, foreLen, wristR, isFront, muscle, isSculpt
 }
 
 export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCol, foreCol, isFront, visuals, armUpperLen = 14, armForeLen = 13, playerRef = null) {
-  const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
+  const v = visuals || DEFAULT_VISUALS;
   const upperLen = armUpperLen || 14;
   const foreLen = armForeLen || 13;
   const muscle = v.muscleMult || 1.0;
@@ -847,18 +837,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 
   const deltoidW = armHalfH * (isSculpted ? 1.48 : 1.32);
   const deltoidLen = upperLen * (isSculpted ? 0.48 : 0.42);
-
-  const deltoidGrad = ctx.createRadialGradient(deltoidLen * 0.2, -deltoidW * 0.25, 1.0, deltoidLen * 0.35, 0, deltoidW * 1.4);
-  if (isFront) {
-    deltoidGrad.addColorStop(0.0, v.skinLight);
-    deltoidGrad.addColorStop(0.40, v.skinMid);
-    deltoidGrad.addColorStop(0.85, v.skinDark);
-    deltoidGrad.addColorStop(1.0, '#78350f');
-  } else {
-    deltoidGrad.addColorStop(0.0, v.skinMid);
-    deltoidGrad.addColorStop(0.45, v.skinBack);
-    deltoidGrad.addColorStop(1.0, v.skinDark);
-  }
+  const deltoidColor = isFront ? v.skinMid : v.skinBack;
 
   // 1. Odsłonięty bark i biceps (rysowane pod rękawem, aby mankiet krótkiego rękawa czysto przykrywał skórę)
   if (!isLong) {
@@ -869,7 +848,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
       ctx.lineTo(deltoidLen, armHalfH * 0.65);
       ctx.quadraticCurveTo(deltoidLen * 0.55, deltoidW * 0.92, 0, deltoidW * 0.92);
       ctx.closePath();
-      ctx.fillStyle = deltoidGrad;
+      ctx.fillStyle = deltoidColor;
       ctx.fill();
 
       if (isSculpted) {
@@ -966,12 +945,17 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     traceSleeve();
 
     if (camoType) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, camoType, -1, -sleeveHalfH * 1.05, sleeveLen, sleeveHalfH * 1.05);
-      ctx.restore();
-      // Przywracamy obrys rękawa, aby stroke nie obrysował plam ani kropek
-      traceSleeve();
+      const pat = getCamoPattern(camoType, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, camoType, -1, -sleeveHalfH * 1.05, sleeveLen, sleeveHalfH * 1.05);
+        ctx.restore();
+        traceSleeve();
+      }
     } else {
       ctx.fillStyle = sleeveGrad;
       ctx.fill();
@@ -1073,12 +1057,17 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     traceForeSleeve();
 
     if (camoType) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, camoType, 0, -elbowR * 1.02, foreLen * 0.82, elbowR * 1.02);
-      ctx.restore();
-      // Przywracamy obrys przedramienia, aby stroke nie obrysował plam ani kropek
-      traceForeSleeve();
+      const pat = getCamoPattern(camoType, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, camoType, 0, -elbowR * 1.02, foreLen * 0.82, elbowR * 1.02);
+        ctx.restore();
+        traceForeSleeve();
+      }
     } else {
       const foreSleeveGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
       foreSleeveGrad.addColorStop(0.0, pal.light);
@@ -1110,14 +1099,9 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
     ctx.stroke();
 
   } else {
-    const jointGrad = ctx.createLinearGradient(0, -elbowR, 0, elbowR);
-    jointGrad.addColorStop(0.0, isFront ? v.skinLight : v.skinMid);
-    jointGrad.addColorStop(0.5, isFront ? v.skinMid : v.skinBack);
-    jointGrad.addColorStop(1.0, v.skinDark);
-
     ctx.beginPath();
     ctx.arc(0, 0, elbowR * 0.8, 0, Math.PI * 2);
-    ctx.fillStyle = jointGrad;
+    ctx.fillStyle = isFront ? v.skinMid : v.skinBack;
     ctx.fill();
 
     const forearmGrad = ctx.createLinearGradient(0, -elbowR * 1.4, 0, elbowR * 1.4);
@@ -1207,7 +1191,7 @@ export function renderArm(ctx, shX, shY, swingAngle, elbowAngle, facing, upperCo
 }
 
 export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, ankleRot, facing, colorThigh, colorShin, colorBoot, isFront, visuals, playerRef = null, legSide = 'right') {
-  const v = { ...DEFAULT_VISUALS, ...(visuals || {}) };
+  const v = visuals || DEFAULT_VISUALS;
   const muscle = v.muscleMult || 1.0;
   const isSculpted = !!v.sculptedMuscles;
   const isFrontLeg = !!isFront;
@@ -1327,11 +1311,17 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     traceShorts();
 
     if (pantsCamo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, pantsCamo, 0, -shortsCuffHalfW * 1.05, shortsEnd, shortsCuffHalfW * 1.05);
-      ctx.restore();
-      traceShorts();
+      const pat = getCamoPattern(pantsCamo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, pantsCamo, 0, -shortsCuffHalfW * 1.05, shortsEnd, shortsCuffHalfW * 1.05);
+        ctx.restore();
+        traceShorts();
+      }
     } else {
       const pantsGrad = ctx.createLinearGradient(0, -shortsCuffHalfW, 0, shortsCuffHalfW);
       pantsGrad.addColorStop(0.0, pantsPal.light);
@@ -1441,11 +1431,17 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     traceThigh();
 
     if (pantsCamo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, pantsCamo, 0, -thighHalfH * 1.05, l1, thighHalfH * 1.05);
-      ctx.restore();
-      traceThigh();
+      const pat = getCamoPattern(pantsCamo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, pantsCamo, 0, -thighHalfH * 1.05, l1, thighHalfH * 1.05);
+        ctx.restore();
+        traceThigh();
+      }
     } else {
       const pantsGrad = ctx.createLinearGradient(0, -thighHalfH, 0, thighHalfH);
       pantsGrad.addColorStop(0.0, pantsPal.light);
@@ -1581,20 +1577,9 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     const kneeR = 2.8 * muscle;
 
     // A. Gładka główka stawu kolanowego (w dokładnie takiej samej technice jak łokieć ręki)
-    const jointGrad = ctx.createLinearGradient(0, -kneeR, 0, kneeR);
-    if (isFrontLeg) {
-      jointGrad.addColorStop(0.0, v.skinLight);
-      jointGrad.addColorStop(0.45, v.skinMid);
-      jointGrad.addColorStop(1.0, v.skinDark);
-    } else {
-      jointGrad.addColorStop(0.0, v.skinMid);
-      jointGrad.addColorStop(0.45, v.skinBack);
-      jointGrad.addColorStop(1.0, v.skinDark);
-    }
-
     ctx.beginPath();
     ctx.arc(0, 0, kneeR * 0.85, 0, Math.PI * 2);
-    ctx.fillStyle = jointGrad;
+    ctx.fillStyle = isFrontLeg ? v.skinMid : v.skinBack;
     ctx.fill();
 
     // B. Płynny profil kości piszczelowej i brzuśca łydki
@@ -1654,10 +1639,16 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     ctx.beginPath();
     ctx.arc(0, 0, kneeCapR, 0, Math.PI * 2);
     if (pantsCamo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, pantsCamo, -kneeCapR, -kneeCapR, kneeCapR, kneeCapR);
-      ctx.restore();
+      const pat = getCamoPattern(pantsCamo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, pantsCamo, -kneeCapR, -kneeCapR, kneeCapR, kneeCapR);
+        ctx.restore();
+      }
     } else {
       const kneeGrad = ctx.createLinearGradient(0, -kneeCapR, 0, kneeCapR);
       kneeGrad.addColorStop(0.0, pantsPal.light);
@@ -1691,11 +1682,17 @@ export function renderIKLeg(ctx, hipX, hipY, targetFootX, targetFootY, l1, l2, a
     traceShinPants();
 
     if (pantsCamo) {
-      ctx.save();
-      ctx.clip();
-      drawCamoSplotches(ctx, pantsCamo, 0, -calfBulge * 1.05, blouseEnd, calfBulge * 1.05);
-      ctx.restore();
-      traceShinPants();
+      const pat = getCamoPattern(pantsCamo, ctx);
+      if (pat) {
+        ctx.fillStyle = pat;
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.clip();
+        drawCamoSplotches(ctx, pantsCamo, 0, -calfBulge * 1.05, blouseEnd, calfBulge * 1.05);
+        ctx.restore();
+        traceShinPants();
+      }
     } else {
       const pantsShinGrad = ctx.createLinearGradient(0, -4.8 * muscle, 0, 4.4 * muscle);
       pantsShinGrad.addColorStop(0.0, pantsPal.light);
@@ -1869,7 +1866,7 @@ export function drawFrontLegOnly(ctx, GROUND_Y, p) {
   const hipX = (p.x + p.w / 2) + p.lastHipShiftX;
   const hipY = p.y + p.h - 40 + (p.pelvisY !== undefined ? p.pelvisY : -11.8);
 
-  const v = { ...DEFAULT_VISUALS, ...(p.currentClass?.visuals || {}) };
+  const v = p._cachedVisuals || p.currentClass?.visuals || DEFAULT_VISUALS;
   v.jetFuel = p.jetFuel;
   v.jetMax = p.jetMax;
   if (p.currentClass?.id === 'STRIKER') {

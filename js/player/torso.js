@@ -84,6 +84,86 @@ export function getTorsoPalette(baseHex = '#18181b') {
   return { base: hex, light: '#3f3f46', dark: '#18181b', highlight: 'rgba(255,255,255,0.10)' };
 }
 
+let _cachedCamoPatterns = null;
+
+/**
+ * Pre-renderowane wzorce CanvasPattern dla kamuflażu moro (light / dark)
+ */
+export function getCamoPattern(camoType, ctx = null) {
+  if (!camoType) return null;
+  if (_cachedCamoPatterns && _cachedCamoPatterns[camoType]) {
+    return _cachedCamoPatterns[camoType];
+  }
+  if (typeof document === 'undefined') return null;
+  const targetCtx = ctx || (typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null);
+  if (!targetCtx || typeof targetCtx.createPattern !== 'function') return null;
+
+  if (!_cachedCamoPatterns) {
+    _cachedCamoPatterns = { light: null, dark: null };
+  }
+
+  const pCanvas = document.createElement('canvas');
+  pCanvas.width = 64;
+  pCanvas.height = 64;
+  const pctx = pCanvas.getContext('2d');
+
+  if (camoType === 'light') {
+    pctx.fillStyle = '#cfbe9f';
+    pctx.fillRect(0, 0, 64, 64);
+    pctx.fillStyle = '#7a8c6a';
+    const olive = [
+      [14, 12, 11, 8, 0.3], [48, 18, 10, 9, -0.4], [24, 34, 12, 9, 0.2],
+      [52, 44, 11, 8, -0.2], [18, 54, 11, 9, 0.4], [46, 58, 12, 8, -0.3]
+    ];
+    for (const b of olive) {
+      pctx.beginPath();
+      pctx.ellipse(b[0], b[1], b[2], b[3], b[4], 0, Math.PI * 2);
+      pctx.fill();
+    }
+    pctx.fillStyle = '#94724b';
+    const brown = [
+      [35, 10, 9, 8, -0.2], [10, 26, 10, 8, 0.5], [45, 32, 10, 8, -0.3],
+      [28, 46, 11, 8, 0.1], [55, 54, 9, 8, -0.4], [30, 60, 9, 7, 0.2]
+    ];
+    for (const b of brown) {
+      pctx.beginPath();
+      pctx.ellipse(b[0], b[1], b[2], b[3], b[4], 0, Math.PI * 2);
+      pctx.fill();
+    }
+  } else {
+    pctx.fillStyle = '#1e261e';
+    pctx.fillRect(0, 0, 64, 64);
+    pctx.fillStyle = '#344534';
+    const green = [
+      [14, 12, 11, 9, 0.2], [50, 18, 10, 9, -0.3], [23, 34, 12, 9, 0.3],
+      [54, 44, 11, 8, -0.2], [18, 54, 11, 9, 0.4], [48, 58, 11, 8, -0.3]
+    ];
+    for (const b of green) {
+      pctx.beginPath();
+      pctx.ellipse(b[0], b[1], b[2], b[3], b[4], 0, Math.PI * 2);
+      pctx.fill();
+    }
+    pctx.fillStyle = '#2f241a';
+    const darkBrown = [
+      [38, 10, 10, 8, -0.3], [12, 26, 9, 8, 0.4], [46, 33, 10, 8, -0.2],
+      [27, 47, 11, 9, 0.2], [56, 54, 10, 8, -0.3], [32, 60, 9, 7, 0.1]
+    ];
+    for (const b of darkBrown) {
+      pctx.beginPath();
+      pctx.ellipse(b[0], b[1], b[2], b[3], b[4], 0, Math.PI * 2);
+      pctx.fill();
+    }
+  }
+
+  try {
+    const pat = targetCtx.createPattern(pCanvas, 'repeat');
+    _cachedCamoPatterns[camoType] = pat;
+    return pat;
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * Renderuje organiczne plamy kamuflażu moro wewnątrz aktywnego obrysu clipping mask.
  * Znormalizowane współrzędne gwarantują, że plamy nigdy nie wykraczają poza zadany prostokąt.
@@ -92,6 +172,12 @@ export function drawCamoSplotches(ctx, camoType = 'light', minX = -12, minY = -2
   if (!camoType) return;
   const w = Math.max(1, maxX - minX);
   const h = Math.max(1, maxY - minY);
+  const pat = getCamoPattern(camoType, ctx);
+  if (pat) {
+    ctx.fillStyle = pat;
+    ctx.fillRect(minX, minY, w, h);
+    return;
+  }
   ctx.save();
 
   if (camoType === 'light') {
@@ -265,12 +351,17 @@ export function drawTorsoShirt(
 
   // Wypełnienie tła koszulki
   if (camoType) {
-    ctx.save();
-    ctx.clip();
-    drawCamoSplotches(ctx, camoType, -shoulderHalfW * 1.25, -25, shoulderHalfW * 1.25, waistY + 1);
-    ctx.restore();
-    // Przywracamy ścieżkę koszulki, aby stroke obrysował kontur koszulki, a nie plamy camo
-    buildShirtPath();
+    const pat = getCamoPattern(camoType, ctx);
+    if (pat) {
+      ctx.fillStyle = pat;
+      ctx.fill();
+    } else {
+      ctx.save();
+      ctx.clip();
+      drawCamoSplotches(ctx, camoType, -shoulderHalfW * 1.25, -25, shoulderHalfW * 1.25, waistY + 1);
+      ctx.restore();
+      buildShirtPath();
+    }
   } else {
     const shirtGrad = ctx.createLinearGradient(-shoulderHalfW, 0, shoulderHalfW, 0);
     shirtGrad.addColorStop(0.0, pal.dark);

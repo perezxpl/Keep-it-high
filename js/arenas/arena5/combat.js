@@ -162,8 +162,14 @@ export function handleArena5BulletHit(bullet) {
     }
   }
 
-  // 2. Sprawdz klocki w siatce wiezy (w tym opadajace kaskadowo i przesuwane)
-  for (const rowData of arena5State.gridRows.values()) {
+  // 2. Sprawdz klocki w siatce wiezy (zoptymalizowany zakres wierszy O(1) na podstawie Y pocisku)
+  const minRayY = Math.min(by, prevY);
+  const maxRayY = Math.max(by, prevY);
+  const minRow = Math.max(0, Math.floor((1200 - maxRayY) / CELL_SIZE) - 1);
+  const maxRow = Math.max(0, Math.ceil((1200 - minRayY) / CELL_SIZE) + 1);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    const rowData = arena5State.gridRows.get(r);
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
@@ -223,9 +229,13 @@ export function handleArena5Explosion(expX, expY, radius) {
     }
   }
 
-  // 2. Sprawdz komorki w siatce wiezy (kolekcjonowanie bez mutacji mapy podczas iteracji)
+  // 2. Sprawdz komorki w siatce wiezy (zakres wierszy w promieniu eksplozji)
   const cellsToDestroy = [];
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
+  const minRow = Math.max(0, Math.floor((1200 - (expY + radius)) / CELL_SIZE) - 1);
+  const maxRow = Math.max(0, Math.ceil((1200 - (expY - radius)) / CELL_SIZE) + 1);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    const rowData = arena5State.gridRows.get(r);
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
@@ -370,8 +380,14 @@ export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KN
     }
   }
 
-  // 2. Sprawdz klocki w siatce wiezy
-  for (const [r, rowData] of arena5State.gridRows.entries()) {
+  // 2. Sprawdz klocki w siatce wiezy w zasiegu ataku
+  const minMeleeY = Math.min(p1.y, p2.y) - hitRadius;
+  const maxMeleeY = Math.max(p1.y, p2.y) + hitRadius;
+  const minRow = Math.max(0, Math.floor((1200 - maxMeleeY) / CELL_SIZE) - 1);
+  const maxRow = Math.max(0, Math.ceil((1200 - minMeleeY) / CELL_SIZE) + 1);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    const rowData = arena5State.gridRows.get(r);
     if (!rowData) continue;
     for (let c = 0; c < COLS; c++) {
       const cell = rowData[c];
@@ -593,14 +609,17 @@ export function handleArena5GrenadeCollision(grenade) {
     }
   }
 
-  // 2. Sprawdz ulozone bloczki w siatce w poblizu granatu
+  // 2. Sprawdz ulozone bloczki w siatce w poblizu granatu (wiersze O(1) na podstawie Y granatu)
   const colLeft = Math.max(0, Math.min(COLS - 1, Math.floor((gx - r - 6) / CELL_SIZE)));
   const colRight = Math.max(0, Math.min(COLS - 1, Math.floor((gx + r + 6) / CELL_SIZE)));
-  const minRow = arena5State.minFloorRow || 0;
+  const minFloor = arena5State.minFloorRow || 0;
+  const minRowG = Math.max(minFloor, Math.floor((1200 - (gy + r + 10)) / CELL_SIZE) - 1);
+  const maxRowG = Math.max(minFloor, Math.ceil((1200 - (gy - r - 10)) / CELL_SIZE) + 1);
 
   for (let c = colLeft; c <= colRight; c++) {
-    for (const [rowIdx, rowData] of arena5State.gridRows.entries()) {
-      if (rowIdx < minRow || !rowData) continue;
+    for (let rowIdx = minRowG; rowIdx <= maxRowG; rowIdx++) {
+      const rowData = arena5State.gridRows.get(rowIdx);
+      if (!rowData) continue;
       const cell = rowData[c];
       if (!cell || cell.hp <= 0) continue;
 

@@ -62,9 +62,14 @@ export function getOverheadStructureInfo(botTarget, currentArenaId = '', maxDist
     const minCol = Math.max(0, Math.min(COLS - 1, Math.floor(botLeft / CELL_SIZE)));
     const maxCol = Math.max(0, Math.min(COLS - 1, Math.floor(botRight / CELL_SIZE)));
 
+    // Zoptymalizowany zakres wierszy O(1) na podstawie wysokości zamiast iteracji po setkach wierszy siatki
+    const minRow = Math.max(0, Math.floor((1200 - feetY) / CELL_SIZE) - 1);
+    const maxRow = Math.max(0, Math.ceil((1200 - checkTopLimit) / CELL_SIZE) + 1);
+
     // A. Klocki w ułożonej wieży
     for (let c = minCol; c <= maxCol; c++) {
-      for (const [r, rowData] of a5.gridRows.entries()) {
+      for (let r = minRow; r <= maxRow; r++) {
+        const rowData = a5.gridRows.get(r);
         if (!rowData) continue;
         const cell = rowData[c];
         if (!cell || cell.hp <= 0) continue;
@@ -109,7 +114,8 @@ export function getOverheadStructureInfo(botTarget, currentArenaId = '', maxDist
       for (let c = minCol - 1; c >= 0; c--) {
         let wallAtBody = false;
         let clearAbove = true;
-        for (const [r, rowData] of a5.gridRows.entries()) {
+        for (let r = minRow; r <= maxRow; r++) {
+          const rowData = a5.gridRows.get(r);
           if (!rowData) continue;
           const cell = rowData[c];
           if (!cell || cell.hp <= 0) continue;
@@ -143,7 +149,8 @@ export function getOverheadStructureInfo(botTarget, currentArenaId = '', maxDist
       for (let c = maxCol + 1; c < COLS; c++) {
         let wallAtBody = false;
         let clearAbove = true;
-        for (const [r, rowData] of a5.gridRows.entries()) {
+        for (let r = minRow; r <= maxRow; r++) {
+          const rowData = a5.gridRows.get(r);
           if (!rowData) continue;
           const cell = rowData[c];
           if (!cell || cell.hp <= 0) continue;
@@ -289,8 +296,18 @@ export function evaluateBotUnstuck(botTarget, bKeys, targetX, targetY, currentAr
     botTarget._stuckTimer = Math.max(0, botTarget._stuckTimer - 2);
   }
 
-  // Pobranie informacji o strukturach nad głową
-  const info = getOverheadStructureInfo(botTarget, currentArenaId, 160);
+  // Pobranie informacji o strukturach nad głową z buforowaniem na 5 klatek (lub przy przemieszczeniu > 8 px)
+  let info = botTarget._cachedOverheadInfo;
+  botTarget._overheadCacheTimer = (botTarget._overheadCacheTimer || 0) - 1;
+  const distSinceCached = Math.hypot(botTarget.x - (botTarget._cachedOverheadX || 0), botTarget.y - (botTarget._cachedOverheadY || 0));
+
+  if (!info || botTarget._overheadCacheTimer <= 0 || distSinceCached > 8) {
+    info = getOverheadStructureInfo(botTarget, currentArenaId, 160);
+    botTarget._cachedOverheadInfo = info;
+    botTarget._cachedOverheadX = botTarget.x;
+    botTarget._cachedOverheadY = botTarget.y;
+    botTarget._overheadCacheTimer = 5;
+  }
 
   // -------------------------------------------------------------------------
   // SYTUACJA A: BOT ZNAJDUJE SIĘ POD FIGURĄ LUB SUFITEM

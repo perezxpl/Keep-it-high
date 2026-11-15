@@ -22,7 +22,7 @@ export const CONFIG = {
 
   // SYSTEM EFEKTÓW GORE / ROZCZŁONKOWANIA
   GORE_ENABLED: true,
-  MAX_BLOOD_DECALS: 120,
+  MAX_BLOOD_DECALS: 60,
 
   // SYSTEM BALANSU KOPNIĘCIA (GLOBAL NERF ~45-50% I BAZOWE SIŁY)
   BASE_KICK_FORCE: 19.5,      // Bazowa siła wykopu piłki (osłabienie o ~45% z 36)

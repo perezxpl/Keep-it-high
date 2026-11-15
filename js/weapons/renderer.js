@@ -110,13 +110,71 @@ const WEAPON_PARTS_PATHS = {
 };
 
 const _partSpriteCache = {};
+const _partMipCache = {};
+
+function createWeaponMipmap(img) {
+  if (typeof document === 'undefined') return img;
+  try {
+    const scale = 0.20; // 20% oryginalnego rozmiaru (ok. 250px)
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+    if (!nw || !nh) return img;
+    const w = Math.max(16, Math.round(nw * scale));
+    const h = Math.max(16, Math.round(nh * scale));
+    const oc = document.createElement('canvas');
+    oc.width = w;
+    oc.height = h;
+    const octx = oc.getContext('2d');
+    if (!octx) return img;
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(img, 0, 0, w, h);
+    oc._isMip = true;
+    oc._origW = nw;
+    oc._origH = nh;
+    oc.complete = true;
+    oc.naturalWidth = nw;
+    oc.naturalHeight = nh;
+    return oc;
+  } catch (_) {
+    return img;
+  }
+}
+
+export function drawWeaponSprite(ctx, sprite, dx = 0, dy = 0) {
+  if (!sprite || !ctx) return;
+  if (sprite._isMip) {
+    ctx.drawImage(sprite, dx, dy, sprite._origW, sprite._origH);
+  } else {
+    ctx.drawImage(sprite, dx, dy);
+  }
+}
 
 export function getWeaponPartSprite(partId) {
-  if (_partSpriteCache[partId]) return _partSpriteCache[partId];
+  if (_partMipCache[partId]) return _partMipCache[partId];
+  if (_partSpriteCache[partId]) {
+    const img = _partSpriteCache[partId];
+    if (img.complete && img.naturalWidth > 0) {
+      const mip = createWeaponMipmap(img);
+      if (mip && mip._isMip) {
+        _partMipCache[partId] = mip;
+        return mip;
+      }
+    }
+    return img;
+  }
   const p = WEAPON_PARTS_PATHS[partId];
   if (!p) return null;
   const img = new Image();
   img.src = p;
+  img.onload = () => {
+    try {
+      const mip = createWeaponMipmap(img);
+      if (mip && mip._isMip) {
+        _partMipCache[partId] = mip;
+      }
+    } catch (_) {}
+  };
   _partSpriteCache[partId] = img;
   return img;
 }
@@ -489,7 +547,7 @@ export function drawMeleeSlashTrail(ctx, p) {
 /**
  * Renderowanie broni w rękach strzelca
  */
-export function drawHeldWeapon(ctx, p) {
+export function drawHeldWeapon(ctx, p, cachedHold = null) {
   if (!p || !p.currentWeapon || p.isDead) return;
   if (p.currentWeapon.id === 'AXE' && p.axeThrown) return;
 
@@ -499,7 +557,7 @@ export function drawHeldWeapon(ctx, p) {
   const hWeight = (typeof p.holsterWeight === 'number') ? p.holsterWeight : (p.isHolstered ? 1.0 : 0.0);
   if (hWeight >= 0.99) return; // Całkowicie schowana
 
-  const hold = getWeaponHoldTransform(p);
+  const hold = cachedHold || getWeaponHoldTransform(p);
   const weapon = p.currentWeapon;
 
   ctx.save();
@@ -535,15 +593,15 @@ export function drawHeldWeapon(ctx, p) {
 
       // A. Magazynek wpięty w gnieździe broni (gdy nie jest wypięty)
       if (hold.isMagInGun !== false) {
-        ctx.drawImage(imgMag, 546, 120);
+        drawWeaponSprite(ctx, imgMag, 546, 120);
       }
 
       // B. Korpus bazowy (kolba, komora, lufa, łoże, chwyt i przyrządy celownicze)
-      ctx.drawImage(imgBody, 0, 0);
+      drawWeaponSprite(ctx, imgBody, 0, 0);
 
       // C. Suwadło zamka z rączką (ruchome blowback przy strzale oraz odciąganie przy przeładowaniu)
       const boltPx = (hold.boltOffset || 0) * (1272 / 44.8);
-      ctx.drawImage(imgBolt, 556 + boltPx, 50);
+      drawWeaponSprite(ctx, imgBolt, 556 + boltPx, 50);
 
       ctx.restore();
 
@@ -554,7 +612,7 @@ export function drawHeldWeapon(ctx, p) {
         ctx.rotate(hold.heldMag.angle || 0);
         ctx.scale(s, s);
         // Środek chwytu dłoni na korpusie magazynka
-        ctx.drawImage(imgMag, -90, -90);
+        drawWeaponSprite(ctx, imgMag, -90, -90);
         ctx.restore();
       }
 
@@ -666,11 +724,11 @@ export function drawHeldWeapon(ctx, p) {
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
       // A. Korpus bazowy (składana kolba z hakiem, komora, lufa z osłoną termiczną, magazynek rurowy)
-      ctx.drawImage(imgBody, 0, 0);
+      drawWeaponSprite(ctx, imgBody, 0, 0);
 
       // B. Ruchome czółenko pump-action (ślizga się wzdłuż osi magazynka rurowego)
       const pumpShiftPx = (p.pumpOffset || 0) * (1334 / 39.0);
-      ctx.drawImage(imgPump, 780 + pumpShiftPx, 65);
+      drawWeaponSprite(ctx, imgPump, 780 + pumpShiftPx, 65);
 
       ctx.restore();
 
@@ -682,7 +740,7 @@ export function drawHeldWeapon(ctx, p) {
         if (imgShell && imgShell.complete && imgShell.naturalWidth > 0) {
           const shellScale = 6.4 / 140;
           ctx.scale(shellScale, shellScale);
-          ctx.drawImage(imgShell, -70, -28);
+          drawWeaponSprite(ctx, imgShell, -70, -28);
         } else {
           ctx.fillStyle = '#dc2626';
           ctx.fillRect(-2.8, -1.2, 5.0, 2.4);
@@ -770,15 +828,15 @@ export function drawHeldWeapon(ctx, p) {
 
       // A. Masywny magazynek pudełkowy 5-nabojowy .50 BMG (wpięty w gnieździe)
       if (hold.isMagInGun !== false) {
-        ctx.drawImage(imgMag, 470, 160);
+        drawWeaponSprite(ctx, imgMag, 470, 160);
       }
 
       // B. Korpus bazowy (kolba PRS, komora, luneta snajperska, łoże, dwójnóg, lufa ryflowana, hamulec wylotowy)
-      ctx.drawImage(imgBody, 0, 0);
+      drawWeaponSprite(ctx, imgBody, 0, 0);
 
       // C. Ruchoma dźwignia zamka czterotaktowego (ruch w tył przy przeładowaniu)
       const boltPx = (hold.boltOffset || 0) * (1353 / 58.5);
-      ctx.drawImage(imgBolt, 480 + boltPx, 70);
+      drawWeaponSprite(ctx, imgBolt, 480 + boltPx, 70);
 
       ctx.restore();
 
@@ -789,7 +847,7 @@ export function drawHeldWeapon(ctx, p) {
         ctx.rotate(hold.heldMag.angle || 0);
         ctx.scale(s, s);
         // Środek chwytu dłoni na korpusie magazynka .50
-        ctx.drawImage(imgMag, -80, -90);
+        drawWeaponSprite(ctx, imgMag, -80, -90);
         ctx.restore();
       }
 
@@ -936,11 +994,11 @@ export function drawHeldWeapon(ctx, p) {
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
       // A. Polimerowy szkielet (chwyt, kabłąk, lufa wewnętrzna)
-      ctx.drawImage(imgFrame, 2, 140);
+      drawWeaponSprite(ctx, imgFrame, 2, 140);
 
       // B. Zamek stalowy (Tenifer Slide) z ruchem blowbacku
       const slideShiftPx = isSlideBack * (835 / 15.7);
-      ctx.drawImage(imgSlide, 44 + slideShiftPx, 2);
+      drawWeaponSprite(ctx, imgSlide, 44 + slideShiftPx, 2);
 
       ctx.restore();
 
@@ -952,7 +1010,7 @@ export function drawHeldWeapon(ctx, p) {
         if (imgMag && imgMag.complete && imgMag.naturalWidth > 0) {
           const magScale = 7.5 / 220;
           ctx.scale(magScale, magScale);
-          ctx.drawImage(imgMag, -50, -110);
+          drawWeaponSprite(ctx, imgMag, -50, -110);
         } else {
           ctx.fillStyle = '#18181b';
           ctx.fillRect(-1.8, -4.0, 3.5, 7.5);
@@ -1076,7 +1134,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
       // Korpus ze stali nierdzewnej i lufą 6 cali z wentylowaną szyną
-      ctx.drawImage(imgBody, 2, 2);
+      drawWeaponSprite(ctx, imgBody, 2, 2);
 
       // Bębenek 6-komorowy .44 Magnum z animacją odchylenia (Swing-Out) podczas przeładowania
       if (imgCyl && imgCyl.complete && imgCyl.naturalWidth > 0) {
@@ -1089,15 +1147,15 @@ export function drawHeldWeapon(ctx, p) {
           // Odchylenie bębenka w dół i lekko w lewo z kątem otwarcia
           ctx.translate(380 + cylSwing * 28, 90 + cylSwing * 125);
           ctx.rotate(cylSwing * 0.28);
-          ctx.drawImage(imgCyl, 0, 0);
+          drawWeaponSprite(ctx, imgCyl, 0, 0);
 
           // Stalowy pręt wyrzutnika (ejector rod) wystający z osi bębenka
           ctx.fillStyle = '#cbd5e1';
-          ctx.fillRect(imgCyl.naturalWidth * 0.32, -18 * cylSwing, 12, 22 * cylSwing);
+          ctx.fillRect((imgCyl._origW || imgCyl.naturalWidth) * 0.32, -18 * cylSwing, 12, 22 * cylSwing);
 
           ctx.restore();
         } else {
-          ctx.drawImage(imgCyl, 380, 90);
+          drawWeaponSprite(ctx, imgCyl, 380, 90);
         }
       }
 
@@ -1189,7 +1247,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
 
       // A. Drewniany zaokrąglony chwyt birdshead i stalowa baskila
-      ctx.drawImage(imgBody, 2, 2);
+      drawWeaponSprite(ctx, imgBody, 2, 2);
 
       // B. Skrócone podwójne lufy 12 Gauge z czółenkiem
       const isReloadBreak = p.isReloading && (p.reloadProgress > 0.2 && p.reloadProgress < 0.85);
@@ -1199,7 +1257,7 @@ export function drawHeldWeapon(ctx, p) {
         ctx.save();
         ctx.translate(510, 140);
         ctx.rotate(breakAngle);
-        ctx.drawImage(imgBarrels, -10, -130);
+        drawWeaponSprite(ctx, imgBarrels, -10, -130);
 
         // Odsłonięte komory nabojowe 12G z płytą wyrzutnika (ejector plate)
         ctx.fillStyle = '#0f172a';
@@ -1229,7 +1287,7 @@ export function drawHeldWeapon(ctx, p) {
 
         ctx.restore();
       } else {
-        ctx.drawImage(imgBarrels, 500, 10);
+        drawWeaponSprite(ctx, imgBarrels, 500, 10);
       }
 
       ctx.restore();
@@ -1332,7 +1390,7 @@ export function drawHeldWeapon(ctx, p) {
       // dzięki czemu wsuwany trzpień naturalnie chowa się W ŚRODKU stalowej rury!
       if (imgRocket && imgRocket.complete && imgRocket.naturalWidth > 0) {
         if (hasRocketLoaded && !isReloading) {
-          ctx.drawImage(imgRocket, 0, 0);
+          drawWeaponSprite(ctx, imgRocket, 0, 0);
         } else if (isReloading) {
           const gripRocketX = 1170;
           const gripRocketY = 166;
@@ -1348,7 +1406,7 @@ export function drawHeldWeapon(ctx, p) {
             ctx.save();
             ctx.translate(handSprX, handSprY);
             ctx.rotate(tilt);
-            ctx.drawImage(imgRocket, -gripRocketX, -gripRocketY);
+            drawWeaponSprite(ctx, imgRocket, -gripRocketX, -gripRocketY);
             ctx.restore();
           } else if (reloadProg >= 0.44 && reloadProg < 0.80) {
             // Faza 3: Osiowe wsuwanie trzpienia rakiety w głąb rury (trzonek wchodzi w lufę)
@@ -1357,11 +1415,11 @@ export function drawHeldWeapon(ctx, p) {
             const jiggleY = (t < 1.0) ? Math.sin(t * Math.PI * 6) * 0.8 : 0;
             ctx.save();
             ctx.translate(offsetX, jiggleY);
-            ctx.drawImage(imgRocket, 0, 0);
+            drawWeaponSprite(ctx, imgRocket, 0, 0);
             ctx.restore();
           } else if (reloadProg >= 0.80) {
             // Faza 4 i 5: Rakieta w pełni osadzona i zaryglowana w gnieździe lufy
-            ctx.drawImage(imgRocket, 0, 0);
+            drawWeaponSprite(ctx, imgRocket, 0, 0);
           }
         }
       }
@@ -1369,7 +1427,7 @@ export function drawHeldWeapon(ctx, p) {
       // 2. Rura wyrzutni (korpus) renderowana na wierzchu:
       // Opaque korpus zasłania chowany w lufie trzpień rakiety, a wylot lufy
       // eksponuje wysuwającą się głowicę PG-7V!
-      ctx.drawImage(imgLauncher, 0, 0);
+      drawWeaponSprite(ctx, imgLauncher, 0, 0);
 
       ctx.restore();
 
@@ -1391,7 +1449,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      ctx.drawImage(imgKnife, 2, 2);
+      drawWeaponSprite(ctx, imgKnife, 2, 2);
       ctx.restore();
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1438,7 +1496,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      ctx.drawImage(imgMachete, 2, 2);
+      drawWeaponSprite(ctx, imgMachete, 2, 2);
       ctx.restore();
     } else {
       // Proceduralny fallback w trakcie ładowania assetów
@@ -1474,7 +1532,7 @@ export function drawHeldWeapon(ctx, p) {
       ctx.save();
       ctx.scale(s, s);
       ctx.translate(-pivotSpriteX, -pivotSpriteY);
-      ctx.drawImage(imgAxe, 2, 2);
+      drawWeaponSprite(ctx, imgAxe, 2, 2);
       ctx.restore();
     } else {
       // Proceduralny fallback w trakcie ładowania assetów

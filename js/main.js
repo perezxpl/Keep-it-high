@@ -1371,14 +1371,14 @@ function loop(now) {
 
   accumulator += delta;
 
-  // Ochrona przed spiralą opóźnień: akumulator nie może przekroczyć 1.5 kroku fizyki
-  if (accumulator > TICK_MS * 1.5) {
-    accumulator = TICK_MS;
+  // Ochrona przed spiralą opóźnień: akumulator nie może przekroczyć 2.5 kroku fizyki
+  if (accumulator > TICK_MS * 2.5) {
+    accumulator = TICK_MS * 2.5;
   }
 
   // 2. Krok fizyki o stałej częstotliwości 60 Hz (maksymalnie 2 kroki na klatkę renderowania)
   let steps = 0;
-  while (accumulator >= TICK_MS - 0.9 && steps < 2) {
+  while (accumulator >= TICK_MS && steps < 2) {
     try {
       update();
     } catch (err) {
@@ -1388,8 +1388,8 @@ function loop(now) {
     steps++;
   }
 
-  // Ochrona przed ujemnym dryfem akumulatora
-  if (steps >= 2 || accumulator < -TICK_MS) {
+  // Ochrona przed ujemnym dryfem akumulatora (zapobiega gubieniu kroków i szarpaniu LTPO 120Hz)
+  if (accumulator < 0) {
     accumulator = 0;
   }
 

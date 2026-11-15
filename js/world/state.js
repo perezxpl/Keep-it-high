@@ -27,7 +27,8 @@ import {
   setCameraArenaId,
   getCameraArenaId,
   setCameraMouseScreenPos,
-  mouseScreenPos
+  mouseScreenPos,
+  updateCanvasDimensionsCache
 } from '../camera.js';
 import { playSound } from '../audio/index.js';
 export { isTouchDevice, setTouchDevice, ARENA_2_PANDORA, goalTriggerLeft, goalTriggerRight, ARENA_1_GOALS, MAP_WIDTH };
@@ -403,6 +404,7 @@ export function resize(player) {
     ctx.scale(bufferW / W, bufferH / H);
     ctx.imageSmoothingEnabled = true;
   }
+  updateCanvasDimensionsCache();
   GROUND_Y = 1000;
   setCameraGroundY(GROUND_Y);
   if (Array.isArray(groundSegments)) {
@@ -586,70 +588,77 @@ export function drawJetpackParticles(ctx) {
   const minY = camera.y - margin;
   const maxY = camera.y + viewH + margin;
 
-  // 1. Dym: delikatne, małe chmurki
+  // 1. Dym: delikatne, małe chmurki zgrupowane w jedną ścieżkę
   ctx.save();
+  ctx.fillStyle = '#64748b';
+  ctx.globalAlpha = 0.22;
+  ctx.beginPath();
+  let hasSmoke = false;
   for (let i = 0; i < jetpackParticles.length; i++) {
     const p = jetpackParticles[i];
     if (p.isFlame) continue;
     if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
 
-    ctx.fillStyle = p.color || '#64748b';
-    ctx.globalAlpha = Math.max(0, p.life * 0.28);
-    ctx.beginPath();
+    hasSmoke = true;
+    ctx.moveTo(p.x + p.size, p.y);
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+  }
+  if (hasSmoke) {
     ctx.fill();
   }
   ctx.restore();
 
-  // 2. Iskry i mikro-smugi w stylu Soldat (ostre, czytelne, bez chaosu)
+  // 2. Iskry i mikro-smugi w stylu Soldat (odcinki linii zgrupowane po kolorze w trybie lighter)
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+
+  const flameBatches = new Map();
   for (let i = 0; i < jetpackParticles.length; i++) {
     const p = jetpackParticles[i];
     if (!p.isFlame) continue;
     if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
 
-    const spd = Math.hypot(p.vx, p.vy);
-
-    if (spd > 1.8) {
-      // Drobna smuga pędu (3-6 px)
-      const ang = Math.atan2(p.vy, p.vx);
-      const sLen = p.size * (1.2 + spd * 0.4);
-      const sW = p.size * 0.8;
-
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(ang);
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(1.0, p.life * 1.4);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, sLen * 0.5, sW * 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Biały mikro-rdzeń
-      if (p.life > 0.5) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, sLen * 0.25, sW * 0.35, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    } else {
-      // Drobny punkt świetlny
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(1.0, p.life * 1.3);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (p.life > 0.6) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    const col = p.color || '#00e5ff';
+    let b = flameBatches.get(col);
+    if (!b) {
+      b = [];
+      flameBatches.set(col, b);
     }
+    b.push(p);
   }
+
+  // Rysowanie batched per kolor (bez save/translate/rotate/ellipse w pętli)
+  for (const [col, particles] of flameBatches.entries()) {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx * 1.2, p.y - p.vy * 1.2);
+    }
+    ctx.stroke();
+  }
+
+  // Biały rdzeń o wysokiej energii
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  let hasCore = false;
+  for (let i = 0; i < jetpackParticles.length; i++) {
+    const p = jetpackParticles[i];
+    if (!p.isFlame || p.life <= 0.5) continue;
+    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
+
+    hasCore = true;
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.vx * 0.6, p.y - p.vy * 0.6);
+  }
+  if (hasCore) {
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 

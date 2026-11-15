@@ -437,7 +437,7 @@ export function drawArena3Background(ctx, camera) {
   }
   ctx.restore();
 
-  // 6B. Bioluminescencyjne świetliki (Fireflies)
+  // 6B. Bioluminescencyjne świetliki (Fireflies - zoptymalizowane bez tworzenia gradientów co klatkę)
   for (let i = 0; i < FIREFLY_COUNT; i++) {
     const ff = FIREFLIES[i];
     const fx = ff.baseX + Math.sin(time * ff.freqX + ff.phaseX) * ff.ampX;
@@ -449,15 +449,10 @@ export function drawArena3Background(ctx, camera) {
 
     const pulse = Math.sin(time * ff.glowSpeed + ff.glowPhase) * 0.5 + 0.5;
     const ffAlpha = 0.35 + pulse * 0.65;
-
-    ctx.save();
-    // Subtelna poświata świetlika
     const glowRad = ff.size * 3.5;
-    const fGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowRad);
-    fGrad.addColorStop(0.0, `rgba(234, 255, 150, ${ffAlpha.toFixed(2)})`);
-    fGrad.addColorStop(0.4, `rgba(163, 230, 53, ${(ffAlpha * 0.45).toFixed(2)})`);
-    fGrad.addColorStop(1.0, 'rgba(163, 230, 53, 0)');
-    ctx.fillStyle = fGrad;
+
+    // Subtelna poświata świetlika
+    ctx.fillStyle = `rgba(163, 230, 53, ${(ffAlpha * 0.30).toFixed(2)})`;
     ctx.beginPath();
     ctx.arc(fx, fy, glowRad, 0, Math.PI * 2);
     ctx.fill();
@@ -467,7 +462,6 @@ export function drawArena3Background(ctx, camera) {
     ctx.beginPath();
     ctx.arc(fx, fy, ff.size * 0.7, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 
   ctx.restore(); // Przywrócenie transformacji kamery

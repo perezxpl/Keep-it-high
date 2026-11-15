@@ -123,7 +123,69 @@ const DEFAULT_PROFILE = BALLISTIC_PROFILES.AK47;
 
 // Pula fizycznych przestrzelin / kraterów na ścianach (Bullet Hole Decals)
 export const bulletHoles = [];
-export const MAX_BULLET_HOLES = 100;
+export const MAX_BULLET_HOLES = 45;
+
+// Pre-renderowane szablony przestrzelin na małym offscreen canvasie (optymalizacja GPU)
+let bulletHoleCanvases = null;
+
+function initBulletHoleCanvases() {
+  if (bulletHoleCanvases || typeof document === 'undefined') return;
+  bulletHoleCanvases = [];
+  const size = 32;
+  const center = size / 2;
+
+  for (let v = 0; v < 3; v++) {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const hctx = c.getContext('2d');
+    const r = 5.0;
+
+    // 1. Osmolenie
+    hctx.fillStyle = 'rgba(15, 23, 42, 0.40)';
+    hctx.beginPath();
+    hctx.arc(center, center, r * 1.6, 0, Math.PI * 2);
+    hctx.fill();
+
+    // 2. Mikropęknięcia
+    hctx.strokeStyle = '#020617';
+    hctx.lineWidth = 0.9;
+    hctx.beginPath();
+    const crackCount = 4 + v;
+    for (let i = 0; i < crackCount; i++) {
+      const a = (Math.PI * 2 * i / crackCount) + (i % 2 === 0 ? 0.2 : -0.2);
+      const startX = center + Math.cos(a) * (r * 0.85);
+      const startY = center + Math.sin(a) * (r * 0.85);
+      const midX = center + Math.cos(a) * (r + 4.5);
+      const midY = center + Math.sin(a) * (r + 4.5);
+      const bendA = a + (i % 2 === 0 ? 0.4 : -0.4);
+      hctx.moveTo(startX, startY);
+      hctx.lineTo(midX, midY);
+      hctx.lineTo(midX + Math.cos(bendA) * 3.0, midY + Math.sin(bendA) * 3.0);
+    }
+    hctx.stroke();
+
+    // 3. Wyszczerbiony brzeg wlotu
+    hctx.fillStyle = '#334155';
+    hctx.beginPath();
+    hctx.arc(center, center, r * 1.15, 0, Math.PI * 2);
+    hctx.fill();
+
+    // 4. Czarny otwór wlotowy
+    hctx.fillStyle = '#020617';
+    hctx.beginPath();
+    hctx.arc(center, center, r, 0, Math.PI * 2);
+    hctx.fill();
+
+    // 5. Cień
+    hctx.fillStyle = '#000000';
+    hctx.beginPath();
+    hctx.arc(center, center + 0.5, r * 0.65, 0, Math.PI * 2);
+    hctx.fill();
+
+    bulletHoleCanvases.push(c);
+  }
+}
 
 // Pule cząstek w locie (Tracer Smoke & Mach Condensation Rings)
 const machRings = [];
@@ -152,18 +214,7 @@ export function addBulletHole(x, y, nx = 0, ny = -1, weaponId = 'AK47') {
     bulletHoles.shift();
   }
 
-  // Generuj 3-5 mikropęknięć tynku / betonu wokół otworu wlotowego
-  const crackCount = Math.floor(Math.random() * 3) + 3;
-  const cracks = [];
-  for (let i = 0; i < crackCount; i++) {
-    const a = (Math.PI * 2 * i / crackCount) + (Math.random() - 0.5) * 0.55;
-    cracks.push({
-      angle: a,
-      len: (Math.random() * 3.5 + 2.0) * (baseRadius / 2.0),
-      bendAngle: a + (Math.random() - 0.5) * 0.7,
-      bendLen: Math.random() * 2.2 + 1.0
-    });
-  }
+  const variant = Math.floor(Math.random() * 3);
 
   bulletHoles.push({
     x,
@@ -171,7 +222,7 @@ export function addBulletHole(x, y, nx = 0, ny = -1, weaponId = 'AK47') {
     nx,
     ny,
     radius,
-    cracks,
+    variant,
     life: 720,      // 12 sekund pełnej widoczności przy 60 fps
     maxLife: 720,
     fadeTime: 90,   // 1.5 sekundy płynnego wygaszania
@@ -358,57 +409,29 @@ export function spawnImpactVisuals(hitX, hitY, nx = 0, ny = -1, weaponId = 'AK47
  */
 function drawBulletHoles(ctx, minX, maxX, minY, maxY) {
   if (bulletHoles.length === 0) return;
+  initBulletHoleCanvases();
+  if (!bulletHoleCanvases) return;
+
+  let currentAlpha = 1.0;
+  ctx.save();
+  ctx.globalAlpha = 1.0;
 
   for (let i = 0; i < bulletHoles.length; i++) {
     const h = bulletHoles[i];
     if (h.x < minX || h.x > maxX || h.y < minY || h.y > maxY) continue;
     if (h.alpha <= 0.02) continue;
 
-    ctx.save();
-    ctx.globalAlpha = h.alpha;
-
-    // 1. Ciemna obwódka osmolenia prochem (powder burn)
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.40)';
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, h.radius * 1.55, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Ostre mikropęknięcia tynku / betonu wokół krateru
-    ctx.strokeStyle = '#020617';
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    for (let c = 0; c < h.cracks.length; c++) {
-      const cr = h.cracks[c];
-      const startX = h.x + Math.cos(cr.angle) * (h.radius * 0.85);
-      const startY = h.y + Math.sin(cr.angle) * (h.radius * 0.85);
-      const midX = h.x + Math.cos(cr.angle) * (h.radius + cr.len);
-      const midY = h.y + Math.sin(cr.angle) * (h.radius + cr.len);
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(midX, midY);
-      ctx.lineTo(midX + Math.cos(cr.bendAngle) * cr.bendLen, midY + Math.sin(cr.bendAngle) * cr.bendLen);
+    if (Math.abs(currentAlpha - h.alpha) > 0.03) {
+      ctx.globalAlpha = h.alpha;
+      currentAlpha = h.alpha;
     }
-    ctx.stroke();
 
-    // 3. Wyszczerbiony brzeg wlotu (chipped concrete / metal rim)
-    ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, h.radius * 1.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 4. Głęboki, smoliście czarny otwór wlotowy (deep penetration core)
-    ctx.fillStyle = '#020617';
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 5. Wewnętrzny cień przestrzeliny
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(h.x - h.nx * 0.35, h.y - h.ny * 0.35, h.radius * 0.65, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    const cvs = bulletHoleCanvases[(h.variant || 0) % bulletHoleCanvases.length];
+    const drawSize = (h.radius / 5.0) * 32;
+    ctx.drawImage(cvs, h.x - drawSize * 0.5, h.y - drawSize * 0.5, drawSize, drawSize);
   }
+
+  ctx.restore();
 }
 
 /**
@@ -455,10 +478,16 @@ function drawTracerSmoke(ctx, minX, maxX, minY, maxY) {
 }
 
 /**
- * Rysuje ostre iskry rykoszetowe z rozciąganiem wzdłuż wektora ruchu
+ * Rysuje ostre iskry rykoszetowe z rozciąganiem wzdłuż wektora ruchu (zoptymalizowany batching)
  */
 function drawBulletSparks(ctx, minX, maxX, minY, maxY) {
   if (bulletParticles.length === 0) return;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  // Grupowanie iskier według koloru dla batched stroke (eliminacja 120x save/restore na klatkę)
+  const sparkBatches = new Map();
 
   for (let i = 0; i < bulletParticles.length; i++) {
     const p = bulletParticles[i];
@@ -467,47 +496,63 @@ function drawBulletSparks(ctx, minX, maxX, minY, maxY) {
     const progress = Math.max(0, Math.min(1, p.life / (p.maxLife || 1.0)));
     if (progress <= 0.02) continue;
 
+    const color = p.color || '#facc15';
+    let batch = sparkBatches.get(color);
+    if (!batch) {
+      batch = [];
+      sparkBatches.set(color, batch);
+    }
+    batch.push(p);
+  }
+
+  // Rysowanie batched dla każdego koloru
+  for (const [color, particles] of sparkBatches.entries()) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const spd = Math.hypot(p.vx, p.vy);
+      if (spd > 0.8) {
+        const streakLen = Math.min(12, spd * 1.35);
+        const dirX = p.vx / spd;
+        const dirY = p.vy / spd;
+        ctx.moveTo(p.x - dirX * streakLen, p.y - dirY * streakLen);
+        ctx.lineTo(p.x, p.y);
+      } else {
+        ctx.moveTo(p.x - 0.5, p.y);
+        ctx.lineTo(p.x + 0.5, p.y);
+      }
+    }
+    ctx.stroke();
+  }
+
+  // Opcjonalny biały wierzchołek dla iskier o wysokiej energii w jednej ścieżce
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  let hasWhiteHot = false;
+  for (let i = 0; i < bulletParticles.length; i++) {
+    const p = bulletParticles[i];
+    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
+    const progress = Math.max(0, Math.min(1, p.life / (p.maxLife || 1.0)));
+    if (progress <= 0.35 || p.color === '#94a3b8' || p.color === '#64748b') continue;
+
     const spd = Math.hypot(p.vx, p.vy);
-
-    ctx.save();
-    ctx.globalAlpha = progress;
-
     if (spd > 0.8) {
-      // Ostra aerodynamiczna igła iskry kierunkowej
+      hasWhiteHot = true;
+      const streakLen = Math.min(12, spd * 1.35);
       const dirX = p.vx / spd;
       const dirY = p.vy / spd;
-      const streakLen = Math.min(12, spd * 1.35);
-      const tailX = p.x - dirX * streakLen;
-      const tailY = p.y - dirY * streakLen;
-
-      // 1. Zewnętrzna barwna smuga iskry
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(0.8, (p.size || 1.3) * progress);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
+      ctx.moveTo(p.x - dirX * Math.min(streakLen * 0.45, 2.8), p.y - dirY * Math.min(streakLen * 0.45, 2.8));
       ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-
-      // 2. Oślepiająco biały wierzchołek iskry dla wysokiej energii
-      if (progress > 0.35 && p.color !== '#94a3b8' && p.color !== '#64748b') {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = Math.max(0.5, (p.size || 1.3) * 0.5 * progress);
-        ctx.beginPath();
-        ctx.moveTo(p.x - dirX * Math.min(streakLen * 0.45, 2.8), p.y - dirY * Math.min(streakLen * 0.45, 2.8));
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-      }
-    } else {
-      // Drobny dogasający punkt
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(0.6, (p.size || 1.2) * 0.55 * progress), 0, Math.PI * 2);
-      ctx.fill();
     }
-
-    ctx.restore();
   }
+  if (hasWhiteHot) {
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -540,7 +585,7 @@ export function drawBullets(ctx) {
   // 4. Ostre iskry rykoszetowe (Motion-stretched Sparks)
   drawBulletSparks(ctx, minX, maxX, minY, maxY);
 
-  // 5. Rysowanie wąskich, naddźwiękowych smug igłowych
+  // 5. Rysowanie wąskich, naddźwiękowych smug igłowych (bez alokacji gradientów w klatce)
   const activeBullets = bullets;
   if (!activeBullets || activeBullets.length === 0) return;
 
@@ -567,7 +612,7 @@ export function drawBullets(ctx) {
       // POCISK SNAJPERSKI BARRETT .50 - PRECYZYJNA BŁĘKITNO-BIAŁA IGŁA
       // =====================================================================
 
-      // Warstwa 1: Wąska, ostra poświata jonizacji
+      // Warstwa 1: Wąska poświata jonizacji
       ctx.strokeStyle = prof.glowColor || 'rgba(56, 189, 248, 0.30)';
       ctx.lineWidth = prof.glowWidth || 3.6;
       ctx.lineCap = 'round';
@@ -576,13 +621,8 @@ export function drawBullets(ctx) {
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
 
-      // Warstwa 2: Środkowa smuga gradientowa od kobaltu do cyjanu
-      const midGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-      midGrad.addColorStop(0.0, 'rgba(2, 132, 199, 0.15)');
-      midGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.85)');
-      midGrad.addColorStop(1.0, '#38bdf8');
-
-      ctx.strokeStyle = midGrad;
+      // Warstwa 2: Środkowa smuga kobalt/cyjan
+      ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = prof.midWidth || 1.8;
       ctx.beginPath();
       ctx.moveTo(tailX + dirX * (tracerLen * 0.25), tailY + dirY * (tracerLen * 0.25));
@@ -609,12 +649,7 @@ export function drawBullets(ctx) {
       // =====================================================================
 
       // Warstwa 1: Dyskretna, wąska poświata aerodynamiczna
-      const glowGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-      glowGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
-      glowGrad.addColorStop(0.6, prof.glowColor || 'rgba(245, 158, 11, 0.12)');
-      glowGrad.addColorStop(1.0, prof.glowColor || 'rgba(245, 158, 11, 0.25)');
-
-      ctx.strokeStyle = glowGrad;
+      ctx.strokeStyle = prof.glowColor || 'rgba(245, 158, 11, 0.22)';
       ctx.lineWidth = prof.glowWidth || 2.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -622,13 +657,8 @@ export function drawBullets(ctx) {
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
 
-      // Warstwa 2: Zwężające się ciało igły (gradient pirotechniczny)
-      const bodyGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-      bodyGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
-      bodyGrad.addColorStop(0.4, prof.bodyGradient[1] || '#dc2626');
-      bodyGrad.addColorStop(1.0, prof.bodyGradient[0] || '#f59e0b');
-
-      ctx.strokeStyle = bodyGrad;
+      // Warstwa 2: Zwężające się ciało igły
+      ctx.strokeStyle = (prof.bodyGradient && prof.bodyGradient[0]) || '#f59e0b';
       ctx.lineWidth = prof.bodyWidth || 1.4;
       ctx.beginPath();
       ctx.moveTo(tailX + dirX * (tracerLen * 0.20), tailY + dirY * (tracerLen * 0.20));
