@@ -1,0 +1,15 @@
+{
+  "name": "keep-it-high",
+  "version": "1.0.0",
+  "description": "Keep-it-high 2D physics combat arena",
+  "type": "module",
+  "scripts": {
+    "verify": "node --experimental-vm-modules scripts/verify-syntax.js",
+    "playtest": "node scripts/ai-playtest.js",
+    "playtest:a5": "node scripts/ai-playtest.js --arena=arena-5 --duration=25",
+    "playtest:a3": "node scripts/ai-playtest.js --arena=arena-3 --duration=25"
+  },
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}

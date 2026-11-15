@@ -83,6 +83,10 @@ import {
   weaponEditorState
 } from './dev/weaponEditor.js';
 import {
+  updatePhysicsWatchdog,
+  checkAndInitAutoPlaytest
+} from './dev/physicsWatchdog.js';
+import {
   toggleDevPanel,
   syncDevBotButtonUI,
   syncDevArenaButtonUI,
@@ -642,8 +646,14 @@ function update() {
   }
 
   // Przetwarzanie wejścia gracza (celowanie, strzał, przeładowanie, jetpack, timery drążków, pad)
-  updatePlayerInputAndCombat(activeArenaId);
-  updateWeaponEditorFreeze();
+  // W trybie Auto-Playtest (?aiTest=1) gracz lokalny jest sterowany autonomicznie przez AI bota
+  if (player.isAiTestControlled) {
+    updateWeaponState(player);
+    updateWeaponEditorFreeze();
+  } else {
+    updatePlayerInputAndCombat(activeArenaId);
+    updateWeaponEditorFreeze();
+  }
 
   const activeRemotePlayers = (typeof getActiveRemotePlayers === 'function') ? getActiveRemotePlayers() : (remotePlayer?.active ? [remotePlayer] : []);
   if (activeRemotePlayers.length > 0) {
@@ -661,8 +671,14 @@ function update() {
   }
   const activeZombies = (typeof getActiveZombies === 'function') ? getActiveZombies() : [];
   const mainMeleeTargets = [...activeBots, ...activeRemotePlayers, ...activeZombies].filter(Boolean);
-  updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
-  updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
+
+  if (player.isAiTestControlled) {
+    const aiCombatants = [player, ...activeBots, ...activeRemotePlayers];
+    updateBotBrain(isDeathmatch ? null : ball, activeBots[0] || null, effectiveGroundY, spawnGrass, player, aiCombatants);
+  } else {
+    updateMobileControlStates(player, leftStick, btnCluster, { ball: isDeathmatch ? null : ball });
+    updatePlayer(keys, leftStick, effectiveGroundY, isDeathmatch ? null : ball, spawnGrass, player, mainMeleeTargets);
+  }
   sendPlayerState(player);
 
   updateParticles();
@@ -1312,6 +1328,7 @@ let refreshSampleSum = 0;
 
 function loop(now) {
   requestAnimationFrame(loop);
+  const frameLoopStartTime = (typeof performance !== 'undefined') ? performance.now() : Date.now();
   const currentTime = (typeof now === 'number' && now > 0) ? now : performance.now();
   if (lastTime === 0) {
     lastTime = currentTime;
@@ -1402,6 +1419,12 @@ function loop(now) {
     } catch (err) {
       console.error('[GAME LOOP DRAW ERROR]', err);
     }
+  }
+
+  // Monitoring anomalii fizyki i czasu wykonania klatki (Physics & Performance Watchdog)
+  const frameExecMs = (typeof performance !== 'undefined') ? (performance.now() - frameLoopStartTime) : 0;
+  if (typeof updatePhysicsWatchdog === 'function') {
+    updatePhysicsWatchdog(delta / 1000, frameExecMs);
   }
 }
 
@@ -1580,10 +1603,16 @@ if (typeof window !== 'undefined') {
   if (window.location) {
     const urlParams = new URLSearchParams(window.location.search);
     const autostartClass = urlParams.get('class') || urlParams.get('autostart');
+    const isAiTest = urlParams.get('aiTest') === '1' || urlParams.has('aiTest');
     if (autostartClass) {
       selectPlayerClass(CLASSES[String(autostartClass).toUpperCase()] || CLASSES.PLAYMAKER);
+    } else if (isAiTest) {
+      selectPlayerClass(CLASSES.STRIKER);
     } else {
       setGameState('MENU');
+    }
+    if (isAiTest && typeof checkAndInitAutoPlaytest === 'function') {
+      checkAndInitAutoPlaytest();
     }
     if (urlParams.has('breach')) {
       const bx = Number(urlParams.get('breach')) || 1400;

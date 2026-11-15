@@ -623,7 +623,7 @@ export function updateArena3(dt, players, ball) {
     b.sinkTimer = b.sinkTimer || 0;
 
     // Gdy zniszczony klocek dotknie wody lub przejdzie w stan uśpienia, natychmiast wyłącz właściwości platformy
-    const touchesWater = (b.y + b.h >= 1295);
+    const touchesWater = (b.y >= 1290 || (b.y + b.h >= 1295));
     if (touchesWater || b.isAsleep) {
       b.solid = false;
       b.isPlatform = false;

@@ -114,6 +114,7 @@ Każdą nową funkcję umieszczaj w odpowiednim module domenowym:
 - `js/dev/devPanel.js` — przyciski panelu DEV (`BOT`, `Arena`, `ZOOM`, `PAD`, `HEŁM`, `KAMIZELKA`).
 - `js/dev/obstacleEditor.js` — edytor przeszkód na żywo w grze.
 - `js/dev/weaponEditor.js` — interaktywny edytor chwytu i pozycji broni na żywo (klawisz F6 lub przycisk `[BRONIE]` w menu DEV, suwaki i przyciski krokowe dla `pivotSpriteX/Y`, `rearGripX/Y`, `foreGripX/Y`, `barrelLen`, natychmiastowy podgląd z zamrożeniem celowania, autozapis w `localStorage` oraz eksport gotowego kodu JS).
+- `js/dev/physicsWatchdog.js` — silnikowy watchdog fizyki i wydajności (PhysicsWatchdog): wykrywanie w każdej klatce anomalii postaci (teleporty dx/dy, penetracje bloków > 6px, missed squash, migotanie onGround), desynchronizacji klocków (Arena 5 grid desync, pływające belki Arena 3 z solid=true) oraz przycięć klatek (FRAME_STUTTER > 28ms), agregacja statystyk (średni FPS, 1% low, p99, exec ms) i eksport raportów getSummaryMarkdown() oraz getReportJSON().
 
 ### Progresja i Rangi (`js/progression.js`, `js/ui/rankHud.js`)
 - `js/progression.js` — system prestiżowych rang wojskowych (od Szeregowego do Generała Areny) z odblokowaniami nagród (`unlocks`: bronie, perki, serie zabójstw, kamuflaże) oraz statystyk bojowych gracza w `localStorage` (`RANKS`, `getPlayerXP`, `addPlayerXP`, `getPlayerStatsSummary`, `recordMatchResult`, `recordKill`, `recordDeath`, `recordGoal`, `resetPlayerStats`).
@@ -206,3 +207,37 @@ Gdy użytkownik zleca stworzenie nowego elementu gry, którego jeszcze nie ma (n
   - **Czystość podglądu postaci**: W kreatorze postać stoi w neutralnej pozie garderoby (BEZ efektów bitewnych, ładowania zdolności, pary bojowej, iskier czy dymu).
   - **Ekrany wyboru map i menu**: Krótkie, jednotaktowe streszczenia taktyczne. Żadnych ścian tekstu, list punktów XP, pucharów ani przeładowanych grafiką elementów.
   - **Minimalizm HUD**: Wskaźniki bojowe mają być zwarte, czytelne w ułamku sekundy i pozbawione zbędnych ozdobników. Zawsze kieruj się zasadą: *„Jeśli element nie jest krytyczny dla czytelności walki lub obsługi, usuń go”*.
+
+## 7. Zautomatyzowane Testy Fizyki i Wydajności (Automated Physics & Performance Playtesting)
+Aby wyeliminować konieczność ręcznego testowania gry i opisywania błędów fizyki oraz spadków płynności, projekt Keep-it-high posiada zautomatyzowany system symulacji oparty na Playwright i module `js/dev/physicsWatchdog.js`.
+
+### Jak uruchamiać testy AI:
+W terminalu agent AI może w dowolnym momencie uruchomić bezobsługowy mecz botów:
+```bash
+# Test Areny 5 (Prefabrykator Orbitalny - Tetris, suwnica, squash, opadanie klocków):
+node scripts/ai-playtest.js --arena=arena-5 --duration=25
+
+# Test Areny 3 (Tajemnicza Dżungla - most linowy, rzeka, pływający gruz):
+node scripts/ai-playtest.js --arena=arena-3 --duration=25
+
+# Wygodne aliasy npm:
+npm run playtest:a5
+npm run playtest:a3
+```
+
+### Opcje CLI:
+- `--arena=arena-5` (lub `arena-3`, `arena-4` itp. domyślnie `arena-5`).
+- `--duration=25` (czas symulacji walki w sekundach).
+- `--bots=5` (liczba walczących botów; łącznie z graczem sterowanym przez AI = 6 postaci).
+- `--headless=true` (domyślnie `true`; ustaw `false` dla podglądu okna przeglądarki).
+- `--port=8000` (port HTTP; skrypt automatycznie uruchamia wbudowany serwer jeśli port jest wolny).
+
+### Co monitoruje i raportuje PhysicsWatchdog:
+1. `TELEPORT_ANOMALY`: gwałtowne przemieszczenia postaci poza dozwolonym limitem wektora prędkości `(|dx| > |vx| + 24 lub |dy| > |vy| + 30)`.
+2. `BLOCK_PENETRATION`: wnikanie hitboxa żywej postaci głębiej niż 6px do litego klocka lub platformy przez >= 2 klatki z rzędu.
+3. `FALLING_BLOCK_GLITCH`: opadający klocek wpychający postać w podłoże zamiast squash kill, albo przeniknięcie postaci na dach opadającego bloku.
+4. `SURFACE_JITTER`: gwałtowne migotanie stanu `onGround` (> 4 zmiany w 10 klatkach) przy opadających klockach lub rampach.
+5. `BLOCK_STATE_DESYNC`: rozsynchronizowanie klocków osiadłych z siatką `getGridX/Y`, zawieszone w powietrzu klocki z `vy=0`, oraz zniszczone belki w wodzie na Arenie 3 zachowujące `solid=true`.
+6. `FRAME_STUTTER`: klatki o czasie wykonania lub `dt > 28 ms` wraz ze snapshotem obciążenia sceny.
+
+Raport zapisuje się do `reports/latest-playtest.md` oraz `reports/latest-playtest.json` i jest automatycznie wypisywany na stdout. Po każdej zmianie w fizyce lub renderowaniu agent powinien uruchomić test, przeanalizować wykryte anomalie i naprawić je przed zakończeniem zadania.

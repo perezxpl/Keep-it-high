@@ -334,9 +334,10 @@ export function spawnArena3WaterSplash(x, y, count = 10, isGeyser = false) {
 export function breakBridgeBlock(block, impulseX = 0, impulseY = 0, angularImpulse = 0) {
   if (!block || !block.intact) return;
   block.intact = false;
-  // Zniszczona deska staje się namacalnym spadającym/pływającym obiektem (nie duchem!)
-  block.solid = true;
-  block.isPlatform = true;
+  // Zniszczona deska staje się namacalnym spadającym/pływającym obiektem (chyba że znajduje się już w wodzie)
+  const isInWater = (block.y >= 1290 || (block.y + block.h >= 1295));
+  block.solid = !isInWater;
+  block.isPlatform = !isInWater;
   block.oneWay = true;
   block.cableAttached = false;
   block.vx += impulseX;
