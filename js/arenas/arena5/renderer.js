@@ -405,6 +405,7 @@ function drawSettledBlocks(ctx, camera) {
 
   const minRow = Math.max(0, Math.floor((1200 - camBottom) / CELL_SIZE) - 1);
   const maxRow = Math.max(0, Math.ceil((1200 - camTop) / CELL_SIZE) + 1);
+  const renderedCells = new Set();
 
   for (let r = minRow; r <= maxRow; r++) {
     const rowData = arena5State.gridRows.get(r);
@@ -413,6 +414,7 @@ function drawSettledBlocks(ctx, camera) {
       const cell = rowData[c];
       if (!cell || cell.hp <= 0) continue;
       if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
+      renderedCells.add(cell);
 
       const outerEdges = cell._outerEdges || getCellOuterEdges(cell);
       const isClearing = clearingRows !== null && clearingRows.has(cell.row);
@@ -427,6 +429,20 @@ function drawSettledBlocks(ctx, camera) {
         ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + 0.35 * pulse})`;
         ctx.fillRect(cell.x + 12, cell.y + 12, cell.w - 24, cell.h - 24);
       }
+    }
+  }
+
+  // Dorysuj aktywnie opadające klocki, których docelowy wiersz jest poza minRow..maxRow, ale fizyczna pozycja Y mieści się w kadrze
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || !cell.isFalling || renderedCells.has(cell)) continue;
+      if (cell.y + cell.h < camTop || cell.y > camBottom) continue;
+      renderedCells.add(cell);
+
+      const outerEdges = cell._outerEdges || getCellOuterEdges(cell);
+      drawSingleBlock(ctx, cell.x, cell.y, cell.w, cell.h, cell.material, cell.hp, cell.maxHp, outerEdges, cell.accentColor);
     }
   }
 }

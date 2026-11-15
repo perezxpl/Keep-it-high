@@ -162,6 +162,28 @@ export function handleArena5BulletHit(bullet) {
     }
   }
 
+  // 1B. Sprawdz klocki w trakcie płynnego opadania w siatce
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || !cell.isFalling) continue;
+
+      if (rayIntersectsAABB(prevX, prevY, bx, by, cell.x, cell.y, cell.w, cell.h)) {
+        if (cell.material === 'SCAFFOLDING') return false;
+        cell.hp -= dmg;
+        spawnRicochetSparks(bx, by, -bullet.vx * 0.4, -bullet.vy * 0.4, 4);
+        if (cell.hp <= 0) {
+          destroyGridCell(cell.row, cell.col);
+          if (typeof window !== 'undefined' && typeof window.broadcastArena5GridSync === 'function') {
+            window.broadcastArena5GridSync({ minIntervalMs: 60 });
+          }
+        }
+        return true;
+      }
+    }
+  }
+
   // 2. Sprawdz klocki w siatce wiezy (zoptymalizowany zakres wierszy O(1) na podstawie Y pocisku)
   const minRayY = Math.min(by, prevY);
   const maxRayY = Math.max(by, prevY);
@@ -229,6 +251,28 @@ export function handleArena5Explosion(expX, expY, radius) {
     }
   }
 
+  // 1B. Sprawdz komorki w trakcie opadania w siatce
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || !cell.isFalling) continue;
+
+      const cellMidX = cell.x + cell.w * 0.5;
+      const cellMidY = cell.y + cell.h * 0.5;
+      const distSq = (cellMidX - expX) * (cellMidX - expX) + (cellMidY - expY) * (cellMidY - expY);
+
+      if (distSq < radSq) {
+        const factor = 1.0 - Math.sqrt(distSq) / radius;
+        const dmg = Math.round(95 * factor);
+        cell.hp -= dmg;
+        if (cell.hp <= 0) {
+          cellsToDestroy.push({ r: cell.row, c });
+        }
+      }
+    }
+  }
+
   // 2. Sprawdz komorki w siatce wiezy (zakres wierszy w promieniu eksplozji)
   const cellsToDestroy = [];
   const minRow = Math.max(0, Math.floor((1200 - (expY + radius)) / CELL_SIZE) - 1);
@@ -283,7 +327,7 @@ export function destroyGridCell(row, col, options = {}) {
   const cell = rowData[col];
   cell.hp = 0;
   cell.isSolid = false;
-  removePlatformForCell(cell);
+  removePlatformForCell(cell, true);
   rowData[col] = null;
 
   const midX = cell.x + cell.w * 0.5;
@@ -376,6 +420,24 @@ export function handleArena5MeleeHit(shooter, p1, p2, width = 24, weaponId = 'KN
         closestDist = d;
         closestCell = cell;
         isCraneHit = true;
+      }
+    }
+  }
+
+  // 1B. Sprawdz klocki w trakcie opadania w siatce
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || !cell.isFalling) continue;
+
+      const d = distSegmentToBox(p1.x, p1.y, p2.x, p2.y, cell.x, cell.y, cell.w, cell.h);
+      if (d <= hitRadius && d < closestDist) {
+        closestDist = d;
+        closestCell = cell;
+        closestRow = cell.row;
+        closestCol = c;
+        isCraneHit = false;
       }
     }
   }
@@ -604,6 +666,19 @@ export function handleArena5GrenadeCollision(grenade) {
       const cellH = CELL_SIZE;
 
       if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cellX, cellY, cellW, cellH)) {
+        return true;
+      }
+    }
+  }
+
+  // 1B. Sprawdz klocki w trakcie opadania w siatce
+  for (const rowData of arena5State.gridRows.values()) {
+    if (!rowData) continue;
+    for (let c = 0; c < COLS; c++) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || !cell.isFalling) continue;
+
+      if (resolveGrenadeBoxBounce(grenade, prevX, prevY, gx, gy, r, cell.x, cell.y, cell.w, cell.h)) {
         return true;
       }
     }

@@ -184,6 +184,28 @@ function renderCraterSegment(ctx, seg) {
 }
 
 function getSurfaceYFromPoints(pts, x) {
+  if (x <= 1150) {
+    const idx = Math.floor(x / 10);
+    if (idx >= 0 && idx < GROUND_LEFT_POINTS.length - 1) {
+      const p0 = GROUND_LEFT_POINTS[idx];
+      const p1 = GROUND_LEFT_POINTS[idx + 1];
+      const dx = p1.x - p0.x;
+      const t = dx > 0 ? (x - p0.x) / dx : 0;
+      return p0.y + t * (p1.y - p0.y);
+    }
+    return 1200;
+  }
+  if (x >= 3250) {
+    const idx = Math.floor((x - 3250) / 10);
+    if (idx >= 0 && idx < GROUND_RIGHT_POINTS.length - 1) {
+      const p0 = GROUND_RIGHT_POINTS[idx];
+      const p1 = GROUND_RIGHT_POINTS[idx + 1];
+      const dx = p1.x - p0.x;
+      const t = dx > 0 ? (x - p0.x) / dx : 0;
+      return p0.y + t * (p1.y - p0.y);
+    }
+    return 1200;
+  }
   if (x <= pts[0].x) return pts[0].y;
   if (x >= pts[pts.length - 1].x) return pts[pts.length - 1].y;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -230,63 +252,68 @@ function getOrigSurfaceY(x, isL) {
 // zwęglenia po wybuchach i rozplecione liny
 // =========================================================================
 
-function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(angle || 0);
+const _woodRubbleCanvases = new Map();
+function getSplinteredWoodCanvas(variant, isWet) {
+  const key = `${variant}_${isWet ? 1 : 0}`;
+  let c = _woodRubbleCanvases.get(key);
+  if (!c && typeof document !== 'undefined') {
+    c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 44;
+    const tctx = c.getContext('2d');
+    if (tctx) {
+      renderWoodRubbleVector(tctx, 32, 22, 40, 22, variant, isWet);
+    }
+    _woodRubbleCanvases.set(key, c);
+  }
+  return c;
+}
 
+function renderWoodRubbleVector(ctx, ox, oy, w, h, seed, isWet, options = {}) {
+  ctx.save();
+  ctx.translate(ox, oy);
   const halfW = w / 2;
   const halfH = h / 2;
-  const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(cx * 7 + cy * 13) % 100);
-  const isWet = (cy + halfH >= 1290);
   const scorchSide = options.scorchSide || (seed % 2 === 0 ? 'left' : 'right');
 
-  // 1. Poszarpany, wyszczerbiony profil połamanej belki ze sterczącymi drzazgami
+  // 1. Poszarpany profil połamanej belki
   ctx.beginPath();
-  // Górna krawędź
   ctx.moveTo(-halfW + 4, -halfH + ((seed % 3) - 1));
   ctx.lineTo(-halfW * 0.3, -halfH + ((seed % 2) - 0.5));
   ctx.lineTo(0, -halfH);
   ctx.lineTo(halfW * 0.4, -halfH + (((seed + 1) % 3) - 1));
   ctx.lineTo(halfW - 3, -halfH + 1);
 
-  // Prawy przełam z ostrymi zębami włókien drewna
   ctx.lineTo(halfW + 5, -halfH * 0.4);
   ctx.lineTo(halfW - 3, -halfH * 0.1);
   ctx.lineTo(halfW + 6, halfH * 0.2);
   ctx.lineTo(halfW - 2, halfH * 0.6);
   ctx.lineTo(halfW + 2, halfH);
 
-  // Dolna krawędź
   ctx.lineTo(halfW * 0.5, halfH + (((seed + 2) % 3) - 1));
   ctx.lineTo(0, halfH);
   ctx.lineTo(-halfW * 0.4, halfH - (seed % 2));
   ctx.lineTo(-halfW + 3, halfH);
 
-  // Lewy przełam ze sterczącymi drzazgami
   ctx.lineTo(-halfW - 3, halfH * 0.5);
   ctx.lineTo(-halfW + 4, halfH * 0.2);
   ctx.lineTo(-halfW - 5, -halfH * 0.2);
   ctx.lineTo(-halfW + 1, -halfH * 0.6);
   ctx.closePath();
 
-  // 2. Wielowarstwowe wypełnienie drewna
   ctx.fillStyle = isWet ? '#2b1708' : '#492c10';
   ctx.fill();
 
-  // 3. Zwęglenie i osmolenie po wybuchu (scorch mark)
   const sx = scorchSide === 'left' ? -halfW + 4 : halfW - 4;
   ctx.fillStyle = 'rgba(15, 8, 3, 0.70)';
   ctx.beginPath();
   ctx.arc(sx, -halfH * 0.2, w * 0.45, 0, Math.PI * 2);
   ctx.fill();
 
-  // 4. Ciemny kontur pęknięć
   ctx.strokeStyle = '#120702';
   ctx.lineWidth = 2.0;
   ctx.stroke();
 
-  // 5. Wzdłużne rozwarstwienia słojów drewna i detale (tylko na lądzie)
   if (!isWet) {
     ctx.strokeStyle = '#0a0401';
     ctx.lineWidth = 1.6;
@@ -299,7 +326,6 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
     ctx.lineTo(halfW - 6, halfH * 0.4);
     ctx.stroke();
 
-    // Rim light na krawędziach
     ctx.strokeStyle = 'rgba(215, 170, 85, 0.60)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -308,7 +334,6 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
     ctx.stroke();
   }
 
-  // 6. Stalowe okucie lub wystający zgięty gwóźdź
   if (!isWet && options.hasMetal !== false) {
     const metalX = (seed % 2 === 0) ? -halfW + 7 : halfW - 11;
     ctx.fillStyle = '#334155';
@@ -328,21 +353,51 @@ function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
     ctx.fillStyle = 'rgba(146, 64, 14, 0.65)';
     ctx.fillRect(metalX + 1, -halfH + 4, 3, 2.5);
   }
-
   ctx.restore();
 }
 
-function drawSplinteredRockSlab(ctx, slab) {
-  const cx = slab.x + slab.w / 2;
-  const cy = slab.y + slab.h / 2;
+function drawSplinteredWoodRubble(ctx, cx, cy, w, h, angle, options = {}) {
+  const seed = options.seed !== undefined ? options.seed : Math.floor(Math.abs(cx * 7 + cy * 13) % 100);
+  const variant = Math.abs(seed) % 4;
+  const isWet = (cy + h / 2 >= 1290);
+  const canv = getSplinteredWoodCanvas(variant, isWet);
+
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(slab.angle);
+  ctx.rotate(angle || 0);
+  if (canv) {
+    const scaleX = (w || 40) / 40;
+    const scaleY = (h || 22) / 22;
+    ctx.scale(scaleX, scaleY);
+    ctx.drawImage(canv, -32, -22);
+  } else {
+    renderWoodRubbleVector(ctx, 0, 0, w, h, seed, isWet, options);
+  }
+  ctx.restore();
+}
 
-  const halfW = slab.w / 2;
-  const halfH = slab.h / 2;
+const _rockSlabCanvases = new Map();
+function getSplinteredRockCanvas(variant) {
+  let c = _rockSlabCanvases.get(variant);
+  if (!c && typeof document !== 'undefined') {
+    c = document.createElement('canvas');
+    c.width = 124;
+    c.height = 56;
+    const tctx = c.getContext('2d');
+    if (tctx) {
+      renderRockSlabVector(tctx, 62, 28, 100, 34, variant);
+    }
+    _rockSlabCanvases.set(variant, c);
+  }
+  return c;
+}
 
-  // 1. Ostry, kanciasty wielokąt łupanego głazu dolomitowego
+function renderRockSlabVector(ctx, ox, oy, w, h, seed) {
+  ctx.save();
+  ctx.translate(ox, oy);
+  const halfW = w / 2;
+  const halfH = h / 2;
+
   ctx.beginPath();
   ctx.moveTo(-halfW + 10, -halfH + 2);
   ctx.lineTo(-halfW * 0.2, -halfH - 3);
@@ -356,11 +411,9 @@ function drawSplinteredRockSlab(ctx, slab) {
   ctx.lineTo(-halfW - 2, -halfH * 0.2);
   ctx.closePath();
 
-  // 2. Główny kolor skały
   ctx.fillStyle = '#343f34';
   ctx.fill();
 
-  // 3. Facet lighting (fasetowane cieniowanie ścian odłamu)
   ctx.fillStyle = 'rgba(125, 155, 125, 0.25)';
   ctx.beginPath();
   ctx.moveTo(-halfW + 10, -halfH + 2);
@@ -379,18 +432,15 @@ function drawSplinteredRockSlab(ctx, slab) {
   ctx.closePath();
   ctx.fill();
 
-  // 4. Zwęglenie po wybuchu
   ctx.fillStyle = 'rgba(10, 15, 10, 0.65)';
   ctx.beginPath();
   ctx.arc(-halfW * 0.3, -halfH * 0.3, halfW * 0.55, 0, Math.PI * 2);
   ctx.fill();
 
-  // 5. Ciemny kontur bryły skalnej
   ctx.strokeStyle = '#0b110b';
   ctx.lineWidth = 2.4;
   ctx.stroke();
 
-  // 6. Głębokie spękania skalne
   ctx.strokeStyle = '#070b07';
   ctx.lineWidth = 1.8;
   ctx.beginPath();
@@ -401,12 +451,30 @@ function drawSplinteredRockSlab(ctx, slab) {
   ctx.lineTo(-halfW * 0.1, halfH * 0.4);
   ctx.stroke();
 
-  // 7. Skrawki mchu
   ctx.fillStyle = '#3f7023';
   ctx.fillRect(-halfW + 14, -halfH + 3, 16, 3);
   ctx.fillStyle = '#5ca033';
   ctx.fillRect(-halfW + 16, -halfH + 3, 10, 1.8);
+  ctx.restore();
+}
 
+function drawSplinteredRockSlab(ctx, slab) {
+  const cx = slab.x + slab.w / 2;
+  const cy = slab.y + slab.h / 2;
+  const variant = Math.abs(slab.slabIndex !== undefined ? slab.slabIndex : (slab.seed || 0)) % 2;
+  const canv = getSplinteredRockCanvas(variant);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(slab.angle || 0);
+  if (canv) {
+    const scaleX = (slab.w || 100) / 100;
+    const scaleY = (slab.h || 34) / 34;
+    ctx.scale(scaleX, scaleY);
+    ctx.drawImage(canv, -62, -28);
+  } else {
+    renderRockSlabVector(ctx, 0, 0, slab.w, slab.h, variant);
+  }
   ctx.restore();
 }
 
@@ -690,9 +758,6 @@ export function drawArena3Foreground(ctx, camera) {
     ctx.fill();
 
     // B. POZIOME WARSTWY GEOLOGICZNE (STRATA) I SPĘKANIA SKALNE
-    // Ścisły clip do sylwetki klifu: żadne linie wewnętrzne nie pojawią się w pustym powietrzu kraterów
-    ctx.save();
-    ctx.clip();
     ctx.strokeStyle = 'rgba(4, 7, 10, 0.70)';
     ctx.lineWidth = 2.4;
     const strataY = [1235, 1275, 1315, 1355];
@@ -707,7 +772,6 @@ export function drawArena3Foreground(ctx, camera) {
       }
       ctx.stroke();
     }
-    ctx.restore();
 
     // C. ŚCIANY WYBITYCH KRATERÓW (Zniszczona, zwęglona skała bazaltowa w lejach)
     drawCraterWalls(ctx, ovalPoints);
@@ -1066,11 +1130,7 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.lineTo(-tw / 2, 0);
       ctx.closePath();
 
-      const fallenGrad = ctx.createLinearGradient(-tw / 2, -logLen, tw / 2, 0);
-      fallenGrad.addColorStop(0, '#533418');
-      fallenGrad.addColorStop(0.5, '#3b220e');
-      fallenGrad.addColorStop(1, '#1e0d04');
-      ctx.fillStyle = fallenGrad;
+      ctx.fillStyle = '#3b220e';
       ctx.fill();
 
       ctx.strokeStyle = '#120702';
@@ -1643,11 +1703,7 @@ export function drawArena3Foreground(ctx, camera) {
       ctx.rotate(p.tiltAngle);
 
       const towerLen = caissonTopY - pylonTopY;
-      const pFallenGrad = ctx.createLinearGradient(-25, -towerLen, 25, 0);
-      pFallenGrad.addColorStop(0, '#533418');
-      pFallenGrad.addColorStop(0.5, '#3b220e');
-      pFallenGrad.addColorStop(1, '#1e0d04');
-      ctx.fillStyle = pFallenGrad;
+      ctx.fillStyle = '#3b220e';
 
       // Poszarpana lewa noga
       ctx.beginPath();

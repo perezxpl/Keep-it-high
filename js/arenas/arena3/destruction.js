@@ -159,6 +159,7 @@ export function onArena3BulletHit(bullet) {
   // 4. Klocki ramp podejścia do mostu (ARENA_3_RAMP_BLOCKS) - całe i zawalone
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 12 || minObjY > b.y + b.h + 18) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 10, b.x + b.w + 2, b.y + b.h + 16)) {
       if (b.intact) {
@@ -185,6 +186,7 @@ export function onArena3BulletHit(bullet) {
   // 5. Klocki mostu głównego (ARENA_3_BRIDGE_BLOCKS) - całe i zawalone pływające deski
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
@@ -211,6 +213,7 @@ export function onArena3BulletHit(bullet) {
   // 6. Klocki wiszących pomostów taktycznych (ALL_CANOPY_BLOCKS)
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
@@ -252,6 +255,7 @@ export function onArena3BulletHit(bullet) {
   // 7. Modularne płyty skalne snajperów (ARENA_3_SNIPER_SLABS)
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
+    if (!slab.intact && (slab.y + slab.h >= 1295 || slab.isAsleep)) continue;
     if (maxObjX < slab.x - 4 || minObjX > slab.x + slab.w + 4 || maxObjY < slab.y - 10 || minObjY > slab.y + slab.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, slab.x - 2, slab.y - 4, slab.x + slab.w + 2, slab.y + slab.h + 6)) {
       if (slab.intact) {
@@ -275,6 +279,7 @@ export function onArena3BulletHit(bullet) {
   // 8. Modularne drewniane podesty wież strażniczych (ARENA_3_TOWER_BLOCKS)
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     if (maxObjX < b.x - 4 || minObjX > b.x + b.w + 4 || maxObjY < b.y - 10 || minObjY > b.y + b.h + 12) continue;
     if (rayIntersectsAABB(bx0, by0, bx, by, b.x - 2, b.y - 6, b.x + b.w + 2, b.y + b.h + 8)) {
       if (b.intact) {
@@ -333,6 +338,7 @@ export function onArena3KickHit(player, kickBox) {
   // 1. Spartan Kick w klocki ramp podejścia do mostu
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const bcx = b.x + b.w / 2;
     const bcy = b.y + b.h / 2;
     if (Math.abs(kx - bcx) <= b.w * 0.6 + 10 && Math.abs(ky - bcy) <= 35) {
@@ -359,6 +365,7 @@ export function onArena3KickHit(player, kickBox) {
   // 2. Spartan Kick w belki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const bcx = b.x + b.w / 2;
     const bcy = b.y + b.h / 2;
     if (Math.abs(kx - bcx) <= b.w * 0.5 + 8 && Math.abs(ky - bcy) <= 30) {
@@ -386,6 +393,7 @@ export function onArena3KickHit(player, kickBox) {
   // 2B. Spartan Kick w pomosty wiszące w koronach drzew
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const bcx = b.x + b.w / 2;
     const bcy = b.y + b.h / 2;
     if (Math.abs(kx - bcx) <= b.w * 0.5 + 8 && Math.abs(ky - bcy) <= 30) {
@@ -460,6 +468,7 @@ export function onArena3KickHit(player, kickBox) {
   // 4. Spartan Kick w płyty skalne snajperów
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
+    if (!slab.intact && (slab.y + slab.h >= 1295 || slab.isAsleep)) continue;
     const scx = slab.x + slab.w / 2;
     const scy = slab.y + slab.h / 2;
     if (Math.abs(kx - scx) <= slab.w * 0.75 + 15 && Math.abs(ky - scy) <= 35) {
@@ -486,6 +495,7 @@ export function onArena3KickHit(player, kickBox) {
   // 5. Spartan Kick w podesty wież strażniczych
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const bcx = b.x + b.w / 2;
     const bcy = b.y + b.h / 2;
     if (Math.abs(kx - bcx) <= b.w * 0.75 + 15 && Math.abs(ky - bcy) <= 35) {
@@ -560,6 +570,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 1. Wybuch w klocki ramp podejścia do mostu
   for (let i = 0; i < ARENA_3_RAMP_BLOCKS.length; i++) {
     const b = ARENA_3_RAMP_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const cx = b.x + b.w / 2;
     const cy = b.y + b.h / 2;
     const d = Math.hypot(cx - expX, cy - expY);
@@ -593,6 +604,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 2. Wybuch w klocki mostu głównego
   for (let i = 0; i < ARENA_3_BRIDGE_BLOCKS.length; i++) {
     const b = ARENA_3_BRIDGE_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const cx = b.x + b.w / 2;
     const cy = b.y + b.h / 2;
     const d = Math.hypot(cx - expX, cy - expY);
@@ -626,6 +638,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 2. Wybuch w klocki pomostów wiszących
   for (let i = 0; i < ALL_CANOPY_BLOCKS.length; i++) {
     const b = ALL_CANOPY_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const cx = b.x + b.w / 2;
     const cy = b.y + b.h / 2;
     const d = Math.hypot(cx - expX, cy - expY);
@@ -731,6 +744,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 5. Wybuch w płyty skalne snajperów
   for (let i = 0; i < ARENA_3_SNIPER_SLABS.length; i++) {
     const slab = ARENA_3_SNIPER_SLABS[i];
+    if (!slab.intact && (slab.y + slab.h >= 1295 || slab.isAsleep)) continue;
     const cx = slab.x + slab.w / 2;
     const cy = slab.y + slab.h / 2;
     const d = Math.hypot(cx - expX, cy - expY);
@@ -764,6 +778,7 @@ export function onArena3Explosion(expX, expY, radius, context) {
   // 6. Wybuch w podesty wież strażniczych
   for (let i = 0; i < ARENA_3_TOWER_BLOCKS.length; i++) {
     const b = ARENA_3_TOWER_BLOCKS[i];
+    if (!b.intact && (b.y + b.h >= 1295 || b.isAsleep)) continue;
     const cx = b.x + b.w / 2;
     const cy = b.y + b.h / 2;
     const d = Math.hypot(cx - expX, cy - expY);

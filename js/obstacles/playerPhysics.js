@@ -504,7 +504,9 @@ export function checkPlayerPlatformLanding(p, groundY) {
   if (landedSurface !== null) {
     const impactVy = p.vy;
     p.y = landedSurface - colH;
-    p.vy = 0;
+    const isFallingPlatform = !!(landedPlatform?.cellRef?.isFalling);
+    p.vy = isFallingPlatform ? (landedPlatform.cellRef.vy || 0) : (p._ridingFallingVy || 0);
+    p._ridingFallingVy = isFallingPlatform ? p.vy : 0;
     p.isJumping = false;
     p.isSprintJump = false;
     p.sprintJumpTimer = 0;
@@ -557,6 +559,7 @@ export function checkPlayerPlatformLanding(p, groundY) {
       p.jetFuel = Math.min(p.jetMax, p.jetFuel + 2.5);
     }
   } else {
+    p._ridingFallingVy = 0;
     p.currentPlatform = null;
     p.slopeAngle = 0;
     const curArena = typeof getActiveArena === 'function' ? getActiveArena() : null;

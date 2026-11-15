@@ -98,9 +98,6 @@ export function updateArena5Physics(dt, combatants = [], camera = null) {
 
   // 7. Aktualizacja najwyższego punktu wieży i stabilnych punktów odrodzenia
   updateTowerApexAndSpawns();
-
-  // 8. Aktywna depenetracja postaci z klocków (Anti-Stuck Solver: zapobiega wpadaniu i uwięzieniu w bloczku)
-  resolveArena5BlockPenetration(_activeCombatants);
 }
 
 /**
@@ -173,9 +170,15 @@ export function checkArena5CeilingCollisions(combatants) {
     let hitCeiling = false;
     let pushDownToY = -Infinity;
 
+    const floorBase = arena5State.currentFloorY || BASE_FLOOR_Y;
+    const rApprox = Math.floor((floorBase - headY) / CELL_SIZE);
+    const rStart = Math.max(minRow, rApprox - 1);
+    const rEnd = Math.min(arena5State.highestRowIndex + 2, rApprox + 2);
+
     for (let c = colLeft; c <= colRight; c++) {
-      for (const [r, rowData] of arena5State.gridRows.entries()) {
-        if (r < minRow || !rowData) continue;
+      for (let r = rStart; r <= rEnd; r++) {
+        const rowData = arena5State.gridRows.get(r);
+        if (!rowData) continue;
         const cell = rowData[c];
         if (!cell || cell.hp <= 0) continue;
 
@@ -288,6 +291,7 @@ function checkFallingSquash(combatants) {
         if (isSweptCross && victim.y < st.bottom && (victim.vy >= -3.0 || relVy >= -6.0)) {
           victim.y = st.top - pH;
           victim.vy = crane.vy;
+          victim._ridingFallingVy = crane.vy;
           victim.onGround = true;
           victim.isJumping = false;
           victim.currentGroundY = st.top;
@@ -324,7 +328,7 @@ function checkFallingSquash(combatants) {
             const hasSafePocketUnderneath = (finalGap >= pH - 8);
 
             if (hasSafePocketUnderneath && (victim.y >= cellTargetBottomY - 4)) {
-              victim.y = st.bottom;
+              victim.y = Math.min(surfaceBelowY - pH, st.bottom);
               if (victim.vy < 0) victim.vy = 0.5;
               if (victim.rocketBoots?.dashing && victim.rocketBoots.dashDirY < 0) {
                 victim.rocketBoots.dashDirY = 0;
@@ -341,7 +345,7 @@ function checkFallingSquash(combatants) {
               executeSquashKill(victim);
               break;
             } else {
-              victim.y = st.bottom;
+              victim.y = Math.min(surfaceBelowY - pH, st.bottom);
               victim.vy = Math.max(victim.vy, (crane.vy || 4.0) + 1.2);
               victim.onGround = false;
               victim.currentPlatform = null;
@@ -813,9 +817,9 @@ export function applyPieceGravity(combatants = null) {
       }
     }
 
-    // 3. Znajdź niepodparte klastry i posortuj od najniższego rzędu (pomijamy klastry będące już w trakcie płynnego opadania)
+    // 3. Znajdź niepodparte klastry i posortuj od najniższego rzędu
     const unsupportedClusters = clusters
-      .filter(cl => !supportedClusterIds.has(cl.id) && !cl.cells.some(c => c.isFalling))
+      .filter(cl => !supportedClusterIds.has(cl.id))
       .sort((a, b) => a.minRow - b.minRow);
 
     if (unsupportedClusters.length === 0) {
@@ -1086,6 +1090,7 @@ function updateFallingBlocks(dt, combatants) {
         if (ridingCell) {
           victim.y = ridingCell.y - pH;
           victim.vy = ridingCell.vy;
+          victim._ridingFallingVy = ridingCell.vy;
           victim.onGround = true;
           victim.currentPlatform = ridingCell.platformObj;
           continue; // Gracz jedzie bezpiecznie na dachu
@@ -1126,7 +1131,7 @@ function updateFallingBlocks(dt, combatants) {
                 executeSquashKill(victim);
                 break;
               } else {
-                victim.y = cell.y + cell.h;
+                victim.y = Math.min(surfaceBelowY - pH, cell.y + cell.h);
                 victim.vy = Math.max(victim.vy || 0, (cell.vy || 4.0) + 1.2);
                 victim.onGround = false;
                 victim.currentPlatform = null;
@@ -1176,6 +1181,7 @@ function updateFallingBlocks(dt, combatants) {
     triggerScreenShake(1.2);
     updateTowerApexAndSpawns();
     syncArena5ExposedSurfaces();
+    applyPieceGravity(combatants);
     checkAndTriggerLineClears(combatants);
     resolveArena5BlockPenetration(combatants);
   }
@@ -1193,7 +1199,8 @@ function checkAndTriggerLineClears(combatants) {
     if (!rowData) continue;
     let isFull = true;
     for (let c = 0; c < COLS; c++) {
-      if (!rowData[c] || rowData[c].hp <= 0) {
+      const cell = rowData[c];
+      if (!cell || cell.hp <= 0 || cell.isFalling || cell.isSliding) {
         isFull = false;
         break;
       }
@@ -1270,7 +1277,6 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
 
   arena5State.linesClearedCount += uniqueRows.length;
   triggerScreenShake(Math.min(32, 18 + uniqueRows.length * 6));
-  triggerHitstop(2);
   triggerCombatFeedBanner('KILL', uniqueRows.length > 1 ? `CZYSZCZENIE ${uniqueRows.length} LINII // COMBO TĄPNIĘCIE!` : `CZYSZCZENIE LINII // ATOMIZACJA RZĘDU!`);
 
   // Wybuchy i fala uderzeniowa na całej szerokości detonowanych wierszy
@@ -1297,8 +1303,10 @@ function executeBatchLineDetonation(rowsToDetonate, combatants) {
 
     for (let c = 0; c < COLS; c++) {
       const cx = getGridX(c) + CELL_SIZE * 0.5;
-      spawnShockwaveRing(cx, lineY, 80, '#f59e0b');
-      spawnConcreteDebris(cx, lineY, 8);
+      if (c % 4 === 0) {
+        spawnShockwaveRing(cx, lineY, 80, '#f59e0b');
+      }
+      spawnConcreteDebris(cx, lineY, 3);
       spawnRicochetSparks(cx, lineY, (Math.random() - 0.5) * 10, -Math.random() * 8, 4);
     }
 
@@ -1602,9 +1610,14 @@ export function resolveArena5BlockPenetration(combatants) {
       const colLeft = Math.max(0, Math.floor((pX - CELL_SIZE) / CELL_SIZE));
       const colRight = Math.min(COLS - 1, Math.floor((pX + pW + CELL_SIZE) / CELL_SIZE));
 
+      const floorBase = arena5State.currentFloorY || BASE_FLOOR_Y;
+      const rMinApprox = Math.max(minRow, Math.floor((floorBase - feetY - 24) / CELL_SIZE));
+      const rMaxApprox = Math.min(arena5State.highestRowIndex + 2, Math.floor((floorBase - headY + 24) / CELL_SIZE) + 1);
+
       for (let c = colLeft; c <= colRight; c++) {
-        for (const [r, rowData] of arena5State.gridRows.entries()) {
-          if (r < minRow || !rowData) continue;
+        for (let r = rMinApprox; r <= rMaxApprox; r++) {
+          const rowData = arena5State.gridRows.get(r);
+          if (!rowData) continue;
           const cell = rowData[c];
           if (!cell || cell.hp <= 0 || cell.isFalling) continue;
 

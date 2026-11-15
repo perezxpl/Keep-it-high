@@ -619,8 +619,28 @@ export function updateArena3(dt, players, ball) {
       continue;
     }
 
-    // Jeśli klocek wypadł poza świat gry -> trwale uśpij i wyłącz
-    if (b.y > 1410 || b.x < 300 || b.x > 4100) {
+    // Inicjalizacja licznika zatopienia dla zniszczonego klocka
+    b.sinkTimer = b.sinkTimer || 0;
+
+    // Gdy zniszczony klocek dotknie wody lub przejdzie w stan uśpienia, natychmiast wyłącz właściwości platformy
+    const touchesWater = (b.y + b.h >= 1295);
+    if (touchesWater || b.isAsleep) {
+      b.solid = false;
+      b.isPlatform = false;
+      b.sinkTimer++;
+    } else {
+      b.solid = true;
+      b.isPlatform = true;
+      b.oneWay = true;
+    }
+
+    // Po 180 klatkach (3s) w wodzie lub uśpieniu klocek powoli tonie poniżej dna
+    if (b.sinkTimer >= 180) {
+      b.y += 1.2;
+    }
+
+    // Jeśli klocek wypadł poza świat gry lub utonął poniżej dna (y > 1415) -> trwale uśpij i wyłącz
+    if (b.y > 1415 || b.x < 300 || b.x > 4100) {
       b.isAsleep = true;
       b.solid = false;
       b.isPlatform = false;
@@ -687,16 +707,6 @@ export function updateArena3(dt, players, ball) {
     if (b.isAsleep) continue;
 
     const inWater = (b.y + b.h >= 1305);
-
-    // Gdy klocek znajdzie się głęboko w rzece, nie może służyć jako platforma (zapobiega tysiącom testów lądowania)
-    if (b.y >= 1315) {
-      b.solid = false;
-      b.isPlatform = false;
-    } else {
-      b.solid = true;
-      b.isPlatform = true;
-      b.oneWay = true;
-    }
 
     if (b.isSniperSlab) {
       // FIZYKA PŁYTY SKALNEJ: Ciężka masa, tonie w rzece na dno

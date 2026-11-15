@@ -825,6 +825,7 @@ export function resetArena3() {
     b.oneWay = true;
     b.isAsleep = false;
     b.sleepTimer = 0;
+    b.sinkTimer = 0;
     b.cableAttached = true;
     b.collapseDelay = 0;
     b.sag = 0;
@@ -848,6 +849,7 @@ export function resetArena3() {
     b.isSlope = true;
     b.isAsleep = false;
     b.sleepTimer = 0;
+    b.sinkTimer = 0;
     b.collapseDelay = 0;
     const yStart = getApproachInclineY(b.origX, b.side === 'left');
     const yEnd = getApproachInclineY(b.origX + b.w, b.side === 'left');
@@ -903,6 +905,7 @@ export function resetArena3() {
       b.oneWay = true;
       b.isAsleep = false;
       b.sleepTimer = 0;
+      b.sinkTimer = 0;
       b.collapseDelay = 0;
     }
   }
@@ -923,6 +926,7 @@ export function resetArena3() {
     slab.oneWay = true;
     slab.isAsleep = false;
     slab.sleepTimer = 0;
+    slab.sinkTimer = 0;
   }
 
   // 5. Reset wież bojowych i podestów
@@ -951,6 +955,7 @@ export function resetArena3() {
     b.oneWay = true;
     b.isAsleep = false;
     b.sleepTimer = 0;
+    b.sinkTimer = 0;
   }
   const stemL = ARENA_3_PLATFORMS.find(p => p.id === 'tower_cyan_stem');
   if (stemL) {
